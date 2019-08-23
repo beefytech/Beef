@@ -1,5 +1,5 @@
-/llvm_*
-/llvm-*
-/x64
-/Debug
-/Release
+*/llvm-*
+*/llvm_*
+*/x64
+*/Debug
+*/Release
