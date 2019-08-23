@@ -1,0 +1,9 @@
+# This tests for a bug where 'b' wasn't visible on the very last line of the method
+
+ShowFile("src/bugs/Bug001.bf")
+GotoText("//Bug001_DoTest")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+AssertEvalEquals("a", "123")
+AssertEvalEquals("b", "234")

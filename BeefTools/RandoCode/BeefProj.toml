@@ -1,0 +1,39 @@
+FileVersion = 1
+Dependencies = {Beefy2D = "*", corlib = "*"}
+
+[Project]
+Name = "RandoCode"
+StartupObject = "RandoCode.Program"
+
+[Configs.Debug.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Debug.Win64]
+TargetDirectory = "$(ProjectDir)"
+TargetName = "$(ProjectName)_d"
+CLibType = "Static"
+BeefLibType = "Static"
+DebugCommandArguments = "scripts\\Test001.toml"
+DebugWorkingDirectory = "$(ProjectDir)\\..\\..\\IDE\\Tests\\Rando"
+
+[Configs.Paranoid.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Paranoid.Win64]
+TargetDirectory = "$(ProjectDir)"
+TargetName = "$(ProjectName)_p"
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win64]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Release.Win64]
+TargetDirectory = "$(ProjectDir)"

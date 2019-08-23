@@ -1,0 +1,10 @@
+LIBRARY
+EXPORTS
+	ffi_closure_alloc
+	ffi_closure_free
+	ffi_prep_closure
+	ffi_prep_closure_loc
+
+	ffi_prep_cif
+	ffi_prep_cif_var
+	ffi_call

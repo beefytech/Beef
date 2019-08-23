@@ -1,0 +1,20 @@
+ShowFile("src/HotSwap.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+GotoText("//*HotTester_Test1")
+AdjustCursor(0, 1)
+InsertText("int a0 = 1;\n\t\t\tint b0 = 2;\n\t\t\tint c0 = 3;\n")
+AdjustCursor(0, -2)
+ToggleBreakpoint()
+
+# We want to ensure that breakpoint didn't bind yet
+StepOver()
+StepOver()
+AssertLineContains("ht.Test1()")
+
+# ... but now it does
+Compile()
+Continue()
+AssertLineContains("b0 = 2")

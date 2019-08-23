@@ -1,0 +1,18 @@
+ShowFile("src/HotSwap_Data.bf")
+ToggleCommentAt("Test03_delegate")
+
+GotoText("//Test_Test03")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+ToggleCommentAt("Test03_delegate")
+Compile()
+
+# We are rebuilding Func so this should be okay
+ToggleCommentAt("StructA_mA2")
+Compile()
+ToggleCommentAt("Func")
+ToggleCommentAt("StructA_mA3")
+SetExpectError("data changes")
+Compile()
+ExpectError()

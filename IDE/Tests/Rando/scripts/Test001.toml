@@ -1,0 +1,32 @@
+TypeCount = 1500
+PrimitiveTypeChance = 0.0        
+StructPct = 0.0
+TypeComplexityPower = 2.0
+
+#CreateGenericTypePct = 0.3
+#SpecializedTypePower = 3.0
+#UnspecializedTypeScalar = 10.0
+
+CreateGenericTypePct = 0.0
+SpecializedTypePower = 0.0
+UnspecializedTypeScalar = 0.0
+TypeDefPoolPower = 1.1
+TypeDefPoolOffset = 3.0
+TypeDefPoolScalar = 15.0
+
+FieldCountPower = 2.0
+FieldCountScalar = 12.0
+FieldStaticPct = 0.2
+
+VoidReturnPct = 0.6
+MethodCodeComplexityPower = 2.0
+MethodLengthScalar = 40
+MethodCountScalar = 10.0
+AssignMemberPct = 0.3
+CreateLocalPct = 0.3
+        
+ParamCountPower = 3.0
+ParamCountScalar = 5.0
+
+NewSpacespaceChance = 0.2
+RootNamespaceChance = 0.1

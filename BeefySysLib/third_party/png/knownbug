@@ -1,0 +1,58 @@
+
+Known bugs and suggested enhancements in libpng-1.0.4
+
+
+1. March 15, 1998 -- OPTIMIZATION -- Kevin Bracey
+
+   Loops need to be optimized everywhere
+
+   Make them count down instead of up -- Kevin Bracey
+
+   Optimizing compilers don't need this, and making
+   the change would be error prone -- Tom Lane, Glenn R-P
+
+   Question whether i-- or --i is better.
+
+   STATUS: Under investigation, postponed until after
+   libpng-1.0.5.  About 160 loops will be turned around
+   in libpng-1.0.Nn, for testing.
+
+2. July 4, 1998 -- ENHANCEMENT -- Glenn R-P
+
+   libpng-1.0.5 and earlier transform colors to gamma=1.0 space for
+   merging with background, and then back to the image's gamma.  The
+   bit_depth of the intermediate (gamma=1.0) representation is probably
+   not sufficient.  In the typical gamma=1/2.2 situation, the linear
+   pixels need about 4 more bits than the gamma-encoded ones, to avoid
+   loss of precision.  A similar situation exists with the rgb_to_gray
+   operation.
+
+   STATUS: under development.
+
+3. September 1999 -- ENHANCEMENT --
+
+   It should be possible to use libpng without floating-point aritmetic.
+
+   STATUS: Under investigation, implementation postponed until after
+   libpng-1.0.5.  The application interface will change because replacements
+   for the png_set_gAMA(), png_set_cHRM(), and corresponding png_get_()
+   functions will be needed.
+
+4. September 1999 -- BUG [FIXED] --
+
+   Portions of the new MMX code in pngvcrd.c were ifdef'd out because they
+   didn't work properly, but the bug appears to have been found and fixed.
+   As a result, all parts of the code are once again enabled.  If you think
+   there's still a problem, you can recompile with one of the following two
+   macros defined and see if the problem goes away:
+
+	DISABLE_PNGVCRD_COMBINE
+	DISABLE_PNGVCRD_INTERLACE
+
+   The second one is in the function where the bug was; as far as we are
+   aware, there was never any bug in the other function.  Please notify us
+   if you find any problems in libpng, regardless of whether the two macros
+   make any difference:  png-implement@ccrc.wustl.edu
+
+   Again, we believe the MMX code in pngvcrd.c is 100% correct, but it has
+   not yet been tested extensively.

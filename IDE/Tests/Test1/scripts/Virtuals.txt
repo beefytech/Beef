@@ -1,0 +1,22 @@
+# This checks that virtual method calls work in the debugger,
+# and also ensures that the virtual indicies properly remap
+# after the interface slot count increases between compiles
+
+ShowFile("src/Virtuals.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+
+RunWithCompiling()
+AssertEvalEquals("ca.GetA(9)", "2009")
+AssertEvalEquals("cb.GetA(11)", "2011")
+AssertEvalEquals("ca.Korf", "234")
+AssertEvalEquals("cb.Korf", "234")
+StopRunning()
+
+ToggleCommentAt("ClassA_IFaces")
+ToggleCommentAt("Test_IFaces")
+RunWithCompiling()
+AssertEvalEquals("ca.GetA(9)", "2009")
+AssertEvalEquals("cb.GetA(11)", "2011")
+AssertEvalEquals("ca.Korf", "234")
+AssertEvalEquals("cb.Korf", "234")

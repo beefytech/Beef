@@ -1,0 +1,55 @@
+FileVersion = 1
+Dependencies = {minlib = "*"}
+
+[Project]
+Name = "LibA"
+TargetType = "BeefLib"
+DefaultNamespace = ""
+
+[Configs.Debug.Win32]
+OtherLinkFlags = "-lComdlg32"
+CLibType = "Dynamic"
+
+[Configs.Debug.Win64]
+OtherLinkFlags = "-lComdlg32"
+CLibType = "Static"
+
+[Configs.Debug.WinFart]
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Release.Win32]
+OtherLinkFlags = "-lComdlg32"
+CLibType = "Dynamic"
+OptimizationLevel = "O2"
+
+[Configs.Release.Win64]
+OtherLinkFlags = "-lComdlg32"
+OptimizationLevel = "O2"
+
+[Configs.Release.WinFart]
+OtherLinkFlags = ""
+
+[Configs.Paranoid.Win32]
+CLibType = "Static"
+
+[Configs.Paranoid.Win64]
+CLibType = "Static"
+
+[Configs.Paranoid.WinFart]
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win32]
+CLibType = "Static"
+
+[Configs.Test.Win64]
+CLibType = "Static"
+
+[Configs.Test.WinFart]
+BuildKind = "Normal"
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"

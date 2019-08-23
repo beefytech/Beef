@@ -1,0 +1,8 @@
+[Registry.minlib]
+Version = "1.0.0"
+Location = { Path = "../../mintest/minlib" }
+
+[Registry.corlib]
+Version = "1.0.0"
+Location = { Path = "../../../BeefLibs/corlib" }
+

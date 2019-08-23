@@ -1,0 +1,13 @@
+ShowFile("src/HotSwap_BaseChange.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+ToggleCommentAt("ClassC_3")
+ToggleCommentAt("DoTest3_Body")
+SetExpectError("Too many arguments")
+Compile()
+
+ToggleCommentAt("ClassC_3")
+ToggleCommentAt("ClassC_1")
+Compile()

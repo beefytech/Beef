@@ -1,0 +1,387 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Compiler">
+      <UniqueIdentifier>{c4e4a945-266b-41b2-af83-5297cff2ac60}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Clang">
+      <UniqueIdentifier>{cabe5063-e7b8-4743-8181-b463bbe70fa0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Debugger">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Backend">
+      <UniqueIdentifier>{203286d2-8612-43a9-9218-cb7add274fcf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Linker">
+      <UniqueIdentifier>{a6d1c52a-5064-42fa-bc7f-e5dbeb5d4386}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Beef">
+      <UniqueIdentifier>{83b97406-2f83-49ad-bbbc-3ff70ecda6bb}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Compiler\BfAst.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfReducer.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfPrinter.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfDefBuilder.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfCompiler.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfParser.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfSystem.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfSourceClassifier.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfSourcePositionFinder.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfConstResolver.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfMangler.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfResolvedTypeUtils.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfAutoComplete.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfContext.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfModule.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfDemangler.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfCodeGen.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Clang\ClangHelper.cpp">
+      <Filter>Clang</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfSource.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfResolvePass.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfUtil.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugManager.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="SpellChecker.cpp" />
+    <ClCompile Include="Targets.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Clang\CDepChecker.cpp">
+      <Filter>Clang</Filter>
+    </ClCompile>
+    <ClCompile Include="X64.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="X86.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="X86Target.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="X86XmmInfo.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugVisualizers.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfExprEvaluator.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Debugger.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfElementVisitor.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfAstAllocator.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfIRBuilder.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\MemReporter.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Linker\BlContext.cpp">
+      <Filter>Linker</Filter>
+    </ClCompile>
+    <ClCompile Include="Backend\BeCOFFObject.cpp">
+      <Filter>Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Backend\BeContext.cpp">
+      <Filter>Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Backend\BeIRCodeGen.cpp">
+      <Filter>Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Backend\BeMCContext.cpp">
+      <Filter>Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Backend\BeModule.cpp">
+      <Filter>Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Linker\BlSymTable.cpp">
+      <Filter>Linker</Filter>
+    </ClCompile>
+    <ClCompile Include="Linker\BlCvTypeSource.cpp">
+      <Filter>Linker</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfDeferEvalChecker.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfStmtEvaluator.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Backend\BeLibManger.cpp">
+      <Filter>Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfIRCodeGen.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="BfDiff.cpp" />
+    <ClCompile Include="Beef\BfCommon.cpp">
+      <Filter>Beef</Filter>
+    </ClCompile>
+    <ClCompile Include="Linker\BlPdbParser.cpp">
+      <Filter>Linker</Filter>
+    </ClCompile>
+    <ClCompile Include="Linker\BlMsf.cpp">
+      <Filter>Linker</Filter>
+    </ClCompile>
+    <ClCompile Include="Linker\BlHash.cpp">
+      <Filter>Linker</Filter>
+    </ClCompile>
+    <ClCompile Include="Linker\BlCvParser.cpp">
+      <Filter>Linker</Filter>
+    </ClCompile>
+    <ClCompile Include="Linker\BlCodeView.cpp">
+      <Filter>Linker</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfModuleTypeUtils.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="DbgMiniDump.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="NetManager.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="VSSupport.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="Compiler\BfVarDeclChecker.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Compiler\BfAst.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfReducer.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfType.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfPrinter.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfSystem.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfDefBuilder.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfCompiler.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfParser.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfSourceClassifier.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfSourcePositionFinder.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfConstResolver.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfMangler.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfResolvedTypeUtils.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfAutoComplete.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfContext.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfModule.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfUtil.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfDemangler.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfCodeGen.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfSource.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Debugger.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugManager.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="Clang\CDepChecker.h">
+      <Filter>Clang</Filter>
+    </ClInclude>
+    <ClInclude Include="Clang\ClangHelper.h">
+      <Filter>Clang</Filter>
+    </ClInclude>
+    <ClInclude Include="X64.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="X86.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="X86InstrInfo.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="X86Target.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugVisualizers.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfExprEvaluator.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="StrHashMap.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="StrBloomMap.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfResolvePass.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfFixits.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfElementVisitor.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfAstAllocator.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfIRBuilder.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfIRCodeGen.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\MemReporter.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="COFFData.h" />
+    <ClInclude Include="Backend\BeCOFFObject.h">
+      <Filter>Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Backend\BeContext.h">
+      <Filter>Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Backend\BeDbgModule.h">
+      <Filter>Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Backend\BeIRCodeGen.h">
+      <Filter>Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Backend\BeMCContext.h">
+      <Filter>Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Backend\BeMCX86.h">
+      <Filter>Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Backend\BeModule.h">
+      <Filter>Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Linker\BlContext.h">
+      <Filter>Linker</Filter>
+    </ClInclude>
+    <ClInclude Include="Linker\BlSymTable.h">
+      <Filter>Linker</Filter>
+    </ClInclude>
+    <ClInclude Include="Linker\BlCodeView.h">
+      <Filter>Linker</Filter>
+    </ClInclude>
+    <ClInclude Include="Linker\BlCvParser.h">
+      <Filter>Linker</Filter>
+    </ClInclude>
+    <ClInclude Include="Linker\BlPdbParser.h">
+      <Filter>Linker</Filter>
+    </ClInclude>
+    <ClInclude Include="Linker\BlCvTypeSource.h">
+      <Filter>Linker</Filter>
+    </ClInclude>
+    <ClInclude Include="Linker\BlHash.h">
+      <Filter>Linker</Filter>
+    </ClInclude>
+    <ClInclude Include="Linker\BlMsf.h">
+      <Filter>Linker</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfDeferEvalChecker.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler\BfModuleTypeUtils.h" />
+    <ClInclude Include="Backend\BeLibManger.h">
+      <Filter>Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="Beef\BfCommon.h">
+      <Filter>Beef</Filter>
+    </ClInclude>
+    <ClInclude Include="LLVMUtils.h" />
+    <ClInclude Include="DbgMiniDump.h">
+      <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="NetManager.h" />
+    <ClInclude Include="Compiler\BfVarDeclChecker.h" />
+  </ItemGroup>
+</Project>

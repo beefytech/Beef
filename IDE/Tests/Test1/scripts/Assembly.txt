@@ -1,0 +1,29 @@
+# We're testing that we can set a breakpoint on a specific assembly instruction 
+#  and that when we re-run, we also stop at that instruction
+
+#Leak()
+#Sleep(5000)
+
+ShowFile("src/Assembly.bf")
+GotoText("//AssemblyTester_Test")
+ToggleBreakpoint()
+RunWithCompiling()
+
+StepInto()
+ShowDisassemblyAtStack()
+
+GotoTextSkip("call", 1)
+AdjustCursor(0, 1)
+ToggleBreakpoint()
+CloseCurrentDocument()
+
+Continue()
+AssertEvalEquals("a", "2")
+
+StopRunning()
+CloseCurrentDocument()
+
+# Make sure when we re-run that we're still stopping after the second IncVal call
+RunWithCompiling()
+Continue()
+AssertEvalEquals("a", "2")

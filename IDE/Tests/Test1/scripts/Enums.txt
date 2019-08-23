@@ -1,0 +1,9 @@
+ShowFile("src/Enums.bf")
+GotoText("//EnumTester_Test")
+ToggleBreakpoint()
+RunWithCompiling()
+
+AssertEvalEquals("ea", ".B(b:1.2)")
+AssertEvalEquals("z", "(aa:123, bb:345)")
+AssertEvalEquals("q", "(a:234, 567, c:999)")
+AssertEvalEquals("qRef = (4, 5, 6)", "(a:4, 5, c:6)")

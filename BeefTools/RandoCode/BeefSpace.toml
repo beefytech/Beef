@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {RandoCode = {Path = "."}, Beefy2D = {Path = "../../Beefy2D"}}
+
+[Workspace]
+StartupProject = "RandoCode"

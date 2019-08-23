@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {RandoTest = {Path = "."}, minlib = {Path = "../../mintest/minlib"}}
+
+[Workspace]
+StartupProject = "RandoTest"

@@ -1,0 +1,13 @@
+ShowFile("src/SlotTest001.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+StepOver()
+AssertEvalEquals("val0", "931")
+
+Continue()
+ToggleCommentAt("ClassA_IFace0")
+RunWithCompiling()
+StepOver()
+AssertEvalEquals("val0", "4321931")

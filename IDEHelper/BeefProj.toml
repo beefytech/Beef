@@ -1,0 +1,504 @@
+FileVersion = 1
+Dependencies = {corlib = "*", Debugger64 = "*", BeefySysLib = "*"}
+
+[Project]
+Name = "IDEHelper"
+TargetType = "CustomBuild"
+
+[Configs.Debug.Win32]
+TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetName = "IDEHelper32_d.dll"
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\IDEHelper\\IDEHelper.vcxproj /p:Configuration=Debug /p:Platform=X86 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+
+[Configs.Debug.Win64]
+TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetName = "IDEHelper64_d.dll"
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\IDEHelper\\IDEHelper.vcxproj /p:Configuration=Debug /p:Platform=X64 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+
+[Configs.Release.Win32]
+TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetName = "IDEHelper32.dll"
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\IDEHelper\\IDEHelper.vcxproj /p:Configuration=Release /p:Platform=X86 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+
+[Configs.Release.Win64]
+TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetName = "IDEHelper64.dll"
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\IDEHelper\\IDEHelper.vcxproj /p:Configuration=Release /p:Platform=X64 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+
+[Configs.Paranoid.Win32]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[Configs.Paranoid.Win64]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[Configs.Test.Win32]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[Configs.Test.Win64]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Name = "Backend"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeCOFFObject.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeCOFFObject.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeContext.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeContext.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeIRCodeGen.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeIRCodeGen.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeLibManger.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeLibManger.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeMCContext.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeMCContext.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeModule.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Backend/BeModule.h"
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Name = "Clang"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Clang/CDepChecker.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Clang/CDepChecker.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Clang/ClangHelper.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Clang/ClangHelper.h"
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Name = "Compiler"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfAst.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfAst.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfAstAllocator.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfAstAllocator.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfAutoComplete.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfAutoComplete.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfCodeGen.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfCodeGen.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfCompiler.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfCompiler.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfConstResolver.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfConstResolver.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfContext.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfContext.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfDefBuilder.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfDefBuilder.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfDeferEvalChecker.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfDeferEvalChecker.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfDemangler.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfDemangler.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfElementVisitor.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfExprEvaluator.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfExprEvaluator.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfFixits.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfIRBuilder.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfIRBuilder.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfIRCodeGen.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfIRCodeGen.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfMangler.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfMangler.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfModule.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfModule.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfModuleTypeUtils.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfModuleTypeUtils.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfParser.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfParser.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfPrinter.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfPrinter.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfReducer.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfReducer.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfResolvedTypeUtils.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfResolvedTypeUtils.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfResolvePass.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfResolvePass.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfSource.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfSource.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfSourceClassifier.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfSourceClassifier.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfSourcePositionFinder.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfSourcePositionFinder.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfStmtEvaluator.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfSystem.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfSystem.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfType.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfUtil.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/BfUtil.h"
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Path = "Debugger"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "BfDiff.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "BumpList.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "COFF.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "COFF.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "CPU.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DbgExprEvaluator.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DbgExprEvaluator.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DbgModule.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DbgModule.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DbgSymSrv.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DbgSymSrv.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DebugCommon.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "Debugger.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "Debugger.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DebugManager.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DebugManager.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DebugTarget.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DebugTarget.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DebugVisualizers.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DebugVisualizers.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DWARFInfo.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "DwAutoComplete.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "HandleDbg.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "HandleDbg.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "RadixMap.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "SpellChecker.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "StrBloomMap.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "StrHashMap.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "Targets.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "X64.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "X64.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "X86.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "X86.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "X86InstrInfo.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "X86Target.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "X86Target.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "X86XmmInfo.cpp"

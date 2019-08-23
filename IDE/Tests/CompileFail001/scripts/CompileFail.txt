@@ -1,0 +1,14 @@
+ShowFile("src/Protection.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
+
+ShowFile("src/Cases.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
+
+ShowFile("src/LocalVars.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()

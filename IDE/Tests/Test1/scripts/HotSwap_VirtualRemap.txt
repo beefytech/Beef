@@ -1,0 +1,39 @@
+# Tests that even when removing an old virtual method, adding a new one, and then
+#  adding back a method with the same name as the old one, we can call this new
+#  method using an old virtual call
+ShowFile("src/HotSwap.bf")
+GotoText("//HotStart_VirtualRemap")
+ToggleBreakpoint()
+RunWithCompiling()
+
+# Turn off MethodB
+ToggleCommentAt("HotA_MethodB")
+ToggleCommentAt("HotTester_Test1")
+ToggleCommentAt("HotTester_TestVirtualRemap_MethodBCall")
+ToggleCommentAt("HotTester_TestVirtualRemap_MethodBCall_2")
+Compile()
+# Make sure we can call the old 'MethodB'
+StepOver()
+StepOver()
+AssertEvalEquals("val", "11")
+
+# Turn on MethodC
+ShowCurrent()
+ToggleCommentAt("HotA_MethodC")
+ToggleCommentAt("HotTester_TestVirtualRemap2_MethodCCall")
+Compile()
+StepInto()
+StepOver()
+AssertEvalEquals("val", "12")
+
+# Turn on MethodB (version 2)
+ToggleCommentAt("HotA_MethodB_2")
+ToggleCommentAt("HotTester_TestVirtualRemap_MethodBCall")
+Compile()
+
+StepOver()
+StepOver()
+# We are running an old version of TestVirtualRemap that used the old virtual slot
+#  number for the MethodB call, but the new MethodB should be mapped to that same
+#  slot because it mangles the same
+AssertEvalEquals("val", "111")

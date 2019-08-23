@@ -1,0 +1,407 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug Static|Win32">
+      <Configuration>Debug Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug Static|x64">
+      <Configuration>Debug Static</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Static|Win32">
+      <Configuration>Release Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Static|x64">
+      <Configuration>Release Static</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8F529049-889A-4FC6-9F4C-FAAFC42C9519}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>BeefMem</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="BeefMem.cpp" />
+    <ClCompile Include="gperftools\src\central_freelist.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\heap-profile-table.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\symbolize.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\tc_common.cc" />
+    <ClCompile Include="gperftools\src\windows\ia32_modrm_map.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\windows\ia32_opcode_map.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\internal_logging.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\base\logging.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\base\low_level_alloc.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\malloc_extension.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\malloc_hook.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\memory_region_map.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\windows\mini_disassembler.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\page_heap.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\sampler.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\windows\port.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\windows\preamble_patcher.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\windows\preamble_patcher_with_stub.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\raw_printer.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\span.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\stacktrace.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\stack_trace_table.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\static_vars.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\base\spinlock.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\base\spinlock_internal.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\base\sysinfo.cc">
+    </ClCompile>
+    <ClCompile Include="gperftools\src\thread_cache.cc">
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="gperftools\src\addressmap-inl.h" />
+    <ClInclude Include="gperftools\src\base\basictypes.h" />
+    <ClInclude Include="gperftools\src\central_freelist.h" />
+    <ClInclude Include="gperftools\src\base\commandlineflags.h" />
+    <ClInclude Include="gperftools\src\windows\config.h" />
+    <ClInclude Include="gperftools\src\base\googleinit.h" />
+    <ClInclude Include="gperftools\src\gperftools\heap-checker.h" />
+    <ClInclude Include="gperftools\src\heap-profile-table.h" />
+    <ClInclude Include="gperftools\src\symbolize.h" />
+    <ClInclude Include="gperftools\src\gperftools\heap-profiler.h" />
+    <ClInclude Include="gperftools\src\common.h" />
+    <ClInclude Include="gperftools\src\internal_logging.h" />
+    <ClInclude Include="gperftools\src\base\logging.h" />
+    <ClInclude Include="gperftools\src\base\low_level_alloc.h" />
+    <ClInclude Include="gperftools\src\base\atomicops-internals-linuxppc.h" />
+    <ClInclude Include="gperftools\src\base\atomicops-internals-macosx.h" />
+    <ClInclude Include="gperftools\src\base\atomicops-internals-x86.h" />
+    <ClInclude Include="gperftools\src\base\atomicops.h" />
+    <ClInclude Include="gperftools\src\base\spinlock.h" />
+    <ClInclude Include="gperftools\src\base\spinlock_internal.h" />
+    <ClInclude Include="gperftools\src\base\spinlock_linux-inl.h" />
+    <ClInclude Include="gperftools\src\base\spinlock_posix-inl.h" />
+    <ClInclude Include="gperftools\src\base\spinlock_win32-inl.h" />
+    <ClInclude Include="gperftools\src\gperftools\malloc_extension.h" />
+    <ClInclude Include="gperftools\src\gperftools\malloc_hook.h" />
+    <ClInclude Include="gperftools\src\malloc_hook-inl.h" />
+    <ClInclude Include="gperftools\src\memory_region_map.h" />
+    <ClInclude Include="gperftools\src\windows\mini_disassembler.h" />
+    <ClInclude Include="gperftools\src\windows\mini_disassembler_types.h" />
+    <ClInclude Include="gperftools\src\packed-cache-inl.h" />
+    <ClInclude Include="gperftools\src\page_heap.h" />
+    <ClInclude Include="gperftools\src\page_heap_allocator.h" />
+    <ClInclude Include="gperftools\src\pagemap.h" />
+    <ClInclude Include="gperftools\src\windows\port.h" />
+    <ClInclude Include="gperftools\src\windows\preamble_patcher.h" />
+    <ClInclude Include="gperftools\src\gperftools\profiler.h" />
+    <ClInclude Include="gperftools\src\raw_printer.h" />
+    <ClInclude Include="gperftools\src\sampler.h" />
+    <ClInclude Include="gperftools\src\span.h" />
+    <ClInclude Include="gperftools\src\gperftools\stacktrace.h" />
+    <ClInclude Include="gperftools\src\stacktrace_config.h" />
+    <ClInclude Include="gperftools\src\stacktrace_win32-inl.h" />
+    <ClInclude Include="gperftools\src\stack_trace_table.h" />
+    <ClInclude Include="gperftools\src\static_vars.h" />
+    <ClInclude Include="gperftools\src\base\stl_allocator.h" />
+    <ClInclude Include="gperftools\src\base\sysinfo.h" />
+    <ClInclude Include="gperftools\src\system-alloc.h" />
+    <ClInclude Include="gperftools\src\tcmalloc.h" />
+    <ClInclude Include="gperftools\src\base\thread_annotations.h" />
+    <ClInclude Include="gperftools\src\thread_cache.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetName>$(ProjectName)64_d</TargetName>
+    <OutDir>$(SolutionDir)\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">
+    <TargetName>$(ProjectName)64_d</TargetName>
+    <OutDir>$(SolutionDir)\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetName>$(ProjectName)64</TargetName>
+    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">
+    <TargetName>$(ProjectName)64</TargetName>
+    <OutDir>$(SolutionDir)\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">
+    <OutDir>$(SolutionDir)\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">
+    <OutDir>$(SolutionDir)\dist\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.; ..; ../BeefySysLib/third_party; ../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.; ..; ../BeefySysLib/third_party; ../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>BFMEM_DYNAMIC;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
+      <SupportJustMyCode>false</SupportJustMyCode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>BF_NO_BFAPP;BFSYSLIB_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
+      <SupportJustMyCode>false</SupportJustMyCode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.; ..; ../BeefySysLib/third_party; ../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.; ..; ../BeefySysLib/third_party; ../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>BFMEM_DYNAMIC;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>Debug</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>BF_NO_BFAPP;BFSYSLIB_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

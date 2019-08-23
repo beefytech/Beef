@@ -1,0 +1,12 @@
+ShowFile("src/MemoryBreakpoints.bf")
+GotoText("//MemoryBreakpointTester_Test")
+ToggleBreakpoint()
+RunWithCompiling()
+
+StepOver()
+CreateMemoryBreakpoint("mbt")
+
+Continue()
+AssertEvalEquals("a", "0")
+Continue()
+AssertEvalEquals("a", "2")

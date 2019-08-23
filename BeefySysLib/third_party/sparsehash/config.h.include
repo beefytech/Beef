@@ -1,0 +1,22 @@
+/***
+ *** These are #defines that autoheader puts in config.h.in that we
+ *** want to show up in sparseconfig.h, the minimal config.h file
+ *** #included by all our .h files.  The reason we don't take
+ *** everything that autoheader emits is that we have to include a
+ *** config.h in installed header files, and we want to minimize the
+ *** number of #defines we make so as to not pollute the namespace.
+ ***/
+GOOGLE_NAMESPACE
+HASH_NAMESPACE
+HASH_FUN_H
+SPARSEHASH_HASH
+HAVE_UINT16_T
+HAVE_U_INT16_T
+HAVE___UINT16
+HAVE_LONG_LONG
+HAVE_SYS_TYPES_H
+HAVE_STDINT_H
+HAVE_INTTYPES_H
+HAVE_MEMCPY
+_END_GOOGLE_NAMESPACE_
+_START_GOOGLE_NAMESPACE_

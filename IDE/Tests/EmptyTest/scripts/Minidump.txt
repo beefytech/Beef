@@ -1,0 +1,18 @@
+SetSymSrvOptions("C:/SymCache", "http://linux.beefy2d.com/symbols\nhttps://msdl.microsoft.com/download/symbols", "TempCache")
+#SetSymSrvOptions("C:/SymCache", "https://msdl.microsoft.com/download/symbols\nhttps://chromium-browser-symsrv.commondatastorage.googleapis.com", "TempCache")
+#SetSymSrvOptions("C:/SymCache", "https://msdl.microsoft.com/download/symbols\nhttps://chromium-browser-symsrv.commondatastorage.googleapis.com", "None")
+
+OpenCrashDump("dumps/Chrome1.dmp")
+WaitForPaused()
+
+ClickPanelButton("Run")
+WaitForPaused()
+
+AssertLineContains("*zero = 0;")
+
+SelectCallStackIdx(2)
+AssertCurrentMethod("chrome_child.dll!content::RenderFrameImpl::OnFailedNavigation(const content::CommonNavigationParams& common_params, const content::RequestNavigationParams& request_params, bool has_stale_copy_in_cache, int error_code)")
+AssertEvalEquals("error_code", "-300")
+
+SelectCallStackIdx(15)
+AssertCurrentMethod("chrome_child.dll!base::internal::InvokeHelper<1,void>::MakeItSo(void (bool)& weak_ptr, const base::WeakPtr<blink::scheduler::TaskQueueManager>&, const bool&)")

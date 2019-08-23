@@ -1,0 +1,69 @@
+FileVersion = 1
+Dependencies = {minlib = "*"}
+
+[Project]
+Name = "mintest"
+StartupObject = "Hey.Dude.Bro.TestClass"
+DefaultNamespace = "Mintest"
+Aliases = ["corlib"]
+
+[Configs.Debug.Win64]
+CLibType = "DynamicDebug"
+BeefLibType = "DynamicDebug"
+StackSize = 4194304
+DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"\"\"abc efg\"\"\""
+DebugWorkingDirectory = ".\\"
+
+[Configs.Debug.Win32]
+CLibType = "DynamicDebug"
+BeefLibType = "DynamicDebug"
+
+[Configs.Debug.WinFart]
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Release.Win64]
+DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"abc efg\""
+
+[Configs.Release.WinFart]
+OtherLinkFlags = ""
+
+[Configs.Paranoid.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Paranoid.Win64]
+CLibType = "Static"
+BeefLibType = "Static"
+DebugCommandArguments = "paranoid"
+
+[Configs.Paranoid.WinFart]
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win64]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.WinFart]
+BuildKind = "Normal"
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"
+
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "../../../temp/test.txt"
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Path = "../../../temp/borf"
+Source = ["a.txt"]

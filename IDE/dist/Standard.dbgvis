@@ -1,0 +1,1186 @@
+{
+    "Type": {
+        "Name": "System.CallStackAddr",
+        "DisplayString": "{__funcName(this), ne}",
+        "Action": "ShowCodeAddr {(int)this,X}"
+    },
+
+    "Type": {
+        "Name": "System.DeferredCall",
+        "DisplayString" : "",
+        "Expand": {
+            "LinkedListItems": {
+                "HeadPointer": "&this",
+                "NextPointer": "mNext",
+                "ValuePointer": "/*(mMethodId < 0) ? &this :*/ __cast(\"_BF_DeferredData_\", mMethodId, \"*\", (void*)&this)"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Event<*>",
+        "DisplayString" : "{{ data={(System.Object)(mData & ~3)} }}",
+        "Expand":
+        {
+            "Item": {
+                "Name": "[target]",
+                "Value": "(System.Object)(mData)",
+                "Condition": "(mData & 1) == 0"
+            },
+            "Item": {
+                "Name": "[target]",
+                "Value": "((System.Event<$T1>.Enumerator*)(mData & ~3)).mTarget",
+                "Condition": "(mData & 1) != 0"
+            },
+            "Item": {
+                "Name": "[flags]",
+                "Value": "mData & 3"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "_BF_DeferredData_*",
+        "DisplayString": {
+            "Condition": "__hasField(this, \"__this\")",
+            "String": "{{ {__demangleFakeMember(this)} this={__this} }}"
+        },
+        "DisplayString": "{{ {__demangleFakeMember(this)} }}"
+    },
+
+    "Type": {
+        "Name": "std::vector<bool, *>",
+        "Flavor": "MS",
+        "DisplayString": "{{ size={_Mysize} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "_Mysize"
+            },
+            "Item": {
+                "Name": "[capacity]",
+                "Value": "(_Myvec._Mypair._Myval2._Myend - _Myvec._Mypair._Myval2._Myfirst) * _EEN_VBITS"
+            },
+            "IndexListItems": {
+                "Size": "_Mysize",
+                "ValueNode": "((_Myvec._Mypair._Myval2._Myfirst[$i / _EEN_VBITS] >> ($i % _EEN_VBITS)) & 1) != 0"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::vector<*, *>",
+        "Flavor": "GNU",
+        "DisplayString": "{{ size={_M_impl._M_finish - _M_impl._M_start} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "_M_impl._M_finish - _M_impl._M_start"
+            },
+            "Item": {
+                "Name": "[capacity]",
+                "Value": "_M_impl._M_end_of_storage - _M_impl._M_start"
+            },
+            "ArrayItems": {
+                "Size": "_M_impl._M_finish - _M_impl._M_start",
+                "ValuePointer": "_M_impl._M_start"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::vector<*, *>",
+        "Flavor": "MS",
+        "DisplayString": "{{ size={_Mypair._Myval2._Mylast - _Mypair._Myval2._Myfirst} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "_Mypair._Myval2._Mylast - _Mypair._Myval2._Myfirst"
+            },
+            "Item": {
+                "Name": "[capacity]",
+                "Value": "_Mypair._Myval2._Myend - _Mypair._Myval2._Myfirst"
+            },
+            "ArrayItems": {
+                "Size": "_Mypair._Myval2._Mylast - _Mypair._Myval2._Myfirst",
+                "ValuePointer": "_Mypair._Myval2._Myfirst"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::__cxx11::list<*, *>",
+        "Expand": {
+            "LinkedListItems": {
+                "HeadPointer": "_M_impl._M_node._M_next",
+                "EndPointer": "_M_impl._M_node",
+                "NextPointer": "_M_next",
+                "ValueType": "value_type",
+                "ValuePointer": "*(this + 1)"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::list<*, *>",
+        "DisplayString": "{{ size={_Mypair._Myval2._Mysize} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Size]",
+                "Value": "_Mypair._Myval2._Mysize"
+            },
+            "LinkedListItems": {
+                "Size": "_Mypair._Myval2._Mysize",
+                "HeadPointer": "_Mypair._Myval2._Myhead._Next",                
+                "NextPointer": "_Next",
+                "ValuePointer": "&_Myval"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::map<*, *, *, *>",
+        "Flavor": "GNU",
+        "DisplayString": "{{ size={_M_t._M_impl._M_node_count} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Size]",
+                "Value": "_M_t._M_impl._M_node_count"
+            },
+            "TreeItems": {
+                "Size": "_M_t._M_impl._M_node_count",
+                "HeadPointer": "_M_t._M_impl._M_header._M_parent",
+                "LeftPointer": "_M_left",
+                "RightPointer": "_M_right",
+                "ValueType": "value_type",
+                "ValuePointer": "*(this + 1)"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::map<*, *, *, *>",
+        "Flavor": "MS",
+        "DisplayString": "{{ size={_Mypair._Myval2._Myval2._Mysize} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Size]",
+                "Value": "_Mypair._Myval2._Myval2._Mysize"
+            },
+            "TreeItems": {
+                "Size": "_Mypair._Myval2._Myval2._Mysize",
+                "HeadPointer": "_Mypair._Myval2._Myval2._Myhead._Parent",
+                "LeftPointer": "_Left",
+                "RightPointer": "_Right",                
+                "ValuePointer": "&_Myval",
+                "Condition": "_Isnil == 0"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::set<*, *, *>",
+        "Flavor": "MS",
+        "DisplayString": "{{ size={_Mypair._Myval2._Myval2._Mysize} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Size]",
+                "Value": "_Mypair._Myval2._Myval2._Mysize"
+            },
+            "TreeItems": {
+                "Size": "_Mypair._Myval2._Myval2._Mysize",
+                "HeadPointer": "_Mypair._Myval2._Myval2._Myhead._Parent",
+                "LeftPointer": "_Left",
+                "RightPointer": "_Right",                
+                "ValuePointer": "&_Myval",
+                "Condition": "_Isnil == 0"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::multiset<*, *, *>",
+        "Flavor": "MS",
+        "DisplayString": "{{ size={_Mypair._Myval2._Myval2._Mysize} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Size]",
+                "Value": "_Mypair._Myval2._Myval2._Mysize"
+            },
+            "TreeItems": {
+                "Size": "_Mypair._Myval2._Myval2._Mysize",
+                "HeadPointer": "_Mypair._Myval2._Myval2._Myhead._Parent",
+                "LeftPointer": "_Left",
+                "RightPointer": "_Right",                
+                "ValuePointer": "&_Myval",
+                "Condition": "_Isnil == 0"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "std::unordered_map<*, *, *, *, *>",
+        "DisplayString": "{_List}",
+        "Expand": {
+            "ExpandedItem": "_List"
+        }
+    },
+
+    "Type": {
+        "Name": "std::unordered_multimap<*, *, *, *, *>",
+        "DisplayString": "{_List}",
+        "Expand": {
+            "ExpandedItem": "_List"
+        }
+    },
+
+    "Type": {
+        "Name": "std::unordered_set<*, *, *, *>",
+        "DisplayString": "{_List}",
+        "Expand": {
+            "ExpandedItem": "_List"
+        }
+    },
+
+    "Type": {
+        "Name": "std::unordered_multiset<*, *, *, *>",
+        "DisplayString": "{_List}",
+        "Expand": {
+            "ExpandedItem": "_List"
+        }
+    },
+
+    "Type": {        
+        "Name": "std::basic_string<*, *, *>",
+        "Flavor": "GNU",
+        "DisplayString": "{_M_dataplus._M_p,s}",
+        "StringView": "{_M_dataplus._M_p,s}"
+    },
+
+    "Type": {        
+        "Name": "std::__cxx11::basic_string<*, *, *>",
+        "Flavor": "GNU",
+        "DisplayString": "{_M_dataplus._M_p,s}",
+        "StringView": "{_M_dataplus._M_p,s}"
+    },
+
+    "Type": {        
+        "Name": "std::basic_string<*, *, *>",
+        "Flavor": "MS",
+        "DisplayString": 
+        {
+            "Condition": "_Mypair._Myval2._Myres < _Mypair._Myval2._BUF_SIZE",
+            "String": "{_Mypair._Myval2._Bx._Buf,na}"
+        },
+        "DisplayString": "{_Mypair._Myval2._Bx._Ptr,na}",
+        "StringView": 
+        {
+            "Condition": "_Mypair._Myval2._Myres < _Mypair._Myval2._BUF_SIZE",
+            "String": "{_Mypair._Myval2._Bx._Buf,na}"
+        },
+        "StringView": "{_Mypair._Myval2._Bx._Ptr,na}",
+        "Expand": {
+            "Item": {
+                "Name": "[Size]",
+                "Value": "_Mypair._Myval2._Mysize"
+            },
+            "Item": {
+                "Name": "[Capacity]",
+                "Value": "_Mypair._Myval2._Myres"
+            },
+            "Item": {
+                "Name": "[Allocator]",
+                "Value": "_Mypair"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::StringImpl",
+        "DisplayString": {
+            "Condition": "(mAllocSizeAndFlags & 0x40000000) == 0",
+            "String": "{(char*)&mPtr,s8}"
+        },
+        "DisplayString": "{mPtr,s8}",
+        "StringView": {
+            "Condition": "(mAllocSizeAndFlags & 0x40000000) == 0",
+            "String": "{(char*)&mPtr,s8}"
+        },
+        "StringView": "{mPtr,s8}",
+        "Expand": {
+            "Item": {
+                "Name": "[Length]",
+                "Value": "mLength"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0xC0000000) == 0xC0000000",
+                "Name": "[AllocSize]",
+                "Value": "mAllocSizeAndFlags & 0x3FFFFFFF"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0xC0000000) == 0x40000000",
+                "Name": "[RefSize]",
+                "Value": "mAllocSizeAndFlags & 0x3FFFFFFF"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0xC0000000) == 0x00000000",
+                "Name": "[InternalSize]",
+                "Value": "mAllocSizeAndFlags & 0x3FFFFFFF"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0x40000000) == 0",
+                "Name": "[RawChars]",
+                "Value": "(char*)&mPtr,arraysize=mLength"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0x40000000) != 0",
+                "Name": "[RawChars]",
+                "Value": "mPtr,arraysize=mLength"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::Dictionary<*, *>",
+        "DisplayString": "{{ count={mCount - mFreeCount} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Count]",
+                "Value": "mCount - mFreeCount"
+            },
+            "DictionaryItems": {
+                "Size": "mCount - mFreeCount",
+                "Buckets": "mBuckets",
+                "Entries": "mEntries",
+                "Key": "mKey",
+                "Value": "mValue",
+                "Next": "mNext"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::Dictionary<*, *>::Entry",
+        "DisplayString": "{{[{*($T1*)&mKey}, {*($T2*)&mValue}]}}",        
+        "Expand": {
+            "Item": {
+                "Name": "[Key]",
+                "Value": "*($T1*)&mKey"
+            },
+            "Item": {
+                "Name": "[Value]",
+                "Value": "*($T2*)&mValue"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::HashSet<*>",
+        "DisplayString": "{{ count={mCount - mFreeCount} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Count]",
+                "Value": "mCount - mFreeCount"
+            },
+            "DictionaryItems": {
+                "Size": "mCount - mFreeCount",
+                "Buckets": "mBuckets",
+                "Entries": "mEntries",
+                "Key": "mKey",                
+                "Next": "mNext"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::HashSet<*>::Entry",
+        "DisplayString": "{{[{*($T1*)&mKey}]}}",        
+        "Expand": {
+            "Item": {
+                "Name": "[Key]",
+                "Value": "*($T1*)&mKey"
+            }            
+        }
+    },
+
+    "Type": {
+        "Name": "std::pair<*, *>",
+        "DisplayString": "({first}, {second})"
+    },
+    
+    "Type": {
+        "Name": "System.String",
+        "DisplayString": {
+            "Condition": "(mAllocSizeAndFlags & 0x40000000) == 0",
+            "String": "{(char8*)&mPtr,s8,count=mLength}"
+        },
+        "DisplayString": "{mPtr,s8,count=mLength}",
+        "StringView": {
+            "Condition": "(mAllocSizeAndFlags & 0x40000000) == 0",
+            "String": "{(char8*)&mPtr,s8,count=mLength}"
+        },
+        "StringView": "{mPtr,s8,count=mLength}",
+        "Expand": {
+            "Item": {
+                "Name": "[Length]",
+                "Value": "mLength"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0xC0000000) == 0xC0000000",
+                "Name": "[AllocSize]",
+                "Value": "mAllocSizeAndFlags & 0x3FFFFFFF"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0xC0000000) == 0x40000000",
+                "Name": "[RefSize]",
+                "Value": "mAllocSizeAndFlags & 0x3FFFFFFF"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0xC0000000) == 0x00000000",
+                "Name": "[InternalSize]",
+                "Value": "mAllocSizeAndFlags & 0x3FFFFFFF"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0x40000000) == 0",
+                "Name": "[RawChars]",
+                "Value": "(char8*)&mPtr,arraysize=mLength"
+            },
+            "Item": {
+                "Condition": "(mAllocSizeAndFlags & 0x40000000) != 0",
+                "Name": "[RawChars]",
+                "Value": "mPtr,arraysize=mLength"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.StringView",
+        "DisplayString": "{__stringView(mPtr, mLength),s8}",
+        "StringView": "{__stringView(mPtr, mLength),s8}",
+        "Expand": {
+            "Item": {
+                "Name": "[Length]",
+                "Value": "mLength"
+            },            
+            "Item": {
+                "Name": "[RawChars]",
+                "Value": "mPtr,arraysize=mLength"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Exception",
+        "DisplayString": "{mMessage,s8}"
+    },
+
+    "Type": {
+        "Name": "System.Variant",
+        "DisplayString": {
+            "Condition": "mStructType == 0",
+            "String": "{{ UnownedObj: {(System.Object)mData} }}"
+        },
+        "DisplayString": {
+            "Condition": "mStructType == 1",
+            "String": "{{ OwnedObj: {(System.Object)mData} }}"
+        },
+        "DisplayString": {
+            "Condition": "mStructType == 2",
+            "String": "{{ Null: {__cast((System.Type)mData, null)} }}"
+        },
+        "DisplayString":
+        {
+            "Condition": "((System.Type)mStructType).mSize <= sizeof(int)",
+            "String": "{{ InlineValue: {*__cast((System.Type)mStructType, \"*\", &mData)} }}"
+        },
+        "DisplayString":
+        {
+            "String": "{{ AllocValue: {*__cast((System.Type)mStructType, \"*\", mData)} }}"
+        },
+
+        "Expand": {
+            "Item": {
+                "Condition": "mStructType == 0",
+                "Name": "[UnownedObj]",
+                "Value": "(System.Object)mData"
+            },
+            "Item": {
+                "Condition": "mStructType == 1",
+                "Name": "[OwnedObj]",
+                "Value": "(System.Object)mData"
+            },
+            "Item": {
+                "Condition": "mStructType == 3",
+                "Name": "[Null]",
+                "Value": "__cast((System.Type)mData, null)"
+            },
+            "Item": {
+                "Condition": "((System.Type)mStructType).mSize <= sizeof(int)",
+                "Name": "[InlineValue]",
+                "Value": "*__cast((System.Type)mStructType, \"*\", &mData)"
+            },
+            "Item": {
+                "Condition": "((System.Type)mStructType).mSize > sizeof(int)",
+                "Name": "[AllocValue]",
+                "Value": "*__cast((System.Type)mStructType, \"*\", mData)"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Result<*>",
+        "DisplayString": {
+            "Condition": "mException == null",
+            "String": "{mValue}"
+        },
+        "DisplayString": "Exception: {mException}"
+    },
+
+    "Type": {
+        "Name": "*?",
+        "DisplayString": {
+            "Condition": "mHasValue",
+            "String": "{mValue}"
+        },
+        "DisplayString": "null"
+    },
+
+    "Type": {
+        "Name": "System.Delegate",
+        "Expand": {
+            "Item": {
+                "Name": "[FuncPtr]",
+                "Value": "__funcName(mFuncPtr)"
+            },
+            "Item": {
+                "Name": "[Target]",
+                "Value": "__funcTarget(mFuncPtr, mTarget), nv"                
+            }
+        },
+        "DisplayString": "{{{__funcName(mFuncPtr), ne}}}",
+        "Action": "ShowCodeAddr {(int)mFuncPtr,X}"
+    },
+
+    "Type": {
+        "Name": "System.Function",
+        "Expand": {
+            "Item": {
+                "Name": "[FuncPtr]",
+                "Value": "__funcName((int)this)"
+            }            
+        },
+        "DisplayString": "{{{__funcName((int)this), ne}}}",
+        "Action": "ShowCodeAddr {(int)this,X}"
+    },
+
+    "Type": {
+        "Name": "*[]",
+        "DisplayString": "{{$T1[{mLength}]}}",
+        "Expand": {
+            "Item": {
+                "Name": "[Length]",
+                "Value": "mLength"
+            },
+            "ArrayItems": {
+                "Size": "mLength",
+                "ValuePointer": "&mFirstElement"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "*[,]",
+        "DisplayString": "{{$T1[{mLength / mLength1}, {mLength1}]}}",
+        "Expand": {
+            "Item": {
+                "Name": "[Length]",
+                "Value": "mLength"
+            },
+            "ArrayItems": {
+                "Size": "mLength",              
+                "LowerDimSizes": ["mLength1"],
+                "ValuePointer": "&mFirstElement"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Span<*>",
+        "DisplayString": "{{ length={mLength} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Length]",
+                "Value": "mLength"
+            },
+            "ArrayItems": {
+                "Size": "mLength",
+                "ValuePointer": "mPtr"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Collections.Generic.List<*>",
+        "DisplayString": "{{ count={mSize} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Count]",
+                "Value": "mSize"
+            },
+            "ArrayItems": {
+                "Size": "mSize",
+                "ValuePointer": "&mItems.mFirstElement"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Collections.Generic.Dictionary<*, *>",
+        "DisplayString": "{{ count={mCount - mFreeCount} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Count]",
+                "Value": "mCount - mFreeCount"
+            },
+            "DictionaryItems": {
+                "Size": "mCount - mFreeCount",
+                "Buckets": "&mBuckets.mFirstElement",
+                "Entries": "&mEntries.mFirstElement",
+                "Key": "mKey",
+                "Value": "mValue",
+                "Next": "mNext"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Collections.Generic.Dictionary<*, *>.Entry",
+        "DisplayString": "{{[{mKey}, {mValue}]}}",        
+        "Expand": {
+            "Item": {
+                "Name": "[Key]",
+                "Value": "mKey"
+            },
+            "Item": {
+                "Name": "[Value]",
+                "Value": "mValue"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Collections.Generic.HashSet<*>",
+        "DisplayString": "{{ count={mCount} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[Count]",
+                "Value": "mCount"
+            },
+            "ArrayItems": {
+                "Size": "mCount",                
+                "ValuePointer": "&mSlots.mFirstElement",
+                "Condition": "mHashCode >= 0"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Collections.Generic.KeyValuePair<*, *>",
+        "DisplayString": "{{{mKey}, {mValue}}}",
+        "Expand": {
+            "Item": {
+                "Name": "[Key]",
+                "Value": "mKey"
+            },
+            "Item": {
+                "Name": "[Value]",
+                "Value": "mValue"
+            }
+        }
+    },
+    
+    "Type": {
+        "Name": "llvm::SmallVectorImpl<*>",
+        "DisplayString": {
+            "Condition": "(($T1*)EndX - ($T1*)BeginX) == 0",
+            "String": "empty"
+        },
+        "DisplayString": "{{ size={($T1*)EndX - ($T1*)BeginX} }}",
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "($T1*)EndX - ($T1*)BeginX"
+            },
+            "Item": {
+                "Name" : "[capacity]",
+                "Value": "($T1*)CapacityX - ($T1*)BeginX"
+            },
+            "ArrayItems" : {
+                "Size": "($T1*)EndX - ($T1*)BeginX",
+                "ValuePointer": "($T1*)BeginX"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "llvm::ArrayRef<*>",
+        "DisplayString": "{{ size={Length} }",
+        "StringView": "Data,count=Length",
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "Length"
+            },
+            "ArrayItems": {
+                "Size": "Length",
+                "ValuePointer": "Data"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "llvm::StringRef",
+        "DisplayString": "{Data,count=Length}",
+        "StringView": "Data,count=Length",
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "Length"
+            },
+            "ArrayItems": {
+                "Size": "Length",
+                "ValuePointer": "Data"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::BfSizedArray<*>",
+        "DisplayString": "{{{mVals},size={mSize}}}",        
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "mSize"
+            },
+            "ArrayItems": {
+                "Size": "mSize",
+                "ValuePointer": "mVals"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::Array<*, *>",
+        "DisplayString": "{{{mVals},size={mSize}}}",        
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "mSize"
+            },
+            "ArrayItems": {
+                "Size": "mSize",
+                "ValuePointer": "mVals"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::SizedArrayImpl<*, *>",
+        "DisplayString": "{{{mVals},size={mSize}}}",        
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "mSize"
+            },
+            "ArrayItems": {
+                "Size": "mSize",
+                "ValuePointer": "mVals"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::Deque<*, *>",
+        "DisplayString": "{{size={mSize}}}",
+        "Expand": {
+            "Item": {
+                "Name": "[size]",
+                "Value": "mSize"
+            },
+            "ArrayItems": {
+                "Size": "mSize",
+                "ValuePointer": "mVals"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::DLIList<*>",
+        "DisplayString": "{{Head:{mHead}}}",
+        "Expand": {
+            "LinkedListItems": {
+                "HeadPointer": "mHead",
+                "NextPointer": "mNext",
+                "ValuePointer": "this",
+                "ShowElementAddrs": true
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::SLIList<*>",
+        "DisplayString": "{{Head:{mHead}}}",
+        "Expand": {
+            "LinkedListItems": {
+                "HeadPointer": "mHead",
+                "NextPointer": "mNext",
+                "ValuePointer": "this",
+                "ShowElementAddrs": true
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::BumpList<*>",
+        "DisplayString": "{{Head:{mHead}}}",
+        "Expand": {
+            "LinkedListItems": {
+                "HeadPointer": "mHead",
+                "NextPointer": "mNext",
+                "ValuePointer": "this",
+                "ShowElementAddrs": true
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::BfAtom",
+        "DisplayString": "'{*mString,rawStr}'"
+    },
+
+    "Type": {
+        "Name": "Beefy::BfReducer::BfVisitorPos",
+        "DisplayString": "{{{mParent->mChildArr.mVals[mReadPos]}}}",
+        "Expand": {
+            "Item": {
+                "Name" : "[Parent]",
+                "Value": "mParent"
+            },            
+            "Item": {
+                "Name" : "[Prev]",
+                "Value": "mParent->mChildArr.mVals[mReadPos - 1]"
+            },            
+            "Item": {
+                "Name" : "[Current] --------------->",
+                "Value": "mParent->mChildArr.mVals[mReadPos]"
+            },
+            "Item": {
+                "Name" : "[Next]",
+                "Value": "mParent->mChildArr.mVals[mReadPos + 1]"
+            },
+            "Item": {
+                "Name" : "[NextNext]",
+                "Value": "mParent->mChildArr.mVals[mReadPos + 2]"
+            }
+        }        
+    },
+
+    "Type": {
+        "Name": "Beefy::BfBlock",
+        "DisplayString": "{{{(*(Beefy::BfSource**)(((intptr_t)this & 0x7FFFFFFFFFFFF000UL)))->mSrc + mSrcStart,na,count=(mSrcEnd - mSrcStart)}}}",
+        "Expand": {
+            "Item": {
+                "Name" : "[Children]",
+                "Value": "mChildArr"
+            },            
+            "Item": {
+                "Name" : "[CharPtr]",
+                "Value": "(*(Beefy::BfSource**)(((intptr_t)this & 0x7FFFFFFFFFFFF000UL)))->mSrc + mSrcStart"
+            },
+            "Item": {
+                "Name" : "[Source]",
+                "Value": "(*(Beefy::BfSource**)(((intptr_t)this & 0x7FFFFFFFFFFFF000UL)))"
+            }
+        }        
+    },
+
+    "Type": {
+        "Name": "Beefy::BfDirectStrTypeReference",
+        "DisplayString": "{{{mTypeName}}}"        
+    },
+
+    "Type": {
+        "Name": "Beefy::BfAstNode",
+        "DisplayString": "{{{(*(Beefy::BfSource**)(((intptr_t)this & 0x7FFFFFFFFFFFF000UL)))->mSrc + mSrcStart,na,count=(mSrcEnd - mSrcStart)}}}",
+        "Expand": {            
+            "Item": {
+                "Name" : "[CharPtr]",
+                "Value": "(*(Beefy::BfSource**)(((intptr_t)this & 0x7FFFFFFFFFFFF000UL)))->mSrc + mSrcStart"
+            },
+            "Item": {
+                "Name" : "[Source]",
+                "Value": "(*(Beefy::BfSource**)(((intptr_t)this & 0x7FFFFFFFFFFFF000UL)))"
+            }
+        }        
+    },    
+
+    "Type": {
+        "Name": "Beefy::BfNearNodeRef<T>",
+        "DisplayString": "{{{(($T1)(*(char**)(( ((intptr_t)this & 0x7FFFFFFFFFFFF000UL) + 8)) + mIdx)}}}",
+        "Expand": {            
+            "Item": {
+                "Name" : "[CharPtr]",
+                "Value": "(*(Beefy::BfSource**)(((intptr_t)this & 0x7FFFFFFFFFFFF000UL)))->mSrc + mSrcStart"
+            },
+            "Item": {
+                "Name" : "[Idx]",
+                "Value": "mIdx"
+            }
+        }        
+    },
+
+    "Type": {
+        "Name": "Beefy::BfAtomComposite",
+        "DisplayString": {
+            "Condition": "mParts.mSize == 0",
+            "String": "{{empty}}"
+        },
+        "DisplayString": {
+            "Condition": "mParts.mSize == 1",
+            "String": "{{{mParts.mVals[0],na}}}"
+        },
+        "DisplayString": {
+            "Condition": "mParts.mSize == 2",
+            "String": "{{{mParts.mVals[0],na}.{mParts.mVals[1],na}}}"
+        },
+        "DisplayString": {
+            "Condition": "mParts.mSize == 3",
+            "String": "{{{mParts.mVals[0],na}.{mParts.mVals[1],na}.{mParts.mVals[2],na}}}"
+        },
+        "DisplayString": {
+            "Condition": "mParts.mSize == 4",
+            "String": "{{{mParts.mVals[0],na}.{mParts.mVals[1],na}.{mParts.mVals[2],na}.{mParts.mVals[3],na}}}"
+        },
+        "DisplayString": {
+            "Condition": "mParts.mSize == 5",
+            "String": "{{{mParts.mVals[0],na}.{mParts.mVals[1],na}.{mParts.mVals[2],na}.{mParts.mVals[3],na}.{mParts.mVals[4],na}}}"
+        },
+        "DisplayString": {
+            "Condition": "mParts.mSize > 5",
+            "String": "{{{mParts.mVals[0],na}.{mParts.mVals[1],na}.{mParts.mVals[2],na}.{mParts.mVals[3],na}.{mParts.mVals[4],na}...}}"
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::BfMethodDef",
+        "DisplayString": {
+            "Condition": "mIsStatic",
+            "String": "{{static {mName}}}"
+        },
+        "DisplayString": "{{{mName}}}",
+        "Expand": {
+            "Item": {
+                "Name": "[Name]",
+                "Value": "mName"
+            },
+            "Item": {
+                "Name": "[Declaration",
+                "Value": "mMethodDeclaration"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "Beefy::BfMethodDef",
+        "DisplayString": {
+            "Condition": "mIsStatic",
+            "String": "{{static {mName}}"
+        },
+        "DisplayString": {
+            "Condition": "!mIsStatic",
+            "String": "{{{mName}}"
+        },        
+        "Expand": {
+            "Item": {
+                "Name": "[Name]",
+                "Value": "mName"
+            },
+            "Item": {
+                "Name": "[Declaration]",
+                "Value": "mMethodDeclaration"
+            }            
+        }        
+    },
+
+    "Type": {
+        "Name": "Beefy::BfMethodInstance",
+        "DisplayString": "{{{mMethodDef->mName} in {mMethodInstanceGroup->mOwner}}",
+        "Expand": {
+            "Item": {
+                "Name": "[MethodDef]",
+                "Value": "mMethodDef"
+            },
+            "Item": {
+                "Name": "[Type]",
+                "Value": "mMethodInstanceGroup->mOwner"
+            }            
+        }
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfFieldInstance",
+        "DisplayString": "{{{mOwner->mTypeDef->mFields.mVals[mFieldIdx]->mName} in {mOwner}}",
+        "Expand": {
+            "Item": {
+                "Name": "[FieldDef]",
+                "Value": "mOwner->mTypeDef->mFields.mVals[mFieldIdx]"
+            },
+            "Item": {
+                "Name": "[Type]",
+                "Value": "mResolvedType"
+            },
+            "Item": {
+                "Name": "[Owner]",
+                "Value": "mOwner"
+            }            
+        }        
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfTypeDef",
+        "DisplayString": {
+            "Condition": "mOuterType == null",
+            "String": "{{{mNamespace,na}.{mName,na}}}"
+        },
+        "DisplayString": {
+            "Condition": "mOuterType != null",
+            "String": "{{{mOuterType,na}.{mName,na}}}"
+        }
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfTypeInstance",
+        "DisplayString": "{{{mTypeDef,na}}}"
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfGenericTypeInstance",
+        "DisplayString": {
+            "Condition": "mTypeGenericArguments.mSize == 1",
+            "String": "{{{mTypeDef,na}<{mTypeGenericArguments.mVals[0],na}>}}"
+        },
+        "DisplayString": {
+            "Condition": "mTypeGenericArguments.mSize == 2",
+            "String": "{{{mTypeDef}<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}>}}"
+        },
+        "DisplayString": {
+            "Condition": "mTypeGenericArguments.mSize == 3",
+            "String": "{{{mTypeDef}<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}>}}"
+        },
+        "DisplayString": {
+            "Condition": "mTypeGenericArguments.mSize == 4",
+            "String": "{{{mTypeDef}<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}, {mTypeGenericArguments.mVals[3]}>}}"
+        },
+        "DisplayString": {
+            "Condition": "mTypeGenericArguments.mSize >= 5",
+            "String": "{{{mTypeDef}<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}, {mTypeGenericArguments.mVals[3]}, ...>}}"
+        }        
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfPointerType",
+        "DisplayString": "{{ptr {mElementType,na}}}"        
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfBoxedType",
+        "DisplayString": "{{boxed {mElementType,na}*}}"
+    },
+
+    "Type": {
+        "Name": "Beefy::BfTupleType",
+        "DisplayString": {
+            "Condition": "mFieldInstances.mSize == 0",
+            "String": "( )"
+        },
+        "DisplayString": {
+            "Condition": "mFieldInstances.mSize == 1",
+            "String": "( {mFieldInstances.mVals[0].mResolvedType,na} )"
+        },
+        "DisplayString": {
+            "Condition": "mFieldInstances.mSize == 2",
+            "String": "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na} )"
+        },
+        "DisplayString": {
+            "Condition": "mFieldInstances.mSize == 3",
+            "String": "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na} )"
+        },
+        "DisplayString": {
+            "Condition": "mFieldInstances.mSize == 4",
+            "String": "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na, {mFieldInstances.mVals[3].mResolvedType,na} )"
+        },
+        "DisplayString": {    
+            "String": "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na, {mFieldInstances.mVals[3].mResolvedType,na}, ... )"
+        }
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfPrimitiveType",
+        "DisplayString": "{{{mTypeDef->mName,na}}}"
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfGenericParamType",
+        "DisplayString": {
+            "Condition": "(int)mGenericParamKind == 0",
+            "String": "{{@T{mGenericParamIdx}}}"
+        },
+        "DisplayString": {
+            "Condition": "(int)mGenericParamKind == 1",
+            "String": "{{@M{mGenericParamIdx}}}"
+        }
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfContext",
+        "DisplayString": {
+            "Condition": "this == mCompiler->mContexts[0]",
+            "String": "Context0"
+        },
+        "DisplayString": {
+            "Condition": "this == mCompiler->mContexts[1]",
+            "String": "Context1"
+        }        
+    },
+        
+    "Type": {
+        "Name": "Beefy::BfModule",
+        "Expand": {
+            "Item": {
+                "Name": "[ModuleName]",
+                "Value": "mModuleName"
+            },
+            "Item": {
+                "Name": "[CurMethodInstance]",
+                "Value": "mCurMethodInstance"
+            },
+            "Item": {
+                "Name": "[File]",
+                "Value": "mCurFilePosition.mFileInstance->mParser->mFileName"
+            },
+            "Item": {
+                "Name": "[LineNum]",
+                "Value": "mCurFilePosition.mCurLine + 1"
+            },
+            "Item": {
+                "Name": "[ExprText]",
+                "Value": "mCurFilePosition.mFileInstance->mParser->mSrc + mCurFilePosition.mCurSrcPos"
+            },
+            "Item": {
+                "Name": "[Context]",
+                "Value": "mContext"
+            }            
+        }
+    } 
+
+}

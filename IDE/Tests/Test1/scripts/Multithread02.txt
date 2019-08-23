@@ -1,0 +1,32 @@
+# This test ensure that other threads continue to execute while we execute a method in the debugger
+# and it tests that we can execute methods on threads other than those which we had originally stopped on
+
+ShowFile("src/Multithread02.bf")
+GotoText("//Thread1_0")
+ToggleBreakpoint()
+GotoText("//Thread1_1")
+ToggleBreakpoint()
+GotoText("//Test_Start")
+ToggleBreakpoint()
+
+RunWithCompiling()
+StepOver()
+AssertEvalEquals("doTest = true", "true")
+Continue()
+AssertEvalEquals("ca.mA", "100")
+AssertEvalEquals("sVal0", "1")
+AssertEvalEquals("ca.GetValWithWait()", "100")
+AssertEvalEquals("sVal0", "2")
+SelectThread("")
+SelectCallStackWithStr(".DoTest()")
+AssertEvalEquals("ca.mA", "9")
+AssertEvalEquals("sVal1", "0")
+AssertEvalEquals("ca.GetValWithWait()", "9")
+AssertEvalEquals("sVal1", "1")
+Continue()
+
+SelectThread("")
+SelectCallStackWithStr(".DoTest()")
+AssertEvalEquals("sVal1", "1")
+AssertEvalEquals("ca.GetValWithWait()", "9")
+AssertEvalEquals("sVal1", "2")

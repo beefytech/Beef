@@ -1,0 +1,188 @@
+1 Clang clang_createIndex 42B83D60
+2 Clang clang_createIndex 42B840A0
+3 CreateParser: 42B57CB0
+4 BfSystem_DeleteParser: 42B57CB0
+5 CreateParser: 42B57EB0
+6 BfSystem_DeleteParser: 42B57EB0
+7 CreateParser: 42B580B0
+8 Creating TypeDef 46C0A820 from TypeDecl: 4DEC3960 Source: 42B580B0 ResolvePass: 0
+9 Creating TypeDef 46C0AA60 from TypeDecl: 4DEC4238 Source: 42B580B0 ResolvePass: 0
+10 Creating TypeDef 46C0CC20 from TypeDecl: 4DED1428 Source: 42B580B0 ResolvePass: 0
+11 Creating TypeDef 46CFAD70 from TypeDecl: 4DED28B8 Source: 42B580B0 ResolvePass: 0
+12 Creating TypeDef 46CFA470 from TypeDecl: 4DED3750 Source: 42B580B0 ResolvePass: 0
+13 Creating TypeDef 46CF9DB0 from TypeDecl: 4DED49D0 Source: 42B580B0 ResolvePass: 0
+14 Creating TypeDef 46CFAB30 from TypeDecl: 4DED6600 Source: 42B580B0 ResolvePass: 0
+15 Creating TypeDef 46CFA6B0 from TypeDecl: 4DED6E20 Source: 42B580B0 ResolvePass: 0
+16 Creating TypeDef 46CFB430 from TypeDecl: 4DED74E8 Source: 42B580B0 ResolvePass: 0
+17 Creating TypeDef 46CFB1F0 from TypeDecl: 4DEDDBD8 Source: 42B580B0 ResolvePass: 0
+18 Creating TypeDef 46CF9FF0 from TypeDecl: 4DEE1FB8 Source: 42B580B0 ResolvePass: 0
+19 CreateParser: 42B570B0
+20 Creating TypeDef 46CFA230 from TypeDecl: 4DEE9FE8 Source: 42B570B0 ResolvePass: 0
+21 Creating TypeDef 46CFA8F0 from TypeDecl: 4DEEA3A8 Source: 42B570B0 ResolvePass: 0
+22 Creating TypeDef 46CFB670 from TypeDecl: 4DEEB420 Source: 42B570B0 ResolvePass: 0
+23 Creating TypeDef 46CFB8B0 from TypeDecl: 4DEEB920 Source: 42B570B0 ResolvePass: 0
+24 Creating TypeDef 46CFBAF0 from TypeDecl: 4DEEBF88 Source: 42B570B0 ResolvePass: 0
+25 CreateParser: 42B590B0
+26 Creating TypeDef 4DF667F0 from TypeDecl: 4DF24F00 Source: 42B590B0 ResolvePass: 0
+27 Creating TypeDef 4DF66130 from TypeDecl: 4DF33A58 Source: 42B590B0 ResolvePass: 0
+28 CreateParser: 42B560B0
+29 Creating TypeDef 4DF679F0 from TypeDecl: 4DF293C8 Source: 42B560B0 ResolvePass: 0
+30 Creating TypeDef 4DF641B0 from TypeDecl: 4DF29B88 Source: 42B560B0 ResolvePass: 0
+31 Creating TypeDef 4DF66370 from TypeDecl: 4DF29EC8 Source: 42B560B0 ResolvePass: 0
+32 Creating TypeDef 4DF665B0 from TypeDecl: 4DF2A730 Source: 42B560B0 ResolvePass: 0
+33 CreateParser: 42B572B0
+34 Creating TypeDef 4DF65A70 from TypeDecl: 4DF2DAC0 Source: 42B572B0 ResolvePass: 0
+35 Creating TypeDef 4DF67C30 from TypeDecl: 4DF2DBF0 Source: 42B572B0 ResolvePass: 0
+36 CreateParser: 42B586B0
+37 Creating TypeDef 4DF64AB0 from TypeDecl: 4DF44430 Source: 42B586B0 ResolvePass: 0
+38 CreateParser: 4DF851C0
+39 Creating TypeDef 4DF65CB0 from TypeDecl: 4DF93D40 Source: 4DF851C0 ResolvePass: 0
+40 Creating TypeDef 4DF677B0 from TypeDecl: 4DF93FE8 Source: 4DF851C0 ResolvePass: 0
+41 CreateParser: 4DF833C0
+42 Creating TypeDef 4DF67570 from TypeDecl: 4DFC8C00 Source: 4DF833C0 ResolvePass: 0
+43 Creating TypeDef 4DF66A30 from TypeDecl: 4DFCB490 Source: 4DF833C0 ResolvePass: 0
+44 Creating TypeDef 4DF63F70 from TypeDecl: 4DFCB770 Source: 4DF833C0 ResolvePass: 0
+45 Creating TypeDef 4DF64F30 from TypeDecl: 4DFCBB38 Source: 4DF833C0 ResolvePass: 0
+46 Creating TypeDef 4DF643F0 from TypeDecl: 4DFCC0A8 Source: 4DF833C0 ResolvePass: 0
+47 CreateParser: 4DF85BC0
+48 Creating TypeDef 4DF64630 from TypeDecl: 4E061FA0 Source: 4DF85BC0 ResolvePass: 0
+49 CreateParser: 4DF82BC0
+50 Creating TypeDef 4DF64870 from TypeDecl: 4E053530 Source: 4DF82BC0 ResolvePass: 0
+51 CreateParser: 4DF861C0
+52 Creating TypeDef 4DF65170 from TypeDecl: 4E0644C0 Source: 4DF861C0 ResolvePass: 0
+53 CreateParser: 4DF855C0
+54 Creating TypeDef 4DF64CF0 from TypeDecl: 4E0669F8 Source: 4DF855C0 ResolvePass: 0
+55 CreateParser: 4DF865C0
+56 Creating TypeDef 4DF653B0 from TypeDecl: 4E068390 Source: 4DF865C0 ResolvePass: 0
+57 CreateParser: 4DF83BC0
+58 Creating TypeDef 4DF655F0 from TypeDecl: 4E07B2B0 Source: 4DF83BC0 ResolvePass: 0
+59 CreateParser: 4DF82DC0
+60 Creating TypeDef 4DF670F0 from TypeDecl: 4E083040 Source: 4DF82DC0 ResolvePass: 0
+61 CreateParser: 4DF85DC0
+62 Creating TypeDef 4DF65830 from TypeDecl: 4F16E550 Source: 4DF85DC0 ResolvePass: 0
+63 Creating TypeDef 4DF65EF0 from TypeDecl: 4F168AC8 Source: 4DF85DC0 ResolvePass: 0
+64 CreateParser: 4DF859C0
+65 Creating TypeDef 4DF66C70 from TypeDecl: 4F16B688 Source: 4DF859C0 ResolvePass: 0
+66 Creating TypeDef 4DF66EB0 from TypeDecl: 4F16B7B8 Source: 4DF859C0 ResolvePass: 0
+67 Creating TypeDef 4DF67330 from TypeDecl: 4F160100 Source: 4DF859C0 ResolvePass: 0
+68 Creating TypeDef 4E0A2950 from TypeDecl: 4F161A08 Source: 4DF859C0 ResolvePass: 0
+69 Creating TypeDef 4E0A2DD0 from TypeDecl: 4F161CB8 Source: 4DF859C0 ResolvePass: 0
+70 Creating TypeDef 4E0A3250 from TypeDecl: 4F161F68 Source: 4DF859C0 ResolvePass: 0
+71 CreateParser: 4DF845C0
+72 Creating TypeDef 4E0A1990 from TypeDecl: 4F1812A0 Source: 4DF845C0 ResolvePass: 0
+73 CreateParser: 4DF85FC0
+74 Creating TypeDef 4E0A12D0 from TypeDecl: 4F18B210 Source: 4DF85FC0 ResolvePass: 0
+75 CreateParser: 4DF84DC0
+76 Creating TypeDef 4E0A2290 from TypeDecl: 4F193470 Source: 4DF84DC0 ResolvePass: 0
+77 CreateParser: 4DF82FC0
+78 Creating TypeDef 4E09FC50 from TypeDecl: 4F1B68A0 Source: 4DF82FC0 ResolvePass: 0
+79 CreateParser: 4DF863C0
+80 Creating TypeDef 4E0A1090 from TypeDecl: 4F1B9E48 Source: 4DF863C0 ResolvePass: 0
+81 CreateParser: 4DF867C0
+82 Creating TypeDef 4E0A0E50 from TypeDecl: 4F1C9D48 Source: 4DF867C0 ResolvePass: 0
+83 CreateParser: 4DF83FC0
+84 Creating TypeDef 4E0A0310 from TypeDecl: 4F1DBE00 Source: 4DF83FC0 ResolvePass: 0
+85 CreateParser: 4DF843C0
+86 Creating TypeDef 4E0A3490 from TypeDecl: 4F1CD200 Source: 4DF843C0 ResolvePass: 0
+87 CreateParser: 4DF847C0
+88 Creating TypeDef 4E0A1510 from TypeDecl: 4F221F90 Source: 4DF847C0 ResolvePass: 0
+89 CreateParser: 4DF835C0
+90 Creating TypeDef 4E0A1750 from TypeDecl: 4F2421C8 Source: 4DF835C0 ResolvePass: 0
+91 CreateParser: 4DF837C0
+92 Creating TypeDef 4E0A36D0 from TypeDecl: 4F24FFF0 Source: 4DF837C0 ResolvePass: 0
+93 CreateParser: 4DF849C0
+94 Creating TypeDef 4E0A2050 from TypeDecl: 4F27E150 Source: 4DF849C0 ResolvePass: 0
+95 Creating TypeDef 4E0A3010 from TypeDecl: 4F27E430 Source: 4DF849C0 ResolvePass: 0
+96 Creating TypeDef 4E0A2B90 from TypeDecl: 4F27E8C0 Source: 4DF849C0 ResolvePass: 0
+97 Creating TypeDef 4E09FE90 from TypeDecl: 4F272ED8 Source: 4DF849C0 ResolvePass: 0
+98 Creating TypeDef 4E0A24D0 from TypeDecl: 4F288998 Source: 4DF849C0 ResolvePass: 0
+99 Creating TypeDef 4E0A2710 from TypeDecl: 4F288C78 Source: 4DF849C0 ResolvePass: 0
+100 Creating TypeDef 4E0A00D0 from TypeDecl: 4F288DA8 Source: 4DF849C0 ResolvePass: 0
+101 Creating TypeDef 4E09FA10 from TypeDecl: 4F288ED8 Source: 4DF849C0 ResolvePass: 0
+102 Creating TypeDef 4E0A1BD0 from TypeDecl: 4F289060 Source: 4DF849C0 ResolvePass: 0
+103 Creating TypeDef 4E0A0550 from TypeDecl: 4F2891E8 Source: 4DF849C0 ResolvePass: 0
+104 Creating TypeDef 4E0A1E10 from TypeDecl: 4F289370 Source: 4DF849C0 ResolvePass: 0
+105 Creating TypeDef 4E0A0790 from TypeDecl: 4F2894F8 Source: 4DF849C0 ResolvePass: 0
+106 Creating TypeDef 4E0A09D0 from TypeDecl: 4F289680 Source: 4DF849C0 ResolvePass: 0
+107 Creating TypeDef 4E0A0C10 from TypeDecl: 4F289808 Source: 4DF849C0 ResolvePass: 0
+108 Creating TypeDef 4F2BF070 from TypeDecl: 4F289990 Source: 4DF849C0 ResolvePass: 0
+109 Creating TypeDef 4F2C0030 from TypeDecl: 4F289B18 Source: 4DF849C0 ResolvePass: 0
+110 Creating TypeDef 4F2C04B0 from TypeDecl: 4F289F40 Source: 4DF849C0 ResolvePass: 0
+111 Creating TypeDef 4F2BF4F0 from TypeDecl: 4F28A0C8 Source: 4DF849C0 ResolvePass: 0
+112 Creating TypeDef 4F2BFBB0 from TypeDecl: 4F28A250 Source: 4DF849C0 ResolvePass: 0
+113 Creating TypeDef 4F2BFDF0 from TypeDecl: 4F28AEE8 Source: 4DF849C0 ResolvePass: 0
+114 Creating TypeDef 4F2C06F0 from TypeDecl: 4F28B330 Source: 4DF849C0 ResolvePass: 0
+115 Creating TypeDef 4F2C0270 from TypeDecl: 4F28FCC8 Source: 4DF849C0 ResolvePass: 0
+116 Creating TypeDef 4F2BE9B0 from TypeDecl: 4F290008 Source: 4DF849C0 ResolvePass: 0
+117 Creating TypeDef 4F2BEBF0 from TypeDecl: 4F290918 Source: 4DF849C0 ResolvePass: 0
+118 Creating TypeDef 4F2BEE30 from TypeDecl: 4F290CE0 Source: 4DF849C0 ResolvePass: 0
+119 CreateParser: 4F2E5D80
+120 Creating TypeDef 4F2BF2B0 from TypeDecl: 4F292F30 Source: 4F2E5D80 ResolvePass: 0
+121 CreateParser: 4F2E3F80
+122 Creating TypeDef 4F2BF730 from TypeDecl: 4F322E40 Source: 4F2E3F80 ResolvePass: 0
+123 Creating TypeDef 4F2BF970 from TypeDecl: 4F32B7D0 Source: 4F2E3F80 ResolvePass: 0
+124 Creating TypeDef 4F364090 from TypeDecl: 4F331230 Source: 4F2E3F80 ResolvePass: 0
+125 CreateParser: 4F2E5980
+126 Creating TypeDef 4F3678D0 from TypeDecl: 4F3382E0 Source: 4F2E5980 ResolvePass: 0
+127 CreateParser: 4F2E6F80
+128 Creating TypeDef 4F366D90 from TypeDecl: 4F35A698 Source: 4F2E6F80 ResolvePass: 0
+129 Creating TypeDef 4F367B10 from TypeDecl: 4F35A7C8 Source: 4F2E6F80 ResolvePass: 0
+130 Creating TypeDef 4F367D50 from TypeDecl: 4F35A8F8 Source: 4F2E6F80 ResolvePass: 0
+131 Creating TypeDef 4F365DD0 from TypeDecl: 4F35ADB0 Source: 4F2E6F80 ResolvePass: 0
+132 Creating TypeDef 4F365710 from TypeDecl: 4F35B510 Source: 4F2E6F80 ResolvePass: 0
+133 CreateParser: 4F2E6780
+134 Creating TypeDef 4F364BD0 from TypeDecl: 4F3A7AF0 Source: 4F2E6780 ResolvePass: 0
+135 CreateParser: 4F2E4780
+136 Creating TypeDef 4F367450 from TypeDecl: 4F3BE078 Source: 4F2E4780 ResolvePass: 0
+137 Creating TypeDef 4F367690 from TypeDecl: 4F3BE2C8 Source: 4F2E4780 ResolvePass: 0
+138 Creating TypeDef 4F364510 from TypeDecl: 4F3CDDA0 Source: 4F2E4780 ResolvePass: 0
+139 Creating TypeDef 4F364750 from TypeDecl: 4F3CF2A8 Source: 4F2E4780 ResolvePass: 0
+140 Creating TypeDef 4F366B50 from TypeDecl: 4F3CF808 Source: 4F2E4780 ResolvePass: 0
+141 Creating TypeDef 4F365950 from TypeDecl: 4F3CF990 Source: 4F2E4780 ResolvePass: 0
+142 Creating TypeDef 4F364990 from TypeDecl: 4F3D46D0 Source: 4F2E4780 ResolvePass: 0
+143 Creating TypeDef 4F366FD0 from TypeDecl: 4F3D1518 Source: 4F2E4780 ResolvePass: 0
+144 Creating TypeDef 4F364E10 from TypeDecl: 4F3D16A0 Source: 4F2E4780 ResolvePass: 0
+145 Creating TypeDef 4F366010 from TypeDecl: 4F3D1A10 Source: 4F2E4780 ResolvePass: 0
+146 Creating TypeDef 4F365050 from TypeDecl: 4F3D86C8 Source: 4F2E4780 ResolvePass: 0
+147 Creating TypeDef 4F3666D0 from TypeDecl: 4F3D8BB0 Source: 4F2E4780 ResolvePass: 0
+148 Creating TypeDef 4F366490 from TypeDecl: 4F3D92B0 Source: 4F2E4780 ResolvePass: 0
+149 Creating TypeDef 4F366910 from TypeDecl: 4F3D9F28 Source: 4F2E4780 ResolvePass: 0
+150 Creating TypeDef 4F365290 from TypeDecl: 4F3DA058 Source: 4F2E4780 ResolvePass: 0
+151 Creating TypeDef 4F3654D0 from TypeDecl: 4F3DA760 Source: 4F2E4780 ResolvePass: 0
+152 CreateParser: 4F2E5B80
+153 Creating TypeDef 4F365B90 from TypeDecl: 4F4241C8 Source: 4F2E5B80 ResolvePass: 0
+154 CreateParser: 4F2E6980
+155 Creating TypeDef 4F456DD0 from TypeDecl: 4F41A460 Source: 4F2E6980 ResolvePass: 0
+156 Creating TypeDef 4F456290 from TypeDecl: 4F41A590 Source: 4F2E6980 ResolvePass: 0
+157 CreateParser: 4F2E6B80
+158 CreateParser: 4F2E5180
+159 Creating TypeDef 4F455E10 from TypeDecl: 4F430BD0 Source: 4F2E5180 ResolvePass: 1
+160 Creating TypeDef 4F457FD0 from TypeDecl: 4F4314A8 Source: 4F2E5180 ResolvePass: 1
+161 Creating TypeDef 4F457D90 from TypeDecl: 4F44D508 Source: 4F2E5180 ResolvePass: 1
+162 Creating TypeDef 4F457010 from TypeDecl: 4F44E998 Source: 4F2E5180 ResolvePass: 1
+163 Creating TypeDef 4F458210 from TypeDecl: 4F449200 Source: 4F2E5180 ResolvePass: 1
+164 Creating TypeDef 4F457250 from TypeDecl: 4F44A480 Source: 4F2E5180 ResolvePass: 1
+165 Creating TypeDef 4F455750 from TypeDecl: 4F4504D0 Source: 4F2E5180 ResolvePass: 1
+166 Creating TypeDef 4F457490 from TypeDecl: 4F450CF0 Source: 4F2E5180 ResolvePass: 1
+167 Creating TypeDef 4F458D50 from TypeDecl: 4F4513B8 Source: 4F2E5180 ResolvePass: 1
+168 Creating TypeDef 4F458450 from TypeDecl: 4F44D058 Source: 4F2E5180 ResolvePass: 1
+169 Creating TypeDef 4F456B90 from TypeDecl: 4F448BF8 Source: 4F2E5180 ResolvePass: 1
+170 UpdateRevisedTypes Revision 1. ResolvePass:1 CursorIdx:-1
+171 BfTypeDef::~BfTypeDef 4F456B90
+172 BfTypeDef::~BfTypeDef 4F458690
+173 Partial combined type typedef 46CFAFB0 updated from parser 4F2E5180
+174 BfTypeDef::~BfTypeDef 4F458690
+175 Partial combined type typedef 4F367210 updated from parser 4F2E6F80
+176 BfTypeDef::~BfTypeDef 4F455E10
+177 BfTypeDef::~BfTypeDef 4F457FD0
+178 BfTypeDef::~BfTypeDef 4F457D90
+179 BfTypeDef::~BfTypeDef 4F457010
+180 BfTypeDef::~BfTypeDef 4F458210
+181 BfTypeDef::~BfTypeDef 4F457250
+182 BfTypeDef::~BfTypeDef 4F455750
+183 BfTypeDef::~BfTypeDef 4F457490
+184 BfTypeDef::~BfTypeDef 4F458D50
+185 BfTypeDef::~BfTypeDef 4F458450
+186 UpdateAfterDeletingTypes
+187 RemoveInvalidWorkItems 46C2E010
+188 Compile Start. Revision: 1

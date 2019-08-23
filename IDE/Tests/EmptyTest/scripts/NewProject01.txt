@@ -1,0 +1,19 @@
+DelTree("$(ScriptDir)/../../NewProject01")
+OpenWorkspace("$(ScriptDir)/../../NewProject01")
+SaveAll()	
+
+# Create some temporary files that we rename, then make sure we can properly use them
+CreateFile("$(WorkspaceDir)/src/ClassA2.bf", "class ClassA\r\n{\r\n\tpublic static int GetA()\r\n\t{\r\n\t\treturn 20;\r\n\t}\r\n}")
+CreateFile("$(WorkspaceDir)/src/Program.bf", "using System;\r\n\r\nnamespace NewProject01\r\n{\r\n\tclass Program\r\n\t{\r\n\t\tpublic static void Main()\r\n\t\t{\r\n\t\t\tint a = ClassA.GetA() + ClassB.GetB();\r\n\t\t}\r\n\t}\r\n}")
+CreateFile("$(WorkspaceDir)/src/ClassA.txt", "class ClassA\r\n{\r\n\tpublic static int GetA()\r\n\t{\r\n\t\treturn 10;\r\n\t}\r\n}")
+RenameFile("$(WorkspaceDir)/src/ClassA.txt", "$(WorkspaceDir)/src/ClassA.bf")
+CreateFile("$(WorkspaceDir)/src/ClassB.txt", "class ClassB\r\n{\r\n\tpublic static int GetB()\r\n\t{\r\n\t\treturn 9;\r\n\t}\r\n}")
+RenameFile_TempRenameDelete("$(WorkspaceDir)/src/ClassB.txt", "$(WorkspaceDir)/src/ClassB.bf")
+DeleteFile("$(WorkspaceDir)/src/ClassA2.bf")
+
+# File race condition
+Sleep(2000)
+
+StepOver()
+StepOver()
+AssertEvalEquals("a", "19")

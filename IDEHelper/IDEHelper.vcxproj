@@ -1,0 +1,436 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release_NoDbgInfo|Win32">
+      <Configuration>Release_NoDbgInfo</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release_NoDbgInfo|x64">
+      <Configuration>Release_NoDbgInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{F8D29C38-D37C-4AF2-8540-2F6E543264F1}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>IDEHelper</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoDbgInfo|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoDbgInfo|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoDbgInfo|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoDbgInfo|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(LibraryPath);..\BeefySysLib\third_party\AK\lib\Win32_vc120\Debug(StaticCRT)\lib</LibraryPath>
+    <TargetName>$(ProjectName)32_d</TargetName>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>$(ProjectName)64_d</TargetName>
+    <IncludePath>C:\Beef\BeefySysLib\third_party\sparsehash\windows;C:\Beef\BeefySysLib\third_party\sparsehash;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>$(ProjectName)32</TargetName>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>$(ProjectName)64</TargetName>
+    <IncludePath>C:\Beef\BeefySysLib\third_party\sparsehash\windows;C:\Beef\BeefySysLib\third_party\sparsehash;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoDbgInfo|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoDbgInfo|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm-3.8\llvm\include;C:\llvm-3.8\bin\include;C:\llvm-3.8\llvm\lib\Target;C:\llvm-3.8\bin\lib\Target\X86;C:\llvm-3.8\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <AdditionalOptions>-D_SCL_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;libclang.lib;LLVMVectorize.lib;LLVMipo.lib;LLVMInstrumentation.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\llvm-3.8\bin\Debug\lib</AdditionalLibraryDirectories>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy "$(SolutionDir)dist\libclang32.dll" "$(SolutionDir)dist\libclang.dll" /Y</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_0\llvm\include;..\extern\llvm_win64_8_0_0\include;..\extern\llvm-project_8_0_0\llvm\lib\Target;..\extern\llvm_win64_8_0_0\lib\Target\X86;..\extern\llvm-project_8_0_0\llvm\tools\clang\include;..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\include</AdditionalIncludeDirectories>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <AdditionalOptions>-D_SCL_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <AdditionalDependencies>rpcrt4.lib;vcruntimed.lib;ucrtd.lib;cabinet.lib;winmm.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;LLVMVectorize.lib;LLVMipo.lib;LLVMInstrumentation.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoPDB.lib;LLVMDebugInfoCodeView.lib;LLVMGlobalISel.lib;LLVMBinaryFormat.lib;LLVMLTO.lib;LLVMPasses.lib;LLVMLinker.lib;LLVMIRReader.lib;LLVMDemangle.lib;LLVMAggressiveInstCombine.lib;libcurl_a.lib;wininet.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\extern\llvm_win64_8_0_0\Debug\lib; ..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\lib;..\extern\curl\deps\lib;..\extern\jemalloc_win\x64\debug</AdditionalLibraryDirectories>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
+      <IgnoreSpecificDefaultLibraries>MSVCRT</IgnoreSpecificDefaultLibraries>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm-3.8\llvm\include;C:\llvm-3.8\bin\include;C:\llvm-3.8\llvm\lib\Target;C:\llvm-3.8\bin\lib\Target\X86;C:\llvm-3.8\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <AdditionalLibraryDirectories>C:\llvm-3.8\bin\Release\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;libclang.lib;LLVMVectorize.lib;LLVMipo.lib;LLVMInstrumentation.lib</AdditionalDependencies>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_0\llvm\include;..\extern\llvm_win64_8_0_0\include;..\extern\llvm-project_8_0_0\llvm\lib\Target;..\extern\llvm_win64_8_0_0\lib\Target\X86;..\extern\llvm-project_8_0_0\llvm\tools\clang\include;..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <AdditionalLibraryDirectories>..\extern\llvm_win64_8_0_0\Release\lib; ..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\lib;..\extern\curl\deps\lib;..\extern\jemalloc_win\x64\release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cabinet.lib;winmm.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;LLVMVectorize.lib;LLVMipo.lib;LLVMInstrumentation.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoPDB.lib;LLVMDebugInfoCodeView.lib;LLVMGlobalISel.lib;LLVMBinaryFormat.lib;LLVMLTO.lib;LLVMPasses.lib;LLVMLinker.lib;LLVMIRReader.lib;LLVMDemangle.lib;LLVMAggressiveInstCombine.lib;libcurl_a.lib;wininet.lib</AdditionalDependencies>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <FullProgramDatabaseFile>true</FullProgramDatabaseFile>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoDbgInfo|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm\llvm\include;C:\llvm\src\include;C:\llvm\llvm\lib\Target;C:\llvm\src\lib\Target\X86;C:\llvm\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <AdditionalLibraryDirectories>C:\llvm\src\Release\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMX86AsmPrinter.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMSupport.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;LLVMBitWriter.lib;libclang.imp;LLVMVectorize.lib;LLVMipo.lib;LLVMipa.lib</AdditionalDependencies>
+      <ProgramDatabaseFile />
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoDbgInfo|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm\llvm\include;C:\llvm\src\include;C:\llvm\llvm\lib\Target;C:\llvm\src\lib\Target\X86;C:\llvm\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <AdditionalLibraryDirectories>C:\llvm\src\Release\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMX86AsmPrinter.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMSupport.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;LLVMBitWriter.lib;libclang.imp;LLVMVectorize.lib;LLVMipo.lib;LLVMipa.lib</AdditionalDependencies>
+      <ProgramDatabaseFile>
+      </ProgramDatabaseFile>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Backend\BeCOFFObject.cpp" />
+    <ClCompile Include="Backend\BeContext.cpp" />
+    <ClCompile Include="Backend\BeIRCodeGen.cpp" />
+    <ClCompile Include="Backend\BeLibManger.cpp" />
+    <ClCompile Include="Backend\BeMCContext.cpp" />
+    <ClCompile Include="Backend\BeModule.cpp" />
+    <ClCompile Include="Beef\BfCommon.cpp" />
+    <ClCompile Include="BfDiff.cpp" />
+    <ClCompile Include="Clang\CDepChecker.cpp" />
+    <ClCompile Include="Clang\ClangHelper.cpp" />
+    <ClCompile Include="Compiler\BfAstAllocator.cpp" />
+    <ClCompile Include="Compiler\BfAutoComplete.cpp" />
+    <ClCompile Include="Compiler\BfCodeGen.cpp" />
+    <ClCompile Include="Compiler\BfDeferEvalChecker.cpp" />
+    <ClCompile Include="Compiler\BfElementVisitor.cpp" />
+    <ClCompile Include="Compiler\BfExprEvaluator.cpp" />
+    <ClCompile Include="Compiler\BfIRBuilder.cpp" />
+    <ClCompile Include="Compiler\BfIRCodeGen.cpp" />
+    <ClCompile Include="Compiler\BfModuleTypeUtils.cpp" />
+    <ClCompile Include="Compiler\BfResolvePass.cpp" />
+    <ClCompile Include="Compiler\BfSource.cpp" />
+    <ClCompile Include="Compiler\BfConstResolver.cpp" />
+    <ClCompile Include="Compiler\BfContext.cpp" />
+    <ClCompile Include="Compiler\BfDemangler.cpp" />
+    <ClCompile Include="Compiler\BfMangler.cpp" />
+    <ClCompile Include="Compiler\BfModule.cpp" />
+    <ClCompile Include="Compiler\BfParser.cpp" />
+    <ClCompile Include="Compiler\BfAst.cpp" />
+    <ClCompile Include="Compiler\BfDefBuilder.cpp" />
+    <ClCompile Include="Compiler\BfPrinter.cpp" />
+    <ClCompile Include="Compiler\BfReducer.cpp" />
+    <ClCompile Include="Compiler\BfCompiler.cpp" />
+    <ClCompile Include="Compiler\BfResolvedTypeUtils.cpp" />
+    <ClCompile Include="Compiler\BfSourceClassifier.cpp" />
+    <ClCompile Include="Compiler\BfSourcePositionFinder.cpp" />
+    <ClCompile Include="Compiler\BfStmtEvaluator.cpp" />
+    <ClCompile Include="Compiler\BfSystem.cpp" />
+    <ClCompile Include="Compiler\BfUtil.cpp" />
+    <ClCompile Include="Compiler\BfVarDeclChecker.cpp" />
+    <ClCompile Include="Compiler\MemReporter.cpp" />
+    <ClCompile Include="DbgMiniDump.cpp" />
+    <ClCompile Include="Debugger.cpp" />
+    <ClCompile Include="DebugManager.cpp" />
+    <ClCompile Include="DebugVisualizers.cpp" />
+    <ClCompile Include="Linker\BlCodeView.cpp" />
+    <ClCompile Include="Linker\BlContext.cpp" />
+    <ClCompile Include="Linker\BlCvParser.cpp" />
+    <ClCompile Include="Linker\BlCvTypeSource.cpp" />
+    <ClCompile Include="Linker\BlHash.cpp" />
+    <ClCompile Include="Linker\BlMsf.cpp" />
+    <ClCompile Include="Linker\BlPdbParser.cpp" />
+    <ClCompile Include="Linker\BlSymTable.cpp" />
+    <ClCompile Include="NetManager.cpp" />
+    <ClCompile Include="SpellChecker.cpp" />
+    <ClCompile Include="Targets.cpp" />
+    <ClCompile Include="VSSupport.cpp" />
+    <ClCompile Include="X64.cpp" />
+    <ClCompile Include="X86.cpp" />
+    <ClCompile Include="X86Target.cpp" />
+    <ClCompile Include="X86XmmInfo.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Backend\BeCOFFObject.h" />
+    <ClInclude Include="Backend\BeContext.h" />
+    <ClInclude Include="Backend\BeDbgModule.h" />
+    <ClInclude Include="Backend\BeIRCodeGen.h" />
+    <ClInclude Include="Backend\BeLibManger.h" />
+    <ClInclude Include="Backend\BeMCContext.h" />
+    <ClInclude Include="Backend\BeMCX86.h" />
+    <ClInclude Include="Backend\BeModule.h" />
+    <ClInclude Include="Beef\BfCommon.h" />
+    <ClInclude Include="Clang\CDepChecker.h" />
+    <ClInclude Include="Clang\ClangHelper.h" />
+    <ClInclude Include="COFFData.h" />
+    <ClInclude Include="Compiler\BfAstAllocator.h" />
+    <ClInclude Include="Compiler\BfAutoComplete.h" />
+    <ClInclude Include="Compiler\BfCodeGen.h" />
+    <ClInclude Include="Compiler\BfDeferEvalChecker.h" />
+    <ClInclude Include="Compiler\BfElementVisitor.h" />
+    <ClInclude Include="Compiler\BfExprEvaluator.h" />
+    <ClInclude Include="Compiler\BfFixits.h" />
+    <ClInclude Include="Compiler\BfIRBuilder.h" />
+    <ClInclude Include="Compiler\BfIRCodeGen.h" />
+    <ClInclude Include="Compiler\BfModuleTypeUtils.h" />
+    <ClInclude Include="Compiler\BfResolvePass.h" />
+    <ClInclude Include="Compiler\BfSource.h" />
+    <ClInclude Include="Compiler\BfConstResolver.h" />
+    <ClInclude Include="Compiler\BfContext.h" />
+    <ClInclude Include="Compiler\BfDemangler.h" />
+    <ClInclude Include="Compiler\BfMangler.h" />
+    <ClInclude Include="Compiler\BfModule.h" />
+    <ClInclude Include="Compiler\BfParser.h" />
+    <ClInclude Include="Compiler\BfAst.h" />
+    <ClInclude Include="Compiler\BfDefBuilder.h" />
+    <ClInclude Include="Compiler\BfPrinter.h" />
+    <ClInclude Include="Compiler\BfReducer.h" />
+    <ClInclude Include="Compiler\BfResolvedTypeUtils.h" />
+    <ClInclude Include="Compiler\BfSourceClassifier.h" />
+    <ClInclude Include="Compiler\BfSourcePositionFinder.h" />
+    <ClInclude Include="Compiler\BfSystem.h" />
+    <ClInclude Include="Compiler\BfType.h" />
+    <ClInclude Include="Compiler\BfCompiler.h" />
+    <ClInclude Include="Compiler\BfUtil.h" />
+    <ClInclude Include="Compiler\BfVarDeclChecker.h" />
+    <ClInclude Include="Compiler\MemReporter.h" />
+    <ClInclude Include="DbgMiniDump.h" />
+    <ClInclude Include="Debugger.h" />
+    <ClInclude Include="DebugManager.h" />
+    <ClInclude Include="DebugVisualizers.h" />
+    <ClInclude Include="Linker\BlCodeView.h" />
+    <ClInclude Include="Linker\BlContext.h" />
+    <ClInclude Include="Linker\BlCvParser.h" />
+    <ClInclude Include="Linker\BlCvTypeSource.h" />
+    <ClInclude Include="Linker\BlHash.h" />
+    <ClInclude Include="Linker\BlMsf.h" />
+    <ClInclude Include="Linker\BlPdbParser.h" />
+    <ClInclude Include="Linker\BlSymTable.h" />
+    <ClInclude Include="LLVMUtils.h" />
+    <ClInclude Include="NetManager.h" />
+    <ClInclude Include="StrBloomMap.h" />
+    <ClInclude Include="StrHashMap.h" />
+    <ClInclude Include="X64.h" />
+    <ClInclude Include="X86.h" />
+    <ClInclude Include="X86InstrInfo.h" />
+    <ClInclude Include="X86Target.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BeefySysLib\BeefySysLib_static.vcxproj">
+      <Project>{eceab68d-2f15-495f-a29c-5ea9548aa23d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Debugger32\Debugger32.vcxproj">
+      <Project>{29025cf2-07cc-4c25-a672-6324c95aa28e}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Debugger64\Debugger64.vcxproj">
+      <Project>{29025cf2-07cc-4c25-a672-6324c95aa28f}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\extern\hunspell\src\win_api\libhunspell.vcxproj">
+      <Project>{53609bb3-d874-465c-af7b-df626db0d89b}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

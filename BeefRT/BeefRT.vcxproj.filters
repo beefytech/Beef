@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="rt">
+      <UniqueIdentifier>{78c64aff-718e-4d16-a5de-2094effe6b6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BeefySysLib">
+      <UniqueIdentifier>{f527f370-389f-47ea-a169-b508cf54e74b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BeefySysLib\platform">
+      <UniqueIdentifier>{07de19bc-5c10-4847-9c94-93e6313cb3ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BeefySysLib\platform\win">
+      <UniqueIdentifier>{79474c84-6280-4e87-a3e3-610bdb7b0245}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BeefySysLib\util">
+      <UniqueIdentifier>{dc963da9-468c-4ee4-8fdc-7e4bc2bd8e85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BeefySysLib\third_party">
+      <UniqueIdentifier>{0b7467ae-d4be-4285-8693-b80f4bcea826}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BeefySysLib\third_party\utf8proc">
+      <UniqueIdentifier>{9828ca89-f600-4147-a90c-4b683c8f5a16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BeefySysLib\third_party\libffi">
+      <UniqueIdentifier>{72880794-4bfa-46cb-aa54-525050d24147}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BeefySysLib\third_party\libffi\x86">
+      <UniqueIdentifier>{f94ea9c5-428b-4925-a59e-b7688752d7d7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="rt\Internal.cpp">
+      <Filter>rt</Filter>
+    </ClCompile>
+    <ClCompile Include="rt\Math.cpp">
+      <Filter>rt</Filter>
+    </ClCompile>
+    <ClCompile Include="rt\StompAlloc.cpp">
+      <Filter>rt</Filter>
+    </ClCompile>
+    <ClCompile Include="rt\Thread.cpp">
+      <Filter>rt</Filter>
+    </ClCompile>
+    <ClCompile Include="rt\ThreadLocalStorage.cpp">
+      <Filter>rt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\platform\win\Platform.cpp">
+      <Filter>BeefySysLib\platform\win</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\Common.cpp">
+      <Filter>BeefySysLib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\util\String.cpp">
+      <Filter>BeefySysLib\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\util\UTF8.cpp">
+      <Filter>BeefySysLib\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\utf8proc\utf8proc.c">
+      <Filter>BeefySysLib\third_party\utf8proc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\platform\win\CrashCatcher.cpp">
+      <Filter>BeefySysLib\platform\win</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\x86\ffi.c">
+      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\x86\ffi64.c">
+      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\closures.c">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\debug.c">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\java_raw_api.c">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\prep_cif.c">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\raw_api.c">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\types.c">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="rt\Chars.cpp">
+      <Filter>rt</Filter>
+    </ClCompile>
+    <ClCompile Include="rt\Object.cpp">
+      <Filter>rt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\util\BeefPerf.cpp">
+      <Filter>BeefySysLib\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\util\AllocDebug.cpp">
+      <Filter>BeefySysLib\util</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="rt\BfObjects.h">
+      <Filter>rt</Filter>
+    </ClInclude>
+    <ClInclude Include="rt\StompAlloc.h">
+      <Filter>rt</Filter>
+    </ClInclude>
+    <ClInclude Include="rt\Thread.h">
+      <Filter>rt</Filter>
+    </ClInclude>
+    <ClInclude Include="rt\ThreadLocalStorage.h">
+      <Filter>rt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\platform\win\BFPlatform.h">
+      <Filter>BeefySysLib\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\Common.h">
+      <Filter>BeefySysLib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\util\String.h">
+      <Filter>BeefySysLib\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\util\UTF8.h">
+      <Filter>BeefySysLib\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\third_party\utf8proc\utf8proc.h">
+      <Filter>BeefySysLib\third_party\utf8proc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\platform\win\CrashCatcher.h">
+      <Filter>BeefySysLib\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\include\ffi.h">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\include\ffitarget.h">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\util\BeefPerf.h">
+      <Filter>BeefySysLib\util</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\src\x86\win64.asm">
+      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">
+      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BeefRT.def" />
+  </ItemGroup>
+</Project>

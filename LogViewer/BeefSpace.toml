@@ -1,0 +1,8 @@
+FileVersion = 1
+Projects = {LogViewer = {Path = "."}, Beefy2D = {Path = "../BeefLibs/Beefy2D"}}
+
+[Workspace]
+StartupProject = "LogViewer"
+
+[Configs.Debug.Win64]
+IntermediateType = "ObjectAndIRCode"

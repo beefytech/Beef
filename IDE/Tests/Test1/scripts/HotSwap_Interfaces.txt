@@ -1,0 +1,34 @@
+# This tests hot adding an unreified interface, hot adding interface methods,
+#  and calling hot-added methods
+
+ShowFile("src/HotSwap.bf")
+GotoText("//HotStart_Interfaces")
+ToggleBreakpoint()
+RunWithCompiling()
+
+StepOver()
+AssertEvalEquals("hot.IHotA()", "ERROR:'Unable to find address for method, possibly due to compiler optimizations.'")
+
+ToggleCommentAt("HotTester_TestIHotA")
+Compile()
+StepInto()
+StepOver()
+StepOver()
+AssertEvalEquals("val", "15")
+AssertEvalEquals("hot.IHotA()", "15")
+
+ToggleCommentAt("IHot_IHotB")
+ToggleCommentAt("HotTester_TestIHotB")
+Compile()
+
+# Steps out
+StepOver()
+
+# We need an extra step for Win32 for stack adjustment...
+if (platform == "Win32") StepOver()
+
+StepInto()
+StepOver()
+StepOver()
+AssertEvalEquals("val", "16")
+AssertEvalEquals("hot.IHotB()", "16")

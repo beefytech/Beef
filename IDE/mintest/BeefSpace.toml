@@ -1,0 +1,118 @@
+FileVersion = 1
+Projects = {mintest = {Path = "."}, minlib = {Path = "minlib"}, LibA = {Path = "LibA"}, LibB = {Path = "LibB"}, mintest2 = {Path = "mintest2"}}
+
+[Workspace]
+StartupProject = "mintest"
+
+[Configs.Debug.Win32]
+InitLocalVariables = true
+IntermediateType = "ObjectAndIRCode"
+ConfigSelections = {mintest2 = {Enabled = false}}
+
+[Configs.Debug.Win64]
+IntermediateType = "ObjectAndIRCode"
+COptimizationLevel = "Og"
+
+[Configs.Debug.WinFart]
+MachineType = "x86"
+Toolset = "GNU"
+EmitDebugInfo = "No"
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+AllowHotSwapping = false
+AllocStackTraceDepth = 0
+
+[Configs.Release.Win32]
+Toolset = "GNU"
+BfOptimizationLevel = "OgPlus"
+EmitDebugInfo = "No"
+AllocStackTraceDepth = 0
+IntermediateType = "ObjectAndIRCode"
+
+[Configs.Release.Win64]
+Toolset = "LLVM"
+BfSIMDSetting = "SSE3"
+BfOptimizationLevel = "O3"
+LTOType = "Thin"
+AllocStackTraceDepth = 0
+IntermediateType = "ObjectAndIRCode"
+COptimizationLevel = "O3"
+
+[Configs.Release.WinFart]
+MachineType = "x86"
+Toolset = "GNU"
+BfOptimizationLevel = "O0"
+EmitDebugInfo = "No"
+AllocStackTraceDepth = 0
+IncrementalBuild = true
+COptimizationLevel = "O0"
+
+[Configs.Test.Win32]
+Toolset = "GNU"
+BfSIMDSetting = "None"
+EmitDebugInfo = "No"
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+AllocStackTraceDepth = 0
+CSIMDSetting = "None"
+COptimizationLevel = "O2"
+ConfigSelections = {mintest = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+AllowHotSwapping = false
+AllocStackTraceDepth = 0
+COptimizationLevel = "O2"
+ConfigSelections = {mintest = {Config = "Debug"}}
+
+[Configs.Test.WinFart]
+MachineType = "x86"
+Toolset = "GNU"
+BuildKind = "Normal"
+EmitDebugInfo = "No"
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+AllowHotSwapping = false
+AllocStackTraceDepth = 0
+COptimizationLevel = "O2"
+
+[Configs.Paranoid.Win32]
+Toolset = "GNU"
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+EnableSideStack = false
+COptimizationLevel = "O2"
+
+[Configs.Paranoid.Win64]
+Toolset = "GNU"
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+EnableSideStack = false
+COptimizationLevel = "O2"
+ConfigSelections = {mintest2 = {Enabled = false}}
+
+[Configs.Paranoid.WinFart]
+MachineType = "x86"
+Toolset = "GNU"
+EmitDebugInfo = "No"
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+EnableSideStack = false
+AllowHotSwapping = false
+AllocStackTraceDepth = 0
+COptimizationLevel = "O2"

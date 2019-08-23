@@ -1,0 +1,74 @@
+FileVersion = 1
+Dependencies = {Beefy2D = "*", corlib = "*"}
+
+[Project]
+Name = "MemProfiler"
+TargetType = "BeefWindowsApplication"
+StartupObject = "MemProfiler.Program"
+DefaultNamespace = ""
+
+[Configs.Debug.Win32]
+TargetDirectory = "$(WorkspaceDir)/dist"
+OtherLinkFlags = "-lwinmm -lole32 -lwsock32"
+CLibType = "Dynamic"
+DebugCommandArguments = "-windowed"
+OptimizationLevel = "O0"
+
+[Configs.Debug.Win64]
+TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetName = "$(ProjectName)_d"
+OtherLinkFlags = "Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib BeefRT64_d.lib BeefySysLib64_d.lib"
+CLibType = "Dynamic"
+PreprocessorMacros = ["DEBUG", "WIN64"]
+OptimizationLevel = "O0"
+
+[Configs.Release.Win32]
+TargetDirectory = "$(WorkspaceDir)/dist"
+OtherLinkFlags = ""
+OptimizationLevel = "O2"
+
+[Configs.Release.Win64]
+TargetDirectory = "$(WorkspaceDir)/dist"
+OtherLinkFlags = ""
+CLibType = "Dynamic"
+PreprocessorMacros = ["RELEASE", "WIN64"]
+OptimizationLevel = "O2"
+
+[Configs.Test.Win32]
+
+[Configs.Test.Win64]
+
+[ProjectFolder]
+Type = "Folder"
+ImportPath = "src"
+AutoInclude = false
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "Board.bf"
+ImportPath = "Board.bf"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "FMod.bf"
+ImportPath = "FMod.bf"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "FMod_DSP.bf"
+ImportPath = "FMod_DSP.bf"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "FMod_Errors.bf"
+ImportPath = "FMod_Errors.bf"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "MPApp.bf"
+ImportPath = "MPApp.bf"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "Program.bf"
+ImportPath = "Program.bf"

@@ -1,0 +1,387 @@
+LastConfig = "Debug"
+LastPlatform = "Win64"
+RecentFilesList = ["c:\\beef\\ide\\mintest\\src\\main2.cs", "c:\\beef\\ide\\mintest\\src\\main3.cs", "c:\\beef\\ide\\mintest\\src\\main.cs", "c:\\beef\\ide\\mintest\\minlib\\src\\System\\String.cs", "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Collections\\Generic\\List.bf", "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Array.cs", "c:\\beef\\ide\\mintest\\minlib\\src\\System\\IComparable.cs", "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Collections\\Generic\\Dictionary.bf", "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Object.cs", "Disassembly"]
+
+[MainWindow]
+X = 128
+Y = 166
+Width = 2434
+Height = 1847
+
+[MainDockingFrame]
+Type = "DockingFrame"
+SplitType = 2
+
+[[MainDockingFrame.DockedWidgets]]
+RequestedWidth = 250.000000
+RequestedHeight = 1133.000000
+SizePriority = 1133.000000
+Type = "DockingFrame"
+SplitType = 1
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+RequestedWidth = 263.000000
+RequestedHeight = 250.000000
+SizePriority = 0.000000
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Workspace"
+TabWidth = 95.000000
+Type = "ProjectPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+IsFillWidget = true
+RequestedWidth = 1639.000000
+RequestedHeight = 150.000000
+SizePriority = 1639.000000
+DefaultDocumentsTabbedView = true
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Contracts.cs"
+TabWidth = 110.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Diagnostics\\Contracts\\Contracts.cs"
+CursorPos = 2270
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "internal.cpp"
+TabWidth = 108.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\beefrt\\rt\\internal.cpp"
+CursorPos = 20281
+VertPos = 0.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "main4.cs"
+TabWidth = 90.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\mintest2\\src\\main4.cs"
+CursorPos = 182
+VertPos = 0.000000
+ProjectName = "mintest2"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Internal.cs"
+TabWidth = 98.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Internal.cs"
+CursorPos = 2881
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Array.cs"
+TabWidth = 86.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Array.cs"
+CursorPos = 608
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Variant.cs"
+TabWidth = 96.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Variant.cs"
+CursorPos = 4292
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "String.cs"
+TabWidth = 89.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\String.cs"
+CursorPos = 10914
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Runtime.bf"
+TabWidth = 102.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Runtime.bf"
+CursorPos = 2021
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "List.bf"
+TabWidth = 74.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Collections\\Generic\\List.bf"
+CursorPos = 9410
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Event.bf"
+TabWidth = 86.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Event.bf"
+CursorPos = 743
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "IEnumerator.cs"
+TabWidth = 125.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Collections\\IEnumerator.cs"
+CursorPos = 464
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Type.cs"
+TabWidth = 83.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Type.cs"
+CursorPos = 1538
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Disassembly"
+TabWidth = 112.000000
+Type = "DisassemblyPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Object.cs"
+TabWidth = 93.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Object.cs"
+CursorPos = 452
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "main2.cs"
+TabWidth = 90.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\src\\main2.cs"
+CursorPos = 2845
+VertPos = 3060.000000
+ProjectName = "mintest"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "main3.cs"
+TabWidth = 90.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\src\\main3.cs"
+CursorPos = 1954
+VertPos = 0.000000
+ProjectName = "mintest"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "main.cs"
+TabWidth = 83.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\src\\main.cs"
+CursorPos = 4383
+VertPos = 0.000000
+ProjectName = "mintest"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Nullable.cs"
+TabWidth = 103.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Nullable.cs"
+CursorPos = 623
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "GC.cs"
+TabWidth = 72.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\GC.cs"
+CursorPos = 1934
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "testdll.cpp"
+TabWidth = 100.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\beeftools\\testdll\\testdll.cpp"
+CursorPos = 939
+VertPos = 0.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "stdio.h"
+TabWidth = 79.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\program files (x86)\\windows kits\\10\\include\\10.0.16299.0\\ucrt\\stdio.h"
+CursorPos = 27765
+VertPos = 0.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Profiler.bf"
+TabWidth = 96.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Diagnostics\\Profiler.bf"
+CursorPos = 450
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Dictionary.bf"
+TabWidth = 113.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\Collections\\Generic\\Dictionary.bf"
+CursorPos = 3575
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "IComparable.cs"
+TabWidth = 130.000000
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\mintest\\minlib\\src\\System\\IComparable.cs"
+CursorPos = 75
+VertPos = 0.000000
+ProjectName = "minlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+RequestedWidth = 291.000000
+RequestedHeight = 250.000000
+SizePriority = 0.000000
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Properties"
+TabWidth = 90.000000
+Type = "PropertiesPanel"
+
+[[MainDockingFrame.DockedWidgets]]
+RequestedWidth = 250.000000
+RequestedHeight = 540.000000
+SizePriority = 0.000000
+Type = "DockingFrame"
+SplitType = 1
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+RequestedWidth = 920.000000
+RequestedHeight = 250.000000
+SizePriority = 0.396523
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Auto"
+TabWidth = 150.000000
+Type = "AutoWatchPanel"
+Items = ["args", "str", ""]
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs.Columns]]
+Width = 225.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs.Columns]]
+Width = 498.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs.Columns]]
+Width = 275.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Watch"
+TabWidth = 150.000000
+Type = "WatchPanel"
+Items = ["args", "z", ""]
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs.Columns]]
+Width = 264.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs.Columns]]
+Width = 984.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs.Columns]]
+Width = 275.000000
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Memory"
+TabWidth = 150.000000
+Type = "MemoryPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Breakpoints"
+TabWidth = 150.000000
+Type = "BreakpointPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+RequestedWidth = 777.000000
+RequestedHeight = 250.000000
+SizePriority = 0.603477
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Threads"
+TabWidth = 150.000000
+Type = "ThreadPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Immediate"
+TabWidth = 150.000000
+Type = "ImmediatePanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Output"
+TabWidth = 150.000000
+Type = "OutputPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Find Results"
+TabWidth = 150.000000
+Type = "FindResultsPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Call Stack"
+TabWidth = 150.000000
+Type = "CallStackPanel"
+
+[[Bookmarks]]
+File = "c:\\beef\\IDE\\mintest\\main.cs"
+Line = 306
+Column = 3
+
+[[Bookmarks]]
+File = "c:\\beef\\IDE\\mintest\\main.cs"
+Line = 56
+Column = 2
+
+[[Bookmarks]]
+File = "c:\\beef\\IDE\\mintest\\main2.cs"
+Line = 8
+Column = 0
+
+[[Bookmarks]]
+File = "c:\\beef\\IDE\\mintest\\main3.cs"
+Line = 177
+Column = 2
+
+[DebuggerDisplayTypes]
+
+[DebuggerDisplayTypes.""]
+IntDisplayType = "Hexadecimal"
+MmDisplayType = "Default"
+
+[[StepFilters]]
+Filter = "System::Internal::ThrowIndexOutOfRange"
+
+[[StepFilters]]
+Filter = "BfObjectStackInit"
+
+[[StepFilters]]
+Filter = "[].this"
+
+[[StepFilters]]
+Filter = "std::basic_string<>::basic_string<>"
+
+[[StepFilters]]
+Filter = "System.StringView.this"
+
+[[StepFilters]]
+Filter = "TestA::TestA"

@@ -1,0 +1,93 @@
+# This tests multithreaded stepping
+#  - Steps should stay in the same thread
+#  - Run To Cursor should stay on the same thread
+#  - Step Out should stay on the same thread
+
+ShowFile("src/Multithread.bf")
+GotoText("//MultithreadTester_Test")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+AssertEvalEquals("doTest = true", "true")
+
+GotoText("//ThreadFunc")
+ToggleBreakpoint()
+Continue()
+AssertEvalEquals("sLocalVal", "1")
+Continue()
+AssertEvalEquals("sLocalVal", "1")
+Continue()
+AssertEvalEquals("sLocalVal", "1")
+
+# We now have all 3 threads running and we're the third one
+# We now do a series of execution tests, concentrating on the "val++" line
+#  We test that "run to cursor" does a full iteration back to that
+#  same line, both from having stepped onto it using "StepOver" and
+#  having previously arrived there from another "RunToCursor"
+AssertEvalEquals("threadNum", "2")
+StepOver()
+AssertEvalEquals("threadNum", "2")
+StepOver()
+AssertEvalEquals("threadNum", "2")
+StepOver()
+AssertEvalEquals("threadNum", "2")
+StepOver()
+AssertEvalEquals("threadNum", "2")
+StepOver()
+AssertEvalEquals("threadNum", "2")
+StepOver()
+AssertEvalEquals("i", "1")
+
+RunToCursor()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "2")
+RunToCursor()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "3")
+
+# Pass 2
+StepOver()
+StepOver()
+StepOver()
+StepOver()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "4")
+
+RunToCursor()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "5")
+RunToCursor()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "6")
+
+# Pass 3
+StepOver()
+StepOver()
+StepOver()
+StepOver()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "7")
+
+RunToCursor()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "8")
+RunToCursor()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "9")
+
+# Set up the StepOut test
+StepInto()
+StepOver()
+StepOver()
+StepOver()
+StepInto()
+StepOver()
+StepOver()
+AssertEvalEquals("val", "2")
+StepOut()
+AssertEvalEquals("depth", "0")
+AssertEvalEquals("val", "5")
+
+StepOut()
+AssertEvalEquals("threadNum", "2")
+AssertEvalEquals("i", "9")

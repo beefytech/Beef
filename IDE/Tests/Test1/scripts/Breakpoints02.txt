@@ -1,0 +1,28 @@
+# This tests for a bug where stepping onto a breakpoint and then continuing (F5)
+# would cause us to immediately hit the breakpoint we were already at
+
+ShowFile("src/Breakpoints02.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+
+GotoText("//MethodA_1")
+ToggleBreakpoint()
+GotoText("//MethodA_2")
+ToggleBreakpoint()
+
+RunWithCompiling()
+Continue()
+AssertEvalEquals("a", "1")
+StepOver()
+AssertEvalEquals("a", "2")
+Continue()
+AssertEvalEquals("a", "5")
+
+# The next section uses assembly and it only works in Og+
+if (platform != "Win64") Stop()
+
+ShowDisassemblyAtStack()
+StepOver()
+AssertEvalEquals("a", "6")
+Continue()
+AssertEvalEquals("a", "9")

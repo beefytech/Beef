@@ -1,0 +1,195 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\IDEHelper\BumpList.h" />
+    <ClInclude Include="..\IDEHelper\COFF.h" />
+    <ClInclude Include="..\IDEHelper\CPU.h" />
+    <ClInclude Include="..\IDEHelper\DbgEvalPool.h" />
+    <ClInclude Include="..\IDEHelper\DbgExprEvaluator.h" />
+    <ClInclude Include="..\IDEHelper\DbgModule.h" />
+    <ClInclude Include="..\IDEHelper\DbgSymSrv.h" />
+    <ClInclude Include="..\IDEHelper\DbgTypeMap.h" />
+    <ClInclude Include="..\IDEHelper\DebugCommon.h" />
+    <ClInclude Include="..\IDEHelper\DebugTarget.h" />
+    <ClInclude Include="..\IDEHelper\DWARFInfo.h" />
+    <ClInclude Include="..\IDEHelper\DwAutoComplete.h" />
+    <ClInclude Include="..\IDEHelper\HandleDbg.h" />
+    <ClInclude Include="..\IDEHelper\HotHeap.h" />
+    <ClInclude Include="..\IDEHelper\HotScanner.h" />
+    <ClInclude Include="..\IDEHelper\MiniDumpDebugger.h" />
+    <ClInclude Include="..\IDEHelper\Profiler.h" />
+    <ClInclude Include="..\IDEHelper\RadixMap.h" />
+    <ClInclude Include="..\IDEHelper\WinDebugger.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\IDEHelper\COFF.cpp" />
+    <ClCompile Include="..\IDEHelper\DbgEvalPool.cpp" />
+    <ClCompile Include="..\IDEHelper\DbgExprEvaluator.cpp" />
+    <ClCompile Include="..\IDEHelper\DbgModule.cpp" />
+    <ClCompile Include="..\IDEHelper\DbgSymSrv.cpp" />
+    <ClCompile Include="..\IDEHelper\DbgTypeMap.cpp" />
+    <ClCompile Include="..\IDEHelper\DebugTarget.cpp" />
+    <ClCompile Include="..\IDEHelper\HandleDbg.cpp" />
+    <ClCompile Include="..\IDEHelper\HotHeap.cpp" />
+    <ClCompile Include="..\IDEHelper\HotScanner.cpp" />
+    <ClCompile Include="..\IDEHelper\MiniDumpDebugger.cpp" />
+    <ClCompile Include="..\IDEHelper\Profiler.cpp" />
+    <ClCompile Include="..\IDEHelper\WinDebugger.cpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{29025CF2-07CC-4C25-A672-6324C95AA28E}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>Debugger32</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(VSInstallDir)\DIA SDK\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(VSInstallDir)\DIA SDK\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(VSInstallDir)\DIA SDK\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(VSInstallDir)\DIA SDK\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>BF_DBG_32;WIN32;_DEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm-3.8\llvm\include;C:\llvm-3.8\bin64\include;C:\llvm-3.8\llvm\lib\Target;C:\llvm-3.8\bin64\lib\Target\X86;C:\llvm-3.8\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <SupportJustMyCode>false</SupportJustMyCode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>BF_DBG_32;WIN32;_DEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_0\llvm\include;..\extern\llvm_win64_8_0_0\include;..\extern\llvm-project_8_0_0\llvm\lib\Target;..\extern\llvm_win64_8_0_0\lib\Target\X86;..\extern\llvm-project_8_0_0\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <AdditionalOptions>-D_SCL_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
+      <SupportJustMyCode>false</SupportJustMyCode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>BF_DBG_32;WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;C:\llvm-3.8\llvm\include;C:\llvm-3.8\bin64\include;C:\llvm-3.8\llvm\lib\Target;C:\llvm-3.8\bin64\lib\Target\X86;C:\llvm-3.8\llvm\tools\clang\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>BF_DBG_32;WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_0\llvm\include;..\extern\llvm_win64_8_0_0\include;..\extern\llvm-project_8_0_0\llvm\lib\Target;..\extern\llvm_win64_8_0_0\lib\Target\X86;..\extern\llvm-project_8_0_0\llvm\tools\clang\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

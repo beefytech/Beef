@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="Beefy::BfAstNode">
+    <DisplayString>{{{(*(Beefy::BfSource**)(((intptr_t)this &amp; 0x7FFFFFFFFFFFF000UL)))->mSrc + mSrcStart,[mSrcEnd - mSrcStart]s8}}}</DisplayString>
+    <Expand> 
+      <Item Name="[CharPtr]">(*(Beefy::BfSource**)(((intptr_t)this &amp; 0x7FFFFFFFFFFFF000UL)))->mSrc + mSrcStart</Item>
+      <Item Name="[Source]">(*(Beefy::BfSource**)(((intptr_t)this &amp; 0x7FFFFFFFFFFFF000UL)))</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::DwType">
+    <DisplayString>{{{mTypeCode} {mName} mParent:{mParent}}}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfMethodDef">
+    <DisplayString Condition="mIsStatic">{{static {mName}}</DisplayString>
+    <DisplayString Condition="!mIsStatic">{{{mName}}</DisplayString>
+    <Expand>
+      <Item Name="[Name]">mName</Item>
+      <Item Name="[Declaration]">mMethodDeclaration</Item>
+    </Expand>
+  </Type>
+  
+  <Type Name="Beefy::BfMethodInstance">
+    <DisplayString>{{{mMethodDef->mName} in {mMethodInstanceGroup->mOwner}}</DisplayString>
+    <Expand>
+      <Item Name="[MethodDef]">mMethodDef</Item>
+      <Item Name="[Type]">mMethodInstanceGroup->mOwner</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::BfFieldInstance">
+    <DisplayString>{{{mOwner->mTypeDef->mFields._Myfirst[mFieldIdx]->mName} in {mOwner}}</DisplayString>
+    <Expand>
+      <Item Name="[FieldDef]">mOwner->mTypeDef->mFields._Myfirst[mFieldIdx]</Item>
+      <Item Name="[Type]">mOwner</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::BfTypeDef">
+    <DisplayString Condition="mOuterType == 0">{{{mNamespace, na}.{mName, na}}}</DisplayString>
+    <DisplayString Condition="mOuterType != 0">{{{mOuterType, na}.{mName, na}}}</DisplayString>
+  </Type>
+  
+  <Type Name="Beefy::BfTypeInstance">
+    <DisplayString>{{{mTypeDef}}}</DisplayString>    
+  </Type>
+
+  <Type Name="Beefy::BfGenericTypeInstance">
+    <DisplayString Condition="mTypeGenericArguments.mSize == 1">{{{mTypeDef}&lt;{mTypeGenericArguments.mVals[0]}&gt;}}</DisplayString>
+    <DisplayString Condition="mTypeGenericArguments.mSize == 2">{{{mTypeDef}&lt;{mTypeGenericArguments.mVals[0]}, {mTypeGenericArguments.mVals[1], na}&gt;}}</DisplayString>
+    <DisplayString Condition="mTypeGenericArguments.mSize == 3">{{{mTypeDef}&lt;{mTypeGenericArguments.mVals[0]}, {mTypeGenericArguments.mVals[1], na}, {mTypeGenericArguments.mVals[2], na	}&gt;}}</DisplayString>
+    <DisplayString Condition="mTypeGenericArguments.mSize == 4">{{{mTypeDef}&lt;{mTypeGenericArguments.mVals[0]}, {mTypeGenericArguments.mVals[1], na}, {mTypeGenericArguments.mVals[2], na	}, {mTypeGenericArguments.mVals[3], na}&gt;}}</DisplayString>
+    <DisplayString Condition="mTypeGenericArguments.mSize >= 5">{{{mTypeDef}&lt;{mTypeGenericArguments.mVals[0]}, {mTypeGenericArguments.mVals[1], na}, {mTypeGenericArguments.mVals[2], na	}, {mTypeGenericArguments.mVals[3], na}, ...&gt;}}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfPointerType">
+    <DisplayString>{{ptr {mElementType}}}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfBoxedType">
+    <DisplayString>{{boxed {mElementType}*}}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfPrimitiveType">
+    <DisplayString>{{{mTypeDef->mName}}}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfAtom">
+    <DisplayString>{*mString, na}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfAtomComposite">
+      <DisplayString Condition="mParts.mSize == 0">{{empty}}</DisplayString>
+      <DisplayString Condition="mParts.mSize == 1">{{{mParts[0], na}}}</DisplayString>
+      <DisplayString Condition="mParts.mSize == 2">{{{mParts[0], na}.{mParts[1], na}}}</DisplayString>
+      <DisplayString Condition="mParts.mSize == 3">{{{mParts[0], na}.{mParts[1], na}.{mParts[2], na	}}}</DisplayString>
+      <DisplayString Condition="mParts.mSize == 4">{{{mParts[0], na}.{mParts[1], na}.{mParts[2], na	}.{mParts[3], na}}}</DisplayString>
+      <DisplayString Condition="mParts.mSize == 5">{{{mParts[0], na}.{mParts[1], na}.{mParts[2], na	}.{mParts[3], na}.{mParts[4], na}}}</DisplayString>
+      <DisplayString Condition="mParts.mSize > 5">{{{mParts[0], na}.{mParts[1], na}.{mParts[2], na	}.{mParts[3], na}.{mParts[4], na}...}}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfGenericParamType">
+    <DisplayString Condition="mGenericParamKind == 0">{{@T{mGenericParamIdx}}}</DisplayString>
+    <DisplayString Condition="mGenericParamKind == 1">{{@M{mGenericParamIdx}}}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfContext">
+    <DisplayString Condition="this == mCompiler->mContexts[0]">Context0</DisplayString>
+    <DisplayString Condition="this == mCompiler->mContexts[1]">Context1</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::BfModule">
+    <Expand>
+      <Item Name="[ModuleName]">mModuleName</Item>
+      <Item Name="[CurMethodInstance]">mCurMethodInstance</Item>
+      <Item Name="[File]">mCurFilePosition.mFileInstance->mParser->mFileName</Item>
+      <Item Name="[LineNum]">mCurFilePosition.mCurLine + 1</Item>
+      <Item Name="[ExprText]">mCurFilePosition.mFileInstance->mParser->mSrc + mCurFilePosition.mCurSrcPos</Item>
+      <Item Name="[Context]">mContext</Item>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

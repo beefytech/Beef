@@ -1,0 +1,43 @@
+# This tests various cases of hitting breakpoints on the closing brace of a method
+# along with stepping onto a return, and stepping into scoped destructors.
+
+ShowFile("src/Stepping_Scope.bf")
+GotoText("//Stepping_Scope_Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+AssertLineContains("Test1(0)")
+GotoText("//Stepping_Scope_Test1_Leave")
+ToggleBreakpoint()
+
+Continue()
+AssertEvalEquals("a", "2")
+StepInto()
+AssertLineContains("b = 99")
+StepOut()
+StepOver()
+
+AssertLineContains("Test1(1)")
+StepOver()
+AssertEvalEquals("a", "3")
+StepInto()
+AssertLineContains("b = 99")
+StepOut()
+StepOver()
+
+AssertLineContains("Test2(0)")
+StepInto()
+StepOver()
+StepOver()
+AssertLineContains("scope::")
+StepOver()
+StepOver()
+AssertLineContains("return")
+StepOver()
+AssertLineContains("}")
+StepInto()
+AssertLineContains("b = 99")
+StepOut()
+StepOver()
+
+AssertLineContains("Test2(1)")

@@ -1,0 +1,47 @@
+using System;
+
+namespace Tests
+{
+	class Mixins
+	{
+		class MixClass
+		{
+			public int mA = 100;
+
+			public mixin MixA(var addTo)
+			{
+				mA += addTo;
+			}
+		}
+
+		[Test]
+		public static void TestBasics()
+		{
+			MixClass mc = scope MixClass();
+			mc.MixA!(10);
+			Test.Assert(mc.mA == 110);
+		}
+
+		[Test]
+		public static void TestLocalMixin()
+		{
+			mixin AppendAndNullify(String str)
+			{
+				int a = 1;
+				a++;
+				str.Append("B");
+				str = null;
+			}
+
+			int a = 2;
+			a++;
+
+			String str0 = scope String("A");
+			String str1 = str0;
+
+			AppendAndNullify!(str0);
+			Test.Assert(str0 == null);
+			Test.Assert(str1 == "AB");
+		}
+	}
+}

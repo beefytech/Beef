@@ -1,0 +1,8 @@
+FileVersion = 1
+
+[Project]
+Name = "IDETest"
+StartupObject = "IDETest.Program"
+
+[Configs.Debug.Win64]
+BeefLibType = "DynamicDebug"

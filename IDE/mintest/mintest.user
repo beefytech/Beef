@@ -1,0 +1,140 @@
+{
+	"MainWindow": {
+		"X": 64,
+		"Y": 64,
+		"Width": 1431,
+		"Height": 1111
+	},
+	"MainDockingFrame": {
+		"Type": "DockingFrame",
+		"SplitType": 2,
+		"DockedWidgets": [
+			{
+				"IsFillWidget": true,
+				"RequestedWidth": 400.0,
+				"RequestedHeight": 150.0,
+				"SizePriority": 0.0,
+				"Type": "DockingFrame",
+				"SplitType": 1,
+				"DockedWidgets": [
+					{
+						"RequestedWidth": 150.0,
+						"RequestedHeight": 150.0,
+						"SizePriority": 1.0,
+						"Type": "TabbedView",
+						"Tabs": [
+							{
+								"TabLabel": "Workspace",
+								"TabWidth": 95.0,
+								"Type": "ProjectPanel"
+							}
+						]
+					},
+					{
+						"IsFillWidget": true,
+						"RequestedWidth": 150.0,
+						"RequestedHeight": 150.0,
+						"SizePriority": 0.0,
+						"DefaultDocumentsTabbedView": true,
+						"Type": "TabbedView",
+						"Tabs": [
+							{
+								"TabLabel": "main.cs",
+								"TabWidth": 83.0,
+								"Type": "SourceViewPanel",
+								"FilePath": "C:/Beef/IDE/mintest/main.cs",
+								"CursorPos": 574,
+								"VertPos": 0.0,
+								"ProjectName": "mintest"
+							}
+						]
+					},
+					{
+						"RequestedWidth": 119.0,
+						"RequestedHeight": 100.0,
+						"SizePriority": 0.0,
+						"Type": "TabbedView",
+						"Tabs": [
+							{
+								"TabLabel": "Properties",
+								"TabWidth": 90.0,
+								"Type": "PropertiesPanel"
+							}
+						]
+					}
+				]
+			},
+			{
+				"RequestedWidth": 100.0,
+				"RequestedHeight": 341.0,
+				"SizePriority": 0.0,
+				"Type": "DockingFrame",
+				"SplitType": 1,
+				"DockedWidgets": [
+					{
+						"RequestedWidth": 150.0,
+						"RequestedHeight": 150.0,
+						"SizePriority": 0.4791224,
+						"Type": "TabbedView",
+						"Tabs": [
+							{
+								"TabLabel": "Watch",
+								"TabWidth": 150.0,
+								"Type": "WatchPanel",
+								"Columns": [
+									{
+										"Width": 100.0
+									},
+									{
+										"Width": 200.0
+									},
+									{
+										"Width": 200.0
+									}
+								],
+								"Items": [
+									""
+								]
+							},
+							{
+								"TabLabel": "Memory",
+								"TabWidth": 150.0,
+								"Type": "MemoryPanel"
+							}
+						]
+					},
+					{
+						"RequestedWidth": 100.0,
+						"RequestedHeight": 100.0,
+						"SizePriority": 0.5208776,
+						"Type": "TabbedView",
+						"Tabs": [
+							{
+								"TabLabel": "Output",
+								"TabWidth": 150.0,
+								"Type": "OutputPanel"
+							},
+							{
+								"TabLabel": "Call Stack",
+								"TabWidth": 150.0,
+								"Type": "CallStackPanel"
+							},
+							{
+								"TabLabel": "Threads",
+								"TabWidth": 150.0,
+								"Type": "ThreadPanel"
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"RecentFilesList": [
+		"C:/Beef/IDE/mintest/main.cs"
+	],
+	"Breakpoints": [
+	],
+	"Bookmarks": [
+	]
+}

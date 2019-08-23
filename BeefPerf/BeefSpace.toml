@@ -1,0 +1,6 @@
+FileVersion = 1
+Projects = {BeefPerf = {Path = "."}, Beefy2D = {Path = "../BeefLibs/Beefy2D"}}
+Unlocked = ["corlib"]
+
+[Workspace]
+StartupProject = "BeefPerf"

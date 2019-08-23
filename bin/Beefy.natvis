@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="System::String">
+    <DisplayString>{&amp;start_char,su}</DisplayString>
+  </Type>
+
+  <Type Name="BFArray1&lt;*&gt;">
+    <DisplayString>{{length = {mLength}}</DisplayString>
+    <Expand>
+      <Item Name="[length]">mLength</Item>
+      <IndexListItems>
+        <Size>mLength</Size>
+        <ValueNode>*(&amp;mFirstElement + $i)</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="BFArrayLB1&lt;*&gt;">
+    <DisplayString>{{length = {mLength}}</DisplayString>
+    <Expand>
+      <Item Name="[length]">mLength</Item>
+      <Item Name="[lowerBound]">mLowerBound0</Item>
+      <IndexListItems>
+        <Size>mLength</Size>
+        <ValueNode>*(&amp;mFirstElement + $i)</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="BFArray2&lt;*&gt;">
+    <DisplayString>{{length = {mLength}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+	<Direction>Forward</Direction>
+	<Rank>2</Rank>
+        <Size>mDim[$i]</Size>
+        <ValuePointer>&amp;mFirstElement</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="BFArrayLB2&lt;*&gt;">
+    <DisplayString>{{length = {mLength}}</DisplayString>
+    <Expand>
+      <Item Name="[lowerBound]">mLowerBound</Item>
+      <ArrayItems>
+	<Direction>Forward</Direction>
+	<Rank>2</Rank>
+        <Size>mDim[$i]</Size>
+        <ValuePointer>&amp;mFirstElement</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="BFTypeRoot">
+    <DisplayString>{mDebugTypeData->mName,s}@{mDebugTypeData->mNamespace,s}</DisplayString>
+  </Type>
+
+  <Type Name="Beefy::DLIList&lt;*&gt;">
+    <DisplayString>{{Head:{mHead}}}</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>100</Size>
+        <HeadPointer>mHead</HeadPointer>
+        <NextPointer>mNext</NextPointer>
+        <ValueNode>this</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::SLIList&lt;*&gt;">
+    <DisplayString>{{Head:{mHead}}}</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>100</Size>
+        <HeadPointer>mHead</HeadPointer>
+        <NextPointer>mNext</NextPointer>
+        <ValueNode>this</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::BumpList&lt;*&gt;">
+    <DisplayString>{{Head:{mHead}}}</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>100</Size>
+        <HeadPointer>mHead</HeadPointer>
+        <NextPointer>mNext</NextPointer>
+        <ValueNode>this</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::Array&lt;*&gt;">
+     <DisplayString>{{ size={mSize} }}</DisplayString>
+      <Expand>
+          <Item Name="[Size]" ExcludeView="simple">mSize</Item>
+          <Item Name="[AllocSize]" ExcludeView="simple">mAllocSize</Item>
+          <ArrayItems>
+              <Size>mSize</Size>
+              <ValuePointer>mVals</ValuePointer>
+          </ArrayItems>
+      </Expand>
+  </Type>
+
+  <Type Name="Beefy::SizedArrayImpl&lt;*&gt;">
+     <DisplayString>{{ size={mSize} }}</DisplayString>
+      <Expand>
+          <Item Name="[Size]" ExcludeView="simple">mSize</Item>
+          <Item Name="[AllocSize]" ExcludeView="simple">mAllocSize</Item>
+          <ArrayItems>
+              <Size>mSize</Size>
+              <ValuePointer>mVals</ValuePointer>
+          </ArrayItems>
+      </Expand>
+  </Type>
+
+  <Type Name="Beefy::Dictionary&lt;*, *&gt;">
+    <DisplayString>{{ count={mCount - mFreeCount} }}</DisplayString>
+    <Expand>
+      <Item Name="[Count]">mCount - mFreeCount</Item>
+      <ArrayItems>
+        <Size>mCount</Size>
+        <ValuePointer>mEntries</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::Dictionary&lt;*, *&gt;::Entry">
+    <DisplayString Condition="mHashCode != -1">{{ [{*($T1*)&amp;mKey}, {*($T2*)&amp;mValue}] }}</DisplayString>
+    <DisplayString>free</DisplayString>
+    <Expand>
+      <Item Name="[Key]">*($T1*)&amp;mKey</Item>
+      <Item Name="[Value]">*($T2*)&amp;mValue</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::HashSet&lt;*&gt;">
+    <DisplayString>{{ count={mCount - mFreeCount} }}</DisplayString>
+    <Expand>
+      <Item Name="[Count]">mCount - mFreeCount</Item>
+      <ArrayItems>
+        <Size>mCount</Size>
+        <ValuePointer>mEntries</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::HashSet&lt;*&gt;::Entry">
+    <DisplayString Condition="mHashCode != -1">{{ [{*($T1*)&amp;mKey}] }}</DisplayString>
+    <DisplayString>free</DisplayString>
+    <Expand>
+      <Item Name="[Key]">*($T1*)&amp;mKey</Item>      
+    </Expand>
+  </Type>
+
+  <Type Name="Beefy::StringImpl">
+    <DisplayString Condition="(mAllocSizeAndFlags &amp; 0x40000000) == 0">{(char*) &amp; mPtr,s8}</DisplayString>
+    <DisplayString>{mPtr,s8}</DisplayString>
+    <StringView Condition="(mAllocSizeAndFlags &amp; 0x40000000) == 0">(char*) &amp; mPtr,s8</StringView>
+    <StringView>mPtr,s8</StringView>
+    <Expand>      
+      <Item Name="[Length]">mLength</Item>
+      <Item Condition="(mAllocSizeAndFlags &amp; 0xC0000000) == 0xC0000000" Name="[AllocSize]">
+        mAllocSizeAndFlags &amp; 0x3FFFFFFF
+      </Item>
+      <Item Condition="(mAllocSizeAndFlags &amp; 0xC0000000) == 0x40000000" Name="[RefSize]">
+        mAllocSizeAndFlags &amp; 0x3FFFFFFF
+      </Item>
+      <Item Condition="(mAllocSizeAndFlags &amp; 0xC0000000) == 0x00000000" Name="[InternalSize]">
+        mAllocSizeAndFlags &amp; 0x3FFFFFFF
+      </Item>
+      <Item Condition="(mAllocSizeAndFlags &amp; 0x40000000) == 0" Name="[RawChars]">
+        (char*) &amp;mPtr, [mLength]
+      </Item>
+      <Item Condition="(mAllocSizeAndFlags &amp; 0x40000000) != 0" Name="[RawChars]">
+        mPtr, [mLength]
+      </Item>
+    </Expand>
+  </Type>    
+
+</AutoVisualizer>

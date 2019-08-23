@@ -1,0 +1,31 @@
+# This tests that we can manually break a long-executing method and then step in the 
+#  correct thread
+
+ShowFile("src/Break.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+ImmediateEvaluate("Infinite()")
+nowait Sleep(1000)
+nowait Break()
+
+StepOver()
+StepOver()
+StepOver()
+AssertEvalEquals("a", "2")
+StopRunning()
+
+# The next section uses assembly and it only works in Og+
+if (platform != "Win64") Stop()
+
+RunWithCompiling()
+ShowDisassemblyAtStack()
+ImmediateEvaluate("Infinite()")
+nowait Sleep(1000)
+nowait Break()
+StepOver()
+StepOver()
+StepOver()
+
+AssertEvalEquals("a", "2")

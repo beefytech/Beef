@@ -1,0 +1,12 @@
+ShowFile("src/Splats.bf")
+GotoText("//SplatTester_SplatC_Call")
+ToggleBreakpoint()
+RunWithCompiling()
+
+StepInto()
+AssertEvalEquals("this", "{ mC='Z' mB=1.2 mA=123 }")
+#This fails currently
+#AssertEvalEquals("GetB()", "1.2")
+StepOver()
+AssertEvalEquals("sc.GetB()", "1.2")
+AssertEvalEquals("GetC(sc)", "123")

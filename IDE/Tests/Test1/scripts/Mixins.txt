@@ -1,0 +1,28 @@
+ShowFile("src/Mixins.bf") 
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+StepOver()
+StepOver()
+AssertLineContains("a = 123")
+StepOver()
+
+StepInto()
+StepOver()
+StepOver()
+AssertLineContains("b + 1000")
+StepInto()
+
+AssertLineContains("a + 10000")
+StepInto()
+AssertLineContains("b = a + 10")
+StepOut()
+
+# This isn't strictly required
+AssertLineContains("a + 10000")
+StepOver()
+
+AssertLineContains("a + 20000")
+StepOver()
+AssertLineContains("a + 30000")

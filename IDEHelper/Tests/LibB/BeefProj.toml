@@ -1,0 +1,6 @@
+Dependencies = {corlib = "*", LibA = "*"}
+
+[Project]
+Name = "LibB"
+TargetType = "BeefLib"
+StartupObject = "Program"

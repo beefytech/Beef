@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {DocPrep = {Path = "."}}
+
+[Workspace]
+StartupProject = "DocPrep"

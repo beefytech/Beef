@@ -1,0 +1,27 @@
+ShowFile("src/Unions.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+StepOver()
+StepOver()
+StepInto()
+StepOver()
+StepOver()
+
+AssertEvalEquals("a", "12")
+AssertEvalEquals("b", "23")
+AssertEvalEquals("us.mInnerB.mInnerA.mInt0", "12")
+AssertEvalEquals("us.mInnerB.mInnerA.mInt1", "23")
+
+StepOut()
+StepOver()
+StepOver()
+StepInto()
+StepOver()
+StepOver()
+
+AssertEvalEquals("a2", "1432778632")
+AssertEvalEquals("b2", "287454020")
+AssertEvalEquals("us.mInnerB.mInnerA.mInt0", "1432778632")
+AssertEvalEquals("us.mInnerB.mInnerA.mInt1", "287454020")

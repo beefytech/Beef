@@ -1,0 +1,1 @@
+\bin\cloc . --force-lang="C#",bf

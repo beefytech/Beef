@@ -1,0 +1,14 @@
+ShowFile("src/Inline.bf")
+GotoText("//InlineTester")
+ToggleBreakpoint()
+RunWithCompiling()
+
+StepInto()
+AssertEvalEquals("argA", "10")
+AssertEvalEquals("argB", "2")
+
+StepOver()
+AssertEvalEquals("argA", "11")
+
+StepOut()
+AssertEvalEquals("c", "13")

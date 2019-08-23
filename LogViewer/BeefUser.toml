@@ -1,0 +1,230 @@
+FileVersion = 1
+LastConfig = "Debug"
+LastPlatform = "Win64"
+RecentFilesList = ["c:\\beef\\LogViewer\\src\\Board.bf", "c:\\beef\\beefysyslib\\platform\\win\\crashcatcher.cpp", "c:\\Beef\\Beefy2D\\src\\gfx\\VertexDefinition.bf", "c:\\Beef\\LogViewer\\src\\LVApp.bf", "c:\\Beef\\LogViewer\\src\\Program.bf", "c:\\Beef\\Beefy2D\\src\\gfx\\ConstantDataDefinition.bf", "c:\\Beef\\Beefy2D\\src\\gfx\\VertexMemberAttribute.bf", "c:\\beef\\ide\\corlib\\src\\System\\String.bf", "c:\\beef\\ide\\corlib\\src\\System\\Collections\\Generic\\List.bf", "c:\\beef\\Beefy2D\\src\\theme\\dark\\DarkEditWidget.bf"]
+
+[MainWindow]
+X = 185
+Y = 121
+Width = 2266
+Height = 1762
+
+[MainDockingFrame]
+Type = "DockingFrame"
+SplitType = 2
+
+[[MainDockingFrame.DockedWidgets]]
+RequestedWidth = 200.0
+RequestedHeight = 200.0
+SizePriority = 200.0
+Type = "DockingFrame"
+SplitType = 1
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+RequestedWidth = 200.0
+RequestedHeight = 200.0
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+Active = true
+TabLabel = "Workspace"
+TabWidth = 115.0
+Type = "ProjectPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+IsFillWidget = true
+RequestedWidth = 0.0
+RequestedHeight = 150.0
+SizePriority = 1.0
+DefaultDocumentsTabbedView = true
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "VertexDefinition.bf"
+TabWidth = 137.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\Beefy2D\\src\\gfx\\VertexDefinition.bf"
+CursorPos = 2663
+VertPos = 1095.0
+ProjectName = "Beefy2D"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "ConstantDataDefinition.bf"
+TabWidth = 178.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\Beefy2D\\src\\gfx\\ConstantDataDefinition.bf"
+CursorPos = 1218
+ProjectName = "Beefy2D"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "crashcatcher.cpp"
+TabWidth = 127.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\beefysyslib\\platform\\win\\crashcatcher.cpp"
+CursorPos = 11676
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Program.bf"
+TabWidth = 96.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\LogViewer\\src\\Program.bf"
+CursorPos = 233
+ProjectName = "LogViewer"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "LVApp.bf"
+TabWidth = 83.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\LogViewer\\src\\LVApp.bf"
+CursorPos = 717
+ProjectName = "LogViewer"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+Active = true
+TabLabel = "Board.bf"
+TabWidth = 80.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\LogViewer\\src\\Board.bf"
+CursorPos = 1741
+VertPos = 527.0
+ProjectName = "LogViewer"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "File.bf"
+TabWidth = 64.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\corlib\\src\\System\\IO\\File.bf"
+CursorPos = 1324
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "String.bf"
+TabWidth = 79.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\corlib\\src\\System\\String.bf"
+CursorPos = 22910
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Environment.bf"
+TabWidth = 117.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\corlib\\src\\System\\Environment.bf"
+CursorPos = 189
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "StatusBar.bf"
+TabWidth = 98.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\LogViewer\\src\\StatusBar.bf"
+CursorPos = 675
+ProjectName = "LogViewer"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Graphics.bf"
+TabWidth = 96.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\Beefy2D\\src\\gfx\\Graphics.bf"
+CursorPos = 27327
+ProjectName = "Beefy2D"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "EditWidget.bf"
+TabWidth = 109.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\Beefy2D\\src\\widgets\\EditWidget.bf"
+CursorPos = 10499
+ProjectName = "Beefy2D"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "DarkEditWidget.bf"
+TabWidth = 136.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\Beefy2D\\src\\theme\\dark\\DarkEditWidget.bf"
+CursorPos = 331
+ProjectName = "Beefy2D"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "List.bf"
+TabWidth = 64.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\corlib\\src\\System\\Collections\\Generic\\List.bf"
+CursorPos = 10166
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "VertexMemberAttribute.bf"
+TabWidth = 182.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\Beefy2D\\src\\gfx\\VertexMemberAttribute.bf"
+CursorPos = 244
+ProjectName = "Beefy2D"
+
+[[MainDockingFrame.DockedWidgets]]
+RequestedWidth = 250.0
+RequestedHeight = 503.0
+Type = "DockingFrame"
+SplitType = 1
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+RequestedWidth = 250.0
+RequestedHeight = 250.0
+SizePriority = 0.5
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+Active = true
+TabLabel = "Auto"
+TabWidth = 77.0
+Type = "AutoWatchPanel"
+Columns = [{Width = 200.0}, {Width = 200.0}, {Width = 200.0}]
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Watch"
+TabWidth = 86.0
+Type = "WatchPanel"
+Columns = [{Width = 200.0}, {Width = 200.0}, {Width = 200.0}]
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Memory"
+TabWidth = 99.0
+Type = "MemoryPanel"
+AutoResize = "Auto_Mul8"
+RequestedWidth = 300.0
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets]]
+RequestedWidth = 250.0
+RequestedHeight = 250.0
+SizePriority = 0.5
+Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Find Results"
+TabWidth = 119.0
+Type = "FindResultsPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+Active = true
+TabLabel = "Output"
+TabWidth = 90.0
+Type = "OutputPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Immediate"
+TabWidth = 111.0
+Type = "ImmediatePanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Call Stack"
+TabWidth = 105.0
+Type = "CallStackPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Threads"
+TabWidth = 97.0
+Type = "ThreadPanel"
+
+[DebuggerDisplayTypes.""]
+IntDisplayType = "Default"
+MmDisplayType = "Default"

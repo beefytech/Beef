@@ -1,0 +1,7 @@
+Projects = {IDETest = {Path = "."}}
+
+[Workspace]
+StartupProject = "IDETest"
+
+[Configs.Debug.Win64]
+IntermediateType = "ObjectAndIRCode"

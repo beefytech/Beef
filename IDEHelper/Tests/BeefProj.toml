@@ -1,0 +1,9 @@
+FileVersion = 1
+Dependencies = {corlib = "*", LibA = "*", LibB = "*", LibC = "*"}
+
+[Project]
+Name = "Tests"
+StartupObject = "Tests.Program"
+
+[Configs.Test.Win64]
+BeefLibType = "DynamicDebug"

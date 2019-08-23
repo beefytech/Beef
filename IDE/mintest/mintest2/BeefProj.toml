@@ -1,0 +1,59 @@
+FileVersion = 1
+Dependencies = {minlib = "*"}
+
+[Project]
+Name = "mintest2"
+TargetType = "BeefLib"
+StartupObject = "Mintest2"
+DefaultNamespace = ""
+
+[Configs.Debug.Win32]
+OtherLinkFlags = ""
+OptimizationLevel = "O0"
+
+[Configs.Debug.Win64]
+CLibType = "Dynamic"
+PreprocessorMacros = ["MINTEST2"]
+
+[Configs.Debug.WinFart]
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Release.Win32]
+OtherLinkFlags = ""
+OptimizationLevel = "O0"
+
+[Configs.Release.Win64]
+OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib"
+CLibType = "Dynamic"
+
+[Configs.Release.WinFart]
+OtherLinkFlags = ""
+
+[Configs.Test.WinFart]
+BuildKind = "Normal"
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win64]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Paranoid.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Paranoid.Win64]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Paranoid.WinFart]
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"

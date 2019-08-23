@@ -1,0 +1,590 @@
+using System.Collections.Generic;
+namespace System.Globalization
+{
+	internal enum MonthNameStyles {
+	    Regular     = 0x00000000,
+	    Genitive    = 0x00000001,
+	    LeapYear    = 0x00000002,
+	}
+
+	internal enum DateTimeFormatFlags {
+	    None                    = 0x00000000,
+	    UseGenitiveMonth        = 0x00000001,
+	    UseLeapYearMonth        = 0x00000002,
+	    UseSpacesInMonthNames   = 0x00000004, // Has spaces or non-breaking space in the month names.
+	    UseHebrewRule           = 0x00000008,   // Format/Parse using the Hebrew calendar rule.
+	    UseSpacesInDayNames     = 0x00000010,   // Has spaces or non-breaking space in the day names.
+	    UseDigitPrefixInTokens  = 0x00000020,   // Has token starting with numbers.
+
+	    NotInitialized          = -1,
+	}
+
+	class DateTimeFormatInfo : IFormatProvider
+	{
+		//
+		// Note, some fields are derived so don't really need to be serialized, but we can't mark as
+		// optional because Whidbey was expecting them.  Post-Arrowhead we could fix that
+		// once Whidbey serialization is no longer necessary.
+		//
+
+		// cache for the invariant culture.
+		// invariantInfo is constant irrespective of your current culture.
+		private static volatile DateTimeFormatInfo invariantInfo;
+
+		// an index which points to a record in Culture Data Table.
+		private CultureData m_cultureData;
+
+		// The culture name used to create this DTFI.
+		internal String m_name = null;
+
+		// The language name of the culture used to create this DTFI.
+		private String m_langName = null;
+
+		// CompareInfo usually used by the parser.
+		//private CompareInfo m_compareInfo = null;
+
+		// Culture matches current DTFI. mainly used for string comparisons during parsing.
+		private CultureInfo m_cultureInfo = null;
+
+		//
+		// Caches for various properties.
+		//
+
+		// 
+
+		//NotImpl: Shouldn't be initialized
+		internal String amDesignator     = "AM";
+		internal String pmDesignator     = "PM";
+		internal String dateSeparator    = "/";            // derived from short date (whidbey expects, arrowhead doesn't)
+		internal String generalShortTimePattern = null;     // short date + short time (whidbey expects, arrowhead doesn't)
+		internal String generalLongTimePattern  = null;     // short date + long time (whidbey expects, arrowhead doesn't)
+		internal String timeSeparator    = ":";            // derived from long time (whidbey expects, arrowhead doesn't)
+		internal String monthDayPattern  = null;
+		internal String dateTimeOffsetPattern = null;
+
+		//
+		// The following are constant values.
+		//
+		internal const String rfc1123Pattern   = "ddd, dd MMM yyyy HH':'mm':'ss 'GMT'";
+
+		// The sortable pattern is based on ISO 8601.
+		internal const String sortableDateTimePattern = "yyyy'-'MM'-'dd'T'HH':'mm':'ss";
+		internal const String universalSortableDateTimePattern = "yyyy'-'MM'-'dd HH':'mm':'ss'Z'";
+
+		//
+		// The following are affected by calendar settings.
+		//
+		internal Calendar calendar  = null;
+
+		internal int firstDayOfWeek = -1;
+		internal int calendarWeekRule = -1;
+
+		internal String fullDateTimePattern  = null;        // long date + long time (whidbey expects, arrowhead doesn't)
+
+		internal String[] abbreviatedDayNames    = null;
+
+		internal String[] m_superShortDayNames    = null;
+
+		internal String[] dayNames                 = null;
+		internal String[] abbreviatedMonthNames    = null;
+		internal String[] monthNames               = null;
+		// Cache the genitive month names that we retrieve from the data table.
+		internal String[] genitiveMonthNames       = null;
+
+		// Cache the abbreviated genitive month names that we retrieve from the data table.
+		internal String[] m_genitiveAbbreviatedMonthNames = null;
+
+		// Cache the month names of a leap year that we retrieve from the data table.
+		internal String[] leapYearMonthNames     = null;
+
+		// For our "patterns" arrays we have 2 variables, a string and a string[]
+		//
+		// The string[] contains the list of patterns, EXCEPT the default may not be included.
+		// The string contains the default pattern.
+		// When we initially construct our string[], we set the string to string[0]
+
+		// The "default" Date/time patterns 
+		internal String longDatePattern  = "dddd, MMMM d, yyyy";
+		internal String shortDatePattern = "M/d/yyyy";
+		internal String yearMonthPattern = "MMMM yyyy";
+		internal String longTimePattern  = null;
+		internal String shortTimePattern = null;
+
+		// These are Whidbey-serialization compatable arrays (eg: default not included)
+		// "all" is a bit of a misnomer since the "default" pattern stored above isn't
+		// necessarily a member of the list
+		private String[] allYearMonthPatterns   = null;   // This was wasn't serialized in Whidbey
+		internal String[] allShortDatePatterns   = null;
+		internal String[] allLongDatePatterns    = null;
+		internal String[] allShortTimePatterns   = null;
+		internal String[] allLongTimePatterns    = null;
+
+		// Cache the era names for this DateTimeFormatInfo instance.
+		internal String[] m_eraNames = null;
+		internal String[] m_abbrevEraNames = null;
+		internal String[] m_abbrevEnglishEraNames = null;
+
+		internal int[] optionalCalendars = null;
+
+		private const int DEFAULT_ALL_DATETIMES_SIZE = 132;
+
+		// CultureInfo updates this
+		internal bool m_isReadOnly=false;
+
+		// This flag gives hints about if formatting/parsing should perform special code path for things like
+		// genitive form or leap year month names.
+		internal DateTimeFormatFlags formatFlags = DateTimeFormatFlags.NotInitialized;
+		//internal static bool preferExistingTokens = InitPreferExistingTokens();
+
+		List<Object> ownedObjects = new .() ~ DeleteContainerAndItems!(_);
+
+		public this()
+		{
+
+		}
+
+		public ~this()
+		{
+
+		}
+
+		public String AllocString()
+		{
+			var str = new String();
+			ownedObjects.Add(str);
+			return str;
+		}
+
+		public this(CultureData cultureData, Calendar calendar)
+		{
+			this.m_cultureData = cultureData;
+			this.calendar = calendar;
+		}
+
+		public static DateTimeFormatInfo CurrentInfo
+		{
+			get
+			{
+				CultureInfo culture = CultureInfo.CurrentCulture;
+				if (!culture.m_isInherited)
+				{
+				    DateTimeFormatInfo info = culture.[Friend]dateTimeInfo;
+				    if (info != null) {
+				        return info;
+				    }
+				}
+				return (DateTimeFormatInfo)culture.GetFormat(typeof(DateTimeFormatInfo));
+			}
+		}
+
+		public static DateTimeFormatInfo InvariantInfo {
+		    get
+			{
+		        if (invariantInfo == null)
+		        {
+		            DateTimeFormatInfo info = new DateTimeFormatInfo();
+		            info.Calendar.SetReadOnlyState(true);
+		            info.m_isReadOnly = true;
+		            invariantInfo = info;
+		        }
+		        return (invariantInfo);
+		    }
+		}
+
+		public Calendar Calendar
+		{
+			get
+			{
+				return calendar;
+			}
+		}
+
+		public StringView AMDesignator
+		{
+			get
+			{
+				return amDesignator;
+			}
+		}
+
+		public StringView PMDesignator
+		{
+			get
+			{
+				return pmDesignator;
+			}
+		}
+
+		public StringView TimeSeparator
+		{
+			get
+			{
+				if (timeSeparator == null)
+				{
+				    timeSeparator = this.m_cultureData.TimeSeparator;
+				}
+				return timeSeparator;
+			}
+		}
+
+		public StringView DateSeparator
+		{
+			get
+			{
+				if (this.dateSeparator == null)
+				{
+					Runtime.NotImplemented();
+				    //this.dateSeparator = this.m_cultureData.DateSeparator(Calendar.ID);
+				}
+				return dateSeparator;
+			}
+		}
+
+		public bool HasForceTwoDigitYears
+		{
+			get
+			{
+				return false;
+			}
+		}
+
+		public DateTimeFormatFlags FormatFlags
+		{
+			get
+			{
+				if (formatFlags == DateTimeFormatFlags.NotInitialized)
+				{
+				    // Build the format flags from the data in this DTFI
+				    formatFlags = DateTimeFormatFlags.None;
+				    /*formatFlags |= (DateTimeFormatFlags)DateTimeFormatInfoScanner.GetFormatFlagGenitiveMonth(
+				        MonthNames, internalGetGenitiveMonthNames(false), AbbreviatedMonthNames, internalGetGenitiveMonthNames(true));
+				    formatFlags |= (DateTimeFormatFlags)DateTimeFormatInfoScanner.GetFormatFlagUseSpaceInMonthNames(
+				        MonthNames, internalGetGenitiveMonthNames(false), AbbreviatedMonthNames, internalGetGenitiveMonthNames(true));
+				    formatFlags |= (DateTimeFormatFlags)DateTimeFormatInfoScanner.GetFormatFlagUseSpaceInDayNames(DayNames, AbbreviatedDayNames);
+				    formatFlags |= (DateTimeFormatFlags)DateTimeFormatInfoScanner.GetFormatFlagUseHebrewCalendar((int)Calendar.ID);*/                    
+				}
+				return (formatFlags);
+			}
+		}
+
+		public StringView ShortDatePattern
+		{
+			get
+			{
+				// Initialize our short date pattern from the 1st array value if not set
+				if (this.shortDatePattern == null)
+				{
+				    // Initialize our data
+				    this.shortDatePattern = this.UnclonedShortDatePatterns[0];
+				}
+
+				return this.shortDatePattern;
+			}
+		}
+
+		public StringView LongDatePattern
+		{
+			get
+			{
+				// Initialize our long date pattern from the 1st array value if not set
+				if (this.longDatePattern == null)
+				{
+				    // Initialize our data
+				    this.longDatePattern = this.UnclonedLongDatePatterns[0];
+				}
+
+				return this.longDatePattern;
+			}
+		}
+
+		public StringView ShortTimePattern
+		{
+			get
+			{
+				// Initialize our short time pattern from the 1st array value if not set
+				if (this.shortTimePattern == null)
+				{
+				    // Initialize our data
+				    this.shortTimePattern = this.UnclonedShortTimePatterns[0];
+				}
+				return this.shortTimePattern;
+			}
+		}
+
+		public StringView FullDateTimePattern
+		{
+			get
+			{
+				if (fullDateTimePattern == null)
+					fullDateTimePattern = AllocString()..Append("dddd, MMMM d, yyyy h:mm:ss tt");
+				return fullDateTimePattern;
+			}
+		}
+
+		public StringView DateTimeOffsetPattern
+		{
+			get
+			{
+				if (dateTimeOffsetPattern == null)
+					dateTimeOffsetPattern = AllocString()..Append("M/d/yyyy h:mm:ss tt zzz");
+				return dateTimeOffsetPattern;
+			}
+		}
+
+		public StringView GeneralShortTimePattern
+		{
+			get {
+			    if (generalShortTimePattern == null) {
+			        generalShortTimePattern = AllocString()..AppendF("{0} {1}", ShortDatePattern, ShortTimePattern);
+			    }
+			    return (generalShortTimePattern);
+			}
+		}
+
+		public StringView GeneralLongTimePattern
+		{
+			get
+			{
+				if (generalLongTimePattern == null) {
+				    generalLongTimePattern = AllocString()..AppendF("{0} {1}", ShortDatePattern, LongTimePattern);
+				}
+				return (generalLongTimePattern);
+			}
+		}
+
+		public StringView MonthDayPattern
+		{
+			get 
+			{
+			    if (this.monthDayPattern == null) 
+			    {
+			        this.monthDayPattern = this.m_cultureData.MonthDay(Calendar.ID);
+			    }
+			    //Contract.Assert(this.monthDayPattern != null, "DateTimeFormatInfo.MonthDayPattern, monthDayPattern != null");
+			    return (this.monthDayPattern);
+			}
+
+			set {
+			    /*if (IsReadOnly)
+			        throw new InvalidOperationException(Environment.GetResourceString("InvalidOperation_ReadOnly"));
+			    if (value == null) {
+			        throw new ArgumentNullException("value",
+			            Environment.GetResourceString("ArgumentNull_String"));
+			    }
+			    Contract.EndContractBlock();
+
+			    this.monthDayPattern = value;*/
+				Runtime.NotImplemented();
+			}
+		}
+
+		public StringView RFC1123Pattern
+		{
+			get
+			{
+				return (rfc1123Pattern);
+			}
+		}
+
+		public StringView SortableDateTimePattern
+		{
+			get
+			{
+				return sortableDateTimePattern;
+			}
+		}
+
+		public StringView LongTimePattern
+		{
+			get
+			{
+				if (this.longTimePattern == null)
+				{
+				    // Initialize our data
+				    this.longTimePattern = this.UnclonedLongTimePatterns[0];
+				}
+
+				return this.longTimePattern;  
+			}
+		}
+
+		public StringView UniversalSortableDateTimePattern
+		{
+			get
+			{
+				return universalSortableDateTimePattern;
+			}
+		}
+
+		public StringView YearMonthPattern
+		{
+			get
+			{
+				if (this.yearMonthPattern == null)
+				{
+				    // Initialize our data
+				    this.yearMonthPattern = this.UnclonedYearMonthPatterns[0];
+				}
+				return this.yearMonthPattern;
+			}
+		}
+
+		public void GetAbbreviatedDayName(DayOfWeek dayofweek, String outStr)
+		{
+			outStr.Append(CalendarData.Invariant.saAbbrevDayNames[(int)dayofweek]);
+		}
+
+		public void GetDayName(DayOfWeek dayofweek, String outStr)
+		{
+			outStr.Append(CalendarData.Invariant.saDayNames[(int)dayofweek]);
+		}
+
+		public void GetAbbreviatedMonthName(int month, String outStr)
+		{
+			outStr.Append(CalendarData.Invariant.saAbbrevMonthNames[month - 1]);
+		}
+
+		public void GetMonthName(int month, String outStr)
+		{
+			outStr.Append(CalendarData.Invariant.saMonthNames[month - 1]);
+		}
+
+		public void GetEraName(int era, String outStr)
+		{
+			outStr.Append(CalendarData.Invariant.saEraNames[era]);
+		}
+
+		internal void internalGetMonthName(int month, MonthNameStyles style, bool abbreviated, String outStr)
+		{
+			GetMonthName(month, outStr);
+		}
+
+		public  Object GetFormat(Type formatType)
+		{
+		    return (formatType == typeof(DateTimeFormatInfo)? this: null);
+		}
+
+		public static DateTimeFormatInfo GetInstance(IFormatProvider provider)
+		{
+		    // Fast case for a regular CultureInfo
+		    DateTimeFormatInfo info;
+		    CultureInfo cultureProvider = provider as CultureInfo;
+		    if (cultureProvider != null && !cultureProvider.m_isInherited)
+		    {
+		        return cultureProvider.DateTimeFormat;
+		    }
+		    // Fast case for a DTFI;
+		    info = provider as DateTimeFormatInfo;
+		    if (info != null) {
+		        return info;
+		    }
+		    // Wasn't cultureInfo or DTFI, do it the slower way
+		    if (provider != null) {
+		        info = provider.GetFormat(typeof(DateTimeFormatInfo)) as DateTimeFormatInfo;
+		        if (info != null) {
+		            return info;
+		        }
+		    }
+		    // Couldn't get anything, just use currentInfo as fallback
+		    return CurrentInfo;
+		}
+
+		private String[] UnclonedYearMonthPatterns
+		{
+		    get
+		    {
+		        if (this.allYearMonthPatterns == null)
+		        {
+		            this.allYearMonthPatterns = this.m_cultureData.YearMonths(this.Calendar.ID);
+		        }
+
+		        return this.allYearMonthPatterns;
+		    }
+		}
+
+		private String [] UnclonedShortDatePatterns
+		{
+		    get
+		    {
+		        if (allShortDatePatterns == null)
+		        {
+		            this.allShortDatePatterns = this.m_cultureData.ShortDates(this.Calendar.ID);
+		        }
+
+		        return this.allShortDatePatterns;
+		    }
+		}
+
+		private String[] UnclonedLongDatePatterns
+		{
+		    get
+		    {
+		        if (allLongDatePatterns == null)
+		        {
+		            this.allLongDatePatterns = this.m_cultureData.LongDates(this.Calendar.ID);
+		        }
+
+		        return this.allLongDatePatterns;
+		    }
+		}
+
+		private String[] UnclonedShortTimePatterns
+		{
+		    get
+		    {
+		        if (this.allShortTimePatterns == null)
+		        {
+		            this.allShortTimePatterns = this.m_cultureData.ShortTimes;
+		        }
+		        
+		        return this.allShortTimePatterns;
+		    }
+		}
+
+		private String[] UnclonedLongTimePatterns
+		{
+		    get
+		    {
+		        if (this.allLongTimePatterns == null)
+		        {
+		            this.allLongTimePatterns = this.m_cultureData.LongTimes;
+		        }
+		        
+		        return this.allLongTimePatterns;
+		    }
+		}
+
+		private String m_fullTimeSpanPositivePattern ~ delete _;
+		internal String FullTimeSpanPositivePattern 
+		{
+		    get
+		    {
+		        if (m_fullTimeSpanPositivePattern == null)
+		        {
+		            CultureData cultureDataWithoutUserOverrides;
+		            if (m_cultureData.UseUserOverride)
+		                cultureDataWithoutUserOverrides = CultureData.GetCultureData(m_cultureData.CultureName, false);
+		            else
+		                cultureDataWithoutUserOverrides = m_cultureData;
+		            StringView decimalSeparator = scope NumberFormatInfo(cultureDataWithoutUserOverrides).NumberDecimalSeparator;
+		            
+		            m_fullTimeSpanPositivePattern = AllocString()..Append("d':'h':'mm':'ss'");
+					m_fullTimeSpanPositivePattern.Append(decimalSeparator);
+					m_fullTimeSpanPositivePattern.Append("'FFFFFFF");
+		        }
+		        return m_fullTimeSpanPositivePattern;
+		    }
+		}
+
+		private String m_fullTimeSpanNegativePattern ~ delete _;
+		internal String FullTimeSpanNegativePattern 
+		{
+		    get
+		    {
+		        if (m_fullTimeSpanNegativePattern == null)
+		            m_fullTimeSpanNegativePattern = AllocString()..Append("'-'", FullTimeSpanPositivePattern);
+		        return m_fullTimeSpanNegativePattern;
+		    }
+		}
+	}
+}

@@ -1,0 +1,30 @@
+FileVersion = 1
+Dependencies = {minlib = "*"}
+
+[Project]
+Name = "RandoTest"
+StartupObject = "Program"
+
+[Configs.Debug.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Debug.Win64]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Paranoid.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Paranoid.Win64]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win32]
+CLibType = "Static"
+BeefLibType = "Static"
+
+[Configs.Test.Win64]
+CLibType = "Static"
+BeefLibType = "Static"

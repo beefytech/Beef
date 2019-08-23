@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {SysMSVCRT = {Path = "."}}
+
+[Workspace]
+StartupProject = "SysMSVCRT"

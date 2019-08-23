@@ -1,0 +1,16 @@
+ShowFile("src/Lambdas.bf")
+GotoText("//LambdaTest_Test1")
+ToggleBreakpoint()
+RunWithCompiling()
+StepInto()
+
+AssertEvalEquals("argA1", "99")
+AssertEvalEquals("outerVar", "88")
+AssertEvalEquals("mA", "123")
+AssertEvalEquals("mB", "234")
+AssertEvalEquals("this,na", "{ mA=123 mB=234 }")
+
+AssertDbgAutocomplete("outerVar")
+AssertDbgAutocomplete("argA1")
+AssertDbgAutocomplete("this")
+AssertDbgAutocomplete("mA")

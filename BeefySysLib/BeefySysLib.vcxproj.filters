@@ -1,0 +1,1055 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="src\gfx">
+      <UniqueIdentifier>{43f7e8cc-917a-461b-af5c-961d51c98d65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\platform">
+      <UniqueIdentifier>{5c6ad523-a93e-403b-b358-a15f86078b0f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\platform\win">
+      <UniqueIdentifier>{813c38d5-9d89-4491-bff7-3c25047100d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\img">
+      <UniqueIdentifier>{2b273590-2487-4e10-acbd-022423c4536c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party">
+      <UniqueIdentifier>{31571ecc-bfdf-44c1-a91d-c1d4b61704c7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\png">
+      <UniqueIdentifier>{f5ef9398-c086-4951-8614-ceb324d5e029}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\zlib">
+      <UniqueIdentifier>{73a918ba-1f42-4f8e-a7ba-e76494ecdae0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\util">
+      <UniqueIdentifier>{0dfbd92a-e027-49fb-a13f-ffcf0975d4d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\jpeg">
+      <UniqueIdentifier>{e7c2dc52-128b-402e-9f94-5c8aeaf27bb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sound">
+      <UniqueIdentifier>{5367b1b8-4b9c-437a-9423-7fb1e94b52a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\ffi">
+      <UniqueIdentifier>{f7c9966e-5b74-43ba-8a5d-db503ea8aaa6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\libffi">
+      <UniqueIdentifier>{3ea6b611-924e-4aa1-a5d3-18899c959c9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\libffi\x86">
+      <UniqueIdentifier>{e8f4f338-80e8-41ba-ae42-1d03754841ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\platform\sdl">
+      <UniqueIdentifier>{c2ca20db-b847-4e2f-bc23-57432468dbb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\perf_tests">
+      <UniqueIdentifier>{e6e45fc1-c3c8-410e-8eca-442b3bfe8f9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\fbx">
+      <UniqueIdentifier>{befafaa7-a995-4087-ab20-0733b6ae8668}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sound\Common">
+      <UniqueIdentifier>{af42d59a-8e02-4478-b3f1-0bca4eba293e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sound\Win32">
+      <UniqueIdentifier>{3e364db0-45bf-49fe-8d44-1a2679204c6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\freetype">
+      <UniqueIdentifier>{82ec1215-51a1-46d3-aa83-429ef9cbf9db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\freetype\FT_MODULES">
+      <UniqueIdentifier>{221e7341-db0d-416a-9816-9251d7dfb6f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\utf8proc">
+      <UniqueIdentifier>{30305636-6c19-4dfc-8861-766e45c58094}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\stb">
+      <UniqueIdentifier>{b85b0989-3047-46e9-93d7-5bc352fb0df7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="platform\win\DXRenderDevice.cpp">
+      <Filter>src\platform\win</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\win\Platform.cpp">
+      <Filter>src\platform\win</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\Shader.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\Texture.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\win\WinBFApp.cpp">
+      <Filter>src\platform\win</Filter>
+    </ClCompile>
+    <ClCompile Include="BFApp.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="BeefySysLib.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Common.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="BFWindow.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\RenderDevice.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\png.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngerror.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngget.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngmem.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngpread.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngread.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngrio.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngrtran.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngrutil.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngset.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngtrans.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngvcrd.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngwio.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngwrite.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngwtran.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngwutil.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\adler32.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\compress.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\crc32.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\deflate.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\gzio.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\infblock.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\infcodes.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\inffast.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\inflate.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\inftrees.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\infutil.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\trees.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\uncompr.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\zutil.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="img\ImageData.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="img\PNGData.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="img\TGAData.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="ResLib.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="img\PSDReader.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="FileStream.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="img\ImgEffects.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="util\BSpline.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Point.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\CatmullRom.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\CubicSpline.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\PolySpline.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\CubicFuncSpline.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="img\ImageUtils.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Vector.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="img\ImageAdjustments.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="img\PVRData.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="img\BFIData.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="img\JPEGData.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
+    <ClCompile Include="MemStream.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="DataStream.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\PerfTimer.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\DrawLayer.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\RenderTarget.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\cdjpeg.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcapimin.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcapistd.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jccoefct.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jccolor.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcdctmgr.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jchuff.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcinit.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcmainct.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcmarker.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcmaster.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcomapi.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcparam.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcphuff.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcprepct.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jcsample.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jctrans.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdapimin.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdapistd.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdatadst.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdatasrc.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdcoefct.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdcolor.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jddctmgr.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdhuff.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdinput.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdmainct.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdmarker.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdmaster.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdmerge.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdphuff.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdpostct.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdsample.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jdtrans.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jerror.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jfdctflt.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jfdctfst.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jfdctint.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jidctflt.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jidctfst.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jidctint.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jidctred.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jmemansi.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jmemmgr.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jquant1.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jquant2.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\jutils.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\rdbmp.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\rdcolmap.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\rdgif.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\rdppm.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\rdrle.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\rdswitch.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\rdtarga.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\transupp.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\wrbmp.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\wrgif.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\wrppm.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\wrrle.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\jpeg\wrtarga.c">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\WwiseSound.cpp">
+      <Filter>src\sound</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\x86\ffi.c">
+      <Filter>src\third_party\libffi\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\x86\ffi64.c">
+      <Filter>src\third_party\libffi\x86</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\closures.c">
+      <Filter>src\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\debug.c">
+      <Filter>src\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\java_raw_api.c">
+      <Filter>src\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\prep_cif.c">
+      <Filter>src\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\raw_api.c">
+      <Filter>src\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\types.c">
+      <Filter>src\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="util\UTF8.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\sdl\SdlBFApp.cpp">
+      <Filter>src\platform\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\sdl\GLRenderDevice.cpp">
+      <Filter>src\platform\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="Startup.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="PerfTests.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="perf_tests\fannkuchredux.cpp">
+      <Filter>src\perf_tests</Filter>
+    </ClCompile>
+    <ClCompile Include="perf_tests\fastaredux.cpp">
+      <Filter>src\perf_tests</Filter>
+    </ClCompile>
+    <ClCompile Include="perf_tests\nbody.cpp">
+      <Filter>src\perf_tests</Filter>
+    </ClCompile>
+    <ClCompile Include="fbx\FBXReader.cpp">
+      <Filter>src\fbx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\RenderCmd.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Matrix4.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\ModelDef.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\ModelInstance.cpp">
+      <Filter>src\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Quaternion.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\Common\AkDefaultLowLevelIODispatcher.cpp">
+      <Filter>src\sound\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\Common\AkFileLocationBase.cpp">
+      <Filter>src\sound\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\Common\AkFilePackage.cpp">
+      <Filter>src\sound\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\Common\AkFilePackageLUT.cpp">
+      <Filter>src\sound\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\Win32\AkDefaultIOHookBlocking.cpp">
+      <Filter>src\sound\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\Win32\AkDefaultIOHookDeferred.cpp">
+      <Filter>src\sound\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Hash.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\AllocDebug.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\ChunkedDataBuffer.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\WorkThread.cpp" />
+    <ClCompile Include="CachedDataStream.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\BeefPerf.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\smooth\smooth.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftbase.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftbitmap.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftdebug.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftgasp.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftinit.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftstroke.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftsystem.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\autofit\autofit.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\bdf\bdf.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\cff\cff.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\cache\ftcache.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftfstype.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftglyph.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\gzip\ftgzip.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\lzw\ftlzw.c">
+      <Filter>src\third_party\freetype</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftbbox.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftfntfmt.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftgxval.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftlcdfil.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftmm.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftotval.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftpatent.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftsynth.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\fttype1.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\base\ftwinfnt.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\pcf\pcf.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\pfr\pfr.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\psaux\psaux.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\pshinter\pshinter.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\psnames\psmodule.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\raster\raster.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\sfnt\sfnt.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\truetype\truetype.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\type1\type1.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\cid\type1cid.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\type42\type42.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\winfonts\winfnt.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\utf8proc\utf8proc.c">
+      <Filter>src\third_party\utf8proc</Filter>
+    </ClCompile>
+    <ClCompile Include="util\String.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\FTFont.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\MappedFile.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="HeadlessApp.cpp" />
+    <ClCompile Include="platform\win\CrashCatcher.cpp">
+      <Filter>src\platform\win</Filter>
+    </ClCompile>
+    <ClCompile Include="util\StackHelper.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\ThreadPool.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Common.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\win\DXRenderDevice.h">
+      <Filter>src\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\Shader.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\Texture.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\RenderDevice.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\win\WinBFApp.h">
+      <Filter>src\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="BFApp.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\win\PlatformApp.h">
+      <Filter>src\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="BFWindow.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\png.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\pngasmrd.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\pngconf.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\deflate.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\infblock.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\infcodes.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\inffast.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\inffixed.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\inftrees.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\infutil.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\trees.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\zconf.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\zlib.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\zutil.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="img\ImageData.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="img\PNGData.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="img\TGAData.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="img\PSDReader.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="FileStream.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="img\ImgEffects.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="util\BSpline.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\CatmullRom.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Point.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\CubicSpline.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\PolySpline.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\CubicFuncSpline.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Vector.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="img\ImageUtils.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="img\ImageAdjustments.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="img\PVRData.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="img\BFIData.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="img\JPEGData.h">
+      <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="DataStream.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="MemStream.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="util\PerfTimer.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\RenderTarget.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\DrawLayer.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\cderror.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\cdjpeg.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jchuff.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jconfig.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jdct.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jdhuff.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jerror.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jinclude.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jmemsys.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jmorecfg.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jpegint.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jpeglib.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\jversion.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\jpeg\transupp.h">
+      <Filter>src\third_party\jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\WwiseSound.h">
+      <Filter>src\sound</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\libffi\i686-pc-cygwin\include\ffi.h">
+      <Filter>src\third_party\libffi</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\libffi\i686-pc-cygwin\include\ffitarget.h">
+      <Filter>src\third_party\libffi</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\win\BFPlatform.h">
+      <Filter>src\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="util\UTF8.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\sdl\SdlBFApp.h">
+      <Filter>src\platform\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\sdl\GLRenderDevice.h">
+      <Filter>src\platform\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="util\CritSect.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="fbx\FBXReader.h">
+      <Filter>src\fbx</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Matrix4.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\SLIList.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Rect.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\ModelInstance.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\RenderCmd.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Quaternion.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\ModelDef.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Common\AkDefaultLowLevelIODispatcher.h">
+      <Filter>src\sound\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Common\AkFileLocationBase.h">
+      <Filter>src\sound\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Common\AkFilePackage.h">
+      <Filter>src\sound\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Common\AkFilePackageLowLevelIO.h">
+      <Filter>src\sound\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Common\AkFilePackageLUT.h">
+      <Filter>src\sound\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Win32\AkDefaultIOHookBlocking.h">
+      <Filter>src\sound\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Win32\AkDefaultIOHookDeferred.h">
+      <Filter>src\sound\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Win32\AkFileHelpers.h">
+      <Filter>src\sound\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Win32\AkFilePackageLowLevelIOBlocking.h">
+      <Filter>src\sound\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\Win32\AkFilePackageLowLevelIODeferred.h">
+      <Filter>src\sound\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="util\DLIList.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\AllocDebug.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Hash.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\BumpAllocator.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\ChunkedDataBuffer.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\ChunkedVector.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\WorkThread.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="CachedDataStream.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="util\BeefPerf.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\Font.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\FTFont.h">
+      <Filter>src\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\utf8proc\utf8proc.h">
+      <Filter>src\third_party\utf8proc</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Array.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\TLSingleton.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\String.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Dictionary.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\HashSet.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\SizedArray.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Queue.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\MappedFile.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Span.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="HeadlessApp.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\PlatformInterface.h">
+      <Filter>src\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\PlatformHelper.h">
+      <Filter>src\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\stb\stb_sprintf.h">
+      <Filter>src\third_party\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\win\CrashCatcher.h">
+      <Filter>src\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Deque.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\StackHelper.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\ThreadPool.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\MultiHashSet.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">
+      <Filter>src\third_party\libffi\x86</Filter>
+    </CustomBuild>
+    <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win64.asm">
+      <Filter>src\third_party\libffi\x86</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="sound\Common\AkFilePackageLowLevelIO.inl">
+      <Filter>src\sound\Common</Filter>
+    </None>
+  </ItemGroup>
+</Project>

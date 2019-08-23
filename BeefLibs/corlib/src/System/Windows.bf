@@ -1,0 +1,1295 @@
+#if BF_PLATFORM_WINDOWS
+
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Collections.Generic;
+using System.Text;
+
+namespace System
+{
+	class Windows
+	{
+		
+		public struct COM_IUnknown
+		{
+			public enum ClsContext : uint32
+			{
+				NONE = 0,
+				INPROC_SERVER	= 0x1,
+				INPROC_HANDLER	= 0x2,
+				LOCAL_SERVER	= 0x4,
+				INPROC_SERVER16	= 0x8,
+				REMOTE_SERVER	= 0x10,
+				INPROC_HANDLER16	= 0x20,
+				RESERVED1	= 0x40,
+				RESERVED2	= 0x80,
+				RESERVED3	= 0x100,
+				RESERVED4	= 0x200,
+				NO_CODE_DOWNLOAD	= 0x400,
+				RESERVED5	= 0x800,
+				NO_CUSTOM_MARSHAL	= 0x1000,
+				ENABLE_CODE_DOWNLOAD	= 0x2000,
+				NO_FAILURE_LOG	= 0x4000,
+				DISABLE_AAA	= 0x8000,
+				ENABLE_AAA	= 0x10000,
+				FROM_DEFAULT_CONTEXT	= 0x20000,
+				ACTIVATE_X86_SERVER	= 0x40000,
+				ACTIVATE_32_BIT_SERVER	= ACTIVATE_X86_SERVER,
+				ACTIVATE_64_BIT_SERVER	= 0x80000,
+				ENABLE_CLOAKING	= 0x100000,
+				APPCONTAINER	= 0x400000,
+				ACTIVATE_AAA_AS_IU	= 0x800000,
+				RESERVED6	= 0x01000000,
+				ACTIVATE_ARM32_SERVER	= 0x02000000,
+				PS_DLL	= 0x80000000,
+
+				ALL = INPROC_SERVER | INPROC_HANDLER | LOCAL_SERVER | REMOTE_SERVER
+			}
+
+			public struct VTable
+			{
+				public function void(COM_IUnknown* self, ref Guid riid, out void* result) QueryInterface;
+				public function HResult(COM_IUnknown* self) AddRef;
+				public function HResult(COM_IUnknown* self) Release;
+			}
+
+			public enum HResult : int32
+			{
+				case OK;
+
+				public bool Failed
+				{
+					get
+					{
+						return this != .OK;
+					}
+				}
+			}
+			protected VTable* mVT;
+			public VTable* VT
+			{
+				get
+				{
+					return (.)mVT;
+				}
+			}
+
+			[Import("ole32.lib"), CLink, StdCall]
+			public static extern HResult CoCreateInstanceFromApp(ref Guid clsid, COM_IUnknown* unkOuter, ClsContext clsCtx, void* reserved, uint32 count, MULTI_QI* result);
+
+			struct MULTI_QI
+			{
+				public Guid* mIID;
+				public COM_IUnknown* mItf;
+				public HResult mHR;
+			}
+
+			[Import("ole32.lib"), CLink, StdCall]
+			public static extern HResult CoCreateInstance(ref Guid clsId, COM_IUnknown* unkOuter, ClsContext clsCtx, ref Guid iid, void** result);
+
+			[Import("ole32.lib"), CLink, StdCall]
+			public static extern void CoTaskMemFree(void* ptr);
+		}
+
+		public function int WndProc(HWnd hWnd, int32 msg, int wParam, int lParam);
+		public delegate IntBool EnumThreadWindowsCallback(HWnd hWnd, void* extraParameter);
+
+		[CRepr]
+		public struct OpenFileName
+		{
+			public int32 mStructSize = (int32)sizeof(OpenFileName); //ndirect.DllLib.sizeOf(this);
+			public HWnd mHwndOwner;
+			public HInstance mHInstance;
+			public char16* mFilter;   // use embedded nulls to separate filters
+			public int mCustomFilter = 0;
+			public int32 nMaxCustFilter = 0;
+			public int32 nFilterIndex;
+			public char16* mFile;
+			public int32 nMaxFile = Windows.MAX_PATH;
+			public int mFileTitle = 0;
+			public int32 mMaxFileTitle = Windows.MAX_PATH;
+			public char16* mInitialDir;
+			public char16* mTitle;
+			public int32 mFlags;
+			public int16 mFileOffset = 0;
+			public int16 mFileExtension = 0;
+			public char8* mDefExt;
+			public int mCustData = 0;
+			public WndProc mHook;
+			public char16* mTemplateName = null;
+			public int mReserved1 = 0;
+			public int32 mReserved2 = 0;
+			public int32 mFlagsEx;
+		}
+
+		public enum BrowseInfos
+		{
+		    NewDialogStyle      = 0x0040,   // Use the new dialog layout with the ability to resize
+		    HideNewFolderButton = 0x0200    // Don't display the 'New Folder' button
+		}
+
+		[CRepr]
+		public struct BrowseInfo
+		{
+		    public HWnd mHWndOwner;
+		    public int mIdlRoot;
+
+		    public char8* mDisplayName;
+
+		    public char8* mTitle;
+		    public int32 mFlags;
+		    public WndProc mCallback;
+		    public int mLParam;
+		    public int32 mImage;
+		}
+
+		[CRepr]
+		public struct SHFileInfo
+		{
+			public Handle mHIcon;                      // out: icon
+			public int32 mIIcon;                      // out: icon index
+			public uint32 mAttributes;               // out: SFGAO_ flags
+			public char16[Windows.MAX_PATH] mDisplayName;    // out: display name (or path)
+			public char16[80] mTypeName;             // out: type name
+		}
+
+		public const int32 SHGFI_ICON            = 0x00000100;     // get icon
+		public const int32 SHGFI_DISPLAYNAME     = 0x00000200;     // get display name
+		public const int32 SHGFI_TYPENAME        = 0x00000400;     // get type name
+		public const int32 SHGFI_ATTRIBUTES      = 0x00000800;     // get attributes
+		public const int32 SHGFI_ICONLOCATION    = 0x00001000;     // get icon location
+		public const int32 SHGFI_EXETYPE         = 0x00002000;     // return exe type
+		public const int32 SHGFI_SYSICONINDEX    = 0x00004000;     // get system icon index
+		public const int32 SHGFI_LINKOVERLAY     = 0x00008000;     // put a link overlay on icon
+		public const int32 SHGFI_SELECTED        = 0x00010000;     // show icon in selected state
+		public const int32 SHGFI_ATTR_SPECIFIED  = 0x00020000;     // get only specified attributes
+		public const int32 SHGFI_LARGEICON       = 0x00000000;     // get large icon
+		public const int32 SHGFI_SMALLICON       = 0x00000001;     // get small icon
+		public const int32 SHGFI_OPENICON        = 0x00000002;     // get open icon
+		public const int32 SHGFI_SHELLICONSIZE   = 0x00000004;     // get shell size icon
+		public const int32 SHGFI_PIDL             = 0x00000008;     // pszPath is a pidl
+		public const int32 SHGFI_USEFILEATTRIBUTES = 0x00000010;     // use passed dwFileAttribute
+		public const int32 SHGFI_ADDOVERLAYS     = 0x00000020;     // apply the appropriate overlays
+		public const int32 SHGFI_OVERLAYINDEX    = 0x00000040;     // Get the index of the overlay
+
+		public const int32 REG_NONE              = 0; // No value type
+		public const int32 REG_SZ                = 1; // Unicode nul terminated string
+		public const int32 REG_EXPAND_SZ         = 2; // Unicode nul terminated string
+		// (with environment variable references)
+		public const int32 REG_BINARY            = 3; // Free form binary
+		public const int32 REG_DWORD             = 4; // 32-bit number
+		public const int32 REG_DWORD_LITTLE_ENDIAN = 4; // 32-bit number (same as REG_DWORD)
+		public const int32 REG_DWORD_BIG_ENDIAN = 5; // 32-bit number
+		public const int32 REG_LINK              = 6; // Symbolic Link (unicode)
+		public const int32 REG_MULTI_SZ          = 7; // Multiple Unicode strings
+		public const int32 REG_RESOURCE_LIST     = 8; // Resource list in the resource map
+		public const int32 REG_FULL_RESOURCE_DESCRIPTOR = 9; // Resource list in the hardware description
+		public const int32 REG_RESOURCE_REQUIREMENTS_LIST = 10;
+		public const int32 REG_QWORD             = 11; // 64-bit number
+		public const int32 REG_QWORD_LITTLE_ENDIAN = 11; // 64-bit number (same as REG_QWORD)
+
+		public const int32 MB_YESNO 			= 4;
+		public const int32 MB_ICONHAND 			= 0x10;
+		public const int32 IDOK 				= 1;
+		public const int32 IDYES 				= 6;
+
+		public const int32 LOAD_LIBRARY_AS_DATAFILE = 0x00000002;
+		public const int LOAD_STRING_MAX_LENGTH = 500;
+
+		public const int MUI_PREFERRED_UI_LANGUAGES = 0x10;
+
+		public enum FOS : uint32
+		{
+		    FOS_OVERWRITEPROMPT = 0x00000002,
+		    FOS_STRICTFILETYPES = 0x00000004,
+		    FOS_NOCHANGEDIR = 0x00000008,
+		    FOS_PICKFOLDERS = 0x00000020,
+		    FOS_FORCEFILESYSTEM = 0x00000040,
+		    FOS_ALLNONSTORAGEITEMS = 0x00000080,
+		    FOS_NOVALIDATE = 0x00000100,
+		    FOS_ALLOWMULTISELECT = 0x00000200,
+		    FOS_PATHMUSTEXIST = 0x00000800,
+		    FOS_FILEMUSTEXIST = 0x00001000,
+		    FOS_CREATEPROMPT = 0x00002000,
+		    FOS_SHAREAWARE = 0x00004000,
+		    FOS_NOREADONLYRETURN = 0x00008000,
+		    FOS_NOTESTFILECREATE = 0x00010000,
+		    FOS_HIDEMRUPLACES = 0x00020000,
+		    FOS_HIDEPINNEDPLACES = 0x00040000,
+		    FOS_NODEREFERENCELINKS = 0x00100000,
+		    FOS_DONTADDTORECENT = 0x02000000,
+		    FOS_FORCESHOWHIDDEN = 0x10000000,
+		    FOS_DEFAULTNOMINIMODE = 0x20000000
+		}
+
+		public struct Handle : int
+		{
+			public const Handle InvalidHandle = (Handle)-1;
+			public const Handle NullHandle = (Handle)+0;
+
+			public bool IsInvalid
+			{
+				get
+				{
+					return ((int)this == (int)(-1)) || ((int)this == (int)0);
+				}
+			}
+
+			public void Close()
+			{
+				Windows.CloseHandle(this);
+			}
+		}
+
+		public struct HKey : int
+		{
+			public bool IsInvalid
+			{
+				get
+				{
+					return ((int)this == (int)(-1)) || ((int)this == (int)0);
+				}
+			}
+
+			public void Close()
+			{
+				Windows.RegCloseKey(this);
+			}
+
+			protected Result<void> GetValue(StringView name, delegate void(uint32 regType, Span<uint8> regData) onData)
+			{
+				uint8[4096] buffer;
+
+				uint8* bufPtr = &buffer;
+				int bufSize = sizeof(decltype(buffer));
+				defer
+				{
+					if (bufPtr != &buffer)
+						delete bufPtr;
+				}			  
+
+				while (true)
+				{
+					uint32 regType = 0;
+					uint32 newBufSize = (uint32)bufSize;
+					int ret = Windows.RegQueryValueExW(this, name.ToScopedNativeWChar!(), null, &regType, bufPtr, &newBufSize);
+					if (ret == 0)
+					{
+						onData(regType, .(bufPtr, (int)newBufSize));
+						break;
+					}
+					
+					if (ret != ERROR_MORE_DATA)
+						return .Err;
+
+					bufSize = (.)newBufSize;
+					let newBuf = new uint8[bufSize]*;
+					if (bufPtr != &buffer)
+						delete bufPtr;
+					bufPtr = newBuf;
+				}
+
+				return .Ok;
+			}
+
+			public Result<Variant> GetValue(StringView name)
+			{
+				Variant val = default;
+
+				GetValue(name, scope [&] (regType, regData) =>
+					{
+						switch (regType)
+						{
+						case Windows.REG_DWORD:
+							val = Variant.Create<int32>(*(int32*)regData.Ptr);
+						case Windows.REG_SZ:
+							var span = Span<char16>((char16*)regData.Ptr, regData.Length / 2);
+							if ((span.Length > 0) && (span[span.Length - 1] == 0))
+								span.RemoveFromEnd(1);
+							String str = scope String(span);
+							val = Variant.Create<String>(str);
+						case Windows.REG_QWORD:
+							val = Variant.Create<int64>(*(int64*)regData.Ptr);
+						default:
+							Runtime.NotImplemented();
+						}
+					});
+				
+				if (!val.HasValue)
+					return .Err;
+				return val;
+			}
+
+			public Result<void> GetValue(StringView name, List<uint8> outData)
+			{
+				bool gotData = false;
+				GetValue(name, scope [&] (regType, regData) =>
+					{
+						if (regType == Windows.REG_BINARY)
+						{
+							gotData = true;
+							outData.Add(regData);
+						}
+					});
+				if (!gotData)
+					return .Err;
+				return .Ok;
+			}
+
+			public Result<void> GetValue(StringView name, String outData)
+			{
+				bool gotData = false;
+				GetValue(name, scope [&] (regType, regData) =>
+					{
+						if (regType == Windows.REG_SZ)
+						{
+							gotData = true;
+							var span = Span<char16>((char16*)regData.Ptr, regData.Length / 2);
+							if ((span.Length > 0) && (span[span.Length - 1] == 0))
+								span.RemoveFromEnd(1);
+							outData.Append(span);
+						}
+					});
+				if (!gotData)
+					return .Err;
+				return .Ok;
+			}
+
+			public Result<void> GetValueT<T>(StringView name, ref T data)
+			{
+				bool gotData = false;
+				int sizeofT = sizeof(T);
+				GetValue(name, scope [&] (regType, regData) =>
+					{
+						if ((regType == Windows.REG_BINARY) && (regData.Length == sizeofT))
+						{
+							Internal.MemCpy(&data, regData.Ptr, sizeofT);
+							gotData = true;
+						}
+					});
+				if (!gotData)
+					return .Err;
+				return .Ok;
+			}
+
+			public Result<Variant> EnumValue(int idx, String outName)
+			{
+				char16[2048] nameBuffer;
+				uint8[4096] buffer;
+
+				char16* namePtr = &nameBuffer;
+				uint8* bufPtr = &buffer;
+				uint32 nameSize = sizeof(decltype(nameBuffer));
+				uint32 bufSize = sizeof(decltype(buffer));
+				defer
+				{
+					if (bufPtr != &buffer)
+						delete bufPtr;
+					if (namePtr != &nameBuffer)
+						delete namePtr;
+				}
+
+				while (true)
+				{
+					uint32 regType = 0;
+					uint32 newNameSize = (.)nameSize;
+					uint32 newBufSize = (.)bufSize;
+					int ret = Windows.RegEnumValueW(this, (.)idx, namePtr, &newNameSize, null, &regType, bufPtr, &newBufSize);
+					if (ret == 0)
+						break;
+					
+					if (ret != ERROR_MORE_DATA)
+						return .Err;
+					if (newNameSize > nameSize)
+					{
+						nameSize = newNameSize;
+						let newBuf = new uint8*[(.)nameSize]*;
+						if (namePtr != &nameBuffer)
+							delete namePtr;
+						namePtr = (char16*)newBuf;
+					}
+					if (newBufSize > bufSize)
+					{
+						bufSize = newBufSize;
+						let newBuf = new uint8[(.)bufSize]*;
+						if (bufPtr != &buffer)
+							delete bufPtr;
+						bufPtr = newBuf;
+					}
+				}
+
+				Runtime.NotImplemented();
+				//return Variant.Create<int>(1234);
+			}
+		}
+
+		public struct HWnd : int
+		{
+
+		}
+
+		public struct HModule : int
+		{
+			public bool IsInvalid
+			{
+				get
+				{
+					return ((int)this == (int)(-1)) || ((int)this == (int)0);
+				}
+			}
+		}
+
+		public struct HInstance : HModule
+		{
+
+		}
+
+		public struct FindHandle : int
+		{
+			public const FindHandle InvalidHandle = (FindHandle)-1;
+			public const FindHandle NullHandle = (FindHandle)+0;
+
+			public bool IsInvalid
+			{
+				get
+				{
+					return ((int)this == (int)(-1)) || ((int)this == (int)0);
+				}
+			}
+
+			public void Close()
+			{
+				Windows.FindClose(this);				
+			}
+		}
+
+		public struct IntBool : int32
+		{
+			public static implicit operator IntBool(bool value)
+			{
+			    return (IntBool)(value ? 1 : 0);
+			}
+
+			public static implicit operator bool(IntBool value)
+			{
+			    return value != 0;
+			}
+		}
+
+		public struct FileHandle : Handle
+		{
+			public new const FileHandle InvalidHandle = (FileHandle)-1;
+		}
+
+		public struct EventHandle : Handle
+		{
+
+		}
+
+		public struct ProcessHandle : Handle
+		{
+
+		}
+
+		public struct IOCompletionHandle : Handle
+		{
+			public new const IOCompletionHandle NullHandle = (IOCompletionHandle)+0;
+		}
+
+		[CRepr]
+		public struct FileNotifyInformation
+		{
+			public int32 mNextEntryOffset;
+			public int32 mAction;
+			public int32 mFileNameLength;
+			public uint16 mFileName;
+		}
+
+		[CRepr]
+		public struct Overlapped
+		{
+			public int mInternal;
+			public int mInternalHigh;
+			public uint32 mOffset;
+			public uint32 mOffsetHigh;
+			public Handle mHEvent;
+		}
+
+		[CRepr]
+		public struct ShellExecuteInfo
+		{
+			public uint32 mSize = (uint32)sizeof(ShellExecuteInfo);
+			public uint32 mMask;
+			public Handle mHWnd;
+			public char8* mVerb;
+			public char8* mFile;
+			public char8* mParameters;
+			public char8* mDirectory;
+			public int32 mShow;
+			public Handle mInstApp;
+			public void* mIDList;
+			public char8* mClass;
+			public Handle mHKeyClass;
+			public uint32 mHotKey;
+			public Handle mMonitorOrIcon;
+			public ProcessHandle mProcess;
+		}
+
+		[CRepr]
+		public struct StartupInfo
+        {
+			public int32 mCb = (int32)sizeof(StartupInfo);
+			public char8* mReserved;
+			public char8* mDesktop;
+			public char8* mTitle;
+			public int32 mX;
+			public int32 mY;
+			public int32 mXSize;
+			public int32 mYSize;
+			public int32 mXCountChars;
+			public int32 mYCountChars;
+			public int32 mFillAttribute;
+			public int32 mFlags;
+			public int16 mShowWindow;
+			public int16 mReserved2;
+			public uint8* mReserved3;
+			public FileHandle mStdInput;
+			public FileHandle mStdOutput;
+			public FileHandle mStdError;
+		}
+
+		[CRepr]
+		public struct ProcessInformation
+		{
+			public ProcessHandle mProcess;
+			public Handle mThread;
+			public int32 mProcessId;
+			public int32 mThreadId;
+		}
+
+		[CRepr]
+		public struct SystemTime
+		{
+			public uint16 mYear;
+			public uint16 mMonth;
+			public uint16 mDayOfWeek;
+			public uint16 mDay;
+			public uint16 mHour;
+			public uint16 mMinute;
+			public uint16 mSecond;
+			public uint16 mMilliseconds;
+		}
+
+		[CRepr]
+		public struct TimeZoneInformation
+		{
+			public int32 mBias;
+			public char16[32] mStandardName;
+			public SystemTime mStandardDate;
+			public int32 mStandardBias;
+			public char16[32] mDaylightName;
+			public SystemTime mDaylightDate;
+			public int32 mDaylightBias;
+
+			public this()
+			{
+				this = default;
+			}
+
+			public this(DynamicTimeZoneInformation dtzi)
+			{
+				mBias = dtzi.mBias;
+				mStandardName = dtzi.mStandardName;
+				mStandardDate = dtzi.mStandardDate;
+				mStandardBias = dtzi.mStandardBias;
+				mDaylightName = dtzi.mDaylightName;
+				mDaylightDate = dtzi.mDaylightDate;
+				mDaylightBias = dtzi.mDaylightBias;
+			}
+		}
+
+		[CRepr]
+		public struct RegistryTimeZoneInformation
+		{
+			public int32 mBias;
+			public int32 mStandardBias;
+			public int32 mDaylightBias;
+			public SystemTime mStandardDate;
+			public SystemTime mDaylightDate;
+
+			public this()
+			{
+				this = default;
+			}
+
+			public this(TimeZoneInformation tzi)
+			{
+			    mBias = tzi.mBias;
+			    mStandardDate = tzi.mStandardDate;
+			    mStandardBias = tzi.mStandardBias;
+			    mDaylightDate = tzi.mDaylightDate;
+			    mDaylightBias = tzi.mDaylightBias;
+			}
+		}
+
+		[CRepr]
+		public struct DynamicTimeZoneInformation
+		{
+			public int32 mBias;
+			public char16[32] mStandardName;
+			public SystemTime mStandardDate;
+			public int32 mStandardBias;
+			public char16[32] mDaylightName;
+			public SystemTime mDaylightDate;
+			public int32 mDaylightBias;
+			public char16[128] mTimeZoneKeyName;
+			public IntBool mDynamicDaylightTimeDisabled;
+		}
+
+		public struct Int64_Rev
+		{
+			public int32 mHigh;
+			public int32 mLow;
+
+			public int64 Value
+			{
+				get
+				{
+					return ((int64)mHigh<<32) | mLow;
+				}
+
+				set mut
+				{
+					mLow = (int32)value;
+					mHigh = (int32)(value >> 32);
+				}
+			}
+		}
+
+		[CRepr, Packed]
+		public struct FileAttributeData
+		{
+			public int32 mFileAttributes;
+			public uint64 mCreationTime;
+			public uint64 mLastAccessTime;
+			public uint64 mLastWriteTime;
+			public Int64_Rev mFileSize;
+
+			public void PopulateFrom(NativeFindDataA findData) mut
+            {
+				// Copy the information to data
+			    mFileAttributes = findData.mFileAttributes; 
+			    mCreationTime = findData.mCreationTime;
+			    mLastAccessTime = findData.mLastAccessTime; 
+			    mLastWriteTime = findData.mLastWriteTime; 
+			    mFileSize = findData.mFileSize; 
+			}
+
+			public void PopulateFrom(NativeFindData findData) mut
+			{
+				// Copy the information to data
+			    mFileAttributes = findData.mFileAttributes; 
+			    mCreationTime = findData.mCreationTime;
+			    mLastAccessTime = findData.mLastAccessTime; 
+			    mLastWriteTime = findData.mLastWriteTime;
+			    mFileSize = findData.mFileSize; 
+			}
+		}
+
+		[CRepr, Packed]
+		public struct NativeFindDataA
+		{
+			public int32 mFileAttributes;
+			public uint64 mCreationTime;
+			public uint64 mLastAccessTime;
+			public uint64 mLastWriteTime;
+			public Int64_Rev mFileSize;
+			public int32 mReserved0;
+			public int32 mReserved1;
+			public char8[260] mFileName;
+			public char8[14] mAlternateFileName;
+		}
+
+		[CRepr, Packed]
+		public struct NativeFindData
+		{
+			public int32 mFileAttributes;
+			public uint64 mCreationTime;
+			public uint64 mLastAccessTime;
+			public uint64 mLastWriteTime;
+			public Int64_Rev mFileSize;
+			public int32 mReserved0;
+			public int32 mReserved1;
+			public char16[260] mFileName;
+			public char16[14] mAlternateFileName;
+		}
+
+		public const int32 S_OK = 0;
+		public const int32 MAX_PATH = 260;
+
+		public const int32 SEE_MASK_DEFAULT = 0;
+		public const int32 SEE_MASK_NOCLOSEPROCESS  = 0x40;
+		public const int32 SEE_MASK_FLAG_NO_UI = 0x400;
+		public const int32 SEE_MASK_FLAG_DDEWAIT = 0x100;
+
+		public const int32 FILE_ATTRIBUTE_READONLY      = 0x00000001;
+		public const int32 FILE_ATTRIBUTE_DIRECTORY     = 0x00000010;
+		public const int32 FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400;
+
+		public const int32 GENERIC_READ = (.)0x80000000;
+		public const int32 GENERIC_WRITE = 0x40000000;
+		public const int32 GENERIC_EXECUTE = 0x20000000;
+		public const int32 GENERIC_ALL = 0x10000000;
+
+		public const int32 SW_HIDE = 0;
+		public const int32 SW_MAXIMIZE = 3;
+		public const int32 SW_MINIMIZE = 6;
+		public const int32 SW_RESTORE = 9;
+		public const int32 SW_SHOW = 5;
+		public const int32 SW_SHOWDEFAULT = 10;
+		public const int32 SW_SHOWMAXIMIZED = 3;
+		public const int32 SW_SHOWMINIMIZED = 2;
+		public const int32 SW_SHOWMINNOACTIVE = 7;
+		public const int32 SW_SHOWNA = 8;
+		public const int32 SW_SHOWNOACTIVATE = 4;
+		public const int32 SW_SHOWNORMAL = 1;
+		public const int32 GW_OWNER = 4;
+
+		public const int32 STD_INPUT_HANDLE = -10;
+		public const int32 STD_OUTPUT_HANDLE = -11;
+		public const int32 STD_ERROR_HANDLE = -12;
+
+		public const int32 CREATE_SUSPENDED = 0x00000004;
+		public const int32 CREATE_NO_WINDOW = 0x08000000;
+
+		// From WinBase.h
+        public const int32 FILE_TYPE_DISK = 0x0001;
+        public const int32 FILE_TYPE_CHAR = 0x0002;
+        public const int32 FILE_TYPE_PIPE = 0x0003;
+
+		public const int32 FILE_READ_DATA = (0x0001);
+		public const int32 FILE_WRITE_DATA = (0x0002);
+		public const int32 FILE_LIST_DIRECTORY = (0x0001);
+		public const int32 FILE_SHARE_READ = 0x00000001;
+		public const int32 FILE_SHARE_WRITE = 0x00000002;
+		public const int32 FILE_SHARE_DELETE = 0x00000004;
+
+		public const int32 FILE_BEGIN = 0;
+		public const int32 FILE_CURRENT = 1;
+		public const int32 FILE_END = 2;
+
+		public const int32 FILE_FLAG_OVERLAPPED = 0x40000000;
+		public const int32 FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
+		public const int32 FILE_FLAG_FIRST_PIPE_INSTANCE = 0x00080000;
+		public const int32 FILE_FLAG_WRITE_THROUGH = (int32)0x80000000;		
+
+		public const int32 DUPLICATE_CLOSE_SOURCE = 0x1;
+		public const int32 DUPLICATE_SAME_ACCESS = 0x2;
+
+		public const int32 WAIT_ABANDONED = 0x80;
+		public const int32 WAIT_OBJECT_0 = 0;
+		public const int32 WAIT_TIMEOUT = 0x102;
+		public const int32 WAIT_FAILED = -1;
+
+		public const int32 STARTF_USESTDHANDLES = 0x00000100;
+
+		public const int32 ERROR_BAD_EXE_FORMAT = 193;
+		public const int32 ERROR_EXE_MACHINE_TYPE_MISMATCH = 216;
+		public const int32 ERROR_ABANDONED_WAIT_0 = 735;
+		public const int32 ERROR_PIPE_CONNECTED = 535;
+		public const int32 ERROR_BROKEN_PIPE = 109;
+		public const int32 ERROR_MORE_DATA = 234;
+		public const int32 ERROR_NO_DATA = 232;
+		public const int32 ERROR_NO_MORE_ITEMS = 259;
+
+		public const int32 PROCESS_QUERY_INFORMATION = 0x0400;
+
+		public const int32 STATUS_PENDING = 0x00000103;
+
+		public const int32 STILL_ACTIVE = STATUS_PENDING;
+
+		public const int32 SYNCHRONIZE = 0x00100000;
+
+		public const int32 SEM_FAILCRITICALERRORS = 1;
+
+		public const int32 ERROR_SUCCESS = 0x0;
+		public const int32 ERROR_INVALID_FUNCTION = 0x1;
+		public const int32 ERROR_FILE_NOT_FOUND = 0x2;
+		public const int32 ERROR_PATH_NOT_FOUND = 0x3;
+		public const int32 ERROR_INVALID_HANDLE = 0x6;
+		public const int32 ERROR_NOT_ENOUGH_MEMORY = 0x8;
+		public const int32 ERROR_INVALID_DATA = 0xd;
+		public const int32 ERROR_INVALID_DRIVE = 0xf;
+		public const int32 ERROR_NO_MORE_FILES = 0x12;
+		public const int32 ERROR_NOT_READY = 0x15;
+		public const int32 ERROR_SHARING_VIOLATION = 32;
+		public const int32 ERROR_ALREADY_EXISTS = 0xB7;
+
+		public const int32 GetFileExInfoStandard = 0;
+
+		public const int32 GWL_WNDPROC = (-4);
+		public const int32 GWL_HWNDPARENT = (-8);
+		public const int32 GWL_STYLE = (-16);
+		public const int32 GWL_EXSTYLE = (-20);
+		public const int32 GWL_ID = (-12);
+		public const int32 GW_HWNDFIRST = 0;
+		public const int32 GW_HWNDLAST = 1;
+		public const int32 GW_HWNDNEXT = 2;
+		public const int32 GW_HWNDPREV = 3;
+
+		public const int32 OFN_READONLY = 0x00000001;
+		public const int32 OFN_OVERWRITEPROMPT = 0x00000002;
+        public const int32 OFN_HIDEREADONLY = 0x00000004;
+        public const int32 OFN_NOCHANGEDIR = 0x00000008;
+        public const int32 OFN_SHOWHELP = 0x00000010;
+        public const int32 OFN_ENABLEHOOK = 0x00000020;
+        public const int32 OFN_NOVALIDATE = 0x00000100;
+        public const int32 OFN_ALLOWMULTISELECT = 0x00000200;
+        public const int32 OFN_PATHMUSTEXIST = 0x00000800;
+        public const int32 OFN_FILEMUSTEXIST = 0x00001000;
+        public const int32 OFN_CREATEPROMPT = 0x00002000;
+        public const int32 OFN_EXPLORER = 0x00080000;
+        public const int32 OFN_NODEREFERENCELINKS = 0x00100000;
+        public const int32 OFN_ENABLESIZING = 0x00800000;
+		public const int32 OFN_USESHELLITEM = 0x01000000;
+
+		public const int32 CSIDL_DESKTOP = 0x0000;
+
+		public const int32 WM_CLOSE = 0x0010;
+		public const int32 WM_DESTROY = 0x0002;
+		public const int32 WM_INITDIALOG = 0x0110;
+		public const int32 WM_SETFOCUS = 0x0007;
+		public const int32 WM_USER = 0x0400;
+		public const int32 WM_KEYDOWN = 0x0100;
+		public const int32 WM_KEYUP = 0x0101;
+		public const int32 WM_CHAR = 0x0102;
+
+		public const int32 BFFM_INITIALIZED = 1;
+		public const int32 BFFM_SELCHANGED = 2;
+		public const int32 BFFM_SETSELECTIONA = 0x400 + 102;
+		public const int32 BFFM_SETSELECTIONW = 0x400 + 103;
+		public const int32 BFFM_ENABLEOK = 0x400 + 101;
+
+		public const int32 STANDARD_RIGHTS_REQUIRED = 0x000F0000;
+		public const int32 PROCESS_ALL_ACCESS = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFF;
+
+		public const uint32 STATUS_INFO_LENGTH_MISMATCH = 0xC0000004;
+
+		public const int32 PIPE_ACCESS_DUPLEX = 0x00000003;
+		public const int32 PIPE_ACCESS_INBOUND = 0x00000001;
+		public const int32 PIPE_ACCESS_OUTBOUND = 0x00000002;		
+		public const int32 WRITE_DAC = 0x00040000;
+		public const int32 WRITE_OWNER = 0x00080000;
+		public const int32 ACCESS_SYSTEM_SECURITY = 0x01000000;
+
+		public const int32 PIPE_TYPE_BYTE = 0x00000000;
+		public const int32 PIPE_TYPE_MESSAGE = 0x00000004;		
+		public const int32 PIPE_READMODE_BYTE = 0x00000000;
+		public const int32 PIPE_READMODE_MESSAGE = 0x00000002;		
+		public const int32 PIPE_WAIT = 0x00000000;
+		public const int32 PIPE_NOWAIT = 0x00000001;		
+		public const int32 PIPE_ACCEPT_REMOTE_CLIENTS = 0x00000000;
+		public const int32 PIPE_REJECT_REMOTE_CLIENTS = 0x00000008;
+		public const int32 PIPE_UNLIMITED_INSTANCES = 255;		
+
+		public const int32 MEM_COMMIT = 0x1000;
+		public const int32 MEM_RESERVE = 0x2000;
+		public const int32 MEM_DECOMMIT = 0x4000;
+		public const int32 MEM_RELEASE = 0x8000;
+
+		public const int32 PAGE_NOACCESS = 0x01;
+		public const int32 PAGE_READONLY = 0x02;
+		public const int32 PAGE_READWRITE = 0x04;
+		public const int32 PAGE_WRITECOPY = 0x08;
+
+		public const int32 KEY_QUERY_VALUE         	= (0x0001);
+		public const int32 KEY_SET_VALUE           	= (0x0002);
+		public const int32 KEY_CREATE_SUB_KEY      	= (0x0004);
+		public const int32 KEY_ENUMERATE_SUB_KEYS  	= (0x0008);
+		public const int32 KEY_NOTIFY        		= (0x0010);
+		public const int32 KEY_CREATE_LINK   		= (0x0020);
+		public const int32 KEY_WOW64_32KEY   		= (0x0200);
+		public const int32 KEY_WOW64_64KEY   		= (0x0100);
+		public const int32 KEY_WOW64_RES     		= (0x0300);
+
+		public const HKey HKEY_CLASSES_ROOT         = (HKey)0x80000000;
+		public const HKey HKEY_CURRENT_USER         = (HKey)0x80000001;
+		public const HKey HKEY_LOCAL_MACHINE        = (HKey)0x80000002;
+		public const HKey HKEY_USERS                = (HKey)0x80000003;
+		public const HKey HKEY_PERFORMANCE_DATA     = (HKey)0x80000004;
+		public const HKey HKEY_PERFORMANCE_TEXT     = (HKey)0x80000050;
+		public const HKey HKEY_PERFORMANCE_NLSTEXT  = (HKey)0x80000060;
+		public const HKey HKEY_CURRENT_CONFIG       = (HKey)0x80000005;
+		public const HKey HKEY_DYN_DATA             = (HKey)0x80000006;
+		public const HKey HKEY_CURRENT_USER_LOCAL_SETTINGS = (HKey)0x80000007;
+
+		public const int32 NtQueryProcessBasicInfo = 0;          
+		public const int32 NtQuerySystemProcessInformation = 5;
+
+		public const int32 TIME_ZONE_ID_INVALID = -1;
+
+		[CLink, StdCall]
+		public static extern int32 GetTimeZoneInformation(out TimeZoneInformation dynamicTimeZoneInformation);
+
+		[CLink, StdCall]
+		public static extern int32 GetDynamicTimeZoneInformation(out DynamicTimeZoneInformation dynamicTimeZoneInformation);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegOpenKeyExA(HKey hKey, char8* lpSubKey, uint32 ulOptions, uint32 samDesired, out HKey phkResult);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegCloseKey(HKey hKey);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegQueryValueExW(HKey hKey, char16* lpValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegEnumValueW(HKey hKey, int32 dwIndex, char16* lpValueName, uint32* lpcchValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegGetValueA(HKey hkey, char8* lpSubKey, char8* lpValue, uint32 dwFlags, uint32* pdwType, void* pvData, uint32* pcbData);
+
+		[Import("shell32.lib"), CLink, StdCall]
+		public static extern int32 SHGetSpecialFolderLocation(HWnd hwnd, int32 csidl, ref int ppidl);
+
+		[Import("shell32.lib"), CLink, StdCall]
+		public static extern bool SHGetPathFromIDList(int pidl, char8* path);
+
+		[Import("shell32.lib"), CLink, StdCall]
+		public static extern int SHBrowseForFolder(ref BrowseInfo bi);
+
+		[CLink, StdCall]
+		public static extern int32 GetLastError();
+
+		[CLink, StdCall]
+		public static extern IntBool GetExitCodeProcess(ProcessHandle process, out int32 exitCode);
+
+		[CLink, StdCall]
+		public static extern IntBool GetExitCodeThread(Handle process, out int32 exitCode);
+
+		[CLink, StdCall]
+		public static extern int32 ResumeThread(Handle thread);
+
+		[CLink, StdCall]
+		public static extern ProcessHandle GetCurrentProcess();
+
+		[CLink, StdCall]
+		public static extern int32 GetCurrentProcessId();
+
+		[CLink, StdCall]
+		public static extern ProcessHandle OpenProcess(int32 desiredAccess, IntBool inheritHandle, int32 processId);
+
+		[CLink, StdCall]
+		public static extern Handle CreateRemoteThread(ProcessHandle process, SecurityAttributes* threadAttributes, int stackSize, void* startAddress, void* parameter, int32 creationFlags, int32* threadId);
+
+		[CLink, StdCall]
+		public static extern IntBool WriteProcessMemory(ProcessHandle process, void* baseAddress, void* buffer, int size, int* numberOfBytesWritten);
+
+		[CLink, StdCall]
+		public static extern void* GetProcAddress(HModule module, char8* procName);
+
+		[CLink, StdCall]
+		public static extern void* VirtualAllocEx(ProcessHandle process, void* address, int size, int32 allocationType, int32 protect);
+
+		[CLink, StdCall]
+		public static extern void* VirtualFreeEx(ProcessHandle process, void* address, int size, int32 allocationType);
+
+		[CLink, StdCall]
+		public static extern FileHandle GetStdHandle(int32 stdHandle);
+
+		[CLink, StdCall]
+		public static extern Handle ShellExecuteA(Handle hwnd, char8* operation, char8* file, char8* parameters, char8* directory, int32 showCmd); 
+
+		[CLink, StdCall]
+		public static extern IntBool ShellExecuteExA(ShellExecuteInfo* shellExecuteInfo); 
+
+		[CLink, StdCall]
+		public static extern void GetStartupInfoA(StartupInfo* startupInfo);
+
+		[CLink, StdCall]
+		public static extern IntBool CreateProcessA(char8* applicationName, char8* commandLine, SecurityAttributes* processAttributes, SecurityAttributes* threadAttributes,
+        	IntBool inheritHandles, int32 creationFlags, void* environment, char8* currentDirectory, StartupInfo* startupInfo, ProcessInformation* processInformation);
+
+		[CLink, StdCall]
+		public static extern IntBool TerminateProcess(ProcessHandle process);
+
+		[CLink, StdCall]
+		public static extern IntBool CreatePipe(out Handle readPipe, out Handle writePipe, SecurityAttributes* pipeAttributes, int32 size);
+
+		[CLink, StdCall]
+		public static extern Handle CreateNamedPipeA(char8* lpName, uint32 dwOpenMode, uint32 dwPipeMode, uint32 nMaxInstances, uint32 nOutBufferSize, uint32 nInBufferSize,
+   			uint32 nDefaultTimeOut, SecurityAttributes* lpSecurityAttributes);
+
+		[CLink, StdCall]
+		public static extern IntBool ConnectNamedPipe(Handle handle, Overlapped* overlapped);
+
+		[CLink, StdCall]
+		public static extern IntBool CallNamedPipeA(char8* name, void* inBuffer, int32 inBufferSize, void* outBuffer, int32 outBufferSize, int32* bytesRead, int32 timeOut);
+
+		[CLink, StdCall]
+		public static extern IntBool DisconnectNamedPipe(Handle handle);
+
+		[CLink, StdCall]
+		public static extern EventHandle CreateEventA(SecurityAttributes* eventAttribuetes, IntBool manualReset, IntBool initialState, char8* name);
+
+		[CLink, StdCall]
+		public static extern IntBool SetEvent(EventHandle eventHandle);
+
+		[CLink, StdCall]
+		public static extern IntBool ResetEvent(EventHandle eventHandle);
+
+		[CLink, StdCall]
+		public static extern int32 WaitForSingleObject(Handle handle, int32 milliseconds);
+
+		[CLink, StdCall]
+		public static extern int32 WaitForMultipleObjects(int32 count, Handle* handles, IntBool waitAll, int32 milliseconds);
+
+		[CLink, StdCall]
+        public static extern IOCompletionHandle CreateIoCompletionPort(FileHandle fileHandle, IOCompletionHandle existingCompletionPort, int completionKey, int32 numberOfConcurrentThreads);
+
+		[CLink, StdCall]
+		public static extern IntBool GetQueuedCompletionStatus(IOCompletionHandle completionPort, out int32 numberOfBytes, out int completionKey, out Overlapped* overlapped, int32 milliseconds);
+
+		[CLink, StdCall]
+		public static extern IntBool PostQueuedCompletionStatus(IOCompletionHandle completionPort, int32 numberOfBytes, int completionKey, Overlapped* overlapped);
+
+		[CLink, StdCall]
+		public static extern IntBool DuplicateHandle(Handle sourceProcessHandle, Handle sourceHandle, Handle targetProcessHandle, Handle* targetHandle, int32 desiredAccess, IntBool inheritHandle, int32 options);
+
+		[CLink, StdCall]
+		public static extern IntBool CloseHandle(Handle handle);
+
+		[CLink, StdCall]
+		public static extern int32 GetFileType(FileHandle handle);
+
+		[CLink, StdCall]
+		public static extern int32 GetFileSize(FileHandle handle, int32* sizeHigh);
+
+		[CLink, StdCall]
+		public static extern FileHandle CreateFileA(char8* lpFileName,
+		            int32 dwDesiredAccess, System.IO.FileShare dwShareMode,
+		            SecurityAttributes* securityAttrs, System.IO.FileMode dwCreationDisposition,
+		            int32 dwFlagsAndAttributes, Handle hTemplateFile);
+
+		[CLink, StdCall]
+		public static extern FileHandle CreateFileW(char16* lpFileName,
+                    int32 dwDesiredAccess, System.IO.FileShare dwShareMode,
+                    SecurityAttributes* securityAttrs, System.IO.FileMode dwCreationDisposition,
+                    int32 dwFlagsAndAttributes, Handle hTemplateFile);
+
+		[CLink, StdCall]
+		public static extern uint32 GetWindowsDirectoryA(char8* lpBuffer, uint32 uSize);
+
+		[CLink, StdCall]
+		public static extern IntBool CreateDirectoryW(char16* pathName, SecurityAttributes* securityAttributes);
+
+		[CLink, StdCall]
+		public static extern IntBool RemoveDirectoryW(char16* pathName);
+
+		[CLink, StdCall]
+		public static extern IntBool DeleteFileW(char16* pathName);
+
+		[CLink, StdCall]
+		public static extern IntBool CopyFileW(char16* srcName, char16* dstName, IntBool failIfExists);
+
+		[CLink, StdCall]
+		public static extern IntBool MoveFileW(char16* srcName, char16* dstName);
+
+		[CLink, StdCall]
+		public static extern int32 ReadFile(Handle handle, uint8* bytes, int32 numBytesToRead, out int32 numBytesRead, Overlapped* overlapped);
+
+		[CLink, StdCall]
+		public static extern int32 WriteFile(Handle handle, uint8* bytes, int32 numBytesToWrite, out int32 numBytesWritten, Overlapped* overlapped);
+
+		[CLink, StdCall]
+		public static extern FindHandle FindFirstFileW(char16* fileName, ref NativeFindData findFileData);
+
+		[CLink, StdCall]
+		public static extern IntBool FindNextFileW(FindHandle findHandle, ref NativeFindData findFileData);
+
+		[CLink, StdCall]
+		public static extern IntBool FindClose(FindHandle findHandle);
+
+		[CLink, StdCall]
+		public static extern IntBool GetFileAttributesExW(char16* name, int32 fileInfoLevel, FileAttributeData* fileInformation);
+
+		[CLink, StdCall]
+		public static extern IntBool SetFileAttributesW(char16* name, int32 attribs);
+
+		[CLink, StdCall]
+		public static extern int32 MessageBoxA(HWnd hWnd, char8* text, char8* caption, int32 type);
+
+		[CLink, StdCall]
+		public static extern int32 MessageBoxW(HWnd hWnd, char16* text, char8* caption, int32 type);
+
+		[CLink, StdCall]
+		public static extern int32 SetErrorMode(int32 errorMode);
+
+		[CLink, StdCall]
+		public static extern HWnd GetActiveWindow();
+
+		[CLink, StdCall]
+		public static extern HWnd SetActiveWindow(HWnd wnd);
+
+		[CLink, StdCall]
+		public static extern int CallWindowProcA(int wndProc, HWnd hWnd, int32 msg, int wParam, int lParam);
+
+		[CLink, StdCall]
+		public static extern int CallWindowProcW(int wndProc, HWnd hWnd, int32 msg, int wParam, int lParam);
+
+		public static int GetWindowLong(HWnd hWnd, int32 nIndex)
+		{
+#if BF32			
+			//if (sizeof(int) == 4)
+			return (int)GetWindowLongA((int)hWnd, nIndex);
+#else
+				
+			//else
+			return GetWindowLongPtrW((int)hWnd, nIndex);
+#endif
+		}
+
+#if BF32
+		[CLink, StdCall]
+		public static extern int GetWindowLongA(int hWnd, int nIndex);
+#else
+		[CLink, StdCall]
+		public static extern int GetWindowLongPtrW(int hWnd, int32 nIndex);
+#endif
+
+		public static int SetWindowLong(HWnd hWnd, int32 nIndex, int value)
+		{
+#if BF32
+				return (int)SetWindowLongA((int)hWnd, nIndex, value);
+#else
+				return SetWindowLongPtrW((int)hWnd, nIndex, value);
+#endif
+		}
+
+#if BF32
+		[CLink, StdCall]
+		public static extern int SetWindowLongA(int hWnd, int nIndex, int value);
+#else
+		[CLink, StdCall]
+		public static extern int SetWindowLongPtrW(int hWnd, int32 nIndex, int value);
+#endif
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern IntBool PostMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern IntBool SendMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
+
+		[Import("user32.lib "), CLink, StdCall]
+		public static extern HWnd SetFocus(HWnd hWnd);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern IntBool EnumWindows(void* callback, void* extraData);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern HWnd GetWindow(HWnd hWnd, int32 uCmd);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern HWnd FindWindowW(char16* className, char16* windowName);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern IntBool IsWindowVisible(HWnd hWnd);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern int32 GetWindowTextLengthW(HWnd hWnd);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern int32 GetWindowTextW(HWnd hWnd, char16* ptr, int32 length);
+
+		[CLink, StdCall]
+		public static extern int32 GetWindowThreadProcessId(HWnd handle, out int32 processId);
+
+		[Import("comdlg32.lib"), CLink, StdCall]
+		public static extern IntBool GetOpenFileNameW(ref OpenFileName ofn);
+
+		[Import("comdlg32.lib"), CLink, StdCall]
+		public static extern IntBool GetSaveFileNameW(ref OpenFileName ofn);
+
+		[CLink, StdCall]
+		public static extern HModule GetModuleHandleW(char16* modName);
+
+		[CLink, StdCall]
+		public static extern uint32 GetTempFileNameW(char16* tmpPath, char16* prefix, uint32 uniqueIdOrZero, char16* tmpFileName);
+
+		[CLink, StdCall]
+		public static extern uint32 GetTempPathW(int32 bufferLen, char16* buffer);
+
+		[CLink, StdCall]
+		public static extern IntBool GetComputerNameA(char8* buffer, ref int32 size);
+
+		[CLink, StdCall]
+		public static extern int32 NtQuerySystemInformation(int32 query, void* dataPtr, int32 size, out int32 returnedSize);
+
+		[CLink, StdCall]
+		public static extern IntBool ReadDirectoryChangesW(FileHandle handle, uint8* buffer, int32 bufferLength, IntBool watchSubtree, NotifyFilters notifyFilter, 
+        	out int32 bytesReturned, Overlapped* overlapped, void* completionRoutine);
+
+		[CLink, StdCall]
+		public static extern int32 SetFilePointer(FileHandle handle, int32 distanceToMove, int32* distanceToMoveHigh, int32 moveMethod);
+
+		[CLink, StdCall]
+		public static extern IntBool SHGetFileInfoW(char16* pszPath, uint32 fileAttributes, SHFileInfo* psfi, uint32 cbFileInfo, uint32 flags);
+
+		[CLink, StdCall]
+		public static extern char16* GetEnvironmentStringsW();
+
+		[CLink, StdCall]
+		public static extern void FreeEnvironmentStringsW(char16* ptr);
+
+		[CLink, StdCall]
+		public static extern IntBool GetFileMUIPath(uint32 dwFlags, char16* pcwszFilePath, char16* pwszLanguage, uint32* pcchLanguage,
+			char16* pwszFileMUIPath, uint32* pcchFileMUIPath, uint64* pululEnumerator);
+
+		[CLink, StdCall]
+		public static extern HInstance LoadLibraryExW(char16* libFileName, HModule hFile, uint32 dwFlags);
+
+		[CLink, StdCall]
+		public static extern IntBool FreeLibrary(HModule module);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern int32 LoadStringW(HInstance hInstance, uint32 uID, char16* lpBuffer, int32 cchBufferMax);
+
+		public static Result<FileHandle, FileOpenError> SafeCreateFile(String lpFileName,
+                    int32 dwDesiredAccess, System.IO.FileShare dwShareMode,
+                    SecurityAttributes* securityAttrs, System.IO.FileMode dwCreationDisposition,
+                    int32 dwFlagsAndAttributes, Handle hTemplateFile)
+        {
+            FileHandle handle = CreateFileW(lpFileName.ToScopedNativeWChar!(), dwDesiredAccess, dwShareMode,
+				securityAttrs, dwCreationDisposition,
+                dwFlagsAndAttributes, hTemplateFile );
+
+            if (handle.IsInvalid)
+			{
+				int32 lastErr = GetLastError();
+				switch (lastErr)
+				{
+				case ERROR_FILE_NOT_FOUND:
+					fallthrough;
+				case ERROR_PATH_NOT_FOUND:
+					return .Err(FileOpenError.NotFound);
+				case ERROR_SHARING_VIOLATION:
+					return .Err(FileOpenError.SharingViolation);
+				default:
+					return .Err(FileOpenError.Unknown);
+				}
+			}
+
+            int32 fileType = GetFileType(handle);
+            if (fileType != FILE_TYPE_DISK) 
+            {
+                //return new NotSupportedException(Environment.GetResourceString("NotSupported_FileStreamOnNonFiles"));
+				return .Err(FileOpenError.NotFile);
+            }
+
+			//if (handle.IsInvalid)
+            return handle;
+        }            
+	}
+}
+
+#endif

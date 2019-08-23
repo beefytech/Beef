@@ -1,0 +1,49 @@
+FileVersion = 1
+Projects = {MemProfiler = {Path = "."}, corlib = {Path = "../IDE\\corlib"}, Beefy2D = {Path = "../Beefy2D"}, BeefySysLib = {Path = "../BeefySysLib"}}
+
+[Workspace]
+StartupProject = "MemProfiler"
+
+[Configs.Debug.Win32]
+BfOptimizationLevel = "O0"
+InitLocalVariables = true
+IntermediateType = "ObjectAndIRCode"
+
+[Configs.Debug.Win64]
+InitLocalVariables = true
+
+[Configs.Release.Win32]
+BfOptimizationLevel = "OgPlus"
+EmitDebugInfo = "No"
+
+[Configs.Release.Win64]
+BfOptimizationLevel = "OgPlus"
+EmitDebugInfo = "No"
+
+[Configs.DebugOpt1.Win32]
+BfOptimizationLevel = "O0"
+EmitDebugInfo = "No"
+ArrayBoundsCheck = false
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableCustodian = false
+EnableRealtimeLeakCheck = false
+
+[Configs.DebugOpt1.Win64]
+PreprocessorMacros = ["BF_SYSLIB_OPT"]
+BfOptimizationLevel = "O0"
+InitLocalVariables = true
+ConfigSelections = {MemProfiler = {Config = "Debug"}, corlib = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, BeefySysLib = {Config = "Release"}}
+
+[Configs.Paranoid.Win32]
+COptimizationLevel = "O2"
+
+[Configs.Paranoid.Win64]
+COptimizationLevel = "O2"
+
+[Configs.Test.Win32]
+COptimizationLevel = "O2"
+
+[Configs.Test.Win64]
+COptimizationLevel = "O2"

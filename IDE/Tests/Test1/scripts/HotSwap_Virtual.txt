@@ -1,0 +1,64 @@
+# Tests:
+#  Virtual methods being added during hot compiles
+#  Breakpoints being set in both old versions of methods and new versions
+
+ShowFile("src/HotSwap.bf")
+GotoText("//HotStart")
+ToggleBreakpoint()
+RunWithCompiling()
+
+# MethodA
+StepOver()
+AssertEvalEquals("val", "20")
+
+# MethodB
+StepOver()
+AssertEvalEquals("val", "11")
+
+# Hot compile, adding in MethodB
+ToggleCommentAt("HotB_MethodB")
+Compile()
+
+# MethodB - after hot compile
+StepOver()
+AssertEvalEquals("val", "21")
+
+# Modify Test1 end so we can make sure break hits both val setting
+GotoText("//HotTester_Test1_EndTest")
+ToggleBreakpoint()
+AdjustCursor(0, 1)
+CursorToLineEnd()
+AdjustCursor(-1, 0)
+InsertText("6")
+
+# Hot compile, adding in MethodC, but MethodC is not called yet
+ToggleCommentAt("HotA_MethodC")
+ToggleCommentAt("HotB_MethodC")
+Compile()
+
+# Hot compile in usage of MethodC
+ToggleCommentAt("HotTester_Test2")
+Compile()
+
+# 'Test2' - calling MethodC after hot compile
+StepInto()
+StepOver()
+AssertEvalEquals("val", "22")
+
+# Continue to HotTester_Test1_EndTest
+Continue
+StepOver
+AssertEvalEquals("val", "99")
+
+# Continue to new HotTester_Test1_EndTest
+Continue()
+Continue()
+StepOver()
+AssertEvalEquals("val", "996")
+
+# Test previously-unused MethodE
+ToggleCommentAt("HotTester_Test3")
+Compile()
+StepInto()
+StepOver()
+AssertEvalEquals("val", "14")

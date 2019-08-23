@@ -1,0 +1,48 @@
+ShowFile("src/Breakpoints.bf")
+GotoText("//BreakpointTester_Test")
+ToggleBreakpoint()
+
+GotoText("//BreakpointTester_LoopA")
+ToggleBreakpoint()
+BreakpointSetHitCountTarget(3, "MultipleOf")
+BreakpointSetCondition("++b < 10")
+
+GotoText("//BreakpointTester_Recurse")
+ToggleBreakpoint()
+
+GotoText("//Recurse_C")
+ToggleBreakpoint()
+BreakpointSetCondition("a == 3")
+
+RunWithCompiling()
+
+Continue()
+AssertEvalEquals("a", "2")
+AssertEvalEquals("b", "3")
+
+Continue()
+AssertEvalEquals("a", "5")
+AssertEvalEquals("b", "6")
+
+Continue()
+Continue()
+AssertLineContains("Recurse(0)")
+
+StepInto()
+AssertLineContains("int b = 234")
+StepOver()
+AssertLineContains("int c = 345")
+StepOver()
+AssertLineContains("a == 10")
+AssertEvalEquals("a", "0")
+
+StepOver()
+StepOver()
+AssertLineContains("int c = 345")
+AssertEvalEquals("a", "3")
+
+StepOver()
+StepOver()
+StepOver()
+StepOver()
+AssertEvalEquals("d", "103")

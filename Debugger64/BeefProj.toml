@@ -1,0 +1,172 @@
+FileVersion = 1
+Dependencies = {corlib = "*", BeefySysLib = "*"}
+
+[Project]
+Name = "Debugger64"
+TargetType = "CustomBuild"
+
+[Configs.Debug.Win64]
+TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetName = "IDEHelper64_d.dll"
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\Debugger64\\Debugger64.vcxproj /p:Configuration=Debug /p:Platform=X64 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+OptimizationLevel = "O0"
+
+[Configs.Debug.Win32]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[Configs.Release.Win64]
+TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetName = "IDEHelper64.dll"
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\Debugger64\\Debugger64.vcxproj /p:Configuration=Release /p:Platform=X64 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+
+[Configs.Release.Win32]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[Configs.Paranoid.Win32]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[Configs.Paranoid.Win64]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[Configs.Test.Win32]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[Configs.Test.Win64]
+BuildCommandsOnCompile = "IfFilesChanged"
+BuildCommandsOnRun = "IfFilesChanged"
+
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "COFF.cpp"
+ImportPath = "../IDEHelper/COFF.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "COFF.h"
+ImportPath = "../IDEHelper/COFF.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "CPU.h"
+ImportPath = "../IDEHelper/CPU.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DbgExprEvaluator.cpp"
+ImportPath = "../IDEHelper/DbgExprEvaluator.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DbgExprEvaluator.h"
+ImportPath = "../IDEHelper/DbgExprEvaluator.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DbgModule.cpp"
+ImportPath = "../IDEHelper/DbgModule.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DbgModule.h"
+ImportPath = "../IDEHelper/DbgModule.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DbgTypeMap.cpp"
+ImportPath = "../IDEHelper/DbgTypeMap.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DbgTypeMap.h"
+ImportPath = "../IDEHelper/DbgTypeMap.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DebugCommon.h"
+ImportPath = "../IDEHelper/DebugCommon.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DebugTarget.cpp"
+ImportPath = "../IDEHelper/DebugTarget.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DebugTarget.h"
+ImportPath = "../IDEHelper/DebugTarget.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DWARFInfo.h"
+ImportPath = "../IDEHelper/DWARFInfo.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "DwAutoComplete.h"
+ImportPath = "../IDEHelper/DwAutoComplete.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "HandleDbg.cpp"
+ImportPath = "../IDEHelper/HandleDbg.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "HandleDbg.h"
+ImportPath = "../IDEHelper/HandleDbg.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "HotHeap.cpp"
+ImportPath = "../IDEHelper/HotHeap.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "HotHeap.h"
+ImportPath = "../IDEHelper/HotHeap.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "MiniDumpDebugger.cpp"
+ImportPath = "../IDEHelper/MiniDumpDebugger.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "MiniDumpDebugger.h"
+ImportPath = "../IDEHelper/MiniDumpDebugger.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "Profiler.cpp"
+ImportPath = "../IDEHelper/Profiler.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "Profiler.h"
+ImportPath = "../IDEHelper/Profiler.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "RadixMap.h"
+ImportPath = "../IDEHelper/RadixMap.h"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "WinDebugger.cpp"
+ImportPath = "../IDEHelper/WinDebugger.cpp"
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Name = "WinDebugger.h"
+ImportPath = "../IDEHelper/WinDebugger.h"

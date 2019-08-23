@@ -1,0 +1,23 @@
+ShowFile("src/HotSwap_Data.bf")
+GotoText("//Test_Test04")
+ToggleBreakpoint()
+RunWithCompiling()
+
+# Both of these interface will have the same slot number
+ToggleCommentAt("ClassC_IFaceB_WithComma")
+SetExpectError("collision error")
+Compile()
+ExpectError()
+
+# Switching interfaces can work if there are no allocations, but this StepInto DOES have an allocation
+StepInto()
+ToggleCommentAt("ClassC_IFaceA")
+ToggleCommentAt("ClassC_IFaceB_WithComma")
+ToggleCommentAt("ClassC_IFaceB_WithoutComma")
+SetExpectError("data changes")
+Compile()
+ExpectError()
+
+# But it should succeeed when were back out in Test() with no allocs
+StepOut()
+Compile()

@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "SysMSVCRT"
+StartupObject = "SysMSVCRT.Program"
+
+[Configs.Debug.Win64]
+CLibType = "SystemMSVCRT"
+BeefLibType = "Static"
