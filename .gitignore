@@ -4,10 +4,12 @@
 **/Debug*/*
 **/Release*/*
 **/Build/*
+**/.vs/*
 lld-link.exe
 stats/
 IDE/dist/*
 dist/*
 *.lst
+*.vcxproj.user
 BeefTools/RandoCode/*
 jbuild*/

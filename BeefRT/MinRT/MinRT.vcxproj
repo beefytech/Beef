@@ -134,34 +134,34 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>Beef$(BeefFilesVersion)MinRT64_d</TargetName>
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug GUI|x64'">
     <TargetName>Beef$(BeefFilesVersion)MinRT64_gd</TargetName>
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>Beef$(BeefFilesVersion)MinRT64</TargetName>
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release GUI|x64'">
     <TargetName>Beef$(BeefFilesVersion)MinRT64_g</TargetName>
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
     <TargetName>Beef$(BeefFilesVersion)MinRT32_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug GUI|Win32'">
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
     <TargetName>Beef$(BeefFilesVersion)MinRT32_gd</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
     <TargetName>Beef$(BeefFilesVersion)MinRT32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release GUI|Win32'">
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
     <TargetName>Beef$(BeefFilesVersion)MinRT32_g</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -212,8 +212,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
-      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
-      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+      <OutputFile>$(SolutionDir)\ide\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\ide\dist\$(TargetName).lib</ImportLibrary>
     </Link>
     <Lib>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
@@ -237,8 +237,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
-      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
-      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+      <OutputFile>$(SolutionDir)\ide\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\ide\dist\$(TargetName).lib</ImportLibrary>
     </Link>
     <Lib>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
@@ -297,8 +297,8 @@
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
-      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+      <OutputFile>$(SolutionDir)\ide\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\ide\dist\$(TargetName).lib</ImportLibrary>
     </Link>
     <Lib>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
@@ -322,8 +322,8 @@
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
-      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+      <OutputFile>$(SolutionDir)\ide\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\ide\dist\$(TargetName).lib</ImportLibrary>
     </Link>
     <Lib>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
