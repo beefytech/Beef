@@ -7,6 +7,23 @@ cd "$(dirname "$0")"
 # exit when any command fails
 set -e
 
+### Dependencies ###
+
+if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
+	echo Building libffi...
+	cd ../BeefySysLib/third_party/libffi
+	./configure
+	make
+	cd "$(dirname "$0")"
+fi
+
+if [ ! -d ../extern/llvm_linux_8_0_0 ]; then
+	echo Building LLVM...
+	cd ../extern
+	./llvm_build.sh
+	cd "$(dirname "$0")"
+fi
+
 ### LIBS ###
 
 cd ..
