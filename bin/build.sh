@@ -10,10 +10,6 @@ set -e
 ### Dependencies ###
 
 if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
-	pwd
-	echo "Shouldn't build"
-	exit 1
-
 	echo Building libffi...
 	cd ../BeefySysLib/third_party/libffi
 	./configure
