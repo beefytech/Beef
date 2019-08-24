@@ -241,6 +241,8 @@ namespace IDE.ui
             {
 				if (gApp.mRunningTestScript)
 					return;
+				if (mWidgetWindow == null)
+					return;
 
                 WidgetWindow widgetWindow = (WidgetWindow)evt.mSender;
                 if (!(widgetWindow.mRootWidget is AutoCompleteContent))

@@ -3,3 +3,9 @@ FileVersion = 1
 [Project]
 Name = "BeefInstall"
 StartupObject = "BeefInstall.Program"
+
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "../../IDE/src/util/Zip.bf"

@@ -1685,22 +1685,22 @@ namespace System
 			return EqualsHelper(a.Ptr, b.Ptr, a.mLength);
 		}
 
-		public bool StartsWith(String b, StringComparison comparisonType = StringComparison.Ordinal)
+		public bool StartsWith(StringView b, StringComparison comparisonType = StringComparison.Ordinal)
 		{
-			if (mLength < b.mLength)
+			if (mLength < b.[Friend]mLength)
 				return false;
 			if (comparisonType == StringComparison.OrdinalIgnoreCase)
 				return EqualsIgnoreCaseHelper(this.Ptr, b.Ptr, b.Length);
-			return EqualsHelper(this.Ptr, b.Ptr, b.mLength);
+			return EqualsHelper(this.Ptr, b.Ptr, b.[Friend]mLength);
 		}
 
-		public bool EndsWith(String b, StringComparison comparisonType = StringComparison.Ordinal)
+		public bool EndsWith(StringView b, StringComparison comparisonType = StringComparison.Ordinal)
 		{
-			if (mLength < b.mLength)
+			if (mLength < b.[Friend]mLength)
 				return false;
 			if (comparisonType == StringComparison.OrdinalIgnoreCase)
-				return EqualsIgnoreCaseHelper(Ptr + mLength - b.mLength, b.Ptr, b.mLength);
-			return EqualsHelper(this.Ptr + mLength - b.mLength, b.Ptr, b.mLength);
+				return EqualsIgnoreCaseHelper(Ptr + mLength - b.[Friend]mLength, b.Ptr, b.[Friend]mLength);
+			return EqualsHelper(this.Ptr + mLength - b.[Friend]mLength, b.Ptr, b.[Friend]mLength);
 		}
 
 		public bool EndsWith(char8 c)

@@ -1,4 +1,6 @@
 using System;
+using IDE.Util;
+using System.IO;
 
 namespace BeefInstall
 {
@@ -34,8 +36,49 @@ namespace BeefInstall
 			}
 		}
 
+		Result<void> ExtractTo(ZipFile zipFile, StringView destDir, StringView subStr)
+		{
+			String fileName = scope .();
+			String destPath = scope .();
+
+			for (int i < zipFile.GetNumFiles())
+			{
+				ZipFile.Entry entry = scope .();
+				if (zipFile.SelectEntry(i, entry) case .Err)
+					continue;
+
+				fileName.Clear();
+				entry.GetFileName(fileName);
+
+				if (!fileName.StartsWith(subStr))
+					continue;
+
+				destPath.Clear();
+				destPath.Append(destDir);
+				destPath.Append('/');
+				destPath.Append(fileName);
+
+				if (entry.IsDirectory)
+				{
+					if (Directory.CreateDirectory(destPath) case .Err)
+						return .Err;
+				}
+				else
+				{
+					if (entry.ExtractToFile(destPath) case .Err)
+						return .Err;
+				}
+			}
+
+			return .Ok;
+		}
+
 		void Run()
 		{
+			ZipFile zipFile = scope .();
+			zipFile.Open(@"c:\\temp\\build_1827.zip");
+			ExtractTo(zipFile, @"c:\temp\unzip", .());
+
 			CabFile cabFile = scope .();
 			cabFile.Init();
 			cabFile.Copy();

@@ -42,18 +42,85 @@ using System.Diagnostics;
 
 namespace IDE.Util
 {
-	class Zip
+	class ZipFile
 	{
-		FileStream mFile ~ delete _;
-
-		public Result<void> Open(String fileName)
+		public class Entry
 		{
-			mFile = new FileStream();
-			if (mFile.Open(fileName, .Read) case .Err)
+			ZipFile mZipFile;
+			MiniZ.ZipArchiveFileStat mFileStat;
+			int32 mFileIdx;
+
+			public bool IsDirectory
 			{
-				DeleteAndNullify!(mFile);
+				get
+				{
+					return MiniZ.ZipReaderIsFileADirectory(&mZipFile.[Friend]mFile, mFileIdx);
+				}
+			}
+
+			public Result<void> ExtractToFile(StringView filePath)
+			{
+				if (!MiniZ.ZipReaderExtractToFile(&mZipFile.[Friend]mFile, mFileIdx, scope String(filePath, .NullTerminate), .None))
+					return .Err;
+				return .Ok;
+			}
+
+			int GetStrLen(char8* ptr, int max)
+			{
+				int i = 0;
+				for (; i < max; i++)
+				{
+					if (ptr[i] == 0)
+						break;
+				}
+				return i;
+			}
+
+			public Result<void> GetFileName(String outFileName)
+			{
+				outFileName.Append(&mFileStat.mFilename, GetStrLen(&mFileStat.mFilename, mFileStat.mFilename.Count));
+				return .Ok;
+			}
+
+			public Result<void> GetComment(String outComment)
+			{
+				outComment.Append(&mFileStat.mComment, GetStrLen(&mFileStat.mComment, mFileStat.mComment.Count));
+				return .Ok;
+			}
+		}
+
+		MiniZ.ZipArchive mFile;
+		bool mInitialized;
+
+		public ~this()
+		{
+			if (mInitialized)
+				MiniZ.ZipReaderEnd(&mFile);
+		}
+
+		public Result<void> Open(StringView fileName)
+		{
+			Debug.Assert(!mInitialized);
+			if (!MiniZ.ZipReaderInitFile(&mFile, scope String(fileName, .NullTerminate), .None))
+				return .Err;
+			mInitialized = true;
+			return .Ok;
+		}
+
+		public int GetNumFiles()
+		{
+			return MiniZ.ZipReaderGetNumFiles(&mFile);
+		}
+
+		public Result<void> SelectEntry(int idx, Entry outEntryInfo)
+		{
+			if (!MiniZ.ZipReaderFileStat(&mFile, (.)idx, &outEntryInfo.[Friend]mFileStat))
+			{
+				outEntryInfo.[Friend]mZipFile = null;
 				return .Err;
 			}
+			outEntryInfo.[Friend]mFileIdx = (.)idx;
+			outEntryInfo.[Friend]mZipFile = this;
 			return .Ok;
 		}
 	}
@@ -192,10 +259,11 @@ namespace IDE.Util
 
 		enum ZipFlags
 		{
-			ZIP_FLAG_CASE_SENSITIVE = 0x0100,
-			ZIP_FLAG_IGNORE_PATH = 0x0200,
-			ZIP_FLAG_COMPRESSED_DATA = 0x0400,
-			ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY = 0x0800
+			None = 0,
+			CaseSensitive = 0x0100,
+			IgnorePath = 0x0200,
+			CompressedData = 0x0400,
+			DoNotSortCentralDirectory = 0x0800
 		}
 
 		[CLink, StdCall]
@@ -2906,7 +2974,7 @@ namespace IDE.Util
 			int64 cur_file_ofs;
 			uint8* p;
 			uint32[4096 / sizeof(uint32)] buf_u32; uint8* pBuf = (uint8*)&buf_u32;
-			bool sort_central_dir = !flags.HasFlag(.ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
+			bool sort_central_dir = !flags.HasFlag(.DoNotSortCentralDirectory);
 			// Basic sanity checks - reject files which are too small, and check the first 4 bytes of the file to make sure a local header is there.
 			if (pZip.m_archive_size < ZIP_END_OF_CENTRAL_DIR_HEADER_SIZE)
 				return false;
@@ -3101,7 +3169,7 @@ namespace IDE.Util
 			return (m_bit_flag & 1) != 0;
 		}
 
-		static bool zip_reader_is_file_a_directory(ZipArchive* pZip, int32 file_index)
+		public static bool ZipReaderIsFileADirectory(ZipArchive* pZip, int32 file_index)
 		{
 			uint32 filename_len, external_attr;
 			uint8* p = ZipReaderGetCdh(pZip, file_index);
@@ -3179,7 +3247,7 @@ namespace IDE.Util
 		static bool zip_reader_string_equal(char8* pA, char8* pB, int32 len, ZipFlags flags)
 		{
 			int32 i;
-			if (flags.HasFlag(.ZIP_FLAG_CASE_SENSITIVE))
+			if (flags.HasFlag(.CaseSensitive))
 				return 0 == Internal.MemCmp(pA, pB, len);
 			for (i = 0; i < len; ++i)
 				if (pA[i].ToLower != pB[i].ToLower)
@@ -3235,7 +3303,7 @@ namespace IDE.Util
 			int32 file_index; int32 name_len, comment_len;
 			if ((pZip == null) || (pZip.m_pState == null) || (pName == null) || (pZip.m_zip_mode != .Reading))
 				return -1;
-			if (((!flags.HasFlag(.ZIP_FLAG_IGNORE_PATH) && !flags.HasFlag(.ZIP_FLAG_CASE_SENSITIVE))) && (pComment == null) && (pZip.m_pState.m_sorted_central_dir_offsets.m_size != 0))
+			if (((!flags.HasFlag(.IgnorePath) && !flags.HasFlag(.CaseSensitive))) && (pComment == null) && (pZip.m_pState.m_sorted_central_dir_offsets.m_size != 0))
 				return zip_reader_locate_file_binary_search(pZip, pName);
 			name_len = Internal.CStrLen(pName); if (name_len > 0xFFFF) return -1;
 			comment_len = (pComment != null) ? Internal.CStrLen(pComment) : 0; if (comment_len > 0xFFFF) return -1;
@@ -3253,7 +3321,7 @@ namespace IDE.Util
 					if ((file_comment_len != comment_len) || (!zip_reader_string_equal(pComment, pFile_comment, file_comment_len, flags)))
 						continue;
 				}
-				if ((flags.HasFlag(.ZIP_FLAG_IGNORE_PATH)) && (filename_len != 0))
+				if ((flags.HasFlag(.IgnorePath)) && (filename_len != 0))
 				{
 					int32 ofs = filename_len - 1;
 					repeat
@@ -3292,7 +3360,7 @@ namespace IDE.Util
 
 			// Entry is a subdirectory (I've seen old zips with dir entries which have compressed deflate data which inflates to 0 bytes, but these entries claim to uncompress to 512 bytes in the headers).
 			// I'm torn how to handle this case - should it fail instead?
-			if (zip_reader_is_file_a_directory(pZip, file_index))
+			if (ZipReaderIsFileADirectory(pZip, file_index))
 				return true;
 
 			// Encryption and patch files are not supported.
@@ -3300,11 +3368,11 @@ namespace IDE.Util
 				return false;
 
 			// This function only supports stored and deflate.
-			if ((!flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)) && (file_stat.mMethod != 0) && (file_stat.mMethod != DEFLATED))
+			if ((!flags.HasFlag(.CompressedData)) && (file_stat.mMethod != 0) && (file_stat.mMethod != DEFLATED))
 				return false;
 
 			// Ensure supplied output buffer is large enough.
-			needed_size = (int64)((flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)) ? file_stat.mCompSize : file_stat.mUncompSize);
+			needed_size = (int64)((flags.HasFlag(.CompressedData)) ? file_stat.mCompSize : file_stat.mUncompSize);
 			if (buf_size < needed_size)
 				return false;
 
@@ -3319,12 +3387,12 @@ namespace IDE.Util
 			if ((cur_file_ofs + (int64)file_stat.mCompSize) > pZip.m_archive_size)
 				return false;
 
-			if ((flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)) || (file_stat.mMethod == 0))
+			if ((flags.HasFlag(.CompressedData)) || (file_stat.mMethod == 0))
 			{
 			  // The file is stored or the caller has requested the compressed data.
 				if (pZip.m_pRead(pZip.m_pIO_opaque, cur_file_ofs, pBuf, (int)needed_size) != needed_size)
 					return false;
-				return (flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)) || (crc32(CRC32_INIT, (uint8*)pBuf, (int)file_stat.mUncompSize) == file_stat.mCrc32);
+				return (flags.HasFlag(.CompressedData)) || (crc32(CRC32_INIT, (uint8*)pBuf, (int)file_stat.mUncompSize) == file_stat.mCrc32);
 			}
 
 			// Decompress the file either directly from memory or from a file input buffer.
@@ -3428,7 +3496,7 @@ namespace IDE.Util
 			comp_size = ReadLE32!(p + ZIP_CDH_COMPRESSED_SIZE_OFS);
 			uncomp_size = ReadLE32!(p + ZIP_CDH_DECOMPRESSED_SIZE_OFS);
 
-			alloc_size = (flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)) ? comp_size : uncomp_size;
+			alloc_size = (flags.HasFlag(.CompressedData)) ? comp_size : uncomp_size;
 			if (alloc_size > 0x7FFFFFFF)
 				return null;
 			if (null == (pBuf = pZip.m_pAlloc(pZip.m_pAlloc_opaque, 1, (int)alloc_size)))
@@ -3472,7 +3540,7 @@ namespace IDE.Util
 
 			// Entry is a subdirectory (I've seen old zips with dir entries which have compressed deflate data which inflates to 0 bytes, but these entries claim to uncompress to 512 bytes in the headers).
 			// I'm torn how to handle this case - should it fail instead?
-			if (zip_reader_is_file_a_directory(pZip, file_index))
+			if (ZipReaderIsFileADirectory(pZip, file_index))
 				return true;
 
 			// Encryption and patch files are not supported.
@@ -3480,7 +3548,7 @@ namespace IDE.Util
 				return false;
 
 			// This function only supports stored and deflate.
-			if ((!(flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA))) && (file_stat.mMethod != 0) && (file_stat.mMethod != DEFLATED))
+			if ((!(flags.HasFlag(.CompressedData))) && (file_stat.mMethod != 0) && (file_stat.mMethod != DEFLATED))
 				return false;
 
 			// Read and parse the local directory entry.
@@ -3510,7 +3578,7 @@ namespace IDE.Util
 				comp_remaining = file_stat.mCompSize;
 			}
 
-			if ((flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)) || (file_stat.mMethod == 0))
+			if ((flags.HasFlag(.CompressedData)) || (file_stat.mMethod == 0))
 			{
 			  // The file is stored or the caller has requested the compressed data.
 				if (pZip.m_pState.m_pMem != null)
@@ -3519,7 +3587,7 @@ namespace IDE.Util
 						return false;
 					if (pCallback(pOpaque, out_buf_ofs, pRead_buf, (int)file_stat.mCompSize) != file_stat.mCompSize)
 						status = .Failed;
-					else if (!(flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)))
+					else if (!(flags.HasFlag(.CompressedData)))
 						file_crc32 = (uint32)crc32(file_crc32, (uint8*)pRead_buf, (int)file_stat.mCompSize);
 					cur_file_ofs += file_stat.mCompSize;
 					out_buf_ofs += file_stat.mCompSize;
@@ -3536,7 +3604,7 @@ namespace IDE.Util
 							break;
 						}
 
-						if (!(flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)))
+						if (!(flags.HasFlag(.CompressedData)))
 							file_crc32 = (uint32)crc32(file_crc32, (uint8*)pRead_buf, (int)read_buf_avail);
 
 						if (pCallback(pOpaque, out_buf_ofs, pRead_buf, (int)read_buf_avail) != read_buf_avail)
@@ -3599,7 +3667,7 @@ namespace IDE.Util
 				}
 			}
 
-			if ((status == .Done) && (!(flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA))))
+			if ((status == .Done) && (!(flags.HasFlag(.CompressedData))))
 			{
 			  // Make sure the entire file was decompressed, and check its CRC.
 				if ((out_buf_ofs != file_stat.mUncompSize) || (file_crc32 != file_stat.mCrc32))
@@ -3990,7 +4058,7 @@ namespace IDE.Util
 			if ((int32)level_and_flags < 0)
 				level_and_flags = (ZipFlags)CompressionLevel.DEFAULT_LEVEL;
 			level = (CompressionLevel)((int32)level_and_flags & 0xF);
-			store_data_uncompressed = ((level == 0) || (level_and_flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)));
+			store_data_uncompressed = ((level == 0) || (level_and_flags.HasFlag(.CompressedData)));
 
 			if ((pZip == null) || (pZip.m_pState != null) || (pZip.m_zip_mode != .Writing) || ((buf_size != 0) && (pBuf == null)) ||
 				(pArchive_name == null) || ((comment_size != 0) && (pComment == null)) || (pZip.m_total_files == 0xFFFF) || (level > .UBER_COMPRESSION))
@@ -3998,7 +4066,7 @@ namespace IDE.Util
 
 			pState = pZip.m_pState;
 
-			if ((!(level_and_flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA))) && (uncomp_size != 0))
+			if ((!(level_and_flags.HasFlag(.CompressedData))) && (uncomp_size != 0))
 				return false;
 		  // No zip64 support yet
 			if ((buf_size > 0xFFFFFFFF) || (uncomp_size > 0xFFFFFFFF))
@@ -4056,7 +4124,7 @@ namespace IDE.Util
 			}
 			cur_archive_file_ofs += archive_name_size;
 
-			if (!(level_and_flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA)))
+			if (!(level_and_flags.HasFlag(.CompressedData)))
 			{
 				uncomp_crc32 = (uint32)crc32(CRC32_INIT, (uint8*)pBuf, buf_size);
 				uncomp_size = buf_size;
@@ -4078,7 +4146,7 @@ namespace IDE.Util
 				cur_archive_file_ofs += buf_size;
 				comp_size = buf_size;
 
-				if (level_and_flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA))
+				if (level_and_flags.HasFlag(.CompressedData))
 					method = DEFLATED;
 			}
 			else if (buf_size != 0)
@@ -4142,7 +4210,7 @@ namespace IDE.Util
 
 			if ((pZip == null) || (pZip.m_pState == null) || (pZip.m_zip_mode != .Writing) || (pArchive_name == null) || ((comment_size != 0) && (pComment == null)) || (level > .UBER_COMPRESSION))
 				return false;
-			if (level_and_flags.HasFlag(.ZIP_FLAG_COMPRESSED_DATA))
+			if (level_and_flags.HasFlag(.CompressedData))
 				return false;
 			if (!zip_writer_validate_archive_name(pArchive_name))
 				return false;
@@ -4568,7 +4636,7 @@ namespace IDE.Util
 			else
 			{
 			  // Append to an existing archive.
-				if (!ZipReaderInitFile(&zip_archive, pZip_filename, level_and_flags | .ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY))
+				if (!ZipReaderInitFile(&zip_archive, pZip_filename, level_and_flags | .DoNotSortCentralDirectory))
 					return false;
 				if (!zip_writer_init_from_reader(&zip_archive, pZip_filename))
 				{
@@ -4603,7 +4671,7 @@ namespace IDE.Util
 				return null;
 
 			zip_archive = default;
-			if (!ZipReaderInitFile(&zip_archive, pZip_filename, flags | .ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY))
+			if (!ZipReaderInitFile(&zip_archive, pZip_filename, flags | .DoNotSortCentralDirectory))
 				return null;
 
 			if ((file_index = zip_reader_locate_file(&zip_archive, pArchive_name, null, flags)) >= 0)
