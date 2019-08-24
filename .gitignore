@@ -7,6 +7,7 @@
 **/Release*/*
 **/build/*
 **/.vs/*
+BeefSpace_User.toml
 lld-link.exe
 stats/
 IDE/dist/*
