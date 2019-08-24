@@ -1,5 +1,13 @@
 */llvm-*
 */llvm_*
-*/x64
-*/Debug
-*/Release
+*/x64/*
+**/Debug*/*
+**/Release*/*
+**/Build/*
+lld-link.exe
+stats/
+IDE/dist/*
+dist/*
+*.lst
+BeefTools/RandoCode/*
+jbuild*/
