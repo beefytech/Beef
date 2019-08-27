@@ -3,7 +3,6 @@
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
 using System;
-using System.Runtime.InteropServices;
 
 namespace System.IO
 {

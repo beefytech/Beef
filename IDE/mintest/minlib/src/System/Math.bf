@@ -16,7 +16,6 @@ namespace System
 {
     //This class contains only static members and doesn't require serialization.
     using System;
-    using System.Runtime;
     using System.Diagnostics.Contracts;
 	using System.Diagnostics;
     

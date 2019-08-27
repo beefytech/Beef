@@ -247,6 +247,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;BFSYSLIB_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./; ./platform/win/; third_party/agg-2.4/include; third_party/agg-2.4/include/platform/win32; third_party/; third_party/libffi/i686-pc-cygwin; third_party/libffi/i686-pc-cygwin/include; third_party/libffi/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

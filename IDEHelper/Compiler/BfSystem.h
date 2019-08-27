@@ -577,6 +577,7 @@ enum BfImportKind : int8
 	BfImportKind_None,
 	BfImportKind_Static,
 	BfImportKind_Dynamic,
+	BfImportKind_Export
 };
 
 enum BfCheckedKind : int8
@@ -911,8 +912,9 @@ struct BfTypeDefMapFuncs : public MultiHashSetFuncs
 enum BfTargetType
 {
 	BfTargetType_BeefConsoleApplication,
-	BfTargetType_BeefWindowsApplication,	
+	BfTargetType_BeefWindowsApplication,		
 	BfTargetType_BeefLib,
+	BfTargetType_BeefDynLib,
 	BfTargetType_CustomBuild,
 	BfTargetType_C_ConsoleApplication,
 	BfTargetType_C_WindowsApplication,

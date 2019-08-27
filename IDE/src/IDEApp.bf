@@ -16,7 +16,6 @@ using Beefy.events;
 using Beefy.geom;
 using Beefy.res;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Beefy.utils;
 using IDE.Debugger;
 using IDE.Compiler;
@@ -207,6 +206,7 @@ namespace IDE
         public BfSystem mBfBuildSystem ~ delete _;
         public BfCompiler mBfBuildCompiler;
 		public int mCompileSinceCleanCount;
+		public BuildContext mBuildContext ~ delete _;
 #if IDE_C_SUPPORT
         public ClangCompiler mDepClang ~ delete _;
 #endif
@@ -237,6 +237,7 @@ namespace IDE
         public bool mTargetHadFirstBreak = false;
         public bool mTargetStartWithStep = false;
         public Breakpoint mMainBreakpoint;
+		public Breakpoint mMainBreakpoint2;
         public bool mInDisassemblyView;
 		public bool mIsAttachPendingSourceShow;
 		public bool mStepOverExternalFiles;
@@ -326,12 +327,12 @@ namespace IDE
         DeferredOpenKind mDeferredOpen;
 		String mDeferredOpenFileName;
 
-        class ExecutionCmd
+        public class ExecutionCmd
         {
             public bool mOnlyIfNotFailed;
         }
 
-        class BuildCompletedCmd : ExecutionCmd
+        public class BuildCompletedCmd : ExecutionCmd
         {
             public Stopwatch mStopwatch ~ delete _;
 			public String mHotProjectName ~ delete _;
@@ -369,24 +370,25 @@ namespace IDE
 			public bool mWasCompiled;
         }
 
-        class TargetCompletedCmd : ExecutionCmd
+        public class TargetCompletedCmd : ExecutionCmd
         {
+			public Project mProject;
+			public bool mIsReady = true;
+
             public this(Project project)
             {
                 mProject = project;
             }
-
-            public Project mProject;
         }
 
-		enum ArgsFileKind
+		public enum ArgsFileKind
 		{
 			None,
 			UTF8,
 			UTF16WithBom
 		}
 
-        class ExecutionQueueCmd : ExecutionCmd
+        public class ExecutionQueueCmd : ExecutionCmd
         {
             public String mFileName ~ delete _;
             public String mArgs  ~ delete _;
@@ -395,7 +397,7 @@ namespace IDE
             public ArgsFileKind mUseArgsFile;
             public int32 mParallelGroup = -1;            
         }
-        List<ExecutionCmd> mExecutionQueue = new List<ExecutionCmd>() ~ DeleteContainerAndItems!(_);
+        public List<ExecutionCmd> mExecutionQueue = new List<ExecutionCmd>() ~ DeleteContainerAndItems!(_);
 
         public class ExecutionInstance
         {
@@ -451,7 +453,7 @@ namespace IDE
         {
             get
             {
-                return (mExecutionInstances.Count > 0) || (mExecutionQueue.Count > 0);
+                return (mExecutionInstances.Count > 0) || (mExecutionQueue.Count > 0) || (mBuildContext != null);
             }
         }
 
@@ -785,6 +787,7 @@ namespace IDE
 			let data = scope StructuredData();
 			if (data.Load(filePath) case .Err)
 			{
+				CreateDefaultLayout();
 				OutputErrorLine("Failed to load debug session '{}'", filePath);
 				return;
 			}
@@ -1829,17 +1832,21 @@ namespace IDE
 				SaveFileDialog dialog = scope .();
 				let activeWindow = GetActiveWindow();
 
+				let workspaceOptions = GetCurWorkspaceOptions();
 				let options = GetCurProjectOptions(project);
 				if (!options.mDebugOptions.mCommand.IsWhiteSpace)
 				{
+					String execCmd = scope .();
+					ResolveConfigString(workspaceOptions, project, options, options.mDebugOptions.mCommand, "command", execCmd);
+
 					String initialDir = scope .();
-					Path.GetDirectoryPath(options.mDebugOptions.mCommand, initialDir);
+					Path.GetDirectoryPath(execCmd, initialDir);
 					dialog.InitialDirectory = initialDir;
 					dialog.SetFilter("Debug Session (*.bfdbg)|*.bfdbg");
 					dialog.DefaultExt = ".bfdbg";
 
 					String fileName = scope .();
-					Path.GetFileName(options.mDebugOptions.mCommand, fileName);
+					Path.GetFileNameWithoutExtension(execCmd, fileName);
 					if (!fileName.IsEmpty)
 					{
 						fileName.Append(".bfdbg");
@@ -4046,8 +4053,13 @@ namespace IDE
 					{
 						
 					}
+					else if (var buildCompleteCmd = cmd as BuildCompletedCmd)
+					{
+
+					}
 					else
 					{
+						delete cmd;
 						@cmd.Remove();
 					}
 				}
@@ -4057,6 +4069,9 @@ namespace IDE
 					executionInstance.Cancel();
 				}
             }
+
+			if ((mBuildContext != null) && (mBuildContext.mScriptManager != null))
+				mBuildContext.mScriptManager.Cancel();
         }
 
         TabbedView FindTabbedView(DockingFrame dockingFrame, int32 xDir, int32 yDir)
@@ -6274,6 +6289,14 @@ namespace IDE
 					}
 					else
 						mWorkspace.mDir = fullDir;
+				case "-open":
+					String.NewOrSet!(mDeferredOpenFileName, value);
+					if (mDeferredOpenFileName.EndsWith(".bfdbg", .OrdinalIgnoreCase))
+						mDeferredOpen = .DebugSession;
+					else if (mDeferredOpenFileName.EndsWith(".dmp", .OrdinalIgnoreCase))
+						mDeferredOpen = .CrashDump;
+					else
+						mDeferredOpen = .File;
 				default:
 					return false;
 				}
@@ -6828,7 +6851,7 @@ namespace IDE
             return null;
         }
 
-        void GetClangFiles(ProjectFolder projectFolder, List<ProjectSource> clangFiles)
+        public void GetClangFiles(ProjectFolder projectFolder, List<ProjectSource> clangFiles)
         {            
             for (var item in projectFolder.mChildItems)
             {
@@ -6866,7 +6889,7 @@ namespace IDE
 
 		const int cArgFileThreshold = 0x7800;
 
-        ExecutionQueueCmd QueueRun(String fileName, String args, String workingDir, ArgsFileKind argsFileKind = .None)
+        public ExecutionQueueCmd QueueRun(String fileName, String args, String workingDir, ArgsFileKind argsFileKind = .None)
         {            
             var executionQueueCmd = new ExecutionQueueCmd();
             executionQueueCmd.mFileName = new String(fileName);
@@ -7179,7 +7202,21 @@ namespace IDE
 #endif
                 if ((next is ProcessBfCompileCmd) && (mBfBuildCompiler.HasQueuedCommands() || (waitForBuildClang)))
                     return;
-				defer(scope) delete next;
+				/*if (next is BuildCompletedCmd)
+				{
+					if (mBuildContext != null)
+						return;
+				}*/
+				if (let targetCompletedCmd = next as TargetCompletedCmd)
+				{
+					if ((mBuildContext == null) || (!mBuildContext.Failed))
+					{
+						if (!targetCompletedCmd.mIsReady)
+							return;
+					}
+				}
+
+				defer delete next;
                 mExecutionQueue.RemoveAt(0);
 
                 bool ignoreCommand = false;
@@ -7244,6 +7281,7 @@ namespace IDE
                 {
                     var targetCompletedCmd = (TargetCompletedCmd)next;
                     targetCompletedCmd.mProject.mNeedsTargetRebuild = false;
+					targetCompletedCmd.mProject.mForceCustomCommands = false;
                 }
                 else if (next is StartDebugCmd)
                 {
@@ -7281,6 +7319,11 @@ namespace IDE
                     if (!completedCompileCmd.mFailed)
                         mDepClang.mDoDependencyCheck = false;
 #endif
+					if (mBuildContext != null)
+					{
+						if (mBuildContext.Failed)
+							buildCompletedCmd.mFailed = true;
+					}
 
 					CompileResult(buildCompletedCmd.mHotProjectName, !buildCompletedCmd.mFailed);
 
@@ -7966,39 +8009,6 @@ namespace IDE
             return passInstance;
         }
 
-		void GetRtLibNames(Workspace.Options workspaceOptions, Project.Options options, bool dynName, String outRt, String outDbg)
-		{
-			if ((!dynName) || (options.mBuildOptions.mBeefLibType != .Static))
-			{
-				outRt.Append("Beef", sRTVersionStr, "RT");
-				outRt.Append((workspaceOptions.mMachineType == .x86) ? "32" : "64");
-				switch (options.mBuildOptions.mBeefLibType)
-				{
-				case .Dynamic:
-				case .DynamicDebug: outRt.Append("_d");
-				case .Static:
-					switch (options.mBuildOptions.mCLibType)
-					{
-					case .None:
-					case .Dynamic, .SystemMSVCRT: outRt.Append("_s");
-					case .DynamicDebug: outRt.Append("_sd");
-					case .Static: outRt.Append("_ss");
-					case .StaticDebug: outRt.Append("_ssd");
-					}
-				}
-				outRt.Append(dynName ? ".dll" : ".lib");
-			}
-			
-			if ((workspaceOptions.mEnableObjectDebugFlags) || (workspaceOptions.mAllocType == .Debug))
-			{
-				outDbg.Append("Beef", sRTVersionStr, "Dbg");
-				outDbg.Append((workspaceOptions.mMachineType == .x86) ? "32" : "64");
-				if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
-					outDbg.Append("_d");
-				outDbg.Append(dynName ? ".dll" : ".lib");
-			}
-		}
-
         public bool DoResolveConfigString(Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
         {
 			int i = result.Length;
@@ -8052,9 +8062,11 @@ namespace IDE
 									
 									DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString);
 #if BF_PLATFORM_WINDOWS
-		                            if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
+		                            if (project.mGeneralOptions.mTargetType == .BeefLib)
 		                                newString.Append(".lib");
-		                            else if (project.mGeneralOptions.mTargetType != Project.TargetType.CustomBuild)
+									else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
+		                                newString.Append(".dll");
+		                            else if (project.mGeneralOptions.mTargetType != .CustomBuild)
 		                                newString.Append(".exe");
 #else
 		                            if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
@@ -8062,7 +8074,13 @@ namespace IDE
 #endif
 		                        }
 		                    case "ProjectDir":
-		                        newString = project.mProjectDir;
+								if (project.IsDebugSession)
+								{
+									newString = scope:: String();
+									Path.GetDirectoryPath(project.mProjectPath, newString);
+								}
+								else
+		                        	newString = project.mProjectDir;
 		                    case "BuildDir":
 								newString = scope:: String();
 		                        GetProjectBuildDir(project, newString);
@@ -8072,7 +8090,7 @@ namespace IDE
 #if BF_PLATFORM_WINDOWS
 								String rtName = scope String();
 								String dbgName = scope String();
-								GetRtLibNames(workspaceOptions, options, false, rtName, dbgName);
+								BuildContext.GetRtLibNames(workspaceOptions, options, false, rtName, dbgName);
 								newString.Append(rtName);
 								if (!dbgName.IsEmpty)
 									newString.Append(" ", dbgName);
@@ -8118,14 +8136,18 @@ namespace IDE
 	                        {
 	                        case "Configuration":
 	                            newString = mConfigName;
-	                            break;
 	                        case "Platform":
 	                            newString = mPlatformName;
-	                            break;
 	                        case "WorkspaceDir":
 								if (mWorkspace.mDir != null)
 	                            	newString = mWorkspace.mDir;
-	                            break;
+								else if (project.IsDebugSession)
+								{
+									newString = scope:: String();
+									Path.GetDirectoryPath(project.mProjectPath, newString);
+								}
+							case "BeefPath":
+								newString = gApp.mInstallDir;
 	                        default:
 	                        }
 						}
@@ -8425,238 +8447,6 @@ namespace IDE
 #endif
 		}
 
-		bool QueueProjectGNULink(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
-		{
-			bool isDebug = mConfigName.IndexOf("Debug", true) != -1;
-
-#if BF_PLATFORM_WINDOWS
-			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
-			IDEUtils.FixFilePath(llvmDir);
-			llvmDir.Append("llvm/");
-#else
-            String llvmDir = "";
-#endif
-
-            //String error = scope String();
-
-			bool isExe = project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib;
-			if (isExe)
-			{
-			    String linkLine = scope String(isDebug ? "-g " : "-g -O2 "); //-O2 -Rpass=inline 
-																 //(doClangCPP ? "-lc++abi " : "") +
-			    
-			    linkLine.Append("-o ");
-			    IDEUtils.AppendWithOptionalQuotes(linkLine, targetPath);
-			    linkLine.Append(" ");
-
-			    /*if (options.mBuildOptions.mLinkerType == Project.LinkerType.GCC)
-			    {
-					// ...
-			    }
-			    else
-			    {
-					linkLine.Append("--target=");
-					GetTargetName(workspaceOptions, linkLine);
-					linkLine.Append(" ");
-			    }*/
-
-			    if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefWindowsApplication) ||
-			        (project.mGeneralOptions.mTargetType == Project.TargetType.C_WindowsApplication))
-			    {
-			        linkLine.Append("-mwindows ");
-			    }
-
-				linkLine.Append("-no-pie ");
-
-			    linkLine.Append(objectsArg);
-
-				//var destDir = scope String();
-				//Path.GetDirectoryName();
-
-				//TODO: Make an option
-			    if (options.mBuildOptions.mCLibType == Project.CLibType.Static)
-			    {
-			        linkLine.Append("-static-libgcc -static-libstdc++ ");
-			    }
-			    else
-			    {
-#if BF_PLATFORM_WINDOWS
-			        String[] mingwFiles;
-			        String fromDir;
-			        if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
-			        {
-			            fromDir = scope:: String(llvmDir, "i686-w64-mingw32/bin/");
-			            mingwFiles = scope:: String[] { "libgcc_s_dw2-1.dll", "libstdc++-6.dll" };
-			        }
-			        else
-			        {
-			            fromDir = scope:: String(llvmDir, "x86_64-w64-mingw32/bin/");
-			            mingwFiles = scope:: String[] { "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll" };
-			        }
-			        for (var mingwFile in mingwFiles)
-			        {
-			            String fromPath = scope String(fromDir, mingwFile);
-						//string toPath = projectBuildDir + "/" + mingwFile;
-			            String toPath = scope String();
-			            Path.GetDirectoryPath(targetPath, toPath);
-			            toPath.Append("/", mingwFile);
-			            if (!File.Exists(toPath))
-						{
-							if (File.Copy(fromPath, toPath) case .Err)
-							{
-								OutputLineSmart("ERROR: Failed to copy mingw file {0}", fromPath);
-								return false;
-							}
-						}
-			        }
-#endif
-			    }
-
-			    List<Project> depProjectList = scope List<Project>();
-			    GetDependentProjectList(project, depProjectList);
-			    if (depProjectList.Count > 0)
-			    {
-			        for (var dep in project.mDependencies)
-			        {
-			            var depProject = mWorkspace.FindProject(dep.mProjectName);
-			            if (depProject == null)
-			            {
-			                OutputLine("Failed to locate dependent library: {0}", dep.mProjectName);
-			                return false;
-			            }
-			            else
-			            {                                                        
-                            /*if (depProject.mNeedsTargetRebuild)
-                                project.mNeedsTargetRebuild = true;*/
-
-                            var depOptions = GetCurProjectOptions(depProject);
-
-                            if (depOptions.mClangObjectFiles != null)
-                            {
-                                var argBuilder = scope ArgBuilder(linkLine, true);
-
-                                for (var fileName in depOptions.mClangObjectFiles)
-                                {
-                                    //AppendWithOptionalQuotes(linkLine, fileName);
-                                    argBuilder.AddFileName(fileName);
-                                    argBuilder.AddSep();
-                                }
-                            }
-
-
-                            /*String depLibTargetPath = scope String();
-                            ResolveConfigString(depProject, depOptions, "$(TargetPath)", error, depLibTargetPath);
-                            IDEUtils.FixFilePath(depLibTargetPath);
-
-                            String depDir = scope String();
-                            Path.GetDirectoryName(depLibTargetPath, depDir);
-                            String depFileName = scope String();
-                            Path.GetFileNameWithoutExtension(depLibTargetPath, depFileName);
-
-                            AppendWithOptionalQuotes(linkLine, depLibTargetPath);
-                            linkLine.Append(" ");*/
-			            }
-			        }
-			    }
-
-#if BF_PLATFORM_WINDOWS
-			    String gccExePath = "c:/mingw/bin/g++.exe";
-			    String clangExePath = scope String(llvmDir, "bin/clang++.exe");
-#else
-                String gccExePath = "/usr/bin/c++";
-                String clangExePath = scope String("/usr/bin/c++");
-#endif
-
-			    if (project.mNeedsTargetRebuild)
-			    {
-			        if (File.Delete(targetPath) case .Err)
-					{
-					    OutputLine("Failed to delete {0}", targetPath);
-					    return false;
-					}
-
-					if (workspaceOptions.mToolsetType == .GNU)
-					{
-			            if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
-			            {
-			            }
-			            else
-			            {
-							IDEUtils.AppendWithOptionalQuotes(linkLine, scope String("-L", llvmDir, "/x86_64-w64-mingw32/lib"));
-							linkLine.Append(" ");
-							IDEUtils.AppendWithOptionalQuotes(linkLine, scope String("-L", llvmDir, "/lib/gcc/x86_64-w64-mingw32/5.2.0"));
-							linkLine.Append(" ");
-			            }
-					}
-					else // Microsoft
-					{
-						if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
-						{
-							//linkLine.Append("-L\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.10586.0\\ucrt\\x86\" ");
-							for (var libPath in mSettings.mVSSettings.mLib32Paths)
-							{
-								linkLine.AppendF("-L\"{0}\" ", libPath);
-							}
-						}
-						else
-						{
-							/*linkLine.Append("-L\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\lib\\amd64\" ");
-							linkLine.Append("-L\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\atlmfc\\lib\\amd64\" ");
-							linkLine.Append("-L\"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.14393.0\\ucrt\\x64\" ");
-							linkLine.Append("-L\"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.14393.0\\um\\x64\" ");*/
-							for (var libPath in mSettings.mVSSettings.mLib64Paths)
-							{
-								linkLine.AppendF("-L\"{0}\" ", libPath);
-							}
-						}
-					}
-
-					if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
-					{
-						var linkFlags = scope String();
-						ResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
-						linkLine.Append(linkFlags, " ");
-					}
-
-			        String compilerExePath = (workspaceOptions.mToolsetType == .GNU) ? gccExePath : clangExePath;
-					String workingDir = scope String();
-					if (!llvmDir.IsEmpty)
-					{
-						workingDir.Append(llvmDir, "bin");
-					}
-					else
-					{
-						workingDir.Append(mInstallDir);
-					}
-
-			        var runCmd = QueueRun(compilerExePath, linkLine, workingDir, .UTF8);
-			        runCmd.mOnlyIfNotFailed = true;
-			        var tagetCompletedCmd = new TargetCompletedCmd(project);
-			        tagetCompletedCmd.mOnlyIfNotFailed = true;
-			        mExecutionQueue.Add(tagetCompletedCmd);
-
-					String logStr = scope String();
-					logStr.AppendF("IDE Process {0}\r\n", Platform.BfpProcess_GetCurrentId());
-					logStr.Append(linkLine);
-					String targetLogPath = scope String(targetPath, ".build.txt");
-					Utils.WriteTextFile(targetLogPath, logStr);
-
-					project.mLastDidBuild = true;
-			    }
-			}
-
-			return true;
-		}
-
-		void GetPdbPath(String targetPath, Workspace.Options workspaceOptions, Project.Options options, String outPdbPath)
-		{
-			int lastDotPos = targetPath.LastIndexOf('.');
-			outPdbPath.Append(targetPath, 0, lastDotPos);
-			if (workspaceOptions.mToolsetType == .LLVM)
-				outPdbPath.Append("_lld");
-			outPdbPath.Append(".pdb");
-		}
-
 		void GetTargetPaths(Project project, Workspace.Options workspaceOptions, Project.Options options, List<String> outPaths)
 		{
 			String targetPath = scope String();
@@ -8670,379 +8460,14 @@ namespace IDE
 				if (workspaceOptions.mToolsetType != .GNU)
 				{
 					String pdbPath = scope String();
-					GetPdbPath(targetPath, workspaceOptions, options, pdbPath);
+					BuildContext.GetPdbPath(targetPath, workspaceOptions, options, pdbPath);
 					outPaths.Add(new String(pdbPath));
 				}
 			}
 #endif			
 		}
 
-		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
-		{
-			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
-			IDEUtils.FixFilePath(llvmDir);
-			llvmDir.Append("llvm/");
-
-			TestManager.ProjectInfo testProjectInfo = null;
-			if (mTestManager != null)
-				testProjectInfo = mTestManager.GetProjectInfo(project);
-
-			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
-			if (isExe)
-			{
-				String linkLine = scope String();
-			    
-			    linkLine.Append("-out:");
-			    IDEUtils.AppendWithOptionalQuotes(linkLine, targetPath);
-			    linkLine.Append(" ");
-
-				if (testProjectInfo != null)
-					linkLine.Append("-subsystem:console ");
-			    else if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefWindowsApplication)
-					linkLine.Append("-subsystem:windows ");
-			    else if (project.mGeneralOptions.mTargetType == Project.TargetType.C_WindowsApplication)
-			    	linkLine.Append("-subsystem:console ");
-
-			    linkLine.Append(objectsArg);
-
-				//var destDir = scope String();
-				//Path.GetDirectoryName();
-
-				//TODO: Allow selecting lib file.  Check date when copying instead of just ALWAYS copying...
-				LibBlock:
-			    {
-			        List<String> stdLibFileNames = scope .(2);
-			        String fromDir;
-			        
-		            fromDir = scope String(mInstallDir);
-
-					bool AddLib(String dllName)
-					{
-						stdLibFileNames.Add(dllName);
-
-						String fromPath = scope String(fromDir, dllName);
-						String toPath = scope String();
-						Path.GetDirectoryPath(targetPath, toPath);
-						toPath.Append("/", dllName);
-						if (File.CopyIfNewer(fromPath, toPath) case .Err)
-						{
-							OutputLine("Failed to copy lib file {0}", fromPath);
-							return false;
-						}
-						return true;
-					}
-
-					String rtName = scope String();
-					String dbgName = scope String();
-					GetRtLibNames(workspaceOptions, options, true, rtName, dbgName);
-					if (!rtName.IsEmpty)
-						if (!AddLib(rtName))
-							return false;
-					if (!dbgName.IsEmpty)
-						if (!AddLib(dbgName))
-							return false;
-					switch (workspaceOptions.mAllocType)
-					{
-					case .JEMalloc:
-						if (!AddLib("jemalloc.dll"))
-							return false;
-					default:
-					}
-			    }
-
-			    List<Project> depProjectList = scope List<Project>();
-			    GetDependentProjectList(project, depProjectList);
-			    if (depProjectList.Count > 0)
-			    {
-			        for (var dep in project.mDependencies)
-			        {
-			            var depProject = mWorkspace.FindProject(dep.mProjectName);
-			            if (depProject == null)
-			            {
-			                OutputLine("Failed to locate dependent library: {0}", dep.mProjectName);
-			                return false;
-			            }
-			            else
-			            {
-			                /*if (depProject.mNeedsTargetRebuild)
-			                    project.mNeedsTargetRebuild = true;*/
-
-			                var depOptions = GetCurProjectOptions(depProject);
-							if (depOptions != null)
-							{
-								if (depOptions.mClangObjectFiles != null)
-	                            {
-									var argBuilder = scope ArgBuilder(linkLine, true);
-
-									for (var fileName in depOptions.mClangObjectFiles)
-									{
-										//AppendWithOptionalQuotes(linkLine, fileName);
-										argBuilder.AddFileName(fileName);
-										argBuilder.AddSep();
-									}
-								}    
-							}
-
-
-			                /*String depLibTargetPath = scope String();
-			                ResolveConfigString(depProject, depOptions, "$(TargetPath)", error, depLibTargetPath);
-							IDEUtils.FixFilePath(depLibTargetPath);
-
-			                String depDir = scope String();
-			                Path.GetDirectoryName(depLibTargetPath, depDir);
-			                String depFileName = scope String();
-			                Path.GetFileNameWithoutExtension(depLibTargetPath, depFileName);
-
-							AppendWithOptionalQuotes(linkLine, depLibTargetPath);
-							linkLine.Append(" ");*/
-			            }
-			        }
-			    }
-
-			    if (project.mNeedsTargetRebuild)
-			    {
-			        /*if (File.Delete(targetPath).Failed(true))
-					{
-					    OutputLine("Failed to delete {0}", targetPath);
-					    return false;
-					}*/
-
-					switch (options.mBuildOptions.mCLibType)
-					{
-					case .None:
-						linkLine.Append("-nodefaultlib ");
-					case .Dynamic:
-						//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:msvcprt " : "-defaultlib:msvcrt ");
-						linkLine.Append("-defaultlib:msvcrt ");
-					case .Static:
-						//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:libcpmt " : "-defaultlib:libcmt ");
-						linkLine.Append("-defaultlib:libcmt ");
-					case .DynamicDebug:
-						//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:msvcprtd " : "-defaultlib:msvcrtd ");
-						linkLine.Append("-defaultlib:msvcrtd ");
-					case .StaticDebug:
-						//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:libcpmtd " : "-defaultlib:libcmtd ");
-						linkLine.Append("-defaultlib:libcmtd ");
-					case .SystemMSVCRT:
-						linkLine.Append("-nodefaultlib ");
-
-						String minRTModName = scope String();
-						if ((project.mGeneralOptions.mTargetType == .BeefWindowsApplication) ||
-							(project.mGeneralOptions.mTargetType == .C_WindowsApplication))
-							minRTModName.Append("g");
-						if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
-							minRTModName.Append("d");
-						if (!minRTModName.IsEmpty)
-							minRTModName.Insert(0, "_");
-
-						if (workspaceOptions.mMachineType == .x86)
-							linkLine.Append(mInstallDir, @"lib\x86\msvcrt.lib Beef", sRTVersionStr,"MinRT32", minRTModName, ".lib ");
-						else
-							linkLine.Append(mInstallDir, @"lib\x64\msvcrt.lib Beef", sRTVersionStr,"MinRT64", minRTModName, ".lib ");
-						linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib chkstk.obj -ignore:4049 -ignore:4217 ");
-					}
-					linkLine.Append("-nologo ");
-					//linkLine.Append("-fixed ");
-
-					// Incremental just seems to be slower for Beef.  Test on larger projects to verify
-					linkLine.Append("-incremental:no ");
-
-					if (options.mBuildOptions.mStackSize > 0)
-						linkLine.AppendF("-stack:{} ", options.mBuildOptions.mStackSize);
-
-					linkLine.Append("-pdb:");
-					let pdbName = scope String();
-					GetPdbPath(targetPath, workspaceOptions, options, pdbName);
-					IDEUtils.AppendWithOptionalQuotes(linkLine, pdbName);
-					linkLine.Append(" ");
-
-					//TODO: Only add -debug if we have some debug info?
-					//if (isDebug)
-					if (workspaceOptions.mEmitDebugInfo != .No)
-						linkLine.Append("-debug ");
-
-					if (workspaceOptions.mBfOptimizationLevel.IsOptimized())
-						//linkLine.Append("-opt:ref -verbose ");
-						linkLine.Append("-opt:ref ");
-					else
-						linkLine.Append("-opt:noref ");
-
-					if (workspaceOptions.mMachineType == .x86)
-					{
-						//linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.10586.0\\ucrt\\x86\" ");
-						for (var libPath in mSettings.mVSSettings.mLib32Paths)
-						{
-							linkLine.AppendF("-libpath:\"{0}\" ", libPath);
-						}
-						linkLine.Append("-libpath:\"", mInstallDir, "lib\\x86\" ");
-					}
-					else
-					{
-						/*linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\lib\\amd64\" ");
-						linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\atlmfc\\lib\\amd64\" ");
-						linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.14393.0\\ucrt\\x64\" ");
-						linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.14393.0\\um\\x64\" ");*/
-						for (var libPath in mSettings.mVSSettings.mLib64Paths)
-						{
-							linkLine.AppendF("-libpath:\"{0}\" ", libPath);
-						}
-						linkLine.Append("-libpath:\"", mInstallDir, "lib\\x64\" ");
-					}
-
-					String targetDir = scope String();
-					Path.GetDirectoryPath(targetPath, targetDir);
-					linkLine.Append("-libpath:");
-					IDEUtils.AppendWithOptionalQuotes(linkLine, targetDir);
-					linkLine.Append(" ");
-
-					if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
-					{
-						var linkFlags = scope String();
-						ResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
-						linkLine.Append(linkFlags, " ");
-					}
-
-					let winOptions = project.mWindowsOptions;
-					/*if (!String.IsNullOrWhiteSpace(project.mWindowsOptions.mManifestFile))
-					{
-						String manifestPath = scope String();
-						String error = scope String();
-						ResolveConfigString(project, options, winOptions.mManifestFile, error, manifestPath);
-						if (!manifestPath.IsWhiteSpace)
-						{
-							linkLine.Append("/MANIFEST:EMBED /MANIFESTINPUT:");
-							IDEUtils.AppendWithOptionalQuotes(linkLine, manifestPath);
-							linkLine.Append(" ");
-						}
-					}*/
-
-					// Put back
-					if ((!String.IsNullOrWhiteSpace(project.mWindowsOptions.mIconFile)) ||
-						(!String.IsNullOrWhiteSpace(project.mWindowsOptions.mManifestFile)) ||
-                        (winOptions.HasVersionInfo()))
-					{						
-						String projectBuildDir = scope String();
-						GetProjectBuildDir(project, projectBuildDir);
-
-						String resOutPath = scope String();
-						resOutPath.Append(projectBuildDir, "\\Resource.res");
-
-						String iconPath = scope String();
-						ResolveConfigString(workspaceOptions, project, options, winOptions.mIconFile, "icon file", iconPath);
-						
-						// Generate resource
-						Result<void> CreateResourceFile()
-						{
-	                        ResourceGen resGen = scope ResourceGen();
-							if (resGen.Start(resOutPath) case .Err)
-							{
-								OutputErrorLine("Failed to create resource file '{0}'", resOutPath);
-								return .Err;
-							}
-							if (!iconPath.IsWhiteSpace)
-							{
-								Path.GetAbsolutePath(scope String(iconPath), project.mProjectDir, iconPath..Clear());
-								if (resGen.AddIcon(iconPath) case .Err)
-								{
-									OutputErrorLine("Failed to add icon");
-									return .Err;
-								}
-							}
-
-							let targetFileName = scope String();
-							Path.GetFileName(targetPath, targetFileName);
-
-							if (resGen.AddVersion(winOptions.mDescription, winOptions.mComments, winOptions.mCompany, winOptions.mProduct,
-                                winOptions.mCopyright, winOptions.mFileVersion, winOptions.mProductVersion, targetFileName) case .Err)
-							{
-								OutputErrorLine("Failed to add version");
-								return .Err;
-							}
-
-							String manifestPath = scope String();
-							ResolveConfigString(workspaceOptions, project, options, winOptions.mManifestFile, "manifest file", manifestPath);
-							if (!manifestPath.IsWhiteSpace)
-							{
-								Path.GetAbsolutePath(scope String(manifestPath), project.mProjectDir, manifestPath..Clear());
-								if (resGen.AddManifest(manifestPath) case .Err)
-								{
-									OutputErrorLine("Failed to add manifest file");
-									return .Err;
-								}
-							}
-
-							Try!(resGen.Finish());
-							return .Ok;
-						}
-
-						if (CreateResourceFile() case .Err)
-						{
-							OutputErrorLine("Failed to generate resource file: {0}", resOutPath);
-							return false;
-						}
-
-						IDEUtils.AppendWithOptionalQuotes(linkLine, resOutPath);
-					}
-					
-
-			        //String linkerPath = "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\amd64\\link.exe";
-
-					let binPath = (workspaceOptions.mMachineType == .x86) ? mSettings.mVSSettings.mBin32Path : mSettings.mVSSettings.mBin64Path;
-					if (binPath.IsWhiteSpace)
-					{
-						OutputErrorLine("Visual Studio tool path not configured. Check Visual Studio configuration in File\\Preferences\\Settings.");
-						return false;
-					}
-
-					String linkerPath = scope String();
-					linkerPath.Append(binPath);
-					linkerPath.Append("/link.exe");
-					if (workspaceOptions.mToolsetType == .LLVM)
-					{
-						linkerPath.Clear();
-						linkerPath.Append(mInstallDir);
-						linkerPath.Append(@"llvm\bin\lld-link.exe");
-						//linkerPath = @"C:\Program Files\LLVM\bin\lld-link.exe";
-
-						var ltoType = workspaceOptions.mLTOType;
-						if (options.mBeefOptions.mLTOType != null)
-							ltoType = options.mBeefOptions.mLTOType.Value;
-
-						if (ltoType == .Thin)
-						{
-							linkLine.Append(" /lldltocache:");
-
-							String ltoPath = scope String();
-							Path.GetDirectoryPath(targetPath, ltoPath);
-							ltoPath.Append("/ltocache");
-							IDEUtils.AppendWithOptionalQuotes(linkLine, ltoPath);
-						}
-					}
-					//String linkerPath = "C:\\Beef\\IDE\\dist\\BeefLink.exe";
-
-					//QueueRun(compilerExePath, linkLine, @"c:\mingw\bin", (options.mGeneralOptions.mLinkerType == Project.LinkerType.Clang) && (linkLine.Length > 1024));
-					//QueueRun(compilerExePath, linkLine, @"c:\mingw\bin", (linkLine.Length > 1024));
-
-			        var runCmd = QueueRun(linkerPath, linkLine, mInstallDir, .UTF16WithBom);
-			        runCmd.mOnlyIfNotFailed = true;
-			        var tagetCompletedCmd = new TargetCompletedCmd(project);
-			        tagetCompletedCmd.mOnlyIfNotFailed = true;
-			        mExecutionQueue.Add(tagetCompletedCmd);
-
-					String logStr = scope String();
-					logStr.AppendF("IDE Process {0}\r\n", Platform.BfpProcess_GetCurrentId());
-					logStr.Append(linkLine);
-					String targetLogPath = scope String(targetPath, ".build.txt");
-					Utils.WriteTextFile(targetLogPath, logStr);
-
-					project.mLastDidBuild = true;
-			    }
-			}
-
-			return true;
-		}
-
-		class ArgBuilder
+		public class ArgBuilder
 		{
 			String mTarget;
 			bool mDoLongBreak;
@@ -9100,367 +8525,12 @@ namespace IDE
 			}
 		}
 
-		bool QueueProjectCustomBuildCommands(Project project, String targetPath, Project.BuildCommandTrigger trigger, List<String> cmdList)
-		{
-			if (cmdList.IsEmpty)
-				return true;
-
-			if (trigger == .Never)
-				return true;
-
-			if (trigger == .IfFilesChanged)
-			{
-				int64 highestDateTime = 0;
-
-				int64 targetDateTime = File.GetLastWriteTime(targetPath).Get().ToFileTime();
-
-				bool forceRebuild = false;
-
-				for (var depName in project.mDependencies)
-				{
-					var depProject = mWorkspace.FindProject(depName.mProjectName);
-					if (depProject != null)
-					{
-						if (depProject.mLastDidBuild)
-							forceRebuild = true;
-					}
-				}
-
-				project.WithProjectItems(scope [&] (projectItem) =>
-					{
-						var projectSource = projectItem as ProjectSource;
-						var importPath = scope String();
-						projectSource.GetFullImportPath(importPath);
-						Result<DateTime> fileDateTime = File.GetLastWriteTime(importPath);
-						if (fileDateTime case .Ok)
-						{
-							let date = fileDateTime.Get().ToFileTime();
-							/*if (date > targetDateTime)
-								Console.WriteLine("Custom build higher time: {0}", importPath);*/
-							highestDateTime = Math.Max(highestDateTime, date);
-						}
-					});
-
-				if ((highestDateTime <= targetDateTime) && (!forceRebuild))
-					return true;
-
-				project.mLastDidBuild = true;
-			}
-
-			Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
-			Project.Options options = GetCurProjectOptions(project);
-
-			//Console.WriteLine("Executing custom command {0} {1} {2}", highestDateTime, targetDateTime, forceRebuild);
-			for (let origCustomCmd in cmdList)
-			{
-				var exePath = scope String();
-				String customCmd = scope String();
-				ResolveConfigString(workspaceOptions, project, options, origCustomCmd, "custom command", customCmd);
-				int spacePos;
-				if (customCmd.StartsWith("\""))
-				{
-					spacePos = customCmd.IndexOf('"', 1) + 1;
-					if (spacePos != -1)
-						exePath.Append(customCmd, 1, spacePos - 2);
-				}
-				else
-				{
-					spacePos = customCmd.IndexOf(' ');
-					if (spacePos != -1)
-						exePath.Append(customCmd, 0, spacePos);
-				}
-
-				if ((spacePos == -1) && (!customCmd.IsEmpty))
-				{
-					OutputErrorLine("Invalid custom command '{0}' in project '{1}'", customCmd, project.mProjectName);
-					return false;
-				}
-
-				if (spacePos > 0)
-				{
-					project.mNeedsTargetRebuild = true;
-					var exeArgs = scope String();
-					exeArgs.Append(customCmd, spacePos + 1);
-					QueueRun(exePath, exeArgs, IDEApp.sApp.mInstallDir);
-					mExecutionQueue.Add(new TargetCompletedCmd(project));
-				}
-			}
-
-			return true;
-		}
-
-        bool QueueProjectCompile(Project project, Project hotProject, BuildCompletedCmd completedCompileCmd, List<String> hotFileNames, bool runAfter)
-        {
-			project.mLastDidBuild = false;
-
-			TestManager.ProjectInfo testProjectInfo = null;
-			if (mTestManager != null)
-				testProjectInfo = mTestManager.GetProjectInfo(project);
-
-			var configSelection = GetCurConfigSelection(project);
-            Project.Options options = GetCurProjectOptions(project);
-            if (options == null)
-                return true;
-
-            Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
-            BfCompiler bfCompiler = mBfBuildCompiler;            
-            var bfProject = mBfBuildSystem.mProjectMap[project];
-            bool bfHadOutputChanges;
-            List<String> bfFileNames = scope List<String>();
-			bfCompiler.GetOutputFileNames(bfProject, true, out bfHadOutputChanges, bfFileNames);
-			defer ClearAndDeleteItems(bfFileNames);//DeleteAndClearItems!(bfFileNames);
-            if (bfHadOutputChanges)
-                project.mNeedsTargetRebuild = true;
-
-            List<ProjectSource> allFileNames = scope List<ProjectSource>();
-            List<String> clangAllObjNames = scope List<String>();
-            //List<String> clangObjNames = scope List<String>();            
-
-            GetClangFiles(project.mRootFolder, allFileNames);
-
-            String workspaceBuildDir = scope String();
-            GetWorkspaceBuildDir(workspaceBuildDir);
-            String projectBuildDir = scope String();
-            GetProjectBuildDir(project, projectBuildDir);
-			if (!projectBuildDir.IsEmpty)
-            	Directory.CreateDirectory(projectBuildDir).IgnoreError();
-
-            //List<String> buildFileNames = new List<String>();
-
-			String targetPath = scope String();
-
-            String outputDir = scope String();
-			String absOutputDir = scope String();
-			
-			if (testProjectInfo != null)
-			{
-				absOutputDir.Append(projectBuildDir);
-				outputDir = absOutputDir;
-				targetPath.Append(outputDir, "/", project.mProjectName);
-#if BF_PLATFORM_WINDOWS
-				targetPath.Append(".exe");
-#endif
-
-				Debug.Assert(testProjectInfo.mTestExePath == null);
-				testProjectInfo.mTestExePath = new String(targetPath);
-			}
-			else
-            {
-				ResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, "target directory", outputDir);
-				Path.GetAbsolutePath(project.mProjectDir, outputDir, absOutputDir);
-				outputDir = absOutputDir;
-				ResolveConfigString(workspaceOptions, project, options, "$(TargetPath)", "target path", targetPath);
-			}
-			IDEUtils.FixFilePath(targetPath);
-            if (!File.Exists(targetPath))
-			{
-                project.mNeedsTargetRebuild = true;
-
-				String targetDir = scope String();
-				Path.GetDirectoryPath(targetPath, targetDir);
-				if (!targetDir.IsEmpty)
-					Directory.CreateDirectory(targetDir).IgnoreError();
-			}
-
-			if (!QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
-				completedCompileCmd.mFailed = true;
-
-			if (project.mGeneralOptions.mTargetType == Project.TargetType.CustomBuild)
-			{
-				/*if (options.mBuildOptions.mPostBuildCmds.IsEmpty)
-					return true;
-
-				int64 highestDateTime = 0;
-
-				int64 targetDateTime = File.GetLastWriteTime(targetPath).Get().ToFileTime();
-
-				bool forceRebuild = false;
-
-				for (var depName in project.mDependencies)
-				{
-					var depProject = mWorkspace.FindProject(depName.mProjectName);
-					if (depProject != null)
-					{
-						if (depProject.mLastDidBuild)
-							forceRebuild = true;
-					}
-				}
-
-				project.WithProjectItems(scope [&] (projectItem) =>
-					{
-						var projectSource = projectItem as ProjectSource;
-						var importPath = scope String();
-						projectSource.GetFullImportPath(importPath);
-						Result<DateTime> fileDateTime = File.GetLastWriteTime(importPath);
-						if (fileDateTime case .Ok)
-						{
-							let date = fileDateTime.Get().ToFileTime();
-							/*if (date > targetDateTime)
-								Console.WriteLine("Custom build higher time: {0}", importPath);*/
-							highestDateTime = Math.Max(highestDateTime, date);
-						}
-					});
-
-				if ((highestDateTime > targetDateTime) || (forceRebuild))
-				{
-					QueueProjectCustomBuildCommands(project, options.mBuildOptions.mPostBuildCmds);
-					project.mLastDidBuild = true;
-				}*/
-				
-				return true; 
-			}
-
-#if IDE_C_SUPPORT
-            bool buildAll = false;
-            String buildStringFilePath = scope String();
-            mDepClang.GetBuildStringFileName(projectBuildDir, project, buildStringFilePath);
-            String newBuildString = scope String();
-            GetClangBuildString(project, options, workspaceOptions, true, newBuildString);
-			String clangBuildString = scope String();
-			GetClangBuildString(project, options, workspaceOptions, false, clangBuildString);
-            newBuildString.Append("|", clangBuildString);
-
-            if (mDepClang.mDoDependencyCheck)
-            {   
-             	String prependStr = scope String();
-				options.mCOptions.mCompilerType.ToString(prependStr);
-				prependStr.Append("|");
-                newBuildString.Insert(0, prependStr);
-                String oldBuildString;
-                mDepClang.mProjectBuildString.TryGetValue(project, out oldBuildString);
-
-				if (oldBuildString == null)
-				{
-					oldBuildString = new String();
-                    File.ReadAllText(buildStringFilePath, oldBuildString).IgnoreError();
-					mDepClang.mProjectBuildString[project] = oldBuildString;
-				}
-
-                if (newBuildString != oldBuildString)
-                {
-                    buildAll = true;
-                    
-                    if (case .Err = File.WriteAllText(buildStringFilePath, newBuildString))
-						OutputLine("Failed to write {0}", buildStringFilePath);
-					
-					delete oldBuildString;
-                    mDepClang.mProjectBuildString[project] = new String(newBuildString);
-                }
-            }            			
-
-            using (mDepClang.mMonitor.Enter())
-            {
-				if (options.mClangObjectFiles == null)
-					options.mClangObjectFiles = new List<String>();
-				else
-					ClearAndDeleteItems(options.mClangObjectFiles);
-
-                for (var projectSource in allFileNames)
-                {
-                    var fileEntry = mDepClang.GetProjectEntry(projectSource);
-                    Debug.Assert((fileEntry != null) || (!mDepClang.mCompileWaitsForQueueEmpty));
-
-                    String filePath = scope String();
-                    projectSource.GetFullImportPath(filePath);
-                    String baseName = scope String();
-                    Path.GetFileNameWithoutExtension(filePath, baseName);
-                    String objName = stack String();
-                    objName.Append(projectBuildDir, "/", baseName, (options.mCOptions.mGenerateLLVMAsm ? ".ll" : ".obj"));
-
-					if (filePath.Contains("test2.cpp"))
-					{
-						NOP!();
-					}	
-
-                    bool needsRebuild = true;
-                    if ((!buildAll) && (fileEntry != null))
-                    {
-                        mDepClang.SetEntryObjFileName(fileEntry, objName);
-                        mDepClang.SetEntryBuildStringFileName(fileEntry, buildStringFilePath);                        
-                        needsRebuild = mDepClang.DoesEntryNeedRebuild(fileEntry);
-                    }
-                    if (needsRebuild)
-                    {
-                        if (hotProject != null)
-                        {
-                            OutputLine("Hot swap detected disallowed C/C++ change: {0}", filePath);                            
-                            return false;
-                        }
-
-                        project.mNeedsTargetRebuild = true;                        
-                        var runCmd = CompileSource(project, workspaceOptions, options, filePath);
-                        runCmd.mParallelGroup = 1;
-                    }
-
-					options.mClangObjectFiles.Add(new String(objName));
-
-					if (hotProject != null)
-						continue;
-
-                    clangAllObjNames.Add(objName);
-
-                    IdSpan sourceCharIdData;
-                    String sourceCode = scope String();
-                    FindProjectSourceContent(projectSource, out sourceCharIdData, true, sourceCode);
-                    mWorkspace.ProjectSourceCompiled(projectSource, sourceCode, sourceCharIdData);
-					sourceCharIdData.Dispose();
-
-					String* fileEntryPtr;
-                    if (completedCompileCmd.mClangCompiledFiles.Add(filePath, out fileEntryPtr))
-						*fileEntryPtr = new String(filePath);
-                }
-            }
-#endif
-
-            String llvmDir = scope String(IDEApp.sApp.mInstallDir);
-            IDEUtils.FixFilePath(llvmDir);
-            llvmDir.Append("llvm/");
-            
-            if (hotProject != null)
-            {
-                if ((hotProject == project) || (hotProject.HasDependency(project.mProjectName)))
-                {
-                    for (var fileName in bfFileNames)
-                        hotFileNames.Add(new String(fileName));
-                }
-            
-                return true;
-            }
-
-            String objectsArg = scope String();
-			var argBuilder = scope ArgBuilder(objectsArg, workspaceOptions.mToolsetType != .GNU);
-            for (var bfFileName in bfFileNames)
-            {
-				argBuilder.AddFileName(bfFileName);
-				argBuilder.AddSep();
-            }
-
-            for (var objName in clangAllObjNames)
-            {                
-                IDEUtils.AppendWithOptionalQuotes(objectsArg, objName);
-                objectsArg.Append(" ");
-            }
-
-			if (workspaceOptions.mToolsetType == .GNU)
-			{
-				if (!QueueProjectGNULink(project, targetPath, workspaceOptions, options, objectsArg))
-					return false;
-			}
-			else // MS
-			{
-				if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
-					return false;
-			}
-
-            return true;
-        }
-
         Project FindProject(String projectName)
         {
             return mWorkspace.FindProject(projectName);
         }
 
-        bool GetDependentProjectList(Project project, List<Project> orderedProjectList, List<Project> projectStack = null)
+        public bool GetDependentProjectList(Project project, List<Project> orderedProjectList, List<Project> projectStack = null)
         {
 			var useProjectStack = projectStack;
             if ((useProjectStack != null) && (useProjectStack.Contains(project)))
@@ -9768,9 +8838,14 @@ namespace IDE
             bool success = true;
             List<String> hotFileNames = scope List<String>();
 			defer ClearAndDeleteItems(hotFileNames);
+			Debug.Assert(mBuildContext == null);
+			DeleteAndNullify!(mBuildContext);
+			mBuildContext = new .();
+			mBuildContext.mWorkspaceOptions = GetCurWorkspaceOptions();
+
             for (var project in orderedProjectList)
             {
-                if (!QueueProjectCompile(project, hotProject, completedCompileCmd, hotFileNames, runAfter))
+                if (!mBuildContext.QueueProjectCompile(project, hotProject, completedCompileCmd, hotFileNames, runAfter))
                     success = false;
             }
 
@@ -10240,7 +9315,12 @@ namespace IDE
                     (project.mGeneralOptions.mTargetType == Project.TargetType.BeefWindowsApplication))
                     mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-BeefMain");
                 else
+				{
                     mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-main");
+#if BF_PLATFORM_WINDOWS
+					//mMainBreakpoint2 = mDebugger.CreateSymbolBreakpoint("-WinMain");
+#endif
+				}
             }
 
             return true;
@@ -11162,6 +10242,10 @@ namespace IDE
 
 						for (var project in mWorkspace.mProjects)
 						{
+							// Force running the "if files changed" commands
+							project.mForceCustomCommands = true;
+							project.mNeedsTargetRebuild = true;
+
 							// Don't delete custom build artifacts
 							if (project.mGeneralOptions.mTargetType == .CustomBuild)
 								continue;
@@ -11170,6 +10254,8 @@ namespace IDE
 							defer ClearAndDeleteItems(projectFiles);
 
 							let options = GetCurProjectOptions(project);
+							if (options == null)
+								continue;
 							GetTargetPaths(project, workspaceOptions, options, projectFiles);
 
 							for (let filePath in projectFiles)
@@ -11529,8 +10615,16 @@ namespace IDE
 								{
 									BfLog.LogDbg("Deleting mMainBreakpoint 1\n");
 									// Couldn't bind to main breakpoint, bind to entry point address
-									mDebugger.DeleteBreakpoint(mMainBreakpoint);
-									mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("."); // Magic symbol for "entry point"
+									 // "." is the magic symbol for "entry point"
+									String[] tryNames = scope .("WinMain", ".");
+
+									for (let name in tryNames)
+									{
+										mDebugger.DeleteBreakpoint(mMainBreakpoint);
+										mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("WinMain");
+										if ((name == ".") || (mMainBreakpoint.IsBound()))
+											break;
+									}
 								}
 
 								wantsContinue = true;
@@ -11659,6 +10753,22 @@ namespace IDE
 					mModulePanel.ModulesChanged();
 
 					mWantsRehupCallstack = false;
+				}
+			}
+
+			if (mBuildContext != null)
+			{
+				bool isCompiling = (!mExecutionInstances.IsEmpty) || (!mExecutionQueue.IsEmpty);
+				if (mBuildContext.mScriptManager != null)
+				{
+					mBuildContext.mScriptManager.Update();
+					if ((mBuildContext.mScriptManager.HasQueuedCommands) && (!mBuildContext.mScriptManager.mFailed))
+						isCompiling = true;
+				}
+
+				if (!isCompiling)
+				{
+					DeleteAndNullify!(mBuildContext);
 				}
 			}
         }

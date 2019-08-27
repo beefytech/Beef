@@ -261,6 +261,11 @@ void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 	BfpSystem_Init(BFP_VERSION, sysInitFlags);
 	BfpSystem_AddCrashInfoFunc(GetCrashInfo);
 
+	if (gBfRtCallbacks.Alloc != NULL)
+	{
+		BfpSystem_FatalError(StrFormat("BeefRT already initialized. Multiple executable modules in the same process cannot dynamically link to the Beef runtime.").c_str(), "BEEF FATAL ERROR");
+	}
+
 	if (version != BFRT_VERSION)
 	{
         BfpSystem_FatalError(StrFormat("BeefRT build version '%d' does not match requested version '%d'", BFRT_VERSION, version).c_str(), "BEEF FATAL ERROR");        

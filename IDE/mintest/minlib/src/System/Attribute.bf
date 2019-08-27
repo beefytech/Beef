@@ -291,38 +291,16 @@ namespace System
 		public bool Profile;
 	}
 
-	namespace Runtime.InteropServices
-	{
-		public enum CallingConvention
-		{
-		    Winapi          = 1,
-		    Cdecl           = 2,
-		    StdCall         = 3,
-		    ThisCall        = 4,
-		    FastCall        = 5,
-
-			Default = Cdecl
-		}
-	
-		[AttributeUsage(AttributeTargets.Method /*3*/)]
-	    public struct DllImportAttribute : Attribute
-	    {
-	        public this(String dllName)
-			{
-				CallingConvention = .Default;
-				CLink = false;
-			}
-
-			public CallingConvention CallingConvention;
-			public bool CLink;
-		}
-	}
-
 	public struct ImportAttribute : Attribute
 	{
 	    public this(String libName)
 		{
 		}
+	}
+
+	public struct ExportAttribute : Attribute
+	{
+
 	}
 
 	[AttributeUsage(AttributeTargets.StaticField | AttributeTargets.Field, .NotInherited)]

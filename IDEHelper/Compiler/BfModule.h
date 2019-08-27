@@ -1686,7 +1686,7 @@ public:
 	void CreateValueTypeEqualsMethod();	
 	BfIRFunction GetIntrinsic(BfMethodInstance* methodInstance, bool reportFailure = false);
 	BfIRFunction GetBuiltInFunc(BfBuiltInFuncType funcType);
-	BfIRValue CreateFunctionFrom(BfMethodInstance* methodInstance, bool tryExisting = false, bool isInlined = false);	
+	BfIRValue CreateFunctionFrom(BfMethodInstance* methodInstance, bool tryExisting, bool isInlined);	
 	void EvaluateWithNewScope(BfExprEvaluator& exprEvaluator, BfExpression* expr, BfEvalExprFlags flags);
 	BfTypedValue CreateValueFromExpression(BfExprEvaluator& exprEvaluator, BfExpression* expr, BfType* wantTypeRef = NULL, BfEvalExprFlags flags = BfEvalExprFlags_None, BfType** outOrigType = NULL);
 	BfTypedValue CreateValueFromExpression(BfExpression* expr, BfType* wantTypeRef = NULL, BfEvalExprFlags flags = BfEvalExprFlags_None, BfType** outOrigType = NULL);

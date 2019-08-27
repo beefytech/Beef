@@ -632,7 +632,7 @@ namespace IDE
 			mProjectNameMap.Clear();
 		}
 
-        public Project FindProject(String projectName)
+        public Project FindProject(StringView projectName)
         {
 			if (mProjectNameMap.IsEmpty)
 			{
@@ -654,7 +654,12 @@ namespace IDE
 						Add(alias, project);
 				}
 			}
-            return mProjectNameMap.GetValueOrDefault(projectName);
+
+            if (mProjectNameMap.TryGetWith(projectName, var matchKey, var value))
+			{
+				return value;
+			}
+			return null;
         }
 
 		public void SetupDefault(Options options, String configName, String platformName)

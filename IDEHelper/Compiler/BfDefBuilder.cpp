@@ -652,6 +652,11 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				methodDef->mCheckedKind = BfCheckedKind_Checked;
 			else if (typeRefName == "Unchecked")
 				methodDef->mCheckedKind = BfCheckedKind_Unchecked;
+			else if (typeRefName == "Export")
+			{				
+				mCurTypeDef->mIsAlwaysInclude = true;
+				methodDef->mImportKind = BfImportKind_Export;				
+			}
 			else if (typeRefName == "Import")
 			{	
 				methodDef->mImportKind = BfImportKind_Static;

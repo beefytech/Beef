@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {Stub = {Path = "."}}
+Unlocked = ["corlib"]
+
+[Workspace]
+StartupProject = "Stub"
+
+[Configs.Debug.Win64]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+IntermediateType = "ObjectAndIRCode"

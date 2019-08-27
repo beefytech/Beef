@@ -15,7 +15,6 @@ using System;
 using System.Threading;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections;
@@ -178,13 +177,18 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
-			while (true)
+			Blurg.Hey();
+
+			/*while (true)
 			{
 				int a = 0;
 			}
 
 			int* iPtr = null;
-			*iPtr = 123;
+			*iPtr = 123;*/
+
+			GC.SetAutoCollectPeriod(20);
+			Thread.Sleep(1000);
 
 			String str = scope .("Boops!");
 			int len = str.GetLength();
@@ -196,7 +200,7 @@ namespace Hey.Dude.Bro
 
 			//Thread.Sleep(500);
 
-			Test2(1, 2, 3, 4);
+			//Test2(1, 2, 3, 4);
 
 			thread.Join();
 

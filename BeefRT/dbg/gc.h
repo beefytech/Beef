@@ -436,15 +436,7 @@ namespace bf
 		{
 		private:
 			BFRT_EXPORT static void Init();
-			BFRT_EXPORT static void Run();
-			static void MarkAllStaticMembers()
-			{
-				gBfRtCallbacks.GC_MarkAllStaticMembers();
-			}
-			static bool CallRootCallbacks()
-			{
-				return gBfRtCallbacks.GC_CallRootCallbacks();
-			}
+			BFRT_EXPORT static void Run();						
 			BFRT_EXPORT static void ReportTLSMember(intptr tlsIndex, void* ptr, void* markFunc);
 			BFRT_EXPORT static void StopCollecting();
 			BFRT_EXPORT static void AddStackMarkableObject(Object* obj);
@@ -460,11 +452,11 @@ namespace bf
 			//static void ToLeakString(Object* obj, String* strBuffer);
 			static void DoMarkAllStaticMembers()
 			{
-				MarkAllStaticMembers();
+				BFRTCALLBACKS.GC_MarkAllStaticMembers();
 			}
 			static bool DoCallRootCallbacks()
 			{
-				return CallRootCallbacks();
+				return BFRTCALLBACKS.GC_CallRootCallbacks();
 			}
 			BFRT_EXPORT static void SetAutoCollectPeriod(intptr periodMS);
 			BFRT_EXPORT static void SetCollectFreeThreshold(intptr freeBytes);

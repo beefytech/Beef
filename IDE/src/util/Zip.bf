@@ -974,7 +974,7 @@ namespace IDE.Util
 						bit_buf |= (((tinfl_bit_buf_t)pIn_buf_cur[0]) << num_bits) | (((tinfl_bit_buf_t)pIn_buf_cur[1]) << (num_bits + 8)); pIn_buf_cur += 2; num_bits += 16;
 					}
 				}
-				if ((temp = (uint16)pHuff.m_look_up[bit_buf & (TINFL_FAST_LOOKUP_SIZE - 1)]) >= 0)
+				if ((temp = pHuff.m_look_up[bit_buf & (TINFL_FAST_LOOKUP_SIZE - 1)]) >= 0)
 				{
 					code_len = temp >> 9;
 					temp &= 511;
@@ -984,7 +984,7 @@ namespace IDE.Util
 					code_len = TINFL_FAST_LOOKUP_BITS;
 					repeat
 					{
-						temp = (uint16)pHuff.m_tree[~temp + (int32)((bit_buf >> code_len++) & 1)];
+						temp = pHuff.m_tree[~temp + (int32)((bit_buf >> code_len++) & 1)];
 					}
 					while (temp < 0);
 				}

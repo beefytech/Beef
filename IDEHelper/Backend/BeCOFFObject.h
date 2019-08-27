@@ -229,6 +229,7 @@ public:
 	BeCOFFSection mXDataSect;
 	BeCOFFSection mDebugSSect;
 	BeCOFFSection mDebugTSect;
+	BeCOFFSection mDirectiveSect;
 	DynMemStream mStrTable;
 	int mBSSPos;
 	Array<BeCOFFSection*> mUsedSections;
@@ -244,6 +245,7 @@ public:
 	int mCurStringId;
 	int mCurJumpTableIdx;
 	bool mTypesLocked;		
+	String mDirectives;
 
 public:	
 	void ToString(BeMDNode* mdNode, String& str);

@@ -447,6 +447,8 @@ public:
 	bool mNoReturn;
 	bool mDidInlinePass;
 	bool mNoFramePointerElim;
+	bool mIsDLLExport;
+	bool mIsDLLImport;
 	BfIRCallingConv mCallingConv;
 	Array<BeBlock*> mBlocks;		
 	Array<BeFunctionParam> mParams;
@@ -467,6 +469,8 @@ public:
 		mUWTable = false;
 		mNoReturn = false;
 		mNoFramePointerElim = false;
+		mIsDLLExport = false;
+		mIsDLLImport = false;
 		mRemapBindVar = NULL;
 		mCurElementId = 0;
 	}	
@@ -2056,6 +2060,7 @@ public:
 	BeDbgLoc* mLastDbgLoc;	
 	Array<BeArgument*> mArgs;	
 	Array<BeFunction*> mFunctions;	
+	Dictionary<String, BeFunction*> mFunctionMap;
 	int mCurDbgLocIdx;
 	int mCurLexBlockId;	
 

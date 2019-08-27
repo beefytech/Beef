@@ -2112,6 +2112,10 @@ void BeIRCodeGen::HandleNextCmd()
 					func->mNoReturn = true;
 				else if (attribute == BFIRAttribute_NoFramePointerElim)
 					func->mNoFramePointerElim = true;
+				else if (attribute == BFIRAttribute_DllExport)
+					func->mIsDLLExport = true;
+				else if (attribute == BFIRAttribute_DllImport)
+					func->mIsDLLImport = true;
 				else
 					BF_FATAL("Unhandled");
 			}			

@@ -1,0 +1,5 @@
+FileVersion = 1
+
+[Project]
+Name = "BugW001"
+StartupObject = "BugW001.Program"

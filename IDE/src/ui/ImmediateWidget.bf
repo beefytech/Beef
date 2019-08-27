@@ -337,10 +337,8 @@ namespace IDE.ui
 				    mUsedHistory = false;
 					if (cmdText.StartsWith("%"))
 					{
-						StringStream strStream = scope .(StringView(cmdText, 1), .Reference);
-						StreamReader reader = scope .(strStream);
 						gApp.mScriptManager.Clear();
-						gApp.mScriptManager.QueueCommands(reader, "Immediate");
+						gApp.mScriptManager.QueueCommands(StringView(cmdText, 1), "Immediate", .NoLines);
 					}
 					else
 				    	result = mResultHoverWatch.Eval(cmdText, false);

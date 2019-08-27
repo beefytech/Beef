@@ -351,6 +351,10 @@ namespace IDE.ui
 			{
 				DrawStatusBox("Running Script");
 			}
+			else if ((gApp.mBuildContext != null) && (!completionPct.HasValue))
+			{
+				DrawStatusBox("Custom Build Commands...");
+			}
 			else
 				mStatusBoxUpdateCnt = -1;
 

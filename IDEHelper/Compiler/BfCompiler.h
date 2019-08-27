@@ -291,6 +291,12 @@ public:
 		BfIRValue mStringVal;
 	};		
 
+	struct TestMethod
+	{
+		String mName;
+		BfMethodInstance* mMethodInstance;
+	};	
+
 public:	
 	BfPassInstance* mPassInstance;	
 	FILE* mCompileLogFP;
@@ -386,6 +392,8 @@ public:
 	void CheckModuleStringRefs(BfModule* module, BfVDataModule* vdataModule, int lastModuleRevision, HashSet<int>& foundStringIds, HashSet<int>& dllNameSet, Array<BfMethodInstance*>& dllMethods, Array<BfCompiler::StringValueEntry>& stringValueEntries);
 	void HashModuleVData(BfModule* module, HashContext& hash);
 	BfIRFunction CreateLoadSharedLibraries(BfVDataModule* bfModule, Array<BfMethodInstance*>& dllMethods);
+	void GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& testMethods, HashContext& vdataHashCtx);
+	void EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& testMethods, BfIRValue& retValue);
 	void CreateVData(BfVDataModule* bfModule);	
 	void UpdateDependencyMap(bool deleteUnusued, bool& didWork);
 	void ProcessPurgatory(bool reifiedOnly);

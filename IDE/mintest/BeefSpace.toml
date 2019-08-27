@@ -10,6 +10,7 @@ IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {mintest2 = {Enabled = false}}
 
 [Configs.Debug.Win64]
+BfOptimizationLevel = "O0"
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "Og"
 

@@ -1,7 +1,6 @@
 #if BF_PLATFORM_WINDOWS
 
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Text;
 
@@ -9,7 +8,6 @@ namespace System
 {
 	class Windows
 	{
-		
 		public struct COM_IUnknown
 		{
 			public enum ClsContext : uint32
@@ -1244,6 +1242,9 @@ namespace System
 		[CLink, StdCall]
 		public static extern IntBool GetFileMUIPath(uint32 dwFlags, char16* pcwszFilePath, char16* pwszLanguage, uint32* pcchLanguage,
 			char16* pwszFileMUIPath, uint32* pcchFileMUIPath, uint64* pululEnumerator);
+
+		[CLink, StdCall]
+		public static extern HInstance LoadLibraryW(char16* libFileName);
 
 		[CLink, StdCall]
 		public static extern HInstance LoadLibraryExW(char16* libFileName, HModule hFile, uint32 dwFlags);

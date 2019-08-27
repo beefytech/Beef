@@ -1,0 +1,9 @@
+# This tests extensions on Result<void*>, where the void* operator would be double-declared in the IR
+
+ShowFile("src/Program.bf")
+GotoText("//Main_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+ToggleCommentAt("Result_Get")
+Compile()

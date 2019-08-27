@@ -1,6 +1,0 @@
-FileVersion = 1
-Projects = {BeefInstall = {Path = "."}}
-Unlocked = ["corlib"]
-
-[Workspace]
-StartupProject = "BeefInstall"

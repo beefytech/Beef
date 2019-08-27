@@ -1,0 +1,10 @@
+FileVersion = 1
+Projects = {StubUI = {Path = "."}, Beefy2D = "*"}
+Unlocked = ["corlib"]
+
+[Workspace]
+StartupProject = "StubUI"
+
+[Configs.Debug.Win64]
+AllocType = "CRT"
+IntermediateType = "ObjectAndIRCode"

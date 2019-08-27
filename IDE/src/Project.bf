@@ -13,7 +13,6 @@ using IDE.ui;
 using IDE.Util;
 using System.Threading;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace IDE
 {    
@@ -299,6 +298,9 @@ namespace IDE
 		{
 			if (mIncludeKind != .Manual)
 				return .None;
+
+			if (mParentFolder.mPath == null)
+				return .SimpleSource;
 
 			var expectPath = scope String();
 			expectPath.Append(mParentFolder.mPath);
@@ -829,12 +831,13 @@ namespace IDE
         public enum TargetType
         {
 			case BeefConsoleApplication,
-				BeefWindowsApplication,
-			 	BeefLib,
-			 	CustomBuild,
-             	C_ConsoleApplication,
-             	C_WindowsApplication,
-			 	BeefTest;
+				 BeefWindowsApplication,
+				 BeefLib,
+				 BeefDynLib,
+				 CustomBuild,
+				 C_ConsoleApplication,
+				 C_WindowsApplication,
+				 BeefTest;
 
 		 	public bool IsBeef
 		 	{
@@ -843,9 +846,10 @@ namespace IDE
 					 switch (this)
 					 {
 						 case BeefConsoleApplication,
-						  BeefWindowsApplication,
-						  BeefLib,
-						  BeefTest: return true;
+							  BeefWindowsApplication,
+							  BeefLib,
+							  BeefDynLib,
+							  BeefTest: return true;
 						 default: return false;
 					}
 				}
@@ -1162,6 +1166,7 @@ namespace IDE
         //public String mLastImportDir = new String() ~ delete _;
         public bool mHasChanged;
         public bool mNeedsTargetRebuild;
+		public bool mForceCustomCommands;
 		public bool mEnabled = true;
 		public bool mLocked;
 		public bool mLockedDefault;

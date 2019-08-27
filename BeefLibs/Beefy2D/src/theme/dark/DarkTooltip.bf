@@ -82,6 +82,7 @@ namespace Beefy.theme.dark
 
 		public ~this()
 		{
+			Debug.Assert(mHasClosed);
 			Detach();
 		}
 
@@ -187,11 +188,6 @@ namespace Beefy.theme.dark
 
             if (mWidgetWindow != null)
             {
-                WidgetWindow.sOnMouseDown.Remove(scope => HandleMouseDown, true);
-                WidgetWindow.sOnMouseWheel.Remove(scope => HandleMouseWheel, true);
-                WidgetWindow.sOnMenuItemSelected.Remove(scope => HandleSysMenuItemSelected, true);
-                WidgetWindow.sOnKeyDown.Remove(scope => HandleKeyDown, true);
-
                 mWidgetWindow.Close();
             }
             mCloseEvent();
@@ -249,6 +245,18 @@ namespace Beefy.theme.dark
 			
 			Close();
         }
+
+		protected override void RemovedFromWindow()
+		{
+			base.RemovedFromWindow();
+
+			Debug.Assert(mHasClosed);
+
+			WidgetWindow.sOnMouseDown.Remove(scope => HandleMouseDown, true);
+			WidgetWindow.sOnMouseWheel.Remove(scope => HandleMouseWheel, true);
+			WidgetWindow.sOnMenuItemSelected.Remove(scope => HandleSysMenuItemSelected, true);
+			WidgetWindow.sOnKeyDown.Remove(scope => HandleKeyDown, true);
+		}
     }
 
 	static class DarkTooltipManager

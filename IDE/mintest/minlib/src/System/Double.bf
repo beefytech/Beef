@@ -19,7 +19,6 @@ namespace System
 ///#if GENERICS_WORK
 ///    using System.Numerics;
 ///#endif
-    using System.Runtime.InteropServices;
     using System.Diagnostics.Contracts;
     
     public struct Double : double, IHashable, IOpComparable, IOpNegatable, ICanBeNaN /*: IComparable, IFormattable, IConvertible

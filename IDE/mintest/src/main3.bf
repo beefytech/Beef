@@ -80,13 +80,6 @@ class ClassF : ClassE
 
 }
 
-class Snorf
-{
-	public static void Borf(ClassD cd)
-	{
-		cd.Poo();
-	}
-}
 
 [NoDiscard("Use this value!")]
 struct TestStruct
@@ -97,70 +90,33 @@ struct TestStruct
 
 class Blurg
 {
-	public static void UseTS(TestStruct ts)
+	[Export, CLink, StdCall]
+	public static void Poof()
 	{
-		int c = ts.mA;
+		PrintF("Poofs!\n");
 	}
 
-	[NoDiscard("Why you no use me?")]
-	public static int UseMe()
+	[Export, CLink, StdCall]
+	public static void Poof2()
 	{
-		return 999;
-	}
-
-	public static TestStruct UseIt()
-	{
-		return .();
-	}
-
-	mixin FartOut(int a)
-	{
-		a = 0;
-
-		//let c = 1;
-		//c = 3;
-		//int b = 123;
-		//int c = 99;
+		PrintF("Poofs2!\n");
 	}
 
 	public static void Hey()
 	{
-		mixin Fart(int a)
-		{
-			//a = 0;
-			//int b = 123;
-			//int c = 99;
-		}
+		Snorf sn = scope .();
 
-		/*int c = 222;
-		Fart!(c);*/
+		Result<void*> voidPtrResult = default;
 
-		//int __CRASH_AUTOVARIABLE__ = 123;
-
-		//UseIt();
-
-		//UseMe();
-
-		//int a;
+		//void* val = voidPtrResult;
 
 
-		for (int i < 10)
-		{
-			int a = 0;
-		}
+		//Result<TestStruct> ts = .Ok(.());
 
-		TestStruct ts = .();
-		ts.mA = 111;
-		ts.mB = 222;
-		UseTS(ts);
+		//let val = ts.Get();
+		//Snorf.Bloog bl = .();
 
-		ClassD cd = null;
-		//let str = cd.mStr;
-
-
-#if A || B
-		ClassC cc = scope .();
-#endif
+		//Poof();
 	}
 
 }

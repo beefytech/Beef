@@ -1,0 +1,8 @@
+FileVersion = 1
+Projects = {BugW001 = {Path = "."}}
+
+[Workspace]
+StartupProject = "BugW001"
+
+[Configs.Debug.Win64]
+BfOptimizationLevel = "O0"

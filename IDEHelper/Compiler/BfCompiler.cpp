@@ -477,7 +477,13 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
 
 	BfTypeInstance* typeInst = checkType->ToTypeInstance();
 	if (typeInst != NULL)
-	{			
+	{	
+		if ((typeInst->mTypeDef->mProject != NULL) && (typeInst->mTypeDef->mProject != curProject))
+		{
+			if (typeInst->mTypeDef->mProject->mTargetType == BfTargetType_BeefDynLib)
+				return false;
+		}
+
 		if (checkType->IsInterface())
 			return typeInst->mIsReified;
 		
@@ -757,6 +763,211 @@ BfIRFunction BfCompiler::CreateLoadSharedLibraries(BfVDataModule* bfModule, Arra
 	return loadSharedLibFunc;
 }
 
+void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& testMethods, HashContext& vdataHashCtx)
+{
+	vdataHashCtx.Mixin(0xBEEF0001); // Marker
+
+	auto _CheckMethod = [&](BfTypeInstance* typeInstance, BfMethodInstance* methodInstance)
+	{
+		auto project = typeInstance->mTypeDef->mProject;
+		if (project->mTargetType != BfTargetType_BeefTest)
+			return;
+		if (project != bfModule->mProject)
+			return;
+
+		bool isTest = false;
+		if ((methodInstance->GetCustomAttributes() != NULL) &&
+			(methodInstance->GetCustomAttributes()->Contains(mTestAttributeTypeDef)))
+			isTest = true;
+		if (!isTest)
+			return;
+
+		if (!methodInstance->mMethodDef->mIsStatic)
+		{
+			bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it is not static", bfModule->MethodToString(methodInstance).c_str()),
+				methodInstance->mMethodDef->GetRefNode());
+			bfModule->mHadBuildError = true;
+			return;
+		}
+
+		if (methodInstance->GetParamCount() > 0)
+		{
+			if ((methodInstance->GetParamInitializer(0) == NULL) &&
+				(methodInstance->GetParamKind(0) != BfParamKind_Params))
+			{
+				bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it contains parameters without defaults", bfModule->MethodToString(methodInstance).c_str()),
+					methodInstance->mMethodDef->GetRefNode());
+				bfModule->mHadBuildError = true;
+				return;
+			}
+		}
+
+		BF_ASSERT(typeInstance->IsReified());
+
+		TestMethod testMethod;
+		testMethod.mMethodInstance = methodInstance;
+		testMethods.Add(testMethod);
+
+		if (!bfModule->mProject->mUsedModules.Contains(typeInstance->mModule))
+			bfModule->mProject->mUsedModules.Add(typeInstance->mModule);
+
+		vdataHashCtx.Mixin(methodInstance->GetOwner()->mTypeId);
+		vdataHashCtx.Mixin(methodInstance->mMethodDef->mIdx);
+	};
+
+
+	for (auto type : mContext->mResolvedTypes)
+	{
+		auto typeInstance = type->ToTypeInstance();
+		if (typeInstance == NULL)
+			continue;
+
+		for (auto& methodInstanceGroup : typeInstance->mMethodInstanceGroups)
+		{
+			if (methodInstanceGroup.mDefault != NULL)
+			{
+				_CheckMethod(typeInstance, methodInstanceGroup.mDefault);
+			}
+		}
+	}
+}
+
+void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& testMethods, BfIRValue& retValue)
+{
+	for (auto& testMethod : testMethods)
+	{
+		auto methodInstance = testMethod.mMethodInstance;
+		auto typeInstance = methodInstance->GetOwner();
+		testMethod.mName += bfModule->TypeToString(typeInstance);
+		testMethod.mName += ".";
+		testMethod.mName += methodInstance->mMethodDef->mName;
+
+		testMethod.mName += "\t";
+		auto testAttribute = methodInstance->GetCustomAttributes()->Get(mTestAttributeTypeDef);
+		for (auto& field : testAttribute->mSetField)
+		{
+			auto constant = typeInstance->mConstHolder->GetConstant(field.mParam.mValue);
+			if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_Boolean) && (constant->mBool))
+			{
+				BfFieldDef* fieldDef = field.mFieldRef;
+				if (fieldDef->mName == "ShouldFail")
+				{
+					testMethod.mName += "Sf";
+				}
+				else if (fieldDef->mName == "Profile")
+				{
+					testMethod.mName += "Pr";
+				}
+				else if (fieldDef->mName == "Ignore")
+				{
+					testMethod.mName += "Ig";
+				}
+			}
+		}
+
+		bfModule->UpdateSrcPos(methodInstance->mMethodDef->GetRefNode(), (BfSrcPosFlags)(BfSrcPosFlag_NoSetDebugLoc | BfSrcPosFlag_Force));
+		testMethod.mName += StrFormat("\t%s\t%d\t%d", bfModule->mCurFilePosition.mFileInstance->mParser->mFileName.c_str(), bfModule->mCurFilePosition.mCurLine, bfModule->mCurFilePosition.mCurColumn);
+	}
+
+	std::stable_sort(testMethods.begin(), testMethods.end(),
+		[](const TestMethod& lhs, const TestMethod& rhs)
+	{
+		return lhs.mName < rhs.mName;
+	});
+
+	String methodData;
+	for (int methodIdx = 0; methodIdx < (int)testMethods.size(); methodIdx++)
+	{
+		String& methodName = testMethods[methodIdx].mName;
+		if (!methodData.IsEmpty())
+			methodData += "\n";
+		methodData += methodName;
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+
+	auto testInitMethod = bfModule->GetInternalMethod("Test_Init");
+	auto testQueryMethod = bfModule->GetInternalMethod("Test_Query");
+	auto testFinishMethod = bfModule->GetInternalMethod("Test_Finish");
+
+	auto char8PtrType = bfModule->CreatePointerType(bfModule->GetPrimitiveType(BfTypeCode_Char8));
+
+	BfIRType strCharType = bfModule->mBfIRBuilder->GetSizedArrayType(bfModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_Char8), (int)methodData.length() + 1);
+	BfIRValue strConstant = bfModule->mBfIRBuilder->CreateConstString(methodData);
+	BfIRValue gv = bfModule->mBfIRBuilder->CreateGlobalVariable(strCharType,
+		true, BfIRLinkageType_External,
+		strConstant, "__bfTestData");
+	BfIRValue strPtrVal = bfModule->mBfIRBuilder->CreateBitCast(gv, bfModule->mBfIRBuilder->MapType(char8PtrType));
+
+	SizedArray<BfIRValue, 4> irArgs;
+	irArgs.Add(strPtrVal);
+	bfModule->mBfIRBuilder->CreateCall(testInitMethod.mFunc, irArgs);
+
+	BfIRBlock testHeadBlock = bfModule->mBfIRBuilder->CreateBlock("testHead");
+	BfIRBlock testEndBlock = bfModule->mBfIRBuilder->CreateBlock("testEnd");
+
+	bfModule->mBfIRBuilder->CreateBr(testHeadBlock);
+	bfModule->mBfIRBuilder->AddBlock(testHeadBlock);
+	bfModule->mBfIRBuilder->SetInsertPoint(testHeadBlock);
+
+	irArgs.clear();
+	auto testVal = bfModule->mBfIRBuilder->CreateCall(testQueryMethod.mFunc, irArgs);
+
+	auto switchVal = bfModule->mBfIRBuilder->CreateSwitch(testVal, testEndBlock, (int)testMethods.size());
+
+	for (int methodIdx = 0; methodIdx < (int)testMethods.size(); methodIdx++)
+	{
+		auto methodInstance = testMethods[methodIdx].mMethodInstance;
+		String& methodName = testMethods[methodIdx].mName;
+
+		auto testBlock = bfModule->mBfIRBuilder->CreateBlock(StrFormat("test%d", methodIdx));
+		bfModule->mBfIRBuilder->AddSwitchCase(switchVal, bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, methodIdx), testBlock);
+
+		bfModule->mBfIRBuilder->AddBlock(testBlock);
+		bfModule->mBfIRBuilder->SetInsertPoint(testBlock);
+
+		auto moduleMethodInstance = bfModule->ReferenceExternalMethodInstance(methodInstance);
+		irArgs.clear();
+		if (methodInstance->GetParamCount() > 0)
+		{
+			if (methodInstance->GetParamKind(0) == BfParamKind_Params)
+			{
+				auto paramType = methodInstance->GetParamType(0);
+				auto paramTypeInst = paramType->ToTypeInstance();
+				BfTypedValue paramVal = BfTypedValue(bfModule->mBfIRBuilder->CreateAlloca(bfModule->mBfIRBuilder->MapTypeInst(paramTypeInst)), paramType);
+				bfModule->InitTypeInst(paramVal, NULL, false, BfIRValue());
+
+				//TODO: Assert 'length' var is at slot 1
+				auto arrayBits = bfModule->mBfIRBuilder->CreateBitCast(paramVal.mValue, bfModule->mBfIRBuilder->MapType(paramTypeInst->mBaseType));
+				auto addr = bfModule->mBfIRBuilder->CreateInBoundsGEP(arrayBits, 0, 1);
+				auto storeInst = bfModule->mBfIRBuilder->CreateAlignedStore(bfModule->GetConstValue(0), addr, 4);
+
+				irArgs.Add(paramVal.mValue);
+			}
+			else
+			{
+				for (int defaultIdx = 0; defaultIdx < (int)methodInstance->mDefaultValues.size(); defaultIdx++)
+				{
+					irArgs.Add(methodInstance->mDefaultValues[defaultIdx]);
+				}
+			}
+		}
+
+		BfExprEvaluator exprEvaluator(bfModule);
+		exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
+
+		bfModule->mBfIRBuilder->CreateBr(testHeadBlock);
+	}
+
+	bfModule->mBfIRBuilder->AddBlock(testEndBlock);
+	bfModule->mBfIRBuilder->SetInsertPoint(testEndBlock);
+
+	irArgs.clear();
+	bfModule->mBfIRBuilder->CreateCall(testFinishMethod.mFunc, irArgs);
+
+	retValue = bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0);
+}
+
 void BfCompiler::CreateVData(BfVDataModule* bfModule)
 {
 	bool isHotCompile = IsHotCompile();
@@ -842,81 +1053,9 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 	vdataHashCtx.Mixin(bfModule->mProject->mVDataConfigHash);
 	
-	struct _TestMethod
-	{
-		String mName;
-		BfMethodInstance* mMethodInstance;
-	};
-	Array<_TestMethod> testMethods;
-
+	Array<TestMethod> testMethods;
 	if (project->mTargetType == BfTargetType_BeefTest)
-	{
-		vdataHashCtx.Mixin(0xBEEF0001); // Marker
-
-		auto _CheckMethod = [&](BfTypeInstance* typeInstance, BfMethodInstance* methodInstance)
-		{
-			auto project = typeInstance->mTypeDef->mProject;
-			if (project->mTargetType != BfTargetType_BeefTest)
-				return;
-			if (project != bfModule->mProject)
-				return;
-
-			bool isTest = false;
-			if ((methodInstance->GetCustomAttributes() != NULL) &&
-				(methodInstance->GetCustomAttributes()->Contains(mTestAttributeTypeDef)))
-				isTest = true;
-			if (!isTest)
-				return;
-
-			if (!methodInstance->mMethodDef->mIsStatic)
-			{
-				bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it is not static", bfModule->MethodToString(methodInstance).c_str()),
-					methodInstance->mMethodDef->GetRefNode());
-				bfModule->mHadBuildError = true;
-				return;
-			}
-
-			if (methodInstance->GetParamCount() > 0)
-			{
-				if ((methodInstance->GetParamInitializer(0) == NULL) &&
-					(methodInstance->GetParamKind(0) != BfParamKind_Params))
-				{
-					bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it contains parameters without defaults", bfModule->MethodToString(methodInstance).c_str()),
-						methodInstance->mMethodDef->GetRefNode());
-					bfModule->mHadBuildError = true;
-					return;
-				}
-			}
-
-			BF_ASSERT(typeInstance->IsReified());
-
-			_TestMethod testMethod;
-			testMethod.mMethodInstance = methodInstance;
-			testMethods.Add(testMethod);
-
-			if (!bfModule->mProject->mUsedModules.Contains(typeInstance->mModule))
-				bfModule->mProject->mUsedModules.Add(typeInstance->mModule);
-
-			vdataHashCtx.Mixin(methodInstance->GetOwner()->mTypeId);
-			vdataHashCtx.Mixin(methodInstance->mMethodDef->mIdx);
-		};
-
-		
-		for (auto type : mContext->mResolvedTypes)
-		{
-			auto typeInstance = type->ToTypeInstance();
-			if (typeInstance == NULL)
-				continue;
-
-			for (auto& methodInstanceGroup : typeInstance->mMethodInstanceGroups)
-			{
-				if (methodInstanceGroup.mDefault != NULL)
-				{
-					_CheckMethod(typeInstance, methodInstanceGroup.mDefault);
-				}
-			}
-		}		
-	}
+		GetTestMethods(bfModule, testMethods, vdataHashCtx);
 
 	Array<BfType*> vdataTypeList;
 	std::multimap<String, BfTypeInstance*> sortedStaticInitMap;
@@ -956,7 +1095,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			auto module = typeInst->mModule;
 			if (module == NULL)
 				continue;			
-
+			
 			if (type->IsInterface())
 				vdataHashCtx.Mixin(typeInst->mSlotNum);
 
@@ -997,7 +1136,14 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			{
 				vdataHashCtx.Mixin(baseType->mTypeDef->mSignatureHash);				
 				baseType = baseType->mBaseType;
-			}			
+			}
+
+			if (module->mProject != bfModule->mProject)
+			{
+				if ((module->mProject != NULL) && (module->mProject->mTargetType == BfTargetType_BeefDynLib))
+					continue;
+			}
+
 			if (typeInst->mHasStaticInitMethod)		
 				sortedStaticInitMap.insert(std::make_pair(bfModule->TypeToString(type), typeInst));
 			else if (typeInst->mHasStaticDtorMethod) // Only store types not already in the static init map
@@ -1437,6 +1583,17 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
             mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "main");			
 		}
+		else if (project->mTargetType == BfTargetType_BeefDynLib)
+		{		
+			SmallVector<BfIRType, 4> paramTypes;
+			paramTypes.push_back(nullPtrType); // hinstDLL			
+			paramTypes.push_back(int32Type); // fdwReason
+			paramTypes.push_back(nullPtrType); // lpvReserved			
+			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
+			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "DllMain");
+			if (mSystem->mPtrSize == 4)
+				bfModule->mBfIRBuilder->SetFuncCallingConv(mainFunc, BfIRCallingConv_StdCall);
+		}
 		else if (project->mTargetType == BfTargetType_BeefWindowsApplication)
 		{				
 			SmallVector<BfIRType, 4> paramTypes;
@@ -1478,6 +1635,17 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
         }
 #endif
 		
+		BfIRBlock initSkipBlock;
+		if (project->mTargetType == BfTargetType_BeefDynLib)
+		{
+			auto initBlock = bfModule->mBfIRBuilder->CreateBlock("doInit", false);
+			initSkipBlock = bfModule->mBfIRBuilder->CreateBlock("skipInit", false);
+			auto cmpResult = bfModule->mBfIRBuilder->CreateCmpEQ(bfModule->mBfIRBuilder->GetArgument(1), bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 1));
+			bfModule->mBfIRBuilder->CreateCondBr(cmpResult, initBlock, initSkipBlock);
+			bfModule->mBfIRBuilder->AddBlock(initBlock);
+			bfModule->mBfIRBuilder->SetInsertPoint(initBlock);
+		}
+
 		// Do the LoadLibrary calls below priority 100
 		bool didSharedLibLoad = false;
 		auto _CheckSharedLibLoad = [&]()
@@ -1515,6 +1683,13 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		}
 
 		_CheckSharedLibLoad();
+
+		if (initSkipBlock)
+		{
+			bfModule->mBfIRBuilder->CreateBr(initSkipBlock);
+			bfModule->mBfIRBuilder->AddBlock(initSkipBlock);
+			bfModule->mBfIRBuilder->SetInsertPoint(initSkipBlock);
+		}
 
 		BfIRValue retValue;
 		if ((project->mTargetType == BfTargetType_BeefConsoleApplication) || (project->mTargetType == BfTargetType_BeefWindowsApplication))
@@ -1655,142 +1830,24 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 			if (!hadRet)
 				retValue = bfModule->GetConstValue32(0);
-		}		
+		}	
+		else if (project->mTargetType == BfTargetType_BeefDynLib)
+		{
+			retValue = bfModule->GetConstValue32(1);
+		}
 
 		if (project->mTargetType == BfTargetType_BeefTest)
+			EmitTestMethod(bfModule, testMethods, retValue);
+
+		BfIRBlock deinitSkipBlock;
+		if (project->mTargetType == BfTargetType_BeefDynLib)
 		{
-			for (auto& testMethod : testMethods)
-			{				
-				auto methodInstance = testMethod.mMethodInstance;
-				auto typeInstance = methodInstance->GetOwner();
-				testMethod.mName += bfModule->TypeToString(typeInstance);
-				testMethod.mName += ".";
-				testMethod.mName += methodInstance->mMethodDef->mName;
-
-				testMethod.mName += "\t";				
-				auto testAttribute = methodInstance->GetCustomAttributes()->Get(mTestAttributeTypeDef);
-				for (auto& field : testAttribute->mSetField)
-				{
-					auto constant = typeInstance->mConstHolder->GetConstant(field.mParam.mValue);
-					if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_Boolean) && (constant->mBool))
-					{
-						BfFieldDef* fieldDef = field.mFieldRef;
-						if (fieldDef->mName == "ShouldFail")
-						{
-							testMethod.mName += "Sf";
-						}
-						else if (fieldDef->mName == "Profile")
-						{
-							testMethod.mName += "Pr";
-						}
-						else if (fieldDef->mName == "Ignore")
-						{
-							testMethod.mName += "Ig";
-						}
-					}
-				}
-
-				bfModule->UpdateSrcPos(methodInstance->mMethodDef->GetRefNode(), (BfSrcPosFlags)(BfSrcPosFlag_NoSetDebugLoc | BfSrcPosFlag_Force));
-				testMethod.mName += StrFormat("\t%s\t%d\t%d", bfModule->mCurFilePosition.mFileInstance->mParser->mFileName.c_str(), bfModule->mCurFilePosition.mCurLine, bfModule->mCurFilePosition.mCurColumn);
-			}
-
-			std::stable_sort(testMethods.begin(), testMethods.end(),
-				[](const _TestMethod& lhs, const _TestMethod& rhs)
-				{
-					return lhs.mName < rhs.mName;
-				});
-
-			String methodData;
-			for (int methodIdx = 0; methodIdx < (int)testMethods.size(); methodIdx++)
-			{				
-				String& methodName = testMethods[methodIdx].mName;
-				if (!methodData.IsEmpty())
-					methodData += "\n";
-				methodData += methodName;
-			}
-			
-			//////////////////////////////////////////////////////////////////////////
-			
-			auto testInitMethod = bfModule->GetInternalMethod("Test_Init");
-			auto testQueryMethod = bfModule->GetInternalMethod("Test_Query");
-			auto testFinishMethod = bfModule->GetInternalMethod("Test_Finish");
-			
-			auto char8PtrType = bfModule->CreatePointerType(bfModule->GetPrimitiveType(BfTypeCode_Char8));
-
-			BfIRType strCharType = bfModule->mBfIRBuilder->GetSizedArrayType(bfModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_Char8), (int)methodData.length() + 1);
-			BfIRValue strConstant = bfModule->mBfIRBuilder->CreateConstString(methodData);
-			BfIRValue gv = bfModule->mBfIRBuilder->CreateGlobalVariable(strCharType,
-				true, BfIRLinkageType_External,
-				strConstant, "__bfTestData");
-			BfIRValue strPtrVal = bfModule->mBfIRBuilder->CreateBitCast(gv, bfModule->mBfIRBuilder->MapType(char8PtrType));
-
-			SizedArray<BfIRValue, 4> irArgs;
-			irArgs.Add(strPtrVal);
-			bfModule->mBfIRBuilder->CreateCall(testInitMethod.mFunc, irArgs);
-
-			BfIRBlock testHeadBlock = bfModule->mBfIRBuilder->CreateBlock("testHead");
-			BfIRBlock testEndBlock = bfModule->mBfIRBuilder->CreateBlock("testEnd");
-
-			bfModule->mBfIRBuilder->CreateBr(testHeadBlock);
-			bfModule->mBfIRBuilder->AddBlock(testHeadBlock);
-			bfModule->mBfIRBuilder->SetInsertPoint(testHeadBlock);
-
-			irArgs.clear();
-			auto testVal = bfModule->mBfIRBuilder->CreateCall(testQueryMethod.mFunc, irArgs);
-									
-			auto switchVal = bfModule->mBfIRBuilder->CreateSwitch(testVal, testEndBlock, (int)testMethods.size());
-
-			for (int methodIdx = 0; methodIdx < (int)testMethods.size(); methodIdx++)
-			{
-				auto methodInstance = testMethods[methodIdx].mMethodInstance;
-				String& methodName = testMethods[methodIdx].mName;
-
-				auto testBlock = bfModule->mBfIRBuilder->CreateBlock(StrFormat("test%d", methodIdx));								
-				bfModule->mBfIRBuilder->AddSwitchCase(switchVal, bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, methodIdx), testBlock);
-
-				bfModule->mBfIRBuilder->AddBlock(testBlock);
-				bfModule->mBfIRBuilder->SetInsertPoint(testBlock);				
-								
-				auto moduleMethodInstance = bfModule->ReferenceExternalMethodInstance(methodInstance);
-				irArgs.clear();
-				if (methodInstance->GetParamCount() > 0)
-				{
-					if (methodInstance->GetParamKind(0) == BfParamKind_Params)
-					{
-						auto paramType = methodInstance->GetParamType(0);
-						auto paramTypeInst = paramType->ToTypeInstance();
-						BfTypedValue paramVal = BfTypedValue(bfModule->mBfIRBuilder->CreateAlloca(bfModule->mBfIRBuilder->MapTypeInst(paramTypeInst)), paramType);
-						bfModule->InitTypeInst(paramVal, NULL, false, BfIRValue());
-						
-						//TODO: Assert 'length' var is at slot 1
-						auto arrayBits = bfModule->mBfIRBuilder->CreateBitCast(paramVal.mValue, bfModule->mBfIRBuilder->MapType(paramTypeInst->mBaseType));
-						auto addr = bfModule->mBfIRBuilder->CreateInBoundsGEP(arrayBits, 0, 1);
-						auto storeInst = bfModule->mBfIRBuilder->CreateAlignedStore(bfModule->GetConstValue(0), addr, 4);
-
-						irArgs.Add(paramVal.mValue);
-					}
-					else
-					{
-						for (int defaultIdx = 0; defaultIdx < (int)methodInstance->mDefaultValues.size(); defaultIdx++)
-						{
-							irArgs.Add(methodInstance->mDefaultValues[defaultIdx]);
-						}
-					}
-				}
-
-				BfExprEvaluator exprEvaluator(bfModule);
-				exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);				
-
-				bfModule->mBfIRBuilder->CreateBr(testHeadBlock);
-			}
-
-			bfModule->mBfIRBuilder->AddBlock(testEndBlock);
-			bfModule->mBfIRBuilder->SetInsertPoint(testEndBlock);
-
-			irArgs.clear();
-			bfModule->mBfIRBuilder->CreateCall(testFinishMethod.mFunc, irArgs);
-
-			retValue = bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0);
+			auto deinitBlock = bfModule->mBfIRBuilder->CreateBlock("doDeinit", false);
+			deinitSkipBlock = bfModule->mBfIRBuilder->CreateBlock("skipDeinit", false);
+			auto cmpResult = bfModule->mBfIRBuilder->CreateCmpEQ(bfModule->mBfIRBuilder->GetArgument(1), bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0));
+			bfModule->mBfIRBuilder->CreateCondBr(cmpResult, deinitBlock, deinitSkipBlock);
+			bfModule->mBfIRBuilder->AddBlock(deinitBlock);
+			bfModule->mBfIRBuilder->SetInsertPoint(deinitBlock);
 		}
 
 		bfModule->mBfIRBuilder->CreateCall(dtorFunc, SizedArray<BfIRValue, 0>());
@@ -1799,6 +1856,13 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		if (shutdownMethod)
 		{
 			bfModule->mBfIRBuilder->CreateCall(shutdownMethod.mFunc, SizedArray<BfIRValue, 0>());
+		}
+
+		if (deinitSkipBlock)
+		{
+			bfModule->mBfIRBuilder->CreateBr(deinitSkipBlock);
+			bfModule->mBfIRBuilder->AddBlock(deinitSkipBlock);
+			bfModule->mBfIRBuilder->SetInsertPoint(deinitSkipBlock);
 		}
 
 		if (retValue)
@@ -5784,6 +5848,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 			}
 
 			if ((bfProject->mTargetType != BfTargetType_BeefConsoleApplication) && (bfProject->mTargetType != BfTargetType_BeefWindowsApplication) &&
+				(bfProject->mTargetType != BfTargetType_BeefDynLib) &&
 				(bfProject->mTargetType != BfTargetType_C_ConsoleApplication) && (bfProject->mTargetType != BfTargetType_C_WindowsApplication) &&
 				(bfProject->mTargetType != BfTargetType_BeefTest))
 				continue;
@@ -7866,6 +7931,11 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 			{
 				if (!bfProject->ContainsReference(project))
 					canReference = false;
+ 				if (bfProject != project)
+ 				{
+ 					if (project->mTargetType == BfTargetType_BeefDynLib)
+ 						canReference = false;
+ 				}
 			}
 			if (!canReference)
 				continue;

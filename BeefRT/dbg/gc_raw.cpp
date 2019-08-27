@@ -1,4 +1,3 @@
-
 #define _WIN32_WINNT _WIN32_WINNT_WIN8
 
 // This spits out interesting stats periodically to the console
@@ -74,7 +73,7 @@ void BFGC::RawInit()
 
 void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 {
-	if ((gBfRtFlags & BfRtFlags_ObjectHasDebugFlags) == 0)
+	if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) == 0)
 		return;
 
 	if (span->location != tcmalloc_raw::Span::IN_USE)
@@ -278,7 +277,7 @@ void BFGC::RawReportHandleSpan(tcmalloc_raw::Span* span, int expectedStartPage, 
 				if (rawAllocData->mType != NULL)
 				{
 					int typeSize;
-					if ((gBfRtFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
+					if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
 						typeSize = rawAllocData->mType->mSize;
 					else
 						typeSize = ((bf::System::Type_NOFLAGS*)rawAllocData->mType)->mSize;
@@ -449,8 +448,8 @@ void BFGC::RawShutdown()
 
 		BF_ASSERT(mSweepInfo.mLeakCount > 0);
 
-		gBfRtCallbacks.SetErrorString(gDbgErrorString.c_str());
-		gBfRtCallbacks.DebugMessageData_SetupError(errorStr.c_str(), 0);
+		gBfRtDbgCallbacks.SetErrorString(gDbgErrorString.c_str());
+		gBfRtDbgCallbacks.DebugMessageData_SetupError(errorStr.c_str(), 0);
 		BF_DEBUG_BREAK();
 	}
 	else

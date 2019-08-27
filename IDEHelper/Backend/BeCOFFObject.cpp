@@ -1950,7 +1950,7 @@ void BeCOFFObject::Generate(BeModule* module)
 		InitSect(mDebugTSect, ".debug$T", IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_ALIGN_4BYTES | IMAGE_SCN_MEM_DISCARDABLE | IMAGE_SCN_MEM_READ, true, false);
 	}
 	InitSect(mPDataSect, ".pdata", IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_ALIGN_4BYTES | IMAGE_SCN_MEM_READ, true, false);
-
+	
 	mTextSect.mData.mData.Reserve(4096);
 
 	BfSizedVector<BeMCSymbol*, 32> globalVarSyms;
@@ -2060,7 +2060,20 @@ void BeCOFFObject::Generate(BeModule* module)
 
 			BeMCContext context(this);
 			context.Generate(func);
+
+			if (func->mIsDLLExport)
+			{
+				mDirectives += " ";
+				mDirectives.Append("/EXPORT:");
+				mDirectives.Append(func->mName);
+			}
 		}
+	}
+
+	if (!mDirectives.IsEmpty())
+	{
+		InitSect(mDirectiveSect, ".drectve", IMAGE_SCN_LNK_INFO | IMAGE_SCN_LNK_REMOVE | IMAGE_SCN_ALIGN_1BYTES, true, false);
+		mDirectiveSect.mData.Write((void*)mDirectives.c_str(), (int)mDirectives.length());
 	}
 	
 	if (hasDebugInfo)

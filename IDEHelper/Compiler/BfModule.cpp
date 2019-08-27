@@ -1118,8 +1118,8 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "Color")
-				|| (mModuleName == "Tests_FuncRefs")
+                (mModuleName == "vdata")
+				|| (mModuleName == "System_Result_PTR_void")
 				//|| (mModuleName == "vdata")
 				|| (mModuleName == "Hey_Dude_Bro_TestClass")
 				)
@@ -4474,7 +4474,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				BF_ASSERT(!methodInstance->GetOwner()->IsUnspecializedType());
 
 				// We need to create an empty thunk for this chained method
-				BfIRFunction func = CreateFunctionFrom(methodInstance);
+				BfIRFunction func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
 				mBfIRBuilder->SetActiveFunction(func);
 				auto block = mBfIRBuilder->CreateBlock("entry", true);
 				mBfIRBuilder->SetInsertPoint(block);
@@ -8494,6 +8494,15 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	if (callingConv != BfIRCallingConv_CDecl)
 		mBfIRBuilder->SetFuncCallingConv(func, callingConv);
 	SetupLLVMMethod(methodInstance, func, isInlined);
+
+// 	auto srcModule = methodInstance->GetOwner()->GetModule();
+// 	if ((srcModule != NULL) && (srcModule->mProject != mProject))
+// 	{
+// 		if (srcModule->mProject->mTargetType == BfTargetType_BeefDynLib)
+// 		{
+// 			mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllImport);
+// 		}
+// 	}
 	
 	return func;
 }
@@ -10485,12 +10494,7 @@ void BfModule::AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInsta
 }
 
 BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstance* methodInstance, BfGetMethodInstanceFlags flags)
-{
-	if (methodInstance->mMethodDef->mName == "OpenAudio")
-	{
-		NOP;
-	}
-
+{	
 	if ((flags & BfGetMethodInstanceFlag_ResultNotUsed) != 0)
 		return BfModuleMethodInstance(methodInstance, BfIRValue());
 
@@ -11067,7 +11071,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 						if (!mIsModuleMutable)
 							StartExtension();
 						
-						if (!mBfIRBuilder->mIgnoreWrites)
+						if ((!mBfIRBuilder->mIgnoreWrites) && (methodInstance->mDeclModule != NULL))
 						{
 							StringT<128> mangledName;
 							BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), methodInstance);
@@ -11127,41 +11131,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 	
 	if ((methodInstance != NULL) && (!doingRedeclare))
-	{			
-		if (mExtensionCount > 0)
-		{
-			if ((mIsModuleMutable) && (!methodInstance->mIRFunction) && 
-				((projectList.IsEmpty() || ((flags & BfGetMethodInstanceFlag_ExplicitSpecializedModule) != 0))))
-			{
-				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, false);
-
-				if (mAwaitingInitFinish)
-					FinishInit();
-
-				// We need to refer to a function that was defined in a prior module
-				methodInstance->mIRFunction = CreateFunctionFrom(methodInstance);
-				BF_ASSERT((methodInstance->mDeclModule == this) || (methodInstance->mDeclModule == mContext->mUnreifiedModule) || (methodInstance->mDeclModule == NULL));
-				methodInstance->mDeclModule = this;
-
-				// Add this inlined def to ourselves
-				if ((methodInstance->mAlwaysInline) && (HasCompiledOutput()) && (!methodInstance->mIsUnspecialized))
-				{
-					mIncompleteMethodCount++;
-					BfInlineMethodRequest* inlineMethodRequest = mContext->mInlineMethodWorkList.Alloc();
-					inlineMethodRequest->mType = typeInst;
-					inlineMethodRequest->mFromModule = this;
-					inlineMethodRequest->mFunc = methodInstance->mIRFunction;
-					inlineMethodRequest->mFromModuleRevision = mRevision;
-					inlineMethodRequest->mMethodInstance = methodInstance;
-
-					BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in GetMethodInstance\n", inlineMethodRequest, methodInstance, this);
-					BF_ASSERT(mIsModuleMutable);
-				}
-			}
-		}
-
+	{					
 		if (methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference)
-		{			
+		{
 			/*if ((!mCompiler->mIsResolveOnly) && (!isReified))
 				BF_ASSERT(!methodInstance->mIsReified);*/
 
@@ -11188,6 +11160,44 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			else
 			{
 				methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Referenced;
+			}
+		}
+
+		if (mExtensionCount > 0)
+		{
+			if ((mIsModuleMutable) && (!methodInstance->mIRFunction) &&
+				((projectList.IsEmpty() || ((flags & BfGetMethodInstanceFlag_ExplicitSpecializedModule) != 0))))
+			{
+				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, false);
+
+				if ((methodInstance->mMethodDef->mName == "Unwrap") && (mModuleName == "System_Result_PTR_void"))
+				{
+					NOP;
+				}
+
+				if (mAwaitingInitFinish)
+					FinishInit();
+
+				// We need to refer to a function that was defined in a prior module
+				bool isInlined = (methodInstance->mAlwaysInline) || ((flags & BfGetMethodInstanceFlag_ForceInline) != 0);
+				methodInstance->mIRFunction = CreateFunctionFrom(methodInstance, false, isInlined);
+				BF_ASSERT((methodInstance->mDeclModule == this) || (methodInstance->mDeclModule == mContext->mUnreifiedModule) || (methodInstance->mDeclModule == NULL));
+				methodInstance->mDeclModule = this;
+
+				// Add this inlined def to ourselves
+				if ((methodInstance->mAlwaysInline) && (HasCompiledOutput()) && (!methodInstance->mIsUnspecialized))
+				{
+					mIncompleteMethodCount++;
+					BfInlineMethodRequest* inlineMethodRequest = mContext->mInlineMethodWorkList.Alloc();
+					inlineMethodRequest->mType = typeInst;
+					inlineMethodRequest->mFromModule = this;
+					inlineMethodRequest->mFunc = methodInstance->mIRFunction;
+					inlineMethodRequest->mFromModuleRevision = mRevision;
+					inlineMethodRequest->mMethodInstance = methodInstance;
+
+					BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in GetMethodInstance\n", inlineMethodRequest, methodInstance, this);
+					BF_ASSERT(mIsModuleMutable);
+				}
 			}
 		}
 
@@ -13545,6 +13555,8 @@ void BfModule::SetupLLVMMethod(BfMethodInstance* methodInstance, BfIRFunction fu
 	
 	if (mCompiler->mOptions.mNoFramePointerElim)
 		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_NoFramePointerElim);
+	if (methodDef->mImportKind == BfImportKind_Export)
+		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllExport);
 
 	mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_NoUnwind);
 	if (mSystem->mPtrSize == 8) // We need unwind info for debugging 

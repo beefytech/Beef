@@ -593,6 +593,7 @@ namespace IDE.ui
 					"Console Application",
 					"Windows Application",
 					"Library",
+					"Dynamic Library",
 					"Custom Build"
 				});
 			AddPropertiesItem(root, "Project Name Aliases", "mAliases");

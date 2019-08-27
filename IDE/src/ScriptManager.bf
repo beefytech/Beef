@@ -15,6 +15,8 @@ namespace IDE
 {
 	class ScriptManager
 	{
+		public static ScriptManager sActiveManager;
+
 		class Target
 		{
 			public class Cmd
@@ -27,20 +29,29 @@ namespace IDE
 			public Dictionary<String, Cmd> mCmds = new .() ~ DeleteDictionyAndKeysAndItems!(_);
 		}
 
+		public enum CmdFlags
+		{
+			None,
+			NoLines
+		}
+
 		public class QueuedCmd
 		{
 			public String mCondition ~ delete _;
 
+			public CmdFlags mFlags;
 			public bool mHandled = true;
 			public String mCmd ~ delete _;
 			public String mSrcFile ~ delete _;
 			public int mLineNum = -1;
 
 			public int mIntParam;
+			public int mExecIdx;
 			public bool mNoWait;
+			public Stopwatch mStopWatch ~ delete _;
 		}
 
-		ScriptHelper mScriptHelper = new ScriptHelper() ~ delete _;
+		ScriptHelper mScriptHelper = new ScriptHelper(this) ~ delete _;
 		Target mRoot = new Target() ~ delete _;
 		Dictionary<String, Variant> mVars = new .() ~
 			{
@@ -52,13 +63,18 @@ namespace IDE
 				delete _;
 			};
 		List<QueuedCmd> mCmdList = new .() ~ DeleteContainerAndItems!(_);
-		bool mFailed;
+		public bool mFailed;
+		public bool mCancelled;
 		public QueuedCmd mCurCmd;
 		public Stopwatch mTimeoutStopwatch ~ delete _;
 		public int mTimeoutMS;
 		public String mExpectingError ~ delete _;
 		public bool mHadExpectingError;
 		public int mDoneTicks;
+		public bool mAllowCompiling;
+		public bool mSoftFail;
+		public Verbosity mVerbosity = .Quiet;
+		public String mProjectName ~ delete _;
 
 		public bool Failed
 		{
@@ -146,9 +162,16 @@ namespace IDE
 			var errStr = scope String(err);
 			if (mCurCmd != null)
 			{
-				errStr.AppendF(" at line {0} in {1}\n\t{2}", mCurCmd.mLineNum + 1, mCurCmd.mSrcFile, mCurCmd.mCmd);
+				if (mCurCmd.mFlags.HasFlag(.NoLines))
+					errStr.AppendF(" in {}\n\t{}", mCurCmd.mSrcFile, mCurCmd.mCmd);
+				else
+					errStr.AppendF(" at line {} in {}\n\t{}", mCurCmd.mLineNum + 1, mCurCmd.mSrcFile, mCurCmd.mCmd);
 			}
-			gApp.Fail(errStr);
+
+			if (mSoftFail)
+				gApp.OutputErrorLine(errStr);
+			else
+				gApp.Fail(errStr);
 
 			//TODO:
 			//gApp.mRunningTestScript = false;
@@ -165,7 +188,7 @@ namespace IDE
 			mFailed = false;
 		}
 
-		public void QueueCommands(StreamReader streamReader, StringView filePath)
+		public void QueueCommands(StreamReader streamReader, StringView filePath, CmdFlags flags)
 		{
 			int lineNum = 0;
 
@@ -179,6 +202,7 @@ namespace IDE
 					if ((!line.IsEmpty) && (!line.StartsWith("#")))
 					{
 						QueuedCmd queuedCmd = new .();
+						queuedCmd.mFlags = flags;
 						queuedCmd.mSrcFile = new String(filePath);
 						queuedCmd.mLineNum = lineNum;
 
@@ -223,6 +247,13 @@ namespace IDE
 			}
 		}
 
+		public void QueueCommands(StringView cmds, StringView filePath, CmdFlags flags)
+		{
+			StringStream strStream = scope .(cmds, .Reference);
+			StreamReader reader = scope .(strStream);
+			QueueCommands(reader, filePath, flags);
+		}
+
 		public void QueueCommandFile(StringView filePath)
 		{
 			let streamReader = scope StreamReader();
@@ -232,7 +263,7 @@ namespace IDE
 				return;
 			}
 
-			QueueCommands(streamReader, filePath);
+			QueueCommands(streamReader, filePath, .None);
 		}
 
 		public void SetTimeoutMS(int timeoutMS)
@@ -245,13 +276,55 @@ namespace IDE
 			mTimeoutMS = timeoutMS;
 		}
 
-		public void Exec(StringView cmdLineView)
+		public void Exec(StringView cmd)
 		{
-			var cmdLineView;
-			cmdLineView.Trim();
+			var cmd;
+			cmd.Trim();
 
-			if ((cmdLineView.StartsWith("#")) || (cmdLineView.IsEmpty))
+			if ((cmd.StartsWith("#")) || (cmd.IsEmpty))
 				return;
+
+			if (cmd.StartsWith("%exec "))
+			{
+				mScriptHelper.ExecuteRaw(scope String(cmd, "%exec ".Length));
+				return;
+			}
+
+			if (cmd.StartsWith("%targetComplete "))
+			{
+				let projectName = cmd.Substring("%targetComplete ".Length);
+				
+				if (gApp.mExecutionQueue.IsEmpty)
+					return;
+
+				bool matched = false;
+				if (var targetCompleteCmd = gApp.mExecutionQueue[0] as IDEApp.TargetCompletedCmd)
+				{
+					if (targetCompleteCmd.mProject.mProjectName == projectName)
+					{
+						targetCompleteCmd.mIsReady = true;
+						matched = true;
+					}
+				}
+
+				if (!matched)
+				{
+					mCurCmd.mHandled = false;
+				}
+				return;
+			}
+
+			if (mCurCmd.mExecIdx == 0)
+			{
+				if (mVerbosity >= .Normal)
+				{
+					gApp.OutputLine("Executing Command: {}", cmd);
+					if (mVerbosity >= .Detailed)
+					{
+						mCurCmd.mStopWatch = new .(true);
+					}
+				}
+			}
 
 			StringView varName = .();
 
@@ -267,20 +340,20 @@ namespace IDE
 			StringView methodName;
 			List<Object> args = scope .();
 
-			int parenPos = cmdLineView.IndexOf('(');
+			int parenPos = cmd.IndexOf('(');
 			if (parenPos != -1)
 			{
-				methodName = cmdLineView.Substring(0, parenPos);
+				methodName = cmd.Substring(0, parenPos);
 				methodName.Trim();
 
-				int endParenPos = cmdLineView.LastIndexOf(')');
+				int endParenPos = cmd.LastIndexOf(')');
 				if (endParenPos == -1)
 				{
 					Fail("Missing argument end ')'");
 					return;
 				}
 
-				var postStr = StringView(cmdLineView, endParenPos + 1);
+				var postStr = StringView(cmd, endParenPos + 1);
 				postStr.Trim();
 				if ((!postStr.IsEmpty) && (!postStr.StartsWith("#")))
 				{
@@ -288,11 +361,15 @@ namespace IDE
 					return;
 				}
 
+				Workspace.Options workspaceOptions = null;
+				Project project = null;
+				Project.Options projectOptions = null;
+
 				bool inQuotes = false;
 				int startIdx = parenPos;
 				for (int idx = parenPos; idx <= endParenPos; idx++)
 				{
-					char8 c = cmdLineView[idx];
+					char8 c = cmd[idx];
 					if (c == '\\')
 					{
 						// Skip past slashed strings
@@ -305,7 +382,7 @@ namespace IDE
 					}
 					else if (((c == ',') || (c == ')')) && (!inQuotes))
 					{
-						StringView argView = cmdLineView.Substring(startIdx + 1, idx - startIdx - 1);
+						StringView argView = cmd.Substring(startIdx + 1, idx - startIdx - 1);
 
 						argView.Trim();
 						if (argView.IsEmpty)
@@ -319,9 +396,20 @@ namespace IDE
 
 							if (str.Contains('$'))
 							{
+								if (workspaceOptions == null)
+								{
+									workspaceOptions = gApp.GetCurWorkspaceOptions();
+									if (mProjectName != null)
+									{
+										project = gApp.mWorkspace.FindProject(mProjectName);
+										if (project != null)
+											projectOptions = gApp.GetCurProjectOptions(project);
+									}
+								}
+
 								String newStr = scope:: .();
 								String err = scope .();
-								if (!gApp.DoResolveConfigString(null, null, null, str, err, newStr))
+								if (!gApp.DoResolveConfigString(workspaceOptions, project, projectOptions, str, err, newStr))
 								{
 									Fail(scope String()..AppendF("Unknown macro string '{}' in '{}'", err, str));
 								}
@@ -375,7 +463,7 @@ namespace IDE
 			}
 			else
 			{
-				methodName = cmdLineView;
+				methodName = cmd;
 			}
 
 			Target curTarget = mRoot;
@@ -539,6 +627,12 @@ namespace IDE
 			return false;
 		}
 
+		public void Cancel()
+		{
+			mCancelled = true;
+			ClearAndDeleteItems(mCmdList);
+		}
+
 		public void Update()
 		{
 			if (mFailed)
@@ -547,9 +641,10 @@ namespace IDE
 			if ((mTimeoutMS > 0) && (gApp.mRunningTestScript))
 			{
 				if (mTimeoutStopwatch.ElapsedMilliseconds >= mTimeoutMS)
-					Fail("Script has timed out: {0}ms", mTimeoutStopwatch.ElapsedMilliseconds);
+					Fail("Script has timed out: {:0.00}s", mTimeoutStopwatch.ElapsedMilliseconds / 1000.0f);
 			}
 
+			ScriptManager.sActiveManager = this;
 			while ((!mCmdList.IsEmpty) && (!mFailed))
 			{
 				mCurCmd = mCmdList[0];
@@ -568,7 +663,10 @@ namespace IDE
 				if (mCurCmd.mCondition != null)
 					doExec = CheckCondition(mCurCmd.mCondition);
 				if (doExec)
+				{
 					Exec(mCurCmd.mCmd);
+					mCurCmd.mExecIdx++;
+				}
 
 				if (mCmdList.IsEmpty)
 					break;
@@ -576,16 +674,30 @@ namespace IDE
 				if (!mCurCmd.mHandled)
 					break; // Try again next update
 
+				if (mCurCmd.mStopWatch != null)
+				{
+					mCurCmd.mStopWatch.Stop();
+					if (mCurCmd.mStopWatch.ElapsedMilliseconds > 10)
+						gApp.OutputLine("Command Time: {:0.00}s", mCurCmd.mStopWatch.ElapsedMilliseconds / 1000.0f);
+				}
+
 				mCmdList.RemoveAt(0);
 				delete mCurCmd;
 				mCurCmd = null;
 			}
+			ScriptManager.sActiveManager = null;
 		}
 	}
 
 	class ScriptHelper
 	{
 		public EditWidgetContent.LineAndColumn mMarkedPos;
+		public ScriptManager mScriptManager;
+
+		public this(ScriptManager scriptManager)
+		{
+			mScriptManager = scriptManager;
+		}
 
 		void FixFilePath(String filePath, ProjectFolder folder)
 		{
@@ -632,7 +744,7 @@ namespace IDE
 
 			if (!File.Exists(outFilePath))
 			{
-				gApp.mScriptManager.Fail("Unable to locate project file '{0}'", outFilePath);
+				ScriptManager.sActiveManager.Fail("Unable to locate project file '{0}'", outFilePath);
 			}
 		}
 
@@ -647,7 +759,7 @@ namespace IDE
 
 			if (!File.Exists(outFilePath))
 			{
-				gApp.mScriptManager.Fail("Unable to locate file '{0}'", outFilePath);
+				ScriptManager.sActiveManager.Fail("Unable to locate file '{0}'", outFilePath);
 			}
 		}
 
@@ -656,7 +768,7 @@ namespace IDE
 			var sourceViewPanel = gApp.GetActiveSourceViewPanel();
 			if (sourceViewPanel == null)
 			{
-				gApp.mScriptManager.Fail("No active source view panel");
+				ScriptManager.sActiveManager.Fail("No active source view panel");
 				return null;
 			}
 			sourceViewPanel.EnsureReady();
@@ -667,13 +779,13 @@ namespace IDE
 		{
 			var textPanel = gApp.GetActivePanel() as TextPanel;
 			if (textPanel == null)
-				gApp.mScriptManager.Fail("No active text panel");
+				ScriptManager.sActiveManager.Fail("No active text panel");
 			return textPanel;
 		}
 
 		public bool Evaluate(String evalStr, String outVal, DebugManager.EvalExpressionFlags expressionFlags = .AllowCalls | .AllowSideEffects)
 		{
-			var curCmd = gApp.mScriptManager.mCurCmd;
+			var curCmd = ScriptManager.sActiveManager.mCurCmd;
 
 			if (curCmd.mIntParam == 1) // Pending
 			{
@@ -741,7 +853,7 @@ namespace IDE
 		{
 			int wantTicks = length * gApp.RefreshRate / 1000;
 
-			var curCmd = gApp.mScriptManager.mCurCmd;
+			var curCmd = ScriptManager.sActiveManager.mCurCmd;
 			if ((++curCmd.mIntParam <= wantTicks) || (length < 0)) // Negative is forever
 				curCmd.mHandled = false;
 		}
@@ -750,7 +862,7 @@ namespace IDE
 		public void SleepTicks(int length)
 		{
 			int wantTicks = length;
-			var curCmd = gApp.mScriptManager.mCurCmd;
+			var curCmd = ScriptManager.sActiveManager.mCurCmd;
 			if ((++curCmd.mIntParam <= wantTicks) || (length < 0)) // Negative is forever
 				curCmd.mHandled = false;
 		}
@@ -780,12 +892,25 @@ namespace IDE
 				return false;
 			if (gApp.[Friend]mDeferredOpen != .None)
 				return false;
-			if (gApp.mWantsRehupCallstack)
-				return false;
+
+			if ((gApp.mExecutionPaused) && (gApp.mDebugger.IsPaused()))
+			{
+				if (gApp.mWantsRehupCallstack)
+					return false;
+			}
 			if (gApp.mWantsClean || gApp.mWantsBeefClean)
 				return false;
 
-			if ((!gApp.IsCompiling) && (!gApp.AreTestsRunning()) && (!gApp.mDebugger.HasPendingDebugLoads()) &&
+			if (gApp.IsCompiling)
+			{
+				if (!ScriptManager.sActiveManager.mAllowCompiling)
+					return false;
+			}
+
+			if (!gApp.[Friend]mExecutionInstances.IsEmpty)
+				return false;
+
+			if ((!gApp.AreTestsRunning()) && (!gApp.mDebugger.HasPendingDebugLoads()) &&
 				((gApp.mExecutionPaused) || (!gApp.mDebugger.mIsRunning)))
 			{
 				var runState = gApp.mDebugger.GetRunState();
@@ -830,14 +955,14 @@ namespace IDE
 		[IDECommand]
 		public void WaitForPaused()
 		{
-			var curCmd = gApp.mScriptManager.mCurCmd;
+			var curCmd = ScriptManager.sActiveManager.mCurCmd;
 			curCmd.mHandled = IsPaused();
 		}
 
 		[IDECommand]
 		public void WaitForResolve()
 		{
-			var curCmd = gApp.mScriptManager.mCurCmd;
+			var curCmd = ScriptManager.sActiveManager.mCurCmd;
 			curCmd.mHandled = IsPaused() && (!gApp.mBfResolveCompiler.IsPerformingBackgroundOperation());
 		}
 
@@ -857,7 +982,7 @@ namespace IDE
 			case .Ok(let flags):
 				gApp.mDebugger.SetSymSrvOptions(symCacheDir, symSrvStr, flags);
 			case .Err:
-				gApp.mScriptManager.Fail("Failed to parse flags");
+				ScriptManager.sActiveManager.Fail("Failed to parse flags");
 			}
 		}
 
@@ -875,7 +1000,7 @@ namespace IDE
 		{
 			if (Utils.DelTree(dirPath) case .Err)
 			{
-				gApp.mScriptManager.Fail(scope String()..AppendF("Failed to deltree '{}'", dirPath));
+				ScriptManager.sActiveManager.Fail(scope String()..AppendF("Failed to deltree '{}'", dirPath));
 			}
 		}
 
@@ -885,7 +1010,7 @@ namespace IDE
 			let fileStream = scope FileStream();
 			if (fileStream.Create(path) case .Err)
 			{
-				gApp.mScriptManager.Fail("Failed to create file '{}'", path);
+				ScriptManager.sActiveManager.Fail("Failed to create file '{}'", path);
 				return;
 			}
 			fileStream.Write(text);
@@ -896,7 +1021,7 @@ namespace IDE
 		{
 			if (File.Move(origPath, newPath) case .Err)
 			{
-				gApp.mScriptManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
+				ScriptManager.sActiveManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
 			}
 		}
 
@@ -905,8 +1030,145 @@ namespace IDE
 		{
 			if (File.Delete(path) case .Err)
 			{
-				gApp.mScriptManager.Fail("Failed to delete file '{}'", path);
+				mScriptManager.Fail("Failed to delete file '{}'", path);
 			}
+		}
+
+		/*[IDECommand]
+		public void Copy(String srcPath, String destPath)
+		{
+
+		}*/
+
+		[IDECommand]
+		public void CopyFilesIfNewer(String srcPath, String destPath)
+		{
+			int copyCount = 0;
+			int foundCount = 0;
+
+			void Do(String srcPath, String destPath)
+			{
+				bool checkedDestDir = false;
+				
+				for (var entry in Directory.Enumerate(srcPath, .Directories | .Files))
+				{
+					foundCount++;
+
+					if (mScriptManager.mFailed)
+						return;
+
+					String srcFilePath = scope .();
+					entry.GetFilePath(srcFilePath);
+
+					String srcFileName = scope .();
+					entry.GetFileName(srcFileName);
+
+					String destFilePath = scope .();
+					Path.GetAbsolutePath(srcFileName, destPath, destFilePath);
+
+					if (entry.IsDirectory)
+					{
+						Do(srcFilePath, destFilePath);
+						continue;
+					}
+
+					DateTime srcDate;
+					if (!(File.GetLastWriteTime(srcFilePath) case .Ok(out srcDate)))
+						continue;
+
+					bool wantCopy = true;
+					if (File.GetLastWriteTime(destFilePath) case .Ok(let destDate))
+					{
+						wantCopy = srcDate > destDate;
+					}
+
+					if (!wantCopy)
+						continue;
+
+					if (!checkedDestDir)
+					{
+						if (Directory.CreateDirectory(destPath) case .Err)
+						{
+							mScriptManager.Fail("Failed to create directory '{}'", destPath);
+							return;
+						}
+					}
+
+					if (File.Copy(srcFilePath, destFilePath) case .Err)
+					{
+						mScriptManager.Fail("Failed to copy '{}' to '{}'", srcFilePath, destFilePath);
+						return;
+					}
+
+					copyCount++;
+				}
+			}
+
+			Do(srcPath, destPath);
+
+			if (foundCount == 0)
+			{
+				String srcDirPath = scope .();
+				Path.GetDirectoryPath(srcPath, srcDirPath);
+				if (!Directory.Exists(srcDirPath))
+				{
+					mScriptManager.Fail("Source directory does not exist: {}", srcDirPath);
+				}
+				else if ((!srcDirPath.Contains('*')) && (!srcDirPath.Contains('?')) && (!File.Exists(srcDirPath)))
+				{
+					mScriptManager.Fail("Source file does not exist: {}", srcPath);
+				}
+			}
+
+			if ((!mScriptManager.mFailed) && (copyCount > 0) && (mScriptManager.mVerbosity >= .Normal))
+			{
+				if (mScriptManager.mCurCmd.mStopWatch != null)
+				{
+					mScriptManager.mCurCmd.mStopWatch.Stop();
+					gApp.OutputLine("{} files copied from '{}' to '{}' in {:0.00}s", foundCount, srcPath, destPath, mScriptManager.mCurCmd.mStopWatch.ElapsedMilliseconds / 1000.0f);
+					DeleteAndNullify!(mScriptManager.mCurCmd.mStopWatch);
+				}
+				else
+					gApp.OutputLine("{} files copied from '{}' to '{}'", foundCount, srcPath, destPath);
+			}
+		}
+
+		[IDECommand]
+		public void ExecuteRaw(String cmd)
+		{
+			var exePath = scope String();
+			int spacePos;
+			if (cmd.StartsWith("\""))
+			{
+				spacePos = cmd.IndexOf('"', 1) + 1;
+				if (spacePos != -1)
+					exePath.Append(cmd, 1, spacePos - 2);
+			}
+			else
+			{
+				spacePos = cmd.IndexOf(' ');
+				if (spacePos != -1)
+					exePath.Append(cmd, 0, spacePos);
+			}
+
+			if ((spacePos == -1) && (!cmd.IsEmpty))
+			{
+				mScriptManager.Fail("Invalid command '{0}' in '{1}'", cmd, mScriptManager.mCurCmd.mSrcFile);
+				return;
+			}
+
+			if (spacePos > 0)
+			{
+				var exeArgs = scope String();
+				exeArgs.Append(cmd, spacePos + 1);
+				gApp.DoRun(exePath, exeArgs, gApp.mInstallDir, .None);
+			}
+		}
+
+		[IDECommand]
+		public void Execute(String path)
+		{
+			ExecuteRaw(path);
 		}
 
 		[IDECommand]
@@ -921,7 +1183,7 @@ namespace IDE
 			String content = scope .();
 			if (File.ReadAllText(origPath, content, true) case .Err)
 			{
-				gApp.mScriptManager.Fail("Failed to open file '{}'", origPath);
+				ScriptManager.sActiveManager.Fail("Failed to open file '{}'", origPath);
 				return;
 			}
 
@@ -942,7 +1204,7 @@ namespace IDE
 			FileStream tempStream = scope .();
 			if (tempStream.Create(tempPath) case .Err)
 			{
-				gApp.mScriptManager.Fail("Failed to create temp file '{}'", tempPath);
+				ScriptManager.sActiveManager.Fail("Failed to create temp file '{}'", tempPath);
 				return;
 			}
 			tempStream.Write(content);
@@ -950,13 +1212,13 @@ namespace IDE
 
 			if (File.Move(tempPath, newPath) case .Err)
 			{
-				gApp.mScriptManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
+				ScriptManager.sActiveManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
 				return;
 			}
 
 			if (File.Delete(origPath) case .Err)
 			{
-				gApp.mScriptManager.Fail("Failed to delete file '{}'", origPath);
+				ScriptManager.sActiveManager.Fail("Failed to delete file '{}'", origPath);
 				return;
 			}
 		}
@@ -982,7 +1244,7 @@ namespace IDE
 			var panelHeader = sourceViewPanel.[Friend]mPanelHeader;
 			if (panelHeader == null)
 			{
-				gApp.mScriptManager.Fail("No panel present");
+				ScriptManager.sActiveManager.Fail("No panel present");
 				return;
 			}
 
@@ -998,7 +1260,7 @@ namespace IDE
 				}
 			}
 
-			gApp.mScriptManager.Fail("Button '{0}' not found", buttonName);
+			ScriptManager.sActiveManager.Fail("Button '{0}' not found", buttonName);
 		}
 
 		[IDECommand]
@@ -1020,7 +1282,7 @@ namespace IDE
 
 			if (outVal != evalResult)
 			{
-				gApp.mScriptManager.Fail("Assert failed: {0} == {1}", outVal, evalResult);
+				ScriptManager.sActiveManager.Fail("Assert failed: {0} == {1}", outVal, evalResult);
 			}
 		}
 
@@ -1033,7 +1295,7 @@ namespace IDE
 
 			if (!outVal.Contains(evalResult))
 			{
-				gApp.mScriptManager.Fail("Assert failed: {0} contains {1}", outVal, evalResult);
+				ScriptManager.sActiveManager.Fail("Assert failed: {0} contains {1}", outVal, evalResult);
 			}
 		}
 
@@ -1056,7 +1318,7 @@ namespace IDE
 				gApp.mDebugger.UpdateCallStack();
 				if (stackCount == gApp.mDebugger.GetCallStackCount())
 				{
-					gApp.mScriptManager.Fail("Stack idx '{0}' is out of range", selectIdx);
+					ScriptManager.sActiveManager.Fail("Stack idx '{0}' is out of range", selectIdx);
 				}	
 			}
 
@@ -1088,7 +1350,7 @@ namespace IDE
 				stackIdx++;
 			}
 
-			gApp.mScriptManager.Fail("Failed to find stack frame containing string '{}'", str);
+			ScriptManager.sActiveManager.Fail("Failed to find stack frame containing string '{}'", str);
 		}
 
 		[IDECommand]
@@ -1124,7 +1386,7 @@ namespace IDE
 
 			if (methodName != stackframeInfo)
 			{
-				gApp.mScriptManager.Fail("Expect method name '{0}', got '{1}'", methodName, stackframeInfo);
+				ScriptManager.sActiveManager.Fail("Expect method name '{0}', got '{1}'", methodName, stackframeInfo);
 			}
 		}
 
@@ -1162,7 +1424,7 @@ namespace IDE
 			var lastBreakpoint = gApp.mDebugger.mBreakpointList.Back;
 			if (lastBreakpoint == null)
 			{
-				gApp.mScriptManager.Fail("No last breakpoint");
+				ScriptManager.sActiveManager.Fail("No last breakpoint");
 				return;
 			}
 			lastBreakpoint.SetCondition(condition);
@@ -1174,13 +1436,13 @@ namespace IDE
 			var lastBreakpoint = gApp.mDebugger.mBreakpointList.Back;
 			if (lastBreakpoint == null)
 			{
-				gApp.mScriptManager.Fail("No last breakpoint");
+				ScriptManager.sActiveManager.Fail("No last breakpoint");
 				return;
 			}
 			switch (Enum.Parse<Breakpoint.HitCountBreakKind>(hitCountBreakKindStr))
 			{
 			case .Err:
-				gApp.mScriptManager.Fail("Invalid break kind: '{0}'", hitCountBreakKindStr);
+				ScriptManager.sActiveManager.Fail("Invalid break kind: '{0}'", hitCountBreakKindStr);
 			case .Ok(let hitCountBreakKind):
 				lastBreakpoint.SetHitCountTarget(hitCountTarget, hitCountBreakKind);
 			}
@@ -1202,20 +1464,20 @@ namespace IDE
 			var textPanel = GetActiveTextPanel();
 			if (textPanel == null)
 			{
-				gApp.mScriptManager.Fail("No text panel active");
+				ScriptManager.sActiveManager.Fail("No text panel active");
 				return null;
 			}
 
 			var ewc = textPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
 			if (ewc == null)
 			{
-				gApp.mScriptManager.Fail("Not an autocomplete text view");
+				ScriptManager.sActiveManager.Fail("Not an autocomplete text view");
 				return null;
 			}
 
 			if (ewc.mAutoComplete == null)
 			{
-				gApp.mScriptManager.Fail("No autocomplete content");
+				ScriptManager.sActiveManager.Fail("No autocomplete content");
 				return null;
 			}
 
@@ -1252,9 +1514,9 @@ namespace IDE
 			if (found != wantsFind)
 			{
 				if (wantsFind)
-					gApp.mScriptManager.Fail("Autocomplete entry '{0}' not found", wantEntry);
+					ScriptManager.sActiveManager.Fail("Autocomplete entry '{0}' not found", wantEntry);
 				else
-					gApp.mScriptManager.Fail("Autocomplete entry '{0}' found, but it shouldn't have been", wantEntry);
+					ScriptManager.sActiveManager.Fail("Autocomplete entry '{0}' found, but it shouldn't have been", wantEntry);
 				return false;
 			}
 			return true;
@@ -1304,7 +1566,7 @@ namespace IDE
 
 			if (contents != wantsContents)
 			{
-				gApp.mScriptManager.Fail("Autocomplete not showing expected values. Expected '{}', got '{}'.", wantsContents, contents);
+				ScriptManager.sActiveManager.Fail("Autocomplete not showing expected values. Expected '{}', got '{}'.", wantsContents, contents);
 				return false;
 			}
 			return true;
@@ -1337,14 +1599,14 @@ namespace IDE
 
 			if (!Path.Equals(filePath, sourceViewPanel.mFilePath))
 			{
-				gApp.mScriptManager.Fail("Expected source file '{0}', got '{1}'", filePath, sourceViewPanel.mFilePath);
+				ScriptManager.sActiveManager.Fail("Expected source file '{0}', got '{1}'", filePath, sourceViewPanel.mFilePath);
 				return;
 			}
 
 			let atLine = sourceViewPanel.mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine + 1;
 			if (atLine != lineNum)
 			{
-				gApp.mScriptManager.Fail("Expected line '{0}', got '{1}'", lineNum, atLine);
+				ScriptManager.sActiveManager.Fail("Expected line '{0}', got '{1}'", lineNum, atLine);
 				return;
 			}
 		}
@@ -1357,7 +1619,7 @@ namespace IDE
 			var textPanel = GetActiveTextPanel();
 			if (textPanel == null)
 			{
-				gApp.mScriptManager.Fail("No active text panel");
+				ScriptManager.sActiveManager.Fail("No active text panel");
 				return;
 			}
 			var ewc = textPanel.EditWidget.mEditWidgetContent;
@@ -1387,7 +1649,7 @@ namespace IDE
 			    }
 			}
 
-			gApp.mScriptManager.Fail("Unable to find text '{0}'", findText);
+			ScriptManager.sActiveManager.Fail("Unable to find text '{0}'", findText);
 		}
 
 		[IDECommand]
@@ -1411,7 +1673,7 @@ namespace IDE
 
 			if (!lineText.Contains(findText))
 			{
-				gApp.mScriptManager.Fail("Lines does not contain text '{0}'", findText);
+				ScriptManager.sActiveManager.Fail("Lines does not contain text '{0}'", findText);
 			}
 		}
 
@@ -1514,12 +1776,12 @@ namespace IDE
 		{
 			if (gApp.IsCompiling)
 			{
-				gApp.mScriptManager.mCurCmd.mHandled = false;
+				ScriptManager.sActiveManager.mCurCmd.mHandled = false;
 				return;
 			}
 			
 			if (gApp.mLastCompileFailed)
-				gApp.mScriptManager.Fail("Compile failed");
+				ScriptManager.sActiveManager.Fail("Compile failed");
 		}
 
 		[IDECommand]
@@ -1532,7 +1794,7 @@ namespace IDE
 			var ewc = sourceViewPanel.mEditWidget.mEditWidgetContent;
 			GotoText(textFrom);
 
-			if (gApp.mScriptManager.Failed)
+			if (ScriptManager.sActiveManager.Failed)
 				return;
 
 
@@ -1630,18 +1892,18 @@ namespace IDE
 		[IDECommand]
 		public void SetExpectError(String error)
 		{
-			DeleteAndNullify!(gApp.mScriptManager.mExpectingError);
-			gApp.mScriptManager.mExpectingError = new String(error);
-			gApp.mScriptManager.mHadExpectingError = true;
+			DeleteAndNullify!(ScriptManager.sActiveManager.mExpectingError);
+			ScriptManager.sActiveManager.mExpectingError = new String(error);
+			ScriptManager.sActiveManager.mHadExpectingError = true;
 		}
 
 		[IDECommand]
 		public void ExpectError()
 		{
-			if (gApp.mScriptManager.mExpectingError != null)
+			if (ScriptManager.sActiveManager.mExpectingError != null)
 			{
-				DeleteAndNullify!(gApp.mScriptManager.mExpectingError);
-				gApp.mScriptManager.Fail("Expected error did not occur");
+				DeleteAndNullify!(ScriptManager.sActiveManager.mExpectingError);
+				ScriptManager.sActiveManager.Fail("Expected error did not occur");
 			}
 		}
 
@@ -1651,7 +1913,7 @@ namespace IDE
 			var textPanel = GetActiveSourceViewPanel();
 			if (textPanel == null)
 			{
-				gApp.mScriptManager.Fail("No active text panel");
+				ScriptManager.sActiveManager.Fail("No active text panel");
 				return;
 			}
 			var ewc = textPanel.EditWidget.mEditWidgetContent;
@@ -1675,9 +1937,9 @@ namespace IDE
 				if (hasError != expectedError)
 				{
 					if (hasError)
-						gApp.mScriptManager.Fail("Unexpected error at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
+						ScriptManager.sActiveManager.Fail("Unexpected error at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
 					else
-						gApp.mScriptManager.Fail("Expected error at line {0} in {1} but didn't encounter one\n\t", lineIdx + 1, textPanel.mFilePath);
+						ScriptManager.sActiveManager.Fail("Expected error at line {0} in {1} but didn't encounter one\n\t", lineIdx + 1, textPanel.mFilePath);
 					return;
 				}
 			}
@@ -1686,7 +1948,7 @@ namespace IDE
 		[IDECommand]
 		public void Stop()
 		{
-			gApp.mScriptManager.Clear();
+			ScriptManager.sActiveManager.Clear();
 		}
 
 		[IDECommand]

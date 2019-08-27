@@ -1,0 +1,24 @@
+FileVersion = 1
+Dependencies = {corlib = "*", Beefy2D = "*"}
+
+[Project]
+Name = "StubUI"
+TargetType = "BeefDynLib"
+StartupObject = "Program"
+DefaultNamespace = "BIStubUI"
+
+[Configs.Debug.Win64]
+TargetDirectory = "$(WorkspaceDir)/../dist"
+TargetName = "$(ProjectName)_d"
+OtherLinkFlags = "$(LinkFlags) BeefySysLib64_d.lib"
+PostBuildCmds = ["Sleep(1000)", "cmd.exe /c echo Hey!", "CopyFilesIfNewer(\"$(WorkspaceDir)/../../../IDE/dist/BeefySysLib*.*\", \"$(WorkspaceDir)/../dist\")"]
+DebugCommand = "$(WorkspaceDir)\\..\\dist\\Stub_d.exe"
+
+[Configs.Release.Win64]
+TargetDirectory = "$(WorkspaceDir)/../dist"
+
+[Configs.Paranoid.Win64]
+TargetDirectory = "$(WorkspaceDir)/../dist"
+
+[Configs.Test.Win64]
+TargetDirectory = "$(WorkspaceDir)/../dist"

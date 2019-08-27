@@ -1,13 +1,14 @@
 FileVersion = 1
 LastConfig = "Debug"
 LastPlatform = "Win64"
-RecentFilesList = ["c:\\beef\\ide\\src\\util\\Zip.bf", "c:\\beef\\ide\\src\\ui\\AutoComplete.bf"]
+RecentFilesList = ["c:\\beef\\ide\\src\\IDEApp.bf", "c:\\beef\\IDEHelper\\DebugManager.cpp", "c:\\beef\\IDEHelper\\Compiler\\BfModule.cpp", "c:\\beef\\IDEHelper\\Compiler\\BfCompiler.cpp", "c:\\beef\\ide\\src\\BuildContext.bf", "c:\\beef\\beefrt\\dbg\\gc.cpp", "c:\\beef\\ide\\src\\ScriptManager.bf", "c:\\beef\\ide\\src\\Project.bf", "c:\\beef\\ide\\src\\CommandQueueManager.bf", "c:\\Beef\\BeefLibs\\corlib\\src\\System\\String.bf"]
+StepFilters = ["System.StringView.operator System.StringView"]
 
 [MainWindow]
-X = 679
-Y = 504
-Width = 2487
-Height = 1554
+X = 1021
+Y = 227
+Width = 2206
+Height = 1810
 
 [MainDockingFrame]
 Type = "DockingFrame"
@@ -41,39 +42,346 @@ DefaultDocumentsTabbedView = true
 Type = "TabbedView"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
-Active = true
-TabLabel = "Zip.bf"
-TabWidth = 73.0
+TabLabel = "DebugManager.cpp"
+TabWidth = 156.0
 Type = "SourceViewPanel"
-FilePath = "c:\\beef\\ide\\src\\util\\Zip.bf"
-CursorPos = 2802
-VertPos = 780.0
+FilePath = "c:\\beef\\IDEHelper\\DebugManager.cpp"
+CursorPos = 15042
+VertPos = 8490.0
+ProjectName = "IDEHelper"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "CommandQueueManager.bf"
+TabWidth = 205.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\CommandQueueManager.bf"
+CursorPos = 896
+VertPos = 1170.0
 ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "ProjectProperties.bf"
+TabWidth = 145.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\ProjectProperties.bf"
+CursorPos = 1930
+VertPos = 270.0
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "ProjectPanel.bf"
+TabWidth = 116.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\ProjectPanel.bf"
+CursorPos = 58964
+VertPos = 25350.0
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Directory.bf"
+TabWidth = 98.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefLibs\\corlib\\src\\System\\IO\\Directory.bf"
+CursorPos = 294
+ProjectName = "corlib"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 TabLabel = "AutoComplete.bf"
-TabWidth = 138.0
+TabWidth = 128.0
 Type = "SourceViewPanel"
 FilePath = "c:\\beef\\ide\\src\\ui\\AutoComplete.bf"
-CursorPos = 3588
-VertPos = 2205.0
+CursorPos = 5948
+VertPos = 3060.0
 ProjectName = "IDE"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
-TabLabel = "Disassembly"
-TabWidth = 122.0
-Type = "DisassemblyPanel"
+TabLabel = "Stopwatch.bf"
+TabWidth = 105.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefLibs\\corlib\\src\\System\\Diagnostics\\Stopwatch.bf"
+CursorPos = 309
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "IComparable.bf"
+TabWidth = 120.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefLibs\\corlib\\src\\System\\IComparable.bf"
+CursorPos = 404
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Dictionary.bf"
+TabWidth = 103.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefLibs\\corlib\\src\\System\\Collections\\Generic\\Dictionary.bf"
+CursorPos = 13141
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Workspace.bf"
+TabWidth = 110.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\Workspace.bf"
+CursorPos = 10820
+VertPos = 5745.0
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Project.bf"
+TabWidth = 85.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\Project.bf"
+CursorPos = 31286
+VertPos = 16875.0
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "gc.cpp"
+TabWidth = 69.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\beefrt\\dbg\\gc.cpp"
+CursorPos = 29571
+VertPos = 16845.0
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "String.bf"
+TabWidth = 79.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefLibs\\corlib\\src\\System\\String.bf"
+CursorPos = 20322
+VertPos = 11775.0
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "ImmediatePanel.bf"
+TabWidth = 137.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\ImmediatePanel.bf"
+CursorPos = 1248
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "StatusBar.bf"
+TabWidth = 98.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\StatusBar.bf"
+CursorPos = 11876
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "ImmediateWidget.bf"
+TabWidth = 148.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\ImmediateWidget.bf"
+CursorPos = 10575
+VertPos = 4425.0
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "ScriptManager.bf"
+TabWidth = 130.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ScriptManager.bf"
+CursorPos = 46372
+VertPos = 29080.0
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "ListView.bf"
+TabWidth = 91.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\BeefLibs\\Beefy2D\\src\\widgets\\ListView.bf"
+CursorPos = 24610
+ProjectName = "Beefy2D"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "EditWidget.bf"
+TabWidth = 109.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\BeefLibs\\Beefy2D\\src\\widgets\\EditWidget.bf"
+CursorPos = 70859
+ProjectName = "Beefy2D"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "OpenFileInSolutionDialog.bf"
+TabWidth = 191.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\OpenFileInSolutionDialog.bf"
+CursorPos = 3378
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "InstalledProjectDialog.bf"
+TabWidth = 171.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\InstalledProjectDialog.bf"
+CursorPos = 2662
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "ClassViewPanel.bf"
+TabWidth = 133.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\ClassViewPanel.bf"
+CursorPos = 10536
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "BinaryDataWidget.bf"
+TabWidth = 149.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\ui\\BinaryDataWidget.bf"
+CursorPos = 87580
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "BfIRBuilder.cpp"
+TabWidth = 116.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\IDEHelper\\Compiler\\BfIRBuilder.cpp"
+CursorPos = 132547
+ProjectName = "IDEHelper"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "BfIRCodeGen.cpp"
+TabWidth = 131.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\IDEHelper\\Compiler\\BfIRCodeGen.cpp"
+CursorPos = 124783
+ProjectName = "IDEHelper"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "memory"
+TabWidth = 78.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\VC\\Tools\\MSVC\\14.21.27702\\include\\memory"
+CursorPos = 68115
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Verifier.cpp"
+TabWidth = 96.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\extern\\llvm-project_8_0_0\\llvm\\lib\\IR\\Verifier.cpp"
+CursorPos = 189261
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "BfExprEvaluator.cpp"
+TabWidth = 145.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\IDEHelper\\Compiler\\BfExprEvaluator.cpp"
+CursorPos = 395532
+ProjectName = "IDEHelper"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "BfModule.cpp"
+TabWidth = 111.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\IDEHelper\\Compiler\\BfModule.cpp"
+CursorPos = 701696
+VertPos = 303765.0
+ProjectName = "IDEHelper"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Result.bf"
+TabWidth = 80.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefLibs\\corlib\\src\\System\\Result.bf"
+CursorPos = 699
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "LegacyPassManager.cpp"
+TabWidth = 173.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\extern\\llvm-project_8_0_0\\llvm\\lib\\IR\\LegacyPassManager.cpp"
+CursorPos = 56552
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "LexicalScopes.cpp"
+TabWidth = 135.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\extern\\llvm-project_8_0_0\\llvm\\lib\\CodeGen\\LexicalScopes.cpp"
+CursorPos = 6263
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "TimeZoneInfo.bf"
+TabWidth = 124.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefLibs\\corlib\\src\\System\\TimeZoneInfo.bf"
+CursorPos = 118021
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Windows.bf"
+TabWidth = 98.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefLibs\\corlib\\src\\System\\Windows.bf"
+CursorPos = 40234
+ProjectName = "corlib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Platform.cpp"
+TabWidth = 104.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\BeefySysLib\\platform\\win\\Platform.cpp"
+CursorPos = 59719
+ProjectName = "BeefySysLib"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "BfCompiler.bf"
+TabWidth = 108.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\Compiler\\BfCompiler.bf"
+CursorPos = 7397
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "BfCompiler.cpp"
+TabWidth = 118.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\IDEHelper\\Compiler\\BfCompiler.cpp"
+CursorPos = 181147
+VertPos = 82605.0
+ProjectName = "IDEHelper"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "WinDebugger.cpp"
+TabWidth = 135.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\IDEHelper\\WinDebugger.cpp"
+CursorPos = 120268
+ProjectName = "Debugger64"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "BuildContext.bf"
+TabWidth = 117.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\BuildContext.bf"
+CursorPos = 3642
+VertPos = 1395.0
+ProjectName = "IDE"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+Active = true
+TabLabel = "IDEApp.bf"
+TabWidth = 88.0
+Type = "SourceViewPanel"
+FilePath = "c:\\beef\\ide\\src\\IDEApp.bf"
+CursorPos = 320852
+VertPos = 158655.0
+ProjectName = "IDE"
 
 [[MainDockingFrame.DockedWidgets]]
 RequestedWidth = 250.0
-RequestedHeight = 553.0
+RequestedHeight = 408.0
 Type = "DockingFrame"
 SplitType = 1
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets]]
 RequestedWidth = 250.0
 RequestedHeight = 250.0
-SizePriority = 0.443346
+SizePriority = 0.4483547
 Type = "TabbedView"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
@@ -99,7 +407,7 @@ TabLabel = "Watch"
 TabWidth = 86.0
 Type = "WatchPanel"
 Columns = [{Width = 306.0}, {Width = 675.0}, {Width = 200.0}]
-Items = [""]
+Items = ["this", "instIdx", "mcBlock", "bfProject", "gApp", ""]
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 TabLabel = "Auto"
@@ -110,7 +418,7 @@ Columns = [{Width = 200.0}, {Width = 442.0}, {Width = 200.0}]
 [[MainDockingFrame.DockedWidgets.DockedWidgets]]
 RequestedWidth = 910.0
 RequestedHeight = 793.0
-SizePriority = 0.203422
+SizePriority = 0.1984133
 Type = "TabbedView"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
@@ -146,6 +454,31 @@ TabLabel = "Output"
 TabWidth = 90.0
 Type = "OutputPanel"
 
+[[Breakpoints]]
+File = "c:\\Beef\\extern\\llvm-project_8_0_0\\llvm\\lib\\IR\\Verifier.cpp"
+Line = 4875
+Column = 6
+
+[[Breakpoints]]
+File = "c:\\Beef\\extern\\llvm-project_8_0_0\\llvm\\lib\\IR\\Verifier.cpp"
+Line = 214
+Column = 4
+
+[[Breakpoints]]
+File = "c:\\beef\\ide\\src\\Workspace.bf"
+Line = 661
+Column = 3
+
+[[Bookmarks]]
+File = "c:\\beef\\ide\\src\\BuildContext.bf"
+Line = 465
+Column = 6
+
+[[Bookmarks]]
+File = "c:\\beef\\ide\\src\\BuildContext.bf"
+Line = 465
+Column = 6
+
 [DebuggerDisplayTypes.""]
-IntDisplayType = "Default"
+IntDisplayType = "Hexadecimal"
 MmDisplayType = "Default"

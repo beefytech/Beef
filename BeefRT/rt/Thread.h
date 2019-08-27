@@ -70,27 +70,27 @@ namespace bf
 
 				static Thread* Alloc()
 				{
-					return gBfRtCallbacks.Thread_Alloc();
+					return BFRTCALLBACKS.Thread_Alloc();
 				}
 
 				BfInternalThread* GetInternalThread()
 				{
-					return gBfRtCallbacks.Thread_GetInternalThread(this);
+					return BFRTCALLBACKS.Thread_GetInternalThread(this);
 				}
 
 				BfDbgInternalThread* Dbg_GetInternalThread()
 				{
-					return (BfDbgInternalThread*)gBfRtCallbacks.Thread_GetInternalThread(this);
+					return (BfDbgInternalThread*)BFRTCALLBACKS.Thread_GetInternalThread(this);
 				}
 
 				void SetInternalThread(BfInternalThread* internalThread)
 				{
-					gBfRtCallbacks.Thread_SetInternalThread(this, internalThread);
+					BFRTCALLBACKS.Thread_SetInternalThread(this, internalThread);
 				}
 
 				int GetMaxStackSize()
 				{
-					return gBfRtCallbacks.Thread_GetMaxStackSize(this);
+					return BFRTCALLBACKS.Thread_GetMaxStackSize(this);
 				}
 			};
 		}

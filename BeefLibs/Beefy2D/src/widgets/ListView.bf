@@ -852,7 +852,7 @@ namespace Beefy.widgets
                     newSelection = GetRoot();
                     while (newSelection.mChildAreaHeight > 0)
                     {
-                        newSelection = GetRoot().mChildItems[GetRoot().mChildItems.Count - 1];
+                        newSelection = newSelection.mChildItems[newSelection.mChildItems.Count - 1];
                     }    
                 case KeyCode.PageUp:                        
                     int32 numIterations = (int32)(mScrollContentContainer.mHeight / selectedItem.mSelfHeight);

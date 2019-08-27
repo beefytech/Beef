@@ -399,11 +399,11 @@ namespace System
 			}
 		}
 
-		public int GetHashCode()
+		static int GetHashCode(char8* ptr, int length)
 		{
-			int charsLeft = mLength;
+			int charsLeft = length;
 			int hash = 0;
-			char8* curPtr = Ptr;
+			char8* curPtr = ptr;
 			let intSize = sizeof(int);
 			while (charsLeft >= intSize)
 			{
@@ -420,6 +420,11 @@ namespace System
 			}
 
 			return hash;
+		}
+
+		public int GetHashCode()
+		{
+			return GetHashCode(Ptr, mLength);
 		}
 
 		public override void ToString(String strBuffer)
@@ -2495,7 +2500,7 @@ namespace System
 		}
 	}
 
-	public struct StringView : Span<char8>, IFormattable, IPrintable
+	public struct StringView : Span<char8>, IFormattable, IPrintable, IOpEquals<String>, IHashable
 	{
 		public this()
 		{
@@ -2577,6 +2582,11 @@ namespace System
 			{
 				return String.UTF8Enumerator(Ptr, 0, mLength);
 			}
+		}
+
+		public int GetHashCode()
+		{
+			return String.[Friend]GetHashCode(mPtr, mLength);
 		}
 
 		public override void ToString(String strBuffer)
@@ -2840,11 +2850,13 @@ namespace System
 			return String.UnQuoteString(Ptr, Length, outString);
 		}
 
+		[NoDiscard]
 		public StringView Substring(int pos)
 		{
 			return .(this, pos);
 		}
 
+		[NoDiscard]
 		public StringView Substring(int pos, int length)
 		{
 			return .(this, pos, length);

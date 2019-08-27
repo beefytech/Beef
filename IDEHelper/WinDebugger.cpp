@@ -8734,7 +8734,9 @@ DbgModule* WinDebugger::GetCallStackDbgModule(int callStackIdx)
 		return mEmptyDebugTarget->GetMainDbgModule();
 	if (callStackIdx == -1)
 		return mDebugTarget->GetMainDbgModule();
-	FixCallStackIdx(callStackIdx);	
+	FixCallStackIdx(callStackIdx);
+	if (callStackIdx >= mCallStack.size())
+		return mDebugTarget->GetMainDbgModule();
 	UpdateCallStackMethod(callStackIdx);
 	auto subProgram = mCallStack[callStackIdx]->mSubProgram;
 	if (subProgram != NULL)

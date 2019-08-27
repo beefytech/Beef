@@ -15,10 +15,11 @@ namespace IDE.ui
         public PathEditWidget mDirectoryEdit;
         public EditWidget mNameEdit;
 		public DarkComboBox mTargetComboBox;
-		static String[4] sApplicationTypeNames =
+		static String[5] sApplicationTypeNames =
 			.("Console Application",
 				"Windows Application",
 				"Library",
+				"Dynamic Library",
 				"Custom Build");
 		public bool mDirChanged;
 		public String mDirBase ~ delete _;

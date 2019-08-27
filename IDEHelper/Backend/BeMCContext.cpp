@@ -11502,6 +11502,10 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 	int curOfs = 0;
 
 	bool allowRep = dataVec.size() >= BF_REP_MOV_LIMIT;
+	if (mDebugging)
+	{
+		NOP;
+	}
 
 	union IntUnion
 	{
@@ -11570,7 +11574,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		}
 	};
 
-	for (; curOfs <= memSize - 8; curOfs += 8)
+	for (; curOfs <= memSize - 8; )
 	{
 		if (allowRep)
 		{
@@ -11588,13 +11592,25 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 
 			if (repSize >= 16)
 			{
-				// mov al, <val>
-				Emit(0xB0); Emit(val);
-				
+				bool regSaved = false;
+				if ((regA == X64Reg_RAX) ||
+					(regA == X64Reg_RCX) ||
+					(regA == X64Reg_RDI))
+				{
+					BF_ASSERT(regB == X64Reg_None);
+					// mov R11, regA
+					Emit(0x49); Emit(0x89);					
+					EmitModRM(BeMCOperand::FromReg(regA), BeMCOperand::FromReg(X64Reg_R11));
+					regSaved = true;
+				}
+
 				// lea rdi, <dest+curOfs>
 				EmitREX(BeMCOperand::FromReg(X64Reg_RDI), dest, true);
 				Emit(0x8D);
 				EmitModRMRel(EncodeRegNum(X64Reg_RDI), regA, regB, 1, disp + curOfs);
+
+				// mov al, <val>
+				Emit(0xB0); Emit(val);
 
 				// mov edx, <repSize>
 				Emit(0xB9);
@@ -11602,6 +11618,13 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 
 				// rep stosb
 				Emit(0xF3); Emit(0xAA);
+
+				if (regSaved)
+				{
+					// mov regA, R11
+					Emit(0x4C); Emit(0x89);
+					EmitModRM(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(regA));
+				}
 
 				curOfs += repSize;
 				continue;
@@ -11615,6 +11638,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11), dest, true);
 		Emit(0x89);
 		EmitModRMRel(EncodeRegNum(X64Reg_R11), regA, regB, 1, disp + curOfs);
+		curOfs += 8;
 	}
 
 	for (; curOfs <= memSize - 4; curOfs += 4)
@@ -14738,7 +14762,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = function->mName == "??$Add@MW4RMWAtomicOrdering@Interlocked@Threading@System@bf@@$$04@Interlocked@Threading@System@bf@@SAMAEAMMW4RMWAtomicOrdering@Interlocked@Threading@System@bf@@$$04@Z";
+	//mDebugging = function->mName == "?__BfStaticCtor@Blurg@bf@@SAXXZ";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
 		//"?Hey@Blurg@bf@@SAXXZ";

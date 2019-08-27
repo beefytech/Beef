@@ -121,8 +121,16 @@ namespace bf
 	}
 }
 
-extern bf::System::Runtime::BfRtCallbacks gBfRtCallbacks;
-extern BfRtFlags gBfRtFlags;
+#ifdef BFRTDBG
+#define BFRTCALLBACKS gBfRtDbgCallbacks
+#define BFRTFLAGS gBfRtDbgFlags
+#else
+#define BFRTCALLBACKS gBfRtCallbacks
+#define BFRTFLAGS gBfRtFlags
+#endif
+
+extern bf::System::Runtime::BfRtCallbacks BFRTCALLBACKS;
+extern BfRtFlags BFRTFLAGS;
 
 namespace bf
 {
@@ -155,9 +163,9 @@ namespace bf
 			};
 #endif
 
-			Type* GetType()
+			Type* _GetType()
 			{
-				return gBfRtCallbacks.Object_GetType(this);
+				return BFRTCALLBACKS.Object_GetType(this);
 			}
 
 			Type* GetTypeSafe()
@@ -275,7 +283,7 @@ namespace bf
 
 			const char* CStr()
 			{
-				return gBfRtCallbacks.String_ToCStr(this);
+				return BFRTCALLBACKS.String_ToCStr(this);
 			}
 		};
 	}

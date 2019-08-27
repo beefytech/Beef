@@ -1963,6 +1963,8 @@ String BeModule::ToString(BeFunction* wantFunc)
 			str += " noreturn";
 		if (func->mNoFramePointerElim)
 			str += " noframepointerelim";
+		if (func->mIsDLLExport)
+			str += " dllexport";
 
 		if (func->mBlocks.size() == 0)
 		{
@@ -2970,6 +2972,9 @@ BeFunction* BeModule::CreateFunction(BeFunctionType* funcType, BfIRLinkageType l
 	func->mLinkageType = linkageType;
 	func->mParams.Resize(funcType->mParams.size());
 	mFunctions.push_back(func);
+#ifdef _DEBUG
+	BF_ASSERT(mFunctionMap.TryAdd(name, func));
+#endif
 	return func;
 }
 

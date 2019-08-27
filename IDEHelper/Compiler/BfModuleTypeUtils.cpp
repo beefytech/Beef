@@ -3434,6 +3434,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 					if (typeRefName == "AlwaysInclude")
 						implRequired = true;
+					else if (typeRefName == "Export")
+						implRequired = true;
 					else if (typeRefName == "Test")
 						implRequired = true;
 					else
@@ -4086,7 +4088,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		auto module = GetOrCreateMethodModule(methodInstance);
 		methodInstance->mDeclModule = module;
 
-		BfIRValue func = CreateFunctionFrom(methodInstance);
+		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
 		methodInstance->mIRFunction = func;
 
 		module->mFuncReferences[methodInstance] = func;
@@ -4892,8 +4894,10 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 					while (checkOuterType != NULL)
 					{
 						for (auto checkType : checkOuterType->mTypeDef->mNestedTypes)
-						{
-							if ((!isFailurePass) && (!CheckProtection(checkType->mProtection, allowProtected, allowPrivate)))
+						{							
+							auto latestCheckType = checkType->GetLatest();
+
+							if ((!isFailurePass) && (!CheckProtection(latestCheckType->mProtection, allowProtected, allowPrivate)))
 								continue;
 
 							if (checkType->mName->mString == findName)

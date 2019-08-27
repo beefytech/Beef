@@ -4305,6 +4305,11 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 	NEW_CMD_INSERTED_IRVALUE;	
 	mFunctionMap[name] = retVal;
 
+	if (name == "??B?$Result@PEAX@System@bf@@SAPEAXU012@@Z")
+	{
+		NOP;
+	}
+
 	//BfLogSys(mModule->mSystem, "BfIRBuilder::CreateFunction: %d %s Module:%p\n", retVal.mId, name.c_str(), mModule);
 
 	return retVal;
@@ -4842,15 +4847,15 @@ BfIRMDNode BfIRBuilder::DbgCreateMethod(BfIRMDNode context, const StringImpl& na
 	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateMethod, context, name, linkageName, file, lineNum, type, isLocalToUnit, isDefinition, vk, vIndex, vTableHolder, flags, isOptimized, fn, genericArgs, genericConstValueArgs);
 	NEW_CMD_INSERTED_IRMD;
 
-	if (vIndex == 8)
+	if (linkageName == "?Unwrap@?$Result@PEAX@System@bf@@AEAAPEAXXZ")
 	{
 		NOP;
 	}
 
-	if (mDbgVerifyCodeGen && gDebugDbgLoc)
-	{
-		OutputDebugStrF("DbgCreateFunction Context:%d name:%s = %d\n", context.mId, name.c_str(), retVal.mId);
-	}
+// 	if (mDbgVerifyCodeGen && gDebugDbgLoc)
+// 	{
+// 		OutputDebugStrF("DbgCreateFunction Context:%d name:%s = %d\n", context.mId, name.c_str(), retVal.mId);
+// 	}
 
 	return retVal;
 }
@@ -4860,10 +4865,10 @@ BfIRMDNode BfIRBuilder::DbgCreateFunction(BfIRMDNode context, const StringImpl& 
 	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateFunction, context, name, linkageName, file, lineNum, type, isLocalToUnit, isDefinition, scopeLine, flags, isOptimized, fn);
 	NEW_CMD_INSERTED_IRMD;
 
-	if (mDbgVerifyCodeGen && gDebugDbgLoc)
-	{
-		OutputDebugStrF("DbgCreateFunction Context:%d name:%s = %d\n", context.mId, name.c_str(), retVal.mId);
-	}
+// 	if (mDbgVerifyCodeGen && gDebugDbgLoc)
+// 	{
+// 		OutputDebugStrF("DbgCreateFunction Context:%d name:%s = %d\n", context.mId, name.c_str(), retVal.mId);
+// 	}	
 
 	return retVal;
 }

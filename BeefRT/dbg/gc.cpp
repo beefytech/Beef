@@ -34,7 +34,7 @@
 #include "gc.h"
 
 #ifdef BF_GC_SUPPORTED
- 
+
 #include <fstream>
 #include "BeefySysLib/Common.h"
 #include "BeefySysLib/BFApp.h"
@@ -180,12 +180,12 @@ void BFGC::MarkMembers(bf::System::Object* obj)
 	if (((obj->mObjectFlags & BF_OBJECTFLAG_DELETED) != 0) && (!mMarkingDeleted))
 	{
 		mMarkingDeleted = true;
-		gBfRtCallbacks.Object_GCMarkMembers(obj);
+		gBfRtDbgCallbacks.Object_GCMarkMembers(obj);
 		mMarkingDeleted = false;
 	}
 	else
 	{
-		gBfRtCallbacks.Object_GCMarkMembers(obj);
+		gBfRtDbgCallbacks.Object_GCMarkMembers(obj);
 	}
 }
 
@@ -636,7 +636,7 @@ BFGC::BFGC()
 
 	mGCThread = NULL;	
 
-	gGCDbgData.mDbgFlags = gBfRtFlags;
+	gGCDbgData.mDbgFlags = gBfRtDbgFlags;
 	ThreadCache::InitTSD();
 	if (UNLIKELY(Static::pageheap() == NULL)) ThreadCache::InitModule();	
 	gGCDbgData.mObjRootPtr = Static::pageheap()->pagemap_.root_;
@@ -767,7 +767,7 @@ void BFCheckObjectSize(bf::System::Object* obj, int size)
 
 void BFGC::ConservativeScan(void* startAddr, int length)
 {
-	if ((gBfRtFlags & BfRtFlags_ObjectHasDebugFlags) == 0)
+	if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) == 0)
 		return;
 
     BFLOG2(GCLog::EVENT_CONSERVATIVE_SCAN, (intptr)startAddr, (intptr)startAddr + length);
@@ -877,7 +877,7 @@ bool BFGC::HandlePendingGCData()
 
 void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 {
-	if ((gBfRtFlags & BfRtFlags_ObjectHasDebugFlags) == 0)
+	if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) == 0)
 		return;
 
 	if (span->location != tcmalloc_obj::Span::IN_USE)
@@ -980,7 +980,7 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 								mSweepInfo.mLeakObjects.push_back(obj);
 							}
 
-							BFLOG2(GCLog::EVENT_LEAK, (intptr)obj, (intptr)obj->GetType());
+							BFLOG2(GCLog::EVENT_LEAK, (intptr)obj, (intptr)obj->_GetType());
 #ifdef BF_GC_LOG_ENABLED
 							gGCLog.Write();
 #endif
@@ -1160,8 +1160,8 @@ void BFGC::ProcessSweepInfo()
 		//TODO: Testing!
 		//OutputDebugStrF(gDbgErrorString.c_str());	
 
-		gBfRtCallbacks.SetErrorString(gDbgErrorString.c_str());
-		gBfRtCallbacks.DebugMessageData_SetupError(errorStr.c_str(), 1);
+		gBfRtDbgCallbacks.SetErrorString(gDbgErrorString.c_str());
+		gBfRtDbgCallbacks.DebugMessageData_SetupError(errorStr.c_str(), 1);
 		BF_DEBUG_BREAK();		
 	}
 
@@ -1614,7 +1614,7 @@ void BFGC::FinishCollect()
 {
 	//OutputDebugStrF("Collected %d objects\n", mFinalizeList.size());
 
-	if ((gBfRtFlags & BfRtFlags_ObjectHasDebugFlags) == 0)
+	if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) == 0)
 		return;
 
 	mLastFreeCount = 0;
@@ -1711,7 +1711,7 @@ void BFGC::FinishCollect()
 			{
 				// Temporarily remove object flags so GetType() won't fail
 				obj->mObjectFlags = BfObjectFlag_None;
-				bf::System::Type* type = obj->GetType();
+				bf::System::Type* type = obj->_GetType();
 				//auto pairVal = sizeMap.insert(std::make_pair(type, 0));
 				//int newSize = pairVal.first->second + objSize;
 				int* sizePtr = NULL;
@@ -2046,7 +2046,7 @@ void BFGC::ObjReportHandleSpan(tcmalloc_obj::Span* span, int expectedStartPage, 
 			int objectFlags = obj->mObjectFlags;
 			if ((objectFlags & BF_OBJECTFLAG_DELETED) == 0)
 			{
-				bf::System::Type* type = obj->GetType();
+				bf::System::Type* type = obj->_GetType();
 				//auto pairVal = sizeMap.insert(std::make_pair(type, 0));
 				//int newSize = pairVal.first->second + elementSize;				
 				//pairVal.first->second = newSize;

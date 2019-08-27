@@ -261,7 +261,7 @@ namespace System.Collections.Generic
 			return -1;
 		}
 
-		private int FindEntryAlt<TOther>(TOther key) where TOther : IOpEquals<TKey>, IHashable
+		private int FindEntryWith<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
 		{
 			if (mBuckets != null)
 			{
@@ -534,6 +534,20 @@ namespace System.Collections.Generic
 		public bool TryGetValue(TKey key, out TKey matchKey, out TValue value)
 		{
 			int_cosize i = (int_cosize)FindEntry(key);
+			if (i >= 0)
+			{
+				matchKey = mEntries[i].mKey;
+				value = mEntries[i].mValue;
+				return true;
+			}
+			matchKey = default(TKey);
+			value = default(TValue);
+			return false;
+		}
+
+		public bool TryGetWith<TAltKey>(TAltKey key, out TKey matchKey, out TValue value) where TAltKey : IOpEquals<TKey>, IHashable
+		{
+			int_cosize i = (int_cosize)FindEntryWith(key);
 			if (i >= 0)
 			{
 				matchKey = mEntries[i].mKey;
