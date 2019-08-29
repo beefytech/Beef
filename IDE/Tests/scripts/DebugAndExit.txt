@@ -1,2 +1,2 @@
-StepInto()
+RunWithStep()
 AssertEvalEquals("args != null", "true")
