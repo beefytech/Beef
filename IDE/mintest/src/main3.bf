@@ -80,7 +80,6 @@ class ClassF : ClassE
 
 }
 
-
 [NoDiscard("Use this value!")]
 struct TestStruct
 {
@@ -102,9 +101,46 @@ class Blurg
 		PrintF("Poofs2!\n");
 	}
 
-	public static void Hey()
+	static void Test0()
 	{
 		Snorf sn = scope .();
+		int a = 124;
+	}
+
+
+	public void DoRecurse(int depth, ref int val)
+	{
+		Thread.Sleep(1);
+		++val;
+		if (val < 5)
+		{
+			DoRecurse(depth + 1, ref val);
+		}
+	}
+
+	public static void VoidCall()
+	{
+		
+	}
+
+	public static int GetInt()
+	{
+		return 123;
+	}
+
+	public static void Hey()
+	{
+		VoidCall();
+		int val0 = GetInt();
+
+		Blurg bl = scope .();
+		int val = 0;
+		bl.DoRecurse(0, ref val);
+
+		Test0();
+		Test0();
+		Test0();
+		Test0();
 
 		Result<void*> voidPtrResult = default;
 

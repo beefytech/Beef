@@ -11,4 +11,8 @@ StepOver()
 AssertEvalEquals("argA", "11")
 
 StepOut()
+
+# For LLVM generation, there's an extra step required here
+if (optlevel != "Og+") StepOver()
+
 AssertEvalEquals("c", "13")

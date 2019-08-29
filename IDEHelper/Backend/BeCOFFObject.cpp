@@ -687,7 +687,7 @@ int BeCOFFObject::DbgGetTypeId(BeDbgType* dbgType, bool doDefine)
 				outT.Write(*(int16*)&attr);
 				outT.Write(func->mCvTypeId);
 				if (isVirt)
-					outT.Write((int32)func->mVIndex);				
+					outT.Write((int32)func->mVIndex * mBeModule->mContext->mPointerSize);
 				DbgEncodeString(outT, func->mName);
 				memberCount++;
 				DbgTAlign();

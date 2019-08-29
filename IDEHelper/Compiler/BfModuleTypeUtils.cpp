@@ -165,10 +165,10 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 	else
 	{
 		for (int paramIdx = startDefGenericParamIdx; paramIdx < (int)genericTypeInst->mTypeGenericArguments.size(); paramIdx++)
-		{
-			auto genericParamDef = typeDef->mGenericParamDefs[paramIdx];
+		{			
 			auto genericParamInstance = genericTypeInst->mGenericParams[paramIdx];
 			ResolveGenericParamConstraints(genericParamInstance, typeDef->mGenericParamDefs, paramIdx);
+			auto genericParamDef = typeDef->mGenericParamDefs[paramIdx];
 
 			for (auto nameNode : genericParamDef->mNameNodes)
 			{

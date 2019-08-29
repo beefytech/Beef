@@ -1885,13 +1885,13 @@ public:
 };
 #endif
 
-void BfIRBuilder::CreateTypeDeclaration(BfType* type)
+void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 {		
 	bool wantDIData = DbgHasInfo() && (!type->IsUnspecializedType());
 	
 	// Types that don't have a proper 'defining module' need to be defined in every module they are used
 	bool isDefiningModule = (type->GetModule() == mModule) || (type->IsFunction());
-	bool wantsForwardDecl = !isDefiningModule;
+	bool wantsForwardDecl = !isDefiningModule && !forceDefine;
 
 	if (mModule->mExtensionCount != 0)
 		wantsForwardDecl = true;
@@ -2802,7 +2802,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	}	
 }
 
-void BfIRBuilder::CreateTypeDefinition(BfType* type)
+void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
 {	
 	// This PopulateType is generally NOT needed, but here is a scenario in which it is:
 	//  ClassB derives from ClassA.  ClassC uses ClassB.  A method inside ClassA gets modified,
@@ -2815,7 +2815,7 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type)
 	bool isDefiningModule = (type->GetModule() == mModule) || (type->IsFunction());
 	if (mModule->mExtensionCount != 0)
 		isDefiningModule = false;
-
+	
 // 	if (mModule->mModuleName == "vdata")
 // 		isDefiningModule = true;
 
@@ -2827,13 +2827,13 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type)
 		DbgSetTypeSize(DbgGetType(type), BF_ALIGN(type->mSize, type->mAlign) * 8, type->mAlign * 8);
 	}
 
-	bool wantsForwardDecl = !isDefiningModule;
+	bool wantsForwardDecl = !isDefiningModule && !forceDefine;
 	bool isPrimEnum = (type->IsEnum()) && (type->IsTypedPrimitive());
-			
+				
 	auto typeInstance = type->ToTypeInstance();
 	if (typeInstance == NULL)
-		return;
-	
+		return;		
+
 	auto typeDef = typeInstance->mTypeDef;	
 	if (DbgHasInfo() && (!type->IsUnspecializedType()) && (!wantsForwardDecl))
 	{
@@ -3057,7 +3057,7 @@ void BfIRBuilder::ReplaceDITemporaryTypes()
 		if (mTypeMap[typeInstance] == BfIRPopulateType_Full)
 			continue;
 
-		CreateTypeDefinition(typeInstance);
+		CreateTypeDefinition(typeInstance, false);
 	}
 	mDITemporaryTypes.Clear();
 }
@@ -3093,12 +3093,14 @@ void BfIRBuilder::PopulateType(BfType* type, BfIRPopulateType populateType)
 
 	if (curPopulateType >= populateType)
 		return;
+	if (curPopulateType == BfIRPopulateType_Full)
+		return;
 	
 	auto typeInst = type->ToTypeInstance();
 
 	if ((curPopulateType < BfIRPopulateType_Declaration) && (populateType >= BfIRPopulateType_Declaration))
 	{		
-		CreateTypeDeclaration(type);
+		CreateTypeDeclaration(type, populateType == BfIRPopulateType_Full_ForceDefinition);
 		
 		mTypeMap[type] = BfIRPopulateType_Declaration;
 	}
@@ -3106,7 +3108,7 @@ void BfIRBuilder::PopulateType(BfType* type, BfIRPopulateType populateType)
 	if ((curPopulateType < populateType) && (populateType >= BfIRPopulateType_Eventually_Full))
 	{
 		mTypeMap[type] = BfIRPopulateType_Eventually_Full;		
-		CreateTypeDefinition(type);		
+		CreateTypeDefinition(type, populateType == BfIRPopulateType_Full_ForceDefinition);
 		mTypeMap[type] = BfIRPopulateType_Full;
 	}
 }

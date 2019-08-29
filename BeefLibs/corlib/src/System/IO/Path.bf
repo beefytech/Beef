@@ -295,6 +295,17 @@ namespace System.IO
 		        outDrive.Append(path, 0, 2);
 		}
 
+		/// Tests if the given path contains a root. A path is considered rooted
+		/// if it starts with a backslash ("\") or a drive letter and a colon (":").
+		public static bool IsPathRooted(StringView path)
+		{
+	        CheckInvalidPathChars(path);
+	        int length = path.Length;
+	        if ((length >= 1 && (path[0] == DirectorySeparatorChar || path[0] == AltDirectorySeparatorChar)) || (length >= 2 && path[1] == VolumeSeparatorChar))
+	            return true;
+		    return false;
+		}
+
 		public static void GetRelativePath(StringView fullPath, StringView curDir, String outRelPath)
 		{
 		    String curPath1 = scope String(curDir);

@@ -5,6 +5,9 @@ RunWithCompiling()
 
 ToggleCommentAt("ClassC_0")
 ToggleCommentAt("DoTest0_Body")
+
+Stop()
+
 Compile()
 
 # DoTest0

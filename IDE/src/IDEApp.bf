@@ -368,6 +368,10 @@ namespace IDE
         class StartDebugCmd : ExecutionCmd
         {
 			public bool mWasCompiled;
+
+			public this()
+			{
+			}
         }
 
         public class TargetCompletedCmd : ExecutionCmd
@@ -3716,6 +3720,8 @@ namespace IDE
 				return;
 			if (mHotResolveState != .None)
 				return;
+			if (IsCompiling)
+				return;
 
 			if (mWorkspace.mProjects.IsEmpty)
 			{
@@ -3766,6 +3772,13 @@ namespace IDE
 		}
 
 		[IDECommand]
+		void RunWithStep()
+		{
+			mTargetStartWithStep = true;
+			CompileAndRun();
+		}
+
+		[IDECommand]
 		void StepInto()
 		{
 			if (mDebugger.mIsRunning)
@@ -3778,8 +3791,7 @@ namespace IDE
 			}
 			else
 			{
-			    mTargetStartWithStep = true;
-			    CompileAndRun();
+			    RunWithStep();
 			}
 		}
 
@@ -3802,8 +3814,7 @@ namespace IDE
 					mRunTimingProfileId = Profiler.StartSampling("RunTiming");
 				}
 
-			    mTargetStartWithStep = true;
-			    CompileAndRun();
+			    RunWithStep();
 			}
 		}
 
@@ -4166,7 +4177,7 @@ namespace IDE
 			ShowTab(panel, label, false, setFocus);
 			if (setFocus)
 				panel.FocusForKeyboard();
-			if (!panel.mWidgetWindow.mHasFocus)
+			if ((!panel.mWidgetWindow.mHasFocus) && (!mRunningTestScript))
 				panel.mWidgetWindow.SetForeground();
 		}
 
@@ -5559,7 +5570,7 @@ namespace IDE
 					    //sourceViewPanel.QueueFullRefresh(true);
 					}
 
-					if ((sourceViewPanel.mWidgetWindow != null) && (!HasModalDialogs()))
+					if ((sourceViewPanel.mWidgetWindow != null) && (!HasModalDialogs()) && (!mRunningTestScript))
 					    sourceViewPanel.mWidgetWindow.SetForeground();
 					sourceViewPanelTab.Activate(setFocus);
 					sourceViewPanelTab.mTabbedView.FinishTabAnim();
@@ -7171,6 +7182,13 @@ namespace IDE
 				}*/
             }
 
+			bool buildFailed = false;
+			if ((mBuildContext != null) && (mBuildContext.Failed))
+				buildFailed = true;
+			let buildCompleteCmd = GetBuildCompletedCmd();
+			if ((buildCompleteCmd != null) && (buildCompleteCmd.mFailed))
+				buildFailed = true;
+
             bool canExecuteNext = false;
             int32 parallelExecutionCount = 16;
             if ((mExecutionQueue.Count > 0) && (mExecutionInstances.Count < parallelExecutionCount))
@@ -7202,6 +7220,7 @@ namespace IDE
 #endif
                 if ((next is ProcessBfCompileCmd) && (mBfBuildCompiler.HasQueuedCommands() || (waitForBuildClang)))
                     return;
+
 				/*if (next is BuildCompletedCmd)
 				{
 					if (mBuildContext != null)
@@ -7279,19 +7298,25 @@ namespace IDE
                 }
                 else if (next is TargetCompletedCmd)
                 {
-                    var targetCompletedCmd = (TargetCompletedCmd)next;
-                    targetCompletedCmd.mProject.mNeedsTargetRebuild = false;
-					targetCompletedCmd.mProject.mForceCustomCommands = false;
+					if (!buildFailed)
+					{
+	                    var targetCompletedCmd = (TargetCompletedCmd)next;
+	                    targetCompletedCmd.mProject.mNeedsTargetRebuild = false;
+						targetCompletedCmd.mProject.mForceCustomCommands = false;
+					}
                 }
                 else if (next is StartDebugCmd)
                 {
-					var startDebugCmd = (StartDebugCmd)next;
-                    if (DebugProject(startDebugCmd.mWasCompiled))
-                    {
-                        OutputLine("Debugger started");
-                    }
-                    else
-                        OutputLine("Failed to start debugger");
+					if (!buildFailed)
+					{
+						var startDebugCmd = (StartDebugCmd)next;
+	                    if (DebugProject(startDebugCmd.mWasCompiled))
+	                    {
+	                        OutputLine("Debugger started");
+	                    }
+	                    else
+	                        OutputLine("Failed to start debugger");
+					}
                 }
                 else if (next is ExecutionQueueCmd)
                 {
@@ -7319,12 +7344,9 @@ namespace IDE
                     if (!completedCompileCmd.mFailed)
                         mDepClang.mDoDependencyCheck = false;
 #endif
-					if (mBuildContext != null)
-					{
-						if (mBuildContext.Failed)
-							buildCompletedCmd.mFailed = true;
-					}
-
+					if (buildFailed)
+						buildCompletedCmd.mFailed = true;
+					
 					CompileResult(buildCompletedCmd.mHotProjectName, !buildCompletedCmd.mFailed);
 
                     if (buildCompletedCmd.mFailed)
@@ -8045,6 +8067,22 @@ namespace IDE
 								newString = options.mDebugOptions.mCommandArguments;
 							case "WorkingDir":
 								newString = options.mDebugOptions.mWorkingDirectory;
+							case "TargetDir":
+								{
+									if (project.IsDebugSession)
+									{
+										let targetPath = scope:ReplaceBlock String();
+										DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, targetPath);
+										newString = scope:ReplaceBlock String();
+										Path.GetDirectoryPath(targetPath, newString);
+										break;
+									}
+
+									String targetDir = scope String();
+									DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
+									newString = scope:ReplaceBlock String();
+									Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
+								}
 							case "TargetPath":
 		                        {
 									if (project.IsDebugSession)
@@ -8087,24 +8125,30 @@ namespace IDE
 								//Debug.WriteLine("BuildDir: {0}", newString);
 							case "LinkFlags":
 								newString = scope:ReplaceBlock String();
-#if BF_PLATFORM_WINDOWS
-								String rtName = scope String();
-								String dbgName = scope String();
-								BuildContext.GetRtLibNames(workspaceOptions, options, false, rtName, dbgName);
-								newString.Append(rtName);
-								if (!dbgName.IsEmpty)
-									newString.Append(" ", dbgName);
-								switch (workspaceOptions.mAllocType)
+
+								if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
+									(project.mGeneralOptions.mTargetType == .BeefWindowsApplication) ||
+									(project.mGeneralOptions.mTargetType == .BeefDynLib))
 								{
-								case .JEMalloc:
-									newString.Append(" jemalloc.lib");
-								case .TCMalloc:
-									newString.Append(" tcmalloc.lib");
-								default:
-								}
+#if BF_PLATFORM_WINDOWS
+									String rtName = scope String();
+									String dbgName = scope String();
+									BuildContext.GetRtLibNames(workspaceOptions, options, false, rtName, dbgName);
+									newString.Append(rtName);
+									if (!dbgName.IsEmpty)
+										newString.Append(" ", dbgName);
+									switch (workspaceOptions.mAllocType)
+									{
+									case .JEMalloc:
+										newString.Append(" jemalloc.lib");
+									case .TCMalloc:
+										newString.Append(" tcmalloc.lib");
+									default:
+									}
 #else
 								newString.Append("./libBeefRT_d.so -Wl,-rpath -Wl,.");
 #endif
+								}
 							case "VSToolPath":
 								if (workspaceOptions.mMachineType.PtrSize == 4)
 									newString = gApp.mSettings.mVSSettings.mBin32Path;
@@ -8895,6 +8939,8 @@ namespace IDE
         {
 			if (AreTestsRunning())
 				return false;
+			if (IsCompiling)
+				return false;
 
             if (!mExecutionQueue.IsEmpty)
             {
@@ -8957,6 +9003,8 @@ namespace IDE
 
         protected bool Compile(CompileKind compileKind = .Normal, Project hotProject = null)
         {
+			Debug.Assert(mBuildContext == null);
+
 			if (mDbgCompileDump)
 			{
 				mDbgCompileIdx++;
@@ -9588,13 +9636,15 @@ namespace IDE
 
 			//
 			{
+				BFWindow.Flags flags = .Border | .ThickFrame | .Resizable | .SysMenu |
+	                .Caption | .Minimize | .Maximize | .QuitOnClose | .Menu;
+				if (mRunningTestScript)
+					flags |= .NoActivate;
+
 				scope AutoBeefPerf("IDEApp.Init:CreateMainWindow");
 	            mMainWindow = new WidgetWindow(null, "Beef IDE", (int32)mRequestedWindowRect.mX,
 	                (int32)mRequestedWindowRect.mY, (int32)mRequestedWindowRect.mWidth, (int32)mRequestedWindowRect.mHeight,
-	                BFWindow.Flags.Border | BFWindow.Flags.ThickFrame | BFWindow.Flags.Resizable | BFWindow.Flags.SysMenu |
-	                BFWindow.Flags.Caption | BFWindow.Flags.Minimize | BFWindow.Flags.Maximize | BFWindow.Flags.QuitOnClose |
-	                BFWindow.Flags.Menu,
-	                mMainFrame);
+	                flags, mMainFrame);
 			}
 			UpdateTitle();
             mMainWindow.SetMinimumSize(GS!(480), GS!(360));
@@ -10670,7 +10720,7 @@ namespace IDE
                                 } 
                             }
 
-                            if (!HasModalDialogs())
+                            if ((!HasModalDialogs()) && (!mRunningTestScript))
                                 mMainWindow.SetForeground();
 
 							if (mRunTimingProfileId != 0)

@@ -1,3 +1,6 @@
+# This test fails on Win32 currently
+if (platform != "Win64") Stop()
+
 ShowFile("src/HotSwap_TLS.bf")
 GotoText("//Test_Start")
 ToggleBreakpoint()

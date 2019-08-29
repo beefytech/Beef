@@ -2972,8 +2972,10 @@ BeFunction* BeModule::CreateFunction(BeFunctionType* funcType, BfIRLinkageType l
 	func->mLinkageType = linkageType;
 	func->mParams.Resize(funcType->mParams.size());
 	mFunctions.push_back(func);
+	
 #ifdef _DEBUG
-	BF_ASSERT(mFunctionMap.TryAdd(name, func));
+	// It IS possible hit this, especially if we have multiple intrinsics mapping to 'malloc' for example
+	//BF_ASSERT(mFunctionMap.TryAdd(name, func));
 #endif
 	return func;
 }

@@ -192,7 +192,7 @@ public:
 
 public:
 	DbgModuleMemoryCache(uintptr addr, int size);
-	DbgModuleMemoryCache(uintptr addr, uint8* data, int size, bool makeCopy);
+	//DbgModuleMemoryCache(uintptr addr, uint8* data, int size, bool makeCopy);
 	~DbgModuleMemoryCache();
 
 	DbgMemoryFlags Read(uintptr addr, uint8* data, int size);

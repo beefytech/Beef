@@ -4877,11 +4877,23 @@ void DbgModule::CommitHotTargetSections()
 			addr_target hotAddr = GetHotTargetAddress(hotTargetSection);
 			if (hotAddr != 0)
 			{
-				void* imageDestPtr = mOrigImageData->mBlocks[0] + hotTargetSection->mImageOffset;
-				if (hotTargetSection->mData != NULL)
-					memcpy(imageDestPtr, hotTargetSection->mData, hotTargetSection->mDataSize);
-				else
+// 				void* imageDestPtr = mOrigImageData->mBlocks[0] + hotTargetSection->mImageOffset;
+// 				if (hotTargetSection->mData != NULL)
+// 					memcpy(imageDestPtr, hotTargetSection->mData, hotTargetSection->mDataSize);
+// 				else
+// 					memset(imageDestPtr, 0, hotTargetSection->mDataSize);
+
+				BF_ASSERT(mOrigImageData->mAddr != 0);
+
+				void* imageDestPtr = hotTargetSection->mData;
+				bool isTemp = false;
+				if (imageDestPtr == NULL)
+				{
+					imageDestPtr = new uint8[hotTargetSection->mDataSize];
 					memset(imageDestPtr, 0, hotTargetSection->mDataSize);
+					isTemp = true;
+				}
+
 				if (hotTargetSection->mCanExecute)
 				{
 					bool success = mDebugger->WriteInstructions(hotAddr, imageDestPtr, hotTargetSection->mDataSize);
@@ -4892,6 +4904,9 @@ void DbgModule::CommitHotTargetSections()
 					bool success = mDebugger->WriteMemory(hotAddr, imageDestPtr, hotTargetSection->mDataSize);
 					BF_ASSERT(success);
 				}
+
+				if (isTemp)
+					delete imageDestPtr;
 			}
 		}
 	}
@@ -5664,7 +5679,8 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 		mDebugger->ReserveHotTargetMemory(needHotTargetMemory);
 		
 		// '0' address is temporary
-		mOrigImageData = new DbgModuleMemoryCache(0, NULL, needHotTargetMemory, true);		
+		//mOrigImageData = new DbgModuleMemoryCache(0, NULL, needHotTargetMemory, true);		
+		mOrigImageData = new DbgModuleMemoryCache(0, needHotTargetMemory);
 	}
 
 	int numSections = ntHdr.mFileHeader.mNumberOfSections;

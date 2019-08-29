@@ -15,10 +15,10 @@ namespace BfAeDebug
 {
     public partial class Form1 : Form
     {
-        public Form1()
+        public Form1(String[] args)
         {
             InitializeComponent();
-
+            
             try
             {
                 Process process = Process.GetProcessById(int.Parse(Program.sProcessId));
@@ -30,6 +30,12 @@ namespace BfAeDebug
             }
             catch (Exception)
             {                
+            }
+
+            mLabel.Text += " crash args:";
+            foreach (var arg in args)
+            {
+                mLabel.Text += " " + arg;
             }
 
             CenterToScreen();

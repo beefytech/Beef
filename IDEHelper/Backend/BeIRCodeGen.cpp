@@ -914,7 +914,7 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_StructSetBody:
-		{
+		{			
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(CmdParamVec<BeType*>, members);
 			CMD_PARAM(bool, isPacked);

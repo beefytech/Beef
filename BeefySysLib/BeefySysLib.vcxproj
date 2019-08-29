@@ -126,7 +126,7 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetName>$(ProjectName)32_d</TargetName>
     <LibraryPath>$(LibraryPath);third_party\AK\lib\Win32_vc120\Debug(StaticCRT)\lib</LibraryPath>
-    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -134,14 +134,14 @@
     <TargetName>$(ProjectName)64_d</TargetName>
     <LibraryPath>third_party\AK\lib\debug;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2007%29\Lib\x86;$(LibraryPath);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
     <IncludePath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>$(ProjectName)_d</TargetName>
     <LibraryPath>$(LibraryPath);third_party\AK\lib\Win32_vc120\Debug(StaticCRT)\lib</LibraryPath>
     <IncludePath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
     <IntDir>$(Configuration)\</IntDir>
     <ExtensionsToDeleteOnClean>*.cdf;*.cache;*.obj;*.ilk;*.resources;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;*.tlog;*.manifest;*.res;*.pch;*.exp;*.idb;*.rep;*.xdc;*.pdb;*_manifest.rc;*.bsc;*.sbr;*.xml;*.metagen;*.bi</ExtensionsToDeleteOnClean>
   </PropertyGroup>
@@ -150,13 +150,13 @@
     <TargetName>$(ProjectName)_d</TargetName>
     <LibraryPath>third_party\AK\lib\debug;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2007%29\Lib\x86;$(LibraryPath);third_party\libffi\i686-pc-cygwin\.libs</LibraryPath>
     <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2007)\Include;C:\temp\wx\wxMSW-2.8.12\include;C:\temp\wx\wxMSW-2.8.12\include\msvc</IncludePath>
-    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>$(LibraryPath);third_party\AK\lib\Win32_vc120\Release(StaticCRT)\lib</LibraryPath>
     <IncludePath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)32</TargetName>
   </PropertyGroup>
@@ -164,19 +164,19 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>$(ProjectName)64</TargetName>
-    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>third_party\AK\lib\release;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86;$(FrameworkSDKDir)\lib;third_party\libffi\i686-pc-cygwin\.libs</LibraryPath>
     <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2007)\Include;C:\temp\wx\wxMSW-2.8.12\include;C:\temp\wx\wxMSW-2.8.12\include\msvc</IncludePath>
-    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>third_party\AK\lib\release;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86;$(FrameworkSDKDir)\lib</LibraryPath>
     <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2007)\Include;C:\temp\wx\wxMSW-2.8.12\include;C:\temp\wx\wxMSW-2.8.12\include\msvc</IncludePath>
-    <OutDir>$(SolutionDir)\ide\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -184,22 +184,33 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BFP_NOEXPORT;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <OutputFile>$(SolutionDir)\ide\dist\$(TargetName).dll</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>../extern/fbxsdk/lib/vs2012/x86/debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>imm32.lib;version.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <ImportLibrary>$(SolutionDir)\ide\dist\$(TargetName).lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
     </Link>
     <MASM>
       <EnableMASM51Compatibility>false</EnableMASM51Compatibility>
     </MASM>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -207,7 +218,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;FT2_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BP_DYNAMIC;BFP_NOEXPORT;WIN32;_DEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;FT2_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include;third_party/freetype/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -215,12 +226,22 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
-      <OutputFile>$(SolutionDir)\ide\dist\$(TargetName).dll</OutputFile>
       <AdditionalDependencies>imm32.lib;version.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <BaseAddress>0x100000000</BaseAddress>
-      <ImportLibrary>$(SolutionDir)\ide\dist\$(TargetName).lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
     </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">
     <ClCompile>
@@ -237,6 +258,17 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OutputFile>$(SolutionDir)\ide\dist\win\$(TargetName).dll</OutputFile>
     </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">
     <ClCompile>
@@ -254,6 +286,17 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OutputFile>$(SolutionDir)\ide\dist\win\$(TargetName).dll</OutputFile>
     </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -263,7 +306,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BFP_NOEXPORT;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>./; ./platform/win/; ./platform/sdl/; third_party/agg-2.4/include; third_party/agg-2.4/include/platform/win32; third_party/; third_party/libffi/i686-pc-cygwin; third_party/libffi/i686-pc-cygwin/include; third_party/libffi/include; third_party/SDL2-2.0.1/include;;../extern/fbxsdk/include</AdditionalIncludeDirectories>
     </ClCompile>
@@ -272,13 +315,24 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(SolutionDir)\ide\dist\$(TargetName).dll</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalLibraryDirectories>../extern/fbxsdk/lib/vs2012/x86/release</AdditionalLibraryDirectories>
       <AdditionalDependencies>imm32.lib;version.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <ImportLibrary>$(SolutionDir)\ide\dist\$(TargetName).lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
     </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -288,7 +342,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;FT2_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BP_DYNAMIC;BFP_NOEXPORT;WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;FT2_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include;third_party/freetype/include</AdditionalIncludeDirectories>
     </ClCompile>
@@ -297,11 +351,22 @@
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(SolutionDir)\ide\dist\$(TargetName).dll</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalDependencies>imm32.lib;version.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <ImportLibrary>$(SolutionDir)\ide\dist\$(TargetName).lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
     </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">
     <ClCompile>
@@ -322,6 +387,17 @@
       <OptimizeReferences>true</OptimizeReferences>
       <OutputFile>$(SolutionDir)\ide\dist\win\BeefySysLib.dll</OutputFile>
     </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">
     <ClCompile>
@@ -342,6 +418,17 @@
       <OptimizeReferences>true</OptimizeReferences>
       <OutputFile>$(SolutionDir)\ide\dist\win\BeefySysLib.dll</OutputFile>
     </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
+copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BFApp.cpp" />
@@ -2086,24 +2173,24 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Executing MASM</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)%(Filename).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">$(IntDir)%(Filename).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(Filename).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">$(IntDir)%(Filename).obj</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Executing MASM</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)$(TargetName).obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).obj</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Executing MASM</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).obj</Outputs>
     </CustomBuild>
     <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">
       <FileType>Document</FileType>

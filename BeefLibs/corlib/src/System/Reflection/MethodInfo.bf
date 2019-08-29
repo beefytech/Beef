@@ -72,6 +72,7 @@ namespace System.Reflection
 			case InvalidTarget;
 			case InvalidArgument(int32 paramIdx);
 			case ParamCountMismatch;
+			case FFIError;
 		}
 
 		public Result<Variant, CallError> Invoke(Object target, params Object[] args)
@@ -308,9 +309,15 @@ namespace System.Reflection
 
 			FFICaller caller = .();
 			if (ffiParamList.Count > 0)
-				caller.Prep(abi, (.)ffiParamList.Count, ffiRetType, &ffiParamList[0]);
+			{
+				if (caller.Prep(abi, (.)ffiParamList.Count, ffiRetType, &ffiParamList[0]) case .Err)
+					return .Err(.FFIError);
+			}
 			else
-				caller.Prep(abi, 0, ffiRetType, null);
+			{
+				if (caller.Prep(abi, 0, ffiRetType, null) case .Err)
+					return .Err(.FFIError);
+			}
 
 			void* funcPtr = mMethodData.mFuncPtr;
 			if (mMethodData.mFlags.HasFlag(.Virtual))

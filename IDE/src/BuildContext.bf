@@ -132,17 +132,16 @@ namespace IDE
 				continue;
 			}
 
+			let targetCompleteCmd = new IDEApp.TargetCompletedCmd(project);
 			if (didCommands)
 			{
 				mScriptManager.QueueCommands(scope String()..AppendF("%targetComplete {}", project.mProjectName), targetName, .NoLines);
-
-				let targetCompleteCmd = new IDEApp.TargetCompletedCmd(project);
 				targetCompleteCmd.mIsReady = false;
-				gApp.mExecutionQueue.Add(targetCompleteCmd);
 				project.mNeedsTargetRebuild = true;
 			}
+			gApp.mExecutionQueue.Add(targetCompleteCmd);
 
-			return didCommands ? .HadCommands : .Failed;
+			return didCommands ? .HadCommands : .NoCommands;
 		}
 
 		bool QueueProjectGNULink(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
@@ -558,6 +557,15 @@ namespace IDE
 								}
 							}
 
+							if (depProject.mGeneralOptions.mTargetType == .BeefLib)
+							{
+								let depProjectOptions = gApp.GetCurProjectOptions(depProject);
+								var linkFlags = scope String();
+								gApp.ResolveConfigString(workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+								if (!linkFlags.IsWhiteSpace)
+									linkLine.Append(linkFlags, " ");
+							}
+
 
 			                /*String depLibTargetPath = scope String();
 			                ResolveConfigString(depProject, depOptions, "$(TargetPath)", error, depLibTargetPath);
@@ -901,12 +909,15 @@ namespace IDE
 				}
 			}
 
-			switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+			if (hotProject == null)
 			{
-			case .NoCommands:
-			case .HadCommands:
-			case .Failed:
-				completedCompileCmd.mFailed = true;
+				switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+				{
+				case .NoCommands:
+				case .HadCommands:
+				case .Failed:
+					completedCompileCmd.mFailed = true;
+				}
 			}
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)

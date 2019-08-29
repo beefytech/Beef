@@ -1118,10 +1118,10 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "vdata")
-				|| (mModuleName == "System_Result_PTR_void")
+                (mModuleName == "-")
+				//|| (mModuleName == "System_Internal")
 				//|| (mModuleName == "vdata")
-				|| (mModuleName == "Hey_Dude_Bro_TestClass")
+				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
 				)
 				mBfIRBuilder->mDbgVerifyCodeGen = true;
 			
@@ -4241,7 +4241,13 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	
 	BfTypeInstance* typeInstance = type->ToTypeInstance();		
 
+// 	BfType* typeInstanceType = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef, BfPopulateType_Identity);
+// 	mBfIRBuilder->PopulateType(typeInstanceType, BfIRPopulateType_Full_ForceDefinition);
+// 	PopulateType(typeInstanceType);
+
 	BfType* typeInstanceType = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef);
+	mBfIRBuilder->PopulateType(typeInstanceType, BfIRPopulateType_Full_ForceDefinition);
+
 	if (typeInstanceType == NULL)
 	{
 		AssertErrorState();
@@ -18900,7 +18906,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 						isValid = true;
 					}
 					else if ((genericParamInstance->mTypeConstraint->IsDelegate()) || (genericParamInstance->mTypeConstraint->IsFunction()) ||
-						((genericParamInstance != NULL) && 
+						((genericParamInstance != NULL) && (typeInstConstraint != NULL) &&
 						 ((typeInstConstraint->mTypeDef == mCompiler->mDelegateTypeDef) || (typeInstConstraint->mTypeDef == mCompiler->mFunctionTypeDef))))
 					{										
 						mCurMethodInstance->mHadGenericDelegateParams = true;

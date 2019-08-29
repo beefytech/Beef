@@ -186,6 +186,7 @@ namespace IDE
 		{
 			DeleteAndClearItems!(mCmdList);
 			mFailed = false;
+			mCurCmd = null;
 		}
 
 		public void QueueCommands(StreamReader streamReader, StringView filePath, CmdFlags flags)
@@ -466,6 +467,9 @@ namespace IDE
 				methodName = cmd;
 			}
 
+			if (mFailed)
+				return;
+
 			Target curTarget = mRoot;
 			for (var cmdPart in methodName.Split('.'))
 			{
@@ -574,6 +578,16 @@ namespace IDE
 					return gApp.mPlatformName;
 				else if (token == "config")
 					return gApp.mConfigName;
+				else if (token == "optlevel")
+				{
+					var workspaceOptions = gApp.GetCurWorkspaceOptions();
+					if (workspaceOptions != null)
+					{
+						String str = new:tempAlloc .();
+						workspaceOptions.mBfOptimizationLevel.ToString(str);
+						return str;
+					}
+				}
 				return null;
 			}
 
@@ -665,7 +679,7 @@ namespace IDE
 				if (doExec)
 				{
 					Exec(mCurCmd.mCmd);
-					mCurCmd.mExecIdx++;
+					mCurCmd?.mExecIdx++;
 				}
 
 				if (mCmdList.IsEmpty)
@@ -888,7 +902,7 @@ namespace IDE
 					return false;
 			}
 
-			if (gApp.mBfResolveCompiler.IsPerformingBackgroundOperation())
+			if ((gApp.mBfResolveCompiler != null) && (gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()))
 				return false;
 			if (gApp.[Friend]mDeferredOpen != .None)
 				return false;
@@ -910,6 +924,9 @@ namespace IDE
 			if (!gApp.[Friend]mExecutionInstances.IsEmpty)
 				return false;
 
+			if (gApp.mDebugger == null)
+				return true;
+
 			if ((!gApp.AreTestsRunning()) && (!gApp.mDebugger.HasPendingDebugLoads()) &&
 				((gApp.mExecutionPaused) || (!gApp.mDebugger.mIsRunning)))
 			{
@@ -928,6 +945,9 @@ namespace IDE
 				{
 					return false;
 				}
+
+				if (runState == .Running_ToTempBreakpoint)
+					return false;
 
 				Debug.Assert((runState == .NotStarted) || (runState == .Paused) || (runState == .Running_ToTempBreakpoint) ||
 					(runState == .Exception) || (runState == .Breakpoint) || (runState == .Terminated));
@@ -1130,6 +1150,62 @@ namespace IDE
 				}
 				else
 					gApp.OutputLine("{} files copied from '{}' to '{}'", foundCount, srcPath, destPath);
+			}
+		}
+
+		public Project GetProject()
+		{
+			if (mScriptManager.mProjectName == null)
+			{
+				mScriptManager.Fail("Only usable in the context of a project");
+				return null;
+			}
+
+			let project = gApp.mWorkspace.FindProject(mScriptManager.mProjectName);
+			if (project == null)
+			{
+				mScriptManager.Fail("Unable to find project '{}'", mScriptManager.mProjectName);
+				return null;
+			}
+			return project;
+		}
+
+		[IDECommand]
+		public void CopyToDependents(String srcPath)
+		{
+			let depProject = GetProject();
+			if (depProject == null)
+				return;
+
+			for (let checkProject in gApp.mWorkspace.mProjects)
+			{
+				if (checkProject.HasDependency(depProject.mProjectName))
+				{
+					String fileName = scope .();
+					Path.GetFileName(srcPath, fileName);
+
+					List<String> targetPaths = scope .();
+					defer ClearAndDeleteItems(targetPaths);
+
+					let workspaceOptions = gApp.GetCurWorkspaceOptions();
+					let options = gApp.GetCurProjectOptions(checkProject);
+					gApp.[Friend]GetTargetPaths(checkProject, workspaceOptions, options, targetPaths);
+
+					if (!targetPaths.IsEmpty)
+					{
+						String targetDirPath = scope .();
+						Path.GetDirectoryPath(targetPaths[0], targetDirPath);
+
+						String destPath = scope .();
+						Path.GetAbsolutePath(fileName, targetDirPath, destPath);
+
+						if (File.CopyIfNewer(srcPath, destPath) case .Err)
+						{
+							mScriptManager.Fail("Failed to copy file '{}' to '{}'", srcPath, destPath);
+							return;
+						}
+					}
+				}
 			}
 		}
 
@@ -1351,6 +1427,49 @@ namespace IDE
 			}
 
 			ScriptManager.sActiveManager.Fail("Failed to find stack frame containing string '{}'", str);
+		}
+
+		public bool AssertRunning()
+		{
+			if (!gApp.mDebugger.mIsRunning)
+			{
+				mScriptManager.Fail("Expected target to be running");
+				return false;
+			}
+			return true;
+		}
+
+		public bool AssertDebuggerPaused()
+		{
+			if (!gApp.mDebugger.mIsRunning)
+			{
+				mScriptManager.Fail("Expected target to be running");
+				return false;
+			}
+
+			if (!gApp.mDebugger.IsPaused())
+			{
+				mScriptManager.Fail("Expected target to be paused");
+				return false;
+			}
+
+			return true;
+		}
+
+		[IDECommand]
+		public void StepInto()
+		{
+			if (!AssertDebuggerPaused())
+				return;
+			gApp.[Friend]StepInto();
+		}
+
+		[IDECommand]
+		public void StepOver()
+		{
+			if (!AssertDebuggerPaused())
+				return;
+			gApp.[Friend]StepOver();
 		}
 
 		[IDECommand]
@@ -1948,7 +2067,7 @@ namespace IDE
 		[IDECommand]
 		public void Stop()
 		{
-			ScriptManager.sActiveManager.Clear();
+			mScriptManager.Clear();
 		}
 
 		[IDECommand]

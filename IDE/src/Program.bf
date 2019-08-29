@@ -25,7 +25,7 @@ namespace IDE
 #if SMALLTEST
 			Debug.WriteLine("Hey!\n");
 #else
-        	IDEApp mApp = new IDEApp(); 	
+        	IDEApp mApp = new IDEApp();
             mApp.ParseCommandLine(args);
             mApp.Init();
 

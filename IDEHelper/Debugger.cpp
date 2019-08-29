@@ -16,33 +16,35 @@ DbgModuleMemoryCache::DbgModuleMemoryCache(uintptr addr, int size)
 	mBlocks = new uint8*[mBlockCount];
 	memset(mBlocks, 0, mBlockCount * sizeof(uint8*));
 	mFlags = new DbgMemoryFlags[mBlockCount];
-	memset(mBlocks, 0, mBlockCount * sizeof(DbgMemoryFlags));
+	memset(mFlags, 0, mBlockCount * sizeof(DbgMemoryFlags));
 	mOwns = true;
 }
 
-DbgModuleMemoryCache::DbgModuleMemoryCache(uintptr addr, uint8* data, int size, bool makeCopy)
-{
-	mAddr = addr;
-	mBlockSize = size;
-	mBlocks = new uint8*[1];
-	mFlags = new DbgMemoryFlags[1];
-	mSize = size;
-
-	if (makeCopy)
-	{
-		uint8* dataCopy = new uint8[size];
-		if (data != NULL)
-			memcpy(dataCopy, data, size);
-		mBlocks[0] = dataCopy;
-	}
-	else
-	{
-		mBlocks[0] = data;
-	}	
-
-	mOwns = makeCopy;
-	mBlockCount = 1;
-}
+// DbgModuleMemoryCache::DbgModuleMemoryCache(uintptr addr, uint8* data, int size, bool makeCopy)
+// {
+// 	mAddr = addr;
+// 	mBlockSize = size;
+// 	mBlocks = new uint8*[1];
+// 	mFlags = new DbgMemoryFlags[1];
+// 	mSize = size;
+// 
+// 	if (makeCopy)
+// 	{
+// 		uint8* dataCopy = new uint8[size];
+// 		if (data != NULL)
+// 			memcpy(dataCopy, data, size);
+// 		else
+// 			memset(dataCopy, 0, size);
+// 		mBlocks[0] = dataCopy;
+// 	}
+// 	else
+// 	{
+// 		mBlocks[0] = data;
+// 	}	
+// 
+// 	mOwns = makeCopy;
+// 	mBlockCount = 1;
+// }
 
 DbgModuleMemoryCache::~DbgModuleMemoryCache()
 {
@@ -57,13 +59,17 @@ DbgModuleMemoryCache::~DbgModuleMemoryCache()
 
 DbgMemoryFlags DbgModuleMemoryCache::Read(uintptr addr, uint8* data, int size)
 {
+	BF_ASSERT(mAddr != 0);
+
 	int sizeLeft = size;
 	DbgMemoryFlags flags = DbgMemoryFlags_None;
 
 	if ((addr < mAddr) || (addr > mAddr + mSize))
 	{
 		gDebugger->ReadMemory(addr, size, data);
-		return gDebugger->GetMemoryFlags(addr);
+		flags =  gDebugger->GetMemoryFlags(addr);
+		BfLogDbg("Got memory flags %p = %d\n", addr, flags);
+		return flags;
 	}
 
 	int relAddr = (int)(addr - mAddr);
@@ -80,7 +86,7 @@ DbgMemoryFlags DbgModuleMemoryCache::Read(uintptr addr, uint8* data, int size)
 			mBlocks[blockIdx] = block;
 
 			mFlags[blockIdx] = gDebugger->GetMemoryFlags(mAddr + blockIdx * mBlockSize);
-			//BfLogDbg("Memory flags for %p = %d\n", mAddr + blockIdx * mBlockSize, mFlags[blockIdx]);
+			BfLogDbg("Memory flags for %p = %d\n", mAddr + blockIdx * mBlockSize, mFlags[blockIdx]);
 		}
 
 		flags = mFlags[blockIdx];

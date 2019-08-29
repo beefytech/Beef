@@ -315,17 +315,25 @@ public:
 
 #endif
 
-BF_EXPORT void BF_CALLTYPE BpInit(const char* serverName, const char* sessionName);
-BF_EXPORT void BF_CALLTYPE BpShutdown();
-BF_EXPORT BpConnectState BF_CALLTYPE BpGetConnectState();
-BF_EXPORT void BF_CALLTYPE BpRetryConnect();
-BF_EXPORT void BF_CALLTYPE BpPause();
-BF_EXPORT void BF_CALLTYPE BpUnpause();
-BF_EXPORT void BF_CALLTYPE BpSetClientName(const char* clientName);
-BF_EXPORT void BF_CALLTYPE BpSetThreadName(const char* threadName);
-BF_EXPORT void BF_CALLTYPE BpEnter(const char* zoneName);
-BF_EXPORT void BF_CALLTYPE BpEnterF(const char* zoneName, ...);
-BF_EXPORT void BF_CALLTYPE BpLeave();
-BF_EXPORT void BF_CALLTYPE BpFrameTick();
-BF_EXPORT void BF_CALLTYPE BpEvent(const char* name, const char* details);
-BF_EXPORT const char* BF_CALLTYPE BpDynStr(const char* str);
+#ifdef BP_DYNAMIC
+#define BP_EXPORT BF_EXPORT
+#define BP_CALLTYPE BF_CALLTYPE
+#else
+#define BP_EXPORT
+#define BP_CALLTYPE
+#endif
+
+BP_EXPORT void BP_CALLTYPE BpInit(const char* serverName, const char* sessionName);
+BP_EXPORT void BP_CALLTYPE BpShutdown();
+BP_EXPORT BpConnectState BP_CALLTYPE BpGetConnectState();
+BP_EXPORT void BP_CALLTYPE BpRetryConnect();
+BP_EXPORT void BP_CALLTYPE BpPause();
+BP_EXPORT void BP_CALLTYPE BpUnpause();
+BP_EXPORT void BP_CALLTYPE BpSetClientName(const char* clientName);
+BP_EXPORT void BP_CALLTYPE BpSetThreadName(const char* threadName);
+BP_EXPORT void BP_CALLTYPE BpEnter(const char* zoneName);
+BP_EXPORT void BP_CALLTYPE BpEnterF(const char* zoneName, ...);
+BP_EXPORT void BP_CALLTYPE BpLeave();
+BP_EXPORT void BP_CALLTYPE BpFrameTick();
+BP_EXPORT void BP_CALLTYPE BpEvent(const char* name, const char* details);
+BP_EXPORT const char* BP_CALLTYPE BpDynStr(const char* str);

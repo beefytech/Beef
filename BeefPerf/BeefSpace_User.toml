@@ -1,6 +1,7 @@
 FileVersion = 1
 LastConfig = "Debug"
 LastPlatform = "Win64"
+RecentFilesList = ["c:\\Beef\\BeefPerf\\src\\FMod_DSP.bf", "c:\\Beef\\BeefPerf\\src\\FMod.bf"]
 
 [MainWindow]
 X = 64
@@ -27,7 +28,7 @@ Type = "TabbedView"
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 Active = true
 TabLabel = "Workspace"
-TabWidth = 95.0
+TabWidth = 115.0
 Type = "ProjectPanel"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets]]
@@ -35,9 +36,26 @@ IsFillWidget = true
 Permanent = true
 RequestedWidth = 150.0
 RequestedHeight = 150.0
-SizePriority = 1.0
+SizePriority = 150.0
 DefaultDocumentsTabbedView = true
 Type = "TabbedView"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+Active = true
+TabLabel = "FMod_DSP.bf"
+TabWidth = 116.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefPerf\\src\\FMod_DSP.bf"
+CursorPos = 1876
+ProjectName = "BeefPerf"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "FMod.bf"
+TabWidth = 89.0
+Type = "SourceViewPanel"
+FilePath = "c:\\Beef\\BeefPerf\\src\\FMod.bf"
+CursorPos = 518
+ProjectName = "BeefPerf"
 
 [[MainDockingFrame.DockedWidgets]]
 RequestedWidth = 250.0
@@ -53,21 +71,21 @@ Type = "TabbedView"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 TabLabel = "Memory"
-TabWidth = 150.0
+TabWidth = 99.0
 Type = "MemoryPanel"
 AutoResize = "Auto_Mul8"
 RequestedWidth = 300.0
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 TabLabel = "Watch"
-TabWidth = 150.0
+TabWidth = 86.0
 Type = "WatchPanel"
 Columns = [{Width = 200.0}, {Width = 200.0}, {Width = 200.0}]
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 Active = true
 TabLabel = "Auto"
-TabWidth = 150.0
+TabWidth = 77.0
 Type = "AutoWatchPanel"
 Columns = [{Width = 200.0}, {Width = 200.0}, {Width = 200.0}]
 
@@ -78,24 +96,29 @@ SizePriority = 0.5
 Type = "TabbedView"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
+TabLabel = "Find Results"
+TabWidth = 119.0
+Type = "FindResultsPanel"
+
+[[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 TabLabel = "Threads"
-TabWidth = 150.0
+TabWidth = 97.0
 Type = "ThreadPanel"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 TabLabel = "Call Stack"
-TabWidth = 150.0
+TabWidth = 105.0
 Type = "CallStackPanel"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 TabLabel = "Immediate"
-TabWidth = 150.0
+TabWidth = 111.0
 Type = "ImmediatePanel"
 
 [[MainDockingFrame.DockedWidgets.DockedWidgets.Tabs]]
 Active = true
 TabLabel = "Output"
-TabWidth = 150.0
+TabWidth = 90.0
 Type = "OutputPanel"
 
 [DebuggerDisplayTypes.""]

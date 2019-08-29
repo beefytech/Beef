@@ -85,6 +85,7 @@ namespace IDETest
 
 		static void DoTest0()
 		{
+			//PrintF("Hey!\n");
 			/*DoTest0_Body
 			ClassC cc = scope .();
 			int a0 = cc.MethodA0();

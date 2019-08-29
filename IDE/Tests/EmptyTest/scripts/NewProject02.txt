@@ -16,6 +16,6 @@ DeleteFile("$(WorkspaceDir)/src/ClassA2.bf")
 # File race condition
 Sleep(2000)
 
-StepOver()
+RunWithStep()
 StepOver()
 AssertEvalEquals("a", "19")

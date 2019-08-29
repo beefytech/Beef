@@ -522,7 +522,7 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 	mDbgProcessHandle = 0;
 	mDbgThreadHandle = 0;
 	mDbgProcessId = 0;
-	mIsPartialCallStack = false;
+	mIsPartialCallStack = true;
 		
 	for (int i = 0; i < 4; i++)
 	{		
@@ -675,6 +675,9 @@ void WinDebugger::PhysSetBreakpoint(addr_target address)
 	if ((flags & DbgMemoryFlags_Execute) == 0)
 	{		
 		BfLogDbg("Breakpoint ignored - execute flag NOT set in breakpoint address\n", address);
+
+		BfLogDbg("Memory Flags = %d\n", gDebugger->GetMemoryFlags(address));
+
 		return;
 	}
 
@@ -1289,6 +1292,7 @@ void WinDebugger::Detach()
 	mRunState = RunState_NotStarted;
 	mStepType = StepType_None;
 	mHadImageFindError = false;
+	mIsPartialCallStack = true;
 
 	delete mDebugPendingExpr;
 	mDebugPendingExpr = NULL;
@@ -2007,9 +2011,8 @@ bool WinDebugger::DoUpdate()
 						isDeeper = mStepSP > BF_CONTEXT_SP(lcContext);
 						if ((mStepType == StepType_StepOut) || (mStepType == StepType_StepOut_ThenInto))
 						{
-							BfLogDbg("StepOut Iteration SP:%p StartSP:%p\n", BF_CONTEXT_SP(lcContext), mStepSP);
-
 							isDeeper = mStepSP >= BF_CONTEXT_SP(lcContext);
+							BfLogDbg("StepOut Iteration SP:%p StartSP:%p IsDeeper:%d\n", BF_CONTEXT_SP(lcContext), mStepSP, isDeeper);
 						}
 
 						if (((mStepType == StepType_StepOut) || (mStepType == StepType_StepOut_ThenInto)) && (breakpoint == NULL) && (isDeeper))
@@ -3637,11 +3640,11 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 			conditional->mDbgEvaluationContext->mDbgExprEvaluator->mExpressionFlags = (DwEvalExpressionFlags)(DwEvalExpressionFlag_AllowSideEffects | DwEvalExpressionFlag_AllowCalls);
 		}
 
-		WdStackFrame wdStackFrame;
-		PopulateRegisters(&wdStackFrame.mRegisters);
-		mCallStack.push_back(&wdStackFrame);
+		WdStackFrame* wdStackFrame = new WdStackFrame();
+		PopulateRegisters(&wdStackFrame->mRegisters);
+		mCallStack.Add(wdStackFrame);
 		DbgTypedValue result = conditional->mDbgEvaluationContext->EvaluateInContext(DbgTypedValue());
-		mCallStack.pop_back();
+		ClearCallStack();		
 
 		if (conditional->mDbgEvaluationContext->mPassInstance->HasFailed())
 		{
@@ -3744,6 +3747,8 @@ void WinDebugger::CleanupDebugEval(bool restoreRegisters)
 		{
 			SetAndRestoreValue<WdThreadInfo*> activeThread(mActiveThread, evalThreadInfo);
 			RestoreAllRegisters();
+// 			if (mRunState == RunState_Running_ToTempBreakpoint)
+// 				mRunState = RunState_Paused;
 		}
 
 		evalThreadInfo->mStartSP = mDebugEvalThreadInfo.mStartSP;
@@ -4110,10 +4115,19 @@ void WinDebugger::RestoreAllRegisters()
 	BF_SetThreadContext(mActiveThread->mHThread, &mSavedContext);
 
 #ifdef BF_DBG_32
-	SetTempBreakpoint(mSavedContext.Eip);
-	mRunState = RunState_Running_ToTempBreakpoint;
-	mStepType = StepType_ToTempBreakpoint;
-	mSteppingThread = mActiveThread;
+	//TODO: Find the test that this was required for...
+// 	if (mActiveThread->mIsAtBreakpointAddress == mSavedContext.Eip)
+// 	{
+// 		if (mRunState == RunState_Running_ToTempBreakpoint)
+// 			mRunState = RunState_Paused;
+// 	}
+// 	else
+// 	{
+// 		SetTempBreakpoint(mSavedContext.Eip);
+// 		mRunState = RunState_Running_ToTempBreakpoint;
+// 		mStepType = StepType_ToTempBreakpoint;
+// 		mSteppingThread = mActiveThread;
+// 	}
 #endif
 }
 
@@ -4280,6 +4294,42 @@ bool WinDebugger::SetupStep(StepType stepType)
 		if ((mStepType != StepType_StepOut_NoFrame) && (RollBackStackFrame(&registers, true)))
 		{
 			pcAddress = registers.GetPC();
+
+			addr_target oldAddress = pcAddress;
+
+			CPUInst inst;
+			while (true)
+			{
+				if (!mDebugTarget->DecodeInstruction(pcAddress, &inst))
+					break;
+				if ((inst.IsBranch()) || (inst.IsCall()) || (inst.IsReturn()))
+					break;
+				DbgSubprogram* checkSubprogram = NULL;
+				auto checkLineData = FindLineDataAtAddress(pcAddress, &checkSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
+				if (checkLineData == NULL)
+					break;
+				if (checkSubprogram->GetLineAddr(*checkLineData) == pcAddress)
+					break;
+				pcAddress += inst.GetLength();
+			}
+
+			if (pcAddress != oldAddress)
+			{
+				BfLogDbg("Adjusting stepout address from %p to %p\n", oldAddress, pcAddress);
+			}
+
+#ifdef BF_DBG_32			
+// 			if (mDebugTarget->DecodeInstruction(pcAddress, &inst))
+// 			{
+// 				if (inst.IsStackAdjust())
+// 				{
+// 					auto oldAddress = pcAddress;
+// 					pcAddress += inst.GetLength();
+// 					BfLogDbg("Adjusting stepout address from %p to %p\n", oldAddress, pcAddress);
+// 				}
+// 			}
+#endif
+
 			BfLogDbg("SetupStep Stepout SetTempBreakpoint %p\n", pcAddress);
 			SetTempBreakpoint(pcAddress);
 			mStepBreakpointAddrs.push_back(pcAddress);			
@@ -4380,10 +4430,16 @@ bool WinDebugger::SetupStep(StepType stepType)
 				breakOnNext = true;
 			}
 
+			if ((inst.IsReturn()) && (instIdx == 0) && (!mStepInAssembly))
+			{
+				// Do actual STEP OUT so we set up proper "stepping over unimportant post-return instructions"
+				return SetupStep(StepType_StepOut);
+			}
+
 			if ((breakOnNext) || (mStepInAssembly) || (isAtLine) || (inst.IsBranch()) || (inst.IsCall()) || (inst.IsReturn()))
 			{
 				if (((instIdx == 0) || (mStepInAssembly)) && (!breakOnNext))
-				{					
+				{
 					if ((stepType == StepType_StepOver) && (inst.IsCall()))
 					{
 						// Continue - sets a breakpoint on the call line to detect recursion.
@@ -4621,6 +4677,8 @@ void WinDebugger::CheckNonDebuggerBreak()
 		return;
 	}
 
+	bool showMainThread = false;
+
 	String symbol;
 	addr_target offset;
 	DbgModule* dbgModule;
@@ -4628,17 +4686,28 @@ void WinDebugger::CheckNonDebuggerBreak()
 	{
 		if (symbol == "DbgBreakPoint")
 		{
-			// This is a manual break, show the main thread
-			mActiveThread = mThreadList.front();
-			if (mDebugPendingExpr != NULL)
+			showMainThread = true;			
+		}
+	}
+#ifdef BF_DBG_32
+	else if ((dbgModule != NULL) && (dbgModule->mDisplayName.Equals("kernel32.dll", StringImpl::CompareKind_OrdinalIgnoreCase)))
+	{
+		showMainThread = true;
+	}
+#endif
+
+	if (showMainThread)
+	{
+		// This is a manual break, show the main thread
+		mActiveThread = mThreadList.front();
+		if (mDebugPendingExpr != NULL)
+		{
+			for (auto thread : mThreadList)
 			{
-				for (auto thread : mThreadList)
+				if (thread->mThreadId == mDebugEvalThreadInfo.mThreadId)
 				{
-					if (thread->mThreadId == mDebugEvalThreadInfo.mThreadId)
-					{
-						mActiveThread = thread;
-						break;
-					}
+					mActiveThread = thread;
+					break;
 				}
 			}
 		}
@@ -8754,8 +8823,10 @@ DbgSubprogram* WinDebugger::GetCallStackSubprogram(int callStackIdx)
 		return NULL;
 	if (callStackIdx >= (int)mCallStack.size())
 		UpdateCallStack();
+	if (mCallStack.IsEmpty())
+		return NULL;
 	if (callStackIdx >= (int)mCallStack.size())
-		callStackIdx = 0;
+		callStackIdx = 0;	
 	UpdateCallStackMethod(callStackIdx);
 	auto subProgram = mCallStack[callStackIdx]->mSubProgram;
 	return subProgram;
@@ -8767,6 +8838,8 @@ DbgCompileUnit* WinDebugger::GetCallStackCompileUnit(int callStackIdx)
 		return NULL;
 	if (callStackIdx >= (int)mCallStack.size())
 		UpdateCallStack();
+	if (mCallStack.IsEmpty())
+		return NULL;
 	if (callStackIdx >= (int)mCallStack.size())
 		callStackIdx = 0;
 	UpdateCallStackMethod(callStackIdx);

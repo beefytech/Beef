@@ -16,7 +16,6 @@ AssertEvalEquals("us.mInnerB.mInnerA.mInt1", "23")
 
 StepOut()
 StepOver()
-StepOver()
 StepInto()
 StepOver()
 StepOver()

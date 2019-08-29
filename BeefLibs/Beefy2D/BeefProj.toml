@@ -2,7 +2,6 @@ FileVersion = 1
 
 [Project]
 Name = "Beefy2D"
-TargetType = "BeefLib"
 DefaultNamespace = ""
 
 [Configs.Debug.Win32]
@@ -11,13 +10,19 @@ PreprocessorMacros = ["DEBUG", "BF32"]
 OptimizationLevel = "O0"
 
 [Configs.Debug.Win64]
+OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/dist/BeefySysLib64_d.lib"
 CLibType = "Static"
 BeefLibType = "Static"
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.pdb\")"]
 
 [Configs.Release.Win32]
 OtherLinkFlags = ""
 PreprocessorMacros = ["RELEASE", "BF32"]
 OptimizationLevel = "O0"
+
+[Configs.Release.Win64]
+OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/dist/BeefySysLib64.lib"
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64.pdb\")"]
 
 [Configs.Paranoid.Win32]
 CLibType = "Static"

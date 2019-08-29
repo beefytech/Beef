@@ -836,7 +836,8 @@ enum BfIRPopulateType
 	BfIRPopulateType_Identity,
 	BfIRPopulateType_Declaration,
 	BfIRPopulateType_Eventually_Full,
-	BfIRPopulateType_Full
+	BfIRPopulateType_Full,
+	BfIRPopulateType_Full_ForceDefinition
 };
 
 class BfIRBuilder : public BfIRConstHolder
@@ -934,8 +935,8 @@ public:
 	BfIRMDNode CreateNamespaceScope(BfType* type, BfIRMDNode fileDIScope);
 	String GetDebugTypeName(BfTypeInstance* typeInstance, bool includeOuterTypeName);
 	void CreateDbgTypeDefinition(BfType* type);
-	void CreateTypeDeclaration(BfType* type);
-	void CreateTypeDefinition(BfType* type);	
+	void CreateTypeDeclaration(BfType* type, bool forceDefine);
+	void CreateTypeDefinition(BfType* type, bool forceDefine);	
 	void ReplaceDITemporaryTypes();
 	void PushDbgLoc(BfTypeInstance* typeInst);
 	BfIRPopulateType GetPopulateTypeState(BfType* type);

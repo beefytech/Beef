@@ -93,6 +93,8 @@ BePointerType* BeContext::GetPointerTo(BeType* beType)
 
 void BeContext::SetStructBody(BeStructType* structType, const SizedArrayImpl<BeType*>& types, bool packed)
 {
+	BF_ASSERT(structType->mMembers.IsEmpty());
+
 	int dataPos = 0;
 	for (auto& beType : types)
 	{

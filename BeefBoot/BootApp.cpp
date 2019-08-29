@@ -742,6 +742,11 @@ bool BootApp::Compile()
 
 	mProject = BfSystem_CreateProject(mSystem, projectName.c_str());
 	
+	if (!mDefines.IsEmpty())
+		mDefines.Append("\n");
+	mDefines.Append("BF_64_BIT");
+	mDefines.Append("\nBF_LITTLE_ENDIAN");
+
 	int ltoType = 0;
     BfProject_SetOptions(mProject, mTargetType, mStartupObject.c_str(), mDefines.c_str(), mOptLevel, ltoType, false, false, false, false);
 	

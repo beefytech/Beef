@@ -13,7 +13,7 @@ OptimizationLevel = "O0"
 [Configs.Debug.Win64]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "$(ProjectName)_d"
-OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib BeefySysLib64_d.lib Rpcrt4.lib Ole32.lib"
+OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib Rpcrt4.lib Ole32.lib"
 CLibType = "Dynamic"
 BeefLibType = "DynamicDebug"
 DebugCommandArguments = "-workspace=."
@@ -45,7 +45,7 @@ OptimizationLevel = "O0"
 
 [Configs.Release.Win64]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
-OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64.lib BeefySysLib64.lib"
+OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64.lib"
 CLibType = "Dynamic"
 DebugCommandArguments = "-proddir=..\\..\\BeefPerf -config=Release"
 DebugWorkingDirectory = "$(ProjectDir)\\dist"

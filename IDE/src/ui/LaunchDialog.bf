@@ -351,13 +351,21 @@ namespace IDE.ui
 			IDEUtils.FixFilePath(targetPath);
 
 			String workingDir = scope String();
-			//
+			
+			workingDir.Append(mWorkingDirCombo.Label);
+			if (Path.IsPathRooted(workingDir))
 			{
-				String relWorkingDir = scope String();
-				relWorkingDir.Append(mWorkingDirCombo.Label);
-				if (!workingDir.IsWhiteSpace)
+				defer targetPath.Remove(0, targetPath.Length);
+				Path.GetAbsolutePath(targetPath, workingDir, targetPath);
+			}
+			else
+			{
+				String targetDir = scope .();
+				Path.GetDirectoryPath(targetPath, targetDir);
+				if (!targetDir.IsWhiteSpace)
 				{
-					Path.GetAbsolutePath(targetPath, relWorkingDir, workingDir);
+					defer workingDir.Remove(0, workingDir.Length);
+					Path.GetAbsolutePath(workingDir, targetDir, workingDir);
 				}
 			}
 

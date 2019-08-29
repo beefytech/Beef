@@ -233,7 +233,8 @@ namespace Hey.Dude.Bro
 			}
 
 			//PrintF("%ld\n", foo((int32*)&l, &l));
-			return foo((int32*)&l, &l);
+			//return foo((int32*)&l, &l);
+			return 1;
 		}
 	}
 }

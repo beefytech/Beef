@@ -10,8 +10,9 @@
 BeefSpace_User.toml
 lld-link.exe
 stats/
-IDE/dist/*
-dist/*
+**/dist/*
 BeefySysLib/third_party/*
 BeefTools/RandoCode/*
 jbuild*/
+IDE/Tests/NewProject*/*
+*.csproj.user

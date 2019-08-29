@@ -21,11 +21,10 @@ ToggleCommentAt("IHot_IHotB")
 ToggleCommentAt("HotTester_TestIHotB")
 Compile()
 
+Stop()
+
 # Steps out
 StepOver()
-
-# We need an extra step for Win32 for stack adjustment...
-if (platform == "Win32") StepOver()
 
 StepInto()
 StepOver()

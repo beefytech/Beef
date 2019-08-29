@@ -593,7 +593,7 @@ namespace Beefy.widgets
                 for (ListViewItem child in mChildItems)
                 {
                     child.mVisible = (mShowChildPct > 0.0f);
-                    child.Resize(child.mX, curY, mWidth - child.mX, child.mSelfHeight);
+                    child.ResizeClamped(child.mX, curY, mWidth - child.mX, child.mSelfHeight);
                     float resizeXOfs = xOffset;
                     if (mParentItem != null)
                         resizeXOfs += mX;

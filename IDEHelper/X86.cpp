@@ -151,6 +151,11 @@ int X86Instr::GetLength()
 	return mSize;
 }
 
+bool X86Instr::IsStackAdjust()
+{
+	return mMCInst.getOpcode() == X86::SUB32ri8;
+}
+
 bool X86Instr::IsBranch()
 {
 	const MCInstrDesc &instDesc = mX86->mInstrInfo->get(mMCInst.getOpcode());

@@ -811,7 +811,7 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 			vDataIdx += mVirtualTableIdx;
 		}
 		if (vDataVal == -1)
-			vDataVal = vDataIdx * module->mSystem->mPtrSize;
+			vDataVal = vDataIdx;
 	}
 	return vDataVal;
 }

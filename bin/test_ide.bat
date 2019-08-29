@@ -3,6 +3,12 @@
 SETLOCAL EnableDelayedExpansion
 @SET PATH=c:\Python27;%PATH%
 
+@SET MSBUILD_FLAGS=
+@IF "%1" NEQ "fast" goto SKIP
+@SET FASTTEST=1
+@ECHO Performing fast test (Win64/Debug only)
+:SKIP
+
 PUSHD %~dp0..\
 
 @SET TESTPATH=IDE\Tests\CompileFail001
@@ -29,13 +35,16 @@ PUSHD %~dp0..\
 	%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i
 	@IF !ERRORLEVEL! NEQ 0 GOTO:EOF
 
-	@ECHO Testing %%i in BeefIDE - Win64
-	%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i
-	@IF !ERRORLEVEL! NEQ 0 GOTO:EOF
+	@IF !FASTTEST! NEQ 1 (
+		echo DOING %FASTTEST%
+		@ECHO Testing %%i in BeefIDE - Win64
+		%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i
+		@IF !ERRORLEVEL! NEQ 0 GOTO:EOF	
 
-	@REM @ECHO Testing %%i - Win32
-	@REM %~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i -platform=Win32
-	@REM @IF !ERRORLEVEL! NEQ 0 GOTO:EOF
+			@ECHO Testing %%i - Win32
+			%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i -platform=Win32
+			@IF !ERRORLEVEL! NEQ 0 GOTO:EOF
+	)
 )
 GOTO:EOF
 

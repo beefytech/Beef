@@ -97,8 +97,14 @@ extern "C" _CRTIMP int __cdecl __MINGW_NOTHROW	_stricmp (const char*, const char
 #define BF_IMPORT extern "C" __declspec(dllimport)
 
 #ifdef BFSYSLIB_DYNAMIC
+
 #define BF_EXPORT extern "C" __declspec(dllexport)
 #define BF_CALLTYPE __stdcall
+#ifdef BFP_NOEXPORT
+#define BFP_EXPORT extern "C"
+#define BFP_CALLTYPE __stdcall
+#endif
+
 #else
 #define BF_EXPORT extern "C"
 #define BF_CALLTYPE __stdcall

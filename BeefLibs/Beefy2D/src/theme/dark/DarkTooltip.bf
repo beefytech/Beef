@@ -250,7 +250,8 @@ namespace Beefy.theme.dark
 		{
 			base.RemovedFromWindow();
 
-			Debug.Assert(mHasClosed);
+			if (!mHasClosed)
+				Close();
 
 			WidgetWindow.sOnMouseDown.Remove(scope => HandleMouseDown, true);
 			WidgetWindow.sOnMouseWheel.Remove(scope => HandleMouseWheel, true);

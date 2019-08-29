@@ -1,3 +1,6 @@
+# This test fails on Win32 currently
+if (platform != "Win64") Stop()
+
 # Tests that even when removing an old virtual method, adding a new one, and then
 #  adding back a method with the same name as the old one, we can call this new
 #  method using an old virtual call

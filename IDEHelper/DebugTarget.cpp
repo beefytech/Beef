@@ -1939,14 +1939,32 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 	if (outReturnAddressLoc != NULL)
 		*outReturnAddressLoc = 0;
 	
-	// Don't even try to use the frame descriptor in x64, the exception directory
-	//  allows us to rollback from any instruction
-#ifdef BF_DBG_32
+	CPUInst inst;
+	if (DecodeInstruction(registers->GetPC(), &inst))	
+	{
+		if (inst.IsReturn())
+		{
+			// If we are literally just a return then often the frame descriptor is wrong,
+			//  but we know this is ACTUALLY just a simple rollback
+
+			int regSize = sizeof(addr_target);
+			addr_target* regPC = registers->GetPCRegisterRef();
+			addr_target* regSP = registers->GetSPRegisterRef();
+
+			addr_target newPC = 0;
+			gDebugger->ReadMemory(*regSP, sizeof(addr_target), &newPC);
+			*regSP += regSize;
+			*regPC = newPC;
+			return true;
+		}
+	}
+
+#ifdef BF_DBG_32			
 	if (RollBackStackFrame_DwFrameDescriptor(registers, outReturnAddressLoc))
 		return true;
 	if (RollBackStackFrame_COFFFrameDescriptor(registers, outReturnAddressLoc, isStackStart))
 		return true;
-	addr_target pc = registers->GetPC();
+	auto pc = registers->GetPC();
 	DbgSubprogram* dbgSubprogram = FindSubProgram(pc);
 	if (dbgSubprogram != NULL)
 	{

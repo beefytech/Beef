@@ -75,6 +75,8 @@ RunToCursor()
 AssertEvalEquals("threadNum", "2")
 AssertEvalEquals("i", "9")
 
+Stop()
+
 # Set up the StepOut test
 StepInto()
 StepOver()

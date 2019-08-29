@@ -1615,146 +1615,146 @@ BpManager* BpManager::Get()
 
 //////////////////////////////////////////////////////////////////////////
 
-BF_EXPORT void BF_CALLTYPE BpShutdown()
+BP_EXPORT void BP_CALLTYPE BpShutdown()
 {
 	BpManager::Get()->Shutdown();
 }
 
-BF_EXPORT void BF_CALLTYPE BpSetClientName(const char* clientName)
+BP_EXPORT void BP_CALLTYPE BpSetClientName(const char* clientName)
 {
 	BpManager::Get()->SetClientName(clientName);
 }
 
-BF_EXPORT void BF_CALLTYPE BpInit(const char* serverName, const char* sessionName)
+BP_EXPORT void BP_CALLTYPE BpInit(const char* serverName, const char* sessionName)
 {
 	BpManager::Get()->Init(serverName, sessionName);
 }
 
-BF_EXPORT BpConnectState BF_CALLTYPE BpGetConnectState()
+BP_EXPORT BpConnectState BP_CALLTYPE BpGetConnectState()
 {
 	return BpManager::Get()->mConnectState;
 }
 
-BF_EXPORT void BF_CALLTYPE BpRetryConnect()
+BP_EXPORT void BP_CALLTYPE BpRetryConnect()
 {
 	return BpManager::Get()->RetryConnect();
 }
 
-BF_EXPORT void BF_CALLTYPE BpPause()
+BP_EXPORT void BP_CALLTYPE BpPause()
 {
 	BpManager::Get()->Pause();
 }
 
-BF_EXPORT void BF_CALLTYPE BpUnpause()
+BP_EXPORT void BP_CALLTYPE BpUnpause()
 {
 	BpManager::Get()->Unpause();
 }
 
-BF_EXPORT void BF_CALLTYPE BpSetThreadName(const char* threadName)
+BP_EXPORT void BP_CALLTYPE BpSetThreadName(const char* threadName)
 {
 	BpManager::GetCurThreadInfo()->SetThreadName(threadName);
 }
 
-BF_EXPORT void BF_CALLTYPE BpEnter(const char* zoneName)
+BP_EXPORT void BP_CALLTYPE BpEnter(const char* zoneName)
 {
 	BpManager::GetCurThreadInfo()->Enter(zoneName);
 }
 
-BF_EXPORT void BF_CALLTYPE BpEnterF(const char* zoneName, ...)
+BP_EXPORT void BP_CALLTYPE BpEnterF(const char* zoneName, ...)
 {
 	va_list args;
 	va_start(args, zoneName);
 	BpManager::GetCurThreadInfo()->Enter(zoneName, args);
 }
 
-BF_EXPORT void BF_CALLTYPE BpLeave()
+BP_EXPORT void BP_CALLTYPE BpLeave()
 {
 	BpManager::GetCurThreadInfo()->Leave();
 }
 
-BF_EXPORT void BF_CALLTYPE BpFrameTick()
+BP_EXPORT void BP_CALLTYPE BpFrameTick()
 {
 	BpManager::Get()->Tick();
 }
 
-BF_EXPORT void BF_CALLTYPE BpEvent(const char* name, const char* details)
+BP_EXPORT void BP_CALLTYPE BpEvent(const char* name, const char* details)
 {
 	BpManager::GetCurThreadInfo()->Event(name, details);
 }
 
-BF_EXPORT const char* BF_CALLTYPE BpDynStr(const char* str)
+BP_EXPORT const char* BP_CALLTYPE BpDynStr(const char* str)
 {
 	return BpManager::GetCurThreadInfo()->DynamicString(str);
 }
 
 #else
 
-BF_EXPORT void BF_CALLTYPE BpShutdown()
+BP_EXPORT void BP_CALLTYPE BpShutdown()
 {
 	
 }
 
-BF_EXPORT BpConnectState BF_CALLTYPE BpGetConnectState()
+BP_EXPORT BpConnectState BP_CALLTYPE BpGetConnectState()
 {
 	return BpConnectState_NotConnected;
 }
 
-BF_EXPORT void BF_CALLTYPE BpRetryConnect()
+BP_EXPORT void BP_CALLTYPE BpRetryConnect()
 {
 
 }
 
-BF_EXPORT void BF_CALLTYPE BpPause()
+BP_EXPORT void BP_CALLTYPE BpPause()
 {
 
 }
 
-BF_EXPORT void BF_CALLTYPE BpUnpause()
+BP_EXPORT void BP_CALLTYPE BpUnpause()
 {
 
 }
 
-BF_EXPORT void BF_CALLTYPE BpSetClientName(const char* clientName)
-{
-	
-}
-
-BF_EXPORT void BF_CALLTYPE BpInit(const char* serverName, const char* sessionName)
+BP_EXPORT void BP_CALLTYPE BpSetClientName(const char* clientName)
 {
 	
 }
 
-BF_EXPORT void BF_CALLTYPE BpSetThreadName(const char* threadName)
+BP_EXPORT void BP_CALLTYPE BpInit(const char* serverName, const char* sessionName)
 {
 	
 }
 
-BF_EXPORT void BF_CALLTYPE BpEnter(const char* zoneName)
+BP_EXPORT void BP_CALLTYPE BpSetThreadName(const char* threadName)
 {
 	
 }
 
-BF_EXPORT void BF_CALLTYPE BpEnterF(const char* zoneName, ...)
+BP_EXPORT void BP_CALLTYPE BpEnter(const char* zoneName)
 {
 	
 }
 
-BF_EXPORT void BF_CALLTYPE BpLeave()
+BP_EXPORT void BP_CALLTYPE BpEnterF(const char* zoneName, ...)
 {
 	
 }
 
-BF_EXPORT void BF_CALLTYPE BpFrameTick()
+BP_EXPORT void BP_CALLTYPE BpLeave()
 {
 	
 }
 
-BF_EXPORT void BF_CALLTYPE BpEvent(const char* name, const char* details)
+BP_EXPORT void BP_CALLTYPE BpFrameTick()
 {
 	
 }
 
-BF_EXPORT const char* BF_CALLTYPE BpDynStr(const char* str)
+BP_EXPORT void BP_CALLTYPE BpEvent(const char* name, const char* details)
+{
+	
+}
+
+BP_EXPORT const char* BP_CALLTYPE BpDynStr(const char* str)
 {
 	return str;
 }

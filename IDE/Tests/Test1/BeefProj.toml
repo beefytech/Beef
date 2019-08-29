@@ -2,6 +2,7 @@ FileVersion = 1
 
 [Project]
 Name = "IDETest"
+TargetType = "BeefWindowsApplication"
 StartupObject = "IDETest.Program"
 
 [Configs.Debug.Win64]
