@@ -8128,7 +8128,8 @@ namespace IDE
 
 								if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
 									(project.mGeneralOptions.mTargetType == .BeefWindowsApplication) ||
-									(project.mGeneralOptions.mTargetType == .BeefDynLib))
+									(project.mGeneralOptions.mTargetType == .BeefDynLib) ||
+									((options.mBuildOptions.mBuildKind == .Test) && (project == mWorkspace.mStartupProject)))
 								{
 #if BF_PLATFORM_WINDOWS
 									String rtName = scope String();
