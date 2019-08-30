@@ -840,6 +840,8 @@ BF_EXPORT void BF_CALLTYPE Debugger_SetSymSrvOptions(const char* symCacheDir, co
 		{
 			String symStr = String(startStr, cPtr - startStr);
 			symStr.Trim();
+			if (symStr.EndsWith('/'))
+				symStr.Remove((int)symStr.length() - 1, 1);
 			if (!symStr.IsEmpty())
 				symServers.Add(symStr);
 			startStr = cPtr;

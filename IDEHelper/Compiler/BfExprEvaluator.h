@@ -383,6 +383,7 @@ public:
 	void DoTypeIntAttr(BfTypeReference* typeRef, BfToken token);
 	//void InitializedSizedArray(BfTupleExpression* createExpr, BfSizedArrayType* arrayType);
 	void InitializedSizedArray(BfSizedArrayType* sizedArrayType, BfTokenNode* openToken, const BfSizedArray<BfExpression*>& values, const BfSizedArray<BfTokenNode*>& commas, BfTokenNode* closeToken, BfTypedValue* receivingValue = NULL);
+	void CheckDotToken(BfTokenNode* tokenNode);
 	void DoMemberReference(BfMemberReferenceExpression* memberRefExpr, BfTypedValue* outCascadeValue);
 
 	//////////////////////////////////////////////////////////////////////////

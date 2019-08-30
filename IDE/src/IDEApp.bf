@@ -4737,11 +4737,13 @@ namespace IDE
 			mViewWhiteSpace.mMenu = AddMenuItem(advancedEditMenu, "View White Space", "View White Space", null, null, true, mViewWhiteSpace.Bool ? 1 : 0);
 			AddMenuItem(advancedEditMenu, "Reformat Document", "Reformat Document");
 
-			subMenu.AddMenuItem(null);
-
-			var internalEditMenu = subMenu.AddMenuItem("Internal");
-			internalEditMenu.AddMenuItem("Hilight Cursor References", null, new (menu) => { ToggleCheck(menu, ref gApp.mSettings.mEditorSettings.mHiliteCursorReferences); }, null, null, true, gApp.mSettings.mEditorSettings.mHiliteCursorReferences ? 1 : 0);
-			internalEditMenu.AddMenuItem("Delayed Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgDelayedAutocomplete); }, null, null, true, gApp.mDbgDelayedAutocomplete ? 1 : 0);
+			if (mSettings.mEnableDevMode)
+			{
+				subMenu.AddMenuItem(null);
+				var internalEditMenu = subMenu.AddMenuItem("Internal");
+				internalEditMenu.AddMenuItem("Hilight Cursor References", null, new (menu) => { ToggleCheck(menu, ref gApp.mSettings.mEditorSettings.mHiliteCursorReferences); }, null, null, true, gApp.mSettings.mEditorSettings.mHiliteCursorReferences ? 1 : 0);
+				internalEditMenu.AddMenuItem("Delayed Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgDelayedAutocomplete); }, null, null, true, gApp.mDbgDelayedAutocomplete ? 1 : 0);
+			}
 
 			//////////
 
@@ -4774,10 +4776,13 @@ namespace IDE
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });
             AddMenuItem(subMenu, "Cancel Build", "Cancel Build", new (menu) => { menu.SetDisabled(!IsCompiling); });
 
-			var internalBuildMenu = subMenu.AddMenuItem("Internal");
-            internalBuildMenu.AddMenuItem("Autobuild (Debug)", null, new (menu) => { mDebugAutoBuild = !mDebugAutoBuild; });
-            internalBuildMenu.AddMenuItem("Autorun (Debug)", null, new (menu) => { mDebugAutoRun = !mDebugAutoRun; });
-			internalBuildMenu.AddMenuItem("Disable Compiling", null, new (menu) => { ToggleCheck(menu, ref mDisableBuilding); }, null, null, true, mDisableBuilding ? 1 : 0);
+			if (mSettings.mEnableDevMode)
+			{
+				var internalBuildMenu = subMenu.AddMenuItem("Internal");
+	            internalBuildMenu.AddMenuItem("Autobuild (Debug)", null, new (menu) => { mDebugAutoBuild = !mDebugAutoBuild; });
+	            internalBuildMenu.AddMenuItem("Autorun (Debug)", null, new (menu) => { mDebugAutoRun = !mDebugAutoRun; });
+				internalBuildMenu.AddMenuItem("Disable Compiling", null, new (menu) => { ToggleCheck(menu, ref mDisableBuilding); }, null, null, true, mDisableBuilding ? 1 : 0);
+			}
 
 			//////////
 
@@ -4803,38 +4808,41 @@ namespace IDE
 			AddMenuItem(newBreakpointMenu, "&Memory Breakpoint...", "Breakpoint Memory");
 			AddMenuItem(newBreakpointMenu, "&Symbol Breakpoint...", "Breakpoint Symbol");
 
-			var internalDebugMenu = subMenu.AddMenuItem("Internal");
-			internalDebugMenu.AddMenuItem("Error Test", null, new (menu) => { DoErrorTest(); } );
-			internalDebugMenu.AddMenuItem("Reconnect BeefPerf", null, new (menu) => { BeefPerf.RetryConnect(); } );
-            AddMenuItem(internalDebugMenu, "Report Memory", "Report Memory");
-			internalDebugMenu.AddMenuItem("Crash", null, new (menu) => { Runtime.FatalError("Bad"); });
-			internalDebugMenu.AddMenuItem("Exit Test", null, new (menu) => { ExitTest(); });
-			internalDebugMenu.AddMenuItem("Run Test", null, new (menu) => { mRunTest = !mRunTest; });
-			internalDebugMenu.AddMenuItem("GC Collect", null, new (menu) =>
-                {
-                    var profileId = Profiler.StartSampling().GetValueOrDefault();
-					for (int i < 10)
-						GC.Collect(false);
-					if (profileId != 0)
-						profileId.Dispose();
-                });
-			internalDebugMenu.AddMenuItem("Enable GC Collect", null, new (menu) => { ToggleCheck(menu, ref mEnableGCCollect); EnableGCCollect = mEnableGCCollect; }, null, null, true, mEnableGCCollect ? 1 : 0);
-			internalDebugMenu.AddMenuItem("Fast Updating", null, new (menu) => { ToggleCheck(menu, ref mDbgFastUpdate); EnableGCCollect = mDbgFastUpdate; }, null, null, true, mDbgFastUpdate ? 1 : 0);
-			internalDebugMenu.AddMenuItem("Alloc String", null, new (menu) => { new String("Alloc String"); });
-			internalDebugMenu.AddMenuItem("Perform Long Update Checks", null, new (menu) =>
-                {
-					bool wantsLongUpdateCheck = mLongUpdateProfileId != 0;
-                    ToggleCheck(menu, ref wantsLongUpdateCheck);
-					mLastLongUpdateCheck = 0;
-					mLastLongUpdateCheckError = 0;
-					if (wantsLongUpdateCheck)
-						mLongUpdateProfileId = Profiler.StartSampling("LongUpdate");
-					else
-					{
-						mLongUpdateProfileId.Dispose();
-						mLongUpdateProfileId = 0;
-					}
-                }, null, null, true, (mLongUpdateProfileId != 0) ? 1 : 0);
+			if (mSettings.mEnableDevMode)
+			{
+				var internalDebugMenu = subMenu.AddMenuItem("Internal");
+				internalDebugMenu.AddMenuItem("Error Test", null, new (menu) => { DoErrorTest(); } );
+				internalDebugMenu.AddMenuItem("Reconnect BeefPerf", null, new (menu) => { BeefPerf.RetryConnect(); } );
+	            AddMenuItem(internalDebugMenu, "Report Memory", "Report Memory");
+				internalDebugMenu.AddMenuItem("Crash", null, new (menu) => { Runtime.FatalError("Bad"); });
+				internalDebugMenu.AddMenuItem("Exit Test", null, new (menu) => { ExitTest(); });
+				internalDebugMenu.AddMenuItem("Run Test", null, new (menu) => { mRunTest = !mRunTest; });
+				internalDebugMenu.AddMenuItem("GC Collect", null, new (menu) =>
+	                {
+	                    var profileId = Profiler.StartSampling().GetValueOrDefault();
+						for (int i < 10)
+							GC.Collect(false);
+						if (profileId != 0)
+							profileId.Dispose();
+	                });
+				internalDebugMenu.AddMenuItem("Enable GC Collect", null, new (menu) => { ToggleCheck(menu, ref mEnableGCCollect); EnableGCCollect = mEnableGCCollect; }, null, null, true, mEnableGCCollect ? 1 : 0);
+				internalDebugMenu.AddMenuItem("Fast Updating", null, new (menu) => { ToggleCheck(menu, ref mDbgFastUpdate); EnableGCCollect = mDbgFastUpdate; }, null, null, true, mDbgFastUpdate ? 1 : 0);
+				internalDebugMenu.AddMenuItem("Alloc String", null, new (menu) => { new String("Alloc String"); });
+				internalDebugMenu.AddMenuItem("Perform Long Update Checks", null, new (menu) =>
+	                {
+						bool wantsLongUpdateCheck = mLongUpdateProfileId != 0;
+	                    ToggleCheck(menu, ref wantsLongUpdateCheck);
+						mLastLongUpdateCheck = 0;
+						mLastLongUpdateCheckError = 0;
+						if (wantsLongUpdateCheck)
+							mLongUpdateProfileId = Profiler.StartSampling("LongUpdate");
+						else
+						{
+							mLongUpdateProfileId.Dispose();
+							mLongUpdateProfileId = 0;
+						}
+	                }, null, null, true, (mLongUpdateProfileId != 0) ? 1 : 0);
+			}
 
 			//////////
 

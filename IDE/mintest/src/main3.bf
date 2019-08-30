@@ -130,6 +130,10 @@ class Blurg
 
 	public static void Hey()
 	{
+		TestStruct ts = .();
+		//int val = ts..mA;
+		ts.mA = 123;
+
 		VoidCall();
 		int val0 = GetInt();
 

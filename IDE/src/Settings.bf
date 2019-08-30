@@ -638,6 +638,7 @@ namespace IDE
 		public KeySettings mKeySettings = new .() ~ delete _;
 		public RecentFiles mRecentFiles = new RecentFiles() ~ delete _;
 		public String mWakaTimeKey = new .() ~ delete _;
+		public bool mEnableDevMode;
 
 		public this()
 		{
@@ -691,7 +692,11 @@ namespace IDE
 				}
 			}
 
-			sd.Add("WakaTimeKey", mWakaTimeKey);
+			using (sd.CreateObject("Options"))
+			{
+				sd.Add("WakaTimeKey", mWakaTimeKey);
+				sd.Add("EnableDevMode", mEnableDevMode);
+			}
 
 			String dataStr = scope String();
 			sd.ToTOML(dataStr);
@@ -736,7 +741,11 @@ namespace IDE
 				}
 			}
 
-			sd.Get("WakaTimeKey", mWakaTimeKey);
+			using (sd.Open("Options"))
+			{
+				sd.Get("WakaTimeKey", mWakaTimeKey);
+				sd.Get("EnableDevMode", ref mEnableDevMode);
+			}
 		}
 
 		public void Apply()

@@ -14824,12 +14824,19 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 	return thisValue;
 }
 
+void BfExprEvaluator::CheckDotToken(BfTokenNode* tokenNode)
+{
+	if ((tokenNode != NULL) && (tokenNode->mToken == BfToken_DotDot))
+		mModule->Fail("Unexpected cascade operation. Chaining can only be used for method invocations", tokenNode);
+}
+
 void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefExpr, BfTypedValue* outCascadeValue)
 {
+	CheckDotToken(memberRefExpr->mDotToken);
+
 	BfAttributeState attributeState;
 	attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_MemberAccess);
 	
-
 	String findName;
 	BfAstNode* nameRefNode = memberRefExpr->mMemberName;
 	if (auto attrIdentifierExpr = BfNodeDynCast<BfAttributedIdentifierNode>(memberRefExpr->mMemberName))

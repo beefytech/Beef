@@ -1387,7 +1387,7 @@ public:
 //#define BF_WANTS_LOG_CLANG
 //#define BF_WANTS_LOG_DBGEXPR
 //#define BF_WANTS_LOG_CV
-#define BF_WANTS_LOG_DBG
+//#define BF_WANTS_LOG_DBG
 #endif
 
 #ifdef BF_WANTS_LOG
