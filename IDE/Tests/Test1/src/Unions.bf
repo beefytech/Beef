@@ -51,7 +51,7 @@ namespace IDETest
 			UseUnion(us);
 
 			UStruct2 us2;
-			us2..mFullInt = 0x11223344'55667788;
+			us2.mFullInt = 0x11223344'55667788;
 			UseUnion2(us2);
 		}
 	}
