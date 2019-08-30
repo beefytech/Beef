@@ -31,6 +31,7 @@ add_definitions(
    -DBF_NO_FBX
    -DFT2_BUILD_LIBRARY
    -DBFSYSLIB_DYNAMIC
+   -DBP_DYNAMIC
 )
 
 include_directories(

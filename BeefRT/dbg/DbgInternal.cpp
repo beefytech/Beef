@@ -159,7 +159,7 @@ Beefy::StringT<0> gDbgErrorString;
 extern DbgRawAllocData sEmptyAllocData;
 extern DbgRawAllocData sObjectAllocData;
 
-#define SETUP_ERROR(str, skip) gDbgErrorString = str; gBfRtDbgCallbacks.DebugMessageData_SetupError(str, skip)
+#define SETUP_ERROR(str, skip) gDbgErrorString = str; BFRTCALLBACKS.DebugMessageData_SetupError(str, skip)
 
 #ifdef BF_PLATFORM_WINDOWS
 #define BF_CAPTURE_STACK(skipCount, outFrames, wantCount) (int)RtlCaptureStackBackTrace(skipCount, wantCount, (void**)outFrames, NULL)
@@ -181,7 +181,7 @@ static void GetCrashInfo()
 
 void bf::System::Runtime::Dbg_Init(int version, int flags, BfRtCallbacks* callbacks)
 {		
-	//BfpSystem_Init(BFP_VERSION, BfpSystemInitFlag_None);
+#ifndef BFRTMERGED
 
 	if (version != BFRT_VERSION)
 	{
@@ -198,6 +198,8 @@ void bf::System::Runtime::Dbg_Init(int version, int flags, BfRtCallbacks* callba
 #ifdef BF_GC_SUPPORTED	
 	gGCDbgData.mDbgFlags = gBfRtDbgFlags;
 #endif
+
+#endif
 }
 
 void* bf::System::Runtime::Dbg_GetCrashInfoFunc()
@@ -210,8 +212,8 @@ void* bf::System::Runtime::Dbg_GetCrashInfoFunc()
 
 void Internal::Dbg_MarkObjectDeleted(bf::System::Object* object)
 {
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
-	if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
+	if ((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0)
 		object->mObjectFlags = (BfObjectFlags)((object->mObjectFlags & ~BfObjectFlag_StackAlloc) | BfObjectFlag_Deleted);
 #ifdef BF_GC_SUPPORTED
 	gBFGC.ObjectDeleteRequested(object);
@@ -288,7 +290,7 @@ intptr Internal::Dbg_PrepareStackTrace(intptr baseAllocSize, intptr maxStackTrac
 
 bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::Reflection::TypeInstance* typeInst, intptr size)
 {	
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	Object* result;	
 	int allocSize = BF_ALIGN(size, typeInst->mInstAlign);
 	uint8* allocBytes = (uint8*)BfObjectAllocate(allocSize, typeInst->_GetType());
@@ -317,7 +319,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 	intptr allocSize = size;
 	bool largeAllocInfo = false;
 
-	if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
+	if ((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0)
 	{
 		if (maxStackTraceDepth > 1)
 		{
@@ -338,7 +340,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 #endif
 
 	bf::System::Object* result;
-	if ((gBfRtDbgFlags & BfRtFlags_LeakCheck) != 0)
+	if ((BFRTFLAGS & BfRtFlags_LeakCheck) != 0)
 	{
 		allocSize = BF_ALIGN(allocSize, align);
 		uint8* allocBytes = (uint8*)BfObjectAllocate(allocSize, classVData->mType);
@@ -357,21 +359,21 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 		sAllocSizes[classVData->mType->mTypeId] += size;
 		result = (bf::System::Object*)(allocPtr + 16);
 #else
-		if ((gBfRtDbgFlags & BfRtFlags_DebugAlloc) != 0)
+		if ((BFRTFLAGS & BfRtFlags_DebugAlloc) != 0)
 		{			
 			uint8* allocBytes = (uint8*)BfRawAllocate(allocSize, &sObjectAllocData, NULL, 0);
 			result = (bf::System::Object*)allocBytes;
 		}
 		else
 		{
-			uint8* allocBytes = (uint8*)gBfRtDbgCallbacks.Alloc(allocSize);
+			uint8* allocBytes = (uint8*)BFRTCALLBACKS.Alloc(allocSize);
 			result = (bf::System::Object*)allocBytes;
 		}		
 #endif
 	}
 
 #ifndef BFRT_NODBGFLAGS
-	if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
+	if ((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0)
 	{
 		// The order is very important here-
 		//  Once we set mDbgAllocInfo, the memory will be recognized by the GC as being a valid object.
@@ -424,7 +426,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 
 void Internal::Dbg_ObjectStackInit(bf::System::Object* result, bf::System::ClassVData* classVData)
 {
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 
 	result->mClassVData = (intptr)classVData | (intptr)BfObjectFlag_StackAlloc;
 #ifndef BFRT_NODBGFLAGS
@@ -463,7 +465,7 @@ static void SetupDbgAllocInfo(bf::System::Object* result, intptr origSize)
 
 void Internal::Dbg_ObjectCreated(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData)
 {
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 #ifndef BFRT_NODBGFLAGS	
 	BF_ASSERT_REL((result->mClassVData & ~(BfObjectFlag_Allocated | BfObjectFlag_Mark3)) == (intptr)classVData);
 	result->mDbgAllocInfo = (intptr)BF_RETURN_ADDRESS;
@@ -472,7 +474,7 @@ void Internal::Dbg_ObjectCreated(bf::System::Object* result, intptr size, bf::Sy
 
 void Internal::Dbg_ObjectCreatedEx(bf::System::Object* result, intptr origSize, bf::System::ClassVData* classVData)
 {
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 #ifndef BFRT_NODBGFLAGS	
 	BF_ASSERT_REL((result->mClassVData & ~(BfObjectFlag_Allocated | BfObjectFlag_Mark3)) == (intptr)classVData);
 	SetupDbgAllocInfo(result, origSize);
@@ -481,7 +483,7 @@ void Internal::Dbg_ObjectCreatedEx(bf::System::Object* result, intptr origSize, 
 
 void Internal::Dbg_ObjectAllocated(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData)
 {
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	result->mClassVData = (intptr)classVData;
 #ifndef BFRT_NODBGFLAGS	
 	result->mDbgAllocInfo = (intptr)BF_RETURN_ADDRESS;	
@@ -490,14 +492,14 @@ void Internal::Dbg_ObjectAllocated(bf::System::Object* result, intptr size, bf::
 
 void Internal::Dbg_ObjectAllocatedEx(bf::System::Object* result, intptr origSize, bf::System::ClassVData* classVData)
 {
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	result->mClassVData = (intptr)classVData;
 	SetupDbgAllocInfo(result, origSize);
 }
 
 void Internal::Dbg_ObjectPreDelete(bf::System::Object* object)
 {
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 
 #ifndef BFRT_NODBGFLAGS
 	const char* errorPtr = NULL;
@@ -534,7 +536,7 @@ void Internal::Dbg_ObjectPreDelete(bf::System::Object* object)
 		errorStr += StrFormat("   (%s)0x%@\n", typeName.c_str(), object);
 		SETUP_ERROR(errorStr.c_str(), 2);
 		BF_DEBUG_BREAK();
-		gBfRtDbgCallbacks.DebugMessageData_Fatal();
+		BFRTCALLBACKS.DebugMessageData_Fatal();
 		return;
 	}
 #endif
@@ -542,7 +544,7 @@ void Internal::Dbg_ObjectPreDelete(bf::System::Object* object)
 
 void Internal::Dbg_ObjectPreCustomDelete(bf::System::Object* object)
 {
-	BF_ASSERT((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0);
+	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 
 	const char* errorPtr = NULL;
 
@@ -561,7 +563,7 @@ void Internal::Dbg_ObjectPreCustomDelete(bf::System::Object* object)
 		errorStr += StrFormat("   (%s)0x%@\n", typeName.c_str(), object);
 		SETUP_ERROR(errorStr.c_str(), 2);
 		BF_DEBUG_BREAK();
-		gBfRtDbgCallbacks.DebugMessageData_Fatal();
+		BFRTCALLBACKS.DebugMessageData_Fatal();
 		return;
 	}
 }

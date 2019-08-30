@@ -32,6 +32,7 @@ add_definitions(
    -DFT2_BUILD_LIBRARY
    -DBFSYSLIB_DYNAMIC
    -DBFRT_NODBGFLAGS
+   -DBFRTMERGED
 )
 
 include_directories(
