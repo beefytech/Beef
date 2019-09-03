@@ -4654,7 +4654,7 @@ void WinDebugger::CheckNonDebuggerBreak()
 	DbgModule* dbgModule;
 	if (mDebugTarget->FindSymbolAt(pcAddress, &symbol, &offset, &dbgModule))
 	{
-		if ((symbol == "DbgBreakPoint") || (symbol == "RtlUserThreadStart@8"))
+		if ((symbol == "DbgBreakPoint") || (symbol == "RtlUserThreadStart") || (symbol == "RtlUserThreadStart@8"))
 		{
 			showMainThread = true;			
 		}
