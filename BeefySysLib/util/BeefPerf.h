@@ -315,7 +315,7 @@ public:
 
 #endif
 
-#ifdef BP_DYNAMIC
+#if (defined BP_DYNAMIC) || (!defined BF_PLATFORM_WINDOWS)
 #define BP_EXPORT BF_EXPORT
 #define BP_CALLTYPE BF_CALLTYPE
 #else
