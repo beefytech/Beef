@@ -433,6 +433,7 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
   <ItemGroup>
     <ClCompile Include="BFApp.cpp" />
     <ClCompile Include="BeefySysLib.cpp" />
+    <ClCompile Include="BFSound.cpp" />
     <ClCompile Include="BFWindow.cpp" />
     <ClCompile Include="CachedDataStream.cpp" />
     <ClCompile Include="Common.cpp" />
@@ -485,6 +486,8 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="platform\win\CrashCatcher.cpp" />
+    <ClCompile Include="platform\win\DSoundInstance.cpp" />
+    <ClCompile Include="platform\win\DSoundManager.cpp" />
     <ClCompile Include="platform\win\WinBFApp.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClCompile>
@@ -1940,6 +1943,7 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BFApp.h" />
+    <ClInclude Include="BFSound.h" />
     <ClInclude Include="BFWindow.h" />
     <ClInclude Include="CachedDataStream.h" />
     <ClInclude Include="Common.h" />
@@ -1989,6 +1993,8 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="platform\win\CrashCatcher.h" />
+    <ClInclude Include="platform\win\DSoundInstance.h" />
+    <ClInclude Include="platform\win\DSoundManager.h" />
     <ClInclude Include="platform\win\PlatformApp.h" />
     <ClInclude Include="platform\win\WinBFApp.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>

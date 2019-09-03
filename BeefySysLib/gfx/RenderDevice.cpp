@@ -101,10 +101,22 @@ VertexDefinition* Beefy::RenderDevice::CreateVertexDefinition(VertexDefData* ele
 Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 {
 	int dotPos = (int)fileName.LastIndexOf('.');
-	String ext = fileName.Substring(dotPos);
+	String ext;
+	if (dotPos != -1)
+		ext = fileName.Substring(dotPos);
 	
 	ImageData* imageData = NULL;
-	if (ext == ".tga")
+	bool handled = false;
+	bool failed = false;
+
+	if (fileName == "!white")
+	{
+		imageData = new ImageData();
+		imageData->CreateNew(1, 1, true);
+		imageData->mBits[0] = 0xFFFFFFFF;
+		handled = true;
+	}
+	else if (ext == ".tga")
 		imageData = new TGAData();	
 	else if (ext == ".png")
 		imageData = new PNGData();
@@ -117,22 +129,20 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		BF_FATAL("Unknown texture format");
 		return NULL; // Unknown format
 	}
-	
-	imageData->mWantsAlphaPremultiplied = (flags & TextureFlag_NoPremult) == 0;
+		
+	if (!handled)
+	{
+		imageData->mWantsAlphaPremultiplied = (flags & TextureFlag_NoPremult) == 0;		
+		if (!imageData->LoadFromFile(fileName))
+		{
+			failed = true;
+			BF_FATAL("Failed to load image");
+		}
+	}
 
 	Texture* aTexture = NULL;
-	if (imageData->LoadFromFile(fileName))
-	{
-// 		if ((int)fileName.IndexOf("fft") != -1)
-// 		{
-// 			BFIData bFIData;
-// 			bFIData.Compress(imageData);
-// 		}
-
+	if (!failed)
 		aTexture = LoadTexture(imageData, flags);
-	}
-	else
-		BF_FATAL("Failed to load image");
 	
 	delete imageData;
 	return aTexture;

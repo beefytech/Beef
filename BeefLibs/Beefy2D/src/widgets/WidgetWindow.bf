@@ -428,7 +428,15 @@ namespace Beefy.widgets
             {
                 var result = mOnHitTest(x, y);
                 if (result != HitTestResult.NotHandled)
+				{
+					if (result != .Client)
+					{
+						if (mHasMouseInside)
+							MouseLeave();
+					}
+
                     return result;
+				}
             }
 
             if (mWindowFlags.HasFlag(Flags.Resizable))
@@ -445,7 +453,7 @@ namespace Beefy.widgets
             if (!mHasMouseInside)
                 return;
             
-            Widget aWidget = mRootWidget.FindWidgetByCoords(mMouseX, mMouseY);            
+            Widget aWidget = mRootWidget.FindWidgetByCoords(mMouseX, mMouseY);
             if (mCaptureWidget != null)
             {
                 bool didSomething = false;

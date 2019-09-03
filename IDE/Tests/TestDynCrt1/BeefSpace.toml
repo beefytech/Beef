@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {TestStaticCrt1 = {Path = "."}}
+
+[Workspace]
+StartupProject = "TestStaticCrt1"

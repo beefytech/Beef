@@ -15,7 +15,7 @@ namespace Beefy.widgets
         {
 			if ((mMouseOver && mMouseDown) && (mDownImage != null))
 				g.Draw(mDownImage);
-			if ((mMouseOver) && (mOverImage != null))
+			else if ((mMouseOver) && (mOverImage != null))
             	g.Draw(mOverImage);
 			else
 				g.Draw(mImage);

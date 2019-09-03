@@ -31,6 +31,25 @@ USING_NS_BF;
 #define BP_ABI_VERSION 2
 
 BpManager* BpManager::sBpManager = NULL;
+static bool gOwnsBpManager = false;
+static BpThreadInfo sFakeThreadInfo;
+
+struct BpManagerOwner
+{
+	BpManager* mOwnedManager;
+	bool mDidShutdown;
+	BpManagerOwner()
+	{
+		mOwnedManager = NULL;
+		mDidShutdown = false;
+	}
+	~BpManagerOwner()
+	{
+		mDidShutdown = true;
+		delete mOwnedManager;
+	}
+};
+static BpManagerOwner gBpManagerOwner;
 
 BF_TLS_DECLSPEC BpThreadInfo* Beefy::BpManager::sBpThreadInfo;
 
@@ -314,7 +333,7 @@ const char* BpCmdTarget::ToStrPtr(const char* str)
 	return str;
 }
 
-#define BPCMD_PREPARE if (!BpManager::Get()->mCollectData) return; AutoCrit autoCrit(mCritSect)
+#define BPCMD_PREPARE if ((gBpManagerOwner.mDidShutdown) || (!BpManager::Get()->mCollectData)) return; AutoCrit autoCrit(mCritSect)
 
 #define GET_FROM(ptr, T) *((T*)(ptr += sizeof(T)) - 1)
 
@@ -1527,6 +1546,8 @@ BpThreadInfo* BpManager::GetCurThreadInfo()
 	BpThreadInfo* threadInfo = sBpThreadInfo;
 	if (threadInfo == NULL)
 	{
+		if (gBpManagerOwner.mDidShutdown)
+			return &sFakeThreadInfo;
 		threadInfo = Get()->SlowGetCurThreadInfo();	
 		sBpThreadInfo = threadInfo;
 	}
@@ -1581,13 +1602,14 @@ BpManager* BpManager::Get()
 				BpSharedMemory* sharedMem = (BpSharedMemory*)MapViewOfFile(fileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BpSharedMemory));
 				if (sharedMem != NULL)
 				{
-					sBpManager = new BpManager();
+					sBpManager = new BpManager();					
 					sBpManager->mMutex = mutex;
-					sBpManager->mSharedMemoryFile = sharedMem;
+					sBpManager->mSharedMemoryFile = fileMapping;
 					sharedMem->mBpManager = sBpManager;
 					sharedMem->mABIVersion = BP_ABI_VERSION;
 					::UnmapViewOfFile(sharedMem);
 					::ReleaseMutex(mutex);
+					gBpManagerOwner.mOwnedManager = sBpManager;
 				}
 				else
 				{
@@ -1609,6 +1631,7 @@ BpManager* BpManager::Get()
 	if (sBpManager == NULL)
 	{
 		sBpManager = new BpManager();		
+		gBpManagerOwner.mOwnedManager = sBpManager;
 	}
 	return sBpManager;
 }

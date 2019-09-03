@@ -2,6 +2,7 @@ FileVersion = 1
 
 [Project]
 Name = "Stub"
+TargetType = "BeefWindowsApplication"
 StartupObject = "BIStub.Program"
 
 [Configs.Debug.Win64]

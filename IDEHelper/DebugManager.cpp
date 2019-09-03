@@ -795,18 +795,18 @@ BF_EXPORT int BF_CALLTYPE Debugger_GetAddrSize()
 	return gDebugger->GetAddrSize();
 }
 
-BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* fileName, const char* args, const char* workingDir, void* envBlockPtr, int envBlockSize)
+BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char* targetPath, const char* args, const char* workingDir, void* envBlockPtr, int envBlockSize)
 {
 	BF_ASSERT(gDebugger == NULL);
 
-	if (!FileExists(fileName))
+	if (!FileExists(launchPath))
 	{
-		gDebugManager->mOutMessages.push_back(StrFormat("error Unable to locate specified debug target '%s'", fileName));
+		gDebugManager->mOutMessages.push_back(StrFormat("error Unable to locate specified launch target '%s'", launchPath));
 		return false;
 	}
 
 	DebuggerResult debuggerResult = DebuggerResult_Ok;
-	if ((gDebugManager->mDebugger64 != NULL) && (gDebugManager->mDebugger64->CanOpen(fileName, &debuggerResult)))
+	if ((gDebugManager->mDebugger64 != NULL) && (gDebugManager->mDebugger64->CanOpen(launchPath, &debuggerResult)))
 		gDebugger = gDebugManager->mDebugger64;
 	else
 		gDebugger = gDebugManager->mDebugger32;
@@ -814,7 +814,7 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* fileName, const char* a
 	if (gDebugger == NULL)
 	{
 		if (debuggerResult == DebuggerResult_WrongBitSize)
-			gDebugManager->mOutMessages.push_back(StrFormat("error The file 32-bit file '%s' cannot be debugged because 32-bit debugger has been disabled", fileName));
+			gDebugManager->mOutMessages.push_back(StrFormat("error The file 32-bit file '%s' cannot be debugged because 32-bit debugger has been disabled", launchPath));
 		return false;
 	}
 
@@ -825,7 +825,7 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* fileName, const char* a
 			envBlock.Insert(0, (uint8*)envBlockPtr, envBlockSize);
 	}
 
-	gDebugger->OpenFile(fileName, args, workingDir, envBlock);
+	gDebugger->OpenFile(launchPath, targetPath, args, workingDir, envBlock);
 	return true;
 }
 

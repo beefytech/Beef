@@ -9,6 +9,7 @@
 NS_BF_BEGIN;
 
 class RenderDevice;
+class DSoundManager;
 
 typedef Dictionary<void*, HGLOBAL> PtrToHGlobalMap;
 typedef Dictionary<String, uint32> StringToUIntMap;
@@ -87,6 +88,7 @@ public:
 	bool					mInMsgProc;
 	PtrToHGlobalMap			mLockedHGlobalMap;
 	StringToUIntMap			mClipboardFormatMap;
+	DSoundManager*			mDSoundManager;
 	
 protected:
 	virtual void			Draw() override;	
@@ -112,6 +114,8 @@ public:
 	virtual void			RehupMouse() override;
 
 	virtual BFSysBitmap*	LoadSysBitmap(const WCHAR* fileName) override;
+
+	virtual BFSoundManager* GetSoundManager() override;
 };
 
 NS_BF_END;

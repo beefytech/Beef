@@ -369,7 +369,8 @@ public:
 	volatile bool mShuttingDown;
 	volatile bool mIsRunning;
 	bool mDestroying;
-	String mFileName;
+	String mLaunchPath;
+	String mTargetPath;
 	String mArgs;
 	String mWorkingDir;
 	Array<uint8> mEnvBlock;	
@@ -450,7 +451,7 @@ public:
 	uint8 mMemCacheData[WD_MEMCACHE_SIZE];	
 
 public:
-	void Fail(const StringImpl& error);
+	void Fail(const StringImpl& error);	
 	void TryGetThreadName(WdThreadInfo* threadInfo);
 	void ThreadRestorePause(WdThreadInfo* onlyPauseThread, WdThreadInfo* dontPauseThread);
 	void ThreadRestoreUnpause();	
@@ -479,7 +480,7 @@ public:
 	virtual bool PopulateRegisters(CPURegisters* registers);
 	bool RollBackStackFrame(CPURegisters* registers, bool isStackStart);
 	bool SetHotJump(DbgSubprogram* oldSubprogram, DbgSubprogram* newSubprogram);
-	DbgSubprogram* TryFollowHotJump(DbgSubprogram* subprogram, addr_target addr);
+	DbgSubprogram* TryFollowHotJump(DbgSubprogram* subprogram, addr_target addr);	
 
 	bool ParseFormatInfo(DbgModule* dbgModule, const StringImpl& formatInfoStr, DwFormatInfo* formatInfo, BfPassInstance* bfPassInstance, int* assignExprOffset, String* assignExpr = NULL, String* errorString = NULL,  DbgTypedValue contextTypedValue = DbgTypedValue());
 	String MaybeQuoteFormatInfoParam(const StringImpl& str);
@@ -558,7 +559,7 @@ public:
 	virtual void OutputRawMessage(const StringImpl& msg) override;
 	virtual int GetAddrSize() override;
 	virtual bool CanOpen(const StringImpl& fileName, DebuggerResult* outResult) override;
-	virtual void OpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock) override;
+	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock) override;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) override;
 	virtual void Run() override;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;	

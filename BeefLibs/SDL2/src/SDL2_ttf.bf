@@ -25,7 +25,6 @@
  */
  
 using System;
-using System.Runtime.InteropServices;
 
 namespace SDL2
 {
@@ -40,13 +39,13 @@ namespace SDL2
 		public const int32 SDL_TTF_PATCHLEVEL =		12;
 
 		public const int32 UNICODE_BOM_NATIVE =	0xFEFF;
-		public const int32 UNICODE_BOM_SWAPPED =	0xFFFE;
+		public const int32 UNICODE_BOM_SWAPPED = 0xFFFE;
 
-		public const int32 TTF_STYLE_NORMAL =		0x00;
-		public const int32 TTF_STYLE_BOLD =		0x01;
-		public const int32 TTF_STYLE_ITALIC =		0x02;
-		public const int32 TTF_STYLE_UNDERLINE =		0x04;
-		public const int32 TTF_STYLE_STRIKETHROUGH =	0x08;
+		public const int32 TTF_STYLE_NORMAL = 0x00;
+		public const int32 TTF_STYLE_BOLD = 0x01;
+		public const int32 TTF_STYLE_ITALIC = 0x02;
+		public const int32 TTF_STYLE_UNDERLINE = 0x04;
+		public const int32 TTF_STYLE_STRIKETHROUGH = 0x08;
 
 		public const int32 TTF_HINTING_NORMAL =	0;
 		public const int32 TTF_HINTING_LIGHT =	1;

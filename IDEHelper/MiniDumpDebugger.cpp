@@ -44,7 +44,10 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 				auto& module = moduleList.Modules[moduleIdx];
 				COFF* dbgModule = new COFF(mDebugTarget);
 				if (mDebugTarget->mTargetBinary == NULL)
+				{
+					mDebugTarget->mLaunchBinary = dbgModule;
 					mDebugTarget->mTargetBinary = dbgModule;
+				}
 				dbgModule->mImageBase = module.BaseOfImage;
 				dbgModule->mImageSize = module.SizeOfImage;
 

@@ -879,12 +879,12 @@ void WinDebugger::DebugThreadProc()
 
 	if (!IsMiniDumpDebugger())
 	{
-		if (!DoOpenFile(mFileName, mArgs, mWorkingDir, mEnvBlock))
+		if (!DoOpenFile(mLaunchPath, mArgs, mWorkingDir, mEnvBlock))
 		{
 			if (mDbgProcessId != 0)
 				OutputRawMessage("error Unable to attach to process");
 			else
-				OutputRawMessage(StrFormat("error Failed to launch: %s", mFileName.c_str()));
+				OutputRawMessage(StrFormat("error Failed to launch: %s", mLaunchPath.c_str()));
 			mShuttingDown = true;
 			mRunState = RunState_Terminated;
 		}
@@ -960,10 +960,11 @@ bool WinDebugger::CanOpen(const StringImpl& fileName, DebuggerResult* outResult)
 	return canRead;
 }
 
-void WinDebugger::OpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock)
+void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock)
 {
 	BF_ASSERT(!mIsRunning);
-	mFileName = fileName;
+	mLaunchPath = launchPath;
+	mTargetPath = targetPath;
 	mArgs = args;
 	mWorkingDir = workingDir;
 	mEnvBlock = envBlock;
@@ -1000,7 +1001,8 @@ bool WinDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
 	
 	WCHAR fileName[MAX_PATH] = {0};
 	GetModuleFileNameExW(mDbgProcessHandle, mainModule, fileName, MAX_PATH);
-	mFileName = UTF8Encode(fileName);
+	mLaunchPath = UTF8Encode(fileName);
+	mTargetPath = mLaunchPath;
 
 	mDbgProcessId = processId;
 	mDbgProcessHandle = 0;
@@ -1209,7 +1211,7 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 
 		ContinueDebugEvent();
 		
-		if ((mDebugTarget->mTargetBinary != NULL) && (mDebugTarget->mTargetBinary->mOrigImageData != NULL))
+		if ((mDebugTarget->mLaunchBinary != NULL) && (mDebugTarget->mLaunchBinary->mOrigImageData != NULL))
 			break;
 	}	
 
@@ -1534,56 +1536,20 @@ bool WinDebugger::DoUpdate()
 			BF_GetThreadContext(threadInfo->mHThread, &lcContext);
 			threadInfo->mStartSP = BF_CONTEXT_SP(lcContext);
 
-			DbgModule* targetBinary = mDebugTarget->Init(mFileName, (addr_target)(intptr)mDebugEvent.u.CreateProcessInfo.lpBaseOfImage);
+			DbgModule* launchBinary = mDebugTarget->Init(mLaunchPath, mTargetPath, (addr_target)(intptr)mDebugEvent.u.CreateProcessInfo.lpBaseOfImage);
 			addr_target gotImageBase = (addr_target)(intptr)mDebugEvent.u.CreateProcessInfo.lpBaseOfImage;
-			if (targetBinary->mImageBase != gotImageBase)
+			if (launchBinary->mImageBase != gotImageBase)
 			{
 				BF_FATAL("Image base didn't match");
 			}
 
-			targetBinary->mImageBase = gotImageBase;
-			targetBinary->mImageSize = (int)targetBinary->GetImageSize();
-			targetBinary->mOrigImageData = new DbgModuleMemoryCache(targetBinary->mImageBase, targetBinary->mImageSize);
+			launchBinary->mImageBase = gotImageBase;
+			launchBinary->mImageSize = (int)launchBinary->GetImageSize();
+			launchBinary->mOrigImageData = new DbgModuleMemoryCache(launchBinary->mImageBase, launchBinary->mImageSize);
 			
-			bool wantsHotHeap = mDbgProcessId == 0;
-
-#ifdef BF_DBG_32
-			if (wantsHotHeap)
-				mDebugTarget->mHotHeap = new HotHeap();
-#else
-			if (wantsHotHeap)
-			{
-				// 64-bit hot loaded code needs to be placed close to the original EXE so 32-bit relative 
-							//  offsets within the hot code can still reach the old code
-				addr_target checkHotReserveAddr = (addr_target)targetBinary->mImageBase + targetBinary->mImageSize;
-				int mb = 1024 * 1024;
-				int reserveSize = 512 * mb;
-
-				// Round up to MB boundary + 64MB, to help keep other DLLs at their preferred base addresses
-				checkHotReserveAddr = ((checkHotReserveAddr + 64 * mb) & ~(mb - 1));
-
-				checkHotReserveAddr = (addr_target)targetBinary->mImageBase;
-
-				addr_target reservedPtr = NULL;
-				while ((addr_target)checkHotReserveAddr < (addr_target)targetBinary->mImageBase + 0x30000000)
-				{
-					reservedPtr = (addr_target)VirtualAllocEx(mProcessInfo.hProcess, (void*)(intptr)checkHotReserveAddr, reserveSize, MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-					if (reservedPtr != NULL)
-						break;
-					checkHotReserveAddr += 4 * mb;
-				}
-
-				if (reservedPtr != 0)
-				{
-					BF_ASSERT(mDebugTarget->mHotHeap == NULL);
-					mDebugTarget->mHotHeap = new HotHeap(reservedPtr, reserveSize);
-				}
-
-				//TODO: Throw actual error if we can't reserve HOT area
-				BF_ASSERT(reservedPtr != NULL);
-			}
-#endif
-
+			if (launchBinary == mDebugTarget->mTargetBinary)
+				mDebugTarget->SetupTargetBinary();
+			
 			if (mDebugEvent.u.CreateProcessInfo.hFile != NULL)
 				CloseHandle(mDebugEvent.u.CreateProcessInfo.hFile);			
 
@@ -1700,7 +1666,7 @@ bool WinDebugger::DoUpdate()
 				if (mDebugTarget->SetupDyn(moduleName, &stream, (intptr)mDebugEvent.u.LoadDll.lpBaseOfDll) == NULL)
 					loadMsg += " - Failed to load";
 				stream.mFileHandle = 0;							
-			}			
+			}
 
 			OutputMessage(loadMsg + "\n");
 
@@ -3225,7 +3191,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 			{
 				if (symbolName == ".")
 				{
-					targetAddr = mDebugTarget->mTargetBinary->mImageBase + mDebugTarget->mTargetBinary->mEntryPoint;
+					targetAddr = mDebugTarget->mLaunchBinary->mImageBase + mDebugTarget->mLaunchBinary->mEntryPoint;
 					onlyBindFirst = true;
 				}
 			}
@@ -4547,7 +4513,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 }
 
 void WinDebugger::CheckNonDebuggerBreak()
-{
+{	
 	enum MessageType
 	{
 		MessageType_None = 0,
@@ -4559,8 +4525,12 @@ void WinDebugger::CheckNonDebuggerBreak()
 	PopulateRegisters(&registers);
 	addr_target pcAddress = registers.GetPC();
 
-	mDebugTarget->mTargetBinary->ParseSymbolData();
-	addr_target debugMessageDataAddr = mDebugTarget->FindSymbolAddr("gBfDebugMessageData");
+	addr_target debugMessageDataAddr = (addr_target)-1;
+	if (mDebugTarget->mTargetBinary != NULL)
+	{
+		mDebugTarget->mTargetBinary->ParseSymbolData();
+		debugMessageDataAddr = mDebugTarget->FindSymbolAddr("gBfDebugMessageData");
+	}
 	if (debugMessageDataAddr != (addr_target)-1)
 	{
 		struct BfDebugMessageData
@@ -4684,7 +4654,7 @@ void WinDebugger::CheckNonDebuggerBreak()
 	DbgModule* dbgModule;
 	if (mDebugTarget->FindSymbolAt(pcAddress, &symbol, &offset, &dbgModule))
 	{
-		if (symbol == "DbgBreakPoint")
+		if ((symbol == "DbgBreakPoint") || (symbol == "RtlUserThreadStart@8"))
 		{
 			showMainThread = true;			
 		}
@@ -8859,14 +8829,17 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		if ((pendingExpr->mFormatInfo.mLanguage == DbgLanguage_Beef) && (mDebugTarget != NULL) && (mDebugTarget->mTargetBinary != NULL))
 			dbgModule = mDebugTarget->mTargetBinary;
 		else
-			dbgModule = mEmptyDebugTarget->GetMainDbgModule();		
+			dbgModule = mEmptyDebugTarget->GetMainDbgModule();
 	}
 	else
 	{
 		dbgModule = GetCallStackDbgModule(pendingExpr->mCallStackIdx);
-		if (!dbgModule->mDebugTarget->mIsEmpty)
+		if ((dbgModule != NULL) &&(!dbgModule->mDebugTarget->mIsEmpty))
 			dbgCompileUnit = GetCallStackCompileUnit(pendingExpr->mCallStackIdx);
 	}
+
+	if (dbgModule == NULL)
+		dbgModule = mEmptyDebugTarget->GetMainDbgModule();
 
 	if (!pendingExpr->mException.empty())
 	{
@@ -9315,7 +9288,7 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 					if (dbgSubprogram != NULL)
 						curLanguage = dbgSubprogram->GetLanguage();
 					if (language != curLanguage)
-					{
+					{						
 						dbgModule = mDebugTarget->mTargetBinary;
 						dbgSubprogram = NULL;
 						formatInfo.mLanguage = language;
@@ -10146,8 +10119,9 @@ String WinDebugger::GetThreadInfo()
 						threadName = module->mDisplayName + " thread";
 	
 					if ((mActiveThread == mExplicitStopThread) && (mActiveBreakpoint != NULL))
-					{
-						if ((mActiveBreakpoint->mAddr < subProgram->mBlock.mLowPC) ||
+					{						
+						if ((subProgram == NULL) ||
+							(mActiveBreakpoint->mAddr < subProgram->mBlock.mLowPC) ||
 							(mActiveBreakpoint->mAddr >= subProgram->mBlock.mHighPC))
 							break;
 					}

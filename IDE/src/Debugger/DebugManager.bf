@@ -131,7 +131,7 @@ namespace IDE.Debugger
 		static extern bool Debugger_OpenMiniDump(char8* filename);
 
 		[StdCall,CLink]
-		static extern bool Debugger_OpenFile(char8* fileName, char8* args, char8* workingDir, void* envBlockPtr, int32 envBlockLen);
+		static extern bool Debugger_OpenFile(char8* launchPath, char8* targetPath, char8* args, char8* workingDir, void* envBlockPtr, int32 envBlockLen);
 
 		[StdCall,CLink]
 		static extern bool Debugger_Attach(int32 processId, AttachFlags attachFlags);
@@ -405,13 +405,13 @@ namespace IDE.Debugger
 			Debugger_FullReportMemory();
 		}
 
-		public bool OpenFile(String file, String args, String workingDir, Span<char8> envBlock, bool isCompiled)
+		public bool OpenFile(String launchPath, String targetPath, String args, String workingDir, Span<char8> envBlock, bool isCompiled)
 		{
 			DeleteAndNullify!(mRunningPath);
-			mRunningPath = new String(file);
+			mRunningPath = new String(launchPath);
 
 			mIsRunningCompiled = isCompiled;
-			return Debugger_OpenFile(file, args, workingDir, envBlock.Ptr, (int32)envBlock.Length);
+			return Debugger_OpenFile(launchPath, targetPath, args, workingDir, envBlock.Ptr, (int32)envBlock.Length);
 		}
 
 		public void SetSymSrvOptions(String symCacheDir, String symSrvStr, SymSrvFlags symSrvFlags)

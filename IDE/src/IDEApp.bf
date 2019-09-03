@@ -9295,8 +9295,8 @@ namespace IDE
 
 			//options.mDebugOptions.mCommand
 
-            String targetPath = scope String();
-            ResolveConfigString(workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", targetPath);
+            String launchPath = scope String();
+            ResolveConfigString(workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPath);
             String arguments = scope String();
             ResolveConfigString(workspaceOptions, project, options, "$(Arguments)", "debug command arguments", arguments);
             String workingDirRel = scope String();
@@ -9304,8 +9304,14 @@ namespace IDE
 			var workingDir = scope String();
 			Path.GetAbsolutePath(workingDirRel, project.mProjectDir, workingDir);
 
+			String targetPath = scope .();
+			ResolveConfigString(workspaceOptions, project, options, "$(TargetPath)", "Target path", targetPath);
+
+			IDEUtils.FixFilePath(launchPath);
+			IDEUtils.FixFilePath(targetPath);
+
 			if (workingDir.IsEmpty)
-				Path.GetDirectoryPath(targetPath, workingDir);
+				Path.GetDirectoryPath(launchPath, workingDir);
 
 			if (!Directory.Exists(workingDir))
 			{
@@ -9333,13 +9339,13 @@ namespace IDE
 			var envBlock = scope List<char8>();
 			Environment.EncodeEnvironmentVariables(envVars, envBlock);
 
-			if (targetPath.IsWhiteSpace)
+			if (launchPath.IsWhiteSpace)
 			{
 				Fail(scope String()..AppendF("No debug command specified in '{}' properties", project.mProjectName));
 				return false;
 			}
 
-            if (!mDebugger.OpenFile(targetPath, arguments, workingDir, envBlock, wasCompiled))
+            if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled))
             {
 				DeleteAndNullify!(mCompileAndRunStopwatch);
                 return false;
@@ -11337,6 +11343,11 @@ namespace IDE
         public override void Update(bool batchStart)
         {
 			scope AutoBeefPerf("IDEApp.Update");
+
+			/*using (mWorkspace.mMonitor.Enter())
+			{
+
+			}*/
 
 			if (mDbgFastUpdate)
 			{

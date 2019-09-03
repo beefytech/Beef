@@ -181,7 +181,7 @@ namespace System.Threading
             StartInternal();
         }
 
-#if PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS
 		[CLink]
 		static extern int32 _tls_index; 
 #endif
@@ -190,7 +190,7 @@ namespace System.Threading
 		{
 			get
 			{
-#if PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS
 				return _tls_index;
 #else
 				return 0;

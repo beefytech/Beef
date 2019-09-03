@@ -5049,12 +5049,7 @@ void BfCompiler::HotResolve_ReportType(BfHotTypeVersion* hotTypeVersion, HotType
 
 	bool applyFlags = true;
 	if ((flags & (BfCompiler::HotTypeFlag_ActiveFunction | BfCompiler::HotTypeFlag_Delegate | BfCompiler::HotTypeFlag_FuncPtr)) != 0)
-	{
-		// These flags only get applied if we detect we're using an old version
-// 		auto hotTypeData = mContext->GetHotTypeData(hotTypeVersion->mTypeId);
-// 		auto latestTypeVersion = hotTypeData->GetLatestVersion();
-// 		applyFlags = hotTypeVersion->mDataHash != latestTypeVersion->mDataHash;		
-
+	{		
 		applyFlags = (hotTypeVersion->mCommittedHotCompileIdx != -1) && (mHotState->mPendingDataChanges.Contains(hotTypeVersion->mTypeId));
 
 		if ((!applyFlags) && (hotTypeVersion->mCommittedHotCompileIdx != -1))
@@ -5074,12 +5069,9 @@ void BfCompiler::HotResolve_ReportType(BfHotTypeVersion* hotTypeVersion, HotType
 	
 	BfLogSysM("HotResolve_ReportType %p %s Flags:%X DeclHotIdx:%d\n", hotTypeVersion, mContext->TypeIdToString(hotTypeVersion->mTypeId).c_str(), flags, hotTypeVersion->mDeclHotCompileIdx);
 	
-	//if ((flags & (BfCompiler::HotTypeFlag_Heap | BfCompiler::HotTypeFlag_Delegate | BfCompiler::HotTypeFlag_CanAllocate)) != 0)		
+	for (auto member : hotTypeVersion->mMembers)
 	{
-		for (auto member : hotTypeVersion->mMembers)
-		{
-			HotResolve_ReportType(member, flags, reason);
-		}
+		HotResolve_ReportType(member, flags, reason);
 	}	
 }
 
@@ -5465,6 +5457,8 @@ void BfCompiler::ClearOldHotData()
 		if (typeInst->mHotTypeData == NULL)
 			continue;
 
+		bool foundCommittedVersion = false;
+
 		auto latestVersionHead = typeInst->mHotTypeData->GetLatestVersionHead();		
 		for (int typeIdx = (int)typeInst->mHotTypeData->mTypeVersions.size() - 1; typeIdx >= 0; typeIdx--)
 		{
@@ -5475,8 +5469,13 @@ void BfCompiler::ClearOldHotData()
 				continue;
 			}
 
-			if (hotVersion->mRefCount == 1)
-			{				
+			if ((!foundCommittedVersion) && (mHotState != NULL) && (hotVersion->mDeclHotCompileIdx <= mHotState->mCommittedHotCompileIdx))
+			{
+				// Don't remove the latest committed version
+				foundCommittedVersion = true;
+			}
+			else if (hotVersion->mRefCount == 1)
+			{
 				typeInst->mHotTypeData->mTypeVersions.RemoveAt(typeIdx);
 				hotVersion->Deref();
 				BF_ASSERT(typeInst->mHotTypeData->mTypeVersions.size() > 0);

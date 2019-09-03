@@ -15,14 +15,17 @@ namespace BIStubUI
 			Debug.WriteLine("Deinitializing StubUI");
 		}
 
-		[Export]
+		[Export, CLink]
 		public static void Start(BIApp.InstallFunc installFunc, BIApp.ProgressFunc progressFunc, BIApp.CancelFunc cancelFunc)
 		{
 			gApp = new BIApp();
 			gApp.mInstallFunc = installFunc;
 			gApp.mProgressFunc = progressFunc;
 			gApp.mCancelFunc = cancelFunc;
+			gApp.Init();
 			gApp.Run();
+			gApp.Shutdown();
+			DeleteAndNullify!(gApp);
 		}
 
 		public static void Hello()

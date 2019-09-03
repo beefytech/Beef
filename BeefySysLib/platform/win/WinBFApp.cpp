@@ -1,7 +1,9 @@
+#include <dsound.h>
 #include "WinBFApp.h"
 #include "DXRenderDevice.h"
 #include <signal.h>
 #include "../../util/BeefPerf.h"
+#include "DSoundManager.h"
 
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
@@ -130,9 +132,9 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		::SystemParametersInfo(SPI_GETWORKAREA, NULL, &desktopRect, NULL);		
 
 		if (x + width >= desktopRect.right)
-			x = std::max((int)desktopRect.left, requestedX - width);
+			x = BF_MAX((int)desktopRect.left, requestedX - width);
 		if (y + height >= desktopRect.bottom)
-			y = std::max((int)desktopRect.top, requestedY - height);
+			y = BF_MAX((int)desktopRect.top, requestedY - height);
 	}
 	
 	mFlags = windowFlags;
@@ -1037,11 +1039,13 @@ WinBFApp::WinBFApp()
 
 	mDataDir = mInstallDir;
 	mInMsgProc = false;
+	mDSoundManager = NULL;
 }
 
 WinBFApp::~WinBFApp()
 {	
 	delete mRenderDevice;
+	delete mDSoundManager;
 }
 
 void WinBFApp::Init()
@@ -1668,6 +1672,13 @@ void WinBFWindow::RemoveMenuItem(BFMenu* item)
 BFSysBitmap* WinBFApp::LoadSysBitmap(const WCHAR* fileName)
 {
 	return NULL;
+}
+
+BFSoundManager* WinBFApp::GetSoundManager()
+{
+	if (mDSoundManager == NULL)
+		mDSoundManager = new DSoundManager(NULL);
+	return mDSoundManager;
 }
 
 void WinBFWindow::ModalsRemoved()

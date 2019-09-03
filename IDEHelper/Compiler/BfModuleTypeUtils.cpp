@@ -4536,7 +4536,7 @@ void BfModule::FixIntUnknown(BfTypedValue& typedVal)
 
 void BfModule::FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs)
 {	
-	if ((lhs.mType != NULL) && (lhs.mType->IsIntUnknown()))
+	if ((lhs.mType != NULL) && (lhs.mType->IsIntUnknown()) && (rhs.mType != NULL) && (rhs.mType->IsInteger()))
 	{
 		if (CanImplicitlyCast(lhs, rhs.mType))
 		{
@@ -4547,7 +4547,7 @@ void BfModule::FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs)
 		}
 	}
 
-	if ((rhs.mType != NULL) && (rhs.mType->IsIntUnknown()))
+	if ((rhs.mType != NULL) && (rhs.mType->IsIntUnknown()) && (lhs.mType != NULL) && (lhs.mType->IsInteger()))
 	{
 		if (CanImplicitlyCast(rhs, lhs.mType))
 		{

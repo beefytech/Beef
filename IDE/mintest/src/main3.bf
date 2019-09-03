@@ -125,14 +125,23 @@ class Blurg
 
 	public static int GetInt()
 	{
+		float f = 10.0f;
+		//f = f % 3.0f;
+		
 		return 123;
 	}
 
 	public static void Hey()
 	{
+		float f = 1.2f;
+		//f = f % 2.3f;
+
 		TestStruct ts = .();
 		//int val = ts..mA;
 		ts.mA = 123;
+
+		GetInt();
+		GetInt();
 
 		VoidCall();
 		int val0 = GetInt();

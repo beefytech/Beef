@@ -1121,6 +1121,9 @@ bool DbgExprEvaluator::TypeIsSubTypeOf(DbgType* srcType, DbgType* wantType, int*
 
 DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 {
+	if (mDebugTarget->mTargetBinary == NULL)
+		return DbgTypedValue();
+
 	auto typeTypeEntry = mDebugTarget->mTargetBinary->FindType("System.Type", DbgLanguage_Beef);
 	if ((typeTypeEntry == NULL) || (typeTypeEntry->mValue == NULL))
 		return DbgTypedValue();
@@ -3433,9 +3436,11 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 		else if (findName == "$ThreadName")
 			return GetString(mDebugger->mActiveThread->mName);
 		else if (findName == "$TargetName")
-			return GetString(GetFileName(mDebugTarget->mTargetBinary->mFilePath));
+			return GetString(GetFileName(mDebugTarget->mTargetPath));
+		else if (findName == "LaunchName")					
+			return GetString(GetFileName(mDebugTarget->mLaunchBinary->mFilePath));		
 		else if (findName == "$TargetPath")
-			return GetString(mDebugTarget->mTargetBinary->mFilePath);
+			return GetString(mDebugTarget->mTargetPath);
 		else if (findName == "$ModuleName")
 			return GetString(GetFileName(mDbgModule->mFilePath));
 		else if (findName == "$ModulePath")

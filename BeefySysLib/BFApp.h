@@ -9,6 +9,7 @@ typedef void (*BFApp_UpdateFunc)(bool batchStart);
 typedef void (*BFApp_DrawFunc)();
 
 class BFApp;
+class BFSoundManager;
 class RenderDevice;
 class BFWindow;
 class FileStream;
@@ -46,7 +47,7 @@ public:
 	String					mInstallDir;
 	String					mDataDir;
 	bool					mDrawEnabled;
-	float					mRefreshRate;
+	float					mRefreshRate;	
 	int						mMaxUpdatesPerDraw;
 
 	bool					mInProcess;
@@ -54,6 +55,7 @@ public:
 	RenderDevice*			mRenderDevice;
 	int						mSysDialogCnt;
 	int						mUpdateCnt;
+	int						mNumPhysUpdates;
 	bool                    mVSynched;
 	bool					mVSyncFailed;
 
@@ -99,6 +101,8 @@ public:
 	virtual BFSysBitmap*	LoadSysBitmap(const wchar_t* fileName) = 0;
 
 	virtual FileStream*		OpenBinaryFile(const StringImpl& fileName);
+
+	virtual BFSoundManager* GetSoundManager() { return NULL; }
 };
 
 extern BFApp* gBFApp;

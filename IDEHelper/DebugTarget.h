@@ -35,7 +35,10 @@ public:
 
 	HotHeap* mHotHeap;
 	int mLastHotHeapCleanIdx;
-	DbgModule* mTargetBinary;	
+	String mTargetPath;
+	DbgModule* mLaunchBinary;
+	DbgModule* mTargetBinary;
+	//DbgModule* m
 	Array<DbgModule*> mDbgModules;
 	//DbgModule* mLastDWARF;
 	HashSet<DbgSrcFile*> mPendingSrcFileRehup; // Waiting to remove old/invalid line info
@@ -69,8 +72,10 @@ protected:
 public:
 	DebugTarget(WinDebugger* debugger);
 	~DebugTarget();
-
-	DbgModule* Init(const StringImpl& fileName, intptr imageBase = 0);
+	
+	DbgModule* Init(const StringImpl& launchPath, const StringImpl& targetPath, intptr imageBase = 0);
+	void SetupTargetBinary();
+	void CheckTargetBinary(DbgModule* module);
 	void CreateEmptyTarget();
 	DbgModule* HotLoad(const StringImpl& fileName, int hotIdx);
 	DbgModule* SetupDyn(const StringImpl& filePath, DataStream* stream, intptr imageBase);

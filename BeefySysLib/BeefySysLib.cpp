@@ -255,6 +255,11 @@ BF_EXPORT void BF_CALLTYPE BFApp_RehupMouse()
 
 }
 
+BF_EXPORT BFSoundManager* BF_CALLTYPE BFApp_GetSoundManager()
+{
+	return gBFApp->GetSoundManager();
+}
+
 ///
 
 BF_EXPORT void BF_CALLTYPE BFWindow_SetCallbacks(BFWindow* window, BFWindow_MovedFunc movedFunc, BFWindow_CloseQueryFunc closeQueryFunc, BFWindow_ClosedFunc closedFunc, 

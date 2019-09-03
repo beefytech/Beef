@@ -30,6 +30,7 @@ BFApp::BFApp()
 	mCursor = CURSOR_POINTER;
 	mInProcess = false;
 	mUpdateCnt = 0;
+	mNumPhysUpdates = 0;
     mVSynched = true;
 	mMaxUpdatesPerDraw = 60; // 8?
     
@@ -49,7 +50,7 @@ BFApp::~BFApp()
 	gBFApp = NULL;	
 	delete gPerfManager;
 	for (auto window : mPendingWindowDeleteList)
-		delete window;
+		delete window;	
 }
 
 void BFApp::Init()
@@ -170,7 +171,10 @@ void BFApp::Process()
 			mFrameTimeAcc = 0;
 		}
 
-		updates = std::min(updates, mMaxUpdatesPerDraw);
+		// Compensate for "slow start" by limiting the number of catchup-updates we can do when starting the app
+		int maxUpdates = BF_MIN(mNumPhysUpdates + 1, mMaxUpdatesPerDraw);
+
+		updates = BF_MIN(updates, maxUpdates);
         
         /*if (updates > 2)
             OutputDebugStrF("Updates: %d  TickDelta: %d\n", updates, tickNow - mLastProcessTick);*/
@@ -198,8 +202,15 @@ void BFApp::Process()
 	}
 #endif
 
+	if (updates > 0)
+		mNumPhysUpdates++;
+
 	for (int updateNum = 0; updateNum < updates; updateNum++)
+	{
+		if (!mRunning)
+			break;
 		Update(updateNum == 0);
+	}
 	
 	if ((mRunning) && (updates > 0))
 		Draw();

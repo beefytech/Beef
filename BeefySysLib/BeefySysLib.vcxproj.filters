@@ -688,6 +688,15 @@
     <ClCompile Include="util\ThreadPool.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
+    <ClCompile Include="platform\win\DSoundInstance.cpp">
+      <Filter>src\platform\win</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\win\DSoundManager.cpp">
+      <Filter>src\platform\win</Filter>
+    </ClCompile>
+    <ClCompile Include="BFSound.cpp">
+      <Filter>src\platform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -1037,6 +1046,15 @@
     </ClInclude>
     <ClInclude Include="util\MultiHashSet.h">
       <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\win\DSoundInstance.h">
+      <Filter>src\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\win\DSoundManager.h">
+      <Filter>src\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="BFSound.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

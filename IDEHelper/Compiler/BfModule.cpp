@@ -14503,9 +14503,7 @@ void BfModule::CallChainedMethods(BfMethodInstance* methodInstance, bool reverse
 }
 
 void BfModule::AddHotDataReferences(BfHotDataReferenceBuilder* builder)
-{
-	//auto methodName = MethodToString(mCurMethodInstance, BfMethodNameFlag_OmitTypeName);	
-	
+{	
 	BF_ASSERT(mCurMethodInstance->mIsReified);
 
 	if (mCurTypeInstance->mHotTypeData == NULL)
@@ -14519,8 +14517,6 @@ void BfModule::AddHotDataReferences(BfHotDataReferenceBuilder* builder)
 	}
 
 	BF_ASSERT(hotMethod->mSrcTypeVersion != NULL);
-	//hotMethod->mSrcTypeVersion = mCurTypeInstance->mHotTypeData->GetLatestVersion();		
-	//hotMethod->mSrcTypeVersion->mRefCount++;
 	
 	int prevSize = (int)hotMethod->mReferences.size();
 	int refCount = (int)(prevSize + builder->mUsedData.size() + builder->mCalledMethods.size() + builder->mDevirtualizedCalledMethods.size());
@@ -17166,14 +17162,6 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 	else if (wantsRemoveBody)
 		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);
-
-	//TODO: Can we actually do this?
-	/*if ((!HasCompiledOutput()) && (!mCompiler->mOptions.mExtraResolveChecks))
-	{
-		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);
-		mBfIRBuilder->Func_EraseFromParent(mCurMethodInstance->mIRFunction);		
-		mCurMethodInstance->mIRFunction = BfIRFunction();
-	}*/
 
 	// We don't want to hold on to pointers to LLVMFunctions of unspecialized types.
 	//  This allows us to delete the mScratchModule LLVM module without rebuilding all

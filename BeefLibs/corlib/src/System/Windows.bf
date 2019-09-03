@@ -852,6 +852,12 @@ namespace System
 		public const int32 OFN_USESHELLITEM = 0x01000000;
 
 		public const int32 CSIDL_DESKTOP = 0x0000;
+		public const int32 CSIDL_PROGRAMS = 0x0002; // Start Menu\Programs
+		public const int32 CSIDL_PERSONAL = 0x0005; // My Documents
+		public const int32 CSIDL_STARTUP = 0x0007; // Start Menu\Programs\Startup
+		public const int32 CSIDL_LOCAL_APPDATA = 0x001c;// <user name>\Local Settings\Applicaiton Data (non roaming)
+		public const int32 CSIDL_COMMON_APPDATA = 0x0023; // All Users\Application Data
+		public const int32 CSIDL_PROGRAM_FILES = 0x0026; // C:\Program Files
 
 		public const int32 WM_CLOSE = 0x0010;
 		public const int32 WM_DESTROY = 0x0002;

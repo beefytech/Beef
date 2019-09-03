@@ -23,6 +23,7 @@ DebugTarget::DebugTarget(WinDebugger* debugger)
 	mBfObjectVDataIntefaceSlotCount = -1;
 	mBfObjectSize = -1;
 	mDebugger = debugger;
+	mLaunchBinary = NULL;
 	mTargetBinary = NULL;
 	mCapturedNamesPtr = NULL;
 	mCapturedTypesPtr = NULL;
@@ -50,31 +51,113 @@ DebugTarget::~DebugTarget()
 	mHotHeap = NULL;
 }
 
-DbgModule* DebugTarget::Init(const StringImpl& fileName, intptr imageBase)
+static bool PathEquals(const String& pathA, String& pathB)
+{
+	const char* ptrA = pathA.c_str();
+	const char* ptrB = pathB.c_str();
+
+	while (true)
+	{
+		char cA = *(ptrA++);
+		char cB = *(ptrB++);
+		
+		if ((cA == 0) || (cB == 0))
+		{
+			return (cA == 0) && (cB == 0);
+		}
+
+		cA = toupper((uint8)cA);
+		cB = toupper((uint8)cB);
+		if (cA == '\\')
+			cA = '/';
+		if (cB == '\\')
+			cB = '/';
+		if (cA != cB)
+			return false;
+	}
+	return true;
+}
+
+void DebugTarget::SetupTargetBinary()
+{
+	bool wantsHotHeap = mDebugger->mDbgProcessId == 0;
+
+#ifdef BF_DBG_32
+	if (wantsHotHeap)
+		mHotHeap = new HotHeap();
+#else
+	if (wantsHotHeap)
+	{
+		// 64-bit hot loaded code needs to be placed close to the original EXE so 32-bit relative 
+		//  offsets within the hot code can still reach the old code
+		addr_target checkHotReserveAddr = (addr_target)mTargetBinary->mImageBase + mTargetBinary->mImageSize;
+		int mb = 1024 * 1024;
+		int reserveSize = 512 * mb;
+
+		// Round up to MB boundary + 64MB, to help keep other DLLs at their preferred base addresses
+		checkHotReserveAddr = ((checkHotReserveAddr + 64 * mb) & ~(mb - 1));
+
+		checkHotReserveAddr = (addr_target)mTargetBinary->mImageBase;
+
+		addr_target reservedPtr = NULL;
+		while ((addr_target)checkHotReserveAddr < (addr_target)mTargetBinary->mImageBase + 0x30000000)
+		{
+			reservedPtr = (addr_target)VirtualAllocEx(mDebugger->mProcessInfo.hProcess, (void*)(intptr)checkHotReserveAddr, reserveSize, MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+			if (reservedPtr != NULL)
+				break;
+			checkHotReserveAddr += 4 * mb;
+		}
+
+		if (reservedPtr != 0)
+		{
+			BF_ASSERT(mHotHeap == NULL);
+			mHotHeap = new HotHeap(reservedPtr, reserveSize);
+		}
+
+		//TODO: Throw actual error if we can't reserve HOT area
+		BF_ASSERT(reservedPtr != NULL);
+	}
+#endif
+}
+
+void DebugTarget::CheckTargetBinary(DbgModule* module)
+{
+	if (mTargetBinary != NULL)
+		return;
+	if (!PathEquals(module->mFilePath, mTargetPath))
+		return;	
+	mTargetBinary = module;
+	if (mTargetBinary != mLaunchBinary)
+		SetupTargetBinary();
+}
+
+DbgModule* DebugTarget::Init(const StringImpl& launchPath, const StringImpl& targetPath, intptr imageBase)
 {
 	BP_ZONE("DebugTarget::Init");
 
-	AutoDbgTime dbgTime("DebugTarget::Init " + fileName);
+	AutoDbgTime dbgTime("DebugTarget::Init Launch:" + launchPath + " Target:" + targetPath);
 
+	mTargetPath = targetPath;
 	FileStream fileStream;
-	fileStream.mFP = _wfopen(UTF8Decode(fileName).c_str(), L"rb");	
+	fileStream.mFP = _wfopen(UTF8Decode(launchPath).c_str(), L"rb");
 	if (fileStream.mFP == NULL)
 	{
-		mDebugger->OutputMessage(StrFormat("Debugger failed to open binary: %s\n", fileName.c_str()));
+		mDebugger->OutputMessage(StrFormat("Debugger failed to open binary: %s\n", launchPath.c_str()));
 		return NULL;
 	}
 
 	DbgModule* dwarf = new COFF(this);	
-	mTargetBinary = dwarf;
-	dwarf->mDisplayName = GetFileName(fileName);
-	dwarf->mFilePath = fileName;
+	mLaunchBinary = dwarf;
+	dwarf->mDisplayName = GetFileName(launchPath);
+	dwarf->mFilePath = launchPath;
 	dwarf->mImageBase = (intptr)imageBase;
 	if (!dwarf->ReadCOFF(&fileStream, false))
 	{
-		mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s\n", fileName.c_str()));
+		mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s\n", launchPath.c_str()));
 		delete dwarf;
 		return NULL;
 	}
+	CheckTargetBinary(dwarf);
 
 	mDbgModules.push_back(dwarf);	
 	return dwarf;
@@ -85,6 +168,7 @@ void DebugTarget::CreateEmptyTarget()
 	auto emptyTarget = new DbgModule(this);
 	mDbgModules.push_back(emptyTarget);
 	mTargetBinary = emptyTarget;
+	mLaunchBinary = emptyTarget;
 }
 
 DbgModule* DebugTarget::HotLoad(const StringImpl& fileName, int hotIdx)
@@ -134,7 +218,7 @@ DbgModule* DebugTarget::SetupDyn(const StringImpl& filePath, DataStream* stream,
 
 	dwarf->mDisplayName = GetFileName(filePath);
 	dwarf->mOrigImageData = new DbgModuleMemoryCache(dwarf->mImageBase, dwarf->mImageSize);
-	
+	CheckTargetBinary(dwarf);
 
 	/*dbgModule->mOrigImageData = new uint8[dbgModule->mImageSize];
 	memset(dbgModule->mOrigImageData, 0xCC, dbgModule->mImageSize);
@@ -163,11 +247,14 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 			RemoveTargetData();
 			filePath = dwarf->mFilePath;
 
+			if (mTargetBinary == dwarf)
+				mTargetBinary = NULL;
+
 			delete dwarf;
 			mDbgModules.erase(mDbgModules.begin() + i);
 			return filePath;
 		}
-	}
+	}	
 
 	return "";
 }
@@ -801,7 +888,10 @@ void DebugTarget::GetCompilerSettings()
 {
 	if (!mCheckedCompilerSettings)
 	{
-		DbgType* bfObjectType = GetMainDbgModule()->FindType("System.CompilerSettings", NULL, DbgLanguage_Beef);
+		auto dbgModule = GetMainDbgModule();
+		if (dbgModule == NULL)
+			return;
+		DbgType* bfObjectType = dbgModule->FindType("System.CompilerSettings", NULL, DbgLanguage_Beef);
 		if (bfObjectType != NULL)
 		{
 			bfObjectType->PopulateType();

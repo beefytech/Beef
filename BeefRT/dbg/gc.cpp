@@ -589,6 +589,7 @@ BFGC::BFGC()
 	mForceDecommit = false;
 	mLastCollectFrame = 0;
 	mSkipMark = false;	
+	mGracelessShutdown = false;
 	mMainThreadTLSPtr = NULL;	
 	
 	mCollectIdx = 0;
@@ -1933,6 +1934,14 @@ void BFGC::StopCollecting()
 	mExiting = true;
 	while (mRunning)
 	{
+		if (BfpThread_WaitFor(mGCThread, 0))
+		{
+			OutputDebugStr("BeefDbgRT not shut down gracefully!\n");
+			mGracelessShutdown = true;
+			mRunning = false;
+			break;
+		}
+
 		//BFRtLock bfLock(mEphemeronTombstone);
 		mWaitingForGC = true;
 		// Wait for current collection to finish
@@ -1969,6 +1978,9 @@ void BFGC::Shutdown()
 	StopCollecting();
 
 	Beefy::AutoCrit autoCrit(mCritSect);
+
+	if (mGracelessShutdown)
+		return;
 
 	// Report any objects that aren't deleted
 	mSweepInfo.mShowAllAsLeaks = true;
@@ -2269,7 +2281,7 @@ void BFGC::ResumeThreads()
 void BFGC::PerformCollection()
 {
 	BP_ZONE("TriggerCollection");
-	
+		
 	DWORD startTick = BFTickCount();
 	CollectReport collectReport;
 	collectReport.mCollectIdx = mCollectIdx;

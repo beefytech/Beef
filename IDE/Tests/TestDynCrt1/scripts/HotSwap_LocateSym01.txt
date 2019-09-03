@@ -1,0 +1,8 @@
+ShowFile("src/HotSwap_LocateSym01.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+ToggleCommentAt("UseMod_Mod")
+Compile()
+StepOver()
+AssertEvalEquals("f", "7")

@@ -70,6 +70,11 @@ public:
 		mNextWithSameName = NULL;
 	}
 
+	~BeLibEntry()
+	{
+		delete mNextWithSameName;
+	}
+
 	void AddSymbol(const StringImpl& sym);
 };
 

@@ -236,9 +236,7 @@ COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mCvPageBits = 31;
 	mCvDataStream = NULL;
 	mCvHeaderData = NULL;		
-	mCvStrTableData = NULL;
-	mCvTypeSectionData = NULL;	
-	mCvTypeSectionDataSize = -1;
+	mCvStrTableData = NULL;	
 	mCvPublicSymbolData = NULL;
 	mCvGlobalSymbolData = NULL;
 	mNewFPOData = NULL;
@@ -251,10 +249,7 @@ COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mCvMappedViewOfFile = NULL;
 	mCvMappedFileSize = 0;
 	//mParsedProcRecs = false;
-	
-	mCvCompileUnitData = NULL;
-	mCvCompileUnitDataSize = 0;
-
+		
 	mGlobalsTargetType = NULL;
 	mPrevScanName = NULL;
 	mProcSymCount = 0;	
@@ -273,7 +268,7 @@ COFF::~COFF()
 {
 	BF_ASSERT(mTempBufIdx == 0);
 	ClosePDB();
-	mDebugger->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
+	mDebugger->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);	
 }
 
 const char* COFF::CvCheckTargetMatch(const char* name, bool& wasBeef)
@@ -3209,7 +3204,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 	_FlushDeferredVariableLocations();
 }
 
-CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, uint8* sectionData, int sectionSize)
+CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* compileUnit, uint8* sectionData, int sectionSize)
 {
 	BP_ZONE("COFF::ParseCompileUnit");
 
@@ -3227,7 +3222,11 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, uint8* sectionDa
 
 	int allocSizeStart = mAlloc.GetAllocSize();
 
-	CvCompileUnit* compileUnit = new CvCompileUnit(this);
+	if (compileUnit == NULL)
+	{
+		compileUnit = new CvCompileUnit(this);
+		mCompileUnits.push_back(compileUnit);
+	}
 	compileUnit->mDbgModule = this;
 	if (moduleInfo != NULL)
 	{
@@ -3239,8 +3238,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, uint8* sectionDa
 	{
 		compileUnit->mModuleIdx = NULL;
 		compileUnit->mName = mFilePath.c_str();
-	}
-	mCompileUnits.push_back(compileUnit);	
+	}	
 		
 	uint8* data = sectionData;
 	uint8* dataEnd = NULL;
@@ -3373,9 +3371,11 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, uint8* sectionDa
 
 		data = debugSubSectionsStart;
 		dataEnd = data + taggedSize;
-		while (data < dataEnd)
+		while (true)
 		{
 			PTR_ALIGN(data, sectionData, 4);
+			if (data >= dataEnd)
+				break;
 			GET_INTO(int32, lineInfoType);
 			GET_INTO(int32, lineInfoLength);
 			uint8* dataStart = data;
@@ -3895,7 +3895,7 @@ CvCompileUnit* COFF::ParseCompileUnit(int compileUnitId)
 
 	int sectionSize = 0;
 	uint8* sectionData = CvReadStream(moduleInfo->mStream, &sectionSize);
-	ParseCompileUnit(moduleInfo, sectionData, sectionSize);
+	ParseCompileUnit(moduleInfo, NULL, sectionData, sectionSize);
 	delete sectionData;
 	return moduleInfo->mCompileUnit;
 }
@@ -5641,10 +5641,10 @@ void COFF::ReportMemory(MemReporter* memReporter)
 
 	if (mCvHeaderData != NULL)
 		memReporter->Add("mCvHeaderData", mCvStreamSizes[1]);	
-	if (mCvTypeSectionData != NULL)
+	for (auto& entry : mCvTypeSectionData)	
 	{
-		if (mCvTypeSectionDataSize != -1)
-			memReporter->Add("mCvTypeSectionData", mCvTypeSectionDataSize);
+		if (entry.mSize != -1)
+			memReporter->Add("mCvTypeSectionData", entry.mSize);
 		else
 			memReporter->Add("mCvTypeSectionData", mCvStreamSizes[2]);
 	}		
@@ -5784,10 +5784,12 @@ void COFF::ClosePDB()
 	mCvHeaderData = NULL;		
 	delete mCvStrTableData;
 	mCvStrTableData = NULL;
-	delete mCvTypeSectionData;
-	mCvTypeSectionData = NULL;
-	delete mCvCompileUnitData;
-	mCvCompileUnitData = NULL;
+	for (auto& entry : mCvTypeSectionData)
+		delete entry.mData;
+	mCvTypeSectionData.Clear();
+	for (auto& entry : mCvCompileUnitData)
+		delete entry.mData;
+	mCvCompileUnitData.Clear();
 	delete mCvPublicSymbolData;
 	mCvPublicSymbolData = NULL;
 	delete mCvGlobalSymbolData;
@@ -5806,7 +5808,8 @@ void COFF::ClosePDB()
 
 	for (auto kv : mHotLibMap)
 		delete kv.mValue;
-	mHotLibMap.Clear();
+	mHotLibMap.Clear();	
+	mHotLibSymMap.Clear();
 }
 
 bool COFF::LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
@@ -5883,15 +5886,19 @@ bool COFF::CheckSection(const char* name, uint8* sectionData, int sectionSize)
 	if (strcmp(name, ".debug$T") == 0)
 	{
 		mDbgFlavor = DbgFlavor_MS;
-		mCvTypeSectionData = sectionData;
-		mCvTypeSectionDataSize = sectionSize;		
+		DbgSectionData entry;
+		entry.mData = sectionData;
+		entry.mSize = sectionSize;
+		mCvTypeSectionData.Add(entry);		
 		return true;
 	}
 
 	if (strcmp(name, ".debug$S") == 0)
-	{
-		mCvCompileUnitData = sectionData;
-		mCvCompileUnitDataSize = sectionSize;
+	{		
+		DbgSectionData entry;
+		entry.mData = sectionData;
+		entry.mSize = sectionSize;
+		mCvCompileUnitData.Add(entry);
 		return true;
 	}
 
@@ -5902,20 +5909,23 @@ void COFF::ProcessDebugInfo()
 {
 	BP_ZONE("COFF::ProcessDebugInfo");
 
-	if ((mCvTypeSectionDataSize > 0) && (mCvCompileUnitDataSize > 0))
+	if ((!mCvTypeSectionData.IsEmpty()) && (!mCvCompileUnitData.IsEmpty()))
 	{		
 		auto linkedModule = (COFF*)GetLinkedModule();
 		int startingTypeIdx = (int)linkedModule->mTypes.size();
 
 		InitCvTypes();
 		
-		uint8* data = mCvTypeSectionData;
-		GET_INTO(uint32, infoType);
-		BF_ASSERT(infoType == CV_SIGNATURE_C13);
+		for (auto entry : mCvTypeSectionData)
+		{
+			uint8* data = entry.mData;
+			GET_INTO(uint32, infoType);
+			BF_ASSERT(infoType == CV_SIGNATURE_C13);
 
-		CvInitStreamRaw(mCvTypeSectionReader, mCvTypeSectionData + 4, mCvTypeSectionDataSize - 4);
-		//ParseTypeData(data, mCvTypeSectionDataSize - sizeof(uint32));
-		ParseTypeData(mCvTypeSectionReader, 0);
+			CvInitStreamRaw(mCvTypeSectionReader, entry.mData + 4, entry.mSize - 4);
+			//ParseTypeData(data, mCvTypeSectionDataSize - sizeof(uint32));
+			ParseTypeData(mCvTypeSectionReader, 0);
+		}
 
 		FixTypes(startingTypeIdx);
 		linkedModule->MapTypes(startingTypeIdx);
@@ -5930,7 +5940,11 @@ void COFF::ProcessDebugInfo()
 			}
 		}*/
 
-		auto compileUnit = ParseCompileUnit(NULL, mCvCompileUnitData, mCvCompileUnitDataSize);
+		CvCompileUnit* compileUnit = NULL;
+		for (auto entry : mCvCompileUnitData)
+		{
+			compileUnit = ParseCompileUnit(NULL, compileUnit, entry.mData, entry.mSize);			
+		}
 		compileUnit->mLanguage = DbgLanguage_Beef;
 		mMasterCompileUnit->mLanguage = DbgLanguage_Beef;
 		MapCompileUnitMethods(compileUnit);
@@ -6538,6 +6552,12 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 				{
 					for (auto sym : libEntry->mSymbols)
 					{
+#ifdef BF_DBG_32
+						if (sym.StartsWith('_'))
+							mHotLibSymMap[sym.Substring(1)] = libEntry;
+						else
+							// Fallthrough
+#endif
 						mHotLibSymMap[sym] = libEntry;
 					}
 					libEntry = libEntry->mNextWithSameName;
@@ -6626,15 +6646,27 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 
 		return 0;
 	}
-
 	BfLogDbg("Loading obj '%s' in '%s'\n", libEntry->mName.c_str(), libEntry->mLibFile->mFilePath.c_str());
+
+// #ifdef _DEBUG
+// 	FILE* fpTest = fopen("c:\\temp\\locateSym.obj", "wb");
+// 
+// 	uint8* data = new uint8[libEntry->mLength];
+// 
+// 	fseek(libEntry->mLibFile->mOldFileStream.mFP, libEntry->mOldDataPos + sizeof(BeLibMemberHeader), SEEK_SET);
+// 	fread(data, 1, libEntry->mLength, libEntry->mLibFile->mOldFileStream.mFP);
+// 	fwrite(data, 1, libEntry->mLength, fpTest);
+// 	fclose(fpTest);
+// 	delete data;
+// #endif
+
 
 	FileSubStream fileStream;
 	fileStream.mFP = libEntry->mLibFile->mOldFileStream.mFP;
 	fileStream.mOffset = libEntry->mOldDataPos + sizeof(BeLibMemberHeader);
 	fileStream.mSize = libEntry->mLength;
 	fileStream.SetPos(0);
-	
+
 	DbgModule* dbgModule = new COFF(mDebugger->mDebugTarget);
 	dbgModule->mHotIdx = mDebugger->mActiveHotIdx;
 	dbgModule->mFilePath = libEntry->mName + "@" + libEntry->mLibFile->mFilePath;
@@ -6789,21 +6821,21 @@ void COFF::ParseFrameDescriptors()
 }
 
 NS_BF_DBG_BEGIN
-void TestCoff(void* tdata, int tdataSize, void* cuData, int cuDataSize)
-{
-	DebugTarget* debugTarget = new DebugTarget(NULL);
-	{
-		COFF coff(debugTarget);
-		coff.mCvTypeSectionData = (uint8*)tdata;
-		coff.mCvTypeSectionDataSize = tdataSize;
-
-		coff.mCvCompileUnitData = (uint8*)cuData;
-		coff.mCvCompileUnitDataSize = cuDataSize;
-
-		coff.ProcessDebugInfo();
-	}
-	delete debugTarget;
-}
+// void TestCoff(void* tdata, int tdataSize, void* cuData, int cuDataSize)
+// {
+// 	DebugTarget* debugTarget = new DebugTarget(NULL);
+// 	{
+// 		COFF coff(debugTarget);
+// 		coff.mCvTypeSectionData = (uint8*)tdata;
+// 		coff.mCvTypeSectionDataSize = tdataSize;
+// 
+// 		coff.mCvCompileUnitData = (uint8*)cuData;
+// 		coff.mCvCompileUnitDataSize = cuDataSize;
+// 
+// 		coff.ProcessDebugInfo();
+// 	}
+// 	delete debugTarget;
+// }
 
 void TestPDB(const String& fileName)
 {

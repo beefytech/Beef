@@ -122,6 +122,12 @@ enum DbgFileExistKind : uint8
 
 class DbgCompileUnit;
 
+struct DbgSectionData
+{
+	uint8* mData;
+	int mSize;
+};
+
 class DbgDebugData
 {
 public:
@@ -1095,9 +1101,8 @@ public:
 	addr_target mCodeAddress;
 	const uint8* mDebugAbbrevData;
 	const uint8* mDebugStrData;
-	const uint8** mDebugAbbrevPtrData;
-	const uint8* mExceptionDirectoryData;
-	int mExceptionDirectoryDataLen;		
+	const uint8** mDebugAbbrevPtrData;	
+	Array<DbgSectionData> mExceptionDirectory;	
 	const uint8* mEHFrameData;
 	const char* mStringTable;
 	const uint8* mSymbolData;

@@ -102,7 +102,7 @@ namespace Beefy.widgets
             {
                 if ((value.a == 1) && (value.b == 0) && (value.c == 0) && (value.d == 1))
                 {
-                    mTransformData = null;
+                    DeleteAndNullify!(mTransformData);
                     mX = value.tx;
                     mY = value.ty;
                 }
@@ -140,6 +140,11 @@ namespace Beefy.widgets
 				mOnRemovedFromParent(this, prevParent, mWidgetWindow);
 			}
 			mOnDeleted(this);
+		}
+
+		public void ClearTransform()
+		{
+			DeleteAndNullify!(mTransformData);
 		}
 
 		public void MarkDirty()

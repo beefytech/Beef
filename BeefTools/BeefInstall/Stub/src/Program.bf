@@ -147,6 +147,8 @@ namespace BIStub
 			}
 
 			startFunc(=> UI_Install, => UI_GetProgress, => UI_Cancel);
+
+			Windows.FreeLibrary(lib);
 		}
 
 		void Run()
@@ -155,7 +157,7 @@ namespace BIStub
 			Directory.GetCurrentDirectory(cwd);
 			StartUI(cwd);
 
-			CheckPE();
+			/*CheckPE();
 
 			ZipFile zipFile = scope .();
 			zipFile.Open(@"c:\\temp\\build_1827.zip");
@@ -163,7 +165,7 @@ namespace BIStub
 
 			CabFile cabFile = scope .();
 			cabFile.Init();
-			cabFile.Copy();
+			cabFile.Copy();*/
 		}
 
 		static int Main(String[] args)

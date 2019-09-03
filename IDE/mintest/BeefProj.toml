@@ -8,7 +8,7 @@ DefaultNamespace = "Mintest"
 Aliases = ["corlib"]
 
 [Configs.Debug.Win64]
-CLibType = "DynamicDebug"
+CLibType = "Static"
 BeefLibType = "DynamicDebug"
 StackSize = 4194304
 DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"\"\"abc efg\"\"\""

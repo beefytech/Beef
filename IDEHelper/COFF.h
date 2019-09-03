@@ -202,6 +202,7 @@ public:
 	Dictionary<String, BeLibEntry*> mSymDict;
 };
 
+
 class COFF : public DbgModule
 {
 public:
@@ -247,8 +248,8 @@ public:
 
 	SafeMemStream* mCvDataStream;
 	CvStringTable mStringTable;
-	uint8* mCvHeaderData;	
-	uint8* mCvTypeSectionData;			
+	uint8* mCvHeaderData;		
+	//uint8* mCvTypeSectionData
 	uint8* mCvStrTableData;	
 	uint8* mCvPublicSymbolData;
 	uint8* mCvGlobalSymbolData;
@@ -270,9 +271,11 @@ public:
 	const char* mPrevScanName;
 
 	// For hot data
-	int mCvTypeSectionDataSize;
-	uint8* mCvCompileUnitData;
-	int mCvCompileUnitDataSize;	
+	Array<DbgSectionData> mCvTypeSectionData;
+	Array<DbgSectionData> mCvCompileUnitData;
+	//int mCvTypeSectionDataSize;
+	//uint8* mCvCompileUnitData;
+	//int mCvCompileUnitDataSize;	
 
 	HANDLE mCvMappedFile;
 	void* mCvMappedViewOfFile;
@@ -292,7 +295,7 @@ public:
 	void ParseTypeData(int sectionNum, CvStreamReader& reader, int& sectionSize, int& dataOfs, int& hashStream, int& hashAdjOffset, int& hashAdjSize, int& minVal, int& maxVal);
 	virtual void ParseTypeData() override;	
 	void ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionData, uint8* data, uint8* dataEnd, CvInlineInfoVec& inlineDataVec, bool deferInternals, DbgSubprogram* useSubprogram);
-	CvCompileUnit* ParseCompileUnit(CvModuleInfo* moduleInfo, uint8* sectionData, int sectionSize);
+	CvCompileUnit* ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* compileUnit, uint8* sectionData, int sectionSize);
 	virtual CvCompileUnit* ParseCompileUnit(int compileUnitId) override;
 	virtual void MapCompileUnitMethods(DbgCompileUnit* compileUnit) override;
 	virtual void MapCompileUnitMethods(int compileUnitId) override;

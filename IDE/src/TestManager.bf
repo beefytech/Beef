@@ -458,7 +458,7 @@ namespace IDE
 
 					var envBlock = scope List<char8>();
 					Environment.EncodeEnvironmentVariables(envVars, envBlock);
-					if (!gApp.mDebugger.OpenFile(curProjectInfo.mTestExePath, mTestInstance.mArgs, mTestInstance.mWorkingDir, envBlock, true))
+					if (!gApp.mDebugger.OpenFile(curProjectInfo.mTestExePath, curProjectInfo.mTestExePath, mTestInstance.mArgs, mTestInstance.mWorkingDir, envBlock, true))
 					{
 						QueueOutputLine("ERROR: Failed debug '{0}'", curProjectInfo.mTestExePath);
 						TestFailed();

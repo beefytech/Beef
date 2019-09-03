@@ -11,6 +11,7 @@ using Beefy.utils;
 using Beefy.res;
 using Beefy.geom;
 using System.Threading;
+using Beefy.sound;
 #if MONOTOUCH
 using MonoTouch;
 #endif
@@ -61,6 +62,7 @@ namespace Beefy
 		public bool mStarted;
 
         public ResourceManager mResourceManager ~ delete _;
+		public SoundManager mSoundManager = new SoundManager() ~ delete _;
 
         public int32 mFPSDrawCount;
         public int32 mFPSUpdateCount;
@@ -123,6 +125,9 @@ namespace Beefy
 
 		[StdCall, CLink]
 		public static extern void BFApp_RehupMouse();
+
+		[StdCall, CLink]
+		public static extern void* BFApp_GetSoundManager();
 
         UpdateDelegate mUpdateDelegate ~ delete _;
         DrawDelegate mDrawDelegate ~ delete _;
@@ -466,6 +471,8 @@ namespace Beefy
             mIPCClientManager.mConnecting = false;
 #endif
             BFApp_Init();
+
+			mSoundManager.[Friend]mNativeSoundManager = BFApp_GetSoundManager();
 
             Interlocked.Fence();
        

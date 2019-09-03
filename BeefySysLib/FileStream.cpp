@@ -29,6 +29,7 @@ bool FileStream::Open(const StringImpl& filePath, const char* fopenOptions)
 #else
 	mFP = fopen(filePath.c_str(), fopenOptions);
 #endif
+	mReadPastEnd = false;
 	return mFP != NULL;
 }
 

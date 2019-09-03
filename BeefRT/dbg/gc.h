@@ -267,6 +267,7 @@ public:
 
 	volatile bool mExiting;
 	volatile bool mRunning;
+	bool mGracelessShutdown;
 	bool mPaused;
 	bool mShutdown;
 	bool mWaitingForGC; // GC.Collect sets this		

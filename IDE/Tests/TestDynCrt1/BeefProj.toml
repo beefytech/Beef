@@ -1,0 +1,8 @@
+FileVersion = 1
+
+[Project]
+Name = "TestStaticCrt1"
+StartupObject = "TestStaticCrt1.Program"
+
+[Configs.Debug.Win64]
+CLibType = "DynamicDebug"

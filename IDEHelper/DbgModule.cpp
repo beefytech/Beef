@@ -1922,9 +1922,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mDebugLocationData = NULL;
 	mDebugRangesData = NULL;
 	mDebugAbbrevData = NULL;
-	mDebugStrData = NULL;	
-	mExceptionDirectoryData = NULL;
-	mExceptionDirectoryDataLen = 0;	
+	mDebugStrData = NULL;		
 	mDebugAbbrevPtrData = NULL;	
 	mEHFrameData = NULL;
 	mEHFrameAddress = 0;	
@@ -1986,7 +1984,8 @@ DbgModule::~DbgModule()
 	delete mDebugAbbrevData;
 	delete mDebugAbbrevPtrData;
 	delete mDebugStrData;	
-	delete mExceptionDirectoryData;	
+	for (auto entry : mExceptionDirectory)
+		delete entry.mData;
 	delete mEHFrameData;
 	
 	delete mOrigImageData;
@@ -2123,47 +2122,50 @@ void DbgModule::ParseAbbrevData(const uint8* data)
 
 void DbgModule::ParseExceptionData()
 {
-	if (mExceptionDirectoryData == NULL)
+	if (mExceptionDirectory.IsEmpty())
 		return;
 
 	BP_ZONE("DbgModule::ParseExceptionData");
 
-	const uint8* data = mExceptionDirectoryData;
-	const uint8* dataEnd = data + mExceptionDirectoryDataLen;
-
-	static int entryCount = 0;
-
-	addr_target imageBase = GetTargetImageBase();	
-
-	while (data < dataEnd)
+	for (auto entry : mExceptionDirectory)
 	{
-		addr_target beginAddress = GET(uint32);
-		addr_target endAddress = GET(uint32);
-		uint32 unwindData = GET(uint32);
-		
-		//TODO: Apparently unwindData can refer to another runtime entry in the .pdata if the LSB is set to 1?
+		const uint8* data = entry.mData;
+		const uint8* dataEnd = data + entry.mSize;
 
-		beginAddress += (addr_target)imageBase;
-		endAddress += (addr_target)imageBase;
-	
-		int exSize = (int)(endAddress - beginAddress);
-		for (int exOffset = 0; true; exOffset += DBG_MAX_LOOKBACK)
+		static int entryCount = 0;
+
+		addr_target imageBase = GetTargetImageBase();
+
+		while (data < dataEnd)
 		{
-			int curSize = exSize - exOffset;
-			if (curSize <= 0)
-				break;
-			
-			BP_ALLOC_T(DbgExceptionDirectoryEntry);
-			DbgExceptionDirectoryEntry* exceptionDirectoryEntry = mAlloc.Alloc<DbgExceptionDirectoryEntry>();			
+			addr_target beginAddress = GET(uint32);
+			addr_target endAddress = GET(uint32);
+			uint32 unwindData = GET(uint32);
 
-			exceptionDirectoryEntry->mAddress = beginAddress + exOffset;			
-			exceptionDirectoryEntry->mOrigAddressOffset = exOffset;
-			exceptionDirectoryEntry->mAddressLength = curSize;
-			exceptionDirectoryEntry->mExceptionPos = (int)unwindData;			
-			exceptionDirectoryEntry->mDbgModule = this;
-			mDebugTarget->mExceptionDirectoryMap.Insert(exceptionDirectoryEntry);			
+			//TODO: Apparently unwindData can refer to another runtime entry in the .pdata if the LSB is set to 1?
 
-			entryCount++;
+			beginAddress += (addr_target)imageBase;
+			endAddress += (addr_target)imageBase;
+
+			int exSize = (int)(endAddress - beginAddress);
+			for (int exOffset = 0; true; exOffset += DBG_MAX_LOOKBACK)
+			{
+				int curSize = exSize - exOffset;
+				if (curSize <= 0)
+					break;
+
+				BP_ALLOC_T(DbgExceptionDirectoryEntry);
+				DbgExceptionDirectoryEntry* exceptionDirectoryEntry = mAlloc.Alloc<DbgExceptionDirectoryEntry>();
+
+				exceptionDirectoryEntry->mAddress = beginAddress + exOffset;
+				exceptionDirectoryEntry->mOrigAddressOffset = exOffset;
+				exceptionDirectoryEntry->mAddressLength = curSize;
+				exceptionDirectoryEntry->mExceptionPos = (int)unwindData;
+				exceptionDirectoryEntry->mDbgModule = this;
+				mDebugTarget->mExceptionDirectoryMap.Insert(exceptionDirectoryEntry);
+
+				entryCount++;
+			}
 		}
 	}
 }
@@ -5310,7 +5312,9 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 			targetSection->mNoTargetAlloc = true;
 		}
 
-		if ((!mIsHotObjectFile) /*&& (!isUnwindSection)*/)
+		bool isExportDataDir = ((exportDataDir->mVirtualAddress != 0) && (exportDataDir->mVirtualAddress >= sectHdr.mVirtualAddress) && (exportDataDir->mVirtualAddress < sectHdr.mVirtualAddress + sectHdr.mSizeOfRawData));
+
+		if ((!mIsHotObjectFile) && (!isExportDataDir))
 		{
 			if (((strcmp(name, ".text")) == 0) ||
 				((strcmp(name, ".textbss")) == 0) ||
@@ -5341,7 +5345,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 			targetSection->mData = data;
 
 		addr_target addrOffset = sectHdr.mVirtualAddress;
-		if ((exportDataDir->mVirtualAddress != 0) && (exportDataDir->mVirtualAddress >= sectHdr.mVirtualAddress) && (exportDataDir->mVirtualAddress < sectHdr.mVirtualAddress + sectHdr.mSizeOfRawData))
+		if (isExportDataDir)
 		{
 			BP_ZONE("DbgModule::ReadCOFF_SymbolMap");
 
@@ -5565,9 +5569,11 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 		}*/
 
 		if (strcmp(name, ".pdata") == 0)
-		{			
-			mExceptionDirectoryData = data;
-			mExceptionDirectoryDataLen = sectHdr.mSizeOfRawData;
+		{
+			DbgSectionData entry;
+			entry.mData = data;			
+			entry.mSize = sectHdr.mSizeOfRawData;
+			mExceptionDirectory.Add(entry);
 		}
 		/*else if (strcmp(name, ".rdata") == 0)
 		{ 

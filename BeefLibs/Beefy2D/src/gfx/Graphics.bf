@@ -107,9 +107,7 @@ namespace Beefy.gfx
             mClipDisposeProxy.mDisposeProxyDelegate = new => PopClip;
             mRenderStateDisposeProxy = new DisposeProxy();
 
-			String filePath = scope String();
-			filePath.Append(BFApp.sApp.mInstallDir, "images/whiteDot.tga");
-            mWhiteDot = Image.LoadFromFile(filePath);
+            mWhiteDot = Image.LoadFromFile("!white");
 
             for (int32 i = 0; i < MATIX_STACK_SIZE; i++)
                 mMatrixStack[i] = Matrix.IdentityMatrix;
