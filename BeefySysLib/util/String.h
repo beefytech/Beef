@@ -33,6 +33,12 @@ public:
 	StringView(const StringImpl& str, int offset);
 	StringView(const StringImpl& str, int offset, int length);
 
+	StringView(const char* ptr)
+	{
+		this->mPtr = ptr;
+		this->mLength = (int)strlen(ptr);
+	}
+
 	StringView(const char* ptr, int length)
 	{
 		this->mPtr = ptr;
@@ -51,6 +57,13 @@ public:
 	{
 		this->mPtr = str.mPtr;
 		this->mLength = str.mLength;
+		return *this;
+	}
+
+	StringView& operator=(const char* str)
+	{
+		this->mPtr = str;
+		this->mLength = (int)strlen(str);
 		return *this;
 	}
 
@@ -339,6 +352,26 @@ protected:
 
 
 public:	
+	static StringImpl MakeRef(const char* charPtr)
+	{
+		StringImpl str;
+		// This is just a ref - called when we pass a literal to a method (for example)
+		str.mPtr = (char*)charPtr;
+		str.mLength = (int_strsize)strlen(charPtr);
+		str.mAllocSizeAndFlags = str.mLength | StrPtrFlag;
+		return str;
+	}	
+
+	static StringImpl MakeRef(const StringView& strView)
+	{
+		StringImpl str;
+		// This is just a ref - called when we pass a literal to a method (for example)
+		str.mPtr = (char*)strView.mPtr;
+		str.mLength = (int_strsize)strView.mLength;
+		str.mAllocSizeAndFlags = str.mLength | StrPtrFlag;
+		return str;
+	}
+
 	StringImpl(const char* charPtr)
 	{
 		// This is just a ref - called when we pass a literal to a method (for example)
@@ -617,6 +650,7 @@ public:
 	static String CreateReference(const StringView& strView);
 	void Reserve(intptr newSize);
 
+	void Append(const char* appendPtr);
 	void Append(const char* appendPtr, intptr length);	
 	void Append(const StringView& str);	
 	void Append(const StringImpl& str);
@@ -672,22 +706,22 @@ public:
 		return EqualsHelper(a.GetPtr(), b.GetPtr(), a.mLength);
 	}
 
-	bool StartsWith(const StringImpl& b, CompareKind comparisonType = CompareKind_Ordinal) const
+	bool StartsWith(const StringView& b, CompareKind comparisonType = CompareKind_Ordinal) const
 	{
 		if (this->mLength < b.mLength)
 			return false;
 		if (comparisonType == CompareKind_OrdinalIgnoreCase)
-			return EqualsIgnoreCaseHelper(this->GetPtr(), b.GetPtr(), b.mLength);
-		return EqualsHelper(this->GetPtr(), b.GetPtr(), b.mLength);
+			return EqualsIgnoreCaseHelper(this->GetPtr(), b.mPtr, b.mLength);
+		return EqualsHelper(this->GetPtr(), b.mPtr, b.mLength);
 	}
 
-	bool EndsWith(const StringImpl& b, CompareKind comparisonType = CompareKind_Ordinal) const
+	bool EndsWith(const StringView& b, CompareKind comparisonType = CompareKind_Ordinal) const
 	{
 		if (this->mLength < b.mLength)
 			return false;
 		if (comparisonType == CompareKind_OrdinalIgnoreCase)
-			return EqualsIgnoreCaseHelper(this->GetPtr() + this->mLength - b.mLength, b.GetPtr(), b.mLength);
-		return EqualsHelper(this->GetPtr() + this->mLength - b.mLength, b.GetPtr(), b.mLength);
+			return EqualsIgnoreCaseHelper(this->GetPtr() + this->mLength - b.mLength, b.mPtr, b.mLength);
+		return EqualsHelper(this->GetPtr() + this->mLength - b.mLength, b.mPtr, b.mLength);
 	}
 
 	bool StartsWith(char c) const
@@ -704,8 +738,8 @@ public:
 		return GetPtr()[this->mLength - 1] == c;
 	}
 
-	void ReplaceLargerHelper(const StringImpl& find, const StringImpl& replace);	
-	void Replace(const StringImpl& find, const StringImpl& replace);	
+	void ReplaceLargerHelper(const StringView& find, const StringView& replace);
+	void Replace(const StringView& find, const StringView& replace);
 	void TrimEnd();	
 	void TrimStart();	
 	void Trim();	
@@ -721,9 +755,9 @@ public:
 	}
 
 	bool HasMultibyteChars();
-	intptr IndexOf(const StringImpl& subStr, bool ignoreCase = false) const;
-	intptr IndexOf(const StringImpl& subStr, int32 startIdx) const;
-	intptr IndexOf(const StringImpl& subStr, int64 startIdx) const;
+	intptr IndexOf(const StringView& subStr, bool ignoreCase = false) const;
+	intptr IndexOf(const StringView& subStr, int32 startIdx) const;
+	intptr IndexOf(const StringView& subStr, int64 startIdx) const;	
 	intptr IndexOf(char c, intptr startIdx = 0) const;	
 	intptr LastIndexOf(char c) const;	
 	intptr LastIndexOf(char c, intptr startCheck) const;
@@ -732,8 +766,8 @@ public:
 	{
 		return IndexOf(c) != -1;
 	}
-
-	bool Contains(const StringImpl& str) const
+	
+	bool Contains(const StringView& str) const
 	{
 		return IndexOf(str) != -1;
 	}
@@ -909,7 +943,7 @@ public: \
 	using StringImpl::StringImpl; \
 	using StringImpl::operator=; \
 	StringT() { mPtr = NULL; mLength = 0; mAllocSizeAndFlags = 0; } \
-	StringT(const char* str) { Init(str, (int_strsize)strlen(str)); } \
+	explicit StringT(const char* str) { Init(str, (int_strsize)strlen(str)); } \
 	StringT(const std::string& str) { Init(str.c_str(), (int_strsize)str.length()); } \
 	StringT(const StringImpl& str) : StringImpl(str) {} \
 	StringT(StringImpl&& str) : StringImpl(std::move(str)) {} \
@@ -927,7 +961,11 @@ BF_SPECIALIZE_STR(6)
 
 String operator+(const StringImpl& lhs, const StringImpl& rhs);
 String operator+(const StringImpl& lhs, const StringView& rhs);
+String operator+(const StringImpl& lhs, const char* rhs);
 String operator+(const StringImpl& lhs, char rhs);
+String operator+(const char* lhs, const StringImpl& rhs);
+String operator+(const char* lhs, const StringView& rhs);
+
 bool operator==(const char* lhs, const StringImpl& rhs);
 bool operator!=(const char* lhs, const StringImpl& rhs);
 // bool operator==(const StringView& lhs, const StringImpl& rhs);

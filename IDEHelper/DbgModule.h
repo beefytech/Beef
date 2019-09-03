@@ -358,6 +358,14 @@ public:
 	};
 #endif
 
+	enum HotReplaceKind : uint8
+	{
+		HotReplaceKind_None = 0,
+		HotReplaceKind_Replaced = 1,
+		HotReplaceKind_Orphaned = 2, // Module was hot replaced but a new version of the subprogram wasn't found
+		HotReplaceKind_Invalid = 3 // Mangles matched but arguments were incompatible
+	};
+
 	const char* mName;	
 	const char* mLinkName;
 	int mTemplateNameIdx;	
@@ -376,8 +384,7 @@ public:
 	bool mVirtual;
 	bool mHasThis;
 	bool mNeedLineDataFixup;	
-	bool mWasHotReplaced;
-	bool mWasModuleHotReplaced; // Module was hot replaced but a new version of the subprogram wasn't found
+	HotReplaceKind mHotReplaceKind;	
 	bool mIsOptimized;
 	bool mHasLineAddrGaps; // There are gaps of addresses which are not covered by lineinfo			
 	DbgLineInfo* mLineInfo;
@@ -397,8 +404,7 @@ public:
 		mLinkName = NULL;				
 		mHasThis = false;
 		mNeedLineDataFixup = true;
-		mWasHotReplaced = false;
-		mWasModuleHotReplaced = false;
+		mHotReplaceKind = HotReplaceKind_None;		
 		mHasLineAddrGaps = false; 
 		mPrologueSize = -1;
 		mParentType = NULL;		
@@ -427,6 +433,7 @@ public:
 	String GetParamName(int paramIdx);
 	bool IsGenericMethod();
 	bool ThisIsSplat();	
+	bool IsLambda();
 
 	DbgSubprogram* GetRootInlineParent()
 	{		
@@ -1201,6 +1208,7 @@ public:
 	virtual String GetOldSourceCommand(const StringImpl& path) { return ""; }
 	virtual bool DbgIsStrMutable(const char* str) { return true; } // Always assume its a copy
 	virtual addr_target LocateSymbol(const StringImpl& name) { return 0; }
+	virtual DbgSubprogram* FindSubprogram(DbgType* dbgType, const char* methodName);
 
 	void Fail(const StringImpl& error);
 	void FindTemplateStr(const char*& name, int& templateNameIdx);

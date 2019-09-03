@@ -390,7 +390,7 @@ String DbgSubprogram::ToString()
 	{		
 		if (mLinkName[0] == '<')
 			return mLinkName;
-		str = BfDemangler::Demangle(mLinkName, language);
+		str = BfDemangler::Demangle(StringImpl::MakeRef(mLinkName), language);
 		// Strip off the params since we need to generate those ourselves		
 		int parenPos = (int)str.IndexOf('(');
 		if (parenPos != -1)
@@ -776,6 +776,13 @@ bool DbgSubprogram::ThisIsSplat()
 	return strncmp(mBlock.mVariables.mHead->mName, "$this$", 6) == 0;
 }
 
+bool DbgSubprogram::IsLambda()
+{
+	if (mName == NULL)
+		return false;
+	return StringView(mName).Contains('$');
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 DbgSubprogram::~DbgSubprogram()
@@ -863,7 +870,7 @@ void DbgSrcFile::RehupLineData()
 	for (int idx = 0; idx < (int)mLineDataRefs.size(); idx++)
 	{
 		auto dbgSubprogram = mLineDataRefs[idx];
-		if (dbgSubprogram->mWasModuleHotReplaced)
+		if (dbgSubprogram->mHotReplaceKind != DbgSubprogram::HotReplaceKind_None)
 		{
 			mLineDataRefs.RemoveAtFast(idx);
 			idx--;
@@ -1548,6 +1555,7 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 		else
 			return mParent->ToString(language) + "::" + nameP;
 	}
+	
 
 	switch (mTypeCode)
 	{
@@ -1997,6 +2005,39 @@ DbgModule::~DbgModule()
 
 	for (auto data : mOwnedSectionData)
 		delete data;
+}
+
+DbgSubprogram* DbgModule::FindSubprogram(DbgType* dbgType, const char * methodName)
+{
+	dbgType = dbgType->GetPrimaryType();
+	dbgType->PopulateType();
+
+	if (dbgType->mNeedsGlobalsPopulated)					
+		PopulateTypeGlobals(dbgType);
+
+	for (auto methodNameEntry : dbgType->mMethodNameList)
+	{
+		if ((methodNameEntry->mCompileUnitId != -1) && (strcmp(methodNameEntry->mName, methodName) == 0))
+		{
+			// If we hot-replaced this type then we replaced and parsed all the methods too
+			if (!dbgType->mCompileUnit->mDbgModule->mIsHotObjectFile)
+				dbgType->mCompileUnit->mDbgModule->MapCompileUnitMethods(methodNameEntry->mCompileUnitId);
+			methodNameEntry->mCompileUnitId = -1;
+		}
+	}
+
+	DbgSubprogram* result = NULL;
+	for (auto method : dbgType->mMethodList)
+	{
+		if (strcmp(method->mName, methodName) == 0)
+		{
+			method->PopulateSubprogram();
+			if ((result == NULL) || (method->mBlock.mLowPC != 0))
+				result = method;
+		}
+	}
+
+	return result;
 }
 
 void DbgModule::Fail(const StringImpl& error)
@@ -4960,7 +5001,8 @@ void DbgModule::HotReplaceType(DbgType* newType)
 	HashSet<DbgSrcFile*> checkedFiles;
 	for (auto method : primaryType->mMethodList)
 	{
-		method->mWasModuleHotReplaced = true;
+		//method->mWasModuleHotReplaced = true;
+		method->mHotReplaceKind = DbgSubprogram::HotReplaceKind_Orphaned; // May be temporarily orphaned
 
 		if (method->mLineInfo == NULL)
 			continue;
@@ -5014,34 +5056,153 @@ void DbgModule::HotReplaceType(DbgType* newType)
 		primaryType->mHotReplacedMethodList.PushFront(method);
 		mHotPrimaryTypes.Add(primaryType);
 	}
-				
+	
+	Dictionary<StringView, DbgSubprogram*> oldProgramMap;
+	for (auto oldMethod : primaryType->mHotReplacedMethodList)
+	{
+		oldMethod->PopulateSubprogram();
+		if (oldMethod->mBlock.IsEmpty())
+			continue;
+		auto symInfo = mDebugTarget->mSymbolMap.Get(oldMethod->mBlock.mLowPC);
+		if (symInfo != NULL)
+		{
+			oldProgramMap.TryAdd(symInfo->mName, oldMethod);
+		}
+	}
+
 	bool setHotJumpFailed = false;
 	while (!newType->mMethodList.IsEmpty())
 	{
 		DbgSubprogram* newMethod = newType->mMethodList.PopFront();
 		if (!newMethod->mBlock.IsEmpty())
 		{
-			newMethod->PopulateSubprogram();
+			newMethod->PopulateSubprogram();			
 
-			bool found = false;
-			for (auto oldMethod : primaryType->mHotReplacedMethodList)
+			auto symInfo = mDebugTarget->mSymbolMap.Get(newMethod->mBlock.mLowPC);
+			if (symInfo != NULL)
 			{
-				if (oldMethod->mBlock.IsEmpty())
-					continue;
-				if (oldMethod->Equals(newMethod))
+				DbgSubprogram* oldMethod = NULL;
+				if (oldProgramMap.TryGetValue(symInfo->mName, &oldMethod))
 				{
-					if (!setHotJumpFailed)
+					bool doHotJump = false;
+
+					if (oldMethod->Equals(newMethod))
 					{
-						if (!mDebugger->SetHotJump(oldMethod, newMethod))
-							setHotJumpFailed = true;
-						oldMethod->mWasHotReplaced = true;
-					}					
+						doHotJump = true;
+					}
+					else
+					{
+						// When mangles match but the actual signatures don't match, that can mean that the call signature was changed 
+						// and thus it's actually a different method and shouldn't hot jump OR it could be lambda whose captures changed.
+						// When the lambda captures change, the user didn't actually enter a different signature so we want to do a hard
+						// fail if the old code gets called to avoid confusion of "why aren't my changes working?"
+
+						// If we removed captures then we can still do the hot jump. Otherwise we have to fail...
+						doHotJump = false;
+						if ((oldMethod->IsLambda()) && (oldMethod->GetParamCount() == 0) && (newMethod->GetParamCount() == 0) &&
+							(oldMethod->mHasThis) && (newMethod->mHasThis))
+						{
+							auto oldParam = oldMethod->mParams.front();
+							auto newParam = newMethod->mParams.front();
+
+							if ((oldParam->mType->IsPointer()) && (newParam->mType->IsPointer()))
+							{
+								auto oldType = oldParam->mType->mTypeParam->GetPrimaryType();
+								auto newType = newParam->mType->mTypeParam->GetPrimaryType();
+								if ((oldType->IsStruct()) && (newType->IsStruct()))
+								{	
+									bool wasMatch = true;
+
+									auto oldMember = oldType->mMemberList.front();
+									auto newMember = newType->mMemberList.front();
+									while (newMember != NULL)
+									{
+										if (oldMember == NULL)
+										{
+											wasMatch = false;
+											break;
+										}
+
+										if ((oldMember->mName == NULL) || (newMember->mName == NULL))
+										{
+											wasMatch = false;
+											break;
+										}
+
+										if (strcmp(oldMember->mName, newMember->mName) != 0)
+										{
+											wasMatch = false;
+											break;
+										}
+
+										if (!oldMember->mType->Equals(newMember->mType))
+										{
+											wasMatch = false;
+											break;
+										}
+										
+										oldMember = oldMember->mNext;
+										newMember = newMember->mNext;
+									}
+
+									if (wasMatch)
+										doHotJump = true;
+								}
+							}
+
+							if (!doHotJump)
+							{
+								mDebugTarget->mDebugger->PhysSetBreakpoint(oldMethod->mBlock.mLowPC);
+								oldMethod->mHotReplaceKind = DbgSubprogram::HotReplaceKind_Invalid;
+							}							
+						}
+					}										
+
+					if (doHotJump)
+					{
+						if (!setHotJumpFailed)
+						{
+							if (!mDebugger->SetHotJump(oldMethod, newMethod->mBlock.mLowPC, (int)(newMethod->mBlock.mHighPC - newMethod->mBlock.mLowPC)))
+								setHotJumpFailed = true;
+						}
+						oldMethod->mHotReplaceKind = DbgSubprogram::HotReplaceKind_Replaced;
+					}
 				}
-			}
+			}			
 		}
 		newMethod->mParentType = primaryType;
 		primaryType->mMethodList.PushBack(newMethod);
 	}
+
+	//mDebugTarget->mSymbolMap.Get()
+
+// 	bool setHotJumpFailed = false;
+// 	while (!newType->mMethodList.IsEmpty())
+// 	{
+// 		DbgSubprogram* newMethod = newType->mMethodList.PopFront();
+// 		if (!newMethod->mBlock.IsEmpty())
+// 		{
+// 			newMethod->PopulateSubprogram();
+// 
+// 			bool found = false;
+// 			for (auto oldMethod : primaryType->mHotReplacedMethodList)
+// 			{
+// 				if (oldMethod->mBlock.IsEmpty())
+// 					continue;
+// 				if (oldMethod->Equals(newMethod))
+// 				{
+// 					if (!setHotJumpFailed)
+// 					{
+// 						if (!mDebugger->SetHotJump(oldMethod, newMethod))
+// 							setHotJumpFailed = true;
+// 						oldMethod->mWasHotReplaced = true;
+// 					}					
+// 				}
+// 			}
+// 		}
+// 		newMethod->mParentType = primaryType;
+// 		primaryType->mMethodList.PushBack(newMethod);
+// 	}
 
 	primaryType->mCompileUnit->mWasHotReplaced = true;	
 

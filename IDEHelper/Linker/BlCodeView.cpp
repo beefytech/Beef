@@ -2052,14 +2052,14 @@ void BlCodeView::CreateLinkerSymStream()
 	
 	ENVBLOCKSYM envBlock = { 0 };
 	envBlock.rectyp = S_ENVBLOCK;	
-	str = "cwd"; str.Append(0);
-	str += cwd; str.Append(0);
-	str += "exe"; str.Append(0);
-	str += moduleFileName; str.Append(0);	
-	str += "pdb"; str.Append(0);
-	str += mMsf.mFileName; str.Append(0);
-	str += "cmd"; str.Append(0);
-	str += GetCommandLineA(); str.Append(0);
+	str = "cwd"; str.Append('\0');
+	str += cwd; str.Append('\0');
+	str += "exe"; str.Append('\0');
+	str += moduleFileName; str.Append('\0');
+	str += "pdb"; str.Append('\0');
+	str += mMsf.mFileName; str.Append('\0');
+	str += "cmd"; str.Append('\0');
+	str += GetCommandLineA(); str.Append('\0');
 	OUT_WITH_STR(ENVBLOCKSYM, envBlock, rgsz);
 
 	for (auto segment : mContext->mSegments)

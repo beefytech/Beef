@@ -157,7 +157,7 @@ public:
 	String mName;
 
 public:
-	DebugTimeGuard(int maxTicks, const StringImpl& name = "DebugTimeGuard")
+	DebugTimeGuard(int maxTicks, const StringImpl& name = StringImpl::MakeRef("DebugTimeGuard"))
 	{
 		mName = name;
 		mMaxTicks = maxTicks;

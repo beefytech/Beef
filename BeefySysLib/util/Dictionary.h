@@ -483,6 +483,15 @@ public:
 		return true;
 	}
 
+// 	template <typename TAltKey>
+// 	bool TryAddWith(const TAltKey& key, TKey** keyPtr, TValue** valuePtr)
+// 	{
+// 		if (!Insert(key, false, keyPtr, valuePtr))
+// 			return false;
+// 		new (*valuePtr) TValue();
+// 		return true;
+// 	}
+
 	// Returns uninitialized valuePtr - must use placement new
 	bool TryAddRaw(const TKey& key, TKey** keyPtr, TValue** valuePtr)
 	{

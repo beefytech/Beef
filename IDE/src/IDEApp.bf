@@ -3051,7 +3051,7 @@ namespace IDE
 
 			if (mRunningTestScript)
 			{
-				if ((mScriptManager.mExpectingError != null) && (text.Contains(mScriptManager.mExpectingError)))
+				if (mScriptManager.IsErrorExpected(text))
 				{
 					DeleteAndNullify!(mScriptManager.mExpectingError);
 					OutputLine("Received expected error: {0}", text);
@@ -10479,7 +10479,7 @@ namespace IDE
                     }
                     else if (cmd == "error")
                     {
-						if ((mRunningTestScript) && (!IsCrashDump))
+						if ((mRunningTestScript) && (!IsCrashDump) && (!mScriptManager.IsErrorExpected(param)))
 							mScriptManager.Fail(param);
 
 						bool isFirstMsg = true;
@@ -10553,7 +10553,6 @@ namespace IDE
 								if (isFirstMsg)
 								{
 									OutputLineSmart(scope String("ERROR: ", errorMsg));
-									Fail(errorMsg);
 									isFirstMsg = false;
 								}
 								else

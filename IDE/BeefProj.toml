@@ -27,7 +27,7 @@ TargetDirectory = "$(WorkspaceDir)/dist"
 TargetName = "BeefIDE_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib"
 CLibType = "Dynamic"
-DebugCommandArguments = "-proddir=C:\\Beef\\IDE\\Tests\\Test1 -platform=Win32 -test=scripts\\Break.txt -testNoExit"
+DebugCommandArguments = "-proddir=C:\\Beef\\IDE\\Tests\\Test1 -test=scripts\\HotSwap_Lambdas01.txt -testNoExit"
 DebugWorkingDirectory = "c:\\Beef\\IDE\\Tests\\EmptyTest"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 

@@ -44,9 +44,9 @@ public:
 	MemReporter();
 	~MemReporter();
 
-	void BeginSection(const StringImpl& name);
+	void BeginSection(const StringView& name);
 	void Add(int size);
-	void Add(const StringImpl& name, int size);
+	void Add(const StringView& name, int size);
 	
 	template <typename T>
 	void AddVec(const T& vec, bool addContainerSize = true)
@@ -55,7 +55,7 @@ public:
 	}
 	
 	template <typename T>
-	void AddVec(const StringImpl& name, const T& vec, bool addContainerSize = true)
+	void AddVec(const StringView& name, const T& vec, bool addContainerSize = true)
 	{
 		BeginSection(name);
 		Add((addContainerSize ? sizeof(T) : 0) + (int)vec.mAllocSize * sizeof(typename T::value_type));
@@ -79,7 +79,7 @@ public:
 	}
 
 	template <typename T>
-	void AddVecPtr(const StringImpl& name, const Array<T>& vec, bool addContainerSize = true)
+	void AddVecPtr(const StringView& name, const Array<T>& vec, bool addContainerSize = true)
 	{
 		Add(name, (addContainerSize ? sizeof(T) : 0) +
 			(int)vec.mAllocSize * sizeof(T) +
@@ -87,7 +87,7 @@ public:
 	}
 
 	template <typename T>
-	void AddMap(const StringImpl& name, const T& map, bool addContainerSize = true)
+	void AddMap(const StringView& name, const T& map, bool addContainerSize = true)
 	{		
 		Add(name, (addContainerSize ? sizeof(T) : 0) + map.mAllocSize * (sizeof(typename T::EntryPair) + sizeof(typename T::int_cosize)));
 	}
@@ -99,7 +99,7 @@ public:
 	}
 
 	template <typename T>
-	void AddHashSet(const StringImpl& name, const T& map, bool addContainerSize = true)
+	void AddHashSet(const StringView& name, const T& map, bool addContainerSize = true)
 	{
 		Add(name, (addContainerSize ? sizeof(T) : 0) + map.mAllocSize * (sizeof(typename T::Entry) + sizeof(typename T::int_cosize)));
 	}
@@ -115,7 +115,7 @@ public:
 		Add((addContainerSize ? sizeof(StringImpl) : 0) + (int)str.GetAllocSize());
 	}
 
-	void AddStr(const StringImpl& name, const StringImpl& str, bool addContainerSize = true)
+	void AddStr(const StringView& name, const StringImpl& str, bool addContainerSize = true)
 	{
 		Add(name, (addContainerSize ? sizeof(StringImpl) : 0) + (int)str.GetAllocSize());
 	}
@@ -125,7 +125,7 @@ public:
 
 
 	template <typename T>
-	void AddBumpAlloc(const StringImpl& name, const T& alloc)
+	void AddBumpAlloc(const StringView& name, const T& alloc)
 	{		
 		BeginSection(name);
 				

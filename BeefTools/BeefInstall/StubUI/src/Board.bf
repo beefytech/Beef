@@ -4,6 +4,7 @@ using Beefy.gfx;
 using System.Diagnostics;
 using System;
 using System.IO;
+using System.Threading;
 
 namespace BIStubUI
 {
@@ -202,10 +203,13 @@ namespace BIStubUI
 		float mEatPct;
 
 		int mCloseTicks;
+		int mInstallTicks;
 		public bool mIsClosed;
+		bool mUninstallDone;
 
 		public bool mInstalling;
-		public float mInstallPct = 0.5f;
+		public bool mUninstalling;
+		public float mInstallPct;
 
 		public this()
 		{
@@ -256,7 +260,7 @@ namespace BIStubUI
 			mCancelButton.mImageHi = Images.sButtonHi;
 			mCancelButton.mOnMouseClick.Add(new (mouseArgs) =>
 				{
-					gApp.mCancelling = true;
+					//gApp.mCancelling = true;
 				});
 			mCancelButton.mMouseInsets = new Insets(4, 4, 4, 4);
 			AddWidget(mCancelButton);
@@ -287,6 +291,12 @@ namespace BIStubUI
 				mInstallPathBox.mInstallPath.Set(@"C:\Program Files");
 			}
 			mInstallPathBox.mInstallPath.Append(@"\BeefLang");
+		}
+
+		void Uninstall()
+		{
+			Thread.Sleep(10000);
+			mUninstallDone = true;
 		}
 
 		void StartInstall()
@@ -320,13 +330,15 @@ namespace BIStubUI
 
 			if (mInstalling)
 			{
-				float installDiv = 1000.0f;
+				//float installDiv = 1000.0f;
 				//mInstallPct = (mUpdateCnt % installDiv) / installDiv;
 
 				//mInstallPct = 1.0f;
 
 				float totalWidth = 410;
 				float fillWidth = totalWidth * (mInstallPct*0.9f + 0.1f);
+				if (mUninstalling)
+					fillWidth = totalWidth * mInstallPct;
 
 				float barX = 200;
 				float barY = 280;
@@ -338,15 +350,19 @@ namespace BIStubUI
 
 					Color colorLeft = 0x800288E9;
 					Color colorRight = 0x80FFFFFF;
+					if (gApp.mClosing)
+					{
+						colorLeft = 0x80000000;
+						colorRight = 0x800288E9;
+					}
 					g.FillRectGradient(barX, barY, fillWidth, barHeight, colorLeft, colorRight, colorLeft, colorRight);
 
-					float pct = (mUpdateCnt % 60) / 60.0f;
-
+					float barPct = (mInstallTicks % 60) / 60.0f;
 					for (int i = 0; i < 16; i++)
 					{
 						Images.sPBBarHilite.mPixelSnapping = .Never;
 						using (g.PushColor(0x22FFFFFF))
-							g.Draw(Images.sPBBarHilite, barX - 16 - totalWidth + fillWidth + (i + pct) * 26, barY + 6);
+							g.Draw(Images.sPBBarHilite, barX - 16 - totalWidth + fillWidth + (i + barPct) * 26, barY + 6);
 					}
 
 					g.DrawButton(Images.sPBBarEmpty, barX + fillWidth - 30, barY + 5, totalWidth - fillWidth + 40);
@@ -395,6 +411,15 @@ namespace BIStubUI
 				base.DrawAll(g);
 		}
 
+		public bool IsDecompressing
+		{
+			get
+			{
+				//return gApp.
+				return false;
+			}
+		}
+
 		public override void Update()
 		{
 			base.Update();
@@ -403,6 +428,34 @@ namespace BIStubUI
 
 			if (gApp.mClosing)
 			{
+				mCancelButton.mDisabled = true;
+				mCancelButton.mMouseVisible = false;
+
+				if ((mInstalling) && (!mUninstallDone))
+				{
+					if ((!IsDecompressing) && (!mUninstalling))
+					{
+						mUninstalling = true;
+						ThreadPool.QueueUserWorkItem(new => Uninstall);
+					}
+					mInstallTicks--;
+					if (mInstallTicks < 0)
+						mInstallTicks = 0x3FFFFFFF;
+				}
+
+				if (mInstallPct > 0)
+				{
+					mInstallPct = (mInstallPct * 0.98f) - 0.003f;
+					if (!mUninstallDone)
+						mInstallPct = Math.Max(mInstallPct, 0.1f);
+					return;
+				}
+
+				if ((mInstalling) && (!mUninstallDone))
+				{
+					return;
+				}
+
 				if (mCloseTicks == 0)
 				{
 					gApp.mSoundManager.PlaySound(Sounds.sAbort);
@@ -426,6 +479,9 @@ namespace BIStubUI
 
 				return;
 			}
+
+			if (mInstalling)
+				mInstallTicks++;
 
 			if (mUpdateCnt == 1)
 				gApp.mSoundManager.PlaySound(Sounds.sBoing);

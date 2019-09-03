@@ -177,6 +177,11 @@ namespace IDE
 			//gApp.mRunningTestScript = false;
 		}
 
+		public bool IsErrorExpected(StringView err)
+		{
+			return (mExpectingError != null) && (err.Contains(mExpectingError));
+		}
+
 		public void Fail(StringView fmt, params Object[] args)
 		{
 			Fail(scope String()..AppendF(fmt, params args));

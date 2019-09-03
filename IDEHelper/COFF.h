@@ -405,7 +405,7 @@ namespace std
 	{
 		size_t operator()(const NS_BF_DBG::CvModuleInfoNameEntry& val) const
 		{			
-			return NS_BF_DBG::CvModuleInfoNameEntry::GetHashCode(val.mModuleInfo->mModuleName);
+			return NS_BF_DBG::CvModuleInfoNameEntry::GetHashCode(Beefy::StringImpl::MakeRef(val.mModuleInfo->mModuleName));
 		}
 	};
 }

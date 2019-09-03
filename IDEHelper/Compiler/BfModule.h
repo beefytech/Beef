@@ -1773,7 +1773,7 @@ public:
 	HashSet<int> mDefinedStrings;
 
 public:
-	BfVDataModule(BfContext* context) : BfModule(context, "vdata")
+	BfVDataModule(BfContext* context) : BfModule(context, StringImpl::MakeRef("vdata"))
 	{
 	}
 };

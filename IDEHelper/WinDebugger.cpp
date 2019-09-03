@@ -1863,10 +1863,20 @@ bool WinDebugger::DoUpdate()
 					bool isNonDebuggerBreak = false;
 
 					if (wasDebugBreakpoint)
-					{
+					{						
 						// Go ahead and set EIP back one instruction												
 						BF_CONTEXT_IP(lcContext)--;
 						BF_SetThreadContext(threadInfo->mHThread, &lcContext);
+
+						if ((dwSubprogram != NULL) && (dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Invalid) &&
+							(pcAddress == dwSubprogram->mBlock.mLowPC))
+						{
+							BfLogDbg("Hit HotReplaceKind_Invalid breakpoint\n");
+							mRunState = RunState_Paused;
+							mDebugManager->mOutMessages.push_back("error This lambda was replaced by a new version that has incompatible captures. A program restart is required.");
+							PhysRemoveBreakpoint(pcAddress);
+							break;
+						}
 					}					
 					else
 					{
@@ -2223,9 +2233,9 @@ bool WinDebugger::DoUpdate()
 							}
 						}
 						else
-						{							
+						{								
 							BfLogDbg("Ignoring break (old or ignored breakpoint)\n");
-							mRunState = RunState_Running;
+							mRunState = RunState_Running;							
 						}
 					}
 
@@ -2363,7 +2373,7 @@ bool WinDebugger::DoUpdate()
 						DbgSubprogram* dwSubprogram = NULL;
 						DbgLineData* dwLineData = FindLineDataAtAddress(pcAddress, &dwSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
 
-						if ((dwSubprogram != NULL) && (pcAddress == dwSubprogram->mBlock.mLowPC) && (dwSubprogram->mWasHotReplaced))
+						if ((dwSubprogram != NULL) && (pcAddress == dwSubprogram->mBlock.mLowPC) && (dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced))
 						{
 							BfLogDbg("Stepping through hot thunk\n");
 							mRunState = RunState_Running;
@@ -2413,7 +2423,7 @@ bool WinDebugger::DoUpdate()
 						}
 						else if (dwSubprogram != NULL)
 						{	
-							if ((dwSubprogram->mWasHotReplaced) && ((mStepType == StepType_StepInto) || (mStepType == StepType_StepInto_Unfiltered)))
+							if ((dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) && ((mStepType == StepType_StepInto) || (mStepType == StepType_StepInto_Unfiltered)))
 							{
 								SingleStepX86();
 							}
@@ -2963,7 +2973,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 				if ((foundInSequence) && (subProgram != lastFoundSubprogram))
 					foundInSequence = false;
 
-				if ((subProgram->mWasHotReplaced) && (address < subProgram->mBlock.mLowPC + sizeof(HotJumpOp)))
+				if ((subProgram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) && (address < subProgram->mBlock.mLowPC + sizeof(HotJumpOp)))
 				{
 					// If this breakpoint ends up on the hot jmp instruction
 					continue;
@@ -2973,7 +2983,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 				{
 					lastFoundSubprogram = subProgram;
 
-					if ((subProgram != NULL) && (subProgram->mWasHotReplaced) && (address == subProgram->mBlock.mLowPC))
+					if ((subProgram != NULL) && (subProgram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) && (address == subProgram->mBlock.mLowPC))
 					{
 						// This instruction is actually the hot jump, we don't need a breakpoint here
 						foundInSequence = true;
@@ -4957,7 +4967,7 @@ bool WinDebugger::RollBackStackFrame(CPURegisters* registers, bool isStackStart)
 	return mDebugTarget->RollBackStackFrame(registers, NULL, isStackStart);	
 }
 
-bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, DbgSubprogram* newSubprogram)
+bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize)
 {
 	//AutoCrit autoCrit(mDebugManager->mCritSect);
 	BF_ASSERT(mDebugManager->mCritSect.mLockCount == 1);
@@ -4968,14 +4978,14 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, DbgSubprogram* newSub
 	if (jmpInstEnd > oldSubprogram->mBlock.mHighPC)
 	{
 		if ((oldSubprogram->mBlock.mHighPC - oldSubprogram->mBlock.mLowPC == 1) &&
-			(newSubprogram->mBlock.mHighPC - newSubprogram->mBlock.mLowPC == 1))
+			(newTargetSize == 1))
 			return true; // Special case for just stub 'ret' methods
-		String err = StrFormat("Failed to hot replace method, method '%s' too small to insert hot thunk", newSubprogram->ToString().c_str());
+		String err = StrFormat("Failed to hot replace method, method '%s' too small to insert hot thunk", oldSubprogram->ToString().c_str());
 		Fail(err);
 		return false;
 	}
 	
-	if (!oldSubprogram->mWasHotReplaced)
+	if (oldSubprogram->mHotReplaceKind != DbgSubprogram::HotReplaceKind_Replaced)
 	{
 		for (int threadIdx = 0; threadIdx < (int)mThreadList.size(); threadIdx++)
 		{
@@ -5068,7 +5078,7 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, DbgSubprogram* newSub
 
 	HotJumpOp jumpOp;
 	jumpOp.mOpCode = 0xE9;
-	jumpOp.mRelTarget = newSubprogram->mBlock.mLowPC - oldSubprogram->mBlock.mLowPC - sizeof(HotJumpOp);
+	jumpOp.mRelTarget = newTarget - oldSubprogram->mBlock.mLowPC - sizeof(HotJumpOp);
 	WriteMemory(oldSubprogram->mBlock.mLowPC, jumpOp);
 	::FlushInstructionCache(mProcessInfo.hProcess, (void*)(intptr)oldSubprogram->mBlock.mLowPC, sizeof(HotJumpOp));
 	return true;
@@ -5076,7 +5086,7 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, DbgSubprogram* newSub
 
 DbgSubprogram* WinDebugger::TryFollowHotJump(DbgSubprogram* subprogram, addr_target addr)
 {
-	if (!subprogram->mWasHotReplaced)
+	if (subprogram->mHotReplaceKind != DbgSubprogram::HotReplaceKind_Replaced)
 		return subprogram;
 
 	if (addr != subprogram->mBlock.mLowPC)
@@ -10794,14 +10804,14 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		if (!dbgModule->mDisplayName.empty())
 			demangledName = dbgModule->mDisplayName + "!" + demangledName;
 
-		if (dwSubprogram->mWasHotReplaced)
+		if ((dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) || (dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Invalid))
 			demangledName = "#" + demangledName;
 
 		if (dbgModule->HasPendingDebugInfo())
 			*outFlags |= FrameFlags_HasPendingDebugInfo;
 		if (dbgModule->CanGetOldSource())
 			*outFlags |= FrameFlags_CanGetOldSource;
-		if (dwSubprogram->mWasHotReplaced)
+		if ((dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) || (dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Invalid))
 			*outFlags |= FrameFlags_WasHotReplaced;
 
 		if ((dwLineData != NULL) && (dwSrcFile != NULL))

@@ -778,11 +778,7 @@ BfModule* gLastCreatedModule = NULL;
 BfModule::BfModule(BfContext* context, const StringImpl& moduleName)	
 {
 	BfLogSys(context->mSystem, "BfModule::BFModule %p %s\n", this, moduleName.c_str());
-	if (moduleName.Contains("_Comparison_"))
-	{
-		NOP;
-	}
-
+	
 	gLastCreatedModule = this;
 
 	mContext = context;
@@ -14930,7 +14926,10 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 			mCurMethodState->mClosureState = &closureState;
 			//closureState.mConstLocals = deferredLocalMethod->mConstLocals;
 			closureState.mReturnType = lambdaInstance->mMethodInstance->mReturnType;
-			closureState.mClosureType = lambdaInstance->mClosureTypeInstance;
+			if (lambdaInstance->mClosureTypeInstance != NULL)
+				closureState.mClosureType = lambdaInstance->mClosureTypeInstance;
+			else
+				closureState.mClosureType = lambdaInstance->mDelegateTypeInstance;
 			closureState.mClosureInstanceInfo = lambdaInstance->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo;
 			mCurMethodState->mMixinState = lambdaInstance->mDeclMixinState;
 

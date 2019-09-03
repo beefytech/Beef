@@ -479,7 +479,7 @@ public:
 	bool PopulateRegisters(CPURegisters* registers, BF_CONTEXT& lcContext);
 	virtual bool PopulateRegisters(CPURegisters* registers);
 	bool RollBackStackFrame(CPURegisters* registers, bool isStackStart);
-	bool SetHotJump(DbgSubprogram* oldSubprogram, DbgSubprogram* newSubprogram);
+	bool SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize);
 	DbgSubprogram* TryFollowHotJump(DbgSubprogram* subprogram, addr_target addr);	
 
 	bool ParseFormatInfo(DbgModule* dbgModule, const StringImpl& formatInfoStr, DwFormatInfo* formatInfo, BfPassInstance* bfPassInstance, int* assignExprOffset, String* assignExpr = NULL, String* errorString = NULL,  DbgTypedValue contextTypedValue = DbgTypedValue());

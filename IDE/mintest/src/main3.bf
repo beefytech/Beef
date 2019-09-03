@@ -87,85 +87,37 @@ struct TestStruct
 	public int mB;
 }
 
+class Bloozer
+{
+	int mA;
+}
+
 class Blurg
 {
-	[Export, CLink, StdCall]
-	public static void Poof()
-	{
-		PrintF("Poofs!\n");
-	}
-
-	[Export, CLink, StdCall]
-	public static void Poof2()
-	{
-		PrintF("Poofs2!\n");
-	}
-
-	static void Test0()
-	{
-		Snorf sn = scope .();
-		int a = 124;
-	}
-
-
-	public void DoRecurse(int depth, ref int val)
-	{
-		Thread.Sleep(1);
-		++val;
-		if (val < 5)
-		{
-			DoRecurse(depth + 1, ref val);
-		}
-	}
-
-	public static void VoidCall()
-	{
-		
-	}
-
-	public static int GetInt()
-	{
-		float f = 10.0f;
-		//f = f % 3.0f;
-		
-		return 123;
-	}
-
+	delegate void() mFuncA;
+	delegate void() mFuncB;
+	
 	public static void Hey()
 	{
-		float f = 1.2f;
-		//f = f % 2.3f;
+		int a = 123;
+		Blurg blurg = scope .();
+		blurg.mFuncA = new () =>
+		{
+			PrintF("YoA!\n");
+			PrintF("A %d!\n", a);
+			PrintF("Blurg: %p\n", blurg);
+		};
 
-		TestStruct ts = .();
-		//int val = ts..mA;
-		ts.mA = 123;
+		blurg.mFuncB = new () =>
+		{
+			PrintF("YoB!\n");
+		};
 
-		GetInt();
-		GetInt();
-
-		VoidCall();
-		int val0 = GetInt();
-
-		Blurg bl = scope .();
-		int val = 0;
-		bl.DoRecurse(0, ref val);
-
-		Test0();
-		Test0();
-		Test0();
-		Test0();
-
-		Result<void*> voidPtrResult = default;
-
-		//void* val = voidPtrResult;
-
-
-		//Result<TestStruct> ts = .Ok(.());
-
-		//let val = ts.Get();
-		//Snorf.Bloog bl = .();
-
-		//Poof();
+		while (true)
+		{
+			blurg.mFuncA();
+			blurg.mFuncB();
+		}
 	}
 
 }

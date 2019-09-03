@@ -59,10 +59,10 @@ void MemReporter::Report(int depth, Entry* entry)
 	}
 }
 
-void MemReporter::BeginSection(const StringImpl& name)
+void MemReporter::BeginSection(const StringView& name)
 {
 	Entry** entryPtr;
-	if (!mCurEntry->mChildren.TryAdd(name, NULL, &entryPtr))
+	if (!mCurEntry->mChildren.TryAdd(StringImpl::MakeRef(name), NULL, &entryPtr))
 	{		
 		mCurEntry = *entryPtr;
 		mCurEntry->mCount++;
@@ -82,7 +82,7 @@ void MemReporter::Add(int size)
 	mCurEntry->mSize += size;
 }
 
-void MemReporter::Add(const StringImpl& name, int size)
+void MemReporter::Add(const StringView& name, int size)
 {
 	BeginSection(name);
 	Add(size);

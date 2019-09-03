@@ -128,7 +128,7 @@ void DbgHotScanner::PopulateHotCallstacks()
 			{
 				auto subProgram = stackFrame->mSubProgram;
 
-				if (subProgram->mWasHotReplaced)
+				if (subProgram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced)
 					subProgram = mDebugger->TryFollowHotJump(subProgram, stackFrame->mRegisters.GetPC());
 
 				AddSubProgram(subProgram, false, "");

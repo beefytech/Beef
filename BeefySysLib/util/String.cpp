@@ -129,11 +129,41 @@ String Beefy::operator+(const StringImpl& lhs, const StringView& rhs)
 	return str;
 }
 
+String Beefy::operator+(const StringImpl& lhs, const char* rhs)
+{
+	String str;
+	int rhsLen = (int)strlen(rhs);
+	str.Reserve(lhs.mLength + rhsLen + 1);
+	str.Append(lhs);
+	str.Append(rhs, rhsLen);
+	return str;
+}
+
 String Beefy::operator+(const StringImpl& lhs, char rhs)
 {
 	String str;
 	str.Reserve(lhs.mLength + 1 + 1);
 	str.Append(lhs);
+	str.Append(rhs);
+	return str;
+}
+
+String Beefy::operator+(const char* lhs, const StringImpl& rhs)
+{
+	String str;
+	int lhsLen = (int)strlen(lhs);
+	str.Reserve(rhs.mLength + lhsLen + 1);
+	str.Append(lhs, lhsLen);
+	str.Append(rhs);
+	return str;
+}
+
+String Beefy::operator+(const char* lhs, const StringView& rhs)
+{
+	String str;
+	int lhsLen = (int)strlen(lhs);
+	str.Reserve(rhs.mLength + lhsLen + 1);
+	str.Append(lhs, lhsLen);
 	str.Append(rhs);
 	return str;
 }
@@ -363,6 +393,11 @@ intptr StringImpl::CompareOrdinalHelper(const StringImpl & strA, intptr indexA, 
 	return CompareOrdinalHelper(strA.GetPtr() + indexA, lengthA, strB.GetPtr() + indexB, lengthB);
 }
 
+void StringImpl::Append(const char* appendPtr)
+{
+	Append(appendPtr, (int)strlen(appendPtr));
+}
+
 void StringImpl::Append(const char* appendPtr, intptr length)
 {
 	intptr newCurrentIndex = mLength + length;
@@ -538,7 +573,7 @@ intptr StringImpl::Compare(const StringImpl & strA, intptr indexA, const StringI
 	return CompareOrdinalHelper(strA, indexA, lengthA, strB, indexB, lengthB);
 }
 
-void StringImpl::ReplaceLargerHelper(const StringImpl & find, const StringImpl & replace)
+void StringImpl::ReplaceLargerHelper(const StringView& find, const StringView& replace)
 {
 	Array<int> replaceEntries;
 
@@ -546,7 +581,7 @@ void StringImpl::ReplaceLargerHelper(const StringImpl & find, const StringImpl &
 
 	for (int startIdx = 0; startIdx < mLength - find.mLength; startIdx++)
 	{
-		if (EqualsHelper(GetPtr() + startIdx, find.GetPtr(), find.mLength))
+		if (EqualsHelper(GetPtr() + startIdx, find.mPtr, find.mLength))
 		{
 			replaceEntries.Add(startIdx);
 			startIdx += find.mLength - 1;
@@ -561,7 +596,7 @@ void StringImpl::ReplaceLargerHelper(const StringImpl & find, const StringImpl &
 	if (needSize > GetAllocSize())
 		Realloc((int_strsize)needSize);
 
-	auto replacePtr = replace.GetPtr();
+	auto replacePtr = replace.mPtr;
 	auto ptr = GetMutablePtr();
 
 	intptr lastDestStartIdx = destLength;
@@ -585,7 +620,7 @@ void StringImpl::ReplaceLargerHelper(const StringImpl & find, const StringImpl &
 	mLength = (int_strsize)destLength;
 }
 
-void StringImpl::Replace(const StringImpl & find, const StringImpl & replace)
+void StringImpl::Replace(const StringView& find, const StringView & replace)
 {
 	if (replace.mLength > find.mLength)
 	{
@@ -594,8 +629,8 @@ void StringImpl::Replace(const StringImpl & find, const StringImpl & replace)
 	}
 
 	auto ptr = GetMutablePtr();
-	auto findPtr = find.GetPtr();
-	auto replacePtr = replace.GetPtr();
+	auto findPtr = find.mPtr;
+	auto replacePtr = replace.mPtr;
 
 	int_strsize inIdx = 0;
 	int_strsize outIdx = 0;
@@ -693,7 +728,7 @@ bool StringImpl::HasMultibyteChars()
 	return false;
 }
 
-intptr StringImpl::IndexOf(const StringImpl& subStr, bool ignoreCase) const
+intptr StringImpl::IndexOf(const StringView& subStr, bool ignoreCase) const
 {
 	for (intptr ofs = 0; ofs <= mLength - subStr.mLength; ofs++)
 	{
@@ -704,15 +739,15 @@ intptr StringImpl::IndexOf(const StringImpl& subStr, bool ignoreCase) const
 	return -1;
 }
 
-intptr StringImpl::IndexOf(const StringImpl& subStr, int32 startIdx) const
+intptr StringImpl::IndexOf(const StringView& subStr, int32 startIdx) const
 {
 	return IndexOf(subStr, (int64)startIdx);
 }
 
-intptr StringImpl::IndexOf(const StringImpl& subStr, int64 startIdx) const
+intptr StringImpl::IndexOf(const StringView& subStr, int64 startIdx) const
 {
 	const char* ptr = GetPtr();
-	const char* subStrPtr = subStr.GetPtr();
+	const char* subStrPtr = subStr.mPtr;
 	for (intptr ofs = (intptr)startIdx; ofs <= mLength - subStr.mLength; ofs++)
 	{
 		if (strncmp(ptr + ofs, subStrPtr, subStr.mLength) == 0)

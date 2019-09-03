@@ -9553,7 +9553,9 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	mModule->mBfIRBuilder->PopulateType(useTypeInstance);
 	mModule->PopulateType(useTypeInstance);
 
-	methodDef->mIsStatic = closureTypeInst == NULL;
+	// If we are allowing hot swapping, we need to always mangle the name to non-static because if we add a capture
+	//  later then we need to have the mangled names match
+	methodDef->mIsStatic = (closureTypeInst == NULL) && (!mModule->mCompiler->mOptions.mAllowHotSwapping);
 
 	SizedArray<BfIRType, 3> newTypes;
 	SizedArray<BfIRType, 8> origParamTypes;
@@ -9598,12 +9600,12 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		methodDef->mName.RemoveToEnd(prevSepPos);
 	}
 
-	if (closureTypeInst != NULL)
-	{
-		StringT<128> typeInstName;
-		BfMangler::Mangle(typeInstName,mModule->mCompiler->GetMangleKind(), closureTypeInst);
-		closureHashCtx.MixinStr(typeInstName);
-	}
+// 	if (closureTypeInst != NULL)
+// 	{
+// 		StringT<128> typeInstName;
+// 		BfMangler::Mangle(typeInstName,mModule->mCompiler->GetMangleKind(), closureTypeInst);
+// 		closureHashCtx.MixinStr(typeInstName);
+// 	}
 
 	auto checkMethodState = mModule->mCurMethodState;
 	while (checkMethodState != NULL)
