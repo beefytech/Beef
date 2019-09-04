@@ -244,7 +244,29 @@ void BeIRCodeGen::Hash(BeHashContext& hashCtx)
 	hashCtx.Mixin(mPtrSize);
 	hashCtx.Mixin(mIsOptimized);
 	if (mBeModule != NULL)
-		mBeModule->Hash(hashCtx);
+		mBeModule->Hash(hashCtx);	
+
+	Array<BeStructType*> structHashList;
+
+	for (auto beType : mBeContext->mTypes)
+	{
+		if (!beType->IsStruct())
+			continue;
+		auto beStructType = (BeStructType*)beType;
+		if (beStructType->mHashId != -1)
+			continue;
+		structHashList.Add(beStructType);
+	}
+
+	structHashList.Sort([](BeStructType* lhs, BeStructType* rhs)
+	{
+		return lhs->mName < rhs->mName;
+	});
+
+	for (auto beStructType : structHashList)
+	{
+		beStructType->HashReference(hashCtx);
+	}
 }
 
 bool BeIRCodeGen::IsModuleEmpty()

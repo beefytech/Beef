@@ -112,6 +112,15 @@ void BfCodeGenDirectoryData::Write()
 	String fileName = GetDataFileName();
 	if (!fileStream.Open(fileName, "wb"))
 	{
+		String directory = GetFileDir(fileName);
+		if (!DirectoryExists(directory))
+		{
+			// Someone else (or the user) cleared this directory
+			DoBfLog(2, "BfCodeGen cleared cache because '%s' was removed\n", directory.c_str());
+			mFileMap.Clear();
+			return;
+		}
+
 		mError = "Failed to write to " + fileName;
 		return;
 	}
