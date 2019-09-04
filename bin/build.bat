@@ -62,7 +62,7 @@ IDE\dist\BeefBuild_d -proddir=BeefTools\RandoCode -config=Release
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 @ECHO Building BeefPerf
-IDE\dist\BeefBuild_d -proddir=BeefPerf -config=Release
+IDE\dist\BeefBuild_d -proddir=BeefTools\BeefPerf -config=Release
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 :SUCCESS

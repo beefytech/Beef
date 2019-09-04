@@ -27,7 +27,7 @@ TargetDirectory = "$(WorkspaceDir)/dist"
 TargetName = "BeefIDE_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib"
 CLibType = "Dynamic"
-DebugCommandArguments = "-test=scripts\\Minidump.txt -testNoExit -verbosity=diagnostic"
+DebugCommandArguments = "-workspace=c:\\beef\\ide -dbgCompileDump"
 DebugWorkingDirectory = "c:\\Beef\\IDE\\Tests\\EmptyTest"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 

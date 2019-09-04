@@ -104,15 +104,7 @@ class Blurg
 
 	public this()
 	{
-		delegate void() dlg = new () =>
-		{
-			//PrintF("Hey! %d\n", mA);
-		};
-
-		dlg();
-		dlg();
-		dlg();
-		dlg();
+		
 	}
 
 	void TestIt(int a, int b, int c)
@@ -122,7 +114,7 @@ class Blurg
 
 	public static void Hey()
 	{
-		Blurg bl = scope .();
+		function void() func = null;
 	}
 
 }
