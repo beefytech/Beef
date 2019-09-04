@@ -7551,6 +7551,9 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			ptrUseDataStr = ptrDataStr;
 		}
 
+		bool isNull = wasPtr && (dataPtr == 0);
+		bool isBadSrc = !wasPtr && (dataPtr == 0);
+
 		if ((ptrVal == 0) && (dwValueType->IsTypedPrimitive()))
 		{
 			DbgTypedValue rawVal;
@@ -7574,14 +7577,14 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				ptrDataStr = expr;
 				ptrUseDataStr = expr;
 			}
+
+			// This keeps 'function' types from showing null as "<null parent>"
+			isBadSrc = false;
 		}
 		else if ((ptrVal == 0) && (dwValueType->IsCompositeType()))
 		{
 			
-		}
-		
-		bool isNull = wasPtr && (dataPtr == 0);
-		bool isBadSrc = !wasPtr && (dataPtr == 0);
+		}				
 
 		DbgTypedValue useTypedValue = typedValue;
 		if ((origHadRef) || ((typedValue.mType->HasPointer()) && (!dwUseType->HasPointer())))
