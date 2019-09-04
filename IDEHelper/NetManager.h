@@ -17,6 +17,7 @@ class NetResult;
 
 #ifdef BF_CURL
 typedef void CURL;
+typedef void CURLM;
 #endif
 
 class NetRequest : public ThreadPool::Job
@@ -30,9 +31,10 @@ public:
 	FileStream mOutFile;
 #ifdef BF_CURL
 	CURL* mCURL;
+	CURLM* mCURLMulti;
 #else
 #endif
-	bool mCancelling;
+	volatile bool mCancelling;
 	bool mFailed;		
 	String mError;
 	uint32 mLastUpdateTick;
@@ -45,6 +47,7 @@ public:
 		mLastUpdateTick = 0;
 #ifdef BF_CURL
 		mCURL = NULL;
+		mCURLMulti = NULL;
 #else
 #endif
 		mCancelling = false;
@@ -90,6 +93,7 @@ public:
 	Array<NetResult*> mOldResults;
 	SyncEvent mRequestDoneEvent;
 	NetResult* mWaitingResult;
+	NetRequest* mWaitingRequest;
 
 public:
 	NetManager();

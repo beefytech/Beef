@@ -8,6 +8,7 @@ static BF_TLS_DECLSPEC ThreadPool* gPoolParent;
 ThreadPool::Thread::Thread()
 {
 	mCurJobThreadId = -1;
+	mActiveJob = NULL;
 }
 
 ThreadPool::Thread::~Thread()
@@ -34,9 +35,10 @@ void ThreadPool::Thread::Proc()
 			{
 				job = mThreadPool->mJobs[0];
 				job->mProcessing = true;
-				mThreadPool->mJobs.RemoveAt(0);
+				mThreadPool->mJobs.RemoveAt(0);				
 			}
 			
+			mActiveJob = job;
 			if (job == NULL)
 				mCurJobThreadId = -1;
 			else
@@ -76,6 +78,7 @@ void ThreadPool::Thread::Proc()
 
 		// Run dtor synchronized
 		AutoCrit autoCrit(mThreadPool->mCritSect);
+		mActiveJob = NULL;
 		delete job;
 	}	
 }
@@ -176,4 +179,14 @@ void ThreadPool::AddJob(BfpThreadStartProc proc, void* param, int maxWorkersPerP
 bool ThreadPool::IsInJob()
 {
 	return gPoolParent == this;
+}
+
+void ThreadPool::CancelAll()
+{
+	AutoCrit autoCrit(mCritSect);
+	for (auto job : mJobs)
+		job->Cancel();
+	for (auto thread : mThreads)
+		if (thread->mActiveJob != NULL)
+			thread->mActiveJob->Cancel();
 }

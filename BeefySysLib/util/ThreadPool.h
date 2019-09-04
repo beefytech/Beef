@@ -9,12 +9,15 @@ NS_BF_BEGIN
 class ThreadPool
 {
 public:
+	class Job;
+
 	class Thread
 	{
 	public:
 		ThreadPool* mThreadPool;
 		BfpThread* mBfpThread;
 		BfpThreadId mCurJobThreadId;
+		Job* mActiveJob;
 
 	public:
 		Thread();
@@ -85,6 +88,7 @@ public:
 	void AddJob(Job* job, int maxWorkersPerProviderThread = 0x7FFFFFFF);
 	void AddJob(BfpThreadStartProc proc, void* param, int maxWorkersPerProviderThread = 0x7FFFFFFF);
 	bool IsInJob();
+	void CancelAll();
 };
 
 NS_BF_END

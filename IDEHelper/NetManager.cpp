@@ -9,6 +9,7 @@ USING_NS_BF;
 #ifdef BF_CURL
 #define CURL_STATICLIB
 #include "curl/curl.h"
+#include "curl/multi.h"
 
 static int TransferInfoCallback(void* userp,
 	curl_off_t dltotal, curl_off_t dlnow,
@@ -80,8 +81,18 @@ static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, voi
 
 void NetRequest::Cleanup()
 {
+	if (mCURLMulti != NULL)
+	{
+		curl_multi_remove_handle(mCURLMulti, mCURL);		
+	}
+
 	if (mCURL != NULL)
 		curl_easy_cleanup(mCURL);
+
+	if (mCURLMulti != NULL)
+	{
+		curl_multi_cleanup(mCURLMulti);
+	}
 }
 
 void NetRequest::Perform()
@@ -98,7 +109,9 @@ void NetRequest::Perform()
 	mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Getting '%s'\n", mURL.c_str()));
 
 	mOutTempPath = mOutPath + "__partial";	
-		
+	
+	mCURLMulti = curl_multi_init();
+
 	mCURL = curl_easy_init();	
 
 	if (mShowTracking)
@@ -115,13 +128,37 @@ void NetRequest::Perform()
 	curl_easy_setopt(mCURL, CURLOPT_XFERINFOFUNCTION, TransferInfoCallback);
 	curl_easy_setopt(mCURL, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(mCURL, CURLOPT_NOPROGRESS, 0L);
-	auto result = curl_easy_perform(mCURL);
+	//auto result = curl_easy_perform(mCURL);
 
-	if (result != CURLE_OK)
+	CURLMcode mcode = curl_multi_add_handle(mCURLMulti, mCURL);
+	if (mcode != CURLM_OK)
 	{
 		mFailed = true;
 		return;
 	}
+	
+	while (true)
+	{ 
+		int activeCount = 0;
+		curl_multi_perform(mCURLMulti, &activeCount);
+		if (activeCount == 0)
+			break;
+
+		int waitRet = 0;
+		curl_multi_wait(mCURLMulti, NULL, 0, 20, &waitRet);		
+
+		if (mCancelling)
+		{
+			mFailed = true;
+			return;
+		}
+	}
+
+// 	if (result != CURLE_OK)
+// 	{
+// 		mFailed = true;
+// 		return;
+// 	}
 
 	long response_code = 0;
 	curl_easy_getinfo(mCURL, CURLINFO_RESPONSE_CODE, &response_code);
@@ -375,6 +412,7 @@ void NetManagerThread()
 NetManager::NetManager() : mThreadPool(8, 1*1024*1024)
 {
 	mWaitingResult = NULL;
+	mWaitingRequest = NULL;
 }
 
 NetManager::~NetManager()
@@ -458,7 +496,7 @@ bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
 						break;
 					}
 
-					mWaitingResult = netResult;
+					mWaitingResult = netResult;					
 					netResult->mCurRequest->ShowTracking();
 				}				
 			}
@@ -474,10 +512,16 @@ bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
 	}
 
 	// Perform this in the requesting thread
+	{
+		AutoCrit autoCrit(mThreadPool.mCritSect);
+		mWaitingRequest = netRequest;
+	}
+
 	netRequest->mShowTracking = true;
 	netRequest->Perform();
 
 	AutoCrit autoCrit(mThreadPool.mCritSect);
+	mWaitingRequest = NULL;
 	auto netResult = netRequest->mResult;
 	delete netRequest;
 
@@ -490,11 +534,9 @@ bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
 void NetManager::CancelAll()
 {
 	AutoCrit autoCrit(mThreadPool.mCritSect);
-	for (auto job : mThreadPool.mJobs)
-	{
-		auto netRequest = (NetRequest*)job;
-		netRequest->Cancel();
-	}
+	if (mWaitingRequest != NULL)
+		mWaitingRequest->Cancel();
+	mThreadPool.CancelAll();	
 }
 
 void NetManager::Clear()
@@ -528,8 +570,9 @@ void NetManager::Clear()
 void NetManager::CancelCurrent()
 {
 	AutoCrit autoCrit(mThreadPool.mCritSect);
-
-	if ((mWaitingResult != NULL) && (mWaitingResult->mCurRequest != NULL))
+	if (mWaitingRequest != NULL)
+		mWaitingRequest->Cancel();
+	else if ((mWaitingResult != NULL) && (mWaitingResult->mCurRequest != NULL))
 		mWaitingResult->mCurRequest->Cancel();
 }
 

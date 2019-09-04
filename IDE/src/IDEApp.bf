@@ -6292,6 +6292,8 @@ namespace IDE
 					    mVerbosity = .Detailed;
 					else if (value == "diagnostic")
 					    mVerbosity = .Diagnostic;
+					else
+						Fail(scope String()..AppendF("Invalid verbosity option: {}", value));
 				case "-workspace","-proddir":
 					var relDir = scope String(value);
 					if ((relDir.EndsWith("\\")) || relDir.EndsWith("\""))
@@ -10465,7 +10467,7 @@ namespace IDE
 					bool isOutput = (cmd == "msg") || (cmd == "dbgEvalMsg") || (cmd == "log");
 					if (cmd == "msgLo")
 					{
-						if (mVerbosity <= .Diagnostic)
+						if (mVerbosity < .Diagnostic)
 							continue;
 						isOutput = true;
 					}

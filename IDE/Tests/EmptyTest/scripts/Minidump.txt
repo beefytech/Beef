@@ -1,6 +1,5 @@
 SetSymSrvOptions("C:/SymCache", "http://symbols.beeflang.org/\nhttps://msdl.microsoft.com/download/symbols", "TempCache")
-#SetSymSrvOptions("C:/SymCache", "https://msdl.microsoft.com/download/symbols\nhttps://chromium-browser-symsrv.commondatastorage.googleapis.com", "TempCache")
-#SetSymSrvOptions("C:/SymCache", "https://msdl.microsoft.com/download/symbols\nhttps://chromium-browser-symsrv.commondatastorage.googleapis.com", "None")
+#SetSymSrvOptions("C:/SymCache", "http://127.0.0.1:8042", "TempCache")
 
 OpenCrashDump("dumps/Chrome1.dmp")
 WaitForPaused()
