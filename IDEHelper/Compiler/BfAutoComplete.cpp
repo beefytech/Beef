@@ -1440,7 +1440,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 	}
 
 	if (memberName != NULL)
-		isAutocompletingName = IsAutocompleteNode(dotToken, memberName);
+		isAutocompletingName = IsAutocompleteNode(dotToken, memberName, 0, 1);
 
 	if ((IsAutocompleteNode(dotToken, 0, 1)) || (isAutocompletingName))
 	{
@@ -1773,6 +1773,9 @@ void BfAutoComplete::CheckInvocation(BfAstNode* invocationNode, BfTokenNode* ope
 			target = qualifiedTypeRef->mRight;
 		else if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(target))
 			target = qualifiedNameNode->mRight;
+
+		if (auto attributedMember = BfNodeDynCast<BfAttributedIdentifierNode>(target))
+			target = attributedMember->mIdentifier;
 	}
 
 	bool doCapture = (bfParser->mCursorIdx >= openParen->GetSrcStart());

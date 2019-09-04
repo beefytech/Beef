@@ -2033,6 +2033,13 @@ bool WinDebugger::DoUpdate()
 									break;
 								}
 
+								if ((dwLineData->mColumn == -1) && (!dwSubprogram->HasValidLines()))
+								{
+									// This is a method we don't actually want to be in, it has no valid lines!
+									SetupStep(StepType_StepOut);
+									break;
+								}
+
 								if ((dwSubprogram != NULL) && (dwSubprogram->mInlineeInfo != NULL) && (pcAddress == dwSubprogram->mBlock.mLowPC))
 								{
 									// We've stepped out, but right into the start of an inlined method, so step out of this inlined method now...

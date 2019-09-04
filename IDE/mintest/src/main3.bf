@@ -92,11 +92,20 @@ class Bloozer
 	int mA;
 }
 
+
+
+
 class Blurg
 {
 	delegate void() mFuncA;
 	delegate void() mFuncB;
-	
+
+
+	void TestIt(int a, int b, int c)
+	{
+
+	}
+
 	public static void Hey()
 	{
 		int a = 123;
@@ -112,6 +121,9 @@ class Blurg
 		{
 			PrintF("YoB!\n");
 		};
+
+		blurg.TestIt(1, 2, 3);
+		blurg.[Friend]TestIt(1, 2, 3);
 
 		while (true)
 		{
@@ -130,3 +142,4 @@ class CustomAlloc
 		return null;
 	}
 }
+

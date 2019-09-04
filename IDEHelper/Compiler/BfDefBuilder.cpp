@@ -1106,7 +1106,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		isAutoCompleteTempType = (mResolvePassData->mAutoComplete != NULL);
 
 		int cursorIdx = mResolvePassData->mParser->mCursorIdx;		
-		if (typeDeclaration->Contains(cursorIdx))
+		if (typeDeclaration->Contains(cursorIdx, 1, 0))
 		{
 			// Within bounds
 		}

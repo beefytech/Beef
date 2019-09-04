@@ -12607,7 +12607,9 @@ BfMethodInstance* BfModule::GetDelegateInvokeMethod(BfTypeInstance* typeInstance
 void BfModule::CreateDelegateInvokeMethod()
 {
 	// Clear out debug loc - otherwise we'll single step onto the delegate type declaration
-	mBfIRBuilder->ClearDebugLocation();
+	//mBfIRBuilder->ClearDebugLocation();
+
+	SetIllegalSrcPos();
 
 	auto typeInstance = mCurTypeInstance;
 	auto memberFuncType = mBfIRBuilder->MapMethod(mCurMethodInstance);

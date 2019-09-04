@@ -99,6 +99,18 @@ DbgSrcFile* DbgSubprogram::GetLineSrcFile(const DbgLineData& lineData)
 	return inlineRoot->mLineInfo->mContexts[lineData.mCtxIdx].mSrcFile;
 }
 
+bool DbgSubprogram::HasValidLines()
+{
+	auto inlineRoot = GetRootInlineParent();
+	for (int lineIdx = 0; lineIdx < (int)inlineRoot->mLineInfo->mLines.size(); lineIdx++)
+	{
+		auto& lineInfo = inlineRoot->mLineInfo->mLines[lineIdx];
+		if (lineInfo.mColumn >= 0)
+			return true;
+	}
+	return false;
+}
+
 void DbgSubprogram::PopulateSubprogram()
 {
 	if (mDeferredInternalsSize == 0)

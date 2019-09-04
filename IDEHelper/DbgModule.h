@@ -459,6 +459,7 @@ public:
 	addr_target GetLineAddr(const DbgLineData& lineData);	
 	DbgSubprogram* GetLineInlinee(const DbgLineData& lineData);
 	DbgSrcFile* GetLineSrcFile(const DbgLineData& lineData);
+	bool HasValidLines();
 	void PopulateSubprogram();
 };
 
