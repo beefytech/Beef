@@ -10,11 +10,11 @@ StartupObject = "LogViewer.Program"
 IconFile = "res/LogViewer.ico"
 
 [Configs.Debug.Win64]
-TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetDirectory = "$(WorkspaceDir)/../../IDE/dist"
 TargetName = "$(ProjectName)_d"
 OtherLinkFlags = "Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib BeefySysLib64_d.lib $(LinkFlags)"
 
 [Configs.Release.Win64]
-TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+TargetDirectory = "$(WorkspaceDir)/../../IDE/dist"
 OtherLinkFlags = "Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib BeefySysLib64.lib $(LinkFlags)"
 BeefLibType = "Dynamic"
