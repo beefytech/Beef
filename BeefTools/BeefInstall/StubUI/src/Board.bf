@@ -260,7 +260,7 @@ namespace BIStubUI
 			mCancelButton.mImageHi = Images.sButtonHi;
 			mCancelButton.mOnMouseClick.Add(new (mouseArgs) =>
 				{
-					//gApp.mCancelling = true;
+					gApp.mCancelling = true;
 				});
 			mCancelButton.mMouseInsets = new Insets(4, 4, 4, 4);
 			AddWidget(mCancelButton);

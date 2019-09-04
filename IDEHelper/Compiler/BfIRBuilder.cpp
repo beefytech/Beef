@@ -965,117 +965,8 @@ int64 BfIRBuilder::CheckedShl(int64 a, int64 b)
 
 //////////////////////////////////////////////////////////////////////////
 
-struct TestQ
-{
-public:
-	int mId;
-	BfIRValueFlags mFlags;
-
-	TestQ()
-	{
-		mId = -1;
-		mFlags = BfIRValueFlags_None;
-	}
-
-
-	/*TestQ(const TestQ& from)
-	{
-		mFlags = from.mFlags;
-		mId = from.mId;
-	}*/
-
-	/*TestQ(BfIRValueFlags flags, int id)
-	{
-		mFlags = flags;
-		mId = id;
-	}
-
-	operator bool() const
-	{
-		return mFlags != BfIRValueFlags_None;
-	}*/
-
-	/*bool IsFake() const;
-	bool IsConst() const;
-	bool IsArg() const;
-	bool IsFunc() const;
-	bool IsFromLLVM() const;
-
-	bool operator==(const TestQ& rhs) const
-	{
-		if (mFlags != rhs.mFlags)
-			return false;
-		if (mId != rhs.mId)
-			return false;
-		return true;
-	}
-
-	bool operator!=(const TestQ& rhs) const
-	{
-		if (mFlags != rhs.mFlags)
-			return true;
-		if (mId != rhs.mId)
-			return true;
-		return false;
-	}*/
-};
-
-class LTest
-{
-public:
-	int mA;
-	int mB;
-
-	void Fiff()
-	{
-		int valZ = 234;
-		mA = 123;
-		mB = 345;
-
-		auto lam = [&]()
-		{
-			mA++;
-			valZ++;
-		};
-
-		lam();
-	}
-
-	static void UseIt(LTest lt)
-	{
-
-	}
-
-	static void DoIt(BfIRValue irVal)
-	{
-	}
-
-	static void DoIt(TestQ irVal)
-	{
-	}
-
-	BfIRValue CreateCall(BfIRValue func)
-	{
-		return func;
-	}
-};
-
-
-void TestIt()
-{
-	LTest lt;
-	lt.mA = 0;
-	lt.mB = 0;
-	LTest::UseIt(lt);
-
-	LTest::DoIt(BfIRValue());
-	LTest::DoIt(TestQ());
-}
-
 BfIRBuilder::BfIRBuilder(BfModule* module) : BfIRConstHolder(module)
 {
-	TestIt();
-
 	mBlockCount = 0;
 	mModule = module;
 	mHasDebugLoc = false;
@@ -2164,13 +2055,8 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 					diFieldTypes.push_back(inheritanceType);
 					DbgMakePermanent(diForwardDecl, derivedFrom, diFieldTypes);
 				}
-				else if (isPrimEnum)
-				//if (checkType->IsValueType())
-				{
-					/*llvm::SmallVector<BfIRMDNode, 0> diEnumValues;
-					diForwardDecl = DbgCreateEnumerationType(curDIScope, typeName, fileDIScope, mModule->mCurFilePosition.mCurLine,
-						typeInstance->mSize * 8, typeInstance->mAlign * 8, diEnumValues, DbgGetType(typeInstance->GetUnderlyingType()));*/
-
+				else if (isPrimEnum)				
+				{					
 					BF_ASSERT(type->mSize > 0);
 
 					diForwardDecl = DbgCreateSizedForwardDecl(llvm::dwarf::DW_TAG_enumeration_type,
@@ -2178,53 +2064,20 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 				}
 				else
 				{
-// 					diForwardDecl = DbgCreateForwardDecl(llvm::dwarf::DW_TAG_structure_type,
-// 						typeName, curDIScope, fileDIScope, 0);	
-
 					diForwardDecl = DbgCreateSizedForwardDecl(llvm::dwarf::DW_TAG_structure_type,
 						typeName, curDIScope, fileDIScope, 0, (int64)BF_ALIGN(type->mSize, type->mAlign) * 8, (int64)type->mAlign * 8);
 				}
 			}
 			else
-			{
-				//TODO: We may not have the fields filled in by the time we need the declaration.  Why did we have this here instead of in the def?
-				/*if (isPrimEnum)
-				{
-					BF_ASSERT(!typeInstance->IsDataIncomplete());					
-
-					llvm::SmallVector<BfIRMDNode, 8> diEnumValues;
-					for (auto& fieldInst : typeInstance->mFieldInstances)
-					{
-						auto fieldDef = fieldInst.GetFieldDef();
-						if ((fieldInst.mConstIdx != -1) && (fieldDef->IsEnumCaseEntry()))
-						{
-							auto constant = typeInstance->mConstHolder->GetConstantById(fieldInst.mConstIdx);
-							auto enumValue = DbgCreateEnumerator(fieldInst.GetFieldDef()->mName, constant->mInt64);
-							diEnumValues.push_back(enumValue);
-						}
-					}
-
-					int flags = 0;
-					diForwardDecl = DbgCreateEnumerationType(curDIScope,
-						typeName, fileDIScope, mModule->mCurFilePosition.mCurLine, (int64)type->mSize * 8, (int64)type->mAlign * 8, diEnumValues, DbgGetType(typeInstance->GetUnderlyingType()));
-
-					DbgSetType(type, diType);
-					DbgSetInstType(type, diType);
-				}
-				else*/
-				{
-
-					//int align = typeInstance->mIsPacked ? 0 : typeInstance->mAlign;
-
-					// Will fill in later (during definition phase)				
-					int flags = 0;
-					diForwardDecl = DbgCreateReplaceableCompositeType(isPrimEnum ? llvm::dwarf::DW_TAG_enumeration_type : llvm::dwarf::DW_TAG_structure_type,
-						typeName, curDIScope, fileDIScope, 0, (int64)BF_ALIGN(typeInstance->mInstSize, typeInstance->mInstAlign) * 8, (int64)typeInstance->mInstAlign * 8, flags);
+			{				
+				// Will fill in later (during definition phase)				
+				int flags = 0;
+				diForwardDecl = DbgCreateReplaceableCompositeType(isPrimEnum ? llvm::dwarf::DW_TAG_enumeration_type : llvm::dwarf::DW_TAG_structure_type,
+					typeName, curDIScope, fileDIScope, 0, (int64)BF_ALIGN(typeInstance->mInstSize, typeInstance->mInstAlign) * 8, (int64)typeInstance->mInstAlign * 8, flags);
 
 					
 
-					mDITemporaryTypes.push_back(typeInstance);
-				}
+				mDITemporaryTypes.push_back(typeInstance);				
 			}			
 
 			DbgSetInstType(type, diForwardDecl);			
@@ -2234,14 +2087,12 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 				diType = diForwardDecl;			
 			else			
 				diType = DbgCreatePointerType(diForwardDecl);
-			DbgSetType(type, diType);
-            //DbgTrackDITypes(type);
+			DbgSetType(type, diType);            
 		}
 
 		if (type->IsTypedPrimitive())
 		{
-			auto underlyingType = type->GetUnderlyingType();
-			//mModule->PopulateType(underlyingType, BfPopulateType_Declaration);
+			auto underlyingType = type->GetUnderlyingType();			
 			irType = MapType(underlyingType);		
 			SetType(type, irType);
 			SetInstType(type, irType);
@@ -2320,11 +2171,6 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	bool isUnion = false;
 	bool isCRepr = false;
 	
-	if ((typeDef->mFullName.ToString() == "IDETest.Virtuals.ClassA") || (typeDef->mFullName.ToString() == "IDETest.Virtuals.ClassB"))
-	{
-		NOP;
-	}
-
 	if (typeInstance->IsBoxed())
 	{
 		
@@ -2672,11 +2518,6 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 			if (methodDef->mMethodType == BfMethodType_Ctor)
 			{
 				flags |= llvm::DINode::FlagArtificial;
-			}
-
-			if (methodDef->mMethodType == BfMethodType_Dtor)
-			{
-				NOP;
 			}
 
 			String methodName = methodDef->mName;									
@@ -3205,11 +3046,7 @@ void BfIRBuilder::StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& mem
 BfIRType BfIRBuilder::MapType(BfType* type, BfIRPopulateType populateType)
 {	
 	if (!mIgnoreWrites)
-	{		
-		/*if (populateType == BfIRPopulateType_Declaration)
-			mModule->PopulateType(type, BfPopulateType_Declaration);
-		else if (populateType == BfIRPopulateType_Full)
-			mModule->PopulateType(type, BfPopulateType_Data);*/
+	{				
 		PopulateType(type, populateType);
 	}
 	BfIRType retType;
@@ -3221,11 +3058,7 @@ BfIRType BfIRBuilder::MapType(BfType* type, BfIRPopulateType populateType)
 BfIRType BfIRBuilder::MapTypeInst(BfTypeInstance* typeInst, BfIRPopulateType populateType)
 {	
 	if (!mIgnoreWrites)
-	{
-		/*if (populateType == BfIRPopulateType_Declaration)
-			mModule->PopulateType(typeInst, BfPopulateType_Declaration);
-		else if (populateType == BfIRPopulateType_Full)
-			mModule->PopulateType(typeInst, BfPopulateType_Data);*/
+	{		
 		PopulateType(typeInst, populateType);
 	}
 
@@ -3650,13 +3483,7 @@ BfIRValue BfIRBuilder::CreateShl(BfIRValue lhs, BfIRValue rhs)
 {
 	mOpFailed = false;
 	if ((lhs.IsConst()) && (rhs.IsConst()))
-	{		
-		/*auto constLHS = GetConstantById(lhs.mId);
-		auto constRHS = GetConstantById(rhs.mId);
-
-		uint64 val = constLHS->mUInt64 << constRHS->mInt32;
-		return CreateConst(constLHS->mTypeCode, val);*/
-
+	{				
 		INT_BINOPFUNC_APPLY(lhs, rhs, CheckedShl);
 	}
 
@@ -3930,12 +3757,7 @@ BfIRValue BfIRBuilder::CreateLifetimeStart(BfIRValue val)
 }
 
 BfIRValue BfIRBuilder::CreateLifetimeEnd(BfIRValue val)
-{
-	if (mModule->mCurMethodInstance->mMethodDef->mName == "Fart")
-	{
-		NOP;
-	}
-
+{	
 	BfIRValue retVal = WriteCmd(BfIRCmd_LifetimeEnd, val);
 	NEW_CMD_INSERTED;
 	return retVal;
@@ -4306,11 +4128,6 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 	BfIRFunction retVal = WriteCmd(BfIRCmd_CreateFunction, funcType, (uint8)linkageType, name);	
 	NEW_CMD_INSERTED_IRVALUE;	
 	mFunctionMap[name] = retVal;
-
-	if (name == "??B?$Result@PEAX@System@bf@@SAPEAXU012@@Z")
-	{
-		NOP;
-	}
 
 	//BfLogSys(mModule->mSystem, "BfIRBuilder::CreateFunction: %d %s Module:%p\n", retVal.mId, name.c_str(), mModule);
 
@@ -4719,7 +4536,7 @@ BfIRMDNode BfIRBuilder::DbgCreateBasicType(const StringImpl& name, int64 sizeInB
 }
 
 BfIRMDNode BfIRBuilder::DbgCreateStructType(BfIRMDNode context, const StringImpl& name, BfIRMDNode file, int lineNum, int64 sizeInBits, int64 alignInBits, int flags, BfIRMDNode derivedFrom, const BfSizedArray<BfIRMDNode>& elements)
-{
+{	
 	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateStructType, context, name, file, lineNum, sizeInBits, alignInBits, flags, derivedFrom, elements);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
@@ -4768,7 +4585,7 @@ BfIRMDNode BfIRBuilder::DbgCreateArrayType(int64 sizeInBits, int64 alignInBits, 
 }
 
 BfIRMDNode BfIRBuilder::DbgCreateReplaceableCompositeType(int tag, const StringImpl& name, BfIRMDNode scope, BfIRMDNode file, int line, int64 sizeInBits, int64 alignInBits, int flags)
-{
+{	
 	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateReplaceableCompositeType, tag, name, scope, file, line, sizeInBits, alignInBits, flags);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
@@ -4848,11 +4665,6 @@ BfIRMDNode BfIRBuilder::DbgCreateMethod(BfIRMDNode context, const StringImpl& na
 {
 	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateMethod, context, name, linkageName, file, lineNum, type, isLocalToUnit, isDefinition, vk, vIndex, vTableHolder, flags, isOptimized, fn, genericArgs, genericConstValueArgs);
 	NEW_CMD_INSERTED_IRMD;
-
-	if (linkageName == "?Unwrap@?$Result@PEAX@System@bf@@AEAAPEAXXZ")
-	{
-		NOP;
-	}
 
 // 	if (mDbgVerifyCodeGen && gDebugDbgLoc)
 // 	{

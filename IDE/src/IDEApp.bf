@@ -10553,6 +10553,14 @@ namespace IDE
 								if (isFirstMsg)
 								{
 									OutputLineSmart(scope String("ERROR: ", errorMsg));
+									if (gApp.mRunningTestScript)
+									{
+										// The 'OutputLineSmart' would already call 'Fail' when running test scripts
+									}
+									else
+									{
+										Fail(errorMsg);
+									}
 									isFirstMsg = false;
 								}
 								else

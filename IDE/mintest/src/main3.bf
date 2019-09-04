@@ -100,6 +100,20 @@ class Blurg
 	delegate void() mFuncA;
 	delegate void() mFuncB;
 
+	int mA = 123;
+
+	public this()
+	{
+		delegate void() dlg = new () =>
+		{
+			//PrintF("Hey! %d\n", mA);
+		};
+
+		dlg();
+		dlg();
+		dlg();
+		dlg();
+	}
 
 	void TestIt(int a, int b, int c)
 	{
@@ -108,28 +122,7 @@ class Blurg
 
 	public static void Hey()
 	{
-		int a = 123;
-		Blurg blurg = scope .();
-		blurg.mFuncA = new () =>
-		{
-			PrintF("YoA!\n");
-			PrintF("A %d!\n", a);
-			PrintF("Blurg: %p\n", blurg);
-		};
-
-		blurg.mFuncB = new () =>
-		{
-			PrintF("YoB!\n");
-		};
-
-		blurg.TestIt(1, 2, 3);
-		blurg.[Friend]TestIt(1, 2, 3);
-
-		while (true)
-		{
-			blurg.mFuncA();
-			blurg.mFuncB();
-		}
+		Blurg bl = scope .();
 	}
 
 }

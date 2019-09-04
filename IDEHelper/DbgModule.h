@@ -428,7 +428,7 @@ public:
 	DbgType* GetParent();
 	DbgType* GetTargetType(); // usually mParentType except for closures
 	DbgLanguage GetLanguage();
-	bool Equals(DbgSubprogram* checkMethod);	
+	bool Equals(DbgSubprogram* checkMethod, bool allowThisMismatch = false);	
 	int GetParamCount();
 	String GetParamName(int paramIdx);
 	bool IsGenericMethod();

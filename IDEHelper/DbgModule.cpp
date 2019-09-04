@@ -714,7 +714,7 @@ DbgLanguage DbgSubprogram::GetLanguage()
 	return DbgLanguage_C; // Parent type would have been set for Beef, so it must be C
 }
 
-bool DbgSubprogram::Equals(DbgSubprogram* checkMethod)
+bool DbgSubprogram::Equals(DbgSubprogram* checkMethod, bool allowThisMismatch)
 {
 	if ((mLinkName != NULL) && (checkMethod->mLinkName != NULL))
 	{
@@ -724,14 +724,23 @@ bool DbgSubprogram::Equals(DbgSubprogram* checkMethod)
 	if (strcmp(mName, checkMethod->mName) != 0)
 		return false;
 
+	if (mHasThis != checkMethod->mHasThis)
+		return false;
+
+	int paramIdx = 0;
 	auto param = mParams.mHead;
 	auto checkParam = checkMethod->mParams.mHead;
 	while ((param != NULL) && (checkParam != NULL))
 	{
-		if ((param->mType != checkParam->mType) && (!param->mType->Equals(checkParam->mType)))
+		if ((paramIdx == 0) && (allowThisMismatch))
+		{
+			// Allow
+		}
+		else if ((param->mType != checkParam->mType) && (!param->mType->Equals(checkParam->mType)))
 			return false;
 		param = param->mNext;
 		checkParam = checkParam->mNext;
+		paramIdx++;
 	}
 
 	if ((param != NULL) || (checkParam != NULL))
@@ -5111,7 +5120,7 @@ void DbgModule::HotReplaceType(DbgType* newType)
 
 						// If we removed captures then we can still do the hot jump. Otherwise we have to fail...
 						doHotJump = false;
-						if ((oldMethod->IsLambda()) && (oldMethod->GetParamCount() == 0) && (newMethod->GetParamCount() == 0) &&
+						if ((oldMethod->IsLambda()) && (oldMethod->Equals(newMethod, true)) &&
 							(oldMethod->mHasThis) && (newMethod->mHasThis))
 						{
 							auto oldParam = oldMethod->mParams.front();
@@ -5120,7 +5129,9 @@ void DbgModule::HotReplaceType(DbgType* newType)
 							if ((oldParam->mType->IsPointer()) && (newParam->mType->IsPointer()))
 							{
 								auto oldType = oldParam->mType->mTypeParam->GetPrimaryType();
+								oldType->PopulateType();
 								auto newType = newParam->mType->mTypeParam->GetPrimaryType();
+								newType->PopulateType();
 								if ((oldType->IsStruct()) && (newType->IsStruct()))
 								{	
 									bool wasMatch = true;
