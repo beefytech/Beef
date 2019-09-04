@@ -51,7 +51,7 @@ namespace IDE
 		Minimal,
 		Normal,
 		Detailed,
-		Diagnostics
+		Diagnostic
 	}
 
 	class DeferredUserRequest
@@ -6290,8 +6290,8 @@ namespace IDE
 					    mVerbosity = .Normal;
 					else if (value == "detailed")
 					    mVerbosity = .Detailed;
-					//else if (value == "diagnostic")
-					    //mVerbosity = .Diagnostic;
+					else if (value == "diagnostic")
+					    mVerbosity = .Diagnostic;
 				case "-workspace","-proddir":
 					var relDir = scope String(value);
 					if ((relDir.EndsWith("\\")) || relDir.EndsWith("\""))
@@ -10461,7 +10461,16 @@ namespace IDE
 					}
 					else
 						cmd.Append(msg);
-                    if ((cmd == "msg") || (cmd == "dbgEvalMsg") || (cmd == "log"))
+
+					bool isOutput = (cmd == "msg") || (cmd == "dbgEvalMsg") || (cmd == "log");
+					if (cmd == "msgLo")
+					{
+						if (mVerbosity <= .Diagnostic)
+							continue;
+						isOutput = true;
+					}
+
+                    if (isOutput)
                     {
 						if (deferredMsgType != cmd)
 						{

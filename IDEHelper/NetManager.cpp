@@ -95,14 +95,14 @@ void NetRequest::Perform()
 // 	}
 
 	BfLogDbg("NetManager starting get on %s\n", mURL.c_str());
+	mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Getting '%s'\n", mURL.c_str()));
 
 	mOutTempPath = mOutPath + "__partial";	
 		
 	mCURL = curl_easy_init();	
 
 	if (mShowTracking)
-	{
-		//mNetManager->mDebugManager->OutputMessage(StrFormat("Getting '%s'\n", mURL.c_str()));
+	{		
 		mNetManager->mDebugManager->OutputRawMessage(StrFormat("symsrv Getting '%s'", mURL.c_str()));		
 	}
 
@@ -125,8 +125,9 @@ void NetRequest::Perform()
 
 	long response_code = 0;
 	curl_easy_getinfo(mCURL, CURLINFO_RESPONSE_CODE, &response_code);
+	mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Result for '%s': %d\n", mURL.c_str(), response_code));
 	if (response_code != 200)
-	{
+	{		
 		mOutFile.Close();
 		// Bad result
 		mFailed = true;
@@ -139,7 +140,7 @@ void NetRequest::Perform()
 		mNetManager->Cancel(mCancelOnSuccess);
 
 	if (!mOutFile.IsOpen())
-	{
+	{		
 		mFailed = true;
 		return; // No data
 	}
@@ -150,7 +151,9 @@ void NetRequest::Perform()
 	BfpFile_Rename(mOutTempPath.c_str(), mOutPath.c_str(), &renameResult);
 
 	if (renameResult != BfpFileResult_Ok)
+	{		
 		mFailed = true;		
+	}
 }
 
 #else
@@ -479,6 +482,8 @@ bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
 	delete netRequest;
 
 	BfLogDbg("NetManager::Get requested %s: %d\n", url.c_str(), !netResult->mFailed);
+	mDebugManager->OutputRawMessage(StrFormat("msgLo Result for '%s': %d\n", url.c_str(), !netResult->mFailed));
+
 	return (!netResult->mFailed) && (FileExists(netResult->mOutPath));
 }
 

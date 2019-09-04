@@ -893,18 +893,20 @@ namespace IDE
 			if (gApp.mLastActiveSourceViewPanel != null)
 			{
 				var sourceViewPanel = gApp.mLastActiveSourceViewPanel;
+				if (sourceViewPanel.HasFocus())
+				{
+					if (sourceViewPanel.[Friend]mOldVerLoadExecutionInstance != null)
+						return false;
+					if (!sourceViewPanel.mDeferredResolveResults.IsEmpty)
+						return false;
 
-				if (sourceViewPanel.[Friend]mOldVerLoadExecutionInstance != null)
-					return false;
-				if (!sourceViewPanel.mDeferredResolveResults.IsEmpty)
-					return false;
-
-				if (sourceViewPanel.[Friend]mWantsFastClassify)
-					return false;
-				if (sourceViewPanel.[Friend]mWantsFullClassify)
-					return false;
-				if (sourceViewPanel.[Friend]mWantsFullRefresh)
-					return false;
+					if (sourceViewPanel.[Friend]mWantsFastClassify)
+						return false;
+					if (sourceViewPanel.[Friend]mWantsFullClassify)
+						return false;
+					if (sourceViewPanel.[Friend]mWantsFullRefresh)
+						return false;
+				}
 			}
 
 			if ((gApp.mBfResolveCompiler != null) && (gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()))
