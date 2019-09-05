@@ -16550,6 +16550,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 	else if (methodDef->mMethodType == BfMethodType_CtorClear)
 	{		
+		SetIllegalSrcPos();
 		mBfIRBuilder->ClearDebugLocation();
 		PopulateType(mCurTypeInstance, BfPopulateType_Data);
 		auto thisVal = GetThis();

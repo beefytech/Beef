@@ -65,6 +65,7 @@ protected:
 	bool RollBackStackFrame_ExceptionDirectory(CPURegisters* registers, addr_target* outReturnAddressLoc, bool& alreadyRolledBackPC);
 	bool RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, addr_target* outReturnAddressLoc);
 	bool RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers, addr_target* outReturnAddressLoc, bool isStackStart);
+	bool RollBackStackFrame_SimpleRet(CPURegisters* registers);
 	bool PropogateRegisterUpCallStack_ExceptionDirectory(addr_target findPC, CPURegisters* callerRegisters, CPURegisters* calleeRegisters, void* regPtr, bool& wasSaved);
 	void RemoveTargetData();
 	bool GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgBlock* dwBlock, String& name, WdStackFrame* stackFrame, intptr* outAddr, DbgType** outType, DbgAddrType* outAddrType);

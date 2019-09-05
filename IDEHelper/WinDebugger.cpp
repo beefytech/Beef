@@ -4276,42 +4276,51 @@ bool WinDebugger::SetupStep(StepType stepType)
 
 		if ((mStepType != StepType_StepOut_NoFrame) && (RollBackStackFrame(&registers, true)))
 		{
+			bool isStackAdjust = false;
+			DbgSubprogram* dwSubprogram = mDebugTarget->FindSubProgram(pcAddress);
+			if (dwSubprogram != NULL)
+			{
+				if ((strcmp(dwSubprogram->mName, "_chkstk") == 0) ||
+					(strcmp(dwSubprogram->mName, "__chkstk") == 0) ||
+					(strcmp(dwSubprogram->mName, "_alloca_probe") == 0))
+					isStackAdjust = true;
+			}
+
 			pcAddress = registers.GetPC();
-
-			addr_target oldAddress = pcAddress;
-
-			CPUInst inst;
-			while (true)
+			if (isStackAdjust)
 			{
-				if (!mDebugTarget->DecodeInstruction(pcAddress, &inst))
-					break;
-				if ((inst.IsBranch()) || (inst.IsCall()) || (inst.IsReturn()))
-					break;
-				DbgSubprogram* checkSubprogram = NULL;
-				auto checkLineData = FindLineDataAtAddress(pcAddress, &checkSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
-				if (checkLineData == NULL)
-					break;
-				if (checkSubprogram->GetLineAddr(*checkLineData) == pcAddress)
-					break;
-				pcAddress += inst.GetLength();
+				// We set it to zero so we never detect an "isDeeper" condition which would skip over the return-location breakpoint
+				mStepSP = 0;
 			}
+			else
+			{							
+				addr_target oldAddress = pcAddress;
 
-			if (pcAddress != oldAddress)
-			{
-				BfLogDbg("Adjusting stepout address from %p to %p\n", oldAddress, pcAddress);
-			}
-
-#ifdef BF_DBG_32			
-// 			if (mDebugTarget->DecodeInstruction(pcAddress, &inst))
-// 			{
-// 				if (inst.IsStackAdjust())
-// 				{
-// 					auto oldAddress = pcAddress;
-// 					pcAddress += inst.GetLength();
-// 					BfLogDbg("Adjusting stepout address from %p to %p\n", oldAddress, pcAddress);
-// 				}
-// 			}
+				CPUInst inst;
+				while (true)
+				{
+					if (!mDebugTarget->DecodeInstruction(pcAddress, &inst))
+						break;
+					if ((inst.IsBranch()) || (inst.IsCall()) || (inst.IsReturn()))
+						break;
+#ifdef BF_DBG_32
+					if (!inst.StackAdjust(mStepSP))
+						break;
 #endif
+					DbgSubprogram* checkSubprogram = NULL;
+					auto checkLineData = FindLineDataAtAddress(pcAddress, &checkSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
+					if (checkLineData == NULL)
+						break;
+					if (checkSubprogram->GetLineAddr(*checkLineData) == pcAddress)
+						break;
+					pcAddress += inst.GetLength();
+				}
+
+				if (pcAddress != oldAddress)
+				{
+					BfLogDbg("Adjusting stepout address from %p to %p\n", oldAddress, pcAddress);
+				}
+			}
 
 			BfLogDbg("SetupStep Stepout SetTempBreakpoint %p\n", pcAddress);
 			SetTempBreakpoint(pcAddress);
@@ -4416,7 +4425,10 @@ bool WinDebugger::SetupStep(StepType stepType)
 			if ((inst.IsReturn()) && (instIdx == 0) && (!mStepInAssembly))
 			{
 				// Do actual STEP OUT so we set up proper "stepping over unimportant post-return instructions"
-				return SetupStep(StepType_StepOut);
+				if (stepType == StepType_StepInto)
+					return SetupStep(StepType_StepOut_ThenInto);
+				else
+					return SetupStep(StepType_StepOut);
 			}
 
 			if ((breakOnNext) || (mStepInAssembly) || (isAtLine) || (inst.IsBranch()) || (inst.IsCall()) || (inst.IsReturn()))

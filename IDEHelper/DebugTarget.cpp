@@ -2024,6 +2024,19 @@ bool DebugTarget::RollBackStackFrame_COFFFrameDescriptor(CPURegisters* registers
 	return false;
 }
 
+bool DebugTarget::RollBackStackFrame_SimpleRet(CPURegisters* registers)
+{
+	int regSize = sizeof(addr_target);
+	addr_target* regPC = registers->GetPCRegisterRef();
+	addr_target* regSP = registers->GetSPRegisterRef();
+
+	addr_target newPC = 0;
+	gDebugger->ReadMemory(*regSP, sizeof(addr_target), &newPC);
+	*regSP += regSize;
+	*regPC = newPC;
+	return true;
+}
+
 bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outReturnAddressLoc, bool isStackStart)
 {
 	if (outReturnAddressLoc != NULL)
@@ -2036,16 +2049,7 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 		{
 			// If we are literally just a return then often the frame descriptor is wrong,
 			//  but we know this is ACTUALLY just a simple rollback
-
-			int regSize = sizeof(addr_target);
-			addr_target* regPC = registers->GetPCRegisterRef();
-			addr_target* regSP = registers->GetSPRegisterRef();
-
-			addr_target newPC = 0;
-			gDebugger->ReadMemory(*regSP, sizeof(addr_target), &newPC);
-			*regSP += regSize;
-			*regPC = newPC;
-			return true;
+			return RollBackStackFrame_SimpleRet(registers);
 		}
 	}
 
@@ -2058,6 +2062,9 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 	DbgSubprogram* dbgSubprogram = FindSubProgram(pc);
 	if (dbgSubprogram != NULL)
 	{
+		if (pc == dbgSubprogram->mBlock.mLowPC)
+			return RollBackStackFrame_SimpleRet(registers);
+		
 		auto dbgModule = dbgSubprogram->mCompileUnit->mDbgModule;
 		if ((dbgModule != NULL) && (!dbgModule->mParsedFrameDescriptors))
 		{
@@ -2065,6 +2072,10 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 			if (RollBackStackFrame_COFFFrameDescriptor(registers, outReturnAddressLoc, isStackStart))
 				return true;
 		}
+	}
+	else
+	{		
+		return RollBackStackFrame_SimpleRet(registers);
 	}
 #endif
 
@@ -2081,7 +2092,7 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 	if (alreadyRolledBackPC)
 		return true;
 
-#ifdef BF_DBG_32 
+#ifdef BF_DBG_32 	
 	// Try rollback assuming a frame pointer
 	addr_target newPC = 0;
 	addr_target stackFrame = registers->GetBP();

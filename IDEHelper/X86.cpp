@@ -151,9 +151,24 @@ int X86Instr::GetLength()
 	return mSize;
 }
 
-bool X86Instr::IsStackAdjust()
+bool X86Instr::StackAdjust(uint32& adjust)
 {
-	return mMCInst.getOpcode() == X86::SUB32ri8;
+	if (adjust == 0)
+		return true;
+
+	if (mMCInst.getOpcode() != X86::SUB32ri8)
+		return true;
+	
+	auto operand0 = mMCInst.getOperand(0);
+	if (operand0.getReg() != llvm::X86::ESP)
+		return true;	
+	auto operand2 = mMCInst.getOperand(2);
+	if (!operand2.isImm())
+		return false;
+
+	adjust -= (uint32)operand2.getImm();
+
+	return true;
 }
 
 bool X86Instr::IsBranch()

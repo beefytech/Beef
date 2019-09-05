@@ -292,7 +292,7 @@ public:
 	}
 
 	int GetLength();	
-	bool IsStackAdjust();
+	bool StackAdjust(uint32& adjust);
 	bool IsBranch();
 	bool IsCall();
 	bool IsRep(bool& isPrefixOnly);
