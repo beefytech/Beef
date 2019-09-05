@@ -127,7 +127,7 @@ namespace IDE.ui
 				if (nextSlash != -1)
 					selStr.Append(editText, startSlash + 1, nextSlash - startSlash - 1);
 				else
-					selStr.Append(editText, startSlash + 1, cursorPos - startSlash - 1);
+					selStr.Append(editText, startSlash + 1, Math.Max(cursorPos - startSlash - 1, 0));
 
 				String info = scope .();
 				info.Append("uncertain\n");

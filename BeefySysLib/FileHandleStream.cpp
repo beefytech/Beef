@@ -55,12 +55,12 @@ bool FileHandleStream::Eof()
 		::SetFilePointer(mFileHandle, 0, 0, FILE_END);
 		return mVFilePos >= (int)::SetFilePointer(mFileHandle, 0, 0, FILE_CURRENT);
 	}
-	return ::SetFilePointer(mFileHandle, 0, 0, FILE_CURRENT) != ::GetFileSize(mFileHandle, NULL);
+	return ::SetFilePointer(mFileHandle, 0, 0, FILE_CURRENT) >= ::GetFileSize(mFileHandle, NULL);
 }
 
 int FileHandleStream::GetSize()
-{	
-	return ::GetFileSize(mFileHandle, NULL);;
+{
+	return ::GetFileSize(mFileHandle, NULL);
 }
 
 void FileHandleStream::Read(void* ptr, int size)

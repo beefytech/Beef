@@ -415,6 +415,8 @@ namespace IDE.ui
 		{
 			None = 0,
 			ApplyAutoToChildren = 1,
+			ClearAutoItems = 2,
+			FullTraversal = 4,
 		}
 
 		public void RehupFolder(ProjectFolder projectFolder, RehupFlags rehupFlags = .None)
@@ -429,7 +431,7 @@ namespace IDE.ui
 			var dirPath = scope String();
 			projectFolder.GetFullImportPath(dirPath);
 
-			bool clearAutoItems = (!rehupFlags.HasFlag(.ApplyAutoToChildren)) && (projectFolder.mIncludeKind == .Auto);
+			bool clearAutoItems = (!rehupFlags.HasFlag(.ApplyAutoToChildren)) && (projectFolder.mAutoInclude); // && (rehupFlags.HasFlag(.ClearAutoItems));
 			HashSet<ProjectItem> foundAutoItems = scope .();
 
 			for (let fileEntry in Directory.EnumerateFiles(dirPath))
@@ -482,6 +484,8 @@ namespace IDE.ui
                         	projectItem.mIncludeKind = .Auto;
 						if (projectItem.mIncludeKind == .Auto)
 							RehupFolder(childProjectFolder, rehupFlags);
+						if ((clearAutoItems) && (projectItem.mIncludeKind == .Auto))
+							foundAutoItems.Add(projectItem);
 					}
 				    continue;
 				}
@@ -501,6 +505,11 @@ namespace IDE.ui
 				childProjectFolder.mAutoInclude = true;
 				projectFolder.AddChild(childProjectFolder);
 
+				if (clearAutoItems)
+				{
+					foundAutoItems.Add(childProjectFolder);
+				}
+
 				AddProjectItem(childProjectFolder);
 
 				RehupFolder(childProjectFolder, rehupFlags);
@@ -516,11 +525,19 @@ namespace IDE.ui
 				for (int childIdx = projectFolder.mChildItems.Count - 1; childIdx >= 0; childIdx--)
 				{
 					var child = projectFolder.mChildItems[childIdx];
+					
+
 					if (((rehupFlags.HasFlag(.ApplyAutoToChildren)) && (child.mIncludeKind == .Manual)) ||
 						((clearAutoItems) && (child.mIncludeKind == .Auto) && (!foundAutoItems.Contains(child))))
 					{
 						var listItem = mProjectToListViewMap[child];
 						DoDeleteItem(listItem, null, true);
+						continue;
+					}
+
+					if ((rehupFlags.HasFlag(.FullTraversal)) && (child.mIncludeKind == .Manual) && (var childProjectFolder = child as ProjectFolder))
+					{
+						RehupFolder(childProjectFolder, rehupFlags);
 					}
 				}
 			}
@@ -583,7 +600,7 @@ namespace IDE.ui
             dialog.mDefaultButton = dialog.AddButton("OK", new (evt) => DoNewClass(folder, evt));
             dialog.mEscButton = dialog.AddButton("Cancel");
             dialog.AddEdit("Unnamed");
-            dialog.PopupWindow(mWidgetWindow);
+            dialog.PopupWindow(gApp.GetActiveWindow());
         }
 
         void DoNewClass(ProjectFolder folder, DialogEvent evt)
@@ -596,6 +613,8 @@ namespace IDE.ui
                 return;
 
 			let project = folder.mProject;
+			if (project.mNeedsCreate)
+				project.FinishCreate();
             String relFileName = scope String(className, ".bf");
             
             String fullFilePath = scope String();
@@ -679,6 +698,11 @@ namespace IDE.ui
                 return -1;
             if (rightProjectItem == null)
                 return 1;
+
+			if ((leftProjectItem.mParentFolder == null) && (rightProjectItem.mParentFolder == null))
+			{
+				return String.Compare(leftProjectItem.mProject.mProjectName, rightProjectItem.mProject.mProjectName, true);
+			}
 
             return ProjectItem.Compare(leftProjectItem, rightProjectItem);
         }
@@ -811,7 +835,7 @@ namespace IDE.ui
             fileDialog.Multiselect = true;
             fileDialog.InitialDirectory = fullDir;            
             fileDialog.ValidateNames = true;
-            mWidgetWindow.PreModalChild();
+            gApp.GetActiveWindow().PreModalChild();
             if (fileDialog.ShowDialog(gApp.GetActiveWindow()).GetValueOrDefault() == .OK)
             {
                 if (mSelectedParentItem.mOpenButton != null)
@@ -1291,7 +1315,7 @@ namespace IDE.ui
 
 		                aDialog.mDefaultButton = aDialog.AddButton("Yes", new (evt) => RemoveSelectedItems(false));
 		                aDialog.mEscButton = aDialog.AddButton("No");
-		                aDialog.PopupWindow(mWidgetWindow);
+		                aDialog.PopupWindow(gApp.GetActiveWindow());
 		            }
 		        }
 		        else if((fileCount > 0) || (folderCount > 0))
@@ -1345,7 +1369,7 @@ namespace IDE.ui
 							RemoveSelectedItems(true);
 						});
 		            aDialog.mEscButton = aDialog.AddButton("Cancel");
-		            aDialog.PopupWindow(mWidgetWindow);
+		            aDialog.PopupWindow(gApp.GetActiveWindow());
 		        }                    
 		    }                
 		}
@@ -1591,7 +1615,7 @@ namespace IDE.ui
 											Sort();
                                         }
                                         ~ delete oldValue);
-									dialog.PopupWindow(mWidgetWindow);
+									dialog.PopupWindow(gApp.GetActiveWindow());
 
 									didRename = false;
 								}
@@ -1712,7 +1736,7 @@ namespace IDE.ui
             fileDialog.ValidateNames = true;
             fileDialog.DefaultExt = ".toml";
             fileDialog.SetFilter("Beef projects (BeefProj.toml)|BeefProj.toml|All files (*.*)|*.*");
-            mWidgetWindow.PreModalChild();
+            gApp.GetActiveWindow().PreModalChild();
             if (fileDialog.ShowDialog(gApp.GetActiveWindow()).GetValueOrDefault() == .OK)
             {
                 for (String origProjFilePath in fileDialog.FileNames)
@@ -1734,13 +1758,13 @@ namespace IDE.ui
         public void ShowProjectProperties(Project project)
         {
             var projectProperties = new ProjectProperties(project);
-            projectProperties.PopupWindow(mWidgetWindow);
+            projectProperties.PopupWindow(gApp.GetActiveWindow());
         }
 
         public void ShowWorkspaceProperties()
         {
             var workspaceProperties = new WorkspaceProperties();
-            workspaceProperties.PopupWindow(mWidgetWindow);
+            workspaceProperties.PopupWindow(gApp.GetActiveWindow());
         }
 
         public void RehupProjects()
@@ -1768,7 +1792,7 @@ namespace IDE.ui
         {
             var newProjectDialog = new NewProjectDialog();
             newProjectDialog.Init();
-            newProjectDialog.PopupWindow(mWidgetWindow);
+            newProjectDialog.PopupWindow(gApp.GetActiveWindow());
         }
 
         protected override void ShowRightClickMenu(Widget relWidget, float x, float y)
@@ -1832,6 +1856,55 @@ namespace IDE.ui
             if ((projectItem != null) && (!handled))
             {
 				Menu item = null;
+
+				if (isProject)
+				{
+					item = menu.AddItem("Set as Startup Project");
+					item.mOnMenuItemSelected.Add(new (item) =>
+					    {
+							var projectItem = GetSelectedProjectItem();
+							if (projectItem != null)
+								SetAsStartupProject(projectItem.mProject);
+					    });
+
+					item = menu.AddItem("Lock Project");
+					if (projectItem.mProject.mLocked)
+						item.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+					item.mOnMenuItemSelected.Add(new (item) =>
+					    {
+							var projectItem = GetSelectedProjectItem();
+							if (projectItem != null)
+							{
+					        	projectItem.mProject.mLocked = !projectItem.mProject.mLocked;
+								gApp.mWorkspace.SetChanged();
+							}
+					    });
+
+					item = menu.AddItem("Refresh");
+					item.mOnMenuItemSelected.Add(new (item) =>
+					    {
+							var projectItem = GetSelectedProjectItem();
+							if (projectItem != null)
+							{
+								let project = projectItem.mProject;
+								if (project.mNeedsCreate)
+								{
+									project.FinishCreate(false);
+									RebuildUI();
+								}
+								else
+								{
+									if (project.mRootFolder.mIsWatching)
+										project.mRootFolder.StopWatching();
+									project.mRootFolder.StartWatching();
+									RehupFolder(project.mRootFolder, .FullTraversal);
+								}
+							}
+					    });
+
+					menu.AddItem();
+				}
+
                 if ((projectItem != null) && (!isProject))
                 {
                     item = menu.AddItem("Remove ...");
@@ -1933,7 +2006,7 @@ namespace IDE.ui
 															RehupFolder(projectFolder);
 														}
 													});
-												dialog.PopupWindow(mWidgetWindow);
+												dialog.PopupWindow(gApp.GetActiveWindow());
 											}
 											else
 												RehupFolder(projectFolder);
@@ -1988,17 +2061,8 @@ namespace IDE.ui
 							var process = scope SpawnedProcess();
 							process.Start(psi).IgnoreError();
                         });
-                }
 
-                if (isProject)
-                {
-                    item = menu.AddItem("Set as Startup Project");
-                    item.mOnMenuItemSelected.Add(new (item) =>
-                        {
-							var projectItem = GetSelectedProjectItem();
-							if (projectItem != null)
-                    			SetAsStartupProject(projectItem.mProject);
-                        });
+					menu.AddItem();
                 }
 
 				//menu.AddItem();
@@ -2026,19 +2090,7 @@ namespace IDE.ui
 
 				if (isProject)
 				{
-					item = menu.AddItem("Lock Project");
-					if (projectItem.mProject.mLocked)
-						item.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
-					item.mOnMenuItemSelected.Add(new (item) =>
-					    {
-							var projectItem = GetSelectedProjectItem();
-							if (projectItem != null)
-							{
-					        	projectItem.mProject.mLocked = !projectItem.mProject.mLocked;
-								gApp.mWorkspace.SetChanged();
-							}
-					    });
-
+					menu.AddItem();
 					item = menu.AddItem("Properties...");
 					item.mOnMenuItemSelected.Add(new (item) =>
 					    {
@@ -2047,7 +2099,6 @@ namespace IDE.ui
 					        	ShowProjectProperties(projectItem.mProject);
 					    });
 				}
-
             }
             /*else if (!handled)
             {
@@ -2070,7 +2121,6 @@ namespace IDE.ui
 					mMenuWidget = null;
 				});
 
-            //menuWidget.mWidgetWindow.mWindowClosedHandler.Add(new => DeselectFolder);
         }
 
 		void ListViewItemClicked(MouseEvent theEvent)

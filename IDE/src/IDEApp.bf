@@ -321,6 +321,8 @@ namespace IDE
 			None,
 			File,
 			Workspace,
+			NewWorkspace,
+			NewWorkspaceOrProject,
 			CrashDump,
 			DebugSession
 		}
@@ -766,7 +768,7 @@ namespace IDE
 				mWorkspace.mName = new String();
 				Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
 
-				LoadWorkspace();
+				LoadWorkspace(.OpenOrNew);
 				FinishShowingNewWorkspace();
 
 				DeleteAndNullify!(mDeferredOpenFileName);
@@ -1646,6 +1648,10 @@ namespace IDE
 
         bool SaveWorkspaceUserData(bool showErrors = true)
         {
+			// Don't save if we didn't finish creating the workspace
+			if (mWorkspace.mNeedsCreate)
+				return false;
+
 			if (mWorkspace.IsDebugSession)
 			{
 				bool hasUnsavedProjects = false;
@@ -1740,35 +1746,9 @@ namespace IDE
         {
 			if (!mWorkspace.IsSingleFileWorkspace)
 			{
-
 #if !CLI
 				if (mWorkspace.mDir == null)
 				{
-					/*SaveFileDialog dialog = scope .();
-					dialog.ValidateNames = true;
-					dialog.DefaultExt = ".toml";
-					dialog.SetFilter("Beef projects (BeefProj.toml)|BeefProj.toml");
-					dialog.FileName = "BeefProj.toml";
-					if (dialog.ShowDialog(GetActiveWindow()).GetValueOrDefault() != .OK)
-						return false;
-					
-					bool matches = false;
-					if (dialog.FileNames.Count == 1)
-					{
-						String fileName = scope .();
-						Path.GetFileName(dialog.FileNames[0], fileName);
-						matches = fileName == "BeefProj.toml";
-					}
-	
-					if (!matches)
-					{
-						Fail("Workspace name must be 'BeefProj.toml'");
-						return false;
-					}
-	
-					mWorkspace.mDir = new String();
-					Path.GetDirectoryPath(dialog.FileNames[0], mWorkspace.mDir);*/
-	
 					let activeWindow = GetActiveWindow();
 	
 					FolderBrowserDialog folderDialog = scope FolderBrowserDialog();
@@ -1960,7 +1940,7 @@ namespace IDE
             ProjectOptionsChanged(project, false);
         }
 
-        public void CreateProject(String projName, String projDir, Project.TargetType targetType)
+        public Project CreateProject(String projName, String projDir, Project.TargetType targetType)
         {
             Project project = new Project();
             project.mProjectName.Set(projName);
@@ -1982,6 +1962,7 @@ namespace IDE
 
 			mWorkspace.ClearProjectNameCache();
         	CurrentWorkspaceConfigChanged();
+			return project;
         }
 
 		void StopDebugging()
@@ -2175,7 +2156,7 @@ namespace IDE
 				return .Err;
 		}
 
-        protected void LoadWorkspace()
+        protected void LoadWorkspace(BeefVerb verb)
         {
 			scope AutoBeefPerf("IDEApp.LoadWorkspace");
 
@@ -2210,11 +2191,11 @@ namespace IDE
 					LoadFailed();
 					return;
 				case .FileError: // Assume 'file not found'
-					if (mVerb == .OpenOrNew)
+					if (verb == .OpenOrNew)
 					{
 						isNew = true;
 					}
-					else if (mVerb == .New)
+					else if (verb == .New)
 					{
 						isNew = true;
 						wantSave = true;
@@ -2257,6 +2238,9 @@ namespace IDE
 					project.mProjectPath.Set(mWorkspace.mDir);
 					Utils.GetDirWithSlash(project.mProjectPath);
 					project.mProjectPath.Append("BeefProj.toml");
+					//project.FinishCreate();
+
+					project.FinishCreate(false);
 
 					var verSpec = new VerSpecRecord();
 					verSpec.SetSemVer("*");
@@ -2922,7 +2906,7 @@ namespace IDE
 		[IDECommand]
 		public void Cmd_NewWorkspace()
 		{
-			OpenWorkspace();
+			mDeferredOpen = .NewWorkspaceOrProject;
 		}
 
 		[IDECommand]
@@ -3107,7 +3091,7 @@ namespace IDE
                 textPanel.ShowQuickFind(isReplace);
 			else
 			{
-				if (let activeWindow = GetActiveWindow() as WidgetWindow)
+				if (let activeWindow = GetActiveWindow())
 				{
 					var widget = activeWindow.mFocusWidget;
 					while (widget != null)
@@ -3207,7 +3191,7 @@ namespace IDE
 			}
 			else
 			{
-				if (let activeWindow = GetActiveWindow() as WidgetWindow)
+				if (let activeWindow = GetActiveWindow())
 				{
 					var widget = activeWindow.mFocusWidget;
 					while (widget != null)
@@ -5030,11 +5014,16 @@ namespace IDE
             return null;
         }
 
-		public BFWindow GetActiveWindow()
+		public WidgetWindow GetActiveWindow()
 		{
 			for (let window in mWindows)
 				if (window.mHasFocus)
-					return window;
+				{
+					var result = window;
+					while ((result.mWindowFlags.HasFlag(.Modal)) && (result.mParent != null))
+						result = result.mParent;
+					return result as WidgetWindow;
+				}
 			return mMainWindow;
 		}
 
@@ -5621,6 +5610,10 @@ namespace IDE
 
             if (showType == SourceShowType.Temp)
             {
+				let prevAutoClose = tabbedView.mAutoClose;
+				defer { tabbedView.mAutoClose = prevAutoClose; }
+				tabbedView.mAutoClose = false;
+
                 if (tabbedView.mRightTab != null)
                 {
                     CloseDocument(tabbedView.mRightTab.mContent);
@@ -9147,7 +9140,7 @@ namespace IDE
 
 						});
 					((DarkButton)dlg.mButtons[0]).Label = "Open Link";
-					dlg.PopupWindow(GetActiveWindow() as WidgetWindow);
+					dlg.PopupWindow(GetActiveWindow());
 					MessageBeep(.Error);
 #endif
 				}
@@ -9637,13 +9630,13 @@ namespace IDE
             {
                 mWorkspace.mName = new String();
                 Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
-                LoadWorkspace();
+                LoadWorkspace(mVerb);
             }
 			else if (mWorkspace.IsSingleFileWorkspace)
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileNameWithoutExtension(mWorkspace.mCompositeFile.mFilePath, mWorkspace.mName);
-				LoadWorkspace();
+				LoadWorkspace(mVerb);
 			}
 
             if ((mRunningTestScript) || (!LoadWorkspaceUserData()))
@@ -11358,6 +11351,117 @@ namespace IDE
 			DeleteAndNullify!(mDeferredUserRequest);
 		}
 
+		void UpdateDeferredOpens()
+		{
+			void DoDeferredOpen(DeferredOpenKind openKind)
+			{
+				switch (openKind)
+				{
+				case .NewWorkspaceOrProject:
+					var dialog = ThemeFactory.mDefault.CreateDialog("Create Workspace?",
+						"Do you want to create an empty workspace or a new project?");
+					dialog.AddButton("Empty Workspace", new (evt) =>
+						{
+							mDeferredOpen = .NewWorkspace;
+						});
+					dialog.AddButton("New Project", new (evt) =>
+						{
+							CloseWorkspace();
+							FinishShowingNewWorkspace();
+							Cmd_NewProject();
+						});
+					dialog.PopupWindow(GetActiveWindow());
+				case .NewWorkspace:
+
+					if (mDeferredOpenFileName != null)
+					{
+						let directoryPath = scope String();
+						Path.GetDirectoryPath(mDeferredOpenFileName, directoryPath);
+
+						if (File.Exists(mDeferredOpenFileName))
+						{
+							var dialog = ThemeFactory.mDefault.CreateDialog("Already Exists", 
+								scope String()..AppendF("A Beef workspace already exists at '{}'. Do you want to open it?", directoryPath),
+								DarkTheme.sDarkTheme.mIconWarning);
+							dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
+								{
+									DoOpenWorkspace();
+								});
+							dialog.AddButton("No", new (evt) =>
+								{
+									DeleteAndNullify!(mDeferredOpenFileName);
+								});
+							dialog.PopupWindow(GetActiveWindow());
+							return;
+						}
+						else if (!IDEUtils.IsDirectoryEmpty(directoryPath))
+						{
+							var dialog = ThemeFactory.mDefault.CreateDialog("Already Exists", 
+								scope String()..AppendF("A non-empty directory already exists at '{}'. Are you sure you want to create a workspace there?", directoryPath),
+								DarkTheme.sDarkTheme.mIconWarning);
+							dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
+								{
+									DoOpenWorkspace();
+								});
+							dialog.AddButton("No", new (evt) =>
+								{
+									DeleteAndNullify!(mDeferredOpenFileName);
+								});
+							dialog.PopupWindow(GetActiveWindow());
+							return;
+						}
+					}
+
+					DoOpenWorkspace();
+					if (mDeferredOpen != .None)
+						mDeferredOpen = _;
+				case .Workspace:
+					DoOpenWorkspace();
+				case .CrashDump:
+					DoOpenCrashDump();
+				default:
+				}
+			}
+
+			var deferredOpen = mDeferredOpen;
+			mDeferredOpen = .None;
+			switch (deferredOpen)
+			{
+			case .File:
+				DoOpenFile();
+			case .CrashDump:
+				DoOpenCrashDump();
+			case .Workspace, .NewWorkspace, .NewWorkspaceOrProject:
+
+				if ((mDeferredOpenFileName == null) && (deferredOpen == .Workspace))
+				{
+					DoDeferredOpen(_);
+					break;
+				}
+
+				if (CheckCloseWorkspace(mMainWindow,
+					new () =>
+					{
+						DoDeferredOpen(_);
+					},
+					new () =>
+					{
+						DoDeferredOpen(_);
+					},
+					new () =>
+					{
+						DeleteAndNullify!(mDeferredOpenFileName);
+					}
+					))
+				{
+					DoDeferredOpen(_);
+				}
+			case .DebugSession:
+				DoOpenDebugSession();
+			default:
+			}
+		}
+
         public override void Update(bool batchStart)
         {
 			scope AutoBeefPerf("IDEApp.Update");
@@ -11473,55 +11577,7 @@ namespace IDE
 			if (mBfResolveSystem != null)
             	mBfResolveSystem.PerfZoneEnd();            
 
-			void DoDeferredOpen(DeferredOpenKind openKind)
-			{
-				switch (openKind)
-				{
-				case .Workspace:
-					DoOpenWorkspace();
-				case .CrashDump:
-					DoOpenCrashDump();
-				default:
-				}
-			}
-
-			var deferredOpen = mDeferredOpen;
-			mDeferredOpen = .None;
-			switch (deferredOpen)
-			{
-			case .File:
-				DoOpenFile();
-			case .CrashDump:
-				DoOpenCrashDump();
-			case .Workspace:
-
-				if (mDeferredOpenFileName == null)
-				{
-					DoDeferredOpen(_);
-					break;
-				}
-
-				if (CheckCloseWorkspace(mMainWindow,
-					new () =>
-					{
-						DoDeferredOpen(_);
-					},
-					new () =>
-					{
-						DoDeferredOpen(_);
-					},
-					new () =>
-					{
-						DeleteAndNullify!(mDeferredOpenFileName);
-					}
-					))
-				{
-					DoDeferredOpen(_);
-				}
-			case .DebugSession:
-				DoOpenDebugSession();
-			default:
-			}
+			UpdateDeferredOpens();
 
             mHaveSourcesChangedInternallySinceLastCompile = false;
             WithSourceViewPanels(scope (sourceViewPanel) =>

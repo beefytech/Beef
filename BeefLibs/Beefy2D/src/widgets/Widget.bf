@@ -811,19 +811,29 @@ namespace Beefy.widgets
 
 		public static bool HandleTab(int dir, List<Widget> tabWidgets)
 		{
+			Widget wantFocus = null;
+
+			if (tabWidgets.IsEmpty)
+				return false;
+
 			for (int32 idx = 0; idx < tabWidgets.Count; idx++)
 			{
 			    Widget widget = tabWidgets[idx];
 			    if (widget.mHasFocus)
 			    {
 					var nextWidget = tabWidgets[(idx + tabWidgets.Count + dir) % tabWidgets.Count];
-			        nextWidget.SetFocus();
-					if (var editWidget = nextWidget as EditWidget)
-						editWidget.mEditWidgetContent.SelectAll();
-					return true;
+					wantFocus = nextWidget;
+					break;
 			    }
 			}
-			return false;
+
+			if (wantFocus == null)
+				wantFocus = tabWidgets[0];
+
+			wantFocus.SetFocus();
+			if (var editWidget = wantFocus as EditWidget)
+				editWidget.mEditWidgetContent.SelectAll();
+			return true;
 		}
     }
 }

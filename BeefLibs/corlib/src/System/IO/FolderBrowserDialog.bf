@@ -43,7 +43,6 @@ namespace System.IO
 
 		public void Reset()
 		{
-			//mRootFolder = .Default;
 			mSelectedPath.Clear();
 			mDescriptionText.Clear();
 			mSelectedPathNeedsCheck = false;

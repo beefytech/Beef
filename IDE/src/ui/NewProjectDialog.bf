@@ -7,6 +7,7 @@ using Beefy;
 using Beefy.gfx;
 using Beefy.theme.dark;
 using Beefy.widgets;
+using Beefy.theme;
 
 namespace IDE.ui
 {
@@ -33,8 +34,14 @@ namespace IDE.ui
             mWidth = GS!(320);
             mHeight = GS!(200);
         }
-        
-        bool CreateProject()
+
+		enum CreateFlags
+		{
+			None,
+			NonEmptyDirOkay = 1,
+		}
+
+        bool CreateProject(CreateFlags createFlags = .None)
         {
             var app = IDEApp.sApp;
             String projName = scope String();
@@ -43,6 +50,13 @@ namespace IDE.ui
             String projDirectory = scope String();
             mDirectoryEdit.GetText(projDirectory);
             projDirectory.Trim();
+
+			if (projName.IsEmpty)
+			{
+				while ((projDirectory.EndsWith('/')) || (projDirectory.EndsWith('\\')))
+					projDirectory.RemoveFromEnd(1);
+				Path.GetFileName(projDirectory, projName);
+			}
 
             bool isNameValid = projName.Length > 0;
 			for (int32 i = 0; i < projName.Length; i++)
@@ -75,6 +89,24 @@ namespace IDE.ui
 					return false;
 				}
 			}
+			else
+			{
+				if ((!createFlags.HasFlag(.NonEmptyDirOkay)) && (!IDEUtils.IsDirectoryEmpty(projDirectory)))
+				{
+					var dialog = ThemeFactory.mDefault.CreateDialog("Create Project?",
+						scope String()..AppendF("The selected directory '{}' is not empty. Are you sure you want to create a project there?", projDirectory), DarkTheme.sDarkTheme.mIconWarning);
+					dialog.AddButton("Yes", new (evt) =>
+						{
+							CreateProject(createFlags | .NonEmptyDirOkay);
+						});
+					dialog.AddButton("No", new (evt) =>
+						{
+							mDirectoryEdit.SetFocus();
+						});
+					dialog.PopupWindow(mWidgetWindow);
+					return false;
+				}
+			}
 
 			String projectFilePath = scope String()..Append(projDirectory, "/BeefProj.toml");
 			if (File.Exists(projectFilePath))
@@ -93,7 +125,28 @@ namespace IDE.ui
 			}
 
             IDEUtils.FixFilePath(projDirectory);
-            app.CreateProject(projName, projDirectory, targetType);
+
+			Project project = null;
+
+			// If we don't yet have a workspace then create one now...
+			if (!app.mWorkspace.IsInitialized)
+			{
+				app.mWorkspace.mDir = new String(projDirectory);
+				app.mWorkspace.mName = new String(projName);
+				
+				app.[Friend]LoadWorkspace(.OpenOrNew);
+				app.[Friend]FinishShowingNewWorkspace(false);
+
+				project = app.mWorkspace.FindProject(projName);
+				if (project != null)
+				{
+					project.mGeneralOptions.mTargetType = targetType;
+					project.FinishCreate();
+				}
+			}
+
+			if (project == null)
+            	project = app.CreateProject(projName, projDirectory, targetType);
 
 			app.mWorkspace.SetChanged();
 
@@ -116,7 +169,7 @@ namespace IDE.ui
         {
             mDefaultButton = AddButton("Create", new (evt) => { if (!CreateProject()) evt.mCloseDialog = false; });
             mEscButton = AddButton("Cancel", new (evt) => Close());
-            mNameEdit = AddEdit("NewProject");
+            mNameEdit = AddEdit("");
 			mNameEdit.mOnContentChanged.Add(new (dlg) =>
 				{
 					UpdateProjectDir();

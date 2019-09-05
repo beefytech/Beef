@@ -84,7 +84,19 @@ namespace IDE
 
         void FileChanged(String filePath, String newPath, WatcherChangeTypes changeType)
         {
-			if (changeType == .Renamed)
+			bool isDirectory = filePath.EndsWith(Path.DirectorySeparatorChar);
+
+			var newPath;
+			if (isDirectory)
+			{
+				if (newPath.EndsWith(Path.DirectorySeparatorChar))
+				{
+					newPath = scope:: String();
+					newPath.Append(@newPath, 0, @newPath.Length - 1);
+				}	
+			}
+			
+			if ((changeType == .Renamed) && (!isDirectory))
 			{
 				// ALWAYS interpret 'file rename' notifications as a delete of filePath and a create of newPath
 				// A manual rename in the IDE will have manually processed the rename before we get here, so
@@ -258,7 +270,7 @@ namespace IDE
 					if (newName != null)
 					{
 						var newFullPath = new String();
-						Path.GetDirectoryPath(fullPath, newFullPath);
+						newFullPath.Append(fileSystemWatcher.Directory);
 						newFullPath.Append(Path.DirectorySeparatorChar);
 						newFullPath.Append(newName);
 						queuedFileChange.mNewFileName = newFullPath;
@@ -363,7 +375,19 @@ namespace IDE
 							CheckFileCreated(newName);
 						}
 						else
-							QueueFileChanged(fileSystemWatcher, oldName, newName, .Renamed);
+						{
+							var newFilePath = scope String();
+							GetPath(newName, newFilePath);
+
+							if (Directory.Exists(newFilePath))
+							{
+								let dirOldName = scope String()..Concat(oldName, Path.DirectorySeparatorChar);
+								let dirNewName = scope String()..Concat(newName, Path.DirectorySeparatorChar);
+								QueueFileChanged(fileSystemWatcher, dirOldName, dirNewName, .Renamed);
+							}
+							else
+								QueueFileChanged(fileSystemWatcher, oldName, newName, .Renamed);
+						}
 					}
 				});
 			fileSystemWatcher.OnError.Add(new () => QueueFileChanged(fileSystemWatcher, null, null, .Failed));

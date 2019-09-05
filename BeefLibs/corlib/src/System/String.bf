@@ -838,6 +838,7 @@ namespace System
 		public void Append(String str, int offset, int length)
 		{
 			Debug.Assert((uint)offset <= (uint)str.mLength);
+			Debug.Assert(length >= 0);
 			Debug.Assert((uint)offset + (uint)length <= (uint)str.mLength);
 			Append(str.Ptr + offset, length);
 		}

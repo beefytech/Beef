@@ -71,6 +71,15 @@ namespace IDE
 			return true;
         }
 
+		public static bool IsDirectoryEmpty(StringView dirPath)
+		{
+			for (let entry in Directory.Enumerate(scope String()..AppendF("{}/*.*", dirPath), .Directories | .Files))
+			{
+				return false;
+			}
+			return true;
+		}
+
 		public static bool FixFilePath(String filePath)
 		{
 			return FixFilePath(filePath, cNativeSlash, cOtherSlash);

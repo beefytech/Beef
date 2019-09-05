@@ -114,7 +114,7 @@ class Blurg
 
 	public static void Hey()
 	{
-		function void() func = null;
+		
 	}
 
 }

@@ -391,13 +391,6 @@ namespace IDE
 
     public class ProjectFolder : ProjectFileItem
     {
-		public enum AutoIncludeKind
-		{
-			Default,
-			Always,
-			Never
-		}
-
         public List<ProjectItem> mChildItems = new List<ProjectItem>() ~
 			{
 				for (var projectItem in mChildItems)
@@ -551,7 +544,7 @@ namespace IDE
 				data.Add("Type", (mIncludeKind == .Ignore) ? "IgnoreFolder" : "Folder");
 	            base.Serialize(data);
 				if (mAutoInclude != (mIncludeKind == .Auto))
-					data.Add("AutoInclude", mAutoInclude);
+					data.ConditionalAdd("AutoInclude", mAutoInclude, true);
 			}
 			if (!mChildItems.IsEmpty)
 			{
@@ -598,12 +591,12 @@ namespace IDE
 
 			//var outer = data.Current;
 
-			bool autoInclude = data.GetBool("AutoInclude");
+			bool doPopulate = false;
+
+			bool autoInclude = data.GetBool("AutoInclude", true);
 			if ((autoInclude) && (!mAutoInclude))
-			{
-				mAutoInclude = true;
-				Populate(mPath);
-			}
+				doPopulate = true;
+			mAutoInclude = autoInclude;
 
             for (data.Enumerate("Items"))
             {
@@ -670,6 +663,9 @@ namespace IDE
 				projectItem.mPath = path;
 				AddChild(projectItem);
 			}
+
+			if (doPopulate)
+				Populate(mPath);
         }
 		
 		public void Populate(String relDir)
@@ -703,7 +699,11 @@ namespace IDE
 				String dirName = scope String();
 				fileEntry.GetFileName(dirName);
 
-				if (dirName == "build")
+				// Why was this here?
+				/*if (dirName == "build")
+					continue;*/
+
+				if (mChildMap.ContainsKey(dirName))
 					continue;
 
 				let newRelDir = scope String(relDir);
@@ -1925,16 +1925,22 @@ namespace IDE
 			mRootFolder.StartWatching();
         }
 
-		public void FinishCreate()
+		public void FinishCreate(bool allowCreateDir = true)
 		{
-			var path = scope String();
-			mRootFolder.GetFullImportPath(path);
-			Directory.CreateDirectory(path).IgnoreError();
 			if (!mRootFolder.mIsWatching)
 			{
 				String fullPath = scope String();
 				mRootFolder.GetFullImportPath(fullPath);
-				Directory.CreateDirectory(fullPath).IgnoreError();
+				if (Directory.Exists(fullPath))
+				{
+					mRootFolder.Populate("src");
+				}
+				else if (!allowCreateDir)
+				{
+					return;
+				}
+				else
+					Directory.CreateDirectory(fullPath).IgnoreError();
 				mRootFolder.StartWatching();
 			}
 			mNeedsCreate = false;

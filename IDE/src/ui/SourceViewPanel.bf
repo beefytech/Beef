@@ -1315,6 +1315,9 @@ namespace IDE.ui
         {
             var editWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
 
+			if (mWidgetWindow == null)
+				return;
+
             bool wantOpen = (autocompleteInfo.Length > 0);
             if ((editWidgetContent.mAutoComplete != null) && (editWidgetContent.mAutoComplete.mIsAsync) &&
                 (editWidgetContent.mAutoComplete.mInvokeWidget != null))
