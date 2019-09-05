@@ -84,7 +84,7 @@ namespace BeefBuild
 			{
 			    mWorkspace.mName = new String();
 			    Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
-			    LoadWorkspace();                
+			    LoadWorkspace(mVerb);                
 			}
 			else
 				Fail("Workspace not specified");
