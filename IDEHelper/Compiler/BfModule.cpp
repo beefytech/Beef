@@ -10585,7 +10585,13 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 {
 	BfTypeInstance* typeInst = methodInstance->mMethodInstanceGroup->mOwner;
-		
+
+	if (mBfIRBuilder == NULL)
+	{
+		// To allow for custom attribute data
+		PrepareForIRWriting(typeInst);
+	}
+
 	BfModule* declareModule = this;
 	// Get to the optionless branch head -- but this could still be a specialized method module, not the true root
 	while ((declareModule->mParentModule != NULL) && (!declareModule->mIsSpecializedMethodModuleRoot))
