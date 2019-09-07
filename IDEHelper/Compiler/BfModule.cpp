@@ -4032,11 +4032,6 @@ BfIRValue BfModule::CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* ou
 
 	StringT<128> classVDataName;
 
-	if ((mCompiler->IsHotCompile()) && (typeInstance->mTypeDef->mName->ToString() == "ClassC"))
-	{
-		NOP;
-	}
-
 	String memberName = "sBfClassVData";
 	if ((typeInstance->mHotTypeData != NULL) && ((typeInstance->mHotTypeData->mHadDataChange) || (typeInstance->mHotTypeData->mPendingDataChange)))
 	{		
@@ -9104,12 +9099,7 @@ void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, Bf
 }
 
 void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget)
-{
-	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mName == "OpenAudio"))
-	{
-		NOP;
-	}
-
+	
 	if ((attributesDirective != NULL) && (mCompiler->mResolvePassData != NULL) && 
 		(attributesDirective->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
 	{
@@ -10990,7 +10980,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	if (lookupMethodGenericArguments.size() == 0)
 	{
 		methodInstance = methodInstGroup->mDefault;
-
+		
 		if ((methodInstance != NULL) && (isReified) && (!methodInstance->mIsReified))
 		{
 			MarkDerivedDirty(typeInst);
@@ -11172,11 +11162,6 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			{
 				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, false);
 
-				if ((methodInstance->mMethodDef->mName == "Unwrap") && (mModuleName == "System_Result_PTR_void"))
-				{
-					NOP;
-				}
-
 				if (mAwaitingInitFinish)
 					FinishInit();
 
@@ -11206,7 +11191,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		if (mCompiler->IsSkippingExtraResolveChecks())
 			return BfModuleMethodInstance(methodInstance, BfIRFunction());
 		else
-		{			
+		{
 			if (methodInstance->mDeclModule != this)
 				return ReferenceExternalMethodInstance(methodInstance, flags);				
 
@@ -14568,11 +14553,6 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 {
 	auto methodDef = methodInstance->mMethodDef;
 	auto methodDeclaration = methodDef->mMethodDeclaration;
-
-	if (methodDef->mName == "GetIt")
-	{
-		NOP;
-	}
 
 	bool isThisStruct = false;
 	if (thisType != NULL)
@@ -18384,11 +18364,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	if (mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
 		mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingReference;
 
-	if (mCurTypeInstance->mTypeDef->mName->ToString() == "ClassA")
-	{
-		NOP;
-	}
-
 	bool ignoreWrites = mBfIRBuilder->mIgnoreWrites;
 
 	if (mAwaitingInitFinish)
@@ -20322,16 +20297,6 @@ bool BfModule::Finish()
 	BP_ZONE("BfModule::Finish");
 	BfLogSysM("BfModule finish: %p\n", this);
 	
-	if (mCompiler->mCanceling)
-	{
-		NOP;
-	}
-
-	if (mModuleName == "System_Array")
-	{
-		NOP;
-	}
-
 	if (mHadBuildError)
 	{
 		// Don't AssertErrorState here, this current pass may not have failed but
@@ -20558,11 +20523,6 @@ void BfModule::ClearModuleData()
 		mAddedToCount = false;
 	}
 
-	if (mCompiler->mCanceling)
-	{
-		NOP;
-	}
-
 	mDICompileUnit = BfIRMDNode();
 	mIsModuleMutable = false;	
 	mIncompleteMethodCount = 0;	
@@ -20598,18 +20558,6 @@ void BfModule::ClearModuleData()
 	if (mNextAltModule != NULL)
 		mNextAltModule->ClearModuleData();
 	
-	for (auto typeInstance : mOwnedTypeInstances)
-	{
-		if (typeInstance->IsSpecializedType())
-		{
-			for (auto&& methodGroup : typeInstance->mMethodInstanceGroups)
-			{
-				if (methodGroup.mDefault != NULL)
-					methodGroup.mDefault->mDeclModule = NULL;
-			}
-		}		
-	}
-
 	BfLogSysM("ClearModuleData. Deleting IRBuilder: %p\n", mBfIRBuilder);		
 	delete mBfIRBuilder;
 	mBfIRBuilder = NULL;	
@@ -20617,7 +20565,7 @@ void BfModule::ClearModuleData()
 }
 
 void BfModule::DisownMethods()
-{
+{	
 	for (int i = 0; i < BfBuiltInFuncType_Count; i++)
 		mBuiltInFuncs[i] = BfIRFunction();
 
@@ -20631,8 +20579,14 @@ void BfModule::DisownMethods()
 		{
 			if (methodGroup.mDefault != NULL)
 			{
-				if (methodGroup.mDefault->mDeclModule == this)
-					methodGroup.mDefault->mIRFunction = BfIRFunction();
+				if (methodGroup.mDefault->mIRFunction)
+				{
+					BF_ASSERT(methodGroup.mDefault->mDeclModule != NULL);
+					if (methodGroup.mDefault->mDeclModule == this)
+					{
+						methodGroup.mDefault->mIRFunction = BfIRFunction();						
+					}
+				}
 			}
 
 			if (methodGroup.mMethodSpecializationMap != NULL)
@@ -20641,7 +20595,9 @@ void BfModule::DisownMethods()
 				{
 					auto methodInstance = mapPair.mValue;
 					if (methodInstance->mDeclModule == this)
+					{
 						methodInstance->mIRFunction = BfIRFunction();
+					}
 				}
 			}
 		}

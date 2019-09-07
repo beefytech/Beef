@@ -4087,21 +4087,24 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 	{
 		auto module = GetOrCreateMethodModule(methodInstance);
 		methodInstance->mDeclModule = module;
-
+		
 		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
 		methodInstance->mIRFunction = func;
 
 		module->mFuncReferences[methodInstance] = func;
-		if (module != this)
-		{
-			// For extension modules we need to keep track of our own methods so we can know which methods
-			//  we have defined ourselves and which are from the parent module or other extensions
-			if (!func.IsFake())
-				mFuncReferences[methodInstance] = func;
-		}
 
 		module->AddMethodToWorkList(methodInstance);
 		return;
+	}
+
+	if ((!methodInstance->mIRFunction) && (!methodInstance->mIsUnspecialized))
+	{
+		if (!mIsModuleMutable)
+			StartExtension();
+
+		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
+		methodInstance->mIRFunction = func;
+		mFuncReferences[methodInstance] = func;		
 	}
 	
 	BF_ASSERT(methodInstance->mDeclModule == this);

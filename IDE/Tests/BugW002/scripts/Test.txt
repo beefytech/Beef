@@ -1,0 +1,8 @@
+# This tests extensions in Span<uint8>, whose IRFunction was not being cleared
+
+ShowFile("src/Program.bf")
+Compile()
+ToggleCommentAt("Main_OpenReg")
+Compile()
+ToggleCommentAt("Main_GetValue")
+Compile()

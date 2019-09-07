@@ -4125,6 +4125,8 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 		return fakeVal;
 	}
 
+	BF_ASSERT(mModule->mIsModuleMutable);
+
 	BfIRFunction retVal = WriteCmd(BfIRCmd_CreateFunction, funcType, (uint8)linkageType, name);	
 	NEW_CMD_INSERTED_IRVALUE;	
 	mFunctionMap[name] = retVal;
