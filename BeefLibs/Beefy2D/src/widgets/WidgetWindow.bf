@@ -429,7 +429,7 @@ namespace Beefy.widgets
                 var result = mOnHitTest(x, y);
                 if (result != HitTestResult.NotHandled)
 				{
-					if (result != .Client)
+					if (result == .Transparent)
 					{
 						if (mHasMouseInside)
 							MouseLeave();
