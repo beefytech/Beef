@@ -332,7 +332,7 @@ namespace IDE.util
 			res.mDataSize = (uint32)manifestText.Length + 3;
 			res.mHeaderSize = 32;
 			res.mType = 0xFFFF | (0x18 << 16);
-			res.mName = 0xFFFF | (2 << 16);
+			res.mName = 0xFFFF | (1 << 16);
 			res.mDataVersion = 0;
 			res.mMemoryFlags = 0x1030;
 			res.mLanguageId = 1033;
