@@ -1063,6 +1063,22 @@ void BfModule::Cleanup()
 	CleanupFileInstances();
 }
 
+void BfModule::PrepareForIRWriting(BfTypeInstance* typeInst)
+{
+	if (HasCompiledOutput())
+	{
+		// It's possible that the target's code hasn't changed but we're requesting a new generic method specialization		
+		if ((!mIsModuleMutable) && (!typeInst->IsUnspecializedType()) && (!typeInst->mResolvingVarField))
+		{
+			StartExtension();
+		}
+	}
+	else
+	{
+		EnsureIRBuilder();
+	}
+}
+
 void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 {
 	BF_ASSERT(!mIsDeleting);
@@ -10569,19 +10585,7 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 {
 	BfTypeInstance* typeInst = methodInstance->mMethodInstanceGroup->mOwner;
-	if (HasCompiledOutput())
-	{
-		// It's possible that the target's code hasn't changed but we're requesting a new generic method specialization		
-		if ((!mIsModuleMutable) && (!typeInst->IsUnspecializedType()) && (!typeInst->mResolvingVarField))
-		{			
-			StartExtension();
-		}
-	}
-	else
-	{
-		EnsureIRBuilder();
-	}
-	
+		
 	BfModule* declareModule = this;
 	// Get to the optionless branch head -- but this could still be a specialized method module, not the true root
 	while ((declareModule->mParentModule != NULL) && (!declareModule->mIsSpecializedMethodModuleRoot))
@@ -10678,6 +10682,7 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 		}
 	}	
 
+	declareModule->PrepareForIRWriting(typeInst);
 	return declareModule;
 }
 

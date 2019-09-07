@@ -1735,6 +1735,7 @@ public:
 	void UnreifyModule();
 	void Cleanup();
 	void StartNewRevision(RebuildKind rebuildKind = RebuildKind_All, bool force = false);
+	void PrepareForIRWriting(BfTypeInstance* typeInst);
 	void EnsureIRBuilder(bool dbgVerifyCodeGen = false);
 	void DbgFinish();
 	BfIRValue CreateForceLinkMarker(BfModule* module, String* outName);

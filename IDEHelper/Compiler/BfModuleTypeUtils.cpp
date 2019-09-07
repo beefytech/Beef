@@ -4097,10 +4097,10 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		return;
 	}
 
-	if ((!mCompiler->mIsResolveOnly) && (!methodInstance->mIRFunction) && (methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized))
+	if ((!methodInstance->mIRFunction) && (methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized))
 	{
 		if (!mIsModuleMutable)
-			StartExtension();
+			PrepareForIRWriting(methodInstance->GetOwner());
 
 		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
 		methodInstance->mIRFunction = func;
