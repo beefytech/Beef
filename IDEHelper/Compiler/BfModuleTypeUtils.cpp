@@ -4097,7 +4097,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		return;
 	}
 
-	if ((!methodInstance->mIRFunction) && (!methodInstance->mIsUnspecialized))
+	if ((!mCompiler->mIsResolveOnly) && (!methodInstance->mIRFunction) && (methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized))
 	{
 		if (!mIsModuleMutable)
 			StartExtension();
