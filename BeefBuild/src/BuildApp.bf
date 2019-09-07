@@ -148,16 +148,18 @@ namespace BeefBuild
 					return true;
 				case "-verbosity":
 				    if (value == "quiet")
-				        mVerbosity = .Quiet;
-				    else if (value == "minimal")
-				        mVerbosity = .Minimal;
-				    else if (value == "normal")
-				        mVerbosity = .Normal;
-				    else if (value == "detailed")
-				        mVerbosity = .Detailed;
-				    //else if (value == "diagnostic")
-				        //mVerbosity = .Diagnostic;
-				    return true;
+					    mVerbosity = .Quiet;
+					else if (value == "minimal")
+					    mVerbosity = .Minimal;
+					else if (value == "normal")
+					    mVerbosity = .Normal;
+					else if (value == "detailed")
+					    mVerbosity = .Detailed;
+					else if (value == "diagnostic")
+					    mVerbosity = .Diagnostic;
+					else
+						Fail(scope String()..AppendF("Invalid verbosity option: {}", value));
+					return true;
 				}
 			}
 
