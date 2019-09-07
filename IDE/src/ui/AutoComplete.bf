@@ -1258,11 +1258,6 @@ namespace IDE.ui
 	                        else if (char8Data.mChar == ')')
 	                        {
 								openDepth--;
-	                            if (openDepth == 0)
-								{
-	                                mInvokeSrcPositions.Add(checkIdx);
-									break;
-								}
 	                        }
 	                        else if ((char8Data.mChar == ',') && (openDepth == 1))
 	                        {
@@ -1271,6 +1266,12 @@ namespace IDE.ui
 	                        }
 	                        else if (!((char8)char8Data.mChar).IsWhiteSpace)
 	                            HadContent();
+
+							if (openDepth == 0)
+							{
+							    mInvokeSrcPositions.Add(checkIdx);
+								break;
+							}
 	                    }
 						else if (char8Data.mDisplayPassId != (.)SourceElementType.Comment)
 						{
@@ -1487,11 +1488,6 @@ namespace IDE.ui
                 //if (selectString == null)
 				if (changedAfterInfo)
                 {
-					if (curString == "Hey")
-					{
-						NOP!();
-					}	
-
 					mAutoCompleteListWidget.mSelectIdx = -1;
 
                     if ((curString.Length == 0) && (!mIsMember) && (mInvokeSrcPositions == null))
@@ -1923,6 +1919,7 @@ namespace IDE.ui
 							infoSections[i].ToString(str);
                             mInvokeSrcPositions.Add(int32.Parse(str));
 						}
+						Debug.WriteLine("Invoke size: {}", mInvokeSrcPositions.Count);
                     }
                 case "invokeLeftParen":
                     {

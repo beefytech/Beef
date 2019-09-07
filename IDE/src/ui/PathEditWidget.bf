@@ -84,6 +84,7 @@ namespace IDE.ui
 #endif							
 						}
 					});
+				mEditWidgetContent.mTextInsets.mRight += GS!(20);
 			}
 		}
 
@@ -209,9 +210,10 @@ namespace IDE.ui
 		public override void Resize(float x, float y, float width, float height)
 		{
 			base.Resize(x, y, width, height);
+			let btnSize = (int)(height - GS!(4));
 			if (mBrowseButton != null)
 			{
-				mBrowseButton.Resize(mWidth - DarkTheme.sUnitSize - GS!(2), GS!(2), DarkTheme.sUnitSize, DarkTheme.sUnitSize);
+				mBrowseButton.Resize(mWidth - btnSize - GS!(2), GS!(2), btnSize, btnSize);
 			}
 		}
 	}

@@ -189,7 +189,12 @@ namespace IDE.ui
             : base(new ExpressionEditWidgetContent())
         {
             var editWidgetContent = (ExpressionEditWidgetContent)mEditWidgetContent;
-            editWidgetContent.mOnGenerateAutocomplete = new (keyChar, options) => UpdateText(keyChar, true);
+            editWidgetContent.mOnGenerateAutocomplete = new (keyChar, options) =>
+				{
+					if ((editWidgetContent.mAutoComplete?.mIsDocumentationPass).GetValueOrDefault())
+						return;
+					UpdateText(keyChar, true);
+				};
 			editWidgetContent.mScrollToStartOnLostFocus = true;
 			mScrollContentInsets.Set(GS!(4), GS!(3), GS!(1), GS!(3));
 

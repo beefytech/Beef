@@ -11,7 +11,7 @@ using Beefy.theme;
 
 namespace IDE.ui
 {
-    public class NewProjectDialog : DarkDialog
+    public class NewProjectDialog : IDEDialog
     {
         public PathEditWidget mDirectoryEdit;
         public EditWidget mNameEdit;
@@ -25,8 +25,9 @@ namespace IDE.ui
 		public bool mDirChanged;
 		public String mDirBase ~ delete _;
 
-        public this() : base("Create New Project", "")
+        public this()
         {
+			mTitle = new String("Create New Project");
         }
 
         public override void CalcSize()
@@ -68,7 +69,7 @@ namespace IDE.ui
             if (!isNameValid)
             {
                 mNameEdit.SetFocus();
-                app.Fail("Invalid project name. The project name can only consist of alphanumeric char8acters, spaces, dashes, and underscores.");
+                app.Fail("Invalid project name. The project name can only consist of alphanumeric characters, spaces, dashes, and underscores.");
                 return false;
             }
 

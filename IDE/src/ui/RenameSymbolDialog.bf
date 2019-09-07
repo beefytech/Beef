@@ -36,6 +36,7 @@ namespace IDE.ui
         {
             public FileEditData mFileEditData;
             public List<ReplaceSpan> mSpans = new List<ReplaceSpan>() ~ delete _;
+			public bool mIsLocked;
         }
 
 		enum BackgroundKind
@@ -65,6 +66,7 @@ namespace IDE.ui
         String mReplaceStr = new String() ~ delete _;
         String mOrigReplaceStr = new String() ~ delete _;
 		String mModifiedParsers ~ delete _;
+		bool mRenameHadChange;
         bool mIgnoreTextChanges;
         bool mTextChanged;
         int32 mStartIdx;
@@ -289,7 +291,6 @@ namespace IDE.ui
 				bool wantsLine = false;
 				
 				var editWidgetContent = editData.mEditWidget.mEditWidgetContent;
-
 				for (int32 idx < editWidgetContent.mData.mTextLength)
 				{
 					char8 c = editWidgetContent.mData.mText[idx].mChar;
@@ -437,6 +438,23 @@ namespace IDE.ui
 				replaceSymbolData.mFileEditData = editData;
 			    //replaceSymbolData.mProjectSource = projectSource;
 
+				if (mKind == .Rename)
+				{
+					if (let sourceEditWidgetContent = editData.mEditWidget.mEditWidgetContent as SourceEditWidgetContent)
+					{
+						if (sourceEditWidgetContent.mSourceViewPanel != null)
+						{
+							replaceSymbolData.mIsLocked = sourceEditWidgetContent.mSourceViewPanel.IsReadOnly;
+						}
+
+						for (var projectSource in editData.mProjectSources)
+						{
+							if (projectSource.mProject.mLocked)
+								replaceSymbolData.mIsLocked = true;
+						}
+					}
+				}
+
 				var spanData = parserData.GetNext().Get().Split(' ');
 				int count = 0;
 				while (true)
@@ -507,21 +525,30 @@ namespace IDE.ui
                 return;
 
             mIgnoreTextChanges = true;
-            //var bfSystem = IDEApp.sApp.mBfResolveSystem;
-            //var bfCompiler = IDEApp.sApp.mBfResolveCompiler;
-
+            
 			String prevReplaceStr = scope String();
 			prevReplaceStr.Set(mReplaceStr);
-
-            GlobalUndoData globalUndoData = null;
-            if (mKind == Kind.Rename)
-                globalUndoData = IDEApp.sApp.mGlobalUndoManager.CreateUndoData();
 
             int32 strLenDiff = (int32)(mNewReplaceStr.Length - mReplaceStr.Length);
             mReplaceStr.Set(mNewReplaceStr);
 
+			var activeSourceEditWidgetContent = (SourceEditWidgetContent)mSourceViewPanel.mEditWidget.Content;
+
             String newStr = mReplaceStr;
             bool didUndo = false;
+
+			if (mKind == .Rename)
+			{
+				if (!mRenameHadChange)
+				{
+					if (newStr != mOrigReplaceStr)
+						mRenameHadChange = true;
+				}
+			}
+
+			GlobalUndoData globalUndoData = null;
+			if (mKind == Kind.Rename)
+			    globalUndoData = IDEApp.sApp.mGlobalUndoManager.CreateUndoData();
 
             List<int32> cursorPositions = scope List<int32>();
             for (var replaceSymbolData in mUpdatingProjectSources)
@@ -537,19 +564,24 @@ namespace IDE.ui
                 cursorPositions.Add((int32)sourceEditWidgetContent.CursorTextPos);
             }
 
-			var sourceEditWidgetContent = (SourceEditWidgetContent)mSourceViewPanel.mEditWidget.Content;
-			var prevSelection = sourceEditWidgetContent.mSelection;
+			var prevSelection = activeSourceEditWidgetContent.mSelection;
 
             for (int sourceIdx = 0; sourceIdx < mUpdatingProjectSources.Count; sourceIdx++)            
             {
                 var replaceSymbolData = mUpdatingProjectSources[sourceIdx];
+				if (replaceSymbolData.mIsLocked)
+					continue;
+
 				var editData = replaceSymbolData.mFileEditData;
 				if (editData.mEditWidget == null)
 					continue;
 
-				for (var projectSource in editData.mProjectSources)
+				if ((mKind == Kind.Rename) && (mRenameHadChange))
 				{
-					projectSource.HasChangedSinceLastCompile = true;
+					for (var projectSource in editData.mProjectSources)
+					{
+						projectSource.HasChangedSinceLastCompile = true;
+					}
 				}
 
                 int32 cursorPos = cursorPositions[sourceIdx];
@@ -591,7 +623,8 @@ namespace IDE.ui
                     int32 spanStart = replaceSymbolData.mSpans[i].mSpanStart + idxOffset;
                     int32 spanLen = replaceSymbolData.mSpans[i].mSpanLength;
                     
-                    if (mKind == Kind.Rename)
+                    if ((mKind == Kind.Rename) &&
+						((mRenameHadChange) || (editWidgetContent == activeSourceEditWidgetContent)))
                     {
                         editWidgetContent.CursorTextPos = spanStart;
                         var deleteCharAction = new EditWidgetContent.DeleteCharAction(editWidgetContent, 0, spanLen);
@@ -631,10 +664,7 @@ namespace IDE.ui
 
             if ((mUpdateTextCount == 0) && (mKind == Kind.Rename))
             {
-				sourceEditWidgetContent.mSelection = prevSelection;
-                //var sourceEditWidgetContent = (SourceEditWidgetContent)mSourceViewPanel.mEditWidget.Content;
-                //sourceEditWidgetContent.CursorTextPos = mEndIdx;
-                //sourceEditWidgetContent.mSelection = EditSelection(mStartIdx, mEndIdx);
+				activeSourceEditWidgetContent.mSelection = prevSelection;
             }
 
             mUpdateTextCount++;
@@ -680,7 +710,6 @@ namespace IDE.ui
 
 	                for (var replaceSymbolData in mUpdatingProjectSources)
 	                {
-	                    //var editData = IDEApp.sApp.GetEditData(replaceSymbolData.mProjectSource, true);
 						var editData = replaceSymbolData.mFileEditData;
 						if (editData.mEditWidget == null)
 							continue;
@@ -690,7 +719,6 @@ namespace IDE.ui
 	                        editWidgetContent.mData.mText[i].mDisplayFlags &= 0xFF ^ (uint8)(SourceElementFlags.SymbolReference);
 	                    }
 
-						//var projectSource = replaceSymbolData.mProjectSource;
 						using (gApp.mMonitor.Enter())
 							editData.SetSavedData(null, IdSpan());
 						var app = IDEApp.sApp;
@@ -718,7 +746,9 @@ namespace IDE.ui
             {
                 for (var replaceSymbolData in mUpdatingProjectSources)
                 {
-                    //var editData = IDEApp.sApp.GetEditData(replaceSymbolData.mProjectSource, true);
+					if (replaceSymbolData.mIsLocked)
+						continue;
+
 					var editData = replaceSymbolData.mFileEditData;
                     var editWidgetContent = editData.mEditWidget.Content;
 
@@ -833,9 +863,32 @@ namespace IDE.ui
             if (mKind == Kind.ShowFileReferences)
                 return;
 
+			int symCount = 0;
+			int readOnlyRefCount = 0;
+			int lockedFileCount = 0;
+			if (mUpdatingProjectSources != null)
+			{
+			    for (var replaceSymbolData in mUpdatingProjectSources)
+			    {
+			        symCount += replaceSymbolData.mSpans.Count;
+					if (replaceSymbolData.mIsLocked)
+					{
+						lockedFileCount++;
+						readOnlyRefCount += replaceSymbolData.mSpans.Count;
+					}
+			    }
+			}
+
+			float boxHeight = mHeight - GS!(8);
+
+			if (lockedFileCount > 0)
+			{
+				boxHeight += GS!(14);
+			}
+
             base.Draw(g);
-            using (g.PushColor(0xFFFFFFFF))
-                g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth - GS!(8), mHeight - GS!(8));
+            using (g.PushColor((lockedFileCount == 0) ? 0xFFFFFFFF : 0xFFF0B0B0))
+                g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth - GS!(8), boxHeight);
 
             using (g.PushColor(0xFFE0E0E0))
             {
@@ -861,22 +914,24 @@ namespace IDE.ui
 				}
 
 				if (drawStr != null)
-					g.DrawString(drawStr, border, GS!(5), FontAlign.Centered, mWidth - border * 2 - GS!(8), FontOverflowMode.Ellipsis);
+					g.DrawString(drawStr, border, GS!(5), FontAlign.Centered, mWidth - border * 2 - GS!(8), FontOverflowMode.Ellipsis); 
 
                 if (mUpdatingProjectSources != null)
                 {
-                    int symCount = 0;
-                    for (var replaceSymbolData in mUpdatingProjectSources)
-                    {
-                        symCount += replaceSymbolData.mSpans.Count;
-                    }
-                            
                     g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
 					var drawString = scope String();
 					drawString.AppendF("{0} {1} in {2} {3}",
 						symCount, (symCount == 1) ? "reference" : "references",
 						mUpdatingProjectSources.Count, (mUpdatingProjectSources.Count == 1) ? "file" : "files");
                     g.DrawString(drawString, GS!(8), GS!(22), FontAlign.Centered, mWidth - GS!(8) - GS!(16));
+
+					if (lockedFileCount > 0)
+					{
+						g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
+						using (g.PushColor(((mUpdateCnt > 200) || (mUpdateCnt / 10 % 2 == 0)) ? 0xFFFF7070 : 0xFFFFB0B0))
+							g.DrawString(scope String()..AppendF("{} {} LOCKED!", lockedFileCount, (lockedFileCount == 1) ? "FILE" : "FILES"),
+								GS!(8), GS!(38), FontAlign.Centered, mWidth - GS!(8) - GS!(16));
+					}
                 }
             }
 
@@ -913,31 +968,6 @@ namespace IDE.ui
             {
                 Close();
             }
-
-            if ((mReplaceStr == "") && (mUpdatingProjectSources != null))
-            {
-                for (int32 sourceIdx = 0; sourceIdx < mUpdatingProjectSources.Count; sourceIdx++)
-                {
-                    var replaceSymbolData = mUpdatingProjectSources[sourceIdx];
-
-                    int32 idxOffset = 0;
-                    for (int32 i = 0; i < replaceSymbolData.mSpans.Count; i++)
-                    {
-                        int32 spanStart = replaceSymbolData.mSpans[i].mSpanStart + idxOffset;
-                        int32 spanLen = replaceSymbolData.mSpans[i].mSpanLength;
-
-                        if ((index == spanStart) && (spanLen == 0))
-                        {
-
-                        }
-                    }
-                }
-            }
-
-			/*if (hadSel)
-			{
-				Update();
-			}*/
         }
 
         public void SourcePreRemoveText(SourceEditWidgetContent sourceEditWidgetContent, int index, int length)
@@ -971,29 +1001,6 @@ namespace IDE.ui
 
             if (mSkipNextUpdate)
             {
-                /*string newStr = mReplaceStr;
-                for (int sourceIdx = 0; sourceIdx < mUpdatingProjectSources.Count; sourceIdx++)
-                {
-                    var replaceSymbolData = mUpdatingProjectSources[sourceIdx];
-                    var projectSource = replaceSymbolData.mProjectSource;
-                    var editData = IDEApp.sApp.GetEditData(replaceSymbolData.mProjectSource);
-                    var editWidgetContent = editData.mEditWidget.Content;
-
-                    int idxOffset = 0;
-                    for (int i = 0; i < replaceSymbolData.mSpans.Count; i++)
-                    {
-                        int spanStart = replaceSymbolData.mSpans[i].mSpanStart + idxOffset;
-                        int spanLen = replaceSymbolData.mSpans[i].mSpanLength;
-
-                        for (int attrIdx = spanStart; attrIdx < spanStart + newStr.Length; attrIdx++)
-                        {
-                            editWidgetContent.mText[attrIdx].mDisplayFlags |= (byte)(SourceElementFlags.SymbolReference);
-                        }
-
-                        idxOffset += newStr.Length - spanLen;
-                    }
-                }*/
-                
                 mSkipNextUpdate = false;
                 return;
             }

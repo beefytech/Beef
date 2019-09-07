@@ -243,6 +243,7 @@ namespace IDE
 		public bool mStepOverExternalFiles;
 
 		public bool mRunningTestScript;
+		public bool mStartedWithTestScript;
 		public bool mExitWhenTestScriptDone = true;
 		public ScriptManager mScriptManager = new ScriptManager() ~ delete _;
 		public TestManager mTestManager;
@@ -564,7 +565,7 @@ namespace IDE
         public ~this()
         {
 #if !CLI
-			if (!mRunningTestScript)
+			if (!mStartedWithTestScript)
 			{
 				mSettings.Save();
 				SaveDefaultLayoutData();
@@ -1424,6 +1425,8 @@ namespace IDE
 					{
 						if (tabWidget.mContent is SourceViewPanel)
 							continue;
+						if (tabWidget.mContent is DisassemblyPanel)
+							continue;
 					}
 
                     using (data.CreateObject())
@@ -2083,7 +2086,9 @@ namespace IDE
 			if ((loadUserData) && (!mRunningTestScript))
 			{
 				if (!LoadWorkspaceUserData())
+				{
 				    CreateDefaultLayout();
+				}
 			}
 
 			WorkspaceLoaded();
@@ -2094,6 +2099,8 @@ namespace IDE
 
 			ShowPanel(mOutputPanel, false);
 			mMainFrame.RehupSize();
+
+			ShowStartupFile();
 		}
 
 		void CloseWorkspaceAndSetupNew()
@@ -6303,7 +6310,7 @@ namespace IDE
 					}
 					else
 						mWorkspace.mDir = fullDir;
-				case "-open":
+				case "-path":
 					String.NewOrSet!(mDeferredOpenFileName, value);
 					if (mDeferredOpenFileName.EndsWith(".bfdbg", .OrdinalIgnoreCase))
 						mDeferredOpen = .DebugSession;
@@ -9421,6 +9428,27 @@ namespace IDE
                 });
         }
 
+		void ShowStartupFile()
+		{
+			if (mWorkspace.mStartupProject != null)
+			{
+				bool didShow = false;
+
+				mWorkspace.mStartupProject.WithProjectItems(scope [&] (item) =>
+					{
+						if (didShow)
+							return;
+
+						if ((item.mName.Equals("main.bf", .OrdinalIgnoreCase)) ||
+							(item.mName.Equals("program.bf", .OrdinalIgnoreCase)))
+						{
+							ShowProjectItem(item, false);
+							didShow = true;
+						}
+					});
+			}
+		}
+
         public void CreateDefaultLayout()
         {
 			//TODO:
@@ -9466,7 +9494,7 @@ namespace IDE
             SetupTab(watchTabbedView, "Memory", 150, mMemoryPanel, false);
             
             SetupTab(outputTabbedView, "Call Stack", 150, mCallStackPanel, false);
-            SetupTab(outputTabbedView, "Threads", 150, mThreadPanel, false);			
+            SetupTab(outputTabbedView, "Threads", 150, mThreadPanel, false);
         }
 
         protected void CreateBfSystems()
@@ -9525,6 +9553,8 @@ namespace IDE
         public override void Init()
         {
 			scope AutoBeefPerf("IDEApp.Init");
+
+			mStartedWithTestScript = mRunningTestScript;
 
 			mCommands.Init();
 			EnableGCCollect = mEnableGCCollect;
@@ -9765,6 +9795,7 @@ namespace IDE
 
 			ShowPanel(mOutputPanel, false);
 			UpdateRecentFileMenuItems();
+			ShowStartupFile();
         }
 #endif
 

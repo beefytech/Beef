@@ -4373,7 +4373,9 @@ namespace IDE.ui
 
         public void RenameSymbol()
         {
-            ShowSymbolReferenceHelper(SymbolReferenceHelper.Kind.Rename);
+			var sourceEditWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
+			if (!sourceEditWidgetContent.CheckReadOnly())
+            	ShowSymbolReferenceHelper(SymbolReferenceHelper.Kind.Rename);
         }
 
 		public void FindAllReferences()
