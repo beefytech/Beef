@@ -9099,7 +9099,7 @@ void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, Bf
 }
 
 void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget)
-	
+{
 	if ((attributesDirective != NULL) && (mCompiler->mResolvePassData != NULL) && 
 		(attributesDirective->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
 	{
