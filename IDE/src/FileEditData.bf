@@ -96,6 +96,28 @@ namespace IDE
 				mFileDeleted = !File.Exists(mFilePath);
 			return mFileDeleted;
 		}
+
+		public bool IsLocked()
+		{
+			if (mEditWidget != null)
+			{
+				if (let sourceEditWidgetContent = mEditWidget.mEditWidgetContent as SourceEditWidgetContent)
+				{
+					if (sourceEditWidgetContent.mSourceViewPanel != null)
+					{
+						if (sourceEditWidgetContent.mSourceViewPanel.IsReadOnly)
+							return true;
+					}
+				}
+			}
+
+			for (var projectSource in mProjectSources)
+			{
+				if (projectSource.mProject.mLocked)
+					return true;
+			}
+			return false;
+		}
 	
 		public ~this()
 		{

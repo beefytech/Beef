@@ -219,6 +219,33 @@ namespace IDE.ui
 				    mResolveParams.mTypeGenericParamIdx = int32.Parse(lineDataItr.GetNext().Get());
 				case "methodGenericParam":
 				    mResolveParams.mMethodGenericParamIdx = int32.Parse(lineDataItr.GetNext().Get());
+				case "defLoc":
+					if (mKind == .Rename)
+					{
+						StringView filePath = lineDataItr.GetNext().Get();
+						let editData = gApp.GetEditData(scope String(filePath), false, false);
+						if (editData != null)
+						{
+							for (var projectSource in editData.mProjectSources)
+							{
+								if (projectSource.mProject.mLocked)
+								{
+									gApp.Fail(scope String()..AppendF("Symbol definition is located in locked project '{}' and cannot be renamed until the lock is removed.", projectSource.mProject.mProjectName));
+									mFailed = true;
+									Close();
+									return;
+								}
+							}
+
+							if (editData.IsLocked())
+							{
+								gApp.Fail(scope String()..AppendF("Symbol definition is located in locked file '{}' and cannot be renamed until the lock is removed.", filePath));
+								mFailed = true;
+								Close();
+								return;
+							}
+						}
+					}
 				}
             }
 
@@ -440,19 +467,7 @@ namespace IDE.ui
 
 				if (mKind == .Rename)
 				{
-					if (let sourceEditWidgetContent = editData.mEditWidget.mEditWidgetContent as SourceEditWidgetContent)
-					{
-						if (sourceEditWidgetContent.mSourceViewPanel != null)
-						{
-							replaceSymbolData.mIsLocked = sourceEditWidgetContent.mSourceViewPanel.IsReadOnly;
-						}
-
-						for (var projectSource in editData.mProjectSources)
-						{
-							if (projectSource.mProject.mLocked)
-								replaceSymbolData.mIsLocked = true;
-						}
-					}
+					replaceSymbolData.mIsLocked = editData.IsLocked();
 				}
 
 				var spanData = parserData.GetNext().Get().Split(' ');
