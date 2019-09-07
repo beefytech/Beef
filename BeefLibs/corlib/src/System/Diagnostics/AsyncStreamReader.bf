@@ -55,7 +55,7 @@ namespace System.Diagnostics
 
 		// Creates a new AsyncStreamReader for the given stream.  The 
 		// character encoding is set by encoding and the buffer size, 
-		// in number of 16-bit char8acters, is set by bufferSize.  
+		// in number of 16-bit characters, is set by bufferSize.  
 		//
 		internal this(Process process, Stream stream, UserCallBack callback, Encoding encoding, int32 bufferSize)
 		{
@@ -181,7 +181,7 @@ namespace System.Diagnostics
 
 
 		// Read lines stored in StringBuilder and the buffer we just read into. 
-		// A line is defined as a sequence of char8acters followed by
+		// A line is defined as a sequence of characters followed by
 		// a carriage return ('\r'), a line feed ('\n'), or a carriage return
 		// immediately followed by a line feed. The resulting string does not
 		// contain the terminating carriage return and/or line feed. The returned

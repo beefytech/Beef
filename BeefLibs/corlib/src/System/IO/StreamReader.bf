@@ -495,7 +495,7 @@ namespace System.IO
 			return byteLength;
 		}
 
-		// Reads a line. A line is defined as a sequence of char8acters followed by
+		// Reads a line. A line is defined as a sequence of characters followed by
         // a carriage return ('\r'), a line feed ('\n'), or a carriage return
         // immediately followed by a line feed. The resulting string does not
         // contain the terminating carriage return and/or line feed. The returned

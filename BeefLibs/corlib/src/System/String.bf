@@ -663,7 +663,7 @@ namespace System
 			mAllocSizeAndFlags = cStrPtrFlag;
 		}
 
-		// This is a fast way to remove char8acters are the beginning of a string, but only works for strings
+		// This is a fast way to remove characters are the beginning of a string, but only works for strings
 		//  that are not dynamically allocated.  Mostly useful for parsing through Referenced strings quickly.
 		public void AdjustPtr(int adjBytes)
 		{

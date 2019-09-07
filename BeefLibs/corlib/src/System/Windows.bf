@@ -1295,7 +1295,7 @@ namespace System
 
 			//if (handle.IsInvalid)
             return handle;
-        }            
+        }
 	}
 }
 
