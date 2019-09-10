@@ -5953,7 +5953,9 @@ namespace IDE.ui
 						{
 							if (mProjectSource.mProject.mLocked && mProjectSource.mProject.mLockedDefault)
 							{
-								let dialog = new DarkDialog("Unlock Project?", "This project is locked because it may be a shared library, and editing shared libraries may have unwanted effects on other programs that use it.\n\nAre you sure you want to unlock it?");
+								let dialog = new DarkDialog("Unlock Project?",
+									"This project is locked because it may be a shared library, and editing shared libraries may have unwanted effects on other programs that use it.\n\nAre you sure you want to unlock it?",
+									DarkTheme.sDarkTheme.mIconWarning);
 								dialog.mWindowFlags |= .Modal;
 								dialog.AddYesNoButtons(new (dlg) =>
 									{

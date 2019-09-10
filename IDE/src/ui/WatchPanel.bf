@@ -775,6 +775,11 @@ namespace IDE.ui
 
 			return true;
 		}
+
+		protected override void RemovedFromWindow()
+		{
+			base.RemovedFromWindow();
+		}
     }
 
     public class WatchListViewItem : IDEListViewItem
