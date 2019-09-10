@@ -2925,21 +2925,28 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 	VerifyTypeDef(nextRevision);
 }
 
+BfTypeDef* BfSystem::GetCombinedPartial(BfTypeDef* typeDef)
+{
+	if ((!typeDef->mIsPartial) || (typeDef->mIsCombinedPartial))
+		return typeDef;
+		
+	auto itr = mTypeDefs.TryGet(typeDef->mFullName);
+	do
+	{
+		BF_ASSERT(typeDef->mIsPartial);
+		typeDef = *itr;
+		itr.MoveToNextHashMatch();
+	} while (!typeDef->mIsCombinedPartial);
+	return typeDef;
+}
+
 BfTypeDef* BfSystem::GetOuterTypeNonPartial(BfTypeDef* typeDef)
 {
 	auto checkType = typeDef->mOuterType;
 	if ((checkType == NULL) || (!checkType->mIsPartial))
 		return checkType;
 
-	auto itr = mTypeDefs.TryGet(checkType->mFullName);
-	do 
-	{
-		BF_ASSERT(checkType->mIsPartial);
-		checkType = *itr;
-		itr.MoveToNextHashMatch();
-	} 
-	while (!checkType->mIsCombinedPartial);		
-	return checkType;
+	return GetCombinedPartial(checkType);	
 }
 
 int BfSystem::GetGenericParamIdx(const Array<BfGenericParamDef*>& genericParams, const StringImpl& name)

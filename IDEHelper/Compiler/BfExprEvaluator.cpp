@@ -745,6 +745,18 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		int prevArgIdx = argIdx + prevImplicitParamCount;		
 		_CompareParamTypes(newMethodInstance->GetParamType(newArgIdx), prevMethodInstance->GetParamType(prevArgIdx));
 	}	
+
+	// Do generic constraint subset test directly to handle cases like "NotDisposed<T>()" vs "NOtDisposed<T>() where T : IDisposable"
+	if ((newMethodInstance->GetNumGenericArguments() > 0) && (newMethodInstance->GetNumGenericArguments() == prevMethodInstance->GetNumGenericArguments()))
+	{
+		for (int genericParamIdx = 0; genericParamIdx < (int)newMethodInstance->GetNumGenericArguments(); genericParamIdx++)
+		{
+			auto newMethodGenericParam = newMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+			auto prevMethodGenericParam = prevMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+			SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(prevMethodGenericParam, newMethodGenericParam), mModule->AreConstraintsSubset(newMethodGenericParam, prevMethodGenericParam));
+		}
+	}
+	
 	if ((isBetter) || (isWorse))
 	{
 		RETURN_RESULTS;
@@ -782,7 +794,37 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		}
 	}
 
-	RETURN_BETTER_OR_WORSE(newMethodDef->mCheckedKind == mCheckedKind, prevMethodDef->mCheckedKind == mCheckedKind);
+	// If we have conditional type extensions that both define an implementation for a method, use the most-specific conditional extension constraints
+	auto owner = newMethodInstance->GetOwner();
+	if ((newMethodDef->mDeclaringType != prevMethodDef->mDeclaringType) && (owner->IsGenericTypeInstance()))
+	{
+		auto genericOwner = (BfGenericTypeInstance*)owner;
+		if (genericOwner->mGenericExtensionInfo != NULL)
+		{			
+			BfGenericExtensionEntry* newGenericExtesionEntry = NULL;
+			BfGenericExtensionEntry* prevGenericExtesionEntry = NULL;
+			if ((genericOwner->mGenericExtensionInfo->mExtensionMap.TryGetValue(newMethodDef->mDeclaringType, &newGenericExtesionEntry)) &&
+				(genericOwner->mGenericExtensionInfo->mExtensionMap.TryGetValue(prevMethodDef->mDeclaringType, &prevGenericExtesionEntry)))
+			{
+				if ((newGenericExtesionEntry->mGenericParams.size() == prevGenericExtesionEntry->mGenericParams.size()))
+				{
+					for (int genericParamIdx = 0; genericParamIdx < (int)newGenericExtesionEntry->mGenericParams.size(); genericParamIdx++)
+					{
+						auto newMethodGenericParam = newGenericExtesionEntry->mGenericParams[genericParamIdx];
+						auto prevMethodGenericParam = prevGenericExtesionEntry->mGenericParams[genericParamIdx];
+						SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(prevMethodGenericParam, newMethodGenericParam), mModule->AreConstraintsSubset(newMethodGenericParam, prevMethodGenericParam));
+					}
+				}
+
+				if ((isBetter) || (isWorse))
+				{
+					RETURN_RESULTS;
+				}
+			}
+		}
+	}
+
+	RETURN_BETTER_OR_WORSE(newMethodDef->mCheckedKind == mCheckedKind, prevMethodDef->mCheckedKind == mCheckedKind);	
 
 	RETURN_RESULTS;
 }

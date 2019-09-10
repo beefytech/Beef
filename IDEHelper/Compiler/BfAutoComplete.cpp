@@ -549,6 +549,13 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 	auto typeDef = typeInst->mTypeDef;
 	for (auto nestedTypeDef : typeDef->mNestedTypes)
 	{
+		if (nestedTypeDef->mIsPartial)
+		{
+			nestedTypeDef = mSystem->GetCombinedPartial(nestedTypeDef);
+			if (nestedTypeDef == NULL)
+				continue;
+		}
+
 	 	if (CheckProtection(nestedTypeDef->mProtection, allowProtected, allowPrivate))
 	 		AddTypeDef(nestedTypeDef, filter, onlyAttribute);
 	}

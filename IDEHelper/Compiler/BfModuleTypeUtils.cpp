@@ -1502,6 +1502,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			for (auto baseTypeRef : typeDef->mBaseTypes)
 			{
+				SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, baseTypeRef);				
+				SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);				
+				SetAndRestoreValue<bool> prevSkipTypeProtectionChecks(typeInstance->mSkipTypeProtectionChecks, true);
+
 				auto baseType = ResolveTypeRef(baseTypeRef, BfPopulateType_Declaration);
 				if (baseType != NULL)
 				{
@@ -3811,6 +3815,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				if (ifaceMethodInst == NULL)
 					continue;
 
+				// Don't even try to match generics
+				if (!ifaceMethodInst->mMethodDef->mGenericParams.IsEmpty())
+					continue;
+
 				auto iReturnType = ifaceMethodInst->mReturnType;
 				if (iReturnType->IsSelf())
 					iReturnType = typeInstance;
@@ -3931,7 +3939,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 							}
 						}
 
-						if ((bestMethodInst->mMethodDef->HasBody()) && (matchedMethod == NULL))
+						if ((bestMethodInst->mMethodDef->HasBody()) && (bestMethodInst->mMethodDef->mGenericParams.size() == 0) && (matchedMethod == NULL))
 						{
 							auto methodDef = bestMethodInst->mMethodDef;
 							BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_ForeignMethodDef;
@@ -3939,10 +3947,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 								flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_UnspecializedPass);
 							auto methodInst = GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags, ifaceInst);
 							if (methodInst)
-							{																	
+							{
 								*matchedMethodRef = methodInst.mMethodInstance;
 
-								BfMethodInstance* newMethodInstance = *matchedMethodRef;
+								BfMethodInstance* newMethodInstance = methodInst.mMethodInstance;
 								BF_ASSERT(newMethodInstance->mIsForeignMethodDef);					
 								if (newMethodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference)
 									mOnDemandMethodCount++;
@@ -4053,7 +4061,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		return;
 
 	BF_ASSERT(mCompiler->mCompileState != BfCompiler::CompileState_VData);
-	if (methodInstance->mIsReified)
+	if ((methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized))
 	{
 		BF_ASSERT(mCompiler->mCompileState != BfCompiler::CompileState_Unreified);
 	}

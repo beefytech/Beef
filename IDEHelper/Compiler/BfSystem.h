@@ -1300,8 +1300,10 @@ public:
 	bool ContainsNamespace(const BfAtomComposite& namespaceStr, BfProject* bfProject);	
 	void InjectNewRevision(BfTypeDef* typeDef);
 	void AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* compositeTypeDef, BfTypeDef* partialTypeDef);
-	void FinishCompositePartial(BfTypeDef* compositeTypeDef);
+	void FinishCompositePartial(BfTypeDef* compositeTypeDef);	
+	BfTypeDef* GetCombinedPartial(BfTypeDef* typeDef);
 	BfTypeDef* GetOuterTypeNonPartial(BfTypeDef* typeDef);
+	
 
 	int GetGenericParamIdx(const Array<BfGenericParamDef*>& genericParams, const StringImpl& name);
 	int GetGenericParamIdx(const Array<BfGenericParamDef*>& genericParams, BfTypeReference* typeRef);
