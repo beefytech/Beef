@@ -13,3 +13,7 @@ Location = { Path = "../../BeefLibs/Beefy2D" }
 [Registry.SDL2]
 Version = "1.0.0"
 Location = { Path = "../../BeefLibs/SDL2" }
+
+[Registry.MiniZ]
+Version = "1.0.0"
+Location = { Path = "../../BeefLibs/MiniZ" }

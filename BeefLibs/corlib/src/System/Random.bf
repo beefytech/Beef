@@ -40,7 +40,7 @@ namespace System
 		private int32 inextp;
 		private int32[] SeedArray = new int32[56] ~ delete _;
 
-		private int32 sSeed = (int32)Environment.TickCount;
+		private static int32 sSeed = (int32)Platform.BfpSystem_GetTimeStamp();
 
       //
       // Public Constants

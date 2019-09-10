@@ -67,20 +67,28 @@ namespace Beefy.widgets
                 if (mHorzScrollbar == null)
                 {
                     mHorzScrollbar = ThemeFactory.mDefault.CreateScrollbar(Scrollbar.Orientation.Horz);
-                    mHorzScrollbar.Init();
-                    mHorzScrollbar.mOnScrollEvent.Add(new => ScrollEventHandler);
-                    AddWidgetAtIndex(0, mHorzScrollbar);
                 }
+
+				if (mHorzScrollbar.mParent == null)
+				{
+					mHorzScrollbar.Init();
+					mHorzScrollbar.mOnScrollEvent.Add(new => ScrollEventHandler);
+					AddWidgetAtIndex(0, mHorzScrollbar);
+				}
             }
             if (wantVert)
             {
                 if (mVertScrollbar == null)
                 {
                     mVertScrollbar = ThemeFactory.mDefault.CreateScrollbar(Scrollbar.Orientation.Vert);
-                    mVertScrollbar.Init();
-                    mVertScrollbar.mOnScrollEvent.Add(new => ScrollEventHandler);
-                    AddWidgetAtIndex(0, mVertScrollbar);
                 }
+
+				if (mVertScrollbar.mParent == null)
+				{
+					mVertScrollbar.Init();
+					mVertScrollbar.mOnScrollEvent.Add(new => ScrollEventHandler);
+					AddWidgetAtIndex(0, mVertScrollbar);
+				}
             }
             else 
             {

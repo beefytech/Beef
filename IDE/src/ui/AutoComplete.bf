@@ -1919,7 +1919,6 @@ namespace IDE.ui
 							infoSections[i].ToString(str);
                             mInvokeSrcPositions.Add(int32.Parse(str));
 						}
-						Debug.WriteLine("Invoke size: {}", mInvokeSrcPositions.Count);
                     }
                 case "invokeLeftParen":
                     {

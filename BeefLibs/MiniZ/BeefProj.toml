@@ -1,0 +1,6 @@
+FileVersion = 1
+
+[Project]
+Name = "MiniZ"
+TargetType = "BeefLib"
+StartupObject = "Program"

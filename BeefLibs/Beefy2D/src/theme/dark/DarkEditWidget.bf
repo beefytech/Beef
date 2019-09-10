@@ -35,7 +35,7 @@ namespace Beefy.theme.dark
             mWidth = GS!(100);
             mHeight = GS!(24);
             mHorzJumpSize = GS!(40);
-            mFont = DarkTheme.sDarkTheme.mSmallFont;            
+            mFont = DarkTheme.sDarkTheme?.mSmallFont;
         }
 
         public override void GetTextData()
@@ -484,22 +484,24 @@ namespace Beefy.theme.dark
                             if (mEditWidget.mVertPos.IsMoving)
                                 brightness = 0; // When we animate a pgup or pgdn, it's weird seeing the cursor scrolling around
 
+							Color cursorColor = mTextColors[0];
+
                             if (mOverTypeMode)
                             {
                                 if (mCharWidth <= 2)
                                 {
-                                    using (g.PushColor(Color.Get(brightness * 0.75f)))
+                                    using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness * 0.75f))))
                                         g.FillRect(aX, curY, GS!(2), lineSpacing);
                                 }
                                 else
                                 {
-                                    using (g.PushColor(Color.Get(brightness * 0.30f)))
+                                    using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness * 0.30f))))
                                         g.FillRect(aX, curY, mCharWidth, lineSpacing);
                                 }
                             }
                             else
                             {
-                                using (g.PushColor(Color.Get(brightness)))
+                                using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness))))
                                     g.FillRect(aX, curY, Math.Max(1.0f, GS!(1)), lineSpacing);
                             }
                             drewCursor = true;

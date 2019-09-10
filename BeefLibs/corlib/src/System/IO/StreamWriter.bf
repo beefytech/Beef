@@ -11,12 +11,31 @@ namespace System.IO
 
 		public bool AutoFlush;
 
+		public this()
+		{
+		}
+
 		public this(Stream stream, Encoding encoding, int32 bufferSize, bool ownsStream = false)
 		{
 			Debug.Assert(encoding != null);
 			mStream = stream;
 			mEncoding = encoding;
 			mOwnsStream = ownsStream;
+		}
+
+		public Result<void, FileOpenError> Create(StringView fileName)
+		{
+			Debug.Assert(mStream == null);
+
+			var fileStream = new FileStream();
+			mStream = fileStream;
+			mEncoding = .UTF8;
+			mOwnsStream = true;
+			
+			if (fileStream.Open(fileName, FileMode.Create, FileAccess.Write, FileShare.ReadWrite) case .Err(let err))
+				return .Err(err);
+
+			return .Ok;
 		}
 
 		public Result<void> Write(Span<uint8> data)

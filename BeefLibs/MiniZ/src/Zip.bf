@@ -76,6 +76,16 @@ namespace IDE.Util
 				return i;
 			}
 
+			public int GetCompressedSize()
+			{
+				return mFileStat.mCompSize;
+			}
+
+			public int GetUncompressedSize()
+			{
+				return mFileStat.mUncompSize;
+			}
+
 			public Result<void> GetFileName(String outFileName)
 			{
 				outFileName.Append(&mFileStat.mFilename, GetStrLen(&mFileStat.mFilename, mFileStat.mFilename.Count));
@@ -102,6 +112,15 @@ namespace IDE.Util
 		{
 			Debug.Assert(!mInitialized);
 			if (!MiniZ.ZipReaderInitFile(&mFile, scope String(fileName, .NullTerminate), .None))
+				return .Err;
+			mInitialized = true;
+			return .Ok;
+		}
+
+		public Result<void> Init(Stream stream)
+		{
+			Debug.Assert(!mInitialized);
+			if (!MiniZ.ZipReaderInitStream(&mFile, stream, .None))
 				return .Err;
 			mInitialized = true;
 			return .Ok;
@@ -180,7 +199,7 @@ namespace IDE.Util
 		}
 
 		// Compression/decompression stream struct.
-		public struct Stream
+		public struct ZipStream
 		{
 			public uint8* mNextIn;     // pointer to next byte to read
 			public uint32 mAvailIn;            // number of bytes available at next_in
@@ -509,12 +528,12 @@ namespace IDE.Util
 			return VERSION;
 		}
 
-		static ReturnStatus DeflateInit(Stream* pStream, CompressionLevel level)
+		static ReturnStatus DeflateInit(ZipStream* pStream, CompressionLevel level)
 		{
 			return DeflateInit(pStream, level, DEFLATED, DEFAULT_WINDOW_BITS, 9, .DEFAULT_STRATEGY);
 		}
 
-		static ReturnStatus DeflateInit(Stream* pStream, CompressionLevel level, int method, int window_bits, int mem_level, CompressionStrategy strategy)
+		static ReturnStatus DeflateInit(ZipStream* pStream, CompressionLevel level, int method, int window_bits, int mem_level, CompressionStrategy strategy)
 		{
 			tdefl_compressor* pComp;
 			TDEFLFlags comp_flags = TDEFLFlags.TDEFL_COMPUTE_ADLER32 | tdefl_create_comp_flags_from_zip_params(level, window_bits, strategy);
@@ -546,7 +565,7 @@ namespace IDE.Util
 			return .OK;
 		}
 
-		static ReturnStatus deflateReset(Stream* pStream)
+		static ReturnStatus deflateReset(ZipStream* pStream)
 		{
 			if ((pStream == null) || (pStream.mState == null) || (pStream.mZAlloc == null) || (pStream.mZFree == null)) return .STREAM_ERROR;
 			pStream.mTotalIn = pStream.mTotalOut = 0;
@@ -554,7 +573,7 @@ namespace IDE.Util
 			return .OK;
 		}
 
-		static ReturnStatus deflate(Stream* pStream, Flush flushIn)
+		static ReturnStatus deflate(ZipStream* pStream, Flush flushIn)
 		{
 			Flush flush = flushIn;
 			int in_bytes, out_bytes;
@@ -604,7 +623,7 @@ namespace IDE.Util
 			return status;
 		}
 
-		static ReturnStatus deflateEnd(Stream* pStream)
+		static ReturnStatus deflateEnd(ZipStream* pStream)
 		{
 			if (pStream == null) return .STREAM_ERROR;
 			if (pStream.mState != null)
@@ -615,7 +634,7 @@ namespace IDE.Util
 			return .OK;
 		}
 
-		static uint32 deflateBound(Stream* pStream, uint32 source_len)
+		static uint32 deflateBound(ZipStream* pStream, uint32 source_len)
 		{
 		  // This is really over conservative. (And lame, but it's actually pretty tricky to compute a true upper bound given the way tdefl's blocking works.)
 			return Math.Max(128 + (source_len * 110) / 100, 128 + source_len + ((source_len / (31 * 1024)) + 1) * 5);
@@ -624,8 +643,8 @@ namespace IDE.Util
 		public static ReturnStatus Compress(uint8* pDest, ref int pDest_len, uint8* pSource, int source_len, CompressionLevel level)
 		{
 			ReturnStatus status;
-			Stream stream = ?;
-			Internal.MemSet(&stream, 0, sizeof(Stream));
+			ZipStream stream = ?;
+			Internal.MemSet(&stream, 0, sizeof(ZipStream));
 
 			// In case uint32 is 64-bits (argh I hate longs).
 			if ((source_len | pDest_len) > 0xFFFFFFFFU) return .PARAM_ERROR;
@@ -669,7 +688,7 @@ namespace IDE.Util
 			public TinflStatus m_last_status;
 		}
 
-		static ReturnStatus inflateInit2(Stream* pStream, int window_bits)
+		static ReturnStatus inflateInit2(ZipStream* pStream, int window_bits)
 		{
 			inflate_state* pDecomp;
 			if (pStream == null) return .STREAM_ERROR;
@@ -700,12 +719,12 @@ namespace IDE.Util
 			return .OK;
 		}
 
-		static ReturnStatus inflateInit(Stream* pStream)
+		static ReturnStatus inflateInit(ZipStream* pStream)
 		{
 			return inflateInit2(pStream, DEFAULT_WINDOW_BITS);
 		}
 
-		static ReturnStatus inflate(Stream* pStream, Flush flushIn)
+		static ReturnStatus inflate(ZipStream* pStream, Flush flushIn)
 		{
 			Flush flush = flushIn;
 			inflate_state* pState;
@@ -799,7 +818,7 @@ namespace IDE.Util
 			return ((status == .Done) && (pState.m_dict_avail == 0)) ? .STREAM_END : .OK;
 		}
 
-		static ReturnStatus inflateEnd(Stream* pStream)
+		static ReturnStatus inflateEnd(ZipStream* pStream)
 		{
 			if (pStream == null)
 				return .STREAM_ERROR;
@@ -813,9 +832,9 @@ namespace IDE.Util
 
 		public static ReturnStatus Uncompress(uint8* pDest, ref int pDest_len, uint8* pSource, int source_len)
 		{
-			Stream stream = default;
+			ZipStream stream = default;
 			ReturnStatus status;
-			Internal.MemSet(&stream, 0, sizeof(Stream));
+			Internal.MemSet(&stream, 0, sizeof(ZipStream));
 
 			// In case uint32 is 64-bits (argh I hate longs).
 			if ((source_len | pDest_len) > 0xFFFFFFFFU) return .PARAM_ERROR;
@@ -2751,6 +2770,7 @@ namespace IDE.Util
 			public ZipArray m_central_dir_offsets;
 			public ZipArray m_sorted_central_dir_offsets;
 			public FILE* m_pFile;
+			public Stream mStream;
 			public void* m_pMem;
 			public int m_mem_size;
 			public int m_mem_capacity;
@@ -3138,6 +3158,40 @@ namespace IDE.Util
 			pZip.m_pRead = => ZipFileReadFunc;
 			pZip.m_pIO_opaque = pZip;
 			pZip.m_pState.m_pFile = pFile;
+			pZip.m_archive_size = file_size;
+			if (!zip_reader_read_central_dir(pZip, flags))
+			{
+				ZipReaderEnd(pZip);
+				return false;
+			}
+			return true;
+		}
+
+		static int ZipFileStreamReadFunc(void* pOpaque, int64 file_ofs, void* pBuf, int n)
+		{
+			ZipArchive* pZip = (ZipArchive*)pOpaque;
+			int64 cur_ofs = pZip.m_pState.mStream.Position;
+			if (((int64)file_ofs < 0) || (((cur_ofs != (int64)file_ofs)) && (pZip.m_pState.mStream.Seek((int64)file_ofs) case .Err)))
+				return 0;
+			switch (pZip.m_pState.mStream.TryRead(.((uint8*)pBuf, n)))
+			{
+			case .Ok(let len):
+				return len;
+			case .Err:
+				return 0;
+			}
+		}
+
+		public static bool ZipReaderInitStream(ZipArchive* pZip, Stream stream, ZipFlags flags)
+		{
+			int64 file_size = stream.Length;
+			if (!zip_reader_init_internal(pZip, flags))
+			{
+				return false;
+			}
+			pZip.m_pRead = => ZipFileStreamReadFunc;
+			pZip.m_pIO_opaque = pZip;
+			pZip.m_pState.mStream = stream;
 			pZip.m_archive_size = file_size;
 			if (!zip_reader_read_central_dir(pZip, flags))
 			{

@@ -14,6 +14,13 @@ namespace System.IO
 		private ReadWriteTask _activeReadWriteTask;
 		private SemaphoreSlim _asyncActiveSemaphore;
 
+		public enum SeekKind
+		{
+			Absolute,
+			Relative,
+			FromEnd
+		}
+
 		public abstract int64 Position
 		{
 			get;
@@ -41,6 +48,15 @@ namespace System.IO
 			{
 				return Length == 0;
 			}
+		}
+
+		public virtual Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
+		{
+			if (seekKind == .Absolute)
+				Position = pos;
+			else
+				Runtime.FatalError();
+			return .Ok;
 		}
 
 		public abstract Result<int> TryRead(Span<uint8> data);

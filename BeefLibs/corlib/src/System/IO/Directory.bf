@@ -12,7 +12,7 @@ namespace System.IO
 			return Exists(fileName.ToScopeCStr!());
 		}
 
-		public static Result<void> CreateDirectory(StringView fullPath)
+		public static Result<void, Platform.BfpFileResult> CreateDirectory(StringView fullPath)
 		{
 			for (int32 pass = 0; pass < 2; pass++)
 			{
@@ -34,7 +34,7 @@ namespace System.IO
 						continue;
 					}
 				}
-				return .Err;
+				return .Err(result);
 			}
 			return .Ok;
 		}
@@ -48,7 +48,7 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public static Result<void> DelTree(String path)
+		public static Result<void> DelTree(StringView path)
 		{
 			if (path.Length <= 2)
 				return .Err;

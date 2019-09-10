@@ -8,13 +8,6 @@ namespace System.IO
 	{
 		protected Platform.BfpFile* mBfpFile;
 
-		public enum SeekKind
-		{
-			Absolute,
-			Relative,
-			FromEnd
-		};
-
 		public override int64 Position
 		{
 			get
@@ -41,7 +34,7 @@ namespace System.IO
 			Close();
 		}
 
-		public Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
+		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
 		{
 			int64 newPos = Platform.BfpFile_Seek(mBfpFile, pos, (Platform.BfpFileSeekKind)seekKind);
 			// Ensure position is what was requested

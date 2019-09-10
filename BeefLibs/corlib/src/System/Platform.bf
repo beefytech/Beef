@@ -400,6 +400,8 @@ namespace System
 			AppData_Local,
 			AppData_LocalLow,
 			AppData_Roaming,
+			Programs,
+			Programs_Common
 		}
 
 		public static Result<void, Platform.Result> GetStrHelper(String outStr, delegate void (char8* outPtr, int32* outSize, Result* outResult) func)

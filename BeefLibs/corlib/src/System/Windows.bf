@@ -46,7 +46,7 @@ namespace System
 
 			public struct VTable
 			{
-				public function void(COM_IUnknown* self, ref Guid riid, out void* result) QueryInterface;
+				public function HResult(COM_IUnknown* self, ref Guid riid, void** result) QueryInterface;
 				public function HResult(COM_IUnknown* self) AddRef;
 				public function HResult(COM_IUnknown* self) Release;
 			}
@@ -188,6 +188,7 @@ namespace System
 
 		public const int32 MB_YESNO 			= 4;
 		public const int32 MB_ICONHAND 			= 0x10;
+		public const int32 MB_ICONQUESTION		= 0x20;
 		public const int32 IDOK 				= 1;
 		public const int32 IDYES 				= 6;
 
@@ -339,7 +340,7 @@ namespace System
 				bool gotData = false;
 				GetValue(name, scope [&] (regType, regData) =>
 					{
-						if (regType == Windows.REG_SZ)
+						if ((regType == Windows.REG_SZ) || (regType == Windows.REG_EXPAND_SZ))
 						{
 							gotData = true;
 							var span = Span<char16>((char16*)regData.Ptr, regData.Length / 2);
@@ -419,11 +420,27 @@ namespace System
 				Runtime.NotImplemented();
 				//return Variant.Create<int>(1234);
 			}
+
+			public Result<void> SetValue(StringView name, StringView strValue)
+			{
+				let result = Windows.RegSetValueExA(this, name.ToScopeCStr!(), 0,  Windows.REG_SZ, strValue.ToScopeCStr!(), (uint32)strValue.Length + 1);
+				if (result != 0)
+					return .Err;
+				return .Ok;
+			}
+
+			public Result<void> SetValueExpand(StringView name, StringView strValue)
+			{
+				let result = Windows.RegSetValueExA(this, name.ToScopeCStr!(), 0,  Windows.REG_EXPAND_SZ, strValue.ToScopeCStr!(), (uint32)strValue.Length + 1);
+				if (result != 0)
+					return .Err;
+				return .Ok;
+			}
 		}
 
 		public struct HWnd : int
 		{
-
+			public const HWnd Broadcast = (.)0xFFFF;
 		}
 
 		public struct HModule : int
@@ -867,6 +884,7 @@ namespace System
 		public const int32 WM_KEYDOWN = 0x0100;
 		public const int32 WM_KEYUP = 0x0101;
 		public const int32 WM_CHAR = 0x0102;
+		public const int32 WM_SETTINGCHANGE = 0x001A;
 
 		public const int32 BFFM_INITIALIZED = 1;
 		public const int32 BFFM_SELCHANGED = 2;
@@ -932,6 +950,154 @@ namespace System
 
 		public const int32 TIME_ZONE_ID_INVALID = -1;
 
+		public const int32 OBJECT_INHERIT_ACE = 1;
+		public const int32 CONTAINER_INHERIT_ACE = 2;
+		public const int32 NO_PROPAGATE_INHERIT_ACE = 4;
+		public const int32 INHERIT_ONLY_ACE = 8;
+		public const int32 INHERITED_ACE = 0x10;
+		public const int32 VALID_INHERIT_FLAGS = 0x1F;
+
+		public const int32 SMTO_NORMAL = 0x0000;
+		public const int32 SMTO_BLOCK = 0x0001;
+		public const int32 SMTO_ABORTIFHUNG = 0x0002;
+
+		enum SECURITY_INFORMATION : int32
+		{
+			DACL_SECURITY_INFORMATION = 4
+		}
+
+		enum SE_OBJECT_TYPE : int32
+		{
+		  SE_UNKNOWN_OBJECT_TYPE,
+		  SE_FILE_OBJECT,
+		  SE_SERVICE,
+		  SE_PRINTER,
+		  SE_REGISTRY_KEY,
+		  SE_LMSHARE,
+		  SE_KERNEL_OBJECT,
+		  SE_WINDOW_OBJECT,
+		  SE_DS_OBJECT,
+		  SE_DS_OBJECT_ALL,
+		  SE_PROVIDER_DEFINED_OBJECT,
+		  SE_WMIGUID_OBJECT,
+		  SE_REGISTRY_WOW64_32KEY,
+		  SE_REGISTRY_WOW64_64KEY
+		}
+
+		public struct SID;
+		public struct SECURITY_DESCRIPTOR;
+
+		[CRepr]
+		public struct ACL
+		{
+		    uint8 AclRevision;
+		    uint8  Sbz1;
+		    uint16   AclSize;
+		    uint16   AceCount;
+		    uint16   Sbz2;
+		}
+
+		public enum ACCESS_MODE : int32
+		{
+			NOT_USED_ACCESS = 0,
+			GRANT_ACCESS,
+			SET_ACCESS,
+			DENY_ACCESS,
+			REVOKE_ACCESS,
+			SET_AUDIT_SUCCESS,
+			SET_AUDIT_FAILURE
+		}
+
+		public enum MULTIPLE_TRUSTEE_OPERATION : int32
+		{
+		    NO_MULTIPLE_TRUSTEE,
+		    TRUSTEE_IS_IMPERSONATE,
+		} 
+
+		public enum TRUSTEE_FORM : int32
+		{
+		    TRUSTEE_IS_SID,
+		    TRUSTEE_IS_NAME,
+		    TRUSTEE_BAD_FORM,
+		    TRUSTEE_IS_OBJECTS_AND_SID,
+		    TRUSTEE_IS_OBJECTS_AND_NAME
+		}
+
+		public enum TRUSTEE_TYPE : int32
+		{
+		    TRUSTEE_IS_UNKNOWN,
+		    TRUSTEE_IS_USER,
+		    TRUSTEE_IS_GROUP,
+		    TRUSTEE_IS_DOMAIN,
+		    TRUSTEE_IS_ALIAS,
+		    TRUSTEE_IS_WELL_KNOWN_GROUP,
+		    TRUSTEE_IS_DELETED,
+		    TRUSTEE_IS_INVALID,
+		    TRUSTEE_IS_COMPUTER
+		}
+
+		[CRepr]
+		public struct TRUSTEE_W
+		{
+			TRUSTEE_W*					pMultipleTrustee;
+			MULTIPLE_TRUSTEE_OPERATION  MultipleTrusteeOperation;
+			TRUSTEE_FORM                TrusteeForm;
+			TRUSTEE_TYPE                TrusteeType;
+			char16*                     ptstrName;
+		}
+
+		[CRepr]
+		public struct EXPLICIT_ACCESS_W
+		{
+		    uint32        grfAccessPermissions;
+		    ACCESS_MODE  grfAccessMode;
+		    uint32        grfInheritance;
+		    TRUSTEE_W    Trustee;
+		}
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern uint32 GetNamedSecurityInfoW(
+		  char16*              pObjectName,
+		  SE_OBJECT_TYPE       ObjectType,
+		  SECURITY_INFORMATION SecurityInfo,
+		  SID**					ppsidOwner,
+		  SID**					ppsidGroup,
+		  ACL**					ppDacl,
+		  ACL**					ppSacl,
+		  SECURITY_DESCRIPTOR* *ppSecurityDescriptor
+		);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern void BuildExplicitAccessWithNameW(
+		  EXPLICIT_ACCESS_W* pExplicitAccess,
+		  char16*             pTrusteeName,
+		  uint32              AccessPermissions,
+		  ACCESS_MODE        AccessMode,
+		  uint32              Inheritance
+		);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern uint32 SetEntriesInAclW(
+		  uint32              cCountOfExplicitEntries,
+		  EXPLICIT_ACCESS_W* pListOfExplicitEntries,
+		  ACL*               OldAcl,
+		  ACL**           	 NewAcl
+		);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern uint32 SetNamedSecurityInfoW(
+		  char16*              pObjectName,
+		  SE_OBJECT_TYPE       ObjectType,
+		  SECURITY_INFORMATION SecurityInfo,
+		  SID*                 psidOwner,
+		  SID*                 psidGroup,
+		  ACL*                 pDacl,
+		  ACL*                 pSacl
+		);
+
+		[CLink, StdCall]
+		public static extern void LocalFree(void* ptr);
+
 		[CLink, StdCall]
 		public static extern int32 GetTimeZoneInformation(out TimeZoneInformation dynamicTimeZoneInformation);
 
@@ -952,6 +1118,9 @@ namespace System
 
 		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegGetValueA(HKey hkey, char8* lpSubKey, char8* lpValue, uint32 dwFlags, uint32* pdwType, void* pvData, uint32* pcbData);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegSetValueExA(HKey hkey, char8* lpValue, uint32 reserved, uint32 dwType, void* pvData, uint32 cbData);
 
 		[Import("shell32.lib"), CLink, StdCall]
 		public static extern int32 SHGetSpecialFolderLocation(HWnd hwnd, int32 csidl, ref int ppidl);
@@ -1124,7 +1293,7 @@ namespace System
 		public static extern int32 MessageBoxA(HWnd hWnd, char8* text, char8* caption, int32 type);
 
 		[CLink, StdCall]
-		public static extern int32 MessageBoxW(HWnd hWnd, char16* text, char8* caption, int32 type);
+		public static extern int32 MessageBoxW(HWnd hWnd, char16* text, char16* caption, int32 type);
 
 		[CLink, StdCall]
 		public static extern int32 SetErrorMode(int32 errorMode);
@@ -1182,7 +1351,10 @@ namespace System
 		public static extern IntBool PostMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
 
 		[Import("user32.lib"), CLink, StdCall]
-		public static extern IntBool SendMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
+		public static extern int32 SendMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
+
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern int32 SendMessageTimeoutW(HWnd hWnd, int32 msg, int wParam, int lParam, int32 flags, int32 timeout, int32* result);
 
 		[Import("user32.lib "), CLink, StdCall]
 		public static extern HWnd SetFocus(HWnd hWnd);
