@@ -8314,7 +8314,7 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 	{
 		if (!mCompiler->mIsResolveOnly)		
 		{
-			BF_ASSERT(methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference);
+			BF_ASSERT((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl));
 			methodGroup.mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 
 			// Get it from the owning module so we don't create a reference prematurely...
