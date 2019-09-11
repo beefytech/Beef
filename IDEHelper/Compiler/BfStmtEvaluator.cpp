@@ -2880,7 +2880,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 	bool allowLocalMethods = mCurMethodInstance != NULL;
 	//int startDeferredLocalIdx = (int)rootMethodState->mDeferredLocalMethods.size();
 	
-	int curLocalMethodIdx = -1;
+ 	int curLocalMethodIdx = -1;
 
 	// Scan for any local method declarations
 	if (allowLocalMethods)
@@ -2942,7 +2942,10 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 
 					String* namePtr;					
 					if (!mCurMethodState->mLocalMethodMap.TryAdd(localMethod->mMethodName, &namePtr, &localMethodPtr))					
-						localMethod->mNextWithSameName = *localMethodPtr;											
+					{
+						BF_ASSERT(localMethod->mNextWithSameName != *localMethodPtr);						
+						localMethod->mNextWithSameName = *localMethodPtr;
+					}
 					*localMethodPtr = localMethod;
 				}
 			}
@@ -3116,56 +3119,6 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 			mSystem->CheckLockYield();
 		}
 
-// 		for (int deferredLocalMethodIdx = startDeferredLocalIdx; deferredLocalMethodIdx < (int)rootMethodState->mDeferredLocalMethods.size(); deferredLocalMethodIdx++)
-// 		{
-// 			auto deferredLocalMethod = rootMethodState->mDeferredLocalMethods[deferredLocalMethodIdx];
-// 			rootMethodState->mDeferredLocalMethods[deferredLocalMethodIdx] = NULL;
-// 
-// 			BfLogSysM("Processing deferred local method %p\n", deferredLocalMethod);
-// 
-// 			// Process as a closure - that allows us to look back and see the const locals and stuff
-// 			BfClosureState closureState;
-// 			SetAndRestoreValue<BfClosureState*> prevClosureState(mCurMethodState->mClosureState, &closureState);
-// 			closureState.mConstLocals = deferredLocalMethod->mConstLocals;
-// 			closureState.mReturnType = deferredLocalMethod->mMethodInstance->mReturnType;
-// 			closureState.mActiveDeferredLocalMethod = deferredLocalMethod;
-// 
-// 			//methodState.mLocalMethods.Clear();
-// 
-// 			// 			for (auto& local : methodState.mLocals)
-// 			// 				delete local;
-// 			// 			methodState.mLocals.Clear();
-// 			// 			methodState.mLocalVarSet.Clear();
-// 
-// 			//methodState.mLocals = deferredLocalMethod->mConstLocals;
-// 
-// 			for (auto& constLocal : deferredLocalMethod->mConstLocals)
-// 			{
-// 				auto localVar = new BfLocalVariable();
-// 				*localVar = constLocal;
-// 				DoAddLocalVariable(localVar);
-// 			}
-// 
-// 			//methodState.mLocalMethods = deferredLocalMethod->mLocalMethods;
-// 
-// 			bool doProcess = !mCompiler->mCanceling;
-// 			if (doProcess)
-// 			{
-// 				auto curInsertPoint = mBfIRBuilder->GetInsertBlock();
-// 
-// 				BP_ZONE_F("ProcessMethod local %s", deferredLocalMethod->mMethodInstance->mMethodDef->mName.c_str());
-// 				ProcessMethod(deferredLocalMethod->mMethodInstance);
-// 
-// 				mBfIRBuilder->SetInsertPoint(curInsertPoint);
-// 			}
-// 			delete deferredLocalMethod;
-// 
-// 			mSystem->CheckLockYield();
-// 		}
-// 		int removeSize = (int)rootMethodState->mDeferredLocalMethods.size() - startDeferredLocalIdx;
-// 		if (removeSize > 0)
-// 			rootMethodState->mDeferredLocalMethods.RemoveRange(startDeferredLocalIdx, removeSize);
-
 		while ((int)mCurMethodState->mLocalMethods.size() > startLocalMethod)
 		{	
 			auto localMethod = mCurMethodState->mLocalMethods.back();
@@ -3178,7 +3131,10 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 			if (localMethod->mNextWithSameName == NULL)
 				mCurMethodState->mLocalMethodMap.Remove(localMethod->mMethodName);
 			else
-				mCurMethodState->mLocalMethodMap[localMethod->mMethodName] = localMethod->mNextWithSameName;			
+			{
+				mCurMethodState->mLocalMethodMap[localMethod->mMethodName] = localMethod->mNextWithSameName;
+				localMethod->mNextWithSameName = NULL;
+			}
 			
 			mCurMethodState->mLocalMethods.pop_back();		
 		}
