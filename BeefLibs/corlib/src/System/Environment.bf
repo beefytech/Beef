@@ -48,6 +48,14 @@ namespace System
                 });
 		}
 
+		public static void GetModuleFilePath(String outPath)
+		{
+			Platform.GetStrHelper(outPath, scope (outPtr, outSize, outResult) =>
+		        {
+					Platform.BfpDynLib_GetFilePath((.)Internal.[Friend]sModuleHandle, outPtr, outSize, (Platform.BfpLibResult*)outResult);
+		        });
+		}
+
 		public static uint32 TickCount
 		{
 			get

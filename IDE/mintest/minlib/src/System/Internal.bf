@@ -70,6 +70,13 @@ namespace System
 		static extern int32 Test_Query();
 		static extern void Test_Finish();
 
+		static void* sModuleHandle;
+		[AlwaysInclude]
+		static void SetModuleHandle(void* handle)
+		{
+			sModuleHandle = handle;
+		}
+
 		public static Object ObjectAlloc(TypeInstance typeInst, int size)
 		{
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS

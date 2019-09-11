@@ -1644,6 +1644,14 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bfModule->mBfIRBuilder->CreateCondBr(cmpResult, initBlock, initSkipBlock);
 			bfModule->mBfIRBuilder->AddBlock(initBlock);
 			bfModule->mBfIRBuilder->SetInsertPoint(initBlock);
+
+			auto moduleMethodInstance = bfModule->GetInternalMethod("SetModuleHandle", 1);
+			if (moduleMethodInstance)
+			{
+				SmallVector<BfIRValue, 1> args;
+				args.push_back(bfModule->mBfIRBuilder->GetArgument(0));
+				bfModule->mBfIRBuilder->CreateCall(moduleMethodInstance.mFunc, args);
+			}
 		}
 
 		// Do the LoadLibrary calls below priority 100
@@ -1841,7 +1849,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 		BfIRBlock deinitSkipBlock;
 		if (project->mTargetType == BfTargetType_BeefDynLib)
-		{
+		{			
 			auto deinitBlock = bfModule->mBfIRBuilder->CreateBlock("doDeinit", false);
 			deinitSkipBlock = bfModule->mBfIRBuilder->CreateBlock("skipDeinit", false);
 			auto cmpResult = bfModule->mBfIRBuilder->CreateCmpEQ(bfModule->mBfIRBuilder->GetArgument(1), bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0));
