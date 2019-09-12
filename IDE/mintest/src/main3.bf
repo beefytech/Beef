@@ -92,8 +92,50 @@ class Bloozer
 	int mA;
 }
 
+enum Zorf : IDisposable
+{
+	case A;
+	case B;
 
+	public void Dispose()
+	{
 
+	}
+}
+
+class IFaceA
+{
+	public static void Fart()
+	{
+
+	}
+}
+
+class Zlips : IFaceA, IDisposable
+{
+	static void Fart()
+	{
+
+	}
+
+	public void Dispose()
+	{
+		PrintF("Disposed");
+	}
+}
+
+class Testo
+{
+	public this()
+	{
+		PrintF("Testo this %p\n", this);
+	}
+
+	public ~this()
+	{
+		PrintF("Testo ~this %p\n", this);
+	}
+}
 
 class Blurg
 {
@@ -107,14 +149,79 @@ class Blurg
 		
 	}
 
-	void TestIt(int a, int b, int c)
+	void TestIt(String a, String b)
 	{
 
 	}
 
+	TestStruct GetTS()
+	{
+		return .();
+	}
+
+	static void Test(int a, int b)
+	{
+
+	}
+
+	static void Test(int a, int b, int c)
+	{
+
+	}
+
+	public static void Use<T>(T val) where T : IFaceA
+	{
+		IFaceA.Fart();
+	}
+
 	public static void Hey()
 	{
+		Loop:
+		for (int i < 10)
+		{
+			defer
+			{
+				//for ()
+				JLoop: for (int j < 5)
+				{
+					//continue Loop;
+				}
+
+				//break JLoop;
+
+				int z = 3;
+
+				/*void Zorg()
+				{
+					
+				}
+
+				Zorg();*/
+				//return;
+
+				//break Loop;
+			}
+		}
+
+		defer
+		{
+			scope:: Testo();
+
+			int i = 0;
+			if (i == 0)
+				scope:: Testo();
+			if (i == 1)
+				scope:: Testo();
+		}
+
 		
+
+		int aaaaaa = 123;
+		if (aaaaaa == 123)
+			return;//A
+
+		int bbbbbbb = 222;
+		return;//B
 	}
 
 }

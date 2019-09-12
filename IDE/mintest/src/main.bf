@@ -1,5 +1,4 @@
 
-
 //♀Farts 
 //Ãjaxa̐ḁ
 
@@ -177,6 +176,9 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
+			int* iPtr = null;
+			*iPtr = 123;
+
 			Blurg.Hey();
 
 			/*while (true)

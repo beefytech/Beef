@@ -9430,6 +9430,14 @@ namespace IDE
 
 		void ShowStartupFile()
 		{
+			bool hasSourceShown = false;
+			WithSourceViewPanels(scope [&] (panel) =>
+				{
+					hasSourceShown = true;
+				});
+			if (hasSourceShown)
+				return;
+
 			if (mWorkspace.mStartupProject != null)
 			{
 				bool didShow = false;

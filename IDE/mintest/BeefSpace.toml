@@ -5,6 +5,7 @@ Projects = {mintest = {Path = "."}, minlib = {Path = "minlib"}, LibA = {Path = "
 StartupProject = "mintest"
 
 [Configs.Debug.Win32]
+BfOptimizationLevel = "OgPlus"
 InitLocalVariables = true
 IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {mintest2 = {Enabled = false}}
