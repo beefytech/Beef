@@ -2319,7 +2319,6 @@ void BeCOFFObject::Finish()
 			symInfo.mStorageClass = IMAGE_SYM_CLASS_STATIC;
 			symInfo.mNumOfAuxSymbols = 1;
 
-			//mStream->WriteT(symInfo);
 			symInfoVec.push_back(symInfo);
 
 			static_assert(sizeof(PE_SymInfoAux) == sizeof(PE_SymInfo), "PE_SymInfo size mismatch");
@@ -2332,7 +2331,8 @@ void BeCOFFObject::Finish()
 			auxSymInfo.mNumber = 0;
 			auxSymInfo.mSelection = 2; // Pick any (only applicable for COMDAT but ignored elsewhere)
 			auxSymInfo.mUnused = 0;
-			//mStream->WriteT(auxSymInfo);
+			auxSymInfo.mUnused2 = 0;
+			auxSymInfo.mUnused3 = 0;			
 			symInfoVec.push_back(*(PE_SymInfo*)&auxSymInfo);
 
 			continue;
@@ -2366,8 +2366,7 @@ void BeCOFFObject::Finish()
 				symInfo.mStorageClass = IMAGE_SYM_CLASS_EXTERNAL;
 			symInfo.mValue = sym->mValue;
 			symInfo.mSectionNum = sym->mSectionNum;
-		}
-		///mStream->WriteT(symInfo);
+		}		
 		symInfoVec.push_back(symInfo);
 	}
 	if (!symInfoVec.IsEmpty())
