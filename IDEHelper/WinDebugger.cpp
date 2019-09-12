@@ -3040,6 +3040,12 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 					foundInSequence = true;
 				}
 			}
+			else
+			{
+				//TODO: We didn't have this here, but if we don't have this then there are some cases where the method-closing brace generates code in
+				// multiple places so we need to ensure this will break on them all
+				foundInSequence = false;
+			}
 
 			if ((lineOffset >= 0) && (lineOffset <= maxLineDist) && (lineOffset <= bestLineOffset))
 			{
