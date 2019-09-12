@@ -622,7 +622,7 @@ namespace IDE
 							linkLine.Append(gApp.mInstallDir, @"lib\x86\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
 						else
 							linkLine.Append(gApp.mInstallDir, @"lib\x64\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
-						linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib chkstk.obj -ignore:4049 -ignore:4217 ");
+						linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib version.lib chkstk.obj -ignore:4049 -ignore:4217 ");
 					}
 					linkLine.Append("-nologo ");
 					//linkLine.Append("-fixed ");
