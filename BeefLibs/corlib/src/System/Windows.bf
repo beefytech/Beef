@@ -55,6 +55,12 @@ namespace System
 			{
 				case OK;
 
+				public const HResult NOERROR = (.)0;
+				public const HResult E_INVALIDARG = (.)0x80000003L;
+				public const HResult E_ABORT = (.)0x80004004L;
+				public const HResult E_FAIL = (.)0x80004005L;
+				public const HResult E_ACCESSDENIED = (.)0x80070005L;
+
 				public bool Failed
 				{
 					get
@@ -185,6 +191,10 @@ namespace System
 		public const int32 REG_RESOURCE_REQUIREMENTS_LIST = 10;
 		public const int32 REG_QWORD             = 11; // 64-bit number
 		public const int32 REG_QWORD_LITTLE_ENDIAN = 11; // 64-bit number (same as REG_QWORD)
+
+		public const int32 REG_OPTION_NON_VOLATILE = 0;
+
+		public const int32 KEY_ALL_ACCESS = 0x000f003f;
 
 		public const int32 MB_YESNO 			= 4;
 		public const int32 MB_ICONHAND 			= 0x10;
@@ -338,7 +348,7 @@ namespace System
 			public Result<void> GetValue(StringView name, String outData)
 			{
 				bool gotData = false;
-				GetValue(name, scope [&] (regType, regData) =>
+				Try!(GetValue(name, scope [&] (regType, regData) =>
 					{
 						if ((regType == Windows.REG_SZ) || (regType == Windows.REG_EXPAND_SZ))
 						{
@@ -348,7 +358,7 @@ namespace System
 								span.RemoveFromEnd(1);
 							outData.Append(span);
 						}
-					});
+					}));
 				if (!gotData)
 					return .Err;
 				return .Ok;
@@ -358,14 +368,14 @@ namespace System
 			{
 				bool gotData = false;
 				int sizeofT = sizeof(T);
-				GetValue(name, scope [&] (regType, regData) =>
+				Try!(GetValue(name, scope [&] (regType, regData) =>
 					{
 						if ((regType == Windows.REG_BINARY) && (regData.Length == sizeofT))
 						{
 							Internal.MemCpy(&data, regData.Ptr, sizeofT);
 							gotData = true;
 						}
-					});
+					}));
 				if (!gotData)
 					return .Err;
 				return .Ok;
@@ -419,6 +429,15 @@ namespace System
 
 				Runtime.NotImplemented();
 				//return Variant.Create<int>(1234);
+			}
+
+			public Result<void> SetValue(StringView name, uint32 val)
+			{
+				var val;
+				let result = Windows.RegSetValueExA(this, name.ToScopeCStr!(), 0,  Windows.REG_DWORD, &val, 4);
+				if (result != 0)
+					return .Err;
+				return .Ok;
 			}
 
 			public Result<void> SetValue(StringView name, StringView strValue)
@@ -831,6 +850,7 @@ namespace System
 		public const int32 ERROR_INVALID_FUNCTION = 0x1;
 		public const int32 ERROR_FILE_NOT_FOUND = 0x2;
 		public const int32 ERROR_PATH_NOT_FOUND = 0x3;
+		public const int32 ERROR_ACCESS_DENIED = 0x5;
 		public const int32 ERROR_INVALID_HANDLE = 0x6;
 		public const int32 ERROR_NOT_ENOUGH_MEMORY = 0x8;
 		public const int32 ERROR_INVALID_DATA = 0xd;
@@ -1108,7 +1128,17 @@ namespace System
 		public static extern int32 RegOpenKeyExA(HKey hKey, char8* lpSubKey, uint32 ulOptions, uint32 samDesired, out HKey phkResult);
 
 		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegCreateKeyExW(HKey hKey, char16* lpSubKey, uint32 reserved, char16* lpClass, uint32 dwOptions, uint32 samDesired,
+			SecurityAttributes* lpSecurityAttributes, out HKey phkResult, uint32* lpdwDisposition);
+
+		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegCloseKey(HKey hKey);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegDeleteKeyA(HKey hKey, char8* lpSubKey);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegDeleteValueA(HKey hKey, char8* lpSubKey);
 
 		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegQueryValueExW(HKey hKey, char16* lpValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
@@ -1420,6 +1450,9 @@ namespace System
 		[CLink, StdCall]
 		public static extern IntBool GetFileMUIPath(uint32 dwFlags, char16* pcwszFilePath, char16* pwszLanguage, uint32* pcchLanguage,
 			char16* pwszFileMUIPath, uint32* pcchFileMUIPath, uint64* pululEnumerator);
+
+		[CLink, StdCall]
+		public static extern IntBool SetDllDirectoryW(char16* libFileName);
 
 		[CLink, StdCall]
 		public static extern HInstance LoadLibraryW(char16* libFileName);

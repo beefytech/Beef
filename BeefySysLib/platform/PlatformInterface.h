@@ -45,7 +45,8 @@ enum BfpResult
 	BfpResult_AccessError,	
 	BfpResult_PartialData,	
 	BfpResult_TempFileError,	
-	BfpResult_Timeout
+	BfpResult_Timeout,
+	BfpResult_NotEmpty
 };
 
 enum BfpSystemResult
@@ -67,7 +68,8 @@ enum BfpFileResult
 	BfpFileResult_AccessError = BfpResult_AccessError,	
 	BfpFileResult_PartialData = BfpResult_PartialData,
 	BfpFileResult_InsufficientBuffer = BfpResult_InsufficientBuffer,	
-	BfpFileResult_Timeout = BfpResult_Timeout
+	BfpFileResult_Timeout = BfpResult_Timeout,
+	BfpFileResult_NotEmpty = BfpResult_NotEmpty
 };
 
 typedef void(*BfpCrashInfoFunc)();
@@ -283,6 +285,7 @@ enum BfpSysDirectoryKind
 	BfpSysDirectoryKind_Home,
 	BfpSysDirectoryKind_System,
 	BfpSysDirectoryKind_Desktop,
+	BfpSysDirectoryKind_Desktop_Common,
 	BfpSysDirectoryKind_AppData_Local,
 	BfpSysDirectoryKind_AppData_LocalLow,
 	BfpSysDirectoryKind_AppData_Roaming,

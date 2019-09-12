@@ -50,10 +50,37 @@ namespace System
 			return default(T);
 		}
 
+		[SkipCall]
+		public void Dispose()
+		{
+
+		}
+
+		[SkipCall]
+		public static void NoDispose<TVal>()
+		{
+
+		}
+
+		public static void NoDispose<TVal>() where TVal : IDisposable
+		{
+			Internal.FatalError("Result must be disposed", 1);
+		}
+
 		public void ReturnValueDiscarded()
 		{
 		    if (this case .Err)
 				Internal.FatalError("Unhandled error in result", 1);
+			NoDispose<T>();
+		}
+	}
+
+	extension Result<T> where T : IDisposable
+	{
+		public void Dispose()
+		{
+			if (this case .Ok(var val))
+				val.Dispose();
 		}
 	}
 
@@ -111,6 +138,23 @@ namespace System
 			return default(T);
 		}
 
+		[SkipCall]
+		public void Dispose()
+		{
+
+		}
+
+		[SkipCall]
+		public static void NoDispose<TVal>()
+		{
+
+		}
+
+		public static void NoDispose<TVal>() where TVal : IDisposable
+		{
+			Internal.FatalError("Result must be disposed", 1);
+		}
+
 		public void ReturnValueDiscarded()
 		{
 		    if (this case .Err(var err))
@@ -121,6 +165,36 @@ namespace System
 				showErr.ConcatInto("Unhandled error in result:\n ", errStr);
 				Internal.FatalError(showErr, 1);
 			}
+			NoDispose<T>();
+		}
+	}
+
+	extension Result<T, TErr> where T : IDisposable
+	{
+		public void Dispose()
+		{
+			if (this case .Ok(var val))
+				val.Dispose();
+		}
+	}
+
+	extension Result<T, TErr> where TErr : IDisposable
+	{
+		public void Dispose()
+		{
+			if (this case .Err(var err))
+				err.Dispose();
+		}
+	}
+
+	extension Result<T, TErr> where T : IDisposable where TErr : IDisposable
+	{
+		public void Dispose()
+		{
+			if (this case .Ok(var val))
+				val.Dispose();
+			else if (this case .Err(var err))
+				err.Dispose();
 		}
 	}
 }
