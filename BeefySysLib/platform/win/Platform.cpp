@@ -417,7 +417,7 @@ void Beefy::BFFatalError(const StringImpl& message, const StringImpl& file, int 
 
 #ifdef _DEBUG
    	OutputDebugStrF("FATAL ERROR: %s\n", message.c_str());
-  	_wassert(UTF8Decode(message).c_str(), UTF8Decode(file).c_str(), line);
+   	_wassert(UTF8Decode(message).c_str(), UTF8Decode(file).c_str(), line);
 #else
 	String error = StrFormat("%s in %s:%d", message.c_str(), file.c_str(), line);
 	::MessageBoxA(NULL, error.c_str(), "FATAL ERROR", MB_ICONERROR | MB_OK);
@@ -2491,6 +2491,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Delete(const char* path, BfpFileResult
 		case ERROR_FILE_NOT_FOUND:
 			OUTRESULT(BfpFileResult_NotFound);
 			break;
+		case ERROR_DIR_NOT_EMPTY:
+			OUTRESULT(BfpFileResult_NotEmpty);
+			break;
 		default:
 			OUTRESULT(BfpFileResult_UnknownError);
 			break;
@@ -2553,6 +2556,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sy
 		break;
 	case BfpSysDirectoryKind_Desktop:
 		_GetKnownFolder(FOLDERID_Desktop);
+		return;
+	case BfpSysDirectoryKind_Desktop_Common:
+		_GetKnownFolder(FOLDERID_PublicDesktop);
 		return;
 	case BfpSysDirectoryKind_AppData_Local:		
 		_GetKnownFolder(FOLDERID_LocalAppData);
