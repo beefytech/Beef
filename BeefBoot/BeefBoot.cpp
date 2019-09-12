@@ -27,7 +27,7 @@ using namespace Beefy;
 BF_IMPORT void BF_CALLTYPE Debugger_ProgramDone();
 
 int main(int argc, char* argv[])
-{	
+{
 	BfpSystem_SetCommandLine(argc, argv);
 
 	BfpThread_SetName(NULL, "MainThread", NULL);
