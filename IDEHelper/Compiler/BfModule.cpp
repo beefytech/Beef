@@ -2613,7 +2613,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 		bfError->mIsWhileSpecializing = isWhileSpecializing;
 
 		if ((mCurMethodState != NULL) && (mCurMethodState->mDeferredCallEmitState != NULL) && (mCurMethodState->mDeferredCallEmitState->mCloseNode != NULL))
-			mCompiler->mPassInstance->MoreInfo("Error during deferred code emission", mCurMethodState->mDeferredCallEmitState->mCloseNode);
+			mCompiler->mPassInstance->MoreInfo("Error during deferred statement handling", mCurMethodState->mDeferredCallEmitState->mCloseNode);
 	}
 
 	return bfError;
@@ -12033,14 +12033,22 @@ void BfModule::CheckVariableDef(BfLocalVariable* variableDef)
 	}
 }
 
-BfScopeData* BfModule::FindScope(BfAstNode* scopeName, BfMixinState* fromMixinState)
+BfScopeData* BfModule::FindScope(BfAstNode* scopeName, BfMixinState* fromMixinState, bool allowAcrossDeferredBlock)
 {
 	bool inMixinDecl = (mCurMethodInstance != NULL) && (mCurMethodInstance->IsMixin());
 
 	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(scopeName))
 	{
 		if (tokenNode->GetToken() == BfToken_Colon)
+		{	
+			if ((!allowAcrossDeferredBlock) && (mCurMethodState->mInDeferredBlock))
+			{
+				Fail("Cannot access method scope across deferred block boundary", scopeName);
+				return NULL;
+			}
+
 			return &mCurMethodState->mHeadScope;
+		}
 		else if (tokenNode->GetToken() == BfToken_Mixin)
 		{			
 			if (fromMixinState == NULL)
@@ -12061,11 +12069,23 @@ BfScopeData* BfModule::FindScope(BfAstNode* scopeName, BfMixinState* fromMixinSt
 	{
 		auto findLabel = scopeName->ToString();
 
+		bool crossedDeferredBlock = false;
+
 		auto checkScope = mCurMethodState->mCurScope;
 		while (checkScope != NULL)
 		{
+			if (checkScope->mIsDeferredBlock)
+				crossedDeferredBlock = true;
+
 			if (checkScope->mLabel == findLabel)
+			{
+				if ((crossedDeferredBlock) && (!allowAcrossDeferredBlock))
+				{
+					Fail(StrFormat("Cannot access scope '%s' across deferred block boundary", findLabel.c_str()), scopeName);
+					return NULL;
+				}
 				return checkScope;
+			}
 			checkScope = checkScope->mPrevScope;
 		}
 
@@ -12075,20 +12095,20 @@ BfScopeData* BfModule::FindScope(BfAstNode* scopeName, BfMixinState* fromMixinSt
 
 	if (auto scopeNode = BfNodeDynCast<BfScopeNode>(scopeName))
 	{
-		return FindScope(scopeNode->mTargetNode);
+		return FindScope(scopeNode->mTargetNode, allowAcrossDeferredBlock);
 	}
 		
 	return mCurMethodState->mCurScope;
 }
 
-BfScopeData* BfModule::FindScope(BfAstNode* scopeName)
+BfScopeData* BfModule::FindScope(BfAstNode* scopeName, bool allowAcrossDeferredBlock)
 {
-	return FindScope(scopeName, mCurMethodState->mMixinState);
+	return FindScope(scopeName, mCurMethodState->mMixinState, allowAcrossDeferredBlock);
 }
 
 BfBreakData* BfModule::FindBreakData(BfAstNode* scopeName)
 {
-	auto scopeData = FindScope(scopeName);
+	auto scopeData = FindScope(scopeName, false);
 	if (scopeData == NULL)
 		return NULL;
 	int scopeDepth = scopeData->GetDepth();
@@ -12097,6 +12117,8 @@ BfBreakData* BfModule::FindBreakData(BfAstNode* scopeName)
 	auto breakData = mCurMethodState->mBreakData;
 	while ((breakData != NULL) && (scopeDepth < breakData->mScope->GetDepth()))
 	{
+		if (breakData->mScope->mIsConditional)
+			return NULL;
 		breakData = breakData->mPrevBreakData;
 	}
 	return breakData;
@@ -12169,7 +12191,7 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 			{
 				if (deferredCallEntry->mDeferredBlock != NULL)
 				{					
-					VisitChild(deferredCallEntry->mDeferredBlock);
+					VisitEmbeddedStatement(deferredCallEntry->mDeferredBlock, NULL, BfEmbeddedStatementFlags_IsDeferredBlock);
 				}
 				deferredCallEntry = deferredCallEntry->mNext;
 			}
@@ -12522,6 +12544,9 @@ void BfModule::EmitReturn(BfIRValue val)
 
 void BfModule::EmitDefaultReturn()
 {
+	if (mCurMethodState->mInDeferredBlock)
+		return;
+
 	if (mCurMethodState->mIRExitBlock)
 	{		
 		EmitDeferredScopeCalls(true, NULL, mCurMethodState->mIRExitBlock);

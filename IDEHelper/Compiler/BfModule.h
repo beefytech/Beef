@@ -107,6 +107,13 @@ enum BfProtectionCheckFlags
 	BfProtectionCheckFlag_AllowPrivate = 8,
 };
 
+enum BfEmbeddedStatementFlags
+{
+	BfEmbeddedStatementFlags_None = 0,
+	BfEmbeddedStatementFlags_IsConditional = 1,
+	BfEmbeddedStatementFlags_IsDeferredBlock = 2
+};
+
 class BfLocalVariable
 {
 public:
@@ -299,7 +306,8 @@ public:
 	bool mInnerIsConditional;
 	bool mHadOuterDynStack;
 	bool mAllowTargeting;
-	bool mHadScopeValueRetain;
+	bool mHadScopeValueRetain;	
+	bool mIsDeferredBlock;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
 	BfExprEvaluator* mExprEvaluator;
@@ -329,6 +337,7 @@ public:
 		mInnerIsConditional = false;
 		mHadOuterDynStack = false;		
 		mHadScopeValueRetain = false;
+		mIsDeferredBlock = false;
 		mAllowTargeting = true;
 		mMixinDepth = 0;
 		mScopeDepth = 0;
@@ -870,12 +879,13 @@ public:
 	BfScopeData* mCurScope;
 	BfScopeData* mTailScope; // Usually equals mCurScope
 	TempKind mTempKind; // Used for var inference, etc
+	bool mInDeferredBlock;
 	bool mHadReturn;
 	bool mHadContinue;
 	bool mMayNeedThisAccessCheck;
 	bool mLeftBlockUncond; // Definitely left block. mHadReturn also sets mLeftBlock
 	bool mLeftBlockCond; // May have left block.
-	bool mInPostReturn; // Unreachable code
+	bool mInPostReturn; // Unreachable code	
 	bool mCrossingMixin; // ie: emitting dtors in response to a return in a mixin
 	bool mNoBind;
 	bool mInConditionalBlock; // IE: RHS of ((A) && (B)), indicates an allocation in 'B' won't be dominated by a dtor, for example		
@@ -904,7 +914,7 @@ public:
 		mInHeadScope = true;
 		mBreakData = NULL;
 		mBlockNestLevel = 0;
-		mInPostReturn = false;
+		mInPostReturn = false;		
 		mCrossingMixin = false;
 		mNoBind = false;
 		mIsEmbedded = false;
@@ -913,6 +923,7 @@ public:
 		mAllowUinitReads = false;
 		mCancelledDeferredCall = false;
 		mNoObjectAccessChecks = false;
+		mInDeferredBlock = false;
 		mDeferredLocalAssignData = NULL;
 		mCurLocalVarId = 0;
 		mCurAccessId = 1;
@@ -1410,7 +1421,7 @@ public:
 	void ValueScopeEnd(BfIRValue valueScopeStart);
 
 	void AddBasicBlock(BfIRBlock bb, bool activate = true);	
-	void VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator = NULL, bool isConditional = false);
+	void VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator = NULL, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None);
 	void VisitCodeBlock(BfBlock* block);
 	void VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn = NULL, BfLabelNode* labelNode = NULL, bool closeScope = false);	
 	void DoForLess(BfForEachStatement* forEachStmt);
@@ -1594,8 +1605,8 @@ public:
 	BfLocalVariable* HandleVariableDeclaration(BfVariableDeclaration* varDecl, BfExprEvaluator* exprEvaluator = NULL);
 	BfLocalVariable* HandleVariableDeclaration(BfVariableDeclaration* varDecl, BfTypedValue val, bool updateSrcLoc = true, bool forceAddr = false);
 	void CheckVariableDef(BfLocalVariable* variableDef);		
-	BfScopeData* FindScope(BfAstNode* scopeName, BfMixinState* curMixinState);
-	BfScopeData* FindScope(BfAstNode* scopeName);
+	BfScopeData* FindScope(BfAstNode* scopeName, BfMixinState* curMixinState, bool allowAcrossDeferredBlock);
+	BfScopeData* FindScope(BfAstNode* scopeName, bool allowAcrossDeferredBlock);
 	BfBreakData* FindBreakData(BfAstNode* scopeName);
 	void EmitLifetimeEnds(BfScopeData* scopeData);
 	void ClearLifetimeEnds();

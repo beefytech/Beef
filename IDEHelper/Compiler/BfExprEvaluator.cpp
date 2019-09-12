@@ -11174,7 +11174,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 		if (auto scopeNode = BfNodeDynCast<BfScopeNode>(allocNode))
 		{
 			newToken = scopeNode->mScopeToken;
-			allocTarget.mScopeData = mModule->FindScope(scopeNode->mTargetNode);
+			allocTarget.mScopeData = mModule->FindScope(scopeNode->mTargetNode, true);
 
 			if (autoComplete != NULL)
 			{

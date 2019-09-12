@@ -661,7 +661,8 @@ void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry)
 			}						
 			AddLocalVariableDef(localVar, true);
 		}
-		VisitEmbeddedStatement(deferredCallEntry.mDeferredBlock);
+				
+		VisitEmbeddedStatement(deferredCallEntry.mDeferredBlock, NULL, BfEmbeddedStatementFlags_IsDeferredBlock);		
 		RestoreScopeState();
 		return;
 	}
@@ -2744,7 +2745,7 @@ void BfModule::AddBasicBlock(BfIRBlock bb, bool activate)
 		mBfIRBuilder->SetInsertPoint(bb);
 }
 
-void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator, bool isConditional)
+void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator, BfEmbeddedStatementFlags flags)
 {
 	auto block = BfNodeDynCast<BfBlock>(stmt);
 	BfLabelNode* labelNode = NULL;
@@ -2799,17 +2800,24 @@ void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEval
 		if (labelNode != NULL)
 			scopeData.mLabelNode = labelNode->mLabel;
 		NewScopeState(block != NULL);
-		mCurMethodState->mCurScope->mOuterIsConditional = isConditional;
+		mCurMethodState->mCurScope->mOuterIsConditional = (flags & BfEmbeddedStatementFlags_IsConditional) != 0;
+		mCurMethodState->mCurScope->mIsDeferredBlock = (flags & BfEmbeddedStatementFlags_IsDeferredBlock) != 0;
 		mCurMethodState->mCurScope->mExprEvaluator = exprEvaluator;		
-		if (block != NULL)
+		
+		//
 		{
-			if (labelNode != NULL)
-				VisitCodeBlock(block, BfIRBlock(), BfIRBlock(), BfIRBlock(), false, NULL, labelNode);
+			SetAndRestoreValue<bool> inDeferredBlock(mCurMethodState->mInDeferredBlock, mCurMethodState->mInDeferredBlock || mCurMethodState->mCurScope->mIsDeferredBlock);
+			if (block != NULL)
+			{
+				if (labelNode != NULL)
+					VisitCodeBlock(block, BfIRBlock(), BfIRBlock(), BfIRBlock(), false, NULL, labelNode);
+				else
+					VisitCodeBlock(block);
+			}
 			else
-				VisitCodeBlock(block);
+				VisitChild(stmt);
 		}
-		else
-			VisitChild(stmt);		
+
 		if ((block != NULL) && (closeBrace != NULL))
 		{
 			UpdateSrcPos(closeBrace);
@@ -2942,9 +2950,9 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 
 					String* namePtr;					
 					if (!mCurMethodState->mLocalMethodMap.TryAdd(localMethod->mMethodName, &namePtr, &localMethodPtr))					
-					{
-						BF_ASSERT(localMethod->mNextWithSameName != *localMethodPtr);						
-						localMethod->mNextWithSameName = *localMethodPtr;
+					{						
+						BF_ASSERT(localMethod != *localMethodPtr);
+						localMethod->mNextWithSameName = *localMethodPtr;						
 					}
 					*localMethodPtr = localMethod;
 				}
@@ -3334,7 +3342,7 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 			falseDeferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData);
 			SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &falseDeferredLocalAssignData);			
 			if (includeFalseStmt)
-				VisitEmbeddedStatement(ifStmt->mFalseStatement, NULL, true);			
+				VisitEmbeddedStatement(ifStmt->mFalseStatement, NULL, BfEmbeddedStatementFlags_IsConditional);
 		}
 		if ((!mCurMethodState->mLeftBlockUncond) && (!ignoredLastBlock))
 		{			
@@ -4498,6 +4506,22 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 	if (mCurMethodState->mClosureState != NULL)	
 		retType = mCurMethodState->mClosureState->mReturnType;
 
+	auto checkScope = mCurMethodState->mCurScope;
+	while (checkScope != NULL)
+	{
+		if (checkScope->mIsDeferredBlock)
+		{
+			Fail("Deferred blocks cannot contain 'return' statements", returnStmt);
+			if (returnStmt->mExpression != NULL)
+			{
+				BfExprEvaluator exprEvaluator(this);
+				CreateValueFromExpression(exprEvaluator, returnStmt->mExpression, GetPrimitiveType(BfTypeCode_Var), BfEvalExprFlags_None);
+			}
+			return;
+		}
+		checkScope = checkScope->mPrevScope;
+	}	
+
 	if (retType == NULL)
 	{
 		if (returnStmt->mExpression != NULL)
@@ -4616,7 +4640,7 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 			if (breakData->mIRBreakBlock)
 				break;
 			breakData = breakData->mPrevBreakData;
-		}
+		}		
 	}
 
 	if ((breakData == NULL) || (!breakData->mIRBreakBlock))
@@ -4629,6 +4653,22 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 			Fail("'break' not applicable in this block", breakStmt);
 		return;
 	}	
+
+	if (mCurMethodState->mInDeferredBlock)
+	{
+		auto checkScope = mCurMethodState->mCurScope;
+		while (checkScope != NULL)
+		{
+			if (checkScope == breakData->mScope)
+				break;
+			if (checkScope->mIsDeferredBlock)
+			{
+				Fail("The break target crosses a deferred block boundary", breakStmt);
+				return;
+			}
+			checkScope = checkScope->mPrevScope;
+		}
+	}
 
 	if (HasDeferredScopeCalls(breakData->mScope))
 	{		
@@ -4723,6 +4763,22 @@ void BfModule::Visit(BfContinueStatement* continueStmt)
 
 	if (breakData->mInnerValueScopeStart)
 		earliestValueScopeStart = breakData->mInnerValueScopeStart;
+
+	if (mCurMethodState->mInDeferredBlock)
+	{
+		auto checkScope = mCurMethodState->mCurScope;
+		while (checkScope != NULL)
+		{
+			if (checkScope == breakData->mScope)
+				break;
+			if (checkScope->mIsDeferredBlock)
+			{
+				Fail("The continue target crosses a deferred block boundary", continueStmt);
+				return;
+			}
+			checkScope = checkScope->mPrevScope;
+		}
+	}
 
 	if ((nextScope != NULL) && (HasDeferredScopeCalls(nextScope)))
 	{		
@@ -6021,7 +6077,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 			scope = &mCurMethodState->mHeadScope;
 	}
 	else if (deferStmt->mScopeName != NULL)
-		scope = FindScope(deferStmt->mScopeName);
+		scope = FindScope(deferStmt->mScopeName, true);
 	else
 		scope = mCurMethodState->mCurScope;
 
