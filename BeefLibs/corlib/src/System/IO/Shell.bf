@@ -72,7 +72,22 @@ namespace System.IO
 			}
 		}
 
-		public static Result<void> CreateShortcut(StringView linkPath, StringView targetPath, StringView arguments, StringView workingDirectory, StringView description)
+		public enum ShellError
+		{
+			case AccessDenied;
+			case UnknownError;
+
+			public this(Windows.COM_IUnknown.HResult result)
+			{
+				switch (result)
+				{
+				case .E_ACCESSDENIED: this = .AccessDenied;
+				default: this = .UnknownError;
+				}
+			}
+		}
+
+		public static Result<void, ShellError> CreateShortcut(StringView linkPath, StringView targetPath, StringView arguments, StringView workingDirectory, StringView description)
 		{
 			COM_IShellLink* shellLink = null;
 			COM_IPersistFile* persistFile = null;
@@ -88,7 +103,9 @@ namespace System.IO
 			mixin TryHR(Windows.COM_IUnknown.HResult result)
 			{
 				if (result != .OK)
-					return .Err;
+				{
+					return .Err(ShellError(result));
+				}
 			}
 
 			TryHR!(Windows.COM_IUnknown.CoCreateInstance(ref COM_IShellLink.sCLSID, null, .INPROC_SERVER, ref COM_IShellLink.sIID, (void**)&shellLink));

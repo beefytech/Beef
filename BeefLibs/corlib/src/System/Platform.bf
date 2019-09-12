@@ -30,7 +30,8 @@ namespace System
 			AccessError,
 			PartialData,
 			TempFileError,
-			Timeout
+			Timeout,
+			NotEmpty
 		};
 
 		public struct BfpCritSect {}
@@ -242,7 +243,8 @@ namespace System
 			ShareError				= (int)Result.ShareError,
 			AccessError				= (int)Result.AccessError,
 			PartialData				= (int)Result.PartialData,
-			InsufficientBuffer		= (int)Result.InsufficientBuffer
+			InsufficientBuffer		= (int)Result.InsufficientBuffer,
+			NotEmpty				= (int)Result.NotEmpty
 		};
 
 		[StdCall, CLink]
@@ -397,6 +399,7 @@ namespace System
 			Home,
 			System,
 			Desktop,
+			Desktop_Common,
 			AppData_Local,
 			AppData_LocalLow,
 			AppData_Roaming,
