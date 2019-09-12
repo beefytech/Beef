@@ -3,6 +3,8 @@
 
 USING_NS_BF;
 
+#pragma comment(lib, "version.lib")
+
 #pragma warning(disable:4091)
 #pragma warning(disable:4996)
 #include <imagehlp.h>
@@ -643,8 +645,16 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 				UNDNAME_NO_RETURN_UDT_MODEL | UNDNAME_NO_THROW_SIGNATURES |
 				UNDNAME_NO_SPECIAL_SYMS);
 
+			String dispName = aUDName;
+
+			if (dispName.StartsWith("_bf::"))
+			{
+				dispName.Remove(0, 5);
+				dispName.Replace("::", ".");
+			}
+
 			aDebugDump += StrFormat("%@ %@ %hs+%X\r\n",
-				sf.AddrFrame.Offset, sf.AddrPC.Offset, aUDName, symDisplacement);
+				sf.AddrFrame.Offset, sf.AddrPC.Offset, dispName.c_str(), symDisplacement);
 
 			DWORD displacement = 0;
 #ifdef BF64
@@ -683,6 +693,80 @@ static String GetSysInfo()
 	return "";
 }
 
+static String GetVersion(const StringImpl& fileName)
+{
+	String verStr = "";
+
+	bool bReturn = false;
+	DWORD dwReserved = 0;
+	DWORD dwBufferSize = GetFileVersionInfoSizeA(fileName.c_str(), &dwReserved);
+
+	struct TRANSARRAY
+	{
+		WORD wLanguageID;
+		WORD wCharacterSet;
+	};
+
+	if (dwBufferSize > 0)
+	{
+		LPVOID pBuffer = (void*)malloc(dwBufferSize);
+
+		if (pBuffer != (void*)NULL)
+		{
+			UINT        nInfoSize = 0,
+			nFixedLength = 0;
+			LPSTR       lpVersion = NULL;
+			void*       lpFixedPointer;
+			TRANSARRAY* lpTransArray;			
+
+			GetFileVersionInfoA(fileName.c_str(),
+				dwReserved,
+				dwBufferSize,
+				pBuffer);
+
+			VerQueryValueA(pBuffer,
+				"\\VarFileInfo\\Translation",
+				&lpFixedPointer,
+				&nFixedLength);
+			lpTransArray = (TRANSARRAY*)lpFixedPointer;
+
+			String langStr = StrFormat(
+				"\\StringFileInfo\\%04x%04x\\FileVersion",
+				lpTransArray[0].wLanguageID,
+				lpTransArray[0].wCharacterSet);
+			VerQueryValueA(pBuffer,
+				langStr.c_str(),
+				(void**)&lpVersion,
+				&nInfoSize);
+			if (nInfoSize != 0)
+			{
+				verStr += "File Version: ";
+				verStr += lpVersion;
+				verStr += "\r\n";
+			}
+
+			langStr = StrFormat(
+				"\\StringFileInfo\\%04x%04x\\ProductVersion",
+				lpTransArray[0].wLanguageID,
+				lpTransArray[0].wCharacterSet);
+			VerQueryValueA(pBuffer,
+				langStr.c_str(),
+				(void**)&lpVersion,
+				&nInfoSize);
+			if (nInfoSize != 0)
+			{
+				verStr += "Product Version: ";
+				verStr += lpVersion;
+				verStr += "\r\n";
+			}
+
+			free(pBuffer);
+		}
+	}
+
+	return verStr;
+}
+
 static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 {
 	if (gCrashed)
@@ -690,7 +774,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	gCrashed = true;
 
 	HMODULE hMod = GetModuleHandleA(NULL);
-	
+		
 	PIMAGE_DOS_HEADER pDosHdr = (PIMAGE_DOS_HEADER)hMod;
 	PIMAGE_NT_HEADERS pNtHdr = (PIMAGE_NT_HEADERS)((uint8*)hMod + pDosHdr->e_lfanew);
 	bool isCLI = pNtHdr->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI;
@@ -775,8 +859,9 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	aDebugDump += "Executable: ";
 	aDebugDump += path;
 	aDebugDump += "\r\n";
-
+	aDebugDump += GetVersion(path);
 	aDebugDump += "Module: " + GetFileName(aBuffer) + "\r\n";
+	
 	aDebugDump += StrFormat("Logical Address: %04X:%@\r\n", section, offset);	
 
 	aDebugDump += "\r\n";
@@ -862,7 +947,7 @@ static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 
 	if (!gCrashed)
 	{
-		CreateMiniDump(lpExceptPtr);
+		//CreateMiniDump(lpExceptPtr);
 		DoHandleDebugEvent(lpExceptPtr);
 	}
  
@@ -879,20 +964,24 @@ static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 
 void CrashCatcher::Init()
 {	
-	gPreviousFilter = SetUnhandledExceptionFilter(SEHFilter);
-
-	//__try
-	//{
-	//	// all of code normally inside of main or WinMain here...
-	//	int a = 123;
-	//	int b = 0;
-	//	a /= b;
-	//}
-	//__except (SEHFilter(GetExceptionInformation()))
-	//{
-	//	
-	//}
+	gPreviousFilter = SetUnhandledExceptionFilter(SEHFilter);	
 }
+
+void CrashCatcher::Test()
+{
+	__try
+	{
+		// all of code normally inside of main or WinMain here...
+		int a = 123;
+		int b = 0;
+		a /= b;
+	}
+	__except (SEHFilter(GetExceptionInformation()))
+	{
+		
+	}
+}
+
 
 void CrashCatcher::AddCrashInfoFunc(CrashInfoFunc crashInfoFunc)
 {

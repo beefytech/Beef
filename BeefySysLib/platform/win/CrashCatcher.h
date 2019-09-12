@@ -15,6 +15,7 @@ public:
 	void AddCrashInfoFunc(CrashInfoFunc crashInfoFunc);
 	void AddInfo(const StringImpl& str);
 
+	void Test();
 	void Crash(const StringImpl& str);	
 	void SetCrashReportKind(BfpCrashReportKind crashReportKind);
 };
