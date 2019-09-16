@@ -160,10 +160,10 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_0\llvm\include;..\extern\llvm_win64_8_0_0\include;..\extern\llvm-project_8_0_0\llvm\lib\Target;..\extern\llvm_win64_8_0_0\lib\Target\X86;..\extern\llvm-project_8_0_0\llvm\tools\clang\include;..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_1\llvm\include;..\extern\llvm_win64_8_0_1\include;..\extern\llvm-project_8_0_1\llvm\lib\Target;..\extern\llvm_win64_8_0_1\lib\Target\X86;..\extern\llvm-project_8_0_1\llvm\tools\clang\include;..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\include</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <AdditionalOptions>-D_SCL_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
@@ -171,8 +171,8 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
-      <AdditionalDependencies>rpcrt4.lib;vcruntimed.lib;ucrtd.lib;cabinet.lib;winmm.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;LLVMVectorize.lib;LLVMipo.lib;LLVMInstrumentation.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoPDB.lib;LLVMDebugInfoCodeView.lib;LLVMGlobalISel.lib;LLVMBinaryFormat.lib;LLVMLTO.lib;LLVMPasses.lib;LLVMLinker.lib;LLVMIRReader.lib;LLVMDemangle.lib;LLVMAggressiveInstCombine.lib;libcurl_a.lib;wininet.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\extern\llvm_win64_8_0_0\Debug\lib; ..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\lib;..\extern\curl\deps\lib;..\extern\jemalloc_win\x64\debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>rpcrt4.lib;cabinet.lib;winmm.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;LLVMVectorize.lib;LLVMipo.lib;LLVMInstrumentation.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoPDB.lib;LLVMDebugInfoCodeView.lib;LLVMGlobalISel.lib;LLVMBinaryFormat.lib;LLVMLTO.lib;LLVMPasses.lib;LLVMLinker.lib;LLVMIRReader.lib;LLVMDemangle.lib;LLVMAggressiveInstCombine.lib;libcurl_a.lib;wininet.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\extern\llvm_win64_8_0_1\Debug\lib; ..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\lib;..\extern\curl\deps\lib;..\extern\jemalloc_win\x64\debug</AdditionalLibraryDirectories>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
       <IgnoreSpecificDefaultLibraries>MSVCRT</IgnoreSpecificDefaultLibraries>
@@ -219,8 +219,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_0\llvm\include;..\extern\llvm_win64_8_0_0\include;..\extern\llvm-project_8_0_0\llvm\lib\Target;..\extern\llvm_win64_8_0_0\lib\Target\X86;..\extern\llvm-project_8_0_0\llvm\tools\clang\include;..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\include</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_1\llvm\include;..\extern\llvm_win64_8_0_1\include;..\extern\llvm-project_8_0_1\llvm\lib\Target;..\extern\llvm_win64_8_0_1\lib\Target\X86;..\extern\llvm-project_8_0_1\llvm\tools\clang\include;..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
@@ -229,7 +229,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
-      <AdditionalLibraryDirectories>..\extern\llvm_win64_8_0_0\Release\lib; ..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\lib;..\extern\curl\deps\lib;..\extern\jemalloc_win\x64\release</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\extern\llvm_win64_8_0_1\Release\lib; ..\extern\curl\builds\libcurl-vc15-x64-release-static-zlib-static-ipv6-sspi-winssl\lib;..\extern\curl\deps\lib;..\extern\jemalloc_win\x64\release</AdditionalLibraryDirectories>
       <AdditionalDependencies>cabinet.lib;winmm.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;LLVMX86Disassembler.lib;LLVMMCDisassembler.lib;LLVMSupport.lib;LLVMX86Info.lib;LLVMX86Utils.lib;LLVMX86AsmPrinter.lib;LLVMX86Desc.lib;%(AdditionalDependencies);LLVMMC.lib;LLVMObject.lib;LLVMCore.lib;LLVMBitReader.lib;LLVMAsmParser.lib;LLVMMCParser.lib;LLVMCodeGen.lib;LLVMTarget.lib;LLVMX86CodeGen.lib;LLVMScalarOpts.lib;LLVMInstCombine.lib;LLVMSelectionDAG.lib;LLVMProfileData.lib;LLVMTransformUtils.lib;LLVMAnalysis.lib;LLVMX86AsmParser.lib;LLVMAsmPrinter.lib;LLVMBitWriter.lib;LLVMVectorize.lib;LLVMipo.lib;LLVMInstrumentation.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoPDB.lib;LLVMDebugInfoCodeView.lib;LLVMGlobalISel.lib;LLVMBinaryFormat.lib;LLVMLTO.lib;LLVMPasses.lib;LLVMLinker.lib;LLVMIRReader.lib;LLVMDemangle.lib;LLVMAggressiveInstCombine.lib;libcurl_a.lib;wininet.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <FullProgramDatabaseFile>true</FullProgramDatabaseFile>

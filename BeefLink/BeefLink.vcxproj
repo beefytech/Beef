@@ -110,6 +110,8 @@
       <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_paty/sparsehash;../BeefySysLib/third_party;..\extern\llvm\include;..\extern\llvm_win64\include;..\extern\llvm\lib\Target;..\extern\llvm_win64\lib\Target\X86;..\extern\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,6 +147,8 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <AdditionalIncludeDirectories>../;../BeefySysLib;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm\include;..\extern\llvm_win64\include;..\extern\llvm\lib\Target;..\extern\llvm_win64\lib\Target\X86;..\extern\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

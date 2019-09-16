@@ -545,7 +545,6 @@
     <ClCompile Include="util\ChunkedDataBuffer.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
-    <ClCompile Include="util\WorkThread.cpp" />
     <ClCompile Include="CachedDataStream.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -678,7 +677,6 @@
     <ClCompile Include="util\MappedFile.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
-    <ClCompile Include="HeadlessApp.cpp" />
     <ClCompile Include="platform\win\CrashCatcher.cpp">
       <Filter>src\platform\win</Filter>
     </ClCompile>
@@ -696,6 +694,12 @@
     </ClCompile>
     <ClCompile Include="BFSound.cpp">
       <Filter>src\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="util\WorkThread.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="HeadlessApp.cpp">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

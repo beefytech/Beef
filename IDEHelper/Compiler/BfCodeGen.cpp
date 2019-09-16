@@ -44,7 +44,7 @@
 //#define DBG_FORCE_SYNCHRONIZED
 
 // This is used for the Release DLL thunk and the build.dat file
-#define BF_CODEGEN_VERSION 12
+#define BF_CODEGEN_VERSION 13
 
 #undef DEBUG
 
