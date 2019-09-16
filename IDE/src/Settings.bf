@@ -631,6 +631,8 @@ namespace IDE
 			}
 		}
 
+		public bool mLoadedSettings;
+
 		public CompilerSettings mCompilerSettings = new .() ~ delete _;
 		public EditorSettings mEditorSettings = new .() ~ delete _;
 		public VSSettings mVSSettings = new .() ~ delete _;
@@ -712,6 +714,7 @@ namespace IDE
 			if (sd.Load(path) case .Err)
 				return;
 
+			mLoadedSettings = true;
 			using (sd.Open("Editor"))
 				mEditorSettings.Deserialize(sd);
 			using (sd.Open("Keys"))
@@ -750,7 +753,7 @@ namespace IDE
 
 		public void Apply()
 		{
-			gApp.mSettings.mEditorSettings.mUIScale = Math.Clamp(gApp.mSettings.mEditorSettings.mUIScale, 25, 400);
+			gApp.mSettings.mEditorSettings.mUIScale = Math.Clamp(gApp.mSettings.mEditorSettings.mUIScale, 50, 400);
 			gApp.mSettings.mEditorSettings.mFontSize = Math.Clamp(gApp.mSettings.mEditorSettings.mFontSize, 6.0f, 72.0f);
 
 			Font.ClearFontNameCache();

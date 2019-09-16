@@ -224,6 +224,9 @@ namespace Beefy
         [StdCall, CLink]
         static extern void* BFWindow_DeleteMenuItem(void* window, void* item);
 
+		[StdCall, CLink]
+		static extern int BFWindow_GetDPI(void* window);
+
         public static BFWindow GetBFWindow(void* window)
         {
             return sWindowDictionary[(int)window];
@@ -555,6 +558,11 @@ namespace Beefy
 			//TODO: REMOVE
             //Debug.WriteLine("LostFocus {0}", mTitle);
         }
+
+		public virtual int GetDPI()
+		{
+			return BFWindow_GetDPI(mNativeWindow);
+		}
         
         public virtual void KeyChar(char32 theChar)
         {

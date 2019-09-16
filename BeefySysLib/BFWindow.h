@@ -124,9 +124,10 @@ public:
 	virtual void			SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible) = 0;
 	virtual void			SetForeground() = 0;	
 	virtual void			SetNonExclusiveMouseCapture() { mNonExclusiveMouseCapture = true; }
-	virtual void			CaptureMouse() {}
+	virtual void			CaptureMouse() {}	
 	virtual bool			IsMouseCaptured() { return false; }
 	virtual void			LostFocus(BFWindow* newFocus) = 0;	
+	virtual int				GetDPI() { return 0; }
 
 	virtual BFMenu*			AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) = 0;
 	virtual void			ModifyMenuItem(BFMenu* item, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) = 0;

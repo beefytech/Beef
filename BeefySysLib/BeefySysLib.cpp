@@ -381,6 +381,11 @@ BF_EXPORT void BF_CALLTYPE BFWindow_Close(BFWindow* window, int force)
 		window->TryClose();
 }
 
+BF_EXPORT int BF_CALLTYPE BFWindow_GetDPI(BFWindow* window)
+{
+	return window->GetDPI();
+}
+
 ///
 
 BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int height, int destAlpha)

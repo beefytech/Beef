@@ -121,6 +121,7 @@ namespace IDE
 		public String mDbgCompileDir ~ delete _;
 		public String mDbgVersionedCompileDir ~ delete _;
 		public DateTime mDbgHighestTime;
+		public bool mIsFirstRun;
 
 		//public ToolboxPanel mToolboxPanel;
 		public Monitor mMonitor = new Monitor() ~ delete _;
@@ -9596,6 +9597,7 @@ namespace IDE
 				// User setting can affect automated testing, so use default settings
 				mSettings.Load();
 				mSettings.Apply();
+				mIsFirstRun = !mSettings.mLoadedSettings;
 			}
 
             DarkTheme aTheme = new DarkTheme();
@@ -9677,10 +9679,28 @@ namespace IDE
 				LoadWorkspace(mVerb);
 			}
 
-            if ((mRunningTestScript) || (!LoadWorkspaceUserData()))
+			bool loadedWorkspaceUserData = false;
+
+            if ((!mRunningTestScript) && (LoadWorkspaceUserData()))
+			{
+				loadedWorkspaceUserData = true;
+			}
+			else
+			{
                 CreateDefaultLayout();
+			}
 
             WorkspaceLoaded();
+
+			if ((mIsFirstRun) && (!loadedWorkspaceUserData))
+			{
+				GetWorkspaceRect(var workX, var workY, var workWidth, var workHeight);
+
+				int32 height = (int32)(workHeight * 0.85f);
+				int32 width = Math.Min(4 * height / 3, (int32)(workWidth * 0.85f));
+
+				mRequestedWindowRect = .(workX + (workWidth - width)/2, workY + (workHeight - height)/2, width, height);
+			}
 
 			//
 			{
@@ -9694,6 +9714,17 @@ namespace IDE
 	                (int32)mRequestedWindowRect.mY, (int32)mRequestedWindowRect.mWidth, (int32)mRequestedWindowRect.mHeight,
 	                flags, mMainFrame);
 			}
+
+			if (mIsFirstRun)
+			{
+				// If this is our first time running, set up a scale based on DPI
+				int dpi = mMainWindow.GetDPI();
+				if (dpi >= 120)
+				{
+					mSettings.mEditorSettings.mUIScale = 100 * Math.Min(dpi / 96.0f, 4.0f);
+				}	
+			}
+
 			UpdateTitle();
             mMainWindow.SetMinimumSize(GS!(480), GS!(360));
             mMainWindow.mIsMainWindow = true;

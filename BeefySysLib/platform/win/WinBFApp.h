@@ -75,6 +75,7 @@ public:
 	virtual void			SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible) override;
 	virtual void			CaptureMouse() override;
 	virtual bool			IsMouseCaptured() override;
+	virtual int				GetDPI() { return ::GetDpiForWindow(mHWnd); }
 
 	virtual BFMenu*			AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) override;
 	virtual void			ModifyMenuItem(BFMenu* item, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) override;
