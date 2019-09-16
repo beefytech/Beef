@@ -358,55 +358,58 @@ namespace IDE.ui
 			else
 				mStatusBoxUpdateCnt = -1;
 
-            g.DrawString(StackStringFormat!("FPS: {0}", gApp.mLastFPS), GS!(4), 0);
+			if (gApp.mSettings.mEnableDevMode)
+			{
+	            g.DrawString(StackStringFormat!("FPS: {0}", gApp.mLastFPS), GS!(4), 0);
 
-            String resolveStr = scope String();
-			let bfResolveCompiler = gApp.mBfResolveCompiler;
-            if ((bfResolveCompiler != null) && (gApp.mBfResolveCompiler.mThreadWorker.mThreadRunning))
-			{
-                resolveStr.Append("B");
-			}
-			if ((bfResolveCompiler != null) && (gApp.mBfResolveCompiler.mThreadWorkerHi.mThreadRunning))
-			{
-			    resolveStr.Append("H");
-			}
+	            String resolveStr = scope String();
+				let bfResolveCompiler = gApp.mBfResolveCompiler;
+	            if ((bfResolveCompiler != null) && (gApp.mBfResolveCompiler.mThreadWorker.mThreadRunning))
+				{
+	                resolveStr.Append("B");
+				}
+				if ((bfResolveCompiler != null) && (gApp.mBfResolveCompiler.mThreadWorkerHi.mThreadRunning))
+				{
+				    resolveStr.Append("H");
+				}
 #if IDE_C_SUPPORT
-            if (gApp.mResolveClang.IsPerformingBackgroundOperation())
-            {
-                if (resolveStr.Length > 0)
-                    resolveStr.Append(" & ");
-                resolveStr.Append("Clang");
-            }
-            if (gApp.mDepClang.IsPerformingBackgroundOperation())
-            {
-                if (resolveStr.Length > 0)
-                    resolveStr.Append(" ");
-                resolveStr.Append("ClangB");
-            }
+	            if (gApp.mResolveClang.IsPerformingBackgroundOperation())
+	            {
+	                if (resolveStr.Length > 0)
+	                    resolveStr.Append(" & ");
+	                resolveStr.Append("Clang");
+	            }
+	            if (gApp.mDepClang.IsPerformingBackgroundOperation())
+	            {
+	                if (resolveStr.Length > 0)
+	                    resolveStr.Append(" ");
+	                resolveStr.Append("ClangB");
+	            }
 #endif
 
-            /*if (BfPassInstance.sPassInstances.Count > 0)
-            {
-                //resolveStr += String.Format(" PassInstances: {0}", BfPassInstance.sPassInstances.Count);
-
-                resolveStr += "ResolvePasses: {";
-
-                //foreach (var passInstance in BfPassInstance.sPassInstances)
-                for (int passIdx = 0; passIdx < BfPassInstance.sPassInstances.Count; passIdx++)
-                {
-                    var passInstance = BfPassInstance.sPassInstances[passIdx];
-                    if (passIdx > 0)
-                        resolveStr += ", ";
-                    if (passInstance.mDbgStr != null)
-                        resolveStr += passInstance.mDbgStr;
-                    resolveStr += String.Format(" #{0}", passInstance.mId);                        
-                }
-
-                resolveStr += "}";
-            }*/
-
-            if (resolveStr.Length != 0)
-                g.DrawString(resolveStr, GS!(100), 0);
+	            /*if (BfPassInstance.sPassInstances.Count > 0)
+	            {
+	                //resolveStr += String.Format(" PassInstances: {0}", BfPassInstance.sPassInstances.Count);
+	
+	                resolveStr += "ResolvePasses: {";
+	
+	                //foreach (var passInstance in BfPassInstance.sPassInstances)
+	                for (int passIdx = 0; passIdx < BfPassInstance.sPassInstances.Count; passIdx++)
+	                {
+	                    var passInstance = BfPassInstance.sPassInstances[passIdx];
+	                    if (passIdx > 0)
+	                        resolveStr += ", ";
+	                    if (passInstance.mDbgStr != null)
+	                        resolveStr += passInstance.mDbgStr;
+	                    resolveStr += String.Format(" #{0}", passInstance.mId);                        
+	                }
+	
+	                resolveStr += "}";
+	            }*/
+	
+	            if (resolveStr.Length != 0)
+	                g.DrawString(resolveStr, GS!(100), 0);
+			}
         }
     }
 }
