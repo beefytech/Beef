@@ -750,8 +750,7 @@ bool BpManager::Connect()
 		if (mShutdownEvent.WaitFor(0))
 		{
 			// We are shutting down - have we waited enough?
-			//int minWaitMS = isLocalhost ? 50 : 20*1000;
-			int minWaitMS = 20 * 1000;
+			int minWaitMS = isLocalhost ? 50 : 20*1000;			
 			if (totalWaitedMS >= minWaitMS)
 				return false;
 		}
