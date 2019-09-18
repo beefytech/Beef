@@ -163,7 +163,7 @@ namespace System.IO
 			searchStr.Append(dirPath);
 			searchStr.Append("/");
 			searchStr.Append(wildcard);
-			return Enumerate(searchStr, .Directories);
+			return Enumerate(searchStr, .Files);
 		}
 	}
 
