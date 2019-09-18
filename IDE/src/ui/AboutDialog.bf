@@ -12,6 +12,7 @@ namespace IDE.ui
 
 		Font mBigFont ~ delete _;
 		Font mMedFont ~ delete _;
+		Font mSmFont ~ delete _;
 		Image mImage ~ delete _;
 		uint32[256] mPalette;
 		uint8[cHeight][cWidth] mFire;
@@ -31,10 +32,14 @@ namespace IDE.ui
 			Title = "About Beef IDE";
 
 			mBigFont = new Font();
-			mBigFont.Load("Segoe UI", GS!(80.0f)); //8.8
+			mBigFont.Load("Segoe UI", GS!(80.0f));
 
 			mMedFont = new Font();
-			mMedFont.Load("Segoe UI", GS!(30.0f)); //8.8
+			mMedFont.Load("Segoe UI", GS!(30.0f));
+
+			mSmFont = new Font();
+			mSmFont.Load("Segoe UI", GS!(20.0f));
+
 			mImage = Image.CreateDynamic((.)cWidth, (.)cHeight);
 
 			for (int x < cWidth)
@@ -140,12 +145,19 @@ namespace IDE.ui
 			float angMed = Math.Min(mUpdateCnt * 0.0055f, Math.PI_f / 2);
 			float alpha = Math.Clamp(mUpdateCnt * 0.007f - 1.3f, 0, 1.0f);
 
-			g.SetFont(mMedFont);
 			using (g.PushColor(Color.Get(alpha)))
 			{
 				using (g.PushTranslate(0, (1.0f - Math.Sin(angMed))*GS!(200)))
 				{
-					g.DrawString("Copyright 2019 BeefyTech", 0, GS!(120), .Centered, mWidth);
+					g.SetFont(mMedFont);
+					g.DrawString("Copyright 2019 BeefyTech LLC", 0, GS!(120), .Centered, mWidth);
+				}
+
+				using (g.PushTranslate(0, (1.0f - Math.Sin(angMed))*GS!(300)))
+				{
+					g.SetFont(mSmFont);
+					g.DrawString(scope String()..AppendF("Version {}", gApp.mVersionInfo.FileVersion), 0, GS!(170), .Centered, mWidth);
+					g.DrawString(scope String()..AppendF("Build {}", gApp.mVersionInfo.ProductVersion), 0, GS!(200), .Centered, mWidth);
 				}
 			}
 

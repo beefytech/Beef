@@ -981,6 +981,31 @@ namespace System
 		public const int32 SMTO_BLOCK = 0x0001;
 		public const int32 SMTO_ABORTIFHUNG = 0x0002;
 
+		public const int32 VS_FF_DEBUG             = 0x00000001;
+		public const int32 VS_FF_PRERELEASE        = 0x00000002;
+		public const int32 VS_FF_PATCHED           = 0x00000004;
+		public const int32 VS_FF_PRIVATEBUILD      = 0x00000008;
+		public const int32 VS_FF_INFOINFERRED      = 0x00000010;
+		public const int32 VS_FF_SPECIALBUILD 		= 0x00000020L;
+
+		[CRepr]
+		public struct VS_FIXEDFILEINFO
+		{
+		    public uint32   dwSignature;            /* e.g. 0xfeef04bd */
+		    public uint32   dwStrucVersion;         /* e.g. 0x00000042 = "0.42" */
+		    public uint32   dwFileVersionMS;        /* e.g. 0x00030075 = "3.75" */
+		    public uint32   dwFileVersionLS;        /* e.g. 0x00000031 = "0.31" */
+		    public uint32   dwProductVersionMS;     /* e.g. 0x00030010 = "3.10" */
+		    public uint32   dwProductVersionLS;     /* e.g. 0x00000031 = "0.31" */
+		    public uint32   dwFileFlagsMask;        /* = 0x3F for version "0.42" */
+		    public uint32   dwFileFlags;            /* e.g. VFF_DEBUG | VFF_PRERELEASE */
+		    public uint32   dwFileOS;               /* e.g. VOS_DOS_WINDOWS16 */
+		    public uint32   dwFileType;             /* e.g. VFT_DRIVER */
+		    public uint32   dwFileSubtype;          /* e.g. VFT2_DRV_KEYBOARD */
+		    public uint32   dwFileDateMS;           /* e.g. 0 */
+		    public uint32   dwFileDateLS;           /* e.g. 0 */
+		}
+
 		enum SECURITY_INFORMATION : int32
 		{
 			DACL_SECURITY_INFORMATION = 4
@@ -1074,6 +1099,18 @@ namespace System
 		    uint32        grfInheritance;
 		    TRUSTEE_W    Trustee;
 		}
+
+		[Import("version.lib"), CLink, StdCall]
+		public static extern IntBool GetFileVersionInfoW(char16* lptstrFilename, uint32 dwHandle, uint32 dwLen, void* lpData);
+
+		[Import("version.lib"), CLink, StdCall]
+		public static extern uint32 GetFileVersionInfoSizeW(char16* lptstrFilename, out uint32 lpdwHandle);
+
+		[Import("version.lib"), CLink, StdCall]
+		public static extern IntBool VerQueryValueW(void* pBlock, char16* lpSubBlock, ref void* lplpBuffer, out int32 puLen);
+
+		[Import("version.lib"), CLink, StdCall]
+		public static extern uint32 VerLanguageNameW(uint32  wLang, char16* szLang, uint32 cchLang);
 
 		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern uint32 GetNamedSecurityInfoW(
