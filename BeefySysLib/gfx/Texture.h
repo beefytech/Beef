@@ -22,6 +22,7 @@ public:
 
 	virtual void			Blt(ImageData* imageData, int x, int y) { };
 	virtual void			SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits) {}
+	virtual void			GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits) {}
 };
 
 class TextureSegment

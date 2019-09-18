@@ -422,6 +422,11 @@ BF_EXPORT void BF_CALLTYPE Gfx_Texture_SetBits(TextureSegment* textureSegment, i
 	textureSegment->mTexture->SetBits(destX, destY, destWidth, destHeight, srcPitch, bits);
 }
 
+BF_EXPORT void BF_CALLTYPE Gfx_Texture_GetBits(TextureSegment* textureSegment, int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
+{
+	textureSegment->mTexture->GetBits(srcX, srcY, srcWidth, srcHeight, destPitch, bits);
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_Delete(TextureSegment* textureSegment)
 {
 	textureSegment->mTexture->Release();

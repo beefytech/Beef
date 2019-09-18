@@ -215,9 +215,9 @@ namespace IDE.ui
             if (atError)
                 bkgColor = 0xFF800000;
             if (gApp.IsCompiling)
-                bkgColor = 0xFF303060;
+                bkgColor = 0xFF35306A;
             else if (gApp.mDebugger.mIsRunning)
-                bkgColor = 0xFFCA5100;
+                bkgColor = 0xFFB65D08;
 			else if (gApp.AreTestsRunning())
 				bkgColor = 0xFF562143;
 

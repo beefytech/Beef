@@ -216,6 +216,48 @@ void DXTexture::SetBits(int destX, int destY, int destWidth, int destHeight, int
 	mRenderDevice->mD3DDeviceContext->UpdateSubresource(mD3DTexture, 0, &box, bits, srcPitch * sizeof(uint32), 0);
 }
 
+void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
+{	
+	D3D11_TEXTURE2D_DESC texDesc;
+	texDesc.ArraySize = 1;
+	texDesc.BindFlags = 0;
+	texDesc.CPUAccessFlags = 0;
+	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	texDesc.Width = srcWidth;
+	texDesc.Height = srcHeight;
+	texDesc.MipLevels = 1;
+	texDesc.MiscFlags = 0;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.SampleDesc.Quality = 0;
+	texDesc.Usage = D3D11_USAGE_STAGING;
+	texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+	D3D11_BOX srcBox = { 0 };
+	srcBox.left = srcX;
+	srcBox.top = srcY;
+	srcBox.right = srcX + srcWidth;
+	srcBox.bottom = srcY + srcHeight;
+	srcBox.back = 1;
+
+	ID3D11Texture2D *texture;
+	DXCHECK(mRenderDevice->mD3DDevice->CreateTexture2D(&texDesc, 0, &texture));
+	mRenderDevice->mD3DDeviceContext->CopySubresourceRegion(texture, 0, 0, 0, 0, mD3DTexture, 0, &srcBox);
+
+	D3D11_MAPPED_SUBRESOURCE mapTex;	
+	DXCHECK(mRenderDevice->mD3DDeviceContext->Map(texture, 0, D3D11_MAP_READ, NULL, &mapTex));
+	
+	uint8* srcPtr = (uint8*) mapTex.pData;
+	uint8* destPtr = (uint8*) bits;
+	for (int y = 0; y < srcHeight; y++)
+	{
+		memcpy(destPtr, srcPtr, srcWidth*sizeof(uint32));
+		srcPtr += mapTex.RowPitch;
+		destPtr += destPitch * 4;
+	}
+	mRenderDevice->mD3DDeviceContext->Unmap(texture, 0);
+	texture->Release();
+}
+
 ///
 
 static int GetPowerOfTwo(int input)

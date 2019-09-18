@@ -146,7 +146,8 @@ enum CullMode : int8
 enum TextureFlag : int8
 {
 	TextureFlag_Additive = 1,
-	TextureFlag_NoPremult = 2
+	TextureFlag_NoPremult = 2,
+	TextureFlag_AllowRead = 4,
 };
 
 struct VertexDefData

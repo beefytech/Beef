@@ -12,7 +12,15 @@ namespace Beefy.gfx
 {
 #if !STUDIO_CLIENT
     public class Image : IDrawable
-    {        
+    {
+		enum LoadFlags
+		{
+			None = 0,
+			Additive = 1,
+			NoPremult = 2,
+			AllowRead = 4
+		}
+
         public Image mSrcTexture;
         public int32 mSrcX;
         public int32 mSrcY;
@@ -29,7 +37,7 @@ namespace Beefy.gfx
         public static extern void Gfx_DrawTextureSegment(void* textureSegment, float a, float b, float c, float d, float tx, float ty, float z, uint32 color, int32 pixelSnapping);
 
 		[StdCall, CLink]
-		static extern void* Gfx_LoadTexture(char8* fileName, int32 additive);
+		static extern void* Gfx_LoadTexture(char8* fileName, int32 flags);
 
         [StdCall, CLink]
         static extern void* Gfx_CreateDynTexture(int32 width, int32 height);
@@ -48,6 +56,9 @@ namespace Beefy.gfx
 
 		[StdCall, CLink]
 		static extern void Gfx_Texture_SetBits(void* textureSegment, int32 destX, int32 destY, int32 destWidth, int32 destHeight, int32 srcPitch, uint32* bits);
+
+		[StdCall, CLink]
+		static extern void Gfx_Texture_GetBits(void* textureSegment, int32 srcX, int32 srcY, int32 srcWidth, int32 srcHeight, int32 destPitch, uint32* bits);
 
         [StdCall, CLink]
         static extern void Gfx_Texture_Delete(void* textureSegment);
@@ -82,11 +93,11 @@ namespace Beefy.gfx
             return CreateFromNativeTextureSegment(aNativeTextureSegment);
         }
 
-        public static Image LoadFromFile(String fileName, bool additive = false)
+        public static Image LoadFromFile(String fileName, LoadFlags flags = .None)
         {
 			scope AutoBeefPerf("Image.LoadFromFile");
 
-            void* aNativeTextureSegment = Gfx_LoadTexture(fileName, additive ? 1 : 0);
+            void* aNativeTextureSegment = Gfx_LoadTexture(fileName, (int32)flags);
             if (aNativeTextureSegment == null)
                 return null;
 
@@ -173,6 +184,11 @@ namespace Beefy.gfx
 		public void SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits)
 		{
 			Gfx_Texture_SetBits(mNativeTextureSegment, (.)destX, (.)destY, (.)destWidth, (.)destHeight, (.)srcPitch, bits);
+		}
+
+		public void GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
+		{
+			Gfx_Texture_GetBits(mNativeTextureSegment, (.)srcX, (.)srcY, (.)srcWidth, (.)srcHeight, (.)destPitch, bits);
 		}
 
         public void CreateImageCels(Image[,] celImages)
