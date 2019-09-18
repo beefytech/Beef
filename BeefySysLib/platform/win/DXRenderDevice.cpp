@@ -31,8 +31,13 @@ USING_NS_BF;
 
 ///
 
+static void GfxFailed(HRESULT result)
+{
+	BF_FATAL(StrFormat("DirectX call failed with result %d", result).c_str());
+}
+
 #define DXFAILED(check) ((hr = (check)) != 0)
-#define DXCHECK(check) if ((check) != 0) BF_FATAL("DX call failed")
+#define DXCHECK(check) if ((check) != 0) GfxFailed(check)
 
 DXShaderParam::DXShaderParam()
 {
@@ -1230,10 +1235,10 @@ bool DXRenderDevice::Init(BFApp* app)
 
 	WinBFApp* winApp = (WinBFApp*) app;
 	
-	D3D_FEATURE_LEVEL d3dFeatureLevel;
+	//D3D_FEATURE_LEVEL d3dFeatureLevel;
 	int flags = 0;	
 	//flags = D3D11_CREATE_DEVICE_DEBUG;
-	DXCHECK(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, NULL, 0, D3D11_SDK_VERSION, &mD3DDevice, &d3dFeatureLevel, &mD3DDeviceContext));
+	DXCHECK(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, NULL, 0, D3D11_SDK_VERSION, &mD3DDevice, NULL, &mD3DDeviceContext));
 	
 	IDXGIDevice* pDXGIDevice = NULL;
 	DXCHECK(mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&pDXGIDevice)));
