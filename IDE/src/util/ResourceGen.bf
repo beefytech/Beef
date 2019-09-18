@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Text;
+using System.Diagnostics;
 namespace IDE.util
 {
 	class ResourceGen
@@ -77,7 +78,6 @@ namespace IDE.util
 			}
 
 			let iconDir = Try!(stream.Read<IconDir>());
-
 			if ((iconDir.mReserved != 0) || (iconDir.mType != 1) || (iconDir.mCount > 0x100))
 			{
 				gApp.OutputErrorLine("Invalid file format: {0}", iconFile);
@@ -96,6 +96,12 @@ namespace IDE.util
 				let iconEntry = ref entries[idx];
 
 				Try!(stream.Seek(iconEntry.mImageOffset));
+
+				if (iconEntry.mBytesInRes > 1024*1024)
+				{
+					gApp.OutputErrorLine("Invalid icon entry in: {0}", iconFile);
+					return .Err;
+				}
 
 				uint8* data = new:ScopedAlloc! uint8[iconEntry.mBytesInRes]*;
 

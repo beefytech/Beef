@@ -93,8 +93,9 @@ namespace IDE.ui
 
         void ResizeComponents()
         {
-            mConfigComboBox.Resize(mWidth - GS!(440), 0, GS!(120), mHeight + 2);
-            mPlatformComboBox.Resize(mWidth - GS!(440 + 120), 0, GS!(120), mHeight + 2);
+			int btnLeft = gApp.mSettings.mEnableDevMode ? GS!(380) : GS!(300);
+            mConfigComboBox.Resize(mWidth - btnLeft, 0, GS!(120), mHeight + 2);
+            mPlatformComboBox.Resize(mWidth - btnLeft - GS!(120), 0, GS!(120), mHeight + 2);
 
 			if (mCancelSymSrvButton != null)
 				mCancelSymSrvButton.Resize(GS!(546), 0, GS!(20), GS!(20));
@@ -239,20 +240,22 @@ namespace IDE.ui
                 int32 column;
                 sourceViewPanel.GetCursorPosition(out line, out column);
 
-				/*if (true)
+				/*var ewc = sourceViewPanel.mEditWidget.Content;
+				int cursorPos = ewc.CursorTextPos;
+				if (cursorPos < ewc.mData.mTextLength)
 				{
-					var ewc = sourceViewPanel.mEditWidget.Content;
-					int cursorPos = ewc.CursorTextPos;
-					if (cursorPos < ewc.mData.mTextLength)
-					{
-						ewc.mData.mTextIdData.Prepare();
-						g.DrawString(StackStringFormat!("Id {0}", ewc.mData.mTextIdData.GetIdAtIndex(cursorPos)), mWidth - GS!(320), 0);
-					}
+					ewc.mData.mTextIdData.Prepare();
+					g.DrawString(StackStringFormat!("Id {0}", ewc.mData.mTextIdData.GetIdAtIndex(cursorPos)), mWidth - GS!(310), 0);
 				}*/
 
-				g.DrawString(StackStringFormat!("Idx {0}", sourceViewPanel.mEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
-                g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(160), 0);
-                g.DrawString(StackStringFormat!("Col {0}", column + 1), mWidth - GS!(80), 0);
+
+				/*line = 8'888'888;
+				column = 8'888'888;*/
+
+				if (gApp.mSettings.mEnableDevMode)
+					g.DrawString(StackStringFormat!("Idx {0}", sourceViewPanel.mEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
+                g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(150), 0);
+                g.DrawString(StackStringFormat!("Col {0}", column + 1), mWidth - GS!(78), 0);
             }
 
             using (g.PushColor(0xFF101010))

@@ -1694,6 +1694,22 @@ namespace IDE.ui
 				return null;
 			}
 
+			if (!gApp.mWorkspace.IsInitialized)
+			{
+				String projPath = scope .();
+				Path.GetDirectoryPath(filePath, projPath);
+				projPath.Concat(Path.DirectorySeparatorChar, "BeefSpace.toml");
+				gApp.OpenWorkspace(projPath);
+
+				for (let project in gApp.mWorkspace.mProjects)
+				{
+					if (Path.Equals(project.mProjectPath, filePath))
+						return project;
+				}
+
+				return null;
+			}
+
 			bool failed = false;                    
 			String projName = scope String();
 			Path.GetFileNameWithoutExtension(filePath, projName);
@@ -1729,8 +1745,15 @@ namespace IDE.ui
             fileDialog.Title = "Import Project";
             fileDialog.Multiselect = false;
 
-			var initialDir = scope String(IDEApp.sApp.mWorkspace.mDir);
-			//initialDir.Replace('/', '\\');
+			var initialDir = scope String();
+			if (gApp.mWorkspace.mDir != null)
+				initialDir.Append(gApp.mWorkspace.mDir);
+			else
+			{
+				if (gApp.mInstallDir.Length > 0)
+					Path.GetDirectoryPath(.(gApp.mInstallDir, 0, gApp.mInstallDir.Length - 1), initialDir);
+				initialDir.Concat(Path.DirectorySeparatorChar, "Samples");
+			}
 
             fileDialog.InitialDirectory = initialDir;
             fileDialog.ValidateNames = true;
