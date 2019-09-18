@@ -1788,7 +1788,7 @@ BfIRValue BfModule::CreateAlloca(BfType* type, bool addLifetime, const char* nam
 	if (name != NULL)
 		mBfIRBuilder->SetName(allocaInst, name);
 	mBfIRBuilder->SetInsertPoint(prevInsertBlock);	
-	if (addLifetime)
+	if ((addLifetime) && (WantsLifetimes()))
 	{
 		auto lifetimeStart = mBfIRBuilder->CreateLifetimeStart(allocaInst);
 		mBfIRBuilder->ClearDebugLocation(lifetimeStart);
@@ -1812,7 +1812,7 @@ BfIRValue BfModule::CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime,
 	if (name != NULL)
 		mBfIRBuilder->SetName(allocaInst, name);
 	mBfIRBuilder->SetInsertPoint(prevInsertBlock);
-	if (addLifetime)
+	if ((addLifetime) && (WantsLifetimes()))
 	{
 		auto lifetimeStart = mBfIRBuilder->CreateLifetimeStart(allocaInst);
 		mBfIRBuilder->ClearDebugLocation(lifetimeStart);
@@ -7456,8 +7456,11 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					castedVal = mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapTypeInstPtr(typeInstance));
 					mBfIRBuilder->ClearDebugLocation(castedVal);
 					mBfIRBuilder->SetInsertPoint(prevBlock);
-					mBfIRBuilder->CreateLifetimeStart(allocaInst);
-					scopeData->mDeferredLifetimeEnds.push_back(allocaInst);
+					if (WantsLifetimes())
+					{
+						mBfIRBuilder->CreateLifetimeStart(allocaInst);
+						scopeData->mDeferredLifetimeEnds.push_back(allocaInst);
+					}
 				}
 				else
 				{
@@ -7507,8 +7510,11 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 			{
 				mBfIRBuilder->ClearDebugLocation(allocaInst);
 				mBfIRBuilder->SetInsertPoint(prevBlock);
-				mBfIRBuilder->CreateLifetimeStart(allocaInst);
-				scopeData->mDeferredLifetimeEnds.push_back(allocaInst);
+				if (WantsLifetimes())
+				{
+					mBfIRBuilder->CreateLifetimeStart(allocaInst);
+					scopeData->mDeferredLifetimeEnds.push_back(allocaInst);
+				}
 			}
 			if (!noDtorCall)
 				AddStackAlloc(typedVal, NULL, scopeData, false, true);
@@ -7937,8 +7943,15 @@ bool BfModule::IsOptimized()
 bool BfModule::IsTargetingBeefBackend()
 {
 	if (mProject == NULL)
-		return false;		
-	return GetModuleOptions().mOptLevel == BfOptLevel_OgPlus;	
+		return false;
+	return GetModuleOptions().mOptLevel == BfOptLevel_OgPlus;
+}
+
+bool BfModule::WantsLifetimes()
+{
+	if (mProject == NULL)
+		return false;
+	return GetModuleOptions().mOptLevel == BfOptLevel_OgPlus;
 }
 
 bool BfModule::HasCompiledOutput()
@@ -11793,7 +11806,7 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 		return mBfIRBuilder->GetFakeVal();	
 
 	auto allocaInst = CreateAlloca(type, doLifetimeEnd, name.c_str());
-	if (!doLifetimeEnd)
+	if ((!doLifetimeEnd) && (WantsLifetimes()))
 	{
 		auto lifetimeStart = mBfIRBuilder->CreateLifetimeStart(allocaInst);
 		mBfIRBuilder->ClearDebugLocation(lifetimeStart);
@@ -15969,7 +15982,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					mBfIRBuilder->SetAllocaAlignment(allocaInst, checkType->mAlign);
 					if (!paramVar->mAddr)
 						paramVar->mAddr = allocaInst;
-					mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
+					if (WantsLifetimes())
+						mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
 					splatAddrValues.push_back(allocaInst);
 				}, paramVar->mResolvedType);
 				mBfIRBuilder->SetInsertPoint(prevInsert);
@@ -15989,7 +16003,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 							mBfIRBuilder->SetName(allocaInst, paramVar->mName + ".addr");
 							mBfIRBuilder->SetAllocaAlignment(allocaInst, thisType->mAlign);
 							paramVar->mAddr = allocaInst;
-							mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
+							if (WantsLifetimes())
+								mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
 						}												
 					}
 					else
@@ -16007,7 +16022,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 						mBfIRBuilder->SetName(allocaInst, paramVar->mName + ".addr");
 						mBfIRBuilder->SetAllocaAlignment(allocaInst, mSystem->mPtrSize);
 						paramVar->mAddr = allocaInst;
-						mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
+						if (WantsLifetimes())
+							mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
 					}
 					mBfIRBuilder->SetInsertPoint(prevInsert);
 				}
@@ -16046,7 +16062,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					mBfIRBuilder->SetAllocaAlignment(allocaInst, alignSize);
 					paramVar->mAddr = allocaInst;
 					mBfIRBuilder->SetInsertPoint(prevInsert);		
-					mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
+					if (WantsLifetimes())
+						mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
 				}
 			}
 			else if (wantsAddr)

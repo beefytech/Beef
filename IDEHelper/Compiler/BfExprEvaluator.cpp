@@ -12043,7 +12043,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 						value = newLocalVar->mConstValue;
 
 					auto aliasValue = mModule->mBfIRBuilder->CreateAliasValue(value);					
-					scopeData.mDeferredLifetimeEnds.Add(aliasValue);					
+					if (mModule->WantsLifetimes())
+						scopeData.mDeferredLifetimeEnds.Add(aliasValue);					
 
 					if (newLocalVar->mAddr)
 						mModule->mBfIRBuilder->DbgInsertDeclare(aliasValue, diVariable);
@@ -15156,7 +15157,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		auto startCheckTypeInst = target.mType->ToTypeInstance();
 
 		for (int pass = 0; pass < 2; pass++)
-		{			
+		{
 			bool isFailurePass = pass == 1;
 
 			auto curCheckType = startCheckTypeInst;
@@ -15315,6 +15316,16 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		{
 			mModule->Fail("Expected integer index", indexerExpr->mArguments[0]);
 			indexArgument = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+		}
+	}
+
+	if (indexArgument.mType->IsPrimitiveType())
+	{
+		auto primType = (BfPrimitiveType*)indexArgument.mType;
+		if ((!primType->IsSigned()) && (primType->mSize < 8))
+		{
+			// GEP will always do a signed upcast so we need to cast manually if we are unsigned
+			indexArgument = BfTypedValue(mModule->mBfIRBuilder->CreateNumericCast(indexArgument.mValue, false, BfTypeCode_IntPtr), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 		}
 	}
 

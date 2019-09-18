@@ -1424,6 +1424,9 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_LifetimeEnd:
 		{
 			CMD_PARAM(BeValue*, val);
+#ifdef _DEBUG
+			val->mLifetimeEnded = true;
+#endif
 			auto inst = mBeModule->AllocInst<BeLifetimeEndInst>();
 			inst->mPtr = val;
 			SetResult(curId, inst);
@@ -3045,6 +3048,9 @@ BeValue* BeIRCodeGen::GetBeValue(int id)
 {
 	auto& result = mResults[id];
 	BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Value);
+#ifdef _DEBUG
+	BF_ASSERT(!result.mBeValue->mLifetimeEnded);
+#endif
 	return result.mBeValue;
 }
 

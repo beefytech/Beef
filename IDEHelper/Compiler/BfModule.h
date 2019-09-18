@@ -1460,6 +1460,7 @@ public:
 	void EmitAppendAlign(int align, int sizeMultiple = 0);
 	BfIRValue AppendAllocFromType(BfType* type, BfIRValue appendSizeValue = BfIRValue(), int appendAllocAlign = 0, BfIRValue arraySize = BfIRValue(), int arrayDim = 0, bool isRawArrayAlloc = false, bool zeroMemory = true);	
 	bool IsTargetingBeefBackend();
+	bool WantsLifetimes();
 	bool HasCompiledOutput();
 	void SkipObjectAccessCheck(BfTypedValue typedVal);
 	void EmitObjectAccessCheck(BfTypedValue typedVal);	

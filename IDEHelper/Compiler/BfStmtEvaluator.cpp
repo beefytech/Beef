@@ -84,10 +84,12 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 					auto allocaInst = mBfIRBuilder->CreateAlloca(origParamTypes[paramIdx]);
 					mBfIRBuilder->ClearDebugLocation(allocaInst);
 					mBfIRBuilder->SetInsertPoint(prevInsertBlock);
-					mBfIRBuilder->CreateLifetimeStart(allocaInst);
+					if (WantsLifetimes())
+						mBfIRBuilder->CreateLifetimeStart(allocaInst);
 					mBfIRBuilder->CreateStore(scopeArg, allocaInst);
 					deferredCallEntry->mScopeArgs[paramIdx] = allocaInst;
-					scopeData->mDeferredLifetimeEnds.push_back(allocaInst);
+					if (WantsLifetimes())
+						scopeData->mDeferredLifetimeEnds.push_back(allocaInst);
 				}
 				deferredCallEntry->mArgsNeedLoad = true;
 			}
@@ -120,7 +122,8 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 		if (!mBfIRBuilder->mIgnoreWrites)
 		{
 			listEntry->mDynCallTail = CreateAlloca(deferredCallEntryTypePtr, false, "deferredCallTail");
-			scopeData->mDeferredLifetimeEnds.push_back(listEntry->mDynCallTail);
+			if (WantsLifetimes())
+				scopeData->mDeferredLifetimeEnds.push_back(listEntry->mDynCallTail);
 
 			auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
 			mBfIRBuilder->SaveDebugLocation();
@@ -129,7 +132,8 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 			auto scopeHead = &mCurMethodState->mHeadScope;
 			mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, 0, scopeHead->mDIScope, BfIRMDNode());
 
-			mBfIRBuilder->CreateLifetimeStart(listEntry->mDynCallTail);
+			if (WantsLifetimes())
+				mBfIRBuilder->CreateLifetimeStart(listEntry->mDynCallTail);
 			auto storeInst = mBfIRBuilder->CreateStore(GetDefaultValue(deferredCallEntryTypePtr), listEntry->mDynCallTail);
 			mBfIRBuilder->ClearDebugLocation(storeInst);
 
@@ -1590,7 +1594,8 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			if (localDef->mIsReadOnly)
 				localDef->mValue = mBfIRBuilder->CreateLoad(localDef->mAddr);			
 		}		
-		mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(localDef->mAddr);
+		if (WantsLifetimes())
+			mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(localDef->mAddr);
 	}
 
 	if ((!localDef->mAddr) && (!isConst) && ((!localDef->mIsReadOnly) || (localNeedsAddr)))
