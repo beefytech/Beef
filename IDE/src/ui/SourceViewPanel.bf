@@ -1148,11 +1148,16 @@ namespace IDE.ui
                         compiler.DoBackgroundHi(new () => { DoClassify(.Autocomplete, resolveParams, true); }, new => ClassifyThreadDone);
 						//BackgroundResolve(new () => { DoClassify(.Autocomplete, resolveParams); });
                     else if (useResolveType == .ClassifyFullRefresh)
+					{
+						// To avoid "flashing" on proper colorization vs FastClassify, we wait a bit for the proper classifying to finish
+						//  on initial show
+						int maxWait = (mUpdateCnt <= 1) ? 50 : 0;
                         compiler.DoBackground(new () => { DoClassify(.ClassifyFullRefresh, resolveParams, false); },
 							new () =>
 							{
 								ClassifyThreadDone();
-							});
+							}, maxWait);
+					}
                     else if (useResolveType == .GetCurrentLocation)
 						compiler.DoBackgroundHi(new () => { DoClassify(.GetCurrentLocation, resolveParams, true); }, new => ClassifyThreadDone);
 					else if (useResolveType == .GetSymbolInfo)
@@ -5425,6 +5430,8 @@ namespace IDE.ui
 
                 // Wait longer for Clang since it'll delay autocompletions whereas Beef can be interrupted
                 int32 classifyDelayTicks = (mIsBeefSource || (mUpdateCnt < 40)) ? 2 : 40;
+				if (mUpdateCnt <= 1)
+					classifyDelayTicks = 0;
                 
                 if (mWantsBackgroundAutocomplete)
                 {

@@ -15,8 +15,9 @@ namespace IDE
 		public Action mOnThreadDone ~ delete _;
 		[ThreadStatic]
 		public static bool mBpSetThreadName;
+		WaitEvent mWaitEvent = new WaitEvent() ~ delete _;
 
-		public void DoBackground(ThreadStart threadStart, Action onThreadDone = null)
+		public void DoBackground(ThreadStart threadStart, Action onThreadDone = null, int maxWait = 0)
 		{
 		    Debug.Assert(Thread.CurrentThread == IDEApp.sApp.mMainThread);
 
@@ -32,6 +33,7 @@ namespace IDE
 
 		    mOnThreadDone = onThreadDone;
 		    mThreadRunning = true;
+			mWaitEvent.Reset();
 
 		    ThreadPool.QueueUserWorkItem(new () =>
 		    {
@@ -51,7 +53,15 @@ namespace IDE
 		        mThread = null;
 		        mThreadRunning = false;
 				BeefPerf.Event("DoBackground:threadEnd", "");
+
+				mWaitEvent.Set();
 		    });
+
+			if (maxWait != 0)
+			{
+				if (mWaitEvent.WaitFor(maxWait))
+					CheckThreadDone();
+			}
 		    //mBfSystem.PerfZoneEnd();
 		}
 
@@ -180,10 +190,10 @@ namespace IDE
             return (mThreadWorker.mThreadRunning || mThreadWorkerHi.mThreadRunning);
         }
 
-        public void DoBackground(ThreadStart threadStart, Action onThreadDone = null)
+        public void DoBackground(ThreadStart threadStart, Action onThreadDone = null, int maxWait = 0)
         {
 			CancelBackground();
-            mThreadWorker.DoBackground(threadStart, onThreadDone);
+            mThreadWorker.DoBackground(threadStart, onThreadDone, maxWait);
         }
 
 		public void DoBackgroundHi(ThreadStart threadStart, Action onThreadDone = null)
