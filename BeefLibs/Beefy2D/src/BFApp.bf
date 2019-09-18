@@ -694,19 +694,12 @@ namespace Beefy
                     window.PreDraw(mGraphics);
 					if (mColorMatrix != null)
 					{
-#if DEBUG
-						mColorMatrix = Matrix4(
+						/*mColorMatrix = Matrix4(
 							0.90f,  0.10f,  0.00f, 0,
 							0.00f,  0.90f,  0.10f, 0,
 							0.10f,  0.00f,  1.05f, 0,
-							    0,      0,      0, 1);
-#else
-						mColorMatrix = Matrix4(
-							0.90f,  0.10f,  0.00f, 0,
-							0.00f,  1.05f,  0.10f, 0,
-							0.10f,  0.00f,  0.90f, 0,
-							    0,      0,      0, 1);
-#endif
+							    0,      0,      0, 1);*/
+
 						mGraphics.SetShaderConstantData(0, &mColorMatrix.ValueRef, mColorMatrixDataDef);
 					}
                     window.Draw(mGraphics);
