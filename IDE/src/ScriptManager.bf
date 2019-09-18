@@ -1188,9 +1188,6 @@ namespace IDE
 			{
 				if (checkProject.HasDependency(depProject.mProjectName))
 				{
-					String fileName = scope .();
-					Path.GetFileName(srcPath, fileName);
-
 					List<String> targetPaths = scope .();
 					defer ClearAndDeleteItems(targetPaths);
 
@@ -1203,13 +1200,41 @@ namespace IDE
 						String targetDirPath = scope .();
 						Path.GetDirectoryPath(targetPaths[0], targetDirPath);
 
-						String destPath = scope .();
-						Path.GetAbsolutePath(fileName, targetDirPath, destPath);
-
-						if (File.CopyIfNewer(srcPath, destPath) case .Err)
+						bool CopyFile(String srcPath)
 						{
-							mScriptManager.Fail("Failed to copy file '{}' to '{}'", srcPath, destPath);
-							return;
+							String fileName = scope .();
+							Path.GetFileName(srcPath, fileName);
+
+							String destPath = scope .();
+							Path.GetAbsolutePath(fileName, targetDirPath, destPath);
+
+							if (File.CopyIfNewer(srcPath, destPath) case .Err)
+							{
+								mScriptManager.Fail("Failed to copy file '{}' to '{}'", srcPath, destPath);
+								return false;
+							}
+							return true;
+						}
+
+						if (srcPath.Contains('*'))
+						{
+							String dirPath = scope .();
+							String wildcard = scope .();
+							Path.GetDirectoryPath(srcPath, dirPath);
+							Path.GetFileName(srcPath, wildcard);
+
+							for (let entry in Directory.EnumerateFiles(dirPath, wildcard))
+							{
+								String foundPath = scope .();
+								entry.GetFilePath(foundPath);
+								if (!CopyFile(foundPath))
+									return;
+							}
+						}
+						else
+						{
+							if (!CopyFile(srcPath))
+								return;
 						}
 					}
 				}
