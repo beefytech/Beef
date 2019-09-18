@@ -1016,11 +1016,21 @@ static int WinBFReportHook( int reportType, char *message, int *returnValue )
 
 extern HINSTANCE gDLLInstance;
 
+typedef UINT(NTAPI *GetDpiForWindow_t)(HWND);
+static GetDpiForWindow_t gGetDpiForWindow = NULL;
+static HMODULE gUserDll = NULL;
+
 WinBFApp::WinBFApp()
 {		
 #ifndef BF_MINGW
 	//_CrtSetReportHook(WinBFReportHook);
 #endif
+
+	if (gUserDll == NULL)
+	{
+		gUserDll = ::LoadLibraryA("user32.dll");
+		gGetDpiForWindow = (GetDpiForWindow_t)::GetProcAddress(gUserDll, "GetDpiForWindow");
+	}
 
 	mRunning = false;
 	mRenderDevice = NULL;	
@@ -1339,6 +1349,13 @@ void WinBFWindow::CaptureMouse()
 bool WinBFWindow::IsMouseCaptured()
 {
 	return (mHWnd != NULL) && (GetCapture() == mHWnd);
+}
+
+int WinBFWindow::GetDPI()
+{
+	if (gGetDpiForWindow != NULL)
+		return (int)gGetDpiForWindow(mHWnd);
+	return 96; // Default DPI
 }
 
 uint32 WinBFApp::GetClipboardFormat(const StringImpl& format)
