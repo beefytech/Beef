@@ -205,6 +205,14 @@ public:
 class BeValue : public BeHashble
 {
 public:
+#ifdef _DEBUG
+	bool mLifetimeEnded;
+	BeValue()
+	{
+		mLifetimeEnded = false;
+	}
+#endif
+
 	virtual ~BeValue()
 	{
 
