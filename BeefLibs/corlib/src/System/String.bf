@@ -1934,6 +1934,26 @@ namespace System
 			}
 		}
 
+		public StringSplitEnumerator Split(char8 c)
+		{
+			return StringSplitEnumerator(Ptr, Length, c, Int32.MaxValue, StringSplitOptions.None);
+		}
+
+		public StringSplitEnumerator Split(char8 separator, int count)
+		{
+			return StringSplitEnumerator(Ptr, Length, separator, count, StringSplitOptions.None);
+		}
+
+		public StringSplitEnumerator Split(char8 separator, StringSplitOptions options)
+		{
+			return StringSplitEnumerator(Ptr, Length, separator, Int32.MaxValue, options);
+		}
+
+		public StringSplitEnumerator Split(char8 separator, int count, StringSplitOptions options)
+		{
+			return StringSplitEnumerator(Ptr, Length, separator, count, options);
+		}
+
 		public StringSplitEnumerator Split(params char8[] separators)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);

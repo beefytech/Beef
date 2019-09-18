@@ -9,28 +9,28 @@ TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "BeefySysLib32_d.dll"
 BuildCommandsOnCompile = "IfFilesChanged"
 BuildCommandsOnRun = "IfFilesChanged"
-PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\BeefySysLib\\BeefySysLib.vcxproj /p:Configuration=Debug /p:Platform=X86 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+PostBuildCmds = ["\"$(WorkspaceDir)\\..\\bin\\msbuild.bat\" \"$(WorkspaceDir)\\..\\BeefySysLib\\BeefySysLib.vcxproj\" /p:Configuration=Debug /p:Platform=X86 /p:SolutionDir=$(Slash \"$(WorkspaceDir)\\\\..\\\\\") /v:m"]
 
 [Configs.Debug.Win64]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "BeefySysLib64_d.dll"
 BuildCommandsOnCompile = "IfFilesChanged"
 BuildCommandsOnRun = "IfFilesChanged"
-PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\BeefySysLib\\BeefySysLib.vcxproj /p:Configuration=Debug /p:Platform=X64 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+PostBuildCmds = ["\"$(WorkspaceDir)\\..\\bin\\msbuild.bat\" \"$(WorkspaceDir)\\..\\BeefySysLib\\BeefySysLib.vcxproj\" /p:Configuration=Debug /p:Platform=X64 /p:SolutionDir=$(Slash \"$(WorkspaceDir)\\\\..\\\\\") /v:m"]
 
 [Configs.Release.Win32]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "BeefySysLib32.dll"
 BuildCommandsOnCompile = "IfFilesChanged"
 BuildCommandsOnRun = "IfFilesChanged"
-PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\BeefySysLib\\BeefySysLib.vcxproj /p:Configuration=Release /p:Platform=X86 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+PostBuildCmds = ["\"$(WorkspaceDir)\\..\\bin\\msbuild.bat\" \"$(WorkspaceDir)\\..\\BeefySysLib\\BeefySysLib.vcxproj\" /p:Configuration=Release /p:Platform=X86 /p:SolutionDir=$(Slash \"$(WorkspaceDir)\\\\..\\\\\") /v:m"]
 
 [Configs.Release.Win64]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "BeefySysLib64.dll"
 BuildCommandsOnCompile = "IfFilesChanged"
 BuildCommandsOnRun = "IfFilesChanged"
-PostBuildCmds = ["$(WorkspaceDir)\\..\\bin\\msbuild.bat $(WorkspaceDir)\\..\\BeefySysLib\\BeefySysLib.vcxproj /p:Configuration=Release /p:Platform=X64 /p:SolutionDir=$(WorkspaceDir)\\..\\ /v:m"]
+PostBuildCmds = ["\"$(WorkspaceDir)\\..\\bin\\msbuild.bat\" \"$(WorkspaceDir)\\..\\BeefySysLib\\BeefySysLib.vcxproj\" /p:Configuration=Release /p:Platform=X64 /p:SolutionDir=$(Slash \"$(WorkspaceDir)\\\\..\\\\\") /v:m"]
 
 [Configs.Paranoid.Win32]
 BuildCommandsOnCompile = "IfFilesChanged"
@@ -56,13 +56,11 @@ Name = "fbx"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "FBXReader.cpp"
-ImportPath = "fbx/FBXReader.cpp"
+Path = "fbx/FBXReader.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "FBXReader.h"
-ImportPath = "fbx/FBXReader.h"
+Path = "fbx/FBXReader.h"
 
 [[ProjectFolder.Items]]
 Type = "Folder"
@@ -70,93 +68,75 @@ Name = "gfx"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "DrawLayer.cpp"
-ImportPath = "gfx/DrawLayer.cpp"
+Path = "gfx/DrawLayer.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "DrawLayer.h"
-ImportPath = "gfx/DrawLayer.h"
+Path = "gfx/DrawLayer.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "FTFont.cpp"
-ImportPath = "gfx/FTFont.cpp"
+Path = "gfx/FTFont.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "FTFont.h"
-ImportPath = "gfx/FTFont.h"
+Path = "gfx/FTFont.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ModelDef.cpp"
-ImportPath = "gfx/ModelDef.cpp"
+Path = "gfx/ModelDef.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ModelDef.h"
-ImportPath = "gfx/ModelDef.h"
+Path = "gfx/ModelDef.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ModelInstance.cpp"
-ImportPath = "gfx/ModelInstance.cpp"
+Path = "gfx/ModelInstance.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ModelInstance.h"
-ImportPath = "gfx/ModelInstance.h"
+Path = "gfx/ModelInstance.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "RenderCmd.cpp"
-ImportPath = "gfx/RenderCmd.cpp"
+Path = "gfx/RenderCmd.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "RenderCmd.h"
-ImportPath = "gfx/RenderCmd.h"
+Path = "gfx/RenderCmd.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "RenderDevice.cpp"
-ImportPath = "gfx/RenderDevice.cpp"
+Path = "gfx/RenderDevice.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "RenderDevice.h"
-ImportPath = "gfx/RenderDevice.h"
+Path = "gfx/RenderDevice.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "RenderTarget.cpp"
-ImportPath = "gfx/RenderTarget.cpp"
+Path = "gfx/RenderTarget.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "RenderTarget.h"
-ImportPath = "gfx/RenderTarget.h"
+Path = "gfx/RenderTarget.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Shader.cpp"
-ImportPath = "gfx/Shader.cpp"
+Path = "gfx/Shader.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Shader.h"
-ImportPath = "gfx/Shader.h"
+Path = "gfx/Shader.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Texture.cpp"
-ImportPath = "gfx/Texture.cpp"
+Path = "gfx/Texture.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Texture.h"
-ImportPath = "gfx/Texture.h"
+Path = "gfx/Texture.h"
 
 [[ProjectFolder.Items]]
 Type = "Folder"
@@ -164,103 +144,83 @@ Name = "img"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "BFIData.cpp"
-ImportPath = "img/BFIData.cpp"
+Path = "img/BFIData.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "BFIData.h"
-ImportPath = "img/BFIData.h"
+Path = "img/BFIData.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ImageAdjustments.cpp"
-ImportPath = "img/ImageAdjustments.cpp"
+Path = "img/ImageAdjustments.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ImageAdjustments.h"
-ImportPath = "img/ImageAdjustments.h"
+Path = "img/ImageAdjustments.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ImageData.cpp"
-ImportPath = "img/ImageData.cpp"
+Path = "img/ImageData.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ImageData.h"
-ImportPath = "img/ImageData.h"
+Path = "img/ImageData.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ImageUtils.cpp"
-ImportPath = "img/ImageUtils.cpp"
+Path = "img/ImageUtils.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ImageUtils.h"
-ImportPath = "img/ImageUtils.h"
+Path = "img/ImageUtils.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ImgEffects.cpp"
-ImportPath = "img/ImgEffects.cpp"
+Path = "img/ImgEffects.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "ImgEffects.h"
-ImportPath = "img/ImgEffects.h"
+Path = "img/ImgEffects.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "JPEGData.cpp"
-ImportPath = "img/JPEGData.cpp"
+Path = "img/JPEGData.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "JPEGData.h"
-ImportPath = "img/JPEGData.h"
+Path = "img/JPEGData.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PNGData.cpp"
-ImportPath = "img/PNGData.cpp"
+Path = "img/PNGData.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PNGData.h"
-ImportPath = "img/PNGData.h"
+Path = "img/PNGData.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PSDReader.cpp"
-ImportPath = "img/PSDReader.cpp"
+Path = "img/PSDReader.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PSDReader.h"
-ImportPath = "img/PSDReader.h"
+Path = "img/PSDReader.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PVRData.cpp"
-ImportPath = "img/PVRData.cpp"
+Path = "img/PVRData.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PVRData.h"
-ImportPath = "img/PVRData.h"
+Path = "img/PVRData.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "TGAData.cpp"
-ImportPath = "img/TGAData.cpp"
+Path = "img/TGAData.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "TGAData.h"
-ImportPath = "img/TGAData.h"
+Path = "img/TGAData.h"
 
 [[ProjectFolder.Items]]
 Type = "Folder"
@@ -272,38 +232,31 @@ Name = "win"
 
 [[ProjectFolder.Items.Items.Items]]
 Type = "Source"
-Name = "BFPlatform.h"
-ImportPath = "platform/win/BFPlatform.h"
+Path = "platform/win/BFPlatform.h"
 
 [[ProjectFolder.Items.Items.Items]]
 Type = "Source"
-Name = "DXRenderDevice.cpp"
-ImportPath = "platform/win/DXRenderDevice.cpp"
+Path = "platform/win/DXRenderDevice.cpp"
 
 [[ProjectFolder.Items.Items.Items]]
 Type = "Source"
-Name = "DXRenderDevice.h"
-ImportPath = "platform/win/DXRenderDevice.h"
+Path = "platform/win/DXRenderDevice.h"
 
 [[ProjectFolder.Items.Items.Items]]
 Type = "Source"
-Name = "Platform.cpp"
-ImportPath = "platform/win/Platform.cpp"
+Path = "platform/win/Platform.cpp"
 
 [[ProjectFolder.Items.Items.Items]]
 Type = "Source"
-Name = "PlatformApp.h"
-ImportPath = "platform/win/PlatformApp.h"
+Path = "platform/win/PlatformApp.h"
 
 [[ProjectFolder.Items.Items.Items]]
 Type = "Source"
-Name = "WinBFApp.cpp"
-ImportPath = "platform/win/WinBFApp.cpp"
+Path = "platform/win/WinBFApp.cpp"
 
 [[ProjectFolder.Items.Items.Items]]
 Type = "Source"
-Name = "WinBFApp.h"
-ImportPath = "platform/win/WinBFApp.h"
+Path = "platform/win/WinBFApp.h"
 
 [[ProjectFolder.Items]]
 Type = "Folder"
@@ -315,183 +268,147 @@ Name = "util"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "AllocDebug.cpp"
-ImportPath = "Util/AllocDebug.cpp"
+Path = "Util/AllocDebug.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "AllocDebug.h"
-ImportPath = "Util/AllocDebug.h"
+Path = "Util/AllocDebug.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "BeefPerf.cpp"
-ImportPath = "util/BeefPerf.cpp"
+Path = "util/BeefPerf.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "BeefPerf.h"
-ImportPath = "util/BeefPerf.h"
+Path = "util/BeefPerf.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "BSpline.cpp"
-ImportPath = "Util/BSpline.cpp"
+Path = "Util/BSpline.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "BSpline.h"
-ImportPath = "Util/BSpline.h"
+Path = "Util/BSpline.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "BumpAllocator.h"
-ImportPath = "Util/BumpAllocator.h"
+Path = "Util/BumpAllocator.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "CatmullRom.cpp"
-ImportPath = "Util/CatmullRom.cpp"
+Path = "Util/CatmullRom.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "CatmullRom.h"
-ImportPath = "Util/CatmullRom.h"
+Path = "Util/CatmullRom.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "CritSect.h"
-ImportPath = "Util/CritSect.h"
+Path = "Util/CritSect.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "CubicFuncSpline.cpp"
-ImportPath = "Util/CubicFuncSpline.cpp"
+Path = "Util/CubicFuncSpline.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "CubicFuncSpline.h"
-ImportPath = "Util/CubicFuncSpline.h"
+Path = "Util/CubicFuncSpline.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "CubicSpline.cpp"
-ImportPath = "Util/CubicSpline.cpp"
+Path = "Util/CubicSpline.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "CubicSpline.h"
-ImportPath = "Util/CubicSpline.h"
+Path = "Util/CubicSpline.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "DLIList.h"
-ImportPath = "Util/DLIList.h"
+Path = "Util/DLIList.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Hash.cpp"
-ImportPath = "Util/Hash.cpp"
+Path = "Util/Hash.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Hash.h"
-ImportPath = "Util/Hash.h"
+Path = "Util/Hash.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Json.cpp"
-ImportPath = "Util/Json.cpp"
+Path = "Util/Json.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Json.h"
-ImportPath = "Util/Json.h"
+Path = "Util/Json.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Matrix4.cpp"
-ImportPath = "Util/Matrix4.cpp"
+Path = "Util/Matrix4.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Matrix4.h"
-ImportPath = "Util/Matrix4.h"
+Path = "Util/Matrix4.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PerfTimer.cpp"
-ImportPath = "Util/PerfTimer.cpp"
+Path = "Util/PerfTimer.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PerfTimer.h"
-ImportPath = "Util/PerfTimer.h"
+Path = "Util/PerfTimer.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Point.cpp"
-ImportPath = "Util/Point.cpp"
+Path = "Util/Point.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Point.h"
-ImportPath = "Util/Point.h"
+Path = "Util/Point.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PolySpline.cpp"
-ImportPath = "Util/PolySpline.cpp"
+Path = "Util/PolySpline.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "PolySpline.h"
-ImportPath = "Util/PolySpline.h"
+Path = "Util/PolySpline.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Quaternion.cpp"
-ImportPath = "Util/Quaternion.cpp"
+Path = "Util/Quaternion.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Quaternion.h"
-ImportPath = "Util/Quaternion.h"
+Path = "Util/Quaternion.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Rect.h"
-ImportPath = "Util/Rect.h"
+Path = "Util/Rect.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "SLIList.h"
-ImportPath = "Util/SLIList.h"
+Path = "Util/SLIList.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "TLSingleton.h"
-ImportPath = "util/TLSingleton.h"
+Path = "util/TLSingleton.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "UTF8.cpp"
-ImportPath = "Util/UTF8.cpp"
+Path = "Util/UTF8.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "UTF8.h"
-ImportPath = "Util/UTF8.h"
+Path = "Util/UTF8.h"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Vector.cpp"
-ImportPath = "Util/Vector.cpp"
+Path = "Util/Vector.cpp"
 
 [[ProjectFolder.Items.Items]]
 Type = "Source"
-Name = "Vector.h"
-ImportPath = "Util/Vector.h"
+Path = "Util/Vector.h"
 
 [[ProjectFolder.Items]]
 Type = "Source"

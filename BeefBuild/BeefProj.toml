@@ -16,7 +16,7 @@ TargetName = "$(ProjectName)_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib Rpcrt4.lib Ole32.lib"
 CLibType = "Dynamic"
 BeefLibType = "DynamicDebug"
-DebugCommandArguments = "-workspace=Elevated -config=Debug -platform=Win64 -verbosity=detailed -clean"
+DebugCommandArguments = "-help"
 DebugWorkingDirectory = "c:\\Beef_website\\BeefTools\\BeefInstall"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 PreprocessorMacros = ["DEBUG", "CLI"]

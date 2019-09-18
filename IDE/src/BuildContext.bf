@@ -370,6 +370,8 @@ namespace IDE
 		public static void GetPdbPath(String targetPath, Workspace.Options workspaceOptions, Project.Options options, String outPdbPath)
 		{
 			int lastDotPos = targetPath.LastIndexOf('.');
+			if (lastDotPos == -1)
+				return;
 			outPdbPath.Append(targetPath, 0, lastDotPos);
 			if (workspaceOptions.mToolsetType == .LLVM)
 				outPdbPath.Append("_lld");
@@ -529,9 +531,6 @@ namespace IDE
 			            }
 			            else
 			            {
-			                /*if (depProject.mNeedsTargetRebuild)
-			                    project.mNeedsTargetRebuild = true;*/
-
 			                var depOptions = gApp.GetCurProjectOptions(depProject);
 							if (depOptions != null)
 							{
@@ -541,7 +540,6 @@ namespace IDE
 
 									for (var fileName in depOptions.mClangObjectFiles)
 									{
-										//AppendWithOptionalQuotes(linkLine, fileName);
 										argBuilder.AddFileName(fileName);
 										argBuilder.AddSep();
 									}
@@ -565,19 +563,6 @@ namespace IDE
 								if (!linkFlags.IsWhiteSpace)
 									linkLine.Append(linkFlags, " ");
 							}
-
-
-			                /*String depLibTargetPath = scope String();
-			                ResolveConfigString(depProject, depOptions, "$(TargetPath)", error, depLibTargetPath);
-							IDEUtils.FixFilePath(depLibTargetPath);
-
-			                String depDir = scope String();
-			                Path.GetDirectoryName(depLibTargetPath, depDir);
-			                String depFileName = scope String();
-			                Path.GetFileNameWithoutExtension(depLibTargetPath, depFileName);
-
-							AppendWithOptionalQuotes(linkLine, depLibTargetPath);
-							linkLine.Append(" ");*/
 			            }
 			        }
 			    }
@@ -652,7 +637,6 @@ namespace IDE
 
 					if (workspaceOptions.mMachineType == .x86)
 					{
-						//linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.10586.0\\ucrt\\x86\" ");
 						for (var libPath in gApp.mSettings.mVSSettings.mLib32Paths)
 						{
 							linkLine.AppendF("-libpath:\"{0}\" ", libPath);
@@ -661,10 +645,6 @@ namespace IDE
 					}
 					else
 					{
-						/*linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\lib\\amd64\" ");
-						linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\atlmfc\\lib\\amd64\" ");
-						linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.14393.0\\ucrt\\x64\" ");
-						linkLine.Append("-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.14393.0\\um\\x64\" ");*/
 						for (var libPath in gApp.mSettings.mVSSettings.mLib64Paths)
 						{
 							linkLine.AppendF("-libpath:\"{0}\" ", libPath);
@@ -686,20 +666,7 @@ namespace IDE
 					}
 
 					let winOptions = project.mWindowsOptions;
-					/*if (!String.IsNullOrWhiteSpace(project.mWindowsOptions.mManifestFile))
-					{
-						String manifestPath = scope String();
-						String error = scope String();
-						ResolveConfigString(project, options, winOptions.mManifestFile, error, manifestPath);
-						if (!manifestPath.IsWhiteSpace)
-						{
-							linkLine.Append("/MANIFEST:EMBED /MANIFESTINPUT:");
-							IDEUtils.AppendWithOptionalQuotes(linkLine, manifestPath);
-							linkLine.Append(" ");
-						}
-					}*/
-
-					// Put back
+					
 					if ((!String.IsNullOrWhiteSpace(project.mWindowsOptions.mIconFile)) ||
 						(!String.IsNullOrWhiteSpace(project.mWindowsOptions.mManifestFile)) ||
 		                (winOptions.HasVersionInfo()))
@@ -767,9 +734,6 @@ namespace IDE
 						IDEUtils.AppendWithOptionalQuotes(linkLine, resOutPath);
 					}
 					
-
-			        //String linkerPath = "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\amd64\\link.exe";
-
 					let binPath = (workspaceOptions.mMachineType == .x86) ? gApp.mSettings.mVSSettings.mBin32Path : gApp.mSettings.mVSSettings.mBin64Path;
 					if (binPath.IsWhiteSpace)
 					{
@@ -801,11 +765,7 @@ namespace IDE
 							IDEUtils.AppendWithOptionalQuotes(linkLine, ltoPath);
 						}
 					}
-					//String linkerPath = "C:\\Beef\\IDE\\dist\\BeefLink.exe";
-
-					//QueueRun(compilerExePath, linkLine, @"c:\mingw\bin", (options.mGeneralOptions.mLinkerType == Project.LinkerType.Clang) && (linkLine.Length > 1024));
-					//QueueRun(compilerExePath, linkLine, @"c:\mingw\bin", (linkLine.Length > 1024));
-
+					
 			        var runCmd = gApp.QueueRun(linkerPath, linkLine, gApp.mInstallDir, .UTF16WithBom);
 			        runCmd.mOnlyIfNotFailed = true;
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);

@@ -1071,7 +1071,7 @@ namespace Beefy.utils
 			//mCurrent.mValues;
 		}
 
-        void StringEncode(String outString, StringView theString)
+        static void StringEncode(String outString, StringView theString)
         {
 			outString.Append('"');
 

@@ -10,7 +10,7 @@ PreprocessorMacros = ["DEBUG", "BF32"]
 OptimizationLevel = "O0"
 
 [Configs.Debug.Win64]
-OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/dist/BeefySysLib64_d.lib"
+OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/BeefySysLib64_d.lib\""
 CLibType = "Static"
 BeefLibType = "Static"
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.pdb\")"]
