@@ -1585,6 +1585,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, stackVal);
 			auto intrin = llvm::Intrinsic::getDeclaration(mLLVMModule, llvm::Intrinsic::stackrestore);
 			auto callInst = mIRBuilder->CreateCall(intrin, llvm::SmallVector<llvm::Value*, 1> {stackVal });			
+			SetResult(curId, callInst);
 		}
 		break;
 	case BfIRCmd_GlobalVariable:

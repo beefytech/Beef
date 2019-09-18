@@ -207,9 +207,11 @@ class BeValue : public BeHashble
 public:
 #ifdef _DEBUG
 	bool mLifetimeEnded;
+	bool mWasRemoved;
 	BeValue()
 	{
 		mLifetimeEnded = false;
+		mWasRemoved = false;
 	}
 #endif
 

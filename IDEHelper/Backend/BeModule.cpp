@@ -2940,10 +2940,12 @@ void BeModule::AddBlock(BeFunction* function, BeBlock* block)
 
 void BeModule::RemoveBlock(BeFunction* function, BeBlock* block)
 {
-	auto itr = std::find(function->mBlocks.begin(), function->mBlocks.end(), block);
-	BF_ASSERT(itr != function->mBlocks.end());
-	if (itr != function->mBlocks.end())
-		function->mBlocks.erase(itr);
+	bool didRemove = function->mBlocks.Remove(block);	
+	BF_ASSERT(didRemove);
+#ifdef _DEBUG
+	for (auto inst : block->mInstructions)
+		inst->mWasRemoved = true;
+#endif
 }
 
 BeBlock* BeModule::GetInsertBlock()

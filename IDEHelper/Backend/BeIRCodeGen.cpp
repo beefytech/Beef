@@ -1767,8 +1767,11 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeValue*, instVal);
 
 			BeInst* inst = (BeInst*)instVal;
-			auto itr = std::find(inst->mParentBlock->mInstructions.begin(), inst->mParentBlock->mInstructions.end(), inst);
-			inst->mParentBlock->mInstructions.erase(itr);
+			bool wasRemoved = inst->mParentBlock->mInstructions.Remove(inst);
+			BF_ASSERT(wasRemoved);
+#ifdef _DEBUG
+			inst->mWasRemoved = true;			
+#endif
 		}
 		break;
 	case BfIRCmd_CreateBr:
@@ -3050,6 +3053,7 @@ BeValue* BeIRCodeGen::GetBeValue(int id)
 	BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Value);
 #ifdef _DEBUG
 	BF_ASSERT(!result.mBeValue->mLifetimeEnded);
+	BF_ASSERT(!result.mBeValue->mWasRemoved);
 #endif
 	return result.mBeValue;
 }

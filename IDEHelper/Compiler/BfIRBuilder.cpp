@@ -3843,10 +3843,11 @@ BfIRValue BfIRBuilder::CreateStackSave()
 	return retVal;
 }
 
-void BfIRBuilder::CreateStackRestore(BfIRValue stackVal)
+BfIRValue BfIRBuilder::CreateStackRestore(BfIRValue stackVal)
 {
 	BfIRValue retVal = WriteCmd(BfIRCmd_StackRestore, stackVal);
 	NEW_CMD_INSERTED;
+	return retVal;
 }
 
 BfIRValue BfIRBuilder::CreateGlobalVariable(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS)

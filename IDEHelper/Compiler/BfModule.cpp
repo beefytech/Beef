@@ -2122,8 +2122,12 @@ void BfModule::SaveStackState(BfScopeData* scopeData)
 		}
 		if (checkScope->mSavedStack)
 		{
+			for (auto usage : checkScope->mSavedStackUses)
+				mBfIRBuilder->EraseInstFromParent(usage);
+			checkScope->mSavedStackUses.Clear();
+
 			mBfIRBuilder->EraseInstFromParent(checkScope->mSavedStack);
-			checkScope->mSavedStack = BfIRValue();
+			checkScope->mSavedStack = BfIRValue();			
 		}		
 		checkScope = checkScope->mPrevScope;
 	}
@@ -12394,7 +12398,7 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 
 			if (checkScope->mSavedStack)
 			{
-				mBfIRBuilder->CreateStackRestore(checkScope->mSavedStack);
+				checkScope->mSavedStackUses.Add(mBfIRBuilder->CreateStackRestore(checkScope->mSavedStack));				
 
 				if (mCurMethodState->mDynStackRevIdx)
 				{

@@ -1099,7 +1099,7 @@ public:
 	BfIRValue CreateMemSet(BfIRValue addr, BfIRValue val, BfIRValue size, int align);
 	void CreateFence(BfIRFenceType fenceType);
 	BfIRValue CreateStackSave();
-	void CreateStackRestore(BfIRValue stackVal);
+	BfIRValue CreateStackRestore(BfIRValue stackVal);
 	
 	BfIRValue CreateGlobalVariable(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);	
 	void GlobalVar_SetUnnamedAddr(BfIRValue val, bool unnamedAddr);

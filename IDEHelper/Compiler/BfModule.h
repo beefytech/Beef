@@ -315,6 +315,7 @@ public:
 	BfIRValue mBlock;
 	BfIRValue mValueScopeStart;
 	BfIRValue mSavedStack;	
+	Array<BfIRValue> mSavedStackUses;
 	Array<BfDeferredHandler> mDeferredHandlers; // These get cleared when us our a parent gets new entries added into mDeferredCallEntries
 	Array<BfIRBlock> mAtEndBlocks; // Move these to the end after we close scope
 	Array<BfIRValue> mDeferredLifetimeEnds;
