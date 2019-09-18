@@ -346,7 +346,10 @@ void BlCvParser::ParseSymbolData(void* symbolData, int size, void* relocData, in
 			dataBlock.mOutSize = -1;
 
 			WIN32_MEMORY_RANGE_ENTRY vAddrs = { dataBlock.mData, (SIZE_T)dataBlock.mSize };
+			//TODO: This was causing link errors on Win7
+#if 0
 			PrefetchVirtualMemory(GetCurrentProcess(), 1, &vAddrs, 0);
+#endif
 
 			data = sectionEnd;
 			while ((nextReloc < relocEnd) && ((int)nextReloc->mVirtualAddress < (int)(sectionEnd - (uint8*)symbolData)))
