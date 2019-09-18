@@ -8047,12 +8047,105 @@ namespace IDE
             {
                 if ((result[i] == '$') && (result[i + 1] == '('))
                 {
-                    int parenPos = result.IndexOf(')', i + 2);
+					int parenPos = -1;
+					int openCount = 1;
+					bool inString = false;
+					char8 prevC = 0;
+					for (int checkIdx = i + 2; checkIdx < result.Length; checkIdx++)
+					{
+						char8 c = result[checkIdx];
+						if (inString)
+						{
+							if (prevC == '\\')
+							{
+								// Slashed char
+								prevC = 0;
+								continue;
+							}
+
+							if (c == '"')
+								inString = false;
+						}
+						else
+						{
+							if (c == '"')
+								inString = true;
+							else if (c == '(')
+								openCount++;
+							else if (c == ')')
+							{
+								openCount--;
+								if (openCount == 0)
+								{
+									parenPos = checkIdx;
+									break;
+								}	
+							}
+						}
+
+						prevC = c;
+					}
+
                     if (parenPos != -1)
 					ReplaceBlock:
+					do
                     {
                         String replaceStr = scope String(result, i + 2, parenPos - i - 2);
                         String newString = null;
+
+						if (replaceStr.Contains(' '))
+						{
+							String cmd = scope .();
+
+							List<String> args = scope .();
+
+							for (let str in replaceStr.Split(' ', .RemoveEmptyEntries))
+							{
+								if (cmd.IsEmpty)
+									cmd.Set(str);
+								else
+								{
+									String arg = scope:ReplaceBlock .();
+									if (str.StartsWith("\""))
+									{
+										String unresolvedStr = scope .();
+										str.UnQuoteString(unresolvedStr);
+										if (!DoResolveConfigString(workspaceOptions, project, options, unresolvedStr, error, arg))
+											return false;
+									}
+									else
+										arg.Append(str);
+									args.Add(arg);
+								}
+							}
+
+							String cmdErr = null;
+
+							switch (cmd)
+							{
+							case "Slash":
+								if (args.Count == 1)
+								{
+									newString = scope:ReplaceBlock .();
+									args[0].QuoteString(newString);
+								}
+								else
+									cmdErr = "Invalid number of arguments";
+							}
+
+							if (newString == null)
+							{
+								if (error != null)
+								{
+									if (cmdErr != null)
+										error.Set(cmdErr);
+									else 
+										error.Set(replaceStr);
+								}
+								hadError = true;
+								break ReplaceBlock;
+							}
+						}
 
 						if ((newString == null) && (project != null))
 						{
@@ -8103,7 +8196,8 @@ namespace IDE
 									Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
 									Utils.GetDirWithSlash(newString);
 									
-									DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString);
+									if (!DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString))
+										return false;
 #if BF_PLATFORM_WINDOWS
 		                            if (project.mGeneralOptions.mTargetType == .BeefLib)
 		                                newString.Append(".lib");
@@ -8119,13 +8213,13 @@ namespace IDE
 		                    case "ProjectDir":
 								if (project.IsDebugSession)
 								{
-									newString = scope:: String();
+									newString = scope:ReplaceBlock String();
 									Path.GetDirectoryPath(project.mProjectPath, newString);
 								}
 								else
 		                        	newString = project.mProjectDir;
 		                    case "BuildDir":
-								newString = scope:: String();
+								newString = scope:ReplaceBlock String();
 		                        GetProjectBuildDir(project, newString);
 								//Debug.WriteLine("BuildDir: {0}", newString);
 							case "LinkFlags":
@@ -8174,7 +8268,7 @@ namespace IDE
 							case "ScriptDir":
 								if ((mScriptManager != null) && (mScriptManager.mCurCmd != null))
 								{
-									newString = scope:: String();
+									newString = scope:ReplaceBlock String();
 									Path.GetDirectoryPath(mScriptManager.mCurCmd.mSrcFile, newString);
 								}
 							}
@@ -8193,7 +8287,7 @@ namespace IDE
 	                            	newString = mWorkspace.mDir;
 								else if (project.IsDebugSession)
 								{
-									newString = scope:: String();
+									newString = scope:ReplaceBlock String();
 									Path.GetDirectoryPath(project.mProjectPath, newString);
 								}
 							case "BeefPath":
