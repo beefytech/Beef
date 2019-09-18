@@ -122,6 +122,7 @@ namespace IDE
 		public String mDbgVersionedCompileDir ~ delete _;
 		public DateTime mDbgHighestTime;
 		public bool mIsFirstRun;
+		public FileVersionInfo mVersionInfo ~ delete _;
 
 		//public ToolboxPanel mToolboxPanel;
 		public Monitor mMonitor = new Monitor() ~ delete _;
@@ -157,7 +158,6 @@ namespace IDE
         public IDETabbedView mActiveDocumentsTabbedView;
         public static new IDEApp sApp;
 
-		//public IPCHostManager mIPCHostManager;
         public Image mTransparencyGridImage ~ delete _;
         public Image mSquiggleImage ~ delete _;
         public Image mCircleImage ~ delete _;
@@ -676,9 +676,6 @@ namespace IDE
 
         public override void Shutdown()
         {
-			/*if (mIPCHostManager != null)
-				mIPCHostManager.Dispose();*/
-
 			if ((mDebugger != null) && (mDebugger.mIsRunning))
 			{
 				mDebugger.DisposeNativeBreakpoints();
@@ -758,26 +755,35 @@ namespace IDE
 #endif
         }
 
+		public void OpenWorkspace(StringView openFileName)
+		{
+			CloseWorkspace();
+
+			mWorkspace.mDir = new String();
+			Path.GetDirectoryPath(openFileName, mWorkspace.mDir);
+			mWorkspace.mName = new String();
+			Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
+
+			LoadWorkspace(.OpenOrNew);
+			FinishShowingNewWorkspace();
+		}
+
 		public void DoOpenWorkspace()
 		{		
 #if !CLI
 			if (mDeferredOpenFileName != null)
 			{
-				CloseWorkspace();
-
-				mWorkspace.mDir = new String();
-				Path.GetDirectoryPath(mDeferredOpenFileName, mWorkspace.mDir);
-				mWorkspace.mName = new String();
-				Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
-
-				LoadWorkspace(.OpenOrNew);
-				FinishShowingNewWorkspace();
-
+				OpenWorkspace(mDeferredOpenFileName);
 				DeleteAndNullify!(mDeferredOpenFileName);
 				return;
 			}
 
 			var folderDialog = scope FolderBrowserDialog();
+			var initialDir = scope String();
+			if (mInstallDir.Length > 0)
+				Path.GetDirectoryPath(.(mInstallDir, 0, mInstallDir.Length - 1), initialDir);
+			initialDir.Concat(Path.DirectorySeparatorChar, "Samples");
+			folderDialog.SelectedPath = initialDir;
 			if (folderDialog.ShowDialog(GetActiveWindow()).GetValueOrDefault() == .OK)
 			{
 				var selectedPath = scope String..AppendF(folderDialog.SelectedPath);
@@ -1073,6 +1079,7 @@ namespace IDE
 				} ~ delete onSave);
 			aDialog.AddButton("Don't Save", new (evt) =>
 				{
+					OutputLine("Changes not saved.");
 				    onNoSave();
 				} ~ delete onNoSave);
 
@@ -2080,6 +2087,8 @@ namespace IDE
 
 			delete mWorkspace;
 			mWorkspace = new Workspace();
+
+			OutputLine("Workspace closed.");
 		}
 
 		void FinishShowingNewWorkspace(bool loadUserData = true)
@@ -2233,6 +2242,7 @@ namespace IDE
 				
                 Project project = new Project();
 				mWorkspace.mProjects.Add(project);
+				project.mProjectPath.Set(projectPath);
                 if (!project.Load(projectPath))
 				{
 					project.mBeefGlobalOptions.mDefaultNamespace.Set(projectName);
@@ -2243,7 +2253,6 @@ namespace IDE
 					project.mNeedsCreate = true;
 					project.mHasChanged = true;
 					project.mProjectDir.Set(mWorkspace.mDir);
-					project.mProjectPath.Set(mWorkspace.mDir);
 					Utils.GetDirWithSlash(project.mProjectPath);
 					project.mProjectPath.Append("BeefProj.toml");
 					//project.FinishCreate();
@@ -2294,21 +2303,6 @@ namespace IDE
 					mWorkspace.mNeedsCreate = true;
 					OutputLine("{0}Use 'File\\Save All' to commit to disk.{1}", Font.EncodeColor(0xfffef860), Font.EncodePopColor());
 				}
-
-
-				/*for (int i < 10)
-				{
-					var testStr = scope String();
-
-					for (int j < 10)
-					{
-						Font.StrEncodeColor(0xfffebd57, testStr);
-						testStr.Append('A' + j);
-						Font.StrEncodePopColor(testStr);
-					}
-
-					OutputLine(testStr);
-				}*/
             }
 			else
 			{
@@ -7752,8 +7746,8 @@ namespace IDE
             bfProject.ClearDependencies();
             for (var depProject in depProjectList)
             {
-                var depBfProject = bfSystem.mProjectMap[depProject];
-                bfProject.AddDependency(depBfProject);
+                if (bfSystem.mProjectMap.TryGetValue(depProject, var depBfProject))
+                	bfProject.AddDependency(depBfProject);
             }
 
 			if (!bfCompiler.mIsResolveOnly)
@@ -9546,6 +9540,27 @@ namespace IDE
 				title.Append(" - ");
 			}
 			title.Append("Beef IDE");
+
+			String extraStr = scope .();
+
+			String exePath = scope .();
+			Environment.GetExecutableFilePath(exePath);
+			if (exePath.Contains(@"\host\"))
+				extraStr.Append("host");
+
+			String exeFileName = scope .();
+			Path.GetFileNameWithoutExtension(exePath, exeFileName);
+			int slashPos = exeFileName.IndexOf('_');
+			if (slashPos != -1)
+			{
+				if (!extraStr.IsEmpty)
+					extraStr.Append(" ");
+				extraStr.Append(exeFileName, slashPos + 1);
+			}
+
+			if (!extraStr.IsEmpty)
+				title.AppendF(" [{}]", extraStr);
+
 			mMainWindow.SetTitle(title);
 		}
 
@@ -9575,7 +9590,9 @@ namespace IDE
 
 			Directory.GetCurrentDirectory(mInitialCWD);
 
-			mColorMatrix = Matrix4.Identity;
+#if DEBUG
+			//mColorMatrix = Matrix4.Identity;
+#endif
 
             base.Init();
 			mSettings.Apply();
@@ -9657,7 +9674,11 @@ namespace IDE
 			mAutoCompletePanel = new AutoCompletePanel();
 			mAutoCompletePanel.mAutoDelete = false;
 
-			OutputLine("IDE Started. Build 1.");
+			String exeFilePath = scope .();
+			Environment.GetExecutableFilePath(exeFilePath);
+			mVersionInfo = new .();
+			mVersionInfo.GetVersionInfo(exeFilePath).IgnoreError();
+			OutputLine("IDE Started. Version {}.", mVersionInfo.FileVersion);
 
 			/*if (!mRunningTestScript)
             {
@@ -9734,21 +9755,8 @@ namespace IDE
             UpdateRecentDisplayedFilesMenuItems();
             if (mRecentlyDisplayedFiles.Count > 0)
                 ShowRecentFile(0);
-			//mIPCHostManager = IPCHostManager.sIPCHostManager = new IPCHostManager();
-			//mIPCHostManager.Init();                                                
-
-			//TODO: Temporary
-			//mBfResolveCompiler.StartTiming();
-
+			
             mProjectPanel.RebuildUI();
-
-			//mDebugger.LoadDebugVisualizers(scope String(mInstallDir, "BeefDbgVis.toml"));
-
-			/*foreach (var project in mWorkspace.mProjects)
-				project.Save();*/
-            
-            //OutputLine("IDE Started. Build 1.");
-			//mProjectPanel.ShowProjectProperties(mWorkspace.mProjects[0]);                  
 
 			if (mProcessAttachId != 0)
 			{
@@ -11581,7 +11589,8 @@ namespace IDE
 			}
 
 #if !CLI
-			UpdateIPC();
+			if (mSettings.mEnableDevMode)
+				UpdateIPC();
 #endif
 
 			if (mRunTest)
