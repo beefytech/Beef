@@ -967,10 +967,8 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 				{
 					if (!mSweepInfo.mEmptyScan)
 					{
-						// We set this as NOT allocated but deleted. This will show an error like:
+						// We set this to cause an error like:
 						//	Deleting an object that was detected as leaked (internal error)
-						//objectFlags = objectFlags & ~BF_OBJECTFLAG_ALLOCATED | BF_OBJECTFLAG_DELETED;
-
 						obj->mObjectFlags = (BfObjectFlags)(objectFlags | BF_OBJECTFLAG_STACK_ALLOC);
 
 						if (!mHadRootError)
