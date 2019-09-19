@@ -10326,7 +10326,20 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 						}
 
 						if (arg != NULL)
-							dimLength = mModule->CreateValueFromExpression(expr, intType);
+						{							
+							dimLength = mModule->CreateValueFromExpression(expr, intType, BfEvalExprFlags_NoCast);
+							
+							BfCastFlags castFlags = BfCastFlags_None;
+							if (dimLength.mType->IsInteger())
+							{
+								// Allow uint for size - just force to int
+								if (!((BfPrimitiveType*)dimLength.mType)->IsSigned())
+									castFlags = BfCastFlags_Explicit;
+							}
+							if (dimLength)
+								dimLength = mModule->Cast(expr, dimLength, intType, castFlags);
+						}
+
 						if (!dimLength)
 						{
 							dimLength = mModule->GetDefaultTypedValue(intType);
