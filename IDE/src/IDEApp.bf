@@ -1962,7 +1962,6 @@ namespace IDE
 			project.mGeneralOptions.mTargetType = targetType;
 			project.SetupDefault();
             project.SetChanged();
-            //AddProjectToWorkspace(project);
 			AddNewProjectToWorkspace(project);
 			project.FinishCreate();
 
@@ -2253,10 +2252,7 @@ namespace IDE
 					project.mNeedsCreate = true;
 					project.mHasChanged = true;
 					project.mProjectDir.Set(mWorkspace.mDir);
-					Utils.GetDirWithSlash(project.mProjectPath);
-					project.mProjectPath.Append("BeefProj.toml");
-					//project.FinishCreate();
-
+					
 					project.FinishCreate(false);
 
 					var verSpec = new VerSpecRecord();
