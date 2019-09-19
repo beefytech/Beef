@@ -6413,21 +6413,6 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 	DbgType* origValueType = typedValue.mType;
 	bool origHadRef = false;
 	DbgType* dwValueType = typedValue.mType->RemoveModifiers(&origHadRef);	
-// 	if (origValueType->mTypeCode == DbgType_Bitfield)
-// 	{
-// 		auto dbgBitfieldType = (DbgBitfieldType*)origValueType;		
-// 		
-// 		typedValue.mUInt64 = typedValue.mUInt64 >> dbgBitfieldType->mPosition;
-// 
-// 		uint64 mask = ((uint64)1<<dbgBitfieldType->mLength) - 1;
-// 		typedValue.mUInt64 &= mask;
-// 
-// 		if ((dwValueType->IsSigned()) && ((typedValue.mUInt64 & (1LL << (dbgBitfieldType->mLength - 1))) != 0))
-// 		{
-// 			// Sign extend
-// 			typedValue.mUInt64 |= ~mask;
-// 		}
-// 	}
 
 	if (dwValueType == NULL)
 		dwValueType = dbgModule->GetPrimitiveType(DbgType_Void, language);
@@ -6501,18 +6486,6 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				retVal = EncodeDataPtr(ptrVal, true) + " ";
 				retVal += dwValueType->mTypeParam->ToString(language);
 				retVal += StrFormat("[%d] ", formatInfo.mArrayLength);				
-			}
-			else
-			{
-				// Show first item								
-// 				String evalString = "*((" + typedValue.mType->ToStringRaw(language) + ")" + EncodeDataPtr(ptrVal, true) + "), nm";
-// 				DwFormatInfo emptyFormatInfo;				
-// 				DbgTypedValue evalResult = EvaluateInContext(dbgModule, typedValue, evalString, &emptyFormatInfo);
-// 				if (evalResult)
-// 				{
-// 					retVal += DbgTypedValueToString(evalResult, evalString, emptyFormatInfo, NULL);
-// 				}
-
 			}
 
 			_ShowArraySummary(retVal, ptrVal, formatInfo.mArrayLength, dwValueType->mTypeParam);
@@ -7156,8 +7129,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		String referenceId = dwValueType->ToString(language);
 		String evalStr;
 
-		// Why did we have the "na"? Do we not want to show addresses for all members?
-		//evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + ")[{0}], na, refid=" + referenceId + ".[]";
+		// Why did we have the "na"? Do we not want to show addresses for all members?		
 		evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + ")[{0}], refid=" + MaybeQuoteFormatInfoParam(referenceId + ".[]");
 		if (typedValue.mIsReadOnly)
 			evalStr += ", ne";
@@ -7375,13 +7347,12 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if (mDebugTarget->mBfObjectHasFlags)
 			{
 				bfObjectFlags = ((int)classVDataPtr) & 0xFF;
-
-				//TODO: Only do this in debug?
-				if (bfObjectFlags & BfObjectFlag_Deleted)
+				
+				if ((bfObjectFlags & BfObjectFlag_Deleted) != 0)
 					isDeletedBfObject = true;
-				if (bfObjectFlags & BfObjectFlag_AppendAlloc)
-					isAppendBfObject = true;
-				if (bfObjectFlags & BfObjectFlag_StackAlloc)
+				if ((bfObjectFlags & BfObjectFlag_AppendAlloc) != 0)
+					isAppendBfObject = true;				
+				if ((bfObjectFlags & (BfObjectFlag_StackAlloc | BfObjectFlag_Allocated)) == BfObjectFlag_StackAlloc)
 					isStackBfObject = true;
 
 				classVDataPtr &= ~0xFF;
@@ -7439,11 +7410,6 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 									className.Remove(i, 3);
 							}
 						}
-
-// 						if (className.StartsWith("bf.")) 
-// 							className.Remove(0, 3);
-// 						else if (className.StartsWith("Box<bf."))
-// 							className.Remove(4, 3);
 
 						int lastDot = (int)className.LastIndexOf('.');
 						if (lastDot > 0)
@@ -7625,19 +7591,6 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if (language == DbgLanguage_Beef)
 				dwUseType->FixName();
 			debugVis = FindVisualizerForType(dwUseType, &dbgVisWildcardCaptures);
-
-// 			for (auto& wildcardCapture : dbgVisWildcardCaptures)
-// 			{
-// 				if (wildcardCapture.StartsWith("`"))
-// 				{
-// 					dwUseType->PopulateType();
-// 					auto entry = dbgModule->mTypeMap.Find(wildcardCapture.c_str(), language);
-// 					if (entry != NULL)
-// 					{
-// 						//wildcardCapture = entry->mValue->ToStringRaw(language);
-// 					}
-// 				}
-// 			}
 		}
 		
 		bool hadCustomDisplayString = false;
@@ -10169,9 +10122,6 @@ String WinDebugger::GetThreadInfo()
 
 					if (stackIdx == 128)
 						break; // Too many!
-
-// 					if ((ToLower(module->mDisplayName) != "ntdll.dll") && (ToLower(module->mDisplayName) != "kernel32.dll") && (ToLower(module->mDisplayName) != "kernelbase.dll"))
-// 						break;										
 
 					addr_target returnAddr;
 					if (!mDebugTarget->RollBackStackFrame(&registers, &returnAddr, true))
