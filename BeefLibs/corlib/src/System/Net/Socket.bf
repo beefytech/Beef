@@ -5,12 +5,9 @@ namespace System.Net
 {
 	class Socket
 	{
-		//#define WSADESCRIPTION_LEN      256
-		//#define WSASYS_STATUS_LEN       128
-
-		const int32 WSAENETRESET = 10052;
+		const int32 WSAENETRESET    = 10052;
 		const int32 WSAECONNABORTED = 10053;
-		const int32 WSAECONNRESET = 10054;
+		const int32 WSAECONNRESET   = 10054;
 
 		public struct HSocket : uint
 		{
@@ -48,25 +45,28 @@ namespace System.Net
 			}
 		}
 
+#if BF_PLATFORM_WINDOWS
 		[CRepr]
 		struct WSAData
         {
 	        public uint16 wVersion;
 	        public uint16 wHighVersion;
-//#ifdef _WIN64
+#if BF_64_BIT
 	        public uint16 iMaxSockets;
 	        public uint16 iMaxUdpDg;
 	        public char8* lpVendorInfo;
 	        public char8[256+1] szDescription;
 	        public char8[128+1] szSystemStatus;
-//#else
-	        /*char                    szDescription[WSADESCRIPTION_LEN+1];
-	        char                    szSystemStatus[WSASYS_STATUS_LEN+1];
-	        unsigned short          iMaxSockets;
-	        unsigned short          iMaxUdpDg;
-	        char FAR *              lpVendorInfo;*/
-//#endif
+#else
+	        char8[256+1] szDescription;
+	        char8[128+1] szSystemStatus;
+	        uint16 iMaxSockets;
+	        uint16 iMaxUdpDg;
+	        char8* lpVendorInfo;
+#endif
 		}
+#endif
+
 		[CRepr]
 		struct in_addr
 		{
@@ -180,7 +180,7 @@ namespace System.Net
 		public static void Init()
 		{
 #if BF_PLATFORM_WINDOWS
-			WSAData wsaData = default(WSAData);
+			WSAData wsaData = default;
 			WSAStartup(0x202, &wsaData);
 #endif
 		}
