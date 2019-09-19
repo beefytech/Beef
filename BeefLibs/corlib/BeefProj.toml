@@ -24,3 +24,6 @@ EmitObjectAccessCheck = false
 [[Configs.Debug.Win64.DistinctOptions]]
 Filter = "[System.Optimize]"
 BfOptimizationLevel = "O2"
+RuntimeChecks = false
+EmitDynamicCastCheck = false
+EmitObjectAccessCheck = false
