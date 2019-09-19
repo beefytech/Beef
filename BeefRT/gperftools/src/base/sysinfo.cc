@@ -321,7 +321,7 @@ static void InitializeSystemInfo() {
   if (fd == -1) {
     perror(pname);
     if (!saw_mhz) {
-      cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
+      //cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
     }
     return;          // TODO: use generic tester instead?
   }
@@ -398,7 +398,7 @@ static void InitializeSystemInfo() {
       cpuinfo_cycles_per_second = bogo_clock;
     } else {
       // If we don't even have bogomips, we'll use the slow estimation.
-      cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
+      //cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
     }
   }
   if (cpuinfo_cycles_per_second == 0.0) {
@@ -430,19 +430,19 @@ static void InitializeSystemInfo() {
   if ( sysctlbyname(sysctl_path, &hz, &sz, NULL, 0) != 0 ) {
     fprintf(stderr, "Unable to determine clock rate from sysctl: %s: %s\n",
             sysctl_path, strerror(errno));
-    cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
+    //cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
   } else {
     cpuinfo_cycles_per_second = hz;
   }
   // TODO(csilvers): also figure out cpuinfo_num_cpus
 
 #elif defined(PLATFORM_WINDOWS)
-# pragma comment(lib, "shlwapi.lib")  // for SHGetValue()
+//# pragma comment(lib, "shlwapi.lib")  // for SHGetValue()
   // In NT, read MHz from the registry. If we fail to do so or we're in win9x
   // then make a crude estimate.
-  OSVERSIONINFO os;
-  os.dwOSVersionInfoSize = sizeof(os);
-  DWORD data, data_size = sizeof(data);
+//   OSVERSIONINFO os;
+//   os.dwOSVersionInfoSize = sizeof(os);
+//   DWORD data, data_size = sizeof(data);
   
   //BCF
   /*if (GetVersionEx(&os) &&
@@ -452,7 +452,7 @@ static void InitializeSystemInfo() {
                            "~MHz", NULL, &data, &data_size)))
     cpuinfo_cycles_per_second = (int64)data * (int64)(1000 * 1000); // was mhz
   else*/
-    cpuinfo_cycles_per_second = EstimateCyclesPerSecond(500); // TODO <500?
+    //cpuinfo_cycles_per_second = EstimateCyclesPerSecond(500); // TODO <500?
 
   // Get the number of processors.
   SYSTEM_INFO info;
@@ -485,12 +485,18 @@ static void InitializeSystemInfo() {
 
 #else
   // Generic cycles per second counter
-  cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
+  //cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
 #endif
 }
 
 double CyclesPerSecond(void) {
   InitializeSystemInfo();
+
+  if (cpuinfo_cycles_per_second == 1.0)
+  {
+	  cpuinfo_cycles_per_second = EstimateCyclesPerSecond(500);
+  }
+
   return cpuinfo_cycles_per_second;
 }
 
