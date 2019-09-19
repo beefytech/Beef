@@ -82,10 +82,7 @@ namespace Beefy.utils
 
 			public void Dispose()
 			{
-				//if (mIsOpen)
-				{
-					mStructuredData.Close();
-				}
+				mStructuredData.Close();
 			}
 
 			public Result<StringView> GetNext() mut
@@ -283,24 +280,6 @@ namespace Beefy.utils
 			return count;
 		}
 
-        /*public Values Current
-        {
-            get { return mCurrent; } 
-        }*/
-
-		/*protected override void GCMarkMembers()
-		{
-			// We do this because these containers are held in the bump allocator so they don't get marked
-			GC.Mark(mKeys.[Friend]mItems);
-			GC.Mark(mNextValues.[Friend]mItems);
-			GC.Mark(mNextKeys.[Friend]mItems);
-			if (mMap != null)
-			{
-				GC.Mark(mMap.[Friend]mBuckets);
-				GC.Mark(mMap.[Friend]mEntries);
-			}
-		}*/
-
 		static int32 sIdx;
 		int32 mIdx = sIdx++;
 		public void ToLeakString(String str)
@@ -318,19 +297,6 @@ namespace Beefy.utils
 			}
 
 			let namedValues = (NamedValues)current;
-
-            /*if (mMap != null)
-                return mMap.TryGetValue(name, out value);
-
-            if (mKeys.Count > 32)
-            {
-                mMap = new Dictionary<String, Object>();
-
-                // Only create a map for large lists
-                for (int32 i = 0; i < mKeys.Count; i++)
-                    mMap[mKeys[i]] = mValues[i];
-                return mMap.TryGetValue(name, out value);
-            }*/
 
 			int32 checkKey = namedValues.mKeyIdx;
 			int32 checkValue = namedValues.mValueIdx;
@@ -363,19 +329,6 @@ namespace Beefy.utils
 			}
 
 			namedValues = (NamedValues)current;
-
-		    /*if (mMap != null)
-		        return mMap.TryGetValue(name, out value);
-
-		    if (mKeys.Count > 32)
-		    {
-		        mMap = new Dictionary<String, Object>();
-
-		        // Only create a map for large lists
-		        for (int32 i = 0; i < mKeys.Count; i++)
-		            mMap[mKeys[i]] = mValues[i];
-		        return mMap.TryGetValue(name, out value);
-		    }*/
 
 			int32 checkKey = namedValues.mKeyIdx;
 			int32 checkValue = namedValues.mValueIdx;
@@ -481,12 +434,6 @@ namespace Beefy.utils
 
         public Object GetCurrent()
         {
-			/*int32 checkValue = mCurrent.mValues.mValueIdx;
-			for (int i < idx)
-			{
-				checkValue = mNextValues[checkValue];
-			}
-			return mValues[checkValue];*/
 			if (mCurrent.mLastValue == -1)
 				return null;
 			return mValues[mCurrent.mLastValue];
@@ -919,22 +866,6 @@ namespace Beefy.utils
 		    return enumerator;
 		}
 
-        /*IEnumerator IEnumerable.GetEnumerator()
-        {
-            return new Enumerator(this);
-        }*/
-
-        /*public Enumerator GetEnumerator()
-        {
-            return Enumerator(this, mCurrent.mValues);
-        }*/
-
-        /*public IEnumerable<StructuredData> GetValues(String name)
-        {
-            Open(name);
-            return this;
-        }*/
-
         IDisposable GetDisposeProxy()
         {
             if (mStructuredDisposeProxy == null)
@@ -946,62 +877,15 @@ namespace Beefy.utils
             return mStructuredDisposeProxy;
         }
 
-        public IDisposable Open(int index)
+        /*public IDisposable Open(int index)
         {
 			ThrowUnimplemented();
-
-            /*if (mStructuredDisposeProxy == null)
-			{
-			    mStructuredDisposeProxy = new DisposeProxy();
-			    mStructuredDisposeProxy.mDisposeProxyDelegate = new => Close;
-			}
-
-			mOpenStack.Add(mCurrent);
-
-			Object val = Get(index);
-			if (let values = val as Values)
-			{
-			    mCurrent = CurrentEntry(values);
-			}
-			else
-			{
-				if (mEmptyData == null)
-				{
-					mEmptyData = new NamedValues();
-				}
-			    mCurrent = CurrentEntry(mEmptyData);
-			}            
-
-			return mStructuredDisposeProxy;*/
         }
 
 		public IDisposable Open(Enumerator enumerator)
 		{
 			ThrowUnimplemented();
-		    /*if (mStructuredDisposeProxy == null)
-			{
-			    mStructuredDisposeProxy = new DisposeProxy();
-			    mStructuredDisposeProxy.mDisposeProxyDelegate = new => Close;
-			}
-
-			mOpenStack.Add(mCurrent);
-
-			Object val = mValues[enumerator.[Friend]mValueIdx];
-			if (let values = val as Values)
-			{
-			    mCurrent = CurrentEntry(values);
-			}
-			else
-			{
-				if (mEmptyData == null)
-				{
-					mEmptyData = new NamedValues();
-				}
-			    mCurrent = CurrentEntry(mEmptyData);
-			}            
-
-			return mStructuredDisposeProxy;*/
-		}
+		}*/
 
 		public void CreateNew()
 		{
@@ -1023,7 +907,6 @@ namespace Beefy.utils
 
         public IDisposable CreateObject(bool forceInline = false)
         {
-            //NamedValues values = new:mBumpAllocator NamedValues();
 			NamedValues values;
 			if (forceInline)
 				values = new:mBumpAllocator InlineNamedValues();
@@ -1038,8 +921,6 @@ namespace Beefy.utils
 
         public IDisposable CreateArray(String name, bool forceInline = false)
         {
-            //Values values = new:mBumpAllocator Values();
-
 			Values values;
 			if (forceInline)
 				values = new:mBumpAllocator InlineValues();
@@ -1065,11 +946,6 @@ namespace Beefy.utils
 			mCurrent = CurrentEntry(values);
 			return GetDisposeProxy();
         }
-
-		public void ForceInline()
-		{
-			//mCurrent.mValues;
-		}
 
         static void StringEncode(String outString, StringView theString)
         {
@@ -1387,9 +1263,7 @@ namespace Beefy.utils
 
         public void ToJSON(String str, bool humanReadable = false)
         {
-            //String aStringBuilder = new String();
             ToJSONHelper(mCurrent.mValues, str, humanReadable, "");
-            //return aStringBuilder.ToString();
         }
 
 		public void ToTOML(String outStr)
@@ -1656,10 +1530,7 @@ namespace Beefy.utils
 				}
 			}
 
-		    //String aStringBuilder = new String();
-			
 		    EncodeValues(mCurrent.mValues);
-		    //return aStringBuilder.ToString();
 		}
 
         public override void ToString(String str)
@@ -1687,12 +1558,7 @@ namespace Beefy.utils
 			bool keyHadSlash = false;
 
 			bool returningValues = false;
-			/*defer
-			{
-				if (!returningValues)
-					delete values;
-			};*/
-
+			
 			int length = string.Length;
 			char8* cPtr = string.Ptr;
             for (int32 char8Idx = idx; char8Idx < length; char8Idx++)
@@ -1727,7 +1593,6 @@ namespace Beefy.utils
                     {
                         if ((valueStartIdx != -1) && (valueHadWhitespace))
 							return .Err(.FormatError(lineNum));
-                            //Runtime.FatalError("Preceding comma expected");
 
                         valueStartIdx = char8Idx;
                         inQuote = true;
@@ -1764,7 +1629,6 @@ namespace Beefy.utils
                 {
                     if (values != null)
                     {
-                        //valueData = ETry!(LoadJSONHelper(theString, ref char8Idx, ref lineNum));
 						var result = LoadJSONHelper(string, ref char8Idx, ref lineNum);
 						if (result case .Err(var err))
 							return .Err(err);
@@ -1825,11 +1689,6 @@ namespace Beefy.utils
 							return .Err(Error.FormatError(lineNum));
                         aValue = valueData;
                         valueData = null;
-
-						//WTF was this?
-                       /*Values values = aValue as StructuredDataa;
-                        if (valueStructuredData != null)
-                            valueStructuredData.mParent = values;*/
                     }
                     else
                     {
@@ -1838,9 +1697,6 @@ namespace Beefy.utils
 
                         if (cPtr[valueStartIdx] == '"')
                         {
-							//String str = new:mBumpAllocator String();
-                            //theString.Substring(valueStartIdx + 1, valueEndIdx - valueStartIdx - 1, str);
-
 							if (hadSlash)
 							{
                                 String str = new:mBumpAllocator String(string, valueStartIdx + 1, valueEndIdx - valueStartIdx - 1);
@@ -1854,11 +1710,7 @@ namespace Beefy.utils
                         }
                         else
                         {
-                            //String str = scope String(string, valueStartIdx, valueEndIdx - valueStartIdx + 1);
-
 							StringView strView = StringView(string, valueStartIdx, valueEndIdx - valueStartIdx + 1);
-
-                            //string.Substring(valueStartIdx, valueEndIdx - valueStartIdx + 1, str);
 
 							char8 lastC = strView.Ptr[strView.Length - 1];
 							switch (lastC)
@@ -1887,13 +1739,7 @@ namespace Beefy.utils
 										aValue = new:mBumpAllocator box intVal;
 									else
 									{
-										//TODO: Is temporary
-										/*if (str.StartsWith("Int@"))
-											aValue = new:mBumpAllocator box (int)0;
-										else if (str.StartsWith("Double@"))
-											aValue = new:mBumpAllocator box 0.0f;
-										else*/
-											return .Err(Error.ParseError);
+										return .Err(Error.ParseError);
 									}
 								}
 							}
@@ -1904,8 +1750,7 @@ namespace Beefy.utils
                     {
                         if (keyStartIdx != -1)
 							return .Err(Error.KeyInArray);
-                        //DoAdd(ref currentEntry, aValue);
-
+                        
 						int valueIdx = mValues.Count;
 						if (currentEntry.mLastValue != -1)
 							mNextValues[currentEntry.mLastValue] = (int32)valueIdx;
@@ -1968,14 +1813,11 @@ namespace Beefy.utils
                 if (atEnd)
                 {
                     idx = char8Idx;
-                    //values.mCanWrite = false;
 					returningValues = true;
                     return values;
                 }
             }
 
-			//if (values != null)
-            	//values.mCanWrite = false;
 			returningValues = true;
             return values;
         }
@@ -2253,14 +2095,9 @@ namespace Beefy.utils
 
 					switch (nextC)
 					{
-					case 0: fallthrough;
-					case ' ': fallthrough;
-					case '\t': fallthrough;
-					case '\r': fallthrough;
-					case '\n': fallthrough;
-					case ',': fallthrough;
-					case ']': fallthrough;
-					case '}':
+					case 0:
+						break ValueStrLoop;
+					case ' ', '\t', '\r', '\n', ',', ']', '}':
 						idx--;
 						break ValueStrLoop;
 					}
@@ -2359,16 +2196,6 @@ namespace Beefy.utils
 
 						bool isArray = outerIsArray && !hasMoreParts;
 
-						/*if (loadSection.IsArray)
-						{
-							if (hasMoreParts)
-							{
-								if (loadSection.mSectionList.Count == 0)
-									return .Err(.FormatError);
-								loadSection = loadSection.mSectionList.Back;
-							}
-						}*/
-
 						String* keyPtr;
 						LoadSection* valuePtr;
 						if (loadSection.mSectionDict.TryAdd(entryName, out keyPtr, out valuePtr))
@@ -2422,12 +2249,8 @@ namespace Beefy.utils
 							loadSection.mSectionList.Add(newSection);
 							DoAdd(ref loadSection.mCurrentEntry, newSection.mCurrentEntry.mValues);
 							loadSection = newSection;
-							//currentEntry = loadSection.mCurrentEntry;
 						}
-						else
-						{
-							//currentEntry = loadSection.mCurrentEntry;
-						}
+						
 
 						if (hasMoreParts)
 						{
@@ -2509,7 +2332,6 @@ namespace Beefy.utils
 
 			if (var values = objResult as Values)
 			{
-				//mCurrent = CurrentEntry(values);
 				int valIdx = mValues.Count;
 
 				mHeadValues = new:mBumpAllocator Values();
@@ -2523,7 +2345,6 @@ namespace Beefy.utils
 			}	
 			else
 			{
-				//delete obj;
 				return .Err(Error.FormatError(aLineNum));
 			}
 		}
