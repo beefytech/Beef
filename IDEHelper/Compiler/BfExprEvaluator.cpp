@@ -10330,7 +10330,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 							dimLength = mModule->CreateValueFromExpression(expr, intType, BfEvalExprFlags_NoCast);
 							
 							BfCastFlags castFlags = BfCastFlags_None;
-							if (dimLength.mType->IsInteger())
+							if ((dimLength) && (dimLength.mType->IsInteger()))
 							{
 								// Allow uint for size - just force to int
 								if (!((BfPrimitiveType*)dimLength.mType)->IsSigned())
