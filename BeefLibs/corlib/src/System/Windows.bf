@@ -95,6 +95,8 @@ namespace System
 			public static extern void CoTaskMemFree(void* ptr);
 		}
 
+		public struct COM_IBindCtx;
+
 		public function int WndProc(HWnd hWnd, int32 msg, int wParam, int lParam);
 		public delegate IntBool EnumThreadWindowsCallback(HWnd hWnd, void* extraParameter);
 
@@ -1197,6 +1199,9 @@ namespace System
 
 		[Import("shell32.lib"), CLink, StdCall]
 		public static extern int SHBrowseForFolder(ref BrowseInfo bi);
+
+		[Import("shell32.lib"), CLink, StdCall]
+		public static extern COM_IUnknown.HResult SHCreateItemFromParsingName(char16* pszPath, COM_IBindCtx *pbc, Guid riid, void **ppv);
 
 		[CLink, StdCall]
 		public static extern int32 GetLastError();

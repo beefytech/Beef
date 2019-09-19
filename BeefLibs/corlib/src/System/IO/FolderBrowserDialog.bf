@@ -51,6 +51,17 @@ namespace System.IO
 
 		protected Result<DialogResult> RunDialog_New(Windows.HWnd hWndOwner, FolderBrowserDialog.COM_IFileDialog* fileDialog)
 		{
+			if (!mSelectedPath.IsEmpty)
+			{
+				COM_IShellItem* folderShellItem = null;
+				Windows.SHCreateItemFromParsingName(mSelectedPath.ToScopedNativeWChar!(), null, COM_IShellItem.sIID, (void**)&folderShellItem);
+				if (folderShellItem != null)
+				{
+					fileDialog.VT.SetDefaultFolder(fileDialog, folderShellItem);
+					folderShellItem.VT.Release(folderShellItem);
+				}
+			}
+
 			fileDialog.VT.SetOptions(fileDialog, .PICKFOLDERS);
 			fileDialog.VT.Show(fileDialog, hWndOwner);
 
@@ -159,6 +170,8 @@ namespace System.IO
 
 		struct COM_IShellItem : Windows.COM_IUnknown
 		{
+			public static Guid sIID = .(0x43826d1e, 0xe718, 0x42ee, 0xbc, 0x55, 0xa1, 0xe2, 0x61, 0xc3, 0x7b, 0xfe);
+
 			public enum SIGDN : uint32
 			{
 			    NORMALDISPLAY = 0x00000000,           // SHGDN_NORMAL
