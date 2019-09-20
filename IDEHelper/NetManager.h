@@ -6,10 +6,11 @@
 #include "BeefySysLib/util/ThreadPool.h"
 #include "BeefySysLib/util/Dictionary.h"
 
-#ifdef BF_PLATFORM_WINDOWS
-
 NS_BF_BEGIN
+
+#ifdef BF_PLATFORM_WINDOWS
 #define BF_CURL
+#endif
 
 class DebugManager;
 class NetManager;
@@ -120,21 +121,3 @@ public:
 };
 
 NS_BF_END
-
-#else
-
-NS_BF_BEGIN
-
-class NetManager
-{
-public:
-	DebugManager* mDebugManager;
-
-public:
-	void CancelAll() {};
-	void Clear() {};
-};
-
-NS_BF_END
-
-#endif

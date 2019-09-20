@@ -198,7 +198,7 @@ void NetRequest::Perform()
 	DoTransfer();	
 }
 
-#else
+#elif defined BF_PLATFORM_WINDOWS
 
 #include <windows.h>
 #include <wininet.h>
@@ -363,6 +363,18 @@ void NetRequest::Perform()
 
 	if (renameResult != BfpFileResult_Ok)
 		mFailed = true;
+}
+
+void NetRequest::Cleanup()
+{
+
+}
+
+#else
+
+void NetRequest::Perform()
+{
+	mFailed = true;
 }
 
 void NetRequest::Cleanup()
