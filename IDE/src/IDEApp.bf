@@ -2509,6 +2509,15 @@ namespace IDE
         {
 			scope AutoBeefPerf("IDE.WorkspaceLoaded");
 
+			if (!Environment.IsFileSystemCaseSensitive)
+			{
+				// Make sure we have the correct actual path
+				String newPath = new String();
+				Path.GetActualPathName(mWorkspace.mDir, newPath);
+				delete mWorkspace.mDir;
+				mWorkspace.mDir = newPath;
+			}
+
 			List<String> platforms = scope List<String>();
 			platforms.Add(IDEApp.sPlatform32Name);
 			platforms.Add(IDEApp.sPlatform64Name);
@@ -6052,6 +6061,7 @@ namespace IDE
 
 			SourceHash hash = default;
 			int hashPos = filePath.IndexOf('#');
+			bool checkForOldFileInfo = false;
 			if (hashPos != -1)
 			{
 				let hashStr = StringView(filePath, hashPos + 1);
@@ -6083,20 +6093,28 @@ namespace IDE
 					if (hashKind == .None)
 						hashKind = .MD5;
 
-					LoadTextFile(filePath, fileText, false, scope [&] () => { hash = SourceHash.Create(hashKind, fileText); }).IgnoreError();
+					LoadTextFile(filePath, fileText, false, scope [&] () => { fileHash = SourceHash.Create(hashKind, fileText); }).IgnoreError();
 
 					if (fileHash != hash)
-					{
-						String outFileInfo = scope String();
-						mDebugger.GetStackFrameOldFileInfo(mDebugger.mActiveCallStackIdx, outFileInfo);
+						checkForOldFileInfo = true;
+				}
+			}
+			else
+			{
+				if (!File.Exists(filePath))
+					checkForOldFileInfo = true;
+			}
 
-						var args = outFileInfo.Split!('\n');
-						if (args.Count == 3)
-						{
-							filePath.Set(args[0]);
-							loadCmd = scope:: String(args[1]);
-						}
-					}
+			if (checkForOldFileInfo)
+			{
+				String outFileInfo = scope String();
+				mDebugger.GetStackFrameOldFileInfo(mDebugger.mActiveCallStackIdx, outFileInfo);
+
+				var args = outFileInfo.Split!('\n');
+				if (args.Count == 3)
+				{
+					filePath.Set(args[0]);
+					loadCmd = scope:: String(args[1]);
 				}
 			}
 

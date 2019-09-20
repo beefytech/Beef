@@ -12,6 +12,7 @@
 #include "BeefySysLib/util/Deque.h"
 #include "BeefySysLib/util/HashSet.h"
 #include "BeefySysLib/util/MultiHashSet.h"
+#include "CrashCatcher.h"
 
 //#include <mmsystem.h>
 //#include <shellapi.h>
@@ -27,7 +28,7 @@ using namespace Beefy;
 BF_IMPORT void BF_CALLTYPE Debugger_ProgramDone();
 
 int main(int argc, char* argv[])
-{
+{	
 	BfpSystem_SetCommandLine(argc, argv);
 
 	BfpThread_SetName(NULL, "MainThread", NULL);

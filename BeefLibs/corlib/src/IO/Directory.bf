@@ -48,19 +48,17 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public static Result<void> DelTree(StringView path)
+		public static Result<void, Platform.BfpFileResult> DelTree(StringView path)
 		{
 			if (path.Length <= 2)
-				return .Err;
+				return .Err(.InvalidParameter);
 			if ((path[0] != '/') && (path[0] != '\\'))
 			{
 				if (path[1] == ':')
 				{
 					if (path.Length < 3)
-						return .Err;
+						return .Err(.InvalidParameter);
 				}
-				else
-					return .Err;
 			}
 
 		    for (var fileEntry in Directory.EnumerateDirectories(path))

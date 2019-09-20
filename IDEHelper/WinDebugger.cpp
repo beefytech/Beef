@@ -1399,9 +1399,9 @@ bool WinDebugger::DoUpdate()
 			dbgModule->PreCacheImage();
 		}
 
-		for (auto dbgModule : mPendingDebugInfoLoad)
+		for (auto kv : mPendingDebugInfoLoad)
 		{
-			dbgModule->PreCacheDebugInfo();
+			kv.mKey->PreCacheDebugInfo();
 		}
 
 		while (!mPendingImageLoad.IsEmpty())
@@ -1412,26 +1412,21 @@ bool WinDebugger::DoUpdate()
 			_ModuleChanged(dbgModule);
 		}
 
-		while (!mPendingDebugInfoLoad.IsEmpty())
+		if (!mPendingDebugInfoLoad.IsEmpty())
 		{
-			auto dbgModule = mPendingDebugInfoLoad.back();
-			mPendingDebugInfoLoad.pop_back();
-			dbgModule->RequestDebugInfo();
-			// We do a "_ModuleChanged" even if the load failed, so we rehup the callstack and stop
-			//  saying "<Loading...>"
-			_ModuleChanged(dbgModule);
-		}
-
-		/*while (!mPendingDebugInfoRequests.IsEmpty())
-		{
-			if ((!mPendingImageLoad.IsEmpty()) || (!mPendingDebugInfoLoad.IsEmpty()))
-				break;
-
-			auto dbgModule = mPendingDebugInfoRequests.back();
-			mPendingDebugInfoRequests.pop_back();
-			if (LoadDebugInfoForModule(dbgModule) == 1)
-				_ModuleChanged(dbgModule);
-		}*/
+			Array<DbgPendingDebugInfoLoad> pendingList;
+			for (auto kv : mPendingDebugInfoLoad)
+				pendingList.Add(kv.mValue);
+			
+			for (auto& entry : pendingList)
+			{
+				auto dbgModule = entry.mModule;
+				entry.mModule->RequestDebugInfo(entry.mAllowRemote);
+				// We do a "_ModuleChanged" even if the load failed, so we rehup the callstack and stop
+				//  saying "<Loading...>"
+				_ModuleChanged(entry.mModule);
+			}
+		}		
 	}
 
 	if (IsMiniDumpDebugger())
@@ -10829,7 +10824,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 			{
 				*outFlags |= FrameFlags_HasPendingDebugInfo;
 				
-				if (mPendingDebugInfoLoad.Contains(dbgModule))
+				if (mPendingDebugInfoLoad.ContainsKey(dbgModule))
 				{
 					String outName = EncodeDataPtr(pcAddress, true);
 					if ((dbgModule != NULL) && (!dbgModule->mDisplayName.empty()))
@@ -11957,12 +11952,15 @@ int WinDebugger::LoadDebugInfoForModule(DbgModule* dbgModule)
 		return 1;
 	}
 
-	if (!mPendingDebugInfoLoad.Contains(dbgModule))
+	DbgPendingDebugInfoLoad* dbgPendingDebugInfoLoad = NULL;
+	if (mPendingDebugInfoLoad.TryAdd(dbgModule, NULL, &dbgPendingDebugInfoLoad))
 	{
-		mPendingDebugInfoLoad.Add(dbgModule);
+		dbgPendingDebugInfoLoad->mModule = dbgModule;
+		dbgPendingDebugInfoLoad->mAllowRemote = true;
 		return 2;
 	}
-
+	dbgPendingDebugInfoLoad->mAllowRemote = true;
+	
 	return 0;
 }
 

@@ -8,6 +8,7 @@
 #include "BeefySysLib/Util/PerfTimer.h"
 #include "BeefySysLib/Util/Dictionary.h"
 #include "BeefySysLib/Util/BeefPerf.h"
+#include "BeefySysLib/platform/PlatformHelper.h"
 #include "WinDebugger.h"
 #include "MiniDumpDebugger.h"
 #include "Linker/BlHash.h"
@@ -6327,14 +6328,44 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 					if (!matches)
 						break;
 
-					String retVal;
-					retVal = defs["SRCSRVTRG"];
-					retVal += "\n";
-					retVal += defs["SRCSRVCMD"];
-					retVal += "\n";
-					retVal += defs["SRCSRVENV"];
-					_Expand(retVal);
+					String& target = defs["SRCSRVTRG"];
+					String& cmd = defs["SRCSRVCMD"];
+					String& env = defs["SRCSRVENV"];
 
+					_Expand(target);
+					_Expand(cmd);
+					_Expand(env);
+					
+					String retVal;
+					if ((cmd.IsEmpty()) && (target.StartsWith("HTTP", StringImpl::CompareKind_OrdinalIgnoreCase)))
+					{
+						String localFile;
+
+						BfpFileResult result;
+						BFP_GETSTR_HELPER(localFile, result, BfpFile_GetTempPath(__STR, __STRLEN, &result));
+						int dotPos = target.IndexOf("://");
+						if (dotPos != -1)
+						{
+							localFile.Append("SymbolCache\\src\\");
+							localFile.Append(StringView(target, dotPos + 3));
+							localFile.Replace("/", "\\");
+						}						
+
+						retVal = localFile;
+						retVal += "\n";
+						retVal += target;
+						retVal += "\n";
+						retVal += env;
+					}
+					else if (!cmd.IsWhitespace())
+					{
+						retVal = target;
+						retVal += "\n";
+						retVal += cmd;
+						retVal += "\n";
+						retVal += env;
+					}
+					
 					return retVal;
 				}
 				break;

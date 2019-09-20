@@ -1,5 +1,6 @@
 #include "CrashCatcher.h"
 #include "../util/CritSect.h"
+#include "../util/Dictionary.h"
 
 USING_NS_BF;
 
@@ -593,6 +594,13 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 
 	CONTEXT ctx = *theContext;
 
+	struct ModuleInfo
+	{
+
+	};
+
+	Dictionary<String, ModuleInfo> moduleInfoMap;
+
 	for (;;)
 	{
 #ifdef BF64
@@ -635,7 +643,11 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 
 		HANDLE hProcess = GetCurrentProcess();
 
-		if (gSymGetSymFromAddr(hProcess, sf.AddrPC.Offset, &symDisplacement, pSymbol))		
+		bool forceFail = true;
+
+		
+
+		if ((gSymGetSymFromAddr(hProcess, sf.AddrPC.Offset, &symDisplacement, pSymbol)) && (!forceFail))
 		{
 			char aUDName[256];
 			gUnDecorateSymbolName(pSymbol->Name, aUDName, 256,
@@ -676,6 +688,13 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 			uintptr section = 0, offset = 0;
 
 			GetLogicalAddress((PVOID)sf.AddrPC.Offset, szModule, sizeof(szModule), section, offset);
+
+			ModuleInfo* moduleInfo = NULL;
+			if (moduleInfoMap.TryAdd(szModule, NULL, &moduleInfo))
+			{
+
+			}
+
 			aDebugDump += StrFormat("%@ %@ %04X:%@ %s\r\n", sf.AddrFrame.Offset, sf.AddrPC.Offset, section, offset, GetFileName(szModule).c_str());
 		}		
 

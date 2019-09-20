@@ -548,6 +548,7 @@
       <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
       <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
       <ModuleDefinitionFile>BeefRT.def</ModuleDefinitionFile>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">

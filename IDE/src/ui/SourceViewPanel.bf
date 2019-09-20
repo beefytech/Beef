@@ -17,6 +17,7 @@ using IDE.Debugger;
 using IDE.Compiler;
 using System.Security.Cryptography;
 using IDE.util;
+using Beefy2D.utils;
 
 namespace IDE.ui
 {
@@ -94,10 +95,6 @@ namespace IDE.ui
 			{
 				if (tabbedView.mIsFillWidget)
 					gApp.mActiveDocumentsTabbedView = tabbedView;
-				else
-				{
-					NOP!();
-				}
 			}
 
 			var sourceEditWidgetContent = (SourceEditWidgetContent)mEditWidgetContent;
@@ -365,6 +362,7 @@ namespace IDE.ui
         public int32 mClassifiedTextVersionId;
 		public bool mLoadFailed;
 		String mOldVerLoadCmd ~ delete _;
+		HTTPRequest mOldVerHTTPRequest ~ delete _;
 		IDEApp.ExecutionInstance mOldVerLoadExecutionInstance ~ { if (_ != null) _.mAutoDelete = true; };
 		SourceFindTask mSourceFindTask ~ delete _;
 		bool mWantsFastClassify;
@@ -3141,13 +3139,19 @@ namespace IDE.ui
 			bool isRepeat = mOldVerLoadCmd != null;
 
 			CloseHeader();
-
-			mPanelHeader = new PanelHeader();
+			
 			if (mOldVerLoadCmd == null)
 				mOldVerLoadCmd = new String(loadCmd);
 
+			if (loadCmd.StartsWith("http", .OrdinalIgnoreCase))
+			{
+				LoadOldVer();
+				return;
+			}
 			// For testing a long command...
 			//mOldVerLoadCmd.Set("/bin/sleep.exe 10");
+
+			mPanelHeader = new PanelHeader();
 
 			String fileName = scope String();
 			Path.GetFileName(mFilePath, fileName);
@@ -3191,9 +3195,18 @@ namespace IDE.ui
 
 		void LoadOldVer()
 		{
-			Debug.Assert(mOldVerLoadExecutionInstance == null);
-			mOldVerLoadExecutionInstance = gApp.DoRun(null, mOldVerLoadCmd, gApp.mInstallDir, .None);
-			mOldVerLoadExecutionInstance.mAutoDelete = false;
+			if (mOldVerLoadCmd.StartsWith("http", .OrdinalIgnoreCase))
+			{
+				DeleteAndNullify!(mOldVerHTTPRequest);
+				mOldVerHTTPRequest = new HTTPRequest();
+				mOldVerHTTPRequest.GetFile(mOldVerLoadCmd, mFilePath);
+			}
+			else
+			{
+				Debug.Assert(mOldVerLoadExecutionInstance == null);
+				mOldVerLoadExecutionInstance = gApp.DoRun(null, mOldVerLoadCmd, gApp.mInstallDir, .None);
+				mOldVerLoadExecutionInstance.mAutoDelete = false;
+			}
 
 			CloseHeader();
 
@@ -3208,7 +3221,12 @@ namespace IDE.ui
 			var button = mPanelHeader.AddButton("Cancel");
 			button.mOnMouseClick.Add(new (evt) =>
 				{
-					mOldVerLoadExecutionInstance.Cancel();
+					if (mOldVerLoadExecutionInstance != null)
+						mOldVerLoadExecutionInstance.Cancel();
+					if (mOldVerHTTPRequest != null)
+					{
+						DeleteAndNullify!(mOldVerHTTPRequest);
+					}
 				});
 			button = mPanelHeader.AddButton("Always Run");
 			button.mOnMouseClick.Add(new (evt) =>
@@ -5373,6 +5391,15 @@ namespace IDE.ui
 						SetLoadCmd(mOldVerLoadCmd);
 					delete mOldVerLoadExecutionInstance;
 					mOldVerLoadExecutionInstance = null;
+				}
+			}
+
+			if (mOldVerHTTPRequest != null)
+			{
+				let result = mOldVerHTTPRequest.GetResult();
+				if (result != .NotDone)
+				{
+					RetryLoad();
 				}
 			}
 

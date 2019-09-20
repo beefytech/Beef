@@ -1291,8 +1291,19 @@ namespace IDE
 			if (!mProjectPath.IsEmpty)
 			{
 				mProjectDir.Clear();
-				mProjectPath.Set(path);
-				IDEUtils.FixFilePath(mProjectPath);
+				mProjectPath.Clear();
+
+				if (!Environment.IsFileSystemCaseSensitive)
+				{
+					Path.GetActualPathName(path, mProjectPath);
+				}
+
+				if (mProjectPath.IsEmpty)
+				{
+					mProjectPath.Set(path);
+					IDEUtils.FixFilePath(mProjectPath);
+				}
+
 				Path.GetDirectoryPath(mProjectPath, mProjectDir);
 	            if (structuredData.Load(ProjectFileName) case .Err)
 	                return false;

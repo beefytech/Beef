@@ -174,68 +174,22 @@ namespace Hey.Dude.Bro
 			return 111;
 		}
 
+		public static void TestA()
+		{
+			int* a = null;
+			*a = 123;
+		}
+
 		public static int Main(String[] args)
 		{
-			int* iPtr = null;
-			*iPtr = 123;
-
 			Blurg.Hey();
 
-			/*while (true)
+			for (int i < 100)
 			{
-				int a = 0;
+				PrintF("Hello 2!\n");
+				Thread.Sleep(10);
 			}
-
-			int* iPtr = null;
-			*iPtr = 123;*/
-
-			GC.SetAutoCollectPeriod(20);
-			Thread.Sleep(1000);
-
-			String str = scope .("Boops!");
-			int len = str.GetLength();
-
-			GetVal();
-
-			Thread thread = scope .(new => Thread);
-			thread.Start(false);
-
-			//Thread.Sleep(500);
-
-			//Test2(1, 2, 3, 4);
-
-			thread.Join();
-
-			RunLong();
 			
-
-			str.Append("Hey yo!\nHey what's up\nHeef neef.\nSnoggles!");
-
-			str.Append(
-				"""
-				Hey, this is a bad ass string
-					Yep yep
-					What up!
-				""");
-
-			Color clr = (.)123;
-
-			int64 l;
-
-			Florf fl = .();
-
-			for (int j < 100)//zzz
-			{
-				fl.Goof();
-
-				for (int i < 1000000000L)
-				{
-					int a = 3;
-				}
-			}
-
-			//PrintF("%ld\n", foo((int32*)&l, &l));
-			//return foo((int32*)&l, &l);
 			return 1;
 		}
 	}

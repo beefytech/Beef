@@ -357,6 +357,18 @@ struct WdMemoryBreakpointBind
 	}
 };
 
+struct DbgPendingDebugInfoLoad
+{
+	DbgModule* mModule;
+	bool mAllowRemote;
+
+	DbgPendingDebugInfoLoad()
+	{
+		mModule = NULL;
+		mAllowRemote = false;
+	}
+};
+
 class WinDebugger : public Debugger
 {
 public:	
@@ -431,7 +443,7 @@ public:
 	DbgPendingExpr* mDebugPendingExpr;
 	WdThreadInfo mDebugEvalThreadInfo; // Copy of thread info when eval started
 	Array<DbgModule*> mPendingImageLoad;
-	Array<DbgModule*> mPendingDebugInfoLoad;
+	Dictionary<DbgModule*, DbgPendingDebugInfoLoad> mPendingDebugInfoLoad;
 	Array<DbgModule*> mPendingDebugInfoRequests;
 	HashSet<String> mLiteralSet;
 

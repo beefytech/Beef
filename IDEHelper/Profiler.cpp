@@ -1,10 +1,6 @@
 #include "Profiler.h"
 #include "DebugManager.h"
-//#include <Winternl.h>
-//::NtQuerySystemInformation();
 #include <mmsystem.h>
-
-//#include <ntstatus.h>
 #include <ntsecapi.h>   // UNICODE_STRING
 
 #define STATUS_INFO_LENGTH_MISMATCH 0xc0000004
@@ -120,7 +116,7 @@ static SYSTEM_PROCESS_INFORMATION* CaptureProcessInfo()
 	ntdll = GetModuleHandle(path);	
 	if (ntdll == NULL)
 		return NULL;
-	NtQuerySystemInformation = (NtQuerySystemInformation_t) GetProcAddress(ntdll, "NtQuerySystemInformation");	
+	NtQuerySystemInformation = (NtQuerySystemInformation_t)GetProcAddress(ntdll, "NtQuerySystemInformation");	
 
 	uint allocSize = 1024;
 	uint8* data = NULL;
@@ -180,9 +176,6 @@ void DbgProfiler::ThreadProc()
 	const int maxStackTrace = 1024;
 	addr_target stackTrace[maxStackTrace];
 
-	// Index zero is invalid
-	//mProfileAddrEntries.push_back(NULL);
-
 	DWORD prevSampleTick = timeGetTime();
 	uint32 accumMS = 0;
 
@@ -201,7 +194,7 @@ void DbgProfiler::ThreadProc()
 			mTotalActualSamples = 0;
 			mTotalActiveSamplingMS = 0;
 
-			mAlloc.Clear();			
+			mAlloc.Clear();
 			mThreadInfo.Clear();
 			mThreadIdList.Clear();
 			mProfileAddrEntrySet.Clear();
@@ -211,7 +204,7 @@ void DbgProfiler::ThreadProc()
 			mProfileProcEntries.Clear();
 			mProfileAddrToProcMap.Clear();
 			mProcMap.Clear();
-			mUniqueProcSet.Clear();			
+			mUniqueProcSet.Clear();
 			mWantsClear = false;
 
 			accumMS = 0;
@@ -221,8 +214,7 @@ void DbgProfiler::ThreadProc()
 		iterations++;
 		DWORD startTick0 = timeGetTime();
 		idleThreadSet.Clear();
-	
-		//SYSTEM_PROCESS_INFORMATION* processData = CaptureProcessInfo();
+		
 		SYSTEM_PROCESS_INFORMATION* processData = NULL;
 		std::unique_ptr<SYSTEM_PROCESS_INFORMATION> ptrDelete(processData);				
 
@@ -585,7 +577,7 @@ void DbgProfiler::HandlePendingEntries()
 			}
 			ProfileProcId* procId = NULL;
 
-			auto subProgram = mDebugger->mDebugTarget->FindSubProgram(addr);
+			auto subProgram = mDebugger->mDebugTarget->FindSubProgram(addr, DbgOnDemandKind_LocalOnly);
 			while (stackTraceProcIdx < maxStackTrace)
 			{
 				if (subProgram != NULL)
@@ -604,7 +596,7 @@ void DbgProfiler::HandlePendingEntries()
 				{
 					String symbolName;
 					addr_target symbolOffset = 0;
-					if ((!mDebugger->mDebugTarget->FindSymbolAt(addr, &symbolName, &symbolOffset)) || (symbolOffset > 64 * 1024))
+					if ((!mDebugger->mDebugTarget->FindSymbolAt(addr, &symbolName, &symbolOffset, NULL, false)) || (symbolOffset > 64 * 1024))
 					{
 						auto dbgModule = mDebugger->mDebugTarget->FindDbgModuleForAddress(addr);
 						if (dbgModule != NULL)
@@ -647,89 +639,11 @@ void DbgProfiler::Process()
 	
 	int time = mTotalActiveSamplingMS;
 
-// 	const int maxStackTrace = 1024;
-// 	ProfileProcId* procStackTrace[maxStackTrace];
-// 	
-// 	bool reverse = false;
-
 	BF_ASSERT(mProfileAddrEntries.IsEmpty());
 	
 	mProfileAddrEntries.Resize(mProfileAddrEntrySet.size() + 1);
 	for (auto& val : mProfileAddrEntrySet)
 		mProfileAddrEntries[val.mEntryIdx] = &val;
-	
-// 	for (int i = 0; i < (int)mProfileAddrEntries.size(); i++)
-// 		mProfileAddrToProcMap.push_back(-1);
-			
-// 	for (int addrEntryIdx = 0; addrEntryIdx < (int)mProfileAddrEntries.size(); addrEntryIdx++)
-// 	{
-// 		const ProfileAddrEntry* addrEntry = mProfileAddrEntries[addrEntryIdx];
-// 		if (addrEntry == NULL)
-// 			continue;
-// 
-// 		ProfileProcId** procStackTraceHead = reverse ? (procStackTrace + maxStackTrace) : procStackTrace;
-// 		int stackTraceProcIdx = 0;
-// 		for (int addrIdx = 0; addrIdx < addrEntry->mSize; addrIdx++)
-// 		{
-// 			addr_target addr = addrEntry->mData[addrIdx];
-// 			if (addrIdx > 0)
-// 			{
-// 				// To reference from SourcePC (calling address, not return address)
-// 				addr--;
-// 			}
-// 			ProfileProcId* procId = NULL;
-// 
-// 			auto subProgram = mDebugger->mDebugTarget->FindSubProgram(addr);
-// 			while (stackTraceProcIdx < maxStackTrace)
-// 			{
-// 				if (subProgram != NULL)
-// 				{
-// 					ProfileProcId** procIdPtr;
-// 					if (mProcMap.TryAdd(subProgram, NULL, &procIdPtr))
-// 					{
-// 						String procName = subProgram->ToString();
-// 						procId = Get(procName);
-// 						*procIdPtr = procId;
-// 					}
-// 					else
-// 						procId = *procIdPtr;
-// 				}
-// 				else
-// 				{
-// 					String symbolName;
-// 					addr_target symbolOffset = 0;
-// 					if ((!mDebugger->mDebugTarget->FindSymbolAt(addr, &symbolName, &symbolOffset)) || (symbolOffset > 64 * 1024))
-// 					{
-// 						auto dbgModule = mDebugger->mDebugTarget->FindDbgModuleForAddress(addr);
-// 						if (dbgModule != NULL)
-// 							symbolName += dbgModule->mDisplayName + "!";						
-// 						symbolName += StrFormat("0x%@", addr);
-// 					}
-// 
-// 					procId = Get(symbolName);
-// 				}
-// 
-// 				if (reverse)
-// 					*(--procStackTraceHead) = procId;
-// 				else
-// 					procStackTraceHead[stackTraceProcIdx] = procId;
-// 				stackTraceProcIdx++;
-// 
-// 				if (subProgram == NULL)
-// 					break;
-// 				if (subProgram->mInlineeInfo == NULL)
-// 					break;
-// 				subProgram = subProgram->mInlineeInfo->mInlineParent;
-// 			}
-// 		}
-// 
-// 		auto procEntry = AddToSet(mProfileProcEntrySet, procStackTraceHead, stackTraceProcIdx);
-// 		if (procEntry->mEntryIdx == -1)
-// 		{					
-// 			procEntry->mEntryIdx = (int)mProfileProcEntrySet.size() - 1; // Start at '0'			
-// 		}
-// 		mProfileAddrToProcMap[addrEntry->mEntryIdx] = procEntry->mEntryIdx;		
-// 	}	
 
 	BF_ASSERT(mProfileProcEntries.IsEmpty());
 	mProfileProcEntries.Resize(mProfileProcEntrySet.size());
