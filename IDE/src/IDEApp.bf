@@ -875,12 +875,12 @@ namespace IDE
 		public void DoOpenCrashDump()
 		{		
 #if !CLI
-			/*if (mDeferredOpenFileName != null)
+			if (mDeferredOpenFileName != null)
 			{
-
+				OpenCrashDump(mDeferredOpenFileName);
 				DeleteAndNullify!(mDeferredOpenFileName);
 				return;
-			}*/
+			}
 
 			var fileDialog = scope OpenFileDialog();
 			fileDialog.Title = "Open Crash Dump";

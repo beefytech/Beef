@@ -1417,6 +1417,7 @@ bool WinDebugger::DoUpdate()
 			Array<DbgPendingDebugInfoLoad> pendingList;
 			for (auto kv : mPendingDebugInfoLoad)
 				pendingList.Add(kv.mValue);
+			mPendingDebugInfoLoad.Clear();
 			
 			for (auto& entry : pendingList)
 			{

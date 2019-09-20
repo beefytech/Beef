@@ -6328,9 +6328,9 @@ String COFF::GetOldSourceCommand(const StringImpl& path)
 					if (!matches)
 						break;
 
-					String& target = defs["SRCSRVTRG"];
-					String& cmd = defs["SRCSRVCMD"];
-					String& env = defs["SRCSRVENV"];
+					String target = defs["SRCSRVTRG"];
+					String cmd = defs["SRCSRVCMD"];
+					String env = defs["SRCSRVENV"];
 
 					_Expand(target);
 					_Expand(cmd);
