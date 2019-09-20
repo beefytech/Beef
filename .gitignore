@@ -16,3 +16,7 @@ BeefTools/RandoCode/*
 jbuild*/
 IDE/Tests/NewProject*/*
 *.csproj.user
+builds/*
+BeefPerf.txt
+IDE/Tests/Rando
+install/
