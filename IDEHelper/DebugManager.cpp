@@ -1616,6 +1616,42 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetHotResolveData(uint8* outTypeData,
 	return outString.c_str();
 }
 
+BF_EXPORT NetResult* HTTP_GetFile(char* url, char* destPath)
+{
+	AutoCrit autoCrit(gDebugManager->mNetManager->mThreadPool.mCritSect);
+
+	auto netResult = gDebugManager->mNetManager->QueueGet(url, destPath);	
+	netResult->mDoneEvent = new SyncEvent();
+	return netResult;
+}
+
+BF_EXPORT int HTTP_GetResult(NetResult* netResult, int waitMS)
+{
+	if (netResult->mDoneEvent->WaitFor(waitMS))
+	{
+		return netResult->mFailed ? 0 : 1;
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+BF_EXPORT void HTTP_Delete(NetResult* netResult)
+{
+	if (!netResult->mDoneEvent->WaitFor(0))
+	{
+		///
+		{
+			AutoCrit autoCrit(gDebugManager->mNetManager->mThreadPool.mCritSect);
+			if (netResult->mCurRequest != NULL)
+				netResult->mCurRequest->Cancel();
+		}
+		netResult->mDoneEvent->WaitFor(-1);
+	}				
+	delete netResult;
+}
+
 BF_EXPORT void Debugger_SetAliasPath(char* origPath, char* localPath)
 {
 	gDebugger->SetAliasPath(origPath, localPath);

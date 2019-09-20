@@ -40,7 +40,7 @@ public:
 	uint32 mLastUpdateTick;
 	bool mShowTracking;
 	NetResult* mResult;	
-	NetResult* mCancelOnSuccess;
+	NetResult* mCancelOnSuccess;	
 
 	NetRequest()
 	{
@@ -54,13 +54,15 @@ public:
 		mFailed = false;		
 		mShowTracking = false;
 		mResult = NULL;
-		mCancelOnSuccess = NULL;
+		mCancelOnSuccess = NULL;		
 	}
 	~NetRequest();
 
+	void DoTransfer();
+
 	void Cleanup();
 	void Fail(const StringImpl& error);
-	bool Cancel() override;
+	bool Cancel() override;	
 	void Perform() override;
 	void ShowTracking();
 };
@@ -73,12 +75,19 @@ public:
 	bool mFailed;
 	NetRequest* mCurRequest;	
 	bool mRemoved;	
+	SyncEvent* mDoneEvent;
 
 	NetResult()
 	{
 		mFailed = false;
 		mCurRequest = NULL;
 		mRemoved = false;
+		mDoneEvent = NULL;
+	}
+
+	~NetResult()
+	{
+		delete mDoneEvent;
 	}
 };
 

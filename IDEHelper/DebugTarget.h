@@ -86,7 +86,7 @@ public:
 	DbgSrcFile* AddSrcFile(const String& srcFilePath);
 	DbgSrcFile* GetSrcFile(const String& srcFilePath);
 
-	bool FindSymbolAt(addr_target addr, String* outSymbol, addr_target* outOffset = NULL, DbgModule** outDWARF = NULL);
+	bool FindSymbolAt(addr_target addr, String* outSymbol, addr_target* outOffset = NULL, DbgModule** outDWARF = NULL, bool allowRemote = true);
 	addr_target FindSymbolAddr(const StringImpl& name);	
 		
 	addr_target GetStaticAddress(DbgVariable* dwVariable);

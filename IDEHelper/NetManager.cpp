@@ -95,7 +95,7 @@ void NetRequest::Cleanup()
 	}
 }
 
-void NetRequest::Perform()
+void NetRequest::DoTransfer()
 {
 	if (mCancelling)
 		return;
@@ -191,6 +191,11 @@ void NetRequest::Perform()
 	{		
 		mFailed = true;		
 	}
+}
+
+void NetRequest::Perform()
+{	
+	DoTransfer();	
 }
 
 #else
@@ -375,11 +380,16 @@ NetRequest::~NetRequest()
 	{
 		mResult->mFailed = mFailed;
 		mResult->mCurRequest = NULL;
+		if (mResult->mDoneEvent != NULL)
+		{
+			mResult->mDoneEvent->Set();
+			BF_ASSERT(!mResult->mRemoved);
+		}
 		if (mResult->mRemoved)
 			delete mResult;
 	}
 
-	mNetManager->mRequestDoneEvent.Set();
+	mNetManager->mRequestDoneEvent.Set();	
 }
 
 void NetRequest::Fail(const StringImpl& error)
@@ -459,7 +469,7 @@ NetRequest* NetManager::CreateGetRequest(const StringImpl& url, const StringImpl
 NetResult* NetManager::QueueGet(const StringImpl& url, const StringImpl& destPath)
 {
 	BfLogDbg("NetManager queueing %s\n", url.c_str());
-
+	
 	auto netRequest = CreateGetRequest(url, destPath);
 	auto netResult = netRequest->mResult;
 	mThreadPool.AddJob(netRequest);
@@ -592,4 +602,3 @@ void NetManager::SetCancelOnSuccess(NetResult* dependentResult, NetResult* cance
 		dependentResult->mCurRequest->mCancelOnSuccess = cancelOnSucess;
 	}
 }
-

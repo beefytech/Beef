@@ -339,25 +339,11 @@ DbgSrcFile* DebugTarget::GetSrcFile(const String& srcFilePath)
 	return srcFile;
 }
 
-bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target* outOffset, DbgModule** outDWARF)
+bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target* outOffset, DbgModule** outDWARF, bool allowRemote)
 {	
 	//TODO: First search for symbol, then determine if the addr is within the defining DbgModule
 
 	DbgModule* insideDWARF = NULL;
-	/*for (auto dbgModule : mDbgModules)
-	{
-		for (int i = 0; i < (int)dbgModule->mSections.size(); i++)
-		{
-			auto section = &dbgModule->mSections[i];
-			if ((addr >= section->mAddrStart + dbgModule->mImageBase) && (addr < section->mAddrStart + dbgModule->mImageBase + section->mAddrLength))
-			{
-				insideDWARF = dbgModule;				
-			}
-		}
-	}*/
-	
-	//mDebugger->ReadMemory(addr, )
-
 	
 	auto dbgModule = FindDbgModuleForAddress(addr);
 	if (dbgModule != NULL)
@@ -385,12 +371,13 @@ bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target*
 		{
 			if (dbgModule->HasPendingDebugInfo())
 			{
-				if ((dbgModule->WantsAutoLoadDebugInfo()) && (!mDebugger->mPendingDebugInfoLoad.Contains(dbgModule)))
+				if (dbgModule->WantsAutoLoadDebugInfo())
 				{
-					mDebugger->mPendingDebugInfoLoad.Add(dbgModule);
+					DbgPendingDebugInfoLoad* dbgPendingDebugInfoLoad = NULL;
+					mDebugger->mPendingDebugInfoLoad.TryAdd(dbgModule, NULL, &dbgPendingDebugInfoLoad);					
+					dbgPendingDebugInfoLoad->mModule = dbgModule;
+					dbgPendingDebugInfoLoad->mAllowRemote |= allowRemote;					
 				}
-
-				//mDebugger->LoadDebugInfoForModule(dbgModule);
 			}
 
 			isInsideSomeSegment = true;
@@ -401,9 +388,6 @@ bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target*
 
 	if (!isInsideSomeSegment)
 		return false;
-
-	//if ((addr < dwSymbol->mDbgModule->mImageBase) || (addr >= dwSymbol->mDbgModule->mImageBase + dwSymbol->mDbgModule->mImageSize))
-		//return false;
 
 	if (dwSymbol == NULL)
 		return false;

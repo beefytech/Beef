@@ -2574,7 +2574,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sy
 		return;
 	case BfpSysDirectoryKind_Programs_Common:
 		_GetKnownFolder(FOLDERID_CommonPrograms);
-		return;
+		return;	
 	}
 
 	TryStringOut(path, outPath, inOutPathLen, (BfpResult*)outResult);
