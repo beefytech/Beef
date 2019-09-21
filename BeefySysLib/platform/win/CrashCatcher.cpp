@@ -1,6 +1,8 @@
 #include "CrashCatcher.h"
 #include "../util/CritSect.h"
 #include "../util/Dictionary.h"
+#include <commdlg.h>
+#include <time.h>
 
 USING_NS_BF;
 
@@ -53,9 +55,12 @@ static StringT<0> gCrashInfo;
 static bool gCrashed = false;
 extern CritSect gBfpCritSect;
 
+static EXCEPTION_POINTERS* gExceptionPointers = NULL;
 static LPTOP_LEVEL_EXCEPTION_FILTER gPreviousFilter = NULL;
 
 static bool gDebugError = false;
+
+static bool CreateMiniDump(EXCEPTION_POINTERS* pep, const StringImpl& filePath);
 
 static bool LoadImageHelp()
 {
@@ -176,10 +181,24 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		HWND hwndCtl = (HWND)lParam;
 		if (hwndCtl == gYesButtonWindow)
 		{
-			// Hide current window and bring up score submitting stuff
-			ShowWindow(hWnd, SW_HIDE);
+			WCHAR fileName[MAX_PATH];
+			fileName[0] = 0;
 
-			//ShowSubmitInfoDialog();
+			OPENFILENAMEW openFileName = { 0 };
+			openFileName.hInstance = ::GetModuleHandle(NULL);
+			openFileName.hwndOwner = hWnd;
+			openFileName.lStructSize = sizeof(OPENFILENAMEW);
+			openFileName.lpstrDefExt = L".dmp";
+			openFileName.lpstrFilter = L"Crash Dump (*.dmp)\0*.dmp\0All files (*.*)\0*.*\0\0";
+			openFileName.lpstrFile = fileName;
+			openFileName.nMaxFile = MAX_PATH;
+			openFileName.Flags = OFN_EXPLORER | OFN_ENABLESIZING;
+			openFileName.lpstrTitle = L"Save Crash Dump";
+
+			if (::GetSaveFileNameW(&openFileName))
+			{
+				CreateMiniDump(gExceptionPointers, UTF8Encode(fileName));
+			}			
 		}
 		else if (hwndCtl == gNoButtonWindow)
 		{
@@ -312,7 +331,7 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 // #endif
 
 	//bool canSubmit = mAllowSubmit && !mSubmitHost.empty();
-	bool canSubmit = false;
+	bool canSubmit = true;
 	int aNumButtons = 1 + (doDebugButton ? 1 : 0) + (canSubmit ? 1 : 0);
 
 	int aButtonWidth = (aRect.right - 8 - 8 - (aNumButtons - 1) * 8) / aNumButtons;
@@ -321,7 +340,7 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 
 	if (canSubmit)
 	{
-		gYesButtonWindow = CreateWindowA("BUTTON", "Send Report",
+		gYesButtonWindow = CreateWindowA("BUTTON", "Save Crash Dump...",
 			aWindowStyle,
 			aCurX, aRect.bottom - 24 - 8,
 			aButtonWidth,
@@ -511,7 +530,7 @@ static BOOL CALLBACK MyMiniDumpCallback(
 }
 
 
-void CreateMiniDump(EXCEPTION_POINTERS* pep)
+static bool CreateMiniDump(EXCEPTION_POINTERS* pep, const StringImpl& filePath)
 {
 	// Open the file 
 	typedef BOOL(*PDUMPFN)(
@@ -525,34 +544,37 @@ void CreateMiniDump(EXCEPTION_POINTERS* pep)
 		);
 
 
-	HANDLE hFile = CreateFileW(L"D:/temp/CrashDumps/dump.dmp", GENERIC_READ | GENERIC_WRITE,
+	HANDLE hFile = CreateFileW(UTF8Decode(filePath).c_str(), GENERIC_READ | GENERIC_WRITE,
 		0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	HMODULE h = ::LoadLibrary(L"DbgHelp.dll");
 	PDUMPFN pFn = (PDUMPFN)GetProcAddress(h, "MiniDumpWriteDump");
+	if (pFn == NULL)
+		return false;
 
-	if ((hFile != NULL) && (hFile != INVALID_HANDLE_VALUE))
-	{
-		// Create the minidump 
+	if ((hFile == NULL) || (hFile == INVALID_HANDLE_VALUE))
+		return false;
 
-		MINIDUMP_EXCEPTION_INFORMATION mdei;
+	// Create the minidump 
 
-		mdei.ThreadId = GetCurrentThreadId();
-		mdei.ExceptionPointers = pep;
-		mdei.ClientPointers = TRUE;
+	MINIDUMP_EXCEPTION_INFORMATION mdei;
 
-		MINIDUMP_CALLBACK_INFORMATION mci;
-		mci.CallbackRoutine = (MINIDUMP_CALLBACK_ROUTINE)MyMiniDumpCallback;
-		mci.CallbackParam = 0;
+	mdei.ThreadId = GetCurrentThreadId();
+	mdei.ExceptionPointers = pep;
+	mdei.ClientPointers = TRUE;
 
-		MINIDUMP_TYPE mdt = (MINIDUMP_TYPE)(MiniDumpWithIndirectlyReferencedMemory | MiniDumpScanMemory);
+	MINIDUMP_CALLBACK_INFORMATION mci;
+	mci.CallbackRoutine = (MINIDUMP_CALLBACK_ROUTINE)MyMiniDumpCallback;
+	mci.CallbackParam = 0;
 
-		BOOL rv = (*pFn)(GetCurrentProcess(), GetCurrentProcessId(),
-			hFile, mdt, (pep != 0) ? &mdei : 0, 0, &mci);
+	MINIDUMP_TYPE mdt = (MINIDUMP_TYPE)(MiniDumpWithIndirectlyReferencedMemory | MiniDumpScanMemory);
+
+	BOOL rv = (*pFn)(GetCurrentProcess(), GetCurrentProcessId(),
+		hFile, mdt, (pep != 0) ? &mdei : 0, 0, &mci);
 				
-		// Close the file 
-		CloseHandle(hFile);
-	}
+	// Close the file 
+	CloseHandle(hFile);	
+	return true;
 }
 
 //
@@ -812,6 +834,31 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	if (isCLI)
 		aDebugDump += "**** FATAL APPLICATION ERROR ****\n";
 
+	WCHAR exeFilePathW[MAX_PATH];
+	exeFilePathW[0] = 0;
+	::GetModuleFileNameW(hMod, exeFilePathW, MAX_PATH);
+	String exeFilePath = UTF8Encode(exeFilePathW);
+	String exeDir = GetFileDir(exeFilePath);
+	String crashPath = exeDir + "\\CrashDumps";
+	if (BfpDirectory_Exists(crashPath.c_str()))
+	{
+		crashPath += "\\" + GetFileName(exeFilePath);
+		crashPath.RemoveToEnd((int)crashPath.length() - 4);
+		crashPath += "_";
+
+		time_t curTime = time(NULL);
+		auto time_info = localtime(&curTime);
+		crashPath += StrFormat("%4d%02d%02d_%02d%02d%02d",
+			time_info->tm_year + 1900, time_info->tm_mon + 1, time_info->tm_mday,
+			time_info->tm_hour, time_info->tm_min, time_info->tm_sec);
+		crashPath += ".dmp";
+
+		if (CreateMiniDump(lpEP, crashPath))
+		{
+			aDebugDump += StrFormat("Crash minidump saved as '%s'\n", crashPath.c_str());
+		}
+	}
+
 	for (auto func : gCrashInfoFuncs)
 		func();
 
@@ -966,6 +1013,7 @@ static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 
 	if (!gCrashed)
 	{
+		gExceptionPointers = lpExceptPtr;
 		//CreateMiniDump(lpExceptPtr);
 		DoHandleDebugEvent(lpExceptPtr);
 	}
