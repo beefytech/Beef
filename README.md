@@ -1,7 +1,5 @@
 # Beef Programming Language
 
-Beef Language
-
 Beef is an open source performance-oriented compiled programming language which has been built hand-in-hand with its IDE environment.
 
 The Beef Development Tools include an IDE with a general-purpose debugger capable of debugging native applications written in any language.
