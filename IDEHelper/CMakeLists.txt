@@ -111,6 +111,7 @@ file(GLOB SRC_FILES
     Debugger.cpp
     DebugManager.cpp
     DebugVisualizers.cpp
+    NetManager.cpp
     SpellChecker.cpp
     Targets.cpp
     X64.cpp

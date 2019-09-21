@@ -12,7 +12,6 @@
 #include "BeefySysLib/util/Deque.h"
 #include "BeefySysLib/util/HashSet.h"
 #include "BeefySysLib/util/MultiHashSet.h"
-#include "CrashCatcher.h"
 
 //#include <mmsystem.h>
 //#include <shellapi.h>
