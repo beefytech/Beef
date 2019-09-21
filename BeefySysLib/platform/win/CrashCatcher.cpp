@@ -7,6 +7,7 @@
 USING_NS_BF;
 
 #pragma comment(lib, "version.lib")
+#pragma comment(lib, "comdlg32.lib")
 
 #pragma warning(disable:4091)
 #pragma warning(disable:4996)
