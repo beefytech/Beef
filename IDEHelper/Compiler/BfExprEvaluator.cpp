@@ -15218,15 +15218,17 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 							wasCapturingMethodMatchInfo = autoComplete->mIsCapturingMethodMatchInfo;
 							autoComplete->mIsCapturingMethodMatchInfo = false;
 						}
+						defer
+						{
+							if (autoComplete != NULL)
+								autoComplete->mIsCapturingMethodMatchInfo = wasCapturingMethodMatchInfo;
+						};
 
 						if ((!isFailurePass) && (!methodMatcher.WantsCheckMethod(protectionCheckFlags, startCheckTypeInst, curCheckType, checkMethod)))
 							continue;
 
 						methodMatcher.mCheckedKind = checkedKind;
-						methodMatcher.CheckMethod(curCheckType, checkMethod, false);
-
-						if (autoComplete != NULL)
-							autoComplete->mIsCapturingMethodMatchInfo = wasCapturingMethodMatchInfo;
+						methodMatcher.CheckMethod(curCheckType, checkMethod, false);						
 
 						if ((methodMatcher.mBestMethodDef == checkMethod) ||
 							((foundProp == NULL) && (methodMatcher.mBackupMethodDef == checkMethod)))
