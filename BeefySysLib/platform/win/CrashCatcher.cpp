@@ -666,10 +666,7 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 
 		HANDLE hProcess = GetCurrentProcess();
 
-		bool forceFail = true;
-
-		
-
+		bool forceFail = false;		
 		if ((gSymGetSymFromAddr(hProcess, sf.AddrPC.Offset, &symDisplacement, pSymbol)) && (!forceFail))
 		{
 			char aUDName[256];
@@ -712,11 +709,11 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 
 			GetLogicalAddress((PVOID)sf.AddrPC.Offset, szModule, sizeof(szModule), section, offset);
 
-			ModuleInfo* moduleInfo = NULL;
-			if (moduleInfoMap.TryAdd(szModule, NULL, &moduleInfo))
-			{
-
-			}
+// 			ModuleInfo* moduleInfo = NULL;
+// 			if (moduleInfoMap.TryAdd(szModule, NULL, &moduleInfo))
+// 			{
+// 
+// 			}
 
 			aDebugDump += StrFormat("%@ %@ %04X:%@ %s\r\n", sf.AddrFrame.Offset, sf.AddrPC.Offset, section, offset, GetFileName(szModule).c_str());
 		}		
@@ -856,7 +853,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 
 		if (CreateMiniDump(lpEP, crashPath))
 		{
-			aDebugDump += StrFormat("Crash minidump saved as '%s'\n", crashPath.c_str());
+			aDebugDump += StrFormat("Crash minidump saved as %s\n", crashPath.c_str());
 		}
 	}
 
