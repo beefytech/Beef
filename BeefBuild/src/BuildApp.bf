@@ -14,6 +14,7 @@ namespace BeefBuild
 		int mProgressIdx = 0;		
 		public bool mIsTest;
 		public bool mIsFailTest;
+		public bool mDidRun;
 
 		/*void Test()
 		{
@@ -40,13 +41,14 @@ namespace BeefBuild
 		{
 			//mConfigName.Clear();
 			//mPlatformName.Clear();
-			mVerbosity = .Normal;
-
 			//Test();
 		}
 
 		public override void Init()
 		{
+			if (mVerbosity == .Default)
+				mVerbosity = .Normal;
+
 			if (mConfigName.IsEmpty)
 			{
 				mConfigName.Set(mIsTest ? "Test" : "Debug");
@@ -98,7 +100,7 @@ namespace BeefBuild
 			{
 				RunTests(false);
 			}
-			else
+			else if (mVerb != .New)
 				Compile(.Normal, null);
 		}
 
@@ -108,6 +110,14 @@ namespace BeefBuild
 			{
 				switch (key)
 				{
+				case "-new":
+					mVerb = .New;
+					return true;
+				case "-run":
+					if (mVerbosity == .Default)
+						mVerbosity = .Minimal;
+					mVerb = .Run;
+					return true;
 				case "-test":
 					mIsTest = true;
 					return true;
@@ -209,7 +219,8 @@ namespace BeefBuild
 		{
 			base.BeefCompileDone();
 			WriteProgress(1.0f);
-			Console.WriteLine("");
+			if (mVerbosity >= .Normal)
+				Console.WriteLine("");
 		}
 
 		public override void LoadFailed()
@@ -245,6 +256,25 @@ namespace BeefBuild
 
 			if ((!IsCompiling) && (!AreTestsRunning()))
 			{
+				if ((mVerb == .Run) && (!mDidRun))
+				{
+					let curPath = scope String();
+					Directory.GetCurrentDirectory(curPath);
+
+					let workspaceOptions = gApp.GetCurWorkspaceOptions();
+					let options = gApp.GetCurProjectOptions(mWorkspace.mStartupProject);
+					let targetPaths = scope List<String>();
+					defer ClearAndDeleteItems(targetPaths);
+					this.[Friend]GetTargetPaths(mWorkspace.mStartupProject, workspaceOptions, options, targetPaths);
+					if (targetPaths.IsEmpty)
+						return;
+
+					ExecutionQueueCmd executionCmd = QueueRun(targetPaths[0], "", curPath);
+					executionCmd.mIsTargetRun = true;
+					mDidRun = true;
+					return;
+				}
+
 				Stop();
 			}
 		}

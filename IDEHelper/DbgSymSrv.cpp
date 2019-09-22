@@ -55,7 +55,7 @@ String DbgSymRequest::GetPDBStoreDir()
 	checkPath += GetFileName(mPDBRequested);
 	checkPath += "/";
 	checkPath += GetGuidString();
-	checkPath += StrFormat("%X/", mWantAge);
+	checkPath += StrFormat("%x/", mWantAge);
 	return checkPath;
 }
 

@@ -47,6 +47,7 @@ namespace IDE
 
 	enum Verbosity
 	{
+		Default,
 		Quiet,
 		Minimal,
 		Normal,
@@ -75,7 +76,8 @@ namespace IDE
 		Open,
 		New,
 		OpenOrNew,
-		Test
+		Test,
+		Run
 	}
 
 	enum HotResolveState
@@ -114,7 +116,7 @@ namespace IDE
 
 		public static bool sExitTest;
 
-		public Verbosity mVerbosity = .Detailed;
+		public Verbosity mVerbosity = .Default;
 		public BeefVerb mVerb;
 		public bool mDbgCompileDump;
 		public int mDbgCompileIdx = -1;
@@ -122,6 +124,7 @@ namespace IDE
 		public String mDbgVersionedCompileDir ~ delete _;
 		public DateTime mDbgHighestTime;
 		public bool mIsFirstRun;
+		public int? mTargetExitCode;
 		public FileVersionInfo mVersionInfo ~ delete _;
 
 		//public ToolboxPanel mToolboxPanel;
@@ -403,7 +406,8 @@ namespace IDE
             public String mWorkingDir  ~ delete _;
 			public Dictionary<String, String> mEnvVars ~ DeleteDictionyAndKeysAndItems!(_);
             public ArgsFileKind mUseArgsFile;
-            public int32 mParallelGroup = -1;            
+            public int32 mParallelGroup = -1;
+			public bool mIsTargetRun;
         }
         public List<ExecutionCmd> mExecutionQueue = new List<ExecutionCmd>() ~ DeleteContainerAndItems!(_);
 
@@ -426,6 +430,7 @@ namespace IDE
 			public int? mExitCode;
 			public bool mAutoDelete = true;
 			public bool mCanceled;
+			public bool mIsTargetRun;
 
 			public ~this()
 			{
@@ -2288,7 +2293,7 @@ namespace IDE
 				Font.StrEncodePopColor(str);
 				OutputLine(str);*/
 
-				OutputLine("{0}Created new workspace in '{1}'{2}", Font.EncodeColor(0xfffef860), mWorkspace.mDir, Font.EncodePopColor());
+				OutputWarnLine("Created new workspace in '{0}'", mWorkspace.mDir);
 				if (wantSave)
 				{
 					SaveWorkspace();
@@ -2297,7 +2302,7 @@ namespace IDE
 				else
 				{
 					mWorkspace.mNeedsCreate = true;
-					OutputLine("{0}Use 'File\\Save All' to commit to disk.{1}", Font.EncodeColor(0xfffef860), Font.EncodePopColor());
+					OutputLine("Use 'File\\Save All' to commit to disk.");
 				}
             }
 			else
@@ -6417,6 +6422,21 @@ namespace IDE
 			OutputLineSmart(errStr, params args);
 		}
 
+		public void OutputWarnLine(String format, params Object[] args)
+		{
+			var warnStr = scope String();
+			warnStr.AppendF(format, params args);
+
+#if CLI
+			var outStr = warnStr;
+#else
+			var outStr = scope String();
+			outStr.AppendF("{0}{1}{2}", Font.EncodeColor(0xfffef860), warnStr, Font.EncodePopColor());
+#endif
+
+			OutputLine(outStr);
+		}
+
 		public void OutputLineSmart(String format, params Object[] args)
 		{
 		    String outStr;
@@ -7154,16 +7174,23 @@ namespace IDE
 	                    executionInstance.mProcess.Close();
 
 	                    executionInstance.mStopwatch.Stop();
-	                    if (executionInstance.mParallelGroup == -1)
-	                    {
-							if (mVerbosity >= .Detailed)
-	                        	OutputLine("Execution time: {0:0.00}s", executionInstance.mStopwatch.ElapsedMilliseconds / 1000.0f);
+						if (executionInstance.mIsTargetRun)
+						{
+							mTargetExitCode = executionInstance.mExitCode;
 						}
+						else
+						{
+		                    if (executionInstance.mParallelGroup == -1)
+		                    {
+								if (mVerbosity >= .Detailed)
+		                        	OutputLine("Execution time: {0:0.00}s", executionInstance.mStopwatch.ElapsedMilliseconds / 1000.0f);
+							}
 
-						if (executionInstance.mCanceled)
-							OutputLine("Execution Canceled");
-						else if (failed)
-							OutputLine("Execution Failed");
+							if (executionInstance.mCanceled)
+								OutputLine("Execution Canceled");
+							else if (failed)
+								OutputLine("Execution Failed");
+						}
 
 	                    if (executionInstance.mTempFileName != null)
 	                    {
@@ -7342,6 +7369,7 @@ namespace IDE
                     var executionQueueCmd = (ExecutionQueueCmd)next;
                     var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile, executionQueueCmd.mEnvVars);
                     executionInstance.mParallelGroup = executionQueueCmd.mParallelGroup;
+					executionInstance.mIsTargetRun = executionQueueCmd.mIsTargetRun;
                 }
                 else if (next is BuildCompletedCmd)
                 {
@@ -9685,6 +9713,9 @@ namespace IDE
         public override void Init()
         {
 			scope AutoBeefPerf("IDEApp.Init");
+
+			if (mVerbosity == .Default)
+				mVerbosity = .Detailed;
 
 			mStartedWithTestScript = mRunningTestScript;
 

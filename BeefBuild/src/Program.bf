@@ -43,6 +43,8 @@ namespace BeefBuild
 			}
 			mApp.Shutdown();
 			int32 result = mApp.mFailed ? 1 : 0;
+			if (mApp.mTargetExitCode != null)
+				result = (int32)mApp.mTargetExitCode.Value;
 
 			delete mApp;
 

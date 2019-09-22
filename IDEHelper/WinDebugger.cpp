@@ -1431,8 +1431,18 @@ bool WinDebugger::DoUpdate()
 	}
 
 	if (IsMiniDumpDebugger())
-	{
-		Sleep(20);
+	{	
+		//
+		{
+			AutoCrit autoCrit(mDebugManager->mCritSect);
+			if (mRunState == RunState_Terminating)
+			{
+				mRunState = RunState_Terminated;
+				return false;
+			}
+		}
+
+		Sleep(20);		
 		return false;
 	}
 

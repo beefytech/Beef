@@ -5399,7 +5399,11 @@ namespace IDE.ui
 				let result = mOldVerHTTPRequest.GetResult();
 				if (result != .NotDone)
 				{
+					if (result == .Failed)
+						gApp.OutputErrorLine("Failed to retrieve source from {}", mOldVerLoadCmd);
+
 					RetryLoad();
+					DeleteAndNullify!(mOldVerHTTPRequest);
 				}
 			}
 

@@ -394,7 +394,7 @@ NetRequest::~NetRequest()
 		mResult->mCurRequest = NULL;
 		if (mResult->mDoneEvent != NULL)
 		{
-			mResult->mDoneEvent->Set();
+			mResult->mDoneEvent->Set(true);
 			BF_ASSERT(!mResult->mRemoved);
 		}
 		if (mResult->mRemoved)
