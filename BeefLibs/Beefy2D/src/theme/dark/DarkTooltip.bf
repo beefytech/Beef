@@ -34,6 +34,7 @@ namespace Beefy.theme.dark
 		public bool mHasClosed;
 		public Insets mRelWidgetMouseInsets ~ delete _;
 		public bool mAllowMouseInsideSelf;
+		public bool mRequireMouseInside;
 
         public const float cShadowSize = 8;
 
@@ -223,9 +224,8 @@ namespace Beefy.theme.dark
             if (mWidgetWindow == null)
                 return;
 
-            /*var lastMouseWidget = IDEApp.sApp.sLastMouseWidget;
-            if ((lastMouseWidget != null) && (lastMouseWidget != mRelWidget) && (lastMouseWidget.mWidgetWindow != mWidgetWindow))
-                Close();*/
+			if (!mRequireMouseInside)
+				return;
 
 			float rootX;
 			float rootY;

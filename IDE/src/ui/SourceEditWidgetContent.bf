@@ -2722,6 +2722,28 @@ namespace IDE.ui
         {
 			mIgnoreKeyChar = false;
 
+			if (((keyCode == .Up) || (keyCode == .Down)) &&
+				(mAutoComplete != null) && (mAutoComplete.IsShowing()) && (mAutoComplete.mListWindow != null) &&
+				(!mAutoComplete.IsInPanel()) &&
+				(!gApp.mSettings.mTutorialsFinished.mCtrlCursor))
+			{
+				if (mWidgetWindow.IsKeyDown(.Control))
+				{
+					if ((DarkTooltipManager.sTooltip != null) && (!DarkTooltipManager.sTooltip.mRequireMouseInside))
+						DarkTooltipManager.CloseTooltip();
+					gApp.mSettings.mTutorialsFinished.mCtrlCursor = true;
+				}
+				else
+				{
+					GetTextCoordAtCursor(var cursorX, var cursorY);
+
+					let tooltip = DarkTooltipManager.ShowTooltip("Hold CTRL when using UP and DOWN", this, cursorX - GS!(24), cursorY - GS!(40));
+					if (tooltip != null)
+						tooltip.mRequireMouseInside = false;
+					return;
+				}
+			}
+
 			/*if (keyCode == .Tilde)
 			{
 				Thread.Sleep(300);
@@ -2847,7 +2869,9 @@ namespace IDE.ui
             int prevTextLength = mData.mTextLength;
             base.KeyDown(keyCode, isRepeat);
 
-            if (mAutoComplete != null)
+            if ((mAutoComplete != null) &&
+				(keyCode != .Control) &&
+				(keyCode != .Shift))
             {
 				mAutoComplete.MarkDirty();
                 bool isCursorInRange = prevCursorPos == CursorTextPos;

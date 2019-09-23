@@ -631,6 +631,11 @@ namespace IDE
 			}
 		}
 
+		public struct TutorialsFinished
+		{
+			public bool mCtrlCursor;
+		}
+
 		public bool mLoadedSettings;
 
 		public CompilerSettings mCompilerSettings = new .() ~ delete _;
@@ -641,6 +646,7 @@ namespace IDE
 		public RecentFiles mRecentFiles = new RecentFiles() ~ delete _;
 		public String mWakaTimeKey = new .() ~ delete _;
 		public bool mEnableDevMode;
+		public TutorialsFinished mTutorialsFinished = .();
 
 		public this()
 		{
@@ -700,6 +706,11 @@ namespace IDE
 				sd.Add("EnableDevMode", mEnableDevMode);
 			}
 
+			using (sd.CreateObject("TutorialsFinished"))
+			{
+				sd.Add("CtrlCursor", mTutorialsFinished.mCtrlCursor);
+			}
+
 			String dataStr = scope String();
 			sd.ToTOML(dataStr);
 			gApp.SafeWriteTextFile(path, dataStr);
@@ -748,6 +759,11 @@ namespace IDE
 			{
 				sd.Get("WakaTimeKey", mWakaTimeKey);
 				sd.Get("EnableDevMode", ref mEnableDevMode);
+			}
+
+			using (sd.Open("TutorialsFinished"))
+			{
+				sd.Get("CtrlCursor", ref mTutorialsFinished.mCtrlCursor);
 			}
 		}
 
