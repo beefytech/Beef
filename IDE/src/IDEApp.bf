@@ -1512,6 +1512,9 @@ namespace IDE
 
 		bool SaveDefaultLayoutData()
 		{
+			if (mMainWindow == null)
+				return true;
+
 			StructuredData sd = scope StructuredData();
 
 			sd.CreateNew();
@@ -4683,6 +4686,7 @@ namespace IDE
             AddMenuItem(subMenu, "&Goto Line...", "Goto Line");
             AddMenuItem(subMenu, "Goto &Method...", "Goto Method");
             AddMenuItem(subMenu, "&Rename Symbol", "Rename Symbol");
+			AddMenuItem(subMenu, "Show Fi&xit", "Show Fixit");
 			AddMenuItem(subMenu, "Find &All References", "Find All References");
 			AddMenuItem(subMenu, "Find C&lass...", "Find Class");
 			subMenu.AddMenuItem(null);
@@ -9762,6 +9766,24 @@ namespace IDE
 				mSettings.Load();
 				mSettings.Apply();
 				mIsFirstRun = !mSettings.mLoadedSettings;
+#if !CLI && BF_PLATFORM_WINDOWS
+				if (!mSettings.mTutorialsFinished.mRanDebug)
+				{
+					let exePath = scope String();
+					Environment.GetExecutableFilePath(exePath);
+					if (exePath.EndsWith("_d.exe", .OrdinalIgnoreCase))
+					{
+						if (Windows.MessageBoxA(default, "Are you sure you want to run the debug build of the Beef IDE? This is useful for debugging Beef issues but execution speed will be much slower.", "RUN DEBUG?",
+							Windows.MB_ICONQUESTION | Windows.MB_YESNO) != Windows.IDYES)
+						{
+							Stop();
+							return;
+						}
+
+					}
+					mSettings.mTutorialsFinished.mRanDebug = true;
+				}
+#endif
 			}
 
             DarkTheme aTheme = new DarkTheme();

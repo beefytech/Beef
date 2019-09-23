@@ -634,6 +634,7 @@ namespace IDE
 		public struct TutorialsFinished
 		{
 			public bool mCtrlCursor;
+			public bool mRanDebug;
 		}
 
 		public bool mLoadedSettings;
@@ -709,6 +710,7 @@ namespace IDE
 			using (sd.CreateObject("TutorialsFinished"))
 			{
 				sd.Add("CtrlCursor", mTutorialsFinished.mCtrlCursor);
+				sd.Add("RanDebug", mTutorialsFinished.mRanDebug);
 			}
 
 			String dataStr = scope String();
@@ -764,6 +766,7 @@ namespace IDE
 			using (sd.Open("TutorialsFinished"))
 			{
 				sd.Get("CtrlCursor", ref mTutorialsFinished.mCtrlCursor);
+				sd.Get("RanDebug", ref mTutorialsFinished.mRanDebug);
 			}
 		}
 
