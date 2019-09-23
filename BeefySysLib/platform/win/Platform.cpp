@@ -3161,6 +3161,13 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 		}
 	}
 
+	if ((i == 0) && (length >= 1) &&
+		((inPath[0] == DIR_SEP_CHAR) || (inPath[1] == DIR_SEP_CHAR_ALT)))
+	{
+		i++; // start after initial slash
+		outPath.Append(DIR_SEP_CHAR);
+	}
+
 	int32 lastComponentStart = i;
 	bool addSeparator = false;
 	String subName;
