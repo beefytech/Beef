@@ -109,8 +109,8 @@ public:
 	NetManager();
 	~NetManager();
 
-	NetRequest* CreateGetRequest(const StringImpl& url, const StringImpl& destPath);
-	NetResult* QueueGet(const StringImpl& url, const StringImpl& destPath);
+	NetRequest* CreateGetRequest(const StringImpl& url, const StringImpl& destPath, bool useCache);
+	NetResult* QueueGet(const StringImpl& url, const StringImpl& destPath, bool useCache);
 	bool Get(const StringImpl& url, const StringImpl& destPath);
 	
 	void CancelAll();

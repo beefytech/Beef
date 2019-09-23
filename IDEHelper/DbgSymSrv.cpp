@@ -111,7 +111,7 @@ bool DbgSymRequest::Get(const StringImpl& url, const StringImpl& destPath, NetRe
 {	
 	if (mIsPreCache)
 	{		
-		auto netResult = mDbgSymSrv->mDebugger->mDebugManager->mNetManager->QueueGet(url, destPath);
+		auto netResult = mDbgSymSrv->mDebugger->mDebugManager->mNetManager->QueueGet(url, destPath, true);
 		if (chainNetResult != NULL)
 		{
 			if ((*chainNetResult != NULL) && (netResult != NULL))

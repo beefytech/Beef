@@ -447,7 +447,7 @@ NetManager::~NetManager()
 	}	
 }
 
-NetRequest* NetManager::CreateGetRequest(const StringImpl& url, const StringImpl& destPath)
+NetRequest* NetManager::CreateGetRequest(const StringImpl& url, const StringImpl& destPath, bool useCache)
 {
 	AutoCrit autoCrit(mThreadPool.mCritSect);
 
@@ -462,15 +462,18 @@ NetRequest* NetManager::CreateGetRequest(const StringImpl& url, const StringImpl
 	netResult->mFailed = false;
 	netResult->mCurRequest = netRequest;
 
-	NetResult** netResultPtr;
-	if (mCachedResults.TryAdd(url, NULL, &netResultPtr))
+	if (useCache)
 	{
-		*netResultPtr = netResult;
-	}
-	else
-	{
-		mOldResults.Add(*netResultPtr);
-		*netResultPtr = netResult;
+		NetResult** netResultPtr;
+		if (mCachedResults.TryAdd(url, NULL, &netResultPtr))
+		{
+			*netResultPtr = netResult;
+		}
+		else
+		{
+			mOldResults.Add(*netResultPtr);
+			*netResultPtr = netResult;
+		}
 	}
 
 	netRequest->mResult = netResult;
@@ -478,11 +481,11 @@ NetRequest* NetManager::CreateGetRequest(const StringImpl& url, const StringImpl
 	return netRequest;
 }
 
-NetResult* NetManager::QueueGet(const StringImpl& url, const StringImpl& destPath)
+NetResult* NetManager::QueueGet(const StringImpl& url, const StringImpl& destPath, bool useCache)
 {
-	BfLogDbg("NetManager queueing %s\n", url.c_str());
+	BfLogDbg("NetManager queueing %s %d\n", url.c_str(), useCache);
 	
-	auto netRequest = CreateGetRequest(url, destPath);
+	auto netRequest = CreateGetRequest(url, destPath, useCache);
 	auto netResult = netRequest->mResult;
 	mThreadPool.AddJob(netRequest);
 	return netResult;
@@ -524,7 +527,7 @@ bool NetManager::Get(const StringImpl& url, const StringImpl& destPath)
 			}
 			else
 			{
-				netRequest = CreateGetRequest(url, destPath);
+				netRequest = CreateGetRequest(url, destPath, true);
 				break;
 			}
 		}

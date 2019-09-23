@@ -6124,6 +6124,8 @@ namespace IDE
 				var args = outFileInfo.Split!('\n');
 				if (args.Count == 3)
 				{
+					aliasFilePath = scope:: String(filePath);
+
 					filePath.Set(args[0]);
 					loadCmd = scope:: String(args[1]);
 				}

@@ -2669,6 +2669,7 @@ namespace IDE.ui
             if (mTrackedTextElementViewList == null)
             {
                 String findFileName = mFilePath;
+				String srcFileName = mAliasFilePath ?? mFilePath;
                 
                 mTrackedTextElementViewList = new List<TrackedTextElementView>();
 				if (mFilePath == null)
@@ -2686,7 +2687,7 @@ namespace IDE.ui
 
                 for (var breakpoint in debugManager.mBreakpointList)
                 {
-                    if ((breakpoint.mFileName != null) && (Path.Equals(breakpoint.mFileName, findFileName)))
+                    if ((breakpoint.mFileName != null) && (Path.Equals(breakpoint.mFileName, srcFileName)))
                     {
                         var breakpointView = new TrackedTextElementView(breakpoint);
                         UpdateTrackedElementView(breakpointView);
@@ -3681,7 +3682,7 @@ namespace IDE.ui
 				if (gApp.mDebugger.mIsRunning)
                 	foundPosition = RemapActiveToCompiledLine(curCompileIdx, ref lineIdx, ref lineCharIdx);
 				bool createNow = foundPosition || !mIsBeefSource; // Only be strict about Beef source
-                Breakpoint newBreakpoint = debugManager.CreateBreakpoint_Create(mFilePath, lineIdx, lineCharIdx, -1);
+                Breakpoint newBreakpoint = debugManager.CreateBreakpoint_Create(mAliasFilePath ?? mFilePath, lineIdx, lineCharIdx, -1);
 				newBreakpoint.mThreadId = threadId;
 				debugManager.CreateBreakpoint_Finish(newBreakpoint, createNow);
                 int newDrawLineNum = GetDrawLineNum(newBreakpoint);

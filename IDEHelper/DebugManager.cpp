@@ -1620,7 +1620,7 @@ BF_EXPORT NetResult* HTTP_GetFile(char* url, char* destPath)
 {
 	AutoCrit autoCrit(gDebugManager->mNetManager->mThreadPool.mCritSect);
 
-	auto netResult = gDebugManager->mNetManager->QueueGet(url, destPath);	
+	auto netResult = gDebugManager->mNetManager->QueueGet(url, destPath, false);	
 	netResult->mDoneEvent = new SyncEvent();
 	return netResult;
 }
