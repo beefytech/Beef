@@ -4816,6 +4816,7 @@ namespace IDE
 				internalDebugMenu.AddMenuItem("Reconnect BeefPerf", null, new (menu) => { BeefPerf.RetryConnect(); } );
 	            AddMenuItem(internalDebugMenu, "Report Memory", "Report Memory");
 				internalDebugMenu.AddMenuItem("Crash", null, new (menu) => { Runtime.FatalError("Bad"); });
+				internalDebugMenu.AddMenuItem("Show Welcome", null, new (menu) => { ShowWelcome(); });
 				internalDebugMenu.AddMenuItem("Exit Test", null, new (menu) => { ExitTest(); });
 				internalDebugMenu.AddMenuItem("Run Test", null, new (menu) => { mRunTest = !mRunTest; });
 				internalDebugMenu.AddMenuItem("GC Collect", null, new (menu) =>
@@ -9989,14 +9990,16 @@ namespace IDE
 			ShowStartupFile();
 
 			if (mIsFirstRun)
-			{
-				WelcomePanel welcomePanel = new .();
-				TabbedView tabbedView = GetDefaultDocumentTabbedView();
-				let tabButton = SetupTab(tabbedView, "Welcome", 0, welcomePanel, true);
-				tabButton.Activate();
-			}
+				ShowWelcome();
         }
 #endif
+		void ShowWelcome()
+		{
+			WelcomePanel welcomePanel = new .();
+			TabbedView tabbedView = GetDefaultDocumentTabbedView();
+			let tabButton = SetupTab(tabbedView, "Welcome", 0, welcomePanel, true);
+			tabButton.Activate();
+		}
 
 		void LoadConfig()
 		{

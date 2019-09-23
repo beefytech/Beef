@@ -60,22 +60,32 @@ namespace IDE.ui
 			}
 		}
 
+		public float YOfs
+		{
+			get
+			{
+				return Math.Max(0, (mHeight - GS!(520)) * 0.35f);
+			}
+		}
+
 		public this()
 		{
 			mSampleImg0 = Image.LoadFromFile(scope String()..AppendF(@"{}\images\welcome_sample0.png", gApp.mInstallDir));
 			mSampleImg1 = Image.LoadFromFile(scope String()..AppendF(@"{}\images\welcome_sample1.png", gApp.mInstallDir));
 
 			mSampleBtn0 = new .();
-			mSampleBtn0.mPath = new String()..AppendF(@"\beef_website\Samples\SpaceGame\BeefSpace.toml");
+			mSampleBtn0.mPath = new String()..AppendF(@"{}\..\Samples\SpaceGame\BeefSpace.toml", gApp.mInstallDir);
 			mSampleBtn0.mLabel = new String("Space Game");
 			mSampleBtn0.mImage = mSampleImg0;
 			AddWidget(mSampleBtn0);
 
 			mSampleBtn1 = new .();
-			mSampleBtn1.mPath = new String()..AppendF(@"\beef_website\Samples\HelloWorld\BeefSpace.toml");
+			mSampleBtn1.mPath = new String()..AppendF(@"{}\..\Samples\HelloWorld\BeefSpace.toml", gApp.mInstallDir);
 			mSampleBtn1.mLabel = new String("Hello World");
 			mSampleBtn1.mImage = mSampleImg1;
 			AddWidget(mSampleBtn1);
+
+			mClipGfx = true;
 		}
 
 		public override void RehupScale(float oldScale, float newScale)
@@ -100,20 +110,24 @@ namespace IDE.ui
 
 		public override void Draw(Graphics g)
 		{
+			using (g.PushColor(0x40000000))
+				g.FillRect(mWidth/2 - GS!(500), YOfs - GS!(24), GS!(500)*2, 570);
+
 			g.SetFont(mLargeFont);
 			using (g.PushColor(0xFFE0E0FF))
-				g.DrawString("Welcome to Beef", 0, GS!(48), .Centered, mWidth);
+				g.DrawString("Welcome to Beef", 0, GS!(0) + YOfs, .Centered, mWidth);
 
 			g.SetFont(mMedFont);
-			g.DrawString("Click on a sample projects below\nor\nCreate a project from the File menu", GS!(32), GS!(148), .Centered, mWidth - GS!(64));
+			g.DrawString(scope String()..AppendF("Click on a sample projects below\n{}or{}\nCreate a project from the File menu", Font.EncodeColor(0xFFA0A0A0), Font.EncodePopColor()),
+				GS!(32), GS!(95) + YOfs, .Centered, mWidth - GS!(64));
 		}
 
 		public override void Update()
 		{
 			base.Update();
 
-			mSampleBtn0.Resize(mWidth / 2 - GS!(32 + 320), GS!(300), GS!(320), GS!(240));
-			mSampleBtn1.Resize(mWidth / 2 + GS!(32), GS!(300), GS!(320), GS!(240));
+			mSampleBtn0.Resize(mWidth / 2 - GS!(32 + 320), GS!(224) + YOfs, GS!(320), GS!(240));
+			mSampleBtn1.Resize(mWidth / 2 + GS!(32), GS!(224) + YOfs, GS!(320), GS!(240));
 		}
 	}
 }
