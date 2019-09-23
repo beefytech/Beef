@@ -3202,8 +3202,12 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 		}
 
 		++i;
+		// Ignore multiple slashes in a row
+		while ((i < length) && ((inPath[i] == DIR_SEP_CHAR) || (inPath[i] == DIR_SEP_CHAR_ALT)))
+			++i;
+		
 		lastComponentStart = i;
-		addSeparator = true;
+		addSeparator = true;		
 	}
 	
 	TryStringOut(outPath, outPathC, inOutPathSize, (BfpResult*)outResult);
