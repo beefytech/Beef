@@ -133,7 +133,6 @@ namespace IDE
         public PropertiesPanel mPropertiesPanel;
         public Font mTinyCodeFont ~ delete _;
         public Font mCodeFont ~ delete _;
-        public Font mLargeFont ~ delete _;
 		protected bool mInitialized;
 		public bool mConfig_NoIR;
 		public bool mFailed;
@@ -1440,10 +1439,16 @@ namespace IDE
 							continue;
 						if (tabWidget.mContent is DisassemblyPanel)
 							continue;
+						if (tabWidget.mContent is WelcomePanel)
+							continue;
 					}
 
                     using (data.CreateObject())
                     {
+						var panel = tabWidget.mContent as Panel;
+						if (!panel.WantsSerialization)
+							continue;
+
 						if (tabWidget.mIsActive)
 							data.Add("Active", true);
 
@@ -1454,7 +1459,7 @@ namespace IDE
 						{
 							watchPanel.Serialize(data, serializeDocs);
 						}
-                        else if (var panel = tabWidget.mContent as Panel)
+                        else if (panel != null)
                         {
                             panel.Serialize(data);
                         }
@@ -9982,6 +9987,14 @@ namespace IDE
 			ShowPanel(mOutputPanel, false);
 			UpdateRecentFileMenuItems();
 			ShowStartupFile();
+
+			if (mIsFirstRun)
+			{
+				WelcomePanel welcomePanel = new .();
+				TabbedView tabbedView = GetDefaultDocumentTabbedView();
+				let tabButton = SetupTab(tabbedView, "Welcome", 0, welcomePanel, true);
+				tabButton.Activate();
+			}
         }
 #endif
 

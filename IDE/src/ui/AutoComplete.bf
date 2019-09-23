@@ -216,6 +216,12 @@ namespace IDE.ui
 				if ((mWidgetWindow == null) || (mWidgetWindow.mRootWidget != this))
 					return; // We're being replaced as root
 
+				if (let widgetWindow = window as WidgetWindow)
+				{
+					if (widgetWindow.mRootWidget is DarkTooltipContainer)
+						return;
+				}
+
                 if ((!mIgnoreMove) && (mWidgetWindow != null) && (!mWidgetWindow.mHasClosed))
                     mAutoComplete.Close();
             }
@@ -2016,6 +2022,9 @@ namespace IDE.ui
 
 			if (!mClosed)
 			{
+				if ((DarkTooltipManager.sTooltip != null) && (!DarkTooltipManager.sTooltip.mRequireMouseInside))
+					DarkTooltipManager.CloseTooltip();
+
 				if (IsInPanel())
 				{
 					gApp.mAutoCompletePanel.Unbind(this);

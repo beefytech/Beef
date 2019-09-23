@@ -31,6 +31,14 @@ namespace IDE.ui
 			}
 		}
 
+		public virtual bool WantsSerialization
+		{
+			get
+			{
+				return true;
+			}
+		}
+
         public override void GotFocus()
         {
             base.GotFocus();

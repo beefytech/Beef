@@ -132,6 +132,7 @@ namespace IDE.ui
 			// If we don't yet have a workspace then create one now...
 			if (!app.mWorkspace.IsInitialized)
 			{
+				DeleteAndNullify!(app.mWorkspace.mDir);
 				app.mWorkspace.mDir = new String(projDirectory);
 				app.mWorkspace.mName = new String(projName);
 				
