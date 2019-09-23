@@ -854,7 +854,11 @@ namespace Beefy.gfx
                     fontMetrics.mMaxWidth = Math.Max(fontMetrics.mMaxWidth, aWidth);
 
                 if (justification == 0)
-                    useX += (width - aWidth) / 2;
+				{
+					// This strange-looking construct is so that odd-length lines and even-length lines do not 'jitter'
+					// relative to each other as we're resizing a window
+                    useX += ((int)(width)&~1 - (int)aWidth) / 2;
+				}
                 else if (justification == 1)
                     useX += width - aWidth;
             }
