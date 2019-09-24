@@ -2022,7 +2022,7 @@ namespace IDE.ui
 
 			if (!mClosed)
 			{
-				if ((DarkTooltipManager.sTooltip != null) && (!DarkTooltipManager.sTooltip.mRequireMouseInside))
+				if ((DarkTooltipManager.sTooltip != null) && (DarkTooltipManager.sTooltip.mAllowMouseOutside))
 					DarkTooltipManager.CloseTooltip();
 
 				if (IsInPanel())

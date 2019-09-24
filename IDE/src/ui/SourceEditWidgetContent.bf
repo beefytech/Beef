@@ -2729,7 +2729,7 @@ namespace IDE.ui
 			{
 				if (mWidgetWindow.IsKeyDown(.Control))
 				{
-					if ((DarkTooltipManager.sTooltip != null) && (!DarkTooltipManager.sTooltip.mRequireMouseInside))
+					if ((DarkTooltipManager.sTooltip != null) && (DarkTooltipManager.sTooltip.mAllowMouseOutside))
 						DarkTooltipManager.CloseTooltip();
 					gApp.mSettings.mTutorialsFinished.mCtrlCursor = true;
 				}
@@ -2739,7 +2739,7 @@ namespace IDE.ui
 
 					let tooltip = DarkTooltipManager.ShowTooltip("Hold CTRL when using UP and DOWN", this, cursorX - GS!(24), cursorY - GS!(40));
 					if (tooltip != null)
-						tooltip.mRequireMouseInside = false;
+						tooltip.mAllowMouseOutside = true;
 					return;
 				}
 			}

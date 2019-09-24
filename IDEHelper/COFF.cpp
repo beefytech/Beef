@@ -4989,7 +4989,7 @@ void COFF::CvParseIPI()
 	int offset = dataOffset;
 	for (int idx = 0; idx < recordCount; idx++)
 	{		
-		BF_ASSERT(((offset) & 3) == 0);
+		//BF_ASSERT(((offset) & 3) == 0);
 		uint8* data = mCvIPIReader.GetTempPtr(offset, 4);		
 		uint16 trLength = GET(uint16);
 		int offsetStart = offset;

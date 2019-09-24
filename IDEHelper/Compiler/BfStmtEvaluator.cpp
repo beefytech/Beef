@@ -1611,30 +1611,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			localDef->mAddr = AllocLocalVariable(resolvedType, localDef->mName);
 	}
 
-// 	if ((!hadVarType) && (varDecl->mInitializer != NULL))
-// 	{
-// 		if (exprEvaluator != NULL)
-// 		{					
-// 			if ((initValue) && (initValue.mType->IsNullable()))
-// 			{
-// 			 	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
-// 			 	initValue = LoadValue(initValue);
-// 			 	exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 2), boolType);
-// 			 	handledExprBoolResult = true;
-// 			 
-// 			 	if (!resolvedType->IsNullable())
-// 			 		initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 1), initValue.mType->GetUnderlyingType());												
-// 			}
-// 			else if (initValue)
-// 			{
-// 			 	TryInitVar(varDecl, &localDef, initValue, exprEvaluator->mResult);
-// 			 	handledExprBoolResult = true;
-// 				handledVarStore = true;
-// 			 	handledVarInit = true;
-// 			}
-// 		}
-// 	}
-
+	bool wantsStore = false;
 	if ((initValue) && (!handledVarStore) && (!isConst) && (!initHandled))
 	{
 		initValue = LoadValue(initValue);
@@ -1651,7 +1628,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			localDef->mValue = initValue.mValue;
 			if ((localDef->mAddr) && (!localDef->mResolvedType->IsValuelessType()))
 			{
-				mBfIRBuilder->CreateStore(initValue.mValue, localDef->mAddr);
+				wantsStore = true;				
 			}
 			else
 			{
@@ -1727,7 +1704,10 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	if (localDef->mConstValue)
 		initType = BfIRInitType_NotNeeded;	
 
-	return AddLocalVariableDef(localDef, true, false, BfIRValue(), initType);
+	BfLocalVariable* localVar = AddLocalVariableDef(localDef, true, false, BfIRValue(), initType);
+	if (wantsStore)
+		mBfIRBuilder->CreateStore(initValue.mValue, localVar->mAddr);
+	return localVar;
 }
 
 BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varDecl, BfTypedValue val, bool updateSrcLoc, bool forceAddr)

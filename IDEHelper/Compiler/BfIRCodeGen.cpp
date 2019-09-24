@@ -1,5 +1,6 @@
 #include "BfIRCodeGen.h"
 #include "BfModule.h"
+#include "BeefySysLib/util/BeefPerf.h"
 
 #pragma warning(push)
 #pragma warning(disable:4141)
@@ -4057,6 +4058,19 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 		}
 
 		bool success = PM.run(*mLLVMModule);
+
+		if ((codeGenOptions.mOptLevel > BfOptLevel_O0) && (codeGenOptions.mWriteLLVMIR))
+		{
+			BP_ZONE("BfCodeGen::RunLoop.LLVM.IR");
+			String fileName = outFileName;
+			int dotPos = (int)fileName.LastIndexOf('.');
+			if (dotPos != -1)
+				fileName.RemoveToEnd(dotPos);
+
+			fileName += "_OPT.ll";
+			String irError;
+			WriteIR(fileName, irError);			
+		}
 	}
 
 	return true;

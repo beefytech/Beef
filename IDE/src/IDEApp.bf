@@ -6182,6 +6182,10 @@ namespace IDE
 							sourceViewPanel.SetLoadCmd(loadCmd);
 						}
 					}
+					else if ((hash != .None) && (hash != sourceViewPanel.mLoadedHash))
+					{
+						sourceViewPanel.ShowWrongHash();
+					}
 
                     int showHotIdx = -1;
                     if (!onlyShowCurrent)
@@ -11408,7 +11412,8 @@ namespace IDE
 					continue;
 
 				//TODO: Check to see if this file is in the dependency list of the executing project
-				mHaveSourcesChangedExternallySinceLastCompile = true;
+				if (!editData.mProjectSources.IsEmpty)
+					mHaveSourcesChangedExternallySinceLastCompile = true;
 				editData.SetSavedData(null, IdSpan());
 
 				if (editData.mQueuedContent == null)

@@ -303,6 +303,8 @@ namespace IDE.ui
 		{
 			switch (lhs)
 			{
+			case .None:
+				return rhs case .None;
 			case .MD5(let lhsMD5):
 				if (rhs case .MD5(let rhsMD5))
 					return lhsMD5 == rhsMD5;
@@ -3106,7 +3108,7 @@ namespace IDE.ui
 			ResizeComponents();
 		}
 
-		void ShowWrongHash()
+		public void ShowWrongHash()
 		{
 			CloseHeader();
 
@@ -3334,6 +3336,38 @@ namespace IDE.ui
 
 			CheckBinary();
         }
+
+		void CheckAdjustFile()
+		{
+			if (mLoadedHash == .None)
+				return;
+
+			String text = scope .();
+			if (File.ReadAllText(mFilePath, text, true) case .Err)
+				return;
+			
+			SourceHash textHash = SourceHash.Create(mLoadedHash.GetKind(), text);
+			if (textHash == mLoadedHash)
+				return;
+
+			if (text.Contains('\r'))
+			{
+				text.Replace("\r", "");
+			}
+			else
+			{
+				text.Replace("\n", "\r\n");
+			}
+			textHash = SourceHash.Create(mLoadedHash.GetKind(), text);
+			if (textHash == mLoadedHash)
+			{
+				if (File.WriteAllText(mFilePath, text) case .Err)
+				{
+					gApp.mFileWatcher.OmitFileChange(mFilePath, text);
+					return;
+				}
+			}
+		}
 
 		void RetryLoad()
 		{
@@ -5386,6 +5420,7 @@ namespace IDE.ui
 				{
 					if ((int)mOldVerLoadExecutionInstance.mExitCode == 0)
 					{
+						CheckAdjustFile();
                         RetryLoad();
 					}
 					else
@@ -5403,6 +5438,7 @@ namespace IDE.ui
 					if (result == .Failed)
 						gApp.OutputErrorLine("Failed to retrieve source from {}", mOldVerLoadCmd);
 
+					CheckAdjustFile();
 					RetryLoad();
 					DeleteAndNullify!(mOldVerHTTPRequest);
 				}

@@ -34,7 +34,7 @@ namespace Beefy.theme.dark
 		public bool mHasClosed;
 		public Insets mRelWidgetMouseInsets ~ delete _;
 		public bool mAllowMouseInsideSelf;
-		public bool mRequireMouseInside;
+		public bool mAllowMouseOutside;
 
         public const float cShadowSize = 8;
 
@@ -224,7 +224,7 @@ namespace Beefy.theme.dark
             if (mWidgetWindow == null)
                 return;
 
-			if (!mRequireMouseInside)
+			if (mAllowMouseOutside)
 				return;
 
 			float rootX;
