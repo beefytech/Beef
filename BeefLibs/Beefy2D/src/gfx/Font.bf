@@ -358,6 +358,8 @@ namespace Beefy.gfx
 			float usePointSize = pointSize;
 			mPath = new String();
 			GetFontPath(fontName, mPath);
+			if (mPath.IsEmpty)
+				return false;
 
 			String fontPath = scope String(mPath);
 			if (pointSize == -1)
@@ -380,7 +382,10 @@ namespace Beefy.gfx
 
             Font font = new Font();
             if (!font.Load(path, pointSize))
+			{
+				delete font;
                 return .Err; //TODO: Make proper error
+			}
             return font;
         }
 

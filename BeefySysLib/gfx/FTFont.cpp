@@ -163,7 +163,7 @@ bool FTFont::Load(const StringImpl& fileName, float pointSize)
 		mFaceSize = new FTFontManager::FaceSize();
 		*faceSizePtr = mFaceSize;
 
-		FT_Size ftSize;
+		FT_Size ftSize = NULL;
 		FT_New_Size(mFace->mFTFace, &ftSize);
 		FT_Activate_Size(ftSize);
 		auto error = FT_Set_Char_Size(mFace->mFTFace, 0, (int)(pointSize * 64), 72, 72);

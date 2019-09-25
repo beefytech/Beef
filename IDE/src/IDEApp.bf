@@ -10069,8 +10069,8 @@ namespace IDE
 				}
 				else
 				{
-					mTinyCodeFont.AddAlternate(fontName, tinyFontSize);
-					mCodeFont.AddAlternate(fontName, fontSize);
+					mTinyCodeFont.AddAlternate(fontName, tinyFontSize).IgnoreError();
+					mCodeFont.AddAlternate(fontName, fontSize).IgnoreError();
 				}
 			}
 
@@ -10086,12 +10086,12 @@ namespace IDE
 				mCodeFont.AddAlternate("Segoe UI", fontSize);
 				mCodeFont.AddAlternate("Segoe UI Symbol", fontSize);
 				mCodeFont.AddAlternate("Segoe UI Historic", fontSize);
-				mCodeFont.AddAlternate("Segoe UI Emoji", fontSize);
+				mCodeFont.AddAlternate("Segoe UI Emoji", fontSize).IgnoreError();
 
 				mTinyCodeFont.AddAlternate("Segoe UI", tinyFontSize);
 				mTinyCodeFont.AddAlternate("Segoe UI Symbol", tinyFontSize);
 				mTinyCodeFont.AddAlternate("Segoe UI Historic", tinyFontSize);
-				mTinyCodeFont.AddAlternate("Segoe UI Emoji", tinyFontSize);
+				mTinyCodeFont.AddAlternate("Segoe UI Emoji", tinyFontSize).IgnoreError();
 
 				/*mCodeFont.AddAlternate(new String("fonts/segoeui.ttf"), fontSize);
 				mCodeFont.AddAlternate(new String("fonts/seguisym.ttf"), fontSize);

@@ -31,13 +31,8 @@ USING_NS_BF;
 
 ///
 
-static void GfxFailed(HRESULT result)
-{
-	BF_FATAL(StrFormat("DirectX call failed with result %d", result).c_str());
-}
-
 #define DXFAILED(check) ((hr = (check)) != 0)
-#define DXCHECK(check) if ((check) != 0) GfxFailed(check)
+#define DXCHECK(check) if ((check) != 0) BF_FATAL(StrFormat("DirectX call failed with result 0x%X", check).c_str());
 
 DXShaderParam::DXShaderParam()
 {
@@ -1277,10 +1272,21 @@ bool DXRenderDevice::Init(BFApp* app)
 
 	WinBFApp* winApp = (WinBFApp*) app;
 	
-	//D3D_FEATURE_LEVEL d3dFeatureLevel;
+	D3D_FEATURE_LEVEL featureLevelArr[] =
+	{		
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+		D3D_FEATURE_LEVEL_9_3,
+		D3D_FEATURE_LEVEL_9_2,
+		D3D_FEATURE_LEVEL_9_1,
+	};;
+
+	D3D_FEATURE_LEVEL d3dFeatureLevel = (D3D_FEATURE_LEVEL)0;
 	int flags = 0;	
 	//flags = D3D11_CREATE_DEVICE_DEBUG;
-	DXCHECK(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, NULL, 0, D3D11_SDK_VERSION, &mD3DDevice, NULL, &mD3DDeviceContext));
+	DXCHECK(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, featureLevelArr, 6, D3D11_SDK_VERSION, &mD3DDevice, &d3dFeatureLevel, &mD3DDeviceContext));
+	OutputDebugStrF("D3D Feature Level: %X\n", d3dFeatureLevel);
 	
 	IDXGIDevice* pDXGIDevice = NULL;
 	DXCHECK(mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&pDXGIDevice)));
@@ -1482,8 +1488,10 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	desc.SampleDesc.Count = 1;
 	//desc.Usage = D3D11_USAGE_DYNAMIC;
 	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	OutputDebugStrF("Creating texture\n");
 
 	ID3D11Texture2D* d3DTexture = NULL;
 	DXCHECK(mD3DDevice->CreateTexture2D(&desc, &resData, &d3DTexture));
@@ -1527,6 +1535,7 @@ Texture* DXRenderDevice::CreateDynTexture(int width, int height)
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;	
+	desc.SampleDesc.Quality = 0;
 	//desc.Usage = D3D11_USAGE_DYNAMIC;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
