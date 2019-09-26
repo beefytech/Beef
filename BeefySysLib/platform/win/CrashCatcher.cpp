@@ -666,6 +666,12 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 
 		HANDLE hProcess = GetCurrentProcess();
 
+		char szModule[MAX_PATH];
+		szModule[0] = 0;
+		uintptr section = 0, offset = 0;
+
+		GetLogicalAddress((PVOID)sf.AddrPC.Offset, szModule, sizeof(szModule), section, offset);
+
 		bool forceFail = false;		
 		if ((gSymGetSymFromAddr(hProcess, sf.AddrPC.Offset, &symDisplacement, pSymbol)) && (!forceFail))
 		{
@@ -685,8 +691,8 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 				dispName.Replace("::", ".");
 			}
 
-			aDebugDump += StrFormat("%@ %@ %hs+%X\r\n",
-				sf.AddrFrame.Offset, sf.AddrPC.Offset, dispName.c_str(), symDisplacement);
+			aDebugDump += StrFormat("%@ %@ %s %hs+%X\r\n",
+				sf.AddrFrame.Offset, sf.AddrPC.Offset, GetFileName(szModule).c_str(), dispName.c_str(), symDisplacement);
 
 			DWORD displacement = 0;
 #ifdef BF64
@@ -703,11 +709,7 @@ static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 		}
 		else // No symbol found.  Print out the logical address instead.
 		{
-			char szModule[MAX_PATH];
-			szModule[0] = 0;
-			uintptr section = 0, offset = 0;
-
-			GetLogicalAddress((PVOID)sf.AddrPC.Offset, szModule, sizeof(szModule), section, offset);
+			
 
 // 			ModuleInfo* moduleInfo = NULL;
 // 			if (moduleInfoMap.TryAdd(szModule, NULL, &moduleInfo))
@@ -924,7 +926,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	aDebugDump += path;
 	aDebugDump += "\r\n";
 	aDebugDump += GetVersion(path);
-	aDebugDump += "Module: " + GetFileName(aBuffer) + "\r\n";
+	aDebugDump += "\r\n";
 	
 	aDebugDump += StrFormat("Logical Address: %04X:%@\r\n", section, offset);	
 
@@ -997,7 +999,7 @@ CrashCatcher::CrashCatcher()
 
 static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 {	
- 	//OutputDebugStrF("SEH Filter! CraskReportKind:%d\n", gCrashReportKind);
+ 	OutputDebugStrF("SEH Filter! CraskReportKind:%d\n", gCrashReportKind);
 
 	if (gCrashReportKind == BfpCrashReportKind_None)
 	{	
@@ -1027,9 +1029,22 @@ static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 	return EXCEPTION_CONTINUE_SEARCH;
 }
 
+//PVECTORED_EXCEPTION_HANDLER(
+
+static long __stdcall VectorExceptionHandler(LPEXCEPTION_POINTERS lpExceptPtr)
+{
+	OutputDebugStrF("VectorExceptionHandler\n");
+	return EXCEPTION_CONTINUE_SEARCH;
+}
+
+
 void CrashCatcher::Init()
-{	
-	gPreviousFilter = SetUnhandledExceptionFilter(SEHFilter);	
+{		
+ 	gPreviousFilter = SetUnhandledExceptionFilter(SEHFilter);	
+ 	OutputDebugStrF("Setting SEH filter %p\n", gPreviousFilter);
+
+// 	OutputDebugStrF("AddVectoredExceptionHandler 2\n");
+// 	AddVectoredExceptionHandler(0, VectorExceptionHandler);
 }
 
 void CrashCatcher::Test()
