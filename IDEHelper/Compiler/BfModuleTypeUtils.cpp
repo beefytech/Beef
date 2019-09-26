@@ -4105,12 +4105,13 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		return;
 	}
 
-	if ((!methodInstance->mIRFunction) && (methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized))
+	if ((!methodInstance->mIRFunction) && (methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized) &&
+		(methodInstance->GetImportCallKind() == BfImportCallKind_None))
 	{
 		if (!mIsModuleMutable)
 			PrepareForIRWriting(methodInstance->GetOwner());
-
-		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
+		
+		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);		
 		methodInstance->mIRFunction = func;
 		mFuncReferences[methodInstance] = func;		
 	}
