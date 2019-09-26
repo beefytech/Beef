@@ -621,6 +621,7 @@ BfIRFunction BfCompiler::CreateLoadSharedLibraries(BfVDataModule* bfModule, Arra
 	SmallVector<BfIRType, 2> paramTypes;
 	auto loadSharedLibrariesFuncType = bfModule->mBfIRBuilder->CreateFunctionType(voidType, paramTypes, false);
 	auto loadSharedLibFunc = bfModule->mBfIRBuilder->CreateFunction(loadSharedLibrariesFuncType, BfIRLinkageType_External, "BfLoadSharedLibraries");
+	bfModule->SetupIRMethod(NULL, loadSharedLibFunc, false);
 
 	bfModule->mBfIRBuilder->SetActiveFunction(loadSharedLibFunc);
 	auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
@@ -1544,6 +1545,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		SmallVector<BfIRType, 2> paramTypes;
 		auto dtorFuncType = bfModule->mBfIRBuilder->CreateFunctionType(voidType, paramTypes, false);
 		dtorFunc = bfModule->mBfIRBuilder->CreateFunction(dtorFuncType, BfIRLinkageType_External, "BfCallAllStaticDtors");
+		bfModule->SetupIRMethod(NULL, dtorFunc, false);
 		bfModule->mBfIRBuilder->SetActiveFunction(dtorFunc);
 		auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
 		bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
@@ -1582,6 +1584,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			paramTypes.push_back(nullPtrType);
 			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
             mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "main");			
+			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}
 		else if (project->mTargetType == BfTargetType_BeefDynLib)
 		{		
@@ -1593,6 +1596,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "DllMain");
 			if (mSystem->mPtrSize == 4)
 				bfModule->mBfIRBuilder->SetFuncCallingConv(mainFunc, BfIRCallingConv_StdCall);
+			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}
 		else if (project->mTargetType == BfTargetType_BeefWindowsApplication)
 		{				
@@ -1605,6 +1609,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "WinMain");
 			if (mSystem->mPtrSize == 4)
 				bfModule->mBfIRBuilder->SetFuncCallingConv(mainFunc, BfIRCallingConv_StdCall);			
+			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}		
 		else
 		{
@@ -1613,6 +1618,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			paramTypes.push_back(nullPtrType);
 			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(voidType, paramTypes, false);
 			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "BeefMain");
+			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}
 
 		bfModule->mBfIRBuilder->SetActiveFunction(mainFunc);
@@ -1627,6 +1633,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
             auto setCmdLineFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
 
             auto setCmdLineFunc = bfModule->mBfIRBuilder->CreateFunction(setCmdLineFuncType, BfIRLinkageType_External, "BfpSystem_SetCommandLine");
+			bfModule->SetupIRMethod(NULL, setCmdLineFunc, false);
 
             SmallVector<BfIRValue, 2> args;
             args.push_back(bfModule->mBfIRBuilder->GetArgument(0));
@@ -1775,6 +1782,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 							BfIRFunctionType thunkFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
 							
 							BfIRFunction thunkMainFunc = bfModule->mBfIRBuilder->CreateFunction(thunkFuncType, BfIRLinkageType_External, "BeefMain");
+							bfModule->SetupIRMethod(NULL, thunkMainFunc, false);
 							bfModule->mBfIRBuilder->SetActiveFunction(thunkMainFunc);
 
 							auto thunkEntryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);

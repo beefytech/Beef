@@ -8523,7 +8523,7 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	auto callingConv = GetCallingConvention(methodInstance->GetOwner(), methodDef);
 	if (callingConv != BfIRCallingConv_CDecl)
 		mBfIRBuilder->SetFuncCallingConv(func, callingConv);
-	SetupLLVMMethod(methodInstance, func, isInlined);
+	SetupIRMethod(methodInstance, func, isInlined);
 
 // 	auto srcModule = methodInstance->GetOwner()->GetModule();
 // 	if ((srcModule != NULL) && (srcModule->mProject != mProject))
@@ -13588,24 +13588,28 @@ BfIRCallingConv BfModule::GetCallingConvention(BfMethodInstance* methodInstance)
 	return GetCallingConvention(methodInstance->GetOwner(), methodInstance->mMethodDef);
 }
 
-void BfModule::SetupLLVMMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined)
+void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined)
 {		
-	auto methodDef = methodInstance->mMethodDef;	
+	BfMethodDef* methodDef = NULL;
+	if (methodInstance != NULL)
+		methodDef = methodInstance->mMethodDef;
 
 	if (!func)
 		return;
 	
 	if (mCompiler->mOptions.mNoFramePointerElim)
-		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_NoFramePointerElim);
-	if (methodDef->mImportKind == BfImportKind_Export)
-		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllExport);
-
+		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_NoFramePointerElim);	
 	mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_NoUnwind);
 	if (mSystem->mPtrSize == 8) // We need unwind info for debugging 
 		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_UWTable);
+	
+	if (methodInstance == NULL)
+		return;
+
+	if (methodDef->mImportKind == BfImportKind_Export)
+		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllExport);
 	if (methodDef->mNoReturn)
 		mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_NoReturn);
-
 	auto callingConv = GetCallingConvention(methodInstance->GetOwner(), methodDef);
 	if (callingConv != BfIRCallingConv_CDecl)
 		mBfIRBuilder->SetFuncCallingConv(func, callingConv);
@@ -18313,7 +18317,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 		*outIsIntrinsic = isIntrinsic;
 
 	if (!isIntrinsic)
-		SetupLLVMMethod(methodInstance, methodInstance->mIRFunction, methodInstance->mAlwaysInline);
+		SetupIRMethod(methodInstance, methodInstance->mIRFunction, methodInstance->mAlwaysInline);
 }
 
 void BfModule::CheckHotMethod(BfMethodInstance* methodInstance, const StringImpl& inMangledName)

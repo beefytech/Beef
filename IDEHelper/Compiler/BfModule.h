@@ -1678,7 +1678,7 @@ public:
 	void CreateDllImportMethod();			
 	BfIRCallingConv GetCallingConvention(BfTypeInstance* typeInst, BfMethodDef* methodDef);
 	BfIRCallingConv GetCallingConvention(BfMethodInstance* methodInstance);
-	void SetupLLVMMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined);
+	void SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined);
 	void EmitCtorBody(bool& skipBody);
 	void EmitDtorBody();
 	void EmitEnumToStringBody();

@@ -9717,7 +9717,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	SetAndRestoreValue<BfClosureState*> prevClosureState(mModule->mCurMethodState->mClosureState, &closureState);
 
 	if (mModule->HasCompiledOutput())
-		mModule->SetupLLVMMethod(methodInstance, methodInstance->mIRFunction, methodInstance->mAlwaysInline);
+		mModule->SetupIRMethod(methodInstance, methodInstance->mIRFunction, methodInstance->mAlwaysInline);
 
 	// This keeps us from giving errors twice.  ProcessMethod can give errors when we capture by value but needed to
 	//  capture by reference, so we still need to do it for resolve-only
