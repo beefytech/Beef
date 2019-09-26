@@ -13,6 +13,11 @@
 #include "BeefySysLib/util/HashSet.h"
 #include "BeefySysLib/util/MultiHashSet.h"
 
+//#define TEST_CRASH
+#ifdef TEST_CRASH
+#include "CrashCatcher.h"
+#endif
+
 //#include <mmsystem.h>
 //#include <shellapi.h>
 //#include <Objbase.h>
@@ -28,6 +33,12 @@ BF_IMPORT void BF_CALLTYPE Debugger_ProgramDone();
 
 int main(int argc, char* argv[])
 {	
+#ifdef TEST_CRASH
+	CrashCatcher catcher;
+	catcher.SetCrashReportKind(BfpCrashReportKind_GUI);
+	catcher.Test();
+#endif
+
 	BfpSystem_SetCommandLine(argc, argv);
 
 	BfpThread_SetName(NULL, "MainThread", NULL);
