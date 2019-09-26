@@ -1234,6 +1234,11 @@ void WinDebugger::StopDebugging()
 
 	if ((mDbgProcessId != 0) && ((mDbgAttachFlags & BfDbgAttachFlag_ShutdownOnExit) == 0))	
 	{
+		for (auto address : mTempBreakpoint)
+			RemoveBreakpoint(address);
+		for (auto breakpoint : mBreakpoints)		
+			DetachBreakpoint(breakpoint);
+
 		BfLogDbg("StopDebugging\n");
 		::DebugActiveProcessStop(mDbgProcessId);
 		mRunState = RunState_Terminated;
