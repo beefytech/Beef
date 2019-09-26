@@ -511,7 +511,8 @@ namespace IDE.ui
 		    mLineDatas.Clear();
 
 		    String codeData = scope String();
-		    IDEApp.sApp.mDebugger.DisassembleAt(addr, codeData);
+			if (addr != 0)
+		    	IDEApp.sApp.mDebugger.DisassembleAt(addr, codeData);
 		    int prevDisasmLineData = -1;
 		    int lineIdx = 0;
 			bool allowEmptyLine = false;
@@ -1248,6 +1249,7 @@ namespace IDE.ui
 
                             debugExpr.Replace('[', '(');
                             debugExpr.Replace(']', ')');
+							debugExpr.Replace("xmmword ptr", "(int64[2]*)");
                             debugExpr.Replace("qword ptr", "(int64*)");
                             debugExpr.Replace("dword ptr", "(int32*)");
                             debugExpr.Replace("word ptr", "(int16*)");

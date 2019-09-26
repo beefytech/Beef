@@ -38,9 +38,10 @@ namespace IDE.ui
 			}
 
 			var vals = scope List<StringView>(val.Split('\n'));
-			let addr = (int)int64.Parse(scope String(vals[0]), System.Globalization.NumberStyles.HexNumber);
-			let byteCount = int32.Parse(scope String(vals[1])).Get();
-			mMemoryPanel.mBinaryDataWidget.SelectRange(addr, byteCount);
+			let addr = (int)int64.Parse(scope String(vals[0]), System.Globalization.NumberStyles.HexNumber).GetValueOrDefault();
+			let byteCount = int32.Parse(scope String(vals[1])).GetValueOrDefault();
+			if (addr != 0)
+				mMemoryPanel.mBinaryDataWidget.SelectRange(addr, byteCount);
 			Close();
 		}
 
