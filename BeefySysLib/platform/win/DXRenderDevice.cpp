@@ -1491,7 +1491,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	//desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
-	OutputDebugStrF("Creating texture\n");
+	//OutputDebugStrF("Creating texture\n");
 
 	ID3D11Texture2D* d3DTexture = NULL;
 	DXCHECK(mD3DDevice->CreateTexture2D(&desc, &resData, &d3DTexture));
