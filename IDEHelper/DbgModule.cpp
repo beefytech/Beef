@@ -1424,6 +1424,24 @@ DbgType* DbgType::GetBaseType()
 		return baseType;
 	baseType = mCompileUnit->mDbgModule->GetPrimaryType(baseType);
 	mBaseTypes.mHead->mBaseType = baseType;
+
+	if (baseType->mIsDeclaration)
+	{
+		// That's no good, try to fix it up
+		if (baseType->GetLanguage() == DbgLanguage_Beef)
+		{
+			if (baseType->GetBaseType() == NULL)
+			{
+				if (baseType->ToString() == "System.Function")
+				{
+					DbgBaseTypeEntry* baseTypeEntry = mCompileUnit->mDbgModule->mAlloc.Alloc<DbgBaseTypeEntry>();
+					baseTypeEntry->mBaseType = mCompileUnit->mDbgModule->GetPrimitiveType(DbgType_IntPtr_Alias, DbgLanguage_Beef);				
+					baseType->mBaseTypes.PushBack(baseTypeEntry);
+				}
+			}
+		}
+	}
+
 	return baseType;
 }
 
@@ -1891,6 +1909,17 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 
 	if (debugTarget != NULL)
 	{
+		// These are 'alias' definitions for C, but get overwritten by their official
+		// stdint.h versions (ie: int8_t)
+		CREATE_PRIMITIVE_C(DbgType_i8, "int8", int8);
+		CREATE_PRIMITIVE_C(DbgType_i16, "int16", int16);
+		CREATE_PRIMITIVE_C(DbgType_i32, "int32", int32);
+		CREATE_PRIMITIVE_C(DbgType_i64, "int64", int64);
+		CREATE_PRIMITIVE_C(DbgType_i8, "uint8", uint8);
+		CREATE_PRIMITIVE_C(DbgType_i16, "uint16", uint16);
+		CREATE_PRIMITIVE_C(DbgType_i32, "uint32", uint32);
+		CREATE_PRIMITIVE_C(DbgType_i64, "uint64", uint64);
+
 		CREATE_PRIMITIVE(DbgType_Void, "void", "void", "void", void*);
 		dbgType->mSize = 0;
 		dbgType->mAlign = 0;
