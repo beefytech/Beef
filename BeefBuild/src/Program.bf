@@ -19,6 +19,7 @@ namespace BeefBuild
 					    -config=<config>        Sets the config (defaults to Debug)
 					    -new                    Creates a new workspace and project
 					    -platform=<platform>    Sets the platform (defaults to system platform)
+					    -run                    Compile and run the startup project in the workspace
 					    -test=<path>            Executes test script
 					    -verbosity=<verbosity>  Set verbosity level to: quiet/minimal/normal/detailed/diagnostic
 					    -workspace=<path>       Sets workspace path (defaults to current working directory)
