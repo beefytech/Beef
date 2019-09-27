@@ -241,6 +241,12 @@ BeIRCodeGen::~BeIRCodeGen()
 
 void BeIRCodeGen::Hash(BeHashContext& hashCtx)
 {
+// 	if (mBeModule->mModuleName == "IDE_IDEApp")
+// 	{
+// 		hashCtx.mDbgViz = true;
+// 		NOP;
+// 	}
+
 	hashCtx.Mixin(mPtrSize);
 	hashCtx.Mixin(mIsOptimized);
 	if (mBeModule != NULL)
@@ -2782,6 +2788,7 @@ void BeIRCodeGen::HandleNextCmd()
 			
 			if (dbgFunc->mValue != NULL)
 				dbgFunc->mValue->mDbgFunction = dbgFunc;
+			dbgFunc->mIdx = (int)mBeModule->mDbgModule->mFuncs.size();
 			mBeModule->mDbgModule->mFuncs.push_back(dbgFunc);
 
 			SetResult(curId, dbgFunc);
@@ -2823,6 +2830,7 @@ void BeIRCodeGen::HandleNextCmd()
 			}*/
 			if (dbgFunc->mValue != NULL)
 				dbgFunc->mValue->mDbgFunction = dbgFunc;
+			dbgFunc->mIdx = (int)mBeModule->mDbgModule->mFuncs.size();
 			mBeModule->mDbgModule->mFuncs.push_back(dbgFunc);						
 
 			SetResult(curId, dbgFunc);

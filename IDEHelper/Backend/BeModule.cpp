@@ -3264,9 +3264,89 @@ void BeDbgModule::HashContent(BeHashContext & hashCtx)
 	hashCtx.MixinStr(mDirectory);
 	hashCtx.MixinStr(mProducer);
 
-	for (auto dbgFunc : mFuncs)
-		dbgFunc->HashReference(hashCtx);
+	BeDumpContext dc;
+	dc.mModule = mBeModule;
+	String lhsName;
+	String rhsName;
 
-	for (auto globalVar : mGlobalVariables)
-		globalVar->HashReference(hashCtx);
+	if (!mFuncs.IsEmpty())
+	{
+		auto _GetName = [&](BeDbgFunction* func, String& str)
+		{
+			if (!func->mLinkageName.IsEmpty())			
+				str.Append(func->mLinkageName);			
+			else			
+				dc.ToString(str, func);			
+		};
+		
+		Array<BeDbgFunction*> unrefFuncs;
+		for (auto dbgFunc : mFuncs)
+		{
+			if ((!dbgFunc->mIncludedAsMember) && (dbgFunc->mHashId == -1))
+				unrefFuncs.Add(dbgFunc);
+		}
+
+		std::sort(unrefFuncs.begin(), unrefFuncs.end(), [&](BeDbgFunction* lhs, BeDbgFunction* rhs)
+		{			
+			lhsName.Clear();
+			_GetName(lhs, lhsName);
+
+			rhsName.Clear();
+			_GetName(rhs, rhsName);			
+
+			int cmp = String::Compare(lhsName, rhsName, false);
+			if (cmp != 0)
+				return cmp < 0;
+
+			if (lhs->mFile != rhs->mFile)
+			{
+				lhsName.Clear();
+				rhsName.Clear();
+				if (lhs->mFile != NULL)
+					lhs->mFile->ToString(lhsName);
+				if (rhs->mFile != NULL)
+					rhs->mFile->ToString(rhsName);
+				cmp = String::Compare(lhsName, rhsName, false);
+				if (cmp != 0)
+					return cmp < 0;
+			}
+
+			if (lhs->mLine != rhs->mLine)
+				return lhs->mLine < rhs->mLine;
+			
+			return lhs->mIdx < rhs->mIdx;
+		});
+
+		hashCtx.Mixin(unrefFuncs.size());
+		for (auto dbgFunc : unrefFuncs)
+		{
+			if (dbgFunc->mHashId == -1)
+				dbgFunc->HashReference(hashCtx);
+		}
+	}
+
+	if (!mGlobalVariables.IsEmpty())
+	{
+		auto _GetName = [&](BeDbgGlobalVariable* func, String& str)
+		{
+			if (!func->mLinkageName.IsEmpty())
+				str.Append(func->mLinkageName);
+			else
+				dc.ToString(str, func);
+		};
+
+		std::sort(mGlobalVariables.begin(), mGlobalVariables.end(), [&](BeDbgGlobalVariable* lhs, BeDbgGlobalVariable* rhs)
+		{
+			lhsName.Clear();
+			_GetName(lhs, lhsName);
+
+			rhsName.Clear();
+			_GetName(rhs, rhsName);
+
+			return (lhsName < rhsName);
+		});
+
+		for (auto globalVar : mGlobalVariables)
+			globalVar->HashReference(hashCtx);
+	}
 }

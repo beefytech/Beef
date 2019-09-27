@@ -1764,6 +1764,8 @@ public:
 	BE_VALUE_TYPE(BeDbgFunction, BeMDNode);
 
 public:
+	int mIdx;
+
 	BeMDNode* mScope;
 	BeDbgFile* mFile;
 	int mLine;
@@ -1793,6 +1795,7 @@ public:
 public:
 	BeDbgFunction()
 	{
+		mIdx = -1;
 		mScope = NULL;
 		mFile = NULL;
 		mLine = -1;
@@ -2009,8 +2012,8 @@ public:
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
 		hashCtx.Mixin(TypeId);
-		hashCtx.Mixin(mName);
-		hashCtx.Mixin(mLinkageName);
+		hashCtx.MixinStr(mName);
+		hashCtx.MixinStr(mLinkageName);
 		if (mFile != NULL)
 			mFile->HashReference(hashCtx);
 		hashCtx.Mixin(mLineNum);
