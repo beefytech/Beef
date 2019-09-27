@@ -29,21 +29,30 @@ namespace Beefy.theme.dark
 				let darkMenuWidget = (DarkMenuWidget)mMenuWidget;
 				g.SetFont(mMenuItem.mBold ? darkMenuWidget.mBoldFont : darkMenuWidget.mFont);
 
-                if (mMenuItem.mDisabled)
-                {
-                    using (g.PushColor(0xFFA8A8A8))
-                        g.DrawString(mMenuItem.mLabel, GS!(36), 0);
-                }
-                else
-                    g.DrawString(mMenuItem.mLabel, GS!(36), 0);
+				using (g.PushColor(mMenuItem.mDisabled ? 0xFFA8A8A8 : 0xFFFFFFFF))
+				{
+					StringView leftStr = mMenuItem.mLabel;
+					StringView rightStr = default;
+					int barIdx = leftStr.IndexOf('|');
+					if (barIdx != -1)
+					{
+						rightStr = .(leftStr, barIdx + 1);
+						leftStr.RemoveToEnd(barIdx);
+					}
+
+					g.DrawString(leftStr, GS!(36), 0);
+					if (!rightStr.IsEmpty)
+						g.DrawString(rightStr, mWidth - GS!(8), 0, .Right);
+				}
 
                 if (mMenuItem.mIconImage != null)
                     g.Draw(mMenuItem.mIconImage, GS!(4), 0);
             }
 
-            if (mMenuItem.mItems.Count > 0)
+            if (mMenuItem.IsParent)
             {
-                g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.RightArrow), mWidth - GS!(16), 0);
+				using (g.PushColor(mMenuItem.mDisabled ? 0xFFA8A8A8 : 0xFFFFFFFF))
+                	g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.RightArrow), mWidth - GS!(16), 0);
             }
         }
 

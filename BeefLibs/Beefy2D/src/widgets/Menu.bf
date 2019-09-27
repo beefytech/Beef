@@ -551,10 +551,32 @@ namespace Beefy.widgets
         public bool mDisabled;
 		public bool mBold;
         public IDrawable mIconImage;
+		public bool mForceParent;
 
 		public ~this()
 		{
 			
+		}
+
+		public bool IsEmpty
+		{
+			get
+			{
+				return mItems.IsEmpty;
+			}
+		}
+
+		public bool IsParent
+		{
+			get
+			{
+				return !mItems.IsEmpty || mForceParent;
+			}
+
+			set
+			{
+				mForceParent = value;
+			}
 		}
 
         public virtual Menu AddItem(StringView label = default)
