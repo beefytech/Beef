@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace System
 {
 	struct Int32 : int32, IInteger, ISigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable
@@ -120,17 +122,19 @@ namespace System
 			ToString(outString, minNumerals);
 		}
 
-	    public static Result<int32, ParseError> Parse(StringView val)
+	    public static Result<int32, ParseError> Parse(StringView val, NumberStyles style)
 	    {
-			if (val.Length == 0)
+			if (val.IsEmpty)
 				return .Err(.NoValue);
 
 			bool isNeg = false;
-	        int32 result = 0;
-			//TODO: Use Number.ParseNumber
+			int32 result = 0;
+
+			int32 radix = style.HasFlag(.AllowHexSpecifier) ? 0x10 : 10;
+						
 			for (int32 i = 0; i < val.Length; i++)
 			{
-				char8 c = val.Ptr[i];
+				char8 c = val[i];
 
 				if ((i == 0) && (c == '-'))
 				{
@@ -140,13 +144,39 @@ namespace System
 
 				if ((c >= '0') && (c <= '9'))
 				{
-					result *= 10;
+					result *= radix;
 					result += (int32)(c - '0');
 				}
+				else if ((c >= 'a') && (c <= 'f'))
+				{
+					result *= radix;
+					result += c - 'a' + 10;
+				}
+				else if ((c >= 'A') && (c <= 'F'))
+				{
+					result *= radix;
+					result += c - 'A' + 10;
+				}
+				else if ((c == 'X') || (c == 'x'))
+				{
+					if (result != 0)
+						return .Err(.InvalidChar(result));
+					radix = 0x10;
+				}
+				else if (c == '\'')
+				{
+					// Ignore
+				}
 				else
-					return .Err(.InvalidChar(isNeg ? -result : result));
+					return .Err(.InvalidChar(result));
 			}
-			return .Ok(isNeg ? -result : result);
+
+			return isNeg ? -result : result;
 	    }
+
+		public static Result<int32, ParseError> Parse(StringView val)
+		{
+			return Parse(val, .Any);
+		}
 	}
 }

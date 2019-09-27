@@ -1383,6 +1383,9 @@ namespace IDE.ui
 
         void ShowRightClickMenu(WatchListViewItem listViewItem, float x, float y)
         {
+			if (mOrigEvalString.StartsWith(":"))
+				return;
+
 			float clickX = x;
 			float clickY = DarkTheme.sDarkTheme.mSmallFont.GetLineSpacing() + GS!(1);
 			listViewItem.SelfToOtherTranslate(listViewItem.mListView.GetRoot(), clickX, clickY, var aX, var aY);

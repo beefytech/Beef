@@ -561,6 +561,17 @@ namespace System.IO
 			return .Ok;
 		}
 
+		public Result<char8> Read()
+		{
+			if (mStream == null)
+				return .Err;
+			if (mCharPos == mCharLen)
+			{
+				if (Try!(ReadBuffer()) == 0) return .Err;
+			}
+			return mCharBuffer[mCharPos++];
+		}
+
 		public struct LineReader : IEnumerator<Result<StringView>>
 		{
 			StreamReader mStreamReader;

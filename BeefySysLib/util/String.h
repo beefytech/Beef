@@ -682,12 +682,16 @@ public:
 
 	intptr CompareTo(const StringImpl& strB, bool ignoreCase = false) const
 	{
-		return Compare(*this, 0, strB, 0, strB.GetLength(), ignoreCase);
+		if (ignoreCase)
+			return CompareOrdinalIgnoreCaseHelper(GetPtr(), GetLength(), strB.GetPtr(), strB.GetLength());
+		return CompareOrdinalHelper(GetPtr(), GetLength(), strB.GetPtr(), strB.GetLength());
 	}
 
 	static intptr Compare(const StringImpl& strA, const StringImpl& strB, bool ignoreCase)
-	{
-		return Compare(strA, 0, strB, 0, strB.GetLength(), ignoreCase);
+	{		
+		if (ignoreCase)
+			return CompareOrdinalIgnoreCaseHelper(strA.GetPtr(), strA.GetLength(), strB.GetPtr(), strB.GetLength());
+		return CompareOrdinalHelper(strA.GetPtr(), strA.GetLength(), strB.GetPtr(), strB.GetLength());
 	}
 
 	static intptr Compare(const StringImpl& strA, intptr indexA, const StringImpl& strB, intptr indexB, intptr length, bool ignoreCase);

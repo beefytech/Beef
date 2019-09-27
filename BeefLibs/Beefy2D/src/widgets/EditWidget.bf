@@ -1919,6 +1919,37 @@ namespace Beefy.widgets
 		    InsertAtCursor(text);
 		}
 
+		public void CutText()
+		{
+			if (!CheckReadOnly())
+			{
+				String selText = scope String();
+				GetSelectionText(selText);
+				if (!selText.IsWhiteSpace)
+				{
+			        BFApp.sApp.SetClipboardText(selText);
+			        DeleteSelection();
+				}
+			}
+		}
+
+		public void CopyText()
+		{
+			String selText = scope String();
+			GetSelectionText(selText);
+			if (!selText.IsWhiteSpace)
+				BFApp.sApp.SetClipboardText(selText);
+		}
+
+		public void PasteText()
+		{
+			String aText = scope String();
+			BFApp.sApp.GetClipboardText(aText);
+			aText.Replace("\r", "");
+			if ((aText != null) && (!CheckReadOnly()))
+			    PasteText(aText);
+		}
+
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
         {
             base.KeyDown(keyCode, isRepeat);
@@ -1944,38 +1975,16 @@ namespace Beefy.widgets
                 {
                 case (KeyCode)'A':
                     SelectAll();
-                    break;
                 case (KeyCode)'C':
-					String selText = scope String();
-					GetSelectionText(selText);
-					if (!selText.IsWhiteSpace)
-                    	BFApp.sApp.SetClipboardText(selText);
-                    break;
+					CopyText();
                 case (KeyCode)'X':
-                    if (!CheckReadOnly())
-                    {
-						String selText = scope String();
-						GetSelectionText(selText);
-						if (!selText.IsWhiteSpace)
-						{
-	                        BFApp.sApp.SetClipboardText(selText);
-	                        DeleteSelection();
-						}
-                    }
-                    break;
+                    CutText();
                 case (KeyCode)'V':
-                    String aText = scope String();
-                	BFApp.sApp.GetClipboardText(aText);
-                    aText.Replace("\r", "");
-                    if ((aText != null) && (!CheckReadOnly()))
-                        PasteText(aText);
-                    break;
+                    PasteText();
                 case (KeyCode)'Z':
                     Undo();
-                    break;
                 case (KeyCode)'Y':
                     Redo();
-                    break;
 				case .Return:
 					if (mIsMultiline)
 						mEditWidget.Submit();

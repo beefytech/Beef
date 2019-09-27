@@ -933,7 +933,7 @@ namespace IDE.ui
 
         public bool Classify(ResolveType resolveType, ResolveParams resolveParams = null)
         {
-			if (resolveType == .Autocomplete)
+			if (resolveType == .GetFixits)
 			{
 				NOP!();
 			}
@@ -1605,7 +1605,11 @@ namespace IDE.ui
 			}
 			else if ((resolveType == .Autocomplete) || (resolveType == .GetFixits))
 			{
-				if ((resolveParams == null) || (!resolveParams.mCancelled))
+				if ((resolveParams != null) && (resolveType == .GetFixits))
+				{
+					resolveParams.mNavigationData = new String(autocompleteInfo);
+				}
+				else if ((resolveParams == null) || (!resolveParams.mCancelled))
 				{
 					bool changedAfterInfo = (resolveParams != null) && (resolveParams.mTextVersion != Content.mData.mCurTextVersionId);
 
@@ -3113,6 +3117,7 @@ namespace IDE.ui
 			CloseHeader();
 
 			mPanelHeader = new PanelHeader();
+			mPanelHeader.mKind = .WrongHash;
 			String fileName = scope String();
 			Path.GetFileName(mFilePath, fileName);
 			String headerStr = scope String();
@@ -5344,6 +5349,18 @@ namespace IDE.ui
 			scope AutoBeefPerf("SourceViewPanel.Update");
 
 			EnsureReady();
+
+			if (mPanelHeader != null)
+			{
+				if (mPanelHeader.mKind == .WrongHash)
+				{
+					if (!gApp.mDebugger.mIsRunning)
+					{
+						// No longer makes sense if we're not even running
+						CloseHeader();
+					}
+				}
+			}
 
 			if (mProjectSource == null)
 			{

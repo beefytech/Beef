@@ -182,6 +182,7 @@ namespace IDE
 		public AutoCompletePanel mAutoCompletePanel;
         
         public Rect mRequestedWindowRect = Rect(64, 64, 1200, 1024);
+		public BFWindow.ShowKind mRequestedShowKind;
         public WakaTime mWakaTime ~ delete _;
 
 		public Settings mSettings = new Settings() ~ delete _;
@@ -1417,10 +1418,11 @@ namespace IDE
        
         void SerializeWindow(StructuredData data, WidgetWindow window)
         {
-            data.Add("X", window.mX);
-            data.Add("Y", window.mY);
-            data.Add("Width", window.mWindowWidth);
-            data.Add("Height", window.mWindowHeight);
+            data.Add("X", window.mNormX);
+            data.Add("Y", window.mNormY);
+            data.Add("Width", window.mNormWidth);
+            data.Add("Height", window.mNormHeight);
+			data.Add("ShowKind", window.mShowKind);
         }
 
         void SerializeTabbedView(StructuredData data, DarkTabbedView tabbedView, bool serializeDocs)
@@ -2670,7 +2672,10 @@ namespace IDE
             int32 width = data.GetInt("Width");
             int32 height = data.GetInt("Height");
 			if ((width > 0) && (height > 0))
+			{
 				mRequestedWindowRect = Rect(x, y, width, height);
+			}
+			mRequestedShowKind = data.GetEnum<BFWindow.ShowKind>("ShowKind");
         }
 
 		bool LoadWorkspaceUserData(StructuredData data)
@@ -9730,6 +9735,8 @@ namespace IDE
         {
 			scope AutoBeefPerf("IDEApp.Init");
 
+			//int zag = 123;
+
 			if (mVerbosity == .Default)
 				mVerbosity = .Detailed;
 
@@ -9902,6 +9909,9 @@ namespace IDE
 	                .Caption | .Minimize | .Maximize | .QuitOnClose | .Menu;
 				if (mRunningTestScript)
 					flags |= .NoActivate;
+
+				if (mRequestedShowKind == .Maximized)
+					flags |= .ShowMaximized;
 
 				scope AutoBeefPerf("IDEApp.Init:CreateMainWindow");
 	            mMainWindow = new WidgetWindow(null, "Beef IDE", (int32)mRequestedWindowRect.mX,

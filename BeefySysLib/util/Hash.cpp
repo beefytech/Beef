@@ -1380,7 +1380,7 @@ void HashContext::Mixin(const void* data, int size)
 
 		if (mDbgViz)
 		{
-			int findIdx = 0x1BCF;
+			int findIdx = 0x2cc159;
 			if ((mBufOffset + mBufSize <= findIdx) && (mBufOffset + mBufSize + addBytes > findIdx))
 			{
 				NOP;
@@ -1429,10 +1429,17 @@ Val128 HashContext::Finish128()
 		{
 			String filePath = StrFormat("c:\\temp\\hash%d.bin", gDbgVizIdx++);
 			mDbgVizStream = new	FileStream();
-			mDbgVizStream->Open(filePath, "wb");
-			OutputDebugStrF("Creating dbg hash: %s\n", filePath.c_str());
+			if (mDbgVizStream->Open(filePath, "wb"))
+			{
+				OutputDebugStrF("Creating dbg hash: %s\n", filePath.c_str());
+			}
+			else
+			{ 
+				OutputDebugStrF("FAILED creating dbg hash: %s\n", filePath.c_str());
+			}
 		}
-		mDbgVizStream->Write(mBuf, mBufSize);
+		if ((mDbgVizStream != NULL) && (mDbgVizStream->IsOpen()))
+			mDbgVizStream->Write(mBuf, mBufSize);
 	}
 	
 	if (mBufSize <= 16)

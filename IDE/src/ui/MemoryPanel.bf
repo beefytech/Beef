@@ -395,6 +395,7 @@ namespace IDE.ui
             String editVal = subItem.mLabel;
             mEditWidget.SetText(editVal);
             mEditWidget.Content.SelectAll();
+			mEditSubmitting = true; // Default to submitting on lost focus
 
             mEditingItem = item;
             mEditingRepType = repType;
@@ -479,6 +480,7 @@ namespace IDE.ui
 				String editText = scope String();
 				mEditWidget.GetText(editText);
                 String expr = scope String();
+				editText.Append(", d");
                 if (!MemoryPanel.EvalExpression(editText, expr))
                     expr = editText;
 
@@ -593,6 +595,7 @@ namespace IDE.ui
 
         void HandleRenameCancel(EditEvent theEvent)
         {
+			mEditSubmitting = false;
             HandleEditLostFocus((EditWidget)theEvent.mSender);
         }
 

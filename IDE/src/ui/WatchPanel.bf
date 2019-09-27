@@ -2670,6 +2670,8 @@ namespace IDE.ui
 
 			if (listViewItem != null)
 			{
+				var clickedHoverItem = listViewItem.GetSubItem(0) as HoverWatch.HoverListViewItem;
+
 				var watchEntry = listViewItem.mWatchEntry;
 				if (listViewItem.mParentItem != listView.GetRoot())
 				{
@@ -2750,13 +2752,20 @@ namespace IDE.ui
 					}
 				}
 
+				void WithSelected(Action<ListViewItem> func)
+				{
+					var root = listView.GetRoot();
+					root.WithSelectedItems(func);
+
+					if (clickedHoverItem != null)
+						func(clickedHoverItem);
+				}
+
 				anItem = menu.AddItem("Copy Value");
 				anItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
 						String selectedText = scope String();
-
-						var root = listView.GetRoot();
-						root.WithSelectedItems(scope (listViewItem) =>
+						WithSelected(scope (listViewItem) =>
 						    {
 						        if (!selectedText.IsEmpty)
 								{
@@ -2772,9 +2781,7 @@ namespace IDE.ui
 				anItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
 						String selectedText = scope String();
-
-						var root = listView.GetRoot();
-						root.WithSelectedItems(scope (listViewItem) =>
+						WithSelected(scope (listViewItem) =>
 						    {
 								String evalStr = scope String();
 								CompactChildExpression((WatchListViewItem)listViewItem, evalStr);

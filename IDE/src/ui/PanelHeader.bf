@@ -11,6 +11,13 @@ namespace IDE.ui
 {
     public class PanelHeader : Widget
     {
+		public enum Kind
+		{
+			None,
+			WrongHash
+		}
+
+		public Kind mKind;
         public List<DarkButton> mButtons = new List<DarkButton>() ~ delete _;
         public String mLabel ~ delete _;
 		public String mTooltipText ~ delete _;

@@ -2232,6 +2232,15 @@ namespace IDE.ui
                 }
             }            
 
+			SourceElementType prevElementType = SourceElementType.Normal;
+			char8 prevChar = 0;
+			int cursorTextPos = CursorTextPos;
+			if (cursorTextPos != 0)
+			{
+			    prevElementType = (SourceElementType)mData.mText[cursorTextPos - 1].mDisplayTypeId;
+				prevChar = mData.mText[cursorTextPos - 1].mChar;
+			}
+
             if (((theChar == '\n') || (theChar == '\r')) && (mIsMultiline) && (!CheckReadOnly()))
             {
                 UndoBatchStart undoBatchStart = new UndoBatchStart("newline");
@@ -2333,6 +2342,17 @@ namespace IDE.ui
 
                 mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 
+				if ((prevElementType == .Normal) &&
+					((prevChar == '.') || (prevChar == '(')))
+				{
+					// Leave it be
+				}
+				else
+				{
+					if (mAutoComplete != null)
+						mAutoComplete.CloseListWindow();
+				}
+				
 				mAutoComplete?.UpdateAsyncInfo();
 
                 return;
@@ -2341,15 +2361,6 @@ namespace IDE.ui
 			if ((theChar == '/') && (ToggleComment()))
 			{
 				return;
-			}
-
-            SourceElementType prevElementType = SourceElementType.Normal;
-			char8 prevChar = 0;
-            int cursorTextPos = CursorTextPos;
-            if (cursorTextPos != 0)
-			{
-                prevElementType = (SourceElementType)mData.mText[cursorTextPos - 1].mDisplayTypeId;
-				prevChar = mData.mText[cursorTextPos - 1].mChar;
 			}
 
             if (prevElementType == SourceElementType.Comment)
@@ -2565,7 +2576,7 @@ namespace IDE.ui
                 mIsInKeyChar = false;
             }
 
-            if ((theChar == '\b') || (theChar >= (char8)32))
+            if ((theChar == '\b') || (theChar == '\r') || (theChar >= (char8)32))
             {
                 bool isHighPri = (theChar == '(') || (theChar == '.');
 				bool needsFreshAutoComplete = ((isHighPri) /*|| (!mAsyncAutocomplete)*/ || (mAutoComplete == null) || (mAutoComplete.mAutoCompleteListWidget == null));
@@ -2720,7 +2731,7 @@ namespace IDE.ui
         /// param.isRepeat = "Whether the key is repeated"
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
         {
-			mIgnoreKeyChar = false;
+			 mIgnoreKeyChar = false;
 
 			if (((keyCode == .Up) || (keyCode == .Down)) &&
 				(mAutoComplete != null) && (mAutoComplete.IsShowing()) && (mAutoComplete.mListWindow != null) &&
@@ -3022,12 +3033,34 @@ namespace IDE.ui
                 Menu menu = new Menu();
                 if (!DoSpellingPopup(menu))
                 {
+					bool hasText = false;
+					bool hasSelection = HasSelection();
+					if (hasSelection)
+						hasText = true;
+					else if ((GetLineCharAtCoord(x, y, var line, var lineChar, var overflowX)) || (overflowX < 2))
+					{
+						int textIdx = GetTextIdx(line, lineChar);
+						for (int checkIdx = textIdx; checkIdx < Math.Min(textIdx + 1, mData.mTextLength); checkIdx++)
+						{
+							if (mData.mText[checkIdx].mDisplayTypeId != (uint8)BfSourceElementType.Comment)
+							{
+								char8 c = mData.mText[checkIdx].mChar;
+								if (!c.IsWhiteSpace)
+									hasText = true;
+							}
+						}
+					}
+
 					if (mSourceViewPanel.mIsSourceCode)
 					{
-	                    var menuItem = menu.AddItem("Go to Definition");
+	                    Menu menuItem;
+
+						menuItem = menu.AddItem("Go to Definition");
+						menuItem.SetDisabled(!hasText);
 	                    menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.GoToDefinition());
 
 	                    menuItem = menu.AddItem("Add Watch");
+						menuItem.SetDisabled(!hasText);
 	                    menuItem.mOnMenuItemSelected.Add(new (evt) =>
 	                        {
 	                            int line, lineChar;
@@ -3046,7 +3079,6 @@ namespace IDE.ui
 	                                    (textIdx >= mSelection.Value.MinPos) &&
 	                                    (textIdx < mSelection.Value.MaxPos))
 	                                {
-	                                    //CDH TODO this doesn't actually get hit right now because right-click context menus lose the selection
 	                                    GetSelectionText(debugExpr);
 	                                }
 	                                else if (bfSystem != null)
@@ -3077,15 +3109,87 @@ namespace IDE.ui
 								}
 	                        });
 
-						var debugger = IDEApp.sApp.mDebugger;
-						if (debugger.IsPaused())
+						// Fixits
 						{
-							menuItem = menu.AddItem("Show Disassembly");
-							menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.ShowDisassemblyAtCursor());
+							ResolveParams resolveParams = scope .();
+							mSourceViewPanel.DoClassify(ResolveType.GetFixits, resolveParams, true);
+							menuItem = menu.AddItem("Fixit");
+							
+							if (resolveParams.mNavigationData != null)
+							{
+								int32 fixitIdx = 0;
+								for (let str in resolveParams.mNavigationData.Split('\n'))
+								{
+									var strItr = str.Split('\t');
+									let cmd = strItr.GetNext().Value;
+									if (cmd != "fixit")
+										continue;
+									let arg = strItr.GetNext().Value;
+									var fixitItem = menuItem.AddItem(arg);
 
-						    var stepIntoSpecificMenu = menu.AddItem("Step into Specific");
-						    var stepFilterMenu = menu.AddItem("Step Filter");
+									var infoCopy = new String(resolveParams.mNavigationData);
+									fixitItem.mOnMenuItemSelected.Add(new (menu) =>
+										{
+											mAutoComplete?.Close();
+											var autoComplete = new AutoComplete(mEditWidget);
+											autoComplete.SetInfo(infoCopy);
+											autoComplete.mAutoCompleteListWidget.mSelectIdx = fixitIdx;
+											autoComplete.InsertSelection(0);
+											autoComplete.Close();
+										}
+										~
+										{
+											delete infoCopy;
+										});
+									fixitIdx++;
+								}
+							}
 
+							if (!menuItem.IsParent)
+							{
+								menuItem.IsParent = true;
+								menuItem.SetDisabled(true);
+							}
+						}
+
+						menu.AddItem();
+						menuItem = menu.AddItem("Cut|Ctrl+X");
+						menuItem.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								CutText();
+							});
+						menuItem.SetDisabled(!hasSelection);
+
+						menuItem = menu.AddItem("Copy|Ctrl+C");
+						menuItem.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								CopyText();
+							});
+						menuItem.SetDisabled(!hasSelection);
+
+						menuItem = menu.AddItem("Paste|Ctrl+V");
+						menuItem.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								PasteText();
+							});
+
+						// Debugger options
+						menu.AddItem();
+						var debugger = IDEApp.sApp.mDebugger;
+						bool isPaused = debugger.IsPaused();
+						menuItem = menu.AddItem("Show Disassembly");
+						menuItem.SetDisabled(!isPaused);
+						menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.ShowDisassemblyAtCursor());
+
+					    var stepIntoSpecificMenu = menu.AddItem("Step into Specific");
+						stepIntoSpecificMenu.SetDisabled(isPaused);
+						stepIntoSpecificMenu.IsParent = true;
+					    var stepFilterMenu = menu.AddItem("Step Filter");
+						stepFilterMenu.SetDisabled(isPaused);
+						stepFilterMenu.IsParent = true;
+
+						if (isPaused)
+						{
 						    int addr;
 						    String file = scope String();
 							String stackFrameInfo = scope String();
@@ -3186,11 +3290,11 @@ namespace IDE.ui
 						                    });
 						            }
 						        }
-						    }
+							}
+					    }
 
-						    stepIntoSpecificMenu.mDisabled = stepIntoSpecificMenu.mItems.Count == 0;
-						    stepFilterMenu.mDisabled = stepFilterMenu.mItems.Count == 0;
-						}
+					    stepIntoSpecificMenu.mDisabled |= stepIntoSpecificMenu.mItems.Count == 0;
+					    stepFilterMenu.mDisabled |= stepFilterMenu.mItems.Count == 0;
 					}
 					else // (!mSourceViewPanel.mIsSourceCode)
 					{

@@ -54,9 +54,9 @@ namespace System.IO
 
 		}
 
-		public static void GetFileName(String inPath, String outFileName)
+		public static void GetFileName(StringView inPath, String outFileName)
 		{
-			if (inPath == null)
+			if (inPath.IsEmpty)
 				return;
 			
 			CheckInvalidPathChars(inPath);
@@ -236,7 +236,7 @@ namespace System.IO
 				outFileName.Append(inPath, lastSlash + 1);
 		}
 
-		public static Result<void> GetExtension(String inPath, String outExt)
+		public static Result<void> GetExtension(StringView inPath, String outExt)
 		{
 			int i;
 			if ((i = inPath.LastIndexOf('.')) != -1)

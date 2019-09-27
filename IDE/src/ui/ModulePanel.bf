@@ -4,6 +4,7 @@ using Beefy.widgets;
 using Beefy.theme;
 using System.IO;
 using Beefy.utils;
+using Beefy.gfx;
 
 namespace IDE.ui
 {
@@ -65,6 +66,17 @@ namespace IDE.ui
 		    mModulesDirty = true;
 		}
 
+		public void GetFileNameFrom(ListViewItem item, String filePath)
+		{
+			var pathItem = item.GetSubItem(1);
+			StringView label = pathItem.Label;
+			int parenPos = label.IndexOf('(');
+			if (parenPos != -1)
+				label.RemoveToEnd(parenPos);
+			label.Trim();
+			filePath.Append(label);
+		}
+
 		protected override void ShowRightClickMenu(Widget relWidget, float x, float y)
 		{
 			base.ShowRightClickMenu(relWidget, x, y);
@@ -76,15 +88,54 @@ namespace IDE.ui
 			{
 				Menu menu = new Menu();
 			    Menu anItem;
-			    anItem = menu.AddItem("Load Symbols...");
+				anItem = menu.AddItem("Load Image...");
+				anItem.mOnMenuItemSelected.Add(new (item) =>
+					{
+						listView.GetRoot().WithSelectedItems(scope (item) =>
+							{
+								String filePath = scope .();
+								GetFileNameFrom(item, filePath);
+
+								String dir = scope String();
+								Path.GetDirectoryPath(filePath, dir);
+								IDEUtils.FixFilePath(dir);
+
+								String fileName = scope String();
+								Path.GetFileName(filePath, fileName);
+
+								String extName = scope String();
+								Path.GetExtension(filePath, extName);
+								extName.ToLower();
+
+								var fileDialog = scope System.IO.OpenFileDialog();
+								fileDialog.ShowReadOnly = false;
+								fileDialog.Title = "Select Image File";
+								fileDialog.Multiselect = false;
+								if (!dir.IsEmpty)
+									fileDialog.InitialDirectory = dir;
+								fileDialog.ValidateNames = true;
+								fileDialog.DefaultExt = ".exe";
+								fileDialog.FileName = fileName;
+								fileDialog.SetFilter(scope String()..AppendF("{0}|{0}|File (*{1})|*{1}|All files (*.*)|*.*", fileName, extName));
+								mWidgetWindow.PreModalChild();
+								if (fileDialog.ShowDialog(gApp.GetActiveWindow()).GetValueOrDefault() == .OK)
+								{
+									var fileNames = fileDialog.FileNames;
+									gApp.mDebugger.LoadImageForModule(filePath, fileNames[0]);
+								}
+							});
+					});
+
+			    anItem = menu.AddItem("Load Debug Info...");
 			    anItem.mOnMenuItemSelected.Add(new (item) =>
 					{
 						listView.GetRoot().WithSelectedItems(scope (item) =>
 							{
-								var pathItem = item.GetSubItem(1);
+								String filePath = scope .();
+								GetFileNameFrom(item, filePath);
 
 								String dir = scope String();
-								Path.GetDirectoryPath(pathItem.Label, dir);
+								Path.GetDirectoryPath(filePath, dir);
 								IDEUtils.FixFilePath(dir);
 
 								var fileDialog = scope System.IO.OpenFileDialog();
@@ -95,14 +146,14 @@ namespace IDE.ui
 									fileDialog.InitialDirectory = dir;
 								fileDialog.ValidateNames = true;
 								fileDialog.DefaultExt = ".exe";
-								fileDialog.SetFilter("PDB Debug Unfo (*.pdb)|*.pdb|All files (*.*)|*.*");
+								fileDialog.SetFilter("PDB Debug Info (*.pdb)|*.pdb|All files (*.*)|*.*");
 								mWidgetWindow.PreModalChild();
 								if (fileDialog.ShowDialog(gApp.GetActiveWindow()).GetValueOrDefault() == .OK)
 								{
 									var fileNames = fileDialog.FileNames;
 									if (gApp.mDebugger.mIsRunning)
 									{
-										gApp.mDebugger.LoadDebugInfoForModule(scope String(pathItem.Label), fileNames[0]);
+										gApp.mDebugger.LoadDebugInfoForModule(filePath, fileNames[0]);
 									}
 								}
 							});
@@ -126,20 +177,22 @@ namespace IDE.ui
 					if (moduleInfoStr.IsEmpty)
 						continue;
 
+					ListViewItem lvItem;
+
 					if (idx < mListView.GetRoot().GetChildCount())
 					{
-						let lvItem = mListView.GetRoot().GetChildAtIndex(idx);
+						lvItem = mListView.GetRoot().GetChildAtIndex(idx);
 						int subIdx = 0;
 						for (let moduleStr in moduleInfoStr.Split('\t'))
 						{
-							let subLVItem = (subIdx == 0) ? lvItem : lvItem.GetSubItem(subIdx);
-							subLVItem.Label = moduleStr;  
+							let subLVItem = (DarkListViewItem)((subIdx == 0) ? lvItem : lvItem.GetSubItem(subIdx));
+							subLVItem.Label = moduleStr;
 							subIdx++;
 						}
 					}
 					else
 					{
-						let lvItem = mListView.GetRoot().CreateChildItem();
+						lvItem = mListView.GetRoot().CreateChildItem();
 						int subIdx = 0;
 						for (let moduleStr in moduleInfoStr.Split('\t'))
 						{
@@ -147,6 +200,17 @@ namespace IDE.ui
 							subLVItem.Label = moduleStr;
 							subIdx++;
 						}
+					}
+
+					DarkListViewItem subLVItem = (DarkListViewItem)lvItem.GetSubItem(1);
+					if (subLVItem.mLabel.StartsWith("!"))
+					{
+						subLVItem.mTextColor = 0xFFFF8080;
+						subLVItem.mLabel.Remove(0, 1);
+					}
+					else
+					{
+						subLVItem.mTextColor = 0xFFFFFFFF;
 					}
 
 					++idx;

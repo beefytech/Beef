@@ -186,6 +186,11 @@ namespace IDE
 
 			public void Apply()
 			{
+#if CLI
+				return;
+#endif
+
+#unwarn
 				String symbolServerPath = scope String()..Join("\n", mSymbolSearchPath.GetEnumerator());
 				if (mUseSymbolServers == .No)
 				{
@@ -479,6 +484,11 @@ namespace IDE
 
 			public void Apply()
 			{
+#if CLI
+				return;
+#endif
+
+#unwarn
 				gApp.mCommands.mKeyMap.Clear();
 
 				for (let entry in mEntries)
