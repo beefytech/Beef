@@ -69,7 +69,8 @@ public:
 	virtual void			LostFocus(BFWindow* newFocus) override;
 	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) override;
 	virtual void			GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight) override;	
-	virtual void			Resize(int x, int y, int width, int height) override;	
+	virtual void			GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind) override;
+	virtual void			Resize(int x, int y, int width, int height, int showKind) override;
 	virtual void			SetClientPosition(int x, int y) override;
 	virtual void			SetMouseVisible(bool isMouseVisible) override;
 	virtual void			SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible) override;

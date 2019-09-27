@@ -168,6 +168,8 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	if ((windowFlags & BFWINDOW_TOPMOST) && (parent == NULL))
 		relativeWindow = HWND_TOP;
 	int showFlags = SWP_SHOWWINDOW;
+// 	if (windowFlags & BFWINDOW_SHOWMINIMIZED)
+// 		showFlags = SWP_
 	mHasFocus = true;	
 	mSoftHasFocus = true;
 	if (windowFlags & BFWINDOW_FAKEFOCUS)
@@ -186,7 +188,29 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		mSoftHasFocus = false;
 	}
 
-	SetWindowPos(mHWnd, relativeWindow, x, y, width, height, showFlags);
+	if (windowFlags & (BFWINDOW_SHOWMINIMIZED | BFWINDOW_SHOWMAXIMIZED))
+	{
+		WINDOWPLACEMENT wndPlacement = { sizeof(WINDOWPLACEMENT), 0 };
+		::GetWindowPlacement(mHWnd, &wndPlacement);
+
+		if (windowFlags & BFWINDOW_SHOWMINIMIZED)
+			wndPlacement.showCmd = SW_SHOWMINIMIZED;
+		else if (windowFlags & BFWINDOW_SHOWMAXIMIZED)
+			wndPlacement.showCmd = SW_SHOWMAXIMIZED;
+		else
+			wndPlacement.showCmd = SW_SHOWNORMAL;		
+
+		wndPlacement.rcNormalPosition.left = x;
+		wndPlacement.rcNormalPosition.top = y;
+		wndPlacement.rcNormalPosition.right = x + width;
+		wndPlacement.rcNormalPosition.bottom = y + height;
+		::SetWindowPlacement(mHWnd, &wndPlacement);
+	}
+	else
+	{
+		SetWindowPos(mHWnd, relativeWindow, x, y, width, height, showFlags);
+	}
+
 		
 	SetTimer(mHWnd, 0, 10, NULL);
 	
@@ -1174,10 +1198,10 @@ void WinBFWindow::SetMinimumSize(int minWidth, int minHeight, bool clientSized)
 void WinBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight)
 {
 	RECT windowRect;
-	GetWindowRect(mHWnd, &windowRect);
+	::GetWindowRect(mHWnd, &windowRect);
 
 	RECT clientRect;
-	GetClientRect(mHWnd, &clientRect);
+	::GetClientRect(mHWnd, &clientRect);
 
 	if (clientRect.right <= clientRect.left)
 		return; // TODO: return failure?
@@ -1195,9 +1219,53 @@ void WinBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clie
 	*clientY = startPt.y;
 }
 
-void WinBFWindow::Resize(int x, int y, int width, int height)
+void WinBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind)
 {
-	::MoveWindow(mHWnd, x, y, width, height, FALSE);
+	WINDOWPLACEMENT wndPlacement = { sizeof(WINDOWPLACEMENT), 0 };
+	::GetWindowPlacement(mHWnd, &wndPlacement);
+	*normX = wndPlacement.rcNormalPosition.left;
+	*normY = wndPlacement.rcNormalPosition.top;
+	*normWidth = wndPlacement.rcNormalPosition.right - wndPlacement.rcNormalPosition.left;
+	*normHeight = wndPlacement.rcNormalPosition.bottom - wndPlacement.rcNormalPosition.top;
+	switch (wndPlacement.showCmd)
+	{
+	case SW_SHOWMINIMIZED:
+		*showKind = 1;
+		break;
+	case SW_SHOWMAXIMIZED:
+		*showKind = 2;
+		break;
+	default:
+		*showKind = 0;
+		break;
+	}	
+}
+
+void WinBFWindow::Resize(int x, int y, int width, int height, int showKind)
+{	
+	WINDOWPLACEMENT wndPlacement = { sizeof(WINDOWPLACEMENT), 0 };
+	::GetWindowPlacement(mHWnd, &wndPlacement);
+	
+	switch (showKind)
+	{
+	case 1:
+		wndPlacement.showCmd = SW_SHOWMINIMIZED;
+		break;
+	case 2:
+		wndPlacement.showCmd = SW_SHOWMAXIMIZED;
+		break;
+	case 3:
+		wndPlacement.showCmd = SW_SHOWNORMAL;
+		break;
+	}	
+
+	wndPlacement.rcNormalPosition.left = x;
+	wndPlacement.rcNormalPosition.top = y;
+	wndPlacement.rcNormalPosition.right = x + width;
+	wndPlacement.rcNormalPosition.bottom = y + height;
+	::SetWindowPlacement(mHWnd, &wndPlacement);
+
+	//::MoveWindow(mHWnd, x, y, width, height, FALSE);
 	mRenderWindow->Resized();
 	if (mMovedFunc != NULL)
 		mMovedFunc(this);	

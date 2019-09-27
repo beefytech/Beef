@@ -312,9 +312,14 @@ BF_EXPORT void BF_CALLTYPE BFWindow_GetPosition(BFWindow* window, int* x, int* y
 	window->GetPosition(x, y, width, height, clientX, clientY, clientWidth, clientHeight);
 }
 
-BF_EXPORT void BF_CALLTYPE BFWindow_Resize(BFWindow* window, int x, int y, int width, int height)
+BF_EXPORT void BF_CALLTYPE BFWindow_GetPlacement(BFWindow* window, int* normX, int* normY, int* normWidth, int* normHeight, int* showKind)
 {
-	window->Resize(x, y, width, height);
+	window->GetPlacement(normX, normY, normWidth, normHeight, showKind);
+}
+
+BF_EXPORT void BF_CALLTYPE BFWindow_Resize(BFWindow* window, int x, int y, int width, int height, int showKind)
+{
+	window->Resize(x, y, width, height, showKind);
 }
 
 BF_EXPORT void BF_CALLTYPE BFWindow_SetForeground(BFWindow* window)

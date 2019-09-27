@@ -50,7 +50,10 @@ enum
 	BFWINDOW_USE_PARENT_MENU = 0x200000,
 	BFWINDOW_CAPTURE_MEDIA_KEYS = 0x400000,
 	BFWINDOW_FULLSCREEN		= 0x800000,
-	BFWINDOW_FAKEFOCUS		= 0x1000000
+	BFWINDOW_FAKEFOCUS		= 0x1000000,
+	BFWINDOW_SHOWMINIMIZED  = 0x2000000,
+	BFWINDOW_SHOWMAXIMIZED  = 0x4000000,
+	
 };
  
 class RenderWindow;
@@ -118,7 +121,8 @@ public:
 	virtual void			SetTitle(const char* title) = 0;
 	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) = 0;
 	virtual void			GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight) = 0;		
-	virtual void			Resize(int x, int y, int width, int height) = 0;
+	virtual void			GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind) = 0;
+	virtual void			Resize(int x, int y, int width, int height, int showKind) = 0;
 	virtual void			SetClientPosition(int x, int y) = 0;
 	virtual void			SetMouseVisible(bool isMouseVisible) = 0;
 	virtual void			SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible) = 0;

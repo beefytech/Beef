@@ -1485,10 +1485,9 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.SampleDesc.Count = 1;
-	//desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.SampleDesc.Count = 1;	
 	desc.Usage = D3D11_USAGE_DEFAULT;
-	//desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc.CPUAccessFlags = 0;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
 	//OutputDebugStrF("Creating texture\n");
@@ -1535,10 +1534,9 @@ Texture* DXRenderDevice::CreateDynTexture(int width, int height)
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;	
-	desc.SampleDesc.Quality = 0;
-	//desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.SampleDesc.Quality = 0;	
 	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc.CPUAccessFlags = 0;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
 	ID3D11Texture2D* d3DTexture = NULL;

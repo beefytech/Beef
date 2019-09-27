@@ -44,7 +44,9 @@ namespace Beefy
             UseParentMenu = 0x20'0000,
 			CaptureMediaKeys = 0x40'0000,
 			Fullscreen = 0x80'0000,
-			FakeFocus = 0x0100'0000
+			FakeFocus = 0x0100'0000,
+			ShowMinimized = 0x0200'0000,
+			ShowMaximized = 0x0400'0000,
         };
 
         public enum HitTestResult
@@ -101,6 +103,13 @@ namespace Beefy
 #if !STUDIO_CLIENT
     public class BFWindow : BFWindowBase, INativeWindow
     {
+		public enum ShowKind
+		{
+			Normal,
+			Minimized,
+			Maximized
+		}
+
         delegate void NativeMovedDelegate(void* window);
         delegate int32 NativeCloseQueryDelegate(void* window);
         delegate void NativeClosedDelegate(void* window);
@@ -130,6 +139,11 @@ namespace Beefy
         public int32 mY;
         public int32 mWindowWidth;
         public int32 mWindowHeight;
+		public int32 mNormX;
+		public int32 mNormY;
+		public int32 mNormWidth;
+		public int32 mNormHeight;
+		public ShowKind mShowKind;
         public int32 mClientX;
         public int32 mClientY;
         public int32 mClientWidth;
@@ -185,8 +199,11 @@ namespace Beefy
         [StdCall, CLink]
         static extern void BFWindow_GetPosition(void* window, out int32 x, out int32 y, out int32 width, out int32 height, out int32 clientX, out int32 clientY, out int32 clientWidth, out int32 clientHeight);
 
+		[StdCall, CLink]
+		static extern void BFWindow_GetPlacement(void* window, out int32 normX, out int32 normY, out int32 normWidth, out int32 normHeight, out int32 showKind);
+
         [StdCall, CLink]
-        static extern void BFWindow_Resize(void* window, int32 x, int32 y, int32 width, int32 height);
+        static extern void BFWindow_Resize(void* window, int32 x, int32 y, int32 width, int32 height, int showKind);
 
         [StdCall, CLink]
         static extern void BFWindow_Close(void* window, int32 force);
@@ -425,10 +442,10 @@ namespace Beefy
 			}
         }
 
-        public virtual void Resize(int x, int y, int width, int height)
+        public virtual void Resize(int x, int y, int width, int height, ShowKind showKind = .Normal)
         {
             Debug.Assert(mNativeWindow != null);
-            BFWindow_Resize(mNativeWindow, (int32)x, (int32)y, (int32)width, (int32)height);
+            BFWindow_Resize(mNativeWindow, (int32)x, (int32)y, (int32)width, (int32)height, (int32)showKind);
         }
 
         public void SetForeground()
@@ -476,6 +493,11 @@ namespace Beefy
         public virtual void Moved()
         {            
             BFWindow_GetPosition(mNativeWindow, out mX, out mY, out mWindowWidth, out mWindowHeight, out mClientX, out mClientY, out mClientWidth, out mClientHeight);
+
+			int32 showKind = 0;
+			BFWindow_GetPlacement(mNativeWindow, out mNormX, out mNormY, out mNormWidth, out mNormHeight, out showKind);
+			mShowKind = (.)showKind;
+
 			mIsDirty = true;
         }
 
