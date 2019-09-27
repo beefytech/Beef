@@ -68,6 +68,9 @@ namespace BeefBuild
 
 			base.Init();
 
+			mSettings.Load();
+			mSettings.Apply();
+
 			mInitialized = true;
 			CreateBfSystems();
 			if (mWantsClean)
