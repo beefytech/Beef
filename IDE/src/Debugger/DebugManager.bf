@@ -329,6 +329,9 @@ namespace IDE.Debugger
 		static extern bool Debugger_HasPendingDebugLoads();
 
 		[StdCall,CLink]
+		static extern int32 Debugger_LoadImageForModuleWith(char8* moduleName, char8* imageFileName);
+
+		[StdCall,CLink]
 		static extern int32 Debugger_LoadDebugInfoForModule(char8* moduleName);
 
 		[StdCall,CLink]
@@ -1087,6 +1090,11 @@ namespace IDE.Debugger
 		public int32 LoadDebugInfoForModule(String moduleName)
 		{
 			return Debugger_LoadDebugInfoForModule(moduleName);
+		}
+
+		public int32 LoadImageForModule(String moduleName, String debugFileName)
+		{
+			return Debugger_LoadImageForModuleWith(moduleName, debugFileName);
 		}
 
 		public int32 LoadDebugInfoForModule(String moduleName, String debugFileName)

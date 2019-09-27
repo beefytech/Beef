@@ -1532,6 +1532,11 @@ BF_EXPORT void BF_CALLTYPE Debugger_CancelSymSrv()
 	gDebugger->CancelSymSrv();
 }
 
+BF_EXPORT int BF_CALLTYPE Debugger_LoadImageForModuleWith(const char* moduleName, const char* debugFilePath) // 0 = No Change, 1 = Loaded, 2 = Loading in background
+{
+	return gDebugger->LoadImageForModule(moduleName, debugFilePath);
+}
+
 BF_EXPORT int BF_CALLTYPE Debugger_LoadDebugInfoForModule(const char* moduleName) // 0 = No Change, 1 = Loaded, 2 = Loading in background
 {
 	return gDebugger->LoadDebugInfoForModule(moduleName);

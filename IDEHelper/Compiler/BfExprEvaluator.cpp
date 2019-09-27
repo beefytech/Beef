@@ -9756,22 +9756,26 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		auto voidType = mModule->GetPrimitiveType(BfTypeCode_None);
 		auto dtorFuncType = mModule->mBfIRBuilder->CreateFunctionType(mModule->mBfIRBuilder->MapType(voidType), newTypes, false);
 
-		String dtorMangledName = "~" + closureFuncName;
-		dtorFunc = mModule->mBfIRBuilder->CreateFunction(dtorFuncType, BfIRLinkageType_External, dtorMangledName);
-
 		BfMethodDef* dtorMethodDef = new BfMethodDef();
 		dtorMethodDef->mDeclaringType = mModule->mCurMethodInstance->mMethodDef->mDeclaringType;
-		dtorMethodDef->mName = "~this";
+		dtorMethodDef->mName = "~this$";
+		dtorMethodDef->mName += methodDef->mName;
+		
 		dtorMethodDef->mMethodType = BfMethodType_Normal;
 		dtorMethodDef->mBody = lambdaBindExpr->mDtor;
 		dtorMethodDef->mIdx = mModule->mCurMethodInstance->mMethodDef->mIdx;
 
-		BfMethodInstance* dtorMethodInstance = new BfMethodInstance();
-		//dtorMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;		
-		dtorMethodInstance->mIRFunction = dtorFunc;
+		BfMethodInstance* dtorMethodInstance = new BfMethodInstance();				
 		dtorMethodInstance->mMethodDef = dtorMethodDef;
 		dtorMethodInstance->mReturnType = mModule->GetPrimitiveType(BfTypeCode_None);
 		dtorMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;
+
+		StringT<128> dtorMangledName;
+		BfMangler::Mangle(dtorMangledName, mModule->mCompiler->GetMangleKind(), dtorMethodInstance);
+		dtorFunc = mModule->mBfIRBuilder->CreateFunction(dtorFuncType, BfIRLinkageType_External, dtorMangledName);
+		mModule->SetupIRMethod(NULL, dtorFunc, false);
+		dtorMethodInstance->mIRFunction = dtorFunc;
+
 		mModule->mIncompleteMethodCount++;
 		mModule->mBfIRBuilder->SaveDebugLocation();
 		//
@@ -9784,7 +9788,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		mModule->mBfIRBuilder->RestoreDebugLocation();
 		if (mModule->mCompiler->IsSkippingExtraResolveChecks())
 			dtorFunc = BfIRFunction();
-
+		
 		if (dtorMethodInstance->mIsReified)
 			mModule->CheckHotMethod(dtorMethodInstance, dtorMangledName);
 		if ((dtorMethodInstance->mHotMethod != NULL) && (mModule->mCurMethodState->mHotDataReferenceBuilder))

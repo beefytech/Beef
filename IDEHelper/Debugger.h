@@ -304,6 +304,7 @@ public:
 	virtual void SetAliasPath(const StringImpl& origPath, const StringImpl& localPath) = 0;
 	virtual void CancelSymSrv() = 0;
 	virtual bool HasPendingDebugLoads() = 0;
+	virtual int LoadImageForModule(const StringImpl& moduleName, const StringImpl& debugFileName) = 0;
 	virtual int LoadDebugInfoForModule(const StringImpl& moduleName) = 0;
 	virtual int LoadDebugInfoForModule(const StringImpl& moduleName, const StringImpl& debugFileName) = 0;
 	virtual void StopDebugging() = 0;

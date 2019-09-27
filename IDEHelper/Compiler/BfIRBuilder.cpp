@@ -4668,7 +4668,7 @@ BfIRMDNode BfIRBuilder::DbgCreateMethod(BfIRMDNode context, const StringImpl& na
 {
 	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateMethod, context, name, linkageName, file, lineNum, type, isLocalToUnit, isDefinition, vk, vIndex, vTableHolder, flags, isOptimized, fn, genericArgs, genericConstValueArgs);
 	NEW_CMD_INSERTED_IRMD;
-
+	
 // 	if (mDbgVerifyCodeGen && gDebugDbgLoc)
 // 	{
 // 		OutputDebugStrF("DbgCreateFunction Context:%d name:%s = %d\n", context.mId, name.c_str(), retVal.mId);

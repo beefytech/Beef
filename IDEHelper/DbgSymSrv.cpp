@@ -494,10 +494,11 @@ String DbgSymRequest::SearchForImage(const String& filePath, uint32 fileTime, in
 		}
 	}
 
-	if ((!mIsPreCache) && (!mDbgSymSrv->mDebugger->mHadImageFindError))
+	if (!mIsPreCache)
 	{
-		mDbgSymSrv->mDebugger->mHadImageFindError = true;
-		mDbgSymSrv->mDebugger->OutputMessage(StrFormat("ERROR: Unable to locate image '%s'. If this file is located on a symbol server, configure the symbol server location in File\\Preferences\\Settings under Debugger\\Symbol File Locations.\n", GetFileName(filePath).c_str()));
+		mDbgSymSrv->mDebugger->mHadImageFindError = true;		
+		mDbgSymSrv->mDebugger->OutputMessage(StrFormat("ERROR: Unable to locate image '%s' (%08X%x). If this file is located on a symbol server, configure the symbol server location in File\\Preferences\\Settings under Debugger\\Symbol File Locations.\n", 
+			GetFileName(filePath).c_str(), fileTime, size));
 	}
 
 	mFailed = true;

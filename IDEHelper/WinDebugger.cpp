@@ -11920,7 +11920,28 @@ String WinDebugger::GetModulesInfo()
 
 		str += module->mDisplayName;
 		str += "\t";
-		str += module->mFilePath;		
+		if (module->mLoadState == DbgModuleLoadState_Loaded)
+		{
+			str += module->mFilePath;			
+		}
+		else if (module->mLoadState == DbgModuleLoadState_NotLoaded)
+		{
+			str += module->mFilePath;
+			str += " (Loading...)";
+		}
+		else if (module->mLoadState == DbgModuleLoadState_Failed)
+		{
+			str += "!";
+			str += module->mFilePath;
+		}
+
+		if (module->mMappedImageFile != NULL)
+		{
+			str += " (";
+			str += module->mMappedImageFile->mFileName;
+			str += ")";
+		}
+		
 		str += "\t";
 		str += coff->mPDBPath;
 		str += "\t";
@@ -11955,6 +11976,29 @@ bool WinDebugger::HasPendingDebugLoads()
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	return (!mPendingImageLoad.IsEmpty()) || (!mPendingDebugInfoLoad.IsEmpty());
+}
+
+int WinDebugger::LoadImageForModule(const StringImpl &modulePath, const StringImpl& imagePath)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	for (auto dbgModule : mDebugTarget->mDbgModules)
+	{
+		if (modulePath.Equals(dbgModule->mFilePath, StringImpl::CompareKind_OrdinalIgnoreCase))
+		{
+			auto coff = (COFF*)dbgModule;
+
+			if (!coff->LoadModuleImage(imagePath))
+			{
+				mDebugManager->mOutMessages.push_back("error Failed to load image " + imagePath);
+			}
+			ModuleChanged(dbgModule);
+
+			return 0;
+		}
+	}
+
+	return 0;
 }
 
 int WinDebugger::LoadDebugInfoForModule(DbgModule* dbgModule)
@@ -12007,10 +12051,10 @@ int WinDebugger::LoadDebugInfoForModule(const StringImpl& modulePath, const Stri
 			auto coff = (COFF*)dbgModule;
 			
 			String err;
-			if (coff->mDbgSymRequest != NULL)
+			if (!coff->mPDBLoaded)
 			{
 				dbgModule->mFailMsgPtr = &err;
-				if (coff->TryLoadPDB(debugFileName, coff->mDbgSymRequest->mWantGuid, coff->mDbgSymRequest->mWantAge))
+				if (coff->TryLoadPDB(debugFileName, coff->mWantPDBGuid, coff->mWantAge))
 				{
 					ModuleChanged(dbgModule);
 				}

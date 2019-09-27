@@ -223,7 +223,9 @@ uint8* CvStreamReader::GetPermanentPtr(int offset, int size, bool* madeCopy)
 COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 {
 	mParseKind = ParseKind_Full;
-	memset(mPDBGuid, 0, 16);
+	memset(mWantPDBGuid, 0, 16);	
+	memset(mPDBGuid, 0, 16);	
+	mWantAge = -1;
 	mDebugAge = -1;
 	mFileAge = -1;
 	mCvMinTag = -1;
@@ -5824,6 +5826,9 @@ bool COFF::LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 		mDebugTarget->mWasLocallyBuilt = FileExists(pdbPath);
 	}
 
+	memcpy(mWantPDBGuid, wantGuid, 16);
+	mWantAge = wantAge;
+
 	mDbgSymRequest = mDebugger->mDbgSymSrv.CreateRequest(mFilePath, pdbPath, wantGuid, wantAge);	
 	mDbgSymRequest->SearchLocal();
 
@@ -6424,6 +6429,36 @@ void COFF::PreCacheDebugInfo()
 	}
 }
 
+bool COFF::LoadModuleImage(const StringImpl& imagePath)
+{
+	if (!mDebugger->IsMiniDumpDebugger())
+		return false;
+
+	auto miniDumpDebugger = (MiniDumpDebugger*)mDebugger;
+
+	if (!imagePath.IsEmpty())
+	{
+		MappedFile* mappedFile = miniDumpDebugger->MapModule(this, imagePath);
+		mMappedImageFile = mappedFile;
+
+		if (mappedFile != NULL)
+		{
+			MemStream memStream(mappedFile->mData, mappedFile->mFileSize, false);
+			ReadCOFF(&memStream, false);
+
+			mOrigImageData = new DbgModuleMemoryCache(mImageBase, mImageSize);
+		}
+	}
+
+	if (mOrigImageData == NULL) // Failed?
+	{
+		mLoadState = DbgModuleLoadState_Failed;
+		return false;
+	}
+
+	return true;
+}
+
 bool COFF::RequestImage()
 {
 	if (!mDebugger->IsMiniDumpDebugger())
@@ -6455,27 +6490,7 @@ bool COFF::RequestImage()
 
 		mDebugger->mRunState = prevRunState;
 		
-		if (!imagePath.IsEmpty())
-		{
-			MappedFile* mappedFile = miniDumpDebugger->MapModule(this, imagePath);
-			mMappedImageFile = mappedFile;
-
-			if (mappedFile != NULL)
-			{
-				MemStream memStream(mappedFile->mData, mappedFile->mFileSize, false);
-				ReadCOFF(&memStream, false);
-
-				mOrigImageData = new DbgModuleMemoryCache(mImageBase, mImageSize);
-			}
-		}				
-		
-		if (mOrigImageData == NULL) // Failed?
-		{
-			mLoadState = DbgModuleLoadState_NotLoaded;			
-			return false;
-		}
-
-		return true;
+		return LoadModuleImage(imagePath);		
 	}
 	else
 	{

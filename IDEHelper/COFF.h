@@ -214,6 +214,9 @@ public:
 	};
 
 public:	
+	uint8 mWantPDBGuid[16];
+	int mWantAge;
+
 	uint8 mPDBGuid[16];
 	int mFileAge;
 	int mDebugAge;	
@@ -321,6 +324,7 @@ public:
 	virtual addr_target LocateSymbol(const StringImpl& name) override;
 	virtual void ParseFrameDescriptors() override;
 
+	bool LoadModuleImage(const StringImpl& imagePath);
 	void FixConstant(DbgVariable* variable);
 	void MapRanges(DbgVariable* variable, CV_LVAR_ADDR_RANGE* range, CV_LVAR_ADDR_GAP* gaps);
 	void MakeThis(DbgSubprogram* curSubprogram, DbgVariable*& curParam);

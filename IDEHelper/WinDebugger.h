@@ -558,10 +558,9 @@ public:
 	String GetAutocompleteOutput(DwAutoComplete& autoComplete);
 	bool CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubprogram* dbgSubprogram, addr_target pcAddress);
 	void CleanupDebugEval(bool restoreRegisters = true);
-	bool FixCallStackIdx(int& callStackIdx);
-
-	virtual int LoadDebugInfoForModule(DbgModule* dbgModule);
-	virtual int LoadDebugInfoForModule(const StringImpl& moduleName, const StringImpl& debugFileName);
+	bool FixCallStackIdx(int& callStackIdx);	
+	
+	int LoadDebugInfoForModule(DbgModule* dbgModule);	
 
 public:
 	WinDebugger(DebugManager* debugManager);
@@ -643,6 +642,8 @@ public:
 	virtual String GetModulesInfo() override;
 	virtual void CancelSymSrv() override;	
 	virtual bool HasPendingDebugLoads() override;
+	virtual int LoadImageForModule(const StringImpl& moduleName, const StringImpl& debugFileName) override;
+	virtual int LoadDebugInfoForModule(const StringImpl& moduleName, const StringImpl& debugFileName) override;
 	virtual int LoadDebugInfoForModule(const StringImpl& moduleName) override;
 	virtual void StopDebugging() override;
 	virtual void Terminate() override;
