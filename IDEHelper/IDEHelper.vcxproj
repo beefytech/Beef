@@ -30,7 +30,7 @@
     <ProjectGuid>{F8D29C38-D37C-4AF2-8540-2F6E543264F1}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>IDEHelper</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

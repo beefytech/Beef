@@ -38,7 +38,7 @@
     <ProjectGuid>{53609BB3-D874-465C-AF7B-DF626DB0D89B}</ProjectGuid>
     <RootNamespace>Hunspell</RootNamespace>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_dll|Win32'" Label="Configuration">
