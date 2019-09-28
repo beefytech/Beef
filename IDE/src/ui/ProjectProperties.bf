@@ -605,18 +605,18 @@ namespace IDE.ui
 			var (category, ?) = AddPropertiesItem(root, "Resources");
 			category.mIsBold = true;
 			category.mTextColor = 0xFFE8E8E8;
-			var (listViewItem, propEntry) = AddPropertiesItem(category, "Icon File", "mIconFile"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(category, "Manifest File", "mManifestFile"); MakePropRebuildTarget(propEntry);
+			var (listViewItem, propEntry) = AddPropertiesItem(category, "Icon File", "mIconFile");
+			(listViewItem, propEntry) = AddPropertiesItem(category, "Manifest File", "mManifestFile");
 			category.Open(true, true);
 
 			(category, ?) = AddPropertiesItem(root, "Version");
-			(listViewItem, propEntry) = AddPropertiesItem(category, "Description", "mDescription"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(category, "Comments", "mComments"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(category, "Company", "mCompany"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(category, "Product", "mProduct"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(category, "Copyright", "mCopyright"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(category, "FileVersion", "mFileVersion"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(category, "ProductVersion", "mProductVersion"); MakePropRebuildTarget(propEntry);
+			(listViewItem, propEntry) = AddPropertiesItem(category, "Description", "mDescription");
+			(listViewItem, propEntry) = AddPropertiesItem(category, "Comments", "mComments");
+			(listViewItem, propEntry) = AddPropertiesItem(category, "Company", "mCompany");
+			(listViewItem, propEntry) = AddPropertiesItem(category, "Product", "mProduct");
+			(listViewItem, propEntry) = AddPropertiesItem(category, "Copyright", "mCopyright");
+			(listViewItem, propEntry) = AddPropertiesItem(category, "FileVersion", "mFileVersion");
+			(listViewItem, propEntry) = AddPropertiesItem(category, "ProductVersion", "mProductVersion");
 			//parent.MakeParent();
 			category.Open(true, true);
 		}
@@ -632,27 +632,20 @@ namespace IDE.ui
 		    category.Open(true, true);
 		}
 
-		void MakePropRebuildTarget(PropEntry propEntry)
-		{
-			if (propEntry.mProperties == null)
-				propEntry.mProperties = new PropertyBag();
-			propEntry.mProperties.Add("RebuildTarget", true);
-		}
-
 		void PopulateBuildOptions()
 		{
 		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
-			var (listViewItem, propEntry) = AddPropertiesItem(root, "Build Type", "mBuildOptions.mBuildKind"); MakePropRebuildTarget(propEntry);
-		    (listViewItem, propEntry) = AddPropertiesItem(root, "Target Directory", "mBuildOptions.mTargetDirectory"); MakePropRebuildTarget(propEntry);
-		    (listViewItem, propEntry) = AddPropertiesItem(root, "Target Name", "mBuildOptions.mTargetName"); MakePropRebuildTarget(propEntry);
-		    (listViewItem, propEntry) = AddPropertiesItem(root, "Other Linker Flags", "mBuildOptions.mOtherLinkFlags"); MakePropRebuildTarget(propEntry);
-		    (listViewItem, propEntry) = AddPropertiesItem(root, "C Library", "mBuildOptions.mCLibType"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(root, "Beef Library", "mBuildOptions.mBeefLibType"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(root, "Stack Size", "mBuildOptions.mStackSize"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(root, "Prebuild Commands", "mBuildOptions.mPreBuildCmds"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(root, "Postbuild Commands", "mBuildOptions.mPostBuildCmds"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Compile", "mBuildOptions.mBuildCommandsOnCompile"); MakePropRebuildTarget(propEntry);
-			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Run", "mBuildOptions.mBuildCommandsOnRun"); MakePropRebuildTarget(propEntry);
+			var (listViewItem, propEntry) = AddPropertiesItem(root, "Build Type", "mBuildOptions.mBuildKind");
+		    (listViewItem, propEntry) = AddPropertiesItem(root, "Target Directory", "mBuildOptions.mTargetDirectory");
+		    (listViewItem, propEntry) = AddPropertiesItem(root, "Target Name", "mBuildOptions.mTargetName");
+		    (listViewItem, propEntry) = AddPropertiesItem(root, "Other Linker Flags", "mBuildOptions.mOtherLinkFlags");
+		    (listViewItem, propEntry) = AddPropertiesItem(root, "C Library", "mBuildOptions.mCLibType");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Beef Library", "mBuildOptions.mBeefLibType");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Stack Size", "mBuildOptions.mStackSize");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Prebuild Commands", "mBuildOptions.mPreBuildCmds");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Postbuild Commands", "mBuildOptions.mPostBuildCmds");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Compile", "mBuildOptions.mBuildCommandsOnCompile");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Run", "mBuildOptions.mBuildCommandsOnRun");
 		}
 
         void PopulateDependencyOptions()
