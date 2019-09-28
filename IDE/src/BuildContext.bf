@@ -10,6 +10,7 @@ namespace IDE
 {
 	class BuildContext
 	{
+		public int32 mUpdateCnt;
 		public Project mHotProject;
 		public Workspace.Options mWorkspaceOptions;
 		public Dictionary<Project, String> mImpLibMap = new .() ~
@@ -567,113 +568,144 @@ namespace IDE
 			        }
 			    }
 
-			    if (project.mNeedsTargetRebuild)
-			    {
-			        /*if (File.Delete(targetPath).Failed(true))
-					{
-					    OutputLine("Failed to delete {0}", targetPath);
-					    return false;
-					}*/
+		        /*if (File.Delete(targetPath).Failed(true))
+				{
+				    OutputLine("Failed to delete {0}", targetPath);
+				    return false;
+				}*/
 
-					switch (options.mBuildOptions.mCLibType)
-					{
-					case .None:
-						linkLine.Append("-nodefaultlib ");
-					case .Dynamic:
-						//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:msvcprt " : "-defaultlib:msvcrt ");
-						linkLine.Append("-defaultlib:msvcrt ");
-					case .Static:
-						//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:libcpmt " : "-defaultlib:libcmt ");
-						linkLine.Append("-defaultlib:libcmt ");
-					case .DynamicDebug:
-						//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:msvcprtd " : "-defaultlib:msvcrtd ");
-						linkLine.Append("-defaultlib:msvcrtd ");
-					case .StaticDebug:
-						//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:libcpmtd " : "-defaultlib:libcmtd ");
-						linkLine.Append("-defaultlib:libcmtd ");
-					case .SystemMSVCRT:
-						linkLine.Append("-nodefaultlib ");
+				switch (options.mBuildOptions.mCLibType)
+				{
+				case .None:
+					linkLine.Append("-nodefaultlib ");
+				case .Dynamic:
+					//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:msvcprt " : "-defaultlib:msvcrt ");
+					linkLine.Append("-defaultlib:msvcrt ");
+				case .Static:
+					//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:libcpmt " : "-defaultlib:libcmt ");
+					linkLine.Append("-defaultlib:libcmt ");
+				case .DynamicDebug:
+					//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:msvcprtd " : "-defaultlib:msvcrtd ");
+					linkLine.Append("-defaultlib:msvcrtd ");
+				case .StaticDebug:
+					//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:libcpmtd " : "-defaultlib:libcmtd ");
+					linkLine.Append("-defaultlib:libcmtd ");
+				case .SystemMSVCRT:
+					linkLine.Append("-nodefaultlib ");
 
-						String minRTModName = scope String();
-						if ((project.mGeneralOptions.mTargetType == .BeefWindowsApplication) ||
-							(project.mGeneralOptions.mTargetType == .C_WindowsApplication))
-							minRTModName.Append("g");
-						if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
-							minRTModName.Append("d");
-						if (!minRTModName.IsEmpty)
-							minRTModName.Insert(0, "_");
-
-						if (workspaceOptions.mMachineType == .x86)
-							linkLine.Append(gApp.mInstallDir, @"lib\x86\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
-						else
-							linkLine.Append(gApp.mInstallDir, @"lib\x64\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
-						linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib version.lib comdlg32.lib chkstk.obj -ignore:4049 -ignore:4217 ");
-					}
-					linkLine.Append("-nologo ");
-					//linkLine.Append("-fixed ");
-
-					// Incremental just seems to be slower for Beef.  Test on larger projects to verify
-					linkLine.Append("-incremental:no ");
-
-					if (options.mBuildOptions.mStackSize > 0)
-						linkLine.AppendF("-stack:{} ", options.mBuildOptions.mStackSize);
-
-					linkLine.Append("-pdb:");
-					let pdbName = scope String();
-					GetPdbPath(targetPath, workspaceOptions, options, pdbName);
-					IDEUtils.AppendWithOptionalQuotes(linkLine, pdbName);
-					linkLine.Append(" ");
-
-					//TODO: Only add -debug if we have some debug info?
-					//if (isDebug)
-					if (workspaceOptions.mEmitDebugInfo != .No)
-						linkLine.Append("-debug ");
-
-					if (workspaceOptions.mBfOptimizationLevel.IsOptimized())
-						//linkLine.Append("-opt:ref -verbose ");
-						linkLine.Append("-opt:ref ");
-					else
-						linkLine.Append("-opt:noref ");
+					String minRTModName = scope String();
+					if ((project.mGeneralOptions.mTargetType == .BeefWindowsApplication) ||
+						(project.mGeneralOptions.mTargetType == .C_WindowsApplication))
+						minRTModName.Append("g");
+					if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
+						minRTModName.Append("d");
+					if (!minRTModName.IsEmpty)
+						minRTModName.Insert(0, "_");
 
 					if (workspaceOptions.mMachineType == .x86)
-					{
-						for (var libPath in gApp.mSettings.mVSSettings.mLib32Paths)
-						{
-							linkLine.AppendF("-libpath:\"{0}\" ", libPath);
-						}
-						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x86\" ");
-					}
+						linkLine.Append(gApp.mInstallDir, @"lib\x86\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
 					else
+						linkLine.Append(gApp.mInstallDir, @"lib\x64\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
+					linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib version.lib comdlg32.lib chkstk.obj -ignore:4049 -ignore:4217 ");
+				}
+				linkLine.Append("-nologo ");
+				//linkLine.Append("-fixed ");
+
+				// Incremental just seems to be slower for Beef.  Test on larger projects to verify
+				linkLine.Append("-incremental:no ");
+
+				if (options.mBuildOptions.mStackSize > 0)
+					linkLine.AppendF("-stack:{} ", options.mBuildOptions.mStackSize);
+
+				linkLine.Append("-pdb:");
+				let pdbName = scope String();
+				GetPdbPath(targetPath, workspaceOptions, options, pdbName);
+				IDEUtils.AppendWithOptionalQuotes(linkLine, pdbName);
+				linkLine.Append(" ");
+
+				//TODO: Only add -debug if we have some debug info?
+				//if (isDebug)
+				if (workspaceOptions.mEmitDebugInfo != .No)
+					linkLine.Append("-debug ");
+
+				if (workspaceOptions.mBfOptimizationLevel.IsOptimized())
+					//linkLine.Append("-opt:ref -verbose ");
+					linkLine.Append("-opt:ref ");
+				else
+					linkLine.Append("-opt:noref ");
+
+				if (workspaceOptions.mMachineType == .x86)
+				{
+					for (var libPath in gApp.mSettings.mVSSettings.mLib32Paths)
 					{
-						for (var libPath in gApp.mSettings.mVSSettings.mLib64Paths)
-						{
-							linkLine.AppendF("-libpath:\"{0}\" ", libPath);
-						}
-						linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x64\" ");
+						linkLine.AppendF("-libpath:\"{0}\" ", libPath);
 					}
-
-					String targetDir = scope String();
-					Path.GetDirectoryPath(targetPath, targetDir);
-					linkLine.Append("-libpath:");
-					IDEUtils.AppendWithOptionalQuotes(linkLine, targetDir);
-					linkLine.Append(" ");
-
-					if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
+					linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x86\" ");
+				}
+				else
+				{
+					for (var libPath in gApp.mSettings.mVSSettings.mLib64Paths)
 					{
-						var linkFlags = scope String();
-						gApp.ResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
-						linkLine.Append(linkFlags, " ");
+						linkLine.AppendF("-libpath:\"{0}\" ", libPath);
 					}
+					linkLine.Append("-libpath:\"", gApp.mInstallDir, "lib\\x64\" ");
+				}
 
-					let winOptions = project.mWindowsOptions;
-					
+				String targetDir = scope String();
+				Path.GetDirectoryPath(targetPath, targetDir);
+				linkLine.Append("-libpath:");
+				IDEUtils.AppendWithOptionalQuotes(linkLine, targetDir);
+				linkLine.Append(" ");
+
+				if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
+				{
+					var linkFlags = scope String();
+					gApp.ResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+					linkLine.Append(linkFlags, " ");
+				}
+
+				let winOptions = project.mWindowsOptions;
+
+				String projectBuildDir = scope String();
+				gApp.GetProjectBuildDir(project, projectBuildDir);
+
+				String cacheStr = scope String();
+
+				void AddBuildFileDependency(StringView filePath)
+				{
+					int64 fileTime = 0;
+					if (!filePath.IsEmpty)
+						fileTime = File.GetLastWriteTime(filePath).GetValueOrDefault().ToFileTime();
+					cacheStr.AppendF("{}\t{}\n", filePath, fileTime);
+				}
+
+				cacheStr.AppendF("Args\t{}\n", linkLine);
+				cacheStr.AppendF("Toolset\t{}\n", workspaceOptions.mToolsetType);
+				AddBuildFileDependency(project.mWindowsOptions.mIconFile);
+				AddBuildFileDependency(project.mWindowsOptions.mManifestFile);
+				cacheStr.AppendF("Description\t{}\n", project.mWindowsOptions.mDescription);
+				cacheStr.AppendF("Comments\t{}\n", project.mWindowsOptions.mComments);
+				cacheStr.AppendF("Company\t{}\n", project.mWindowsOptions.mCompany);
+				cacheStr.AppendF("Product\t{}\n", project.mWindowsOptions.mProduct);
+				cacheStr.AppendF("Copyright\t{}\n", project.mWindowsOptions.mCopyright);
+				cacheStr.AppendF("FileVersion\t{}\n", project.mWindowsOptions.mFileVersion);
+				cacheStr.AppendF("ProductVersion\t{}\n", project.mWindowsOptions.mProductVersion);
+
+				String prevCacheStr = scope .();
+				gApp.mBfBuildCompiler.GetBuildValue(projectBuildDir, "Link", prevCacheStr);
+				if (prevCacheStr != cacheStr)
+				{
+					project.mNeedsTargetRebuild = true;
+					gApp.mBfBuildCompiler.SetBuildValue(projectBuildDir, "Link", cacheStr);
+					gApp.mBfBuildCompiler.WriteBuildCache(projectBuildDir);
+				}
+
+				if (project.mNeedsTargetRebuild)
+				{
 					if ((!String.IsNullOrWhiteSpace(project.mWindowsOptions.mIconFile)) ||
 						(!String.IsNullOrWhiteSpace(project.mWindowsOptions.mManifestFile)) ||
 		                (winOptions.HasVersionInfo()))
-					{						
-						String projectBuildDir = scope String();
-						gApp.GetProjectBuildDir(project, projectBuildDir);
-
+					{
 						String resOutPath = scope String();
 						resOutPath.Append(projectBuildDir, "\\Resource.res");
 

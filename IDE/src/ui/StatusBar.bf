@@ -312,7 +312,7 @@ namespace IDE.ui
                 g.DrawString("Source Changed", GS!(200), GS!(-1.3f), FontAlign.Centered, GS!(120));
             }
 
-			void DrawStatusBox(StringView str)
+			void DrawStatusBox(StringView str, int32 updateCnt = -1)
 			{
 				if (mStatusBoxUpdateCnt == -1)
 					mStatusBoxUpdateCnt = 0;
@@ -325,7 +325,11 @@ namespace IDE.ui
 				completionRect.Inflate(-1, -1);
 				//float pulseSpeed = Math.Min(mStatusBoxUpdateCnt * 0.001f, 0.2f);
 				float pulseSpeed = 0.2f;
+				if (updateCnt != -1)
+					pulseSpeed = Math.Max(0.14f, pulseSpeed - updateCnt * 0.00005f);
 				float pulsePct = -Math.Cos(Math.Max(mStatusBoxUpdateCnt - 30, 0) * pulseSpeed);
+				if (updateCnt != -1)
+					pulsePct *= Math.Max(0.4f, 1.0f - updateCnt * 0.0004f);
 				using (g.PushColor(Color.FromHSV(0.1f, 0.5f, (float)Math.Max(pulsePct * 0.15f + 0.3f, 0.3f))))
 				    g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
 
@@ -356,7 +360,7 @@ namespace IDE.ui
 			}
 			else if ((gApp.mBuildContext != null) && (!completionPct.HasValue))
 			{
-				DrawStatusBox("Custom Build Commands...");
+				DrawStatusBox("Custom Build Commands...", gApp.mBuildContext.mUpdateCnt);
 			}
 			else
 				mStatusBoxUpdateCnt = -1;

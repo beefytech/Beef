@@ -390,6 +390,11 @@ namespace IDE
             {
                 mProject = project;
             }
+
+			public ~this()
+			{
+
+			}
         }
 
 		public enum ArgsFileKind
@@ -7319,6 +7324,13 @@ namespace IDE
                 if (ignoreCommand)
                 {
 					// Nothing
+					if (let targetCompletedCmd = next as TargetCompletedCmd)
+					{
+						String projectBuildDir = scope String();
+						gApp.GetProjectBuildDir(targetCompletedCmd.mProject, projectBuildDir);
+						gApp.mBfBuildCompiler.SetBuildValue(projectBuildDir, "Link", "FAILED");
+						gApp.mBfBuildCompiler.WriteBuildCache(projectBuildDir);
+					}
                 }
                 else if (next is ProcessBfCompileCmd)
                 {
@@ -11105,6 +11117,8 @@ namespace IDE
 
 			if (mBuildContext != null)
 			{
+				mBuildContext.mUpdateCnt++;
+
 				bool isCompiling = (!mExecutionInstances.IsEmpty) || (!mExecutionQueue.IsEmpty);
 				if (mBuildContext.mScriptManager != null)
 				{
@@ -11429,7 +11443,13 @@ namespace IDE
 				if (editData.mQueuedContent == null)
 					editData.mQueuedContent = new String();
 				editData.mQueuedContent.Clear();
-				if (LoadTextFile(fileName, editData.mQueuedContent, false) case .Err(let err))
+				if (LoadTextFile(fileName, editData.mQueuedContent, false, scope() =>
+					{
+						if (editData.mLoadedHash.GetKind() != .None)
+						{
+							editData.mLoadedHash = SourceHash.Create(editData.mLoadedHash.GetKind(), editData.mQueuedContent);
+						}
+					}) case .Err(let err))
 				{
 					if (err case .FileOpenError(.SharingViolation))
 					{

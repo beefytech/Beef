@@ -111,6 +111,7 @@ class BfCodeGenDirectoryData
 public:
 	BfCodeGen* mCodeGen;
 	Dictionary<String, BfCodeGenFileData> mFileMap;
+	Dictionary<String, String> mBuildSettings;
 	String mDirectoryName;
 	bool mDirty;
 	bool mVerified;	
@@ -137,6 +138,8 @@ public:
 	void SetHash(const StringImpl& fileName, Val128 hash, Val128 orderedHash, bool isObjectWrite);
 	void ClearHash(const StringImpl& fileName);
 	void FileFailed();
+	String GetValue(const StringImpl& key);
+	void SetValue(const StringImpl& key, const StringImpl& value);
 };
 
 class BfCodeGenFileEntry
@@ -202,6 +205,7 @@ public:
 	void ClearBuildCache();
 	void RequestComplete(BfCodeGenRequest* request);
 	void ProcessErrors(BfPassInstance* passInstance, bool canceled);
+	BfCodeGenDirectoryData* GetDirCache(const StringImpl& cacheDir);
 
 public:	
 	BfCodeGen();
@@ -209,7 +213,10 @@ public:
 
 	void ResetStats();
 	void UpdateStats();
-	void WriteObjectFile(BfModule* module, const StringImpl& outFileName, const BfCodeGenOptions& options);
+	void WriteObjectFile(BfModule* module, const StringImpl& outFileName, const BfCodeGenOptions& options);	
+	String GetBuildValue(const StringImpl& buildDir, const StringImpl& key);
+	void SetBuildValue(const StringImpl& buildDir, const StringImpl& key, const StringImpl& value);
+	void WriteBuildCache(const StringImpl& buildDir);
 	void Cancel();
 	bool Finish();
 };

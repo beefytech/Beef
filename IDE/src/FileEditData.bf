@@ -85,6 +85,8 @@ namespace IDE
 			{
 			    var editWidgetContent = (SourceEditWidgetContent)mEditWidget.mEditWidgetContent;
 				mFileDeleted = !editWidgetContent.Reload(mFilePath, mQueuedContent);
+				if (editWidgetContent.mSourceViewPanel.mLoadedHash.GetKind() == mLoadedHash.GetKind())
+					editWidgetContent.mSourceViewPanel.mLoadedHash = mLoadedHash;
 				mLastFileTextVersion = mEditWidget.Content.mData.mCurTextVersionId;
 			}
 			return true;

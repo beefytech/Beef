@@ -7790,6 +7790,23 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_ClearBuildCache(BfCompiler* bfCompiler)
 	bfCompiler->ClearBuildCache();
 }
 
+BF_EXPORT void BF_CALLTYPE BfCompiler_SetBuildValue(BfCompiler* bfCompiler, char* cacheDir, char* key, char* value)
+{
+	bfCompiler->mCodeGen.SetBuildValue(cacheDir, key, value);
+}
+
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetBuildValue(BfCompiler* bfCompiler, char* cacheDir, char* key)
+{
+	String& outString = *gTLStrReturn.Get();
+	outString = bfCompiler->mCodeGen.GetBuildValue(cacheDir, key);
+	return outString.c_str();
+}
+
+BF_EXPORT void BF_CALLTYPE BfCompiler_WriteBuildCache(BfCompiler* bfCompiler, char* cacheDir)
+{
+	bfCompiler->mCodeGen.WriteBuildCache(cacheDir);
+}
+
 BF_EXPORT void BF_CALLTYPE BfCompiler_Delete(BfCompiler* bfCompiler)
 {		
 	delete bfCompiler;	
@@ -8210,3 +8227,4 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_ForceRebuild(BfCompiler* bfCompiler)
 {
 	bfCompiler->mOptions.mForceRebuildIdx++;
 }
+

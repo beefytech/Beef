@@ -44,7 +44,7 @@
 //#define DBG_FORCE_SYNCHRONIZED
 
 // This is used for the Release DLL thunk and the build.dat file
-#define BF_CODEGEN_VERSION 13
+#define BF_CODEGEN_VERSION 14
 
 #undef DEBUG
 
@@ -85,7 +85,8 @@ void BfCodeGenDirectoryData::Read()
 		return;
 #endif
 
-	while (!fileStream.Eof())
+	int numFiles = fileStream.ReadInt32();
+	for (int fileIdx = 0; fileIdx < numFiles; fileIdx++)
 	{
 		String fileName = fileStream.ReadAscii32SizedString();
 		BfCodeGenFileData fileData;		
@@ -93,6 +94,14 @@ void BfCodeGenDirectoryData::Read()
 		fileStream.Read(&fileData.mIROrderedHash, sizeof(Val128));
 		fileStream.Read(&fileData.mLastWasObjectWrite, sizeof(bool));
 		mFileMap[fileName] = fileData;
+	}
+
+	int numValues = fileStream.ReadInt32();
+	for (int valIdx = 0; valIdx < numValues; valIdx++)
+	{
+		String key = fileStream.ReadAscii32SizedString();
+		String value = fileStream.ReadAscii32SizedString();
+		mBuildSettings[key] = value;
 	}
 
 	mFileTime = GetFileTimeWrite(fileName);
@@ -129,12 +138,20 @@ void BfCodeGenDirectoryData::Write()
 	fileStream.Write(BF_CODEGEN_VERSION);
 	fileStream.WriteT(mCodeGen->mBackendHash);
 
+	fileStream.Write((int)mFileMap.size());
 	for (auto& pair : mFileMap)
 	{
 		fileStream.Write(pair.mKey);
 		fileStream.Write(&pair.mValue.mIRHash, sizeof(Val128));
 		fileStream.Write(&pair.mValue.mIROrderedHash, sizeof(Val128));
 		fileStream.Write(&pair.mValue.mLastWasObjectWrite, sizeof(bool));
+	}
+
+	fileStream.Write((int)mBuildSettings.size());
+	for (auto& pair : mBuildSettings)
+	{
+		fileStream.Write(pair.mKey);
+		fileStream.Write(pair.mValue);
 	}
 
 	fileStream.Close();
@@ -161,6 +178,7 @@ void BfCodeGenDirectoryData::Verify()
 void BfCodeGenDirectoryData::Clear()
 {	
 	mFileMap.Clear();
+	mBuildSettings.Clear();
 }
 
 bool BfCodeGenDirectoryData::CheckCache(const StringImpl& fileName, Val128 hash, Val128* outOrderedHash, bool disallowObjectWrite)
@@ -209,6 +227,21 @@ void BfCodeGenDirectoryData::ClearHash(const StringImpl& fileName)
 void BfCodeGenDirectoryData::FileFailed()
 {
 	mFileFailed = true;
+}
+
+String BfCodeGenDirectoryData::GetValue(const StringImpl& key)
+{
+	String* valuePtr = NULL;
+	if (mBuildSettings.TryGetValue(key, &valuePtr))
+	{
+		return *valuePtr;
+	}
+	return String();
+}
+
+void BfCodeGenDirectoryData::SetValue(const StringImpl& key, const StringImpl& value)
+{	
+	mBuildSettings[key] = value;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -285,22 +318,8 @@ void BfCodeGenThread::RunLoop()
 
 #ifndef CODEGEN_DISABLE_CACHE
 		{
-			AutoCrit autoCrit(mCodeGen->mCacheCritSect);
-			
-			BfCodeGenDirectoryData** dirCachePtr = NULL;
-			if (mCodeGen->mDirectoryCache.TryAdd(cacheDir, NULL, &dirCachePtr))
-			{
-				dirCache = new BfCodeGenDirectoryData();
-				*dirCachePtr = dirCache;
-				dirCache->mCodeGen = mCodeGen;
-				dirCache->mDirectoryName = cacheDir;
-				if (!mCodeGen->mDisableCacheReads)
-					dirCache->Read();
-			}
-			else
-			{				
-				dirCache = *dirCachePtr;
-			}
+			AutoCrit autoCrit(mCodeGen->mCacheCritSect);						
+			dirCache = mCodeGen->GetDirCache(cacheDir);
 
 			//For testing only!
 			/*{
@@ -872,6 +891,27 @@ void BfCodeGen::WriteObjectFile(BfModule* bfModule, const StringImpl& outFileNam
 #endif
 }
 
+String BfCodeGen::GetBuildValue(const StringImpl& buildDir, const StringImpl& key)
+{
+	AutoCrit autoCrit(mCacheCritSect);
+	BfCodeGenDirectoryData* dirCache = GetDirCache(buildDir);
+	return dirCache->GetValue(key);
+}
+
+void BfCodeGen::SetBuildValue(const StringImpl& buildDir, const StringImpl & key, const StringImpl & value)
+{
+	AutoCrit autoCrit(mCacheCritSect);
+	BfCodeGenDirectoryData* dirCache = GetDirCache(buildDir);
+	dirCache->SetValue(key, value);
+}
+
+void BfCodeGen::WriteBuildCache(const StringImpl& buildDir)
+{
+	AutoCrit autoCrit(mCacheCritSect);
+	BfCodeGenDirectoryData* dirCache = GetDirCache(buildDir);
+	dirCache->Write();
+}
+
 void BfCodeGen::RequestComplete(BfCodeGenRequest* request)
 {
 	mCompletionCount++;
@@ -934,6 +974,26 @@ void BfCodeGen::ProcessErrors(BfPassInstance* passInstance, bool canceled)
 			dirEntry->mError.clear();
 		}
 	}
+}
+
+BfCodeGenDirectoryData * BfCodeGen::GetDirCache(const StringImpl & cacheDir)
+{
+	BfCodeGenDirectoryData* dirCache = NULL;
+	BfCodeGenDirectoryData** dirCachePtr = NULL;
+	if (mDirectoryCache.TryAdd(cacheDir, NULL, &dirCachePtr))
+	{
+		dirCache = new BfCodeGenDirectoryData();
+		*dirCachePtr = dirCache;
+		dirCache->mCodeGen = this;
+		dirCache->mDirectoryName = cacheDir;
+		if (!mDisableCacheReads)
+			dirCache->Read();
+	}
+	else
+	{
+		dirCache = *dirCachePtr;
+	}
+	return dirCache;
 }
 
 void BfCodeGen::Cancel()

@@ -10937,7 +10937,10 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			// Just leave the new items
 			projectList.RemoveRange(0, typeProjectsCounts);
-			std::sort(projectList.begin(), projectList.end());
+			std::sort(projectList.begin(), projectList.end(), [](BfProject* lhs, BfProject*rhs)
+				{
+					return lhs->mName < rhs->mName;
+				});
 		}
 		else
 		{

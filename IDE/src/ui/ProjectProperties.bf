@@ -952,15 +952,7 @@ namespace IDE.ui
 							for (var propEntry in propEntries)
 							{
 	                            if (propEntry.HasChanged())
-	                            {
-									if (propEntry.mProperties != null)
-									{
-										bool wantsExeRebuild = false;
-										propEntry.mProperties.Get<bool>("RebuildTarget", out wantsExeRebuild);
-										if (wantsExeRebuild)
-											mProject.mNeedsTargetRebuild = true;
-									}
-
+	                            {									
 	                                configDataHadChange = true;
 	                                propEntry.ApplyValue();
 	                            }

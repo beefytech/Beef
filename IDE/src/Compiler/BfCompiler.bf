@@ -70,6 +70,15 @@ namespace IDE.Compiler
 		[StdCall, CLink]
 		static extern void BfCompiler_ClearBuildCache(void* bfCompiler);
 
+		[StdCall, CLink]
+		static extern void BfCompiler_SetBuildValue(void* bfCompiler, char8* cacheDir, char8* key, char8* value);
+
+		[StdCall, CLink]
+		static extern char8* BfCompiler_GetBuildValue(void* bfCompiler, char8* cacheDir, char8* key);
+
+		[StdCall, CLink]
+		static extern void BfCompiler_WriteBuildCache(void* bfCompiler, char8* cacheDir);
+
         [StdCall, CLink]
         static extern char8* BfCompiler_GetOutputFileNames(void* bfCompiler, void* bfProject, out bool hadOutputChanges);
 
@@ -589,6 +598,22 @@ namespace IDE.Compiler
 		public void ClearBuildCache()
 		{
 			BfCompiler_ClearBuildCache(mNativeBfCompiler);
+		}
+
+		public void SetBuildValue(String cacheDir, String key, String value)
+		{
+			BfCompiler_SetBuildValue(mNativeBfCompiler, cacheDir, key, value);
+		}
+
+		public void GetBuildValue(String cacheDir, String key, String outValue)
+		{
+			char8* cStr = BfCompiler_GetBuildValue(mNativeBfCompiler, cacheDir, key);
+			outValue.Append(cStr);
+		}
+
+		public void WriteBuildCache(String cacheDir)
+		{
+			BfCompiler_WriteBuildCache(mNativeBfCompiler, cacheDir);
 		}
 
 		public bool GetHasHotPendingDataChanges()
