@@ -6968,7 +6968,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			{
 				auto dbgModule = mDebugTarget->FindDbgModuleForAddress(funcPtr);
 				if (dbgModule != NULL)				
-					demangledName += dbgModule->mDisplayName + "!";				
+					demangledName += dbgModule->GetLinkedModule()->mDisplayName + "!";				
 				demangledName += StrFormat("0x%@", funcPtr);
 			}
 
@@ -10092,10 +10092,11 @@ String WinDebugger::GetThreadInfo()
 					{
 						if (subProgram->mLineInfo != NULL)
 						{
-							auto module = subProgram->mCompileUnit->mDbgModule;
-							if (module->mDisplayName.length() > 0)
+							DbgModule* module = subProgram->mCompileUnit->mDbgModule;
+							DbgModule* linkedModule = module->GetLinkedModule();
+							if (linkedModule->mDisplayName.length() > 0)
 							{
-								locString = module->mDisplayName + "!" + subProgram->ToString();
+								locString = linkedModule->mDisplayName + "!" + subProgram->ToString();
 								if (!hadThreadName)
 									threadName = module->mDisplayName + " thread";
 							}
@@ -10108,17 +10109,18 @@ String WinDebugger::GetThreadInfo()
 						}
 					}
 	
-					auto module = mDebugTarget->FindDbgModuleForAddress(registers.GetPC());
+					DbgModule* module = mDebugTarget->FindDbgModuleForAddress(registers.GetPC());
 					if (module == NULL)	
 					{
 						isInvalid = true;
 						break;
 					}
 	
+					DbgModule* linkedModule = module->GetLinkedModule();
 					appendAddr = (addr_target)registers.GetPC();
-					locString = module->mDisplayName + "!" + EncodeDataPtr((addr_target)registers.GetPC(), true);
+					locString = linkedModule->mDisplayName + "!" + EncodeDataPtr((addr_target)registers.GetPC(), true);
 					if (!hadThreadName)
-						threadName = module->mDisplayName + " thread";
+						threadName = linkedModule->mDisplayName + " thread";
 	
 					if ((mActiveThread == mExplicitStopThread) && (mActiveBreakpoint != NULL))
 					{						
@@ -10152,9 +10154,12 @@ String WinDebugger::GetThreadInfo()
 					DbgModule* dwarf;
 					if (mDebugTarget->FindSymbolAt(appendAddr, &symbolName, &offset, &dwarf))
 					{
+						DbgModule* linkedModule = dwarf->GetLinkedModule();
 						String demangledName = BfDemangler::Demangle(symbolName, DbgLanguage_Unknown);
-						if (!dwarf->mDisplayName.empty())
-							demangledName = dwarf->mDisplayName + "!" + demangledName;
+						if (!linkedModule->mDisplayName.empty())
+						{
+							demangledName = linkedModule->mDisplayName + "!" + demangledName;
+						}
 						locString = demangledName + StrFormat("+0x%X", offset);
 					}
 				}
@@ -10733,8 +10738,9 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 
 		String name = wdStackFrame->mSubProgram->ToString();
 		DbgModule* dbgModule = wdStackFrame->mSubProgram->mCompileUnit->mDbgModule;
-		if (!dbgModule->mDisplayName.empty())
-			name = dbgModule->mDisplayName + "!" + name;
+		DbgModule* linkedModule = dbgModule->GetLinkedModule();
+		if (!linkedModule->mDisplayName.empty())
+			name = linkedModule->mDisplayName + "!" + name;
 		return name;
 	}
 	
@@ -10790,8 +10796,9 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		}
 		
 		DbgModule* dbgModule = dwSubprogram->mCompileUnit->mDbgModule;
-		if (!dbgModule->mDisplayName.empty())
-			demangledName = dbgModule->mDisplayName + "!" + demangledName;
+		DbgModule* linkedModule = dbgModule->GetLinkedModule();
+		if (!linkedModule->mDisplayName.empty())
+			demangledName = linkedModule->mDisplayName + "!" + demangledName;
 
 		if ((dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) || (dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Invalid))
 			demangledName = "#" + demangledName;
@@ -10848,23 +10855,26 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 					return outName;
 				}
 			}
-						
+			
+			DbgModule* linkedModule = dbgModule->GetLinkedModule();
 			String demangledName = BfDemangler::Demangle(symbolName, DbgLanguage_Unknown);
-			if (!dbgModule->mDisplayName.empty())
-				demangledName = dbgModule->mDisplayName + "!" + demangledName;
+			if (!linkedModule->mDisplayName.empty())
+				demangledName = linkedModule->mDisplayName + "!" + demangledName;
 			return demangledName + StrFormat("+0x%X", offset);			
 		}		
 	}
 	
 	DbgModule* dbgModule = mDebugTarget->FindDbgModuleForAddress(pcAddress);
+	DbgModule* linkedModule = NULL;
 	if (dbgModule != NULL)
 	{
+		linkedModule = dbgModule->GetLinkedModule();
 		if (dbgModule->HasPendingDebugInfo())
 			*outFlags |= FrameFlags_HasPendingDebugInfo;
 	}
 	String outName = EncodeDataPtr(pcAddress, true);	
-	if ((dbgModule != NULL) && (!dbgModule->mDisplayName.empty()))
-		outName = dbgModule->mDisplayName + "!" + outName;
+	if ((linkedModule != NULL) && (!linkedModule->mDisplayName.empty()))
+		outName = linkedModule->mDisplayName + "!" + outName;
 	return outName;
 }
 
@@ -11130,7 +11140,7 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 				{					
 					outSymbol = BfDemangler::Demangle(outSymbol, DbgLanguage_Unknown);
 					if ((symDWARF != NULL) && (!symDWARF->mDisplayName.empty()))
-						outSymbol = symDWARF->mDisplayName + "!" + outSymbol;
+						outSymbol = symDWARF->GetLinkedModule()->mDisplayName + "!" + outSymbol;
 					result += "T " + outSymbol + ":\n";
 				}
 			}
