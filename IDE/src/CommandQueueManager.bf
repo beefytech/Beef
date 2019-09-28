@@ -21,11 +21,6 @@ namespace IDE
 		{
 		    Debug.Assert(Thread.CurrentThread == IDEApp.sApp.mMainThread);
 
-			/*if (gApp.mMainWindow.IsKeyDown(.Control))
-			{
-				NOP!();
-			}*/
-
 		    Debug.Assert(mOnThreadDone == null);
 		    //mBfSystem.PerfZoneStart("BfCompiler.ThreadStart");
 

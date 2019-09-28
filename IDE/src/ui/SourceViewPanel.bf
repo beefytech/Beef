@@ -933,11 +933,6 @@ namespace IDE.ui
 
         public bool Classify(ResolveType resolveType, ResolveParams resolveParams = null)
         {
-			if (resolveType == .GetFixits)
-			{
-				NOP!();
-			}
-
             // Don't allow other classify calls interrupt a symbol rename
             if ((IDEApp.sApp.mSymbolReferenceHelper != null) && (IDEApp.sApp.mSymbolReferenceHelper.HasStarted) && (IDEApp.sApp.mSymbolReferenceHelper.mKind == SymbolReferenceHelper.Kind.Rename))
                 return false;
@@ -1812,10 +1807,6 @@ namespace IDE.ui
 				var sw = scope Stopwatch(true);
 				sw.Start();
                 bfSystem.Lock(1);
-				if (sw.ElapsedMicroseconds > 100)
-				{
-					NOP!();
-				}
                 bfSystem.PerfZoneEnd();
             }
             else
@@ -1864,11 +1855,6 @@ namespace IDE.ui
             {
                 parser.ClassifySource(char8Data, !mIsBeefSource);
             }
-
-			if (resolveType == .Autocomplete)
-			{
-				NOP!();
-			}
 
             if (!isBackground)
             {
@@ -5225,10 +5211,7 @@ namespace IDE.ui
 			{
 				for (int i < mProcessResolveCharData.Count)
 				{
-					if (mProcessResolveCharData[i].mDisplayFlags == 1)
-					{
-						NOP!();
-					}
+					
 				}
 
 				MarkDirty();

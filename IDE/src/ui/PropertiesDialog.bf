@@ -340,11 +340,6 @@ namespace IDE.ui
 				}
 				else
 				{
-					if (type.IsEnum)
-					{
-						NOP!();
-					}
-					
 					if (mApplyAction != null)
 					{
 						mApplyAction();

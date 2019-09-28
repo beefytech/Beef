@@ -50,11 +50,6 @@ namespace IDE.ui
 			else
 				isValid = gApp.mBfResolveCompiler.VerifyTypeName(editText, cursorPos);
 
-			if (isValid)
-			{
-				NOP!();
-			}
-
 			for (int ofs < editText.Length)
 			{
 				mEditWidgetContent.mData.mText[editOffset + ofs].mDisplayTypeId = isValid ? 0 : 1;

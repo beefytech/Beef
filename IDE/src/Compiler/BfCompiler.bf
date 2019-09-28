@@ -179,11 +179,6 @@ namespace IDE.Compiler
 		{
 		    BfCompiler_Delete(mNativeBfCompiler);
 		    mNativeBfCompiler = null;
-
-			if (mCommandQueue.Count > 0)
-			{
-				NOP!();
-			}
 		}
 
         public bool Compile(BfPassInstance passInstance, String outputDirectory)
@@ -556,10 +551,6 @@ namespace IDE.Compiler
         {
             if ([Friend]mThreadWorker.mThreadRunning)
             {
-				/*if (gApp.mMainWindow.IsKeyDown(.Control))
-				{
-					NOP!();
-				}*/
 				if (mNativeBfCompiler != null)
                 	BfCompiler_Cancel(mNativeBfCompiler);
             }

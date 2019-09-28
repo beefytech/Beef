@@ -166,6 +166,14 @@ namespace Beefy.theme.dark
             }
         }
 
+		public override bool IsOpen
+		{
+			get
+			{
+				return (mOpenButton != null) && (mOpenButton.mIsOpen);
+			}
+		}
+
         public this()
         {
             

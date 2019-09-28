@@ -283,7 +283,6 @@ namespace IDE
 
 			public this()
 			{
-				NOP!();
 			}
 
 			public void Deref()
@@ -294,7 +293,6 @@ namespace IDE
 
 			public ~this()
 			{
-				NOP!();
 			}
         }
 

@@ -166,11 +166,6 @@ namespace System.Reflection
 	        /*if (type.IsStruct)
 	            return &value;*/
 
-			if (type.IsStruct)
-			{
-				NOP!();
-			}	
-
 	        if (type.IsBoxed)
 	            return ((uint8*)(void*)value) + type.mMemberDataOffset;
 	        return ((uint8*)(void*)value);

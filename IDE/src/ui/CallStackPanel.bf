@@ -28,7 +28,6 @@ namespace IDE.ui
 
 		public ~this()
 		{
-			NOP!();
 		}
 	}
 

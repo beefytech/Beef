@@ -1072,10 +1072,6 @@ namespace IDE
 
 			public ~this()
 			{
-				if ((int)(void*)this & 0xFFFF == (int)0x6180UL)
-				{
-					NOP!();
-				}
 			}
         }
         

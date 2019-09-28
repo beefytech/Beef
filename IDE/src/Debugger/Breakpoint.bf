@@ -480,10 +480,6 @@ namespace IDE.Debugger
 			{
 				str.Append(mSymbol);
 			}
-			else
-			{
-				NOP!();
-			}
 		}
 
 		public void ToString_HitCount(String str)

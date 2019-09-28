@@ -25,12 +25,7 @@ namespace IDE.ui
 
 			public ~this()
 			{
-				//Debug.Assert((mWatchSeriesInfo == null) || (mWatchSeriesInfo.mMoreButton == null));
-
-				if (mWatchSeriesInfo != null)
-				{
-					NOP!();
-				}
+				
 			}
         }
 
@@ -47,18 +42,10 @@ namespace IDE.ui
 
             public this(IWatchOwner watchOwner, HoverListView listView) : base(watchOwner, listView)
             {
-				if (mHLVItemId == 8)
-				{
-					NOP!();
-				}
             }
 
 			public ~this()
 			{
-				if (mHLVItemId == 8)
-				{
-					NOP!();
-				}
 			}
 
 			public override WatchListViewItem GetWatchListViewItemParent()
@@ -204,11 +191,6 @@ namespace IDE.ui
 
 			public override void Resize(float x, float y, float width, float height)
 			{
-				if (width < mWidth)
-				{
-					NOP!();
-				}
-
 				base.Resize(x, y, width, height);
 			}
         }
@@ -293,17 +275,6 @@ namespace IDE.ui
 		public ~this()
 		{
 			//Debug.WriteLine("HoverWatch.~this {0}", this);
-
-			if (!String.IsNullOrEmpty(mOrigEvalString))
-			{
-				NOP!();
-			}
-
-			if (mListView != null)
-			{
-				NOP!();
-			}
-
 			Clear();
 		}
 
@@ -947,11 +918,6 @@ namespace IDE.ui
         {            
             //var font = DarkTheme.sDarkTheme.mSmallFont;
             var listView = new HoverListView(this);
-
-			if (mListView != null)
-			{
-				NOP!();
-			}
 
 			//Debug.WriteLine("HoverWatch.CreateListView {0}", listView);
 

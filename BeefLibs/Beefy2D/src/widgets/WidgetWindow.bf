@@ -719,19 +719,6 @@ namespace Beefy.widgets
 
         public override void MouseLeave()
         {
-			/*if (mTitle == "Tooltip")
-			{
-				NOP!();
-			}
-
-			Debug.WriteLine("MouseLeave {0}", this);*/
-
-			// This line breaks the ability to drag a tab outside the window.  Why did we have it?
-			/*if (sMouseInsideWindow == this)
-				return;*/
-
-			//Debug.WriteLine("MouseLeave {0}", this);
-
 			if (sMouseInsideWindow == this)
 			{
 				sMouseInsideWindow = null;

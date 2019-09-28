@@ -445,11 +445,6 @@ namespace IDE.ui
         public DarkButton mLessButton;
 		public static int32 sIdx;
 		public int32 mSeriesId = ++sIdx;
-
-		public ~this()
-		{
-			NOP!();
-		}
     }
 
     public class WatchRefreshButton : ButtonWidget
@@ -815,8 +810,8 @@ namespace IDE.ui
 
             set
             {
-                if (value)
-                    mParent.UpdateAll();
+                /*if (value)
+                    mParent.UpdateAll();*/
                 base.Selected = value;
             }
         }
@@ -831,11 +826,6 @@ namespace IDE.ui
 
         public this(IWatchOwner watchOwner, IDEListView listView)
         {
-			if (mIdx == 670)
-			{
-				NOP!();
-			}
-
             mWatchOwner = watchOwner;
         }
 
@@ -1357,7 +1347,7 @@ namespace IDE.ui
 						}
 
 						if ((forceDelete) || 
-                            ((wantsDelete) && (idx != 0) && (curWatchListViewItem != null) && (curWatchListViewItem.mChildAreaHeight == 0)))
+                            ((wantsDelete) && (idx != 0) && (curWatchListViewItem != null) && (curWatchListViewItem.mChildAreaHeight == 0) && (!curWatchListViewItem.mIsSelected)))
 						{
 						    curMemberIdx--;
 						    mParentItem.RemoveChildItem(curWatchListViewItem);
@@ -1822,6 +1812,23 @@ namespace IDE.ui
 
             SetupListViewItem(listViewItem, name, evalStr);
 
+			if ((parentItem != null) && (parentItem.Selected))
+			{
+				// If the parentItem is selected and the next item after the parentItem is selected then we may have a selection span
+				// so we want to expand that selection to the newly-created item
+
+				int parentIdx = parentItem.mParentItem.GetIndexOfChild(parentItem);
+				if (parentIdx + 1 < parentItem.mParentItem.mChildItems.Count)
+				{
+					let nextItem = parentItem.mParentItem.mChildItems[parentIdx + 1];
+					if (nextItem.Selected)
+					{
+						if ((parentItem.mChildItems.Count == 1) || (parentItem.mChildItems[parentItem.mChildItems.Count - 2].Selected))
+							listViewItem.Selected = true;
+					}
+				}
+			}
+
             return listViewItem;
         }
 
@@ -2126,7 +2133,10 @@ namespace IDE.ui
             if (btnNum == 0)
                 ListViewItemMouseDown(clickedItem, btnCount);
 			else
-				ListViewItemMouseDown(clickedItem, 1);
+			{
+				if (!clickedItem.GetSubItem(0).Selected)
+					ListViewItemMouseDown(clickedItem, 1);
+			}
         }
 
         void ClearWatchValues(ListViewItem parentListViewItem)
@@ -2436,7 +2446,7 @@ namespace IDE.ui
                 }
 
                 if (memberVals.Count >= 2)
-                {                    
+                {
                     WatchListViewItem memberItem;
                     if (memberCount >= listViewItem.GetChildCount())
                     {
@@ -2563,11 +2573,6 @@ namespace IDE.ui
 
                     while (curIdx < mListView.GetRoot().GetChildCount())
                         parentItem.RemoveChildItemAt(curIdx);
-
-					if (parentItem.GetChildCount() == 0)
-					{
-						NOP!();
-					}
                 }
             }
         }
@@ -2755,7 +2760,7 @@ namespace IDE.ui
 				void WithSelected(Action<ListViewItem> func)
 				{
 					var root = listView.GetRoot();
-					root.WithSelectedItems(func);
+					root.WithSelectedItems(func, false, true);
 
 					if (clickedHoverItem != null)
 						func(clickedHoverItem);

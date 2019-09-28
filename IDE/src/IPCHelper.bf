@@ -75,11 +75,6 @@ namespace IDE
 						Windows.DisconnectNamedPipe();
 					}*/
 
-					if (lastError != 536)
-					{
-						NOP!();
-					}
-
 					if ((lastError != Windows.ERROR_PIPE_CONNECTED) && (lastError != Windows.ERROR_NO_DATA))
 						return;
 				}

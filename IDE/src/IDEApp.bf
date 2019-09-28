@@ -361,7 +361,6 @@ namespace IDE
 
 			public ~this()
 			{
-				NOP!();
 			}
         }
 
@@ -5380,10 +5379,6 @@ namespace IDE
 					if (createEditData)
 					{
 						editData = new FileEditData();
-						if (filePath.EndsWith("main.cs"))
-						{
-							NOP!();
-						}
 						editData.mFilePath = new String(filePath);
 						mFileEditData.Add(new String(fixedFilePath), editData);
 					}
@@ -10177,11 +10172,6 @@ namespace IDE
 			{
 				if (mPendingDebugExprHandler != pendingHandler)
 					delete pendingHandler;
-			}
-
-			if (expressionFlags != .None)
-			{
-				NOP!();
 			}
 
 			mIsImmediateDebugExprEval = false;

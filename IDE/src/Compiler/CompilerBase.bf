@@ -52,11 +52,6 @@ namespace IDE.Compiler
 
         public void QueueDeferredResolveAll()
         {
-			/*if (gApp.mMainWindow.IsKeyDown(.Control))
-			{
-				NOP!();
-			}*/
-
             mResolveAllWait = 2;
         }
 
@@ -134,11 +129,6 @@ namespace IDE.Compiler
 
         public void QueueResolveCommand()
         {
-			/*if (gApp.mMainWindow.IsKeyDown(.Control))
-			{
-				NOP!();
-			}*/
-
             ResolveAllCommand command = new ResolveAllCommand();
             QueueCommand(command);
         }

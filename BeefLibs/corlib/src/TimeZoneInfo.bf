@@ -115,11 +115,6 @@ namespace System {
         // there is a chance that the internal ConvertTime calls will throw since 'source' won't be reference equal to the new TimeZoneInfo.Local.
         //
 
-		public ~this()
-		{
-			NOP!();
-		}
-
 #pragma warning disable 0420
         class CachedData
         {

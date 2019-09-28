@@ -23,15 +23,8 @@ namespace Beefy.widgets
     public delegate void RemovedFromParentHandler(Widget widget, Widget prevParent, WidgetWindow widgetWindow);
     public delegate void AddedToParentHandler(Widget widget);
 
-    public class Widget : ILeakIdentifiable
+    public class Widget
     {   
-		static int32 sIdx;
-		public int32 mIdx = sIdx++;
-		public void ToLeakString(String str)
-		{
-			str.AppendF("Idx:{0}", mIdx);
-		}
-
         public class TransformData
         {
             public float a;

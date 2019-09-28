@@ -409,11 +409,6 @@ namespace IDE.ui
 							let dispWidth = g.mFont.GetWidth(selectedEntry.mEntryDisplay) + GS!(24);
 
 						    float width = mWidth - GS!(16) - mAutoCompleteListWidget.mRightBoxAdjust;
-							if (gApp.mMainWindow.IsKeyDown(.Alt))
-							{
-								NOP!();
-							}
-
 						    if (mAutoCompleteListWidget.mVertScrollbar != null)
 						        width -= GS!(18);
 							width = Math.Max(dispWidth, width);
@@ -1650,11 +1645,6 @@ namespace IDE.ui
             }
 			gApp.mAutoCompletePanel.FinishBind();
             SetIgnoreMove(false);
-
-			if (changedAfterInfo)
-			{
-				NOP!();
-			}
 
             if ((mAutoCompleteListWidget != null) && (!mAutoCompleteListWidget.mIsInitted))
                 mAutoCompleteListWidget.Init();

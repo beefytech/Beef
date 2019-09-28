@@ -40,7 +40,7 @@ namespace Beefy.widgets
         virtual public StringView Label 
         { 
             get { return (mLabel != null) ? mLabel : default; } 
-            set { String.NewOrSet!(mLabel, value);} 
+            set { String.NewOrSet!(mLabel, value); } 
         }
         virtual public IDrawable IconImage { get { return mIconImage; } set { mIconImage = value; } }
         virtual public uint32 IconImageColor { get { return mIconImageColor; } set { mIconImageColor = value; } }
@@ -103,6 +103,14 @@ namespace Beefy.widgets
             }
         }
 
+		public virtual bool IsOpen
+		{
+			get
+			{
+				return (mChildItems != null) && (mChildItems.Count > 0) && (mChildAreaHeight > 0);
+			}
+		}
+
         public virtual float LabelX { get { return 0; } }
         public virtual float LabelWidth { get { return mWidth; } }
 
@@ -141,7 +149,7 @@ namespace Beefy.widgets
             }
         }
 
-        public void WithSelectedItems(Action<ListViewItem> func, bool skipSelectedChildrenOnSelectedItems = false)
+        public void WithSelectedItems(Action<ListViewItem> func, bool skipSelectedChildrenOnSelectedItems = false, bool skipClosed = false)
         {
             bool selfSelected = Selected;
             if (selfSelected)
@@ -149,10 +157,13 @@ namespace Beefy.widgets
 
             if ((mChildItems != null) && ((!skipSelectedChildrenOnSelectedItems) || (!selfSelected)))
             {
-                for (ListViewItem child in mChildItems)
-                {
-                    child.WithSelectedItems(func, skipSelectedChildrenOnSelectedItems);                    
-                }
+				if ((!skipClosed) || (mParentItem == null) || (IsOpen))
+				{
+	                for (ListViewItem child in mChildItems)
+	                {
+	                    child.WithSelectedItems(func, skipSelectedChildrenOnSelectedItems, skipClosed);                    
+	                }
+				}
             }
         }
         
@@ -243,8 +254,8 @@ namespace Beefy.widgets
 							{
 								defer { prevItem = checkItem; }
 
-								if (selectEndElement != null)
-									return;
+								/*if (selectEndElement != null)
+									return;*/
 
 								if (checkItem == focusedItem)
 								{
@@ -263,14 +274,19 @@ namespace Beefy.widgets
 									if (!checkItem.Selected)
 									{
 										if (spanStart == focusedItem)
+										{
 											selectEndElement = prevItem;
+										}
 										spanStart = null;
 									}
 								}
 								else if (spanStart == null)
 								{
 									if (checkItem.Selected)
+									{
 										spanStart = checkItem;
+									}
+									
 								}
 							});
 
@@ -757,16 +773,22 @@ namespace Beefy.widgets
             mListSizeDirty = true;
         }
 
-        public void EnsureItemVisible(ListViewItem item, bool centerView)
+		public enum VisibleKind
+		{
+			WasVisible,
+			Scrolled
+		}
+
+        public VisibleKind EnsureItemVisible(ListViewItem item, bool centerView)
         {
             if (mVertScrollbar == null)
-                return;
+                return .WasVisible;
 
             if (mListSizeDirty)
                 UpdateListSize();
 
 			if (mScrollContentContainer.mHeight <= 0)
-				return;
+				return .WasVisible;
 
             float aX;
             float aY;
@@ -783,7 +805,8 @@ namespace Beefy.widgets
                     scrollPos -= mScrollContentContainer.mHeight * 0.50f;
                     scrollPos = (float)Math.Round(scrollPos / lineHeight) * lineHeight;
                 }
-                VertScrollTo(scrollPos);                
+                VertScrollTo(scrollPos);
+				return .Scrolled;
             }
             else if (aY + lineHeight + mBottomInset >= mVertPos.mDest + mScrollContentContainer.mHeight)
             {                
@@ -794,8 +817,10 @@ namespace Beefy.widgets
                     scrollPos += mScrollContentContainer.mHeight * 0.50f;
                     scrollPos = (float)Math.Round(scrollPos / lineHeight) * lineHeight;
                 }
-                VertScrollTo(scrollPos);                
+                VertScrollTo(scrollPos);
+				return .Scrolled;
             }
+			return .WasVisible;
         }
 
         ListViewItem FindClosestItemAtYPosition(ListViewItem parentItem, float y, bool addHeight)
@@ -854,7 +879,9 @@ namespace Beefy.widgets
                     {
                         newSelection = newSelection.mChildItems[newSelection.mChildItems.Count - 1];
                     }    
-                case KeyCode.PageUp:                        
+                case KeyCode.PageUp:
+					selectedItem.SelfToOtherTranslate(mScrollContent, 0, 0, var absX, var absY);
+
                     int32 numIterations = (int32)(mScrollContentContainer.mHeight / selectedItem.mSelfHeight);
                     for (int32 i = 0; i < numIterations; i++)
                         KeyDown(KeyCode.Up, false);                            
@@ -876,7 +903,7 @@ namespace Beefy.widgets
 					}
 					triedMove = true;
                 case KeyCode.Down:
-                    if ((selectedItem.mChildItems != null) && (selectedItem.mChildItems.Count > 0) && (selectedItem.mChildAreaHeight > 0))
+                    if (selectedItem.IsOpen)
                         newSelection = selectedItem.mChildItems[0];
                     else
                     {
@@ -920,7 +947,8 @@ namespace Beefy.widgets
                 if (newSelection != null)
                 {
                     mRoot.SelectItem(newSelection, isDoingSpanSelection);
-                    EnsureItemVisible(newSelection, false);
+                    if (EnsureItemVisible(newSelection, false) == .Scrolled)
+						newSelection.mParent.UpdateAll(); // Update virtual list
                 }
                 else if ((triedMove) && (!isDoingSpanSelection) && (firstSelectedItem != null))
                     mRoot.SelectItemExclusively(firstSelectedItem);

@@ -534,11 +534,6 @@ namespace IDE.ui
 		    {
 				checkIdx++;
 
-				if (checkIdx == 0x82)
-				{
-					NOP!();
-				}
-
 				line.Reference(lineStrView);
 		        if (line.Length == 0)
 		            break;

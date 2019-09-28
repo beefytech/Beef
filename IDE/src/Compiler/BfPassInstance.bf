@@ -89,11 +89,6 @@ namespace IDE.Compiler
             mIsDisposed = true;
             BfPassInstance_Delete(mNativeBfPassInstance);
             mNativeBfPassInstance = null;
-
-			if (mFailed)
-			{
-				NOP!();
-			}
         }
 
         public bool PopOutString(String outStr)

@@ -87,11 +87,6 @@ namespace IDE.ui
         {
             if (mHoverWatch != null)
             {
-				if (mHoverWatch.mCloseCountdown == 1)
-				{
-					NOP!();
-				}
-
 				bool hasActiveHoverWatch = false;
 
                 if (mHoverWatch.mEditWidget != null)

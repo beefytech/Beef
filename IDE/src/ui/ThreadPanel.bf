@@ -24,11 +24,6 @@ namespace IDE.ui
 			{
 				if (mIsSelected != value)
 				{
-					if (!value)
-					{
-						NOP!();
-					}
-
 					var threadListView = (ThreadListView)mListView;
 					if (threadListView.mThreadPanel.mCallstackPopup != null)
 						threadListView.mThreadPanel.mCallstackPopup.Close();

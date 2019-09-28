@@ -1407,6 +1407,12 @@ namespace IDE.ui
                 clickedItem = (DarkListViewItem)clickedItem.GetSubItem(0);
             }
 
+			if (theEvent.mBtn != 0)
+			{
+				if (clickedItem.Selected)
+					return;
+			}
+
             SelectItem(clickedItem, true);
 
             if ((!clickedItem.IsParent) && (theEvent.mBtnCount > 1))
