@@ -7547,7 +7547,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		}
 
 		bool isNull = wasPtr && (dataPtr == 0);
-		bool isBadSrc = !wasPtr && (dataPtr == 0);
+		bool isBadSrc = !wasPtr && (dataPtr == 0) && (!dwValueType->IsValuelessType());
 
 		if ((ptrVal == 0) && (dwValueType->IsTypedPrimitive()))
 		{

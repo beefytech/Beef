@@ -6373,7 +6373,7 @@ void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unar
 	case BfUnaryOp_Not:
 		{
 			auto boolType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
-			if (mResult.mType != boolType)
+			if (mResult.mType->mTypeCode != DbgType_Bool)
 			{
 				Fail("Operator can only be used on boolean values", opToken);
 				return;
