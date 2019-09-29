@@ -118,4 +118,25 @@ __declspec(dllexport) void Test3(int a, int b)
 	
  	
 	//printf("Hey!\n");
+
+
+}
+
+static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
+{
+	printf("SEHFilter!\n");
+	return 0;
+}
+
+extern "C"
+__declspec(dllexport) void TestSEH()
+{
+	if (::MessageBoxA(NULL, "DO IT?", "Crash?", MB_YESNO) == IDNO)
+		return;
+
+	::SetUnhandledExceptionFilter(SEHFilter);
+
+	int* iPtr = nullptr;
+	*iPtr = 1;
+	//printf("Hey!\n");
 }

@@ -11,13 +11,12 @@
 // Zoop
 //using IDE;
 using System;
-using System.Threading;
+//using System.Threading;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections;
-using System.Reflection;
+using System.Threading;
 
 // Disable unused variable warning
 #pragma warning disable 168
@@ -180,8 +179,43 @@ namespace Hey.Dude.Bro
 			*a = 123;
 		}
 
+		public static int32 SEHHandler(void* ptr)
+		{
+			PrintF("SEH Handler at root\n");
+			//Thread.Sleep(15000);
+			return 0;
+		}
+
+		[CRepr, CLink]
+		public static extern void* SetUnhandledExceptionFilter(function int32(void* p) func);
+
 		public static int Main(String[] args)
 		{
+			//Test2(1, 2, 3, 4);
+			//int a = Fartso;
+
+#if ZLOG
+			PrintF("HEY!");
+#endif
+			List<String> iList = scope .();
+			for (int i < 1000)
+			{
+				iList.Add("Zpops");
+			}
+
+			bool b = false;
+
+			//File file;
+			int len = args.Count;
+
+			int zog = 123;
+
+			int a = 0x1122334455667788;
+
+			void* prev = SetUnhandledExceptionFilter(=> SEHHandler);
+			PrintF("Prev: %p\n", prev);
+
+			//TestA();
 			Blurg.Hey();
 
 			for (int i < 100)
@@ -191,6 +225,11 @@ namespace Hey.Dude.Bro
 			}
 			
 			return 1;
+		}
+
+		public static this()
+		{
+			//Runtime.TestCrash();
 		}
 	}
 }

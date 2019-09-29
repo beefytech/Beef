@@ -7,9 +7,12 @@ StartupObject = "Hey.Dude.Bro.TestClass"
 DefaultNamespace = "Mintest"
 Aliases = ["corlib"]
 
+[Platform.Windows]
+Description = "Mintest"
+
 [Configs.Debug.Win64]
 CLibType = "Static"
-BeefLibType = "DynamicDebug"
+BeefLibType = "Static"
 StackSize = 4194304
 DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"\"\"abc efg\"\"\""
 DebugWorkingDirectory = ".\\"
@@ -24,6 +27,7 @@ CLibType = "Static"
 BeefLibType = "Static"
 
 [Configs.Release.Win64]
+OtherLinkFlags = "$(LinkFlags) C:\\Beef\\BeefTools\\TestDLL\\x64\\Debug\\TestDLL.lib"
 DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"abc efg\""
 
 [Configs.Release.WinFart]

@@ -33,10 +33,7 @@ AllocStackTraceDepth = 0
 IntermediateType = "ObjectAndIRCode"
 
 [Configs.Release.Win64]
-Toolset = "LLVM"
 BfSIMDSetting = "SSE3"
-BfOptimizationLevel = "O3"
-LTOType = "Thin"
 AllocStackTraceDepth = 0
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O3"

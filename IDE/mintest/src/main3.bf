@@ -137,16 +137,34 @@ class Testo
 	}
 }
 
-class Blurg
+class Norg
 {
-	delegate void() mFuncA;
-	delegate void() mFuncB;
+	public String mVal;
+	public int32 mA;
+	public int32 mB;
 
-	int mA = 123;
+	public int32 GetIt(int32 a, int32 b, int32 c) mut
+	{
+		return a + b + c + mA;
+	}
+
+	public static int32 GetIt(Blurg bl, int32 a, int32 b, int32 c)
+	{
+		return a + b + c + bl.mA;
+	}
+}
+
+struct Blurg 
+{
+	public String mVal;
+	public int32 mA;
+	public int32 mB;
 
 	public this()
 	{
-		
+		mVal = "z";
+		mA = 111;
+		mB = 222;
 	}
 
 	void TestIt(String a, String b)
@@ -161,7 +179,7 @@ class Blurg
 
 	static void Test(int a, int b)
 	{
-
+		PrintF("a0");
 	}
 
 	static void Test(int a, int b, int c)
@@ -169,61 +187,34 @@ class Blurg
 
 	}
 
-	public static void Use<T>(T val) where T : IFaceA
+	
+	public static int32 Hey()
 	{
-		IFaceA.Fart();
-	}
+		Result<int, float> res = .Ok(123);
 
-	public static void Hey()
-	{
-		Loop:
-		for (int i < 10)
+		Florg fl = .();
+
+		let f2 = fl;
+		//defer f2.Dispose();
+
+		using (var f = fl)
 		{
-			defer
-			{
-				//for ()
-				JLoop: for (int j < 5)
-				{
-					//continue Loop;
-				}
-
-				//break JLoop;
-
-				int z = 3;
-
-				/*void Zorg()
-				{
-					
-				}
-
-				Zorg();*/
-				//return;
-
-				//break Loop;
-			}
+			
 		}
-
-		defer
-		{
-			scope:: Testo();
-
-			int i = 0;
-			if (i == 0)
-				scope:: Testo();
-			if (i == 1)
-				scope:: Testo();
-		}
-
 		
-
-		int aaaaaa = 123;
-		if (aaaaaa == 123)
-			return;//A
-
-		int bbbbbbb = 222;
-		return;//B
+		return 123;
 	}
 
+}
+
+struct Florg
+{
+	int mA = 123;
+
+	public void Dispose() mut
+	{
+
+	}
 }
 
 class CustomAlloc
