@@ -4566,17 +4566,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				(!isSkipCall))
 			{
 				bool skipMutCheck = false;
-				if (prevBindResult.mPrevVal != NULL)
+				if ((prevBindResult.mPrevVal != NULL) && (prevBindResult.mPrevVal->mSkipMutCheck))
 				{
 					// If we are binding a delegate, then we will end up making a copy of the target anyway
 					//  so we don't need to do a mutability check
 					skipMutCheck = true;
-// 					auto bindResult = prevBindResult.mPrevVal;
-// 					if ((bindResult->mOrigTarget) &&
-// 						((bindResult->mOrigTarget.mType->IsVar()) || (bindResult->mOrigTarget.mType->IsPointer())))
-// 					{
-// 						skipMutCheck = true;
-// 					}
 				}
 
 				PushThis(targetSrc, target, moduleMethodInstance.mMethodInstance, irArgs, skipMutCheck);
@@ -8104,6 +8098,7 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 		methodGenericArguments = &delegateBindExpr->mGenericArgs->mGenericArgs;
 	
 	BfFunctionBindResult bindResult;
+	bindResult.mSkipMutCheck = true; // Allow operating on copies
 	mFunctionBindResult = &bindResult;
 	SetAndRestoreValue<bool> ignoreError(mModule->mIgnoreErrors, true);
 	DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArguments);
@@ -8505,6 +8500,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 	}
 
 	BfFunctionBindResult bindResult;
+	bindResult.mSkipMutCheck = true; // Allow operating on copies
 	mFunctionBindResult = &bindResult;
 	DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArguments);
 	mFunctionBindResult = NULL;

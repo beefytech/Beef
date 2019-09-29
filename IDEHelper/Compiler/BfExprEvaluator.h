@@ -219,6 +219,7 @@ public:
 	BfIRValue mFunc;	
 	BfMethodInstance* mMethodInstance;
 	bool mSkipThis;
+	bool mSkipMutCheck;
 	bool mWantsArgs;
 	bool mCheckedMultipleMethods;
 	SizedArray<BfIRValue, 2> mIRArgs;
@@ -227,6 +228,7 @@ public:
 	BfFunctionBindResult()
 	{				
 		mMethodInstance = NULL;
+		mSkipMutCheck = false;
 		mWantsArgs = false;
 		mSkipThis = false;
 		mCheckedMultipleMethods = false;
