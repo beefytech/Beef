@@ -143,6 +143,9 @@ namespace Beefy.theme.dark
             if (mMenuItem.mItems.Count > 0)
                 return;
 
+			if (mIndex != mMenuWidget.mSelectIdx)
+				return;
+
             if ((btn == 0) && (mMouseOver))
             {
                 Submit();
