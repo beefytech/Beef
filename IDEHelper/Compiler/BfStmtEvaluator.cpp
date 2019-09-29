@@ -2089,8 +2089,10 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 			if (!isVarOrLet)
 			{
 				auto wantType = ResolveTypeRef(varDecl->mTypeRef);
+				if (wantType == NULL)
+					wantType = mContext->mBfObjectType;
 				if (wantType != NULL)
-					tupleElement = Cast(varDecl->mTypeRef, tupleElement, wantType);
+					tupleElement = Cast(varDecl->mTypeRef, tupleElement, wantType);				
 				if (!tupleElement)
 					tupleElement = GetDefaultTypedValue(wantType);
 			}
@@ -4828,8 +4830,11 @@ void BfModule::Visit(BfUsingStatement* usingStmt)
 			AssertErrorState();
 			failed = true;
 		}
-		else
-			embeddedValue = BfTypedValue(localVar->mAddr, localVar->mResolvedType, true);
+		else 
+		{
+			embeddedValue = exprEvaluator.LoadLocal(localVar);			
+		}
+		//exprEvaluator.CheckModifyResult(embeddedValue, usingStmt->mVariableDeclaration->mNameNode,);
 	}
 	else	
 	{		
@@ -4839,7 +4844,7 @@ void BfModule::Visit(BfUsingStatement* usingStmt)
 	}
 
 	if (!failed)
-	{
+	{		
 		exprEvaluator.mFunctionBindResult = &functionBindResult;
 		BfResolvedArgs resolvedArgs;
 		exprEvaluator.MatchMethod(usingStmt->mVariableDeclaration, NULL, embeddedValue, false, false, "Dispose", resolvedArgs, NULL);		
