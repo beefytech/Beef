@@ -24,8 +24,7 @@ namespace IDE.ui
 			var editText = scope String();
 			GetText(editText);
 
-			int cursorPos = doAutoComplete ? mEditWidgetContent.CursorTextPos - 1 : -1;
-#unwarn
+			int cursorPos = doAutoComplete ? mEditWidgetContent.CursorTextPos : -1;
 
 			int editOffset = 0;
 			if (cursorPos > 0)
@@ -54,8 +53,7 @@ namespace IDE.ui
 			{
 				mEditWidgetContent.mData.mText[editOffset + ofs].mDisplayTypeId = isValid ? 0 : 1;
 			}
-			//mColors[0] = isValid ? 0xFFFFFFFF : 0xFFFF8080;
-
+			
 			if (doAutoComplete)
 			{
 				String autocompleteInfo = scope String();

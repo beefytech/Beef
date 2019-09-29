@@ -1,4 +1,6 @@
-using System; //abc
+using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
@@ -10,7 +12,6 @@ using Beefy.widgets;
 using Beefy.gfx;
 using Beefy.theme;
 using Beefy.theme.dark;
-using IDE.ui;
 using Beefy.sys;
 using Beefy.events;
 using Beefy.geom;
@@ -20,8 +21,7 @@ using Beefy.utils;
 using IDE.Debugger;
 using IDE.Compiler;
 using IDE.Util;
-using System.Security.Cryptography;
-using System.Text;
+using IDE.ui;
 using IDE.util;
 
 [AttributeUsage(.Method, .ReflectAttribute | .AlwaysIncludeTarget, ReflectUser=.All)]
@@ -3363,12 +3363,10 @@ namespace IDE
 		[IDECommand]
 		public void Cmd_ShowAutoComplete()
 		{
-			var activeTextPanel = GetActivePanel() as TextPanel;
-			if (activeTextPanel != null)
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
 			{
-				var sewc = activeTextPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
-				if (sewc != null)
-					sewc.ShowAutoComplete(true);
+				sewc.ShowAutoComplete(true);
 			}
 		}
 
@@ -4885,7 +4883,7 @@ namespace IDE
         IDETabbedView CreateTabbedView()
         {
             var tabbedView = new IDETabbedView();
-            tabbedView.mSharedData.mOpenNewWindowDelegate.Add(new (fromTabbedView, newWindow) => SetupNewWindow(newWindow));
+            tabbedView.mSharedData.mOpenNewWindowDelegate.Add(new (fromTabbedView, newWindow) => SetupNewWindow(newWindow, true));
 			tabbedView.mSharedData.mTabbedViewClosed.Add(new (tabbedView) =>
                 {
 					if (tabbedView == mActiveDocumentsTabbedView)
@@ -4894,10 +4892,11 @@ namespace IDE
             return tabbedView;
         }
 
-        void SetupNewWindow(WidgetWindow window)
+        public void SetupNewWindow(WidgetWindow window, bool isMainWindow)
         {
             window.mOnWindowKeyDown.Add(new => SysKeyDown);
-            window.mOnWindowCloseQuery.Add(new => SecondaryAllowClose);
+			if (isMainWindow)
+            	window.mOnWindowCloseQuery.Add(new => SecondaryAllowClose);
         }        
 
 		DarkTabbedView FindDocumentTabbedView()
@@ -5044,6 +5043,28 @@ namespace IDE
             }
             return null;
         }
+
+		public SourceEditWidgetContent GetActiveSourceEditWidgetContent()
+		{
+			let activeWindow = GetActiveWindow();
+			if (activeWindow.mFocusWidget != null)
+			{
+				if (let editWidget = activeWindow.mFocusWidget as EditWidget)
+				{
+					let sewc = editWidget.mEditWidgetContent as SourceEditWidgetContent;
+					if (sewc != null)
+						return sewc;
+				}
+			}
+
+			var activeTextPanel = GetActivePanel() as TextPanel;
+			if (activeTextPanel != null)
+			{
+				return activeTextPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
+			}
+
+			return null;
+		}
 
 		public WidgetWindow GetActiveWindow()
 		{
@@ -6345,7 +6366,7 @@ namespace IDE
 					}
 					else
 						mWorkspace.mDir = fullDir;
-				case "-path":
+				case "-file":
 					String.NewOrSet!(mDeferredOpenFileName, value);
 					if (mDeferredOpenFileName.EndsWith(".bfdbg", .OrdinalIgnoreCase))
 						mDeferredOpen = .DebugSession;
@@ -6584,11 +6605,26 @@ namespace IDE
 
         void SysKeyDown(KeyDownEvent evt)
         {
+			 if (evt.mHandled)
+				return;
+
             var window = (WidgetWindow)evt.mSender;                     
+
+			IDECommand.ContextFlags useFlags = .None;
+			var activeWindow = GetActiveWindow();
+			bool isMainWindow = activeWindow.mRootWidget is MainFrame;
+
+			var activePanel = GetActivePanel() as Panel;
+			if (activePanel is SourceViewPanel)
+				useFlags |= .Editor;
+			else if (activePanel is DisassemblyPanel)
+				useFlags |= .Editor;
+
+			if (isMainWindow)
+				useFlags |= .MainWindow;
 
 			if (evt.mKeyCode == .Tab)
 			{
-				var activePanel = GetActivePanel() as Panel;
 				if (activePanel != null)
 				{
 					if (activePanel.HandleTab(window.IsKeyDown(.Shift) ? -1 : 1))
@@ -6620,20 +6656,19 @@ namespace IDE
 				}
 				else if (var command = commandBase as IDECommand)
 				{
-					IDECommand.ContextFlags useFlags = .None;
-					var activePanel = GetActivePanel();
-					if (activePanel is SourceViewPanel)
-						useFlags |= .Editor;
-					else if (activePanel is DisassemblyPanel)
-						useFlags |= .Editor;
-
 					bool foundMatch = false;
 					if (useFlags != .None)
 					{
 						var checkCommand = command;
 						while (checkCommand != null)
 						{
-							if (checkCommand.mContextFlags.HasFlag(useFlags))
+							bool matches = checkCommand.mContextFlags == .None;
+							if (checkCommand.mContextFlags.HasFlag(.Editor))
+								matches |= useFlags.HasFlag(.Editor);
+							if (checkCommand.mContextFlags.HasFlag(.MainWindow))
+								matches |= useFlags.HasFlag(.MainWindow);
+
+							if (matches)
 							{
 								checkCommand.mAction();
 								foundMatch = true;

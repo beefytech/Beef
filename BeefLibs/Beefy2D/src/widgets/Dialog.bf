@@ -248,6 +248,11 @@ namespace Beefy.widgets
                 SetFocus();
         }  
 
+		public virtual void WindowCreated()
+		{
+
+		}
+
         public virtual void PopupWindow(WidgetWindow parentWindow, float offsetX = 0, float offsetY = 0)
         {
             if (mClosed)
@@ -295,6 +300,7 @@ namespace Beefy.widgets
 
             widgetWindow.mOnWindowCloseQuery.Add(windowCloseHandler);
             widgetWindow.mOnWindowKeyDown.Add(new => WindowKeyDown);
+			WindowCreated();
         }
 
         public virtual bool HandleTab(int dir)

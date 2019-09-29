@@ -12,6 +12,12 @@ namespace IDE.ui
 		public DarkButton mNextButton;
 		public SettingHistoryManager mSettingHistoryManager;
 
+		public override void WindowCreated()
+		{
+			base.WindowCreated();
+			gApp.SetupNewWindow(mWidgetWindow, false);
+		}
+
 		public void CreatePrevNextButtons()
 		{
 			mPrevButton = new DarkButton();

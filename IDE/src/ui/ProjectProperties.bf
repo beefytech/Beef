@@ -908,10 +908,17 @@ namespace IDE.ui
 
         protected override bool ApplyChanges()
         {
+			if (mApplyButton.mDisabled)
+				return true;
+
 			if (mProject.mLocked)
 			{
 				let dialog = gApp.Fail(
-					"This project is locked because it may be a shared library, and editing shared libraries may have unwanted effects on other programs that use it.\n\nIf you are sure you want to edit this project then you can unlock it with the lock icon in the lower left of the",
+					"""
+					This project is locked because it may be a shared library, and editing shared libraries may have unwanted effects on other programs that use it.
+
+					If you are sure you want to edit this project then you can unlock it with the lock icon in the lower left of the properties dialog.
+					""",
 					null, mWidgetWindow);
 				dialog.mWindowFlags |= .Modal;
 				if (dialog != null)
@@ -1090,6 +1097,7 @@ namespace IDE.ui
 					{
 						mProject.mLocked = !mProject.mLocked;
 						gApp.mWorkspace.SetChanged();
+						gApp.mProjectPanel.MarkDirty();
 					});
 				if (mProject.mLocked)
 					menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);

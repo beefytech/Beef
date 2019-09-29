@@ -3057,7 +3057,11 @@ namespace IDE.ui
 
 						menuItem = menu.AddItem("Go to Definition");
 						menuItem.SetDisabled(!hasText);
-	                    menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.GoToDefinition());
+	                    menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.GoToDefinition());
+
+						menuItem = menu.AddItem("Rename Symbol");
+						menuItem.SetDisabled(!hasText);
+						menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.Cmd_RenameSymbol());
 
 	                    menuItem = menu.AddItem("Add Watch");
 						menuItem.SetDisabled(!hasText);

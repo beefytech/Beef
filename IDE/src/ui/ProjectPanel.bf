@@ -1908,6 +1908,14 @@ namespace IDE.ui
 								gApp.mWorkspace.SetChanged();
 							}
 					    });
+					
+					item = menu.AddItem("Rename");
+					item.mOnMenuItemSelected.Add(new (item) =>
+						{
+							var projectItem = GetSelectedProjectItem();
+							if (projectItem != null)
+								RenameItem(projectItem);
+						});
 
 					item = menu.AddItem("Refresh");
 					item.mOnMenuItemSelected.Add(new (item) =>

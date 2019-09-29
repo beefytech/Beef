@@ -104,7 +104,8 @@ namespace IDE
 		public enum ContextFlags
 		{
 			None = 0,
-			Editor = 1
+			MainWindow = 1,
+			Editor = 2,
 		}
 
 		public String mName ~ delete _;
@@ -158,7 +159,7 @@ namespace IDE
 			};
 		public CommandMap mKeyMap = new .() ~ delete _;
 
-		void Add(StringView name, Action act, IDECommand.ContextFlags contextFlags = .None)
+		void Add(StringView name, Action act, IDECommand.ContextFlags contextFlags = .MainWindow)
 		{
 			let cmd = new IDECommand();
 			cmd.mName = new String(name);
@@ -170,7 +171,7 @@ namespace IDE
 		public void Init()
 		{
 			Add("About", new => gApp.ShowAbout);
-			Add("Autocomplete", new => gApp.Cmd_ShowAutoComplete);
+			Add("Autocomplete", new => gApp.Cmd_ShowAutoComplete, .None);
 			Add("Bookmark Next", new => gApp.Cmd_NextBookmark, .Editor);
 			Add("Bookmark Prev", new => gApp.Cmd_PrevBookmark, .Editor);
 			Add("Bookmark Toggle", new => gApp.Cmd_ToggleBookmark, .Editor);
