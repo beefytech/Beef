@@ -1862,31 +1862,31 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 				if (!curType->IsTypeMemberAccessible(methodDef->mDeclaringType, activeTypeDef))
 					continue;
 			}
-
-			if (methodDef->mMethodType == BfMethodType_Normal)
+			
+			auto& methodGroup = curType->mMethodInstanceGroups[methodDef->mIdx];
+			if (methodGroup.mDefault == NULL)
 			{
-				auto& methodGroup = curType->mMethodInstanceGroups[methodDef->mIdx];
-				if (methodGroup.mDefault == NULL)
-				{
-					continue;
-				}
-				auto methodInst = methodGroup.mDefault;
+				continue;
+			}
+			auto methodInst = methodGroup.mDefault;
 
-				if ((methodDef->mIsVirtual) && (!methodDef->mIsOverride))
+			if ((methodDef->mIsVirtual) && (!methodDef->mIsOverride))
+			{
+				if (methodDef->mMethodType == BfMethodType_Normal)
 				{
 					String methodPrefix;
 					String methodName;
 					String impString;
-
-					if (!methodInst->mReturnType->IsVoid())
-						impString = "return ";
-
+					
 					bool isAbstract = methodDef->mIsAbstract;
 
 					if (!isAbstract)
 					{
+						if (!methodInst->mReturnType->IsVoid())
+							impString = "return ";
+
 						impString += "base.";
-						impString += methodDef->mName;;
+						impString += methodDef->mName;
 						impString += "(";
 					}
 
@@ -1898,7 +1898,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 					methodPrefix += " ";
 					methodName += methodDef->mName;
 					methodName += "(";
-					for (int paramIdx = 0; paramIdx < (int) methodInst->GetParamCount(); paramIdx++)
+					for (int paramIdx = 0; paramIdx < (int)methodInst->GetParamCount(); paramIdx++)
 					{
 						if (paramIdx > 0)
 						{
@@ -1918,8 +1918,57 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 					if (!isAbstract)
 						impString += ");";
 
-					AddEntry(AutoCompleteEntry("override", methodName + "\t" + methodPrefix + methodName + "\t" + impString, methodDeclaration->mDocumentation), filter);
-				}
+					AddEntry(AutoCompleteEntry("override", methodName + "\t" + methodPrefix + methodName + "\t" + impString, NULL), filter);
+				}					
+				else if ((methodDef->mMethodType == BfMethodType_PropertyGetter) || (methodDef->mMethodType == BfMethodType_PropertySetter))
+				{					
+					auto propDeclaration = methodDef->GetPropertyDeclaration();
+					bool hasGet = propDeclaration->GetMethod("get") != NULL;
+					bool hasSet = propDeclaration->GetMethod("set") != NULL;
+
+					if ((methodDef->mMethodType == BfMethodType_PropertyGetter) || (!hasGet))
+					{
+						String propName;
+						String impl;
+
+						propDeclaration->mNameNode->ToString(propName);
+
+						bool isAbstract = methodDef->mIsAbstract;
+
+						if (propDeclaration->mProtectionSpecifier != NULL)
+							impl += propDeclaration->mProtectionSpecifier->ToString() + " ";
+						impl += "override ";
+						impl += mModule->TypeToString(methodInst->mReturnType, BfTypeNameFlag_ReduceName);
+						impl += " ";
+						impl += propName;
+						impl += "\t";
+						if (hasGet)
+						{
+							impl += "get\t";
+							if (!isAbstract)
+							{
+								impl += "return base.";
+								impl += propName;
+								impl += ";";
+							}
+						}
+						if (hasSet)
+						{
+							if (hasGet)
+								impl += "\b\r";
+
+							impl += "set\t";
+							if (!isAbstract)
+							{
+								impl += "base.";
+								impl += propName;
+								impl += " = value;";
+							}
+						}
+
+						AddEntry(AutoCompleteEntry("override", propName + "\t" + impl, NULL), filter);
+					}
+				}				
 			}
 		}
 

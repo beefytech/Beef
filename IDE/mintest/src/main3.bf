@@ -152,6 +152,33 @@ class Norg
 	{
 		return a + b + c + bl.mA;
 	}
+
+	public virtual int Zorf
+	{
+		set
+		{
+			
+		}
+
+		
+	}
+
+	public virtual int GetVal()
+	{
+		return 99;
+	}
+}
+
+class Norg2 : Norg
+{
+	public override void Zorf
+	{
+		set
+		{
+			base.Zorf = 123;
+		}
+	}
+
 }
 
 struct Blurg 

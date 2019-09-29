@@ -2184,12 +2184,14 @@ namespace IDE.ui
                     bool allowChar = true;
                     mIsInKeyChar = true;
                     String insertType = scope String();
-                    mAutoComplete.InsertSelection(theChar, insertType);
+					String insertStr = scope String();
+                    mAutoComplete.InsertSelection(theChar, insertType, insertStr);
                     mIsInKeyChar = false;
                     if (insertType != null)
                     {
 						//mGenerateAutocompleteHandler(false, false);
-                        if ((insertType == "method") && (theChar == '('))
+                        if (((insertType == "method") && (theChar == '(')) ||
+							((insertType == "token") && (insertStr == "override")))
                         {
 							if (IsCursorVisible(false))
                             	mOnGenerateAutocomplete('\0', default);

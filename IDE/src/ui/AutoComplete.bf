@@ -2198,7 +2198,7 @@ namespace IDE.ui
 			}*/
 		}
 
-        public void InsertSelection(char32 keyChar, String insertType = null)
+        public void InsertSelection(char32 keyChar, String insertType = null, String insertStr = null)
         {
 			//Debug.WriteLine("InsertSelection");
 
@@ -2223,6 +2223,9 @@ namespace IDE.ui
                 }
             }
 
+			if (insertStr != null)
+				insertStr.Append(entry.mEntryInsert ?? entry.mEntryDisplay);
+
 			if (entry.mEntryType == "fixit")
 			{
 				if (insertType != null)
@@ -2240,7 +2243,7 @@ namespace IDE.ui
             if (tabIdx != -1)
             {
                 implText = scope:: String();
-                implText.Append(insertText, tabIdx + 1);
+                implText.Append(insertText, tabIdx);
                 insertText.RemoveToEnd(tabIdx);
             }
             String prevText = scope String();
@@ -2294,13 +2297,52 @@ namespace IDE.ui
                 UpdateAsyncInfo();*/
 
             if (implText != null)
-            {                
-                sourceEditWidgetContent.InsertAtCursor("\n");
-                sourceEditWidgetContent.CursorToLineEnd();
-                sourceEditWidgetContent.OpenCodeBlock();
-                var lineAndColumn = sourceEditWidgetContent.CursorLineAndColumn;
-                sourceEditWidgetContent.InsertAtCursor(implText);
-                sourceEditWidgetContent.CursorLineAndColumn = lineAndColumn;
+            {
+				String implSect = scope .();
+				
+				int startIdx = 0;
+				for (int i < implText.Length)
+				{
+					char8 c = implText[i];
+					if ((c == '\t') || (c == '\b') || (c == '\r'))
+					{
+						implSect.Clear();
+						implSect.Append(implText, startIdx, i - startIdx);
+						if (!implSect.IsEmpty)
+						{
+							sourceEditWidgetContent.InsertAtCursor(implSect);
+						}
+
+						if (c == '\t')
+						{
+							sourceEditWidgetContent.InsertAtCursor("\n");
+							sourceEditWidgetContent.CursorToLineEnd();
+							sourceEditWidgetContent.OpenCodeBlock();
+						}
+						else if (c == '\r')
+						{
+							sourceEditWidgetContent.InsertAtCursor("\n");
+							sourceEditWidgetContent.CursorToLineEnd();
+						}
+						else
+						{
+							let lc = sourceEditWidgetContent.CursorLineAndColumn;
+							sourceEditWidgetContent.CursorLineAndColumn = .(lc.mLine + 1, 0);
+							sourceEditWidgetContent.CursorToLineEnd();
+							sourceEditWidgetContent.InsertAtCursor("\n");
+							sourceEditWidgetContent.CursorToLineEnd();
+						}
+
+						startIdx = i + 1;
+					}
+				}
+
+				implSect.Clear();
+				implSect.Append(implText, startIdx, implText.Length - startIdx);
+				if (!implSect.IsEmpty)
+				{
+					sourceEditWidgetContent.InsertAtCursor(implSect);
+				}
             }
 
             if (persistentInvokeSrcPositons != null)
