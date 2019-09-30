@@ -3487,7 +3487,7 @@ namespace IDE
 		public void Cmd_ZoomOut()
 		{
 			float scale = DarkTheme.sScale;
-			if (scale > 0.30f)
+			if (scale > 0.25f)
 			{
 				if (scale < 0)
 					scale -= 0.05f;
@@ -6559,7 +6559,7 @@ namespace IDE
 		public void SetScale(float scale, bool force = false)
 		{
 			var prevScale = DarkTheme.sScale;
-			float useScale = Math.Clamp(scale, 0.25f, 4.0f);
+			float useScale = Math.Clamp(scale, 0.5f, 4.0f);
 			if ((prevScale == useScale) && (!force))
 				return;
 
@@ -10069,7 +10069,7 @@ namespace IDE
 			UpdateRecentFileMenuItems();
 			ShowStartupFile();
 
-			if (mIsFirstRun)
+			if ((mIsFirstRun) && (!mWorkspace.IsInitialized))
 				ShowWelcome();
         }
 #endif
@@ -11985,19 +11985,19 @@ namespace IDE
 			Image squiggleImage = IDEApp.sApp.mSquiggleImage;
 			int32 segSize = 30;
 			float height = mSquiggleImage.mHeight;
-            //int32 segSize = GS!(6 * 5);
-
+            
             float curX = x;
             float curWidth = width;
 
+			float drawY = y + gApp.mCodeFont.GetHeight();
             while (curWidth > 0)
             {
                 float drawWidth = Math.Min(curWidth, segSize - (curX % segSize));
 
                 float u1 = ((int32)curX % segSize) / (float)squiggleImage.mSrcWidth;
                 float u2 = u1 + drawWidth / (float)squiggleImage.mSrcWidth;
-                
-                g.DrawQuad(squiggleImage, curX, y + (int)GS!(15), u1, 0, drawWidth, height, u2, 1.0f);
+
+                g.DrawQuad(squiggleImage, curX, drawY, u1, 0, drawWidth, height, u2, 1.0f);
 
                 curWidth -= drawWidth;
                 curX += drawWidth;

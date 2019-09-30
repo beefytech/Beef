@@ -642,7 +642,7 @@ namespace IDE.ui
                 if (underlineColor != 0)
                 {
                     using (g.PushColor(underlineColor))
-                        IDEApp.sApp.DrawSquiggle(g, x, y, width);                    
+                        gApp.DrawSquiggle(g, x, y, width);                    
                 }
             }
         }

@@ -449,6 +449,9 @@ namespace IDE.ui
                     continue;
 				}
 
+				if (!projectFolder.mAutoInclude)
+					continue;
+
 				let ext = scope String();
 				Path.GetExtension(fileName, ext);
 				

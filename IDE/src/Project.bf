@@ -474,7 +474,8 @@ namespace IDE
             }
 			
             mChildItems.Insert(index, item);
-			mChildMap.Add(item.mName, item);
+			bool added = mChildMap.TryAdd(item.mName, item);
+			Debug.Assert(added);
         }
 
         public virtual void InsertChild(ProjectItem item, ProjectItem insertBefore)
@@ -544,7 +545,7 @@ namespace IDE
 				data.Add("Type", (mIncludeKind == .Ignore) ? "IgnoreFolder" : "Folder");
 	            base.Serialize(data);
 				if (mAutoInclude != (mIncludeKind == .Auto))
-					data.ConditionalAdd("AutoInclude", mAutoInclude, true);
+					data.ConditionalAdd("AutoInclude", mAutoInclude, mIncludeKind == .Auto);
 			}
 			if (!mChildItems.IsEmpty)
 			{
@@ -593,7 +594,7 @@ namespace IDE
 
 			bool doPopulate = false;
 
-			bool autoInclude = data.GetBool("AutoInclude", true);
+			bool autoInclude = data.GetBool("AutoInclude", mIncludeKind == .Auto);
 			if ((autoInclude) && (!mAutoInclude))
 				doPopulate = true;
 			mAutoInclude = autoInclude;
