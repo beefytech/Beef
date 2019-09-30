@@ -87,7 +87,7 @@ copy Beefy2D.dll host
 copy BeefDbgVis.toml host
 copy en_*.* host
 copy BeefUser.toml host
-xcopy /y BeefConfig_host.toml host\BeefConfig.toml
+copy BeefConfig_host.toml host\BeefConfig.toml
 xcopy /y shaders host\shaders\
 xcopy /y images host\images\
 xcopy /y fonts host\fonts\
