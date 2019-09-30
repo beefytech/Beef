@@ -16973,9 +16973,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				if (methodDeclaration->mFatArrowToken != NULL)
 					isExpressionBody = true;
 			}
-			else if (methodDef->GetPropertyDeclaration() != NULL)
+			else if (auto propertyDeclaration = methodDef->GetPropertyDeclaration())
 			{
-				//
+				if (auto propBodyExpr = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
+				{
+					isExpressionBody = true;
+				}
 			}
 			else
 			{
@@ -17011,7 +17014,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 			else if (auto expressionBody = BfNodeDynCast<BfExpression>(methodDef->mBody))
 			{	
-				if (methodDef->mMethodType != BfMethodType_Normal)
+				if ((methodDef->mMethodType != BfMethodType_Normal) && (propertyDeclaration == NULL))
 				{
 					BF_ASSERT(methodDeclaration->mFatArrowToken != NULL);
 					Fail("Only normal methods can have expression bodies", methodDeclaration->mFatArrowToken);
@@ -19960,8 +19963,13 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				else if (auto methodDeclaration = methodDef->GetMethodDeclaration())
 					overrideToken = methodDeclaration->mVirtualSpecifier;
 				if (overrideToken != NULL)
-				{
-					Fail("No suitable method found to override", overrideToken, true);
+				{					
+					if ((propertyDeclaration != NULL) && (propertyDeclaration->mNameNode != NULL) &&
+						((methodDef->mMethodType == BfMethodType_PropertyGetter) || (methodDef->mMethodType == BfMethodType_PropertySetter)))
+						Fail(StrFormat("No suitable method found to override for '%s.%s'",
+							propertyDeclaration->mNameNode->ToString().c_str(), (methodDef->mMethodType == BfMethodType_PropertyGetter) ? "get" : "set"), overrideToken, true);
+					else
+						Fail("No suitable method found to override", overrideToken, true);
 				}
 				
 				return usedMethod;

@@ -576,6 +576,11 @@ void BfStructuralVisitor::Visit(BfPropertyMethodDeclaration* propertyMethodDecla
 	Visit(propertyMethodDeclaration->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfPropertyBodyExpression* propertyBodyExpression)
+{
+	Visit(propertyBodyExpression->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfPropertyDeclaration* propertyDeclaration)
 {
 	Visit(propertyDeclaration->ToBase());

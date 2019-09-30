@@ -2070,17 +2070,25 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mInitializer);
 
-	bool doInlineBlock = false;
-	if (propertyDeclaration->mDefinitionBlock != NULL)
-		DoBlockOpen(propertyDeclaration->mDefinitionBlock, true, &doInlineBlock);
-	
-	for (auto method : propertyDeclaration->mMethods)
+	if (auto block = BfNodeDynCast<BfBlock>(propertyDeclaration->mDefinitionBlock))
 	{
-		Visit(method);
+		bool doInlineBlock = false;		
+		DoBlockOpen(block, true, &doInlineBlock);
+		for (auto method : propertyDeclaration->mMethods)
+		{
+			Visit(method);
+		}		
+		DoBlockClose(block, true, doInlineBlock);
 	}
-	
-	if (propertyDeclaration->mDefinitionBlock != NULL)
-		DoBlockClose(propertyDeclaration->mDefinitionBlock, true, doInlineBlock);
+	else
+	{
+		QueueVisitChild(propertyDeclaration->mDefinitionBlock);
+		ExpectSpace();
+		for (auto method : propertyDeclaration->mMethods)
+		{
+			QueueVisitChild(method->mBody);
+		}
+	}
 
 	//QueueVisitChild(propertyDeclaration->mTrailingSemicolon);
 

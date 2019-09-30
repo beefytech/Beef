@@ -6606,39 +6606,19 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 		nextNode = mVisitorPos.Get(blockAfterIdx);
 		auto block = BfNodeDynCast<BfBlock>(nextNode);
 		auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
+
+		bool isExprBodyProp = (tokenNode != NULL) && (tokenNode->mToken == BfToken_FatArrow);
 		// Property.
 		//  If we don't have a token afterwards then still treat it as a property for autocomplete purposes
-		if (((block != NULL) || (tokenNode == NULL)) && (typeRef != NULL))
+		if ((typeRef != NULL) &&			
+			((block != NULL) || (tokenNode == NULL) || (isExprBodyProp)))
 		{
 			//mVisitorPos.mReadPos = blockAfterIdx;
 
 			if (propertyDeclaration == NULL)
 			{
-				if (block == NULL)
-				{
-					//// Actually treat it as a method
-					//auto methodDecl = mAlloc->Alloc<BfMethodDeclaration>();
-					//ReplaceNode(typeRef, methodDecl);
-					//methodDecl->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
-					//methodDecl->mReturnType = typeRef;
-
-					//if (explicitInterface != NULL)
-					//{
-					//	MEMBER_SET(methodDecl, mExplicitInterface, explicitInterface);
-					//	MEMBER_SET(methodDecl, mExplicitInterfaceDotToken, explicitInterfaceDot);
-					//}
-
-					//// Don't set the name identifier, this could be bogus
-					////mVisitorPos.mReadPos--;
-					//
-					//// WHY did we want to not set this?
-					//// If we don't, then typing a new method name will end up treating the name node as a typeRef 
-					////  which can autocomplete incorrectly
-					//MEMBER_SET(methodDecl, mNameNode, nameIdentifier);
-
-					//return methodDecl;
-
-					
+				if ((block == NULL) && (!isExprBodyProp))
+				{					
 					auto propDecl = mAlloc->Alloc<BfPropertyDeclaration>();
 					ReplaceNode(typeRef, propDecl);
 					propDecl->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
@@ -6683,6 +6663,29 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 			{
 				MEMBER_SET(propertyDeclaration, mDefinitionBlock, block);
 				ReadPropertyBlock(propertyDeclaration, block);
+			}
+			else if (isExprBodyProp)
+			{				
+				BfDeferredAstSizedArray<BfPropertyMethodDeclaration*> methods(propertyDeclaration->mMethods, mAlloc);
+				
+				auto propertyBodyExpr = mAlloc->Alloc<BfPropertyBodyExpression>();
+				ReplaceNode(tokenNode, propertyBodyExpr);				
+				MEMBER_SET(propertyBodyExpr, mFatTokenArrow, tokenNode);				
+
+				auto method = mAlloc->Alloc<BfPropertyMethodDeclaration>();
+				method->mPropertyDeclaration = propertyDeclaration;				
+				method->mNameNode = propertyDeclaration->mNameNode;
+				
+				auto expr = CreateExpressionAfter(tokenNode);
+				if (expr != NULL)
+				{
+					MEMBER_SET(method, mBody, expr);
+					propertyDeclaration->SetSrcEnd(expr->GetSrcEnd());
+				}
+
+				methods.Add(method);
+
+				MEMBER_SET(propertyDeclaration, mDefinitionBlock, propertyBodyExpr);
 			}
 
 			return propertyDeclaration;

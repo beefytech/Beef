@@ -1022,6 +1022,13 @@ void BfElementVisitor::Visit(BfPropertyMethodDeclaration* propertyDeclaration)
 	VisitChild(propertyDeclaration->mBody);
 }
 
+void BfElementVisitor::Visit(BfPropertyBodyExpression* propertyBodyExpression)
+{
+	Visit(propertyBodyExpression->ToBase());
+
+	VisitChild(propertyBodyExpression->mFatTokenArrow);	
+}
+
 void BfElementVisitor::Visit(BfPropertyDeclaration* propertyDeclaration)
 {
 	Visit(propertyDeclaration->ToBase());
@@ -1035,14 +1042,19 @@ void BfElementVisitor::Visit(BfPropertyDeclaration* propertyDeclaration)
 	VisitChild(propertyDeclaration->mExplicitInterface);
 	VisitChild(propertyDeclaration->mExplicitInterfaceDotToken);
 	
-	if (propertyDeclaration->mDefinitionBlock != NULL)
-		VisitChild(propertyDeclaration->mDefinitionBlock->mOpenBrace);
-
-	for (auto& method : propertyDeclaration->mMethods)
-		VisitChild(method);	
-
-	if (propertyDeclaration->mDefinitionBlock != NULL)
-		VisitChild(propertyDeclaration->mDefinitionBlock->mCloseBrace);
+	if (auto block = BfNodeDynCast<BfBlock>(propertyDeclaration->mDefinitionBlock))
+	{
+		VisitChild(block->mOpenBrace);
+		for (auto& method : propertyDeclaration->mMethods)
+			VisitChild(method);		
+		VisitChild(block->mCloseBrace);
+	}
+	else
+	{
+		VisitChild(propertyDeclaration->mDefinitionBlock);
+		for (auto& method : propertyDeclaration->mMethods)
+			VisitChild(method);
+	}
 }
 
 void BfElementVisitor::Visit(BfIndexerDeclaration* indexerDeclaration)

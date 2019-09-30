@@ -847,8 +847,10 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 			}
 		}
 
-		String methodName;
-		if ((methodDeclaration != NULL) && (methodDeclaration->mNameNode != NULL))
+		String methodName;		
+		if (auto propExprBody = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
+			methodName = "get";
+		else if ((methodDeclaration != NULL) && (methodDeclaration->mNameNode != NULL))
 			methodName = methodDeclaration->mNameNode->ToString();
 		
 		if (methodName == "get")

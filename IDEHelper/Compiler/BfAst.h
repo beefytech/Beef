@@ -322,6 +322,7 @@ class BfQualifiedTypeReference;
 class BfUsingDirective;
 class BfUsingStaticDirective;
 class BfPropertyMethodDeclaration;
+class BfPropertyBodyExpression;
 class BfPropertyDeclaration;
 class BfIndexerDeclaration;
 class BfPreprocesorIgnoredSectionNode;
@@ -500,6 +501,7 @@ public:
 	virtual void Visit(BfMethodDeclaration* methodDeclaration);
 	virtual void Visit(BfOperatorDeclaration* operatorDeclaration);
 	virtual void Visit(BfPropertyMethodDeclaration* propertyMethodDeclaration);
+	virtual void Visit(BfPropertyBodyExpression* propertyBodyExpression);
 	virtual void Visit(BfPropertyDeclaration* propertyDeclaration);
 	virtual void Visit(BfIndexerDeclaration* indexerDeclaration);
 	virtual void Visit(BfFieldDeclaration* fieldDeclaration);
@@ -2895,10 +2897,17 @@ public:
 	BfPropertyDeclaration* mPropertyDeclaration;
 	BfAttributeDirective* mAttributes;
 	BfTokenNode* mProtectionSpecifier;
-	BfTokenNode* mMutSpecifier;
+	BfTokenNode* mMutSpecifier;	
 	BfIdentifierNode* mNameNode;
-	BfAstNode* mBody;	
+	BfAstNode* mBody;		
 };	BF_AST_DECL(BfPropertyMethodDeclaration, BfAstNode);
+
+class BfPropertyBodyExpression : public BfAstNode
+{
+public:
+	BF_AST_TYPE(BfPropertyBodyExpression, BfAstNode);
+	BfTokenNode* mFatTokenArrow;		
+};  BF_AST_DECL(BfPropertyBodyExpression, BfAstNode);
 
 class BfPropertyDeclaration : public BfFieldDeclaration
 {
@@ -2907,8 +2916,8 @@ public:
 
 	BfTokenNode* mVirtualSpecifier; // either 'virtual', 'override', or 'abstract'
 	BfTypeReference* mExplicitInterface;
-	BfTokenNode* mExplicitInterfaceDotToken;
-	BfBlock* mDefinitionBlock;
+	BfTokenNode* mExplicitInterfaceDotToken;	
+	BfAstNode* mDefinitionBlock;
 
 	BfSizedArray<BfPropertyMethodDeclaration*> mMethods;		
 

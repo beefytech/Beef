@@ -116,6 +116,7 @@ public:
 	virtual void Visit(BfMethodDeclaration* methodDeclaration);
 	virtual void Visit(BfOperatorDeclaration* operatorDeclaration);
 	virtual void Visit(BfPropertyMethodDeclaration* propertyDeclaration);
+	virtual void Visit(BfPropertyBodyExpression* propertyBodyExpression);
 	virtual void Visit(BfPropertyDeclaration* propertyDeclaration);
 	virtual void Visit(BfIndexerDeclaration* indexerDeclaration);
 	virtual void Visit(BfFieldDeclaration* fieldDeclaration);
