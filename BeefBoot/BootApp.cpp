@@ -746,6 +746,8 @@ bool BootApp::Compile()
 		mDefines.Append("\n");
 	mDefines.Append("BF_64_BIT");
 	mDefines.Append("\nBF_LITTLE_ENDIAN");
+	mDefines.Append("\n");
+	mDefines.Append(BF_PLATFORM_NAME);
 
 	int ltoType = 0;
     BfProject_SetOptions(mProject, mTargetType, mStartupObject.c_str(), mDefines.c_str(), mOptLevel, ltoType, false, false, false, false);

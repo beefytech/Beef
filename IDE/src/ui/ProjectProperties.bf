@@ -16,16 +16,17 @@ namespace IDE.ui
     public class ProjectProperties : BuildPropertiesDialog
     {   
 		ValueContainer<String> mVC;
-     
+
         enum CategoryType
         {
 			General, ///
             Project,
-			Platform,
+			/*Platform,
 			Platform_Windows,
-			Platform_Linux,
+			Platform_Linux,*/
             Dependencies,
 			Beef_Global,
+			Platform,
 
 			Targeted, ///
 			Beef_Targeted,
@@ -92,11 +93,9 @@ namespace IDE.ui
             var item = AddCategoryItem(globalItem, "Project");
 			if (!project.IsDebugSession)
             	item.Focused = true;
-			item = AddCategoryItem(globalItem, "Platform");
-			AddCategoryItem(item, "Windows");
-			AddCategoryItem(item, "Linux");
 			AddCategoryItem(globalItem, "Dependencies");
 			AddCategoryItem(globalItem, "Beef");
+			AddCategoryItem(globalItem, "Platform");
 			globalItem.Open(true, true);
 
 			var targetedItem = AddCategoryItem(root, "Targeted");
@@ -143,21 +142,19 @@ namespace IDE.ui
 			return false;
 		}
 
-        protected override bool IsCategoryTargeted(int32 categoryTypeInt)
+        protected override TargetedKind GetCategoryTargetedKind(int32 categoryTypeInt)
         {
         	switch ((CategoryType)categoryTypeInt)
 			{
 			case .General,
-				 .Targeted,
-				 .Platform,
 				 .Project,
 				 .Dependencies,
-				 .Platform_Linux,
-				 .Platform_Windows,
 				 .Beef_Global:
-				return false;
+				return .None;
+			case .Platform:
+				return .Platform;
 			default:
-				return true;
+				return .Config;
 			}
         }
 
@@ -427,14 +424,23 @@ namespace IDE.ui
 				mProject.SetupDefault(generalOptions);
 				targetDict[mCurPropertiesTargets[0]] = generalOptions;
 				UpdateFromTarget(targetDict);
-			case .Platform_Windows:
-				var windowsOptions = scope Project.WindowsOptions();
-				targetDict[mCurPropertiesTargets[0]] = windowsOptions;
-				UpdateFromTarget(targetDict);
-			case .Platform_Linux:
-				var linuxOptions = scope Project.LinuxOptions();
-				targetDict[mCurPropertiesTargets[0]] = linuxOptions;
-				UpdateFromTarget(targetDict);
+			case .Platform:
+				for (var platformName in mPlatformNames)
+				{
+					let platform = Workspace.PlatformType.GetFromName(platformName);
+					switch (platform)
+					{
+					case .Windows:
+						var windowsOptions = scope Project.WindowsOptions();
+						targetDict[mCurPropertiesTargets[0]] = windowsOptions;
+						UpdateFromTarget(targetDict);
+					case .Linux:
+						var linuxOptions = scope Project.LinuxOptions();
+						targetDict[mCurPropertiesTargets[0]] = linuxOptions;
+						UpdateFromTarget(targetDict);
+					default:
+					}
+				}
 			case .Build, .Debugging, .Beef_Targeted:
 				DeleteDistinctBuildOptions();
 				DistinctBuildOptions defaultTypeOptions = scope:: .();
@@ -488,7 +494,33 @@ namespace IDE.ui
 
 			DeleteAndNullify!(mCurProjectOptions);
 
-			if (IsCategoryTargeted(categoryTypeInt))
+			let targetKind = GetCategoryTargetedKind(categoryTypeInt);
+
+			bool areSamePlatforms = true;
+
+			if (targetKind == .Platform)
+			{
+				let platformKind = Workspace.PlatformType.GetFromName(platformName);
+
+				for (var checkPlatformName in mPlatformNames)
+				{
+					let checkPlatformKind = Workspace.PlatformType.GetFromName(checkPlatformName);
+					if (checkPlatformKind != platformKind)
+						areSamePlatforms = false;
+				}
+
+				if (areSamePlatforms)
+				{
+					mCurPropertiesTargets = new Object[1];
+					switch (platformKind)
+					{
+					case .Windows: mCurPropertiesTargets[0] = mProject.mWindowsOptions;
+					case .Linux: mCurPropertiesTargets[0] = mProject.mLinuxOptions;
+					default:
+					}
+				}
+			}
+			else if (targetKind == .Config)
 			{
 				mCurPropertiesTargets = new Object[mConfigNames.Count * mPlatformNames.Count];
 				mCurProjectOptions = new Project.Options[mConfigNames.Count * mPlatformNames.Count];
@@ -496,9 +528,6 @@ namespace IDE.ui
 				{
 					for (var checkPlatformName in mPlatformNames)
 					{
-						/*var projectConfig = mProject.mConfigs[checkConfigName];
-						mCurProjectOptions[propIdx] = projectConfig.mPlatforms[checkPlatformName];
-						mCurPropertiesTargets[propIdx] = mCurProjectOptions[propIdx];*/
 						let projectOptions = mProject.GetOptions(checkConfigName, checkPlatformName, true);
 						mCurProjectOptions[propIdx] = projectOptions;
 						mCurPropertiesTargets[propIdx] = projectOptions;
@@ -513,14 +542,10 @@ namespace IDE.ui
 					mCurPropertiesTargets[0] = mProject.mGeneralOptions;
 				else if (categoryType == .Beef_Global)
 					mCurPropertiesTargets[0] = mProject.mBeefGlobalOptions;
-				else if (categoryType == .Platform_Windows)
-					mCurPropertiesTargets[0] = mProject.mWindowsOptions;
-				else if (categoryType == .Platform_Linux)
-					mCurPropertiesTargets[0] = mProject.mLinuxOptions;
 			}
 
             ConfigDataGroup targetedConfigData;
-            if ((IsCategoryTargeted(categoryTypeInt)) &&
+            if ((GetCategoryTargetedKind(categoryTypeInt) == .Config) &&
 				((mConfigNames.Count == 1) && (mPlatformNames.Count == 1)))
             {
                 var key = Tuple<String, String>(configName, platformName);
@@ -531,24 +556,28 @@ namespace IDE.ui
 					key.Item2 = new String(key.Item2);
                     targetedConfigData = new ConfigDataGroup((int32)CategoryType.COUNT);
                     targetedConfigData.mTarget = key;
-                    mConfigDatas.Add(targetedConfigData);
                     mTargetedConfigDatas[key] = targetedConfigData;
                 }
             }
             else
             {
-                if (mUntargetedConfigData == null)
+                if (mMultiTargetConfigData == null)
                 {
-                    mUntargetedConfigData = new ConfigDataGroup((int32)CategoryType.COUNT);
-                    mConfigDatas.Add(mUntargetedConfigData);
+                    mMultiTargetConfigData = new ConfigDataGroup((int32)CategoryType.COUNT);
+					mMultiTargetConfigData.mIsMultiTargeted = true;
                 }
-                targetedConfigData = mUntargetedConfigData;
+                targetedConfigData = mMultiTargetConfigData;
 
-				if (IsCategoryTargeted(categoryTypeInt))
+				if (GetCategoryTargetedKind(categoryTypeInt) != .None)
 				{
 					DeleteAndNullify!(targetedConfigData.mPropPages[categoryTypeInt]);
 				}
             }
+
+			// Always add the current to the back so the most recently viewed one will apply changes last.
+			//  This matters when we have both project-specific and multiply-selected config data
+			mConfigDatas.Remove(targetedConfigData);
+			mConfigDatas.Add(targetedConfigData);
 
             if (targetedConfigData.mPropPages[(int32)categoryType] == null)
             {
@@ -563,13 +592,22 @@ namespace IDE.ui
 
                 if (categoryType == CategoryType.Project)
                     PopulateGeneralOptions();
-				else if (categoryType == CategoryType.Platform_Windows)
-					PopulateWindowsOptions();
-				else if (categoryType == CategoryType.Platform_Linux)
-					PopulateLinuxOptions();
                 else if (categoryType == CategoryType.Dependencies)
                     PopulateDependencyOptions();
-				if (categoryType == CategoryType.Build)
+				else if (categoryType == .Platform)
+				{
+					if (areSamePlatforms)
+					{
+						let platformKind = Workspace.PlatformType.GetFromName(platformName);
+						switch (platformKind)
+						{
+						case .Windows: PopulateWindowsOptions();
+						case .Linux: PopulateLinuxOptions();
+						default:
+						}
+					}
+				}
+				else if (categoryType == CategoryType.Build)
 					PopulateBuildOptions();
 				else if (categoryType == CategoryType.Beef_Global				)
 					PopulateBeefSharedOptions();
@@ -976,7 +1014,7 @@ namespace IDE.ui
 											continue;
 										if (projectProperties.mProject != mProject)
 											continue;
-										if (IsCategoryTargeted(propPage.mCategoryType))
+										if (GetCategoryTargetedKind(propPage.mCategoryType) != .None)
 										{
 											if (mPropPage == propPage)
 											{

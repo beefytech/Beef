@@ -3603,8 +3603,7 @@ BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int target
 	bfProject->mCodeGenOptions = codeGenOptions;
 
 	bfProject->mPreprocessorMacros.Clear();
-	bfProject->mPreprocessorMacros.Add(BF_PLATFORM_NAME);
-
+	
 	int startIdx = 0;
 	int idx = 0;
 	while (true)

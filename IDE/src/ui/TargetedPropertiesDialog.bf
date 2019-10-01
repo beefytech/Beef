@@ -259,6 +259,13 @@ namespace IDE.ui
 
     public class TargetedPropertiesDialog : PropertiesDialog
     {
+		public enum TargetedKind
+		{
+			None,
+			Platform,
+			Config
+		}
+
         protected const String sConfigLabel = "Configuration:";
         protected const String sPlatformLabel = "Platform:";
 
@@ -273,6 +280,7 @@ namespace IDE.ui
 
 		protected class ConfigDataGroup
 		{
+			public bool mIsMultiTargeted;
 		    public Tuple<String, String> mTarget;
 		    public PropPage[] mPropPages ~ delete _;
 
@@ -289,7 +297,7 @@ namespace IDE.ui
 		}
 
 		protected Dictionary<Tuple<String, String>, ConfigDataGroup> mTargetedConfigDatas = new Dictionary<Tuple<String, String>, ConfigDataGroup>() ~ delete _;
-		protected ConfigDataGroup mUntargetedConfigData;
+		protected ConfigDataGroup mMultiTargetConfigData;
 		protected List<ConfigDataGroup> mConfigDatas = new List<ConfigDataGroup>() ~ DeleteContainerAndItems!(_);
 
         public this()
@@ -333,9 +341,9 @@ namespace IDE.ui
 			return (mConfigNames.Count != 1) || (mPlatformNames.Count != 1);
 		}
 
-        protected virtual bool IsCategoryTargeted(int32 categoryTypeInt)
+        protected virtual TargetedKind GetCategoryTargetedKind(int32 categoryTypeInt)
         {
-            return false;
+            return .None;
         }
 
 		public virtual void GetConfigList(List<String> configNames)
@@ -583,26 +591,50 @@ namespace IDE.ui
         {
             base.ShowPropPage(categoryTypeInt);
 
-            if (IsCategoryTargeted(categoryTypeInt))
+            if (GetCategoryTargetedKind(categoryTypeInt) == .Config)
             {
 				if (mConfigNames.Count == 1)
 				{
 	                String dispStr = ((mConfigNames.Count == 1) && (mActiveConfigName == mConfigNames[0])) ? StackStringFormat!("Active({0})", mConfigNames[0]) : mConfigNames[0];
 	                mConfigComboBox.Label = dispStr;
 				}
+				else
+				{
+					List<String> configNames = scope .();
+					GetConfigList(configNames);
+					if (mConfigNames.Count == configNames.Count)
+						mConfigComboBox.Label = "<All>";
+					else
+						mConfigComboBox.Label = "<Multiple>";
+				}
                 mConfigComboBox.mDisabled = false;
+			}
+			else
+			{
+				mConfigComboBox.Label = "N/A";
+				mConfigComboBox.mDisabled = true;
+			}
 
+			if (GetCategoryTargetedKind(categoryTypeInt) != .None)
+			{
 				if (mPlatformNames.Count == 1)
 				{
 	                String dispStr = ((mPlatformNames.Count == 1) && (mActivePlatformName == mPlatformNames[0])) ? StackStringFormat!("Active({0})", mPlatformNames[0]) : mPlatformNames[0];
 	                mPlatformComboBox.Label = dispStr;
 				}
+				else
+				{
+					List<String> platformNames = scope .();
+					GetPlatformList(platformNames);
+					if (mPlatformNames.Count == platformNames.Count)
+						mPlatformComboBox.Label = "<All>";
+					else
+						mPlatformComboBox.Label = "<Multiple>";
+				}
                 mPlatformComboBox.mDisabled = false;
             }
             else
             {
-                mConfigComboBox.Label = "N/A";
-                mConfigComboBox.mDisabled = true;
                 mPlatformComboBox.Label = "N/A";
                 mPlatformComboBox.mDisabled = true;
             }
@@ -618,7 +650,7 @@ namespace IDE.ui
 				{
 					if ((mConfigNames.Contains(configName)) && (mPlatformNames.Contains(platformName)))
 					{
-						if (mPropPage == mUntargetedConfigData.mPropPages[categoryType])
+						if (mPropPage == mMultiTargetConfigData.mPropPages[categoryType])
 						{
 							RemovePropPage();
 						}
@@ -637,7 +669,7 @@ namespace IDE.ui
 			}
 			else
 			{
-				if (!IsCategoryTargeted(categoryType))
+				if (GetCategoryTargetedKind(categoryType) == .None)
 					RemovePropPage();
 			}
 

@@ -118,16 +118,16 @@ namespace IDE.ui
 		}
 #endif
 
-        protected override bool IsCategoryTargeted(int32 categoryTypeInt)
+        protected override TargetedKind GetCategoryTargetedKind(int32 categoryTypeInt)
 		{
 			switch ((CategoryType)categoryTypeInt)
 			{
 			case .General,
-				 .Targeted,
+				 //.Targeted,
 				 .Beef_Global:
-				return false;
+				return .None;
 			default:
-				return true;
+				return .Config;
 			}
 		}
 
@@ -351,41 +351,49 @@ namespace IDE.ui
 
         protected override void CreateNewPlatform(String name)
         {
-            var workspace = IDEApp.sApp.mWorkspace;            
+            var workspace = gApp.mWorkspace;
             
             using (workspace.mMonitor.Enter())
             {
-                String useName = scope String(name);
-                useName.Trim();
-                if (!useName.IsEmpty)
+                String platformName = scope String(name);
+                platformName.Trim();
+                if (!platformName.IsEmpty)
                 {            
-                    for (var workspaceConfig in workspace.mConfigs.Values)
+                    /*for (var workspaceConfig in workspace.mConfigs)
                     {
-                        Workspace.Options workspaceOptions = new Workspace.Options();
-                        workspaceConfig.mPlatforms[new String(useName)] = workspaceOptions;
+						if (!workspaceConfig.value.mPlatforms.ContainsKey(useName))
+						{
+	                        Workspace.Options workspaceOptions = new Workspace.Options();
+							workspace.SetupDefault(workspaceOptions, workspaceConfig.key, useName);
+	                        workspaceConfig.value.mPlatforms[new String(useName)] = workspaceOptions;
+						}
                     }
 
 					for (var project in workspace.mProjects)
 					{
-					    for (var projectConfig in project.mConfigs.Values)
+					    for (var projectConfigKV in project.mConfigs)
 					    {
+							let projectConfig = projectConfigKV.value;
 							if (!projectConfig.mPlatforms.ContainsKey(useName))
 					        {
-								Project.Options projectOptions = new Project.Options();
-					            projectConfig.mPlatforms[new String(useName)] = projectOptions;
-								project.SetChanged();
+								project.CreateConfig(projectConfigKV.key, useName);
 							}
 					    }                            
-					}
+					}*/
 
-                    IDEApp.sApp.mWorkspace.SetChanged();
-                    SelectPlatform(useName);
+                    //IDEApp.sApp.mWorkspace.SetChanged();
+					gApp.mWorkspace.FixOptionsForPlatform(platformName);
+                    SelectPlatform(platformName);
+
+					gApp.mWorkspace.MarkPlatformNamesDirty();
+					if (!gApp.mWorkspace.mUserPlatforms.Contains(platformName))
+						gApp.mWorkspace.mUserPlatforms.Add(new String(platformName));
                 }
             }
         }
 
         protected override void ShowPropPage(int32 categoryTypeInt)
-        {          
+        {
             base.ShowPropPage(categoryTypeInt);
 
 			var configName = mConfigNames[0];
@@ -414,7 +422,7 @@ namespace IDE.ui
 			}
 
             ConfigDataGroup targetedConfigData;
-            if ((IsCategoryTargeted(categoryTypeInt)) &&
+            if ((GetCategoryTargetedKind(categoryTypeInt) != .None) &&
 				((mConfigNames.Count == 1) && (mPlatformNames.Count == 1)))
             {
                 var key = Tuple<String, String>(configName, platformName);
@@ -431,15 +439,15 @@ namespace IDE.ui
             }
             else
             {
-                if (mUntargetedConfigData == null)
+                if (mMultiTargetConfigData == null)
                 {
-                    mUntargetedConfigData = new ConfigDataGroup((int32)CategoryType.COUNT);
-                    mConfigDatas.Add(mUntargetedConfigData);
+                    mMultiTargetConfigData = new ConfigDataGroup((int32)CategoryType.COUNT);
+                    mConfigDatas.Add(mMultiTargetConfigData);
 					//Debug.WriteLine("Creating ConfigDataGroup {0} in {1}", mUntargetedConfigData, this);
                 }
-                targetedConfigData = mUntargetedConfigData;
+                targetedConfigData = mMultiTargetConfigData;
 
-				if (IsCategoryTargeted(categoryTypeInt))
+				if (GetCategoryTargetedKind(categoryTypeInt) != .None)
 				{
 					DeleteAndNullify!(targetedConfigData.mPropPages[categoryTypeInt]);
 				}
@@ -877,7 +885,7 @@ namespace IDE.ui
 									if (workspaceProperties == this)
 										continue;
 									
-									if (IsCategoryTargeted(propPage.mCategoryType))
+									if (GetCategoryTargetedKind(propPage.mCategoryType) != .None)
 									{
 										if (mPropPage == propPage)
 										{

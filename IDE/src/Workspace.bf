@@ -55,6 +55,20 @@ namespace IDE
 				default: return .Unknown;
 				}
 			}
+
+			public static PlatformType GetHostPlatform()
+			{
+#if BF_PLATFORM_WINDOWS
+				return .Windows;
+#endif
+
+#if BF_PLATFORM_LINUX
+				return .Linux;
+#endif
+
+#unwarn
+				return .Unknown;
+			}
 		}
 
 		public enum ToolsetType
@@ -338,6 +352,7 @@ namespace IDE
 		public bool mForceNextCompile;
         public List<CompileInstance> mCompileInstanceList = new List<CompileInstance>() ~ DeleteContainerAndItems!(_); // First item is primary compile, secondaries are hot reloads
 		public List<String> mPlatforms = new List<String>() ~ DeleteContainerAndItems!(_);
+		public List<String> mUserPlatforms = new List<String>() ~ DeleteContainerAndItems!(_);
 		public bool mIsDebugSession;
 
 		public int32 HotCompileIdx
@@ -865,6 +880,14 @@ namespace IDE
                 }
             }
         }
+
+		public void FixOptionsForPlatform(String platformName)
+		{
+		    for (var configKV in mConfigs)
+		    {
+		        FixOptions(configKV.key, platformName);
+		    }
+		}
 
         public void FixOptions(String configName, String platformName)
         {

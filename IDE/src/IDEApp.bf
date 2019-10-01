@@ -1578,6 +1578,12 @@ namespace IDE
 			        sd.Add(recentFile);
 			}
 
+			using (sd.CreateArray("UserPlatforms"))
+			{
+			    for (var platformName in gApp.mWorkspace.mUserPlatforms)
+			        sd.Add(platformName);
+			}
+
 			using (sd.CreateArray("Breakpoints"))
 			{
 			    for (var breakpoint in mDebugger.mBreakpointList)
@@ -2691,17 +2697,20 @@ namespace IDE
 				 mConfigName.Set(configName);
 			}
 
-			String platformName = scope String();
-			data.GetString("LastPlatform", platformName);
-			if (!platformName.IsEmpty)
+			//
 			{
-			    Workspace.Config config;
-			    mWorkspace.mConfigs.TryGetValue(mConfigName, out config);
-			    if (config != null)
-			    {
-			        if (Utils.Contains(config.mPlatforms.Keys, platformName))
-			            mPlatformName.Set(platformName);
-			    }
+				String platformName = scope String();
+				data.GetString("LastPlatform", platformName);
+				if (!platformName.IsEmpty)
+				{
+				    Workspace.Config config;
+				    mWorkspace.mConfigs.TryGetValue(mConfigName, out config);
+				    if (config != null)
+				    {
+				        if (Utils.Contains(config.mPlatforms.Keys, platformName))
+				            mPlatformName.Set(platformName);
+				    }
+				}
 			}
 
 			using (data.Open("MainWindow"))
@@ -2720,6 +2729,18 @@ namespace IDE
 				data.GetCurString(fileStr);
 				IDEUtils.FixFilePath(fileStr);
 		        mRecentlyDisplayedFiles.Add(fileStr);
+			}
+
+			DeleteAndClearItems!(gApp.mWorkspace.mUserPlatforms);
+			for (data.Enumerate("UserPlatforms"))
+			{
+				String platformName = scope String();
+				data.GetCurString(platformName);
+				if (!gApp.mWorkspace.mUserPlatforms.Contains(platformName))
+				{
+					gApp.mWorkspace.mUserPlatforms.Add(new String(platformName));
+					gApp.mWorkspace.FixOptionsForPlatform(platformName);
+				}
 			}
     
 			for (var _breakpoint in data.Enumerate("Breakpoints"))
@@ -6828,8 +6849,18 @@ namespace IDE
             return fileName.EndsWith(".h", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase);
         }
 
-        public void GetBeefPreprocessorMacros(List<String> macroList)
+        public void GetBeefPreprocessorMacros(DefinesSet macroList)
         {
+			let platform = Workspace.PlatformType.GetFromName(mPlatformName);
+			if (platform != .Unknown)
+			{
+				String def = scope .();
+				def.Append("BF_PLATFORM_");
+				platform.ToString(def);
+				def.ToUpper();
+				macroList.Add(def);
+			}
+
             var workspaceOptions = GetCurWorkspaceOptions();            
             if (workspaceOptions.mRuntimeChecks)
                 macroList.Add("BF_RUNTIME_CHECKS");
@@ -6891,9 +6922,9 @@ namespace IDE
 
                 if (options.mCOptions.mEnableBeefInterop)
                 {
-					var beefPreprocMacros = scope List<String>();
+					var beefPreprocMacros = scope DefinesSet();
                     GetBeefPreprocessorMacros(beefPreprocMacros);
-                    for (var beefPreprocMacro in beefPreprocMacros)
+                    for (var beefPreprocMacro in beefPreprocMacros.mDefines)
 					{
                         outResolveArgs.Add(new String("-D", beefPreprocMacro));
 					}
@@ -7784,17 +7815,11 @@ namespace IDE
 
             bfProject.SetDisabled(false);
 
-            var preprocessorMacros = scope List<String>();
+            var preprocessorMacros = scope DefinesSet();
 			void AddMacros(List<String> macros)
 			{
 				for (var macro in macros)
 				{
-					if (macro.StartsWith("!"))
-					{
-						let removeStr = scope String(macro, 1);
-						preprocessorMacros.Remove(removeStr);
-						continue;
-					}
 					preprocessorMacros.Add(macro);
 				}
 			}
@@ -7841,7 +7866,7 @@ namespace IDE
 
             bfProject.SetOptions(targetType,
                 project.mBeefGlobalOptions.mStartupObject,
-                preprocessorMacros,
+                preprocessorMacros.mDefines,
                 optimizationLevel, ltoType, options.mBeefOptions.mMergeFunctions, options.mBeefOptions.mCombineLoads,
                 options.mBeefOptions.mVectorizeLoops, options.mBeefOptions.mVectorizeSLP);
 
@@ -8507,9 +8532,9 @@ namespace IDE
 
             if (options.mCOptions.mEnableBeefInterop)
             {
-                var beefPreprocMacros = scope List<String>();
+                var beefPreprocMacros = scope DefinesSet();
                 GetBeefPreprocessorMacros(beefPreprocMacros);
-                for (var beefPreprocMacro in beefPreprocMacros)                
+                for (var beefPreprocMacro in beefPreprocMacros.mDefines)                
                     clangOptions.Append("-D", beefPreprocMacro, " ");
             }
 
@@ -9209,6 +9234,30 @@ namespace IDE
         protected bool Compile(CompileKind compileKind = .Normal, Project hotProject = null)
         {
 			Debug.Assert(mBuildContext == null);
+
+			let platform = Workspace.PlatformType.GetFromName(mPlatformName);
+			let hostPlatform = Workspace.PlatformType.GetHostPlatform();
+			if (platform == .Unknown)
+			{
+				OutputErrorLine("Failed to compiler for unknown platform '{}'", mPlatformName);
+				return false;
+			}
+
+			bool canCompile = false;
+			if (platform == hostPlatform)
+			{
+				canCompile = true;
+			}
+			else
+			{
+				canCompile = false;
+			}
+			
+			if (!canCompile)
+			{
+				OutputErrorLine("Cannot compile for platform '{}' from host platform '{}'", platform, hostPlatform);
+				return false;
+			}
 
 			if (mDbgCompileDump)
 			{

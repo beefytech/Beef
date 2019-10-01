@@ -831,13 +831,8 @@ namespace IDE.ui
 
 		public ~this()
 		{
-			//if (mOwnsWatchSeriesInfo)
-                //delete mWatchSeriesInfo;
 			if (mWatchSeriesInfo != null)
-			{					
-				// Why were we setting these to null here?  This caused the buttons to stay in the widget hierarchy when we scrolled a virtual listview around (since old items got deleted)
-				//mWatchSeriesInfo.mLessButton = null;				
-				//mWatchSeriesInfo.mMoreButton = null;
+			{
 				mWatchSeriesInfo.ReleaseRef();
 			}
 		}
@@ -1210,7 +1205,8 @@ namespace IDE.ui
                     lastValidListViewItem = watchListViewItem;
             }
 
-            if (mWatchSeriesInfo.mAddrs != null)
+			// This caused 'closing' opened items with Dictionay elements when stepping
+            /*if (mWatchSeriesInfo.mAddrs != null)
             {
                 int32 checkIdx = mWatchSeriesInfo.mStartMemberIdx + 1;
                 while (checkIdx < mParentItem.mChildItems.Count)
@@ -1220,7 +1216,7 @@ namespace IDE.ui
                         break;
                     mParentItem.RemoveChildItem(watchListViewItem);
                 }
-            }
+            }*/
         }
 
         public override void Update()
