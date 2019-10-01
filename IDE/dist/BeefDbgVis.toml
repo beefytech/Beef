@@ -122,11 +122,11 @@ Condition = "mStructType == 3"
 Name = "[Null]"
 Value = "__cast((System.Type)mData, null)"
 [[Type.Expand.Item]]
-Condition = "((System.Type)mStructType).mSize <= sizeof(int)"
+Condition = "(mStructType != 0) && ((System.Type)mStructType).mSize <= sizeof(int)"
 Name = "[InlineValue]"
 Value = "__bitcast((System.Type)mStructType, mData)"
 [[Type.Expand.Item]]
-Condition = "((System.Type)mStructType).mSize > sizeof(int)"
+Condition = "(mStructType != 0) && ((System.Type)mStructType).mSize > sizeof(int)"
 Name = "[AllocValue]"
 Value = "*__cast((System.Type)mStructType, \"*\", mData)"
 
