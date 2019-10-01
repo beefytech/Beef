@@ -3188,10 +3188,10 @@ namespace IDE.ui
 						menuItem.mOnMenuItemSelected.Add(new (evt) => IDEApp.sApp.ShowDisassemblyAtCursor());
 
 					    var stepIntoSpecificMenu = menu.AddItem("Step into Specific");
-						stepIntoSpecificMenu.SetDisabled(isPaused);
+						stepIntoSpecificMenu.SetDisabled(!isPaused);
 						stepIntoSpecificMenu.IsParent = true;
 					    var stepFilterMenu = menu.AddItem("Step Filter");
-						stepFilterMenu.SetDisabled(isPaused);
+						stepFilterMenu.SetDisabled(!isPaused);
 						stepFilterMenu.IsParent = true;
 
 						if (isPaused)
