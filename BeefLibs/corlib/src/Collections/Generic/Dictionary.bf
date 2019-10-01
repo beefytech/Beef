@@ -286,7 +286,7 @@ namespace System.Collections.Generic
 		private void Insert(TKey key, TValue value, bool add)
 		{
 			if (mBuckets == null) Initialize(0);
-			int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
+			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
 			int_cosize targetBucket = hashCode % (int_cosize)mBuckets.Count;
 
 			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
@@ -335,7 +335,7 @@ namespace System.Collections.Generic
 		private bool Insert(TKey key, bool add, out TKey* keyPtr, out TValue* valuePtr)
 		{
 			if (mBuckets == null) Initialize(0);
-			int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
+			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
 			int_cosize targetBucket = hashCode % (int_cosize)mBuckets.Count;
 
 			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
@@ -413,7 +413,7 @@ namespace System.Collections.Generic
 				{
 					if (newEntries[i].mHashCode != -1)
 					{
-						newEntries[i].mHashCode = (int_cosize)newEntries[i].mKey.GetHashCode() & 0x7FFFFFFF;
+						newEntries[i].mHashCode = (int32)newEntries[i].mKey.GetHashCode() & 0x7FFFFFFF;
 					}
 				}
 			}
@@ -445,7 +445,7 @@ namespace System.Collections.Generic
 			if (mBuckets != null)
 			{
 				
-				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
+				int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
 				int_cosize bucket = hashCode % (int_cosize)mBuckets.Count;
 				int_cosize last = -1;
 				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)

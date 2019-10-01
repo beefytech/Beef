@@ -196,6 +196,24 @@ namespace System.Collections.Generic
 			return false;
 		}
 
+		public bool ContainsWith<TAltKey>(TAltKey item) where TAltKey : IOpEquals<T>, IHashable
+		{
+			if (mBuckets != null)
+			{
+				int32 hashCode = (int32)item.GetHashCode() & Lower31BitMask;
+				// see note at "HashSet" level describing why "- 1" appears in for loop
+				for (int32 i = mBuckets[hashCode % mBuckets.Count] - 1; i >= 0; i = mSlots[i].mNext)
+				{
+					if (mSlots[i].mHashCode == hashCode && /*m_comparer.Equals*/(mSlots[i].mValue == item))
+					{
+						return true;
+					}
+				}
+			}
+			// either m_buckets is null or wasn't found
+			return false;
+		}
+
 		/// Copy items in this hashset to array, starting at arrayIndex
 		/// @param array array to add items to
 		/// @param arrayIndex index to start at

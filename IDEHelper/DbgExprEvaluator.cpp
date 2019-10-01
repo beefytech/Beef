@@ -1153,10 +1153,29 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 
 void DbgExprEvaluator::BeefStringToString(addr_target addr, String& outStr)
 {
+	mDebugTarget->GetCompilerSettings();
 	int objectSize = mDebugTarget->mBfObjectSize;
 
-	int32 strLen = mDebugger->ReadMemory<int16>(addr + objectSize);
-	addr_target charPtr = mDebugger->ReadMemory<addr_target>(addr + objectSize + 4 + 4);
+	int32 strLen = 0;
+	addr_target charPtr = 0;
+	if (!mDebugTarget->mBfHasLargeStrings)
+	{
+		strLen = mDebugger->ReadMemory<int32>(addr + objectSize);
+		int32 allocSizeAndFlags = mDebugger->ReadMemory<int32>(addr + objectSize + 4);
+		if ((allocSizeAndFlags & 0x40000000) != 0)
+			charPtr = mDebugger->ReadMemory<addr_target>(addr + objectSize + 4 + 4);
+		else
+			charPtr = addr + objectSize + 4 + 4;
+	}
+	else
+	{
+		strLen = mDebugger->ReadMemory<int32>(addr + objectSize);
+		int64 allocSizeAndFlags = mDebugger->ReadMemory<int64>(addr + objectSize + 8);
+		if ((allocSizeAndFlags & 0x40000000'00000000LL) != 0)
+			charPtr = mDebugger->ReadMemory<addr_target>(addr + objectSize + 8 + 8);
+		else
+			charPtr = addr + objectSize + 4 + 4;
+	}
 
 	if ((strLen > 0) && (strLen < 4096))
 	{

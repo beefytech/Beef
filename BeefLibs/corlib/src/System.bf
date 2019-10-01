@@ -4,7 +4,11 @@ using System.Collections.Generic;
 namespace System
 {
 	// Collection size type
+#if BF_LARGE_COLLECTIONS
+	typealias int_cosize = int64;
+#else
 	typealias int_cosize = int32;
+#endif
 
 	[AlwaysInclude]
 	static class CompilerSettings
@@ -16,6 +20,18 @@ namespace System
 #endif
 	    public const bool cHasVDataExtender = true;
 	    public const int32 cVDataIntefaceSlotCount = 16;
+
+#if BF_LARGE_STRINGS
+		public const bool cHasLargeStrings = true;
+#else
+		public const bool cHasLargeStrings = false;
+#endif
+
+#if BF_LARGE_COLLECTIONS
+		public const bool cHasLargeCollections = true;
+#else
+		public const bool cHasLargeCollections = false;
+#endif
 
 		static this()
 		{

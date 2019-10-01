@@ -16492,8 +16492,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					if (checkType == NULL)
 						break;
 
-					bool foundExactMatch = false;
-					BfOperatorDef* oppositeOperatorDef = NULL;					
+					bool foundExactMatch = false;					
+					Array<BfMethodDef*> oppositeOperatorDefs;
 
 					for (auto operatorDef : checkType->mTypeDef->mOperators)
 					{
@@ -16502,7 +16502,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 							allowOp = true;
 
 						if (allowOp)
-						{	
+						{
 							foundOp = true;
 							if (methodMatcher.CheckMethod(checkType, operatorDef, false))
 							{
@@ -16512,14 +16512,17 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 							}
 						}
 						else if (operatorDef->mOperatorDeclaration->mBinOp == oppositeBinaryOp)
-							oppositeOperatorDef = operatorDef;
+							oppositeOperatorDefs.Add(operatorDef);							
 					}
 
-					if (((methodMatcher.mBestMethodDef == NULL) || (!foundExactMatch)) && (oppositeOperatorDef != NULL))
+					if (((methodMatcher.mBestMethodDef == NULL) || (!foundExactMatch)) && (!oppositeOperatorDefs.IsEmpty()))
 					{
 						foundOp = true;
-						if (methodMatcher.CheckMethod(checkType, oppositeOperatorDef, false))
-							methodMatcher.mSelfType = entry.mSrcType;
+						for (auto oppositeOperatorDef : oppositeOperatorDefs)
+						{
+							if (methodMatcher.CheckMethod(checkType, oppositeOperatorDef, false))
+								methodMatcher.mSelfType = entry.mSrcType;
+						}
 					}
 				}
 				if (methodMatcher.mBestMethodDef != NULL)

@@ -287,7 +287,7 @@ namespace Beefy.utils
 			str.AppendF("Idx:{0}", mIdx);
 		}
 
-        public bool TryGet(String name, out Object value)
+        public bool TryGet(StringView name, out Object value)
         {
 			var current = GetCurrent();
 			if ((current == null) || (current.GetType() != typeof(NamedValues)))
@@ -316,7 +316,7 @@ namespace Beefy.utils
 			return false;
         }
 
-		public bool TryGet(String name, out NamedValues namedValues, out int keyIdx, out int valueIdx)
+		public bool TryGet(StringView name, out NamedValues namedValues, out int keyIdx, out int valueIdx)
 		{
 			var current = GetCurrent();
 			if ((current == null) || (current.GetType() != typeof(NamedValues)))
@@ -351,20 +351,20 @@ namespace Beefy.utils
 			return false;
 		}
 
-        public bool Contains(String name)
+        public bool Contains(StringView name)
         {
             Object value;
             return TryGet(name, out value);
         }
 
-        public Object Get(String name)
+        public Object Get(StringView name)
         {
             Object value;
             TryGet(name, out value);
             return value;
         }
 
-		public bool Get(String name, ref bool val)
+		public bool Get(StringView name, ref bool val)
 		{
 		    Object aVal = Get(name);
 		    if ((aVal == null) || (!(aVal is bool)))
@@ -373,7 +373,7 @@ namespace Beefy.utils
 			return true;
 		}
 
-		public void Get(String name, ref int32 val)
+		public void Get(StringView name, ref int32 val)
 		{
 			Object obj = Get(name);
 			if (obj == null)
@@ -385,7 +385,7 @@ namespace Beefy.utils
 			}
 		}
 
-		public void Get(String name, ref float val)
+		public void Get(StringView name, ref float val)
 		{
 			Object obj = Get(name);
 			if (obj == null)
@@ -398,7 +398,7 @@ namespace Beefy.utils
 			}
 		}
 
-		public void Get<T>(String name, ref T val) where T : Enum
+		public void Get<T>(StringView name, ref T val) where T : Enum
 		{
 			Object obj = Get(name);
 			if (obj == null)
@@ -414,7 +414,7 @@ namespace Beefy.utils
 				val = parsedVal;
 		}
 
-		public void Get(String name, String outString)
+		public void Get(StringView name, String outString)
 		{
 		    Object obj = Get(name);
 			if (obj == null)
@@ -439,7 +439,7 @@ namespace Beefy.utils
 			return mValues[mCurrent.mLastValue];
         }
 
-        public void GetString(String name, String outString, String theDefault = null)
+        public void GetString(StringView name, String outString, String theDefault = null)
         {
             Object val = Get(name);
 
@@ -650,23 +650,23 @@ namespace Beefy.utils
 		    DoAdd(ref mCurrent, new:mBumpAllocator box value);
 		}
 
-		public void Add(String value)
+		public void Add(StringView value)
 		{
 			DoAdd(ref mCurrent, (Object)new:mBumpAllocator String(value));
 		}
 
-		public void Add<T>(String name, T value) where T : struct
+		public void Add<T>(StringView name, T value) where T : struct
 		{
 		    DoAdd(ref mCurrent, AllocStringView(name), new:mBumpAllocator box value);
 		}
 
-		public void ConditionalAdd<T>(String name, T value) where T : var
+		public void ConditionalAdd<T>(StringView name, T value) where T : var
 		{
 			if (value != default(T))
 				Add(name, value);
 		}
 
-		public void ConditionalAdd<T>(String name, T value, T defaultVal) where T : var
+		public void ConditionalAdd<T>(StringView name, T value, T defaultVal) where T : var
 		{
 			if ((value != null) && (value != defaultVal))
 				Add(name, value);
@@ -718,7 +718,7 @@ namespace Beefy.utils
 			mNextValues.Add(-1);
 		}
 
-		StringView AllocStringView(String str)
+		StringView AllocStringView(StringView str)
 		{
 			int len = str.Length;
 			char8* ptr = (char8*)mBumpAllocator.Alloc(len, 1);
@@ -726,20 +726,32 @@ namespace Beefy.utils
 			return StringView(ptr, len);
 		}
 
-		public void Add(String name, String value)
+		public void Add(String name, StringView value)
 		{
 			DoAdd(ref mCurrent, AllocStringView(name), (Object)new:mBumpAllocator String(value));
 		}
 
-		public void ConditionalAdd(String name, String value, String defaultVal)
+		public void ConditionalAdd(StringView name, StringView value, StringView defaultVal)
 		{
-			if (value != defaultVal)
+			if (!(value == defaultVal))
 				DoAdd(ref mCurrent, AllocStringView(name), (Object)new:mBumpAllocator String(value));
 		}
 
-		public void ConditionalAdd(String name, String value)
+		public void ConditionalAdd(StringView name, String value, String defaultVal)
 		{
-			if ((value != null) && (value != ""))
+			if (!(value == defaultVal))
+				DoAdd(ref mCurrent, AllocStringView(name), (Object)new:mBumpAllocator String(value));
+		}
+
+		public void ConditionalAdd(StringView name, StringView value)
+		{
+			if (!value.IsEmpty)
+				DoAdd(ref mCurrent, AllocStringView(name), (Object)new:mBumpAllocator String(value));
+		}
+
+		public void ConditionalAdd(StringView name, String value)
+		{
+			if ((value != null) && (!value.IsEmpty))
 				DoAdd(ref mCurrent, AllocStringView(name), (Object)new:mBumpAllocator String(value));
 		}
         
@@ -787,7 +799,7 @@ namespace Beefy.utils
 			}
 		}
 
-        public IDisposable Open(String name)
+        public IDisposable Open(StringView name)
         {
             if (mStructuredDisposeProxy == null)
             {

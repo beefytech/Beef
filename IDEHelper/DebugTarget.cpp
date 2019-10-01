@@ -20,6 +20,8 @@ DebugTarget::DebugTarget(WinDebugger* debugger)
 	mCheckedCompilerSettings = false;
 	mBfObjectHasFlags = false;
 	mBfObjectHasVDataExtender = false;
+	mBfHasLargeStrings = false;
+	mBfHasLargeCollections = false;
 	mBfObjectVDataIntefaceSlotCount = -1;
 	mBfObjectSize = -1;
 	mDebugger = debugger;
@@ -887,6 +889,10 @@ void DebugTarget::GetCompilerSettings()
 					mBfObjectHasFlags = member->mConstValue != 0;
 				if (strcmp(member->mName, "cHasVDataExtender") == 0)
 					mBfObjectHasVDataExtender = member->mConstValue != 0;
+				if (strcmp(member->mName, "cHasLargeStrings") == 0)
+					mBfHasLargeStrings = member->mConstValue != 0;
+				if (strcmp(member->mName, "cHasLargeCollections") == 0)
+					mBfHasLargeCollections = member->mConstValue != 0;
 				if (strcmp(member->mName, "cVDataIntefaceSlotCount") == 0)
 					mBfObjectVDataIntefaceSlotCount = (int)member->mConstValue;
 			}
