@@ -2462,6 +2462,12 @@ void BfModule::SetElementType(BfAstNode* astNode, BfSourceElementType elementTyp
 	}
 }
 
+void BfModule::SetHadVarUsage()
+{
+	mHadVarUsage = true;
+	mHadBuildError = true;
+}
+
 BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPersistent)
 {	
 	BP_ZONE("BfModule::Fail");
@@ -3340,6 +3346,8 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 
 	bool staticOnly = (field->mIsStatic) && (!isDeclType);
 	
+	if (!fieldInstance->mIsInferredType)
+		return fieldType;
 	if (!fieldType->IsVar())
 		return fieldType;	
 	
@@ -3353,7 +3361,8 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	if ((!field->mIsStatic) && (typeDef->mIsStatic))
 	{
 		AssertErrorState();
-		return mContext->mBfObjectType;
+		SetHadVarUsage();
+		return GetPrimitiveType(BfTypeCode_Var);
 	}
 	
 	bool hadInferenceCycle = false;
@@ -3372,7 +3381,8 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 				fieldModule->Fail(StrFormat("Field '%s.%s' creates a type inference cycle", TypeToString(fieldOwner).c_str(), fieldDef->mName.c_str()), fieldDef->mTypeRef, true);				
 			}
 			
-			return mContext->mBfObjectType;
+			SetHadVarUsage();
+			return GetPrimitiveType(BfTypeCode_Var);
 		}
 	}
 	mContext->mFieldResolveReentrys.push_back(fieldInstance);
@@ -3383,8 +3393,10 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	
 	if ((field->mInitializer == NULL) && (!isDeclType))
 	{
-		Fail("Implicitly-typed fields must be initialized", field->mFieldDeclaration);
-		return mContext->mBfObjectType;
+		if ((field->mTypeRef->IsA<BfVarTypeReference>()) || (field->mTypeRef->IsA<BfLetTypeReference>()))
+			Fail("Implicitly-typed fields must be initialized", field->GetRefNode());
+		SetHadVarUsage();
+		return GetPrimitiveType(BfTypeCode_Var);
 	}
 
 	BfType* resolvedType = NULL;
@@ -3421,7 +3433,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	}
 
 	if (resolvedType == NULL)
-		return mContext->mBfObjectType;
+		return GetPrimitiveType(BfTypeCode_Var);
 				
 	fieldInstance->SetResolvedType(resolvedType);
 
@@ -11839,7 +11851,7 @@ void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 {
 	if (localVar->mResolvedType->IsVar())
 	{
-		BF_ASSERT((mCurMethodInstance->mIsUnspecialized) || (mCurMethodState->mClosureState != NULL));
+		BF_ASSERT((mCurMethodInstance->mIsUnspecialized) || (mCurMethodState->mClosureState != NULL) || (mHadVarUsage));
 	}
 
 	localVar->mLocalVarIdx = (int)mCurMethodState->mLocals.size();
@@ -12008,7 +12020,7 @@ void BfModule::CreateDIRetVal()
 
 	if ((mCurMethodState->mRetVal) || (mCurMethodState->mRetValAddr))
 	{
-		BF_ASSERT(!mBfIRBuilder->mIgnoreWrites);
+		BF_ASSERT((!mBfIRBuilder->mIgnoreWrites) || (mHadVarUsage));
 
 		BfType* dbgType = mCurMethodInstance->mReturnType;
 		BfIRValue dbgValue = mCurMethodState->mRetVal.mValue;
@@ -13150,12 +13162,17 @@ void BfModule::CreateStaticCtor()
 				// For extensions, only handle these fields in the appropriate extension
 				if ((fieldDef->mDeclaringType->mTypeDeclaration != methodDef->mDeclaringType->mTypeDeclaration))
 					continue;
-				
+								
 				UpdateSrcPos(fieldDef->mInitializer);				
 				
 				auto fieldInst = &mCurTypeInstance->mFieldInstances[fieldDef->mIdx];					
 				if (!fieldInst->mFieldIncluded)
 					continue;
+				if (fieldInst->mResolvedType->IsVar())
+				{
+					BF_ASSERT(mHadVarUsage);
+					continue;
+				}
 				auto assignValue = GetFieldInitializerValue(fieldInst);
 				if (assignValue)
 				{
@@ -18665,11 +18682,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		if ((resolvedReturnType != NULL) && (resolvedReturnType->IsVar()) && (methodDef->mMethodType != BfMethodType_Mixin))
 		{
 			Fail("Cannot declare var return types", methodDef->mReturnTypeRef);
-			resolvedReturnType = mContext->mBfObjectType;
+			resolvedReturnType = GetPrimitiveType(BfTypeCode_Var);
 		}
 		
 		if (resolvedReturnType == NULL)
-			resolvedReturnType = mContext->mBfObjectType; // Fake an object
+			resolvedReturnType = GetPrimitiveType(BfTypeCode_Var);
 	}
 	else
 	{
@@ -18807,7 +18824,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		}
 		if (resolvedParamType == NULL)
 		{
-			resolvedParamType = mContext->mBfObjectType; // Fake an object				
+			resolvedParamType = GetPrimitiveType(BfTypeCode_Var);
 			unresolvedParamType = resolvedParamType;
 			if (mCurTypeInstance->IsBoxed())
 			{

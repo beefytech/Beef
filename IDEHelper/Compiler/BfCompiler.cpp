@@ -3828,7 +3828,10 @@ void BfCompiler::ProcessAutocompleteTempType()
 			if (BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef))
 			{
 				if (fieldDef->mInitializer == NULL)
-					mPassInstance->Fail("Implicitly-typed fields must be initialized", fieldDef->mFieldDeclaration);
+				{
+					if ((fieldDef->mTypeRef->IsA<BfVarTypeReference>()) || (fieldDef->mTypeRef->IsA<BfLetTypeReference>()))
+						mPassInstance->Fail("Implicitly-typed fields must be initialized", fieldDef->GetRefNode());
+				}
 			}
 		}
 	}

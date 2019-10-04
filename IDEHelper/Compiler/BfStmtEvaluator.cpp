@@ -1383,8 +1383,11 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 				}				
 			}
 		}
-		if (!initValue)
-			initValue = GetDefaultTypedValue(mContext->mBfObjectType);
+		if (!initValue)			
+		{
+			initValue = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_Var));
+			SetHadVarUsage();
+		}
 		if (initValue.mType->IsNull())
 		{
 			Fail("Implicitly-typed variables cannot be initialized to 'null'", varDecl->mInitializer);

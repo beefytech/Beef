@@ -2265,6 +2265,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				resolveEntry.mTypeArrayIdx = (int)llvmFieldTypes.size();
 				deferredVarResolves.push_back(resolveEntry);
 
+				fieldInstance->mIsInferredType = true;
 				// For 'let', make read-only
 			}
 			else
@@ -2273,10 +2274,11 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
 				if (resolvedFieldType == NULL)
 				{
-					// Failed, just put in placeholder 'Object'
+					// Failed, just put in placeholder 'var'
 					AssertErrorState();
-					resolvedFieldType = mContext->mBfObjectType;
-				}
+					resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);
+					SetHadVarUsage();
+				}									
 			}
 
 			if (resolvedFieldType->IsMethodRef())
@@ -8659,7 +8661,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// * <-> Var 
 	if ((typedVal.mType->IsVar()) || (toType->IsVar()))
 	{
-		BF_ASSERT((mCurMethodInstance->mIsUnspecialized) || (mCurMethodState->mClosureState != NULL));
+		BF_ASSERT((mCurMethodInstance->mIsUnspecialized) || (mCurMethodState->mClosureState != NULL) || (mHadVarUsage));
 		return GetDefaultValue(toType);
 	}
 

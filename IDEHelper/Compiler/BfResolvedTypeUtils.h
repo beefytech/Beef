@@ -1088,6 +1088,7 @@ public:
 	bool mFieldIncluded;
 	bool mIsEnumPayloadCase;
 	bool mIsThreadLocal;
+	bool mIsInferredType;
 	int mLastRevisionReferenced;
 
 public:
@@ -1109,7 +1110,8 @@ public:
 		mFieldIncluded = copyFrom.mFieldIncluded;		
 		mIsEnumPayloadCase = copyFrom.mIsEnumPayloadCase;
 		mIsThreadLocal = copyFrom.mIsThreadLocal;
-		mLastRevisionReferenced = copyFrom.mLastRevisionReferenced;
+		mIsInferredType = copyFrom.mIsInferredType;
+		mLastRevisionReferenced = copyFrom.mLastRevisionReferenced;		
 	}
 
 	BfFieldInstance()
@@ -1126,6 +1128,7 @@ public:
 		mDataSize = 0;
 		mFieldIncluded = true;
 		mIsThreadLocal = false;
+		mIsInferredType = false;
 		mLastRevisionReferenced = -1;
 	}		
 

@@ -1340,8 +1340,9 @@ public:
 	bool mWroteToLib;
 	bool mHadBuildError;
 	bool mHadBuildWarning;
+	bool mHadVarUsage;
 	bool mIgnoreErrors;
-	bool mIgnoreWarnings;
+	bool mIgnoreWarnings;	
 	bool mSetIllegalSrcPosition;
 	bool mHadIgnoredError;
 	bool mReportErrors; // Still puts system in error state when set to false
@@ -1362,6 +1363,7 @@ public:
 	void GetAccessAllowed(BfTypeInstance* checkType, bool& allowProtected, bool& allowPrivate);
 	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProtection memberProtection, BfTypeInstance* lookupStartType);
 	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);
+	void SetHadVarUsage();
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	
 	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false);

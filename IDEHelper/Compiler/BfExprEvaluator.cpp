@@ -3053,6 +3053,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					fieldInstance->mResolvedType = mModule->ResolveVarFieldType(curCheckType, fieldInstance, field);
 					if (fieldInstance->mResolvedType == NULL)
 						return BfTypedValue();
+
+					if ((fieldInstance->mResolvedType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))
+						mModule->Fail("Field type reference failed to resolve", targetSrc);
 				}
 					
 				auto resolvedFieldType = fieldInstance->mResolvedType;
@@ -3332,7 +3335,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				{
 					if (retVal.IsAddr())
 						retVal.mKind = BfTypedValueKind_TempAddr;
-				}
+				}				
 
 				return retVal;				
 			}
@@ -5080,7 +5083,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	}
 
 	auto func = moduleMethodInstance.mFunc;	
-	return CreateCall(methodInstance, func, bypassVirtual, irArgs);	
+	BfTypedValue result = CreateCall(methodInstance, func, bypassVirtual, irArgs);	
+	if ((result.mType != NULL) && (result.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))		
+		mModule->Fail("Method return type reference failed to resolve", targetSrc);
+	return result;
 }
 
 BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, BfTypeInstance* targetType, BfResolvedArgs& argValues, bool callCtorBodyOnly, bool allowAppendAlloc, BfTypedValue* appendIndexValue)
@@ -7718,13 +7724,45 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 	
 	auto objectType = mModule->mContext->mBfObjectType;
 	mModule->PopulateType(objectType, BfPopulateType_Full);
+		
+	targetValue = mModule->LoadValue(targetValue);
+
+	BfTypeInstance* srcTypeInstance = targetValue.mType->ToTypeInstance();
+	BfTypeInstance* targetTypeInstance = targetType->ToTypeInstance();
+	bool wasGenericParamType = false;
+
+	if ((srcTypeInstance != NULL) && (targetTypeInstance != NULL))
+	{
+		if (mModule->TypeIsSubTypeOf(srcTypeInstance, targetTypeInstance))
+		{
+			// We don't give this warning when we have wasGenericParmType set because that indicates we had a generic type constraint,
+			//  and a type constraint infers that the ACTUAL type used will be equal to or derived from that type and therefore
+			//  it may be a "necessary cast" indeed
+			if ((!wasGenericParamType) && (mModule->mCurMethodState->mMixinState == NULL))
+			{
+				if (srcTypeInstance == targetType)
+					mModule->Warn(BfWarning_BF4203_UnnecessaryDynamicCast, StrFormat("Unnecessary cast, the value is already type '%s'",
+						mModule->TypeToString(srcTypeInstance).c_str()), checkTypeExpr->mIsToken);
+				else
+					mModule->Warn(BfWarning_BF4203_UnnecessaryDynamicCast, StrFormat("Unnecessary cast, '%s' is a subtype of '%s'",
+						mModule->TypeToString(srcTypeInstance).c_str(), mModule->TypeToString(targetType).c_str()), checkTypeExpr->mIsToken);
+			}
+			
+			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1), boolType);
+			return;
+		}
+		else if ((!targetType->IsInterface()) && (srcTypeInstance != mModule->mContext->mBfObjectType) && (!mModule->TypeIsSubTypeOf(targetTypeInstance, srcTypeInstance)))
+		{
+			mModule->Fail(StrFormat("Cannot convert type '%s' to '%s' via any conversion",
+				mModule->TypeToString(targetValue.mType).c_str(), mModule->TypeToString(targetTypeInstance).c_str()), checkTypeExpr->mIsToken);
+		}
+	}
+
 	if (mModule->mCompiler->IsAutocomplete())
 	{
 		mResult = mModule->GetDefaultTypedValue(boolType, false, BfDefaultValueKind_Addr);
 		return;
 	}
-	
-	targetValue = mModule->LoadValue(targetValue);
 
 	auto irb = mModule->mBfIRBuilder;
 	auto prevBB = mModule->mBfIRBuilder->GetInsertBlock();
@@ -7835,6 +7873,9 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 	auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
 	if (targetValue.mType->IsValueTypeOrValueTypePtr())
 	{
+		mModule->Warn(0, StrFormat("Type '%s' is not applicable for dynamic casting",
+			mModule->TypeToString(targetValue.mType).c_str()), dynCastExpr->mAsToken);
+
 		auto typeInstance = targetValue.mType->ToTypeInstance();
 		if (targetValue.mType->IsWrappableType())
 			typeInstance = mModule->GetWrappedStructType(targetValue.mType);
@@ -7955,7 +7996,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 	else if ((!targetType->IsInterface()) && (!mModule->TypeIsSubTypeOf(targetTypeInstance, srcTypeInstance)))
 	{
 		mModule->Fail(StrFormat("Cannot convert type '%s' to '%s' via any conversion", 
-			mModule->TypeToString(targetTypeInstance).c_str(), mModule->TypeToString(targetValue.mType).c_str()), dynCastExpr->mAsToken);
+			mModule->TypeToString(targetValue.mType).c_str(), mModule->TypeToString(targetTypeInstance).c_str()), dynCastExpr->mAsToken);
 	}
 
 	if (autoComplete != NULL)	
@@ -12514,9 +12555,13 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		}
 		else if (auto expr = BfNodeDynCast<BfExpression>(memberRefExpression->mTarget))
 		{
+			BfType* expectingTargetType = NULL;
+			if (memberRefExpression->mDotToken->mToken == BfToken_DotDot)
+				expectingTargetType = mExpectingType;
+
 			bool handled = false;
 			if (auto subMemberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(expr))
-			{
+			{								
 				String findName;
 				if (subMemberRefExpr->mMemberName != NULL)
                 	findName = subMemberRefExpr->mMemberName->ToString();
@@ -12570,7 +12615,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			if (!handled)
 			{
 				SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, &attributeState);
-				auto flags = BfEvalExprFlags_PropogateNullConditional;
+				auto flags = (BfEvalExprFlags)(BfEvalExprFlags_PropogateNullConditional | BfEvalExprFlags_NoCast);
 				if (mFunctionBindResult != NULL)
 				{
 					if (auto paranExpr = BfNodeDynCast<BfParenthesizedExpression>(expr))
@@ -12582,7 +12627,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 					
 				}
 				if (expr != NULL)
-					mResult = mModule->CreateValueFromExpression(expr, NULL, flags);
+					mResult = mModule->CreateValueFromExpression(expr, expectingTargetType, flags);
 			}
 		}
 
@@ -13253,7 +13298,11 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			else
 				mResult = CreateCall(methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
 			if (mResult.mType != NULL)
+			{
+				if ((mResult.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))
+					mModule->Fail("Property type reference failed to resolve", mPropSrc);
 				BF_ASSERT(!mResult.mType->IsRef());
+			}
 		}
 		mPropDef = NULL;
 		mPropDefBypassVirtual = false;
