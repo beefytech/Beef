@@ -1,0 +1,12 @@
+FileVersion = 1
+Projects = {IDETest = {Path = "."}}
+Unlocked = ["corlib"]
+
+[Workspace]
+StartupProject = "IDETest"
+
+[Configs.Debug.Win64]
+IntermediateType = "ObjectAndIRCode"
+
+[Configs.Debug.Win32]
+IntermediateType = "ObjectAndIRCode"

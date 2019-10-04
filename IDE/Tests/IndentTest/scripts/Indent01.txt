@@ -1,0 +1,46 @@
+ShowFile("src/Indent01.bf")
+
+GotoText("//Test01")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 17)
+
+GotoText("//Test02")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 21)
+
+GotoText("//Test03")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 21)
+
+GotoText("//Test04")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 25)
+
+GotoText("//Test05")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 25)
+
+GotoText("//Test06")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 21)
+
+GotoText("//Test07")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 25)
+
+GotoText("//Test08")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 21)
+
+GotoText("//Test09")
+AdjustCursor(0, -1)
+CursorToLineEnd()
+AssertIsAtColumn("Indent01.bf", 17)

@@ -828,6 +828,7 @@ namespace IDE.ui
 			int ifDepth = 0;
 			bool isDoingCtl = false;
 			bool justFinishedCtlCond = false;
+			bool justFinishedCtl = false;
 			int ctlDepth = 0; // for, while, using
 
 			int extraTab = 1;
@@ -906,20 +907,25 @@ namespace IDE.ui
 				{
 					if (blockDepth == 0)
 					{
+						if (((justFinishedIf) || (justFinishedCtl)) && (keywordStr != "else"))
+						{
+							// This catches the case of:
+							// if (a) Thing();
+							// if (b) ...
+							ifDepth = 0;
+							justFinishedIf = false;
+							ifCtlDepthStack.Clear();
+							ctlDepth = 0;
+
+							isDoingCtl = false;
+						}
+
+						justFinishedCtl = false;
+						justFinishedIf = false;
+						
 						switch (keywordStr)
 						{
 						case "if":
-							if (justFinishedIf)
-							{
-								// This catches the case of:
-								// if (a) Thing();
-								// if (b) ...
-								ifDepth = 0;
-								justFinishedIf = false;
-								ifCtlDepthStack.Clear();
-								ctlDepth = 0;
-							}
-							
 							if (isDoingCtl)
 							{
 								ctlDepth++;
@@ -947,7 +953,11 @@ namespace IDE.ui
 								caseStartPos = checkIdx - 4;
 								inCaseExpr = true;
 							}
+						case "switch":
+							ifDepth = 0;
 						}
+
+						doingElse = keywordStr == "else";
 					}
 
 					keywordStr.Clear();
@@ -1052,6 +1062,9 @@ namespace IDE.ui
 						startedWithType = false;
 						checkedStartedWithType = false;
 
+						if (isDoingCtl)
+							justFinishedCtl = true;
+
 						if (ifDepth == 0)
 						{
 							isDoingCtl = false;
@@ -1075,7 +1088,6 @@ namespace IDE.ui
 							doingElse = false;
 						}
 
-
 						if (justFinishedIf)
 						{
 							// We had a non-else statement
@@ -1092,7 +1104,6 @@ namespace IDE.ui
 						if (ifDepth > 0)
 							justFinishedIf = true;
 
-						//NEW
 						inCaseExpr = false;
 						inCaseExprNext = false;
 						inCaseExprNextLine = false;
@@ -1146,6 +1157,7 @@ namespace IDE.ui
 				}
 				
 			}
+
 
 			if ((ctlDepth > 0) && ((!justFinishedIf) || (insertingElseStmt)))
 				extraTab += ctlDepth;

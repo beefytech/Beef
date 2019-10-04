@@ -1548,7 +1548,19 @@ namespace Beefy.widgets
             int lineChar;
             GetLineCharAtIdx(textPos, out line, out lineChar);
 
-            bool wasLineEnd = mData.mText[textPos].mChar == '\n';
+            bool wasLineEnd = false;
+			for (int i = textPos; i < mData.mTextLength; i++)
+			{
+				char8 c = mData.mText[i].mChar;
+				if (c == '\n')
+				{
+					wasLineEnd = true;
+					break;
+				}
+				else if (!c.IsWhiteSpace)
+					break;
+			}
+
             String lineText = scope String();
             GetLineText(line, lineText);
 
