@@ -2225,6 +2225,8 @@ namespace IDE
             
             if (StructuredLoad(data, workspaceFileName) case .Err(let err))
             {
+				mBeefConfig.Refresh();
+
 				switch (err)
 				{
 				case .FormatError(int lineNum):

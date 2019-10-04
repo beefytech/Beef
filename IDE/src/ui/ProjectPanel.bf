@@ -1291,7 +1291,7 @@ namespace IDE.ui
 		                    projectsReferenced.Add(selectedProjectItem.mProject);
 		                    folderCount++;
 		                }
-		                else if (selectedProjectItem is ProjectItem)
+		                else
 		                {
 		                    projectsReferenced.Add(selectedProjectItem.mProject);
 		                    fileCount++;
@@ -1749,6 +1749,8 @@ namespace IDE.ui
         void ImportProject()
         {
 #if !CLI
+			gApp.mBeefConfig.Refresh();
+
             var fileDialog = scope OpenFileDialog();
 			fileDialog.ShowReadOnly = false;
             fileDialog.Title = "Import Project";

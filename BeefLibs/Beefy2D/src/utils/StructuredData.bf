@@ -410,6 +410,7 @@ namespace Beefy.utils
 				result = Enum.Parse<T>((StringView)obj);
 			else
 				return;
+
 			if (result case .Ok(var parsedVal))
 				val = parsedVal;
 		}

@@ -63,7 +63,7 @@ namespace IDE
 					regEntry.mLocation.Parse(data).IgnoreError();
 			}
 
-			for (data.Enumerate("LibDirs"))
+			for (data.Enumerate("UnversionedLibDirs"))
 			{
 				String dirStr = scope .();
 				data.GetCurString(dirStr);
@@ -74,12 +74,50 @@ namespace IDE
 					libDir.mPath = new String(dirStr);
 					libDir.mConfigFile = configFile;
 					mLibDirectories.Add(libDir);
+
+					String absPath = scope .();
+					Path.GetAbsolutePath(libDir.mPath, configFile.mConfigDir, absPath);
+
+					for (var entry in Directory.EnumerateDirectories(absPath))
+					{
+						String projName = scope .();
+						entry.GetFileName(projName);
+						
+						String filePath = scope .();
+						entry.GetFilePath(filePath);
+
+						String projFilePath = scope .();
+						projFilePath.Concat(filePath, "/BeefProj.toml");
+
+						if (File.Exists(projFilePath))
+						{
+							RegistryEntry regEntry = new RegistryEntry();
+							regEntry.mProjName = new String(projName);
+							mRegistry.Add(regEntry);
+
+							regEntry.mConfigFile = configFile;
+
+							var verString = scope String();
+							data.GetString("Version", verString);
+							regEntry.mVersion = new SemVer();
+							regEntry.mVersion.Parse("0.0.0");
+
+							regEntry.mLocation = new VerSpecRecord();
+							using (data.Open("Location"))
+								regEntry.mLocation.SetPath(filePath);
+						}
+					}
 				}
 			}
 
 			mConfigFiles.Add(configFile);
 
 			return .Ok;
+		}
+
+		public void Refresh()
+		{
+			Load().IgnoreError();
 		}
 
 		public void QueuePaths(StringView topLevelDir)
@@ -96,7 +134,7 @@ namespace IDE
 				if (File.Exists(path))
 				{
 					if (mConfigPathQueue.Contains(path))
-						break; // We have this and everthing under it already
+						break; // We have this and everything under it already
 					mConfigPathQueue.Add(new String(path));
 				}
 
@@ -116,6 +154,9 @@ namespace IDE
 
 		public Result<void> Load()
 		{
+			ClearAndDeleteItems(mRegistry);
+			ClearAndDeleteItems(mConfigFiles);
+
 			for (int i = mConfigPathQueue.Count - 1; i >= 0; i--)
 			{
 				let path = mConfigPathQueue[i];

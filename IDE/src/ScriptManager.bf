@@ -1763,6 +1763,30 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void AssertIsAtColumn(String fileName, int column)
+		{
+			String filePath = scope String();
+			FixSrcPath(fileName, filePath);
+
+			var sourceViewPanel = GetActiveSourceViewPanel();
+			if (sourceViewPanel == null)
+				return;
+
+			if (!Path.Equals(filePath, sourceViewPanel.mFilePath))
+			{
+				ScriptManager.sActiveManager.Fail("Expected source file '{0}', got '{1}'", filePath, sourceViewPanel.mFilePath);
+				return;
+			}
+
+			let atColumn = sourceViewPanel.mEditWidget.mEditWidgetContent.CursorLineAndColumn.mColumn + 1;
+			if (atColumn != column)
+			{
+				ScriptManager.sActiveManager.Fail("Expected column '{0}', got '{1}'", column, atColumn);
+				return;
+			}
+		}
+
+		[IDECommand]
 		public void GotoTextSkip(String findText, int skipIdx)
 		{
 			var skipIdx;
