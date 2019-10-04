@@ -437,7 +437,7 @@ bool DebugTarget::GetValueByName(DbgSubprogram* subProgram, const StringImpl& na
 	BP_ZONE("DebugTarget::GetValueByName");
 
 	//BF_ASSERT(*outAddrType == DbgAddrType_None);
-
+	
 	String checkName = name;
 
 	if (subProgram != NULL)
@@ -2203,6 +2203,8 @@ addr_target DebugTarget::GetStaticAddress(DbgVariable* dwVariable)
 
 bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgBlock* dwBlock, String& name, WdStackFrame* stackFrame, intptr* outAddr, DbgType** outType, DbgAddrType* outAddrType)
 {
+	int nameLen = (int)name.length();
+
 	// Checks for previous version of a local name by stripping off the '@' each time we find a match, until we don't have any @'s left
 	auto _CheckName = [&](const char* localName)
 	{
@@ -2213,6 +2215,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 			namePtr++;
 		if (strcmp(localName, namePtr) == 0)
 		{
+			nameLen--;
 			name.Remove(0, 1);
 		}
 	};
@@ -2260,8 +2263,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 				*outType = dwSubprogram->mCompileUnit->mDbgModule->GetConstType(*outType);
 		}
 	};
-
-	int nameLen = (int)name.length();
+	
 	//for (auto variable : dwBlock->mVariables)
 	for (int varIdx = (int)checkVars.size() - 1; varIdx >= 0; varIdx--)
 	{
