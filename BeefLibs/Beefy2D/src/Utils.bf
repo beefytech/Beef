@@ -159,27 +159,53 @@ namespace Beefy
 
         public static Result<void, FileError> LoadTextFile(String fileName, String outBuffer, bool autoRetry = true, delegate void() onPreFilter = null)
         {
+			FileStream sr = scope .();
+			
+
 			// Retry for a while if the other side is still writing out the file
 			for (int i = 0; i < 100; i++)
 			{
-				if (File.ReadAllText(fileName, outBuffer, true) case .Err(let err))
+				if (sr.Open(fileName) case .Err(let fileOpenErr))
 				{
 					bool retry = false;
-					if ((autoRetry) && (err case .FileOpenError(let fileOpenErr)))
+					if (autoRetry)
 					{
 						if (fileOpenErr == .SharingViolation)
 							retry = true;
 					}
 					if (!retry)
-                    	return .Err(err);
+                    	return .Err(.FileOpenError(fileOpenErr));
 				}
 				else
 					break;
 				Thread.Sleep(20);
 			}
 
+			int fileLen = sr.Length;
+			if (sr.TryRead(.((.)outBuffer.PrepareBuffer(fileLen), fileLen)) case .Err(let readErr))
+				return .Err(.FileReadError(readErr));
+
 			if (onPreFilter != null)
 				onPreFilter();
+
+			int startLen = Math.Min(fileLen, 4);
+			Span<uint8> bomSpan = .((.)outBuffer.Ptr, startLen);
+			var encoding = Encoding.DetectEncoding(bomSpan, var bomSize);
+			if (bomSize > 0)
+			{
+				if (encoding == .UTF8WithBOM)
+				{
+					outBuffer.Remove(0, bomSize);
+				}
+				else
+				{
+					String srcBuffer = scope .();
+					outBuffer.MoveTo(srcBuffer);
+					Span<uint8> inSpan = .((.)srcBuffer.Ptr, srcBuffer.Length);
+					inSpan.RemoveFromStart(bomSize);
+					encoding.DecodeToUTF8(inSpan, outBuffer).IgnoreError();
+				}
+			}
 
 			/*if (hashPtr != null)
 				*hashPtr = MD5.Hash(Span<uint8>((uint8*)outBuffer.Ptr, outBuffer.Length));*/

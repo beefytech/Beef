@@ -123,6 +123,7 @@ namespace IDE
 		public String mDbgCompileDir ~ delete _;
 		public String mDbgVersionedCompileDir ~ delete _;
 		public DateTime mDbgHighestTime;
+		public bool mForceFirstRun;
 		public bool mIsFirstRun;
 		public int? mTargetExitCode;
 		public FileVersionInfo mVersionInfo ~ delete _;
@@ -575,7 +576,7 @@ namespace IDE
         public ~this()
         {
 #if !CLI
-			if (!mStartedWithTestScript)
+			if (!mStartedWithTestScript && !mForceFirstRun)
 			{
 				mSettings.Save();
 				SaveDefaultLayoutData();
@@ -5376,7 +5377,18 @@ namespace IDE
 						char8 c = text[i];
 						if (c == '\r')
 						{
-							if ((i < text.Length - 1) && (text[i + 1] == '\n'))
+							char8 nextC = 0;
+							if (i < text.Length - 1)
+							{
+								nextC = text[++i];
+								if (nextC == 0)
+								{
+									if (i < text.Length - 2)
+										nextC = text[++i];
+								}
+							}	
+
+							if (nextC == '\n')
 								editData.mLineEndingKind = .CrLf;
 							else
 								editData.mLineEndingKind = .Cr;
@@ -6311,6 +6323,9 @@ namespace IDE
 					mVerb = .New;
 				case "-testNoExit":
 					mExitWhenTestScriptDone = false;
+				case "-firstRun":
+					mForceFirstRun = true;
+					mIsFirstRun = true;
 				case "-clean":
 					mWantsClean = true;
 				case "-dbgCompileDump":
@@ -8156,6 +8171,13 @@ namespace IDE
 
             if (doCompile)
             {
+				for (var project in mWorkspace.mProjects)
+				{
+					// Regenerate these
+					DeleteContainerAndItems!(project.mCurBfOutputFileNames);
+					project.mCurBfOutputFileNames = null;
+				}
+
 				var dir = scope String();
 				GetWorkspaceBuildDir(dir);
                 bfCompiler.QueueCompile(dir);
@@ -9707,7 +9729,7 @@ namespace IDE
 			//TODO:
 			//mConfigName.Set("Dbg");
 
-			if ((!mRunningTestScript) && (LoadDefaultLayoutData()))
+			if ((!mRunningTestScript) && (!mIsFirstRun) && (LoadDefaultLayoutData()))
 			{
 				return;
 			}
@@ -9716,8 +9738,8 @@ namespace IDE
             
             TabbedView projectTabbedView = CreateTabbedView();
             SetupTab(projectTabbedView, "Workspace", 0, mProjectPanel, false);
-            projectTabbedView.SetRequestedSize(200, 200);
-			projectTabbedView.mWidth = 200;
+            projectTabbedView.SetRequestedSize(GS!(200), GS!(200));
+			projectTabbedView.mWidth = GS!(200);
 
             //TabbedView propertiesView = CreateTabbedView();
             //propertiesView.AddTab("Properties", 0, mPropertiesPanel, false);
@@ -9732,14 +9754,14 @@ namespace IDE
 
             var outputTabbedView = CreateTabbedView();
             mDockingFrame.AddDockedWidget(outputTabbedView, null, DockingFrame.WidgetAlign.Bottom);
-			outputTabbedView.SetRequestedSize(250, 250);
+			outputTabbedView.SetRequestedSize(GS!(250), GS!(250));
             
-            SetupTab(outputTabbedView, "Output", 150, mOutputPanel, false);
-            SetupTab(outputTabbedView, "Immediate", 150, mImmediatePanel, false);
+            SetupTab(outputTabbedView, "Output", GS!(150), mOutputPanel, false);
+            SetupTab(outputTabbedView, "Immediate", GS!(150), mImmediatePanel, false);
             //outputTabbedView.AddTab("Find Results", 150, mFindResultsPanel, false);
 
             var watchTabbedView = CreateTabbedView();
-            watchTabbedView.SetRequestedSize(250, 250);
+            watchTabbedView.SetRequestedSize(GS!(250), GS!(250));
             mDockingFrame.AddDockedWidget(watchTabbedView, outputTabbedView, DockingFrame.WidgetAlign.Left);
 
             SetupTab(watchTabbedView, "Auto", 150, mAutoWatchPanel, false);
@@ -9867,7 +9889,8 @@ namespace IDE
 			if (!mRunningTestScript)
 			{
 				// User setting can affect automated testing, so use default settings
-				mSettings.Load();
+				if (!mIsFirstRun)
+					mSettings.Load();
 				mSettings.Apply();
 				mIsFirstRun = !mSettings.mLoadedSettings;
 #if !CLI && BF_PLATFORM_WINDOWS
@@ -9979,10 +10002,6 @@ namespace IDE
 			{
 				loadedWorkspaceUserData = true;
 			}
-			else
-			{
-                CreateDefaultLayout();
-			}
 
             WorkspaceLoaded();
 
@@ -10019,8 +10038,12 @@ namespace IDE
 				if (dpi >= 120)
 				{
 					mSettings.mEditorSettings.mUIScale = 100 * Math.Min(dpi / 96.0f, 4.0f);
+					mSettings.Apply();
 				}	
 			}
+
+			if (!loadedWorkspaceUserData)
+				CreateDefaultLayout();
 
 			UpdateTitle();
             mMainWindow.SetMinimumSize(GS!(480), GS!(360));
@@ -11523,6 +11546,7 @@ namespace IDE
 					{
 						if (editData.mLoadedHash.GetKind() != .None)
 						{
+							File.WriteAllText(@"c:\temp\test.txt", editData.mQueuedContent).IgnoreError();
 							editData.mLoadedHash = SourceHash.Create(editData.mLoadedHash.GetKind(), editData.mQueuedContent);
 						}
 					}) case .Err(let err))

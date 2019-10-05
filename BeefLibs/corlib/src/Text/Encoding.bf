@@ -59,6 +59,27 @@ namespace System.Text
 		/// Decodes from bytes to UTF8
 		public abstract Result<int, DecodeError> DecodeToUTF8(Span<uint8> inBytes, StringView outChars);
 
+		/// Decodes from bytes to UTF8
+		public virtual Result<int, DecodeError> DecodeToUTF8(Span<uint8> inBytes, String outStr)
+		{
+			int utf8Len = GetDecodedUTF8Size(inBytes);
+
+			int prevSize = outStr.Length;
+			switch (DecodeToUTF8(inBytes, StringView(outStr.PrepareBuffer(utf8Len))))
+			{
+			case .Ok(let val):
+				 return .Ok(val);
+			case .Err(let err):
+				switch (err)
+				{
+				case .PartialDecode(let decodedBytes, let outChars):
+					outStr.[Friend]mLength = (.)(prevSize + outChars);
+				case .FormatError:
+				}
+				return .Err(err);
+			}
+		}
+
 		public static Encoding DetectEncoding(Span<uint8> data, out int bomSize)
 		{
 			bomSize = 0;
@@ -261,7 +282,7 @@ namespace System.Text
 
 		public override int GetDecodedUTF8Size(Span<uint8> bytes)
 		{
-			return Text.UTF16.GetLengthAsUTF8(Span<char16>((.)bytes.Ptr, bytes.Length));
+			return Text.UTF16.GetLengthAsUTF8(Span<char16>((.)bytes.Ptr, bytes.Length / 2));
 		}
 
 		public override Result<int, DecodeError> DecodeToUTF8(Span<uint8> inBytes, StringView outChars)
