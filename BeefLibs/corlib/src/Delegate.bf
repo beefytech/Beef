@@ -31,6 +31,12 @@ namespace System
 			mTarget = target;
 			mFuncPtr = ptr;
 		}
+
+		protected override void GCMarkMembers()
+		{
+			// Note- this is safe even if mTarget is not an object, because the GC does object address validation
+			GC.Mark(Internal.UnsafeCastToObject(mTarget));
+		}
 	}
 
 	struct Function : int
