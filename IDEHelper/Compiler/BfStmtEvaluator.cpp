@@ -5219,10 +5219,13 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 	if (varType == NULL)
 		varType = GetPrimitiveType(BfTypeCode_IntPtr);
 
-	if (!varType->IsIntegral())
+	BfType* checkType = varType;
+	if (checkType->IsTypedPrimitive())
+		checkType = checkType->GetUnderlyingType();
+	if (!checkType->IsIntegral())
 	{
 		Fail(StrFormat("Cannot iterate over '%s' in for-less statements, only integer types are allowed", TypeToString(varType).c_str()), forEachStmt->mVariableTypeRef);
-		varType = GetPrimitiveType(BfTypeCode_Int32);
+		varType = GetPrimitiveType(BfTypeCode_IntPtr);
 		if (didInference)
 			target = GetDefaultTypedValue(varType);
 	}
@@ -5283,7 +5286,10 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 		// Soldier on
 		target = GetDefaultTypedValue(varType);
 	}
-	conditionValue = mBfIRBuilder->CreateCmpLT(localVal, target.mValue, varType->IsSigned());	
+	if (forEachStmt->mInToken->mToken == BfToken_LessEquals)
+		conditionValue = mBfIRBuilder->CreateCmpLTE(localVal, target.mValue, varType->IsSigned());
+	else
+		conditionValue = mBfIRBuilder->CreateCmpLT(localVal, target.mValue, varType->IsSigned());
 	mBfIRBuilder->CreateCondBr(conditionValue, bodyBB, endBB);	
 	ValueScopeEnd(valueScopeStart);
 
@@ -5331,7 +5337,8 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 
 void BfModule::Visit(BfForEachStatement* forEachStmt)
 {
-	if ((forEachStmt->mInToken != NULL) && (forEachStmt->mInToken->GetToken() == BfToken_LChevron))
+	if ((forEachStmt->mInToken != NULL) && 
+		((forEachStmt->mInToken->GetToken() == BfToken_LChevron) || (forEachStmt->mInToken->GetToken() == BfToken_LessEquals)))
 	{
 		DoForLess(forEachStmt);
 		return;

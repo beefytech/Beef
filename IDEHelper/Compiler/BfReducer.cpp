@@ -2803,7 +2803,7 @@ BfForEachStatement* BfReducer::CreateForEachStatement(BfAstNode* node, bool hasT
 	
 	if (auto nextNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 	{
-		if (nextNode->mToken == BfToken_LParen)
+		if ((nextNode->mToken == BfToken_LParen) || (nextNode->mToken == BfToken_LessEquals))
 		{			
 			mVisitorPos.MoveNext();
 			auto tupleNode = CreateTupleExpression(nextNode);
@@ -2816,7 +2816,7 @@ BfForEachStatement* BfReducer::CreateForEachStatement(BfAstNode* node, bool hasT
 		auto name = ExpectIdentifierAfter(forEachStatement, "variable name");
 		MEMBER_SET_CHECKED(forEachStatement, mVariableName, name);
 	}
-	auto inToken = ExpectTokenAfter(forEachStatement, BfToken_In, BfToken_LChevron);
+	auto inToken = ExpectTokenAfter(forEachStatement, BfToken_In, BfToken_LChevron, BfToken_LessEquals);
 	MEMBER_SET_CHECKED(forEachStatement, mInToken, inToken);
 	auto expr = CreateExpressionAfter(forEachStatement);
 	MEMBER_SET_CHECKED(forEachStatement, mCollectionExpression, expr);
@@ -2930,7 +2930,7 @@ BfStatement* BfReducer::CreateForStatement(BfAstNode* node)
 			if (tokenNode != NULL)
 			{
 				int token = tokenNode->GetToken();
-				if ((token == BfToken_In) || (token == BfToken_LChevron))
+				if ((token == BfToken_In) || (token == BfToken_LChevron) || (token == BfToken_LessEquals))
 				{
 					mVisitorPos.mReadPos = startReadIdx;
 					return CreateForEachStatement(node, true);
