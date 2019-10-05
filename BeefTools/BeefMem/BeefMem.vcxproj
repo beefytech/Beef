@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug Static|Win32">
@@ -231,32 +231,32 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>$(ProjectName)64_d</TargetName>
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">
     <TargetName>$(ProjectName)64_d</TargetName>
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>$(ProjectName)64</TargetName>
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">
     <TargetName>$(ProjectName)64</TargetName>
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">
-    <OutDir>$(SolutionDir)\dist\</OutDir>
+    <OutDir>$(SolutionDir)\IDE\dist\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -301,8 +301,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
-      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
-      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">
@@ -320,8 +320,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
-      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
-      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -377,8 +377,8 @@
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
-      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">
@@ -397,8 +397,8 @@
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(SolutionDir)\dist\$(TargetName).dll</OutputFile>
-      <ImportLibrary>$(SolutionDir)\dist\$(TargetName).lib</ImportLibrary>
+      <OutputFile>$(SolutionDir)\IDE\dist\$(TargetName).dll</OutputFile>
+      <ImportLibrary>$(SolutionDir)\IDE\dist\$(TargetName).lib</ImportLibrary>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

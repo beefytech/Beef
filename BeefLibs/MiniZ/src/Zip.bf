@@ -1695,7 +1695,7 @@ namespace IDE.Util
 
 		static void tdefl_start_dynamic_block(tdefl_compressor* d)
 		{
-			uint32 num_lit_codes, num_dist_codes, num_bit_lengths; uint32 i, total_code_sizes_to_pack, num_packed_code_sizes, rle_z_count, rle_repeat_count, packed_code_sizes_index;
+			int32 num_lit_codes, num_dist_codes, num_bit_lengths; int32 i, total_code_sizes_to_pack, num_packed_code_sizes, rle_z_count, rle_repeat_count, packed_code_sizes_index;
 			uint8[TDEFL_MAX_HUFF_SYMBOLS_0 + TDEFL_MAX_HUFF_SYMBOLS_1] code_sizes_to_pack = ?;
 			uint8[TDEFL_MAX_HUFF_SYMBOLS_0 + TDEFL_MAX_HUFF_SYMBOLS_1] packed_code_sizes = ?;
 			uint8 prev_code_size = 0xFF;
@@ -3068,7 +3068,7 @@ namespace IDE.Util
 						ZIP_ARRAY_ELEMENT!<uint32>(&pZip.m_pState.m_sorted_central_dir_offsets, i) = (uint32)i;
 					comp_size = (int32)ReadLE32!(p + ZIP_CDH_COMPRESSED_SIZE_OFS);
 					decomp_size = (int32)ReadLE32!(p + ZIP_CDH_DECOMPRESSED_SIZE_OFS);
-					if (((ReadLE32!(p + ZIP_CDH_METHOD_OFS) == 0) && (decomp_size != comp_size)) || ((decomp_size != 0) && (comp_size == 0)) || (decomp_size == 0xFFFFFFFF) || (comp_size == 0xFFFFFFFF))
+					if (((ReadLE32!(p + ZIP_CDH_METHOD_OFS) == 0) && (decomp_size != comp_size)) || ((decomp_size != 0) && (comp_size == 0)) || (decomp_size == -1) || (comp_size == -1))
 						return false;
 					disk_index = ReadLE16!(p + ZIP_CDH_DISK_START_OFS);
 					if ((disk_index != num_this_disk) && (disk_index != 1))

@@ -79,6 +79,7 @@
     <TargetName>$(ProjectName)_d</TargetName>
     <LibraryPath>third_party\AK\lib\debug;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2007%29\Lib\x86;$(LibraryPath);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
     <IntDir>$(Platform)\$(Configuration)_static\</IntDir>
+    <OutDir>$(SolutionDir)\ide\dist\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -90,6 +91,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IntDir>$(Platform)\$(Configuration)_static\</IntDir>
+    <OutDir>$(SolutionDir)\ide\dist\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

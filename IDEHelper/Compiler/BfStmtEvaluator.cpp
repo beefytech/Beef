@@ -1631,7 +1631,8 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			localDef->mValue = initValue.mValue;
 			if ((localDef->mAddr) && (!localDef->mResolvedType->IsValuelessType()))
 			{
-				wantsStore = true;				
+				if (!initValue.mType->IsVar())
+					wantsStore = true;
 			}
 			else
 			{
@@ -5448,7 +5449,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	else if (isVarEnumerator)
 	{
 		// Generic method or mixin decl
-		BF_ASSERT(mBfIRBuilder->mIgnoreWrites);
+		BF_ASSERT(mBfIRBuilder->mIgnoreWrites || mHadVarUsage);
 	}		
 	else if (!target.mType->IsTypeInstance())
 	{		

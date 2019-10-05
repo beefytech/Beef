@@ -831,19 +831,23 @@ namespace IDE
 		        return true;
 
 		    Workspace.Options workspaceOptions = gApp.GetCurWorkspaceOptions();
-		    BfCompiler bfCompiler = gApp.mBfBuildCompiler;            
+		    BfCompiler bfCompiler = gApp.mBfBuildCompiler;
 		    var bfProject = gApp.mBfBuildSystem.mProjectMap[project];
-		    bool bfHadOutputChanges;
+		    bool bfHadOutputChanges = false;
 		    List<String> bfFileNames = scope List<String>();
-			bfCompiler.GetOutputFileNames(bfProject, true, out bfHadOutputChanges, bfFileNames);
-			defer ClearAndDeleteItems(bfFileNames);//DeleteAndClearItems!(bfFileNames);
+			if (project.mCurBfOutputFileNames == null)
+			{
+				project.mCurBfOutputFileNames = new .();
+				bfCompiler.GetOutputFileNames(bfProject, true, out bfHadOutputChanges, project.mCurBfOutputFileNames);
+			}
+			for (var fileName in project.mCurBfOutputFileNames)
+				bfFileNames.Add(fileName);
 		    if (bfHadOutputChanges)
 		        project.mNeedsTargetRebuild = true;
 
 		    List<ProjectSource> allFileNames = scope List<ProjectSource>();
 		    List<String> clangAllObjNames = scope List<String>();
-		    //List<String> clangObjNames = scope List<String>();            
-
+		    
 		    gApp.GetClangFiles(project.mRootFolder, allFileNames);
 
 		    String workspaceBuildDir = scope String();
@@ -852,8 +856,6 @@ namespace IDE
 		    gApp.GetProjectBuildDir(project, projectBuildDir);
 			if (!projectBuildDir.IsEmpty)
 		    	Directory.CreateDirectory(projectBuildDir).IgnoreError();
-
-		    //List<String> buildFileNames = new List<String>();
 
 			String targetPath = scope String();
 

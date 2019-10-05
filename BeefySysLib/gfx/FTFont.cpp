@@ -120,6 +120,7 @@ void FTFontManager::ClearCache()
 
 FTFontManager::Page::~Page()
 {
+	mTexture->Release();
 	//delete mTexture;
 }
 
@@ -266,8 +267,7 @@ FTFontManager::Glyph* FTFont::AllocGlyph(int charCode, bool allowDefault)
 			else
 				img.mBits[i] = 0xFF0000FF;
 		}
-		page->mTexture = gBFApp->mRenderDevice->LoadTexture(&img, TextureFlag_NoPremult);
-		page->mTexture->mRefCount = 0;
+		page->mTexture = gBFApp->mRenderDevice->LoadTexture(&img, TextureFlag_NoPremult);		
 	}
 
 	if (bitmap.width > 0)

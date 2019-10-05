@@ -1188,6 +1188,8 @@ namespace IDE
 		public bool mFailed;
 		public bool mNeedsCreate;
 
+		public List<String> mCurBfOutputFileNames ~ DeleteContainerAndItems!(_);
+
         public String ProjectFileName
         {
             get

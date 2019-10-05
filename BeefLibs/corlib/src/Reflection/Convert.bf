@@ -39,14 +39,14 @@ namespace System.Reflection
 			case .Int8: return (val >= -0x80) && (val <= 0x7F);
 			case .Int16: return (val >= -0x8000) && (val <= 0x7FFF);
 			case .Int32: return (val >= -0x80000000) && (val <= 0x7FFF'FFFF);
-			case .Int64: return (val >= -0x80000000'00000000) && (val <= 0x7FFFFFFF'FFFFFFFF);
+			case .Int64: return true;
 			case .UInt8, .Char8: return (val >= 0) && (val <= 0xFF);
 			case .UInt16, .Char16: return (val >= 0) && (val <= 0xFFFF);
 			case .UInt32, .Char32: return (val >= 0) && (val <= 0xFFFFFFFF);
-			case .UInt64: return (val >= 0) && (val <= 0x7FFFFFFF'FFFFFFFF);
+			case .UInt64: return (val >= 0);
 #if BF_64_BIT
-			case .Int: return (val >= -0x80000000'00000000) && (val <= 0x7FFFFFFF'FFFFFFFF);
-			case .UInt: return (val >= 0) && (val <= 0x7FFFFFFF'FFFFFFFF);
+			case .Int: return true;
+			case .UInt: return (val >= 0);
 #else
 			case .Int: return (val >= -0x80000000) && (val <= 0x7FFF'FFFF);
 			case .UInt: return (val >= 0) && (val <= 0xFFFFFFFF);

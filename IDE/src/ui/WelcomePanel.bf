@@ -111,7 +111,7 @@ namespace IDE.ui
 		public override void Draw(Graphics g)
 		{
 			using (g.PushColor(0x40000000))
-				g.FillRect(mWidth/2 - GS!(500), YOfs - GS!(24), GS!(500)*2, 570);
+				g.FillRect(mWidth/2 - GS!(500), YOfs - GS!(24), GS!(500)*2, GS!(570));
 
 			g.SetFont(mLargeFont);
 			using (g.PushColor(0xFFE0E0FF))

@@ -6543,7 +6543,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		break;
 	case DbgType_UChar:
 		if (language != DbgLanguage_Beef)
-			return IntTypeToString<int8>(typedValue.mUInt8, WrapWithModifiers("uint8_t", origValueType, language), displayInfo, formatInfo);
+			return IntTypeToString<uint8>(typedValue.mUInt8, WrapWithModifiers("uint8_t", origValueType, language), displayInfo, formatInfo);
 	case DbgType_SChar:
 		{						
 			if (typedValue.mInt8 != 0)

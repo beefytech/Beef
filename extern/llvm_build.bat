@@ -1,4 +1,6 @@
-@IF EXIST llvm-project GOTO LLVM_HAS
+PUSHD %~dp0..\
+
+@IF EXIST llvm-project_8_0_1 GOTO LLVM_HAS
 git clone --config core.autocrlf=false https://github.com/llvm/llvm-project.git llvm-project_8_0_1
 pushd llvm-project_8_0_1
 GOTO :LLVM_SET
@@ -24,3 +26,13 @@ cd llvm_win64_8_0_1
 :DOBUILD
 cmake --build . --config Debug 
 cmake --build . --config Release
+
+:SUCCESS
+@ECHO SUCCESS!
+@POPD
+@EXIT /b 0
+
+:HADERROR
+@ECHO =================FAILED=================
+@POPD
+@EXIT /b %ERRORLEVEL%

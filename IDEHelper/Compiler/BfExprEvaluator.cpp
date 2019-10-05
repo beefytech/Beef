@@ -16230,10 +16230,157 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	return PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue);	
 }
 
+bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken, const BfTypedValue& leftValue, const BfTypedValue& rightValue)
+{
+	if ((binaryOp < BfBinaryOp_Equality) || (binaryOp > BfBinaryOp_LessThanOrEqual))
+		return false;
+
+	// LHS is expected to be a value and RHS is expected to be a const
+	if (!leftValue.mType->IsIntegral())
+		return false;
+
+	BF_ASSERT(rightValue.mValue.IsConst());
+	auto rightConst = mModule->mBfIRBuilder->GetConstant(rightValue.mValue);
+
+	BfType* checkType = leftValue.mType;
+	if (checkType->IsTypedPrimitive())
+		checkType = checkType->GetUnderlyingType();
+	if (!checkType->IsPrimitiveType())
+		return false;
+
+	BfTypeCode typeCode = ((BfPrimitiveType*)checkType)->mTypeDef->mTypeCode;
+		
+	int64 minValue = 0;
+	int64 maxValue = 0;
+	switch (typeCode)
+	{
+	case BfTypeCode_Int8:
+		minValue = -0x80;
+		maxValue =  0x7F;
+		break;
+	case BfTypeCode_Int16:
+		minValue = -0x8000;
+		maxValue =  0x7FFF;
+		break;
+	case BfTypeCode_Int32:
+		minValue = -0x80000000LL;
+		maxValue =  0x7FFFFFFF;
+		break;
+	case BfTypeCode_Int64:
+		minValue = -0x8000000000000000LL;
+		maxValue =  0x7FFFFFFFFFFFFFFFLL;
+		break;
+	case BfTypeCode_UInt8:		
+		maxValue = 0xFF;
+		break;
+	case BfTypeCode_UInt16:
+		maxValue = 0xFFFF;
+		break;
+	case BfTypeCode_UInt32:
+		maxValue = 0xFFFFFFFF;
+		break;
+	default:
+		return false;
+	}	
+
+	int constResult = -1;
+	if (typeCode == BfTypeCode_UInt64)
+	{		
+		switch (binaryOp)
+		{
+		case BfBinaryOp_Equality:
+			if (rightConst->mInt64 < minValue)
+				constResult = 0;			
+			break;
+		case BfBinaryOp_InEquality:
+			if (rightConst->mInt64 < minValue)
+				constResult = 1;			
+			break;
+		case BfBinaryOp_LessThan:
+			if (rightConst->mInt64 <= minValue)
+				constResult = 0;			
+			break;
+		case BfBinaryOp_LessThanOrEqual:
+			if (rightConst->mInt64 < minValue)
+				constResult = 0;			
+			break;		
+		}
+		return false;
+	}
+	else
+	{
+		switch (binaryOp)
+		{
+		case BfBinaryOp_Equality:
+			if (rightConst->mInt64 < minValue)
+				constResult = 0;
+			else if (rightConst->mInt64 > maxValue)
+				constResult = 0;
+			break;
+		case BfBinaryOp_InEquality:
+			if (rightConst->mInt64 < minValue)
+				constResult = 1;
+			else if (rightConst->mInt64 > maxValue)
+				constResult = 1;
+			break;
+		case BfBinaryOp_LessThan:
+			if (rightConst->mInt64 <= minValue)
+				constResult = 0;
+			else if (rightConst->mInt64 > maxValue)
+				constResult = 1;
+			break;
+		case BfBinaryOp_LessThanOrEqual:
+			if (rightConst->mInt64 < minValue)
+				constResult = 0;
+			else if (rightConst->mInt64 >= maxValue)
+				constResult = 1;
+			break;
+		case BfBinaryOp_GreaterThan:
+			if (rightConst->mInt64 >= maxValue)
+				constResult = 0;
+			else if (rightConst->mInt64 < minValue)
+				constResult = 1;
+			break;
+		case BfBinaryOp_GreaterThanOrEqual:
+			if (rightConst->mInt64 > maxValue)
+				constResult = 0;
+			else if (rightConst->mInt64 <= minValue)
+				constResult = 1;
+			break;
+		}
+	}
+	
+	if (constResult == 0)
+	{
+		mModule->Warn(0, "The result of this operation is always 'false'", opToken);
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+		return true;
+	}
+	else  if (constResult == 1)
+	{
+		mModule->Warn(0, "The result of this operation is always 'true'", opToken);
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+		return true;
+	}
+	
+	return false;
+}
+
 void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNode* rightExpression, BfBinaryOp binaryOp, BfAstNode* opToken, BfBinOpFlags flags, BfTypedValue leftValue, BfTypedValue rightValue)
 {
 	bool noClassify = (flags & BfBinOpFlag_NoClassify) != 0;
 	bool forceLeftType = (flags & BfBinOpFlag_ForceLeftType) != 0;
+
+	if ((rightValue.mValue.IsConst()) && (!leftValue.mValue.IsConst()))
+	{
+		if (CheckConstCompare(binaryOp, opToken, leftValue, rightValue))
+			return;
+	}
+	else if ((leftValue.mValue.IsConst()) && (!rightValue.mValue.IsConst()))
+	{
+		if (CheckConstCompare(GetOppositeBinaryOp(binaryOp), opToken, rightValue, leftValue))
+			return;
+	}
 
 	if ((binaryOp == BfBinaryOp_NullCoalesce) && ((leftValue.mType->IsPointer()) || (leftValue.mType->IsObject())))
 	{
@@ -17261,7 +17408,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(convLeftValue, convRightValue),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;
-	case BfBinaryOp_LessThan:	
+	case BfBinaryOp_LessThan:			
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSignedInt()),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;

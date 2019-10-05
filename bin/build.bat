@@ -10,6 +10,11 @@ PUSHD %~dp0..\
 @ECHO Performing clean build
 :BUILD
 
+@IF EXIST extern\llvm-project_8_0_1 GOTO LLVM_HAS
+call extern\llvm_build.bat
+@IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
+:LLVM_HAS
+
 CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
