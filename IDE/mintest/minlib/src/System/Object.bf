@@ -493,6 +493,11 @@ namespace System
 			mTarget = target;
 			mFuncPtr = ptr;
 		}
+
+		protected override void GCMarkMembers()
+		{
+			GC.Mark(Internal.UnsafeCastToObject(mTarget));
+		}
     }
 
     struct DeferredCall

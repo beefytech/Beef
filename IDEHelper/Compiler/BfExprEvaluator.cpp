@@ -16241,6 +16241,8 @@ bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken,
 
 	BF_ASSERT(rightValue.mValue.IsConst());
 	auto rightConst = mModule->mBfIRBuilder->GetConstant(rightValue.mValue);
+	if (!mModule->mBfIRBuilder->IsInt(rightConst->mTypeCode))
+		return false;
 
 	BfType* checkType = leftValue.mType;
 	if (checkType->IsTypedPrimitive())
