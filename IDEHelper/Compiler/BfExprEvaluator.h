@@ -167,7 +167,7 @@ public:
 	void CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, bool isFailurePass);
 	bool WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInstance* startTypeInstance, BfTypeInstance* checkTypeInstance, BfMethodDef* methodDef);
 	bool CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* checkMethod, bool isFailurePass);	
-	void TryDevirtualizeCall(BfTypedValue target);
+	void TryDevirtualizeCall(BfTypedValue target, BfTypedValue* origTarget = NULL, BfTypedValue* staticResult = NULL);
 };
 
 
@@ -345,6 +345,7 @@ public:
 	BfTypedValue LookupIdentifier(BfAstNode* identifierNode, const StringImpl& findName, bool ignoreInitialError = false, bool* hadError = NULL);
 	BfTypedValue LookupIdentifier(BfIdentifierNode* identifierNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void AddCallDependencies(BfMethodInstance* methodInstance);
+	void PerformCallChecks(BfMethodInstance* methodInstance, BfAstNode* targetSrc);
 	BfTypedValue CreateCall(BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret = NULL, bool isTailCall = false);
 	BfTypedValue CreateCall(BfAstNode* targetSrc, const BfTypedValue& target, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance methodInstance, bool bypassVirtual, SizedArrayImpl<BfResolvedArg>& argValues, bool skipThis = false);
 	BfTypedValue CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target);

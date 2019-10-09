@@ -1660,7 +1660,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 	return mBestMethodDef != NULL;
 }
 
-void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target)
+void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* origTarget, BfTypedValue* staticResult)
 {		
 	if ((mBestMethodDef == NULL) || (target.mType == NULL))
 		return;
@@ -1684,14 +1684,25 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target)
 		if (checkType->IsWrappableType())
 			checkType = mModule->GetWrappedStructType(checkType);
 		if ((checkType != NULL) && (checkType->IsTypeInstance()) && (!checkType->IsInterface()))
-		{
+		{			
 			BfTypeInterfaceEntry* bestIFaceEntry = NULL;
 			auto checkTypeInst = checkType->ToTypeInstance();			
+
+			if (mBestMethodTypeInstance->mTypeDef == mModule->mCompiler->mIHashableTypeDef)
+			{
+				if ((origTarget != NULL) && (origTarget->mType->IsPointer()) && (staticResult != NULL))
+				{					
+					BfTypedValue ptrVal = mModule->LoadValue(*origTarget);
+					*staticResult = BfTypedValue(mModule->mBfIRBuilder->CreatePtrToInt(ptrVal.mValue, BfTypeCode_IntPtr), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+					return;					
+				}
+			}
+
 			while (checkTypeInst != NULL)
 			{
 				mModule->PopulateType(checkTypeInst, BfPopulateType_DataAndMethods);
 				for (auto&& iface : checkTypeInst->mInterfaces)
-				{
+				{					
 					//TODO: Why did we have this check?  This caused Dictionary to not be able to devirtualize
 					//  calls to TKey GetHashCode when TKey was from a user's project...
 					/*if (!checkTypeInst->IsTypeMemberAccessible(iface.mDeclaringType, activeTypeDef))
@@ -1723,6 +1734,13 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target)
 				if (bestIFaceEntry != NULL)
 					break;
 				checkTypeInst = checkTypeInst->mBaseType;
+
+				if ((checkTypeInst == NULL) && (checkType->HasWrappedRepresentation()))
+				{
+					auto underlyingType = checkType->GetUnderlyingType();
+					if ((underlyingType != NULL) && (underlyingType->IsWrappableType()))
+						checkTypeInst = mModule->GetWrappedStructType(underlyingType);
+				}
 			}
 			
 			if (bestIFaceEntry != NULL)
@@ -3687,6 +3705,82 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 
 	if (autoComplete != NULL)
 		autoComplete->mIgnoreFixits = hadIgnoredFixits;
+}
+
+void BfExprEvaluator::PerformCallChecks(BfMethodInstance* methodInstance, BfAstNode* targetSrc)
+{
+	BfCustomAttributes* customAttributes = methodInstance->GetCustomAttributes();
+	if (customAttributes != NULL)
+	{
+		auto _AddMethodDeclarationMoreInfo = [&]()
+		{
+			if (methodInstance->mMethodDef->mMethodDeclaration != NULL)
+				mModule->mCompiler->mPassInstance->MoreInfo(
+					StrFormat("See method declaration '%s'", mModule->MethodToString(methodInstance).c_str()),
+					methodInstance->mMethodDef->GetRefNode());
+		};
+
+		BfIRConstHolder* constHolder = methodInstance->GetOwner()->mConstHolder;
+		auto customAttribute = customAttributes->Get(mModule->mCompiler->mObsoleteAttributeTypeDef);
+		if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
+		{
+			String err;
+			err = StrFormat("'%s' is obsolete", mModule->MethodToString(methodInstance).c_str());
+
+			bool isError = false;
+
+			auto constant = constHolder->GetConstant(customAttribute->mCtorArgs[0]);
+			if (constant->mTypeCode == BfTypeCode_Boolean)
+			{
+				isError = constant->mBool;
+			}
+			else if (customAttribute->mCtorArgs.size() >= 2)
+			{
+				String* str = mModule->GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+				if (str != NULL)
+				{
+					err += ":\n    '";
+					err += *str;
+					err += "'";
+				}
+
+				constant = constHolder->GetConstant(customAttribute->mCtorArgs[1]);
+				isError = constant->mBool;
+			}
+
+			BfError* error = NULL;
+			if (isError)
+				error = mModule->Fail(err, targetSrc);
+			else
+				error = mModule->Warn(0, err, targetSrc);
+			if (error != NULL)
+				_AddMethodDeclarationMoreInfo();
+		}
+
+		customAttribute = customAttributes->Get(mModule->mCompiler->mErrorAttributeTypeDef);
+		if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
+		{
+			String err = StrFormat("Method error: '", mModule->MethodToString(methodInstance).c_str());
+			String* str = mModule->GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+			if (str != NULL)
+				err += *str;
+			err += "'";
+			if (mModule->Fail(err, targetSrc) != NULL)
+				_AddMethodDeclarationMoreInfo();
+		}
+
+		customAttribute = customAttributes->Get(mModule->mCompiler->mWarnAttributeTypeDef);
+		if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
+		{
+			String err = StrFormat("Method warning: '", mModule->MethodToString(methodInstance).c_str());
+			String* str = mModule->GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+			if (str != NULL)
+				err += *str;
+			err += "'";
+			if (mModule->Warn(0, err, targetSrc) != NULL)
+				_AddMethodDeclarationMoreInfo();
+		}
+	}
 }
 
 BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret, bool isTailCall)
@@ -5926,7 +6020,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			methodMatcher.CheckType(lookupTypeInst, target, true);		
 	}
 	
-	methodMatcher.TryDevirtualizeCall(target);
+	BfTypedValue staticResult;
+	methodMatcher.TryDevirtualizeCall(target, &origTarget, &staticResult);
+	if (staticResult)
+		return staticResult;
 	bypassVirtual |= methodMatcher.mBypassVirtual;
 
 	if (methodMatcher.mBestMethodDef != NULL)
@@ -6660,6 +6757,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 	}
 
+	PerformCallChecks(moduleMethodInstance.mMethodInstance, targetSrc);
+
 	if (result)
 	{
 		bool discardedReturnValue = mUsedAsStatement;		
@@ -6672,16 +6771,12 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 					auto customAttribute = customAttributes->Get(mModule->mCompiler->mNoDiscardAttributeTypeDef);
 					if (!customAttribute->mCtorArgs.IsEmpty())
 					{
-						int strId = mModule->GetStringPoolIdx(customAttribute->mCtorArgs[0], constHolder);
-						if (strId != -1)
+						String* str = mModule->GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+						if ((str != NULL) && (!str->IsEmpty()))
 						{
-							auto& entry = mModule->mContext->mStringObjectIdMap[strId];
-							if (!entry.mString.IsEmpty())
-							{
-								mModule->Warn(0, text + ": " + entry.mString, targetSrc);
-								return;
-							}
-						}
+							mModule->Warn(0, text + ": " + *str, targetSrc);
+							return;
+						}						
 					}
 				}
 
@@ -7505,7 +7600,7 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 
 	mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
 	mModule->PopulateType(type);
-	auto typeInstance = type->ToTypeInstance();
+	auto typeInstance = type->ToTypeInstance();	
 
 	auto _BoolResult = [&](bool val)
 	{
@@ -7562,6 +7657,70 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		_Int32Result((typeInstance != NULL) ? typeInstance->mInstAlign : type->mSize);
 	else if (memberName == "InstanceStride")
 		_Int32Result((typeInstance != NULL) ? typeInstance->GetInstStride() : type->GetStride());
+	else if ((memberName == "MinValue") || (memberName == "MaxValue"))
+	{
+		bool isMin = memberName == "MinValue";
+				
+		BfType* checkType = typeInstance;
+		if (checkType->IsTypedPrimitive())
+			checkType = checkType->GetUnderlyingType();
+
+		if (checkType->IsPrimitiveType())
+		{
+			auto primType = (BfPrimitiveType*)checkType;
+
+			if (typeInstance->IsEnum())
+			{
+				if (typeInstance->mTypeInfoEx != NULL)
+				{
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)typeInstance->mTypeInfoEx->mMinValue : (uint64)typeInstance->mTypeInfoEx->mMaxValue), typeInstance);
+					return true;
+				}
+			}
+			else
+			{
+				switch (primType->mTypeDef->mTypeCode)
+				{				
+				case BfTypeCode_Int8:
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x80 : 0x7F), typeInstance);
+					return true;
+				case BfTypeCode_Int16:
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x8000 : 0x7FFF), typeInstance);
+					return true;
+				case BfTypeCode_Int32:
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x80000000LL : 0x7FFFFFFF), typeInstance);
+					return true;
+				case BfTypeCode_Int64:
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x8000000000000000LL : (uint64)0x7FFFFFFFFFFFFFFFLL), typeInstance);
+					return true;
+				case BfTypeCode_UInt8:
+				case BfTypeCode_Char8:
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFF), typeInstance);
+					return true;
+				case BfTypeCode_UInt16:
+				case BfTypeCode_Char16:
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFFFF), typeInstance);
+					return true;
+				case BfTypeCode_UInt32:
+				case BfTypeCode_Char32:
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFLL), typeInstance);
+					return true;
+				case BfTypeCode_UInt64:
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), typeInstance);
+					return true;
+				}
+			}
+		}
+		
+		if (typeInstance->IsEnum())
+		{
+			mModule->Fail("'MinValue' cannot be used on enums with payloads", propName);			
+		}
+		else 
+		{
+			mModule->Fail(StrFormat("'%s' cannot be used on type '%s'", memberName.c_str(), mModule->TypeToString(typeInstance).c_str()), propName);
+		}
+	}	
 	else
 		return false;
 	
@@ -11287,10 +11446,24 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 	}
 
 	if (target.mType->IsWrappableType())
-	{		
+	{
 		auto primStructType = mModule->GetWrappedStructType(target.mType);
 		if (primStructType != NULL)
+		{
+			mModule->PopulateType(primStructType);
 			target.mType = primStructType;
+			if ((primStructType->IsSplattable()) && (!primStructType->IsTypedPrimitive()))
+			{				
+				if (target.IsAddr())
+				{
+					auto ptrType = mModule->CreatePointerType(primStructType);
+					target = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType)), primStructType, true);
+				}
+				else
+					target.mKind = BfTypedValueKind_SplatHead;
+			}
+		}
+
 		return target;
 	}
 
@@ -12981,7 +13154,7 @@ void BfExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
 				checkTarget = indexerExpr->mTarget;
 
 				if (indexerExpr->mCommas.size() != 0)
-					mModule->Fail("Only one value expected. Consider adding an allocation specifier such as 'new' if construction of a dynamic multidimentional was intended.", indexerExpr->mCommas[0]);
+					mModule->Fail("Only one value expected. Consider adding an allocation specifier such as 'new' if construction of a dynamic multidimensional was intended.", indexerExpr->mCommas[0]);
 
 				int arrSize = 0;
 
@@ -13161,10 +13334,11 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 					if (!checkedUnderlying)
 					{
 						checkedUnderlying = true;
-						if (checkType->IsTypedPrimitive())
+						if (checkType->HasWrappedRepresentation())
 						{
 							auto underlyingType = checkType->GetUnderlyingType();
-							checkTypeInst = mModule->GetWrappedStructType(underlyingType);
+							if (underlyingType != NULL)
+								checkTypeInst = mModule->GetWrappedStructType(underlyingType);
 						}
 					}
 				}
@@ -13251,12 +13425,13 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 		if (!mModule->mBfIRBuilder->mIgnoreWrites)
 		{
 			BF_ASSERT(!methodInstance.mFunc.IsFake());
-		}
-		
+		}				
+
 		if (mPropSrc != NULL)
 			mModule->UpdateExprSrcPos(mPropSrc);
 		
 		CheckPropFail(matchedMethod, methodInstance.mMethodInstance);
+		PerformCallChecks(methodInstance.mMethodInstance, mPropSrc);
 
 		if (methodInstance.mMethodInstance->IsSkipCall())
 		{

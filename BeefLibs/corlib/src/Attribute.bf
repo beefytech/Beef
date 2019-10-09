@@ -319,12 +319,43 @@ namespace System
 	{
 	}
 
-
 	/// Generally used as a per-method optimization, [DisableObjectAccessChecks] will avoid the runtime per-object-access
 	/// checks which by default are only applied in debug builds anyway.
 	[AttributeUsage(AttributeTargets.Method/*, AlwaysIncludeTarget=true*/)]
 	public struct DisableObjectAccessChecksAttribute : Attribute
 	{
+	}
+
+	[AttributeUsage(.Method | .Constructor)]
+	public struct ObsoleteAttribute : Attribute
+	{
+		public this(bool isError)
+		{
+
+		}
+
+		public this(String error, bool isError)
+		{
+
+		}
+	}
+
+	[AttributeUsage(.Method | .Constructor)]
+	public struct ErrorAttribute : Attribute
+	{
+		public this(String error)
+		{
+
+		}
+	}
+
+	[AttributeUsage(.Method | .Constructor)]
+	public struct WarnAttribute : Attribute
+	{
+		public this(String error)
+		{
+
+		}
 	}
 
 	/// If [NoDiscard] is used on a method, the the compiler will show a warning if the result is discarded.

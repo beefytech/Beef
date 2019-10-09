@@ -332,6 +332,38 @@ namespace System
 	{
 	}
 
+	[AttributeUsage(.Method | .Constructor)]
+	public struct ObsoleteAttribute : Attribute
+	{
+		public this(bool isError)
+		{
+
+		}
+
+		public this(String error, bool isError)
+		{
+
+		}
+	}
+
+	[AttributeUsage(.Method | .Constructor)]
+	public struct ErrorAttribute : Attribute
+	{
+		public this(String error)
+		{
+
+		}
+	}
+
+	[AttributeUsage(.Method | .Constructor)]
+	public struct WarnAttribute : Attribute
+	{
+		public this(String error)
+		{
+
+		}
+	}
+
 	[AttributeUsage(.Method | .Class | .Struct)]
 	public struct NoDiscardAttribute : Attribute
 	{
