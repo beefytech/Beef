@@ -46,6 +46,8 @@ namespace BeefBuild
 
 		public override void Init()
 		{
+			GetVersionInfo();
+
 			if (mVerbosity == .Default)
 				mVerbosity = .Normal;
 
@@ -109,6 +111,9 @@ namespace BeefBuild
 
 		public override bool HandleCommandLineParam(String key, String value)
 		{
+			if (key.StartsWith("--"))
+				key.Remove(0, 1);
+
 			if (value == null)
 			{
 				switch (key)
@@ -132,6 +137,9 @@ namespace BeefBuild
 					return true;
 				case "-noir":
 					mConfig_NoIR = true;
+					return true;
+				case "-version":
+					mVerb = .GetVersion;
 					return true;
 				}
 			}

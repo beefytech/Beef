@@ -22,6 +22,7 @@ namespace BeefBuild
 					    -run                    Compile and run the startup project in the workspace
 					    -test=<path>            Executes test script
 					    -verbosity=<verbosity>  Set verbosity level to: quiet/minimal/normal/detailed/diagnostic
+						-version				Get version
 					    -workspace=<path>       Sets workspace path (defaults to current working directory)
 					""");
 				return 0;
@@ -33,14 +34,21 @@ namespace BeefBuild
 
 			BuildApp mApp = new BuildApp();	
 			mApp.ParseCommandLine(commandLine);
-			if (mApp.mFailed)
+			if (mApp.mVerb == .GetVersion)
 			{
-				Console.Error.WriteLine("  Run with \"-help\" for a list of command-line arguments");
+				Console.WriteLine("BeefBuild {}", mApp.GetVersionInfo().FileVersion);
 			}
 			else
 			{
-				mApp.Init();
-				mApp.Run();
+				if (mApp.mFailed)
+				{
+					Console.Error.WriteLine("  Run with \"-help\" for a list of command-line arguments");
+				}
+				else
+				{
+					mApp.Init();
+					mApp.Run();
+				}
 			}
 			mApp.Shutdown();
 			int32 result = mApp.mFailed ? 1 : 0;
