@@ -13,18 +13,15 @@ class ClassA
 {
 	public virtual void ClassA0()
 	{
-
 	}
 
 	public virtual void ClassA1()
 	{
-
 	}
 }
 
 class ClassB
 {
-	
 }
 
 #if B
@@ -71,13 +68,11 @@ class ClassE : ClassD
 {
 	public void Zog2()
 	{
-
 	}
 }
 
 class ClassF : ClassE
 {
-
 }
 
 [NoDiscard("Use this value!")]
@@ -95,11 +90,10 @@ class Bloozer
 enum Zorf : IDisposable
 {
 	case A;
-	case B;
+		case B;
 
 	public void Dispose()
 	{
-
 	}
 }
 
@@ -107,7 +101,6 @@ class IFaceA
 {
 	public static void Fart()
 	{
-
 	}
 }
 
@@ -115,7 +108,6 @@ class Zlips : IFaceA, IDisposable
 {
 	static void Fart()
 	{
-
 	}
 
 	public void Dispose()
@@ -129,9 +121,7 @@ class Testo
 	public this()
 	{
 		PrintF("Testo this %p\n", this);
-	}
-
-	public ~this()
+	} public ~this()
 	{
 		PrintF("Testo ~this %p\n", this);
 	}
@@ -143,7 +133,7 @@ class Norg
 	public int32 mA;
 	public int32 mB;
 
-	public int32 GetIt(int32 a, int32 b, int32 c) mut
+	public int32 GetIt(int32 a, int32 b, int32 c)
 	{
 		return a + b + c + mA;
 	}
@@ -157,10 +147,13 @@ class Norg
 	{
 		set
 		{
-			
+			mA = (.)value;
 		}
 
-		
+		get
+		{
+			return mA;
+		}
 	}
 
 	public virtual int GetVal()
@@ -171,18 +164,47 @@ class Norg
 
 class Norg2 : Norg
 {
-	public override void Zorf
+	public int mVal2;
+
+	public int Zof => 123;
+
+	public int GetIt() => 234;
+
+	/*public override int Zorf
 	{
 		set
 		{
 			base.Zorf = 123;
 		}
-	}
+	}*/
 
 }
 
-struct Blurg 
+enum TestEnumA
 {
+	A,
+	B,
+	C
+}
+
+[AttributeUsage(.Field, .ReflectAttribute, ReflectUser=.All)]
+struct FoofAttribute : Attribute
+{
+	int32 mA;
+	int32 mB;
+	int32 mC;
+
+	public this(int32 a, int32 b, int32 c)
+	{
+		mA = a;
+		mB = b;
+		mC = c;
+	}
+}
+
+struct Blurg
+{
+	[Foof(1, 2, 3)]
 	public String mVal;
 	public int32 mA;
 	public int32 mB;
@@ -196,7 +218,6 @@ struct Blurg
 
 	void TestIt(String a, String b)
 	{
-
 	}
 
 	TestStruct GetTS()
@@ -209,26 +230,29 @@ struct Blurg
 		PrintF("a0");
 	}
 
+	[Error("This property can only be accessed directly from a typeof() expression")]
 	static void Test(int a, int b, int c)
 	{
-
 	}
 
-	
+	public static Result<int> GetMe()
+	{
+		return 123;
+	}
+
 	public static int32 Hey()
 	{
-		Result<int, float> res = .Ok(123);
+		let t = typeof(Self);
+		let field = t.GetField("mVal").Value;
+		var foofAttrib = field.GetCustomAttribute<FoofAttribute>();
 
-		Florg fl = .();
+		//for (TypeCode tc < .Boolean)
 
-		let f2 = fl;
-		//defer f2.Dispose();
+		//Test(1, 2, 3);
 
-		using (var f = fl)
-		{
-			
-		}
-		
+		/*TestEnumA ta = .A;
+		IHashable ih = ta;*/
+
 		return 123;
 	}
 
@@ -240,7 +264,6 @@ struct Florg
 
 	public void Dispose() mut
 	{
-
 	}
 }
 

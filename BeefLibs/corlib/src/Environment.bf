@@ -44,7 +44,7 @@ namespace System
 		{
 			Platform.GetStrHelper(outPath, scope (outPtr, outSize, outResult) =>
                 {
-					Platform.BfpDynLib_GetFilePath(null, outPtr, outSize, (Platform.BfpLibResult*)outResult);
+					Platform.BfpSystem_GetExecutablePath(outPtr, outSize, (Platform.BfpSystemResult*)outResult);
                 });
 		}
 

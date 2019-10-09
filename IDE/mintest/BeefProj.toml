@@ -70,4 +70,4 @@ Path = "../../../temp/test.txt"
 [[ProjectFolder.Items]]
 Type = "Folder"
 Path = "../../../temp/borf"
-Source = ["a.txt"]
+AutoInclude = true

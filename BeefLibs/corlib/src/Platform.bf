@@ -55,8 +55,6 @@ namespace System
 		[StdCall, CLink]
 		public static extern BfpTimeStamp BfpSystem_GetTimeStamp();
 		[StdCall, CLink]
-		public static extern void BfpSystem_GetEnvironmentStrings(char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult);
-		[StdCall, CLink]
 		public static extern uint8 BfpSystem_InterlockedExchange8(uint8* ptr, uint8 val); /// Returns the initial value in 'ptr'
 		[StdCall, CLink]
 		public static extern uint16 BfpSystem_InterlockedExchange16(uint16* ptr, uint16 val); /// Returns the initial value in 'ptr'
@@ -80,6 +78,10 @@ namespace System
 		public static extern uint32 BfpSystem_InterlockedCompareExchange32(uint32* ptr, uint32 oldVal, uint32 newVal);
 		[StdCall, CLink]
 		public static extern uint64 BfpSystem_InterlockedCompareExchange64(uint64* ptr, uint64 oldVal, uint64 newVal);
+		[StdCall, CLink]
+		public static extern void BfpSystem_GetExecutablePath(char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult);
+		[StdCall, CLink]
+		public static extern void BfpSystem_GetEnvironmentStrings(char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult);
 		[StdCall, CLink]
 		public static extern int32 BfpSystem_GetNumLogicalCPUs(BfpSystemResult* outResult);
 		[StdCall, CLink]

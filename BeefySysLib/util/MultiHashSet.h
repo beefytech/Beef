@@ -111,7 +111,7 @@ public:
 
 public:
 	Entry** mHashHeads;
-	const int cDefaultHashSize = 17;
+	static const int cDefaultHashSize = 17;
 	int mHashSize;
 	int mCount;
 	

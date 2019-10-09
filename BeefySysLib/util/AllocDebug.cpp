@@ -2,6 +2,10 @@
 #include "CritSect.h"
 #include "util/Dictionary.h"
 
+#ifdef DEF_BF_ALLOCDEBUG
+#define USE_BF_ALLOCDEBUG
+#endif
+
 #pragma warning(disable:4996)
 #include <cstdio>
 #include "AllocDebug.h"

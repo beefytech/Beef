@@ -424,6 +424,15 @@ namespace Beefy.widgets
             return mSubItems[columnIdx];
         }
 
+		public ListViewItem GetOrCreateSubItem(int columnIdx)
+		{
+			if (mColumnIdx == columnIdx)
+				return this;
+			if ((mSubItems != null) && (columnIdx < mSubItems.Count))
+		    	return mSubItems[columnIdx];
+			return CreateSubItem(columnIdx);
+		}
+
         public virtual void MakeParent()
         {
             if (mChildItems == null)

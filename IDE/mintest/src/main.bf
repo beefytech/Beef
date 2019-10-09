@@ -189,40 +189,27 @@ namespace Hey.Dude.Bro
 		[CRepr, CLink]
 		public static extern void* SetUnhandledExceptionFilter(function int32(void* p) func);
 
+		public static int GetHash<T>(T val) where T : IHashable
+		{
+			return val.GetHashCode();
+		}	
+
 		public static int Main(String[] args)
 		{
+			/*IHashable ih = (int32)TypeCode.Boolean;
+			let hashCode = ih.GetHashCode();*/
+
+			Object obj = new Object();
+
+			int* iPtr = scope .();
+			int hash = GetHash(iPtr);
+			
+
 			//Test2(1, 2, 3, 4);
-			//int a = Fartso;
+		
 
-#if ZLOG
-			PrintF("HEY!");
-#endif
-			List<String> iList = scope .();
-			for (int i < 1000)
-			{
-				iList.Add("Zpops");
-			}
-
-			bool b = false;
-
-			//File file;
-			int len = args.Count;
-
-			int zog = 123;
-
-			int a = 0x1122334455667788;
-
-			void* prev = SetUnhandledExceptionFilter(=> SEHHandler);
-			PrintF("Prev: %p\n", prev);
-
-			//TestA();
 			Blurg.Hey();
 
-			for (int i < 100)
-			{
-				PrintF("Hello 2!\n");
-				Thread.Sleep(10);
-			}
 			
 			return 1;
 		}

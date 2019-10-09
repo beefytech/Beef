@@ -333,6 +333,16 @@ namespace System
 			}
 		}
 
+		public virtual int32 MaxValue
+		{
+			[Error("This property can only be accessed directly from a typeof() expression")]
+			get
+			{
+				return 0;
+			}
+		}
+
+
         public int32 GetTypeId()
         {
             return (int32)mTypeId;
