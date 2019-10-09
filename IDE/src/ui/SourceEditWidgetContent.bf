@@ -3128,6 +3128,7 @@ namespace IDE.ui
 	                        });
 
 						// Fixits
+						if ((mSourceViewPanel.mIsBeefSource) && (mSourceViewPanel.mProjectSource != null))
 						{
 							ResolveParams resolveParams = scope .();
 							mSourceViewPanel.DoClassify(ResolveType.GetFixits, resolveParams, true);

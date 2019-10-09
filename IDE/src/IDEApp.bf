@@ -77,7 +77,8 @@ namespace IDE
 		New,
 		OpenOrNew,
 		Test,
-		Run
+		Run,
+		GetVersion
 	}
 
 	enum HotResolveState
@@ -9845,6 +9846,18 @@ namespace IDE
 			}
 		}
 
+		public FileVersionInfo GetVersionInfo()
+		{
+			if (mVersionInfo == null)
+			{
+				String exeFilePath = scope .();
+				Environment.GetExecutableFilePath(exeFilePath);
+				mVersionInfo = new .();
+				mVersionInfo.GetVersionInfo(exeFilePath).IgnoreError();
+			}
+			return mVersionInfo;
+		}
+
 #if !CLI
         public override void Init()
         {
@@ -9970,10 +9983,7 @@ namespace IDE
 			mAutoCompletePanel = new AutoCompletePanel();
 			mAutoCompletePanel.mAutoDelete = false;
 
-			String exeFilePath = scope .();
-			Environment.GetExecutableFilePath(exeFilePath);
-			mVersionInfo = new .();
-			mVersionInfo.GetVersionInfo(exeFilePath).IgnoreError();
+			GetVersionInfo();
 			OutputLine("IDE Started. Version {}.", mVersionInfo.FileVersion);
 
 			/*if (!mRunningTestScript)
@@ -11546,7 +11556,6 @@ namespace IDE
 					{
 						if (editData.mLoadedHash.GetKind() != .None)
 						{
-							File.WriteAllText(@"c:\temp\test.txt", editData.mQueuedContent).IgnoreError();
 							editData.mLoadedHash = SourceHash.Create(editData.mLoadedHash.GetKind(), editData.mQueuedContent);
 						}
 					}) case .Err(let err))

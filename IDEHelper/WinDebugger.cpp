@@ -5307,6 +5307,8 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 	while (formatFlags.length() > 0)
 	{
 		formatFlags = Trim(formatFlags);
+		if (formatFlags.IsEmpty())
+			break;
 		if (formatFlags[0] != ',')
 		{
 			return false;			
@@ -5731,6 +5733,7 @@ String WinDebugger::GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 		return "";
 	}
 	int entrySize = entriesPtr.mType->mTypeParam->GetByteCount();
+	int bucketIdxSize = bucketsPtr.mType->mTypeParam->GetByteCount();
 
 	String addrs;
 
@@ -5757,8 +5760,11 @@ String WinDebugger::GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 			encodeCount++;
 		}
 		else
-		{			
-			nodeIdx = ReadMemory<int>(bucketsPtr.mPtr + bucketIdx * sizeof(int32));
+		{	
+			if (bucketIdxSize == 4)
+				nodeIdx = ReadMemory<int>(bucketsPtr.mPtr + bucketIdx * sizeof(int32));
+			else
+				nodeIdx = (int)ReadMemory<int64>(bucketsPtr.mPtr + bucketIdx * sizeof(int64));
 			bucketIdx++;
 		}
 	}

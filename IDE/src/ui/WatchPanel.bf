@@ -51,7 +51,8 @@ namespace IDE.ui
 		public String mAction ~ delete _;
 		public List<String> mWarnings ~ DeleteContainerAndItems!(_);
 
-		public int32 mSeriesId = -1;
+		public int32 mSeriesFirstVersion = -1;
+		public int32 mSeriesVersion = -1;
 
         public bool ParseCmd(List<StringView> cmd)
         {
@@ -444,7 +445,8 @@ namespace IDE.ui
         public DarkButton mMoreButton;
         public DarkButton mLessButton;
 		public static int32 sIdx;
-		public int32 mSeriesId = ++sIdx;
+		public int32 mSeriesVersion = ++sIdx;
+		public int32 mSeriesFirstVersion = mSeriesVersion;
     }
 
     public class WatchRefreshButton : ButtonWidget
@@ -1179,7 +1181,7 @@ namespace IDE.ui
 
         public void RemoveInvalidContinuationItems()
         {
-            var lastValidListViewItem = this;
+            /*var lastValidListViewItem = this;
             for (int32 idx = 1; idx < mWatchSeriesInfo.mCount; idx++)
             {                
                 int32 parentIdx = idx + mWatchSeriesInfo.mStartMemberIdx;
@@ -1203,9 +1205,9 @@ namespace IDE.ui
                 }
                 else
                     lastValidListViewItem = watchListViewItem;
-            }
+            }*/
 
-			// This caused 'closing' opened items with Dictionay elements when stepping
+			// This caused 'closing' opened items with Dictionary elements when stepping
             /*if (mWatchSeriesInfo.mAddrs != null)
             {
                 int32 checkIdx = mWatchSeriesInfo.mStartMemberIdx + 1;
@@ -1214,7 +1216,7 @@ namespace IDE.ui
                     WatchListViewItem watchListViewItem = (WatchListViewItem)mParentItem.mChildItems[checkIdx];
                     if (watchListViewItem.mWatchSeriesInfo != mWatchSeriesInfo)
                         break;
-                    mParentItem.RemoveChildItem(watchListViewItem);
+                    //mParentItem.RemoveChildItem(watchListViewItem);
                 }
             }*/
         }
@@ -1328,6 +1330,7 @@ namespace IDE.ui
                         bool wantsFillIn = (curY + ofsY + itemHeight >= 0) && (curY + ofsY < mListView.mHeight);
                         bool wantsDelete = !wantsFillIn;
 						bool forceDelete = false;
+						bool forceFillIn = false;
 
                         if (mDisabled)
                         {
@@ -1335,11 +1338,16 @@ namespace IDE.ui
                             wantsDelete = false;
                         }
 
-						if ((curWatchListViewItem != null) && (idx > 0) && (curWatchListViewItem.mWatchEntry.mSeriesId != mWatchSeriesInfo.mSeriesId))
+						if ((curWatchListViewItem != null) && (idx > 0) && (curWatchListViewItem.mWatchEntry.mSeriesFirstVersion != mWatchSeriesInfo.mSeriesFirstVersion))
 						{
 							// This logic gets invoked for Beef array views....
 							forceDelete = true;
 							wantsFillIn = true;
+						}
+
+						if ((curWatchListViewItem != null) && (idx > 0) && (curWatchListViewItem.mWatchEntry.mSeriesVersion != mWatchSeriesInfo.mSeriesVersion))
+						{
+							forceFillIn = true;
 						}
 
 						if ((forceDelete) || 
@@ -1350,16 +1358,26 @@ namespace IDE.ui
 						    curWatchListViewItem = null;
 						}
 
-                        if ((curWatchListViewItem == null) && (wantsFillIn))
+                        if (((curWatchListViewItem == null) && (wantsFillIn)) ||
+							(forceFillIn))
                         {
                             prevWatchListViewItem.mBottomPadding = (curY - prevWatchListViewItem.mY) - prevWatchListViewItem.mSelfHeight - prevWatchListViewItem.mChildAreaHeight;
-                            curWatchListViewItem = (WatchListViewItem)mParentItem.CreateChildItemAtIndex(curMemberIdx);
-                            curWatchListViewItem.mVisible = false;
+							if (curWatchListViewItem == null)
+                            	curWatchListViewItem = (WatchListViewItem)mParentItem.CreateChildItemAtIndex(curMemberIdx);
                             curWatchListViewItem.mX = mX;
-							mWatchSeriesInfo.AddRef();
-                            curWatchListViewItem.mWatchSeriesInfo = mWatchSeriesInfo;
-                            curWatchListViewItem.mSeriesMemberIdx = idx;							
-
+							if (curWatchListViewItem.mWatchSeriesInfo == null)
+							{
+								curWatchListViewItem.mVisible = false;
+								mWatchSeriesInfo.AddRef();
+	                            curWatchListViewItem.mWatchSeriesInfo = mWatchSeriesInfo;
+								curWatchListViewItem.mSeriesMemberIdx = idx;
+							}
+							else
+							{
+								Debug.Assert(curWatchListViewItem.mWatchSeriesInfo == mWatchSeriesInfo);
+								Debug.Assert(curWatchListViewItem.mSeriesMemberIdx == idx);
+							}
+                            
                             Object[] formatParams = scope Object[mWatchSeriesInfo.mAddrsEntrySize + 1];
                             formatParams[0] = idx;
                             
@@ -1401,8 +1419,10 @@ namespace IDE.ui
 							evalStr.AppendF(mWatchSeriesInfo.mEvalTemplate, params formatParams);
 
                             watchListView.mWatchOwner.SetupListViewItem(curWatchListViewItem, dispStr, evalStr);
-							curWatchListViewItem.mWatchEntry.mSeriesId = mWatchSeriesInfo.mSeriesId;
-                            curMemberIdx++;
+							curWatchListViewItem.mWatchEntry.mSeriesFirstVersion = mWatchSeriesInfo.mSeriesFirstVersion;
+							curWatchListViewItem.mWatchEntry.mSeriesVersion = mWatchSeriesInfo.mSeriesVersion;
+							if (!forceFillIn)
+                            	curMemberIdx++;
                         }
                         
 
@@ -1757,15 +1777,16 @@ namespace IDE.ui
             listViewItem.AllowDragging = true;
             listViewItem.mOpenOnDoubleClick = false;
 
-            var subViewItem = (DarkListViewItem)listViewItem.CreateSubItem(1);
+            var subViewItem = (DarkListViewItem)listViewItem.GetOrCreateSubItem(1);
             subViewItem.Label = "";
             subViewItem.AllowDragging = true;
 
-            subViewItem = (DarkListViewItem)listViewItem.CreateSubItem(2);
+            subViewItem = (DarkListViewItem)listViewItem.GetOrCreateSubItem(2);
             subViewItem.Label = "";
 			subViewItem.AllowDragging = true;
-            
-            ((WatchListViewItem)listViewItem).mWatchEntry = watchEntry;
+
+			delete listViewItem.mWatchEntry;
+            listViewItem.mWatchEntry = watchEntry;
         }
 
         public void AddWatchItem(String name)
@@ -2352,7 +2373,7 @@ namespace IDE.ui
 								//  This keeps expanded items expanded when single stepping, but will cause them to refresh and close
 								//  when we are actually evaluating a different value with the same name in a different context
 								if ((prevWatchSeriesInfo.mEvalTemplate == watchSeriesInfo.mEvalTemplate) && (prevWatchSeriesInfo.mDisplayTemplate == watchSeriesInfo.mDisplayTemplate))
-									watchSeriesInfo.mSeriesId = prevWatchSeriesInfo.mSeriesId;
+									watchSeriesInfo.mSeriesFirstVersion = prevWatchSeriesInfo.mSeriesFirstVersion;
 								
 								memberItem.mWatchSeriesInfo.ReleaseRef();
                             }

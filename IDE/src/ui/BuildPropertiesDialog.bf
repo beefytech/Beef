@@ -210,7 +210,8 @@ namespace IDE.ui
 				var propEntry = propEntryKV.value[0];
 				if (propEntry.mPropertyName == "mFilter")
 				{
-					typeOptionsEntries.Add(propEntry);
+					if (propEntry.mListViewItem != null)
+						typeOptionsEntries.Add(propEntry);
 				}
 			}
 
