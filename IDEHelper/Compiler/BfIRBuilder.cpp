@@ -1730,6 +1730,8 @@ String BfIRBuilder::GetDebugTypeName(BfTypeInstance* typeInstance, bool includeO
 	{
 		BfBoxedType* boxedType = (BfBoxedType*)typeInstance;
 		typeName = mModule->TypeToString(boxedType->mElementType, (BfTypeNameFlags)(BfTypeNameFlag_ResolveGenericParamNames | BfTypeNameFlag_AddGlobalContainerName));
+		if (boxedType->IsBoxedStructPtr())
+			typeName += "*";
 		typeName = "Box<" + typeName + ">";
 	}	
 	else if (includeOuterTypeName)
@@ -2547,7 +2549,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	}
 	else if (type->IsBoxed())
 	{
-		auto underlyingType = typeInstance->GetUnderlyingType();
+		auto underlyingType = ((BfBoxedType*)type)->GetModifiedElementType();
 		if (!underlyingType->IsValuelessType())
 		{
 			auto fieldInstance = &typeInstance->mFieldInstances.back();
@@ -2705,9 +2707,14 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
 	if (typeInstance->IsBoxed())
 	{
 		auto boxedType = (BfBoxedType*)typeInstance;
-		if (!boxedType->mElementType->IsValuelessType())
-		{			
-			irFieldTypes.push_back(MapTypeInst(boxedType->mElementType, boxedType->mElementType->IsValueType() ? BfIRPopulateType_Eventually_Full : BfIRPopulateType_Declaration));
+		BF_ASSERT(!boxedType->mFieldInstances.IsEmpty());
+
+		auto& fieldInst = boxedType->mFieldInstances.back();
+		auto elementType = fieldInst.mResolvedType;
+
+		if (!elementType->IsValuelessType())
+		{
+			irFieldTypes.push_back(MapType(elementType, elementType->IsValueType() ? BfIRPopulateType_Eventually_Full : BfIRPopulateType_Declaration));
 		}
 	}
 	else

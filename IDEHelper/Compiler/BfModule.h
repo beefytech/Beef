@@ -1388,6 +1388,7 @@ public:
 	BfIRValue CreateStringObjectValue(const StringImpl& str, int stringId, bool define);
 	BfIRValue CreateStringCharPtr(const StringImpl& str, int stringId, bool define);
 	int GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHolder = NULL);
+	String* GetStringPoolString(BfIRValue constantStr, BfIRConstHolder* constHolder = NULL);
 	BfIRValue GetStringCharPtr(int stringId);
 	BfIRValue GetStringCharPtr(BfIRValue strValue);	
 	BfIRValue GetStringCharPtr(const StringImpl& str);

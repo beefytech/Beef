@@ -2394,6 +2394,20 @@ void BeModule::Print(BeFunction* func)
 	OutputDebugStr(ToString(func));
 }
 
+void BeModule::PrintValue(BeValue* val)
+{
+	BeDumpContext dumpCtx;
+	dumpCtx.mModule = this;
+	String str;
+	dumpCtx.ToString(str, val);
+	str += "\n";
+	OutputDebugStr(str);
+
+	auto type = val->GetType();
+	if (type != NULL)
+		bpt(type);
+}
+
 void BeModule::DoInlining(BeFunction* func)
 {
 	//bool debugging = func->mName == "?Test@Program@bf@@CAXXZ";
@@ -3138,9 +3152,9 @@ BeGEPInst* BeModule::CreateGEP(BeValue* ptr, BeValue* idx0, BeValue* idx1)
 	inst->mIdx0 = idx0;
 	inst->mIdx1 = idx1;		
 	AddInst(inst);	
-
-	BF_ASSERT(ptr->GetType()->IsPointer());
+	
 #ifdef _DEBUG
+	BF_ASSERT(ptr->GetType()->IsPointer());
 	inst->GetType();
 #endif
 

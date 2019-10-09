@@ -397,6 +397,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mInlineAttributeTypeDef = NULL;
 	mInternalTypeDef = NULL;
 	mIPrintableTypeDef = NULL;
+	mIHashableTypeDef = NULL;
 	mLinkNameAttributeTypeDef = NULL;
 	mMethodRefTypeDef = NULL;
 	mNullableTypeDef = NULL;
@@ -422,6 +423,9 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mTypeTypeDef = NULL;
 	mUnboundAttributeTypeDef = NULL;	
 	mValueTypeTypeDef = NULL;
+	mObsoleteAttributeTypeDef = NULL;
+	mErrorAttributeTypeDef = NULL;
+	mWarnAttributeTypeDef = NULL;
 
 	mLastAutocompleteModule = NULL;
 }
@@ -4679,7 +4683,7 @@ void BfCompiler::PopulateReified()
 				if (!unspecializedType->mIsReified)
 					unspecializedType->mIsReified = true;
 			}
-
+			
 			// Check reifications forced by virtuals or interfaces
 			if ((!mIsResolveOnly) && (typeInst != NULL) && (typeInst->mIsReified) && (typeInst->IsObject()) && (!typeInst->IsUnspecializedType())
 				&& (typeInst->mHasBeenInstantiated) && (!typeInst->IsIncomplete()))
@@ -4826,6 +4830,9 @@ void BfCompiler::PopulateReified()
 
 void BfCompiler::HotCommit()
 {
+	if (mHotState == NULL)
+		return;
+
 	mHotState->mCommittedHotCompileIdx = mOptions.mHotCompileIdx;
 
 	for (auto type : mContext->mResolvedTypes)
@@ -5808,6 +5815,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
 	mIPrintableTypeDef = _GetRequiredType("System.IPrintable");
+	mIHashableTypeDef = _GetRequiredType("System.IHashable");
 	mLinkNameAttributeTypeDef = _GetRequiredType("System.LinkNameAttribute");
 	mMethodRefTypeDef = _GetRequiredType("System.MethodReference", 1);
 	mNullableTypeDef = _GetRequiredType("System.Nullable");
@@ -5834,6 +5842,9 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mTypeTypeDef = _GetRequiredType("System.Type");
 	mUnboundAttributeTypeDef = _GetRequiredType("System.UnboundAttribute");	
 	mValueTypeTypeDef = _GetRequiredType("System.ValueType");
+	mObsoleteAttributeTypeDef = _GetRequiredType("System.ObsoleteAttribute");
+	mErrorAttributeTypeDef = _GetRequiredType("System.ErrorAttribute");
+	mWarnAttributeTypeDef = _GetRequiredType("System.WarnAttribute");
 
 	for (int i = 0; i < BfTypeCode_Length; i++)
 		mContext->mPrimitiveStructTypes[i] = NULL;

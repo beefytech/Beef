@@ -328,10 +328,10 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 	}
 	else if (typeInst->IsBoxed())	
 	{
-		auto boxedType = (BfBoxedType*)typeInst;
+		auto boxedType = (BfBoxedType*)typeInst;		
 		name += "N3BoxI";
-		mangleContext.mSubstituteList.push_back(NameSubstitute(BfGNUMangler::NameSubstitute::Kind_None, NULL)); // Insert entry for 'Box'
-		Mangle(mangleContext, name, boxedType->mElementType, postfixTypeInstance);
+		mangleContext.mSubstituteList.push_back(NameSubstitute(BfGNUMangler::NameSubstitute::Kind_None, NULL)); // Insert entry for 'Box'		
+		Mangle(mangleContext, name, boxedType->GetModifiedElementType(), postfixTypeInstance);
 		name += "E";		
 		mangleContext.mSubstituteList.push_back(NameSubstitute(BfGNUMangler::NameSubstitute::Kind_None, NULL)); // Insert entry for 'Box<T>'
 		if (isEndOpen != NULL)		
@@ -1154,11 +1154,11 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 // 			name += '@';
 		}
 		else if (newNameSub.mTypeInst->IsBoxed())
-		{			
+		{
 			auto boxedType = (BfBoxedType*)newNameSub.mTypeInst;
 			name += "?$Box@";
 			BfTypeVector typeVec;			
-			typeVec.push_back(boxedType->mElementType);			
+			typeVec.push_back(boxedType->GetModifiedElementType());			
 			AddGenericArgs(mangleContext, name, typeVec);
 			name += '@';
 		}

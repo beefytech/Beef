@@ -450,6 +450,7 @@ public:
 	virtual bool IsTypedPrimitive() { return false; }
 	virtual bool IsComposite() { return IsStruct(); }
 	virtual bool IsStruct() { return false; }
+	virtual bool IsStructPtr() { return false; }
 	virtual bool IsUnion() { return false; }
 	virtual bool IsStructOrStructPtr() { return false; }	
 	virtual bool IsObject() { return false; }
@@ -494,6 +495,7 @@ public:
 	virtual bool WantsGCMarking() { return false; }
 	virtual BfTypeCode GetLoweredType() { return BfTypeCode_None; }
 	virtual BfType* GetUnderlyingType() { return NULL; }	
+	virtual bool HasWrappedRepresentation() { return IsWrappableType(); }
 	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) { return true; } // May be 'false' only for generic extensions with constraints
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) { return true; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) { return true; }	
@@ -1451,6 +1453,21 @@ public:
 	Array<BfTypeInstance*> mStaticTypes;
 };
 
+class BfTypeInfoEx
+{
+public:
+	BfType* mUnderlyingType;
+	int64 mMinValue;
+	int64 mMaxValue;
+
+	BfTypeInfoEx()
+	{
+		mUnderlyingType = NULL;
+		mMinValue = 0;
+		mMaxValue = 0;
+	}
+};
+
 // Instance of struct or class
 class BfTypeInstance : public BfDependedType
 {
@@ -1465,6 +1482,7 @@ public:
 	BfTypeInstance* mBaseType;
 	BfCustomAttributes* mCustomAttributes;
 	BfAttributeData* mAttributeData;
+	BfTypeInfoEx* mTypeInfoEx;
 
 	Array<BfTypeInterfaceEntry> mInterfaces;	
 	Array<BfTypeInterfaceMethodEntry> mInterfaceMethodTable;
@@ -1528,6 +1546,7 @@ public:
 		mBaseType = NULL;
 		mCustomAttributes = NULL;
 		mAttributeData = NULL;
+		mTypeInfoEx = NULL;
 		//mClassVData = NULL;
 		mVirtualMethodTableSize = 0;
 		mHotTypeData = NULL;		
@@ -1566,7 +1585,8 @@ public:
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfPrimitiveType* ToPrimitiveType() override { return GetUnderlyingType()->ToPrimitiveType();  }
-
+	virtual bool HasWrappedRepresentation() { return IsTypedPrimitive(); }
+	
 	int GetEndingInstanceAlignment() { if (mInstSize % mInstAlign == 0) return mInstAlign; return mInstSize % mInstAlign; }
 	virtual bool HasTypeFailed() override { return mTypeFailed; } 
 	virtual bool IsReified() override { return mIsReified; }
@@ -1602,6 +1622,8 @@ public:
 	virtual bool WantsGCMarking() override;
 	virtual BfTypeCode GetLoweredType() override;
 
+	virtual BfTypeInstance* GetImplBaseType() { return mBaseType; }
+
 	virtual bool IsIRFuncUsed(BfIRFunction func);
 
 	void CalcHotVirtualData(/*Val128& vtHash, */Array<int>* ifaceMapping);
@@ -1626,9 +1648,25 @@ public:
 class BfBoxedType : public BfTypeInstance
 {
 public:
-	BfTypeInstance* mElementType;
+	enum BoxedFlags
+	{
+		BoxedFlags_None = 0,
+		BoxedFlags_StructPtr = 1
+	};
 
 public:
+	BfTypeInstance* mElementType;
+	BfBoxedType* mBoxedBaseType;
+	BoxedFlags mBoxedFlags;
+
+public:
+	BfBoxedType()
+	{
+		mElementType = NULL;
+		mBoxedBaseType = NULL;
+		mBoxedFlags = BoxedFlags_None;
+	}
+
 	virtual bool IsBoxed() override { return true; }
 
 	virtual bool IsValueType() override { return false; }
@@ -1645,6 +1683,15 @@ public:
 	virtual bool IsSpecializedType() override { return !mElementType->IsUnspecializedType(); }
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
 	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedTypeVariation(); }		
+
+	virtual BfTypeInstance* GetImplBaseType() { return (mBoxedBaseType != NULL) ? mBoxedBaseType : mBaseType; }
+
+	bool IsBoxedStructPtr()
+	{
+		return (mBoxedFlags & BoxedFlags_StructPtr) != 0;
+	}
+
+	BfType* GetModifiedElementType();
 };
 
 class BfGenericExtensionEntry
@@ -1862,6 +1909,7 @@ public:
 	virtual bool IsReified() { return mElementType->IsReified(); }
 	virtual bool IsPointer() override { return true; }
 	virtual bool IsIntPtrable() override { return true; }
+	virtual bool IsStructPtr() override { return mElementType->IsStruct(); }
 	virtual bool IsStructOrStructPtr() override { return mElementType->IsStruct(); }
 	virtual bool IsValueTypeOrValueTypePtr() override { return mElementType->IsValueType(); }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
@@ -2174,7 +2222,7 @@ public:
 		}
 		
 		mCount++;
-		Entry* entry = new Entry();
+		Entry* entry = (Entry*)BfResolvedTypeSetFuncs::Allocate(sizeof(Entry), alignof(Entry));
 		entry->mValue = NULL;
 // 		if (mHashHeads[bucket] != NULL)
 // 			mHashHeads[bucket]->mPrev = entry;

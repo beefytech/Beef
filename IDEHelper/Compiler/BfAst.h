@@ -2427,12 +2427,6 @@ public:
 	BfTokenNode* mRefToken;
 };	BF_AST_DECL(BfRefTypeRef, BfElementedTypeRef);
 
-class BfBoxedTypeRef : public BfElementedTypeRef
-{
-public:
-	BF_AST_TYPE(BfBoxedTypeRef, BfElementedTypeRef);
-};	BF_AST_DECL(BfBoxedTypeRef, BfElementedTypeRef);
-
 class BfParamsExpression : public BfExpression
 {
 public:

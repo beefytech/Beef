@@ -2109,6 +2109,7 @@ public:
 	String ToString(BeFunction* func = NULL);
 	void Print();
 	void Print(BeFunction* func);
+	void PrintValue(BeValue* val);
 
 	void DoInlining(BeFunction* func);
 	void DoInlining();

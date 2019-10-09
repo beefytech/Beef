@@ -1087,6 +1087,7 @@ BfMethodInstanceGroup::~BfMethodInstanceGroup()
 
 BfTypeInstance::~BfTypeInstance()
 {
+	delete mTypeInfoEx;
 	delete mCustomAttributes;
 	delete mAttributeData;
 	for (auto methodInst : mInternalMethods)
@@ -1622,17 +1623,25 @@ BfType* BfTypeInstance::GetUnderlyingType()
 	if (!mIsTypedPrimitive)
 		return NULL;
 
+	if (mTypeInfoEx == NULL)
+		mTypeInfoEx = new BfTypeInfoEx();
+	if (mTypeInfoEx->mUnderlyingType != NULL)
+		return mTypeInfoEx->mUnderlyingType;
+
 	auto checkTypeInst = this;
 	while (checkTypeInst != NULL)
 	{
 		if (!checkTypeInst->mFieldInstances.empty())
-			return checkTypeInst->mFieldInstances.back().mResolvedType;
+		{
+			mTypeInfoEx->mUnderlyingType = checkTypeInst->mFieldInstances.back().mResolvedType;
+			return mTypeInfoEx->mUnderlyingType;
+		}
 		checkTypeInst = checkTypeInst->mBaseType;
 		if (checkTypeInst->IsIncomplete())
 			mModule->PopulateType(checkTypeInst, BfPopulateType_Data);
 	}
 	BF_FATAL("Failed");
-	return NULL;
+	return mTypeInfoEx->mUnderlyingType;
 }
 
 bool BfTypeInstance::IsValuelessType()
@@ -1853,6 +1862,15 @@ void BfTupleType::Finish()
 	bfDefBuilder.FinishTypeDef(true);
 
 	mHasUnspecializedMembers = false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+BfType* BfBoxedType::GetModifiedElementType()
+{
+	if ((mBoxedFlags & BoxedFlags_StructPtr) != 0)
+		return mModule->CreatePointerType(mElementType);
+	return mElementType;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2460,12 +2478,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		int hashVal = ctx->mModule->mCompiler->mNullableTypeDef->mHash;
 		hashVal = ((hashVal ^ (Hash(nullableType->mElementType, ctx))) << 5) - hashVal;
 		return hashVal;
-	}
-	else if (auto boxedType = BfNodeDynCastExact<BfBoxedTypeRef>(typeRef))
-	{		
-		int elemHash = Hash(boxedType->mElementType, ctx) ^ HASH_VAL_BOXED;
-		return (elemHash << 5) - elemHash;
-	}
+	}	
 	else if (auto refType = BfNodeDynCastExact<BfRefTypeRef>(typeRef))
 	{
 		if ((flags & BfHashFlag_AllowRef) != 0)
@@ -2654,8 +2667,10 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 	{
 		if (!rhs->IsBoxed())
 			return false;
-		BfBoxedType* lhsBoxedType = (BfBoxedType*) lhs;
-		BfBoxedType* rhsBoxedType = (BfBoxedType*) rhs;
+		BfBoxedType* lhsBoxedType = (BfBoxedType*)lhs;
+		BfBoxedType* rhsBoxedType = (BfBoxedType*)rhs;
+		if (lhsBoxedType->mBoxedFlags != rhsBoxedType->mBoxedFlags)
+			return false;
 		return Equals(lhsBoxedType->mElementType, rhsBoxedType->mElementType, ctx);
 	}
 	else if (lhs->IsArray())
@@ -3050,11 +3065,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 	if (lhs->IsBoxed())
 	{
-		auto rhsBoxedTypeRef = BfNodeDynCastExact<BfBoxedTypeRef>(rhs);
-		if (rhsBoxedTypeRef == NULL)
-			return false;
-		BfBoxedType* lhsBoxedType = (BfBoxedType*) lhs;
-		return Equals(lhsBoxedType->mElementType, rhsBoxedTypeRef->mElementType, ctx);
+		return false;
 	}
 	else if (lhs->IsArray())
 	{
@@ -3700,9 +3711,7 @@ String BfTypeUtils::TypeToString(BfTypeReference* typeRef)
 	}
 
 	if (auto ptrType = BfNodeDynCast<BfPointerTypeRef>(typeRef))
-		return TypeToString(ptrType->mElementType) + "*";
-	if (auto boxedType = BfNodeDynCast<BfBoxedTypeRef>(typeRef))
-		return "boxed " + TypeToString(boxedType->mElementType);
+		return TypeToString(ptrType->mElementType) + "*";	
 	if (auto ptrType = BfNodeDynCast<BfArrayTypeRef>(typeRef))
 	{
 		String name = TypeToString(ptrType->mElementType) + "[";

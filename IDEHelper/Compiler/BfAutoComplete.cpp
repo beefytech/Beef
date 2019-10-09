@@ -1394,7 +1394,7 @@ void BfAutoComplete::CheckIdentifier(BfIdentifierNode* identifierNode, bool isIn
 			"delegate", "extern", "enum", "explicit", "extension", "function",
 			"interface", "in", "internal", "mixin", "namespace", "new",
 			"operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "rettype", "return",
-			"sealed", "static", "struct", "this", "typealias",
+			"scope", "sealed", "static", "struct", "this", "typealias",
 			"using", "virtual", "volatile", "T", "where"
 		};
 		for (int i = 0; i < sizeof(tokens)/sizeof(char*); i++)

@@ -1130,7 +1130,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "-")
+                (mModuleName == "Program")
 				//|| (mModuleName == "System_Internal")
 				//|| (mModuleName == "vdata")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
@@ -1581,6 +1581,17 @@ int BfModule::GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHold
 	}	
 
 	return -1;
+}
+
+String* BfModule::GetStringPoolString(BfIRValue constantStr, BfIRConstHolder * constHolder)
+{
+	int strId = GetStringPoolIdx(constantStr, constHolder);
+	if (strId != -1)
+	{
+		auto& entry = mContext->mStringObjectIdMap[strId];		
+		return &entry.mString;
+	}
+	return NULL;
 }
 
 BfIRValue BfModule::GetStringCharPtr(int stringId)
@@ -4264,10 +4275,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	
 	BfTypeInstance* typeInstance = type->ToTypeInstance();		
 
-// 	BfType* typeInstanceType = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef, BfPopulateType_Identity);
-// 	mBfIRBuilder->PopulateType(typeInstanceType, BfIRPopulateType_Full_ForceDefinition);
-// 	PopulateType(typeInstanceType);
-
 	BfType* typeInstanceType = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef);
 	mBfIRBuilder->PopulateType(typeInstanceType, BfIRPopulateType_Full_ForceDefinition);
 
@@ -4379,7 +4386,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	if (type->IsStruct())	
 		typeFlags |= BfTypeFlags_Struct;
 	if (type->IsBoxed())
-		typeFlags |= BfTypeFlags_Boxed;	
+	{
+		typeFlags |= BfTypeFlags_Boxed;
+		if (((BfBoxedType*)type)->IsBoxedStructPtr())
+			typeFlags |= BfTypeFlags_Pointer;
+	}
 	if (type->IsPrimitiveType())	
 		typeFlags |= BfTypeFlags_Primitive;
 	if (type->IsTypedPrimitive())
@@ -4565,7 +4576,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			for (int i = 0; i < mCompiler->mMaxInterfaceSlots; i++)
 				dynCastData.Add(0);
 			dynCastData.Add(0);
-			
+						
 			auto checkTypeInst = typeInstance;
 			while (checkTypeInst != NULL)
 			{
@@ -4573,10 +4584,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				{
 					if (interfaceEntry.mInterfaceType->mSlotNum >= 0)
 					{
-						dynCastData[interfaceEntry.mInterfaceType->mSlotNum + 1] = interfaceEntry.mInterfaceType->mTypeId;
+						if (dynCastData[interfaceEntry.mInterfaceType->mSlotNum + 1] == 0)
+							dynCastData[interfaceEntry.mInterfaceType->mSlotNum + 1] = interfaceEntry.mInterfaceType->mTypeId;
 					}
 				}
-				checkTypeInst = checkTypeInst->mBaseType;
+				checkTypeInst = checkTypeInst->GetImplBaseType();
 			}
 			
 			if (mSystem->mPtrSize == 8)
@@ -4633,6 +4645,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		Dictionary<BfTypeInstance*, _InterfaceMatchEntry> interfaceMap;
 		auto checkTypeInst = typeInstance;
 
+		bool forceInterfaceSet = false;
 		while (checkTypeInst != NULL)
 		{
 			for (auto&& interfaceEntry : checkTypeInst->mInterfaces)
@@ -4648,6 +4661,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					auto prevEntry = matchEntry->mEntry;
 					bool isBetter = TypeIsSubTypeOf(checkTypeInst, matchEntry->mEntrySource);
 					bool isWorse = TypeIsSubTypeOf(matchEntry->mEntrySource, checkTypeInst);
+					if (forceInterfaceSet)
+					{
+						isBetter = true;
+						isWorse = false;
+					}
 					if (isBetter == isWorse)								
 						CompareDeclTypes(interfaceEntry.mDeclaringType, prevEntry->mDeclaringType, isBetter, isWorse);
 					if (isBetter == isWorse)
@@ -4675,8 +4693,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				}
 			}
 
-			checkTypeInst = checkTypeInst->mBaseType;
-		}
+			checkTypeInst = checkTypeInst->GetImplBaseType();
+		}		
 
 		for (auto interfacePair : interfaceMap)
 		{
@@ -4701,7 +4719,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			while (checkTypeInst != NULL)
 			{
 				origVirtTypeStack.push_back(checkTypeInst);
-				checkTypeInst = checkTypeInst->mBaseType;
+				checkTypeInst = checkTypeInst->GetImplBaseType();
 			}
 
 			Array<BfVirtualMethodEntry> origVTable;
@@ -4860,14 +4878,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				makeEmpty = true;
 			
 			int endVirtualIdx = interfaceEntry->mStartVirtualIdx + interfaceEntry->mInterfaceType->mVirtualMethodTableSize;
-// 			for (int methodIdx = 0; methodIdx < (int)interfaceEntry->mInterfaceType->mMethodInstanceGroups.size(); methodIdx++)
-// 			{
-// 				BfMethodInstance* ifaceMethodInstance = interfaceEntry->mInterfaceType->mMethodInstanceGroups[methodIdx].mDefault;
-// 				if ((ifaceMethodInstance == NULL) || (ifaceMethodInstance->mVirtualTableIdx == -1))
-// 					continue;
-// 				endVirtualIdx = BF_MAX(endVirtualIdx, interfaceEntry->mStartVirtualIdx + ifaceMethodInstance->mVirtualTableIdx);
-// 			}
-
 			bool useExt = endVirtualIdx > ifaceMethodExtStart;
 
 			for (int methodIdx = 0; methodIdx < (int)interfaceEntry->mInterfaceType->mMethodInstanceGroups.size(); methodIdx++)
@@ -4893,8 +4903,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					{
 						BF_ASSERT(methodInstance->mIsReified);
 						// This doesn't work because we may have FOREIGN methods from implicit interface methods
-						//auto moduleMethodInst = GetMethodInstanceAtIdx(methodRef.mTypeInstance, methodRef.mMethodNum);
-						BfMethodInstance* methodInstance = methodRef;
+						//auto moduleMethodInst = GetMethodInstanceAtIdx(methodRef.mTypeInstance, methodRef.mMethodNum);						
 						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance);
 						auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 						pushValue = funcPtr;
@@ -4906,8 +4915,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				}
 
 				int idx = interfaceEntry->mStartVirtualIdx + ifaceMethodInstance->mVirtualTableIdx;
-// 				if (!useExt)
-// 					vData[iFaceMethodStartIdx + idx] = pushValue;
 				if (idx < ifaceMethodExtStart)
 				{
 					BF_ASSERT(iFaceMethodStartIdx + idx < (int)vData.size());
@@ -4922,7 +4929,46 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					ifaceMethodExtData[extIdx] = pushValue;
 				}
 			}
-		}		
+		}	
+
+		if (typeInstance->IsBoxed())
+		{
+			BfBoxedType* boxedType = (BfBoxedType*)typeInstance;
+			if (boxedType->IsBoxedStructPtr())
+			{
+				// Force override of GetHashCode so we use the pointer address as the hash code
+				checkTypeInst = CreateBoxedType(ResolveTypeDef(mCompiler->mPointerTypeDef));
+				
+				// Force override of GetHashCode so we use the pointer address as the hash code
+				for (auto& checkIFace : checkTypeInst->mInterfaces)
+				{
+					for (int methodIdx = 0; methodIdx < (int)checkIFace.mInterfaceType->mMethodInstanceGroups.size(); methodIdx++)
+					{
+						BfIRValue pushValue;
+
+						BfMethodInstance* ifaceMethodInstance = checkIFace.mInterfaceType->mMethodInstanceGroups[methodIdx].mDefault;
+						if ((ifaceMethodInstance == NULL) || (ifaceMethodInstance->mVirtualTableIdx == -1))
+							continue;
+
+						if ((!ifaceMethodInstance->mIsReified) || (!ifaceMethodInstance->mMethodInstanceGroup->IsImplemented()))
+							continue;
+
+						auto& methodRef = checkTypeInst->mInterfaceMethodTable[checkIFace.mStartInterfaceTableIdx + methodIdx].mMethodRef;
+						
+						auto methodInstance = (BfMethodInstance*)methodRef;
+						BF_ASSERT(methodInstance->mIsReified);
+						// This doesn't work because we may have FOREIGN methods from implicit interface methods
+						//auto moduleMethodInst = GetMethodInstanceAtIdx(methodRef.mTypeInstance, methodRef.mMethodNum);						
+						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance);
+						auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
+
+						int idx = checkIFace.mStartVirtualIdx + ifaceMethodInstance->mVirtualTableIdx;
+						vData[iFaceMethodStartIdx + idx] = funcPtr;
+					}
+
+				}
+			}
+		}
 				
 		if ((needsVData) && (!typeInstance->mTypeDef->mIsStatic))
 		{
@@ -6540,8 +6586,16 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			convCheckConstraint = ResolveGenericType(convCheckConstraint, *methodGenericArgs);		
 
 		BfTypeInstance* typeConstraintInst = convCheckConstraint->ToTypeInstance();	
-				
-		bool implementsInterface = CanImplicitlyCast(checkArgType, convCheckConstraint);
+		
+		bool implementsInterface = false;
+		if (origCheckArgType != checkArgType)
+		{
+			implementsInterface = CanImplicitlyCast(origCheckArgType, convCheckConstraint);
+		}
+
+		if (!implementsInterface)
+			implementsInterface = CanImplicitlyCast(checkArgType, convCheckConstraint);
+
 		if ((!implementsInterface) && (origCheckArgType->IsWrappableType()))
 		{			
 			BfTypeInstance* wrappedStructType = GetWrappedStructType(origCheckArgType, false);
@@ -8228,23 +8282,40 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		return BfTypedValue(phi, resultType);		
 	} 		
 	
-	if (fromStructTypeInstance == NULL)	
-	{		
-		auto primType = (BfPrimitiveType*) typedVal.mType;		
-		fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
-	}
-	if (fromStructTypeInstance == NULL)
-		return BfTypedValue();
+	bool alreadyCheckedCast = false;
+
 	BfTypeInstance* toTypeInstance = NULL;
 	if (toType != NULL)
 		toTypeInstance = toType->ToTypeInstance();
 
-	// Need to box it
-	bool isBoxedType = (fromStructTypeInstance != NULL) && (toType->IsBoxed()) && (CreateBoxedType(fromStructTypeInstance) == toType);
+	bool isStructPtr = typedVal.mType->IsStructPtr();
+	if (fromStructTypeInstance == NULL)	
+	{	
+		auto primType = (BfPrimitiveType*)typedVal.mType;
+		fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
 
-	if ((toType == NULL) || (toType == mContext->mBfObjectType) || (isBoxedType) || (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
+		if (isStructPtr)
+		{
+			if ((toTypeInstance != NULL) && (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
+				alreadyCheckedCast = true;
+
+			fromStructTypeInstance = typedVal.mType->GetUnderlyingType()->ToTypeInstance();
+		}		
+	}
+	if (fromStructTypeInstance == NULL)
+		return BfTypedValue();	
+
+	// Need to box it
+	auto boxedType = CreateBoxedType(typedVal.mType);
+	bool isBoxedType = (fromStructTypeInstance != NULL) && (toType->IsBoxed()) && (boxedType == toType);
+
+	if ((toType == NULL) || (toType == mContext->mBfObjectType) || (isBoxedType) || (alreadyCheckedCast) ||  (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
 	{
-		auto boxedType = CreateBoxedType(fromStructTypeInstance);	
+		if (typedVal.mType->IsPointer())
+		{
+			NOP;
+		}
+		
 		mBfIRBuilder->PopulateType(boxedType);
 		AddDependency(boxedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
 		auto allocaInst = AllocFromType(boxedType, allocTarget, BfIRValue(), BfIRValue(), 0, callDtor ? BfAllocFlags_None : BfAllocFlags_NoDtorCall);
@@ -8264,7 +8335,7 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				typedVal = LoadValue(typedVal);
 				auto valPtr = mBfIRBuilder->CreateInBoundsGEP(allocaInst, 0, 1);
 
-				if (typedVal.mType != fromStructTypeInstance)
+				if ((typedVal.mType != fromStructTypeInstance) && (!isStructPtr))
 				{
 					auto ptrType = CreatePointerType(typedVal.mType);
 					valPtr = mBfIRBuilder->CreateBitCast(valPtr, mBfIRBuilder->MapType(ptrType));
@@ -16573,6 +16644,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				{
 					BfIRValue thisValue = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, 1);
 					BfTypedValue innerVal(thisValue, innerType, true);
+					if (boxedType->IsBoxedStructPtr())
+					{												
+						innerVal = LoadValue(innerVal);
+						innerVal = BfTypedValue(innerVal.mValue, innerType, true);
+					}
+
 					exprEvaluator.PushThis(NULL, innerVal, innerMethodInstance.mMethodInstance, innerParams);
 				}
 

@@ -325,33 +325,30 @@ public:
 	BfTypeDef* mArray3TypeDef;
 	BfTypeDef* mArray4TypeDef;
 	BfTypeDef* mSpanTypeDef;
-	BfTypeDef* mAttributeTypeDef;
-	BfTypeDef* mAttributeUsageAttributeTypeDef;
+	
 	BfTypeDef* mBfObjectTypeDef;
 	BfTypeDef* mClassVDataTypeDef;		
-	BfTypeDef* mCLinkAttributeTypeDef;
-	BfTypeDef* mCReprAttributeTypeDef;
-	BfTypeDef* mNoDiscardAttributeTypeDef;
-	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;
+	
 	BfTypeDef* mDbgRawAllocDataTypeDef;
 	BfTypeDef* mDeferredCallTypeDef;	
 	BfTypeDef* mDelegateTypeDef;
 	BfTypeDef* mEnumTypeDef;
-	BfTypeDef* mFriendAttributeTypeDef;
-	BfTypeDef* mCheckedAttributeTypeDef;
-	BfTypeDef* mUncheckedAttributeTypeDef;
+	BfTypeDef* mStringTypeDef;
+	BfTypeDef* mTypeTypeDef;
+	BfTypeDef* mValueTypeTypeDef;	
 	BfTypeDef* mFunctionTypeDef;
 	BfTypeDef* mGCTypeDef;	
 	BfTypeDef* mGenericIEnumerableTypeDef;
 	BfTypeDef* mGenericIEnumeratorTypeDef;
 	BfTypeDef* mGenericIRefEnumeratorTypeDef;
-	BfTypeDef* mInlineAttributeTypeDef;
+	
 	BfTypeDef* mInternalTypeDef;
 	BfTypeDef* mIPrintableTypeDef;
-	BfTypeDef* mLinkNameAttributeTypeDef;
+	BfTypeDef* mIHashableTypeDef;
+	
 	BfTypeDef* mMethodRefTypeDef;
 	BfTypeDef* mNullableTypeDef;
-	BfTypeDef* mOrderedAttributeTypeDef;
+	
 	BfTypeDef* mPointerTTypeDef;
 	BfTypeDef* mPointerTypeDef;
 	BfTypeDef* mReflectArrayType;
@@ -364,16 +361,30 @@ public:
 	BfTypeDef* mReflectSpecializedGenericType;
 	BfTypeDef* mReflectTypeInstanceTypeDef;
 	BfTypeDef* mReflectUnspecializedGenericType;	
+	
 	BfTypeDef* mSizedArrayTypeDef;
+	BfTypeDef* mAttributeTypeDef;
+	BfTypeDef* mAttributeUsageAttributeTypeDef;
+	BfTypeDef* mLinkNameAttributeTypeDef;
+	BfTypeDef* mOrderedAttributeTypeDef;
+	BfTypeDef* mInlineAttributeTypeDef;
+	BfTypeDef* mCLinkAttributeTypeDef;
+	BfTypeDef* mCReprAttributeTypeDef;
+	BfTypeDef* mNoDiscardAttributeTypeDef;
+	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;
+	BfTypeDef* mFriendAttributeTypeDef;
+	BfTypeDef* mCheckedAttributeTypeDef;
+	BfTypeDef* mUncheckedAttributeTypeDef;
 	BfTypeDef* mSkipAccessCheckAttributeTypeDef;
 	BfTypeDef* mStaticInitAfterAttributeTypeDef;
-	BfTypeDef* mStaticInitPriorityAttributeTypeDef;
-	BfTypeDef* mStringTypeDef;
+	BfTypeDef* mStaticInitPriorityAttributeTypeDef;	
 	BfTypeDef* mTestAttributeTypeDef;
-	BfTypeDef* mThreadStaticAttributeTypeDef;
-	BfTypeDef* mTypeTypeDef;
-	BfTypeDef* mUnboundAttributeTypeDef;	
-	BfTypeDef* mValueTypeTypeDef;
+	BfTypeDef* mThreadStaticAttributeTypeDef;	
+	BfTypeDef* mUnboundAttributeTypeDef;
+	BfTypeDef* mObsoleteAttributeTypeDef;
+	BfTypeDef* mErrorAttributeTypeDef;
+	BfTypeDef* mWarnAttributeTypeDef;
+	
 
 	int mCurTypeId;	
 	int mTypeInitCount;

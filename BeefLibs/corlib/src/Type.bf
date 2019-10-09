@@ -213,6 +213,14 @@ namespace System
 		    }
 		}
 
+		public bool IsPointer
+		{
+		    get
+		    {
+		        return (mTypeFlags & (TypeFlags.Boxed | TypeFlags.Pointer)) == TypeFlags.Pointer;
+		    }
+		}
+
         public bool IsBoxed
         {
             get
@@ -220,6 +228,14 @@ namespace System
                 return (mTypeFlags & TypeFlags.Boxed) != 0;
             }
         }
+
+		public bool IsBoxedStructPtr
+		{
+		    get
+		    {
+		        return (mTypeFlags & (TypeFlags.Boxed | TypeFlags.Pointer)) == TypeFlags.Boxed | TypeFlags.Pointer;
+		    }
+		}
 
 		public bool IsEnum
 		{

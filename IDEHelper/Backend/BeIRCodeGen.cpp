@@ -1357,13 +1357,12 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(int, idx);
+			
+			BF_ASSERT(val->GetType()->IsComposite());
 
 			auto extractValueInst = mBeModule->AllocInst<BeExtractValueInst>();
 			extractValueInst->mAggVal = val;
-			extractValueInst->mIdx = idx;
-
-			BF_ASSERT(val->GetType()->IsComposite());
-
+			extractValueInst->mIdx = idx;			
 			SetResult(curId, extractValueInst);
 		}
 		break;

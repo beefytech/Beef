@@ -582,25 +582,7 @@ BOOL WINAPI DllMain(
 	DWORD   dwReason,
 	LPVOID  lpreserved)
 {	
-	//::MessageBoxA(NULL, "A", "B", MB_OK);
-
-// 	MemReporter memReporter;
-// 	memReporter.mShowInKB = false;
-// 	{
-// 		memReporter.BeginSection("A");
-// 		{
-// 			memReporter.BeginSection("B");
-// 			memReporter.Add(10);
-// 			
-// 			memReporter.Add("C", 1);
-// 			memReporter.Add("D", 2);
-// 			
-// 			memReporter.EndSection();
-// 		}
-// 		memReporter.EndSection();
-// 	}
-// 
-// 	memReporter.Report();
+	
 
 	if (dwReason == DLL_PROCESS_ATTACH)
 	{
@@ -640,58 +622,10 @@ void WdAllocTest();
 static _CrtMemState gStartMemCheckpoint;
 #endif
 BF_EXPORT void BF_CALLTYPE Debugger_Create()
-{		
-	String outStr = BfDemangler::Demangle(
-		"??0?$_String_alloc@U?$_String_base_types@DV?$allocator@D@std@@@std@@@std@@QEAA@AEBV?$allocator@D@1@@Z"
-		//"?_Tidy@?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QEAAX_N_K@Z"
-		//"?gamma@Class1@@2PAY04NA"
-		//"?alpha@@3HA"
-		//"?Fis_i@myclass@@SAHH@Z"
-		//"??$?0AEBV?$allocator@D@std@@$$V@?$_Compressed_pair@U?$_Wrap_alloc@V?$allocator@D@std@@@std@@V?$_String_val@U?$_Simple_types@D@std@@@2@$00@std@@QEAA@U_One_then_variadic_args_t@1@AEBV?$allocator@D@1@@Z"
-		
-		//"??0?$map@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@IU?$less@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@I@std@@@2@@std@@QEAA@XZ"
-		//"??4?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QEAAAEAV01@PEBD@Z"
-		//"??0?$allocator@_W@std@@QEAA@XZ"
-		//"??0?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QEAA@XZ"
-		, DbgLanguage_C);
-	
-	/*{
-
-		struct TestStruct
-		{
-			TestStruct* mNext;
-			int mInt;
-
-			TestStruct(int i)
-			{
-				mNext = NULL;
-				mInt = i;
-			}
-		};
-
-		TestStruct tsArr[5] = { 1, 2, 3, 4, 5 };
-		SLIList<TestStruct*> sliList;
-
-		sliList.PushBack(&tsArr[0]);
-		//sliList.PushBack(&tsArr[1]);
-		//sliList.PushBack(&tsArr[2]);
-
-		auto itr = sliList.begin();
-		auto* val = *itr;
-		//++itr;		
-		//val = *itr;
-		//++itr;
-		//val = *itr;
-		sliList.erase(itr);
-		bool isEnd = itr == sliList.end();		
-	}*/
-
-	String str = StrFormat("%d:%@:%l@", 123, (intptr)0x1234567890LL, 0xABCDEF7890LL);
-	//String str = StrFormat("%l@", "Yo");
-
+{			
 	//TODO: Very slow, remove
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_CHECK_ALWAYS_DF);
-	
+	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_CHECK_EVERY_16_DF);
 	//TODO: _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF /*| _CRTDBG_CHECK_EVERY_16_DF*/);
 	//_CrtSetAllocHook(BfAllocHook);
 

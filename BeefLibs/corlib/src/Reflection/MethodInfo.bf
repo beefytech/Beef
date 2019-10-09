@@ -154,26 +154,35 @@ namespace System.Reflection
 					Type underlyingType = argType.UnderlyingType;
 					if ((paramType.IsPrimitive) && (underlyingType.IsTypedPrimitive)) // Boxed primitive?
 						underlyingType = underlyingType.UnderlyingType;
-					if (!underlyingType.IsSubtypeOf(paramType))
+
+					if (argType.IsBoxedStructPtr)
 					{
-						if (underlyingType.IsGenericType)
+						dataPtr = *(void**)dataPtr;
+						handled = true;
+					}
+					else
+					{
+						if (!underlyingType.IsSubtypeOf(paramType))
 						{
-							var ptrTypedPrimitive = (SpecializedGenericType)underlyingType;
-							if ((ptrTypedPrimitive.mTypeFlags.HasFlag(.Sys_PointerT)))
+							if (underlyingType.IsGenericType)
 							{
-								let elementType = Type.GetType(ptrTypedPrimitive.mResolvedTypeRefs[0]);
-								if (elementType == paramType)
+								var ptrTypedPrimitive = (SpecializedGenericType)underlyingType;
+								if ((ptrTypedPrimitive.mTypeFlags.HasFlag(.Sys_PointerT)))
 								{
-									dataPtr = *(void**)dataPtr;
-									handled = true;
+									let elementType = Type.GetType(ptrTypedPrimitive.mResolvedTypeRefs[0]);
+									if (elementType == paramType)
+									{
+										dataPtr = *(void**)dataPtr;
+										handled = true;
+									}
 								}
 							}
+
+							/*if (underlyingType.IsSpecialType(TypeInstance.[Friend]sPointerTType, "System", "Pointer", 2))
+							{
+
+							}*/
 						}
-
-						/*if (underlyingType.IsSpecialType(TypeInstance.[Friend]sPointerTType, "System", "Pointer", 2))
-						{
-
-						}*/
 					}
 
 					if (!handled)

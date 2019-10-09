@@ -88,6 +88,7 @@ BfContext::~BfContext()
 	int numTypesDeleted = 0;
 	for (auto type : mResolvedTypes)
 	{		
+		//_CrtCheckMemory();
 		delete type;
 	}		
 	
@@ -930,6 +931,11 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mIsSplattable = false;
 	typeInst->mHasPackingHoles = false;
 	typeInst->mWantsGCMarking = false;	
+	if (typeInst->mTypeInfoEx != NULL)
+	{
+		delete typeInst->mTypeInfoEx;
+		typeInst->mTypeInfoEx = NULL;
+	}
 
 	if (typeInst->IsGenericTypeInstance())
 	{
@@ -2082,7 +2088,10 @@ void BfContext::GenerateModuleName_Type(BfType* type, String& name)
 	if (type->IsBoxed())
 	{
 		auto boxedType = (BfBoxedType*)type;
-		name += "BOX_";
+		if (boxedType->IsBoxedStructPtr())
+			name += "BOXPTR_";
+		else
+			name += "BOX_";
 		GenerateModuleName_Type(boxedType->mElementType, name);
 		return;
 	}
