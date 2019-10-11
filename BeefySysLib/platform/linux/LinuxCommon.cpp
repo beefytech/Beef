@@ -1816,7 +1816,64 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_SetAttributes(const char* path, BfpFileAttr
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldPath, const char* newPath, BfpFileCopyKind copyKind, BfpFileResult* outResult)
 {
-    NOT_IMPL;
+	int fd_to, fd_from;
+	char buf[4096];
+	ssize_t nread;	
+
+	fd_from = open(oldPath, O_RDONLY);
+	if (fd_from < 0)
+	{
+		OUTRESULT(BfpFileResult_NotFound);
+		return;
+	}
+
+	fd_to = open(newPath, O_WRONLY | O_CREAT | O_EXCL, 0666);
+	if (fd_to < 0)
+	{
+		OUTRESULT(BfpFileResult_AlreadyExists);
+		goto out_error;
+	}
+
+	while (nread = read(fd_from, buf, sizeof buf), nread > 0)
+	{
+		char *out_ptr = buf;
+		ssize_t nwritten;
+
+		do {
+			nwritten = write(fd_to, out_ptr, nread);
+
+			if (nwritten >= 0)
+			{
+				nread -= nwritten;
+				out_ptr += nwritten;
+			}
+			else if (errno != EINTR)
+			{
+				OUTRESULT(BfpFileResult_UnknownError);
+				goto out_error;
+			}
+		} while (nread > 0);
+	}
+
+	if (nread == 0)
+	{
+		if (close(fd_to) < 0)
+		{
+			fd_to = -1;
+			OUTRESULT(BfpFileResult_UnknownError);
+			goto out_error;
+		}
+		close(fd_from);
+
+		/* Success! */
+		OUTRESULT(BfpFileResult_Ok);
+		return;
+	}
+
+out_error:
+	close(fd_from);
+	if (fd_to >= 0)
+		close(fd_to);	
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Rename(const char* oldPath, const char* newPath, BfpFileResult* outResult)

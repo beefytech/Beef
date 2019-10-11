@@ -9,6 +9,7 @@
 #include "BfAutoComplete.h"
 #include "BfResolvePass.h"
 #include "MemReporter.h"
+#include "BfIRCodeGen.h"
 
 #include "BeefySysLib/util/AllocDebug.h"
 
@@ -840,8 +841,11 @@ bool BfTypeDef::HasSource(BfSource* source)
 BfProject::BfProject()
 {		
 	mDisabled = false;
+	mSingleModule = false;
 	mTargetType = BfTargetType_BeefConsoleApplication;
 	mBuildConfigChanged = false;	
+	mSingleModule = false;
+	mAlwaysIncludeAll = false;
 	mSystem = NULL;
 	mIdx = -1;
 }
@@ -3588,7 +3592,7 @@ BF_EXPORT void BF_CALLTYPE BfProject_SetDisabled(BfProject* bfProject, bool disa
 }
 
 BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int targetType, const char* startupObject, const char* preprocessorMacros, 
-	int optLevel, int ltoType, bool mergeFunctions, bool combineLoads, bool vectorizeLoops, bool vectorizeSLP)
+	int optLevel, int ltoType, BfProjectFlags flags)
 {
 	bfProject->mTargetType = (BfTargetType)targetType;
 	bfProject->mStartupObject = startupObject;	
@@ -3596,11 +3600,27 @@ BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int target
 	BfCodeGenOptions codeGenOptions;
 	codeGenOptions.mOptLevel = (BfOptLevel)optLevel;
 	codeGenOptions.mLTOType = (BfLTOType)ltoType;
-	codeGenOptions.mMergeFunctions = mergeFunctions;
-	codeGenOptions.mLoadCombine = combineLoads;
-	codeGenOptions.mLoopVectorize = vectorizeLoops;
-	codeGenOptions.mSLPVectorize = vectorizeSLP;
+	codeGenOptions.mMergeFunctions = (flags & BfProjectFlags_MergeFunctions) != 0;
+	codeGenOptions.mLoadCombine = (flags & BfProjectFlags_CombineLoads) != 0;
+	codeGenOptions.mLoopVectorize = (flags & BfProjectFlags_VectorizeLoops) != 0;
+	codeGenOptions.mSLPVectorize = (flags & BfProjectFlags_VectorizeSLP) != 0;	
+	if ((flags & BfProjectFlags_AsmOutput) != 0)
+	{
+		static bool setLLVMAsmKind = false;
+		if ((flags & BfProjectFlags_AsmOutput_ATT) != 0)
+			codeGenOptions.mAsmKind = BfAsmKind_ATT;
+		else
+			codeGenOptions.mAsmKind = BfAsmKind_Intel;
+
+		if (!setLLVMAsmKind)
+		{
+			setLLVMAsmKind = true;
+			BfIRCodeGen::SetAsmKind(codeGenOptions.mAsmKind);				
+		}
+	}	
 	bfProject->mCodeGenOptions = codeGenOptions;
+	bfProject->mSingleModule = (flags & BfProjectFlags_SingleModule) != 0;
+	bfProject->mAlwaysIncludeAll = (flags & BfProjectFlags_AlwaysIncludeAll) != 0;
 
 	bfProject->mPreprocessorMacros.Clear();
 	

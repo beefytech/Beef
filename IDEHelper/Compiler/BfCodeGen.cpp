@@ -497,7 +497,10 @@ void BfCodeGenThread::RunLoop()
 						BP_ZONE("BfCodeGen::RunLoop.LLVM.OBJ");
 
 						String outFileName;
-						outFileName = request->mOutFileName + BF_OBJ_EXT;
+						if (request->mOptions.mAsmKind != BfAsmKind_None)
+							outFileName = request->mOutFileName + ".s";
+						else
+							outFileName = request->mOutFileName + BF_OBJ_EXT;
 						if (!llvmIRCodeGen->WriteObjectFile(outFileName, request->mOptions))
 						{
 							result.mType = BfCodeGenResult_Failed;

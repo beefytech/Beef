@@ -4407,11 +4407,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		typeFlags |= BfTypeFlags_Union;
 	if (type->IsDelegate())
 		typeFlags |= BfTypeFlags_Delegate;
-	if (typeInstance != NULL)
-	{
-		if (typeInstance->mTypeDef == mCompiler->mPointerTTypeDef)
-			typeFlags |= BfTypeFlags_Sys_PointerT;
-	}
 	if (type->WantsGCMarking())
 		typeFlags |= BfTypeFlags_WantsMarking;
 
@@ -20413,7 +20408,7 @@ void BfModule::DbgFinish()
 				needForceLinking = true;
 		}
 
-		if (needForceLinking)
+		if ((needForceLinking) && (mProject->mCodeGenOptions.mAsmKind == BfAsmKind_None))
 		{
 			BfMethodState methodState;
 			SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
@@ -20510,13 +20505,6 @@ bool BfModule::Finish()
 		BF_ASSERT((int)mOutFileNames.size() >= mExtensionCount);
 
 		bool writeModule = mBfIRBuilder->HasExports();
-// 		if ((!writeModule) && (!IsOptimized()))
-// 		{
-// 			CreateForceLinkMarker(this);
-// 			mHasForceLinkMarker = true;
-// 			writeModule = true;
-// 		}
-
 		String outputPath;
 		
 		BfCodeGenOptions codeGenOptions = mProject->mCodeGenOptions;

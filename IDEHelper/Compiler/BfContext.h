@@ -289,6 +289,7 @@ public:
 	BfModule* mScratchModule;
 	BfModule* mUnreifiedModule;	
 	HashSet<String> mUsedModuleNames;
+	Dictionary<BfProject*, BfModule*> mProjectModule;
 	Array<BfModule*> mModules;
 	Array<BfModule*> mDeletingModules;	
 	HashSet<BfTypeInstance*> mFailTypes; // All types handled after a failure need to be rebuild on subsequent compile		

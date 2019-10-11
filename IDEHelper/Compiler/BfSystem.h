@@ -154,7 +154,7 @@ enum BfTypeFlags
 	BfTypeFlags_SizedArray		= 0x0800,
 	BfTypeFlags_Splattable		= 0x1000,
 	BfTypeFlags_Union			= 0x2000,
-	BfTypeFlags_Sys_PointerT	= 0x4000,
+	//
 	BfTypeFlags_WantsMarking    = 0x8000,
 	BfTypeFlags_Delegate        = 0x10000,
 	BfTypeFlags_HasDestructor   = 0x20000,
@@ -209,6 +209,13 @@ enum BfSIMDSetting
 	BfSIMDSetting_AVX2,
 };
 
+enum BfAsmKind
+{
+	BfAsmKind_None,
+	BfAsmKind_ATT,
+	BfAsmKind_Intel,
+};
+
 enum BfOptLevel
 {
 	BfOptLevel_NotSet = -1,
@@ -240,8 +247,9 @@ struct BfCodeGenOptions
 	bool mIsHotCompile;
 
 	bool mWriteObj;
+	BfAsmKind mAsmKind;
 	bool mWriteToLib;
-	bool mWriteLLVMIR;		
+	bool mWriteLLVMIR;	
 
 	int16 mVirtualMethodOfs;
 	int16 mDynSlotOfs;
@@ -289,8 +297,9 @@ struct BfCodeGenOptions
 
 	BfCodeGenOptions()
 	{	
-		mIsHotCompile = false;
+		mIsHotCompile = false;		
 		mWriteObj = true;
+		mAsmKind = BfAsmKind_None;
 		mWriteToLib = false;
 		mWriteLLVMIR = false;
 		mVirtualMethodOfs = 0;
@@ -921,6 +930,19 @@ enum BfTargetType
 	BfTargetType_BeefTest
 };
 
+enum BfProjectFlags
+{
+	BfProjectFlags_None           = 0,
+	BfProjectFlags_MergeFunctions = 1,
+	BfProjectFlags_CombineLoads   = 2,
+	BfProjectFlags_VectorizeLoops = 4,
+	BfProjectFlags_VectorizeSLP   = 8,
+	BfProjectFlags_SingleModule   = 0x10,
+	BfProjectFlags_AsmOutput      = 0x20,
+	BfProjectFlags_AsmOutput_ATT  = 0x40,
+	BfProjectFlags_AlwaysIncludeAll = 0x80,
+};
+
 class BfProject
 {
 public:	
@@ -930,6 +952,8 @@ public:
 	BfTargetType mTargetType;
 	BfCodeGenOptions mCodeGenOptions;	
 	bool mDisabled;
+	bool mSingleModule;
+	bool mAlwaysIncludeAll;
 	int mIdx;
 
 	String mStartupObject;

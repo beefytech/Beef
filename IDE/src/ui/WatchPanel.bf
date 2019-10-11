@@ -1179,48 +1179,6 @@ namespace IDE.ui
             }
         }
 
-        public void RemoveInvalidContinuationItems()
-        {
-            /*var lastValidListViewItem = this;
-            for (int32 idx = 1; idx < mWatchSeriesInfo.mCount; idx++)
-            {                
-                int32 parentIdx = idx + mWatchSeriesInfo.mStartMemberIdx;
-                if (parentIdx >= mParentItem.mChildItems.Count)
-                    break;
-
-                WatchListViewItem watchListViewItem = (WatchListViewItem)mParentItem.mChildItems[parentIdx];
-                if (watchListViewItem.mWatchSeriesInfo != mWatchSeriesInfo)
-                    break;
-                if (watchListViewItem.mSeriesMemberIdx == 0)
-                    break;
-
-                int addrSize = IDEApp.sApp.mDebugger.GetAddrSize() * 2;
-                int addrsCount = (mWatchSeriesInfo.mAddrs.Length / addrSize) / mWatchSeriesInfo.mAddrsEntrySize;
-                if (watchListViewItem.mSeriesMemberIdx >= addrsCount)
-                {
-                    lastValidListViewItem.mBottomPadding += watchListViewItem.mSelfHeight + watchListViewItem.mBottomPadding;
-                    mListView.mListSizeDirty = true;
-                    mParentItem.RemoveChildItem(watchListViewItem);
-                    idx--;
-                }
-                else
-                    lastValidListViewItem = watchListViewItem;
-            }*/
-
-			// This caused 'closing' opened items with Dictionary elements when stepping
-            /*if (mWatchSeriesInfo.mAddrs != null)
-            {
-                int32 checkIdx = mWatchSeriesInfo.mStartMemberIdx + 1;
-                while (checkIdx < mParentItem.mChildItems.Count)
-                {
-                    WatchListViewItem watchListViewItem = (WatchListViewItem)mParentItem.mChildItems[checkIdx];
-                    if (watchListViewItem.mWatchSeriesInfo != mWatchSeriesInfo)
-                        break;
-                    //mParentItem.RemoveChildItem(watchListViewItem);
-                }
-            }*/
-        }
-
         public override void Update()
         {
 			if ((mWatchEntry != null) && (mWatchEntry.mIsPending))
@@ -2507,13 +2465,6 @@ namespace IDE.ui
 
             while (listViewItem.GetChildCount() > memberCount)
                 listViewItem.RemoveChildItem(listViewItem.GetChildAtIndex(memberCount));
-
-            if ((watchSeriesInfo != null) && (watchSeriesInfo.mAddrs != null))
-            {
-                var headItem = (WatchListViewItem)listViewItem.GetChildAtIndex(watchSeriesInfo.mStartMemberIdx);
-                headItem.RemoveInvalidContinuationItems();                
-                mListView.UpdateAll();
-            }            
 
             if ((listViewItem.GetChildCount() == 0) && (listViewItem.mOpenButton != null))
             {

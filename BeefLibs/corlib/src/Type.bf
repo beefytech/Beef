@@ -826,7 +826,7 @@ namespace System.Reflection
 		SizedArray				= 0x0800,
 		Splattable				= 0x1000,
 		Union					= 0x2000,
-		Sys_PointerT			= 0x4000, // System.Pointer<T>
+		//
 		WantsMark				= 0x8000,
 		Delegate				= 0x10000,
 		HasDestructor			= 0x20000,

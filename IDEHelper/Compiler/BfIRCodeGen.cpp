@@ -3415,7 +3415,8 @@ static void AddFunctionSimplificationPasses(llvm::legacy::PassManagerBase &MPM, 
 	//if (EnableGVNHoist)
 	if (options.mEnableGVNHoist)
 		MPM.add(llvm::createGVNHoistPass());
-	if (options.mEnableGVNSink) 	{
+	if (options.mEnableGVNSink) 
+	{
 		MPM.add(llvm::createGVNSinkPass());
 		MPM.add(llvm::createCFGSimplificationPass());
 	}
@@ -4047,7 +4048,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 		{
 			// Ask the target to add backend passes as necessary.
 			if (target->addPassesToEmitFile(PM, out, NULL,
-				llvm::TargetMachine::CGFT_ObjectFile,
+				(codeGenOptions.mAsmKind != BfAsmKind_None) ? llvm::TargetMachine::CGFT_AssemblyFile : llvm::TargetMachine::CGFT_ObjectFile,
 				//TargetMachine::CGFT_AssemblyFile,
 				noVerify /*, StartAfterID, StopAfterID*/))
 			{
@@ -4108,6 +4109,12 @@ int BfIRCodeGen::GetIntrinsicId(const StringImpl& name)
 const char* BfIRCodeGen::GetIntrinsicName(int intrinId)
 {
 	return gIntrinEntries[intrinId].mName;
+}
+
+void BfIRCodeGen::SetAsmKind(BfAsmKind asmKind)
+{
+	const char* args[] = {"", (asmKind == BfAsmKind_ATT) ? "-x86-asm-syntax=att" : "-x86-asm-syntax=intel" };
+	llvm::cl::ParseCommandLineOptions(2, args);
 }
 
 #ifdef BF_PLATFORM_LINUX

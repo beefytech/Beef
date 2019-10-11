@@ -3468,6 +3468,11 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 				attributes = attributes->mNextAttribute;
 			}
+			if ((mProject != NULL) && (mProject->mAlwaysIncludeAll) && (methodDef->mBody != NULL))
+			{				
+				implRequired = true;
+				declRequired = true;
+			}
 
 			if (typeInstance->IsInterface())
 				declRequired = true;
@@ -8671,7 +8676,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// * <-> Var 
 	if ((typedVal.mType->IsVar()) || (toType->IsVar()))
 	{
-		BF_ASSERT((mCurMethodInstance->mIsUnspecialized) || (mCurMethodState->mClosureState != NULL) || (mHadVarUsage));
+		BF_ASSERT(((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized)) ||
+			((mCurMethodState != NULL) && (mCurMethodState->mClosureState != NULL)) ||
+			(mHadVarUsage));
 		return GetDefaultValue(toType);
 	}
 

@@ -8,6 +8,18 @@ namespace IDE.Compiler
 {
     public class BfProject
     {
+		enum Flags : int32
+		{
+			None           	= 0,
+			MergeFunctions 	= 1,
+			CombineLoads   	= 2,
+			VectorizeLoops 	= 4,
+			VectorizeSLP   	= 8,
+			SingleModule   	= 0x10,
+			AsmOutput		= 0x20,
+			AsmOutput_ATT	= 0x40,
+		}
+
         [StdCall, CLink]
         extern static void BfProject_Delete(void* nativeBfProject);
 
@@ -22,7 +34,7 @@ namespace IDE.Compiler
 
         [StdCall, CLink]
         extern static void BfProject_SetOptions(void* nativeBfProject, int32 targetType, char8* startupObject, char8* preprocessorMacros,
-            int32 optLevel, int32 ltoType, bool mergeFunctions, bool combineLoads, bool vectorizeLoops, bool vectorizeSLP);
+            int32 optLevel, int32 ltoType, Flags flags);
 
         public void* mNativeBfProject;
         public bool mDisabled;
@@ -51,10 +63,21 @@ namespace IDE.Compiler
         public void SetOptions(Project.TargetType targetType, String startupObject, List<String> preprocessorMacros,
             BuildOptions.BfOptimizationLevel optLevel, BuildOptions.LTOType ltoType, bool mergeFunctions, bool combineLoads, bool vectorizeLoops, bool vectorizeSLP)
         {
+			Flags flags = default;
+			void SetFlags(bool val, Flags flag)
+			{
+				if (val)
+					flags |= flag;
+			}
+			SetFlags(mergeFunctions, .MergeFunctions);
+			SetFlags(combineLoads, .CombineLoads);
+			SetFlags(vectorizeLoops, .VectorizeLoops);
+			SetFlags(vectorizeSLP, .VectorizeSLP);
+
             String macrosStr = scope String();
             macrosStr.Join("\n", preprocessorMacros.GetEnumerator());
             BfProject_SetOptions(mNativeBfProject, (int32)targetType, startupObject, macrosStr, 
-                (int32)optLevel, (int32)ltoType, mergeFunctions, combineLoads, vectorizeLoops, vectorizeSLP);
+                (int32)optLevel, (int32)ltoType, flags);
         }
 
     }

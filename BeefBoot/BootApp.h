@@ -40,7 +40,7 @@ public:
 	bool mHadErrors;
 	Array<String> mRequestedSrc;
 	BfOptLevel mOptLevel;
-	BfToolsetType mToolset;	
+	BfToolsetType mToolset;		
 	bool mEmitIR;
 	String mBuildDir;
 	String mWorkingDir;
@@ -48,18 +48,24 @@ public:
 	String mStartupObject;
 	String mTargetPath;
 	String mLinkParams;
+	BfAsmKind mAsmKind;
 
 	void* mSystem;
-	void* mCompiler;	
-	void* mProject;
+	void* mCompiler;		
+	void* mProject;	
 	void* mPassInstance;
+
+	bool mIsCERun;
+	void* mCELibProject;
+	String mCESrc;
+	String mCEDest;		
 
 public:
 	void Fail(const String & error);
 	void OutputLine(const String& text, OutputPri outputPri = OutputPri_Normal);
 	bool QueueRun(const String& fileName, const String& args, const String& workingDir, BfpSpawnFlags extraFlags);
 
-	void QueueFile(const StringImpl& path);
+	void QueueFile(const StringImpl& path, void* project);
 	void QueuePath(const StringImpl& path);
 	void DoCompile();
     void DoLinkMS();

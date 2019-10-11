@@ -47,36 +47,58 @@ int main(int argc, char* argv[])
 	
 	gApp = new BootApp();
 
+	/*for (int i = 0; i < argc; i++)
+	{
+		if (i != 0)
+			std::cout << " ";
+		std::cout << argv[i];
+	}	
+	std::cout << std::endl;*/
+
+	String cmd;
+
 	bool success = true;
 	for (int i = 1; i < argc; i++)
-	{			
-		std::string arg = argv[i];
-				
+	{
+		String arg = argv[i];
+		if (arg.StartsWith("--"))
+			arg.Remove(0, 1);
+
+		if (!cmd.IsEmpty())
+		{
+			cmd.Append('=');
+			arg.Insert(0, cmd);
+			cmd.Clear();
+		}
+
 		if (arg[0] == '"')
 		{
-			arg.erase(0, 1);
+			arg.Remove(0, 1);
 			if ((arg.length() > 1) && (arg[arg.length() - 1] == '"'))
-				arg.erase(arg.length() - 1);
+				arg.RemoveToEnd(arg.length() - 1);
 			success &= gApp->HandleCmdLine(arg, "");
 			continue;
 		}
 		
-		int eqPos = (int)arg.find('=');
+		int eqPos = (int)arg.IndexOf('=');
 		if (eqPos == -1)
 		{
 			success &= gApp->HandleCmdLine(arg, "");
 			continue;
 		}
 
-		std::string cmd = arg.substr(0, eqPos);
-		std::string param = arg.substr(eqPos + 1);
+		cmd = arg.Substring(0, eqPos);
+		if (eqPos == arg.length() - 1)
+			continue;
+		String param = arg.Substring(eqPos + 1);
 		if ((param.length() > 1) && (param[0] == '"'))
 		{
-			param.erase(0, 1);
+			param.Remove(0, 1);
 			if ((param.length() > 1) && (param[param.length() - 1] == '"'))
-				param.erase(param.length() - 1);
+				param.Remove(param.length() - 1);
 		}
-		success &= gApp->HandleCmdLine(cmd, param);		
+		success &= gApp->HandleCmdLine(cmd, param);
+		cmd.Clear();
 	}
 	
 	if (!gApp->mShowedHelp)

@@ -5529,7 +5529,7 @@ void BfCompiler::CompileReified()
 		if (typeDef->mIsPartial)
 			continue;
 
-		bool isAlwaysInclude = typeDef->mIsAlwaysInclude;
+		bool isAlwaysInclude = (typeDef->mIsAlwaysInclude) || (typeDef->mProject->mAlwaysIncludeAll);
 
 		if (typeDef->mProject->IsTestProject())
 		{

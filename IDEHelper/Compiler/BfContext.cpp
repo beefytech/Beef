@@ -149,7 +149,8 @@ void BfContext::AssignModule(BfType* type)
 		BF_ASSERT(!typeInst->mModule->mIsReified);
 	}
 
-	BfModule* module;
+	BfModule* module = NULL;
+	bool needsModuleInit = false;
 
 	// We used to have this "IsReified" check, but we DO want to create modules for unreified types even if they remain unused.
 	//  What was that IsReified check catching?
@@ -166,20 +167,46 @@ void BfContext::AssignModule(BfType* type)
 		BF_ASSERT(typeProcessEntry->mType->mContext == this);
 		BfLogSysM("HandleTypeWorkItem: %p -> %p\n", type, typeProcessEntry->mType);				
 		mCompiler->mStats.mTypesQueued++;
-		mCompiler->UpdateCompletion();
+		mCompiler->UpdateCompletion();		
 	}
 	else
 	{
 		auto typeInst = type->ToTypeInstance();
 		BF_ASSERT(typeInst != NULL);
-
-		String moduleName = GenerateModuleName(typeInst);
-		module = new BfModule(this, moduleName);
-		module->mIsReified = typeInst->mIsReified;
-		module->mProject = typeInst->mTypeDef->mProject;
-		typeInst->mModule = module;
-		BF_ASSERT(!mLockModules);
-		mModules.push_back(module);
+		
+		auto project = typeInst->mTypeDef->mProject;
+		if ((project->mSingleModule) && (typeInst->mIsReified))
+		{
+			BfModule** modulePtr = NULL;
+			if (mProjectModule.TryAdd(project, NULL, &modulePtr))
+			{
+				String moduleName = project->mName;
+				module = new BfModule(this, moduleName);
+				module->mIsReified = true;
+				module->mProject = project;
+				typeInst->mModule = module;
+				BF_ASSERT(!mLockModules);
+				mModules.push_back(module);
+				*modulePtr = module;
+				needsModuleInit = true;
+			}
+			else
+			{				
+				module = *modulePtr;
+				typeInst->mModule = module;
+			}
+		}
+		else
+		{
+			String moduleName = GenerateModuleName(typeInst);
+			module = new BfModule(this, moduleName);
+			module->mIsReified = typeInst->mIsReified;
+			module->mProject = project;
+			typeInst->mModule = module;
+			BF_ASSERT(!mLockModules);
+			mModules.push_back(module);
+			needsModuleInit = true;
+		}
 	}
 
 	auto localTypeInst = type->ToTypeInstance();
@@ -191,7 +218,7 @@ void BfContext::AssignModule(BfType* type)
 		module->mOwnedTypeInstances.push_back(localTypeInst);
 	}
 
-	if (!module->mIsScratchModule)
+	if (needsModuleInit)
 		module->Init();
 }
 

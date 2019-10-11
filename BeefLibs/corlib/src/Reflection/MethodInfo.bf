@@ -160,31 +160,7 @@ namespace System.Reflection
 						dataPtr = *(void**)dataPtr;
 						handled = true;
 					}
-					else
-					{
-						if (!underlyingType.IsSubtypeOf(paramType))
-						{
-							if (underlyingType.IsGenericType)
-							{
-								var ptrTypedPrimitive = (SpecializedGenericType)underlyingType;
-								if ((ptrTypedPrimitive.mTypeFlags.HasFlag(.Sys_PointerT)))
-								{
-									let elementType = Type.GetType(ptrTypedPrimitive.mResolvedTypeRefs[0]);
-									if (elementType == paramType)
-									{
-										dataPtr = *(void**)dataPtr;
-										handled = true;
-									}
-								}
-							}
-
-							/*if (underlyingType.IsSpecialType(TypeInstance.[Friend]sPointerTType, "System", "Pointer", 2))
-							{
-
-							}*/
-						}
-					}
-
+					
 					if (!handled)
 					{
 						if (!underlyingType.IsSubtypeOf(paramType))

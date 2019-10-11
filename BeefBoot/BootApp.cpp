@@ -76,7 +76,7 @@ BF_IMPORT void BF_CALLTYPE BfSystem_AddTypeOptions(void* bfSystem, const char* f
 
 BF_IMPORT void BF_CALLTYPE BfProject_SetDisabled(void* bfProject, bool disabled);
 BF_IMPORT void BF_CALLTYPE BfProject_SetOptions(void* bfProject, int targetType, const char* startupObject, const char* preprocessorMacros,
-	int optLevel, int ltoType, bool mergeFunctions, bool combineLoads, bool vectorizeLoops, bool vectorizeSLP);
+	int optLevel, int ltoType, int32 flags);
 BF_IMPORT void BF_CALLTYPE BfProject_ClearDependencies(void* bfProject);
 BF_IMPORT void BF_CALLTYPE BfProject_AddDependency(void* bfProject, void* depProject);
 
@@ -169,6 +169,10 @@ BootApp::BootApp()
 	mSystem = NULL;
 	mCompiler = NULL;
 	mProject = NULL;	
+	mCELibProject = NULL;
+	mIsCERun = false;
+	mAsmKind = BfAsmKind_None;
+	mStartupObject = "Program";
 
 #ifdef BF_PLATFORM_WINDOWS
 	mOptLevel = BfOptLevel_OgPlus;
@@ -177,7 +181,7 @@ BootApp::BootApp()
 	mOptLevel = BfOptLevel_O0;
 	mToolset = BfToolsetType_GNU;
 #endif
-	mEmitIR = false;
+	mEmitIR = false;	
 	
 	GetConsoleColor(gConsoleFGColor, gConsoleBGColor);
 }
@@ -246,19 +250,25 @@ bool BootApp::HandleCmdLine(const String &cmd, const String& param)
 
 	bool wantedParam = false;
 
-	if ((cmd == "--help") || (cmd == "-h") || (cmd == "/?"))
+	if ((!cmd.StartsWith("-")) && (mIsCERun) && (mCESrc.IsEmpty()))
+	{
+		mCESrc = cmd;
+		return true;
+	}
+
+	if ((cmd == "-help") || (cmd == "-h") || (cmd == "/?"))
 	{
 		mShowedHelp = true;
 		std::cout << "BeefBoot - Beef bootstrapping tool" << std::endl;
 		
 		return false;
 	}
-	else if (cmd == "--src")
+	else if (cmd == "-src")
 	{
 		mRequestedSrc.Add(param);
 		wantedParam = true;
 	}	
-	else if (cmd == "--verbosity")
+	else if (cmd == "-verbosity")
 	{
 		if (param == "quiet")
 			mVerbosity = Verbosity_Quiet;
@@ -277,24 +287,34 @@ bool BootApp::HandleCmdLine(const String &cmd, const String& param)
 		}
 		wantedParam = true;
 	}
-	else if (cmd == "--define")
+	else if (cmd == "-version")
+	{
+		BfpSystemResult sysResult;
+		String exePath;
+		BFP_GETSTR_HELPER(exePath, sysResult, BfpSystem_GetExecutablePath(__STR, __STRLEN, &sysResult));
+
+		std::cout << "0.0.0" << std::endl;
+		mShowedHelp = true;
+		return true;
+	}
+	else if (cmd == "-define")
 	{
 		if (!mDefines.IsEmpty())
 			mDefines += "\n";
 		mDefines += param;
 		wantedParam = true;
 	}
-	else if (cmd == "--startup")
+	else if (cmd == "-startup")
 	{
 		mStartupObject = param;
 		wantedParam = true;
 	}
-	else if (cmd == "--out")
+	else if (cmd == "-out")
 	{
 		mTargetPath = param;
 		wantedParam = true;
 	}
-	else if (cmd == "--linkparams")
+	else if (cmd == "-linkparams")
 	{
 		mLinkParams = param;
 		wantedParam = true;
@@ -326,6 +346,31 @@ bool BootApp::HandleCmdLine(const String &cmd, const String& param)
 	else if (cmd == "-emitir")
 	{
 		mEmitIR = true;
+	}	
+	else if (cmd == "-cedest")
+	{
+		mIsCERun = true;
+		mCEDest = param;
+		wantedParam = true;
+	}
+	else if (cmd == "-cesrc")
+	{
+		mIsCERun = true;
+	}
+	else if (cmd == "-emitasm")
+	{
+		if (param.IsEmpty())
+		{
+			mAsmKind = BfAsmKind_Intel;
+		}
+		else
+		{
+			if (param == "att")
+				mAsmKind = BfAsmKind_ATT;
+			else
+				mAsmKind = BfAsmKind_Intel;
+			wantedParam = true;
+		}				
 	}
 	else
 	{
@@ -353,7 +398,7 @@ bool BootApp::Init()
 	mWorkingDir = cwdPtr;
 	free(cwdPtr);
 
-	if (mTargetPath.IsEmpty())
+	if ((mTargetPath.IsEmpty()) && (mCESrc.IsEmpty()))
 	{
 		Fail("'Out' path not specified");
 	}
@@ -366,7 +411,7 @@ bool BootApp::Init()
 	return !mHadErrors;
 }
 
-void BootApp::QueueFile(const StringImpl& path)
+void BootApp::QueueFile(const StringImpl& path, void* project)
 {
 	String ext;
 	ext = GetFileExtension(path);
@@ -382,7 +427,7 @@ void BootApp::QueueFile(const StringImpl& path)
 		}
 		
 		bool worked = true;
-		void* bfParser = BfSystem_CreateParser(mSystem, mProject);
+		void* bfParser = BfSystem_CreateParser(mSystem, project);
 		BfParser_SetSource(bfParser, data, len, path.c_str());
 		//bfParser.SetCharIdData(charIdData);
 		worked &= BfParser_Parse(bfParser, mPassInstance, false);
@@ -404,7 +449,7 @@ void BootApp::QueuePath(const StringImpl& path)
 			String fileName;
 			fileName = GetFileName(filePath);
 
-			QueueFile(filePath);			
+			QueueFile(filePath, (mCELibProject != NULL) ? mCELibProject : mProject);
 		}
 
 		for (auto& fileEntry : FileEnumerator(path, FileEnumerator::Flags_Directories))
@@ -416,12 +461,12 @@ void BootApp::QueuePath(const StringImpl& path)
 			if (dirName == "build")
 				continue;
 
-			QueuePath(childPath);			
+			QueuePath(childPath);
 		}
 	}
 	else
 	{
-		QueueFile(path);		
+		QueueFile(path, mProject);
 	}
 }
 
@@ -677,8 +722,7 @@ void BootApp::DoLinkMS()
 
 	BfpSpawnFlags flags = BfpSpawnFlag_None;
 	if (true)
-	{
-		//if (linkLine.HasMultibyteChars())
+	{		
 		if (true)
 			flags = (BfpSpawnFlags)(BfpSpawnFlag_UseArgsFile | BfpSpawnFlag_UseArgsFile_Native | BfpSpawnFlag_UseArgsFile_BOM);
 		else
@@ -739,9 +783,19 @@ bool BootApp::Compile()
 	int dotPos = (int)projectName.IndexOf('.');
 	if (dotPos != -1)
 		projectName.RemoveToEnd(dotPos);
+	if (projectName.IsEmpty())
+		projectName.Append("BeefProject");
 
 	mProject = BfSystem_CreateProject(mSystem, projectName.c_str());
 	
+	if (mIsCERun)
+	{
+		mCELibProject = BfSystem_CreateProject(mSystem, "BeefLib");		
+
+		BfProjectFlags flags = BfProjectFlags_None;
+		BfProject_SetOptions(mCELibProject, BfTargetType_BeefLib, "", mDefines.c_str(), mOptLevel, 0, flags);		
+	}
+
 	if (!mDefines.IsEmpty())
 		mDefines.Append("\n");
 	mDefines.Append("BF_64_BIT");
@@ -750,10 +804,22 @@ bool BootApp::Compile()
 	mDefines.Append(BF_PLATFORM_NAME);
 
 	int ltoType = 0;
-    BfProject_SetOptions(mProject, mTargetType, mStartupObject.c_str(), mDefines.c_str(), mOptLevel, ltoType, false, false, false, false);
+	BfProjectFlags flags = BfProjectFlags_None;
+	if (mIsCERun)
+	{
+		flags = (BfProjectFlags)(flags | BfProjectFlags_SingleModule | BfProjectFlags_AlwaysIncludeAll);
+		if (mAsmKind == BfAsmKind_ATT)
+			flags = (BfProjectFlags)(flags | BfProjectFlags_AsmOutput | BfProjectFlags_AsmOutput_ATT);
+		else if (mAsmKind == BfAsmKind_Intel)
+			flags = (BfProjectFlags)(flags | BfProjectFlags_AsmOutput);
+	}
+    BfProject_SetOptions(mProject, mTargetType, mStartupObject.c_str(), mDefines.c_str(), mOptLevel, ltoType, flags);
+
+	if (mCELibProject != NULL)
+		BfProject_AddDependency(mProject, mCELibProject);
 	
 	mPassInstance = BfSystem_CreatePassInstance(mSystem);
-
+	
 	Beefy::String exePath;
 	BfpGetStrHelper(exePath, [](char* outStr, int* inOutStrSize, BfpResult* result)
 		{
@@ -762,11 +828,12 @@ bool BootApp::Compile()
 	mBuildDir = GetFileDir(exePath) + "/build";
 	
 	RecursiveCreateDirectory(mBuildDir + "/" + projectName);
+	if (mIsCERun)
+		RecursiveCreateDirectory(mBuildDir + "/BeefLib");
 
 	BfCompilerOptionFlags optionFlags = (BfCompilerOptionFlags)(BfCompilerOptionFlag_EmitDebugInfo | BfCompilerOptionFlag_EmitLineInfo | BfCompilerOptionFlag_GenerateOBJ);
 	if (mEmitIR)
 		optionFlags = (BfCompilerOptionFlags)(optionFlags | BfCompilerOptionFlag_WriteIR);
-
 
 	int maxWorkerThreads = BfpSystem_GetNumLogicalCPUs(NULL);
 	if (maxWorkerThreads <= 1)
@@ -774,6 +841,10 @@ bool BootApp::Compile()
 
     BfCompiler_SetOptions(mCompiler, NULL, 0, BfMachineType_x64, mToolset, BfSIMDSetting_SSE2, 1, maxWorkerThreads, optionFlags, "malloc", "free");
 	    
+	if (mIsCERun)
+	{
+		QueueFile(mCESrc, mProject);
+	}
 	for (auto& srcName : mRequestedSrc)
 	{
 		String absPath = GetAbsPath(srcName, mWorkingDir);
@@ -784,6 +855,51 @@ bool BootApp::Compile()
 	{
 		DoCompile();
 		OutputLine(StrFormat("TIMING: Beef compiling: %0.1fs", (BFTickCount() - startTick) / 1000.0), OutputPri_Normal);
+
+		if (!mCEDest.IsEmpty())
+		{
+			String ext;
+			String srcResult = mBuildDir + "/BeefProject/BeefProject";
+			if (mAsmKind == BfAsmKind_None)			
+				srcResult += BF_OBJ_EXT;
+			else			
+				srcResult += ".s";			
+
+			BfpFileResult result = BfpFileResult_Ok;
+			BfpFile_Copy(srcResult.c_str(), mCEDest.c_str(), BfpFileCopyKind_Always, &result);
+			if (result != BfpFileResult_Ok)
+			{
+				Fail(StrFormat("Failed to copy '%s' to '%s'", srcResult.c_str(), mCEDest.c_str()));
+			}
+		}
+
+		if ((mIsCERun) && (mEmitIR))
+		{
+			String ext;			
+			String srcResult = mBuildDir + "/BeefProject/BeefProject";			
+			String irDestPath = mCEDest;
+			int dotPos = (int)irDestPath.LastIndexOf('.');
+			if (dotPos != -1)
+				irDestPath.RemoveToEnd(dotPos);
+
+			if (mOptLevel == BfOptLevel_OgPlus)
+			{
+				srcResult += ".beir";
+				irDestPath += ".ll";
+			}
+			else
+			{
+				srcResult += ".ll";			
+				irDestPath += ".ll";
+			}
+
+			BfpFileResult result = BfpFileResult_Ok;
+			BfpFile_Copy(srcResult.c_str(), irDestPath.c_str(), BfpFileCopyKind_Always, &result);
+			if (result != BfpFileResult_Ok)
+			{
+				Fail(StrFormat("Failed to copy '%s' to '%s'", srcResult.c_str(), mCEDest.c_str()));
+			}			
+		}
 	}
 
 	while (true)
@@ -820,7 +936,7 @@ bool BootApp::Compile()
 			OutputLine(msg);
 	}
 		
-	if (!mHadErrors)
+	if ((!mHadErrors) && (!mTargetPath.IsEmpty()))
     {
 		if (mVerbosity == Verbosity_Normal)
 		{

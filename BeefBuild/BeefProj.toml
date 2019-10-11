@@ -5,6 +5,10 @@ Dependencies = {Beefy2D = "*", corlib = "*"}
 Name = "BeefBuild"
 StartupObject = "BeefBuild.Program"
 
+[Platform.Windows]
+Description = "BeefBuild"
+FileVersion = "0.42.1"
+
 [Configs.Debug.Win32]
 TargetName = ""
 OtherLinkFlags = ""
@@ -16,8 +20,8 @@ TargetName = "$(ProjectName)_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib Rpcrt4.lib Ole32.lib"
 CLibType = "Dynamic"
 BeefLibType = "DynamicDebug"
-DebugCommandArguments = "-run"
-DebugWorkingDirectory = "c:\\temp\\Hello2"
+DebugCommandArguments = "--version"
+DebugWorkingDirectory = "c:\\beef\\ide\\mintest"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 PreprocessorMacros = ["DEBUG", "CLI"]
 
