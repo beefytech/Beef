@@ -80,6 +80,7 @@ bool bf::System::Char32::get__IsLetterOrDigit(char32_t c)
 	case UTF8PROC_CATEGORY_ND:
 	case UTF8PROC_CATEGORY_NL:
 	case UTF8PROC_CATEGORY_NO: return true;
+	default: break;
 	}
 	return false;
 }
@@ -94,6 +95,7 @@ bool bf::System::Char32::get__IsLetter(char32_t c)
 	case UTF8PROC_CATEGORY_LT:
 	case UTF8PROC_CATEGORY_LM:
 	case UTF8PROC_CATEGORY_LO: return true;
+	default: break;
 	}
 	return false;
 }
@@ -106,6 +108,7 @@ bool bf::System::Char32::get__IsNumber(char32_t c)
 	case UTF8PROC_CATEGORY_ND:
 	case UTF8PROC_CATEGORY_NL:
 	case UTF8PROC_CATEGORY_NO: return true;
+	default: break;
 	}
 	return false;
 }
@@ -150,6 +153,7 @@ bool bf::System::Char16::get__IsLetterOrDigit(char16_t c)
 	case UTF8PROC_CATEGORY_ND:
 	case UTF8PROC_CATEGORY_NL:
 	case UTF8PROC_CATEGORY_NO: return true;
+	default: break;
 	}
 	return false;
 }
@@ -164,6 +168,7 @@ bool bf::System::Char16::get__IsLetter(char16_t c)
 	case UTF8PROC_CATEGORY_LT:
 	case UTF8PROC_CATEGORY_LM:
 	case UTF8PROC_CATEGORY_LO: return true;
+	default: break;
 	}
 	return false;
 }
@@ -176,6 +181,7 @@ bool bf::System::Char16::get__IsNumber(char16_t c)
 	case UTF8PROC_CATEGORY_ND:
 	case UTF8PROC_CATEGORY_NL:
 	case UTF8PROC_CATEGORY_NO: return true;
+	default: break;
 	}
 	return false;
 }

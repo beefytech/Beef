@@ -382,7 +382,7 @@ void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 		VisitChild(qualifiedName->mDot);
 		identifier = qualifiedName->mRight;		
 	}
-	else if (identifier = BfNodeDynCast<BfIdentifierNode>(target))
+	else if ((identifier = BfNodeDynCast<BfIdentifierNode>(target)))
 	{
 		// Leave as BfAttributedIdentifierNode if that's the case
 		identifier = target;

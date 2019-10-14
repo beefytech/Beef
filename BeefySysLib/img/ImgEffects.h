@@ -152,7 +152,7 @@ public:
 public:
 	virtual void			Init() override;
 	virtual void			CreateContourAndGradientData();	
-	virtual int				GetNeededBorderSize();
+	virtual int				GetNeededBorderSize() override;
 };
 
 class ImageOuterGlowEffect : public ImageGlowEffect
@@ -266,9 +266,9 @@ public:
 	void					Init() override;
 	void					Apply(PSDLayerInfo* layerInfo, ImageData* imageData, ImageData* destImageData) override;	
 	virtual void			Apply(ImageEffectCtx* ctx) override;
-	virtual int				GetMixType();
+	virtual int				GetMixType() override;
 	void					Apply(int pass, int style, PSDLayerInfo* layerInfo, ImageData* imageData, ImageData* hiliteImage, ImageData* shadowImage);	
-	virtual int				GetNeededBorderSize();	
+	virtual int				GetNeededBorderSize() override;
 };
 
 typedef std::vector<BaseImageEffect*> ImageEffectVector;
@@ -286,10 +286,10 @@ public:
 	bool					mInvert;
 
 public:
-	virtual void			Init();
+	virtual void			Init() override;
 	virtual void			Apply(PSDLayerInfo* layerInfo, ImageData* imageData, ImageData* destImageData) override;
-	virtual int				GetMixType(); // Default:Interior
-	virtual int				GetNeededBorderSize();
+	virtual int				GetMixType() override; // Default:Interior
+	virtual int				GetNeededBorderSize() override;
 };
 
 class ImageColorOverlayEffect : public BaseImageEffect
@@ -334,8 +334,8 @@ public:
 public:
 	virtual void			Apply(PSDLayerInfo* layerInfo, ImageData* imageData, ImageData* destImageData) override;
 	virtual void			Apply(ImageEffectCtx* ctx) override;
-	virtual int				GetMixType(); // Default:Interior
-	virtual int				GetNeededBorderSize();
+	virtual int				GetMixType() override; // Default:Interior
+	virtual int				GetNeededBorderSize() override;
 	virtual bool			NeedsOrigBits(ImageEffects* effects) override;
 };
 

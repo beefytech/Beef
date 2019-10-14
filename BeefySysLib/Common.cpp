@@ -238,6 +238,9 @@ String Beefy::SlashString(const StringImpl& str, bool utf8decode, bool utf8encod
 						case UTF8PROC_CATEGORY_CF:
 						case UTF8PROC_CATEGORY_CO:
 							wantHex = true;
+							break;
+						default:
+							break;
 						}
 
 						if (wantHex)

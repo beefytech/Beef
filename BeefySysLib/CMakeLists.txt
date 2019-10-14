@@ -34,13 +34,24 @@ add_definitions(
    -DBP_DYNAMIC
 )
 
-include_directories(
-  .
-  platform/linux
-  third_party
-  third_party/freetype/include
-  ../extern
-)
+if (${APPLE})
+    include_directories(
+      .
+      platform/osx
+      platform/darwin
+      third_party
+      third_party/freetype/include
+      ../extern
+    )
+else()
+    include_directories(
+      .
+      platform/linux
+      third_party
+      third_party/freetype/include
+      ../extern
+    )
+endif()
 
 ############## Artefacts Output #################
 # Defines outputs , depending Debug or Release. #
@@ -105,10 +116,7 @@ file(GLOB SRC_FILES
     HeadlessApp.cpp
     MemStream.cpp      
     ResLib.cpp    
-    Startup.cpp
-
-    platform/linux/BFPlatform.cpp
-    platform/linux/LinuxCommon.cpp
+    Startup.cpp    
 
     fbx/FBXReader.cpp
     gfx/DrawLayer.cpp
@@ -284,9 +292,22 @@ file(GLOB SRC_FILES
     util/Vector.cpp
 )
 
+if (${APPLE})
+    file(GLOB SRC_FILES_OS
+        platform/darwin/BFPlatform.cpp
+        platform/darwin/DarwinCommon.cpp
+    )
+else()
+    file(GLOB SRC_FILES_OS
+        platform/linux/BFPlatform.cpp
+        platform/linux/LinuxCommon.cpp
+    )
+endif()
+
 # Add library to build.
 add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
+   ${SRC_FILES_OS}
 )
 
 # Link with other dependencies.

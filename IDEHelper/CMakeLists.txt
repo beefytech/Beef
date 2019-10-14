@@ -33,16 +33,31 @@ add_definitions(
    -DBFSYSLIB_DYNAMIC
 )
 
-include_directories(
-  .
-  ../BeefySysLib/
-  ../BeefySysLib/platform/linux
-  ../BeefySysLib/third_party
-  ../BeefySysLib/third_party/freetype/include
-  ../  
-  ../extern/llvm-project_8_0_0/llvm/include  
-  ../extern/llvm-project_8_0_0/llvm/lib/Target
-)
+if (${APPLE})
+  include_directories(
+    .
+    ../
+    ../BeefySysLib/    
+    ../BeefySysLib/third_party
+    ../BeefySysLib/third_party/freetype/include    
+    ../extern/llvm-project_8_0_0/llvm/include  
+    ../extern/llvm-project_8_0_0/llvm/lib/Target
+
+    ../BeefySysLib/platform/osx
+  )
+else()
+  include_directories(
+    .
+    ../
+    ../BeefySysLib/    
+    ../BeefySysLib/third_party
+    ../BeefySysLib/third_party/freetype/include    
+    ../extern/llvm-project_8_0_0/llvm/include  
+    ../extern/llvm-project_8_0_0/llvm/lib/Target
+
+    ../BeefySysLib/platform/linux    
+  )
+endif()
 
 ############## Artefacts Output #################
 # Defines outputs , depending Debug or Release. #
@@ -161,11 +176,17 @@ add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
 )
 
+if (${APPLE})
+    set(TARGET_LIBS_OS "ncurses")
+else()
+    set(TARGET_LIBS_OS "backtrace")
+endif()
+
 # Link with other dependencies.
 if(MSVC)
   target_link_libraries(${PROJECT_NAME} BeefySysLib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib LLVMX86Disassembler.lib LLVMMCDisassembler.lib LLVMSupport.lib LLVMX86Info.lib LLVMX86Utils.lib LLVMX86AsmPrinter.lib LLVMX86Desc.lib %(AdditionalDependencies) LLVMMC.lib LLVMObject.lib LLVMCore.lib LLVMBitReader.lib LLVMAsmParser.lib LLVMMCParser.lib LLVMCodeGen.lib LLVMTarget.lib LLVMX86CodeGen.lib LLVMScalarOpts.lib LLVMInstCombine.lib LLVMSelectionDAG.lib LLVMProfileData.lib LLVMTransformUtils.lib LLVMAnalysis.lib LLVMX86AsmParser.lib LLVMAsmPrinter.lib LLVMBitWriter.lib LLVMVectorize.lib LLVMipo.lib LLVMInstrumentation.lib LLVMDebugInfoDWARF.lib LLVMDebugInfoPDB.lib LLVMDebugInfoCodeView.lib LLVMGlobalISel.lib LLVMBinaryFormat.lib LLVMAggressiveInstCombine.lib libcurl_a.lib)
 else()
-  target_link_libraries(${PROJECT_NAME} BeefySysLib hunspell pthread dl backtrace
+  target_link_libraries(${PROJECT_NAME} BeefySysLib hunspell pthread dl ${TARGET_LIBS_OS}
     ${LLVM_LIB}/libLLVMCore.a
     ${LLVM_LIB}/libLLVMMC.a
     ${LLVM_LIB}/libLLVMMCParser.a

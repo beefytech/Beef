@@ -1840,7 +1840,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	}	
 
 	bool isPayloadEnum = false;
-	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) /*&& (mCurTypeDef->mGenericParams.size() == 0)*/)
+	if (mCurTypeDef->mTypeCode == BfTypeCode_Enum)
 	{
 		for (auto fieldDef : mCurTypeDef->mFields)
 		{

@@ -35,19 +35,37 @@ add_definitions(
    -DBFRTMERGED
 )
 
-include_directories(
-  .
-  ../BeefySysLib/
-  ../BeefySysLib/platform/linux
-  ../BeefySysLib/third_party
-  ../BeefySysLib/third_party/freetype/include
-  ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/include
-  ../  
-  ../extern
-  ../extern/llvm/include  
-  ../extern/llvm_linux/include
-  ../extern/llvm/lib/Target
-)
+if (${APPLE})
+  include_directories(
+    .
+    ../BeefySysLib/  
+    ../BeefySysLib/third_party
+    ../BeefySysLib/third_party/freetype/include
+    ../BeefySysLib/third_party/libffi/x86_64-apple-darwin12.5.0/include
+    ../  
+    ../extern
+    ../extern/llvm/include  
+    ../extern/llvm_linux/include
+    ../extern/llvm/lib/Target
+
+    ../BeefySysLib/platform/osx
+  )
+else()
+  include_directories(
+    .
+    ../BeefySysLib/  
+    ../BeefySysLib/third_party
+    ../BeefySysLib/third_party/freetype/include
+    ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/include
+    ../  
+    ../extern
+    ../extern/llvm/include  
+    ../extern/llvm_linux/include
+    ../extern/llvm/lib/Target
+
+    ../BeefySysLib/platform/linux
+  )
+endif()
 
 ############## Artefacts Output #################
 # Defines outputs , depending Debug or Release. #
@@ -117,21 +135,38 @@ file(GLOB SRC_FILES
     ../BeefySysLib/util/BeefPerf.cpp
     ../BeefySysLib/util/String.cpp
     ../BeefySysLib/util/UTF8.cpp
-    ../BeefySysLib/third_party/utf8proc/utf8proc.c
-    ../BeefySysLib/platform/linux/BFPlatform.cpp
-    ../BeefySysLib/platform/linux/LinuxCommon.cpp
+    ../BeefySysLib/third_party/utf8proc/utf8proc.c    
 )
+
+if (${APPLE})
+    file(GLOB SRC_FILES_OS
+        ../BeefySysLib/platform/darwin/BFPlatform.cpp
+        ../BeefySysLib/platform/darwin/DarwinCommon.cpp
+    )
+else()
+    file(GLOB SRC_FILES_OS
+        ../BeefySysLib/platform/linux/BFPlatform.cpp
+        ../BeefySysLib/platform/linux/LinuxCommon.cpp
+    )
+endif()
 
 # Add library to build.
 add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
+   ${SRC_FILES_OS}
 )
+
+if (${APPLE})
+    set(TARGET_LIBS_OS "")
+else()
+    set(TARGET_LIBS_OS "backtrace")
+endif()
 
 # Link with other dependencies.
 if(MSVC)
   target_link_libraries(${PROJECT_NAME} BeefySysLib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib LLVMX86Disassembler.lib LLVMMCDisassembler.lib LLVMSupport.lib LLVMX86Info.lib LLVMX86Utils.lib LLVMX86AsmPrinter.lib LLVMX86Desc.lib %(AdditionalDependencies) LLVMMC.lib LLVMObject.lib LLVMCore.lib LLVMBitReader.lib LLVMAsmParser.lib LLVMMCParser.lib LLVMCodeGen.lib LLVMTarget.lib LLVMX86CodeGen.lib LLVMScalarOpts.lib LLVMInstCombine.lib LLVMSelectionDAG.lib LLVMProfileData.lib LLVMTransformUtils.lib LLVMAnalysis.lib LLVMX86AsmParser.lib LLVMAsmPrinter.lib LLVMBitWriter.lib LLVMVectorize.lib LLVMipo.lib LLVMInstrumentation.lib LLVMDebugInfoDWARF.lib LLVMDebugInfoPDB.lib LLVMDebugInfoCodeView.lib LLVMGlobalISel.lib LLVMBinaryFormat.lib libcurl_a.lib)
 else()
   set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux/lib")
-  target_link_libraries(${PROJECT_NAME} BeefySysLib pthread dl backtrace ffi 
+  target_link_libraries(${PROJECT_NAME} BeefySysLib pthread dl ffi ${TARGET_LIBS_OS}
   )
 endif()

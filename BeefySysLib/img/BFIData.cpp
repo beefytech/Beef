@@ -488,7 +488,7 @@ void FFTShift1D(BFComplex* array, int size, int pitch, int dir)
 	for (int i = 0; i < size; i++)
 		array[i * pitch] = prev[((i + dir) % size)];
 
-	delete prev;
+	delete [] prev;
 }
 
 static void FFTShift2D(BFComplex* data, int cols, int rows)
@@ -543,7 +543,7 @@ static void FFTConvert(ImageData* source)
 		source->mBits[i] = 0xFF000000 | val | (val << 8) | (val << 16);
 	}
 
-	delete fFTLog;
+	delete [] fFTLog;
 	delete [] nums;
 }
 
@@ -563,7 +563,7 @@ void DCT_1D(double* array, int size, int pitch)
 		array[idxOut*pitch] = 0.5 * scale * val;
 	}
 
-	delete prev;
+	delete [] prev;
 }
 
 void IDCT_1D(double* array, int size, int pitch)
@@ -583,7 +583,7 @@ void IDCT_1D(double* array, int size, int pitch)
 		array[idxOut*pitch] = 0.5 * val;
 	}
 
-	delete prev;
+	delete [] prev;
 }
 
 const int DCT_1D_I_TABLE[64] = 
@@ -619,7 +619,7 @@ void DCT_1D_I(int* array, int size, int pitch)
 
 	}
 
-	delete prev;
+	delete [] prev;
 }
 
 const int IDCT_1D_I_TABLE[64] = 

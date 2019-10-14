@@ -17,6 +17,14 @@ typedef fd_set FD_SET;
 #define closesocket close
 #endif
 
+#ifdef BF_PLATFORM_OSX
+#include <sys/socket.h>
+#include <mach/error.h>
+#include <mach/mach.h>
+#include <cerrno>
+//#define errno (*__error())
+#endif
+
 //#include <rpcdce.h>
 
 #pragma comment(lib,"wsock32.lib")

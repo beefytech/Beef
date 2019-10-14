@@ -653,6 +653,7 @@ bool BfParser::EvaluatePreprocessor(BfExpression* expr)
 			return EvaluatePreprocessor(binaryOp->mLeft) || EvaluatePreprocessor(binaryOp->mRight);
 		case BfBinaryOp_ConditionalAnd:
 			return EvaluatePreprocessor(binaryOp->mLeft) && EvaluatePreprocessor(binaryOp->mRight);
+		default: break;
 		}
 	}
 
@@ -662,6 +663,7 @@ bool BfParser::EvaluatePreprocessor(BfExpression* expr)
 		{
 		case BfUnaryOp_Not:
 			return !EvaluatePreprocessor(unaryOp->mExpression);
+		default: break;
 		}
 	}
 
@@ -2154,7 +2156,7 @@ void BfParser::NextToken(int endIdx)
 			{				
 				bool prevIsDot = (mSrcIdx > 1) && (mSrc[mSrcIdx - 2] == '.');
 
-				if ((c == '-') /*&& ((mSrc[mSrcIdx] < '0') || mSrc[mSrcIdx] > '9')*/)
+				if (c == '-')
 				{
 					// Not a number!
 					if (mSrc[mSrcIdx] == '-')
@@ -2258,7 +2260,7 @@ void BfParser::NextToken(int endIdx)
 							}
 							else
 							{
-								if (expSign = -1)
+								if (expSign == -1)
 									expVal = -expVal;
 								mSrcIdx--;
 								break;
@@ -2938,6 +2940,7 @@ void BfParser::NextToken(int endIdx)
 					case UTF8PROC_CATEGORY_LO:
 					case UTF8PROC_CATEGORY_NL:
 						allowChar = true;
+					default: break;
 					}
 				}
 
@@ -2981,6 +2984,7 @@ void BfParser::NextToken(int endIdx)
 							case UTF8PROC_CATEGORY_PC:
 							case UTF8PROC_CATEGORY_CF:
 								isValidChar = true;
+							default: break;
 							}
 						}
 
@@ -3134,29 +3138,30 @@ BfAstNode* BfParser::CreateNode()
 {
 	switch (mSyntaxToken)
 	{
-	case BfSyntaxToken_Token:
-	{
-		auto bfTokenNode = mAlloc->Alloc<BfTokenNode>();
-		bfTokenNode->Init(this);
-		bfTokenNode->SetToken(mToken);
-		return bfTokenNode;
-	}
+		case BfSyntaxToken_Token:
+		{
+			auto bfTokenNode = mAlloc->Alloc<BfTokenNode>();
+			bfTokenNode->Init(this);
+			bfTokenNode->SetToken(mToken);
+			return bfTokenNode;
+		}
 	case BfSyntaxToken_Identifier:
-	{
-		//auto bfIdentifierNode = new BfIdentifierNode();
-		auto bfIdentifierNode = mAlloc->Alloc<BfIdentifierNode>();
-		bfIdentifierNode->Init(this);
-		return bfIdentifierNode;
-	}
+		{
+			//auto bfIdentifierNode = new BfIdentifierNode();
+			auto bfIdentifierNode = mAlloc->Alloc<BfIdentifierNode>();
+			bfIdentifierNode->Init(this);
+			return bfIdentifierNode;
+		}
 	case BfSyntaxToken_Literal:
-	{
-		auto bfLiteralExpression = mAlloc->Alloc<BfLiteralExpression>();
-		bfLiteralExpression->Init(this);
-		bfLiteralExpression->mValue = mLiteral;
-		mLiteral.mTypeCode = BfTypeCode_None;
-		mLiteral.mWarnType = 0;
-		return bfLiteralExpression;
-	}
+		{
+			auto bfLiteralExpression = mAlloc->Alloc<BfLiteralExpression>();
+			bfLiteralExpression->Init(this);
+			bfLiteralExpression->mValue = mLiteral;
+			mLiteral.mTypeCode = BfTypeCode_None;
+			mLiteral.mWarnType = 0;
+			return bfLiteralExpression;
+		}
+	default: break;
 	}
 
 	return NULL;

@@ -32,17 +32,33 @@ add_definitions(
    -DBFSYSLIB_DYNAMIC
 )
 
-include_directories(
-  .
-  ../BeefySysLib/
-  ../BeefySysLib/platform/linux
-  ../BeefySysLib/third_party
-  ../BeefySysLib/third_party/freetype/include
-  ../  
-  ../extern/llvm-project_8_0_0/llvm/include  
-  ../extern/llvm-project_8_0_0/llvm/lib/Target
-  ../IDEHelper
-)
+if (${APPLE})
+  include_directories(
+    .
+    ../
+    ../BeefySysLib/    
+    ../BeefySysLib/third_party
+    ../BeefySysLib/third_party/freetype/include    
+    ../extern/llvm-project_8_0_0/llvm/include  
+    ../extern/llvm-project_8_0_0/llvm/lib/Target
+    ../IDEHelper
+
+    ../BeefySysLib/platform/osx
+  )
+else()
+  include_directories(
+    .
+    ../
+    ../BeefySysLib/    
+    ../BeefySysLib/third_party
+    ../BeefySysLib/third_party/freetype/include    
+    ../extern/llvm-project_8_0_0/llvm/include  
+    ../extern/llvm-project_8_0_0/llvm/lib/Target
+    ../IDEHelper
+
+    ../BeefySysLib/platform/linux    
+  )
+endif()
 
 ############## Artefacts Output #################
 # Defines outputs , depending Debug or Release. #
@@ -112,11 +128,17 @@ add_executable(${PROJECT_NAME}
    ${SRC_FILES}
 )
 
+if (${APPLE})
+    set(TARGET_LIBS_OS "")
+else()
+    set(TARGET_LIBS_OS "tinfo")
+endif()
+
 # Link with other dependencies.
 if(MSVC)
    target_link_libraries(${PROJECT_NAME} BeefySysLib IDEHelper kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib)
 else()
-    target_link_libraries(${PROJECT_NAME} BeefySysLib IDEHelper tinfo
+    target_link_libraries(${PROJECT_NAME} BeefySysLib IDEHelper ${TARGET_LIBS_OS}
         #${LLVM_LIB}/libLLVMMC.a
         )    
 endif()

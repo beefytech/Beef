@@ -2043,6 +2043,7 @@ bool BfSystem::DoesLiteralFit(BfTypeCode typeCode, int64 value)
 		return (value >= 0) && (value < 0x100000000LL);
 	case BfTypeCode_UInt64:
 		return (value >= 0);
+	default: break;
 	}
 
 	return false;

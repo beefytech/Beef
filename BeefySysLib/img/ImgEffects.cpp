@@ -441,7 +441,7 @@ void SoftBlur(uint32* data, int w, int h, float radius, uint32 defaultValue)
 			BoxBlur(tempBuffer, data, h, w, d, defaultValue);
 		}
 	}	
-	delete tempBuffer;
+	delete [] tempBuffer;
 }
 
 static int gAlphaCheckOfs [][2] =
@@ -1705,7 +1705,7 @@ void ChokedPixelTransform(ImageData* src, ImageData* dest, float radius, float c
 		}	
 	}
 
-	delete tempBuffer;
+	delete [] tempBuffer;
 }
 
 void ImageOuterGlowEffect::Apply(PSDLayerInfo* layerInfo, ImageData* imageData, ImageData* destImageData)
@@ -2251,7 +2251,7 @@ void ImageBevelEffect::Apply(int pass, int style, PSDLayerInfo* layerInfo, Image
 		}
 	}
 
-	delete normalMap;
+	delete [] normalMap;
 }
 
 void ImageBevelEffect::Apply(ImageEffectCtx* ctx)

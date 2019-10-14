@@ -42,6 +42,7 @@ static BfBinaryOp GetOppositeBinaryOp(BfBinaryOp origOp)
 		return BfBinaryOp_LessThanOrEqual;
 	case BfBinaryOp_GreaterThanOrEqual:
 		return BfBinaryOp_LessThan;
+	default: break;
 	}
 
 	return BfBinaryOp_None;
@@ -63,6 +64,7 @@ static BfBinaryOp GetFlippedBinaryOp(BfBinaryOp origOp)
 		return BfBinaryOp_LessThan;
 	case BfBinaryOp_GreaterThanOrEqual:
 		return BfBinaryOp_LessThanOrEqual;
+	default: break;
 	}
 
 	return BfBinaryOp_None;
@@ -7708,6 +7710,7 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 				case BfTypeCode_UInt64:
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), typeInstance);
 					return true;
+				default: break;
 				}
 			}
 		}
@@ -7754,6 +7757,7 @@ void BfExprEvaluator::DoTypeIntAttr(BfTypeReference* typeRef, BfToken token)
 	case BfToken_SizeOf: attrVal = type->mSize; break;
 	case BfToken_AlignOf: attrVal = type->mAlign; break;
 	case BfToken_StrideOf: attrVal = type->GetStride(); break;
+	default: break;
 	}
 
 	bool isUndefVal = false;
@@ -16481,6 +16485,7 @@ bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken,
 			if (rightConst->mInt64 < minValue)
 				constResult = 0;			
 			break;		
+		default: break;
 		}
 		return false;
 	}
@@ -16524,6 +16529,7 @@ bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken,
 			else if (rightConst->mInt64 <= minValue)
 				constResult = 1;
 			break;
+		default: break;
 		}
 	}
 	
@@ -16591,7 +16597,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				}
 				else
 				{
-					mModule->Fail(StrFormat("Operator '??' cannot be applied to operands of type '%s' and '%s'",
+					// Note: Annoying trigraph split for '??'
+					mModule->Fail(StrFormat("Operator '?" "?' cannot be applied to operands of type '%s' and '%s'",
 						mModule->TypeToString(leftValue.mType).c_str(), mModule->TypeToString(rightValue.mType).c_str()), opToken);					
 					leftValue = mModule->GetDefaultTypedValue(rightValue.mType);
 				}
@@ -16971,6 +16978,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						case BfBinaryOp_LessThanOrEqual:
 							mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpLTE(mResult.mValue, zeroVal, true), boolType);
 							break;
+						default: break;
 						}
 					}
 
@@ -17653,6 +17661,7 @@ void BfExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 	case BfBinaryOp_Subtract: unaryOp = BfUnaryOp_Negate; break;
 	case BfBinaryOp_Multiply: unaryOp = BfUnaryOp_Dereference; break;
 	case BfBinaryOp_BitwiseAnd: unaryOp = BfUnaryOp_AddressOf; break;
+	default: break;
 	}
 
 	if (unaryOp != BfUnaryOp_None)

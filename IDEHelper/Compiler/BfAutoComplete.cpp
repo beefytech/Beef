@@ -364,7 +364,7 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 	if (auto identifier = BfNodeDynCast<BfIdentifierNode>(node))
 	{				
 		BfExprEvaluator exprEvaluator(mModule);
-		auto identifierResult = exprEvaluator.LookupIdentifier(identifier, NULL);
+		auto identifierResult = exprEvaluator.LookupIdentifier(identifier, false, NULL);
 		if (!identifierResult)
 			identifierResult = exprEvaluator.GetResult();
 		if (identifierResult)
@@ -1435,7 +1435,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 {
 	BfAttributedIdentifierNode* attrIdentifier = NULL;
 	bool isAutocompletingName = false;
-	if (attrIdentifier = BfNodeDynCast<BfAttributedIdentifierNode>(memberName))
+	if ((attrIdentifier = BfNodeDynCast<BfAttributedIdentifierNode>(memberName)))
 	{
 		memberName = attrIdentifier->mIdentifier;
 		if ((memberName == NULL) && (IsAutocompleteNode(attrIdentifier->mAttributes)))

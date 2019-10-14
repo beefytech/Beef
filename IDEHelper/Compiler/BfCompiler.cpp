@@ -1074,7 +1074,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	
 	for (auto type : orderedTypes)
 	{			
-		if ((type == NULL) /*|| (type->IsUnspecializedType()*/)
+		if (type == NULL)
 			continue;
 
 		if (type->IsTemporary())

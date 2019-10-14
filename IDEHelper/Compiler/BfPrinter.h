@@ -150,7 +150,7 @@ public:
 	virtual void Visit(BfDynamicCastExpression* dynCastExpr) override;
 	virtual void Visit(BfCastExpression* castExpr) override;
 	virtual void Visit(BfDelegateBindExpression* invocationExpr) override;	
-	virtual void Visit(BfLambdaBindExpression* lambdaBindExpr);
+	virtual void Visit(BfLambdaBindExpression* lambdaBindExpr) override;
 	virtual void Visit(BfObjectCreateExpression* invocationExpr) override;
 	virtual void Visit(BfBoxExpression* boxExpr) override;
 	virtual void Visit(BfInvocationExpression* invocationExpr) override;	

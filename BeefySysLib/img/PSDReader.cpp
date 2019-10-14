@@ -1907,12 +1907,12 @@ bool PSDLayerInfo::ReadData()
 					}
 				}
 
-				delete rowData;
+				delete [] rowData;
 			}
 		}				
 	}
 
-	delete rowLengths;
+	delete [] rowLengths;
 
 	if (((mLayerMask != NULL) || (mVectorMask != NULL)) && (!mLayerMaskHidesEffects))
 		ApplyMask(this);

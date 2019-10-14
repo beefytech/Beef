@@ -1049,7 +1049,7 @@ class Deque : public DequeImpl<T, TAlloc, std::is_pod<T>::value>
 public:
 	typedef DequeImpl<T, TAlloc, std::is_pod<T>::value> _DequeImpl;
 
-	using _DequeImpl::DequeImpl;
+	using DequeImpl<T, TAlloc, std::is_pod<T>::value>::DequeImpl;
 	using _DequeImpl::operator=;
 	using _DequeImpl::operator==;
 	using _DequeImpl::operator!=;

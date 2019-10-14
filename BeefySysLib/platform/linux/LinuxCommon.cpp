@@ -1233,7 +1233,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Sleep(int sleepMS)
 
 BFP_EXPORT bool BFP_CALLTYPE BfpThread_Yield()
 {
-    sched_yield();
+    return sched_yield() == 0;
 }
 
 struct BfpCritSect
@@ -1814,24 +1814,24 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Flush(BfpFile* file)
     ::fsync(file->mHandle);
 }
 
-BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetFileSize(BfpFile* file)
+BFP_EXPORT int64 BFP_CALLTYPE BfpFile_GetFileSize(BfpFile* file)
 {
     int64 oldPos = (int64)lseek64(file->mHandle, 0, SEEK_CUR);
     int64 size = (int64)lseek64(file->mHandle, 0, SEEK_END);
     lseek64(file->mHandle, oldPos, SEEK_SET);
-    return (intptr)size;
+    return (int64)size;
 }
 
-BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Seek(BfpFile* file, intptr offset, BfpFileSeekKind seekKind)
+BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileSeekKind seekKind)
 {
     int whence;
-    if (seekKind = BfpFileSeekKind_Absolute)        
+    if (seekKind == BfpFileSeekKind_Absolute)        
         whence = SEEK_SET;
-    else if (seekKind = BfpFileSeekKind_Relative)
+    else if (seekKind == BfpFileSeekKind_Relative)
         whence = SEEK_CUR;
     else
         whence = SEEK_END;
-    lseek64(file->mHandle, offset, whence);
+    return seek64(file->mHandle, offset, whence);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file)

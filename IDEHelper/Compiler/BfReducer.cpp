@@ -439,6 +439,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 										// Failed
 										done = true;
 										break;
+									default: break;
 									}
 
 									if (done)
@@ -1001,6 +1002,7 @@ bool BfReducer::IsLocalMethod(BfAstNode* nameNode)
 					return false;
 				case BfToken_Where: // Always denotes a local method
 					return true;
+				default: break;
 				}
 			}
 		}
@@ -1889,6 +1891,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				case BfToken_StrideOf:
 					typeAttrExpr = mAlloc->Alloc<BfStrideOfExpression>();
 					break;
+				default: break;
 				}
 
 				ReplaceNode(tokenNode, typeAttrExpr);
@@ -2013,7 +2016,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				MEMBER_SET_CHECKED(delegateBindExpr, mTarget, expr);
 
 				auto nextNode = mVisitorPos.GetNext();
-				if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+				if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 				{
 					if (tokenNode->GetToken() == BfToken_LChevron)
 					{
@@ -3313,7 +3316,8 @@ BfSwitchStatement* BfReducer::CreateSwitchStatement(BfTokenNode* tokenNode)
 		BfToken token = BfToken_None;
 		if (tokenNode != NULL)
 			token = tokenNode->GetToken();
-		if ((tokenNode == NULL) || (token != BfToken_Case) && (token != BfToken_When) && (token != BfToken_Default))
+		if ((tokenNode == NULL) || 
+			((token != BfToken_Case) && (token != BfToken_When) && (token != BfToken_Default)))
 		{
 			Fail("Expected 'case'", child);
 			return switchStatement;
@@ -3618,7 +3622,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 			MEMBER_SET(deleteStmt, mDeleteToken, tokenNode);
 
 			auto nextNode = mVisitorPos.GetNext();
-			if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+			if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 			{
 				if (tokenNode->GetToken() == BfToken_Append)
 				{
@@ -3869,7 +3873,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 				MEMBER_SET(methodDecl, mNameNode, nameNode);
 
 				auto nextNode = mVisitorPos.GetNext();
-				if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+				if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 				{
 					if (tokenNode->GetToken() == BfToken_LChevron)
 					{
@@ -4087,7 +4091,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 		bool isValidFinish = false;
 
 		BfTokenNode* tokenNode;
-		if (tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+		if ((tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext())))
 		{
 			int token = tokenNode->GetToken();
 			if ((token == BfToken_AssignEquals) || (token == BfToken_Semicolon) || (token == BfToken_Comma))
@@ -4352,7 +4356,7 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 			mPrevStmtHadError = false;
 
 			// Must be an expression.  Always set CreateExprFlags_NoCaseExpr, to keep ending statements in a switch case to look like case expressions
-			auto expr = CreateExpression(node, (CreateExprFlags)(createStmtFlags & CreateStmtFlags_To_CreateExprFlags_Mask | CreateExprFlags_NoCaseExpr));
+			auto expr = CreateExpression(node, (CreateExprFlags)((createStmtFlags & CreateStmtFlags_To_CreateExprFlags_Mask) | CreateExprFlags_NoCaseExpr));
 
 			auto nextNode = mVisitorPos.GetNext();
 			if (nextNode != NULL)
@@ -4821,7 +4825,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, bool parseArra
 					MEMBER_SET(qualifiedTypeRef, mRight, typeRef);
 
 					nextNode = mVisitorPos.GetNext();
-					if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+					if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 					{
 						if (tokenNode->GetToken() == BfToken_Dot)
 						{
@@ -5727,7 +5731,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
 			MEMBER_SET(methodDecl, mNameNode, nameNode);
 
 			auto nextNode = mVisitorPos.GetNext();
-			if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+			if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 			{
 				if (tokenNode->GetToken() == BfToken_LChevron)
 				{
@@ -6903,7 +6907,7 @@ BfDelegateBindExpression* BfReducer::CreateDelegateBindExpression(BfAstNode* all
 	MEMBER_SET_CHECKED(delegateBindExpr, mTarget, expr);
 
 	auto nextNode = mVisitorPos.GetNext();
-	if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+	if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 	{
 		if (tokenNode->GetToken() == BfToken_LChevron)
 		{
@@ -7446,7 +7450,7 @@ BfMemberReferenceExpression* BfReducer::CreateMemberReferenceExpression(BfAstNod
 		}
 	}
 
-	if (tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+	if ((tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext())))
 	{
 		if (tokenNode->GetToken() == BfToken_LBracket)
 		{
@@ -7507,7 +7511,7 @@ BfTupleExpression* BfReducer::CreateTupleExpression(BfTokenNode* node, BfExpress
 		{
 			// Failed, but can we pull in the closing rparen?
 			auto nextNode = mVisitorPos.GetNext();
-			if (closeParenToken = BfNodeDynCast<BfTokenNode>(nextNode))
+			if ((closeParenToken = BfNodeDynCast<BfTokenNode>(nextNode)))
 			{
 				if (closeParenToken->GetToken() == BfToken_RParen)
 				{
@@ -7691,7 +7695,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			{
 				// Failure, but eat any following dot for autocompletion purposes
 				auto nextNode = mVisitorPos.GetNext();
-				if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+				if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 				{
 					if (tokenNode->GetToken() == BfToken_Dot)
 					{
@@ -7916,7 +7920,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		MEMBER_SET_CHECKED(typeDeclaration, mNameNode, name);
 
 		auto nextNode = mVisitorPos.GetNext();
-		if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+		if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 		{
 			if (tokenNode->GetToken() == BfToken_LChevron)
 			{
@@ -8100,9 +8104,10 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			HandleTypeDeclaration(typeDeclaration, attributes);
 		}		
 
-		return typeDeclaration;
+		return typeDeclaration;		
 	}
 	break;
+	default: break;
 	}
 
 	if (isSimpleEnum)
@@ -8807,7 +8812,7 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 
 	auto typeDecl = mCurTypeDecl;
 	auto nextNode = mVisitorPos.GetNext();
-	if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+	if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 	{
 		if (tokenNode->GetToken() == BfToken_Mut)
 		{
@@ -8822,7 +8827,7 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 		}
 	}
 
-	if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+	if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 	{
 		if (tokenNode->GetToken() == BfToken_Where)
 		{
@@ -9102,6 +9107,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 				case BfToken_Var:
 					addToConstraint = true;
 					break;
+				default: break;
 				}
 
 				if (addToConstraint)
@@ -9115,7 +9121,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 					{
 						addToConstraint = true;
 						nextNode = mVisitorPos.GetNext();
-						if (tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+						if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 						{
 							if (tokenNode->GetToken() == BfToken_Star)
 							{

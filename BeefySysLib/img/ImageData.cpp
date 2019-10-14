@@ -85,7 +85,7 @@ bool ImageData::LoadFromFile(const StringImpl& path)
 	int size = 0;
 	uint8* aData = LoadBinaryData(path, &size);
 	if (aData == NULL)
-		return NULL;
+		return false;
 	SetSrcData(aData, size);
 	bool result = ReadData();
 	if (mKeepSrcDataValid)

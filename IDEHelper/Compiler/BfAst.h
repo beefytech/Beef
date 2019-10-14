@@ -655,6 +655,8 @@ public:
 		case BfTypedValueKind_ParamsSplat:
 		case BfTypedValueKind_Params:
 			return true;
+		default:
+			return false;
 		}
 
 		return false;

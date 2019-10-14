@@ -2,6 +2,7 @@
 
 #include "BFApp.h"
 #include "BFWindow.h"
+#include <map>
 
 struct SDL_Window;
 
@@ -56,13 +57,15 @@ public:
 	virtual void			Run() override;
 
 	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) override;
-	virtual DrawLayer*		CreateDrawLayer(BFWindow* window);
+	virtual DrawLayer*		CreateDrawLayer(BFWindow* window) override;
 
 	virtual void*			GetClipboardData(const StringImpl& format, int* size) override;
 	virtual void			ReleaseClipboardData(void* ptr) override;
 	virtual void			SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard) override;
 
 	virtual BFSysBitmap*	LoadSysBitmap(const wchar_t* fileName) override;
+	virtual void            GetDesktopResolution(int& width, int& height) override;
+	virtual void            GetWorkspaceRect(int& x, int& y, int& width, int& height) override;
 };
 
 NS_BF_END;

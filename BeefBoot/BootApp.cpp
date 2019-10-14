@@ -199,6 +199,7 @@ void BootApp::OutputLine(const String& text, OutputPri outputPri)
 		if (mVerbosity < Verbosity_Minimal)
 			return;
 		break;
+	default: break;
 	}
 
 	if (outputPri == OutputPri_Warning)

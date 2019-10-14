@@ -137,6 +137,21 @@ public:
 		{
 			return mPtr < val2.mPtr;
 		}
+
+		bool operator>(const iterator& val2) const
+		{
+			return mPtr > val2.mPtr;
+		}
+
+		bool operator<=(const iterator& val2) const
+		{
+			return mPtr <= val2.mPtr;
+		}
+
+		bool operator>=(const iterator& val2) const
+		{
+			return mPtr >= val2.mPtr;
+		}
 	};
 
 	struct const_iterator
@@ -1041,7 +1056,7 @@ class Array : public ArrayImpl<T, TAlloc, std::is_pod<T>::value>
 public:
 	typedef ArrayImpl<T, TAlloc, std::is_pod<T>::value> _ArrayImpl;
 
-	using _ArrayImpl::ArrayImpl;
+	using ArrayImpl<T, TAlloc, std::is_pod<T>::value>::ArrayImpl;
 	using _ArrayImpl::operator=;
 	using _ArrayImpl::operator==;
 	using _ArrayImpl::operator!=;

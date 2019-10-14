@@ -201,6 +201,7 @@ static llvm::Attribute::AttrKind LLVMMapAttribute(BfIRAttribute attr)
 	case BFIRAttribute_NoUnwind: return llvm::Attribute::NoUnwind;
 	case BFIRAttribute_UWTable: return llvm::Attribute::UWTable;
 	case BFIRAttribute_AlwaysInline: return llvm::Attribute::AlwaysInline;
+	default: break;
 	}
 	return llvm::Attribute::None;
 }
@@ -307,6 +308,7 @@ llvm::Type* BfIRCodeGen::GetLLVMType(BfTypeCode typeCode, bool& isSigned)
 		return llvm::Type::getFloatTy(*mLLVMContext);
 	case BfTypeCode_Double:	
 		return llvm::Type::getDoubleTy(*mLLVMContext);
+	default: break;
 	}
 	return NULL;
 }
@@ -2236,6 +2238,7 @@ void BfIRCodeGen::HandleNextCmd()
 						case BfIRIntrinsic_AtomicXor:
 							op = llvm::AtomicRMWInst::BinOp::Xor;
 							break;
+						default: break;
 						}						
 
 						auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[2]);
@@ -2312,6 +2315,7 @@ void BfIRCodeGen::HandleNextCmd()
 									case BfIRIntrinsic_AtomicUMin:
 										cmpVal = mIRBuilder->CreateICmpULE(atomicRMW, args[1]);
 										break;
+									default: break;
 									}
 									result = mIRBuilder->CreateSelect(cmpVal, atomicRMW, args[1]);
 								}
@@ -2335,6 +2339,7 @@ void BfIRCodeGen::HandleNextCmd()
 							case BfIRIntrinsic_AtomicXChg:
 								result = args[1];
 								break;
+							default: break;
 							}
 						}
 						SetResult(curId, result);

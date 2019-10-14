@@ -723,7 +723,7 @@ bool StringImpl::HasMultibyteChars()
 {
 	auto ptr = GetPtr();
 	for (int i = 0; i < (int)mLength; i++)
-		if (ptr[i] >= 0x80)
+		if ((uint8)ptr[i] >= (uint8)0x80)
 			return true;
 	return false;
 }

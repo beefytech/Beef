@@ -1506,6 +1506,8 @@ int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
 		return 2;
 	case BfBinaryOp_NullCoalesce:
 		return 1;
+	default:
+		break;
 	}
 
 	return 0;

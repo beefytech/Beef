@@ -44,7 +44,7 @@ void PolySpline2D::Calculate()
 	for (int i=0; i<n; i++)
 		mCoefs[i] = mat[i];
 
-	delete mat;	
+	delete [] mat;
 }
 
 float PolySpline2D::Evaluate(float x)

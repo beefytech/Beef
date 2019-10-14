@@ -538,11 +538,11 @@ public:
 		(mTypeDef->mTypeCode == BfTypeCode_Int32) || (mTypeDef->mTypeCode == BfTypeCode_Int64) || (mTypeDef->mTypeCode == BfTypeCode_IntPtr) ||
 		(mTypeDef->mTypeCode == BfTypeCode_IntUnknown); }
 	virtual bool IsIntUnknown() override { return (mTypeDef->mTypeCode == BfTypeCode_IntUnknown) || (mTypeDef->mTypeCode == BfTypeCode_UIntUnknown); }
-	virtual bool IsChar() { return (mTypeDef->mTypeCode == BfTypeCode_Char8) || (mTypeDef->mTypeCode == BfTypeCode_Char16) || (mTypeDef->mTypeCode == BfTypeCode_Char32); }
+	virtual bool IsChar() override { return (mTypeDef->mTypeCode == BfTypeCode_Char8) || (mTypeDef->mTypeCode == BfTypeCode_Char16) || (mTypeDef->mTypeCode == BfTypeCode_Char32); }
 	virtual bool IsFloat() override { return (mTypeDef->mTypeCode == BfTypeCode_Single) || (mTypeDef->mTypeCode == BfTypeCode_Double); }
 	virtual bool IsNull() override { return mTypeDef->mTypeCode == BfTypeCode_NullPtr; }
 	virtual bool IsVoid() override { return mTypeDef->mTypeCode == BfTypeCode_None; }	
-	virtual bool CanBeValuelessType() { return mTypeDef->mTypeCode == BfTypeCode_None; }
+	virtual bool CanBeValuelessType() override { return mTypeDef->mTypeCode == BfTypeCode_None; }
 	virtual bool IsValuelessType() override { return mTypeDef->mTypeCode == BfTypeCode_None; }
 	virtual bool IsSelf() override { return mTypeDef->mTypeCode == BfTypeCode_Self; }
 	virtual bool IsDot() override { return mTypeDef->mTypeCode == BfTypeCode_Dot; }
@@ -921,7 +921,7 @@ public:
 	BfType* mElementType;
 
 	virtual bool IsRetTypeType() override { return true; }
-	virtual bool CanBeValuelessType() { return true; }
+	virtual bool CanBeValuelessType() override { return true; }
 	virtual bool IsValuelessType() override { return true; }
 
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
@@ -1581,16 +1581,16 @@ public:
 	
 	~BfTypeInstance();	
 
-	virtual BfModule* GetModule() { return mModule; }
+	virtual BfModule* GetModule() override { return mModule; }
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfPrimitiveType* ToPrimitiveType() override { return GetUnderlyingType()->ToPrimitiveType();  }
-	virtual bool HasWrappedRepresentation() { return IsTypedPrimitive(); }
+	virtual bool HasWrappedRepresentation() override { return IsTypedPrimitive(); }
 	
 	int GetEndingInstanceAlignment() { if (mInstSize % mInstAlign == 0) return mInstAlign; return mInstSize % mInstAlign; }
 	virtual bool HasTypeFailed() override { return mTypeFailed; } 
 	virtual bool IsReified() override { return mIsReified; }
-	virtual bool NeedsExplicitAlignment() { return !IsSizeAligned() || mIsPacked; }	
+	virtual bool NeedsExplicitAlignment() override { return !IsSizeAligned() || mIsPacked; }	
 	virtual bool IsDataIncomplete() override { return ((mTypeIncomplete) || (mBaseTypeMayBeIncomplete)) && (!mNeedsMethodProcessing); }	
 	virtual bool IsIncomplete() override { return (mTypeIncomplete) || (mBaseTypeMayBeIncomplete); }
 	virtual bool IsSplattable() override { BF_ASSERT((mInstSize >= 0) || (!IsComposite())); return mIsSplattable; }
@@ -1616,7 +1616,7 @@ public:
 	//virtual bool IsValuelessType() override { return (mIsTypedPrimitive) && (mInstSize == 0); }	
 	virtual bool CanBeValuelessType() override { return (mTypeDef->mTypeCode == BfTypeCode_Struct) || (mTypeDef->mTypeCode == BfTypeCode_Enum); }
 	virtual bool IsValuelessType() override;
-	virtual bool HasPackingHoles() { return mHasPackingHoles; }
+	virtual bool HasPackingHoles() override { return mHasPackingHoles; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) override;
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) override;	
 	virtual bool WantsGCMarking() override;
@@ -1684,7 +1684,7 @@ public:
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
 	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedTypeVariation(); }		
 
-	virtual BfTypeInstance* GetImplBaseType() { return (mBoxedBaseType != NULL) ? mBoxedBaseType : mBaseType; }
+	virtual BfTypeInstance* GetImplBaseType() override { return (mBoxedBaseType != NULL) ? mBoxedBaseType : mBaseType; }
 
 	bool IsBoxedStructPtr()
 	{
@@ -1906,7 +1906,7 @@ public:
 
 public:
 	virtual bool IsWrappableType() override { return true; }
-	virtual bool IsReified() { return mElementType->IsReified(); }
+	virtual bool IsReified() override { return mElementType->IsReified(); }
 	virtual bool IsPointer() override { return true; }
 	virtual bool IsIntPtrable() override { return true; }
 	virtual bool IsStructPtr() override { return mElementType->IsStruct(); }
@@ -1951,7 +1951,7 @@ public:
 	virtual bool IsComposite() override { return true; }
 	virtual bool IsMethodRef() override { return true; }
 	virtual bool IsSplattable() override { return true; }
-	virtual int GetSplatCount() { return (int)mDataToParamIdx.mSize; }
+	virtual int GetSplatCount() override { return (int)mDataToParamIdx.mSize; }
 
 	virtual bool IsOnDemand() override { return true; }
 	virtual bool IsTemporary() override { return true; }
@@ -1990,7 +1990,7 @@ public:
 
 	virtual bool IsDataIncomplete() override { CheckElement(); return mDefineState < BfTypeDefineState_Defined; }
 	virtual bool IsIncomplete() override { CheckElement(); return mDefineState < BfTypeDefineState_Defined; }
-	virtual bool IsReified() { return mElementType->IsReified(); }
+	virtual bool IsReified() override { return mElementType->IsReified(); }
 
 	virtual bool IsRef() override { return true; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
@@ -2027,17 +2027,17 @@ public:
 	bool mWantsGCMarking;
 
 public:
-	virtual bool NeedsExplicitAlignment() { return mElementType->NeedsExplicitAlignment(); }
+	virtual bool NeedsExplicitAlignment() override { return mElementType->NeedsExplicitAlignment(); }
 
 	virtual bool IsSizedArray() override { return true; }
 		
 	virtual bool IsWrappableType() override { return true; }
 	virtual bool IsValueType() override { return true; } // Is a type of struct
-	virtual bool IsValueTypeOrValueTypePtr() { return true; }
+	virtual bool IsValueTypeOrValueTypePtr() override { return true; }
 	virtual bool IsComposite() override { return true; }
 	virtual bool IsStruct() override { return false; } // But IsStruct infers a definition, which it does not have
 	virtual bool IsStructOrStructPtr() override { return false; }
-	virtual bool IsReified() { return mElementType->IsReified(); }
+	virtual bool IsReified() override { return mElementType->IsReified(); }
 
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
@@ -2056,17 +2056,17 @@ public:
 	BfType* mElementCountSource;
 
 public:
-	virtual bool NeedsExplicitAlignment() { return mElementType->NeedsExplicitAlignment(); }
+	virtual bool NeedsExplicitAlignment() override { return mElementType->NeedsExplicitAlignment(); }
 
 	virtual bool IsUnknownSizedArray() override { return true; }
 
 	virtual bool IsWrappableType() override { return true; }
 	virtual bool IsValueType() override { return true; } // Is a type of struct
-	virtual bool IsValueTypeOrValueTypePtr() { return true; }
+	virtual bool IsValueTypeOrValueTypePtr() override { return true; }
 	virtual bool IsComposite() override { return true; }
 	virtual bool IsStruct() override { return false; } // But IsStruct infers a definition, which it does not have
 	virtual bool IsStructOrStructPtr() override { return false; }
-	virtual bool IsReified() { return mElementType->IsReified(); }
+	virtual bool IsReified() override { return mElementType->IsReified(); }
 
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }

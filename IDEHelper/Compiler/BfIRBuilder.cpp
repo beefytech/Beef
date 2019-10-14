@@ -70,6 +70,7 @@ USING_NS_BF;
 	case BfTypeCode_Single: \
 	case BfTypeCode_Double: \
 		return CreateConst(constLHS->mTypeCode, OP(constLHS->mDouble, constRHS->mDouble)); break; \
+	default: break; \
 	} \
 	return CreateConst(constLHS->mTypeCode, val);
 
@@ -94,6 +95,7 @@ USING_NS_BF;
 	case BfTypeCode_Char32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
 	case BfTypeCode_Int64: val = OP(constLHS->mInt64, constRHS->mInt64); break; \
 	case BfTypeCode_UInt64: val = OP(constLHS->mUInt64, constRHS->mUInt64); break; \
+	default: break; \
 	} \
 	return CreateConst(constLHS->mTypeCode, val);
 
@@ -122,6 +124,7 @@ USING_NS_BF;
 	case BfTypeCode_Single: \
 	case BfTypeCode_Double: \
 		return CreateConst(constLHS->mTypeCode, constLHS->mDouble OP constRHS->mDouble); break; \
+	default: break; \
 	} \
 	return CreateConst(constLHS->mTypeCode, val);
 
@@ -143,6 +146,7 @@ USING_NS_BF;
 	case BfTypeCode_Char32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
 	case BfTypeCode_Int64: val = constLHS->mInt64 OP constRHS->mInt64; break; \
 	case BfTypeCode_UInt64: val = constLHS->mUInt64 OP constRHS->mUInt64; break; \
+	default: break; \
 	} \
 	return CreateConst(constLHS->mTypeCode, val);
 
@@ -166,6 +170,7 @@ USING_NS_BF;
 	case BfTypeCode_Single: \
 	case BfTypeCode_Double: \
 		return CreateConst(constVal->mTypeCode, OP constVal->mDouble); break; \
+	default: break; \
 	} \
 	return CreateConst(constVal->mTypeCode, val);
 
@@ -195,6 +200,7 @@ USING_NS_BF;
 		case BfTypeCode_UInt64: val = constLHS->mUInt64 OP constRHS->mUInt64; break; \
 		case BfTypeCode_Single: val = constLHS->mDouble OP constRHS->mDouble; break; \
 		case BfTypeCode_Double: val = constLHS->mDouble OP constRHS->mDouble; break; \
+		default: break; \
 		} \
 		return CreateConst(BfTypeCode_Boolean, val ? (uint64)1 : (uint64)0); \
 	}
@@ -1481,54 +1487,54 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 		mStream.Write(BfIRParamType_Const);
 		mStream.Write((uint8)constant->mTypeCode);
 		
-		switch (constant->mTypeCode)
+		switch ((int)constant->mTypeCode)
 		{
-		case BfTypeCode_Single:
+		case (int)BfTypeCode_Single:
 			{
 				float f = (float)constant->mDouble;
 				mStream.Write(&f, sizeof(float));
 			}
 			break;
-		case BfTypeCode_Double:			
+		case (int)BfTypeCode_Double:			
 			{
 				mStream.Write(&constant->mDouble, sizeof(double));
 			}
 			break;
-		case BfTypeCode_Int8:
-		case BfTypeCode_UInt8:
-		case BfTypeCode_Int16:
-		case BfTypeCode_UInt16:
-		case BfTypeCode_Int32:
-		case BfTypeCode_UInt32:
-		case BfTypeCode_Int64:
-		case BfTypeCode_UInt64:
-		case BfTypeCode_IntPtr:
-		case BfTypeCode_UIntPtr:
-		case BfTypeCode_IntUnknown:
-		case BfTypeCode_UIntUnknown:
-		case BfTypeCode_Char8:
-		case BfTypeCode_Char16:
-		case BfTypeCode_Char32:			
+		case (int)BfTypeCode_Int8:
+		case (int)BfTypeCode_UInt8:
+		case (int)BfTypeCode_Int16:
+		case (int)BfTypeCode_UInt16:
+		case (int)BfTypeCode_Int32:
+		case (int)BfTypeCode_UInt32:
+		case (int)BfTypeCode_Int64:
+		case (int)BfTypeCode_UInt64:
+		case (int)BfTypeCode_IntPtr:
+		case (int)BfTypeCode_UIntPtr:
+		case (int)BfTypeCode_IntUnknown:
+		case (int)BfTypeCode_UIntUnknown:
+		case (int)BfTypeCode_Char8:
+		case (int)BfTypeCode_Char16:
+		case (int)BfTypeCode_Char32:			
 			{
 				WriteSLEB128(constant->mInt64);
 			}
 			break;
-		case BfTypeCode_Boolean:
+		case (int)BfTypeCode_Boolean:
 			{
 				Write(constant->mBool);
 			}
 			break;
-		case BfTypeCode_NullPtr:
+		case (int)BfTypeCode_NullPtr:
 			{
 				Write(constant->mIRType);
 			}
 			break;
-		case BfTypeCode_None:
+		case (int)BfTypeCode_None:
 			{
 				// No param needed
 			}
 			break;
-		case BfConstType_GlobalVar:
+		case (int)BfConstType_GlobalVar:
 			{
 				auto gvConst = (BfGlobalVar*)constant;
 				WriteSLEB128(gvConst->mStreamId);
@@ -1546,8 +1552,8 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				}
 			}
 			break;
-		case BfConstType_BitCast:
-		case BfConstType_BitCastNull:
+		case (int)BfConstType_BitCast:
+		case (int)BfConstType_BitCastNull:
 			{
 				auto bitcast = (BfConstantBitCast*)constant;
 				BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
@@ -1555,7 +1561,7 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				Write(bitcast->mToType);
 			}
 			break;
-		case BfConstType_GEP32_2:
+		case (int)BfConstType_GEP32_2:
 			{
 				auto gepConst = (BfConstantGEP32_2*)constant;
 				BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
@@ -1564,7 +1570,7 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				Write(gepConst->mIdx1);
 			}
 			break;
-		case BfConstType_PtrToInt:
+		case (int)BfConstType_PtrToInt:
 			{
 				auto ptrToIntConst = (BfConstantPtrToInt*)constant;
 				BfIRValue targetConst(BfIRValueFlags_Const, ptrToIntConst->mTarget);
@@ -1572,12 +1578,12 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				Write(ptrToIntConst->mToTypeCode);
 			}
 			break;
-		case BfConstType_AggZero:
+		case (int)BfConstType_AggZero:
 			{
 				Write(constant->mIRType);
 			}
 			break;
-		case BfConstType_Array:
+		case (int)BfConstType_Array:
 			{
 				auto arrayConst = (BfConstantArray*)constant;
 				Write(arrayConst->mType);
@@ -3230,6 +3236,7 @@ BfIRValue BfIRBuilder::CreateNumericCast(BfIRValue val, bool valIsSigned, BfType
 				case BfTypeCode_UInt32: val = (uint32)constVal->mInt64; break;
 				case BfTypeCode_Int64: val = (uint64)(int64)constVal->mInt64; break;
 				case BfTypeCode_UInt64: val = (uint64)constVal->mUInt64; break;
+				default: break;
 				}
 			}
 			else // Float -> Int
@@ -3247,6 +3254,7 @@ BfIRValue BfIRBuilder::CreateNumericCast(BfIRValue val, bool valIsSigned, BfType
 				case BfTypeCode_UInt32: val = (uint32)constVal->mDouble; break;
 				case BfTypeCode_Int64: val = (uint64)(int64)constVal->mDouble; break;
 				case BfTypeCode_UInt64: val = (uint64)constVal->mDouble; break;
+				default: break;
 				}
 			}
 

@@ -4407,6 +4407,7 @@ BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
 		case BfTypeCode_UIntUnknown:
 			primType = (BfPrimitiveType*)ResolveTypeDef(mSystem->mTypeUIntUnknown);
 			break;
+		default: break;
 		}
 		mContext->mPrimitiveTypes[typeCode] = primType;
 	}	
@@ -4900,16 +4901,16 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 	BfNamedTypeReference* namedTypeRef = NULL;
 	BfGenericInstanceTypeRef* genericTypeRef = NULL;
 	BfDirectStrTypeReference* directStrTypeRef = NULL;
-	if (namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
+	if ((namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef)))
 	{
 		//TYPEDEF nestedTypeDef = namedTypeRef->mTypeDef;
 	}
-	else if (genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
+	else if ((genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef)))
 	{
 		namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(genericTypeRef->mElementType);
 		//TYPEDEF nestedTypeDef = namedTypeRef->mTypeDef;
 	}
-	else if (directStrTypeRef = BfNodeDynCast<BfDirectStrTypeReference>(typeRef))
+	else if ((directStrTypeRef = BfNodeDynCast<BfDirectStrTypeReference>(typeRef)))
 	{
 		//
 	}
@@ -5545,10 +5546,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			//TODO: By only breaking out for "mIgnoreErrors", we classified elements (below) even when a resolvedTypeRef was not found!
 			//Why did we have this mIgnoreErrors check in there?
 // 			if ((resolvedTypeRef == NULL) && (mIgnoreErrors))
-// 			{
-// 				return NULL;
-// 			}
-			if ((resolvedTypeRef == NULL) /*&& (mIgnoreErrors)*/)
+			if (resolvedTypeRef == NULL)
 		 	{
 		 		return NULL;
 		 	}
@@ -6637,7 +6635,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			{
 				if (auto parentQualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(mParentNodeEntry->mNode))
 				{
-					if (typeRef = parentQualifiedTypeRef->mLeft)
+					if (typeRef == parentQualifiedTypeRef->mLeft)
 					{
 						if ((resolveFlags & BfResolveTypeRefFlag_IgnoreLookupError) == 0)
 							TypeRefNotFound(typeRef);
@@ -6926,7 +6924,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			BfPrimitiveType* primType = new BfPrimitiveType();
 			primType->mTypeDef = typeDef;
 			resolvedEntry->mValue = primType;
-			BF_ASSERT(BfResolvedTypeSet::Hash(primType, &lookupCtx, NULL) == resolvedEntry->mHash);
+			BF_ASSERT(BfResolvedTypeSet::Hash(primType, &lookupCtx, false) == resolvedEntry->mHash);
 			InitType(primType, populateType);
 			return ResolveTypeResult(typeRef, primType, populateType, resolveFlags);
 		}
@@ -7688,7 +7686,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 		{
 			auto fromRefType = (BfRefType*)typedVal.mType;
 			auto toRefType = (BfRefType*)toType;
-			if ((fromRefType->mRefKind == toRefType->mRefKind))
+			if (fromRefType->mRefKind == toRefType->mRefKind)
 				checkUnderlying = true;
 			else if ((fromRefType->mRefKind == BfRefType::RefKind_Ref) && (toRefType->mRefKind == BfRefType::RefKind_Mut))
 				checkUnderlying = true; // Allow a ref-to-mut implicit conversion
@@ -7757,8 +7755,8 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 		if (toType->IsVoidPtr())
 		{
 			if ((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr)) ||
-				(genericParamInst->mTypeConstraint != NULL) &&
-				((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface())))
+				((genericParamInst->mTypeConstraint != NULL) &&
+				 ((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
 			{
 				return true;
 			}
@@ -8068,6 +8066,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			{
 			case BfTypeCode_UInt8:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Char16:
@@ -8075,6 +8074,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			{
 			case BfTypeCode_Char8:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Int16:
@@ -8084,6 +8084,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 				return true;
 			case BfTypeCode_UInt8:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_UInt16:
@@ -8091,6 +8092,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			{
 			case BfTypeCode_UInt8:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Int32:
@@ -8106,6 +8108,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			case BfTypeCode_UInt8:
 			case BfTypeCode_UInt16:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Char32:
@@ -8114,6 +8117,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			case BfTypeCode_Char8:
 			case BfTypeCode_Char16:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_UInt32:
@@ -8127,6 +8131,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 				if (mCompiler->mSystem->mPtrSize == 4)
 					return true;
 				break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Int64:
@@ -8141,6 +8146,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			case BfTypeCode_UInt16:
 			case BfTypeCode_UInt32:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_UInt64:
@@ -8151,6 +8157,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			case BfTypeCode_UInt32:
 			case BfTypeCode_UIntPtr:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_IntPtr:
@@ -8168,6 +8175,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 				if (mCompiler->mSystem->mPtrSize == 8)
 					return true;
 				break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_UIntPtr:
@@ -8181,6 +8189,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 				if (mCompiler->mSystem->mPtrSize == 8)
 					return true;
 				break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Single:
@@ -8200,6 +8209,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			case BfTypeCode_UIntPtr:
 			case BfTypeCode_UIntUnknown:
 				return true;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Double:
@@ -8221,8 +8231,10 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 				return true;
 			case BfTypeCode_Single:
 				return true;
+			default: break;
 			}
 			break;
+		default: break;
 		}
 	}
 
@@ -8589,7 +8601,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		{
 			auto fromRefType = (BfRefType*)typedVal.mType;
 			auto toRefType = (BfRefType*)toType;
-			if ((fromRefType->mRefKind == toRefType->mRefKind))
+			if (fromRefType->mRefKind == toRefType->mRefKind)
 				checkUnderlying = true;
 			else if ((fromRefType->mRefKind == BfRefType::RefKind_Ref) && (toRefType->mRefKind == BfRefType::RefKind_Mut))
 				checkUnderlying = true; // Allow a ref-to-mut implicit conversion
@@ -8738,8 +8750,8 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		if (toType->IsVoidPtr())
 		{
 			if ((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr)) ||
-				(genericParamInst->mTypeConstraint != NULL) &&
-				((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface())))
+				((genericParamInst->mTypeConstraint != NULL) &&
+				((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
 			{
 				return GetDefaultValue(toType);
 			}
@@ -9183,6 +9195,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 			case BfTypeCode_Char8:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Int16:
@@ -9192,6 +9205,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				allowCast = true; break;
 			case BfTypeCode_UInt8:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_UInt16:
@@ -9199,6 +9213,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 			case BfTypeCode_UInt8:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Int32:
@@ -9214,6 +9229,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			case BfTypeCode_UInt8:
 			case BfTypeCode_UInt16:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Char32:
@@ -9222,6 +9238,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			case BfTypeCode_Char8:
 			case BfTypeCode_Char16:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_UInt32:
@@ -9235,6 +9252,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if (mCompiler->mSystem->mPtrSize == 4)
 					allowCast = true;
 				break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Int64:
@@ -9249,6 +9267,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			case BfTypeCode_UInt16:
 			case BfTypeCode_UInt32:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_UInt64:
@@ -9259,6 +9278,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			case BfTypeCode_UInt32:
 			case BfTypeCode_UIntPtr:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_IntPtr:
@@ -9281,6 +9301,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if (mCompiler->mSystem->mPtrSize == 8)
 					allowCast = true;
 				break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_UIntPtr:
@@ -9294,6 +9315,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if (mCompiler->mSystem->mPtrSize == 8)
 					allowCast = true;
 				break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Single:
@@ -9313,6 +9335,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			case BfTypeCode_UIntPtr:
 			case BfTypeCode_UIntUnknown:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
 		case BfTypeCode_Double:
@@ -9334,8 +9357,10 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				allowCast = true; break;
 			case BfTypeCode_Single:
 				allowCast = true; break;
+			default: break;
 			}
 			break;
+		default: break;
 		}
 
 		if (explicitCast)
@@ -10239,25 +10264,26 @@ void BfModule::VariantToString(StringImpl& str, const BfVariant& variant)
 		str += StrFormat("%llu", variant.mInt64);
 		break;
 	case BfTypeCode_Single:
-	{
-		char cstr[64];
-		ExactMinimalFloatToStr(variant.mSingle, cstr);
-		str += cstr;
-		if (strchr(cstr, '.') == NULL)
-			str += ".0f";
-		else
-			str += "f";
-	}
-	break;
+		{
+			char cstr[64];
+			ExactMinimalFloatToStr(variant.mSingle, cstr);
+			str += cstr;
+			if (strchr(cstr, '.') == NULL)
+				str += ".0f";
+			else
+				str += "f";
+		}
+		break;
 	case BfTypeCode_Double:
-	{
-		char cstr[64];
-		ExactMinimalDoubleToStr(variant.mDouble, cstr);
-		str += cstr;
-		if (strchr(cstr, '.') == NULL)
-			str += ".0";
-	}
-	break;
+		{
+			char cstr[64];
+			ExactMinimalDoubleToStr(variant.mDouble, cstr);
+			str += cstr;
+			if (strchr(cstr, '.') == NULL)
+				str += ".0";
+		}
+		break;
+	default: break;
 	}
 }
 

@@ -711,3 +711,18 @@ DrawLayer* SdlBFApp::CreateDrawLayer(BFWindow* window)
 	}
 	return drawLayer;
 }
+
+
+void SdlBFApp::GetDesktopResolution(int& width, int& height) override
+{
+	width = 1024;
+	height = 768;
+}
+
+void SdlBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height) override
+{
+	x = 0;
+	y = 0;
+	width = 1024;
+	height = 768;
+}

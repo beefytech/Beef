@@ -408,7 +408,7 @@ public:
 		mModule->EmitAppendAlign(align, sizeMultiple);
 	}
 
-	void Visit(BfAstNode* astNode)
+	void Visit(BfAstNode* astNode) override
 	{
 		mModule->VisitChild(astNode);
 	}
@@ -6181,6 +6181,7 @@ BfIRFunction BfModule::GetBuiltInFunc(BfBuiltInFuncType funcTypeId)
 			funcType = mBfIRBuilder->CreateFunctionType(voidType, paramTypes);
 			func = mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, "BfLoadSharedLibraries");
 			break;
+		default: break;
 		}
 
 		mBuiltInFuncs[(int)funcTypeId] = func;
@@ -6264,6 +6265,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				case BfTypeCode_Char32:
 					isValidTypeCode = true;
 					break;
+				default: break;
 				}
 				
 				if (isValidTypeCode)
@@ -9134,6 +9136,7 @@ BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConst
 				return castedTypedValue;
 			}
 			break;
+		default: break;
 		}
 	}
 	BfIRValue irValue = ConstantToCurrent(constant, constHolder, wantType);
@@ -15687,11 +15690,13 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		// This is 'inner' (probably a closure) - use binding from outer function
 		methodState.mGenericTypeBindings = prevMethodState.mPrevVal->mGenericTypeBindings;		
 	}
-	else if ((methodInstance->mIsUnspecialized) || (mCurTypeInstance->IsUnspecializedType()) && (!isGenericVariation))
+	else if ((methodInstance->mIsUnspecialized) || 
+		((mCurTypeInstance->IsUnspecializedType()) && (!isGenericVariation)))
 	{		
 		methodState.mGenericTypeBindings = &methodInstance->GetMethodInfoEx()->mGenericTypeBindings;
 	}
-	else if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) || ((mCurTypeInstance->IsGenericTypeInstance())) && (!isGenericVariation)))
+	else if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) || 
+		((mCurTypeInstance->IsGenericTypeInstance()) && (!isGenericVariation))))
 	{		
 		unspecializedMethodInstance = GetUnspecializedMethodInstance(methodInstance);
 		

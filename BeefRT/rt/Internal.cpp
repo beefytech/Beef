@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 //#include <crtdefs.h>
-#include <malloc.h>
+//#include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
 //#include <intrin.h>
@@ -453,6 +453,7 @@ void* Internal::VirtualAlloc(intptr size, bool canExecute, bool canWrite)
     return ptr;
 #else
     BF_FATAL("Not supported");
+    return NULL;
 #endif
 }
 

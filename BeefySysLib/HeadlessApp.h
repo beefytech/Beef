@@ -13,17 +13,17 @@ public:
 
 	virtual void			PhysSetCursor() override { }
 
-	virtual void			GetDesktopResolution(int& width, int& height) { }
-	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) {}
+	virtual void			GetDesktopResolution(int& width, int& height) override { }
+	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) override {}
 
-	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) { return NULL; }
-	virtual DrawLayer*		CreateDrawLayer(BFWindow* window) { return NULL; }
+	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) override { return NULL; }
+	virtual DrawLayer*		CreateDrawLayer(BFWindow* window) override { return NULL; }
 
-	virtual void*			GetClipboardData(const StringImpl& format, int* size) { return NULL; }
-	virtual void			ReleaseClipboardData(void* ptr) { }
-	virtual void			SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard) { }
+	virtual void*			GetClipboardData(const StringImpl& format, int* size) override { return NULL; }
+	virtual void			ReleaseClipboardData(void* ptr) override { }
+	virtual void			SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard) override { }
 
-	virtual BFSysBitmap*	LoadSysBitmap(const wchar_t* fileName) { return NULL; }
+	virtual BFSysBitmap*	LoadSysBitmap(const wchar_t* fileName) override { return NULL; }
 	
 };
 

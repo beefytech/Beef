@@ -834,7 +834,7 @@ public:
 	typename _Base::TStorage mInternalBuffer[TInternalSize - 1];
 
 public:
-	using _Base::SizedArrayImpl;
+	using SizedArrayImpl<T, TAlloc>::SizedArrayImpl;
 	using _Base::operator=;
 	using _Base::operator==;
 	using _Base::operator!=;

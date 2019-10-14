@@ -489,6 +489,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			name += "f"; return;
 		case BfTypeCode_Double:
 			name += "d"; return;
+		default: break;
 		}
 
 		name += "?"; return;
@@ -761,6 +762,7 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 			case BfBinaryOp_As:
 				methodName = "2as";
 				break;		
+			default: break;
 			}
 
 			switch (operatorDef->mOperatorDeclaration->mUnaryOp)
@@ -804,6 +806,7 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 			case BfUnaryOp_Out:
 				methodName = "3out";
 				break;
+			default: break;
 			}
 		}
 	}
@@ -1520,6 +1523,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			break;
 		case BfTypeCode_Char32:
 			name += "_U"; break;
+		default: break;
 		}
 	}
 	else if (type->IsTypeInstance())
@@ -1825,6 +1829,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 			case BfBinaryOp_As:
 				methodName = "__as__";
 				break;
+			default: break;
 			}
 
 			switch (operatorDef->mOperatorDeclaration->mUnaryOp)
@@ -1865,6 +1870,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 			case BfUnaryOp_Out:
 				methodName = "__out__";
 				break;
+			default: break;
 			}
 
 			switch (operatorDef->mOperatorDeclaration->mAssignOp)
@@ -1902,6 +1908,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 			case BfAssignmentOp_ExclusiveOr:
 				methodName += "__a_xor__";
 				break;
+			default: break;
 			}
 		}
 

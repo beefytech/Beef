@@ -1528,7 +1528,7 @@ public:
 	virtual void Visit(BfForEachStatement* forEachStmt) override;
 	virtual void Visit(BfDeferStatement* deferStmt) override;
 	virtual void Visit(BfBlock* block) override;
-	virtual void Visit(BfLabeledBlock* labeledBlock);
+	virtual void Visit(BfLabeledBlock* labeledBlock) override;
 	virtual void Visit(BfRootNode* rootNode) override;
 	virtual void Visit(BfInlineAsmStatement* asmStmt) override;
 

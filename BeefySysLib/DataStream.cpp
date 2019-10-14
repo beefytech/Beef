@@ -212,7 +212,7 @@ void DataStream::Write(DataStream& refStream)
 	refStream.SetPos(0);
 	refStream.Read(data, size);
 	Write(data, size);
-	delete data;
+	delete [] data;
 }
 
 void DataStream::WriteSNZ(const StringImpl& val)
