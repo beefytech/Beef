@@ -688,7 +688,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 {
     Beefy::Array<Beefy::StringView> stringViews;
 
-    //printf("Executing: %s %s\n", inTargetPath, args);
+    //printf("Executing: %s %s %x\n", inTargetPath, args, flags);
 
 	if ((workingDir != NULL) && (workingDir[0] != 0))
 	{
@@ -697,6 +697,55 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 			//printf("CHDIR failed %s\n", workingDir);
 			OUTRESULT(BfpSpawnResult_UnknownError);
 			return NULL;
+		}
+	}
+
+	String newArgs;
+	String tempFileName;
+
+	if ((flags & BfpSpawnFlag_UseArgsFile) != 0)
+	{
+		char tempFileNameStr[256];
+		int size = 256;
+		BfpFileResult fileResult;
+		BfpFile_GetTempFileName(tempFileNameStr, &size, &fileResult);
+		if (fileResult == BfpFileResult_Ok)
+		{
+			tempFileName = tempFileNameStr;
+
+			BfpFileResult fileResult;
+			BfpFile* file = BfpFile_Create(tempFileNameStr, BfpFileCreateKind_CreateAlways, BfpFileCreateFlag_Write, BfpFileAttribute_Normal, &fileResult);
+			if (file == NULL)
+			{
+				OUTRESULT(BfpSpawnResult_TempFileError);
+				return NULL;
+			}
+
+			if ((flags & BfpSpawnFlag_UseArgsFile_Native) != 0)
+			{
+				UTF16String wStr = UTF8Decode(args);
+
+				if ((flags & BfpSpawnFlag_UseArgsFile_BOM) != 0)
+				{
+					uint8 bom[2] = { 0xFF, 0xFE };
+					BfpFile_Write(file, bom, 2, -1, NULL);
+				}
+
+				BfpFile_Write(file, wStr.c_str(), wStr.length() * 2, -1, NULL);
+			}
+			else
+				BfpFile_Write(file, args, strlen(args), -1, NULL);
+			BfpFile_Release(file);
+
+			newArgs.Append("@");
+			newArgs.Append(tempFileName);
+			if (newArgs.Contains(' '))
+			{
+				newArgs.Insert(0, '\"');
+				newArgs.Append('\"');
+			}
+
+			args = newArgs.c_str();
 		}
 	}
 

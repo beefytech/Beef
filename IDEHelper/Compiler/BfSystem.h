@@ -137,6 +137,27 @@ struct BfAtomCompositeEquals
 	}
 };
 
+enum BfCompilerOptionFlags
+{
+	BfCompilerOptionFlag_EmitDebugInfo = 1,
+	BfCompilerOptionFlag_EmitLineInfo = 2,
+	BfCompilerOptionFlag_WriteIR = 4,
+	BfCompilerOptionFlag_GenerateOBJ = 8,
+	BfCompilerOptionFlag_NoFramePointerElim = 0x10,
+	BfCompilerOptionFlag_ClearLocalVars = 0x20,
+	BfCompilerOptionFlag_RuntimeChecks = 0x40,
+	BfCompilerOptionFlag_EmitDynamicCastCheck = 0x80,
+	BfCompilerOptionFlag_EnableObjectDebugFlags = 0x100,
+	BfCompilerOptionFlag_EmitObjectAccessCheck = 0x200,
+	BfCompilerOptionFlag_EnableCustodian = 0x400,
+	BfCompilerOptionFlag_EnableRealtimeLeakCheck = 0x800,
+	BfCompilerOptionFlag_EnableSideStack   = 0x1000,
+	BfCompilerOptionFlag_EnableHotSwapping = 0x2000,
+	BfCompilerOptionFlag_IncrementalBuild  = 0x4000,
+	BfCompilerOptionFlag_DebugAlloc        = 0x8000,
+	BfCompilerOptionFlag_OmitDebugHelpers  = 0x10000
+};
+
 enum BfTypeFlags
 {
 	BfTypeFlags_UnspecializedGeneric = 0x0001,

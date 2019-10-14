@@ -8122,26 +8122,6 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_HotResolve_Finish(BfCompiler* bfCom
 	return outString.c_str();
 }
 
-enum BfCompilerOptionFlags
-{
-	BfCompilerOptionFlag_EmitDebugInfo = 1,
-	BfCompilerOptionFlag_EmitLineInfo = 2,
-	BfCompilerOptionFlag_WriteIR = 4,
-	BfCompilerOptionFlag_GenerateOBJ = 8,
-	BfCompilerOptionFlag_NoFramePointerElim = 0x10,
-	BfCompilerOptionFlag_ClearLocalVars = 0x20,
-	BfCompilerOptionFlag_RuntimeChecks = 0x40,
-	BfCompilerOptionFlag_EmitDynamicCastCheck = 0x80,
-	BfCompilerOptionFlag_EnableObjectDebugFlags = 0x100,
-	BfCompilerOptionFlag_EmitObjectAccessCheck = 0x200,
-	BfCompilerOptionFlag_EnableCustodian = 0x400,
-	BfCompilerOptionFlag_EnableRealtimeLeakCheck = 0x800,
-	BfCompilerOptionFlag_EnableSideStack = 0x1000,
-	BfCompilerOptionFlag_EnableHotSwapping = 0x2000,
-	BfCompilerOptionFlag_IncrementalBuild = 0x4000,
-	BfCompilerOptionFlag_DebugAlloc = 0x8000
-};
-
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProject* hotProject, int hotIdx,
 	int machineType, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
 	BfCompilerOptionFlags optionFlags, char* mallocLinkName, char* freeLinkName)
@@ -8178,6 +8158,7 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 		options->mObjectHasDebugFlags = (optionFlags & BfCompilerOptionFlag_EnableObjectDebugFlags) != 0;
 		options->mEnableRealtimeLeakCheck = ((optionFlags & BfCompilerOptionFlag_EnableRealtimeLeakCheck) != 0) && options->mObjectHasDebugFlags;
 		options->mDebugAlloc = ((optionFlags & BfCompilerOptionFlag_DebugAlloc) != 0) || options->mEnableRealtimeLeakCheck;
+		options->mOmitDebugHelpers = (optionFlags & BfCompilerOptionFlag_OmitDebugHelpers) != 0;
 
 #ifdef _WINDOWS
 		if (options->mToolsetType == BfToolsetType_GNU)

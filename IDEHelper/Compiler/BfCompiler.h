@@ -118,6 +118,7 @@ public:
 		bool mEnableSideStack;
 		bool mHasVDataExtender; 
 		bool mDebugAlloc;
+		bool mOmitDebugHelpers;
 
 		bool mUseDebugBackingParams;		
 
@@ -143,6 +144,7 @@ public:
 			mSIMDSetting = BfSIMDSetting_None;
 			mHotProject = NULL;
 			mDebugAlloc = false;
+			mOmitDebugHelpers = false;
 			mIncrementalBuild = true;
 			mEmitDebugInfo = false;
 			mEmitLineInfo = false;
@@ -163,7 +165,7 @@ public:
 			mUseDebugBackingParams = true;
 			mAllocStackCount = 1;
 
-			mExtraResolveChecks = false;
+			mExtraResolveChecks = false;			
 #ifdef _DEBUG
 			//mExtraResolveChecks = true;
 #endif

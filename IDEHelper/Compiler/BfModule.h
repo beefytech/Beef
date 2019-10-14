@@ -1468,7 +1468,6 @@ public:
 	bool HasCompiledOutput();
 	void SkipObjectAccessCheck(BfTypedValue typedVal);
 	void EmitObjectAccessCheck(BfTypedValue typedVal);	
-	void EmitNop();
 	void EmitEnsureInstructionAt();
 	void EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* targetType, BfIRBlock trueBlock, BfIRBlock falseBlock, bool nullSucceeds = false);
 	void EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool allowNull);

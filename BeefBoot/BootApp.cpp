@@ -24,29 +24,10 @@ BF_IMPORT void BF_CALLTYPE Debugger_FullReportMemory();
 
 //////////////////////////////////////////////////////////////////////////
 
-enum BfCompilerOptionFlags
-{
-	BfCompilerOptionFlag_None = 0,
-	BfCompilerOptionFlag_EmitDebugInfo = 1,
-	BfCompilerOptionFlag_EmitLineInfo = 2,
-	BfCompilerOptionFlag_WriteIR = 4,
-	BfCompilerOptionFlag_GenerateOBJ = 8,
-	BfCompilerOptionFlag_NoFramePointerElim = 0x10,
-	BfCompilerOptionFlag_ClearLocalVars = 0x20,
-	BfCompilerOptionFlag_ArrayBoundsCheck = 0x40,
-	BfCompilerOptionFlag_EmitDynamicCastCheck = 0x80,
-	BfCompilerOptionFlag_EnableObjectDebugFlags = 0x100,
-	BfCompilerOptionFlag_EmitObjectAccessCheck = 0x200,
-	BfCompilerOptionFlag_EnableCustodian = 0x400,
-	BfCompilerOptionFlag_EnableRealtimeLeakCheck = 0x800,
-	BfCompilerOptionFlag_EnableSideStack = 0x1000,
-	BfCompilerOptionFlag_EnableHotSwapping = 0x2000
-};
-
 BF_IMPORT void BF_CALLTYPE BfCompiler_Delete(void* bfCompiler);
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(void* bfCompiler, void* hotProject, int hotIdx,
 	int machineType, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
-	BfCompilerOptionFlags optionFlags, const char* mallocLinkName, const char* freeLinkName);
+	Beefy::BfCompilerOptionFlags optionFlags, const char* mallocLinkName, const char* freeLinkName);
 BF_IMPORT void BF_CALLTYPE BfCompiler_ClearBuildCache(void* bfCompiler);
 BF_IMPORT bool BF_CALLTYPE BfCompiler_Compile(void* bfCompiler, void* bfPassInstance, const char* outputPath);
 BF_IMPORT float BF_CALLTYPE BfCompiler_GetCompletionPercentage(void* bfCompiler);
@@ -639,6 +620,20 @@ bool BootApp::QueueRun(const String& fileName, const String& args, const String&
     return true;
 }
 
+bool BootApp::CopyFile(const StringImpl& srcPath, const StringImpl& destPath)
+{
+	BfpFileResult result = BfpFileResult_Ok;
+	for (int i = 0; i < 20; i++)
+	{
+		BfpFile_Copy(srcPath.c_str(), destPath.c_str(), BfpFileCopyKind_Always, &result);
+		if (result == BfpFileResult_Ok)
+			return true;
+		BfpThread_Sleep(100);
+	}
+	Fail(StrFormat("Failed to copy '%s' to '%s'", srcPath.c_str(), destPath.c_str()));
+	return false;
+}
+
 #ifdef BF_PLATFORM_WINDOWS
 void BootApp::DoLinkMS()
 {
@@ -720,14 +715,8 @@ void BootApp::DoLinkMS()
 
 	linkLine.Append(mLinkParams);	
 
-	BfpSpawnFlags flags = BfpSpawnFlag_None;
-	if (true)
-	{		
-		if (true)
-			flags = (BfpSpawnFlags)(BfpSpawnFlag_UseArgsFile | BfpSpawnFlag_UseArgsFile_Native | BfpSpawnFlag_UseArgsFile_BOM);
-		else
-			flags = (BfpSpawnFlags)(BfpSpawnFlag_UseArgsFile);
-	}
+	BfpSpawnFlags flags = BfpSpawnFlag_None;			
+	flags = (BfpSpawnFlags)(BfpSpawnFlag_UseArgsFile | BfpSpawnFlag_UseArgsFile_Native | BfpSpawnFlag_UseArgsFile_BOM);			
 
 	auto runCmd = QueueRun(linkerPath, linkLine, mWorkingDir, flags);
 }
@@ -768,7 +757,7 @@ void BootApp::DoLinkGNU()
     linkLine.Append("-debug -no-pie ");
     linkLine.Append(mLinkParams);
 
-    auto runCmd = QueueRun(linkerPath, linkLine, mWorkingDir, true ? BfpSpawnFlag_UseArgsFile : BfpSpawnFlag_None);
+    auto runCmd = QueueRun(linkerPath, linkLine, mWorkingDir, BfpSpawnFlag_UseArgsFile);
 }
 
 bool BootApp::Compile()
@@ -831,7 +820,7 @@ bool BootApp::Compile()
 	if (mIsCERun)
 		RecursiveCreateDirectory(mBuildDir + "/BeefLib");
 
-	BfCompilerOptionFlags optionFlags = (BfCompilerOptionFlags)(BfCompilerOptionFlag_EmitDebugInfo | BfCompilerOptionFlag_EmitLineInfo | BfCompilerOptionFlag_GenerateOBJ);
+	BfCompilerOptionFlags optionFlags = (BfCompilerOptionFlags)(BfCompilerOptionFlag_EmitDebugInfo | BfCompilerOptionFlag_EmitLineInfo | BfCompilerOptionFlag_GenerateOBJ | BfCompilerOptionFlag_OmitDebugHelpers);
 	if (mEmitIR)
 		optionFlags = (BfCompilerOptionFlags)(optionFlags | BfCompilerOptionFlag_WriteIR);
 
@@ -864,13 +853,8 @@ bool BootApp::Compile()
 				srcResult += BF_OBJ_EXT;
 			else			
 				srcResult += ".s";			
-
-			BfpFileResult result = BfpFileResult_Ok;
-			BfpFile_Copy(srcResult.c_str(), mCEDest.c_str(), BfpFileCopyKind_Always, &result);
-			if (result != BfpFileResult_Ok)
-			{
-				Fail(StrFormat("Failed to copy '%s' to '%s'", srcResult.c_str(), mCEDest.c_str()));
-			}
+			
+			CopyFile(srcResult, mCEDest);			
 		}
 
 		if ((mIsCERun) && (mEmitIR))
@@ -892,13 +876,8 @@ bool BootApp::Compile()
 				srcResult += ".ll";			
 				irDestPath += ".ll";
 			}
-
-			BfpFileResult result = BfpFileResult_Ok;
-			BfpFile_Copy(srcResult.c_str(), irDestPath.c_str(), BfpFileCopyKind_Always, &result);
-			if (result != BfpFileResult_Ok)
-			{
-				Fail(StrFormat("Failed to copy '%s' to '%s'", srcResult.c_str(), mCEDest.c_str()));
-			}			
+			
+			CopyFile(srcResult, irDestPath);			
 		}
 	}
 

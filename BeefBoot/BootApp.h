@@ -64,6 +64,7 @@ public:
 	void Fail(const String & error);
 	void OutputLine(const String& text, OutputPri outputPri = OutputPri_Normal);
 	bool QueueRun(const String& fileName, const String& args, const String& workingDir, BfpSpawnFlags extraFlags);
+	bool CopyFile(const StringImpl& srcPath, const StringImpl& destPath);
 
 	void QueueFile(const StringImpl& path, void* project);
 	void QueuePath(const StringImpl& path);

@@ -8066,23 +8066,12 @@ void BfModule::EmitObjectAccessCheck(BfTypedValue typedVal)
 	mBfIRBuilder->CreateObjectAccessCheck(typedVal.mValue, !IsOptimized());
 }
 
-void BfModule::EmitNop()
-{		
-	if (mProject == NULL)
-		return;
-
-	if ((mBfIRBuilder->mIgnoreWrites) || (!mHasFullDebugInfo) || (IsOptimized()))
-		return;
-
-	mBfIRBuilder->CreateNop();
-}
-
 void BfModule::EmitEnsureInstructionAt()
 {
 	if (mProject == NULL)
 		return;
 
-	if ((mBfIRBuilder->mIgnoreWrites) || (!mHasFullDebugInfo) || (IsOptimized()))
+	if ((mBfIRBuilder->mIgnoreWrites) || (!mHasFullDebugInfo) || (IsOptimized()) || (mCompiler->mOptions.mOmitDebugHelpers))
 		return;
 
 	mBfIRBuilder->CreateEnsureInstructionAt();
