@@ -17,7 +17,7 @@ typedef fd_set FD_SET;
 #define closesocket close
 #endif
 
-#ifdef BF_PLATFORM_OSX
+#ifdef BF_PLATFORM_MACOS
 #include <sys/socket.h>
 #include <mach/error.h>
 #include <mach/mach.h>

@@ -494,7 +494,6 @@ namespace IDE.ui
             var (category, propEntry) = AddPropertiesItem(root, "General");
             category.mIsBold = true;
             category.mTextColor = cHeaderColor;
-            AddPropertiesItem(category, "Machine Type", "mMachineType");
 			AddPropertiesItem(category, "Toolset", "mToolsetType");
 			AddPropertiesItem(category, "Build Type", "mBuildKind");
 

@@ -5319,10 +5319,10 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 		mMemReporter->Add(mImageSize);
 	}
 	defer
-	{
+	(
 		if (mMemReporter != NULL)
 			mMemReporter->EndSection();
-	};
+	);
 	
 	DbgModule* mainModule = mDebugTarget->mTargetBinary;	
 	

@@ -4717,9 +4717,9 @@ bool COFF::CvParseDBI(int wantAge)
 	uint8* data = CvReadStream(3);	
 	uint8* sectionData = data;
 	defer
-	{
+	(
 		delete sectionData;
-	};
+	);
 
 	// Header
 	GET_INTO(int32, signature);
@@ -5578,22 +5578,7 @@ bool COFF::ParseCv(DataStream& pdbFS, uint8* rootDirData, int pageSize, uint8 wa
 	if (mParseKind == ParseKind_Header)
 		return true;
 
-	//ParseSymbolData();
-
-	//TODO: Remove
-	/*for (int streamIdx = 0; streamIdx < numStreams; streamIdx++)
-	{
-		int outSize;
-		uint8* data = CvReadStream(streamIdx, &outSize);
-		if (outSize > 0)
-		{
-			FILE* fp = fopen(StrFormat("c:/temp/test4/pdb_stream_%d.bin", streamIdx).c_str(), "wb");
-			fwrite(data, 1, outSize, fp);
-			fclose(fp);
-			delete [] data;
-		}
-	}*/
-		
+	///
 	{
 		BP_ZONE("COFF::ParseCv_ReadStrTable");
 		if (mStringTable.mStream != -1)
@@ -5604,28 +5589,12 @@ bool COFF::ParseCv(DataStream& pdbFS, uint8* rootDirData, int pageSize, uint8 wa
 	}
 
 	for (int compileUnitId = 0; compileUnitId < (int)mCvModuleInfo.size(); compileUnitId++)
-	{
-		//ParseCompileUnit(compileUnitId);
+	{		
 		ScanCompileUnit(compileUnitId);
 	}
 
-	/*for (int streamIdx = 0; streamIdx < (int)mDeferredModuleInfo.size(); streamIdx++)
-	{	
-		if (mDeferredModuleInfo[streamIdx].empty())
-			continue;
-
-		uint8* data = CvReadStream(streamIdx);
-		uint8* sectionData = data;
-
-		for (auto& moduleInfo : mDeferredModuleInfo[streamIdx])
-		{
-			CvParseModuleInfo(*moduleInfo, data, sectionData, mCvTypeSectionData, mStringTable);
-		}
-	}*/
-
 	//////////////////////////////////////////////////////////////////////////
-
-	
+		
 	return true;
 }
 
@@ -5764,9 +5733,6 @@ bool COFF::TryLoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 		return false;	
 	}
 	
-	//FixTypes(startingTypeIdx);
-	//MapTypes(startingTypeIdx);
-
 	if (mCvDataStream->mFailed)
 		return false;
 		
@@ -5928,23 +5894,12 @@ void COFF::ProcessDebugInfo()
 			GET_INTO(uint32, infoType);
 			BF_ASSERT(infoType == CV_SIGNATURE_C13);
 
-			CvInitStreamRaw(mCvTypeSectionReader, entry.mData + 4, entry.mSize - 4);
-			//ParseTypeData(data, mCvTypeSectionDataSize - sizeof(uint32));
+			CvInitStreamRaw(mCvTypeSectionReader, entry.mData + 4, entry.mSize - 4);			
 			ParseTypeData(mCvTypeSectionReader, 0);
 		}
 
 		FixTypes(startingTypeIdx);
 		linkedModule->MapTypes(startingTypeIdx);
-
-		/*std::unordered_set<String, >
-		for (int typeIdx = startingTypeIdx; typeIdx < (int)mTypes.size(); typeIdx++)
-		{
-			DbgType* dbgType = linkedModule->mTypes[typeIdx];
-			if ((!dbgType->mIsDeclaration) && (dbgType->IsCompositeType()))
-			{
-
-			}
-		}*/
 
 		CvCompileUnit* compileUnit = NULL;
 		for (auto entry : mCvCompileUnitData)

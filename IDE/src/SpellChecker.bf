@@ -99,7 +99,7 @@ namespace IDE
         {
 			String fileName = scope String();
 			GetUserDirectFileName(fileName);
-            File.WriteAllLines(fileName, mCustomDictionaryWordList.GetEnumerator());
+            File.WriteAllLines(fileName, mCustomDictionaryWordList.GetEnumerator()).IgnoreError();
         }
 
 

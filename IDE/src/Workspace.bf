@@ -20,31 +20,13 @@ namespace IDE
             ObjectAndIRCode
         }
 
-        public enum MachineType
-        {
-            case x86;
-            case x64;
-
-			public int32 PtrSize
-			{
-				get
-				{
-					switch (this)
-					{
-					case .x86:
-						return 4;
-					case .x64:
-						return 8;
-					}
-				}
-			}
-        }
-
 		public enum PlatformType
 		{
 			case Unknown;
 			case Windows;
 			case Linux;
+			case macOS;
+			case iOS;
 
 			public static PlatformType GetFromName(String name)
 			{
@@ -52,6 +34,8 @@ namespace IDE
 				{
 				case "Win32", "Win64": return .Windows;
 				case "Linux32", "Linux64": return .Linux;
+				case "macOS": return .macOS;
+				case "iOS": return .iOS;
 				default: return .Unknown;
 				}
 			}
@@ -63,6 +47,10 @@ namespace IDE
 #endif
 
 #if BF_PLATFORM_LINUX
+				return .Linux;
+#endif
+
+#if BF_PLATFORM_MACOS
 				return .Linux;
 #endif
 
@@ -585,6 +573,9 @@ namespace IDE
                         {
                             var options = platformKeyValue.value;
 							var platformName = platformKeyValue.key;
+
+							let platformType = PlatformType.GetFromName(platformName);
+
                             using (data.CreateObject(platformName))
                             {
 								using (data.CreateArray("PreprocessorMacros"))
@@ -597,11 +588,10 @@ namespace IDE
 								data.ConditionalAdd("Toolset", options.mToolsetType, ToolsetType.Default);
 								data.ConditionalAdd("BuildKind", options.mBuildKind, isTest ? .Test : .Normal);
                                 data.ConditionalAdd("BfSIMDSetting", options.mBfSIMDSetting, .SSE2);
-#if BF_PLATFORM_WINDOWS
-                                data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
-#else
-								data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : .O0);
-#endif
+								if (platformType == .Windows)
+                                	data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
+								else
+									data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : .O0);
 								data.ConditionalAdd("LTOType", options.mLTOType, .None);
 								data.ConditionalAdd("AllocType", options.mAllocType, isRelease ? .CRT : .Debug);
 								data.ConditionalAdd("AllocMalloc", options.mAllocMalloc, "");
@@ -705,15 +695,19 @@ namespace IDE
 #unwarn
 			bool isParanoid = configName.Contains("Paranoid");
 			bool isTest = configName.Contains("Test");
+			let platformType = PlatformType.GetFromName(platformName);
 
 			options.mBfSIMDSetting = .SSE2;
-#if BF_PLATFORM_WINDOWS
-			options.mBfOptimizationLevel = isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0;
-			options.mToolsetType = .Microsoft;
-#else
-			options.mBfOptimizationLevel = isRelease ? .O2 : .O0;
-			options.mToolsetType = .GNU;
-#endif
+			if (platformType == .Windows)
+			{
+				options.mBfOptimizationLevel = isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0;
+				options.mToolsetType = .Microsoft;
+			}
+			else
+			{
+				options.mBfOptimizationLevel = isRelease ? .O2 : .O0;
+				options.mToolsetType = .GNU;
+			}
 
 			options.mAllocType = isRelease ? .CRT : .Debug;
 			options.mEmitDebugInfo = .Yes;
@@ -726,13 +720,16 @@ namespace IDE
 			options.mEnableObjectDebugFlags = !isRelease;
 			options.mEmitObjectAccessCheck = !isRelease;
 
-#if BF_PLATFORM_WINDOWS
-			options.mEnableRealtimeLeakCheck = !isRelease;
-			options.mEnableSideStack = isParanoid;
-#else
-            options.mEnableRealtimeLeakCheck = false;
-            options.mEnableSideStack = false;
-#endif
+			if (platformType == .Windows)
+			{
+				options.mEnableRealtimeLeakCheck = !isRelease;
+				options.mEnableSideStack = isParanoid;
+			}
+			else
+			{
+	            options.mEnableRealtimeLeakCheck = false;
+	            options.mEnableSideStack = false;
+			}
 			options.mAllowHotSwapping = !isRelease;
 			options.mIncrementalBuild = !isRelease;
 
@@ -784,6 +781,7 @@ namespace IDE
                 {
                     Options options = new Options();
 					let platformName = new String(platformNameKey);
+					let platformType = PlatformType.GetFromName(platformName);
                     config.mPlatforms[platformName] = options;
                     
 					SetupDefault(options, configName, platformName);
@@ -798,11 +796,11 @@ namespace IDE
 					options.mToolsetType = data.GetEnum<ToolsetType>("Toolset", ToolsetType.Default);
 					options.mBuildKind = data.GetEnum<BuildKind>("BuildKind", isTest ? .Test : .Normal);
 					options.mBfSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("BfSIMDSetting", .SSE2);
-#if BF_PLATFORM_WINDOWS
-                    options.mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel", isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
-#else
-					options.mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel", isRelease ? .O2 : .O0);
-#endif
+					if (platformType == .Windows)
+                    	options.mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel", isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
+					else
+						options.mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel", isRelease ? .O2 : .O0);
+
 					options.mLTOType = data.GetEnum<BuildOptions.LTOType>("LTOType", .None);
 					options.mAllocType = data.GetEnum<AllocType>("AllocType", isRelease ? .CRT : .Debug);
 					data.GetString("AllocMalloc", options.mAllocMalloc);

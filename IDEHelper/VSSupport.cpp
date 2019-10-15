@@ -123,6 +123,8 @@ void free_resources(Find_Result *result) {
 
 // Defer macro/thing.
 
+#undef defer
+
 #define CONCAT_INTERNAL(x,y) x##y
 #define CONCAT(x,y) CONCAT_INTERNAL(x,y)
 

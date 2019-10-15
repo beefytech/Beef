@@ -763,7 +763,11 @@ void BootApp::DoLinkGNU()
     linkLine.Append(" ");
     linkLine.Append("-g ");
 
-    linkLine.Append("-debug -no-pie ");
+    linkLine.Append("-debug ");
+#ifdef BF_PLATFORM_LINUX
+	linkLine.Append("-no-pie ");
+#endif
+
     linkLine.Append(mLinkParams);
 
     auto runCmd = QueueRun(linkerPath, linkLine, mWorkingDir, BfpSpawnFlag_UseArgsFile);

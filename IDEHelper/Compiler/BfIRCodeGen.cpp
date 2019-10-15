@@ -4013,7 +4013,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	PopulateModulePassManager(PM, codeGenOptions);
 
 	llvm::raw_fd_ostream* outStream = NULL;
-	defer{ delete outStream; };
+	defer ( delete outStream; );
 
 	if (enableLTO)
 	{

@@ -107,7 +107,7 @@ namespace IDE
 #elif BF_PLATFORM_LINUX
 		public static readonly String sPlatform64Name = "Linux64";
 		public static readonly String sPlatform32Name = "Linux32";
-#elif BF_PLATFORM_OSX
+#elif BF_PLATFORM_MACOS
 		public static readonly String sPlatform64Name = "macOS";
 		public static readonly String sPlatform32Name = null;
 #else
@@ -8358,17 +8358,24 @@ namespace IDE
 									
 									if (!DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString))
 										return false;
-#if BF_PLATFORM_WINDOWS
-		                            if (project.mGeneralOptions.mTargetType == .BeefLib)
-		                                newString.Append(".lib");
-									else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
-		                                newString.Append(".dll");
-		                            else if (project.mGeneralOptions.mTargetType != .CustomBuild)
-		                                newString.Append(".exe");
-#else
-		                            if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
-		                                newString.Append(".so");
-#endif
+
+									let platformType = Workspace.PlatformType.GetFromName(platformName);
+									switch (platformType)
+									{
+									case .Windows:
+										if (project.mGeneralOptions.mTargetType == .BeefLib)
+										    newString.Append(".lib");
+										else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
+										    newString.Append(".dll");
+										else if (project.mGeneralOptions.mTargetType != .CustomBuild)
+										    newString.Append(".exe");
+									case .macOS:
+										if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
+											newString.Append(".dylib");
+									default:
+										if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
+											newString.Append(".so");
+									}
 		                        }
 		                    case "ProjectDir":
 								if (project.IsDebugSession)
@@ -8390,24 +8397,33 @@ namespace IDE
 									(project.mGeneralOptions.mTargetType == .BeefDynLib) ||
 									((options.mBuildOptions.mBuildKind == .Test) && (project == mWorkspace.mStartupProject)))
 								{
-#if BF_PLATFORM_WINDOWS
-									String rtName = scope String();
-									String dbgName = scope String();
-									BuildContext.GetRtLibNames(workspaceOptions, options, false, rtName, dbgName);
-									newString.Append(rtName);
-									if (!dbgName.IsEmpty)
-										newString.Append(" ", dbgName);
-									switch (workspaceOptions.mAllocType)
+
+									let platformType = Workspace.PlatformType.GetFromName(platformName);
+									switch (platformType)
 									{
-									case .JEMalloc:
-										newString.Append(" jemalloc.lib");
-									case .TCMalloc:
-										newString.Append(" tcmalloc.lib");
+									case .Windows:
+										String rtName = scope String();
+										String dbgName = scope String();
+										BuildContext.GetRtLibNames(workspaceOptions, options, false, rtName, dbgName);
+										newString.Append(rtName);
+										if (!dbgName.IsEmpty)
+											newString.Append(" ", dbgName);
+										switch (workspaceOptions.mAllocType)
+										{
+										case .JEMalloc:
+											newString.Append(" jemalloc.lib");
+										case .TCMalloc:
+											newString.Append(" tcmalloc.lib");
+										default:
+										}
+									case .macOS:
+										newString.Append("./libBeefRT_d.dylib -Wl,-rpath -Wl,.");
+									case .iOS:
+									case .Linux:
+										newString.Append("./libBeefRT_d.so -Wl,-rpath -Wl,$ORIGIN");
 									default:
-									}
-#else
-								newString.Append("./libBeefRT_d.so -Wl,-rpath -Wl,.");
-#endif
+									}	
+
 								}
 							case "VSToolPath":
 								if (Workspace.PlatformType.GetPtrSizeByName(platformName) == 4)
@@ -9255,6 +9271,9 @@ namespace IDE
 			{
 				canCompile = false;
 			}
+
+			//TODO:
+			canCompile = true;
 			
 			if (!canCompile)
 			{

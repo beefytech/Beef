@@ -38,6 +38,18 @@ namespace IDE
 			Failed
 		}
 
+		Workspace.PlatformType mPlatformType;
+		Workspace.ToolsetType mToolset;
+		int mPtrSize;
+
+		public this()
+		{
+			Workspace.Options workspaceOptions = gApp.GetCurWorkspaceOptions();
+			mToolset = workspaceOptions.mToolsetType;
+			mPlatformType = Workspace.PlatformType.GetFromName(gApp.mPlatformName);
+			mPtrSize = Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName);
+		}
+
 		public CustomBuildCommandResult QueueProjectCustomBuildCommands(Project project, String targetPath, Project.BuildCommandTrigger trigger, List<String> cmdList)
 		{
 			if (cmdList.IsEmpty)
@@ -186,7 +198,8 @@ namespace IDE
 			        linkLine.Append("-mwindows ");
 			    }
 
-				linkLine.Append("-no-pie ");
+				if (mPlatformType == .Linux)
+					linkLine.Append("-no-pie ");
 
 			    linkLine.Append(objectsArg);
 
@@ -204,7 +217,7 @@ namespace IDE
 			        String[] mingwFiles;
 			        String fromDir;
 
-			        if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
+			        if (mPtrSize == 4)
 			        {
 			            fromDir = scope:: String(llvmDir, "i686-w64-mingw32/bin/");
 			            mingwFiles = scope:: String[] { "libgcc_s_dw2-1.dll", "libstdc++-6.dll" };
@@ -298,7 +311,7 @@ namespace IDE
 
 					if (workspaceOptions.mToolsetType == .GNU)
 					{
-			            if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
+			            if (mPtrSize == 4)
 			            {
 			            }
 			            else
@@ -311,7 +324,7 @@ namespace IDE
 					}
 					else // Microsoft
 					{
-						if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
+						if (mPtrSize == 4)
 						{
 							//linkLine.Append("-L\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.10586.0\\ucrt\\x86\" ");
 							for (var libPath in gApp.mSettings.mVSSettings.mLib32Paths)
@@ -411,33 +424,11 @@ namespace IDE
 					outDbg.Append("_d");
 				outDbg.Append(dynName ? ".dll" : ".lib");
 			}
-
-			/*if ((workspaceOptions.mEnableObjectDebugFlags) &&
-				((!dynName) || (options.mBuildOptions.mBeefLibType != .Static)))
-			{
-				outDbg.Append("Beef", IDEApp.sRTVersionStr, "Dbg");
-				outDbg.Append((workspaceOptions.mMachineType == .x86) ? "32" : "64");
-				switch (options.mBuildOptions.mBeefLibType)
-				{
-				case .Dynamic:
-				case .DynamicDebug: outDbg.Append("_d");
-				case .Static:
-					switch (options.mBuildOptions.mCLibType)
-					{
-					case .None:
-					case .Dynamic, .SystemMSVCRT: outDbg.Append("_s");
-					case .DynamicDebug: outDbg.Append("_sd");
-					case .Static: outDbg.Append("_ss");
-					case .StaticDebug: outDbg.Append("_ssd");
-					}
-				}
-				outDbg.Append(dynName ? ".dll" : ".lib");
-			}*/
 		}
 
 		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
-			bool is64Bit = Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 8;
+			bool is64Bit = mPtrSize == 8;
 
 			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
 			IDEUtils.FixFilePath(llvmDir);
@@ -1060,7 +1051,12 @@ namespace IDE
 			}
 			else // MS
 			{
-				if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
+				if (mPlatformType != .Windows)
+				{
+					gApp.OutputErrorLine("Project '{}' cannot be linked with the Windows Toolset for platform '{}'", project.mProjectName, mPlatformType);
+					return false;
+				}
+				else if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
 					return false;
 			}
 

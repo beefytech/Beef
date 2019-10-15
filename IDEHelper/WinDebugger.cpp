@@ -11092,10 +11092,10 @@ String WinDebugger::DisassembleAtRaw(intptr inAddress)
 		DbgModule* dbgModule = mDebugTarget->FindDbgModuleForAddress(address);
 		DbgModuleMemoryCache* memCache = NULL;
 		defer
-		{
+		(
 			if (dbgModule == NULL)
 				delete memCache;
-		};
+		);
 
 		if ((dbgModule != NULL) && (dbgModule->mOrigImageData == NULL))
 			dbgModule = NULL;

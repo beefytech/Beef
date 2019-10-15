@@ -2505,10 +2505,10 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			}
 
 			defer
-			{
+			(
 				if (autoComplete != NULL)
 					autoComplete->mIsCapturingMethodMatchInfo = (wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo);
-			};
+			);
 
 			///
 

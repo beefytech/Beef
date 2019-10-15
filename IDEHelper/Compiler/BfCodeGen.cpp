@@ -377,7 +377,7 @@ void BfCodeGenThread::RunLoop()
 		{
 #ifdef BF_PLATFORM_WINDOWS			
 			BeIRCodeGen* beIRCodeGen = new BeIRCodeGen();
-			defer { delete beIRCodeGen; };
+			defer ( delete beIRCodeGen; );
 
 			beIRCodeGen->SetConfigConst(BfIRConfigConst_VirtualMethodOfs, request->mOptions.mVirtualMethodOfs);
 			beIRCodeGen->SetConfigConst(BfIRConfigConst_DynSlotOfs, request->mOptions.mDynSlotOfs);

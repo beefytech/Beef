@@ -5709,7 +5709,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 	}
 
-	OnScopeExit doRestoreAutocomplete([&]()
+	defer(
 		{
 			if ((restoreCapturingMethodMatchInfo != NULL) && (autoComplete->mMethodMatchInfo == restoreCapturingMethodMatchInfo))
 				autoComplete->mIsCapturingMethodMatchInfo = true;
@@ -9365,10 +9365,12 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	}
 
 	defer
-	{
-		if (autoComplete != NULL)
-			autoComplete->mIsCapturingMethodMatchInfo = (wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo);
-	};
+	(
+		{
+			if (autoComplete != NULL)
+				autoComplete->mIsCapturingMethodMatchInfo = (wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo);
+		}
+	);	
 
 	if (lambdaBindExpr->mBody == NULL)
 	{
@@ -11848,11 +11850,13 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	SizedArray<BfResolvedArg, 4> args;
 	SizedArray<BfExprEvaluator*, 8> argExprEvaluators;
 
-	OnScopeExit freeMem([&]()
-	{
-		for (auto exprEvaluator : argExprEvaluators)
-			delete exprEvaluator;
-	});
+	defer
+	(
+		{
+			for (auto exprEvaluator : argExprEvaluators)
+				delete exprEvaluator;
+		}
+	);
 
 	auto _AddArg = [&](BfExpression* argExpr)
 	{
@@ -12155,11 +12159,14 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		prevSymbolRefKind = mModule->mCompiler->mResolvePassData->mGetSymbolReferenceKind;
 		mModule->mCompiler->mResolvePassData->mGetSymbolReferenceKind = BfGetSymbolReferenceKind_None;
 	}
+
 	defer
-	{
-		if (mModule->mCompiler->mResolvePassData != NULL)
-			mModule->mCompiler->mResolvePassData->mGetSymbolReferenceKind = prevSymbolRefKind;
-	};
+	(
+		{
+			if (mModule->mCompiler->mResolvePassData != NULL)
+				mModule->mCompiler->mResolvePassData->mGetSymbolReferenceKind = prevSymbolRefKind;
+		}
+	);	
 
 	auto methodDef = methodInstance->mMethodDef;
 	auto methodDeclaration = methodDef->GetMethodDeclaration();
@@ -15142,14 +15149,14 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		findName = memberRefExpr->mMemberName->ToString();
 
 	defer
-	{
+	(	
 		if (attributeState.mCustomAttributes != NULL)
 		{
 			if (mPropDef != NULL)
 				attributeState.mTarget = BfAttributeTargets_Invocation;
 			mModule->ValidateCustomAttributes(attributeState.mCustomAttributes, attributeState.mTarget);
-		}
-	};
+		}		
+	);
 
 	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, &attributeState);
 
@@ -15451,11 +15458,12 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 							wasCapturingMethodMatchInfo = autoComplete->mIsCapturingMethodMatchInfo;
 							autoComplete->mIsCapturingMethodMatchInfo = false;
 						}
+						
 						defer
-						{
+						(
 							if (autoComplete != NULL)
 								autoComplete->mIsCapturingMethodMatchInfo = wasCapturingMethodMatchInfo;
-						};
+						);
 
 						if ((!isFailurePass) && (!methodMatcher.WantsCheckMethod(protectionCheckFlags, startCheckTypeInst, curCheckType, checkMethod)))
 							continue;
