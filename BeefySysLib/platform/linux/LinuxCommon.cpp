@@ -1831,7 +1831,7 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpFile_Seek(BfpFile* file, int64 offset, BfpFileS
         whence = SEEK_CUR;
     else
         whence = SEEK_END;
-    return seek64(file->mHandle, offset, whence);
+    return lseek64(file->mHandle, offset, whence);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Truncate(BfpFile* file)

@@ -123,7 +123,7 @@ namespace IDE.ui
 				if (inStr == null)
 					return false;
 
-				gApp.ResolveConfigString(workspaceOptions, gApp.mWorkspace.mStartupProject, options, inStr, "", outString);
+				gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, gApp.mWorkspace.mStartupProject, options, inStr, "", outString);
 				return true;
 			}
 			return false;

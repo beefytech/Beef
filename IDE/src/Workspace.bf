@@ -69,6 +69,35 @@ namespace IDE
 #unwarn
 				return .Unknown;
 			}
+
+			public static int GetPtrSizeByName(String name)
+			{
+				if (name.EndsWith("32"))
+					return 4;
+				return 8;
+			}
+
+			public static bool GetTargetTripleByName(String name, ToolsetType toolsetType, String outTriple)
+			{
+				switch (name)
+				{
+				case "Win32":
+					outTriple.Append((toolsetType == .GNU) ? "i686-pc-windows-gnu" : "i686-pc-windows-msvc");
+				case "Win64":
+					outTriple.Append((toolsetType == .GNU) ? "x86_64-pc-windows-gnu" : "x86_64-pc-windows-msvc");
+				case "Linux32":
+					outTriple.Append("i686-unknown-linux-gnu");
+				case "Linux64":
+					outTriple.Append("x86_64-unknown-linux-gnu");
+				case "macOS":
+					outTriple.Append("x86_64-apple-macosx10.14.0");
+				case "iOS":
+					outTriple.Append("arm64-apple-ios13.1");
+				default:
+					return false;
+				}
+				return true;
+			}
 		}
 
 		public enum ToolsetType
@@ -157,8 +186,6 @@ namespace IDE
         public class Options
         {
 			[Reflect]
-            public MachineType mMachineType = MachineType.x86;
-			[Reflect]
 			public ToolsetType mToolsetType;
 			[Reflect]
 			public BuildKind mBuildKind;
@@ -234,7 +261,6 @@ namespace IDE
 			
 			public void CopyFrom(Workspace.Options prev)
 			{
-				mMachineType = prev.mMachineType;
 				mToolsetType = prev.mToolsetType;
 				mBuildKind = prev.mBuildKind;
 
@@ -568,11 +594,6 @@ namespace IDE
 									data.RemoveIfEmpty();
 								}
 
-								MachineType defaultMachineType = .x64;
-								if (platformName == "Win32")
-									defaultMachineType = .x86;
-
-                                data.ConditionalAdd("MachineType", options.mMachineType, defaultMachineType);
 								data.ConditionalAdd("Toolset", options.mToolsetType, ToolsetType.Default);
 								data.ConditionalAdd("BuildKind", options.mBuildKind, isTest ? .Test : .Normal);
                                 data.ConditionalAdd("BfSIMDSetting", options.mBfSIMDSetting, .SSE2);
@@ -720,11 +741,6 @@ namespace IDE
 			options.mCSIMDSetting = .SSE2;
 			options.mCOptimizationLevel = isRelease ? .O2 : .O0;
 
-			MachineType defaultMachineType = .x64;
-			if (platformName == "Win32")
-				defaultMachineType = .x86;
-
-            options.mMachineType = defaultMachineType;
 			options.mBuildKind = isTest ? .Test : .Normal;
 
 			//TODO:
@@ -779,11 +795,6 @@ namespace IDE
 				        options.mPreprocessorMacros.Add(str);
 					}
 
-					MachineType defaultMachineType = .x64;
-					if (platformName == "Win32")
-						defaultMachineType = .x86;
-
-                    options.mMachineType = data.GetEnum<MachineType>("MachineType", defaultMachineType);
 					options.mToolsetType = data.GetEnum<ToolsetType>("Toolset", ToolsetType.Default);
 					options.mBuildKind = data.GetEnum<BuildKind>("BuildKind", isTest ? .Test : .Normal);
 					options.mBfSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("BfSIMDSetting", .SSE2);

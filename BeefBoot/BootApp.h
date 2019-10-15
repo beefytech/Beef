@@ -35,6 +35,7 @@ public:
 	FileStream mLogFile;
 	Verbosity mVerbosity;
 	BfTargetType mTargetType;
+	String mTargetTriple;
 	bool mHadCmdLine;
 	bool mShowedHelp;
 	bool mHadErrors;

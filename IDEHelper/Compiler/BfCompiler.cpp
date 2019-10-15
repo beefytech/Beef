@@ -8123,7 +8123,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_HotResolve_Finish(BfCompiler* bfCom
 }
 
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProject* hotProject, int hotIdx,
-	int machineType, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
+	const char* targetTriple, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
 	BfCompilerOptionFlags optionFlags, char* mallocLinkName, char* freeLinkName)
 {
 	BfLogSys(bfCompiler->mSystem, "BfCompiler_SetOptions\n");
@@ -8135,7 +8135,15 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 	options->mErrorString.Clear();
 	options->mHotProject = hotProject;
 	options->mHotCompileIdx = hotIdx;
-	options->mMachineType = (BfMachineType)machineType;
+	options->mTargetTriple = targetTriple;
+
+	if (options->mTargetTriple.StartsWith("x86_64-"))
+		options->mMachineType = BfMachineType_x64;
+	else if (options->mTargetTriple.StartsWith("i686-"))
+		options->mMachineType = BfMachineType_x86;
+	else
+		options->mMachineType = BfMachineType_x64; // Default
+
 	bfCompiler->mCodeGen.SetMaxThreads(maxWorkerThreads);
 
 	if (!bfCompiler->mIsResolveOnly)

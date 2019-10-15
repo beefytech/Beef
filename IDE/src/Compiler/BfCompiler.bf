@@ -96,7 +96,7 @@ namespace IDE.Compiler
 
         [StdCall, CLink]
         static extern void BfCompiler_SetOptions(void* bfCompiler,
-            void* hotProject, int32 hotIdx, int32 machineType, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
+            void* hotProject, int32 hotIdx, char8* targetTriple, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
             OptionFlags optionsFlags, char8* mallocName, char8* freeName);
 
 		[StdCall, CLink]
@@ -240,12 +240,12 @@ namespace IDE.Compiler
         }
 
         public void SetOptions(BfProject hotProject, int32 hotIdx,
-            int32 machineType, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
+            String targetTriple, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
 			OptionFlags optionFlags, String mallocFuncName, String freeFuncName)
         {
             BfCompiler_SetOptions(mNativeBfCompiler,
                 (hotProject != null) ? hotProject.mNativeBfProject : null, hotIdx,
-                machineType, toolsetType, simdSetting, allocStackCount, maxWorkerThreads, optionFlags, mallocFuncName, freeFuncName);
+                targetTriple, toolsetType, simdSetting, allocStackCount, maxWorkerThreads, optionFlags, mallocFuncName, freeFuncName);
         }
 
 		public void ForceRebuild()
@@ -464,6 +464,8 @@ namespace IDE.Compiler
 			//Debug.WriteLine("HandleOptions");
 
 			var options = IDEApp.sApp.GetCurWorkspaceOptions();
+			String targetTriple = scope .();
+			Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, options.mToolsetType, targetTriple);
 
 			bool enableObjectDebugFlags = options.mEnableObjectDebugFlags;
 			bool emitObjectAccessCheck = options.mEmitObjectAccessCheck && enableObjectDebugFlags;
@@ -527,7 +529,7 @@ namespace IDE.Compiler
 			//Debug.WriteLine("HandleOptions SetOptions:{0:X}", (int)optionFlags);
 
 			SetOptions(hotBfProject, hotIdx,
-			    (int32)options.mMachineType, (int32)options.mToolsetType, (int32)options.mBfSIMDSetting, (int32)options.mAllocStackTraceDepth, (int32)gApp.mSettings.mCompilerSettings.mWorkerThreads,
+			    targetTriple, (int32)options.mToolsetType, (int32)options.mBfSIMDSetting, (int32)options.mAllocStackTraceDepth, (int32)gApp.mSettings.mCompilerSettings.mWorkerThreads,
 				optionFlags, mallocLinkName, freeLinkName);
 
 			if (!mIsResolveOnly)

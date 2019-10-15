@@ -93,6 +93,7 @@ public:
 		
 		int32 mForceRebuildIdx;
 		BfCompileOnDemandKind mCompileOnDemandKind;		
+		String mTargetTriple;
 		BfMachineType mMachineType;
 		BfToolsetType mToolsetType;
 		BfSIMDSetting mSIMDSetting;				

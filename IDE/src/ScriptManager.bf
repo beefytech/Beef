@@ -415,7 +415,7 @@ namespace IDE
 
 								String newStr = scope:: .();
 								String err = scope .();
-								if (!gApp.DoResolveConfigString(workspaceOptions, project, projectOptions, str, err, newStr))
+								if (!gApp.DoResolveConfigString("", workspaceOptions, project, projectOptions, str, err, newStr))
 								{
 									Fail(scope String()..AppendF("Unknown macro string '{}' in '{}'", err, str));
 								}
@@ -1193,7 +1193,7 @@ namespace IDE
 
 					let workspaceOptions = gApp.GetCurWorkspaceOptions();
 					let options = gApp.GetCurProjectOptions(checkProject);
-					gApp.[Friend]GetTargetPaths(checkProject, workspaceOptions, options, targetPaths);
+					gApp.[Friend]GetTargetPaths(checkProject, gApp.mPlatformName, workspaceOptions, options, targetPaths);
 
 					if (!targetPaths.IsEmpty)
 					{

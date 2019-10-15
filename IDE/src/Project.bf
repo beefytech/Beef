@@ -1235,8 +1235,10 @@ namespace IDE
 		public void SetupDefaultConfigs()
 		{
 			List<String> platforms = scope List<String>();
-			platforms.Add(IDEApp.sPlatform32Name);
-			platforms.Add(IDEApp.sPlatform64Name);
+			if (IDEApp.sPlatform32Name != null)
+				platforms.Add(IDEApp.sPlatform32Name);
+			if (IDEApp.sPlatform64Name != null)
+				platforms.Add(IDEApp.sPlatform64Name);
 
 			List<String> configs = scope List<String>();
 			configs.Add("Debug");

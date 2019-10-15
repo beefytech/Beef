@@ -276,7 +276,7 @@ namespace BeefBuild
 					let options = gApp.GetCurProjectOptions(mWorkspace.mStartupProject);
 					let targetPaths = scope List<String>();
 					defer ClearAndDeleteItems(targetPaths);
-					this.[Friend]GetTargetPaths(mWorkspace.mStartupProject, workspaceOptions, options, targetPaths);
+					this.[Friend]GetTargetPaths(mWorkspace.mStartupProject, gApp.mPlatformName, workspaceOptions, options, targetPaths);
 					if (targetPaths.IsEmpty)
 						return;
 

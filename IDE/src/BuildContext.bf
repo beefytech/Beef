@@ -113,7 +113,7 @@ namespace IDE
 				else
 				{
 					customCmd.Append("%exec ");
-					gApp.ResolveConfigString(workspaceOptions, project, options, origCustomCmd, "custom command", customCmd);
+					gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, origCustomCmd, "custom command", customCmd);
 				}
 
 				if (customCmd.IsWhiteSpace)
@@ -203,7 +203,8 @@ namespace IDE
 #if BF_PLATFORM_WINDOWS
 			        String[] mingwFiles;
 			        String fromDir;
-			        if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
+
+			        if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
 			        {
 			            fromDir = scope:: String(llvmDir, "i686-w64-mingw32/bin/");
 			            mingwFiles = scope:: String[] { "libgcc_s_dw2-1.dll", "libstdc++-6.dll" };
@@ -297,7 +298,7 @@ namespace IDE
 
 					if (workspaceOptions.mToolsetType == .GNU)
 					{
-			            if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
+			            if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
 			            {
 			            }
 			            else
@@ -310,7 +311,7 @@ namespace IDE
 					}
 					else // Microsoft
 					{
-						if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
+						if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
 						{
 							//linkLine.Append("-L\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.10586.0\\ucrt\\x86\" ");
 							for (var libPath in gApp.mSettings.mVSSettings.mLib32Paths)
@@ -334,7 +335,7 @@ namespace IDE
 					if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
 					{
 						var linkFlags = scope String();
-						gApp.ResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+						gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
 						linkLine.Append(linkFlags, " ");
 					}
 
@@ -384,7 +385,7 @@ namespace IDE
 			if ((!dynName) || (options.mBuildOptions.mBeefLibType != .Static))
 			{
 				outRt.Append("Beef", IDEApp.sRTVersionStr, "RT");
-				outRt.Append((workspaceOptions.mMachineType == .x86) ? "32" : "64");
+				outRt.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
 				switch (options.mBuildOptions.mBeefLibType)
 				{
 				case .Dynamic:
@@ -405,7 +406,7 @@ namespace IDE
 			if ((workspaceOptions.mEnableObjectDebugFlags) || (workspaceOptions.mAllocType == .Debug))
 			{
 				outDbg.Append("Beef", IDEApp.sRTVersionStr, "Dbg");
-				outDbg.Append((workspaceOptions.mMachineType == .x86) ? "32" : "64");
+				outDbg.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
 				if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
 					outDbg.Append("_d");
 				outDbg.Append(dynName ? ".dll" : ".lib");
@@ -436,6 +437,8 @@ namespace IDE
 
 		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
+			bool is64Bit = Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 8;
+
 			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
 			IDEUtils.FixFilePath(llvmDir);
 			llvmDir.Append("llvm/");
@@ -560,7 +563,7 @@ namespace IDE
 							{
 								let depProjectOptions = gApp.GetCurProjectOptions(depProject);
 								var linkFlags = scope String();
-								gApp.ResolveConfigString(workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+								gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
 								if (!linkFlags.IsWhiteSpace)
 									linkLine.Append(linkFlags, " ");
 							}
@@ -602,7 +605,7 @@ namespace IDE
 					if (!minRTModName.IsEmpty)
 						minRTModName.Insert(0, "_");
 
-					if (workspaceOptions.mMachineType == .x86)
+					if (!is64Bit)
 						linkLine.Append(gApp.mInstallDir, @"lib\x86\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT32", minRTModName, ".lib ");
 					else
 						linkLine.Append(gApp.mInstallDir, @"lib\x64\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
@@ -634,7 +637,7 @@ namespace IDE
 				else
 					linkLine.Append("-opt:noref ");
 
-				if (workspaceOptions.mMachineType == .x86)
+				if (!is64Bit)
 				{
 					for (var libPath in gApp.mSettings.mVSSettings.mLib32Paths)
 					{
@@ -660,7 +663,7 @@ namespace IDE
 				if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
 				{
 					var linkFlags = scope String();
-					gApp.ResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+					gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
 					linkLine.Append(linkFlags, " ");
 				}
 
@@ -710,7 +713,7 @@ namespace IDE
 						resOutPath.Append(projectBuildDir, "\\Resource.res");
 
 						String iconPath = scope String();
-						gApp.ResolveConfigString(workspaceOptions, project, options, winOptions.mIconFile, "icon file", iconPath);
+						gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, winOptions.mIconFile, "icon file", iconPath);
 						
 						// Generate resource
 						Result<void> CreateResourceFile()
@@ -742,7 +745,7 @@ namespace IDE
 							}
 
 							String manifestPath = scope String();
-							gApp.ResolveConfigString(workspaceOptions, project, options, winOptions.mManifestFile, "manifest file", manifestPath);
+							gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, winOptions.mManifestFile, "manifest file", manifestPath);
 							if (!manifestPath.IsWhiteSpace)
 							{
 								Path.GetAbsolutePath(scope String(manifestPath), project.mProjectDir, manifestPath..Clear());
@@ -766,7 +769,7 @@ namespace IDE
 						IDEUtils.AppendWithOptionalQuotes(linkLine, resOutPath);
 					}
 					
-					let binPath = (workspaceOptions.mMachineType == .x86) ? gApp.mSettings.mVSSettings.mBin32Path : gApp.mSettings.mVSSettings.mBin64Path;
+					let binPath = (!is64Bit) ? gApp.mSettings.mVSSettings.mBin32Path : gApp.mSettings.mVSSettings.mBin64Path;
 					if (binPath.IsWhiteSpace)
 					{
 						gApp.OutputErrorLine("Visual Studio tool path not configured. Check Visual Studio configuration in File\\Preferences\\Settings.");
@@ -876,10 +879,10 @@ namespace IDE
 			}
 			else
 		    {
-				gApp.ResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, "target directory", outputDir);
+				gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, "target directory", outputDir);
 				Path.GetAbsolutePath(project.mProjectDir, outputDir, absOutputDir);
 				outputDir = absOutputDir;
-				gApp.ResolveConfigString(workspaceOptions, project, options, "$(TargetPath)", "target path", targetPath);
+				gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, "$(TargetPath)", "target path", targetPath);
 			}
 			IDEUtils.FixFilePath(targetPath);
 		    if (!File.Exists(targetPath))

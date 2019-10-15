@@ -954,30 +954,32 @@ void BfModule::FinishInit()
 
 	mBfIRBuilder->Start(mModuleName, mCompiler->mSystem->mPtrSize, IsOptimized());
 
-#ifdef BF_PLATFORM_WINDOWS
-	if (mCompiler->mOptions.mToolsetType == BfToolsetType_GNU)
-	{
-		if (mCompiler->mOptions.mMachineType == BfMachineType_x86)
-			mBfIRBuilder->Module_SetTargetTriple("i686-pc-windows-gnu");
-		else
-			mBfIRBuilder->Module_SetTargetTriple("x86_64-pc-windows-gnu");
-	}
-	else //if (mCompiler->mOptions.mToolsetType == BfToolsetType_Microsoft)
-	{
-		if (mCompiler->mOptions.mMachineType == BfMachineType_x86)
-			mBfIRBuilder->Module_SetTargetTriple("i686-pc-windows-msvc");
-		else
-			mBfIRBuilder->Module_SetTargetTriple("x86_64-pc-windows-msvc");
-	}
-#elif defined BF_PLATFORM_LINUX
-	if (mCompiler->mOptions.mMachineType == BfMachineType_x86)
-		mBfIRBuilder->Module_SetTargetTriple("i686-unknown-linux-gnu");
-	else
-		mBfIRBuilder->Module_SetTargetTriple("x86_64-unknown-linux-gnu");
-#else
-	// Leave it default
-	mBfIRBuilder->Module_SetTargetTriple("");
-#endif
+	mBfIRBuilder->Module_SetTargetTriple(mCompiler->mOptions.mTargetTriple);
+
+// #ifdef BF_PLATFORM_WINDOWS
+// 	if (mCompiler->mOptions.mToolsetType == BfToolsetType_GNU)
+// 	{
+// 		if (mCompiler->mOptions.mMachineType == BfMachineType_x86)
+// 			mBfIRBuilder->Module_SetTargetTriple("i686-pc-windows-gnu");
+// 		else
+// 			mBfIRBuilder->Module_SetTargetTriple("x86_64-pc-windows-gnu");
+// 	}
+// 	else //if (mCompiler->mOptions.mToolsetType == BfToolsetType_Microsoft)
+// 	{
+// 		if (mCompiler->mOptions.mMachineType == BfMachineType_x86)
+// 			mBfIRBuilder->Module_SetTargetTriple("i686-pc-windows-msvc");
+// 		else
+// 			mBfIRBuilder->Module_SetTargetTriple("x86_64-pc-windows-msvc");
+// 	}
+// #elif defined BF_PLATFORM_LINUX
+// 	if (mCompiler->mOptions.mMachineType == BfMachineType_x86)
+// 		mBfIRBuilder->Module_SetTargetTriple("i686-unknown-linux-gnu");
+// 	else
+// 		mBfIRBuilder->Module_SetTargetTriple("x86_64-unknown-linux-gnu");
+// #else
+// 	// Leave it default
+// 	mBfIRBuilder->Module_SetTargetTriple("");
+// #endif
 
 	mBfIRBuilder->SetBackend(IsTargetingBeefBackend());	
 

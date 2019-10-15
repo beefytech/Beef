@@ -241,6 +241,8 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 {
 	if (argType == NULL)
 		return false;
+	if (argType->IsVar())
+		return false;
 	
 	if (wantType->IsGenericParam())
 	{
@@ -248,7 +250,7 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 
 		BfType* methodGenericTypeConstraint = NULL;
 		auto _SetGeneric = [&]()
-		{
+		{			
 			if (mCheckMethodGenericArguments[wantGenericParam->mGenericParamIdx] != argType)
 			{
 				if (methodGenericTypeConstraint != NULL)
@@ -1346,6 +1348,9 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 				auto primType = (BfPrimitiveType*) genericArg;
 				genericArg = mModule->GetPrimitiveStructType(primType->mTypeDef->mTypeCode);
 			}
+
+			if (genericArg == NULL)
+				goto NoMatch;
 
 			//SetAndRestoreValue<bool> ignoreError(mModule->mIgnoreErrors, true);
 			if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, NULL, genericParams[checkGenericIdx], genericArgumentsSubstitute, NULL))

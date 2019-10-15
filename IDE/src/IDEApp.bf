@@ -107,6 +107,9 @@ namespace IDE
 #elif BF_PLATFORM_LINUX
 		public static readonly String sPlatform64Name = "Linux64";
 		public static readonly String sPlatform32Name = "Linux32";
+#elif BF_PLATFORM_OSX
+		public static readonly String sPlatform64Name = "macOS";
+		public static readonly String sPlatform32Name = null;
 #else
 		public static readonly String sPlatform64Name = "Unknown64";
 		public static readonly String sPlatform32Name = "Unknown32";
@@ -1859,7 +1862,7 @@ namespace IDE
 				if (!options.mDebugOptions.mCommand.IsWhiteSpace)
 				{
 					String execCmd = scope .();
-					ResolveConfigString(workspaceOptions, project, options, options.mDebugOptions.mCommand, "command", execCmd);
+					ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "command", execCmd);
 
 					String initialDir = scope .();
 					Path.GetDirectoryPath(execCmd, initialDir);
@@ -2548,8 +2551,10 @@ namespace IDE
 			}
 
 			List<String> platforms = scope List<String>();
-			platforms.Add(IDEApp.sPlatform32Name);
-			platforms.Add(IDEApp.sPlatform64Name);
+			if (IDEApp.sPlatform32Name != null)
+				platforms.Add(IDEApp.sPlatform32Name);
+			if (IDEApp.sPlatform64Name != null)
+				platforms.Add(IDEApp.sPlatform64Name);
 
 			List<String> configs = scope List<String>();
 			configs.Add("Debug");
@@ -6887,7 +6892,7 @@ namespace IDE
 			if (workspaceOptions.mAllowHotSwapping)
 				macroList.Add("BF_ALLOW_HOT_SWAPPING");
 
-			bool is64Bits = workspaceOptions.mMachineType.PtrSize == 8;
+			bool is64Bits = Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 8;
 
 			if (is64Bits)
 			{
@@ -8191,7 +8196,7 @@ namespace IDE
             return passInstance;
         }
 
-        public bool DoResolveConfigString(Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
+        public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
         {
 			int i = result.Length;
 			result.Append(configString);
@@ -8265,7 +8270,7 @@ namespace IDE
 									{
 										String unresolvedStr = scope .();
 										str.UnQuoteString(unresolvedStr);
-										if (!DoResolveConfigString(workspaceOptions, project, options, unresolvedStr, error, arg))
+										if (!DoResolveConfigString(platformName, workspaceOptions, project, options, unresolvedStr, error, arg))
 											return false;
 									}
 									else
@@ -8325,14 +8330,14 @@ namespace IDE
 									if (project.IsDebugSession)
 									{
 										let targetPath = scope:ReplaceBlock String();
-										DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, targetPath);
+										DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, targetPath);
 										newString = scope:ReplaceBlock String();
 										Path.GetDirectoryPath(targetPath, newString);
 										break;
 									}
 
 									String targetDir = scope String();
-									DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
+									DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
 									newString = scope:ReplaceBlock String();
 									Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
 								}
@@ -8341,17 +8346,17 @@ namespace IDE
 									if (project.IsDebugSession)
 									{
 										newString = scope:ReplaceBlock String();
-										DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString);
+										DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString);
 										break;
 									}
 
 									String targetDir = scope String();
-									DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
+									DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
 									newString = scope:ReplaceBlock String();
 									Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
 									Utils.GetDirWithSlash(newString);
 									
-									if (!DoResolveConfigString(workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString))
+									if (!DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString))
 										return false;
 #if BF_PLATFORM_WINDOWS
 		                            if (project.mGeneralOptions.mTargetType == .BeefLib)
@@ -8405,7 +8410,7 @@ namespace IDE
 #endif
 								}
 							case "VSToolPath":
-								if (workspaceOptions.mMachineType.PtrSize == 4)
+								if (Workspace.PlatformType.GetPtrSizeByName(platformName) == 4)
 									newString = gApp.mSettings.mVSSettings.mBin32Path;
 								else
 									newString = gApp.mSettings.mVSSettings.mBin64Path;
@@ -8472,10 +8477,10 @@ namespace IDE
 			return !hadError;
         }
 
-        public bool ResolveConfigString(Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String errorContext, String outResult)
+        public bool ResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String errorContext, String outResult)
         {
             String errorString = scope String();
-            if (!DoResolveConfigString(workspaceOptions, project, options, configString, errorString, outResult))
+            if (!DoResolveConfigString(platformName, workspaceOptions, project, options, configString, errorString, outResult))
 			{
                 OutputErrorLine("Invalid macro in {0}: {1}", errorContext, errorString);
 				return false;
@@ -8586,7 +8591,7 @@ namespace IDE
 
             if (options.mCOptions.mCompilerType == Project.CCompilerType.GCC)
             {
-                if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
+                if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
                     clangOptions.Append("-m32 ");
                 else
                     clangOptions.Append("-m64 ");
@@ -8594,7 +8599,7 @@ namespace IDE
             else
             {
 				clangOptions.Append("--target=");
-                GetTargetName(workspaceOptions, clangOptions);
+                Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, workspaceOptions.mToolsetType, clangOptions);
 				clangOptions.Append(" ");
 
 				if (workspaceOptions.mToolsetType == .GNU)
@@ -8719,37 +8724,10 @@ namespace IDE
 		        project.mNeedsTargetRebuild = true;
 		}
 
-		void GetTargetName(Workspace.Options workspaceOptions, String str)
-		{
-#if BF_PLATFORM_WINDOWS
-			if (workspaceOptions.mToolsetType == .GNU)
-			{
-				if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
-				    str.Append("i686-pc-windows-gnu");
-				else
-				    str.Append("x86_64-pc-windows-gnu");
-			}
-			else
-			{
-				if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
-				    str.Append("i686-pc-windows-msvc");
-				else
-				    str.Append("x86_64-pc-windows-msvc");
-			}
-#elif BF_PLATFORM_LINUX
-            if (workspaceOptions.mMachineType == Workspace.MachineType.x86)
-                str.Append("i686-unknown-linux-gnu");
-            else
-                str.Append("x86_64-unknown-linux-gnu");
-#else
-
-#endif
-		}
-
-		void GetTargetPaths(Project project, Workspace.Options workspaceOptions, Project.Options options, List<String> outPaths)
+		void GetTargetPaths(Project project, String platformName, Workspace.Options workspaceOptions, Project.Options options, List<String> outPaths)
 		{
 			String targetPath = scope String();
-			ResolveConfigString(workspaceOptions, project, options, "$(TargetPath)", "Target path", targetPath);
+			ResolveConfigString(platformName, workspaceOptions, project, options, "$(TargetPath)", "Target path", targetPath);
 			outPaths.Add(new String(targetPath));
 
 #if BF_PLATFORM_WINDOWS
@@ -9566,16 +9544,16 @@ namespace IDE
 			//options.mDebugOptions.mCommand
 
             String launchPath = scope String();
-            ResolveConfigString(workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPath);
+            ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPath);
             String arguments = scope String();
-            ResolveConfigString(workspaceOptions, project, options, "$(Arguments)", "debug command arguments", arguments);
+            ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(Arguments)", "debug command arguments", arguments);
             String workingDirRel = scope String();
-            ResolveConfigString(workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
+            ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
 			var workingDir = scope String();
 			Path.GetAbsolutePath(workingDirRel, project.mProjectDir, workingDir);
 
 			String targetPath = scope .();
-			ResolveConfigString(workspaceOptions, project, options, "$(TargetPath)", "Target path", targetPath);
+			ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(TargetPath)", "Target path", targetPath);
 
 			IDEUtils.FixFilePath(launchPath);
 			IDEUtils.FixFilePath(targetPath);
@@ -10708,7 +10686,7 @@ namespace IDE
 							let options = GetCurProjectOptions(project);
 							if (options == null)
 								continue;
-							GetTargetPaths(project, workspaceOptions, options, projectFiles);
+							GetTargetPaths(project, mPlatformName, workspaceOptions, options, projectFiles);
 
 							for (let filePath in projectFiles)
 							{
