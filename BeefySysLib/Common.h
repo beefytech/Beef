@@ -253,42 +253,22 @@ struct RemoveTypePointer<T*>
 };
 
 #ifndef BF_SMALL
-struct OnScopeExit
-{
-	std::function<void()> mFunc;
-
-	OnScopeExit(std::function<void()> func) : mFunc(func)
-	{		
-	}
-
-	~OnScopeExit()
-	{
-		mFunc();
-	}
+template <typename F>
+struct BF_Defer {
+	F f;
+	BF_Defer(F f) : f(f) {}
+	~BF_Defer() { f(); }
 };
 
-#define CONCAT_INTERNAL(x,y) x##y
-#define CONCAT(x,y) CONCAT_INTERNAL(x,y)
+template <typename F>
+BF_Defer<F> BF_defer_func(F f) {
+	return BF_Defer<F>(f);
+}
 
-template<typename T>
-struct ExitScope
-{
-	T lambda;
-	ExitScope(T lambda) :lambda(lambda) {}
-	~ExitScope() { lambda(); }
-	ExitScope(const ExitScope&);
-private:
-	ExitScope & operator =(const ExitScope&);
-};
-
-class ExitScopeHelp
-{
-public:
-	template<typename T>
-	ExitScope<T> operator+(T t) { return t; }
-};
-
-#define defer const auto& CONCAT(defer__, __LINE__) = ExitScopeHelp() + [&]()
+#define DEFER_1(x, y) x##y
+#define DEFER_2(x, y) DEFER_1(x, y)
+#define DEFER_3(x)    DEFER_2(x, __COUNTER__)
+#define defer(code)   auto DEFER_3(_defer_) = BF_defer_func([&](){code;})
 #endif //BF_SMALL
 
 NS_BF_END
