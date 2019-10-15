@@ -82,6 +82,8 @@ typedef int32 LONG;
 typedef pthread_key_t BFTlsKey;
 typedef pthread_t BF_THREADID;
 typedef pthread_t BF_THREADHANDLE;
+
+#define BF_HAS_TLS_DECLSPEC
 #define BF_TLS_DECLSPEC thread_local
 
 //:int64 abs(int64 val);

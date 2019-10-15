@@ -393,8 +393,26 @@ namespace IDE
 			outPdbPath.Append(".pdb");
 		}
 
-		public static void GetRtLibNames(Workspace.Options workspaceOptions, Project.Options options, bool dynName, String outRt, String outDbg)
+		public static void GetRtLibNames(Workspace.PlatformType platformType, Workspace.Options workspaceOptions, Project.Options options, bool dynName, String outRt, String outDbg)
 		{
+			if (platformType == .Linux)
+			{
+				if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
+					outRt.Append("libBeefRT_d.so");
+				else
+					outRt.Append("libBeefRT.so");
+				return;
+			}
+
+			if ((platformType == .macOS) || (platformType == .iOS))
+			{
+				if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
+					outRt.Append("libBeefRT_d.dylib");
+				else
+					outRt.Append("libBeefRT.dylib");
+				return;
+			}
+
 			if ((!dynName) || (options.mBuildOptions.mBeefLibType != .Static))
 			{
 				outRt.Append("Beef", IDEApp.sRTVersionStr, "RT");
@@ -424,6 +442,49 @@ namespace IDE
 					outDbg.Append("_d");
 				outDbg.Append(dynName ? ".dll" : ".lib");
 			}
+		}
+
+		bool CopyLibFiles(String targetPath, Workspace.Options workspaceOptions, Project.Options options)
+		{
+		    List<String> stdLibFileNames = scope .(2);
+		    String fromDir;
+		    
+		    fromDir = scope String(gApp.mInstallDir);
+
+			bool AddLib(String dllName)
+			{
+				stdLibFileNames.Add(dllName);
+
+				String fromPath = scope String(fromDir, dllName);
+				String toPath = scope String();
+				Path.GetDirectoryPath(targetPath, toPath);
+				toPath.Append("/", dllName);
+				if (File.CopyIfNewer(fromPath, toPath) case .Err)
+				{
+					gApp.OutputLine("Failed to copy lib file {0}", fromPath);
+					return false;
+				}
+				return true;
+			}
+
+			String rtName = scope String();
+			String dbgName = scope String();
+			GetRtLibNames(mPlatformType, workspaceOptions, options, true, rtName, dbgName);
+			if (!rtName.IsEmpty)
+				if (!AddLib(rtName))
+					return false;
+			if (!dbgName.IsEmpty)
+				if (!AddLib(dbgName))
+					return false;
+			switch (workspaceOptions.mAllocType)
+			{
+			case .JEMalloc:
+				if (!AddLib("jemalloc.dll"))
+					return false;
+			default:
+			}
+
+			return true;
 		}
 
 		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
@@ -467,50 +528,7 @@ namespace IDE
 
 			    linkLine.Append(objectsArg);
 
-				//var destDir = scope String();
-				//Path.GetDirectoryName();
-
-				//TODO: Allow selecting lib file.  Check date when copying instead of just ALWAYS copying...
-				LibBlock:
-			    {
-			        List<String> stdLibFileNames = scope .(2);
-			        String fromDir;
-			        
-		            fromDir = scope String(gApp.mInstallDir);
-
-					bool AddLib(String dllName)
-					{
-						stdLibFileNames.Add(dllName);
-
-						String fromPath = scope String(fromDir, dllName);
-						String toPath = scope String();
-						Path.GetDirectoryPath(targetPath, toPath);
-						toPath.Append("/", dllName);
-						if (File.CopyIfNewer(fromPath, toPath) case .Err)
-						{
-							gApp.OutputLine("Failed to copy lib file {0}", fromPath);
-							return false;
-						}
-						return true;
-					}
-
-					String rtName = scope String();
-					String dbgName = scope String();
-					GetRtLibNames(workspaceOptions, options, true, rtName, dbgName);
-					if (!rtName.IsEmpty)
-						if (!AddLib(rtName))
-							return false;
-					if (!dbgName.IsEmpty)
-						if (!AddLib(dbgName))
-							return false;
-					switch (workspaceOptions.mAllocType)
-					{
-					case .JEMalloc:
-						if (!AddLib("jemalloc.dll"))
-							return false;
-					default:
-					}
-			    }
+				CopyLibFiles(targetPath, workspaceOptions, options);
 
 			    List<Project> depProjectList = scope List<Project>();
 			    gApp.GetDependentProjectList(project, depProjectList);
@@ -1029,6 +1047,8 @@ namespace IDE
 		    
 		        return true;
 		    }
+
+			CopyLibFiles(targetPath, workspaceOptions, options);
 
 		    String objectsArg = scope String();
 			var argBuilder = scope IDEApp.ArgBuilder(objectsArg, workspaceOptions.mToolsetType != .GNU);

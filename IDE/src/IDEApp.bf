@@ -200,6 +200,9 @@ namespace IDE
         public String mConfigName = new String() ~ delete _;
         public String mPlatformName = new String() ~ delete _;
 
+		public String mSetConfigName ~ delete _;
+		public String mSetPlatformName ~ delete _;
+
         public Targets mTargets = new Targets() ~ delete _;
         public DebugManager mDebugger ~ delete _;
 		public String mSymSrvStatus = new String() ~ delete _;
@@ -6357,7 +6360,9 @@ namespace IDE
 				case "-attachId":
 	                mProcessAttachId = int32.Parse(value).GetValueOrDefault();
 				case "-config":
-					mConfigName.Set(value);
+					if (mSetConfigName == null)
+						mSetConfigName = new String();
+					mSetConfigName.Set(value);
 				case "-launch":
 					if (mLaunchData == null)
 						mLaunchData = new .();
@@ -6367,7 +6372,9 @@ namespace IDE
 						String.NewOrSet!(mCrashDumpPath, value);
 #endif
 				case "-platform":
-					mPlatformName.Set(value);
+					if (mSetPlatformName == null)
+						mSetPlatformName = new String();
+					mSetPlatformName.Set(value);
 	            case "-test":
 					Runtime.SetCrashReportKind(.PrintOnly);
 
@@ -8397,14 +8404,14 @@ namespace IDE
 									(project.mGeneralOptions.mTargetType == .BeefDynLib) ||
 									((options.mBuildOptions.mBuildKind == .Test) && (project == mWorkspace.mStartupProject)))
 								{
-
 									let platformType = Workspace.PlatformType.GetFromName(platformName);
+									String rtName = scope String();
+									String dbgName = scope String();
+									BuildContext.GetRtLibNames(platformType, workspaceOptions, options, false, rtName, dbgName);
+
 									switch (platformType)
 									{
 									case .Windows:
-										String rtName = scope String();
-										String dbgName = scope String();
-										BuildContext.GetRtLibNames(workspaceOptions, options, false, rtName, dbgName);
 										newString.Append(rtName);
 										if (!dbgName.IsEmpty)
 											newString.Append(" ", dbgName);
@@ -8417,10 +8424,10 @@ namespace IDE
 										default:
 										}
 									case .macOS:
-										newString.Append("./libBeefRT_d.dylib -Wl,-rpath -Wl,.");
+										newString.AppendF("./{} -Wl,-rpath -Wl,.", rtName);
 									case .iOS:
 									case .Linux:
-										newString.Append("./libBeefRT_d.so -Wl,-rpath -Wl,$ORIGIN");
+										newString.AppendF("./{} -Wl,-rpath -Wl,$ORIGIN", rtName);
 									default:
 									}	
 
@@ -9873,7 +9880,7 @@ namespace IDE
 			if (mConfigName.IsEmpty)
 				mConfigName.Set("Debug");
 			if (mPlatformName.IsEmpty)
-				mPlatformName.Set(sPlatform64Name);
+				mPlatformName.Set(sPlatform64Name ?? sPlatform32Name);
 
 			Directory.GetCurrentDirectory(mInitialCWD);
 
@@ -10008,6 +10015,18 @@ namespace IDE
             if ((!mRunningTestScript) && (LoadWorkspaceUserData()))
 			{
 				loadedWorkspaceUserData = true;
+			}
+
+			if (mSetConfigName != null)
+			{
+				mConfigName.Set(mSetConfigName);
+				DeleteAndNullify!(mSetConfigName);
+			}
+
+			if (mSetPlatformName != null)
+			{
+				mPlatformName.Set(mSetPlatformName);
+				DeleteAndNullify!(mSetPlatformName);
 			}
 
             WorkspaceLoaded();
