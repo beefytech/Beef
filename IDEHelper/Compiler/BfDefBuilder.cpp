@@ -76,6 +76,8 @@ BfDefBuilder::~BfDefBuilder()
 
 void BfDefBuilder::Process(BfPassInstance* passInstance, BfSource* bfSource, bool fullRefresh)
 {
+	BF_ASSERT(mSystem->mCurSystemLockThreadId == BfpThread_GetCurrentId());
+
 	String fileName;
 	BfParser* parser = bfSource->ToParser();
 	if (parser != NULL)
@@ -1171,7 +1173,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		}
 	}
 	
-	BfLogSys(mCurSource->mSystem, "DefBuilder %p TypeDecl:%s\n", mCurSource, mCurTypeDef->mName->ToString().mPtr);
+	BfLogSys(mCurSource->mSystem, "DefBuilder %p %p TypeDecl:%s\n", mCurTypeDef, mCurSource, mCurTypeDef->mName->ToString().mPtr);
 
 	mCurTypeDef->mProtection = (outerTypeDef == NULL) ? BfProtection_Public : BfProtection_Private;
 	if (typeDeclaration->mInternalSpecifier != NULL)
@@ -1363,12 +1365,16 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	if (outerTypeDef != NULL)
 		numGenericParams += (int)outerTypeDef->mGenericParamDefs.size();
 
+	BfLogSys(mCurSource->mSystem, "DefBuilder %p Hash:%d isAutoComplete:%d\n", mCurTypeDef, mSystem->mTypeDefs.GetHash(mCurTypeDef), isAutoCompleteTempType);
+
 	if (!isAutoCompleteTempType)
 	{		
 		BfTypeDef* prevDef = NULL;
 		
 // 		auto checkTypeDef = mSystem->mTypeDefs.Find(fullName);
 // 		while (checkTypeDef != NULL)
+
+		
 
 		auto itr = mSystem->mTypeDefs.TryGet(fullName);		
 		while (itr)

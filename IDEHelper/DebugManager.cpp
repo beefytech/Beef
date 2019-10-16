@@ -3,6 +3,7 @@
 #include "Compiler/BfSystem.h"
 #include "Compiler/BfParser.h"
 #include "Compiler/MemReporter.h"
+#include "Compiler/BfIRCodeGen.h"
 #include "Debugger.h"
 #include "DebugVisualizers.h"
 #include "RadixMap.h"
@@ -628,6 +629,8 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_CHECK_EVERY_16_DF);
 	//TODO: _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF /*| _CRTDBG_CHECK_EVERY_16_DF*/);
 	//_CrtSetAllocHook(BfAllocHook);
+
+	BfIRCodeGen::StaticInit();
 
 #ifdef BF_PLATFORM_WINDOWS
 	_CrtMemCheckpoint(&gStartMemCheckpoint);

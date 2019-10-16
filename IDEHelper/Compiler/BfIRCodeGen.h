@@ -142,6 +142,8 @@ public:
 	static int GetIntrinsicId(const StringImpl& name);	
 	static const char* GetIntrinsicName(int intrinId);
 	static void SetAsmKind(BfAsmKind asmKind);
+
+	static void StaticInit();
 };
 
 NS_BF_END

@@ -3953,7 +3953,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	const llvm::Target *theTarget = llvm::TargetRegistry::lookupTarget(arch.c_str(), theTriple, Error);
 	if (!theTarget)
 	{
-		OutputDebugStrF("Failed to create LLVM Target: %s", Error.c_str());
+		Fail(StrFormat("Failed to create LLVM Target: %s", Error.c_str()));
 		return false;
 	}
 
@@ -4057,6 +4057,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 				//TargetMachine::CGFT_AssemblyFile,
 				noVerify /*, StartAfterID, StopAfterID*/))
 			{
+				Fail("Target does not support generation of this file type");
 				/*errs() << argv[0] << ": target does not support generation of this"
 					<< " file type!\n";*/
 				return false;
@@ -4137,3 +4138,33 @@ int BF_LinuxFixLinkage()
 	return 0;
 }
 #endif
+
+//#include "aarch64/Disassembler/X86DisassemblerDecoder.h"
+//#include "X86/MCTargetDesc/X86MCTargetDesc.h"
+//#include "X86/MCTargetDesc/X86BaseInfo.h"
+//#include "X86InstrInfo.h"
+
+#ifdef BF_PLATFORM_MACOS
+#include "AArch64/MCTargetDesc/AArch64MCTargetDesc.h"
+//#include "AArch64/MCTargetDesc/AArch64BaseInfo.h"
+//#include "../X86InstrInfo.h"
+
+int BF_AARC64_Linkage()
+{
+	LLVMInitializeAArch64TargetInfo();
+	LLVMInitializeAArch64Target();
+	LLVMInitializeAArch64TargetMC();	
+	return 0;
+}
+#endif
+
+void BfIRCodeGen::StaticInit()
+{
+	LLVMInitializeX86TargetInfo();
+	LLVMInitializeX86Target();
+	LLVMInitializeX86TargetMC();
+
+	LLVMInitializeAArch64TargetInfo();
+	LLVMInitializeAArch64Target();
+	LLVMInitializeAArch64TargetMC();
+}

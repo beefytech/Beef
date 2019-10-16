@@ -3176,7 +3176,7 @@ void BfCompiler::UpdateRevisedTypes()
 
 				if (outerTypeDef->mDefState == BfTypeDef::DefState_Deleted)
 				{
-					BfLogSysM("UpdateRevisedTypes deleting type %p\n", outerTypeDef);
+					BfLogSysM("UpdateRevisedTypes deleting outerTypeDef %p\n", outerTypeDef);
 					outerTypeDef->mDefState = BfTypeDef::DefState_Deleted;
 					mSystem->RemoveTypeDef(outerTypeDef);
 				}
