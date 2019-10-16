@@ -76,7 +76,7 @@ BfDefBuilder::~BfDefBuilder()
 
 void BfDefBuilder::Process(BfPassInstance* passInstance, BfSource* bfSource, bool fullRefresh)
 {
-	BF_ASSERT(mSystem->mCurSystemLockThreadId == BfpThread_GetCurrentId());
+	BF_ASSERT((mSystem->mCurSystemLockThreadId == 0) || (mSystem->mCurSystemLockThreadId == BfpThread_GetCurrentId()));
 
 	String fileName;
 	BfParser* parser = bfSource->ToParser();
