@@ -5,7 +5,8 @@
 #include "../darwin/DarwinCommon.h"
 #include <string>
 
-#define BF_PLATFORM_OSX
+#define BF_PLATFORM_MACOS
+#define BF_PLATFORM_NAME "BF_PLATFORM_MACOS"
 
 #define BF_IMPORT extern "C"
 

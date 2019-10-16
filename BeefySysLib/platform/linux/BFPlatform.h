@@ -5,6 +5,7 @@
 #include "LinuxCommon.h"
 
 #define BF_PLATFORM_LINUX
+#define BF_PLATFORM_NAME "BF_PLATFORM_LINUX"
 
 #define BF_IMPORT extern "C"
 

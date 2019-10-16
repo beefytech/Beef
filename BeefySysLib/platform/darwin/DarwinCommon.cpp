@@ -27,6 +27,8 @@
 #include <cxxabi.h>
 #include <random>
 
+#include <mach-o/dyld.h>
+
 USING_NS_BF;
 
 
@@ -293,6 +295,48 @@ static Array<CrashInfoFunc> gCrashInfoFuncs;
 static String gCmdLine;
 static String gExePath;
 
+typedef struct _Unwind_Context _Unwind_Context;   // opaque
+
+typedef enum {
+  _URC_NO_REASON = 0,
+  _URC_OK = 0,
+  _URC_FOREIGN_EXCEPTION_CAUGHT = 1,
+  _URC_FATAL_PHASE2_ERROR = 2,
+  _URC_FATAL_PHASE1_ERROR = 3,
+  _URC_NORMAL_STOP = 4,
+  _URC_END_OF_STACK = 5,
+  _URC_HANDLER_FOUND = 6,
+  _URC_INSTALL_CONTEXT = 7,
+  _URC_CONTINUE_UNWIND = 8,
+  _URC_FAILURE = 9
+} _Unwind_Reason_Code;
+
+typedef _Unwind_Reason_Code (*_Unwind_Trace_Fn)(struct _Unwind_Context *, void *);
+extern "C" _Unwind_Reason_Code _Unwind_Backtrace(_Unwind_Trace_Fn, void *);
+extern "C" uintptr_t _Unwind_GetIP(struct _Unwind_Context *context);
+
+static String gUnwindExecStr;
+static int gUnwindIdx = 0;
+
+static _Unwind_Reason_Code UnwindHandler(struct _Unwind_Context* context, void* ref)
+{   
+    gUnwindIdx++;
+    if (gUnwindIdx < 2)
+        return _URC_NO_REASON;
+
+    dl_info dyldInfo;
+    void* addr = (void*)_Unwind_GetIP(context);
+    gUnwindExecStr += StrFormat(" %p", addr);
+    return _URC_NO_REASON;
+}
+
+static bool FancyBacktrace()
+{
+    gUnwindExecStr += StrFormat("atos -p %d", getpid());    
+    _Unwind_Backtrace(&UnwindHandler, NULL);
+    return system(gUnwindExecStr.c_str()) == 0;
+}
+
 static void Crashed()
 {
     //
@@ -315,18 +359,21 @@ static void Crashed()
         fprintf(stderr, "%s", debugDump.c_str());
     }
 
-    void* array[64];
-    size_t size;
-    char** strings;
-    size_t i;
+    if (!FancyBacktrace())
+    {
+        void* array[64];
+        size_t size;
+        char** strings;
+        size_t i;
 
-    size = backtrace(array, 64);
-    strings = backtrace_symbols(array, size);
+        size = backtrace(array, 64);
+        strings = backtrace_symbols(array, size);
 
-    for (i = 0; i < size; i++)
-        fprintf(stderr, "%s\n", strings[i]);
+        for (i = 0; i < size; i++)
+            fprintf(stderr, "%s\n", strings[i]);
 
-    free(strings);
+        free(strings);
+    }
 
     exit(1);
 }
@@ -372,11 +419,12 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
-{
+{ 
     char* relPath = argv[0];
 
     char* cwd = getcwd(NULL, 0);
     gExePath = GetAbsPath(relPath, cwd);
+    
     free(cwd);
 
     for (int i = 0; i < argc; i++)
@@ -501,6 +549,19 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetCommandLine(char* outStr, int* inOutSt
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetExecutablePath(char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
 {
+    //printf("Setting BfpSystem_GetExecutablePath %s %p\n", gExePath.c_str(), &gExePath);
+
+    if (gExePath.IsEmpty())
+    {
+        char path[4096];
+        uint32_t size = sizeof(path);
+        if (_NSGetExecutablePath(path, &size) == 0)
+            gExePath = path;
+
+        // When when running with a './file', we end up with an annoying '/./' in our path
+        gExePath.Replace("/./", "/");        
+    }
+
     TryStringOut(gExePath, outStr, inOutStrSize, (BfpResult*)outResult);
 }
 
@@ -1101,6 +1162,8 @@ BFP_EXPORT bool BFP_CALLTYPE BfpThread_WaitFor(BfpThread* thread, int waitMS)
         return true;
     }
 
+    if (thread == NULL)
+        BF_FATAL("Invalid thread with non-infinite wait");
     return BfpEvent_WaitFor(thread->mDoneEvent, waitMS);    
 }
 
@@ -1505,12 +1568,14 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
         if ((createFlags & BfpFileCreateFlag_Pipe) != 0)
         {
             name = "/tmp/" + name;
+
             if ((createKind == BfpFileCreateKind_CreateAlways) ||
                 (createKind == BfpFileCreateKind_CreateIfNotExists))
             {
                 for (int pass = 0; pass < 2; pass++)
                 {
-                    int result = mknod(name.c_str(), S_IFIFO | ALLPERMS, 0);
+                    int result = mknod(name.c_str(), S_IFIFO | 0666, 0);
+
                     if (result == 0)
                         break;
 
@@ -1821,10 +1886,20 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldPath, const char* newPa
         return;
     }
 
-    fd_to = open(newPath, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    int flags = O_WRONLY | O_CREAT;
+    if (copyKind == BfpFileCopyKind_IfNotExists)
+        flags |= O_EXCL;
+
+    fd_to = open(newPath, flags, 0666);
     if (fd_to < 0)
     {
-        OUTRESULT(BfpFileResult_AlreadyExists);
+        if (errno == EEXIST)
+        {
+            OUTRESULT(BfpFileResult_AlreadyExists);
+            goto out_error;
+        }
+
+        OUTRESULT(BfpFileResult_UnknownError);
         goto out_error;
     }
 

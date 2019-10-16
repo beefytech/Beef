@@ -45,13 +45,13 @@ namespace IDE
 			scope AutoBeefPerf("SpellChecker.Init");
 
 			mLangPath = new String(langPath);
+            
             mNativeSpellChecker = SpellChecker_Create(langPath);
 			if (mNativeSpellChecker == null)
 				return .Err;
             
 			String fileName = scope String();
-			GetUserDirectFileName(fileName);
-			//if (File.ReadLines(fileName) case .Ok(var lineEnumeratorVal))
+			GetUserDirectFileName(fileName);			
 
 			let streamReader = scope StreamReader();
 			if (streamReader.Open(fileName) case .Ok)

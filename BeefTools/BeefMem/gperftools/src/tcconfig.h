@@ -3,7 +3,7 @@
 #ifdef BF_PLATFORM_WINDOWS
 #include "windows/config.h"
 #include "windows/gperftools/tcmalloc.h"
-#elif defined BF_PLATFORM_OSX
+#elif defined BF_PLATFORM_MACOS
 #include "osx/config.h"
 #include "osx/gperftools/tcmalloc.h"
 #elif defined BF_PLATFORM_IOS

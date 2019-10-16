@@ -55,8 +55,6 @@ typedef int16_t int16;
 typedef int8_t int8;
 typedef unsigned int uint;
 
-#define BF_PLATFORM_LINUX
-#define BF_PLATFORM_NAME "BF_PLATFORM_LINUX"
 //#define BF_PLATFORM_SDL
 
 #define NOP

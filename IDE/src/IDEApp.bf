@@ -7178,7 +7178,11 @@ namespace IDE
 				}
 
 				if (!startInfo.mFileName.IsEmpty)
-                	OutputLine("Executing: {0} {1}", startInfo.mFileName, showArgs);
+                {
+                	OutputLine("Executing: {0} {1}", startInfo.mFileName, showArgs);                	
+                	if ((mVerbosity >= .Diagnostic) && (useArgsFile != .None))
+                		OutputLine("Arg file contents: {0}", args);
+                }
 				else
 					OutputLine("Executing: {0}", showArgs);
 			}

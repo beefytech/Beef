@@ -17551,6 +17551,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 		case BfBinaryOp_RightShift:			
 			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateShr(convLeftValue, convRightValue, resultType->IsSigned()), resultType);			
 			return;
+		default: break;
 		}
 	}
 	

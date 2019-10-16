@@ -28,7 +28,6 @@
 
 USING_NS_BF;
 
-
 struct BfpPipeInfo
 {
 	String mPipePath;
@@ -431,7 +430,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
-{
+{    
 	char* relPath = argv[0];
 
 	char* cwd = getcwd(NULL, 0);
@@ -1565,7 +1564,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 			{
 				for (int pass = 0; pass < 2; pass++)
 				{
-					int result = mknod(name.c_str(), S_IFIFO | ALLPERMS, 0);
+					int result = mknod(name.c_str(), S_IFIFO | 0666, 0);
 					if (result == 0)
 						break;
 
@@ -1865,64 +1864,74 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_SetAttributes(const char* path, BfpFileAttr
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldPath, const char* newPath, BfpFileCopyKind copyKind, BfpFileResult* outResult)
 {
-	int fd_to, fd_from;
-	char buf[4096];
-	ssize_t nread;	
+    int fd_to, fd_from;
+    char buf[4096];
+    ssize_t nread;  
 
-	fd_from = open(oldPath, O_RDONLY);
-	if (fd_from < 0)
-	{
-		OUTRESULT(BfpFileResult_NotFound);
-		return;
-	}
+    fd_from = open(oldPath, O_RDONLY);
+    if (fd_from < 0)
+    {
+        OUTRESULT(BfpFileResult_NotFound);
+        return;
+    }
 
-	fd_to = open(newPath, O_WRONLY | O_CREAT | O_EXCL, 0666);
-	if (fd_to < 0)
-	{
-		OUTRESULT(BfpFileResult_AlreadyExists);
-		goto out_error;
-	}
+    int flags = O_WRONLY | O_CREAT;
+    if (copyKind == BfpFileCopyKind_IfNotExists)
+        flags |= O_EXCL;
 
-	while (nread = read(fd_from, buf, sizeof buf), nread > 0)
-	{
-		char *out_ptr = buf;
-		ssize_t nwritten;
+    fd_to = open(newPath, flags, 0666);
+    if (fd_to < 0)
+    {
+        if (errno == EEXIST)
+        {
+            OUTRESULT(BfpFileResult_AlreadyExists);
+            goto out_error;
+        }
 
-		do {
-			nwritten = write(fd_to, out_ptr, nread);
+        OUTRESULT(BfpFileResult_UnknownError);
+        goto out_error;
+    }
 
-			if (nwritten >= 0)
-			{
-				nread -= nwritten;
-				out_ptr += nwritten;
-			}
-			else if (errno != EINTR)
-			{
-				OUTRESULT(BfpFileResult_UnknownError);
-				goto out_error;
-			}
-		} while (nread > 0);
-	}
+    while (nread = read(fd_from, buf, sizeof buf), nread > 0)
+    {
+        char *out_ptr = buf;
+        ssize_t nwritten;
 
-	if (nread == 0)
-	{
-		if (close(fd_to) < 0)
-		{
-			fd_to = -1;
-			OUTRESULT(BfpFileResult_UnknownError);
-			goto out_error;
-		}
-		close(fd_from);
+        do {
+            nwritten = write(fd_to, out_ptr, nread);
 
-		/* Success! */
-		OUTRESULT(BfpFileResult_Ok);
-		return;
-	}
+            if (nwritten >= 0)
+            {
+                nread -= nwritten;
+                out_ptr += nwritten;
+            }
+            else if (errno != EINTR)
+            {
+                OUTRESULT(BfpFileResult_UnknownError);
+                goto out_error;
+            }
+        } while (nread > 0);
+    }
+
+    if (nread == 0)
+    {
+        if (close(fd_to) < 0)
+        {
+            fd_to = -1;
+            OUTRESULT(BfpFileResult_UnknownError);
+            goto out_error;
+        }
+        close(fd_from);
+
+        /* Success! */
+        OUTRESULT(BfpFileResult_Ok);
+        return;
+    }
 
 out_error:
-	close(fd_from);
-	if (fd_to >= 0)
-		close(fd_to);	
+    close(fd_from);
+    if (fd_to >= 0)
+        close(fd_to);   
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Rename(const char* oldPath, const char* newPath, BfpFileResult* outResult)

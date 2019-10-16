@@ -58,8 +58,6 @@ typedef int16_t int16;
 typedef int8_t int8;
 typedef unsigned int uint;
 
-#define BF_PLATFORM_LINUX
-#define BF_PLATFORM_NAME "BF_PLATFORM_LINUX"
 //#define BF_PLATFORM_SDL
 
 #define NOP
@@ -67,13 +65,8 @@ typedef unsigned int uint;
 //#define BF_NOTHROW noexcept
 #define BF_NOTHROW
 
-#ifdef BF64
-typedef int64 intptr;
-typedef uint64 uintptr;
-#else
-typedef int32 intptr;
-typedef uint32 uintptr;
-#endif
+typedef intptr_t intptr;
+typedef uintptr_t uintptr;
 
 typedef wchar_t* BSTR;
 typedef int HRESULT;
@@ -85,6 +78,8 @@ typedef int32 LONG;
 typedef pthread_key_t BFTlsKey;
 typedef pthread_t BF_THREADID;
 typedef pthread_t BF_THREADHANDLE;
+
+#define BF_HAS_TLS_DECLSPEC
 #define BF_TLS_DECLSPEC thread_local
 
 //:int64 abs(int64 val);

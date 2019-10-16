@@ -8028,10 +8028,15 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 					}
 					else if (toType->IsSigned())
 					{
-						int64 minVal = -(1LL << (8 * toType->mSize - 1));
-						int64 maxVal = (1LL << (8 * toType->mSize - 1)) - 1;
-						if ((srcVal >= minVal) && (srcVal <= maxVal))
-							return true;
+                        if (toType->mSize == 8) // int64
+                            return true;
+                        else
+                        {
+                            int64 minVal = -(1LL << (8 * toType->mSize - 1));
+                            int64 maxVal = (1LL << (8 * toType->mSize - 1)) - 1;
+                            if ((srcVal >= minVal) && (srcVal <= maxVal))
+                                return true;
+                        }
 					}
 					else if (toType->mSize == 8) // ulong
 					{
@@ -9155,12 +9160,17 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 					else if (toType->IsSigned())
 					{
-						int64 minVal = -(1LL << (8 * toType->mSize - 1));
-						int64 maxVal = (1LL << (8 * toType->mSize - 1)) - 1;
-						if ((srcVal >= minVal) && (srcVal <= maxVal))
-							explicitCast = true;
+                        if (toType->mSize == 8) // int64
+                            explicitCast = true;
+                        else
+                        {
+                            int64 minVal = -(1LL << (8 * toType->mSize - 1));
+                            int64 maxVal = (1LL << (8 * toType->mSize - 1)) - 1;
+                            if ((srcVal >= minVal) && (srcVal <= maxVal))
+                                explicitCast = true;
+                        }
 					}
-					else if (toType->mSize == 8) // ulong
+					else if (toType->mSize == 8) // uint64
 					{
 						if (srcVal >= 0)
 							explicitCast = true;
@@ -9703,10 +9713,16 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 	if ((castFlags & BfCastFlags_SilentFail) == 0)
 	{
-		const char* errStr = explicitCast ?
+		if (mIgnoreErrors)
+			return BfIRValue();
+
+		const char* errStrF = explicitCast ?
 			"Unable to cast '%s' to '%s'" :
 			"Unable to implicitly cast '%s' to '%s'";
-		auto error = Fail(StrFormat(errStr, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
+
+		String errStr = StrFormat(errStrF, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str());
+		printf("Err: %s\n", errStr.c_str());
+		auto error = Fail(errStr, srcNode);
 		if ((error != NULL) && (srcNode != NULL))
 		{
 			if ((mCompiler->IsAutocomplete()) && (mCompiler->mResolvePassData->mAutoComplete->CheckFixit((srcNode))))

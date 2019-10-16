@@ -14,7 +14,9 @@ ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.Test.Linux64]
 IntermediateType = "ObjectAndIRCode"
-COptimizationLevel = "O2"
+ConfigSelections = {TestsB = {Config = "Test"}}
+
+[Configs.Test.macOS]
 ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.TestFail.Win64]

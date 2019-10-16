@@ -76,8 +76,10 @@ bool Thread::GetIsThreadPoolThread()
 
 bool Thread::JoinInternal(int millisecondsTimeout)
 {
-	bool success = BfpThread_WaitFor(GetInternalThread()->mThreadHandle, millisecondsTimeout);
-	//((BFInternalThread*) thread)->ClrState(Threading::ThreadState::WaitSleepJoin);
+	auto internalThread = GetInternalThread();
+	if (internalThread == NULL)
+		return true;
+	bool success = BfpThread_WaitFor(internalThread->mThreadHandle, millisecondsTimeout);	
 	return success;
 }
 
@@ -176,6 +178,8 @@ void Thread::ManualThreadInit()
 {	
 #ifdef BF_THREAD_TLS
 	sCurrentThread = this;
+#else
+	BfpTLS_SetValue(BfTLSManager::sInternalThreadKey, this);
 #endif
 	
 	BfInternalThread* internalThread = SetupInternalThread();
@@ -207,6 +211,8 @@ void Thread::SetStackStart(void* ptr)
 void Thread::InternalFinalize()
 {
 	auto internalThread = GetInternalThread();
+	if (internalThread == NULL)
+		return;
 
 	bool wantsJoin = false;
 	//

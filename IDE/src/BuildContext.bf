@@ -171,9 +171,15 @@ namespace IDE
 
 		    //String error = scope String();
 
-			bool isExe = project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib;
+		    TestManager.ProjectInfo testProjectInfo = null;
+			if (gApp.mTestManager != null)
+				testProjectInfo = gApp.mTestManager.GetProjectInfo(project);
+
+			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
 			if (isExe)
 			{
+				CopyLibFiles(targetPath, workspaceOptions, options);
+
 			    String linkLine = scope String(isDebug ? "-g " : "-g -O2 "); //-O2 -Rpass=inline 
 																 //(doClangCPP ? "-lc++abi " : "") +
 			    
@@ -459,9 +465,9 @@ namespace IDE
 				String toPath = scope String();
 				Path.GetDirectoryPath(targetPath, toPath);
 				toPath.Append("/", dllName);
-				if (File.CopyIfNewer(fromPath, toPath) case .Err)
+				if (File.CopyIfNewer(fromPath, toPath) case .Err(let err))
 				{
-					gApp.OutputLine("Failed to copy lib file {0}", fromPath);
+					gApp.OutputLine("Failed to copy lib file '{0}' to '{1}'", fromPath, toPath);
 					return false;
 				}
 				return true;
@@ -1047,8 +1053,6 @@ namespace IDE
 		    
 		        return true;
 		    }
-
-			CopyLibFiles(targetPath, workspaceOptions, options);
 
 		    String objectsArg = scope String();
 			var argBuilder = scope IDEApp.ArgBuilder(objectsArg, workspaceOptions.mToolsetType != .GNU);
