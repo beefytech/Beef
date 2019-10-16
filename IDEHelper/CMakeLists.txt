@@ -70,6 +70,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   include_directories(
     ../extern/llvm_linux_8_0_0/include
     ../extern/llvm_linux_8_0_0/lib/Target/X86
+    ../extern/llvm_linux_8_0_0/lib/Target/AArch64
   )
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
@@ -79,6 +80,7 @@ else()
   include_directories(
     ../extern/llvm_linux_rel_8_0_0/include
     ../extern/llvm_linux_rel_8_0_0/lib/Target/X86
+    ../extern/llvm_linux_rel_8_0_0/lib/Target/AArch64
   )
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
@@ -177,7 +179,14 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 if (${APPLE})
-    set(TARGET_LIBS_OS "ncurses")
+    set(TARGET_LIBS_OS "ncurses \
+      ${LLVM_LIB}/libLLVMAArch64Info.a \
+      ${LLVM_LIB}/libLLVMAArch64Utils.a \
+      ${LLVM_LIB}/libLLVMAArch64AsmPrinter.a \
+      ${LLVM_LIB}/libLLVMAArch64Desc.a \
+      ${LLVM_LIB}/libLLVMAArch64CodeGen.a \
+      ${LLVM_LIB}/libLLVMAArch64AsmParser.a \
+      ${LLVM_LIB}/libLLVMAArch64Disassembler.a")
 else()
     set(TARGET_LIBS_OS "backtrace")
 endif()
@@ -190,26 +199,19 @@ else()
     ${LLVM_LIB}/libLLVMCore.a
     ${LLVM_LIB}/libLLVMMC.a
     ${LLVM_LIB}/libLLVMMCParser.a
-    ${LLVM_LIB}/libLLVMCodeGen.a
-    ${LLVM_LIB}/libLLVMX86Disassembler.a
+    ${LLVM_LIB}/libLLVMCodeGen.a    
     ${LLVM_LIB}/libLLVMMCDisassembler.a
-    ${LLVM_LIB}/libLLVMSupport.a
-    ${LLVM_LIB}/libLLVMX86Info.a
-    ${LLVM_LIB}/libLLVMX86Utils.a
-    ${LLVM_LIB}/libLLVMX86AsmPrinter.a
-    ${LLVM_LIB}/libLLVMX86Desc.a    
+    ${LLVM_LIB}/libLLVMSupport.a    
     ${LLVM_LIB}/libLLVMObject.a
     ${LLVM_LIB}/libLLVMBitReader.a
     ${LLVM_LIB}/libLLVMAsmParser.a    
-    ${LLVM_LIB}/libLLVMTarget.a
-    ${LLVM_LIB}/libLLVMX86CodeGen.a
+    ${LLVM_LIB}/libLLVMTarget.a    
     ${LLVM_LIB}/libLLVMScalarOpts.a
     ${LLVM_LIB}/libLLVMInstCombine.a
     ${LLVM_LIB}/libLLVMSelectionDAG.a
     ${LLVM_LIB}/libLLVMProfileData.a
     ${LLVM_LIB}/libLLVMTransformUtils.a
-    ${LLVM_LIB}/libLLVMAnalysis.a
-    ${LLVM_LIB}/libLLVMX86AsmParser.a
+    ${LLVM_LIB}/libLLVMAnalysis.a    
     ${LLVM_LIB}/libLLVMAsmPrinter.a
     ${LLVM_LIB}/libLLVMBitWriter.a
     ${LLVM_LIB}/libLLVMVectorize.a
@@ -225,5 +227,13 @@ else()
     ${LLVM_LIB}/libLLVMLinker.a
     ${LLVM_LIB}/libLLVMDemangle.a
     ${LLVM_LIB}/libLLVMAggressiveInstCombine.a
+
+    ${LLVM_LIB}/libLLVMX86Info.a
+    ${LLVM_LIB}/libLLVMX86Utils.a
+    ${LLVM_LIB}/libLLVMX86AsmPrinter.a
+    ${LLVM_LIB}/libLLVMX86Desc.a    
+    ${LLVM_LIB}/libLLVMX86CodeGen.a
+    ${LLVM_LIB}/libLLVMX86AsmParser.a
+    ${LLVM_LIB}/libLLVMX86Disassembler.a
   )
 endif()

@@ -80,7 +80,7 @@ namespace IDE
 				case "macOS":
 					outTriple.Append("x86_64-apple-macosx10.14.0");
 				case "iOS":
-					outTriple.Append("arm64-apple-ios13.1");
+					outTriple.Append("aarch64-apple-ios");
 				default:
 					return false;
 				}
