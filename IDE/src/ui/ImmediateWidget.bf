@@ -338,7 +338,7 @@ namespace IDE.ui
 					if (cmdText.StartsWith("%"))
 					{
 						gApp.mScriptManager.Clear();
-						gApp.mScriptManager.QueueCommands(StringView(cmdText, 1), "Immediate", .NoLines);
+						gApp.mScriptManager.QueueCommands(StringView(cmdText, 1), "Immediate", .NoLines | .NoWait); 
 					}
 					else
 				    	result = mResultHoverWatch.Eval(cmdText, false);

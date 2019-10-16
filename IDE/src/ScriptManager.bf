@@ -32,7 +32,8 @@ namespace IDE
 		public enum CmdFlags
 		{
 			None,
-			NoLines
+			NoLines,
+			NoWait
 		}
 
 		public class QueuedCmd
@@ -212,6 +213,9 @@ namespace IDE
 						queuedCmd.mSrcFile = new String(filePath);
 						queuedCmd.mLineNum = lineNum;
 
+						if (flags.HasFlag(.NoWait))
+							queuedCmd.mNoWait = true; 
+
 						if (line.StartsWith("nowait "))
 						{
 							queuedCmd.mNoWait = true;
@@ -257,7 +261,7 @@ namespace IDE
 		{
 			StringStream strStream = scope .(cmds, .Reference);
 			StreamReader reader = scope .(strStream);
-			QueueCommands(reader, filePath, flags);
+			QueueCommands(reader, filePath, flags); 
 		}
 
 		public void QueueCommandFile(StringView filePath)
@@ -904,7 +908,7 @@ namespace IDE
 						return false;
 					if (sourceViewPanel.[Friend]mWantsFullClassify)
 						return false;
-					if (sourceViewPanel.[Friend]mWantsFullRefresh)
+					if (sourceViewPanel.[Friend]mWantsFullRefresh) 
 						return false;
 				}
 			}
@@ -2112,9 +2116,9 @@ namespace IDE
 				if (hasError != expectedError)
 				{
 					if (hasError)
-						ScriptManager.sActiveManager.Fail("Unexpected error at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
+						mScriptManager.Fail("Unexpected error at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
 					else
-						ScriptManager.sActiveManager.Fail("Expected error at line {0} in {1} but didn't encounter one\n\t", lineIdx + 1, textPanel.mFilePath);
+						mScriptManager.Fail("Expected error at line {0} in {1} but didn't encounter one\n\t", lineIdx + 1, textPanel.mFilePath);
 					return;
 				}
 			}
@@ -2153,16 +2157,18 @@ namespace IDE
 
 				int crPos = dbgContent.IndexOf('\n');
 				StringView dbgText = .(dbgContent.Ptr + crPos + 1, dbgContent.Length - crPos - 1);
-				let dbgHash = MD5.Hash(.((uint8*)dbgText.Ptr, dbgText.Length));
+				//let dbgHash = MD5.Hash(.((uint8*)dbgText.Ptr, dbgText.Length));
 
 				String srcContent = scope .();
 				File.ReadAllText(srcPath, srcContent, false);
 				let srcHash = MD5.Hash(.((uint8*)srcContent.Ptr, srcContent.Length));
 
-				if (dbgHash != srcHash)
+				//if (dbgHash != srcHash)
 				{
 					String bkuPath = scope .();
 					bkuPath.Append(gApp.mInstallDir, "/bku/");
+					Directory.CreateDirectory(bkuPath).IgnoreError();
+
 					Path.GetFileNameWithoutExtension(dbgFilePath, bkuPath);
 					bkuPath.Append("_");
 					srcHash.ToString(bkuPath);
@@ -2183,6 +2189,38 @@ namespace IDE
 				versionedPath.AppendF("{}/{}/", dbgPath, i);
 				RestoreDebugFiles(versionedPath);
 			}
+		}
+
+		class DbgFileCtx
+		{
+			public String mFile ~ delete _;
+			public int mIdx;
+		}
+
+		DbgFileCtx mDbgFileCtx ~ delete _;
+
+		[IDECommand]
+		public void StartDebugFiles(String dbgPath)
+		{																		   
+			DeleteAndNullify!(mDbgFileCtx);
+			mDbgFileCtx = new DbgFileCtx();
+			mDbgFileCtx.mFile = new String(dbgPath);
+			ContinueDebugFiles();
+		}
+
+		[IDECommand]
+		public void ContinueDebugFiles()
+		{
+			if (mDbgFileCtx == null)
+			{
+				mScriptManager.Fail("StartDebugFiles required");
+				return;
+			}
+
+			gApp.OutputLine("Compiling debug files {0}", mDbgFileCtx.mIdx); 
+			gApp.ShowOutput();
+			RestoreDebugFilesSpan(mDbgFileCtx.mFile, mDbgFileCtx.mIdx, mDbgFileCtx.mIdx);
+			mDbgFileCtx.mIdx++;
 		}
 
 		[IDECommand]
