@@ -390,14 +390,17 @@ void BfIRCodeGen::Fail(const StringImpl& error)
 	if (mFailed)
 		return;
 
-	auto dbgLoc = mIRBuilder->getCurrentDebugLocation();
-	if (dbgLoc)
+	if (mHasDebugLoc)
 	{
-		llvm::DIFile* file = NULL;
-		if (llvm::DIScope* scope = llvm::dyn_cast<llvm::DIScope>(dbgLoc.getScope()))		
-		{			
-			BfIRCodeGenBase::Fail(StrFormat("%s at line %d:%d in %s/%s", error.c_str(), dbgLoc.getLine(), dbgLoc.getCol(), scope->getDirectory().data(), scope->getFilename().data()));
-			return;
+		auto dbgLoc = mIRBuilder->getCurrentDebugLocation();
+		if (dbgLoc)
+		{
+			llvm::DIFile* file = NULL;
+			if (llvm::DIScope* scope = llvm::dyn_cast<llvm::DIScope>(dbgLoc.getScope()))		
+			{			
+				BfIRCodeGenBase::Fail(StrFormat("%s at line %d:%d in %s/%s", error.c_str(), dbgLoc.getLine(), dbgLoc.getCol(), scope->getDirectory().data(), scope->getFilename().data()));
+				return;
+			}
 		}
 	}
 	
@@ -2615,6 +2618,7 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_StatementStart:
 		// We only commit the debug loc for statement starts
 		mIRBuilder->SetCurrentDebugLocation(mDebugLoc);
+		mHasDebugLoc = true;
 		break;
 	case BfIRCmd_ObjectAccessCheck:
 		{
@@ -3942,6 +3946,8 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	// 		
 	// 	}
 	
+	mHasDebugLoc = false; // So fails don't show a line number
+
 	bool enableLTO = codeGenOptions.mLTOType != BfLTOType_None;
 
 	if (enableLTO)

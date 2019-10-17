@@ -170,7 +170,8 @@ file(GLOB SRC_FILES
     Compiler/BfSystem.cpp
     Compiler/BfUtil.cpp
     Compiler/BfVarDeclChecker.cpp
-    Compiler/MemReporter.cpp
+    Compiler/BfTargetTriple.cpp
+    Compiler/MemReporter.cpp    
 )
 
 # Add library to build.

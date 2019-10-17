@@ -322,10 +322,10 @@ namespace IDE
 			            }
 			            else
 			            {
-							IDEUtils.AppendWithOptionalQuotes(linkLine, scope String("-L", llvmDir, "/x86_64-w64-mingw32/lib"));
+							/*IDEUtils.AppendWithOptionalQuotes(linkLine, scope String("-L", llvmDir, "/x86_64-w64-mingw32/lib"));
 							linkLine.Append(" ");
 							IDEUtils.AppendWithOptionalQuotes(linkLine, scope String("-L", llvmDir, "/lib/gcc/x86_64-w64-mingw32/5.2.0"));
-							linkLine.Append(" ");
+							linkLine.Append(" ");*/
 			            }
 					}
 					else // Microsoft
