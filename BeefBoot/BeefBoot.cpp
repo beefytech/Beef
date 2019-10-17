@@ -29,7 +29,8 @@ using namespace Beefy;
 
 #include "BootApp.h"
 
-BF_IMPORT void BF_CALLTYPE Debugger_ProgramDone();
+BF_IMPORT void BF_CALLTYPE IDEHelper_ProgramStart();
+BF_IMPORT void BF_CALLTYPE IDEHelper_ProgramDone();
 
 int main(int argc, char* argv[])
 {		
@@ -44,6 +45,8 @@ int main(int argc, char* argv[])
 	BfpThread_SetName(NULL, "MainThread", NULL);
 
     BfpSystem_Init(BFP_VERSION, BfpSystemInitFlag_InstallCrashCatcher);
+
+	IDEHelper_ProgramStart();
 	
 	gApp = new BootApp();
 
@@ -116,7 +119,7 @@ int main(int argc, char* argv[])
 
 	delete gApp;		
 
-	Debugger_ProgramDone();
+	IDEHelper_ProgramDone();
 
     BfpSystem_Shutdown();
 
