@@ -179,14 +179,7 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 if (${APPLE})
-    set(TARGET_LIBS_OS "ncurses \
-      ${LLVM_LIB}/libLLVMAArch64Info.a \
-      ${LLVM_LIB}/libLLVMAArch64Utils.a \
-      ${LLVM_LIB}/libLLVMAArch64AsmPrinter.a \
-      ${LLVM_LIB}/libLLVMAArch64Desc.a \
-      ${LLVM_LIB}/libLLVMAArch64CodeGen.a \
-      ${LLVM_LIB}/libLLVMAArch64AsmParser.a \
-      ${LLVM_LIB}/libLLVMAArch64Disassembler.a")
+    set(TARGET_LIBS_OS "ncurses")
 else()
     set(TARGET_LIBS_OS "backtrace")
 endif()
@@ -235,5 +228,13 @@ else()
     ${LLVM_LIB}/libLLVMX86CodeGen.a
     ${LLVM_LIB}/libLLVMX86AsmParser.a
     ${LLVM_LIB}/libLLVMX86Disassembler.a
+
+    ${LLVM_LIB}/libLLVMAArch64Info.a
+    ${LLVM_LIB}/libLLVMAArch64Utils.a
+    ${LLVM_LIB}/libLLVMAArch64AsmPrinter.a
+    ${LLVM_LIB}/libLLVMAArch64Desc.a
+    ${LLVM_LIB}/libLLVMAArch64CodeGen.a
+    ${LLVM_LIB}/libLLVMAArch64AsmParser.a
+    ${LLVM_LIB}/libLLVMAArch64Disassembler.a
   )
 endif()
