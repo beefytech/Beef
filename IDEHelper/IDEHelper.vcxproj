@@ -327,6 +327,7 @@
     <ClCompile Include="Compiler\BfSourcePositionFinder.cpp" />
     <ClCompile Include="Compiler\BfStmtEvaluator.cpp" />
     <ClCompile Include="Compiler\BfSystem.cpp" />
+    <ClCompile Include="Compiler\BfTargetTriple.cpp" />
     <ClCompile Include="Compiler\BfUtil.cpp" />
     <ClCompile Include="Compiler\BfVarDeclChecker.cpp" />
     <ClCompile Include="Compiler\MemReporter.cpp" />
@@ -390,6 +391,7 @@
     <ClInclude Include="Compiler\BfSourceClassifier.h" />
     <ClInclude Include="Compiler\BfSourcePositionFinder.h" />
     <ClInclude Include="Compiler\BfSystem.h" />
+    <ClInclude Include="Compiler\BfTargetTriple.h" />
     <ClInclude Include="Compiler\BfType.h" />
     <ClInclude Include="Compiler\BfCompiler.h" />
     <ClInclude Include="Compiler\BfUtil.h" />

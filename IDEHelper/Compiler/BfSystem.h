@@ -206,8 +206,10 @@ enum BfCustomAttributeFlags
 
 enum BfMachineType
 {
+	BfMachineType_Unknown,
 	BfMachineType_x86,
-	BfMachineType_x64
+	BfMachineType_x64,
+	BfMachineType_AArch64
 };
 
 enum BfToolsetType

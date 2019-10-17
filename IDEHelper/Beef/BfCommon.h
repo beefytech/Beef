@@ -208,7 +208,7 @@ public:
 	int mPtrSize;
 	bool mIsOptimized;
 	bool mFailed;
-	String mErrorMsg;
+	String mErrorMsg;	
 
 public:
 	BfIRCodeGenBase()

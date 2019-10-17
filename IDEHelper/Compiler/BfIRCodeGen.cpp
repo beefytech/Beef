@@ -804,6 +804,9 @@ void BfIRCodeGen::Read(llvm::Metadata*& llvmMD)
 
 void BfIRCodeGen::AddNop()
 {
+	if ((mTargetTriple.GetMachineType() != BfMachineType_x86) && (mTargetTriple.GetMachineType() != BfMachineType_x64))
+		return;
+
 	if (mNopInlineAsm == NULL)
 	{
 		llvm::SmallVector<llvm::Type*, 8> paramTypes;
@@ -945,6 +948,7 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_Module_SetTargetTriple:
 		{
 			CMD_PARAM(String, targetTriple);
+			mTargetTriple.Set(targetTriple);
             if (targetTriple.IsEmpty())
                 mLLVMModule->setTargetTriple(llvm::sys::getDefaultTargetTriple());
             else
@@ -2089,13 +2093,20 @@ void BfIRCodeGen::HandleNextCmd()
 					{
 						if (args.size() == 0)
 						{
-							// Compiler barrier
+							if ((mTargetTriple.GetMachineType() != BfMachineType_x86) && (mTargetTriple.GetMachineType() != BfMachineType_x64))
+							{
+								Fail("Unable to create compiler barrier on this platform");
+							}
+							else
+							{
+								// Compiler barrier
 
-							llvm::SmallVector<llvm::Type*, 8> paramTypes;
-							llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*mLLVMContext), paramTypes, false);
-							auto fenceFunc = llvm::InlineAsm::get(funcType,
-								"", "~{memory},~{dirflag},~{fpsr},~{flags}", true, false, llvm::InlineAsm::AD_ATT);
-							mIRBuilder->CreateCall(fenceFunc);
+								llvm::SmallVector<llvm::Type*, 8> paramTypes;
+								llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*mLLVMContext), paramTypes, false);
+								auto fenceFunc = llvm::InlineAsm::get(funcType,
+									"", "~{memory},~{dirflag},~{fpsr},~{flags}", true, false, llvm::InlineAsm::AD_ATT);
+								mIRBuilder->CreateCall(fenceFunc);
+							}
 							break;
 						}
 
@@ -2611,6 +2622,10 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(bool, useAsm);
 			auto curLLVMFunc = mActiveFunction;
 			auto irBuilder = mIRBuilder;
+
+			if ((mTargetTriple.GetMachineType() != BfMachineType_x86) && (mTargetTriple.GetMachineType() != BfMachineType_x64))
+				useAsm = false;
+
 			if (!useAsm)
 			{
 				// This is generates slower code than the inline asm in debug mode, but can optimize well in release
@@ -4098,9 +4113,9 @@ bool BfIRCodeGen::WriteIR(const StringImpl& outFileName, StringImpl& error)
 
 int BfIRCodeGen::GetIntrinsicId(const StringImpl& name)
 {
-	llvm::Intrinsic::ID intrin = llvm::Intrinsic::getIntrinsicForGCCBuiltin("x86", name.c_str());
-	if (intrin != llvm::Intrinsic::not_intrinsic)
-		return (int)intrin;
+// 	llvm::Intrinsic::ID intrin = llvm::Intrinsic::getIntrinsicForGCCBuiltin("x86", name.c_str());
+// 	if (intrin != llvm::Intrinsic::not_intrinsic)
+// 		return (int)intrin;
 	
 	auto itr = std::lower_bound(std::begin(gIntrinEntries), std::end(gIntrinEntries), name);
 	if (itr != std::end(gIntrinEntries) && strcmp(itr->mName, name.c_str()) == 0)
@@ -4163,8 +4178,14 @@ void BfIRCodeGen::StaticInit()
 	LLVMInitializeX86TargetInfo();
 	LLVMInitializeX86Target();
 	LLVMInitializeX86TargetMC();
+	LLVMInitializeX86AsmPrinter();
+	LLVMInitializeX86AsmParser();
+	LLVMInitializeX86Disassembler();
 
 	LLVMInitializeAArch64TargetInfo();
 	LLVMInitializeAArch64Target();
 	LLVMInitializeAArch64TargetMC();
+	LLVMInitializeAArch64AsmPrinter();
+	//LLVMInitializeAArch64Parser();
+	//LLVMInitializeX86Disassembler();
 }

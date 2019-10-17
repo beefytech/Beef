@@ -2,6 +2,7 @@
 
 #include "BfIRBuilder.h"
 #include "BfSystem.h"
+#include "BfTargetTriple.h"
 
 NS_BF_BEGIN
 
@@ -53,6 +54,7 @@ class BfIRCodeGen : public BfIRCodeGenBase
 public:	
 	BfIRBuilder* mBfIRBuilder;	
 	
+	BfTargetTriple mTargetTriple;
     String mModuleName;
 	llvm::LLVMContext* mLLVMContext;
 	llvm::Module* mLLVMModule;
