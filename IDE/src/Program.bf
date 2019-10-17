@@ -52,7 +52,7 @@ namespace A0
 	{
 		static ~this()
 		{
-			IDE.Debugger.DebugManager.ProgramDone();
+			IDE.IDEApp.[Friend]IDEHelper_ProgramDone();
 
 #if BF_PLATFORM_WINDOWS
 			if (IDE.IDEApp.sExitTest)

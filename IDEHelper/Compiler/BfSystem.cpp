@@ -3813,4 +3813,3 @@ BF_EXPORT void BF_CALLTYPE BfSystem_FixTypes(BfSystem* bfSystem)
 	fixTypesHelper.mBfSystem = bfSystem;
 	fixTypesHelper.Fix();
 }
-

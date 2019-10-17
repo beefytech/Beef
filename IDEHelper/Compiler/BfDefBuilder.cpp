@@ -1364,11 +1364,9 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		numGenericParams = (int)typeDeclaration->mGenericParams->mGenericParams.size();
 	if (outerTypeDef != NULL)
 		numGenericParams += (int)outerTypeDef->mGenericParamDefs.size();
-
-	BfLogSys(mCurSource->mSystem, "DefBuilder %p Hash:%d isAutoComplete:%d\n", mCurTypeDef, mSystem->mTypeDefs.GetHash(mCurTypeDef), isAutoCompleteTempType);
-
+	
 	if (!isAutoCompleteTempType)
-	{		
+	{
 		BfTypeDef* prevDef = NULL;
 		
 // 		auto checkTypeDef = mSystem->mTypeDefs.Find(fullName);
@@ -1466,7 +1464,8 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		outerTypeDef->mNestedTypes.push_back(mCurActualTypeDef);
 	}
 
-	BfLogSysM("Creating TypeDef %p from TypeDecl: %p Source: %p ResolvePass: %d\n", mCurTypeDef, typeDeclaration, typeDeclaration->GetSourceData(), mResolvePassData != NULL);
+	BfLogSysM("Creating TypeDef %p Hash:%d from TypeDecl: %p Source: %p ResolvePass: %d AutoComplete:%d\n", mCurTypeDef, mSystem->mTypeDefs.GetHash(mCurTypeDef), typeDeclaration, 
+		typeDeclaration->GetSourceData(), mResolvePassData != NULL, isAutoCompleteTempType);
 			
 	mCurTypeDef->mSource = mCurSource;
 	mCurTypeDef->mSource->mRefCount++;

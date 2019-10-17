@@ -119,9 +119,6 @@ namespace IDE.Debugger
 		static extern void Debugger_Delete();
 
 		[StdCall,CLink]
-		static extern void Debugger_ProgramDone();
-
-		[StdCall,CLink]
 		static extern int32 Debugger_GetAddrSize();
 
 		[StdCall,CLink]
@@ -396,11 +393,6 @@ namespace IDE.Debugger
 		{
 			scope AutoBeefPerf("LoadDebugVisualizers");
 			Debugger_LoadDebugVisualizers(fileName);
-		}
-
-		public static void ProgramDone()
-		{
-			Debugger_ProgramDone();
 		}
 
 		public void FullReportMemory()

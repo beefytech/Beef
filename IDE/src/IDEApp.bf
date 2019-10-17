@@ -498,11 +498,18 @@ namespace IDE
 			}
 		}
 
+		[StdCall,CLink]
+		static extern void IDEHelper_ProgramStart();
+		[StdCall,CLink]
+		static extern void IDEHelper_ProgramDone();
+
         public this()
         {
             sApp = this;
 			gApp = this;
 			mMainThread = Thread.CurrentThread;
+
+			IDEHelper_ProgramStart();
 
 #if !CLI
 			mDebugger = new DebugManager();

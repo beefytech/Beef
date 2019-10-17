@@ -629,9 +629,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_CHECK_EVERY_16_DF);
 	//TODO: _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF /*| _CRTDBG_CHECK_EVERY_16_DF*/);
 	//_CrtSetAllocHook(BfAllocHook);
-
-	BfIRCodeGen::StaticInit();
-
+	
 #ifdef BF_PLATFORM_WINDOWS
 	_CrtMemCheckpoint(&gStartMemCheckpoint);
 #endif
@@ -683,7 +681,12 @@ BF_EXPORT void BF_CALLTYPE Debugger_Delete()
 #endif
 }
 
-BF_EXPORT void BF_CALLTYPE Debugger_ProgramDone()
+BF_EXPORT void BF_CALLTYPE IDEHelper_ProgramStart()
+{
+	BfIRCodeGen::StaticInit();
+}
+
+BF_EXPORT void BF_CALLTYPE IDEHelper_ProgramDone()
 {
 	//TODO:
 	//::MessageBoxA(NULL, "Done", "Done", MB_OK);
