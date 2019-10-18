@@ -252,6 +252,56 @@ BeVTrackingList* BeVTrackingContext::AddFiltered(BeVTrackingList* list, SizedArr
 	return newList;
 }
 
+BeVTrackingList* BeVTrackingContext::AddFiltered(BeVTrackingList* list, int idx, bool perserveChangeList)
+{
+	int newSize = list->mSize + 1;
+	int allocBytes = sizeof(int) * (2 + newSize);
+	if (perserveChangeList)
+		allocBytes += sizeof(int) * (int)(list->mNumChanges + 1);
+	auto newList = (BeVTrackingList*)mAlloc.AllocBytes(allocBytes);
+	mStats.mListBytes += allocBytes;
+
+	{		
+		int addIdx = 0;
+		int nextAdd;		
+		nextAdd = idx;
+		
+		int* outPtr = &newList->mEntries[0];
+		for (auto idx : *list)
+		{
+			while (idx > nextAdd)
+			{
+				*(outPtr++) = nextAdd;
+				nextAdd = 0x7FFFFFFF;
+			}
+			*(outPtr++) = idx;
+		}
+		while (nextAdd != 0x7FFFFFFF)
+		{
+			*(outPtr++) = nextAdd;
+			break;
+		}
+	}
+
+	newList->mSize = newSize;
+
+	if (perserveChangeList)
+	{
+		for (int changeIdx = 0; changeIdx < list->mNumChanges; changeIdx++)
+		{
+			newList->mEntries[newSize + changeIdx] = list->GetChange(changeIdx);
+		}
+		
+		newList->mEntries[newSize + list->mNumChanges] = idx;		
+		newList->mNumChanges = list->mNumChanges + (int)1;
+	}
+	else
+		newList->mNumChanges = 0;
+
+
+	return newList;
+}
+
 BeVTrackingList* BeVTrackingContext::Add(BeVTrackingList* list, const SizedArrayImpl<int>& indices, bool perserveChangeList)
 {
 	SizedArray<int, 16> newIndices;
@@ -265,6 +315,13 @@ BeVTrackingList* BeVTrackingContext::Add(BeVTrackingList* list, const SizedArray
 	if (newIndices.empty())
 		return list;
 	return AddFiltered(list, newIndices, perserveChangeList);
+}
+
+BeVTrackingList* BeVTrackingContext::Add(BeVTrackingList* list, int idx, bool perserveChangeList)
+{
+	if (IsSet(list, idx))
+		return list;	
+	return AddFiltered(list, idx, perserveChangeList);
 }
 
 // Performs an 'add' for items that were in prevDest
@@ -1346,21 +1403,21 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 		{
 			bool hadNewStackItem = false;
 #ifdef _DEBUG
-			for (int graphIdx = 0; graphIdx < (int)vregGraph.size(); graphIdx++)
-			{
-				int validatedCount = 0;
-				int vregIdx = vregGraph[graphIdx];
-				if (vregIdx == -1)
-					continue;
-				Node* node = &mNodes[vregIdx];
-				for (auto connNodeIdx : node->mEdges)
-				{
-					Node* connNode = &mNodes[connNodeIdx];
-					if (connNode->mInGraph)
-						validatedCount++;
-				}
-				BF_ASSERT(validatedCount == node->mGraphEdgeCount);
-			}
+// 			for (int graphIdx = 0; graphIdx < (int)vregGraph.size(); graphIdx++)
+// 			{
+// 				int validatedCount = 0;
+// 				int vregIdx = vregGraph[graphIdx];
+// 				if (vregIdx == -1)
+// 					continue;
+// 				Node* node = &mNodes[vregIdx];
+// 				for (auto connNodeIdx : node->mEdges)
+// 				{
+// 					Node* connNode = &mNodes[connNodeIdx];
+// 					if (connNode->mInGraph)
+// 						validatedCount++;
+// 				}
+// 				BF_ASSERT(validatedCount == node->mGraphEdgeCount);
+// 			}
 #endif
 
 			for (int graphIdx = 0; graphIdx < (int)vregGraph.size(); graphIdx++)
@@ -1799,14 +1856,18 @@ BeMCLoopDetector::BeMCLoopDetector(BeMCContext* context) : mTrackingContext(cont
 
 void BeMCLoopDetector::DetectLoops(BeMCBlock* mcBlock, BeVTrackingList* predBlocksSeen)
 {
+	mMCContext->mDetectLoopIdx++;
+	
 	auto node = &mNodes[mcBlock->mBlockIdx];
 	auto blocksSeen = mTrackingContext.Merge(node->mPredBlocksSeen, predBlocksSeen);
 	if (blocksSeen == node->mPredBlocksSeen)
 		return;
 	node->mPredBlocksSeen = blocksSeen;
 	
-	SizedArray<int, 2> addVec = { mcBlock->mBlockIdx };
-	auto newBlocksSeen = mTrackingContext.Add(blocksSeen, addVec, false);
+	//SizedArray<int, 2> addVec = { mcBlock->mBlockIdx };
+	//auto newBlocksSeen = mTrackingContext.Add(blocksSeen, addVec, false);
+
+	auto newBlocksSeen = mTrackingContext.Add(blocksSeen, mcBlock->mBlockIdx, false);
 	if (newBlocksSeen == blocksSeen)
 	{
 		// Our ID was already set, so this is a re-entry and thus we are looped
@@ -1822,16 +1883,40 @@ void BeMCLoopDetector::DetectLoops(BeMCBlock* mcBlock, BeVTrackingList* predBloc
 
 void BeMCLoopDetector::DetectLoops()
 {
-	auto blocksSeen = mTrackingContext.AllocEmptyList();
-	DetectLoops(mMCContext->mBlocks[0], blocksSeen);
+// 	auto blocksSeen = mTrackingContext.AllocEmptyList();
+// 	DetectLoops(mMCContext->mBlocks[0], blocksSeen);
+// 
+// 	HashSet<int> wasLooped;
+// 	for (auto block : mMCContext->mBlocks)
+// 	{
+// 		if (block->mIsLooped)
+// 		{
+// 			wasLooped.Add(block->mBlockIdx);
+// 			block->mIsLooped = false;
+// 		}
+// 	}
+
+	for (auto block : mMCContext->mBlocks)
+	{
+		for (auto succ : block->mSuccs)
+		{
+			if (succ->mBlockIdx < block->mBlockIdx)
+			{
+				auto prevBlock = mMCContext->mBlocks[block->mBlockIdx - 1];
+				//if ((!succ->mIsLooped) || (!prevBlock->mIsLooped))
+				{
+					for (int setBlockIdx = succ->mBlockIdx; setBlockIdx < block->mBlockIdx; setBlockIdx++)
+						mMCContext->mBlocks[setBlockIdx]->mIsLooped = true;
+				}
+			}
+		}
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
 
 void BeMCBlock::AddPred(BeMCBlock* pred)
-{
-	//auto itr = std::find(mPreds.begin(), mPreds.end(), pred);
-	//if (itr == mPreds.end())
+{	
 	if (!mPreds.Contains(pred))
 	{
 		pred->mSuccs.push_back(this);
@@ -1875,6 +1960,7 @@ BeMCContext::BeMCContext(BeCOFFObject* coffObject) : mOut(coffObject->mTextSect.
 	mNativeIntType = mCOFFObject->mBeModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
 	mDebugging = false;
 	mFailed = false;
+	mDetectLoopIdx = 0;
 }
 
 void BeMCContext::NotImpl()
@@ -4503,15 +4589,6 @@ void BeMCContext::GenerateLiveness()
 
 	mLivenessContext.mStats = BeVTrackingContext::Stats();
 
-	if (mBeFunction->mName == "?Draw@DarkEditWidgetContent@dark@theme@Beefy@@UEAAXPEAVGraphics@gfx@4@@Z")
-	{
-		if (false)
-		{
-			Print(false, false);
-		}
-	}
-
-
 #ifdef _DEBUG
 	// So we can Print() while generating liveness (the old values would have been unallocated)
 	for (auto mcBlock : mBlocks)
@@ -6820,6 +6897,7 @@ void BeMCContext::DoChainedBlockMerge()
 
 void BeMCContext::DetectLoops()
 {
+	BP_ZONE("BeMCContext::DetectLoops");
 	BeMCLoopDetector loopDetector(this);
 	loopDetector.DetectLoops();
 }
@@ -14762,7 +14840,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?__BfStaticCtor@Blurg@bf@@SAXXZ";
+	//mDebugging = function->mName == "?DoResolveConfigString@IDEApp@IDE@bf@@QEAA_NPEAVString@System@3@PEAVOptions@Workspace@23@PEAVProject@23@PEAVOptions@823@UStringView@53@00@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
 		//"?Hey@Blurg@bf@@SAXXZ";

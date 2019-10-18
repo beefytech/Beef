@@ -32,7 +32,7 @@
 //#define MAX_THREADS 6
 //#define BF_USE_CODEGEN_RELEASE_THUNK
 #else
-#define MAX_THREADS 6
+//#define MAX_THREADS 6
 //#define MAX_THREADS 8
 //#define MAX_THREADS 1
 #endif
@@ -585,7 +585,7 @@ void BfCodeGenThread::Start()
 {
 	mRunning = true;	
 	//TODO: How much mem do we need? WTF- we have 32MB set before!
-	auto mThread = BfpThread_Create(RunLoopThunk, (void*)this, 1024 * 1024);
+	auto mThread = BfpThread_Create(RunLoopThunk, (void*)this, 1024 * 1024, BfpThreadCreateFlag_StackSizeReserve);
 	BfpThread_SetPriority(mThread, BfpThreadPriority_Low, NULL);
 	BfpThread_Release(mThread);	
 }

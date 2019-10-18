@@ -1915,9 +1915,9 @@ void BFGC::Start()
 #ifdef BF_DEBUG
 	// More stack space is needed in debug version
 	//::CreateThread(NULL, 64*1024, (LPTHREAD_START_ROUTINE)&RunStub, (void*)this, 0, (DWORD*)&mThreadId);
-	mGCThread = BfpThread_Create(RunStub, (void*)this, 256*1024, BfpThreadCreateFlag_Suspended, &mThreadId);
+	mGCThread = BfpThread_Create(RunStub, (void*)this, 256*1024, (BfpThreadCreateFlags)(BfpThreadCreateFlag_Suspended | BfpThreadCreateFlag_StackSizeReserve), &mThreadId);
 #else	
-	mGCThread = BfpThread_Create(RunStub, (void*)this, 64 * 1024, BfpThreadCreateFlag_Suspended, &mThreadId);
+	mGCThread = BfpThread_Create(RunStub, (void*)this, 64 * 1024, (BfpThreadCreateFlags)(BfpThreadCreateFlag_Suspended | BfpThreadCreateFlag_StackSizeReserve), &mThreadId);
 #endif
 	
 	BfpThread_Resume(mGCThread, NULL);

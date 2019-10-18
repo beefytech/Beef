@@ -945,7 +945,9 @@ public:
 
 	BeVTrackingList* AllocEmptyList();
 	BeVTrackingList* AddFiltered(BeVTrackingList* list, SizedArrayImpl<int>& indices, bool perserveChangeList);
+	BeVTrackingList* AddFiltered(BeVTrackingList* list, int idx, bool perserveChangeList);
 	BeVTrackingList* Add(BeVTrackingList* list, const SizedArrayImpl<int>& indices, bool perserveChangeList);
+	BeVTrackingList* Add(BeVTrackingList* list, int idx, bool perserveChangeList);
 	BeVTrackingList* ClearFiltered(BeVTrackingList* list, const SizedArrayImpl<int>& indices);
 	BeVTrackingList* Modify(BeVTrackingList* list, const SizedArrayImpl<int>& adds, const SizedArrayImpl<int>& removes, SizedArrayImpl<int>& filteredAdds, SizedArrayImpl<int>& filteredRemoves);
 	int FindIndex(BeVTrackingList* entry, int val);
@@ -978,9 +980,13 @@ public:
 	BeMCContext* mMCContext;
 	Array<Node> mNodes;
 
+	BfBitSet mBitSet;
+
 public:
 	BeMCLoopDetector(BeMCContext* context);
 	void DetectLoops(BeMCBlock* mcBlock, BeVTrackingList* blocksSeen);
+
+	void DetectLoops(BeMCBlock* mcBlock);
 	void DetectLoops();
 };
 
@@ -1214,6 +1220,7 @@ public:
 	DynMemStream& mOut;	
 	bool mDebugging;
 	bool mFailed;
+	int mDetectLoopIdx;
 
 	BeVTrackingContext mLivenessContext;
 	BeVTrackingContext mVRegInitializedContext;
