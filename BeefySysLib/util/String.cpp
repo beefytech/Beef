@@ -109,6 +109,11 @@ void StringView::ToString(StringImpl& str) const
 	str.Append(mPtr, mLength);
 }
 
+StringSplitEnumerator StringView::Split(char c)
+{
+	return StringSplitEnumerator(mPtr, mLength, c, 0x7FFFFFFF, false);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 String Beefy::operator+(const StringImpl& lhs, const StringImpl& rhs)
@@ -490,6 +495,11 @@ void StringImpl::Remove(intptr char8Idx)
 void StringImpl::RemoveToEnd(intptr startIdx)
 {
 	Remove(startIdx, mLength - startIdx);
+}
+
+void StringImpl::RemoveFromEnd(intptr length)
+{
+	Remove(mLength - length, length);
 }
 
 void StringImpl::Insert(intptr idx, const char* str, intptr length)
