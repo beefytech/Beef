@@ -204,11 +204,22 @@ enum BfCustomAttributeFlags
 	BfCustomAttributeFlags_AlwaysIncludeTarget = 8
 };
 
+enum BfPlatformType
+{
+	BfPlatformType_Unknown,
+	BfPlatformType_Windows,
+	BfPlatformType_Linux,
+	BfPlatformType_macOS,
+	BfPlatformType_iOS,
+	BfPlatformType_Android,
+};
+
 enum BfMachineType
 {
 	BfMachineType_Unknown,
 	BfMachineType_x86,
 	BfMachineType_x64,
+	BfMachineType_ARM,
 	BfMachineType_AArch64
 };
 
@@ -265,6 +276,25 @@ enum BfCFLAAType
 	BfCFLAAType_Both
 };
 
+enum BfRelocType
+{
+	BfRelocType_NotSet,
+	BfRelocType_Static, 
+	BfRelocType_PIC, 
+	BfRelocType_DynamicNoPIC,
+	BfRelocType_ROPI,
+	BfRelocType_RWPI, 
+	BfRelocType_ROPI_RWPI
+};
+
+enum BfPICLevel
+{
+	BfPICLevel_NotSet,
+	BfPICLevel_Not,
+	BfPICLevel_Small, 
+	BfPICLevel_Big
+};
+
 struct BfCodeGenOptions
 {	
 	bool mIsHotCompile;
@@ -277,6 +307,8 @@ struct BfCodeGenOptions
 	int16 mVirtualMethodOfs;
 	int16 mDynSlotOfs;
 
+	BfRelocType mRelocType;
+	BfPICLevel mPICLevel;
 	BfSIMDSetting mSIMDSetting;	
 	BfOptLevel mOptLevel;
 	BfLTOType mLTOType;
@@ -327,7 +359,9 @@ struct BfCodeGenOptions
 		mWriteLLVMIR = false;
 		mVirtualMethodOfs = 0;
 		mDynSlotOfs = 0;
-
+		
+		mRelocType = BfRelocType_NotSet;
+		mPICLevel = BfPICLevel_NotSet;
 		mSIMDSetting = BfSIMDSetting_None;
 		mOptLevel = BfOptLevel_O0;
 		mLTOType = BfLTOType_None;
@@ -378,6 +412,8 @@ struct BfCodeGenOptions
 		hashCtx.Mixin(mVirtualMethodOfs);
 		hashCtx.Mixin(mDynSlotOfs);
 
+		hashCtx.Mixin(mRelocType);
+		hashCtx.Mixin(mPICLevel);
 		hashCtx.Mixin(mSIMDSetting);
 		hashCtx.Mixin(mOptLevel);
 		hashCtx.Mixin(mLTOType);
@@ -950,7 +986,9 @@ enum BfTargetType
 	BfTargetType_CustomBuild,
 	BfTargetType_C_ConsoleApplication,
 	BfTargetType_C_WindowsApplication,
-	BfTargetType_BeefTest
+	BfTargetType_BeefTest,
+	BfTargetType_BeefApplication_StaticLib,
+	BfTargetType_BeefApplication_DynamicLib
 };
 
 enum BfProjectFlags

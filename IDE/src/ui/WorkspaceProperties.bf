@@ -724,17 +724,20 @@ namespace IDE.ui
 		void PopulateBeefGlobalOptions()
 		{
 		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
-		    var (category, ?) = AddPropertiesItem(root, "General");
+		    /*var (category, ?) = AddPropertiesItem(root, "General");
 		    category.mIsBold = true;
-		    category.mTextColor = 0xFFE8E8E8;
+		    category.mTextColor = 0xFFE8E8E8;*/
 			
-			AddPropertiesItem(category, "Preprocessor Macros", "mPreprocessorMacros");
+			AddPropertiesItem(root, "Preprocessor Macros", "mPreprocessorMacros");
 			DistinctOptionBuilder dictinctOptionBuilder = scope .(this);
 			dictinctOptionBuilder.Add(gApp.mWorkspace.mBeefGlobalOptions.mDistinctBuildOptions);
 			dictinctOptionBuilder.Finish();
+
+			//AddPropertiesItem(root, "Target Triple", "mTargetTriple");
+
 			AddNewDistinctBuildOptions();
 		    //parent.MakeParent();
-		    category.Open(true, true);
+		    //category.Open(true, true);
 		}
 
         void PopulateBeefTargetedOptions()

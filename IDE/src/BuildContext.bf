@@ -157,9 +157,91 @@ namespace IDE
 			return didCommands ? .HadCommands : .NoCommands;
 		}
 
+		bool QueueProjectGNUArchive(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
+		{
+#if BF_PLATFORM_WINDOWS
+			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
+			IDEUtils.FixFilePath(llvmDir);
+			llvmDir.Append("llvm/");
+#else
+		    String llvmDir = "";
+#endif
+
+		    //String error = scope String();
+
+		    TestManager.ProjectInfo testProjectInfo = null;
+			if (gApp.mTestManager != null)
+				testProjectInfo = gApp.mTestManager.GetProjectInfo(project);
+
+			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
+			if (!isExe)
+				return true;
+			
+		    String arCmds = scope String(""); //-O2 -Rpass=inline 
+															 //(doClangCPP ? "-lc++abi " : "") +
+
+		    arCmds.AppendF("CREATE {}\n", targetPath);
+
+			for (let obj in objectsArg.Split(' '))
+			{
+				if (!obj.IsEmpty)
+				{
+					arCmds.AppendF("ADDMOD {}\n", obj);
+				}
+			}
+			arCmds.AppendF("SAVE\n");
+
+		    if (project.mNeedsTargetRebuild)
+		    {
+		        if (File.Delete(targetPath) case .Err)
+				{
+				    gApp.OutputLine("Failed to delete {0}", targetPath);
+				    return false;
+				}
+
+				String arPath = scope .();
+#if BF_PLATFORM_WINDOWS
+				arPath.Clear();
+				arPath.Append(gApp.mInstallDir);
+				arPath.Append(@"llvm\bin\llvm-ar.exe");
+#else
+				arPath.Append("/usr/bin/ar");
+#endif
+
+				String workingDir = scope String();
+				workingDir.Append(gApp.mInstallDir);
+
+				String scriptPath = scope .();
+				if (Path.GetTempFileName(scriptPath) case .Err)
+				{
+					return false;
+				}
+				if (File.WriteAllText(scriptPath, arCmds) case .Err)
+				{
+					gApp.OutputLine("Failed to write archive script {0}", scriptPath);
+					return false;
+				}
+
+				String cmdLine = scope .();
+				cmdLine.AppendF("-M");
+
+		        var runCmd = gApp.QueueRun(arPath, cmdLine, workingDir, .UTF8);
+		        runCmd.mOnlyIfNotFailed = true;
+				runCmd.mStdInData = new .(arCmds);
+		        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+		        tagetCompletedCmd.mOnlyIfNotFailed = true;
+		        gApp.mExecutionQueue.Add(tagetCompletedCmd);
+
+				project.mLastDidBuild = true;
+		    }
+
+			return true;
+		}
+
 		bool QueueProjectGNULink(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
 			bool isDebug = gApp.mConfigName.IndexOf("Debug", true) != -1;
+			
 
 #if BF_PLATFORM_WINDOWS
 			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
@@ -1070,7 +1152,12 @@ namespace IDE
 
 			if (workspaceOptions.mToolsetType == .GNU)
 			{
-				if (!QueueProjectGNULink(project, targetPath, workspaceOptions, options, objectsArg))
+				if ((options.mBuildOptions.mBuildKind == .StaticLib) || (options.mBuildOptions.mBuildKind == .DynamicLib))
+				{
+					if (!QueueProjectGNUArchive(project, targetPath, workspaceOptions, options, objectsArg))
+						return false;
+				}
+				else if (!QueueProjectGNULink(project, targetPath, workspaceOptions, options, objectsArg))
 					return false;
 			}
 			else // MS

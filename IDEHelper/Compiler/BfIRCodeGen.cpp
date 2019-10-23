@@ -4009,9 +4009,44 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	llvm::Optional<llvm::Reloc::Model> relocModel;
 	llvm::CodeModel::Model cmModel = llvm::CodeModel::Small;
 
+	switch (codeGenOptions.mRelocType)
+	{
+	case BfRelocType_Static:
+		relocModel = llvm::Reloc::Model::DynamicNoPIC;
+		break;
+	case BfRelocType_PIC:
+		relocModel = llvm::Reloc::Model::PIC_;
+		break;
+	case BfRelocType_DynamicNoPIC:
+		relocModel = llvm::Reloc::Model::DynamicNoPIC;
+		break;
+	case BfRelocType_ROPI:
+		relocModel = llvm::Reloc::Model::ROPI;
+		break;
+	case BfRelocType_RWPI:
+		relocModel = llvm::Reloc::Model::RWPI;
+		break;
+	case BfRelocType_ROPI_RWPI:
+		relocModel = llvm::Reloc::Model::ROPI_RWPI;
+		break;
+	}
+
+	switch (codeGenOptions.mPICLevel)
+	{
+	case BfPICLevel_Not:
+		mLLVMModule->setPICLevel(llvm::PICLevel::Level::NotPIC);
+		break;
+	case BfPICLevel_Small:
+		mLLVMModule->setPICLevel(llvm::PICLevel::Level::SmallPIC);
+		break;
+	case BfPICLevel_Big:
+		mLLVMModule->setPICLevel(llvm::PICLevel::Level::BigPIC);
+		break;
+	}
+
 	std::unique_ptr<llvm::TargetMachine> target(
 		theTarget->createTargetMachine(theTriple.getTriple(), cpuName.c_str(), featuresStr.c_str(),
-			Options, relocModel, cmModel, optLvl));
+			Options, relocModel, cmModel, optLvl));	
 
 	std::error_code EC;
 	llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_None;
@@ -4187,6 +4222,11 @@ void BfIRCodeGen::StaticInit()
 	LLVMInitializeX86AsmPrinter();
 	LLVMInitializeX86AsmParser();
 	LLVMInitializeX86Disassembler();
+
+	LLVMInitializeARMTargetInfo();
+	LLVMInitializeARMTarget();
+	LLVMInitializeARMTargetMC();
+	LLVMInitializeARMAsmPrinter();
 
 	LLVMInitializeAArch64TargetInfo();
 	LLVMInitializeAArch64Target();

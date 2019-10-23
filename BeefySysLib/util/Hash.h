@@ -109,16 +109,20 @@ public:
 	uint8 mBuf[1024];
 	int mBufSize;
 	int mBufOffset;
+#ifdef BF_PLATFORM_WINDOWS
 	bool mDbgViz;
 	FileStream* mDbgVizStream;
+#endif
 
 public:
 	HashContext()
 	{
 		mBufOffset = 0;
 		mBufSize = 0;
+#ifdef BF_PLATFORM_WINDOWS
 		mDbgViz = false;
 		mDbgVizStream = NULL;
+#endif
 	}
 
 	~HashContext();

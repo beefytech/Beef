@@ -420,6 +420,7 @@ namespace IDE
             public ArgsFileKind mUseArgsFile;
             public int32 mParallelGroup = -1;
 			public bool mIsTargetRun;
+			public String mStdInData ~ delete _;
         }
         public List<ExecutionCmd> mExecutionQueue = new List<ExecutionCmd>() ~ DeleteContainerAndItems!(_);
 
@@ -435,9 +436,11 @@ namespace IDE
             public Task<String> mErrorTask /*~ delete _*/;
             public Action<Task<String>> mOnErrorTaskComplete /*~ delete _*/;
 			public Monitor mMonitor = new Monitor() ~ delete _;
+			public String mStdInData ~ delete _;
 
 			public Thread mOutputThread;
 			public Thread mErrorThread;
+			public Thread mInputThread;
 
 			public int? mExitCode;
 			public bool mAutoDelete = true;
@@ -450,12 +453,17 @@ namespace IDE
 				/*if (mProcess != null)
 					mProcess.Close();*/
 
+				if (mInputThread != null)
+					mInputThread.Join();
+				delete mInputThread;
+
 				if (mOutputThread != null)
 					mOutputThread.Join();
 				delete mOutputThread;
+
 				if (mErrorThread != null)
 					mErrorThread.Join();
-				delete mErrorThread;				
+				delete mErrorThread;
 
 				delete mReadTask;
 				delete mOnReadTaskComplete;
@@ -7092,6 +7100,26 @@ namespace IDE
             }
         }
 
+		static void WriteInputThread(Object obj)
+		{
+			ExecutionInstance executionInstance = (ExecutionInstance)obj;
+
+			FileStream fileStream = scope FileStream();
+			if (executionInstance.mProcess.AttachStandardInput(fileStream) case .Err)
+				return;
+			
+			while (!executionInstance.mStdInData.IsEmpty)
+			{
+				switch (fileStream.TryWrite(.((.)executionInstance.mStdInData.Ptr, executionInstance.mStdInData.Length)))
+				{
+				case .Ok(int len):
+					executionInstance.mStdInData.Remove(0, len);
+				case .Err:
+					break;
+				}
+			}
+		}
+
 		static void ReadOutputThread(Object obj)
 		{
 			ExecutionInstance executionInstance = (ExecutionInstance)obj;
@@ -7131,7 +7159,7 @@ namespace IDE
 			}
 		}
 
-        public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null)
+        public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null)
         {
 			//Debug.Assert(executionInstance == null);
 
@@ -7146,6 +7174,8 @@ namespace IDE
             startInfo.SetArguments(args);
             startInfo.RedirectStandardOutput = true;
             startInfo.RedirectStandardError = true;
+			if (stdInData != null)
+				startInfo.RedirectStandardInput = true;
             startInfo.CreateNoWindow = true;
 			if (envVars != null)
 			{
@@ -7223,6 +7253,13 @@ namespace IDE
 
 			executionInstance.mErrorThread = new Thread(new => ReadErrorThread);
 			executionInstance.mErrorThread.Start(executionInstance, false);
+
+			if (stdInData != null)
+			{
+				executionInstance.mStdInData = new String(stdInData);
+				executionInstance.mInputThread = new Thread(new => WriteInputThread);
+				executionInstance.mInputThread.Start(executionInstance, false);
+			}
 
             return executionInstance;
         }
@@ -7502,7 +7539,7 @@ namespace IDE
                 else if (next is ExecutionQueueCmd)
                 {
                     var executionQueueCmd = (ExecutionQueueCmd)next;
-                    var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile, executionQueueCmd.mEnvVars);
+                    var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile, executionQueueCmd.mEnvVars, executionQueueCmd.mStdInData);
                     executionInstance.mParallelGroup = executionQueueCmd.mParallelGroup;
 					executionInstance.mIsTargetRun = executionQueueCmd.mIsTargetRun;
                 }
@@ -7903,12 +7940,23 @@ namespace IDE
 						success = false;
 					}
 				}
+				else if (options.mBuildOptions.mBuildKind == .StaticLib)
+				{
+					if (project.mGeneralOptions.mTargetType.IsBeefApplication)
+						targetType = .BeefApplication_StaticLib;
+				}
+				else if (options.mBuildOptions.mBuildKind == .DynamicLib)
+				{
+					if (project.mGeneralOptions.mTargetType.IsBeefApplication)
+						targetType = .BeefApplication_DynamicLib;
+				}
 			}
 
             bfProject.SetOptions(targetType,
                 project.mBeefGlobalOptions.mStartupObject,
                 preprocessorMacros.mDefines,
-                optimizationLevel, ltoType, options.mBeefOptions.mMergeFunctions, options.mBeefOptions.mCombineLoads,
+                optimizationLevel, ltoType, options.mBeefOptions.mRelocType, options.mBeefOptions.mPICLevel,
+				options.mBeefOptions.mMergeFunctions, options.mBeefOptions.mCombineLoads,
                 options.mBeefOptions.mVectorizeLoops, options.mBeefOptions.mVectorizeSLP);
 
             List<Project> depProjectList = scope List<Project>();
@@ -8378,21 +8426,43 @@ namespace IDE
 										return false;
 
 									let platformType = Workspace.PlatformType.GetFromName(platformName);
-									switch (platformType)
+
+									if (options.mBuildOptions.mBuildKind.IsApplicationLib)
 									{
-									case .Windows:
-										if (project.mGeneralOptions.mTargetType == .BeefLib)
-										    newString.Append(".lib");
-										else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
-										    newString.Append(".dll");
-										else if (project.mGeneralOptions.mTargetType != .CustomBuild)
-										    newString.Append(".exe");
-									case .macOS:
-										if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
-											newString.Append(".dylib");
-									default:
-										if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
-											newString.Append(".so");
+										switch (platformType)
+										{
+										case .Windows:
+											newString.Append(".lib");
+										case .iOS:
+											if (options.mBuildOptions.mBuildKind == .DynamicLib)
+												newString.Append(".dylib");
+											else
+												newString.Append(".a");
+										default:
+											if (options.mBuildOptions.mBuildKind == .DynamicLib)
+												newString.Append(".so");
+											else
+												newString.Append(".a");
+										}
+									}
+									else
+									{
+										switch (platformType)
+										{
+										case .Windows:
+											if (project.mGeneralOptions.mTargetType == .BeefLib)
+											    newString.Append(".lib");
+											else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
+											    newString.Append(".dll");
+											else if (project.mGeneralOptions.mTargetType != .CustomBuild)
+											    newString.Append(".exe");
+										case .macOS:
+											if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
+												newString.Append(".dylib");
+										default:
+											if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
+												newString.Append(".so");
+										}
 									}
 		                        }
 		                    case "ProjectDir":
@@ -8633,7 +8703,10 @@ namespace IDE
             else
             {
 				clangOptions.Append("--target=");
-                Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, workspaceOptions.mToolsetType, clangOptions);
+				if (TargetTriple.IsTargetTriple(gApp.mPlatformName))
+					clangOptions.Append(gApp.mPlatformName);
+				else
+                	Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, workspaceOptions.mToolsetType, clangOptions);
 				clangOptions.Append(" ");
 
 				if (workspaceOptions.mToolsetType == .GNU)

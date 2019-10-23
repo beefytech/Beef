@@ -10,6 +10,7 @@
 #endif
 
 #define BF_PLATFORM_IOS
+#define BF_PLATFORM_POSIX
 #define BF_PLATFORM_OPENGL_ES2
 #define BF_PLATFORM_FULLSCREEN
 

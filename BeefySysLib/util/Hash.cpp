@@ -1356,7 +1356,9 @@ static int gDbgVizIdx = 0;
 
 HashContext::~HashContext()
 {
+#ifdef BF_PLATFORM_WINDOWS
 	delete mDbgVizStream;
+#endif
 }
 
 void HashContext::Reset()
@@ -1378,6 +1380,7 @@ void HashContext::Mixin(const void* data, int size)
 	{
 		int addBytes = std::min(size, 1024 - mBufSize);
 
+#ifdef BF_PLATFORM_WINDOWS
 		if (mDbgViz)
 		{
 			int findIdx = 0x2cc159;
@@ -1386,6 +1389,7 @@ void HashContext::Mixin(const void* data, int size)
 				NOP;
 			}
 		}
+#endif
 
 		memcpy(&mBuf[mBufSize], data, addBytes);
 		mBufSize += addBytes;
@@ -1417,6 +1421,7 @@ void HashContext::MixinStr(const StringImpl& str)
 
 Val128 HashContext::Finish128()
 {
+#ifdef BF_PLATFORM_WINDOWS
 	if (mDbgViz)
 	{
 // 		String dbg = "HashContext Dbg";
@@ -1441,6 +1446,7 @@ Val128 HashContext::Finish128()
 		if ((mDbgVizStream != NULL) && (mDbgVizStream->IsOpen()))
 			mDbgVizStream->Write(mBuf, mBufSize);
 	}
+#endif
 	
 	if (mBufSize <= 16)
 	{
@@ -1459,6 +1465,7 @@ Val128 HashContext::Finish128()
 
 uint64 HashContext::Finish64()
 {
+#ifdef BF_PLATFORM_WINDOWS
 	if (mDbgViz)
 	{
 		// 		String dbg = "HashContext Dbg";
@@ -1476,6 +1483,7 @@ uint64 HashContext::Finish64()
 		}
 		mDbgVizStream->Write(mBuf, mBufSize);
 	}
+#endif
 
 	if (mBufSize <= 8)
 	{

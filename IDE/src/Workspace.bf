@@ -27,6 +27,7 @@ namespace IDE
 			case Linux;
 			case macOS;
 			case iOS;
+			case Android;
 
 			public static PlatformType GetFromName(String name)
 			{
@@ -36,7 +37,8 @@ namespace IDE
 				case "Linux32", "Linux64": return .Linux;
 				case "macOS": return .macOS;
 				case "iOS": return .iOS;
-				default: return .Unknown;
+				default:
+					return TargetTriple.GetPlatformType(name);
 				}
 			}
 
@@ -60,7 +62,11 @@ namespace IDE
 
 			public static int GetPtrSizeByName(String name)
 			{
-				if (name.EndsWith("32"))
+				if ((name.EndsWith("32")) && (!TargetTriple.IsTargetTriple(name)))
+					return 4;
+				if (name.StartsWith("armv"))
+					return 4;
+				if (name.StartsWith("i686-"))
 					return 4;
 				return 8;
 			}
@@ -80,7 +86,7 @@ namespace IDE
 				case "macOS":
 					outTriple.Append("x86_64-apple-macosx10.14.0");
 				case "iOS":
-					outTriple.Append("aarch64-apple-ios");
+					outTriple.Append("arm64-apple-ios");
 				default:
 					return false;
 				}
@@ -167,6 +173,8 @@ namespace IDE
 		{
 			[Reflect]
 			public List<String> mPreprocessorMacros = new List<String>() ~ DeleteContainerAndItems!(_);
+			/*[Reflect]
+			public String mTargetTriple = new .() ~ delete _;*/
 			[Reflect]
 			public List<DistinctBuildOptions> mDistinctBuildOptions = new List<DistinctBuildOptions>() ~ DeleteContainerAndItems!(_);
 		}
@@ -505,6 +513,7 @@ namespace IDE
 				if (mStartupProject != null)
 					data.Add("StartupProject", mStartupProject.mProjectName);
 				WriteStrings("PreprocessorMacros", mBeefGlobalOptions.mPreprocessorMacros);
+				//data.ConditionalAdd("TargetTriple", mBeefGlobalOptions.mTargetTriple, "");
 				WriteDistinctOptions(mBeefGlobalOptions.mDistinctBuildOptions);
 				data.RemoveIfEmpty();
 			}
@@ -697,15 +706,20 @@ namespace IDE
 			bool isTest = configName.Contains("Test");
 			let platformType = PlatformType.GetFromName(platformName);
 
+			/*if (TargetTriple.IsTargetTriple(platformName))
+			{
+				options.mToolsetType = .None;
+			}*/
+
+			options.mBfOptimizationLevel = isRelease ? .O2 : .O0;
 			options.mBfSIMDSetting = .SSE2;
 			if (platformType == .Windows)
 			{
 				options.mBfOptimizationLevel = isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0;
 				options.mToolsetType = .Microsoft;
 			}
-			else
+			else if ((platformType == .macOS) == (platformType == .Linux))
 			{
-				options.mBfOptimizationLevel = isRelease ? .O2 : .O0;
 				options.mToolsetType = .GNU;
 			}
 
@@ -757,6 +771,7 @@ namespace IDE
 					data.GetCurString(str);
 				    mBeefGlobalOptions.mPreprocessorMacros.Add(str);
 				}
+				//data.GetString("TargetTriple", mBeefGlobalOptions.mTargetTriple);
 
 				for (data.Enumerate("DistinctOptions"))
 				{

@@ -4319,12 +4319,12 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	{
 		BfMangler::MangleStaticFieldName(typeDataName, mCompiler->GetMangleKind(), typeInstance, "sBfTypeData");
 		if (typeInstance->mTypeDef->IsGlobalsContainer())
-			typeDataName += "@" + typeInstance->mTypeDef->mProject->mName;
+			typeDataName += "`G`" + typeInstance->mTypeDef->mProject->mName;
 	}
 	else
 	{
 		typeDataName += "sBfTypeData.";
-		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type);
+		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, mContext->mScratchModule);
 	}
 	
 	int typeCode = BfTypeCode_None;		
@@ -4460,7 +4460,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	
 	BfTypeDef* typeDef = typeInstance->mTypeDef;
 	StringT<128> mangledName;
-	BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), typeInstance);
+	BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), typeInstance, typeInstance->mModule);
 	
 	for (int methodIdx = 0; methodIdx < (int)typeDef->mMethods.size(); methodIdx++)
 	{
@@ -13619,8 +13619,8 @@ void BfModule::CreateDllImportMethod()
 
 BfIRCallingConv BfModule::GetCallingConvention(BfTypeInstance* typeInst, BfMethodDef* methodDef)
 {
-	if (mSystem->mPtrSize == 8)
-		return BfIRCallingConv_CDecl;
+	if ((mCompiler->mOptions.mMachineType != BfMachineType_x86) || (mCompiler->mOptions.mPlatformType != BfPlatformType_Windows))
+		return BfIRCallingConv_CDecl;			
 	if (methodDef->mCallingConvention == BfCallingConvention_Stdcall)
 		return BfIRCallingConv_StdCall;
 	if ((!methodDef->mIsStatic) && (!typeInst->IsValuelessType()) &&

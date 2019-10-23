@@ -792,6 +792,16 @@ namespace IDE
 		{
 			case Normal;
 			case Test;
+			case StaticLib;
+			case DynamicLib;
+
+			public bool IsApplicationLib
+			{
+				get
+				{
+					return (this == .StaticLib) || (this == .DynamicLib);
+				}
+			}
 		}
 
         public enum COptimizationLevel
@@ -838,20 +848,39 @@ namespace IDE
 				 CustomBuild,
 				 C_ConsoleApplication,
 				 C_WindowsApplication,
-				 BeefTest;
+				 BeefTest,
+				 BeefApplication_StaticLib,
+				 BeefApplication_DynamicLib;
 
 		 	public bool IsBeef
 		 	{
-				 get
-				 {
-					 switch (this)
-					 {
-						 case BeefConsoleApplication,
-							  BeefWindowsApplication,
-							  BeefLib,
-							  BeefDynLib,
-							  BeefTest: return true;
-						 default: return false;
+				get
+				{
+					switch (this)
+					{
+					case BeefConsoleApplication,
+						 BeefWindowsApplication,
+						 BeefLib,
+						 BeefDynLib,
+						 BeefTest:
+						return true;
+					default:
+						return false;
+					}
+				}
+			}
+
+			public bool IsBeefApplication
+			{
+				get
+				{
+					switch (this)
+					{
+					case BeefConsoleApplication,
+						 BeefWindowsApplication:
+						return true;
+					default:
+						return false;
 					}
 				}
 			}
@@ -1005,6 +1034,10 @@ namespace IDE
 			[Reflect]
             public List<String> mPreprocessorMacros = new List<String>() ~ DeleteContainerAndItems!(_);
 			[Reflect]
+			public BuildOptions.RelocType mRelocType;
+			[Reflect]
+			public BuildOptions.PICLevel mPICLevel;
+			[Reflect]
             public BuildOptions.BfOptimizationLevel? mOptimizationLevel;
 			[Reflect]
 			public BuildOptions.LTOType? mLTOType;
@@ -1103,6 +1136,8 @@ namespace IDE
 				Set!(newOptions.mBeefOptions.mPreprocessorMacros, mBeefOptions.mPreprocessorMacros);
 				Set!(newOptions.mBeefOptions.mOptimizationLevel, mBeefOptions.mOptimizationLevel);
 				Set!(newOptions.mBeefOptions.mLTOType, mBeefOptions.mLTOType);
+				Set!(newOptions.mBeefOptions.mRelocType, mBeefOptions.mRelocType);
+				Set!(newOptions.mBeefOptions.mPICLevel, mBeefOptions.mPICLevel);
 				Set!(newOptions.mBeefOptions.mMergeFunctions, mBeefOptions.mMergeFunctions);
 				Set!(newOptions.mBeefOptions.mCombineLoads, mBeefOptions.mCombineLoads);
 				Set!(newOptions.mBeefOptions.mVectorizeLoops, mBeefOptions.mVectorizeLoops);
@@ -1522,6 +1557,8 @@ namespace IDE
 							                data.Add(macro);
 							        }
 								}
+								data.ConditionalAdd("RelocType", options.mBeefOptions.mRelocType, .NotSet);
+								data.ConditionalAdd("PICLevel", options.mBeefOptions.mPICLevel, .NotSet);
 							    data.ConditionalAdd("OptimizationLevel", options.mBeefOptions.mOptimizationLevel);
 								data.ConditionalAdd("LTOType", options.mBeefOptions.mLTOType);
 							    data.ConditionalAdd("MergeFunctions", options.mBeefOptions.mMergeFunctions);
@@ -1826,6 +1863,8 @@ namespace IDE
 							options.mBeefOptions.mPreprocessorMacros.Add(new String("TEST"));
 					}
 
+					options.mBeefOptions.mRelocType = data.GetEnum<BuildOptions.RelocType>("RelocType");
+					options.mBeefOptions.mPICLevel = data.GetEnum<BuildOptions.PICLevel>("PICLevel");
 					if (data.Contains("OptimizationLevel"))
 			        	options.mBeefOptions.mOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("OptimizationLevel");
 					if (data.Contains("LTOType"))
@@ -2135,6 +2174,7 @@ namespace IDE
 			bool isParanoid = configName.Contains("Paranoid");
 			bool isDebug = isParanoid || configName.Contains("Debug");
 			bool isTest = configName.Contains("Test");
+			let platformType = Workspace.PlatformType.GetFromName(platformName);
 
 			if (isRelease)
 				options.mBeefOptions.mPreprocessorMacros.Add(new String("RELEASE"));
@@ -2149,7 +2189,20 @@ namespace IDE
 			options.mBuildOptions.mBeefLibType = isRelease ? .Static : .Dynamic;
 			options.mBuildOptions.mStackSize = 0;
 
-			options.mBuildOptions.mBuildKind = isTest ? .Test : .Normal;
+			switch (platformType)
+			{
+			case .Linux,
+				 .Windows,
+				 .macOS:
+				options.mBuildOptions.mBuildKind = isTest ? .Test : .Normal;
+			default:
+				options.mBuildOptions.mBuildKind = .StaticLib;
+			}
+
+			if (platformType == .Android)
+			{
+				options.mBeefOptions.mRelocType = .PIC;
+			}
 
 			options.mBuildOptions.mOtherLinkFlags.Set("$(LinkFlags)");
 

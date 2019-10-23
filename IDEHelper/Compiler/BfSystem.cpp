@@ -3592,8 +3592,8 @@ BF_EXPORT void BF_CALLTYPE BfProject_SetDisabled(BfProject* bfProject, bool disa
 	bfProject->mDisabled = disabled;
 }
 
-BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int targetType, const char* startupObject, const char* preprocessorMacros, 
-	int optLevel, int ltoType, BfProjectFlags flags)
+BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int targetType, const char* startupObject, const char* preprocessorMacros,
+	int optLevel, int ltoType, int relocType, int picLevel, BfProjectFlags flags)
 {
 	bfProject->mTargetType = (BfTargetType)targetType;
 	bfProject->mStartupObject = startupObject;	
@@ -3601,6 +3601,8 @@ BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int target
 	BfCodeGenOptions codeGenOptions;
 	codeGenOptions.mOptLevel = (BfOptLevel)optLevel;
 	codeGenOptions.mLTOType = (BfLTOType)ltoType;
+	codeGenOptions.mRelocType = (BfRelocType)relocType;
+	codeGenOptions.mPICLevel = (BfPICLevel)picLevel;
 	codeGenOptions.mMergeFunctions = (flags & BfProjectFlags_MergeFunctions) != 0;
 	codeGenOptions.mLoadCombine = (flags & BfProjectFlags_CombineLoads) != 0;
 	codeGenOptions.mLoopVectorize = (flags & BfProjectFlags_VectorizeLoops) != 0;

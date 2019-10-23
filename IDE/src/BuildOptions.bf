@@ -45,6 +45,25 @@ namespace IDE
 				return (this != .Og) && (this != .OgPlus) && (this != .O0);
 			}
 		}
+
+		public enum RelocType
+		{
+			NotSet,
+			Static, 
+			PIC, 
+			DynamicNoPIC,
+			ROPI,
+			RWPI, 
+			ROPI_RWPI
+		}
+
+		public enum PICLevel
+		{
+			NotSet,
+			Not,
+			Small, 
+			Big
+		}
 	}
 
 	public class DistinctBuildOptions

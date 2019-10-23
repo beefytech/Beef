@@ -34,7 +34,7 @@ namespace IDE.Compiler
 
         [StdCall, CLink]
         extern static void BfProject_SetOptions(void* nativeBfProject, int32 targetType, char8* startupObject, char8* preprocessorMacros,
-            int32 optLevel, int32 ltoType, Flags flags);
+            int32 optLevel, int32 ltoType, int32 relocType, int32 picLevel, Flags flags);
 
         public void* mNativeBfProject;
         public bool mDisabled;
@@ -61,7 +61,8 @@ namespace IDE.Compiler
         }
 
         public void SetOptions(Project.TargetType targetType, String startupObject, List<String> preprocessorMacros,
-            BuildOptions.BfOptimizationLevel optLevel, BuildOptions.LTOType ltoType, bool mergeFunctions, bool combineLoads, bool vectorizeLoops, bool vectorizeSLP)
+            BuildOptions.BfOptimizationLevel optLevel, BuildOptions.LTOType ltoType, BuildOptions.RelocType relocType, BuildOptions.PICLevel picLevel,
+			bool mergeFunctions, bool combineLoads, bool vectorizeLoops, bool vectorizeSLP)
         {
 			Flags flags = default;
 			void SetFlags(bool val, Flags flag)
@@ -77,7 +78,7 @@ namespace IDE.Compiler
             String macrosStr = scope String();
             macrosStr.Join("\n", preprocessorMacros.GetEnumerator());
             BfProject_SetOptions(mNativeBfProject, (int32)targetType, startupObject, macrosStr, 
-                (int32)optLevel, (int32)ltoType, flags);
+                (int32)optLevel, (int32)ltoType, (int32)relocType, (int32)picLevel, flags);
         }
 
     }

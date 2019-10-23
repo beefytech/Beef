@@ -2,13 +2,11 @@
 
 #define BFSTDCALL
 
-#include "../darwin/DarwinCommon.h"
-#include <string>
+#include "AndroidCommon.h"
 
-#define BF_PLATFORM_MACOS
+#define BF_PLATFORM_ANDROID
 #define BF_PLATFORM_POSIX
-#define BF_PLATFORM_DARWIN
-#define BF_PLATFORM_NAME "BF_PLATFORM_MACOS"
+#define BF_PLATFORM_NAME "BF_PLATFORM_ANDROID"
 
 #define BF_IMPORT extern "C"
 
@@ -19,12 +17,6 @@
 #define BF_EXPORT extern "C"
 #define BF_CALLTYPE
 #define BF_RESOURCES_REL_DIR "../Resources"
-#endif
-
-#ifdef BF32
-#define BF_REGISTER_COUNT 7
-#else
-#define BF_REGISTER_COUNT 15
 #endif
 
 #define BF_DEBUG_BREAK()

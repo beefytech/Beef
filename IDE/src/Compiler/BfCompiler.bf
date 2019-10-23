@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Beefy.widgets;
 using Beefy;
 using Beefy.utils;
+using IDE.Util;
 
 namespace IDE.Compiler
 {
@@ -465,7 +466,10 @@ namespace IDE.Compiler
 
 			var options = IDEApp.sApp.GetCurWorkspaceOptions();
 			String targetTriple = scope .();
-			Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, options.mToolsetType, targetTriple);
+			if (TargetTriple.IsTargetTriple(gApp.mPlatformName))
+				targetTriple.Set(gApp.mPlatformName);
+			else
+				Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, options.mToolsetType, targetTriple);
 
 			bool enableObjectDebugFlags = options.mEnableObjectDebugFlags;
 			bool emitObjectAccessCheck = options.mEmitObjectAccessCheck && enableObjectDebugFlags;

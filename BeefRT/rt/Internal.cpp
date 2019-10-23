@@ -230,9 +230,9 @@ void SetErrorString(const char* str)
 	while (true)
 	{
 		const char* prevStr = gErrorString;
-		auto result = ::InterlockedCompareExchangePointer((void* volatile*)&gErrorString, (void*)newStr, (void*)prevStr);
+		auto result = (void*)BfpSystem_InterlockedCompareExchangePtr((uintptr*)&gErrorString, (uintptr)prevStr, (uintptr)newStr);
 		if (result != prevStr)
-			continue;		
+			continue;
 		if (prevStr != NULL)
 			free((void*)prevStr);
 		break;

@@ -57,7 +57,7 @@ BF_IMPORT void BF_CALLTYPE BfSystem_AddTypeOptions(void* bfSystem, const char* f
 
 BF_IMPORT void BF_CALLTYPE BfProject_SetDisabled(void* bfProject, bool disabled);
 BF_IMPORT void BF_CALLTYPE BfProject_SetOptions(void* bfProject, int targetType, const char* startupObject, const char* preprocessorMacros,
-	int optLevel, int ltoType, int32 flags);
+	int optLevel, int ltoType, int relocType, int picLevel, int32 flags);
 BF_IMPORT void BF_CALLTYPE BfProject_ClearDependencies(void* bfProject);
 BF_IMPORT void BF_CALLTYPE BfProject_AddDependency(void* bfProject, void* depProject);
 
@@ -795,7 +795,7 @@ bool BootApp::Compile()
 		mCELibProject = BfSystem_CreateProject(mSystem, "BeefLib");		
 
 		BfProjectFlags flags = BfProjectFlags_None;
-		BfProject_SetOptions(mCELibProject, BfTargetType_BeefLib, "", mDefines.c_str(), mOptLevel, 0, flags);		
+		BfProject_SetOptions(mCELibProject, BfTargetType_BeefLib, "", mDefines.c_str(), mOptLevel, 0, 0, 0, flags);		
 	}
 
 	if (!mDefines.IsEmpty())
@@ -815,7 +815,7 @@ bool BootApp::Compile()
 		else if (mAsmKind == BfAsmKind_Intel)
 			flags = (BfProjectFlags)(flags | BfProjectFlags_AsmOutput);
 	}
-    BfProject_SetOptions(mProject, mTargetType, mStartupObject.c_str(), mDefines.c_str(), mOptLevel, ltoType, flags);
+    BfProject_SetOptions(mProject, mTargetType, mStartupObject.c_str(), mDefines.c_str(), mOptLevel, ltoType, 0, 0, flags);
 
 	if (mCELibProject != NULL)
 		BfProject_AddDependency(mProject, mCELibProject);

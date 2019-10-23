@@ -1632,7 +1632,8 @@ void BfContext::UpdateRevisedTypes()
 	BP_ZONE("BfContext::UpdateRevisedTypes");
 
 	int wantPtrSize;
-	if (mCompiler->mOptions.mMachineType == BfMachineType_x86)
+	if ((mCompiler->mOptions.mMachineType == BfMachineType_x86) |
+		(mCompiler->mOptions.mMachineType == BfMachineType_ARM))
 		wantPtrSize = 4;
 	else
 		wantPtrSize = 8;
@@ -1788,9 +1789,12 @@ void BfContext::UpdateRevisedTypes()
 
 	//
 	{
+		AutoCrit autoCrit(mSystem->mDataLock);
+
 		auto options = &mCompiler->mOptions;
 		HashContext workspaceConfigHashCtx;												
 
+		workspaceConfigHashCtx.MixinStr(options->mTargetTriple);
 		workspaceConfigHashCtx.Mixin(options->mForceRebuildIdx);
 
 		workspaceConfigHashCtx.Mixin(options->mMachineType);
@@ -1813,6 +1817,8 @@ void BfContext::UpdateRevisedTypes()
 		workspaceConfigHashCtx.Mixin(options->mEnableCustodian);
 		workspaceConfigHashCtx.Mixin(options->mEnableSideStack);
 		workspaceConfigHashCtx.Mixin(options->mHasVDataExtender);
+		workspaceConfigHashCtx.Mixin(options->mDebugAlloc);
+		workspaceConfigHashCtx.Mixin(options->mOmitDebugHelpers);
 
 		workspaceConfigHashCtx.Mixin(options->mUseDebugBackingParams);
 
@@ -1821,6 +1827,7 @@ void BfContext::UpdateRevisedTypes()
 
 		workspaceConfigHashCtx.Mixin(options->mAllocStackCount);
 		workspaceConfigHashCtx.Mixin(options->mExtraResolveChecks);
+		workspaceConfigHashCtx.Mixin(options->mMaxSplatRegs);
 		workspaceConfigHashCtx.MixinStr(options->mMallocLinkName);
 		workspaceConfigHashCtx.MixinStr(options->mFreeLinkName);
 
@@ -1842,6 +1849,11 @@ void BfContext::UpdateRevisedTypes()
 			workspaceConfigHashCtx.Mixin(typeOptions.mAllocStackTraceDepth);
 		}
 
+// 		for (auto project : mSystem->mProjects)
+// 		{
+// 			workspaceConfigHashCtx.MixinStr(project->mName);
+// 		}
+
 		Val128 workspaceConfigHash = workspaceConfigHashCtx.Finish128();
 
 		mSystem->mWorkspaceConfigChanged = mSystem->mWorkspaceConfigHash != workspaceConfigHash;
@@ -1852,8 +1864,7 @@ void BfContext::UpdateRevisedTypes()
 			mSystem->mMergedTypeOptions.Clear();
 			mSystem->mWorkspaceConfigHash = workspaceConfigHash;
 		}
-
-		AutoCrit autoCrit(mSystem->mDataLock);
+		
 		for (auto project : mSystem->mProjects)
 		{
 			HashContext buildConfigHashCtx;
@@ -1861,11 +1872,14 @@ void BfContext::UpdateRevisedTypes()
 			
 			if (!mCompiler->mIsResolveOnly)
 			{
-				auto& codeGenOptions = project->mCodeGenOptions;
+				auto& codeGenOptions = project->mCodeGenOptions;								
 				
+				buildConfigHashCtx.Mixin(project->mAlwaysIncludeAll);
+				buildConfigHashCtx.Mixin(project->mSingleModule);
+
 				bool isTestConfig = project->mTargetType == BfTargetType_BeefTest;
 				buildConfigHashCtx.Mixin(isTestConfig);
-
+				
 				buildConfigHashCtx.Mixin(codeGenOptions.mOptLevel);
 				buildConfigHashCtx.Mixin(codeGenOptions.mSizeLevel);
 				buildConfigHashCtx.Mixin(codeGenOptions.mUseCFLAA);
@@ -1888,6 +1902,7 @@ void BfContext::UpdateRevisedTypes()
 				buildConfigHashCtx.Mixin(codeGenOptions.mRunSLPAfterLoopVectorization);
 				buildConfigHashCtx.Mixin(codeGenOptions.mUseGVNAfterVectorization);
 			}
+			buildConfigHashCtx.Mixin(project->mDisabled);
 			buildConfigHashCtx.Mixin(project->mTargetType);
 
 			for (auto dep : project->mDependencies)
@@ -2225,6 +2240,12 @@ String BfContext::GenerateModuleName(BfTypeInstance* typeInst)
 	{
 		name.RemoveToEnd(80);
 		name += "__";
+	}
+	for (int i = 0; i < (int)name.length(); i++)
+	{
+		char c = name[i];
+		if (c == '@')
+			name[i] = '_';
 	}
 
 	String tryName = name;

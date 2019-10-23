@@ -823,7 +823,9 @@ namespace IDE.ui
 
             (category, propEntry) = AddPropertiesItem(root, "Code Generation");
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;            
+            category.mTextColor = cHeaderColor;
+			AddPropertiesItem(category, "Reloc Model", "mBeefOptions.mRelocType");
+			AddPropertiesItem(category, "PIC Level", "mBeefOptions.mPICLevel");
             AddPropertiesItem(category, "Optimization Level", "mBeefOptions.mOptimizationLevel",
                 scope String[] { "O0", "O1", "O2", "O3", "Og", "Og+" }); // -O0 .. -O3,  -Os, -Ofast, -Og
 			AddPropertiesItem(category, "LTO", "mBeefOptions.mLTOType");

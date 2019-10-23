@@ -50,6 +50,68 @@ if (${APPLE})
 
     ../BeefySysLib/platform/osx
   )
+elseif (${ANDROID})
+  if (ANDROID_ABI STREQUAL "x86")
+    include_directories(
+      .
+      ../BeefySysLib/  
+      ../BeefySysLib/third_party
+      ../BeefySysLib/third_party/freetype/include
+      ../BeefySysLib/third_party/libffi/i686-pc-linux-gnu/include
+      ../  
+      ../extern
+      ../extern/llvm/include  
+      ../extern/llvm_linux/include
+      ../extern/llvm/lib/Target
+
+      ../BeefySysLib/platform/android
+    )
+  elseif (ANDROID_ABI STREQUAL "x86_64")
+    include_directories(
+      .
+      ../BeefySysLib/  
+      ../BeefySysLib/third_party
+      ../BeefySysLib/third_party/freetype/include
+      ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/include
+      ../  
+      ../extern
+      ../extern/llvm/include  
+      ../extern/llvm_linux/include
+      ../extern/llvm/lib/Target
+
+      ../BeefySysLib/platform/android
+    )
+  elseif (ANDROID_ABI STREQUAL "armeabi-v7a")
+    include_directories(
+      .
+      ../BeefySysLib/  
+      ../BeefySysLib/third_party
+      ../BeefySysLib/third_party/freetype/include
+      ../BeefySysLib/third_party/libffi/arm-unknown-linux-gnu/include
+      ../  
+      ../extern
+      ../extern/llvm/include  
+      ../extern/llvm_linux/include
+      ../extern/llvm/lib/Target
+
+      ../BeefySysLib/platform/android
+    )
+  else()    
+    include_directories(
+      .
+      ../BeefySysLib/  
+      ../BeefySysLib/third_party
+      ../BeefySysLib/third_party/freetype/include
+      ../BeefySysLib/third_party/libffi/aarch64-unknown-linux-gnu/include
+      ../  
+      ../extern
+      ../extern/llvm/include  
+      ../extern/llvm_linux/include
+      ../extern/llvm/lib/Target
+
+      ../BeefySysLib/platform/android
+    )
+  endif()
 else()
   include_directories(
     .
@@ -135,6 +197,7 @@ file(GLOB SRC_FILES
     ../BeefySysLib/util/BeefPerf.cpp
     ../BeefySysLib/util/String.cpp
     ../BeefySysLib/util/UTF8.cpp
+    ../BeefySysLib/util/Hash.cpp    
     ../BeefySysLib/third_party/utf8proc/utf8proc.c    
 )
 
@@ -142,6 +205,11 @@ if (${APPLE})
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/darwin/BFPlatform.cpp
         ../BeefySysLib/platform/darwin/DarwinCommon.cpp
+    )
+elseif (${ANDROID})
+  file(GLOB SRC_FILES_OS
+        ../BeefySysLib/platform/android/BFPlatform.cpp
+        ../BeefySysLib/platform/android/AndroidCommon.cpp
     )
 else()
     file(GLOB SRC_FILES_OS
@@ -151,15 +219,19 @@ else()
 endif()
 
 # Add library to build.
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} STATIC
    ${SRC_FILES}
    ${SRC_FILES_OS}
 )
 
 if (${APPLE})
-    set(TARGET_LIBS_OS "")
+  target_link_libraries(${PROJECT_NAME} pthread ffi)
+elseif (${ANDROID})
+  set(TARGET_LIBS_OS "")
+  #target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../BeefySysLib/third_party/libffi/aarch64-unknown-linux-gnu/.libs/libffi.a)
+  #target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../BeefySysLib/third_party/libffi/i686-pc-linux-gnu/.libs/libffi.a)
 else()
-    set(TARGET_LIBS_OS "backtrace")
+  target_link_libraries(${PROJECT_NAME} pthread ffi backtrace)
 endif()
 
 # Link with other dependencies.
@@ -167,6 +239,8 @@ if(MSVC)
   target_link_libraries(${PROJECT_NAME} BeefySysLib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib LLVMX86Disassembler.lib LLVMMCDisassembler.lib LLVMSupport.lib LLVMX86Info.lib LLVMX86Utils.lib LLVMX86AsmPrinter.lib LLVMX86Desc.lib %(AdditionalDependencies) LLVMMC.lib LLVMObject.lib LLVMCore.lib LLVMBitReader.lib LLVMAsmParser.lib LLVMMCParser.lib LLVMCodeGen.lib LLVMTarget.lib LLVMX86CodeGen.lib LLVMScalarOpts.lib LLVMInstCombine.lib LLVMSelectionDAG.lib LLVMProfileData.lib LLVMTransformUtils.lib LLVMAnalysis.lib LLVMX86AsmParser.lib LLVMAsmPrinter.lib LLVMBitWriter.lib LLVMVectorize.lib LLVMipo.lib LLVMInstrumentation.lib LLVMDebugInfoDWARF.lib LLVMDebugInfoPDB.lib LLVMDebugInfoCodeView.lib LLVMGlobalISel.lib LLVMBinaryFormat.lib libcurl_a.lib)
 else()
   set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux/lib")
-  target_link_libraries(${PROJECT_NAME} BeefySysLib pthread dl ffi ${TARGET_LIBS_OS}
+  target_link_libraries(${PROJECT_NAME} dl
   )
 endif()
+
+#pthread ffi

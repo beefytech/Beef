@@ -33,7 +33,7 @@ BF_IMPORT void BF_CALLTYPE IDEHelper_ProgramStart();
 BF_IMPORT void BF_CALLTYPE IDEHelper_ProgramDone();
 
 int main(int argc, char* argv[])
-{		
+{	
 #ifdef TEST_CRASH
 	CrashCatcher catcher;
 	catcher.SetCrashReportKind(BfpCrashReportKind_GUI);

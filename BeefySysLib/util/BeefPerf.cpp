@@ -21,15 +21,13 @@ typedef fd_set FD_SET;
 #include <sys/socket.h>
 #include <mach/error.h>
 #include <mach/mach.h>
-#include <cerrno>
-//#define errno (*__error())
 #endif
 
-//#include <rpcdce.h>
+#ifdef BF_PLATFORM_POSIX
+#include <cerrno>
+#endif
 
 #pragma comment(lib,"wsock32.lib")
-
-//#include "Hash.h"
 
 #pragma warning(disable:4996)
 

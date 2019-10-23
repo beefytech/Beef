@@ -94,13 +94,15 @@ public:
 		int32 mForceRebuildIdx;
 		BfCompileOnDemandKind mCompileOnDemandKind;		
 		String mTargetTriple;
+		BfPlatformType mPlatformType;
 		BfMachineType mMachineType;
+		int mCLongSize;
 		BfToolsetType mToolsetType;
 		BfSIMDSetting mSIMDSetting;				
 		int mMaxWorkerThreads;
 		String mMallocLinkName;
 		String mFreeLinkName;
-		bool mIncrementalBuild;
+		bool mIncrementalBuild;		
 
 		bool mEmitDebugInfo;
 		bool mEmitLineInfo;
@@ -140,7 +142,9 @@ public:
 			mHotCompileIdx = 0;
 			mForceRebuildIdx = 0;
 			mCompileOnDemandKind = BfCompileOnDemandKind_AlwaysInclude;
+			mPlatformType = BfPlatformType_Unknown;
 			mMachineType = BfMachineType_x86;
+			mCLongSize = 4;
 			mToolsetType = BfToolsetType_Microsoft;
 			mSIMDSetting = BfSIMDSetting_None;
 			mHotProject = NULL;

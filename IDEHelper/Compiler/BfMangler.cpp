@@ -56,13 +56,10 @@ BfTypeCode BfGNUMangler::GetPrimTypeAt(MangleContext& mangleContext, StringImpl&
 	case 't': return BfTypeCode_UInt16;
 	case 'i': return BfTypeCode_Int32;
 	case 'j': return BfTypeCode_UInt32;
-#if __SIZEOF_LONG__ == 8
     case 'l': return BfTypeCode_Int64;
     case 'm': return BfTypeCode_UInt64;
-#else
     case 'x': return BfTypeCode_Int64;
     case 'y': return BfTypeCode_UInt64;
-#endif
 	case 'u': 
 		if (name[strIdx + 1] == '3')
 			return BfTypeCode_IntPtr;
@@ -234,9 +231,9 @@ void BfGNUMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl&
 		else
 			name += "4";		
 		if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
-			name += "@M";
+			name += "`M";
 		else
-			name += "@T";		
+			name += "`T";		
 		itoa(genericParamType->mGenericParamIdx, str, 10);
 		name += str;
 	}
@@ -274,7 +271,7 @@ void BfGNUMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl&
 }
 
 void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name, BfTypeInstance* typeInst, BfTypeInstance* postfixTypeInstance, bool* isEndOpen)
-{	
+{		
 	static int sCallCount = 0;
 	sCallCount++;
 	
@@ -289,7 +286,7 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 			BfFieldDef* fieldDef = fieldInstance->GetFieldDef();
 			String fieldName = fieldDef->mName;
 			if ((fieldName[0] < '0') || (fieldName[0] > '9'))
-				name += StrFormat("U%d@%s", fieldName.length() + 1, fieldName.c_str());
+				name += StrFormat("U%d`%s", fieldName.length() + 1, fieldName.c_str());
 			Mangle(mangleContext, name, fieldInstance->mResolvedType, postfixTypeInstance);
 		}
 		name += "E";
@@ -444,25 +441,25 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			name += "i"; return;
 		case BfTypeCode_UInt32:
 			name += "j"; return;
-#if __SIZEOF_LONG__ == 8
         case BfTypeCode_Int64:
-            name += "l"; return;
+			if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+				name += "l";
+			else
+				name += "x";
+			return;
         case BfTypeCode_UInt64:
-            name += "m"; return;
-#else
-        case BfTypeCode_Int64:
-            name += "x"; return;
-        case BfTypeCode_UInt64:
-            name += "y"; return;
-#endif
+			if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+				name += "m";
+			else
+				name += "y";
+			return;
 		case BfTypeCode_UIntPtr:
 			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
 			{
-#if __SIZEOF_LONG__ == 8
-                name += (primType->mSize == 8) ? "m" : "j";
-#else
-                name += (primType->mSize == 8) ? "y" : "j";
-#endif
+				if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+					name += (primType->mSize == 8) ? "m" : "j";
+				else
+					name += (primType->mSize == 8) ? "y" : "j";
 				return;
 			}
 			name += "u4uint";
@@ -470,11 +467,10 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		case BfTypeCode_IntPtr:
 			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
 			{
-#if __SIZEOF_LONG__ == 8
-                name += (primType->mSize == 8) ? "l" : "i";
-#else
-                name += (primType->mSize == 8) ? "x" : "i";
-#endif
+				if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+					name += (primType->mSize == 8) ? "l" : "i";
+				else
+					name += (primType->mSize == 8) ? "x" : "i";
 				return;
 			}
 			name += "u3int";
@@ -635,7 +631,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			}
 
 			name += strP;
-			name += '@';
+			name += '`';
 		}		
 	}
 	else
@@ -834,7 +830,7 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	{
 		if (methodInst->mMangleWithIdx)
 		{
-			methodName += StrFormat("@%d", methodInst->mMethodDef->mIdx);
+			methodName += StrFormat("`%d", methodInst->mMethodDef->mIdx);
 			mangledMethodIdx = true;
 		}
 
@@ -842,9 +838,9 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	}
 
 	if (methodDef->mCheckedKind == BfCheckedKind_Checked)
-		name += "@CHK";
+		name += "`CHK";
 	else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
-		name += "@UCHK";
+		name += "`UCHK";
 
 	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (!methodInst->mIsForeignMethodDef))
 	{
@@ -877,14 +873,14 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 
 	if ((methodInst->mMangleWithIdx) && (!mangledMethodIdx))
 	{
-		methodName += StrFormat("@%d", methodInst->mMethodDef->mIdx);
+		methodName += StrFormat("`%d", methodInst->mMethodDef->mIdx);
 	}
 
 	//
 
 	if ((prefixLen) && (methodInst->mMethodInstanceGroup->mOwner->mTypeDef->IsGlobalsContainer()) && (methodInst->mMethodDef->mMethodDeclaration == NULL))
 	{
-		methodName += '@';
+		methodName += '`';
 		methodName += methodInst->mMethodInstanceGroup->mOwner->mTypeDef->mProject->mName;
 	}
 

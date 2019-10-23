@@ -20,7 +20,7 @@ TargetName = "$(ProjectName)_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib Rpcrt4.lib Ole32.lib"
 CLibType = "Dynamic"
 BeefLibType = "DynamicDebug"
-DebugCommandArguments = "--version"
+DebugCommandArguments = "-platform=x86_64-none-linux-android21 -workspace=C:/proj/Android/BeefTest/app/src/main/cpp/../beef/\""
 DebugWorkingDirectory = "c:\\beef\\ide\\mintest"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 PreprocessorMacros = ["DEBUG", "CLI"]
@@ -34,15 +34,6 @@ DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
 DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
 PreprocessorMacros = ["DEBUG", "CLI"]
 
-[Configs.Release.macOS]
-TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
-OtherLinkFlags = "./libBeefRT.dylib ./libIDEHelper.dylib ./libBeefySysLib.dylib ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMCore.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMC.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMCParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMCodeGen.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Disassembler.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMCDisassembler.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMSupport.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Info.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Utils.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86AsmPrinter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Desc.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMObject.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBitReader.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAsmParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMTarget.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86CodeGen.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMScalarOpts.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMInstCombine.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMSelectionDAG.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMProfileData.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMTransformUtils.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAnalysis.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86AsmParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAsmPrinter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBitWriter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMVectorize.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMipo.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMInstrumentation.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoDWARF.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoPDB.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoCodeView.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMGlobalISel.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBinaryFormat.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDemangle.a -Wl,-rpath -Wl,."
-CLibType = "Dynamic"
-DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
-DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
-PreprocessorMacros = ["CLI"]
-
-
 [Configs.Debug.Linux64]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "$(ProjectName)_d"
@@ -51,6 +42,14 @@ CLibType = "Dynamic"
 DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
 DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
 PreprocessorMacros = ["DEBUG", "CLI"]
+
+[Configs.Release.macOS]
+TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
+OtherLinkFlags = "./libBeefRT.dylib ./libIDEHelper.dylib ./libBeefySysLib.dylib ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMCore.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMC.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMCParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMCodeGen.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Disassembler.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMCDisassembler.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMSupport.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Info.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Utils.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86AsmPrinter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Desc.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMObject.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBitReader.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAsmParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMTarget.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86CodeGen.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMScalarOpts.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMInstCombine.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMSelectionDAG.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMProfileData.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMTransformUtils.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAnalysis.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86AsmParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAsmPrinter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBitWriter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMVectorize.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMipo.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMInstrumentation.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoDWARF.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoPDB.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoCodeView.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMGlobalISel.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBinaryFormat.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDemangle.a -Wl,-rpath -Wl,."
+CLibType = "Dynamic"
+DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
+DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
+PreprocessorMacros = ["CLI"]
 
 [Configs.Release.Linux64]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"

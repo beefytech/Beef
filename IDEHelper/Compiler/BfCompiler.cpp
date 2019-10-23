@@ -1582,7 +1582,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		BfIRFunctionType mainFuncType;
 		BfIRFunction mainFunc;
 		if ((project->mTargetType == BfTargetType_BeefConsoleApplication) || (project->mTargetType == BfTargetType_BeefTest))
-		{			
+		{
 			SmallVector<BfIRType, 2> paramTypes;
 			paramTypes.push_back(int32Type);
 			paramTypes.push_back(nullPtrType);
@@ -1598,7 +1598,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			paramTypes.push_back(nullPtrType); // lpvReserved			
 			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
 			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "DllMain");
-			if (mSystem->mPtrSize == 4)
+			if (mOptions.mMachineType == BfMachineType_x86)
 				bfModule->mBfIRBuilder->SetFuncCallingConv(mainFunc, BfIRCallingConv_StdCall);
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}
@@ -1611,7 +1611,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			paramTypes.push_back(int32Type); // nCmdShow
 			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
 			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "WinMain");
-			if (mSystem->mPtrSize == 4)
+			if (mOptions.mMachineType == BfMachineType_x86)
 				bfModule->mBfIRBuilder->SetFuncCallingConv(mainFunc, BfIRCallingConv_StdCall);			
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}		
@@ -1620,7 +1620,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			SmallVector<BfIRType, 2> paramTypes;
 			paramTypes.push_back(int32Type);
 			paramTypes.push_back(nullPtrType);
-			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(voidType, paramTypes, false);
+			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
 			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "BeefMain");
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}
@@ -1711,7 +1711,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		}
 
 		BfIRValue retValue;
-		if ((project->mTargetType == BfTargetType_BeefConsoleApplication) || (project->mTargetType == BfTargetType_BeefWindowsApplication))
+		if ((project->mTargetType == BfTargetType_BeefConsoleApplication) || (project->mTargetType == BfTargetType_BeefWindowsApplication) ||
+			(project->mTargetType == BfTargetType_BeefApplication_StaticLib) || (project->mTargetType == BfTargetType_BeefApplication_DynamicLib))
 		{
 			bool hadRet = false;
 
@@ -1785,7 +1786,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 							}
 							BfIRFunctionType thunkFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
 							
-							BfIRFunction thunkMainFunc = bfModule->mBfIRBuilder->CreateFunction(thunkFuncType, BfIRLinkageType_External, "BeefMain");
+							BfIRFunction thunkMainFunc = bfModule->mBfIRBuilder->CreateFunction(thunkFuncType, BfIRLinkageType_External, "BeefStartProgram");
 							bfModule->SetupIRMethod(NULL, thunkMainFunc, false);
 							bfModule->mBfIRBuilder->SetActiveFunction(thunkMainFunc);
 
@@ -5879,7 +5880,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 			if ((bfProject->mTargetType != BfTargetType_BeefConsoleApplication) && (bfProject->mTargetType != BfTargetType_BeefWindowsApplication) &&
 				(bfProject->mTargetType != BfTargetType_BeefDynLib) &&
 				(bfProject->mTargetType != BfTargetType_C_ConsoleApplication) && (bfProject->mTargetType != BfTargetType_C_WindowsApplication) &&
-				(bfProject->mTargetType != BfTargetType_BeefTest))
+				(bfProject->mTargetType != BfTargetType_BeefTest) &&
+				(bfProject->mTargetType != BfTargetType_BeefApplication_StaticLib) && (bfProject->mTargetType != BfTargetType_BeefApplication_DynamicLib))
 				continue;
 
 			if (bfProject->mTargetType == BfTargetType_BeefTest)
@@ -8122,6 +8124,38 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_HotResolve_Finish(BfCompiler* bfCom
 	return outString.c_str();
 }
 
+static BfPlatformType GetPlatform(StringView str)
+{	
+	while (!str.IsEmpty())
+	{
+		char c = str[str.mLength - 1];
+		if (((c >= '0') && (c <= '9')) || (c == '.'))
+			str.RemoveFromEnd(1);
+		else
+			break;
+	}
+
+	bool hasLinux = false;
+
+	for (auto elem : str.Split('-'))
+	{
+		if (elem == "linux")
+			hasLinux = true;
+		else if (elem == "windows")
+			return BfPlatformType_Windows;
+		else if (elem == "macosx")
+			return BfPlatformType_macOS;
+		else if (elem == "ios")
+			return BfPlatformType_iOS;
+		else if ((elem == "android") || (elem == "androideabi"))
+			return BfPlatformType_Android;
+	}
+
+	if (hasLinux)
+		return BfPlatformType_Linux;
+	return BfPlatformType_Unknown;
+}
+
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProject* hotProject, int hotIdx,
 	const char* targetTriple, int toolsetType, int simdSetting, int allocStackCount, int maxWorkerThreads,
 	BfCompilerOptionFlags optionFlags, char* mallocLinkName, char* freeLinkName)
@@ -8141,9 +8175,22 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 		options->mMachineType = BfMachineType_x64;
 	else if (options->mTargetTriple.StartsWith("i686-"))
 		options->mMachineType = BfMachineType_x86;
+	else if ((options->mTargetTriple.StartsWith("arm64")) || (options->mTargetTriple.StartsWith("aarch64")))
+		options->mMachineType = BfMachineType_AArch64;
+	else if (options->mTargetTriple.StartsWith("armv"))
+		options->mMachineType = BfMachineType_ARM;
 	else
 		options->mMachineType = BfMachineType_x64; // Default
 
+	options->mPlatformType = GetPlatform(options->mTargetTriple);
+
+	options->mCLongSize = 4;
+	if ((options->mMachineType == BfMachineType_AArch64) || (options->mMachineType == BfMachineType_x64))
+	{
+		if ((options->mPlatformType == BfPlatformType_macOS) || (options->mPlatformType == BfPlatformType_iOS) || (options->mPlatformType == BfPlatformType_Android))
+			options->mCLongSize = 8;
+	}	
+	
 	bfCompiler->mCodeGen.SetMaxThreads(maxWorkerThreads);
 
 	if (!bfCompiler->mIsResolveOnly)
@@ -8169,15 +8216,15 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 		options->mOmitDebugHelpers = (optionFlags & BfCompilerOptionFlag_OmitDebugHelpers) != 0;
 
 #ifdef _WINDOWS
-		if (options->mToolsetType == BfToolsetType_GNU)
-		{
-			options->mErrorString = "Toolset 'GNU' is not available on this platform. Consider changing 'Workspace/General/Toolset'.";
-		}
+// 		if (options->mToolsetType == BfToolsetType_GNU)
+// 		{
+// 			options->mErrorString = "Toolset 'GNU' is not available on this platform. Consider changing 'Workspace/General/Toolset'.";
+// 		}
 #else
-		if (options->mToolsetType == BfToolsetType_Microsoft)
-		{
-			options->mErrorString = "Toolset 'Microsoft' is not available on this platform. Consider changing 'Workspace/General/Toolset'.";
-		}
+// 		if (options->mToolsetType == BfToolsetType_Microsoft)
+// 		{
+// 			options->mErrorString = "Toolset 'Microsoft' is not available on this platform. Consider changing 'Workspace/General/Toolset'.";
+// 		}
 		BF_ASSERT(!options->mEnableRealtimeLeakCheck);		
 #endif
 		options->mEmitObjectAccessCheck = (optionFlags & BfCompilerOptionFlag_EmitDebugInfo) != 0;

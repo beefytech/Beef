@@ -2110,7 +2110,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 			String prefix = typeDef->mProject->mName + ".";
 			StringT<128> mangledName;
 			mangledName += prefix;
-			BfMangler::Mangle(mangledName, mModule->mCompiler->GetMangleKind(), typeInstance);
+			BfMangler::Mangle(mangledName, mModule->mCompiler->GetMangleKind(), typeInstance, typeInstance->mModule);
 			BfIRType irStructType = CreateStructType(mangledName);
 			if (type->IsObjectOrInterface())
 			{
@@ -4748,7 +4748,7 @@ BfIRValue BfIRBuilder::DbgLifetimeEnd(BfIRMDNode varInfo)
 }
 
 void BfIRBuilder::DbgCreateGlobalVariable(BfIRMDNode context, const StringImpl& name, const StringImpl& linkageName, BfIRMDNode file, int lineNumber, BfIRMDNode type, bool isLocalToUnit, BfIRValue val, BfIRMDNode decl)
-{		
+{	
 	WriteCmd(BfIRCmd_DbgCreateGlobalVariable, context, name, linkageName, file, lineNumber, type, isLocalToUnit, val, decl);	
 	NEW_CMD_INSERTED;
 }
