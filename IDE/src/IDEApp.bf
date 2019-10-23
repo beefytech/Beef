@@ -9734,7 +9734,7 @@ namespace IDE
 				//mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("_ZN3Hey4Dude3Bro9TestClass4MainEv");
                 if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefConsoleApplication) ||
                     (project.mGeneralOptions.mTargetType == Project.TargetType.BeefWindowsApplication))
-                    mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-BeefMain");
+                    mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-BeefStartProgram");
                 else
 				{
                     mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-main");
@@ -11229,7 +11229,7 @@ namespace IDE
                                 mDebugger.UpdateCallStack();
                                 var stackInfo = scope String();
                                 mDebugger.GetStackFrameInfo(0, out addr, fileName, stackInfo);
-                                if (stackInfo.Contains("Main"))
+                                if (stackInfo.Contains("BeefStartProgram"))
                                 {
 									// Okay, NOW we can do a "step into"
                                     if (!IsInDisassemblyMode())

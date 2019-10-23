@@ -230,6 +230,14 @@ else()
     ${LLVM_LIB}/libLLVMX86AsmParser.a
     ${LLVM_LIB}/libLLVMX86Disassembler.a
 
+    ${LLVM_LIB}/libLLVMARMInfo.a
+    ${LLVM_LIB}/libLLVMARMUtils.a
+    ${LLVM_LIB}/libLLVMARMAsmPrinter.a
+    ${LLVM_LIB}/libLLVMARMDesc.a
+    ${LLVM_LIB}/libLLVMARMCodeGen.a
+    ${LLVM_LIB}/libLLVMARMAsmParser.a
+    ${LLVM_LIB}/libLLVMARMDisassembler.a
+
     ${LLVM_LIB}/libLLVMAArch64Info.a
     ${LLVM_LIB}/libLLVMAArch64Utils.a
     ${LLVM_LIB}/libLLVMAArch64AsmPrinter.a
