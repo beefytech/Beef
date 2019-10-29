@@ -1,3 +1,4 @@
+.DS_Store
 *.lst
 *.vcxproj.user
 */llvm-*
@@ -9,7 +10,6 @@
 **/.vs/*
 BeefSpace_User.toml
 lld-link.exe
-.DS_Store
 stats/
 **/dist/*
 BeefySysLib/third_party/*
