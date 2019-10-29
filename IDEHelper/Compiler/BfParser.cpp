@@ -458,7 +458,7 @@ void BfParser::Init(uint64 cacheHash)
 	mParserData->mAstAllocManager = &gBfParserCache->mAstAllocManager;
 	mParserData->mSrc = mSrc;
 	mParserData->mSrcLength = mSrcLength;
-	
+		
 	if (cacheHash != 0)
 	{
 		BfLogSysM("Creating cached parserData %p for %p %s\n", mParserData, this, mFileName.c_str());

@@ -20478,6 +20478,7 @@ bool BfModule::Finish()
 		codeGenOptions.mSIMDSetting = moduleOptions.mSIMDSetting;
 		codeGenOptions.mWriteLLVMIR = mCompiler->mOptions.mWriteIR;
 		codeGenOptions.mWriteObj = mCompiler->mOptions.mGenerateObj;
+		codeGenOptions.mWriteBitcode = mCompiler->mOptions.mGenerateBitcode;
 		codeGenOptions.mVirtualMethodOfs = 1 + mCompiler->GetDynCastVDataCount() + mCompiler->mMaxInterfaceSlots;
 		codeGenOptions.mDynSlotOfs = mSystem->mPtrSize - mCompiler->GetDynCastVDataCount() * 4;
 
@@ -20525,7 +20526,7 @@ bool BfModule::Finish()
 			{
 				moduleFileName.mFileName = irOutputPath;				
 			}
-			else if ((!mCompiler->mOptions.mGenerateObj) && (!mCompiler->mOptions.mWriteIR))
+			else if ((!mCompiler->mOptions.mGenerateObj) && (!mCompiler->mOptions.mGenerateBitcode) && (!mCompiler->mOptions.mWriteIR))
 			{
 				BF_FATAL("Neither obj nor IR specified");
 			}

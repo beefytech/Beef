@@ -158,10 +158,6 @@ namespace IDE.Compiler
 
         public void SetSource(String data, String fileName)
         {
-			if (fileName.Contains("main4.cs"))
-			{
-			}
-
             Debug.Assert(!mIsUsed);
             mIsUsed = true;
             BfParser_SetSource(mNativeBfParser, data, (int32)data.Length, fileName);

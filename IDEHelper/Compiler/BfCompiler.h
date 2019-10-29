@@ -98,8 +98,7 @@ public:
 		BfMachineType mMachineType;
 		int mCLongSize;
 		BfToolsetType mToolsetType;
-		BfSIMDSetting mSIMDSetting;				
-		int mMaxWorkerThreads;
+		BfSIMDSetting mSIMDSetting;		
 		String mMallocLinkName;
 		String mFreeLinkName;
 		bool mIncrementalBuild;		
@@ -127,6 +126,7 @@ public:
 
 		bool mWriteIR;
 		bool mGenerateObj;
+		bool mGenerateBitcode;
 
 		int mAllocStackCount;
 		bool mExtraResolveChecks;
@@ -164,6 +164,7 @@ public:
 			mEnableRealtimeLeakCheck = false;
 			mWriteIR = false;
 			mGenerateObj = true;
+			mGenerateBitcode = false;
 			mEnableCustodian = false;
 			mEnableSideStack = false;
 			mHasVDataExtender = false;

@@ -79,6 +79,9 @@ namespace IDE.Compiler
         [StdCall, CLink]
         extern static void BfSystem_DbgPrintTimings();
 
+		[StdCall, CLink]
+		extern static void BfSystem_Log(void* bfSystem, char8* str);
+
         public void* mNativeBfSystem;
         public bool mIsTiming;
 		public Monitor mMonitor = new Monitor() ~ delete _;
@@ -359,6 +362,11 @@ namespace IDE.Compiler
 		{
 			AddTypeOptions(typeOption.mFilter, typeOption.mBfSIMDSetting, typeOption.mBfOptimizationLevel, typeOption.mEmitDebugInfo, typeOption.mRuntimeChecks,
 				typeOption.mInitLocalVariables, typeOption.mEmitDynamicCastCheck, typeOption.mEmitObjectAccessCheck, typeOption.mAllocStackTraceDepth);
+		}
+
+		public void Log(String str)
+		{
+			BfSystem_Log(mNativeBfSystem, str);
 		}
     }
 }

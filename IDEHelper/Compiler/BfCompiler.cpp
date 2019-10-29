@@ -8207,6 +8207,7 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 		options->mIncrementalBuild = (optionFlags & BfCompilerOptionFlag_IncrementalBuild) != 0;		
 		options->mWriteIR = (optionFlags & BfCompilerOptionFlag_WriteIR) != 0;
 		options->mGenerateObj = (optionFlags & BfCompilerOptionFlag_GenerateOBJ) != 0;
+		options->mGenerateBitcode = (optionFlags & BfCompilerOptionFlag_GenerateBitcode) != 0;
 		options->mNoFramePointerElim = (optionFlags & BfCompilerOptionFlag_NoFramePointerElim) != 0;
 		options->mInitLocalVariables = (optionFlags & BfCompilerOptionFlag_ClearLocalVars) != 0;
 		options->mRuntimeChecks = (optionFlags & BfCompilerOptionFlag_RuntimeChecks) != 0;
@@ -8278,4 +8279,5 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_ForceRebuild(BfCompiler* bfCompiler)
 {
 	bfCompiler->mOptions.mForceRebuildIdx++;
 }
+
 

@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -17,7 +18,9 @@ namespace IDE
         {
             Object,
             IRCode,
-            ObjectAndIRCode
+            ObjectAndIRCode,
+			Bitcode,
+			BitcodeAndIRCode,
         }
 
 		public enum PlatformType
@@ -748,7 +751,7 @@ namespace IDE
 			options.mIncrementalBuild = !isRelease;
 
             options.mAllocStackTraceDepth = 1;
-			options.mIntermediateType = .Object;
+			options.mIntermediateType = (platformType == .iOS) ? .Bitcode : .Object;
 			options.mCSIMDSetting = .SSE2;
 			options.mCOptimizationLevel = isRelease ? .O2 : .O0;
 

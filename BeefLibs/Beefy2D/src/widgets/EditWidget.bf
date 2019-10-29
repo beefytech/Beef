@@ -1148,7 +1148,7 @@ namespace Beefy.widgets
 					doCheck = false;
 					for (char32 c in theString.DecodedChars)
 					{
-						if (c <= (char32)128)
+						if (c < (char32)128)
 							hasChar[(int)c] = true;
 						else if (!AllowChar(c))
 						{

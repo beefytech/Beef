@@ -2435,7 +2435,8 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Create(const char* path, BfpFileResult
 	UTF16String wPath = UTF8Decode(path);
 	if (!::CreateDirectoryW(wPath.c_str(), NULL))
 	{
-		switch (::GetLastError())
+		int lastError = ::GetLastError();
+		switch (lastError)
 		{
 		case ERROR_ALREADY_EXISTS:
 			OUTRESULT(BfpFileResult_AlreadyExists);

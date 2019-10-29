@@ -21,7 +21,7 @@ namespace IDE.Compiler
 			EmitLineInfo = 2,
 			WriteIR = 4,
 			GenerateOBJ = 8,
-			NoFramePointerElim = 0x10,
+			GenerateBitcode = 0x10,
 			ClearLocalVars = 0x20,
 			RuntimeChecks = 0x40,
 			EmitDynamicCastCheck = 0x80,
@@ -32,7 +32,9 @@ namespace IDE.Compiler
 			EnableSideStack = 0x1000,
 			EnableHotSwapping = 0x2000,
 			IncrementalBuild = 0x4000,
-			DebugAlloc = 0x8000
+			DebugAlloc = 0x8000,
+			OmitDebugHelpers = 0x10000,
+			NoFramePointerElim = 0x20000,
 		}
 
         [StdCall, CLink]
@@ -491,8 +493,10 @@ namespace IDE.Compiler
 			}	
 			else
 			{
-				SetOpt((options.mIntermediateType == .IRCode) || (options.mIntermediateType == .ObjectAndIRCode), .WriteIR);
-				SetOpt((options.mIntermediateType == .Object) || (options.mIntermediateType == .ObjectAndIRCode), .GenerateOBJ);
+				SetOpt((options.mIntermediateType == .IRCode) || (options.mIntermediateType == .ObjectAndIRCode) || (options.mIntermediateType == .BitcodeAndIRCode), .WriteIR);
+				SetOpt((options.mIntermediateType == .Object) || (options.mIntermediateType == .ObjectAndIRCode) ||
+					(options.mIntermediateType == .Bitcode) || (options.mIntermediateType == .BitcodeAndIRCode), .GenerateOBJ);
+				SetOpt((options.mIntermediateType == .Bitcode) || (options.mIntermediateType == .BitcodeAndIRCode), .GenerateBitcode);
 			}
 			SetOpt(options.mNoOmitFramePointers, .NoFramePointerElim);
 			SetOpt(options.mInitLocalVariables, .ClearLocalVars);

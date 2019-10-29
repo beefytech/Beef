@@ -3290,7 +3290,7 @@ BF_EXPORT void BF_CALLTYPE BfSystem_DeleteParser(BfSystem* bfSystem, BfParser* b
 	{
 		for (auto typeDef : bfParser->mTypeDefs)
 		{
-			BfLogSys(bfSystem, "BfSystem_DeleteParser deleting typeDef %p\n", typeDef);
+			BfLogSys(bfSystem, "BfSystem_DeleteParser %p deleting typeDef %p\n", bfParser, typeDef);
 			typeDef->mDefState = BfTypeDef::DefState_Deleted;
 		}
 	}
@@ -3814,4 +3814,10 @@ BF_EXPORT void BF_CALLTYPE BfSystem_FixTypes(BfSystem* bfSystem)
 	FixTypesHelper fixTypesHelper;
 	fixTypesHelper.mBfSystem = bfSystem;
 	fixTypesHelper.Fix();
+}
+
+BF_EXPORT void BF_CALLTYPE BfSystem_Log(BfSystem* bfSystem, char* str)
+{
+	BfLogSys(bfSystem, str);
+	BfLogSys(bfSystem, "\n");
 }

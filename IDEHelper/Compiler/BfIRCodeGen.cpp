@@ -3948,7 +3948,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	
 	mHasDebugLoc = false; // So fails don't show a line number
 
-	bool enableLTO = codeGenOptions.mLTOType != BfLTOType_None;
+	bool enableLTO = codeGenOptions.mLTOType != BfLTOType_None;	
 
 	if (enableLTO)
 	{
@@ -4070,8 +4070,8 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 
 	llvm::raw_fd_ostream* outStream = NULL;
 	defer ( delete outStream; );
-
-	if (enableLTO)
+	
+	if ((enableLTO) || (codeGenOptions.mWriteBitcode))
 	{
 		std::error_code ec;
 		outStream = new llvm::raw_fd_ostream(outFileName.c_str(), ec, llvm::sys::fs::F_None);
@@ -4079,10 +4079,12 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 		{
 			return false;
 		}
-
-		//PM.add()
-		PM.add(createWriteThinLTOBitcodePass(*outStream, NULL));
-	}
+		
+		if (enableLTO)
+			PM.add(createWriteThinLTOBitcodePass(*outStream, NULL));
+		else
+			PM.add(createBitcodeWriterPass(*outStream, false, false, false));
+	}	
 
 	//TargetPassConfig *PassConfig = target->createPassConfig(PM);
 	//PM.add(new BfPass());
@@ -4105,7 +4107,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 		//WriteBitcode		
 		bool noVerify = false; // Option
 
-		if (!enableLTO)
+		if ((!enableLTO) && (!codeGenOptions.mWriteBitcode))
 		{
 			// Ask the target to add backend passes as necessary.
 			if (target->addPassesToEmitFile(PM, out, NULL,

@@ -3775,6 +3775,8 @@ namespace IDE
 		[IDECommand]
 		void Compile()
 		{
+			CompilerLog("IDEApp.Compile");
+
 			if (AreTestsRunning())
 				return;
 			if (mHotResolveState != .None)
@@ -6500,6 +6502,16 @@ namespace IDE
             mOutputPanel.Write(outStr);
         }
 
+		public void CompilerLog(String format, params Object[] args)
+		{
+			var str = scope String();
+			str..AppendF(format, params args);
+			if (mBfBuildSystem != null)
+				mBfBuildSystem.Log(str);
+			if (mBfResolveSystem != null)
+				mBfResolveSystem.Log(str);
+		}
+
         public void OutputLine(String format, params Object[] args)
         {
             String outStr;
@@ -8162,6 +8174,8 @@ namespace IDE
 
         BfPassInstance CompileBeef(Project hotProject, int32 hotIdx, bool lastCompileHadMessages, out bool hadBeef)
         {
+			CompilerLog("IDEApp.CompileBeef");
+
 			hadBeef = false;
 			mCompilingBeef = true;
 			BeefCompileStarted();
@@ -11484,6 +11498,8 @@ namespace IDE
 
 		public void OnWatchedFileChanged(ProjectItem projectItem, WatcherChangeTypes changeType, String newPath)
 		{
+			CompilerLog("IDEApp.OnWatchedFileChanged {} {} {}", projectItem.mName, changeType, newPath);
+
 			ProjectListViewItem listViewItem;
 			mProjectPanel.mProjectToListViewMap.TryGetValue(projectItem, out listViewItem);
 
