@@ -248,12 +248,19 @@ elseif (${ANDROID})
   file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/android/BFPlatform.cpp
         ../BeefySysLib/platform/android/AndroidCommon.cpp
-
     )
 else()
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/linux/BFPlatform.cpp
         ../BeefySysLib/platform/linux/LinuxCommon.cpp
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/types.o
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/closures.o
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/ffi64.o
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/unix64.o
+        ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/src/x86/ffiw64.o
     )
 endif()
 

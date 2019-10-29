@@ -484,17 +484,8 @@ namespace IDE
 		}
 
 		public static void GetRtLibNames(Workspace.PlatformType platformType, Workspace.Options workspaceOptions, Project.Options options, bool dynName, String outRt, String outDbg)
-		{
-			if (platformType == .Linux)
-			{
-				if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
-					outRt.Append("libBeefRT_d.so");
-				else
-					outRt.Append("libBeefRT.so");
-				return;
-			}
-
-			if ((platformType == .macOS) || (platformType == .iOS))
+		{			
+			if ((platformType == .Linux) || (platformType == .macOS) || (platformType == .iOS))
 			{
 				if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
 					outRt.Append("libBeefRT_d.a");

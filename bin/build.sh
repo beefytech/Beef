@@ -45,7 +45,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 	LINKOPTS="-Wl,-rpath -Wl,@executable_path"	
 else
 	LIBEXT=so
-	LINKOPTS="-ltinfo -Wl,-rpath -Wl,\$ORIGIN"
+	LINKOPTS="-ldl -lpthread -ltinfo -Wl,-rpath -Wl,\$ORIGIN"
 fi
 
 if [ ! -L libBeefRT_d.a ]; then	
@@ -54,7 +54,7 @@ if [ ! -L libBeefRT_d.a ]; then
 	ln -s ../../jbuild_d/Debug/bin/libIDEHelper_d.$LIBEXT libIDEHelper_d.$LIBEXT
 
 	ln -s ../../jbuild/Release/bin/libBeefRT.a libBeefRT.a
-	ln -s  ../../jbuild/Release/bin/libBeefySysLib.$LIBEXT libBeefySysLib.$LIBEXT
+	ln -s ../../jbuild/Release/bin/libBeefySysLib.$LIBEXT libBeefySysLib.$LIBEXT
 	ln -s ../../jbuild/Release/bin/libIDEHelper.$LIBEXT libIDEHelper.$LIBEXT
 fi
 

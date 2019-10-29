@@ -8522,7 +8522,7 @@ namespace IDE
 										newString.AppendF("./{} -Wl,-rpath -Wl,@executable_path", rtName);
 									case .iOS:
 									case .Linux:
-										newString.AppendF("./{} -Wl,-rpath -Wl,$ORIGIN", rtName);
+										newString.AppendF("./{} -lpthread -ldl -Wl,-rpath -Wl,$ORIGIN", rtName);
 									default:
 									}	
 
