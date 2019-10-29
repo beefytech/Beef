@@ -146,8 +146,7 @@ public:
 	}
 
 	virtual void ThreadStarted()
-	{
-		int threadPriority = BfpThread_GetPriority(mThreadHandle, NULL);
+	{		
 		mRunning = true;
 	}
 

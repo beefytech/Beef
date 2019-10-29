@@ -191,8 +191,8 @@ static int DecodeInt(uint8* buf, int& idx)
 
 static int gCurDataId = 0;
 BfParserData::BfParserData()
-{	
-	mDataId = (int)::InterlockedIncrement((volatile uint32*)&gCurDataId);
+{		
+	mDataId = (int)BfpSystem_InterlockedExchangeAdd32((uint32*)&gCurDataId, 1) + 1;
 
 	mHash = 0;
 	mRefCount = -1;

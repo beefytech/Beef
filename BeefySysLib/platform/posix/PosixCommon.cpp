@@ -1,12 +1,16 @@
 #include "Common.h"
 #include "BFPlatform.h"
 #include <sys/stat.h>
+#ifndef BF_PLATFORM_DARWIN
 #include <sys/sysinfo.h>
+#endif
 #include <sys/wait.h>
 #include <wchar.h>
 #include <fcntl.h>
 #include <time.h>
+#ifdef BFP_HAS_DLINFO
 #include <link.h>
+#endif
 #include <dirent.h>
 #include <syslog.h>
 #include <unistd.h>
@@ -148,9 +152,7 @@ int64 Beefy::GetFileTimeWrite(const StringImpl& path)
     int result = stat(path.c_str(), &statbuf);
     if (result == -1)
         return 0;
-    
-    //int64 fileTime = 0;
-    //BFSystemTimeToFileTime(statbuf.st_mtime, 0, &fileTime);
+        
     return statbuf.st_mtime;
 }
 
@@ -785,7 +787,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 {
     Beefy::Array<Beefy::StringView> stringViews;
 
-    //printf("Executing: %s %s %x\n", inTargetPath, args, flags);
+    //printf("BfpSpawn_Create: %s %s %x\n", inTargetPath, args, flags);    
 
 	if ((workingDir != NULL) && (workingDir[0] != 0))
 	{
@@ -989,12 +991,25 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     else if (pid == 0) // Child
     {
         if ((flags & BfpSpawnFlag_RedirectStdInput) != 0)
+        {
+            close(stdInFD[1]);            
             while ((dup2(stdInFD[0], STDIN_FILENO) == -1) && (errno == EINTR)) {}
-        if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
-            while ((dup2(stdOutFD[1], STDOUT_FILENO) == -1) && (errno == EINTR)) {}
-        if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
-            while ((dup2(stdErrFD[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
+            close(stdInFD[0]);            
+        }
 
+        if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
+        {
+            close(stdOutFD[0]);
+            while ((dup2(stdOutFD[1], STDOUT_FILENO) == -1) && (errno == EINTR)) {}
+            close(stdOutFD[1]);
+        }
+        if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
+        {
+            close(stdErrFD[0]);
+            while ((dup2(stdErrFD[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
+            close(stdErrFD[0]);
+        }
+        
         // If successful then this shouldn't return at all:
         int result;
 
@@ -2280,20 +2295,32 @@ BFP_EXPORT void BFP_CALLTYPE BfpFindFileData_GetFileName(BfpFindFileData* findDa
 
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_LastWrite(BfpFindFileData* findData)
 {
-    GetStat(findData);
+    GetStat(findData);    
+#ifdef BF_PLATFORM_DARWIN    
+    return BfpToTimeStamp(findData->mStat.st_mtimespec);
+#else
     return BfpToTimeStamp(findData->mStat.st_mtim);
+#endif
 }
 
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_Created(BfpFindFileData* findData)
 {
     GetStat(findData);
+#ifdef BF_PLATFORM_DARWIN        
+    return BfpToTimeStamp(findData->mStat.st_ctimespec);
+#else
     return BfpToTimeStamp(findData->mStat.st_ctim);
+#endif
 }
 
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_Access(BfpFindFileData* findData)
 {
     GetStat(findData);
+#ifdef BF_PLATFORM_DARWIN
+    return BfpToTimeStamp(findData->mStat.st_atimespec);
+#else
     return BfpToTimeStamp(findData->mStat.st_atim);
+#endif
 }
 
 BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFindFileData_GetFileAttributes(BfpFindFileData* findData)

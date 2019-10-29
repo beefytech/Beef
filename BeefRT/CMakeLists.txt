@@ -35,7 +35,22 @@ add_definitions(
    -DBFRTMERGED
 )
 
-if (${APPLE})
+if (${IOS})  
+  include_directories(
+    .
+    ../BeefySysLib/  
+    ../BeefySysLib/third_party
+    ../BeefySysLib/third_party/freetype/include
+    ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/include
+    ../  
+    ../extern
+    ../extern/llvm/include  
+    ../extern/llvm_linux/include
+    ../extern/llvm/lib/Target
+
+    ../BeefySysLib/platform/ios
+  )
+elseif (${APPLE})
   include_directories(
     .
     ../BeefySysLib/  
@@ -201,15 +216,39 @@ file(GLOB SRC_FILES
     ../BeefySysLib/third_party/utf8proc/utf8proc.c    
 )
 
-if (${APPLE})
+if (${IOS})
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/darwin/BFPlatform.cpp
         ../BeefySysLib/platform/darwin/DarwinCommon.cpp
+        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/prep_cif.o
+        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/types.o
+        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/raw_api.o
+        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/closures.o
+        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/aarch64/.libs/ffi.o
+        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/aarch64/.libs/sysv.o
+    )
+    # Simulator
+    # src/prep_cif.o src/types.o src/raw_api.o src/java_raw_api.o src/closures.o src/x86/ffi64.o src/x86/unix64.o src/x86/ffiw64.o src/x86/win64.o
+elseif (${APPLE})
+    file(GLOB SRC_FILES_OS
+        ../BeefySysLib/platform/darwin/BFPlatform.cpp
+        ../BeefySysLib/platform/darwin/DarwinCommon.cpp
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/types.o
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/closures.o
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/ffi64.o
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/unix64.o
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/ffiw64.o
+        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/win64.o
     )
 elseif (${ANDROID})
   file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/android/BFPlatform.cpp
         ../BeefySysLib/platform/android/AndroidCommon.cpp
+
     )
 else()
     file(GLOB SRC_FILES_OS

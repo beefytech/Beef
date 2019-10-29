@@ -119,7 +119,8 @@ namespace System
 		public static void Collect(bool async = true) {}
 		private static void MarkAllStaticMembers() {}
 		public static void DebugDumpLeaks() {}
-		public static void Mark(Object obj) {}
+		[SkipCall]
+		public static void Mark(Object obj) {}		
 		public static void Mark(void* ptr, int size) {}
 		public static void SetAutoCollectPeriod(int periodMS) {}
 		public static void SetCollectFreeThreshold(int freeBytes) {}

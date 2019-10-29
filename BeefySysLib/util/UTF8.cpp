@@ -361,28 +361,28 @@ int Beefy::u8_read_escape_sequence(char *str, uint32 *dest)
         do {
             digs[dno++] = str[i++];
         } while (octal_digit(str[i]) && dno < 3);
-        ch = strtol(digs, NULL, 8);
+        ch = (uint32)strtol(digs, NULL, 8);
     }
     else if (str[0] == 'x') {
         while (hex_digit(str[i]) && dno < 2) {
             digs[dno++] = str[i++];
         }
         if (dno > 0)
-            ch = strtol(digs, NULL, 16);
+            ch = (uint32)strtol(digs, NULL, 16);
     }
     else if (str[0] == 'u') {
         while (hex_digit(str[i]) && dno < 4) {
             digs[dno++] = str[i++];
         }
         if (dno > 0)
-            ch = strtol(digs, NULL, 16);
+            ch = (uint32)strtol(digs, NULL, 16);
     }
     else if (str[0] == 'U') {
         while (hex_digit(str[i]) && dno < 8) {
             digs[dno++] = str[i++];
         }
         if (dno > 0)
-            ch = strtol(digs, NULL, 16);
+            ch = (uint32)strtol(digs, NULL, 16);
     }
     *dest = ch;
     

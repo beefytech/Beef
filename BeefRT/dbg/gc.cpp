@@ -2761,9 +2761,9 @@ void GC::Report()
 {
 }
 
-void GC::Mark(Object* obj)
+/*void GC::Mark(Object* obj)
 {
-}
+}*/
 
 void GC::Mark(void* ptr, intptr size)
 {

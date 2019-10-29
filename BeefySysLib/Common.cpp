@@ -867,6 +867,7 @@ uint8* Beefy::LoadBinaryData(const StringImpl& path, int* size)
 
 	uint8* data = new uint8[aSize];
 	int readSize = (int)fread(data, 1, aSize, fP);
+	(void)readSize;
 	fclose(fP);
 	if (size)
 		*size = aSize;
@@ -897,6 +898,7 @@ char* Beefy::LoadTextData(const StringImpl& path, int* size)
 		data[dataLen] = 0;
 		data[dataLen + 1] = 0;
 		int readSize = (int)fread(data + 1, 1, dataLen - 1, fP);
+		(void)readSize;
 		fclose(fP);
 
 		// UTF16
@@ -921,6 +923,7 @@ char* Beefy::LoadTextData(const StringImpl& path, int* size)
 		if (size != NULL)
 			*size = strLen;
 		int readSize = (int)fread(data, 1, strLen, fP);
+		(void)readSize;
 		fclose(fP);		
 		return data;
 	}
@@ -934,6 +937,7 @@ char* Beefy::LoadTextData(const StringImpl& path, int* size)
 	if (strLen > 3)
 	{
 		int readSize = (int)fread(data + 3, 1, strLen - 3, fP);
+		(void)readSize;
 	}
 	fclose(fP);
 	return data;

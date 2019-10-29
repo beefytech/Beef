@@ -23,7 +23,7 @@ if [ ! -d llvm_linux_8_0_0 ]; then
 	cd ..
 fi
 
-if [ ! -d llvm_linux_rel_8_0_0_rel ]; then
+if [ ! -d llvm_linux_rel_8_0_0 ]; then
 	mkdir llvm_linux_rel_8_0_0
 	cd llvm_linux_rel_8_0_0
 	cmake ../llvm-project_8_0_0/llvm -DCMAKE_BUILD_TYPE:String=Release
@@ -31,3 +31,8 @@ if [ ! -d llvm_linux_rel_8_0_0_rel ]; then
 	cd ..
 fi
 	
+if [ ! -d ../IDE/dist/llvm/bin ]; then
+	mkdir ../IDE/dist/llvm
+	mkdir ../IDE/dist/llvm/bin
+fi
+cp llvm_linux_rel_8_0_0/bin/llvm-ar ../IDE/dist/llvm/bin

@@ -4,6 +4,7 @@
 
 #include "../darwin/DarwinCommon.h"
 #include "TargetConditionals.h"
+#include <string>
 
 #ifndef __IPHONEOS__
 #define __IPHONEOS__
@@ -13,6 +14,8 @@
 #define BF_PLATFORM_POSIX
 #define BF_PLATFORM_OPENGL_ES2
 #define BF_PLATFORM_FULLSCREEN
+#define BF_PLATFORM_DARWIN
+#define BF_PLATFORM_NAME "BF_PLATFORM_IOS"
 
 #if !TARGET_IPHONE_SIMULATOR
 #ifdef __LP64__
@@ -43,12 +46,15 @@
 
 #endif
 
+#define BF_IMPORT extern "C"
+
 #ifdef BFSYSLIB_DYNAMIC
-#define BF_EXPORT extern "C" __declspec(dllexport)
+#define BF_EXPORT extern "C"
 #define BF_CALLTYPE
 #else
 #define BF_EXPORT extern "C"
 #define BF_CALLTYPE
+#define BF_RESOURCES_REL_DIR "../Resources"
 #endif
 
 #ifdef BF_PLATFORM_ARM32
@@ -59,3 +65,6 @@
 #define BF_REGISTER_COUNT 15
 #endif
 
+#define BF_DEBUG_BREAK()
+
+#include "../PlatformInterface.h"

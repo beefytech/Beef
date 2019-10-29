@@ -7,3 +7,12 @@
 #define ftruncate64 ftruncate
 
 #include "../posix/PosixCommon.cpp"
+
+char* itoa(int value, char* str, int base)
+{
+    if (base == 16)
+        sprintf(str, "%X", value);
+    else
+        sprintf(str, "%d", value);
+    return str;
+}

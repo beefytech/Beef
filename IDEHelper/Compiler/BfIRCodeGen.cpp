@@ -4029,6 +4029,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	case BfRelocType_ROPI_RWPI:
 		relocModel = llvm::Reloc::Model::ROPI_RWPI;
 		break;
+	default: break;
 	}
 
 	switch (codeGenOptions.mPICLevel)
@@ -4042,6 +4043,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	case BfPICLevel_Big:
 		mLLVMModule->setPICLevel(llvm::PICLevel::Level::BigPIC);
 		break;
+	default: break;
 	}
 
 	std::unique_ptr<llvm::TargetMachine> target(

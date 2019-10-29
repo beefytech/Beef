@@ -1098,7 +1098,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "Program")
+                (mModuleName == "-")
 				//|| (mModuleName == "System_Internal")
 				//|| (mModuleName == "vdata")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")

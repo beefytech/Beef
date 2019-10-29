@@ -123,6 +123,22 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpSystem_GetCPUTickFreq();
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_CreateGUID(BfpGUID* outGuid);
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetComputerName(char* outStr, int* inOutStrSize, BfpSystemResult* outResult);
 
+#ifdef BFP_INTPTR_UNIQUE
+
+#ifdef BF32
+#define BfpSystem_InterlockedExchangePtr(ptr, val) BfpSystem_InterlockedExchange32((uint32*)(ptr), (uint32)(val))
+#define BfpSystem_InterlockedExchangeAddPtr(ptr, val) BfpSystem_InterlockedExchangeAdd32((uint32*)(ptr), (uint32)(val))
+#define BfpSystem_InterlockedCompareExchangePtr(ptr, oldVal, newVal) BfpSystem_InterlockedCompareExchange32((uint32*)(ptr), (uint32)(oldVal), (uint32)(newVal))
+#define BfpSystem_EndianSwapPtr(val) BfpSystem_EndianSwap32((uint32)(val))
+#else
+#define BfpSystem_InterlockedExchangePtr(ptr, val) BfpSystem_InterlockedExchange64((uint64*)(ptr), (uint64)(val))
+#define BfpSystem_InterlockedExchangeAddPtr(ptr, val) BfpSystem_InterlockedExchangeAdd64((uint64*)(ptr), (uint64)(val))
+#define BfpSystem_InterlockedCompareExchangePtr(ptr, oldVal, newVal) BfpSystem_InterlockedCompareExchange64((uint64*)(ptr), (uint64)(oldVal), (uint64)(newVal))
+#define BfpSystem_EndianSwapPtr(val) BfpSystem_EndianSwap64((uint64)(val))
+#endif
+
+#else
+
 #ifdef BF32
 #define BfpSystem_InterlockedExchangePtr BfpSystem_InterlockedExchange32
 #define BfpSystem_InterlockedExchangeAddPtr BfpSystem_InterlockedExchangeAdd32
@@ -133,6 +149,8 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetComputerName(char* outStr, int* inOutS
 #define BfpSystem_InterlockedExchangeAddPtr BfpSystem_InterlockedExchangeAdd64
 #define BfpSystem_InterlockedCompareExchangePtr BfpSystem_InterlockedCompareExchange64
 #define BfpSystem_EndianSwapPtr BfpSystem_EndianSwap64
+#endif
+
 #endif
 
 enum BfpProcessResult

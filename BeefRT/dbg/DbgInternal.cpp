@@ -297,7 +297,8 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::Reflection::TypeInstan
 // 	int dataOffset = (int)(sizeof(intptr) * 2);
 // 	memset(allocBytes + dataOffset, 0, size - dataOffset);
 	result = (bf::System::Object*)allocBytes;
-	auto classVData = typeInst->mTypeClassVData;	
+	auto classVData = typeInst->mTypeClassVData;
+	(void)classVData;	
 
 #ifndef BFRT_NODBGFLAGS
 	intptr dbgAllocInfo = (intptr)BF_RETURN_ADDRESS;

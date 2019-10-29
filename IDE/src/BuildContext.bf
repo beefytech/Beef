@@ -204,6 +204,8 @@ namespace IDE
 				arPath.Clear();
 				arPath.Append(gApp.mInstallDir);
 				arPath.Append(@"llvm\bin\llvm-ar.exe");
+#elif BF_PLATFORM_MACOS
+				arPath.Append("llvm/bin/llvm-ar");
 #else
 				arPath.Append("/usr/bin/ar");
 #endif
@@ -495,9 +497,9 @@ namespace IDE
 			if ((platformType == .macOS) || (platformType == .iOS))
 			{
 				if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
-					outRt.Append("libBeefRT_d.dylib");
+					outRt.Append("libBeefRT_d.a");
 				else
-					outRt.Append("libBeefRT.dylib");
+					outRt.Append("libBeefRT.a");
 				return;
 			}
 

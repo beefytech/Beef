@@ -8519,7 +8519,7 @@ namespace IDE
 										default:
 										}
 									case .macOS:
-										newString.AppendF("./{} -Wl,-rpath -Wl,.", rtName);
+										newString.AppendF("./{} -Wl,-rpath -Wl,@executable_path", rtName);
 									case .iOS:
 									case .Linux:
 										newString.AppendF("./{} -Wl,-rpath -Wl,$ORIGIN", rtName);
