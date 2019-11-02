@@ -142,6 +142,7 @@ public:
 
 	BfType* mSelfType; // Only when matching interfaces when 'Self' needs to refer back to the implementing type
 	BfMethodDef* mBackupMethodDef;
+	int mBackupArgMatchCount;
 	BfMethodDef* mBestMethodDef;
 	BfTypeInstance* mBestMethodTypeInstance;		
 	BfModuleMethodInstance mBestMethodInstance;
@@ -152,7 +153,7 @@ public:
 	Array<BfAmbiguousEntry> mAmbiguousEntries;
 
 public:
-	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType);
+	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute);
 	bool InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue);
 	void CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute, 

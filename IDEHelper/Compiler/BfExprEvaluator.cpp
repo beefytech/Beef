@@ -833,7 +833,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	RETURN_RESULTS;
 }
 
-BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType)
+BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute)
 {
 	BfTypedValue argTypedValue = resolvedArg.mTypedValue;
 	if ((resolvedArg.mArgFlags & BfArgFlag_DelegateBindAttempt) != 0)
@@ -909,9 +909,8 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 			if ((resolvedArg.mExpectedType != checkType) || (resolvedArg.mExpectedType == NULL)) // Did our last check match for this type?
 			{
 				SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
-				SetAndRestoreValue<bool> prevIgnoreError(mModule->mIgnoreErrors, true);
-				//SetAndRestoreValue<bool> prevNoBind(mModule->mCurMethodState->mNoBind, true);
-
+				SetAndRestoreValue<bool> prevIgnoreError(mModule->mIgnoreErrors, true);				
+				
 				bool prevNoBind = false;
 				if (mModule->mCurMethodState != NULL)
 				{
@@ -921,12 +920,28 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 
 				auto prevBlock = mModule->mBfIRBuilder->GetInsertBlock();
 
-				BfExprEvaluator exprEvaluator(mModule);		
-				exprEvaluator.mExpectingType = checkType;				
-				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowIntUnknown);
+				
+				BfExprEvaluator exprEvaluator(mModule);									
+				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowIntUnknown | BfEvalExprFlags_NoAutoComplete);
 				if ((resolvedArg.mArgFlags & BfArgFlag_ParamsExpr) != 0)
 					exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowParamsExpr);
-				exprEvaluator.Evaluate(resolvedArg.mExpression);
+
+				auto expectType = checkType;
+				if (expectType != NULL)
+				{
+					if (expectType->IsRef())
+					{
+						auto refType = (BfRefType*)expectType;
+						expectType = refType->mElementType;
+					}
+
+					if (genericArgumentsSubstitute != NULL)
+						expectType = mModule->ResolveGenericType(expectType, *genericArgumentsSubstitute, true);
+				}
+				
+				exprEvaluator.mExpectingType = expectType;
+
+				exprEvaluator.Evaluate(resolvedArg.mExpression);				
 				argTypedValue = exprEvaluator.GetResult();
 				
 				if (mModule->mCurMethodState != NULL)
@@ -1046,6 +1061,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 
 	BfTypeVector* genericArgumentsSubstitute = NULL;
 	int argIdx = 0;
+	int argMatchCount = 0;
 	
 	bool needInferGenericParams = (checkMethod->mGenericParams.size() != 0) && (!mHadExplicitGenericArguments);
 	int paramIdx = 0;
@@ -1140,7 +1156,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 
 			if (wantType->IsUnspecializedType())
 			{
-				BfTypedValue argTypedValue = ResolveArgTypedValue(mArguments[argIdx], checkType);				
+				BfTypedValue argTypedValue = ResolveArgTypedValue(mArguments[argIdx], checkType, genericArgumentsSubstitute);
 				if (!argTypedValue.IsUntypedValue())
 				{
 					auto type = argTypedValue.mType;
@@ -1209,7 +1225,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 			if (paramIdx >= (int) mArguments.size())
 				break; // No params			
 
-			BfTypedValue argTypedValue = ResolveArgTypedValue(mArguments[argIdx], NULL);
+			BfTypedValue argTypedValue = ResolveArgTypedValue(mArguments[argIdx], NULL, genericArgumentsSubstitute);
 			if (!argTypedValue)
 				goto NoMatch;
 
@@ -1224,7 +1240,8 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 				if ((argTypedValue.IsUntypedValue()) || (mModule->CanImplicitlyCast(argTypedValue, paramsArrayType)))
 				{
 					argIdx++;
-					paramIdx++;
+					argMatchCount++;
+					paramIdx++;					
 					break;
 				}
 
@@ -1238,12 +1255,13 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 
 				while (argIdx < (int)mArguments.size())
 				{
-					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], paramsElementType);
+					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], paramsElementType, genericArgumentsSubstitute);
 					if (!argTypedValue.HasType())
 						goto NoMatch;
 					if (!mModule->CanImplicitlyCast(argTypedValue, paramsElementType))
 						goto NoMatch;
 					argIdx++;
+					argMatchCount++;
 				}
 			}			
 			else
@@ -1283,7 +1301,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 			// We had a 'params' expression but this method didn't have a params slot in this parameter
 			goto NoMatch;
 		}
-		BfTypedValue argTypedValue = ResolveArgTypedValue(mArguments[argIdx], wantType);
+		BfTypedValue argTypedValue = ResolveArgTypedValue(mArguments[argIdx], wantType, genericArgumentsSubstitute);
 
 		if (!argTypedValue.IsUntypedValue())
 		{
@@ -1297,6 +1315,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 		
 		paramIdx++;
 		argIdx++;
+		argMatchCount++;
 
 		if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo))
 		{
@@ -1430,21 +1449,30 @@ NoMatch:
 			if ((prevParamDiff >= 0) && ((paramDiff < 0) || (prevParamDiff < paramDiff)))
 				return false;
 			
-			// We search from the most specific type, so don't prefer a less specific type
-			if ((paramDiff == prevParamDiff) && (mBestMethodTypeInstance != typeInstance))
-				return false;
+			if (paramDiff == prevParamDiff)
+			{
+				if (argMatchCount < mBackupArgMatchCount)
+					return false;
+				else if (argMatchCount == mBackupArgMatchCount)
+				{
+					// We search from the most specific type, so don't prefer a less specific type
+					if (mBestMethodTypeInstance != typeInstance)
+						return false;
+				}
+			}			
 		}
 
 		if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo))
 		{
 			auto methodMatchInfo = autoComplete->mMethodMatchInfo;
 			if ((methodMatchInfo->mPrevBestIdx == -1) && (!methodMatchInfo->mHadExactMatch))
-			{				
-				methodMatchInfo->mBestIdx = (int)methodMatchInfo->mInstanceList.size() - 1;
+			{
+				methodMatchInfo->mBestIdx = (int)methodMatchInfo->mInstanceList.size() - 1;				
 			}
 		}
 
 		mBackupMethodDef = checkMethod;
+		mBackupArgMatchCount = argMatchCount;
 		// Lie temporarily to store at least one candidate (but mBestMethodDef is still NULL)
 		hadMatch = true;
 	}
@@ -1949,6 +1977,8 @@ BfExprEvaluator::~BfExprEvaluator()
 BfAutoComplete* BfExprEvaluator::GetAutoComplete()
 {
 	if (mModule->mCompiler->mResolvePassData == NULL)
+		return NULL;
+	if ((mBfEvalExprFlags & BfEvalExprFlags_NoAutoComplete) != 0)
 		return NULL;
 
 	// For local methods- only process autocomplete on capture phase
@@ -7826,9 +7856,17 @@ void BfExprEvaluator::Visit(BfDefaultExpression* defaultExpr)
 		type = mModule->ResolveTypeRef(defaultExpr->mTypeRef);
 	if (type == NULL)
 		return;	
+
+	BfDefaultValueKind defaultKind = BfDefaultValueKind_Const;
+	if (type->IsRef())
+	{
+		mModule->Fail(StrFormat("There is no default value for type '%s'", mModule->TypeToString(type).c_str()), defaultExpr);
+		defaultKind = BfDefaultValueKind_Addr;
+	}
+
 	mModule->ValidateAllocation(type, defaultExpr->mTypeRef);
 	mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
-	mResult = mModule->GetDefaultTypedValue(type);
+	mResult = mModule->GetDefaultTypedValue(type, true, defaultKind);
 }
 
 void BfExprEvaluator::Visit(BfUninitializedExpression* uninitialziedExpr)

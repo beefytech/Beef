@@ -140,8 +140,8 @@ public:
 		BfMethodInstance* mCurMethodInstance;
 		Array<MethodMatchEntry> mInstanceList;
 		int mInvocationSrcIdx;
-		int mBestIdx;
-		int mPrevBestIdx;
+		int mBestIdx;		
+		int mPrevBestIdx;		
 		bool mHadExactMatch;
 		int mMostParamsMatched;		
 		Array<int> mSrcPositions; // start, commas, end
@@ -152,8 +152,8 @@ public:
 			mInvocationSrcIdx = -1;
 			mCurTypeInstance = NULL;
 			mCurMethodInstance = NULL;
-			mBestIdx = 0;
-			mPrevBestIdx = -1;
+			mBestIdx = 0;			
+			mPrevBestIdx = -1;			
 			mHadExactMatch = false;
 			mMostParamsMatched = 0;			
 		}

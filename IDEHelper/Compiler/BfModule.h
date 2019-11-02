@@ -64,7 +64,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_AllowRefExpr = 0x800,
 	BfEvalExprFlags_AllowOutExpr = 0x1000,
 	BfEvalExprFlags_FieldInitializer = 0x2000,
-	BfEvalExprFlags_VariableDeclaration = 0x4000
+	BfEvalExprFlags_VariableDeclaration = 0x4000,
+	BfEvalExprFlags_NoAutoComplete = 0x8000
 };
 
 enum BfCastFlags
@@ -1339,8 +1340,7 @@ public:
 	bool mIsModuleMutable; // Set to false after writing module to disk, can be set back to true after doing extension module	
 	bool mWroteToLib;
 	bool mHadBuildError;
-	bool mHadBuildWarning;
-	bool mHadVarUsage;
+	bool mHadBuildWarning;	
 	bool mIgnoreErrors;
 	bool mIgnoreWarnings;	
 	bool mSetIllegalSrcPosition;
@@ -1362,8 +1362,7 @@ public:
 	bool CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate);
 	void GetAccessAllowed(BfTypeInstance* checkType, bool& allowProtected, bool& allowPrivate);
 	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProtection memberProtection, BfTypeInstance* lookupStartType);
-	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);
-	void SetHadVarUsage();
+	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);	
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	
 	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false);

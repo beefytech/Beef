@@ -1794,18 +1794,9 @@ void BfAutoComplete::CheckInvocation(BfAstNode* invocationNode, BfTokenNode* ope
 	if (doCapture)
 	{				
 		mIsCapturingMethodMatchInfo = true;
-		if (mMethodMatchInfo == NULL)
-			mMethodMatchInfo = new MethodMatchInfo();			
-		else
-		{
-			if (wasCapturingMethodMatchInfo)
-			{
-				// We're actually in an inner invocation now
-				delete mMethodMatchInfo;
-				mMethodMatchInfo = new MethodMatchInfo();
-				mMethodMatchInfo->mSrcPositions.Clear();
-			}
-		}
+		
+		delete mMethodMatchInfo;
+		mMethodMatchInfo = new MethodMatchInfo();
 
 		mMethodMatchInfo->mInvocationSrcIdx = target->GetSrcStart();
 		mMethodMatchInfo->mCurMethodInstance = mModule->mCurMethodInstance;
