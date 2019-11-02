@@ -823,8 +823,15 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 						data = (uint8*)&baseClassInfo.offset;
 						baseTypeEntry->mThisOffset = (int)CvParseConstant(data);
 						if (baseClassInfo.index != 0)
-						{
+						{							
 							baseTypeEntry->mBaseType = CvGetType(baseClassInfo.index);
+
+// 							if (parentType->mLanguage == DbgLanguage_Beef)
+// 							{
+// 								if (!parentType->mBaseTypes.IsEmpty())
+// 									parentType->mTypeParam = baseTypeEntry->mBaseType;
+// 							}
+
 							parentType->mBaseTypes.PushBack(baseTypeEntry);
 							parentType->mAlign = std::max(parentType->mAlign, baseTypeEntry->mBaseType->GetAlign());							
 							
@@ -980,14 +987,14 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 						}
 						char* fieldName = (char*)_ParseString();
 
-						if ((fieldName != NULL) && (strcmp(fieldName, "$prim") == 0))
+						if ((fieldName != NULL) && (parentType->mLanguage == DbgLanguage_Beef))
 						{
-							DbgType* fieldType = CvGetType(fieldTypeId);
-							DbgBaseTypeEntry* baseTypeEntry = mAlloc.Alloc<DbgBaseTypeEntry>();							
-							baseTypeEntry->mThisOffset = 0;
-							baseTypeEntry->mBaseType = fieldType;
-							parentType->mBaseTypes.PushFront(baseTypeEntry);
-							break;
+							if (strcmp(fieldName, "$prim") == 0)
+							{
+								parentType->mTypeParam = CvGetType(fieldTypeId);
+								if ((parentType->mBaseTypes.mHead != NULL) && (strcmp(parentType->mBaseTypes.mHead->mBaseType->mName, "System.Enum") == 0))
+									parentType->mTypeCode = DbgType_Enum;
+							}
 						}
 
 						int64 constVal = 0;
