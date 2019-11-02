@@ -767,6 +767,36 @@ void BfContext::AddTypeToWorkList(BfType* type)
 	}
 }
 
+void BfContext::ValidateDependencies()
+{
+#if _DEBUG
+	BP_ZONE("BfContext::ValidateDependencies");
+	BfLogSysM("ValidateDependencies\n");
+
+	bool deletedNewTypes = false;
+	auto itr = mResolvedTypes.begin();
+	while (itr != mResolvedTypes.end())
+	{
+		auto type = itr.mCurEntry->mValue;		
+		if (type->IsGenericTypeInstance())
+		{
+			// We can't contain deleted generic arguments without being deleted ourselves
+			BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;
+
+			for (auto genericTypeArg : genericType->mTypeGenericArguments)
+			{
+				auto depType = genericTypeArg->ToDependedType();
+				if (depType != NULL)
+				{
+					BF_ASSERT(depType->mDependencyMap.mTypeSet.ContainsKey(type));					
+				}
+			}
+		}
+		++itr;
+	}
+#endif
+}
+
 void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuildModule, bool placeSpecializiedInPurgatory)
 {
 	BfTypeInstance* typeInst = type->ToTypeInstance();		
@@ -788,6 +818,12 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		mCompiler->UpdateCompletion();
 		
 		return;
+	}
+
+	if (typeInst->mRevision != mCompiler->mRevision)
+	{
+		BfLogSysM("Setting revision.  Type: %p  Revision: %d\n", typeInst, mCompiler->mRevision);
+		typeInst->mRevision = mCompiler->mRevision;
 	}
 
 	if ((typeInst->IsTypeAlias()) != (typeInst->mTypeDef->mTypeCode == BfTypeCode_TypeAlias))

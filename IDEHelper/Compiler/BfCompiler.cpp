@@ -1073,7 +1073,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	vdataHashCtx.Mixin(project->mTargetType);
 	
 	for (auto type : orderedTypes)
-	{			
+	{
 		if (type == NULL)
 			continue;
 
@@ -1092,11 +1092,11 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 		vdataTypeList.push_back(type);
 
-		vdataHashCtx.Mixin(type->mTypeId);
+		vdataHashCtx.Mixin(type->mTypeId);		
 
 		BF_ASSERT((type != NULL) || (mPassInstance->HasFailed()));
 		if ((type != NULL) && (typeInst != NULL))
-		{						
+		{			
 			auto module = typeInst->mModule;
 			if (module == NULL)
 				continue;			
@@ -1114,8 +1114,10 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 					HashModuleVData(module, vdataHashCtx);
 				}
 			}
-						
+			
+			vdataHashCtx.MixinStr(module->mModuleName);
 			vdataHashCtx.Mixin(typeInst->mTypeDef->mSignatureHash);
+			vdataHashCtx.Mixin(module->mHasForceLinkMarker);
 			
 			for (auto iface : typeInst->mInterfaces)
 			{
@@ -2064,7 +2066,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 							// If we're deleting the type, OR the dependency of the type has been removed.
 							//  We detect a removed dependency by the dependent type changing but the dependency revision
 							//  is older than the dependent type.
-							BfLogSysM("Removing old dependent %p from %p\n", dependentType, typeInst);
+							BfLogSysM("Removing old dependent %p from %p\n", dependentType, depType);
   							itr = depType->mDependencyMap.erase(itr);
 						}
 						else
@@ -2171,7 +2173,9 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 
 			if (deleteQueue.size() != 0)
 			{
+				mContext->ValidateDependencies();
 				mContext->UpdateAfterDeletingTypes();
+				mContext->ValidateDependencies();
 			}			
 		}
 
@@ -2964,13 +2968,6 @@ void BfCompiler::UpdateRevisedTypes()
 						compositeTypeDef->mFullNameEx = rootTypeDef->mFullNameEx;
 						compositeTypeDef->mIsCombinedPartial = true;
 
-// 						if (rootTypeDef->IsGlobalsContainer())
-// 						{
-// 							//NOP;							
-// 							auto didAdd = mSystem->mGlobalsMap.TryAdd(rootTypeDef->mNamespace, compositeTypeDef);
-// 							BF_ASSERT(didAdd);
-// 						}
-
 						for (auto prevGenericParam : rootTypeDef->mGenericParamDefs)
 						{
 							BfGenericParamDef* copiedGenericParam = new BfGenericParamDef();
@@ -2979,8 +2976,6 @@ void BfCompiler::UpdateRevisedTypes()
 						}
 
 						mSystem->mTypeDefs.AddAfter(compositeTypeDef, rootTypeDefEntry);
-// 						compositeTypeDef->mNext = rootTypeDef->mNext;
-// 						rootTypeDef->mNext = compositeTypeDef;
 						partialsHadChanges = true;
 						hadSignatureChange = true;
 						compositeIsNew = true;
@@ -3249,9 +3244,13 @@ void BfCompiler::UpdateRevisedTypes()
 	mContext->UpdateRevisedTypes();
 	mContext->VerifyTypeLookups();	
 	
+	mContext->ValidateDependencies();
 	if (mStats.mTypesDeleted != 0)
-		mContext->UpdateAfterDeletingTypes();		
-	mContext->RemoveInvalidWorkItems();
+	{
+		mContext->UpdateAfterDeletingTypes();
+		mContext->ValidateDependencies();
+	}
+	mContext->RemoveInvalidWorkItems();	
 
 	for (auto typeDef : mSystem->mTypeDefs)
 	{
@@ -6253,6 +6252,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		if ((!IsHotCompile()) && (!mCanceling))
 			ClearUnusedStringPoolEntries();
 		
+		mContext->ValidateDependencies();
 		mContext->UpdateAfterDeletingTypes();		
 	}
 		
@@ -6486,6 +6486,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mLastRevisionAborted = mCanceling || !hasRequiredTypes;
 	bool didCancel = mCanceling && hasRequiredTypes;
 	mCanceling = false;
+
+	mContext->ValidateDependencies();
 
 	return !didCancel;
 }

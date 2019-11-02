@@ -1495,11 +1495,21 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_Load:
 		{
 			CMD_PARAM(BeValue*, val);
-#ifdef _DEBUG
+#ifdef _DEBUG			
 			auto ptrType = val->GetType();
 			BF_ASSERT(ptrType->IsPointer());
 			// We call via a function pointer so there's never a reason to allow loading of a funcPtr
 			BF_ASSERT(((BePointerType*)ptrType)->mElementType->mTypeCode != BeTypeCode_Function);
+
+			// Disallow loading from a NULL constant
+			if (val->GetTypeId() == BeConstant::TypeId)
+			{
+				if (auto constant = BeValueDynCast<BeConstant>(val))
+				{
+					BF_ASSERT(constant->mTarget != NULL);
+				}
+			}
+
 #endif
 			CMD_PARAM(bool, isVolatile);			
 			SetResult(curId, mBeModule->CreateLoad(val, isVolatile));
@@ -1511,6 +1521,15 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, alignment);
 			CMD_PARAM(bool, isVolatile);
 #ifdef _DEBUG
+			// Disallow loading from a NULL constant
+			if (val->GetTypeId() == BeConstant::TypeId)
+			{
+				if (auto constant = BeValueDynCast<BeConstant>(val))
+				{
+					BF_ASSERT(constant->mTarget != NULL);
+				}
+			}
+
 			auto ptrType = val->GetType();
 			BF_ASSERT(ptrType->IsPointer());
 #endif
