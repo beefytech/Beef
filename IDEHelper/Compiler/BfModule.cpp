@@ -794,12 +794,12 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mModuleOptions = NULL;
 	mLastUsedRevision = -1;		
 	mUsedSlotCount = -1;
-
+	
 	mIsReified = true;
 	mReifyQueued = false;
 	mIsSpecialModule = false;
 	mIsScratchModule = false;	
-	mIsSpecializedMethodModuleRoot = false; // There may be mNextAltModules extending from this
+	mIsSpecializedMethodModuleRoot = false; // There may be mNextAltModules extending from this	
 	mHadBuildError = false;
 	mHadBuildWarning = false;
 	mIgnoreErrors = false;
@@ -1098,7 +1098,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "-")
+                (mModuleName == "IDE_ui_LaunchDialog")
 				//|| (mModuleName == "System_Internal")
 				//|| (mModuleName == "vdata")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
@@ -1149,7 +1149,7 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 		return;
 	
 	mHadBuildError = false;
-	mHadBuildWarning = false;
+	mHadBuildWarning = false;	
 	mExtensionCount = 0;
 	mRevision = mCompiler->mRevision;	
 	mRebuildIdx++;
@@ -2441,12 +2441,6 @@ void BfModule::SetElementType(BfAstNode* astNode, BfSourceElementType elementTyp
 	}
 }
 
-void BfModule::SetHadVarUsage()
-{
-	mHadVarUsage = true;
-	mHadBuildError = true;
-}
-
 BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPersistent)
 {	
 	BP_ZONE("BfModule::Fail");
@@ -3339,8 +3333,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 
 	if ((!field->mIsStatic) && (typeDef->mIsStatic))
 	{
-		AssertErrorState();
-		SetHadVarUsage();
+		AssertErrorState();		
 		return GetPrimitiveType(BfTypeCode_Var);
 	}
 	
@@ -3359,8 +3352,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 				SetAndRestoreValue<bool> prevIgnoreError(fieldModule->mIgnoreErrors, false);
 				fieldModule->Fail(StrFormat("Field '%s.%s' creates a type inference cycle", TypeToString(fieldOwner).c_str(), fieldDef->mName.c_str()), fieldDef->mTypeRef, true);				
 			}
-			
-			SetHadVarUsage();
+						
 			return GetPrimitiveType(BfTypeCode_Var);
 		}
 	}
@@ -3373,8 +3365,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	if ((field->mInitializer == NULL) && (!isDeclType))
 	{
 		if ((field->mTypeRef->IsA<BfVarTypeReference>()) || (field->mTypeRef->IsA<BfLetTypeReference>()))
-			Fail("Implicitly-typed fields must be initialized", field->GetRefNode());
-		SetHadVarUsage();
+			Fail("Implicitly-typed fields must be initialized", field->GetRefNode());		
 		return GetPrimitiveType(BfTypeCode_Var);
 	}
 
@@ -9855,6 +9846,11 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 	BfIRValue loadedVal = typedValue.mValue;
 	if (loadedVal)
 	{
+		if (typedValue.mType->IsVar())
+		{			
+			return BfTypedValue(loadedVal, typedValue.mType, false);
+		}
+
 		/*if (isVolatile)
 			mBfIRBuilder->CreateFence(BfIRFenceType_AcquireRelease);*/
 		PopulateType(typedValue.mType, BfPopulateType_Data);
@@ -11551,6 +11547,11 @@ void BfModule::HadSlotCountDependency()
 
 BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 {	
+	if (fieldInstance->mResolvedType->IsVar())
+	{
+		NOP;
+	}
+
 	if (mIsScratchModule)
 	{
 		// Just fake it for the extern and unspecialized modules
@@ -11875,11 +11876,6 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 
 void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 {
-	if (localVar->mResolvedType->IsVar())
-	{
-		BF_ASSERT((mCurMethodInstance->mIsUnspecialized) || (mCurMethodState->mClosureState != NULL) || (mHadVarUsage));
-	}
-
 	localVar->mLocalVarIdx = (int)mCurMethodState->mLocals.size();
 	mCurMethodState->mLocals.push_back(localVar);
 
@@ -12045,9 +12041,7 @@ void BfModule::CreateDIRetVal()
 	}*/
 
 	if ((mCurMethodState->mRetVal) || (mCurMethodState->mRetValAddr))
-	{
-		BF_ASSERT((!mBfIRBuilder->mIgnoreWrites) || (mHadVarUsage));
-
+	{		
 		BfType* dbgType = mCurMethodInstance->mReturnType;
 		BfIRValue dbgValue = mCurMethodState->mRetVal.mValue;
 		if (mCurMethodInstance->HasStructRet())
@@ -13195,8 +13189,7 @@ void BfModule::CreateStaticCtor()
 				if (!fieldInst->mFieldIncluded)
 					continue;
 				if (fieldInst->mResolvedType->IsVar())
-				{
-					BF_ASSERT(mHadVarUsage);
+				{					
 					continue;
 				}
 				auto assignValue = GetFieldInitializerValue(fieldInst);

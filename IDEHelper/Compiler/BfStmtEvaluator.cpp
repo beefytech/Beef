@@ -1385,8 +1385,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		}
 		if (!initValue)			
 		{
-			initValue = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_Var));
-			SetHadVarUsage();
+			initValue = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_Var));			
 		}
 		if (initValue.mType->IsNull())
 		{
@@ -5455,8 +5454,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	}
 	else if (isVarEnumerator)
 	{
-		// Generic method or mixin decl
-		BF_ASSERT(mBfIRBuilder->mIgnoreWrites || mHadVarUsage);
+		// Generic method or mixin decl		
 	}		
 	else if (!target.mType->IsTypeInstance())
 	{		

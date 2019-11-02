@@ -1689,8 +1689,8 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
-	BfLogSysM("Setting revision.  Type: %p  Revision: %d\n", typeInstance, mRevision);
-	typeInstance->mRevision = mRevision;
+	//BfLogSysM("Setting revision.  Type: %p  Revision: %d\n", typeInstance, mRevision);
+	//typeInstance->mRevision = mRevision;
 
 	// Temporarily allow us to derive from private classes, to avoid infinite loop from TypeIsSubTypeOf
 	SetAndRestoreValue<bool> prevSkipTypeProtectionChecks(typeInstance->mSkipTypeProtectionChecks, true);
@@ -2285,8 +2285,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					// Failed, just put in placeholder 'var'
 					AssertErrorState();
-					resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);
-					SetHadVarUsage();
+					resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);					
 				}									
 			}
 
@@ -8693,9 +8692,6 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// * <-> Var 
 	if ((typedVal.mType->IsVar()) || (toType->IsVar()))
 	{
-		BF_ASSERT(((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized)) ||
-			((mCurMethodState != NULL) && (mCurMethodState->mClosureState != NULL)) ||
-			(mHadVarUsage));
 		return GetDefaultValue(toType);
 	}
 
