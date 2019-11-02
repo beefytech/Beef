@@ -622,7 +622,7 @@ public:
 	DbgModule* GetDbgModule();
 	DbgType* GetUnderlyingType();	
 	DbgType* GetPrimaryType();
-	DbgType* GetBaseType();
+	DbgType* GetBaseType();	
 	DbgType* GetRootBaseType();
 	DbgType* RemoveModifiers(bool* hadRef = NULL);	
 	String ToStringRaw(DbgLanguage language = DbgLanguage_Unknown);

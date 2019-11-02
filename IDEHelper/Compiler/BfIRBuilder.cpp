@@ -2063,13 +2063,6 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 					diFieldTypes.push_back(inheritanceType);
 					DbgMakePermanent(diForwardDecl, derivedFrom, diFieldTypes);
 				}
-				else if (isPrimEnum)				
-				{					
-					BF_ASSERT(type->mSize > 0);
-
-					diForwardDecl = DbgCreateSizedForwardDecl(llvm::dwarf::DW_TAG_enumeration_type,
-						typeName, curDIScope, fileDIScope, 0, (int64)BF_ALIGN(type->mSize, type->mAlign) * 8, (int64)type->mAlign * 8);
-				}
 				else
 				{
 					diForwardDecl = DbgCreateSizedForwardDecl(llvm::dwarf::DW_TAG_structure_type,
@@ -2080,7 +2073,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 			{				
 				// Will fill in later (during definition phase)				
 				int flags = 0;
-				diForwardDecl = DbgCreateReplaceableCompositeType(isPrimEnum ? llvm::dwarf::DW_TAG_enumeration_type : llvm::dwarf::DW_TAG_structure_type,
+				diForwardDecl = DbgCreateReplaceableCompositeType(llvm::dwarf::DW_TAG_structure_type,
 					typeName, curDIScope, fileDIScope, 0, (int64)BF_ALIGN(typeInstance->mInstSize, typeInstance->mInstAlign) * 8, (int64)typeInstance->mInstAlign * 8, flags);
 
 					
@@ -2140,13 +2133,13 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 {
 	BP_ZONE("BfIRBuilder::CreateDbgTypeDefinition");
-	
+
 	auto typeInstance = type->ToTypeInstance();
 
-	bool isPrimEnum = (type->IsEnum()) && (type->IsTypedPrimitive());	
+	bool isPrimEnum = (type->IsEnum()) && (type->IsTypedPrimitive());
 	auto typeDef = typeInstance->mTypeDef;
 	bool wantDIData = true;
-
+	
 	BfModuleOptions moduleOptions = mModule->GetModuleOptions();
 	bool isOptimized = (moduleOptions.mOptLevel != BfOptLevel_O0) && (moduleOptions.mOptLevel != BfOptLevel_OgPlus);
 	
@@ -2549,11 +2542,11 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	if (typeInstance->IsTypedPrimitive())
 		declaredBaseType = typeInstance->GetUnderlyingType();
 
-	if (isPrimEnum)
+	/*if (isPrimEnum)
 	{
 		// Handled below		
 	}
-	else if (type->IsBoxed())
+	else*/ if (type->IsBoxed())
 	{
 		auto underlyingType = ((BfBoxedType*)type)->GetModifiedElementType();
 		if (!underlyingType->IsValuelessType())
@@ -2571,15 +2564,9 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 				flags, DbgGetType(underlyingType));
 			diFieldTypes.push_back(memberType);
 		}
-	}
-	else if ((typeInstance->IsTypedPrimitive()) && (typeInstance->mBaseType != NULL) && (!typeInstance->mBaseType->IsTypedPrimitive()))
-	{
-		auto underlyingType = typeInstance->GetUnderlyingType();			
-		auto inheritanceType = DbgCreateInheritance(diForwardDecl, DbgGetType(underlyingType), 0, llvm::DINode::FlagPublic);
-		diFieldTypes.push_back(inheritanceType);
-	}
+	}	
 	else
-	{
+	{		
 		auto baseType = typeInstance->mBaseType;
 
 		if (baseType != NULL)
@@ -2591,6 +2578,21 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 			else
 				inheritanceType = DbgCreateInheritance(diForwardDecl, DbgGetType(baseType), 0, llvm::DINode::FlagPublic);
 			diFieldTypes.push_back(inheritanceType);
+		}
+
+		// Typed primitives are expressed as multiple inheritance
+		if ((typeInstance->IsTypedPrimitive()) && (typeInstance->mBaseType != NULL) && (!typeInstance->mBaseType->IsTypedPrimitive()))
+		{
+ 			auto underlyingType = typeInstance->GetUnderlyingType();
+// 			auto inheritanceType = DbgCreateInheritance(diForwardDecl, DbgGetType(underlyingType), 0, llvm::DINode::FlagPublic);
+// 			diFieldTypes.push_back(inheritanceType);
+
+			int lineNum = 0;
+			int flags = llvm::DINode::FlagPublic;
+			auto memberType = DbgCreateMemberType(fileDIScope, "$prim", fileDIScope, lineNum,
+				underlyingType->mSize * 8, underlyingType->mAlign * 8, 0,
+				flags, DbgGetType(underlyingType));
+			diFieldTypes.push_back(memberType);
 		}
 	}
 
@@ -2622,7 +2624,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	int diFlags = 0;
 
 	BfIRMDNode diType;
-	if ((typeInstance->IsEnum()) && (typeInstance->IsTypedPrimitive()))
+	/*if ((typeInstance->IsEnum()) && (typeInstance->IsTypedPrimitive()))
 	{			
 		llvm::SmallVector<BfIRMDNode, 8> diEnumValues;
 
@@ -2644,7 +2646,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		DbgSetType(type, diType);
 		DbgSetInstType(type, diType);
 	}
-	else
+	else*/
 	{			
 		BfIRMDNode diCompositeType = DbgMakePermanent(diForwardDecl, BfIRMDNode(), diFieldTypes);
 		diType = diCompositeType;

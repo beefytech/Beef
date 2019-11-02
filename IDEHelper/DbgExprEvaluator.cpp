@@ -3430,7 +3430,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 	}	
 
 	String findName = identifierNode->ToString();	
-	if (findName[0] == '$')
+	if ((findName[0] == '$') && (findName != "$prim"))
 	{	
 		if (IsAutoCompleteNode(identifierNode))
 		{
@@ -3484,7 +3484,11 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 			if (findName[i] == '$')
 				mayBeRegister = false;
 		if (mayBeRegister)
-			return GetRegister(findName.Substring(1));
+		{
+			DbgTypedValue val = GetRegister(findName.Substring(1));
+			if (val)
+				return val;
+		}
 	}
 
 	DbgTypedValue result;

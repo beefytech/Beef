@@ -999,17 +999,11 @@ bool DbgType::IsValueType()
 }
 
 bool DbgType::IsTypedPrimitive()
-{	
+{
 	if (mTypeCode != DbgType_Struct)
 		return false;	
-	auto baseType = GetBaseType();
-	if (baseType == NULL)
-		return false;
-	if (!baseType->IsPrimitiveType() && !baseType->IsTypedPrimitive())
-		return false;	
-	if (mTypeParam == NULL)
-		mTypeParam = baseType;
-	return true;
+
+	return mTypeParam != NULL;
 }
 
 bool DbgType::IsBoolean()
@@ -5007,9 +5001,6 @@ void DbgModule::CommitHotTargetSections()
 
 void DbgModule::HotReplaceType(DbgType* newType)
 {	
-	if (!newType->IsCompositeType())
-		return;
-
 	auto linkedModule = GetLinkedModule();
 
 	newType->PopulateType();
