@@ -1406,17 +1406,22 @@ void HashContext::Mixin(const void* data, int size)
 
 void HashContext::MixinHashContext(HashContext& ctx)
 {
+	Mixin(ctx.mBufSize);
 	Mixin(ctx.mBuf, ctx.mBufSize);
 }
 
 void HashContext::MixinStr(const char* str)
 {
-	Mixin(str, (int)strlen(str));
+	int len = (int)strlen(str);
+	Mixin(len);
+	Mixin(str, len);
 }
 
 void HashContext::MixinStr(const StringImpl& str)
 {
-	Mixin(str.c_str(), (int)str.length());
+	int len = (int)str.length();
+	Mixin(len);
+	Mixin(str.c_str(), len);
 }
 
 Val128 HashContext::Finish128()
