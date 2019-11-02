@@ -2485,14 +2485,17 @@ namespace IDE
 				}
 			}
 
-			for (int regEntryIdx = mBeefConfig.mRegistry.Count - 1; regEntryIdx >= 0; regEntryIdx--)
+			if (useVerSpecRecord.mVerSpec case .SemVer)
 			{
-				var regEntry = mBeefConfig.mRegistry[regEntryIdx];
-
-				if (regEntry.mProjName == projectName)
+				for (int regEntryIdx = mBeefConfig.mRegistry.Count - 1; regEntryIdx >= 0; regEntryIdx--)
 				{
-					useVerSpecRecord = regEntry.mLocation;
-					verConfigDir = regEntry.mConfigFile.mConfigDir;
+					var regEntry = mBeefConfig.mRegistry[regEntryIdx];
+
+					if (regEntry.mProjName == projectName)
+					{
+						useVerSpecRecord = regEntry.mLocation;
+						verConfigDir = regEntry.mConfigFile.mConfigDir;
+					}
 				}
 			}
 
