@@ -1982,7 +1982,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mSymbolData = NULL;
 	mCheckedBfObject = false;
 	mBfObjectHasFlags = false;
-	mIsHotObjectFile = false;
+	mModuleKind = DbgModuleKind_Module;
 	mStartTypeIdx = 0;
 	mEndTypeIdx = 0;
 	mHotIdx = 0;
@@ -2042,7 +2042,7 @@ DbgModule::~DbgModule()
 	
 	delete mOrigImageData;
 
-	if ((mIsHotObjectFile) && (mImageBase != 0))
+	if ((IsObjectFile()) && (mImageBase != 0))
 	{
 		mDebugger->ReleaseHotTargetMemory((addr_target)mImageBase, (int)mImageSize);
 	}
@@ -2064,7 +2064,7 @@ DbgSubprogram* DbgModule::FindSubprogram(DbgType* dbgType, const char * methodNa
 		if ((methodNameEntry->mCompileUnitId != -1) && (strcmp(methodNameEntry->mName, methodName) == 0))
 		{
 			// If we hot-replaced this type then we replaced and parsed all the methods too
-			if (!dbgType->mCompileUnit->mDbgModule->mIsHotObjectFile)
+			if (!dbgType->mCompileUnit->mDbgModule->IsObjectFile())
 				dbgType->mCompileUnit->mDbgModule->MapCompileUnitMethods(methodNameEntry->mCompileUnitId);
 			methodNameEntry->mCompileUnitId = -1;
 		}
@@ -2108,14 +2108,14 @@ char* DbgModule::DbgDupString(const char* str, const char* allocName)
 
 DbgModule* DbgModule::GetLinkedModule()
 {
-	if (mIsHotObjectFile)
+	if (IsObjectFile())
 		return mDebugTarget->mTargetBinary;
 	return this;
 }
 
 addr_target DbgModule::GetTargetImageBase()
 {
-	if (mIsHotObjectFile)
+	if (IsObjectFile())
 		return (addr_target)mDebugTarget->mTargetBinary->mImageBase;
 	return (addr_target)mImageBase;
 }
@@ -2577,7 +2577,7 @@ void DbgModule::MapTypes(int startingTypeIdx)
 			if (dbgType->mCompileUnit->mDbgModule != prevType->mCompileUnit->mDbgModule)
 			{
 				// Don't replace original types with hot types -- those need to be inserted in the the hot alternates list
-				BF_ASSERT(dbgType->mCompileUnit->mDbgModule->mIsHotObjectFile);
+				BF_ASSERT(dbgType->mCompileUnit->mDbgModule->IsObjectFile());
 				prevType->mHotNewType = dbgType;
 				continue;
 			}
@@ -5297,7 +5297,7 @@ bool DbgModule::CanRead(DataStream* stream, DebuggerResult* outResult)
 	return true;
 }
 
-bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
+bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 {
 	BP_ZONE("DbgModule::ReadCOFF");	
 
@@ -5323,10 +5323,13 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 		miniDumpDebugger = (MiniDumpDebugger*)mDebugger;
 	}
 
-	mIsHotObjectFile = isHotObjectFile;
+	mModuleKind = moduleKind;
+	bool isHotSwap = mModuleKind == DbgModuleKind_HotObject;
+	bool isObjectFile = mModuleKind != DbgModuleKind_Module;
+	
 	auto linkedModule = GetLinkedModule();
 
-	if (mIsHotObjectFile)
+	if (isObjectFile)
 		linkedModule->PopulateStaticVariableMap();
 	
 	mStartTypeIdx = (int)linkedModule->mTypes.size();
@@ -5339,7 +5342,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 	PE_NTHeaders ntHdr;
 	memset(&ntHdr, 0, sizeof(ntHdr));
 
-	if (!mIsHotObjectFile)
+	if (!isObjectFile)
 	{
 		stream->Read(&hdr, sizeof(PEHeader));
 		stream->SetPos(hdr.e_lfanew);
@@ -5484,7 +5487,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 		sectionNames[sectNum] = name;
 
 		DbgHotTargetSection* targetSection = NULL;
-		if (mIsHotObjectFile)
+		if (IsObjectFile())
 		{
 			targetSection = new DbgHotTargetSection();
 			targetSection->mDataSize = sectHdr.mSizeOfRawData;
@@ -5509,7 +5512,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 		if (strcmp(name, ".tls") == 0)
 			mTLSAddr = (addr_target)(sectHdr.mVirtualAddress + mImageBase);
 
-		if ((mIsHotObjectFile) && (strcmp(name, ".tls$") == 0))
+		if ((IsObjectFile()) && (strcmp(name, ".tls$") == 0))
 		{
 			tlsSection = sectNum;
 			mTLSSize = sectHdr.mSizeOfRawData;
@@ -5518,7 +5521,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 
 		bool isExportDataDir = ((exportDataDir->mVirtualAddress != 0) && (exportDataDir->mVirtualAddress >= sectHdr.mVirtualAddress) && (exportDataDir->mVirtualAddress < sectHdr.mVirtualAddress + sectHdr.mSizeOfRawData));
 
-		if ((!mIsHotObjectFile) && (!isExportDataDir))
+		if ((!IsObjectFile()) && (!isExportDataDir))
 		{
 			if (((strcmp(name, ".text")) == 0) ||
 				((strcmp(name, ".textbss")) == 0) ||
@@ -5545,7 +5548,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 
 		memset(data + sectHdr.mSizeOfRawData, 0, 8);
 
-		if (mIsHotObjectFile)
+		if (IsObjectFile())
 			targetSection->mData = data;
 
 		addr_target addrOffset = sectHdr.mVirtualAddress;
@@ -5594,7 +5597,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 			}
 		}
 
-		if ((mIsHotObjectFile) && (sectHdr.mNumberOfRelocations > 0))
+		if ((IsObjectFile()) && (sectHdr.mNumberOfRelocations > 0))
 		{
 
 			//mDebugger->AllocTargetMemory(sectHdr.mSizeOfRawData, true, true);
@@ -5602,7 +5605,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 
 		if (strcmp(name, ".text") == 0)
 		{
-			if (!mIsHotObjectFile)
+			if (!IsObjectFile())
 				mCodeAddress = ntHdr.mOptionalHeader.mImageBase + sectHdr.mVirtualAddress;
 		}
 
@@ -5795,7 +5798,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 		{
 			if (mExceptionData != NULL)			
 			{
-				if (mIsHotObjectFile)
+				if (IsObjectFile())
 				{
 					mOwnedSectionData.push_back(mExceptionData);
 				}
@@ -5863,7 +5866,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 
 		if (!usedData)
 		{
-			if (mIsHotObjectFile)
+			if (IsObjectFile())
 			{
 				mOwnedSectionData.push_back(data);
 			}
@@ -5878,7 +5881,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 	}
 
 	int needHotTargetMemory = 0;
-	if (mIsHotObjectFile)
+	if (isObjectFile)
 	{				
 		for (int sectNum = 0; sectNum < ntHdr.mFileHeader.mNumberOfSections; sectNum++)
 		{
@@ -5894,7 +5897,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 	}
 
 	int numSections = ntHdr.mFileHeader.mNumberOfSections;
-	if (mIsHotObjectFile)
+	if (isObjectFile)
 	{
 		addr_target* resolvedSymbolAddrs = new addr_target[ntHdr.mFileHeader.mNumberOfSymbols];
 		memset(resolvedSymbolAddrs, 0, ntHdr.mFileHeader.mNumberOfSymbols * sizeof(addr_target));
@@ -5973,7 +5976,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 				{					
 					bool isTLS = false;
 					addr_target targetAddr = 0;
-					if (mIsHotObjectFile)
+					if (isObjectFile)
 					{
 						if (symInfo->mSectionNum - 1 == tlsSection)
 						{
@@ -6007,7 +6010,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 						if ((isStaticSymbol) && (IsHotSwapPreserve(symbolName)))
 							isStaticSymbol = false;
 
-						if ((mIsHotObjectFile) && (!isStaticSymbol))
+						if ((isObjectFile) && (!isStaticSymbol))
 						{	
 							DbgSymbol* dwSymbol = NULL;
 
@@ -6109,10 +6112,10 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 							dwSymbol->mName = symbolName;
 							dwSymbol->mAddress = targetAddr;
 
-							if (!mIsHotObjectFile)
+							if (!IsObjectFile())
 								dwSymbol->mAddress += (addr_target)mImageBase;
 
-							if (mIsHotObjectFile)
+							if (IsObjectFile())
 								BF_ASSERT((dwSymbol->mAddress >= mImageBase) && (dwSymbol->mAddress < mImageBase + mImageSize));
 
 							mDebugTarget->mSymbolMap.Insert(dwSymbol);
@@ -6178,7 +6181,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 		}
 	}
 
-	if (!mIsHotObjectFile)
+	if (!isObjectFile)
 	{
 		mImageSize = ntHdr.mOptionalHeader.mSizeOfImage;
 		mEntryPoint = ntHdr.mOptionalHeader.mAddressOfEntryPoint;
@@ -6187,7 +6190,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 	/*OutputDebugStrF("%s:\n CompileUnits:%d DebugLines: %d Types: %d (%d in map) SubPrograms: %d (%dk) AllocSize:%dk\n", mFilePath.c_str(), mCompileUnits.size(), 
 		lineDataCount, mEndTypeIdx - mStartTypeIdx, (int)linkedModule->mTypes.size() - mStartTypeIdx, mEndSubprogramIdx - mStartSubprogramIdx, subProgramSizes / 1024, mAlloc.GetAllocSize() / 1024);*/
 	
-	if (mIsHotObjectFile)
+	if (isHotSwap)
 	{
 		// In COFF, we don't necessarily add an actual primary type during MapCompileUnitMethods, so this fixes that
 		while (true)
@@ -6293,7 +6296,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, bool isHotObjectFile)
 
 void DbgModule::FinishHotSwap()
 {
-	BF_ASSERT(mIsHotObjectFile);
+	BF_ASSERT(IsObjectFile());
 
 	auto linkedModule = GetLinkedModule();
 	auto mainModule = mDebugTarget->mTargetBinary;	

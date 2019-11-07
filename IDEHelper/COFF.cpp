@@ -727,7 +727,7 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 	}
 
 
-	if ((parentType != NULL) && (!mIsHotObjectFile))
+	if ((parentType != NULL) && (!IsObjectFile()))
 	{		
 		subprogram->mCompileUnit = parentType->mCompileUnit;
 		parentType->mMethodList.PushBack(subprogram);
@@ -1025,7 +1025,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 							}
 						}						
 
-						if ((isStatic) && (!isConst) && (mIsHotObjectFile))
+						if ((isStatic) && (!isConst) && (IsObjectFile()))
 						{
 							// Already has statics filled in
 							break;
@@ -2219,7 +2219,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		uint8* dataEnd = data + symLen;
 		GET_INTO(uint16, symType);
 
-		if (!mIsHotObjectFile)
+		if (!IsObjectFile())
 			BF_ASSERT(symLen % 4 == 2);
 
 		bool newLocalVarHasLocData = false;
@@ -2320,7 +2320,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		case S_GDATA32:
 		case S_LDATA32:
 			// In PDB reads we get this from the symbol stream
-			if ((mIsHotObjectFile) || (curSubprogram != NULL))
+			if ((IsObjectFile()) || (curSubprogram != NULL))
 			{
 				auto linkedModule = GetLinkedModule();
 				DATASYM32& dataSym = *(DATASYM32*)dataStart;
@@ -2362,7 +2362,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				if (curSubprogram != NULL)
 				{
-					if (!mIsHotObjectFile)
+					if (!IsObjectFile())
 					{
 						// Copy this, we free the source data
 						variable->mName = DbgDupString(name, "DbgDupString.S_GDATA32");
@@ -2387,7 +2387,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		case S_GTHREAD32:
 		case S_LTHREAD32:
 			{
-				if ((mIsHotObjectFile) || (curSubprogram != NULL))				
+				if ((IsObjectFile()) || (curSubprogram != NULL))				
 				{
 					auto linkedModule = GetLinkedModule();
 					THREADSYM32& dataSym = *(THREADSYM32*)dataStart;
@@ -2429,7 +2429,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 					if (curSubprogram != NULL)
 					{
-						if (!mIsHotObjectFile)
+						if (!IsObjectFile())
 						{
 							// Copy this, we free the source data
 							variable->mName = DbgDupString(name, "DbgDupString.S_GTHREAD32");
@@ -2474,7 +2474,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				else
 				{					
 					bool ipi = false;
-					if ((!mIsHotObjectFile) && 
+					if ((!IsObjectFile()) && 
 						((symType == S_GPROC32_ID) || (symType == S_LPROC32_ID)))
 					{
 						if (!mCvIPIReader.IsSetup())
@@ -2961,7 +2961,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				
 				DbgSubprogram* inlineParent = curSubprogram;
 				DbgSubprogram* subprogram = NULL;
-				if (mIsHotObjectFile)
+				if (IsObjectFile())
 				{
 					subprogram = CvParseMethod(NULL, NULL, inlinee, false);
 					subprogram->mCompileUnit = compileUnit;					
@@ -3990,7 +3990,7 @@ DbgType* COFF::CvGetTypeOrNamespace(char* name, DbgLanguage language)
 
 void COFF::MapCompileUnitMethods(DbgCompileUnit* compileUnit)
 {
-	bool addHotTypes = (mIsHotObjectFile) && (mHotPrimaryTypes.size() == 0);
+	bool addHotTypes = (IsObjectFile()) && (mHotPrimaryTypes.size() == 0);
 
 	DbgSubprogram* prevDbgMethod = NULL;
 	DbgSubprogram* dbgMethod = compileUnit->mOrphanMethods.mHead;
@@ -4467,7 +4467,7 @@ void COFF::FixTypes(int startingIdx)
 		if (dbgType->mIsDeclaration)
 			continue;
 
-		if (mIsHotObjectFile)
+		if (IsObjectFile())
 		{
 			auto entry = linkedModule->mTypeMap.Find(dbgType->mName, dbgType->mLanguage);
 			if (entry != NULL)
@@ -5184,7 +5184,7 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 			// Push front so we will find before the original static declaration (that has no memory associated with it)
 			mGlobalsTargetType->mMemberList.PushFront(variable);			
 
-			if (mIsHotObjectFile)
+			if (IsObjectFile())
 			{
 				if ((variable->mIsExtern) && (variable->mLinkName != NULL))
 					mStaticVariables.push_back(variable);
@@ -6406,7 +6406,7 @@ bool COFF::LoadModuleImage(const StringImpl& imagePath)
 		if (mappedFile != NULL)
 		{
 			MemStream memStream(mappedFile->mData, mappedFile->mFileSize, false);
-			ReadCOFF(&memStream, false);
+			ReadCOFF(&memStream, DbgModuleKind_Module);
 
 			mOrigImageData = new DbgModuleMemoryCache(mImageBase, mImageSize);
 		}
@@ -6512,7 +6512,7 @@ bool COFF::WantsAutoLoadDebugInfo()
 
 bool COFF::DbgIsStrMutable(const char* str)
 {
-	if (mIsHotObjectFile)
+	if (IsObjectFile())
 	{
 		return GetLinkedModule()->DbgIsStrMutable(str);
 	}
@@ -6678,7 +6678,7 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 	DbgModule* dbgModule = new COFF(mDebugger->mDebugTarget);
 	dbgModule->mHotIdx = mDebugger->mActiveHotIdx;
 	dbgModule->mFilePath = libEntry->mName + "@" + libEntry->mLibFile->mFilePath;
-	bool success = dbgModule->ReadCOFF(&fileStream, true);
+	bool success = dbgModule->ReadCOFF(&fileStream, DbgModuleKind_FromLocateSymbol);
 	fileStream.mFP = NULL;
 
 	// Mark as loaded

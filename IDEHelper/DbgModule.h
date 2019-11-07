@@ -120,6 +120,13 @@ enum DbgFileExistKind : uint8
 	DbgFileExistKind_Found	
 };
 
+enum DbgModuleKind : uint8
+{
+	DbgModuleKind_Module,
+	DbgModuleKind_HotObject,
+	DbgModuleKind_FromLocateSymbol
+};
+
 class DbgCompileUnit;
 
 struct DbgSectionData
@@ -1159,7 +1166,7 @@ public:
 	Array<addr_target> mSecRelEncodingVec;
 	bool mCheckedBfObject;
 	bool mBfObjectHasFlags;
-	bool mIsHotObjectFile;	
+	DbgModuleKind mModuleKind;
 	bool mIsDwarf64;	
 
 	HashSet<DbgSrcFile*> mSrcFileDeferredRefs;
@@ -1237,6 +1244,8 @@ public:
 	void FixupInnerTypes(int startingTypeIdx);
 	void MapTypes(int startingTypeIdx);	
 	void CreateNamespaces();	
+	bool IsObjectFile() { return mModuleKind != DbgModuleKind_Module; }
+	bool IsHotSwapObjectFile() { return mModuleKind == DbgModuleKind_HotObject; }
 	bool IsHotSwapPreserve(const String& name);
 	addr_target GetHotTargetAddress(DbgHotTargetSection* hotTargetSection);	
 	uint8* GetHotTargetData(addr_target address);
@@ -1268,7 +1277,7 @@ public:
 
 	static bool CanRead(DataStream* stream, DebuggerResult* outResult);
 
-	bool ReadCOFF(DataStream* stream, bool isHotObjectFile);
+	bool ReadCOFF(DataStream* stream, DbgModuleKind dbgModuleKind);
 	void RemoveTargetData();
 	virtual void ReportMemory(MemReporter* memReporter);
 		

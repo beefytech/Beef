@@ -597,7 +597,7 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 			if ((methodNameEntry->mCompileUnitId != -1) && (methodNameEntry->mName == mMethodName))
 			{
 				// If we hot-replaced this type then we replaced and parsed all the methods too
-				if (!curType->mCompileUnit->mDbgModule->mIsHotObjectFile)
+				if (!curType->mCompileUnit->mDbgModule->IsObjectFile())
 					curType->mCompileUnit->mDbgModule->MapCompileUnitMethods(methodNameEntry->mCompileUnitId);
 				methodNameEntry->mCompileUnitId = -1;
 			}		

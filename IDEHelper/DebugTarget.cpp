@@ -153,7 +153,7 @@ DbgModule* DebugTarget::Init(const StringImpl& launchPath, const StringImpl& tar
 	dwarf->mDisplayName = GetFileName(launchPath);
 	dwarf->mFilePath = launchPath;
 	dwarf->mImageBase = (intptr)imageBase;
-	if (!dwarf->ReadCOFF(&fileStream, false))
+	if (!dwarf->ReadCOFF(&fileStream, DbgModuleKind_Module))
 	{
 		mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s\n", launchPath.c_str()));
 		delete dwarf;
@@ -191,7 +191,7 @@ DbgModule* DebugTarget::HotLoad(const StringImpl& fileName, int hotIdx)
 	dwarf->mHotIdx = hotIdx;	
 	dwarf->mDisplayName = GetFileName(fileName);
 	dwarf->mFilePath = fileName;
-	if (!dwarf->ReadCOFF(&fileStream, true))
+	if (!dwarf->ReadCOFF(&fileStream, DbgModuleKind_HotObject))
 	{
 		mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s\n", fileName.c_str()));
 		delete dwarf;		
@@ -210,7 +210,7 @@ DbgModule* DebugTarget::SetupDyn(const StringImpl& filePath, DataStream* stream,
 	DbgModule* dwarf = new COFF(this);
 	dwarf->mFilePath = filePath;
 	dwarf->mImageBase = (intptr)imageBase;
-	if (!dwarf->ReadCOFF(stream, false))
+	if (!dwarf->ReadCOFF(stream, DbgModuleKind_Module))
 	{
 		//mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s", fileName.c_str()));
 		delete dwarf;
@@ -270,7 +270,7 @@ void DebugTarget::CleanupHotHeap()
 	for (int dwarfIdx = 0; dwarfIdx < (int)mDbgModules.size(); dwarfIdx++)
 	{
 		DbgModule* dbgModule = mDbgModules[dwarfIdx];
-		if (dbgModule->mIsHotObjectFile)
+		if (dbgModule->IsObjectFile())
 		{
 			if (!mHotHeap->IsReferenced(dbgModule->mImageBase, dbgModule->mImageSize))
 			{
@@ -919,7 +919,7 @@ bool DebugTarget::RollBackStackFrame_ExceptionDirectory(addr_target findPC, CPUR
 		//const uint8* data = dbgModule->mExceptionData + exceptionDirectoryEntry->mExceptionPos;
 
 		uint32 exceptionPos = exceptionDirectoryEntry->mExceptionPos;
-		if (dbgModule->mIsHotObjectFile)
+		if (dbgModule->IsObjectFile())
 		{
 			exceptionPos -= dbgModule->mImageBase - dbgModule->GetLinkedModule()->mImageBase;
 		}

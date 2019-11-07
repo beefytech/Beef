@@ -1062,7 +1062,7 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	for (int moduleIdx = startingModuleIdx; moduleIdx < (int)mDebugTarget->mDbgModules.size(); moduleIdx++)
 	{
 		auto dbgModule = mDebugTarget->mDbgModules[moduleIdx];
-		BF_ASSERT(dbgModule->mIsHotObjectFile);
+		BF_ASSERT(dbgModule->IsObjectFile());
 		BF_ASSERT(dbgModule->mHotIdx == hotIdx);
 		dbgModule->FinishHotSwap();
 	}	
