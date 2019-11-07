@@ -1761,31 +1761,19 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		if (fromType->mTypeCode == toType->mTypeCode)
 			return typedVal;
 
-		// Typed primitive?
-		int thisOffset = 0;
-		addr_target thisVal = typedVal.mSrcAddress;
-		if (TypeIsSubTypeOf(fromType, toType, &thisOffset, &thisVal))
-		{	
-			if (typedVal.mSrcAddress == 0)
+		if ((fromType->IsStruct()) || (fromType->IsEnum()))
+		{
+			if (fromType->mTypeParam != NULL)
 			{
-				if (fromType->IsTypedPrimitive())
-				{
-					DbgTypedValue val = typedVal;
-					val.mType = toType;
-					return val;
-				}
+				DbgTypedValue underlyingTypedValue = typedVal;
+				underlyingTypedValue.mType = fromType->mTypeParam;
+				auto castedVal = Cast(srcNode, underlyingTypedValue, toType, explicitCast, true);
+				if (castedVal)
+					return castedVal;
 			}
-
-			DbgTypedValue val = ReadTypedValue(toType, typedVal.mSrcAddress, DbgAddrType_Target);
-			return val;
-		}		
-
-		//TODO: Check to see if other types are equal as well
+		}
 	}
-
-	/*if (toType->IsBfObject())
-		toType = mDbgModule->GetPointerType(toType);*/
-
+	
 	if (fromType == toType)
 		return typedVal;
 
@@ -1798,34 +1786,6 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		return val;
 	}
 
-	/*if ((fromType->IsConst()) || (toType->IsConst()))
-	{
-		auto checkFromType = fromType;
-		if (checkFromType->IsConst())
-			checkFromType = checkFromType->mTypeParam;
-		auto checkToType = toType;
-		if (checkToType->IsConst())
-			checkToType = checkToType->mTypeParam;
-		DbgTypedValue checkVal = typedVal;
-		checkVal.mType = checkFromType;
-
-		auto result = Cast(srcNode, checkVal, checkToType, explicitCast, true);
-		if (result)
-		{
-			result.mType = toType;
-			return result;
-		}
-	}*/
-
-	/*if ((fromType->IsPointer()) && (toType->IsCompositeType()))
-	{
-		DbgType* toPtrType = mDbgModule->GetPointerType(toType);
-		DbgTypedValue val;
-		val.mPtr = typedVal.mPtr;
-		val.mType = toPtrType;
-		return val;
-	}*/
-	
 	auto curTypeInstance = GetCurrentType();
 
 	if ((fromType->IsCompositeType()) && ((toType->IsCompositeType() || (toType->IsInterface()))))
