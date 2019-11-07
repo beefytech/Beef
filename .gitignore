@@ -4,8 +4,12 @@
 */llvm-*
 */llvm_*
 */x64/*
-**/Debug*/*
-**/Release*/*
+**/Debug/*
+**/Debug */*
+**/Debug_*/*
+**/Release/*
+**/Release */*
+**/Release_*/*
 **/build/*
 **/.vs/*
 BeefSpace_User.toml
