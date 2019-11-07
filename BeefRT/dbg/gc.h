@@ -4,6 +4,7 @@
 #include "BeefySysLib/util/CritSect.h"
 #include "BeefySysLib/util/Array.h"
 #include "BeefySysLib/util/Dictionary.h"
+#include "BeefySysLib/util/BinaryHeap.h"
 #include <unordered_map>
 #include <map>
 #include "../rt/BfObjects.h"
@@ -238,12 +239,15 @@ public:
 
 	struct AllocInfo
 	{
-		int mCount;
-		int mSize;
+		int mObjCount;
+		int mObjSize;
+
+		int mRawCount;
+		int mRawSize;
 
 		bool operator<(const AllocInfo &rhs) const
 		{
-			return mSize > rhs.mSize;
+			return (mObjSize + mRawSize) > (rhs.mObjSize + rhs.mRawSize);
 		}
 	};
 
@@ -301,10 +305,11 @@ public:
 	static int volatile sCurMarkId; //0-3
 	static int volatile sAllocFlags;
 
-	Beefy::Array<bf::System::Object*> mPendingGCData;
-	bool mHadPendingGCDataOverflow;
-	int mCurPendingGCDepth;
-	int mMaxPendingGCDepth;
+	Beefy::BinaryMinHeap<bf::System::Object*> mOrderedPendingGCData;	
+
+	bool mHadPendingGCDataOverflow;	
+	int mCurPendingGCSize;
+	int mMaxPendingGCSize;
 	Beefy::Array<ThreadInfo*> mThreadList;
 	int mCurMutatorMarkCount;
 	int mCurGCMarkCount;
@@ -335,8 +340,7 @@ public:
 public:
 	void RawInit();
 	void RawShutdown();
-	void WriteDebugDumpState();
-	bool HandlePendingGCData(Beefy::Array<bf::System::Object*>* pendingGCData);
+	void WriteDebugDumpState();	
 	bool HandlePendingGCData();	
 
 	void MarkMembers(bf::System::Object* obj);

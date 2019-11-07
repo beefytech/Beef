@@ -292,8 +292,8 @@ void BFGC::RawReportHandleSpan(tcmalloc_raw::Span* span, int expectedStartPage, 
 			else
 			{
 				(*sizeMap).TryAdd(type, NULL, &sizePtr);
-				sizePtr->mSize += elementSize;
-				sizePtr->mCount++;
+				sizePtr->mRawSize += elementSize;
+				sizePtr->mRawCount++;
 			}
 			objectCount++;
 		}

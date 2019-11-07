@@ -42,6 +42,7 @@
 #include "BeefySysLib/util/BeefPerf.h"
 #include "BeefySysLib/util/HashSet.h"
 #include "BeefySysLib/util/Dictionary.h"
+#include "BeefySysLib/util/BinaryHeap.h"
 #include <unordered_set>
 #include "../rt/BfObjects.h"
 #include "../rt/Thread.h"
@@ -586,8 +587,8 @@ BFGC::BFGC()
 	mGracelessShutdown = false;
 	mMainThreadTLSPtr = NULL;	
 	mHadPendingGCDataOverflow = false;
-	mCurPendingGCDepth = 0;
-	mMaxPendingGCDepth = 0;
+	mCurPendingGCSize = 0;
+	mMaxPendingGCSize = 0;	
 	
 	mCollectIdx = 0;
     mStackScanIdx = 0;
@@ -851,31 +852,26 @@ void BFGC::ObjectDeleteRequested(bf::System::Object* obj)
 	}
 }
 
-bool BFGC::HandlePendingGCData(Beefy::Array<bf::System::Object*>* pendingGCData)
+bool BFGC::HandlePendingGCData()
 {
 	int count = 0;
 	
-	while (!pendingGCData->IsEmpty())
+	while (true)
 	{
-		mCurPendingGCDepth = 0;
+		if (mOrderedPendingGCData.IsEmpty())
+			break;
+		
+		mCurPendingGCSize = 0;
 
-		bf::System::Object* obj = pendingGCData->back();
-		pendingGCData->pop_back();
+		bf::System::Object* obj = mOrderedPendingGCData.Pop();		
 		MarkMembers(obj);
 		count++;
 
-		if (mCurPendingGCDepth > mMaxPendingGCDepth)
-			mMaxPendingGCDepth = mCurPendingGCDepth;
+		if (mCurPendingGCSize > mMaxPendingGCSize)
+			mMaxPendingGCSize = mCurPendingGCSize;
 	}	
 
 	return count > 0;
-}
-
-bool BFGC::HandlePendingGCData()
-{
-	bool didMark = false;
-	didMark = HandlePendingGCData(&mPendingGCData);
-	return didMark;
 }
 
 void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
@@ -1446,7 +1442,7 @@ bool BFGC::ScanThreads()
 		//suspendTimeGuard.Stop();
 		BF_LOGASSERT(result != -1);
 
-		if (!mPendingGCData.IsEmpty())
+		if ((!mOrderedPendingGCData.IsEmpty()) || (!mOrderedPendingGCData.IsEmpty()))
 		{
 			BP_ZONE("HandlePendingGCData(Thread)");
 			HandlePendingGCData();			
@@ -1608,7 +1604,7 @@ void BFGC::DoCollect(bool doingFullGC)
 		}        
     }	
 
-	BF_ASSERT(mPendingGCData.IsEmpty());
+	BF_ASSERT(mOrderedPendingGCData.IsEmpty());
 }        
 
 void BFGC::FinishCollect()
@@ -1825,11 +1821,11 @@ void BFGC::Run()
 		while (true)
 		{
 			mHadPendingGCDataOverflow = false;
-			mMaxPendingGCDepth = 0;
+			mMaxPendingGCSize = 0;
 			PerformCollection();
 			if (!mHadPendingGCDataOverflow)
-				break;
-			mPendingGCData.Reserve(BF_MAX(mPendingGCData.mAllocSize + mPendingGCData.mAllocSize / 2, mMaxPendingGCDepth + 256));
+				break;			
+			mOrderedPendingGCData.Reserve(BF_MAX(mOrderedPendingGCData.mAllocSize + mOrderedPendingGCData.mAllocSize / 2, mMaxPendingGCSize + 256));
 		}
 		
 		BF_FULL_MEMORY_FENCE();
@@ -1997,7 +1993,7 @@ void BFGC::Shutdown()
 	TCMalloc_FreeAllocs();
 	
 	mFinalizeList.Dispose();	
-	mPendingGCData.Dispose();
+	mOrderedPendingGCData.Dispose();	
 	for (auto thread : mThreadList)
 		thread->mStackMarkableObjects.Dispose();	
 }
@@ -2070,8 +2066,8 @@ void BFGC::ObjReportHandleSpan(tcmalloc_obj::Span* span, int expectedStartPage, 
 				//pairVal.first->second = newSize;
 				AllocInfo* sizePtr = NULL;
 				sizeMap.TryAdd(type, NULL, &sizePtr);
-				sizePtr->mCount++;
-				sizePtr->mSize += elementSize;
+				sizePtr->mObjCount++;
+				sizePtr->mObjSize += elementSize;
 
 				objectCount++;
 			}
@@ -2167,8 +2163,7 @@ void BFGC::Report()
 
 	ObjReportScan(objectCount, objFreeSize, sizeMap);
 
-	std::multimap<AllocInfo, bf::System::Type*> orderedSizeMap;
-	intptr totalSize = 0;
+	std::multimap<AllocInfo, bf::System::Type*> orderedSizeMap;	
 	for (auto& pair : sizeMap)
 	{		
 		orderedSizeMap.insert(std::make_pair(pair.mValue, pair.mKey));
@@ -2182,18 +2177,25 @@ void BFGC::Report()
 	msg += Beefy::StrFormat("  Live Objects                                                   %d\n", objectCount);
 	msg += Beefy::StrFormat("  Last Object Freed Count                                        %d\n", mLastFreeCount);	
 	    
-	intptr reportedCount = 0;
-	intptr rawFreeSize = 0;	
+	intptr objReportedCount = 0;
+	intptr rawReportedCount = 0;
+	intptr rawFreeSize = 0;		
+	intptr objTotalSize = 0;
+	intptr rawTotalSize = 0;	
 	gBFGC.RawReport(msg, rawFreeSize, orderedSizeMap);
 	for (auto& pair : orderedSizeMap)
 	{
-		totalSize += pair.first.mSize;
-		reportedCount += pair.first.mCount;
+		objTotalSize += pair.first.mObjSize;
+		objReportedCount += pair.first.mObjCount;
+		rawTotalSize += pair.first.mRawSize;
+		rawReportedCount += pair.first.mRawCount;
 	}
 
-	msg += Beefy::StrFormat("  Scanned Alloc Count                                            %d\n", (int)(reportedCount));
-	msg += Beefy::StrFormat("  Used Memory                                                    %dk\n", (int)(totalSize / 1024));	
-	msg += Beefy::StrFormat("  Object Unusued Memory                                          %dk\n", (int)(objFreeSize / 1024));	
+	msg += Beefy::StrFormat("  Obj Scanned Alloc Count                                        %d\n", (int)(objReportedCount));
+	msg += Beefy::StrFormat("  Raw Scanned Alloc Count                                        %d\n", (int)(rawReportedCount));
+	msg += Beefy::StrFormat("  Obj Used Memory                                                %dk\n", (int)(objTotalSize / 1024));	
+	msg += Beefy::StrFormat("  Raw Used Memory                                                %dk\n", (int)(rawTotalSize / 1024));
+	msg += Beefy::StrFormat("  Obj Unusued Memory                                             %dk\n", (int)(objFreeSize / 1024));	
 	msg += Beefy::StrFormat("  Raw Unusued Memory                                             %dk\n", (int)(rawFreeSize / 1024));
 
 	
@@ -2216,7 +2218,7 @@ void BFGC::Report()
 		msg += Beefy::StrFormat("  Average Time Between Collections                               %dms\n", BFTickCount() / mCollectIdx);
 	}
 	        
-	msg += "Types                                                                Size   Count\n";	
+	msg += "Types                                                                  Size   Count\n";	
 	for (auto& pair : orderedSizeMap)
 	{
 		bf::System::Type* type = pair.second;
@@ -2225,8 +2227,11 @@ void BFGC::Report()
 			typeName = "NULL";
 		else
 			typeName = type->GetFullName();
-				
-		msg += StrFormat("  %-62s %7dk %7d\n", typeName.c_str(), (pair.first.mSize + 1023) / 1024, pair.first.mCount);
+		
+		if (pair.first.mObjCount > 0)
+			msg += StrFormat("OBJ %-62s %7dk %7d\n", typeName.c_str(), (pair.first.mObjSize + 1023) / 1024, pair.first.mObjCount);
+		if (pair.first.mRawCount > 0)
+			msg += StrFormat("RAW %-62s %7dk %7d\n", typeName.c_str(), (pair.first.mRawSize + 1023) / 1024, pair.first.mRawCount);		
 	}	
 
 	Beefy::OutputDebugStr(msg.c_str());
@@ -2313,7 +2318,7 @@ void BFGC::PerformCollection()
 	uint8 oldCode = *mallocAddr;
 	*mallocAddr = 0xCC;*/
 	
-	mPendingGCData.Reserve(BF_GC_MAX_PENDING_OBJECT_COUNT);
+	mOrderedPendingGCData.Reserve(BF_GC_MAX_PENDING_OBJECT_COUNT);	
 
 	uint32 suspendStartTick = BFTickCount();
 	SuspendThreads();
@@ -2579,13 +2584,14 @@ void BFGC::MarkFromGCThread(bf::System::Object* obj)
 	mCurGCMarkCount++;
 	
 	mCurGCObjectQueuedCount++;
-	mCurPendingGCDepth++;
+	mCurPendingGCSize++;
 
 	bool allowQueue = true;	
-	if (mPendingGCData.GetFreeCount() > 0)
+	
+	if (mOrderedPendingGCData.GetFreeCount() > 0)
 	{
-		mPendingGCData.Add(obj);
-	}
+		mOrderedPendingGCData.Add(obj);
+	}	
 	else
 	{
 		mHadPendingGCDataOverflow = true;
