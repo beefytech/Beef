@@ -767,7 +767,7 @@ namespace IDE
 
 			if (!File.Exists(outFilePath))
 			{
-				ScriptManager.sActiveManager.Fail("Unable to locate project file '{0}'", outFilePath);
+				mScriptManager.Fail("Unable to locate project file '{0}'", outFilePath);
 			}
 		}
 
@@ -782,7 +782,7 @@ namespace IDE
 
 			if (!File.Exists(outFilePath))
 			{
-				ScriptManager.sActiveManager.Fail("Unable to locate file '{0}'", outFilePath);
+				mScriptManager.Fail("Unable to locate file '{0}'", outFilePath);
 			}
 		}
 
@@ -791,7 +791,7 @@ namespace IDE
 			var sourceViewPanel = gApp.GetActiveSourceViewPanel();
 			if (sourceViewPanel == null)
 			{
-				ScriptManager.sActiveManager.Fail("No active source view panel");
+				mScriptManager.Fail("No active source view panel");
 				return null;
 			}
 			sourceViewPanel.EnsureReady();
@@ -802,7 +802,7 @@ namespace IDE
 		{
 			var textPanel = gApp.GetActivePanel() as TextPanel;
 			if (textPanel == null)
-				ScriptManager.sActiveManager.Fail("No active text panel");
+				mScriptManager.Fail("No active text panel");
 			return textPanel;
 		}
 
@@ -894,6 +894,28 @@ namespace IDE
 
 		public bool IsPaused()
 		{
+			/*if (gApp.mWatchPanel.mVisible)
+			{
+				bool hasPendingWatch = false;
+
+				gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [&] (item) =>
+					{
+						var watchListViewItem = (WatchListViewItem)item;
+						if (!watchListViewItem.mVisible)
+							return;
+						if (watchListViewItem.mMustUpdateBeforeEvaluate)
+							hasPendingWatch = true;
+						if ((watchListViewItem.mWatchEntry != null) && (!watchListViewItem.mWatchEntry.mHasValue))
+						{
+							var parentWatchListViewItem = watchListViewItem.mParentItem as WatchListViewItem;
+							if ((!watchListViewItem.mDisabled) || (parentWatchListViewItem == null) || (watchListViewItem.mWatchEntry.mIsNewExpression))
+								hasPendingWatch = true;
+						}
+					});
+				if (hasPendingWatch)
+					return false;
+			}*/
+
 			if (gApp.mLastActiveSourceViewPanel != null)
 			{
 				var sourceViewPanel = gApp.mLastActiveSourceViewPanel;
@@ -1013,7 +1035,7 @@ namespace IDE
 			case .Ok(let flags):
 				gApp.mDebugger.SetSymSrvOptions(symCacheDir, symSrvStr, flags);
 			case .Err:
-				ScriptManager.sActiveManager.Fail("Failed to parse flags");
+				mScriptManager.Fail("Failed to parse flags");
 			}
 		}
 
@@ -1031,7 +1053,7 @@ namespace IDE
 		{
 			if (Utils.DelTree(dirPath) case .Err)
 			{
-				ScriptManager.sActiveManager.Fail(scope String()..AppendF("Failed to deltree '{}'", dirPath));
+				mScriptManager.Fail(scope String()..AppendF("Failed to deltree '{}'", dirPath));
 			}
 		}
 
@@ -1041,7 +1063,7 @@ namespace IDE
 			let fileStream = scope FileStream();
 			if (fileStream.Create(path) case .Err)
 			{
-				ScriptManager.sActiveManager.Fail("Failed to create file '{}'", path);
+				mScriptManager.Fail("Failed to create file '{}'", path);
 				return;
 			}
 			fileStream.Write(text);
@@ -1052,7 +1074,7 @@ namespace IDE
 		{
 			if (File.Move(origPath, newPath) case .Err)
 			{
-				ScriptManager.sActiveManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
+				mScriptManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
 			}
 		}
 
@@ -1295,7 +1317,7 @@ namespace IDE
 			String content = scope .();
 			if (File.ReadAllText(origPath, content, true) case .Err)
 			{
-				ScriptManager.sActiveManager.Fail("Failed to open file '{}'", origPath);
+				mScriptManager.Fail("Failed to open file '{}'", origPath);
 				return;
 			}
 
@@ -1316,7 +1338,7 @@ namespace IDE
 			FileStream tempStream = scope .();
 			if (tempStream.Create(tempPath) case .Err)
 			{
-				ScriptManager.sActiveManager.Fail("Failed to create temp file '{}'", tempPath);
+				mScriptManager.Fail("Failed to create temp file '{}'", tempPath);
 				return;
 			}
 			tempStream.Write(content);
@@ -1324,13 +1346,13 @@ namespace IDE
 
 			if (File.Move(tempPath, newPath) case .Err)
 			{
-				ScriptManager.sActiveManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
+				mScriptManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
 				return;
 			}
 
 			if (File.Delete(origPath) case .Err)
 			{
-				ScriptManager.sActiveManager.Fail("Failed to delete file '{}'", origPath);
+				mScriptManager.Fail("Failed to delete file '{}'", origPath);
 				return;
 			}
 		}
@@ -1356,7 +1378,7 @@ namespace IDE
 			var panelHeader = sourceViewPanel.[Friend]mPanelHeader;
 			if (panelHeader == null)
 			{
-				ScriptManager.sActiveManager.Fail("No panel present");
+				mScriptManager.Fail("No panel present");
 				return;
 			}
 
@@ -1372,7 +1394,7 @@ namespace IDE
 				}
 			}
 
-			ScriptManager.sActiveManager.Fail("Button '{0}' not found", buttonName);
+			mScriptManager.Fail("Button '{0}' not found", buttonName);
 		}
 
 		[IDECommand]
@@ -1394,7 +1416,7 @@ namespace IDE
 
 			if (outVal != evalResult)
 			{
-				ScriptManager.sActiveManager.Fail("Assert failed: {0} == {1}", outVal, evalResult);
+				mScriptManager.Fail("Assert failed: {0} == {1}", outVal, evalResult);
 			}
 		}
 
@@ -1407,8 +1429,134 @@ namespace IDE
 
 			if (!outVal.Contains(evalResult))
 			{
-				ScriptManager.sActiveManager.Fail("Assert failed: {0} contains {1}", outVal, evalResult);
+				mScriptManager.Fail("Assert failed: {0} contains {1}", outVal, evalResult);
 			}
+		}
+
+		[IDECommand]
+		public void AddWatch(String evalStr)
+		{
+			gApp.mWatchPanel.AddWatchItem(evalStr);
+		}
+
+		[IDECommand]
+		public void SelectWatch(String str)
+		{
+			UpdateWatches();
+
+			int foundIdx = 0;
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [&] (item) =>
+				{
+					if (item.mLabel == str)
+					{
+						if (foundIdx == 0)
+							item.Focused = true;
+						else
+							item.Selected = true;
+						foundIdx++;
+					}
+					else
+						item.Selected = false;
+				});
+			if (foundIdx == 0)
+				mScriptManager.Fail("Unable to find watch '{}'", str);
+		}
+
+		[IDECommand]
+		public void FocusWatchDir(int dir)
+		{
+			if (dir < 0)
+			{
+				for (int idx < -dir)
+					gApp.mWatchPanel.mListView.KeyDown(.Up, false);
+			}
+			else
+			{
+				for (int idx < dir)
+					gApp.mWatchPanel.mListView.KeyDown(.Down, false);
+			}
+		}
+
+		[IDECommand]
+		public void AssertSelectedWatchEquals(String val)
+		{
+			UpdateWatches();
+
+			int foundIdx = 0;
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [&] (item) =>
+				{
+					let watchItem = (WatchListViewItem)item;
+					if (watchItem.Selected)
+					{
+						foundIdx++;
+						ForceWatchItem(watchItem);
+
+						let valueWatchItem = (WatchListViewItem)watchItem.GetSubItem(1);
+						if (valueWatchItem.Label != val)
+							mScriptManager.Fail("Assert failed: {} == {}", valueWatchItem.Label, val);
+					}
+				});
+			if (foundIdx == 0)
+				mScriptManager.Fail("No watches selected");
+		}
+
+		[IDECommand]
+		public void UpdateWatches()
+		{
+			gApp.mWatchPanel.CheckClearDirtyWatches();
+
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [&] (item) =>
+				{
+					let watchItem = (WatchListViewItem)item;
+					if (!watchItem.mVisible)
+						return;
+					ForceWatchItem(watchItem);
+				});
+		}
+
+		void ForceWatchItem(WatchListViewItem item)
+		{
+			item.CalculatedDesiredHeight();
+
+			if (item.mMustUpdateBeforeEvaluate)
+				item.Update();
+
+			if ((item.mWatchEntry != null) && (!item.mWatchEntry.mHasValue))
+			{
+				item.mWatchOwner.UpdateWatch(item);
+			}
+		}
+
+		[IDECommand]
+		public void OpenSelectedWatches()
+		{
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope (item) =>
+				{
+					if (item.Selected)
+					{
+						let watchItem = (WatchListViewItem)item;
+						ForceWatchItem(watchItem);
+						item.Open(true, true);
+						item.CalculatedDesiredHeight();
+
+						watchItem.WithItems(scope (subItem) =>
+							{
+								var watchSubItem = (WatchListViewItem)subItem;
+								if (watchSubItem.mMustUpdateBeforeEvaluate)
+									watchSubItem.Update();
+							});
+					}
+				});
+		}
+
+		[IDECommand]
+		public void CloseSelectedWatches()
+		{
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope (item) =>
+				{
+					if (item.Selected)
+						item.Open(false, true);
+				});
 		}
 
 		[IDECommand]
@@ -1430,7 +1578,7 @@ namespace IDE
 				gApp.mDebugger.UpdateCallStack();
 				if (stackCount == gApp.mDebugger.GetCallStackCount())
 				{
-					ScriptManager.sActiveManager.Fail("Stack idx '{0}' is out of range", selectIdx);
+					mScriptManager.Fail("Stack idx '{0}' is out of range", selectIdx);
 				}	
 			}
 
@@ -1462,7 +1610,7 @@ namespace IDE
 				stackIdx++;
 			}
 
-			ScriptManager.sActiveManager.Fail("Failed to find stack frame containing string '{}'", str);
+			mScriptManager.Fail("Failed to find stack frame containing string '{}'", str);
 		}
 
 		public bool AssertRunning()
@@ -1541,7 +1689,7 @@ namespace IDE
 
 			if (methodName != stackframeInfo)
 			{
-				ScriptManager.sActiveManager.Fail("Expect method name '{0}', got '{1}'", methodName, stackframeInfo);
+				mScriptManager.Fail("Expect method name '{0}', got '{1}'", methodName, stackframeInfo);
 			}
 		}
 
@@ -1579,7 +1727,7 @@ namespace IDE
 			var lastBreakpoint = gApp.mDebugger.mBreakpointList.Back;
 			if (lastBreakpoint == null)
 			{
-				ScriptManager.sActiveManager.Fail("No last breakpoint");
+				mScriptManager.Fail("No last breakpoint");
 				return;
 			}
 			lastBreakpoint.SetCondition(condition);
@@ -1591,13 +1739,13 @@ namespace IDE
 			var lastBreakpoint = gApp.mDebugger.mBreakpointList.Back;
 			if (lastBreakpoint == null)
 			{
-				ScriptManager.sActiveManager.Fail("No last breakpoint");
+				mScriptManager.Fail("No last breakpoint");
 				return;
 			}
 			switch (Enum.Parse<Breakpoint.HitCountBreakKind>(hitCountBreakKindStr))
 			{
 			case .Err:
-				ScriptManager.sActiveManager.Fail("Invalid break kind: '{0}'", hitCountBreakKindStr);
+				mScriptManager.Fail("Invalid break kind: '{0}'", hitCountBreakKindStr);
 			case .Ok(let hitCountBreakKind):
 				lastBreakpoint.SetHitCountTarget(hitCountTarget, hitCountBreakKind);
 			}
@@ -1619,20 +1767,20 @@ namespace IDE
 			var textPanel = GetActiveTextPanel();
 			if (textPanel == null)
 			{
-				ScriptManager.sActiveManager.Fail("No text panel active");
+				mScriptManager.Fail("No text panel active");
 				return null;
 			}
 
 			var ewc = textPanel.EditWidget.mEditWidgetContent as SourceEditWidgetContent;
 			if (ewc == null)
 			{
-				ScriptManager.sActiveManager.Fail("Not an autocomplete text view");
+				mScriptManager.Fail("Not an autocomplete text view");
 				return null;
 			}
 
 			if (ewc.mAutoComplete == null)
 			{
-				ScriptManager.sActiveManager.Fail("No autocomplete content");
+				mScriptManager.Fail("No autocomplete content");
 				return null;
 			}
 
@@ -1669,9 +1817,9 @@ namespace IDE
 			if (found != wantsFind)
 			{
 				if (wantsFind)
-					ScriptManager.sActiveManager.Fail("Autocomplete entry '{0}' not found", wantEntry);
+					mScriptManager.Fail("Autocomplete entry '{0}' not found", wantEntry);
 				else
-					ScriptManager.sActiveManager.Fail("Autocomplete entry '{0}' found, but it shouldn't have been", wantEntry);
+					mScriptManager.Fail("Autocomplete entry '{0}' found, but it shouldn't have been", wantEntry);
 				return false;
 			}
 			return true;
@@ -1721,7 +1869,7 @@ namespace IDE
 
 			if (contents != wantsContents)
 			{
-				ScriptManager.sActiveManager.Fail("Autocomplete not showing expected values. Expected '{}', got '{}'.", wantsContents, contents);
+				mScriptManager.Fail("Autocomplete not showing expected values. Expected '{}', got '{}'.", wantsContents, contents);
 				return false;
 			}
 			return true;
@@ -1754,14 +1902,14 @@ namespace IDE
 
 			if (!Path.Equals(filePath, sourceViewPanel.mFilePath))
 			{
-				ScriptManager.sActiveManager.Fail("Expected source file '{0}', got '{1}'", filePath, sourceViewPanel.mFilePath);
+				mScriptManager.Fail("Expected source file '{0}', got '{1}'", filePath, sourceViewPanel.mFilePath);
 				return;
 			}
 
 			let atLine = sourceViewPanel.mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine + 1;
 			if (atLine != lineNum)
 			{
-				ScriptManager.sActiveManager.Fail("Expected line '{0}', got '{1}'", lineNum, atLine);
+				mScriptManager.Fail("Expected line '{0}', got '{1}'", lineNum, atLine);
 				return;
 			}
 		}
@@ -1778,14 +1926,14 @@ namespace IDE
 
 			if (!Path.Equals(filePath, sourceViewPanel.mFilePath))
 			{
-				ScriptManager.sActiveManager.Fail("Expected source file '{0}', got '{1}'", filePath, sourceViewPanel.mFilePath);
+				mScriptManager.Fail("Expected source file '{0}', got '{1}'", filePath, sourceViewPanel.mFilePath);
 				return;
 			}
 
 			let atColumn = sourceViewPanel.mEditWidget.mEditWidgetContent.CursorLineAndColumn.mColumn + 1;
 			if (atColumn != column)
 			{
-				ScriptManager.sActiveManager.Fail("Expected column '{0}', got '{1}'", column, atColumn);
+				mScriptManager.Fail("Expected column '{0}', got '{1}'", column, atColumn);
 				return;
 			}
 		}
@@ -1798,7 +1946,7 @@ namespace IDE
 			var textPanel = GetActiveTextPanel();
 			if (textPanel == null)
 			{
-				ScriptManager.sActiveManager.Fail("No active text panel");
+				mScriptManager.Fail("No active text panel");
 				return;
 			}
 			var ewc = textPanel.EditWidget.mEditWidgetContent;
@@ -1828,7 +1976,7 @@ namespace IDE
 			    }
 			}
 
-			ScriptManager.sActiveManager.Fail("Unable to find text '{0}'", findText);
+			mScriptManager.Fail("Unable to find text '{0}'", findText);
 		}
 
 		[IDECommand]
@@ -1852,7 +2000,7 @@ namespace IDE
 
 			if (!lineText.Contains(findText))
 			{
-				ScriptManager.sActiveManager.Fail("Lines does not contain text '{0}'", findText);
+				mScriptManager.Fail("Lines does not contain text '{0}'", findText);
 			}
 		}
 
@@ -1960,7 +2108,7 @@ namespace IDE
 			}
 			
 			if (gApp.mLastCompileFailed)
-				ScriptManager.sActiveManager.Fail("Compile failed");
+				mScriptManager.Fail("Compile failed");
 		}
 
 		[IDECommand]
@@ -1973,7 +2121,7 @@ namespace IDE
 			var ewc = sourceViewPanel.mEditWidget.mEditWidgetContent;
 			GotoText(textFrom);
 
-			if (ScriptManager.sActiveManager.Failed)
+			if (mScriptManager.Failed)
 				return;
 
 
@@ -2082,7 +2230,7 @@ namespace IDE
 			if (ScriptManager.sActiveManager.mExpectingError != null)
 			{
 				DeleteAndNullify!(ScriptManager.sActiveManager.mExpectingError);
-				ScriptManager.sActiveManager.Fail("Expected error did not occur");
+				mScriptManager.Fail("Expected error did not occur");
 			}
 		}
 
@@ -2092,7 +2240,7 @@ namespace IDE
 			var textPanel = GetActiveSourceViewPanel();
 			if (textPanel == null)
 			{
-				ScriptManager.sActiveManager.Fail("No active text panel");
+				mScriptManager.Fail("No active text panel");
 				return;
 			}
 			var ewc = textPanel.EditWidget.mEditWidgetContent;
