@@ -1,5 +1,5 @@
 FileVersion = 1
-Projects = {LogViewer = {Path = "."}, Beefy2D = {Path = "../BeefLibs/Beefy2D"}}
+Projects = {LogViewer = {Path = "."}, Beefy2D = "*"}
 
 [Workspace]
 StartupProject = "LogViewer"

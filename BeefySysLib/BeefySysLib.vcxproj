@@ -2142,6 +2142,7 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
     <ClInclude Include="Util\AllocDebug.h" />
     <ClInclude Include="util\Array.h" />
     <ClInclude Include="util\BeefPerf.h" />
+    <ClInclude Include="util\BinaryHeap.h" />
     <ClInclude Include="util\BSpline.h" />
     <ClInclude Include="util\BumpAllocator.h" />
     <ClInclude Include="util\CatmullRom.h" />

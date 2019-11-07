@@ -1060,6 +1060,9 @@
     <ClInclude Include="BFSound.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="util\BinaryHeap.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">

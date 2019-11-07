@@ -1,5 +1,5 @@
 FileVersion = 1
-Projects = {MemProfiler = {Path = "."}, corlib = {Path = "../IDE\\corlib"}, Beefy2D = {Path = "../Beefy2D"}, BeefySysLib = {Path = "../BeefySysLib"}}
+Projects = {MemProfiler = {Path = "."}, corlib = "*", Beefy2D = "*", BeefySysLib = "*"}
 
 [Workspace]
 StartupProject = "MemProfiler"
