@@ -781,7 +781,7 @@ namespace IDE.ui
 
     public class WatchListViewItem : IDEListViewItem
     {
-        IWatchOwner mWatchOwner;
+        public IWatchOwner mWatchOwner;
         public WatchEntry mWatchEntry ~ delete _;
         public bool mFailed;
         public int32 mErrorStart;
@@ -802,6 +802,7 @@ namespace IDE.ui
         public WatchRefreshButton mWatchRefreshButton;
 		public ActionButton mActionButton;
 		public String mTextAction ~ delete _;
+		public bool mMustUpdateBeforeEvaluate;
 
         public override bool Selected
         {
@@ -1057,6 +1058,11 @@ namespace IDE.ui
             if (mParentItem.mChildAreaHeight == 0)
                 return;
 
+			if (mMustUpdateBeforeEvaluate)
+			{
+				Update();
+			}
+
             if (!IsVisible(g))
 				return;
 
@@ -1181,6 +1187,8 @@ namespace IDE.ui
 
         public override void Update()
         {
+			mMustUpdateBeforeEvaluate = false;
+
 			if ((mWatchEntry != null) && (mWatchEntry.mIsPending))
 			{
 				if (!gApp.mDebugger.mIsRunning)
@@ -1311,6 +1319,9 @@ namespace IDE.ui
 						if ((forceDelete) || 
                             ((wantsDelete) && (idx != 0) && (curWatchListViewItem != null) && (curWatchListViewItem.mChildAreaHeight == 0) && (!curWatchListViewItem.mIsSelected)))
 						{
+							if (curWatchListViewItem == nextWatchListViewItem)
+								nextWatchListViewItem = null;
+
 						    curMemberIdx--;
 						    mParentItem.RemoveChildItem(curWatchListViewItem);
 						    curWatchListViewItem = null;
@@ -1747,11 +1758,10 @@ namespace IDE.ui
             listViewItem.mWatchEntry = watchEntry;
         }
 
-        public void AddWatchItem(String name)
+        public WatchListViewItem AddWatchItem(String name)
         {
             // This is the public interface to AddWatch, which uses the first available blank watch slot or appends a new one if necessary
             var rootItem = mListView.GetRoot();
-            bool added = false;
             int childCount = mListView.GetRoot().GetChildCount();
             for (int iChild=0; iChild<childCount; ++iChild)
             {
@@ -1766,13 +1776,10 @@ namespace IDE.ui
                 rootItem.SelectItemExclusively(listViewItem);
                 mListView.EnsureItemVisible(listViewItem, true);
                 
-                added = true;
-                break;
+                return listViewItem;
             }
-            if (!added)
-            {
-                AddWatch(name);
-            }
+            
+            return AddWatch(name);
         }
 
         WatchListViewItem AddWatch(String name, String evalStr = null, ListViewItem parentItem = null)
@@ -2376,6 +2383,9 @@ namespace IDE.ui
                                 memberCount++;
                             }
                         }
+
+						// We update here to avoid doing a Draw with old series information (such as addresses)
+						memberItem.mMustUpdateBeforeEvaluate = true;
                     }                    
                     else if (memberVals0 == ":addrs")
                     {
