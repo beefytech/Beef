@@ -1665,13 +1665,12 @@ namespace IDE.ui
 					Object target;
 					if (!targetDict.TryGetValue(propEntry.mTarget, out target))
 					{
-						Debug.FatalError();
-						//continue;
+						//Debug.FatalError();
+						continue;
 					}
 
 					String usePropName = scope:: String(propEntry.mPropertyName);
-					//String[] useOptionValues = optionValues;
-
+					
 					while (true)
 					{
 					    int dotIdx = usePropName.IndexOf('.');

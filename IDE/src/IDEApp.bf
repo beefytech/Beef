@@ -3058,7 +3058,8 @@ namespace IDE
             {
 				if (!mWorkspace.IsDebugSession)
 					success &= SaveWorkspaceUserData();
-				mSettings.Save();
+				if (mSettings.mLoadedSettings)
+					mSettings.Save();
 			}
 
 			MarkDirty();
