@@ -679,6 +679,7 @@ namespace IDE.ui
 				DeleteDistinctBuildOptions();
 				fallthrough;
 			case .Build:
+				DeleteDistinctBuildOptions();
 				int propsIdx = 0;
 				for (var configName in mConfigNames)
 				{
