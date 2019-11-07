@@ -539,13 +539,7 @@ void* BfObjectAllocate(intptr size, bf::System::Type* objType)
 #endif
     
     gBFGC.mAllocSinceLastGC += size;
-    /*if ((uint32)gBFGC.mAllocSinceLastGC > (uint32)gBFGC.mAllocGCTrigger)
-        gBFGC.TriggerCollection();*/
-
-	//BfLog("AllocId %d ptr: %p Thread:%d\n", gBFGC.mTotalAllocs, obj, GetCurrentThreadId());
-
-	//gBFGC.TriggerCollection(true);
-
+    
 	return obj;
 }
 
@@ -591,6 +585,9 @@ BFGC::BFGC()
 	mSkipMark = false;	
 	mGracelessShutdown = false;
 	mMainThreadTLSPtr = NULL;	
+	mHadPendingGCDataOverflow = false;
+	mCurPendingGCDepth = 0;
+	mMaxPendingGCDepth = 0;
 	
 	mCollectIdx = 0;
     mStackScanIdx = 0;
@@ -860,10 +857,15 @@ bool BFGC::HandlePendingGCData(Beefy::Array<bf::System::Object*>* pendingGCData)
 	
 	while (!pendingGCData->IsEmpty())
 	{
+		mCurPendingGCDepth = 0;
+
 		bf::System::Object* obj = pendingGCData->back();
 		pendingGCData->pop_back();
 		MarkMembers(obj);
 		count++;
+
+		if (mCurPendingGCDepth > mMaxPendingGCDepth)
+			mMaxPendingGCDepth = mCurPendingGCDepth;
 	}	
 
 	return count > 0;
@@ -1818,9 +1820,18 @@ void BFGC::Run()
 
 		lastGCTick = tickNow;
 		mCollectRequested = false;
-		mPerformingCollection = true;
+		mPerformingCollection = true;		
 		BF_FULL_MEMORY_FENCE();
-		PerformCollection();
+		while (true)
+		{
+			mHadPendingGCDataOverflow = false;
+			mMaxPendingGCDepth = 0;
+			PerformCollection();
+			if (!mHadPendingGCDataOverflow)
+				break;
+			mPendingGCData.Reserve(BF_MAX(mPendingGCData.mAllocSize + mPendingGCData.mAllocSize / 2, mMaxPendingGCDepth + 256));
+		}
+		
 		BF_FULL_MEMORY_FENCE();
 		mPerformingCollection = false;
 		BF_FULL_MEMORY_FENCE();
@@ -1907,15 +1918,12 @@ void BFGC::Init()
 
 void BFGC::Start()
 {		
-#ifndef BF_GC_DISABLED
-	//mEphemeronTombstone = Object::BFCreate();
-	//RegisterRoot(mEphemeronTombstone);
+#ifndef BF_GC_DISABLED	
 	mRunning = true;	
 
 #ifdef BF_DEBUG
-	// More stack space is needed in debug version
-	//::CreateThread(NULL, 64*1024, (LPTHREAD_START_ROUTINE)&RunStub, (void*)this, 0, (DWORD*)&mThreadId);
-	mGCThread = BfpThread_Create(RunStub, (void*)this, 256*1024, (BfpThreadCreateFlags)(BfpThreadCreateFlag_Suspended | BfpThreadCreateFlag_StackSizeReserve), &mThreadId);
+	// More stack space is needed in debug version	
+	mGCThread = BfpThread_Create(RunStub, (void*)this, 256 * 1024, (BfpThreadCreateFlags)(BfpThreadCreateFlag_Suspended | BfpThreadCreateFlag_StackSizeReserve), &mThreadId);
 #else	
 	mGCThread = BfpThread_Create(RunStub, (void*)this, 64 * 1024, (BfpThreadCreateFlags)(BfpThreadCreateFlag_Suspended | BfpThreadCreateFlag_StackSizeReserve), &mThreadId);
 #endif
@@ -2304,7 +2312,7 @@ void BFGC::PerformCollection()
 	BOOL worked = ::VirtualProtect(mallocAddr, 1, PAGE_EXECUTE_READWRITE, &oldProtect);
 	uint8 oldCode = *mallocAddr;
 	*mallocAddr = 0xCC;*/
-
+	
 	mPendingGCData.Reserve(BF_GC_MAX_PENDING_OBJECT_COUNT);
 
 	uint32 suspendStartTick = BFTickCount();
@@ -2341,7 +2349,8 @@ void BFGC::PerformCollection()
 	//BFGCLogWrite();
 
 	mFinalizeList.Clear();
-	Sweep();
+	if (!mHadPendingGCDataOverflow)
+		Sweep();
 
 #ifdef BF_GC_DEBUGSWEEP
 	ResumeThreads();
@@ -2565,54 +2574,23 @@ void BFGC::MarkFromGCThread(bf::System::Object* obj)
 		parentObj = gMarkingObject[mMarkDepthCount-1];
 	BFLOG3(GCLog::EVENT_MARK, (intptr)obj, obj->mObjectFlags, (intptr)parentObj);
 #endif
-	
-	int maxMarkDepth = 256;
-	//int maxMarkDepth = 1;
-
+		
 	obj->mObjectFlags = (BfObjectFlags)((obj->mObjectFlags & ~BF_OBJECTFLAG_MARK_ID_MASK) | mCurMarkId);
 	mCurGCMarkCount++;
-	//if (obj->mBFVData->BFMarkMembers != NULL)
+	
+	mCurGCObjectQueuedCount++;
+	mCurPendingGCDepth++;
+
+	bool allowQueue = true;	
+	if (mPendingGCData.GetFreeCount() > 0)
 	{
-		mCurGCObjectQueuedCount++;
-
-#ifdef NO_QUEUE_OBJECTS
-		Beefy::AutoCrit autoCrit(mCritSect);
-		BFVCALL(obj, BFMarkMembers)();
-#else
-
-		bool allowQueue = true;
-		//if ((!mQueueMarkObjects) && (mMarkDepthCount < maxMarkDepth))
-
-		if (mMarkDepthCount < maxMarkDepth)
-		{
-#ifdef BF_GC_LOG_ENABLED
-			gMarkingObject[mMarkDepthCount] = obj;
-#endif
-			mMarkDepthCount++;			
-			// Try to clear off the list first
-			while (!mPendingGCData.IsEmpty())
-			{
-				bf::System::Object* queuedObj = mPendingGCData.back();				
-				mPendingGCData.pop_back();
-				MarkMembers(queuedObj);
-			}
-
-			MarkMembers(obj);
-			mMarkDepthCount--;
-		}
-		else
-		{			
-			if (mPendingGCData.GetFreeCount() > 0)
-			{
-				mPendingGCData.Add(obj);
-			}
-			else
-			{
-				// No more room left -- we can't queue...
-				MarkMembers(obj);
-			}
-		}
-#endif
+		mPendingGCData.Add(obj);
+	}
+	else
+	{
+		mHadPendingGCDataOverflow = true;
+		// No more room left -- we can't queue...
+		//MarkMembers(obj);
 	}
 #endif
 }

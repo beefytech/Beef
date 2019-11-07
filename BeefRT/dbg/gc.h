@@ -302,6 +302,9 @@ public:
 	static int volatile sAllocFlags;
 
 	Beefy::Array<bf::System::Object*> mPendingGCData;
+	bool mHadPendingGCDataOverflow;
+	int mCurPendingGCDepth;
+	int mMaxPendingGCDepth;
 	Beefy::Array<ThreadInfo*> mThreadList;
 	int mCurMutatorMarkCount;
 	int mCurGCMarkCount;
