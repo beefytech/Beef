@@ -23,11 +23,12 @@ namespace System.Collections.Generic
 			public int_cosize mNext;        // Index of next entry, -1 if last
 		}
 
-		private int_cosize[] mBuckets ~ delete _;
-		private Entry[] mEntries ~ delete _;
-		private int_cosize mCount;
-		private int_cosize mFreeList;
-		private int_cosize mFreeCount;
+		int_cosize* mBuckets ~ delete _;
+		Entry* mEntries ~ delete _;
+		int_cosize mAllocSize;
+		int_cosize mCount;
+		int_cosize mFreeList;
+		int_cosize mFreeCount;
 #if VERSION_DICTIONARY
 		private int32 mVersion;
 		const String cVersionError = "Dictionary changed during enumeration";
@@ -204,7 +205,7 @@ namespace System.Collections.Generic
 		{
 			if (mCount > 0)
 			{
-				for (int_cosize i = 0; i < mBuckets.Count; i++) mBuckets[i] = -1;
+				for (int_cosize i = 0; i < mAllocSize; i++) mBuckets[i] = -1;
 				//for (int_cosize i = 0; i < mCount; i++)
 					//mEntries[i] = default(Entry);
 				//Array.Clear(entries, 0, count);
@@ -248,12 +249,13 @@ namespace System.Collections.Generic
 			return Enumerator(this, Enumerator.KeyValuePair);
 		}
 
+		[DisableObjectAccessChecks]
 		private int FindEntry(TKey key)
 		{
 			if (mBuckets != null)
 			{
 				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
-				for (int_cosize i = mBuckets[hashCode % mBuckets.Count]; i >= 0; i = mEntries[i].mNext)
+				for (int_cosize i = mBuckets[hashCode % mAllocSize]; i >= 0; i = mEntries[i].mNext)
 				{
 					if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key)) return i;
 				}
@@ -261,12 +263,17 @@ namespace System.Collections.Generic
 			return -1;
 		}
 
+		public bool CheckEq(TKey key, TKey key2)
+		{
+			return key == key2;
+		}
+
 		private int FindEntryWith<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
 		{
 			if (mBuckets != null)
 			{
 				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
-				for (int_cosize i = mBuckets[hashCode % mBuckets.Count]; i >= 0; i = mEntries[i].mNext)
+				for (int_cosize i = mBuckets[hashCode % mAllocSize]; i >= 0; i = mEntries[i].mNext)
 				{
 					if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key)) return i;
 				}
@@ -277,9 +284,10 @@ namespace System.Collections.Generic
 		private void Initialize(int capacity)
 		{
 			int_cosize size = GetPrimeish((int_cosize)capacity);
-			mBuckets = new int_cosize[size];
-			for (int_cosize i < (int_cosize)mBuckets.Count) mBuckets[i] = -1;
-			mEntries = new Entry[size];
+			mBuckets = new int_cosize[size]*;
+			for (int_cosize i < (int_cosize)size) mBuckets[i] = -1;
+			mEntries = new Entry[size]*;
+			mAllocSize = size;
 			mFreeList = -1;
 		}
 
@@ -287,7 +295,7 @@ namespace System.Collections.Generic
 		{
 			if (mBuckets == null) Initialize(0);
 			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
-			int_cosize targetBucket = hashCode % (int_cosize)mBuckets.Count;
+			int_cosize targetBucket = hashCode % (int_cosize)mAllocSize;
 
 			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
 			{
@@ -313,10 +321,10 @@ namespace System.Collections.Generic
 			}
 			else
 			{
-				if (mCount == mEntries.Count)
+				if (mCount == mAllocSize)
 				{
 					Resize();
-					targetBucket = hashCode % (int_cosize)mBuckets.Count;
+					targetBucket = hashCode % (int_cosize)mAllocSize;
 				}
 				index = mCount;
 				mCount++;
@@ -336,7 +344,7 @@ namespace System.Collections.Generic
 		{
 			if (mBuckets == null) Initialize(0);
 			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
-			int_cosize targetBucket = hashCode % (int_cosize)mBuckets.Count;
+			int_cosize targetBucket = hashCode % (int_cosize)mAllocSize;
 
 			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
 			{
@@ -360,10 +368,10 @@ namespace System.Collections.Generic
 			}
 			else
 			{
-				if (mCount == mEntries.Count)
+				if (mCount == mAllocSize)
 				{
 					Resize();
-					targetBucket = hashCode % (int_cosize)mBuckets.Count;
+					targetBucket = hashCode % (int_cosize)mAllocSize;
 				}
 				index = mCount;
 				mCount++;
@@ -402,11 +410,13 @@ namespace System.Collections.Generic
 
 		private void Resize(int newSize, bool forceNewHashCodes)
 		{
-			Contract.Assert(newSize >= mEntries.Count);
-			int_cosize[] newBuckets = new int_cosize[newSize];
-			for (int_cosize i = 0; i < newBuckets.Count; i++) newBuckets[i] = -1;
-			Entry[] newEntries = new Entry[newSize];
-			mEntries.CopyTo(newEntries, 0, 0, mCount);
+			Contract.Assert(newSize >= mAllocSize);
+			int_cosize* newBuckets = new int_cosize[newSize]*;
+			for (int_cosize i = 0; i < newSize; i++) newBuckets[i] = -1;
+			Entry* newEntries = new Entry[newSize]*;
+			//mEntries.CopyTo(newEntries, 0, 0, mCount);
+			Internal.MemCpy(newEntries, mEntries, mCount * sizeof(Entry), alignof(Entry));
+
 			if (forceNewHashCodes)
 			{
 				for (int_cosize i = 0; i < mCount; i++)
@@ -432,6 +442,7 @@ namespace System.Collections.Generic
 
 			mBuckets = newBuckets;
 			mEntries = newEntries;
+			mAllocSize = (int_cosize)newSize;
 		}
 
 		public bool Remove(TKey key)
@@ -446,7 +457,7 @@ namespace System.Collections.Generic
 			{
 				
 				int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
-				int_cosize bucket = hashCode % (int_cosize)mBuckets.Count;
+				int_cosize bucket = hashCode % (int_cosize)mAllocSize;
 				int_cosize last = -1;
 				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
 				{
@@ -484,7 +495,7 @@ namespace System.Collections.Generic
 			{
 				
 				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
-				int_cosize bucket = hashCode % (int_cosize)mBuckets.Count;
+				int_cosize bucket = hashCode % (int_cosize)mAllocSize;
 				int_cosize last = -1;
 				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
 				{
