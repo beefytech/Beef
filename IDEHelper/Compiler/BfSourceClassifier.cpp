@@ -468,11 +468,8 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 	SetAndRestoreValue<BfAstNode*> prevMember(mCurMember, methodDeclaration);
 
 	BfElementVisitor::Visit(methodDeclaration);	
-
-	BfIdentifierNode* identifier = methodDeclaration->mNameNode;
-	if (identifier == NULL)
-		return;
-	SetElementType(identifier, BfSourceElementType_Method);
+	
+	SetElementType(methodDeclaration->mNameNode, BfSourceElementType_Method);
 
 	if (methodDeclaration->mGenericParams != NULL)
 	{
@@ -485,11 +482,14 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 
 	if (methodDeclaration->mGenericConstraintsDeclaration != NULL)
 	{
-		for (auto constraint : methodDeclaration->mGenericConstraintsDeclaration->mGenericConstraints)
+		for (auto constraintNode : methodDeclaration->mGenericConstraintsDeclaration->mGenericConstraints)
 		{
-			BfIdentifierNode* typeRef = constraint->mGenericParamName;
-			if (typeRef != NULL)
-				SetElementType(typeRef, BfSourceElementType_TypeRef);
+			if (auto genericConstraint = BfNodeDynCast<BfGenericConstraint>(constraintNode))
+			{
+				BfTypeReference* typeRef = genericConstraint->mTypeRef;
+				if (typeRef != NULL)
+					SetElementType(typeRef, BfSourceElementType_TypeRef);
+			}
 		}
 	}
 }
@@ -563,9 +563,11 @@ void BfSourceClassifier::Handle(BfTypeDeclaration* typeDeclaration)
 
 	if (typeDeclaration->mGenericConstraintsDeclaration != NULL)
 	{
-		for (auto constraint : typeDeclaration->mGenericConstraintsDeclaration->mGenericConstraints)
+		for (auto constraintNode : typeDeclaration->mGenericConstraintsDeclaration->mGenericConstraints)
 		{
-			BfIdentifierNode* typeRef = constraint->mGenericParamName;
+			auto genericConstraint = BfNodeDynCast<BfGenericConstraint>(constraintNode);
+
+			BfTypeReference* typeRef = genericConstraint->mTypeRef;
 			if (typeRef != NULL)
 				SetElementType(typeRef, BfSourceElementType_TypeRef);
 		}

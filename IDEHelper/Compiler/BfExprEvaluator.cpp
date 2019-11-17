@@ -26,50 +26,6 @@
 USING_NS_BF;
 using namespace llvm;
 
-static BfBinaryOp GetOppositeBinaryOp(BfBinaryOp origOp)
-{
-	switch (origOp)
-	{
-	case BfBinaryOp_Equality:
-		return BfBinaryOp_InEquality;
-	case BfBinaryOp_InEquality:
-		return BfBinaryOp_Equality;
-	case BfBinaryOp_LessThan:
-		return BfBinaryOp_GreaterThanOrEqual;
-	case BfBinaryOp_LessThanOrEqual:
-		return BfBinaryOp_GreaterThan;
-	case BfBinaryOp_GreaterThan:
-		return BfBinaryOp_LessThanOrEqual;
-	case BfBinaryOp_GreaterThanOrEqual:
-		return BfBinaryOp_LessThan;
-	default: break;
-	}
-
-	return BfBinaryOp_None;
-}
-
-static BfBinaryOp GetFlippedBinaryOp(BfBinaryOp origOp)
-{
-	switch (origOp)
-	{
-	case BfBinaryOp_Equality:
-		return BfBinaryOp_Equality;
-	case BfBinaryOp_InEquality:
-		return BfBinaryOp_InEquality;
-	case BfBinaryOp_LessThan:
-		return BfBinaryOp_GreaterThan;
-	case BfBinaryOp_LessThanOrEqual:
-		return BfBinaryOp_GreaterThanOrEqual;
-	case BfBinaryOp_GreaterThan:
-		return BfBinaryOp_LessThan;
-	case BfBinaryOp_GreaterThanOrEqual:
-		return BfBinaryOp_LessThanOrEqual;
-	default: break;
-	}
-
-	return BfBinaryOp_None;
-}
-
 //////////////////////////////////////////////////////////////////////////
 
 DeferredTupleAssignData::~DeferredTupleAssignData()
@@ -197,6 +153,7 @@ BfMethodMatcher::BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMetho
 void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments)
 {
 	//mArguments = arguments;	
+	mActiveTypeDef = NULL;
 	mBestMethodDef = NULL;	
 	mBackupMethodDef = NULL;
 	mBestMethodTypeInstance = NULL;
@@ -235,6 +192,22 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 		}
 		mHadExplicitGenericArguments = true;
 	}
+}
+
+bool BfMethodMatcher::IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* declaringType)
+{
+	if (mActiveTypeDef == NULL)
+		mActiveTypeDef = mModule->GetActiveTypeDef();
+	if (!typeInst->IsTypeMemberIncluded(declaringType, mActiveTypeDef, mModule))
+		return false;
+
+	// This may not be completely correct - BUT if we don't have this then even Dictionary TKey's operator == won't be considered accessible
+	if (!mModule->IsInSpecializedSection())
+	{
+		if (!typeInst->IsTypeMemberAccessible(declaringType, mActiveTypeDef))
+			return false;
+	}
+	return true;
 }
 
 bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue)
@@ -828,7 +801,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		}
 	}
 
-	RETURN_BETTER_OR_WORSE(newMethodDef->mCheckedKind == mCheckedKind, prevMethodDef->mCheckedKind == mCheckedKind);	
+	RETURN_BETTER_OR_WORSE(newMethodDef->mCheckedKind == mCheckedKind, prevMethodDef->mCheckedKind == mCheckedKind);
+	RETURN_BETTER_OR_WORSE(newMethodDef->mCommutableKind != BfCommutableKind_Reverse, prevMethodDef->mCommutableKind != BfCommutableKind_Reverse);
 
 	RETURN_RESULTS;
 }
@@ -1030,6 +1004,11 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 	mMethodCheckCount++;
 
 	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);
+	if (methodInstance == NULL)
+	{		
+		BF_FATAL("Failed to get raw method in BfMethodMatcher::CheckMethod");
+		return false;
+	}
 
 	if ((mInterfaceMethodInstance != NULL) && (methodInstance->GetExplicitInterface() != NULL))
 	{
@@ -1203,6 +1182,24 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 			auto& genericArg = mCheckMethodGenericArguments[genericArgIdx];
 			if (genericArg == NULL)
 			{
+				auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericArgIdx];
+				//mModule->CheckGenericConstraints(BfGenericParamSource(), NULL, NULL, genericParam, &mCheckMethodGenericArguments, NULL);
+				if (genericArg != NULL)
+					continue;
+
+// 				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Equals) != 0)
+// 				{
+// 					if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Equals_Op) != 0)
+// 					{
+// 						
+// 					}
+// 
+// 					else if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Equals_Type) != 0)
+// 					{
+// 
+// 					}
+// 				}
+
 				if (!allowEmptyGenericSet.Contains(genericArgIdx))
 					goto NoMatch;
 			}
@@ -1944,7 +1941,7 @@ void BfResolvedArgs::HandleFixits(BfModule* module)
 BfExprEvaluator::BfExprEvaluator(BfModule* module)
 {
 	mBfEvalExprFlags = BfEvalExprFlags_None;
-	mModule = module;
+	mModule = module;	
 	mPropDef = NULL;
 	mPropSrc = NULL;
 	mPropGetMethodFlags = BfGetMethodInstanceFlag_None;
@@ -6009,22 +6006,39 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			else if (lookupType->IsGenericParam())
 			{
 				auto genericParamTarget = (BfGenericParamType*)lookupType;
-				auto genericParamInstance = mModule->GetGenericParamInstance(genericParamTarget);
 
-				if (genericParamInstance->mTypeConstraint != NULL)
-					lookupTypeInst = genericParamInstance->mTypeConstraint->ToTypeInstance();
-				else
-					lookupTypeInst = mModule->mContext->mBfObjectType;
-
-				for (BfType* ifaceInst : genericParamInstance->mInterfaceConstraints)
+				auto _HandleGenericParamInstance = [&](BfGenericParamInstance* genericParamInstance)
 				{
-					if (ifaceInst->IsUnspecializedType())
-						ifaceInst = mModule->ResolveType(ifaceInst);
+					if (genericParamInstance->mTypeConstraint != NULL)
+						lookupTypeInst = genericParamInstance->mTypeConstraint->ToTypeInstance();
+					else
+						lookupTypeInst = mModule->mContext->mBfObjectType;
 
-					BfTypeInstance* typeInst = ifaceInst->ToTypeInstance();
-					BF_ASSERT(typeInst != NULL);
-					if (methodMatcher.CheckType(typeInst, target, false))
-						methodMatcher.mSelfType = lookupType;
+					for (BfType* ifaceInst : genericParamInstance->mInterfaceConstraints)
+					{
+						if (ifaceInst->IsUnspecializedType())
+							ifaceInst = mModule->ResolveType(ifaceInst);
+
+						BfTypeInstance* typeInst = ifaceInst->ToTypeInstance();
+						BF_ASSERT(typeInst != NULL);
+						if (methodMatcher.CheckType(typeInst, target, false))
+							methodMatcher.mSelfType = lookupType;
+					}
+				};
+
+				auto genericParamInstance = mModule->GetGenericParamInstance(genericParamTarget);
+				_HandleGenericParamInstance(genericParamInstance);
+				
+				// Check method generic constraints
+				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+				{
+					for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size(); 
+						genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+					{
+						auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+						if (genericParam->mExternType == lookupType)
+							_HandleGenericParamInstance(genericParam);						
+					}
 				}
 			}
 		}
@@ -11736,11 +11750,11 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 		auto genericArg = methodMatcher.mBestMethodGenericArguments[checkGenericIdx];
 		if (genericArg->IsVar())
 			continue;
-		if (genericArg->IsPrimitiveType())
+		/*if (genericArg->IsPrimitiveType())
 		{
 			auto primType = (BfPrimitiveType*)genericArg;
 			genericArg = mModule->GetPrimitiveStructType(primType->mTypeDef->mTypeCode);
-		}
+		}*/
 
 		BfAstNode* paramSrc;
 		if (methodMatcher.mBestMethodGenericArgumentSrcs.size() == 0)
@@ -15506,6 +15520,9 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 						if ((!isFailurePass) && (!methodMatcher.WantsCheckMethod(protectionCheckFlags, startCheckTypeInst, curCheckType, checkMethod)))
 							continue;
 
+						if (!methodMatcher.IsMemberAccessible(curCheckType, checkMethod->mDeclaringType))
+							continue;
+
 						methodMatcher.mCheckedKind = checkedKind;
 						methodMatcher.CheckMethod(curCheckType, checkMethod, false);						
 
@@ -15794,10 +15811,17 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 			break;
 		default:
 			mExpectingType = NULL;
-		}		
-        VisitChild(unaryOpExpr);
+		}
+		VisitChild(unaryOpExpr);
 		mExpectingType = prevExpedcting;
 	}
+		
+	
+	BfExprEvaluator::PerformUnaryOperation_OnResult(unaryOpExpr, unaryOp, opToken);
+}
+
+void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken)
+{
 	BfAstNode* propSrc = mPropSrc;
 	BfTypedValue propTarget = mPropTarget;
 	BfPropertyDef* propDef = mPropDef;
@@ -15806,7 +15830,7 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 
 	GetResult();
 	if (!mResult)
-		return;
+		return;	
 
 	if (mResult.mType->IsRef())
 		mResult.mType = mResult.mType->GetUnderlyingType();
@@ -15851,12 +15875,17 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 			for (auto operatorDef : checkType->mTypeDef->mOperators)
 			{
 				if (operatorDef->mOperatorDeclaration->mUnaryOp == findOp)
+				{
+					if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
+						continue;
 					if (methodMatcher.CheckMethod(checkType, operatorDef, false))
 						methodMatcher.mSelfType = entry.mSrcType;
+				}
 			}			
 		}
+		
 		if (methodMatcher.mBestMethodDef != NULL)
-		{			
+		{
 			if (!baseClassWalker.mMayBeFromInterface)
 				mModule->SetElementType(opToken, BfSourceElementType_Method);
 
@@ -15882,6 +15911,47 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 			if (isPostOp)
 				mResult = args[0].mTypedValue;
 			return;
+		}
+
+		// Check method generic constraints
+		if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+		{
+			for (int genericParamIdx = 0; genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+			{
+				auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+				for (auto& opConstraint : genericParam->mOperatorConstraints)
+				{
+					if (opConstraint.mUnaryOp == findOp)
+					{
+						if (mModule->CanImplicitlyCast(args[0].mTypedValue, opConstraint.mRightType))
+						{
+							mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
+							return;
+						}
+					}
+				}
+			}
+		}
+		
+		// Check type generic constraints
+		if ((mModule->mCurTypeInstance->IsGenericTypeInstance()) && (mModule->mCurTypeInstance->IsUnspecializedType()))
+		{
+			auto genericTypeInst = (BfGenericTypeInstance*)mModule->mCurTypeInstance;
+			for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericParams.size(); genericParamIdx++)
+			{
+				auto genericParam = mModule->GetGenericTypeParamInstance(genericParamIdx);
+				for (auto& opConstraint : genericParam->mOperatorConstraints)
+				{
+					if (opConstraint.mUnaryOp == findOp)
+					{
+						if (mModule->CanImplicitlyCast(args[0].mTypedValue, opConstraint.mRightType))
+						{
+							mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
+							return;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -16612,7 +16682,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	}
 	else if ((leftValue.mValue.IsConst()) && (!rightValue.mValue.IsConst()))
 	{
-		if (CheckConstCompare(GetOppositeBinaryOp(binaryOp), opToken, rightValue, leftValue))
+		if (CheckConstCompare(BfGetOppositeBinaryOp(binaryOp), opToken, rightValue, leftValue))
 			return;
 	}
 
@@ -16914,7 +16984,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 				bool invertResult = false;				
 				
-				BfBinaryOp oppositeBinaryOp = GetOppositeBinaryOp(findBinaryOp);
+				BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);				
 
 				while (true)
 				{
@@ -16935,6 +17005,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						if (allowOp)
 						{
 							foundOp = true;
+							
+							if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
+								continue;
+
 							if (methodMatcher.CheckMethod(checkType, operatorDef, false))
 							{
 								methodMatcher.mSelfType = entry.mSrcType;
@@ -17006,7 +17080,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 						auto useBinaryOp = binaryOp;
 						if (pass == 1)
-							useBinaryOp = GetFlippedBinaryOp(useBinaryOp);
+							useBinaryOp = BfGetFlippedBinaryOp(useBinaryOp);
 
 						auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
 						switch (useBinaryOp)
@@ -17036,19 +17110,57 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					return;
 				}
 
+				// Check method generic constraints
+				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+				{
+					for (int genericParamIdx = 0; genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+					{
+						auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+						for (auto& opConstraint : genericParam->mOperatorConstraints)
+						{
+							if (opConstraint.mBinaryOp == findBinaryOp)
+							{
+								if ((mModule->CanImplicitlyCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
+									(mModule->CanImplicitlyCast(args[1].mTypedValue, opConstraint.mRightType)))
+								{									
+									BF_ASSERT(genericParam->mExternType != NULL);
+									mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);									
+									return;
+								}
+							}
+						}
+					}
+				}
+				
+				// Check type generic constraints
+				if ((mModule->mCurTypeInstance->IsGenericTypeInstance()) && (mModule->mCurTypeInstance->IsUnspecializedType()))
+				{
+					auto genericTypeInst = (BfGenericTypeInstance*)mModule->mCurTypeInstance;
+					for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericParams.size(); genericParamIdx++)
+					{
+						auto genericParam = mModule->GetGenericTypeParamInstance(genericParamIdx);
+						for (auto& opConstraint : genericParam->mOperatorConstraints)
+						{
+							if (opConstraint.mBinaryOp == findBinaryOp)
+							{
+								if ((mModule->CanImplicitlyCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
+									(mModule->CanImplicitlyCast(args[1].mTypedValue, opConstraint.mRightType)))
+								{
+									mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
+									return;
+								}
+							}
+						}
+					}
+				}
+
 				if ((!foundOp) || (pass == 1))
 					break;
 								
 				switch (findBinaryOp)
 				{
-				case BfBinaryOp_Add:
-				case BfBinaryOp_Multiply:
 				case BfBinaryOp_Equality:
-				case BfBinaryOp_InEquality:
-				case BfBinaryOp_BitwiseAnd:
-				case BfBinaryOp_BitwiseOr:
-				case BfBinaryOp_ConditionalAnd:
-				case BfBinaryOp_ConditionalOr:
+				case BfBinaryOp_InEquality:			
 				case BfBinaryOp_Compare:
 					// Still works
 					break;
@@ -17071,7 +17183,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 				if (findBinaryOp == BfBinaryOp_None)
 					break;
-			}
+			}			
 		}
 	}
 

@@ -574,34 +574,52 @@ public:
 	BfAstNode* GetRefNode();
 };
 
-enum BfGenericParamFlags : uint8
+enum BfGenericParamFlags : uint16
 {
-	BfGenericParamFlag_None = 0,
-	BfGenericParamFlag_Class = 1,
-	BfGenericParamFlag_Struct = 2,
+	BfGenericParamFlag_None      = 0,
+	BfGenericParamFlag_Class     = 1,
+	BfGenericParamFlag_Struct    = 2,
 	BfGenericParamFlag_StructPtr = 4,
-	BfGenericParamFlag_New = 8,
-	BfGenericParamFlag_Delete = 16,
-	BfGenericParamFlag_Var = 32,
-	BfGenericParamFlag_Const = 64
+	BfGenericParamFlag_New       = 8,
+	BfGenericParamFlag_Delete    = 0x10,
+	BfGenericParamFlag_Var       = 0x20,
+	BfGenericParamFlag_Const     = 0x40,
+	BfGenericParamFlag_Equals    = 0x80,
+	BfGenericParamFlag_Equals_Op    = 0x100,
+	BfGenericParamFlag_Equals_Type  = 0x200,
+	BfGenericParamFlag_Equals_IFace = 0x400
 };
 
-class BfGenericParamDef
+class BfConstraintDef
 {
 public:
-	//BfTypeDef* mOwner;	
+	BfGenericParamFlags mGenericParamFlags;
+	Array<BfAstNode*> mConstraints;
+
+	BfConstraintDef()
+	{
+		mGenericParamFlags = BfGenericParamFlag_None;
+	}
+};
+
+class BfGenericParamDef : public BfConstraintDef
+{
+public:	
 	String mName;		
-	Array<BfIdentifierNode*> mNameNodes; // 0 is always the def name
-	BfGenericParamFlags mGenericParamFlags;	
-	Array<BfTypeReference*> mInterfaceConstraints;	
+	Array<BfIdentifierNode*> mNameNodes; // 0 is always the def name	
+};
+
+class BfExternalConstraintDef : public BfConstraintDef
+{
+public:
+	BfTypeReference* mTypeRef;	
 };
 
 // CTOR is split into two for Objects - Ctor clears and sets up VData, Ctor_Body executes ctor body code
 enum BfMethodType : uint8
 {
 	BfMethodType_Ignore,
-	BfMethodType_Normal,
-	//BfMethodType_Lambda,
+	BfMethodType_Normal,	
 	BfMethodType_PropertyGetter,
 	BfMethodType_PropertySetter,
 	BfMethodType_CtorCalcAppend,
@@ -658,6 +676,13 @@ enum BfCheckedKind : int8
 	BfCheckedKind_Unchecked
 };
 
+enum BfCommutableKind : int8
+{
+	BfCommutableKind_None,
+	BfCommutableKind_Forward,
+	BfCommutableKind_Reverse,
+};
+
 class BfMethodDef : public BfMemberDef
 {
 public:		
@@ -668,6 +693,7 @@ public:
 	BfTypeReference* mReturnTypeRef;
 	Array<BfParameterDef*> mParams;
 	Array<BfGenericParamDef*> mGenericParams;
+	Array<BfExternalConstraintDef> mExternalConstraints;
 	BfMethodDef* mNextWithSameName;
 	Val128 mFullHash;
 
@@ -694,6 +720,7 @@ public:
 	bool mIsOperator;
 	bool mIsExtern;	
 	bool mIsNoDiscard;
+	BfCommutableKind mCommutableKind;
 	BfCheckedKind mCheckedKind;
 	BfImportKind mImportKind;	
 	BfCallingConvention mCallingConvention;	
@@ -726,6 +753,7 @@ public:
 		mMethodDeclaration = NULL;		
 		mCodeChanged = false;
 		mWantsBody = true;
+		mCommutableKind = BfCommutableKind_None;
 		mCheckedKind = BfCheckedKind_NotSet;
 		mImportKind = BfImportKind_None;
 		mMethodType = BfMethodType_Normal;

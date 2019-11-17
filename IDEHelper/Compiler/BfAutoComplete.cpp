@@ -1512,22 +1512,37 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 			}
 
 			// Statics, inner types
-			//bool isStatic = (targetValue.mValue == NULL) && (!targetValue.mType->IsValuelessType());
 			
 			auto checkType = targetValue.mType;
-
+			
 			if (checkType->IsGenericParam())
 			{
 				auto genericParamType = (BfGenericParamType*)checkType;
-				auto genericParamInst = mModule->GetGenericParamInstance(genericParamType);				
+				auto genericParamInstance = mModule->GetGenericParamInstance(genericParamType);
 				
-				for (auto interfaceConstraint : genericParamInst->mInterfaceConstraints)
-					AddTypeMembers(interfaceConstraint, false, true, filter, interfaceConstraint, true, false);
+				auto _HandleGenericParamInstance = [&](BfGenericParamInstance* genericParamInstance)
+				{
+					for (auto interfaceConstraint : genericParamInstance->mInterfaceConstraints)
+						AddTypeMembers(interfaceConstraint, false, true, filter, interfaceConstraint, true, false);
 
-				if (genericParamInst->mTypeConstraint != NULL)
-					checkType = genericParamInst->mTypeConstraint;
-				else
-					checkType = mModule->mContext->mBfObjectType;
+					if (genericParamInstance->mTypeConstraint != NULL)
+						checkType = genericParamInstance->mTypeConstraint;
+					else
+						checkType = mModule->mContext->mBfObjectType;
+				};
+				_HandleGenericParamInstance(genericParamInstance);
+
+				// Check method generic constraints
+				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+				{
+					for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+						genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+					{
+						auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+						if (genericParam->mExternType == genericParamType)
+							_HandleGenericParamInstance(genericParam);
+					}
+				}
 			}
 
 			if (checkType->IsPointer())

@@ -69,19 +69,29 @@ void BfElementVisitor::Visit(BfGenericParamsDeclaration* genericParams)
 	VisitChild(genericParams->mCloseChevron);
 }
 
+void BfElementVisitor::Visit(BfGenericOperatorConstraint* genericConstraints)
+{
+	Visit(genericConstraints->ToBase());
+
+	VisitChild(genericConstraints->mOperatorToken);
+	VisitChild(genericConstraints->mLeftType);
+	VisitChild(genericConstraints->mOpToken);
+	VisitChild(genericConstraints->mRightType);
+}
+
 void BfElementVisitor::Visit(BfGenericConstraintsDeclaration* genericConstraints)
 {
 	Visit(genericConstraints->ToBase());
 
 	for (auto genericConstraint : genericConstraints->mGenericConstraints)
-	{
+	{		
 		VisitChild(genericConstraint->mWhereToken);
-		VisitChild(genericConstraint->mGenericParamName);
+		VisitChild(genericConstraint->mTypeRef);
 		VisitChild(genericConstraint->mColonToken);
 		for (auto val : genericConstraint->mConstraintTypes)
 			VisitChild(val);
 		for (auto val : genericConstraint->mCommas)
-			VisitChild(val);
+			VisitChild(val);		
 	}		
 }
 

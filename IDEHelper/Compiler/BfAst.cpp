@@ -96,6 +96,11 @@ void BfStructuralVisitor::Visit(BfGenericParamsDeclaration* genericParams)
 	Visit(genericParams->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfGenericOperatorConstraint* genericConstraints)
+{
+	Visit(genericConstraints->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfGenericConstraintsDeclaration* genericConstraints)
 {
 	Visit(genericConstraints->ToBase());
@@ -1566,6 +1571,165 @@ const char* Beefy::BfGetOpName(BfUnaryOp unaryOp)
 	default: return "???";
 	}
 }
+
+BfBinaryOp Beefy::BfTokenToBinaryOp(BfToken token)
+{
+	switch (token)
+	{
+	case BfToken_Plus:
+		return BfBinaryOp_Add;
+	case BfToken_Minus:
+		return BfBinaryOp_Subtract;
+	case BfToken_Star:
+		return BfBinaryOp_Multiply;
+	case BfToken_ForwardSlash:
+		return BfBinaryOp_Divide;
+	case BfToken_Modulus:
+		return BfBinaryOp_Modulus;
+	case BfToken_Ampersand:
+		return BfBinaryOp_BitwiseAnd;
+	case BfToken_Bar:
+		return BfBinaryOp_BitwiseOr;
+	case BfToken_Carat:
+		return BfBinaryOp_ExclusiveOr;
+	case BfToken_LDblChevron:
+		return BfBinaryOp_LeftShift;
+	case BfToken_RDblChevron:
+		return BfBinaryOp_RightShift;
+	case BfToken_CompareEquals:
+		return BfBinaryOp_Equality;
+	case BfToken_CompareNotEquals:
+		return BfBinaryOp_InEquality;
+	case BfToken_RChevron:
+		return BfBinaryOp_GreaterThan;
+	case BfToken_LChevron:
+		return BfBinaryOp_LessThan;
+	case BfToken_GreaterEquals:
+		return BfBinaryOp_GreaterThanOrEqual;
+	case BfToken_LessEquals:
+		return BfBinaryOp_LessThanOrEqual;
+	case BfToken_Spaceship:
+		return BfBinaryOp_Compare;
+	case BfToken_DblAmpersand:
+		return BfBinaryOp_ConditionalAnd;
+	case BfToken_DblBar:
+		return BfBinaryOp_ConditionalOr;
+	case BfToken_DblQuestion:
+		return BfBinaryOp_NullCoalesce;
+	default:
+		return BfBinaryOp_None;
+	}
+}
+
+BfUnaryOp Beefy::BfTokenToUnaryOp(BfToken token)
+{
+	switch (token)
+	{
+	case BfToken_Star:
+		return BfUnaryOp_Dereference;
+	case BfToken_Ampersand:
+		return BfUnaryOp_AddressOf;
+	case BfToken_Minus:
+		return BfUnaryOp_Negate;
+	case BfToken_Bang:
+		return BfUnaryOp_Not;
+	case BfToken_Plus:
+		return BfUnaryOp_Positive;
+	case BfToken_Tilde:
+		return BfUnaryOp_InvertBits;
+	case BfToken_DblPlus:
+		return BfUnaryOp_Increment;
+	case BfToken_DblMinus:
+		return BfUnaryOp_Decrement;
+	case BfToken_Ref:
+		return BfUnaryOp_Ref;
+	case BfToken_Mut:
+		return BfUnaryOp_Mut;
+	case BfToken_Out:
+		return BfUnaryOp_Out;
+	case BfToken_Params:
+		return BfUnaryOp_Params;
+	default:
+		return BfUnaryOp_None;
+	}
+}
+
+
+BfAssignmentOp Beefy::BfTokenToAssignmentOp(BfToken token)
+{
+	switch (token)
+	{
+	case BfToken_AssignEquals:
+		return BfAssignmentOp_Assign;
+	case BfToken_PlusEquals:
+		return BfAssignmentOp_Add;
+	case BfToken_MinusEquals:
+		return BfAssignmentOp_Subtract;
+	case BfToken_MultiplyEquals:
+		return BfAssignmentOp_Multiply;
+	case BfToken_DivideEquals:
+		return BfAssignmentOp_Divide;
+	case BfToken_ModulusEquals:
+		return BfAssignmentOp_Modulus;
+	case BfToken_ShiftLeftEquals:
+		return BfAssignmentOp_ShiftLeft;
+	case BfToken_ShiftRightEquals:
+		return BfAssignmentOp_ShiftRight;
+	case BfToken_AndEquals:
+		return BfAssignmentOp_BitwiseAnd;
+	case BfToken_OrEquals:
+		return BfAssignmentOp_BitwiseOr;
+	case BfToken_XorEquals:
+		return BfAssignmentOp_ExclusiveOr;
+	default:
+		return BfAssignmentOp_None;
+	}
+}
+
+BfBinaryOp Beefy::BfGetOppositeBinaryOp(BfBinaryOp origOp)
+{
+	switch (origOp)
+	{
+	case BfBinaryOp_Equality:
+		return BfBinaryOp_InEquality;
+	case BfBinaryOp_InEquality:
+		return BfBinaryOp_Equality;
+	case BfBinaryOp_LessThan:
+		return BfBinaryOp_GreaterThanOrEqual;
+	case BfBinaryOp_LessThanOrEqual:
+		return BfBinaryOp_GreaterThan;
+	case BfBinaryOp_GreaterThan:
+		return BfBinaryOp_LessThanOrEqual;
+	case BfBinaryOp_GreaterThanOrEqual:
+		return BfBinaryOp_LessThan;
+	default: break;
+	}
+
+	return BfBinaryOp_None;
+}
+
+BfBinaryOp Beefy::BfGetFlippedBinaryOp(BfBinaryOp origOp)
+{
+	switch (origOp)
+	{
+	case BfBinaryOp_Equality:
+		return BfBinaryOp_Equality;
+	case BfBinaryOp_InEquality:
+		return BfBinaryOp_InEquality;
+	case BfBinaryOp_LessThan:
+		return BfBinaryOp_GreaterThan;
+	case BfBinaryOp_LessThanOrEqual:
+		return BfBinaryOp_GreaterThanOrEqual;
+	case BfBinaryOp_GreaterThan:
+		return BfBinaryOp_LessThan;
+	case BfBinaryOp_GreaterThanOrEqual:
+		return BfBinaryOp_LessThanOrEqual;
+	default: break;
+	}
+
+	return BfBinaryOp_None;
+}
+
 
 BfInlineAsmInstruction::AsmArg::AsmArg()
 	: mType(ARGTYPE_Immediate)

@@ -1537,6 +1537,7 @@ public:
 	bool ValidateGenericConstraints(BfTypeReference* typeRef, BfGenericTypeInstance* genericTypeInstance, bool ignoreErrors);
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
+	void CheckInjectNewRevision(BfTypeInstance* typeInstance);
 	bool InitType(BfType* resolvedTypeRef, BfPopulateType populateType);
 	bool CheckAccessMemberProtection(BfProtection protection, BfType* memberType);
 	bool CheckDefineMemberProtection(BfProtection protection, BfType* memberType);	
@@ -1589,7 +1590,7 @@ public:
 	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);
 	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef);	
 	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data);	
-	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, const Array<BfGenericParamDef*>& genericParamDefs, int genericParamIdx);
+	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized);
 	String GenericParamSourceToString(const BfGenericParamSource& genericParamSource);
 	bool CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs = NULL, BfError** errorOut = NULL);
 	BfIRValue AllocLocalVariable(BfType* type, const StringImpl& name, bool doLifetimeEnd = true);
@@ -1619,6 +1620,7 @@ public:
 	BfGenericParamType* GetGenericParamType(BfGenericParamKind paramKind, int paramIdx);
 	BfType* ResolveGenericType(BfType* unspecializedType, const BfTypeVector& methodGenericArguments, bool allowFail = false);	
 	bool IsUnboundGeneric(BfType* type);
+	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type);	
 	BfTypeInstance* GetBaseType(BfTypeInstance* typeInst);
 	void HandleTypeGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, int typeGenericParamIdx);

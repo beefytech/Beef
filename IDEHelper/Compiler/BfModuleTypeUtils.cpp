@@ -57,6 +57,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfGenericTypeInstan
 	}
 
 	BfTypeState typeState;
+	typeState.mTypeInstance = genericTypeInst;
 	typeState.mCurTypeDef = partialTypeDef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
@@ -71,6 +72,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfGenericTypeInstan
 	for (int paramIdx = startDefGenericParamIdx; paramIdx < (int)genericTypeInst->mTypeGenericArguments.size(); paramIdx++)
 	{
 		auto genericParamInstance = new BfGenericTypeParamInstance(partialTypeDef, paramIdx);
+		genericParamInstance->mExternType = GetGenericParamType(BfGenericParamKind_Type, paramIdx);
 		genericExEntry->mGenericParams.push_back(genericParamInstance);
 	}
 
@@ -83,7 +85,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfGenericTypeInstan
 		genericParamInstance->mInterfaceConstraints = rootGenericParamInstance->mInterfaceConstraints;
 		genericParamInstance->mGenericParamFlags |= rootGenericParamInstance->mGenericParamFlags;
 
-		ResolveGenericParamConstraints(genericParamInstance, partialTypeDef->mGenericParamDefs, paramIdx);
+		ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType());
 	}
 
 	for (auto genericParam : genericExEntry->mGenericParams)
@@ -116,8 +118,9 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 	for (int paramIdx = startDefGenericParamIdx; paramIdx < (int)genericTypeInst->mTypeGenericArguments.size(); paramIdx++)
 	{
 		auto genericParamInstance = new BfGenericTypeParamInstance(typeDef, paramIdx);
+		genericParamInstance->mExternType = GetGenericParamType(BfGenericParamKind_Type, paramIdx);
 		genericTypeInst->mGenericParams.push_back(genericParamInstance);
-	}
+	}	
 
 	if (!typeDef->mPartials.empty())
 	{
@@ -130,7 +133,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 				{
 					auto genericParamDef = typeDef->mGenericParamDefs[paramIdx];
 					auto genericParamInstance = genericTypeInst->mGenericParams[paramIdx];
-					ResolveGenericParamConstraints(genericParamInstance, typeDef->mGenericParamDefs, paramIdx);
+					ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType());
 
 					for (auto nameNode : genericParamDef->mNameNodes)
 					{
@@ -164,15 +167,17 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 	}
 	else
 	{
-		for (int paramIdx = startDefGenericParamIdx; paramIdx < (int)genericTypeInst->mTypeGenericArguments.size(); paramIdx++)
+		for (int paramIdx = startDefGenericParamIdx; paramIdx < (int)genericTypeInst->mGenericParams.size(); paramIdx++)
 		{			
 			auto genericParamInstance = genericTypeInst->mGenericParams[paramIdx];
-			ResolveGenericParamConstraints(genericParamInstance, typeDef->mGenericParamDefs, paramIdx);
-			auto genericParamDef = typeDef->mGenericParamDefs[paramIdx];
-
-			for (auto nameNode : genericParamDef->mNameNodes)
+			ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType());
+			auto genericParamDef = genericParamInstance->GetGenericParamDef();
+			if (genericParamDef != NULL)
 			{
-				HandleTypeGenericParamRef(nameNode, typeDef, paramIdx);
+				for (auto nameNode : genericParamDef->mNameNodes)
+				{
+					HandleTypeGenericParamRef(nameNode, typeDef, paramIdx);
+				}
 			}
 		}
 	}
@@ -261,6 +266,12 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 			return false;
 	}
 
+	for (auto& innerOp : checkInner->mOperatorConstraints)
+	{
+		if (!checkOuter->mOperatorConstraints.Contains(innerOp))
+			return false;
+	}
+
 	return true;
 }
 
@@ -305,6 +316,37 @@ bool BfModule::ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDe
 	return false;
 }
 
+void BfModule::CheckInjectNewRevision(BfTypeInstance* typeInstance)
+{
+	if ((typeInstance != NULL) && (typeInstance->mTypeDef != NULL))
+	{
+		if (typeInstance->mTypeDef->mNextRevision != NULL)
+		{
+			// It's possible that our main compiler thread is generating a new typedef while we're autocompleting. This handles that case...
+			if (typeInstance->mDefineState == BfTypeDefineState_Undefined)
+			{
+				if (typeInstance->IsBoxed())
+				{
+					BfBoxedType* boxedType = (BfBoxedType*)typeInstance;
+					BfTypeInstance* innerType = boxedType->mElementType->ToTypeInstance();
+					PopulateType(innerType, BfPopulateType_Data);
+				}
+				else
+				{
+					mContext->HandleChangedTypeDef(typeInstance->mTypeDef);
+					mSystem->InjectNewRevision(typeInstance->mTypeDef);
+				}
+			}
+			else
+			{
+				BF_ASSERT(mCompiler->IsAutocomplete());
+			}
+		}
+		if ((!typeInstance->IsDeleting()) && (!mCompiler->IsAutocomplete()))
+			BF_ASSERT((typeInstance->mTypeDef->mDefState == BfTypeDef::DefState_Defined) || (typeInstance->mTypeDef->mDefState == BfTypeDef::DefState_New));
+	}
+}
+
 bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 {
 	BP_ZONE("BfModule::InitType");
@@ -318,6 +360,8 @@ bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 	auto typeInst = resolvedTypeRef->ToTypeInstance();
 	if (typeInst != NULL)
 	{
+		CheckInjectNewRevision(typeInst);
+
 		if (typeInst->mBaseType != NULL)
 			BF_ASSERT((typeInst->mBaseType->mRebuildFlags & BfTypeRebuildFlag_Deleted) == 0);
 
@@ -606,22 +650,6 @@ bool BfModule::CheckCircularDataError()
 {
 	bool hadError = false;
 
-	{
-		int count = 0;
-		auto checkTypeState = mContext->mCurTypeState;
-		while (checkTypeState != NULL)
-		{
-			checkTypeState = checkTypeState->mPrevState;
-			count++;
-		}
-
-		if (count > 20)
-		{
-			NOP;
-		}
-	}
-
-
 	int checkIdx = 0;
 	auto checkTypeState = mContext->mCurTypeState;
 	bool isPreBaseCheck = checkTypeState->mPopulateType == BfPopulateType_Declaration;
@@ -748,33 +776,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		return true;
 
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
-	if ((typeInstance != NULL) && (typeInstance->mTypeDef != NULL))
-	{		
-		if (typeInstance->mTypeDef->mNextRevision != NULL)
-		{
-			// It's possible that our main compiler thread is generating a new typedef while we're autocompleting. This handles that case...
-			if (typeInstance->mDefineState == BfTypeDefineState_Undefined)
-			{				
-				if (typeInstance->IsBoxed())
-				{
-					BfBoxedType* boxedType = (BfBoxedType*)typeInstance;
-					BfTypeInstance* innerType = boxedType->mElementType->ToTypeInstance();					
-					PopulateType(innerType, BfPopulateType_Data);
-				}
-				else
-				{
-					mContext->HandleChangedTypeDef(typeInstance->mTypeDef);
-					mSystem->InjectNewRevision(typeInstance->mTypeDef);
-				}
-			}
-			else
-			{
-				BF_ASSERT(mCompiler->IsAutocomplete());
-			}
-		}		
-		if ((!typeInstance->IsDeleting()) && (!mCompiler->IsAutocomplete()))
-			BF_ASSERT(typeInstance->mTypeDef->mDefState == BfTypeDef::DefState_Defined);
-	}
+	CheckInjectNewRevision(typeInstance);	
 
 	BF_ASSERT((resolvedTypeRef->mRebuildFlags & (BfTypeRebuildFlag_Deleted | BfTypeRebuildFlag_DeleteQueued)) == 0);
 
@@ -2167,6 +2169,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			if (propDef->mFieldDeclaration != NULL)
 			{
+				BfTypeState typeState;
+				typeState.mCurTypeDef = propDef->mDeclaringType;
+				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
 				if (propDef->mFieldDeclaration->mAttributes != NULL)
 				{
 					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Property);
@@ -2181,11 +2187,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 				auto propDecl = (BfPropertyDeclaration*)propDef->mFieldDeclaration;
 				if (propDecl->mExplicitInterface != NULL)
-				{
-					BfTypeState typeState;
-					typeState.mCurTypeDef = propDef->mDeclaringType;
-					SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-
+				{					
 					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
 						mCompiler->mResolvePassData->mAutoComplete->CheckTypeRef(propDecl->mExplicitInterface, false);
 					auto explicitInterface = ResolveTypeRef(propDecl->mExplicitInterface, BfPopulateType_Declaration);
@@ -4841,9 +4843,15 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType
 	return resolvedtypeDefType;
 }
 
-// Get BaseClass even when we haven't populated the type yet
+// Get BaseClass even when we haven't populated the type yet2
 BfTypeInstance* BfModule::GetBaseType(BfTypeInstance* typeInst)
 {
+	if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mTypeInstance == typeInst))
+	{
+		if (typeInst->mBaseType == NULL)
+			return NULL;
+	}
+
 	if ((typeInst->mBaseType == NULL) && (typeInst != mContext->mBfObjectType))	
 		PopulateType(typeInst, BfPopulateType_BaseType);
 	return typeInst->mBaseType;
@@ -5093,6 +5101,7 @@ bool BfModule::IsInnerType(BfType* checkInnerType, BfType* checkOuterType)
 
 bool BfModule::IsInnerType(BfTypeDef* checkInnerType, BfTypeDef* checkOuterType)
 {
+	BF_ASSERT(!checkOuterType->mIsPartial);
 	if (checkInnerType->mNestDepth <= checkOuterType->mNestDepth)
 		return false;
 	while (true)
@@ -5100,6 +5109,8 @@ bool BfModule::IsInnerType(BfTypeDef* checkInnerType, BfTypeDef* checkOuterType)
 		BfTypeDef* outerType = checkInnerType->mOuterType;
 		if (outerType == NULL)
 			return false;
+		if (outerType->mIsPartial)
+			outerType = mSystem->GetCombinedPartial(outerType);
 		if (outerType == checkOuterType)
 			return true;
 		checkInnerType = checkInnerType->mOuterType;
@@ -5482,11 +5493,8 @@ bool BfModule::IsUnboundGeneric(BfType* type)
 	return (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0;
 }
 
-BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* type)
+BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamIdx)
 {
-	if (type->mGenericParamKind == BfGenericParamKind_Method)
-		return mCurMethodInstance->mMethodInfoEx->mGenericParams[type->mGenericParamIdx];
-
 	// When we're evaluating a method, make sure the params refer back to that method context
 	auto curTypeInstance = mCurTypeInstance;
 	if (mCurMethodInstance != NULL)
@@ -5505,23 +5513,35 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 		auto activeTypeDef = GetActiveTypeDef(NULL, true);
 		if ((activeTypeDef->mTypeDeclaration != genericTypeInst->mTypeDef->mTypeDeclaration) && (activeTypeDef->IsExtension()))
 		{
+			BfTypeDef* lookupTypeDef = activeTypeDef;
+			while (lookupTypeDef->mNestDepth > genericTypeInst->mTypeDef->mNestDepth)
+				lookupTypeDef = lookupTypeDef->mOuterType;
+
 			BfGenericExtensionEntry* genericExEntry;
-			if (genericTypeInst->mGenericExtensionInfo->mExtensionMap.TryGetValue(activeTypeDef, &genericExEntry))
+			if (genericTypeInst->mGenericExtensionInfo->mExtensionMap.TryGetValue(lookupTypeDef, &genericExEntry))
 			{
-				return genericExEntry->mGenericParams[type->mGenericParamIdx];
+				return genericExEntry->mGenericParams[genericParamIdx];
 			}
 			else
 			{
 				if ((mCompiler->mResolvePassData == NULL) || (mCompiler->mResolvePassData->mAutoComplete == NULL))
 				{
-					BF_FATAL("Invalid GetGenericParamInstance with extention");
+					BF_FATAL("Invalid GetGenericParamInstance with extension");
 				}
 			}
 		}
 	}
 
 	BF_ASSERT(genericTypeInst != NULL);
-	return genericTypeInst->mGenericParams[type->mGenericParamIdx];
+	return genericTypeInst->mGenericParams[genericParamIdx];
+}
+
+BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* type)
+{
+	if (type->mGenericParamKind == BfGenericParamKind_Method)
+		return mCurMethodInstance->mMethodInfoEx->mGenericParams[type->mGenericParamIdx];
+
+	return GetGenericTypeParamInstance(type->mGenericParamIdx);
 }
 
 BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTypeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
@@ -5717,7 +5737,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	bool hadError = false;
 	hadError = !PopulateType(resolvedTypeRef, populateType);
 	
-	if ((genericTypeInstance != NULL) && (populateType > BfPopulateType_Identity))
+	if ((genericTypeInstance != NULL) && (genericTypeInstance != mCurTypeInstance) && (populateType > BfPopulateType_Identity))
 	{
 		if (((genericTypeInstance->mHadValidateErrors) || (!genericTypeInstance->mValidatedGenericConstraints) || (genericTypeInstance->mIsUnspecializedVariation)) &&
 			((mCurMethodInstance == NULL) || (!mCurMethodInstance->mIsUnspecializedVariation)) &&
@@ -5852,6 +5872,12 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 				}
 				if (checkTypeInst == skipCheckBaseType)
 					break;
+
+				if (checkTypeInst->mTypeDef == mCompiler->mNullableTypeDef)
+				{
+					NOP;
+				}				
+
 				checkTypeInst = GetBaseType(checkTypeInst);
 				allowPrivate = false;
 			}			
@@ -5868,6 +5894,7 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 				}
 				if (checkTypeInst == skipCheckBaseType)
 					break;
+				
 				checkTypeInst = GetBaseType(checkTypeInst);
 				allowPrivate = false;
 			}
@@ -6931,8 +6958,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if ((mCurTypeInstance != NULL) && (typeDef->mGenericParamDefs.size() != 0))
 		{
 			// Try to inherit generic params from current parent
-			
-			auto outerType = typeDef->mOuterType;
+						
+			BfTypeDef* outerType = mSystem->GetCombinedPartial(typeDef->mOuterType);
 			BF_ASSERT(!outerType->mIsPartial);
 			if (TypeHasParent(mCurTypeInstance->mTypeDef, outerType))			
 			{
@@ -8699,62 +8726,87 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	if ((typedVal.mType->IsGenericParam()) && (!toType->IsGenericParam()))
 	{
 		if (toType == mContext->mBfObjectType)
-		{
-			/*auto resolvedType = ResolveGenericType(typedVal.mType);
-			if (!resolvedType->IsGenericParam())
-			return CastToValue(srcNode, BfTypedValue(typedVal.mValue, resolvedType), toType, castFlags, silentFail);
-			return typedVal.mValue;*/
-			// Always allow casting to generic
+		{			
+			// Always allow casting from generic to object
 			return typedVal.mValue;
 		}
+
+		auto _CheckGenericParamInstance = [&](BfGenericParamInstance* genericParamInst)
+		{
+			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+			{
+				return typedVal.mValue;
+			}
+			if (toType->IsInterface())
+			{
+				for (auto iface : genericParamInst->mInterfaceConstraints)
+					if (TypeIsSubTypeOf(iface, toType->ToTypeInstance()))
+						return GetDefaultValue(toType);
+			}
+
+			if (genericParamInst->mTypeConstraint != NULL)
+			{
+				auto constraintTypeInst = genericParamInst->mTypeConstraint->ToTypeInstance();
+				if ((constraintTypeInst != NULL) && (constraintTypeInst->mTypeDef == mCompiler->mEnumTypeDef))
+				{
+					// Enum->int
+					if (toType->IsInteger())
+						return GetDefaultValue(toType);
+				}
+
+				auto defaultFromValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint);
+				auto result = CastToValue(srcNode, defaultFromValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
+
+				if (result)
+				{
+					if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
+					{
+						// Don't allow cast when we are constrained by a delegate type, because BfMethodRefs can match and we require an actual alloc
+						Fail(StrFormat("Unable to cast '%s' to '%s' because delegate constraints allow valueless direct method references", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
+						return BfIRValue();
+					}
+					return result;
+				}
+			}
+
+			// Generic constrained with class or pointer type -> void*
+			if (toType->IsVoidPtr())
+			{
+				if ((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr)) ||
+					((genericParamInst->mTypeConstraint != NULL) &&
+					((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
+				{
+					return GetDefaultValue(toType);
+				}
+			}
+
+			return BfIRValue();
+		};
+
+		BfIRValue retVal;
 
 		// For these casts, it's just important we get *A* value to work with here, 
 		//  as this is just use for unspecialized parsing.  We don't use the generated code
-		auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)typedVal.mType);
-		if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
 		{
-			return typedVal.mValue;
-		}
-		if (toType->IsInterface())
-		{
-			for (auto iface : genericParamInst->mInterfaceConstraints)
-				if (TypeIsSubTypeOf(iface, toType->ToTypeInstance()))
-					return GetDefaultValue(toType);
+			auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)typedVal.mType);
+			retVal = _CheckGenericParamInstance(genericParamInst);
+			if (retVal)
+				return retVal;
 		}
 
-		if (genericParamInst->mTypeConstraint != NULL)
+		// Check method generic constraints
+		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))
 		{
-			auto constraintTypeInst = genericParamInst->mTypeConstraint->ToTypeInstance();
-			if ((constraintTypeInst != NULL) && (constraintTypeInst->mTypeDef == mCompiler->mEnumTypeDef))
+			for (int genericParamIdx = (int)mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+				genericParamIdx < mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
 			{
-				// Enum->int
-				if (toType->IsInteger())
-					return GetDefaultValue(toType);
-			}
-
-			auto defaultFromValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint);
-			auto result = CastToValue(srcNode, defaultFromValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
-
-			if (result)
-			{
-				if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
+				auto genericParamInst = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+				if (genericParamInst->mExternType == typedVal.mType)
 				{
-					// Don't allow cast when we are constrained by a delegate type, because BfMethodRefs can match and we require an actual alloc
-					Fail(StrFormat("Unable to cast '%s' to '%s' because delegate constraints allow valueless direct method references", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
-					return BfIRValue();
+					retVal = _CheckGenericParamInstance(genericParamInst);
+					if (retVal)
+						return retVal;
 				}
-				return result;
-			}
-		}
-
-		// Generic constrained with class or pointer type -> void*
-		if (toType->IsVoidPtr())
-		{
-			if ((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr)) ||
-				((genericParamInst->mTypeConstraint != NULL) &&
-				((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
-			{
-				return GetDefaultValue(toType);
 			}
 		}
 	}
@@ -9612,7 +9664,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 
 					return CastToValue(srcNode, operatorOut, toType, castFlags, resultFlags);
-				}
+				}				
 			}
 
 			if (bestFromType == NULL)
@@ -9627,6 +9679,55 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			const char* errStr = "Ambiguous conversion operators for casting from '%s' to '%s'";
 			Fail(StrFormat(errStr, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
 			return BfIRValue();
+		}
+
+		// Check method generic constraints
+		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))
+		{
+			for (int genericParamIdx = 0; genericParamIdx < mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+			{
+				auto genericParam = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+				for (auto& opConstraint : genericParam->mOperatorConstraints)
+				{
+					if ((opConstraint.mCastToken == BfToken_Implicit) ||
+						((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
+					{
+						// If we can convert OUR fromVal to the constraint's fromVal then we may match
+						if (CanImplicitlyCast(typedVal, opConstraint.mRightType))
+						{
+							// .. and we can convert the constraint's toType to OUR toType then we're good
+							auto opToVal = genericParam->mExternType;
+							if (CanImplicitlyCast(opToVal, toType))
+								return mBfIRBuilder->GetFakeVal();
+						}
+					}
+				}
+			}
+		}
+
+		// Check type generic constraints
+		if ((mCurTypeInstance->IsGenericTypeInstance()) && (mCurTypeInstance->IsUnspecializedType()))
+		{
+			auto genericTypeInst = (BfGenericTypeInstance*)mCurTypeInstance;
+			for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericParams.size(); genericParamIdx++)
+			{
+				auto genericParam = GetGenericTypeParamInstance(genericParamIdx);
+				for (auto& opConstraint : genericParam->mOperatorConstraints)
+				{
+					if ((opConstraint.mCastToken == BfToken_Implicit) ||
+						((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
+					{
+						// If we can convert OUR fromVal to the constraint's fromVal then we may match
+						if (CanImplicitlyCast(typedVal, opConstraint.mRightType))
+						{
+							// .. and we can convert the constraint's toType to OUR toType then we're good
+							auto opToVal = genericParam->mExternType;
+							if (CanImplicitlyCast(opToVal, toType))
+								return mBfIRBuilder->GetFakeVal();
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -10047,8 +10148,16 @@ BfTypeDef* BfModule::FindCommonOuterType(BfTypeDef* type, BfTypeDef* type2)
 
 	while (curNestDepth >= 0)
 	{
-		if (type == type2)
-			return type;
+		if ((!type->mIsPartial) && (!type2->mIsPartial))
+		{
+			if (type == type2)
+				return type;
+		}
+		else
+		{
+			if (type->mFullNameEx == type2->mFullNameEx)
+				return type;
+		}
 		type = type->mOuterType;
 		type2 = type2->mOuterType;
 		curNestDepth--;
@@ -10627,7 +10736,11 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		}
 
 		auto genericParamInstance = GetGenericParamInstance(genericParam);
-		str += genericParamInstance->GetGenericParamDef()->mName;
+		auto genericParamDef = genericParamInstance->GetGenericParamDef();
+		if (genericParamDef != NULL)
+			str += genericParamInstance->GetGenericParamDef()->mName;
+		else
+			str += "external generic " + TypeToString(genericParamInstance->mExternType, typeNameFlags, genericMethodNameOverrides);
 		return;
 	}
 	else if (resolvedType->IsRef())

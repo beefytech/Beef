@@ -181,7 +181,7 @@ bool BfDefBuilder::WantsNode(BfAstNode* wholeNode, BfAstNode* startNode, int add
 
 static int sGenericParamIdx = 0;
 
-void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsDecl, BfGenericConstraintsDeclaration* genericConstraints, Array<BfGenericParamDef*>& genericParams, int outerGenericSize)
+void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsDecl, BfGenericConstraintsDeclaration* genericConstraints, Array<BfGenericParamDef*>& genericParams, Array<BfExternalConstraintDef>* externConstraintDefs, int outerGenericSize)
 {		
 	if (genericParamsDecl != NULL)
 	{
@@ -203,7 +203,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 			while (checkTypeDef != NULL)
 			{
 				if (&genericParams != &checkTypeDef->mGenericParamDefs)
-				{
+				{					
 					for (int checkParamsIdx = 0; checkParamsIdx < (int)checkTypeDef->mGenericParamDefs.size(); checkParamsIdx++)
 					{
 						if (checkTypeDef->mGenericParamDefs[checkParamsIdx]->mName == name)
@@ -228,30 +228,53 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 	if (genericConstraints == NULL)
 		return;
 
-	for (BfGenericConstraint* genericConstraint : genericConstraints->mGenericConstraints)
+	for (BfAstNode* genericConstraintNode : genericConstraints->mGenericConstraints)
 	{
-		if (genericConstraint->mGenericParamName == NULL)
+		auto genericConstraint = BfNodeDynCast<BfGenericConstraint>(genericConstraintNode);
+		if (genericConstraint == NULL)
+			continue;
+		if (genericConstraint->mTypeRef == NULL)
 			continue;
 
-		String findName = genericConstraint->mGenericParamName->ToString();
+		BfIdentifierNode* nameNode = NULL;
 		BfGenericParamDef* genericParamDef = NULL;
-		for (int genericParamIdx = outerGenericSize; genericParamIdx < (int) genericParams.size(); genericParamIdx++)
+		if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(genericConstraint->mTypeRef))
 		{
-			auto checkGenericParam = genericParams[genericParamIdx];
-			if (checkGenericParam->mName == findName)
-				genericParamDef = checkGenericParam;
+			nameNode = namedTypeRef->mNameNode;
+			String findName = nameNode->ToString();
+			for (int genericParamIdx = outerGenericSize; genericParamIdx < (int)genericParams.size(); genericParamIdx++)
+			{
+				auto checkGenericParam = genericParams[genericParamIdx];
+				if (checkGenericParam->mName == findName)
+					genericParamDef = checkGenericParam;
+			}
 		}
+		
+		BfConstraintDef* constraintDef = genericParamDef;
+
 		if (genericParamDef == NULL)
 		{
-			mPassInstance->Fail("Cannot find generic parameter in constraint", genericConstraint->mGenericParamName);
+			if (externConstraintDefs == NULL)
+			{
+				mPassInstance->Fail("Cannot find generic parameter in constraint", genericConstraint->mTypeRef);
 
-			if (genericParams.IsEmpty())
-				continue;
+				if (genericParams.IsEmpty())
+					continue;
 
-			genericParamDef = genericParams[0];
+				genericParamDef = genericParams[0];
+				constraintDef = genericParamDef;
+			}
+			else
+			{
+				externConstraintDefs->Add(BfExternalConstraintDef());
+				BfExternalConstraintDef* externConstraintDef = &externConstraintDefs->back();
+				externConstraintDef->mTypeRef = genericConstraint->mTypeRef;
+				constraintDef = externConstraintDef;
+			}
 		}
-		else
-			genericParamDef->mNameNodes.Add(genericConstraint->mGenericParamName);
+		
+		if (genericParamDef != NULL)
+			genericParamDef->mNameNodes.Add(nameNode);
 
 		for (BfAstNode* constraintNode : genericConstraint->mConstraintTypes)
 		{
@@ -266,11 +289,13 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 				name = tokenPairNode->mLeft->ToString() + tokenPairNode->mRight->ToString();
 			}
 
+			bool hasEquals = (genericConstraint->mColonToken != NULL) && (genericConstraint->mColonToken->mToken == BfToken_AssignEquals);			
+
 			if (!name.empty())
 			{
 				if ((name == "class") || (name == "struct") || (name == "struct*") || (name == "const") || (name == "var"))
 				{
-					int prevFlags = genericParamDef->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr);
+					int prevFlags = constraintDef->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr);
 					if (prevFlags != 0)					
 					{
 						String prevFlagName;
@@ -289,38 +314,57 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 					}
 
 					if (name == "class")
-						genericParamDef->mGenericParamFlags = (BfGenericParamFlags)(genericParamDef->mGenericParamFlags | BfGenericParamFlag_Class);
+						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Class);
 					else if (name == "struct")
-						genericParamDef->mGenericParamFlags = (BfGenericParamFlags)(genericParamDef->mGenericParamFlags | BfGenericParamFlag_Struct);
+						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Struct);
 					else if (name == "struct*")
-						genericParamDef->mGenericParamFlags = (BfGenericParamFlags)(genericParamDef->mGenericParamFlags | BfGenericParamFlag_StructPtr);
+						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_StructPtr);
 					else if (name == "const")
-						genericParamDef->mGenericParamFlags = (BfGenericParamFlags)(genericParamDef->mGenericParamFlags | BfGenericParamFlag_Const);
+						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Const);
 					else //if (name == "var")
-						genericParamDef->mGenericParamFlags = (BfGenericParamFlags)(genericParamDef->mGenericParamFlags | BfGenericParamFlag_Var);
+						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Var);
 										
 					continue;
 				}				
 				else if (name == "new")
 				{
-					genericParamDef->mGenericParamFlags = (BfGenericParamFlags)(genericParamDef->mGenericParamFlags | BfGenericParamFlag_New);
+					constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_New);
 					continue;
 				}				
 				else if (name == "delete")
 				{
-					genericParamDef->mGenericParamFlags = (BfGenericParamFlags)(genericParamDef->mGenericParamFlags | BfGenericParamFlag_Delete);
+					constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Delete);
 					continue;
 				}
 			}			
 
-			auto constraintType = BfNodeDynCast<BfTypeReference>(constraintNode);
-			if (constraintType == NULL)
+			if (auto genericOpConstraint = BfNodeDynCast<BfGenericOperatorConstraint>(constraintNode))
 			{
-				mPassInstance->Fail("Invalid constraint", constraintNode);
-				return;
+				// Ok
 			}
+			else
+			{
+				auto constraintType = BfNodeDynCast<BfTypeReference>(constraintNode);
+				if (constraintType == NULL)
+				{
+					mPassInstance->Fail("Invalid constraint", constraintNode);
+					return;
+				}				
+			}
+
+			if (hasEquals)
+			{				
+				if (constraintDef->mConstraints.IsEmpty())
+				{
+					constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Equals);
+				}
+				else
+				{
+					mPassInstance->Fail("Type assignment must be the first constraint", genericConstraint->mColonToken);
+				}
+			}			
 			
-			genericParamDef->mInterfaceConstraints.push_back(constraintType);
+			constraintDef->mConstraints.Add(constraintNode);
 		}
 	}
 }
@@ -538,7 +582,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	int outerGenericSize = 0;
 	if (outerMethodDef != NULL)
 		outerGenericSize = (int)outerMethodDef->mGenericParams.size();
-	ParseGenericParams(methodDeclaration->mGenericParams, methodDeclaration->mGenericConstraintsDeclaration, methodDef->mGenericParams, outerGenericSize);
+	ParseGenericParams(methodDeclaration->mGenericParams, methodDeclaration->mGenericConstraintsDeclaration, methodDef->mGenericParams, &methodDef->mExternalConstraints, outerGenericSize);
 
 	bool didDefaultsError = false;
 	bool hadParams = false;
@@ -623,13 +667,25 @@ void BfDefBuilder::Visit(BfMethodDeclaration* methodDeclaration)
 	}
 
 	auto methodDef = CreateMethodDef(methodDeclaration);
-	if (methodDef->mMethodType == BfMethodType_Operator)
-	{
-		mCurTypeDef->mOperators.push_back((BfOperatorDef*)methodDef);
-	}	
+	methodDef->mWantsBody = wantsBody;
+	if (methodDef->mMethodType == BfMethodType_Operator)	
+		mCurTypeDef->mOperators.push_back((BfOperatorDef*)methodDef);	
 	mCurTypeDef->mMethods.push_back(methodDef);	
 
-	methodDef->mWantsBody = wantsBody;
+	if (methodDef->mCommutableKind == BfCommutableKind_Forward)
+	{				
+		auto revMethodDef = CreateMethodDef(methodDeclaration);
+		revMethodDef->mWantsBody = wantsBody;
+		if (revMethodDef->mMethodType == BfMethodType_Operator)
+			mCurTypeDef->mOperators.push_back((BfOperatorDef*)revMethodDef);
+
+		if (revMethodDef->mParams.size() >= 2)
+		{
+			BF_SWAP(revMethodDef->mParams[0], revMethodDef->mParams[1]);
+		}
+		revMethodDef->mCommutableKind = BfCommutableKind_Reverse;		
+		mCurTypeDef->mMethods.push_back(revMethodDef);		
+	}	
 }
 
 void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef* methodDef)
@@ -647,7 +703,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			else if (typeRefName == "CVarArgs")
 				methodDef->mCallingConvention = BfCallingConvention_CVarArgs;
 			else if (typeRefName == "Inline")
-				methodDef->mAlwaysInline = true;			
+				methodDef->mAlwaysInline = true;
 			else if (typeRefName == "AllowAppend")
 				methodDef->mHasAppend = true;
 			else if (typeRefName == "Checked")
@@ -655,12 +711,12 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			else if (typeRefName == "Unchecked")
 				methodDef->mCheckedKind = BfCheckedKind_Unchecked;
 			else if (typeRefName == "Export")
-			{				
+			{
 				mCurTypeDef->mIsAlwaysInclude = true;
-				methodDef->mImportKind = BfImportKind_Export;				
+				methodDef->mImportKind = BfImportKind_Export;
 			}
 			else if (typeRefName == "Import")
-			{	
+			{
 				methodDef->mImportKind = BfImportKind_Static;
 				if (!attributes->mArguments.IsEmpty())
 				{
@@ -677,7 +733,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 							}
 						}
 					}
-				}				
+				}
 			}
 			else if (typeRefName == "NoReturn")
 				methodDef->mNoReturn = true;
@@ -687,6 +743,17 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				methodDef->mIsNoShow = true;
 			else if (typeRefName == "NoDiscard")
 				methodDef->mIsNoDiscard = true;
+			else if (typeRefName == "Commutable")
+			{
+				if (methodDef->mParams.size() != 2)
+				{
+					mPassInstance->Fail("Commutable attributes can only be applied to methods with two arguments", attributes->mAttributeTypeRef);
+				}
+				else
+				{
+					methodDef->mCommutableKind = BfCommutableKind_Forward;
+				}				
+			}
 		}
 
 		attributes = attributes->mNextAttribute;
@@ -1304,7 +1371,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 			BfGenericParamDef* copiedGenericParamDef = new BfGenericParamDef();
 			*copiedGenericParamDef = *outerGenericParamDef;
 			mCurTypeDef->mGenericParamDefs.Add(copiedGenericParamDef);
-		}
+		}		
 
 		BfTypeDef* parentType = outerTypeDef;
 		while (parentType != NULL)
@@ -1521,7 +1588,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	int outerGenericSize = 0;
 	if (mCurTypeDef->mOuterType != NULL)
 		outerGenericSize = (int)mCurTypeDef->mOuterType->mGenericParamDefs.size();
-	ParseGenericParams(typeDeclaration->mGenericParams, typeDeclaration->mGenericConstraintsDeclaration, mCurTypeDef->mGenericParamDefs, outerGenericSize);
+	ParseGenericParams(typeDeclaration->mGenericParams, typeDeclaration->mGenericConstraintsDeclaration, mCurTypeDef->mGenericParamDefs, NULL, outerGenericSize);
 	
 	BF_ASSERT(mCurTypeDef->mNameEx == NULL);
 	

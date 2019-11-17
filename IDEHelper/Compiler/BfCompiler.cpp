@@ -2697,7 +2697,8 @@ void BfCompiler::GenerateDynCastData()
 }
 
 void BfCompiler::UpdateRevisedTypes()
-{	
+{
+	BfLogSysM("UpdateRevisedTypes\n");
 	BP_ZONE("BfCompiler::UpdateRevisedTypes");	
 		
 	// See if we have any name conflicts and remove those
@@ -3251,13 +3252,25 @@ void BfCompiler::UpdateRevisedTypes()
 		mContext->ValidateDependencies();
 	}
 	mContext->RemoveInvalidWorkItems();	
+	
+	//for (auto typeDef : mSystem->mTypeDefs)
+	//{
+	//	auto latestTypeDef = typeDef->GetLatest();
+	//	if ((latestTypeDef->mOuterType != NULL) && (latestTypeDef->mOuterType->mIsPartial) && (latestTypeDef->mIsCombinedPartial))
+	//		//((!latestTypeDef->mIsPartial) || (latestTypeDef->mIsCombinedPartial)))
+	//		latestTypeDef->mOuterType = mSystem->GetOuterTypeNonPartial(latestTypeDef);
 
-	for (auto typeDef : mSystem->mTypeDefs)
-	{
-		auto latestTypeDef = typeDef->GetLatest();
-		if ((latestTypeDef->mOuterType != NULL) && (latestTypeDef->mOuterType->mIsPartial))
-			latestTypeDef->mOuterType = mSystem->GetOuterTypeNonPartial(latestTypeDef);
-	}
+	//	/*String fullName = typeDef->mFullNameEx.ToString();
+	//	if (fullName == "System.Collections.Generic.List`1.Enumerator`1")
+	//	{
+	//		NOP;
+	//	}
+
+	//	if ((typeDef->mOuterType != NULL) && (!typeDef->mIsPartial) && (typeDef->mOuterType->mIsPartial) && (!typeDef->mOuterType->mIsCombinedPartial))
+	//	{
+	//		NOP;
+	//	}*/
+	//}
 
 	mSystem->mNeedsTypesHandledByCompiler = false;
 
@@ -3767,8 +3780,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 	{	
 		auto genericParamDef = tempTypeDef->mGenericParamDefs[genericParamIdx];
 
-		auto genericParamInstance = new BfGenericTypeParamInstance(tempTypeDef, genericParamIdx);		
-		module->ResolveGenericParamConstraints(genericParamInstance, tempTypeDef->mGenericParamDefs, genericParamIdx);
+		auto genericParamInstance = new BfGenericTypeParamInstance(tempTypeDef, genericParamIdx);
+		genericParamInstance->mExternType = module->GetGenericParamType(BfGenericParamKind_Type, genericParamIdx);
+		module->ResolveGenericParamConstraints(genericParamInstance, true);
 		delete genericParamInstance;
 
 		for (auto nameNode : genericParamDef->mNameNodes)		
@@ -3937,10 +3951,14 @@ void BfCompiler::ProcessAutocompleteTempType()
 			auto genericParamType = module->GetGenericParamType(BfGenericParamKind_Method, genericParamIdx);
 			methodInstance->GetMethodInfoEx()->mMethodGenericArguments.push_back(genericParamType);
 
-			auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, genericParamIdx);
+			auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, genericParamIdx);			
 			methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);
+		}
 
-			//module->ResolveGenericParamConstraints(genericParamInstance, methodDef->mGenericParams[genericParamIdx]);
+		for (int externConstraintIdx = 0; externConstraintIdx < (int)methodDef->mExternalConstraints.size(); externConstraintIdx++)
+		{
+			auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, externConstraintIdx + (int)methodDef->mGenericParams.size());
+			methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);
 		}
 
 		SetAndRestoreValue<BfFilePosition> prevFilePos(module->mCurFilePosition);
@@ -4187,8 +4205,18 @@ void BfCompiler::GetSymbolReferences()
 
 							for (auto genericParam : checkTypeDef->mGenericParamDefs)
 							{
-								for (auto constraint : genericParam->mInterfaceConstraints)
-									module->ResolveTypeRef(constraint, BfPopulateType_Identity);
+								for (auto constraint : genericParam->mConstraints)
+								{
+									if (auto constraintTypeRef = BfNodeDynCast<BfTypeReference>(constraint))
+									{
+										module->ResolveTypeRef(constraintTypeRef, BfPopulateType_Identity);
+									}
+									else if (auto opConstraint = BfNodeDynCast<BfGenericOperatorConstraint>(constraint))
+									{
+										module->ResolveTypeRef(opConstraint->mLeftType, BfPopulateType_Identity);
+										module->ResolveTypeRef(opConstraint->mRightType, BfPopulateType_Identity);
+									}
+								}
 							}
 						}
 					}
@@ -4230,8 +4258,6 @@ void BfCompiler::GetSymbolReferences()
 					BfGenericTypeParamInstance genericParamInstance(genericTypeInstance->mTypeDef, genericParamIdx);
 					auto genericParamDef = typeDef->mGenericParamDefs[genericParamIdx];
 
-					//BfGenericMethodParamInstance genericParamInstance(rebuildMethodInstance->mMethodDef, genericParamIdx);
-
 					if (mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_TypeGenericParam)
 					{
 						for (auto nameNode : genericParamDef->mNameNodes)
@@ -4239,8 +4265,8 @@ void BfCompiler::GetSymbolReferences()
 								mResolvePassData->HandleTypeGenericParam(nameNode, typeDef, genericParamIdx);
 					}
 
-					rebuildModule->ResolveGenericParamConstraints(&genericParamInstance, typeDef->mGenericParamDefs, genericParamIdx);
-				}
+					rebuildModule->ResolveGenericParamConstraints(&genericParamInstance, genericTypeInstance->IsGenericTypeInstance());
+				}				
 			}
 		}
 		
@@ -4372,7 +4398,7 @@ void BfCompiler::GetSymbolReferences()
 				}
 
 				if (rebuildMethodInstance->mIgnoreBody)
-				{					
+				{
 					auto methodDeclaration = methodDef->GetMethodDeclaration();
 					if (methodDeclaration != NULL)
 						mResolvePassData->HandleMethodReference(methodDeclaration->mNameNode, typeDef, methodDef);
@@ -4436,7 +4462,15 @@ void BfCompiler::GetSymbolReferences()
 									mResolvePassData->HandleMethodGenericParam(nameNode, typeDef, methodDef, genericParamIdx);
 						}
 
-						rebuildModule->ResolveGenericParamConstraints(&genericParamInstance, methodDef->mGenericParams, genericParamIdx);
+						rebuildModule->ResolveGenericParamConstraints(&genericParamInstance, rebuildMethodInstance->mIsUnspecialized);
+					}
+
+					for (int externConstraintIdx = 0; externConstraintIdx < (int)methodDef->mExternalConstraints.size(); externConstraintIdx++)
+					{
+						BfGenericMethodParamInstance genericParamInstance(rebuildMethodInstance->mMethodDef, externConstraintIdx + (int)methodDef->mGenericParams.size());
+						auto& externConstraintDef = methodDef->mExternalConstraints[externConstraintIdx];
+						CheckSymbolReferenceTypeRef(module, externConstraintDef.mTypeRef);
+						rebuildModule->ResolveGenericParamConstraints(&genericParamInstance, rebuildMethodInstance->mIsUnspecialized);
 					}
 
 					rebuildModule->ProcessMethod(rebuildMethodInstance);

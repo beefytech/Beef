@@ -120,6 +120,7 @@ public:
 public:
 	BfAstNode* mTargetSrc;
 	BfModule* mModule;
+	BfTypeDef* mActiveTypeDef;
 	String mMethodName;
 	BfMethodInstance* mInterfaceMethodInstance;
 	SizedArrayImpl<BfResolvedArg>& mArguments;
@@ -164,6 +165,7 @@ public:
 	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments);
 	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* interfaceMethodInstance, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments = NULL);
 	void Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments);
+	bool IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* declaringType);
 	bool CheckType(BfTypeInstance* typeInstance, BfTypedValue target, bool isFailurePass);
 	void CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, bool isFailurePass);
 	bool WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInstance* startTypeInstance, BfTypeInstance* checkTypeInstance, BfMethodDef* methodDef);
@@ -379,6 +381,7 @@ public:
 	void VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration* fieldDtor);	
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic);	
 	void PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);
+	void PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);
 	void PerformAssignment(BfAssignmentExpression* assignExpr, bool evaluatedLeft, BfTypedValue rightValue, BfTypedValue* outCascadeValue = NULL);	
 	void PopulateDeferrredTupleAssignData(BfTupleExpression* tupleExr, DeferredTupleAssignData& deferredTupleAssignData);
 	void AssignDeferrredTupleAssignData(BfAssignmentExpression* assignExpr, DeferredTupleAssignData& deferredTupleAssignData, BfTypedValue rightValue);

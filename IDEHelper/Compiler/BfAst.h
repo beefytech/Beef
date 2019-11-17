@@ -347,6 +347,7 @@ class BfCollectionInitializerExpression;
 class BfArraySizeSpecifier;
 class BfSizedArrayCreateExpression;
 class BfEmptyStatement;
+class BfGenericOperatorConstraint;
 class BfGenericConstraintsDeclaration;
 class BfAttributeDirective;
 class BfNullableTypeRef;
@@ -409,6 +410,7 @@ public:
 
 	virtual void Visit(BfAttributeDirective* attributeDirective);
 	virtual void Visit(BfGenericParamsDeclaration* genericParams);
+	virtual void Visit(BfGenericOperatorConstraint* genericConstraints);
 	virtual void Visit(BfGenericConstraintsDeclaration* genericConstraints);
 	virtual void Visit(BfGenericArgumentsNode* genericArgumentsNode);
 
@@ -2762,15 +2764,26 @@ public:
 	BfTokenNode* mRight;
 };	BF_AST_DECL(BfTokenPairNode, BfAstNode);
 
+class BfGenericOperatorConstraint : public BfAstNode
+{
+public:
+	BF_AST_TYPE(BfGenericOperatorConstraint, BfAstNode);
+		
+	BfTokenNode* mOperatorToken;
+	BfTypeReference* mLeftType;
+	BfTokenNode* mOpToken;
+	BfTypeReference* mRightType;
+};  BF_AST_DECL(BfGenericOperatorConstraint, BfAstNode);
+
 class BfGenericConstraint : public BfAstNode
 {
 public:
 	BF_AST_TYPE(BfGenericConstraint, BfAstNode);
 
-	BfTokenNode* mWhereToken;	
-	BfIdentifierNode* mGenericParamName;
+	BfTokenNode* mWhereToken;
+	BfTypeReference* mTypeRef;
 	BfTokenNode* mColonToken;
-	BfSizedArray<ASTREF(BfAstNode*)> mConstraintTypes;
+	BfSizedArray<BfAstNode*> mConstraintTypes;
 	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;	
 };	BF_AST_DECL(BfGenericConstraint, BfAstNode);
 
@@ -2778,7 +2791,7 @@ class BfGenericConstraintsDeclaration : public BfAstNode
 {
 public:
 	BF_AST_TYPE(BfGenericConstraintsDeclaration, BfAstNode);
-	BfSizedArray<ASTREF(BfGenericConstraint*)> mGenericConstraints;
+	BfSizedArray<BfGenericConstraint*> mGenericConstraints;
 };	BF_AST_DECL(BfGenericConstraintsDeclaration, BfAstNode);
 
 class BfMethodDeclaration : public BfMemberDeclaration
@@ -3171,8 +3184,13 @@ public:
 const char* BfTokenToString(BfToken token);
 bool BfTokenIsKeyword(BfToken token);
 BfBinaryOp BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp);
+BfBinaryOp BfGetOppositeBinaryOp(BfBinaryOp origOp);
+BfBinaryOp BfGetFlippedBinaryOp(BfBinaryOp origOp);
 int BfGetBinaryOpPrecendence(BfBinaryOp binOp);
 const char* BfGetOpName(BfBinaryOp binOp);
 const char* BfGetOpName(BfUnaryOp unaryOp);
+BfBinaryOp BfTokenToBinaryOp(BfToken token);
+BfUnaryOp BfTokenToUnaryOp(BfToken token);
+BfAssignmentOp BfTokenToAssignmentOp(BfToken token);
 
 NS_BF_END

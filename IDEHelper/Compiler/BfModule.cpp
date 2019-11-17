@@ -2471,7 +2471,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
  	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecializedVariation))
 		return NULL; // Ignore errors on unspecialized variations, they are always dups
 
- 	if (!mHadBuildError)
+	if (!mHadBuildError)
 		mHadBuildError = true;
 	if (mParentModule != NULL)
 		mParentModule->mHadBuildError = true;
@@ -6150,17 +6150,19 @@ BfIRFunction BfModule::GetBuiltInFunc(BfBuiltInFuncType funcTypeId)
 	return mBuiltInFuncs[(int)funcTypeId];
 }
 
-void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, const Array<BfGenericParamDef*>& genericParamDefs, int genericParamIdx)
-{
-	BfGenericParamDef* genericParamDef = genericParamDefs[genericParamIdx];
+void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized)
+{	
+	BfGenericParamDef* genericParamDef = genericParamInstance->GetGenericParamDef();	
+	BfExternalConstraintDef* externConstraintDef = genericParamInstance->GetExternConstraintDef();
+	BfConstraintDef* constraintDef = genericParamInstance->GetConstraintDef();
 
 	BfType* startingTypeConstraint = genericParamInstance->mTypeConstraint;
 
 	BfAutoComplete* bfAutocomplete = NULL;
-	if (mCompiler->mResolvePassData != NULL)
+	if ((mCompiler->mResolvePassData != NULL) && (isUnspecialized))
 		bfAutocomplete = mCompiler->mResolvePassData->mAutoComplete;	
 
-	if (bfAutocomplete != NULL)
+	if ((bfAutocomplete != NULL) && (genericParamDef != NULL))
 	{		
 		for (int nameIdx = 0; nameIdx < (int)genericParamDef->mNameNodes.size(); nameIdx++)		
 		{
@@ -6172,16 +6174,87 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				bfAutocomplete->mInsertEndIdx = nameNode->GetSrcEnd();
 
 				if (nameIdx != 0)
-				{
-					for (auto checkGenericParam : genericParamDefs)
-						bfAutocomplete->AddEntry(AutoCompleteEntry("generic", checkGenericParam->mName.c_str()), filter);
+				{					
+					bfAutocomplete->AddEntry(AutoCompleteEntry("generic", nameNode->ToString().c_str()), filter);
 				}
 			}
 		}		
 	}
 
-	for (auto constraintTypeRef : genericParamDef->mInterfaceConstraints)
+	for (auto constraint : constraintDef->mConstraints)
 	{
+		if (auto opConstraint = BfNodeDynCast<BfGenericOperatorConstraint>(constraint))
+		{
+			BfGenericOperatorConstraintInstance opConstraintInstance;
+			
+			if (opConstraint->mLeftType != NULL)
+			{
+				if (bfAutocomplete != NULL)
+					bfAutocomplete->CheckTypeRef(opConstraint->mLeftType, false);
+				opConstraintInstance.mLeftType = ResolveTypeRef(opConstraint->mLeftType);
+				if (opConstraintInstance.mLeftType == NULL)
+					continue;
+			}
+
+			if (opConstraint->mRightType == NULL)
+			{
+				// We had a failure in parsing
+				continue;
+			}
+
+			if (opConstraint->mRightType != NULL)
+			{
+				if (bfAutocomplete != NULL)
+					bfAutocomplete->CheckTypeRef(opConstraint->mRightType, false);
+				opConstraintInstance.mRightType = ResolveTypeRef(opConstraint->mRightType);
+				if (opConstraintInstance.mRightType == NULL)
+					continue;
+			}
+
+			if (opConstraint->mOpToken == NULL)
+			{				
+				FailAfter("Missing operator", (opConstraint->mLeftType != NULL) ? (BfAstNode*)opConstraint->mLeftType : (BfAstNode*)opConstraint->mOperatorToken);
+				continue;
+			}
+
+			if (opConstraint->mLeftType != NULL)
+			{
+				if (opConstraint->mRightType == NULL)
+				{
+					// Parse should have failed
+					continue;
+				}
+
+				opConstraintInstance.mBinaryOp = BfTokenToBinaryOp(opConstraint->mOpToken->mToken);
+				if (opConstraintInstance.mBinaryOp == BfBinaryOp_None)
+				{
+					Fail("Invalid binary operator", opConstraint->mOpToken);
+					continue;
+				}
+			}
+			else if ((opConstraint->mOpToken->mToken == BfToken_Implicit) || (opConstraint->mOpToken->mToken == BfToken_Explicit))
+			{
+				opConstraintInstance.mCastToken = opConstraint->mOpToken->mToken;
+			}
+			else
+			{
+				opConstraintInstance.mUnaryOp = BfTokenToUnaryOp(opConstraint->mOpToken->mToken);
+				if (opConstraintInstance.mUnaryOp == BfBinaryOp_None)
+				{
+					Fail("Invalid unary operator", opConstraint->mOpToken);
+					continue;
+				}
+			}
+
+			if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Equals) != 0)
+				genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | BfGenericParamFlag_Equals_Op);
+			genericParamInstance->mOperatorConstraints.Add(opConstraintInstance);
+
+			continue;
+		}
+
+		auto constraintTypeRef = BfNodeDynCast<BfTypeReference>(constraint);
+
 		if (bfAutocomplete != NULL)
 			bfAutocomplete->CheckTypeRef(constraintTypeRef, true);
 		//TODO: Constraints may refer to other generic params (of either type or method)
@@ -6189,7 +6262,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 		auto constraintType = ResolveTypeRef(constraintTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericMethodParamConstValue);
 		if (constraintType != NULL)
 		{
-			if ((genericParamDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
+			if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
 			{
 				bool isValidTypeCode = false;				
 				BfTypeCode typeCode = BfTypeCode_None;
@@ -6238,26 +6311,57 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			}
 			else
 			{
+				bool checkEquality = false;
+
 				if (constraintType->IsPrimitiveType())
 				{
-					Fail("Primitive constraints are not allowed unless preceded with 'const'", constraintTypeRef);
-					continue;
+					if (isUnspecialized)
+					{
+						Fail("Primitive constraints are not allowed unless preceded with 'const'", constraintTypeRef);
+						continue;
+					}					
+					checkEquality = true;
 				}
 
 				if (constraintType->IsArray())
 				{
-					Fail("Array constraints are not allowed.  If a constant-sized array was intended, an type parameterized by a const generic param can be used (ie: where T : int[T2] where T2 : const int)", constraintTypeRef);
+					if (isUnspecialized)					
+					{
+						Fail("Array constraints are not allowed.  If a constant-sized array was intended, an type parameterized by a const generic param can be used (ie: where T : int[T2] where T2 : const int)", constraintTypeRef);
+						continue;
+					}
+					checkEquality = true;
+				}
+
+				if (constraintType->IsGenericParam())
+				{
 					continue;
 				}
 
 				if ((!constraintType->IsTypeInstance()) && (!constraintType->IsSizedArray()))
 				{
-					Fail(StrFormat("Type '%s' is not allowed as a generic constraint", TypeToString(constraintType).c_str()), constraintTypeRef);
-					continue;
+					if (isUnspecialized)
+					{
+						Fail(StrFormat("Type '%s' is not allowed as a generic constraint", TypeToString(constraintType).c_str()), constraintTypeRef);
+						continue;
+					}
+					checkEquality = true;
 				}
 
-				if (constraintType->IsInterface())
+				if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Equals) != 0)
 				{
+					genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | BfGenericParamFlag_Equals_Type);
+					checkEquality = true;
+				}
+
+				if (checkEquality)
+				{
+					genericParamInstance->mTypeConstraint = constraintType;
+				}
+				else if (constraintType->IsInterface())
+				{
+ 					if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Equals) != 0)
+ 						genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | BfGenericParamFlag_Equals_IFace);
 					genericParamInstance->mInterfaceConstraints.push_back(constraintType->ToTypeInstance());
 				}
 				else
@@ -6292,7 +6396,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 		}
 	}
 
-	if (((genericParamDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0) &&
+	if (((constraintDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0) &&
 		(genericParamInstance->mTypeConstraint == NULL))
 		genericParamInstance->mTypeConstraint = GetPrimitiveType(BfTypeCode_IntPtr);
 }
@@ -6342,7 +6446,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			argMayBeReferenceType = true;
 		}
-	}	
+	}
 
 	if (checkArgType->IsObjectOrInterface())
 		argMayBeReferenceType = true;
@@ -6356,7 +6460,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a value type in order to use it as parameter '%s' for '%s'",
-				TypeToString(origCheckArgType).c_str(), genericParamInst->GetGenericParamDef()->mName.c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 	
@@ -6365,7 +6469,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a pointer type in order to use it as parameter '%s' for '%s'",
-				TypeToString(origCheckArgType).c_str(), genericParamInst->GetGenericParamDef()->mName.c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 
@@ -6374,7 +6478,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a reference type in order to use it as parameter '%s' for '%s'",
-				TypeToString(origCheckArgType).c_str(), genericParamInst->GetGenericParamDef()->mName.c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 
@@ -6384,7 +6488,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("The type '%s' must be a const value in order to use it as parameter '%s' for '%s'",
-					TypeToString(origCheckArgType).c_str(), genericParamInst->GetGenericParamDef()->mName.c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}		
 	}
@@ -6394,12 +6498,12 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("The value '%s' cannot be used for generic type parameter '%s' for '%s'",
-					TypeToString(origCheckArgType).c_str(), genericParamInst->GetGenericParamDef()->mName.c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
 
-	if ((genericParamInst->mInterfaceConstraints.size() == 0) && (genericParamInst->mTypeConstraint == NULL))
+	if ((genericParamInst->mInterfaceConstraints.IsEmpty()) && (genericParamInst->mOperatorConstraints.IsEmpty()) && (genericParamInst->mTypeConstraint == NULL))
 		return true;
 	
 	if (checkArgType->IsPointer())
@@ -6435,7 +6539,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 								if (!mCompiler->mSystem->DoesLiteralFit(primType->mTypeDef->mTypeCode, constExprValueType->mValue.mInt64))
 								{
 									if (!ignoreErrors)
-										*errorOut = Fail(StrFormat("Const generic argument '%s', declared with const '%lld', does not fit into const constraint '%s' for '%s'", genericParamInst->GetGenericParamDef()->mName.c_str(),
+										*errorOut = Fail(StrFormat("Const generic argument '%s', declared with const '%lld', does not fit into const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
 											constExprValueType->mValue.mInt64, TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 									return false;
 								}
@@ -6443,7 +6547,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 							else
 							{
 								if (!ignoreErrors)
-									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with integer const '%lld', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetGenericParamDef()->mName.c_str(),
+									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with integer const '%lld', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
 										constExprValueType->mValue.mInt64, TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 								return false;
 							}
@@ -6455,7 +6559,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 								char valStr[64];
 								ExactMinimalDoubleToStr(constExprValueType->mValue.mDouble, valStr);
 								if (!ignoreErrors)
-									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with floating point const '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetGenericParamDef()->mName.c_str(),
+									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with floating point const '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
 										valStr, TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 								return false;
 							}
@@ -6514,7 +6618,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			if (!constraintMatched)
 			{
 				if (!ignoreErrors)
-					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must derive from '%s'", genericParamInst->GetGenericParamDef()->mName.c_str(),
+					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must derive from '%s'", genericParamInst->GetName().c_str(),
 						TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(convCheckConstraint).c_str(),
 						TypeToString(genericParamInst->mTypeConstraint).c_str()), checkArgTypeRef);
 				return false;
@@ -6529,7 +6633,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		if (checkTypeInst->mTypeDef->mIsConcrete)
 		{
 			if (!ignoreErrors)
-				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be concrete interface '%s' for '%s', must be a concrete type", genericParamInst->GetGenericParamDef()->mName.c_str(),
+				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be concrete interface '%s' for '%s', must be a concrete type", genericParamInst->GetName().c_str(),
 					TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}
@@ -6570,11 +6674,100 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		if (!implementsInterface)
 		{
 			if (!ignoreErrors)
-				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must implement '%s'", genericParamInst->GetGenericParamDef()->mName.c_str(), 
+				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must implement '%s'", genericParamInst->GetName().c_str(), 
 					TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(checkConstraint).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
+
+	for (auto& checkOpConstraint : genericParamInst->mOperatorConstraints)
+	{
+		auto leftType = checkOpConstraint.mLeftType;
+		if ((leftType != NULL) && (leftType->IsUnspecializedType()))
+			leftType = ResolveGenericType(leftType, *methodGenericArgs);
+		if (leftType != NULL)
+			leftType = FixIntUnknown(leftType);		
+		
+		auto rightType = checkOpConstraint.mRightType;
+		if ((rightType != NULL) && (rightType->IsUnspecializedType()))
+			rightType = ResolveGenericType(rightType, *methodGenericArgs);
+		if (rightType != NULL)
+			rightType = FixIntUnknown(rightType);
+		
+		if (checkOpConstraint.mBinaryOp != BfBinaryOp_None)
+		{						
+			BfExprEvaluator exprEvaluator(this);						
+
+			BfTypedValue leftValue(mBfIRBuilder->GetFakeVal(), leftType);
+			BfTypedValue rightValue(mBfIRBuilder->GetFakeVal(), rightType);
+
+			//
+			{
+				SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
+				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+				exprEvaluator.PerformBinaryOperation(NULL, NULL, checkOpConstraint.mBinaryOp, NULL, BfBinOpFlag_NoClassify, leftValue, rightValue);
+			}
+
+			if ((exprEvaluator.mResult == NULL) || 
+				(!CanImplicitlyCast(exprEvaluator.mResult, origCheckArgType)))
+			{
+				if (!ignoreErrors)
+					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must result from binary operation '%s %s %s'", genericParamInst->GetName().c_str(),
+						TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), 
+						TypeToString(leftType).c_str(), BfGetOpName(checkOpConstraint.mBinaryOp), TypeToString(rightType).c_str()
+					), checkArgTypeRef);
+				return false;
+			}
+			
+		}
+		else
+		{
+			BfTypedValue rightValue(mBfIRBuilder->GetFakeVal(), rightType);
+			
+			StringT<128> failedOpName;
+
+			if (checkOpConstraint.mCastToken == BfToken_Implicit)
+			{
+				if (!CanImplicitlyCast(rightValue, origCheckArgType, BfCastFlags_SilentFail))
+					failedOpName = "implicit conversion from '";
+			}
+			else
+			{
+				SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
+				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+
+				if (checkOpConstraint.mCastToken == BfToken_Explicit)
+				{
+					if (!CastToValue(NULL, rightValue, origCheckArgType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail)))
+						failedOpName = "explicit conversion from '";					
+				}
+				else
+				{
+					BfExprEvaluator exprEvaluator(this);
+					exprEvaluator.mResult = rightValue;
+					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL);
+
+					if ((exprEvaluator.mResult == NULL) ||
+						(!CanImplicitlyCast(exprEvaluator.mResult, origCheckArgType)))
+					{
+						failedOpName += "unary operation '";
+						failedOpName += BfGetOpName(checkOpConstraint.mUnaryOp);
+					}
+				}
+			}
+
+			if (!failedOpName.IsEmpty())
+			{
+				if (!ignoreErrors)
+					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must result from %s%s'", genericParamInst->GetName().c_str(),
+						TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(),
+						failedOpName.c_str(), TypeToString(rightType).c_str()
+					), checkArgTypeRef);
+				return false;
+			}
+		}		
+	}
+
 	return true;
 }
 
@@ -10389,6 +10582,9 @@ bool BfModule::CheckModifyValue(BfTypedValue& typedValue, BfAstNode* refNode, co
 
 bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstance* methodB)
 {
+	// If one is an interface and the other is an impl, B is the impl
+	auto implOwner = methodB->GetOwner();
+
 	if (methodA->mMethodDef->mIsLocalMethod)
 	{
 		int sepPosA = (int)BF_MIN(methodA->mMethodDef->mName.IndexOf('@'), methodA->mMethodDef->mName.length());
@@ -10421,7 +10617,7 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 			return false;
 		if (operatorA->mOperatorDeclaration->mIsConvOperator)
 		{
-			if (methodA->mReturnType != methodB->mReturnType)
+			if (!BfTypeUtils::TypeEquals(methodA->mReturnType, methodB->mReturnType, implOwner))
 				return false;
 		}
 	}
@@ -10437,13 +10633,11 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 
 	for (int paramIdx = 0; paramIdx < (int)methodA->GetParamCount() - implicitParamCountA; paramIdx++)	
 	{
-		if ((methodA->GetParamType(paramIdx + implicitParamCountA) != methodB->GetParamType(paramIdx + implicitParamCountB)) ||
+		if ((!BfTypeUtils::TypeEquals(methodA->GetParamType(paramIdx + implicitParamCountA), methodB->GetParamType(paramIdx + implicitParamCountB), implOwner)) ||
 			(methodA->GetParamKind(paramIdx + implicitParamCountA) != methodB->GetParamKind(paramIdx + implicitParamCountB)))
 			return false;
 	}
-
 	
-
 	// Compare generic params.  Generic params are part of the method signature here
 	if (methodA->GetNumGenericParams() != methodB->GetNumGenericParams())
 		return false;	
@@ -11402,6 +11596,12 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	{
 		auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, genericParamIdx);
 		methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);		
+	}
+
+	for (int externConstraintIdx = 0; externConstraintIdx < (int)methodDef->mExternalConstraints.size(); externConstraintIdx++)
+	{
+		auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, externConstraintIdx + (int)methodDef->mGenericParams.size());
+		methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);
 	}
 	
 	bool addToWorkList = !processNow;
@@ -18578,23 +18778,48 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	BfAutoComplete* bfAutocomplete = NULL;
 	if (mCompiler->mResolvePassData != NULL)
 		bfAutocomplete = mCompiler->mResolvePassData->mAutoComplete;
-	
-	for (int genericParamIdx = 0; genericParamIdx < (int)methodInstance->GetNumGenericArguments(); genericParamIdx++)
-	{			
-		auto genericParamDef = methodDef->mGenericParams[genericParamIdx];
-		ResolveGenericParamConstraints(methodInstance->mMethodInfoEx->mGenericParams[genericParamIdx], methodDef->mGenericParams, genericParamIdx);
-
-		if (bfAutocomplete != NULL)
-		{
-			for (auto nameNode : genericParamDef->mNameNodes)
-			{
-				HandleMethodGenericParamRef(nameNode, typeDef, methodDef, genericParamIdx);
-			}
-		}
-	}
-
+		
 	if (methodInstance->mMethodInfoEx != NULL)
 	{
+		for (int genericParamIdx = 0; genericParamIdx < (int)methodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+		{
+			auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+			if (genericParamIdx < (int)methodDef->mGenericParams.size())
+			{
+				genericParam->mExternType = GetGenericParamType(BfGenericParamKind_Method, genericParamIdx);
+			}
+			else
+			{
+				auto externConstraintDef = genericParam->GetExternConstraintDef();
+				genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
+
+				auto autoComplete = mCompiler->GetAutoComplete();
+				if (autoComplete != NULL)
+					autoComplete->CheckTypeRef(externConstraintDef->mTypeRef, false);
+
+				if (genericParam->mExternType != NULL)
+				{
+					//
+				}
+				else
+					genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
+			}
+
+			ResolveGenericParamConstraints(genericParam, methodInstance->mIsUnspecialized);
+
+			if (genericParamIdx < (int)methodDef->mGenericParams.size())
+			{
+				auto genericParamDef = methodDef->mGenericParams[genericParamIdx];
+				if (bfAutocomplete != NULL)
+				{
+					for (auto nameNode : genericParamDef->mNameNodes)
+					{
+						HandleMethodGenericParamRef(nameNode, typeDef, methodDef, genericParamIdx);
+					}
+				}
+			}
+		}
+
 		for (auto genericParam : methodInstance->mMethodInfoEx->mGenericParams)
 		{
 			for (auto constraintTypeInst : genericParam->mInterfaceConstraints)
@@ -19412,7 +19637,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 						{
 							if (!typeInstance->IsTypeMemberAccessible(checkMethod->mDeclaringType, methodDef->mDeclaringType))
 								continue;
-							
+														
 							bool silentlyAllow = false;							
 							if (checkMethod->mDeclaringType != methodDef->mDeclaringType)
 							{								
@@ -19424,10 +19649,13 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 								else
 									silentlyAllow = true;
 							}
+
+							if ((checkMethod->mCommutableKind == BfCommutableKind_Reverse) || (methodDef->mCommutableKind == BfCommutableKind_Reverse))
+								silentlyAllow = true;
 							
 							if (!silentlyAllow)
-							{	
-								if (!methodDef->mName.IsEmpty())
+							{
+								if ((!methodDef->mName.IsEmpty()) || (checkMethodInstance->mMethodDef->mIsOperator))
 								{
 									auto refNode = methodDef->GetRefNode();
 									auto bfError = Fail("Method already declared with the same parameter types", refNode, true);

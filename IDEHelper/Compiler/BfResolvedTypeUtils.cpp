@@ -3754,6 +3754,15 @@ String BfTypeUtils::TypeToString(BfTypeReference* typeRef)
 	return "???";
 }
 
+bool BfTypeUtils::TypeEquals(BfType* typeA, BfType* typeB, BfType* selfType)
+{
+	if (typeA->IsSelf())
+		typeA = selfType;
+	if (typeB->IsSelf())
+		typeB = selfType;
+	return typeA == typeB;
+}
+
 String BfTypeUtils::TypeToString(BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags)
 {
 	String str;

@@ -930,16 +930,49 @@ public:
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
 };
 
+class BfGenericOperatorConstraintInstance
+{
+public:
+	BfType* mLeftType;
+	BfBinaryOp mBinaryOp;
+	BfUnaryOp mUnaryOp;
+	BfToken mCastToken;
+	BfType* mRightType;
+
+public:
+	BfGenericOperatorConstraintInstance()
+	{
+		mLeftType = NULL;
+		mBinaryOp = BfBinaryOp_None;
+		mUnaryOp = BfUnaryOp_None;
+		mCastToken = BfToken_None;
+		mRightType = NULL;
+	}
+
+	bool operator==(const BfGenericOperatorConstraintInstance& other) const
+	{
+		return
+			(mLeftType == other.mLeftType) &&
+			(mBinaryOp == other.mBinaryOp) &&
+			(mUnaryOp == other.mUnaryOp) &&
+			(mCastToken == other.mCastToken) &&
+			(mRightType == other.mRightType);
+	}
+};
+
 class BfGenericParamInstance 
 {
 public:	
 	int mGenericParamFlags;
+	BfType* mExternType;
 	Array<BfTypeInstance*> mInterfaceConstraints;
+	Array<BfGenericOperatorConstraintInstance> mOperatorConstraints;
 	BfType* mTypeConstraint;
 	int mRefCount;
 
 	BfGenericParamInstance()
 	{
+		mExternType = NULL;
 		mGenericParamFlags = 0;
 		mTypeConstraint = NULL;
 		mRefCount = 1;
@@ -954,7 +987,10 @@ public:
 	virtual ~BfGenericParamInstance()
 	{
 	}
+	virtual BfConstraintDef* GetConstraintDef() = 0;
 	virtual BfGenericParamDef* GetGenericParamDef() = 0;
+	virtual BfExternalConstraintDef* GetExternConstraintDef() = 0;
+	virtual String GetName() = 0;
 };
 
 class BfGenericTypeParamInstance : public BfGenericParamInstance
@@ -962,12 +998,13 @@ class BfGenericTypeParamInstance : public BfGenericParamInstance
 public:
 	BfTypeDef* mTypeDef;
 	int mGenericIdx;
+
 public:
 	BfGenericTypeParamInstance(BfTypeDef* typeDef, int genericIdx)
 	{
 		mTypeDef = typeDef;
 		mGenericIdx = genericIdx;
-		mGenericParamFlags = GetGenericParamDef()->mGenericParamFlags;
+		mGenericParamFlags = GetConstraintDef()->mGenericParamFlags;
 		mTypeConstraint = NULL;
 	}
 
@@ -977,9 +1014,32 @@ public:
 		return this;
 	}
 
+	virtual BfConstraintDef* GetConstraintDef() override
+	{
+		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
+			return mTypeDef->mGenericParamDefs[mGenericIdx];
+		return NULL;
+	}
+
 	virtual BfGenericParamDef* GetGenericParamDef() override
 	{
-		return mTypeDef->mGenericParamDefs[mGenericIdx];
+		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
+			return mTypeDef->mGenericParamDefs[mGenericIdx];
+		return NULL;
+	}
+
+	virtual BfExternalConstraintDef* GetExternConstraintDef() override
+	{
+		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
+			return NULL;
+		return NULL;
+	}
+
+	virtual String GetName() override
+	{
+		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
+			return mTypeDef->mGenericParamDefs[mGenericIdx]->mName;
+		return NULL;
 	}
 };
 
@@ -988,12 +1048,13 @@ class BfGenericMethodParamInstance : public BfGenericParamInstance
 public:
 	BfMethodDef* mMethodDef;
 	int mGenericIdx;
+
 public:
 	BfGenericMethodParamInstance(BfMethodDef* methodDef, int genericIdx)
 	{
 		mMethodDef = methodDef;
 		mGenericIdx = genericIdx;
-		mGenericParamFlags = GetGenericParamDef()->mGenericParamFlags;
+		mGenericParamFlags = GetConstraintDef()->mGenericParamFlags;
 		mTypeConstraint = NULL;
 	}
 
@@ -1003,9 +1064,32 @@ public:
 		return this;
 	}
 
+	virtual BfConstraintDef* GetConstraintDef() override
+	{
+		if (mGenericIdx < (int)mMethodDef->mGenericParams.size())
+			return mMethodDef->mGenericParams[mGenericIdx];
+		return &mMethodDef->mExternalConstraints[mGenericIdx - (int)mMethodDef->mGenericParams.size()];
+	}
+
 	virtual BfGenericParamDef* GetGenericParamDef() override
 	{
-		return mMethodDef->mGenericParams[mGenericIdx];
+		if (mGenericIdx < (int)mMethodDef->mGenericParams.size())
+			return mMethodDef->mGenericParams[mGenericIdx];
+		return NULL;
+	}
+
+	virtual BfExternalConstraintDef* GetExternConstraintDef() override
+	{
+		if (mGenericIdx < (int)mMethodDef->mGenericParams.size())
+			return NULL;
+		return &mMethodDef->mExternalConstraints[mGenericIdx - (int)mMethodDef->mGenericParams.size()];
+	}
+
+	virtual String GetName() override
+	{
+		if (mGenericIdx < (int)mMethodDef->mGenericParams.size())
+			return mMethodDef->mGenericParams[mGenericIdx]->mName;
+		return mMethodDef->mExternalConstraints[mGenericIdx - (int)mMethodDef->mGenericParams.size()].mTypeRef->ToString();
 	}
 };
 
@@ -2246,6 +2330,7 @@ public:
 	static String TypeToString(BfTypeReference* typeRef);
 	static String TypeToString(BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None);
 	static bool TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None);
+	static bool TypeEquals(BfType* typeA, BfType* typeB, BfType* selfType);
 
 	static void GetProjectList(BfType* checkType, Array<BfProject*>* projectVector, int immutableLength);
 

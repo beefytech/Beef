@@ -28,6 +28,7 @@ public:
 
 	virtual void Visit(BfAttributeDirective* attributeDirective);
 	virtual void Visit(BfGenericParamsDeclaration* genericParams);
+	virtual void Visit(BfGenericOperatorConstraint* genericConstraints);
 	virtual void Visit(BfGenericConstraintsDeclaration* genericConstraints);
 	virtual void Visit(BfGenericArgumentsNode* genericArgumentsNode);
 

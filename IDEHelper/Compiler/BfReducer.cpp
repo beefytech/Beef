@@ -26,120 +26,6 @@ USING_NS_BF;
 	dest->member = src; \
 	MoveNode(src, dest); }
 
-static BfBinaryOp TokenToBinaryOp(BfToken token)
-{
-	switch (token)
-	{
-	case BfToken_Plus:
-		return BfBinaryOp_Add;
-	case BfToken_Minus:
-		return BfBinaryOp_Subtract;
-	case BfToken_Star:
-		return BfBinaryOp_Multiply;
-	case BfToken_ForwardSlash:
-		return BfBinaryOp_Divide;
-	case BfToken_Modulus:
-		return BfBinaryOp_Modulus;
-	case BfToken_Ampersand:
-		return BfBinaryOp_BitwiseAnd;
-	case BfToken_Bar:
-		return BfBinaryOp_BitwiseOr;
-	case BfToken_Carat:
-		return BfBinaryOp_ExclusiveOr;
-	case BfToken_LDblChevron:
-		return BfBinaryOp_LeftShift;
-	case BfToken_RDblChevron:
-		return BfBinaryOp_RightShift;
-	case BfToken_CompareEquals:
-		return BfBinaryOp_Equality;
-	case BfToken_CompareNotEquals:
-		return BfBinaryOp_InEquality;
-	case BfToken_RChevron:
-		return BfBinaryOp_GreaterThan;
-	case BfToken_LChevron:
-		return BfBinaryOp_LessThan;
-	case BfToken_GreaterEquals:
-		return BfBinaryOp_GreaterThanOrEqual;
-	case BfToken_LessEquals:
-		return BfBinaryOp_LessThanOrEqual;
-	case BfToken_Spaceship:
-		return BfBinaryOp_Compare;
-	case BfToken_DblAmpersand:
-		return BfBinaryOp_ConditionalAnd;
-	case BfToken_DblBar:
-		return BfBinaryOp_ConditionalOr;
-	case BfToken_DblQuestion:
-		return BfBinaryOp_NullCoalesce;
-	default:
-		return BfBinaryOp_None;
-	}
-}
-
-static BfUnaryOp TokenToUnaryOp(BfToken token)
-{
-	switch (token)
-	{
-	case BfToken_Star:
-		return BfUnaryOp_Dereference;
-	case BfToken_Ampersand:
-		return BfUnaryOp_AddressOf;
-	case BfToken_Minus:
-		return BfUnaryOp_Negate;
-	case BfToken_Bang:
-		return BfUnaryOp_Not;
-	case BfToken_Plus:
-		return BfUnaryOp_Positive;
-	case BfToken_Tilde:
-		return BfUnaryOp_InvertBits;
-	case BfToken_DblPlus:
-		return BfUnaryOp_Increment;
-	case BfToken_DblMinus:
-		return BfUnaryOp_Decrement;
-	case BfToken_Ref:
-		return BfUnaryOp_Ref;
-	case BfToken_Mut:
-		return BfUnaryOp_Mut;
-	case BfToken_Out:
-		return BfUnaryOp_Out;
-	case BfToken_Params:
-		return BfUnaryOp_Params;
-	default:
-		return BfUnaryOp_None;
-	}
-}
-
-
-static BfAssignmentOp TokenToAssignmentOp(BfToken token)
-{
-	switch (token)
-	{
-	case BfToken_AssignEquals:
-		return BfAssignmentOp_Assign;
-	case BfToken_PlusEquals:
-		return BfAssignmentOp_Add;
-	case BfToken_MinusEquals:
-		return BfAssignmentOp_Subtract;
-	case BfToken_MultiplyEquals:
-		return BfAssignmentOp_Multiply;
-	case BfToken_DivideEquals:
-		return BfAssignmentOp_Divide;
-	case BfToken_ModulusEquals:
-		return BfAssignmentOp_Modulus;
-	case BfToken_ShiftLeftEquals:
-		return BfAssignmentOp_ShiftLeft;
-	case BfToken_ShiftRightEquals:
-		return BfAssignmentOp_ShiftRight;
-	case BfToken_AndEquals:
-		return BfAssignmentOp_BitwiseAnd;
-	case BfToken_OrEquals:
-		return BfAssignmentOp_BitwiseOr;
-	case BfToken_XorEquals:
-		return BfAssignmentOp_ExclusiveOr;
-	default:
-		return BfAssignmentOp_None;
-	}
-}
-
 BfReducer::BfReducer()
 {
 	mCurTypeDecl = NULL;
@@ -2122,7 +2008,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 						{
 							BfToken nextToken = nextTokenNode->GetToken();
 							//TODO: Hm. What other tokens make it into a cast expr?
-							auto binaryOp = TokenToBinaryOp(nextToken);
+							auto binaryOp = BfTokenToBinaryOp(nextToken);
 							// When we have a binary operator token following, it COULD either be a "(double)-val" or it COULD be a "(val2)-val"
 							//  But we can't tell until we determine whether the thing inside the paren is a type name or a value name, so we
 							//  have special code in BfExprEvaluator that can fix those cases at evaluation time
@@ -2232,7 +2118,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 			if (exprLeft == NULL)
 			{
-				BfUnaryOp unaryOp = TokenToUnaryOp(tokenNode->GetToken());
+				BfUnaryOp unaryOp = BfTokenToUnaryOp(tokenNode->GetToken());
 
 				if (unaryOp != BfUnaryOp_None)
 				{
@@ -2624,7 +2510,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				}
 			}
 
-			BfBinaryOp binOp = TokenToBinaryOp(tokenNode->GetToken());
+			BfBinaryOp binOp = BfTokenToBinaryOp(tokenNode->GetToken());
 			if (binOp != BfBinaryOp_None)
 			{				
 				auto binOpExpression = mAlloc->Alloc<BfBinaryOperatorExpression>();
@@ -2648,7 +2534,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				return CheckBinaryOperatorPrecedence(binOpExpression);
 			}
 
-			auto assignmentOp = TokenToAssignmentOp(tokenNode->GetToken());
+			auto assignmentOp = BfTokenToAssignmentOp(tokenNode->GetToken());
 			if (assignmentOp != BfAssignmentOp_None)
 			{
 				if ((createExprFlags & CreateExprFlags_NoAssignment) != 0)
@@ -3870,21 +3756,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 			auto nameNode = ExpectIdentifierAfter(methodDecl);
 			if (nameNode != NULL)
 			{
-				MEMBER_SET(methodDecl, mNameNode, nameNode);
-
-				auto nextNode = mVisitorPos.GetNext();
-				if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
-				{
-					if (tokenNode->GetToken() == BfToken_LChevron)
-					{
-						auto genericParams = CreateGenericParamsDeclaration(tokenNode);
-						if (genericParams != NULL)
-						{
-							MEMBER_SET(methodDecl, mGenericParams, genericParams);
-						}
-					}
-				}
-
+				MEMBER_SET(methodDecl, mNameNode, nameNode);				
 				ParseMethod(methodDecl, &params, &commas, true);
 			}
 
@@ -6493,7 +6365,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 			auto nextNode = mVisitorPos.GetNext();
 			if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
 			{
-				operatorDecl->mBinOp = TokenToBinaryOp(nextToken->GetToken());
+				operatorDecl->mBinOp = BfTokenToBinaryOp(nextToken->GetToken());
 				if (operatorDecl->mBinOp != BfBinaryOp_None)
 				{
 					MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
@@ -6501,7 +6373,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 				}
 				else
 				{
-					operatorDecl->mUnaryOp = TokenToUnaryOp(nextToken->GetToken());
+					operatorDecl->mUnaryOp = BfTokenToUnaryOp(nextToken->GetToken());
 					if (operatorDecl->mUnaryOp != BfUnaryOp_None)
 					{
 						MEMBER_SET(operatorDecl, mOpTypeToken, nextToken);
@@ -6509,7 +6381,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 					}
 					else
 					{
-						operatorDecl->mAssignOp = TokenToAssignmentOp(nextToken->GetToken());
+						operatorDecl->mAssignOp = BfTokenToAssignmentOp(nextToken->GetToken());
 						if (operatorDecl->mAssignOp == BfAssignmentOp_Assign)
 						{
 							Fail("The assignment operator '=' cannot be overridden", nextToken);
@@ -8768,7 +8640,24 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 
 bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, bool alwaysIncludeBlock)
 {
-	auto tokenNode = ExpectTokenAfter(methodDeclaration, BfToken_LParen, BfToken_Bang);
+	BfTokenNode* tokenNode;
+	auto nextNode = mVisitorPos.GetNext();
+	if (methodDeclaration->mGenericParams == NULL)
+	{
+		if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
+		{
+			if (tokenNode->GetToken() == BfToken_LChevron)
+			{
+				auto genericParams = CreateGenericParamsDeclaration(tokenNode);
+				if (genericParams != NULL)
+				{
+					MEMBER_SET(methodDeclaration, mGenericParams, genericParams);
+				}
+			}
+		}
+	}
+
+	tokenNode = ExpectTokenAfter(methodDeclaration, BfToken_LParen, BfToken_Bang);
 	if (tokenNode == NULL)
 		return false;
 	if (tokenNode->GetToken() == BfToken_Bang)
@@ -8811,7 +8700,7 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 	mVisitorPos.MoveNext();
 
 	auto typeDecl = mCurTypeDecl;
-	auto nextNode = mVisitorPos.GetNext();
+	nextNode = mVisitorPos.GetNext();
 	if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 	{
 		if (tokenNode->GetToken() == BfToken_Mut)
@@ -9038,7 +8927,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 
 	bool isDone = false;
 	for (int constraintIdx = 0; !isDone; constraintIdx++)
-	{
+	{		
 		BfGenericConstraint* genericConstraint = mAlloc->Alloc<BfGenericConstraint>();
 		BfDeferredAstSizedArray<BfAstNode*> constraintTypes(genericConstraint->mConstraintTypes, mAlloc);
 		BfDeferredAstSizedArray<BfTokenNode*> commas(genericConstraint->mCommas, mAlloc);
@@ -9047,11 +8936,12 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 		genericConstraint->mWhereToken = tokenNode;
 
 		genericConstraintsArr.push_back(genericConstraint);
-		auto genericParamName = ExpectIdentifierAfter(genericConstraint, "generic parameter name");
+
+		auto genericParamName = CreateTypeRefAfter(genericConstraint);
 		if (genericParamName != NULL)
 		{
-			MEMBER_SET(genericConstraint, mGenericParamName, genericParamName);
-			tokenNode = ExpectTokenAfter(genericConstraint, BfToken_Colon);
+			MEMBER_SET(genericConstraint, mTypeRef, genericParamName);
+			tokenNode = ExpectTokenAfter(genericConstraint, BfToken_Colon, BfToken_AssignEquals);
 		}
 		else
 			isDone = true;
@@ -9076,7 +8966,6 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 				}
 
 				tokenNode = ExpectTokenAfter(genericConstraint, BfToken_Comma, BfToken_LBrace, BfToken_Where, BfToken_Semicolon);
-
 				if (tokenNode == NULL)
 				{
 					isDone = true;
@@ -9098,6 +8987,8 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 			auto nextNode = mVisitorPos.GetNext();
 			if (auto constraintToken = BfNodeDynCast<BfTokenNode>(nextNode))
 			{
+				BfAstNode* constraintNode = NULL;
+
 				bool addToConstraint = false;
 				switch (constraintToken->GetToken())
 				{
@@ -9107,13 +8998,43 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 				case BfToken_Var:
 					addToConstraint = true;
 					break;
+				case BfToken_Operator:					
+					{
+						BfGenericOperatorConstraint* opConstraint = mAlloc->Alloc<BfGenericOperatorConstraint>();
+						constraintNode = opConstraint;
+						
+						ReplaceNode(constraintToken, opConstraint);						
+						
+						MEMBER_SET(opConstraint, mOperatorToken, constraintToken);
+						mVisitorPos.MoveNext();
+
+						auto opToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
+						if (opToken == NULL)
+						{
+							auto typeRef = CreateTypeRefAfter(opConstraint);
+							if (typeRef == NULL)
+								break;
+							MEMBER_SET(opConstraint, mLeftType, typeRef);
+							opToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
+						}
+
+						if (opToken == NULL)
+							break;
+						MEMBER_SET(opConstraint, mOpToken, opToken);
+						mVisitorPos.MoveNext();
+
+						auto typeRef = CreateTypeRefAfter(opConstraint);
+						if (typeRef == NULL)
+							break;
+						MEMBER_SET(opConstraint, mRightType, typeRef);											
+					}
+					break;
 				default: break;
 				}
 
 				if (addToConstraint)
 				{
-					BfAstNode* constraintNode = constraintToken;
-					MoveNode(constraintToken, genericConstraint);
+					constraintNode = constraintToken;
 					bool addToConstraint = false;
 
 					mVisitorPos.MoveNext();
@@ -9152,8 +9073,12 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 						constraintTypes.push_back(typeRef);
 
 						continue;
-					}
-
+					}					
+				}
+				
+				if (constraintNode != NULL)
+				{
+					MoveNode(constraintNode, genericConstraint);
 					constraintTypes.push_back(constraintNode);
 					continue;
 				}

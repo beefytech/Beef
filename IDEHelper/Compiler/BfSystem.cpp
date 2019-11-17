@@ -2379,11 +2379,12 @@ BfTypeDef* BfSystem::FindTypeDefEx(const StringImpl& fullTypeName)
 
 	int numGenericArgs = 0;
 	String typeName = fullTypeName.Substring(colonPos + 1);
-	int tildePos = (int)typeName.IndexOf('`');
+	int tildePos = (int)typeName.LastIndexOf('`');	
 	if (tildePos != -1)
 	{
+		BF_ASSERT(tildePos > (int)typeName.LastIndexOf('.'));
 		numGenericArgs = atoi(typeName.c_str() + tildePos + 1);
-		typeName.RemoveToEnd(tildePos);
+		typeName.RemoveToEnd(tildePos);		
 	}
 
 	return FindTypeDef(typeName, numGenericArgs, project);
@@ -2587,13 +2588,13 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mGenericParamDefs.Clear();
 	
 	typeDef->mGenericParamDefs = nextTypeDef->mGenericParamDefs;
-	nextTypeDef->mGenericParamDefs.Clear();
+	nextTypeDef->mGenericParamDefs.Clear();	
 
 	typeDef->mBaseTypes = nextTypeDef->mBaseTypes;		
 	typeDef->mNestedTypes = nextTypeDef->mNestedTypes;	
 	
 	// If we are a partial then the mOuterType gets set to the combined partial so don't do that here
-	if (!typeDef->mIsPartial)
+	if (!typeDef->mIsCombinedPartial)
 	{
 		for (auto nestedType : typeDef->mNestedTypes)
 		{
@@ -2658,7 +2659,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 			BfGenericParamDef* newGeneric = new BfGenericParamDef();
 			*newGeneric = *generic;
 			typeDef->mGenericParamDefs.push_back(newGeneric);
-		}
+		}		
 		
 		typeDef->mBaseTypes = partialTypeDef->mBaseTypes;				
 
@@ -2675,7 +2676,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		{
 			typeDef->mTypeCode = partialTypeDef->mTypeCode;
 			typeDef->mTypeDeclaration = partialTypeDef->mTypeDeclaration;
-		}		
+		}				
 	}	
 
 	// Merge attributes together

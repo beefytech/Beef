@@ -746,12 +746,14 @@ void BfPrinter::Visit(BfGenericConstraintsDeclaration* genericConstraints)
 {
 	Visit(genericConstraints->ToBase());
 
-	for (auto genericConstraint : genericConstraints->mGenericConstraints)
+	for (auto genericConstraintNode : genericConstraints->mGenericConstraints)
 	{
+		auto genericConstraint = BfNodeDynCast<BfGenericConstraint>(genericConstraintNode);
+
 		ExpectSpace();
 		VisitChild(genericConstraint->mWhereToken);
 		ExpectSpace();
-		VisitChild(genericConstraint->mGenericParamName);
+		VisitChild(genericConstraint->mTypeRef);
 		ExpectSpace();
 		VisitChild(genericConstraint->mColonToken);
 		ExpectSpace();
