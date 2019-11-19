@@ -6648,11 +6648,11 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		bool implementsInterface = false;
 		if (origCheckArgType != checkArgType)
 		{
-			implementsInterface = CanImplicitlyCast(origCheckArgType, convCheckConstraint);
+			implementsInterface = CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, origCheckArgType), convCheckConstraint);
 		}
 
 		if (!implementsInterface)
-			implementsInterface = CanImplicitlyCast(checkArgType, convCheckConstraint);
+			implementsInterface = CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, checkArgType), convCheckConstraint);
 
 		if ((!implementsInterface) && (origCheckArgType->IsWrappableType()))
 		{			

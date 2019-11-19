@@ -94,13 +94,13 @@ namespace Tests
 			IHashable ihB = valB;
 			IHashable ihC = valC;
 
-			Test.Assert(ihA.GetHashCode() == (int)valA);
-			Test.Assert(ihB.GetHashCode() == (int)valB);
-			Test.Assert(ihC.GetHashCode() == (int)valC);
+			Test.Assert(ihA.GetHashCode() == (int)(void*)valA);
+			Test.Assert(ihB.GetHashCode() == (int)(void*)valB);
+			Test.Assert(ihC.GetHashCode() == (int)(void*)valC);
 
-			Test.Assert(GetHash(ihA) == (int)valA);
-			Test.Assert(GetHash(ihB) == (int)valB);
-			Test.Assert(GetHash(ihC) == (int)valC);
+			Test.Assert(GetHash(ihA) == (int)(void*)valA);
+			Test.Assert(GetHash(ihB) == (int)(void*)valB);
+			Test.Assert(GetHash(ihC) == (int)(void*)valC);
 		}
 	}
 }
