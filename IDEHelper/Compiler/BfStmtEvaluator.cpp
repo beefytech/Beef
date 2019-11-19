@@ -1162,7 +1162,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	BfLocalVariable* localDef = new BfLocalVariable();
 	if (varDecl->mNameNode != NULL)
 	{
-		localDef->mName = varDecl->mNameNode->ToString();
+		varDecl->mNameNode->ToString(localDef->mName);
 		localDef->mNameNode = BfNodeDynCast<BfIdentifierNode>(varDecl->mNameNode);
 	}
 	else
@@ -1773,7 +1773,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	BfLocalVariable* localDef = new BfLocalVariable();
 	if (varDecl->mNameNode != NULL)
-		localDef->mName = varDecl->mNameNode->ToString();
+		varDecl->mNameNode->ToString(localDef->mName);
 	localDef->mNameNode = BfNodeDynCast<BfIdentifierNode>(varDecl->mNameNode);
 	localDef->mResolvedType = type;
 	localDef->mIsAssigned = true;	
@@ -1906,7 +1906,7 @@ void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, Bf
 		bool initHandled = false;
 
 		BfLocalVariable* localDef = new BfLocalVariable();
-		localDef->mName = varNameNode->ToString();
+		varNameNode->ToString(localDef->mName);
 		localDef->mNameNode = BfNodeDynCast<BfIdentifierNode>(varNameNode);		
 		localDef->mResolvedType = resolvedType;
 		localDef->mReadFromId = 0; // Don't give usage errors for binds
@@ -2326,9 +2326,9 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 	auto enumType = targetType->ToTypeInstance();
 	PopulateType(enumType);
 
-	String enumCaseName;
+	StringT<128> enumCaseName;
 	if (nameNode != NULL)
-		enumCaseName = nameNode->ToString();
+		nameNode->ToString(enumCaseName);
 
 	auto tagType = GetPrimitiveType(BfTypeCode_Int32);
 	if (enumVal.mType != enumType)

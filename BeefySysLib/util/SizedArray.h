@@ -217,7 +217,7 @@ public:
 		BF_ASSERT((uintptr)idx < (uintptr)this->mSize);
 		return this->mVals[idx];
 	}
-
+	
 	bool operator==(const SizedArrayBase& arrB) const
 	{
 		if (this->mSize != arrB.mSize)
@@ -284,6 +284,11 @@ public:
 	}
 
 	void clear()
+	{
+		this->mSize = 0;
+	}
+
+	void Clear()
 	{
 		this->mSize = 0;
 	}
@@ -1060,17 +1065,27 @@ public:
 	}
 };
 
+template <typename T>
+static bool operator==(const ArrayBase<T>& arrA, const SizedArrayBase<T>& arrB)
+{
+	if (arrA.mSize != arrB.mSize)
+		return false;
+	for (intptr i = 0; i < arrA.mSize; i++)
+		if (arrA.mVals[i] != arrB.mVals[i])
+			return false;
+	return true;
+}
+
 NS_BF_END;
 
-/*namespace std
+namespace std
 {
 	template<typename T>
-	struct hash<Beefy::Array<T> >
+	struct hash<Beefy::SizedArrayImpl<T> >
 	{
-		size_t operator()(const Beefy::Array<T>& val) const
+		size_t operator()(const Beefy::SizedArrayImpl<T>& val) const
 		{
-			return _Hash_seq((const uint8*)val.mVals, sizeof(T) * val.mSize);
+			return HashBytes((const uint8*)val.mVals, sizeof(T) * val.mSize);
 		}
 	};
-}*/
-
+}

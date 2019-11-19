@@ -1566,7 +1566,7 @@ namespace BeefPerf
 					uint32 tickMSNow = (.)ReadSLEB128();
 					int64 clockRate = (.)ReadSLEB128();
 
-					mTicksToUSScale = 1000.0 / clockRate;
+					mTicksToUSScale = 1000000.0 / clockRate;
 
 					/*if (mFirstTimeStamp == -1)
 					{

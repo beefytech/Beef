@@ -473,6 +473,7 @@ public:
 public:	
 	int mId;
 	BfIRValueFlags mFlags;
+	static BfIRValue sValueless;
 
 #ifdef CHECK_CONSTHOLDER
 	BfIRConstHolder* mHolder;
@@ -883,7 +884,8 @@ public:
 public:
 	~BfIRBuilder();
 	
-	void WriteSLEB128(int64 val);	
+	void WriteSLEB128(int64 val);
+	void WriteSLEB128(int32 val);
 	void Write(uint8 val);
 	void Write(bool val);
 	void Write(int val);

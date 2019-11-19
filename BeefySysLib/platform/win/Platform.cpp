@@ -909,8 +909,25 @@ static void __cdecl AbortHandler(int)
 	BfpSystem_FatalError("Abort handler", NULL);
 }
 
+static int64 gCPUFreq = -1;
+static int64 gStartCPUTick = -1;
+static int64 gStartQPF = -1;
+
+static void InitCPUFreq()
+{
+	if (gStartCPUTick == -1)
+	{		
+		gStartCPUTick = __rdtsc();
+		LARGE_INTEGER largeVal = { 0 };
+		QueryPerformanceCounter(&largeVal);
+		gStartQPF = largeVal.QuadPart;
+	}
+}
+
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags)
 {	
+	InitCPUFreq();
+
 	::_set_error_mode(_OUT_TO_STDERR);
 
 #ifdef _DEBUG
@@ -1123,10 +1140,28 @@ BFP_EXPORT int64 BFP_CALLTYPE BfpSystem_GetCPUTick()
 }
 
 BFP_EXPORT int64 BFP_CALLTYPE BfpSystem_GetCPUTickFreq()
-{
-	LARGE_INTEGER freq = { 0 };
-	QueryPerformanceFrequency(&freq);
-	return freq.QuadPart;
+{	
+	LARGE_INTEGER largeVal = { 0 };
+	QueryPerformanceFrequency(&largeVal);
+	int64 qpfFreq = largeVal.QuadPart;
+	
+	if (gStartCPUTick == -1)
+	{
+		InitCPUFreq();
+		Sleep(10);
+	}
+
+	int64 cpuTick1 = __rdtsc();
+	QueryPerformanceCounter(&largeVal);
+	int64 slowTick1 = largeVal.QuadPart;
+
+	int64 cpuElapsed = cpuTick1 - gStartCPUTick;
+	int64 slowElapsed = slowTick1 - gStartQPF;
+	double elapsedSeconds = slowElapsed / (double)qpfFreq;
+	int64 freq = (int64)(cpuElapsed / elapsedSeconds);
+	gCPUFreq = freq;
+
+	return gCPUFreq;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_CreateGUID(BfpGUID* outGuid)

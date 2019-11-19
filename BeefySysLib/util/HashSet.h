@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../Common.h"
+#include "Array.h"
 #include <unordered_map>
 
 NS_BF_BEGIN;
 
-template <typename TKey>
-class HashSet
+template <typename TKey, typename TAlloc = AllocatorCLib<TKey> >
+class HashSet : public TAlloc
 {
 public:
 	typedef int int_cosize;
@@ -254,14 +254,14 @@ private:
 		Resize(ExpandSize(mCount), false);
 	}
 
-	void Resize(int newSize, bool forceNewHashCodes)
+	void Resize(intptr newSize, bool forceNewHashCodes)
 	{
 		BF_ASSERT(newSize >= mAllocSize);
-		int_cosize* newBuckets = new int_cosize[newSize];
+		int_cosize* newBuckets = (int_cosize*)rawAllocate(sizeof(int_cosize) * newSize);
 		for (int_cosize i = 0; i < newSize; i++)
 			newBuckets[i] = -1;
-		Entry* newEntries = new Entry[newSize];
-		//mEntries.CopyTo(newEntries, 0, 0, mCount);
+		Entry* newEntries = (Entry*)rawAllocate(sizeof(Entry)*newSize);
+		
 		for (int i = 0; i < mCount; i++)
 		{
 			auto& newEntry = newEntries[i];
@@ -294,12 +294,12 @@ private:
 			}
 		}
 
-		delete[] mBuckets;
-		delete[] mEntries;
+		rawDeallocate(mBuckets);
+		rawDeallocate(mEntries);
 
 		mBuckets = newBuckets;
 		mEntries = newEntries;
-		mAllocSize = newSize;
+		mAllocSize = (int_cosize)newSize;
 	}
 
 	int FindEntry(const TKey& key)
@@ -332,10 +332,10 @@ private:
 	void Initialize(intptr capacity)
 	{
 		int_cosize size = GetPrimeish((int_cosize)capacity);
-		mBuckets = new int_cosize[size];
+		mBuckets = (int_cosize*)rawAllocate(sizeof(int_cosize) * size);
 		mAllocSize = size;
 		for (int_cosize i = 0; i < (int_cosize)mAllocSize; i++) mBuckets[i] = -1;
-		mEntries = new Entry[size];
+		mEntries = (Entry*)rawAllocate(sizeof(Entry) * size);
 		mFreeList = -1;
 	}
 
@@ -431,8 +431,8 @@ public:
 		}
 		else
 		{
-			mBuckets = new int_cosize[mAllocSize];
-			mEntries = new Entry[mAllocSize];
+			mBuckets = (int_cosize*)rawAllocate(sizeof(int_cosize) * mAllocSize);
+			mEntries = (Entry*)rawAllocate(sizeof(Entry) * mAllocSize);
 
 			for (int_cosize i = 0; i < mAllocSize; i++)
 				mBuckets[i] = val.mBuckets[i];
@@ -476,8 +476,8 @@ public:
 			}
 		}
 
-		delete[] mBuckets;
-		delete[] mEntries;
+		rawDeallocate(mBuckets);
+		rawDeallocate(mEntries);
 	}
 
 	HashSet& operator=(const HashSet& rhs)

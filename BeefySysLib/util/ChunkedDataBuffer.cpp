@@ -107,6 +107,42 @@ void ChunkedDataBuffer::Write(uint8 byte)
 	mSize++;
 }
 
+void ChunkedDataBuffer::Write_2(uint16 val)
+{
+	while (mWriteCurPtr + 2 > mWriteCurAlloc + ALLOC_SIZE)
+	{
+		Write((uint8*)&val, 2);
+		return;
+	}
+	*(uint16*)mWriteCurPtr = val;
+	mWriteCurPtr += 2;
+	mSize += 2;
+}
+
+void ChunkedDataBuffer::Write_3(uint32 val)
+{	
+	while (mWriteCurPtr + 3 > mWriteCurAlloc + ALLOC_SIZE)
+	{
+		Write((uint8*)&val, 3);
+		return;
+	}
+	*(uint32*)mWriteCurPtr = val;
+	mWriteCurPtr += 3;
+	mSize += 3;
+}
+
+void ChunkedDataBuffer::Write_4(uint32 val)
+{	
+	while (mWriteCurPtr + 4 > mWriteCurAlloc + ALLOC_SIZE)
+	{
+		Write((uint8*)&val, 4);
+		return;
+	}
+	*(uint32*)mWriteCurPtr = val;
+	mWriteCurPtr += 4;
+	mSize += 4;
+}
+
 int ChunkedDataBuffer::GetReadPos()
 {
 	return mReadPoolIdx * ALLOC_SIZE + (int)(mReadCurPtr - mReadCurAlloc);

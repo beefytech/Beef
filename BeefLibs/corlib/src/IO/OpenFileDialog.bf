@@ -438,7 +438,7 @@ namespace System.IO
 			{
 				using (sMonitor.Enter())
 				{
-					var ofn = (Windows.OpenFileName*)lparam;
+					var ofn = (Windows.OpenFileName*)(void*)lparam;
 					sHookMap[(int)hWnd] = (CommonDialog)Internal.UnsafeCastToObject((void*)ofn.mCustData);
 				}
 			}

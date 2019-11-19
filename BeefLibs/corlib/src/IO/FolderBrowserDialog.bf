@@ -145,7 +145,7 @@ namespace System.IO
                     if (sCurrentThis.mSelectedPath.Length != 0) 
                     {
                         // Try to select the folder specified by selectedPath
-                        Windows.SendMessageW(hWnd, Windows.BFFM_SETSELECTIONA, 1, (int)sCurrentThis.mSelectedPath.ToScopedNativeWChar!());
+                        Windows.SendMessageW(hWnd, Windows.BFFM_SETSELECTIONA, 1, (int)(void*)sCurrentThis.mSelectedPath.ToScopedNativeWChar!());
                     }
                     break;
                 case Windows.BFFM_SELCHANGED: 

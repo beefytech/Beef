@@ -23,7 +23,7 @@ namespace System
 
 		public int GetHashCode()
 		{
-			return (int)mVal;
+			return (int)(void*)mVal;
 		}
 	}
 }

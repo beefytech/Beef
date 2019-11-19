@@ -2332,7 +2332,64 @@ public:
 	static bool TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None);
 	static bool TypeEquals(BfType* typeA, BfType* typeB, BfType* selfType);
 
-	static void GetProjectList(BfType* checkType, Array<BfProject*>* projectVector, int immutableLength);
+	template <typename T>
+	static void GetProjectList(BfType* checkType, T* projectList, int immutableLength)
+	{
+		if (checkType->IsBoxed())
+			GetProjectList(((BfBoxedType*)checkType)->mElementType, projectList, immutableLength);
+
+		BfTypeInstance* typeInst = checkType->ToTypeInstance();
+		if (typeInst != NULL)
+		{
+			auto genericTypeInst = typeInst->ToGenericTypeInstance();
+			if (genericTypeInst != NULL)
+			{
+				for (auto genericArg : genericTypeInst->mTypeGenericArguments)
+					GetProjectList(genericArg, projectList, immutableLength);
+			}
+
+			BfProject* bfProject = typeInst->mTypeDef->mProject;
+			if (!projectList->Contains(bfProject))
+			{
+				bool handled = false;
+				for (int idx = 0; idx < (int)projectList->size(); idx++)
+				{
+					auto checkProject = (*projectList)[idx];
+					bool isBetter = bfProject->ContainsReference(checkProject);
+					bool isWorse = checkProject->ContainsReference(bfProject);
+					if (isBetter == isWorse)
+						continue;
+					if (isBetter)
+					{
+						if (idx >= immutableLength)
+						{
+							// This is even more specific, so replace with this one
+							(*projectList)[idx] = bfProject;
+							handled = true;
+						}
+					}
+					else
+					{
+						// This is less specific, ignore
+						handled = true;
+					}
+					break;
+				}
+				if (!handled)
+				{
+					projectList->Add(bfProject);
+				}
+			}
+		}
+		else if (checkType->IsPointer())
+			GetProjectList(((BfPointerType*)checkType)->mElementType, projectList, immutableLength);
+		else if (checkType->IsRef())
+			GetProjectList(((BfPointerType*)checkType)->mElementType, projectList, immutableLength);
+		else if (checkType->IsSizedArray())
+			GetProjectList(((BfSizedArrayType*)checkType)->mElementType, projectList, immutableLength);
+		else if (checkType->IsMethodRef())
+			GetProjectList(((BfMethodRefType*)checkType)->mOwner, projectList, immutableLength);
+	}
 
 	static BfPrimitiveType* GetPrimitiveType(BfModule* module, BfTypeCode typeCode);
 	static void PopulateType(BfModule* module, BfType* type);

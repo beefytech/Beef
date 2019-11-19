@@ -186,7 +186,7 @@ public:
 		return mPrevSizes + (int)((uint8*)ptr - mCurAlloc);
 	}
 
-	uint8* AllocBytes(int wantSize, int alignSize, const char* dbgName = "AllocBytes")
+	uint8* AllocBytes(intptr wantSize, int alignSize, const char* dbgName = "AllocBytes")
 	{
 		mCurPtr = (uint8*)(((intptr)mCurPtr + alignSize - 1) & ~(alignSize - 1));
 
@@ -194,7 +194,7 @@ public:
 		return retVal;
 	}
 
-	uint8* AllocBytes(int wantSize, const char* dbgName = "AllocBytes")
+	uint8* AllocBytes(intptr wantSize, const char* dbgName = "AllocBytes")
 	{
 #ifdef BUMPALLOC_TRACKALLOCS		
 		BumpAllocTrackedEntry* allocSizePtr;
@@ -237,6 +237,11 @@ class AllocatorBump
 public:
 	BumpAllocator* mAlloc;
 
+	AllocatorBump()
+	{
+		mAlloc = NULL;
+	}
+
 	T* allocate(intptr count)
 	{
 		return (T*)mAlloc->AllocBytes((int)(sizeof(T) * count), alignof(T));
@@ -244,6 +249,16 @@ public:
 
 	void deallocate(T* ptr)
 	{		
+	}
+
+	void* rawAllocate(intptr size)
+	{
+		return mAlloc->AllocBytes(size, 16);
+	}
+
+	void rawDeallocate(void* ptr)
+	{
+		
 	}
 };
 

@@ -803,8 +803,7 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mHadBuildError = false;
 	mHadBuildWarning = false;
 	mIgnoreErrors = false;
-	mIgnoreWarnings = false;
-	mHadIgnoredError = false;
+	mIgnoreWarnings = false;	
 	mReportErrors = true;
 	mIsInsideAutoComplete = false;
 	mIsDeleting = false;
@@ -1374,7 +1373,7 @@ BfTypedValue BfModule::GetFakeTypedValue(BfType* type)
 {
 	// This is a conservative "IsValueless", since it's not an error to use a fakeVal even if we don't need one
 	if (type->mSize == 0)
-		return BfTypedValue(BfIRValue(), type);
+		return BfTypedValue(BfIRValue::sValueless, type);
 	else
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), type);
 }
@@ -2446,8 +2445,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	BP_ZONE("BfModule::Fail");
 
 	if (mIgnoreErrors)
-	{
-		mHadIgnoredError = true;
+	{		
 	 	return NULL;
 	}
 
@@ -8320,6 +8318,9 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 
 void BfModule::EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool allowNull)
 {
+	if (mBfIRBuilder->mIgnoreWrites)
+		return;
+
 	bool emitDynamicCastCheck = mCompiler->mOptions.mEmitDynamicCastCheck;
 	auto typeOptions = GetTypeOptions();
 	if (typeOptions != NULL)
@@ -8355,19 +8356,34 @@ void BfModule::EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool al
 
 BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType, const BfAllocTarget& allocTarget, bool callDtor)
 {
+	if (mBfIRBuilder->mIgnoreWrites)
+	{
+		if (toType == mContext->mBfObjectType)
+			return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
+	}
+
 	BP_ZONE("BoxValue");
 
 	BfTypeInstance* fromStructTypeInstance = typedVal.mType->ToTypeInstance();
 	if (typedVal.mType->IsNullable())
-	{
+	{		
 		typedVal = MakeAddressable(typedVal);
 
 		auto innerType = typedVal.mType->GetUnderlyingType();
 		if (!innerType->IsValueType())
 		{
-			Fail("Only value types can be boxed", srcNode);
+			if (!mIgnoreErrors)
+				Fail("Only value types can be boxed", srcNode);
 			return BfTypedValue();
 		}
+		
+		auto boxedType = CreateBoxedType(innerType);
+		auto resultType = toType;
+		if (resultType == NULL)
+			resultType = boxedType;
+
+		if (mBfIRBuilder->mIgnoreWrites)
+			return BfTypedValue(mBfIRBuilder->GetFakeVal(), resultType);
 
 		auto prevBB = mBfIRBuilder->GetInsertBlock();
 		auto boxBB = mBfIRBuilder->CreateBlock("boxedN.notNull");
@@ -8378,13 +8394,9 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		auto hasValue = mBfIRBuilder->CreateLoad(hasValueAddr);
 
 		mBfIRBuilder->CreateCondBr(hasValue, boxBB, endBB);
-
-		auto boxedType = CreateBoxedType(innerType);
+		
 		AddDependency(boxedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
-		auto resultType = toType;
-		if (resultType == NULL)
-			resultType = boxedType;
-
+		
 		mBfIRBuilder->AddBlock(boxBB);
 		mBfIRBuilder->SetInsertPoint(boxBB);
 		BfScopeData newScope;
@@ -8443,17 +8455,16 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	if (fromStructTypeInstance == NULL)
 		return BfTypedValue();	
 
-	// Need to box it
-	auto boxedType = CreateBoxedType(typedVal.mType);
-	bool isBoxedType = (fromStructTypeInstance != NULL) && (toType->IsBoxed()) && (boxedType == toType);
-
+	// Need to box it	
+	bool isBoxedType = (fromStructTypeInstance != NULL) && (toType->IsBoxed());
+	
 	if ((toType == NULL) || (toType == mContext->mBfObjectType) || (isBoxedType) || (alreadyCheckedCast) ||  (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
-	{
-		if (typedVal.mType->IsPointer())
-		{
-			NOP;
-		}
-		
+	{	
+		if (mBfIRBuilder->mIgnoreWrites)
+			return BfTypedValue(mBfIRBuilder->GetFakeVal(), (toType != NULL) ? toType : CreateBoxedType(typedVal.mType));
+
+		auto boxedType = CreateBoxedType(typedVal.mType);
+
 		mBfIRBuilder->PopulateType(boxedType);
 		AddDependency(boxedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
 		auto allocaInst = AllocFromType(boxedType, allocTarget, BfIRValue(), BfIRValue(), 0, callDtor ? BfAllocFlags_None : BfAllocFlags_NoDtorCall);
@@ -8463,7 +8474,7 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		
 		if (boxedType->IsUnspecializedType())
 		{
-			BF_ASSERT(mCurMethodInstance->mIsUnspecialized);
+			BF_ASSERT((srcNode == NULL) || (mCurMethodInstance->mIsUnspecialized));
 		}
 		else
 		{
@@ -8656,7 +8667,7 @@ int BfModule::GetGenericParamAndReturnCount(BfMethodInstance* methodInstance)
 	return genericCount;
 }
 
-BfModule* BfModule::GetSpecializedMethodModule(const Array<BfProject*>& projectList)
+BfModule* BfModule::GetSpecializedMethodModule(const SizedArrayImpl<BfProject*>& projectList)
 {
 	BF_ASSERT(!mIsScratchModule);
 	BF_ASSERT(mIsReified);
@@ -8667,7 +8678,7 @@ BfModule* BfModule::GetSpecializedMethodModule(const Array<BfProject*>& projectL
 
 	BfModule* specModule = NULL;	
 	BfModule** specModulePtr = NULL;
-	if (mainModule->mSpecializedMethodModules.TryGetValue(projectList, &specModulePtr))
+	if (mainModule->mSpecializedMethodModules.TryGetValueWith(projectList, &specModulePtr))
 	{
 		return *specModulePtr;
 	}
@@ -8681,7 +8692,11 @@ BfModule* BfModule::GetSpecializedMethodModule(const Array<BfProject*>& projectL
 		specModule->mParentModule = mainModule;
 		specModule->mIsSpecializedMethodModuleRoot = true;
 		specModule->Init();
-		mainModule->mSpecializedMethodModules[projectList] = specModule;			
+
+		Array<BfProject*> projList;
+		for (auto project : projectList)
+			projList.Add(project);
+		mainModule->mSpecializedMethodModules[projList] = specModule;
 	}
 	return specModule;
 }
@@ -11080,7 +11095,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 
 	BfTypeVector sanitizedMethodGenericArguments;	
-	Array<BfProject*> projectList;
+	SizedArray<BfProject*, 4> projectList;
 	
 	bool isUnspecializedPass = (flags & BfGetMethodInstanceFlag_UnspecializedPass) != 0;
 	if ((isUnspecializedPass) && (methodDef->mGenericParams.size() == 0))
@@ -19095,7 +19110,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		if ((paramDef != NULL) && (paramDef->mParamDeclaration != NULL) && (paramDef->mParamDeclaration->mInitializer != NULL) &&
 			(!paramDef->mParamDeclaration->mInitializer->IsA<BfBlock>()))
 		{
-			BfMethodState methodState;
+			BfMethodState methodState;			
 			SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
 			methodState.mTempKind = BfMethodState::TempKind_Static;
 

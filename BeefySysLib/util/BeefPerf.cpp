@@ -355,7 +355,7 @@ static int64 GetTimestamp()
 #ifdef BF_PLATFORM_WINDOWS
 	return __rdtsc() / 100;
 #else
-	return BfpSystem_GetCPUTick();
+	return BfpSystem_GetCPUTick() / 100;
 #endif
 }
 

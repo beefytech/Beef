@@ -51,7 +51,7 @@ namespace System
 			{
 				if (mData & sIsEnumerating != 0)
 				{
-					Enumerator* enumerator = (Enumerator*)(mData & sDataMask);
+					Enumerator* enumerator = (Enumerator*)(void*)(mData & sDataMask);
 					return enumerator.[Friend]mTarget;
 				}
 				return Internal.UnsafeCastToObject((void*)mData);
@@ -61,7 +61,7 @@ namespace System
 			{
 				if (mData & sIsEnumerating != 0)
 				{
-					Enumerator* enumerator = (Enumerator*)(mData & sDataMask);
+					Enumerator* enumerator = (Enumerator*)(void*)(mData & sDataMask);
 					enumerator.[Friend]mTarget = value;
 				}
 				else
@@ -249,12 +249,12 @@ namespace System
 					if (mEvent.mData & sIsEnumerating == 0)
 					{
 						mTarget = mEvent.Target;
-						mEvent.mData = (int)(&this) | sIsEnumerating;
+						mEvent.mData = (int)(void*)(&this) | sIsEnumerating;
 						mRootEnumerator = &this;
 					}
 					else
 					{
-						mRootEnumerator = (Enumerator*)(mEvent.mData & Event<T>.sDataMask);
+						mRootEnumerator = (Enumerator*)(void*)(mEvent.mData & Event<T>.sDataMask);
 					}
 					mIdx = -1;
 				}

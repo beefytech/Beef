@@ -215,6 +215,8 @@ static llvm::GlobalValue::LinkageTypes LLVMMapLinkageType(BfIRLinkageType linkag
 	return llvmLinkageType;
 }
 
+BfIRValue BfIRValue::sValueless(BfIRValueFlags_Value, -1);
+
 bool BfIRValue::IsFake() const
 {
 	return mId < -1;
@@ -1450,6 +1452,98 @@ void BfIRBuilder::WriteSLEB128(int64 value)
 		mStream.Write(curByte);
 	}
 	while (hasMore);        
+}
+
+void BfIRBuilder::WriteSLEB128(int32 value)
+{
+	if (value < 0)
+	{
+// 		if (value >= -0x40)
+// 		{
+// 			mStream.Write((uint8)value);
+// 			return;
+// 		}
+// 
+// 		if (value >= -0x2000)
+// 		{
+// 			uint16 val =
+// 				(((uint16)(value << 1)) & 0x7F00) |
+// 				(((uint16)value) & 0x7F) | 0x80;
+// 			mStream.Write_2(val);
+// 			return;
+// 		}
+// 
+// 		if (value >= -0x100000)
+// 		{
+// 			uint32 val =
+// 				(((uint32)(value << 2)) & 0x7F0000) |
+// 				(((uint32)(value << 1)) & 0x7F00) |
+// 				(((uint32)value) & 0x7F) | 0x8080;
+// 			mStream.Write_3(val);
+// 			return;
+// 		}
+// 
+// 		if (value >= -0x8000000)
+// 		{
+// 			uint32 val =
+// 				(((uint32)(value << 3)) & 0x7F000000) |
+// 				(((uint32)(value << 2)) & 0x7F0000) |
+// 				(((uint32)(value << 1)) & 0x7F00) |
+// 				(((uint32)value) & 0x7F) | 0x808080;
+// 			mStream.Write_4(val);
+// 			return;
+// 		}
+	}
+	else
+	{
+		if (value <= 0x3F)
+		{
+			mStream.Write((uint8)value);
+			return;
+		}
+
+		if (value <= 0x1FFF)
+		{
+			uint16 val =
+				(((uint16)(value << 1)) & 0x7F00) |
+				(((uint16)value) & 0x7F) | 0x80;
+			mStream.Write_2(val);
+			return;
+		}
+// 
+// 		if (value <= 0x0FFFFF)
+// 		{
+// 			uint32 val =
+// 				(((uint32)(value << 2)) & 0x7F0000) |
+// 				(((uint32)(value << 1)) & 0x7F00) |
+// 				(((uint32)value) & 0x7F) | 0x8080;
+// 			mStream.Write_3(val);
+// 			return;
+// 		}
+// 
+// 		if (value <= 0x7FFFFF)
+// 		{
+// 			uint32 val =
+// 				(((uint32)(value << 3)) & 0x7F000000) |
+// 				(((uint32)(value << 2)) & 0x7F0000) |
+// 				(((uint32)(value << 1)) & 0x7F00) |
+// 				(((uint32)value) & 0x7F) | 0x808080;
+// 			mStream.Write_4(val);
+// 			return;
+// 		}
+	}
+
+	bool hasMore;
+	do
+	{
+		uint8 curByte = (uint8)(value & 0x7f);
+		value >>= 7;
+		hasMore = !((((value == 0) && ((curByte & 0x40) == 0)) ||
+			((value == -1) && ((curByte & 0x40) != 0))));
+		if (hasMore)
+			curByte |= 0x80;
+		mStream.Write(curByte);
+	} while (hasMore);
 }
 
 void BfIRBuilder::Write(uint8 val)
@@ -4550,21 +4644,21 @@ BfIRMDNode BfIRBuilder::DbgCreateImportedModule(BfIRMDNode context, BfIRMDNode n
 
 BfIRMDNode BfIRBuilder::DbgCreateBasicType(const StringImpl& name, int64 sizeInBits, int64 alignInBits, int encoding)
 {
-	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateBasicType, name, sizeInBits, alignInBits, encoding);
+	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateBasicType, name, (int32)sizeInBits, (int32)alignInBits, encoding);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
 }
 
 BfIRMDNode BfIRBuilder::DbgCreateStructType(BfIRMDNode context, const StringImpl& name, BfIRMDNode file, int lineNum, int64 sizeInBits, int64 alignInBits, int flags, BfIRMDNode derivedFrom, const BfSizedArray<BfIRMDNode>& elements)
 {	
-	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateStructType, context, name, file, lineNum, sizeInBits, alignInBits, flags, derivedFrom, elements);
+	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateStructType, context, name, file, lineNum, (int32)sizeInBits, (int32)alignInBits, flags, derivedFrom, elements);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
 }
 
 BfIRMDNode BfIRBuilder::DbgCreateEnumerationType(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNumber, int64 sizeInBits, int64 alignInBits, const BfSizedArray<BfIRMDNode>& elements, BfIRMDNode underlyingType)
 {
-	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateEnumerationType, scope, name, file, lineNumber, sizeInBits, alignInBits, elements, underlyingType);
+	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateEnumerationType, scope, name, file, lineNumber, (int32)sizeInBits, (int32)alignInBits, elements, underlyingType);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
 }
@@ -4606,7 +4700,7 @@ BfIRMDNode BfIRBuilder::DbgCreateArrayType(int64 sizeInBits, int64 alignInBits, 
 
 BfIRMDNode BfIRBuilder::DbgCreateReplaceableCompositeType(int tag, const StringImpl& name, BfIRMDNode scope, BfIRMDNode file, int line, int64 sizeInBits, int64 alignInBits, int flags)
 {	
-	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateReplaceableCompositeType, tag, name, scope, file, line, sizeInBits, alignInBits, flags);
+	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateReplaceableCompositeType, tag, name, scope, file, line, (int32)sizeInBits, (int32)alignInBits, flags);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
 }
@@ -4627,7 +4721,7 @@ BfIRMDNode BfIRBuilder::DbgCreateForwardDecl(int tag, const StringImpl& name, Bf
 
 BfIRMDNode BfIRBuilder::DbgCreateSizedForwardDecl(int tag, const StringImpl& name, BfIRMDNode scope, BfIRMDNode file, int line, int64 sizeInBits, int64 alignInBits)
 {
-	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateSizedForwardDecl, tag, name, scope, file, line, sizeInBits, alignInBits);
+	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateSizedForwardDecl, tag, name, scope, file, line, (int32)sizeInBits, (int32)alignInBits);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
 }
@@ -4661,7 +4755,7 @@ BfIRMDNode BfIRBuilder::DbgCreateEnumerator(const StringImpl& name, int64 val)
 
 BfIRMDNode BfIRBuilder::DbgCreateMemberType(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNumber, int64 sizeInBits, int64 alignInBits, int64 offsetInBits, int flags, BfIRMDNode type)
 {
-	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateMemberType, scope, name, file, lineNumber, sizeInBits, alignInBits, offsetInBits, flags, type);
+	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateMemberType, scope, name, file, lineNumber, (int32)sizeInBits, (int32)alignInBits, (int32)offsetInBits, flags, type);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
 }
@@ -4675,7 +4769,7 @@ BfIRMDNode BfIRBuilder::DbgCreateStaticMemberType(BfIRMDNode scope, const String
 
 BfIRMDNode BfIRBuilder::DbgCreateInheritance(BfIRMDNode type, BfIRMDNode baseType, int64 baseOffset, int flags)
 {
-	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateInheritance, type, baseType, baseOffset, flags);
+	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateInheritance, type, baseType, (int32)baseOffset, flags);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
 }

@@ -639,7 +639,7 @@ public:
 		this->mSize++;
 	}
 
-	void Insert(intptr idx, T* vals, intptr size)
+	void Insert(intptr idx, const T* vals, intptr size)
 	{
 		BF_ASSERT((uintptr)idx <= (uintptr)this->mSize);
 		if (this->mSize + size > this->mAllocSize)
@@ -934,7 +934,7 @@ public:
 		this->mSize++;
 	}
 
-	void Insert(intptr idx, T* vals, intptr size)
+	void Insert(intptr idx, const T* vals, intptr size)
 	{
 		BF_ASSERT((uintptr)idx <= (uintptr)this->mSize);
 		if (this->mSize + size > this->mAllocSize)

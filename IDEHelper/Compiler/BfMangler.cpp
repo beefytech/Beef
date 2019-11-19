@@ -304,7 +304,7 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 			name += "N8delegateI";
 		else
 			name += "N8functionI";
-		BfTypeVector typeVec;
+		SizedArray<BfType*, 8> typeVec;
 		typeVec.push_back(invokeMethodInst->mReturnType);
 		for (int paramIdx = 0; paramIdx < (int)invokeMethodInst->mParams.size(); paramIdx++)
 		{
@@ -1095,7 +1095,7 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 		{
 			auto tupleType = (BfTupleType*)newNameSub.mType;			
 			name += "?$__TUPLE";
-			BfTypeVector typeVec;
+			SizedArray<BfType*, 8> typeVec;
 			for (auto& fieldInst : tupleType->mFieldInstances)
 			{
 				BfFieldDef* fieldDef = fieldInst.GetFieldDef();
@@ -1120,7 +1120,7 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 				 	name += "?$delegate";
 				else
 				 	name += "?$function";
-				BfTypeVector typeVec;				
+				SizedArray<BfType*, 8> typeVec;
 				typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);
 				for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
 				{								
@@ -1139,7 +1139,7 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 // 				name += "?$delegate";
 // 			else
 // 				name += "?$function";
-// 			BfTypeVector typeVec;
+// 			SizedArray<BfType*, 8> typeVec;
 // 			typeVec.push_back(invokeMethodInst->mReturnType);
 // 			for (int paramIdx = 0; paramIdx < (int)invokeMethodInst->mParams.size(); paramIdx++)
 // 			{								
@@ -1156,7 +1156,7 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 		{
 			auto boxedType = (BfBoxedType*)newNameSub.mTypeInst;
 			name += "?$Box@";
-			BfTypeVector typeVec;			
+			SizedArray<BfType*, 8> typeVec;
 			typeVec.push_back(boxedType->GetModifiedElementType());			
 			AddGenericArgs(mangleContext, name, typeVec);
 			name += '@';

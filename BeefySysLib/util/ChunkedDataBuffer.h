@@ -32,6 +32,9 @@ public:
 	void GrowPool();
 	void Write(const void* data, int size);
 	void Write(uint8 byte);
+	void Write_2(uint16 val);
+	void Write_3(uint32 val);
+	void Write_4(uint32 val);
 	int GetReadPos();
 	void SetReadPos(int pos);
 	void NextReadPool();

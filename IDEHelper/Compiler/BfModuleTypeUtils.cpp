@@ -4653,8 +4653,6 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 {	
 	bool isStructPtr = false;
 
-// 	if (resolvedTypeRef->IsPointer())
-// 		resolvedTypeRef = ((BfPointerType*)resolvedTypeRef)->mElementType;
 	if (resolvedTypeRef->IsPrimitiveType())
 	{
 		auto primType = (BfPrimitiveType*)resolvedTypeRef;
@@ -7696,14 +7694,13 @@ BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeRe
 	return ResolveTypeRef(typeRef, populateType, resolveFlags);
 }
 
-// This flow should mirror CastToValue
-bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags)
+bool BfModule::DoCanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags)
 {
 	BfType* fromType = typedVal.mType;
 
 	if (fromType == toType)
 		return true;
-
+	
 	// Ref X to Ref Y, X* to Y*
 	{
 		bool checkUnderlying = false;
@@ -7782,7 +7779,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 		{
 			if ((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr)) ||
 				((genericParamInst->mTypeConstraint != NULL) &&
-				 ((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
+				((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
 			{
 				return true;
 			}
@@ -7868,8 +7865,8 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			//  And from T* to T[size]* explicitly
 			if (fromUnderlying->IsSizedArray())
 				fromUnderlying = fromUnderlying->GetUnderlyingType();
-// 			if ((toUnderlying->IsSizedArray()) && (explicitCast))
-// 				toUnderlying = toUnderlying->GetUnderlyingType();
+			// 			if ((toUnderlying->IsSizedArray()) && (explicitCast))
+			// 				toUnderlying = toUnderlying->GetUnderlyingType();
 
 			if ((fromUnderlying == toUnderlying) ||
 				(TypeIsSubTypeOf(fromUnderlying->ToTypeInstance(), toUnderlying->ToTypeInstance())) ||
@@ -7905,20 +7902,20 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 	if (((fromType->IsValueType()) || (fromType->IsPointer()) || (fromType->IsValuelessType())) &&
 		((toType->IsInterface()) || (toType == mContext->mBfObjectType)))
 	{
-//  		if (fromType->IsPointer())
-//  		{
-//  			if (toType == mContext->mBfObjectType)
-//  				return true;
-//  			return false;
-//  		}
- 
+		//  		if (fromType->IsPointer())
+		//  		{
+		//  			if (toType == mContext->mBfObjectType)
+		//  				return true;
+		//  			return false;
+		//  		}
+
 		if (toType == mContext->mBfObjectType)
 			return true;
 
- 		BfTypeInstance* fromStructTypeInstance = NULL;
- 		fromStructTypeInstance = fromType->ToTypeInstance();
- 		if (fromStructTypeInstance == NULL)
- 		{
+		BfTypeInstance* fromStructTypeInstance = NULL;
+		fromStructTypeInstance = fromType->ToTypeInstance();
+		if (fromStructTypeInstance == NULL)
+		{
 			if (fromType->IsPrimitiveType())
 			{
 				auto primType = (BfPrimitiveType*)fromType;
@@ -7926,15 +7923,79 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			}
 			else
 				return false;
- 		}
+		}
 
- 		auto toTypeInstance = toType->ToTypeInstance(); 
- 		// Need to box it
- 		if (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance))
- 			return true;
+		auto toTypeInstance = toType->ToTypeInstance();
+		// Need to box it
+		if (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance))
+			return true;
 	}
 
-	if (fromType->IsRef())
+	// Null -> Nullable<T>
+	if ((typedVal.mType->IsNull()) && (toType->IsNullable()))
+	{		
+		return true;
+	}
+
+	// Nullable<A> -> Nullable<B>
+	if ((typedVal.mType->IsNullable()) && (toType->IsNullable()))
+	{
+		auto fromNullableType = (BfGenericTypeInstance*)typedVal.mType;
+		auto toNullableType = (BfGenericTypeInstance*)toType;
+
+		return CanImplicitlyCast(BfTypedValue(mBfIRBuilder->GetFakeVal(), fromNullableType->mTypeGenericArguments[0]), toNullableType->mTypeGenericArguments[0], castFlags);		
+	}
+
+	// Tuple -> Tuple
+	if ((typedVal.mType->IsTuple()) && (toType->IsTuple()))
+	{
+		auto fromTupleType = (BfTupleType*)typedVal.mType;
+		auto toTupleType = (BfTupleType*)toType;
+		if (fromTupleType->mFieldInstances.size() == toTupleType->mFieldInstances.size())
+		{			
+			bool canCast = true;
+
+			BfIRValue curTupleValue = mBfIRBuilder->CreateUndefValue(mBfIRBuilder->MapType(toTupleType));
+			for (int valueIdx = 0; valueIdx < (int)fromTupleType->mFieldInstances.size(); valueIdx++)
+			{
+				BfFieldInstance* fromFieldInstance = &fromTupleType->mFieldInstances[valueIdx];
+				BfFieldInstance* toFieldInstance = &toTupleType->mFieldInstances[valueIdx];
+
+				//
+				{
+					BfFieldDef* fromFieldDef = fromFieldInstance->GetFieldDef();
+					BfFieldDef* toFieldDef = toFieldInstance->GetFieldDef();
+
+					// Either the names have to match or one has to be unnamed
+					if ((!fromFieldDef->IsUnnamedTupleField()) && (!toFieldDef->IsUnnamedTupleField()) &&
+						(fromFieldDef->mName != toFieldDef->mName))
+					{
+						curTupleValue = BfIRValue();
+						break;
+					}
+				}
+
+				auto fromFieldType = fromFieldInstance->GetResolvedType();
+				auto toFieldType = toFieldInstance->GetResolvedType();
+
+				if (toFieldType->IsVoid())
+					continue; // Allow sinking to void
+
+				BfIRValue fromFieldValue;				
+				bool canCastField = CanImplicitlyCast(BfTypedValue(mBfIRBuilder->GetFakeVal(), fromFieldType), toFieldType, (BfCastFlags)(castFlags | BfCastFlags_Explicit));
+				if (!canCastField)
+				{
+					canCast = false;
+					break;
+				}				
+			}
+
+			if (canCast)
+				return false;
+		}
+	}
+
+	/*if (fromType->IsRef())
 	{
 		if (toType->IsRef())
 		{
@@ -7946,7 +8007,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			// ref T -> T
 			return fromType->GetUnderlyingType() == toType;
 		}
-	}
+	}*/
 
 	// Int -> Enum
 	if ((typedVal.mType->IsIntegral()) && (toType->IsEnum()))
@@ -8005,7 +8066,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 		if (constant != NULL)
 		{
 			BfConstExprValueType* toConstExprValueType = (BfConstExprValueType*)toType;
-			
+
 			auto variantVal = TypedValueToVariant(NULL, typedVal);
 			if ((mBfIRBuilder->IsInt(variantVal.mTypeCode)) && (mBfIRBuilder->IsInt(toConstExprValueType->mValue.mTypeCode)))
 			{
@@ -8054,15 +8115,15 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 					}
 					else if (toType->IsSigned())
 					{
-                        if (toType->mSize == 8) // int64
-                            return true;
-                        else
-                        {
-                            int64 minVal = -(1LL << (8 * toType->mSize - 1));
-                            int64 maxVal = (1LL << (8 * toType->mSize - 1)) - 1;
-                            if ((srcVal >= minVal) && (srcVal <= maxVal))
-                                return true;
-                        }
+						if (toType->mSize == 8) // int64
+							return true;
+						else
+						{
+							int64 minVal = -(1LL << (8 * toType->mSize - 1));
+							int64 maxVal = (1LL << (8 * toType->mSize - 1)) - 1;
+							if ((srcVal >= minVal) && (srcVal <= maxVal))
+								return true;
+						}
 					}
 					else if (toType->mSize == 8) // ulong
 					{
@@ -8420,7 +8481,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 			}
 
 			BfBaseClassWalker baseClassWalker(fromType, toType, this);
-			
+
 			while (true)
 			{
 				auto entry = baseClassWalker.Next();
@@ -8455,7 +8516,7 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 						// Selection pass
 						if (pass < 2)
 						{
-							auto methodCheckFromType = methodFromType;							
+							auto methodCheckFromType = methodFromType;
 							auto methodCheckToType = methodToType;
 							if (pass == 1)
 							{
@@ -8495,13 +8556,13 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 									bestToDist = toDist;
 									bestToType = methodToType;
 								}
-							}							
+							}
 						}
 						else if (pass == 2) // Execution Pass
 						{
 							if ((methodFromType == bestFromType) && (methodToType == bestToType))
 							{
-								return true;
+								return CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, bestToType), toType, castFlags);
 							}
 						}
 					}
@@ -8515,11 +8576,58 @@ bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFl
 				bestFromType = bestNegFromType;
 			if (bestToType == NULL)
 				bestToType = bestNegToType;
-		}		
+		}
+	}
+
+	// Prim -> TypedPrimitive
+	if ((typedVal.mType->IsPrimitiveType()) && (toType->IsTypedPrimitive()))
+	{
+		bool allowCast = false;
+		if (toType == mCurTypeInstance)
+			allowCast = true;
+		if ((!allowCast) && (typedVal.mType->IsIntegral()) /*&& (!toType->IsEnum())*/)
+		{
+			// Allow implicit cast of zero
+			auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
+			if ((constant != NULL) && (mBfIRBuilder->IsInt(constant->mTypeCode)))
+			{
+				allowCast = constant->mInt64 == 0;
+			}
+		}
+		if (allowCast)
+		{
+			return CanImplicitlyCast(typedVal, toType->GetUnderlyingType(), castFlags);
+		}
 	}
 
 	return false;
 }
+
+// This flow should mirror CastToValue
+bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags)
+{
+	BP_ZONE("BfModule::CanImplicitlyCast");
+
+	//return DoCanImplicitlyCast(typedVal, toType, castFlags);
+
+	bool canCastToValue;
+	{
+		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+		canCastToValue = CastToValue(NULL, typedVal, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
+		return canCastToValue;
+	}
+
+	return canCastToValue;
+
+	bool sideCanCast = DoCanImplicitlyCast(typedVal, toType, castFlags);
+	if (canCastToValue != sideCanCast)
+	{
+		NOP;  
+	}
+	//BF_ASSERT(canCastToValue == sideCanCast);
+	return sideCanCast;
+}
+
 
 bool BfModule::AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNeedsMemberCasting)
 {
@@ -8600,6 +8708,8 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, BfMethodInstance* methodI
 BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags, BfCastResultFlags* resultFlags)
 {
 	bool explicitCast = (castFlags & BfCastFlags_Explicit) != 0;
+	bool ignoreErrors = mIgnoreErrors || ((castFlags & BfCastFlags_SilentFail) != 0);	
+	bool ignoreWrites = mBfIRBuilder->mIgnoreWrites;
 
 	if (typedVal.mType == toType)
 	{
@@ -8692,12 +8802,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 		// void* -> intptr
 		if ((typedVal.mType->IsPointer()) && (toType->IsIntPtr()))
-		{
-			//TODO: Put back
-			/*if ((!typedVal.mType->GetUnderlyingType()->IsVoid()) && ((castFlags & BfCastFlags_FromCompiler) == 0))
+		{				
+			if ((!ignoreErrors) && (!typedVal.mType->GetUnderlyingType()->IsVoid()) && ((castFlags & BfCastFlags_FromCompiler) == 0))
 			{
 				Fail(StrFormat("Unable to cast direct from '%s' to '%s', consider casting to void* first", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
-			}*/
+			}
 						
 			auto toPrimitive = (BfPrimitiveType*)toType;
 			return mBfIRBuilder->CreatePtrToInt(typedVal.mValue, toPrimitive->mTypeDef->mTypeCode);
@@ -8705,12 +8814,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 		// intptr -> void*
 		if ((typedVal.mType->IsIntPtr()) && (toType->IsPointer()))
-		{
-			//TODO: Put back
-			/*if ((!toType->GetUnderlyingType()->IsVoid()) && ((castFlags & BfCastFlags_FromCompiler) == 0))
+		{			
+			if ((!ignoreErrors) && (!toType->GetUnderlyingType()->IsVoid()) && ((castFlags & BfCastFlags_FromCompiler) == 0))
 			{
 				Fail(StrFormat("Unable to cast direct from '%s' to '%s', consider casting to void* first", TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
-			}*/
+			}
 
 			return mBfIRBuilder->CreateIntToPtr(typedVal.mValue, mBfIRBuilder->MapType(toType));
 		}
@@ -8846,30 +8954,49 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 	}
 
-	// ObjectInst|IFace -> object|IFace
-	if ((typedVal.mType->IsObject() || (typedVal.mType->IsInterface())) && ((toType->IsObject() || (toType->IsInterface()))))
+	if ((typedVal.mType->IsTypeInstance()) && (toType->IsTypeInstance()))
 	{
-		bool allowCast = false;
-		
 		auto fromTypeInstance = typedVal.mType->ToTypeInstance();
 		auto toTypeInstance = toType->ToTypeInstance();
 
-		if (TypeIsSubTypeOf(fromTypeInstance, toTypeInstance))
-			allowCast = true;
-		else if ((explicitCast) && 
-			((toType->IsInterface()) || (TypeIsSubTypeOf(toTypeInstance, fromTypeInstance))))
+		if ((typedVal.mType->IsValueType()) && (toType->IsValueType()))
 		{
-			if (toType->IsObjectOrInterface())
+			bool allowCast = false;
+			if (TypeIsSubTypeOf(fromTypeInstance, toTypeInstance))
+				allowCast = true;
+			if (allowCast)
 			{
-				if ((castFlags & BfCastFlags_Unchecked) == 0)
-					EmitDynamicCastCheck(typedVal, toType, true);
+				if (toType->IsValuelessType())
+					return BfIRValue::sValueless;
 			}
-			allowCast = true;
 		}
 
-		if (allowCast)
-			return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
-	}
+		// ObjectInst|IFace -> object|IFace
+		if ((typedVal.mType->IsObject() || (typedVal.mType->IsInterface())) && ((toType->IsObject() || (toType->IsInterface()))))
+		{
+			bool allowCast = false;			
+
+			if (TypeIsSubTypeOf(fromTypeInstance, toTypeInstance))
+				allowCast = true;
+			else if ((explicitCast) &&
+				((toType->IsInterface()) || (TypeIsSubTypeOf(toTypeInstance, fromTypeInstance))))
+			{
+				if (toType->IsObjectOrInterface())
+				{
+					if ((castFlags & BfCastFlags_Unchecked) == 0)
+						EmitDynamicCastCheck(typedVal, toType, true);
+				}
+				allowCast = true;
+			}
+
+			if (allowCast)
+			{
+				if (ignoreWrites)
+					return mBfIRBuilder->GetFakeVal();
+				return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
+			}
+		}
+	}	
 
 	// MethodRef -> Function
 	if ((typedVal.mType->IsMethodRef()) && (toType->IsFunction()))
@@ -8918,7 +9045,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				allowCast = true;
 
 			if (allowCast)
+			{
+				if (ignoreWrites)
+					return mBfIRBuilder->GetFakeVal();
 				return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
+			}
 		}
 		else if (typedVal.mType->IsObject())
 		{
@@ -8951,9 +9082,10 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		((toType->IsValueType()) || (toType->IsPointer())))
 	{
 		if (toType->IsValuelessType())
-		{
-			return mBfIRBuilder->GetFakeVal();
-		}
+			return BfIRValue::sValueless;		
+
+		if (ignoreWrites)		
+			return mBfIRBuilder->GetFakeVal();		
 
 		// Unbox!
 		if ((castFlags & BfCastFlags_Unchecked) == 0)
@@ -9036,6 +9168,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// Null -> Nullable<T>
 	if ((typedVal.mType->IsNull()) && (toType->IsNullable()))
 	{
+		if (ignoreWrites)
+			return mBfIRBuilder->GetFakeVal();
+
 		if ((castFlags & BfCastFlags_PreferAddr) != 0)
 		{
 			auto boolType = GetPrimitiveType(BfTypeCode_Boolean);		
@@ -9059,6 +9194,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// Nullable<A> -> Nullable<B>
 	if ((typedVal.mType->IsNullable()) && (toType->IsNullable()))
 	{
+		if (ignoreWrites)		
+			return mBfIRBuilder->GetFakeVal();
+
 		auto fromNullableType = (BfGenericTypeInstance*)typedVal.mType;
 		auto toNullableType = (BfGenericTypeInstance*)toType;
 
@@ -9073,7 +9211,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		auto srcAddr = mBfIRBuilder->CreateInBoundsGEP(srcPtr, 0, 1); // mValue
 		auto srcVal = mBfIRBuilder->CreateLoad(srcAddr);
 
-		auto toVal = CastToValue(srcNode, BfTypedValue(srcVal, fromNullableType->mTypeGenericArguments[0]), toNullableType->mTypeGenericArguments[0]);
+		auto toVal = CastToValue(srcNode, BfTypedValue(srcVal, fromNullableType->mTypeGenericArguments[0]), toNullableType->mTypeGenericArguments[0], ignoreErrors ? BfCastFlags_SilentFail : BfCastFlags_None);
 		if (!toVal)
 			return BfIRValue();
 
@@ -9166,7 +9304,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					return typedVal.mValue;
 			}
 
-			if ((castFlags & BfCastFlags_SilentFail) == 0)
+			if (!ignoreErrors)
 			{	
 				String valStr;
 				VariantToString(valStr, variantVal);
@@ -9533,7 +9671,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							if (fromDist < 0)
 							{
 								// Allow us to cast a constant int to a smaller type if it satisfies the cast operator
-								if ((typedVal.mValue.IsConst()) && (CanImplicitlyCast(typedVal, methodCheckFromType)))
+								if ((typedVal.mValue.IsConst()) && (CanImplicitlyCast(typedVal, methodCheckFromType, BfCastFlags_NoConversionOperator)))
 								{
 									fromDist = 0;
 								}
@@ -9623,7 +9761,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				{
 					if (mayBeBox)
 					{
-						if (Fail("Ambiguous cast, may be conversion operator or may be boxing request", srcNode) != NULL)
+						if ((!ignoreErrors) && (Fail("Ambiguous cast, may be conversion operator or may be boxing request", srcNode) != NULL))
 							mCompiler->mPassInstance->MoreInfo("See conversion operator", opMethodInstance->mMethodDef->GetRefNode());
 					}
 
@@ -9653,7 +9791,10 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					auto castedFromValue = Cast(srcNode, typedVal, bestFromType, castFlags);
 					if (!castedFromValue)
 						return BfIRValue();
-										
+					
+					if (ignoreWrites)
+						return mBfIRBuilder->GetFakeVal();
+
 					SizedArray<BfIRValue, 1> args;					
 					exprEvaluator.PushArg(castedFromValue, args);
 					auto operatorOut = exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, mCompiler->IsSkippingExtraResolveChecks() ? BfIRValue() : moduleMethodInstance.mFunc, false, args);
@@ -9676,8 +9817,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		isAmbiguousCast |= ((bestFromType != NULL) && (bestToType != NULL));
 		if (isAmbiguousCast)
 		{
-			const char* errStr = "Ambiguous conversion operators for casting from '%s' to '%s'";
-			Fail(StrFormat(errStr, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
+			if (!ignoreErrors)
+			{
+				const char* errStr = "Ambiguous conversion operators for casting from '%s' to '%s'";
+				Fail(StrFormat(errStr, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str()), srcNode);
+			}
 			return BfIRValue();
 		}
 
@@ -9697,7 +9841,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						{
 							// .. and we can convert the constraint's toType to OUR toType then we're good
 							auto opToVal = genericParam->mExternType;
-							if (CanImplicitlyCast(opToVal, toType))
+							if (CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType))
 								return mBfIRBuilder->GetFakeVal();
 						}
 					}
@@ -9722,7 +9866,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						{
 							// .. and we can convert the constraint's toType to OUR toType then we're good
 							auto opToVal = genericParam->mExternType;
-							if (CanImplicitlyCast(opToVal, toType))
+							if (CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType))
 								return mBfIRBuilder->GetFakeVal();
 						}
 					}
@@ -9777,7 +9921,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		bool allowCast = explicitCast;
 		if (toType == mCurTypeInstance)
 			allowCast = true;
- 		if ((!allowCast) && (typedVal.mType->IsIntegral()) && (!toType->IsEnum()))
+ 		if ((!allowCast) && (typedVal.mType->IsIntegral()) /*&& (!toType->IsEnum())*/)
  		{
  			// Allow implicit cast of zero
  			auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
@@ -9803,16 +9947,14 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			Warn(0, "This implicit boxing will only be in scope during the constructor. Consider using a longer-term allocation such as 'box new'", srcNode);
 		}
 
+		SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites, ignoreWrites);
 		auto value = BoxValue(srcNode, typedVal, toType, scopeData, (castFlags & BfCastFlags_NoBoxDtor) == 0);
 		if (value)
 			return value.mValue;
 	}
 
-	if ((castFlags & BfCastFlags_SilentFail) == 0)
+	if (!ignoreErrors)
 	{
-		if (mIgnoreErrors)
-			return BfIRValue();
-
 		const char* errStrF = explicitCast ?
 			"Unable to cast '%s' to '%s'" :
 			"Unable to implicitly cast '%s' to '%s'";
@@ -10526,44 +10668,156 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	{
 		BfTypeInstance* typeInstance = (BfTypeInstance*)resolvedType;
 		
-		auto checkTypeInst = typeInstance;
-		auto checkTypeDef = typeInstance->mTypeDef;
-
-		auto checkCurTypeInst = mCurTypeInstance; // Only used for ReduceName
-		BfTypeDef* checkCurTypeDef = NULL;
-		if (checkCurTypeInst != NULL)
-			checkCurTypeDef = checkCurTypeInst->mTypeDef;
-
-		std::function<void(BfTypeDef*, int)> _AddTypeName = [&](BfTypeDef* checkTypeDef, int depth) 
+		//auto checkTypeInst = typeInstance;
+		//auto checkTypeDef = typeInstance->mTypeDef;
+							
+		bool omitNamespace = (typeNameFlags & BfTypeNameFlag_OmitNamespace) != 0;
+		if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
 		{
-			if (depth > 0)
+			for (auto& checkNamespace : mCurTypeInstance->mTypeDef->mNamespaceSearch)
 			{
-				if ((typeNameFlags & BfTypeNameFlag_OmitOuterType) != 0)
-					return;
+				if (checkNamespace == typeInstance->mTypeDef->mNamespace)
+					omitNamespace = true;
+			}
+		}
 
-				if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
+		if ((!typeInstance->mTypeDef->mNamespace.IsEmpty()) && (!omitNamespace))
+		{			
+			if (!typeInstance->mTypeDef->mNamespace.IsEmpty())
+			{
+				typeInstance->mTypeDef->mNamespace.ToString(str);
+				if (!typeInstance->mTypeDef->IsGlobalsContainer())
+					str += '.';
+			}
+		}
+		
+		//_AddTypeName(typeInstance->mTypeDef, 0);
+
+		//std::function<void(String& str, BfTypeInstance*, BfTypeDef*, int, BfTypeNameFlags)> _AddTypeName = [&](StringImpl& str, BfTypeInstance*& checkTypeInst, BfTypeDef* checkTypeDef, int depth, BfTypeNameFlags typeNameFlags)
+		
+// 		BfTypeDef* endTypeDef = NULL;
+// 		if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
+// 		{
+// 			auto checkTypeInst = typeInstance;
+// 			auto checkTypeDef = typeInstance->mTypeDef;
+// 
+// 			auto outerTypeInst = GetOuterType(checkTypeInst);
+// 			if (outerTypeInst == NULL)
+// 				return;
+// 			checkTypeInst = outerTypeInst;
+// 
+// 			auto checkCurTypeInst = mCurTypeInstance; // Only used for ReduceName
+// 			BfTypeDef* checkCurTypeDef = NULL;
+// 			if (checkCurTypeInst != NULL)
+// 				checkCurTypeDef = checkCurTypeInst->mTypeDef;
+// 
+// 			while (checkCurTypeDef->mNestDepth > checkTypeDef->mNestDepth)
+// 			{
+// 				checkCurTypeInst = GetOuterType(checkCurTypeInst);
+// 				checkCurTypeDef = checkCurTypeInst->mTypeDef;
+// 			}
+// 
+// 			if (TypeIsSubTypeOf(checkCurTypeInst, checkTypeInst))
+// 				endTypeDef = checkCurTypeDef;
+// 		}
+
+		
+
+		SizedArray<BfTypeDef*, 8> typeDefStack;		
+		
+		BfTypeDef* endTypeDef = NULL;
+		if (((typeNameFlags & BfTypeNameFlag_ReduceName) != 0) && (mCurTypeInstance != NULL))
+		{
+			auto checkTypeInst = typeInstance; 			
+ 
+ 			auto outerTypeInst = GetOuterType(checkTypeInst);
+ 			if (outerTypeInst != NULL) 				
+			{
+				checkTypeInst = outerTypeInst;
+				auto checkTypeDef = checkTypeInst->mTypeDef;
+
+				auto checkCurTypeInst = mCurTypeInstance; // Only used for ReduceName
+				BfTypeDef* checkCurTypeDef = NULL;
+				if (checkCurTypeInst != NULL)
+					checkCurTypeDef = checkCurTypeInst->mTypeDef;
+
+				while (checkCurTypeDef->mNestDepth > checkTypeDef->mNestDepth)
 				{
-					auto outerTypeInst = GetOuterType(checkTypeInst);
-					if (outerTypeInst == NULL)
-						return;
-					checkTypeInst = outerTypeInst;
+					checkCurTypeInst = GetOuterType(checkCurTypeInst);
+					checkCurTypeDef = checkCurTypeInst->mTypeDef;
+				}
 
-					while (checkCurTypeDef->mNestDepth > checkTypeDef->mNestDepth)
+				while (checkTypeDef != NULL)
+				{
+					if (TypeIsSubTypeOf(checkCurTypeInst, checkTypeInst))
 					{
-						checkCurTypeInst = GetOuterType(checkCurTypeInst);
-						checkCurTypeDef = checkCurTypeInst->mTypeDef;
+						endTypeDef = checkTypeDef;
+						break;
 					}
 
-					if (TypeIsSubTypeOf(checkCurTypeInst, checkTypeInst))
-						return; // Found outer type				
+					checkCurTypeInst = GetOuterType(checkCurTypeInst);
+					if (checkCurTypeInst == NULL)
+						break;
+					checkCurTypeDef = checkCurTypeInst->mTypeDef;
+
+					checkTypeInst = GetOuterType(checkTypeInst);
+					if (checkTypeInst == NULL)
+						break;
+					checkTypeDef = checkTypeInst->mTypeDef;
 				}
 			}
+		}
 
-			auto parentTypeDef = checkTypeDef->mOuterType;
-			if (parentTypeDef != NULL)
-			{
-				_AddTypeName(parentTypeDef, depth + 1);				
-			}
+		BfTypeDef* checkTypeDef = typeInstance->mTypeDef;
+		while (checkTypeDef != NULL)
+		{
+			typeDefStack.Add(checkTypeDef);
+
+			checkTypeDef = checkTypeDef->mOuterType;
+
+			if ((typeNameFlags & BfTypeNameFlag_OmitOuterType) != 0)
+				break;
+
+			if (checkTypeDef == endTypeDef)
+				break;
+		}
+
+		while (!typeDefStack.IsEmpty())
+		{
+			BfTypeDef* checkTypeDef = typeDefStack.back();
+			int depth = (int)typeDefStack.size() - 1;
+			typeDefStack.pop_back();
+
+// 			if (depth > 0)
+// 			{
+// 				if ((typeNameFlags & BfTypeNameFlag_OmitOuterType) != 0)
+// 					return;
+// 
+// 				if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
+// 				{
+// 					auto outerTypeInst = GetOuterType(checkTypeInst);
+// 					if (outerTypeInst == NULL)
+// 						return;
+// 					checkTypeInst = outerTypeInst;
+// 
+// 					while (checkCurTypeDef->mNestDepth > checkTypeDef->mNestDepth)
+// 					{
+// 						checkCurTypeInst = GetOuterType(checkCurTypeInst);
+// 						checkCurTypeDef = checkCurTypeInst->mTypeDef;
+// 					}
+// 
+// 					if (TypeIsSubTypeOf(checkCurTypeInst, checkTypeInst))
+// 						return; // Found outer type				
+// 				}
+// 			}
+
+// 			auto parentTypeDef = checkTypeDef->mOuterType;
+// 			if (parentTypeDef != NULL)
+// 			{
+// 				//_AddTypeName(parentTypeDef, depth + 1);
+// 				typeDefStack.Add(parentTypeDef);
+// 				continue;
+// 			}
 
 			if (checkTypeDef->IsGlobalsContainer())
 			{
@@ -10630,32 +10884,12 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 					}
 					str += '>';
 				}
-			}		
+			}
 
 			if (depth > 0)
 				str += '.';
-		};							
+		};
 
-		bool omitNamespace = (typeNameFlags & BfTypeNameFlag_OmitNamespace) != 0;
-		if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
-		{
-			for (auto& checkNamespace : mCurTypeInstance->mTypeDef->mNamespaceSearch)
-			{
-				if (checkNamespace == typeInstance->mTypeDef->mNamespace)
-					omitNamespace = true;
-			}
-		}
-
-		if ((!typeInstance->mTypeDef->mNamespace.IsEmpty()) && (!omitNamespace))
-		{			
-			if (!typeInstance->mTypeDef->mNamespace.IsEmpty())
-			{
-				typeInstance->mTypeDef->mNamespace.ToString(str);
-				if (!typeInstance->mTypeDef->IsGlobalsContainer())
-					str += '.';
-			}
-		}
-		_AddTypeName(typeInstance->mTypeDef, 0);
 		return;
 	}
 	else if (resolvedType->IsPrimitiveType())

@@ -45,7 +45,7 @@ namespace System
         {
             Type type;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-            ClassVData* maskedVData = (ClassVData*)(mClassVData & ~(int)0xFF);
+            ClassVData* maskedVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
             type = maskedVData.mType;
 #else
             type = mClassVData.mType;
@@ -63,7 +63,7 @@ namespace System
         {
             Type type;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-            ClassVData* maskedVData = (ClassVData*)(mClassVData & ~(int)0xFF);
+            ClassVData* maskedVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
             type = maskedVData.mType;
 #else            
             type = mClassVData.mType;

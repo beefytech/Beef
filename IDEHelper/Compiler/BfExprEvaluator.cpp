@@ -993,6 +993,8 @@ bool BfMethodMatcher::WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInst
 
 bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* checkMethod, bool isFailurePass)
 {
+	BP_ZONE("BfMethodMatcher::CheckMethod");
+
 	bool hadMatch = false;
 
 	// Never consider overrides - they only get found at original method declaration
@@ -2905,7 +2907,9 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfIdentifierNode* identifierNode,
 		return qualifiedResult;
 	}	
 
-	return LookupIdentifier(identifierNode, identifierNode->ToString(), ignoreInitialError, hadError);		
+	StringT<128> identifierStr;
+	identifierNode->ToString(identifierStr);
+	return LookupIdentifier(identifierNode, identifierStr, ignoreInitialError, hadError);		
 }
 
 void BfExprEvaluator::Visit(BfIdentifierNode* identifierNode)
@@ -3148,7 +3152,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				if (resolvedFieldType->IsValuelessType())
 				{
-					return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), resolvedFieldType, true);
+					return BfTypedValue(BfIRValue::sValueless, resolvedFieldType, true);
 				}
 
 				if (isConst)
@@ -7285,8 +7289,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 void BfExprEvaluator::LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, bool ignoreIdentifierNotFoundError)
 {
 	// Lookup left side as a type
-	{
-		SetAndRestoreValue<bool> prevHadIgnoreError(mModule->mHadIgnoredError, false);
+	{		
  		BfType* type = NULL;
 		{
 			type = mModule->ResolveTypeRef(nameNode->mLeft, NULL, BfPopulateType_Data, BfResolveTypeRefFlag_AllowRef);
@@ -7371,8 +7374,7 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, 
 void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifierNode* nameLeft, BfIdentifierNode* nameRight, bool ignoreIdentifierNotFoundError)
 {
 	// Lookup left side as a type
-	{
-		SetAndRestoreValue<bool> prevHadIgnoreError(mModule->mHadIgnoredError, false);
+	{		
 		BfType* type = NULL;
 		{
 			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
@@ -8349,6 +8351,7 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 	for (int i = 0; i < (int) methodInstance->GetParamCount(); i++)
 	{
 		auto typedValueExpr = &typedValueExprs[i];
+		typedValueExpr->mTypedValue.mValue = BfIRValue(BfIRValueFlags_Value, -1);
 		typedValueExpr->mTypedValue.mType = methodInstance->GetParamType(i);
 		typedValueExpr->mRefNode = NULL;
 		args[i] = typedValueExpr;
@@ -8734,6 +8737,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 	for (int i = 0; i < (int)methodInstance->GetParamCount(); i++)
 	{
 		auto typedValueExpr = &typedValueExprs[i];
+		typedValueExpr->mTypedValue.mValue = BfIRValue(BfIRValueFlags_Value, -1);
 		typedValueExpr->mTypedValue.mType = methodInstance->GetParamType(i);
 		typedValueExpr->mRefNode = NULL;
 		args[i] = typedValueExpr;
@@ -13160,13 +13164,13 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	if (mayBeSkipCall)
 		resolveArgsFlags = (BfResolveArgFlags)(resolveArgsFlags | BfResolveArgFlag_DeferParamValues);
 
-// 	static int sCallIdx = 0;
-// 	sCallIdx++;
-// 	int callIdx = sCallIdx;
-// 	if (callIdx == 1557)
-// 	{
-// 		NOP;
-// 	}
+	static int sCallIdx = 0;
+	sCallIdx++;
+	int callIdx = sCallIdx;
+	if (callIdx == 1557)
+	{
+		NOP;
+	}
 	
 	BfCheckedKind checkedKind = BfCheckedKind_NotSet;
 	if (attributeState.mCustomAttributes != NULL)
@@ -17208,8 +17212,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 			BfPointerType* resultPointerType = (BfPointerType*)resultType;
 			BfType* intPtrType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-			convLeftValue = mModule->CastToValue(leftExpression, leftValue, intPtrType, BfCastFlags_Explicit);
-			convRightValue = mModule->CastToValue(rightExpression, rightValue, intPtrType, BfCastFlags_Explicit);
+			convLeftValue = mModule->CastToValue(leftExpression, leftValue, intPtrType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromCompiler));
+			convRightValue = mModule->CastToValue(rightExpression, rightValue, intPtrType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_FromCompiler));
 			BfIRValue diffValue = mModule->mBfIRBuilder->CreateSub(convLeftValue, convRightValue);
 			diffValue = mModule->mBfIRBuilder->CreateDiv(diffValue, mModule->GetConstValue(resultPointerType->mElementType->mSize, intPtrType), true);
 			mResult = BfTypedValue(diffValue, intPtrType);

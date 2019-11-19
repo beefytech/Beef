@@ -833,6 +833,7 @@ public:
 	};
 
 public:
+	BumpAllocator mBumpAlloc;
 	BfMethodState* mPrevMethodState; // Only non-null for things like local methods
 	BfConstResolveState* mConstResolveState;	
 	BfMethodInstance* mMethodInstance;	
@@ -841,8 +842,8 @@ public:
 	BfIRBlock mIRHeadBlock;
 	BfIRBlock mIRInitBlock;
 	BfIRBlock mIREntryBlock;
-	Array<BfLocalVariable*> mLocals;
-	HashSet<BfLocalVarEntry> mLocalVarSet;
+	Array<BfLocalVariable*, AllocatorBump<BfLocalVariable*> > mLocals;
+	HashSet<BfLocalVarEntry, AllocatorBump<BfLocalVariable*> > mLocalVarSet;
 	Array<BfLocalMethod*> mLocalMethods;
 	Dictionary<String, BfLocalMethod*> mLocalMethodMap;
 	Dictionary<String, BfLocalMethod*> mLocalMethodCache; // So any lambda 'capturing' and 'processing' stages use the same local method			
@@ -899,7 +900,12 @@ public:
 
 public:
 	BfMethodState()
-	{		
+	{
+		mLocals.mAlloc = &mBumpAlloc;
+		mLocals.Reserve(8);
+		mLocalVarSet.mAlloc = &mBumpAlloc;
+		mLocalVarSet.Reserve(8);
+
 		mMethodInstance = NULL;		
 		mPrevMethodState = NULL;
 		mConstResolveState = NULL;
@@ -1343,8 +1349,7 @@ public:
 	bool mHadBuildWarning;	
 	bool mIgnoreErrors;
 	bool mIgnoreWarnings;	
-	bool mSetIllegalSrcPosition;
-	bool mHadIgnoredError;
+	bool mSetIllegalSrcPosition;	
 	bool mReportErrors; // Still puts system in error state when set to false
 	bool mIsInsideAutoComplete;
 	bool mIsHotModule;
@@ -1439,6 +1444,7 @@ public:
 	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false);	
 	void EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry);
 	void EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);
+	bool DoCanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	bool CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	bool AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNeedsMemberCasting);
 	BfTypedValue BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType /*Can be System.Object or interface*/, const BfAllocTarget& allocTarget, bool callDtor = true);
@@ -1712,7 +1718,7 @@ public:
 	BfMethodInstance* GetRawMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false, bool allowMixin = false);
 	BfMethodInstance* GetUnspecializedMethodInstance(BfMethodInstance* methodInstance); // Unspecialized owner type and unspecialized method type	
 	int GetGenericParamAndReturnCount(BfMethodInstance* methodInstance);	
-	BfModule* GetSpecializedMethodModule(const Array<BfProject*>& projectList);	
+	BfModule* GetSpecializedMethodModule(const SizedArrayImpl<BfProject*>& projectList);	
 	BfModuleMethodInstance GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL);	
 	BfModuleMethodInstance GetMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false);
 	BfModuleMethodInstance GetMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, const Array<BfType*>& paramTypes, bool checkBase = false);
