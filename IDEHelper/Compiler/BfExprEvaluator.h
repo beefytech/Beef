@@ -156,6 +156,7 @@ public:
 public:
 	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute);
 	bool InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue);
+	bool InferFromGenericConstraints(BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs);
 	void CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute, 
 		bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail);

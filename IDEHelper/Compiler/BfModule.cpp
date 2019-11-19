@@ -6237,7 +6237,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			else
 			{
 				opConstraintInstance.mUnaryOp = BfTokenToUnaryOp(opConstraint->mOpToken->mToken);
-				if (opConstraintInstance.mUnaryOp == BfBinaryOp_None)
+				if (opConstraintInstance.mUnaryOp == BfUnaryOp_None)
 				{
 					Fail("Invalid unary operator", opConstraint->mOpToken);
 					continue;
@@ -6706,7 +6706,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				exprEvaluator.PerformBinaryOperation(NULL, NULL, checkOpConstraint.mBinaryOp, NULL, BfBinOpFlag_NoClassify, leftValue, rightValue);
 			}
 
-			if ((exprEvaluator.mResult == NULL) || 
+			if ((!exprEvaluator.mResult) || 
 				(!CanImplicitlyCast(exprEvaluator.mResult, origCheckArgType)))
 			{
 				if (!ignoreErrors)
@@ -6745,7 +6745,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					exprEvaluator.mResult = rightValue;
 					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL);
 
-					if ((exprEvaluator.mResult == NULL) ||
+					if ((!exprEvaluator.mResult) ||
 						(!CanImplicitlyCast(exprEvaluator.mResult, origCheckArgType)))
 					{
 						failedOpName += "unary operation '";

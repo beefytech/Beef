@@ -257,10 +257,10 @@ private:
 	void Resize(intptr newSize, bool forceNewHashCodes)
 	{
 		BF_ASSERT(newSize >= mAllocSize);
-		int_cosize* newBuckets = (int_cosize*)rawAllocate(sizeof(int_cosize) * newSize);
+		int_cosize* newBuckets = (int_cosize*)this->rawAllocate(sizeof(int_cosize) * newSize);
 		for (int_cosize i = 0; i < newSize; i++)
 			newBuckets[i] = -1;
-		Entry* newEntries = (Entry*)rawAllocate(sizeof(Entry)*newSize);
+		Entry* newEntries = (Entry*)this->rawAllocate(sizeof(Entry)*newSize);
 		
 		for (int i = 0; i < mCount; i++)
 		{
@@ -294,8 +294,8 @@ private:
 			}
 		}
 
-		rawDeallocate(mBuckets);
-		rawDeallocate(mEntries);
+		this->rawDeallocate(mBuckets);
+		this->rawDeallocate(mEntries);
 
 		mBuckets = newBuckets;
 		mEntries = newEntries;
@@ -332,10 +332,10 @@ private:
 	void Initialize(intptr capacity)
 	{
 		int_cosize size = GetPrimeish((int_cosize)capacity);
-		mBuckets = (int_cosize*)rawAllocate(sizeof(int_cosize) * size);
+		mBuckets = (int_cosize*)this->rawAllocate(sizeof(int_cosize) * size);
 		mAllocSize = size;
 		for (int_cosize i = 0; i < (int_cosize)mAllocSize; i++) mBuckets[i] = -1;
-		mEntries = (Entry*)rawAllocate(sizeof(Entry) * size);
+		mEntries = (Entry*)this->rawAllocate(sizeof(Entry) * size);
 		mFreeList = -1;
 	}
 
@@ -431,8 +431,8 @@ public:
 		}
 		else
 		{
-			mBuckets = (int_cosize*)rawAllocate(sizeof(int_cosize) * mAllocSize);
-			mEntries = (Entry*)rawAllocate(sizeof(Entry) * mAllocSize);
+			mBuckets = (int_cosize*)this->rawAllocate(sizeof(int_cosize) * mAllocSize);
+			mEntries = (Entry*)this->rawAllocate(sizeof(Entry) * mAllocSize);
 
 			for (int_cosize i = 0; i < mAllocSize; i++)
 				mBuckets[i] = val.mBuckets[i];
@@ -476,8 +476,8 @@ public:
 			}
 		}
 
-		rawDeallocate(mBuckets);
-		rawDeallocate(mEntries);
+		this->rawDeallocate(mBuckets);
+		this->rawDeallocate(mEntries);
 	}
 
 	HashSet& operator=(const HashSet& rhs)

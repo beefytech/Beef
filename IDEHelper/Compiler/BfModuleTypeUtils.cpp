@@ -9021,7 +9021,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			Warn(0, "This implicit boxing will only be in scope during the constructor. Consider using a longer-term allocation such as 'box new'", srcNode);
 		}
 
-		SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites, ignoreWrites);
+		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, ignoreWrites);
 		auto value = BoxValue(srcNode, typedVal, toType, scopeData, (castFlags & BfCastFlags_NoBoxDtor) == 0);
 		if (value)
 			return value.mValue;
