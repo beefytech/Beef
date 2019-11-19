@@ -176,7 +176,7 @@ namespace System
 
 		public int GetHashCode()
 		{
-			return (int)mVal;
+			return (int)(void*)mVal;
 		}
 	}
 
@@ -377,7 +377,7 @@ namespace System
 		}
     }
 
-    struct Int : int, IOpComparable, IOpAddable, IIsNaN
+    struct Int : int, IOpComparable, IOpAddable, IOpDividable, IIsNaN
     {
 		public static int operator<=>(Int a, Int b)
 		{
@@ -387,6 +387,11 @@ namespace System
 		public static Int operator+(Int a, Int b)
 		{
 			return (int)a + (int)b;
+		}
+
+		public static Self operator/(Self a, Self b)
+		{
+			return (int)a / (int)b;
 		}
 
 		bool IIsNaN.IsNaN

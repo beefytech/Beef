@@ -346,6 +346,12 @@ namespace System
 		}
 	}
 
+	[AttributeUsage(.Method)]
+	public struct CommutableAttribute : Attribute
+	{
+
+	}
+
 	[AttributeUsage(.Method | .Constructor)]
 	public struct ErrorAttribute : Attribute
 	{
