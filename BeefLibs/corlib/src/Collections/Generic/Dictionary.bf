@@ -414,8 +414,7 @@ namespace System.Collections.Generic
 			int_cosize* newBuckets = new int_cosize[newSize]*;
 			for (int_cosize i = 0; i < newSize; i++) newBuckets[i] = -1;
 			Entry* newEntries = new Entry[newSize]*;
-			//mEntries.CopyTo(newEntries, 0, 0, mCount);
-			Internal.MemCpy(newEntries, mEntries, mCount * sizeof(Entry), alignof(Entry));
+			Internal.MemCpy(newEntries, mEntries, mCount * strideof(Entry), alignof(Entry));
 
 			if (forceNewHashCodes)
 			{

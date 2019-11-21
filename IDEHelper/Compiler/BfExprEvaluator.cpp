@@ -1030,6 +1030,15 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* generi
 		if (rightType != NULL)
 			rightType = mModule->FixIntUnknown(rightType);
 
+		BfConstraintState constraintSet;
+		constraintSet.mPrevState = mModule->mContext->mCurConstraintState;
+		constraintSet.mGenericParamInstance = genericParamInst;
+		constraintSet.mLeftType = leftType;
+		constraintSet.mRightType = rightType;
+		SetAndRestoreValue<BfConstraintState*> prevConstraintSet(mModule->mContext->mCurConstraintState, &constraintSet);
+		if (!mModule->CheckConstraintState(NULL))
+			return false;
+
 		if (checkOpConstraint.mBinaryOp != BfBinaryOp_None)
 		{
 			BfExprEvaluator exprEvaluator(mModule);
@@ -3374,14 +3383,14 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					return mModule->GetDefaultTypedValue(resolvedFieldType);
 				}
 
-				bool isTemporary = false;
+				bool isTemporary = target.IsTempAddr();
 				bool wantsLoadValue = false;
 				if ((field->mIsReadOnly) && ((mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Ctor) || (!target.IsThis())))
 					wantsLoadValue = true;					
 										
 				bool isComposite = target.mType->IsComposite();
 				if ((isComposite) && (!target.mType->IsTypedPrimitive()) && (!target.IsAddr()))
-					isTemporary = true;					
+					isTemporary = true;	
 				if ((isComposite) && (!target.IsAddr()))
 					wantsLoadValue = true;
 
@@ -4005,7 +4014,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		}
 		else
 		{						
-			return mModule->GetDefaultTypedValue(returnType, true, returnType->IsComposite() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
+			auto val = mModule->GetDefaultTypedValue(returnType, true, methodInstance->HasStructRet() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
+			if (val.mKind == BfTypedValueKind_Addr)
+				val.mKind = BfTypedValueKind_TempAddr;
+			return val;
 		}
 	};
 

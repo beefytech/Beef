@@ -275,6 +275,30 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 	return true;
 }
 
+bool BfModule::CheckConstraintState(BfAstNode* refNode)
+{
+	if (mContext->mCurConstraintState == NULL)
+		return true;
+
+	auto checkState = mContext->mCurConstraintState->mPrevState;
+	while (checkState != NULL)
+	{
+		if (*checkState == *mContext->mCurConstraintState)
+		{
+			if (refNode != NULL)
+			{
+				Fail("Constraints cause circular operator invocations", refNode);
+			}
+
+			return false;
+		}
+
+		checkState = checkState->mPrevState;
+	}
+
+	return true;
+}
+
 bool BfModule::ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef)
 {
 	if (firstDeclaringTypeDef == secondDeclaringTypeDef)

@@ -25,9 +25,54 @@ namespace System
 		static int operator<=>(Self lhs, Self rhs);
 	}
 
+	interface IOpComparable<TRight>
+	{
+		static int operator<=>(Self lhs, TRight rhs);
+	}
+
 	interface IOpAddable
 	{
 		static Self operator+(Self lhs, Self rhs);
+	}
+
+	interface IOpSubtractable
+	{
+		static Self operator-(Self lhs, Self rhs);
+	}
+
+	interface IOpMultipliable
+	{
+		static Self operator*(Self lhs, Self rhs);
+	}
+
+	interface IOpDividable
+	{
+		static Self operator/(Self lhs, Self rhs);
+	}
+
+	interface IOpBitwiseAndable
+	{
+		static Self operator&(Self lhs, Self rhs);
+	}
+
+	interface IOpBitwiseOrable
+	{
+		static Self operator|(Self lhs, Self rhs);
+	}
+
+	interface IOpExclusiveOrable
+	{
+		static Self operator^(Self lhs, Self rhs);
+	}
+
+	interface IOpLeftShiftable
+	{
+		static Self operator^(Self lhs, int rhs);
+	}
+
+	interface IOpRightShiftable
+	{
+		static Self operator^(Self lhs, int rhs);
 	}
 
 	interface IOpNegatable

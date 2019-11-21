@@ -6691,7 +6691,16 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			rightType = ResolveGenericType(rightType, *methodGenericArgs);
 		if (rightType != NULL)
 			rightType = FixIntUnknown(rightType);
-		
+
+		BfConstraintState constraintSet;
+		constraintSet.mPrevState = mContext->mCurConstraintState;
+		constraintSet.mGenericParamInstance = genericParamInst;
+		constraintSet.mLeftType = leftType;
+		constraintSet.mRightType = rightType;
+		SetAndRestoreValue<BfConstraintState*> prevConstraintSet(mContext->mCurConstraintState, &constraintSet);
+		if (!CheckConstraintState(NULL))
+			return false;
+
 		if (checkOpConstraint.mBinaryOp != BfBinaryOp_None)
 		{						
 			BfExprEvaluator exprEvaluator(this);						
@@ -10585,10 +10594,9 @@ bool BfModule::CheckModifyValue(BfTypedValue& typedValue, BfAstNode* refNode, co
 		return false;
 	}
 
-
 	if (typedValue.mKind == BfTypedValueKind_TempAddr)
 	{
-		Fail(StrFormat("Cannot %s value", modifyType), refNode);
+		Fail(StrFormat("Cannot %s temporary value", modifyType), refNode);
 		return false;
 	}
 
@@ -14224,7 +14232,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					}
 
 					BfIRValue fieldAddr;
-					if (!mCurTypeInstance->IsTypedPrimitive())
+					if ((!mCurTypeInstance->IsTypedPrimitive()) && (!fieldInst->mResolvedType->IsVar()))
 					{
 						fieldAddr = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, fieldInst->mDataIdx /*, fieldDef->mName*/);
 					}

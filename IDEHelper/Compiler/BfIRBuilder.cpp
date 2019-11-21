@@ -2955,6 +2955,11 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
 	if (!typeInstance->IsTypedPrimitive())
 		StructSetBody(MapTypeInst(typeInstance), irFieldTypes, isPacked || !isCRepr);
 
+	if (typeInstance->IsNullable())
+	{
+		BF_ASSERT(irFieldTypes.size() <= 3);
+	}
+
 	for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 	{
 		auto fieldInstance = &fieldInstanceRef;

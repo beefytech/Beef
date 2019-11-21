@@ -46,6 +46,7 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mLockModules = false;
 
 	mCurTypeState = NULL;
+	mCurConstraintState = NULL;
 	mResolvingVarField = false;
 	
 	for (int i = 0; i < BfTypeCode_Length; i++)

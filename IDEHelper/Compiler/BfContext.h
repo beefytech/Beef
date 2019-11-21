@@ -272,6 +272,32 @@ public:
 	}
 };
 
+class BfConstraintState
+{
+public:
+	BfGenericParamInstance* mGenericParamInstance;
+	BfType* mLeftType;
+	BfType* mRightType;
+	BfConstraintState* mPrevState;
+
+public:
+	BfConstraintState()
+	{
+		mGenericParamInstance = NULL;
+		mLeftType = NULL;
+		mRightType = NULL;
+		mPrevState = NULL;
+	}
+
+	bool operator==(const BfConstraintState& other) const
+	{
+		return 
+			(mGenericParamInstance == other.mGenericParamInstance) &&
+			(mLeftType == other.mLeftType) &&
+			(mRightType == other.mRightType);
+	}
+};
+
 class BfContext
 {
 public:
@@ -279,6 +305,7 @@ public:
 	bool mDeleting;
 
 	BfTypeState* mCurTypeState;
+	BfConstraintState* mCurConstraintState;
 	bool mResolvingVarField;
 	int mMappedObjectRevision;
 
@@ -364,7 +391,7 @@ public:
 	void SaveDeletingType(BfType* type);		
 	BfType* FindType(const StringImpl& typeName);
 	String TypeIdToString(int typeId);
-	BfHotTypeData* GetHotTypeData(int typeId);
+	BfHotTypeData* GetHotTypeData(int typeId);	
 
 public:
 	BfContext(BfCompiler* compiler);

@@ -1997,7 +1997,7 @@ namespace IDE.ui
 
 		public bool ToggleComment()
 		{
-		    if (HasSelection())
+		    if ((HasSelection()) && (mSelection.Value.Length > 1))
 		    {
 				var startLineAndCol = CursorLineAndColumn ;
 

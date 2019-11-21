@@ -1443,8 +1443,7 @@ public:
 	void AddDeferredBlock(BfBlock* block, BfScopeData* scope, Array<BfDeferredCapture>* captures = NULL);
 	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false);	
 	void EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry);
-	void EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);
-	bool DoCanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
+	void EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);	
 	bool CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	bool AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNeedsMemberCasting);
 	BfTypedValue BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType /*Can be System.Object or interface*/, const BfAllocTarget& allocTarget, bool callDtor = true);
@@ -1458,7 +1457,7 @@ public:
 	void CleanupFileInstances();
 	void AssertErrorState();
 	void AssertParseErrorState();
-	void InitTypeInst(BfTypedValue typedValue, BfScopeData* scope, bool zeroMemory, BfIRValue dataSize);	
+	void InitTypeInst(BfTypedValue typedValue, BfScopeData* scope, bool zeroMemory, BfIRValue dataSize);		
 	BfIRValue AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTarget, BfType* type, BfIRValue sizeValue, BfIRValue alignValue, BfAllocFlags allocFlags/*bool zeroMemory, bool defaultToMalloc*/);
 	BfIRValue GetMarkFuncPtr(BfType* type);
 	BfIRValue GetDbgRawAllocData(BfType* type);
@@ -1542,6 +1541,7 @@ public:
 	bool BuildGenericParams(BfType* resolvedTypeRef);
 	bool ValidateGenericConstraints(BfTypeReference* typeRef, BfGenericTypeInstance* genericTypeInstance, bool ignoreErrors);
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
+	bool CheckConstraintState(BfAstNode* refNode);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
 	void CheckInjectNewRevision(BfTypeInstance* typeInstance);
 	bool InitType(BfType* resolvedTypeRef, BfPopulateType populateType);

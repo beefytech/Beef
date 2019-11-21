@@ -4371,9 +4371,11 @@ BfTypeReference* BfReducer::DoCreateNamedTypeRef(BfIdentifierNode* identifierNod
 	}
 }
 
-BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, bool parseArrayBracket)
+BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefFlags createTypeRefFlags)
 {
 	AssertCurrentNode(firstNode);
+
+	bool parseArrayBracket = (createTypeRefFlags & CreateTypeRefFlags_NoParseArrayBrackets) == 0;
 
 	auto identifierNode = BfNodeDynCast<BfIdentifierNode>(firstNode);
 	if (identifierNode == NULL)
@@ -4475,7 +4477,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, bool parseArra
 					}
 					else
 					{
-						auto elementType = CreateTypeRefAfter(tokenNode, parseArrayBracket);
+						auto elementType = CreateTypeRefAfter(tokenNode, createTypeRefFlags);
 						auto constTypeRef = mAlloc->Alloc<BfConstTypeRef>();
 						ReplaceNode(firstNode, constTypeRef);
 						MEMBER_SET(constTypeRef, mConstToken, tokenNode);
@@ -4486,7 +4488,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, bool parseArra
 				else if (token == BfToken_Unsigned)
 				{
 					BF_ASSERT(mCompatMode);
-					auto elementType = CreateTypeRefAfter(tokenNode, parseArrayBracket);
+					auto elementType = CreateTypeRefAfter(tokenNode, createTypeRefFlags);
 
 					BfTypeReference* rootElementParent = NULL;
 					auto rootElement = elementType;
@@ -4525,7 +4527,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, bool parseArra
 					tokenNode = ExpectTokenAfter(retTypeTypeRef, BfToken_LParen);
 					MEMBER_SET_CHECKED(retTypeTypeRef, mOpenParen, tokenNode);
 
-					auto elementType = CreateTypeRefAfter(retTypeTypeRef, parseArrayBracket);
+					auto elementType = CreateTypeRefAfter(retTypeTypeRef, createTypeRefFlags);
 					MEMBER_SET_CHECKED(retTypeTypeRef, mElementType, elementType);
 
 					tokenNode = ExpectTokenAfter(retTypeTypeRef, BfToken_RParen);
@@ -4811,32 +4813,6 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, bool parseArra
 						}
 						MoveNode(sizeExpr, arrayType);
 						params.push_back(sizeExpr);
-
-						// 						if (params.size() == 0)
-						// 						{
-						// 							BfExpression* sizeExpr = CreateExpressionAfter(arrayType);
-						// 							if (sizeExpr == NULL)
-						// 							{
-						// 								hasFailed = true;
-						// 								break;								
-						// 							}
-						// 							MoveNode(sizeExpr, arrayType);
-						// 							params.push_back(sizeExpr);
-						// 							tokenNode = ExpectTokenAfter(arrayType, BfToken_RBracket);
-						// 							if (tokenNode == NULL)
-						// 							{								
-						// 								hasFailed = true;
-						// 								break;
-						// 							}
-						// 							MoveNode(tokenNode, arrayType);
-						// 							arrayType->mCloseBracket = tokenNode;
-						// 							break;
-						// 						}
-						// 						else
-						// 						{							
-						// 							FailAfter("Either ',' or ']' expected", arrayType);
-						// 							return arrayType;							
-						// 						}
 					}
 				}
 
@@ -4954,8 +4930,34 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, bool parseArra
 	return typeRef;
 }
 
-BfTypeReference* BfReducer::CreateTypeRef(BfAstNode* firstNode, bool parseArrayBracket)
+BfTypeReference* BfReducer::CreateTypeRef(BfAstNode* firstNode, CreateTypeRefFlags createTypeRefFlags)
 {
+	if ((createTypeRefFlags & CreateTypeRefFlags_SafeGenericParse) != 0)
+	{
+		createTypeRefFlags = (CreateTypeRefFlags)(createTypeRefFlags & ~CreateTypeRefFlags_SafeGenericParse);
+		
+		int outEndNode = -1;
+		bool isTypeRef = IsTypeReference(firstNode, BfToken_None, &outEndNode);
+		
+		if ((!isTypeRef) && (outEndNode != -1))
+		{
+			for (int checkIdx = outEndNode - 1; checkIdx > mVisitorPos.mReadPos; checkIdx--)
+			{
+				auto checkNode = mVisitorPos.Get(checkIdx);
+				if (auto checkToken = BfNodeDynCast<BfTokenNode>(checkNode))
+				{
+					if (checkToken->mToken == BfToken_LChevron)
+					{
+						checkToken->mToken = BfToken_Bar;
+						auto typeRef = CreateTypeRef(firstNode, createTypeRefFlags);
+						checkToken->mToken = BfToken_LChevron;
+						return typeRef;
+					}
+				}
+			}
+		}		
+	}
+
 	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(firstNode))
 	{
 		BfToken token = tokenNode->GetToken();
@@ -4963,7 +4965,7 @@ BfTypeReference* BfReducer::CreateTypeRef(BfAstNode* firstNode, bool parseArrayB
 		{
 			auto nextNode = mVisitorPos.GetNext();
 			mVisitorPos.MoveNext();
-			auto typeRef = DoCreateTypeRef(nextNode, parseArrayBracket);
+			auto typeRef = DoCreateTypeRef(nextNode, createTypeRefFlags);
 			if (typeRef == NULL)
 			{				
 				mVisitorPos.mReadPos--;
@@ -4975,13 +4977,13 @@ BfTypeReference* BfReducer::CreateTypeRef(BfAstNode* firstNode, bool parseArrayB
 		else if ((token == BfToken_In) || (token == BfToken_As))
 		{
 			// This is mostly to allow a partially typed 'int' to be parsed as 'in' to make autocomplete nicer
-			return CreateTypeRef(ReplaceTokenStarter(firstNode), parseArrayBracket);
+			return CreateTypeRef(ReplaceTokenStarter(firstNode), createTypeRefFlags);
 		}
 	}
-	return DoCreateTypeRef(firstNode, parseArrayBracket);
+	return DoCreateTypeRef(firstNode, createTypeRefFlags);
 }
 
-BfTypeReference* BfReducer::CreateTypeRefAfter(BfAstNode* astNode, bool parseArrayBracket)
+BfTypeReference* BfReducer::CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRefFlags createTypeRefFlags)
 {
 	AssertCurrentNode(astNode);
 	auto nextNode = mVisitorPos.GetNext();
@@ -4993,7 +4995,7 @@ BfTypeReference* BfReducer::CreateTypeRefAfter(BfAstNode* astNode, bool parseArr
 
 	mVisitorPos.MoveNext();
 	int startPos = mVisitorPos.mReadPos;
-	BfTypeReference* typeRef = CreateTypeRef(nextNode, parseArrayBracket);
+	BfTypeReference* typeRef = CreateTypeRef(nextNode, createTypeRefFlags);
 	if (typeRef == NULL)
 	{
 		BF_ASSERT(mVisitorPos.mReadPos == startPos);
@@ -9010,18 +9012,31 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 
 						auto opToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
 						if (opToken == NULL)
-						{
-							auto typeRef = CreateTypeRefAfter(opConstraint);
+						{							
+							auto typeRef = CreateTypeRefAfter(opConstraint, BfReducer::CreateTypeRefFlags_SafeGenericParse);
 							if (typeRef == NULL)
 								break;
 							MEMBER_SET(opConstraint, mLeftType, typeRef);
 							opToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
+
+							if (opToken == NULL)
+							{
+								if (auto pointerTypeRef = BfNodeDynCast<BfPointerTypeRef>(typeRef))
+								{
+									MEMBER_SET(opConstraint, mLeftType, pointerTypeRef->mElementType);
+									opToken = pointerTypeRef->mStarNode;
+									MEMBER_SET(opConstraint, mOpToken, opToken);
+								}
+							}
 						}
 
-						if (opToken == NULL)
-							break;
-						MEMBER_SET(opConstraint, mOpToken, opToken);
-						mVisitorPos.MoveNext();
+						if (opConstraint->mOpToken == NULL)
+						{
+							if (opToken == NULL)
+								break;
+							MEMBER_SET(opConstraint, mOpToken, opToken);
+							mVisitorPos.MoveNext();
+						}
 
 						auto typeRef = CreateTypeRefAfter(opConstraint);
 						if (typeRef == NULL)
