@@ -174,15 +174,15 @@ namespace IDE.ui
 		void CheckFile(String filePath)
 		{
 			bool hashMatches = true;
-			if (!(mSourceViewPanel.mLoadedHash case .None))
+			if (!(mSourceViewPanel.mWantHash case .None))
 			{
-				SourceHash.Kind hashKind = mSourceViewPanel.mLoadedHash.GetKind();
+				SourceHash.Kind hashKind = mSourceViewPanel.mWantHash.GetKind();
 				
 				var buffer = scope String();
 				SourceHash hash = ?;
 				if (gApp.LoadTextFile(filePath, buffer, true, scope [&] () => { hash = SourceHash.Create(hashKind, buffer); }) case .Ok)
 				{
-					if (hash != mSourceViewPanel.mLoadedHash)
+					if (hash != mSourceViewPanel.mWantHash)
 						hashMatches = false;
 				}
 			}
@@ -244,7 +244,8 @@ namespace IDE.ui
 					let localPath = scope String();
 					localPath.Append(localDir);
 					localPath.Append(mFilePath, origDir.Length);
-					CheckFile(localPath);
+					if (File.Exists(localPath))
+						CheckFile(localPath);
 				}
 			}
 
@@ -284,6 +285,26 @@ namespace IDE.ui
 			default:
 				return .None;
 			}
+		}
+
+		public static SourceHash Create(StringView hashStr)
+		{
+			if (hashStr.Length == 32)
+			{
+				if (MD5Hash.Parse(hashStr) case .Ok(let parsedHash))
+				{
+			        return .MD5(parsedHash);
+				}
+			}
+			else if (hashStr.Length == 64)
+			{
+				if (SHA256Hash.Parse(hashStr) case .Ok(let parsedHash))
+				{
+					return .SHA256(parsedHash);
+				}
+			}
+
+			return .None;
 		}
 
 		public static SourceHash Create(Kind kind, StringView str)
@@ -354,7 +375,6 @@ namespace IDE.ui
         public String mFilePath ~ delete _;
 		public bool mIsBinary;
 		public String mAliasFilePath ~ delete _;
-		public SourceHash mLoadedHash;
 #if IDE_C_SUPPORT
         public ProjectSource mClangSource; // For headers, an implementing .cpp file
 #endif
@@ -408,6 +428,7 @@ namespace IDE.ui
         SourceViewPanel mOldVersionPanel;
 		SourceViewPanel mCurrentVersionPanel;
 		EditWidgetContent.LineAndColumn? mRequestedLineAndColumn;
+		public SourceHash mWantHash;
 
 		SourceViewPanel mSplitTopPanel; // This is only set if we are controlling a top panel
 		PanelSplitter mSplitter;
@@ -894,10 +915,7 @@ namespace IDE.ui
 			{
                 mEditData.mLastFileTextVersion = mEditWidget.Content.mData.mCurTextVersionId;
 				mEditData.mHadRefusedFileChange = false;
-			}
-            if (mProjectSource != null)
-            {
-                //mProjectSource.ClearUnsavedData();
+			
 				var editText = scope String();
 				mEditWidget.GetText(editText);
 				using (gApp.mMonitor.Enter())
@@ -2783,10 +2801,7 @@ namespace IDE.ui
 				}
 				else
 				{
-					SourceHash.Kind hashKind = mLoadedHash.GetKind();
-					if (hashKind == .None)
-						hashKind = .MD5;
-					useFileEditData = gApp.GetEditData(useFilePath, true, true, hashKind);
+					useFileEditData = gApp.GetEditData(useFilePath, true, true);
 				}
 				if (useFileEditData.mEditWidget == null)
 					useFileEditData = null;
@@ -2903,7 +2918,7 @@ namespace IDE.ui
             }
 			else
 			{
-				mLoadedHash = useFileEditData.mLoadedHash;
+				//LoadedHash = useFileEditData.mLoadedHash;
 
 				// Sanity check for when we have the saved data cached already
 				if (useFileEditData.IsFileDeleted())
@@ -3330,15 +3345,15 @@ namespace IDE.ui
 
 		void CheckAdjustFile()
 		{
-			if (mLoadedHash == .None)
+			if (mEditData == null)
 				return;
 
 			String text = scope .();
 			if (File.ReadAllText(mFilePath, text, true) case .Err)
 				return;
 			
-			SourceHash textHash = SourceHash.Create(mLoadedHash.GetKind(), text);
-			if (textHash == mLoadedHash)
+			SourceHash textHash = SourceHash.Create(.MD5, text);
+			if (mEditData.CheckHash(textHash))
 				return;
 
 			if (text.Contains('\r'))
@@ -3349,8 +3364,8 @@ namespace IDE.ui
 			{
 				text.Replace("\n", "\r\n");
 			}
-			textHash = SourceHash.Create(mLoadedHash.GetKind(), text);
-			if (textHash == mLoadedHash)
+			textHash = SourceHash.Create(.MD5, text);
+			if (mEditData.CheckHash(textHash))
 			{
 				if (File.WriteAllText(mFilePath, text) case .Err)
 				{
@@ -3362,14 +3377,12 @@ namespace IDE.ui
 
 		void RetryLoad()
 		{
-			var prevHash = mLoadedHash;
-			
 			Reload();
 			if (mRequestedLineAndColumn != null)
 				ShowFileLocation(-1, mRequestedLineAndColumn.mValue.mLine, mRequestedLineAndColumn.mValue.mColumn, .Always);
 			FocusEdit();
 
-			if ((!(prevHash case .None)) && (prevHash != mLoadedHash))
+			if ((!(mWantHash case .None)) && (mEditData != null) && (!mEditData.CheckHash(mWantHash)))
 				ShowWrongHash();
 
 			if (!mLoadFailed)

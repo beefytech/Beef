@@ -238,6 +238,7 @@ namespace IDE.ui
 
         void SetFile(String fileName, out bool isOld)
         {
+			mSourceHash = .();
             isOld = false;
             String useFileName = scope String(fileName);
 			if (mAliasFilePath != null)
@@ -361,9 +362,13 @@ namespace IDE.ui
                 IDEApp.sApp.Fail("Unable to locate source");
                 return;
             }
+#unwarn
             var sourceViewPanel = gApp.ShowSourceFileLocation(mSourceFileName, -1, IDEApp.sApp.mWorkspace.GetHighestCompileIdx(), mSourceLine, mSourceColumn, LocatorType.None);
-			if (sourceViewPanel.mLoadedHash case .None)
-				sourceViewPanel.mLoadedHash = mSourceHash; // Set for when we do Auto Find
+			if (sourceViewPanel.mLoadFailed)
+				sourceViewPanel.mWantHash = mSourceHash;
+
+			/*if (sourceViewPanel.LoadedHash case .None)
+				sourceViewPanel.LoadedHash = mSourceHash; // Set for when we do Auto Find*/
         }
 
         public bool SelectLine(int addr, bool jumpToPos)
@@ -577,6 +582,10 @@ namespace IDE.ui
 	                    lineIdx++;
 	                }
 	                break;
+				case 'H':
+					{
+						mSourceHash = SourceHash.Create(.(line, 2));
+					}
 	            case 'T':
 	                {
 						typeId = (int32)SourceElementType.Disassembly_FileName;
@@ -1082,7 +1091,7 @@ namespace IDE.ui
         }
 
         public bool Show(String file, int lineNum, int column)
-        {            
+        {
             String addrs = scope String();
             IDEApp.sApp.mDebugger.FindCodeAddresses(file, lineNum, column, true, addrs);
             if (addrs.Length == 0)

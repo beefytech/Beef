@@ -1233,8 +1233,13 @@ namespace IDE
 					projectSource.GetFullImportPath(path);
 				    String text = scope String();
 				    projectSource.mEditData.mEditWidget.GetText(text);
-					if (!SafeWriteTextFile(path, text, true, projectSource.mEditData.mLineEndingKind))
+					if (!SafeWriteTextFile(path, text, true, projectSource.mEditData.mLineEndingKind, scope (outStr) =>
+						{
+							projectSource.mEditData.BuildHash(outStr);
+						}))
+					{
 						return false;
+					}
 
 					mFileWatcher.OmitFileChange(path, text);
 				    projectSource.mEditData.mLastFileTextVersion = projectSource.mEditData.mEditWidget.Content.mData.mCurTextVersionId;
@@ -1249,7 +1254,7 @@ namespace IDE
 			return true;
 		}
 
-		public bool SafeWriteTextFile(StringView path, StringView text, bool showErrors = true, LineEndingKind lineEndingKind = .Default)
+		public bool SafeWriteTextFile(StringView path, StringView text, bool showErrors = true, LineEndingKind lineEndingKind = .Default, delegate void(StringView str) strOutDlg = null)
 		{
 			if (mWorkspace.IsSingleFileWorkspace)
 			{
@@ -1288,6 +1293,9 @@ namespace IDE
 					}
 				}
 			}
+
+			if (strOutDlg != null)
+				strOutDlg(useText);
 
 			return true;
 		}
@@ -1375,8 +1383,13 @@ namespace IDE
                     String text = scope String();
                     sourceViewPanel.mEditWidget.GetText(text);
 
-					if (!SafeWriteTextFile(path, text, true, lineEndingKind))
+					if (!SafeWriteTextFile(path, text, true, lineEndingKind, scope (outStr) =>
+						{
+							sourceViewPanel.mEditData.BuildHash(outStr);
+						}))
+					{
 						return false;
+					}
 
 					mFileWatcher.OmitFileChange(path, text);
 					if (forcePath == null)
@@ -5395,7 +5408,7 @@ namespace IDE
             return editWidget;
         }
 
-		public bool CreateEditDataEditWidget(FileEditData editData, SourceHash.Kind hashKind = .MD5)
+		public bool CreateEditDataEditWidget(FileEditData editData)
 		{
 			if (editData.mEditWidget != null)
 				return true;
@@ -5430,8 +5443,7 @@ namespace IDE
 							break;
 						}
 					}
-
-					editData.mLoadedHash = SourceHash.Create(hashKind, text);
+					editData.BuildHash(text);
 				} ) case .Err)
 				return false;
 
@@ -5451,7 +5463,7 @@ namespace IDE
 			return true;
 		}
 
-		public FileEditData GetEditData(String filePath, bool createEditData = true, bool createEditDataWidget = true, SourceHash.Kind hashKind = .MD5)
+		public FileEditData GetEditData(String filePath, bool createEditData = true, bool createEditDataWidget = true)
 		{
 			FileEditData editData;
 			using (mMonitor.Enter())
@@ -5471,7 +5483,7 @@ namespace IDE
 				}
 			}
 			if (createEditDataWidget)
-				CreateEditDataEditWidget(editData, hashKind);
+				CreateEditDataEditWidget(editData);
 			return editData;
 		}
 
@@ -6171,21 +6183,7 @@ namespace IDE
 			if (hashPos != -1)
 			{
 				let hashStr = StringView(filePath, hashPos + 1);
-
-				if (hashStr.Length == 32)
-				{
-					if (MD5Hash.Parse(hashStr) case .Ok(let parsedHash))
-					{
-				        hash = .MD5(parsedHash);
-					}
-				}
-				else
-				{
-					if (SHA256Hash.Parse(hashStr) case .Ok(let parsedHash))
-					{
-						hash = .SHA256(parsedHash);
-					}
-				}
+				hash = SourceHash.Create(hashStr);
 				filePath.RemoveToEnd(hashPos);
 
 				if (frameFlags.HasFlag(.CanLoadOldVersion))
@@ -6267,13 +6265,13 @@ namespace IDE
 
 					if (sourceViewPanel.mLoadFailed)
 					{
-						sourceViewPanel.mLoadedHash = hash;
+						sourceViewPanel.mWantHash = hash;
 						if (loadCmd != null)
 						{
 							sourceViewPanel.SetLoadCmd(loadCmd);
 						}
 					}
-					else if ((hash != .None) && (hash != sourceViewPanel.mLoadedHash))
+					else if ((hash != .None) && (sourceViewPanel.mEditData != null) && (!sourceViewPanel.mEditData.CheckHash(hash)))
 					{
 						sourceViewPanel.ShowWrongHash();
 					}
@@ -6687,7 +6685,7 @@ namespace IDE
 
         void SysKeyDown(KeyDownEvent evt)
         {
-			 if (evt.mHandled)
+			if (evt.mHandled)
 				return;
 
             var window = (WidgetWindow)evt.mSender;                     
@@ -11674,10 +11672,7 @@ namespace IDE
 				editData.mQueuedContent.Clear();
 				if (LoadTextFile(fileName, editData.mQueuedContent, false, scope() =>
 					{
-						if (editData.mLoadedHash.GetKind() != .None)
-						{
-							editData.mLoadedHash = SourceHash.Create(editData.mLoadedHash.GetKind(), editData.mQueuedContent);
-						}
+						editData.BuildHash(editData.mQueuedContent);
 					}) case .Err(let err))
 				{
 					if (err case .FileOpenError(.SharingViolation))

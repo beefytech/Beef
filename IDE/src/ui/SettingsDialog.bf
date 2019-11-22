@@ -3,6 +3,7 @@ using Beefy.theme.dark;
 using Beefy.gfx;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Beefy.geom;
 
 namespace IDE.ui
 {
@@ -36,6 +37,7 @@ namespace IDE.ui
 		}
 
 		List<KeyEntry> mKeyEntries ~ DeleteContainerAndItems!(_);
+		bool mHideVSHelper;
 
 		protected override float TopY
 		{
@@ -56,6 +58,11 @@ namespace IDE.ui
 			AddCategoryItem(root, "Compiler");
 		    AddCategoryItem(root, "Debugger");
 			AddCategoryItem(root, "Visual Studio");
+
+			if (gApp.mSettings.mVSSettings.IsConfigured())
+				gApp.mSettings.mVSSettings.SetDefaults();
+			if (gApp.mSettings.mVSSettings.IsConfigured())
+				mHideVSHelper = true;
 		}
 
 		void PopulateEditorOptions()
@@ -411,6 +418,41 @@ namespace IDE.ui
 		{
 		    base.Update();
 			CheckForChanges(mPropPages);
+
+			if (mPropPage?.mCategoryType == 4)
+			{
+				if (mWidgetWindow.mFocusWidget?.HasParent(mPropPage.mPropertiesListView) == true)
+				{
+					mHideVSHelper = true;
+				}
+				
+			}
+		}
+
+		public override void DrawAll(Graphics g)
+		{
+			base.DrawAll(g);
+
+			if ((mPropPage?.mCategoryType == 4) && (!mHideVSHelper))
+			{
+				var rect = mPropPage.mPropertiesListView.GetRect();
+				rect.Top += GS!(120);
+
+				rect.Inflate(-GS!(20), -GS!(20));
+				rect.mWidth -= GS!(10);
+
+				g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
+				String helpStr = "NOTE: These settings will be auto-detected if you have Visual Studio 2013 or later installed. You should not need to manually configure these settings.";
+				rect.mHeight = g.mFont.GetWrapHeight(helpStr, rect.mWidth - GS!(40)) + GS!(40);
+
+				using (g.PushClip(0, 0, mWidth, mPropPage.mPropertiesListView.mY + mPropPage.mPropertiesListView.mHeight))
+				{
+					using (g.PushColor(0x80000000))
+						g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+
+					g.DrawString(helpStr, rect.mX + GS!(20), rect.mY + GS!(20), .Left, rect.mWidth - GS!(40), .Wrap);
+				}
+			}
 		}
 	}
 }

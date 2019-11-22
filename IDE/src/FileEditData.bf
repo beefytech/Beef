@@ -37,7 +37,9 @@ namespace IDE
 		public String mQueuedContent ~ delete _;
 		public bool mHadRefusedFileChange;
 		public bool mFileDeleted;
-		public SourceHash mLoadedHash;
+
+		public MD5Hash mMD5Hash;
+		public SHA256Hash mSHA256Hash;
 
 		public this()
 		{
@@ -85,8 +87,8 @@ namespace IDE
 			{
 			    var editWidgetContent = (SourceEditWidgetContent)mEditWidget.mEditWidgetContent;
 				mFileDeleted = !editWidgetContent.Reload(mFilePath, mQueuedContent);
-				if (editWidgetContent.mSourceViewPanel.mLoadedHash.GetKind() == mLoadedHash.GetKind())
-					editWidgetContent.mSourceViewPanel.mLoadedHash = mLoadedHash;
+				/*if (editWidgetContent.mSourceViewPanel.LoadedHash.GetKind() == mLoadedHash.GetKind())
+					editWidgetContent.mSourceViewPanel.LoadedHash = mLoadedHash;*/
 				mLastFileTextVersion = mEditWidget.Content.mData.mCurTextVersionId;
 			}
 			return true;
@@ -136,6 +138,22 @@ namespace IDE
 		{
 			if (--mRefCount == 0)
 				delete this;
+		}
+		
+		public void BuildHash(StringView contents)
+		{
+			mMD5Hash = Security.Cryptography.MD5.Hash(.((uint8*)contents.Ptr, contents.Length));
+			mSHA256Hash = Security.Cryptography.SHA256.Hash(.((uint8*)contents.Ptr, contents.Length));
+		}
+
+		public bool CheckHash(SourceHash sourceHash)
+		{
+			switch (sourceHash)
+			{
+			case .MD5(let hash): return hash == mMD5Hash;
+			case .SHA256(let hash): return hash == mSHA256Hash;
+			default: return false;
+			}
 		}
 	}
 }
