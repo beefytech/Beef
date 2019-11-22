@@ -17981,3 +17981,4 @@ void BfExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 
 	PerformBinaryOperation(binOpExpr->mLeft, binOpExpr->mRight, binOpExpr->mOp, binOpExpr->mOpToken, BfBinOpFlag_None);
 }
+//

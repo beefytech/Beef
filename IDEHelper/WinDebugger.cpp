@@ -6433,6 +6433,8 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 	if (dwValueType == NULL)
 		dwValueType = dbgModule->GetPrimitiveType(DbgType_Void, language);
+	else
+		dwValueType = dwValueType->GetPrimaryType();
 
 	if (dwValueType->mTypeCode == DbgType_TypeDef)
 	{
@@ -10683,20 +10685,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		if (srcFile->mHashKind != DbgHashKind_None)
 		{
 			outStr += "#";
-			if (srcFile->mHashKind == DbgHashKind_MD5)
-			{
-				for (int i = 0; i < 16; i++)
-				{
-					outStr += StrFormat("%02X", srcFile->mHash[i]);
-				}
-			}
-			else
-			{
-				for (int i = 0; i < 32; i++)
-				{
-					outStr += StrFormat("%02X", srcFile->mHash[i]);
-				}
-			}
+			srcFile->GetHash(outStr);			
 		}
 	};
 	
@@ -11278,6 +11267,13 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 	{		
 		srcFile = dwSubProgram->GetLineSrcFile(*dwLineData);
 		result += "S " + srcFile->GetLocalPath() + "\n";
+		if (srcFile->mHashKind != DbgHashKind_None)
+		{
+			result += "H ";
+			srcFile->GetHash(result);
+			result += "\n";
+		}
+
 		curLine = BF_MAX(0, dwLineData->mLine - 5);
 		//for (; curLine <= dwLineData->mLine; curLine++)
 		result += StrFormat("L %d %d\n", curLine, dwLineData->mLine - curLine + 1);

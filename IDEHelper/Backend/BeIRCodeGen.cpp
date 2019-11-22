@@ -2168,6 +2168,9 @@ void BeIRCodeGen::HandleNextCmd()
 					func->mIsDLLExport = true;
 				else if (attribute == BFIRAttribute_DllImport)
 					func->mIsDLLImport = true;
+				else if (attribute == BFIRAttribute_NoRecurse)
+				{
+				}
 				else
 					BF_FATAL("Unhandled");
 			}			

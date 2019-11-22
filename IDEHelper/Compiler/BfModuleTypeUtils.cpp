@@ -7895,7 +7895,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 
 		// * -> Valueless
-		if (toType->IsValuelessType())
+		if (toType->IsVoid())
 			return mBfIRBuilder->GetFakeVal();
 
 		// void* -> intptr
@@ -9284,10 +9284,10 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 		}
 	}
 
-	if ((explicitCast) && (toType->IsValuelessType()))
+	/*if ((explicitCast) && (toType->IsValuelessType()))
 	{
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
-	}
+	}*/
 
 	BfCastResultFlags castResultFlags = BfCastResultFlags_None;
 	auto castedValue = CastToValue(srcNode, typedVal, toType, castFlags, &castResultFlags);

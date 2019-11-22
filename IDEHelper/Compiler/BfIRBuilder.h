@@ -593,6 +593,7 @@ enum BfIRAttribute
 	BFIRAttribute_NoFramePointerElim,
 	BFIRAttribute_DllImport,
 	BFIRAttribute_DllExport,
+	BFIRAttribute_NoRecurse
 };
 
 struct BfIRFunctionType

@@ -760,6 +760,7 @@ public:
 	void RemoveLines(DbgModule* debugModule, DbgSubprogram* dbgSubprogram, bool isHotReplaced);
 	void RehupLineData();
 	const String& GetLocalPath();
+	void GetHash(String& hashStr);
 };
 
 class DwCommonFrameDescriptor

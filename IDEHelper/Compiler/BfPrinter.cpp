@@ -742,6 +742,19 @@ void BfPrinter::Visit(BfGenericParamsDeclaration* genericParams)
 	VisitChild(genericParams->mCloseChevron);
 }
 
+void BfPrinter::Visit(BfGenericOperatorConstraint* genericConstraints)
+{
+	Visit(genericConstraints->ToBase());
+
+	VisitChild(genericConstraints->mOperatorToken);
+	ExpectSpace();
+	VisitChild(genericConstraints->mLeftType);
+	ExpectSpace();
+	VisitChild(genericConstraints->mOpToken);
+	ExpectSpace();
+	VisitChild(genericConstraints->mRightType);
+}
+
 void BfPrinter::Visit(BfGenericConstraintsDeclaration* genericConstraints)
 {
 	Visit(genericConstraints->ToBase());
@@ -1946,6 +1959,12 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 	QueueVisitChild(methodDeclaration->mExplicitInterface);	
 	QueueVisitChild(methodDeclaration->mExplicitInterfaceDotToken);
 	QueueVisitChild(methodDeclaration->mNameNode);
+	
+	if (auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDeclaration))
+	{
+		if ((operatorDecl->mOpTypeToken != NULL) && (operatorDecl->mOpTypeToken->mToken == BfToken_LChevron))
+			ExpectSpace();
+	}
 	QueueVisitChild(methodDeclaration->mGenericParams);
 
 	if (auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDeclaration))
@@ -1953,8 +1972,7 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 		ExpectSpace();
 		QueueVisitChild(operatorDecl->mExplicitToken);
 		ExpectSpace();
-		QueueVisitChild(operatorDecl->mOperatorToken);
-		ExpectSpace();
+		QueueVisitChild(operatorDecl->mOperatorToken);		
 		QueueVisitChild(operatorDecl->mOpTypeToken);
 		ExpectSpace();
 		QueueVisitChild(methodDeclaration->mReturnType);		

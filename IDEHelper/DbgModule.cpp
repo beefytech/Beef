@@ -904,6 +904,24 @@ const String& DbgSrcFile::GetLocalPath()
 	return (!mLocalPath.IsEmpty()) ? mLocalPath : mFilePath;
 }
 
+void DbgSrcFile::GetHash(String& outStr)
+{
+	if (mHashKind == DbgHashKind_MD5)
+	{
+		for (int i = 0; i < 16; i++)
+		{
+			outStr += StrFormat("%02X", mHash[i]);
+		}
+	}
+	else if (mHashKind == DbgHashKind_SHA256)
+	{
+		for (int i = 0; i < 32; i++)
+		{
+			outStr += StrFormat("%02X", mHash[i]);
+		}
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 DbgType::DbgType()
@@ -1393,10 +1411,11 @@ DbgType* DbgType::GetPrimaryType()
 		if ((mCompileUnit != NULL) && 
 			((mCompileUnit->mLanguage == DbgLanguage_Beef) || (mTypeCode == DbgType_Namespace) || (mIsDeclaration)))
 		{
-			mPrimaryType = mCompileUnit->mDbgModule->GetPrimaryType(this);			
+			mPrimaryType = mCompileUnit->mDbgModule->GetPrimaryType(this);
+			mTypeCode = mPrimaryType->mTypeCode;
 		}
 	}
-
+	
 	return mPrimaryType;
 }
 

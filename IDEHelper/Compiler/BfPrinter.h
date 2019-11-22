@@ -113,6 +113,7 @@ public:
 
 	virtual void Visit(BfAttributeDirective* attributeDirective) override;	
 	virtual void Visit(BfGenericParamsDeclaration* genericParams) override;
+	virtual void Visit(BfGenericOperatorConstraint* genericConstraints) override;
 	virtual void Visit(BfGenericConstraintsDeclaration* genericConstraints) override;
 	virtual void Visit(BfGenericArgumentsNode* genericArgumentsNode) override;
 

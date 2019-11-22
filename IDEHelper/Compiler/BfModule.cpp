@@ -13877,7 +13877,9 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 		mBfIRBuilder->SetFuncCallingConv(func, callingConv);
 	
 	if (isInlined)
-		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_AlwaysInline);
+	{
+		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_AlwaysInline);		
+	}
 
 	int argIdx = 0;
 	int paramIdx = 0;

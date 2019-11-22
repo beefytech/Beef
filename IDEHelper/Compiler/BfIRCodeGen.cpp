@@ -201,6 +201,7 @@ static llvm::Attribute::AttrKind LLVMMapAttribute(BfIRAttribute attr)
 	case BFIRAttribute_NoUnwind: return llvm::Attribute::NoUnwind;
 	case BFIRAttribute_UWTable: return llvm::Attribute::UWTable;
 	case BFIRAttribute_AlwaysInline: return llvm::Attribute::AlwaysInline;
+	case BFIRAttribute_NoRecurse: return llvm::Attribute::NoRecurse;
 	default: break;
 	}
 	return llvm::Attribute::None;
