@@ -18,6 +18,12 @@ namespace Beefy.geom
 			{
 				return mX;
 			}
+
+			set mut
+			{
+				mWidth = mX + mWidth - value;
+				mX = value;
+			}
 		}
 
 		public float Top
@@ -25,6 +31,12 @@ namespace Beefy.geom
 			get
 			{
 				return mY;
+			}
+
+			set mut
+			{
+				mHeight = mY + mHeight - value;
+				mY = value;
 			}
 		}
 
@@ -34,6 +46,11 @@ namespace Beefy.geom
 			{
 				return mX + mWidth;
 			}
+
+			set mut
+			{
+				mWidth = value - mX;
+			}
 		}
 
 		public float Bottom
@@ -41,6 +58,11 @@ namespace Beefy.geom
 			get
 			{
 				return mY + mHeight;
+			}
+
+			set mut
+			{
+				mHeight = value - mY;
 			}
 		}
 
@@ -50,6 +72,11 @@ namespace Beefy.geom
 			{
 				return mWidth;
 			}
+
+			set mut
+			{
+				mWidth = value;
+			}
 		}
 
 		public float Height
@@ -57,6 +84,11 @@ namespace Beefy.geom
 			get
 			{
 				return mHeight;
+			}
+
+			set mut
+			{
+				mHeight = value;
 			}
 		}
 
