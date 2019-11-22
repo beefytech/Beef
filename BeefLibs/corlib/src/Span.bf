@@ -272,5 +272,124 @@ namespace System
 		}
 	}
 
+#if BF_RUNTIME_CHECKS
+#define BF_OPTSPAN_LENGTH
+#endif
+
+	struct OptSpan<T>
+	{
+		protected T* mPtr;
+#if BF_OPTSPAN_LENGTH
+		protected int mLength;
+#endif
+
+		public this()
+		{
+			mPtr = null;
+#if BF_OPTSPAN_LENGTH
+			mLength = 0;
+#endif
+		}
+
+		public this(T[] array)
+		{
+			mPtr = &array.getRef(0);
+#if BF_OPTSPAN_LENGTH
+			mLength = array.[Friend]mLength;
+#endif
+		}
+
+		public this(T[] array, int index)
+		{
+			mPtr = &array[index];
+#if BF_OPTSPAN_LENGTH
+			mLength = array.[Friend]mLength - index;
+#endif
+		}
+
+		public this(T[] array, int index, int length)
+		{
+			if (length == 0)
+				mPtr = null;
+			else
+				mPtr = &array[index];
+#if BF_OPTSPAN_LENGTH
+			mLength = length;
+#endif
+		}
+
+		public this(T* memory, int length)
+		{
+			mPtr = memory;
+#if BF_OPTSPAN_LENGTH
+			mLength = length;
+#endif
+		}
+
+		public static implicit operator OptSpan<T> (T[] array)
+		{
+			return OptSpan<T>(array);
+		}
+
+
+		[Inline]
+		public T* Ptr
+		{
+			get
+			{
+				return mPtr;
+			}
+		}
+
+		public ref T this[int index]
+	    {
+			[Inline, Checked]
+	        get
+			{
+#if BF_OPTSPAN_LENGTH
+				Debug.Assert((uint)index < (uint)mLength);
+#endif
+				return ref mPtr[index];
+			}
+
+			[Inline, Unchecked]
+			get
+			{
+				return ref mPtr[index];
+			}
+	    }
+
+		public OptSpan<T> Slice(int index, int length)
+		{
+			OptSpan<T> span;
+			span.mPtr = mPtr + index;
+#if BF_OPTSPAN_LENGTH
+			Debug.Assert((uint)index + (uint)length <= (uint)mLength);
+			span.mLength = length;
+#else
+			Debug.Assert(index >= 0);
+#endif
+			return span;
+		}
+
+		public void Adjust(int ofs) mut
+		{
+			mPtr += ofs;
+#if BF_OPTSPAN_LENGTH
+			Debug.Assert((uint)ofs <= (uint)mLength);
+			mLength -= ofs;
+#endif
+		}
+
+		public OptSpan<uint8> ToRawData()
+		{
+#if BF_OPTSPAN_LENGTH
+			return OptSpan<uint8>((uint8*)mPtr, mLength * alignof(T));
+#else
+			return OptSpan<uint8>((uint8*)mPtr, 0);
+#endif			
+		}
+	}
+
 	//TODO: Make a ReadOnlySpan
 }
