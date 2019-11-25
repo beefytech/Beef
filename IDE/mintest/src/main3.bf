@@ -9,270 +9,158 @@ using System.Threading;
 //#define A
 //#define B
 
-class ClassA
-{
-	public virtual void ClassA0()
-	{
-	}
-
-	public virtual void ClassA1()
-	{
-	}
-}
-
-class ClassB
-{
-}
-
-#if B
-class ClassC : ClassB
-{
-	public override void ToString(System.String strBuffer)
-	{
-		base.ToString(strBuffer);
-	}
-}
-#elif A
-class ClassC : ClassA
-{
-	public override void ToString(System.String strBuffer)
-	{
-		base.ToString(strBuffer);
-	}
-}
-#endif
-
-class ClassD
-{
-	public String mStr;
-	int mA6;
-
-	public virtual void Poo()
-	{
-		PrintF("Poo\n");
-	}
-
-	public virtual void Poo2()
-	{
-		PrintF("Poo2\n");
-	}
-}
-
-class ClassD2
-{
-	int mA5;
-
-}
-
-class ClassE : ClassD
-{
-	public void Zog2()
-	{
-	}
-}
-
-class ClassF : ClassE
-{
-}
-
-[NoDiscard("Use this value!")]
-struct TestStruct
+struct StructA
 {
 	public int mA;
-	public int mB;
-}
 
-class Bloozer
-{
-	int mA;
-}
-
-enum Zorf : IDisposable
-{
-	case A;
-		case B;
-
-	public void Dispose()
+	public static StructA operator+(StructA lhs, float rhs)
 	{
+		StructA newVal = .();
+		newVal.mA = lhs.mA + (int)rhs;
+		return newVal;
 	}
 }
 
-class IFaceA
+struct StructB
 {
-	public static void Fart()
+	public int mA;
+
+	public static bool operator==(StructA lhs, StructB rhs)
 	{
+		return lhs.mA == rhs.mA;
 	}
 }
 
-class Zlips : IFaceA, IDisposable
-{
-	static void Fart()
-	{
-	}
 
-	public void Dispose()
+struct StructC
+{
+	public int mA;
+
+	public static operator StructD(StructC val)
 	{
-		PrintF("Disposed");
+		StructD conv;
+		conv.mA = val.mA;
+		return conv;
 	}
 }
 
-class Testo
+struct StructD
 {
-	public this()
+	public int mA;
+
+	public static operator StructD(StructC val)
 	{
-		PrintF("Testo this %p\n", this);
-	} public ~this()
-	{
-		PrintF("Testo ~this %p\n", this);
+		StructC conv;
+		conv.mA = val.mA;
+		return conv;
 	}
 }
 
-class Norg
+struct StructE
 {
-	public String mVal;
-	public int32 mA;
-	public int32 mB;
+	public int mA;
 
-	public int32 GetIt(int32 a, int32 b, int32 c)
+	public static operator StructD(StructE val)
 	{
-		return a + b + c + mA;
+		StructC conv;
+		conv.mA = val.mA;
+		return conv;
 	}
+}
 
-	public static int32 GetIt(Blurg bl, int32 a, int32 b, int32 c)
-	{
-		return a + b + c + bl.mA;
-	}
+class ClassA
+{
+	public int mA;
+}
 
-	public virtual int Zorf
+struct StructK
+{
+
+}
+
+struct StructL : StructK
+{
+	public int mA;
+}
+
+struct Checker
+{
+	public static int CheckIt(int* iPtr, int len)
 	{
-		set
+		int acc = 0;
+		for (int i < len)
 		{
-			mA = (.)value;
+			acc += iPtr[i];
 		}
-
-		get
-		{
-			return mA;
-		}
+		return acc;
 	}
 
-	public virtual int GetVal()
+	public static int CheckItSpan(int* iPtr, int len)
 	{
-		return 99;
-	}
-}
+		Span<int> span = .(iPtr, len);
 
-class Norg2 : Norg
-{
-	public int mVal2;
-
-	public int Zof => 123;
-
-	public int GetIt() => 234;
-
-	/*public override int Zorf
-	{
-		set
+		int acc = 0;
+		for (int i < len)
 		{
-			base.Zorf = 123;
+			acc += span[i];
 		}
-	}*/
+		return acc;
+	}
 
-}
-
-enum TestEnumA
-{
-	A,
-	B,
-	C
-}
-
-[AttributeUsage(.Field, .ReflectAttribute, ReflectUser=.All)]
-struct FoofAttribute : Attribute
-{
-	int32 mA;
-	int32 mB;
-	int32 mC;
-
-	public this(int32 a, int32 b, int32 c)
+	public static int CheckItSpanOpt(int* iPtr, int len)
 	{
-		mA = a;
-		mB = b;
-		mC = c;
+		OptSpan<int> span = .(iPtr, len);
+
+		int acc = 0;
+		for (int i < len)
+		{
+			acc += span[i];
+		}
+		return acc;
 	}
 }
 
 struct Blurg
 {
-	[Foof(1, 2, 3)]
-	public String mVal;
-	public int32 mA;
-	public int32 mB;
-
-	public this()
+	static int GetHash<T>(T val) where T : IHashable
 	{
-		mVal = "z";
-		mA = 111;
-		mB = 222;
+		return val.GetHashCode();
 	}
 
-	void TestIt(String a, String b)
+	public static int32 LongCall(
+		int abcdefghijklmnopqrstuvwxyz0,
+		int abcdefghijklmnopqrstuvwxyz1,
+		int abcdefghijklmnopqrstuvwxyz2,
+		int abcdefghijklmnopqrstuvwxyz3,
+		int abcdefghijklmnopqrstuvwxyz4,
+		int abcdefghijklmnopqrstuvwxyz5,
+		int abcdefghijklmnopqrstuvwxyz6,
+		int abcdefghijklmnopqrstuvwxyz7,
+		int abcdefghijklmnopqrstuvwxyz8,
+		int abcdefghijklmnopqrstuvwxyz9
+		)
 	{
-	}
-
-	TestStruct GetTS()
-	{
-		return .();
-	}
-
-	static void Test(int a, int b)
-	{
-		PrintF("a0");
-	}
-
-	[Error("This property can only be accessed directly from a typeof() expression")]
-	static void Test(int a, int b, int c)
-	{
-	}
-
-	public static Result<int> GetMe()
-	{
-		return 123;
+		return 0;
 	}
 
 	public static int32 Hey()
 	{
-		let t = typeof(Self);
-		let field = t.GetField("mVal").Value;
-		var foofAttrib = field.GetCustomAttribute<FoofAttribute>();
+		TypeCode tc = .Boolean;
+		//int h = GetHash(tc);
 
-		//for (TypeCode tc < .Boolean)
+		var val = tc.Underlying;
+		var valRef = ref tc.UnderlyingRef;
 
-		//Test(1, 2, 3);
+		let maxVal = typeof(TypeCode).MaxValue;
 
-		/*TestEnumA ta = .A;
-		IHashable ih = ta;*/
+		int a = 100;
+
+		String str = new:gCRTAlloc String(a);
+
+		delete:gCRTAlloc str;
+
 
 		return 123;
 	}
 
 }
-
-struct Florg
-{
-	int mA = 123;
-
-	public void Dispose() mut
-	{
-	}
-}
-
-class CustomAlloc
-{
-	public void* Alloc(int size, int align)
-	{
-		//return Internal.Malloc(size);
-		return null;
-	}
-}
-

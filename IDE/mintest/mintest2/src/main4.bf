@@ -1,12 +1,34 @@
 using System;
 // Zapples
 
+struct StructA<T>
+{
+	public T mVal;
 
-static
+	public static bool operator< <TOther>(StructA<T> lhs, TOther rhs) where bool : operator T < TOther
+	{
+		return true;
+	}
+
+	/*public static TResult operator+<TOther, TResult>(StructA<T> lhs, TOther rhs)
+		where TResult = operator T * TOther
+	{
+		return lhs.mVal * rhs;
+	}*/
+}
+
+class TestA
 {
 	
 
-	
+	public void Bloop()
+	{
+		StructA<float> sa;
+		sa.mVal = 1.23f;
+		let res = sa < 100;
+
+		int a = 1 * 2;
+	}
 }
 
 /*class Mintest2

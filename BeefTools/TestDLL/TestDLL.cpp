@@ -1,4 +1,5 @@
-﻿#define _ENABLE_ATOMIC_ALIGNMENT_FIX
+//2
+#define _ENABLE_ATOMIC_ALIGNMENT_FIX
 
 #include <windows.h>
 #include <stdlib.h>
@@ -82,7 +83,7 @@ StructA GetSA()
 	return StructA();
 }
 
-// THIS IS VERSION 3.
+// THIS IS VERSION 6.
 extern "C"
 __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 {	
@@ -107,9 +108,6 @@ __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 	int a = 123;
 	int b = 234;
 	int c = 345;
-
-	//GetA();
-	//GetB();
 }
 
 extern "C"

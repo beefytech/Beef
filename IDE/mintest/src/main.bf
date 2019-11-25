@@ -196,6 +196,12 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
+			TypeCode tc = .Boolean;
+
+			PrintF("Hey\n");
+
+			//Test2(1, 2, 3, 4);
+
 			/*IHashable ih = (int32)TypeCode.Boolean;
 			let hashCode = ih.GetHashCode();*/
 

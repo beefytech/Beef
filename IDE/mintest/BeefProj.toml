@@ -12,7 +12,7 @@ Description = "Mintest"
 
 [Configs.Debug.Win64]
 CLibType = "Static"
-BeefLibType = "Static"
+BeefLibType = "DynamicDebug"
 StackSize = 4194304
 DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"\"\"abc efg\"\"\""
 DebugWorkingDirectory = ".\\"
@@ -26,12 +26,26 @@ OtherLinkFlags = ""
 CLibType = "Static"
 BeefLibType = "Static"
 
+[Configs.Debug.iOS]
+BuildKind = "StaticLib"
+
+[Configs.Debug.aarch64-none-linux-android21]
+BuildKind = "StaticLib"
+RelocType = "PIC"
+
 [Configs.Release.Win64]
 OtherLinkFlags = "$(LinkFlags) C:\\Beef\\BeefTools\\TestDLL\\x64\\Debug\\TestDLL.lib"
 DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"abc efg\""
 
 [Configs.Release.WinFart]
 OtherLinkFlags = ""
+
+[Configs.Release.iOS]
+BuildKind = "StaticLib"
+
+[Configs.Release.aarch64-none-linux-android21]
+BuildKind = "StaticLib"
+RelocType = "PIC"
 
 [Configs.Paranoid.Win32]
 CLibType = "Static"
@@ -47,6 +61,13 @@ OtherLinkFlags = ""
 CLibType = "Static"
 BeefLibType = "Static"
 
+[Configs.Paranoid.iOS]
+BuildKind = "StaticLib"
+
+[Configs.Paranoid.aarch64-none-linux-android21]
+BuildKind = "StaticLib"
+RelocType = "PIC"
+
 [Configs.Test.Win32]
 CLibType = "Static"
 BeefLibType = "Static"
@@ -60,6 +81,13 @@ BuildKind = "Normal"
 OtherLinkFlags = ""
 CLibType = "Static"
 BeefLibType = "Static"
+
+[Configs.Test.iOS]
+BuildKind = "StaticLib"
+
+[Configs.Test.aarch64-none-linux-android21]
+BuildKind = "StaticLib"
+RelocType = "PIC"
 
 [ProjectFolder]
 

@@ -982,6 +982,18 @@ namespace System
 			}
 			ptr
 		}
+
+		/*public mixin ToNewCStr()
+		{
+			char8* ptr = null;
+			if (mPtr != null)
+			{
+				ptr = new:mixin char8[mLength + 1]* (?);
+				Internal.MemCpy(ptr, mPtr, mLength);
+				ptr[mLength] = 0;
+			}
+			ptr
+		}*/
 	}
 
 	static

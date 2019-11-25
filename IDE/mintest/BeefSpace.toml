@@ -14,8 +14,10 @@ ConfigSelections = {mintest2 = {Enabled = false}}
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "Og"
 
+[[Configs.Debug.Win64.DistinctOptions]]
+Filter = "System.String"
+
 [Configs.Debug.WinFart]
-MachineType = "x86"
 Toolset = "GNU"
 EmitDebugInfo = "No"
 EmitDynamicCastCheck = false
@@ -24,6 +26,23 @@ EmitObjectAccessCheck = false
 EnableRealtimeLeakCheck = false
 AllowHotSwapping = false
 AllocStackTraceDepth = 0
+
+[Configs.Debug.Linux64]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+
+[Configs.Debug.macOS]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+
+[Configs.Debug.iOS]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+IntermediateType = "Bitcode"
+
+[Configs.Debug.aarch64-none-linux-android21]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
 
 [Configs.Release.Win32]
 Toolset = "GNU"
@@ -39,13 +58,25 @@ IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O3"
 
 [Configs.Release.WinFart]
-MachineType = "x86"
 Toolset = "GNU"
 BfOptimizationLevel = "O0"
 EmitDebugInfo = "No"
 AllocStackTraceDepth = 0
 IncrementalBuild = true
 COptimizationLevel = "O0"
+
+[Configs.Release.Linux64]
+Toolset = "GNU"
+
+[Configs.Release.macOS]
+Toolset = "GNU"
+
+[Configs.Release.iOS]
+Toolset = "GNU"
+IntermediateType = "Bitcode"
+
+[Configs.Release.aarch64-none-linux-android21]
+Toolset = "GNU"
 
 [Configs.Test.Win32]
 Toolset = "GNU"
@@ -71,7 +102,6 @@ COptimizationLevel = "O2"
 ConfigSelections = {mintest = {Config = "Debug"}}
 
 [Configs.Test.WinFart]
-MachineType = "x86"
 Toolset = "GNU"
 BuildKind = "Normal"
 EmitDebugInfo = "No"
@@ -81,6 +111,27 @@ EmitObjectAccessCheck = false
 EnableRealtimeLeakCheck = false
 AllowHotSwapping = false
 AllocStackTraceDepth = 0
+COptimizationLevel = "O2"
+
+[Configs.Test.Linux64]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+COptimizationLevel = "O2"
+
+[Configs.Test.macOS]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+COptimizationLevel = "O2"
+
+[Configs.Test.iOS]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+IntermediateType = "Bitcode"
+COptimizationLevel = "O2"
+
+[Configs.Test.aarch64-none-linux-android21]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
 COptimizationLevel = "O2"
 
 [Configs.Paranoid.Win32]
@@ -103,7 +154,6 @@ COptimizationLevel = "O2"
 ConfigSelections = {mintest2 = {Enabled = false}}
 
 [Configs.Paranoid.WinFart]
-MachineType = "x86"
 Toolset = "GNU"
 EmitDebugInfo = "No"
 EmitDynamicCastCheck = false
@@ -113,4 +163,29 @@ EnableRealtimeLeakCheck = false
 EnableSideStack = false
 AllowHotSwapping = false
 AllocStackTraceDepth = 0
+COptimizationLevel = "O2"
+
+[Configs.Paranoid.Linux64]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+EnableSideStack = false
+COptimizationLevel = "O2"
+
+[Configs.Paranoid.macOS]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+EnableSideStack = false
+COptimizationLevel = "O2"
+
+[Configs.Paranoid.iOS]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+EnableSideStack = false
+IntermediateType = "Bitcode"
+COptimizationLevel = "O2"
+
+[Configs.Paranoid.aarch64-none-linux-android21]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+EnableSideStack = false
 COptimizationLevel = "O2"

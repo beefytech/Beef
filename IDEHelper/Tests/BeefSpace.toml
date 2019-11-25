@@ -6,6 +6,7 @@ StartupProject = "Tests"
 
 [Configs.Debug.Win64]
 BfOptimizationLevel = "O0"
+IntermediateType = "ObjectAndIRCode"
 
 [Configs.Test.Win64]
 IntermediateType = "ObjectAndIRCode"
@@ -14,9 +15,11 @@ ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.Test.Linux64]
 IntermediateType = "ObjectAndIRCode"
+COptimizationLevel = "O2"
 ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.Test.macOS]
+COptimizationLevel = "O2"
 ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.TestFail.Win64]
