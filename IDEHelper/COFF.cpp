@@ -994,6 +994,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 								parentType->mTypeParam = CvGetType(fieldTypeId);
 								if ((parentType->mBaseTypes.mHead != NULL) && (strcmp(parentType->mBaseTypes.mHead->mBaseType->mName, "System.Enum") == 0))
 									parentType->mTypeCode = DbgType_Enum;
+								break;
 							}
 						}
 

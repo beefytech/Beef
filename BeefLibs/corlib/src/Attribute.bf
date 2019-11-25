@@ -334,7 +334,7 @@ namespace System
 
 		}
 
-		public this(String error, bool isError)
+		public this(String message, bool isError)
 		{
 
 		}

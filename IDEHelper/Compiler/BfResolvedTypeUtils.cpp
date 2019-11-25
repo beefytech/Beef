@@ -1867,9 +1867,14 @@ void BfTupleType::Finish()
 //////////////////////////////////////////////////////////////////////////
 
 BfType* BfBoxedType::GetModifiedElementType()
-{
+{	
 	if ((mBoxedFlags & BoxedFlags_StructPtr) != 0)
-		return mModule->CreatePointerType(mElementType);
+	{
+		auto module = mModule;
+		if (module == NULL)
+			module = mContext->mUnreifiedModule;		
+		return module->CreatePointerType(mElementType);		
+	}
 	return mElementType;
 }
 

@@ -16163,6 +16163,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			MarkResultUsed();
 						
 			mModule->FixIntUnknown(mResult);
+			mModule->PopulateType(mResult.mType);
 			auto ptrType = mModule->CreatePointerType(mResult.mType);
 			if ((!CheckModifyResult(mResult, unaryOpExpr, "take address of")) || (mResult.mType->IsValuelessType()))
 			{
@@ -16194,6 +16195,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				return;
 			}
 
+			mModule->PopulateType(resolvedType);
 			if (resolvedType->IsValuelessType())			
 				mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), resolvedType, true);
 			else

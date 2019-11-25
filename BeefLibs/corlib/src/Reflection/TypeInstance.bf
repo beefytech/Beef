@@ -39,7 +39,7 @@ namespace System.Reflection
 {
 	extension TypeInstance
 	{
-		public override FieldInfo? GetField(String fieldName)
+		public override Result<FieldInfo> GetField(String fieldName)
 		{
 		    for (int32 i = 0; i < mFieldDataCount; i++)
 		    {
@@ -47,7 +47,7 @@ namespace System.Reflection
 		        if (fieldData.mName == fieldName)
 		            return FieldInfo(this, fieldData);
 		    }
-		    return null;
+		    return .Err;
 		}
 
 		public override FieldInfo.Enumerator GetFields(BindingFlags bindingFlags = cDefaultLookup)

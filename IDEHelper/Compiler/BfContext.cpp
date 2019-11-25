@@ -437,6 +437,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 					continue;
 
 				auto methodSpecializationRequest = *workItemRef;
+
 				auto module = workItemRef->mFromModule;
 				workIdx = mMethodSpecializationWorkList.RemoveAt(workIdx);
 
@@ -2337,11 +2338,6 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 		//  This pass is just for handling rebuilding old specialization requests
 		if (module->mRevision == mCompiler->mRevision)
 			return;
-	}
-
-	if ((module->mModuleName == "System_Array") && (!mCompiler->mIsResolveOnly))
-	{
-		NOP;
 	}
 
 	// Find any method specialization requests for types that are rebuilding, but from

@@ -349,6 +349,24 @@ namespace System
 			}
 		}
 
+		public virtual int32 MinValue
+		{
+			[Error("This property can only be accessed directly from a typeof() expression")]
+			get
+			{
+				return 0;
+			}
+		}
+
+		public virtual int32 MaxValue
+		{
+			[Error("This property can only be accessed directly from a typeof() expression")]
+			get
+			{
+				return 0;
+			}
+		}
+
         public int32 GetTypeId()
         {
             return (int32)mTypeId;
@@ -425,9 +443,9 @@ namespace System
             return type == this;
         }
 
-		public virtual FieldInfo? GetField(String fieldName)
+		public virtual Result<FieldInfo> GetField(String fieldName)
 		{
-		    return null;
+		    return .Err;
 		}
 
 		public virtual FieldInfo.Enumerator GetFields(BindingFlags bindingFlags = cDefaultLookup)
@@ -665,7 +683,7 @@ namespace System.Reflection
             strBuffer.Append(mName);
         }
 
-		public override FieldInfo? GetField(String fieldName)
+		public override Result<FieldInfo> GetField(String fieldName)
 		{
 		    for (int32 i = 0; i < mFieldDataCount; i++)
 		    {
@@ -673,7 +691,7 @@ namespace System.Reflection
 		        if (fieldData.mName == fieldName)
 		            return FieldInfo(this, fieldData);
 		    }
-		    return null;
+		    return .Err;
 		}
 
 		public override FieldInfo.Enumerator GetFields(BindingFlags bindingFlags = cDefaultLookup)

@@ -132,9 +132,9 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		::SystemParametersInfo(SPI_GETWORKAREA, NULL, &desktopRect, NULL);		
 
 		if (x + width >= desktopRect.right)
-			x = BF_MAX((int)desktopRect.left, requestedX - width);
+			x = BF_MAX((int)desktopRect.left, desktopRect.right - width);
 		if (y + height >= desktopRect.bottom)
-			y = BF_MAX((int)desktopRect.top, requestedY - height);
+			y = BF_MAX((int)desktopRect.top, desktopRect.bottom - height);
 	}
 	
 	mFlags = windowFlags;

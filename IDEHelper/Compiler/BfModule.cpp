@@ -1097,7 +1097,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "IDE_ui_LaunchDialog")
+                (mModuleName == "Blurg")
 				//|| (mModuleName == "System_Internal")
 				//|| (mModuleName == "vdata")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
@@ -11036,7 +11036,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		BF_ASSERT(instModule == mParentModule);
 	}
 	else if (instModule != this)
-	{
+	{		
 		if ((!mIsReified) && (instModule->mIsReified))
 		{
 			BF_ASSERT(!mCompiler->mIsResolveOnly);
@@ -11064,10 +11064,11 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				specializationRequest->mMethodDef = methodDef;
 				specializationRequest->mMethodGenericArguments = methodGenericArguments;
 				specializationRequest->mType = typeInst;				
+				specializationRequest->mFlags = flags;
 			}
 
 			auto defFlags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
-
+			
 			// Not extern
 			// Create the instance in the proper module and then create a reference in this one
 			moduleMethodInst = instModule->GetMethodInstance(typeInst, methodDef, methodGenericArguments, defFlags, foreignType);
@@ -11769,12 +11770,7 @@ void BfModule::HadSlotCountDependency()
 }
 
 BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
-{	
-	if (fieldInstance->mResolvedType->IsVar())
-	{
-		NOP;
-	}
-
+{		
 	if (mIsScratchModule)
 	{
 		// Just fake it for the extern and unspecialized modules
@@ -19490,7 +19486,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 // 		CheckHotMethod(methodInstance, mangledName);
 
 	BfLogSysM("DoMethodDeclaration %s Module: %p Type: %p MethodInst: %p Reified: %d Unspecialized: %d IRFunction: %d MethodId:%llx\n", mangledName.c_str(), this, mCurTypeInstance, methodInstance, methodInstance->mIsReified, mCurTypeInstance->IsUnspecializedType(), methodInstance->mIRFunction.mId, methodInstance->mIdHash);
-
+	
 	SizedArray<BfIRMDNode, 8> diParams;	
 	diParams.push_back(mBfIRBuilder->DbgGetType(resolvedReturnType));			
 	

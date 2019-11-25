@@ -1410,9 +1410,11 @@ DbgType* DbgType::GetPrimaryType()
 	{
 		if ((mCompileUnit != NULL) && 
 			((mCompileUnit->mLanguage == DbgLanguage_Beef) || (mTypeCode == DbgType_Namespace) || (mIsDeclaration)))
-		{
-			mPrimaryType = mCompileUnit->mDbgModule->GetPrimaryType(this);
+		{			
+			mPrimaryType = mCompileUnit->mDbgModule->GetPrimaryType(this);			
+			mPrimaryType->PopulateType();
 			mTypeCode = mPrimaryType->mTypeCode;
+			mTypeParam = mPrimaryType->mTypeParam;
 		}
 	}
 	

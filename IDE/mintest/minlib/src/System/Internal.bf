@@ -51,8 +51,10 @@ namespace System
 		public static extern void ObjectDynCheck(Object obj, int32 typeId, bool allowNull);
 		public static extern void ObjectDynCheckFailed(Object obj, int32 typeId);
 		public static extern void Dbg_ObjectCreated(Object obj, int size, ClassVData* classVData);
+		public static extern void Dbg_ObjectCreatedEx(Object obj, int size, ClassVData* classVData);
 		public static extern void Dbg_ObjectAllocated(Object obj, int size, ClassVData* classVData);
-		public static extern int Dbg_PrepareStackTrace(int maxDepth);
+		public static extern void Dbg_ObjectAllocatedEx(Object obj, int size, ClassVData* classVData);
+		public static extern int Dbg_PrepareStackTrace(int baseAllocSize, int maxStackTraceDepth);
 		public static extern void Dbg_ObjectStackInit(Object object, ClassVData* classVData);
 		public static extern Object Dbg_ObjectAlloc(TypeInstance typeInst, int size);
 		public static extern Object Dbg_ObjectAlloc(ClassVData* classVData, int size, int align, int maxStackTraceDepth);
@@ -139,6 +141,8 @@ namespace System
         public static String[] CreateParamsArray()
 		{
 			char8* cmdLine = GetCommandLineArgs();
+			//Windows.MessageBoxA(default, scope String()..AppendF("CmdLine: {0}", StringView(cmdLine)), "HI", 0);
+
 			String[] strVals = null;
 			for (int pass = 0; pass < 2; pass++)
 			{
@@ -151,21 +155,40 @@ namespace System
 						var str = new String(len);
 						char8* outStart = str.Ptr;
 						char8* outPtr = outStart;
+						bool inQuote = false;
 
 						for (int i < len)
 						{
 							char8 c = cmdLine[idx + i];
-							if (c == '\"')
+
+							if (!inQuote)
 							{
-								if ((cmdLine[idx + i + 1] == '\"') &&
-									(cmdLine[idx + i + 2] == '\"'))
+								if (c == '"')
 								{
-									*(outPtr++) = '\"';
-									i += 2;
+									inQuote = true;
 									continue;
 								}
-								continue;
 							}
+							else
+							{
+								if (c == '^')
+								{
+									i++;
+									c = cmdLine[idx + i];
+								}
+								else if (c == '\"')
+								{
+									if (cmdLine[idx + i + 1] == '\"')
+									{
+										*(outPtr++) = '\"';
+										i++;
+										continue;
+									}
+									inQuote = false;
+									continue;
+								}
+							}
+
 							*(outPtr++) = c;
 						}
 						str.[Friend]mLength = (.)(outPtr - outStart);
@@ -195,6 +218,10 @@ namespace System
 				    {
 				        if (firstCharIdx == -1)
 				            firstCharIdx = i;
+						if (c == '^')
+						{	
+							i++;
+						}
 				        if (c == '"')
 				            inQuote = !inQuote;
 				        else if ((inQuote) && (c == '\\'))
@@ -225,4 +252,22 @@ namespace System
         extern static this();
         extern static ~this();
     }
+
+	struct CRTAlloc
+	{
+		public void* Alloc(int size, int align)
+		{
+			return Internal.StdMalloc(size);
+		}
+
+		public void Free(void* ptr)
+		{
+			Internal.StdFree(ptr);
+		}
+	}
+
+	static
+	{
+		public static CRTAlloc gCRTAlloc;
+	}
 }
