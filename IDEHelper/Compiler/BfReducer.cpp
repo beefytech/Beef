@@ -5105,6 +5105,8 @@ BfAttributeDirective* BfReducer::CreateAttributeDirective(BfTokenNode* startToke
 	ReplaceNode(startToken, attributeDirective);
 	attributeDirective->mAttrOpenToken = startToken;
 
+	bool isHandled = false;
+
 	auto nextNode = mVisitorPos.GetNext();
 	auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 	if (tokenNode != NULL)
@@ -5114,32 +5116,50 @@ BfAttributeDirective* BfReducer::CreateAttributeDirective(BfTokenNode* startToke
 			auto attributeTargetSpecifier = mAlloc->Alloc<BfAttributeTargetSpecifier>();
 			ReplaceNode(tokenNode, attributeTargetSpecifier);
 			MEMBER_SET(attributeDirective, mAttributeTargetSpecifier, attributeTargetSpecifier);
-			attributeDirective->mAttributeTargetSpecifier->mTargetToken = tokenNode;
+			attributeTargetSpecifier->mTargetToken = tokenNode;
 			mVisitorPos.MoveNext();
 			tokenNode = ExpectTokenAfter(attributeDirective, BfToken_Colon);
 			if (tokenNode != NULL)
-				MEMBER_SET(attributeDirective->mAttributeTargetSpecifier, mColonToken, tokenNode);
+				MEMBER_SET(attributeTargetSpecifier, mColonToken, tokenNode);
 			attributeDirective->SetSrcEnd(attributeDirective->mAttributeTargetSpecifier->GetSrcEnd());
 		}
-	}
-
-	auto typeRef = CreateTypeRefAfter(attributeDirective);
-	if (typeRef == NULL)
-	{
-		auto nextNode = mVisitorPos.GetNext();
-		if (BfTokenNode* endToken = BfNodeDynCast<BfTokenNode>(nextNode))
+		else if ((tokenNode->mToken == BfToken_Ampersand) || (tokenNode->mToken == BfToken_AssignEquals))
 		{
-			if (endToken->GetToken() == BfToken_RBracket)
+			MEMBER_SET(attributeDirective, mAttributeTargetSpecifier, tokenNode);
+			mVisitorPos.MoveNext();
+			isHandled = true;
+			nextNode = mVisitorPos.GetNext();
+			if (auto identiferNode = BfNodeDynCast<BfIdentifierNode>(nextNode))
 			{
+				attributeDirective->SetSrcEnd(identiferNode->GetSrcEnd());
+				arguments.push_back(identiferNode);
 				mVisitorPos.MoveNext();
-				MEMBER_SET(attributeDirective, mCtorCloseParen, endToken);
-				return attributeDirective;
+				nextNode = mVisitorPos.GetNext();
 			}
 		}
-
-		return attributeDirective;
 	}
-	MEMBER_SET(attributeDirective, mAttributeTypeRef, typeRef);
+
+	if (!isHandled)
+	{
+		auto typeRef = CreateTypeRefAfter(attributeDirective);
+		if (typeRef == NULL)
+		{
+			auto nextNode = mVisitorPos.GetNext();
+			if (BfTokenNode* endToken = BfNodeDynCast<BfTokenNode>(nextNode))
+			{
+				if (endToken->GetToken() == BfToken_RBracket)
+				{
+					mVisitorPos.MoveNext();
+					MEMBER_SET(attributeDirective, mCtorCloseParen, endToken);
+					return attributeDirective;
+				}
+			}
+
+			return attributeDirective;
+		}
+		MEMBER_SET(attributeDirective, mAttributeTypeRef, typeRef);
+	}
+
 	tokenNode = ExpectTokenAfter(attributeDirective, BfToken_LParen, BfToken_RBracket, BfToken_Comma);
 	if (tokenNode == NULL)
 		return attributeDirective;
@@ -5159,8 +5179,7 @@ BfAttributeDirective* BfReducer::CreateAttributeDirective(BfTokenNode* startToke
 		tokenNode = ExpectTokenAfter(attributeDirective, BfToken_RBracket, BfToken_Comma);
 		if (tokenNode == NULL)
 			return attributeDirective;
-	}
-
+	}		
 Do_RBracket:
 	if (tokenNode->GetToken() == BfToken_RBracket)
 	{
@@ -5171,9 +5190,8 @@ Do_RBracket:
 			return attributeDirective;
 		mVisitorPos.MoveNext();
 	}
-
-	// Has another one- chain it
-	//mVisitorPos.MoveNext();
+	
+	// Has another one- chain it	
 	auto nextAttribute = CreateAttributeDirective(tokenNode);
 	if (nextAttribute != NULL)
 	{
@@ -6810,40 +6828,9 @@ BfLambdaBindExpression* BfReducer::CreateLambdaBindExpression(BfAstNode* allocNo
 		ReplaceNode(parenToken, lambdaBindExpr);
 		tokenNode = parenToken;
 	}
-	//auto tokenNode = ExpectTokenAfter(lambdaBindExpr, BfToken_LParen, BfToken_LBracket);
+	
 	if (tokenNode == NULL)
 		return lambdaBindExpr;
-
-	if (tokenNode->GetToken() == BfToken_LBracket)
-	{
-		auto lambdaCapture = mAlloc->Alloc<BfLambdaCapture>();
-		ReplaceNode(tokenNode, lambdaCapture);
-
-		MEMBER_SET(lambdaBindExpr, mLambdaCapture, lambdaCapture);
-		MEMBER_SET(lambdaCapture, mOpenBracket, tokenNode);
-
-		while (true)
-		{
-			tokenNode = ExpectTokenAfter(lambdaBindExpr, BfToken_Ampersand, BfToken_AssignEquals, BfToken_RBracket);
-			if (tokenNode == NULL)
-				return lambdaBindExpr;
-
-			if ((tokenNode->GetToken() == BfToken_Ampersand) || (tokenNode->GetToken() == BfToken_AssignEquals))
-			{
-				MEMBER_SET(lambdaCapture, mCaptureToken, tokenNode);
-				lambdaBindExpr->SetSrcEnd(lambdaCapture->GetSrcEnd());
-			}
-
-			if (tokenNode->GetToken() == BfToken_RBracket)
-			{
-				MEMBER_SET(lambdaCapture, mCloseBracket, tokenNode);
-				lambdaBindExpr->SetSrcEnd(lambdaCapture->GetSrcEnd());
-				break;
-			}
-		}
-
-		tokenNode = ExpectTokenAfter(lambdaBindExpr, BfToken_LParen);
-	}
 
 	MEMBER_SET_CHECKED(lambdaBindExpr, mOpenParen, tokenNode);
 
@@ -7051,11 +7038,17 @@ BfAstNode* BfReducer::CreateAllocNode(BfTokenNode* allocToken)
 	if (allocToken->GetToken() == BfToken_Scope)
 	{
 		auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
-		if ((nextToken != NULL) && (nextToken->GetToken() == BfToken_Colon))
-		{
-			auto scopeNode = mAlloc->Alloc<BfScopeNode>();
-			ReplaceNode(allocToken, scopeNode);
-			scopeNode->mScopeToken = allocToken;
+		if (nextToken == NULL)
+			return allocToken;
+		if ((nextToken->mToken != BfToken_Colon) && (nextToken->mToken != BfToken_LBracket))
+			return allocToken;
+		
+		auto scopeNode = mAlloc->Alloc<BfScopeNode>();
+		ReplaceNode(allocToken, scopeNode);
+		scopeNode->mScopeToken = allocToken;
+
+		if (nextToken->mToken == BfToken_Colon)
+		{			
 			MEMBER_SET(scopeNode, mColonToken, nextToken);
 			mVisitorPos.MoveNext();
 
@@ -7077,19 +7070,36 @@ BfAstNode* BfReducer::CreateAllocNode(BfTokenNode* allocToken)
 			{
 				FailAfter("Expected scope name", scopeNode);
 			}
-
-			return scopeNode;
 		}
+
+		nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
+		if (nextToken == NULL)
+			return scopeNode;
+		if (nextToken->mToken != BfToken_LBracket)
+			return scopeNode;
+
+		mVisitorPos.MoveNext();
+		auto attributeDirective = CreateAttributeDirective(nextToken);
+		MEMBER_SET(scopeNode, mAttributes, attributeDirective);
+
+		return scopeNode;		
 	}
 
 	if (allocToken->GetToken() == BfToken_New)
-	{//
+	{
 		auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
-		if ((nextToken != NULL) && (nextToken->GetToken() == BfToken_Colon))
-		{ //
-			auto newNode = mAlloc->Alloc<BfNewNode>();
-			ReplaceNode(allocToken, newNode);
-			newNode->mNewToken = allocToken;
+
+		if (nextToken == NULL)
+			return allocToken;
+		if ((nextToken->mToken != BfToken_Colon) && (nextToken->mToken != BfToken_LBracket))
+			return allocToken;
+
+		auto newNode = mAlloc->Alloc<BfNewNode>();
+		ReplaceNode(allocToken, newNode);
+		newNode->mNewToken = allocToken;
+
+		if (nextToken->mToken == BfToken_Colon)
+		{			
 			MEMBER_SET(newNode, mColonToken, nextToken);
 			mVisitorPos.MoveNext();
 
@@ -7166,15 +7176,7 @@ BfAstNode* BfReducer::CreateAllocNode(BfTokenNode* allocToken)
 					{
 						MEMBER_SET(newNode, mAllocNode, identifier);
 						mVisitorPos.MoveNext();
-					}
-
-					// This causes parse ambiguities
-					/*mVisitorPos.mReadPos = nodeIdx;
-					auto allocExpr = CreateExpressionAfter(newNode, BfReducer::CreateExprFlags_NoCast);
-					if (allocExpr != NULL)
-					{
-					MEMBER_SET(newNode, mAllocNode, allocExpr);
-					}*/
+					}					
 
 				}
 			}
@@ -7183,9 +7185,19 @@ BfAstNode* BfReducer::CreateAllocNode(BfTokenNode* allocToken)
 			{
 				FailAfter("Expected allocator expression", newNode);
 			}
-
-			return newNode;
 		}
+
+		nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
+		if (nextToken == NULL)
+			return newNode;
+		if (nextToken->mToken != BfToken_LBracket)
+			return newNode;
+
+		mVisitorPos.MoveNext();
+		auto attributeDirective = CreateAttributeDirective(nextToken);
+		MEMBER_SET(newNode, mAttributes, attributeDirective);
+
+		return newNode;
 	}
 
 	return allocToken;

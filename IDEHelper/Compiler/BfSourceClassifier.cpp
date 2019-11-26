@@ -206,8 +206,15 @@ void BfSourceClassifier::Visit(BfAttributeDirective* attributeDirective)
 
 	if (attributeDirective->mAttributeTargetSpecifier != NULL)
 	{
-		VisitChild(attributeDirective->mAttributeTargetSpecifier->mTargetToken);
-		VisitChild(attributeDirective->mAttributeTargetSpecifier->mColonToken);
+		if (auto attributeTargetSpecifier = BfNodeDynCast<BfAttributeTargetSpecifier>(attributeDirective->mAttributeTargetSpecifier))
+		{
+			VisitChild(attributeTargetSpecifier->mTargetToken);
+			VisitChild(attributeTargetSpecifier->mColonToken);
+		}
+		else
+		{
+			VisitChild(attributeDirective->mAttributeTargetSpecifier);
+		}
 	}
 
 	VisitChild(attributeDirective->mAttributeTypeRef);

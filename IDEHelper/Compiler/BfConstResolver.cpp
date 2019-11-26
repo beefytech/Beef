@@ -143,8 +143,8 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 				isConst = false;
 		}
 
-		if (!isConst)
-		{
+		if ((!isConst) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowNonConst) == 0))
+		{			
 			mModule->Fail("Expression does not evaluate to a constant value", expr);
 
 			if (wantType != NULL)

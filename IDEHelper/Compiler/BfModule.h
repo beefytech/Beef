@@ -65,7 +65,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_AllowOutExpr = 0x1000,
 	BfEvalExprFlags_FieldInitializer = 0x2000,
 	BfEvalExprFlags_VariableDeclaration = 0x4000,
-	BfEvalExprFlags_NoAutoComplete = 0x8000
+	BfEvalExprFlags_NoAutoComplete = 0x8000,
+	BfEvalExprFlags_AllowNonConst = 0x10000
 };
 
 enum BfCastFlags
@@ -146,6 +147,7 @@ public:
 	bool mAllowAddr;
 	bool mIsShadow;
 	bool mUsedImplicitly; // Passed implicitly to a local method, capture by ref if we can	
+	bool mNotCaptured;
 	BfLocalVariable* mShadowedLocal;
 
 public:
@@ -172,6 +174,7 @@ public:
 		mAllowAddr = false;
 		mIsShadow = false;
 		mUsedImplicitly = false;		
+		mNotCaptured = false;
 		mShadowedLocal = NULL;
 	}
 
@@ -441,6 +444,27 @@ public:
 	}
 };
 
+struct BfCaptureInfo
+{
+public:
+	struct Entry
+	{
+		BfCaptureType mCaptureType;
+		bool mUsed;
+		BfIdentifierNode* mNameNode;
+
+		Entry()
+		{
+			mCaptureType = BfCaptureType_Copy;
+			mUsed = false;
+			mNameNode = NULL;
+		}
+	};
+
+public:
+	Array<Entry> mCaptures;
+};
+
 class BfAllocTarget
 {
 public:
@@ -448,6 +472,8 @@ public:
 	BfAstNode* mRefNode;
 	BfTypedValue mCustomAllocator;
 	BfScopedInvocationTarget* mScopedInvocationTarget;
+	int mAlignOverride;
+	BfCaptureInfo mCaptureInfo;
 
 public:
 	BfAllocTarget()
@@ -456,6 +482,7 @@ public:
 		mRefNode = NULL;
 		mCustomAllocator = NULL;
 		mScopedInvocationTarget = NULL;
+		mAlignOverride = -1;
 	}
 
 	BfAllocTarget(BfScopeData* scopeData)
@@ -464,6 +491,7 @@ public:
 		mRefNode = NULL;
 		mCustomAllocator = NULL;
 		mScopedInvocationTarget = NULL;
+		mAlignOverride = -1;
 	}
 
 	BfAllocTarget(const BfTypedValue& customAllocator, BfAstNode* refNode)
@@ -472,6 +500,7 @@ public:
 		mCustomAllocator = customAllocator;
 		mRefNode = NULL;
 		mScopedInvocationTarget = NULL;
+		mAlignOverride = -1;
 	}
 };
 
@@ -1409,8 +1438,8 @@ public:
 	BfTypedValue GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType);
 	BfIRValue ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType);
 	void ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget);
-	void GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrType);
-	BfCustomAttributes* GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType);
+	void GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs = false, BfCaptureInfo* captureInfo = NULL);
+	BfCustomAttributes* GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs = false, BfCaptureInfo* captureInfo = NULL);
 	void ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered);
 	void ProcessCustomAttributeData();	
 	bool TryGetConstString(BfIRConstHolder* constHolder, BfIRValue irValue, StringImpl& str);

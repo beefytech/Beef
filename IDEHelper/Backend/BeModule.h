@@ -811,6 +811,7 @@ public:
 
 	BeType* mType;
 	BeValue* mArraySize;
+	int mAlign;
 	bool mNoChkStk;
 	bool mForceMem;
 
@@ -823,6 +824,7 @@ public:
 		mType->HashReference(hashCtx);
 		if (mArraySize != NULL)
 			mArraySize->HashReference(hashCtx);
+		hashCtx.Mixin(mAlign);
 		hashCtx.Mixin(mNoChkStk);
 		hashCtx.Mixin(mForceMem);
 	}

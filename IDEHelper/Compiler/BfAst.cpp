@@ -938,7 +938,7 @@ StringView BfAstNode::ToStringView()
 		return StringView();
 	}
 
-	auto source = GetSourceData();	
+	auto source = GetSourceData();
 	return StringView(source->mSrc + GetSrcStart(), srcLen);
 }
 
@@ -954,6 +954,15 @@ void BfAstNode::ToString(StringImpl& str)
 
 	auto source = GetSourceData();
 	str.Append(source->mSrc + GetSrcStart(), srcLen);	
+}
+
+bool BfAstNode::Equals(const StringImpl& str)
+{
+	int len = mSrcEnd - mSrcStart;
+	if (len != str.mLength)
+		return false;
+	auto source = GetSourceData();
+	return strncmp(str.GetPtr(), source->mSrc + mSrcStart, len) == 0;
 }
 
 //////////////////////////////////////////////////////////////////////////

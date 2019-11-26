@@ -378,6 +378,7 @@ public:
 	BfTypeDef* mInlineAttributeTypeDef;
 	BfTypeDef* mCLinkAttributeTypeDef;
 	BfTypeDef* mCReprAttributeTypeDef;
+	BfTypeDef* mAlignAttributeTypeDef;
 	BfTypeDef* mNoDiscardAttributeTypeDef;
 	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;
 	BfTypeDef* mFriendAttributeTypeDef;

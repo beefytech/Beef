@@ -25,6 +25,7 @@ namespace System
 	    GenericParameter = 0x8000,
 		Invocation   = 0x10000,
 		MemberAccess = 0x20000,
+		Alloc        = 0x40000,
 
 	    All = Assembly | Module | Class | Struct | Enum | Constructor |
 	        Method | Property | Field | StaticField | Interface | Parameter |
@@ -57,7 +58,7 @@ namespace System
 
     public sealed struct AttributeUsageAttribute : Attribute
 	{
-	    internal AttributeTargets mAttributeTarget = AttributeTargets.All;
+	    internal AttributeTargets mAttributeTarget = .All;
 		internal AttributeFlags mAttributeFlags = .None;
 		internal ReflectKind mReflectUser = .None;
 
@@ -93,7 +94,7 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(AttributeTargets.All)]
+	[AttributeUsage(.All)]
 	public struct ReflectAttribute : Attribute
 	{
 	    public this(ReflectKind reflectKind = .All)
@@ -101,13 +102,13 @@ namespace System
 		}
 	}
 
-    [AttributeUsage(AttributeTargets.Method /*1*/ | .Invocation | .Property)]
+    [AttributeUsage(.Method /*1*/ | .Invocation | .Property)]
     public struct InlineAttribute : Attribute
     {
         
     }
 
-	[AttributeUsage(AttributeTargets.Invocation)]
+	[AttributeUsage(.Invocation)]
 	public struct UnboundAttribute : Attribute
 	{
 	    
@@ -125,13 +126,13 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(AttributeTargets.MemberAccess)]
+	[AttributeUsage(.MemberAccess)]
 	public struct FriendAttribute : Attribute
 	{
 	    
 	}
 
-	[AttributeUsage(AttributeTargets.MemberAccess)]
+	[AttributeUsage(.MemberAccess)]
 	public struct SkipAccessCheckAttribute : Attribute
 	{
 	    
@@ -143,13 +144,13 @@ namespace System
 	    
 	}
 
-    [AttributeUsage(AttributeTargets.Method /*2*/ | AttributeTargets.StaticField)]
+    [AttributeUsage(.Method /*2*/ | .StaticField)]
     public struct CLinkAttribute : Attribute
     {
 
 	}
 
-	[AttributeUsage(AttributeTargets.Method /*2*/ | AttributeTargets.StaticField)]
+	[AttributeUsage(.Method /*2*/ | .StaticField)]
 	public struct LinkNameAttribute : Attribute
 	{
 		public this(String linkName)
@@ -158,31 +159,31 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(AttributeTargets.Method | .Delegate | .Function)]
+	[AttributeUsage(.Method | .Delegate | .Function)]
 	public struct StdCallAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Method /*2*/)]
+	[AttributeUsage(.Method /*2*/)]
 	public struct CVarArgsAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Method /*2*/)]
+	[AttributeUsage(.Method /*2*/)]
 	public struct NoReturnAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Method /*2*/)]
+	[AttributeUsage(.Method /*2*/)]
 	public struct SkipCallAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Method /*2*/)]
+	[AttributeUsage(.Method /*2*/)]
 	public struct IntrinsicAttribute : Attribute
 	{
 		public this(String intrinName)
@@ -191,7 +192,7 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct /*2*/)]
+	[AttributeUsage(.Class | .Struct /*2*/)]
 	public struct StaticInitPriorityAttribute : Attribute
 	{
 	    public this(int priority)
@@ -200,7 +201,7 @@ namespace System
 	    }
 	}
 
-	[AttributeUsage(AttributeTargets.Class /*2*/ | AttributeTargets.Struct /*2*/)]
+	[AttributeUsage(.Class /*2*/ | .Struct /*2*/)]
     public struct StaticInitAfterAttribute : Attribute
     {
 		public this()
@@ -214,50 +215,59 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(AttributeTargets.Struct)]
+	[AttributeUsage(.Struct)]
 	public struct ForceAddrAttribute : Attribute
 	{
 
 	}
 
 	/// This attribute is required on constructors that include 'append' allocations.
-	[AttributeUsage(AttributeTargets.Constructor)]
+	[AttributeUsage(.Constructor)]
 	public struct AllowAppendAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+	[AttributeUsage(.Class | .Struct)]
 	public struct PackedAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+	[AttributeUsage(.Class | .Struct | .Alloc)]
+	public struct AlignAttribute : Attribute
+	{
+		public this(int align)
+		{
+
+		}
+	}
+
+	[AttributeUsage(.Class | .Struct)]
 	public struct UnionAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+	[AttributeUsage(.Class | .Struct)]
 	public struct CReprAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+	[AttributeUsage(.Class | .Struct)]
 	public struct OrderedAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Field | .Method /*2*/)]
+	[AttributeUsage(.Field | .Method /*2*/)]
 	public struct NoShowAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(AttributeTargets.Field | .Method /*2*/)]
+	[AttributeUsage(.Field | .Method /*2*/)]
 	public struct HideAttribute : Attribute
 	{
 
@@ -269,7 +279,7 @@ namespace System
 	{
 	}
 
-	[AttributeUsage(AttributeTargets.Method/*, AlwaysIncludeTarget=true*/)]
+	[AttributeUsage(.Method/*, AlwaysIncludeTarget=true*/)]
 	public struct TestAttribute : Attribute
 	{
 		public bool ShouldFail;
@@ -289,7 +299,7 @@ namespace System
 	    
 	}
 
-	[AttributeUsage(AttributeTargets.StaticField | AttributeTargets.Field, .NotInherited)]
+	[AttributeUsage(.StaticField | .Field, .NotInherited)]
 	public struct ThreadStaticAttribute : Attribute
 	{
 		public this()
@@ -321,7 +331,7 @@ namespace System
 
 	/// Generally used as a per-method optimization, [DisableObjectAccessChecks] will avoid the runtime per-object-access
 	/// checks which by default are only applied in debug builds anyway.
-	[AttributeUsage(AttributeTargets.Method/*, AlwaysIncludeTarget=true*/)]
+	[AttributeUsage(.Method/*, AlwaysIncludeTarget=true*/)]
 	public struct DisableObjectAccessChecksAttribute : Attribute
 	{
 	}

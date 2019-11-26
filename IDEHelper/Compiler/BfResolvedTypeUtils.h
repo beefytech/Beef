@@ -1411,6 +1411,7 @@ enum BfAttributeTargets : int32
 	BfAttributeTargets_GenericParameter = 0x8000,
 	BfAttributeTargets_Invocation = 0x10000,
 	BfAttributeTargets_MemberAccess = 0x20000,
+	BfAttributeTargets_Alloc = 0x40000,
 	BfAttributeTargets_All = 0x3FFFF
 };
 
@@ -1879,9 +1880,9 @@ public:
 
 enum BfCaptureType
 {
-	BfCaptureType_Value,
-	BfCaptureType_Reference,
-	BfCaptureType_Copy
+	BfCaptureType_None,
+	BfCaptureType_Copy,
+	BfCaptureType_Reference,	
 };
 
 class BfClosureType : public BfTypeInstance

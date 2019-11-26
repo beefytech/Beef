@@ -1386,7 +1386,10 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				BF_ASSERT(!((BeStructType*)type)->mIsOpaque);
 			}			
-			SetResult(curId, mBeModule->CreateAlloca(type));
+
+			auto allocaInst = mBeModule->CreateAlloca(type);
+			allocaInst->mAlign = type->mAlign;
+			SetResult(curId, allocaInst);		
 		}
 		break;
 	case BfIRCmd_AllocaArray:
@@ -1396,8 +1399,9 @@ void BeIRCodeGen::HandleNextCmd()
 
 			auto allocaInst = mBeModule->AllocInst<BeAllocaInst>();
 			allocaInst->mType = type;
+			allocaInst->mAlign = type->mAlign;			
 			allocaInst->mArraySize = arraySize;
-
+			
 			SetResult(curId, allocaInst);
 		}
 		break;
@@ -1406,8 +1410,10 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(int, alignment);
 			auto inst = BeValueDynCast<BeAllocaInst>(val);
+
+			inst->mAlign = alignment;			
 			//TODO: Implement
-			/*inst->setAlignment(alignment);*/			
+			/*inst->setAlignment(alignment);*/
 		}
 		break;
 	case BfIRCmd_AliasValue:

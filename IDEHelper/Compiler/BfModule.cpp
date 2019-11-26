@@ -7521,7 +7521,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					}
 					if (!isDynAlloc)
 						mBfIRBuilder->ClearDebugLocation(allocaInst);
-					mBfIRBuilder->SetAllocaAlignment(allocaInst, type->mAlign);	
+					mBfIRBuilder->SetAllocaAlignment(allocaInst, allocAlign);	
 					if (!isDynAlloc)
 						mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 					auto typedVal = BfTypedValue(result, type, BfTypedValueKind_Addr);
@@ -7606,7 +7606,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					auto allocaInst = mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(byteType), sizeValue);
 					if (!isDynAlloc)
 						mBfIRBuilder->ClearDebugLocation(allocaInst);
-					mBfIRBuilder->SetAllocaAlignment(allocaInst, arrayType->mAlign);
+					mBfIRBuilder->SetAllocaAlignment(allocaInst, allocAlign);
 					auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);
 					mBfIRBuilder->ClearDebugLocation_Last();
 					if (!isDynAlloc)
@@ -9214,6 +9214,7 @@ static String GetAttributesTargetListString(BfAttributeTargets attrTarget)
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_GenericParameter, resultStr, "generic parameters");	
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_Invocation, resultStr, "invocations");	
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_MemberAccess, resultStr, "member access");
+	AddAttributeTargetName(flagsLeft, BfAttributeTargets_Alloc, resultStr, "allocations");
 	if (resultStr.IsEmpty())
 		return "<nothing>";
 	return resultStr;
@@ -9377,7 +9378,7 @@ void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, Bf
 	}
 }
 
-void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget)
+void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget, bool allowNonConstArgs, BfCaptureInfo* captureInfo)
 {
 	if ((attributesDirective != NULL) && (mCompiler->mResolvePassData != NULL) && 
 		(attributesDirective->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
@@ -9398,6 +9399,26 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 
 	for (; attributesDirective != NULL; attributesDirective = attributesDirective->mNextAttribute)
 	{
+		if (auto tokenNode = BfNodeDynCast<BfTokenNode>(attributesDirective->mAttributeTargetSpecifier))
+		{
+			if (captureInfo == NULL)
+			{
+				Fail("Capture specifiers can only be used in lambda allocations", attributesDirective);
+				continue;
+			}
+
+			BfCaptureInfo::Entry captureEntry;
+			captureEntry.mCaptureType = (tokenNode->mToken == BfToken_Ampersand) ? BfCaptureType_Reference : BfCaptureType_Copy;
+			if (!attributesDirective->mArguments.IsEmpty())
+			{
+				captureEntry.mNameNode = BfNodeDynCast<BfIdentifierNode>(attributesDirective->mArguments[0]);
+				if ((captureEntry.mNameNode != NULL) && (autoComplete != NULL))
+					autoComplete->CheckIdentifier(captureEntry.mNameNode);
+			}
+			captureInfo->mCaptures.Add(captureEntry);
+			continue;
+		}
+
 		BfAutoParentNodeEntry autoParentNodeEntry(this, attributesDirective);
 
 		BfCustomAttribute customAttribute;
@@ -9509,7 +9530,9 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 
 		customAttribute.mType = attrTypeInst;		
 		
-		BfConstResolver constResolver(this);		
+		BfConstResolver constResolver(this);
+		if (allowNonConstArgs)
+			constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowNonConst);
 		
 		bool inPropSet = false;
 		SizedArray<BfResolvedArg, 2> argValues;
@@ -9775,7 +9798,8 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		// Move all those to the constHolder
 		for (auto& ctorArg : customAttribute.mCtorArgs)
 		{
-			CurrentAddToConstHolder(ctorArg);			
+			if (ctorArg.IsConst())
+				CurrentAddToConstHolder(ctorArg);			
 		}
 		
 		if (attributesDirective->mAttributeTargetSpecifier != NULL)
@@ -9835,10 +9859,10 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 	ValidateCustomAttributes(customAttributes, attrTarget);
 }
 
-BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType)
+BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, bool allowNonConstArgs, BfCaptureInfo* captureInfo)
 {
 	BfCustomAttributes* customAttributes = new BfCustomAttributes();
-	GetCustomAttributes(customAttributes, attributesDirective, attrType);
+	GetCustomAttributes(customAttributes, attributesDirective, attrType, allowNonConstArgs, captureInfo);
 	return customAttributes;
 }
 

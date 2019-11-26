@@ -715,6 +715,7 @@ public:
 	X64CPURegister mReg;
 	X64CPURegister mNaturalReg; // From param	
 	BeType* mType;
+	int mAlign;
 	int mFrameOffset; // 0 = 'RBP' (probably first local var or saved RBP), 8 means retAddr
 	bool mRegNumPinned;
 	bool mHasDynLife;
@@ -756,6 +757,7 @@ public:
 public:
 	BeMCVRegInfo()
 	{
+		mAlign = -1;
 		mRegNumPinned = false;		
 		mReg = X64Reg_None;
 		mNaturalReg = X64Reg_None;
@@ -1256,8 +1258,7 @@ public:
 	BeVTrackingList* mCurVRegsInit;
 	BeVTrackingList* mCurVRegsLive;
 	Array<int> mTextRelocs;
-	Array<BeMCSwitchEntry> mSwitchEntries;
-	Array<int> mDeferredHomeSizeOffsets;
+	Array<BeMCSwitchEntry> mSwitchEntries;	
 
 	Dictionary<int, X64CPURegister> mDbgPreferredRegs;
 

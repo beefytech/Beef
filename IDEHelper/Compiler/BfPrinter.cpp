@@ -588,6 +588,35 @@ void BfPrinter::Visit(BfErrorNode* errorNode)
 	VisitChild(errorNode->mRefNode);
 }
 
+void BfPrinter::Visit(BfScopeNode* scopeNode)
+{
+	Visit(scopeNode->ToBase());
+
+	VisitChild(scopeNode->mScopeToken);
+	VisitChild(scopeNode->mColonToken);
+	VisitChild(scopeNode->mTargetNode);
+	if (scopeNode->mAttributes != NULL)
+	{
+		ExpectSpace();
+		VisitChild(scopeNode->mAttributes);
+	}
+}
+
+void BfPrinter::Visit(BfNewNode* newNode)
+{
+	Visit(newNode->ToBase());
+
+	VisitChild(newNode->mNewToken);
+	VisitChild(newNode->mColonToken);
+	VisitChild(newNode->mAllocNode);
+	if (newNode->mAttributes != NULL)
+	{
+		ExpectSpace();
+		VisitChild(newNode->mAttributes);
+	}
+}
+
+
 void BfPrinter::Visit(BfExpression* expr)
 {
 	Visit(expr->ToBase());	
@@ -698,14 +727,19 @@ void BfPrinter::Visit(BfAttributeDirective* attributeDirective)
 			VisitChild(attributeDirective->mAttrOpenToken);
 		}
 	}
-
-	
-
+		
 	if (attributeDirective->mAttributeTargetSpecifier != NULL)
 	{
-		VisitChild(attributeDirective->mAttributeTargetSpecifier->mTargetToken);
-		VisitChild(attributeDirective->mAttributeTargetSpecifier->mColonToken);
-		ExpectSpace();
+		if (auto attributeTargetSpecifier = BfNodeDynCast<BfAttributeTargetSpecifier>(attributeDirective->mAttributeTargetSpecifier))
+		{
+			VisitChild(attributeTargetSpecifier->mTargetToken);
+			VisitChild(attributeTargetSpecifier->mColonToken);
+			ExpectSpace();
+		}
+		else
+		{
+			VisitChild(attributeDirective->mAttributeTargetSpecifier);
+		}
 	}
 	
 	VisitChild(attributeDirective->mAttributeTypeRef);
@@ -1226,13 +1260,7 @@ void BfPrinter::Visit(BfLambdaBindExpression* lambdaBindExpr)
 	Visit(lambdaBindExpr->ToBase());
 
 	VisitChild(lambdaBindExpr->mNewToken);
-	ExpectSpace();
-	if (lambdaBindExpr->mLambdaCapture != NULL)
-	{
-		VisitChild(lambdaBindExpr->mLambdaCapture->mOpenBracket);
-		VisitChild(lambdaBindExpr->mLambdaCapture->mCaptureToken);
-		VisitChild(lambdaBindExpr->mLambdaCapture->mCloseBracket);
-	}
+	ExpectSpace();	
 	VisitChild(lambdaBindExpr->mOpenParen);
 	for (int i = 0; i < (int)lambdaBindExpr->mParams.size(); i++)
 	{

@@ -132,6 +132,7 @@ void BfElementVisitor::Visit(BfScopeNode* scopeNode)
 	VisitChild(scopeNode->mScopeToken);
 	VisitChild(scopeNode->mColonToken);
 	VisitChild(scopeNode->mTargetNode);
+	VisitChild(scopeNode->mAttributes);
 }
 
 void BfElementVisitor::Visit(BfNewNode* newNode)
@@ -141,6 +142,7 @@ void BfElementVisitor::Visit(BfNewNode* newNode)
 	VisitChild(newNode->mNewToken);
 	VisitChild(newNode->mColonToken);
 	VisitChild(newNode->mAllocNode);
+	VisitChild(newNode->mAttributes);
 }
 
 void BfElementVisitor::Visit(BfLabeledBlock* labeledBlock)
@@ -532,12 +534,6 @@ void BfElementVisitor::Visit(BfLambdaBindExpression* lambdaBindExpr)
 	Visit(lambdaBindExpr->ToBase());
 
 	VisitChild(lambdaBindExpr->mNewToken);
-	if (lambdaBindExpr->mLambdaCapture != NULL)
-	{
-		VisitChild(lambdaBindExpr->mLambdaCapture->mOpenBracket);
-		VisitChild(lambdaBindExpr->mLambdaCapture->mCaptureToken);
-		VisitChild(lambdaBindExpr->mLambdaCapture->mCloseBracket);
-	}
 	
 	VisitChild(lambdaBindExpr->mOpenParen);
 	VisitChild(lambdaBindExpr->mCloseParen);

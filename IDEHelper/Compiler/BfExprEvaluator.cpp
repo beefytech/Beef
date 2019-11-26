@@ -2818,6 +2818,11 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 					varSkipCount--;
 				}
 
+				if (varDecl->mNotCaptured)
+				{
+					mModule->Fail("Local variable is not captured", refNode);
+				}
+
 				if ((varSkipCount == 0) && (varDecl != NULL))
 				{
 					if ((closureTypeInst != NULL) && (wantName == "this"))
@@ -9376,7 +9381,7 @@ void BfExprEvaluator::VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration*
 	}
 }
 
-BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lambdaBindExpr)
+BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lambdaBindExpr, BfAllocTarget& allocTarget)
 {
 	auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();
 	BfLambdaInstance* lambdaInstance = NULL;
@@ -9527,8 +9532,11 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		return NULL;
 	}
 
-	if (lambdaBindExpr->mNewToken == NULL)
+	if ((lambdaBindExpr->mNewToken == NULL) || (isFunctionBind))
 	{
+		if ((lambdaBindExpr->mNewToken != NULL) && (isFunctionBind))
+			mModule->Fail("Binds to functions should do not require allocations.", lambdaBindExpr->mNewToken);
+
 		if (lambdaBindExpr->mDtor != NULL)
 		{
 			mModule->Fail("Valueless method reference cannot contain destructor. Consider either removing destructor or using an allocated lambda.", lambdaBindExpr->mDtor->mTildeToken);
@@ -9695,6 +9703,89 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	methodDef->mBody = lambdaBindExpr->mBody;
 	///
 
+	auto varMethodState = methodState.mPrevMethodState;
+	bool hasExplicitCaptureNames = false;	
+
+	for (auto& captureEntry : allocTarget.mCaptureInfo.mCaptures)
+	{
+		if (captureEntry.mNameNode == NULL)
+		{
+			hasExplicitCaptureNames = false;
+			break;
+		}
+		
+		hasExplicitCaptureNames = true;				
+	}
+
+	auto _SetNotCapturedFlag = [&](bool notCaptured)
+	{
+		auto varMethodState = methodState.mPrevMethodState;
+		while (varMethodState != NULL)
+		{
+			for (int localIdx = 0; localIdx < varMethodState->mLocals.size(); localIdx++)
+			{
+				auto localVar = varMethodState->mLocals[localIdx];
+				localVar->mNotCaptured = notCaptured;
+			}
+
+			varMethodState = varMethodState->mPrevMethodState;
+			if (varMethodState == NULL)
+				break;
+			if (varMethodState->mMixinState != NULL)
+				break;
+			if (varMethodState->mClosureState != NULL)
+			{
+				if (!varMethodState->mClosureState->mCapturing)
+					break;
+			}
+		}
+	};
+
+	if (hasExplicitCaptureNames)
+	{
+		_SetNotCapturedFlag(true);
+
+		auto varMethodState = methodState.mPrevMethodState;
+		while (varMethodState != NULL)
+		{
+			for (auto& captureEntry : allocTarget.mCaptureInfo.mCaptures)
+			{
+				if (captureEntry.mNameNode != NULL)
+				{
+					StringT<64> captureName;
+					captureEntry.mNameNode->ToString(captureName);
+					BfLocalVarEntry* entry;
+					if (varMethodState->mLocalVarSet.TryGetWith<StringImpl&>(captureName, &entry))
+					{
+						auto localVar = entry->mLocalVar;
+						while (localVar != NULL)
+						{
+							if (autoComplete != NULL)
+								autoComplete->CheckLocalRef(captureEntry.mNameNode, localVar);
+							if (((mModule->mCurMethodState->mClosureState == NULL) || (mModule->mCurMethodState->mClosureState->mCapturing)) &&
+								(mModule->mCompiler->mResolvePassData != NULL) && (mModule->mCurMethodInstance != NULL))
+								mModule->mCompiler->mResolvePassData->HandleLocalReference(captureEntry.mNameNode, localVar->mNameNode, mModule->mCurTypeInstance->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, localVar->mLocalVarId);
+
+							localVar->mNotCaptured = false;
+							localVar = localVar->mShadowedLocal;
+						}						
+					}
+				}
+			}
+			
+			varMethodState = varMethodState->mPrevMethodState;
+			if (varMethodState == NULL)
+				break;
+			if (varMethodState->mMixinState != NULL)
+				break;
+			if (varMethodState->mClosureState != NULL)
+			{
+				if (!varMethodState->mClosureState->mCapturing)
+					break;
+			}
+		}
+	}
+	
 	BfClosureInstanceInfo* closureInstanceInfo = new BfClosureInstanceInfo();
 
 	auto checkInsertBlock = mModule->mBfIRBuilder->GetInsertBlock();
@@ -9703,6 +9794,9 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	closureState.mClosureInstanceInfo = closureInstanceInfo;
 	
 	VisitLambdaBodies(lambdaBindExpr->mBody, lambdaBindExpr->mDtor);
+
+	if (hasExplicitCaptureNames)	
+		_SetNotCapturedFlag(false);
 
 	// If we ended up being called by a method with a lower captureStartAccessId, propagate that to whoever is calling us, too...
 	if ((methodState.mPrevMethodState->mClosureState != NULL) && (methodState.mPrevMethodState->mClosureState->mCapturing))
@@ -9731,18 +9825,27 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	prevIgnoreWrites.Restore();
 	mModule->mBfIRBuilder->RestoreDebugLocation();
 
-	BfCaptureType captureType = BfCaptureType_Value;
-	if ((lambdaBindExpr->mLambdaCapture != NULL) && (lambdaBindExpr->mLambdaCapture->mCaptureToken != NULL))
+	auto _GetCaptureType = [&](const StringImpl& str)
 	{
-		if (lambdaBindExpr->mLambdaCapture->mCaptureToken->GetToken() == BfToken_Ampersand)
-			captureType = BfCaptureType_Reference;
-		else
-			captureType = BfCaptureType_Copy;
-	}
+		if (allocTarget.mCaptureInfo.mCaptures.IsEmpty())
+			return BfCaptureType_Copy;
+
+		for (auto& captureEntry : allocTarget.mCaptureInfo.mCaptures)
+		{
+			if ((captureEntry.mNameNode == NULL) || (captureEntry.mNameNode->Equals(str)))
+			{
+				captureEntry.mUsed = true;
+				return captureEntry.mCaptureType;
+			}
+		}
+
+		return BfCaptureType_None;
+	};
 
 	Array<BfClosureCapturedEntry> capturedEntries;
 
 	bool copyOuterCaptures = false;
+	//
 	{
 		auto varMethodState = methodState.mPrevMethodState;
 
@@ -9771,6 +9874,11 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 					auto capturedType = outerLocal->mResolvedType;
 					bool captureByRef = false;
 
+					auto captureType = _GetCaptureType(localVar->mName);
+					if (captureType == BfCaptureType_None)
+					{
+						continue;
+					}
 
 					if (!capturedType->IsRef())
 					{
@@ -9823,9 +9931,17 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		}
 	}
 
+	for (auto& captureEntry : allocTarget.mCaptureInfo.mCaptures)
+	{
+		if ((!captureEntry.mUsed) && (captureEntry.mNameNode != NULL))
+			mModule->Warn(0, "Capture specifier not used", captureEntry.mNameNode);
+	}
+
 	for (auto copyField : closureState.mReferencedOuterClosureMembers)
 	{
 		auto fieldDef = copyField->GetFieldDef();
+		auto captureType = _GetCaptureType(fieldDef->mName);
+
 		BfClosureCapturedEntry capturedEntry;
 		capturedEntry.mName = fieldDef->mName;		
 		capturedEntry.mType = copyField->mResolvedType;
@@ -10200,7 +10316,7 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 		return;
 	}
 
-	BfLambdaInstance* lambdaInstance = GetLambdaInstance(lambdaBindExpr);
+	BfLambdaInstance* lambdaInstance = GetLambdaInstance(lambdaBindExpr, allocTarget);
 	if (lambdaInstance == NULL)
 		return;
 	BfTypeInstance* delegateTypeInstance = lambdaInstance->mDelegateTypeInstance;
@@ -11052,7 +11168,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 				arrayValue = BfTypedValue(mModule->AppendAllocFromType(resultType, BfIRValue(), 0, arraySize, (int)dimLengthVals.size(), isRawArrayAlloc, false), ptrType);
 			else
 			{
-				arrayValue = BfTypedValue(mModule->AllocFromType(resultType, allocTarget, BfIRValue(), arraySize, (int)dimLengthVals.size(), allocFlags), ptrType);
+				arrayValue = BfTypedValue(mModule->AllocFromType(resultType, allocTarget, BfIRValue(), arraySize, (int)dimLengthVals.size(), allocFlags, allocTarget.mAlignOverride), ptrType);
 			}
 
 			_HandleInitExprs(arrayValue.mValue, 0, objCreateExpr->mArguments);
@@ -11071,7 +11187,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 			arrayValue = BfTypedValue(mModule->AppendAllocFromType(resultType, BfIRValue(), 0, arraySize, (int)dimLengthVals.size(), isRawArrayAlloc, zeroMemory), arrayType);
 		else
 		{
-			arrayValue = BfTypedValue(mModule->AllocFromType(resultType, allocTarget, BfIRValue(), arraySize, (int)dimLengthVals.size(), allocFlags), arrayType);
+			arrayValue = BfTypedValue(mModule->AllocFromType(resultType, allocTarget, BfIRValue(), arraySize, (int)dimLengthVals.size(), allocFlags, allocTarget.mAlignOverride), arrayType);
 
 			if (isScopeAlloc)
 			{
@@ -11538,6 +11654,7 @@ void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
 BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenNode*& newToken)
 {
 	auto autoComplete = GetAutoComplete();
+	BfAttributeDirective* attributeDirective = NULL;
 
 	BfAllocTarget allocTarget;
 	allocTarget.mRefNode = allocNode;
@@ -11555,6 +11672,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 				if ((scopeNode->mTargetNode == NULL) || (targetIdentifier != NULL))
 					autoComplete->CheckLabel(targetIdentifier, scopeNode->mColonToken);
 			}
+			attributeDirective = scopeNode->mAttributes;
 		}
 		if (auto newNode = BfNodeDynCast<BfNewNode>(allocNode))
 		{
@@ -11568,6 +11686,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 			{
 				allocTarget.mScopedInvocationTarget = scopedInvocationTarget;
 			}
+			attributeDirective = newNode->mAttributes;
 		}
 	}
 	else if (newToken->GetToken() == BfToken_Scope)
@@ -11580,6 +11699,38 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 		if (mModule->mCurMethodState != NULL)
 			allocTarget.mScopeData = &mModule->mCurMethodState->mHeadScope;
 	}
+
+	if (attributeDirective != NULL)
+	{
+		auto customAttrs = mModule->GetCustomAttributes(attributeDirective, BfAttributeTargets_Alloc, true, &allocTarget.mCaptureInfo);
+		if (customAttrs != NULL)
+		{
+			for (auto& attrib : customAttrs->mAttributes)
+			{
+				if (attrib.mType->mTypeDef == mModule->mCompiler->mAlignAttributeTypeDef)
+				{
+					allocTarget.mAlignOverride = 16; // System conservative default
+					
+					if (!attrib.mCtorArgs.IsEmpty())
+					{
+						BfIRConstHolder* constHolder = mModule->mCurTypeInstance->mConstHolder;
+						auto constant = constHolder->GetConstant(attrib.mCtorArgs[0]);
+						if (constant != NULL)
+						{
+							int alignOverride = (int)BF_MAX(1, constant->mInt64);
+							if ((alignOverride & (alignOverride - 1)) == 0)
+								allocTarget.mAlignOverride = alignOverride;
+							else
+								mModule->Fail("Alignment must be a power of 2", attrib.mRef);							
+						}
+					}
+				}
+			}
+
+			delete customAttrs;
+		}
+	}
+
 	return allocTarget;
 }
 

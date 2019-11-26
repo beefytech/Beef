@@ -101,6 +101,8 @@ public:
 
 	virtual void Visit(BfAstNode* bfAstNode) override;
 	virtual void Visit(BfErrorNode* bfErrorNode) override;
+	virtual void Visit(BfScopeNode * scopeNode) override;
+	virtual void Visit(BfNewNode * newNode) override;
 	virtual void Visit(BfExpression* expr) override;
 	virtual void Visit(BfExpressionStatement* exprStmt) override;
 	virtual void Visit(BfAttributedExpression* attribExpr) override;

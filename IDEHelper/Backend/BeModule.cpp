@@ -258,6 +258,9 @@ void BeInliner::Visit(BeAllocaInst* allocaInst)
 	auto destAllocInst = AllocInst(allocaInst);
 	destAllocInst->mType = allocaInst->mType;
 	destAllocInst->mArraySize = Remap(allocaInst->mArraySize);
+	destAllocInst->mAlign = allocaInst->mAlign;
+	destAllocInst->mNoChkStk = allocaInst->mNoChkStk;
+	destAllocInst->mForceMem = allocaInst->mForceMem;
 }
 
 void BeInliner::Visit(BeAliasValueInst* aliasValueInst)
@@ -1525,7 +1528,9 @@ String BeDumpContext::ToString(BeDbgFunction* dbgFunction)
 
 void BeDumpContext::ToString(StringImpl& str, int val)
 {
-	str += StrFormat("%d", val);
+	char iStr[32];
+	sprintf(iStr, "%d", val);
+	str += iStr;
 }
 
 String BeDumpContext::ToString(int val)
@@ -2146,6 +2151,8 @@ String BeModule::ToString(BeFunction* wantFunc)
 							str += ", ";
 							dc.ToString(str, castedInst->mArraySize);
 						}
+						str += ", align ";
+						dc.ToString(str, castedInst->mAlign);
 					}
 					break;
 				DISPLAY_INST1(BeAliasValueInst, "aliasvalue", mPtr);
@@ -2672,6 +2679,9 @@ void BeModule::DoInlining(BeFunction* func)
 								auto destAlloca = mAlloc.Alloc<BeAllocaInst>();
 								destAlloca->mType = allocaInst->mType;
 								destAlloca->mArraySize = allocaInst->mArraySize;
+								destAlloca->mAlign = allocaInst->mAlign;
+								destAlloca->mNoChkStk = allocaInst->mNoChkStk;
+								destAlloca->mForceMem = allocaInst->mForceMem;								
 								destAlloca->mName = allocaInst->mName;
 
 								auto destBlock = func->mBlocks[0];

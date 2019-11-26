@@ -378,7 +378,7 @@ public:
 	BfTypeInstance* VerifyBaseDelegateType(BfTypeInstance* delegateType);	
 	void ConstResolve(BfExpression* expr);
 	void ProcessArrayInitializer(BfTokenNode* openToken, const BfSizedArray<BfExpression*>& values, const BfSizedArray<BfTokenNode*>& commas, BfTokenNode* closeToken, int dimensions, SizedArrayImpl<int64>& dimLengths, int dim, bool& hasFailed);
-	BfLambdaInstance* GetLambdaInstance(BfLambdaBindExpression* lambdaBindExpr);
+	BfLambdaInstance* GetLambdaInstance(BfLambdaBindExpression* lambdaBindExpr, BfAllocTarget& allocTarget);
 	void VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration* fieldDtor);	
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic);	
 	void PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);

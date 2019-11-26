@@ -1022,6 +1022,7 @@ public:
 	String ToString();
 	StringView ToStringView();
 	void ToString(StringImpl& str);
+	bool Equals(const StringImpl& str);
 	void Init(BfParser* bfParser);
 	void Accept(BfStructuralVisitor* bfVisitor);
 	static void ClassAccept(BfAstNode* node, BfStructuralVisitor* bfVisitor) { bfVisitor->Visit(node); }
@@ -1733,6 +1734,7 @@ public:
 	BfTokenNode* mScopeToken;
 	BfTokenNode* mColonToken;
 	BfAstNode* mTargetNode; // . : or identifier
+	BfAttributeDirective* mAttributes;
 };	BF_AST_DECL(BfScopeNode, BfAstNode);
 
 class BfNewNode : public BfAstNode
@@ -1743,6 +1745,7 @@ public:
 	BfTokenNode* mNewToken;
 	BfTokenNode* mColonToken;	
 	BfAstNode* mAllocNode; // Expression or BfScopedInvocationTarget
+	BfAttributeDirective* mAttributes;
 };	BF_AST_DECL(BfNewNode, BfAstNode);
 
 enum BfCommentKind
@@ -1849,7 +1852,7 @@ public:
 
 	ASTREF(BfTokenNode*) mAttrOpenToken; // [ @ ,
 	ASTREF(BfTokenNode*) mAttrCloseToken;
-	ASTREF(BfAttributeTargetSpecifier*) mAttributeTargetSpecifier;
+	ASTREF(BfAstNode*) mAttributeTargetSpecifier;
 
 	ASTREF(BfTypeReference*) mAttributeTypeRef;
 	ASTREF(BfTokenNode*) mCtorOpenParen;
@@ -2534,23 +2537,12 @@ public:
 	BfGenericArgumentsNode* mGenericArgs;
 };	BF_AST_DECL(BfDelegateBindExpression, BfMethodBoundExpression);
 
-class BfLambdaCapture : public BfAstNode
-{
-public:
-	BF_AST_TYPE(BfLambdaCapture, BfAstNode);
-
-	BfTokenNode* mOpenBracket;
-	BfTokenNode* mCloseBracket;
-	BfTokenNode* mCaptureToken;
-};	BF_AST_DECL(BfLambdaCapture, BfAstNode);
-
 class BfLambdaBindExpression : public BfExpression
 {
 public:
 	BF_AST_TYPE(BfLambdaBindExpression, BfExpression);
 
-	BfAstNode* mNewToken;
-	BfLambdaCapture* mLambdaCapture;
+	BfAstNode* mNewToken;	
 	BfTokenNode* mOpenParen;
 	BfTokenNode* mCloseParen;		
 	BfSizedArray<ASTREF(BfIdentifierNode*)> mParams;

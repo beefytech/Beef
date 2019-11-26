@@ -2941,6 +2941,8 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 
 	SizedArray<_ShadowReg, 8> shadowRegs;
 
+	BF_ASSERT(mMaxCallParamCount >= argCount);
+
 	mMaxCallParamCount = BF_MAX(mMaxCallParamCount, argCount);
 	for (int argIdx = args.size() - 1; argIdx >= 0; argIdx--)
 	{
@@ -3651,6 +3653,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 	int vregIdx = (int)mVRegInfo.size();
 	BeMCVRegInfo* vregInfo = mAlloc.Alloc<BeMCVRegInfo>();
 	vregInfo->mType = type;
+	vregInfo->mAlign = type->mAlign;
 	vregInfo->mRefCount = refCount;
 	vregInfo->mForceReg = mustBeReg;
 	mVRegInfo.push_back(vregInfo);
@@ -3661,7 +3664,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 31)
+		if (mcOperand.mVRegIdx == 3)
 		{
 			NOP;
 		}		
@@ -7902,13 +7905,7 @@ void BeMCContext::DoFrameObjPass()
 	//  we need for calls with more than 4 params.  
 	// If we're doing UseBP, we have to allocate these at call time
 	int homeSize = BF_ALIGN(BF_MAX(mMaxCallParamCount, 4) * 8, 16);		
-	for (int homeVRegIdx : mDeferredHomeSizeOffsets)
-	{
-		auto vregInfo = mVRegInfo[homeVRegIdx];
-		BF_ASSERT(vregInfo->mRelOffset.mImmediate == -1);
-		vregInfo->mRelOffset.mImmediate = BF_ALIGN(homeSize, 16);
-	}
-
+	
 	mStackSize = 0;
 
 	if (mUseBP)
@@ -7947,12 +7944,13 @@ void BeMCContext::DoFrameObjPass()
 
 		if ((vregInfo->mRefCount > 0) && (!vregInfo->mIsExpr) && (vregInfo->mReg == X64Reg_None) && (vregInfo->mFrameOffset == INT_MIN))
 		{
-			int align = BF_MAX(vregInfo->mType->mAlign, 1);
+			BF_ASSERT(vregInfo->mAlign != -1);
+			int align = BF_MAX(vregInfo->mAlign, 1);
 			int alignOffset = regStackOffset + 8;
 			int alignedPosition = (mStackSize + alignOffset + (align - 1)) & ~(align - 1);
 			mStackSize = alignedPosition - alignOffset;
 			//vregInfo->mFrameOffset = -mStackSize - regStackOffset - 8;
-			mStackSize += BF_ALIGN(vregInfo->mType->mSize, vregInfo->mType->mAlign);
+			mStackSize += BF_ALIGN(vregInfo->mType->mSize, vregInfo->mAlign);
 			vregInfo->mFrameOffset = -mStackSize - regStackOffset;
 		}
 	}
@@ -8893,6 +8891,7 @@ bool BeMCContext::DoLegalization()
 														auto relVRegInfo = mVRegInfo[relVRegIdx];
 														setInst->mKind = BeMCInstKind_MovSX;
 														relVRegInfo->mType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
+														relVRegInfo->mAlign = relVRegInfo->mType->mAlign;
 														if (debugging)
 															OutputDebugStrF(" Def MovSX\n");
 														isFinalRun = false;
@@ -14693,7 +14692,7 @@ String BeMCContext::ToString(bool showVRegFlags, bool showVRegDetails)
 		{
 			str += "  ";
 			str += ToString(BeMCOperand::FromVReg(vregIdx));
-			str += StrFormat(": size=%d, align=%d, at ", vregInfo->mType->mSize, vregInfo->mType->mAlign);
+			str += StrFormat(": size=%d, align=%d, at ", vregInfo->mType->mSize, vregInfo->mAlign);
 			
 			X64CPURegister reg;
 			int offset;
@@ -14840,7 +14839,9 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?DoResolveConfigString@IDEApp@IDE@bf@@QEAA_NPEAVString@System@3@PEAVOptions@Workspace@23@PEAVProject@23@PEAVOptions@823@UStringView@53@00@Z";
+	mDebugging = function->mName ==
+	//"?TestPrimitives@Nullable@Tests@bf@@SAXXZ"
+		"?TestAlloc@Blurg@bf@@SAXXZ";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
 		//"?Hey@Blurg@bf@@SAXXZ";
@@ -14875,6 +14876,7 @@ void BeMCContext::Generate(BeFunction* function)
 	SizedArray<int, 64> stackSaveVRegs;
 
 	// Scan pass
+	mMaxCallParamCount = 4;
 	for (int blockIdx = 0; blockIdx < (int)function->mBlocks.size(); blockIdx++)
 	{
 		auto beBlock = function->mBlocks[blockIdx];
@@ -14889,7 +14891,8 @@ void BeMCContext::Generate(BeFunction* function)
 			{				
 			case BeAllocaInst::TypeId:
 				{
-					if (!inHeadAlloca)
+					auto castedInst = (BeAllocaInst*)inst;
+					if ((!inHeadAlloca) || (castedInst->mAlign > 16))
 						mUseBP = true;
 				}
 				break;
@@ -14900,6 +14903,12 @@ void BeMCContext::Generate(BeFunction* function)
 				{
 					auto stackVReg = AllocVirtualReg(mNativeIntType);
 					stackSaveVRegs.push_back(stackVReg.mVRegIdx);
+				}
+				break;
+			case BeCallInst::TypeId:
+				{
+					auto castedInst = (BeCallInst*)inst;
+					mMaxCallParamCount = BF_MAX(mMaxCallParamCount, (int)castedInst->mArgs.size());
 				}
 				break;
 			default:
@@ -15360,10 +15369,17 @@ void BeMCContext::Generate(BeFunction* function)
 				}
 				break;
 			case BeAllocaInst::TypeId:
-				{							
+				{			
+					if (mDebugging)
+					{
+						NOP;
+					}
+
+					int homeSize = BF_ALIGN(BF_MAX(mMaxCallParamCount, 4) * 8, 16);
 					auto castedInst = (BeAllocaInst*)inst;
 					auto mcSize = BeMCOperand::FromImmediate(castedInst->mType->mSize);
 					bool isAligned16 = false;
+					int align = castedInst->mAlign;
 					BeType* allocType = castedInst->mType;
 					bool preservedVolatiles = false;
 					bool doPtrCast = false;
@@ -15385,7 +15401,7 @@ void BeMCContext::Generate(BeFunction* function)
 							if (mcSize.mImmediate == 1)
 							{								
 								mcSize = mcArraySize;
-							}							
+							}
 							else
 							{
 								auto mcInst = AllocInst(BeMCInstKind_IMul, mcArraySize, mcSize);
@@ -15395,10 +15411,12 @@ void BeMCContext::Generate(BeFunction* function)
 						}
 					}
 					
-					if (inHeadAlloca)
+					// The stack is 16-byte aligned on entry - we have to manually adjust for any alignment greater than that
+					if ((inHeadAlloca) && (align <= 16))
 					{						
 						result = AllocVirtualReg(allocType);
 						auto vregInfo = mVRegInfo[result.mVRegIdx];
+						vregInfo->mAlign = castedInst->mAlign;
 						vregInfo->mHasDynLife = true;
 						if (castedInst->mForceMem)
 							vregInfo->mForceMem = true;
@@ -15416,6 +15434,7 @@ void BeMCContext::Generate(BeFunction* function)
 							vregInfo->mIsExpr = true;
 							vregInfo->mRelTo = result;
 							vregInfo->mType = resultType;
+							vregInfo->mAlign = resultType->mSize;
 							CreateDefineVReg(ptrResult);
 
 							result = ptrResult;
@@ -15438,6 +15457,8 @@ void BeMCContext::Generate(BeFunction* function)
 							}
 						}
 						
+						int stackAlign = BF_MAX(align, 16);
+
 						BeMCOperand mcFunc;
 						mcFunc.mKind = BeMCOperandKind_SymbolAddr;
 						mcFunc.mSymbolIdx = mCOFFObject->GetSymbolRef("__chkstk")->mIdx;						
@@ -15449,7 +15470,7 @@ void BeMCContext::Generate(BeFunction* function)
 						}
 
 						if ((mcSize.IsImmediate()) && (!preservedVolatiles) && (!needsChkStk))
-						{
+						{							
 							AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), mcSize);
 						}
 						else
@@ -15482,7 +15503,7 @@ void BeMCContext::Generate(BeFunction* function)
 									//  and BOOM.  We rely on the front-end to tell us when we can omit it.
 								}
 								else if (!isAligned16)
-								{
+								{																		
 									AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), mcSize);
 									AllocInst(BeMCInstKind_Add, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromImmediate(0xF));
 									AllocInst(BeMCInstKind_And, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromImmediate(~0xF));
@@ -15493,8 +15514,7 @@ void BeMCContext::Generate(BeFunction* function)
 									AllocInst(BeMCInstKind_Call, mcFunc);
 								}
 
-								AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), BeMCOperand::FromReg(X64Reg_RAX));
-
+								AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), BeMCOperand::FromReg(X64Reg_RAX));								
 								if (doFastChkStk)
 								{									
 									AllocInst(BeMCInstKind_FastCheckStack, BeMCOperand::FromReg(X64Reg_RSP));
@@ -15514,8 +15534,7 @@ void BeMCContext::Generate(BeFunction* function)
 							auto vregInfo = mVRegInfo[ptrValue.mVRegIdx];
 							vregInfo->mIsExpr = true;
 							vregInfo->mRelTo = BeMCOperand::FromReg(X64Reg_RSP);
-							vregInfo->mRelOffset = BeMCOperand::FromImmediate(-1);
-							mDeferredHomeSizeOffsets.Add(ptrValue.mVRegIdx);							
+							vregInfo->mRelOffset = BeMCOperand::FromImmediate(homeSize);
 							CreateDefineVReg(ptrValue);
 						}
 						else
@@ -15529,6 +15548,14 @@ void BeMCContext::Generate(BeFunction* function)
 						CreateDefineVReg(result);
 
 						AllocInst(BeMCInstKind_Mov, result, ptrValue);					
+						
+						if (stackAlign > 16)
+						{
+							// We have to align after everything - note that we always have to keep the 'homeSize' space available from RSP for calls,
+							//  so the ANDing for alignment must be done here
+							AllocInst(BeMCInstKind_And, result, BeMCOperand::FromImmediate(~(stackAlign - 1)));
+							AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), BeMCOperand::FromImmediate(stackAlign - 16));
+						}
 
 						BF_ASSERT(mUseBP);						
 					}
@@ -16037,6 +16064,7 @@ void BeMCContext::Generate(BeFunction* function)
 									auto vregInfo = GetVRegInfo(castedTarget);
 									vregInfo->mMustExist = true;
 									vregInfo->mType = valType;
+									vregInfo->mAlign = valType->mAlign;
 									vregInfo->mIsExpr = true;
 									vregInfo->mRelTo = mcTarget;
 									CreateDefineVReg(castedTarget);
