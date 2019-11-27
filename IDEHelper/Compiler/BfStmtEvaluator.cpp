@@ -2276,7 +2276,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 BfTypedValue BfModule::TryCaseTupleMatch(BfTypedValue tupleVal, BfTupleExpression* tupleExpr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, bool& hadConditional, bool clearOutOnMismatch)
 {
 	if (!tupleVal.mType->IsTuple())
-		return false;
+		return BfTypedValue();
 
 	auto tupleType = (BfTupleType*)tupleVal.mType;
 
