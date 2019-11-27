@@ -2273,6 +2273,168 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 	}
 }
 
+BfTypedValue BfModule::TryCaseTupleMatch(BfTypedValue tupleVal, BfTupleExpression* tupleExpr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, bool& hadConditional, bool clearOutOnMismatch)
+{
+	if (!tupleVal.mType->IsTuple())
+		return false;
+
+	auto tupleType = (BfTupleType*)tupleVal.mType;
+
+	BfAstNode* tooFewRef = tupleExpr->mCloseParen;
+	if ((tooFewRef == NULL) && (!tupleExpr->mCommas.IsEmpty()))
+		tooFewRef = tupleExpr->mCommas[tupleExpr->mCommas.size() - 1];
+	else if (tooFewRef == NULL)
+		tooFewRef = tupleExpr->mOpenParen;
+
+	///
+
+	auto autoComplete = mCompiler->GetAutoComplete();
+
+	bool wasCapturingMethodInfo = false;
+	if (autoComplete != NULL)
+	{
+		wasCapturingMethodInfo = autoComplete->mIsCapturingMethodMatchInfo;
+		autoComplete->CheckInvocation(tupleExpr, tupleExpr->mOpenParen, tupleExpr->mCloseParen, tupleExpr->mCommas);
+
+		if (autoComplete->mIsCapturingMethodMatchInfo)
+		{
+			autoComplete->mMethodMatchInfo->mInstanceList.Clear();
+
+			auto methodMatchInfo = autoComplete->mMethodMatchInfo;
+
+// 			auto methodDef = tupleType->mTypeDef->mMethods[0];
+// 
+// 			BfAutoComplete::MethodMatchEntry methodMatchEntry;
+// 			methodMatchEntry.mMethodDef = methodDef;
+// 			methodMatchEntry.mTypeInstance = tupleType;
+// 			methodMatchEntry.mCurMethodInstance = mCurMethodInstance;
+// 			//methodMatchEntry.mPayloadEnumField = fieldInstance;
+			//autoComplete->mMethodMatchInfo->mInstanceList.push_back(methodMatchEntry);
+
+			methodMatchInfo->mBestIdx = 0;
+			methodMatchInfo->mMostParamsMatched = 0;
+
+			int cursorIdx = tupleExpr->GetParser()->mCursorIdx;
+			if ((tupleExpr->mCloseParen == NULL) || (cursorIdx <= tupleExpr->mCloseParen->GetSrcStart()))
+			{
+				int paramIdx = 0;
+				for (int commaIdx = 0; commaIdx < (int)tupleExpr->mCommas.size(); commaIdx++)
+				{
+					auto commaNode = tupleExpr->mCommas[commaIdx];
+					if ((commaNode != NULL) && (cursorIdx >= commaNode->GetSrcStart()))
+						paramIdx = commaIdx + 1;
+				}
+
+				bool isEmpty = true;
+
+				if (paramIdx < (int)tupleExpr->mValues.size())
+				{
+					auto paramNode = tupleExpr->mValues[paramIdx];
+					if (paramNode != NULL)
+						isEmpty = false;
+				}
+
+				if (isEmpty)
+				{
+					if (paramIdx < (int)tupleType->mFieldInstances.size())
+					{
+						auto fieldDef = tupleType->mFieldInstances[paramIdx].GetFieldDef();
+						String insertStr;
+						if (fieldDef->IsUnnamedTupleField())
+							insertStr = "p";
+						insertStr += fieldDef->mName;
+
+						insertStr.Insert(0, "let ");
+						autoComplete->mEntriesSet.Clear();
+						autoComplete->AddEntry(AutoCompleteEntry("paramName", insertStr));
+						autoComplete->mInsertStartIdx = cursorIdx;
+						autoComplete->mInsertEndIdx = cursorIdx;
+					}
+				}
+			}
+		}
+	}
+
+	defer
+	(
+		if (autoComplete != NULL)
+			autoComplete->mIsCapturingMethodMatchInfo = (wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo);
+	);
+
+	///
+
+	//BfIRValue phiVal;
+	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
+	//phiVal = mBfIRBuilder->CreatePhi(mBfIRBuilder->MapType(boolType), 2);
+
+	auto startBlock = mBfIRBuilder->GetInsertBlock();
+	//auto dscrType = enumType->GetDiscriminatorType();
+	//BfIRValue eqResult = mBfIRBuilder->CreateCmpEQ(tagVal.mValue, mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagId));
+
+	BfIRBlock falseBlock;
+	BfIRBlock doneBlock;
+	if (notEqBlock != NULL)
+		doneBlock = *notEqBlock;
+	else
+		doneBlock = mBfIRBuilder->CreateBlock("caseDone", false);
+
+	if (clearOutOnMismatch)
+	{
+		falseBlock = mBfIRBuilder->CreateBlock("caseNotEq", false);
+		mBfIRBuilder->AddBlock(falseBlock);
+	}
+
+	BfIRBlock matchedBlock = mBfIRBuilder->CreateBlock("caseMatch", false);
+	if (matchBlock != NULL)
+		*matchBlock = matchedBlock;
+	mBfIRBuilder->CreateBr(matchedBlock);
+	mBfIRBuilder->AddBlock(matchedBlock);
+
+	mBfIRBuilder->SetInsertPoint(doneBlock);
+	BfIRValue phiVal;
+	if (eqBlock == NULL)
+		phiVal = mBfIRBuilder->CreatePhi(mBfIRBuilder->MapType(boolType), 2);
+	if (phiVal)
+	{
+		auto falseVal = mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0);
+
+		if (falseBlock)
+			mBfIRBuilder->AddPhiIncoming(phiVal, falseVal, falseBlock);
+// 		else
+// 			mBfIRBuilder->AddPhiIncoming(phiVal, falseVal, startBlock);
+	}
+
+	mBfIRBuilder->SetInsertPoint(matchedBlock);
+
+	HandleCaseEnumMatch_Tuple(tupleVal, tupleExpr->mValues, tooFewRef, falseBlock ? BfIRValue() : phiVal, matchedBlock, falseBlock ? falseBlock : doneBlock, hadConditional, clearOutOnMismatch);
+	
+	if (phiVal)
+	{
+		auto trueVal = mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1);
+		mBfIRBuilder->AddPhiIncoming(phiVal, trueVal, matchedBlock);
+	}
+
+	if (eqBlock != NULL)
+		mBfIRBuilder->CreateBr(*eqBlock);
+	else
+		mBfIRBuilder->CreateBr(doneBlock);
+
+	if (falseBlock)
+	{
+		mBfIRBuilder->SetInsertPoint(falseBlock);
+		mBfIRBuilder->CreateBr(doneBlock);
+		//mBfIRBuilder->AddPhiIncoming(phiVal, mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0), falseBlock);
+	}
+
+	mBfIRBuilder->AddBlock(doneBlock);
+	mBfIRBuilder->SetInsertPoint(doneBlock);
+
+	if (phiVal)
+		return BfTypedValue(phiVal, boolType);
+	else
+		return GetDefaultTypedValue(boolType);
+}
+
 BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVal, BfExpression* expr, BfIRBlock* eqBlock, BfIRBlock* notEqBlock, BfIRBlock* matchBlock, int& tagId, bool& hadConditional, bool clearOutOnMismatch)
 {
 	auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(expr);
@@ -2393,7 +2555,7 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			mBfIRBuilder->CreateCondBr(eqResult, matchedBlock, falseBlock ? falseBlock : doneBlock);
 			
 			mBfIRBuilder->AddBlock(matchedBlock);
-			
+						
 			mBfIRBuilder->SetInsertPoint(doneBlock);
 			BfIRValue phiVal;
 			if (eqBlock == NULL)
@@ -2409,7 +2571,7 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			}
 
 			mBfIRBuilder->SetInsertPoint(matchedBlock);
-			
+						
 			BfTypedValue tupleVal;
 			if (!enumVal.IsAddr())
 			{
@@ -2430,6 +2592,8 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 				else
 					tupleVal = GetDefaultTypedValue(tupleType);
 			}
+
+			////
 
 			BfAstNode* tooFewRef = invocationExpr->mCloseParen;
 			if ((tooFewRef == NULL) && (!invocationExpr->mCommas.IsEmpty()))
@@ -2512,6 +2676,8 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			///
 
 			HandleCaseEnumMatch_Tuple(tupleVal, invocationExpr->mArguments, tooFewRef, falseBlock ? BfIRValue() : phiVal, matchedBlock, falseBlock ? falseBlock : doneBlock, hadConditional, clearOutOnMismatch);
+
+			///////
 
 			if (phiVal)
 			{
@@ -4072,6 +4238,21 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				{
 					handled = true;
 					eqResult = eqTypedResult.mValue;					
+				}
+			}
+			else if (auto tupleExpr = BfNodeDynCast<BfTupleExpression>(caseExpr))
+			{
+				notEqBB = mBfIRBuilder->CreateBlock(StrFormat("switch.notEq.%d", blockIdx), false);
+
+				BfIRBlock matchBlock;
+				BfTypedValue eqTypedResult = TryCaseTupleMatch(switchValue, tupleExpr, &caseBlock, &notEqBB, &matchBlock, hadConditional, false);
+				if (hadConditional)
+					hadCondCase = true;
+				if (eqTypedResult)
+				{
+					mayHaveMatch = true;
+					handled = true;
+					eqResult = eqTypedResult.mValue;
 				}
 			}
 

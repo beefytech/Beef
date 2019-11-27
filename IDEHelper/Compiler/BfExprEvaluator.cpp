@@ -2396,7 +2396,11 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 		}
 	}
 
-	if ((caseValAddr) && (caseValAddr.mType->IsPayloadEnum()))
+	bool isPayloadEnum = caseValAddr.mType->IsPayloadEnum();
+	auto tupleExpr = BfNodeDynCast<BfTupleExpression>(caseExpr->mCaseExpression);
+
+	if ((caseValAddr) && 
+		((isPayloadEnum) || (tupleExpr != NULL)))
 	{	
 		bool hasVariable = false;
 		bool hasOut = false;
@@ -2429,12 +2433,19 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 		if (hasOut)
 			clearOutOnMismatch = !CheckVariableDeclaration(caseExpr, true, true, true);
 
-		int dscrDataIdx;
-		auto dscrType = caseValAddr.mType->ToTypeInstance()->GetDiscriminatorType(&dscrDataIdx);
-		auto enumTagVal = mModule->LoadValue(mModule->ExtractValue(caseValAddr, NULL, 2));
-		int uncondTagId = -1;
 		bool hadConditional = false;
-		mResult = mModule->TryCaseEnumMatch(caseValAddr, enumTagVal, caseExpr->mCaseExpression, NULL, NULL, NULL, uncondTagId, hadConditional, clearOutOnMismatch);
+		if (isPayloadEnum)
+		{
+			int dscrDataIdx;
+			auto dscrType = caseValAddr.mType->ToTypeInstance()->GetDiscriminatorType(&dscrDataIdx);
+			auto enumTagVal = mModule->LoadValue(mModule->ExtractValue(caseValAddr, NULL, 2));
+			int uncondTagId = -1;			
+			mResult = mModule->TryCaseEnumMatch(caseValAddr, enumTagVal, caseExpr->mCaseExpression, NULL, NULL, NULL, uncondTagId, hadConditional, clearOutOnMismatch);
+		}
+		else
+		{
+			mResult = mModule->TryCaseTupleMatch(caseValAddr, tupleExpr, NULL, NULL, NULL, hadConditional, clearOutOnMismatch);
+		}
 		
 		if (mResult)
 			return;
