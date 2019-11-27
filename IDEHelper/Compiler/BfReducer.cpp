@@ -367,6 +367,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 	bool hadTupleComma = false;
 	bool hadIdentifier = false;
 	bool foundSuccessToken = false;
+	bool hadUnexpectedIdentifier = false;
 	BfTokenNode* lastToken = NULL;
 	//while (checkNode != NULL)
 
@@ -423,6 +424,12 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 						(successToken == BfToken_LBracket))
 					{
 						success = (chevronDepth == 0) && (bracketDepth == 0) && (parenDepth == 0);
+					}
+
+					if ((success) || (doEnding))
+					{
+						if ((!hadTupleComma) && (hadUnexpectedIdentifier)) // Looked like a tuple but wasn't
+							return false;
 					}
 
 					if (success)
@@ -811,13 +818,17 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 			// Identifier is always allowed in tuple (parenDepth == 0), because it's potentially the field name
 			//  (successToken == BfToken_RParen) infers we are already checking inside parentheses, such as
 			//  when we see a potential cast expression
-			if ((!identifierExpected) && (parenDepth == 0) && (successToken != BfToken_RParen))
+			if (!identifierExpected)
 			{
-				if (outEndNode != NULL)
-					*outEndNode = checkIdx;
-				if (successToken == BfToken_None)
-					return chevronDepth == 0;
-				return false;
+				if ((parenDepth == 0) && (successToken != BfToken_RParen))
+				{
+					if (outEndNode != NULL)
+						*outEndNode = checkIdx;
+					if (successToken == BfToken_None)
+						return chevronDepth == 0;
+					return false;
+				}
+				hadUnexpectedIdentifier = true;
 			}
 
 			hadIdentifier = true;
@@ -847,6 +858,8 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 	}
 	if (outEndNode != NULL)
 		*outEndNode = checkIdx;
+	if ((!hadTupleComma) && (hadUnexpectedIdentifier)) // Looked like a tuple but wasn't
+		return false;
 	return (hadIdentifier) && (chevronDepth == 0) && (bracketDepth == 0) && (parenDepth == 0) && ((successToken == BfToken_None) || (foundSuccessToken));
 }
 

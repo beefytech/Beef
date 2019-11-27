@@ -15,7 +15,11 @@ namespace System
 		void Print(String outString);
 	}
 
+#if BF_LARGE_COLLECTIONS
+	typealias int_cosize = int64;
+#else
 	typealias int_cosize = int32;
+#endif
 
 	[AlwaysInclude]
     static class CompilerSettings

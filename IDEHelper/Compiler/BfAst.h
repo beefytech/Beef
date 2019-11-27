@@ -1000,6 +1000,7 @@ public:
 		//mParent = NULL;
 		mTriviaStart = -1;
 		mSrcStart = 0x7FFFFFFF;
+		mSrcEnd = 0;
 		//mSrcEnd = 0;
 #endif
 	}

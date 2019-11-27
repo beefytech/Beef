@@ -143,22 +143,67 @@ struct Blurg
 		return 0;
 	}
 
+	static mixin ScopedAlloc(int size, int align)
+	{
+		//(void*)scope:mixin [Align(align)] uint8[size]* { ? }
+	}
+
+	public static void TestAlloc()
+	{
+		int i = 1;
+		if (i == 1)
+		{
+			int size = 128;
+			scope:: int[size]*;
+		}
+	}
+
+	struct StructA
+	{
+		public int[10] mA;
+	}
+
+	enum EnumA
+	{
+		case None;
+		case A(StructA sa);
+	}
+
+	enum EnumB
+	{
+		case A;
+		case B(int a, int b);
+	}
+
 	public static int32 Hey()
 	{
-		TypeCode tc = .Boolean;
-		//int h = GetHash(tc);
+		//int_test val = 123;
 
-		var val = tc.Underlying;
-		var valRef = ref tc.UnderlyingRef;
+		(int, int) tup = (1, 3);
 
-		let maxVal = typeof(TypeCode).MaxValue;
+		switch (tup)
+		{
+		case (1, var ref a):
+			a++;
+			PrintF("A\n");
+		default:
+			PrintF("B\n");
+		}
 
-		int a = 100;
+		
+		if (tup case (1, var ref aa))
+		{
+			aa += 100;
+		}
 
-		String str = new:gCRTAlloc String(a);
+		/*EnumB eb = .B(1, 2);
 
-		delete:gCRTAlloc str;
+		if (eb case .B(1, var ref bb))
+		{
 
+		}*/
+		
+		
 
 		return 123;
 	}
