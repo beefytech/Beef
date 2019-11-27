@@ -15453,6 +15453,18 @@ void BeMCContext::Generate(BeFunction* function)
 									// If we're clearing out this memory immediately after allocation then we don't
 									//  need to do stack probing - the memset will ensure stack pages are committed
 									needsChkStk = false;
+
+									if (mcSize.IsImmediate())
+									{
+										if (auto sizeConst = BeValueDynCast<BeConstant>(memSetInstr->mSize))
+										{
+											if (sizeConst->mInt64 < mcSize.mImmediate)
+											{
+												// We haven't actually cleared out everything so we still need to chkStk
+												needsChkStk = true;
+											}
+										}
+									}
 								}
 							}
 						}
