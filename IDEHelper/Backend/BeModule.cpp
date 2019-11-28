@@ -443,10 +443,14 @@ void BeConstant::GetData(Array<uint8>& data)
 		for (int i = 0; i < type->mSize; i++)
 			data.push_back(0); // Aggregate
 	}
-	else
+	else if (type->mTypeCode == BeTypeCode_Float)
 	{
-		for (int i = 0; i < type->mSize; i++)
-			data.push_back((&mUInt8)[i]);
+		float f = mDouble;
+		data.Insert(data.mSize, (uint8*)&f, sizeof(float));
+	}
+	else
+	{		
+		data.Insert(data.mSize, &mUInt8, type->mSize);
 	}
 }
 
