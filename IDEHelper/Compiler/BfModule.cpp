@@ -2567,7 +2567,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 		}
 	}
 
-	if ((!isWhileSpecializing) && ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType())))
+	if ((!isWhileSpecializing) && (mCurTypeInstance != NULL) && ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType())))
 	{		
 		errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
 		isWhileSpecializing = true;
