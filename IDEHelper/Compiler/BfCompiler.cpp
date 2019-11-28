@@ -382,6 +382,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mCReprAttributeTypeDef = NULL;
 	mAlignAttributeTypeDef = NULL;
 	mNoDiscardAttributeTypeDef = NULL;
+	mDisableChecksAttributeTypeDef = NULL;
 	mDisableObjectAccessChecksAttributeTypeDef = NULL;
 	mDbgRawAllocDataTypeDef = NULL;
 	mDeferredCallTypeDef = NULL;
@@ -5835,6 +5836,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mCReprAttributeTypeDef = _GetRequiredType("System.CReprAttribute");
 	mAlignAttributeTypeDef = _GetRequiredType("System.AlignAttribute");
 	mNoDiscardAttributeTypeDef = _GetRequiredType("System.NoDiscardAttribute");
+	mDisableChecksAttributeTypeDef = _GetRequiredType("System.DisableChecksAttribute");
 	mDisableObjectAccessChecksAttributeTypeDef = _GetRequiredType("System.DisableObjectAccessChecksAttribute");
 	mDbgRawAllocDataTypeDef = _GetRequiredType("System.DbgRawAllocData");
 	mDeferredCallTypeDef = _GetRequiredType("System.DeferredCall");

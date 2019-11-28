@@ -2396,7 +2396,7 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 		}
 	}
 
-	bool isPayloadEnum = caseValAddr.mType->IsPayloadEnum();
+	bool isPayloadEnum = (caseValAddr.mType != NULL) && (caseValAddr.mType->IsPayloadEnum());
 	auto tupleExpr = BfNodeDynCast<BfTupleExpression>(caseExpr->mCaseExpression);
 
 	if ((caseValAddr) && 
@@ -5171,8 +5171,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		}
 
 		if ((argValue) && (arg != NULL))
-		{				
-			argValue = mModule->Cast(arg, argValue, wantType);
+		{	
+			//
+			{
+				SetAndRestoreValue<BfScopeData*> prevScopeData(mModule->mCurMethodState->mOverrideScope, boxScopeData);
+				argValue = mModule->Cast(arg, argValue, wantType);
+			}
+
 			if (!argValue)
 			{
 				failed = true;				
@@ -7367,9 +7372,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 				prevDef = mPropDef;
 				prevTarget = mPropTarget;
 			}
-		}
-		/*if ((mResult) || (mPropDef != NULL))
-		break;*/
+		}		
 	}
 
 	if (mPropDef != NULL)
@@ -13738,72 +13741,100 @@ void BfExprEvaluator::CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance
 BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericType)
 {
 	if ((!mResult) && (mPropDef != NULL))
-	{		
-		BfMethodDef* matchedMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind);
-		if (matchedMethod == NULL)
+	{	
+		bool handled = false;
+		if (mPropTarget.mType->IsGenericTypeInstance())
 		{
-			mModule->Fail("Property has no getter", mPropSrc);
-			return mResult;
-		}
-
-		auto methodInstance = GetPropertyMethodInstance(matchedMethod);
-		if (methodInstance.mMethodInstance == NULL)
-			return mResult;
-		if (!mModule->mBfIRBuilder->mIgnoreWrites)
-		{
-			BF_ASSERT(!methodInstance.mFunc.IsFake());
-		}				
-
-		if (mPropSrc != NULL)
-			mModule->UpdateExprSrcPos(mPropSrc);
-		
-		CheckPropFail(matchedMethod, methodInstance.mMethodInstance);
-		PerformCallChecks(methodInstance.mMethodInstance, mPropSrc);
-
-		if (methodInstance.mMethodInstance->IsSkipCall())
-		{
-			mResult = mModule->GetDefaultTypedValue(methodInstance.mMethodInstance->mReturnType);			
-		}
-		else
-		{
-			SizedArray<BfIRValue, 4> args;
-			if (!matchedMethod->mIsStatic)
-			{
-				if ((mPropDefBypassVirtual) && (mPropTarget.mType != methodInstance.mMethodInstance->GetOwner()))
-					mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, methodInstance.mMethodInstance->GetOwner());
-
-				mModule->EmitObjectAccessCheck(mPropTarget);
-				PushThis(mPropSrc, mPropTarget, methodInstance.mMethodInstance, args);
-			}
-
-			bool failed = false;
-			for (int paramIdx = 0; paramIdx < (int)mIndexerValues.size(); paramIdx++)
-			{
-				auto val = mModule->Cast(mPropSrc, mIndexerValues[paramIdx].mTypedValue, methodInstance.mMethodInstance->GetParamType(paramIdx));
-				if (!val)				
-					failed = true;									
-				else
-					PushArg(val, args);
-			}
-			
-			if (mPropDefBypassVirtual)
-			{
-				auto methodDef = methodInstance.mMethodInstance->mMethodDef;
-				if ((methodDef->mIsAbstract) && (mPropDefBypassVirtual))
+			auto genericTypeInst = (BfGenericTypeInstance*)mPropTarget.mType;
+			if (genericTypeInst->mTypeDef == mModule->mCompiler->mSizedArrayTypeDef)
+			{				
+				if (mPropDef->mName == "Count")
 				{
-					mModule->Fail(StrFormat("Abstract base property method '%s' cannot be invoked", mModule->MethodToString(methodInstance.mMethodInstance).c_str()), mPropSrc);
+					auto sizedType = genericTypeInst->mTypeGenericArguments[1];
+					if (sizedType->IsConstExprValue())
+					{
+						auto constExprType = (BfConstExprValueType*)sizedType;						
+						mResult = BfTypedValue(mModule->GetConstValue(constExprType->mValue.mInt64), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+						handled = true;						
+					}
+					else
+					{
+						BF_ASSERT(mModule->mCurMethodInstance->mIsUnspecialized);
+						mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(BfTypeCode_IntPtr), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+						handled = true;
+					}
 				}
 			}
-			
-			if (failed)
-				mResult = mModule->GetDefaultTypedValue(methodInstance.mMethodInstance->mReturnType);
-			else
-				mResult = CreateCall(methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
-			if (mResult.mType != NULL)
+		}
+
+		if (!handled)
+		{
+			BfMethodDef* matchedMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind);
+			if (matchedMethod == NULL)
 			{
-				if ((mResult.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))
-					mModule->Fail("Property type reference failed to resolve", mPropSrc);
-				BF_ASSERT(!mResult.mType->IsRef());
+				mModule->Fail("Property has no getter", mPropSrc);
+				return mResult;
+			}
+
+			auto methodInstance = GetPropertyMethodInstance(matchedMethod);
+			if (methodInstance.mMethodInstance == NULL)
+				return mResult;
+			if (!mModule->mBfIRBuilder->mIgnoreWrites)
+			{
+				BF_ASSERT(!methodInstance.mFunc.IsFake());
+			}
+
+			if (mPropSrc != NULL)
+				mModule->UpdateExprSrcPos(mPropSrc);
+
+			CheckPropFail(matchedMethod, methodInstance.mMethodInstance);
+			PerformCallChecks(methodInstance.mMethodInstance, mPropSrc);
+
+			if (methodInstance.mMethodInstance->IsSkipCall())
+			{
+				mResult = mModule->GetDefaultTypedValue(methodInstance.mMethodInstance->mReturnType);
+			}
+			else
+			{
+				SizedArray<BfIRValue, 4> args;
+				if (!matchedMethod->mIsStatic)
+				{
+					if ((mPropDefBypassVirtual) && (mPropTarget.mType != methodInstance.mMethodInstance->GetOwner()))
+						mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, methodInstance.mMethodInstance->GetOwner());
+
+					mModule->EmitObjectAccessCheck(mPropTarget);
+					PushThis(mPropSrc, mPropTarget, methodInstance.mMethodInstance, args);
+				}
+
+				bool failed = false;
+				for (int paramIdx = 0; paramIdx < (int)mIndexerValues.size(); paramIdx++)
+				{
+					auto val = mModule->Cast(mPropSrc, mIndexerValues[paramIdx].mTypedValue, methodInstance.mMethodInstance->GetParamType(paramIdx));
+					if (!val)
+						failed = true;
+					else
+						PushArg(val, args);
+				}
+
+				if (mPropDefBypassVirtual)
+				{
+					auto methodDef = methodInstance.mMethodInstance->mMethodDef;
+					if ((methodDef->mIsAbstract) && (mPropDefBypassVirtual))
+					{
+						mModule->Fail(StrFormat("Abstract base property method '%s' cannot be invoked", mModule->MethodToString(methodInstance.mMethodInstance).c_str()), mPropSrc);
+					}
+				}
+
+				if (failed)
+					mResult = mModule->GetDefaultTypedValue(methodInstance.mMethodInstance->mReturnType);
+				else
+					mResult = CreateCall(methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
+				if (mResult.mType != NULL)
+				{
+					if ((mResult.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))
+						mModule->Fail("Property type reference failed to resolve", mPropSrc);
+					BF_ASSERT(!mResult.mType->IsRef());
+				}
 			}
 		}
 		mPropDef = NULL;
@@ -15838,6 +15869,10 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		return;
 	}	
 
+	bool wantsChecks = checkedKind == BfCheckedKind_Checked;
+	if (checkedKind == BfCheckedKind_NotSet)
+		wantsChecks = mModule->GetDefaultCheckedKind() == BfCheckedKind_Checked;	
+
 	//target.mType = mModule->ResolveGenericType(target.mType);
 	if (target.mType->IsVar())
 	{
@@ -15914,7 +15949,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				return;
 			}
 		}
-		else if (mModule->HasCompiledOutput())
+		else if ((mModule->HasCompiledOutput()) && (wantsChecks))
 		{
 			if (checkedKind == BfCheckedKind_NotSet)
 				checkedKind = mModule->GetDefaultCheckedKind();

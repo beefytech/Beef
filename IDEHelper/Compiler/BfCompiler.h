@@ -380,6 +380,7 @@ public:
 	BfTypeDef* mCReprAttributeTypeDef;
 	BfTypeDef* mAlignAttributeTypeDef;
 	BfTypeDef* mNoDiscardAttributeTypeDef;
+	BfTypeDef* mDisableChecksAttributeTypeDef;
 	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;
 	BfTypeDef* mFriendAttributeTypeDef;
 	BfTypeDef* mCheckedAttributeTypeDef;

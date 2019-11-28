@@ -2155,8 +2155,8 @@ public:
 
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
-	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
-	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedTypeVariation(); }
+	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType() || mElementCountSource->IsUnspecializedType(); }
+	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedTypeVariation() || mElementCountSource->IsUnspecializedTypeVariation(); }
 	virtual bool CanBeValuelessType() override { return true; }	
 	// Leave the default "zero sized" definition
 	//virtual bool IsValuelessType()  override { return mElementType->IsValuelessType(); }

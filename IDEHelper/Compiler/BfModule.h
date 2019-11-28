@@ -899,6 +899,7 @@ public:
 	int mBlockNestLevel; // 0 = top level
 	bool mIsEmbedded; // Is an embedded statement (ie: if () stmt) not wrapped in a block
 	bool mIgnoreObjectAccessCheck;	
+	bool mDisableChecks;
 	BfMixinState* mMixinState;
 	BfClosureState* mClosureState;
 	BfDeferredCallEmitState* mDeferredCallEmitState;
@@ -910,6 +911,7 @@ public:
 	BfScopeData mHeadScope;
 	BfScopeData* mCurScope;
 	BfScopeData* mTailScope; // Usually equals mCurScope
+	BfScopeData* mOverrideScope;
 	TempKind mTempKind; // Used for var inference, etc
 	bool mInDeferredBlock;
 	bool mHadReturn;
@@ -942,6 +944,7 @@ public:
 		mHeadScope.mIsScopeHead = true;
 		mCurScope = &mHeadScope;
 		mTailScope = &mHeadScope;
+		mOverrideScope = NULL;
 		mHadReturn = false;
 		mLeftBlockUncond = false;				
 		mLeftBlockCond = false;
@@ -956,6 +959,7 @@ public:
 		mNoBind = false;
 		mIsEmbedded = false;
 		mIgnoreObjectAccessCheck = false;
+		mDisableChecks = false;
 		mInConditionalBlock = false;		
 		mAllowUinitReads = false;
 		mCancelledDeferredCall = false;
@@ -1332,7 +1336,7 @@ public:
 	Array<BfIRBuilder*> mPrevIRBuilders; // Before extensions	
 	BfIRBuilder* mBfIRBuilder;	
 	
-	BfMethodState* mCurMethodState;
+	BfMethodState* mCurMethodState;	
 	BfAttributeState* mAttributeState;	
 	BfFilePosition mCurFilePosition;
 	BfMethodInstance* mCurMethodInstance;

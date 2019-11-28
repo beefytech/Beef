@@ -816,7 +816,7 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mCompiler = context->mCompiler;
 	mSystem = mCompiler->mSystem;				
 	mProject = NULL;	
-	mCurMethodState = NULL;		
+	mCurMethodState = NULL;			
 	mAttributeState = NULL;
 	mCurLocalMethodId = 0;
 	mParentNodeEntry = NULL;
@@ -2479,7 +2479,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 	BfLogSysM("BfModule::Fail module %p type %p %s\n", this, mCurTypeInstance, error.c_str());
 	
-	String errorString = error;
+ 	String errorString = error;
 	bool isWhileSpecializing = false;
 	bool isWhileSpecializingMethod = false;		
 
@@ -2493,20 +2493,12 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 			errorString += StrFormat("\n  while compiling '%s'", TypeToString(mCurTypeInstance, BfTypeNameFlags_None).c_str());		
 		else if (mProject != NULL)
 			errorString += StrFormat("\n  while compiling project '%s'", mProject->mName.c_str());
-	}
+	}	
 
-	if ((mCurTypeInstance != NULL) && (mCurMethodState != NULL))
-	{		
-		auto checkMethodState = mCurMethodState;
-		while (checkMethodState != NULL)
+	if (mCurTypeInstance != NULL)
+	{	
+		auto _CheckMethodInstance = [&](BfMethodInstance* methodInstance)
 		{
-			auto methodInstance = checkMethodState->mMethodInstance;
-			if (methodInstance == NULL)
-			{
-				checkMethodState = checkMethodState->mPrevMethodState;
-				continue;
-			}
-
 			// Propogatea the fail all the way to the main method (assuming we're in a local method or lambda)
 			methodInstance->mHasFailed = true;
 
@@ -2516,7 +2508,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 				//auto unspecializedMethod = &mCurMethodInstance->mMethodInstanceGroup->mMethodSpecializationMap.begin()->second;
 				auto unspecializedMethod = methodInstance->mMethodInstanceGroup->mDefault;
 				if (unspecializedMethod->mHasFailed)
-					return NULL; // At least SOME error has already been reported
+					return false; // At least SOME error has already been reported
 			}
 
 			if (isSpecializedMethod)
@@ -2536,8 +2528,30 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 				errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
 				isWhileSpecializing = true;
 			}
+			return true;
+		};
 
-			checkMethodState = checkMethodState->mPrevMethodState;
+		if (mCurMethodState != NULL)
+		{
+			auto checkMethodState = mCurMethodState;
+			while (checkMethodState != NULL)
+			{
+				auto methodInstance = checkMethodState->mMethodInstance;
+				if (methodInstance == NULL)
+				{
+					checkMethodState = checkMethodState->mPrevMethodState;
+					continue;
+				}
+
+				if (!_CheckMethodInstance(methodInstance))
+					return NULL;
+				checkMethodState = checkMethodState->mPrevMethodState;
+			}
+		}
+		else if (mCurMethodInstance != NULL)
+		{
+			if (!_CheckMethodInstance(mCurMethodInstance))
+				return NULL;
 		}
 
 		// Keep in mind that all method specializations with generic type instances as its method generic params
@@ -2551,6 +2565,12 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 				bfError->mIsWhileSpecializing = isWhileSpecializing;
 			return bfError;
 		}
+	}
+
+	if ((!isWhileSpecializing) && ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType())))
+	{		
+		errorString += StrFormat("\n  while specializing type '%s'", TypeToString(mCurTypeInstance).c_str());
+		isWhileSpecializing = true;
 	}
 
 	if (!mHadBuildError)
@@ -3028,6 +3048,8 @@ BfModuleOptions BfModule::GetModuleOptions()
 
 BfCheckedKind BfModule::GetDefaultCheckedKind()
 {
+	if ((mCurMethodState != NULL) && (mCurMethodState->mDisableChecks))
+		return BfCheckedKind_Unchecked;
 	bool runtimeChecks = mCompiler->mOptions.mRuntimeChecks;
 	auto typeOptions = GetTypeOptions();
 	if (typeOptions != NULL)
@@ -16922,6 +16944,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	auto customAttributes = methodInstance->GetCustomAttributes();
 	if ((customAttributes != NULL) && (customAttributes->Contains(mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
 		mCurMethodState->mIgnoreObjectAccessCheck = true;
+	if ((customAttributes != NULL) && (customAttributes->Contains(mCompiler->mDisableChecksAttributeTypeDef)))
+		mCurMethodState->mDisableChecks = true;
 	
 	if ((methodDef->mMethodType == BfMethodType_CtorNoBody) && (!methodDef->mIsStatic) &&
 		((methodInstance->mChainType == BfMethodChainType_ChainHead) || (methodInstance->mChainType == BfMethodChainType_None)))

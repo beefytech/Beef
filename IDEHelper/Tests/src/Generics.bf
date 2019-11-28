@@ -42,4 +42,24 @@ namespace Tests
 
 		}
 	}
+
+	class ConstGenerics
+	{
+		public static float GetSum<TCount>(float[TCount] vals) where TCount : const int
+		{
+			float total = 0;
+			for (int i < vals.Count)
+				total += vals[i];
+			return total;
+		}
+
+		[Test]
+		public static void TestBasics()
+		{
+			float[5] fVals = .(10, 20, 30, 40, 50);
+
+			float totals = GetSum(fVals);
+			Test.Assert(totals == 10+20+30+40+50);
+		}
+	}
 }

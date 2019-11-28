@@ -4338,10 +4338,19 @@ BfTypeInstance* BfModule::GetWrappedStructType(BfType* type, bool allowSpecializ
 	{
 		if (allowSpecialized)
 		{
+			if (type->IsUnknownSizedArray())
+			{
+				BfUnknownSizedArrayType* sizedArrayType = (BfUnknownSizedArrayType*)type;
+				BfTypeVector typeVector;
+				typeVector.Add(sizedArrayType->mElementType);				
+				typeVector.Add(sizedArrayType->mElementCountSource);
+				return ResolveTypeDef(mCompiler->mSizedArrayTypeDef, typeVector, BfPopulateType_Data)->ToTypeInstance();
+			}
+
 			BfSizedArrayType* sizedArrayType = (BfSizedArrayType*)type;
 			BfTypeVector typeVector;
 			typeVector.Add(sizedArrayType->mElementType);
-			auto sizeValue = BfTypedValue(GetConstValue(sizedArrayType->mElementCount), GetPrimitiveType(BfTypeCode_IntPtr));
+			auto sizeValue = BfTypedValue(GetConstValue(BF_MAX(sizedArrayType->mElementCount, 0)), GetPrimitiveType(BfTypeCode_IntPtr));
 			typeVector.Add(CreateConstExprValueType(sizeValue));
 			return ResolveTypeDef(mCompiler->mSizedArrayTypeDef, typeVector, BfPopulateType_Data)->ToTypeInstance();
 		}
@@ -9038,7 +9047,12 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	{
 		BfScopeData* scopeData = NULL;
 		if (mCurMethodState != NULL)
-			scopeData = mCurMethodState->mCurScope;
+		{
+			if (mCurMethodState->mOverrideScope)
+				scopeData = mCurMethodState->mOverrideScope;
+			else
+				scopeData = mCurMethodState->mCurScope;
+		}
 
 		if ((castFlags & BfCastFlags_WarnOnBox) != 0)
 		{
