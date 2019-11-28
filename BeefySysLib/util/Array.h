@@ -958,8 +958,7 @@ public:
 			intptr moveCount = this->mSize - idx;
 			memmove(this->mVals + idx + size, this->mVals + idx, moveCount * sizeof(T));
 		}
-		for (intptr i = 0; i < size; i++)
-			this->mVals[idx + i] = vals[i];
+		memcpy(&this->mVals[idx], vals, size * sizeof(T));		
 		this->mSize += (int_cosize)size;
 	}
 

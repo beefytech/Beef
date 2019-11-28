@@ -321,7 +321,7 @@ namespace IDE
 
 		class LaunchData
 		{
-			public String mTargetPath = new .() ~ delete _;
+			public String mTargetPath ~ delete _;
 			public String mArgs ~ delete _;
 			public String mWorkingDir ~ delete _;
 			public bool mPaused = false;
@@ -6358,6 +6358,9 @@ namespace IDE
 					mWantsClean = true;
 				case "-dbgCompileDump":
 					mDbgCompileDump = true;
+				case "-launch":
+					if (mLaunchData == null)
+						mLaunchData = new .();
 				case "-launchPaused":
 					if (mLaunchData != null)
 						mLaunchData.mPaused = true;
@@ -6385,7 +6388,12 @@ namespace IDE
 				case "-launch":
 					if (mLaunchData == null)
 						mLaunchData = new .();
-					mLaunchData.mTargetPath.Set(value);
+					String.NewOrSet!(mLaunchData.mTargetPath, value);
+				case "-launchDir":
+					if (mLaunchData != null)
+						String.NewOrSet!(mLaunchData.mWorkingDir, value);
+					else
+						Fail("'-launchDir' can only be used after '-launch'");
 #if BF_PLATFORM_WINDOWS
 				case "-minidump":
 						String.NewOrSet!(mCrashDumpPath, value);
@@ -8404,9 +8412,15 @@ namespace IDE
 							switch (replaceStr)
 							{
 							case "Arguments":
-								newString = options.mDebugOptions.mCommandArguments;
+								if (mLaunchData?.mArgs != null)
+									newString = mLaunchData.mArgs;
+								else
+									newString = options.mDebugOptions.mCommandArguments;
 							case "WorkingDir":
-								newString = options.mDebugOptions.mWorkingDirectory;
+								if (mLaunchData?.mWorkingDir != null)
+									newString = mLaunchData.mWorkingDir;
+								else
+									newString = options.mDebugOptions.mWorkingDirectory;
 							case "TargetDir":
 								{
 									if (project.IsDebugSession)
@@ -9308,6 +9322,9 @@ namespace IDE
                 return false;
             }
 
+			if (mInitialized)
+				DeleteAndNullify!(mLaunchData);
+
             mOutputPanel.Clear();            
             OutputLine("Compiling...");
             if (!Compile(.RunAfter))
@@ -9357,9 +9374,88 @@ namespace IDE
 			Test
 		}
 
+		public void AutoGenerateStartupCode(Project project)
+		{
+			String namespaceName = scope .();
+			String className = scope .();
+			String startupStr = project.mBeefGlobalOptions.mStartupObject;
+
+			int dotPos = startupStr.LastIndexOf('.');
+			if (dotPos != -1)
+			{
+				namespaceName.Append(startupStr, 0, dotPos);
+				className.Append(startupStr, dotPos + 1);
+			}
+			else
+			{
+				namespaceName.Append(project.mProjectName);
+				className.Append(startupStr);
+			}
+
+			String startupCode = scope .();
+			startupCode.AppendF(
+				"""
+				using System;
+
+				namespace {}
+				{{
+					class {}
+					{{
+						public static int Main(String[] args)
+						{{
+							return 0;
+						}}
+					}}
+				}}
+				""", namespaceName, className);
+
+			String srcPath = scope .();
+			project.mRootFolder.GetFullImportPath(srcPath);
+			srcPath.Append(Path.DirectorySeparatorChar);
+			srcPath.Append("Program.bf");
+
+			if (!SafeWriteTextFile(srcPath, startupCode))
+				return;
+
+			OnWatchedFileChanged(project.mRootFolder, .FileCreated, srcPath);
+			if (project.IsEmpty)
+				return;
+
+			let projectSource = project.mRootFolder.mChildItems[0] as ProjectSource;
+			if (projectSource == null)
+				return;
+
+			ShowSourceFile(srcPath);
+		}
+
         protected bool Compile(CompileKind compileKind = .Normal, Project hotProject = null)
         {
 			Debug.Assert(mBuildContext == null);
+
+			if (mWorkspace.mStartupProject != null)
+			{
+				if (mWorkspace.mStartupProject.IsEmpty)
+				{
+					DarkDialog dlg = new DarkDialog("Initialize Project?",
+						"""
+						This project does not contain any source code. Do you want to auto-generate some startup code?
+						"""
+						, DarkTheme.sDarkTheme.mIconError);
+					dlg.mWindowFlags |= .Modal;
+					dlg.AddYesNoButtons(new (dlg) =>
+						{
+							AutoGenerateStartupCode(mWorkspace.mStartupProject);
+						},
+						new (dlg) =>
+						{
+
+						});
+					dlg.PopupWindow(GetActiveWindow());
+
+					OutputLine("Aborted - no startup project code found.");
+					return false;
+				}
+			}
 
 			let platform = Workspace.PlatformType.GetFromName(mPlatformName);
 			let hostPlatform = Workspace.PlatformType.GetHostPlatform();
@@ -10230,7 +10326,15 @@ namespace IDE
 			}
 			else if (mLaunchData != null)
 			{
-				LaunchDialog.DoLaunch(null, mLaunchData.mTargetPath, mLaunchData.mArgs ?? "", mLaunchData.mWorkingDir ?? "", "", mLaunchData.mPaused, true);
+				if (mLaunchData.mTargetPath == null)
+				{
+					if (mLaunchData.mPaused)
+						RunWithStep();
+					else
+						CompileAndRun();
+				}
+				else
+					LaunchDialog.DoLaunch(null, mLaunchData.mTargetPath, mLaunchData.mArgs ?? "", mLaunchData.mWorkingDir ?? "", "", mLaunchData.mPaused, true);
 			}
 
 			mInitialized = true;
@@ -11357,6 +11461,9 @@ namespace IDE
 					DeleteAndNullify!(mBuildContext);
 				}
 			}
+
+			if ((mBuildContext == null) && (!IsCompiling))
+				DeleteAndNullify!(mLaunchData);
         }
 
         public void ShowPassOutput(BfPassInstance bfPassInstance)

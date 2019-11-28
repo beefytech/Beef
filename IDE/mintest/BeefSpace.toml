@@ -1,5 +1,6 @@
 FileVersion = 1
 Projects = {mintest = {Path = "."}, minlib = {Path = "minlib"}, LibA = {Path = "LibA"}, LibB = {Path = "LibB"}, mintest2 = {Path = "mintest2"}}
+Locked = ["mintest2"]
 
 [Workspace]
 StartupProject = "mintest"

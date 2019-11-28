@@ -1250,6 +1250,14 @@ namespace IDE
 			}
 		}
 
+		public bool IsEmpty
+		{
+			get
+			{
+				return mRootFolder.mChildItems.IsEmpty;
+			}
+		}
+
 		void SetupDefaultOptions(Options options)
 		{
 			options.mBuildOptions.mOtherLinkFlags.Set("$(LinkFlags)");

@@ -807,6 +807,22 @@ namespace IDE.ui
                 });
         }
 
+		bool CheckProjectModify(Project project)
+		{
+			if (!project.mLocked)
+				return true;
+			
+			let dialog = gApp.Fail(
+				"""
+				This project is locked because it may be a shared library, and editing shared libraries may have unwanted effects on other programs that use it.
+
+				If you are sure you want to edit this project then you can unlock it by right clicking on the project and deselecting 'Lock Project'
+				""",
+				null, mWidgetWindow);
+			dialog.mWindowFlags |= .Modal;
+			return false;
+		}
+
         public void ImportFile(ProjectFolder folder)
         {
 #if !CLI
@@ -826,6 +842,9 @@ namespace IDE.ui
 			String oldStr = fullDir;
 			fullDir = scope String();
             folder.mProject.GetProjectFullPath(oldStr, fullDir);*/
+
+			if (!CheckProjectModify(folder.mProject))
+				return;
 
 			String fullDir = scope String();
 			folder.GetFullImportPath(fullDir);
@@ -960,6 +979,9 @@ namespace IDE.ui
         public void ImportFolder(ProjectFolder folder)
         {
 #if !CLI
+			if (!CheckProjectModify(folder.mProject))
+				return;
+
 			//ThrowUnimplemented();
             String relDir = scope String("");
             var checkFolder = folder;
@@ -2113,7 +2135,10 @@ namespace IDE.ui
 				    {
 						var projectFolder = GetSelectedProjectItem() as ProjectFolder;
 						if (projectFolder != null)
-				        	NewFolder(projectFolder);
+				        {
+							if (CheckProjectModify(projectFolder.mProject))
+								NewFolder(projectFolder);
+						}
 				    });
 
 				item = menu.AddItem("New Class...");
@@ -2121,7 +2146,10 @@ namespace IDE.ui
 				    {
 						var projectFolder = GetSelectedProjectItem() as ProjectFolder;
 						if (projectFolder != null)
-				        	NewClass(projectFolder);
+				        {
+							if (CheckProjectModify(projectFolder.mProject))
+								NewClass(projectFolder);
+						}
 				    });
 
 				item = menu.AddItem("Import File...");
