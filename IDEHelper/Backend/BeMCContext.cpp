@@ -1376,24 +1376,6 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 		}
 	}
 
-	//TODO: This sort was meaningless I think...
-
-	//int xorVal = 227;
-	// For vregs that have a 'preferred register', make sure we pop those off the stack first to help
-	//  ensure they actually get that assignment
-	//std::stable_sort(vregGraph.begin(), vregGraph.end(), [&] (int lhs, int rhs)
-	//	{
-	//		auto lhsInfo = mContext->mVRegInfo[lhs];
-	//		auto rhsInfo = mContext->mVRegInfo[rhs];
-
-	//		if (lhsInfo->mForceReg != rhsInfo->mForceReg)
-	//			return !lhsInfo->mForceReg;
-
-	//		return mNodes[lhs].mLowestRegCost > mNodes[rhs].mLowestRegCost;
-
-	//		//return (lhs ^ xorVal) < (rhs ^ xorVal);
-	//	});
-
 	//
 	{
 		int graphSize = (int)vregGraph.size();
@@ -1883,19 +1865,6 @@ void BeMCLoopDetector::DetectLoops(BeMCBlock* mcBlock, BeVTrackingList* predBloc
 
 void BeMCLoopDetector::DetectLoops()
 {
-// 	auto blocksSeen = mTrackingContext.AllocEmptyList();
-// 	DetectLoops(mMCContext->mBlocks[0], blocksSeen);
-// 
-// 	HashSet<int> wasLooped;
-// 	for (auto block : mMCContext->mBlocks)
-// 	{
-// 		if (block->mIsLooped)
-// 		{
-// 			wasLooped.Add(block->mBlockIdx);
-// 			block->mIsLooped = false;
-// 		}
-// 	}
-
 	for (auto block : mMCContext->mBlocks)
 	{
 		for (auto succ : block->mSuccs)
@@ -4247,47 +4216,6 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 		OutputDebugStrF("GenerateLiveness %s(%d)\n", ToString(BeMCOperand::FromBlock(block)).c_str(), block->mBlockIdx);
 	}
 
-	/*bool isFirstEntry = block->mSuccLiveness.mBits == NULL;	
-	if (isFirstEntry)
-	{
-		mLivenessContext.mStats.mSuccBytes += mLivenessContext.GetBitsBytes() * 2;
-		block->mSuccLiveness.mBits = mLivenessContext.Duplicate(succLiveRegs.mBits);
-		block->mSuccLiveness.mList = succLiveRegs.mList;
-		block->mSuccVRegsInitialized.mBits = mLivenessContext.Duplicate(succInitRegs.mBits);
-		block->mSuccVRegsInitialized.mList = succInitRegs.mList;
-	}
-	else
-	{				
-		if (debugging)
-		{
-			OutputDebugStrF(" New Succ Regs: ");		
-		
-			int vregIdx = -1;
-			while (true)
-			{
-				vregIdx = mLivenessContext.GetNextDiffSetIdx(block->mSuccLiveness.mBits, succLiveRegs.mBits, vregIdx);
-				if (vregIdx == -1)
-					break;
-
-				auto vregInfo = mVRegInfo[vregIdx];
-				if (vregInfo->mDbgVariable != NULL)
-					OutputDebugStrF("#%s/%d ", vregInfo->mDbgVariable->mName.c_str(), vregIdx);
-				else
-					OutputDebugStrF("%%vreg%d ", vregIdx);
-			}
-			
-			OutputDebugStrF("\n");
-		}				
-
-		if (mDebugging)
-		{
-			
-		}
-
-		MergeLiveRegs(block->mSuccLiveness, succLiveRegs.mBits);
-		mVRegInitializedContext.MergeInplace(block->mSuccVRegsInitialized.mBits, succInitRegs.mBits);
-	}*/
-
 	genCtx->mHandledCalls++;
 
 	BeMDNode* curDbgScope = NULL;
@@ -4317,13 +4245,6 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 
 		if ((inst->mVRegsInitialized != NULL) && (inst->mVRegsInitialized != vregsInitialized))
 		{
-			/*int vregIdxEx = -1;
-			while (true)
-			{				
-				vregIdxEx = mVRegInitializedContext.GetNextDiffSetIdx(vregsInitialized.mBits, inst->mVRegsInitialized, vregIdxEx, false, false);
-				if (vregIdxEx == -1)
-					break;*/
-
 			auto _VRegUninit = [&] (int vregIdxEx)
 			{
 				int vregIdx = vregIdxEx % mVRegInitializedContext.mNumItems;
@@ -11039,19 +10960,9 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 		if (inst->mArg0.IsNativeReg())
 		{			
 			if (arg0Type->mTypeCode == BeTypeCode_Double)
-			{
-				/*if (inst->mArg1.IsNativeReg())
-				{
-					if (arg1Type->mTypeCode == BeTypeCode_Double)
-						return BeMCInstForm_XMM64_XMM64;
-					else if (arg1Type->mTypeCode == BeTypeCode_Float)
-						return BeMCInstForm_XMM64_XMM32;
-				}*/
-				
+			{				
 				if (inst->mArg1.IsImmediate())
-					return BeMCInstForm_XMM64_IMM;
-				/*if (inst->mArg1.IsSymbol())
-					return BeMCInstForm_XMM64_FRM64;*/
+					return BeMCInstForm_XMM64_IMM;				
 				switch (arg1Type->mTypeCode)
 				{
 				case BeTypeCode_Float: return BeMCInstForm_XMM64_FRM32;
@@ -11062,19 +10973,9 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 				}
 			}
 			else if (arg0Type->mTypeCode == BeTypeCode_Float)
-			{
-				/*if (inst->mArg1.IsNativeReg())
-				{
-					if (arg1Type->mTypeCode == BeTypeCode_Double)
-						return BeMCInstForm_XMM32_XMM64;
-					else if (arg1Type->mTypeCode == BeTypeCode_Float)
-						return BeMCInstForm_XMM32_XMM32;
-				}*/
-
+			{			
 				if (inst->mArg1.IsImmediate())
-					return BeMCInstForm_XMM32_IMM;
-				/*if (inst->mArg1.IsSymbol())
-					return BeMCInstForm_XMM32_FRM32;*/
+					return BeMCInstForm_XMM32_IMM;				
 				switch (arg1Type->mTypeCode)
 				{
 				case BeTypeCode_Float: return BeMCInstForm_XMM32_FRM32;
@@ -14841,7 +14742,7 @@ void BeMCContext::Generate(BeFunction* function)
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
 	mDebugging = function->mName ==
 	//"?TestPrimitives@Nullable@Tests@bf@@SAXXZ"
-		"?TestAlloc@Blurg@bf@@SAXXZ";
+		"?Hey@Blurg@bf@@SAHXZ";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
 		//"?Hey@Blurg@bf@@SAXXZ";
