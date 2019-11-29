@@ -13826,7 +13826,24 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				}
 
 				if (failed)
-					mResult = mModule->GetDefaultTypedValue(methodInstance.mMethodInstance->mReturnType);
+				{
+					auto returnType = methodInstance.mMethodInstance->mReturnType;
+					auto methodDef = methodInstance.mMethodInstance->mMethodDef;
+					if (returnType->IsRef())
+					{
+						auto result = mModule->GetDefaultTypedValue(returnType->GetUnderlyingType(), true, BfDefaultValueKind_Addr);
+						if (methodDef->mIsReadOnly)
+							result.mKind = BfTypedValueKind_ReadOnlyAddr;
+						return result;
+					}
+					else
+					{
+						auto val = mModule->GetDefaultTypedValue(returnType, true, methodInstance.mMethodInstance->HasStructRet() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
+						if (val.mKind == BfTypedValueKind_Addr)
+							val.mKind = BfTypedValueKind_TempAddr;
+						return val;
+					}
+				}
 				else
 					mResult = CreateCall(methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
 				if (mResult.mType != NULL)
