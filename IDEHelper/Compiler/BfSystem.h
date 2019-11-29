@@ -669,13 +669,6 @@ enum BfImportKind : int8
 	BfImportKind_Export
 };
 
-enum BfCheckedKind : int8
-{
-	BfCheckedKind_NotSet,
-	BfCheckedKind_Checked,
-	BfCheckedKind_Unchecked
-};
-
 enum BfCommutableKind : int8
 {
 	BfCommutableKind_None,

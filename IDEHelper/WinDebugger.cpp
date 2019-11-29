@@ -7673,7 +7673,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			{
 				summaryType->PopulateType();
 
-				if (summaryType->IsPrimitiveType())
+				if (summaryType->IsTypedPrimitive())
 				{
 					if (formatInfo.mTotalSummaryLength + (int)displayString.length() > 255)
 					{
@@ -7688,7 +7688,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						displayStrFormatInfo.mTotalSummaryLength += (int)displayString.length();
 						displayStrFormatInfo.mHidePointers = false;
 						
-						auto primType = dwUseType->GetDbgModule()->GetPrimitiveType(summaryType->mTypeCode, dwUseType->GetLanguage());
+						DbgType* primType = summaryType->mTypeParam;
 						String result;
 						
 						if ((dataPtr != 0) && (dataPtr != -1))

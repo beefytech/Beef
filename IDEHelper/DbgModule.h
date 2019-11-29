@@ -400,6 +400,7 @@ public:
 	DbgType* mReturnType;	
 	DbgMethodType mMethodType;
 	BfProtection mProtection;
+	BfCheckedKind mCheckedKind;
 	SLIList<DbgVariable*> mParams;
 
 	DbgSubprogram* mNext;
@@ -424,6 +425,7 @@ public:
 		mNext = NULL;
 		mMethodType = DbgMethodType_Normal;
 		mProtection = BfProtection_Public;
+		mCheckedKind = BfCheckedKind_NotSet;
 		mVTableLoc = -1;
 		mStepFilterVersion = -1;
 	}

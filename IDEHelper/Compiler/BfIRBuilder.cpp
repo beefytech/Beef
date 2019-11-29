@@ -2615,7 +2615,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 				flags |= llvm::DINode::FlagArtificial;
 			}
 
-			String methodName = methodDef->mName;									
+			String methodName = methodDef->mName;
 			llvm::SmallVector<BfIRMDNode, 1> genericArgs;
 			llvm::SmallVector<BfIRValue, 1> genericConstValueArgs;
 			auto diFunction = DbgCreateMethod(funcScope, methodName, mangledName, fileDIScope,

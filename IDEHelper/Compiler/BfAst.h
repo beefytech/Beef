@@ -56,6 +56,13 @@ enum BfProtection : uint8
 	BfProtection_Public,
 };
 
+enum BfCheckedKind : int8
+{
+	BfCheckedKind_NotSet,
+	BfCheckedKind_Checked,
+	BfCheckedKind_Unchecked
+};
+
 static bool CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate)
 {	
 	return (protection == BfProtection_Public) ||

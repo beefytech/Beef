@@ -16187,6 +16187,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				}
 			}
 
+			if (methodDef->mCheckedKind == BfCheckedKind_Checked)
+				methodName += "$CHK";
+			else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
+				methodName += "$UCHK";
+
 			methodState.mDIFile = mCurFilePosition.mFileInstance->mDIFile;
 // 			diFunction = mBfIRBuilder->DbgCreateMethod(funcScope, methodName, mangledName, methodState.mDIFile,
 // 				defLine + 1, diFuncType, false, true, 

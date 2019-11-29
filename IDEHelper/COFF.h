@@ -305,6 +305,7 @@ public:
 	virtual void PopulateType(DbgType* dbgType) override;
 	virtual void PopulateTypeGlobals(DbgType* dbgType) override;
 	virtual void PopulateSubprogram(DbgSubprogram* dbgSubprogram) override;
+	void FixSubprogramName(DbgSubprogram * dbgSubprogram);
 	int MapImport(CvCompileUnit* compileUnit, int Id);
 	void FixupInlinee(DbgSubprogram* dbgSubprogram, uint32 ipiTag);
 	virtual void FixupInlinee(DbgSubprogram* dbgSubprogram) override;
@@ -340,6 +341,7 @@ public:
 	uint8* HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, uint8* addrMap);
 	const char* CvParseString(uint8*& data);
 	const char* CvParseAndDupString(uint8*& data);	
+	const char* CvDupString(const char* str, int strLen);
 	
 	void CvReadStream(int sectionIdx, CvStreamReader& streamReader);	
 	void CvInitStreamRaw(CvStreamReader& streamReader, uint8* data, int size);

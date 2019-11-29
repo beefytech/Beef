@@ -395,8 +395,14 @@ String DbgSubprogram::ToString()
 		mCompileUnit->mDbgModule->FixupInlinee(this);
 
 	PopulateSubprogram();
-
+	
 	String str;
+
+	if (mCheckedKind == BfCheckedKind_Checked)
+		str += "[Checked] ";
+	else if (mCheckedKind == BfCheckedKind_Unchecked)
+		str += "[Unchecked] ";
+
 	auto language = GetLanguage();
 	if (mName == NULL)
 	{		
@@ -992,7 +998,7 @@ bool DbgType::IsStruct()
 }
 
 bool DbgType::IsPrimitiveType()
-{
+{	
 	return (mTypeCode >= DbgType_i8) && (mTypeCode <= DbgType_Bool);
 }
 
@@ -1141,7 +1147,7 @@ DbgExtType DbgType::CalcExtType()
 	}
 
 	auto baseExtType = baseType->CalcExtType();
-	if ((baseExtType == DbgExtType_BfObject) && (mSize == 0))
+	if ((baseExtType == DbgExtType_BfObject) && (GetByteCount() == 0))
 		baseExtType = DbgExtType_Interface;
 	return baseExtType;
 }

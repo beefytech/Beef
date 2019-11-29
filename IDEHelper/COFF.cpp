@@ -597,6 +597,15 @@ const char* COFF::CvParseAndDupString(uint8*& data)
 	return dupStr;
 }
 
+const char* COFF::CvDupString(const char* str, int strLen)
+{		
+	BP_ALLOC("CvDupString", strLen + 1);
+	char* dupStr = (char*)mAlloc.AllocBytes(strLen + 1, "CvParseAndDupString");
+	memcpy(dupStr, str, strLen);
+	dupStr[strLen] = 0;
+	return dupStr;
+}
+
 void COFF::CvParseArgList(DbgSubprogram* subprogram, int tagIdx, bool ipi)
 {
 	uint8* data = CvGetTagData(tagIdx, ipi);
@@ -837,7 +846,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 							
 							if (!parentType->mSizeCalculated)
 							{	
-								if ((parentType->mSize == 0) && (baseTypeEntry->mBaseType->IsBfObject()))
+								if ((baseTypeEntry->mBaseType->GetByteCount() == 0) && (baseTypeEntry->mBaseType->IsBfObject()))
 								{
 									parentType->mExtType = DbgExtType_Interface;
 								}
@@ -992,6 +1001,10 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 							if (strcmp(fieldName, "$prim") == 0)
 							{
 								parentType->mTypeParam = CvGetType(fieldTypeId);
+								parentType->mTypeParam = GetPrimitiveType(parentType->mTypeParam->mTypeCode, DbgLanguage_Beef);
+								
+								parentType->mSize = parentType->mTypeParam->mSize;
+								parentType->mAlign = parentType->mTypeParam->mAlign;
 								if ((parentType->mBaseTypes.mHead != NULL) && (strcmp(parentType->mBaseTypes.mHead->mBaseType->mName, "System.Enum") == 0))
 									parentType->mTypeCode = DbgType_Enum;
 								break;
@@ -1437,6 +1450,11 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 						
 			const char* name = _ParseString();
 			
+			if (strstr(name, "Derived") != NULL)
+			{
+				NOP;
+			}
+
 // 			if ((strstr(name, "`") != NULL) || (strstr(name, "::__l") != NULL))
 // 			{
 // 				OutputDebugStrF("Local type: %s\n", name);
@@ -1503,8 +1521,10 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 
 				if (strncmp(name, "_bf:", 4) == 0)
 				{
-					// Beef types have different strides from size
+					// Beef types have different strides from size. Note we MUST set size to zero here, because there are
+					// some BF_MAX calculations we perform on it
 					dbgType->mSizeCalculated = false;
+					dbgType->mSize = 0;
 				}				
 			}
 			
@@ -2487,7 +2507,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				subprogram->mTagIdx = (int)(dataEnd - sectionData); // Position for method data
 				subprogram->mIsOptimized = isOptimized;
 				subprogram->mCompileUnit = compileUnit;				
-				const char* name = DbgDupString((const char*)procSym->name, "DbgDupString.S_GPROC32");
+				char* name = DbgDupString((const char*)procSym->name, "DbgDupString.S_GPROC32");
 				
 				if (procSym->flags.CV_PFLAG_OPTDBGINFO)
 				{
@@ -2507,8 +2527,26 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				localVar = NULL;
 				bool hasColon = false;
-				for (const char* cPtr = name; *cPtr != 0; cPtr++)				
-					hasColon |= *cPtr == ':';				
+				for (char* cPtr = name; *cPtr != 0; cPtr++)
+				{
+					char c = *cPtr;
+					hasColon |= c == ':';
+					if (c == '$')
+					{
+						if (strcmp(cPtr, "$CHK") == 0)
+						{
+							subprogram->mCheckedKind = BfCheckedKind_Checked;
+							*cPtr = NULL;
+							break;
+						}
+						else if (strcmp(cPtr, "$UCHK") == 0)
+						{
+							subprogram->mCheckedKind = BfCheckedKind_Unchecked;
+							*cPtr = NULL;
+							break;
+						}						
+					}
+				}
 				
 				subprogram->mPrologueSize = procSym->DbgStart;
 				subprogram->mBlock.mLowPC = addr;
@@ -4119,6 +4157,27 @@ void COFF::PopulateSubprogram(DbgSubprogram* dbgSubprogram)
 	dbgSubprogram->mDeferredInternalsSize = 0;
 }
 
+void COFF::FixSubprogramName(DbgSubprogram* dbgSubprogram)
+{
+	const char* name = dbgSubprogram->mName;
+
+	for (const char* cPtr = name; *cPtr != 0; cPtr++)
+	{
+		char c = *cPtr;		
+		if (c == '$')
+		{
+			bool isChecked = strcmp(cPtr, "$CHK") == 0;
+			bool isUnchecked = strcmp(cPtr, "$UCHK") == 0;
+			if (isChecked || isUnchecked)
+			{
+				dbgSubprogram->mCheckedKind = isChecked ? BfCheckedKind_Checked : BfCheckedKind_Unchecked;
+				dbgSubprogram->mName = CvDupString(name, cPtr - name);
+				return;
+			}			
+		}
+	}
+}
+
 void COFF::FixupInlinee(DbgSubprogram* dbgSubprogram, uint32 ipiTag)
 {
 	if (!mCvIPIReader.IsSetup())
@@ -4178,8 +4237,9 @@ void COFF::FixupInlinee(DbgSubprogram* dbgSubprogram, uint32 ipiTag)
 	case LF_MFUNC_ID:
 		{
 			lfMFuncId* funcData = (lfMFuncId*)dataStart;
-			CvParseMethod(NULL, NULL, funcData->type, false, dbgSubprogram);
+			CvParseMethod(NULL, NULL, funcData->type, false, dbgSubprogram);			
 			dbgSubprogram->mName = (const char*)funcData->name;
+			FixSubprogramName(dbgSubprogram);
 
 			dbgSubprogram->mParentType = CvGetType(funcData->parentType);
 		}
@@ -5247,24 +5307,40 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 			int moduleId = refSym.imod - 1;									
 			
 			bool wasBeef = false;
-			const char* memberName = CvCheckTargetMatch(name, wasBeef);
+			char* memberName = (char*)CvCheckTargetMatch(name, wasBeef);
 			if (memberName == NULL)									
 				break;
 			
+			bool wantsCopy = madeCopy;
+
 			bool isIllegal = false;
 			for (const char* cPtr = memberName; *cPtr != 0; cPtr++)
 			{
 				char c = *cPtr;
-				if ((c == '<') || (c == '`') || (c == '$'))
+				if (c == '$')
+				{
+					if ((strcmp(cPtr, "$CHK") == 0) || (strcmp(cPtr, "$UCHK") == 0))
+					{
+						auto prevName = memberName;
+						memberName = DbgDupString(prevName);
+						memberName[cPtr - prevName] = 0;
+						wantsCopy = false;
+						break;
+					}					
+					else
+						isIllegal = true;
+				}
+
+				if ((c == '<') || (c == '`'))
 					isIllegal = true;
-			}
+			}			
 
 			if (!isIllegal)
 			{				
 				BP_ALLOC_T(DbgMethodNameEntry);
 				auto methodNameEntry = mAlloc.Alloc<DbgMethodNameEntry>();
 				methodNameEntry->mCompileUnitId = moduleId;
-				methodNameEntry->mName = madeCopy ? DbgDupString(memberName) : memberName;
+				methodNameEntry->mName = wantsCopy ? DbgDupString(memberName) : memberName;
 				mGlobalsTargetType->mMethodNameList.PushBack(methodNameEntry);
 			}			
 		}

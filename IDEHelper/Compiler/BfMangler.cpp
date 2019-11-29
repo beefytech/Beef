@@ -1936,7 +1936,8 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 		AddStr(mangleContext, name, methodDef->mName);
 	}
 		
-	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (!methodInst->mIsForeignMethodDef))
+	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) && 
+		(!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern))
 	{
 		auto declType = methodInst->mMethodDef->mDeclaringType;
 		BF_ASSERT(methodInst->GetOwner()->mTypeDef->mIsCombinedPartial);
