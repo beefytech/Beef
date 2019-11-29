@@ -161,6 +161,12 @@ struct Blurg
 	struct StructA
 	{
 		public int[10] mA;
+
+		public this()
+		{
+			mA = default;
+			void* v = &this;
+		}
 	}
 
 	enum EnumA
@@ -175,37 +181,61 @@ struct Blurg
 		case B(int a, int b);
 	}
 
+	/*[DisableChecks]
+	public static float GetSum<TCount>(float[TCount] vals) where TCount : const int
+	{
+		float total = 0;
+		for (int i < vals.Count)
+			total += vals[i];
+		return total;
+	}
+
+	public static void Max<T, TFunc>(T lhs, T rhs, TFunc func) where TFunc : delegate int(T lhs, T rhs)
+	{
+
+	}*/
+
+	struct Base
+	{
+		int32 mA;
+		int64 mB;
+	}
+
+	struct Derived : Base
+	{
+		int8 mC;
+	}
+
+	static int[] gArr = new .(1, 2, 3, 4, 5, );
+
+	[Checked]
+	public static int32 GetVal()
+	{
+		return 1;
+	}
+
+	[Unchecked]
+	public static int32 GetVal()
+	{
+		return 2;
+	}
+
+	public static int32 GetVal2()
+	{
+		return 3;
+	}
+
 	public static int32 Hey()
 	{
-		//int_test val = 123;
+		/*Self.[Checked]GetVal();
+		Self.[Unchecked]GetVal();
+		GetVal2();*/
 
-		(int, int) tup = (1, 3);
+		int a = gArr[1];
+		a = gArr[[Unchecked]2];
 
-		switch (tup)
-		{
-		case (1, var ref a):
-			a++;
-			PrintF("A\n");
-		default:
-			PrintF("B\n");
-		}
-
-		
-		if (tup case (1, var ref aa))
-		{
-			aa += 100;
-		}
-
-		/*EnumB eb = .B(1, 2);
-
-		if (eb case .B(1, var ref bb))
-		{
-
-		}*/
-		
-		
-
-		return 123;
+		return (int32)123;
 	}
 
 }
+

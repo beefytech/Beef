@@ -1045,7 +1045,10 @@ namespace IDE
 			String filePath = scope String();
 			FixSrcPath(fileName, filePath);
 
-			gApp.ShowSourceFile(filePath);
+			String fixedFilePath = scope .();
+			Path.GetAbsolutePath(filePath, gApp.mWorkspace.mDir, fixedFilePath);
+
+			gApp.ShowSourceFile(fixedFilePath);
 		}
 
 		[IDECommand]
