@@ -8,6 +8,7 @@ namespace IDETest
 			Break.Test();
 			Breakpoints.Test();
 			Breakpoints02.Test();
+			Data01.Test();
 			EnumTester.Test();
 			HotTester.Test();
 			HotSwap_BaseChange.Test();

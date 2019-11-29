@@ -80,20 +80,21 @@ namespace Tests
 		class ClassB
 		{
 			[AttrA(11, 22, "StrA", "StrB")]
-			int mA;
+			public int mA = 1;
 			[AttrB(44, 55)]
-			int mB;
-			int mC;
+			public int mB = 2;
+			public int mC = 3;
 		}
 
 		[Reflect(.Type)]
 		class ClassC
 		{
 			[AttrA(11, 22, "StrA", "StrC")]
-			int mA;
+			public int mA = 1;
 			[AttrB(44, 55)]
-			int mB;
-			int mC;
+			public int mB = 2;
+			public int mC = 3;
+			public float mD = 4;
 		}
 
 		[Test]
@@ -158,6 +159,16 @@ namespace Tests
 
 				fieldIdx++;
 			}
+
+			let fieldInfo = cb.GetType().GetField("mC").Value;
+			int cVal = 0;
+			fieldInfo.GetValue(cb, out cVal);
+			fieldInfo.SetValue(cb, cVal + 1000);
+			Test.Assert(cb.mC == 1003);
+
+			Variant variantVal = Variant.Create(123);
+			fieldInfo.SetValue(cb, variantVal);
+			Test.Assert(cb.mC == 123);
 		}
 	}
 }

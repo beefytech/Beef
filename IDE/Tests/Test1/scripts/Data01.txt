@@ -1,0 +1,9 @@
+ShowFile("src/Data01.bf")
+GotoText("//Test_End")
+ToggleBreakpoint()
+RunWithCompiling()
+
+AssertEvalEquals("sizeof(Derived)", "13")
+AssertEvalEquals("strideof(Derived)", "16")
+AssertEvalEquals("alignof(Derived)", "8")
+AssertEvalEquals("iVal", "{ 123 }")
