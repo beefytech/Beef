@@ -2475,6 +2475,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			BF_ASSERT(fieldInstance->mCustomAttributes == NULL);
 			if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL))
 			{
+				BfTypeState typeState;
+				typeState.mCurTypeDef = fieldDef->mDeclaringType;
+				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
 				fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
 
 				for (auto customAttr : fieldInstance->mCustomAttributes->mAttributes)
