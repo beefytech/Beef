@@ -1816,6 +1816,9 @@ namespace IDE
 
         bool SaveWorkspace()
         {
+			if (mWorkspace.mNeedsCreate)
+				mWorkspace.mNeedsCreate = false;
+
 			if (!mWorkspace.IsSingleFileWorkspace)
 			{
 #if !CLI
@@ -9376,6 +9379,11 @@ namespace IDE
 
 		public void AutoGenerateStartupCode(Project project)
 		{
+			// We have to save this to ensure any new project is actually created. Maybe overkill,
+			// but best to stay conservative since this path won't be heavily tested
+			if (!SaveAll())
+				return;
+
 			String namespaceName = scope .();
 			String className = scope .();
 			String startupStr = project.mBeefGlobalOptions.mStartupObject;
@@ -9411,6 +9419,8 @@ namespace IDE
 
 			String srcPath = scope .();
 			project.mRootFolder.GetFullImportPath(srcPath);
+			Directory.CreateDirectory(srcPath).IgnoreError();
+
 			srcPath.Append(Path.DirectorySeparatorChar);
 			srcPath.Append("Program.bf");
 

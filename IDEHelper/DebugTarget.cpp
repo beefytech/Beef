@@ -2150,8 +2150,8 @@ int DebugTarget::GetFrameBaseRegister(DbgSubprogram* dwSubprogram)
 	}
 
 #ifdef BF_DBG_32 
-	if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_ESP)
-		return X86Reg_ESP;
+	if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_VFRAME)
+		return X86Reg_EBP;
 	else if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_EBX)
 		return X86Reg_EBX;
 	return X86Reg_EBP;

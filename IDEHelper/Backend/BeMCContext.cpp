@@ -14742,6 +14742,7 @@ void BeMCContext::Generate(BeFunction* function)
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
 	mDebugging = function->mName ==
 	//"?TestPrimitives@Nullable@Tests@bf@@SAXXZ"
+
 		"?Hey@Blurg@bf@@SAHXZ";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 

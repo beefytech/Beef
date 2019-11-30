@@ -995,6 +995,7 @@ BfIRBuilder::BfIRBuilder(BfModule* module) : BfIRConstHolder(module)
 	mActiveFunctionHasBody = false;
 	mHasStarted = false;	
 	mCmdCount = 0;
+	mIsBeefBackend = false;
 }
 
 bool BfIRBuilder::HasExports()
@@ -1374,7 +1375,9 @@ void BfIRBuilder::Start(const StringImpl& moduleName, int ptrSize, bool isOptimi
 }
 
 void BfIRBuilder::SetBackend(bool isBeefBackend)
-{		
+{	
+	mIsBeefBackend = isBeefBackend;
+
 	BF_ASSERT(mIRCodeGen == NULL);
 	if (mDbgVerifyCodeGen)
 	{
@@ -1881,13 +1884,14 @@ public:
 void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 {		
 	bool wantDIData = DbgHasInfo() && (!type->IsUnspecializedType());
-	
-	// Types that don't have a proper 'defining module' need to be defined in every module they are used
-	bool isDefiningModule = (type->GetModule() == mModule) || (type->IsFunction());
-	bool wantsForwardDecl = !isDefiningModule && !forceDefine;
-
+			
+	// Types that don't have a proper 'defining module' need to be defined in every module they are used	
+	bool wantsDIForwardDecl = (type->GetModule() != mModule) && (!type->IsFunction());
+	// Forward declarations of valuetypes doesn't work in LLVM backend for Win32.....
+//  	if ((!mIsBeefBackend) && (type->IsValueType()))
+//  		wantsDIForwardDecl = false;
 	if (mModule->mExtensionCount != 0)
-		wantsForwardDecl = true;
+		wantsDIForwardDecl = true;
 
 	bool isPrimEnum = (type->IsEnum()) && (type->IsTypedPrimitive());
 
@@ -2144,7 +2148,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 			else
 				curDIScope = CreateNamespaceScope(checkType, fileDIScope);
 			String typeName = GetDebugTypeName(typeInstance, false);
-			if (wantsForwardDecl)
+			if (wantsDIForwardDecl)
 			{					
 				if (type->IsInterface())
 				{
@@ -2169,10 +2173,14 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 				int flags = 0;
 				diForwardDecl = DbgCreateReplaceableCompositeType(llvm::dwarf::DW_TAG_structure_type,
 					typeName, curDIScope, fileDIScope, 0, (int64)BF_ALIGN(typeInstance->mInstSize, typeInstance->mInstAlign) * 8, (int64)typeInstance->mInstAlign * 8, flags);
+				
+				mDITemporaryTypes.push_back(typeInstance);
 
-					
-
-				mDITemporaryTypes.push_back(typeInstance);				
+				if (!type->IsUnspecializedType())
+				{
+					BF_ASSERT(!mDeferredDbgTypeDefs.Contains(type));
+					mDeferredDbgTypeDefs.Add(type);
+				}
 			}			
 
 			DbgSetInstType(type, diForwardDecl);			
@@ -2257,8 +2265,10 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 
 	bool isGlobalContainer = typeDef->IsGlobalsContainer();
 	
-	bool isDefiningModule = true;
+	bool isDefiningModule = ((type->GetModule() == mModule) || (type->IsFunction()));
 	auto diForwardDecl = DbgGetTypeInst(typeInstance);
+
+	//BF_ASSERT(WantsDbgDefinition(type));
 	
 	llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;
 
@@ -2330,7 +2340,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		{
 			if (fieldDef->mIsConst)
 			{
-				if (wantDIData)
+				if (isDefiningModule)
 				{
 					if ((isPayloadEnum) && (fieldDef->IsEnumCaseEntry()))
 					{
@@ -2464,7 +2474,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 			}
 			else if (fieldDef->mIsStatic)
 			{
-				if (wantDIData)
+				if (isDefiningModule)
 				{
 					int flags = 0;
 					auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldDef->mName, fileDIScope, 0,
@@ -2523,8 +2533,11 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	if (type->IsBoxed())
 		wantsMethods = false; 
 
+	if (!isDefiningModule)
+		wantsMethods = false;
+
 	if (wantsMethods)
-	{			
+	{
 		for (int methodIdx = 0; methodIdx < (int)typeInstance->mMethodInstanceGroups.size(); methodIdx++)
 		{
 			auto& methodGroup = typeInstance->mMethodInstanceGroups[methodIdx];
@@ -2747,6 +2760,18 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	}	
 }
 
+bool BfIRBuilder::WantsDbgDefinition(BfType* type)
+{
+	if ((type->GetModule() == mModule) || (type->IsFunction()))
+		return true;
+
+	// Forward declarations of valuetypes doesn't work in LLVM backend
+// 	if ((!mIsBeefBackend) && (type->IsValueType()))
+// 		return true;
+
+	return false;
+}
+
 void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
 {	
 	// This PopulateType is generally NOT needed, but here is a scenario in which it is:
@@ -2757,10 +2782,10 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
 	if (type->IsDataIncomplete())
 		mModule->PopulateType(type, BfPopulateType_Data);	
 
-	bool isDefiningModule = (type->GetModule() == mModule) || (type->IsFunction());
+	bool isDefiningModule = ((type->GetModule() == mModule) || (type->IsFunction()));
 	if (mModule->mExtensionCount != 0)
 		isDefiningModule = false;
-	
+ 	
 // 	if (mModule->mModuleName == "vdata")
 // 		isDefiningModule = true;
 
@@ -2771,8 +2796,7 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
 	{
 		DbgSetTypeSize(DbgGetType(type), BF_ALIGN(type->mSize, type->mAlign) * 8, type->mAlign * 8);
 	}
-
-	bool wantsForwardDecl = !isDefiningModule && !forceDefine;
+	
 	bool isPrimEnum = (type->IsEnum()) && (type->IsTypedPrimitive());
 				
 	auto typeInstance = type->ToTypeInstance();
@@ -2780,13 +2804,7 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
 		return;		
 
 	auto typeDef = typeInstance->mTypeDef;	
-	if (DbgHasInfo() && (!type->IsUnspecializedType()) && (!wantsForwardDecl))
-	{
-		BF_ASSERT(!mDeferredDbgTypeDefs.Contains(type));
-		mDeferredDbgTypeDefs.Add(type);
-	}
-
-	
+		
 #ifdef BFIR_RENTRY_CHECK
 	ReEntryCheck reEntryCheck(&mDefReentrySet, type);
 #endif
@@ -3007,12 +3025,17 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
 
 void BfIRBuilder::ReplaceDITemporaryTypes()
 {
-	for (auto typeInstance : mDITemporaryTypes)
+	//for (auto typeInstance : mDITemporaryTypes)
+	for (int i = 0; i < (int)mDITemporaryTypes.size(); i++)
 	{
-		if (mTypeMap[typeInstance] == BfIRPopulateType_Full)
+		auto typeInstance = mDITemporaryTypes[i];
+		auto populateType = mTypeMap[typeInstance];
+		if (populateType == BfIRPopulateType_Full)
 			continue;
 
+		mTypeMap[typeInstance] = BfIRPopulateType_Eventually_Full;
 		CreateTypeDefinition(typeInstance, false);
+		mTypeMap[typeInstance] = BfIRPopulateType_Full;
 	}
 	mDITemporaryTypes.Clear();
 }
@@ -4510,8 +4533,9 @@ void BfIRBuilder::DbgFinalize()
 {	
 	while ((!mDeferredDbgTypeDefs.IsEmpty()) || (!mDITemporaryTypes.IsEmpty()))
 	{		
-		for (auto deferredType : mDeferredDbgTypeDefs)
-			CreateDbgTypeDefinition(deferredType);
+		//for (auto deferredType : mDeferredDbgTypeDefs)
+		for (int i = 0; i < (int)mDeferredDbgTypeDefs.size(); i++)
+			CreateDbgTypeDefinition(mDeferredDbgTypeDefs[i]);
 		mDeferredDbgTypeDefs.Clear();
 
 		ReplaceDITemporaryTypes();

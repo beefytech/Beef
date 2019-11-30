@@ -849,6 +849,7 @@ public:
 	bool mDbgVerifyCodeGen;
 	int mCurFakeId;
 	bool mHasGlobalDefs;
+	bool mIsBeefBackend;
 	int mNumFunctionsWithBodies;	
 	int mBlockCount;
 	bool mHasStarted;		
@@ -938,6 +939,7 @@ public:
 	BfIRMDNode CreateNamespaceScope(BfType* type, BfIRMDNode fileDIScope);
 	String GetDebugTypeName(BfTypeInstance* typeInstance, bool includeOuterTypeName);
 	void CreateDbgTypeDefinition(BfType* type);
+	bool WantsDbgDefinition(BfType * type);
 	void CreateTypeDeclaration(BfType* type, bool forceDefine);
 	void CreateTypeDefinition(BfType* type, bool forceDefine);	
 	void ReplaceDITemporaryTypes();

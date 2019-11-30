@@ -780,7 +780,7 @@ void BfContext::ValidateDependencies()
 	while (itr != mResolvedTypes.end())
 	{
 		auto type = itr.mCurEntry->mValue;		
-		if (type->IsGenericTypeInstance())
+		if ((type->IsGenericTypeInstance()) && (type->mDefineState > BfTypeDefineState_Undefined))
 		{
 			// We can't contain deleted generic arguments without being deleted ourselves
 			BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;

@@ -351,7 +351,7 @@ public:
 	enum LocalBaseRegKind : uint8
 	{
 		LocalBaseRegKind_None,
-		LocalBaseRegKind_ESP,
+		LocalBaseRegKind_VFRAME,
 		LocalBaseRegKind_EBP,
 		LocalBaseRegKind_EBX
 	};
