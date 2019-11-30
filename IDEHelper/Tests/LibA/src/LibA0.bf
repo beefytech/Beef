@@ -31,9 +31,17 @@ class LibClassA
 	{
 		return 9;
 	}
+
+	public static int GetVal3(Object obj)
+	{
+		return 30;
+	}
 }
 
 class LibClassB
 {
-	//public uint8* mA = append uint8[10];
+	public static int DoGetVal3<T>(T val)
+	{
+		return LibClassA.GetVal3(val);
+	}
 }

@@ -56,7 +56,7 @@ struct StructB
 };
 
 
-struct [[nodiscard]] StructA
+struct StructA
 {
 	StructB* mSB;
 
@@ -72,7 +72,6 @@ struct [[nodiscard]] StructA
 	}
 };
 
-[[nodiscard]]
 int GetVal()
 {
 	return 9;
@@ -83,20 +82,78 @@ StructA GetSA()
 	return StructA();
 }
 
+int Zorq()
+{
+	int zaf = 123;
+	return 0;
+}
+
+struct Base
+{
+	int32_t mA;
+	int64_t mB;
+};
+
+struct Derived : Base
+{
+	int8_t mC;
+
+	int GetC()
+	{
+		return mC + 10000;
+	}
+};
+
+struct Int
+{
+	int64_t mVal;
+};
+
+void Zorq2()
+{
+	Derived dr;
+	dr.mA = 1;
+	dr.mB = 2;
+	dr.mC = 3;
+	dr.GetC();
+	Int iVal;
+	iVal.mVal = 88;
+
+	int64_t q = 999;
+}
+
+void Zorq3()
+{
+	Derived dr;
+	dr.mA = 1;
+	dr.mB = 2;
+	dr.mC = 3;	
+	Int iVal;
+	iVal.mVal = 88;
+
+	int64_t q = 999;
+}
+
 // THIS IS VERSION 6.
 extern "C"
 __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 {	
+	Zorq();
+	Zorq2();
+	Zorq3();
+
 	GetVal();
 	GetSA();
 
 	//Sleep(10000);
 
+	int zed = 999;
+
 	StructA sa;
 	sa.mSB = NULL;
 	Sleep(200);
-	sa.GetVal();
-	sa.GetWithSleep();	
+	//sa.GetVal();
+	//sa.GetWithSleep();	
 	//auto val = sa.mSB->mStr;
 
 	std::string str = "Hey Dude";

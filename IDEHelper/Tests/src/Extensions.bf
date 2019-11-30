@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 
 namespace System.Collections.Generic
@@ -21,6 +23,14 @@ namespace System.Collections.Generic
 	extension TClass<T>
 	{
 		
+	}
+}
+
+extension LibClassA
+{
+	public static int GetVal3<T>(T val)
+	{
+		return 31;
 	}
 }
 
@@ -169,6 +179,18 @@ namespace Tests
 			Test.Assert(ca.mA == 7);
 			Test.Assert(ca.LibB_GetB() == 8);
 			Test.Assert(ca.LibC_GetB() == 30013);
+		}
+
+		[Test]
+		public static void TestExtensionOverride()
+		{
+			int a = 123;
+			int directResult = LibClassA.GetVal3(a);
+			Test.Assert(directResult == 31);
+			// This should only call the LibA version since the LibA:LibClassB.DoGetVal3 won't have
+			//  access to call the Tests:LibClassB.DoGetVal3
+			int indirectResult = LibClassB.DoGetVal3(a);
+			Test.Assert(directResult == 30);
 		}
 	}
 }

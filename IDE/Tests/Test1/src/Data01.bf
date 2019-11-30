@@ -23,6 +23,8 @@ namespace IDETest
 			Derived dr = .();
 			Int iVal = (.)123;
 
+			int q = 999;
+
 			//Test_End
 		}
 	}
