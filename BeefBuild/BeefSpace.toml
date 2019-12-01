@@ -1,15 +1,14 @@
 FileVersion = 1
 Projects = {BeefBuild = {Path = "."}, corlib = "*", Beefy2D = {Path = "../BeefLibs/Beefy2D"}, IDEHelper = {Path = "../IDEHelper"}, Debugger64 = {Path = "../Debugger64"}, BeefySysLib = {Path = "../BeefySysLib"}}
+Unlocked = ["corlib"]
 
 [Workspace]
 StartupProject = "BeefBuild"
 
 [Configs.Debug.Win32]
 Toolset = "GNU"
-BfOptimizationLevel = "O0"
 InitLocalVariables = true
 EmitObjectAccessCheck = false
-EnableCustodian = false
 EnableRealtimeLeakCheck = false
 AllocStackTraceDepth = 0
 ConfigSelections = {IDEHelper = {Enabled = false}}
@@ -25,24 +24,18 @@ EmitDebugInfo = "No"
 AllocStackTraceDepth = 0
 ConfigSelections = {IDEHelper = {Enabled = false}}
 
-[Configs.Release.Win64]
-
 [Configs.Release.Win64z]
 EnableObjectDebugFlags = true
 EmitObjectAccessCheck = true
-EnableCustodian = true
 EnableRealtimeLeakCheck = true
 AllocStackTraceDepth = 0
 
 [Configs.Debug-IDE.Win32]
 Toolset = "GNU"
-BfOptimizationLevel = "O0"
 EmitDebugInfo = "No"
-ArrayBoundsCheck = false
 EmitDynamicCastCheck = false
 EnableObjectDebugFlags = false
 EmitObjectAccessCheck = false
-EnableCustodian = false
 EnableRealtimeLeakCheck = false
 AllocStackTraceDepth = 0
 ConfigSelections = {corlib = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
@@ -51,29 +44,25 @@ ConfigSelections = {corlib = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, I
 Toolset = "GNU"
 BfOptimizationLevel = "O0"
 EmitDebugInfo = "No"
-ArrayBoundsCheck = false
 EmitDynamicCastCheck = false
 EnableObjectDebugFlags = false
 EmitObjectAccessCheck = false
-EnableCustodian = false
 EnableRealtimeLeakCheck = false
 ConfigSelections = {corlib = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
 
 [Configs.Debug2.Win32]
 Toolset = "GNU"
-BfOptimizationLevel = "O0"
 EmitDebugInfo = "No"
-ArrayBoundsCheck = false
 EmitDynamicCastCheck = false
 EnableObjectDebugFlags = false
 EmitObjectAccessCheck = false
-EnableCustodian = false
 EnableRealtimeLeakCheck = false
 AllocStackTraceDepth = 0
 ConfigSelections = {corlib = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
 
 [Configs.Debug2.Win64]
 PreprocessorMacros = ["NEWFONT"]
+BfOptimizationLevel = "O0"
 IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {corlib = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
 

@@ -132,12 +132,6 @@ namespace System
 	    
 	}
 
-	[AttributeUsage(.MemberAccess)]
-	public struct SkipAccessCheckAttribute : Attribute
-	{
-	    
-	}
-
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
 	public struct OptimizeAttribute : Attribute
 	{
@@ -331,7 +325,7 @@ namespace System
 
 	/// Generally used as a per-method optimization, [DisableObjectAccessChecks] will avoid the runtime per-object-access
 	/// checks which by default are only applied in debug builds anyway.
-	[AttributeUsage(.Method/*, AlwaysIncludeTarget=true*/)]
+	[AttributeUsage(.Method | .MemberAccess)]
 	public struct DisableObjectAccessChecksAttribute : Attribute
 	{
 	}

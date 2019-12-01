@@ -195,15 +195,20 @@ struct Blurg
 
 	}*/
 
-	struct Base
+	public struct Base
 	{
 		int32 mA;
 		int64 mB;
 	}
 
-	struct Derived : Base
+	public struct Derived : Base
 	{
 		int8 mC;
+
+		public int GetC()
+		{
+			return mC + 10000;
+		}
 	}
 
 	static int[] gArr = new .(1, 2, 3, 4, 5, );
@@ -225,17 +230,105 @@ struct Blurg
 		return 3;
 	}
 
+	
+	public static void Test()
+	{
+		//Test_Start
+		Derived dr = .();
+		dr.GetC();
+		Int iVal = (.)123;
+
+		int q = 999;
+
+		//Test_End
+	}
+
+	public static void Test2(int aa, int bb, int cc)
+	{
+		//Test_Start
+		Derived dr2 = .();
+		Int iVal2 = (.)123;
+
+		int q2 = 999;
+
+		String str = scope .();
+
+		//Test_End
+	}
+
+	public static void Recurse(int a)
+	{
+		int b = 234;
+		//Recurse_C
+		int c = 345;
+
+		if (a == 10)
+			return;
+
+		Recurse(a + 1);
+		int d = 100 + a;
+	}
+
+	public static void Test3()
+	{
+		//BreakpointTester_Test
+		int a = 0;
+		int b = 0;
+
+		while (a < 20)
+		{
+			//BreakpointTester_LoopA
+			a++;
+		}
+
+		//BreakpointTester_Recurse
+		Recurse(0);
+	}
+
+	public static void Test4()
+	{
+		//Test_Start
+		Derived dr = .();
+		Int iVal = (.)123;
+
+		int q = 999;
+
+		//Test_End
+	}
+
+	//[DisableObjectAccessChecks]
+	public static void Hey2()
+	{
+		String str = "Hey";
+		    //int len = str.[Friend, DisableObjectAccessChecks]PrivateLength;
+		int len = str.[DisableObjectAccessChecks]Length;
+		 //int len = str.[Friend]GetLength();
+	}				   
+
 	public static int32 Hey()
 	{
-		/*Self.[Checked]GetVal();
-		Self.[Unchecked]GetVal();
-		GetVal2();*/
-
-		int a = gArr[1];
-		a = gArr[[Unchecked]2];
-
+		Hey2();
+		Test();
+		Test2(11, 22, 33);
+		Test3();
+		Test4();
+		NoFrame.Test();
 		return (int32)123;
 	}
 
 }
 
+
+class NoFrame
+{
+	public static void Test()
+	{
+		//Test_Start
+		Blurg.Derived dr = .();
+		Int iVal = (.)123;
+
+		int q = 999;
+
+		//Test_End
+	}
+}

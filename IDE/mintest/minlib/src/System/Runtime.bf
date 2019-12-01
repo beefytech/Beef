@@ -159,7 +159,7 @@ namespace System
 			static void Object_GCMarkMembers(Object obj)
 			{
 #if BF_ENABLE_REALTIME_LEAK_CHECK
-				obj.[Friend, SkipAccessCheck]GCMarkMembers();
+				obj.[Friend, DisableObjectAccessChecks]GCMarkMembers();
 #endif
 			}
 

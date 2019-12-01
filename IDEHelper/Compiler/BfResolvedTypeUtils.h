@@ -37,7 +37,7 @@ enum BfMethodNameFlags : uint8
 	BfMethodNameFlag_OmitTypeName = 2
 };
 
-enum BfGetMethodInstanceFlags : uint8
+enum BfGetMethodInstanceFlags : uint16
 {
 	BfGetMethodInstanceFlag_None = 0,
 	BfGetMethodInstanceFlag_UnspecializedPass = 1,
@@ -47,7 +47,9 @@ enum BfGetMethodInstanceFlags : uint8
 	BfGetMethodInstanceFlag_Unreified = 0x10,
 	BfGetMethodInstanceFlag_NoForceReification = 0x20,
 	BfGetMethodInstanceFlag_ResultNotUsed = 0x40,
-	BfGetMethodInstanceFlag_ForceInline = 0x80
+	BfGetMethodInstanceFlag_ForceInline = 0x80,
+	BfGetMethodInstanceFlag_Friend = 0x100,
+	BfGetMethodInstanceFlag_DisableObjectAccessChecks = 0x200,
 };
 
 class BfDependencyMap
@@ -2203,6 +2205,13 @@ public:
 	Array<BfCustomAttributeSetProperty> mSetProperties;
 	Array<BfCustomAttributeSetField> mSetField;
 	bool mAwaitingValidation;
+
+	BfAstNode* GetRefNode()
+	{
+		if (mRef->mAttributeTypeRef != NULL)
+			return mRef->mAttributeTypeRef;
+		return mRef;
+	}
 };
 
 class BfCustomAttributes

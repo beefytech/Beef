@@ -5,6 +5,7 @@ Dependencies = {}
 Name = "minlib"
 TargetType = "BeefLib"
 DefaultNamespace = ""
+Aliases = ["corlib"]
 
 [Configs.Debug.Win32]
 OtherLinkFlags = ""

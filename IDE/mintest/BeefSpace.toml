@@ -11,6 +11,9 @@ InitLocalVariables = true
 IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {mintest2 = {Enabled = false}}
 
+[[Configs.Debug.Win32.DistinctOptions]]
+Filter = "NoFrame"
+
 [Configs.Debug.Win64]
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "Og"

@@ -1438,11 +1438,14 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 	if ((attrIdentifier = BfNodeDynCast<BfAttributedIdentifierNode>(memberName)))
 	{
 		memberName = attrIdentifier->mIdentifier;
-		if ((memberName == NULL) && (IsAutocompleteNode(attrIdentifier->mAttributes)))
+		if (IsAutocompleteNode(attrIdentifier->mAttributes))
 		{
 			auto bfParser = attrIdentifier->mAttributes->GetSourceData()->ToParser();			
 			int cursorIdx = bfParser->mCursorIdx;
-			isAutocompletingName = cursorIdx == attrIdentifier->mAttributes->GetSrcEnd();			
+			if (cursorIdx == attrIdentifier->mAttributes->GetSrcEnd())
+				isAutocompletingName = true;
+			else
+				return false;
 		}
 	}
 

@@ -3441,7 +3441,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				bool doAccessCheck = true;
 
-				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mSkipAccessCheckAttributeTypeDef)))
+				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
 					doAccessCheck = false;
 
 				if (target.IsThis())
@@ -3582,6 +3582,14 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					mPropCheckedKind = checkedKind;
 					if (isInlined)
 						mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
+
+					if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL))
+					{
+						if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef))
+							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_Friend);
+						if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef))
+							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_DisableObjectAccessChecks);
+					}
 
 					if (mPropDef->mIsStatic)
 					{
@@ -4800,7 +4808,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					if (!mModule->mCurMethodState->mMayNeedThisAccessCheck)
 						doAccessCheck = false;
 				}
-				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mSkipAccessCheckAttributeTypeDef)))
+				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
 					doAccessCheck = false;
 				if ((doAccessCheck) && (!isSkipCall))
 					mModule->EmitObjectAccessCheck(target);
@@ -11735,7 +11743,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 							if ((alignOverride & (alignOverride - 1)) == 0)
 								allocTarget.mAlignOverride = alignOverride;
 							else
-								mModule->Fail("Alignment must be a power of 2", attrib.mRef);							
+								mModule->Fail("Alignment must be a power of 2", attrib.GetRefNode());							
 						}
 					}
 				}
@@ -13787,7 +13795,8 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			if (mPropSrc != NULL)
 				mModule->UpdateExprSrcPos(mPropSrc);
 
-			CheckPropFail(matchedMethod, methodInstance.mMethodInstance);
+			if ((mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0)
+				CheckPropFail(matchedMethod, methodInstance.mMethodInstance);
 			PerformCallChecks(methodInstance.mMethodInstance, mPropSrc);
 
 			if (methodInstance.mMethodInstance->IsSkipCall())
@@ -13802,7 +13811,8 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 					if ((mPropDefBypassVirtual) && (mPropTarget.mType != methodInstance.mMethodInstance->GetOwner()))
 						mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, methodInstance.mMethodInstance->GetOwner());
 
-					mModule->EmitObjectAccessCheck(mPropTarget);
+					if ((mPropGetMethodFlags & BfGetMethodInstanceFlag_DisableObjectAccessChecks) == 0)
+						mModule->EmitObjectAccessCheck(mPropTarget);
 					PushThis(mPropSrc, mPropTarget, methodInstance.mMethodInstance, args);
 				}
 
@@ -15512,7 +15522,7 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		if (attributeState.mCustomAttributes != NULL)
 		{
 			if (mPropDef != NULL)
-				attributeState.mTarget = BfAttributeTargets_Invocation;
+				attributeState.mTarget = (BfAttributeTargets)(attributeState.mTarget | BfAttributeTargets_Invocation);
 			mModule->ValidateCustomAttributes(attributeState.mCustomAttributes, attributeState.mTarget);
 		}		
 	);

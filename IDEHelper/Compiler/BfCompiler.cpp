@@ -417,7 +417,6 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mReflectTypeInstanceTypeDef = NULL;
 	mReflectUnspecializedGenericType = NULL;
 	mSizedArrayTypeDef = NULL;
-	mSkipAccessCheckAttributeTypeDef = NULL;
 	mStaticInitAfterAttributeTypeDef = NULL;	
 	mStaticInitPriorityAttributeTypeDef = NULL;
 	mStringTypeDef = NULL;
@@ -5870,8 +5869,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mReflectSpecializedGenericType = _GetRequiredType("System.Reflection.SpecializedGenericType");
 	mReflectTypeInstanceTypeDef = _GetRequiredType("System.Reflection.TypeInstance");
 	mReflectUnspecializedGenericType = _GetRequiredType("System.Reflection.UnspecializedGenericType");
-	mSizedArrayTypeDef = _GetRequiredType("System.SizedArray", 2);
-	mSkipAccessCheckAttributeTypeDef = _GetRequiredType("System.SkipAccessCheckAttribute");
+	mSizedArrayTypeDef = _GetRequiredType("System.SizedArray", 2);	
 	mStaticInitAfterAttributeTypeDef = _GetRequiredType("System.StaticInitAfterAttribute");
 	mStaticInitPriorityAttributeTypeDef = _GetRequiredType("System.StaticInitPriorityAttribute");
 	mStringTypeDef = _GetRequiredType("System.String");

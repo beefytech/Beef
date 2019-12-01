@@ -5,7 +5,6 @@ Dependencies = {minlib = "*"}
 Name = "mintest"
 StartupObject = "Hey.Dude.Bro.TestClass"
 DefaultNamespace = "Mintest"
-Aliases = ["corlib"]
 
 [Platform.Windows]
 Description = "Mintest"

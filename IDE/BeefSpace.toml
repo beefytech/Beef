@@ -100,6 +100,7 @@ AllowHotSwapping = false
 AllocStackTraceDepth = 0
 
 [Configs.Debug3.Win64]
+BfOptimizationLevel = "O0"
 IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
 

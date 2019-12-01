@@ -9393,7 +9393,7 @@ void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, Bf
 		if ((customAttribute.mType->mAttributeData->mAttributeTargets & attrTarget) == 0)
 		{
 			Fail(StrFormat("Attribute '%s' is not valid on this declaration type. It is only valid on %s.",
-				customAttribute.mRef->ToString().c_str(), GetAttributesTargetListString(customAttribute.mType->mAttributeData->mAttributeTargets).c_str()), customAttribute.mRef->mAttributeTypeRef);	// CS0592
+				customAttribute.GetRefNode()->ToString().c_str(), GetAttributesTargetListString(customAttribute.mType->mAttributeData->mAttributeTargets).c_str()), customAttribute.mRef->mAttributeTypeRef);	// CS0592
 		}		
 
 		customAttribute.mAwaitingValidation = false;

@@ -241,6 +241,14 @@ namespace System
 			}
 		}
 
+		private int PrivateLength
+		{
+		    get
+		    {
+		        return mLength;
+			}
+		}
+
         int32 AllocSize
         {
 			[Inline]

@@ -132,12 +132,6 @@ namespace System
 	    
 	}
 
-	[AttributeUsage(.MemberAccess)]
-	public struct SkipAccessCheckAttribute : Attribute
-	{
-	    
-	}
-
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
 	public struct OptimizeAttribute : Attribute
 	{
@@ -337,7 +331,7 @@ namespace System
 	{
 	}
 
-	[AttributeUsage(.Method/*, AlwaysIncludeTarget=true*/)]
+	[AttributeUsage(.Method | .MemberAccess)]
 	public struct DisableObjectAccessChecksAttribute : Attribute
 	{
 	}

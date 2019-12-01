@@ -1151,7 +1151,10 @@ namespace IDE.ui
 				gApp.WithTabs(scope (tab) =>
 					{
 					    var sourceViewPanel = tab.mContent as SourceViewPanel;
-					    if ((sourceViewPanel != null) && (sourceViewPanel.mProjectSource.mProject == project))
+					    //if (sourceViewPanel?.mProjectSource?.mProject == project)
+						if	((sourceViewPanel != null) &&
+							 (sourceViewPanel.mProjectSource != null) &&
+							 (sourceViewPanel.mProjectSource.mProject == project))
 					    {
 					        sourceViewPanel.DetachFromProjectItem();
 					    }

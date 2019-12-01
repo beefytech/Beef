@@ -384,8 +384,7 @@ public:
 	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;
 	BfTypeDef* mFriendAttributeTypeDef;
 	BfTypeDef* mCheckedAttributeTypeDef;
-	BfTypeDef* mUncheckedAttributeTypeDef;
-	BfTypeDef* mSkipAccessCheckAttributeTypeDef;
+	BfTypeDef* mUncheckedAttributeTypeDef;	
 	BfTypeDef* mStaticInitAfterAttributeTypeDef;
 	BfTypeDef* mStaticInitPriorityAttributeTypeDef;	
 	BfTypeDef* mTestAttributeTypeDef;
