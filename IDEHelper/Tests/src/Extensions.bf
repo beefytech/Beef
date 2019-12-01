@@ -190,7 +190,7 @@ namespace Tests
 			// This should only call the LibA version since the LibA:LibClassB.DoGetVal3 won't have
 			//  access to call the Tests:LibClassB.DoGetVal3
 			int indirectResult = LibClassB.DoGetVal3(a);
-			Test.Assert(directResult == 30);
+			Test.Assert(indirectResult == 30);
 		}
 	}
 }
