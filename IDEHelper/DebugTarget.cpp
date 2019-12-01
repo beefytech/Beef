@@ -1699,7 +1699,7 @@ bool DebugTarget::RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, 
 					{
 						int blockLen = (int)DecodeULEB128(data);
 						DbgAddrType addrType;
-						state->mCFA = dwFrameDescriptor->mCommonFrameDescriptor->mDbgModule->ExecuteOps(NULL, data, blockLen , NULL, registers, &addrType, true, &state->mCFA);
+						state->mCFA = dwFrameDescriptor->mCommonFrameDescriptor->mDbgModule->ExecuteOps(NULL, data, blockLen , NULL, registers, &addrType, DbgEvalLocFlag_None, &state->mCFA);
 					}
 					break;
 				case DW_CFA_expression:
@@ -1766,7 +1766,7 @@ bool DebugTarget::RollBackStackFrame_DwFrameDescriptor(CPURegisters* registers, 
 		case DW_CFA_expression:
 			{
 				DbgAddrType addrType;
-				registers->mIntRegsArray[registerNum] = dwFrameDescriptor->mCommonFrameDescriptor->mDbgModule->ExecuteOps(NULL, registerRuleData->mParamData, registerRuleData->mParamOffset, NULL, registers, &addrType, true, &state->mCFA);
+				registers->mIntRegsArray[registerNum] = dwFrameDescriptor->mCommonFrameDescriptor->mDbgModule->ExecuteOps(NULL, registerRuleData->mParamData, registerRuleData->mParamOffset, NULL, registers, &addrType, DbgEvalLocFlag_None, &state->mCFA);
 			}
 			break;
 		default:
@@ -2372,7 +2372,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 					return false;
 				}
 
-				*outAddr = variable->mCompileUnit->mDbgModule->EvaluateLocation(dwSubprogram, variable->mLocationData, variable->mLocationLen, stackFrame, outAddrType);
+				*outAddr = variable->mCompileUnit->mDbgModule->EvaluateLocation(dwSubprogram, variable->mLocationData, variable->mLocationLen, stackFrame, outAddrType, variable->mIsParam ? DbgEvalLocFlag_IsParam : DbgEvalLocFlag_None);
 
 				_FixParam(variable);
 

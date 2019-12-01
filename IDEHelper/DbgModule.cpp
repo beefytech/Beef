@@ -6425,8 +6425,10 @@ void DbgModule::FinishHotSwap()
 	mSymbolNameMap.Clear(); 
 }
 
-addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, CPURegisters* registers, DbgAddrType* outAddrType, bool allowReg, addr_target* pushValue)
+addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, CPURegisters* registers, DbgAddrType* outAddrType, DbgEvalLocFlags flags, addr_target* pushValue)
 {
+	bool allowReg = (flags & DbgEvalLocFlag_IsParam) == 0;
+
 	const uint8* locDataEnd = locData + locDataLen;
 	int regNum = -1;
 
@@ -6507,7 +6509,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 				}
 
 				BF_ASSERT(nonInlinedSubProgram->mFrameBaseData != NULL);
-				uint64 loc = EvaluateLocation(nonInlinedSubProgram, nonInlinedSubProgram->mFrameBaseData, nonInlinedSubProgram->mFrameBaseLen, stackFrame, outAddrType, false);
+				uint64 loc = EvaluateLocation(nonInlinedSubProgram, nonInlinedSubProgram->mFrameBaseData, nonInlinedSubProgram->mFrameBaseLen, stackFrame, outAddrType, DbgEvalLocFlag_DisallowReg);
 				int64 offset = DecodeSLEB128(locData);
 				loc += offset;
 				//loc = BfDebuggerReadMemory(loc);
@@ -6631,7 +6633,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 	return stackFrameData[--stackIdx];
 }
 
-addr_target DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, bool allowReg)
+addr_target DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)
 {
 	BP_ZONE("DebugTarget::EvaluateLocation");
 	
@@ -6725,7 +6727,7 @@ addr_target DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8
 		}
 	}
 
-	return ExecuteOps(dwSubprogram, locData, locDataLen, stackFrame, registers, outAddrType, allowReg);
+	return ExecuteOps(dwSubprogram, locData, locDataLen, stackFrame, registers, outAddrType, flags);
 }
 
 void DbgModule::ProcessHotSwapVariables()

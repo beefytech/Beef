@@ -2635,6 +2635,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 // 					}
 
 					curSubprogram->mFrameBaseLen = frameProc->cbFrame + frameProc->cbSaveRegs;
+					curSubprogram->mParamBaseReg = (DbgSubprogram::LocalBaseRegKind)(uint8)frameProc->flags.encodedParamBasePointer;
 					curSubprogram->mLocalBaseReg = (DbgSubprogram::LocalBaseRegKind)(uint8)frameProc->flags.encodedLocalBasePointer;
 				}
 			}
@@ -6003,10 +6004,10 @@ void COFF::FinishHotSwap()
 	mTypeMap.Clear();	
 }
 
-addr_target COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, bool allowReg)
+addr_target COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)
 {
 	if (mDbgFlavor == DbgFlavor_GNU)
-		return DbgModule::EvaluateLocation(dwSubprogram, locData, locDataLen, stackFrame, outAddrType, allowReg);
+		return DbgModule::EvaluateLocation(dwSubprogram, locData, locDataLen, stackFrame, outAddrType, flags);
 
 	addr_target pc = 0;
 	if (stackFrame != NULL)
@@ -6104,30 +6105,20 @@ addr_target COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* loc
 			{
 				DEFRANGESYMFRAMEPOINTERREL& defRangeFPRel = *(DEFRANGESYMFRAMEPOINTERREL*)dataStart;
 				
+				DbgSubprogram::LocalBaseRegKind baseReg = ((flags & DbgEvalLocFlag_IsParam) != 0) ? dwSubprogram->mParamBaseReg : dwSubprogram->mLocalBaseReg;
+
 				*outAddrType = DbgAddrType_Target;
 #ifdef BF_DBG_64				
-				if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_RSP)
+				if (baseReg == DbgSubprogram::LocalBaseRegKind_RSP)
 					result = stackFrame->mRegisters.mIntRegsArray[X64Reg_RSP] + defRangeFPRel.offFramePointer;
-				else if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_R13)
+				else if (baseReg == DbgSubprogram::LocalBaseRegKind_R13)
 					result = stackFrame->mRegisters.mIntRegsArray[X64Reg_R13] + defRangeFPRel.offFramePointer;
 				else
 					result = stackFrame->mRegisters.mIntRegsArray[X64Reg_RBP] + defRangeFPRel.offFramePointer;
 #else				
-				if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_VFRAME)					
-				{					
-					if (defRangeFPRel.offFramePointer > 0)
-					{
-						// Note that a positive offFramePointer always refers to params, and param fp reg is always EBP-relative.
-						// If this is not true in some cases then we need to actually pass in knowledge of whether is loc data is 
-						//  from a param or not, and we have to store the param fp reg just like the local fp reg (mLocalBaseReg)
-						result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBP] + defRangeFPRel.offFramePointer;
-					}
-					else
-						result = stackFrame->mRegisters.mIntRegsArray[X86Reg_ESP] + dwSubprogram->mFrameBaseLen + defRangeFPRel.offFramePointer;
-						//result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBP] + defRangeFPRel.offFramePointer;
-						//result = ((stackFrame->mRegisters.mIntRegsArray[X86Reg_ESP] + dwSubprogram->mFrameBaseLen) & ~7) + defRangeFPRel.offFramePointer;
-				}
-				else if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_EBX)
+				if (baseReg == DbgSubprogram::LocalBaseRegKind_VFRAME)
+					result = stackFrame->mRegisters.mIntRegsArray[X86Reg_ESP] + dwSubprogram->mFrameBaseLen + defRangeFPRel.offFramePointer;									
+				else if (baseReg == DbgSubprogram::LocalBaseRegKind_EBX)
 					result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBX] + defRangeFPRel.offFramePointer;
 				else
 					result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBP] + defRangeFPRel.offFramePointer;

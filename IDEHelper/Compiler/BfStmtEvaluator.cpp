@@ -6145,19 +6145,26 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		BfMethodMatcher methodMatcher(forEachStmt->mVariableName, this, "get__", argValues.mResolvedArgs, NULL);
 		methodMatcher.mMethodType = BfMethodType_PropertyGetter;
 		methodMatcher.CheckType(target.mType->ToTypeInstance(), target, false);
-		methodMatcher.mCheckedKind = boundsCheck ? BfCheckedKind_Checked : BfCheckedKind_Unchecked;
-		BfTypedValue arrayItem = exprEvaluator.CreateCall(&methodMatcher, target);
-
-		if ((varInst) && (arrayItem))
+		if (methodMatcher.mBestMethodDef == NULL)
 		{
-			if (isRefExpression)
-				arrayItem = BfTypedValue(arrayItem.mValue, CreateRefType(arrayItem.mType));
-			else if (!arrayItem.mType->IsComposite())
+			Fail("Failed to find indexer method in array", forEachStmt);
+		}
+		else
+		{
+			methodMatcher.mCheckedKind = boundsCheck ? BfCheckedKind_Checked : BfCheckedKind_Unchecked;
+			BfTypedValue arrayItem = exprEvaluator.CreateCall(&methodMatcher, target);
+
+			if ((varInst) && (arrayItem))
+			{
+				if (isRefExpression)
+					arrayItem = BfTypedValue(arrayItem.mValue, CreateRefType(arrayItem.mType));
+				else if (!arrayItem.mType->IsComposite())
+					arrayItem = LoadValue(arrayItem);
+				arrayItem = Cast(forEachStmt->mCollectionExpression, arrayItem, varType, BfCastFlags_Explicit);
 				arrayItem = LoadValue(arrayItem);
-			arrayItem = Cast(forEachStmt->mCollectionExpression, arrayItem, varType, BfCastFlags_Explicit);
-			arrayItem = LoadValue(arrayItem);
-			if (arrayItem)			
-				mBfIRBuilder->CreateStore(arrayItem.mValue, varInst);	
+				if (arrayItem)
+					mBfIRBuilder->CreateStore(arrayItem.mValue, varInst);
+			}
 		}
 	}
 	else

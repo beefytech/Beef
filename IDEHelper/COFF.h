@@ -312,7 +312,7 @@ public:
 	virtual void PopulateStaticVariableMap() override;
 	virtual void ProcessDebugInfo() override;
 	virtual void FinishHotSwap() override;
-	virtual addr_target EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, bool allowReg) override;
+	virtual addr_target EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags = DbgEvalLocFlag_None) override;
 	virtual bool CanGetOldSource() override;
 	virtual String GetOldSourceCommand(const StringImpl& path) override;	
 	virtual bool HasPendingDebugInfo() override;

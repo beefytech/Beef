@@ -384,6 +384,7 @@ public:
 	int mDeferredInternalsSize;
 	int mVTableLoc;
 	int mStepFilterVersion;	
+	LocalBaseRegKind mParamBaseReg;
 	LocalBaseRegKind mLocalBaseReg;
 	bool mHasQualifiedName;
 	bool mIsStepFiltered;
@@ -1086,6 +1087,13 @@ enum DbgModuleLoadState
 	DbgModuleLoadState_Loaded
 };
 
+enum DbgEvalLocFlags
+{
+	DbgEvalLocFlag_None = 0,
+	DbgEvalLocFlag_DisallowReg = 1,
+	DbgEvalLocFlag_IsParam = 2
+};
+
 struct DbgSizedArrayEntry
 {
 	DbgType* mElementType;
@@ -1286,8 +1294,8 @@ public:
 		
 	int64 GetImageSize();	
 	virtual void FinishHotSwap();	
-	addr_target ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, CPURegisters* registers, DbgAddrType* outAddrType, bool allowReg, addr_target* pushValue = NULL);
-	virtual addr_target EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, bool allowReg = true);
+	addr_target ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, CPURegisters* registers, DbgAddrType* outAddrType, DbgEvalLocFlags flags, addr_target* pushValue = NULL);
+	virtual addr_target EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags = DbgEvalLocFlag_None);
 
 	//const uint8* CopyOrigImageData(addr_target address, int length);
 	
