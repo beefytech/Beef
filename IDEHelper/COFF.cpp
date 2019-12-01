@@ -6123,8 +6123,9 @@ addr_target COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* loc
 						result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBP] + defRangeFPRel.offFramePointer;
 					}
 					else
-						//result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBP] + defRangeFPRel.offFramePointer - 4;
-						result = ((stackFrame->mRegisters.mIntRegsArray[X86Reg_ESP] + dwSubprogram->mFrameBaseLen) & ~7) + defRangeFPRel.offFramePointer;
+						result = stackFrame->mRegisters.mIntRegsArray[X86Reg_ESP] + dwSubprogram->mFrameBaseLen + defRangeFPRel.offFramePointer;
+						//result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBP] + defRangeFPRel.offFramePointer;
+						//result = ((stackFrame->mRegisters.mIntRegsArray[X86Reg_ESP] + dwSubprogram->mFrameBaseLen) & ~7) + defRangeFPRel.offFramePointer;
 				}
 				else if (dwSubprogram->mLocalBaseReg == DbgSubprogram::LocalBaseRegKind_EBX)
 					result = stackFrame->mRegisters.mIntRegsArray[X86Reg_EBX] + defRangeFPRel.offFramePointer;
