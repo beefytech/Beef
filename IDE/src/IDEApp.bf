@@ -2236,6 +2236,34 @@ namespace IDE
 				return .Err;
 		}
 
+		void FlushDeferredLoadProjects()
+		{
+			while (true)
+			{
+				bool hadLoad = false;
+				for (int projectIdx = 0; projectIdx < mWorkspace.mProjects.Count; projectIdx++)
+				{
+					var project = mWorkspace.mProjects[projectIdx];
+					if (project.mLoadDeferred)
+					{
+						hadLoad = true;
+
+						var projectPath = project.mProjectPath;
+						if (!project.Load(projectPath))
+						{
+							OutputErrorLine("Failed to load project '{0}' from '{1}'", project.mProjectName, projectPath);
+							LoadFailed();
+							project.mFailed = true;
+						}
+
+						AddProjectToWorkspace(project, false);
+					}
+				}
+				if (!hadLoad)
+					break;
+			}
+		}
+
         protected void LoadWorkspace(BeefVerb verb)
         {
 			scope AutoBeefPerf("IDEApp.LoadWorkspace");
@@ -2428,30 +2456,7 @@ namespace IDE
 				mWorkspace.Deserialize(data);
 			}
 
-			while (true)
-			{
-				bool hadLoad = false;
-				for (int projectIdx = 0; projectIdx < mWorkspace.mProjects.Count; projectIdx++)
-				{
-					var project = mWorkspace.mProjects[projectIdx];
-					if (project.mLoadDeferred)
-					{
-						hadLoad = true;
-
-						var projectPath = project.mProjectPath;
-						if (!project.Load(projectPath))
-						{
-							OutputErrorLine("Failed to load project '{0}' from '{1}'", project.mProjectName, projectPath);
-							LoadFailed();
-							project.mFailed = true;
-						}
-
-						AddProjectToWorkspace(project, false);
-					}
-				}
-				if (!hadLoad)
-					break;
-			}
+			FlushDeferredLoadProjects();
 
 			mWorkspace.FinishDeserialize(data);
             mWorkspace.FixOptions(mConfigName, mPlatformName);
@@ -2465,6 +2470,8 @@ namespace IDE
 
 		public void RetryProjectLoad(Project project)
 		{
+			LoadConfig();
+
 			var projectPath = project.mProjectPath;
 			if (!project.Load(projectPath))
 			{
@@ -2474,9 +2481,12 @@ namespace IDE
 			}
 			else
 			{
+				FlushDeferredLoadProjects();
+				mWorkspace.FixOptions();
+
 				project.mFailed = false;
-				CurrentWorkspaceConfigChanged();
 				mProjectPanel.RebuildUI();
+				CurrentWorkspaceConfigChanged();
 			}
 		}
 
@@ -2493,14 +2503,9 @@ namespace IDE
 			VerSpecRecord useVerSpecRecord = verSpecRecord;
 			String verConfigDir = mWorkspace.mDir;
 
-			for (var project in mWorkspace.mProjects)
-			{
-				if (project.mProjectName == projectName)
-				{
-					return project;
-				}
-			}
-
+			if (let project = mWorkspace.FindProject(projectName))
+				return project;
+			
 			if (useVerSpecRecord.mVerSpec case .SemVer)
 			{
 				for (int regEntryIdx = mBeefConfig.mRegistry.Count - 1; regEntryIdx >= 0; regEntryIdx--)
@@ -2561,6 +2566,7 @@ namespace IDE
 			project.mProjectName.Set(projectName);
 			project.DeferLoad(projectFilePath);
 			success = true;
+			mWorkspace.AddProjectToCache(project);
 
 			/*if (!project.Load(projectFilePath))
 			{
@@ -3796,6 +3802,15 @@ namespace IDE
 		void Compile()
 		{
 			CompilerLog("IDEApp.Compile");
+
+			for (let project in gApp.mWorkspace.mProjects)
+			{
+				if (project.mFailed)
+				{
+					OutputErrorLine("Project '{}' is not loaded. Retry loading by right clicking on the project in the Workspace panel and selecting 'Retry Load'", project.mProjectName);
+					return;
+				}
+			}
 
 			if (AreTestsRunning())
 				return;
@@ -8959,7 +8974,7 @@ namespace IDE
                         projectError.Append(", ");
                     projectError.Append(useProjectStack[i].mProjectName);
                 }
-                OutputLine(projectError);
+                OutputErrorLine(projectError);
                 return true;
             }
 

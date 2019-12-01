@@ -667,6 +667,23 @@ namespace IDE
 			mProjectNameMap.Clear();
 		}
 
+		public void AddProjectToCache(Project project)
+		{
+			void Add(String name, Project project)
+			{
+				bool added = mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr);
+				if (!added)
+					return;
+				*keyPtr = new String(name);
+				*valuePtr = project;
+			}
+
+			Add(project.mProjectName, project);
+
+			for (var alias in project.mGeneralOptions.mAliases)
+				Add(alias, project);
+		}
+
         public Project FindProject(StringView projectName)
         {
 			if (mProjectNameMap.IsEmpty)
@@ -681,7 +698,7 @@ namespace IDE
 				}
 
 				for (var project in mProjects)
-					Add(project.mProjectName, project);;
+					Add(project.mProjectName, project);
 				
 				for (var project in mProjects)
 				{
