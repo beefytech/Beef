@@ -940,8 +940,8 @@ public:
 	String GetDebugTypeName(BfTypeInstance* typeInstance, bool includeOuterTypeName);
 	void CreateDbgTypeDefinition(BfType* type);
 	bool WantsDbgDefinition(BfType * type);
-	void CreateTypeDeclaration(BfType* type, bool forceDefine);
-	void CreateTypeDefinition(BfType* type, bool forceDefine);	
+	void CreateTypeDeclaration(BfType* type, bool forceDbgDefine);
+	void CreateTypeDefinition(BfType* type, bool forceDbgDefine);
 	void ReplaceDITemporaryTypes();
 	void PushDbgLoc(BfTypeInstance* typeInst);
 	BfIRPopulateType GetPopulateTypeState(BfType* type);

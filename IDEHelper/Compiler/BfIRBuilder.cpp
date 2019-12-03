@@ -1881,7 +1881,7 @@ public:
 };
 #endif
 
-void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
+void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 {		
 	bool wantDIData = DbgHasInfo() && (!type->IsUnspecializedType());
 			
@@ -1892,6 +1892,8 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDefine)
 //  		wantsDIForwardDecl = false;
 	if (mModule->mExtensionCount != 0)
 		wantsDIForwardDecl = true;
+	if (forceDbgDefine)
+		wantsDIForwardDecl = false;
 
 	bool isPrimEnum = (type->IsEnum()) && (type->IsTypedPrimitive());
 
@@ -2772,7 +2774,7 @@ bool BfIRBuilder::WantsDbgDefinition(BfType* type)
 	return false;
 }
 
-void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDefine)
+void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 {	
 	// This PopulateType is generally NOT needed, but here is a scenario in which it is:
 	//  ClassB derives from ClassA.  ClassC uses ClassB.  A method inside ClassA gets modified,

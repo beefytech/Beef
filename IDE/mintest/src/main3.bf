@@ -307,28 +307,23 @@ struct Blurg
 
 	public static int32 Hey()
 	{
-		Hey2();
-		Test();
-		Test2(11, 22, 33);
-		Test3();
-		Test4();
-		NoFrame.Test();
+		while (true)
+		{
+			Type t = typeof(Yoofer);
+			for (let field in t.GetFields())
+			{
+				StringView name = field.Name;
+			}
+		}
+		
+#unwarn
 		return (int32)123;
 	}
 
 }
 
-
-class NoFrame
+[Reflect]
+struct Yoofer
 {
-	public static void Test()
-	{
-		//Test_Start
-		Blurg.Derived dr = .();
-		Int iVal = (.)123;
-
-		int q = 999;
-
-		//Test_End
-	}
+	int mA;
 }
