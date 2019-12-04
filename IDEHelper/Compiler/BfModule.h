@@ -645,6 +645,7 @@ public:
 	BfIRBlock mPrevBB;
 	BfIRBlock mCheckBB;
 	BfIRBlock mDoneBB;
+	SizedArray<BfIRBlock, 4> mNotNullBBs;
 };
 
 class BfAttributeState

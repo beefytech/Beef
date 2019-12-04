@@ -15485,6 +15485,7 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 	else
 		isNotNull = mModule->mBfIRBuilder->CreateIsNotNull(thisValue.mValue);
 	BfIRBlock notNullBB = mModule->mBfIRBuilder->CreateBlock("nullCond.notNull");
+	pendingNullCond->mNotNullBBs.Add(notNullBB);
 	mModule->mBfIRBuilder->CreateCondBr(isNotNull, notNullBB, pendingNullCond->mDoneBB);
 
 	mModule->AddBasicBlock(notNullBB);	

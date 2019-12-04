@@ -7,6 +7,7 @@ namespace Tests
 	class CondB
 	{
 		public int mInt = 123;
+		public String mStr;
 
 		public int Val
 		{
@@ -52,6 +53,10 @@ namespace Tests
 				Test.Assert(i == 123);
 			else
 				Test.FatalError();
+
+			Test.Assert(ca?.mCondB?.mStr == null);
+			Test.Assert(!(ca?.mCondB?.mStr?.Length != 0));
+			Test.Assert(!(ca?.mCondB?.mStr?.Length == 0));
 
 			if (let i = ca?.mCondB?.mInt)
 			{
