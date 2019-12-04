@@ -54,8 +54,9 @@ namespace IDE.ui
         CompilerFlags_Mask      = 0x0F,
 
         SpellingError           = 0x10,
-        Find_Matches            = 0x20,        
-        SymbolReference         = 0x40,
+        Find_Matches            = 0x20,
+		Find_CurrentSelection   = 0x40,
+        SymbolReference         = 0x80,
         EditorFlags_Mask        = 0xF0,
 
         MASK = 0xFF

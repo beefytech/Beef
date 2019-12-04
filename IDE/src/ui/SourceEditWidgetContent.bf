@@ -572,16 +572,6 @@ namespace IDE.ui
             if ((flags & ~(uint8)SourceElementFlags.Skipped) == 0)
                 return;
 
-            /*if ((flags & (byte)SourceElementFlags.Find_CurrentSelection) != 0)
-            {
-                using (g.PushColor(0xFF706030))
-                    g.FillRect(x, y, width, mFont.GetLineSpacing());
-
-                DrawSectionFlagsOver(g, x, y, width, (byte)(flags & ~(byte)(SourceElementFlags.Find_CurrentSelection | SourceElementFlags.Find_Matches)));
-                return;
-            }
-            else*/
-
             if ((flags & (uint8)SourceElementFlags.SymbolReference) != 0)
             {
                 bool isRenameSymbol = (IDEApp.sApp.mSymbolReferenceHelper != null) && (IDEApp.sApp.mSymbolReferenceHelper.mKind == SymbolReferenceHelper.Kind.Rename);
@@ -592,12 +582,18 @@ namespace IDE.ui
                 return;
             }
 
+			if ((flags & (uint8)SourceElementFlags.Find_CurrentSelection) != 0)
+			{
+			    using (g.PushColor(0x80FFE0B0))
+			        g.FillRect(x, y, width, mFont.GetLineSpacing());
+
+			    DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)(SourceElementFlags.Find_CurrentSelection | .Find_Matches)));
+			    return;
+			}
+
             if ((flags & (uint8)SourceElementFlags.Find_Matches) != 0)
             {
-                //using (g.PushColor(0xFF505050))
-                //using (g.PushColor(0x30B0B0B0))
-                //using (g.PushColor(0x28FFFFFF))
-                using (g.PushColor(0x34FFE0B0))
+                using (g.PushColor(0x50D0C090))
                     g.FillRect(x, y, width, mFont.GetLineSpacing());
 
                 DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)SourceElementFlags.Find_Matches));

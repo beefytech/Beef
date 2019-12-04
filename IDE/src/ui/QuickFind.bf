@@ -79,6 +79,7 @@ namespace IDE.ui
         public int32 mCurFindIdx = -1;
         public int32 mCurFindStart = 0;
         public int32 mCurFindCount;
+		public int32 mCurFindDir;
         //public bool mSearchDidWrap;
         public bool mIsReplace;
         public int32 mLastTextVersion;
@@ -254,9 +255,9 @@ namespace IDE.ui
         {
             uint8 mask = 0xFF;
             if (clearMatches)
-                mask = (uint8)(mask & ~(uint8)SourceElementFlags.Find_Matches);
-            //if (clearSelection)
-                //mask = (byte)(mask & ~(byte)SourceElementFlags.Find_CurrentSelection);
+                mask = (uint8)(mask & ~(uint8)(SourceElementFlags.Find_Matches));
+            if (clearSelection)
+                mask = (uint8)(mask & ~(uint8)SourceElementFlags.Find_CurrentSelection);
 
             bool foundFlags = false;
             var text = mEditWidget.Content.mData.mText;
@@ -301,12 +302,19 @@ namespace IDE.ui
 				return;
             var editWidgetContent = mEditWidget.Content;
             editWidgetContent.MoveCursorToIdx(mCurFindIdx + (int32)findText.Length, true);
+
+			for (int32 idx = mCurFindIdx; idx < mCurFindIdx + findText.Length; idx++)
+			{
+			    uint8 flags = (uint8)SourceElementFlags.Find_CurrentSelection;
+			    mEditWidget.Content.mData.mText[idx].mDisplayFlags = (uint8)(mEditWidget.Content.mData.mText[idx].mDisplayFlags | flags);
+			}
+
 			if ((mSelectionStart == null) || (mParent == null))
 			{
-	            if (mFoundMatches)
+	            /*if (mFoundMatches)
 	                editWidgetContent.mSelection = EditSelection(mCurFindIdx, mCurFindIdx + (int32)findText.Length);
 	            else if (!String.IsNullOrWhiteSpace(findText))
-	                editWidgetContent.mSelection = null;
+	                editWidgetContent.mSelection = null;*/
 			}
             if (mHasNewActiveCursorPos)
             {
@@ -337,9 +345,11 @@ namespace IDE.ui
                 return;
             }
 
-            ClearFlags(false, true);
             if (FindNext(dir, true, showMessage ? ErrorReportType.MessageBox : ErrorReportType.Sound))
-                ShowCurrentSelection();            
+            {
+				ClearFlags(false, true);
+				ShowCurrentSelection();
+			}
         }
 
         public enum ErrorReportType
@@ -373,7 +383,9 @@ namespace IDE.ui
             findTextLower.ToLower();
             String findTextUpper = scope String(findText);
             findTextUpper.ToUpper();
-            
+
+			Debug.WriteLine("Before: mCurFindIdx:{} mCurFindStart:{} mCurFindCount:{}", mCurFindIdx, mCurFindStart, mCurFindCount);
+
             if ((mCurFindIdx == -1) && (mSelectionStart != null))
             {
                 mCurFindIdx = mSelectionStart.mIndex - 1;
@@ -390,17 +402,19 @@ namespace IDE.ui
 			if (dir < 0)
 			{
 				if (mCurFindIdx == -1)
-					searchStartIdx = selEnd + dir - (int32)findText.Length;					
+				{
+					searchStartIdx = selEnd + dir - (int32)findText.Length;
+				}
 				else
 					searchStartIdx = mCurFindIdx + dir;
-				if (searchStartIdx < selStart)
-				    searchStartIdx = selStart;
+				/*if (searchStartIdx < selStart)
+				    searchStartIdx = selStart;*/
 			}
 			else
 			{
 				searchStartIdx = mCurFindIdx + dir;
-				if (searchStartIdx < selStart)
-				    searchStartIdx = selStart;
+				/*if (searchStartIdx < selStart)
+				    searchStartIdx = selStart;*/
 			}            
 
             /*if ((searchStartIdx == mCurFindStart) && (mCurFindCount > 0))
@@ -414,7 +428,7 @@ namespace IDE.ui
             {
 				if (startIdx > selEnd - findText.Length)
 					break;
-				if (startIdx < 0)
+				if (startIdx < selStart)
 					break;
 
                 bool isEqual = true;
@@ -439,6 +453,18 @@ namespace IDE.ui
                 int a = 0;
             }*/
 
+			if (mCurFindDir != dir)
+			{
+				mCurFindDir = dir;
+				mCurFindCount = 0;
+				mCurFindStart = mCurFindIdx;
+			}
+
+			defer
+			{
+				Debug.WriteLine("After: mCurFindIdx:{} mCurFindStart:{} mCurFindCount:{}", mCurFindIdx, mCurFindStart, mCurFindCount);
+			}
+
 			if (dir < 0)
 			{
 				int32 checkOfs = (mCurFindCount == 0) ? 1 : 0;
@@ -447,7 +473,7 @@ namespace IDE.ui
 				    if (isSelection)
 				        ShowDoneError(errorType);
 				        
-				    mCurFindIdx = mCurFindStart - 1;
+				    mCurFindIdx = mCurFindStart + 1;
 				    mCurFindCount = 0;
 				    return false;
 				}
@@ -478,8 +504,8 @@ namespace IDE.ui
                 for (int32 idx = nextIdx; idx < nextIdx + findText.Length; idx++)
                 {
                     uint8 flags = (uint8)SourceElementFlags.Find_Matches;
-                    //if (isSelection)
-                        //flags |= (byte)SourceElementFlags.Find_CurrentSelection;
+                    /*if (isSelection)
+                        flags |= (uint8)SourceElementFlags.Find_CurrentSelection;*/
 
                     mEditWidget.Content.mData.mText[idx].mDisplayFlags = (uint8)(mEditWidget.Content.mData.mText[idx].mDisplayFlags | flags);
                 }
