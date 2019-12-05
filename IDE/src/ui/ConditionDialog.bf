@@ -197,7 +197,7 @@ namespace IDE.ui
 					exprPre.Append("@C:");
 				else
 					exprPre.Append("@Beef:");
-				exprPost.AppendF(",_=({0}*)0x", addrVal);
+				exprPost.AppendF(",_=*({0}*)0x", addrVal);
 				mBreakpoint.mMemoryAddress.ToString(exprPost, "X", null);
 				exprPost.Append("L");
 			}

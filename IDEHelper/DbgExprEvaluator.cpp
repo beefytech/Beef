@@ -3628,8 +3628,17 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 		return GetThis();
 	if (findName == "_")
 	{
-		if (mSubjectValue)
+		if (mSubjectValue)			
+		{
+			if (mSubjectValue.mSrcAddress != 0)
+			{
+				auto refreshVal = ReadTypedValue(mSubjectValue.mType, mSubjectValue.mSrcAddress, DbgAddrType_Target);
+				if (refreshVal)
+					mSubjectValue = refreshVal;
+			}
 			return mSubjectValue;
+		}
+		
 		if (!mSubjectExpr.IsEmpty())
 		{
 			DwFormatInfo formatInfo;
@@ -5795,7 +5804,10 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 	{
 		if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality))
 		{
-			Fail("Invalid operation for objects", opToken);
+			if (resultType->IsPointer())
+				Fail("Invalid operation for pointers", opToken);
+			else
+				Fail("Invalid operation for objects", opToken);
 			return;
 		}
 

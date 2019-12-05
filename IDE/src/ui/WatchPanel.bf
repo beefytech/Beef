@@ -2705,6 +2705,21 @@ namespace IDE.ui
 								}
 							}
 						});
+
+					let configItem = menu.AddItem("Configure Breakpoint");
+					configItem.mOnMenuItemSelected.Add(new (evt) =>
+						{
+							for (int breakIdx < gApp.mDebugger.mBreakpointList.Count)
+							{
+								let breakpoint = gApp.mDebugger.mBreakpointList[breakIdx];
+								if (breakpoint.mMemoryAddress == watchEntry.mMemoryBreakpointAddr)
+								{
+									ConditionDialog dialog = new ConditionDialog();
+									dialog.Init(breakpoint);
+									dialog.PopupWindow(listView.mWidgetWindow);
+								}
+							}
+						});
 				}
 
 				if (watchEntry.mResultType == .Pointer)
