@@ -685,7 +685,7 @@ namespace System
 		void Realloc(int newSize)
 		{
 			Debug.Assert(AllocSize > 0, "String has been frozen");
-			Debug.Assert((uint_strsize)newSize < 0x40000000);
+			Debug.Assert((uint_strsize)newSize <= cSizeFlags);
 			char8* newPtr = new:this char8[newSize]*;
 			Internal.MemCpy(newPtr, Ptr, mLength);
 			if (IsDynAlloc)
@@ -703,7 +703,7 @@ namespace System
 		void Realloc(char8* newPtr, int newSize)
 		{
 			Debug.Assert(AllocSize > 0, "String has been frozen");
-			Debug.Assert((uint_strsize)newSize < 0x40000000);
+			Debug.Assert((uint_strsize)newSize <= cSizeFlags);
 			Internal.MemCpy(newPtr, Ptr, mLength);
 			if (IsDynAlloc)
 				delete:this mPtr;

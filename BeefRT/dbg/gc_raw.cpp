@@ -55,13 +55,13 @@ using namespace Beefy;
 struct DeferredFreeEntry
 {
 	bf::System::Object* mObject;
-	int mAllocSize;
+	intptr mAllocSize;
 };
 
 static Beefy::Deque<DeferredFreeEntry> gDeferredFrees;
-static int gRawAllocSize = 0;
-static int gMaxRawAllocSize = 0;
-static int gDeferredObjectFreeSize = 0;
+static intptr gRawAllocSize = 0;
+static intptr gMaxRawAllocSize = 0;
+static intptr gDeferredObjectFreeSize = 0;
 
 void BFGC::RawInit()
 {
@@ -97,14 +97,14 @@ void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 	}
 
 	intptr pageSize = (intptr)1 << kPageShift;
-	int spanSize = pageSize * span->length;
+	intptr spanSize = pageSize * span->length;
 	void* spanStart = (void*)((intptr)span->start << kPageShift);
 	void* spanEnd = (void*)((intptr)spanStart + spanSize);
 	void* spanPtr = spanStart;
 
 	BF_LOGASSERT((spanStart >= tcmalloc_raw::PageHeap::sAddressStart) && (spanEnd <= tcmalloc_raw::PageHeap::sAddressEnd));
 
-	int elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
+	intptr elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
 	if (elementSize == 0)
 		elementSize = spanSize;
 	BF_LOGASSERT(elementSize >= sizeof(bf::System::Object));
@@ -116,14 +116,14 @@ void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 		{	
 			if (rawAllocData->mMarkFunc != NULL)
 			{	
-				int extraDataSize = sizeof(intptr);
+				intptr extraDataSize = sizeof(intptr);
 				if (rawAllocData->mMaxStackTrace == 1)
 				{
 					extraDataSize += sizeof(intptr);					
 				}
 				else if (rawAllocData->mMaxStackTrace > 1)
 				{
-					int stackTraceCount = *(intptr*)((uint8*)spanPtr + elementSize - sizeof(intptr) - sizeof(intptr));					
+					intptr stackTraceCount = *(intptr*)((uint8*)spanPtr + elementSize - sizeof(intptr) - sizeof(intptr));					
 					extraDataSize += (1 + stackTraceCount) * sizeof(intptr);
 				}
 
@@ -132,10 +132,10 @@ void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 				 
 				// It's possible we can overestimate elemCount, particularly for large allocations. This doesn't cause a problem
 				//  because we can safely mark on complete random memory -- pointer values are always validated before being followed
-				int elemStride = BF_ALIGN(rawAllocData->mType->mSize, rawAllocData->mType->mAlign);
-				int dataSize = elementSize - extraDataSize;
-				int elemCount = dataSize / elemStride;
-				for (int elemIdx = 0; elemIdx < elemCount; elemIdx++)
+				intptr elemStride = BF_ALIGN(rawAllocData->mType->mSize, rawAllocData->mType->mAlign);
+				intptr dataSize = elementSize - extraDataSize;
+				intptr elemCount = dataSize / elemStride;
+				for (intptr elemIdx = 0; elemIdx < elemCount; elemIdx++)
 				{
 				 	markFunc((uint8*)spanPtr + elemIdx * elemStride);
 				}
@@ -161,7 +161,7 @@ void BFGC::RawMarkAll()
 	if (pageHeap == NULL)
 		return;
 
-	int leafCheckCount = 0;
+	intptr leafCheckCount = 0;
 
 #ifdef BF32
 	for (int rootIdx = 0; rootIdx < PageHeap::PageMap::ROOT_LENGTH; rootIdx++)
@@ -228,14 +228,14 @@ void BFGC::RawReportHandleSpan(tcmalloc_raw::Span* span, int expectedStartPage, 
 	}
 
 	intptr pageSize = (intptr)1 << kPageShift;
-	int spanSize = pageSize * span->length;
+	intptr spanSize = pageSize * span->length;
 	void* spanStart = (void*)((intptr)span->start << kPageShift);
 	void* spanEnd = (void*)((intptr)spanStart + spanSize);
 	void* spanPtr = spanStart;
 
 	BF_LOGASSERT((spanStart >= tcmalloc_raw::PageHeap::sAddressStart) && (spanEnd <= tcmalloc_raw::PageHeap::sAddressEnd));
 
-	int elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
+	intptr elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
 	if (elementSize == 0)
 		elementSize = spanSize;		
 
@@ -250,7 +250,7 @@ void BFGC::RawReportHandleSpan(tcmalloc_raw::Span* span, int expectedStartPage, 
 
 			if (sizeMap == NULL)
 			{
-				int extraDataSize = sizeof(intptr);
+				intptr extraDataSize = sizeof(intptr);
 
 				RawLeakInfo rawLeakInfo;
 				rawLeakInfo.mRawAllocData = rawAllocData;
@@ -276,7 +276,7 @@ void BFGC::RawReportHandleSpan(tcmalloc_raw::Span* span, int expectedStartPage, 
 				
 				if (rawAllocData->mType != NULL)
 				{
-					int typeSize;
+					intptr typeSize;
 					if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
 						typeSize = rawAllocData->mType->mSize;
 					else
@@ -374,7 +374,7 @@ void BFGC::RawReport(String& msg, intptr& freeSize, std::multimap<AllocInfo, bf:
 	allocIdSet.clear();
 #endif
 
-	int leafCheckCount = 0;
+	intptr leafCheckCount = 0;
 	bool overflowed = false;
 
 	Beefy::Dictionary<bf::System::Type*, AllocInfo> sizeMap;
@@ -556,7 +556,7 @@ void BfRawFree(void* ptr)
 {	
 	const PageID p = reinterpret_cast<uintptr_t>(ptr) >> kPageShift;	
 	size_t cl = Static::pageheap()->GetSizeClassIfCached(p);
-	int allocSize = 0;
+	intptr allocSize = 0;
 	if (cl == 0)
 	{		
 		auto span = Static::pageheap()->GetDescriptor(p);
@@ -602,7 +602,7 @@ void BfRawFree(void* ptr)
 			entry.mAllocSize = allocSize;
 			gDeferredFrees.Add(entry);
 
-			int maxDeferredSize = gMaxRawAllocSize * gBFGC.mMaxRawDeferredObjectFreePercentage / 100;
+			intptr maxDeferredSize = gMaxRawAllocSize * gBFGC.mMaxRawDeferredObjectFreePercentage / 100;
 			while (gDeferredObjectFreeSize > maxDeferredSize)
 			{
 				DeferredFreeEntry entry = gDeferredFrees.PopBack();

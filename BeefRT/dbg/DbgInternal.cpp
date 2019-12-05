@@ -268,7 +268,7 @@ void* Internal::Dbg_GetMetadata(bf::System::Object* obj)
 
 intptr Internal::Dbg_PrepareStackTrace(intptr baseAllocSize, intptr maxStackTraceDepth)
 {
-	int allocSize = 0;
+	intptr allocSize = 0;
 	if (maxStackTraceDepth > 1)
 	{
 		int capturedTraceCount = BF_CAPTURE_STACK(1, (intptr*)gPendingAllocState.mStackTrace, min((int)maxStackTraceDepth, 1024));
@@ -292,7 +292,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::Reflection::TypeInstan
 {	
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	Object* result;	
-	int allocSize = BF_ALIGN(size, typeInst->mInstAlign);
+	intptr allocSize = BF_ALIGN(size, typeInst->mInstAlign);
 	uint8* allocBytes = (uint8*)BfObjectAllocate(allocSize, typeInst->_GetType());
 // 	int dataOffset = (int)(sizeof(intptr) * 2);
 // 	memset(allocBytes + dataOffset, 0, size - dataOffset);

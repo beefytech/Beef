@@ -28,8 +28,13 @@ namespace System.Collections.Generic
 	{
 		private const int_cosize cDefaultCapacity = 4;
 
+#if BF_LARGE_COLLECTIONS
+		const int_cosize SizeFlags = 0x7FFFFFFF'FFFFFFFF;
+		const int_cosize DynAllocFlag = (int_cosize)0x80000000'00000000;
+#else
 		const int_cosize SizeFlags = 0x7FFFFFFF;
 		const int_cosize DynAllocFlag = (int_cosize)0x80000000;
+#endif
 
 #if BF_ENABLE_REALTIME_LEAK_CHECK
 		static DbgRawAllocData sRawAllocData;
@@ -393,11 +398,13 @@ namespace System.Collections.Generic
 			int allocSize = AllocSize;
 			if (allocSize < min)
 			{
-				int_cosize newCapacity = (int_cosize)(allocSize == 0 ? cDefaultCapacity : allocSize * 2);
-				// Allow the list to grow to maximum possible capacity (~2G elements) before encountering overflow.
-				// Note that this check works even when mItems.Length overflowed thanks to the (uint) cast
-				//if ((uint)newCapacity > Array.MaxArrayLength) newCapacity = Array.MaxArrayLength;
-				if (newCapacity < min) newCapacity = (int_cosize)min;
+				int newCapacity = allocSize == 0 ? cDefaultCapacity : allocSize + allocSize / 2;
+				// If we overflow, try to set to max. The "< min" check after still still bump us up
+				// if necessary
+				if (newCapacity > SizeFlags) 
+					newCapacity = SizeFlags;
+				if (newCapacity < min)
+					newCapacity = min;
 				Capacity = newCapacity;
 			}
 		}
@@ -454,6 +461,23 @@ namespace System.Collections.Generic
 			}
 			mItems[index] = item;
 			mSize++;
+#if VERSION_LIST
+			mVersion++;
+#endif
+		}
+
+		public void Insert(int index, Span<T> items)
+		{
+			if (items.Length == 0)
+				return;
+			int addCount = items.Length;
+			if (mSize + addCount > AllocSize) EnsureCapacity(mSize + addCount);
+			if (index < mSize)
+			{
+				Internal.MemCpy(mItems + index + addCount, mItems + index, (mSize - index) * strideof(T), alignof(T));
+			}
+			Internal.MemCpy(mItems + index, items.Ptr, addCount * strideof(T));
+			mSize += (int_cosize)addCount;
 #if VERSION_LIST
 			mVersion++;
 #endif

@@ -900,14 +900,14 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 	}
 
 	intptr pageSize = (intptr)1<<kPageShift;
-	int spanSize = pageSize * span->length;
+	intptr spanSize = pageSize * span->length;
 	void* spanStart = (void*)((intptr)span->start << kPageShift);
 	void* spanEnd = (void*)((intptr)spanStart + spanSize);
 	void* spanPtr = spanStart;
 
     BF_LOGASSERT((spanStart >= tcmalloc_obj::PageHeap::sAddressStart) && (spanEnd <= tcmalloc_obj::PageHeap::sAddressEnd));
     
-	int elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
+	intptr elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
 	if (elementSize == 0)
 		elementSize = spanSize;
 	BF_LOGASSERT(elementSize >= sizeof(bf::System::Object));
@@ -2040,14 +2040,14 @@ void BFGC::ObjReportHandleSpan(tcmalloc_obj::Span* span, int expectedStartPage, 
 	}
 
 	intptr pageSize = (intptr)1<<kPageShift;
-	int spanSize = pageSize * span->length;
+	intptr spanSize = pageSize * span->length;
 	void* spanStart = (void*)((intptr)span->start << kPageShift);
 	void* spanEnd = (void*)((intptr)spanStart + spanSize);
 	void* spanPtr = spanStart;
 
 	BF_LOGASSERT((spanStart >= tcmalloc_obj::PageHeap::sAddressStart) && (spanEnd <= tcmalloc_obj::PageHeap::sAddressEnd));
 
-	int elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
+	intptr elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
 	if (elementSize == 0)
 		elementSize = spanSize;
 	BF_LOGASSERT(elementSize >= sizeof(bf::System::Object));
@@ -2519,7 +2519,7 @@ void BFGC::MarkFromGCThread(bf::System::Object* obj)
 		return;
 		
 	intptr pageSize = (intptr) 1 << kPageShift;
-	int spanSize = pageSize * span->length;
+	intptr spanSize = pageSize * span->length;
 	void* spanStart = (void*)((intptr)span->start << kPageShift);
 	void* spanEnd = (void*)((intptr)spanStart + spanSize);
 		
@@ -2546,7 +2546,7 @@ void BFGC::MarkFromGCThread(bf::System::Object* obj)
 		}
 	}
 
-	int elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
+	intptr elementSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
 	// Large alloc
 	if (elementSize == 0)
 	{
