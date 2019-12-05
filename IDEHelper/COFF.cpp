@@ -1030,7 +1030,10 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 
 									isConst = true;
 									if (cPtr[1] == '_')
-										constVal = -atoll(cPtr + 2);
+									{
+										cPtr[1] = '-';
+										constVal = atoll(cPtr + 1);
+									}
 									else
 										constVal = atoll(cPtr + 1);
 									*cPtr = 0;
@@ -2720,8 +2723,9 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 						{
 							if (cPtr[1] == '_')
 							{
+								cPtr[1] = '-';
 								isConst = true;
-								constVal = -atoll(cPtr + 2);								
+								constVal = atoll(cPtr + 1);								
 								*cPtr = 0;
 							}
 							else if ((cPtr[1] >= '0') && (cPtr[1] <= '9'))

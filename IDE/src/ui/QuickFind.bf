@@ -296,6 +296,8 @@ namespace IDE.ui
         {
             if (mCurFindIdx == -1)
                 return;
+			if (!mFoundMatches)
+				return;
             String findText = scope String();
             mFindEditWidget.GetText(findText);
 			if (findText.Length == 0)
@@ -384,8 +386,6 @@ namespace IDE.ui
             String findTextUpper = scope String(findText);
             findTextUpper.ToUpper();
 
-			Debug.WriteLine("Before: mCurFindIdx:{} mCurFindStart:{} mCurFindCount:{}", mCurFindIdx, mCurFindStart, mCurFindCount);
-
             if ((mCurFindIdx == -1) && (mSelectionStart != null))
             {
                 mCurFindIdx = mSelectionStart.mIndex - 1;
@@ -458,11 +458,6 @@ namespace IDE.ui
 				mCurFindDir = dir;
 				mCurFindCount = 0;
 				mCurFindStart = mCurFindIdx;
-			}
-
-			defer
-			{
-				Debug.WriteLine("After: mCurFindIdx:{} mCurFindStart:{} mCurFindCount:{}", mCurFindIdx, mCurFindStart, mCurFindCount);
 			}
 
 			if (dir < 0)

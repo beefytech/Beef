@@ -6454,7 +6454,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 		}
 		else if (nextToken->GetToken() == BfToken_LParen)
 		{
-			Fail("Method name, 'this', or '~this' expected", node);
+			Fail("Method return type expected", node);
 
 			nameIdentifier = BfNodeDynCast<BfIdentifierNode>(origNode);
 			if (nameIdentifier != NULL)
