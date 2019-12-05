@@ -2222,6 +2222,7 @@ bool WinDebugger::DoUpdate()
 						breakpoint = (WdBreakpoint*)FindBreakpointAt((uintptr_t)exceptionRecord->ExceptionAddress);
 						if ((breakpoint != NULL) && (!CheckConditionalBreakpoint(breakpoint, dwSubprogram, pcAddress)))
 						{
+							ClearCallStack();
 							BfLogDbg("Skipping conditional breakpoint. Setting mIsAtBreakpointAddress = %p\n", breakpoint->mAddr);
 							threadInfo->mIsAtBreakpointAddress = breakpoint->mAddr;
 							mRunState = RunState_Running;
@@ -2334,6 +2335,8 @@ bool WinDebugger::DoUpdate()
 							RemoveTempBreakpoints();
 							BfLogDbg("Memory breakpoint hit: %p\n", foundBreakpoint);
 						}
+						else
+							ClearCallStack();
 						break;
 					}
 
@@ -3586,17 +3589,17 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 			return false;
 	}
 	
-	auto _SplitExpr = [&](const StringImpl& expr, String& outExpr, String& outSubject)
+	auto _SplitExpr = [&](const StringImpl& expr, StringImpl& outExpr, StringImpl& outSubject)
 	{
 		int crPos = expr.IndexOf('\n');
 		if (crPos != -1)
 		{
-			outExpr = expr.Substring(0, crPos);
-			outSubject = expr.Substring(crPos + 1);
+			outExpr += expr.Substring(0, crPos);
+			outSubject += expr.Substring(crPos + 1);
 		}
 		else
 		{
-			outExpr = expr;
+			outExpr += expr;
 		}
 	};
 
@@ -3616,8 +3619,13 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 				return false;
 			}
 
-			String expr;
-			String subjectExpr;
+			StringT<256> expr;
+			StringT<256> subjectExpr;
+			if (breakpoint->mMemoryBreakpointInfo != NULL)
+			{
+				subjectExpr += "*";
+			}
+
 			_SplitExpr(conditional->mExpr, expr, subjectExpr);
 			DbgLanguage language = DbgLanguage_Unknown;
 			if (expr.StartsWith("@Beef:"))
