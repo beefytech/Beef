@@ -7815,6 +7815,12 @@ namespace IDE
 						if ((bfCompiler == null) || (bfCompiler.mIsResolveOnly))
 						{
 							projectSource.HasChangedSinceLastCompile = true;
+
+							if (bfCompiler != null)
+							{
+								// Process change in resolve compiler
+								bfCompiler.QueueProjectSource(projectSource);
+							}
 						}
 						else // Actual build
 						{
