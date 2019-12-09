@@ -794,9 +794,9 @@ namespace IDE.ui
                     }
                     else if (memberVals0 == ":repeat")
                     {
-                        int32 startIdx = int32.Parse(scope String(memberVals[1]));
-                        int32 count = int32.Parse(scope String(memberVals[2]));
-                        int32 maxShow = int32.Parse(scope String(memberVals[3]));
+                        int startIdx = Int.Parse(scope String(memberVals[1]));
+                        int count = Int.Parse(scope String(memberVals[2]));
+                        int maxShow = Int.Parse(scope String(memberVals[3]));
 
                         String displayStr = new String(memberVals[4]);
                         String evalStr = new String(memberVals[5]);
@@ -814,7 +814,7 @@ namespace IDE.ui
                         watchSeriesInfo.mEvalTemplate = evalStr;
                         watchSeriesInfo.mStartIdx = startIdx;
                         watchSeriesInfo.mCount = count;
-                        watchSeriesInfo.mShowPageSize = maxShow;
+                        watchSeriesInfo.mShowPageSize = (int32)maxShow;
                         watchSeriesInfo.mShowPages = 1;
 
                         var memberWatch = new PendingWatch();

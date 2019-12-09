@@ -854,7 +854,7 @@ namespace Beefy.widgets
 				var action = new DeleteSelectionAction(this);
 				action.mMoveCursor = moveCursor;
                 mData.mUndoManager.Add(action);
-                PhysDeleteSelection();
+                PhysDeleteSelection(moveCursor);
             }
         }
 

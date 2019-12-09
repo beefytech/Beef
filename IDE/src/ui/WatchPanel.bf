@@ -434,9 +434,9 @@ namespace IDE.ui
         public String mDisplayTemplate ~ delete _;
         public String mEvalTemplate ~ delete _;
         public int32 mStartMemberIdx;
-        public int32 mStartIdx;
-        public int32 mCount;
-        public int32 mCurCount; // When counting up unsized series
+        public int mStartIdx;
+        public int mCount;
+        public int mCurCount; // When counting up unsized series
         public int32 mShowPages;
         public int32 mShowPageSize;
         public String mAddrs ~ delete _;
@@ -1262,10 +1262,10 @@ namespace IDE.ui
                         if (continuationDone)
                         {
                             // We finally have the count
-                            mWatchSeriesInfo.mCount = (int32)totalCount;
+                            mWatchSeriesInfo.mCount = totalCount;
                         }                        
                     }
-                    mWatchSeriesInfo.mCurCount = (int32)totalCount;
+                    mWatchSeriesInfo.mCurCount = totalCount;
 
                     int showCount = Math.Min(totalCount, mWatchSeriesInfo.mShowPages * mWatchSeriesInfo.mShowPageSize);
 
@@ -1423,7 +1423,7 @@ namespace IDE.ui
 	                            {
 	                                if (mWatchSeriesInfo.mMoreButton.mDisabled)
 	                                    return;
-	                                mWatchSeriesInfo.mShowPages = Math.Min(mWatchSeriesInfo.mShowPages + 1, 1 + (mWatchSeriesInfo.mCurCount + mWatchSeriesInfo.mShowPageSize - 1) / mWatchSeriesInfo.mShowPageSize);
+	                                mWatchSeriesInfo.mShowPages = (int32)Math.Min(mWatchSeriesInfo.mShowPages + 1, 1 + (mWatchSeriesInfo.mCurCount + mWatchSeriesInfo.mShowPageSize - 1) / mWatchSeriesInfo.mShowPageSize);
 									mWatchSeriesInfo.mMoreButton.mVisible = false;
 									mWatchSeriesInfo.mLessButton.mVisible = false;
 	                            });
@@ -2297,9 +2297,9 @@ namespace IDE.ui
                     }
                     else if (memberVals0 == ":repeat")
                     {
-                        int32 startIdx = int32.Parse(scope String(memberVals[1]));
-                        int32 count = int32.Parse(scope String(memberVals[2]));
-                        int32 maxShow = int32.Parse(scope String(memberVals[3]));
+                        int startIdx = Int.Parse(scope String(memberVals[1]));
+                        int count = Int.Parse(scope String(memberVals[2]));
+                        int maxShow = Int.Parse(scope String(memberVals[3]));
 
                         String displayStr = scope String(memberVals[4]);
                         String evalStr = scope String(memberVals[5]);
@@ -2318,7 +2318,7 @@ namespace IDE.ui
                         watchSeriesInfo.mEvalTemplate = new String(evalStr);
                         watchSeriesInfo.mStartIdx = startIdx;
                         watchSeriesInfo.mCount = count;
-                        watchSeriesInfo.mShowPageSize = maxShow;
+                        watchSeriesInfo.mShowPageSize = (int32)maxShow;
                         watchSeriesInfo.mShowPages = 1;                        
 
                         WatchListViewItem memberItem;

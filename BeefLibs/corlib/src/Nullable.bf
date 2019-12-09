@@ -15,15 +15,15 @@ namespace System
             mValue = value;
         }
 
-        [Inline]
         public bool HasValue
         {
+			[Inline]
             get { return mHasValue; }
         }
 
-        [Inline]
         public T Value
         {
+			[Inline]
             get
             {
                 if (!mHasValue)
@@ -35,9 +35,9 @@ namespace System
             }
         }
 
-        [Inline]
         public ref T ValueRef
         {
+			[Inline]
             get mut
             {
                 if (!mHasValue)

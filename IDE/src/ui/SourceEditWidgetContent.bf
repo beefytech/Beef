@@ -354,7 +354,7 @@ namespace IDE.ui
 
 		            editWidgetContent.mHadPersistentTextPositionDeletes = false;
 		            editWidgetContent.mSelection = EditSelection(pos, pos + len);
-		            editWidgetContent.DeleteSelection();
+		            editWidgetContent.DeleteSelection(false);
 
 		            // If we have modified a section of text containing breakpoint (for example), this gets encoded by
 		            //  'adds' of the new lines and then 'removes' of the old lines.  We do a Levenshtein search for
@@ -420,7 +420,7 @@ namespace IDE.ui
 		            editWidgetContent.CursorTextPos = posTo;
 					var subStr = scope String();
 					subStr.Append(text, posFrom, len);
-		            editWidgetContent.InsertAtCursor(subStr);
+		            editWidgetContent.InsertAtCursor(subStr, .NoMoveCursor);
 
 		            if (cmdParts.Count >= 5)
 		            {

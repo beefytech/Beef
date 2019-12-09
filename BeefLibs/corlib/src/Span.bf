@@ -50,65 +50,67 @@ namespace System
 		{
 			return Span<T>(array);
 		}
-
-		[Inline]
+		
 		public int Length
 	    {
+	    	[Inline]
 	        get
 			{
 				return mLength;
 			}
 
+			[Inline]
 			set mut
 			{
 				mLength = value;
 			}
 	    }
-
-		[Inline]
+		
 		public T* Ptr
 		{
+			[Inline]
 			get
 			{
 				return mPtr;
 			}
 
+			[Inline]
 			set	mut
 			{
 				mPtr = value;
 			}
 		}
-
-		[Inline]
+		
 		public T* EndPtr
 		{
+			[Inline]
 			get
 			{
 				return mPtr + mLength;
 			}
 		}
-
-		[Inline]
+		
 		public bool IsEmpty
 		{
+			[Inline]
 			get
 			{
 				return mLength == 0;
 			}
 		}
-
-		[Inline]
+		
 		public bool IsNull
 		{
+			[Inline]
 			get
 			{
 				return mPtr == null;
 			}
 		}
-
-		[Inline]
+		
 		public ref T this[int index]
 	    {
+	    	[Inline]
 	        get
 			{
 				return ref mPtr[index];
@@ -331,10 +333,10 @@ namespace System
 			return OptSpan<T>(array);
 		}
 
-
-		[Inline]
+		
 		public T* Ptr
 		{
+			[Inline]
 			get
 			{
 				return mPtr;

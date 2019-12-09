@@ -429,6 +429,12 @@ namespace System.Collections.Generic
 #endif
 		}
 
+		public void Insert(int index, Span<T> items)
+		{
+			if (items.Length == 0)
+				return;
+		}
+
 		public void RemoveAt(int index)
 		{
 			if (((int)Internal.UnsafeCastToPtr(this) & 0xFFFF) == 0x4BA0)
