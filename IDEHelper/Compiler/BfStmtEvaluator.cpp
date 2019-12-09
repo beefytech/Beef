@@ -4833,9 +4833,9 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 			if (checkScope == breakData->mScope)
 				break;
 			if (checkScope->mIsDeferredBlock)
-			{
-				Fail("The break target crosses a deferred block boundary", breakStmt);
-				return;
+			{				
+ 				Fail("The break target crosses a deferred block boundary", breakStmt);
+ 				return;
 			}
 			checkScope = checkScope->mPrevScope;
 		}

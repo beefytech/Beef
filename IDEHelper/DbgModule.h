@@ -557,8 +557,8 @@ public:
 		
 	const char* mName;
 	const char* mTypeName;
-	int mTemplateNameIdx;
-	int mSize; // In bytes
+	intptr mSize; // In bytes
+	int mTemplateNameIdx;	
 	int mAlign;
 	int mDeclFileIdx;
 	int mDeclLine;	
@@ -637,8 +637,8 @@ public:
 	DbgType* RemoveModifiers(bool* hadRef = NULL);	
 	String ToStringRaw(DbgLanguage language = DbgLanguage_Unknown);
 	String ToString(DbgLanguage language = DbgLanguage_Unknown, bool allowDirectBfObject = false);
-	int GetByteCount();
-	int GetStride();
+	intptr GetByteCount();
+	intptr GetStride();
 	int GetAlign();	
 	void EnsureMethodsMapped();
 };

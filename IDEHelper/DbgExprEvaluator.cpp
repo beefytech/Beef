@@ -7318,7 +7318,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 		if (argValues.size() >= 2)
 		{			
 			if ((argValues[1].mType != NULL) && (argValues[1].mType->IsInteger()))
-				mCountResultOverride = (int)argValues[1].GetInt64();
+				mCountResultOverride = (intptr)argValues[1].GetInt64();
 			return argValues[0];
 		}
 	}

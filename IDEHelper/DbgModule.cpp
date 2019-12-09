@@ -1710,13 +1710,13 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 			auto checkType = this;
 			while (checkType->mTypeCode == DbgType_SizedArray)			
 			{
-				int innerSize = checkType->mTypeParam->GetStride();
-				int arrSize = 0;
+				intptr innerSize = checkType->mTypeParam->GetStride();
+				intptr arrSize = 0;
 				if (innerSize > 0)
 				{
 					arrSize = checkType->GetStride() / innerSize;
 				}
-				name += StrFormat("[%d]", arrSize);
+				name += StrFormat("[%lld]", arrSize);
 				checkType = checkType->mTypeParam;
 			}			 
 			name = checkType->ToString(language) + name;
@@ -1775,7 +1775,7 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 	return "???";
 }
 
-int DbgType::GetByteCount()
+intptr DbgType::GetByteCount()
 {	
 	if (!mSizeCalculated)
 	{
@@ -1820,7 +1820,7 @@ int DbgType::GetByteCount()
 				}
 				else
 				{
-					int elemCount = BF_ALIGN(mSize, primaryType->mAlign) / primaryType->GetStride();
+					intptr elemCount = BF_ALIGN(mSize, primaryType->mAlign) / primaryType->GetStride();
 					if (elemCount > 0)
 					{
 						mSize = ((elemCount - 1) * primaryType->GetStride()) + primaryType->GetByteCount();
@@ -1836,7 +1836,7 @@ int DbgType::GetByteCount()
 	return mSize;
 }
 
-int DbgType::GetStride()
+intptr DbgType::GetStride()
 {
 	return BF_ALIGN(GetByteCount(), GetAlign());
 }
@@ -6086,7 +6086,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 												{
 													auto staticVar = itr->second;
 													mainModule->mTLSExtraAddr = extraSym->mValue->mAddress;
-													mainModule->mTLSExtraSize = staticVar->mType->GetByteCount();
+													mainModule->mTLSExtraSize = (int)staticVar->mType->GetByteCount();
 												}
 											}
 										}
@@ -6780,8 +6780,8 @@ void DbgModule::ProcessHotSwapVariables()
 						continue;
 					
 					uint8* newData = GetHotTargetData(newAddress);
-					int newArraySize = staticVariable->mType->GetByteCount();
-					int oldArraySize = oldVariable->mType->GetByteCount();
+					int newArraySize = (int)staticVariable->mType->GetByteCount();
+					int oldArraySize = (int)oldVariable->mType->GetByteCount();
 
 					int copySize = std::min(newArraySize, oldArraySize);
 
@@ -6863,7 +6863,7 @@ void DbgModule::ProcessHotSwapVariables()
 				{
 					if ((strncmp(oldVariable->mName, "?sBfTypeData@", 13) == 0) || (strncmp(oldVariable->mName, "sBfTypeData.", 12) == 0))
 					{
-						int size = staticVariable->mType->GetByteCount();												
+						int size = (int)staticVariable->mType->GetByteCount();
 						addr_target oldAddress = mDebugTarget->GetStaticAddress(oldVariable);
 						addr_target newAddress = _GetNewAddress();
 						if (newAddress == 0)

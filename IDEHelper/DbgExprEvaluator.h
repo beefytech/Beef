@@ -265,7 +265,7 @@ public:
 	DbgSubprogram* mCurMethod;
 	DbgTypedValue mResult;
 	DbgTypedValue* mReceivingValue;
-	int mCountResultOverride;
+	intptr mCountResultOverride;
 	DbgTypedValue mExplicitThis;	
 	BfExpression* mExplicitThisExpr;
 	Array<DbgCallResult>* mCallResults;	

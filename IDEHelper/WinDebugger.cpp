@@ -5366,7 +5366,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
 				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
 				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mOverrideCount = (int)countValue.GetInt64();
+					formatInfo->mOverrideCount = (intptr)countValue.GetInt64();
 				if (dbgEvaluationContext.HadError())
 				{					
 					if (errorString != NULL)
@@ -5386,7 +5386,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
 				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
 				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mOverrideCount = (int)countValue.GetInt64();
+					formatInfo->mOverrideCount = (intptr)countValue.GetInt64();
 				if (dbgEvaluationContext.HadError())
 				{
 					if (errorString != NULL)
@@ -5406,7 +5406,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
 				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
 				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mArrayLength = (int)countValue.GetInt64();
+					formatInfo->mArrayLength = (intptr)countValue.GetInt64();
 				if (dbgEvaluationContext.HadError())
 				{
 					if (errorString != NULL)
@@ -5529,7 +5529,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
 				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
 				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mArrayLength = (int)countValue.GetInt64();
+					formatInfo->mArrayLength = (intptr)countValue.GetInt64();
 				if (dbgEvaluationContext.HadError())
 				{
 					if (errorString != NULL)
@@ -6143,7 +6143,7 @@ DebugVisualizerEntry* WinDebugger::FindVisualizerForType(DbgType* dbgType, Array
 
 #define GET_FROM(ptr, T) *((T*)(ptr += sizeof(T)) - 1)
 
-String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAddr, int maxLength, DwFormatInfo& formatInfo)
+String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAddr, intptr maxLength, DwFormatInfo& formatInfo)
 {	
 	int origMaxLength = maxLength;
 	if (addr == 0)
@@ -6154,7 +6154,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 	String retVal = "\"";
 	bool wasTerminated = false;
 	String valString;	
-	int maxShowSize = 255;
+	intptr maxShowSize = 255;
 
 	if (maxLength == -1)
 		maxLength = formatInfo.mOverrideCount;
@@ -6457,7 +6457,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			return "";
 	}
 	
-	auto _ShowArraySummary = [&](String& retVal, addr_target ptrVal, int arraySize, DbgType* innerType)
+	auto _ShowArraySummary = [&](String& retVal, addr_target ptrVal, int64 arraySize, DbgType* innerType)
 	{
 		String displayString;
 		displayString += "{";
@@ -6480,7 +6480,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 			// Why did we have this "na" on here? It made "void*[3]" type things show up as "{,,}"
 			//String evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + StrFormat(")[%d], na", idx);
-			String evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + StrFormat(")[%d]", idx);
+			String evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + StrFormat(")[%lld]", idx);
 			DbgTypedValue evalResult = EvaluateInContext(dbgCompileUnit, typedValue, evalStr, &displayStrFormatInfo);
 			String result;
 			if (evalResult)
@@ -6512,7 +6512,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			{
 				retVal = EncodeDataPtr(ptrVal, true) + " ";
 				retVal += dwValueType->mTypeParam->ToString(language);
-				retVal += StrFormat("[%d] ", formatInfo.mArrayLength);				
+				retVal += StrFormat("[%lld] ", (int64)formatInfo.mArrayLength);				
 			}
 
 			_ShowArraySummary(retVal, ptrVal, formatInfo.mArrayLength, dwValueType->mTypeParam);
@@ -6525,7 +6525,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 
 			String evalStr = "*((" + typedValue.mType->ToStringRaw(language) + ")" + EncodeDataPtr(ptrVal, true) + " + {0})";
 
-			retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, (int)BF_MAX(formatInfo.mArrayLength, 0), 10000) +
+			retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, (int)BF_MAX(formatInfo.mArrayLength, 0), 10000) +
 				"\t" + idxStr + "\t" + evalStr;
 			return retVal;
 		}
@@ -7125,8 +7125,8 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		if (ptrVal == 0)
 			ptrVal = typedValue.mPtr;		
 
-		int arraySize = 0;
-		int innerSize = innerType->GetStride();
+		intptr arraySize = 0;
+		intptr innerSize = innerType->GetStride();
 		if (innerSize > 0)
 			arraySize = arrayType->GetStride() / innerSize;
 		else
@@ -7160,7 +7160,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		evalStr = "((" + innerType->ToStringRaw(language) + "*)" + EncodeDataPtr(ptrVal, true) + ")[{0}], refid=" + MaybeQuoteFormatInfoParam(referenceId + ".[]");
 		if (typedValue.mIsReadOnly)
 			evalStr += ", ne";
-		retVal += "\n:repeat" + StrFormat("\t%d\t%d\t%d", 0, (int)BF_MAX(arraySize, 0), 10000) +
+		retVal += "\n:repeat" + StrFormat("\t%d\t%lld\t%d", 0, (int)BF_MAX(arraySize, 0), 10000) +
 			"\t" + idxStr + "\t" + evalStr;
 		return retVal;
 	}
