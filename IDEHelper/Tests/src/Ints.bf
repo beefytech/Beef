@@ -21,5 +21,12 @@ namespace Tests
 			Test.Assert(Math.Min((int64)-1, (int64)0) == -1);
 			Test.Assert(Math.Max((int64)-1, (int64)0) == 0);
 		}
+
+		[Test]
+		public static void TestLiterals()
+		{
+			Test.Assert(0b0111010110111100110100010101 == 123456789);
+			Test.Assert(0o726746425 == 123456789);
+		}
 	}
 }

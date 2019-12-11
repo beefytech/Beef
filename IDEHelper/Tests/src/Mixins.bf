@@ -12,6 +12,16 @@ namespace Tests
 			{
 				mA += addTo;
 			}
+
+			public mixin MixB(var addTo)
+			{
+				void AddIt()
+				{
+					mA += addTo;
+				}
+
+				AddIt();
+			}
 		}
 
 		[Test]
@@ -20,6 +30,8 @@ namespace Tests
 			MixClass mc = scope MixClass();
 			mc.MixA!(10);
 			Test.Assert(mc.mA == 110);
+			mc.MixB!(10);
+			Test.Assert(mc.mA == 120);
 		}
 
 		[Test]
@@ -43,5 +55,6 @@ namespace Tests
 			Test.Assert(str0 == null);
 			Test.Assert(str1 == "AB");
 		}
+
 	}
 }

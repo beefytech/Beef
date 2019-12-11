@@ -36,5 +36,42 @@ namespace Tests
 			int result = Add3(() => a++);
 			Test.Assert(result == 63);
 		}
+
+		[Test]
+		static void LambdaWithDtor()
+		{
+			int a = 10;
+			int b = 20;
+
+			//
+			{
+				delegate void() dlg = scope [&] () =>
+				{
+					a++;
+				}
+				~
+				{
+					b++;
+				};
+				dlg();
+			}
+
+			Test.Assert(a == 11);
+			Test.Assert(b == 21);
+
+			delegate void() dlg = new [&] () =>
+			{
+				a += 100;
+			}
+			~
+			{
+				b += 200;
+			};
+			dlg();
+			Test.Assert(a == 111);
+			Test.Assert(b == 21);
+			delete dlg;
+			Test.Assert(b == 221);
+		}
 	}
 }
