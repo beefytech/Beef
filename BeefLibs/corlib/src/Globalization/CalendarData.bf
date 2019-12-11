@@ -6,7 +6,6 @@ namespace System.Globalization
 {
 
     using System;
-    using System.Runtime.CompilerServices;
     using System.Diagnostics.Contracts;
 	using System.Diagnostics;
 

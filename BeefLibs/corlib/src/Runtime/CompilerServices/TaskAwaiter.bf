@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
 using System.Threading;
 
-namespace System.Runtime.CompilerServices
+namespace System.Threading.Tasks
 {
 	public struct TaskAwaiter
 	{

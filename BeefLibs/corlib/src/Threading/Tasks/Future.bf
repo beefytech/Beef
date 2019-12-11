@@ -2,7 +2,6 @@
 // of an open-sourcing initiative in 2014 of the C# core libraries.
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
-using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System.Diagnostics;
 

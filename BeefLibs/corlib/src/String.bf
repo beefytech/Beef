@@ -1959,6 +1959,11 @@ namespace System
 			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
+		public StringSplitEnumerator Split(char8[] separators)
+		{
+			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
+		}
+
 		public StringSplitEnumerator Split(char8[] separators, int count)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, count, StringSplitOptions.None);
