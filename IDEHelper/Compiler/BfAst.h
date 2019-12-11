@@ -1025,6 +1025,7 @@ public:
 	bool IsTemporary();
 	int GetStartCharId();
 	BfSourceData* GetSourceData();
+	BfParserData* GetParserData();
 	BfParser* GetParser();
 	bool IsFromParser(BfParser* parser);
 	String ToString();

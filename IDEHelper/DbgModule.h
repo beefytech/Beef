@@ -433,7 +433,8 @@ public:
 
 	~DbgSubprogram();	
 		
-	String ToString();		
+	void ToString(StringImpl& str, bool internalName);
+	String ToString();
 	DbgLineData* FindClosestLine(addr_target addr, DbgSubprogram** inlinedSubprogram = NULL, DbgSrcFile** srcFile = NULL, int* outLineIdx = NULL);	
 	DbgType* GetParent();
 	DbgType* GetTargetType(); // usually mParentType except for closures
@@ -636,6 +637,7 @@ public:
 	DbgType* GetRootBaseType();
 	DbgType* RemoveModifiers(bool* hadRef = NULL);	
 	String ToStringRaw(DbgLanguage language = DbgLanguage_Unknown);
+	void ToString(StringImpl& str, DbgLanguage language, bool allowDirectBfObject, bool internalName);
 	String ToString(DbgLanguage language = DbgLanguage_Unknown, bool allowDirectBfObject = false);
 	intptr GetByteCount();
 	intptr GetStride();

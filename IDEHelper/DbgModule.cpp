@@ -389,15 +389,13 @@ NS_BF_DBG_END
 
 //////////////////////////////////////////////////////////////////////////
 
-String DbgSubprogram::ToString()
+void DbgSubprogram::ToString(StringImpl& str, bool internalName)
 {
 	if ((mInlineeInfo != NULL) && (mInlineeInfo->mInlineeId != 0))
 		mCompileUnit->mDbgModule->FixupInlinee(this);
 
 	PopulateSubprogram();
-	
-	String str;
-
+		
 	if (mCheckedKind == BfCheckedKind_Checked)
 		str += "[Checked] ";
 	else if (mCheckedKind == BfCheckedKind_Unchecked)
@@ -407,14 +405,17 @@ String DbgSubprogram::ToString()
 	if (mName == NULL)
 	{		
 		if (mLinkName[0] == '<')
-			return mLinkName;
+		{
+			str += mLinkName;
+			return;
+		}
 		str = BfDemangler::Demangle(StringImpl::MakeRef(mLinkName), language);
 		// Strip off the params since we need to generate those ourselves		
 		int parenPos = (int)str.IndexOf('(');
 		if (parenPos != -1)
 			str = str.Substring(0, parenPos);
 	}
-	else if (mHasQualifiedName)
+	else if ((mHasQualifiedName) && (!internalName))
 	{
 		const char* cPtr = mName;
 		if (strncmp(cPtr, "_bf::", 5) == 0)
@@ -458,48 +459,64 @@ String DbgSubprogram::ToString()
 			str += mName;
 	}
 	else
-	{		
+	{
 		if (mParentType != NULL)
 		{
-			str += mParentType->ToString();
+			mParentType->ToString(str, language, true, internalName);
 			if (!str.empty())
 			{
 				if (language == DbgLanguage_Beef)
 					str += ".";
 				else
 					str += "::";
+			}			
+		}
+
+		const char* name = mName;
+		if (mHasQualifiedName)
+		{
+			const char* cPtr = name;
+			for (; true; cPtr++)
+			{
+				char c = *cPtr;
+				if (c == 0)
+					break;				
+				if ((c == ':') && (cPtr[1] == ':'))
+				{
+					name = cPtr + 2;
+				}				
 			}
 		}
 
-		if ((language == DbgLanguage_Beef) && (mParentType != NULL) && (mParentType->mTypeName != NULL) && (strcmp(mName, mParentType->mTypeName) == 0))
+		if ((language == DbgLanguage_Beef) && (mParentType != NULL) && (mParentType->mTypeName != NULL) && (strcmp(name, mParentType->mTypeName) == 0))
 			str += "this";
-		else if ((language == DbgLanguage_Beef) && (mName[0] == '~'))
+		else if ((language == DbgLanguage_Beef) && (name[0] == '~'))
 			str += "~this";
-		else if (strncmp(mName, "_bf::", 5) == 0)
-			str += mName + 5;
+		else if (strncmp(name, "_bf::", 5) == 0)
+			str += name + 5;
 		else
 		{
 			bool handled = false;
-			if ((language == DbgLanguage_Beef) && (mName[0] == '_'))
+			if ((language == DbgLanguage_Beef) && (name[0] == '_'))
 			{
-				if (strcmp(mName, "__BfCtor") == 0)
+				if (strcmp(name, "__BfCtor") == 0)
 				{
 					str += "this";
 					handled = true;
 				}
-				else if (strcmp(mName, "__BfStaticCtor") == 0)				
+				else if (strcmp(name, "__BfStaticCtor") == 0)
 				{
 					str += "this";
 					handled = true;
 				}
-				else if (strcmp(mName, "__BfCtorClear") == 0)				
+				else if (strcmp(name, "__BfCtorClear") == 0)
 				{
 					str += "this$clear";
 					handled = true;
 				}
 			}
 			if (!handled)
-				str += mName;
+				str += name;
 		}
 	}
 
@@ -538,7 +555,7 @@ String DbgSubprogram::ToString()
 				BF_ASSERT(varType->IsPointer());
 				varType = varType->mTypeParam;
 			}
-			str += varType->ToString(language);
+			varType->ToString(str, language, false, internalName);
 			if (variable->mName != NULL)
 				str += " ";
 		}
@@ -547,7 +564,13 @@ String DbgSubprogram::ToString()
 		showedParam = true;
 		i++;
 	}
-	str += ")";
+	str += ")";	
+}
+
+String DbgSubprogram::ToString()
+{
+	String str;
+	ToString(str, false);
 	return str;
 }
 
@@ -1503,8 +1526,8 @@ String DbgType::ToStringRaw(DbgLanguage language)
 	return ToString(language);
 }
 
-String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
-{
+void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBfObject, bool internalName)
+{	
 	if (language == DbgLanguage_Unknown)
 		language = GetLanguage();
 
@@ -1513,27 +1536,38 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 		switch (mTypeCode)
 		{
 		case DbgType_UChar:
-			return "char8";
+			str += "char8";
+			return;
 		case DbgType_UChar16:
-			return "char16";
+			str += "char16";
+			return;
 		case DbgType_UChar32:
-			return "char32";
+			str += "char32";
+			return;
 		case DbgType_i8:
-			return "int8";
+			str += "int8";
+			return;
 		case DbgType_u8:
-			return "uint8";
+			str += "uint8";
+			return;
 		case DbgType_i16:
-			return "int16";
+			str += "int16";
+			return;
 		case DbgType_u16:
-			return "uint16";
+			str += "uint16";
+			return;
 		case DbgType_i32:
-			return "int32";
+			str += "int32";
+			return;
 		case DbgType_u32:
-			return "uint32";
+			str += "uint32";
+			return;
 		case DbgType_i64:
-			return "int64";
+			str += "int64";
+			return;
 		case DbgType_u64:
-			return "uint64";		
+			str += "uint64";
+			return;
 		}
 	}
 	else
@@ -1541,34 +1575,58 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 		switch (mTypeCode)
 		{
 		case DbgType_SChar:
-			return "char";
-		case DbgType_SChar16:		
-			return "wchar_t";
+			str += "char";
+			return;
+		case DbgType_SChar16:
+			str += "wchar_t";
+			return;
 		case DbgType_SChar32:
-			return "int32_t";
+			str += "int32_t";
+			return;
 		case DbgType_UChar:
-			return "uint8_t";
+			str += "uint8_t";
+			return;
 		case DbgType_UChar16:
-			return "uint16_t";
+			str += "uint16_t";
+			return;
 		case DbgType_UChar32:
-			return "uint32_t";
+			str += "uint32_t";
+			return;
 		case DbgType_i8:
-			return "char";
+			str += "char";
+			return;
 		case DbgType_u8:
-			return "uint8_t";
+			str += "uint8_t";
+			return;
 		case DbgType_i16:
-			return "short";
+			str += "short";
+			return;
 		case DbgType_u16:
-			return "uint16_t";
+			str += "uint16_t";
+			return;
 		case DbgType_i32:
-			return "int";
+			str += "int";
+			return;
 		case DbgType_u32:
-			return "uint32_t";
+			str += "uint32_t";
+			return;
 		case DbgType_i64:
-			return "int64_t";
+			str += "int64_t";
+			return;
 		case DbgType_u64:
-			return "uint64_t";
+			str += "uint64_t";
+			return;
 		}
+	}
+
+	if (mTypeCode == DbgType_Namespace)
+		internalName = false;
+
+	auto parent = mParent;
+	if ((parent == NULL) && (internalName))
+	{
+		auto primaryType = GetPrimaryType();
+		parent = primaryType->mParent;
 	}
 
 	if (mTypeName != NULL)
@@ -1577,14 +1635,18 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 		{
 			// Only use the '#' for testing
 			//return ToString(true) + "#";
-			return ToString(DbgLanguage_Unknown, true);
+			ToString(str, DbgLanguage_Unknown, true, internalName);
+			return;
 		}
 
 		if (IsGlobalsContainer())
 		{
 			if (mParent != NULL)
-				return mParent->ToString(language);
-			return "";
+			{
+				mParent->ToString(str, language, false, internalName);
+				return;
+			}
+			return;
 		}
 
 		char* nameP = (char*)mTypeName;
@@ -1599,181 +1661,270 @@ String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
 		if ((!mFixedName) && (language == DbgLanguage_Beef))
 		{
 			FixName();
-		}
+		}		
 
-		if (mParent == NULL)
-		{			
+		if (parent == NULL)
+		{
 			if (strncmp(nameP, "Box<", 4) == 0)
-				return String(nameP + 4, nameP + strlen(nameP) - 1) + "^";
+			{
+				str += String(nameP + 4, nameP + strlen(nameP) - 1);
+				str += "^";
+				return;
+			}
 
 			// For declarations, may also include namespaces
-			return mName;			
+			str += mName;
+			return;
 		}
 
 		if (GetLanguage() == DbgLanguage_Beef)
-			return mParent->ToString(language) + "." + nameP;
+		{
+			parent->ToString(str, language, allowDirectBfObject, internalName);
+			if ((internalName) && (parent->mTypeCode != DbgType_Namespace))
+				str += "+";
+			else
+				str += ".";			
+			str += nameP;
+		}
 		else
-			return mParent->ToString(language) + "::" + nameP;
-	}
-	
+		{			
+			parent->ToString(str, language, allowDirectBfObject, internalName);
+			if ((internalName) && (parent->mTypeCode != DbgType_Namespace))
+				str += "+";
+			else
+				str += "::";			
+			str += nameP;
+		}
+		return;
+	}	
 
 	switch (mTypeCode)
 	{
 	case DbgType_Struct:
+	{
+		if ((mTypeName == NULL) && (parent != NULL))
 		{
-			if ((mTypeName == NULL) && (mParent != NULL))
-				return mParent->ToString(language);
-			return "@struct";
+			parent->ToString(str, language, allowDirectBfObject, internalName);
+			return;
 		}
+		str += "@struct";
+		return;
+	}
 	case DbgType_Class:
-		{
-			return "@class";
-		}
+	{
+		str += "@class";
+		return;
+	}
 	case DbgType_TypeDef:
-		{
-			return "@typedef";
-		}		
+	{
+		str += "@typedef";
+		return;
+	}
 	case DbgType_Const:
+	{
+		if (language == DbgLanguage_Beef)
 		{
-			if (language == DbgLanguage_Beef)
+			str += "readonly";
+			if (mTypeParam != NULL)
 			{
-				if (mTypeParam == NULL)
-					return "readonly";
-				return "readonly " + mTypeParam->ToString(language);
+				str += " ";
+				mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
 			}
-
-			if (mTypeParam == NULL)
-				return "const";
-			return "const " + mTypeParam->ToString(language);
+			return;
 		}
+
+		str += "const";
+		if (mTypeParam != NULL)
+		{
+			str += " ";
+			mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
+		}
+		return;
+	}
 	case DbgType_Volatile:
+	{
+		str += "volatile";
+		if (mTypeParam != NULL)
 		{
-			if (mTypeParam == NULL)
-				return "volatile";
-			return "volatile " + mTypeParam->ToString(language);
+			str += " ";
+			mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
 		}
+		return;
+	}
 	case DbgType_Unaligned:
+	{
+		str += "unaligned";
+		if (mTypeParam != NULL)
 		{
-			if (mTypeParam == NULL)
-				return "unaligned";
-			return "unaligned " + mTypeParam->ToString(language);
+			str += " ";
+			mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
 		}
+	}
 	case DbgType_Restrict:
+	{
+		str += "restrict";
+		if (mTypeParam != NULL)
 		{
-			if (mTypeParam == NULL)
-				return "restrict";
-			return "restrict " + mTypeParam->ToString(language);
+			str += " ";
+			mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
 		}
+	}
 	case DbgType_Ptr:
+	{
+		if (mTypeParam == NULL)
 		{
-			if (mTypeParam == NULL)
-				return "void*";
-	
-			if (mTypeParam->IsBfObject())
-				return mTypeParam->ToString(DbgLanguage_Unknown, true);
-	
-			// Don't put a "*" on the end of a function type, it's implicit
-			if (mTypeParam->mTypeCode == DbgType_Subroutine)
-				return mTypeParam->ToString(language);
+			str += "void*";
+			return;
+		}
 
-			return mTypeParam->ToString(language) + "*";
-		}	
+		if (mTypeParam->IsBfObject())
+		{
+			mTypeParam->ToString(str, DbgLanguage_Unknown, true, internalName);
+			return;
+		}
+
+		// Don't put a "*" on the end of a function type, it's implicit
+		if (mTypeParam->mTypeCode == DbgType_Subroutine)
+		{
+			mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
+			return;
+		}
+
+		mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
+		str += "*";
+		return;
+	}
 	case DbgType_Ref:
+	{
+		if (language == DbgLanguage_Beef)
 		{
-			if (language == DbgLanguage_Beef)
+			str += "ref";
+			if (mTypeParam != NULL)
 			{
-				if (mTypeParam == NULL)
-					return "ref";
-				return "ref " + mTypeParam->ToString(language);
+				str += " ";
+				mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
 			}
-			if (mTypeParam == NULL)
-				return "&";
-			return mTypeParam->ToString(language) + "&";
 		}
+		if (mTypeParam == NULL)
+		{
+			str += "&";
+			return;
+		}
+		mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
+		str += "&";
+		return;
+	}
 	case DbgType_RValueReference:
+	{
+		if (language == DbgLanguage_Beef)
 		{
-			if (language == DbgLanguage_Beef)
-			{
-				// Ignore this - this is used for passing structs when we're not using the 'byval' attribute
-				return mTypeParam->ToString(language);
-			}
-	
-			if (mTypeParam == NULL)
-				return "&&";
-			return mTypeParam->ToString(language) + "&&";
+			// Ignore this - this is used for passing structs when we're not using the 'byval' attribute
+			mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
+			return;
 		}
-	case DbgType_Unspecified:
-		return mTypeName;
-	case DbgType_SizedArray:
-		{
-			String name;
-			auto checkType = this;
-			while (checkType->mTypeCode == DbgType_SizedArray)			
-			{
-				intptr innerSize = checkType->mTypeParam->GetStride();
-				intptr arrSize = 0;
-				if (innerSize > 0)
-				{
-					arrSize = checkType->GetStride() / innerSize;
-				}
-				name += StrFormat("[%lld]", arrSize);
-				checkType = checkType->mTypeParam;
-			}			 
-			name = checkType->ToString(language) + name;
 
-			return name;
+		if (mTypeParam == NULL)
+		{
+			str += "&&";
+			return;
 		}
-	case DbgType_Union:
+		mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
+		str += "&&";
+		return;
+	}
+	case DbgType_Unspecified:
+		str += mTypeName;
+		return;
+	case DbgType_SizedArray:
+	{
+		StringT<128> name;
+		auto checkType = this;
+		while (checkType->mTypeCode == DbgType_SizedArray)
 		{
-			if (mTypeName != NULL)
-				return String("union ") + mTypeName;
-			return "union";
-		}	
-	case DbgType_Single:
-		return "float";
-	case DbgType_Double:
-		return "double";
-	case DbgType_Null:
-		return "void";
-	case DbgType_Subroutine:
-		{
-			String str;			
-			str += mTypeParam->ToString(language);
-			str += " (";
-			int paramIdx = 0;
-			for (auto param : mBlockParam->mVariables)
+			intptr innerSize = checkType->mTypeParam->GetStride();
+			intptr arrSize = 0;
+			if (innerSize > 0)
 			{
-				if (paramIdx > 0)
-					str += ", ";
-				str += param->mType->ToString(language);
-				paramIdx++;
+				arrSize = checkType->GetStride() / innerSize;
 			}
-			str += ")";
-			return str;
+			name += StrFormat("[%lld]", arrSize);
+			checkType = checkType->mTypeParam;
 		}
-	case DbgType_VTable:
-		return "@vtable";
-	case DbgType_Enum:
-		return "@enum";	
-	case DbgType_Namespace:
-		{		
-			// Anonymous
-			return "`anon`";
-		}
-	case DbgType_PtrToMember:
-		return "@ptrToMember";
-	case DbgType_Bitfield:
+		checkType->ToString(str, language, allowDirectBfObject, internalName);
+		str += name;
+		return;
+	}
+	case DbgType_Union:
+	{
+		str += "union";
+		if (mTypeParam != NULL)
 		{
-			auto dbgBitfieldType = (DbgBitfieldType*)this;
-			return mTypeParam->ToString(language) + StrFormat("{%d:%d}", dbgBitfieldType->mPosition, dbgBitfieldType->mLength);
+			str += " ";
+			mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
 		}
+		return;
+	}
+	case DbgType_Single:
+		str += "float";
+		return;
+	case DbgType_Double:
+		str += "double";
+		return;
+	case DbgType_Null:
+		str += "void";
+		return;
+	case DbgType_Subroutine:
+	{		
+		mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
+		str += " (";
+		int paramIdx = 0;
+		for (auto param : mBlockParam->mVariables)
+		{
+			if (paramIdx > 0)
+				str += ", ";
+			param->mType->ToString(str, language, allowDirectBfObject, internalName);
+			paramIdx++;
+		}
+		str += ")";
+		return;
+	}
+	case DbgType_VTable:
+		str += "@vtable";
+		return;
+	case DbgType_Enum:
+		str += "@enum";
+		return;
+	case DbgType_Namespace:
+	{
+		// Anonymous
+		str += "`anon`";
+		return;
+	}
+	case DbgType_PtrToMember:
+		str += "@ptrToMember";
+		return;
+	case DbgType_Bitfield:
+	{
+		auto dbgBitfieldType = (DbgBitfieldType*)this;
+		mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
+		str += StrFormat("{%d:%d}", dbgBitfieldType->mPosition, dbgBitfieldType->mLength);
+		return;
+	}
 	default:
 		break;
 	}
 
 	BF_FATAL("Unhandled type");
-	return "???";
+	str += "???";
 }
+
+String DbgType::ToString(DbgLanguage language, bool allowDirectBfObject)
+{
+	String str;
+	ToString(str, language, allowDirectBfObject, false);
+	return str;
+}
+
 
 intptr DbgType::GetByteCount()
 {	

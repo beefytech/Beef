@@ -10766,7 +10766,9 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 			}
 		}
 		if (demangledName.IsEmpty())
-			demangledName = dwSubprogram->ToString();
+		{
+			dwSubprogram->ToString(demangledName, true);
+		}
 		
 		DbgSrcFile* dwSrcFile = NULL;
 		DbgLineData* dwLineData = NULL;

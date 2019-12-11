@@ -19,6 +19,7 @@ namespace IDE.ui
 		    public Object mRefObject;
 			public DataKind mKind;
 			public PendingEntry mMemberInfo ~ delete _;
+			public bool mProcessedLabel;
 
 		    protected override float GetLabelOffset()
 		    {
@@ -44,7 +45,36 @@ namespace IDE.ui
 
 		    public override void Draw(Graphics g)
 		    {
+				if ((!mProcessedLabel) && (mLabel != null))
+				{
+					uint32 color = 0;
+					switch (mMemberInfo.mKind)
+					{
+					case .Globals:
+						/*color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Identifier];
+						color = Color.Mult(color, Color.Get(0.8f));*/
+					case .Namespace:
+						color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Namespace];
+					case .Interface,
+						 .Class,
+						 .ValueType:
+						IDEUtils.ColorizeCodeString(mLabel, .Type);
+					case .Field,
+						 .Property:
+						IDEUtils.ColorizeCodeString(mLabel, .Field);
+					case .Method:
+						IDEUtils.ColorizeCodeString(mLabel, .Method);
+					default:
+					}
+
+					if (color != 0)
+						IDEUtils.InsertColorChange(mLabel, 0, color);
+						
+					mProcessedLabel = true;
+				}
+
 		        base.Draw(g);
+
 		        if (mRefObject != null)
 		        {
 		            bool hasChanged = false;
@@ -203,8 +233,13 @@ namespace IDE.ui
 			{
 				if (((Object)val1 == null) || ((Object)val2 == null))
 					return ((Object)val1 == null) && ((Object)val2 == null);
-				if ((val1.mKind != val2.mKind) && ((val1.mKind != .Namespace) && (val2.mKind != .Namespace)))
-					return false;
+				if (val1.mKind != val2.mKind)
+				{
+					if ((val1.mKind == .Project) || (val2.mKind == .Project))
+						return false;
+					if ((val1.mKind != .Namespace) && (val2.mKind != .Namespace))
+						return false;
+				}
 				return (val1.mName == val2.mName);
 			}
 
@@ -598,6 +633,8 @@ namespace IDE.ui
 
 			List<PendingEntry> partialRefs = scope List<PendingEntry>();
 
+			char8[] seps = scope char8[] ('.', '+');
+
 			for (var subStrRef in str.Split('\n'))
 			{
 				String param = scope String();
@@ -656,6 +693,8 @@ namespace IDE.ui
 						kind = .Interface;
 					else if (cmd == 'c')
 						kind = .Class;
+					else if (cmd == 'g')
+						kind = .Globals;
 
 					if (parentEntry != null)
 					{
@@ -677,7 +716,7 @@ namespace IDE.ui
 					}
 
 					int nameIdx = 0;
-					for (var subName in param.Split('.'))
+					for (var subName in param.Split(seps))
 					{
 						if (nameIdx < addIdx)
 						{
@@ -687,10 +726,13 @@ namespace IDE.ui
 
 						String subNameStr = scope String();
 
+						bool isLast = subName.Ptr + subName.Length == param.Ptr + param.Length;
+
 						if (nameIdx == addIdx)
 						{
+							DataKind insertKind = isLast ? kind : .Namespace;
 							subNameStr.Reference(StringView(param, 0, @subName.MatchPos));
-							curEntry = mPendingInfo.mPendingRoot.AddChild(kind, subNameStr);
+							curEntry = mPendingInfo.mPendingRoot.AddChild(insertKind, subNameStr);
 							curEntry.mParent = curProject;
 							Debug.Assert(curProject != (Object)curEntry);
 							partialRefs.Add(curEntry);
@@ -700,7 +742,6 @@ namespace IDE.ui
 						}
 
 						DataKind insertKind = kind;
-						bool isLast = subName.Ptr + subName.Length == param.Ptr + param.Length;
 						if (!isLast)
 						{
 							char8 nextChar = subName.Ptr[subName.Length];
@@ -803,6 +844,7 @@ namespace IDE.ui
 					childListViewItem.mRefObject = pendingEntry.mRefObject;
 					childListViewItem.mOpenOnDoubleClick = false;
 					childListViewItem.mKind = child.mKind;
+					childListViewItem.mProcessedLabel = false;
 					DeleteAndNullify!(childListViewItem.mMemberInfo);
 					//if (child.mFile != null)
 					{
@@ -940,7 +982,10 @@ namespace IDE.ui
 			if (mWorkWait == -1)
 			{
 				if (mWantsSubmit)
+				{
 					mTypeLV.KeyDown(.Return, false);
+					mWantsSubmit = false;
+				}
 			}
 		}
 

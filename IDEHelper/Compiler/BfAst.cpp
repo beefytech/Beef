@@ -892,6 +892,14 @@ BfSourceData* BfAstNode::GetSourceData()
 #endif
 }
 
+BfParserData* BfAstNode::GetParserData()
+{
+	BfSourceData* sourceData = GetSourceData();
+	if (sourceData == NULL)
+		return NULL;
+	return sourceData->ToParserData();
+}
+
 BfParser* BfAstNode::GetParser()
 {
 	BfSourceData* sourceData = GetSourceData();

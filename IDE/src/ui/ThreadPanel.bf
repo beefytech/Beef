@@ -447,7 +447,7 @@ namespace IDE.ui
 			    subItem = (ThreadListViewItem)listViewItem.CreateSubItem(2);
 				label.Clear();
 				label.Append(elementData[2]);
-				CallStackListView.ColorizeLocationString(label);
+				IDEUtils.ColorizeCodeString(label, .Callstack);
 			    subItem.Label = label;
 			    subItem.mOnMouseDown.Add(new => ValueClicked);
 

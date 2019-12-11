@@ -8,6 +8,7 @@ using Beefy.utils;
 using Beefy;
 using Beefy.gfx;
 using Beefy.theme.dark;
+using IDE.ui;
 
 namespace IDE
 {
@@ -286,6 +287,276 @@ namespace IDE
 				}
 
 				g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), x, y);
+			}
+		}
+
+		public static void InsertColorChange(String str, int idx, uint32 color)
+		{
+			char8* insertChars = scope char8[5]*;
+			insertChars[0] = (char8)1;
+			*(uint32*)(insertChars + 1) = (color >> 1) & 0x7F7F7F7F;
+			str.Insert(idx, scope String(insertChars, 5));
+		}
+
+		public static void ModifyColorChange(String str, int idx, uint32 color)
+		{
+			char8* insertPos = str.Ptr + idx;
+			*(uint32*)(insertPos + 1) = (color >> 1) & 0x7F7F7F7F;
+		}
+
+		public enum CodeKind
+		{
+			Callstack,
+			Method,
+			Field,
+			Type
+		}
+
+		public static void ColorizeCodeString(String label, CodeKind codeKind)
+		{
+			//int q = 98;
+
+			int prevTypeColor = -1;
+			int prevStart = -1;
+			bool foundOpenParen = codeKind != .Callstack;
+			// Check to see if this is just a Mixin name, don't mistake for the bang that separates module name 
+			bool awaitingBang = label.Contains('!') && !label.EndsWith("!"); 
+			bool awaitingParamName = false;
+			int chevronCount = 0;
+			int parenCount = 0;
+
+			int lastTopStart = -1;
+			int lastTopEnd = -1;
+
+			bool inSubtype = false;
+
+			bool IsIdentifierChar(char8 c)
+			{
+				return (c.IsLetterOrDigit) || (c == '_') || (c == '$') || (c == '@');
+			}
+
+			bool IsIdentifierStart(char8 c)
+			{
+				return (c.IsLetter) || (c == '_');
+			}
+
+			for (int32 i = 0; i < label.Length; i++)
+			{
+				char8 c = label[i];
+				if ((c == '0') && (i == 0))
+					break; // Don't colorize addresses
+
+				if ((c == '<') && (i == 0))
+				{
+					uint32 color = 0xFFA0A0A0;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
+					InsertColorChange(label, 0, color);
+					label.Append('\x02');
+					break;
+				}
+
+				if (awaitingBang)
+				{
+					if ((c == ':') || (c == '<'))
+					{
+		                awaitingBang = false;
+						i = -1;
+						continue;
+					}
+
+					if (c == '!')
+					{
+						bool endNow = false;
+
+						if (i + 1 < label.Length)
+						{
+		                    char16 nextC = label[i + 1];
+							if ((nextC == '(') || (nextC == '='))
+							{
+								awaitingBang = false;
+								i = -1;
+								continue;
+							}
+							else if ((nextC == '0') || (nextC == '<'))
+							{
+								endNow = true; // Just a raw string
+							}
+						}
+
+						uint32 color = 0xFFA0A0A0;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
+						InsertColorChange(label, 0, color);
+						awaitingBang = false;
+
+						i += 5;
+						label.Insert(i, '\x02');
+
+						if (endNow)
+						{
+							InsertColorChange(label, i + 2, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method]);
+		                    break;
+						}
+					}
+				}
+				else if (c == '$')
+				{
+					uint32 color = 0xFF80A080;//SourceEditWidgetContent.sTextColors[(int)SourceElementType.Comment];
+					InsertColorChange(label, i, color);
+					i += 5;
+				}
+				else if (IsIdentifierChar(c))
+				{					
+					if ((prevStart == -1) && (!awaitingParamName))
+						prevStart = i;
+				}
+				else
+				{
+					int setNamespaceIdx = -1;
+
+					if ((!inSubtype) && (prevTypeColor != -1))
+					{
+						setNamespaceIdx = prevTypeColor;
+					}
+
+					bool isSubtypeSplit = false;
+					char8 nextC = (i < label.Length - 1) ? label[i + 1] : 0;
+
+					// Check for internal '+' subtype encoding
+					if ((c == '+') && (IsIdentifierStart(nextC)))
+					{
+						isSubtypeSplit = true;
+						inSubtype = true;
+						label[i] = '.';
+					}
+
+					if (prevStart != -1)
+					{
+						//label.Insert(prevStart, SourceEditWidgetContent.sTextColors[(int)SourceElementType.TypeRef]);
+						/*uint32 color = SourceEditWidgetContent.sTextColors[
+							inSubtype ? (int32)SourceElementType.TypeRef : (int32)SourceElementType.Namespace
+							];*/
+
+						uint32 color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.TypeRef];
+
+						/*if ((c == '+') || (c == '('))
+						{
+							foundOpenParen = true;
+							color = SourceEditWidgetContent.sTextColors[(int)SourceElementType.Method];
+						}*/
+
+						if (chevronCount == 0)
+						{
+							lastTopStart = prevStart;
+							lastTopEnd = i;
+						}
+
+						prevTypeColor = prevStart;
+						InsertColorChange(label, prevStart, color);
+						i += 5;
+
+						label.Insert(i, '\x02');
+						prevStart = -1;
+						awaitingParamName = false;
+
+						i++;
+					}
+
+					
+
+					if (c == ',')
+						awaitingParamName = false;
+
+					if ((c == ')') && (parenCount > 0))
+						parenCount--;
+
+					if ((c != '+') && (c != '.'))
+					{
+						inSubtype = false;
+						prevTypeColor = -1;
+					}
+
+					if ((c == '(') || ((c == '+') && (!isSubtypeSplit)))
+						setNamespaceIdx = -1;
+
+					if (setNamespaceIdx != -1)
+						ModifyColorChange(label, setNamespaceIdx, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Namespace]);
+
+					if (isSubtypeSplit)
+					{
+						// Handled
+					}
+					else if ((c == '(') && ((i == 0) || (chevronCount > 0)))
+					{
+						parenCount++;
+					}
+					else if ((c == '(') || (c == '+'))
+					{
+						foundOpenParen = true;
+						if (lastTopStart != -1)
+						{
+							char8* insertChars = label.CStr() + lastTopStart;
+							uint32 color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method];
+							*(uint32*)(insertChars + 1) = (color >> 1) & 0x7F7F7F7F;
+						}
+						else
+						{
+							int checkIdx = i - 1;
+							while (checkIdx > 0)
+							{
+								char8 checkC = label[checkIdx];
+								if (checkC == ':')
+								{
+									checkIdx++;
+		                            break;
+								}
+								checkIdx--;
+							}
+							if (checkIdx >= 0)
+							{
+		                        InsertColorChange(label, checkIdx, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method]);
+								i += 5;
+							}
+						}
+					}
+
+					if ((foundOpenParen) && (!awaitingParamName) && (chevronCount == 0))
+					{
+						if (c == ' ')
+						{							
+							bool nextIsName = true;
+							int32 spaceCount = 0;
+							for (int32 checkIdx = i + 1; checkIdx < label.Length; checkIdx++)
+							{
+								char8 checkC = label[checkIdx];
+								if (checkC == ' ')
+								{
+									spaceCount++;
+									if (spaceCount > 1)
+										nextIsName = false;
+								}
+								if ((checkC == '<') || (checkC == '*') || (checkC == '['))
+									nextIsName = false;
+								if ((checkC == ',') || (checkC == ')'))
+								{
+									if (spaceCount > 0)
+										nextIsName = false;
+									break;
+								}
+							}
+
+							if (nextIsName)
+								awaitingParamName = true;
+						}						
+					}
+				}
+
+				if (c == '<')
+					chevronCount++;
+				else if (c == '>')
+					chevronCount--;
+			}
+
+			if ((prevStart != -1) && (codeKind == .Type))
+			{
+				InsertColorChange(label, prevStart, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Type]);
 			}
 		}
     }
