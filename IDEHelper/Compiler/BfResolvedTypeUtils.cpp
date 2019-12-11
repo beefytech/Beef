@@ -408,26 +408,43 @@ BfFieldInstance::~BfFieldInstance()
 
 BfType* BfFieldInstance::GetResolvedType()
 {
-	return mResolvedType;
-	/*if (mType == NULL)
-		return NULL;
-	if (!mType->IsGenericParam())
-		return mType;
-	if (!mOwner->IsGenericTypeInstance())
-		return mType;
-	auto genericParamType = (BfGenericParamType*)mType;	
-	auto genericTypeInst = (BfGenericTypeInstance*)mOwner;
-	if (genericTypeInst->mIsUnspecialized)
-		return mType;
-	if (genericParamType->mGenericParamKind == BfGenericParamKind_Type)
-		return genericTypeInst->mTypeGenericArguments[genericParamType->mGenericParamIdx];
-	return mType;*/
+	return mResolvedType;	
 }
 
 void BfFieldInstance::SetResolvedType(BfType* type)
 {	
 	mResolvedType = type;
 }
+
+//////////////////////////////////////////////////////////////////////////
+
+int64 BfDeferredMethodCallData::GenerateMethodId(BfModule* module, int64 methodId)
+{
+	// The mMethodId MUST be unique within a given deferred method processor. We are even more conservative, making it
+	// unique per module
+	if (module->mDeferredMethodIds.Add(methodId))
+	{
+		return methodId;
+	}
+	else
+	{
+		// Ideally the passed in methodId just works, otherwise --
+		// We hope to create a hash that will hopefully be globally unique. If it isn't then it just means we will end up with two
+		//  conflicting debug info definitions for the same name, which is not an error but may cause a debugger to show the
+		//  wrong one to the user. Does not affect runtime correctness.
+		int64 checkId = Hash64(module->mModuleName.c_str(), (int)module->mModuleName.length(), module->mDeferredMethodIds.size());
+		while (true)
+		{
+			if (!module->mDeferredMethodIds.Contains(checkId))
+				break;
+			checkId += 0x100;
+		}
+		module->mDeferredMethodIds.Add(checkId);
+		return checkId;
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
 
 BfMethodCustomAttributes::~BfMethodCustomAttributes()
 {
@@ -3720,13 +3737,16 @@ String BfTypeUtils::TypeToString(BfTypeDef* typeDef, BfTypeNameFlags typeNameFla
 bool BfTypeUtils::TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFlags typeNameFlags)
 {	
 	auto checkTypeDef = typeDef;
-	bool needsDot = false;
+	char needsSep = 0;
 
 	if (checkTypeDef->mOuterType != NULL)
 	{
 		if (TypeToString(str, checkTypeDef->mOuterType, typeNameFlags))
 		{
-			needsDot = true;			
+			if ((typeNameFlags & BfTypeNameFlag_InternalName) != 0) 
+				needsSep = '+';
+			else
+				needsSep = '.';
 		}
 	}
 	else
@@ -3734,16 +3754,17 @@ bool BfTypeUtils::TypeToString(StringImpl& str, BfTypeDef* typeDef, BfTypeNameFl
 		if (((typeNameFlags & BfTypeNameFlag_OmitNamespace) == 0) && (!typeDef->mNamespace.IsEmpty()))
 		{
 			typeDef->mNamespace.ToString(str);
-			needsDot = true;
+			needsSep = '.';
 		}		
 	}
+
+	if (needsSep != 0)
+		str += needsSep;
 	
 	if (((typeNameFlags & BfTypeNameFlag_HideGlobalName) != 0) && (typeDef->IsGlobalsContainer()))
 		return false;
-	
-	if (needsDot)
-		str += ".";
-	typeDef->mName->ToString(str);	
+		
+	typeDef->mName->ToString(str);
 
 	if (typeDef->mGenericParamDefs.size() != 0)
 	{

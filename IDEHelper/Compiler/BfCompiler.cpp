@@ -2722,6 +2722,11 @@ void BfCompiler::UpdateRevisedTypes()
 			++typeDefItr;
 			continue;
 		}
+
+		if ((!typeDef->IsGlobalsContainer()) && (mSystem->ContainsNamespace(typeDef->mFullName, typeDef->mProject)))
+		{
+			mPassInstance->Fail(StrFormat("The name '%s' is already defined to be a namespace name", typeDef->mFullName.ToString().c_str()), typeDef->mTypeDeclaration->mNameNode);			
+		}
 						
 		bool removedElement = false;
 		auto nextTypeDefItr = typeDefItr;
@@ -7082,7 +7087,7 @@ String BfCompiler::GetTypeDefList()
 				result += "c";
 			else
 				result += "v";
-			result += BfTypeUtils::TypeToString(typeDef) + "\n";
+			result += BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName) + "\n";
 		}
 	}
 
@@ -7381,7 +7386,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 				if (matchHelper.CheckMemberMatch(typeDef, fieldDef->mName))
 				{
 					result += "F";
-					if (BfTypeUtils::TypeToString(result, typeDef, BfTypeNameFlag_HideGlobalName))
+					if (BfTypeUtils::TypeToString(result, typeDef, (BfTypeNameFlags)(BfTypeNameFlag_HideGlobalName | BfTypeNameFlag_InternalName)))
 						result += ".";
 					result += fieldDef->mName;
 					matchHelper.AddFieldDef(fieldDef);
@@ -7397,7 +7402,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 				if (matchHelper.CheckMemberMatch(typeDef, propDef->mName))
 				{
 					result += "P";
-					if (BfTypeUtils::TypeToString(result, typeDef, BfTypeNameFlag_HideGlobalName))
+					if (BfTypeUtils::TypeToString(result, typeDef, (BfTypeNameFlags)(BfTypeNameFlag_HideGlobalName | BfTypeNameFlag_InternalName)))
 						result += ".";
 					matchHelper.AddPropertyDef(typeDef, propDef);
 				}
@@ -7418,7 +7423,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 				if (matchHelper.CheckMemberMatch(typeDef, methodDef->mName))
 				{
 					result += "M";
-					if (BfTypeUtils::TypeToString(result, typeDef, BfTypeNameFlag_HideGlobalName))
+					if (BfTypeUtils::TypeToString(result, typeDef, (BfTypeNameFlags)(BfTypeNameFlag_HideGlobalName | BfTypeNameFlag_InternalName)))
 						result += ".";
 					matchHelper.AddMethodDef(methodDef);
 				}
@@ -7447,11 +7452,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 			if (!matchHelper.MergeFlags(matchFlags))
 			{
 				continue;
-			}
-			
-			//foundComposite.Set(typeDef->mFullName.mParts, matchIdx + 1, NULL, 0);
-
-			//foundComposite = typeDef->mFullName;
+			}			
 		}
 		
 		if (typeDef->mProject != curProject)
@@ -7471,9 +7472,9 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 				sprintf(str, "=%d\n", *projectIdPtr);
 				result += str;
 			}
-		}		
+		}
 
-		typeName = BfTypeUtils::TypeToString(typeDef);
+		typeName = BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName);
 
 		if (matchIdx != -1)
 		{
@@ -7505,7 +7506,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 			else
 			{
 				result += StrFormat("<%d@", *matchIdxPtr);
-			} 			
+			} 
 		}
 		else
 		{
@@ -7587,6 +7588,10 @@ String BfCompiler::GetTypeDefInfo(const StringImpl& inTypeName)
 		typeName.RemoveToEnd(typeName.length() - 8);
 		isGlobals = true;
 	}
+
+	for (int i = 0; i < (int)typeName.length(); i++)
+		if (typeName[i] == '+')
+			typeName[i] = '.';
 	
 	String result;
 	TypeDefMatchHelper matchHelper(result);

@@ -6343,6 +6343,11 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 				doExplicitInterface = true; // Qualified property
 			}
 		}
+
+		// Experimental 'more permissive' explicit interface check
+		if (endNodeIdx != -1)
+			doExplicitInterface = true;
+
 		if (doExplicitInterface)
 		{
 			auto prevEndNode = mVisitorPos.Get(endNodeIdx - 1);

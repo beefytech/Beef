@@ -178,7 +178,14 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 
 	if (deferredCallEntry->mDeferredBlock != NULL)
 	{
-		int blockId = -deferredCallEntry->mDeferredBlock->GetSrcStart();
+		HashContext hashCtx;
+		hashCtx.Mixin(deferredCallEntry->mDeferredBlock->GetSrcStart());
+		
+		auto parserData = deferredCallEntry->mDeferredBlock->GetParserData();
+		if (parserData != NULL)		
+			hashCtx.MixinStr(parserData->mFileName);
+		
+		int64 blockId = BfDeferredMethodCallData::GenerateMethodId(this, hashCtx.Finish64());
 
 		auto deferType = deferredCallEntryType;
 
@@ -200,7 +207,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 
 		SizedArray<BfIRType, 4> llvmTypes;
 		SizedArray<BfIRMDNode, 8> diFieldTypes;
-			
+		
 		typeName = StrFormat("_BF_DeferredData_%s", BfTypeUtils::HashEncode64(blockId).c_str());
 				
 		auto valueType = ResolveTypeDef(mCompiler->mValueTypeTypeDef);
@@ -286,27 +293,8 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 		{
 			deferredMethodCallData = new BfDeferredMethodCallData();
 			mDeferredMethodCallData[methodInstance] = deferredMethodCallData;
-
-			if (mDeferredMethodIds.Add(methodInstance->mIdHash))
-			{
-				deferredMethodCallData->mMethodId = methodInstance->mIdHash;
-			}
-			else
-			{				
-				// Try to create a hash that will hopefully be globally unique.  If it isn't then it just means we will end up with two
-				//  conflicting debug info definitions for the same name, which is not an error but may cause a debugger to show the
-				//  wrong one to the user. Does not affect runtime correctness.
-				int64 checkId = Hash64(mModuleName.c_str(), (int)mModuleName.length(), mDeferredMethodIds.size());
-				while (true)
-				{
-					if (!mDeferredMethodIds.Contains(checkId))
-						break;
-					checkId += 0x100;
-				}
-				mDeferredMethodIds.Add(checkId);
-				deferredMethodCallData->mMethodId = checkId;
-			}
-
+			deferredMethodCallData->mMethodId = BfDeferredMethodCallData::GenerateMethodId(this, methodInstance->mIdHash);
+			
 			auto int64Type = GetPrimitiveType(BfTypeCode_Int64);
 			auto methodDef = moduleMethodInstance.mMethodInstance->mMethodDef;
 			auto thisType = moduleMethodInstance.mMethodInstance->mMethodInstanceGroup->mOwner;

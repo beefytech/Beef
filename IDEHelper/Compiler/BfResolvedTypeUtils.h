@@ -576,6 +576,8 @@ public:
 		mSize = 0;
 		mMethodId = 0;
 	}
+
+	static int64 GenerateMethodId(BfModule* module, int64 methodId);
 };
 
 class BfMethodCustomAttributes
