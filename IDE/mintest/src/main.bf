@@ -34,6 +34,8 @@ namespace Hey.Dude.Bro
 {
 	class TestClass
 	{
+		static int gApzong = 123;
+
 		[CLink, StdCall]
 		public static extern void OutputDebugStringA(char8* str);
 
@@ -144,6 +146,18 @@ namespace Hey.Dude.Bro
 			}
 		}
 
+		enum EnumB
+		{
+			AAA,
+			BBB
+		}
+
+		enum EnumC
+		{
+			CCC,
+			DDD
+		}
+
 		static void Flarg()
 		{
 			EnumA ea;
@@ -194,13 +208,28 @@ namespace Hey.Dude.Bro
 			return val.GetHashCode();
 		}	
 
+		class Zangles
+		{
+			public static int GetMe(Zangles zang, String str)
+			{
+				return 99;
+			}
+		}
+
 		public static int Main(String[] args)
 		{
+			Int i = (.)123;
+			i = i + i;
+
+			Zangles zang = scope .();
+
+			Zangles.GetMe(zang, "hey");
+
 			TypeCode tc = .Boolean;
 
 			PrintF("Hey\n");
 
-			//Test2(1, 2, 3, 4);
+			Test2(1, 2, 3, 4);
 
 			/*IHashable ih = (int32)TypeCode.Boolean;
 			let hashCode = ih.GetHashCode();*/
@@ -302,5 +331,6 @@ namespace AA
 
 static
 {
-	
+	static int gApsings = 123;
 }
+

@@ -314,8 +314,6 @@ namespace IDE
 
 		public static void ColorizeCodeString(String label, CodeKind codeKind)
 		{
-			//int q = 98;
-
 			int prevTypeColor = -1;
 			int prevStart = -1;
 			bool foundOpenParen = codeKind != .Callstack;

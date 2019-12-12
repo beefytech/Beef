@@ -1,4 +1,3 @@
-//2
 #define _ENABLE_ATOMIC_ALIGNMENT_FIX
 
 #include <windows.h>
@@ -134,10 +133,22 @@ void Zorq3()
 	int64_t q = 999;
 }
 
+void TestMem()
+{
+	char* mem = (char*)::VirtualAlloc(0, 4096 * 2, MEM_RESERVE, PAGE_READWRITE);
+	::VirtualAlloc(mem, 4096, MEM_COMMIT, PAGE_READWRITE);
+
+	char* str = "Hey";
+	char* cPtr = mem + 4096 - 3;
+	memcpy(cPtr, str, 3);
+}
+
 // THIS IS VERSION 6.
 extern "C"
 __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 {	
+	TestMem();
+
 	Zorq();
 	Zorq2();
 	Zorq3();

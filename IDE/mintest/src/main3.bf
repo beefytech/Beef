@@ -305,25 +305,55 @@ struct Blurg
 		 //int len = str.[Friend]GetLength();
 	}				   
 
+	
+	static void Test(int a, int b, Span<int> iSpan)
+	{
+
+	}
+
+	public static mixin Florf(int a, int b)
+	{
+
+	}
+
+	class Zangles
+	{
+		public static int GetMe()
+		{
+			return 99;
+		}
+	}
+
 	public static int32 Hey()
 	{
-		while (true)
+		for (int i < 100)
 		{
-			Type t = typeof(Yoofer);
-			for (let field in t.GetFields())
-			{
-				StringView name = field.Name;
-			}
+			Yoofer.ColorizeCodeString("abc", .Callstack);
 		}
-		
-#unwarn
 		return (int32)123;
 	}
 
 }
 
-[Reflect]
-struct Yoofer
+class Yoofer
 {
-	int mA;
+	public enum CodeKind
+	{
+		Callstack,
+		Method,
+		Field,
+		Type
+	}
+
+	public static void Zorg()
+	{
+		int a = 1;
+	}
+
+	public static void ColorizeCodeString(String label, CodeKind codeKind)
+	{
+		Zorg();
+		int a = 1;
+	}
 }
+

@@ -62,7 +62,10 @@ ConfigSelections = {corlib = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, I
 
 [Configs.Debug2.Win64]
 PreprocessorMacros = ["NEWFONT"]
-BfOptimizationLevel = "O0"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+AllowHotSwapping = false
 IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {corlib = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
 

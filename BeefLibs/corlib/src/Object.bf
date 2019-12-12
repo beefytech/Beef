@@ -71,7 +71,7 @@ namespace System
             return type;
         }
 
-#if BF_ALLOW_HOT_SWAPPING
+#if BF_DYNAMIC_CAST_CHECK || BF_ENABLE_REALTIME_LEAK_CHECK
 		[NoShow]
 		public virtual Object DynamicCastToTypeId(int32 typeId)
 		{
