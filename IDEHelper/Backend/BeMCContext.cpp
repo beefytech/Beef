@@ -4031,7 +4031,7 @@ bool BeMCContext::CheckForce(BeMCVRegInfo * vregInfo)
 	if (!vregInfo->mIsRetVal)
 	{
 		if (vregInfo->mForceMem && vregInfo->mForceReg)
-			Fail("vreg forceMem/forceReg collision");
+			SoftFail("vreg forceMem/forceReg collision");
 	}
 	return false;
 }
@@ -4467,12 +4467,12 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 							if (vregInfo->mDoConservativeLife)
 								BF_ASSERT(mVRegInitializedContext.IsSet(vregsInitialized, vregIdx, BeTrackKind_Uninitialized));
 							else
-								Fail("VReg lifetime error");
+								SoftFail("VReg lifetime error");
 						}
 					}
 					else
 					{
-						Fail("VReg lifetime error");
+						SoftFail("VReg lifetime error");
 					}					
 				}
 			}			
@@ -5340,7 +5340,7 @@ uint8 BeMCContext::EncodeRegNum(X64CPURegister regNum)
 	case X64Reg_XMM15_f64:
 		return 7;
 	}
-	Fail("Invalid reg");
+	SoftFail("Invalid reg");
 	return -1;
 }
 
@@ -5945,7 +5945,7 @@ void BeMCContext::EmitModRM(int rx, BeMCOperand rm, int relocOfs)
 	}
 	else
 	{
-		Fail("Invalid rm");
+		SoftFail("Invalid rm");
 	}
 	mOut.Write(modRM);
 }
@@ -6038,12 +6038,12 @@ void BeMCContext::EmitModRM_Addr(BeMCOperand r, BeMCOperand rm)
 		}
 		else
 		{
-			Fail("Illegal");
+			SoftFail("Illegal expression in EmitModRM_Addr");
 		}
 	}
 	else
 	{
-		Fail("Invalid rm");
+		SoftFail("Invalid rm in EmitModRM_Addr");
 	}
 	mOut.Write(modRM);
 }
@@ -7789,7 +7789,7 @@ void BeMCContext::DoRegAssignPass()
 			continue;
 		if ((vregInfo->mForceReg) && (!vregInfo->mRelTo) && (vregInfo->mReg == X64Reg_None))
 		{			
-			Fail("Failed to assign register to ForceReg vreg");
+			SoftFail("Failed to assign register to ForceReg vreg");
 		}
 		if (vregInfo->mDisableRAX)
 		{
@@ -8729,7 +8729,7 @@ bool BeMCContext::DoLegalization()
 				break;
 			case BeMCInstKind_DefLoad:
 				{
-					Fail("DefLoad- DoLoads should have removed these");
+					SoftFail("DefLoad- DoLoads should have removed these");
 				}
 				break;
 			case BeMCInstKind_Def:			
@@ -8846,6 +8846,13 @@ bool BeMCContext::DoLegalization()
 							int disp = 0;
 							int errorVRegIdx = -1;
 							bool isValid = GetRMParams(inst->mArg0, regA, regB, bScale, disp, &errorVRegIdx) != BeMCRMMode_Invalid;
+							if (mDebugging)
+							{
+								if ((inst->mArg0.mVRegIdx == 272) || (inst->mArg0.mVRegIdx == 274))
+								{
+									NOP;
+								}
+							}
 
 							if (!isValid)
 							{
@@ -9001,9 +9008,9 @@ bool BeMCContext::DoLegalization()
 										else
 										{
 											// This should be impossible - a previous def for an inner expr should have caught this case
-											if (vregExprChangeSet.IsEmpty())
+											if ((vregExprChangeSet.IsEmpty()) && (!hasPendingActualizations))
 											{
-												Fail("Error");
+												SoftFail("Error legalizing vreg expression", NULL);
 											}
 										}
 									}
@@ -9377,7 +9384,7 @@ bool BeMCContext::DoLegalization()
 							// The 3-op form of MUL must be in "reg, r/m64, imm" form		
 							if (!inst->mArg1.IsImmediateInt())
 							{
-								Fail("Not supported");
+								SoftFail("Not supported");
 								//isFinalRun = false;
 								break;
 							}
@@ -9508,7 +9515,7 @@ bool BeMCContext::DoLegalization()
 						{
 							if (!arg0.IsNativeReg())
 							{
-								Fail("xmm reg required");
+								SoftFail("xmm reg required");
 							}
 						}
 					}
@@ -9557,7 +9564,7 @@ bool BeMCContext::DoLegalization()
 							else if ((checkInst->mKind != BeMCInstKind_Def) && (checkInst->mKind != BeMCInstKind_DbgDecl) &&
 								(checkInst->mKind != BeMCInstKind_ValueScopeSoftEnd) && (checkInst->mKind != BeMCInstKind_ValueScopeHardEnd))
 							{
-								Fail("Malformed");
+								SoftFail("Malformed");
 							}
 						}
 						break;
@@ -9615,7 +9622,7 @@ bool BeMCContext::DoLegalization()
 						auto vregInfo = mVRegInfo[inst->mArg1.mVRegIdx];
 						if ((!vregInfo->mIsExpr) && (!vregInfo->mForceMem))
 						{
-							Fail("VRegAddr used without ForceMem");
+							SoftFail("VRegAddr used without ForceMem");
 						}
 					}
 
@@ -10066,7 +10073,7 @@ void BeMCContext::DoSanityChecking()
 					{
 						// It's possible during legalization to extend the usage of a dynLife value 'upward', and we need
 						//  to ensure we also extend the init flags up as well
-						Fail("Invalid liveness - from init flag not being set properly?");
+						SoftFail("Invalid liveness - from init flag not being set properly?");
 					}
 				}
 			}
@@ -10732,7 +10739,7 @@ void BeMCContext::DoRegFinalization()
 								if (inst->mKind == BeMCInstKind_Def)
 								{
 									// If we have a Def here, it's because of a legalization that introduced a variable in a non-safe position
-									Fail("Illegal def");
+									SoftFail("Illegal def");
 								}
 
 								if (inst->mKind == BeMCInstKind_Mov)
@@ -11269,7 +11276,7 @@ void BeMCContext::EmitInst(BeMCInstForm instForm, uint16 codeBytes, BeMCInst* in
 	case BeMCInstForm_RM64_IMM32:
 		break;
 	default:
-		Fail("Notimpl EmitInst");
+		SoftFail("Notimpl EmitInst");
 	}
 }
 
@@ -11306,7 +11313,7 @@ void BeMCContext::EmitInst(BeMCInstForm instForm, uint16 codeBytes, uint8 rx, Be
 		mOut.Write((int64)inst->mArg1.GetImmediateInt());
 		break;
 	default:
-		Fail("Notimpl EmitInst");
+		SoftFail("Notimpl EmitInst");
 	}
 }
 
@@ -12055,7 +12062,7 @@ void BeMCContext::DoCodeEmission()
 					}
 					else if (vregInfo->mRelTo.mKind == BeMCOperandKind_SymbolAddr)
 					{
-						Fail("Not supported SymbolAddr");
+						SoftFail("Not supported SymbolAddr");
 						//dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_SymbolAddr;
 						//dbgVar->mPrimaryLoc.mOfs = vregInfo->mRelTo.mSymbolIdx;
 					}
@@ -12473,7 +12480,7 @@ void BeMCContext::DoCodeEmission()
 								}
 								else
 								{
-									Fail("Error in Mov");
+									SoftFail("Error in Mov");
 								}
 
 								switch (useTypeCode)
@@ -12882,7 +12889,7 @@ void BeMCContext::DoCodeEmission()
 						Emit(0x0F); Emit(0xB1); EmitModRM(inst->mArg1, inst->mArg0);
 						break;
 					default:
-						Fail("Invalid CmpXChg args");
+						SoftFail("Invalid CmpXChg args");
 					}
 				}
 				break;
@@ -12932,7 +12939,7 @@ void BeMCContext::DoCodeEmission()
 						Emit(0x0F); Emit(0xC1); EmitModRM(inst->mArg1, inst->mArg0);
 						break;
 					default:
-						Fail("Invalid XAdd args");
+						SoftFail("Invalid XAdd args");
 					}
 				}
 				break;
@@ -14740,10 +14747,8 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = function->mName ==
-	//"?TestPrimitives@Nullable@Tests@bf@@SAXXZ"
-
-		"?Hey@Blurg@bf@@SAHXZ";
+	//mDebugging = function->mName ==	
+		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
 		//"?Hey@Blurg@bf@@SAXXZ";
@@ -15669,7 +15674,7 @@ void BeMCContext::Generate(BeFunction* function)
 
 							}
 							else
-								Fail("Invalid GEP");
+								SoftFail("Invalid GEP");
 						}
 						else
 						{

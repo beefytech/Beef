@@ -989,7 +989,17 @@ bool DbgType::Equals(DbgType* dbgType)
 	if (dbgType == NULL)
 		return false;
 	if (mTypeCode != dbgType->mTypeCode)
-		return false;
+	{
+		if ((mTypeCode == DbgType_Enum) || (dbgType->mTypeCode == DbgType_Enum))
+		{
+			// These may change mTypeCode, so redo the check afterward
+			GetPrimaryType();
+			dbgType->GetPrimaryType();
+		}
+
+		if (mTypeCode != dbgType->mTypeCode)
+			return false;
+	}
 	if ((mName == NULL) != (dbgType->mName == NULL))
 		return false;
 	if (mName != NULL)
@@ -1212,11 +1222,16 @@ void DbgType::FixName()
 
 			if ((c == ':') && (inPtr[0] == ':'))
 			{
-				modified = true;
-				inPtr++;
-				*(outPtr++) = '.';			
-				if (depthCount == 0)
-					typeNamePtr = outPtr;
+				if (mLanguage == DbgLanguage_Beef)
+				{
+					modified = true;
+					inPtr++;
+					*(outPtr++) = '.';
+					if (depthCount == 0)
+						typeNamePtr = outPtr;
+				}
+				else if (depthCount == 0)
+					mTypeName = inPtr + 1;
 			}
 			else if (modified)
 				*(outPtr++) = c;
@@ -1658,7 +1673,7 @@ void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBf
 			nameP = combName.c_str();
 		}*/
 
-		if ((!mFixedName) && (language == DbgLanguage_Beef))
+		if ((!mFixedName) /*&& (language == DbgLanguage_Beef)*/)
 		{
 			FixName();
 		}		

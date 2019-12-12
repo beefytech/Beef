@@ -1097,7 +1097,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "Blurg")
+                (mModuleName == "-")
 				//|| (mModuleName == "System_Internal")
 				//|| (mModuleName == "vdata")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
@@ -3747,7 +3747,7 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 		auto paramType = mCurMethodInstance->GetParamType(paramIdx);
 		if (paramType->IsValuelessType())
 			continue;				
-		exprEvaluator.PushArg(GetDefaultTypedValue(paramType, true), args);
+		exprEvaluator.PushArg(GetDefaultTypedValue(paramType, true, paramType->IsComposite() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Const), args);
 	}
 
 	mBfIRBuilder->CreateCall(mCurMethodInstance->mIRFunction, args);
