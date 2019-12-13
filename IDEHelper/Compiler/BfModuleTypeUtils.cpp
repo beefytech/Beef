@@ -8082,8 +8082,10 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if (ignoreWrites)
 					return mBfIRBuilder->GetFakeVal();
 								
+				if (resultFlags != NULL)
+					*resultFlags = (BfCastResultFlags)(BfCastResultFlags_IsAddr);
 				typedVal = MakeAddressable(typedVal);
-				return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(toTypeInstance));
+				return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(toTypeInstance));				
 			}
 		}
 
