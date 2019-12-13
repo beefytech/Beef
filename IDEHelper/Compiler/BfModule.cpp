@@ -9065,8 +9065,9 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 		BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None;
 		if (!methodInst->mIsUnspecializedVariation && allowResolveGenericParamNames)
 			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;		
+		methodName += "[";
 		methodName += TypeToString(methodInst->mMethodInfoEx->mExplicitInterface, typeNameFlags);
-		methodName += ".";
+		methodName += "].";
 	}
 	
 	if (methodDef->mMethodType == BfMethodType_Operator)
@@ -9103,13 +9104,17 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 	}	
 	else if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 	{
-		methodDef->GetRefNode()->ToString(methodName);
+		auto propertyDecl = methodDef->GetPropertyDeclaration();
+		if ((propertyDecl != NULL) && (propertyDecl->mNameNode != NULL))
+			propertyDecl->mNameNode->ToString(methodName);		
 		methodName += " get accessor";
 		return methodName;
 	}
 	else if (methodDef->mMethodType == BfMethodType_PropertySetter)
 	{
-		methodDef->GetRefNode()->ToString(methodName);
+		auto propertyDecl = methodDef->GetPropertyDeclaration();
+		if ((propertyDecl != NULL) && (propertyDecl->mNameNode != NULL))
+			propertyDecl->mNameNode->ToString(methodName);
 		methodName += " set accessor";
 		return methodName;
 	}
@@ -19037,11 +19042,30 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	
 	if (methodDef->mExplicitInterface != NULL)
 	{
-		if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
-			mCompiler->mResolvePassData->mAutoComplete->CheckTypeRef(methodDef->mExplicitInterface, false);
-		auto explicitInterface = ResolveTypeRef(methodDef->mExplicitInterface, BfPopulateType_Declaration);
+		auto autoComplete = mCompiler->GetAutoComplete();
+
+		if (autoComplete != NULL)
+			autoComplete->CheckTypeRef(methodDef->mExplicitInterface, false);
+		auto explicitType = ResolveTypeRef(methodDef->mExplicitInterface, BfPopulateType_Declaration);
+		BfTypeInstance* explicitInterface = NULL;
+		if (explicitType != NULL)
+			explicitInterface = explicitType->ToTypeInstance();
 		if (explicitInterface != NULL)
+		{			
 			mCurMethodInstance->GetMethodInfoEx()->mExplicitInterface = explicitInterface->ToTypeInstance();
+			if (autoComplete != NULL)
+			{
+				BfTokenNode* dotToken = NULL;
+				BfAstNode* nameNode = NULL;
+				if (auto methodDeclaration = BfNodeDynCast<BfMethodDeclaration>(methodDef->mMethodDeclaration))
+				{
+					dotToken = methodDeclaration->mExplicitInterfaceDotToken;
+					nameNode = methodDeclaration->mNameNode;
+				}
+				
+				autoComplete->CheckExplicitInterface(explicitInterface, dotToken, nameNode);
+			}
+		}
 		if ((mCurMethodInstance->mMethodInfoEx != NULL) && (mCurMethodInstance->mMethodInfoEx->mExplicitInterface != NULL))
 		{
 			bool interfaceFound = false;
@@ -20357,7 +20381,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 			continue;
 
 		bool hadMatch = false;
-		bool hadNameMatch = false;		
+		BfMethodInstance* hadNameMatch = NULL;
 		BfType* expectedReturnType = NULL;
 		
 		bool showedError = false;
@@ -20394,7 +20418,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				continue;
 			}
 			if (iMethodInst->mMethodDef->mName == methodInstance->mMethodDef->mName)
-				hadNameMatch = true;								
+				hadNameMatch = iMethodInst;
 
 			bool doesMethodSignatureMatch = CompareMethodSignatures(iMethodInst, methodInstance);
 				
@@ -20467,16 +20491,31 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 			}
 
 			checkMethodDef = checkMethodDef->mNextWithSameName;
-		}
+		}		
 
 		if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mExplicitInterface == ifaceInst) && (!hadMatch) && (!showedError))
 		{	
 			if (expectedReturnType != NULL)
 				Fail(StrFormat("Wrong return type, expected '%s'", TypeToString(expectedReturnType).c_str()), declaringNode, true);
-			else if (hadNameMatch)
-				Fail("Method parameters don't match interface method", declaringNode, true);
+			else if (hadNameMatch != NULL)
+			{
+				auto error = Fail("Method parameters don't match interface method", declaringNode, true);
+				if (error != NULL)
+					mCompiler->mPassInstance->MoreInfo("See interface method declaration", hadNameMatch->mMethodDef->GetRefNode());
+			}
 			else
-				Fail("Method name not found in interface", methodDef->GetRefNode(), true);
+			{
+				auto propertyDecl = methodDef->GetPropertyDeclaration();
+				if (propertyDecl != NULL)
+				{
+					auto propertyMethodDecl = methodDef->GetPropertyMethodDeclaration();
+
+					Fail(StrFormat("Property '%s' %s accessor not defined in interface '%s'", propertyDecl->mNameNode->ToString().c_str(),
+						(methodDef->mMethodType == BfMethodType_PropertyGetter) ? "get" : "set", TypeToString(ifaceInst).c_str()), methodDef->GetRefNode(), true);
+				}
+				else
+					Fail(StrFormat("Method '%s' not found in interface '%s'", methodDef->mName.c_str(), TypeToString(ifaceInst).c_str()), methodDef->GetRefNode(), true);
+			}
 		}
 	}
 

@@ -249,6 +249,7 @@ public:
 	SizedArray<BfIRValue, 1> mScopeArgs;
 	Array<BfDeferredCapture> mCaptures;	
 	BfBlock* mDeferredBlock;
+	int64 mBlockId;
 	int mHandlerCount;
 	bool mBypassVirtual;
 	bool mDoNullCheck;
@@ -267,6 +268,7 @@ public:
 		mNext = NULL;
 		mSrcNode = NULL;
 		mDeferredBlock = NULL;
+		mBlockId = -1;
 		mHandlerCount = 0;
 		mArgsNeedLoad = false;
 		mCastThis = false;

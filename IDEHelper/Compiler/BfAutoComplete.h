@@ -230,6 +230,7 @@ public:
 
 	void CheckIdentifier(BfIdentifierNode* identifierNode, bool isInExpression = false, bool isUsingDirective = false);
 	bool CheckMemberReference(BfAstNode* target, BfAstNode* dotToken, BfAstNode* memberName, bool onlyShowTypes = false, BfType* expectingType = NULL, bool isUsingDirective = false, bool onlyAttribute = false);
+	bool CheckExplicitInterface(BfTypeInstance* interfaceType, BfAstNode* dotToken, BfAstNode* memberName);
 	void CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier, bool isInExpression = false, bool onlyAttribute = false);
 	void CheckAttributeTypeRef(BfTypeReference* typeRef);
 	void CheckInvocation(BfAstNode* invocationNode, BfTokenNode* openParen, BfTokenNode* closeParen, const BfSizedArray<BfTokenNode*>& commas);	

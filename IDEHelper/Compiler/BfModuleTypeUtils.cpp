@@ -8079,6 +8079,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 				if (toType->IsValuelessType())
 					return BfIRValue::sValueless;
+				if (ignoreWrites)
+					return mBfIRBuilder->GetFakeVal();
+								
+				typedVal = MakeAddressable(typedVal);
+				return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(toTypeInstance));
 			}
 		}
 

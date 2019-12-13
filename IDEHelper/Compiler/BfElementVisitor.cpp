@@ -752,7 +752,7 @@ void BfElementVisitor::Visit(BfDeferStatement* deferStmt)
 
 void BfElementVisitor::Visit(BfReturnStatement* returnStmt)
 {
-	Visit(returnStmt->ToBase());
+ 	Visit(returnStmt->ToBase());
 
 	VisitChild(returnStmt->mReturnToken);
 	VisitChild(returnStmt->mExpression);

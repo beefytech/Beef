@@ -250,12 +250,14 @@ void BfSourceClassifier::Visit(BfThisExpression* thisExpr)
 {
 	HandleLeafNode(thisExpr);
 	Visit((BfAstNode*)thisExpr);
+	SetElementType(thisExpr, BfSourceElementType_Keyword);
 }
 
 void BfSourceClassifier::Visit(BfBaseExpression* baseExpr)
 {
 	HandleLeafNode(baseExpr);
 	Visit((BfAstNode*)baseExpr);
+	SetElementType(baseExpr, BfSourceElementType_Keyword);
 }
 
 void BfSourceClassifier::Visit(BfMemberReferenceExpression* memberRefExpr)

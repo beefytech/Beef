@@ -223,7 +223,9 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 
 		BfType* methodGenericTypeConstraint = NULL;
 		auto _SetGeneric = [&]()
-		{			
+		{	
+			BF_ASSERT((argType == NULL) || (!argType->IsVar()));
+
 			if (mCheckMethodGenericArguments[wantGenericParam->mGenericParamIdx] != argType)
 			{
 				if (methodGenericTypeConstraint != NULL)
@@ -271,7 +273,7 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 						}
 					}
 				}
-
+				
 				mInferGenericProgressIdx++;
 				mCheckMethodGenericArguments[wantGenericParam->mGenericParamIdx] = argType;
 			}
@@ -1090,6 +1092,8 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* generi
 
 	if (checkArgType == NULL)
 		return false;
+	if (checkArgType->IsVar())
+		return false;
 	
 	(*methodGenericArgs)[genericParamType->mGenericParamIdx] = checkArgType;
 	return true;
@@ -1572,7 +1576,13 @@ NoMatch:
 		if (genericArgumentsSubstitute != &mBestMethodGenericArguments)
 		{
 			if (genericArgumentsSubstitute != NULL)
+			{
 				mBestMethodGenericArguments = *genericArgumentsSubstitute;
+#ifdef _DEBUG
+				for (auto arg : mBestMethodGenericArguments)
+					BF_ASSERT((arg == NULL) || (!arg->IsVar()));
+#endif
+			}
 			else
 				mBestMethodGenericArguments.clear();
 		}
@@ -3020,12 +3030,16 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfIdentifierNode* identifierNode,
 
 void BfExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 {
-	if (GetAutoComplete() != NULL)
-		GetAutoComplete()->CheckIdentifier(identifierNode, true);
+	auto autoComplete = GetAutoComplete();
+	if (autoComplete != NULL)
+		autoComplete->CheckIdentifier(identifierNode, true);
 	
 	mResult = LookupIdentifier(identifierNode);	
 	if ((!mResult) && (mPropDef == NULL))
+	{
+		mModule->CheckTypeRefFixit(identifierNode);
 		mModule->Fail("Identifier not found", identifierNode);
+	}
 }
 
 void BfExprEvaluator::Visit(BfAttributedIdentifierNode* attrIdentifierNode)

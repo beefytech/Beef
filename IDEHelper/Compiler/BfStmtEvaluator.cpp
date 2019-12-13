@@ -186,6 +186,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 			hashCtx.MixinStr(parserData->mFileName);
 		
 		int64 blockId = BfDeferredMethodCallData::GenerateMethodId(this, hashCtx.Finish64());
+		deferredCallEntry->mBlockId = blockId;
 
 		auto deferType = deferredCallEntryType;
 
@@ -797,7 +798,7 @@ void BfModule::EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntr
 			deferredCallEntry = deferredCallEntry->mNext;
 			continue;
 		}
-		int blockId = -block->GetSrcStart();
+		int64 blockId = deferredCallEntry->mBlockId;
 
 		//auto itr = handledSet.insert(deferredCallEntry);
 		//if (!itr.second)
