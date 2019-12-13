@@ -1653,6 +1653,60 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 	return false;
 }
 
+bool BfAutoComplete::CheckExplicitInterface(BfTypeInstance* interfaceType, BfAstNode* dotToken, BfAstNode* memberName)
+{
+	bool isAutocompletingName = false;
+	if (memberName != NULL)
+		isAutocompletingName = IsAutocompleteNode(dotToken, memberName, 0, 1);
+
+	if (isAutocompletingName)
+	{
+		//
+	}
+	else if (IsAutocompleteNode(dotToken, 0, 1))
+	{
+		mInsertStartIdx = dotToken->GetSrcEnd();
+		mInsertEndIdx = mInsertStartIdx;
+	}
+	else
+		return false;
+	
+	String filter;
+	if (isAutocompletingName)
+		filter = GetFilter(memberName);
+
+	auto activeTypeDef = mModule->GetActiveTypeDef();
+
+	for (auto methodDef : interfaceType->mTypeDef->mMethods)
+	{
+		if (methodDef->mIsOverride)
+			continue;
+		if (methodDef->mIsNoShow)
+			continue;
+		if (methodDef->mName.IsEmpty())
+			continue;
+
+		if (methodDef->mExplicitInterface != NULL)
+			continue;
+		if ((!interfaceType->IsTypeMemberIncluded(methodDef->mDeclaringType, activeTypeDef, mModule)) ||
+			(!interfaceType->IsTypeMemberAccessible(methodDef->mDeclaringType, activeTypeDef)))
+			continue;
+
+		if (methodDef->mIsStatic)
+			continue;
+
+		bool canUseMethod;
+		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal);	
+		if (canUseMethod)
+		{
+			AddMethod(methodDef->GetMethodDeclaration(), methodDef->mName, filter);
+		}
+	}
+
+
+	return false;
+}
+
 void BfAutoComplete::CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier, bool isInExpression, bool onlyAttribute)
 {
 	if ((typeRef == NULL) || (typeRef->IsTemporary()) || (!IsAutocompleteNode(typeRef)))
@@ -2043,6 +2097,18 @@ void BfAutoComplete::CheckProperty(BfPropertyDeclaration* propertyDeclaration)
 	{
 		mInsertStartIdx = propertyDeclaration->mNameNode->GetSrcStart();
 		mInsertEndIdx = propertyDeclaration->mNameNode->GetSrcEnd();
+	}
+
+	if (propertyDeclaration->mExplicitInterface != NULL)
+	{
+		BfTypeInstance* typeInst = NULL;
+
+		auto type = mModule->ResolveTypeRef(propertyDeclaration->mExplicitInterface, BfPopulateType_DataAndMethods);
+		if (type != NULL)
+			typeInst = type->ToTypeInstance();
+
+		if (typeInst != NULL)		
+			CheckExplicitInterface(typeInst, propertyDeclaration->mExplicitInterfaceDotToken, propertyDeclaration->mNameNode);		
 	}
 
 	if ((propertyDeclaration->mVirtualSpecifier != NULL) &&
