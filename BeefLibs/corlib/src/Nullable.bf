@@ -53,6 +53,14 @@ namespace System
         {
             return mValue;
         }
+
+        public bool TryGetValue(ref T outValue)
+        {
+            if (!mHasValue)
+                return false;
+            outValue = mValue;
+            return true;
+        }
         
         public T GetValueOrDefault(T defaultmValue)
         {
@@ -382,6 +390,11 @@ namespace System
         }
 
         //
+
+		public static T operator??(Nullable<T> lhs, T rhs)
+		{
+		    return (lhs.mHasValue) ? lhs.mValue : rhs;
+		}
 
         public static TResult? operator??<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther ?? T where TResult : struct
         {

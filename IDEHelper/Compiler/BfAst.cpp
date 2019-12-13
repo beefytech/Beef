@@ -1559,7 +1559,7 @@ const char* Beefy::BfGetOpName(BfBinaryOp binOp)
 	case BfBinaryOp_Compare: return "<=>";
 	case BfBinaryOp_ConditionalAnd: return "&&";
 	case BfBinaryOp_ConditionalOr: return "||";
-	case BfBinaryOp_NullCoalesce: return "&&";
+	case BfBinaryOp_NullCoalesce: return "??";
 	case BfBinaryOp_Is: return "is";
 	case BfBinaryOp_As: return "as";
 	default: return "???";
