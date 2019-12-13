@@ -195,6 +195,8 @@ namespace IDE.ui
 
 			public ~this()
 			{
+				//Debug.WriteLine("~this {} {}", this, mIsInitted);
+
 			    if (mIsInitted)
 			        Cleanup();
 			}
@@ -232,6 +234,13 @@ namespace IDE.ui
                 mIsInitted = true;
 
                 //Console.WriteLine("AutoCompleteContent Init");
+
+				//Debug.WriteLine("Init {} {} {} {}", this, mIsInitted, mOwnsWindow, mAutoComplete);
+
+				if (WidgetWindow.sOnMouseDown.Count > 0)
+				{
+					NOP!();
+				}
 
 				if (mOwnsWindow)
 				{
@@ -280,6 +289,8 @@ namespace IDE.ui
 
             public void Cleanup()
             {
+				//Debug.WriteLine("Cleanup {} {}", this, mIsInitted);
+
 				if (!mIsInitted)
 					return;
 
@@ -1003,6 +1014,13 @@ namespace IDE.ui
         {
             mTargetEditWidget = targetEditWidget;
         }
+
+		public ~this()
+		{
+			//Debug.WriteLine("Autocomplete ~this {}", this);
+
+			Close(false);
+		}
 
 		static ~this()
 		{
@@ -1749,18 +1767,20 @@ namespace IDE.ui
 						mAutoCompleteListWidget.RemoveSelf();
 						delete mAutoCompleteListWidget;
 					}
-					if (mListWindow != null)
+					else if (mListWindow != null)
 					{
 						// Will get deleted later...
 						Debug.Assert(mListWindow.mRootWidget == mAutoCompleteListWidget);
 					}
+					else
+						delete mAutoCompleteListWidget;
                     mAutoCompleteListWidget = null;
                 }
             }
             if (mAutoCompleteListWidget == null)
 			{
                 mAutoCompleteListWidget = new AutoCompleteListWidget(this);
-				//Debug.WriteLine("Created mAutoCompleteListWidget {0}", mAutoCompleteListWidget);
+				//Debug.WriteLine("Created mAutoCompleteListWidget {} in {}", mAutoCompleteListWidget, this);
 			}
             
 			bool queueClearInvoke = false;
@@ -2105,11 +2125,6 @@ namespace IDE.ui
             }
 
             Close();
-        }
-
-        public ~this()
-        {
-            Close(false);
         }
 
         public bool IsInsertEmpty()

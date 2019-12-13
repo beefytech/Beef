@@ -177,18 +177,17 @@ namespace IDE.ui
 			gApp.MarkDirty();
 		}
 
-		public void SetBreakpointDisabled(bool disabled)
+		public void SetBreakpointsDisabled(bool? disabled)
 		{
 			mListView.GetRoot().WithSelectedItems(scope (item) =>
 				{
 					var listViewItem = (BreakpointListViewItem)item;
 					if (listViewItem.Selected)
 					{
-						gApp.mDebugger.SetBreakpointDisabled(listViewItem.mBreakpoint, disabled);
-						if (!disabled)
-						{
-
-						}	
+						bool wantDisabled = !listViewItem.mBreakpoint.mDisabled;
+						if (disabled.HasValue)
+							wantDisabled = disabled.Value;
+						gApp.mDebugger.SetBreakpointDisabled(listViewItem.mBreakpoint, wantDisabled);
 						BreakpointsChanged();
 						gApp.MarkDirty();
 					}
@@ -225,7 +224,7 @@ namespace IDE.ui
 			gApp.MarkDirty();
 		}
 
-		public void ConfigureBreakpoints(Widget relWidget)
+		public void ConfigureBreakpoints(WidgetWindow widgetWindow)
 		{
 			mListView.GetRoot().WithSelectedItems(scope (item) =>
 				{
@@ -235,7 +234,7 @@ namespace IDE.ui
 						mDeselectOnFocusLost = false;
 						ConditionDialog dialog = new ConditionDialog();
 						dialog.Init(listViewItem.mBreakpoint);
-						dialog.PopupWindow(relWidget.mWidgetWindow);
+						dialog.PopupWindow(widgetWindow);
 						mDeselectOnFocusLost = true;
 					}
 				});
@@ -285,7 +284,7 @@ namespace IDE.ui
 				menuItem = menu.AddItem("Configure Breakpoint");
 				menuItem.mOnMenuItemSelected.Add(new (evt) => 
 					{
-						ConfigureBreakpoints(relWidget);
+						ConfigureBreakpoints(relWidget.mWidgetWindow);
 					});
 				menuItem = menu.AddItem("Delete Breakpoint");
 				menuItem.mOnMenuItemSelected.Add(new (evt) => 
@@ -295,12 +294,12 @@ namespace IDE.ui
 				if (selectedEnabledBreakpoint)
 				{
 					menuItem = menu.AddItem("Disable Breakpoint");
-					menuItem.mOnMenuItemSelected.Add(new (evt) => { SetBreakpointDisabled(true); });
+					menuItem.mOnMenuItemSelected.Add(new (evt) => { SetBreakpointsDisabled(true); });
 				}
 				if (selectedDisabledBreakpoint)
 				{
 					menuItem = menu.AddItem("Enable Breakpoint");
-					menuItem.mOnMenuItemSelected.Add(new (evt) => { SetBreakpointDisabled(false); });
+					menuItem.mOnMenuItemSelected.Add(new (evt) => { SetBreakpointsDisabled(false); });
 				}
 				if (gApp.mDebugger.IsPaused())
 				{

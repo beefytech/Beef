@@ -1842,22 +1842,31 @@ namespace Beefy.widgets
             return Math.Max(0, Math.Min(newY, mHeight - mEditWidget.mScrollContentContainer.mHeight - mMaximalScrollAddedHeight));
         }
 
-        int32 GetCharType(char8 theChar)
+		enum CharType
+		{
+			Unknown = -1,
+			NewLine,
+			WhiteSpace,
+			NonBreaking,
+			Opening,
+			Other
+		}
+        CharType GetCharType(char8 theChar)
         {
             if (theChar == '\n')
-                return 2;
+                return .NewLine;
             if (theChar.IsWhiteSpace)
-                return 0;
+                return .WhiteSpace;
             if (IsNonBreakingChar(theChar))
-                return 1;
+                return .NonBreaking;
 
             // We break on each instance of these
             switch (theChar)
             {
             case '<', '>', '(', ')', '[', ']', '{', '}':
-                return 3;
+                return .Opening;
             }
-            return 4;
+            return .Other;
         }
 
         public void GetTextCoordAtCursor(out float x, out float y)
@@ -2053,9 +2062,11 @@ namespace Beefy.widgets
 						    }
 						}
 
+						bool isWordMove = mWidgetWindow.IsKeyDown(.Alt);
                         wasMoveKey = true;
                         int anIndex = GetTextIdx(lineIdx, lineChar);
-                        int prevCharType = (anIndex > 0) ? GetCharType((char8)mData.mText[anIndex - 1].mChar) : -1;
+						char8 prevC = 0;
+                        CharType prevCharType = (anIndex > 0) ? GetCharType((char8)mData.mText[anIndex - 1].mChar) : .Unknown;
                         while (true)
                         {
                             if (lineChar > 0)
@@ -2082,19 +2093,23 @@ namespace Beefy.widgets
                             if (anIndex == 0)
                                 break;
 
-                            char8 aChar = (char8)mData.mText[anIndex - 1].mChar;
-                            int32 char8Type = GetCharType(aChar);
-                            if (prevCharType == 3)
+                            char8 c = (char8)mData.mText[anIndex - 1].mChar;
+                            CharType char8Type = GetCharType(c);
+                            if (prevCharType == .Opening)
                                 break;
                             if (char8Type != prevCharType)
                             {
                                 if ((char8Type == 0) && (prevCharType != 0))
                                     break;
-                                if ((prevCharType == 2) || (prevCharType == 1) || (prevCharType == 4))
+                                if ((prevCharType == .NewLine) || (prevCharType == .NonBreaking) || (prevCharType == .Other))
                                     break;
                             }
 
+							if ((isWordMove) && (c.IsLower) && (prevC.IsUpper))
+								break;
+
                             prevCharType = char8Type;
+							prevC = c;
                         }
                     }
                 }
@@ -2131,9 +2146,11 @@ namespace Beefy.widgets
 	                        }
 						}
 
+						bool isWordMove = mWidgetWindow.IsKeyDown(.Alt);
                         wasMoveKey = true;
                         int anIndex = GetTextIdx(lineIdx, lineChar);
-                        int prevCharType = (anIndex < mData.mTextLength) ? GetCharType((char8)mData.mText[anIndex].mChar) : -1;
+						char8 prevC = 0;
+                        CharType prevCharType = (anIndex < mData.mTextLength) ? GetCharType((char8)mData.mText[anIndex].mChar) : .Unknown;
                         while (true)
                         {
                             int lineStart;
@@ -2165,19 +2182,23 @@ namespace Beefy.widgets
                             if (anIndex == mData.mTextLength)
                                 break;
 
-                            char8 aChar = (char8)mData.mText[anIndex].mChar;
-                            int32 char8Type = GetCharType(aChar);
-                            if (char8Type == 3)
+                            char8 c = (char8)mData.mText[anIndex].mChar;
+                            CharType char8Type = GetCharType(c);
+                            if (char8Type == .Opening)
                                 break;
                             if (char8Type != prevCharType)
                             {
-                                if ((char8Type != 0) && (prevCharType == 0))
+                                if ((char8Type != .WhiteSpace) && (prevCharType == .WhiteSpace))
                                     break;
-                                if ((char8Type == 2) || (char8Type == 1) || (char8Type == 4))
+                                if ((char8Type == .NewLine) || (char8Type == .NonBreaking) || (char8Type == .Other))
                                     break;
                             }
 
+							if ((isWordMove) && (c.IsUpper) && (prevC.IsLower))
+								break;
+
                             prevCharType = char8Type;
+							prevC = c;
                         }
                     }
                 }

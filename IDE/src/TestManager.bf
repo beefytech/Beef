@@ -51,6 +51,14 @@ namespace IDE
 		public bool mIncludeIgnored;
 		public bool mFailed;
 
+		public bool HasProjects
+		{
+			get
+			{
+				return !mProjectInfos.IsEmpty;
+			}
+		}
+
 		public ~this()
 		{
 			if (mTestInstance != null)

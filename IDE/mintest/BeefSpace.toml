@@ -95,14 +95,6 @@ COptimizationLevel = "O2"
 ConfigSelections = {mintest = {Config = "Debug"}}
 
 [Configs.Test.Win64]
-EmitDynamicCastCheck = false
-EnableObjectDebugFlags = false
-EmitObjectAccessCheck = false
-EnableRealtimeLeakCheck = false
-AllowHotSwapping = false
-AllocStackTraceDepth = 0
-COptimizationLevel = "O2"
-ConfigSelections = {mintest = {Config = "Debug"}}
 
 [Configs.Test.WinFart]
 Toolset = "GNU"

@@ -2400,7 +2400,7 @@ namespace IDE.ui
 			SetFocus();
 
 			var sel = GetSelectionForCursor(mSelection, false);
-			LocatorAnim.Show(this, sel.mBinRect.Left, sel.mBinRect.Top + sel.mBinRect.mHeight / 2);
+			LocatorAnim.Show(.Always, this, sel.mBinRect.Left, sel.mBinRect.Top + sel.mBinRect.mHeight / 2);
 			delete sel;
         }
 

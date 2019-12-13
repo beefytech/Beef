@@ -177,8 +177,10 @@ namespace IDE
 			Add("Bookmark Toggle", new => gApp.Cmd_ToggleBookmark, .Editor);
 			Add("Bookmark Clear", new => gApp.Cmd_ClearBookmarks, .Editor);
 			Add("Break All", new => gApp.[Friend]Cmd_Break);
-			Add("Breakpoint Memory", new () => { gApp.mBreakpointPanel.AddMemoryBreakpoint(gApp.[Friend]GetCurrentWindow()); }, .Editor);
-			Add("Breakpoint Symbol", new () => { gApp.mBreakpointPanel.AddSymbolBreakpoint(gApp.[Friend]GetCurrentWindow()); }, .Editor);
+			Add("Breakpoint Configure", new () => gApp.ConfigureBreakpoint());
+			Add("Breakpoint Disable", new () => gApp.DisableBreakpoint());
+			Add("Breakpoint Memory", new () => { gApp.mBreakpointPanel.AddMemoryBreakpoint(gApp.[Friend]GetCurrentWindow()); });
+			Add("Breakpoint Symbol", new () => { gApp.mBreakpointPanel.AddSymbolBreakpoint(gApp.[Friend]GetCurrentWindow()); });
 			Add("Breakpoint Toggle Thread", new => gApp.[Friend]ToggleThreadBreakpoint, .Editor);
 			Add("Breakpoint Toggle", new => gApp.[Friend]ToggleBreakpoint, .Editor);
 			Add("Build Solution", new => gApp.[Friend]Compile);
@@ -189,7 +191,8 @@ namespace IDE
 			Add("Close Window", new () => { gApp.[Friend]TryCloseCurrentDocument(); });
 			Add("Close Workspace", new => gApp.[Friend]Cmd_CloseWorkspaceAndSetupNew);
 			Add("Compile File", new => gApp.Cmd_CompileFile);
-			Add("Debug All Tests", new () => { gApp.[Friend]RunTests(true); });
+			Add("Debug All Tests", new () => { gApp.[Friend]RunTests(true, true); });
+			Add("Debug Normal Tests", new () => { gApp.[Friend]RunTests(false, true); });
 			Add("Exit", new => gApp.[Friend]Cmd_Exit);
 			Add("Find All References", new => gApp.Cmd_FindAllReferences);
 			Add("Find Class", new => gApp.Cmd_FindClass);
@@ -229,7 +232,8 @@ namespace IDE
 			Add("Replace in Document", new => gApp.Cmd_Document__Replace);
 			Add("Replace in Files", new => gApp.Cmd_Replace);
 			Add("Report Memory", new => gApp.[Friend]ReportMemory);
-			Add("Run All Tests", new => gApp.Cmd_RunAllTests);
+			Add("Run All Tests", new () => { gApp.[Friend]RunTests(true, false); });
+			Add("Run Normal Tests", new () => { gApp.[Friend]RunTests(false, false); });
 			Add("Run To Cursor", new => gApp.[Friend]RunToCursor);
 			Add("Run Without Compiling", new => gApp.[Friend]RunWithoutCompiling);
 			Add("Save All", new () => { gApp.SaveAll(); });
@@ -276,7 +280,6 @@ namespace IDE
 			Add("Attach to Process", new => gApp.[Friend]DoAttach);
 
 			Add("Test Enable Console", new => gApp.Cmd_TestEnableConsole);
-			Add("Test Include Ignored", new => gApp.Cmd_TestIncludeIgnored);
 		}
 	}
 }

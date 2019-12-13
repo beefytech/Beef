@@ -13,7 +13,7 @@ namespace BeefBuild
 		const int cProgressSize = 30;
 		int mProgressIdx = 0;		
 		public bool mIsTest;
-		public bool mIsFailTest;
+		public bool mTestIncludeIgnored;
 		public bool mDidRun;
 
 		/*void Test()
@@ -103,7 +103,7 @@ namespace BeefBuild
 
 			if (mIsTest)
 			{
-				RunTests(false);
+				RunTests(mTestIncludeIgnored, false);
 			}
 			else if (mVerb != .New)
 				Compile(.Normal, null);
@@ -129,8 +129,9 @@ namespace BeefBuild
 				case "-test":
 					mIsTest = true;
 					return true;
-				case "-testfail":
-					mIsFailTest = true;
+				case "-testall":
+					mIsTest = true;
+					mTestIncludeIgnored = true;
 					return true;
 				case "-clean":
 					mWantsClean = true;

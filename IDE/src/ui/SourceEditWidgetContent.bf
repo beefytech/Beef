@@ -2799,60 +2799,7 @@ namespace IDE.ui
             if ((keyCode == KeyCode.Escape) && (mSelection != null) && (mSelection.Value.HasSelection))
             {
                 mSelection = null;
-                //return;
             }
-
-            /*if (keyCode == KeyCode.F2)
-            {
-                int wantCount = 10;
-                if (mWidgetWindow.IsKeyDown(KeyCode.Shift))
-                    wantCount = 100;
-                for (int i = 0; i < wantCount; i++)
-                    mPanel.DoClassify(true, false, true);
-            }
-
-            if ((mPanel.mUseDebugKeyboard) && (keyCode == KeyCode.Menu))
-            {
-                if (mPanel.mClassifyPaused)
-                    mPanel.mClassifyPaused = false;
-                else
-                    mPanel.Classify(true, false, true);
-                return;
-            }*/
-
-            /*if ((keyCode == KeyCode.Left) && (mWidgetWindow.IsKeyDown(KeyCode.Alt)))
-            {
-                if (!IsAtCurrentHistory())
-                    IDEApp.sApp.mHistoryManager.GoToCurrentHistory();
-                else
-                    IDEApp.sApp.mHistoryManager.PrevHistory();
-                return;
-            }
-
-            if ((keyCode == KeyCode.Right) && (mWidgetWindow.IsKeyDown(KeyCode.Alt)))
-            {                
-                IDEApp.sApp.mHistoryManager.NextHistory();
-                return;
-            }*/
-
-			if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.Left) || (keyCode == KeyCode.Right)) &&
-				(mWidgetWindow.IsKeyDown(KeyCode.Control) && ((mWidgetWindow.IsKeyDown(KeyCode.Alt)))))
-			{
-				// Fast cursor!
-				/*if (mFastCursorState == null)
-				{
-					mFastCursorState = new FastCursorState();
-
-					float x;
-					float y;
-					GetTextCoordAtCursor(out x, out y);
-
-					mFastCursorState.mX = x;
-					mFastCursorState.mY = y;
-				}*/
-
-				return;
-			}
 
             if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)) &&
                 (mWidgetWindow.IsKeyDown(KeyCode.Control)))

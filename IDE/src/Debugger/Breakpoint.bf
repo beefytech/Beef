@@ -19,6 +19,21 @@ namespace IDE.Debugger
 			MultipleOf
 		};
 
+		public enum SetKind
+		{
+			Toggle,
+			Force,
+			EnsureExists,
+			MustExist
+		}
+
+		public enum SetFlags
+		{
+			None,
+			Configure,
+			Disable
+		}
+
         [StdCall, CLink]
         static extern void Breakpoint_Delete(void* nativeBreakpoint);
         

@@ -938,7 +938,7 @@ namespace IDE.ui
         }*/
 
 		// This is useful for a one-shot breakpoint within the current execution context- IE: "Run to cursor"
-        public Breakpoint ToggleAddrBreakpointAtCursor(bool forceSet, int threadId = -1)
+        public Breakpoint ToggleAddrBreakpointAtCursor(Breakpoint.SetKind setKind = .Toggle, Breakpoint.SetFlags flags = .None, int threadId = -1)
         {
             DebugManager debugManager = IDEApp.sApp.mDebugger;
 
@@ -953,7 +953,7 @@ namespace IDE.ui
                 return null;
 
             bool hadBreakpoint = false;
-			if (!forceSet)
+			if (setKind != .Force)
 			{
 	            for (int32 breakIdx = 0; breakIdx < IDEApp.sApp.mDebugger.mBreakpointList.Count; breakIdx++)
 	            {
@@ -988,7 +988,7 @@ namespace IDE.ui
 			return null;
         }
 
-        public Breakpoint ToggleBreakpointAtCursor(bool forceSet = false, int threadId = -1)
+        public Breakpoint ToggleBreakpointAtCursor(Breakpoint.SetKind setKind = .Toggle, Breakpoint.SetFlags flags = .None, int threadId = -1)
         {         
             DebugManager debugManager = IDEApp.sApp.mDebugger;
 
@@ -1005,7 +1005,7 @@ namespace IDE.ui
             {
                 if (checkIdx < 0)
                 {
-                    return ToggleAddrBreakpointAtCursor(forceSet);
+                    return ToggleAddrBreakpointAtCursor(setKind, flags, threadId);
                 }
                 lineData = mLineDatas[checkIdx];
                 if (lineData.mSourceFile != null)
@@ -1038,7 +1038,7 @@ namespace IDE.ui
 				instrOffsetCount = -1;*/
 
             bool hadBreakpoint = false;
-			if (!forceSet)
+			if (setKind != .Force)
 			{
 	            for (int32 breakIdx = 0; breakIdx < IDEApp.sApp.mDebugger.mBreakpointList.Count; breakIdx++)
 	            {
@@ -1246,6 +1246,9 @@ namespace IDE.ui
                         {
                             debugExpr = scope:: String();
                             content.ExtractString(leftIdx, rightIdx - leftIdx + 1, debugExpr);
+							int commaPos = debugExpr.LastIndexOf(',');
+							if (commaPos != -1)
+ 								debugExpr.RemoveToEnd(commaPos);
 
                             int32 semiPos = (int32)debugExpr.IndexOf(';');
                             if (semiPos != -1)

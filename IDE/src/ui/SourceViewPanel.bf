@@ -2039,7 +2039,7 @@ namespace IDE.ui
             return Path.Equals(fileName, mFilePath);
         }
 
-        void HilitePosition(LocatorType hilitePosition, int32 prevLine = -1)
+        public void HilitePosition(LocatorType hilitePosition, int32 prevLine = -1)
         {
             if (hilitePosition == LocatorType.None)
                 return;
@@ -2057,7 +2057,7 @@ namespace IDE.ui
 
             var sourceEditWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
 
-            LocatorAnim.Show(mEditWidget.Content, x, y + sourceEditWidgetContent.mFont.GetLineSpacing() / 2);
+            LocatorAnim.Show(hilitePosition, mEditWidget.Content, x, y + sourceEditWidgetContent.mFont.GetLineSpacing() / 2);
         }
 
         public void ShowFileLocation(int cursorIdx, LocatorType hilitePosition)
@@ -3657,11 +3657,11 @@ namespace IDE.ui
 			return drawLineNum;
 		}
 
-        public Breakpoint ToggleBreakpointAtCursor(bool forceSet = false, int threadId = -1)
+        public Breakpoint ToggleBreakpointAtCursor(Breakpoint.SetKind setKind = .Toggle, Breakpoint.SetFlags flags = .None, int threadId = -1)
         {
 			var activePanel = GetActivePanel();
 			if (activePanel != this)
-				return activePanel.ToggleBreakpointAtCursor(forceSet, threadId);
+				return activePanel.ToggleBreakpointAtCursor(setKind, flags, threadId);
 
             if (mOldVersionPanel != null)
             {                
@@ -3674,8 +3674,16 @@ namespace IDE.ui
             int lineCharIdx;
             mEditWidget.Content.GetLineCharAtIdx(mEditWidget.Content.CursorTextPos, out lineIdx, out lineCharIdx);
 
+			/*let lineAndCol = mEditWidget.Content.CursorLineAndColumn;
+			if (SelectBreakpointsAtLine(lineAndCol.mLine))
+			{
+				gApp.mBreakpointPanel.ConfigureBreakpoints(mWidgetWindow);
+			}*/
+
+			HashSet<Breakpoint> breakpoints = scope .();
+
             bool hadBreakpoint = false;
-			if (!forceSet)
+			if (setKind != .Force)
 			{
 	            /*WithTrackedElementsAtCursor<Breakpoint>(IDEApp.sApp.mDebugger.mBreakpointList, scope [&] (breakpoint) =>
 	                {
@@ -3692,15 +3700,21 @@ namespace IDE.ui
 						int drawLineNum = GetDrawLineNum(breakpoint);
 						if (drawLineNum == lineIdx)
 						{
-							BfLog.LogDbg("SourceViewPanel.ToggleBreakpointAtCursor deleting breakpoint\n");
-							debugManager.DeleteBreakpoint(breakpoint);
 							hadBreakpoint = true;
+							if (setKind == .Toggle)
+							{
+								BfLog.LogDbg("SourceViewPanel.ToggleBreakpointAtCursor deleting breakpoint\n");
+								debugManager.DeleteBreakpoint(breakpoint);
+							}
+							else
+								breakpoints.Add(breakpoint);
 						}
 					}
 				}
 			}
-                
-            if (!hadBreakpoint)
+
+			Breakpoint newBreakpoint = null;
+            if ((!hadBreakpoint) && (setKind != .MustExist))
             {
 				RecordHistoryLocation();
 
@@ -3721,12 +3735,12 @@ namespace IDE.ui
 				if (gApp.mDebugger.mIsRunning)
                 	foundPosition = RemapActiveToCompiledLine(curCompileIdx, ref lineIdx, ref lineCharIdx);
 				bool createNow = foundPosition || !mIsBeefSource; // Only be strict about Beef source
-                Breakpoint newBreakpoint = debugManager.CreateBreakpoint_Create(mAliasFilePath ?? mFilePath, lineIdx, lineCharIdx, -1);
+                newBreakpoint = debugManager.CreateBreakpoint_Create(mAliasFilePath ?? mFilePath, lineIdx, lineCharIdx, -1);
 				newBreakpoint.mThreadId = threadId;
 				debugManager.CreateBreakpoint_Finish(newBreakpoint, createNow);
                 int newDrawLineNum = GetDrawLineNum(newBreakpoint);
 
-                if (!forceSet)
+                if (setKind != .Force)
 				{
 	                for (int32 breakIdx = 0; breakIdx < IDEApp.sApp.mDebugger.mBreakpointList.Count; breakIdx++)
 	                {
@@ -3743,7 +3757,9 @@ namespace IDE.ui
 		                        debugManager.DeleteBreakpoint(newBreakpoint);
 								newBreakpoint = null;
 								var ewc = mEditWidget.mEditWidgetContent;
-								LocatorAnim.Show(mEditWidget, ewc.mX + -GS!(15), ewc.mY + newDrawLineNum * ewc.GetLineHeight(0) + GS!(12));
+								LocatorAnim.Show(.Always, mEditWidget, ewc.mX + -GS!(15), ewc.mY + newDrawLineNum * ewc.GetLineHeight(0) + GS!(12));
+
+								breakpoints.Add(checkBreakpoint);
 								break;
 							}
 	                    }
@@ -3778,10 +3794,22 @@ namespace IDE.ui
 					}
 				}
 
-				return newBreakpoint;
+				if (newBreakpoint != null)
+					breakpoints.Add(newBreakpoint);
             }
 
-			return null;
+			if (((flags.HasFlag(.Configure)) || (flags.HasFlag(.Disable))) &&
+				(!breakpoints.IsEmpty))
+			{
+				gApp.mBreakpointPanel.Update();
+				gApp.mBreakpointPanel.SelectBreakpoints(breakpoints);
+				if (flags.HasFlag(.Configure))
+					gApp.mBreakpointPanel.ConfigureBreakpoints(mWidgetWindow);
+				if (flags.HasFlag(.Disable))
+					gApp.mBreakpointPanel.SetBreakpointsDisabled(null);
+			}
+
+			return newBreakpoint;
         }
 
         public void ToggleBookmarkAtCursor()
@@ -4481,9 +4509,7 @@ namespace IDE.ui
 			if ((mousePos.x < editX - 24) || (mousePos.x > editX - 5))
 				return false;
 
-			DarkEditWidgetContent darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
-			float lineSpacing = darkEditWidgetContent.mFont.GetLineSpacing();
-			float ofsY = mEditWidget.mY + darkEditWidgetContent.mY + (lineSpacing - DarkTheme.sUnitSize + GS!(5)) / 2;
+			int mouseLine = GetLineAt(mousePos.x, mousePos.y);
 
 			for (var breakpointView in GetTrackedElementList())
 			{
@@ -4500,8 +4526,7 @@ namespace IDE.ui
 						breakpointLineNum = breakpoint.mLineNum;
 					int drawLineNum = breakpointLineNum;
 
-					float iconY = ofsY + drawLineNum * lineSpacing;
-					if ((mousePos.y > iconY) && (mousePos.y < iconY + GS!(20)))
+					if (drawLineNum == mouseLine)
 					{
 						if (!tooltipStr.IsEmpty)
 							tooltipStr.Append("\n\n");
@@ -6080,44 +6105,60 @@ namespace IDE.ui
 			}
 		}
 
+		public int GetLineAt(float x, float y)
+		{
+			if (x > GS!(40))
+				return -1;
+
+			DarkEditWidgetContent darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
+			float lineSpacing = darkEditWidgetContent.mFont.GetLineSpacing();
+			float relY = y - mEditWidget.mY - mEditWidget.Content.Y - GS!(3);
+			if (relY < 0)
+				return -1;
+			return (int)(relY / lineSpacing);
+		}
+
+		public bool SelectBreakpointsAtLine(int selectLine)
+		{
+			if (selectLine == -1)
+				return false;
+
+			HashSet<Breakpoint> selectedBreakpoints = scope HashSet<Breakpoint>();
+
+			for (var breakpointView in GetTrackedElementList())
+			{
+			    var trackedElement = breakpointView.mTrackedElement;
+			    var breakpoint = trackedElement as Breakpoint;
+			    if (breakpoint != null)
+			    {
+					int drawLineNum = RemapActiveLineToHotLine(breakpoint.mLineNum);
+					if (selectLine == drawLineNum)
+					{
+						selectedBreakpoints.Add(breakpoint);
+					}
+				}
+			}
+
+			if (selectedBreakpoints.IsEmpty)
+				return false;
+			
+			gApp.mBreakpointPanel.Update();
+			gApp.mBreakpointPanel.SelectBreakpoints(selectedBreakpoints);
+			return true;
+		}
+
 		public override void MouseClicked(float x, float y, int32 btn)
 		{
 			base.MouseClicked(x, y, btn);
 
 			if (btn == 1)
 			{
-				DarkEditWidgetContent darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
-				float lineSpacing = darkEditWidgetContent.mFont.GetLineSpacing();
-
-				HashSet<Breakpoint> selectedBreakpoints = scope HashSet<Breakpoint>();
-
-				for (var breakpointView in GetTrackedElementList())
+				int lineClick = GetLineAt(x, y);
+				if (SelectBreakpointsAtLine(lineClick))
 				{
-				    var trackedElement = breakpointView.mTrackedElement;
-				    var breakpoint = trackedElement as Breakpoint;
-				    if (breakpoint != null)
-				    {
-						int drawLineNum = RemapActiveLineToHotLine(breakpoint.mLineNum);
-						//float breakX = mEditWidget.mX - 20;
-						float breakY = GS!(3) + drawLineNum * lineSpacing + mEditWidget.mY + mEditWidget.Content.Y;
-
-						if ((x <= GS!(40)) && (y >= breakY) && (y < breakY + lineSpacing + GS!(1)))
-						{
-							selectedBreakpoints.Add(breakpoint);
-						}
-					}
-				}
-
-				if (selectedBreakpoints.Count > 0)
-				{
-					gApp.mBreakpointPanel.Update();
-					gApp.mBreakpointPanel.SelectBreakpoints(selectedBreakpoints);
 #unwarn
 					var menuWidget = gApp.mBreakpointPanel.ShowRightClickMenu(this, x, y, true);
-					//menuWidget.mDeletedHandler.Add(new (widget) => { gApp.mBreakpointPanel.mListView.GetRoot().SelectItemExclusively(null); });
 				}
-
-				//float checkY = y + mEditWidget.mScrollContentContainer.m;
 			}
 		}
 

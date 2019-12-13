@@ -211,7 +211,7 @@ struct Blurg
 		}
 	}
 
-	static int[] gArr = new .(1, 2, 3, 4, 5, );
+	//static int[] gArr = new .(1, 2, 3, 4, 5, );
 
 	[Checked]
 	public static int32 GetVal()
@@ -305,12 +305,6 @@ struct Blurg
 		 //int len = str.[Friend]GetLength();
 	}				   
 
-	
-	static void Test(int a, int b, Span<int> iSpan)
-	{
-
-	}
-
 	public static mixin Florf(int a, int b)
 	{
 
@@ -324,36 +318,30 @@ struct Blurg
 		}
 	}
 
+	public static int sA = 123;
+
+	/*public static void Test<T>(T val)
+	{
+
+	}*/
+
+	public static void Test<T, T2>(T val) where T : Span<T2>
+	{
+
+	}
+
 	public static int32 Hey()
 	{
-		for (int i < 100)
-		{
-			Yoofer.ColorizeCodeString("abc", .Callstack);
-		}
+		Span<uint8> valSpan = .();
+		StringView sv = "Hey";
+
+		Span<char8> span = sv;
+
+		Test(sv);
+
 		return (int32)123;
 	}
 
 }
 
-class Yoofer
-{
-	public enum CodeKind
-	{
-		Callstack,
-		Method,
-		Field,
-		Type
-	}
-
-	public static void Zorg()
-	{
-		int a = 1;
-	}
-
-	public static void ColorizeCodeString(String label, CodeKind codeKind)
-	{
-		Zorg();
-		int a = 1;
-	}
-}
 

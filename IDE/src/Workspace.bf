@@ -805,10 +805,10 @@ namespace IDE
                 Config config = new Config();
 				//let configName = new String(data.Keys[configIdx]);
 				let configName = new String(configNameKey);
-				bool isDebug = configName.Contains("Debug");
 				bool isRelease = configName.Contains("Release");
 				bool isParanoid = configName.Contains("Paranoid");
 				bool isTest = configName.Contains("Test");
+				//bool isDebug = configName.Contains("Debug");
                 mConfigs[configName] = config;
                 
 				for (var platformNameKey in data.Enumerate())
@@ -858,7 +858,7 @@ namespace IDE
                     options.mIntermediateType = data.GetEnum<IntermediateType>("IntermediateType", .Object);
 
                     options.mCSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("CSIMDSetting", .SSE2);
-                    options.mCOptimizationLevel = data.GetEnum<COptimizationLevel>("COptimizationLevel", isDebug ? .O0 : .O2);
+                    options.mCOptimizationLevel = data.GetEnum<COptimizationLevel>("COptimizationLevel", isRelease ? .O2 : .O0);
 
                     for (var projectName in data.Enumerate("ConfigSelections"))
                     {

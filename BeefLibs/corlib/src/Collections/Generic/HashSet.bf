@@ -290,9 +290,17 @@ namespace System.Collections.Generic
 		}
 
 		/// Number of elements in this hashset
-		public int32 Count
+		public int Count
 		{
 			get { return mCount; }
+		}
+
+		public bool IsEmpty
+		{
+			get
+			{
+				return mCount == 0;
+			}
 		}
 
 		/// Whether this is readonly

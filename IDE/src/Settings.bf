@@ -412,8 +412,10 @@ namespace IDE
 				Add("Bookmark Toggle", "Ctrl+F2");
 				Add("Bookmark Clear", "Ctrl+K, Ctrl+L");
 				Add("Break All", "Ctrl+Alt+Break");
-				Add("Breakpoint Toggle Thread", "Ctrl+F9");
+				Add("Breakpoint Configure", "Alt+F9");
+				Add("Breakpoint Disable", "Ctrl+F9");
 				Add("Breakpoint Toggle", "F9");
+				Add("Breakpoint Toggle Thread", "Shift+F9");
 				Add("Build Solution", "F7");
 				Add("Cancel Build", "Ctrl+Break");
 				Add("Close Window", "Ctrl+W");

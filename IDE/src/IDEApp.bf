@@ -295,7 +295,6 @@ namespace IDE
 		public bool mEnableGCCollect = true;
 		public bool mDbgFastUpdate;
 		public bool mTestEnableConsole = false;
-		public bool mTestIncludeIgnored = false;
 		public ProfileInstance mLongUpdateProfileId;
 		public uint32 mLastLongUpdateCheck;
 		public uint32 mLastLongUpdateCheckError;
@@ -3988,11 +3987,11 @@ namespace IDE
 			if (sourceViewPanel != null)
 			{
 				BfLog.LogDbg("Creating mRunToCursorBreakpoint\n");
-				mDebugger.mRunToCursorBreakpoint = sourceViewPanel.ToggleBreakpointAtCursor(true, mDebugger.GetActiveThread());
+				mDebugger.mRunToCursorBreakpoint = sourceViewPanel.ToggleBreakpointAtCursor(.Force, .None, mDebugger.GetActiveThread());
 			}
 			else if (var disassemblyPanel = GetActiveDocumentPanel() as DisassemblyPanel)
 			{
-				mDebugger.mRunToCursorBreakpoint = disassemblyPanel.ToggleAddrBreakpointAtCursor(true, mDebugger.GetActiveThread());
+				mDebugger.mRunToCursorBreakpoint = disassemblyPanel.ToggleAddrBreakpointAtCursor(.Force, .None, mDebugger.GetActiveThread());
 			}
 
 			if (mDebugger.mIsRunning)
@@ -4090,17 +4089,17 @@ namespace IDE
 			}
 		}
 
-		void ToggleBreakpoint(WidgetWindow window, bool bindToThread = false)
+		void ToggleBreakpoint(WidgetWindow window, Breakpoint.SetKind setKind, Breakpoint.SetFlags setFlags, bool bindToThread = false)
 		{
 			var documentPanel = GetActiveDocumentPanel();
 
 			if (var sourceViewPanel = documentPanel as SourceViewPanel)
 			{
-			    sourceViewPanel.ToggleBreakpointAtCursor(false, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
+			    sourceViewPanel.ToggleBreakpointAtCursor(setKind, setFlags, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
 			}
 			else if (var disassemblyPanel = documentPanel as DisassemblyPanel)
 			{				
-				disassemblyPanel.ToggleBreakpointAtCursor(false, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
+				disassemblyPanel.ToggleBreakpointAtCursor(setKind, setFlags, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
 			}
 		}
 
@@ -4118,13 +4117,37 @@ namespace IDE
 		[IDECommand]
 		void ToggleBreakpoint()
 		{
-			ToggleBreakpoint(GetCurrentWindow(), false);
+			ToggleBreakpoint(GetCurrentWindow(), .Toggle, .None);
+		}
+
+		[IDECommand]
+		public void ConfigureBreakpoint()
+		{
+			if (var breakpointPanel = GetActivePanel() as BreakpointPanel)
+			{
+				breakpointPanel.ConfigureBreakpoints(breakpointPanel.mWidgetWindow);
+				return;
+			}
+
+			ToggleBreakpoint(GetCurrentWindow(), .EnsureExists, .Configure);
+		}
+
+		[IDECommand]
+		public void DisableBreakpoint()
+		{
+			if (var breakpointPanel = GetActivePanel() as BreakpointPanel)
+			{
+				breakpointPanel.SetBreakpointsDisabled(null);
+				return;
+			}
+
+			ToggleBreakpoint(GetCurrentWindow(), .MustExist, .Disable);
 		}
 
 		[IDECommand]
 		void ToggleThreadBreakpoint()
 		{
-			ToggleBreakpoint(GetCurrentWindow(), true);
+			ToggleBreakpoint(GetCurrentWindow(), .Toggle, .None, true);
 		}
 
 		void CompileCurrentFile()
@@ -4498,18 +4521,21 @@ namespace IDE
 			var tabbedView = GetActiveTabbedView();
 			if ((tabbedView == null) || (tabbedView.mTabs.IsEmpty))
 				return;
+			TabbedView.TabButton activateTab = tabbedView.mTabs[0];
 			for (var tab in tabbedView.mTabs)
 			{
 				if (tab.mIsActive)
 				{
 					if (@tab.Index < tabbedView.mTabs.Count - 1)
 					{
-						tabbedView.mTabs[@tab.Index + 1].Activate();
-						return;
+						activateTab = tabbedView.mTabs[@tab.Index + 1];
+						break;
 					}
 				}
 			}
-			tabbedView.mTabs[0].Activate();
+			activateTab.Activate();
+			if (var sourceViewPanel = activateTab.mContent as SourceViewPanel)
+				sourceViewPanel.HilitePosition(.Extra);
 		}
 
 		[IDECommand]
@@ -4518,18 +4544,21 @@ namespace IDE
 			var tabbedView = GetActiveTabbedView();
 			if ((tabbedView == null) || (tabbedView.mTabs.IsEmpty))
 				return;
+			TabbedView.TabButton activateTab = tabbedView.mTabs.Back;
 			for (var tab in tabbedView.mTabs)
 			{
 				if (tab.mIsActive)
 				{
 					if (@tab.Index > 0)
 					{
-						tabbedView.mTabs[@tab.Index - 1].Activate();
-						return;
+						activateTab = tabbedView.mTabs[@tab.Index - 1];
+						break;
 					}
 				}
 			}
-			tabbedView.mTabs.Back.Activate();
+			activateTab.Activate();
+			if (var sourceViewPanel = activateTab.mContent as SourceViewPanel)
+				sourceViewPanel.HilitePosition(.Extra);
 		}
 
 		void DoErrorTest()
@@ -4630,7 +4659,7 @@ namespace IDE
 			return (mTestManager != null);
 		}
 
-		protected void RunTests(bool debug)
+		protected void RunTests(bool includeIgnored, bool debug)
 		{
 			if (mOutputPanel != null)
 			{
@@ -4640,13 +4669,13 @@ namespace IDE
 
 			if (AreTestsRunning())
 			{
-				OutputLineSmart("ERROR: Tests already running");
+				OutputErrorLine("Tests already running");
 				return;
 			}
 
 			if ((mDebugger != null) && (mDebugger.mIsRunning))
 			{
-				OutputLineSmart("ERROR: Tests cannot be run while program is executing");
+				OutputErrorLine("Tests cannot be run while program is executing");
 				return;
 			}
 
@@ -4662,7 +4691,7 @@ namespace IDE
 			if (workspaceOptions.mBuildKind != .Test)
 			{
 				mMainFrame.mStatusBar.SelectConfig(prevConfigName);
-				OutputLineSmart("ERROR: No valid Test workspace configuration exists");
+				OutputErrorLine("No valid Test workspace configuration exists");
 				return;
 			}
 
@@ -4670,7 +4699,7 @@ namespace IDE
 			mTestManager = new TestManager();
 			mTestManager.mPrevConfigName = new String(prevConfigName);
 			mTestManager.mDebug = debug;
-			mTestManager.mIncludeIgnored = mTestIncludeIgnored;
+			mTestManager.mIncludeIgnored = includeIgnored;
 
 			if (mOutputPanel != null)
 				mOutputPanel.Clear();
@@ -4679,12 +4708,10 @@ namespace IDE
 			{
 				mTestManager.BuildFailed();
 			}
-		}
-
-		[IDECommand]
-		public void Cmd_RunAllTests()
-		{
-			RunTests(false);
+			if (!mTestManager.HasProjects)
+			{
+				OutputLineSmart("WARNING: No projects have a test configuration specified");
+			}
 		}
 
 		[IDECommand]
@@ -4692,13 +4719,6 @@ namespace IDE
 		{
 			let ideCommand = gApp.mCommands.mCommandMap["Test Enable Console"];
 			ToggleCheck(ideCommand.mMenuItem, ref mTestEnableConsole);
-		}
-
-		[IDECommand]
-		public void Cmd_TestIncludeIgnored()
-		{
-			let ideCommand = gApp.mCommands.mCommandMap["Test Include Ignored"];
-			ToggleCheck(ideCommand.mMenuItem, ref mTestIncludeIgnored);
 		}
 
         public void CreateMenu()
@@ -4946,13 +4966,14 @@ namespace IDE
 
 			var testMenu = root.AddMenuItem("&Test");
 			var testRunMenu = testMenu.AddMenuItem("&Run");
+			AddMenuItem(testRunMenu, "&Normal Tests", "Run Normal Tests");
 			AddMenuItem(testRunMenu, "&All Tests", "Run All Tests");
 
 			var testDebugMenu = testMenu.AddMenuItem("&Debug");
+			AddMenuItem(testDebugMenu, "&Normal Tests", "Debug Normal Tests");
 			AddMenuItem(testDebugMenu, "&All Tests", "Debug All Tests");
 
 			AddMenuItem(testMenu, "Enable Console", "Test Enable Console", null, null, true, mTestEnableConsole ? 1 : 0);
-			AddMenuItem(testMenu, "Include Ignored Tests", "Test Include Ignored", null, null, true, mTestIncludeIgnored ? 1 : 0);
 
 			//////////
 
