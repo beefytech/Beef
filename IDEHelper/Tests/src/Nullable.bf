@@ -17,6 +17,19 @@ namespace Tests
 
 			let fn3 = fn + intn2;
 			Test.Assert(fn3 == null);
+
+			int i = intn ?? 200;
+			Test.Assert(i == 100);
+
+			i = intn2 ?? (int16)200;
+			Test.Assert(i == 200);
+
+			i = 300;
+			Test.Assert(intn.TryGetValue(ref i));
+			Test.Assert(i == 100);
+
+			Test.Assert(!intn2.TryGetValue(ref i));
+			Test.Assert(i == 100);
 		}
 	}
 }

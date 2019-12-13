@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 
 namespace Tests
@@ -113,6 +115,24 @@ namespace Tests
 			Test.Assert(sizeof(StructI) == 16);
 			Test.Assert(alignof(StructI) == 4);
 			Test.Assert(strideof(StructI) == 16);
+		}
+
+		public int Test<T>(T val)
+		{
+			return 11;
+		}
+
+		static int Test<T, T2>(T val) where T : Span<T2>
+		{
+			return 22;
+		}
+
+		[Test]
+		static void TestStringView()
+		{
+			StringView sv = "Hey";
+			Span<char8> span = sv;
+			Test.Assert(Test(sv) == 22);
 		}
 	}
 }
