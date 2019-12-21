@@ -13,6 +13,10 @@ md stats
 IDE\dist\BeefBuild_d -proddir=IDEHelper\Tests -test
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
+@ECHO Testing IDEHelper\Tests (Win32)
+IDE\dist\BeefBuild_d -proddir=IDEHelper\Tests -test -platform=Win32
+@IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
+
 @ECHO Testing SysMSVCRT
 del IDE\Tests\SysMSVCRT\build\Debug_Win64\SysMSVCRT\SysMSVCRT.exe
 IDE\dist\BeefBuild_d -proddir=IDE\Tests\SysMSVCRT

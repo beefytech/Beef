@@ -32,6 +32,25 @@ namespace Tests
 			{
 				return mA + mB + a;
 			}
+
+			public void TestLambda() mut
+			{
+				delegate int(ref int a, ref int b) dlg = scope [&] (a, b) => 
+				{
+					a += 20;
+					b += 30;
+					mA++;
+					return mA + a + b;
+				};
+
+				mA = 100;
+				int testA = 8;
+				int testB = 9;
+				Test.Assert(dlg(ref testA, ref testB) == 100+1 + 20+8 + 30+9);
+				Test.Assert(testA == 28);
+				Test.Assert(testB == 39);
+				Test.Assert(mA == 101);
+			}
 		}
 
 		struct NonSplattable
@@ -50,6 +69,30 @@ namespace Tests
 			public int NonMutMethod(int a)
 			{
 				return mA + mB + a;
+			}
+		}
+
+		class ClassA
+		{
+			public int mA;
+
+			public void TestLambda()
+			{
+				delegate int(ref int a, ref int b) dlg = scope (a, b) => 
+				{
+					a += 20;
+					b += 30;
+					mA++;
+					return mA + a + b;
+				};
+
+				mA = 100;
+				int testA = 8;
+				int testB = 9;
+				Test.Assert(dlg(ref testA, ref testB) == 100+1 + 20+8 + 30+9);
+				Test.Assert(testA == 28);
+				Test.Assert(testB == 39);
+				Test.Assert(mA == 101);
 			}
 		}
 
@@ -89,6 +132,10 @@ namespace Tests
 			dlg = scope => (ref val2).NonMutMethod;
 			Test.Assert(dlg(9) == 319);
 			Test.Assert(val2.mB == 300);
+
+			val1.TestLambda();
+			ClassA ca = scope .();
+			ca.TestLambda();
 		}
 	}
 }

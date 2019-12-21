@@ -9,6 +9,10 @@ StartupProject = "Tests"
 BfOptimizationLevel = "O0"
 IntermediateType = "ObjectAndIRCode"
 
+[Configs.Debug.Linux64]
+Toolset = "GNU"
+EnableRealtimeLeakCheck = false
+
 [Configs.Test.Win64]
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O2"
@@ -21,6 +25,9 @@ ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.Test.macOS]
 COptimizationLevel = "O2"
+ConfigSelections = {TestsB = {Config = "Test"}}
+
+[Configs.Test.Win32]
 ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.TestFail.Win64]
