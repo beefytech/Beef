@@ -684,12 +684,12 @@ static tcmalloc_obj::Span* TCGetSpanAt(void* addr)
 	if (rootLeaf == NULL)
 		return NULL;	
 	auto span = (tcmalloc_obj::Span*)rootLeaf->values[checkLeafIdx];	
-	intptr pageSize = (intptr)1 << kPageShift;
-	int spanSize = pageSize * span->length;
-	void* spanStart = (void*)((intptr)span->start << kPageShift);
-	void* spanEnd = (void*)((intptr)spanStart + spanSize);
-	if ((addr >= spanStart) && (addr < spanEnd))
-		return span;
+// 	intptr pageSize = (intptr)1 << kPageShift;
+// 	int spanSize = pageSize * span->length;
+// 	void* spanStart = (void*)((intptr)span->start << kPageShift);
+// 	void* spanEnd = (void*)((intptr)spanStart + spanSize);
+// 	if ((addr >= spanStart) && (addr < spanEnd))
+// 		return span;
 	return span;
 }
 #else
