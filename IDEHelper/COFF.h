@@ -358,6 +358,7 @@ public:
 	DbgType* CvGetType(int typeId);	
 	DbgType* CvGetType(int typeId, CvCompileUnit* compileUnit);
 	int CvGetTagStart(int tagIdx, bool ipi);	
+	int CvGetTagSize(int tagIdx, bool ipi);
 	uint8* CvGetTagData(int tagIdx, bool ipi, int* outDataSize = NULL);
 	void CvParseArgList(DbgSubprogram* subprogram, int tagIdx, bool ipi);
 	DbgSubprogram* CvParseMethod(DbgType* parentType, const char* methodName, int tagIdx, bool ipi, DbgSubprogram* subprogram = NULL);

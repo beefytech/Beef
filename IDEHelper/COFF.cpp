@@ -518,7 +518,17 @@ int COFF::CvGetTagStart(int tagIdx, bool ipi)
 	if (ipi)
 		return mCvIPITagStartMap[tagIdx - mCvMinTag];
 	else
-		return mCvTagStartMap[tagIdx - mCvMinTag];				
+		return mCvTagStartMap[tagIdx - mCvMinTag];
+}
+
+int COFF::CvGetTagSize(int tagIdx, bool ipi)
+{
+	if (tagIdx == 0)
+		return 0;
+	if (ipi)
+		return mCvIPITagStartMap[tagIdx - mCvMinTag + 1] - mCvIPITagStartMap[tagIdx - mCvMinTag];
+	else
+		return mCvTagStartMap[tagIdx - mCvMinTag + 1] - mCvTagStartMap[tagIdx - mCvMinTag];
 }
 
 uint8* COFF::CvGetTagData(int tagIdx, bool ipi, int* outDataSize)
@@ -1402,7 +1412,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				dbgType->mIsDeclaration = true;
 
 			dbgType->mSize = dbgType->mTypeParam->mSize;
-			dbgType->mAlign = dbgType->mTypeParam->mAlign;
+			dbgType->mAlign = dbgType->mTypeParam->mAlign;			
 
 			/*if (dbgType->mTypeParam->GetByteCount() == 0)
 			{
@@ -1538,6 +1548,14 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			}
 
 			dbgType->mIsIncomplete = true;
+
+			if (classInfo.field != 0)			
+				dbgType->mDefinedMembersSize = CvGetTagSize(classInfo.field, ipi);			
+
+			// This helps differentiate '
+// 			if (classInfo.field != 0)
+// 				dbgType->mDefinedMembersCount++;
+
 			//CvParseMembers(dbgType, classInfo.field, sectionData);
 		}
 		break;
@@ -1791,6 +1809,9 @@ void COFF::ParseTypeData(CvStreamReader& reader, int dataOffset)
 			CvParseType(tagIdx);
 		}
 	}
+
+	if (isTagMapEmpty)
+		mCvTagStartMap.Add(offset);
 }
 
 void COFF::ParseTypeData(int sectionNum, CvStreamReader& reader, int& sectionSize, int& dataOfs, int& hashStream, int& hashAdjOffset, int& hashAdjSize, int& minVal, int& maxVal)
@@ -5058,7 +5079,7 @@ void COFF::CvParseIPI()
 	//mCvIPIData = sectionData;
 	
 	int recordCount = mCvIPIMaxTag - mCvIPIMinTag;
-	mCvIPITagStartMap.Resize(recordCount);
+	mCvIPITagStartMap.Resize(recordCount + 1);
 
 	//uint8* data = sectionData + dataOffset;
 	int offset = dataOffset;
@@ -5130,6 +5151,8 @@ void COFF::CvParseIPI()
 
 		mCvIPITagStartMap[idx] = offsetStart;
 	}
+	
+	mCvIPITagStartMap[recordCount] = offset;
 }
 
 const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_target& outAddr)

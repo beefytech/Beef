@@ -564,7 +564,7 @@ public:
 	int mDeclFileIdx;
 	int mDeclLine;	
 	int mTypeIdx;
-	uint16 mDefinedMembersCount; // For static members
+	uint16 mDefinedMembersSize;
 	uint16 mMethodsWithParamsCount;	
 	bool mIsIncomplete; // Not fully loaded
 	bool mIsPacked;

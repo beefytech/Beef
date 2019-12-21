@@ -1186,7 +1186,7 @@ DbgExtType DbgType::CalcExtType()
 }
 
 DbgLanguage DbgType::GetLanguage()
-{	
+{		
 	return mLanguage;
 }
 
@@ -1451,9 +1451,10 @@ DbgType* DbgType::GetPrimaryType()
 
 	mPrimaryType = this;
 	if (mPriority <= DbgTypePriority_Normal)
-	{
+	{		
 		if ((mCompileUnit != NULL) && 
-			((mCompileUnit->mLanguage == DbgLanguage_Beef) || (mTypeCode == DbgType_Namespace) || (mIsDeclaration)))
+			((mCompileUnit->mLanguage == DbgLanguage_Beef)|| (mLanguage == DbgLanguage_Beef) || 
+			(mTypeCode == DbgType_Namespace) || (mIsDeclaration)))
 		{			
 			mPrimaryType = mCompileUnit->mDbgModule->GetPrimaryType(this);			
 			mPrimaryType->PopulateType();
@@ -2761,7 +2762,7 @@ void DbgModule::MapTypes(int startingTypeIdx)
 		{
 			for (auto member : dbgType->mMemberList)
 				if ((member->mIsStatic) && (member->mLocationData != NULL))
-					dbgType->mDefinedMembersCount++;
+					dbgType->mDefinedMembersSize++;
 		}
 		
 		if ((dbgType->mTypeName != NULL) && (strcmp(dbgType->mTypeName, "@") == 0))
@@ -2855,12 +2856,13 @@ void DbgModule::MapTypes(int startingTypeIdx)
 						continue;
 					}
 					
-					if (prevType->mDefinedMembersCount > 0)
+					if (prevType->mDefinedMembersSize > 0)
 					{
-						if (dbgType->mDefinedMembersCount > 0)
+						if (dbgType->mDefinedMembersSize > 0)
 						{
 							// We create an 'alternates' list for all types that define at least one static field
-							prevType->mAlternates.PushFront(dbgType, &mAlloc);
+							if (prevType->mHasStaticMembers)
+								prevType->mAlternates.PushFront(dbgType, &mAlloc);
 						}
 						continue;
 					}
