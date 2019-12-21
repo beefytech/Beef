@@ -664,8 +664,9 @@ enum BfOptimize : int8
 enum BfImportKind : int8
 {
 	BfImportKind_None,
-	BfImportKind_Static,
-	BfImportKind_Dynamic,
+	BfImportKind_Import_Unknown,
+	BfImportKind_Import_Dynamic,
+	BfImportKind_Import_Static,
 	BfImportKind_Export
 };
 
@@ -758,6 +759,7 @@ public:
 
 	virtual ~BfMethodDef();
 
+	static BfImportKind GetImportKindFromPath(const StringImpl& filePath);
 	bool HasNoThisSplat() { return mIsMutating || mNoSplat; }
 	void Reset();
 	void FreeMembers();

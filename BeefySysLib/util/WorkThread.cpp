@@ -16,7 +16,7 @@ WorkThread::~WorkThread()
 	mThread = NULL;
 }
 
-static void WorkThreadStub(void* param)
+static void BFP_CALLTYPE WorkThreadStub(void* param)
 {
 	((WorkThread*)param)->Run();
 }

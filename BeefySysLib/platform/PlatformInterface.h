@@ -4,12 +4,19 @@
 
 #define BFP_VERSION 2
 
+#ifdef BFP_INTERNAL
+#define BFP_EXPORT
+#define BFP_CALLTYPE
+#else
+
 #ifndef BFP_EXPORT
 #define BFP_EXPORT BF_EXPORT
 #endif
 
 #ifndef BFP_CALLTYPE
 #define BFP_CALLTYPE BF_CALLTYPE
+#endif
+
 #endif
 
 // Windows file time (the number of 100-nanosecond intervals that have elapsed since 12:00 A.M. January 1, 1601 Coordinated Universal Time (UTC))

@@ -813,6 +813,7 @@ public:
 	BfIRValue mClosureFunc;
 	BfIRValue mDtorFunc;
 	bool mCopyOuterCaptures;
+	bool mDeclaringMethodIsMutating;
 	bool mIsStatic;
 	Array<BfLambdaCaptureInfo> mCaptures;
 	BfMethodInstance* mMethodInstance;
@@ -829,6 +830,7 @@ public:
 		mDeclMixinState = NULL;
 		mOuterClosure = NULL;
 		mCopyOuterCaptures = false;
+		mDeclaringMethodIsMutating = false;
 		mIsStatic = false;
 		mMethodInstance = NULL;
 		mDtorMethodInstance = NULL;
@@ -1722,8 +1724,8 @@ public:
 	void CreateStaticCtor();	
 	BfIRValue CreateDllImportGlobalVar(BfMethodInstance* methodInstance, bool define = false);
 	void CreateDllImportMethod();			
-	BfIRCallingConv GetCallingConvention(BfTypeInstance* typeInst, BfMethodDef* methodDef);
-	BfIRCallingConv GetCallingConvention(BfMethodInstance* methodInstance);
+	BfIRCallingConv GetIRCallingConvention(BfTypeInstance* typeInst, BfMethodDef* methodDef);
+	BfIRCallingConv GetIRCallingConvention(BfMethodInstance* methodInstance);
 	void SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined);
 	void EmitCtorBody(bool& skipBody);
 	void EmitDtorBody();

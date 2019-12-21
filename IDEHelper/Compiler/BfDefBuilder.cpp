@@ -717,7 +717,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			}
 			else if (typeRefName == "Import")
 			{
-				methodDef->mImportKind = BfImportKind_Static;
+				methodDef ->mImportKind = BfImportKind_Import_Unknown;
 				if (!attributes->mArguments.IsEmpty())
 				{
 					if (auto literalExpr = BfNodeDynCast<BfLiteralExpression>(attributes->mArguments[0]))
@@ -725,12 +725,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 						if (literalExpr->mValue.mTypeCode == BfTypeCode_CharPtr)
 						{
 							String filePath = *literalExpr->mValue.mString;
-							String fileExt = GetFileExtension(filePath);
-							if ((fileExt.Equals(".DLL", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
-								(fileExt.Equals(".EXE", StringImpl::CompareKind_OrdinalIgnoreCase)))
-							{
-								methodDef->mImportKind = BfImportKind_Dynamic;
-							}
+							methodDef->mImportKind = BfMethodDef::GetImportKindFromPath(filePath);							
 						}
 					}
 				}
@@ -752,7 +747,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				else
 				{
 					methodDef->mCommutableKind = BfCommutableKind_Forward;
-				}				
+				}
 			}
 		}
 
@@ -1799,7 +1794,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			}			
 		}
 
-		if (method->mImportKind == BfImportKind_Dynamic)
+		if ((method->mImportKind == BfImportKind_Import_Dynamic) || (method->mImportKind == BfImportKind_Import_Unknown))
 			needsStaticInit = true;
 	}
 	

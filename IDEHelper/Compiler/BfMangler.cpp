@@ -2024,10 +2024,12 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 		name += qualifier;
 	}	
 
+	auto callingConvention = mangleContext.mModule->GetIRCallingConvention(typeInst, methodDef);
+
 	char callingConv = 'A';
-	if (methodDef->mCallingConvention == BfCallingConvention_Stdcall)
+	if (callingConvention == BfIRCallingConv_StdCall)
 		callingConv = 'G';
-	else if ((!mangleContext.mIs64Bit) && (!methodDef->mIsStatic))
+	else if (callingConvention == BfIRCallingConv_ThisCall)
 		callingConv = 'E';
 	name += callingConv;
 

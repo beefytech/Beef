@@ -4296,7 +4296,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		firstArg = irArgs[0];
 	
 	auto methodInstOwner = methodInstance->GetOwner();
-	auto expectCallingConvention = mModule->GetCallingConvention(methodInstOwner, methodDef);
+	auto expectCallingConvention = mModule->GetIRCallingConvention(methodInstOwner, methodDef);
 	if ((methodInstOwner->IsFunction()) && (methodInstance->GetParamCount() > 0) && (methodInstance->GetParamName(0) == "this"))
 	{
 		auto paramType = methodInstance->GetParamType(0);
@@ -9031,7 +9031,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					auto funcType = mModule->mBfIRBuilder->CreateFunctionType(irReturnType, irParamTypes);
 					auto funcValue = mModule->mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, methodName);
 
-					auto srcCallingConv = mModule->GetCallingConvention(methodInstance->GetOwner(), methodInstance->mMethodDef);
+					auto srcCallingConv = mModule->GetIRCallingConvention(methodInstance);
 					mModule->mBfIRBuilder->SetFuncCallingConv(funcValue, srcCallingConv);
 
 					mModule->mBfIRBuilder->SetActiveFunction(funcValue);
@@ -9048,7 +9048,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					if (mModule->mCompiler->mOptions.mAllowHotSwapping)
 						bindFuncVal = mModule->mBfIRBuilder->RemapBindFunction(bindFuncVal);
 					auto callResult = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
-					auto destCallingConv = mModule->GetCallingConvention(bindMethodInstance->GetOwner(), bindMethodInstance->mMethodDef);
+					auto destCallingConv = mModule->GetIRCallingConvention(bindMethodInstance);
 					if (destCallingConv != BfIRCallingConv_CDecl)
 						mModule->mBfIRBuilder->SetCallCallingConv(callResult, destCallingConv);
 					if (methodInstance->mReturnType->IsValuelessType())
@@ -9285,7 +9285,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		auto funcType = mModule->mBfIRBuilder->CreateFunctionType(irReturnType, irParamTypes);
 		funcValue = mModule->mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, methodName);
 
-		auto srcCallingConv = mModule->GetCallingConvention(methodInstance->GetOwner(), methodInstance->mMethodDef);
+		auto srcCallingConv = mModule->GetIRCallingConvention(methodInstance);
 		if ((!hasThis) && (methodInstance->mMethodDef->mCallingConvention == BfCallingConvention_Stdcall))
 			srcCallingConv = BfIRCallingConv_StdCall;
 		mModule->mBfIRBuilder->SetFuncCallingConv(funcValue, srcCallingConv);
@@ -9334,7 +9334,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		if (mModule->mCompiler->mOptions.mAllowHotSwapping)
 			bindFuncVal = mModule->mBfIRBuilder->RemapBindFunction(bindFuncVal);
 		auto result = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
-		auto destCallingConv = mModule->GetCallingConvention(bindMethodInstance->GetOwner(), bindMethodInstance->mMethodDef);
+		auto destCallingConv = mModule->GetIRCallingConvention(bindMethodInstance);
 		if (destCallingConv != BfIRCallingConv_CDecl)
 			mModule->mBfIRBuilder->SetCallCallingConv(result, destCallingConv);
 		if (methodInstance->mReturnType->IsValuelessType())
@@ -9942,6 +9942,8 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 						capturedType = mModule->CreateRefType(capturedType);
 					}
 					
+					if (captureType == BfCaptureType_Reference)
+						capturedEntry.mExplicitlyByReference = true;
 					capturedEntry.mType = capturedType;
 					if (outerLocal->mName == "this")
 						capturedEntry.mName = "__this";
@@ -10208,6 +10210,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	lambdaInstance->mClosureTypeInstance = closureTypeInst;
 	lambdaInstance->mOuterClosure = outerClosure;
 	lambdaInstance->mCopyOuterCaptures = copyOuterCaptures;
+	lambdaInstance->mDeclaringMethodIsMutating = mModule->mCurMethodInstance->mMethodDef->mIsMutating;
 	lambdaInstance->mIsStatic = methodDef->mIsStatic;
 	lambdaInstance->mClosureFunc = closureFunc;	
 	lambdaInstance->mMethodInstance = methodInstance;

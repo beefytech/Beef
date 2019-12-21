@@ -453,6 +453,19 @@ BfMethodDef::~BfMethodDef()
 	FreeMembers();
 }
 
+BfImportKind BfMethodDef::GetImportKindFromPath(const StringImpl& filePath)
+{
+	String fileExt = GetFileExtension(filePath);
+
+	if ((fileExt.Equals(".DLL", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
+		(fileExt.Equals(".EXE", StringImpl::CompareKind_OrdinalIgnoreCase)))
+	{
+		return BfImportKind_Import_Dynamic;
+	}
+
+	return BfImportKind_Import_Static;
+}
+
 void BfMethodDef::Reset()
 {
 	FreeMembers();

@@ -134,7 +134,7 @@ void ThreadPool::SetStackSize(int stackSize)
 	mStackSize = stackSize;
 }
 
-static void WorkerProc(void* param)
+static void BFP_CALLTYPE WorkerProc(void* param)
 {
 	((ThreadPool::Thread*)param)->Proc();
 }

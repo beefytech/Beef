@@ -497,6 +497,23 @@ BfMethodInstance::~BfMethodInstance()
 	delete mMethodInfoEx;
 }
 
+BfImportKind BfMethodInstance::GetImportKind()
+{
+	if (mMethodDef->mImportKind != BfImportKind_Import_Unknown)
+		return mMethodDef->mImportKind;
+
+	auto module = GetOwner()->mModule;
+	BfCustomAttribute* customAttribute = GetCustomAttributes()->Get(module->mCompiler->mImportAttributeTypeDef);
+	if (customAttribute == NULL)
+		return BfImportKind_Import_Static;
+
+	BfIRConstHolder* constHolder = GetOwner()->mConstHolder;
+	String* filePath = module->GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+	if (filePath == NULL)
+		return BfImportKind_Import_Static;
+	return BfMethodDef::GetImportKindFromPath(*filePath);
+}
+
 void BfMethodInstance::UndoDeclaration(bool keepIRFunction)
 {	
 	
@@ -614,7 +631,7 @@ bool BfMethodInstance::AlwaysInline()
 
 BfImportCallKind BfMethodInstance::GetImportCallKind()
 {
-	if (mMethodDef->mImportKind != BfImportKind_Dynamic)
+	if (GetImportKind() != BfImportKind_Import_Dynamic)
 		return BfImportCallKind_None;	
 	if ((mHotMethod != NULL) && ((mHotMethod->mFlags & BfHotDepDataFlag_IsOriginalBuild) == 0))
 		return BfImportCallKind_GlobalVar_Hot;

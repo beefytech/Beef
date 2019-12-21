@@ -797,14 +797,14 @@ public:
 		return mMethodDef->mMethodType == BfMethodType_Mixin;
 	}
 
+	BfImportKind GetImportKind();
 	void UndoDeclaration(bool keepIRFunction = false);
 	BfTypeInstance* GetOwner();	
 	BfModule* GetModule();
 	bool IsSpecializedGenericMethod();
 	bool IsSpecializedGenericMethodOrType();
 	bool IsSpecializedByAutoCompleteMethod();
-	bool HasThis();
-	bool WantsThisPointer();
+	bool HasThis();	
 	bool HasParamsArray();
 	bool HasStructRet();
 	bool HasSelf();

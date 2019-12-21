@@ -4898,7 +4898,7 @@ bool COFF::CvParseDBI(int wantAge)
 		bool isV2 = sig == 0xf13151e4;
 		if (isV2)
 		{
-			Fail("ERROR: FastLink PDBs are not supported. Consider adding full debug info (/DEBUG:FULL).");
+			Fail("FastLink PDBs are not supported. Consider adding full debug info (/DEBUG:FULL).");
 			mIsFastLink = true;
 		}
 

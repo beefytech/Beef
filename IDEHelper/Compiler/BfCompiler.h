@@ -374,9 +374,10 @@ public:
 	BfTypeDef* mAttributeTypeDef;
 	BfTypeDef* mAttributeUsageAttributeTypeDef;
 	BfTypeDef* mLinkNameAttributeTypeDef;
-	BfTypeDef* mOrderedAttributeTypeDef;
-	BfTypeDef* mInlineAttributeTypeDef;
+	BfTypeDef* mOrderedAttributeTypeDef;	
+	BfTypeDef* mInlineAttributeTypeDef;	
 	BfTypeDef* mCLinkAttributeTypeDef;
+	BfTypeDef* mImportAttributeTypeDef;
 	BfTypeDef* mCReprAttributeTypeDef;
 	BfTypeDef* mAlignAttributeTypeDef;
 	BfTypeDef* mNoDiscardAttributeTypeDef;

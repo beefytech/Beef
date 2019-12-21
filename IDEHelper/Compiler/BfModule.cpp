@@ -3712,7 +3712,7 @@ void BfModule::EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRB
 	exprEvaluator.mExpectingType = mCurMethodInstance->mReturnType;
 	exprEvaluator.PerformBinaryOperation((BfAstNode*)NULL, (BfAstNode*)NULL, BfBinaryOp_Equality, NULL, BfBinOpFlag_None, leftValue, rightValue);
 	BfTypedValue result = exprEvaluator.GetResult();
-	if (result)
+	if ((result) && (!result.mType->IsVar()))
 	{
 		auto nextBB = mBfIRBuilder->CreateBlock("next");
 		mBfIRBuilder->CreateCondBr(result.mValue, nextBB, exitBB);
@@ -5676,6 +5676,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			MethodFlags_Virtual = 0x40,
 			MethodFlags_StdCall = 0x1000,
 			MethodFlags_FastCall = 0x2000,
+			MethodFlags_ThisCall = 0x3000,
 			MethodFlags_Mutating = 0x4000,
 		};
 
@@ -5693,6 +5694,12 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_FastCall);
 		if (methodDef->mIsMutating)
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Mutating);
+
+		auto callingConvention = GetIRCallingConvention(defaultMethod);
+		if (callingConvention == BfIRCallingConv_ThisCall)
+			methodFlags = (MethodFlags)(methodFlags | MethodFlags_ThisCall);
+		else if (callingConvention == BfIRCallingConv_StdCall)
+			methodFlags = (MethodFlags)(methodFlags | MethodFlags_StdCall);
 		
 		int customAttrIdx = _HandleCustomAttrs(methodCustomAttributes);
 
@@ -8794,7 +8801,7 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	auto funcType = mBfIRBuilder->CreateFunctionType(returnType, paramTypes);
 
 	auto func = mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, methodName);
-	auto callingConv = GetCallingConvention(methodInstance->GetOwner(), methodDef);
+	auto callingConv = GetIRCallingConvention(methodInstance);
 	if (callingConv != BfIRCallingConv_CDecl)
 		mBfIRBuilder->SetFuncCallingConv(func, callingConv);
 	SetupIRMethod(methodInstance, func, isInlined);
@@ -13020,7 +13027,7 @@ void BfModule::CreateDelegateInvokeMethod()
 	BfIRValue nonStaticResult;
 	BfIRValue staticResult;
 
-	auto callingConv = GetCallingConvention(mCurTypeInstance, mCurMethodInstance->mMethodDef);
+	auto callingConv = GetIRCallingConvention(mCurTypeInstance, mCurMethodInstance->mMethodDef);
 
 	/// Non-static invocation
 	{	
@@ -13540,7 +13547,7 @@ void BfModule::EmitDtorBody()
 		auto basePtr = mBfIRBuilder->CreateBitCast(thisVal.mValue, mBfIRBuilder->MapTypeInstPtr(mContext->mBfObjectType));
 		SizedArray<BfIRValue, 1> vals = { basePtr };
 		result = mBfIRBuilder->CreateCall(dtorFunc.mFunc, vals);
-		mBfIRBuilder->SetCallCallingConv(result, GetCallingConvention(dtorFunc.mMethodInstance));
+		mBfIRBuilder->SetCallCallingConv(result, GetIRCallingConvention(dtorFunc.mMethodInstance));
 		mBfIRBuilder->SetTailCall(result);		
 
 		return;		
@@ -13705,7 +13712,7 @@ void BfModule::EmitDtorBody()
 							auto basePtr = mBfIRBuilder->CreateBitCast(mCurMethodState->mLocals[0]->mValue, mBfIRBuilder->MapTypeInstPtr(checkBaseType));
 							SizedArray<BfIRValue, 1> vals = { basePtr };
 							auto callInst = mBfIRBuilder->CreateCall(dtorMethodInstance.mFunc, vals);
-							mBfIRBuilder->SetCallCallingConv(callInst, GetCallingConvention(dtorMethodInstance.mMethodInstance));
+							mBfIRBuilder->SetCallCallingConv(callInst, GetIRCallingConvention(dtorMethodInstance.mMethodInstance));
 						}
 					}
 					else
@@ -13851,7 +13858,7 @@ void BfModule::CreateDllImportMethod()
 		mBfIRBuilder->CreateCall(loadSharedLibsFunc, SizedArray<BfIRValue, 0>());
 	}
 
-	auto callingConvention = GetCallingConvention(mCurTypeInstance, mCurMethodInstance->mMethodDef);
+	auto callingConvention = GetIRCallingConvention(mCurTypeInstance, mCurMethodInstance->mMethodDef);
 
 	BfIRType returnType;
 	SizedArray<BfIRType, 8> paramTypes;
@@ -13887,7 +13894,7 @@ void BfModule::CreateDllImportMethod()
 	}
 }
 
-BfIRCallingConv BfModule::GetCallingConvention(BfTypeInstance* typeInst, BfMethodDef* methodDef)
+BfIRCallingConv BfModule::GetIRCallingConvention(BfTypeInstance* typeInst, BfMethodDef* methodDef)
 {
 	if ((mCompiler->mOptions.mMachineType != BfMachineType_x86) || (mCompiler->mOptions.mPlatformType != BfPlatformType_Windows))
 		return BfIRCallingConv_CDecl;			
@@ -13899,9 +13906,15 @@ BfIRCallingConv BfModule::GetCallingConvention(BfTypeInstance* typeInst, BfMetho
 	return BfIRCallingConv_CDecl;
 }
 
-BfIRCallingConv BfModule::GetCallingConvention(BfMethodInstance* methodInstance)
+BfIRCallingConv BfModule::GetIRCallingConvention(BfMethodInstance* methodInstance)
 {
-	return GetCallingConvention(methodInstance->GetOwner(), methodInstance->mMethodDef);
+	auto methodDef = methodInstance->mMethodDef;
+	BfTypeInstance* owner = NULL;
+	if (!methodDef->mIsStatic)
+		owner = methodInstance->GetParamType(-1)->ToTypeInstance();
+	if (owner == NULL)
+		owner = methodInstance->GetOwner();
+	return GetIRCallingConvention(owner, methodInstance->mMethodDef);
 }
 
 void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined)
@@ -13926,7 +13939,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllExport);
 	if (methodDef->mNoReturn)
 		mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_NoReturn);
-	auto callingConv = GetCallingConvention(methodInstance->GetOwner(), methodDef);
+	auto callingConv = GetIRCallingConvention(methodInstance);
 	if (callingConv != BfIRCallingConv_CDecl)
 		mBfIRBuilder->SetFuncCallingConv(func, callingConv);
 	
@@ -14401,7 +14414,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 								}
 								AddCallDependency(ctorBodyMethodInstance.mMethodInstance, true);
 								auto callInst = mBfIRBuilder->CreateCall(ctorBodyMethodInstance.mFunc, args);
-								auto callingConv = GetCallingConvention(ctorBodyMethodInstance.mMethodInstance->GetOwner(), ctorBodyMethodInstance.mMethodInstance->mMethodDef);
+								auto callingConv = GetIRCallingConvention(ctorBodyMethodInstance.mMethodInstance);
 								if (callingConv != BfIRCallingConv_CDecl)
 									mBfIRBuilder->SetCallCallingConv(callInst, callingConv);
 // 								if (!mCurTypeInstance->mBaseType->IsValuelessType())
@@ -15288,6 +15301,7 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 			else
 				closureState.mClosureType = lambdaInstance->mDelegateTypeInstance;
 			closureState.mClosureInstanceInfo = lambdaInstance->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo;
+			closureState.mDeclaringMethodIsMutating = lambdaInstance->mDeclaringMethodIsMutating;
 			mCurMethodState->mMixinState = lambdaInstance->mDeclMixinState;
 
 			_ClearState();
@@ -16255,7 +16269,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	bool isTypedPrimitiveFunc = mCurTypeInstance->IsTypedPrimitive() && (methodDef->mMethodType != BfMethodType_Ctor);
 	int irParamCount = methodInstance->GetIRFunctionParamCount(this);
 
-	if (methodDef->mImportKind != BfImportKind_Dynamic)
+	if (methodInstance->GetImportKind() != BfImportKind_Import_Dynamic)
 	{
 		int localIdx = 0;
 		int argIdx = 0;				
@@ -16823,7 +16837,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	bool skipBody = false;
 	bool skipUpdateSrcPos = false;
 	bool skipEndChecks = false;
-	bool hasExternSpecifier = (methodDeclaration != NULL) && (methodDeclaration->mExternSpecifier != NULL) && (methodDef->mImportKind != BfImportKind_Dynamic);
+	bool hasExternSpecifier = (methodDeclaration != NULL) && (methodDeclaration->mExternSpecifier != NULL) && (methodInstance->GetImportKind() != BfImportKind_Import_Dynamic);
 	auto propertyDeclaration = methodDef->GetPropertyDeclaration();
 
 	if ((methodDef != NULL) && (propertyDeclaration != NULL) && (propertyDeclaration->mExternSpecifier != NULL))
@@ -16986,7 +17000,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		}
 
 		bool isDllImport = false;		
-		if (methodDef->mImportKind == BfImportKind_Static)
+		if (methodInstance->GetImportKind() == BfImportKind_Import_Static)
 		{
 			for (auto customAttr : methodInstance->GetCustomAttributes()->mAttributes)
 			{
@@ -17015,7 +17029,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 			//mImportFileNames
 		}
-		else if (methodDef->mImportKind == BfImportKind_Dynamic)
+		else if (methodInstance->GetImportKind() == BfImportKind_Import_Dynamic)
 		{
 			CreateDllImportMethod();
 		}
@@ -17534,7 +17548,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			CreateFakeCallerMethod(mangledName);
 		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);
 	}
-	else if ((methodDef->mImportKind == BfImportKind_Dynamic) && (!mCompiler->IsHotCompile()))
+	else if ((methodInstance->GetImportKind() == BfImportKind_Import_Dynamic) && (!mCompiler->IsHotCompile()))
 	{
 		// We only need the DLL stub when we may be hot swapping
 		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);
