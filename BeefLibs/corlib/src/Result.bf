@@ -110,6 +110,14 @@ namespace System
 			}
 		}
 
+		public T Value
+		{
+			get
+			{
+				return Unwrap();
+			}
+		}
+
 		public static implicit operator Result<T, TErr>(T value)
 		{
 		    return .Ok(value);

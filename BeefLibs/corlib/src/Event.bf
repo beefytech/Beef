@@ -26,7 +26,26 @@ namespace System
 			}
 		}
 
-		public int32 Count
+		public bool IsEmpty
+		{
+			get
+			{
+				Object data = Internal.UnsafeCastToObject((void*)(mData & sDataMask));
+
+				if (data == null)
+					return true;
+
+				var type = data.GetType();
+				if (type == typeof(List<T>))
+				{
+					var list = (List<T>)data;
+					return list.Count == 0;
+				}
+				return false;
+			}
+		}
+
+		public int Count
 		{
 			get
 			{
@@ -39,7 +58,7 @@ namespace System
 				if (type == typeof(List<T>))
 				{
 					var list = (List<T>)data;
-					return (int32)list.Count;
+					return list.Count;
 				}
 				return 1;
 			}

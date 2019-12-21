@@ -585,6 +585,7 @@ namespace IDE.ui
 				case 'H':
 					{
 						mSourceHash = SourceHash.Create(.(line, 2));
+						addLineData = false;
 					}
 	            case 'T':
 	                {

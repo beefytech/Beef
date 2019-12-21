@@ -80,8 +80,10 @@ namespace System.Reflection
 			var retType = Type.GetType(mMethodData.mReturnType);
 
 			FFIABI abi = .Default;
-#if BF_PLATFORM_WINDOWS
-			if (mMethodData.mFlags.HasFlag(.StdCall))
+#if BF_PLATFORM_WINDOWS && BF_32_BIT
+			if (mMethodData.mFlags.HasFlag(.ThisCall))
+				abi = .ThisCall;
+			else if (!mMethodData.mFlags.HasFlag(.Static))
 				abi = .StdCall;
 #endif
 

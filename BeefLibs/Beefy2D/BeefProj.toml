@@ -5,9 +5,9 @@ Name = "Beefy2D"
 DefaultNamespace = ""
 
 [Configs.Debug.Win32]
-OtherLinkFlags = ""
+OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/BeefySysLib32_d.lib\""
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib32_d.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib32_d.pdb\")"]
 PreprocessorMacros = ["DEBUG", "BF32"]
-OptimizationLevel = "O0"
 
 [Configs.Debug.Win64]
 OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/BeefySysLib64_d.lib\""
@@ -18,7 +18,6 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.dll\")",
 [Configs.Release.Win32]
 OtherLinkFlags = ""
 PreprocessorMacros = ["RELEASE", "BF32"]
-OptimizationLevel = "O0"
 
 [Configs.Release.Win64]
 OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/dist/BeefySysLib64.lib"

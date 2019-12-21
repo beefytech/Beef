@@ -1373,7 +1373,7 @@ namespace System
 		[CLink, StdCall]
 		public static extern HWnd GetActiveWindow();
 
-		[CLink, StdCall]
+		[Import("user32.lib"), CLink, StdCall]
 		public static extern HWnd SetActiveWindow(HWnd wnd);
 
 		[CLink, StdCall]

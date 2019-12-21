@@ -108,7 +108,7 @@ namespace Beefy.widgets
 	            mRootWidget.mWidgetWindow = this;
 	            mRootWidget.InitChildren();
 	            mRootWidget.AddedToParent();
-	            Moved(); // Rehup size
+				RehupSize();
 			}
         }
 
@@ -192,51 +192,57 @@ namespace Beefy.widgets
         {
             base.PreDraw(g);
 
-            g.mMatrix.Set(mScaleMatrix);            
+            g.mMatrix.Set(mScaleMatrix);
+			g.mMatrixStack[g.mMatrixStackIdx] = g.mMatrix;
         }
+
+		public override void RehupSize()
+		{
+			base.RehupSize();
+
+			if (mWindowFlags.HasFlag(Flags.ScaleContent))
+			{
+			    float scaleX = mClientWidth / (float)mContentClientWidth;
+			    float scaleY = mClientHeight / (float)mContentClientHeight;
+
+			    if (scaleX > scaleY)
+			    {
+			        float scale = scaleY;
+			        mScaleMatrix.a = scale;
+			        mScaleMatrix.b = 0;
+			        mScaleMatrix.c = 0;
+			        mScaleMatrix.d = scale;
+			        mScaleMatrix.tx = (int32)(mClientWidth - (scale * mContentClientWidth)) / 2;
+			        mScaleMatrix.ty = 0;
+			    }
+			    else
+			    {
+			        float scale = scaleX;
+			        mScaleMatrix.a = scale;
+			        mScaleMatrix.b = 0;
+			        mScaleMatrix.c = 0;
+			        mScaleMatrix.d = scale;
+			        mScaleMatrix.tx = 0;
+			        mScaleMatrix.ty = (int32)(mClientHeight - (scale * mContentClientHeight)) / 2;
+			    }
+
+			    mInvScaleMatrix.Set(mScaleMatrix);
+			    mInvScaleMatrix.Invert();
+			    mRootWidget.Resize(0, 0, mContentClientWidth, mContentClientHeight);
+			}
+			else
+			{
+			    mInvScaleMatrix = Matrix.IdentityMatrix;
+			    mScaleMatrix = Matrix.IdentityMatrix;
+			    mContentClientWidth = mClientWidth;
+			    mContentClientHeight = mClientHeight;
+			    mRootWidget.Resize(0, 0, mClientWidth, mClientHeight);
+			}
+		}
 
         public override void Moved()
         {
             base.Moved();
-
-            if (mWindowFlags.HasFlag(Flags.ScaleContent))
-            {
-                float scaleX = mClientWidth / (float)mContentClientWidth;
-                float scaleY = mClientHeight / (float)mContentClientHeight;
-
-                if (scaleX > scaleY)
-                {
-                    float scale = scaleY;
-                    mScaleMatrix.a = scale;
-                    mScaleMatrix.b = 0;
-                    mScaleMatrix.c = 0;
-                    mScaleMatrix.d = scale;
-                    mScaleMatrix.tx = (int32)(mClientWidth - (scale * mContentClientWidth)) / 2;
-                    mScaleMatrix.ty = 0;
-                }
-                else
-                {
-                    float scale = scaleX;
-                    mScaleMatrix.a = scale;
-                    mScaleMatrix.b = 0;
-                    mScaleMatrix.c = 0;
-                    mScaleMatrix.d = scale;
-                    mScaleMatrix.tx = 0;
-                    mScaleMatrix.ty = (int32)(mClientHeight - (scale * mContentClientHeight)) / 2;
-                }
-
-                mInvScaleMatrix.Set(mScaleMatrix);
-                mInvScaleMatrix.Invert();
-                mRootWidget.Resize(0, 0, mContentClientWidth, mContentClientHeight);
-            }
-            else
-            {
-                mInvScaleMatrix = Matrix.IdentityMatrix;
-                mScaleMatrix = Matrix.IdentityMatrix;
-                mContentClientWidth = mClientWidth;
-                mContentClientHeight = mClientHeight;
-                mRootWidget.Resize(0, 0, mClientWidth, mClientHeight);
-            }            
 
             mOnWindowMoved(this);
             sOnWindowMoved(this);
@@ -754,6 +760,13 @@ namespace Beefy.widgets
 			newMouseWindow.mMouseFlags = mMouseFlags;
 			newMouseWindow.CaptureMouse();
 			mMouseFlags = default;
+		}
+		
+		public void SetContentSize(int width, int height)
+		{
+			mContentClientWidth = (.)width;
+			mContentClientHeight = (.)height;
+			RehupSize();
 		}
     }
 }

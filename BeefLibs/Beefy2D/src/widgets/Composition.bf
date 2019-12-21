@@ -59,7 +59,7 @@ namespace Beefy.widgets
             entry.mFrame = frame;
             entry.mValue = value;
 
-            int32 index = mEntries.BinarySearch(entry, sEntryComparer);
+            int index = mEntries.BinarySearch(entry, sEntryComparer);
             if (index >= 0)
             {
                 isNewKeyframe = false;
@@ -80,7 +80,7 @@ namespace Beefy.widgets
             entry.mFrame = frame;
             entry.mValue = default(T);
 
-            int32 index = mEntries.BinarySearch(entry, sEntryComparer);
+            int index = mEntries.BinarySearch(entry, sEntryComparer);
             mEntries.RemoveAt(index);
         }
 
@@ -112,7 +112,7 @@ namespace Beefy.widgets
             Entry find;
             find.mValue = default(T);
             find.mFrame = frame;
-            int32 index = mEntries.BinarySearch(find, sEntryComparer);
+            int index = mEntries.BinarySearch(find, sEntryComparer);
             if (index >= 0)
                 return mEntries[index].mValue;
 
@@ -589,7 +589,7 @@ namespace Beefy.widgets
 
                             if (childInst.mItemDef.mFollowingItemDef != null)
                             {
-                                int32 followingIdx = mItemDef.mChildItemDefs.IndexOf(childInst.mItemDef.mFollowingItemDef);
+                                int followingIdx = mItemDef.mChildItemDefs.IndexOf(childInst.mItemDef.mFollowingItemDef);
                                 data.Add("Follow", followingIdx);
                             }
 

@@ -1012,6 +1012,8 @@ namespace IDE
 			[Reflect]
 			public BuildCommandTrigger mBuildCommandsOnRun = .Always;
 			[Reflect]
+			public List<String> mLinkDependencies = new List<String>() ~ DeleteContainerAndItems!(_);
+			[Reflect]
 			public List<String> mPreBuildCmds = new List<String>() ~ DeleteContainerAndItems!(_);
 			[Reflect]
 			public List<String> mPostBuildCmds = new List<String>() ~ DeleteContainerAndItems!(_);
@@ -1130,6 +1132,7 @@ namespace IDE
 				Set!(newOptions.mBuildOptions.mTargetName, mBuildOptions.mTargetName);
 				Set!(newOptions.mBuildOptions.mOtherLinkFlags, mBuildOptions.mOtherLinkFlags);
 				Set!(newOptions.mBuildOptions.mCLibType, mBuildOptions.mCLibType);
+				Set!(newOptions.mBuildOptions.mLinkDependencies, mBuildOptions.mLinkDependencies);
 				Set!(newOptions.mBuildOptions.mPreBuildCmds, mBuildOptions.mPreBuildCmds);
 				Set!(newOptions.mBuildOptions.mPostBuildCmds, mBuildOptions.mPostBuildCmds);
 
@@ -1518,6 +1521,7 @@ namespace IDE
 								data.ConditionalAdd("StackSize", options.mBuildOptions.mStackSize, 0);
 								data.ConditionalAdd("BuildCommandsOnCompile", options.mBuildOptions.mBuildCommandsOnCompile, .Always);
 								data.ConditionalAdd("BuildCommandsOnRun", options.mBuildOptions.mBuildCommandsOnRun, .Always);
+								WriteStrings("LinkDependencies", options.mBuildOptions.mLinkDependencies);
 								WriteStrings("PreBuildCmds", options.mBuildOptions.mPreBuildCmds);
 								WriteStrings("PostBuildCmds", options.mBuildOptions.mPostBuildCmds);
 								
@@ -1839,6 +1843,7 @@ namespace IDE
 					options.mBuildOptions.mStackSize = data.GetInt("StackSize");
 					options.mBuildOptions.mBuildCommandsOnCompile = data.GetEnum<BuildCommandTrigger>("BuildCommandsOnCompile", .Always);
 					options.mBuildOptions.mBuildCommandsOnRun = data.GetEnum<BuildCommandTrigger>("BuildCommandsOnRun", .Always);
+					ReadStrings("LinkDependencies", options.mBuildOptions.mLinkDependencies);
 					ReadStrings("PreBuildCmds", options.mBuildOptions.mPreBuildCmds);
 					ReadStrings("PostBuildCmds", options.mBuildOptions.mPostBuildCmds);
 					

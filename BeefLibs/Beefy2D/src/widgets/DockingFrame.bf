@@ -266,7 +266,7 @@ namespace Beefy.widgets
         // Used when an embedded docking frame gets down to just a single widget
         public virtual void ReplaceDockedWidget(DockedWidget dockedWidget, DockedWidget replaceWidget)
         {
-            int32 index = mDockedWidgets.IndexOf(dockedWidget);
+            int index = mDockedWidgets.IndexOf(dockedWidget);
             RemoveWidget(dockedWidget);
             mDockedWidgets[index] = replaceWidget;
             AddWidget(replaceWidget);

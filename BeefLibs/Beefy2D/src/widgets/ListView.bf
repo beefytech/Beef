@@ -487,7 +487,7 @@ namespace Beefy.widgets
             return CreateChildItemAtIndex((mChildItems != null) ? mChildItems.Count : 0);
         }
 
-        public int32 GetIndexOfChild(ListViewItem item)
+        public int GetIndexOfChild(ListViewItem item)
         {
             return mChildItems.IndexOf(item);
         }
@@ -508,7 +508,7 @@ namespace Beefy.widgets
 
         public virtual void RemoveChildItem(ListViewItem item, bool deleteItem = true)
         {
-            int32 idx = mChildItems.IndexOf(item);
+            int idx = mChildItems.IndexOf(item);
             RemoveChildItemAt(idx, deleteItem);
         }
 
@@ -899,7 +899,7 @@ namespace Beefy.widgets
                     for (int32 i = 0; i < numIterations; i++)
                         KeyDown(KeyCode.Down, false);
                 case KeyCode.Up:
-					int32 idx = selectedItem.mParentItem.mChildItems.IndexOf(selectedItem);
+					int idx = selectedItem.mParentItem.mChildItems.IndexOf(selectedItem);
 					if (idx > 0)
 					{
 					    newSelection = selectedItem.mParentItem.mChildItems[idx - 1];
@@ -919,7 +919,7 @@ namespace Beefy.widgets
                         while (selectedItem != mRoot)
                         {
                             var childItems = selectedItem.mParentItem.mChildItems;
-                            int32 idx = childItems.IndexOf(selectedItem);
+                            int idx = childItems.IndexOf(selectedItem);
                             if (idx < childItems.Count - 1)
                             {
                                 newSelection = childItems[idx + 1];

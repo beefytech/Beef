@@ -721,10 +721,10 @@ namespace Beefy.theme.dark
                         TabButton foundTab = FindWidgetByCoords(x, y) as TabButton;
                         if ((foundTab != null) && (foundTab != dockable))
                         {
-                            int32 foundIndex = mTabs.IndexOf(foundTab);
+                            int foundIndex = mTabs.IndexOf(foundTab);
                             if (foundIndex != -1)
                             {
-                                int32 dragIndex = mTabs.IndexOf((TabButton)dockable);
+                                int dragIndex = mTabs.IndexOf((TabButton)dockable);
 
                                 mTabs[dragIndex] = mTabs[foundIndex];
                                 mTabs[foundIndex] = (TabButton)dockable;

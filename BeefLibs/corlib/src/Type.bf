@@ -902,6 +902,7 @@ namespace System.Reflection
 		SpecialName         	=  0x0800,     // Method is special.  Name describes how.
 		StdCall					=  0x1000,
 		FastCall				=  0x2000,
+		ThisCall				=  0x3000, // Purposely resuing StdCall|FastCall
 		Mutating				=  0x4000
 	}
 }

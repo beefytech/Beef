@@ -1718,7 +1718,7 @@ namespace IDE.ui
                         CompactChildExpression(source, compactEvalStr);
 
                         var rootItem = mListView.GetRoot();
-                        int32 idx = rootItem.mChildItems.IndexOf(target);
+                        int idx = rootItem.mChildItems.IndexOf(target);
                         if (theEvent.mDragTargetDir > 0)
                             idx += theEvent.mDragTargetDir;
                         var listViewItem = (WatchListViewItem)rootItem.CreateChildItemAtIndex(idx);
@@ -2864,7 +2864,7 @@ namespace IDE.ui
 				var selectedItem = selectedItems[itemIdx];
 			    if ((selectedItem != null) && (selectedItem.mLabel.Length > 0) && (selectedItem.mParentItem == root))
 			    {
-			        int32 idx = root.mChildItems.IndexOf(selectedItem);
+			        int idx = root.mChildItems.IndexOf(selectedItem);
 			        root.RemoveChildItem(selectedItem);
 			        if (idx < root.mChildItems.Count)
 			            root.SelectItemExclusively(root.mChildItems[idx]);

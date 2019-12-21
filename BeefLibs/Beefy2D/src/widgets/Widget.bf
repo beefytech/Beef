@@ -424,6 +424,8 @@ namespace Beefy.widgets
                     Widget child = mChildWidgets[anIdx];                
                     Debug.Assert(child.mParent == this);
 
+					int startDepth = g.mMatrixStackIdx;
+
                     if (child.mTransformData != null)
                     {                        
                         Matrix m = child.Transform;
@@ -437,6 +439,8 @@ namespace Beefy.widgets
                     child.DrawAll(g);
 
                     g.PopMatrix();
+
+					Debug.Assert(startDepth == g.mMatrixStackIdx);
                 }
             }
 

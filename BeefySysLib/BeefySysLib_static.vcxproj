@@ -99,9 +99,9 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>BFP_INTERNAL;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;_USRDLL;BF_NO_FBX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include;third_party/freetype/include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -141,7 +141,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>./; ./platform/win/; ./platform/sdl/; third_party/agg-2.4/include; third_party/agg-2.4/include/platform/win32; third_party/; third_party/libffi/i686-pc-cygwin; third_party/libffi/i686-pc-cygwin/include; third_party/libffi/include; third_party/SDL2-2.0.1/include;;../extern/fbxsdk/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

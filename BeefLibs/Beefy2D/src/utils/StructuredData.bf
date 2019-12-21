@@ -1409,8 +1409,7 @@ namespace Beefy.utils
 				{
 					bool forceAllInline = namedValues is InlineNamedValues;
 
-					//bool needsHeader = false;
-					if ((!outStr.IsEmpty) || (nameStack.Count > 0))
+					/*if ((!outStr.IsEmpty) || (nameStack.Count > 0))
 					{
 						int valueIdx = namedValues.mValueIdx;
 
@@ -1432,7 +1431,9 @@ namespace Beefy.utils
 
 						if (needsHeader)
 							EncodeHeader();
-					}	
+					}*/
+
+					bool needsHeader = ((!outStr.IsEmpty) || (nameStack.Count > 0));
 						
 					for (int pass = 0; pass < 2; pass++)
 					{
@@ -1484,6 +1485,12 @@ namespace Beefy.utils
 
 							if (doValuesInline && isInlinePass)
 							{
+								if (needsHeader)
+								{
+									EncodeHeader();
+									needsHeader = false;
+								}
+
 								EncodeName(key);
 								outStr.Append(" = ");
 								EncodeObject(value);

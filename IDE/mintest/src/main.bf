@@ -229,7 +229,7 @@ namespace Hey.Dude.Bro
 
 			PrintF("Hey\n");
 
-			Test2(1, 2, 3, 4);
+			//Test2(1, 2, 3, 4);
 
 			/*IHashable ih = (int32)TypeCode.Boolean;
 			let hashCode = ih.GetHashCode();*/

@@ -490,15 +490,20 @@ namespace Beefy
             BFWindow_SetMinimumSize(mNativeWindow, minWidth, minHeight, clientSized);
         }
 
-        public virtual void Moved()
-        {            
-            BFWindow_GetPosition(mNativeWindow, out mX, out mY, out mWindowWidth, out mWindowHeight, out mClientX, out mClientY, out mClientWidth, out mClientHeight);
+		public virtual void RehupSize()
+		{
+			BFWindow_GetPosition(mNativeWindow, out mX, out mY, out mWindowWidth, out mWindowHeight, out mClientX, out mClientY, out mClientWidth, out mClientHeight);
 
 			int32 showKind = 0;
 			BFWindow_GetPlacement(mNativeWindow, out mNormX, out mNormY, out mNormWidth, out mNormHeight, out showKind);
 			mShowKind = (.)showKind;
 
 			mIsDirty = true;
+		}
+
+        public virtual void Moved()
+        {            
+            RehupSize();
         }
 
         public virtual void SetClientPosition(float x, float y)

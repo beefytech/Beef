@@ -418,36 +418,36 @@ namespace System.Collections.Generic
 			return Enumerator(this);
 		}
 
-		public int_cosize FindIndex(Predicate<T> match)
+		public int FindIndex(Predicate<T> match)
 		{
-			for (int_cosize i = 0; i < mSize; i++)
+			for (int i = 0; i < mSize; i++)
 				if (match(mItems[i]))
 					return i;
 			return -1;
 		}
 
-		public int_cosize IndexOf(T item)
+		public int IndexOf(T item)
 		{
 			//return Array.IndexOf(mItems, item, 0, mSize);
 			for (int i = 0; i < mSize; i++)
 				if (mItems[i] == item)
-					return (int_cosize)i;
+					return i;
 			return -1;
 		}
 
-		public int_cosize IndexOf(T item, int index)
+		public int IndexOf(T item, int index)
 		{
 			for (int i = index; i < mSize; i++)
 				if (mItems[i] == item)
-					return (int_cosize)i;
+					return i;
 			return -1;
 		}
 
-		public int_cosize IndexOf(T item, int index, int count)
+		public int IndexOf(T item, int index, int count)
 		{
 			for (int i = index; i < index + count; i++)
 				if (mItems[i] == item)
-					return (int_cosize)i;
+					return i;
 			return -1;
 		}
 
@@ -571,7 +571,7 @@ namespace System.Collections.Generic
 
 		public bool Remove(T item)
 		{
-			int_cosize index = IndexOf(item);
+			int index = IndexOf(item);
 			if (index >= 0)
 			{
 				RemoveAt(index);

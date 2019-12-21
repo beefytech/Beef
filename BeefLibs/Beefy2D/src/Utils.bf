@@ -181,7 +181,7 @@ namespace Beefy
 				Thread.Sleep(20);
 			}
 
-			int fileLen = sr.Length;
+			int fileLen = (.)sr.Length;
 			if (sr.TryRead(.((.)outBuffer.PrepareBuffer(fileLen), fileLen)) case .Err(let readErr))
 				return .Err(.FileReadError(readErr));
 

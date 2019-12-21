@@ -764,8 +764,17 @@ namespace IDE
 
 				String cacheStr = scope String();
 
-				void AddBuildFileDependency(StringView filePath)
+				void AddBuildFileDependency(StringView filePath, bool resolveString = false)
 				{
+					var filePath;
+
+					if ((resolveString) && (filePath.Contains('$')))
+					{
+						String resolvedFilePath = scope:: String();
+						gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, filePath, "link flags", resolvedFilePath);
+						filePath = resolvedFilePath;
+					}
+
 					int64 fileTime = 0;
 					if (!filePath.IsEmpty)
 						fileTime = File.GetLastWriteTime(filePath).GetValueOrDefault().ToFileTime();
@@ -783,6 +792,8 @@ namespace IDE
 				cacheStr.AppendF("Copyright\t{}\n", project.mWindowsOptions.mCopyright);
 				cacheStr.AppendF("FileVersion\t{}\n", project.mWindowsOptions.mFileVersion);
 				cacheStr.AppendF("ProductVersion\t{}\n", project.mWindowsOptions.mProductVersion);
+				for (var linkDep in options.mBuildOptions.mLinkDependencies)
+					AddBuildFileDependency(linkDep, true);
 
 				String prevCacheStr = scope .();
 				gApp.mBfBuildCompiler.GetBuildValue(projectBuildDir, "Link", prevCacheStr);

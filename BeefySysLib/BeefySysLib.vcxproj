@@ -184,13 +184,14 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BFP_NOEXPORT;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>BP_DYNAMIC;BFP_NOEXPORT;WIN32;_DEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;FT2_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/i686-pc-cygwin;third_party/libffi/i686-pc-cygwin/include;third_party/libffi/include;third_party/SDL2-2.0.1/include;../extern/fbxsdk/include;third_party/freetype/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>../extern/fbxsdk/lib/vs2012/x86/debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>imm32.lib;version.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>

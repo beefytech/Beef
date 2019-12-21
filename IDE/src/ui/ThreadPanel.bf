@@ -133,6 +133,13 @@ namespace IDE.ui
 				PopupCallStackPanel();
 			}
 		}
+
+		public override bool WantsTooltip(float mouseX, float mouseY)
+		{
+			if ((mColumnIdx == 2) && (mouseX >= mListView.mParent.mWidth - LabelX - GS!(34)))
+				return false;
+			return base.WantsTooltip(mouseX, mouseY);
+		}
 	}
 
 	public class ThreadListView : DarkListView
@@ -357,7 +364,7 @@ namespace IDE.ui
                 }
 
 #unwarn
-                int32 selectedIdx = mListView.GetRoot().GetIndexOfChild(item);
+                int selectedIdx = mListView.GetRoot().GetIndexOfChild(item);
 
                 int32 threadId = int32.Parse(item.mLabel);
                 gApp.mDebugger.SetActiveThread(threadId);                

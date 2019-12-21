@@ -680,6 +680,7 @@ namespace IDE.ui
 		    (listViewItem, propEntry) = AddPropertiesItem(root, "C Library", "mBuildOptions.mCLibType");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Beef Library", "mBuildOptions.mBeefLibType");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Stack Size", "mBuildOptions.mStackSize");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Link Dependencies", "mBuildOptions.mLinkDependencies");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Prebuild Commands", "mBuildOptions.mPreBuildCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Postbuild Commands", "mBuildOptions.mPostBuildCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Compile", "mBuildOptions.mBuildCommandsOnCompile");
@@ -752,7 +753,7 @@ namespace IDE.ui
 						}
 						else
 						{
-							int32 idx = mProject.mDependencies.FindIndex(scope (dep) => dep.mProjectName == listViewItem.mLabel);
+							int idx = mProject.mDependencies.FindIndex(scope (dep) => dep.mProjectName == listViewItem.mLabel);
 							if (idx != -1)
 							{
 								delete mProject.mDependencies[idx];

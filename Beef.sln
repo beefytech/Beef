@@ -99,7 +99,6 @@ Global
 		{F8D29C38-D37C-4AF2-8540-2F6E543264F1}.Debug|x64.ActiveCfg = Debug|x64
 		{F8D29C38-D37C-4AF2-8540-2F6E543264F1}.Debug|x64.Build.0 = Debug|x64
 		{F8D29C38-D37C-4AF2-8540-2F6E543264F1}.Debug|x86.ActiveCfg = Debug|Win32
-		{F8D29C38-D37C-4AF2-8540-2F6E543264F1}.Debug|x86.Build.0 = Debug|Win32
 		{F8D29C38-D37C-4AF2-8540-2F6E543264F1}.Release Static CStatic|x64.ActiveCfg = Release_NoDbgInfo|x64
 		{F8D29C38-D37C-4AF2-8540-2F6E543264F1}.Release Static CStatic|x86.ActiveCfg = Release_NoDbgInfo|Win32
 		{F8D29C38-D37C-4AF2-8540-2F6E543264F1}.Release Static CStatic|x86.Build.0 = Release_NoDbgInfo|Win32
@@ -198,7 +197,6 @@ Global
 		{53609BB3-D874-465C-AF7B-DF626DB0D89B}.Debug|x64.ActiveCfg = Debug|x64
 		{53609BB3-D874-465C-AF7B-DF626DB0D89B}.Debug|x64.Build.0 = Debug|x64
 		{53609BB3-D874-465C-AF7B-DF626DB0D89B}.Debug|x86.ActiveCfg = Debug|Win32
-		{53609BB3-D874-465C-AF7B-DF626DB0D89B}.Debug|x86.Build.0 = Debug|Win32
 		{53609BB3-D874-465C-AF7B-DF626DB0D89B}.Release Static CStatic|x64.ActiveCfg = Release_dll|x64
 		{53609BB3-D874-465C-AF7B-DF626DB0D89B}.Release Static CStatic|x86.ActiveCfg = Release_dll|Win32
 		{53609BB3-D874-465C-AF7B-DF626DB0D89B}.Release Static CStatic|x86.Build.0 = Release_dll|Win32
@@ -231,7 +229,6 @@ Global
 		{29025CF2-07CC-4C25-A672-6324C95AA28E}.Debug|x64.ActiveCfg = Debug|x64
 		{29025CF2-07CC-4C25-A672-6324C95AA28E}.Debug|x64.Build.0 = Debug|x64
 		{29025CF2-07CC-4C25-A672-6324C95AA28E}.Debug|x86.ActiveCfg = Debug|Win32
-		{29025CF2-07CC-4C25-A672-6324C95AA28E}.Debug|x86.Build.0 = Debug|Win32
 		{29025CF2-07CC-4C25-A672-6324C95AA28E}.Release Static CStatic|x64.ActiveCfg = Release|x64
 		{29025CF2-07CC-4C25-A672-6324C95AA28E}.Release Static CStatic|x86.ActiveCfg = Release|Win32
 		{29025CF2-07CC-4C25-A672-6324C95AA28E}.Release Static CStatic|x86.Build.0 = Release|Win32
@@ -266,7 +263,6 @@ Global
 		{29025CF2-07CC-4C25-A672-6324C95AA28F}.Debug|x64.ActiveCfg = Debug|x64
 		{29025CF2-07CC-4C25-A672-6324C95AA28F}.Debug|x64.Build.0 = Debug|x64
 		{29025CF2-07CC-4C25-A672-6324C95AA28F}.Debug|x86.ActiveCfg = Debug|Win32
-		{29025CF2-07CC-4C25-A672-6324C95AA28F}.Debug|x86.Build.0 = Debug|Win32
 		{29025CF2-07CC-4C25-A672-6324C95AA28F}.Release Static CStatic|x64.ActiveCfg = Release|x64
 		{29025CF2-07CC-4C25-A672-6324C95AA28F}.Release Static CStatic|x86.ActiveCfg = Release|Win32
 		{29025CF2-07CC-4C25-A672-6324C95AA28F}.Release Static CStatic|x86.Build.0 = Release|Win32
@@ -301,7 +297,6 @@ Global
 		{78BE2825-EF6A-4C57-B22D-FF69EB925359}.Debug|x64.ActiveCfg = Debug|x64
 		{78BE2825-EF6A-4C57-B22D-FF69EB925359}.Debug|x64.Build.0 = Debug|x64
 		{78BE2825-EF6A-4C57-B22D-FF69EB925359}.Debug|x86.ActiveCfg = Debug|Win32
-		{78BE2825-EF6A-4C57-B22D-FF69EB925359}.Debug|x86.Build.0 = Debug|Win32
 		{78BE2825-EF6A-4C57-B22D-FF69EB925359}.Release Static CStatic|x64.ActiveCfg = Release|x64
 		{78BE2825-EF6A-4C57-B22D-FF69EB925359}.Release Static CStatic|x86.ActiveCfg = Release|Win32
 		{78BE2825-EF6A-4C57-B22D-FF69EB925359}.Release Static CStatic|x86.Build.0 = Release|Win32
@@ -336,7 +331,6 @@ Global
 		{755663F3-7C3F-4321-ABFF-CB036C0F2C9F}.Debug|x64.ActiveCfg = Debug|x64
 		{755663F3-7C3F-4321-ABFF-CB036C0F2C9F}.Debug|x64.Build.0 = Debug|x64
 		{755663F3-7C3F-4321-ABFF-CB036C0F2C9F}.Debug|x86.ActiveCfg = Debug|Win32
-		{755663F3-7C3F-4321-ABFF-CB036C0F2C9F}.Debug|x86.Build.0 = Debug|Win32
 		{755663F3-7C3F-4321-ABFF-CB036C0F2C9F}.Release Static CStatic|x64.ActiveCfg = Release|x64
 		{755663F3-7C3F-4321-ABFF-CB036C0F2C9F}.Release Static CStatic|x86.ActiveCfg = Release|Win32
 		{755663F3-7C3F-4321-ABFF-CB036C0F2C9F}.Release Static CStatic|x86.Build.0 = Release|Win32
@@ -396,7 +390,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		VD_Solution = <?xml version="1.0" encoding="utf-16"?>|§r|§n<DocumentsSolution xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">|§r|§n  <m_persistedPinnedDocumentGroupLabels>|§r|§n    <string>X86</string>|§r|§n  </m_persistedPinnedDocumentGroupLabels>|§r|§n</DocumentsSolution>
 		SolutionGuid = {460361DC-9F40-4AE7-B647-82D5D69B70DC}
+		VD_Solution = <?xml version="1.0" encoding="utf-16"?>|§r|§n<DocumentsSolution xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">|§r|§n  <m_persistedPinnedDocumentGroupLabels>|§r|§n    <string>X86</string>|§r|§n  </m_persistedPinnedDocumentGroupLabels>|§r|§n</DocumentsSolution>
 	EndGlobalSection
 EndGlobal

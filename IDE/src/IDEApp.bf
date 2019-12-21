@@ -5798,7 +5798,7 @@ namespace IDE
             return sourceViewPanel;            
         }
 
-		int32 GetRecentFilesIdx(String filePath)
+		int GetRecentFilesIdx(String filePath)
 		{
 			return mRecentlyDisplayedFiles.FindIndex(scope (item) => Path.Equals(item, filePath));
 		}
@@ -6006,7 +6006,7 @@ namespace IDE
             if (tabbedView == null)
                 return;
 
-			int32 recentFileIdx = -1;
+			int recentFileIdx = -1;
             if (sourceViewPanel != null)
             {
                 sourceViewPanel.Dispose();
