@@ -5,7 +5,7 @@
 USING_NS_BF;
 
 DbgModuleMemoryCache::DbgModuleMemoryCache(uintptr addr, int size)
-{
+{	
 	mAddr = addr;
 	mSize = size;
 

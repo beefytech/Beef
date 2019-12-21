@@ -1887,9 +1887,10 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 			
 	// Types that don't have a proper 'defining module' need to be defined in every module they are used	
 	bool wantsDIForwardDecl = (type->GetModule() != mModule) && (!type->IsFunction());
-	// Forward declarations of valuetypes doesn't work in LLVM backend for Win32.....
-//  	if ((!mIsBeefBackend) && (type->IsValueType()))
-//  		wantsDIForwardDecl = false;
+	// Forward declarations of valuetypes don't work in LLVM backend for Win32.....
+	//TODO: Why was this commented out?
+  	if ((!mIsBeefBackend) && (type->IsValueType()))
+  		wantsDIForwardDecl = false;
 	if (mModule->mExtensionCount != 0)
 		wantsDIForwardDecl = true;
 	if (forceDbgDefine)

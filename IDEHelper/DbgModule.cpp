@@ -1663,8 +1663,7 @@ void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBf
 			}
 			return;
 		}
-
-		char* nameP = (char*)mTypeName;
+		
 		//String combName;
 		/*if (mTemplateParams != NULL)
 		{
@@ -1677,6 +1676,7 @@ void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBf
 		{
 			FixName();
 		}		
+		char* nameP = (char*)mTypeName;
 
 		if (parent == NULL)
 		{
@@ -2285,7 +2285,17 @@ void DbgModule::Fail(const StringImpl& error)
 			*mFailMsgPtr = error;
 	}
 
-	mDebugger->OutputRawMessage("error " + error + "\n");
+	String errorStr = "error ";
+	if (!mFilePath.IsEmpty())
+	{
+		errorStr += "Error in ";
+		errorStr += mFilePath;
+		errorStr += ": ";
+	}
+	errorStr += error;	
+	errorStr += "\n";
+
+	mDebugger->OutputRawMessage(errorStr);
 	mFailed = true;
 }
 
