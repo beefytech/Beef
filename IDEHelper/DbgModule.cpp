@@ -2856,21 +2856,21 @@ void DbgModule::MapTypes(int startingTypeIdx)
 						continue;
 					}
 					
-// 					if (prevType->mDefinedMembersSize > 0)
-// 					{
-// 						if (dbgType->mDefinedMembersSize > 0)
-// 						{
-// 							// We create an 'alternates' list for all types that define at least one static field
-// 							if (prevType->mHasStaticMembers)
-// 								prevType->mAlternates.PushFront(dbgType, &mAlloc);
-// 						}
-// 						continue;
-// 					}
-
-					if (prevType->mDefinedMembersSize > dbgType->mDefinedMembersSize)
+					if (prevType->mDefinedMembersSize > 0)
 					{
+						if (dbgType->mDefinedMembersSize > 0)
+						{
+							// We create an 'alternates' list for all types that define at least one static field
+							if (prevType->mHasStaticMembers)
+								prevType->mAlternates.PushFront(dbgType, &mAlloc);
+						}
 						continue;
 					}
+
+// 					if (prevType->mDefinedMembersSize > dbgType->mDefinedMembersSize)
+// 					{
+// 						continue;
+// 					}
 
 					if (prevType->mMethodsWithParamsCount > dbgType->mMethodsWithParamsCount)
 					{

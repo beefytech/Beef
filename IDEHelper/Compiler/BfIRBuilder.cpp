@@ -1889,8 +1889,16 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	bool wantsDIForwardDecl = (type->GetModule() != mModule) && (!type->IsFunction());
 	// Forward declarations of valuetypes don't work in LLVM backend for Win32.....
 	//TODO: Why was this commented out?
-  	if ((!mIsBeefBackend) && (type->IsValueType()))
-  		wantsDIForwardDecl = false;
+
+	bool wantsDIPartialDef = false;
+	if (wantsDIForwardDecl)
+	{		
+		if ((!mIsBeefBackend) && (type->IsValueType()))
+		{
+			wantsDIPartialDef = true;
+			wantsDIForwardDecl = false;
+		}
+	}
 	if (mModule->mExtensionCount != 0)
 		wantsDIForwardDecl = true;
 	if (forceDbgDefine)
@@ -2171,7 +2179,10 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 				}
 			}
 			else
-			{				
+			{	
+				if (wantsDIPartialDef)
+					typeName += "$part";
+
 				// Will fill in later (during definition phase)				
 				int flags = 0;
 				diForwardDecl = DbgCreateReplaceableCompositeType(llvm::dwarf::DW_TAG_structure_type,

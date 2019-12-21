@@ -1462,11 +1462,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			int dataSize = (int)CvParseConstant(data);
 						
 			const char* name = _ParseString();
-			
-			if (strstr(name, "Derived") != NULL)
-			{
-				NOP;
-			}
+						
 
 // 			if ((strstr(name, "`") != NULL) || (strstr(name, "::__l") != NULL))
 // 			{
@@ -1474,11 +1470,23 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 // 			}
 
 			// Remove "enum " from type names
+
+			bool isPartialDef = false;
+
 			for (int i = 0; true; i++)
 			{
 				char c = name[i];
 				if (c == 0)
+				{
+					if ((i >= 4) && (strcmp(&name[i - 5], "$part") == 0))
+					{
+						if (!strMadeCopy)
+							name = DbgDupString(name, "CvParseType.LF_CLASS");
+						((char*)name)[i - 5] = '\0';
+						isPartialDef = true;
+					}
 					break;
+				}
 				if ((c == ' ') && (i >= 5))
 				{
 					if ((name[i - 4] == 'e') &&
@@ -1503,6 +1511,8 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			dbgType = CvCreateType();
 			dbgType->mCompileUnit = mMasterCompileUnit;
 			dbgType->mIsDeclaration = classInfo.property.fwdref;
+			if (isPartialDef)
+				dbgType->mIsDeclaration = true;
 			dbgType->mName = name;
 			dbgType->mTypeName = name;
 			//SplitName(dbgType->mName, dbgType->mTypeName, dbgType->mTemplateParams);
@@ -1510,6 +1520,8 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				dbgType->mTypeCode = DbgType_Class;
 			else
 				dbgType->mTypeCode = DbgType_Struct;
+
+			
 
 			DbgType* baseType = NULL;
 			if (classInfo.derived != 0)
@@ -1549,13 +1561,9 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 
 			dbgType->mIsIncomplete = true;
 
-			if (classInfo.field != 0)			
-				dbgType->mDefinedMembersSize = CvGetTagSize(classInfo.field, ipi);			
-
-			// This helps differentiate '
-// 			if (classInfo.field != 0)
-// 				dbgType->mDefinedMembersCount++;
-
+// 			if (classInfo.field != 0)			
+// 				dbgType->mDefinedMembersSize = CvGetTagSize(classInfo.field, ipi);			
+			
 			//CvParseMembers(dbgType, classInfo.field, sectionData);
 		}
 		break;
