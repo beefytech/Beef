@@ -186,6 +186,8 @@ public:
 		}
 
 		~ThreadInfo();
+
+		bool WantsSuspend();
 	};
 
 	struct RawLeakInfo

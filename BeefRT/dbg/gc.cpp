@@ -216,6 +216,16 @@ BFGC::ThreadInfo::~ThreadInfo()
 		BfpThread_Release(mThreadHandle);
 }
 
+bool BFGC::ThreadInfo::WantsSuspend()
+{
+#ifndef BP_DISABLED
+	BfpThreadId threadId = BpManager::Get()->mThreadId;
+	return threadId != (BfpThreadId)mThreadId;
+#else
+	return true;
+#endif
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 #ifdef BF_GC_LOG_ENABLED
@@ -1371,7 +1381,7 @@ bool BFGC::ScanThreads()
 			continue;
 		}
 
-		BP_ZONE("ThreadCollect");
+		BP_ZONE_F("ThreadCollect %d", thread->mThreadId);
 		//Beefy::DebugTimeGuard suspendTimeGuard(10, "ThreadSuspend");
 
 		DWORD result = 0;
@@ -1405,16 +1415,24 @@ bool BFGC::ScanThreads()
 
 		BFLOG2(GCLog::EVENT_SCAN_THREAD, (intptr)thread, (intptr)thread->mThreadId);
 
-		for (auto obj : thread->mStackMarkableObjects)
+		//
 		{
-			MarkMembers(obj);
+			BP_ZONE("StackMarkableObjects");
+			for (auto obj : thread->mStackMarkableObjects)
+			{
+				MarkMembers(obj);
+			}
 		}
 
 		intptr regVals[64];
 		intptr stackPtr = 0;		
 		BfpThreadResult threadResult;
 		int regValCount = 64;
-		BfpThread_GetIntRegisters(thread->mThreadHandle, &stackPtr, regVals, &regValCount, &threadResult);
+		///
+		{
+			BP_ZONE("BfpThread_GetIntRegisters");
+			BfpThread_GetIntRegisters(thread->mThreadHandle, &stackPtr, regVals, &regValCount, &threadResult);
+		}
 		BF_ASSERT(threadResult == BfpThreadResult_Ok);
 		
 		void** threadLoadAddressMap = (void**)((_TEB*)thread->mTEB)->ThreadLocalStorage;
@@ -1432,7 +1450,10 @@ bool BFGC::ScanThreads()
 		int length = thread->mStackStart - stackPtr;		
 		
 		AdjustStackPtr(stackPtr, length);
-		ConservativeScan((void*)stackPtr, length);
+		{
+			BP_ZONE("ConservativeScan stack");
+			ConservativeScan((void*)stackPtr, length);
+		}
 		mQueueMarkObjects = false;
 
 		if (mDoStackDeepMark)
@@ -2260,7 +2281,7 @@ void BFGC::SuspendThreads()
 	auto curThreadId = GetCurrentThreadId();
 	for (auto thread : mThreadList)
 	{
-		if ((thread->mThreadId != curThreadId) && (thread->mRunning))
+		if ((thread->mThreadId != curThreadId) && (thread->mRunning) && (thread->WantsSuspend()))
 		{
 			// We must lock this before suspending so we can access mStackMarkableObjects
 			//  Otherwise we could deadlock
@@ -2279,7 +2300,7 @@ void BFGC::ResumeThreads()
 	auto curThreadId = GetCurrentThreadId();
 	for (auto thread : mThreadList)
 	{
-		if ((thread->mThreadId != curThreadId) && (thread->mRunning))
+		if ((thread->mThreadId != curThreadId) && (thread->mRunning) && (thread->WantsSuspend()))
 		{
 			// Previously locked in SuspendThreads
 			thread->mCritSect.Unlock();
