@@ -466,8 +466,8 @@ static double ConvertFloat80ToDouble(const byte fp80[10])
 
 addr_target NS_BF_DBG::DecodeTargetDataPtr(const char*& strRef)
 {
-	addr_target val = (addr_target)stouln(strRef, sizeof(intptr) * 2);
-	strRef += sizeof(intptr) * 2;
+	addr_target val = (addr_target)stouln(strRef, sizeof(intptr_target) * 2);
+	strRef += sizeof(intptr_target) * 2;
 	return val;
 }
 
@@ -7699,6 +7699,9 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						DbgType* primType = summaryType->mTypeParam;
 						String result;
 						
+						if (primType->IsInteger())
+							formatInfo.mTypeKindFlags = (DbgTypeKindFlags)(formatInfo.mTypeKindFlags | DbgTypeKindFlag_Int);
+
 						if ((dataPtr != 0) && (dataPtr != -1))
 						{
 							String evalString = "(" + primType->ToString() +  ")" + ptrDataStr;
@@ -7795,6 +7798,9 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 								else
 									result = "???";
 							}
+
+							if (member->mType->IsInteger())
+								formatInfo.mTypeKindFlags = (DbgTypeKindFlags)(formatInfo.mTypeKindFlags | DbgTypeKindFlag_Int);
 
 							if (formatInfo.mRawString)
 								return result;
@@ -9070,7 +9076,12 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		else if (checkType->IsInteger())
 			val += "\n:type\tint";
 		else if ((exprResult.mRegNum >= X64Reg_M128_XMM0) && (exprResult.mRegNum <= X64Reg_M128_XMM15))
-			val += "\n:type\tmm128";		
+			val += "\n:type\tmm128";
+		else
+			val += "\n:type\tvaluetype";
+
+		if ((pendingExpr->mFormatInfo.mTypeKindFlags & DbgTypeKindFlag_Int) != 0)
+			val += "\n:type\tint";
 
 		if (dbgExprEvaluator.mHadSideEffects)
 			val += "\n:sideeffects";

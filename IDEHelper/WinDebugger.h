@@ -269,6 +269,12 @@ public:
 	}
 };
 
+enum DbgTypeKindFlags
+{
+	DbgTypeKindFlag_None = 0,
+	DbgTypeKindFlag_Int = 1
+};
+
 struct DwFormatInfo
 {
 	int mCallStackIdx;
@@ -278,6 +284,7 @@ struct DwFormatInfo
 	bool mNoMembers;
 	bool mRawString;	
 	bool mNoEdit;
+	DbgTypeKindFlags mTypeKindFlags;
 	intptr mArrayLength;
 	intptr mOverrideCount;
 	intptr mMaxCount;
@@ -300,6 +307,7 @@ struct DwFormatInfo
 		mNoVisualizers = false;
 		mNoMembers = false;		
 		mNoEdit = false;
+		mTypeKindFlags = DbgTypeKindFlag_None;
 		mArrayLength = -1;
 		mOverrideCount = -1;
 		mMaxCount = -1;
