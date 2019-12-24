@@ -39,7 +39,7 @@ namespace IDE.Compiler
 		GetFixits,
 		GetTypeDefList,
 		GetTypeDefInto,
-		GetVarType
+		GetResultString
     }
 
     public class ResolveParams
@@ -62,6 +62,7 @@ namespace IDE.Compiler
         public int32 mOutLineChar;
         public String mNavigationData ~ delete _;
 		public String mAutocompleteInfo ~ delete _;
+		public String mResultString ~ delete _;
 		public WaitEvent mWaitEvent ~ delete _;
 
 		public BfPassInstance mPassInstance ~ delete _;

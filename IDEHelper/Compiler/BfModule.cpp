@@ -3523,14 +3523,26 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 		else if (fieldDef->mIsConst)
 		{
 			BfTypeState typeState;
+			typeState.mTypeInstance = mCurTypeInstance;
 			typeState.mCurTypeDef = fieldDef->mDeclaringType;
+			typeState.mCurFieldDef = fieldDef;
 			SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 			BfConstResolver constResolver(this);
 			if (fieldType->IsVar())
 				return constResolver.Resolve(initializer);
 			else
-				return constResolver.Resolve(initializer, fieldType);
+			{
+				BfConstResolveFlags resolveFlags = BfConstResolveFlag_None;
+				if ((mCompiler->mResolvePassData != NULL) && (mCurTypeInstance->IsEnum()) && (fieldDef->IsEnumCaseEntry()) &&
+					(mCompiler->mResolvePassData->mAutoCompleteTempTypes.Contains(fieldDef->mDeclaringType)))
+				{
+					// We avoid doing the cast here because the value we're typing may not be in the range of the current
+					//  auto-created underlying type and it will cause an 'error flash'. We defer errors until the full resolve for that purpose
+					resolveFlags = BfConstResolveFlag_NoCast;
+				}
+				return constResolver.Resolve(initializer, fieldType, resolveFlags);
+			}
 		}
 		
 		if (fieldType->IsVar())

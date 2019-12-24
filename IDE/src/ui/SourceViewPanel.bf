@@ -1609,9 +1609,9 @@ namespace IDE.ui
 			{
 			    resolveParams.mNavigationData = new String(autocompleteInfo);
 			}
-			else if (resolveType == ResolveType.GetVarType)
+			else if (resolveType == ResolveType.GetResultString)
 			{
-				resolveParams.mTypeDef = new String(autocompleteInfo);
+				resolveParams.mResultString = new String(autocompleteInfo);
 			}
 			else if (resolveType == ResolveType.GetCurrentLocation)
 			{
@@ -4819,7 +4819,33 @@ namespace IDE.ui
                     if (debugExpr != null)
                         triedShow = true;
 
-                    if ((debugExpr == null) || (isOverMessage) || (!mHoverWatch.Show(this, x, y, debugExpr)))
+					bool didShow = false;
+					//if ((debugExpr == "var") || (debugExpr == "let"))
+
+					String origDebugExpr = null;
+
+					if ((debugExpr != null) || (isOverMessage))
+					{
+						let resolveParams = scope ResolveParams();
+						resolveParams.mOverrideCursorPos = (int32)textIdx;
+						Classify(ResolveType.GetResultString, resolveParams);
+						if (!String.IsNullOrEmpty(resolveParams.mResultString))
+						{
+							origDebugExpr = scope:: String();
+							origDebugExpr.Set(debugExpr);
+
+							debugExpr.Set(resolveParams.mResultString);
+						}
+
+						if (!triedShow)
+						{
+					        mHoverWatch.Show(this, x, y, debugExpr, debugExpr);
+							triedShow = true;
+						}
+					}
+
+                    if ((!didShow) &&
+						((debugExpr == null) || (isOverMessage) || (!mHoverWatch.Show(this, x, y, origDebugExpr ?? debugExpr, debugExpr))))
                     {
 #if IDE_C_SUPPORT
                         if ((mIsClang) && (textIdx != -1))
@@ -4918,7 +4944,7 @@ namespace IDE.ui
                             if (showMouseoverString != null)
                             {
                                 triedShow = true;
-                                mHoverWatch.Show(this, x, y, showMouseoverString);
+                                mHoverWatch.Show(this, x, y, showMouseoverString, showMouseoverString);
 								if (debugExpr != null)
                                 	mHoverWatch.mEvalString.Set(debugExpr); // Set to old debugStr for comparison
                             }
@@ -4928,25 +4954,6 @@ namespace IDE.ui
                     }
 					if (!hasHoverWatchOpen)
                     	mHoverWatch.mOpenMousePos = DarkTooltipManager.sLastRelMousePos;
-
-					if ((debugExpr == "var") || (debugExpr == "let"))
-					{
-						let resolveParams = scope ResolveParams();
-						resolveParams.mOverrideCursorPos = (int32)textIdx;
-						Classify(ResolveType.GetVarType, resolveParams);
-						if (resolveParams.mTypeDef != null)
-						{
-							debugExpr.Set(resolveParams.mTypeDef);
-							if (!debugExpr.IsEmpty)
-								debugExpr.Insert(0, ":");
-						}
-
-						if (!triedShow)
-						{
-                            mHoverWatch.Show(this, x, y, debugExpr);
-							triedShow = true;
-						}
-					}
                 }
 
 				// Not used?

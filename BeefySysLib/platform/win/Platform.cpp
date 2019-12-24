@@ -2193,7 +2193,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr
 {
 	CONTEXT ctx;
 	memset(&ctx, 0, sizeof(CONTEXT));
-	ctx.ContextFlags = CONTEXT_FULL | CONTEXT_DEBUG_REGISTERS;
+	ctx.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL;
 	BOOL success = ::GetThreadContext((HANDLE)thread, &ctx);
 	if (!success)
 	{

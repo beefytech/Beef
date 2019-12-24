@@ -63,7 +63,7 @@ namespace IDE.ui
                 if (mColumnIdx == 0)
                 {
                     var hoverListView = (HoverListView)mListView;
-                    if ((mWatchEntry.mResultType == WatchResultType.TypeClass) || (mWatchEntry.mResultType == WatchResultType.TypeValueType))
+                    if ((mWatchEntry.mResultType.HasFlag(WatchResultType.TypeClass)) || (mWatchEntry.mResultType.HasFlag(WatchResultType.TypeValueType)))
                         return false;
                     return mouseX < LabelX + hoverListView.mFont.GetWidth(mLabel) + GS!(2);
                 }
@@ -226,8 +226,9 @@ namespace IDE.ui
 			}
 		}
 
+		public String mDisplayString = new String() ~ delete _;
+		public String mOrigEvalString = new String() ~ delete _;
         public String mEvalString = new String() ~ delete _;
-        public String mOrigEvalString = new String() ~ delete _;
         public TextPanel mTextPanel;
         public HoverListView mListView;
         public Point mOpenMousePos;
@@ -1382,7 +1383,7 @@ namespace IDE.ui
             theEvent.mHandled = true;
         }
 
-        public HoverListViewItem Eval(String evalString, bool isPending)
+        public HoverListViewItem Eval(String displayString, String evalString, bool isPending)
         {
 			Debug.Assert(evalString != null);
             mOrigEvalString.Set(evalString);
@@ -1390,7 +1391,7 @@ namespace IDE.ui
             	mListView = CreateListView();
 			else
 				mListView.GetRoot().Clear();
-            return DoListViewItem(mListView, null, evalString, evalString, isPending);
+            return DoListViewItem(mListView, null, displayString, evalString, isPending);
         }
 
         public void SetListView(HoverListView listView)
@@ -1405,7 +1406,7 @@ namespace IDE.ui
 			Close();
 		}
 
-        public bool Show(TextPanel textPanel, float x, float y, String evalString)
+        public bool Show(TextPanel textPanel, float x, float y, String displayString, String evalString)
         {
             if (mIsShown)
                 Clear();
@@ -1434,6 +1435,11 @@ namespace IDE.ui
             if (mTextPanel.mHoverWatch != null)            
                 Debug.Assert(mTextPanel.mHoverWatch == this);            
             mTextPanel.mHoverWatch = this;
+			if (displayString == null)
+				mDisplayString.Clear();
+			else
+				mDisplayString.Set(displayString);
+
 			if (evalString == null)
 				mEvalString.Clear();
 			else
@@ -1447,7 +1453,7 @@ namespace IDE.ui
 
             if (evalString != null)
             {
-                if (Eval(evalString, false).Failed)
+                if (Eval(displayString, evalString, false).Failed)
 				{
 					if (mListView.mParent != null)
 						mListView.RemoveSelf();
@@ -1529,7 +1535,7 @@ namespace IDE.ui
 				widgetWindow.mRootWidget = null; // Detach root
 			//Debug.WriteLine("Hoverwatch showing");
 			mClosed = false;
-            Show(sourceViewPanel, mOrigX, mOrigY, mOrigEvalString);
+            Show(sourceViewPanel, mOrigX, mOrigY, mDisplayString, mOrigEvalString);
             sourceViewPanel.mHoverWatch = this;
 
             for (int32 listIdx = 0; listIdx < openYList.Count; listIdx++)

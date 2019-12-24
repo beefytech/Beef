@@ -2964,18 +2964,40 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
-	for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
+	///
 	{
-		auto fieldInstance = &fieldInstanceRef;
-		if (!fieldInstance->mFieldIncluded)
-			continue;
-		auto fieldDef = fieldInstance->GetFieldDef();
-		if (fieldDef == NULL)
-			continue;
-		if ((fieldInstance->mConstIdx == -1) && (fieldDef->mIsConst))
-		{			
-			SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
-			typeInstance->mModule->ResolveConstField(typeInstance, fieldInstance, fieldDef);
+		Dictionary<int64, BfFieldDef*> valueMap;
+
+		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
+		{
+			auto fieldInstance = &fieldInstanceRef;
+			if (!fieldInstance->mFieldIncluded)
+				continue;
+			auto fieldDef = fieldInstance->GetFieldDef();
+			if (fieldDef == NULL)
+				continue;
+			if ((fieldInstance->mConstIdx == -1) && (fieldDef->mIsConst))
+			{
+				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
+				typeInstance->mModule->ResolveConstField(typeInstance, fieldInstance, fieldDef);
+
+				auto underlyingType = fieldInstance->mResolvedType->GetUnderlyingType();
+				if ((fieldDef->IsEnumCaseEntry()) && (fieldInstance->mConstIdx != -1) && (underlyingType->IsIntegral()))
+				{
+					auto foreignConst = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+					BfFieldDef** fieldDefPtr;
+					if (valueMap.TryAdd(foreignConst->mInt64, NULL, &fieldDefPtr))
+					{
+						*fieldDefPtr = fieldDef;
+					}
+					else
+					{
+						auto error = Warn(0, StrFormat("Enum value '%lld' for field '%s' is not unique", foreignConst->mInt64, fieldDef->mName.c_str()), fieldDef->GetRefNode(), true);
+						if (error != NULL)
+							mCompiler->mPassInstance->MoreInfo(StrFormat("This value was previously used for field '%s'", (*fieldDefPtr)->mName.c_str()), (*fieldDefPtr)->GetRefNode());
+					}
+				}				
+			}
 		}
 	}
 	
@@ -8997,7 +9019,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	if (explicitCast)
 	{
 		// TypedPrimitive -> Primitive
-		if ((typedVal.mType->IsTypedPrimitive()) && (toType->IsPrimitiveType()))
+		if ((typedVal.mType->IsTypedPrimitive()) && (!typedVal.mType->IsFunction()) && (toType->IsPrimitiveType()))
 		{
 			auto fromTypedPrimitiveType = typedVal.mType->ToTypeInstance();
 			auto primTypedVal = BfTypedValue(typedVal.mValue, fromTypedPrimitiveType->mFieldInstances.back().mResolvedType, typedVal.IsAddr());
@@ -9006,7 +9028,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 
 		// TypedPrimitive -> TypedPrimitive
-		if ((typedVal.mType->IsTypedPrimitive()) && (toType->IsTypedPrimitive()))
+		if ((typedVal.mType->IsTypedPrimitive()) && (!typedVal.mType->IsFunction()) && (toType->IsTypedPrimitive()))
 		{
 			auto fromTypedPrimitiveType = typedVal.mType->ToTypeInstance();
 			auto toTypedPrimitiveType = toType->ToTypeInstance();

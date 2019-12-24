@@ -460,6 +460,9 @@ void BfAutoComplete::AddMethod(BfMethodDeclaration* methodDecl, const StringImpl
 
 void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bool onlyAttribute)
 {
+	if (typeDef->mTypeDeclaration == NULL)
+		return;
+
 	StringT<64> name(typeDef->mName->ToString());
 	if (name == "@")
 		return;
@@ -575,6 +578,11 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 	bool isInterface = false;
 	
 	auto activeTypeDef = mModule->GetActiveTypeDef();
+
+	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()))
+	{
+		AddEntry(AutoCompleteEntry("valuetype", "_"), filter);
+	}
 
 #define CHECK_STATIC(staticVal) ((staticVal && addStatic) || (!staticVal && addNonStatic))
 
@@ -2178,11 +2186,39 @@ void BfAutoComplete::CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedT
 			}
 		}
 
-		if (mResolveType == BfResolveType_GetVarType)
+		if (mResolveType == BfResolveType_GetResultString)
 		{
-			mVarTypeName = mModule->TypeToString(resolvedType);
+			mResultString = ":";
+			mResultString += mModule->TypeToString(resolvedType);
 		}
 	}
+}
+
+void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue)
+{
+	if (mResolveType != BfResolveType_GetResultString)
+		return;
+
+	if (!IsAutocompleteNode(node))
+		return;
+
+	if (!typedValue.mValue.IsConst())
+		return;
+
+	if (typedValue.mType->IsPointer())
+		return;
+	if (typedValue.mType->IsObject())
+		return;
+
+	auto constant = mModule->mBfIRBuilder->GetConstant(typedValue.mValue);
+	if (BfIRConstHolder::IsInt(constant->mTypeCode))
+	{
+		mResultString = StrFormat("%lld", constant->mInt64);
+	}
+	else if (BfIRConstHolder::IsFloat(constant->mTypeCode))
+	{
+		mResultString = StrFormat("%f", constant->mDouble);
+	}	
 }
 
 void BfAutoComplete::CheckLocalDef(BfIdentifierNode* identifierNode, BfLocalVariable* varDecl)

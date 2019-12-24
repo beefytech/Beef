@@ -16,16 +16,16 @@ namespace IDE.ui
 {
     public enum WatchResultType
     {
-        None,
-        Value,
-        Int,
-        MM128,
-        Object,
-        Pointer,
-        TypeClass,
-        TypeValueType,
-        Namespace,
-        Text
+        None   		= 0,
+        Value  		= 1,
+        Int 		= 2,
+        MM128 		= 4,
+        Object 		= 8,
+        Pointer 	= 0x10,
+        TypeClass 	= 0x20,
+        TypeValueType = 0x40,
+        Namespace 	= 0x80,
+        Text 		= 0x100
     }
 
     public class WatchEntry
@@ -54,6 +54,18 @@ namespace IDE.ui
 		public int32 mSeriesFirstVersion = -1;
 		public int32 mSeriesVersion = -1;
 
+		public bool IsConstant
+		{
+			get
+			{
+				if (mEvalStr.IsEmpty)
+					return true;
+				if (mEvalStr[0].IsNumber)
+					return true;
+				return false;
+			}
+		}
+
         public bool ParseCmd(List<StringView> cmd)
         {
             switch (scope String(cmd[0]))
@@ -62,25 +74,25 @@ namespace IDE.ui
                     switch (scope String(cmd[1]))
                     {
                         case "object":
-                            mResultType = WatchResultType.Object;
+                            mResultType |= WatchResultType.Object;
                             return true;
                         case "pointer":
-                            mResultType = WatchResultType.Pointer;
+                            mResultType |= WatchResultType.Pointer;
                             return true;
                         case "class":
-                            mResultType = WatchResultType.TypeClass;
+                            mResultType |= WatchResultType.TypeClass;
                             return true;
                         case "valuetype":
-                            mResultType = WatchResultType.TypeValueType;
+                            mResultType |= WatchResultType.TypeValueType;
                             return true;
                         case "namespace":
-                            mResultType = WatchResultType.Namespace;
+                            mResultType |= WatchResultType.Namespace;
                             return true;
                         case "int":
-                            mResultType = WatchResultType.Int;
+                            mResultType |= WatchResultType.Int;
                             return true;
                         case "mm128":
-                            mResultType = WatchResultType.MM128;
+                            mResultType |= WatchResultType.MM128;
                             return true;
                     }
                     break;
@@ -1131,26 +1143,26 @@ namespace IDE.ui
 				{
 					imageIdx = .RedDot;
 				}
-                else if (mWatchEntry.mResultType == WatchResultType.Object)
+                else if (mWatchEntry.mResultType.HasFlag(WatchResultType.Object))
                 {
                     if (mWatchEntry.mIsDeleted)
                         imageIdx = .IconObjectDeleted;
                     else
                         imageIdx = .IconObject;
                 }
-                else if (mWatchEntry.mResultType == WatchResultType.TypeClass)
+                else if (mWatchEntry.mResultType.HasFlag(WatchResultType.TypeClass))
                 {
                     imageIdx = .Type_Class;
                 }
-                else if (mWatchEntry.mResultType == WatchResultType.TypeValueType)
+                else if (mWatchEntry.mResultType.HasFlag(WatchResultType.TypeValueType))
                 {
                     imageIdx = .Type_ValueType;
                 }
-                else if (mWatchEntry.mResultType == WatchResultType.Namespace)
+                else if (mWatchEntry.mResultType.HasFlag(WatchResultType.Namespace))
                 {
                     imageIdx = .Namespace;
                 }
-                else if (mWatchEntry.mResultType == WatchResultType.Pointer)
+                else if (mWatchEntry.mResultType.HasFlag(WatchResultType.Pointer))
                 {
                     imageIdx = .IconPointer;
                 }
@@ -2587,9 +2599,9 @@ namespace IDE.ui
 
         public static bool AddDisplayTypeMenu(String label, Menu menu, WatchResultType watchResultType, String referenceId, bool includeDefault)
         {
-            bool isInt = watchResultType == WatchResultType.Int;
-            bool isMM128 = watchResultType == WatchResultType.MM128;
-            bool canSetFormat = isInt || isMM128;
+            bool hasInt = watchResultType.HasFlag(WatchResultType.Int);
+            bool hasMM128 = watchResultType.HasFlag(WatchResultType.MM128);
+            bool canSetFormat = hasInt || hasMM128;
 
             var debugger = IDEApp.sApp.mDebugger;
             DebugManager.IntDisplayType intDisplayType;
@@ -2606,7 +2618,7 @@ namespace IDE.ui
             
             Menu parentItem = menu.AddItem(label);                                
             //anItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
-            if (isInt)
+            if (hasInt)
             {
                 for (DebugManager.IntDisplayType i = default; i < DebugManager.IntDisplayType.COUNT; i++)
                 {
@@ -2622,8 +2634,9 @@ namespace IDE.ui
                         new () => SetDisplayType(referenceId, toType, mmDisplayType));
                 }
             }
-            else if (isMM128)
-            {                
+
+            if (hasMM128)
+            {
                 for (DebugManager.MmDisplayType i = default; i < DebugManager.MmDisplayType.COUNT; i++)
                 {                    
                     var toType = i;
@@ -2677,49 +2690,52 @@ namespace IDE.ui
 				if (watchEntry.mReferenceId != null)
 					AddDisplayTypeMenu("Watch Display", menu, listViewItem.mWatchEntry.mResultType, watchEntry.mReferenceId, true);
 
-				anItem = menu.AddItem("Break When Value Changes");
-				if (watchEntry.mMemoryBreakpointAddr == 0)
+				if (!watchEntry.IsConstant)
 				{
-					anItem.mOnMenuItemSelected.Add(new (evt) =>
-						{
-							String evalStr = scope String();
-							CompactChildExpression(listViewItem, evalStr);
-							evalStr.Insert(0, "&");
-							gApp.mBreakpointPanel.CreateMemoryBreakpoint(evalStr);
-							gApp.MarkDirty();
-						});
-				}
-				else
-				{
-					anItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
-					anItem.mOnMenuItemSelected.Add(new (evt) =>
-						{
-							for (int breakIdx < gApp.mDebugger.mBreakpointList.Count)
+					anItem = menu.AddItem("Break When Value Changes");
+					if (watchEntry.mMemoryBreakpointAddr == 0)
+					{
+						anItem.mOnMenuItemSelected.Add(new (evt) =>
 							{
-								let breakpoint = gApp.mDebugger.mBreakpointList[breakIdx];
-								if (breakpoint.mMemoryAddress == watchEntry.mMemoryBreakpointAddr)
+								String evalStr = scope String();
+								CompactChildExpression(listViewItem, evalStr);
+								evalStr.Insert(0, "&");
+								gApp.mBreakpointPanel.CreateMemoryBreakpoint(evalStr);
+								gApp.MarkDirty();
+							});
+					}
+					else
+					{
+						anItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+						anItem.mOnMenuItemSelected.Add(new (evt) =>
+							{
+								for (int breakIdx < gApp.mDebugger.mBreakpointList.Count)
 								{
-									gApp.mDebugger.DeleteBreakpoint(breakpoint);
-									gApp.RefreshWatches();
-									breakIdx--;
+									let breakpoint = gApp.mDebugger.mBreakpointList[breakIdx];
+									if (breakpoint.mMemoryAddress == watchEntry.mMemoryBreakpointAddr)
+									{
+										gApp.mDebugger.DeleteBreakpoint(breakpoint);
+										gApp.RefreshWatches();
+										breakIdx--;
+									}
 								}
-							}
-						});
+							});
 
-					let configItem = menu.AddItem("Configure Breakpoint");
-					configItem.mOnMenuItemSelected.Add(new (evt) =>
-						{
-							for (int breakIdx < gApp.mDebugger.mBreakpointList.Count)
+						let configItem = menu.AddItem("Configure Breakpoint");
+						configItem.mOnMenuItemSelected.Add(new (evt) =>
 							{
-								let breakpoint = gApp.mDebugger.mBreakpointList[breakIdx];
-								if (breakpoint.mMemoryAddress == watchEntry.mMemoryBreakpointAddr)
+								for (int breakIdx < gApp.mDebugger.mBreakpointList.Count)
 								{
-									ConditionDialog dialog = new ConditionDialog();
-									dialog.Init(breakpoint);
-									dialog.PopupWindow(listView.mWidgetWindow);
+									let breakpoint = gApp.mDebugger.mBreakpointList[breakIdx];
+									if (breakpoint.mMemoryAddress == watchEntry.mMemoryBreakpointAddr)
+									{
+										ConditionDialog dialog = new ConditionDialog();
+										dialog.Init(breakpoint);
+										dialog.PopupWindow(listView.mWidgetWindow);
+									}
 								}
-							}
-						});
+							});
+					}
 				}
 
 				if (watchEntry.mResultType == .Pointer)

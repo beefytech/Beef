@@ -1404,11 +1404,8 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	{
 		unresolvedType = ResolveTypeRef(varDecl->mTypeRef, BfPopulateType_Data, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowRef));
 		if (unresolvedType == NULL)
-			unresolvedType = mContext->mBfObjectType; // Fake an object
-													  //resolvedType = ResolveGenericType(unresolvedType);
-		resolvedType = unresolvedType;
-		if (unresolvedType == NULL)
-			resolvedType = mContext->mBfObjectType; // Fake an object
+			unresolvedType = GetPrimitiveType(BfTypeCode_Var);													  
+		resolvedType = unresolvedType;		
 	}	
 
 	auto _CheckConst = [&]
@@ -1417,7 +1414,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		{
 			auto constant = mBfIRBuilder->GetConstant(initValue.mValue);
 
-			// NullPtr is standin for GlobalVar during autocomplete
+			// NullPtr is stand-in for GlobalVar during autocomplete
 			if ((constant->mConstType == BfConstType_GlobalVar) ||
 				(constant->mTypeCode == BfTypeCode_NullPtr))
 			{
@@ -3114,7 +3111,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 		if ((!autoComplete->mIsAutoComplete) ||
 			(autoComplete->mResolveType == BfResolveType_GetCurrentLocation) ||
 			(autoComplete->mResolveType == BfResolveType_GetFixits) ||
-			(autoComplete->mResolveType == BfResolveType_GetVarType) ||
+			(autoComplete->mResolveType == BfResolveType_GetResultString) ||
 			(autoComplete->mResolveType == BfResolveType_GetSymbolInfo) ||
 			(autoComplete->mResolveType == BfResolveType_ShowFileSymbolReferences))
 			wantsAllLocalMethods = false;

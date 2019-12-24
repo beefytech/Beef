@@ -2940,6 +2940,40 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		}		
 	}
 
+	if ((mModule->mCurMethodInstance == NULL) && (mModule->mCurTypeInstance->IsEnum()))
+	{
+		if (findName == "_")
+		{
+			BfFieldDef* resolvingFieldDef = NULL;
+			auto checkTypeState = mModule->mContext->mCurTypeState;
+			while (checkTypeState != NULL)
+			{
+				if (checkTypeState->mCurFieldDef != NULL)
+				{
+					if (checkTypeState->mTypeInstance == mModule->mCurTypeInstance)
+						resolvingFieldDef = checkTypeState->mCurFieldDef;
+				}
+				checkTypeState = checkTypeState->mPrevState;
+			}
+
+			if ((resolvingFieldDef != NULL) && (resolvingFieldDef->mIdx > 0))
+			{
+				auto enumType = mModule->mCurTypeInstance;
+				if (!enumType->mFieldInstances.IsEmpty())
+				{
+					auto fieldInstance = &mModule->mCurTypeInstance->mFieldInstances[resolvingFieldDef->mIdx - 1];
+					if ((fieldInstance->mConstIdx != -1) &&
+						(fieldInstance->mResolvedType == mModule->mCurTypeInstance))
+					{
+						auto foreignConst = enumType->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+						auto retVal = mModule->ConstantToCurrent(foreignConst, enumType->mConstHolder, enumType);
+						return BfTypedValue(retVal, enumType);
+					}
+				}
+			}
+		}
+	}
+
 	BfTypedValue thisValue = mModule->GetThis();
 
 	bool forcedIFaceLookup = false;

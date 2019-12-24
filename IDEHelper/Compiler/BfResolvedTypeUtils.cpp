@@ -2198,7 +2198,7 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 	else if (type->IsConstExprValue())
 	{
 		BfConstExprValueType* constExprValueType = (BfConstExprValueType*)type;
-		int hashVal = ((int)constExprValueType->mValue.mTypeCode << 17) ^ (constExprValueType->mValue.mInt32 << 3) ^ HASH_CONSTTYPE;
+		int hashVal = (constExprValueType->mValue.mInt32 << 17) ^ HASH_CONSTTYPE;
 		int elemHash = Hash(constExprValueType->mType, ctx);
 		hashVal = ((hashVal ^ elemHash) << 5) - hashVal;
 		return hashVal;
@@ -2897,8 +2897,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfConstExprValueType* lhsConstExprValueType = (BfConstExprValueType*)lhs;
 		BfConstExprValueType* rhsConstExprValueType = (BfConstExprValueType*)rhs;
 
-		return (lhsConstExprValueType->mType == rhsConstExprValueType->mType) &&
-			(lhsConstExprValueType->mValue.mTypeCode == rhsConstExprValueType->mValue.mTypeCode) &&
+		return (lhsConstExprValueType->mType == rhsConstExprValueType->mType) &&			
 			(lhsConstExprValueType->mValue.mInt64 == rhsConstExprValueType->mValue.mInt64);
 	}
 	else 

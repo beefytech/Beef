@@ -1335,7 +1335,7 @@ namespace IDE.ui
                         else
                         {
                             mHoverWatch = new HoverWatch();
-                            if (mHoverWatch.Show(this, x, y, debugExpr))
+                            if (mHoverWatch.Show(this, x, y, debugExpr, debugExpr))
                             {
                                 mHoverWatch.mOpenMousePos = DarkTooltipManager.sLastRelMousePos;
                                 mHoverWatch.mEvalString.Set(debugExpr); // Set to old debugStr for comparison

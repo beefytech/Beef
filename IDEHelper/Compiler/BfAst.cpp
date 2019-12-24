@@ -1543,7 +1543,7 @@ const char* Beefy::BfGetOpName(BfBinaryOp binOp)
 	case BfBinaryOp_Add: return "+";
 	case BfBinaryOp_Subtract: return "-";
 	case BfBinaryOp_Multiply: return "*";
-	case BfBinaryOp_Divide: return "\\";
+	case BfBinaryOp_Divide: return "/";
 	case BfBinaryOp_Modulus: return "%";
 	case BfBinaryOp_BitwiseAnd: return "&";
 	case BfBinaryOp_BitwiseOr: return "|";

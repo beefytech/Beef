@@ -128,7 +128,7 @@ namespace IDE.ui
 		{
 			base.MouseDown(x, y, btn, btnCount);
 
-			if (x >= mListView.mParent.mWidth - LabelX - GS!(34))
+			if ((x >= mListView.mParent.mWidth - LabelX - GS!(34)) && (mParentItem != null))
 			{
 				PopupCallStackPanel();
 			}

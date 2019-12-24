@@ -3393,7 +3393,7 @@ void BfCompiler::VisitSourceExteriorNodes()
 
 	auto _CheckParser = [&](BfParser* parser)
 	{
-		if (parser->mNextRevision != NULL)
+		while (parser->mNextRevision != NULL)
 			parser = parser->mNextRevision;
 		if (parser->mAwaitingDelete)
 			return;		
@@ -3819,19 +3819,34 @@ void BfCompiler::ProcessAutocompleteTempType()
 			}
 		}
 
-		if ((autoComplete->mIsGetDefinition) && (fieldDef->mFieldDeclaration != NULL) && (autoComplete->IsAutocompleteNode(fieldDef->mFieldDeclaration->mNameNode)))
+		if (((autoComplete->mIsGetDefinition)  || (autoComplete->mResolveType == BfResolveType_GetResultString)) &&
+			(fieldDef->mFieldDeclaration != NULL) && (autoComplete->IsAutocompleteNode(fieldDef->mFieldDeclaration->mNameNode)))
 		{
 			for (int i = 0; i < (int)actualTypeDef->mFields.size(); i++)
 			{
 				auto actualFieldDef = actualTypeDef->mFields[i];
 				if (actualFieldDef->mName == fieldDef->mName)
 				{
-					autoComplete->mDefType = actualTypeDef;
-					autoComplete->mDefField = actualFieldDef;
+					if (autoComplete->mIsGetDefinition)
+					{
+						autoComplete->mDefType = actualTypeDef;
+						autoComplete->mDefField = actualFieldDef;
 
-					autoComplete->SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
-					autoComplete->mInsertStartIdx = fieldDef->mFieldDeclaration->mNameNode->GetSrcStart();
-					autoComplete->mInsertEndIdx = fieldDef->mFieldDeclaration->mNameNode->GetSrcEnd();
+						autoComplete->SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
+						autoComplete->mInsertStartIdx = fieldDef->mFieldDeclaration->mNameNode->GetSrcStart();
+						autoComplete->mInsertEndIdx = fieldDef->mFieldDeclaration->mNameNode->GetSrcEnd();
+					}
+					else if (autoComplete->mResolveType == BfResolveType_GetResultString)
+					{
+						auto fieldInstance = &typeInst->mFieldInstances[actualFieldDef->mIdx];						
+						if (fieldInstance->mConstIdx != -1)
+						{													
+							auto constant = typeInst->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+							auto retVal = module->ConstantToCurrent(constant, typeInst->mConstHolder, typeInst);
+							BfTypedValue typedValue = BfTypedValue(retVal, typeInst);
+							autoComplete->CheckResult(fieldDef->GetRefNode(), typedValue);							
+						}
+					}
 					break;
 				}
 			}			
@@ -3847,7 +3862,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 		{			
 			module->ResolveConstField(typeInst, NULL, fieldDef);			
 		}
-
+		
 		if (fieldDef->mInitializer == NULL)
 		{
 			if (BfNodeIsA<BfVarTypeReference>(fieldDef->mTypeRef))
@@ -6682,9 +6697,9 @@ void BfCompiler::GenerateAutocompleteInfo()
 		if (autoComplete->mResolveType == BfResolveType_GetNavigationData)
 			return; // Already handled
 
-		if (autoComplete->mResolveType == BfResolveType_GetVarType)
+		if (autoComplete->mResolveType == BfResolveType_GetResultString)
 		{
-			autoCompleteResultString = autoComplete->mVarTypeName;
+			autoCompleteResultString = autoComplete->mResultString;
 			return;
 		}
 

@@ -198,7 +198,7 @@ namespace IDE.ui
             hoverWatch.mAllowSideEffects = true;
             hoverWatch.mOrigEvalString.Set(mImmediateWidget.mResultHoverWatch.mOrigEvalString);
             hoverWatch.SetListView(mImmediateWidget.mResultHoverWatch.mListView);
-            hoverWatch.Show(mImmediateWidget.mPanel, mX + GS!(2), mY + GS!(3), null);
+            hoverWatch.Show(mImmediateWidget.mPanel, mX + GS!(2), mY + GS!(3), null, null);
 			hoverWatch.mRehupEvent.Add(new () =>
                 {
 					mImmediateWidget.RehupResult();
@@ -316,7 +316,7 @@ namespace IDE.ui
 			{
 				// Is a continuation
 				if (mLastEvalString != null)
-					result = mResultHoverWatch.Eval(mLastEvalString, true);
+					result = mResultHoverWatch.Eval(mLastEvalString, mLastEvalString, true);
 				gApp.mIsImmediateDebugExprEval = true;
 			}
 			else
@@ -341,7 +341,7 @@ namespace IDE.ui
 						gApp.mScriptManager.QueueCommands(StringView(cmdText, 1), "Immediate", .NoLines | .NoWait); 
 					}
 					else
-				    	result = mResultHoverWatch.Eval(cmdText, false);
+				    	result = mResultHoverWatch.Eval(cmdText, cmdText, false);
 					mLastTextVersionId = mEditWidgetContent.mData.mCurTextVersionId;
 					gApp.mIsImmediateDebugExprEval = true;
 				}

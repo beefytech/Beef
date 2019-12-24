@@ -195,6 +195,7 @@ public:
 #endif
 	SOCKET mSocket;
 	BfpThread* mThread;
+	BfpThreadId mThreadId;
 	String mServerName;
 	String mSessionName;
 	String mSessionID;

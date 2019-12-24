@@ -20,7 +20,7 @@ enum BfResolveType
 	BfResolveType_GetFixits,
 	BfResolveType_GetTypeDefList,
 	BfResolveType_GetTypeDefInto,
-	BfResolveType_GetVarType,
+	BfResolveType_GetResultString,
 };
 
 class BfLocalVariable;

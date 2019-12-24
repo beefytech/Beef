@@ -67,7 +67,7 @@ namespace IDE.ui
 		    //hoverWatch.SetListView(mImmediateWidget.mResultHoverWatch.mListView);
 		    //hoverWatch.Show(mTextPanel, mX + 2, mY + 3, evalStr);
 			hoverWatch.mOpenMousePos = DarkTooltipManager.sLastRelMousePos;
-			hoverWatch.Show(mOutputPanel, mX, mY, evalStr);
+			hoverWatch.Show(mOutputPanel, mX, mY, evalStr, evalStr);
 		    mOutputPanel.mHoverWatch = hoverWatch;
 		}
 	}

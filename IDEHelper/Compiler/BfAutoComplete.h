@@ -170,7 +170,7 @@ public:
 	MethodMatchInfo* mMethodMatchInfo;
 	bool mIsCapturingMethodMatchInfo;
 	String mDefaultSelection;
-	String mVarTypeName;
+	String mResultString;
 	String mDocumentationEntryName;
 	BfAstNode* mGetDefinitionNode;
 	BfResolveType mResolveType;
@@ -238,6 +238,7 @@ public:
 	void CheckMethod(BfMethodDeclaration* methodDeclaration, bool isLocalMethod);
 	void CheckProperty(BfPropertyDeclaration* propertyDeclaration);	
 	void CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedTypeRef);
+	void CheckResult(BfAstNode* node, const BfTypedValue& typedValue);
 	void CheckLocalDef(BfIdentifierNode* identifierNode, BfLocalVariable* varDecl);
 	void CheckLocalRef(BfIdentifierNode* identifierNode, BfLocalVariable* varDecl);
 	void CheckFieldRef(BfIdentifierNode* identifierNode, BfFieldInstance* fieldInst);
@@ -246,6 +247,7 @@ public:
 	bool CheckFixit(BfAstNode* node);	
 
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom);
+	
 };
 
 NS_BF_END

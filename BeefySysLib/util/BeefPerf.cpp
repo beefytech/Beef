@@ -34,7 +34,7 @@ typedef fd_set FD_SET;
 USING_NS_BF;
 
 // All DLLs must use the same ABI version
-#define BP_ABI_VERSION 2
+#define BP_ABI_VERSION 3
 
 BpManager* BpManager::sBpManager = NULL;
 static bool gOwnsBpManager = false;
@@ -665,6 +665,7 @@ BpManager::BpManager() : mShutdownEvent(true), mTLSDtor(&FlsFreeFunc)
 	mSocket = INVALID_SOCKET;
 	mConnectState = BpConnectState_NotConnected;
 	mThread = NULL;
+	mThreadId = 0;
 	mCurTick = 0;
 	mCurThreadId = 0;
 	mOutBlockSizeLeft = 0;
@@ -890,6 +891,8 @@ void BpManager::FinishWorkThread()
 
 void BpManager::ThreadProc()
 {
+	BfpThread_SetName(NULL, "BeefPerf", NULL);
+
 	if (!Connect())
 	{				
 		mConnectState = BpConnectState_Failed;
@@ -1482,7 +1485,7 @@ BpResult BpManager::Init(const char* serverName, const char* sessionName)
 
 	mRootCmdTarget.Init();
 		
-	mThread = BfpThread_Create(ThreadProcThunk, (void*)this, 64 * 1024, BfpThreadCreateFlag_StackSizeReserve);
+	mThread = BfpThread_Create(ThreadProcThunk, (void*)this, 64 * 1024, BfpThreadCreateFlag_StackSizeReserve, &mThreadId);
 	return BpResult_Ok;
 }
 
