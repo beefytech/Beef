@@ -850,7 +850,7 @@ void COFF::CvParseMembers(DbgType* parentType, int tagIdx, bool ipi)
 // 								if (!parentType->mBaseTypes.IsEmpty())
 // 									parentType->mTypeParam = baseTypeEntry->mBaseType;
 // 							}
-
+							
 							parentType->mBaseTypes.PushBack(baseTypeEntry);
 							parentType->mAlign = std::max(parentType->mAlign, baseTypeEntry->mBaseType->GetAlign());							
 							
@@ -1529,7 +1529,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				baseType = CvGetType(classInfo.derived);
 				BP_ALLOC_T(DbgBaseTypeEntry);
 				DbgBaseTypeEntry* baseTypeEntry = mAlloc.Alloc<DbgBaseTypeEntry>();
-				baseTypeEntry->mBaseType = baseType;
+				baseTypeEntry->mBaseType = baseType;				
 				dbgType->mBaseTypes.PushBack(baseTypeEntry);
 			}
 

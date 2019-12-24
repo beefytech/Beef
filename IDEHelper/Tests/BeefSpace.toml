@@ -28,6 +28,7 @@ COptimizationLevel = "O2"
 ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.Test.Win32]
+IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.TestFail.Win64]

@@ -4705,6 +4705,13 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		}
 	}
 
+	if ((collection.mType->IsBfObjectPtr()) || (collection.mType->IsStruct()))
+	{
+		// This should have been handled by some other cases
+		mResult = DbgTypedValue();
+		Fail(StrFormat("Unable to index type '%s'", TypeToString(collection.mType).c_str()), indexerExpr->mOpenBracket);
+	}
+
 	auto memberType = collection.mType->mTypeParam;
 	auto result = ReadTypedValue(memberType, target + indexArgument.GetInt64() * memberType->GetStride(), DbgAddrType_Target);
 	if (mResult.mIsReadOnly)

@@ -1057,10 +1057,23 @@ bool DbgType::IsValueType()
 
 bool DbgType::IsTypedPrimitive()
 {
+	PopulateType();
+
 	if (mTypeCode != DbgType_Struct)
 		return false;	
 
-	return mTypeParam != NULL;
+	if (mTypeParam != NULL)
+		return true;
+
+	auto baseType = GetBaseType();
+	if (baseType == NULL)
+		return false;
+
+	if (!baseType->IsTypedPrimitive())
+		return false;
+	
+	mTypeParam = baseType->mTypeParam;
+	return true;
 }
 
 bool DbgType::IsBoolean()
@@ -2140,9 +2153,9 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 		CREATE_PRIMITIVE(DbgType_RawText, "@RawText", "@RawText", "@RawText", bool);
 
 		CREATE_PRIMITIVE(DbgType_RegGroup, "@RegGroup", "@RegGroup", "@RegGroup", void*);
-		
-		CREATE_PRIMITIVE_C(DbgType_i8, "int16_t", int16_t);
-		CREATE_PRIMITIVE_C(DbgType_i8, "int32_t", int32_t);		
+				
+		CREATE_PRIMITIVE_C(DbgType_i16, "int16_t", int16_t);
+		CREATE_PRIMITIVE_C(DbgType_i32, "int32_t", int32_t);
 		CREATE_PRIMITIVE_C(DbgType_i64, "__int64", int64);
 		CREATE_PRIMITIVE_C(DbgType_u64, "unsigned __int64", uint64);
 
