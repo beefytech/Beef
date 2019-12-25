@@ -216,36 +216,23 @@ namespace Hey.Dude.Bro
 			}
 		}
 
+		public static void Florgs()
+		{
+
+		}
+
 		public static int Main(String[] args)
 		{
-			Int i = (.)123;
-			i = i + i;
+			function void() func = => Florgs;
+			int32 val = (int32)(int)(void*)func;
 
-			Zangles zang = scope .();
+			//void* ptr = "Hey";
+			//val = (int32)ptr;
 
-			Zangles.GetMe(zang, "hey");
 
-			TypeCode tc = .Boolean;
-
-			PrintF("Hey\n");
-
-			//Test2(1, 2, 3, 4);
-
-			/*IHashable ih = (int32)TypeCode.Boolean;
-			let hashCode = ih.GetHashCode();*/
-
-			Object obj = new Object();
-
-			int* iPtr = scope .();
-			int hash = GetHash(iPtr);
-			
-
-			//Test2(1, 2, 3, 4);
-		
+			//Test2(1, 2, val, 4);
 
 			Blurg.Hey();
-
-			
 			return 1;
 		}
 
@@ -334,3 +321,10 @@ static
 	static int gApsings = 123;
 }
 
+/*namespace zSquarf
+{
+	class Zorf
+	{
+
+	}
+}*/

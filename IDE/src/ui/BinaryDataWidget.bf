@@ -495,6 +495,7 @@ namespace IDE.ui
             public uint32 mDisplayColor;
             public bool mIsReg;
             public bool mIsVisible;
+			public Rect? mDrawRect;
 
             public this(BinaryDataWidget binaryDataWidget, StringView expr, int memStart, int size, StringView displayName, uint32 displayColor, bool isReg)
             {
@@ -860,6 +861,9 @@ namespace IDE.ui
         public void DoDraw(Graphics g)
         {
             base.Draw(g);
+
+			for (var te in mTrackedExprs)
+				te.mDrawRect = null;
 
 			int barThickness = (int)GS!(1.5f);
 
@@ -1429,6 +1433,8 @@ namespace IDE.ui
                                 }
                             }
 
+							
+
                             for (var kvp in trackedRegYDict)
                             {
                                 var te = kvp.key;
@@ -1441,6 +1447,9 @@ namespace IDE.ui
                                 var useFont = IDEApp.sApp.mTinyCodeFont;
                                 float strWidth = useFont.GetWidth(te.mExpr);
                                 bool shortLine = trackedRegYShortLines[lineIdx];
+								var useLineSpacing = useFont.GetLineSpacing();
+
+								te.mDrawRect = Rect(barX, barY, strWidth + GS!(2), useLineSpacing + GS!(2));
 
 								if (te.mDisplayName.StartsWith("$"))
 									continue;
@@ -1448,7 +1457,6 @@ namespace IDE.ui
                                 using (g.PushColor(te.mDisplayColor))
                                 {
                                     var regsOnThisLine = trackedRegsByLine[lineIdx].Count;
-                                    var useLineSpacing = useFont.GetLineSpacing();
                                     float barYAdj = barY + useLineSpacing*0.5f + GS!(1);
                                     float barGoalYAdj = barGoalY + useLineSpacing*0.5f + GS!(1);
                                     if (regsOnThisLine == 2)
@@ -1698,6 +1706,18 @@ namespace IDE.ui
 				DeleteAndNullify!(mSelection);
 
                 var selection = GetSelectionForDisplayPosition(x, y, 1, 1);
+
+				if (selection == null)
+				{
+					for (var te in mTrackedExprs)
+					{
+						if ((var rect = te.mDrawRect) && (rect.Contains(x, y)))
+						{
+							SelectRange(te.mCurValue, 0);
+							break;
+						}
+					}
+				}
 
                 if (selection != null)
                 {

@@ -687,7 +687,9 @@ namespace IDE.ui
 			if (folder.mIncludeKind != .Auto)
             	folder.mProject.SetChanged();
 
+			gApp.RecordHistoryLocation(true);
             gApp.ShowProjectItem(projectSource);
+			gApp.RecordHistoryLocation(true);
         }
 
         int CompareListViewItem(ListViewItem left, ListViewItem right)

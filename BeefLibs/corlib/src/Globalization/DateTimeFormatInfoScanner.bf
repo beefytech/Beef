@@ -26,6 +26,7 @@ namespace System.Globalization
         TAIWANLUNISOLAR            = 21,
         PERSIAN                    = 22,
         UMALQURA                   = 23,
+#unwarn
         LAST_CALENDAR              = 23      // Last calendar ID
     }
 

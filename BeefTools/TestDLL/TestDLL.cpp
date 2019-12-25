@@ -143,10 +143,34 @@ void TestMem()
 	memcpy(cPtr, str, 3);
 }
 
+void Test6()
+{
+
+}
+
+void Test5(int a, void* b, void* c)
+{
+
+}
+
+void Test4(int a, int b, int c)
+{
+	Test5(10, Test6, NULL);
+}
+
+void Test3(int a)
+{
+	Test4(100, 200, 300);
+}
+
 // THIS IS VERSION 6.
 extern "C"
 __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 {	
+	Test3(10);
+
+	char* strP = "Hey yo";
+
 	TestMem();
 
 	Zorq();

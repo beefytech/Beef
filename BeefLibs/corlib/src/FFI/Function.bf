@@ -141,9 +141,13 @@ namespace System.FFI
 	{
 		NotSet = 0,
 		StdCall = 1,
+#unwarn
 		ThisCall = 1,
+#unwarn
 		FastCall = 1,
+#unwarn
 		MS_CDecl = 1,
+#unwarn
 		Default = 1
 	}
 #else

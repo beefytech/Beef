@@ -32,6 +32,7 @@ namespace System
 				ENABLE_AAA	= 0x10000,
 				FROM_DEFAULT_CONTEXT	= 0x20000,
 				ACTIVATE_X86_SERVER	= 0x40000,
+#unwarn
 				ACTIVATE_32_BIT_SERVER	= ACTIVATE_X86_SERVER,
 				ACTIVATE_64_BIT_SERVER	= 0x80000,
 				ENABLE_CLOAKING	= 0x100000,
@@ -198,6 +199,8 @@ namespace System
 
 		public const int32 KEY_ALL_ACCESS = 0x000f003f;
 
+		public const int32 MB_OK 				= 0;
+		public const int32 MB_OKCANCEL			= 1;
 		public const int32 MB_YESNO 			= 4;
 		public const int32 MB_ICONHAND 			= 0x10;
 		public const int32 MB_ICONQUESTION		= 0x20;
@@ -1361,16 +1364,16 @@ namespace System
 		[CLink, StdCall]
 		public static extern IntBool SetFileAttributesW(char16* name, int32 attribs);
 
-		[CLink, StdCall]
+		[Import("user32.lib"), CLink, StdCall]
 		public static extern int32 MessageBoxA(HWnd hWnd, char8* text, char8* caption, int32 type);
 
-		[CLink, StdCall]
+		[Import("user32.lib"), CLink, StdCall]
 		public static extern int32 MessageBoxW(HWnd hWnd, char16* text, char16* caption, int32 type);
 
 		[CLink, StdCall]
 		public static extern int32 SetErrorMode(int32 errorMode);
 
-		[CLink, StdCall]
+		[Import("user32.lib"), CLink, StdCall]
 		public static extern HWnd GetActiveWindow();
 
 		[Import("user32.lib"), CLink, StdCall]

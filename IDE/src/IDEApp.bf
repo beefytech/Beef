@@ -4282,7 +4282,7 @@ namespace IDE
 			return result;
         }
 
-		public void RecordHistoryLocation(bool includeLastActive = false, bool b = true)
+		public void RecordHistoryLocation(bool includeLastActive = false)
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel(includeLastActive);
 			if (sourceViewPanel != null)

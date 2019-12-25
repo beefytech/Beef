@@ -893,7 +893,9 @@ namespace System.Reflection
 
 		// vtable layout mask - Use this mask to retrieve vtable attributes.
 		VtableLayoutMask    	=  0x0100,
+#unwarn
 		ReuseSlot           	=  0x0000,     // The default.
+#unwarn
 		NewSlot             	=  0x0100,     // Method always gets a new slot in the vtable.
 		// end vtable layout mask
 
