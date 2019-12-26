@@ -5,6 +5,7 @@ using System.Reflection;
 
 namespace Beefy.widgets
 {
+	[AllowDuplicates]
     public enum KeyCode
     {
         LButton = 0x01,
@@ -18,17 +19,14 @@ namespace Beefy.widgets
         Shift = 0x10,
         Control = 0x11,
         Alt = 0x12,
-#unwarn
         Menu = 0x12,
 		Pause = 0x13,
         Capital = 0x14,
         Kana = 0x15,
-#unwarn
         Hangul = 0x15,
         Junja = 0x17,
         Final = 0x18,
         Hanja = 0x19,
-#unwarn
         Kanji = 0x19,
         Escape = 0x1B,
         Convert = 0x1C,
