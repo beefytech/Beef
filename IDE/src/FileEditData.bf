@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 
 namespace IDE
 {
+	[AllowDuplicates]
 	public enum LineEndingKind
 	{
 		Lf,   // \n

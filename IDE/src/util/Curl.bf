@@ -14,6 +14,7 @@ namespace CURL
 		const int32 cOptionFunction = 20000;
 		const int32 cOptionOffT = 30000;
 
+		[AllowDuplicates]
 		public enum Option
 		{
 			/* This is the FILE * or void * the regular output should be written to. */

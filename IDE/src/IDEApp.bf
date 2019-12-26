@@ -804,6 +804,9 @@ namespace IDE
 #if !CLI
 			if (mDeferredOpenFileName != null)
 			{
+				String prevFilePath = scope .(mDeferredOpenFileName);
+				mDeferredOpenFileName.Clear();
+				Path.GetActualPathName(prevFilePath, mDeferredOpenFileName);
 				OpenWorkspace(mDeferredOpenFileName);
 				DeleteAndNullify!(mDeferredOpenFileName);
 				return;

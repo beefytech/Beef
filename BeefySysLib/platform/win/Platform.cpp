@@ -3150,18 +3150,52 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 {
 	String inPath = inPathC;
 	String outPath;
+	
+	// Check for '/../' backtracking - handle those first
+	{
+		int i = 0;
+		int32 lastComponentStart = -1;		
+		String subName;
+		
+		while (i < inPath.mLength)
+		{
+			// skip until path separator
+			while ((i < inPath.mLength) && (inPath[i] != DIR_SEP_CHAR) && (inPath[i] != DIR_SEP_CHAR_ALT))
+				++i;
+			
+			if (lastComponentStart != -1)
+			{
+				if ((i - lastComponentStart == 2) && (inPath[lastComponentStart] == '.') && (inPath[lastComponentStart + 1] == '.'))
+				{
+					// Backtrack
+					while ((lastComponentStart > 0) && 
+						((inPath[lastComponentStart - 1] == DIR_SEP_CHAR) || (inPath[lastComponentStart - 1] == DIR_SEP_CHAR_ALT)))
+						lastComponentStart--;
+					while ((lastComponentStart > 0) && (inPath[lastComponentStart - 1] != DIR_SEP_CHAR) && (inPath[lastComponentStart - 1] != DIR_SEP_CHAR_ALT))
+						lastComponentStart--;
+					inPath.Remove(lastComponentStart, i - lastComponentStart + 1);
+					i = lastComponentStart;
+					continue;					
+				}
+				else if ((i - lastComponentStart == 1) && (inPath[lastComponentStart] == '.'))
+				{					
+					inPath.Remove(lastComponentStart, i - lastComponentStart + 1);
+					i = lastComponentStart;
+					continue;
+				}
+			}
 
-	// This is quite involved, but the meat is SHGetFileInfo
-	//const wchar8_t kSeparator = L'\\';
-	// copy input string because we'll be temporary modifying it in place
-	//size_t length = wcslen(path);
-	//wchar8_t buffer[MAX_PATH];
-	//memcpy( buffer, path, (length+1) * sizeof(path[0]) );
+			++i;
+			// Ignore multiple slashes in a row
+			while ((i < inPath.mLength) && ((inPath[i] == DIR_SEP_CHAR) || (inPath[i] == DIR_SEP_CHAR_ALT)))
+				++i;
+
+			lastComponentStart = i;			
+		}
+	}
 
 	int32 i = 0;
-
-	//UTF16String result;
-
+	
 	// for network paths (\\server\share\RestOfPath), getting the display
 	// name mangles it into unusable form (e.g. "\\server\share" turns
 	// into "share on server (server)"). So detect this case and just skip

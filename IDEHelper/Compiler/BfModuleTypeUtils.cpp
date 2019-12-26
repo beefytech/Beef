@@ -2992,7 +2992,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					}
 					else if ((typeInstance->mCustomAttributes == NULL) || (typeInstance->mCustomAttributes->Get(mCompiler->mAllowDuplicatesAttributeTypeDef) == NULL))
 					{
-						auto error = Warn(0, StrFormat("Enum value '%lld' for field '%s' is not unique", foreignConst->mInt64, fieldDef->mName.c_str()), fieldDef->GetRefNode(), true);
+						auto error = Warn(0, StrFormat("Enum value '%lld' for field '%s' is not unique. Considering adding [AllowDuplicates] to the type declaration.", foreignConst->mInt64, fieldDef->mName.c_str()), fieldDef->GetRefNode(), true);
 						if (error != NULL)
 							mCompiler->mPassInstance->MoreInfo(StrFormat("This value was previously used for field '%s'", (*fieldDefPtr)->mName.c_str()), (*fieldDefPtr)->GetRefNode());
 					}

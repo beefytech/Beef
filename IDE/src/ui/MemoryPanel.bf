@@ -36,6 +36,7 @@ namespace IDE.ui
 
     public class MemoryRepListView : DarkListView
     {
+		[AllowDuplicates]
         public enum RepType
         {
             // integer types (dual signed/unsigned reps)
