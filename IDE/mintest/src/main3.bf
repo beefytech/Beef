@@ -8,11 +8,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 
+[AllowDuplicates]
 enum EnumA
 {
 	Abo = 1,
 	Boop = _*2,
 	Croop = _*2,
+
+	Zoop = 1
 }
 
 struct Blurg

@@ -49,6 +49,7 @@ namespace Beefy
 			ShowMaximized = 0x0400'0000,
         };
 
+		[AllowDuplicates]
         public enum HitTestResult
         {
             NotHandled = -3,

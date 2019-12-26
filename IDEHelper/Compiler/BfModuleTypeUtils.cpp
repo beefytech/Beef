@@ -2990,7 +2990,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					{
 						*fieldDefPtr = fieldDef;
 					}
-					else
+					else if ((typeInstance->mCustomAttributes == NULL) || (typeInstance->mCustomAttributes->Get(mCompiler->mAllowDuplicatesAttributeTypeDef) == NULL))
 					{
 						auto error = Warn(0, StrFormat("Enum value '%lld' for field '%s' is not unique", foreignConst->mInt64, fieldDef->mName.c_str()), fieldDef->GetRefNode(), true);
 						if (error != NULL)

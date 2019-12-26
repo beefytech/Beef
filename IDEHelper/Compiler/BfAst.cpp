@@ -762,6 +762,15 @@ bool BfAstNode::IsExpression()
 	return IsA<BfExpression>();
 }
 
+bool BfAstNode::WantsWarning(int warningNumber)
+{
+	auto parserData = GetParserData();
+	if (parserData == NULL)
+		return true;
+	int srcStart = GetSrcStart();
+	return (!parserData->IsUnwarnedAt(this)) && (parserData->IsWarningEnabledAtSrcIndex(warningNumber, GetSrcStart()));
+}
+
 bool BfAstNode::LocationEquals(BfAstNode* otherNode)
 {	
 	return (GetSourceData() == otherNode->GetSourceData()) &&

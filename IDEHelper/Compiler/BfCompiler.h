@@ -380,6 +380,7 @@ public:
 	BfTypeDef* mImportAttributeTypeDef;
 	BfTypeDef* mCReprAttributeTypeDef;
 	BfTypeDef* mAlignAttributeTypeDef;
+	BfTypeDef* mAllowDuplicatesAttributeTypeDef;
 	BfTypeDef* mNoDiscardAttributeTypeDef;
 	BfTypeDef* mDisableChecksAttributeTypeDef;
 	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;

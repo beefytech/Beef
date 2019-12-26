@@ -848,6 +848,7 @@ namespace System.Reflection
 		EnumDiscriminator		= 0x0200
     }
 
+	[AllowDuplicates]
 	public enum MethodFlags : int16
 	{
 		MethodAccessMask    	=  0x0007,
@@ -869,6 +870,7 @@ namespace System.Reflection
 
 		// vtable layout mask - Use this mask to retrieve vtable attributes.
 		VtableLayoutMask    	=  0x0100,
+
 		ReuseSlot           	=  0x0000,     // The default.
 		NewSlot             	=  0x0100,     // Method always gets a new slot in the vtable.
 		// end vtable layout mask

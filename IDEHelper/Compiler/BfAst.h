@@ -1040,6 +1040,7 @@ public:
 	void Add(BfAstNode* bfAstNode);
 	bool IsMissingSemicolon();
 	bool IsExpression();
+	bool WantsWarning(int warningNumber);
 	
 	template <typename T>
 	bool IsA()

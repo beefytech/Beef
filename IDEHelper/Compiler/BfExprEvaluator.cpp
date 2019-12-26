@@ -2940,7 +2940,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		}		
 	}
 
-	if ((mModule->mCurMethodInstance == NULL) && (mModule->mCurTypeInstance->IsEnum()))
+	if ((mModule->mCurMethodInstance == NULL) && (mModule->mCurTypeInstance != NULL) && (mModule->mCurTypeInstance->IsEnum()))
 	{
 		if (findName == "_")
 		{

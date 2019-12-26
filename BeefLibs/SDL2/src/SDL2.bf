@@ -1521,6 +1521,7 @@ namespace SDL2
 			ArrayF32
 		}
 
+		[AllowDuplicates]
 		public enum SDL_PIXELORDER_ENUM : uint32
 		{
 			/* BITMAPORDER */
@@ -2967,6 +2968,7 @@ namespace SDL2
 			void* userdata
 		);
 
+		[AllowDuplicates]
 		enum EventState : int32
 		{
 			Query = -1,
@@ -3272,6 +3274,7 @@ namespace SDL2
 		 * and all of the names are in an anonymous enum. Yeah...
 		 * that's not going to cut it for C#. We'll just put them in an
 		 * enum for now? */
+		[AllowDuplicates]
 		public enum Keycode : uint32
 		{
 			UNKNOWN = 0,

@@ -382,6 +382,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mImportAttributeTypeDef = NULL;
 	mCReprAttributeTypeDef = NULL;
 	mAlignAttributeTypeDef = NULL;
+	mAllowDuplicatesAttributeTypeDef = NULL;
 	mNoDiscardAttributeTypeDef = NULL;
 	mDisableChecksAttributeTypeDef = NULL;
 	mDisableObjectAccessChecksAttributeTypeDef = NULL;
@@ -5856,6 +5857,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mImportAttributeTypeDef = _GetRequiredType("System.ImportAttribute");
 	mCReprAttributeTypeDef = _GetRequiredType("System.CReprAttribute");
 	mAlignAttributeTypeDef = _GetRequiredType("System.AlignAttribute");
+	mAllowDuplicatesAttributeTypeDef = _GetRequiredType("System.AllowDuplicatesAttribute");
 	mNoDiscardAttributeTypeDef = _GetRequiredType("System.NoDiscardAttribute");
 	mDisableChecksAttributeTypeDef = _GetRequiredType("System.DisableChecksAttribute");
 	mDisableObjectAccessChecksAttributeTypeDef = _GetRequiredType("System.DisableObjectAccessChecksAttribute");

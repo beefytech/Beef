@@ -237,6 +237,12 @@ namespace System
 		}
 	}
 
+	[AttributeUsage(.Enum)]
+	public struct AllowDuplicatesAttribute : Attribute
+	{
+	    
+	}
+
 	[AttributeUsage(.Class | .Struct)]
 	public struct UnionAttribute : Attribute
 	{
