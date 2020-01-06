@@ -626,7 +626,6 @@ namespace IDE
 			
 			RemoveAndDelete!(mProjectPanel);
 			RemoveAndDelete!(mClassViewPanel);
-			RemoveAndDelete!(mErrorsPanel);
 			RemoveAndDelete!(mOutputPanel);
 			RemoveAndDelete!(mImmediatePanel);
 			RemoveAndDelete!(mFindResultsPanel);
@@ -648,6 +647,7 @@ namespace IDE
             	mBfBuildCompiler.CancelBackground();
 			if (mBfResolveCompiler != null)
             	mBfResolveCompiler.CancelBackground();
+
 #if IDE_C_SUPPORT
             mDepClang.CancelBackground();
             mResolveClang.CancelBackground();
@@ -689,6 +689,9 @@ namespace IDE
 			delete mResolveClang;
 #endif
 			delete mSpellChecker;
+
+			//NOTE: this must be done after the resolve compiler has been destroyed
+			RemoveAndDelete!(mErrorsPanel);
 
 			// Clear these out, for delete ordering purposes
 			ProcessDeferredDeletes();
