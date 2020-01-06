@@ -7,3 +7,5 @@ Beef allows for safely mixing different optimization levels on a per-type or per
 Memory management in Beef is manual, and includes first-class support for custom allocators. Care has been taken to reduce the burden of manual memory management with language ergonomics and runtime safeties &ndash; Beef can detect memory leaks in real-time, and offers guaranteed protection against use-after-free and double-deletion errors. As with most safety features in Beef, these memory safeties can be turned off in release builds for maximum performance.
 
 The Beef IDE supports productivity features such as autocomplete, fixits, reformatting, refactoring tools, type inspection, hot compilation, and a built-in profiler. The IDE's general-purpose debugger is capable of debugging native applications written in any language, and is intended to be a fully-featured standalone debugger even for pure C/C++ developers who want an alternative to Visual Studio debugging.
+
+<img width="960" src="IDE/screenshot0.gif">
