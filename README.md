@@ -8,4 +8,6 @@ Memory management in Beef is manual, and includes first-class support for custom
 
 The Beef IDE supports productivity features such as autocomplete, fixits, reformatting, refactoring tools, type inspection, hot compilation, and a built-in profiler. The IDE's general-purpose debugger is capable of debugging native applications written in any language, and is intended to be a fully-featured standalone debugger even for pure C/C++ developers who want an alternative to Visual Studio debugging.
 
+# IDE Screenshots
+
 <img width="960" src="IDE/screenshot0.gif">
