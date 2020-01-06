@@ -10,4 +10,4 @@ The Beef IDE supports productivity features such as autocomplete, fixits, reform
 
 # IDE Screenshots
 
-![Screenshot](IDE/screenshot0.gif | width=720)
+![Screenshot](IDE/screenshot0.gif)
