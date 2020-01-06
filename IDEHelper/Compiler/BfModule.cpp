@@ -2610,6 +2610,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	}		
 	if (bfError != NULL)
 	{
+		bfError->mProject = mProject;
 		bfError->mIsPersistent = isPersistent;
 		bfError->mIsWhileSpecializing = isWhileSpecializing;
 
@@ -2629,7 +2630,10 @@ BfError* BfModule::FailAfter(const StringImpl& error, BfAstNode* refNode)
 		refNode = BfNodeToNonTemporary(refNode);
 
 	mHadBuildError = true;	
-	return mCompiler->mPassInstance->FailAfter(error, refNode);
+	BfError* bfError =  mCompiler->mPassInstance->FailAfter(error, refNode);
+	if (bfError != NULL)
+		bfError->mProject = mProject;
+	return bfError;
 }
 
 BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode, bool isPersistent)
@@ -2692,6 +2696,7 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 	BfError* bfError = mCompiler->mPassInstance->WarnAt(warningNum, warning, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());
 	if (bfError != NULL)
 	{
+		bfError->mProject = mProject;
 		AddFailType(mCurTypeInstance);
 
 		mHadBuildWarning = true;

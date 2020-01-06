@@ -179,6 +179,8 @@ namespace Beefy.theme.dark
 			ThreadBreakpointUnbound,
 			Search,
 			CheckIndeterminate,
+			CodeError,
+			CodeWarning,
 
             COUNT
         };

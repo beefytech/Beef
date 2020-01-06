@@ -195,7 +195,7 @@ namespace IDE.ui
 			if (mShowingDropdown)
 				return null;
 			mShowingDropdown = true;
-			defer(scope) { mShowingDropdown = false; }
+			defer { mShowingDropdown = false; }
 
 			/*var stopWatch = scope Stopwatch();
 			stopWatch.Start();*/

@@ -195,7 +195,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 			{
 				if (genericParams[checkParamsIdx]->mName == name)
 				{
-					mPassInstance->Fail("Duplicate generic param name", genericParamNode);
+					Fail("Duplicate generic param name", genericParamNode);
 				}
 			}
 
@@ -256,7 +256,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 		{
 			if (externConstraintDefs == NULL)
 			{
-				mPassInstance->Fail("Cannot find generic parameter in constraint", genericConstraint->mTypeRef);
+				Fail("Cannot find generic parameter in constraint", genericConstraint->mTypeRef);
 
 				if (genericParams.IsEmpty())
 					continue;
@@ -307,9 +307,9 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 							prevFlagName = "struct*";
 
 						if (prevFlagName == name)
-							mPassInstance->Fail(StrFormat("Cannot specify '%s' twice", prevFlagName.c_str()), constraintNode);
+							Fail(StrFormat("Cannot specify '%s' twice", prevFlagName.c_str()), constraintNode);
 						else
-							mPassInstance->Fail(StrFormat("Cannot specify both '%s' and '%s'", prevFlagName.c_str(), name.c_str()), constraintNode);
+							Fail(StrFormat("Cannot specify both '%s' and '%s'", prevFlagName.c_str(), name.c_str()), constraintNode);
 						return;
 					}
 
@@ -347,7 +347,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 				auto constraintType = BfNodeDynCast<BfTypeReference>(constraintNode);
 				if (constraintType == NULL)
 				{
-					mPassInstance->Fail("Invalid constraint", constraintNode);
+					Fail("Invalid constraint", constraintNode);
 					return;
 				}				
 			}
@@ -360,7 +360,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 				}
 				else
 				{
-					mPassInstance->Fail("Type assignment must be the first constraint", genericConstraint->mColonToken);
+					Fail("Type assignment must be the first constraint", genericConstraint->mColonToken);
 				}
 			}			
 			
@@ -453,22 +453,22 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
 		{
 			if ((methodDef->mIsConcrete) && (!mCurTypeDef->mIsConcrete))
-				mPassInstance->Fail("Only interfaces declared as 'concrete' can be declare methods as 'concrete'. Consider adding 'concrete' to the interface declaration.", methodDeclaration->mVirtualSpecifier);
+				Fail("Only interfaces declared as 'concrete' can be declare methods as 'concrete'. Consider adding 'concrete' to the interface declaration.", methodDeclaration->mVirtualSpecifier);
 			//if (!methodDef->mIsConcrete)
-				//mPassInstance->Fail(StrFormat("Interfaces methods cannot be declared as '%s'", methodDeclaration->mVirtualSpecifier->ToString().c_str()), methodDeclaration->mVirtualSpecifier);
+				//Fail(StrFormat("Interfaces methods cannot be declared as '%s'", methodDeclaration->mVirtualSpecifier->ToString().c_str()), methodDeclaration->mVirtualSpecifier);
 		}
 		else
 		{
 			if (methodDef->mIsConcrete)
-				mPassInstance->Fail("Only interfaces methods can be declared as 'concrete'", methodDeclaration->mVirtualSpecifier);
+				Fail("Only interfaces methods can be declared as 'concrete'", methodDeclaration->mVirtualSpecifier);
 		}
 
 		if (methodDef->mIsAbstract)
 		{
 			if ((!mCurTypeDef->mIsAbstract) && (mCurTypeDef->mTypeCode != BfTypeCode_Interface))
-				mPassInstance->Fail("Method is abstract but it is contained in non-abstract class", methodDeclaration);
+				Fail("Method is abstract but it is contained in non-abstract class", methodDeclaration);
 			if (methodDeclaration->mBody != NULL)
-				mPassInstance->Fail("Abstract method cannot declare a body", methodDeclaration);
+				Fail("Abstract method cannot declare a body", methodDeclaration);
 		}
 	}
 	else
@@ -513,7 +513,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		methodDef->mMethodType = BfMethodType_Operator;
 		/*if (propertyDecl->mStaticSpecifier == NULL)
 		{
-		mPassInstance->Fail("Operators must be declared as static", methodDeclaration);
+		Fail("Operators must be declared as static", methodDeclaration);
 		}*/		
 
 		String declError;
@@ -531,7 +531,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		}
 		if (!declError.empty())
 		{
-			mPassInstance->Fail(StrFormat("Operator must be declared %s", declError.c_str()), operatorDecl->mOperatorToken);
+			Fail(StrFormat("Operator must be declared %s", declError.c_str()), operatorDecl->mOperatorToken);
 		}
 	}
 	else if ((mCurTypeDef->mIsDelegate) || (mCurTypeDef->mIsFunction))
@@ -560,7 +560,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 			methodDef->mName = methodDeclaration->mNameNode->ToString();
 		methodDef->mMethodType = BfMethodType_Mixin;
 		/*if (!methodDef->mIsStatic)
-			mPassInstance->Fail("Mixin must be declared static", methodDeclaration->mMixinSpecifier);*/
+			Fail("Mixin must be declared static", methodDeclaration->mMixinSpecifier);*/
 	}
 	else
 	{
@@ -612,7 +612,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 			{								
 				methodDef->mParams[paramIdx - 1]->mParamKind = BfParamKind_Normal; 
 				hadParams = false;
-				mPassInstance->Fail("Params parameter must be the last parameter", methodDef->mParams[paramIdx - 1]->mParamDeclaration);							
+				Fail("Params parameter must be the last parameter", methodDef->mParams[paramIdx - 1]->mParamDeclaration);							
 			}
 
 			if (paramDef->mParamDeclaration->mInitializer != NULL)
@@ -620,7 +620,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 			else if (hasDefault)
 			{
 				if (!didDefaultsError)
-					mPassInstance->Fail("Optional parameters must appear after all required parameters", methodDef->mParams[paramIdx - 1]->mParamDeclaration);
+					Fail("Optional parameters must appear after all required parameters", methodDef->mParams[paramIdx - 1]->mParamDeclaration);
 				didDefaultsError = true;
 			}
 		}
@@ -630,6 +630,14 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 
 	ParseAttributes(methodDeclaration->mAttributes, methodDef);	
 	return methodDef;
+}
+
+BfError* BfDefBuilder::Fail(const StringImpl& errorStr, BfAstNode* refNode)
+{
+	auto error = mPassInstance->Fail(errorStr, refNode);
+	if (error != NULL)
+		error->mProject = mCurSource->mProject;
+	return error;
 }
 
 void BfDefBuilder::Visit(BfMethodDeclaration* methodDeclaration)
@@ -742,7 +750,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			{
 				if (methodDef->mParams.size() != 2)
 				{
-					mPassInstance->Fail("Commutable attributes can only be applied to methods with two arguments", attributes->mAttributeTypeRef);
+					Fail("Commutable attributes can only be applied to methods with two arguments", attributes->mAttributeTypeRef);
 				}
 				else
 				{
@@ -790,7 +798,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	if (propertyDeclaration->mConstSpecifier != NULL)
 	{
-		mPassInstance->Fail("Const properties are not allowed", propertyDeclaration->mConstSpecifier);
+		Fail("Const properties are not allowed", propertyDeclaration->mConstSpecifier);
 	}
 
 	HashNode(*mSignatureHashCtx, propertyDeclaration, propertyDeclaration->mDefinitionBlock);	
@@ -871,7 +879,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 		{
 			BfProtection newProtection = GetProtection(methodDeclaration->mProtectionSpecifier);
 			if (newProtection > methodDef->mProtection)
-				mPassInstance->Fail(StrFormat("the accessibility modifier of the 'get' accessor must be more restrictive than the property or indexer '%s'", propertyDef->mName.c_str()),
+				Fail(StrFormat("the accessibility modifier of the 'get' accessor must be more restrictive than the property or indexer '%s'", propertyDef->mName.c_str()),
 					methodDeclaration->mProtectionSpecifier);
 			methodDef->mProtection = newProtection;
 		}
@@ -997,7 +1005,7 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 		// This check is a bit of a hack to determine the difference between a "MemberType mMember" and a proper case entry of "mMember(TupleType)"
 		if (!isEnumEntryDecl)
 		{
-			mPassInstance->Fail("Non-static field declarations are not allowed in enums", fieldDeclaration);
+			Fail("Non-static field declarations are not allowed in enums", fieldDeclaration);
 		}
 	}
 
@@ -1231,7 +1239,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		mCurTypeDef->mName = mSystem->GetAtom(typeDeclaration->mNameNode->ToString());
 		if (mCurTypeDef->mName->mIsSystemType)
 		{
-			mPassInstance->Fail(StrFormat("Type name '%s' is reserved", typeDeclaration->mNameNode->ToString().c_str()), typeDeclaration->mNameNode);
+			Fail(StrFormat("Type name '%s' is reserved", typeDeclaration->mNameNode->ToString().c_str()), typeDeclaration->mNameNode);
 		}
 	}
 	
@@ -1245,7 +1253,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		if ((outerTypeDef == NULL) && (typeDeclaration->mProtectionSpecifier->GetToken() != BfToken_Public))
 		{
 			//CS1527
-			mPassInstance->Fail("Elements defined in a namespace cannot be explicitly declared as private, protected, or protected internal", typeDeclaration->mProtectionSpecifier);
+			Fail("Elements defined in a namespace cannot be explicitly declared as private, protected, or protected internal", typeDeclaration->mProtectionSpecifier);
 		}
 		else
 		{
@@ -1677,13 +1685,13 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			{
 				if (hasStaticCtor)
 				{
-					mPassInstance->Fail("Only one static constructor is allowed", method->mMethodDeclaration);
+					Fail("Only one static constructor is allowed", method->mMethodDeclaration);
 					method->mIsStatic = false;
 				}
 
 				if (method->mParams.size() != 0)
 				{
-					mPassInstance->Fail("Static constructor cannot declare parameters", method->mMethodDeclaration);
+					Fail("Static constructor cannot declare parameters", method->mMethodDeclaration);
 					method->mIsStatic = false;
 				}
 
@@ -1740,7 +1748,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			{
 				if (hasStaticDtor)
 				{
-					mPassInstance->Fail("Only one static constructor is allowed", method->mMethodDeclaration);
+					Fail("Only one static constructor is allowed", method->mMethodDeclaration);
 					method->mIsStatic = false;
 				}
 				
@@ -1750,14 +1758,14 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			{
 				if (hasDtor)
 				{
-					mPassInstance->Fail("Only one destructor is allowed", method->mMethodDeclaration);
+					Fail("Only one destructor is allowed", method->mMethodDeclaration);
 					method->mIsStatic = false;
 				}
 				hasDtor = true;
 			}
 
 			if (method->mParams.size() != 0)			
-				mPassInstance->Fail("Destructors cannot declare parameters", method->GetMethodDeclaration()->mParams[0]);
+				Fail("Destructors cannot declare parameters", method->GetMethodDeclaration()->mParams[0]);
 		}
 		else if (method->mMethodType == BfMethodType_Normal)
 		{

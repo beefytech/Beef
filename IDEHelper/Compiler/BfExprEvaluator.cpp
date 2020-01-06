@@ -2839,7 +2839,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 					varSkipCount--;
 				}
 
-				if (varDecl->mNotCaptured)
+				if ((varDecl != NULL) && (varDecl->mNotCaptured))
 				{
 					mModule->Fail("Local variable is not captured", refNode);
 				}

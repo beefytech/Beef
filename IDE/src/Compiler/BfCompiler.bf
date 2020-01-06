@@ -8,6 +8,7 @@ using Beefy.widgets;
 using Beefy;
 using Beefy.utils;
 using IDE.Util;
+using IDE.ui;
 
 namespace IDE.Compiler
 {
@@ -295,6 +296,8 @@ namespace IDE.Compiler
 
         protected override void DoProcessQueue()
         {
+			BfPassInstance.PassKind passKind = .None;
+
             BfPassInstance passInstance = null;
             bool didPassInstanceAlloc = false;
 
@@ -311,6 +314,23 @@ namespace IDE.Compiler
                         break;
                     command = mCommandQueue[0];
                 }
+
+				bool commandProcessed = true;
+				defer
+				{
+					if (commandProcessed)
+					{
+						using (mMonitor.Enter())
+						{
+						    delete command;
+						    if (!mShuttingDown)
+							{
+								var poppedCmd = mCommandQueue.PopFront();
+								Debug.Assert(poppedCmd == command);
+							}
+						}
+					}
+				}
 
                 if (command is SetPassInstanceCommand)
                 {
@@ -345,9 +365,12 @@ namespace IDE.Compiler
                     var projectSource = projectSourceCommand.mProjectSource;
 					if (projectSource.mIncludeKind != .Ignore)
 					{
+						BfProject bfProject = null;
+
 	                    using (projectSource.mProject.mMonitor.Enter())
 	                    {
 	                        projectSourceCommand.mProjectSource.GetFullImportPath(sourceFilePath);
+							bfProject = mBfSystem.GetBfProject(projectSource.mProject);
 	                    }
 
 						bool canMoveSourceString = true;
@@ -389,9 +412,14 @@ namespace IDE.Compiler
 						else
 							bfParser.SetSource("", sourceFilePath);
 						bfParser.SetCharIdData(ref char8IdData);
+
+						//passInstance.SetProject(bfProject);
 						worked &= bfParser.Parse(passInstance, false);
 						worked &= bfParser.Reduce(passInstance);
+						//passInstance.SetProject(bfProject);
 	                    worked &= bfParser.BuildDefs(passInstance, null, false);
+
+						passKind = .Parse;
 
 						// Do this to make sure we re-trigger errors in parse/reduce/builddefs
 						if (!worked)
@@ -402,6 +430,15 @@ namespace IDE.Compiler
                 if (command is ProjectSourceRemovedCommand)
                 {
                     var fileRemovedCommand = (ProjectSourceRemovedCommand)command;
+					let projectSource = fileRemovedCommand.mProjectSource;
+
+					using (projectSource.mProject.mMonitor.Enter())
+					{
+						String sourceFilePath = scope String();
+					    projectSource.GetFullImportPath(sourceFilePath);
+						gApp.mErrorsPanel.ClearParserErrors(sourceFilePath);
+					}
+
                     var bfParser = mBfSystem.FileRemoved(fileRemovedCommand.mProjectSource);
                     if (bfParser != null)
                     {
@@ -421,13 +458,24 @@ namespace IDE.Compiler
 
                 if (command is ResolveAllCommand)
                 {
+					if (passKind != .None)
+					{
+						commandProcessed = false;
+						break;
+					}
+
                     var resolvePassData = BfResolvePassData.Create(ResolveType.Classify);
                     // If we get canceled then try again after waiting a couple updates
                     if (!ClassifySource(passInstance, null, resolvePassData, null))
                         QueueDeferredResolveAll();
+					
                     delete resolvePassData;
                     mBfSystem.RemoveOldParsers();
                     mBfSystem.RemoveOldData();
+					passKind = .Classify;
+
+					// End after resolveAll
+					break;
                 }
 
                 if (command is SetWorkspaceOptionsCommand)
@@ -444,22 +492,16 @@ namespace IDE.Compiler
                 {
                     mWantsActiveViewRefresh = true;
                 }
-
-                using (mMonitor.Enter())
-                {
-                    delete command;
-                    if (!mShuttingDown)
-					{
-						var poppedCmd = mCommandQueue.PopFront();
-						Debug.Assert(poppedCmd == command);
-					}
-                }
             }
 
             mBfSystem.Unlock();
 
             if (didPassInstanceAlloc)
-                delete passInstance;
+            {
+				if ((passKind != .None) && (mIsResolveOnly))
+					gApp.mErrorsPanel.ProcessPassInstance(passInstance, passKind);
+				delete passInstance;
+			}
         }
 
 		void HandleOptions(BfProject hotBfProject, int32 hotIdx)

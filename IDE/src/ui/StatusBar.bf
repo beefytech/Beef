@@ -365,9 +365,21 @@ namespace IDE.ui
 			else
 				mStatusBoxUpdateCnt = -1;
 
+			///
+			{
+				if (gApp.mErrorsPanel.mErrorCount > 0)
+				{
+					g.Draw(DarkTheme.sDarkTheme.GetImage(.CodeError), GS!(6), 0);
+				}
+				else if (gApp.mErrorsPanel.mWarningCount > 0)
+				{
+					g.Draw(DarkTheme.sDarkTheme.GetImage(.CodeWarning), GS!(6), 0);
+				}
+			}
+
 			if (gApp.mSettings.mEnableDevMode)
 			{
-	            g.DrawString(StackStringFormat!("FPS: {0}", gApp.mLastFPS), GS!(4), 0);
+	            g.DrawString(StackStringFormat!("FPS: {0}", gApp.mLastFPS), GS!(32), 0);
 
 	            String resolveStr = scope String();
 				let bfResolveCompiler = gApp.mBfResolveCompiler;
@@ -418,5 +430,16 @@ namespace IDE.ui
 	                g.DrawString(resolveStr, GS!(100), 0);
 			}
         }
+
+		public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
+		{
+			base.MouseDown(x, y, btn, btnCount);
+
+			if (Rect(GS!(6), 0, GS!(20), mHeight).Contains(x, y))
+			{
+				gApp.mErrorsPanel.ShowErrorNext();
+				return;
+			}
+		}
     }
 }

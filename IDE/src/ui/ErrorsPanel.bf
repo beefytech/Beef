@@ -51,7 +51,8 @@ namespace IDE.ui
 		public bool mNeedsResolveAll;
 		public bool mErrorsDirty;
 		public Monitor mMonitor = new .() ~ delete _;
-		public List<BfPassInstance.BfError> mErrorList = new .() ~ DeleteContainerAndItems!(_);
+		public Dictionary<String, List<BfPassInstance.BfError>> mParseErrors = new .() ~ delete _;
+		public List<BfPassInstance.BfError> mResolveErrors = new .() ~ DeleteContainerAndItems!(_);
 		public int mDirtyTicks;
 
 		public int mErrorCount;
@@ -98,6 +99,11 @@ namespace IDE.ui
 			AddWidget(mDockingFrame);
 		}
 
+		public ~this()
+		{
+			ClearParserErrors(null);
+		}
+
 		public override void Serialize(StructuredData data)
 		{
 		    base.Serialize(data);
@@ -122,12 +128,23 @@ namespace IDE.ui
 		{
 			using (mMonitor.Enter())
 			{
-				mErrorCount = 0;
-				mWarningCount = 0;
-
 				int32 errorCount = passInstance.GetErrorCount();
-				ClearAndDeleteItems(mErrorList);
-				mErrorList.Capacity = mErrorList.Count;
+				if (passKind != .Parse)
+				{
+					if (!mResolveErrors.IsEmpty)
+						mErrorsDirty = true;
+
+					for (let error in mResolveErrors)
+					{
+						if (error.mIsWarning)
+							mWarningCount--;
+						else
+							mErrorCount--;
+					}
+
+					ClearAndDeleteItems(mResolveErrors);
+					mResolveErrors.Capacity = mResolveErrors.Count;
+				}
 
 				for (int32 errorIdx = 0; errorIdx < errorCount; errorIdx++)
 				{
@@ -148,16 +165,61 @@ namespace IDE.ui
 						bfError.mMoreInfo.Add(moreInfo);
 					}
 
-				    mErrorList.Add(bfError);
-				}
+					if (passKind == .Parse)
+					{
+						bool added = mParseErrors.TryAdd(bfError.mFilePath, var keyPtr, var valuePtr);
+						if (added)
+						{
+							*keyPtr = new .(bfError.mFilePath);
+							*valuePtr = new .();
+						}
+						(*valuePtr).Add(bfError);
+					}
+					else
+				    	mResolveErrors.Add(bfError);
 
-				mErrorsDirty = true;
+					mErrorsDirty = true;
+				}
 			}
 		}
 
-		public void ClearParserErrors(StringView filePath)
+		public void ClearParserErrors(String filePath)
 		{
+			using (mMonitor.Enter())
+			{
+				void DeleteErrorList(List<BfPassInstance.BfError> list)
+				{
+					for (let error in list)
+					{
+						if (error.mIsWarning)
+							mWarningCount--;
+						else
+							mErrorCount--;
+						delete error;
+					}
+					delete list;
+				}
 
+				if (filePath == null)
+				{
+					for (var kv in mParseErrors)
+					{
+						delete kv.key;
+						DeleteErrorList(kv.value);
+						mErrorsDirty = true;
+					}
+					mParseErrors.Clear();
+				}
+				else
+				{
+					if (mParseErrors.GetAndRemove(filePath) case .Ok((let key, let list)))
+					{
+						delete key;
+						DeleteErrorList(list);
+						mErrorsDirty = true;
+					}
+				}
+			}
 		}
 
 		void ProcessErrors()
@@ -168,7 +230,8 @@ namespace IDE.ui
 				{
 					let root = mErrorLV.GetRoot();
 
-					for (let error in mErrorList)
+					int idx = 0;
+					void HandleError(BfPassInstance.BfError error)
 					{
 						ErrorsListViewItem item;
 
@@ -181,7 +244,6 @@ namespace IDE.ui
 							item.Label = str;
 						}
 
-						int idx = @error.Index;
 						if (idx >= root.GetChildCount())
 						{
 							item = (.)root.CreateChildItem();
@@ -225,9 +287,28 @@ namespace IDE.ui
 
 						if (changed)
 							item.Focused = false;
+
+						idx++;
 					}
 
-					while (root.GetChildCount() > mErrorList.Count)
+					if (!mParseErrors.IsEmpty)
+					{
+						List<String> paths = scope .();
+						for (var path in mParseErrors.Keys)
+							paths.Add(path);
+						paths.Sort();
+
+						for (var path in paths)
+						{
+							for (var error in mParseErrors[path])
+								HandleError(error);
+						}
+					}
+
+					for (let error in mResolveErrors)
+						HandleError(error);
+
+					while (root.GetChildCount() > idx)
 						root.RemoveChildItemAt(root.GetChildCount() - 1);
 
 					mErrorsDirty = false;
@@ -277,7 +358,7 @@ namespace IDE.ui
 
 			bool foundFocused = false;
 			let root = mErrorLV.GetRoot();
-			if (root.mChildItems == null)
+			if (root.GetChildCount() == 0)
 				return;
 			for (let lvItem in root.mChildItems)
 			{

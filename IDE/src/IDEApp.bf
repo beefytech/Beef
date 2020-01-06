@@ -176,6 +176,7 @@ namespace IDE
         public WatchPanel mWatchPanel;
         public MemoryPanel mMemoryPanel;
         public CallStackPanel mCallStackPanel;
+		public ErrorsPanel mErrorsPanel;
         public BreakpointPanel mBreakpointPanel;
 		public ModulePanel mModulePanel;
         public ThreadPanel mThreadPanel;
@@ -625,6 +626,7 @@ namespace IDE
 			
 			RemoveAndDelete!(mProjectPanel);
 			RemoveAndDelete!(mClassViewPanel);
+			RemoveAndDelete!(mErrorsPanel);
 			RemoveAndDelete!(mOutputPanel);
 			RemoveAndDelete!(mImmediatePanel);
 			RemoveAndDelete!(mFindResultsPanel);
@@ -4328,6 +4330,18 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void ShowErrors()
+		{
+		    ShowPanel(mErrorsPanel, "Errors");						
+		}
+
+		[IDECommand]
+		public void ShowErrorNext()
+		{
+			mErrorsPanel.ShowErrorNext();
+		}
+
+		[IDECommand]
 		public void ShowWatches()
 		{
 		    ShowPanel(mWatchPanel, "Watch");
@@ -4868,20 +4882,21 @@ namespace IDE
 			//////////
 
             subMenu = root.AddMenuItem("&View");
-			AddMenuItem(subMenu, "Work&space Explorer", "Show Workspace Explorer");
-			AddMenuItem(subMenu, "C&lass View", "Show Class View");
-            AddMenuItem(subMenu, "&Immediate Window", "Show Immediate");
-			AddMenuItem(subMenu, "&Threads", "Show Threads");
+			AddMenuItem(subMenu, "A&utoComplete", "Show Autocomplete Panel");
+			AddMenuItem(subMenu, "&Auto Watches", "Show Auto Watches");
+			AddMenuItem(subMenu, "&Breakpoints", "Show Breakpoints");
 			AddMenuItem(subMenu, "&Call Stack", "Show Call Stack");
-			AddMenuItem(subMenu, "&Watches", "Show Watches");
-            AddMenuItem(subMenu, "&Auto Watches", "Show Auto Watches");
-            AddMenuItem(subMenu, "&Breakpoints", "Show Breakpoints");
+			AddMenuItem(subMenu, "C&lass View", "Show Class View");
+			AddMenuItem(subMenu, "E&rrors", "Show Errors");
+			AddMenuItem(subMenu, "&Find Results", "Show Find Results");
+			AddMenuItem(subMenu, "&Immediate Window", "Show Immediate");
 			AddMenuItem(subMenu, "&Memory", "Show Memory");
 			AddMenuItem(subMenu, "Mo&dules", "Show Modules");
 			AddMenuItem(subMenu, "&Output", "Show Output");
-			AddMenuItem(subMenu, "&Find Results", "Show Find Results");
 			AddMenuItem(subMenu, "&Profiler", "Show Profiler");
-			AddMenuItem(subMenu, "A&utoComplete", "Show Autocomplete Panel");
+			AddMenuItem(subMenu, "&Threads", "Show Threads");
+			AddMenuItem(subMenu, "&Watches", "Show Watches");
+			AddMenuItem(subMenu, "Work&space Explorer", "Show Workspace Explorer");
 			subMenu.AddMenuItem(null);
 			AddMenuItem(subMenu, "Next Document Panel", "Next Document Panel");
 			AddMenuItem(subMenu, "Navigate Backwards", "Navigate Backwards");
@@ -8904,7 +8919,7 @@ namespace IDE
 		    bool bfHadOutputChanges;
 		    List<String> bfFileNames = scope List<String>();
 			bfCompiler.GetOutputFileNames(bfProject, false, out bfHadOutputChanges, bfFileNames);
-			defer(scope) ClearAndDeleteItems(bfFileNames);
+			defer ClearAndDeleteItems(bfFileNames);
 		    if (bfHadOutputChanges)
 		        project.mNeedsTargetRebuild = true;
 		}
@@ -10227,6 +10242,8 @@ namespace IDE
 			mCallStackPanel.mAutoDelete = false;
             mBreakpointPanel = new BreakpointPanel();
 			mBreakpointPanel.mAutoDelete = false;
+			mErrorsPanel = new ErrorsPanel();
+			mErrorsPanel.mAutoDelete = false;
 			mModulePanel = new ModulePanel();
 			mModulePanel.mAutoDelete = false;
             mThreadPanel = new ThreadPanel();
@@ -10857,6 +10874,9 @@ namespace IDE
 						didClean = true;
                         OutputLine("Cleaned Beef.");
 
+						if (mErrorsPanel != null)
+							mErrorsPanel.ClearParserErrors(null);
+
                         delete mBfResolveCompiler;
                         delete mBfResolveSystem;
 						delete mBfResolveHelper;
@@ -10931,6 +10951,9 @@ namespace IDE
                         )
                     {                        
                         OutputLine("Cleaned.");
+
+						if (mErrorsPanel != null)
+							mErrorsPanel.ClearParserErrors(null);
 
 						let workspaceOptions = GetCurWorkspaceOptions();
 
@@ -11038,17 +11061,17 @@ namespace IDE
 						}
 					}
 
+					CurrentWorkspaceConfigChanged();
+
 					if (mBfResolveSystem != null)
 					{
-						for (var project in mWorkspace.mProjects)
+						/*for (var project in mWorkspace.mProjects)
 						{
 							if (IsProjectEnabled(project))
 								QueueProjectItems(project);
-						}
+						}*/
 						mBfResolveCompiler.QueueDeferredResolveAll();
 					}
-
-					CurrentWorkspaceConfigChanged();
 				}
 
                 mBfBuildSystem.Update();
@@ -11519,6 +11542,8 @@ namespace IDE
 
 			if ((mBuildContext == null) && (!IsCompiling))
 				DeleteAndNullify!(mLaunchData);
+
+			mErrorsPanel?.CheckResolveAll();
         }
 
         public void ShowPassOutput(BfPassInstance bfPassInstance)

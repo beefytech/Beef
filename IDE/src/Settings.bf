@@ -451,12 +451,14 @@ namespace IDE
 				Add("Save All", "Ctrl+Shift+S");
 				Add("Save File", "Ctrl+S");
 				Add("Set Next Statement", "Ctrl+Shift+F10");
-				Add("Show Current", "Alt+C");
 				Add("Show Auto Watches", "Ctrl+Alt+A");
 				Add("Show Autocomplete Panel", "Ctrl+Alt+U");
 				Add("Show Breakpoints", "Ctrl+Alt+B");
 				Add("Show Call Stack", "Ctrl+Alt+C");
 				Add("Show Class View", "Ctrl+Alt+L");
+				Add("Show Current", "Alt+C");
+				Add("Show Errors", "Ctrl+Alt+E");
+				Add("Show Error Next", "Ctrl+Shift+F12");
 				Add("Show File Externally", "Ctrl+Tilde");
 				Add("Show Find Results", "Ctrl+Alt+F");
 				Add("Show Fixit", "Ctrl+Period");

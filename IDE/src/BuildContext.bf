@@ -135,7 +135,7 @@ namespace IDE
 				{
 					mScriptManager = new .();
 					mScriptManager.mProjectName = new String(project.mProjectName);
-					mScriptManager.mAllowCompiling = true;
+					mScriptManager.mIsBuildScript = true;
 					mScriptManager.mSoftFail = true;
 					mScriptManager.mVerbosity = gApp.mVerbosity;
 					didCommands = true;

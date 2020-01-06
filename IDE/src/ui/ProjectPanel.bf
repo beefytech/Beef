@@ -868,7 +868,7 @@ namespace IDE.ui
                 String dir = scope String(fileDialog.InitialDirectory);
 
                 List<String> alreadyHadFileList = scope List<String>();
-				defer(scope) ClearAndDeleteItems(alreadyHadFileList);
+				defer ClearAndDeleteItems(alreadyHadFileList);
 
                 for (String fileNameIn in fileDialog.FileNames)
                 {

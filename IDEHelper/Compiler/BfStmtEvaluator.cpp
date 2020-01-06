@@ -5568,7 +5568,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			autoComplete->CheckTypeRef(forEachStmt->mVariableTypeRef, false);
 		varType = ResolveTypeRef(forEachStmt->mVariableTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_AllowRef);
 	}
-
+	
 	if (varType == NULL)
 		varType = mContext->mBfObjectType;
 	bool isArray = target.mType->IsArray();
@@ -5978,6 +5978,9 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	}
 
 	scopeData.mIsLoop = true;
+
+	if ((autoComplete != NULL) && (forEachStmt->mVariableTypeRef != NULL))
+		autoComplete->CheckVarResolution(forEachStmt->mVariableTypeRef, varType);
 
 	if (isArray || isSizedArray)	
 		mBfIRBuilder->CreateStore(GetConstValue(0), itr.mValue);	

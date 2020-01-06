@@ -72,7 +72,7 @@ namespace IDE
 		public String mExpectingError ~ delete _;
 		public bool mHadExpectingError;
 		public int mDoneTicks;
-		public bool mAllowCompiling;
+		public bool mIsBuildScript;
 		public bool mSoftFail;
 		public Verbosity mVerbosity = .Quiet;
 		public String mProjectName ~ delete _;
@@ -950,7 +950,7 @@ namespace IDE
 
 			if (gApp.IsCompiling)
 			{
-				if (!ScriptManager.sActiveManager.mAllowCompiling)
+				if (!ScriptManager.sActiveManager.mIsBuildScript)
 					return false;
 			}
 
@@ -960,8 +960,16 @@ namespace IDE
 			if (gApp.mDebugger == null)
 				return true;
 
-			if ((!gApp.AreTestsRunning()) && (!gApp.mDebugger.HasPendingDebugLoads()) &&
-				((gApp.mExecutionPaused) || (!gApp.mDebugger.mIsRunning)))
+			bool checkRunState = (!gApp.mDebugger.HasPendingDebugLoads()) &&
+				((gApp.mExecutionPaused) || (!gApp.mDebugger.mIsRunning));
+
+			if ((!ScriptManager.sActiveManager.mIsBuildScript) && (gApp.AreTestsRunning()))
+				checkRunState = false;
+
+			/*if (gApp.AreTestsRunning())
+				checkRunState = false;*/
+
+			if (checkRunState)
 			{
 				var runState = gApp.mDebugger.GetRunState();
 				if (runState == .Terminating)

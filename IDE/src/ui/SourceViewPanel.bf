@@ -1653,6 +1653,9 @@ namespace IDE.ui
 			if (gApp.mDbgDelayedAutocomplete)
 				Thread.Sleep(250);
 
+			if ((resolveType == .Classify) || (resolveType == .ClassifyFullRefresh))
+				gApp.mErrorsPanel.SetNeedsResolveAll();
+
 			/*if (resolveType == .Autocomplete)
 			{
 				Thread.Sleep(250);
@@ -1818,6 +1821,13 @@ namespace IDE.ui
 				resolvePassData.SetDocumentationRequest(resolveParams.mDocumentationName);
             parser.Parse(passInstance, !mIsBeefSource);
             parser.Reduce(passInstance);
+
+			if ((mIsBeefSource) &&
+				((resolveType == .Classify) || (resolveType == .ClassifyFullRefresh)))
+			{
+				gApp.mErrorsPanel.ClearParserErrors(mFilePath);
+				gApp.mErrorsPanel.ProcessPassInstance(passInstance, .Parse);
+			}
             
             if (isInterrupt)
             {
@@ -2511,13 +2521,16 @@ namespace IDE.ui
                     if (trackedElement.mSnapToLineStart)
                     {
                         int32 lineLeft = trackedElementView.mTextPosition.mIndex;
-                        repeat
-                        {
-                            if (!((char8)editContent.mData.mText[lineLeft].mChar).IsWhiteSpace)
-                                startContentIdx = lineLeft;                            
-                            lineLeft--;
-                        }
-                        while ((lineLeft > 0) && (editContent.mData.mText[lineLeft].mChar != '\n'));
+						if (lineLeft < editContent.mData.mTextLength)
+						{
+	                        repeat
+	                        {
+	                            if (!((char8)editContent.mData.mText[lineLeft].mChar).IsWhiteSpace)
+	                                startContentIdx = lineLeft;                            
+	                            lineLeft--;
+	                        }
+	                        while ((lineLeft > 0) && (editContent.mData.mText[lineLeft].mChar != '\n'));
+						}
 
 						if (startContentIdx == -1)
 						{
@@ -4926,7 +4939,7 @@ namespace IDE.ui
 								{
 									for (var moreInfo in bestError.mMoreInfo)
 									{
-										showMouseoverString.AppendF("\n@{0}\t{1}\t{2}", moreInfo.mFileName, moreInfo.mSrcStart, moreInfo.mError);
+										showMouseoverString.AppendF("\n@{0}\t{1}\t{2}", moreInfo.mFilePath, moreInfo.mSrcStart, moreInfo.mError);
 									}
 								}
                             }

@@ -97,6 +97,10 @@ namespace IDE.ui
             {                
                 panel = gApp.mImmediatePanel;
             }
+			else if (type == "ErrorsPanel")
+			{                
+			    panel = gApp.mErrorsPanel;
+			}
             else if (type == "FindResultsPanel")
             {                
                 panel = gApp.mFindResultsPanel;

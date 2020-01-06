@@ -3482,6 +3482,22 @@ void BfCompiler::ProcessAutocompleteTempType()
 	BF_ASSERT(mResolvePassData->mAutoComplete->mDefMethod == NULL);
 	if (autoComplete->mResolveType == BfResolveType_GetNavigationData)
 	{
+		for (auto node : mResolvePassData->mParser->mSidechannelRootNode->mChildArr)
+		{
+			if (auto preprocNode = BfNodeDynCast<BfPreprocessorNode>(node))
+			{
+				if (preprocNode->mCommand->Equals("region"))
+				{
+					if (!autoCompleteResultString.empty())
+						autoCompleteResultString += "\n";
+					autoCompleteResultString += "#";
+					preprocNode->mArgument->ToString(autoCompleteResultString);
+					mContext->mScratchModule->UpdateSrcPos(preprocNode, (BfSrcPosFlags)(BfSrcPosFlag_NoSetDebugLoc | BfSrcPosFlag_Force));
+					autoCompleteResultString += StrFormat("\tregion\t%d\t%d", module->mCurFilePosition.mCurLine, module->mCurFilePosition.mCurColumn);
+				}
+			}
+		}
+
 		for (auto tempTypeDef : mResolvePassData->mAutoCompleteTempTypes)
 		{						
 			String typeName = tempTypeDef->ToString();

@@ -73,7 +73,7 @@ BeefLibType = "Static"
 
 [Configs.Test.Win64]
 CLibType = "Static"
-BeefLibType = "Static"
+BeefLibType = "DynamicDebug"
 
 [Configs.Test.WinFart]
 BuildKind = "Normal"
@@ -88,8 +88,6 @@ BuildKind = "StaticLib"
 BuildKind = "StaticLib"
 RelocType = "PIC"
 
-[ProjectFolder]
-
 [[ProjectFolder.Items]]
 Type = "Source"
 Path = "../../../temp/test.txt"
@@ -98,3 +96,7 @@ Path = "../../../temp/test.txt"
 Type = "Folder"
 Path = "../../../temp/borf"
 AutoInclude = true
+
+[[ProjectFolder.Items]]
+Type = "Source"
+Path = "../../../temp/test.bf"

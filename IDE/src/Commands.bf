@@ -250,6 +250,8 @@ namespace IDE
 			Add("Show Class View", new => gApp.ShowClassViewPanel);
 			Add("Show Current", new => gApp.Cmd_ShowCurrent);
 			Add("Show Disassembly", new => gApp.[Friend]ShowDisassemblyAtStack);
+			Add("Show Errors", new => gApp.[Friend]ShowErrors);
+			Add("Show Error Next", new => gApp.ShowErrorNext);
 			Add("Show File Externally", new => gApp.Cmd_ShowFileExternally);
 			Add("Show Find Results", new => gApp.ShowFindResults);
 			Add("Show Fixit", new => gApp.Cmd_ShowFixit);

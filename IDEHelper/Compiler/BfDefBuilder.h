@@ -41,6 +41,7 @@ public:
 	void ParseAttributes(BfAttributeDirective* attributes, BfMethodDef* methodDef);
 	void ParseAttributes(BfAttributeDirective* attributes, BfTypeDef* typeDef);
 	BfMethodDef* CreateMethodDef(BfMethodDeclaration* methodDecl, BfMethodDef* outerMethodDef = NULL);
+	BfError* Fail(const StringImpl& errorStr, BfAstNode* refNode);
 
 public:
 	BfDefBuilder(BfSystem* bfSystem);

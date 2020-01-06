@@ -197,15 +197,18 @@ BfAstNode* BfReducer::Fail(const StringImpl& errorMsg, BfAstNode* refNode)
 	mStmtHasError = true;
 	if (mPassInstance->HasLastFailedAt(refNode)) // No duplicate failures
 		return NULL;
-	mPassInstance->Fail(errorMsg, refNode);
+	auto error = mPassInstance->Fail(errorMsg, refNode);
+	if (error != NULL)	
+		error->mProject = mSource->mProject;	
 	return NULL;
 }
 
 BfAstNode* BfReducer::FailAfter(const StringImpl& errorMsg, BfAstNode* prevNode)
 {
 	mStmtHasError = true;
-	mPassInstance->FailAfter(errorMsg, prevNode);
-
+	auto error = mPassInstance->FailAfter(errorMsg, prevNode);
+	if (error != NULL)
+		error->mProject = mSource->mProject;
 	return NULL;
 }
 
@@ -4053,11 +4056,11 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 		if ((unaryOperatorExpr->mOp == BfUnaryOp_Ref) || (unaryOperatorExpr->mOp == BfUnaryOp_Mut) || (unaryOperatorExpr->mOp == BfUnaryOp_Out))
 		{
 			if (unaryOperatorExpr->mOp == BfUnaryOp_Ref)
-				mPassInstance->Fail("Cannot use 'ref' in this context", unaryOperatorExpr);
+				Fail("Cannot use 'ref' in this context", unaryOperatorExpr);
 			else if (unaryOperatorExpr->mOp == BfUnaryOp_Mut)
-				mPassInstance->Fail("Cannot use 'mut' in this context", unaryOperatorExpr);
+				Fail("Cannot use 'mut' in this context", unaryOperatorExpr);
 			else
-				mPassInstance->Fail("Cannot use 'out' in this context", unaryOperatorExpr);
+				Fail("Cannot use 'out' in this context", unaryOperatorExpr);
 			return NULL;
 		}
 	}
@@ -4246,7 +4249,7 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 			auto nextNode = mVisitorPos.GetNext();
 			if (nextNode != NULL)
 			{
-				mPassInstance->FailAfter("Semicolon expected", expr);
+				FailAfter("Semicolon expected", expr);
 			}
 
 			return expr;
@@ -4295,7 +4298,9 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 				if (((createStmtFlags & CreateStmtFlags_AllowUnterminatedExpression) != 0) && (origStmtNode->IsA<BfExpression>()) && (nextNode == NULL))
 					return stmt;
 
-				mPassInstance->FailAfterAt("Semicolon expected", node->GetSourceData(), stmt->GetSrcEnd() - 1);
+				auto error = mPassInstance->FailAfterAt("Semicolon expected", node->GetSourceData(), stmt->GetSrcEnd() - 1);
+				if (error != NULL)
+					error->mProject = mSource->mProject;
 				mPrevStmtHadError = true;
 				return stmt;
 			}
@@ -4881,7 +4886,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 
 					if ((!doAddType) && (isBoundName))
 					{
-						mPassInstance->FailAfter("Expected type", genericInstance);
+						FailAfter("Expected type", genericInstance);
 					}
 					if ((doAddType) && (!isUnboundName))
 					{
@@ -5539,7 +5544,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
 				innerType->mAttributes = attributes;
 				return innerType;
 			}
-			mPassInstance->Fail("Invalid target for attributes", memberNode);
+			Fail("Invalid target for attributes", memberNode);
 			return memberNode;
 		}
 
@@ -8595,9 +8600,9 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 					{
 						auto node = mVisitorPos.Get(errIdx);
 						if (auto token = BfNodeDynCast<BfTokenNode>(node))
-							mPassInstance->Fail("Unexpected token", node);
+							Fail("Unexpected token", node);
 						else
-							mPassInstance->Fail("Unexpected identifier", node);
+							Fail("Unexpected identifier", node);
 						AddErrorNode(node);
 					}
 

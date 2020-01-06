@@ -1391,17 +1391,21 @@ BfError* BfPassInstance::Fail(const StringImpl& error)
 	return mErrors.back();
 }
 
-BfError* BfPassInstance::Fail(const StringImpl& error, BfAstNode* refNode)
+BfError* BfPassInstance::Fail(const StringImpl& errorStr, BfAstNode* refNode)
 {
 	BP_ZONE("BfPassInstance::Fail");
 
+	BfError* error = NULL;
+
 	mFailedIdx++;
 	if ((refNode == NULL) || (refNode->IsTemporary()))
-		return Fail(error);
+		error = Fail(errorStr);
 	else if (refNode->IsA<BfBlock>())
-		return FailAt(error, refNode->GetSourceData(), refNode->GetSrcStart(), 1);
+		error = FailAt(errorStr, refNode->GetSourceData(), refNode->GetSrcStart(), 1);
 	else
-		return FailAt(error, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());
+		error = FailAt(errorStr, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());	
+
+	return error;
 }
 
 BfError* BfPassInstance::FailAfter(const StringImpl& error, BfAstNode* refNode)
@@ -1504,7 +1508,7 @@ BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, Bf
 		if ((int)mErrors.size() > 1)
 			errorStart += StrFormat("(%d)", mErrors.size());
 		if (warningNumber > 0)
-			errorStart += StrFormat(": CS%04d", warningNumber);
+			errorStart += StrFormat(": BF%04d", warningNumber);
 		MessageAt(":warn", errorStart + ": " + warning, bfParser, srcIdx);
 	}
 	return errorVal;
@@ -3334,7 +3338,8 @@ BF_EXPORT int BF_CALLTYPE BfPassInstance_GetErrorCount(BfPassInstance* bfPassIns
 	return (int)bfPassInstance->mErrors.size();
 }
 
-BF_EXPORT const char* BF_CALLTYPE BfPassInstance_GetErrorData(BfPassInstance* bfPassInstance, int errorIdx, bool& outIsWarning, bool& outIsAfter, bool& outIsDeferred, bool& outIsWhileSpecializing, bool& outIsPersistent, int& outSrcStart, int& outSrcEnd, int& outMoreInfoCount)
+BF_EXPORT const char* BF_CALLTYPE BfPassInstance_GetErrorData(BfPassInstance* bfPassInstance, int errorIdx, int& outCode, bool& outIsWarning, bool& outIsAfter, bool& outIsDeferred, bool& outIsWhileSpecializing, bool& outIsPersistent, 
+	char*& projectName, char*& fileName, int& outSrcStart, int& outSrcEnd, int* outLine, int* outColumn, int& outMoreInfoCount)
 {
 	BfError* bfError = bfPassInstance->mErrors[errorIdx];
 	outIsWarning = bfError->mIsWarning;
@@ -3342,13 +3347,33 @@ BF_EXPORT const char* BF_CALLTYPE BfPassInstance_GetErrorData(BfPassInstance* bf
 	outIsDeferred = bfError->mIsDeferred;
 	outIsWhileSpecializing = bfError->mIsWhileSpecializing;
 	outIsPersistent = bfError->mIsPersistent;
+	outCode = bfError->mWarningNumber;
+	if (bfError->mProject != NULL)
+		projectName = (char*)bfError->mProject->mName.c_str();
+	if (bfError->mSource != NULL)
+	{
+		String* srcFileName;
+		if (bfPassInstance->mSourceFileNameMap.TryGetValue(bfError->mSource, &srcFileName))
+		{
+			fileName = (char*)srcFileName->c_str();
+		}
+
+		if (outLine != NULL)
+		{			
+			auto parserData = bfError->mSource->ToParserData();
+			if (parserData != NULL)
+			{
+				parserData->GetLineCharAtIdx(bfError->mSrcStart, *outLine, *outColumn);
+			}
+		}
+	}
 	outSrcStart = bfError->mSrcStart;
 	outSrcEnd = bfError->mSrcEnd;
 	outMoreInfoCount = (int)bfError->mMoreInfo.size();
 	return bfError->mError.c_str();
 }
 
-BF_EXPORT const char* BfPassInstance_Error_GetMoreInfoData(BfPassInstance* bfPassInstance, int errorIdx, int moreInfoIdx, char*& fileName, int& srcStart, int& srcEnd)
+BF_EXPORT const char* BfPassInstance_Error_GetMoreInfoData(BfPassInstance* bfPassInstance, int errorIdx, int moreInfoIdx, char*& fileName, int& srcStart, int& srcEnd, int* outLine, int* outColumn)
 {
 	BfError* rootError = bfPassInstance->mErrors[errorIdx];
 	BfMoreInfo* moreInfo = rootError->mMoreInfo[moreInfoIdx];

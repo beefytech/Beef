@@ -78,7 +78,7 @@ namespace Beefy.widgets
             {                
                 if (mIsFocused != value)
                 {
-                    Selected = true;
+                    Selected = value;
                     mIsFocused = value;
                     if (mListView.mOnFocusChanged.HasListeners)
                         mListView.mOnFocusChanged(this);

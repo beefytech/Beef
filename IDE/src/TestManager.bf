@@ -183,6 +183,9 @@ namespace IDE
 						cmd.Append(clientStr, 0, crPos);
 						clientStr.Remove(0, crPos + 1);
 
+						if (cmd.IsWhiteSpace)
+							continue;
+
 						/*String outStr = scope String();
 						outStr.AppendF("CMD: {0}", cmd);
 						QueueOutput(outStr);*/
@@ -254,6 +257,13 @@ namespace IDE
 						case ":TestFinish":
 							testsFinished = true;
 						default:
+							if ((cmdParts.Count < 5) || (cmdParts[0].StartsWith(":")))
+							{
+								QueueOutputLine("ERROR: Failed communicate with test target '{0}'", curProjectInfo.mTestExePath);
+								TestFailed();
+								return;
+							}
+
 							Debug.Assert(cmdParts[0][0] != ':');
 
 							let attribs = cmdParts[1];
@@ -347,11 +357,12 @@ namespace IDE
 			}
 			else if (exitCode != 0)
 			{
-				if (exitCode != 0)
-				{
-					QueueOutputLine("ERROR: Test process exited with error code: {0}", exitCode);
-					TestFailed();
-				}
+				QueueOutputLine("ERROR: Test process exited with error code: {0}", exitCode);
+				TestFailed();
+			}
+			else if (testInstance.mTestEntries.IsEmpty)
+			{
+				QueueOutputLine("WARNING: No test methods defined. Consider adding a [Test] attribute to a static method in a project whose build type is set to 'Test'.");
 			}
 		}
 

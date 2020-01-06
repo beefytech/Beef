@@ -1114,17 +1114,19 @@ public:
 	bool mIsPersistent;
 	bool mIsWhileSpecializing;
 	bool mIgnore;	
+	BfProject* mProject;
 	String mError;
 	int mWarningNumber;
 	Array<BfMoreInfo*> mMoreInfo;
 
 public:
 	BfError()
-	{		
+	{				
 		mIsAfter = false;		
 		mIsPersistent = false;
 		mIsWhileSpecializing = false;
 		mIgnore = false;		
+		mProject = NULL;
 		mWarningNumber = 0;
 	}
 
