@@ -5,34 +5,26 @@ if [ ! -d llvm-project_8_0_0 ]; then
 	git clone https://github.com/llvm/llvm-project.git llvm-project_8_0_0
 else
 	cd llvm-project_8_0_0
-	git pull origin master	
+	git fetch origin
 	cd ..
 fi
 
-if [ -d llvm-project_8_0_0 ]; then
-	cd llvm-project_8_0_0
- 	git checkout llvmorg-8.0.0
-	cd ..
-fi 
+cd llvm-project_8_0_0
+git checkout llvmorg-8.0.0
+cd ..
 
-if [ ! -d llvm_linux_8_0_0 ]; then
-	mkdir llvm_linux_8_0_0
-	cd llvm_linux_8_0_0
-	cmake ../llvm-project_8_0_0/llvm
-	cmake --build .
-	cd ..
-fi
+mkdir -p llvm_linux_8_0_0
+cd llvm_linux_8_0_0
+cmake -G Ninja ../llvm-project_8_0_0/llvm
+ninja
+cd ..
 
-if [ ! -d llvm_linux_rel_8_0_0 ]; then
-	mkdir llvm_linux_rel_8_0_0
-	cd llvm_linux_rel_8_0_0
-	cmake ../llvm-project_8_0_0/llvm -DCMAKE_BUILD_TYPE:String=Release
-	cmake --build .
-	cd ..
-fi
-	
-if [ ! -d ../IDE/dist/llvm/bin ]; then
-	mkdir ../IDE/dist/llvm
-	mkdir ../IDE/dist/llvm/bin
-fi
+mkdir -p llvm_linux_rel_8_0_0
+cd llvm_linux_rel_8_0_0
+cmake -G Ninja ../llvm-project_8_0_0/llvm -DCMAKE_BUILD_TYPE:String=Release
+ninja
+cd ..
+
+mkdir -p ../IDE/dist/llvm
+mkdir -p ../IDE/dist/llvm/bin
 cp llvm_linux_rel_8_0_0/bin/llvm-ar ../IDE/dist/llvm/bin
