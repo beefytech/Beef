@@ -6890,20 +6890,23 @@ BfTypedValue BfModule::FlushNullConditional(BfTypedValue result, bool ignoreNull
 		if (nullableTypedValue)
 		{
 			auto elementType = nullableType->GetUnderlyingType();
-			if (elementType->IsValuelessType())
+			if (elementType->IsVar())
+			{
+				// Do nothing
+			}
+			else if (elementType->IsValuelessType())
 			{				
 				BfIRValue ptrValue = mBfIRBuilder->CreateInBoundsGEP(nullableTypedValue.mValue, 0, 1); // mHasValue
-				mBfIRBuilder->CreateStore(GetConstValue(1, GetPrimitiveType(BfTypeCode_Boolean)), ptrValue);
-				result = nullableTypedValue;
+				mBfIRBuilder->CreateStore(GetConstValue(1, GetPrimitiveType(BfTypeCode_Boolean)), ptrValue);				
 			}
 			else
 			{
 				BfIRValue ptrValue = mBfIRBuilder->CreateInBoundsGEP(nullableTypedValue.mValue, 0, 1); // mValue
 				mBfIRBuilder->CreateStore(result.mValue, ptrValue);
 				ptrValue = mBfIRBuilder->CreateInBoundsGEP(nullableTypedValue.mValue, 0, 2); // mHasValue
-				mBfIRBuilder->CreateStore(GetConstValue(1, GetPrimitiveType(BfTypeCode_Boolean)), ptrValue);
-				result = nullableTypedValue;
+				mBfIRBuilder->CreateStore(GetConstValue(1, GetPrimitiveType(BfTypeCode_Boolean)), ptrValue);				
 			}			
+			result = nullableTypedValue;
 		}
 		mBfIRBuilder->CreateBr(pendingNullCond->mDoneBB);
 

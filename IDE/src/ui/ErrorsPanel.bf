@@ -222,6 +222,18 @@ namespace IDE.ui
 			}
 		}
 
+		public void Clear()
+		{
+			using (mMonitor.Enter())
+			{
+				ClearParserErrors(null);
+				ClearAndDeleteItems(mResolveErrors);
+				mErrorsDirty = true;
+				mErrorCount = 0;
+				mWarningCount = 0;
+			}
+		}
+
 		void ProcessErrors()
 		{
 			using (mMonitor.Enter())

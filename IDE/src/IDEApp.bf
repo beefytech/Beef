@@ -623,7 +623,7 @@ namespace IDE
 				Widget.RemoveAndDelete(widget);
 				widget = null;
 			}
-			
+
 			RemoveAndDelete!(mProjectPanel);
 			RemoveAndDelete!(mClassViewPanel);
 			RemoveAndDelete!(mOutputPanel);
@@ -633,6 +633,7 @@ namespace IDE
 			RemoveAndDelete!(mWatchPanel);
 			RemoveAndDelete!(mMemoryPanel);
 			RemoveAndDelete!(mCallStackPanel);
+			RemoveAndDelete!(mErrorsPanel);
 			RemoveAndDelete!(mBreakpointPanel);
 			RemoveAndDelete!(mModulePanel);
 			RemoveAndDelete!(mThreadPanel);
@@ -703,6 +704,26 @@ namespace IDE
 			{
 				return mCrashDumpPath != null;
 			}
+		}
+
+		void WithStandardPanels(delegate void(Panel panel) dlg)
+		{
+			dlg(mProjectPanel);
+			dlg(mClassViewPanel);
+			dlg(mOutputPanel);
+			dlg(mImmediatePanel);
+			dlg(mFindResultsPanel);
+			dlg(mAutoWatchPanel);
+			dlg(mWatchPanel);
+			dlg(mMemoryPanel);
+			dlg(mCallStackPanel);
+			dlg(mErrorsPanel);
+			dlg(mBreakpointPanel);
+			dlg(mModulePanel);
+			dlg(mThreadPanel);
+			dlg(mProfilePanel);
+			dlg(mPropertiesPanel);
+			dlg(mAutoCompletePanel);
 		}
 
 		public override void ShutdownCompleted()
@@ -804,7 +825,7 @@ namespace IDE
 			FinishShowingNewWorkspace();
 		}
 
-		public void DoOpenWorkspace()
+		public void DoOpenWorkspace(bool isCreating = false)
 		{		
 #if !CLI
 			if (mDeferredOpenFileName != null)
@@ -817,12 +838,13 @@ namespace IDE
 				return;
 			}
 
-			var folderDialog = scope FolderBrowserDialog();
+			var folderDialog = scope FolderBrowserDialog(isCreating ? .Save : .Open);
 			var initialDir = scope String();
 			if (mInstallDir.Length > 0)
 				Path.GetDirectoryPath(.(mInstallDir, 0, mInstallDir.Length - 1), initialDir);
 			initialDir.Concat(Path.DirectorySeparatorChar, "Samples");
 			folderDialog.SelectedPath = initialDir;
+			//folderDialog.
 			if (folderDialog.ShowDialog(GetActiveWindow()).GetValueOrDefault() == .OK)
 			{
 				var selectedPath = scope String..AppendF(folderDialog.SelectedPath);
@@ -1607,7 +1629,17 @@ namespace IDE
 
 			using (sd.CreateObject("MainWindow"))
 			{
-			    SerializeWindow(sd, mMainWindow);
+				if (mMainWindow != null)
+			    	SerializeWindow(sd, mMainWindow);
+				else
+				{
+					
+					sd.Add("X", mRequestedWindowRect.mX);
+					sd.Add("Y", mRequestedWindowRect.mY);
+					sd.Add("Width", mRequestedWindowRect.mWidth);
+					sd.Add("Height", mRequestedWindowRect.mHeight);
+					sd.Add("ShowKind", mRequestedShowKind);
+				}
 			}
 
 			using (sd.CreateObject("MainDockingFrame"))
@@ -2123,21 +2155,10 @@ namespace IDE
 			if (!mRunningTestScript)
 			{
 				mActiveDocumentsTabbedView = null;
-				ResetPanel(mProjectPanel);
-				ResetPanel(mClassViewPanel);
-				ResetPanel(mOutputPanel);
-				ResetPanel(mImmediatePanel);
-				ResetPanel(mFindResultsPanel);
-				ResetPanel(mAutoWatchPanel);
-				ResetPanel(mWatchPanel);
-				ResetPanel(mMemoryPanel);
-				ResetPanel(mCallStackPanel);
-				ResetPanel(mBreakpointPanel);
-				ResetPanel(mModulePanel);
-				ResetPanel(mThreadPanel);
-				ResetPanel(mProfilePanel);
-				ResetPanel(mPropertiesPanel);
-				ResetPanel(mAutoCompletePanel);
+				WithStandardPanels(scope (panel) =>
+					{
+						ResetPanel(panel);
+					});
 				mMainFrame.Reset();
 			}
 
@@ -2157,6 +2178,8 @@ namespace IDE
 
 			delete mWorkspace;
 			mWorkspace = new Workspace();
+
+			mErrorsPanel.Clear();
 
 			OutputLine("Workspace closed.");
 		}
@@ -2332,9 +2355,9 @@ namespace IDE
 				}
 
 				//Directory.CreateDirectory(mWorkspace.mDir).IgnoreError();
-
-                int lastSlashPos = mWorkspace.mDir.LastIndexOf(IDEUtils.cNativeSlash);
-                String projectName = scope String(mWorkspace.mDir, lastSlashPos + 1);
+                //int lastSlashPos = mWorkspace.mDir.LastIndexOf(IDEUtils.cNativeSlash);
+                String projectName = mWorkspace.mName;
+				Debug.Assert(!projectName.IsWhiteSpace);
 
                 String projectPath = scope String(mWorkspace.mDir);
                 Utils.GetDirWithSlash(projectPath);
@@ -3085,10 +3108,12 @@ namespace IDE
 
 			if (!mRunningTestScript)
             {
+#if !CLI
 				if (!mWorkspace.IsDebugSession)
 					success &= SaveWorkspaceUserData();
 				if (mSettings.mLoadedSettings)
 					mSettings.Save();
+#endif
 			}
 
 			MarkDirty();
@@ -6639,6 +6664,8 @@ namespace IDE
 				outStr = scope:: String(format);
 		    outStr.Replace("\r", "");
 #if CLI
+			if (outStr.StartsWith("ERROR:"))
+				mFailed = true;
 			Console.WriteLine(outStr);
 #else
 			outStr.Append("\n");
@@ -9491,6 +9518,7 @@ namespace IDE
 				return;
 
 			OnWatchedFileChanged(project.mRootFolder, .FileCreated, srcPath);
+
 			if (project.IsEmpty)
 				return;
 
@@ -9509,10 +9537,9 @@ namespace IDE
 			{
 				if (mWorkspace.mStartupProject.IsEmpty)
 				{
+#if !CLI
 					DarkDialog dlg = new DarkDialog("Initialize Project?",
-						"""
-						This project does not contain any source code. Do you want to auto-generate some startup code?
-						"""
+						scope String("The project does not contain any source code. Do you want to auto-generate some startup code?", mWorkspace.mStartupProject.mProjectName)
 						, DarkTheme.sDarkTheme.mIconError);
 					dlg.mWindowFlags |= .Modal;
 					dlg.AddYesNoButtons(new (dlg) =>
@@ -9524,7 +9551,9 @@ namespace IDE
 
 						});
 					dlg.PopupWindow(GetActiveWindow());
-
+#else
+					OutputErrorLine("The project '{}' does not contain any source code. Run with '-generate' to auto-generate some startup code.", mWorkspace.mStartupProject.mProjectName);
+#endif
 					OutputLine("Aborted - no startup project code found.");
 					return false;
 				}
@@ -11692,8 +11721,8 @@ namespace IDE
 		{
 			CompilerLog("IDEApp.OnWatchedFileChanged {} {} {}", projectItem.mName, changeType, newPath);
 
-			ProjectListViewItem listViewItem;
-			mProjectPanel.mProjectToListViewMap.TryGetValue(projectItem, out listViewItem);
+			ProjectListViewItem listViewItem = null;
+			mProjectPanel?.mProjectToListViewMap.TryGetValue(projectItem, out listViewItem);
 
 			String newName = null;
 			if (newPath != null)
@@ -11708,21 +11737,22 @@ namespace IDE
 				{
 	                let projectFileItem = projectItem as ProjectFileItem;
 
-					listViewItem.Label = newName;
+					if (listViewItem != null)
+						listViewItem.Label = newName;
 
 					String oldPath = scope String();
 					projectFileItem.GetFullImportPath(oldPath);
 					projectFileItem.Rename(newName);
 
 					FileRenamed(projectFileItem, oldPath, newPath);
-					mProjectPanel.SortItem((ProjectListViewItem)listViewItem.mParentItem);
+					mProjectPanel?.SortItem((ProjectListViewItem)listViewItem.mParentItem);
 				}
 			}
 			else if (changeType == .Deleted)
 			{
 				if (projectItem.mIncludeKind == .Auto)
 				{
-					mProjectPanel.DoDeleteItem(listViewItem, null, true);
+					mProjectPanel?.DoDeleteItem(listViewItem, null, true);
 				}
 			}
 			else if (changeType == .FileCreated)
@@ -11742,8 +11772,11 @@ namespace IDE
 						projectFolder.AddChild(projectSource);
 						projectFolder.MarkAsUnsorted();
 
-						mProjectPanel.AddProjectItem(projectSource);
-						mProjectPanel.QueueSortItem(listViewItem);
+						if (mProjectPanel != null)
+						{
+							mProjectPanel.AddProjectItem(projectSource);
+							mProjectPanel.QueueSortItem(listViewItem);
+						}
 					}
 				}
 			}
@@ -11764,18 +11797,25 @@ namespace IDE
 						projectFolder.AddChild(newFolder);
 						projectFolder.MarkAsUnsorted();
 
-						mProjectPanel.AddProjectItem(newFolder);
-						mProjectPanel.QueueSortItem(listViewItem);
+						if (mProjectPanel != null)
+						{
+							mProjectPanel.AddProjectItem(newFolder);
+							mProjectPanel.QueueSortItem(listViewItem);
+						}
 
 						newFolder.mAutoInclude = true;
-						mProjectPanel.QueueRehupFolder(newFolder);
+						if (mProjectPanel != null)
+							mProjectPanel.QueueRehupFolder(newFolder);
 					}
 				}
 			}
 			else if (changeType == .Failed)
 			{
-				if (let projectFolder = projectItem as ProjectFolder)
-					mProjectPanel.QueueRehupFolder(projectFolder);
+				if (mProjectPanel != null)
+				{
+					if (let projectFolder = projectItem as ProjectFolder)
+						mProjectPanel.QueueRehupFolder(projectFolder);
+				}
 			}
 		}
 
@@ -12091,7 +12131,7 @@ namespace IDE
 								DarkTheme.sDarkTheme.mIconWarning);
 							dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
 								{
-									DoOpenWorkspace();
+									DoOpenWorkspace(true);
 								});
 							dialog.AddButton("No", new (evt) =>
 								{
@@ -12107,7 +12147,7 @@ namespace IDE
 								DarkTheme.sDarkTheme.mIconWarning);
 							dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
 								{
-									DoOpenWorkspace();
+									DoOpenWorkspace(true);
 								});
 							dialog.AddButton("No", new (evt) =>
 								{
@@ -12118,7 +12158,7 @@ namespace IDE
 						}
 					}
 
-					DoOpenWorkspace();
+					DoOpenWorkspace(true);
 					if (mDeferredOpen != .None)
 						mDeferredOpen = _;
 				case .Workspace:

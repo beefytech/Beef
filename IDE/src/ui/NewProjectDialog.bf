@@ -22,7 +22,7 @@ namespace IDE.ui
 				"Library",
 				"Dynamic Library",
 				"Custom Build");
-		public bool mDirChanged;
+		public bool mNameChanged;
 		public String mDirBase ~ delete _;
 
         public this()
@@ -155,15 +155,16 @@ namespace IDE.ui
             return true;
         }
 
-		public void UpdateProjectDir()
+		public void UpdateProjectName()
 		{
-			if ((!mDirChanged) && (!mDirBase.IsEmpty))
+			if (!mNameChanged)
 			{
-				String dirPath = scope .();
-				dirPath.Append(mDirBase);
-				dirPath.Append(Path.DirectorySeparatorChar);
-				mNameEdit.GetText(dirPath);
-				mDirectoryEdit.SetText(dirPath);
+				String path = scope .();
+				mDirectoryEdit.GetText(path);
+
+				String projName = scope .();
+				Path.GetFileName(path, projName);
+				mNameEdit.SetText(projName);
 			}
 		}
 
@@ -171,12 +172,7 @@ namespace IDE.ui
         {
             mDefaultButton = AddButton("Create", new (evt) => { if (!CreateProject()) evt.mCloseDialog = false; });
             mEscButton = AddButton("Cancel", new (evt) => Close());
-            mNameEdit = AddEdit("");
-			mNameEdit.mOnContentChanged.Add(new (dlg) =>
-				{
-					UpdateProjectDir();
-				});
-
+            
 			if (gApp.mWorkspace.IsInitialized)
 				mDirBase = new String(gApp.mWorkspace.mDir);
 			else
@@ -185,10 +181,16 @@ namespace IDE.ui
 			AddEdit(mDirectoryEdit);
 			mDirectoryEdit.mOnContentChanged.Add(new (dlg) =>
 				{
-					if (mDirectoryEdit.mHasFocus)
-						mDirChanged = true;
+					UpdateProjectName();
 				});
-			UpdateProjectDir();
+
+			mNameEdit = AddEdit("");
+			mNameEdit.mOnContentChanged.Add(new (dlg) =>
+				{
+					if (mNameEdit.mHasFocus)
+						mNameChanged = true;
+				});
+			UpdateProjectName();
 
 			mTargetComboBox = new DarkComboBox();
 			mTargetComboBox.Label = sApplicationTypeNames[0];
@@ -211,7 +213,7 @@ namespace IDE.ui
         public override void PopupWindow(WidgetWindow parentWindow, float offsetX = 0, float offsetY = 0)
         {
             base.PopupWindow(parentWindow, offsetX, offsetY);
-            mNameEdit.SetFocus();
+            mDirectoryEdit.SetFocus();
         }
 
         public override void ResizeComponents()
@@ -221,19 +223,19 @@ namespace IDE.ui
             float curY = mHeight - GS!(20) - mButtonBottomMargin;
 			mTargetComboBox.Resize(GS!(16), curY - GS!(36), mWidth - GS!(16) * 2, GS!(28));
 
-			curY -= GS!(40);
-            mDirectoryEdit.Resize(GS!(16), curY - GS!(36), mWidth - GS!(16) * 2, GS!(24));
+			curY -= GS!(40);            
+			mNameEdit.Resize(GS!(16), curY - GS!(36), mWidth - GS!(16) * 2, GS!(24));
 
-            curY -= GS!(50);            
-            mNameEdit.Resize(GS!(16), curY - GS!(36), mWidth - GS!(16) * 2, GS!(24));
+			curY -= GS!(50);
+            mDirectoryEdit.Resize(GS!(16), curY - GS!(36), mWidth - GS!(16) * 2, GS!(24));
         }
 
         public override void Draw(Graphics g)
         {
             base.Draw(g);
 
+			g.DrawString("Project Directory", mDirectoryEdit.mX, mDirectoryEdit.mY - GS!(20));
             g.DrawString("Project Name", mNameEdit.mX, mNameEdit.mY - GS!(20));
-            g.DrawString("Project Directory", mDirectoryEdit.mX, mDirectoryEdit.mY - GS!(20));
         }
     }
 

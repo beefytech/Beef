@@ -4,14 +4,22 @@ namespace System.IO
 {
 	class FolderBrowserDialog : CommonDialog
 	{
+		public enum FolderKind
+		{
+			Open,
+			Save
+		}
+
 		String mSelectedPath = new String() ~ delete _;
 		public bool ShowNewFolderButton;
 		String mDescriptionText = new String() ~ delete _;
 		bool mSelectedPathNeedsCheck;
 		static FolderBrowserDialog sCurrentThis;
+		FolderKind mFolderKind;
 
-		public this()
+		public this(FolderKind kind = .Open)
 		{
+			mFolderKind = kind;
 			Reset();
 		}
 
@@ -51,6 +59,51 @@ namespace System.IO
 
 		protected Result<DialogResult> RunDialog_New(Windows.HWnd hWndOwner, FolderBrowserDialog.COM_IFileDialog* fileDialog)
 		{
+			//COM_IFileDialogEvents evts;
+			/*COM_IFileDialogEvents.VTable funcs;
+			funcs.QueryInterface = (self, riid, result) =>
+				{
+					return .E_FAIL;
+				};
+			funcs.AddRef = (self) =>
+				{
+					return .OK;
+				};
+			funcs.Release = (self) =>
+				{
+					return .OK;
+				};
+			funcs.OnFileOk = (self, fileDialog) => 
+				{
+					return .OK;
+				};
+			funcs.OnFolderChanging = (self, fileDialog, folder) => 
+				{
+					return .OK;
+				};
+			funcs.OnFolderChange = (self, fileDialog) => 
+				{
+					return .OK;
+				};
+			funcs.OnSelectionChange = (self, fileDialog) => 
+				{
+					return .OK;
+				};
+			funcs.OnShareViolation = (self, fileDialog, result) => 
+				{
+					return .OK;
+				};
+			funcs.OnTypeChange = (self, fileDialog) => 
+				{
+					return .OK;
+				};
+			funcs.OnOverwrite = (self, fileDialog, item, result) => 
+				{
+					return .OK;
+				};
+			evts.[Friend]mVT = &funcs;
+			fileDialog.VT.Advise(fileDialog, &evts, var adviseCookie);*/
+
 			if (!mSelectedPath.IsEmpty)
 			{
 				COM_IShellItem* folderShellItem = null;
@@ -90,7 +143,11 @@ namespace System.IO
 		protected override Result<DialogResult> RunDialog(Windows.HWnd hWndOwner)
 		{
 			FolderBrowserDialog.COM_IFileDialog* fileDialog = null;
-			let hr = Windows.COM_IUnknown.CoCreateInstance(ref FolderBrowserDialog.COM_IFileDialog.sCLSID, null, .INPROC_SERVER, ref FolderBrowserDialog.COM_IFileDialog.sIID, (void**)&fileDialog);
+			Windows.COM_IUnknown.HResult hr;
+			//if (mFolderKind == .Open)
+				hr = Windows.COM_IUnknown.CoCreateInstance(ref FolderBrowserDialog.COM_IFileDialog.sCLSID, null, .INPROC_SERVER, ref FolderBrowserDialog.COM_IFileDialog.sIID, (void**)&fileDialog);
+			//else
+				//hr = Windows.COM_IUnknown.CoCreateInstance(ref FolderBrowserDialog.COM_FileSaveDialog.sCLSID, null, .INPROC_SERVER, ref FolderBrowserDialog.COM_FileSaveDialog.sIID, (void**)&fileDialog);
 			if (hr == 0)
 				return RunDialog_New(hWndOwner, fileDialog);
 
@@ -163,9 +220,22 @@ namespace System.IO
             return 0;
 		}
 
-		struct COM_IFileDialogEvents
-		{
+		struct FDE_SHAREVIOLATION_RESPONSE;
+		struct FDE_OVERWRITE_RESPONSE;
 
+		struct COM_IFileDialogEvents : Windows.COM_IUnknown
+		{
+			public struct VTable : Windows.COM_IUnknown.VTable
+			{
+				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnFileOk;
+				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* psiFolder) OnFolderChanging;
+				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnFolderChange;
+				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnSelectionChange;
+				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, FDE_SHAREVIOLATION_RESPONSE* pResponse) OnShareViolation;
+				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog) OnTypeChange;
+				public function HResult(COM_IFileDialogEvents* self, COM_IFileDialog* fileDialog, COM_IShellItem* shellItem, FDE_OVERWRITE_RESPONSE* response) OnOverwrite;
+
+			}
 		}
 
 		struct COM_IShellItem : Windows.COM_IUnknown
@@ -279,6 +349,12 @@ namespace System.IO
 					return (.)mVT;
 				}
 			}
+		}
+
+		public struct COM_FileSaveDialog : COM_IFileDialog
+		{
+			public static new Guid sIID = .(0x84bccd23, 0x5fde, 0x4cdb, 0xae, 0xa4, 0xaf, 0x64, 0xb8, 0x3d, 0x78, 0xab);
+			public static new Guid sCLSID = .(0xC0B4E2F3, 0xBA21, 0x4773, 0x8D, 0xBA, 0x33, 0x5E, 0xC9, 0x46, 0xEB, 0x8B);
 		}
 	}	
 }

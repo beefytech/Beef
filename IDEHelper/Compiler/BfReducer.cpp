@@ -198,7 +198,7 @@ BfAstNode* BfReducer::Fail(const StringImpl& errorMsg, BfAstNode* refNode)
 	if (mPassInstance->HasLastFailedAt(refNode)) // No duplicate failures
 		return NULL;
 	auto error = mPassInstance->Fail(errorMsg, refNode);
-	if (error != NULL)	
+	if ((error != NULL)	&& (mSource != NULL))
 		error->mProject = mSource->mProject;	
 	return NULL;
 }
@@ -207,7 +207,7 @@ BfAstNode* BfReducer::FailAfter(const StringImpl& errorMsg, BfAstNode* prevNode)
 {
 	mStmtHasError = true;
 	auto error = mPassInstance->FailAfter(errorMsg, prevNode);
-	if (error != NULL)
+	if ((error != NULL) && (mSource != NULL))
 		error->mProject = mSource->mProject;
 	return NULL;
 }
@@ -4299,7 +4299,7 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 					return stmt;
 
 				auto error = mPassInstance->FailAfterAt("Semicolon expected", node->GetSourceData(), stmt->GetSrcEnd() - 1);
-				if (error != NULL)
+				if ((error != NULL) && (mSource != NULL))
 					error->mProject = mSource->mProject;
 				mPrevStmtHadError = true;
 				return stmt;

@@ -2248,7 +2248,7 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 				mcOperand.mKind = BeMCOperandKind_Immediate_i64;
 				break;
 			default:
-				NotImpl();
+				Fail("Unhandled constant type");
 			}
 			mcOperand.mImmediate = constant->mInt64;
 			return mcOperand;
@@ -3585,7 +3585,7 @@ void BeMCContext::CreatePhiAssign(BeMCBlock* mcBlock, const BeMCOperand& testVal
 	}
 	else
 	{
-		NotImpl();
+		SoftFail("Unhandled CreatePhiAssign value");
 	}
 }
 
@@ -4026,7 +4026,7 @@ bool BeMCContext::CouldBeReg(const BeMCOperand& operand)
 	return true;
 }
 
-bool BeMCContext::CheckForce(BeMCVRegInfo * vregInfo)
+bool BeMCContext::CheckForce(BeMCVRegInfo* vregInfo)
 {
 	if (!vregInfo->mIsRetVal)
 	{
@@ -6080,7 +6080,7 @@ void BeMCContext::EmitModRM_XMM_IMM(int rx, BeMCOperand & imm)
 		sym = mCOFFObject->GetCOMDAT(name, data, 16, 16);
 	}
 	else
-		NotImpl();
+		SoftFail("Unhandled value type in EmitModRM_XMM_IMM");
 
 	BeMCRelocation reloc;
 	reloc.mKind = BeMCRelocationKind_REL32;
@@ -9993,6 +9993,14 @@ bool BeMCContext::DoLegalization()
 					}					
 				}
 				break;			
+			case BeMCInstKind_DefPhi:
+				{
+					// This is from a PHI whose value was not used
+					RemoveInst(mcBlock, instIdx);
+					instIdx--;
+					continue;
+				}
+				break;
 			}
 
 			if ((pendingInitKind != BfIRInitType_NotNeeded) && (pendingInitKind != BfIRInitType_NotNeeded_AliveOnDecl))
@@ -13860,7 +13868,8 @@ void BeMCContext::DoCodeEmission()
 				//mOut.Write((uint8)0xC3);
 				break;
 			default:
-				NotImpl();
+				SoftFail("Unhandled instruction in DoCodeEmission", inst->mDbgLoc);				
+				break;
 			}
 		}
 	}
@@ -14747,7 +14756,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName ==	
+	//mDebugging = function->mName == "?Do@ClassA@bf@@QEAAXXZ";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
@@ -15674,7 +15683,7 @@ void BeMCContext::Generate(BeFunction* function)
 
 							}
 							else
-								SoftFail("Invalid GEP");
+								SoftFail("Invalid GEP", inst->mDbgLoc);
 						}
 						else
 						{
@@ -16350,7 +16359,7 @@ void BeMCContext::Generate(BeFunction* function)
 				}
 				break;
 			default:
-				NotImpl();
+				Fail("Unhandled BeInst type");
 				break;
 			}
 

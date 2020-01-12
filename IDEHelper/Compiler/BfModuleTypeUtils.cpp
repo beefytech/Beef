@@ -652,12 +652,13 @@ void BfModule::TypeFailed(BfTypeInstance* typeInstance)
 {
 	BfLogSysM("TypeFailed: %p\n", typeInstance);
 	typeInstance->mTypeFailed = true;
-	// Punt on field types - just substitute System.Object where we have NULLs
+	// Punt on field types - just substitute 'var' where we have NULLs
 	for (auto& fieldInstance : typeInstance->mFieldInstances)
-	{
+	{		
 		if ((fieldInstance.mResolvedType == NULL) || (fieldInstance.mResolvedType->IsNull()))
 		{
-			fieldInstance.mResolvedType = mContext->mBfObjectType;
+			if (fieldInstance.mDataIdx >= 0)
+				fieldInstance.mResolvedType = GetPrimitiveType(BfTypeCode_Var);
 		}
 		if (fieldInstance.mOwner == NULL)
 			fieldInstance.mOwner = typeInstance;
@@ -2268,6 +2269,8 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if ((fieldInstance->mResolvedType != NULL) || (!fieldInstance->mFieldIncluded))
 				continue;			
 
+			SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, field);
+
 			BfType* resolvedFieldType = NULL;
 
 			if (field->IsEnumCaseEntry())
@@ -2304,15 +2307,14 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				// For 'let', make read-only
 			}
 			else
-			{
-				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, field);
+			{				
 				resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
 				if (resolvedFieldType == NULL)
 				{
 					// Failed, just put in placeholder 'var'
 					AssertErrorState();
 					resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);					
-				}									
+				}
 			}
 
 			if (resolvedFieldType->IsMethodRef())
