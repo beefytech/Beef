@@ -17,12 +17,13 @@ namespace BeefBuild
 					BeefBuild [args]
 					  If no arguments are specified, a build will occur using current working directory as the workspace.
 					    -config=<config>        Sets the config (defaults to Debug)
+					    -generate               Generates startup code for an empty project
 					    -new                    Creates a new workspace and project
 					    -platform=<platform>    Sets the platform (defaults to system platform)
 					    -run                    Compile and run the startup project in the workspace
 					    -test=<path>            Executes test script
 					    -verbosity=<verbosity>  Set verbosity level to: quiet/minimal/normal/detailed/diagnostic
-						-version				Get version
+					    -version                Get version
 					    -workspace=<path>       Sets workspace path (defaults to current working directory)
 					""");
 				return 0;

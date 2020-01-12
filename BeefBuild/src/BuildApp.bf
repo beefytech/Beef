@@ -15,6 +15,7 @@ namespace BeefBuild
 		public bool mIsTest;
 		public bool mTestIncludeIgnored;
 		public bool mDidRun;
+		public bool mWantsGenerate = false;
 
 		/*void Test()
 		{
@@ -101,12 +102,26 @@ namespace BeefBuild
 
 			WorkspaceLoaded();
 
-			if (mIsTest)
+			if (mWantsGenerate)
 			{
-				RunTests(mTestIncludeIgnored, false);
+				if (mWorkspace.mStartupProject != null)
+				{
+					if (mWorkspace.mStartupProject.IsEmpty)
+						AutoGenerateStartupCode(mWorkspace.mStartupProject);
+					else
+						OutputErrorLine("The project '{}' is not empty, but '-generate' was specified.", mWorkspace.mStartupProject.mProjectName);
+				}
 			}
-			else if (mVerb != .New)
-				Compile(.Normal, null);
+
+			if (!mFailed)
+			{
+				if (mIsTest)
+				{
+					RunTests(mTestIncludeIgnored, false);
+				}
+				else if (mVerb != .New)
+					Compile(.Normal, null);
+			}
 		}
 
 		public override bool HandleCommandLineParam(String key, String value)
@@ -120,6 +135,9 @@ namespace BeefBuild
 				{
 				case "-new":
 					mVerb = .New;
+					return true;
+				case "-generate":
+					mWantsGenerate = true;
 					return true;
 				case "-run":
 					if (mVerbosity == .Default)
@@ -268,7 +286,7 @@ namespace BeefBuild
 
 			if ((!IsCompiling) && (!AreTestsRunning()))
 			{
-				if ((mVerb == .Run) && (!mDidRun))
+				if ((mVerb == .Run) && (!mDidRun) && (!mFailed))
 				{
 					let curPath = scope String();
 					Directory.GetCurrentDirectory(curPath);
