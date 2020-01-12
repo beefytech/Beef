@@ -1,4 +1,4 @@
-PUSHD %~dp0..\
+PUSHD %~dp0
 
 @IF EXIST llvm-project_8_0_1 GOTO LLVM_HAS
 git clone --config core.autocrlf=false https://github.com/llvm/llvm-project.git llvm-project_8_0_1
