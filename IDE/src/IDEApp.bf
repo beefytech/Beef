@@ -633,7 +633,6 @@ namespace IDE
 			RemoveAndDelete!(mWatchPanel);
 			RemoveAndDelete!(mMemoryPanel);
 			RemoveAndDelete!(mCallStackPanel);
-			RemoveAndDelete!(mErrorsPanel);
 			RemoveAndDelete!(mBreakpointPanel);
 			RemoveAndDelete!(mModulePanel);
 			RemoveAndDelete!(mThreadPanel);
