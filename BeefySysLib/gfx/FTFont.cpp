@@ -143,19 +143,19 @@ bool FTFont::Load(const StringImpl& fileName, float pointSize)
 		*facePtr = face;
 
 		face->mFileName = fileName;
-		FT_Face ftFace;
-		auto error = FT_New_Face(gFTLibrary, fileName.c_str(), 0, &ftFace);
-		if (error != FT_Err_Ok)
-			return false;		
+		FT_Face ftFace = NULL;
+		auto error = FT_New_Face(gFTLibrary, fileName.c_str(), 0, &ftFace);		
 		face->mFTFace = ftFace;
 	}
 	else
 	{
 		face = *facePtr;
 	}
-	mFace = face;
+	if (face->mFTFace == NULL)
+		return false;
 
-	
+	mFace = face;
+		
 	FTFontManager::FaceSize** faceSizePtr = NULL;
 	if (face->mFaceSizes.TryAdd(pointSize, NULL, &faceSizePtr))
 	{

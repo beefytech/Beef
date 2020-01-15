@@ -7893,7 +7893,7 @@ namespace IDE
 						}
 						else // Actual build
 						{
-							if ((projectSource.HasChangedSinceLastCompile) || (forceQueue))
+							if ((projectSource.HasChangedSinceLastCompile) || (projectSource.mLoadFailed) || (forceQueue))
 							{
 								// mHasChangedSinceLastCompile is safe to set 'false' here since it just determines whether or not
 								//  we rebuild the TypeDefs from the sources.  It isn't affected by any compilation errors.
@@ -10517,6 +10517,16 @@ namespace IDE
 			float fontSize = DarkTheme.sScale * mSettings.mEditorSettings.mFontSize;
 			float tinyFontSize = fontSize * 8.0f/9.0f;
 
+			bool failed = false;
+			void FontFail(StringView name)
+			{
+				String err = scope String()..AppendF("Failed to load font '{}'", name);
+				OutputErrorLine(err);
+				if (!failed)
+					Fail(err);
+				failed = true;
+			}
+
 			bool isFirstFont = true;
 			for (let fontName in mSettings.mEditorSettings.mFonts)
 			{
@@ -10525,12 +10535,14 @@ namespace IDE
 					mTinyCodeFont.Dispose(true);
 					isFirstFont = !mTinyCodeFont.Load(fontName, tinyFontSize);
 					mCodeFont.Dispose(true);
-					mCodeFont.Load(fontName, fontSize);
+					if (!mCodeFont.Load(fontName, fontSize))
+						FontFail(fontName);
 				}
 				else
 				{
 					mTinyCodeFont.AddAlternate(fontName, tinyFontSize).IgnoreError();
-					mCodeFont.AddAlternate(fontName, fontSize).IgnoreError();
+					if (mCodeFont.AddAlternate(fontName, fontSize) case .Err)
+						FontFail(fontName);
 				}
 			}
 
@@ -11118,7 +11130,7 @@ namespace IDE
 					msg.Clear();
                     if (!mBfBuildCompiler.PopMessage(msg))
 						break;
-                    OutputLine(msg);					
+                    OutputLineSmart(msg);					
                 }
 
 				if (mBfResolveSystem != null)
