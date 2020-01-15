@@ -1535,8 +1535,8 @@ NoMatch:
 
 		if (mBackupMethodDef != NULL)
 		{
-			int prevParamDiff = (int)mBackupMethodDef->mParams.size() - (int)mArguments.size();
-			int paramDiff = (int)checkMethod->mParams.size() - (int)mArguments.size();
+			int prevParamDiff = (int)mBackupMethodDef->GetExplicitParamCount() - (int)mArguments.size();
+			int paramDiff = (int)checkMethod->GetExplicitParamCount() - (int)mArguments.size();
 			if ((prevParamDiff < 0) && (prevParamDiff > paramDiff))
 				return false;
 			if ((prevParamDiff >= 0) && ((paramDiff < 0) || (prevParamDiff < paramDiff)))

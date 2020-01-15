@@ -571,6 +571,19 @@ String BfMethodDef::ToString()
 	return methodText;
 }
 
+int BfMethodDef::GetExplicitParamCount()
+{
+	for (int i = 0; i < (int)mParams.size(); i++)
+	{
+		auto param = mParams[i];
+		if ((param->mParamKind != BfParamKind_AppendIdx) &&
+			(param->mParamKind != BfParamKind_ImplicitCapture))
+			return (int)mParams.size() - i;
+	}
+
+	return (int)mParams.size();
+}
+
 ///
 
 void BfTypeDef::Reset()

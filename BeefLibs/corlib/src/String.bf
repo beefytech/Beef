@@ -102,7 +102,7 @@ namespace System
 		[AllowAppend]
 		public this(String str, int offset)
 		{
-			Debug.Assert(offset <= str.Length);
+			Debug.Assert((uint)offset <= (uint)str.Length);
 			let count = str.mLength - offset;
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn

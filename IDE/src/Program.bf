@@ -17,11 +17,6 @@ namespace IDE
 		//System.Collections.Generic.List<System.String> list;
         static int32 Main(String[] args)
         {
-			/*if ((var str = scope String()) || (var str2 = scope String()))
-			{
-
-			}*/
-			//Test.Test();
 #if SMALLTEST
 			Debug.WriteLine("Hey!\n");
 #else

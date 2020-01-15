@@ -772,6 +772,7 @@ public:
 	bool IsEmptyPartial();	
 	bool IsDefaultCtor();
 	String ToString();		
+	int GetExplicitParamCount();
 };
 
 class BfOperatorDef : public BfMethodDef

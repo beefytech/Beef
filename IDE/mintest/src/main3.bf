@@ -49,6 +49,7 @@ struct Blurg
 		StructA sa = .();
 		sa.mA = 123
 		
+		
 		return (int32)123;
 	}
 }
