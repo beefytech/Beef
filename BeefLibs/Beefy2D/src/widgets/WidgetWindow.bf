@@ -679,6 +679,15 @@ namespace Beefy.widgets
             }
         }
 
+		public void ReleaseMouseCaptures()
+		{
+			if (mCaptureWidget == null)
+				return;
+			for (int32 btn < 3)
+				MouseUp((int32)mMouseX, (int32)mMouseY, btn);
+			mCaptureWidget = null;
+		}
+
         public override void MouseWheel(int32 inX, int32 inY, int32 delta)
         {
             float x;

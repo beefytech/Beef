@@ -154,8 +154,8 @@ namespace Beefy.widgets
             {
                 //mWidgetWindow.mMouseLeftWindowDelegate.Remove(scope => MouseLeftWindow, true);
 
-                if (mSrcDraggingWindow != null)
-                    mSrcDraggingWindow.mCaptureWidget = null;
+                if ((mSrcDraggingWindow != null) && (mSrcDraggingWindow.mCaptureWidget != null))
+					mSrcDraggingWindow.ReleaseMouseCaptures();
 
                 mTabbedView.mParentDockingFrame.GetRootDockingFrame().HideDragTarget(this, !mDragHelper.mAborted);
                 if (mNewDraggingWindow != null)
