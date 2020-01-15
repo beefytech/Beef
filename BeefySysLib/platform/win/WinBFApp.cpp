@@ -790,9 +790,10 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 						pD3DDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
 						pD3DDebug->Release();
 					}
-				}*/
+				}*/				
 
-				if ((!mIsKeyDown[VK_MENU]) && (!mIsKeyDown[VK_CONTROL]))
+				//NOTE: This line broke Alt+Gr for braces and such. Determine why this was needed.
+				//if ((!mIsKeyDown[VK_MENU]) && (!mIsKeyDown[VK_CONTROL]))
 				{
 					for (int i = 0; i < (lParam & 0x7FFF); i++)
 						mKeyCharFunc(this, (WCHAR)wParam);
