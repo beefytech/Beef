@@ -4245,13 +4245,12 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 
 			// Must be an expression.  Always set CreateExprFlags_NoCaseExpr, to keep ending statements in a switch case to look like case expressions
 			auto expr = CreateExpression(node, (CreateExprFlags)((createStmtFlags & CreateStmtFlags_To_CreateExprFlags_Mask) | CreateExprFlags_NoCaseExpr));
-
-			auto nextNode = mVisitorPos.GetNext();
-			if (nextNode != NULL)
+			if (expr != NULL)
 			{
-				FailAfter("Semicolon expected", expr);
+				auto nextNode = mVisitorPos.GetNext();
+				if (nextNode != NULL)				
+					FailAfter("Semicolon expected", expr);				
 			}
-
 			return expr;
 		}
 	}

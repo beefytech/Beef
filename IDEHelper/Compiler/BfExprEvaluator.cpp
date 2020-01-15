@@ -4202,7 +4202,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 				{
 					auto typeInst = methodInstance->mMethodInstanceGroup->mOwner;
 
-					int extMethodIdx = (methodInstance->mVirtualTableIdx - typeInst->GetBaseVTableSize()) - typeInst->GetOrigSelfVTableSize();
+					int extMethodIdx = (methodInstance->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) - typeInst->GetOrigSelfVTableSize();
 					if (extMethodIdx >= 0)
 					{
 						BF_ASSERT(mModule->mCompiler->IsHotCompile());
@@ -4215,10 +4215,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 						//  for that new method is inserted in mVirtualMethodTable (thus increasing the index relative to GetBaseVTableSize()),
 						//  but the actual written vtable position doesn't change, hence offsetting from GetOrigBaseVTableSize()
 #ifdef _DEBUG
-						int vExtIdx = typeInst->GetBaseVTableSize();
+						int vExtIdx = typeInst->GetImplBaseVTableSize();
 						BF_ASSERT(typeInst->mVirtualMethodTable[vExtIdx].mDeclaringMethod.mMethodNum == -1); // A type entry with a -1 mMethodNum means it's a vtable ext slot
 #endif
-						int vExtOfs = typeInst->GetOrigBaseVTableSize();
+						int vExtOfs = typeInst->GetOrigImplBaseVTableSize();
 
 						vDataIdx = mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 1 + mModule->mCompiler->GetDynCastVDataCount() + mModule->mCompiler->mMaxInterfaceSlots);
 						vDataIdx = mModule->mBfIRBuilder->CreateAdd(vDataIdx, mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, vExtOfs));
@@ -4235,7 +4235,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 
 						vDataIdx = mModule->mBfIRBuilder->GetConfigConst(BfIRConfigConst_VirtualMethodOfs, BfTypeCode_Int32);
 						vDataIdx = mModule->mBfIRBuilder->CreateAdd(vDataIdx, mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 
-							(methodInstance->mVirtualTableIdx - typeInst->GetBaseVTableSize()) + typeInst->GetOrigBaseVTableSize()));
+							(methodInstance->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) + typeInst->GetOrigImplBaseVTableSize()));
 					}
 				}
 				else

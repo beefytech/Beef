@@ -3372,7 +3372,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	if (typeInstance->mHotTypeData != NULL)
 	{		
 		//auto hotLatestVersionHead = typeInstance->mHotTypeData->GetLatestVersionHead();
-		int wantVTableSize = typeInstance->GetBaseVTableSize() + (int)typeInstance->mHotTypeData->mVTableEntries.size();
+		int wantVTableSize = typeInstance->GetImplBaseVTableSize() + (int)typeInstance->mHotTypeData->mVTableEntries.size();
 		while ((int)typeInstance->mVirtualMethodTable.size() < wantVTableSize)
 		{
 			typeInstance->mVirtualMethodTable.push_back(BfVirtualMethodEntry());

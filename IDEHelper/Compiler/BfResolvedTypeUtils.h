@@ -1719,8 +1719,8 @@ public:
 	int GetOrigVTableSize();
 	int GetSelfVTableSize();
 	int GetOrigSelfVTableSize();	
-	int GetBaseVTableSize();
-	int GetOrigBaseVTableSize();
+	int GetImplBaseVTableSize();
+	int GetOrigImplBaseVTableSize();
 	int GetIFaceVMethodSize();
 	BfType* GetUnionInnerType(bool* wantSplat = NULL);
 	BfPrimitiveType* GetDiscriminatorType(int* outDataIdx = NULL);		

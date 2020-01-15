@@ -827,17 +827,17 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 		{
 			auto typeInst = mMethodInstanceGroup->mOwner;
 
-			int extMethodIdx = (mVirtualTableIdx - typeInst->GetBaseVTableSize()) - typeInst->GetOrigSelfVTableSize();
+			int extMethodIdx = (mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) - typeInst->GetOrigSelfVTableSize();
 			if (extMethodIdx >= 0)
 			{
 				// Extension?
-				int vExtOfs = typeInst->GetOrigBaseVTableSize();
+				int vExtOfs = typeInst->GetOrigImplBaseVTableSize();
 				vDataVal = ((vDataIdx + vExtOfs + 1) << 20) | (extMethodIdx);
 			}
 			else
 			{
 				// Map this new virtual index back to the original index
-				vDataIdx += (mVirtualTableIdx - typeInst->GetBaseVTableSize()) + typeInst->GetOrigBaseVTableSize();
+				vDataIdx += (mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) + typeInst->GetOrigImplBaseVTableSize();
 			}
 		}
 		else
@@ -1178,20 +1178,22 @@ int BfTypeInstance::GetSelfVTableSize()
 int BfTypeInstance::GetOrigSelfVTableSize()
 {	
 	if (mBaseType != NULL)
-		return GetOrigVTableSize() - GetOrigBaseVTableSize();
+		return GetOrigVTableSize() - GetOrigImplBaseVTableSize();
 	return GetOrigVTableSize();
 }
 
-int BfTypeInstance::GetBaseVTableSize()
+int BfTypeInstance::GetImplBaseVTableSize()
 {
-	if (mBaseType != NULL)
-		return mBaseType->mVirtualMethodTableSize;
+	auto implBase = GetImplBaseType();
+	if (implBase != NULL)
+		return implBase->mVirtualMethodTableSize;
 	return 0;
 }
 
-int BfTypeInstance::GetOrigBaseVTableSize()
+int BfTypeInstance::GetOrigImplBaseVTableSize()
 {
-	if (mBaseType != NULL)
+	auto implBase = GetImplBaseType();
+	if (implBase != NULL)
 		return mBaseType->GetOrigVTableSize();
 	return 0;
 }

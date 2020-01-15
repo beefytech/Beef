@@ -5773,17 +5773,17 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			{
 				auto typeInst = defaultMethod->mMethodInstanceGroup->mOwner;
 
-				int extMethodIdx = (defaultMethod->mVirtualTableIdx - typeInst->GetBaseVTableSize()) - typeInst->GetOrigSelfVTableSize();
+				int extMethodIdx = (defaultMethod->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) - typeInst->GetOrigSelfVTableSize();
 				if (extMethodIdx >= 0)
 				{
 					// Extension?
-					int vExtOfs = typeInst->GetOrigBaseVTableSize();
+					int vExtOfs = typeInst->GetOrigImplBaseVTableSize();
 					vDataVal = ((vDataIdx + vExtOfs + 1) << 20) | (extMethodIdx);
 				}
 				else
 				{
 					// Map this new virtual index back to the original index
-					vDataIdx += (defaultMethod->mVirtualTableIdx - typeInst->GetBaseVTableSize()) + typeInst->GetOrigBaseVTableSize();
+					vDataIdx += (defaultMethod->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) + typeInst->GetOrigImplBaseVTableSize();
 				}
 			}
 			else
@@ -19906,8 +19906,9 @@ void BfModule::UniqueSlotVirtualMethod(BfMethodInstance* methodInstance)
 			//  may slot this override anyway (?)
 
 			int vTableStart = 0;
-			if (typeInstance->mBaseType != NULL)
-				vTableStart = typeInstance->mBaseType->mVirtualMethodTableSize;
+			auto implBaseType = typeInstance->GetImplBaseType();
+			if (implBaseType != NULL)
+				vTableStart = implBaseType->mVirtualMethodTableSize;
 
 			StringT<128> mangledName;
 			BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), methodInstance);
