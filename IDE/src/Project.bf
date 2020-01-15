@@ -266,6 +266,7 @@ namespace IDE
 
 		public bool mHasChangedSinceLastCompile = true;
 		public bool mHasChangedSinceLastSuccessfulCompile = true;
+		public bool mLoadFailed;
 		public bool HasChangedSinceLastCompile
 		{
 			get

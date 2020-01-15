@@ -1163,6 +1163,11 @@ namespace IDE.ui
 						//BackgroundResolve(new () => { DoClassify(.Autocomplete, resolveParams); });
                     else if (useResolveType == .ClassifyFullRefresh)
 					{
+						if ((mProjectSource?.mLoadFailed == true) && (!mLoadFailed))
+						{
+							mProjectSource.mLoadFailed = false;
+						}
+
 						// To avoid "flashing" on proper colorization vs FastClassify, we wait a bit for the proper classifying to finish
 						//  on initial show
 						int maxWait = (mUpdateCnt <= 1) ? 50 : 0;

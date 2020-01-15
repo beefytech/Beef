@@ -53,6 +53,13 @@ namespace IDE.ui
 					color = 0xFFE0E0FF;
 				else if (projectItem.mIncludeKind == .Ignore)
 					color = 0xFF909090;
+
+				if (let projectSource = projectItem as ProjectSource)
+				{
+					if (projectSource.mLoadFailed)
+						color = 0xFFFF0000;
+				}
+
 				mTextColor = color;
 			}
 

@@ -398,10 +398,16 @@ namespace IDE.Compiler
 	                    if (data == null)
 	                    {
 							String msg = new String();
-							msg.AppendF("FAILED TO LOAD FILE: {0}", sourceFilePath);
+							msg.AppendF("ERROR: FAILED TO LOAD FILE '{0}' in project '{1}'", sourceFilePath, projectSource.mProject.mProjectName);
 	                        mQueuedOutput.Add(msg);
 							passInstance.mFailed = true;
+							projectSourceCommand.mProjectSource.mLoadFailed = true;
 	                    }
+						else
+							projectSourceCommand.mProjectSource.mLoadFailed = false;
+						
+						if (mIsResolveOnly)
+							projectSourceCommand.mProjectSource.mLoadFailed = data == null;
 
 	                    if ((!mIsResolveOnly) && (data != null))
 	                        IDEApp.sApp.mWorkspace.ProjectSourceCompiled(projectSource, data, char8IdData, canMoveSourceString);

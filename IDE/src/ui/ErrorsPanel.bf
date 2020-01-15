@@ -167,6 +167,9 @@ namespace IDE.ui
 
 					if (passKind == .Parse)
 					{
+						if (bfError.mFilePath == null)
+							bfError.mFilePath = new String("");
+
 						bool added = mParseErrors.TryAdd(bfError.mFilePath, var keyPtr, var valuePtr);
 						if (added)
 						{
