@@ -2566,9 +2566,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sy
 	String path;
 
 	auto _GetKnownFolder = [&](REFKNOWNFOLDERID rfid)
-	{		
+	{
 		PWSTR pStrPtr;
-		int result = SHGetKnownFolderPath(rfid, KF_FLAG_CREATE, NULL, &pStrPtr);
+		int result = SHGetKnownFolderPath(rfid, KF_FLAG_CREATE | KF_FLAG_SIMPLE_IDLIST, NULL, &pStrPtr);
 		if (result != 0)
 		{
 			OUTRESULT(BfpFileResult_UnknownError);
