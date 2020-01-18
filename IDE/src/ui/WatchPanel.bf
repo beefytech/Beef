@@ -2738,7 +2738,7 @@ namespace IDE.ui
 					}
 				}
 
-				if (watchEntry.mResultType == .Pointer)
+				if (watchEntry.mResultType.HasFlag(.Pointer))
 				{
 					if (int.Parse(watchEntry.mEditInitialize) case .Ok(let addr))
 					{

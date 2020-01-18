@@ -290,6 +290,8 @@ namespace IDE.ui
             }
 #endif
 
+			float statusLabelPos = (int)GS!(-1.3f);
+
 			//completionPct = 0.4f;
             if (completionPct.HasValue)
             {                
@@ -309,7 +311,7 @@ namespace IDE.ui
                 using (g.PushColor(0x40202080))
                     g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
 
-                g.DrawString("Source Changed", GS!(200), GS!(-1.3f), FontAlign.Centered, GS!(120));
+                g.DrawString("Source Changed", GS!(200), statusLabelPos, FontAlign.Centered, GS!(120));
             }
 
 			void DrawStatusBox(StringView str, int32 updateCnt = -1)
@@ -336,7 +338,7 @@ namespace IDE.ui
 				if (mCancelSymSrvButton != null)
 					mCancelSymSrvButton.mX = completionRect.Right - GS!(16);
 
-				g.DrawString(str, x, (int)GS!(-1.3f), FontAlign.Centered, len);
+				g.DrawString(str, x, statusLabelPos, FontAlign.Centered, len);
 			}
 
 			if (gApp.mKeyChordState != null)
