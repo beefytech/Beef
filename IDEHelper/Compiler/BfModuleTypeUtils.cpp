@@ -57,6 +57,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfGenericTypeInstan
 	}
 
 	BfTypeState typeState;
+	typeState.mPrevState = mContext->mCurTypeState;
 	typeState.mTypeInstance = genericTypeInst;
 	typeState.mCurTypeDef = partialTypeDef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
@@ -101,6 +102,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfGenericTypeInstan
 bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 {
 	BfTypeState typeState;
+	typeState.mPrevState = mContext->mCurTypeState;
 	typeState.mBuildingGenericParams = true;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
@@ -1500,6 +1502,12 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	// into an errored state
 	SetAndRestoreValue<bool> prevReportErrors(mReportErrors, reportErrors);
 	
+	if (typeInstance->mIsFinishingType)
+	{
+		// This type already failed
+		return true;
+	}
+
 	CheckCircularDataError();
 
 	bool underlyingTypeDeferred = false;
@@ -2095,7 +2103,9 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					if (partialTypeDef->mTypeDeclaration->mAttributes == NULL)
 						continue;
 					BfTypeState typeState;
+					typeState.mPrevState = mContext->mCurTypeState;
 					typeState.mCurTypeDef = partialTypeDef;
+					typeState.mTypeInstance = typeInstance;
 					SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 					if (typeInstance->mCustomAttributes == NULL)
@@ -2186,61 +2196,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			BfFieldDef* mFieldDef;
 			int mTypeArrayIdx;
 		};
-
-		for (auto propDef : typeDef->mProperties)
-		{
-			if (!typeInstance->IsTypeMemberIncluded(propDef->mDeclaringType))
-				continue;
-
-			if (propDef->mFieldDeclaration != NULL)
-			{
-				BfTypeState typeState;
-				typeState.mCurTypeDef = propDef->mDeclaringType;
-				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-
-				if (propDef->mFieldDeclaration->mAttributes != NULL)
-				{
-					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Property);
-					delete customAttrs;
-				}
-
-				if (propDef->mFieldDeclaration->mAttributes != NULL)
-				{
-					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Property);
-					delete customAttrs;
-				}
-
-				auto propDecl = (BfPropertyDeclaration*)propDef->mFieldDeclaration;
-				if (propDecl->mExplicitInterface != NULL)
-				{					
-					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
-						mCompiler->mResolvePassData->mAutoComplete->CheckTypeRef(propDecl->mExplicitInterface, false);
-					auto explicitInterface = ResolveTypeRef(propDecl->mExplicitInterface, BfPopulateType_Declaration);
-					if (explicitInterface != NULL)
-					{
-						bool interfaceFound = false;
-						for (auto ifaceInst : typeInstance->mInterfaces)
-							interfaceFound |= ifaceInst.mInterfaceType == explicitInterface;
-						if (!interfaceFound)
-						{
-							Fail("Containing class has not declared to implement this interface", propDecl->mExplicitInterface, true);
-						}
-					}
-				}
-			}
-
-			if (propDef->mMethods.IsEmpty())
-			{
-				auto nameNode = ((BfPropertyDeclaration*)propDef->mFieldDeclaration)->mNameNode;
-
-				if (nameNode != NULL)
-				{
-					Fail(StrFormat("Property or indexer '%s.%s' must have at least one accessor", TypeToString(typeInstance).c_str(), propDef->mName.c_str()),
-						nameNode, true); // CS0548
-				}
-			}
-		}
-
+		
 		BfSizedVector<DeferredResolveEntry, 8> deferredVarResolves;
 
 		for (auto field : typeDef->mFields)
@@ -2417,7 +2373,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	BF_ASSERT(mContext->mCurTypeState == &typeState);
 
-	BF_ASSERT(!typeInstance->mIsFinishingType);
+	//BF_ASSERT(!typeInstance->mIsFinishingType);
 	typeInstance->mIsFinishingType = true;
 
 	// No re-entry is allowed below here -- we will run all the way to the end at this point
@@ -2427,6 +2383,63 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	
 	if (!resolvedTypeRef->IsBoxed())
 	{
+		for (auto propDef : typeDef->mProperties)
+		{
+			if (!typeInstance->IsTypeMemberIncluded(propDef->mDeclaringType))
+				continue;
+
+			if (propDef->mFieldDeclaration != NULL)
+			{
+				BfTypeState typeState;
+				typeState.mPrevState = mContext->mCurTypeState;
+				typeState.mCurTypeDef = propDef->mDeclaringType;
+				typeState.mCurFieldDef = propDef;
+				typeState.mTypeInstance = typeInstance;
+				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
+				if (propDef->mFieldDeclaration->mAttributes != NULL)
+				{
+					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Property);
+					delete customAttrs;
+				}
+
+				if (propDef->mFieldDeclaration->mAttributes != NULL)
+				{
+					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Property);
+					delete customAttrs;
+				}
+
+				auto propDecl = (BfPropertyDeclaration*)propDef->mFieldDeclaration;
+				if (propDecl->mExplicitInterface != NULL)
+				{
+					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+						mCompiler->mResolvePassData->mAutoComplete->CheckTypeRef(propDecl->mExplicitInterface, false);
+					auto explicitInterface = ResolveTypeRef(propDecl->mExplicitInterface, BfPopulateType_Declaration);
+					if (explicitInterface != NULL)
+					{
+						bool interfaceFound = false;
+						for (auto ifaceInst : typeInstance->mInterfaces)
+							interfaceFound |= ifaceInst.mInterfaceType == explicitInterface;
+						if (!interfaceFound)
+						{
+							Fail("Containing class has not declared to implement this interface", propDecl->mExplicitInterface, true);
+						}
+					}
+				}
+			}
+
+			if (propDef->mMethods.IsEmpty())
+			{
+				auto nameNode = ((BfPropertyDeclaration*)propDef->mFieldDeclaration)->mNameNode;
+
+				if (nameNode != NULL)
+				{
+					Fail(StrFormat("Property or indexer '%s.%s' must have at least one accessor", TypeToString(typeInstance).c_str(), propDef->mName.c_str()),
+						nameNode, true); // CS0548
+				}
+			}
+		}
+
 		bool isGlobalContainer = typeDef->IsGlobalsContainer();		
 
 		if (typeInstance->mBaseType != NULL)
@@ -2478,7 +2491,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if ((fieldDef != NULL) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL))
 			{
 				BfTypeState typeState;
+				typeState.mPrevState = mContext->mCurTypeState;
+				typeState.mCurFieldDef = fieldDef;
 				typeState.mCurTypeDef = fieldDef->mDeclaringType;
+				typeState.mTypeInstance = typeInstance;
 				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 				fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
@@ -2959,6 +2975,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				continue;
 
 			BfTypeState typeState;
+			typeState.mPrevState = mContext->mCurTypeState;
 			typeState.mCurTypeDef = propDef->mDeclaringType;
 			typeState.mTypeInstance = typeInstance;
 			SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);

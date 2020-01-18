@@ -119,7 +119,7 @@ public:
 	BfPopulateType mPopulateType;
 	BfTypeReference* mCurBaseTypeRef;
 	BfTypeReference* mCurAttributeTypeRef;
-	BfFieldDef* mCurFieldDef;
+	BfFieldDef* mCurFieldDef;	
 	BfTypeDef* mCurTypeDef;
 	bool mBuildingGenericParams;
 

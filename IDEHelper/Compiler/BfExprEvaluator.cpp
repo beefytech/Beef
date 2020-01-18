@@ -2066,6 +2066,7 @@ BfExprEvaluator::BfExprEvaluator(BfModule* module)
 	mIsHeapReference = false; 	
 	mResultIsTempComposite = false;
 	mAllowReadOnlyReference = false;
+	mInsidePendingNullable = false;
 	mReceivingValue = NULL;
 }
 
@@ -2167,6 +2168,7 @@ void BfExprEvaluator::Evaluate(BfAstNode* astNode, bool propogateNullConditional
 		if (!propogateNullConditional)
 			mModule->mCurMethodState->mPendingNullConditional = NULL;
 	}
+	mInsidePendingNullable = pendingNullCond != NULL;
 
 	astNode->Accept(this);			
 	GetResult();
@@ -5633,6 +5635,11 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 
 		bool isLet = variableDeclaration->mTypeRef->IsExact<BfLetTypeReference>();
 		bool isVar = variableDeclaration->mTypeRef->IsExact<BfVarTypeReference>();
+
+		if (mModule->mCurMethodState->mPendingNullConditional != NULL)
+		{
+			mModule->Fail("Variables cannot be declared in method arguments inside null conditional expressions", variableDeclaration);
+		}
 
 		if ((!isLet) && (!isVar))
 		{
@@ -12237,7 +12244,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 		argExprEvaluators.push_back(new BfExprEvaluator(mModule));
 		BfExprEvaluator* exprEvaluator = argExprEvaluators.back();
-		exprEvaluator->mResolveGenericParam = false;
+		exprEvaluator->mResolveGenericParam = false;		
+		exprEvaluator->mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator->mBfEvalExprFlags | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr);
 		if (argExpr != NULL)
 			exprEvaluator->Evaluate(argExpr, false, false, true);
 		auto argValue = exprEvaluator->mResult;
@@ -12634,6 +12642,37 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			{
 				// Already handled
 			}
+			else if (newLocalVar->mIsSplat)
+			{
+				bool found = false;
+
+				auto checkMethodState = mModule->mCurMethodState;
+				while ((checkMethodState != NULL) && (!found))
+				{
+					for (auto localVar : checkMethodState->mLocals)
+					{
+						if (localVar == newLocalVar)
+							continue;
+						if (newLocalVar->mValue != localVar->mValue)
+							continue;
+
+						String name = newLocalVar->mName;
+						name += "$alias$";
+						name += localVar->mName;
+
+						auto fakeValue = mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0);
+						auto diType = mModule->mBfIRBuilder->DbgGetType(mModule->GetPrimitiveType(BfTypeCode_Int32));
+						auto diVariable = mModule->mBfIRBuilder->DbgCreateAutoVariable(mModule->mCurMethodState->mCurScope->mDIScope,
+							newLocalVar->mName, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
+						mModule->mBfIRBuilder->DbgInsertValueIntrinsic(fakeValue, diVariable);
+
+						found = true;
+						break;
+					}
+
+					checkMethodState = checkMethodState->mPrevMethodState;
+				}
+			}
 			else if (mModule->IsTargetingBeefBackend())
 			{
 				mModule->UpdateSrcPos(methodDeclaration->mNameNode);
@@ -12707,7 +12746,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 				if (!mModule->mBfIRBuilder->mIgnoreWrites)
 				{
 					if (newLocalVar->mIsSplat)
-					{
+					{						
 						//TODO: Implement
 					}
 					else
@@ -16635,7 +16674,13 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				return;
 			}
 
-			MarkResultAssigned();
+			if (mInsidePendingNullable)
+			{
+				// 'out' inside null conditionals never actually causes a definite assignment...				
+			}
+			else
+				MarkResultAssigned();
+
 			MarkResultUsed();
 			ResolveGenericType();
 			mResult = BfTypedValue(mResult.mValue, mModule->CreateRefType(mResult.mType, BfRefType::RefKind_Out));

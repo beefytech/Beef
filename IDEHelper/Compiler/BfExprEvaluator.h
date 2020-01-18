@@ -308,6 +308,7 @@ public:
 	bool mIsHeapReference;
 	bool mResultIsTempComposite;
 	bool mAllowReadOnlyReference;
+	bool mInsidePendingNullable;
 
 public:
 	BfExprEvaluator(BfModule* module);

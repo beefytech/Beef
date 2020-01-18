@@ -14327,7 +14327,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					}
 					else
 					{
-						AssertErrorState();
+						// Failed
 					}
 					auto assignValue = GetFieldInitializerValue(fieldInst);					
 					if ((fieldAddr) && (assignValue))
