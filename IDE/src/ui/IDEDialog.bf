@@ -117,7 +117,7 @@ namespace IDE.ui
 		{
 			if ((let editWidget = mWidgetWindow.mFocusWidget as EditWidget) && (let ewc = editWidget.mEditWidgetContent as SourceEditWidgetContent))
 		    {
-				if ((ewc.mAutoComplete != null) && (ewc.mAutoComplete.IsShowing()))
+				if ((ewc.mAutoComplete != null) && (ewc.mAutoComplete.IsShowing()) && (dir == 1))
 				{
 				    //ewc.KeyChar('\t');
 				    return false;

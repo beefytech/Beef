@@ -44,9 +44,7 @@ namespace IDE.ui
 			}
 		}
 
-		public DarkDockingFrame mDockingFrame;
 		public ErrorsListView mErrorLV;
-		public OutputWidget mOutputWidget;
 
 		public bool mNeedsResolveAll;
 		public bool mErrorsDirty;
@@ -87,16 +85,7 @@ namespace IDE.ui
 			//let newItem = mErrorLV.GetRoot().CreateChildItem();
 			//newItem.Label = "Hey";
 
-			mOutputWidget = new .();
-			
-			var errorDock = new DockingProxy(mErrorLV);
-			var detailsDock = new DockingProxy(mOutputWidget);
-
-			mDockingFrame = new DarkDockingFrame();
-			mDockingFrame.mDrawBkg = false;
-			mDockingFrame.AddDockedWidget(errorDock, null, .Top);
-			mDockingFrame.AddDockedWidget(detailsDock, errorDock, .Bottom);
-			AddWidget(mDockingFrame);
+			AddWidget(mErrorLV);
 		}
 
 		public ~this()
@@ -114,7 +103,7 @@ namespace IDE.ui
 		public override void Resize(float x, float y, float width, float height)
 		{
 			base.Resize(x, y, width, height);
-			mDockingFrame.Resize(0, 0, width, height);
+			mErrorLV.Resize(0, 0, width, height);
 		}
 
 		public enum ResolveKind

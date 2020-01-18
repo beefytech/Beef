@@ -2063,7 +2063,7 @@ namespace IDE.ui
                 mAutoComplete.CloseListWindow();*/
         }
 
-        public override void KeyChar(char32 theChar)
+        public override void KeyChar(char32 keyChar)
         {
 			scope AutoBeefPerf("SEWC.KeyChar");
 
@@ -2075,18 +2075,21 @@ namespace IDE.ui
 
             if (mIsReadOnly)
             {
-                base.KeyChar(theChar);
+                base.KeyChar(keyChar);
                 return;
             }
 
+			if ((keyChar == '\t') && (mWidgetWindow.IsKeyDown(.Shift)))
+				return;
+
             if ((gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.IsRenaming))
             {         
-                if ((theChar == '\r') || (theChar == '\n'))
+                if ((keyChar == '\r') || (keyChar == '\n'))
                 {                    
                     gApp.mSymbolReferenceHelper.Close();
                     return;
                 }
-                else if (theChar == '\t')
+                else if (keyChar == '\t')
                 {
                     if (HasSelection())
                     {
@@ -2094,7 +2097,7 @@ namespace IDE.ui
                         return;
                     }
                 }
-                else if (theChar == '\b')
+                else if (keyChar == '\b')
                 {
                     if (HasSelection())                    
                         mSelection = null;                    
@@ -2103,20 +2106,20 @@ namespace IDE.ui
 
             int32 startRevision = mData.mCurTextVersionId;
             
-            bool doAutocomplete = (theChar == '\t');
-			if ((mAutoComplete != null) && (theChar == '\r') &&
+            bool doAutocomplete = (keyChar == '\t');
+			if ((mAutoComplete != null) && (keyChar == '\r') &&
 				((!mIsMultiline) || (mAutoComplete.mIsUserRequested)))
 				doAutocomplete = true;
             bool hasEmptyAutocompleteReplace = true;
             if (mAutoComplete != null)
                 hasEmptyAutocompleteReplace = mAutoComplete.mInsertEndIdx == -1;
 
-            bool isEndingChar = (theChar >= (char8)32) && !theChar.IsLetterOrDigit && (theChar != '_') && (theChar != '~') && (theChar != '=') && (theChar != '!') && (theChar != ':');
+            bool isEndingChar = (keyChar >= (char8)32) && !keyChar.IsLetterOrDigit && (keyChar != '_') && (keyChar != '~') && (keyChar != '=') && (keyChar != '!') && (keyChar != ':');
 
 			if (gApp.mSettings.mEditorSettings.mAutoCompleteRequireTab)
 			{
-				doAutocomplete = theChar == '\t';
-				if (theChar == '\r')
+				doAutocomplete = keyChar == '\t';
+				if (keyChar == '\r')
 				{
 					if (mAutoComplete != null)
 						mAutoComplete.Close();
@@ -2156,29 +2159,29 @@ namespace IDE.ui
 
             if ((mAutoComplete != null) && (mAutoComplete.mAutoCompleteListWidget != null))
             {
-				if ((mAutoComplete.mInsertEndIdx != -1) && (mAutoComplete.mInsertEndIdx != mCursorTextPos) && (theChar != '\t') && (theChar != '\r') && (theChar != '\n'))
+				if ((mAutoComplete.mInsertEndIdx != -1) && (mAutoComplete.mInsertEndIdx != mCursorTextPos) && (keyChar != '\t') && (keyChar != '\r') && (keyChar != '\n'))
 					doAutocomplete = false;
 				
-                if ((mAutoComplete.IsInsertEmpty()) && (!mAutoComplete.mIsFixit) && (theChar != '.') && (theChar != '\t'))
+                if ((mAutoComplete.IsInsertEmpty()) && (!mAutoComplete.mIsFixit) && (keyChar != '.') && (keyChar != '\t'))
                 {
                     // Require a '.' or tab to insert autocomplete when we don't have any insert section (ie: after an 'enumVal = ')
                     doAutocomplete = false;
                 }
 
-				if ((theChar == '[') && (mAutoComplete.mInsertStartIdx >= 0) && (mData.mText[mAutoComplete.mInsertStartIdx].mChar != '.'))
+				if ((keyChar == '[') && (mAutoComplete.mInsertStartIdx >= 0) && (mData.mText[mAutoComplete.mInsertStartIdx].mChar != '.'))
 				{
 					// Don't autocomplete for ".[" (member access attributes)
 					doAutocomplete = false;
 				}
 
-				if (((theChar == '.') || (theChar == '*')) &&
+				if (((keyChar == '.') || (keyChar == '*')) &&
 					((mAutoComplete.mInsertEndIdx == -1) || (mAutoComplete.IsInsertEmpty())))
 				{
 					// Don't autocomplete for object allocation when we haven't typed anything yet but then we press '.' (for 'inferred type')
 					doAutocomplete = false;
 				}
 
-				if ((mAutoComplete.mUncertain) && (theChar != '\t'))
+				if ((mAutoComplete.mUncertain) && (keyChar != '\t'))
 					doAutocomplete = false;
 
                 if (doAutocomplete)
@@ -2193,12 +2196,12 @@ namespace IDE.ui
                     mIsInKeyChar = true;
                     String insertType = scope String();
 					String insertStr = scope String();
-                    mAutoComplete.InsertSelection(theChar, insertType, insertStr);
+                    mAutoComplete.InsertSelection(keyChar, insertType, insertStr);
                     mIsInKeyChar = false;
                     if (insertType != null)
                     {
 						//mGenerateAutocompleteHandler(false, false);
-                        if (((insertType == "method") && (theChar == '(')) ||
+                        if (((insertType == "method") && (keyChar == '(')) ||
 							((insertType == "token") && (insertStr == "override")))
                         {
 							if (IsCursorVisible(false))
@@ -2213,7 +2216,7 @@ namespace IDE.ui
 							{
 								// Update invoke since the autocompletion may have selected a different overload
 								if (IsCursorVisible(false))
-									mOnGenerateAutocomplete(theChar, .OnlyShowInvoke);
+									mOnGenerateAutocomplete(keyChar, .OnlyShowInvoke);
 							}
 						}
 
@@ -2222,7 +2225,7 @@ namespace IDE.ui
                             allowChar = false;
                         }
 
-                        if ((insertType == "mixin") && (theChar == '!'))
+                        if ((insertType == "mixin") && (keyChar == '!'))
                         {
                             // It already ends with the char8 that we have
                             allowChar = false;
@@ -2231,7 +2234,7 @@ namespace IDE.ui
                     else
                         mAutoComplete.CloseListWindow();
 
-                    if ((theChar == '\t') || (theChar == '\r')) // Let other chars besides explicit-insert chrars pass through       
+                    if ((keyChar == '\t') || (keyChar == '\r')) // Let other chars besides explicit-insert chrars pass through       
                     {                        
                         allowChar = false;
                     }
@@ -2251,7 +2254,7 @@ namespace IDE.ui
 				prevChar = mData.mText[cursorTextPos - 1].mChar;
 			}
 
-            if (((theChar == '\n') || (theChar == '\r')) && (mIsMultiline) && (!CheckReadOnly()))
+            if (((keyChar == '\n') || (keyChar == '\r')) && (mIsMultiline) && (!CheckReadOnly()))
             {
                 UndoBatchStart undoBatchStart = new UndoBatchStart("newline");
                 mData.mUndoManager.Add(undoBatchStart);                
@@ -2368,7 +2371,7 @@ namespace IDE.ui
                 return;
             }
 
-			if ((theChar == '/') && (ToggleComment()))
+			if ((keyChar == '/') && (ToggleComment()))
 			{
 				return;
 			}
@@ -2378,7 +2381,7 @@ namespace IDE.ui
                 if ((cursorTextPos < mData.mTextLength - 1) && (mData.mText[cursorTextPos - 1].mChar == '\n'))
                     prevElementType = (SourceElementType)mData.mText[cursorTextPos].mDisplayTypeId;
 
-				if (theChar == '*')
+				if (keyChar == '*')
 				{
 					if (cursorTextPos >= 3)
 					{
@@ -2414,13 +2417,13 @@ namespace IDE.ui
                     char8UnderCursor = (char8)mData.mText[cursorTextPos].mChar;
 					cursorInOpenSpace = ((char8UnderCursor == ')') || (char8UnderCursor == ']') || (char8UnderCursor == (char8)0) || (char8UnderCursor.IsWhiteSpace));
 
-                    if ((char8UnderCursor == theChar) && (!HasSelection()))
+                    if ((char8UnderCursor == keyChar) && (!HasSelection()))
                     {
 						var wantElementType = SourceElementType.Normal;
 
 						bool ignore = false;
 						int checkPos = cursorTextPos;
-						if ((theChar == '"') || (theChar == '\''))
+						if ((keyChar == '"') || (keyChar == '\''))
 						{
 							checkPos = Math.Max(cursorTextPos - 1, 0);
 							wantElementType = .Literal;
@@ -2434,7 +2437,7 @@ namespace IDE.ui
 						if (!ignore)
 						{
 	                        if ((mData.mText[checkPos].mDisplayTypeId == (int32)wantElementType) &&
-	                            ((theChar == '"') || (theChar == '\'') || (theChar == ')') || (theChar == ']') || (theChar == '>') || (theChar == '}')))
+	                            ((keyChar == '"') || (keyChar == '\'') || (keyChar == ')') || (keyChar == ']') || (keyChar == '>') || (keyChar == '}')))
 	                        {
 	                            mJustInsertedCharPair = false;
 	                            CursorTextPos++;
@@ -2442,12 +2445,12 @@ namespace IDE.ui
 	                        }
 							else
 							{
-								if ((theChar == '"') || (theChar == '\''))
+								if ((keyChar == '"') || (keyChar == '\''))
 									cursorInOpenSpace = true;
 							}
 						}
                     }
-					else if ((theChar == '}') && (!HasSelection())) // Jump down to block close, as long as it's just whitespace between us and there
+					else if ((keyChar == '}') && (!HasSelection())) // Jump down to block close, as long as it's just whitespace between us and there
 					{
 						int checkPos = cursorTextPos;
 						while (checkPos < mData.mTextLength - 1)
@@ -2487,11 +2490,11 @@ namespace IDE.ui
 
 				if (HasSelection())
 				{
-					if ((theChar == '{') && (OpenCodeBlock()))
+					if ((keyChar == '{') && (OpenCodeBlock()))
  					{
 						// OpenCodeBlock handled this char
 					}
-					else if ((theChar == '{') || (theChar == '('))
+					else if ((keyChar == '{') || (keyChar == '('))
 					{
 						UndoBatchStart undoBatchStart = new UndoBatchStart("blockSurround");
 						mData.mUndoManager.Add(undoBatchStart);                
@@ -2501,19 +2504,19 @@ namespace IDE.ui
 						mSelection = null;
 						CursorTextPos = minPos;
 						String insertStr = scope String();
-						insertStr.Append(theChar);
+						insertStr.Append(keyChar);
 						InsertAtCursor(insertStr);
 						CursorTextPos = maxPos + 1;
 						insertStr.Clear();
-						if (theChar == '(')
+						if (keyChar == '(')
 							insertStr.Append(')');
-						else if (theChar == '{')
+						else if (keyChar == '{')
 							insertStr.Append('}');
 						InsertAtCursor(insertStr);
 
 						mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 					}
-					else if ((theChar == '}') && (CloseCodeBlock()))
+					else if ((keyChar == '}') && (CloseCodeBlock()))
 					{
 						// CloseCodeBlock handled this char
 					}
@@ -2522,7 +2525,7 @@ namespace IDE.ui
 				}
                 else if (prevElementType == SourceElementType.Literal)
                     doChar = true;
-                else if (theChar == '#')
+                else if (keyChar == '#')
                 {
                     int32 line = CursorLineAndColumn.mLine;
                     String lineText = scope String();
@@ -2532,11 +2535,11 @@ namespace IDE.ui
                         CursorLineAndColumn = LineAndColumn(line, 0);
                     doChar = true;
                 }
-                else if ((theChar == '{') && (OpenCodeBlock()))
+                else if ((keyChar == '{') && (OpenCodeBlock()))
 				{
                     // OpenCodeBlock handled this char8
 				}
-                else if (theChar == '}')
+                else if (keyChar == '}')
                 {
                     int32 line = CursorLineAndColumn.mLine;
                     String lineText = scope String();
@@ -2548,11 +2551,11 @@ namespace IDE.ui
                         CursorLineAndColumn = LineAndColumn(line, Math.Max(0, GetLineEndColumn(line, false, false) - 4));
                         CursorMoved();
                     }
-                    base.KeyChar(theChar);
+                    base.KeyChar(keyChar);
                 }
-                else if ((theChar == '(') && (cursorInOpenSpace))
+                else if ((keyChar == '(') && (cursorInOpenSpace))
                     InsertCharPair("()");
-				else if ((theChar == '{') && (cursorInOpenSpace))
+				else if ((keyChar == '{') && (cursorInOpenSpace))
 				{
 					/*int lineStart;
 					int lineEnd;
@@ -2569,11 +2572,11 @@ namespace IDE.ui
 						doChar = true;*/
 					InsertCharPair("{}");
 				}
-                else if ((theChar == '[') && (cursorInOpenSpace))
+                else if ((keyChar == '[') && (cursorInOpenSpace))
                     InsertCharPair("[]");
-                else if ((theChar == '\"') && (cursorInOpenSpace) && (!cursorAfterText))
+                else if ((keyChar == '\"') && (cursorInOpenSpace) && (!cursorAfterText))
                     InsertCharPair("\"\"");
-                else if ((theChar == '\'') && (cursorInOpenSpace) && (!cursorAfterText))
+                else if ((keyChar == '\'') && (cursorInOpenSpace) && (!cursorAfterText))
                     InsertCharPair("\'\'");
                 else
                     doChar = true;
@@ -2582,16 +2585,16 @@ namespace IDE.ui
             if (doChar)
             {
                 mIsInKeyChar = true;
-                base.KeyChar(theChar);
+                base.KeyChar(keyChar);
                 mIsInKeyChar = false;
             }
 
-            if ((theChar == '\b') || (theChar == '\r') || (theChar >= (char8)32))
+            if ((keyChar == '\b') || (keyChar == '\r') || (keyChar >= (char8)32))
             {
-                bool isHighPri = (theChar == '(') || (theChar == '.');
+                bool isHighPri = (keyChar == '(') || (keyChar == '.');
 				bool needsFreshAutoComplete = ((isHighPri) /*|| (!mAsyncAutocomplete)*/ || (mAutoComplete == null) || (mAutoComplete.mAutoCompleteListWidget == null));
 
-				if ((needsFreshAutoComplete) && (theChar == '\b'))
+				if ((needsFreshAutoComplete) && (keyChar == '\b'))
 				{
 					if ((prevChar != 0) && (prevChar.IsWhiteSpace) && (prevElementType != .Comment))
 					{
@@ -2619,7 +2622,7 @@ namespace IDE.ui
                 {
 					//Profiler.StartSampling();
 					if (IsCursorVisible(false))
-						mOnGenerateAutocomplete(theChar, isHighPri ? .HighPriority : default);
+						mOnGenerateAutocomplete(keyChar, isHighPri ? .HighPriority : default);
 					//Profiler.StopSampling();
                 }
             }
@@ -2629,7 +2632,7 @@ namespace IDE.ui
                     mAutoComplete.CloseListWindow();
             }
 
-            if ((theChar.IsLower) || (theChar == ' ') || (theChar == ':'))
+            if ((keyChar.IsLower) || (keyChar == ' ') || (keyChar == ':'))
             {
                 int cursorTextIdx = CursorTextPos;
                 int line;
@@ -2641,10 +2644,10 @@ namespace IDE.ui
                 String trimmedLineText = scope String(lineText);
                 trimmedLineText.TrimStart();
 
-                if ((theChar == ' ') || (theChar == ':'))
+                if ((keyChar == ' ') || (keyChar == ':'))
                 {
 					bool isLabel = false;
-					if (theChar == ':')
+					if (keyChar == ':')
 					{
 						isLabel = trimmedLineText != "scope:";
 						for (var c in trimmedLineText.RawChars)
