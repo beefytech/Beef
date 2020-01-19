@@ -1467,7 +1467,12 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 				{
 					if (checkTypeDef->mDefState == BfTypeDef::DefState_AwaitingNewVersion)
 					{
-						if (isExtension == (checkTypeDef->mTypeCode == BfTypeCode_Extension))
+						// We don't allow "new revision" semantics if the 'isExtension' state changes, or
+						//  if the outer type did not use "new revision" semantics (for isExtension change on itself or other outer type)
+						bool isCompatible = (isExtension == (checkTypeDef->mTypeCode == BfTypeCode_Extension)) &&
+							(checkTypeDef->mOuterType == actualOuterTypeDef);
+						
+						if (isCompatible)
 						{
 							if (prevRevisionTypeDef == NULL)
 							{

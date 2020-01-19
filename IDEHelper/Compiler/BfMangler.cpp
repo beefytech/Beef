@@ -259,7 +259,10 @@ void BfGNUMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl&
 		if (useModule == NULL)
 			useModule = mangleContext.mModule;
 		auto outerType = useModule->GetOuterType(typeInst);
-		FindOrCreateNameSub(mangleContext, name, outerType, curMatchIdx, matchFailed);
+		if (outerType != NULL)
+			FindOrCreateNameSub(mangleContext, name, outerType, curMatchIdx, matchFailed);
+		else
+			useModule->Fail("Failed to mangle name in BfGNUMangler::FindOrCreateNameSub");
 	}
 
 	FindOrCreateNameSub(mangleContext, name, NameSubstitute(NameSubstitute::Kind_TypeInstName, typeInst), curMatchIdx, matchFailed);
@@ -1283,7 +1286,10 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfTypeI
 		else
 		{
 			auto outerType = useModule->GetOuterType(typeInstance);
-			Mangle(mangleContext, name, outerType, true, true);
+			if (outerType != NULL)
+				Mangle(mangleContext, name, outerType, true, true);
+			else	
+				useModule->Fail("Failed to mangle name in BfMSMangler::Mangle");
 		}
 	}
 

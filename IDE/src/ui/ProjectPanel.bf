@@ -1064,6 +1064,16 @@ namespace IDE.ui
 			return projectItem;
 		}
 
+		ProjectFolder GetSelectedProjectFolder()
+		{
+			let projectItem = GetSelectedProjectItem();
+			if (projectItem == null)
+				return null;
+			if (let projectFolder = projectItem as ProjectFolder)
+				return projectFolder;
+			return projectItem.mParentFolder;
+		}
+
         public void SelectItem(ListViewItem item, bool checkKeyStates = false)
         {
             if (item.Focused)
@@ -2145,7 +2155,7 @@ namespace IDE.ui
 				item = menu.AddItem("New Folder");
 				item.mOnMenuItemSelected.Add(new (item) =>
 				    {
-						var projectFolder = GetSelectedProjectItem() as ProjectFolder;
+						var projectFolder = GetSelectedProjectFolder();
 						if (projectFolder != null)
 				        {
 							if (CheckProjectModify(projectFolder.mProject))
@@ -2156,7 +2166,7 @@ namespace IDE.ui
 				item = menu.AddItem("New Class...");
 				item.mOnMenuItemSelected.Add(new (item) =>
 				    {
-						var projectFolder = GetSelectedProjectItem() as ProjectFolder;
+						var projectFolder = GetSelectedProjectFolder();
 						if (projectFolder != null)
 				        {
 							if (CheckProjectModify(projectFolder.mProject))

@@ -4902,6 +4902,9 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType
 	//BF_ASSERT(typeDef->mTypeCode != BfTypeCode_Extension);
 	BF_ASSERT(!typeDef->mIsPartial || typeDef->mIsCombinedPartial);
 
+	BF_ASSERT(typeDef->mDefState != BfTypeDef::DefState_Deleted);
+	BF_ASSERT((typeDef->mOuterType == NULL) || (typeDef->mOuterType->mDefState != BfTypeDef::DefState_Deleted));
+
 	if (typeDef->mGenericParamDefs.size() != 0)
 		return ResolveTypeDef(typeDef, BfTypeVector(), populateType);
 
