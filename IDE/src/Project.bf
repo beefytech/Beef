@@ -290,6 +290,11 @@ namespace IDE
             }
         }
 
+		public this()
+		{
+
+		}
+
 		public ~this()
 		{
 			Dispose();

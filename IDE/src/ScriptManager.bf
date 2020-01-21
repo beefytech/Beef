@@ -969,48 +969,46 @@ namespace IDE
 			/*if (gApp.AreTestsRunning())
 				checkRunState = false;*/
 
-			if (checkRunState)
+			if (!checkRunState)
+				return true;
+
+			var runState = gApp.mDebugger.GetRunState();
+			if (runState == .Terminating)
 			{
-				var runState = gApp.mDebugger.GetRunState();
-				if (runState == .Terminating)
-				{
-					return false;
-				}
-
-				if (runState == .SearchingSymSrv)
-				{
-					return false;
-				}
-
-				if (runState == .DebugEval)
-				{
-					return false;
-				}
-
-				if (runState == .Running_ToTempBreakpoint)
-					return false;
-
-				Debug.Assert((runState == .NotStarted) || (runState == .Paused) || (runState == .Running_ToTempBreakpoint) ||
-					(runState == .Exception) || (runState == .Breakpoint) || (runState == .Terminated));
-				/*if (runState == .Paused)
-				{
-					NOP!();
-				}
-				else if ((runState == .Paused) || (runState == .Exception) || (runState == .Breakpoint))*/
-				{
-					if ((runState != .NotStarted) && (mIsFirstBreak))
-					{
-						//Debug.Assert((runState == .Breakpoint) || (gApp.IsCrashDump));
-						mIsFirstBreak = false;
-					}
-
-					//TEMPORARY TEST:
-					//Debug.Assert(runState == .Breakpoint);
-					return true;
-				}
+				return false;
 			}
 
-			return false;
+			if (runState == .SearchingSymSrv)
+			{
+				return false;
+			}
+
+			if (runState == .DebugEval)
+			{
+				return false;
+			}
+
+			if (runState == .Running_ToTempBreakpoint)
+				return false;
+
+			Debug.Assert((runState == .NotStarted) || (runState == .Paused) || (runState == .Running_ToTempBreakpoint) ||
+				(runState == .Exception) || (runState == .Breakpoint) || (runState == .Terminated));
+			/*if (runState == .Paused)
+			{
+				NOP!();
+			}
+			else if ((runState == .Paused) || (runState == .Exception) || (runState == .Breakpoint))*/
+			{
+				if ((runState != .NotStarted) && (mIsFirstBreak))
+				{
+					//Debug.Assert((runState == .Breakpoint) || (gApp.IsCrashDump));
+					mIsFirstBreak = false;
+				}
+
+				//TEMPORARY TEST:
+				//Debug.Assert(runState == .Breakpoint);
+				return true;
+			}
 		}
 
 		[IDECommand]

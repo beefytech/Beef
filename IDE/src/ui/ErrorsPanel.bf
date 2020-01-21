@@ -47,7 +47,9 @@ namespace IDE.ui
 		public ErrorsListView mErrorLV;
 
 		public bool mNeedsResolveAll;
-		public bool mErrorsDirty;
+		public int mDataId;
+		public int mErrorListId;
+		public int mErrorRefreshId;
 		public Monitor mMonitor = new .() ~ delete _;
 		public Dictionary<String, List<BfPassInstance.BfError>> mParseErrors = new .() ~ delete _;
 		public List<BfPassInstance.BfError> mResolveErrors = new .() ~ DeleteContainerAndItems!(_);
@@ -121,7 +123,7 @@ namespace IDE.ui
 				if (passKind != .Parse)
 				{
 					if (!mResolveErrors.IsEmpty)
-						mErrorsDirty = true;
+						mDataId++;
 
 					for (let error in mResolveErrors)
 					{
@@ -170,7 +172,7 @@ namespace IDE.ui
 					else
 				    	mResolveErrors.Add(bfError);
 
-					mErrorsDirty = true;
+					mDataId++;
 				}
 			}
 		}
@@ -198,7 +200,7 @@ namespace IDE.ui
 					{
 						delete kv.key;
 						DeleteErrorList(kv.value);
-						mErrorsDirty = true;
+						mDataId++;
 					}
 					mParseErrors.Clear();
 				}
@@ -208,7 +210,7 @@ namespace IDE.ui
 					{
 						delete key;
 						DeleteErrorList(list);
-						mErrorsDirty = true;
+						mDataId++;
 					}
 				}
 			}
@@ -220,7 +222,7 @@ namespace IDE.ui
 			{
 				ClearParserErrors(null);
 				ClearAndDeleteItems(mResolveErrors);
-				mErrorsDirty = true;
+				mDataId++;
 				mErrorCount = 0;
 				mWarningCount = 0;
 			}
@@ -230,7 +232,7 @@ namespace IDE.ui
 		{
 			using (mMonitor.Enter())
 			{
-				if (mErrorsDirty)
+				if (mDataId != mErrorListId)
 				{
 					let root = mErrorLV.GetRoot();
 
@@ -315,13 +317,20 @@ namespace IDE.ui
 					while (root.GetChildCount() > idx)
 						root.RemoveChildItemAt(root.GetChildCount() - 1);
 
-					mErrorsDirty = false;
+					mErrorListId = mDataId;
+					MarkDirty();
 				}
 			}
 		}
 
-		public void CheckResolveAll()
+		public void UpdateAlways()
 		{
+			if (mErrorRefreshId != mDataId)
+			{
+				gApp.MarkDirty();
+				mErrorRefreshId = mDataId;
+			}
+
 			let compiler = gApp.mBfResolveCompiler;
 			if ((mNeedsResolveAll) && (!compiler.IsPerformingBackgroundOperation()))
 			{

@@ -11586,7 +11586,7 @@ namespace IDE
 			if ((mBuildContext == null) && (!IsCompiling))
 				DeleteAndNullify!(mLaunchData);
 
-			mErrorsPanel?.CheckResolveAll();
+			mErrorsPanel?.UpdateAlways();
         }
 
         public void ShowPassOutput(BfPassInstance bfPassInstance)

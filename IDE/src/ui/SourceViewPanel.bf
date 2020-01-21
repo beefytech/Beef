@@ -577,7 +577,8 @@ namespace IDE.ui
 			{
 				if (mProjectSource == null)
 					return null;
-
+				if (mProjectSource.IsIgnored())
+					return null;
 				if (!gApp.IsProjectSourceEnabled(mProjectSource))
 					return null;
 
@@ -1831,7 +1832,8 @@ namespace IDE.ui
 				((resolveType == .Classify) || (resolveType == .ClassifyFullRefresh)))
 			{
 				gApp.mErrorsPanel.ClearParserErrors(mFilePath);
-				gApp.mErrorsPanel.ProcessPassInstance(passInstance, .Parse);
+				if (!isFastClassify)
+					gApp.mErrorsPanel.ProcessPassInstance(passInstance, .Parse);
 			}
             
             if (isInterrupt)
@@ -1872,7 +1874,7 @@ namespace IDE.ui
                 parser.SetAutocomplete(Math.Max(0, mEditWidget.mEditWidgetContent.CursorTextPos - 1));
             }*/
 
-            if ((!isFastClassify) && (bfCompiler != null))
+			if ((!isFastClassify) && (bfCompiler != null))
             {
                 if (!bfCompiler.ClassifySource(passInstance, parser, resolvePassData, char8Data))
                 {
@@ -1910,7 +1912,7 @@ namespace IDE.ui
             {
                 //bool isAutocomplete = (resolveType == ResolveType.Autocomplete) || (resolveType == ResolveType.Autocomplete_HighPri);
                 //if (isAutocomplete)
-                if ((!isBackground) && (resolveType == ResolveType.Autocomplete))
+                if ((!isFastClassify) && (!isBackground) && (resolveType == ResolveType.Autocomplete))
                     InjectErrors(passInstance, mEditWidget.mEditWidgetContent.mData.mText, mEditWidget.mEditWidgetContent.mData.mTextIdData.GetPrepared(), true);
                 //IDEApp.sApp.ShowPassOutput(passInstance);
                 

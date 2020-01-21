@@ -161,6 +161,9 @@ namespace IDE.ui
 			{
 				String path = scope .();
 				mDirectoryEdit.GetText(path);
+				path.Trim();
+				if ((path.EndsWith('\\')) || (path.EndsWith('/')))
+					path.RemoveFromEnd(1);
 
 				String projName = scope .();
 				Path.GetFileName(path, projName);

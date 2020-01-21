@@ -1103,7 +1103,7 @@ namespace IDE.ui
             app.RemoveProject(project);
         }
 
-		void ProjectItemUnregister(ProjectItem projectItem)
+		void ProjectItemUnregister(ProjectItem projectItem, bool isDeleting)
 		{
 			var projectSource = projectItem as ProjectSource;
 			if (projectSource != null)
@@ -1136,14 +1136,20 @@ namespace IDE.ui
 			            var sourceViewPanel = tab.mContent as SourceViewPanel;
 			            if ((sourceViewPanel != null) && (sourceViewPanel.mProjectSource == projectSource))
 			            {
-			                sourceViewPanel.DetachFromProjectItem();
+							if (isDeleting)
+			                	sourceViewPanel.DetachFromProjectItem();
+							else
+								sourceViewPanel.QueueFullRefresh(true);
 			            }
 			        });
 
 				if (isProjectEnabled)
 				{
-			        gApp.mBfResolveHelper.ProjectSourceRemoved(projectSource);
-					gApp.mWorkspace.ProjectSourceRemoved(projectSource);
+					if (isDeleting)
+					{
+				        gApp.mBfResolveHelper.ProjectSourceRemoved(projectSource);
+						gApp.mWorkspace.ProjectSourceRemoved(projectSource);
+					}
 			        gApp.RefreshVisibleViews();
 				}
 			}
@@ -1192,7 +1198,7 @@ namespace IDE.ui
             if (projectItem == null)
                 return;
 
-            ProjectItemUnregister(projectItem);           
+            ProjectItemUnregister(projectItem, forceRemove);           
 
 			bool doReleaseRef = false;
 			bool didRemove = false;
@@ -1227,16 +1233,31 @@ namespace IDE.ui
 			}
 			else
 			{
-				/*if (projectItem.mParentFolder.mIncludeKind == .Ignore)
-					projectItem.mIncludeKind = .Auto;
-				else
-					projectItem.mIncludeKind = .Ignore;*/
+				// Mark item as ignored - note, this was removed at some point. Why? Did this trigger some bug?
+				ProjectItem.IncludeKind includeKind = .Ignore;
+				if (projectItem.mParentFolder.mIncludeKind == .Ignore)
+					includeKind = .Auto;
+
+				if (projectItem.mIncludeKind != includeKind)
+				{
+					projectItem.mIncludeKind = includeKind;
+					projectItem.mProject.SetChanged();
+				}
+				
+				if (let projectSource = projectItem as ProjectSource)
+				{
+					String path = scope .();
+					projectSource.GetFullImportPath(path);
+					gApp.mErrorsPanel.ClearParserErrors(path);
+				}
 			}
 
 			if ((didRemove) || (!mShowIgnored))
-            	listItem.mParentItem.RemoveChildItem(listItem);
-			using (gApp.mMonitor.Enter())
-            	projectItem.Dispose();
+			{
+	            listItem.mParentItem.RemoveChildItem(listItem);
+				using (gApp.mMonitor.Enter())
+	            	projectItem.Dispose();
+			}
 
 			if (doReleaseRef)
 				projectItem.ReleaseRef();
