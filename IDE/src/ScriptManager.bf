@@ -960,17 +960,14 @@ namespace IDE
 			if (gApp.mDebugger == null)
 				return true;
 
-			bool checkRunState = (!gApp.mDebugger.HasPendingDebugLoads()) &&
-				((gApp.mExecutionPaused) || (!gApp.mDebugger.mIsRunning));
-
 			if ((!ScriptManager.sActiveManager.mIsBuildScript) && (gApp.AreTestsRunning()))
-				checkRunState = false;
-
-			/*if (gApp.AreTestsRunning())
-				checkRunState = false;*/
-
-			if (!checkRunState)
 				return true;
+
+			if (gApp.mDebugger.HasPendingDebugLoads())
+				return false;
+
+			if ((!gApp.mExecutionPaused) && (gApp.mDebugger.mIsRunning))
+				return false;
 
 			var runState = gApp.mDebugger.GetRunState();
 			if (runState == .Terminating)

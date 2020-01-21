@@ -9538,7 +9538,7 @@ namespace IDE
 				{
 #if !CLI
 					DarkDialog dlg = new DarkDialog("Initialize Project?",
-						scope String("The project does not contain any source code. Do you want to auto-generate some startup code?", mWorkspace.mStartupProject.mProjectName)
+						scope String()..AppendF("Project '{}' does not contain any source code. Do you want to auto-generate some startup code?", mWorkspace.mStartupProject.mProjectName)
 						, DarkTheme.sDarkTheme.mIconError);
 					dlg.mWindowFlags |= .Modal;
 					dlg.AddYesNoButtons(new (dlg) =>
