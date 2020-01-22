@@ -6486,7 +6486,16 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 			}
 		}		
 
-		BeLibManager::Get()->Finish();
+		auto libManager = BeLibManager::Get();
+		libManager->Finish();
+		if (!libManager->mErrors.IsEmpty())
+		{
+			for (auto& error : libManager->mErrors)
+				mPassInstance->Fail(error);
+			// We need to rebuild everything just to force that lib to get repopulated
+			mOptions.mForceRebuildIdx++;
+		}
+		libManager->mErrors.Clear();
 	}
 #endif		
 

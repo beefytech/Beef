@@ -105,6 +105,7 @@ class BeLibManager
 public:
 	CritSect mCritSect;
 	Dictionary<String, BeLibFile*> mLibFiles;
+	Array<String> mErrors;
 
 public:	
 	BeLibManager();

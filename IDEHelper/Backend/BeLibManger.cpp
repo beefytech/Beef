@@ -185,6 +185,7 @@ bool BeLibFile::Init(const StringImpl& filePath, bool moveFile)
 				::DeleteFileA(altName.c_str());
 				if (!::MoveFileA(filePath.c_str(), altName.c_str()))
 				{
+					mFilePath = filePath;
 					return false;
 				}
 			}
@@ -240,7 +241,7 @@ bool BeLibFile::Finish()
 	}
 
 	if (!mFileStream.Open(mFilePath, "wb"))
-	{
+	{		
 		mFailed = true;
 		return false;
 	}
@@ -499,10 +500,18 @@ void BeLibManager::Finish()
 {
 	BP_ZONE("BeLibManager::Finish");
 
+	AutoCrit autoCrit(mCritSect);
+
 	for (auto& libPair : mLibFiles)
 	{
 		auto libFile = libPair.mValue;
-		libFile->Finish();
+		if (!libFile->mFilePath.IsEmpty())
+		{
+			if (!libFile->Finish())
+			{
+				mErrors.Add(StrFormat("Failed to write lib file '%s'", libFile->mFilePath.c_str()));
+			}
+		}
 		delete libFile;
 	}
 	mLibFiles.Clear();
