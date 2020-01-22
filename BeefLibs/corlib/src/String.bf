@@ -1709,6 +1709,11 @@ namespace System
 			return EqualsHelper(this.Ptr + mLength - b.[Friend]mLength, b.Ptr, b.[Friend]mLength);
 		}
 
+		public bool StartsWith(char8 c)
+		{
+			return mLength != 0 && Ptr[0] == c;
+		}
+
 		public bool EndsWith(char8 c)
 		{
 			if (mLength == 0)
