@@ -253,7 +253,7 @@ public:
 	DebugTarget* mDebugTarget;	
 	DbgModule* mOrigDbgModule;
 	DbgModule* mDbgModule;
-	DbgCompileUnit* mDbgCompileUnit;
+	DbgCompileUnit* mDbgCompileUnit;	
 
 	DbgLanguage mLanguage;
 	BfPassInstance* mPassInstance;	
@@ -301,7 +301,7 @@ public:
 	bool mIsComplexExpression;
 
 public:
-	DbgTypedValue ReadTypedValue(DbgType* type, uint64 valAddr, DbgAddrType addrType);
+	DbgTypedValue ReadTypedValue(BfAstNode* targetSrc, DbgType* type, uint64 valAddr, DbgAddrType addrType);
 	bool CheckTupleCreation(addr_target receiveAddr, BfAstNode* targetSrc, DbgType* tupleType, const BfSizedArray<BfExpression*>& argValues, BfSizedArray<BfTupleNameNode*>* names);
 	DbgTypedValue CheckEnumCreation(BfAstNode* targetSrc, DbgType* enumType, const StringImpl& caseName, const BfSizedArray<BfExpression*>& argValues);
 	void DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExpression*)>& args, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments);
@@ -369,7 +369,7 @@ public:
 	DbgTypedValue LookupField(BfAstNode* targetSrc, DbgTypedValue target, const StringImpl& fieldName);	
 	DbgTypedValue LookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void LookupSplatMember(const DbgTypedValue& target, const StringImpl& fieldName);
-	void LookupSplatMember(BfAstNode* srcNode, BfAstNode* lookupNode, const DbgTypedValue& target, const StringImpl& fieldName, String* outFindName = NULL, bool* outIsConst = NULL);
+	void LookupSplatMember(BfAstNode* srcNode, BfAstNode* lookupNode, const DbgTypedValue& target, const StringImpl& fieldName, String* outFindName = NULL, bool* outIsConst = NULL, StringImpl* forceName = NULL);
 	void LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	DbgType* FindSubtype(DbgType* type, const StringImpl& name);
 	void LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, bool ignoreIdentifierNotFoundError = false);		

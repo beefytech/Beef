@@ -543,7 +543,7 @@ void DebugTarget::EvaluateAutoStaticVariable(DbgVariable* variable, const String
 	if ((variable->mLocationData != NULL) && (variable->mLocationLen > 0))
 	{
 		DbgAddrType addrType = DbgAddrType_Local;
-		addr_target variableAddr = variable->mStaticCachedAddr;
+		intptr variableAddr = variable->mStaticCachedAddr;
 		if (variableAddr == 0)
 		{
 			addrType = DbgAddrType_Target;
@@ -2198,7 +2198,7 @@ bool DebugTarget::GetVariableIndexRegisterAndOffset(DbgVariable* dwVariable, int
 addr_target DebugTarget::GetStaticAddress(DbgVariable* dwVariable)
 {
 	DbgAddrType addrType;
-	return dwVariable->mCompileUnit->mDbgModule->EvaluateLocation(NULL, dwVariable->mLocationData, dwVariable->mLocationLen, NULL, &addrType);
+	return (addr_target)dwVariable->mCompileUnit->mDbgModule->EvaluateLocation(NULL, dwVariable->mLocationData, dwVariable->mLocationLen, NULL, &addrType);
 }
 
 bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgBlock* dwBlock, String& name, WdStackFrame* stackFrame, intptr* outAddr, DbgType** outType, DbgAddrType* outAddrType)

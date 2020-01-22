@@ -6705,7 +6705,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 				}
 
 				BF_ASSERT(nonInlinedSubProgram->mFrameBaseData != NULL);
-				uint64 loc = EvaluateLocation(nonInlinedSubProgram, nonInlinedSubProgram->mFrameBaseData, nonInlinedSubProgram->mFrameBaseLen, stackFrame, outAddrType, DbgEvalLocFlag_DisallowReg);
+				intptr loc = EvaluateLocation(nonInlinedSubProgram, nonInlinedSubProgram->mFrameBaseData, nonInlinedSubProgram->mFrameBaseLen, stackFrame, outAddrType, DbgEvalLocFlag_DisallowReg);
 				int64 offset = DecodeSLEB128(locData);
 				loc += offset;
 				//loc = BfDebuggerReadMemory(loc);
@@ -6829,7 +6829,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 	return stackFrameData[--stackIdx];
 }
 
-addr_target DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)
+intptr DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)
 {
 	BP_ZONE("DebugTarget::EvaluateLocation");
 	

@@ -1136,7 +1136,7 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 		{
 			auto stackFrame = GetStackFrame();
 			DbgAddrType addrType;
-			int64 valAddr = member->mCompileUnit->mDbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, stackFrame, &addrType);
+			intptr valAddr = member->mCompileUnit->mDbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, stackFrame, &addrType);
 			if (valAddr != 0)
 			{
 				DbgTypedValue typedVal;
@@ -1470,12 +1470,12 @@ DbgTypedValue DbgExprEvaluator::GetThis()
 		if (mDebugTarget->GetValueByName(GetCurrentMethod(), findName, stackFrame, &valAddr, &valType, &addrType))
 		{
 			//valType = valType->RemoveModifiers();
-			return FixThis(ReadTypedValue(valType, valAddr, addrType));
+			return FixThis(ReadTypedValue(NULL, valType, valAddr, addrType));
 		}
 
 		if (mDebugTarget->GetValueByName(GetCurrentMethod(), "__closure", stackFrame, &valAddr, &valType, &addrType))
 		{
-			DbgTypedValue result = ReadTypedValue(valType, valAddr, addrType);
+			DbgTypedValue result = ReadTypedValue(NULL, valType, valAddr, addrType);
 			if (!result)
 				return result;
 			SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);
@@ -1849,7 +1849,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 		findName += "$d";
 		if (mDebugTarget->GetValueByName(GetCurrentMethod(), findName, GetStackFrame(), &valAddr, &valType, &addrType))
 		{
-			return ReadTypedValue(valType, valAddr, addrType);			
+			return ReadTypedValue(srcNode, valType, valAddr, addrType);			
 		}		
 	}
 
@@ -2535,7 +2535,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 			if (checkMember->mLocationLen != 0)
 			{
 				DbgAddrType addrType;
-				int64 valAddr = checkMember->mCompileUnit->mDbgModule->EvaluateLocation(NULL, checkMember->mLocationData, checkMember->mLocationLen, stackFrame, &addrType);				
+				intptr valAddr = checkMember->mCompileUnit->mDbgModule->EvaluateLocation(NULL, checkMember->mLocationData, checkMember->mLocationLen, stackFrame, &addrType);
 				if ((language == DbgLanguage_Beef) && (checkMember->mType->IsConst()) && (checkMember->mType->mTypeParam->IsSizedArray()))
 				{
 					// We need an extra deref
@@ -2544,11 +2544,11 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 
 				if (checkMember->mIsConst)
 					addrType = DbgAddrType_Value;
-				return ReadTypedValue(checkMember->mType, valAddr, addrType);
+				return ReadTypedValue(targetSrc, checkMember->mType, valAddr, addrType);
 			}
 			else if (checkMember->mIsConst)
 			{
-				return ReadTypedValue(checkMember->mType, (uint64)&checkMember->mConstValue, DbgAddrType_Local);
+				return ReadTypedValue(targetSrc, checkMember->mType, (uint64)&checkMember->mConstValue, DbgAddrType_Local);
 			}
 			else if (checkMember->mIsStatic)
 			{
@@ -2583,14 +2583,14 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 				}
 				else if ((targetPtr == 0) && (target.mPtr != 0) && (!target.mType->HasPointer()))
 				{
-					typedValue = ReadTypedValue(checkMember->mType, (uint64)&target.mPtr + checkMember->mMemberOffset, DbgAddrType_Local);
+					typedValue = ReadTypedValue(targetSrc, checkMember->mType, (uint64)&target.mPtr + checkMember->mMemberOffset, DbgAddrType_Local);
 				}
 				else
 				{
 					if (target.mType->HasPointer())
 						targetPtr = target.mPtr;
 
-					typedValue = ReadTypedValue(checkMember->mType, targetPtr + checkMember->mMemberOffset, DbgAddrType_Target);
+					typedValue = ReadTypedValue(targetSrc, checkMember->mType, targetPtr + checkMember->mMemberOffset, DbgAddrType_Target);
 				}
 
 				if (checkMember->mBitSize != 0)
@@ -2850,10 +2850,44 @@ void DbgExprEvaluator::Visit(BfAstNode* node)
 	Fail("Invalid debug expression", node);
 }
 
-DbgTypedValue DbgExprEvaluator::ReadTypedValue(DbgType* dbgType, uint64 valAddr, DbgAddrType addrType)
+DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* dbgType, uint64 valAddr, DbgAddrType addrType)
 {
 	bool failedReadMemory = false;
-	
+
+	if (addrType == DbgAddrType_Alias)
+	{
+		String findName = (const char*)valAddr;
+		
+		if (targetSrc == NULL)
+			return DbgTypedValue();
+
+		auto source = targetSrc->GetSourceData();
+		auto bfParser = source->ToParser();
+		if (bfParser == NULL)
+			return DbgTypedValue();
+
+		auto identifierNode = source->mAlloc.Alloc<BfIdentifierNode>();
+		int srcStart = bfParser->AllocChars(findName.length());
+		memcpy((char*)source->mSrc + srcStart, findName.c_str(), findName.length());
+		identifierNode->Init(srcStart, srcStart, srcStart + findName.length());
+		
+		SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
+		auto result = LookupIdentifier(identifierNode);
+		if (result)
+			return result;
+				
+		// Allow lookup in calling method if we are inlined (for mixin references)
+		auto currentMethod = GetCurrentMethod();
+		if ((currentMethod != NULL) && (currentMethod->mInlineeInfo != NULL))
+		{
+			SetAndRestoreValue<int> preCallstackIdx(mCallStackIdx);
+			mCallStackIdx++;
+			result = LookupIdentifier(identifierNode);
+		}
+
+		return result;
+	}
+
 	if (addrType == DbgAddrType_LocalSplat)
 	{
 		DbgTypedValue val;
@@ -2866,7 +2900,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(DbgType* dbgType, uint64 valAddr,
 
 	if (addrType == DbgAddrType_TargetDeref)
 	{
-		DbgTypedValue result = ReadTypedValue(dbgType, valAddr, DbgAddrType_Target);
+		DbgTypedValue result = ReadTypedValue(targetSrc, dbgType, valAddr, DbgAddrType_Target);
 		if ((result.mType != NULL) && (result.mType->IsPointer()))
 		{
 			result.mType = result.mType->mTypeParam;
@@ -2945,7 +2979,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(DbgType* dbgType, uint64 valAddr,
 	if (dbgType->mTypeCode == DbgType_Bitfield)
 	{		
 		DbgType* underlyingType = dbgType->mTypeParam;
-		DbgTypedValue result = ReadTypedValue(dbgType->mTypeParam, valAddr, addrType);
+		DbgTypedValue result = ReadTypedValue(targetSrc, dbgType->mTypeParam, valAddr, addrType);
 		result.mType = dbgType;
 
 		auto dbgBitfieldType = (DbgBitfieldType*)dbgType;
@@ -3084,7 +3118,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(DbgType* dbgType, uint64 valAddr,
 		break;
 
 	case DbgType_Enum:		
-		result = ReadTypedValue(dbgType->mTypeParam, valAddr, addrType);
+		result = ReadTypedValue(targetSrc, dbgType->mTypeParam, valAddr, addrType);
 		if (result)
 			result.mType = dbgType;		
 		break;
@@ -3632,7 +3666,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 		{
 			if (mSubjectValue.mSrcAddress != 0)
 			{
-				auto refreshVal = ReadTypedValue(mSubjectValue.mType, mSubjectValue.mSrcAddress, DbgAddrType_Target);
+				auto refreshVal = ReadTypedValue(identifierNode, mSubjectValue.mType, mSubjectValue.mSrcAddress, DbgAddrType_Target);
 				if (refreshVal)
 					mSubjectValue = refreshVal;
 			}
@@ -3678,7 +3712,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 				//bool isLocal = !valIsAddr;
 				//if (valType->IsCompositeType())
 					//isLocal = false;
-				return ReadTypedValue(valType, valAddr, addrType);
+				return ReadTypedValue(identifierNode, valType, valAddr, addrType);
 			}
 		}
 	}
@@ -3693,7 +3727,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 		//bool valIsAddr = false;
 		if (mDebugTarget->GetValueByName(GetCurrentMethod(), "__closure", stackFrame, &valAddr, &valType, &addrType))
 		{
-			DbgTypedValue closureValue = ReadTypedValue(valType, valAddr, addrType);
+			DbgTypedValue closureValue = ReadTypedValue(identifierNode, valType, valAddr, addrType);
 			if (closureValue)
 			{
 				SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);
@@ -4634,7 +4668,7 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				return;
 			}
 
-			auto result = ReadTypedValue(typeVariable->mType, collection.mPtr + typeVariable->mMemberOffset + (idx * typeVariable->mType->GetStride()), DbgAddrType_Target);
+			auto result = ReadTypedValue(indexerExpr, typeVariable->mType, collection.mPtr + typeVariable->mMemberOffset + (idx * typeVariable->mType->GetStride()), DbgAddrType_Target);
 			if (mResult.mIsReadOnly)
 				result.mIsReadOnly = true;
 			mResult = result;
@@ -4713,7 +4747,7 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 	}
 
 	auto memberType = collection.mType->mTypeParam;
-	auto result = ReadTypedValue(memberType, target + indexArgument.GetInt64() * memberType->GetStride(), DbgAddrType_Target);
+	auto result = ReadTypedValue(indexerExpr, memberType, target + indexArgument.GetInt64() * memberType->GetStride(), DbgAddrType_Target);
 	if (mResult.mIsReadOnly)
 		result.mIsReadOnly = true;
 	mResult = result;
@@ -4859,18 +4893,20 @@ void DbgExprEvaluator::LookupSplatMember(const DbgTypedValue& target, const Stri
 			{
 				if (mReferenceId != NULL)
 					*mReferenceId = findName;
-				mResult = ReadTypedValue(valType, valAddr, addrType);
+				mResult = ReadTypedValue(NULL, valType, valAddr, addrType);
 				return;
 			}
 		}
 	}
 }
 
-void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* lookupNode, const DbgTypedValue& target, const StringImpl& fieldName, String* outFindName, bool* outIsConst)
+void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* lookupNode, const DbgTypedValue& target, const StringImpl& fieldName, String* outFindName, bool* outIsConst, StringImpl* forceName)
 {
 	/*DbgVariable* dbgVariable = (DbgVariable*)target.mVariable;
 	if (dbgVariable != NULL)
 		return LookupSplatMember(target, fieldName);*/
+
+	auto curMethod = GetCurrentMethod();
 
 	while (auto parenNode = BfNodeDynCast<BfParenthesizedExpression>(lookupNode))
 		lookupNode = parenNode->mExpression;
@@ -4882,8 +4918,8 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 		{
 			//
 		}
-		else
-		{
+		else if (forceName == NULL)
+		{			
 			if (outFindName != NULL)
 				*outFindName = splatLookupEntry->mFindName;
 			if (outIsConst != NULL)
@@ -4938,6 +4974,9 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 		else
 			return;
 	}
+
+	if (forceName != NULL)
+		findName = *forceName;
 		
 	CPUStackFrame* stackFrame = GetStackFrame();
 	intptr valAddr;
@@ -4974,15 +5013,34 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 	}
 		
 	if (!foundParent)
-	{
-		if (!mDebugTarget->GetValueByName(GetCurrentMethod(), findName, stackFrame, &valAddr, &valType, &addrType))
+	{		
+		if (!mDebugTarget->GetValueByName(curMethod, findName, stackFrame, &valAddr, &valType, &addrType))
 			return;
+
+		if (addrType == DbgAddrType_Alias)
+		{
+			findName = (const char*)valAddr;								
+
+			if (!mDebugTarget->GetValueByName(curMethod, findName, stackFrame, &valAddr, &valType, &addrType))
+			{
+				if (curMethod->mInlineeInfo != NULL)
+				{
+					// Look outside to inline
+					SetAndRestoreValue<int> prevStackIdx(mCallStackIdx, mCallStackIdx + 1);
+					LookupSplatMember(targetNode, lookupNode, target, fieldName, outFindName, outIsConst, &findName);
+					return;
+				}
+
+				return;
+			}
+		}			
+			
 		if (addrType == DbgAddrType_LocalSplat)
 		{
 			DbgVariable* dbgVariable = (DbgVariable*)valAddr;
 			// Use real name, in case of aliases
 			findName = dbgVariable->mName;
-		}
+		}		
 	}
 
 	if ((wasCast) && (valType != NULL))
@@ -5048,7 +5106,7 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 		if (outIsConst != NULL)
 			*outIsConst = wantConst;
 
-		if (mDebugTarget->GetValueByName(GetCurrentMethod(), findName, stackFrame, &valAddr, &valType, &addrType))
+		if (mDebugTarget->GetValueByName(curMethod, findName, stackFrame, &valAddr, &valType, &addrType))
 		{
 			BF_ASSERT(valType != NULL);
 
@@ -5061,7 +5119,7 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 					// Set readonly if the original value was const
 					memberType = mDbgModule->GetConstType(valType);										
 				}*/
-				mResult = ReadTypedValue(memberType, valAddr, addrType);				
+				mResult = ReadTypedValue(targetNode, memberType, valAddr, addrType);				
 				if (wantConst)
 				{
 					// Set readonly if the original value was const
@@ -5073,6 +5131,14 @@ void DbgExprEvaluator::LookupSplatMember(BfAstNode* targetNode, BfAstNode* looku
 		{
  			if (target.mSrcAddress == -1)
  			{
+// 				if (curMethod->mInlineeInfo != NULL)
+// 				{
+// 					// Look outside to inline
+// 					SetAndRestoreValue<int> prevStackIdx(mCallStackIdx, mCallStackIdx + 1);
+// 					LookupSplatMember(targetNode, lookupNode, target, fieldName, outFindName, outIsConst, true);
+// 					return;
+// 				}
+
 				if (!memberType->IsStruct())
 					Fail("Failed to lookup splat member", (lookupNode != NULL) ? lookupNode : targetNode);
 
@@ -6348,7 +6414,7 @@ void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unar
 				Fail("Operator can only be used on pointer values", opToken);
 				return;
 			}			
-			mResult = ReadTypedValue(type->mTypeParam, mResult.mPtr, DbgAddrType_Target);
+			mResult = ReadTypedValue(opToken, type->mTypeParam, mResult.mPtr, DbgAddrType_Target);
 		}
 		break;
 	case BfUnaryOp_AddressOf:
@@ -6529,7 +6595,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 			auto returnType = method->mReturnType->RemoveModifiers(&hadRef);
 			if (hadRef) 
 			{
-				returnVal = ReadTypedValue(returnType, returnVal.mPtr, DbgAddrType_Target);
+				returnVal = ReadTypedValue(NULL, returnType, returnVal.mPtr, DbgAddrType_Target);
 				returnVal.mType = returnType;
 			}
 		}
@@ -6689,7 +6755,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 
 					if (!type->IsCompositeType())
 					{
-						auto elemTypedValue = ReadTypedValue(type, typedVal.mSrcAddress, DbgAddrType_Target);
+						auto elemTypedValue = ReadTypedValue(targetSrc, type, typedVal.mSrcAddress, DbgAddrType_Target);
 						DbgMethodArgument methodArg;
 						methodArg.mTypedValue = elemTypedValue;						
 						argPushQueue.push_back(methodArg);

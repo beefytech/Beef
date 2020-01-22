@@ -2202,7 +2202,12 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		}
 		else
 		{
-			if (unrangedIdx >= deferredVariableLocations.size())
+			if (localVar->mLocationData != NULL)
+			{
+				// Already handled
+				NOP;
+			}
+			else if (unrangedIdx >= deferredVariableLocations.size())
 			{
 				// There was no ranged data, commit just the unranged entry
 				BF_ASSERT(locationDataCount == localVar->mLocationLen);
@@ -2240,8 +2245,13 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		for (auto& deferredVariableLocation : deferredVariableLocations)
 		{
 			if (deferredVariableLocation.mRangedLength == -1)
-				continue;
+				continue;			
 			auto deferredVar = deferredVariableLocation.mVariable;
+			if (deferredVar->mLocationData != NULL)
+			{
+				// Already handled
+				continue;
+			}
 			BP_ALLOC("DeferredVarLoc2", deferredVariableLocation.mRangedLength);
 			deferredVar->mLocationData = mAlloc.AllocBytes(deferredVariableLocation.mRangedLength, "DeferredVarLoc2");
 			memcpy((uint8*)deferredVar->mLocationData, deferredVariableLocation.mRangedStart, deferredVariableLocation.mRangedLength);
@@ -3205,7 +3215,8 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 							locationDataStart = dataStart;
 						locationDataEnd = dataEnd;
 						locationDataCount++;
-						localVar->mLocationLen++;
+						if (localVar->mLocationData == NULL)
+							localVar->mLocationLen++;
 					}
 				}
 				break;
@@ -3214,42 +3225,81 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 		if (hasNewLocalVar)
 		{
-			if (localVar->mName != NULL)
+			if ((localVar->mName != NULL) && (localVar->mName[0] == '$'))
 			{
+				char* aliasPos = (char*)strstr(localVar->mName, "$alias$");
+
 				// This $alias$ hack is unfortunate, but LLVM gets confused when we attempt to tie multiple debug variables
 				//  to the same memory location, which can happen during mixin injection.  The result is that the mixin gets
 				//  some premature instructions attributed to it from the variable declaration.  This fixes that.
-				if (strncmp(localVar->mName, "$alias$", 7) == 0)
-				{
-					localVar->mName += 7;
-					char* dollarPos = (char*)strchr(localVar->mName, '$');
-					if (dollarPos != 0)
-					{
-						*dollarPos = 0;
-						const char* findName = dollarPos + 1;
+				if (aliasPos != NULL)
+				{						
+					String findName = String(aliasPos + 7);
+					localVar->mName = CvDupString(localVar->mName + 1, aliasPos - localVar->mName - 1);
 
-						bool found = false;
-						for (int blockIdx = (int)blockStack.size() - 1; blockIdx >= 0; blockIdx--)
+					auto curBlock = blockStack.back();
+					localVar->mLocationData = (uint8*)CvDupString(aliasPos + 7, strlen(aliasPos + 7));
+					localVar->mRangeStart = curBlock->mLowPC;
+					localVar->mRangeLen = curBlock->mHighPC - curBlock->mLowPC;
+
+					/*bool found = false;
+
+					auto _CheckBlock = [&](DbgBlock* block)
+					{						
+						for (auto checkVar : block->mVariables)
 						{
-							DbgBlock* block = blockStack[blockIdx];												
-							for (auto checkVar : block->mVariables)
+							if (checkVar->mName == NULL)
+								continue;
+
+							if (findName == checkVar->mName)
 							{
-								if (strcmp(checkVar->mName, findName) == 0)
-								{
-									localVar->mConstValue = checkVar->mConstValue;
-									localVar->mType = checkVar->mType;
-									localVar->mLocationData = checkVar->mLocationData;
-									localVar->mLocationLen = checkVar->mLocationLen;
-
-									found = true;
-									break;
-								}
+								localVar->mConstValue = checkVar->mConstValue;
+								localVar->mType = checkVar->mType;
+								localVar->mLocationData = checkVar->mLocationData;
+								localVar->mLocationLen = checkVar->mLocationLen;
+								found = true;
+								return true;
 							}
-
-							if (found)
-								break;
 						}
-					}
+
+						return false;
+						
+					};
+
+					for (int blockIdx = (int)blockStack.size() - 1; blockIdx >= 0; blockIdx--)
+					{
+						DbgBlock* block = blockStack[blockIdx];												
+						if (_CheckBlock(block))						
+							break;						
+					}				
+
+					if (!found)
+					{
+						addr_target checkAddr = 0;
+						DbgSubprogram* checkSubprogram = curSubprogram;
+
+						while (checkSubprogram != NULL)
+						{
+							auto checkAddr = checkSubprogram->mBlock.mLowPC;
+							if (checkSubprogram->mInlineeInfo == NULL)
+								break;
+							checkSubprogram = checkSubprogram->mInlineeInfo->mInlineParent;
+
+							std::function<void(DbgBlock*)> _RecurseBlock = [&](DbgBlock* block)
+							{
+								if ((checkAddr < block->mLowPC) || (checkAddr >= block->mHighPC))
+									return;
+
+								if (_CheckBlock(block))								
+									return;
+
+								for (auto block : block->mSubBlocks)
+									_RecurseBlock(block);
+							};
+
+							_RecurseBlock(&checkSubprogram->mBlock);
+						}
+					}*/
 				}
 							
 				if (compileUnit->mLanguage != DbgLanguage_Beef)
@@ -6039,15 +6089,22 @@ void COFF::FinishHotSwap()
 	mTypeMap.Clear();	
 }
 
-addr_target COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)
+intptr COFF::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)
 {
 	if (mDbgFlavor == DbgFlavor_GNU)
 		return DbgModule::EvaluateLocation(dwSubprogram, locData, locDataLen, stackFrame, outAddrType, flags);
 
+	if ((locDataLen == 0) && (locData != NULL))
+	{
+		// locData is actually a string, the aliased name
+		*outAddrType = DbgAddrType_Alias;
+		return (intptr)locData;
+	}
+
 	addr_target pc = 0;
 	if (stackFrame != NULL)
 	{
-		// Use 'GetSourcePC', which will offset the RSP when we're not at the top positon of the call stack, since RSP will be the 
+		// Use 'GetSourcePC', which will offset the RSP when we're not at the top position of the call stack, since RSP will be the 
 		//  return address in those cases
 		pc = stackFrame->GetSourcePC();
 	}

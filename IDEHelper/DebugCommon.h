@@ -57,7 +57,8 @@ enum DbgAddrType : uint8
 	DbgAddrType_TargetDeref,
 	DbgAddrType_Register,
 	DbgAddrType_OptimizedOut,
-	DbgAddrType_NoValue
+	DbgAddrType_NoValue,
+	DbgAddrType_Alias
 };
 
 NS_BF_END

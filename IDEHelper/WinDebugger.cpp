@@ -7033,7 +7033,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if (ptrVal != 0)
 			{
 				DbgExprEvaluator dbgExprEvaluator(this, dbgModule, NULL, -1, -1);
-				DbgTypedValue innerTypedVal = dbgExprEvaluator.ReadTypedValue(innerType, typedValue.mPtr, DbgAddrType_Target);
+				DbgTypedValue innerTypedVal = dbgExprEvaluator.ReadTypedValue(NULL, innerType, typedValue.mPtr, DbgAddrType_Target);
 				if (innerTypedVal)
 				{
 					DwFormatInfo defaultFormatInfo;
@@ -9115,7 +9115,7 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 		else if ((underlyingType->IsStruct()) && (exprResult.mSrcAddress != 0) && (underlyingType->IsTypedPrimitive()))
 		{
 			auto primType = underlyingType->GetRootBaseType();
-			DbgTypedValue primVal = dbgExprEvaluator.ReadTypedValue(primType, exprResult.mSrcAddress, DbgAddrType_Target);
+			DbgTypedValue primVal = dbgExprEvaluator.ReadTypedValue(NULL, primType, exprResult.mSrcAddress, DbgAddrType_Target);
 						
 			String primResult = DbgTypedValueToString(primVal, "", pendingExpr->mFormatInfo, NULL);
 			int crPos = (int)primResult.IndexOf('\n');

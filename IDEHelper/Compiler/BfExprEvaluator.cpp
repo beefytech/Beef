@@ -12653,18 +12653,26 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 					{
 						if (localVar == newLocalVar)
 							continue;
-						if (newLocalVar->mValue != localVar->mValue)
+						if (!localVar->mIsSplat)
+							continue;
+						if (newLocalVar->mValue != localVar->mAddr)
 							continue;
 
-						String name = newLocalVar->mName;
+						String name = "$";
+						name += newLocalVar->mName;
 						name += "$alias$";
 						name += localVar->mName;
 
-						auto fakeValue = mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0);
-						auto diType = mModule->mBfIRBuilder->DbgGetType(mModule->GetPrimitiveType(BfTypeCode_Int32));
-						auto diVariable = mModule->mBfIRBuilder->DbgCreateAutoVariable(mModule->mCurMethodState->mCurScope->mDIScope,
-							newLocalVar->mName, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
-						mModule->mBfIRBuilder->DbgInsertValueIntrinsic(fakeValue, diVariable);
+// 						auto fakeValue = mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0);
+// 						auto diType = mModule->mBfIRBuilder->DbgGetType(mModule->GetPrimitiveType(BfTypeCode_Int32));
+// 						auto diVariable = mModule->mBfIRBuilder->DbgCreateAutoVariable(mModule->mCurMethodState->mCurScope->mDIScope,
+// 							name, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
+// 						mModule->mBfIRBuilder->DbgInsertValueIntrinsic(fakeValue, diVariable);
+						 						
+ 						auto diType = mModule->mBfIRBuilder->DbgGetType(mModule->GetPrimitiveType(BfTypeCode_NullPtr));
+ 						auto diVariable = mModule->mBfIRBuilder->DbgCreateAutoVariable(mModule->mCurMethodState->mCurScope->mDIScope,
+ 							name, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
+ 						mModule->mBfIRBuilder->DbgInsertValueIntrinsic(mModule->mBfIRBuilder->CreateConstNull(), diVariable);
 
 						found = true;
 						break;

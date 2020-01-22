@@ -1229,6 +1229,7 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 
 	bool isConst = false;
 	String varName = dbgVar->mName;	
+
 	bool isGlobal = false;
 	//
 	{
@@ -1246,18 +1247,21 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 	{
 		if (auto beConst = BeValueDynCast<BeConstant>(dbgVar->mValue))
 		{
-			int64 writeVal = beConst->mInt64;
-			if (beConst->mType->mTypeCode == BfTypeCode_Single)
+			if (!beConst->mType->IsPointer())
 			{
-				// We need to do this because Singles are stored in mDouble, so we need to reduce here
-				float floatVal = (float)beConst->mDouble;
-				writeVal = *(uint32*)&floatVal;
+				int64 writeVal = beConst->mInt64;
+				if (beConst->mType->mTypeCode == BfTypeCode_Single)
+				{
+					// We need to do this because Singles are stored in mDouble, so we need to reduce here
+					float floatVal = (float)beConst->mDouble;
+					writeVal = *(uint32*)&floatVal;
+				}
+				if (writeVal < 0)
+					varName += StrFormat("$_%llu", -writeVal);
+				else
+					varName += StrFormat("$%llu", writeVal);
+				isConst = true;
 			}
-			if (writeVal < 0)
-				varName += StrFormat("$_%llu", -writeVal);
-			else
-				varName += StrFormat("$%llu", writeVal);
-			isConst = true;
 		}
 	}
 
