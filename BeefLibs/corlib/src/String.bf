@@ -1711,7 +1711,9 @@ namespace System
 
 		public bool StartsWith(char8 c)
 		{
-			return mLength != 0 && Ptr[0] == c;
+			if (mLength == 0)
+				return false;
+			return Ptr[0] == c;
 		}
 
 		public bool EndsWith(char8 c)
