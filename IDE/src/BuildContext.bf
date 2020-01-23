@@ -1009,7 +1009,7 @@ namespace IDE
 
 			if (hotProject == null)
 			{
-				switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+				switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPreBuildCmds))
 				{
 				case .NoCommands:
 				case .HadCommands:
@@ -1173,6 +1173,17 @@ namespace IDE
 				}
 				else if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
 					return false;
+			}
+
+			if (hotProject == null)
+			{
+				switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+				{
+				case .NoCommands:
+				case .HadCommands:
+				case .Failed:
+					completedCompileCmd.mFailed = true;
+				}
 			}
 
 		    return true;
