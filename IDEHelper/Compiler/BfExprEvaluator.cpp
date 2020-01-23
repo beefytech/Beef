@@ -15530,11 +15530,8 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 		// Also good
 	}
 	else
-	{
-		if (thisValue.mType->IsStruct())
-			mModule->Warn(0, "Struct lookups can never fail, null conditional reference is unnecessary", dotToken);
-		else
-			mModule->AssertErrorState();
+	{		
+		mModule->Warn(0, StrFormat("Null conditional reference is unnecessary since value type '%s' can never be null", mModule->TypeToString(thisValue.mType).c_str()), dotToken);		
 		return thisValue;
 	}	
 

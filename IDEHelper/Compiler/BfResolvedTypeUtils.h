@@ -461,7 +461,7 @@ public:
 	virtual bool IsString() { return false; }
 	virtual bool IsSizedArray() { return false; }
 	virtual bool IsUnknownSizedArray() { return false; }
-	virtual bool IsArray() { return false; }
+	virtual bool IsArray() { return false; }	
 	virtual bool IsDelegate() { return false; }
 	virtual bool IsFunction() { return false; }
 	virtual bool IsDelegateFromTypeRef() { return false; }
@@ -1920,16 +1920,20 @@ public:
 	// These depend on the params in Invoke
 	bool mIsUnspecializedType;
 	bool mIsUnspecializedTypeVariation;	
+	
+	BfType* mReturnType;
+	Array<BfType*> mParams;
 
 public:
 	BfDelegateType()
 	{
 		mIsUnspecializedType = false;
 		mIsUnspecializedTypeVariation = false;		
+		mReturnType = NULL;		
 	}
 	~BfDelegateType();
-
-	virtual bool IsOnDemand() override { return true; }	
+	
+	virtual bool IsOnDemand() override { return true; }
 	
 	virtual bool IsDelegate() override { return mTypeDef->mIsDelegate; }
 	virtual bool IsDelegateFromTypeRef() override { return mTypeDef->mIsDelegate;  }

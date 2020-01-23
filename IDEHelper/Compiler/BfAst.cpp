@@ -196,11 +196,6 @@ void BfStructuralVisitor::Visit(BfCollectionInitializerExpression* collectionIni
 	Visit(collectionInitExpr->ToBase());
 }
 
-void BfStructuralVisitor::Visit(BfArraySizeSpecifier* arraySizeSpecifier)
-{
-	Visit(arraySizeSpecifier->ToBase());
-}
-
 void BfStructuralVisitor::Visit(BfTypeReference* typeRef)
 {
 	Visit(typeRef->ToBase());

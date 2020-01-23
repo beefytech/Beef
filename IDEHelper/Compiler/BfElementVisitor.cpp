@@ -251,18 +251,6 @@ void BfElementVisitor::Visit(BfCollectionInitializerExpression* collectionInitEx
 	VisitChild(collectionInitExpr->mCloseBrace);
 }
 
-void BfElementVisitor::Visit(BfArraySizeSpecifier* arraySizeSpecifier)
-{
-	Visit(arraySizeSpecifier->ToBase());
-
-	VisitChild(arraySizeSpecifier->mOpenToken);
-	for (auto& val : arraySizeSpecifier->mArguments)
-		VisitChild(val);
-	for (auto& val : arraySizeSpecifier->mCommas)
-		VisitChild(val);
-	VisitChild(arraySizeSpecifier->mCloseToken);	
-}
-
 void BfElementVisitor::Visit(BfTypeReference* typeRef)
 {
 	Visit(typeRef->ToBase());

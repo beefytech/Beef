@@ -933,23 +933,6 @@ void BfPrinter::Visit(BfCollectionInitializerExpression* initExpr)
 	VisitChild(initExpr->mCloseBrace);
 }
 
-void BfPrinter::Visit(BfArraySizeSpecifier* arraySizeSpecifier)
-{
-	Visit(arraySizeSpecifier->ToBase());
-
-	VisitChild(arraySizeSpecifier->mOpenToken);
-	for (int i = 0; i < (int)arraySizeSpecifier->mArguments.size(); i++)
-	{
-		if (i > 0)
-		{
-			VisitChild(arraySizeSpecifier->mCommas[i - 1]);
-			ExpectSpace();
-		}
-		VisitChild(arraySizeSpecifier->mArguments[i]);
-	}
-	VisitChild(arraySizeSpecifier->mCloseToken);	
-}
-
 void BfPrinter::Visit(BfTypeReference* typeRef)
 {
 	Visit(typeRef->ToBase());

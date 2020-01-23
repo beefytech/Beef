@@ -2072,17 +2072,21 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 	}	
 	else if (type->IsDelegateFromTypeRef() || type->IsFunctionFromTypeRef())
 	{
+		auto delegateType = (BfDelegateType*)type;
+
 		int hashVal = HASH_DELEGATE;
+		
+		hashVal = ((hashVal ^ (Hash(delegateType->mReturnType, ctx))) << 5) - hashVal;
 
-		BfMethodInstance* invokeMethodInstance = ctx->mModule->GetRawMethodInstanceAtIdx(type->ToTypeInstance(), 0, "Invoke");
+		auto methodDef = delegateType->mTypeDef->mMethods[0];
+		BF_ASSERT(methodDef->mName == "Invoke");
+		BF_ASSERT(delegateType->mParams.size() == methodDef->mParams.size());
 
-		hashVal = ((hashVal ^ (Hash(invokeMethodInstance->mReturnType, ctx))) << 5) - hashVal;
-
-		for (int paramIdx = 0; paramIdx < invokeMethodInstance->mParams.size(); paramIdx++)
+		for (int paramIdx = 0; paramIdx < delegateType->mParams.size(); paramIdx++)
 		{
 			// Parse attributes?			
-			hashVal = ((hashVal ^ (Hash(invokeMethodInstance->GetParamType(paramIdx), ctx))) << 5) - hashVal;
-			String paramName = invokeMethodInstance->GetParamName(paramIdx);
+			hashVal = ((hashVal ^ (Hash(delegateType->mParams[paramIdx], ctx))) << 5) - hashVal;
+			String paramName = methodDef->mParams[paramIdx]->mName;
 			int nameHash = (int)Hash64(paramName.c_str(), (int)paramName.length());
 			hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
 		}
@@ -2875,18 +2879,19 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfDelegateType* rhsDelegateType = (BfDelegateType*)rhs;
 		if (lhsDelegateType->mTypeDef->mIsDelegate != rhsDelegateType->mTypeDef->mIsDelegate)
 			return false;
+		
+		auto lhsMethodDef = lhsDelegateType->mTypeDef->mMethods[0];
+		auto rhsMethodDef = rhsDelegateType->mTypeDef->mMethods[0];
 
-		BfMethodInstance* lhsInvokeMethodInstance = ctx->mModule->GetRawMethodInstanceAtIdx(lhsDelegateType->ToTypeInstance(), 0, "Invoke");
-		BfMethodInstance* rhsInvokeMethodInstance = ctx->mModule->GetRawMethodInstanceAtIdx(rhsDelegateType->ToTypeInstance(), 0, "Invoke");
-		if (lhsInvokeMethodInstance->mReturnType != rhsInvokeMethodInstance->mReturnType)
+		if (lhsDelegateType->mReturnType != rhsDelegateType->mReturnType)
 			return false;
-		if (lhsInvokeMethodInstance->GetParamCount() != rhsInvokeMethodInstance->GetParamCount())
+		if (lhsDelegateType->mParams.size() != rhsDelegateType->mParams.size())
 			return false;
-		for (int paramIdx = 0; paramIdx < lhsInvokeMethodInstance->GetParamCount(); paramIdx++)
+		for (int paramIdx = 0; paramIdx < lhsDelegateType->mParams.size(); paramIdx++)
 		{
-			if (lhsInvokeMethodInstance->GetParamType(paramIdx) != rhsInvokeMethodInstance->GetParamType(paramIdx))
+			if (lhsDelegateType->mParams[paramIdx] != rhsDelegateType->mParams[paramIdx])
 				return false;
-			if (lhsInvokeMethodInstance->GetParamName(paramIdx) != rhsInvokeMethodInstance->GetParamName(paramIdx))
+			if (lhsMethodDef->mParams[paramIdx]->mName != rhsMethodDef->mParams[paramIdx]->mName)
 				return false;
 		}
 		return true;

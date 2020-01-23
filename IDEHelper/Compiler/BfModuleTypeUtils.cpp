@@ -7459,7 +7459,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		auto baseDelegateType = ResolveTypeDef(mCompiler->mDelegateTypeDef)->ToTypeInstance();
 
-		BfDelegateType* delegateType = new BfDelegateType();
+		BfDelegateType* delegateType = new BfDelegateType();		
 
 		Val128 hashContext;
 
@@ -7497,6 +7497,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		delegateType->mDirectAllocNodes.push_back(directTypeRef);		
 		directTypeRef->Init(returnType);
 		methodDef->mReturnTypeRef = directTypeRef;
+		delegateType->mReturnType = returnType;
 
 		AddDependency(directTypeRef->mType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 
@@ -7506,6 +7507,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		for (auto param : delegateTypeRef->mParams)
 		{
 			auto paramType = ResolveTypeRef(param->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowRef);
+			if (paramType == NULL)
+				paramType = GetPrimitiveType(BfTypeCode_Var);
 			String paramName;
 			if (param->mNameNode != NULL)
 				paramName = param->mNameNode->ToString();
@@ -7532,6 +7535,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			methodDef->mParams.push_back(paramDef);
 			paramIdx++;
 
+			delegateType->mParams.Add(paramType);
 			AddDependency(paramType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		}
 
@@ -7545,7 +7549,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		delegateType->mContext = mContext;
 		delegateType->mTypeDef = typeDef;
-		InitType(delegateType, BfPopulateType_DataAndMethods);		
+		InitType(delegateType, populateType);
 		resolvedEntry->mValue = delegateType;
 
 // #ifdef _DEBUG
@@ -9775,7 +9779,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		}
 		str += ")";
 		return;
-	}
+	}	
 	else if (resolvedType->IsDelegateFromTypeRef() || resolvedType->IsFunctionFromTypeRef())
 	{
 		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance);
@@ -9795,7 +9799,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			str += "delegate ";
 		else
 			str += "function ";
-		DoTypeToString(str, ResolveTypeRef(methodDef->mReturnTypeRef));
+		DoTypeToString(str, delegateType->mReturnType);
 		str += "(";
 		for (int paramIdx = 0; paramIdx < methodDef->mParams.size(); paramIdx++)
 		{
@@ -9805,7 +9809,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
 			if (delegateType->mIsUnspecializedTypeVariation)
 				innerFlags = (BfTypeNameFlags)(innerFlags & ~BfTypeNameFlag_ResolveGenericParamNames);
-			DoTypeToString(str, ResolveTypeRef(paramDef->mTypeRef), innerFlags, genericMethodNameOverrides);
+			DoTypeToString(str, delegateType->mParams[paramIdx], innerFlags, genericMethodNameOverrides);
 			str += " ";
 			str += paramDef->mName;
 		}
