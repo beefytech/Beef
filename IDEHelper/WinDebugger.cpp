@@ -6592,7 +6592,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					result = StrFormat("'%s'\n", result.c_str());
 			}
 			else
-				result = "'\\0'";
+				result = "'\\0'\n";
 			return result + WrapWithModifiers(isBeef ? "char16" : "int16_t", origValueType, language);
 		}
 		break;
@@ -6609,7 +6609,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					result = StrFormat("'%s'\n", result.c_str());									
 			}
 			else
-				result = "'\\0'";
+				result = "'\\0'\n";
 			return result + WrapWithModifiers(isBeef ? "char32" : "int32_t", origValueType, language);
 		}
 		break;
