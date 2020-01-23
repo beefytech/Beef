@@ -822,7 +822,7 @@ struct BfMemberSetEntry
 		return mMemberDef->mName == other.mMemberDef->mName;
 	}
 
-	bool operator==(const String& other) const
+	bool operator==(const StringImpl& other) const
 	{
 		return mMemberDef->mName == other;
 	}

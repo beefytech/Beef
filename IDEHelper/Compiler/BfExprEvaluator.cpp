@@ -2818,11 +2818,16 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			}
 
 			int varSkipCount = 0;
-			StringT<128> wantName = findName;
-			while (wantName.StartsWith("@"))
+			StringT<128> wantName;
+			wantName.Reference(findName);
+			if (findName.StartsWith('@'))
 			{
-				varSkipCount++;
-				wantName.Remove(0);
+				wantName = findName;
+				while (wantName.StartsWith("@"))
+				{
+					varSkipCount++;
+					wantName.Remove(0);
+				}
 			}
 
 			if (wantName.IsEmpty())
@@ -2887,12 +2892,31 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 
 			// Check for the captured locals.  It's important we do it here so we get local-first precedence still
 			if (closureTypeInst != NULL)
-			{				
+			{	
+				int varSkipCount = 0;
+				StringT<128> wantName;
+				wantName.Reference(findName);
+				if (findName.StartsWith('@'))
+				{
+					wantName = findName;
+					while (wantName.StartsWith("@"))
+					{
+						varSkipCount++;
+						wantName.Remove(0);
+					}
+				}
+
 				closureTypeInst->mTypeDef->PopulateMemberSets();
 				BfMemberSetEntry* memberSetEntry = NULL;
-				if (closureTypeInst->mTypeDef->mFieldSet.TryGetWith(findName, &memberSetEntry))
-				{
+				if (closureTypeInst->mTypeDef->mFieldSet.TryGetWith((StringImpl&)wantName, &memberSetEntry))
+				{					
 					auto fieldDef = (BfFieldDef*)memberSetEntry->mMemberDef;
+					while ((varSkipCount > 0) && (fieldDef != NULL))
+					{
+						fieldDef = fieldDef->mNextWithSameName;
+						varSkipCount--;
+					}
+
 					auto& field = closureTypeInst->mFieldInstances[fieldDef->mIdx];
 					if (!field.mResolvedType->IsValuelessType())
 					{
@@ -3145,7 +3169,22 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 	else if (target.mType != NULL)
 	{		
 		startCheckType = target.mType->ToTypeInstance();
-	}	
+	}
+
+	String findName;
+	int varSkipCount = 0;
+	if (fieldName.StartsWith('@'))
+	{
+		findName = fieldName;
+		while (findName.StartsWith('@'))
+		{
+			findName.Remove(0);
+			varSkipCount++;
+		}
+	}
+	else
+		findName.Reference(fieldName);
+	
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 	for (int pass = 0; pass < 2; pass++)
@@ -3159,8 +3198,13 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			curCheckType->mTypeDef->PopulateMemberSets();
 			BfFieldDef* nextField = NULL;
 			BfMemberSetEntry* entry;
-			if (curCheckType->mTypeDef->mFieldSet.TryGetWith(fieldName, &entry))
+			if (curCheckType->mTypeDef->mFieldSet.TryGetWith(findName, &entry))
 				nextField = (BfFieldDef*)entry->mMemberDef;
+
+			while ((varSkipCount > 0) && (nextField != NULL))
+			{
+				nextField = nextField->mNextWithSameName;
+			}
 
 			BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
 			BfFieldDef* matchedField = NULL;
@@ -3174,16 +3218,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					continue;					
 				}				
 
-				//OLD:
+				
 				bool isResolvingFields = curCheckType->mResolvingConstField || curCheckType->mResolvingVarField;
-
-				// mCurMethodState is NULL when we're pre-evaluating var field expressions
-				//  to determine their type in PopulateFields
-				/*if (!isResolvingFields)
-				{
-					mModule->PopulateType(curCheckType, BfPopulateType_Data);
-				}*/
-
+				
 				if (curCheckType->mFieldInstances.IsEmpty())
 				{					
 					mModule->PopulateType(curCheckType, BfPopulateType_Data);
@@ -3219,7 +3256,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			}
 
 			if (matchedField != NULL)
-			{								
+			{
 				auto field = matchedField;
 				auto fieldInstance = &curCheckType->mFieldInstances[field->mIdx];
 				
