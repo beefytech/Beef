@@ -1301,7 +1301,9 @@ namespace IDE
 			{
 				var exeArgs = scope String();
 				exeArgs.Append(cmd, spacePos + 1);
-				gApp.DoRun(exePath, exeArgs, gApp.mInstallDir, .None);
+
+				bool wantsShellCommand = !exePath.EndsWith(".exe", .OrdinalIgnoreCase);
+				gApp.DoRun(exePath, exeArgs, gApp.mInstallDir, .None, null, null, wantsShellCommand ? .ShellCommand : .None);
 			}
 		}
 

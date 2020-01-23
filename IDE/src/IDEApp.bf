@@ -7267,7 +7267,13 @@ namespace IDE
 			}
 		}
 
-        public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null)
+		public enum RunFlags
+		{
+			None,
+			ShellCommand = 1
+		}
+
+        public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None)
         {
 			//Debug.Assert(executionInstance == null);
 
@@ -7285,6 +7291,18 @@ namespace IDE
 			if (stdInData != null)
 				startInfo.RedirectStandardInput = true;
             startInfo.CreateNoWindow = true;
+
+			if (runFlags.HasFlag(.ShellCommand))
+			{
+				String shellArgs = scope .();
+				shellArgs.Append("/c ");
+				IDEUtils.AppendWithOptionalQuotes(shellArgs, fileName);
+				shellArgs.Append(" ");
+				shellArgs.Append(args);
+				startInfo.SetFileName("cmd.exe");
+				startInfo.SetArguments(shellArgs);
+			}
+
 			if (envVars != null)
 			{
 				for (var envKV in envVars)
