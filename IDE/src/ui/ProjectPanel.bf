@@ -1103,7 +1103,7 @@ namespace IDE.ui
             app.RemoveProject(project);
         }
 
-		void ProjectItemUnregister(ProjectItem projectItem, bool isDeleting)
+		void ProjectItemUnregister(ProjectItem projectItem, bool isRemovingProjectSource)
 		{
 			var projectSource = projectItem as ProjectSource;
 			if (projectSource != null)
@@ -1136,7 +1136,7 @@ namespace IDE.ui
 			            var sourceViewPanel = tab.mContent as SourceViewPanel;
 			            if ((sourceViewPanel != null) && (sourceViewPanel.mProjectSource == projectSource))
 			            {
-							if (isDeleting)
+							if (isRemovingProjectSource)
 			                	sourceViewPanel.DetachFromProjectItem();
 							else
 								sourceViewPanel.QueueFullRefresh(true);
@@ -1145,7 +1145,7 @@ namespace IDE.ui
 
 				if (isProjectEnabled)
 				{
-					if (isDeleting)
+					if (isRemovingProjectSource)
 					{
 				        gApp.mBfResolveHelper.ProjectSourceRemoved(projectSource);
 						gApp.mWorkspace.ProjectSourceRemoved(projectSource);
@@ -1198,8 +1198,6 @@ namespace IDE.ui
             if (projectItem == null)
                 return;
 
-            ProjectItemUnregister(projectItem, forceRemove);           
-
 			bool doReleaseRef = false;
 			bool didRemove = false;
 			if ((forceRemove) || (projectItem.mParentFolder == null) || (projectItem.mParentFolder.mIncludeKind == .Manual) || (projectItem.mIncludeKind == .Manual) || (deletePathFunc != null))
@@ -1251,6 +1249,8 @@ namespace IDE.ui
 					gApp.mErrorsPanel.ClearParserErrors(path);
 				}
 			}
+
+			ProjectItemUnregister(projectItem, didRemove);
 
 			if ((didRemove) || (!mShowIgnored))
 			{

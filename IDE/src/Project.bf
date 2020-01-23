@@ -37,6 +37,14 @@ namespace IDE
         public String mName = new String() ~ delete _;
         public String mComment = new String() ~ delete _;
 
+		public bool IncludeInMap
+		{
+			get
+			{
+				return mIncludeKind != .Manual;
+			}
+		}
+
 		public ~this()
 		{
 			Debug.Assert(mRefCount == 0);
@@ -236,9 +244,12 @@ namespace IDE
 
 			bool didNameMatch = mName == fileName;
 
-			mParentFolder.mChildMap.Remove(mName);
-			mName.Set(newName);
-			mParentFolder.mChildMap.Add(mName, this);
+			if (IncludeInMap)
+			{
+				mParentFolder.mChildMap.Remove(mName);
+				mName.Set(newName);
+				mParentFolder.mChildMap.Add(mName, this);
+			}
 
 			if ((didNameMatch) && (changePath))
 			{
@@ -480,8 +491,12 @@ namespace IDE
             }
 			
             mChildItems.Insert(index, item);
-			bool added = mChildMap.TryAdd(item.mName, item);
-			Debug.Assert(added);
+
+			if (item.IncludeInMap)
+			{
+				bool added = mChildMap.TryAdd(item.mName, item);
+				Debug.Assert(added);
+			}
         }
 
         public virtual void InsertChild(ProjectItem item, ProjectItem insertBefore)
@@ -505,7 +520,8 @@ namespace IDE
 					projectFileItem.StopWatching();
             }
 
-			mChildMap.Remove(item.mName);
+			if (item.IncludeInMap)
+				mChildMap.Remove(item.mName);
             mChildItems.Remove(item);
             item.mParentFolder = null;
         }

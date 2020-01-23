@@ -297,7 +297,7 @@ namespace IDE.ui
         {
 			scope AutoBeefPerf("ExpressionEditWidget.UpdateText");
 
-			if (keyChar == 0)
+			if ((keyChar == 0) && (doAutoComplete))
 				return; // Is documentation pass
 
 			DeleteAndNullify!(mLastError);
