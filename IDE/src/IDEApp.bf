@@ -10165,14 +10165,17 @@ namespace IDE
 			}
 		}
 
-		public FileVersionInfo GetVersionInfo()
+		public FileVersionInfo GetVersionInfo(out DateTime exeTime)
 		{
+			exeTime = default;
+
 			if (mVersionInfo == null)
 			{
 				String exeFilePath = scope .();
 				Environment.GetExecutableFilePath(exeFilePath);
 				mVersionInfo = new .();
 				mVersionInfo.GetVersionInfo(exeFilePath).IgnoreError();
+				exeTime = File.GetLastWriteTime(exeFilePath).GetValueOrDefault();
 			}
 			return mVersionInfo;
 		}
@@ -10304,8 +10307,15 @@ namespace IDE
 			mAutoCompletePanel = new AutoCompletePanel();
 			mAutoCompletePanel.mAutoDelete = false;
 
-			GetVersionInfo();
-			OutputLine("IDE Started. Version {}.", mVersionInfo.FileVersion);
+			GetVersionInfo(var exeDate);
+			let localExeDate = exeDate.ToLocalTime();
+
+			String exeDateStr = scope .();
+			localExeDate.ToShortDateString(exeDateStr);
+			exeDateStr.Append(" at ");
+			localExeDate.ToShortTimeString(exeDateStr);
+
+			OutputLine("IDE Started. Version {} built {}.", mVersionInfo.FileVersion, exeDateStr);
 
 			/*if (!mRunningTestScript)
             {
