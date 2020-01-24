@@ -63,7 +63,7 @@ namespace System.Text
 			}
 		}
 
-		public static (char32, int) Decode(char16* buf, int lenLeft = 0)
+		public static (char32 c, int8 cSize) Decode(char16* buf, int lenLeft = 0)
 		{
 			char16 c = buf[0];
 			if ((c >='\u{D800}') && (c < '\u{DC00}'))

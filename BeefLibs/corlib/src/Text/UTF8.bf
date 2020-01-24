@@ -44,7 +44,7 @@ namespace System.Text
 			return UTF8.sTrailingBytesForUTF8[firstChar] + 1;
 		}
 
-		public static (char32, int32) Decode(char8* buf, int bufSize)
+		public static (char32 c, int8 cSize) Decode(char8* buf, int bufSize)
 		{
 			char32 c = *buf;
 			int8 trailingBytes = UTF8.sTrailingBytesForUTF8[c];
