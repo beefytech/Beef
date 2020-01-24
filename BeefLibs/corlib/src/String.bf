@@ -2119,7 +2119,7 @@ namespace System
 			return false;
 		}
 
-		public (char32 c, int8 len) GetChar32(int idx)
+		public (char32 c, int8 length) GetChar32(int idx)
 		{
 			Debug.Assert((uint)idx < (uint)mLength);
 			char8* ptr = Ptr;
@@ -2131,7 +2131,7 @@ namespace System
 			return UTF8.Decode(ptr + idx, mLength - idx);
 		}
 
-		public (char32 c, int idx, int8 len) GetChar32WithBacktrack(int idx)
+		public (char32 c, int idx, int8 length) GetChar32WithBacktrack(int idx)
 		{
 			Debug.Assert((uint)idx < (uint)mLength);
 			char8* ptr = Ptr;

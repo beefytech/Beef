@@ -6627,7 +6627,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					constraintMatched = true;
 
 			}
-			else if (CanImplicitlyCast(GetFakeTypedValue(checkArgType), convCheckConstraint))
+			else if (CanCast(GetFakeTypedValue(checkArgType), convCheckConstraint))
 			{
 				constraintMatched = true;
 			}
@@ -6654,7 +6654,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				if (!constraintMatched)
 				{
 					BfType* wrappedStructType = GetWrappedStructType(origCheckArgType, false);
-					if (CanImplicitlyCast(GetFakeTypedValue(wrappedStructType), convCheckConstraint))
+					if (CanCast(GetFakeTypedValue(wrappedStructType), convCheckConstraint))
 						constraintMatched = true;
 				}
 			}
@@ -6694,11 +6694,11 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		bool implementsInterface = false;
 		if (origCheckArgType != checkArgType)
 		{
-			implementsInterface = CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, origCheckArgType), convCheckConstraint);
+			implementsInterface = CanCast(BfTypedValue(BfIRValue::sValueless, origCheckArgType), convCheckConstraint);
 		}
 
 		if (!implementsInterface)
-			implementsInterface = CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, checkArgType), convCheckConstraint);
+			implementsInterface = CanCast(BfTypedValue(BfIRValue::sValueless, checkArgType), convCheckConstraint);
 
 		if ((!implementsInterface) && (origCheckArgType->IsWrappableType()))
 		{			
@@ -6762,7 +6762,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			}
 
 			if ((!exprEvaluator.mResult) || 
-				(!CanImplicitlyCast(exprEvaluator.mResult, origCheckArgType)))
+				(!CanCast(exprEvaluator.mResult, origCheckArgType)))
 			{
 				if (!ignoreErrors)
 					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must result from binary operation '%s %s %s'", genericParamInst->GetName().c_str(),
@@ -6781,7 +6781,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 			if (checkOpConstraint.mCastToken == BfToken_Implicit)
 			{
-				if (!CanImplicitlyCast(rightValue, origCheckArgType, BfCastFlags_SilentFail))
+				if (!CanCast(rightValue, origCheckArgType, BfCastFlags_SilentFail))
 					failedOpName = "implicit conversion from '";
 			}
 			else
@@ -6801,7 +6801,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL);
 
 					if ((!exprEvaluator.mResult) ||
-						(!CanImplicitlyCast(exprEvaluator.mResult, origCheckArgType)))
+						(!CanCast(exprEvaluator.mResult, origCheckArgType)))
 					{
 						failedOpName += "unary operation '";
 						failedOpName += BfGetOpName(checkOpConstraint.mUnaryOp);
@@ -19260,7 +19260,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 					{
 						defaultValue = castedDefaultValue; // Good!
 					}
-					else if (!CanImplicitlyCast(defaultValue, resolvedParamType))
+					else if (!CanCast(defaultValue, resolvedParamType))
 					{
 						// We only care that we get a constant value that can be implicitly casted at the callsite- even if that requires
 						//  a conversion operator.

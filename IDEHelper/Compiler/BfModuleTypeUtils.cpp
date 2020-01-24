@@ -3954,7 +3954,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 						// Concrete
 						if (matchedMethod->mReturnType->IsInterface())
 							hadMatch = false;
-						else if (!CanImplicitlyCast(GetFakeTypedValue(matchedMethod->mReturnType), iReturnType))
+						else if (!CanCast(GetFakeTypedValue(matchedMethod->mReturnType), iReturnType))
 							hadMatch = false;
 					}
 					
@@ -4655,7 +4655,7 @@ void BfModule::FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs)
 {	
 	if ((lhs.mType != NULL) && (lhs.mType->IsIntUnknown()) && (rhs.mType != NULL) && (rhs.mType->IsInteger()))
 	{
-		if (CanImplicitlyCast(lhs, rhs.mType))
+		if (CanCast(lhs, rhs.mType))
 		{
 			lhs = Cast(NULL, lhs, rhs.mType, BfCastFlags_SilentFail);
 			if (!lhs)
@@ -4666,7 +4666,7 @@ void BfModule::FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs)
 
 	if ((rhs.mType != NULL) && (rhs.mType->IsIntUnknown()) && (lhs.mType != NULL) && (lhs.mType->IsInteger()))
 	{
-		if (CanImplicitlyCast(rhs, lhs.mType))
+		if (CanCast(rhs, lhs.mType))
 		{
 			rhs = Cast(NULL, rhs, lhs.mType, BfCastFlags_SilentFail);
 			if (!rhs)
@@ -6409,7 +6409,7 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 				
 				if ((genericTypeConstraint != NULL) && (expectingType != NULL))
 				{										
-					if (!CanImplicitlyCast(BfTypedValue(mBfIRBuilder->GetFakeVal(), genericTypeConstraint), expectingType))
+					if (!CanCast(BfTypedValue(mBfIRBuilder->GetFakeVal(), genericTypeConstraint), expectingType))
 					{
 						Fail(StrFormat("Generic constraint '%s' is not convertible to 'int'", TypeToString(genericTypeConstraint).c_str()), identifierNode);
 					}
@@ -7780,9 +7780,9 @@ BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeRe
 }
 
 // This flow should mirror CastToValue
-bool BfModule::CanImplicitlyCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags)
+bool BfModule::CanCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags)
 {
-	BP_ZONE("BfModule::CanImplicitlyCast");
+	BP_ZONE("BfModule::CanCast");
 
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 	return CastToValue(NULL, typedVal, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));			
@@ -8837,7 +8837,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							if (fromDist < 0)
 							{
 								// Allow us to cast a constant int to a smaller type if it satisfies the cast operator
-								if ((typedVal.mValue.IsConst()) && (CanImplicitlyCast(typedVal, methodCheckFromType, BfCastFlags_NoConversionOperator)))
+								if ((typedVal.mValue.IsConst()) && (CanCast(typedVal, methodCheckFromType, BfCastFlags_NoConversionOperator)))
 								{
 									fromDist = 0;
 								}
@@ -9003,11 +9003,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
 					{
 						// If we can convert OUR fromVal to the constraint's fromVal then we may match
-						if (CanImplicitlyCast(typedVal, opConstraint.mRightType))
+						if (CanCast(typedVal, opConstraint.mRightType))
 						{
 							// .. and we can convert the constraint's toType to OUR toType then we're good
 							auto opToVal = genericParam->mExternType;
-							if (CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType))
+							if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType))
 								return mBfIRBuilder->GetFakeVal();
 						}
 					}
@@ -9028,11 +9028,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
 					{
 						// If we can convert OUR fromVal to the constraint's fromVal then we may match
-						if (CanImplicitlyCast(typedVal, opConstraint.mRightType))
+						if (CanCast(typedVal, opConstraint.mRightType))
 						{
 							// .. and we can convert the constraint's toType to OUR toType then we're good
 							auto opToVal = genericParam->mExternType;
-							if (CanImplicitlyCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType))
+							if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType))
 								return mBfIRBuilder->GetFakeVal();
 						}
 					}
@@ -9232,7 +9232,8 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 
 				if (!toFieldDef->IsUnnamedTupleField())
 				{
-					if ((!fromFieldDef->IsUnnamedTupleField()) &&
+					if ((!explicitCast) &&
+						(!fromFieldDef->IsUnnamedTupleField()) &&
 						(fromFieldDef->mName != toFieldDef->mName))
 						isCompatible = false;
 					fieldNames.push_back(toFieldDef->mName);
@@ -9247,10 +9248,14 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 					if (fromFieldInst->mResolvedType != toFieldInst->mResolvedType)
 						isExactTypeMatch = false;
 
+					BfCastFlags tryCastFlags = BfCastFlags_SilentFail;
+					if (explicitCast)
+						tryCastFlags = (BfCastFlags)(tryCastFlags | BfCastFlags_Explicit);
+
 					// The unused-token '?' comes out as 'void', so we allow that to match here.  We may want to wrap that with a different fake type
 					//  so we can give normal implicit-cast-to-void errors
 					if ((fromFieldInst->mResolvedType != toFieldInst->mResolvedType) && (!toFieldInst->mResolvedType->IsVoid()) &&
-						(!CanImplicitlyCast(GetFakeTypedValue(fromFieldInst->mResolvedType), toFieldInst->mResolvedType)))
+						(!CanCast(GetFakeTypedValue(fromFieldInst->mResolvedType), toFieldInst->mResolvedType, tryCastFlags)))
 						isCompatible = false;
 					fieldTypes.push_back(toFieldInst->mResolvedType);
 				}
@@ -9260,25 +9265,25 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 			AddDependency(tupleType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
 			mBfIRBuilder->PopulateType(tupleType);
 
-			if (isExactTypeMatch)
-			{
-  				if (typedVal.mKind == BfTypedValueKind_TempAddr)
- 				{
- 					return BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(tupleType)), tupleType, BfTypedValueKind_TempAddr);
- 				}
-				else if (typedVal.IsAddr())
-				{
-					return BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(tupleType)), tupleType, BfTypedValueKind_ReadOnlyAddr);
-				}
-								
-				BfIRValue curTupleValue = CreateAlloca(tupleType);
-				auto loadedVal = LoadValue(typedVal);
-				mBfIRBuilder->CreateStore(loadedVal.mValue, mBfIRBuilder->CreateBitCast(curTupleValue, mBfIRBuilder->MapTypeInstPtr(fromTupleType)));
-				return BfTypedValue(curTupleValue, tupleType, BfTypedValueKind_TempAddr);
-			}
-			
 			if (isCompatible)
-			{								
+			{
+				if (isExactTypeMatch)
+				{
+  					if (typedVal.mKind == BfTypedValueKind_TempAddr)
+ 					{
+ 						return BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(tupleType)), tupleType, BfTypedValueKind_TempAddr);
+ 					}
+					else if (typedVal.IsAddr())
+					{
+						return BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(tupleType)), tupleType, BfTypedValueKind_ReadOnlyAddr);
+					}
+								
+					BfIRValue curTupleValue = CreateAlloca(tupleType);
+					auto loadedVal = LoadValue(typedVal);
+					mBfIRBuilder->CreateStore(loadedVal.mValue, mBfIRBuilder->CreateBitCast(curTupleValue, mBfIRBuilder->MapTypeInstPtr(fromTupleType)));
+					return BfTypedValue(curTupleValue, tupleType, BfTypedValueKind_TempAddr);
+				}			
+									
 				BfIRValue curTupleValue = CreateAlloca(tupleType);
 				for (int fieldIdx = 0; fieldIdx < (int)fromTupleType->mFieldInstances.size(); fieldIdx++)
 				{

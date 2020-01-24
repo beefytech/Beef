@@ -1018,7 +1018,7 @@ void BfModule::TryInitVar(BfAstNode* checkNode, BfLocalVariable* localVar, BfTyp
 	BfTypeInstance* srcTypeInstance = initValue.mType->ToTypeInstance();
 	BfTypeInstance* varTypeInstance = varType->ToTypeInstance();
 
-	if (CanImplicitlyCast(initValue, varType))
+	if (CanCast(initValue, varType))
 	{
 		if ((!varType->IsPointer()) && (!varType->IsObjectOrInterface()))
 		{
@@ -1044,7 +1044,7 @@ void BfModule::TryInitVar(BfAstNode* checkNode, BfLocalVariable* localVar, BfTyp
 // 		// Class downcast
 // 		isDynamicCast = true;
 // 	}
-// 	else if ((!CanImplicitlyCast(GetFakeTypedValue(varType), initType)) && (!initType->IsGenericParam()))
+// 	else if ((!CanCast(GetFakeTypedValue(varType), initType)) && (!initType->IsGenericParam()))
 // 	{
 // 		if (!IsInSpecializedSection())
 // 		{

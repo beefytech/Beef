@@ -2451,7 +2451,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 					/*BF_ASSERT(typedVal.mType->IsGenericParam());
 					auto genericParamInstance = ctx->mModule->GetGenericParamInstance((BfGenericParamType*)typedVal.mType);
 					if ((genericParamInstance->mTypeConstraint == NULL) ||
-						(!ctx->mModule->CanImplicitlyCast(BfTypedValue(ctx->mModule->mBfIRBuilder->GetFakeVal(), genericParamInstance->mTypeConstraint),
+						(!ctx->mModule->CanCast(BfTypedValue(ctx->mModule->mBfIRBuilder->GetFakeVal(), genericParamInstance->mTypeConstraint),
 							ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr))))
 					{
 						ctx->mModule->Fail(StrFormat("Generic constraint '%s' is not convertible to 'int'", ctx->mModule->TypeToString(typedVal.mType).c_str()), sizeExpr);

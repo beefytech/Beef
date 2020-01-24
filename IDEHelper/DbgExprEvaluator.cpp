@@ -65,11 +65,11 @@ DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEva
 			}			
 
 			// Prev is already best
-			if (mModule->CanImplicitlyCast(DbgTypedValue(NULL, argType), prevGenericMethodArg))
+			if (mModule->CanCast(DbgTypedValue(NULL, argType), prevGenericMethodArg))
 				return true; 
 
 			// New best?
-			if (mModule->CanImplicitlyCast(DbgTypedValue(NULL, prevGenericMethodArg), argType))
+			if (mModule->CanCast(DbgTypedValue(NULL, prevGenericMethodArg), argType))
 			{
 				mCheckMethodGenericArguments[wantGenericParam->mGenericParamIdx] = argType;
 				return true;
@@ -198,9 +198,9 @@ void DwMethodMatcher::CompareMethods(DbgSubprogram* prevMethodInstance, DwTypeVe
 			}
 			else
 			{
-				if (mExprEvaluator->CanImplicitlyCast(DbgTypedValue::GetValueless(paramType), prevParamType))
+				if (mExprEvaluator->CanCast(DbgTypedValue::GetValueless(paramType), prevParamType))
 					isBetter = true;
-				if (mExprEvaluator->CanImplicitlyCast(DbgTypedValue::GetValueless(prevParamType), paramType))
+				if (mExprEvaluator->CanCast(DbgTypedValue::GetValueless(prevParamType), paramType))
 					isWorse = true;
 			}
 		}
@@ -387,7 +387,7 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 
 			// Check to see if we're directly passing the params type (like an int[])
 			auto paramsArrayType = methodInstance->mParamTypes[paramIdx];
-			if (mModule->CanImplicitlyCast(mArguments[argIdx], paramsArrayType))
+			if (mModule->CanCast(mArguments[argIdx], paramsArrayType))
 			{
 				argIdx++;
 				paramIdx++;
@@ -402,7 +402,7 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 			{
 				if (!mArguments[argIdx])
 					goto NoMatch;
-				if (!mModule->CanImplicitlyCast(mArguments[argIdx], paramsElementType))
+				if (!mModule->CanCast(mArguments[argIdx], paramsElementType))
 					goto NoMatch;
 				argIdx++;
 			}
@@ -428,7 +428,7 @@ bool DwMethodMatcher::CheckMethod(DbgType* typeInstance, DbgSubprogram* checkMet
 			goto NoMatch;
 
 		
-		if (!mExprEvaluator->CanImplicitlyCast(mArguments[argIdx], wantType))
+		if (!mExprEvaluator->CanCast(mArguments[argIdx], wantType))
 			goto NoMatch;
 		
 		paramIdx++;
@@ -1510,7 +1510,7 @@ bool DbgExprEvaluator::CheckHasValue(DbgTypedValue typedValue, BfAstNode* refNod
 }
 
 //TODO: Expand this
-bool DbgExprEvaluator::CanImplicitlyCast(DbgTypedValue typedVal, DbgType* toType)
+bool DbgExprEvaluator::CanCast(DbgTypedValue typedVal, DbgType* toType, BfCastFlags castFlags)
 {
 	DbgType* fromType = typedVal.mType;
 
@@ -6003,7 +6003,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 				}
 				else if ((!resultType->IsSigned()) && (otherType->IsSigned()))
 				{
-					/*if (CanImplicitlyCast(*otherTypedValue, resultType))
+					/*if (CanCast(*otherTypedValue, resultType))
 					{
 						// If we can convert the 'other' value implicitly then it's a convertible literal, leave as uint
 					}
@@ -6864,7 +6864,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 				{					
 					if (argValues[argIdx].mValue == NULL)
 						return DbgTypedValue();
-					if (mModule->CanImplicitlyCast(argValues[argIdx], wantType))
+					if (mModule->CanCast(argValues[argIdx], wantType))
 						isDirectPass = true;
 				}
 

@@ -721,7 +721,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 		
 		if ((fieldDef->mIsStatic) && (CheckProtection(fieldDef->mProtection, allowProtected, allowPrivate)))
 		{
-			if (!mModule->CanImplicitlyCast(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), fieldInst.mResolvedType), selfType))
+			if (!mModule->CanCast(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), fieldInst.mResolvedType), selfType))
 				continue;
 
 			if ((!typeInst->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, mModule)) ||
@@ -772,7 +772,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 			continue;
 		if (methodInstance->mReturnType->IsUnspecializedType())
 			continue;
-		if (!mModule->CanImplicitlyCast(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), methodInstance->mReturnType), selfType))
+		if (!mModule->CanCast(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), methodInstance->mReturnType), selfType))
 			continue;
 
 		if (canUseMethod)

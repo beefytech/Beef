@@ -316,14 +316,14 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 			if ((prevGenericMethodArg->IsIntUnknown()) && (!argType->IsIntUnknown()))
 			{
 				// Old int fits into new argType, that's good
-				if (mModule->CanImplicitlyCast(BfTypedValue(prevArgValue, prevGenericMethodArg), argType))
+				if (mModule->CanCast(BfTypedValue(prevArgValue, prevGenericMethodArg), argType))
 				{
 					_SetGeneric();
 					return true;
 				}
 				// Doesn't fit, upgrade type to 'int'
 				argType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-				if (mModule->CanImplicitlyCast(BfTypedValue(prevArgValue, prevGenericMethodArg), argType))
+				if (mModule->CanCast(BfTypedValue(prevArgValue, prevGenericMethodArg), argType))
 				{
 					_SetGeneric();
 					return true;
@@ -333,7 +333,7 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 			if (argType->IsIntUnknown())
 			{
 				// New int fits into previous arg type, that's good
-				if (mModule->CanImplicitlyCast(BfTypedValue(argValue, argType), prevGenericMethodArg))
+				if (mModule->CanCast(BfTypedValue(argValue, argType), prevGenericMethodArg))
 					return true;
 				// Doesn't fit, upgrade type to 'int'
 				argType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
@@ -341,12 +341,12 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 			else
 			{
 				// Prev is already best
-				if (mModule->CanImplicitlyCast(mModule->GetFakeTypedValue(argType), prevGenericMethodArg))
+				if (mModule->CanCast(mModule->GetFakeTypedValue(argType), prevGenericMethodArg))
 					return true;
 			}			
 			
 			// New best?
-			if (mModule->CanImplicitlyCast(mModule->GetFakeTypedValue(prevGenericMethodArg), argType))
+			if (mModule->CanCast(mModule->GetFakeTypedValue(prevGenericMethodArg), argType))
 			{
 				_SetGeneric();
 				return true;
@@ -556,8 +556,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 							isWorse = true;
 						else
 						{
-							bool canCastFromCurToPrev = mModule->CanImplicitlyCast(mModule->GetFakeTypedValue(paramType), prevParamType);
-							bool canCastFromPrevToCur = mModule->CanImplicitlyCast(mModule->GetFakeTypedValue(prevParamType), paramType);
+							bool canCastFromCurToPrev = mModule->CanCast(mModule->GetFakeTypedValue(paramType), prevParamType);
+							bool canCastFromPrevToCur = mModule->CanCast(mModule->GetFakeTypedValue(prevParamType), paramType);
 
 							if ((canCastFromCurToPrev) && (!canCastFromPrevToCur))
 								isBetter = true;
@@ -604,9 +604,9 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 						}
 						else
 						{
-							if (mModule->CanImplicitlyCast(mModule->GetFakeTypedValue(paramType), prevParamType))
+							if (mModule->CanCast(mModule->GetFakeTypedValue(paramType), prevParamType))
 								isBetter = true;
-							if (mModule->CanImplicitlyCast(mModule->GetFakeTypedValue(prevParamType), paramType))
+							if (mModule->CanCast(mModule->GetFakeTypedValue(prevParamType), paramType))
 								isWorse = true;
 						}*/
 					}
@@ -1330,7 +1330,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 			if ((mArguments[argIdx].mArgFlags & BfArgFlag_ParamsExpr) != 0)
 			{				
 				// Direct-pass params
-				if ((argTypedValue.IsUntypedValue()) || (mModule->CanImplicitlyCast(argTypedValue, paramsArrayType)))
+				if ((argTypedValue.IsUntypedValue()) || (mModule->CanCast(argTypedValue, paramsArrayType)))
 				{
 					argIdx++;
 					argMatchCount++;
@@ -1351,7 +1351,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], paramsElementType, genericArgumentsSubstitute);
 					if (!argTypedValue.HasType())
 						goto NoMatch;
-					if (!mModule->CanImplicitlyCast(argTypedValue, paramsElementType))
+					if (!mModule->CanCast(argTypedValue, paramsElementType))
 						goto NoMatch;
 					argIdx++;
 					argMatchCount++;
@@ -1402,7 +1402,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 			{
 				goto NoMatch;
 			}
-			else if (!mModule->CanImplicitlyCast(argTypedValue, wantType))
+			else if (!mModule->CanCast(argTypedValue, wantType))
 				goto NoMatch;
 		}
 		
@@ -5046,7 +5046,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				if (argIdx < (int)argValues.size())
 				{		
 					auto argValue = argValues[argIdx].mTypedValue;
-					if ((argValue.IsParams()) /*&& (mModule->CanImplicitlyCast(argValue, wantType))*/)
+					if ((argValue.IsParams()) /*&& (mModule->CanCast(argValue, wantType))*/)
 						isDirectPass = true;
 				}
 
@@ -14367,11 +14367,11 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 		if ((ignoredValue) && (ignoredValue.mType != actualValue.mType))
 		{
 			// Cast to more specific 'ignored' type if applicable
-			if (mModule->CanImplicitlyCast(actualValue, ignoredValue.mType))
+			if (mModule->CanCast(actualValue, ignoredValue.mType))
 			{
 				actualValue = mModule->Cast(actualExpr, actualValue, ignoredValue.mType);
 			}
-			else if (!mModule->CanImplicitlyCast(ignoredValue, actualValue.mType))
+			else if (!mModule->CanCast(ignoredValue, actualValue.mType))
 			{
 				mModule->Fail(StrFormat("Type of conditional expression cannot be determined because there is no implicit conversion between '%s' and '%s'",
 					mModule->TypeToString(actualValue.mType).c_str(), mModule->TypeToString(ignoredValue.mType).c_str()), condExpr);
@@ -16377,7 +16377,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				{
 					if (opConstraint.mUnaryOp == findOp)
 					{
-						if (mModule->CanImplicitlyCast(args[0].mTypedValue, opConstraint.mRightType))
+						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))
 						{
 							mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
 							return;
@@ -16398,7 +16398,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				{
 					if (opConstraint.mUnaryOp == findOp)
 					{
-						if (mModule->CanImplicitlyCast(args[0].mTypedValue, opConstraint.mRightType))
+						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))
 						{
 							mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
 							return;
@@ -17246,7 +17246,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		// If one of these is a constant that can be converted into a smaller type, then do that
 		if (rightValue.mValue.IsConst())
 		{
-			if (mModule->CanImplicitlyCast(rightValue, leftValue.mType))			
+			if (mModule->CanCast(rightValue, leftValue.mType))			
 			{
 				resultType = leftValue.mType;			
 				handled = true;
@@ -17258,7 +17258,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		{			
 			if (leftValue.mValue.IsConst())
 			{
-				if (mModule->CanImplicitlyCast(leftValue, rightValue.mType))
+				if (mModule->CanCast(leftValue, rightValue.mType))
 				{
 					resultType = rightValue.mType;
 					handled = true;
@@ -17325,7 +17325,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	// This case fixes cases like "c == 0" where "0" is technically an int but can be reduced
 	if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
 	{
-		if ((resultType != otherType) && (resultTypedValue->mValue.IsConst()) && (mModule->CanImplicitlyCast(*resultTypedValue, otherType)))
+		if ((resultType != otherType) && (resultTypedValue->mValue.IsConst()) && (mModule->CanCast(*resultTypedValue, otherType)))
 		{
 			std::swap(resultTypedValue, otherTypedValue);
 			std::swap(resultTypeSrc, otherTypeSrc);
@@ -17582,8 +17582,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						{
 							if (opConstraint.mBinaryOp == findBinaryOp)
 							{
-								if ((mModule->CanImplicitlyCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
-									(mModule->CanImplicitlyCast(args[1].mTypedValue, opConstraint.mRightType)))
+								if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
+									(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
 								{									
 									BF_ASSERT(genericParam->mExternType != NULL);
 									mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);									
@@ -17605,8 +17605,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						{
 							if (opConstraint.mBinaryOp == findBinaryOp)
 							{
-								if ((mModule->CanImplicitlyCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
-									(mModule->CanImplicitlyCast(args[1].mTypedValue, opConstraint.mRightType)))
+								if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
+									(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
 								{
 									mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
 									return;
@@ -17891,9 +17891,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			// We only do this for tuples, because we would allow an implicit struct
 			//  truncation if we allow it for all structs, which would result in only
 			//  the base class's fields being compared
-			if (mModule->CanImplicitlyCast(rightValue, leftValue.mType))			
+			if (mModule->CanCast(rightValue, leftValue.mType))			
 				rightValue = mModule->Cast(opToken, rightValue, leftValue.mType, BfCastFlags_Explicit);
-			else if (mModule->CanImplicitlyCast(leftValue, rightValue.mType))
+			else if (mModule->CanCast(leftValue, rightValue.mType))
 				leftValue = mModule->Cast(opToken, leftValue, rightValue.mType, BfCastFlags_Explicit);
 		}
 
@@ -17990,7 +17990,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			}
 			else if ((!resultType->IsSigned()) && (otherType->IsSigned()))
 			{
-				if (mModule->CanImplicitlyCast(*otherTypedValue, resultType))
+				if (mModule->CanCast(*otherTypedValue, resultType))
 				{
 					// If we can convert the 'other' value implicitly then it's a convertible literal, leave as uint
 				}

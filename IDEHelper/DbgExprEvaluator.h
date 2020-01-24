@@ -362,7 +362,7 @@ public:
 
 	String TypeToString(DbgType* type);
 	bool CheckHasValue(DbgTypedValue typedValue, BfAstNode* refNode);
-	bool CanImplicitlyCast(DbgTypedValue typedVal, DbgType* toType);
+	bool CanCast(DbgTypedValue typedVal, DbgType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	DbgTypedValue Cast(BfAstNode* srcNode, const DbgTypedValue& val, DbgType* toType, bool explicitCast = false, bool silentFail = false);
 	bool HasField(DbgType* type, const StringImpl& fieldName);
 	DbgTypedValue DoLookupField(BfAstNode* targetSrc, DbgTypedValue target, DbgType* curCheckType, const StringImpl& fieldName, CPUStackFrame* stackFrame, bool allowImplicitThis);	

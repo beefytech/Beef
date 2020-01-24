@@ -240,7 +240,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 				{
 					if (!arguments[argIdx].mTypedValue.mValue)
 						return false;
-					if (mModule->CanImplicitlyCast(arguments[argIdx].mTypedValue, wantType))
+					if (mModule->CanCast(arguments[argIdx].mTypedValue, wantType))
 						isDirectPass = true;
 				}
 
