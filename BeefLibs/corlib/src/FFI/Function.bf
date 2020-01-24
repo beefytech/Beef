@@ -137,20 +137,18 @@ namespace System.FFI
 #if BF_PLATFORM_WINDOWS
 
 #if BF_64_BIT
+	[AllowDuplicates]
 	enum FFIABI : int32
 	{
 		NotSet = 0,
 		StdCall = 1,
-#unwarn
 		ThisCall = 1,
-#unwarn
 		FastCall = 1,
-#unwarn
 		MS_CDecl = 1,
-#unwarn
 		Default = 1
 	}
 #else
+	[AllowDuplicates]
 	enum FFIABI : int32
 	{
 		NotSet = 0,
@@ -167,6 +165,7 @@ namespace System.FFI
 #else //!BF_PLATFORM_WINDOWS
 
 #if BF_64_BIT
+	[AllowDuplicates]
 	enum FFIABI : int32
 	{
 		NotSet = 0,
@@ -175,6 +174,7 @@ namespace System.FFI
 		Default = Unix64
 	}
 #else
+	[AllowDuplicates]
 	enum FFIABI : int32
 	{
 		NotSet = 0,

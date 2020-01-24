@@ -10175,7 +10175,9 @@ namespace IDE
 				Environment.GetExecutableFilePath(exeFilePath);
 				mVersionInfo = new .();
 				mVersionInfo.GetVersionInfo(exeFilePath).IgnoreError();
+#if BF_PLATFORM_WINDOWS
 				exeTime = File.GetLastWriteTime(exeFilePath).GetValueOrDefault();
+#endif
 			}
 			return mVersionInfo;
 		}
