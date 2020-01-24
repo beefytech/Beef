@@ -6095,12 +6095,21 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			{
 				checkNonStatic = false;
 			}
-			else if (mModule->mCurMethodState->mTempKind != BfMethodState::TempKind_None)
+			else 
 			{
-				checkNonStatic = mModule->mCurMethodState->mTempKind == BfMethodState::TempKind_NonStatic;
+				if (mModule->mCurMethodState->mMixinState != NULL)
+				{					
+					targetTypeInst = mModule->mCurMethodState->mMixinState->mMixinMethodInstance->GetOwner();
+					curTypeDef = targetTypeInst->mTypeDef;					
+				}
+
+				if (mModule->mCurMethodState->mTempKind != BfMethodState::TempKind_None)
+				{
+					checkNonStatic = mModule->mCurMethodState->mTempKind == BfMethodState::TempKind_NonStatic;
+				}
+				else
+					checkNonStatic = !mModule->mCurMethodInstance->mMethodDef->mIsStatic;
 			}
-			else
-				checkNonStatic = !mModule->mCurMethodInstance->mMethodDef->mIsStatic;
 		}
 	}
 
