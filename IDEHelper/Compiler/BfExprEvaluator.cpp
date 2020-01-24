@@ -12196,17 +12196,21 @@ void BfExprEvaluator::CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* ty
 			}
 		}
 		else
-		{
+		{			
 			BfLocalMethod* matchedLocalMethod = NULL;
 			BfLocalMethod* localMethod = NULL;
 			if (checkMethodState->mLocalMethodMap.TryGetValue(methodName, &localMethod))
 			{
+				auto typeInst = mModule->mCurTypeInstance;
+				if (checkMethodState->mMixinState != NULL)
+					typeInst = checkMethodState->mMixinState->mMixinMethodInstance->GetOwner();
+
 				while (localMethod != NULL)
 				{
 					auto methodDef = mModule->GetLocalMethodDef(localMethod);
 					if (methodDef->mMethodType == methodType)
 					{
-						methodMatcher.CheckMethod(mModule->mCurTypeInstance, methodDef, true);
+						methodMatcher.CheckMethod(typeInst, methodDef, true);
 						if (methodMatcher.mBestMethodDef == methodDef)
 							matchedLocalMethod = localMethod;
 					}

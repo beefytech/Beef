@@ -17844,6 +17844,11 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	auto callerMethodState = mCurMethodState;
 	
 	auto typeInst = mCurTypeInstance;
+
+	if (mCurMethodState->mMixinState != NULL)
+	{
+		typeInst = mCurMethodState->mMixinState->mMixinMethodInstance->GetOwner();
+	}
 			
 	auto methodDef = GetLocalMethodDef(localMethod);
 
@@ -18238,7 +18243,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 						// We can only set mutating if our owning type is mutating
 						if (localVar->mWrittenToId >= closureState.mCaptureStartAccessId)
 						{
-							if (mCurTypeInstance->IsValueType())
+							if (typeInst->IsValueType())
 							{
 								if (rootMethodState->mMethodInstance->mMethodDef->mIsMutating)
 									methodDef->mIsMutating = true;
