@@ -1716,6 +1716,15 @@ namespace System
 			return Ptr[0] == c;
 		}
 
+		public bool StartsWith(char32 c)
+		{
+			if (c < '\x80')
+				return StartsWith((char8)c);
+			if (mLength == 0)
+				return false;
+			return UTF8.Decode(Ptr, mLength).c == c;
+		}
+
 		public bool EndsWith(char8 c)
 		{
 			if (mLength == 0)
@@ -1725,22 +1734,15 @@ namespace System
 
 		public bool EndsWith(char32 c)
 		{
-			int encodedLen = UTF8.GetEncodedLength(c);
-			char8* ptr = Ptr;
+			if (c < '\x80')
+				return EndsWith((char8)c);
 			if (mLength == 0)
 				return false;
-			let (c32, _) = UTF8.Decode(ptr + mLength - 1 * encodedLen, encodedLen);
-			return c32 == c;
-		}
-
-		public bool StartsWith(char32 c)
-		{
-			int encodedLen = UTF8.GetEncodedLength(c);
 			char8* ptr = Ptr;
-			if (mLength == 0)
-				return false;
-			let (c32, _) = UTF8.Decode(ptr, encodedLen);
-			return c32 == c;
+			int idx = mLength - 1;
+			while ((idx > 0) && ((uint8)ptr[idx] & 0xC0 == 0x80))
+				idx--;
+			return UTF8.Decode(ptr + idx, mLength - idx).c == c;
 		}
 
 		public void ReplaceLargerHelper(String find, String replace)
@@ -2117,7 +2119,7 @@ namespace System
 			return false;
 		}
 
-		public (char32 c, int len) GetChar32(int idx)
+		public (char32 c, int8 len) GetChar32(int idx)
 		{
 			Debug.Assert((uint)idx < (uint)mLength);
 			char8* ptr = Ptr;
@@ -2129,7 +2131,7 @@ namespace System
 			return UTF8.Decode(ptr + idx, mLength - idx);
 		}
 
-		public (char32 c, int idx, int len) GetChar32WithBacktrack(int idx)
+		public (char32 c, int idx, int8 len) GetChar32WithBacktrack(int idx)
 		{
 			Debug.Assert((uint)idx < (uint)mLength);
 			char8* ptr = Ptr;
