@@ -1723,6 +1723,26 @@ namespace System
 			return Ptr[mLength - 1] == c;
 		}
 
+		public bool EndsWith(char32 c)
+		{
+			int encodedLen = UTF8.GetEncodedLength(c);
+			char8* ptr = Ptr;
+			if (mLength == 0)
+				return false;
+			let (c32, _) = UTF8.Decode(ptr + mLength - 1 * encodedLen, encodedLen);
+			return c32 == c;
+		}
+
+		public bool StartsWith(char32 c)
+		{
+			int encodedLen = UTF8.GetEncodedLength(c);
+			char8* ptr = Ptr;
+			if (mLength == 0)
+				return false;
+			let (c32, _) = UTF8.Decode(ptr, encodedLen);
+			return c32 == c;
+		}
+
 		public void ReplaceLargerHelper(String find, String replace)
 		{
 			List<int> replaceEntries = scope List<int>(8192);
