@@ -2052,7 +2052,7 @@ namespace System
 				count++;
 			var stringArr = scope:mixin StringView[count];
 			int idx = 0;
-			for (var strView in this.Split(splitChar))
+			for (var strView in Split(splitChar))
 				stringArr[idx++] = strView;
 			stringArr
 		}
