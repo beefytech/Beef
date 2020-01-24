@@ -37,7 +37,7 @@ namespace BeefBuild
 			mApp.ParseCommandLine(commandLine);
 			if (mApp.mVerb == .GetVersion)
 			{
-				Console.WriteLine("BeefBuild {}", mApp.GetVersionInfo().FileVersion);
+				Console.WriteLine("BeefBuild {}", mApp.GetVersionInfo(var exeTime).FileVersion);
 			}
 			else
 			{

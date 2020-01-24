@@ -47,7 +47,7 @@ namespace BeefBuild
 
 		public override void Init()
 		{
-			GetVersionInfo();
+			GetVersionInfo(var exeTime);
 
 			if (mVerbosity == .Default)
 				mVerbosity = .Normal;
