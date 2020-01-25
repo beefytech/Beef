@@ -93,6 +93,11 @@ namespace System.Threading
             }
         }
 
+		private this()
+		{
+
+		}
+
         public this(ThreadStart start)
         {
             if (start == null)

@@ -226,6 +226,11 @@ namespace System.Globalization
 		    return (temp);
 		}
 
+		private this()
+		{
+
+		}
+
 		public this(String name) : this(name, true)
 		{
 		}

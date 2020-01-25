@@ -10,7 +10,12 @@ namespace Beefy.geom
         public float mZ;
         public float mW;
         public static readonly Quaternion Identity = Quaternion(0, 0, 0, 1);
-        
+
+		public this()
+		{
+			this = default;
+		}
+
         public this(float x, float y, float z, float w)
         {
             mX = x;
