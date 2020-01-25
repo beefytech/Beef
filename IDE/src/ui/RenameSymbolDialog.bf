@@ -850,6 +850,13 @@ namespace IDE.ui
             }
         }
 
+		public override bool Contains(float x, float y)
+		{
+			if (mKind == Kind.ShowFileReferences)
+				return false;
+			return base.Contains(x, y);
+		}
+
         public void Close()
         {
 			if (mClosed)
