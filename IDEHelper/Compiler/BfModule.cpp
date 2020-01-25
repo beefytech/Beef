@@ -14408,52 +14408,62 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			(baseType->mTypeDef != mCompiler->mBfObjectTypeDef))
 		{
 			// Try to find a ctor without any params first
-			bool foundBaseCtor = false;
+			BfMethodDef* matchedMethod = NULL;
 			bool hadCtorWithAllDefaults = false;
 
 			for (int pass = 0; pass < 2; pass++)
 			{
-				for (auto checkMethodDef : baseType->mTypeDef->mMethods)
+				baseType->mTypeDef->PopulateMemberSets();
+				BfMemberSetEntry* entry = NULL;
+				BfMethodDef* checkMethodDef = NULL;
+				baseType->mTypeDef->mMethodSet.TryGetWith(String("__BfCtor"), &entry);
+				if (entry != NULL)
+					checkMethodDef = (BfMethodDef*)entry->mMemberDef;				
+				
+				while (checkMethodDef != NULL)
 				{
-					bool allowPriv = checkMethodDef->mProtection != BfProtection_Private;
+					bool allowMethod = checkMethodDef->mProtection > BfProtection_Private;
 					// Allow calling of the default base ctor if it is implicitly defined
 					if ((checkMethodDef->mMethodDeclaration == NULL) && (pass == 1) && (!hadCtorWithAllDefaults))
-						allowPriv = true;
+						allowMethod = true;
 						
-					if ((checkMethodDef->mMethodType == BfMethodType_Ctor) && (!checkMethodDef->mIsStatic) && (allowPriv))
+					if ((checkMethodDef->mMethodType == BfMethodType_Ctor) && (!checkMethodDef->mIsStatic) && (allowMethod))
 					{
 						if (checkMethodDef->mParams.size() == 0)
-						{
-							foundBaseCtor = true;
-							if (HasCompiledOutput())
-							{
-								SizedArray<BfIRValue, 1> args;
-								auto ctorBodyMethodInstance = GetMethodInstance(mCurTypeInstance->mBaseType, checkMethodDef, BfTypeVector());
-								if (!mCurTypeInstance->mBaseType->IsValuelessType())
-								{
-									auto basePtr = mBfIRBuilder->CreateBitCast(mCurMethodState->mLocals[0]->mValue, mBfIRBuilder->MapTypeInstPtr(mCurTypeInstance->mBaseType));
-									args.push_back(basePtr);
-								}
-								AddCallDependency(ctorBodyMethodInstance.mMethodInstance, true);
-								auto callInst = mBfIRBuilder->CreateCall(ctorBodyMethodInstance.mFunc, args);
-								auto callingConv = GetIRCallingConvention(ctorBodyMethodInstance.mMethodInstance);
-								if (callingConv != BfIRCallingConv_CDecl)
-									mBfIRBuilder->SetCallCallingConv(callInst, callingConv);
-// 								if (!mCurTypeInstance->mBaseType->IsValuelessType())
-// 									mBfIRBuilder->SetCallCallingConv(callInst, BfIRCallingConv_ThisCall);
-								break;
-							}
+						{							
+							matchedMethod = checkMethodDef;							
 						}
 						else if ((checkMethodDef->mParams[0]->mParamDeclaration != NULL) && (checkMethodDef->mParams[0]->mParamDeclaration->mInitializer != NULL))
-							hadCtorWithAllDefaults = true;
+						{
+							if (pass == 0)
+								hadCtorWithAllDefaults = true;							
+						}
 					}			
+
+					checkMethodDef = checkMethodDef->mNextWithSameName;
 				}
 
-				if (foundBaseCtor)
+				if (matchedMethod != NULL)
 					break;
 			}
 
-			if (!foundBaseCtor)
+			if ((HasCompiledOutput()) && (matchedMethod != NULL))
+			{
+				SizedArray<BfIRValue, 1> args;
+				auto ctorBodyMethodInstance = GetMethodInstance(mCurTypeInstance->mBaseType, matchedMethod, BfTypeVector());
+				if (!mCurTypeInstance->mBaseType->IsValuelessType())
+				{
+					auto basePtr = mBfIRBuilder->CreateBitCast(mCurMethodState->mLocals[0]->mValue, mBfIRBuilder->MapTypeInstPtr(mCurTypeInstance->mBaseType));
+					args.push_back(basePtr);
+				}
+				AddCallDependency(ctorBodyMethodInstance.mMethodInstance, true);
+				auto callInst = mBfIRBuilder->CreateCall(ctorBodyMethodInstance.mFunc, args);
+				auto callingConv = GetIRCallingConvention(ctorBodyMethodInstance.mMethodInstance);
+				if (callingConv != BfIRCallingConv_CDecl)
+					mBfIRBuilder->SetCallCallingConv(callInst, callingConv);				
+			}
+
+			if (matchedMethod == NULL)
 			{
 				targetType = mCurTypeInstance->mBaseType;
 				if (ctorDeclaration != NULL)
