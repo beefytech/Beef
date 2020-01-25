@@ -598,7 +598,12 @@ namespace IDE.ui
 			projectFolder.mIncludeKind = folder.mIncludeKind;
 			projectFolder.mAutoInclude = folder.IsAutoInclude();
             folder.AddChild(projectFolder);
-            AddProjectItem(projectFolder);
+            let projectItem = AddProjectItem(projectFolder);
+			if (projectItem != null)
+			{
+				mListView.GetRoot().SelectItemExclusively(projectItem);
+				mListView.EnsureItemVisible(projectItem, false);
+			}
 			if (projectFolder.mIncludeKind != .Auto)
 				projectFolder.mProject.SetChanged();
         }
@@ -689,7 +694,12 @@ namespace IDE.ui
             projectSource.mProject = folder.mProject;
             projectSource.mParentFolder = folder;
             folder.AddChild(projectSource);
-            AddProjectItem(projectSource);            
+            let projectItem = AddProjectItem(projectSource);
+			if (projectItem != null)
+			{
+				mListView.GetRoot().SelectItemExclusively(projectItem);
+				mListView.EnsureItemVisible(projectItem, false);
+			}
             Sort();
 			if (folder.mIncludeKind != .Auto)
             	folder.mProject.SetChanged();
