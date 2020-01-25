@@ -8124,6 +8124,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		return typeDeclaration;
 	}
 
+	AddErrorNode(tokenNode, false);
 	Fail("Unexpected token", tokenNode);
 	return NULL;
 }
