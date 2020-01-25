@@ -823,6 +823,9 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 	propertyDef->mFieldDeclaration = propertyDeclaration;
 	propertyDef->mDeclaringType = mCurTypeDef;
 
+	if (auto varType = BfNodeDynCast<BfLetTypeReference>(propertyDef->mTypeRef))		
+		propertyDef->mIsReadOnly = true;
+
 	//HashNode(*mSignatureHashCtx, propertyDeclaration, propertyDeclaration->mDefinitionBlock);
 
 	//mCurTypeDef->mSignatureHash = HashNode(propertyDeclaration, propertyDeclaration->mDefinitionBlock, mCurTypeDef->mSignatureHash);	
@@ -999,6 +1002,8 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 	fieldDef->mIsStatic = (fieldDeclaration->mStaticSpecifier != NULL) || fieldDef->mIsConst;
 	fieldDef->mIsVolatile = (fieldDeclaration->mVolatileSpecifier != NULL);
 	fieldDef->mTypeRef = fieldDeclaration->mTypeRef;
+	if (auto varType = BfNodeDynCast<BfLetTypeReference>(fieldDef->mTypeRef))		
+		fieldDef->mIsReadOnly = true;
 	
 	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (fieldDef->mTypeRef != NULL) && (!fieldDef->mIsStatic))
 	{
@@ -1903,7 +1908,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	{
 		// Create default constructor.  If it's the only constructor then make it public,
 		//  otherwise make it private so we can still internally use it but the user can't		
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, hasCtor ? BfProtection_Private : BfProtection_Public, false, "");
+		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, hasCtor ? BfProtection_Hidden : BfProtection_Public, false, "");
 		methodDef->mIsMutating = true;
 	}
 
