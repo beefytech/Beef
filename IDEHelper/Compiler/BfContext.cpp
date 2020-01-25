@@ -1785,6 +1785,7 @@ void BfContext::UpdateRevisedTypes()
 		
 		if (typeDef->mDefState == BfTypeDef::DefState_Deleted)
 		{			
+			HandleChangedTypeDef(typeDef);
 			DeleteType(typeInst);
 			continue;
 		}

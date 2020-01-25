@@ -850,11 +850,12 @@ bool BfTypeDef::NameEquals(BfTypeDef* otherTypeDef)
 }
 
 bool BfTypeDef::HasSource(BfSource* source)
-{
+{	
 	if (mNextRevision != NULL)
-		return mNextRevision->HasSource(source);
-
+		return mNextRevision->HasSource(source);	
 	if (mSource == source)
+		return true;
+	if ((mSource != NULL) && (mSource->mNextRevision != NULL) && (mSource->mNextRevision == source))
 		return true;
 	for (auto partial : mPartials)
 		if (partial->mSource == source)

@@ -13596,7 +13596,7 @@ void BfModule::EmitDtorBody()
 			UpdateSrcPos(typeDef->mTypeDeclaration);
 		if ((methodDeclaration != NULL) && (methodDeclaration->mFatArrowToken != NULL))
 		{
-			Fail("Destructors cannot have expression bodies", methodDeclaration->mFatArrowToken);
+			Fail("Destructors cannot have expression bodies", methodDeclaration->mFatArrowToken, true);
 		}
 	}		
 
@@ -13610,7 +13610,7 @@ void BfModule::EmitDtorBody()
 			{
 				if ((!methodDef->mIsStatic) && (mCurTypeInstance->IsValueType()))
 				{
-					Fail("Structs cannot have field destructors", fieldDef->mFieldDeclaration->mFieldDtor->mTildeToken);
+					Fail("Structs cannot have field destructors", fieldDef->mFieldDeclaration->mFieldDtor->mTildeToken, true);
 				}
 
 				SetAndRestoreValue<BfFilePosition> prevFilePos(mCurFilePosition);
@@ -13650,7 +13650,7 @@ void BfModule::EmitDtorBody()
 					else
 					{						
 						AssertErrorState();
-						value = mBfIRBuilder->CreateConstNull(mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapType(fieldInst->mResolvedType)));						
+						value = mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(fieldInst->mResolvedType));
 					}
 				}
 
@@ -13771,6 +13771,8 @@ void BfModule::EmitDtorBody()
 							if ((curFieldDef != NULL) && (fieldDef->mName == curFieldDef->mName))
 								fieldType = curFieldInstance->GetResolvedType();							
 						}
+						if (fieldType == NULL)
+							fieldType = GetPrimitiveType(BfTypeCode_Var);
 						
 						auto fieldDtor = fieldDef->mFieldDeclaration->mFieldDtor;
 
@@ -13783,7 +13785,7 @@ void BfModule::EmitDtorBody()
 						{
 							BfLocalVariable* localDef = new BfLocalVariable();
 							localDef->mName = "_";
-							localDef->mResolvedType = fieldType;							
+							localDef->mResolvedType = fieldType;	
 							localDef->mAddr = mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(fieldType));
 							localDef->mIsAssigned = true;
 							AddLocalVariableDef(localDef);
