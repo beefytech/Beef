@@ -5176,7 +5176,22 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				if ((autoComplete != NULL) && (prevNode != NULL))
 					autoComplete->CheckEmptyStart(prevNode, wantType);									
 
-				BfError* error = mModule->Fail(StrFormat("Not enough parameters specified, expected %d more.", methodInstance->GetParamCount() - paramIdx), refNode);
+				BfError* error = NULL;
+				
+				if (mModule->mParentNodeEntry != NULL)
+				{
+					if (auto ctorDeclaration = BfNodeDynCast<BfConstructorDeclaration>(mModule->mParentNodeEntry->mNode))
+					{
+						if (ctorDeclaration->mInitializer == NULL)
+						{
+							error = mModule->Fail(StrFormat("No parameterless constructor is available for base class. Consider calling base constructor '%s'.",
+								mModule->MethodToString(methodInstance).c_str()), refNode);
+						}
+					}
+				}
+
+				if (error != NULL)
+					error = mModule->Fail(StrFormat("Not enough parameters specified, expected %d more.", methodInstance->GetParamCount() - paramIdx), refNode);
 				if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
 					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 				failed = true;

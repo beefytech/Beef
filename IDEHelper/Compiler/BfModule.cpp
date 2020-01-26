@@ -14408,8 +14408,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			(baseType->mTypeDef != mCompiler->mBfObjectTypeDef))
 		{
 			// Try to find a ctor without any params first
-			BfMethodDef* matchedMethod = NULL;
-			bool hadCtorWithAllDefaults = false;
+			BfMethodDef* matchedMethod = NULL;			
 
 			for (int pass = 0; pass < 2; pass++)
 			{
@@ -14422,22 +14421,13 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				
 				while (checkMethodDef != NULL)
 				{
-					bool allowMethod = checkMethodDef->mProtection > BfProtection_Private;
-					// Allow calling of the default base ctor if it is implicitly defined
-					if ((checkMethodDef->mMethodDeclaration == NULL) && (pass == 1) && (!hadCtorWithAllDefaults))
-						allowMethod = true;
-						
+					bool allowMethod = checkMethodDef->mProtection > BfProtection_Private;	
 					if ((checkMethodDef->mMethodType == BfMethodType_Ctor) && (!checkMethodDef->mIsStatic) && (allowMethod))
 					{
 						if (checkMethodDef->mParams.size() == 0)
 						{							
 							matchedMethod = checkMethodDef;							
-						}
-						else if ((checkMethodDef->mParams[0]->mParamDeclaration != NULL) && (checkMethodDef->mParams[0]->mParamDeclaration->mInitializer != NULL))
-						{
-							if (pass == 0)
-								hadCtorWithAllDefaults = true;							
-						}
+						}						
 					}			
 
 					checkMethodDef = checkMethodDef->mNextWithSameName;
@@ -14481,6 +14471,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 	if (targetType != NULL)
 	{
+		BfAutoParentNodeEntry autoParentNodeEntry(this, methodDeclaration);
+
 		auto autoComplete = mCompiler->GetAutoComplete();
 		auto wasCapturingMethodInfo = (autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo);
 		if ((autoComplete != NULL) && (ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL))
