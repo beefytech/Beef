@@ -238,6 +238,11 @@ namespace System.Threading.Tasks
 		    }
 		}
 
+		protected this()
+		{
+
+		}
+
 		public this(Action action)
 		    : this(action, null, null, default(CancellationToken), TaskCreationOptions.None, InternalTaskOptions.None, null)
 		{

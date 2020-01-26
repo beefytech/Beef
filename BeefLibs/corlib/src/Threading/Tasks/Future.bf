@@ -27,6 +27,11 @@ namespace System.Threading.Tasks
 		    get { return IsWaitNotificationEnabledOrNotRanToCompletion ? GetResultCore(true) : m_result; }
 		}
 
+		protected this()
+		{
+
+		}
+
 		public this(Func<Object, TResult> func, Object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
 		    : this(func, state, Task.InternalCurrentIfAttached(creationOptions), cancellationToken,
 		            creationOptions, InternalTaskOptions.None, null)
