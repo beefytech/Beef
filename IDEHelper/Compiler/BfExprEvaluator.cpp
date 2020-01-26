@@ -5190,7 +5190,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					}
 				}
 
-				if (error != NULL)
+				if (error == NULL)
 					error = mModule->Fail(StrFormat("Not enough parameters specified, expected %d more.", methodInstance->GetParamCount() - paramIdx), refNode);
 				if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
 					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
