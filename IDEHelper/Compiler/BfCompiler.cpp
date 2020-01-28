@@ -3822,18 +3822,29 @@ void BfCompiler::ProcessAutocompleteTempType()
 			continue; // Don't process auto-generated property fields
 
 		if (fieldDef->mTypeRef != NULL)
-			module->ResolveTypeRef(fieldDef->mTypeRef);
+		{
+			module->ResolveTypeRef(fieldDef->mTypeRef);			
+		}
 		mResolvePassData->mAutoComplete->CheckTypeRef(fieldDef->mTypeRef, true);
 	
+		actualTypeDef->PopulateMemberSets();
+
 		BfFieldDef* actualFieldDef = NULL;		
-		for (auto checkFieldDef : actualTypeDef->mFields)
-		{			
-			if ((checkFieldDef->mName == fieldDef->mName) &&
-				(checkFieldDef->mIsConst == fieldDef->mIsConst) &&
+		BfMemberSetEntry* memberSetEntry = NULL;
+		if (actualTypeDef->mFieldSet.TryGetWith(fieldDef->mName, &memberSetEntry))
+		{
+			auto checkFieldDef = (BfFieldDef*)memberSetEntry->mMemberDef;		
+			if ((checkFieldDef->mIsConst == fieldDef->mIsConst) &&
 				(checkFieldDef->mIsStatic == fieldDef->mIsStatic))
 			{
 				actualFieldDef = checkFieldDef;
 			}
+		}
+
+		if (actualFieldDef != NULL)
+		{
+			auto fieldInstance = &typeInst->mFieldInstances[actualFieldDef->mIdx];
+			autoComplete->CheckVarResolution(fieldDef->mTypeRef, fieldInstance->mResolvedType);
 		}
 
 		if (((autoComplete->mIsGetDefinition)  || (autoComplete->mResolveType == BfResolveType_GetResultString)) &&
