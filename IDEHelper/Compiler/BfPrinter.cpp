@@ -2245,9 +2245,8 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 	ExpectNewLine();	
 	QueueVisitChild(typeDeclaration->mAttributes);
 	if (!isOneLine)
-		ExpectNewLine();
-	else
-		ExpectSpace();
+		ExpectNewLine();	
+	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mAbstractSpecifier);
 	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mSealedSpecifier);
