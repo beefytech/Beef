@@ -18,11 +18,16 @@ namespace System
 		}
 	}
 
-	interface IInteger
+	interface INumeric
+	{
+		static Self operator+(Self lhs, Self rhs);
+	}
+
+	interface IInteger : INumeric
 	{
 	}
 
-	interface IUnsigned
+	interface IUnsigned : INumeric
 	{
 
 	}

@@ -17,12 +17,17 @@ namespace System
 
 		public static int operator<=>(Int64 a, Int64 b)
 		{
-			return (int64)a <=> (int64)b;
+			return (SelfBase)a <=> (SelfBase)b;
+		}
+
+		public static Self operator+(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs + (SelfBase)rhs;
 		}
 
 		public static Int64 operator-(Int64 value)
 		{
-			return (int64)value;
+			return -(SelfBase)value;
 		}
 
 		int IHashable.GetHashCode()

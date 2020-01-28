@@ -16,7 +16,12 @@ namespace System
 
 		public static int operator<=>(UInt64 a, UInt64 b)
 		{
-			return (uint64)a <=> (uint64)b;
+			return (SelfBase)a <=> (SelfBase)b;
+		}
+
+		public static Self operator+(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs + (SelfBase)rhs;
 		}
 
 	    int IHashable.GetHashCode()
