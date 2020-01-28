@@ -1017,9 +1017,21 @@ namespace IDE
 					completedCompileCmd.mFailed = true;
 				}
 			}
+
+			void DoPostBuild()
+			{
+				switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+				{
+				case .NoCommands:
+				case .HadCommands:
+				case .Failed:
+					completedCompileCmd.mFailed = true;
+				}
+			}
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)
 			{
+				DoPostBuild();
 				return true; 
 			}
 
@@ -1175,17 +1187,7 @@ namespace IDE
 					return false;
 			}
 
-			if (hotProject == null)
-			{
-				switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
-				{
-				case .NoCommands:
-				case .HadCommands:
-				case .Failed:
-					completedCompileCmd.mFailed = true;
-				}
-			}
-
+			DoPostBuild();
 		    return true;
 		}
 	}
