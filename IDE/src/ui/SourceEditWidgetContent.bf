@@ -2079,9 +2079,7 @@ namespace IDE.ui
                 return;
             }
 
-			if ((keyChar == '\t') && (mWidgetWindow.IsKeyDown(.Shift)))
-				return;
-
+			bool isTab = (keyChar == '\t') && (!mWidgetWindow.IsKeyDown(.Shift));
             if ((gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.IsRenaming))
             {         
                 if ((keyChar == '\r') || (keyChar == '\n'))
@@ -2106,7 +2104,7 @@ namespace IDE.ui
 
             int32 startRevision = mData.mCurTextVersionId;
             
-            bool doAutocomplete = (keyChar == '\t');
+            bool doAutocomplete = (keyChar == '\t') && (!mWidgetWindow.IsKeyDown(.Shift));
 			if ((mAutoComplete != null) && (keyChar == '\r') &&
 				((!mIsMultiline) || (mAutoComplete.mIsUserRequested)))
 				doAutocomplete = true;
