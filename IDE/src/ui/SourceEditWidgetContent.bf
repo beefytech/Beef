@@ -2104,7 +2104,7 @@ namespace IDE.ui
 
             int32 startRevision = mData.mCurTextVersionId;
             
-            bool doAutocomplete = (keyChar == '\t') && (!mWidgetWindow.IsKeyDown(.Shift));
+            bool doAutocomplete = isTab;
 			if ((mAutoComplete != null) && (keyChar == '\r') &&
 				((!mIsMultiline) || (mAutoComplete.mIsUserRequested)))
 				doAutocomplete = true;
@@ -2116,7 +2116,7 @@ namespace IDE.ui
 
 			if (gApp.mSettings.mEditorSettings.mAutoCompleteRequireTab)
 			{
-				doAutocomplete = keyChar == '\t';
+				doAutocomplete = isTab;
 				if (keyChar == '\r')
 				{
 					if (mAutoComplete != null)
