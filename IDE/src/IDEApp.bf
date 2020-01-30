@@ -678,7 +678,7 @@ namespace IDE
 			for (var val in mWindowDatas.Values)
 				delete val;
 
-			if (mErrorsPanel.mParent != null)
+			if (mErrorsPanel?.mParent != null)
 				mErrorsPanel.RemoveSelf();
 
 			ProcessIdleDeferredDeletes();
