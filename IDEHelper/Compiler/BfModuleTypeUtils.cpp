@@ -4774,13 +4774,16 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 	}	
 
 	BfTypeInstance* typeInst = resolvedTypeRef->ToTypeInstance();
-	if (typeInst == NULL)
+	if ((typeInst == NULL) && (!resolvedTypeRef->IsGenericParam()))
 		return NULL;
 
 	auto boxedType = mContext->mBoxedTypePool.Get();
 	boxedType->mContext = mContext;
-	boxedType->mElementType = typeInst;
-	boxedType->mTypeDef = boxedType->mElementType->mTypeDef;
+	boxedType->mElementType = resolvedTypeRef;
+	if (typeInst != NULL)
+		boxedType->mTypeDef = typeInst->mTypeDef;
+	else
+		boxedType->mTypeDef = mCompiler->mValueTypeTypeDef;
 	boxedType->mBoxedFlags = isStructPtr ? BfBoxedType::BoxedFlags_StructPtr : BfBoxedType::BoxedFlags_None;
 	auto resolvedBoxedType = ResolveType(boxedType);
 	if (resolvedBoxedType != boxedType)
@@ -9099,6 +9102,21 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		if (allowCast)
 		{			
 			return CastToValue(srcNode, typedVal, toType->GetUnderlyingType(), castFlags);
+		}
+	}
+
+	if (typedVal.mType->IsBoxed())
+	{
+		BfBoxedType* boxedType = (BfBoxedType*)typedVal.mType;
+		if (boxedType->mElementType->IsGenericParam())
+		{
+			// If we have a boxed generic param, the actual available interfaces constraints won't be 
+			// handled, so we need to pass through again as the root generic param
+			BfTypedValue unboxedValue = typedVal;
+			unboxedValue.mType = boxedType->mElementType;
+			auto result = CastToValue(srcNode, unboxedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail), resultFlags);
+			if (result)
+				return result;
 		}
 	}
 

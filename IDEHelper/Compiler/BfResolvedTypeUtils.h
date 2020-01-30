@@ -1579,7 +1579,7 @@ public:
 	Array<BfVirtualMethodEntry> mVirtualMethodTable;	
 	BfHotTypeData* mHotTypeData;	
 	int mVirtualMethodTableSize; // With hot reloading, mVirtualMethodTableSize can be larger than mInterfaceMethodTable (live vtable versioning)	
-	Array<BfFieldInstance> mFieldInstances;		
+	Array<BfFieldInstance> mFieldInstances;
 	Array<BfMethodInstance*> mInternalMethods;			
 	Dictionary<BfTypeDef*, BfStaticSearch> mStaticSearchMap;
 	bool mHasStaticInitMethod;
@@ -1744,7 +1744,7 @@ public:
 	};
 
 public:
-	BfTypeInstance* mElementType;
+	BfType* mElementType;
 	BfBoxedType* mBoxedBaseType;
 	BoxedFlags mBoxedFlags;
 

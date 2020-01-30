@@ -1939,7 +1939,7 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 			auto boxedMethodInstance = useModule->ReferenceExternalMethodInstance(methodRef.mImplementingMethod);
 
 			BfBoxedType* vBoxedType = (BfBoxedType*)methodRef.mImplementingMethod.mTypeInstance;
-			mBestMethodTypeInstance = vBoxedType->mElementType;		
+			mBestMethodTypeInstance = vBoxedType->mElementType->ToTypeInstance();
 			mBestMethodInstance = mModule->GetMethodInstance(mBestMethodTypeInstance, boxedMethodInstance.mMethodInstance->mMethodDef, BfTypeVector());
 			mBestMethodDef = mBestMethodInstance.mMethodInstance->mMethodDef;
 		}
@@ -11752,38 +11752,45 @@ void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
 	auto exprValue = mModule->CreateValueFromExpression(boxExpr->mExpression);
 	if (exprValue)
 	{
+		bool doFail = false;
+		bool doWarn = false;
+
 		if (exprValue.mType->IsGenericParam())
 		{
 			BF_ASSERT(mModule->mCurMethodInstance->mIsUnspecialized);
 
 			auto genericParamTarget = (BfGenericParamType*)exprValue.mType;
 			auto genericParamInstance = mModule->GetGenericParamInstance(genericParamTarget);
-			bool isBoxable = false;
+			
+			if ((genericParamInstance->mGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Class)) == BfGenericParamFlag_Class)
+				doWarn = true;
 
-			if (genericParamInstance->mGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr))
-				isBoxable = true;
-
-			if ((genericParamInstance->mTypeConstraint != NULL) && (exprValue.mType->IsValueTypeOrValueTypePtr()))
-				isBoxable = true;
-
-			if (isBoxable)
-			{
-				mResult = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
-				return;
-			}
+			if ((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsObjectOrInterface()))
+				doWarn = true;
+		}
+		else
+		{
+			doFail = !exprValue.mType->IsValueTypeOrValueTypePtr();
+			doWarn = exprValue.mType->IsObjectOrInterface();
 		}
 
-		if (!exprValue.mType->IsValueTypeOrValueTypePtr())
+		if (doWarn)
+		{
+			mModule->Warn(0, StrFormat("Boxing is unnecessary since type '%s' is already a reference type.", mModule->TypeToString(exprValue.mType).c_str()), boxExpr->mExpression);
+			mResult = exprValue;
+			return;
+		}
+
+		if (doFail)
 		{
 			mModule->Fail(StrFormat("Box target '%s' must be a value type or pointer to a value type", mModule->TypeToString(exprValue.mType).c_str()), boxExpr->mExpression);
 			return;
 		}
 		
-		//BfType* boxedType = mModule->CreateBoxedType(exprValue.mType);
-
-		//auto scopeData = mModule->FindScope(boxExpr->mAllocNode);		
-		
-		mResult = mModule->BoxValue(boxExpr->mExpression, exprValue, mModule->mContext->mBfObjectType, allocTarget);
+		BfType* boxedType = mModule->CreateBoxedType(exprValue.mType);
+		if (boxedType == NULL)
+			boxedType = mModule->mContext->mBfObjectType;
+		mResult = mModule->BoxValue(boxExpr->mExpression, exprValue, boxedType, allocTarget);
 		if (!mResult)
 		{
 			mModule->Fail(StrFormat("Type '%s' is not boxable", mModule->TypeToString(exprValue.mType).c_str()), boxExpr->mExpression);

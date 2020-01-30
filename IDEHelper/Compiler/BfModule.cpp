@@ -3653,7 +3653,7 @@ void BfModule::CreateDynamicCastMethod()
 	if (mCurTypeInstance->IsBoxed())
 	{
 		BfBoxedType* boxedType = (BfBoxedType*)mCurTypeInstance;
-		BfTypeInstance* innerType = boxedType->mElementType;
+		BfTypeInstance* innerType = boxedType->mElementType->ToTypeInstance();
 		
 		FindSubTypes(innerType, &typeMatches, &exChecks, isInterfacePass);
 
@@ -8425,6 +8425,14 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	{
 		if (toType == mContext->mBfObjectType)
 			return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
+		if (toType->IsBoxed())
+		{
+			BfBoxedType* boxedType = (BfBoxedType*)toType;
+			if (typedVal.mType == boxedType->mElementType)
+				return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
+			else
+				return BfTypedValue();
+		}
 	}
 
 	BP_ZONE("BoxValue");
@@ -16900,7 +16908,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			mBfIRBuilder->ClearDebugLocation();
 
 			BfBoxedType* boxedType = (BfBoxedType*) mCurTypeInstance;
-			BfTypeInstance* innerType = boxedType->mElementType;
+			BfTypeInstance* innerType = boxedType->mElementType->ToTypeInstance();
 			PopulateType(innerType, BfPopulateType_DataAndMethods);
 			mBfIRBuilder->PopulateType(mCurTypeInstance);
 			BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None;
@@ -19246,7 +19254,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				auto boxedType = (BfBoxedType*)mCurTypeInstance;
 				// If we failed a lookup here then we better have also failed it in the original type
-				BF_ASSERT(boxedType->mElementType->mModule->mHadBuildError || mContext->mFailTypes.Contains(boxedType->mElementType));
+				BF_ASSERT(boxedType->mElementType->ToTypeInstance()->mModule->mHadBuildError || mContext->mFailTypes.Contains(boxedType->mElementType->ToTypeInstance()));
 			}
 		}
 
