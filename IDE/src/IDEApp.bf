@@ -678,6 +678,9 @@ namespace IDE
 			for (var val in mWindowDatas.Values)
 				delete val;
 
+			if (mErrorsPanel.mParent != null)
+				mErrorsPanel.RemoveSelf();
+
 			ProcessIdleDeferredDeletes();
 
 			// Get rid of panels
