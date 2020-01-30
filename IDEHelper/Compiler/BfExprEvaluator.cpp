@@ -16329,7 +16329,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 		BfResolvedArg resolvedArg;
 		resolvedArg.mTypedValue = mResult;
 		args.push_back(resolvedArg);		
-		BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
+ 		BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
 		BfBaseClassWalker baseClassWalker(mResult.mType, NULL, mModule);
 		
 		BfUnaryOp findOp = unaryOp;
@@ -16804,7 +16804,18 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 
 	if (numericFail)
 	{
-		mModule->Fail("Operator can only be used on numeric types", opToken);
+		if (mResult.mType->IsInterface())
+		{
+			mModule->Fail(
+				StrFormat("Operator '%s' cannot be used on interface '%s'. Consider rewriting using generics and use this interface as a generic constraint.",
+					BfTokenToString(opToken->mToken), mModule->TypeToString(mResult.mType).c_str()), opToken);
+		}
+		else
+		{
+			mModule->Fail(
+				StrFormat("Operator '%s' cannot be used because type '%s' is neither a numeric type nor does it define an applicable operator overload",
+					BfTokenToString(opToken->mToken), mModule->TypeToString(mResult.mType).c_str()), opToken);
+		}
 		mResult = BfTypedValue();
 	}
 
@@ -17343,8 +17354,18 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				mModule->Fail(StrFormat("Cannot perform binary operation '%s' between types '%s' and '%s'",
 					BfGetOpName(binaryOp), mModule->TypeToString(leftValue.mType).c_str(), mModule->TypeToString(rightValue.mType).c_str()), opToken);
 			else
-				mModule->Fail(StrFormat("Cannot perform binary operation '%s' between two instances of type '%s'",
-					BfGetOpName(binaryOp), mModule->TypeToString(leftValue.mType).c_str()), opToken);
+			{
+				if (leftValue.mType->IsInterface())
+				{
+					mModule->Fail(StrFormat("Cannot perform binary operation '%s' between two instances of interface '%s'. Consider rewriting using generics and use this interface as a generic constraint.",
+						BfGetOpName(binaryOp), mModule->TypeToString(leftValue.mType).c_str()), opToken);
+				}
+				else
+				{
+					mModule->Fail(StrFormat("Cannot perform binary operation '%s' between two instances of type '%s'",
+						BfGetOpName(binaryOp), mModule->TypeToString(leftValue.mType).c_str()), opToken);
+				}
+			}
 		}
 		else
 			mModule->Fail(StrFormat("Cannot perform binary operation '%s'", BfGetOpName(binaryOp)), opToken);
