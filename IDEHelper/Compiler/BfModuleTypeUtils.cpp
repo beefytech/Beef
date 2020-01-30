@@ -9167,7 +9167,8 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							doWrap = true;
 					}
 					if ((srcNode->IsA<BfCastExpression>()) ||
-						(srcNode->IsA<BfBinaryOperatorExpression>()))
+						(srcNode->IsA<BfBinaryOperatorExpression>()) ||
+						(srcNode->IsA<BfConditionalExpression>()))
 						doWrap = true;
 
 					BfParserData* parser = srcNode->GetSourceData()->ToParserData();

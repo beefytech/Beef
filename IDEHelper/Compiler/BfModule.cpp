@@ -2708,8 +2708,14 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 			if (parser != NULL)
 			{
 				int fileLoc = BfFixitFinder::FindLineStartBefore(refNode);
-				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("#unwarn\tunwarn|%s|%d|#unwarn|", parser->mFileName.c_str(), fileLoc).c_str()));
-			}				
+				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("#unwarn\tunwarn|%s|%d|#unwarn|", parser->mFileName.c_str(), fileLoc).c_str()));				
+
+				if (warningNum != 0)
+				{
+					mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("#pragma warning disable %d\tusing|%s|%d||#pragma warning disable %d", 
+						warningNum, parser->mFileName.c_str(), 0, warningNum).c_str()));
+				}
+			}			
 		}
 	}
 	return bfError;
@@ -8428,10 +8434,13 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		if (toType->IsBoxed())
 		{
 			BfBoxedType* boxedType = (BfBoxedType*)toType;
-			if (typedVal.mType == boxedType->mElementType)
-				return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
-			else
-				return BfTypedValue();
+			if (boxedType->mElementType->IsGenericParam())
+			{
+				if (typedVal.mType == boxedType->mElementType)
+					return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
+				else
+					return BfTypedValue();
+			}
 		}
 	}
 
