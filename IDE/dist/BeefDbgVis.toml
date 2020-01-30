@@ -532,7 +532,7 @@ Name = "[Value]"
 Value = "*($T2*)&mValue"
 
 [[Type]]
-Name = "Beefy::HashSet<*>"
+Name = "Beefy::HashSet<*, *>"
 DisplayString = "{{ count={mCount - mFreeCount} }}"
 [[Type.Expand.Item]]
 Name = "[Count]"
@@ -545,7 +545,7 @@ Key = "mKey"
 Next = "mNext"
 
 [[Type]]
-Name = "Beefy::HashSet<*>::Entry"
+Name = "Beefy::HashSet<*, *>::Entry"
 DisplayString = "{{[{*($T1*)&mKey}]}}"
 [[Type.Expand.Item]]
 Name = "[Key]"
