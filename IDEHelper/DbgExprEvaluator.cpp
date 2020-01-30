@@ -1756,6 +1756,9 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 	fromType = fromType->GetPrimaryType();
 	toType = toType->GetPrimaryType();
 	
+	if ((toType->IsBfObject()) && (fromType->IsPointer()))
+		toType = toType->GetDbgModule()->GetPointerType(toType);
+
 	if (toType->IsPrimitiveType())
 	{
 		if (fromType->mTypeCode == toType->mTypeCode)
