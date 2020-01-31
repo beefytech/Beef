@@ -266,7 +266,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 			{
 				// Tuple start
 			}
-			else if (checkToken == BfToken_Decltype)
+			else if ((checkToken == BfToken_Decltype) || (checkToken == BfToken_RetType))
 			{
 				// Decltype start
 			}
@@ -759,37 +759,45 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 					checkIdx = funcEndNode;
 					continue;
 				}
-				else if (checkToken == BfToken_Decltype)
+				else if ((checkToken == BfToken_Decltype) || (checkToken == BfToken_RetType))
 				{
 					int endNodeIdx = checkIdx + 1;
 
 					auto nextNode = mVisitorPos.Get(checkIdx + 1);
 					if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
 					{
-						int openCount = 1;
-
-						while (true)
+						if (tokenNode->mToken != BfToken_LParen)
 						{
-							endNodeIdx++;
+							isDone = true;
+						}
+						else
+						{
+							int openCount = 1;
 
-							auto checkNextNode = mVisitorPos.Get(endNodeIdx);
-							if (checkNextNode == NULL)
-								break;
-
-							if (auto checkNextToken = BfNodeDynCast<BfTokenNode>(checkNextNode))
+							while (true)
 							{
-								if (checkNextToken->GetToken() == BfToken_LParen)
-									openCount++;
-								else if (checkNextToken->GetToken() == BfToken_RParen)
+								endNodeIdx++;
+
+								auto checkNextNode = mVisitorPos.Get(endNodeIdx);
+								if (checkNextNode == NULL)
+									break;
+
+								if (auto checkNextToken = BfNodeDynCast<BfTokenNode>(checkNextNode))
 								{
-									openCount--;
-									if (openCount == 0)
-										break;
+									if (checkNextToken->GetToken() == BfToken_LParen)
+										openCount++;
+									else if (checkNextToken->GetToken() == BfToken_RParen)
+									{
+										openCount--;
+										if (openCount == 0)
+											break;
+									}
 								}
 							}
 						}
 					}
 
+					identifierExpected = false;
 					checkIdx = endNodeIdx;
 
 					/*if (outEndNode != NULL)
@@ -4590,7 +4598,10 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					tokenNode = ExpectTokenAfter(declTypeRef, BfToken_RParen);
 					MEMBER_SET_CHECKED(declTypeRef, mCloseParen, tokenNode);
 
-					return declTypeRef;
+					isHandled = true;
+					firstNode = declTypeRef;
+
+					//return declTypeRef;
 				}
 				else if (token == BfToken_LParen)
 				{
