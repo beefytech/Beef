@@ -10987,7 +10987,10 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	}
 
 	if (resolvedTypeRef == NULL)
-		return;
+	{
+		unresolvedTypeRef = mModule->GetPrimitiveType(BfTypeCode_Var);
+		resolvedTypeRef = unresolvedTypeRef;
+	}
 	auto resultType = resolvedTypeRef;
 	
 	if ((resolvedTypeRef->IsInterface()) && (!isArrayAlloc))
@@ -11300,6 +11303,14 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 					mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, isUninit ? 0xCC : 0), clearBytes, resultType->mAlign);
 			}
 		};
+		
+		if (resultType->IsVar())
+		{
+			SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+			mResult = BfTypedValue(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), mModule->GetPrimitiveType(BfTypeCode_Var)));
+			_HandleInitExprs(mResult.mValue, 0, objCreateExpr->mArguments);
+			return;
+		}
 
 		if (isRawArrayAlloc)
 		{
@@ -11569,13 +11580,21 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	appendAllocAlign = BF_MAX(appendAllocAlign, allocAlign);
 
 	BfIRValue allocValue;
-	if (isAppendAlloc)
-		allocValue = mModule->AppendAllocFromType(resolvedTypeRef, appendSizeValue, appendAllocAlign);
+	if (resolvedTypeRef->IsVar())
+	{
+		mResult = mModule->GetDefaultTypedValue(resultType);
+		return;
+	}
 	else
 	{
-		allocValue = mModule->AllocFromType(resolvedTypeRef, allocTarget, appendSizeValue, BfIRValue(), 0, BfAllocFlags_None, allocAlign);		
+		if (isAppendAlloc)
+			allocValue = mModule->AppendAllocFromType(resolvedTypeRef, appendSizeValue, appendAllocAlign);
+		else
+		{
+			allocValue = mModule->AllocFromType(resolvedTypeRef, allocTarget, appendSizeValue, BfIRValue(), 0, BfAllocFlags_None, allocAlign);
+		}
+		mResult = BfTypedValue(allocValue, resultType);
 	}
-	mResult = BfTypedValue(allocValue, resultType);
 
 	if (isScopeAlloc)
 	{
@@ -11695,33 +11714,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 				bindResult.mIRArgs.Insert(0, mResult.mValue);
 			CreateCall(bindResult.mMethodInstance, bindResult.mFunc, false, bindResult.mIRArgs);
 		}
-	}	
-
-// 	if ((mResult) && (!isArrayAlloc) && (objCreateExpr->mCollectionInitializer != NULL))
-// 	{
-// 		for (BfExpression* initExpr : objCreateExpr->mCollectionInitializer->mValues)
-// 		{
-// 			SizedArray<ASTREF(BfExpression*), 1> exprs;
-// 
-// 			if (auto groupExpr = BfNodeDynCast<BfCollectionInitializerExpression>(initExpr))
-// 			{
-// 				for (BfExpression* argExpr : groupExpr->mValues)
-// 					exprs.push_back(argExpr);
-// 			}
-// 			else
-// 			{
-// 				exprs.push_back(initExpr);
-// 			}
-// 			
-// 			BfExprEvaluator exprEvaluator(mModule);
-// 			SizedArray<BfExpression*, 8> copiedArgs;
-// 			for (BfExpression* arg : exprs)
-// 				copiedArgs.push_back(arg);
-// 			BfResolvedArgs argValues(copiedArgs);
-// 			exprEvaluator.ResolveArgValues(argValues);
-// 			exprEvaluator.MatchMethod(initExpr, NULL, mResult, false, false, "Add", argValues, NULL);
-// 		}
-// 	}
+	}
 }
 
 void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
@@ -17394,7 +17387,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 	if ((resultType->IsVar()) || (otherType->IsVar()))
 	{
-		mResult = BfTypedValue(mModule->GetDefaultValue(resultType), mModule->GetPrimitiveType(BfTypeCode_Var));
+		mResult = mModule->GetDefaultTypedValue(resultType);
 		return;
 	}
 	

@@ -1380,6 +1380,9 @@ BfTypedValue BfModule::GetFakeTypedValue(BfType* type)
 
 BfTypedValue BfModule::GetDefaultTypedValue(BfType* type, bool allowRef, BfDefaultValueKind defaultValueKind)
 {
+	if (type->IsVar())
+		return BfTypedValue(mBfIRBuilder->GetFakeVal(), type);
+
 	PopulateType(type, BfPopulateType_Data);
 	mBfIRBuilder->PopulateType(type, type->IsValueType() ? BfIRPopulateType_Full : BfIRPopulateType_Declaration);
 
@@ -7383,6 +7386,8 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 	BP_ZONE("AllocFromType");
 
 	BfScopeData* scopeData = allocTarget.mScopeData;
+
+	BF_ASSERT(!type->IsVar());
 
 	auto typeInstance = type->ToTypeInstance();	
 	if ((typeInstance == NULL) && (type->IsGenericParam()))
