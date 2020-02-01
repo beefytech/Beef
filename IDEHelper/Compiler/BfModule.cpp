@@ -2291,6 +2291,7 @@ void BfModule::UpdateExprSrcPos(BfAstNode* astNode, BfSrcPosFlags flags)
 void BfModule::UseDefaultSrcPos(BfSrcPosFlags flags, int debugLocOffset)
 {
 	UpdateSrcPos(mCompiler->mBfObjectTypeDef->mTypeDeclaration, flags, debugLocOffset);
+	SetIllegalSrcPos();
 }
 
 void BfModule::SetIllegalSrcPos(BfSrcPosFlags flags)
@@ -14200,6 +14201,11 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		}
 	}
 
+	if (mCurTypeInstance->IsDelegate())
+	{
+		NOP;
+	}
+
 	BfAstNode* baseCtorNode = NULL;
 	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL) && (ctorDeclaration->mInitializer->mTarget != NULL))
 		baseCtorNode = ctorDeclaration->mInitializer->mTarget;
@@ -14300,6 +14306,10 @@ void BfModule::EmitCtorBody(bool& skipBody)
 							if ((mBfIRBuilder->DbgHasInfo()) && (!mCurTypeInstance->IsUnspecializedType()) && (mHasFullDebugInfo))
 							{
 								UpdateSrcPos(baseCtorNode);
+
+								if (methodDef->mBody == NULL)
+									SetIllegalSrcPos();
+
 								// NOP so we step onto the open paren of the method so we can choose to set into the field initializers or step over them
 								EmitEnsureInstructionAt();
 
@@ -14416,6 +14426,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	if (baseCtorNode != NULL)
 	{
 		UpdateSrcPos(baseCtorNode);		
+		if (methodDef->mBody == NULL)
+			SetIllegalSrcPos();
 	}
 	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL))
 	{
