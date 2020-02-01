@@ -658,6 +658,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* 
     while (true)
     {
         char* envStr = *envPtr;
+        if (envStr == NULL)
+            break;
+
         env.Append(envStr, strlen(envStr) + 1);
         ++envPtr;
     }
