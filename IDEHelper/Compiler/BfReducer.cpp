@@ -31,6 +31,7 @@ BfReducer::BfReducer()
 	mCurTypeDecl = NULL;
 	mLastTypeDecl = NULL;
 	mCurMethodDecl = NULL;
+	mLastBlockNode = NULL;
 	mSource = NULL;
 	mClassDepth = 0;
 	mAlloc = NULL;
@@ -3365,6 +3366,7 @@ BfSwitchStatement* BfReducer::CreateSwitchStatement(BfTokenNode* tokenNode)
 		//switchCase->Add(codeBlock);
 
 		BfDeferredAstSizedArray<BfAstNode*> codeBlockChildArr(codeBlock->mChildArr, mAlloc);
+		SetAndRestoreValue<BfAstNode*> prevLastBlockNode(mLastBlockNode, NULL);
 
 		while (true)
 		{
@@ -3395,6 +3397,8 @@ BfSwitchStatement* BfReducer::CreateSwitchStatement(BfTokenNode* tokenNode)
 				MoveNode(stmt, codeBlock);
 				codeBlockChildArr.push_back(stmt);
 			}
+
+			mLastBlockNode = stmt;
 		}
 		MoveNode(switchCase, switchStatement);
 		if (!codeBlock->IsInitialized())
@@ -3734,7 +3738,10 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 		}
 		else if (token == BfToken_Comma)
 		{
-			auto prevVarDecl = mVisitorPos.Get(mVisitorPos.mWritePos - 1);
+			BfAstNode* prevVarDecl = mVisitorPos.Get(mVisitorPos.mWritePos - 1);
+			if (mLastBlockNode != NULL)
+				prevVarDecl = mLastBlockNode;
+
 			if (auto exprStmt = BfNodeDynCast<BfExpressionStatement>(prevVarDecl))
 			{
 				continuingVariable = BfNodeDynCast<BfVariableDeclaration>(exprStmt->mExpression);

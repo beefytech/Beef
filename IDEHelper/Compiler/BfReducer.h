@@ -135,6 +135,7 @@ public:
 	BfTypeDeclaration* mCurTypeDecl;
 	BfTypeDeclaration* mLastTypeDecl;
 	BfMethodDeclaration* mCurMethodDecl;
+	BfAstNode* mLastBlockNode;
 	bool mStmtHasError;
 	bool mPrevStmtHadError;	
 	bool mCompatMode; // Does C++ compatible parsing
@@ -144,7 +145,7 @@ public:
 	bool mSkipCurrentNodeAssert;	
 	BfVisitorPos mVisitorPos;
 	int mDocumentCheckIdx;
-	SizedArray<BfAstNode*, 4> mExteriorNodes;
+	SizedArray<BfAstNode*, 4> mExteriorNodes;	
 
 	int mAssertCurrentNodeIdx;
 
