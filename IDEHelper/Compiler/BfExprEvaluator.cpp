@@ -17305,6 +17305,25 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			}
 		}
 
+		if ((leftValue.mType->IsPointer()) &&
+			(rightValue.mType->IsPointer()))
+		{
+			BfPointerType* leftPointerType = (BfPointerType*)leftValue.mType;
+			BfPointerType* rightPointerType = (BfPointerType*)rightValue.mType;
+
+			// If one is a pointer to a sized array then use the other type
+			if (leftPointerType->mElementType->IsSizedArray())
+			{
+				resultType = rightPointerType;
+				handled = true;
+			}
+			else if (rightPointerType->mElementType->IsSizedArray())
+			{
+				resultType = leftPointerType;
+				handled = true;
+			}			
+		}
+
 		if (!handled)
 		{
 			if ((resultType->IsNull()) ||
@@ -17708,10 +17727,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	{
 		//TODO: Allow all pointer comparisons, but only allow SUBTRACTION between equal pointer types
 		if (binaryOp == BfBinaryOp_Subtract)
-		{
-			if (resultType != otherType)
+		{			
+			if (!mModule->CanCast(*otherTypedValue, resultType))
 			{
-				mModule->Fail(StrFormat("Operands must be the same type, '%s' doesn't match '%s'", 
+				mModule->Fail(StrFormat("Operands '%s' and '%s' are not comparable types.", 
 					mModule->TypeToString(leftValue.mType).c_str(), mModule->TypeToString(rightValue.mType).c_str()),
 					opToken);
 				return;
@@ -17928,8 +17947,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		}
 		return false;
 	};
-	
-	if (((leftValue.mType->IsComposite()) || (leftValue.mType->IsObject())))
+		
+	//if (((leftValue.mType->IsComposite()) || (leftValue.mType->IsObject())))
+
+	if (((resultType->IsComposite()) || (resultType->IsObject())))
 	{
 		bool areEquivalentTuples = false;
 		if ((leftValue.mType->IsTuple()) && (rightValue.mType->IsTuple()))
@@ -17945,7 +17966,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			else if (mModule->CanCast(leftValue, rightValue.mType))
 				leftValue = mModule->Cast(opToken, leftValue, rightValue.mType, BfCastFlags_Explicit);
 		}
-
+		
 		if (leftValue.mType == rightValue.mType)
 		{
 			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
@@ -17971,16 +17992,41 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			mModule->Fail(StrFormat("Operator '%s' cannot be applied to operands of type '%s'",
 				BfGetOpName(binaryOp),
 				mModule->TypeToString(leftValue.mType).c_str()), opToken);
+			return;
 		}
 		else
-		{
-			mModule->Fail(StrFormat("Operator '%s' cannot be applied to operands of type '%s' and '%s'",
-				BfGetOpName(binaryOp),
-				mModule->TypeToString(leftValue.mType).c_str(),
-				mModule->TypeToString(rightValue.mType).c_str()), opToken);
-		}
-		return;
+		{	
+			bool handled = false;
+
+			for (int pass = 0; pass < 2; pass++)
+			{
+				BfTypedValue& fromValue = (pass == 0) ? leftValue : rightValue;
+				BfType* toType = (pass == 0) ? rightValue.mType : leftValue.mType;
+
+				if (mModule->CanCast(fromValue, toType))
+				{
+					auto result = mModule->Cast(opToken, fromValue, toType);
+					if (result)
+					{
+						resultType = toType;
+						fromValue = result;
+						handled = true;
+						break;
+					}
+				}
+			}
+			
+			if (!handled)
+			{
+				mModule->Fail(StrFormat("Operator '%s' cannot be applied to operands of type '%s' and '%s'",
+					BfGetOpName(binaryOp),
+					mModule->TypeToString(leftValue.mType).c_str(),
+					mModule->TypeToString(rightValue.mType).c_str()), opToken);
+				return;
+			}
+		}		
 	}	
+
 	if (resultType->IsMethodRef() && otherType->IsMethodRef())
 	{
 		if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
