@@ -1094,13 +1094,35 @@ void BfPrinter::Visit(BfTupleTypeRef* typeRef)
 			if (fieldNameNode != NULL)			
 				VisitChild(fieldNameNode);
 		}
+	}
+	VisitChild(typeRef->mCloseParen);
+}
+
+void BfPrinter::Visit(BfDelegateTypeRef* typeRef)
+{
+	Visit((BfAstNode*)typeRef);
+
+	VisitChild(typeRef->mTypeToken);
+	ExpectSpace();
+	VisitChild(typeRef->mReturnType);
+	VisitChild(typeRef->mAttributes);
+	VisitChild(typeRef->mOpenParen);
+
+	for (int i = 0; i < (int)typeRef->mParams.size(); i++)
+	{
+		if (i > 0)
+		{
+			VisitChild(typeRef->mCommas[i - 1]);
+			ExpectSpace();
+		}
+		VisitChild(typeRef->mParams[i]);	
 	}	
 	VisitChild(typeRef->mCloseParen);
 }
 
 void BfPrinter::Visit(BfPointerTypeRef* ptrType)
 {
-	Visit((BfAstNode*) ptrType);
+	Visit((BfAstNode*)ptrType);
 
 	VisitChild(ptrType->mElementType);
 	VisitChild(ptrType->mStarNode);
@@ -1280,13 +1302,7 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 
 	VisitChild(newExpr->mNewNode);
 	ExpectSpace();
-
-	if (newExpr->mStarToken != NULL)
-	{
-		VisitChild(newExpr->mStarToken);
-		ExpectSpace();
-	}
-
+	
 	VisitChild(newExpr->mTypeRef);	
 
 	VisitChild(newExpr->mOpenToken);
@@ -1300,6 +1316,12 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 		VisitChild(newExpr->mArguments[i]);		
 	}
 	VisitChild(newExpr->mCloseToken);		
+
+	if (newExpr->mStarToken != NULL)
+	{
+		VisitChild(newExpr->mStarToken);
+		ExpectSpace();
+	}
 }
 
 void BfPrinter::Visit(BfBoxExpression* boxExpr)
