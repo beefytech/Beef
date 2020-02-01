@@ -179,11 +179,12 @@ private:
 	void Resize(intptr newSize, bool forceNewHashCodes)
 	{
 		BF_ASSERT(newSize >= mAllocSize);
-		int_cosize* newBuckets = new int_cosize[newSize];
+		Entry* newEntries;
+		int_cosize* newBuckets;
+		AllocData(newSize, newEntries, newBuckets);
+		
 		for (int_cosize i = 0; i < newSize; i++) 
-			newBuckets[i] = -1;
-		Entry* newEntries = new Entry[newSize];		
-		//mEntries.CopyTo(newEntries, 0, 0, mCount);
+			newBuckets[i] = -1;		
 		for (int i = 0; i < mCount; i++)
 		{
 			auto& newEntry = newEntries[i];
@@ -217,8 +218,7 @@ private:
 			}
 		}
 
-		delete [] mBuckets;
-		delete [] mEntries;
+		DeleteData();
 
 		mBuckets = newBuckets;
 		mEntries = newEntries;
@@ -255,10 +255,9 @@ private:
 	void Initialize(intptr capacity)
 	{
 		int_cosize size = GetPrimeish((int_cosize)capacity);
-		mBuckets = new int_cosize[size];
+		AllocData(size, mEntries, mBuckets);		
 		mAllocSize = size;
-		for (int_cosize i = 0; i < (int_cosize)mAllocSize; i++) mBuckets[i] = -1;
-		mEntries = new Entry[size];
+		for (int_cosize i = 0; i < (int_cosize)mAllocSize; i++) mBuckets[i] = -1;		
 		mFreeList = -1;		
 	}
 
@@ -358,9 +357,8 @@ public:
 			mEntries = NULL;
 		}
 		else
-		{
-			mBuckets = new int_cosize[mAllocSize];
-			mEntries = new Entry[mAllocSize];
+		{			
+			AllocData(mAllocSize, mEntries, mBuckets);
 
 			for (int_cosize i = 0; i < mAllocSize; i++)
 				mBuckets[i] = val.mBuckets[i];
@@ -414,8 +412,19 @@ public:
 			}
 		}
 
-		delete [] mBuckets;
-		delete [] mEntries;
+		DeleteData();
+	}
+
+	void AllocData(intptr size, Entry*& outEntries, int_cosize*& outBuckets)
+	{
+		uint8* data = new uint8[size * (sizeof(Entry) + sizeof(int_cosize))];
+		outEntries = (Entry*)data;
+		outBuckets = (int_cosize*)(data + size * sizeof(Entry));
+	}
+
+	void DeleteData()
+	{
+		delete mEntries;
 	}
 
 	Dictionary& operator=(const Dictionary& rhs)
