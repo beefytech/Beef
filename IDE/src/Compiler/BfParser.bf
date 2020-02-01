@@ -8,6 +8,7 @@ using Beefy.utils;
 using IDE.ui;
 using System.IO;
 using System.Threading;
+using Beefy;
 
 namespace IDE.Compiler
 {
@@ -256,9 +257,9 @@ namespace IDE.Compiler
         {
             var editWidgetContent = (SourceEditWidgetContent)editWidget.Content;
 
-			/*let origText = scope String();
-			editWidget.GetText(origText);
-			File.WriteAllText(@"c:\temp\orig.txt", origText);*/
+			let oldText = scope String();
+			editWidget.GetText(oldText);
+			/*File.WriteAllText(@"c:\temp\orig.txt", origText);*/
 
             int32[] char8Mapping;
             String newText = scope String();
@@ -318,9 +319,16 @@ namespace IDE.Compiler
                 }
                 else
                 {
-                    Debug.Assert(oldIdx > expectedOldIdx); // This fails if we have the same ID occur multiple times, or we reorder nodes
-                    if (oldIdx <= expectedOldIdx)
-                        break; // Error - abort
+					// This fails if we have the same ID occur multiple times, or we reorder nodes
+					if (oldIdx <= expectedOldIdx)
+					{
+#if DEBUG
+						Utils.WriteTextFile(@"c:\temp\old.txt", oldText);
+						Utils.WriteTextFile(@"c:\temp\new.txt", newText);
+						Debug.FatalError("Reformat failed");
+#endif
+						break; // Error - abort
+					}
                     
                     int32 charsToDelete = oldIdx - expectedOldIdx;
                     editWidgetContent.CursorTextPos = i;
