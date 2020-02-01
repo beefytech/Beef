@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 
 namespace Tests
@@ -57,6 +59,13 @@ namespace Tests
 			Test.Assert(iface1.Get() == 1100);
 			Test.Assert(GetFromIFace(iface1) == 2100);
 			Test.Assert(valB.mA == 1100); // This should copy values
+
+			var boxedVal = scope box valA;
+			iface0 = boxedVal;
+
+#unwarn
+			var boxedStr = scope box "Test";
+			IHashable ihash = boxedStr;
 		}
 
 		[Test]

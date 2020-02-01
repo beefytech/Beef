@@ -215,5 +215,30 @@ namespace Tests
 			let oai2 = OuterOp2<float>.InnerOp<int>.Op(2.0f, 200);
 			Test.Assert(oai2 == 202.0f);*/
 		}
+
+		struct IntStruct
+		{
+			public int mA = 123;
+
+			public typealias ZaffInt = int;
+
+			public ZaffInt GetIt()
+			{
+				return 123;
+			}
+
+			public static implicit operator int(Self val)
+			{
+				return val.mA;
+			}
+		}
+
+		[Test]
+		public static void TestCompareWithCastOperator()
+		{
+			IntStruct iVal = .();
+			Test.Assert(iVal == 123);
+			Test.Assert(iVal == 123.0f);
+		}
 	}
 }

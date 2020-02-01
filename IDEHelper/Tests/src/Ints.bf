@@ -1,9 +1,20 @@
+#pragma warning disable 168
+
 using System;
 
 namespace Tests
 {
 	class Ints
 	{
+		[Test]
+		public static void TestBasics()
+		{
+			int i;
+			decltype(i + 100) j = 123;
+			Test.Assert(typeof(decltype(j)) == typeof(int));
+			int k = j + 10;
+		}
+
 		[Test]
 		public static void TestUInt64()
 		{
