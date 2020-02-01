@@ -5165,7 +5165,8 @@ BfTypeInstance* BfModule::GetOuterType(BfType* type)
 	BF_ASSERT((intptr)typeGenericArguments.size() >= (intptr)outerTypeDef->mGenericParamDefs.size());
 	typeGenericArguments.resize(outerTypeDef->mGenericParamDefs.size());
 
-	auto outerType = ResolveTypeDef(outerTypeDef, typeGenericArguments, BfPopulateType_Declaration);
+	//auto outerType = ResolveTypeDef(outerTypeDef, typeGenericArguments, BfPopulateType_Declaration);
+	auto outerType = ResolveTypeDef(outerTypeDef, typeGenericArguments, BfPopulateType_Identity);
 	if (outerType == NULL)
 		return NULL;
 	return outerType->ToTypeInstance();
