@@ -210,8 +210,7 @@ public:
 			mPools.push_back(bigData);
 			return bigData;
 		}
-
-		//AutoPerf perf("Alloc");
+		
 		if (mCurPtr + wantSize >= mCurAlloc + ALLOC_SIZE)
 			GrowPool();
 

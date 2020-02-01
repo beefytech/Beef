@@ -4,6 +4,7 @@
 #include "gfx/RenderDevice.h"
 #include "gfx/Shader.h"
 #include "util/PerfTimer.h"
+#include "util/BeefPerf.h"
 
 USING_NS_BF;
 
@@ -185,7 +186,7 @@ void DrawLayer::QueueRenderCmd(RenderCmd* renderCmd)
 
 DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 {
-	AutoPerf autoPerf("DrawLayer::AllocateBatch");
+	BP_ZONE("DrawLayer::AllocateBatch");
 
 	BF_ASSERT(mRenderDevice->mCurRenderState->mShader != NULL);
 	int vtxSize = mRenderDevice->mCurRenderState->mShader->mVertexSize;
@@ -258,7 +259,7 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 
 void DrawLayer::Draw()
 {
-	AutoPerf autoPerf("DrawLayer::Draw");
+	BP_ZONE("DrawLayer::Draw");
 
 	RenderCmd* curRenderCmd = mRenderCmdList.mHead;
 	while (curRenderCmd != NULL)
@@ -384,7 +385,7 @@ BF_EXPORT void BF_CALLTYPE DrawLayer_DrawToRenderTarget(DrawLayer* drawLayer, Te
 {	
 	RenderDevice* renderDevice = gBFApp->mRenderDevice;
 
-	AutoPerf autoPerf("DrawLayer_DrawToRenderTarget DrawPart");
+	BP_ZONE("DrawLayer_DrawToRenderTarget DrawPart");
 	RenderTarget* prevTarget = renderDevice->mCurRenderTarget;
 	renderDevice->PhysSetRenderState(renderDevice->mDefaultRenderState);
 	renderDevice->PhysSetRenderTarget(textureSegment->mTexture);	

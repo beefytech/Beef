@@ -2385,9 +2385,7 @@ bool DbgExprEvaluator::HasField(DbgType* curCheckType, const StringImpl& fieldNa
 }
 
 DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValue target, DbgType* curCheckType, const StringImpl& fieldName, CPUStackFrame* stackFrame, bool allowImplicitThis)
-{
-	AutoPerf perf("DbgExprEvaluator::DoLookupField");
-
+{	
 	bool wantsStatic = (!target) || (target.mHasNoValue);
 	auto flavor = GetFlavor();
 	auto language = GetLanguage();
@@ -2795,9 +2793,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 }
 
 DbgTypedValue DbgExprEvaluator::LookupField(BfAstNode* targetSrc, DbgTypedValue target, const StringImpl& fieldName)
-{
-	AutoPerf perf("DbgExprEvaluator::LookupField");
-	
+{	
 	CPUStackFrame* stackFrame = GetStackFrame();
 		
 	DbgType* curCheckType = NULL;	
@@ -3411,9 +3407,7 @@ void DbgExprEvaluator::AutocompleteAddTopLevelTypes(const StringImpl& filter)
 }
 
 DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool ignoreInitialError, bool* hadError)
-{	
-	AutoPerf perf("DbgExprEvaluator::LookupIdentifier");
-	
+{			
 	if (!mDebugger->mIsRunning)
 		return DbgTypedValue();
 	
@@ -3540,16 +3534,14 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 		Array<DbgType*> capturedTypes;
 		mDebugTarget->mCapturedNamesPtr = &capturedNames;
 		mDebugTarget->mCapturedTypesPtr = &capturedTypes;
-		{
-			AutoPerf perf("mDebugTarget->GetValueByName");
+		{			
 			mDebugTarget->GetValueByName(GetCurrentMethod(), "*", stackFrame, &valAddr, &valType, &addrType);
 		}
 		mDebugTarget->mCapturedNamesPtr = NULL;
 		mDebugTarget->mCapturedTypesPtr = NULL;
 		auto language = GetLanguage();
 		BF_ASSERT(capturedTypes.size() == capturedNames.size());
-		{
-			AutoPerf perf("capturedNames Add");
+		{			
 			//for (auto capturedName : capturedNames)
 			for (int i = 0; i < (int)capturedNames.size(); i++)
 			{
@@ -3636,8 +3628,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 	
 	if (language == DbgLanguage_C)
 	{
-		// For C++ lambdas, captured a "this" is named "__this", so allow lookups into that
-		AutoPerf perf("GetValueByName __lambda");		
+		// For C++ lambdas, captured a "this" is named "__this", so allow lookups into that		
 		auto currentMethod = GetCurrentMethod();
 		if (currentMethod != NULL)
 		{
@@ -3693,8 +3684,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 	}
 
 	if (stackFrame != NULL)
-	{		
-		AutoPerf perf("GetValueByName findName");
+	{				
 		if (mDebugTarget->GetValueByName(GetCurrentMethod(), findName, stackFrame, &valAddr, &valType, &addrType))
 		{
 			//BF_ASSERT(valType != NULL);
@@ -3723,8 +3713,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 	bool isClosure = false;	
 
 	if (language == DbgLanguage_Beef)
-	{
-		AutoPerf perf("GetValueByName __closure");
+	{		
 		intptr valAddr;
 		DbgType* valType;
 		//bool valIsAddr = false;
@@ -4165,8 +4154,6 @@ void DbgExprEvaluator::AutocompleteAddMembers(DbgType* dbgType, bool wantsStatic
 	DbgFlavor flavor = GetFlavor();
 	if ((mDbgCompileUnit != NULL) && (dbgType->mLanguage != DbgLanguage_Unknown) && (dbgType->mLanguage != language))
 		return;
-
-	AutoPerf perf("DbgExprEvaluator::AutocompleteAddMembers");
 
 	dbgType->PopulateType();
 	if (dbgType->mNeedsGlobalsPopulated)
@@ -7943,9 +7930,7 @@ void DbgExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 }
 
 DbgTypedValue DbgExprEvaluator::Resolve(BfExpression* expr, DbgType* wantType)
-{
-	AutoPerf perf3("DbgExprEvaluator::Resolve");
-
+{	
 	BF_ASSERT(!HasPropResult());
 
 	SetAndRestoreValue<DbgType*> prevType(mExpectingType, wantType);
