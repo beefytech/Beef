@@ -14856,26 +14856,68 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 	BfTypedValue convVal;
 	if (binaryOp != BfBinaryOp_None)
 	{
+		CheckResultForReading(ptr);
+		BfTypedValue leftValue = ptr;
+		leftValue = mModule->LoadValue(leftValue);
+
 		auto expectedType = ptr.mType;
 		if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 			expectedType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 
 		if ((!rightValue) && (assignExpr->mRight != NULL))
-		{			
+		{
 			rightValue = mModule->CreateValueFromExpression(assignExpr->mRight, expectedType, (BfEvalExprFlags)(BfEvalExprFlags_AllowSplat | BfEvalExprFlags_NoCast));
 		}
 
-		CheckResultForReading(ptr);
-		BfTypedValue leftValue = ptr;
-		leftValue = mModule->LoadValue(leftValue);
+		bool handled = false;
 
 		if (rightValue)
-			PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, BfBinOpFlag_ForceLeftType, leftValue, rightValue);
+		{
+			auto checkTypeInst = leftValue.mType->ToTypeInstance();
+			while (checkTypeInst != NULL)
+			{
+				for (auto operatorDef : checkTypeInst->mTypeDef->mOperators)
+				{
+					if (operatorDef->mOperatorDeclaration->mAssignOp != assignExpr->mOp)
+						continue;
+
+					auto methodInst = mModule->GetRawMethodInstanceAtIdx(checkTypeInst, operatorDef->mIdx);
+					if (methodInst->GetParamCount() != 1)
+						continue;
+
+					auto paramType = methodInst->GetParamType(0);
+					if (!mModule->CanCast(rightValue, paramType))
+						continue;
+
+					auto moduleMethodInstance = mModule->GetMethodInstance(checkTypeInst, operatorDef, BfTypeVector());
+
+					BfExprEvaluator exprEvaluator(mModule);
+					SizedArray<BfIRValue, 1> args;
+					exprEvaluator.PushThis(assignExpr->mLeft, leftValue, moduleMethodInstance.mMethodInstance, args);
+					exprEvaluator.PushArg(rightValue, args);
+					exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, args);
+					convVal = leftValue;
+					handled = true;
+					break;
+				}
+
+				if (handled)
+					break;
+				checkTypeInst = mModule->GetBaseType(checkTypeInst);
+			}
+
+			if (!handled)
+				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, BfBinOpFlag_ForceLeftType, leftValue, rightValue);
+		}
 		
-		convVal = mResult;
-		mResult = BfTypedValue();
+		if (!handled)
+		{
+			convVal = mResult;
+			mResult = BfTypedValue();			
+		}
+
 		if (!convVal)
-			return;		
+			return;
 	}
 	else
 	{	

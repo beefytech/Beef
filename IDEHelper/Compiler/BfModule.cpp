@@ -16101,7 +16101,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				Fail("Assignment operators must declare one parameter", paramErrorRefNode);
 			}
 			
-			if (mCurMethodInstance->mReturnType->IsVoid())
+			if (!mCurMethodInstance->mReturnType->IsVoid())
 			{
 				Fail("The return type for assignment operator must be 'void'", operatorDef->mOperatorDeclaration->mReturnType);
 			}

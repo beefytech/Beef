@@ -522,12 +522,22 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 			declError = "'public'";
 			methodDef->mProtection = BfProtection_Public; // Fix it
 		}
-		if (!methodDef->mIsStatic)
+		if (operatorDecl->mAssignOp != BfAssignmentOp_None)
 		{
-			if (!declError.empty())
-				declError += " and ";
-			declError += "'static'";
-			methodDef->mIsStatic = true; // Fix it
+			if (methodDef->mIsStatic)
+			{
+				Fail("Assignment operator must not be declared 'static'", operatorDecl->mStaticSpecifier);
+			}
+		}
+		else
+		{
+			if (!methodDef->mIsStatic)
+			{
+				if (!declError.empty())
+					declError += " and ";
+				declError += "'static'";
+				methodDef->mIsStatic = true; // Fix it
+			}
 		}
 		if (!declError.empty())
 		{
