@@ -2017,26 +2017,6 @@ namespace System
 				inStr = scope:: String(outStr);
 		}
 
-		/*public static mixin StackSplit(var target, var splitChar)
-		{
-			var stringViews = scope List<StringView>();
-			target.Split(stringViews, splitChar);
-			var strings = stack List<String>();
-			for (int i = 0; i < stringViews.Count; i++)
-				strings.Add(stack String(stringViews[i]));
-			strings
-		}*/
-
-		/*public static mixin StackSplit(var target, var splitChar)
-		{
-			var stringViews = scope List<StringView>();
-			target.Split(stringViews, splitChar);
-			var strings = stack String[stringViews.Count];
-			for (int i = 0; i < stringViews.Count; i++)
-				strings[i] = stack String(stringViews[i]);
-			strings
-		}*/
-
 		public static mixin StackSplit(var target, var splitChar)
 		{
 			var strings = scope:mixin List<String>();

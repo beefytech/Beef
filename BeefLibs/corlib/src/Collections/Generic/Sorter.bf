@@ -274,31 +274,6 @@ namespace System.Collections.Generic
 	            items[lo + curI - 1] = *dt;
 	    }
 
-	    private void InsertionSortZ(int lo, int hi)
-	    {
-	        int i, j;
-	        T t;
-			T2 ti = ?;
-	        for (i = lo; i < hi; i++)
-	        {
-	            j = i;
-	            t = keys[i + 1];
-	            //ti = (items != null) ? items[i + 1] : null;
-				if (items != null)
-					ti = items[i + 1];
-	            while (j >= lo && comparer(t, keys[j]) < 0)
-	            {
-	                keys[j + 1] = keys[j];
-	                if(items != null)
-	                    items[j + 1] = items[j];
-	                j--;
-	            }
-	            keys[j + 1] = t;
-	            if (items != null)
-	                items[j + 1] = ti;
-	        }
-	    }
-
 		private void InsertionSort(int lo, int hi)
 		{
 		    int i, j;

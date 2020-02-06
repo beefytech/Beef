@@ -2579,6 +2579,13 @@ namespace Beefy.widgets
                 lineEnd--;
         }
 
+		public bool IsLineWhiteSpace(int line)
+		{
+			String str = scope .();
+			GetLineText(line, str);
+			return str.IsWhiteSpace;
+		}
+
         public virtual void GetLineText(int line, String outStr)
         {
             GetTextData();
