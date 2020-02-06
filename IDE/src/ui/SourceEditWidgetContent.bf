@@ -322,7 +322,6 @@ namespace IDE.ui
 		        if (cmd == "")
 		            continue;
 
-		        //String[] cmdPart = String.StackSplit!(cmd, ' ');                
 				cmdParts.Clear();
 				for (var strView in cmd.Split(' '))
 					cmdParts.Add(strView);

@@ -1906,6 +1906,176 @@ void BfAutoComplete::CheckNode(BfAstNode* node)
 	}
 }
 
+bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* showString, StringImpl* insertString, bool isExplicitInterface)
+{
+	auto methodDef = methodInst->mMethodDef;
+	bool isInterface = methodInst->GetOwner()->IsInterface();
+
+	if (methodDef->mMethodType == BfMethodType_Normal)
+	{
+		StringT<128> methodPrefix;
+		StringT<128> methodName;
+		StringT<256> impString;
+		
+		bool isAbstract = (methodDef->mIsAbstract) && (!isInterface);
+
+		if (!isAbstract)
+		{
+			if (isInterface)
+			{
+				if (!methodInst->mReturnType->IsVoid())
+					impString += "return default;";
+			}
+			else
+			{
+				if (!methodInst->mReturnType->IsVoid())
+					impString = "return ";
+
+				impString += "base.";
+				impString += methodDef->mName;
+				impString += "(";
+			}
+		}
+
+		auto methodDeclaration = methodDef->GetMethodDeclaration();
+
+		if (isInterface)
+		{ 
+			if (!isExplicitInterface)
+				methodPrefix += "public ";
+		}		
+		else if (methodDeclaration->mProtectionSpecifier != NULL)
+			methodPrefix += methodDeclaration->mProtectionSpecifier->ToString() + " ";
+		if (!isInterface)
+			methodPrefix += "override ";
+		methodPrefix += mModule->TypeToString(methodInst->mReturnType, BfTypeNameFlag_ReduceName);
+		methodPrefix += " ";
+		if (isExplicitInterface)
+		{
+			methodName += mModule->TypeToString(methodInst->GetOwner(), BfTypeNameFlag_ReduceName);
+			methodName += ".";
+		}
+
+		methodName += methodDef->mName;
+		methodName += "(";
+		for (int paramIdx = 0; paramIdx < (int)methodInst->GetParamCount(); paramIdx++)
+		{
+			if (paramIdx > 0)
+			{
+				methodName += ", ";
+				if ((!isAbstract) && (!isInterface))
+					impString += ", ";
+			}
+			methodName += mModule->TypeToString(methodInst->GetParamType(paramIdx), BfTypeNameFlag_ReduceName);
+			methodName += " ";
+			methodName += methodDef->mParams[paramIdx]->mName;
+
+			if ((!isAbstract) && (!isInterface))
+				impString += methodDef->mParams[paramIdx]->mName;
+		}
+		methodName += ")";
+
+		if ((!isAbstract) && (!isInterface))
+			impString += ");";
+
+		if (showString != NULL)
+			*showString += methodName;		
+		if (insertString != NULL)
+		{
+			if (showString == insertString)
+				*insertString += "\t";
+
+			*insertString += methodPrefix + methodName + "\t" + impString;
+		}
+
+		return true;
+	}
+	else if ((methodDef->mMethodType == BfMethodType_PropertyGetter) || (methodDef->mMethodType == BfMethodType_PropertySetter))
+	{
+		auto propDeclaration = methodDef->GetPropertyDeclaration();
+		bool hasGet = propDeclaration->GetMethod("get") != NULL;
+		bool hasSet = propDeclaration->GetMethod("set") != NULL;
+
+		if ((methodDef->mMethodType == BfMethodType_PropertyGetter) || (!hasGet))
+		{
+			StringT<128> propName;
+			StringT<256> impl;
+
+			propDeclaration->mNameNode->ToString(propName);
+
+			bool isAbstract = methodDef->mIsAbstract;
+
+			if (propDeclaration->mProtectionSpecifier != NULL)
+				impl += propDeclaration->mProtectionSpecifier->ToString() + " ";
+			if (!isInterface)
+				impl += "override ";
+
+			BfType* propType = methodInst->mReturnType;
+			if (methodDef->mMethodType == BfMethodType_PropertySetter)
+				propType = methodInst->GetParamType(0);
+			impl += mModule->TypeToString(propType, BfTypeNameFlag_ReduceName);
+			impl += " ";
+			if (isExplicitInterface)
+			{
+				impl += mModule->TypeToString(methodInst->GetOwner(), BfTypeNameFlag_ReduceName);
+				impl += ".";
+			}
+
+			impl += propName;
+			impl += "\t";
+			if (hasGet)
+			{
+				impl += "get\t";
+				if (!isAbstract)
+				{
+					if (isInterface)
+					{
+						impl += "return default;";
+					}
+					else
+					{
+						impl += "return base.";
+						impl += propName;
+						impl += ";";
+					}
+				}
+				impl += "\b";
+			}
+			if (hasSet)
+			{
+ 				if (hasGet)
+ 					impl += "\r\r";
+
+				impl += "set\t";
+				if (!isAbstract)
+				{
+					if (!isInterface)					
+					{
+						impl += "base.";
+						impl += propName;
+						impl += " = value;";
+					}
+				}
+
+				impl += "\b";
+			}
+
+			if (showString != NULL)
+				*showString += propName;
+			if (insertString != NULL)
+			{
+				if (showString == insertString)
+					*insertString += "\t";
+				*insertString += impl;
+			}			
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void BfAutoComplete::AddOverrides(const StringImpl& filter)
 {
 	if (!mIsAutoComplete)
@@ -1941,106 +2111,14 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			}
 			auto methodInst = methodGroup.mDefault;
 
-			if ((methodDef->mIsVirtual) && (!methodDef->mIsOverride))
-			{
-				if (methodDef->mMethodType == BfMethodType_Normal)
-				{
-					String methodPrefix;
-					String methodName;
-					String impString;
-					
-					bool isAbstract = methodDef->mIsAbstract;
-
-					if (!isAbstract)
-					{
-						if (!methodInst->mReturnType->IsVoid())
-							impString = "return ";
-
-						impString += "base.";
-						impString += methodDef->mName;
-						impString += "(";
-					}
-
-					auto methodDeclaration = methodDef->GetMethodDeclaration();
-					if (methodDeclaration->mProtectionSpecifier != NULL)
-						methodPrefix += methodDeclaration->mProtectionSpecifier->ToString() + " ";
-					methodPrefix += "override ";
-					methodPrefix += mModule->TypeToString(methodInst->mReturnType, BfTypeNameFlag_ReduceName);
-					methodPrefix += " ";
-					methodName += methodDef->mName;
-					methodName += "(";
-					for (int paramIdx = 0; paramIdx < (int)methodInst->GetParamCount(); paramIdx++)
-					{
-						if (paramIdx > 0)
-						{
-							methodName += ", ";
-							if (!isAbstract)
-								impString += ", ";
-						}
-						methodName += mModule->TypeToString(methodInst->GetParamType(paramIdx), BfTypeNameFlag_ReduceName);
-						methodName += " ";
-						methodName += methodDef->mParams[paramIdx]->mName;
-
-						if (!isAbstract)
-							impString += methodDef->mParams[paramIdx]->mName;
-					}
-					methodName += ")";
-
-					if (!isAbstract)
-						impString += ");";
-
-					AddEntry(AutoCompleteEntry("override", methodName + "\t" + methodPrefix + methodName + "\t" + impString, NULL), filter);
-				}					
-				else if ((methodDef->mMethodType == BfMethodType_PropertyGetter) || (methodDef->mMethodType == BfMethodType_PropertySetter))
-				{					
-					auto propDeclaration = methodDef->GetPropertyDeclaration();
-					bool hasGet = propDeclaration->GetMethod("get") != NULL;
-					bool hasSet = propDeclaration->GetMethod("set") != NULL;
-
-					if ((methodDef->mMethodType == BfMethodType_PropertyGetter) || (!hasGet))
-					{
-						String propName;
-						String impl;
-
-						propDeclaration->mNameNode->ToString(propName);
-
-						bool isAbstract = methodDef->mIsAbstract;
-
-						if (propDeclaration->mProtectionSpecifier != NULL)
-							impl += propDeclaration->mProtectionSpecifier->ToString() + " ";
-						impl += "override ";
-						impl += mModule->TypeToString(methodInst->mReturnType, BfTypeNameFlag_ReduceName);
-						impl += " ";
-						impl += propName;
-						impl += "\t";
-						if (hasGet)
-						{
-							impl += "get\t";
-							if (!isAbstract)
-							{
-								impl += "return base.";
-								impl += propName;
-								impl += ";";
-							}
-						}
-						if (hasSet)
-						{
-							if (hasGet)
-								impl += "\b\r";
-
-							impl += "set\t";
-							if (!isAbstract)
-							{
-								impl += "base.";
-								impl += propName;
-								impl += " = value;";
-							}
-						}
-
-						AddEntry(AutoCompleteEntry("override", propName + "\t" + impl, NULL), filter);
-					}
-				}				
-			}
+			if ((!methodDef->mIsVirtual) || (methodDef->mIsOverride) || (methodDef->mMethodType != BfMethodType_Normal))
+				continue;
+			
+			StringT<512> insertString;
+			GetMethodInfo(methodInst, &insertString, &insertString, false);
+			if (insertString.IsEmpty())
+				continue;
+			AddEntry(AutoCompleteEntry("override", insertString, NULL), filter);
 		}
 
 		if (curType->IsStruct())
@@ -2395,6 +2473,127 @@ bool BfAutoComplete::CheckFixit(BfAstNode* node)
 		mInsertEndIdx = node->GetSrcStart();
 	}
 	return true;
+}
+
+void BfAutoComplete::ChcekInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node)
+{
+	if (!CheckFixit(node))
+		return;
+	if (typeInstance == NULL)
+		return;	
+
+	for (auto& ifaceTypeInst : typeInstance->mInterfaces)
+	{
+		Array<BfMethodInstance*> missingMethods;
+
+		auto ifaceInst = ifaceTypeInst.mInterfaceType;
+		int startIdx = ifaceTypeInst.mStartInterfaceTableIdx;
+		int iMethodCount = (int)ifaceInst->mMethodInstanceGroups.size();
+		auto declTypeDef = ifaceTypeInst.mDeclaringType;
+
+		for (int iMethodIdx = 0; iMethodIdx < iMethodCount; iMethodIdx++)
+		{
+			auto matchedMethodRef = &typeInstance->mInterfaceMethodTable[iMethodIdx + startIdx].mMethodRef;
+			BfMethodInstance* matchedMethod = *matchedMethodRef;
+			auto ifaceMethodInst = ifaceInst->mMethodInstanceGroups[iMethodIdx].mDefault;
+			if (ifaceMethodInst == NULL)
+				continue;
+
+			// Don't even try to match generics
+			if (!ifaceMethodInst->mMethodDef->mGenericParams.IsEmpty())
+				continue;
+			auto iReturnType = ifaceMethodInst->mReturnType;
+			if (iReturnType->IsSelf())
+				iReturnType = typeInstance;
+
+			if (ifaceMethodInst->mMethodDef->mIsOverride)
+				continue; // Don't consider overrides here
+
+			// If we have "ProjA depends on LibBase", "ProjB depends on LibBase", then a type ClassC in LibBase implementing IFaceD,
+			//  where IFaceD gets extended with MethodE in ProjA, an implementing MethodE is still required to exist on ClassC -- 
+			//  the visibility is bidirectional.  A type ClassF implementing IFaceD inside ProjB will not be required to implement
+			//  MethodE, however
+			if ((!ifaceInst->IsTypeMemberAccessible(ifaceMethodInst->mMethodDef->mDeclaringType, ifaceTypeInst.mDeclaringType)) &&
+				(!ifaceInst->IsTypeMemberAccessible(ifaceTypeInst.mDeclaringType, ifaceMethodInst->mMethodDef->mDeclaringType)))
+				continue;
+
+			if (!ifaceInst->IsTypeMemberIncluded(ifaceMethodInst->mMethodDef->mDeclaringType, ifaceTypeInst.mDeclaringType))
+				continue;
+
+			bool hadMatch = matchedMethod != NULL;
+			bool hadPubFailure = false;
+			bool hadMutFailure = false;
+
+			if (!hadMatch)
+				missingMethods.Add(ifaceMethodInst);
+		}
+
+		if (!missingMethods.IsEmpty())
+		{
+			BfTypeDeclaration* typeDecl = declTypeDef->mTypeDeclaration;			
+			BfTokenNode* openNode = NULL;
+			BfTokenNode* closeNode = NULL;
+			if (auto blockNode = BfNodeDynCast<BfBlock>(typeDecl->mDefineNode))
+			{
+				openNode = blockNode->mOpenBrace;
+				closeNode = blockNode->mCloseBrace;
+			}
+
+			BfParserData* parser = declTypeDef->mTypeDeclaration->GetSourceData()->ToParserData();
+			if ((parser != NULL) && (closeNode != NULL))
+			{				
+				int startPos = openNode->mSrcStart + 1;
+				int insertPos = closeNode->mSrcStart;
+				while (insertPos > startPos)
+				{
+					char prevC = parser->mSrc[insertPos - 1];
+					if (prevC == '\n')
+						break;
+					insertPos--;
+				}
+				if (insertPos > startPos)
+					insertPos--;
+
+				bool wantsBreak = false;
+				String insertStr = "\f";
+				for (auto methodInst : missingMethods)
+				{
+					if (wantsBreak)
+					{
+						insertStr += "\r\r";
+						wantsBreak = false;
+					}
+					if (GetMethodInfo(methodInst, NULL, &insertStr, false))
+					{
+						insertStr += "\b";
+						wantsBreak = true;
+					}
+				}
+
+				wantsBreak = false;
+				String explicitInsertStr = "\f";
+				for (auto methodInst : missingMethods)
+				{
+					if (wantsBreak)
+					{
+						explicitInsertStr += "\r\r";
+						wantsBreak = false;
+					}
+					if (GetMethodInfo(methodInst, NULL, &explicitInsertStr, true))
+					{
+						explicitInsertStr += "\b";
+						wantsBreak = true;
+					}
+				}
+
+
+				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Implement interface '%s'\tusing|%s|%d|%s",
+					mModule->TypeToString(ifaceInst).c_str(), parser->mFileName.c_str(), insertPos, insertStr.c_str()).c_str()));
+				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Implement interface '%s' explicitly\tusing|%s|%d|%s",
+					mModule->TypeToString(ifaceInst).c_str(), parser->mFileName.c_str(), insertPos, explicitInsertStr.c_str()).c_str()));
+			}
+		}		
+	}
 }
 
 void BfAutoComplete::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom)

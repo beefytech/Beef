@@ -3815,7 +3815,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	}
 
 	if ((!typeInstance->IsInterface()) && (!typeInstance->IsUnspecializedTypeVariation()) && (!isBoxed))
-	{	
+	{
 		if (!typeInstance->mTypeDef->mIsAbstract)
 		{
 			for (int methodIdx = 0; methodIdx < (int) typeInstance->mVirtualMethodTable.size(); methodIdx++)
@@ -3896,7 +3896,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		}
 
 		for (auto& ifaceTypeInst : typeInstance->mInterfaces)
-		{
+		{			
 			auto ifaceInst = ifaceTypeInst.mInterfaceType;
 			int startIdx = ifaceTypeInst.mStartInterfaceTableIdx;
 			int iMethodCount = (int)ifaceInst->mMethodInstanceGroups.size();
@@ -3978,7 +3978,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 						{
 							bool searchFailed = false;
 							for (auto& checkIFaceTypeInst : typeInstance->mInterfaces)
-							{
+							{								
 								auto checkIFaceInst = checkIFaceTypeInst.mInterfaceType;
 								int checkStartIdx = checkIFaceTypeInst.mStartInterfaceTableIdx;
 								int checkIMethodCount = (int)checkIFaceInst->mMethodInstanceGroups.size();
@@ -4067,8 +4067,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 							}
 						}
 						else
-						{
-							BfError* error = Fail(StrFormat("'%s' does not implement interface member '%s'", TypeToString(typeInstance).c_str(), MethodToString(ifaceMethodInst).c_str()), declTypeDef->mTypeDeclaration->mNameNode, true);
+						{							
+							BfTypeDeclaration* typeDecl = declTypeDef->mTypeDeclaration;
+							BfError* error = Fail(StrFormat("'%s' does not implement interface member '%s'", TypeToString(typeInstance).c_str(), MethodToString(ifaceMethodInst).c_str()), typeDecl->mNameNode, true);
 							if ((matchedMethod != NULL) && (error != NULL))
 							{
 								if (hadPubFailure)
@@ -4094,16 +4095,16 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 									if ((ifaceMethodInst->mVirtualTableIdx != -1) && (ifaceMethodInst->mReturnType->IsInterface()))
 										mCompiler->mPassInstance->MoreInfo("Declare the interface method as 'concrete' to allow matching concrete return values", ifaceMethodInst->mMethodDef->GetMethodDeclaration()->mVirtualSpecifier);
 								}
-							}
+							}							
 						}
 					}
 
 					// Clear out the entry
 					*matchedMethodRef = BfMethodRef();
-				}				
-			}
-		}	
-	}	
+				}
+			}			
+		}
+	}
 
 	ambiguityContext.Finish();
 	CheckAddFailType();
@@ -6178,9 +6179,7 @@ void BfModule::CheckTypeRefFixit(BfAstNode* typeRef, const char* appendName)
 		
 		std::set<String> fixitNamespaces;
 
-		//TODO: Do proper value for numGenericArgs
-		
-		//mSystem->FindFixitNamespaces(typeName, -1, typeRef->GetSourceData()->mProject, fixitNamespaces);
+		//TODO: Do proper value for numGenericArgs		
 		mSystem->FindFixitNamespaces(typeName, -1, mCompiler->mResolvePassData->mParser->mProject, fixitNamespaces);
 
 		int insertLoc = 0;

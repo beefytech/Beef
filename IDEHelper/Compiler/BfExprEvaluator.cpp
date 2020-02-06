@@ -13982,7 +13982,10 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				bool failed = false;
 				for (int paramIdx = 0; paramIdx < (int)mIndexerValues.size(); paramIdx++)
 				{
-					auto val = mModule->Cast(mPropSrc, mIndexerValues[paramIdx].mTypedValue, methodInstance.mMethodInstance->GetParamType(paramIdx));
+					auto refNode = mIndexerValues[paramIdx].mExpression;
+					if (refNode == NULL)
+						refNode = mPropSrc;
+					auto val = mModule->Cast(refNode, mIndexerValues[paramIdx].mTypedValue, methodInstance.mMethodInstance->GetParamType(paramIdx));
 					if (!val)
 						failed = true;
 					else
@@ -14815,7 +14818,10 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 	
 			for (int paramIdx = 0; paramIdx < (int)mIndexerValues.size(); paramIdx++)
 			{
-				auto val = mModule->Cast(mPropSrc, mIndexerValues[paramIdx].mTypedValue, methodInstance.mMethodInstance->GetParamType(paramIdx));
+				auto refNode = mIndexerValues[paramIdx].mExpression;
+				if (refNode == NULL)
+					refNode = mPropSrc;
+				auto val = mModule->Cast(refNode, mIndexerValues[paramIdx].mTypedValue, methodInstance.mMethodInstance->GetParamType(paramIdx));
 				if (!val)
 				{
 					mPropDef = NULL;
@@ -14858,8 +14864,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 	{
 		CheckResultForReading(ptr);
 		BfTypedValue leftValue = ptr;
-		leftValue = mModule->LoadValue(leftValue);
-
+		
 		auto expectedType = ptr.mType;
 		if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 			expectedType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
@@ -14907,7 +14912,10 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			}
 
 			if (!handled)
+			{
+				leftValue = mModule->LoadValue(leftValue);
 				PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, BfBinOpFlag_ForceLeftType, leftValue, rightValue);
+			}
 		}
 		
 		if (!handled)
@@ -15969,6 +15977,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				argVal = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
 			}
 			BfResolvedArg resolvedArg;
+			resolvedArg.mExpression = expr;
 			resolvedArg.mTypedValue = argVal;
 			mIndexerValues.push_back(resolvedArg);
 		}

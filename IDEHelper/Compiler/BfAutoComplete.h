@@ -218,6 +218,7 @@ public:
 	void UpdateReplaceData();	
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);
 	void CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation);	
+	bool GetMethodInfo(BfMethodInstance* methodInst, StringImpl* methodName, StringImpl* insertString, bool isExplicitInterface);
 
 public:
 	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete);
@@ -245,8 +246,9 @@ public:
 	void CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* precedingNode = NULL);
 	void CheckEmptyStart(BfAstNode* prevNode, BfType* type);	
 	bool CheckFixit(BfAstNode* node);	
+	void ChcekInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);
 
-	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom);
+	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom);	
 	
 };
 
