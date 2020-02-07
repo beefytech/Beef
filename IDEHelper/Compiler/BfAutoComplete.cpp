@@ -1906,7 +1906,7 @@ void BfAutoComplete::CheckNode(BfAstNode* node)
 	}
 }
 
-bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* showString, StringImpl* insertString, bool isExplicitInterface)
+bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* showString, StringImpl* insertString, bool isImplementing, bool isExplicitInterface)
 {
 	auto methodDef = methodInst->mMethodDef;
 	bool isInterface = methodInst->GetOwner()->IsInterface();
@@ -1917,24 +1917,21 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 		StringT<128> methodName;
 		StringT<256> impString;
 		
-		bool isAbstract = (methodDef->mIsAbstract) && (!isInterface);
+		bool isAbstract = methodDef->mIsAbstract || isInterface;// (methodDef->mIsAbstract) && (!isInterface);
 
-		if (!isAbstract)
+		if (isAbstract)
 		{
-			if (isInterface)
-			{
-				if (!methodInst->mReturnType->IsVoid())
-					impString += "return default;";
-			}
-			else
-			{
-				if (!methodInst->mReturnType->IsVoid())
-					impString = "return ";
+			if (!methodInst->mReturnType->IsVoid())
+				impString += "return default;";
+		}
+		else if (!isAbstract)
+		{						
+			if (!methodInst->mReturnType->IsVoid())
+				impString = "return ";
 
-				impString += "base.";
-				impString += methodDef->mName;
-				impString += "(";
-			}
+			impString += "base.";
+			impString += methodDef->mName;
+			impString += "(";			
 		}
 
 		auto methodDeclaration = methodDef->GetMethodDeclaration();
@@ -1963,19 +1960,19 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			if (paramIdx > 0)
 			{
 				methodName += ", ";
-				if ((!isAbstract) && (!isInterface))
+				if (!isAbstract)
 					impString += ", ";
 			}
 			methodName += mModule->TypeToString(methodInst->GetParamType(paramIdx), BfTypeNameFlag_ReduceName);
 			methodName += " ";
 			methodName += methodDef->mParams[paramIdx]->mName;
 
-			if ((!isAbstract) && (!isInterface))
+			if (!isAbstract)
 				impString += methodDef->mParams[paramIdx]->mName;
 		}
 		methodName += ")";
 
-		if ((!isAbstract) && (!isInterface))
+		if (!isAbstract)
 			impString += ");";
 
 		if (showString != NULL)
@@ -2115,7 +2112,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 				continue;
 			
 			StringT<512> insertString;
-			GetMethodInfo(methodInst, &insertString, &insertString, false);
+			GetMethodInfo(methodInst, &insertString, &insertString, true, false);
 			if (insertString.IsEmpty())
 				continue;
 			AddEntry(AutoCompleteEntry("override", insertString, NULL), filter);
@@ -2475,7 +2472,37 @@ bool BfAutoComplete::CheckFixit(BfAstNode* node)
 	return true;
 }
 
-void BfAutoComplete::ChcekInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node)
+int BfAutoComplete::FixitGetMemberInsertPos(BfTypeDef* typeDef)
+{
+	BfTypeDeclaration* typeDecl = typeDef->mTypeDeclaration;
+	BfTokenNode* openNode = NULL;
+	BfTokenNode* closeNode = NULL;
+	if (auto blockNode = BfNodeDynCast<BfBlock>(typeDecl->mDefineNode))
+	{
+		openNode = blockNode->mOpenBrace;
+		closeNode = blockNode->mCloseBrace;
+	}
+
+	int insertPos = -1;
+	BfParserData* parser = typeDef->mTypeDeclaration->GetSourceData()->ToParserData();
+	if ((parser != NULL) && (closeNode != NULL))
+	{
+		int startPos = openNode->mSrcStart + 1;
+		insertPos = closeNode->mSrcStart;
+		while (insertPos > startPos)
+		{
+			char prevC = parser->mSrc[insertPos - 1];
+			if (prevC == '\n')
+				break;
+			insertPos--;
+		}
+		if (insertPos > startPos)
+			insertPos--;
+	}
+	return insertPos;
+}
+
+void BfAutoComplete::CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node)
 {
 	if (!CheckFixit(node))
 		return;
@@ -2529,30 +2556,11 @@ void BfAutoComplete::ChcekInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 		}
 
 		if (!missingMethods.IsEmpty())
-		{
-			BfTypeDeclaration* typeDecl = declTypeDef->mTypeDeclaration;			
-			BfTokenNode* openNode = NULL;
-			BfTokenNode* closeNode = NULL;
-			if (auto blockNode = BfNodeDynCast<BfBlock>(typeDecl->mDefineNode))
-			{
-				openNode = blockNode->mOpenBrace;
-				closeNode = blockNode->mCloseBrace;
-			}
-
+		{			
 			BfParserData* parser = declTypeDef->mTypeDeclaration->GetSourceData()->ToParserData();
-			if ((parser != NULL) && (closeNode != NULL))
-			{				
-				int startPos = openNode->mSrcStart + 1;
-				int insertPos = closeNode->mSrcStart;
-				while (insertPos > startPos)
-				{
-					char prevC = parser->mSrc[insertPos - 1];
-					if (prevC == '\n')
-						break;
-					insertPos--;
-				}
-				if (insertPos > startPos)
-					insertPos--;
+			if (parser != NULL)
+			{
+				int insertPos = FixitGetMemberInsertPos(declTypeDef);
 
 				bool wantsBreak = false;
 				String insertStr = "\f";
@@ -2563,7 +2571,7 @@ void BfAutoComplete::ChcekInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 						insertStr += "\r\r";
 						wantsBreak = false;
 					}
-					if (GetMethodInfo(methodInst, NULL, &insertStr, false))
+					if (GetMethodInfo(methodInst, NULL, &insertStr, true, false))
 					{
 						insertStr += "\b";
 						wantsBreak = true;
@@ -2579,20 +2587,87 @@ void BfAutoComplete::ChcekInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 						explicitInsertStr += "\r\r";
 						wantsBreak = false;
 					}
-					if (GetMethodInfo(methodInst, NULL, &explicitInsertStr, true))
+					if (GetMethodInfo(methodInst, NULL, &explicitInsertStr, true, true))
 					{
 						explicitInsertStr += "\b";
 						wantsBreak = true;
 					}
 				}
 
-
-				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Implement interface '%s'\tusing|%s|%d|%s",
-					mModule->TypeToString(ifaceInst).c_str(), parser->mFileName.c_str(), insertPos, insertStr.c_str()).c_str()));
-				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Implement interface '%s' explicitly\tusing|%s|%d|%s",
-					mModule->TypeToString(ifaceInst).c_str(), parser->mFileName.c_str(), insertPos, explicitInsertStr.c_str()).c_str()));
+				if (insertPos != -1)
+				{
+					mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Implement interface '%s'\tusing|%s|%s",
+						mModule->TypeToString(ifaceInst).c_str(), FixitGetLocation(parser, insertPos).c_str(), insertStr.c_str()).c_str()));
+					mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Implement interface '%s' explicitly\tusing|%s|%s",
+						mModule->TypeToString(ifaceInst).c_str(), FixitGetLocation(parser, insertPos).c_str(), explicitInsertStr.c_str()).c_str()));
+				}
 			}
-		}		
+		}
+	}
+
+	if ((!typeInstance->IsInterface()) && (!typeInstance->IsUnspecializedTypeVariation()) && (!typeInstance->IsBoxed()))
+	{
+		if (!typeInstance->mTypeDef->mIsAbstract)
+		{
+			Array<BfMethodInstance*> missingMethods;
+
+			for (int methodIdx = 0; methodIdx < (int)typeInstance->mVirtualMethodTable.size(); methodIdx++)
+			{
+				auto& methodRef = typeInstance->mVirtualMethodTable[methodIdx].mImplementingMethod;
+				if (methodRef.mMethodNum == -1)
+				{
+					BF_ASSERT(mCompiler->mOptions.mHasVDataExtender);
+					if (methodRef.mTypeInstance == typeInstance)
+					{
+						if (typeInstance->GetImplBaseType() != NULL)
+							BF_ASSERT(methodIdx == (int)typeInstance->GetImplBaseType()->mVirtualMethodTableSize);
+					}
+					continue;
+				}
+				auto methodInstance = (BfMethodInstance*)methodRef;
+				if ((methodInstance != NULL) && (methodInstance->mMethodDef->mIsAbstract))
+				{
+					if (methodInstance->mMethodDef->mIsAbstract)
+					{
+						if (!typeInstance->IsUnspecializedTypeVariation())
+							missingMethods.Add(methodInstance);
+					}
+				}
+			}
+
+			if (!missingMethods.IsEmpty())
+			{
+				auto declTypeDef = typeInstance->mTypeDef;
+				BfParserData* parser = declTypeDef->mTypeDeclaration->GetSourceData()->ToParserData();
+				if (parser != NULL)
+				{
+					int insertPos = FixitGetMemberInsertPos(declTypeDef);
+
+					bool wantsBreak = false;
+					String insertStr = "\f";
+					for (auto methodInst : missingMethods)
+					{
+						if (wantsBreak)
+						{
+							insertStr += "\r\r";
+							wantsBreak = false;
+						}
+
+						if (GetMethodInfo(methodInst, NULL, &insertStr, true, false))
+						{
+							insertStr += "\b";
+							wantsBreak = true;
+						}
+					}
+
+					if (insertPos != -1)
+					{
+						mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Implement abstract methods\tmethod|%s|%s",
+							FixitGetLocation(parser, insertPos).c_str(), insertStr.c_str()).c_str()));
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -2644,7 +2719,8 @@ void BfAutoComplete::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType,
 		}
 	}
 
-	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create field '%s' in '%s'\taddField|%s|%d||%s", fieldName.c_str(), fullName.c_str(), parser->mFileName.c_str(), fileLoc, fieldStr.c_str()).c_str()));
+	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create field '%s' in '%s'\taddField|%s||%s", fieldName.c_str(), fullName.c_str(), 
+		FixitGetLocation(parser->mParserData, fileLoc).c_str(), fieldStr.c_str()).c_str()));
 }
 
 void BfAutoComplete::FixitAddCase(BfTypeInstance* typeInst, const StringImpl& caseName, const BfTypeVector& fieldTypes)
@@ -2728,7 +2804,8 @@ void BfAutoComplete::FixitAddCase(BfTypeInstance* typeInst, const StringImpl& ca
 		fieldStr += ";";
 	}		
 
-	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create case '%s' in '%s'\taddField|%s|%d|%s", caseName.c_str(), fullName.c_str(), parser->mFileName.c_str(), fileLoc, fieldStr.c_str()).c_str()));
+	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create case '%s' in '%s'\taddField|%s|%s", caseName.c_str(), fullName.c_str(), 
+		FixitGetLocation(parser->mParserData, fileLoc).c_str(), fieldStr.c_str()).c_str()));
 }
 
 void BfAutoComplete::FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr)
@@ -2772,7 +2849,16 @@ void BfAutoComplete::FixitGetParamString(const BfTypeVector& paramTypes, StringI
 					if (isOut)
 						checkName = "out" + checkName;
 					else if (isupper(checkName[0]))
+					{
 						checkName[0] = tolower(checkName[0]);
+						for (int i = 1; i < (int)checkName.length(); i++)
+						{							
+							if ((i + 1 < (int)checkName.length()) &&
+								(islower(checkName[i + 1])))
+								break;
+							checkName[i] = tolower(checkName[i]);
+						}
+					}
 					if (isArr)
 						checkName += "Arr";
 					break;
@@ -2803,6 +2889,14 @@ void BfAutoComplete::FixitGetParamString(const BfTypeVector& paramTypes, StringI
 	}
 }
 
+String BfAutoComplete::FixitGetLocation(BfParserData* parser, int insertPos)
+{
+	int line = 0;
+	int lineChar = 0;
+	parser->GetLineCharAtIdx(insertPos, line, lineChar);
+	return StrFormat("%s|%d:%d", parser->mFileName.c_str(), line, lineChar);
+}
+
 void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic)
 {
 	if ((typeInst->IsEnum()) && (returnType == typeInst) && (wantStatic))
@@ -2818,6 +2912,8 @@ void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& 
 		{
 			String fullName = typeInst->mTypeDef->mFullName.ToString();
 			String methodStr;
+
+			methodStr += "\f\a";
 
 			if (typeInst == mModule->mCurTypeInstance)
 			{
@@ -2844,12 +2940,40 @@ void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& 
 
 			FixitGetParamString(paramTypes, methodStr);
 
-			int fileLoc = typeInst->mTypeDef->mTypeDeclaration->GetSrcEnd();
-			if (auto defineBlock = BfNodeDynCast<BfBlock>(typeInst->mTypeDef->mTypeDeclaration->mDefineNode))
-				fileLoc = defineBlock->mCloseBrace->GetSrcStart();
+			int insertPos = FixitGetMemberInsertPos(typeInst->mTypeDef);
 
 			methodStr += ")";
-			AddEntry(AutoCompleteEntry("fixit", StrFormat("Create method '%s' in '%s'\taddMethod|%s|%d|||%s|{||}", methodName.c_str(), fullName.c_str(), parser->mFileName.c_str(), fileLoc, methodStr.c_str()).c_str()));
+			methodStr += "\t";
+			AddEntry(AutoCompleteEntry("fixit", StrFormat("Create method '%s' in '%s'\taddMethod|%s|%s", methodName.c_str(), fullName.c_str(), FixitGetLocation(parser->mParserData, insertPos).c_str(), methodStr.c_str()).c_str()));
 		}
+	}
+}
+
+void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfTypeReference* typeRef, BfTokenNode* nextDotToken)
+{
+	if (nextDotToken == NULL)
+		return;
+
+	auto parserData = typeRef->GetParserData();
+
+	BfSizedAtomComposite namespaceComposite;
+	String namespaceString = typeRef->ToString();
+	bool isValid = mSystem->ParseAtomComposite(namespaceString, namespaceComposite);
+		
+	bool hasNamespace = false;
+	if (activeTypeDef != NULL)
+		hasNamespace = activeTypeDef->mNamespaceSearch.Contains(namespaceComposite);
+
+	if (hasNamespace)
+	{
+		AddEntry(AutoCompleteEntry("fixit", StrFormat("Remove unneeded '%s'\taddMethod|%s-%d|", typeRef->ToString().c_str(),
+			FixitGetLocation(parserData, typeRef->GetSrcStart()).c_str(), nextDotToken->GetSrcEnd() - typeRef->GetSrcStart()).c_str()));
+	}
+	else
+	{	
+		BfUsingFinder usingFinder;
+		usingFinder.VisitMembers(typeRef->GetSourceData()->mRootNode);
+		mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("using %s;\tusing|%s|%d||using %s;", namespaceString.c_str(), parserData->mFileName.c_str(), 
+			usingFinder.mLastIdx, namespaceString.c_str()).c_str()));
 	}
 }

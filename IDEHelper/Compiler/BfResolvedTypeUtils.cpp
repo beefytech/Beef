@@ -503,7 +503,11 @@ BfImportKind BfMethodInstance::GetImportKind()
 		return mMethodDef->mImportKind;
 
 	auto module = GetOwner()->mModule;
-	BfCustomAttribute* customAttribute = GetCustomAttributes()->Get(module->mCompiler->mImportAttributeTypeDef);
+	auto customAttributes = GetCustomAttributes();
+	if (customAttributes == NULL)
+		return BfImportKind_None;
+	
+	BfCustomAttribute* customAttribute = customAttributes->Get(module->mCompiler->mImportAttributeTypeDef);
 	if (customAttribute == NULL)
 		return BfImportKind_Import_Static;
 

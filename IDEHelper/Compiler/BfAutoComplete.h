@@ -218,8 +218,10 @@ public:
 	void UpdateReplaceData();	
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);
 	void CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation);	
-	bool GetMethodInfo(BfMethodInstance* methodInst, StringImpl* methodName, StringImpl* insertString, bool isExplicitInterface);
+	bool GetMethodInfo(BfMethodInstance* methodInst, StringImpl* methodName, StringImpl* insertString, bool isImplementing, bool isExplicitInterface);
 	void FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr);
+	int FixitGetMemberInsertPos(BfTypeDef* typeDef);
+	String FixitGetLocation(BfParserData* parserData, int insertPos);
 
 public:
 	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete);
@@ -247,12 +249,12 @@ public:
 	void CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* precedingNode = NULL);
 	void CheckEmptyStart(BfAstNode* prevNode, BfType* type);	
 	bool CheckFixit(BfAstNode* node);	
-	void ChcekInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);
+	void CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);
 
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom);
 	void FixitAddCase(BfTypeInstance * typeInst, const StringImpl & caseName, const BfTypeVector & fieldTypes);
 	void FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic);
-	
+	void FixitCheckNamespace(BfTypeDef* activeTypeDef, BfTypeReference* typeRef, BfTokenNode* nextDotToken);
 };
 
 NS_BF_END

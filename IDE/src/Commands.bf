@@ -215,7 +215,6 @@ namespace IDE
 			Add("New File", new => gApp.Cmd_NewFile);
 			Add("New Project", new => gApp.Cmd_NewProject);
 			Add("New Workspace", new => gApp.Cmd_NewWorkspace);
-			Add("New View Into File", new => gApp.Cmd_NewFileView);
 			Add("Next Document Panel", new => gApp.[Friend]DoShowNextDocumentPanel);
 			Add("Open Corresponding", new => gApp.[Friend]OpenCorresponding);
 			Add("Open Crash Dump", new => gApp.OpenCrashDump);
@@ -264,7 +263,6 @@ namespace IDE
 			Add("Show Threads", new => gApp.ShowThreads);
 			Add("Show Watches", new => gApp.ShowWatches);
 			Add("Show Workspace Explorer", new => gApp.ShowWorkspacePanel);
-			Add("Split View", new => gApp.[Friend]SplitView);
 			Add("Start Debugging", new => gApp.[Friend]RunWithCompiling);
 			Add("Start Without Debugging", new => gApp.[Friend]RunWithoutCompiling);
 			Add("Step Into", new => gApp.[Friend]StepInto);
@@ -275,6 +273,8 @@ namespace IDE
 			Add("Tab Last", new => gApp.[Friend]TabLast);
 			Add("Tab Next", new => gApp.[Friend]TabNext);
 			Add("Tab Prev", new => gApp.[Friend]TabPrev);
+			Add("View New", new => gApp.Cmd_ViewNew);
+			Add("View Split", new => gApp.[Friend]ViewSplit);
 			Add("View White Space", new => gApp.Cmd_ViewWhiteSpace);
 			Add("Zoom In", new => gApp.Cmd_ZoomIn);
 			Add("Zoom Out", new => gApp.Cmd_ZoomOut);

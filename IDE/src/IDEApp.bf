@@ -751,7 +751,7 @@ namespace IDE
             base.Run();
         }
 
-		public void Cmd_NewFileView()
+		public void Cmd_ViewNew()
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
@@ -4824,7 +4824,6 @@ namespace IDE
             AddMenuItem(subMenu, "&Save File","Save File");
             AddMenuItem(subMenu, "Save &As...", "Save As");
 			AddMenuItem(subMenu, "Save A&ll", "Save All");
-			AddMenuItem(subMenu, "N&ew View into File", "New View Into File");
 			let prefMenu = subMenu.AddMenuItem("&Preferences");
 			//prefMenu.AddMenuItem("&Keyboard Shortcuts", null, new (evt) => { ShowKeyboardShortcuts(); });
 			AddMenuItem(prefMenu, "&Settings", "Settings");
@@ -5028,7 +5027,8 @@ namespace IDE
             mWindowMenu = root.AddMenuItem("&Window");
             AddMenuItem(mWindowMenu, "&Close", "Close Window");
 			AddMenuItem(mWindowMenu, "&Close All", "Close All Windows");
-			AddMenuItem(mWindowMenu, "&Split View", "Split View");
+			AddMenuItem(mWindowMenu, "&New View into File", "View New");
+			AddMenuItem(mWindowMenu, "&Split View", "View Split");
 
             subMenu = root.AddMenuItem("&Help");
             AddMenuItem(subMenu, "&About", "About");
@@ -6155,7 +6155,7 @@ namespace IDE
 				DocumentCloseClicked(docPanel);
 		}
 
-		void SplitView()
+		void ViewSplit()
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)

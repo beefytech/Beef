@@ -236,21 +236,11 @@ namespace IDE.ui
             if (activeDocument is SourceViewPanel)
             {
                 var sourceViewPanel = (SourceViewPanel)activeDocument;
+				sourceViewPanel = sourceViewPanel.GetActivePanel();
+
                 int32 line;
                 int32 column;
                 sourceViewPanel.GetCursorPosition(out line, out column);
-
-				/*var ewc = sourceViewPanel.mEditWidget.Content;
-				int cursorPos = ewc.CursorTextPos;
-				if (cursorPos < ewc.mData.mTextLength)
-				{
-					ewc.mData.mTextIdData.Prepare();
-					g.DrawString(StackStringFormat!("Id {0}", ewc.mData.mTextIdData.GetIdAtIndex(cursorPos)), mWidth - GS!(310), 0);
-				}*/
-
-
-				/*line = 8'888'888;
-				column = 8'888'888;*/
 
 				if (gApp.mSettings.mEnableDevMode)
 					g.DrawString(StackStringFormat!("Idx {0}", sourceViewPanel.mEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);

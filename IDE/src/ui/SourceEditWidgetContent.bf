@@ -1489,7 +1489,7 @@ namespace IDE.ui
          
             base.InsertAtCursor(theString, insertFlags);
 			mInsertDisplayFlags = 0;
-			if ((!mIgnoreSetHistory) && (!insertFlags.HasFlag(.NoMoveCursor)))
+			if ((!mIgnoreSetHistory) && (!insertFlags.HasFlag(.NoMoveCursor)) && (!insertFlags.HasFlag(.NoRecordHistory)))
             	RecordHistoryLocation();
         }        
 

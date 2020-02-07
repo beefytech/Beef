@@ -5632,6 +5632,11 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 {
 	if (mCompiler->mIsResolveOnly)
 	{
+		bool isGetDefinition = false;
+		BfAutoComplete* autoComplete = NULL;
+		if (mCompiler->IsAutocomplete())
+			autoComplete = mCompiler->mResolvePassData->mAutoComplete;
+
 		BfSourceData* typeRefSource = NULL;
 		if (typeRef->IsTemporary())
 		{
@@ -5680,7 +5685,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			{
 				StringView leftString = qualifiedTypeRef->mLeft->ToStringView();
 				BfSizedAtomComposite leftComposite;
-				bool isValid = mSystem->ParseAtomComposite(leftString, leftComposite);				
+				bool isValid = mSystem->ParseAtomComposite(leftString, leftComposite);
 				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
 				if (resolvedTypeInstance == NULL)
 				{
@@ -5688,7 +5693,11 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 						isNamespace = true;
 				}
 				else if ((isValid) && (resolvedTypeInstance->mTypeDef->mNamespace.EndsWith(leftComposite)))
+				{
+					if ((autoComplete != NULL) && (autoComplete->CheckFixit(typeRef)))
+						autoComplete->FixitCheckNamespace(GetActiveTypeDef(), qualifiedTypeRef->mLeft, qualifiedTypeRef->mDot);
 					isNamespace = true;
+				}
 				checkTypeRef = qualifiedTypeRef->mLeft;
 			}
 
@@ -5714,11 +5723,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
 			}
 		}
-
-		bool isGetDefinition = false;
-		BfAutoComplete* autoComplete = NULL;
-		if (mCompiler->IsAutocomplete())
-			autoComplete = mCompiler->mResolvePassData->mAutoComplete;
+		
 		if (autoComplete != NULL)
 		{
 			isGetDefinition = autoComplete->mIsGetDefinition;

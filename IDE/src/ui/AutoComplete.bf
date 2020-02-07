@@ -2126,35 +2126,47 @@ namespace IDE.ui
             return mInsertStartIdx == mInsertEndIdx;
         }
 
-		/*void ApplyFixit(String fixitType, String fileName, String fixitParam)
-		{			
-			var projectSource = IDEApp.sApp.FindProjectSourceItem(fileName);
-
-			var editData = IDEApp.sApp.GetEditData(projectSource);
-			var sourceEditWidgetContent = (SourceEditWidgetContent)editData.mEditWidget.Content;
-			//cursorPositions.Add(sourceEditWidgetContent.CursorTextPos);
-			
-			var bfSystem = IDEApp.sApp.mBfResolveSystem;
-			var parser = bfSystem.CreateEmptyParser(null);
-			defer:: delete parser;
-			var text = scope String();
-			editData.mEditWidget.GetText(text);
-			parser.SetSource(text, fileName);
-			var passInstance = bfSystem.CreatePassInstance();
-			defer:: delete passInstance;
-			parser.Parse(passInstance, false);
-			parser.Reduce(passInstance);
-			
-			parser.Ref
-		}*/
-
 		void ApplyFixit(String data)
 		{
-			var parts = String.StackSplit!(data, '|');
-			//String fixitType = parts[0];
-			String fixitFileName = parts[1];
-			int32 fixitIdx = int32.Parse(parts[2]).GetValueOrDefault();
+			UndoBatchStart undoBatchStart = null;
 
+			var parts = String.StackSplit!(data, '|');
+			String fixitFileName = parts[1];
+			SourceViewPanel sourceViewPanel = IDEApp.sApp.ShowSourceFile(fixitFileName);
+
+			var targetSourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
+			var historyEntry = targetSourceEditWidgetContent.RecordHistoryLocation();
+			historyEntry.mNoMerge = true;
+
+			var sourceEditWidgetContent = targetSourceEditWidgetContent;
+			if (sourceEditWidgetContent.mSourceViewPanel != sourceViewPanel)
+			{
+				sourceEditWidgetContent = (SourceEditWidgetContent)sourceViewPanel.GetActivePanel().EditWidget.mEditWidgetContent;
+				undoBatchStart = new UndoBatchStart("autocomplete");
+				sourceEditWidgetContent.mData.mUndoManager.Add(undoBatchStart);
+			}
+
+			int32 fixitIdx = 0;
+			int32 fixitLen = 0;
+			StringView fixitLocStr = parts[2];
+			int dashPos = fixitLocStr.IndexOf('-');
+			if (dashPos != -1)
+			{
+				fixitLen = int32.Parse(fixitLocStr.Substring(dashPos + 1));
+				fixitLocStr.RemoveToEnd(dashPos);
+			}
+
+			if (fixitLocStr.Contains(':'))
+			{
+				var splitItr = fixitLocStr.Split(':');
+				int32 line = int32.Parse(splitItr.GetNext().Value).Value;
+				int32 col = int32.Parse(splitItr.GetNext().Value).Value;
+				fixitIdx = (.)sourceEditWidgetContent.GetTextIdx(line, col);
+			}
+			else
+				fixitIdx = int32.Parse(fixitLocStr).GetValueOrDefault();
+
+			int insertCount = 0;
 			int dataIdx = 3;
 
 			while (dataIdx < parts.Count)
@@ -2178,7 +2190,6 @@ namespace IDE.ui
 #unwarn
 				bool hasMore = dataIdx < parts.Count;
 
-				SourceViewPanel sourceViewPanel = IDEApp.sApp.ShowSourceFile(fixitFileName);
 				if (sourceViewPanel != null)
 				{
 					if (sourceViewPanel.IsReadOnly)
@@ -2186,50 +2197,48 @@ namespace IDE.ui
 						gApp.Fail(scope String()..AppendF("The selected fixit cannot be applied to locked file '{}'", sourceViewPanel.mFilePath));
 						return;
 					}
-
-					var targetSourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
-					var history = targetSourceEditWidgetContent.RecordHistoryLocation();
-					history.mNoMerge = true;
 	
-					var editWidgetContent = (SourceEditWidgetContent)sourceViewPanel.mEditWidget.mEditWidgetContent;				
-					editWidgetContent.CursorTextPos = fixitIdx;
-					editWidgetContent.EnsureCursorVisible(true, true);
+					sourceEditWidgetContent.CursorTextPos = fixitIdx;
+					sourceEditWidgetContent.EnsureCursorVisible(true, true);
+
+					if (fixitLen > 0)
+					{
+						sourceEditWidgetContent.mSelection = EditSelection(fixitIdx, fixitIdx + fixitLen);
+						sourceEditWidgetContent.DeleteSelection();
+						fixitLen = 0;
+					}
 
 					if (fixitInsert.StartsWith('\n'))
-						editWidgetContent.PasteText(fixitInsert, fixitInsert.StartsWith("\n"));
+						sourceEditWidgetContent.PasteText(fixitInsert, fixitInsert.StartsWith("\n"));
 					else
-						InsertImplText(fixitInsert);
+						InsertImplText(sourceEditWidgetContent, fixitInsert);
 
-					fixitIdx = (.)editWidgetContent.CursorTextPos;
+					fixitIdx = (.)sourceEditWidgetContent.CursorTextPos;
+					insertCount++;
 				}
 			}
 
-			/*switch (parts[0])
+			if (historyEntry != null)
 			{
-			case "using":
-				//ApplyFixit(parts[0], parts[1], parts[2]);
-				
-				break;
-			case "addMethod":
-				break;
-			}*/
+				// Make sure when we go back that we'll go back to the insert position
+				int idx = gApp.mHistoryManager.mHistoryList.LastIndexOf(historyEntry);
+				if (idx != -1)
+					gApp.mHistoryManager.mHistoryIdx = (.)idx;
+			}
+
+			if (undoBatchStart != null)
+				sourceEditWidgetContent.mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 		}
 
-		void InsertImplText(String implText)
+		void InsertImplText(SourceEditWidgetContent sourceEditWidgetContent, String implText)
 		{
-
-			var sourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
-			/*sourceEditWidgetContent.ClearLine();
-			sourceEditWidgetContent.InsertAtCursor("ABC\nDEF\nGHI");
-			return;*/
-
 			String implSect = scope .();
 			
 			int startIdx = 0;
 			for (int i < implText.Length)
 			{
 				char8 c = implText[i];
-				if ((c == '\t') || (c == '\b') || (c == '\r') || (c == '\f'))
+				if ((c == '\a') || (c == '\t') || (c == '\b') || (c == '\r') || (c == '\f'))
 				{
 					implSect.Clear();
 					implSect.Append(implText, startIdx, i - startIdx);
@@ -2238,7 +2247,30 @@ namespace IDE.ui
 						sourceEditWidgetContent.InsertAtCursor(implSect);
 					}
 
-					if (c == '\f')
+					if (c == '\a') // Ensure we have spacing or an open brace on the previous line
+					{
+						int lineNum = sourceEditWidgetContent.CursorLineAndColumn.mLine;
+						if (lineNum > 0)
+						{
+							sourceEditWidgetContent.GetLinePosition(lineNum - 1, var lineStart, var lineEnd);
+							for (int idx = lineEnd; idx >= lineStart; idx--)
+							{
+								let charData = sourceEditWidgetContent.mData.mText[idx];
+								if (charData.mDisplayTypeId == (.)SourceElementType.Comment)
+									continue;
+								if (charData.mChar.IsWhiteSpace)
+									continue;
+								if (charData.mChar == '{')
+									break;
+
+								// Add new line
+								sourceEditWidgetContent.InsertAtCursor("\n");
+								sourceEditWidgetContent.CursorToLineEnd();
+								break;
+							}
+						}
+					}
+					else if (c == '\f') // Make sure we're on an empty line
 					{
 						if (!sourceEditWidgetContent.IsLineWhiteSpace(sourceEditWidgetContent.CursorLineAndColumn.mLine))
 						{
@@ -2251,29 +2283,19 @@ namespace IDE.ui
 							sourceEditWidgetContent.CursorTextPos = prevPos;
 						}
 						sourceEditWidgetContent.CursorToLineEnd();
-						/*if (!sourceEditWidgetContent.IsLineWhiteSpace(sourceEditWidgetContent.CursorLineAndColumn.mLine))
-						{
-							sourceEditWidgetContent.InsertText(sourceEditWidgetContent.CursorTextPos + 1, "\n");
-							sourceEditWidgetContent.ContentChanged();
-						}*/
-						//return;
-
-						//sourceEditWidgetContent.GetLineText(sourceEditWidgetContent.CursorLineAndColumn.mLine, )
-						
-						//sourceEditWidgetContent.InsertAtCursor("ABC\n");
 					}
-					else if (c == '\t')
+					else if (c == '\t') // Open block
 					{
 						sourceEditWidgetContent.InsertAtCursor("\n");
 						sourceEditWidgetContent.CursorToLineEnd();
 						sourceEditWidgetContent.OpenCodeBlock();
 					}
-					else if (c == '\r')
+					else if (c == '\r') // Newline
 					{
 						sourceEditWidgetContent.InsertAtCursor("\n");
 						sourceEditWidgetContent.CursorToLineEnd();
 					}
-					else if (c == '\b')
+					else if (c == '\b') // Close block
 					{
 						int cursorPos = sourceEditWidgetContent.CursorTextPos;
 						while (cursorPos < sourceEditWidgetContent.mData.mTextLength)
@@ -2406,7 +2428,7 @@ namespace IDE.ui
                 UpdateAsyncInfo();*/
 
 			if (implText != null)
-				InsertImplText(implText);
+				InsertImplText(sourceEditWidgetContent, implText);
 
             if (persistentInvokeSrcPositons != null)
             {

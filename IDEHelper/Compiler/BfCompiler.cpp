@@ -3768,7 +3768,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 			autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();
 		}		
 	}	
-	autoComplete->ChcekInterfaceFixit(typeInst, tempTypeDef->mTypeDeclaration->mNameNode);
+	autoComplete->CheckInterfaceFixit(typeInst, tempTypeDef->mTypeDeclaration->mNameNode);
 
 	if (tempTypeDef->mTypeCode == BfTypeCode_TypeAlias)
 	{
