@@ -2159,7 +2159,15 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 		return;
 	}
 
-	ExpectNewLine();
+	bool isEnumDecl = false;
+
+	if (auto enumEntry = BfNodeDynCast<BfEnumEntryDeclaration>(fieldDeclaration))
+	{		
+		isEnumDecl = true;
+	}
+
+	if (!isEnumDecl)
+		ExpectNewLine();
 	if (fieldDeclaration->mAttributes != NULL)
 	{
 		QueueVisitChild(fieldDeclaration->mAttributes);
@@ -2180,14 +2188,22 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 	QueueVisitChild(fieldDeclaration->mStaticSpecifier);
 	ExpectSpace();
 	QueueVisitChild(fieldDeclaration->mPrecedingComma);
-	ExpectSpace();	
+	ExpectSpace();
+	if (isEnumDecl)
+		mNextStateModify.mExpectingSpace = false;
 	QueueVisitChild(fieldDeclaration->mTypeRef);
 	ExpectSpace();	
 	QueueVisitChild(fieldDeclaration->mNameNode);
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mEqualsNode);
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mInitializer);
+	if (fieldDeclaration->mEqualsNode != NULL)
+	{
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mEqualsNode);
+	}
+	if (fieldDeclaration->mInitializer != NULL)
+	{
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mInitializer);
+	}
 
 	auto fieldDtor = fieldDeclaration->mFieldDtor;
 	while (fieldDtor != NULL)
@@ -2205,7 +2221,9 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 
 void BfPrinter::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
 {
-	Visit(enumCaseDeclaration->ToBase());
+	ExpectNewLine();
+
+	Visit(enumCaseDeclaration->ToBase());	
 
 	if (mDocPrep)
 	{
@@ -2368,6 +2386,8 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 			for (auto member : defineBlock->mChildArr)
 			{
 				SetAndRestoreValue<BfAstNode*> prevBlockMember(mCurBlockMember, member);
+				if (auto fieldDecl = BfNodeDynCast<BfFieldDeclaration>(member))
+					ExpectNewLine();
 				VisitChild(member);
 			}
 			ExpectUnindent();
