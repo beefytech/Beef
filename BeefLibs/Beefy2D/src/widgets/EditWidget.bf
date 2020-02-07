@@ -1121,8 +1121,9 @@ namespace Beefy.widgets
 			None,
 			NoRestoreSelectionOnUndo = 1,
 			NoMoveCursor = 2,
-			IsGroupPart = 4,
-			IsGroupStart = 8
+			NoRecordHistory = 4,
+			IsGroupPart = 8,
+			IsGroupStart = 0x10
 		}
 
         public virtual void InsertAtCursor(String theString, InsertFlags insertFlags = .None)

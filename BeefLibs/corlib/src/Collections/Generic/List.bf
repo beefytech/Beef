@@ -428,8 +428,15 @@ namespace System.Collections.Generic
 
 		public int IndexOf(T item)
 		{
-			//return Array.IndexOf(mItems, item, 0, mSize);
 			for (int i = 0; i < mSize; i++)
+				if (mItems[i] == item)
+					return i;
+			return -1;
+		}
+
+		public int LastIndexOf(T item)
+		{
+			for (int i = mSize - 1; i >= 0; i--)
 				if (mItems[i] == item)
 					return i;
 			return -1;
