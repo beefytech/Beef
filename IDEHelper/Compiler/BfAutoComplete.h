@@ -219,6 +219,7 @@ public:
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);
 	void CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation);	
 	bool GetMethodInfo(BfMethodInstance* methodInst, StringImpl* methodName, StringImpl* insertString, bool isExplicitInterface);
+	void FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr);
 
 public:
 	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete);
@@ -248,7 +249,9 @@ public:
 	bool CheckFixit(BfAstNode* node);	
 	void ChcekInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);
 
-	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom);	
+	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom);
+	void FixitAddCase(BfTypeInstance * typeInst, const StringImpl & caseName, const BfTypeVector & fieldTypes);
+	void FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic);
 	
 };
 

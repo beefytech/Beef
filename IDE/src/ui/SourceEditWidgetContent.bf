@@ -1326,15 +1326,6 @@ namespace IDE.ui
 
 				int alignColumn = GetLineEndColumn(lineAndColumn.mLine, isBlock, true,  true);
 
-				if ((useString.StartsWith("case ")) ||
-					(useString.StartsWith("when ")) ||
-					(useString.StartsWith("default:")) ||
-					(useString.StartsWith("default ")))
-				{
-					//CursorLineAndColumn = LineAndColumn(lineAndColumn.mLine, alignColumn - tabSpaceCount);
-					//alignColumn--;
-				}
-
 			    String linePrefix = scope String('\t', alignColumn / tabSpaceCount);
 			    CursorLineAndColumn = LineAndColumn(lineAndColumn.mLine, alignColumn);
 
@@ -1342,10 +1333,11 @@ namespace IDE.ui
 				if (useString.StartsWith("{"))
 					isFullSwitch = true;
 
-				if ((useString.StartsWith("case ")) ||
-					(useString.StartsWith("when ")) ||
-					(useString.StartsWith("default:")) ||
-					(useString.StartsWith("default ")))
+				if ((useString.Contains(':')) &&
+					((useString.StartsWith("case ")) ||
+					 (useString.StartsWith("when ")) ||
+					 (useString.StartsWith("default:")) ||
+					 (useString.StartsWith("default "))))
 				{
 					CursorLineAndColumn = LineAndColumn(lineAndColumn.mLine, Math.Max(0, alignColumn - tabSpaceCount));
 
@@ -2110,6 +2102,7 @@ namespace IDE.ui
             bool hasEmptyAutocompleteReplace = true;
             if (mAutoComplete != null)
                 hasEmptyAutocompleteReplace = mAutoComplete.mInsertEndIdx == -1;
+			bool didAutoComplete = false;
 
             bool isEndingChar = (keyChar >= (char8)32) && !keyChar.IsLetterOrDigit && (keyChar != '_') && (keyChar != '~') && (keyChar != '=') && (keyChar != '!') && (keyChar != ':');
 
@@ -2203,6 +2196,7 @@ namespace IDE.ui
                         {
 							if (IsCursorVisible(false))
                             	mOnGenerateAutocomplete('\0', default);
+							didAutoComplete = true;
 						}
                         else
 						{
@@ -2602,25 +2596,13 @@ namespace IDE.ui
 				if (mAutoComplete != null)
 				{
 				    mAutoComplete.UpdateAsyncInfo();
-
-					/*if (mAutoComplete != null)
-					{
-						String filter = scope String();
-						mAutoComplete.GetFilter(filter);
-						if ((filter.Length < mAutoComplete.mInfoFilter.Length) || (mAutoComplete.mInfoFilter.Length == 1))
-						{
-							needsFreshAutoComplete = true;
-						}
-					}*/
 					needsFreshAutoComplete = true;
 				}
 
-                if (needsFreshAutoComplete)
+                if ((needsFreshAutoComplete) && (!didAutoComplete))
                 {
-					//Profiler.StartSampling();
 					if (IsCursorVisible(false))
 						mOnGenerateAutocomplete(keyChar, isHighPri ? .HighPriority : default);
-					//Profiler.StopSampling();
                 }
             }
             else if (mData.mCurTextVersionId != startRevision)

@@ -237,11 +237,6 @@ namespace IDE.ui
 
 				//Debug.WriteLine("Init {} {} {} {}", this, mIsInitted, mOwnsWindow, mAutoComplete);
 
-				if (WidgetWindow.sOnMouseDown.Count > 0)
-				{
-					NOP!();
-				}
-
 				if (mOwnsWindow)
 				{
 	                WidgetWindow.sOnWindowLostFocus.Add(new => LostFocusHandler);
@@ -369,7 +364,6 @@ namespace IDE.ui
 
 				public ~this()
 				{
-
 				}
 
                 public void Draw(Graphics g)
@@ -2187,6 +2181,12 @@ namespace IDE.ui
 				SourceViewPanel sourceViewPanel = IDEApp.sApp.ShowSourceFile(fixitFileName);
 				if (sourceViewPanel != null)
 				{
+					if (sourceViewPanel.IsReadOnly)
+					{
+						gApp.Fail(scope String()..AppendF("The selected fixit cannot be applied to locked file '{}'", sourceViewPanel.mFilePath));
+						return;
+					}
+
 					var targetSourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
 					var history = targetSourceEditWidgetContent.RecordHistoryLocation();
 					history.mNoMerge = true;

@@ -1325,7 +1325,6 @@ namespace IDE
 
 		public ~this()
 		{
-			NOP!();
 		}
 
         public void GetProjectRelPath(String fullPath, String outRelPath)

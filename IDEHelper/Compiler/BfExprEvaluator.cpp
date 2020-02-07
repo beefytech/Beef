@@ -4802,7 +4802,7 @@ void BfExprEvaluator::FinishDeferredEvals(SizedArrayImpl<BfResolvedArg>& argValu
 {
 	for (int argIdx = 0; argIdx < argValues.size(); argIdx++)
 	{		
-		auto argValue = argValues[argIdx].mTypedValue;		
+		auto& argValue = argValues[argIdx].mTypedValue;		
 		if ((argValues[argIdx].mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt | BfArgFlag_DeferredEval)) != 0)
 		{
 			if (!argValue)
@@ -6661,129 +6661,31 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	if (methodDef == NULL)
 	{
+		FinishDeferredEvals(argValues.mResolvedArgs);
 		auto compiler = mModule->mCompiler;
 		if ((compiler->IsAutocomplete()) && (compiler->mResolvePassData->mAutoComplete->CheckFixit(targetSrc)))
 		{	
-			mModule->CheckTypeRefFixit(targetSrc);
-
+			mModule->CheckTypeRefFixit(targetSrc);			
 			bool wantStatic = !target.mValue;
 			if ((targetType == NULL) && (allowImplicitThis))
 			{
 				targetType = mModule->mCurTypeInstance;
 				if (mModule->mCurMethodInstance != NULL)
 					wantStatic = mModule->mCurMethodInstance->mMethodDef->mIsStatic;
-			}
+			}			
+
 			if (targetType != NULL)
 			{
 				auto typeInst = targetType->ToTypeInstance();
-				if ((typeInst->mTypeDef->mSource != NULL) && (typeInst != mModule->mContext->mBfObjectType))
-				{	
-					auto parser = typeInst->mTypeDef->mSource->ToParser();
-					if (parser != NULL)
-					{
-						String fullName = typeInst->mTypeDef->mFullName.ToString();
-						String methodStr;
 
-						if (typeInst == mModule->mCurTypeInstance)
-						{
-							// Implicitly private
-						}
-						else if (mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, typeInst))
-						{
-							methodStr += "protected ";
-						}
-						else
-						{
-							methodStr += "public ";
-						}
-
-						if (wantStatic)
-							methodStr += "static ";
-
-						if (mExpectingType != NULL)
-							methodStr += mModule->TypeToString(mExpectingType, BfTypeNameFlag_ReduceName);
-						else
-							methodStr += "void";
-
-                        methodStr += " " + methodName + "(";
-
-						std::set<String> usedNames;
-
-						for (int argIdx = 0; argIdx < (int)argValues.mResolvedArgs.size(); argIdx++)
-						{
-							if (argIdx > 0)
-								methodStr += ", ";
-							auto& resolvedArg = argValues.mResolvedArgs[argIdx];
-							String checkName = "param";
-							if (resolvedArg.mTypedValue.mType != NULL)
-							{
-								bool isOut = false;
-								bool isArr = false;
-
-								BfType* checkType = resolvedArg.mTypedValue.mType;
-								while (true)
-								{
-									if ((checkType->IsArray()) || (checkType->IsSizedArray()))
-									{
-										isArr = true;
-										checkType = checkType->GetUnderlyingType();
-									}
-									else if (checkType->IsRef())
-									{
-										BfRefType* refType = (BfRefType*)checkType;
-										if (refType->mRefKind == BfRefType::RefKind_Out)
-											isOut = true;
-										checkType = refType->GetUnderlyingType();
-									}
-									else if (checkType->IsTypeInstance())
-									{
-										BfTypeInstance* typeInst = (BfTypeInstance*)checkType;
-										checkName = typeInst->mTypeDef->mName->ToString();
-										if (checkName == "String")
-											checkName = "Str";
-										if (checkName == "Object")
-											checkName = "Obj";
-										if (isOut)
-											checkName = "out" + checkName;
-										else if (isupper(checkName[0]))
-											checkName[0] = tolower(checkName[0]);
-										if (isArr)
-											checkName += "Arr";
-										break;
-									}
-									else
-										break;
-								}
-																
-								methodStr += mModule->TypeToString(resolvedArg.mTypedValue.mType, BfTypeNameFlag_ReduceName);
-							}
-							else
-							{
-								checkName = "param";
-								methodStr += "Object";
-							}
-
-							for (int i = 1; i < 10; i++)
-							{
-								String lookupName = checkName;
-								if (i > 1)
-									lookupName += StrFormat("%d", i);
-								if (usedNames.insert(lookupName).second)
-								{
-									methodStr += " " + lookupName;
-									break;
-								}
-							}							
-						}
-
-						int fileLoc = typeInst->mTypeDef->mTypeDeclaration->GetSrcEnd();
-						if (auto defineBlock = BfNodeDynCast<BfBlock>(typeInst->mTypeDef->mTypeDeclaration->mDefineNode))
-							fileLoc = defineBlock->mCloseBrace->GetSrcStart();
-						
-						methodStr += ")";
-						compiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Create method '%s' in '%s'\taddMethod|%s|%d|||%s|{||}", methodName.c_str(), fullName.c_str(), parser->mFileName.c_str(), fileLoc, methodStr.c_str()).c_str()));
-					}
+				BfTypeVector paramTypes;
+				for (int argIdx = 0; argIdx < (int)argValues.mResolvedArgs.size(); argIdx++)
+				{
+					auto& resolvedArg = argValues.mResolvedArgs[argIdx];
+					paramTypes.Add(resolvedArg.mTypedValue.mType);
 				}
+
+				autoComplete->FixitAddMethod(typeInst, methodName, mExpectingType, paramTypes, wantStatic);				
 			}			
 		}
 
@@ -6794,8 +6696,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		else if (target.mType != NULL)
 			mModule->Fail(StrFormat("Method '%s' does not exist in type '%s'", methodName.c_str(), mModule->TypeToString(target.mType).c_str()), targetSrc);
 		else
-			mModule->Fail(StrFormat("Method '%s' does not exist", methodName.c_str()), targetSrc);
-		FinishDeferredEvals(argValues.mResolvedArgs);
+			mModule->Fail(StrFormat("Method '%s' does not exist", methodName.c_str()), targetSrc);		
 		return BfTypedValue();
 	}		
 			
@@ -15899,6 +15800,14 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 			if (auto targetIdentifier = BfNodeDynCast<BfIdentifierNode>(memberRefExpr->mMemberName))
 			{
 				mResult.mType = mModule->ResolveInnerType(thisValue.mType, targetIdentifier, BfPopulateType_Declaration);
+			}
+		}
+
+		if ((memberRefExpr->mTarget == NULL) && (expectingTypeInst != NULL) && (autoComplete != NULL))
+		{
+			if (autoComplete->CheckFixit(memberRefExpr->mMemberName))
+			{
+				autoComplete->FixitAddCase(expectingTypeInst, memberRefExpr->mMemberName->ToString(), BfTypeVector());
 			}
 		}
 

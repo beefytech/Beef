@@ -3651,7 +3651,7 @@ namespace IDE
 		[IDECommand]
         public void Cmd_ReformatDocument()
         {
-            var sourceViewPanel = GetActiveSourceViewPanel();
+            var sourceViewPanel = GetActiveSourceViewPanel(true);
             if (sourceViewPanel != null)
                 sourceViewPanel.ReformatDocument();
         }

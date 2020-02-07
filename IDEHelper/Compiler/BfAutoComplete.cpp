@@ -2646,3 +2646,210 @@ void BfAutoComplete::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType,
 
 	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create field '%s' in '%s'\taddField|%s|%d||%s", fieldName.c_str(), fullName.c_str(), parser->mFileName.c_str(), fileLoc, fieldStr.c_str()).c_str()));
 }
+
+void BfAutoComplete::FixitAddCase(BfTypeInstance* typeInst, const StringImpl& caseName, const BfTypeVector& fieldTypes)
+{
+	if (typeInst == mModule->mContext->mBfObjectType)
+		return;
+
+	auto parser = typeInst->mTypeDef->mSource->ToParser();
+	if (parser == NULL)
+		return;
+
+	String fullName = typeInst->mTypeDef->mFullName.ToString();
+	String fieldStr;
+
+	int fileLoc = typeInst->mTypeDef->mTypeDeclaration->GetSrcEnd();
+
+	if (auto defineBlock = BfNodeDynCast<BfBlock>(typeInst->mTypeDef->mTypeDeclaration->mDefineNode))
+		fileLoc = BfFixitFinder::FindLineStartAfter(defineBlock->mOpenBrace);
+	if (!typeInst->mTypeDef->mFields.empty())
+	{
+		auto fieldDecl = typeInst->mTypeDef->mFields.back()->mFieldDeclaration;
+		if (fieldDecl != NULL)
+		{
+			fileLoc = BfFixitFinder::FindLineStartAfter(fieldDecl);
+		}
+	}
+
+	bool isSimpleCase = false;	
+	if (!typeInst->mTypeDef->mFields.IsEmpty())
+	{		
+		if (auto block = BfNodeDynCast<BfBlock>(typeInst->mTypeDef->mTypeDeclaration->mDefineNode))
+		{
+			bool endsInComma = false;
+
+			if (!block->mChildArr.IsEmpty())
+			{	
+				auto lastNode = block->mChildArr.back();				
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(lastNode))
+				{
+					if (tokenNode->mToken == BfToken_Comma)
+					{
+						isSimpleCase = true;
+						endsInComma = true;
+					}
+				}
+				else if (auto enumEntryDecl = BfNodeDynCast<BfEnumEntryDeclaration>(lastNode))
+				{
+					isSimpleCase = true;
+				}
+			}
+
+			if (isSimpleCase)
+			{
+				if (endsInComma)
+				{
+					fieldStr += "|";
+					fieldStr += caseName;
+				}
+				else
+				{
+					auto fieldDef = typeInst->mTypeDef->mFields.back();
+					fileLoc = fieldDef->mFieldDeclaration->GetSrcEnd();
+					fieldStr += ",\r";
+					fieldStr += caseName;
+				}
+			}
+		}
+	}
+
+	if (!isSimpleCase)	
+	{
+		fieldStr += "|case ";
+		fieldStr += caseName;
+
+		if (!fieldTypes.IsEmpty())
+		{
+			fieldStr += "(";
+			FixitGetParamString(fieldTypes, fieldStr);			
+			fieldStr += ")";
+		}
+		fieldStr += ";";
+	}		
+
+	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create case '%s' in '%s'\taddField|%s|%d|%s", caseName.c_str(), fullName.c_str(), parser->mFileName.c_str(), fileLoc, fieldStr.c_str()).c_str()));
+}
+
+void BfAutoComplete::FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr)
+{
+	std::set<String> usedNames;
+
+	for (int argIdx = 0; argIdx < (int)paramTypes.size(); argIdx++)
+	{
+		if (argIdx > 0)
+			outStr += ", ";
+		BfType* paramType = paramTypes[argIdx];
+		String checkName = "param";
+		if (paramType != NULL)
+		{
+			bool isOut = false;
+			bool isArr = false;
+
+			BfType* checkType = paramType;
+			while (true)
+			{
+				if ((checkType->IsArray()) || (checkType->IsSizedArray()))
+				{
+					isArr = true;
+					checkType = checkType->GetUnderlyingType();
+				}
+				else if (checkType->IsRef())
+				{
+					BfRefType* refType = (BfRefType*)checkType;
+					if (refType->mRefKind == BfRefType::RefKind_Out)
+						isOut = true;
+					checkType = refType->GetUnderlyingType();
+				}
+				else if (checkType->IsTypeInstance())
+				{
+					BfTypeInstance* typeInst = (BfTypeInstance*)checkType;
+					checkName = typeInst->mTypeDef->mName->ToString();
+					if (checkName == "String")
+						checkName = "Str";
+					if (checkName == "Object")
+						checkName = "Obj";
+					if (isOut)
+						checkName = "out" + checkName;
+					else if (isupper(checkName[0]))
+						checkName[0] = tolower(checkName[0]);
+					if (isArr)
+						checkName += "Arr";
+					break;
+				}
+				else
+					break;
+			}
+
+			outStr += mModule->TypeToString(paramType, BfTypeNameFlag_ReduceName);
+		}
+		else
+		{
+			checkName = "param";
+			outStr += "Object";
+		}
+
+		for (int i = 1; i < 10; i++)
+		{
+			String lookupName = checkName;
+			if (i > 1)
+				lookupName += StrFormat("%d", i);
+			if (usedNames.insert(lookupName).second)
+			{
+				outStr += " " + lookupName;
+				break;
+			}
+		}
+	}
+}
+
+void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic)
+{
+	if ((typeInst->IsEnum()) && (returnType == typeInst) && (wantStatic))
+	{
+		FixitAddCase(typeInst, methodName, paramTypes);
+		return;
+	}
+
+	if ((typeInst->mTypeDef->mSource != NULL) && (typeInst != mModule->mContext->mBfObjectType))
+	{
+		auto parser = typeInst->mTypeDef->mSource->ToParser();
+		if (parser != NULL)
+		{
+			String fullName = typeInst->mTypeDef->mFullName.ToString();
+			String methodStr;
+
+			if (typeInst == mModule->mCurTypeInstance)
+			{
+				// Implicitly private
+			}
+			else if (mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, typeInst))
+			{
+				methodStr += "protected ";
+			}
+			else
+			{
+				methodStr += "public ";
+			}
+
+			if (wantStatic)
+				methodStr += "static ";
+
+			if (returnType != NULL)
+				methodStr += mModule->TypeToString(returnType, BfTypeNameFlag_ReduceName);
+			else
+				methodStr += "void";
+
+			methodStr += " " + methodName + "(";
+
+			FixitGetParamString(paramTypes, methodStr);
+
+			int fileLoc = typeInst->mTypeDef->mTypeDeclaration->GetSrcEnd();
+			if (auto defineBlock = BfNodeDynCast<BfBlock>(typeInst->mTypeDef->mTypeDeclaration->mDefineNode))
+				fileLoc = defineBlock->mCloseBrace->GetSrcStart();
+
+			methodStr += ")";
+			AddEntry(AutoCompleteEntry("fixit", StrFormat("Create method '%s' in '%s'\taddMethod|%s|%d|||%s|{||}", methodName.c_str(), fullName.c_str(), parser->mFileName.c_str(), fileLoc, methodStr.c_str()).c_str()));
+		}
+	}
+}
