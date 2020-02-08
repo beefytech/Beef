@@ -5740,8 +5740,8 @@ String WinDebugger::GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisu
 		count = -1;
 		return "";
 	}
-	int entrySize = entriesPtr.mType->mTypeParam->GetByteCount();
-	int bucketIdxSize = bucketsPtr.mType->mTypeParam->GetByteCount();
+	int entrySize = entriesPtr.mType->mTypeParam->GetStride();
+	int bucketIdxSize = bucketsPtr.mType->mTypeParam->GetStride();
 
 	String addrs;
 
