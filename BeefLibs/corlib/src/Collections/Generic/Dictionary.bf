@@ -53,34 +53,6 @@ namespace System.Collections.Generic
 			get { return mCount - mFreeCount == 0; }
 		}
 
-		/*public KeyCollection Keys
-		{
-			get
-			{
-				//Contract.Ensures(Contract.Result<KeyCollection>() != null);
-				if (keys == null) keys = new KeyCollection(this);
-				return keys;
-			}
-		}*/
-
-		/*ICollection<TKey> IDictionary<TKey, TValue>.Keys
-		{
-			get
-			{
-				if (keys == null) keys = new KeyCollection(this);
-				return keys;
-			}
-		}
-
-		IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys
-		{
-			get
-			{
-				if (keys == null) keys = new KeyCollection(this);
-				return keys;
-			}
-		}*/
-
 		public ValueEnumerator Values
 		{
 			get
@@ -737,7 +709,7 @@ namespace System.Collections.Generic
 			}
 		}
 
-		public struct ValueEnumerator : IEnumerator<TValue>, IResettable
+		public struct ValueEnumerator : IRefEnumerator<TValue>, IResettable
 		{
 			private Dictionary<TKey, TValue> mDictionary;
 #if VERSION_DICTIONARY
@@ -788,6 +760,11 @@ namespace System.Collections.Generic
 				get { return mCurrent; }
 			}
 
+			public ref TValue CurrentRef
+			{
+				get mut { return ref mCurrent; } 
+			}
+
 			public ref TKey Key
 			{
 				get
@@ -824,94 +801,12 @@ namespace System.Collections.Generic
 					return .Err;
 				return Current;
 			}
-		}
 
-		public struct RefValueEnumerator : IEnumerator<TValue>, IResettable
-		{
-			private Dictionary<TKey, TValue> mDictionary;
-#if VERSION_DICTIONARY
-			private int_cosize mVersion;
-#endif
-			private int_cosize mIndex;
-			private TValue* mCurrent;
-
-			internal const int_cosize DictEntry = 1;
-			internal const int_cosize KeyValuePair = 2;
-
-			internal this(Dictionary<TKey, TValue> dictionary)
-			{
-				mDictionary = dictionary;
-#if VERSION_DICTIONARY
-				mVersion = dictionary.mVersion;
-#endif
-				mIndex = 0;
-				mCurrent = null;
-			}
-
-#if VERSION_DICTIONARY
-			void CheckVersion()
-			{
-				if (mVersion != mDictionary.mVersion)
-					Runtime.FatalError(cVersionError);
-			}
-#endif
-
-			public bool MoveNext() mut
-			{
-#if VERSION_DICTIONARY
-				CheckVersion();
-#endif
-
-		        // Use unsigned comparison since we set index to dictionary.count+1 when the enumeration ends.
-		        // dictionary.count+1 could be negative if dictionary.count is Int32.MaxValue
-				while ((uint32)mIndex < (uint32)mDictionary.mCount)
-				{
-					if (mDictionary.mEntries[mIndex].mHashCode >= 0)
-					{
-						mCurrent = &mDictionary.mEntries[mIndex].mValue;
-						mIndex++;
-						return true;
-					}
-					mIndex++;
-				}
-
-				mIndex = mDictionary.mCount + 1;
-				mCurrent = null;
-				return false;
-			}
-
-			public TValue Current
-			{
-				get { return *mCurrent; }
-			}
-
-			public ref TKey Key
-			{
-				get
-				{
-					return ref mDictionary.mEntries[mIndex - 1].mKey;
-				}
-			}
-
-			public void Dispose()
-			{
-			}
-
-			public void Reset() mut
-			{
-#if VERSION_DICTIONARY
-				CheckVersion();
-#endif
-
-				mIndex = 0;
-				mCurrent = null;
-			}
-
-			public Result<TValue> GetNext() mut
+			public Result<TValue*> GetNextRef() mut
 			{
 				if (!MoveNext())
 					return .Err;
-				return Current;
+				return &CurrentRef;
 			}
 		}
 
