@@ -56,7 +56,7 @@ namespace IDE.ui
 				delete _;
 			};
         public static int32 sCurrentMRUIndex = 1;
-		static Dictionary<String, TimeEntry> sTimeCache = new .() ~ DeleteDictionyAndKeysAndItems!(_);
+		static Dictionary<String, TimeEntry> sTimeCache = new .() ~ DeleteDictionaryAndKeysAndItems!(_);
 
         protected EntryListView mFileList;
         EditWidget mEditWidget;

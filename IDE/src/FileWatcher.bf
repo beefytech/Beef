@@ -52,7 +52,7 @@ namespace IDE
         // One watcher per directory
 		public static int32 sDbgFileCreateDelay;
         Dictionary<String, WatcherEntry> mWatchers = new Dictionary<String, WatcherEntry>();
-        Dictionary<String, DepInfo> mWatchedFiles = new Dictionary<String, DepInfo>() ~ DeleteDictionyAndKeysAndItems!(_); // Including ref count
+        Dictionary<String, DepInfo> mWatchedFiles = new Dictionary<String, DepInfo>() ~ DeleteDictionaryAndKeysAndItems!(_); // Including ref count
         List<ChangeRecord> mChangeList = new .() ~ DeleteContainerAndItems!(_);
 		Dictionary<String, ChangeRecord> mChangeMap = new .() ~ delete _;
         List<Object> mDependencyChangeList = new List<Object>() ~ delete _;

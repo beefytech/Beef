@@ -38,7 +38,7 @@ namespace IDE.ui
         }
         
         public Project mProject;
-        Dictionary<String, ValueContainer<bool>> mDependencyValuesMap ~ DeleteDictionyAndKeysAndItems!(_);
+        Dictionary<String, ValueContainer<bool>> mDependencyValuesMap ~ DeleteDictionaryAndKeysAndItems!(_);
 		Project.Options[] mCurProjectOptions ~ delete _;
 		float mLockFlashPct;
 		public int32 mNewDebugSessionCountdown;

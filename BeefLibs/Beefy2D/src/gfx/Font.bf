@@ -53,7 +53,7 @@ namespace Beefy.gfx
 		[StdCall, CLink]
 		static extern int32 FTFont_GetKerning(FTFont* font, int32 char8CodeA, int32 char8CodeB);
 
-		static Dictionary<String, String> sFontNameMap ~ DeleteDictionyAndKeysAndItems!(_);
+		static Dictionary<String, String> sFontNameMap ~ DeleteDictionaryAndKeysAndItems!(_);
 		static Monitor sMonitor = new .() ~ delete _;
 
 		struct FTFont
@@ -200,7 +200,7 @@ namespace Beefy.gfx
 		{
 			using (sMonitor.Enter())
 			{
-				DeleteDictionyAndKeysAndItems!(sFontNameMap);
+				DeleteDictionaryAndKeysAndItems!(sFontNameMap);
 				sFontNameMap = null;
 			}
 		}

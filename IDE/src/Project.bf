@@ -1205,7 +1205,7 @@ namespace IDE
 
         public class Config
         {
-            public Dictionary<String, Options> mPlatforms = new Dictionary<String, Options>() ~ DeleteDictionyAndKeysAndItems!(_);
+            public Dictionary<String, Options> mPlatforms = new Dictionary<String, Options>() ~ DeleteDictionaryAndKeysAndItems!(_);
         }
 
 		public class Dependency
@@ -1235,7 +1235,7 @@ namespace IDE
         public int32 mCurResVer;
         public int32 mLastGeneratedResVer;
 
-        public Dictionary<String, Config> mConfigs = new Dictionary<String, Config>() ~ DeleteDictionyAndKeysAndItems!(_);
+        public Dictionary<String, Config> mConfigs = new Dictionary<String, Config>() ~ DeleteDictionaryAndKeysAndItems!(_);
 		public GeneralOptions mGeneralOptions = new GeneralOptions() ~ delete _;
 		public BeefGlobalOptions mBeefGlobalOptions = new BeefGlobalOptions() ~ delete _;
 
@@ -1834,7 +1834,7 @@ namespace IDE
 				}
 			}
 
-			DeleteDictionyAndKeysAndItems!(mConfigs);
+			DeleteDictionaryAndKeysAndItems!(mConfigs);
 			mConfigs = new Dictionary<String, Config>();
 
 			for (var configNameSV in data.Enumerate("Configs"))

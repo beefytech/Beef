@@ -25,8 +25,8 @@ namespace IDE
 				public Object mTargetObject;
 			}
 
-			public Dictionary<String, Target> mTargets = new .() ~ DeleteDictionyAndKeysAndItems!(_);
-			public Dictionary<String, Cmd> mCmds = new .() ~ DeleteDictionyAndKeysAndItems!(_);
+			public Dictionary<String, Target> mTargets = new .() ~ DeleteDictionaryAndKeysAndItems!(_);
+			public Dictionary<String, Cmd> mCmds = new .() ~ DeleteDictionaryAndKeysAndItems!(_);
 		}
 
 		public enum CmdFlags

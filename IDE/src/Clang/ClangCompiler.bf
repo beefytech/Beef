@@ -93,7 +93,7 @@ namespace IDE.Clang
 
         public Dictionary<ProjectSource, FileEntry> mProjectFileSet = new Dictionary<ProjectSource, FileEntry>() ~ delete _;
         public Dictionary<Project, String> mProjectBuildString = new Dictionary<Project, String>() ~ { for (var val in _.Values) delete val; delete _; }; // Don't delete 'Project', only the String
-        public Dictionary<String, String> mHeaderToSourceMap = new Dictionary<String, String>() ~ DeleteDictionyAndKeysAndItems!(_);
+        public Dictionary<String, String> mHeaderToSourceMap = new Dictionary<String, String>() ~ DeleteDictionaryAndKeysAndItems!(_);
 
         FileWatcher mFileWatcher = new FileWatcher() ~ delete _;
         public bool mDoDependencyCheck = true;

@@ -166,7 +166,7 @@ static
 		container.Clear();
 	}
 
-	public static mixin DeleteDictionyAndKeys(var container)
+	public static mixin DeleteDictionaryAndKeys(var container)
 	{
 		if (container != null)
 		{
@@ -178,7 +178,7 @@ static
 		}
 	}
 
-	public static mixin DeleteDictionyAndKeysAndItems(var container)
+	public static mixin DeleteDictionaryAndKeysAndItems(var container)
 	{
 		if (container != null)
 		{

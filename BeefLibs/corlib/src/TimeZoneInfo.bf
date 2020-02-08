@@ -225,7 +225,7 @@ namespace System {
             }
 
 #if FEATURE_WIN32_REGISTRY
-            public Dictionary<String, TimeZoneInfo> m_systemTimeZones ~ DeleteDictionyAndKeysAndItems!(_);
+            public Dictionary<String, TimeZoneInfo> m_systemTimeZones ~ DeleteDictionaryAndKeysAndItems!(_);
             //public ReadOnlyCollection<TimeZoneInfo> m_readOnlySystemTimeZones;
             public bool m_allSystemTimeZonesRead;
 
