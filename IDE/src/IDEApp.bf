@@ -1387,6 +1387,55 @@ namespace IDE
 			return true;
 		}
 
+		public bool SaveFile(FileEditData editData, String forcePath = null)
+		{
+			var lineEndingKind = LineEndingKind.Default;
+			if (editData != null)
+			{
+				for (var user in editData.mEditWidget.mEditWidgetContent.mData.mUsers)
+				{
+					user.MarkDirty();
+				}
+				lineEndingKind = editData.mLineEndingKind;
+			}
+
+			// Lock file watcher to synchronize the 'file changed' notification so we don't 
+			//  think a file was externally saved
+			using (mFileWatcher.mMonitor.Enter())
+			{
+			    String path = forcePath ?? editData.mFilePath;
+			    String text = scope String();
+			    editData.mEditWidget.GetText(text);
+
+				if (!SafeWriteTextFile(path, text, true, lineEndingKind, scope (outStr) =>
+					{
+						editData.BuildHash(outStr);
+					}))
+				{
+					return false;
+				}
+
+				editData.mLastFileTextVersion = editData.mEditWidget.Content.mData.mCurTextVersionId;
+				mFileWatcher.OmitFileChange(path, text);
+				if (forcePath == null)
+			    {
+					for (var user in editData.mEditWidget.mEditWidgetContent.mData.mUsers)
+					{
+						if (var sourceEditWidgetContent = user as SourceEditWidgetContent)
+						{
+							var sourceViewPanel = sourceEditWidgetContent.mSourceViewPanel;
+							sourceViewPanel?.FileSaved();
+						}
+					}
+				}
+#if IDE_C_SUPPORT
+			    mDepClang.FileSaved(path);
+#endif
+			}
+
+			return true;
+		}
+
         public bool SaveFile(SourceViewPanel sourceViewPanel, String forcePath = null)
         {
             if ((sourceViewPanel.HasUnsavedChanges()) || (forcePath != null))
@@ -1396,45 +1445,15 @@ namespace IDE
 					return SaveFileAs(sourceViewPanel);
 				}
 
-				var lineEndingKind = LineEndingKind.Default;
-				if (sourceViewPanel.mEditData != null)
-				{
-					for (var user in sourceViewPanel.mEditData.mEditWidget.mEditWidgetContent.mData.mUsers)
-					{
-						user.MarkDirty();
-					}
-					lineEndingKind = sourceViewPanel.mEditData.mLineEndingKind;
-				}
+				if (!SaveFile(sourceViewPanel.mEditData, forcePath))
+					return false;
 
-				// Lock file watcher to synchronize the 'file changed' notification so we don't 
-				//  think a file was externally saved
-                using (mFileWatcher.mMonitor.Enter())
+                if (sourceViewPanel.mProjectSource != null)
                 {
-                    String path = forcePath ?? sourceViewPanel.mFilePath;
-                    String text = scope String();
-                    sourceViewPanel.mEditWidget.GetText(text);
-
-					if (!SafeWriteTextFile(path, text, true, lineEndingKind, scope (outStr) =>
-						{
-							sourceViewPanel.mEditData.BuildHash(outStr);
-						}))
-					{
-						return false;
-					}
-
-					mFileWatcher.OmitFileChange(path, text);
-					if (forcePath == null)
-                    	sourceViewPanel.FileSaved();
-#if IDE_C_SUPPORT
-                    mDepClang.FileSaved(path);
-#endif
-
-                    if (sourceViewPanel.mProjectSource != null)
+                    if (mWakaTime != null)
                     {
-                        if (mWakaTime != null)
-                        {
-                            mWakaTime.QueueFile(path, sourceViewPanel.mProjectSource.mProject.mProjectName, true);
-                        }
+						String path = forcePath ?? sourceViewPanel.mFilePath;
+                        mWakaTime.QueueFile(path, sourceViewPanel.mProjectSource.mProject.mProjectName, true);
                     }
                 }
             }

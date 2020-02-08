@@ -623,8 +623,10 @@ namespace IDE.ui
 						int replaceInFileCount = 0;
 						var editData = gApp.GetEditData(filePath);
 
+						bool hasUnsavedChanges = editData.HasTextChanged();
+
 						globalUndoData.mFileEditDatas.Add(editData);
-						var sourceEditBatchHelper = scope:: SourceEditBatchHelper(editData.mEditWidget, "#renameSymbol", new GlobalUndoAction(editData, globalUndoData));
+						var sourceEditBatchHelper = scope:: SourceEditBatchHelper(editData.mEditWidget, "#renameInFiles", new GlobalUndoAction(editData, globalUndoData));
 
 						bool matchCase = mSearchOptions.mMatchCase;
 
@@ -697,6 +699,11 @@ namespace IDE.ui
 						}
 
 						sourceEditBatchHelper.Finish();
+
+						if (!hasUnsavedChanges)
+						{
+							gApp.SaveFile(editData);
+						}
 
 						if ((IDEApp.IsBeefFile(filePath)) && (gApp.mBfResolveCompiler != null))
 						{
