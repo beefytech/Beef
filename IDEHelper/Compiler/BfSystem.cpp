@@ -1912,6 +1912,9 @@ void BfSystem::ProcessAtomGraveyard()
 
 bool BfSystem::ParseAtomComposite(const StringView& name, BfAtomComposite& composite, bool addRefs)
 {
+	if (name.mLength == 0)
+		return true;
+
 	bool isValid = true;
 
 	SizedArray<BfAtom*, 6> parts;
@@ -2418,7 +2421,31 @@ BfTypeDef* BfSystem::FindTypeDefEx(const StringImpl& fullTypeName)
 		typeName.RemoveToEnd(tildePos);		
 	}
 
-	return FindTypeDef(typeName, numGenericArgs, project);
+	BfAtomComposite qualifiedFindName;
+	BfAtom* tempData[16];
+	qualifiedFindName.mAllocSize = 16;
+	qualifiedFindName.mParts = tempData;
+
+	BfTypeDef* result = NULL;
+	if (ParseAtomComposite(typeName, qualifiedFindName))
+	{		
+		auto itr = mTypeDefs.TryGet(qualifiedFindName);
+		while (itr)
+		{
+			BfTypeDef* typeDef = *itr;			
+			if ((typeDef->mFullName == qualifiedFindName) && (CheckTypeDefReference(typeDef, project)) && 
+				(!typeDef->mIsPartial))
+			{				
+				if (typeDef->mGenericParamDefs.size() != numGenericArgs)
+					continue;
+				return typeDef;
+			}
+			itr.MoveToNextHashMatch();
+		}
+	}
+	if (qualifiedFindName.mParts == tempData)
+		qualifiedFindName.mParts = NULL;
+	return result;
 }
 
 void BfSystem::FindFixitNamespaces(const StringImpl& typeName, int numGenericArgs, BfProject* project, std::set<String>& fixitNamespaces)

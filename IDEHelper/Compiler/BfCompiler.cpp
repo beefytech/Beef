@@ -6750,7 +6750,9 @@ void BfCompiler::GenerateAutocompleteInfo()
 
 		auto _EncodeTypeDef = [] (BfTypeDef* typeDef)
 		{
-			String typeName = typeDef->mProject->mName + ":" + typeDef->mFullName.ToString();
+			StringT<128> typeName = typeDef->mProject->mName;
+			typeName += ":";
+			typeName += typeDef->mFullName.ToString();
 			if (!typeDef->mGenericParamDefs.IsEmpty())
 				typeName += StrFormat("`%d", (int)typeDef->mGenericParamDefs.size());
 			return typeName;
