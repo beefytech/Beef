@@ -3098,6 +3098,20 @@ void BfExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 	if ((!mResult) && (mPropDef == NULL))
 	{
 		mModule->CheckTypeRefFixit(identifierNode);
+		if ((autoComplete != NULL) && (autoComplete->CheckFixit(identifierNode)))
+		{
+			if (mModule->mCurMethodInstance != NULL)
+			{
+				BfType* fieldType = mExpectingType;
+				if (fieldType == NULL)
+					fieldType = mModule->mContext->mBfObjectType;
+
+				autoComplete->FixitAddMember(mModule->mCurTypeInstance, fieldType, identifierNode->ToString(), true, mModule->mCurTypeInstance);
+				if (!mModule->mCurMethodInstance->mMethodDef->mIsStatic)
+					autoComplete->FixitAddMember(mModule->mCurTypeInstance, fieldType, identifierNode->ToString(), false, mModule->mCurTypeInstance);
+			}
+		}
+
 		mModule->Fail("Identifier not found", identifierNode);
 	}
 }
@@ -6696,7 +6710,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		else if (target.mType != NULL)
 			mModule->Fail(StrFormat("Method '%s' does not exist in type '%s'", methodName.c_str(), mModule->TypeToString(target.mType).c_str()), targetSrc);
 		else
-			mModule->Fail(StrFormat("Method '%s' does not exist", methodName.c_str()), targetSrc);		
+			mModule->Fail(StrFormat("Method '%s' does not exist", methodName.c_str()), targetSrc);				
 		return BfTypedValue();
 	}		
 			
@@ -8903,9 +8917,13 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 	BfFunctionBindResult bindResult;
 	bindResult.mSkipMutCheck = true; // Allow operating on copies
-	mFunctionBindResult = &bindResult;
-	DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArguments);
-	mFunctionBindResult = NULL;
+	//
+	{
+		SetAndRestoreValue<BfType*> prevExpectingType(mExpectingType, methodInstance->mReturnType);
+		mFunctionBindResult = &bindResult;
+		DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArguments);
+		mFunctionBindResult = NULL;
+	}	
 	
 	SetMethodElementType(delegateBindExpr->mTarget);
 
@@ -14531,10 +14549,15 @@ void BfExprEvaluator::AssignDeferrredTupleAssignData(BfAssignmentExpression* ass
 			{
 				AssignDeferrredTupleAssignData(assignExpr, *child.mInnerTuple, elementValue);
 				delete child.mInnerTuple;
+				child.mInnerTuple = NULL;
 			}
 			else
 			{
-				child.mExprEvaluator->PerformAssignment(assignExpr, true, elementValue);				
+				if (child.mExprEvaluator->mResult)
+ 				{
+ 					child.mExprEvaluator->mBfEvalExprFlags = (BfEvalExprFlags)(child.mExprEvaluator->mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete);
+ 					child.mExprEvaluator->PerformAssignment(assignExpr, true, elementValue);
+ 				}
 			}
 		}
 
@@ -14542,8 +14565,7 @@ void BfExprEvaluator::AssignDeferrredTupleAssignData(BfAssignmentExpression* ass
 		{
 			if (!elementValue)
 				elementValue = mModule->GetDefaultTypedValue(fieldInstance->GetResolvedType());
-			mModule->HandleVariableDeclaration(varDecl, elementValue);
-			
+			mModule->HandleVariableDeclaration(varDecl, elementValue);			
 		}
 	}
 }
@@ -16824,7 +16846,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	if (!leftValue)
 	{		
 		if (!rightValue)
-			mModule->CreateValueFromExpression(rightExpression);
+			mModule->CreateValueFromExpression(rightExpression, mExpectingType);
 		return;
 	}
 	if (leftValue.mType->IsRef())

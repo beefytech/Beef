@@ -2719,7 +2719,10 @@ void BfAutoComplete::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType,
 		}
 	}
 
-	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create field '%s' in '%s'\taddField|%s||%s", fieldName.c_str(), fullName.c_str(), 
+	const char* memberName = "field";
+	if (isStatic)
+		memberName = "static field";
+	AddEntry(AutoCompleteEntry("fixit", StrFormat("Create %s '%s' in '%s'\taddField|%s||%s", memberName, fieldName.c_str(), fullName.c_str(),
 		FixitGetLocation(parser->mParserData, fileLoc).c_str(), fieldStr.c_str()).c_str()));
 }
 
