@@ -1434,12 +1434,12 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 			}
 		}
 	}
-
-	//TODO: Does this ever get hit?
-	// Not enough arguments?
+	
+	// Too many arguments (not all incoming arguments processed)
 	if (argIdx < (int)mArguments.size())
 	{		
-		goto NoMatch;
+		if (!methodInstance->IsVarArgs())
+			goto NoMatch;
 	}
 
 	if ((genericArgumentsSubstitute != NULL) && (genericArgumentsSubstitute->size() != 0))
@@ -4431,8 +4431,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		argIdx++;
 	}
 
+	int paramCount = methodInstance->GetParamCount();
+
 	for ( ; argIdx < (int)irArgs.size(); /*argIdx++*/)
-	{		
+	{	
+		if (argIdx >= paramCount)
+			break;
+
 		auto _HandleParamType = [&] (BfType* paramType)
 		{
 			if (paramType->IsStruct())
@@ -4986,6 +4991,31 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 		if (paramIdx >= (int)methodInstance->GetParamCount())
 		{
+			if (methodInstance->IsVarArgs())
+			{
+				if (argIdx >= (int)argValues.size())
+					break;
+
+				BfTypedValue argValue = ResolveArgValue(argValues[argIdx], NULL);				
+				if (argValue)					
+				{
+					auto typeInst = argValue.mType->ToTypeInstance();
+
+					if (argValue.mType == mModule->GetPrimitiveType(BfTypeCode_Single))
+						argValue = mModule->Cast(argValues[argIdx].mExpression, argValue, mModule->GetPrimitiveType(BfTypeCode_Double));
+
+					if ((typeInst != NULL) && (typeInst->mTypeDef == mModule->mCompiler->mStringTypeDef))
+					{
+						BfType* charType = mModule->GetPrimitiveType(BfTypeCode_Char8);
+						BfType* charPtrType = mModule->CreatePointerType(charType);
+						argValue = mModule->Cast(argValues[argIdx].mExpression, argValue, charPtrType);
+					}
+					PushArg(argValue, irArgs, true, false);
+				}				
+				argIdx++;
+				continue;
+			}			
+
 			if (argIdx < (int)argValues.size())
 			{				
 				BfAstNode* errorRef = argValues[argIdx].mExpression;				
@@ -5632,41 +5662,10 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 				BfEvalExprFlags flags = BfEvalExprFlags_NoCast;
 				if ((paramKind == BfParamKind_Params) || (paramKind == BfParamKind_DelegateParam))
 					flags = (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowParamsExpr);
-// 				if ((mModule->mCurMethodInstance->mHadGenericDelegateParams) && (!mModule->mCurMethodInstance->mIsUnspecialized))
-// 					flags = (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowParamsExpr);
 
 				argValue = mModule->CreateValueFromExpression(exprEvaluator, expr, wantType, flags);
 
-// 				if ((resolvedArg.mArgFlags & BfArgFlag_ParamsExpr) != 0)
-// 				{
-// 					if ((mModule->mCurMethodState != NULL) && (exprEvaluator.mResultLocalVar != NULL) && (exprEvaluator.mResultLocalVarRefNode != NULL))
-// 					{
-// 						auto localVar = exprEvaluator.mResultLocalVar;
-// 						int fieldIdx = mResultLocalVarField - 1;						
-// 						auto methodState = mModule->mCurMethodState->GetMethodStateForLocal(localVar);
-// 						if (localVar->mCompositeCount >= 0)
-// 						{
-// 							for (int compositeIdx = 0; compositeIdx < localVar->mCompositeCount; compositeIdx++)
-// 							{
-// 								BfResolvedArg compositeResolvedArg;
-// 								auto compositeLocalVar = methodState->mLocals[localVar->mLocalVarIdx + compositeIdx + 1];
-// 								auto argValue = exprEvaluator.LoadLocal(compositeLocalVar);
-// 								if (argValue)
-// 								{
-// 									if (argValue.mType->IsRef())
-// 										argValue.mKind = BfTypedValueKind_Value;
-// 									else if (!argValue.mType->IsStruct())
-// 										argValue = mModule->LoadValue(argValue, NULL, exprEvaluator.mIsVolatileReference);
-// 								}
-// 								resolvedArg.mTypedValue = argValue;									
-// 								resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_FromParamComposite);									
-// 								return resolvedArg.mTypedValue;
-// 							}								
-// 						}						
-// 					}
-// 				}
-
-				if ((argValue) && (argValue.mType != wantType))
+				if ((argValue) && (argValue.mType != wantType) && (wantType != NULL))
 				{
 					if ((mDeferScopeAlloc != NULL) && (wantType == mModule->mContext->mBfObjectType))
 					{
@@ -5686,7 +5685,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 		auto expr = BfNodeDynCast<BfExpression>(resolvedArg.mExpression);
 		BF_ASSERT(expr != NULL); 		
 		argValue = mModule->CreateValueFromExpression(expr, wantType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr));
-		if (argValue)
+		if ((argValue) && (wantType != NULL))
 			argValue = mModule->Cast(expr, argValue, wantType);
 	}
 	else if ((resolvedArg.mArgFlags & (BfArgFlag_UntypedDefault)) != 0)
@@ -5748,8 +5747,6 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 		CheckVariableDeclaration(resolvedArg.mExpression, false, false, false);
 		
 		argValue = BfTypedValue(localVar->mAddr, mModule->CreateRefType(variableType, BfRefType::RefKind_Out));
-
-		//argValue = mModule->GetDefaultTypedValue(wantType);		
 	}
 	return argValue;
 }

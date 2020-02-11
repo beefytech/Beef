@@ -456,6 +456,7 @@ enum BfParamKind : uint8
 	BfParamKind_DelegateParam,
 	BfParamKind_ImplicitCapture,
 	BfParamKind_AppendIdx,
+	BfParamKind_VarArgs
 };
 
 class BfParameterDef

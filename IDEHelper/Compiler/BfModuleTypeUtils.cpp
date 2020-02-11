@@ -6470,7 +6470,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 	if (auto dotType = BfNodeDynCastExact<BfDotTypeReference>(typeRef))
 	{		
-		Fail("Invalid use of '.'", typeRef);
+		Fail(StrFormat("Invalid use of '%s'", BfTokenToString(dotType->mDotToken->mToken)), typeRef);
 		return NULL;
 	}
 

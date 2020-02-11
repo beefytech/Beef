@@ -1960,6 +1960,14 @@ String BeModule::ToString(BeFunction* wantFunc)
 			dc.mSeenNames[param.mName] = 0;
 			str += "%" + param.mName;
 		}
+
+		if (funcType->mIsVarArg)
+		{
+			if (!funcType->mParams.IsEmpty())
+				str += ", ";
+			str += "...";
+		}
+
 		str += ")";
 
 		if (func->mAlwaysInline)
@@ -2917,6 +2925,14 @@ void BeModule::ToString(StringImpl& str, BeType* type)
 					str += ", ";
 				ToString(str, funcType->mParams[paramIdx].mType);
 			}
+
+			if (funcType->mIsVarArg)
+			{
+				if (!funcType->mParams.IsEmpty())
+					str += ", ";
+				str += "...";
+			}
+
 			str += ")";
 			return;
 		}

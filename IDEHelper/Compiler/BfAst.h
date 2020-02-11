@@ -215,6 +215,7 @@ enum BfToken : uint8
 	BfToken_Comma,
 	BfToken_Dot,
 	BfToken_DotDot,
+	BfToken_DotDotDot,
 	BfToken_QuestionDot,
 	BfToken_QuestionLBracket,
 	BfToken_AutocompleteDot,

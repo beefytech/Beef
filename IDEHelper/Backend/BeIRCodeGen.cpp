@@ -1935,7 +1935,7 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_CreateFunctionType:
-		{
+		{			
 			CMD_PARAM(BeType*, resultType);
 			CMD_PARAM(CmdParamVec<BeType*>, paramTypes);
 			CMD_PARAM(bool, isVarArg);

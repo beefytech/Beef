@@ -211,7 +211,7 @@ void BfStructuralVisitor::Visit(BfQualifiedTypeReference* qualifiedTypeRef)
 	Visit(qualifiedTypeRef->ToBase());
 }
 
-void BfStructuralVisitor::Visit(BfDotTypeReference * typeRef)
+void BfStructuralVisitor::Visit(BfDotTypeReference* typeRef)
 {
 	Visit(typeRef->ToBase());
 }
@@ -1411,6 +1411,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return ".";
 	case BfToken_DotDot:
 		return "..";
+	case BfToken_DotDotDot:
+		return "...";
 	case BfToken_QuestionDot:
 		return "?.";
 	case BfToken_QuestionLBracket:

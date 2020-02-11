@@ -4257,7 +4257,7 @@ BfIRFunctionType BfIRBuilder::MapMethod(BfMethodInstance* methodInstance)
 	SizedArray<BfIRType, 8> paramTypes;
 	methodInstance->GetIRFunctionInfo(mModule, retType, paramTypes);
 
-	auto funcType = CreateFunctionType(retType, paramTypes, false);
+	auto funcType = CreateFunctionType(retType, paramTypes, methodInstance->IsVarArgs());
 	if (useCache)
 		mMethodTypeMap[methodInstance] = funcType;
 

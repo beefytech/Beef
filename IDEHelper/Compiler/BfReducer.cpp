@@ -4445,8 +4445,16 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					ReplaceNode(firstNode, dotTypeRef);
 					dotTypeRef->mDotToken = tokenNode;
 					firstNode = dotTypeRef;
+					isHandled = true;					
+				}
+				else if (token == BfToken_DotDotDot)
+				{
+					auto dotTypeRef = mAlloc->Alloc<BfDotTypeReference>();
+					ReplaceNode(firstNode, dotTypeRef);
+					dotTypeRef->mDotToken = tokenNode;
+					firstNode = dotTypeRef;
 					isHandled = true;
-					//return dotTypeRef;
+					return dotTypeRef;
 				}
 				else if ((token == BfToken_Star) && (mAllowTypeWildcard))
 				{
@@ -8402,7 +8410,8 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				(token == BfToken_Out) || (token == BfToken_Ref) || (token == BfToken_Mut) ||
 				(token == BfToken_Delegate) || (token == BfToken_Function) ||
 				(token == BfToken_Params) || (token == BfToken_LParen) ||
-				(token == BfToken_Var) || (token == BfToken_LBracket)))
+				(token == BfToken_Var) || (token == BfToken_LBracket) ||
+				(token == BfToken_DotDotDot)))
 			{
 				// These get picked up below
 			}
@@ -8453,7 +8462,8 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 		{
 			BfToken token = tokenNode->GetToken();
 			if ((token == BfToken_Var) || (token == BfToken_LParen) ||
-				(token == BfToken_Delegate) || (token == BfToken_Function))
+				(token == BfToken_Delegate) || (token == BfToken_Function) ||
+				(token == BfToken_DotDotDot))
 			{
 				mVisitorPos.MoveNext();
 				typeRef = CreateTypeRef(tokenNode);
@@ -8516,6 +8526,9 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 		{
 			MEMBER_SET(paramDecl, mModToken, modTokenNode);
 		}
+
+		if ((tokenNode != NULL) && (tokenNode->mToken == BfToken_DotDotDot))
+			continue;
 
 		bool allowNameFail = false;
 		bool nextIsName = false;

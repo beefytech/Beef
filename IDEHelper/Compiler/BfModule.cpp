@@ -8794,6 +8794,11 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	if (mCompiler->IsSkippingExtraResolveChecks())
 		return BfIRValue();
 
+	if (methodInstance->mMethodDef->mName == "Check")
+	{
+		NOP;
+	}
+
 	if (methodInstance->mMethodInstanceGroup->mOwner->IsInterface())
 	{
 		//BF_ASSERT(!methodInstance->mIRFunction);
@@ -8841,7 +8846,7 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	BfIRType returnType;
 	SizedArray<BfIRType, 8> paramTypes;
 	methodInstance->GetIRFunctionInfo(this, returnType, paramTypes);
-	auto funcType = mBfIRBuilder->CreateFunctionType(returnType, paramTypes);
+	auto funcType = mBfIRBuilder->CreateFunctionType(returnType, paramTypes, methodInstance->IsVarArgs());
 
 	auto func = mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, methodName);
 	auto callingConv = GetIRCallingConvention(methodInstance);
@@ -13859,7 +13864,7 @@ BfIRValue BfModule::CreateDllImportGlobalVar(BfMethodInstance* methodInstance, b
 	SizedArray<BfIRType, 8> paramTypes;
 	methodInstance->GetIRFunctionInfo(this, returnType, paramTypes);
 	
-	BfIRFunctionType externFunctionType = mBfIRBuilder->CreateFunctionType(returnType, paramTypes, false);
+	BfIRFunctionType externFunctionType = mBfIRBuilder->CreateFunctionType(returnType, paramTypes, methodInstance->IsVarArgs());
 	auto ptrType = mBfIRBuilder->GetPointerTo(externFunctionType);
 
 	BfIRValue initVal;
@@ -13907,14 +13912,14 @@ void BfModule::CreateDllImportMethod()
 
 	BfIRType returnType;
 	SizedArray<BfIRType, 8> paramTypes;
-	mCurMethodInstance->GetIRFunctionInfo(this, returnType, paramTypes);
+	mCurMethodInstance->GetIRFunctionInfo(this, returnType, paramTypes, mCurMethodInstance->IsVarArgs());
 
 	SizedArray<BfIRValue, 8> args;
 
 	for (int i = 0; i < (int)paramTypes.size(); i++)
 		args.push_back(mBfIRBuilder->GetArgument(i));
 
-	BfIRFunctionType externFunctionType = mBfIRBuilder->CreateFunctionType(returnType, paramTypes, false);
+	BfIRFunctionType externFunctionType = mBfIRBuilder->CreateFunctionType(returnType, paramTypes, mCurMethodInstance->IsVarArgs());
 
 	if (isHotCompile)
 	{
@@ -18115,7 +18120,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	BfIRFunctionType funcType;	
 	auto voidType = GetPrimitiveType(BfTypeCode_None);
 	SizedArray<BfIRType, 0> paramTypes;
-	funcType = mBfIRBuilder->CreateFunctionType(mBfIRBuilder->MapType(voidType), paramTypes, false);	
+	funcType = mBfIRBuilder->CreateFunctionType(mBfIRBuilder->MapType(voidType), paramTypes, methodInstance->IsVarArgs());	
 
 	mBfIRBuilder->SaveDebugLocation();
 	auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
@@ -19228,6 +19233,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 		if (hadParams)
 			break;
+
+		if ((paramDef != NULL) && (paramDef->mParamKind == BfParamKind_VarArgs))
+			continue;
 
 		if ((paramDef != NULL) && (mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) &&
 			(paramDef->mParamKind != BfParamKind_AppendIdx))

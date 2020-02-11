@@ -202,7 +202,7 @@ class BeFunctionType : public BeType
 public:
 	String mName;
 	BeType* mReturnType;	
-	std::vector<BeFunctionTypeParam> mParams;
+	Array<BeFunctionTypeParam> mParams;
 	bool mIsVarArg;
 	
 	virtual void HashContent(BeHashContext& hashCtx) override

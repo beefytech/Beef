@@ -215,8 +215,7 @@ public:
 	BfTypeReference* DoCreateTypeRef(BfAstNode* identifierNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None);
 	BfTypeReference* CreateTypeRef(BfAstNode* identifierNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None);
 	BfTypeReference* CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRefFlags createTypeRefFlags = CreateTypeRefFlags_None);
-	BfTypeReference* CreateRefTypeRef(BfTypeReference* elementType, BfTokenNode* refToken);
-	BfTypeReference* CreateConstTypeRef(BfTypeReference* elementType, BfTokenNode* refToken);
+	BfTypeReference* CreateRefTypeRef(BfTypeReference* elementType, BfTokenNode* refToken);	
 	bool ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, bool alwaysIncludeBlock = false);
 	BfGenericArgumentsNode* CreateGenericArguments(BfTokenNode* tokenNode);
 	BfGenericParamsDeclaration* CreateGenericParamsDeclaration(BfTokenNode* tokenNode);

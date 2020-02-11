@@ -2068,10 +2068,20 @@ void BfParser::NextToken(int endIdx)
 		case '.':
 			if (mSrc[mSrcIdx] == '.')
 			{
-				mSrcIdx++;
-				mTokenEnd = mSrcIdx;
-				mToken = BfToken_DotDot;
-				mSyntaxToken = BfSyntaxToken_Token;
+				if (mSrc[mSrcIdx + 1] == '.')
+				{
+					mSrcIdx += 2;
+					mTokenEnd = mSrcIdx;
+					mToken = BfToken_DotDotDot;
+					mSyntaxToken = BfSyntaxToken_Token;
+				}
+				else
+				{
+					mSrcIdx++;
+					mTokenEnd = mSrcIdx;
+					mToken = BfToken_DotDot;
+					mSyntaxToken = BfSyntaxToken_Token;
+				}
 			}
 			else
 			{

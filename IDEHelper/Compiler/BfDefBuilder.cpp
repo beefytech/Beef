@@ -597,7 +597,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	bool didDefaultsError = false;
 	bool hadParams = false;
 	bool hasDefault = false;
-	for (int paramIdx = 0; paramIdx < (int) methodDeclaration->mParams.size(); paramIdx++)
+	for (int paramIdx = 0; paramIdx < (int)methodDeclaration->mParams.size(); paramIdx++)
 	{				
 		BfParameterDeclaration* paramDecl = methodDeclaration->mParams[paramIdx];		
 
@@ -612,6 +612,17 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		else //
 			paramDef->mParamKind = BfParamKind_Params;
 
+		if (auto dotTypeRef = BfNodeDynCast<BfDotTypeReference>(paramDef->mTypeRef))
+		{
+			if (dotTypeRef->mDotToken->mToken == BfToken_DotDotDot)
+			{
+				if (paramIdx == (int)methodDeclaration->mParams.size() - 1)
+					paramDef->mParamKind = BfParamKind_VarArgs;
+				else
+					Fail("Varargs specifier must be the last parameter", methodDef->mParams[paramIdx - 1]->mParamDeclaration);
+			}
+		}
+
 		if (paramDef->mParamDeclaration != NULL)
 		{
 			if (paramDef->mParamKind == BfParamKind_Params)
@@ -622,7 +633,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 			{								
 				methodDef->mParams[paramIdx - 1]->mParamKind = BfParamKind_Normal; 
 				hadParams = false;
-				Fail("Params parameter must be the last parameter", methodDef->mParams[paramIdx - 1]->mParamDeclaration);							
+				Fail("Params parameter must be the last parameter", methodDef->mParams[paramIdx - 1]->mParamDeclaration);
 			}
 
 			if (paramDef->mParamDeclaration->mInitializer != NULL)

@@ -810,6 +810,7 @@ public:
 	bool HasSelf();
 	bool IsAutocompleteMethod() { /*return mIdHash == -1;*/ return mIsAutocompleteMethod; }
 	bool IsSkipCall(bool bypassVirtual = false);	
+	bool IsVarArgs();
 	bool AlwaysInline();
 	BfImportCallKind GetImportCallKind();	
 	bool IsTestMethod();

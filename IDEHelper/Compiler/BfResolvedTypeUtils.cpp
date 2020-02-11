@@ -628,6 +628,13 @@ bool BfMethodInstance::IsSkipCall(bool bypassVirtual)
 	return false;
 }
 
+bool BfMethodInstance::IsVarArgs()
+{
+	if (mMethodDef->mParams.IsEmpty())
+		return false;
+	return mMethodDef->mParams.back()->mParamKind == BfParamKind_VarArgs;
+}
+
 bool BfMethodInstance::AlwaysInline()
 {
 	return mAlwaysInline;
@@ -855,12 +862,7 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 }
 
 void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic)
-{
-	if ((mMethodDef->mNoSplat) && (GetOwner()->GetLoweredType() != BfTypeCode_None))
-	{
-		NOP;
-	}
-
+{	
 	module->PopulateType(mReturnType);
 	if (mReturnType->IsValuelessType())
 	{
@@ -904,7 +906,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		else
 		{
 			checkType = GetParamType(paramIdx);
-		}
+		}		
 
 		if ((paramIdx != -1) || (!mMethodDef->mNoSplat && !mMethodDef->mIsMutating))
 		{
