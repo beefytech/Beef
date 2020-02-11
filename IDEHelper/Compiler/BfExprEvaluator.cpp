@@ -5624,13 +5624,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 					resolvedArg.mTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), intPtrType);
 				}
 				else
-				{
-					// 				auto thisVal = target;				
-					// 				BfIRValue intPtrVal = mModule->CreateAlloca(intPtrType);
-					// 				auto intPtrThisVal = mModule->mBfIRBuilder->CreatePtrToInt(thisVal.mValue, (intPtrType->mSize == 4) ? BfTypeCode_Int32 : BfTypeCode_Int64);
-					// 				auto curValPtr = mModule->mBfIRBuilder->CreateAdd(intPtrThisVal, mModule->GetConstValue(targetType->mInstSize, intPtrType));
-					// 				mModule->mBfIRBuilder->CreateStore(curValPtr, intPtrVal);								
-					// 				resolvedArg.mTypedValue = BfTypedValue(intPtrVal, intPtrRefType);
+				{					
 					BF_FATAL("Bad");
 				}
 			}
@@ -16589,10 +16583,11 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				BfPointerType* ptrType = (BfPointerType*)ptr.mType;
 				BfType* intPtrType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 				constValue = mModule->GetConstValue(ptrType->mElementType->GetStride(), intPtrType);
-
-				BfIRValue origIntValue = mModule->mBfIRBuilder->CreatePtrToInt(origVal, BfTypeCode_IntPtr);
-				BfIRValue newIntValue = mModule->mBfIRBuilder->CreateAdd(origIntValue, constValue/*, "inc"*/);
-				resultValue = mModule->mBfIRBuilder->CreateIntToPtr(newIntValue, mModule->mBfIRBuilder->MapType(ptr.mType));
+				
+				auto i8PtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_Int8));
+				BfIRValue origPtrValue = mModule->mBfIRBuilder->CreateBitCast(origVal, i8PtrType);
+				BfIRValue newPtrValue = mModule->mBfIRBuilder->CreateInBoundsGEP(origPtrValue, constValue);
+				resultValue = mModule->mBfIRBuilder->CreateBitCast(newPtrValue, mModule->mBfIRBuilder->MapType(ptr.mType));
 			}
 			else
 			{
@@ -16640,11 +16635,12 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			{
 				BfPointerType* ptrType = (BfPointerType*)ptr.mType;
 				BfType* intPtrType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-				constValue = mModule->GetConstValue(ptrType->mElementType->GetStride(), intPtrType);
+				constValue = mModule->GetConstValue(-ptrType->mElementType->GetStride(), intPtrType);
 
-				BfIRValue origIntValue = mModule->mBfIRBuilder->CreatePtrToInt(origVal, BfTypeCode_IntPtr);
-				BfIRValue newIntValue = mModule->mBfIRBuilder->CreateSub(origIntValue, constValue);
-				resultValue = mModule->mBfIRBuilder->CreateIntToPtr(newIntValue, mModule->mBfIRBuilder->MapType(ptr.mType));
+				auto i8PtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_Int8));
+				BfIRValue origPtrValue = mModule->mBfIRBuilder->CreateBitCast(origVal, i8PtrType);
+				BfIRValue newPtrValue = mModule->mBfIRBuilder->CreateInBoundsGEP(origPtrValue, constValue);
+				resultValue = mModule->mBfIRBuilder->CreateBitCast(newPtrValue, mModule->mBfIRBuilder->MapType(ptr.mType));
 			}
 			else
 			{
@@ -17781,6 +17777,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			addValue = mModule->mBfIRBuilder->CreateNeg(addValue);
 		}
 
+		mModule->PopulateType(underlyingType);
 		if (underlyingType->IsValuelessType())
 		{
 			if (!mModule->IsInSpecializedSection())

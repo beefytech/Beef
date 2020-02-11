@@ -10665,9 +10665,10 @@ BfIRValue BfModule::CreateIndexedValue(BfType* elementType, BfIRValue value, BfI
 	auto ptrType = CreatePointerType(elementType);
 	auto ofsVal = mBfIRBuilder->CreateNumericCast(indexValue, true, BfTypeCode_IntPtr);
 	auto ofsScaledVal = mBfIRBuilder->CreateMul(ofsVal, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, elementType->GetStride()));
-	auto intVal = mBfIRBuilder->CreatePtrToInt(value, BfTypeCode_IntPtr);
-	auto newIntVal = mBfIRBuilder->CreateAdd(intVal, ofsScaledVal);
-	return mBfIRBuilder->CreateIntToPtr(newIntVal, mBfIRBuilder->MapType(ptrType));
+	auto i8PtrType = mBfIRBuilder->GetPointerTo(mBfIRBuilder->GetPrimitiveType(BfTypeCode_Int8));
+	BfIRValue origPtrValue = mBfIRBuilder->CreateBitCast(value, i8PtrType);
+	BfIRValue newPtrValue = mBfIRBuilder->CreateInBoundsGEP(origPtrValue, ofsScaledVal);
+	return mBfIRBuilder->CreateBitCast(newPtrValue, mBfIRBuilder->MapType(ptrType));
 }
 
 BfIRValue BfModule::CreateIndexedValue(BfType* elementType, BfIRValue value, int indexValue, bool isElementIndex)
