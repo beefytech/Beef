@@ -2893,11 +2893,6 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 	
 	int argCount = (int)args.size() + argOfs;
 	int dynStackSize = 0;
-// 	if (mUseBP)
-// 	{
-// 		dynStackSize = BF_MAX(4, argCount) * 8;
-// 		dynStackSize = BF_ALIGN(dynStackSize, 16);
-// 	}
 
 	if (dynStackSize > 0)	
 		AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), BeMCOperand::FromImmediate(dynStackSize));
@@ -15894,8 +15889,8 @@ void BeMCContext::Generate(BeFunction* function)
 					retCount++;
 				}
 				break;
-			case BeCallInst::TypeId:
-				{					
+			case BeCallInst::TypeId:				
+				{				
 					auto castedInst = (BeCallInst*)inst;		
 					BeMCOperand mcFunc;
 					BeType* returnType = NULL;
@@ -16268,18 +16263,15 @@ void BeMCContext::Generate(BeFunction* function)
 					}
 					else
 					{
-						if (auto func = BeValueDynCast<BeFunction>(castedInst->mFunc))
+						auto funcPtrType = castedInst->mFunc->GetType();						
+						if (funcPtrType->IsPointer())
 						{
-							auto funcPtrType = func->mType;
-							if (funcPtrType->IsPointer())
+							auto elementType = ((BePointerType*)funcPtrType)->mElementType;
+							if (elementType->mTypeCode == BeTypeCode_Function)
 							{
-								auto elementType = ((BePointerType*)funcPtrType)->mElementType;
-								if (elementType->mTypeCode == BeTypeCode_Function)
-								{
-									isVarArg = ((BeFunctionType*)elementType)->mIsVarArg;
-								}								
-							}							
-						}
+								isVarArg = ((BeFunctionType*)elementType)->mIsVarArg;
+							}								
+						}							
 
 						returnType = castedInst->GetType();
 						mcFunc = GetOperand(castedInst->mFunc);						

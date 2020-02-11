@@ -329,7 +329,8 @@ public:
 	BfMethodDef* GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind);
 	BfModuleMethodInstance GetPropertyMethodInstance(BfMethodDef* methodDef);
 	void CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance* methodInstance);
-	BfTypedValue GetResult(bool clearResult = false, bool resolveGenericType = false);			
+	bool HasResult();
+	BfTypedValue GetResult(bool clearResult = false, bool resolveGenericType = false);				
 	void CheckResultForReading(BfTypedValue& typedValue);
 	void MarkResultUsed();
 	void MarkResultAssigned();

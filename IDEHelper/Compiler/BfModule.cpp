@@ -8794,11 +8794,6 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	if (mCompiler->IsSkippingExtraResolveChecks())
 		return BfIRValue();
 
-	if (methodInstance->mMethodDef->mName == "Check")
-	{
-		NOP;
-	}
-
 	if (methodInstance->mMethodInstanceGroup->mOwner->IsInterface())
 	{
 		//BF_ASSERT(!methodInstance->mIRFunction);

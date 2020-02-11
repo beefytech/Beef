@@ -13825,6 +13825,11 @@ void BfExprEvaluator::CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance
 	}
 }
 
+bool BfExprEvaluator::HasResult()
+{
+	return (mResult) || (mPropDef != NULL);
+}
+
 BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericType)
 {
 	if ((!mResult) && (mPropDef != NULL))
@@ -14550,7 +14555,7 @@ void BfExprEvaluator::AssignDeferrredTupleAssignData(BfAssignmentExpression* ass
 			}
 			else
 			{
-				if (child.mExprEvaluator->mResult)
+				if (child.mExprEvaluator->HasResult())
  				{
  					child.mExprEvaluator->mBfEvalExprFlags = (BfEvalExprFlags)(child.mExprEvaluator->mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete);
  					child.mExprEvaluator->PerformAssignment(assignExpr, true, elementValue);
@@ -14588,7 +14593,7 @@ void BfExprEvaluator::DoTupleAssignment(BfAssignmentExpression* assignExpr)
 	rightValue = mModule->LoadValue(rightValue);
 	
 	AssignDeferrredTupleAssignData(assignExpr, deferredTupleAssignData, rightValue);		
-
+	
 	mResult = rightValue;
 }
 
