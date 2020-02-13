@@ -4109,6 +4109,23 @@ BfType* BfCompiler::CheckSymbolReferenceTypeRef(BfModule* module, BfTypeReferenc
 	return resolvedType;
 }
 
+void BfCompiler::AddToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeInstance*>& rebuildTypeInstList)
+{
+	if (mResolvePassData->mParser != NULL)
+	{
+		// Only find references within the current file
+		if (!typeInst->mTypeDef->HasSource(mResolvePassData->mParser))
+			return;
+	}
+
+	bool allowRebuild = ((!typeInst->IsGenericTypeInstance()) ||
+		((typeInst->IsUnspecializedType()) && (!typeInst->IsUnspecializedTypeVariation())));
+	if ((typeInst->IsClosure()) || (typeInst->IsConcreteInterfaceType()) || (typeInst->IsRetTypeType()))
+		allowRebuild = false;
+	if (allowRebuild)
+		rebuildTypeInstList.Add(typeInst);
+}
+
 void BfCompiler::AddDepsToRebuildTypeList(BfTypeInstance* replaceTypeInst, HashSet<BfTypeInstance*>& rebuildTypeInstList)
 {
 	for (auto& dep : replaceTypeInst->mDependencyMap)
@@ -4118,19 +4135,7 @@ void BfCompiler::AddDepsToRebuildTypeList(BfTypeInstance* replaceTypeInst, HashS
 		if (depTypeInst == NULL)
 			continue;
 
-		if (mResolvePassData->mParser != NULL)
-		{
-			// Only find references within the current file
-			if (!depTypeInst->mTypeDef->HasSource(mResolvePassData->mParser))
-				continue;
-		}
-
-		bool allowRebuild = ((!depTypeInst->IsGenericTypeInstance()) ||
-			((depTypeInst->IsUnspecializedType()) && (!depTypeInst->IsUnspecializedTypeVariation())));
-		if ((depTypeInst->IsClosure()) || (depTypeInst->IsConcreteInterfaceType()) || (depTypeInst->IsRetTypeType()))
-			allowRebuild = false;
-		if (allowRebuild)
-			rebuildTypeInstList.Add(depTypeInst);
+		AddToRebuildTypeList(depTypeInst, rebuildTypeInstList);		
 	}	
 }
 
@@ -4173,8 +4178,8 @@ void BfCompiler::GetSymbolReferences()
 			}			
 		}
 	}
-
-	rebuildTypeInstList.Add(replaceTypeInst);
+	
+	AddToRebuildTypeList(replaceTypeInst, rebuildTypeInstList);
 
 	//TODO: Did we need this to be rebuildTypeInst->mModule???  Why?
 	//auto rebuildModule = rebuildTypeInst->mModule;
