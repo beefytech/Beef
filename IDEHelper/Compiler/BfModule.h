@@ -878,7 +878,7 @@ public:
 	BfIRBlock mIREntryBlock;
 	Array<BfLocalVariable*, AllocatorBump<BfLocalVariable*> > mLocals;
 	HashSet<BfLocalVarEntry, AllocatorBump<BfLocalVariable*> > mLocalVarSet;
-	Array<BfLocalMethod*> mLocalMethods;
+	Array<BfLocalMethod*> mLocalMethods;	
 	Dictionary<String, BfLocalMethod*> mLocalMethodMap;
 	Dictionary<String, BfLocalMethod*> mLocalMethodCache; // So any lambda 'capturing' and 'processing' stages use the same local method			
 	Array<BfDeferredLocalMethod*> mDeferredLocalMethods;
@@ -941,11 +941,11 @@ public:
 		mLocals.Reserve(8);
 		mLocalVarSet.mAlloc = &mBumpAlloc;
 		mLocalVarSet.Reserve(8);
-
+		
 		mMethodInstance = NULL;		
 		mPrevMethodState = NULL;
 		mConstResolveState = NULL;
-		mHotDataReferenceBuilder = NULL;
+		mHotDataReferenceBuilder = NULL;		
 		mHeadScope.mIsScopeHead = true;
 		mCurScope = &mHeadScope;
 		mTailScope = &mHeadScope;
@@ -1620,8 +1620,8 @@ public:
 	BfPointerType* CreatePointerType(BfTypeReference* typeRef);
 	BfConstExprValueType* CreateConstExprValueType(const BfTypedValue& typedValue);
 	BfBoxedType* CreateBoxedType(BfType* resolvedTypeRef);	
-	BfTupleType* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames);
-	BfTupleType* SantizeTupleType(BfTupleType* tupleType);
+	BfTupleType* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames);	
+	BfTupleType* SantizeTupleType(BfTupleType* tupleType);	
 	BfRefType* CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind = BfRefType::RefKind_Ref);
 	BfRetTypeType* CreateRetTypeType(BfType* resolvedTypeRef);
 	BfConcreteInterfaceType* CreateConcreteInterfaceType(BfTypeInstance* interfaceType);

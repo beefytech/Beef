@@ -443,6 +443,7 @@ public:
 	bool IsSkippingExtraResolveChecks();
 	int GetVTableMethodOffset();
 	BfType* CheckSymbolReferenceTypeRef(BfModule* module, BfTypeReference* typeRef);
+	void AddToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeInstance*>& rebuildTypeInstList);
 	void AddDepsToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeInstance*>& rebuildTypeInstList);
 	void CompileReified();
 	void PopulateReified();

@@ -2754,6 +2754,34 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			return lhsClosure->mClosureHash == rhsClosure->mClosureHash;
 		}
 		
+		if (lhs->IsDelegateFromTypeRef() || lhs->IsFunctionFromTypeRef())
+		{
+			if (!rhs->IsDelegateFromTypeRef() && !rhs->IsFunctionFromTypeRef())
+				return false;
+			if (lhs->IsDelegate() != rhs->IsDelegate())
+				return false;
+			BfDelegateType* lhsDelegateType = (BfDelegateType*)lhs;
+			BfDelegateType* rhsDelegateType = (BfDelegateType*)rhs;
+			if (lhsDelegateType->mTypeDef->mIsDelegate != rhsDelegateType->mTypeDef->mIsDelegate)
+				return false;
+
+			auto lhsMethodDef = lhsDelegateType->mTypeDef->mMethods[0];
+			auto rhsMethodDef = rhsDelegateType->mTypeDef->mMethods[0];
+
+			if (lhsDelegateType->mReturnType != rhsDelegateType->mReturnType)
+				return false;
+			if (lhsDelegateType->mParams.size() != rhsDelegateType->mParams.size())
+				return false;
+			for (int paramIdx = 0; paramIdx < lhsDelegateType->mParams.size(); paramIdx++)
+			{
+				if (lhsDelegateType->mParams[paramIdx] != rhsDelegateType->mParams[paramIdx])
+					return false;
+				if (lhsMethodDef->mParams[paramIdx]->mName != rhsMethodDef->mParams[paramIdx]->mName)
+					return false;
+			}
+			return true;
+		}
+
 		if (lhs->IsGenericTypeInstance())
 		{
 			if (!rhs->IsGenericTypeInstance())
@@ -2874,34 +2902,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		return (lhsMethodRefType->mMethodRef == rhsMethodRefType->mMethodRef) &&
 			(lhsMethodRefType->mOwner == rhsMethodRefType->mOwner) &&
 			(lhsMethodRefType->mOwnerRevision == rhsMethodRefType->mOwnerRevision);
-	}
-	else if (lhs->IsDelegateFromTypeRef() || lhs->IsFunctionFromTypeRef())
-	{
-		if (!rhs->IsDelegateFromTypeRef() && !rhs->IsFunctionFromTypeRef())
-			return false;
-		if (lhs->IsDelegate() != rhs->IsDelegate())
-			return false;
-		BfDelegateType* lhsDelegateType = (BfDelegateType*)lhs;
-		BfDelegateType* rhsDelegateType = (BfDelegateType*)rhs;
-		if (lhsDelegateType->mTypeDef->mIsDelegate != rhsDelegateType->mTypeDef->mIsDelegate)
-			return false;
-		
-		auto lhsMethodDef = lhsDelegateType->mTypeDef->mMethods[0];
-		auto rhsMethodDef = rhsDelegateType->mTypeDef->mMethods[0];
-
-		if (lhsDelegateType->mReturnType != rhsDelegateType->mReturnType)
-			return false;
-		if (lhsDelegateType->mParams.size() != rhsDelegateType->mParams.size())
-			return false;
-		for (int paramIdx = 0; paramIdx < lhsDelegateType->mParams.size(); paramIdx++)
-		{
-			if (lhsDelegateType->mParams[paramIdx] != rhsDelegateType->mParams[paramIdx])
-				return false;
-			if (lhsMethodDef->mParams[paramIdx]->mName != rhsMethodDef->mParams[paramIdx]->mName)
-				return false;
-		}
-		return true;
-	}
+	}	
 	else if ((lhs->IsConstExprValue()) || (rhs->IsConstExprValue()))
 	{
 		if (!lhs->IsConstExprValue() || !rhs->IsConstExprValue())

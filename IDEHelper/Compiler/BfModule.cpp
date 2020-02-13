@@ -19346,12 +19346,19 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 			if (defaultValue)
 			{
-				BF_ASSERT(defaultValue.mValue.IsConst());
-				while ((int)mCurMethodInstance->mDefaultValues.size() < paramDefIdx)
-					mCurMethodInstance->mDefaultValues.Add(BfIRValue());
+				if (defaultValue.mType->IsVar())
+				{
+					AssertErrorState();
+				}
+				else
+				{
+					BF_ASSERT(defaultValue.mValue.IsConst());
+					while ((int)mCurMethodInstance->mDefaultValues.size() < paramDefIdx)
+						mCurMethodInstance->mDefaultValues.Add(BfIRValue());
 
-				CurrentAddToConstHolder(defaultValue.mValue);
-				mCurMethodInstance->mDefaultValues.Add(defaultValue.mValue);
+					CurrentAddToConstHolder(defaultValue.mValue);
+					mCurMethodInstance->mDefaultValues.Add(defaultValue.mValue);
+				}
 			}
 		}		
 
