@@ -5272,14 +5272,23 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				
 				if (mModule->mParentNodeEntry != NULL)
 				{
+					bool showCtorError = false;
+
 					if (auto ctorDeclaration = BfNodeDynCast<BfConstructorDeclaration>(mModule->mParentNodeEntry->mNode))
 					{
 						if (ctorDeclaration->mInitializer == NULL)
-						{
-							error = mModule->Fail(StrFormat("No parameterless constructor is available for base class. Consider calling base constructor '%s'.",
-								mModule->MethodToString(methodInstance).c_str()), refNode);
-						}
+							showCtorError = true;
 					}
+
+					if (auto typerDecl = BfNodeDynCast<BfTypeDeclaration>(mModule->mParentNodeEntry->mNode))
+						showCtorError = true;
+				
+
+					if (showCtorError)
+					{
+						error = mModule->Fail(StrFormat("No parameterless constructor is available for base class. Consider calling base constructor '%s'.",
+							mModule->MethodToString(methodInstance).c_str()), refNode);
+					}					
 				}
 
 				if (error == NULL)

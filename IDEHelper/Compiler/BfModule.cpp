@@ -14446,7 +14446,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			BfMethodDef* matchedMethod = NULL;
 			bool hadCtorWithAllDefaults = false;
 
-			bool isGenerated = methodDeclaration == NULL;
+			bool isHiddenGenerated = (methodDeclaration == NULL) && (methodDef->mProtection == BfProtection_Hidden);
 
 			for (int pass = 0; pass < 2; pass++)
 			{
@@ -14461,7 +14461,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				{
 					bool allowMethod = checkMethodDef->mProtection > BfProtection_Private;
 
-					if (isGenerated)
+					if (isHiddenGenerated)
 					{
 						// Allow calling of the default base ctor if it is implicitly defined
 						if ((checkMethodDef->mMethodDeclaration == NULL) && (pass == 1) && (!hadCtorWithAllDefaults))
@@ -14474,7 +14474,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						{							
 							matchedMethod = checkMethodDef;							
 						}
-						else if (isGenerated)
+						else if (isHiddenGenerated)
 						{
 							if ((checkMethodDef->mParams[0]->mParamDeclaration != NULL) && (checkMethodDef->mParams[0]->mParamDeclaration->mInitializer != NULL))							
 								hadCtorWithAllDefaults = true;							
@@ -14522,7 +14522,11 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 	if (targetType != NULL)
 	{
-		BfAutoParentNodeEntry autoParentNodeEntry(this, methodDeclaration);
+		BfAstNode* refNode = methodDeclaration;
+		if (refNode == NULL)
+			refNode = typeDef->mTypeDeclaration;
+
+		BfAutoParentNodeEntry autoParentNodeEntry(this, refNode);
 
 		auto autoComplete = mCompiler->GetAutoComplete();
 		auto wasCapturingMethodInfo = (autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo);
