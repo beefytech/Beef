@@ -8015,6 +8015,8 @@ void BeMCContext::DoActualization()
 				auto inst = mcBlock->mInstructions[instIdx];
 				SetCurrentInst(inst);
 
+				bool forceMove = false;
+
 				if (inst->mKind == BeMCInstKind_DbgDecl)
 				{
 					auto vregInfo = GetVRegInfo(inst->mArg0);
@@ -8022,7 +8024,11 @@ void BeMCContext::DoActualization()
 					{
  						if (inst->mArg0.mKind == BeMCOperandKind_VReg)
  						{
-							if (vregInfo->mDbgVariable->mIsValue)
+							if (vregInfo->mRelTo.IsSymbol())
+							{
+								forceMove = true;
+							}
+							else if (vregInfo->mDbgVariable->mIsValue)
 							{
 								vregInfo->mDbgVariable->mIsValue = false;
 								inst->mArg0.mKind = BeMCOperandKind_VRegAddr;
@@ -8032,22 +8038,16 @@ void BeMCContext::DoActualization()
 								inst->mArg0.mKind = BeMCOperandKind_VRegAddr;
 								vregInfo->mDbgVariable->mType = mModule->mDbgModule->CreateReferenceType(vregInfo->mDbgVariable->mType);
 							}
-							
-
-//  							if (auto ptrType = BeValueDynCast<BeDbgPointerType>(vregInfo->mDbgVariable->mType))							
-//  								vregInfo->mDbgVariable->mType = ptrType->mElement;							
-//  							if (vregInfo->mType->IsPointer())
-//  								vregInfo->mType = ((BePointerType*)vregInfo->mType)->mElementType;
  						}
 						vregInfo->mWantsExprActualize = false;
 					}
 				}
 
-				if (inst->IsDef())
+				if ((inst->IsDef()) || (forceMove))
 				{
 					int vregIdx = inst->mArg0.mVRegIdx;
 					auto vregInfo = GetVRegInfo(inst->mArg0);
-					if (vregInfo->mWantsExprActualize)
+					if ((vregInfo->mWantsExprActualize) || (forceMove))
 					{	
 						if (vregInfo->mDbgVariable != NULL)
 						{
@@ -14751,7 +14751,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?Do@ClassA@bf@@QEAAXXZ";
+	//mDebugging = function->mName == "?TestTagCount@Program@bf@@SAXXZ";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
