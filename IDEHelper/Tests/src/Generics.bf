@@ -35,7 +35,23 @@ namespace Tests
 				val.Dispose();
 			}
 		}
-		
+
+		[Test]
+		public static void TestGenericDelegates()
+		{
+			delegate void(String v) dlg = scope => StrMethod;
+			CallGenericDelegate(dlg);
+			CallGenericDelegate<String>(scope => StrMethod);
+		}
+
+		public static void CallGenericDelegate<T>(delegate void(T v) dlg)
+		{
+		}
+
+		public static void StrMethod(String v)
+		{
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
