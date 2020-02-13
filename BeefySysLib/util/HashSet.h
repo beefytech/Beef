@@ -256,11 +256,13 @@ private:
 
 	void Resize(intptr newSize, bool forceNewHashCodes)
 	{
-		BF_ASSERT(newSize >= mAllocSize);
-		int_cosize* newBuckets = (int_cosize*)this->rawAllocate(sizeof(int_cosize) * newSize);
+		BF_ASSERT(newSize >= mAllocSize);	
+		Entry* newEntries;
+		int_cosize* newBuckets;
+		AllocData(newSize, newEntries, newBuckets);
+
 		for (int_cosize i = 0; i < newSize; i++)
 			newBuckets[i] = -1;
-		Entry* newEntries = (Entry*)this->rawAllocate(sizeof(Entry)*newSize);
 		
 		for (int i = 0; i < mCount; i++)
 		{
@@ -294,8 +296,7 @@ private:
 			}
 		}
 
-		this->rawDeallocate(mBuckets);
-		this->rawDeallocate(mEntries);
+		DeleteData();		
 
 		mBuckets = newBuckets;
 		mEntries = newEntries;
@@ -331,11 +332,11 @@ private:
 
 	void Initialize(intptr capacity)
 	{
-		int_cosize size = GetPrimeish((int_cosize)capacity);
-		mBuckets = (int_cosize*)this->rawAllocate(sizeof(int_cosize) * size);
+		int_cosize size = GetPrimeish((int_cosize)capacity);		
+		AllocData(size, mEntries, mBuckets);
+
 		mAllocSize = size;
-		for (int_cosize i = 0; i < (int_cosize)mAllocSize; i++) mBuckets[i] = -1;
-		mEntries = (Entry*)this->rawAllocate(sizeof(Entry) * size);
+		for (int_cosize i = 0; i < (int_cosize)mAllocSize; i++) mBuckets[i] = -1;		
 		mFreeList = -1;
 	}
 
@@ -430,9 +431,8 @@ public:
 			mEntries = NULL;
 		}
 		else
-		{
-			mBuckets = (int_cosize*)this->rawAllocate(sizeof(int_cosize) * mAllocSize);
-			mEntries = (Entry*)this->rawAllocate(sizeof(Entry) * mAllocSize);
+		{			
+			AllocData(mAllocSize, mEntries, mBuckets);
 
 			for (int_cosize i = 0; i < mAllocSize; i++)
 				mBuckets[i] = val.mBuckets[i];
@@ -465,6 +465,18 @@ public:
 		mFreeList = val.mFreeList;
 	}
 
+	void AllocData(intptr size, Entry*& outEntries, int_cosize*& outBuckets)
+	{
+		uint8* data = (uint8*)this->rawAllocate(size * (sizeof(Entry) + sizeof(int_cosize)));
+		outEntries = (Entry*)data;
+		outBuckets = (int_cosize*)(data + size * sizeof(Entry));
+	}
+
+	void DeleteData()
+	{
+		this->rawDeallocate(mEntries);		
+	}
+
 	~HashSet()
 	{
 		if (!std::is_pod<TKey>::value)
@@ -476,8 +488,7 @@ public:
 			}
 		}
 
-		this->rawDeallocate(mBuckets);
-		this->rawDeallocate(mEntries);
+		DeleteData();
 	}
 
 	HashSet& operator=(const HashSet& rhs)
