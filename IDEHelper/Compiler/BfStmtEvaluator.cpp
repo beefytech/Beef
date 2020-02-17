@@ -517,7 +517,7 @@ void BfModule::AddDeferredBlock(BfBlock* block, BfScopeData* scopeData, Array<Bf
 	deferredCallEntry->mDeferredBlock = block;
 	if (captures != NULL)
 		deferredCallEntry->mCaptures = *captures;
-	AddDeferredCallEntry(deferredCallEntry, scopeData);																																								 \
+	AddDeferredCallEntry(deferredCallEntry, scopeData);
 }
 
 BfDeferredCallEntry* BfModule::AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scopeData, BfAstNode* srcNode, bool bypassVirtual, bool doNullCheck)
@@ -5014,15 +5014,39 @@ void BfModule::Visit(BfUsingStatement* usingStmt)
 	}
 
 	if (!failed)
-	{		
-		exprEvaluator.mFunctionBindResult = &functionBindResult;
-		BfResolvedArgs resolvedArgs;
-		exprEvaluator.MatchMethod(usingStmt->mVariableDeclaration, NULL, embeddedValue, false, false, "Dispose", resolvedArgs, NULL);		
-		if (functionBindResult.mMethodInstance != NULL)
+	{	
+		auto iDisposableType = ResolveTypeDef(mCompiler->mIDisposableTypeDef)->ToTypeInstance();
+		auto dispMethod = GetMethodByName(iDisposableType, "Dispose");
+
+		if ((!dispMethod) || (!CanCast(embeddedValue, iDisposableType)))
 		{
-			moduleMethodInstance = BfModuleMethodInstance(functionBindResult.mMethodInstance, functionBindResult.mFunc);			
-			AddDeferredCall(moduleMethodInstance, functionBindResult.mIRArgs, mCurMethodState->mCurScope);
-		}		
+			Fail(StrFormat("Type '%s' must be implicitly convertible to 'System.IDisposable' for use in 'using' statement", TypeToString(embeddedValue.mType).c_str()), usingStmt->mVariableDeclaration);
+			failed = true;
+		}
+		else
+		{
+			bool mayBeNull = true;
+			if (embeddedValue.mType->IsStruct())
+			{
+				// It's possible that a struct can convert to an IDisposable through a conversion operator that CAN
+				//  return null, so the only way we can know we are not null is if we are a struct that directly
+				//  implements the interface
+				if (TypeIsSubTypeOf(embeddedValue.mType->ToTypeInstance(), iDisposableType))
+					mayBeNull = false;
+			}
+
+			exprEvaluator.mFunctionBindResult = &functionBindResult;			
+			SizedArray<BfResolvedArg, 0> resolvedArgs;
+			BfMethodMatcher methodMatcher(usingStmt->mVariableDeclaration, this, dispMethod.mMethodInstance, resolvedArgs);
+			methodMatcher.CheckType(iDisposableType, embeddedValue, false);
+			methodMatcher.TryDevirtualizeCall(embeddedValue);
+			auto retVal = exprEvaluator.CreateCall(&methodMatcher, embeddedValue);
+			if (functionBindResult.mMethodInstance != NULL)
+			{
+				moduleMethodInstance = BfModuleMethodInstance(functionBindResult.mMethodInstance, functionBindResult.mFunc);
+				AddDeferredCall(moduleMethodInstance, functionBindResult.mIRArgs, mCurMethodState->mCurScope, NULL, false, mayBeNull);
+			}
+		}
 	}
 
 	if (usingStmt->mEmbeddedStatement == NULL)

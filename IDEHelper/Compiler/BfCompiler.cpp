@@ -400,6 +400,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mGenericIRefEnumeratorTypeDef = NULL;
 	mInlineAttributeTypeDef = NULL;
 	mInternalTypeDef = NULL;
+	mIDisposableTypeDef = NULL;
 	mIPrintableTypeDef = NULL;
 	mIHashableTypeDef = NULL;
 	mLinkNameAttributeTypeDef = NULL;
@@ -5908,6 +5909,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.Generic.IRefEnumerator");	
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
+	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
 	mIPrintableTypeDef = _GetRequiredType("System.IPrintable");
 	mIHashableTypeDef = _GetRequiredType("System.IHashable");
 	mLinkNameAttributeTypeDef = _GetRequiredType("System.LinkNameAttribute");

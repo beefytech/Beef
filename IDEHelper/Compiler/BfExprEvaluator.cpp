@@ -4964,7 +4964,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				}
 				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
 					doAccessCheck = false;
-				if ((doAccessCheck) && (!isSkipCall))
+				if ((doAccessCheck) && (!isSkipCall) && (prevBindResult.mPrevVal == NULL))
 					mModule->EmitObjectAccessCheck(target);
 			}
 
@@ -8292,6 +8292,19 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 	}
 
 	auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
+
+	if ((targetValue.mType->IsNullable()) && (targetType->IsInterface()))
+	{		
+		mResult = mModule->Cast(dynCastExpr, targetValue, targetType, BfCastFlags_SilentFail);
+		if (!mResult)
+		{
+			mModule->Warn(0, StrFormat("Conversion from '%s' to '%s' will always be null", 
+				mModule->TypeToString(targetValue.mType).c_str(), mModule->TypeToString(targetType).c_str()), dynCastExpr->mAsToken);
+			mResult = BfTypedValue(mModule->GetDefaultValue(targetType), targetType);
+		}
+		return;
+	}
+
 	if (targetValue.mType->IsValueTypeOrValueTypePtr())
 	{
 		mModule->Warn(0, StrFormat("Type '%s' is not applicable for dynamic casting",

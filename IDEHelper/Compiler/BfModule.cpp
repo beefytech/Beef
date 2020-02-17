@@ -2688,16 +2688,13 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 		// We used to bubble up warnings into the mixin injection site, BUT
 		//  we are now assuming any relevant warnings will be given at the declaration site
 		return NULL;
-// 		AddFailType(mCurTypeInstance);
-// 
-// 		BfError* bfError = mCompiler->mPassInstance->Warn(warningNum, "Warning while injecting mixin", mCurMethodState->mMixinState->GetRoot()->mSource);
-// 		if (bfError == NULL)
-// 			return NULL;
-// 		mHadBuildWarning = true;
-// 		return mCompiler->mPassInstance->MoreInfo(warning, refNode);	
 	}
 
-	BfError* bfError = mCompiler->mPassInstance->WarnAt(warningNum, warning, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());
+	BfError* bfError;
+	if (refNode != NULL)
+		bfError = mCompiler->mPassInstance->WarnAt(warningNum, warning, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());
+	else
+		bfError = mCompiler->mPassInstance->Warn(warningNum, warning);
 	if (bfError != NULL)
 	{
 		bfError->mProject = mProject;
