@@ -7130,6 +7130,11 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		}
 	}
 
+	if (typeRef->ToString() == "Issue.I?")
+	{
+		NOP;
+	}
+
 	BfResolvedTypeSet::LookupContext lookupCtx;
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;

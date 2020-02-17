@@ -3065,6 +3065,8 @@ BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* t
 	auto type = mModule->ResolveTypeRef(typeReference, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
 	if (type == NULL)
 		return NULL;
+	if (type->IsPrimitiveType())
+		return ((BfPrimitiveType*)type)->mTypeDef;
 	auto typeInst = type->ToTypeInstance();
 	if (typeInst == NULL)
 		return NULL;
@@ -3259,18 +3261,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				return true;
 		}
 
-		if (!rhs->IsTypeDefTypeReference())
-			return false;
-		
 		BfPrimitiveType* lhsPrimType = (BfPrimitiveType*)lhs;				
 		auto rhsTypeDef = ctx->ResolveToTypeDef(rhs);		
 		return lhsPrimType->mTypeDef == rhsTypeDef;
-
-// 		auto rhsTypeDefTypeRef = BfNodeDynCast<BfTypeDefTypeReference>(rhs);
-// 		if (rhsTypeDefTypeRef == NULL)
-// 			return false;
-// 		BfPrimitiveType* lhsPrimType = (BfPrimitiveType*)lhs;		
-// 		return lhsPrimType->mTypeDef == rhsTypeDefTypeRef->mTypeDef;
 	}
 	else if (lhs->IsPointer())
 	{
