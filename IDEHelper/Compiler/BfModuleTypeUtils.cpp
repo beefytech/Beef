@@ -3324,11 +3324,6 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		BF_ASSERT(typeInstance->mInterfaceMethodTable.size() == 1);
 	}
 	
-	if (typeInstance->mTypeDef == mCompiler->mPointerTypeDef)
-	{
-		NOP;
-	}
-
 	// Slot interfaces method blocks in vtable
 	{
 		int ifaceVirtIdx = 0;

@@ -7651,11 +7651,17 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				else
 				{
 					BfArrayType* arrayType = CreateArrayType(type, arrayDim);
-					auto firstElementField = &arrayType->mFieldInstances.back();
-					int arrayClassSize = firstElementField->mDataOffset;
-					sizeValue = GetConstValue(arrayClassSize);
-					BfIRValue elementDataSize = mBfIRBuilder->CreateMul(GetConstValue(type->GetStride()), arraySize);
-					sizeValue = mBfIRBuilder->CreateAdd(sizeValue, elementDataSize);
+					auto firstElementField = &arrayType->mFieldInstances.back();					
+
+					if (!type->IsValuelessType())
+					{
+						int arrayClassSize = firstElementField->mDataOffset;
+						sizeValue = GetConstValue(arrayClassSize);
+						BfIRValue elementDataSize = mBfIRBuilder->CreateMul(GetConstValue(type->GetStride()), arraySize);
+						sizeValue = mBfIRBuilder->CreateAdd(sizeValue, elementDataSize);
+					}
+					else
+						sizeValue = GetConstValue(arrayType->mInstSize);
 					
 					auto prevBlock = mBfIRBuilder->GetInsertBlock();
 					isDynAlloc = (isDynAlloc) || (!sizeValue.IsConst());

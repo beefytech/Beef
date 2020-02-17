@@ -1396,6 +1396,11 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(BeValue*, arraySize);
+			
+			if (auto constant = BeValueDynCast<BeConstant>(arraySize))
+			{
+				//BF_ASSERT(constant->mInt64 >= 0);
+			}
 
 			auto allocaInst = mBeModule->AllocInst<BeAllocaInst>();
 			allocaInst->mType = type;

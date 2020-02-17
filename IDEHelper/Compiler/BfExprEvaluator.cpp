@@ -11279,8 +11279,11 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 				}
 
 				mModule->mBfIRBuilder->PopulateType(resultType);
-				mModule->mBfIRBuilder->CreateMemSet(mModule->CreateIndexedValue(resultType, addr, clearFromIdx),
-					mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, isUninit ? 0xCC : 0), clearBytes, resultType->mAlign);
+				if (!resultType->IsValuelessType())
+				{
+					mModule->mBfIRBuilder->CreateMemSet(mModule->CreateIndexedValue(resultType, addr, clearFromIdx),
+						mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, isUninit ? 0xCC : 0), clearBytes, resultType->mAlign);
+				}
 			}
 		};
 		
