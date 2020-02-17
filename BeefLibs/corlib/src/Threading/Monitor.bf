@@ -5,7 +5,7 @@ namespace System.Threading
 {    
     public class Monitor
     {
-        public struct MonitorLockInstance
+        public struct MonitorLockInstance : IDisposable
         {
             public Monitor mMonitor;
             public void Dispose()
