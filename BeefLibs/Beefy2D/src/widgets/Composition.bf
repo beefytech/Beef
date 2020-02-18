@@ -21,7 +21,7 @@ namespace Beefy.widgets
     {
         public delegate T Interpolator(T from, T to, float pct);
 
-        public struct Entry
+        public struct Entry : IOpComparable
         {
             public float mFrame;
             public T mValue;
@@ -30,20 +30,16 @@ namespace Beefy.widgets
 			{
 				return ((val1.mFrame == val2.mFrame) && (val1.mValue == val2.mValue));
 			}
-        }
 
-        public class EntryComparer : IComparer<Entry>
-        {
-            public int Compare(Entry ent1, Entry ent2)
-            {
-                return ent1.mFrame.CompareTo(ent2.mFrame);
-            }
+			public static int operator<=>(Entry lhs, Entry rhs)
+			{
+				return lhs.mFrame.CompareTo(rhs.mFrame);
+			}
         }
 
         public List<Entry> mEntries;
         public Interpolator mInterpolator;
-        public T mConstantValue;
-        static EntryComparer sEntryComparer;
+        public T mConstantValue;        
 
         public void SetValue(float frame, T value, out T oldValue, out bool isNewKeyframe)
         {
@@ -59,7 +55,7 @@ namespace Beefy.widgets
             entry.mFrame = frame;
             entry.mValue = value;
 
-            int index = mEntries.BinarySearch(entry, sEntryComparer);
+            int index = mEntries.BinarySearch(entry);
             if (index >= 0)
             {
                 isNewKeyframe = false;
@@ -80,7 +76,7 @@ namespace Beefy.widgets
             entry.mFrame = frame;
             entry.mValue = default(T);
 
-            int index = mEntries.BinarySearch(entry, sEntryComparer);
+            int index = mEntries.BinarySearch(entry);
             mEntries.RemoveAt(index);
         }
 
@@ -105,14 +101,11 @@ namespace Beefy.widgets
         {
             if ((mEntries == null) || (mEntries.Count == 0))
                 return mConstantValue;
-
-            if (sEntryComparer == null)
-                sEntryComparer = new EntryComparer();
             
             Entry find;
             find.mValue = default(T);
             find.mFrame = frame;
-            int index = mEntries.BinarySearch(find, sEntryComparer);
+            int index = mEntries.BinarySearch(find);
             if (index >= 0)
                 return mEntries[index].mValue;
 

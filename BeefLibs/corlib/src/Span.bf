@@ -16,7 +16,7 @@ namespace System
 
 		public this(T[] array)
 		{
-			mPtr = &array.getRef(0);
+			mPtr = &array.[Friend]GetRef(0);
 			mLength = array.[Friend]mLength;
 		}
 
@@ -295,7 +295,7 @@ namespace System
 
 		public this(T[] array)
 		{
-			mPtr = &array.getRef(0);
+			mPtr = &array.[Friend]GetRef(0);
 #if BF_OPTSPAN_LENGTH
 			mLength = array.[Friend]mLength;
 #endif

@@ -5478,6 +5478,15 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 		return CreateRefType(elementType, refType->mRefKind);
 	}
 
+	if (unspecializedType->IsPointer())
+	{
+		auto ptrType = (BfPointerType*)unspecializedType;
+		auto elementType = ResolveGenericType(ptrType->GetUnderlyingType(), methodGenericArguments, allowFail);
+		if (elementType == NULL)
+			return NULL;
+		return CreatePointerType(elementType);
+	}
+
 	if (unspecializedType->IsArray())
 	{
 		auto arrayType = (BfArrayType*)unspecializedType;
@@ -9273,8 +9282,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			"Unable to cast '%s' to '%s'" :
 			"Unable to implicitly cast '%s' to '%s'";
 
-		String errStr = StrFormat(errStrF, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str());
-		printf("Err: %s\n", errStr.c_str());
+		String errStr = StrFormat(errStrF, TypeToString(typedVal.mType).c_str(), TypeToString(toType).c_str());		
 		auto error = Fail(errStr, srcNode);
 		if ((error != NULL) && (srcNode != NULL))
 		{
@@ -9807,14 +9815,14 @@ bool BfModule::IsTypeMoreSpecific(BfType* leftType, BfType* rightType)
 	return false;
 }
 
-StringT<128> BfModule::TypeToString(BfType* resolvedType)
+StringT<128> BfModule::TypeToString(BfType* resolvedType, Array<String>* genericMethodParamNameOverrides)
 {
 	BfTypeNameFlags flags = BfTypeNameFlags_None;
 	if ((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsUnspecializedTypeVariation()))
 		flags = BfTypeNameFlag_ResolveGenericParamNames;
 	
 	StringT<128> str;
-	DoTypeToString(str, resolvedType, flags);	
+	DoTypeToString(str, resolvedType, flags, genericMethodParamNameOverrides);
 	return str;
 }
 
@@ -9956,8 +9964,10 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 				str += ", ";
 			auto paramDef = methodDef->mParams[paramIdx];
 			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
-			if (delegateType->mIsUnspecializedTypeVariation)
-				innerFlags = (BfTypeNameFlags)(innerFlags & ~BfTypeNameFlag_ResolveGenericParamNames);
+
+			//TODO: Why was this necessary? It made some errors show incorrectly
+// 			if (delegateType->mIsUnspecializedTypeVariation)
+// 				innerFlags = (BfTypeNameFlags)(innerFlags & ~BfTypeNameFlag_ResolveGenericParamNames);
 			DoTypeToString(str, delegateType->mParams[paramIdx], innerFlags, genericMethodNameOverrides);
 			str += " ";
 			str += paramDef->mName;
@@ -10240,14 +10250,27 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		bool doResolveGenericParams = (typeNameFlags & BfTypeNameFlag_ResolveGenericParamNames) != 0;
 		if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsUnspecializedTypeVariation()))
 			doResolveGenericParams = false;
-		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecializedVariation))
-			doResolveGenericParams = false;
 
 		auto genericParam = (BfGenericParamType*)resolvedType;
+		if (genericParam->mGenericParamKind == BfGenericParamKind_Method)
+		{
+			if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecializedVariation))
+				doResolveGenericParams = false;
+		}
+		
 		if (!doResolveGenericParams)
 		{
 			if (genericParam->mGenericParamKind == BfGenericParamKind_Method)
 			{
+				if (genericMethodNameOverrides != NULL)
+				{
+					BF_ASSERT(genericParam->mGenericParamIdx < genericMethodNameOverrides->mSize);
+					if (genericParam->mGenericParamIdx < genericMethodNameOverrides->mSize)
+					{
+						str += (*genericMethodNameOverrides)[genericParam->mGenericParamIdx];
+						return;
+					}
+				}				
 				str += StrFormat("@M%d", genericParam->mGenericParamIdx);
 				return;
 			}

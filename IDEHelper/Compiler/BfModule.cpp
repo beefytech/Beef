@@ -6471,6 +6471,20 @@ String BfModule::GenericParamSourceToString(const BfGenericParamSource & generic
 
 bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs, BfError** errorOut)
 {
+	Array<String> methodParamNameOverrides;
+	auto _TypeToString = [&](BfType* type)
+	{
+		if (methodParamNameOverrides.IsEmpty())
+		{
+			if (genericParamSource.mMethodInstance != NULL)
+			{
+				for (auto genericParam : genericParamSource.mMethodInstance->mMethodDef->mGenericParams)
+					methodParamNameOverrides.Add(genericParam->mName);
+			}
+		}
+		return TypeToString(type, &methodParamNameOverrides);
+	};
+
 	bool ignoreErrors = mIgnoreErrors || (errorOut == NULL) ||
 		((genericParamSource.mMethodInstance == NULL) && (genericParamSource.mTypeInstance == NULL));
 
@@ -6511,7 +6525,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a value type in order to use it as parameter '%s' for '%s'",
-				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 	
@@ -6520,7 +6534,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a pointer type in order to use it as parameter '%s' for '%s'",
-				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 
@@ -6529,7 +6543,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a reference type in order to use it as parameter '%s' for '%s'",
-				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 
@@ -6539,7 +6553,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("The type '%s' must be a const value in order to use it as parameter '%s' for '%s'",
-					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}		
 	}
@@ -6549,7 +6563,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("The value '%s' cannot be used for generic type parameter '%s' for '%s'",
-					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
@@ -6591,7 +6605,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 								{
 									if (!ignoreErrors)
 										*errorOut = Fail(StrFormat("Const generic argument '%s', declared with const '%lld', does not fit into const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
-											constExprValueType->mValue.mInt64, TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+											constExprValueType->mValue.mInt64, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 									return false;
 								}
 							}
@@ -6599,7 +6613,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 							{
 								if (!ignoreErrors)
 									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with integer const '%lld', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
-										constExprValueType->mValue.mInt64, TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+										constExprValueType->mValue.mInt64, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 								return false;
 							}
 						}
@@ -6611,7 +6625,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 								ExactMinimalDoubleToStr(constExprValueType->mValue.mDouble, valStr);
 								if (!ignoreErrors)
 									*errorOut = Fail(StrFormat("Const generic argument '%s', declared with floating point const '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
-										valStr, TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+										valStr, _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 								return false;
 							}
 						}
@@ -6670,8 +6684,8 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			{
 				if (!ignoreErrors)
 					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must derive from '%s'", genericParamInst->GetName().c_str(),
-						TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(convCheckConstraint).c_str(),
-						TypeToString(genericParamInst->mTypeConstraint).c_str()), checkArgTypeRef);
+						_TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(convCheckConstraint).c_str(),
+						_TypeToString(genericParamInst->mTypeConstraint).c_str()), checkArgTypeRef);
 				return false;
 			}
 		}
@@ -6685,7 +6699,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be concrete interface '%s' for '%s', must be a concrete type", genericParamInst->GetName().c_str(),
-					TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					_TypeToString(origCheckArgType).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
@@ -6726,7 +6740,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must implement '%s'", genericParamInst->GetName().c_str(), 
-					TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(checkConstraint).c_str()), checkArgTypeRef);
+					_TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), _TypeToString(checkConstraint).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}

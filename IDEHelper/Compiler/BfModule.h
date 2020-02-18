@@ -1438,7 +1438,7 @@ public:
 	BfIRValue GetStringObjectValue(const StringImpl& str, bool define = false);
 	BfIRValue CreateGlobalConstValue(const StringImpl& name, BfIRValue constant, BfIRType type, bool external);
 	void VariantToString(StringImpl& str, const BfVariant& variant);
-	StringT<128> TypeToString(BfType* resolvedType);
+	StringT<128> TypeToString(BfType* resolvedType, Array<String>* genericMethodParamNameOverrides = NULL);
 	StringT<128> TypeToString(BfType* resolvedType, BfTypeNameFlags typeNameFlags, Array<String>* genericMethodParamNameOverrides = NULL);	
 	void DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None, Array<String>* genericMethodParamNameOverrides = NULL);
 	String MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags = BfMethodNameFlag_ResolveGenericParamNames, BfTypeVector* methodGenericArgs = NULL);

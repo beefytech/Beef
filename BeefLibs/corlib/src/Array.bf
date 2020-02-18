@@ -43,16 +43,16 @@ namespace System
 			}
 		}
 
-		public static int BinarySearch<T>(T* arr, int idx, int length, T value) where T : IComparable<T>
+		public static int BinarySearch<T>(T* arr, int length, T value) where T : IOpComparable
 		{
-			int lo = idx;
-            int hi = idx + length - 1;
+			int lo = 0;
+            int hi = length - 1;
 			
 			while (lo <= hi)
             {
                 int i = (lo + hi) / 2;
 				T midVal = arr[i];
-				int c = midVal.CompareTo(value);
+				int c = midVal <=> value;
                 if (c == 0) return i;
                 if (c < 0)
                     lo = i + 1;                    
@@ -62,16 +62,28 @@ namespace System
 			return ~lo;
 		}
 
-		public static int BinarySearch<T>(T* arr, int idx, int length, T value, IComparer<T> comp)
+		public static int BinarySearch<T>(T[] arr, T value) where T : IOpComparable
 		{
-			int lo = idx;
-            int hi = idx + length - 1;
+			return BinarySearch(&arr.[Friend]GetRef(0), arr.mLength, value);
+		}
+
+		public static int BinarySearch<T>(T[] arr, int idx, int length, T value) where T : IOpComparable
+		{
+			Debug.Assert((uint)idx <= (uint)arr.mLength);
+			Debug.Assert(idx + length <= arr.mLength);
+			return BinarySearch(&arr.[Friend]GetRef(idx), length, value);
+		}
+
+		public static int BinarySearch<T>(T* arr, int length, T value, delegate int(T lhs, T rhs) comp)
+		{
+			int lo = 0;
+            int hi = length - 1;
 			
 			while (lo <= hi)
             {
                 int i = (lo + hi) / 2;
 				T midVal = arr[i];
-				int c = comp.Compare(midVal, value);
+				int c = comp(midVal, value);
                 if (c == 0) return i;
                 if (c < 0)
                     lo = i + 1;                    
@@ -79,6 +91,18 @@ namespace System
                     hi = i - 1;
 			}
 			return ~lo;
+		}
+
+		public static int BinarySearch<T>(T[] arr, T value, delegate int(T lhs, T rhs) comp)
+		{
+			return BinarySearch(&arr.[Friend]GetRef(0), arr.mLength, value, comp);
+		}
+
+		public static int BinarySearch<T>(T[] arr, int idx, int length, T value, delegate int(T lhs, T rhs) comp)
+		{
+			Debug.Assert((uint)idx <= (uint)arr.mLength);
+			Debug.Assert(idx + length <= arr.mLength);
+			return BinarySearch(&arr.[Friend]GetRef(idx), length, value, comp);
 		}
 
 		public static void Clear<T>(T[] arr, int idx, int length)
@@ -92,12 +116,12 @@ namespace System
 			if (((Object)arrayTo == (Object)arrayFrom) && (dstOffset > srcOffset))
 			{
 				for (int i = length - 1; i >= 0; i--)
-					arrayTo.getRef(i + dstOffset) = (T2)arrayFrom.getRef(i + srcOffset);
+					arrayTo.[Friend]GetRef(i + dstOffset) = (T2)arrayFrom.[Friend]GetRef(i + srcOffset);
 				return;
 			}
 
 			for (int i = 0; i < length; i++)
-				arrayTo.getRef(i + dstOffset) = (T2)arrayFrom.getRef(i + srcOffset);
+				arrayTo.[Friend]GetRef(i + dstOffset) = (T2)arrayFrom.[Friend]GetRef(i + srcOffset);
 		}
 
 		public static void Sort<T>(T[] array, Comparison<T> comp)
@@ -129,13 +153,13 @@ namespace System
 		} 
 		
 		[Inline]
-		public ref T getRef(int idx)
+		ref T GetRef(int idx)
 		{
 			return ref (&mFirstElement)[idx];
 		}
 
 		[Inline]
-		public ref T getRefChecked(int idx)
+		ref T GetRefChecked(int idx)
 		{
 			if ((uint)idx >= (uint)mLength)
 				Internal.ThrowIndexOutOfRange(1);
@@ -168,7 +192,7 @@ namespace System
 		public void CopyTo(T[] arrayTo)
 		{
 			Debug.Assert(arrayTo.mLength >= mLength);
-			Internal.MemCpy(&arrayTo.getRef(0), &getRef(0), strideof(T) * mLength, alignof(T));
+			Internal.MemCpy(&arrayTo.GetRef(0), &GetRef(0), strideof(T) * mLength, alignof(T));
 		}
 
 		public void CopyTo(T[] arrayTo, int srcOffset, int dstOffset, int length)
@@ -176,7 +200,7 @@ namespace System
 			Debug.Assert(length >= 0);
 			Debug.Assert((uint)srcOffset + (uint)length <= (uint)mLength);
 			Debug.Assert((uint)dstOffset + (uint)length <= (uint)arrayTo.mLength);
-			Internal.MemCpy(&arrayTo.getRef(dstOffset), &getRef(srcOffset), strideof(T) * length, alignof(T));
+			Internal.MemCpy(&arrayTo.GetRef(dstOffset), &GetRef(srcOffset), strideof(T) * length, alignof(T));
 		}
 
 		public void CopyTo<T2>(T2[] arrayTo, int srcOffset, int dstOffset, int length) where T2 : var
@@ -188,12 +212,12 @@ namespace System
 			if (((Object)arrayTo == (Object)this) && (dstOffset > srcOffset))
 			{
 				for (int i = length - 1; i >= 0; i--)
-					arrayTo.getRef(i + dstOffset) = (T2)getRef(i + srcOffset);
+					arrayTo.GetRef(i + dstOffset) = (T2)GetRef(i + srcOffset);
 				return;
 			}
 
 			for (int i = 0; i < length; i++)
-				arrayTo.getRef(i + dstOffset) = (T2)getRef(i + srcOffset);
+				arrayTo.GetRef(i + dstOffset) = (T2)GetRef(i + srcOffset);
 		}
 
 		public Span<T>.Enumerator GetEnumerator()
@@ -352,19 +376,19 @@ namespace System
 		}
 
 		[Inline]
-		public ref T getRef(int idx)
+		public ref T GetRef(int idx)
 		{
 			return ref (&mFirstElement)[idx];
 		}
 
 		[Inline]
-		public ref T getRef(int idx0, int idx1, int idx2)
+		public ref T GetRef(int idx0, int idx1, int idx2)
 		{
 			return ref (&mFirstElement)[(idx0*mLength1 + idx1)*mLength2 + idx2];
 		}
 
 		[Inline]
-		public ref T getRefChecked(int idx)
+		public ref T GetRefChecked(int idx)
 		{
 			if ((uint)idx >= (uint)mLength)
 				Internal.ThrowIndexOutOfRange(1);
@@ -372,7 +396,7 @@ namespace System
 		}
 
 		[Inline]
-		public ref T getRefChecked(int idx0, int idx1, int idx2)
+		public ref T GetRefChecked(int idx0, int idx1, int idx2)
 		{
 			int idx = (idx0*mLength1 + idx1)*mLength2 + idx2;
 			if (((uint)idx >= (uint)mLength) ||
@@ -471,19 +495,19 @@ namespace System
 		}
 
 		[Inline]
-		public ref T getRef(int idx)
+		public ref T GetRef(int idx)
 		{
 			return ref (&mFirstElement)[idx];
 		}
 
 		[Inline]
-		public ref T getRef(int idx0, int idx1, int idx2, int idx3)
+		public ref T GetRef(int idx0, int idx1, int idx2, int idx3)
 		{
 			return ref (&mFirstElement)[((idx0*mLength1 + idx1)*mLength2 + idx2)*mLength3 + idx3];
 		}
 
 		[Inline]
-		public ref T getRefChecked(int idx)
+		public ref T GetRefChecked(int idx)
 		{
 			if ((uint)idx >= (uint)mLength)
 				Internal.ThrowIndexOutOfRange(1);
@@ -491,7 +515,7 @@ namespace System
 		}
 
 		[Inline]
-		public ref T getRefChecked(int idx0, int idx1, int idx2, int idx3)
+		public ref T GetRefChecked(int idx0, int idx1, int idx2, int idx3)
 		{
 			int idx = ((idx0*mLength1 + idx1)*mLength2 + idx2)*mLength3 + idx3;
 			if (((uint)idx >= (uint)mLength) ||

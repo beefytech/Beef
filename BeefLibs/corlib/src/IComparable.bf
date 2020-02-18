@@ -1,23 +1,5 @@
 namespace System
 {
-	interface IComparable<T>
-	{
-		int32 CompareTo(T other);
-	}
-
-	public interface IComparer<T>
-	{
-	    int Compare(T x, T y);
-	}
-
-	public class CompareWrapper<T> : IComparer<T> where T : IOpComparable
-	{
-		public int Compare(T x, T y)
-		{
-			return x <=> y;
-		}
-	}
-
 	interface INumeric
 	{
 		static Self operator+(Self lhs, Self rhs);

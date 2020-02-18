@@ -588,15 +588,6 @@ namespace System.Collections.Generic
 			return false;
 		}
 
-		/// Searches a section of the list for a given element using a binary search
-		/// algorithm. Elements of the list are compared to the search value using
-		/// the given IComparer interface. If comparer is null, elements of
-		/// the list are compared to the search value using the IComparable
-		/// interface, which in that case must be implemented by all elements of the
-		/// list and the given search value. This method assumes that the given
-		/// section of the list is already sorted; if this is not the case, the
-		/// result will be incorrect.
-		///
 		/// The method returns the index of the given value in the list. If the
 		/// list does not contain the given value, the method returns a negative
 		/// integer. The bitwise complement operator (~) can be applied to a
@@ -609,15 +600,16 @@ namespace System.Collections.Generic
 		/// search.
 		///
 		/// @brief Searches a section of the list for a given element using a binary search algorithm.
-		public int BinarySearch(int index, int count, T item, IComparer<T> comparer)
+		public int BinarySearch(T item, delegate int(T lhs, T rhs) comparer)
 		{
-			return (int_cosize)Array.BinarySearch(mItems, index, count, item, comparer);
+			return Array.BinarySearch(mItems, Count, item, comparer);
 		}
 
-		public int_cosize BinarySearch(T item, IComparer<T> comparer)
+		public int BinarySearch(int index, int count, T item, delegate int(T lhs, T rhs) comparer)
 		{
-			//Contract.Ensures(Contract.Result<int>() <= Count);
-			return (int_cosize)BinarySearch(0, Count, item, comparer);
+			Debug.Assert((uint)index <= (uint)mSize);
+			Debug.Assert(index + count <= mSize);
+			return (int)Array.BinarySearch(mItems + index, count, item, comparer);
 		}
 
 		public static operator Span<T>(List<T> list)
@@ -775,9 +767,16 @@ namespace System.Collections.Generic
 
 	extension List<T> where T : IOpComparable
 	{
-		public int_cosize BinarySearch(T item)
+		public int BinarySearch(T item)
 		{
-			return (int_cosize)BinarySearch(0, Count, item, scope CompareWrapper<T>());
+			return (int)Array.BinarySearch(mItems, Count, item);
+		}
+
+		public int BinarySearch(int index, int count, T item)
+		{
+			Debug.Assert((uint)index <= (uint)mSize);
+			Debug.Assert(index + count <= mSize);
+			return (int)Array.BinarySearch(mItems + index, count, item);
 		}
 
 		public void Sort()

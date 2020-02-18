@@ -1857,12 +1857,19 @@ void BfAutoComplete::CheckInvocation(BfAstNode* invocationNode, BfTokenNode* ope
 				target = memberTarget->mMemberName;
 		}
 		else if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(target))
-			target = qualifiedTypeRef->mRight;
+		{
+			if (qualifiedTypeRef->mRight != NULL)
+				target = qualifiedTypeRef->mRight;
+		}
 		else if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(target))
-			target = qualifiedNameNode->mRight;
+		{
+			if (qualifiedNameNode->mRight != NULL)
+				target = qualifiedNameNode->mRight;
+		}
 
 		if (auto attributedMember = BfNodeDynCast<BfAttributedIdentifierNode>(target))
-			target = attributedMember->mIdentifier;
+			if (attributedMember->mIdentifier != NULL)
+				target = attributedMember->mIdentifier;
 	}
 
 	bool doCapture = (bfParser->mCursorIdx >= openParen->GetSrcStart());

@@ -12122,12 +12122,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 		auto genericArg = methodMatcher.mBestMethodGenericArguments[checkGenericIdx];
 		if (genericArg->IsVar())
 			continue;
-		/*if (genericArg->IsPrimitiveType())
-		{
-			auto primType = (BfPrimitiveType*)genericArg;
-			genericArg = mModule->GetPrimitiveStructType(primType->mTypeDef->mTypeCode);
-		}*/
-
+		
 		BfAstNode* paramSrc;
 		if (methodMatcher.mBestMethodGenericArgumentSrcs.size() == 0)
 		{
@@ -12149,7 +12144,6 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 				if (error != NULL)
 					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance.mMethodInstance->mMethodDef->GetRefNode());
 			}
-			return BfModuleMethodInstance();
 		}
 	}
 

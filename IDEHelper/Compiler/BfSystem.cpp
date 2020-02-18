@@ -2436,9 +2436,8 @@ BfTypeDef* BfSystem::FindTypeDefEx(const StringImpl& fullTypeName)
 			if ((typeDef->mFullName == qualifiedFindName) && (CheckTypeDefReference(typeDef, project)) && 
 				(!typeDef->mIsPartial))
 			{				
-				if (typeDef->mGenericParamDefs.size() != numGenericArgs)
-					continue;
-				return typeDef;
+				if (typeDef->mGenericParamDefs.size() == numGenericArgs)					
+					return typeDef;
 			}
 			itr.MoveToNextHashMatch();
 		}
