@@ -22,7 +22,7 @@ namespace System
 			return (SelfBase)lhs + (SelfBase)rhs;
 		}
 
-		int IHashable.GetHashCode()
+		public int GetHashCode()
 		{
 			return (int)this;
 		}

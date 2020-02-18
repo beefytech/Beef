@@ -20,7 +20,7 @@ namespace System
 			return (SelfBase)value;
 		}
 
-		int IHashable.GetHashCode()
+		public int GetHashCode()
 		{
 			return (int)this;
 		}

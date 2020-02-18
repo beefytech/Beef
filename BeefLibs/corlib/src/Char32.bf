@@ -2,7 +2,7 @@ namespace System
 {
 	struct Char32 : char32, IHashable
 	{
-	    int IHashable.GetHashCode()
+	    public int GetHashCode()
 		{
 			return (int)this;
 		}

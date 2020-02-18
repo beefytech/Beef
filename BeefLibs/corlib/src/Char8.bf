@@ -109,7 +109,7 @@ namespace System
 			}
 		}
 
-		int IHashable.GetHashCode()
+		public int GetHashCode()
 		{
 			return (int32)this;
 		}

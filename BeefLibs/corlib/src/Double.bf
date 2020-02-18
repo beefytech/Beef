@@ -33,7 +33,7 @@ namespace System
             return (double)value;
         }
 
-		int IHashable.GetHashCode()
+		public int GetHashCode()
 		{
 			double d = (double)this;
 			if (d == 0)

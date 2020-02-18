@@ -14,7 +14,7 @@ namespace System
 		internal const char16 HIGH_SURROGATE_END   = (char16)0xdbff;
 		internal const char16 LOW_SURROGATE_START  = (char16)0xdc00;
 
-		int IHashable.GetHashCode()
+		public int GetHashCode()
 		{
 			return (int)this;
 		}

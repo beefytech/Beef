@@ -32,7 +32,7 @@ namespace System
 			}
 		}*/
 
-		int IHashable.GetHashCode()
+		public int GetHashCode()
 		{
 			var val = (float)this;
 			return *(int32*)(&val);

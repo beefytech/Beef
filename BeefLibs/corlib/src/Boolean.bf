@@ -7,7 +7,7 @@ namespace System
 		    strBuffer.Append(((bool)this) ? "true" : "false");
 		}
 
-		int IHashable.GetHashCode()
+		public int GetHashCode()
 		{
 			return ((bool)this) ? 1 : 0;
 		}
