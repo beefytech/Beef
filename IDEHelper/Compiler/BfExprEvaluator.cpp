@@ -2107,6 +2107,7 @@ BfExprEvaluator::BfExprEvaluator(BfModule* module)
 	mResolveGenericParam = true;
 	mNoBind = false;
 	mResultLocalVar = NULL;
+	mResultFieldInstance = NULL;
 	mResultLocalVarField = 0;
 	mResultLocalVarFieldCount = 0;
 	mResultLocalVarRefNode = NULL;	
@@ -2932,6 +2933,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 					if (!isMixinOuterVariablePass)
 					{
  						mResultLocalVar = varDecl;
+						mResultFieldInstance = NULL;
 						mResultLocalVarRefNode = identifierNode;
 					}
 					return localResult;
@@ -2988,6 +2990,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 							result = mModule->LoadValue(result);
 
 						mResultLocalVar = localVar;
+						mResultFieldInstance = &field;
 						mResultLocalVarField = -(field.mMergedDataIdx + 1);
 
 						return result;
@@ -3077,6 +3080,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		if (!mModule->mCurMethodState->HasNonStaticMixin())
 		{
 			mResultLocalVar = mModule->GetThisVariable();
+			mResultFieldInstance = NULL;
 			mResultLocalVarRefNode = identifierNode;
 		}
 	}
@@ -3357,6 +3361,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					return BfTypedValue();
 				}
 
+				mResultFieldInstance = fieldInstance;
+
 				// Are we accessing a 'var' field that has not yet been resolved?
 				if (fieldInstance->mResolvedType->IsVar())
 				{
@@ -3393,7 +3399,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 					// Target must be an implicit 'this', or an error (accessing a static with a non-static target).  
 					//  Not actually needed in either case since this is a static lookup.
-					mResultLocalVar = NULL;
+					mResultLocalVar = NULL;					
 				}
 
 				bool isConst = false;
@@ -3463,7 +3469,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				{
 					mModule->CheckStaticAccess(curCheckType);
 					auto retVal = mModule->ReferenceStaticField(fieldInstance);						
-					if (field->mIsReadOnly)
+					bool isStaticCtor = (mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor) &&
+						(mModule->mCurMethodInstance->mMethodDef->mIsStatic);
+					if ((field->mIsReadOnly) && (!isStaticCtor))
 						retVal = mModule->LoadValue(retVal, NULL, mIsVolatileReference);
 					else
 						mIsHeapReference = true;
@@ -6683,7 +6691,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			}
 			
 			mResultLocalVar = NULL;
-			mResultLocalVarRefNode = NULL;						
+			mResultFieldInstance = NULL;
+			mResultLocalVarRefNode = NULL;									
 			MatchConstructor(targetSrc, methodBoundExpr, structInst, resolvedTypeInstance, argValues, false, false);
 			mModule->ValidateAllocation(resolvedTypeInstance, targetSrc);
 			
@@ -7687,6 +7696,7 @@ void BfExprEvaluator::Visit(BfThisExpression* thisExpr)
 	{		
 		
 		mResultLocalVar = mModule->GetThisVariable();
+		mResultFieldInstance = NULL;
 	}
 }
 
@@ -7732,6 +7742,7 @@ void BfExprEvaluator::Visit(BfMixinExpression* mixinExpr)
 			BfTypedValue localResult = LoadLocal(varDecl);
 			mResult = localResult;
 			mResultLocalVar = varDecl;
+			mResultFieldInstance = NULL;
 			mResultLocalVarRefNode = mixinExpr;
 			return;
 		}
@@ -8635,6 +8646,7 @@ BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentif
 							if (!isMixinOuterVariablePass)
 							{
 								mResultLocalVar = varDecl;
+								mResultFieldInstance = NULL;
 								mResultLocalVarRefNode = identifierNode;
 							}
 						return localResult;
@@ -8684,6 +8696,7 @@ BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentif
 									result = mModule->LoadValue(result);
 
 								mResultLocalVar = localVar;
+								mResultFieldInstance = &field;
 								mResultLocalVarField = -(field.mMergedDataIdx + 1);
 
 								return result;
@@ -14016,6 +14029,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 		mPropDefBypassVirtual = false;
 		mIndexerValues.clear();
 		mResultLocalVar = NULL;
+		mResultFieldInstance = NULL;
 	}	
 	if (resolveGenericType)
 		ResolveGenericType();
@@ -14126,6 +14140,7 @@ void BfExprEvaluator::FinishExpressionResult()
 {
 	CheckResultForReading(mResult);
 	mResultLocalVar = NULL;
+	mResultFieldInstance = NULL;
 }
 
 bool BfExprEvaluator::CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode)
@@ -14171,6 +14186,7 @@ void BfExprEvaluator::MakeResultAsValue()
 {
 	// Expressions like parens will turn a variable reference into a simple value 	
 	mResultLocalVar = NULL;
+	mResultFieldInstance = NULL;
 }
 
 bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut)
@@ -14208,10 +14224,12 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 		return true;
 	}
 
+	bool canModify = (((typedVal.IsAddr()) || (typedVal.mType->IsValuelessType())) &&
+		(!typedVal.IsReadOnly()));
+
 	if (localVar != NULL)
 	{
-		if (((!typedVal.IsAddr()) && (!typedVal.mType->IsValuelessType())) ||
-			(typedVal.IsReadOnly()))
+		if (!canModify)
 		{
 			BfError* error = NULL;
 			if (localVar->mIsThis)
@@ -14253,40 +14271,35 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 					}
 					return false;
 				}
-				else
-				{					
-					while (checkTypeInst != NULL)
+				else if (mResultFieldInstance != NULL)
+				{															
+					if (isCapturedLocal)
 					{
-						for (auto& checkFieldInstance : checkTypeInst->mFieldInstances)
-						{
-							if (checkFieldInstance.mMergedDataIdx == fieldIdx)
-							{
-								if (isCapturedLocal)
-								{
-									error = mModule->Fail(StrFormat("Cannot %s read-only captured local variable '%s'. Consider adding by-reference capture specifier [&] to lambda and ensuring that captured value is not read-only.", modifyType,
-										checkFieldInstance.GetFieldDef()->mName.c_str()), refNode);
-								}
-								else if (isClosure)
-								{
-									if (!mModule->mCurMethodState->mClosureState->mDeclaringMethodIsMutating)
-										error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct lambda. Consider adding 'mut' specifier to this method.", modifyType,
-											mModule->TypeToString(checkFieldInstance.mOwner).c_str(), checkFieldInstance.GetFieldDef()->mName.c_str()), refNode);
-									else
-										error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct lambda. Consider adding by-reference capture specifier [&] to lambda.", modifyType,
-										mModule->TypeToString(checkFieldInstance.mOwner).c_str(), checkFieldInstance.GetFieldDef()->mName.c_str()), refNode);
-								}
-								else
-								{
-									error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct method '%s'. Consider adding 'mut' specifier to this method.", modifyType,
-										mModule->TypeToString(checkFieldInstance.mOwner).c_str(), checkFieldInstance.GetFieldDef()->mName.c_str(),
-										mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
-								}								
-								return false;
-							}
-						}
-
-						checkTypeInst = checkTypeInst->mBaseType;
+						error = mModule->Fail(StrFormat("Cannot %s read-only captured local variable '%s'. Consider adding by-reference capture specifier [&] to lambda and ensuring that captured value is not read-only.", modifyType,
+							mResultFieldInstance->GetFieldDef()->mName.c_str()), refNode);
 					}
+					else if (isClosure)
+					{
+						if (!mModule->mCurMethodState->mClosureState->mDeclaringMethodIsMutating)
+							error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct lambda. Consider adding 'mut' specifier to this method.", modifyType,
+								mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str()), refNode);
+						else
+							error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct lambda. Consider adding by-reference capture specifier [&] to lambda.", modifyType,
+							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str()), refNode);
+					}
+					else if (mResultFieldInstance->GetFieldDef()->mIsReadOnly)
+					{
+						error = mModule->Fail(StrFormat("Cannot %s readonly field '%s.%s' within method '%s'", modifyType,
+							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
+							mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+					}
+					else
+					{
+						error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct method '%s'. Consider adding 'mut' specifier to this method.", modifyType,
+							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
+							mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+					}								
+					return false;												
 				}
 			}
 			else if (localVar->IsParam())
@@ -14314,6 +14327,15 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 			// When we are capturing, we need to note that we require capturing by reference here			
 			localVar->mWrittenToId = mModule->mCurMethodState->GetRootMethodState()->mCurAccessId++;
 		}
+	}
+
+	if ((mResultFieldInstance != NULL) && (mResultFieldInstance->GetFieldDef()->mIsReadOnly) && (!canModify))
+	{
+		auto error = mModule->Fail(StrFormat("Cannot %s static readonly field '%s.%s' within method '%s'", modifyType,
+			mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
+			mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+
+		return false;
 	}
 	
 

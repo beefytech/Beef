@@ -283,6 +283,7 @@ public:
 	BfTypedValue mResult;
 	BfEvalExprFlags mBfEvalExprFlags;
 	BfLocalVariable* mResultLocalVar;
+	BfFieldInstance* mResultFieldInstance;
 	int mResultLocalVarField;
 	int mResultLocalVarFieldCount; // > 1 for structs with multiple members
 	BfAstNode* mResultLocalVarRefNode;

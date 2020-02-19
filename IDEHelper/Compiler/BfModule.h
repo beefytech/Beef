@@ -1022,9 +1022,10 @@ public:
 
 	BfMethodState* GetNonCaptureState()
 	{
+		//TODO: Why did this require mLocalMethod to not be null? That means lambda captures we're not crossed over
 		auto checkMethodState = this;
 		while ((checkMethodState->mPrevMethodState != NULL) && (checkMethodState->mClosureState != NULL) && 
-			(checkMethodState->mClosureState->mCapturing) && (checkMethodState->mClosureState->mLocalMethod != NULL))
+			(checkMethodState->mClosureState->mCapturing) /*&& (checkMethodState->mClosureState->mLocalMethod != NULL)*/)
 			checkMethodState = checkMethodState->mPrevMethodState;
 		return checkMethodState;
 	}
