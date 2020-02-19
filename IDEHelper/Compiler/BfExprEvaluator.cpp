@@ -5603,7 +5603,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 			{
 				if (callCtorBodyOnly)
 				{
-					if (curTypeDef != targetType->mTypeDef)
+					if (curTypeDef != mModule->mCurTypeInstance->mTypeDef)
 					{
 						// We're calling the base class's ctor from a derived class
 						if (checkProt <= BfProtection_Private)
