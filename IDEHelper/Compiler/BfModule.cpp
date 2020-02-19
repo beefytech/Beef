@@ -14219,11 +14219,6 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		}
 	}
 
-	if (mCurTypeInstance->IsDelegate())
-	{
-		NOP;
-	}
-
 	BfAstNode* baseCtorNode = NULL;
 	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL) && (ctorDeclaration->mInitializer->mTarget != NULL))
 		baseCtorNode = ctorDeclaration->mInitializer->mTarget;
