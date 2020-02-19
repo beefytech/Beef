@@ -18154,6 +18154,12 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	methodState.mIRFunction = declMethodState->mIRFunction;
 	methodState.mDeferredLocalAssignData = &deferredLocalAssignData;
 
+	if (auto blockBody = BfNodeDynCast<BfBlock>(body))
+	{
+		methodState.mCurScope->mAstBlock = blockBody;
+		methodState.mCurScope->mCloseNode = blockBody->mCloseBrace;
+	}
+
 	mBfIRBuilder->SetInsertPoint(methodState.mIREntryBlock);	
 
 	BfClosureState closureState;
