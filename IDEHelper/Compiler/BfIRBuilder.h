@@ -403,6 +403,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_AtomicXChg,
 	BfIRIntrinsic_AtomicXor,
 	BfIRIntrinsic_BSwap,
+	BfIRIntrinsic_Cast,
 	BfIRIntrinsic_Cos,
 	BfIRIntrinsic_Floor,
 	BfIRIntrinsic_Free,	
@@ -1136,7 +1137,7 @@ public:
 	BfIRValue CreatePhi(BfIRType type, int incomingCount);
 	void AddPhiIncoming(BfIRValue phi, BfIRValue value, BfIRBlock comingFrom);
 	
-	BfIRFunction GetIntrinsic(int intrinId, const BfSizedArray<BfIRType>& paramTypes);
+	BfIRFunction GetIntrinsic(int intrinId, BfIRType returnType, const BfSizedArray<BfIRType>& paramTypes);
 	BfIRFunctionType MapMethod(BfMethodInstance* methodInstance);
 	BfIRFunctionType CreateFunctionType(BfIRType resultType, const BfSizedArray<BfIRType>& paramTypes, bool isVarArg = false);
 	BfIRFunction CreateFunction(BfIRFunctionType funcType, BfIRLinkageType linkageType, const StringImpl& name);	

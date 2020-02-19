@@ -13,7 +13,9 @@ namespace System
 	[AlwaysInclude]
     static class Internal
     {
+		[Intrinsic("cast")]
         public static extern Object UnsafeCastToObject(void* ptr);
+		[Intrinsic("cast")]
 		public static extern void* UnsafeCastToPtr(Object obj);
 		[NoReturn]
 		public static extern void ThrowIndexOutOfRange(int stackOffset = 0);

@@ -143,6 +143,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"atomic_xchg"},
 	{"atomic_xor"},
 	{"bswap"},
+	{"cast"},
 	{"cos"},
 	{"floor"},
 	{"free"},
@@ -1815,18 +1816,24 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_GetIntrinsic:
 		{
 			CMD_PARAM(int, intrinId);
+			CMD_PARAM(llvm::Type*, returnType);
 			CMD_PARAM(CmdParamVec<llvm::Type*>, paramTypes);
-
+			
 			bool isFakeIntrinsic = false;
-			if ((intrinId >= BfIRIntrinsic_Atomic_FIRST) && (intrinId <= BfIRIntrinsic_Atomic_LAST))
+			if (((intrinId >= BfIRIntrinsic_Atomic_FIRST) && (intrinId <= BfIRIntrinsic_Atomic_LAST)) ||
+				(intrinId == BfIRIntrinsic_Cast))
 			{
 				isFakeIntrinsic = true;
 			}
 			if (isFakeIntrinsic)
-			{				
+			{	
+				auto intrinsicData = mAlloc.Alloc<BfIRIntrinsicData>();
+				intrinsicData->mIntrinsic = (BfIRIntrinsic)intrinId;
+				intrinsicData->mReturnType = returnType;
+
 				BfIRCodeGenEntry entry;
-				entry.mKind = BfIRCodeGenEntryKind_FakeIntrinsic;
-				entry.mIntrinsic = (BfIRIntrinsic)intrinId;
+				entry.mKind = BfIRCodeGenEntryKind_IntrinsicData;
+				entry.mIntrinsicData = intrinsicData;
 				mResults.TryAdd(curId, entry);
 				break;
 			}
@@ -1863,6 +1870,7 @@ void BfIRCodeGen::HandleNextCmd()
 					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicXChg,
 					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicXor,
 					{ llvm::Intrinsic::bswap, -1},
+					{ (llvm::Intrinsic::ID) - 1, -1}, // cast,
 					{ llvm::Intrinsic::cos, -1},
 					{ llvm::Intrinsic::floor, -1},
 					{ (llvm::Intrinsic::ID)-1, -1}, // free					
@@ -2005,9 +2013,11 @@ void BfIRCodeGen::HandleNextCmd()
 			Read(func, &codeGenEntry);
 			CMD_PARAM(CmdParamVec<llvm::Value*>, args);
 
-			if ((func == NULL) && (codeGenEntry != NULL) && (codeGenEntry->mKind == BfIRCodeGenEntryKind_FakeIntrinsic))
+			if ((func == NULL) && (codeGenEntry != NULL) && (codeGenEntry->mKind == BfIRCodeGenEntryKind_IntrinsicData))
 			{
-				switch (codeGenEntry->mIntrinsic)
+				auto intrinsicData = codeGenEntry->mIntrinsicData;
+
+				switch (intrinsicData->mIntrinsic)
 				{
 				case BfIRIntrinsic_AtomicCmpStore:
 				case BfIRIntrinsic_AtomicCmpStore_Weak:
@@ -2077,11 +2087,11 @@ void BfIRCodeGen::HandleNextCmd()
 						}
 
 						auto inst = mIRBuilder->CreateAtomicCmpXchg(args[0], args[1], args[2], successOrdering, failOrdering);
-						if (codeGenEntry->mIntrinsic == BfIRIntrinsic_AtomicCmpStore_Weak)
+						if (intrinsicData->mIntrinsic == BfIRIntrinsic_AtomicCmpStore_Weak)
 							inst->setWeak(true);
 						if ((memoryKind & BfIRAtomicOrdering_Volatile) != 0)
 							inst->setVolatile(true);
-						if (codeGenEntry->mIntrinsic == BfIRIntrinsic_AtomicCmpXChg)
+						if (intrinsicData->mIntrinsic == BfIRIntrinsic_AtomicCmpXChg)
 						{
 							auto prevVal = mIRBuilder->CreateExtractValue(inst, 0);
 							SetResult(curId, prevVal);
@@ -2218,7 +2228,7 @@ void BfIRCodeGen::HandleNextCmd()
 						bool isFloat = args[1]->getType()->isFloatingPointTy();
 
 						auto op = llvm::AtomicRMWInst::BinOp::Add;
-						switch (codeGenEntry->mIntrinsic)
+						switch (intrinsicData->mIntrinsic)
 						{
 						case BfIRIntrinsic_AtomicAdd:							
 							op = llvm::AtomicRMWInst::BinOp::Add;
@@ -2293,7 +2303,7 @@ void BfIRCodeGen::HandleNextCmd()
 						llvm::Value* result = atomicRMW;
 						if ((memoryKind & BfIRAtomicOrdering_ReturnModified) != 0)
 						{
-							switch (codeGenEntry->mIntrinsic)
+							switch (intrinsicData->mIntrinsic)
 							{
 							case BfIRIntrinsic_AtomicAdd:
 								if (isFloat)
@@ -2310,7 +2320,7 @@ void BfIRCodeGen::HandleNextCmd()
 							case BfIRIntrinsic_AtomicUMin:
 								{
 									llvm::Value* cmpVal = NULL;
-									switch (codeGenEntry->mIntrinsic)
+									switch (intrinsicData->mIntrinsic)
 									{
 									case BfIRIntrinsic_AtomicMax:
 										if (isFloat)
@@ -2358,6 +2368,11 @@ void BfIRCodeGen::HandleNextCmd()
 							}
 						}
 						SetResult(curId, result);
+					}
+					break;
+				case BfIRIntrinsic_Cast:
+					{
+						SetResult(curId, mIRBuilder->CreateBitCast(args[0], intrinsicData->mReturnType));
 					}
 					break;
 				default:

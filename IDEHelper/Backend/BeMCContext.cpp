@@ -16209,6 +16209,15 @@ void BeMCContext::Generate(BeFunction* function)
 								result = scratchReg;
 							}
 							break;
+						case BfIRIntrinsic_Cast:
+							{								
+								result = AllocVirtualReg(intrin->mReturnType);
+								CreateDefineVReg(result);
+								auto vregInfo = GetVRegInfo(result);
+								vregInfo->mRelTo = GetOperand(castedInst->mArgs[0].mValue);
+								vregInfo->mIsExpr = true;
+							}
+							break;
 						case BfIRIntrinsic_MemSet:
 							{
 								if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mArgs[1].mValue))

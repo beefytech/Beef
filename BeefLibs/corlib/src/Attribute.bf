@@ -102,7 +102,7 @@ namespace System
 		}
 	}
 
-    [AttributeUsage(.Method /*1*/ | .Invocation)]
+    [AttributeUsage(.Method | .Constructor |  .Invocation | .Property)]
     public struct InlineAttribute : Attribute
     {
         

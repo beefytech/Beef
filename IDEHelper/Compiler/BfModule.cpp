@@ -6096,7 +6096,7 @@ BfIRFunction BfModule::GetIntrinsic(BfMethodInstance* methodInstance, bool repor
 					SizedArray<BfIRType, 2> paramTypes;
 					for (auto& param : methodInstance->mParams)
 						paramTypes.push_back(mBfIRBuilder->MapType(param.mResolvedType));
-					return mBfIRBuilder->GetIntrinsic(intrinId, paramTypes);
+					return mBfIRBuilder->GetIntrinsic(intrinId, mBfIRBuilder->MapType(methodInstance->mReturnType), paramTypes);
 				}
 				else if (reportFailure)
 					error = StrFormat("Unable to find intrinsic '%s'", entry.mString.c_str());

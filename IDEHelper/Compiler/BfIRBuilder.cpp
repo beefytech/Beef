@@ -4232,9 +4232,9 @@ void BfIRBuilder::AddPhiIncoming(BfIRValue phi, BfIRValue value, BfIRBlock comin
 	NEW_CMD_INSERTED;
 }
 
-BfIRFunction BfIRBuilder::GetIntrinsic(int intrinId, const BfSizedArray<BfIRType>& paramTypes)
+BfIRFunction BfIRBuilder::GetIntrinsic(int intrinId, BfIRType returnType, const BfSizedArray<BfIRType>& paramTypes)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_GetIntrinsic, intrinId, paramTypes);
+	BfIRValue retVal = WriteCmd(BfIRCmd_GetIntrinsic, intrinId, returnType, paramTypes);
 	NEW_CMD_INSERTED;
 	return retVal;
 }

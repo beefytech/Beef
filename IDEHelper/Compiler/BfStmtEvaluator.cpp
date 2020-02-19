@@ -6281,6 +6281,11 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 	else
 		scope = mCurMethodState->mCurScope;
 
+	if ((scope == mCurMethodState->mCurScope) && (scope->mCloseNode == NULL))
+	{
+		Warn(0, "This defer will immediately execute. Consider specifying a wider scope target such as 'defer::'", deferStmt->mDeferToken);
+	}
+
 	if (auto block = BfNodeDynCast<BfBlock>(deferStmt->mTargetNode))
 	{		
 		if (deferStmt->mBind != NULL)

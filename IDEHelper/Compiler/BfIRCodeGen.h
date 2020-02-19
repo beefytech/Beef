@@ -13,7 +13,14 @@ enum BfIRCodeGenEntryKind
 	BfIRCodeGenEntryKind_LLVMType,
 	BfIRCodeGenEntryKind_LLVMBasicBlock,
 	BfIRCodeGenEntryKind_LLVMMetadata,
-	BfIRCodeGenEntryKind_FakeIntrinsic,
+	BfIRCodeGenEntryKind_IntrinsicData,
+};
+
+class BfIRIntrinsicData
+{
+public:
+	BfIRIntrinsic mIntrinsic;
+	llvm::Type* mReturnType;
 };
 
 struct BfIRCodeGenEntry
@@ -25,7 +32,7 @@ struct BfIRCodeGenEntry
 		llvm::Type* mLLVMType;
 		llvm::BasicBlock* mLLVMBlock;
 		llvm::MDNode* mLLVMMetadata;	
-		BfIRIntrinsic mIntrinsic;
+		BfIRIntrinsicData* mIntrinsicData;
 	};
 };
 
@@ -54,6 +61,7 @@ class BfIRCodeGen : public BfIRCodeGenBase
 public:	
 	BfIRBuilder* mBfIRBuilder;	
 	
+	BumpAllocator mAlloc;
 	BfTargetTriple mTargetTriple;
     String mModuleName;
 	llvm::LLVMContext* mLLVMContext;

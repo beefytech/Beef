@@ -78,7 +78,10 @@ namespace System
         [Inline]
         public static implicit operator Nullable<T>(T value)
         {
-            return Nullable<T>(value);
+			Nullable<T> result;
+			result.mHasValue = true;
+			result.mValue = value;
+			return result;
         }
 
         [Inline]

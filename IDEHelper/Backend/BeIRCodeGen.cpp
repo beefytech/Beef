@@ -1902,7 +1902,9 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_GetIntrinsic:
 		{			
 			CMD_PARAM(int, intrinId);
+			CMD_PARAM(BeType*, returnType);
 			CMD_PARAM(CmdParamVec<BeType*>, paramTypes);
+
 			auto intrin = mBeModule->mAlloc.Alloc<BeIntrinsic>();
 			intrin->mKind = (BfIRIntrinsic)intrinId;
 
@@ -1933,6 +1935,9 @@ void BeIRCodeGen::HandleNextCmd()
 			case BfIRIntrinsic_AtomicCmpStore:
 			case BfIRIntrinsic_AtomicCmpStore_Weak:			
 				intrin->mReturnType = mBeContext->GetPrimitiveType(BeTypeCode_Boolean);
+				break;			
+			case BfIRIntrinsic_Cast:
+				intrin->mReturnType = returnType;
 				break;
 			}
 
