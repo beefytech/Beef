@@ -897,11 +897,6 @@ void BeMCColorizer::Prepare()
 	mReserveParamRegs = false;
 	mNodes.Resize(mContext->mVRegInfo.size());
 
-	if (mContext->mDebugging)
-	{
-		NOP;	
-	}
-
 	for (int vregIdx = 0; vregIdx < (int)mNodes.size(); vregIdx++)
 	{
 		auto node = &mNodes[vregIdx];
@@ -1281,12 +1276,7 @@ void BeMCColorizer::GenerateRegCosts()
 }
 
 void BeMCColorizer::AssignRegs(RegKind regKind)
-{
-	if (mContext->mDebugging)
-	{
-		NOP;
-	}
-
+{	
 	X64CPURegister highestReg;
 	
 	int totalRegs32 = 0;
@@ -3068,7 +3058,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 }
 
 void BeMCContext::CreateMemSet(const BeMCOperand& addr, uint8 val, int size, int align)
-{	
+{		
 	if ((size == 8) || (size == 4) || (size == 2) || (size == 1))
 	{	
 		BeType* type = NULL;
@@ -3338,12 +3328,7 @@ void BeMCContext::CreateBinarySwitchSection(BeSwitchInst* switchInst, int startI
 }
 
 void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const BeMCOperand& trueBlock, const BeMCOperand& falseBlock)
-{
-	if (mDebugging)
-	{
-		NOP;
-	}
-
+{	
 	if (testVal.IsImmediate())
 	{
 		if (testVal.mImmediate != 0)
@@ -3785,11 +3770,6 @@ BeMCOperand BeMCContext::AllocRelativeVirtualReg(BeType* type, const BeMCOperand
 	BF_ASSERT(relTo.IsVRegAny());	
 	auto relToVRegInfo = GetVRegInfo(relTo);
 	
-	if ((mDebugging) && (mVRegInfo.size() == 5))
-	{
-		NOP;
-	}
-
 	if ((relToVRegInfo->mRelTo) && (relToVRegInfo->mRelOffsetScale == 1) && (relToVRegInfo->mRelOffset.IsImmediate()) &&
 		(relOffset.IsImmediate()) && (relScale == 1))
 	{
@@ -6947,12 +6927,7 @@ void BeMCContext::DoInstCombinePass()
 
 	BeVTrackingValue vTrackingVal((int)mVRegInfo.size());
 	HashSet<int> wantUnwrapVRegs;
-
-	if (mDebugging)
-	{
-		NOP;
-	}
-
+	
 	for (auto mcBlock : mBlocks)
 	{
 		BeDbgLoc* curDbgLoc = NULL;
@@ -8170,11 +8145,6 @@ bool BeMCContext::DoLegalization()
 			auto inst = mcBlock->mInstructions[instIdx];
 			SetCurrentInst(inst);
 			
-			if ((mDebugging) && (inst->mKind == BeMCInstKind_IMul))
-			{
-				NOP;
-			}
-
 			if (inst->mKind == BeMCInstKind_Mov)
 			{
 				// Useless mov, remove it
@@ -8840,14 +8810,7 @@ bool BeMCContext::DoLegalization()
 							int bScale = 1;
 							int disp = 0;
 							int errorVRegIdx = -1;
-							bool isValid = GetRMParams(inst->mArg0, regA, regB, bScale, disp, &errorVRegIdx) != BeMCRMMode_Invalid;
-							if (mDebugging)
-							{
-								if ((inst->mArg0.mVRegIdx == 272) || (inst->mArg0.mVRegIdx == 274))
-								{
-									NOP;
-								}
-							}
+							bool isValid = GetRMParams(inst->mArg0, regA, regB, bScale, disp, &errorVRegIdx) != BeMCRMMode_Invalid;							
 
 							if (!isValid)
 							{
@@ -10608,12 +10571,7 @@ void BeMCContext::DoRegFinalization()
 			switch (inst->mKind)
 			{
 			case BeMCInstKind_PreserveVolatiles:
-				{
-					if (mDebugging)
-					{
-						NOP;
-					}
-
+				{					
 					int preserveIdx;
 					BeMCInst* preserveInst;
 					BeMCInst* restoreInst;
@@ -11489,11 +11447,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 	int memSize = dataVec.size();
 	int curOfs = 0;
 
-	bool allowRep = dataVec.size() >= BF_REP_MOV_LIMIT;
-	if (mDebugging)
-	{
-		NOP;
-	}
+	bool allowRep = dataVec.size() >= BF_REP_MOV_LIMIT;	
 
 	union IntUnion
 	{
@@ -14751,7 +14705,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?TestTagCount@Program@bf@@SAXXZ";
+	//mDebugging = function->mName == "?Hey@Blurg@bf@@SAXXZ";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
@@ -15280,12 +15234,7 @@ void BeMCContext::Generate(BeFunction* function)
 				}
 				break;
 			case BeAllocaInst::TypeId:
-				{			
-					if (mDebugging)
-					{
-						NOP;
-					}
-
+				{								
 					int homeSize = BF_ALIGN(BF_MAX(mMaxCallParamCount, 4) * 8, 16);
 					auto castedInst = (BeAllocaInst*)inst;
 					auto mcSize = BeMCOperand::FromImmediate(castedInst->mType->mSize);
@@ -15754,12 +15703,7 @@ void BeMCContext::Generate(BeFunction* function)
 				}
 				break;
 			case BeCondBrInst::TypeId:
-				{
-					if (mDebugging)
-					{
-						NOP;
-					}
-
+				{					
 					auto castedInst = (BeCondBrInst*)inst;
 					auto testVal = GetOperand(castedInst->mCond, true);
 					auto trueBlock = GetOperand(castedInst->mTrueBlock);
@@ -16300,12 +16244,7 @@ void BeMCContext::Generate(BeFunction* function)
 				}
 				break;
 			case BeDbgDeclareInst::TypeId:
-				{
-					if (mDebugging)
-					{
-						NOP;
-					}
-
+				{					
 					auto castedInst = (BeDbgDeclareInst*)inst;
 					auto dbgVar = castedInst->mDbgVar;
 					auto mcValue = GetOperand(castedInst->mValue);

@@ -1135,16 +1135,6 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	if (bfAutocomplete != NULL)			
 		bfAutocomplete->CheckTypeRef(varDecl->mTypeRef, true, true);	
 
-// 	if (varDecl->mNameNode == NULL)
-// 	{
-// 		// Minimum parsing requirements
-// 		auto resolvedType = ResolveTypeRef(varDecl->mTypeRef);
-// 		if (resolvedType != NULL)
-// 			AddDependency(resolvedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_LocalUsage);
-// 		AssertErrorState();
-// 		return NULL;
-// 	}
-
 	bool isConst = (varDecl->mModSpecifier != NULL) && (varDecl->mModSpecifier->GetToken() == BfToken_Const);
 	bool isReadOnly = (varDecl->mModSpecifier != NULL) && (varDecl->mModSpecifier->GetToken() == BfToken_ReadOnly);
 

@@ -2933,7 +2933,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, lineNo);
 			CMD_PARAM(BeMDNode*, type);
 			CMD_PARAM(int, initType);
-						
+
 			auto dbgVar = mBeModule->mOwnedValues.Alloc<BeDbgVariable>();
 			dbgVar->mName = name;
 			dbgVar->mType = (BeDbgType*)type;

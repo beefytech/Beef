@@ -2599,6 +2599,7 @@ void BeModule::DoInlining(BeFunction* func)
 						auto destDbgGlobalVar = mOwnedValues.Alloc<BeDbgVariable>();
 						destDbgGlobalVar->mName = dbgGlobalVar->mName;
 						destDbgGlobalVar->mType = dbgGlobalVar->mType;
+						destDbgGlobalVar->mInitType = dbgGlobalVar->mInitType;
 						if (dbgGlobalVar->mValue != NULL)
 						{
 							BF_ASSERT(BeValueDynCast<BeConstant>(dbgGlobalVar->mValue) != NULL);							

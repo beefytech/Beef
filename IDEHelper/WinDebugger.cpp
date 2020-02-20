@@ -4324,6 +4324,8 @@ bool WinDebugger::SetupStep(StepType stepType)
 				CPUInst inst;
 				while (true)
 				{
+					if (mStepInAssembly)
+						break;
 					if (!mDebugTarget->DecodeInstruction(pcAddress, &inst))
 						break;
 					if ((inst.IsBranch()) || (inst.IsCall()) || (inst.IsReturn()))
@@ -4331,7 +4333,7 @@ bool WinDebugger::SetupStep(StepType stepType)
 #ifdef BF_DBG_32
 					if (!inst.StackAdjust(mStepSP))
 						break;
-#endif
+#endif					
 					DbgSubprogram* checkSubprogram = NULL;
 					auto checkLineData = FindLineDataAtAddress(pcAddress, &checkSubprogram, NULL, NULL, DbgOnDemandKind_LocalOnly);
 					if (checkLineData == NULL)
