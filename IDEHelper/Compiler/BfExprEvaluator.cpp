@@ -6001,6 +6001,30 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 	return BfTypedValue();
 }
 
+bool BfExprEvaluator::CheckGenericCtor(BfGenericParamType* genericParamType, BfResolvedArgs& argValues, BfAstNode* targetSrc)
+{
+	auto genericConstraint = mModule->GetGenericParamInstance(genericParamType);
+	bool success = true;
+	
+	if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_New) == 0)
+	{
+		mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		success = false;
+	}
+	if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_Struct) == 0)
+	{
+		mModule->Fail(StrFormat("Must add 'where %s : struct' constraint to generic parameter to instantiate type without allocator", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		success = false;
+	}
+	if ((argValues.mArguments != NULL) && (argValues.mArguments->size() != 0))
+	{
+		mModule->Fail(StrFormat("Only default parameterless constructors can be called on generic argument '%s'", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		success = false;
+	}
+
+	return success;
+}
+
 BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName, 
 	BfResolvedArgs& argValues, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments, BfCheckedKind checkedKind)
 {
@@ -6669,7 +6693,15 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				}
 
 				if (refType != NULL)
+				{
 					resolvedTypeInstance = refType->ToTypeInstance();
+
+					if (refType->IsGenericParam())
+					{
+						CheckGenericCtor((BfGenericParamType*)refType, argValues, targetSrc);
+						return mModule->GetDefaultTypedValue(refType);
+					}
+				}
 			}
 		}
 
@@ -10873,7 +10905,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		{
 			//mModule->SetElementType(objCreateExpr->mTypeRef, BfSourceElementType_TypeRef);
 
-			if (mExpectingType->IsObject())
+			if ((mExpectingType->IsObject()) || (mExpectingType->IsGenericParam()))
 			{
 				unresolvedTypeRef = mExpectingType;
 
@@ -11441,7 +11473,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		auto genericConstraint = mModule->GetGenericParamInstance((BfGenericParamType*)resolvedTypeRef);
 		if (genericConstraint->mTypeConstraint == NULL)
 		{
-			if ((genericConstraint->mGenericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Struct)) == 0)
+			if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_New) == 0)
 			{
 				mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericConstraint->GetGenericParamDef()->mName.c_str()), objCreateExpr->mTypeRef);
 			}
@@ -13108,7 +13140,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		if ((memberRefExpression->mTarget == NULL) && (memberRefExpression->mMemberName == NULL))
 		{
 			if (mExpectingType != NULL)
-			{
+			{				
 				if (mExpectingType->IsSizedArray())
 				{
 					if (mModule->mParentNodeEntry != NULL)
@@ -13147,6 +13179,23 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							MatchConstructor(target, methodBoundExpr, mResult, mExpectingType->ToTypeInstance(), argValues, false, false);
 							mModule->ValidateAllocation(mExpectingType, invocationExpr->mTarget);
 
+							return;
+						}
+					}
+				}
+				else if (mExpectingType->IsGenericParam())
+				{
+					if (mModule->mParentNodeEntry != NULL)
+					{
+						if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(mModule->mParentNodeEntry->mNode))
+						{
+							BfResolvedArgs argValues(invocationExpr->mOpenParen, &invocationExpr->mArguments, &invocationExpr->mCommas, invocationExpr->mCloseParen);
+
+							BfResolveArgFlags resolveArgsFlags = BfResolveArgFlag_None;
+							ResolveArgValues(argValues, resolveArgsFlags);
+
+							CheckGenericCtor((BfGenericParamType*)mExpectingType, argValues, invocationExpr->mTarget);
+							mResult = mModule->GetDefaultTypedValue(mExpectingType);
 							return;
 						}
 					}

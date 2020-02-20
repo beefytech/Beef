@@ -273,7 +273,7 @@ namespace System.Collections.Generic
 
 		protected void Free(T* val)
 		{
-			delete val;
+			delete (void*)val;
 		}
 		/*protected T[] Alloc(int size)
 		{

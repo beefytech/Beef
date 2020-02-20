@@ -6536,22 +6536,22 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 					return BfTypedValue(mBfIRBuilder->GetFakeVal(), genericTypeConstraint);
 				}
 
-				if ((genericParamDef->mGenericParamFlags & BfGenericParamFlag_Const) == 0)					
-					Fail("Only const generic parameters can be used a value", identifierNode);
-				
-				if ((genericTypeConstraint != NULL) && (expectingType != NULL))
-				{										
-					if (!CanCast(BfTypedValue(mBfIRBuilder->GetFakeVal(), genericTypeConstraint), expectingType))
+				if ((genericParamDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)									
+				{
+					if ((genericTypeConstraint != NULL) && (expectingType != NULL))
 					{
-						Fail(StrFormat("Generic constraint '%s' is not convertible to 'int'", TypeToString(genericTypeConstraint).c_str()), identifierNode);
+						if (!CanCast(BfTypedValue(mBfIRBuilder->GetFakeVal(), genericTypeConstraint), expectingType))
+						{
+							Fail(StrFormat("Generic constraint '%s' is not convertible to 'int'", TypeToString(genericTypeConstraint).c_str()), identifierNode);
+						}
 					}
+
+					BfTypedValue result;
+					result.mType = genericParamResult;
+					result.mKind = BfTypedValueKind_GenericConstValue;
+
+					return result;
 				}
-
-				BfTypedValue result;
-				result.mType = genericParamResult;
-				result.mKind = BfTypedValueKind_GenericConstValue;				
-
-				return result;				
 			}
 		}
 	}

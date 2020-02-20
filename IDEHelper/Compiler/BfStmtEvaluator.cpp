@@ -3636,16 +3636,37 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 	if (!val)
 		return;
 
-	auto checkType = val.mType;
+	
+	BfGenericParamType* genericType = NULL;
 	if (val.mType->IsGenericParam())
+		genericType = (BfGenericParamType*)val.mType;
+	if ((val.mType->IsPointer()) && (val.mType->GetUnderlyingType()->IsGenericParam()))
+		genericType = (BfGenericParamType*)val.mType->GetUnderlyingType();	
+
+	auto checkType = val.mType;
+	if (genericType != NULL)
 	{
-		auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)checkType);
+		auto genericParamInst = GetGenericParamInstance(genericType);
 		if (genericParamInst->mTypeConstraint != NULL)
 			checkType = genericParamInst->mTypeConstraint;
-		if (genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
-			return;		
-	}
+		bool canAlwaysDelete = checkType->IsDelegate() || checkType->IsFunction() || checkType->IsArray();
+		if (auto checkTypeInst = checkType->ToTypeInstance())
+		{
+			if ((checkTypeInst->mTypeDef == mCompiler->mDelegateTypeDef) || 
+				(checkTypeInst->mTypeDef == mCompiler->mFunctionTypeDef))
+				canAlwaysDelete = true;
+		}
 
+		if (!canAlwaysDelete)
+		{
+			if (genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
+				return;
+			Fail(StrFormat("Must add 'where %s : delete' constraint to generic parameter to delete generic type '%s'",
+				genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
+			return;
+		}
+	}
+	
 	if (checkType->IsVar())
 	{
 		// Mixin or unconstrained generic

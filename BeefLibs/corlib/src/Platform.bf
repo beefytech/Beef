@@ -458,7 +458,7 @@ namespace System
 				if (result == .Ok)
 					return .Ok(Span<T>(vals, inOutSize));
 
-				delete vals;
+				delete (void*)vals;
 				trySize = inOutSize;
 			}
 		}
