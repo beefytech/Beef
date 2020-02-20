@@ -125,14 +125,6 @@ namespace System
             //PrintF("Object.GCMarkMembers %08X\n", this);
 		}
 
-		public static Object ManualInit(void* ptr, TypeInstance typeInst)
-		{
-			void* addr = ptr;
-			let obj = *((Object*)&addr);
-			*(int*)&obj.mClassVData = *(int*)&typeInst.mTypeClassVData;
-			return obj;
-		}
-
 		static void ToString(Object obj, String strBuffer)
 		{
             if (obj == null)

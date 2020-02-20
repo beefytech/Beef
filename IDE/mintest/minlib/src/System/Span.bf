@@ -51,27 +51,27 @@ namespace System
 			return Span<T>(array);
 		}
 
-		[Inline]
 		public int Length
 	    {
+			[Inline]
 	        get
 			{
 				return mLength;
 			}
 	    }
 
-		[Inline]
 		public T* Ptr
 		{
+			[Inline]
 			get
 			{
 				return mPtr;
 			}
 		}
 
-		[Inline]
 		public T* EndPtr
 		{
+			[Inline]
 			get
 			{
 				return mPtr + mLength;
@@ -281,9 +281,9 @@ namespace System
 		}
 
 
-		[Inline]
 		public T* Ptr
 		{
+			[Inline]
 			get
 			{
 				return mPtr;
