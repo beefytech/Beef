@@ -4627,7 +4627,20 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	if (sret != NULL)
 		result = *sret;
 	else if (hasResult)
-		result = BfTypedValue(callInst, methodInstance->mReturnType);
+	{
+		if (methodInstance->mReturnType->GetLoweredType() != BfTypeCode_None)
+		{
+			auto loweredType = mModule->GetPrimitiveType(methodInstance->mReturnType->GetLoweredType());
+			auto loweredPtrType = mModule->CreatePointerType(loweredType);
+
+			auto retVal = mModule->CreateAlloca(methodInstance->mReturnType);
+			auto castedRetVal = mModule->mBfIRBuilder->CreateBitCast(retVal, mModule->mBfIRBuilder->MapType(loweredPtrType));
+			mModule->mBfIRBuilder->CreateStore(callInst, castedRetVal);
+			result = BfTypedValue(retVal, methodInstance->mReturnType, BfTypedValueKind_TempAddr);
+		}
+		else
+			result = BfTypedValue(callInst, methodInstance->mReturnType);
+	}
 	else
 		result = mModule->GetFakeTypedValue(methodInstance->mReturnType);
 	if (result.mType->IsRef())

@@ -12888,7 +12888,7 @@ void BfModule::MarkScopeLeft(BfScopeData* scopeData)
 
 void BfModule::CreateReturn(BfIRValue val)
 {
-	if (mCurMethodInstance->mReturnType->IsComposite())
+	if (mCurMethodInstance->HasStructRet())
 	{
 		// Store to sret
 		BF_ASSERT(val);
@@ -12900,6 +12900,17 @@ void BfModule::CreateReturn(BfIRValue val)
 		if (mCurMethodInstance->mReturnType->IsValuelessType())
 		{
 			mBfIRBuilder->CreateRetVoid();
+		}
+		else if (mCurMethodInstance->mReturnType->IsStruct())
+		{
+			auto loweredType = GetPrimitiveType(mCurMethodInstance->mReturnType->GetLoweredType());			
+			auto ptrReturnType = CreatePointerType(mCurMethodInstance->mReturnType);
+			auto ptrLoweredValue = CreateAlloca(loweredType);
+			auto ptrReturnValue = mBfIRBuilder->CreateBitCast(ptrLoweredValue, mBfIRBuilder->MapType(ptrReturnType));
+			mBfIRBuilder->CreateStore(val, ptrReturnValue);
+
+			auto loadedLoweredValue = mBfIRBuilder->CreateLoad(ptrLoweredValue);
+			mBfIRBuilder->CreateRet(loadedLoweredValue);
 		}
 		else
 		{
@@ -13121,11 +13132,6 @@ void BfModule::CreateDelegateInvokeMethod()
 			callingConv = BfIRCallingConv_CDecl;
 		if (callingConv != BfIRCallingConv_CDecl)
 			mBfIRBuilder->SetCallCallingConv(staticResult, callingConv);
-// 		if (!mSystem->IsCompatibleCallingConvention(BfCallingConvention_Unspecified, mCurMethodInstance->mMethodDef->mCallingConvention))
-// 		{
-// 			if (mCurMethodInstance->mMethodDef->mCallingConvention == BfCallingConvention_Stdcall)
-// 				
-// 		}		
 		mCurMethodState->SetHadReturn(false);
 		mCurMethodState->mLeftBlockUncond = false;
 		mCurMethodState->mLeftBlockCond = false;
@@ -13140,9 +13146,12 @@ void BfModule::CreateDelegateInvokeMethod()
 	}
 	else
 	{
-		auto phi = mBfIRBuilder->CreatePhi(mBfIRBuilder->MapType(mCurMethodInstance->mReturnType), 2);
+		auto loweredReturnType = mCurMethodInstance->mReturnType;
+		if (loweredReturnType->GetLoweredType() != BfTypeCode_None)
+			loweredReturnType = GetPrimitiveType(loweredReturnType->GetLoweredType());
+		auto phi = mBfIRBuilder->CreatePhi(mBfIRBuilder->MapType(loweredReturnType), 2);
 		mBfIRBuilder->AddPhiIncoming(phi, nonStaticResult, trueBB);
-		mBfIRBuilder->AddPhiIncoming(phi, staticResult, falseBB);
+		mBfIRBuilder->AddPhiIncoming(phi, staticResult, falseBB);		
 		mBfIRBuilder->CreateRet(phi);
 	}
 }

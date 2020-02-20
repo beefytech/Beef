@@ -607,7 +607,7 @@ bool BfMethodInstance::HasParamsArray()
 
 bool BfMethodInstance::HasStructRet()
 {
-	return (mReturnType->IsComposite()) && (!mReturnType->IsValuelessType());
+	return (mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (mReturnType->GetLoweredType() == BfTypeCode_None);
 }
 
 bool BfMethodInstance::HasSelf()
@@ -864,29 +864,35 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic)
 {	
 	module->PopulateType(mReturnType);
-	if (mReturnType->IsValuelessType())
+
+	BfType* loweredReturnType = mReturnType;
+	auto loweredReturnTypeCode = mReturnType->GetLoweredType();
+	if (loweredReturnTypeCode != BfTypeCode_None)
+		loweredReturnType = module->GetPrimitiveType(loweredReturnTypeCode);
+
+	if (loweredReturnType->IsValuelessType())
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
 	}
-	else if (mReturnType->IsComposite())
+	else if (loweredReturnType->IsComposite())
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
-		auto typeInst = mReturnType->ToTypeInstance();
+		auto typeInst = loweredReturnType->ToTypeInstance();
 		if (typeInst != NULL)
 		{
 			paramTypes.push_back(module->mBfIRBuilder->MapTypeInstPtr(typeInst));
 		}
 		else
 		{
-			auto ptrType = module->CreatePointerType(mReturnType);
+			auto ptrType = module->CreatePointerType(loweredReturnType);
 			paramTypes.push_back(module->mBfIRBuilder->MapType(ptrType));
 		}
 	}
 	else
 	{
-		returnType = module->mBfIRBuilder->MapType(mReturnType);
+		returnType = module->mBfIRBuilder->MapType(loweredReturnType);
 	}	
 
 	for (int paramIdx = -1; paramIdx < GetParamCount(); paramIdx++)
