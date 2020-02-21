@@ -9852,7 +9852,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 				if ((!isFailurePass) && (!CheckProtection(checkMethod->mProtection, false, false)))
 					continue;
 
-				methodMatcher.CheckMethod(attrTypeInst, checkMethod, isFailurePass);
+				methodMatcher.CheckMethod(NULL, attrTypeInst, checkMethod, isFailurePass);
 			}
 
 			if ((methodMatcher.mBestMethodDef != NULL) || (methodMatcher.mBackupMethodDef != NULL))
@@ -20433,6 +20433,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						{							
 							auto declMethodInstance = (BfMethodInstance*)typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mDeclaringMethod;
 							_AddVirtualDecl(declMethodInstance);
+							setMethodInstance->mVirtualTableIdx = virtualMethodMatchIdx;
 							typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mImplementingMethod = setMethodInstance;							
 						}
 					}

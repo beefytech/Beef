@@ -170,7 +170,7 @@ public:
 	bool CheckType(BfTypeInstance* typeInstance, BfTypedValue target, bool isFailurePass);
 	void CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, bool isFailurePass);
 	bool WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInstance* startTypeInstance, BfTypeInstance* checkTypeInstance, BfMethodDef* methodDef);
-	bool CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* checkMethod, bool isFailurePass);	
+	bool CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInstance* typeInstance, BfMethodDef* checkMethod, bool isFailurePass);
 	void TryDevirtualizeCall(BfTypedValue target, BfTypedValue* origTarget = NULL, BfTypedValue* staticResult = NULL);
 };
 

@@ -1144,7 +1144,7 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* generi
 	return true;
 }
 
-bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* checkMethod, bool isFailurePass)
+bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInstance* typeInstance, BfMethodDef* checkMethod, bool isFailurePass)
 {
 	BP_ZONE("BfMethodMatcher::CheckMethod");
 
@@ -1170,6 +1170,19 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* typeInstance, BfMethodDef* che
 		BfTypeInstance* wantInterface = mInterfaceMethodInstance->mMethodInstanceGroup->mOwner;
 		if (wantInterface != methodInstance->GetExplicitInterface())
 			return false;
+	}
+
+	if ((checkMethod->mIsVirtual) && (!checkMethod->mIsOverride) && (!mBypassVirtual) && 
+		(targetTypeInstance != NULL) && (targetTypeInstance->IsObject()))
+	{
+		mModule->PopulateType(targetTypeInstance, BfPopulateType_DataAndMethods);
+		BfVirtualMethodEntry& vEntry = targetTypeInstance->mVirtualMethodTable[methodInstance->mVirtualTableIdx];
+		auto implMethod = (BfMethodInstance*)vEntry.mImplementingMethod;
+		if (implMethod != methodInstance)
+		{
+			SetAndRestoreValue<bool> prevBypassVirtual(mBypassVirtual, true);
+			return CheckMethod(targetTypeInstance, implMethod->GetOwner(), implMethod->mMethodDef, isFailurePass);
+		}
 	}
 
 	HashSet<int> allowEmptyGenericSet;
@@ -1703,6 +1716,10 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 		}	
 	}
 
+	BfTypeInstance* targetTypeInstance = NULL;
+	if (target.mType != NULL)
+		targetTypeInstance = target.mType->ToTypeInstance();
+
 	while (true)
 	{		
 		curTypeDef->PopulateMemberSets();
@@ -1784,7 +1801,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 				}
 			}			
 
-			CheckMethod(curTypeInst, checkMethod, isFailurePass);
+			CheckMethod(targetTypeInstance, curTypeInst, checkMethod, isFailurePass);
 			if ((isFailurePass) &&
 				((mBestMethodDef == checkMethod) || (mBackupMethodDef == checkMethod)))
 				mMatchFailKind = matchFailKind;			
@@ -2033,7 +2050,7 @@ void BfMethodMatcher::CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, 
 			if ((!isFailurePass) && (!mModule->CheckProtection(checkMethod->mProtection, allowProtected, allowPrivate)))
 				continue;
 
-			CheckMethod(curTypeInst, checkMethod, isFailurePass);				
+			CheckMethod(typeInstance, curTypeInst, checkMethod, isFailurePass);				
 		}
 
 		if (mBestMethodDef != NULL)
@@ -5632,7 +5649,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 				}
 			}
 
-			methodMatcher.CheckMethod(curTypeInst, checkMethod, isFailurePass);			
+			methodMatcher.CheckMethod(NULL, curTypeInst, checkMethod, isFailurePass);			
 		}
 
 		if ((methodMatcher.mBestMethodDef != NULL) || (methodMatcher.mBackupMethodDef != NULL))
@@ -12243,7 +12260,7 @@ void BfExprEvaluator::CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* ty
 			BfMethodDef* localMethodDef = NULL;
 			if (ctxClosureInstanceInfo->mLocalMethodBindings.TryGetValue(_GetNodeId(), &localMethodDef))
 			{
-				methodMatcher.CheckMethod(mModule->mCurTypeInstance, localMethodDef, true);
+				methodMatcher.CheckMethod(mModule->mCurTypeInstance, mModule->mCurTypeInstance, localMethodDef, true);
 				BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
 				return;
 			}
@@ -12263,7 +12280,7 @@ void BfExprEvaluator::CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* ty
 					auto methodDef = mModule->GetLocalMethodDef(localMethod);
 					if (methodDef->mMethodType == methodType)
 					{
-						methodMatcher.CheckMethod(typeInst, methodDef, true);
+						methodMatcher.CheckMethod(mModule->mCurTypeInstance, typeInst, methodDef, true);
 						if (methodMatcher.mBestMethodDef == methodDef)
 							matchedLocalMethod = localMethod;
 					}
@@ -16134,7 +16151,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 							continue;
 
 						methodMatcher.mCheckedKind = checkedKind;
-						methodMatcher.CheckMethod(curCheckType, checkMethod, false);						
+						methodMatcher.CheckMethod(startCheckTypeInst, curCheckType, checkMethod, false);						
 
 						if ((methodMatcher.mBestMethodDef == checkMethod) ||
 							((foundProp == NULL) && (methodMatcher.mBackupMethodDef == checkMethod)))
@@ -16492,7 +16509,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				{
 					if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
 						continue;
-					if (methodMatcher.CheckMethod(checkType, operatorDef, false))
+					if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
 						methodMatcher.mSelfType = entry.mSrcType;
 				}
 			}			
@@ -17673,7 +17690,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 							if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
 								continue;
 
-							if (methodMatcher.CheckMethod(checkType, operatorDef, false))
+							if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
 							{
 								methodMatcher.mSelfType = entry.mSrcType;
 								if (operatorDef->mOperatorDeclaration->mBinOp == findBinaryOp)
@@ -17689,7 +17706,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						foundOp = true;
 						for (auto oppositeOperatorDef : oppositeOperatorDefs)
 						{
-							if (methodMatcher.CheckMethod(checkType, oppositeOperatorDef, false))
+							if (methodMatcher.CheckMethod(NULL, checkType, oppositeOperatorDef, false))
 								methodMatcher.mSelfType = entry.mSrcType;
 						}
 					}
