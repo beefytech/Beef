@@ -2348,7 +2348,7 @@ namespace IDE
 				switch (err)
 				{
 				case .FormatError(int lineNum):
-					OutputLineSmart("ERROR: Workspace format error in '{0}' on line {1}", workspaceFileName, lineNum);
+					OutputErrorLine("Workspace format error in '{0}' on line {1}", workspaceFileName, lineNum);
 					LoadFailed();
 					return;
 				case .FileError: // Assume 'file not found'
@@ -2449,7 +2449,7 @@ namespace IDE
 			{
 				if (mVerb == .New)
 				{
-					OutputLineSmart("ERROR: Workspace '{0}' already exists, but '-new' argument was specified.", workspaceFileName);
+					OutputErrorLine("Workspace '{0}' already exists, but '-new' argument was specified.", workspaceFileName);
 					LoadFailed();
 				}
 
@@ -6653,6 +6653,7 @@ namespace IDE
 
 		public void OutputErrorLine(String format, params Object[] args)
 		{
+			ShowOutput();
 			var errStr = scope String();
 			errStr.Append("ERROR: ", format);
 			OutputLineSmart(errStr, params args);
@@ -8090,7 +8091,7 @@ namespace IDE
 					}
 					else
 					{
-						OutputLineSmart("ERROR: Project '{0}' has a Test configuration specified but the workspace is not using a Test configuration", project.mProjectName);
+						OutputErrorLine("Project '{0}' has a Test configuration specified but the workspace is not using a Test configuration", project.mProjectName);
 						success = false;
 					}
 				}
@@ -9717,7 +9718,7 @@ namespace IDE
 			{
 				if (workspaceOptions.mBuildKind == .Test)
 				{
-					OutputLineSmart("ERROR: Cannot directly run Test workspace configurations.  Use the 'Test' menu to run or debug tests.");
+					OutputErrorLine("Cannot directly run Test workspace configurations.  Use the 'Test' menu to run or debug tests.");
 					return false;
 				}
 			}
@@ -9796,7 +9797,7 @@ namespace IDE
 
 			if (mDisableBuilding)
 			{
-				OutputLineSmart("ERROR: Compiling disabled!");
+				OutputErrorLine("Compiling disabled!");
 				return false;
 			}
 
@@ -9887,7 +9888,7 @@ namespace IDE
 
             if (mWorkspace.mStartupProject == null)
             {
-                OutputLineSmart("ERROR: No startup project started");
+                OutputErrorLine("No startup project started");
                 return false;
             }
 			var project = mWorkspace.mStartupProject;
@@ -9895,7 +9896,7 @@ namespace IDE
             var options = GetCurProjectOptions(project);
             if (options == null)
             {
-                OutputLineSmart("ERROR: Startup project '{0}' not enabled", mWorkspace.mStartupProject.mProjectName);
+                OutputErrorLine("Startup project '{0}' not enabled", mWorkspace.mStartupProject.mProjectName);
                 return false;
             }
 
@@ -10838,7 +10839,7 @@ namespace IDE
 			{
 				if (mHotResolveTryIdx == 0)
 				{
-					OutputLineSmart("ERROR: Hot type data changes cannot be applied because of the following types");
+					OutputErrorLine("ERROR: Hot type data changes cannot be applied because of the following types");
 					for (var line in hotResult.Split('\n'))
 					{
 						OutputLineSmart("   {0}", line);

@@ -101,7 +101,9 @@ namespace Tests
 		static void TestA()
 		{
 			ClassA ca = scope ClassA();
+
 			ClassA2 ca2 = scope ClassA2();
+
 			Test.Assert(ca2.GetA(9) == 2009);
 
 			int methodIdx = 0;

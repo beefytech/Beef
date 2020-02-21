@@ -4289,9 +4289,19 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	}
 
 	if (methodInstance->mVirtualTableIdx != -1)
-	{
+	{		
 		if ((!bypassVirtual) && (mDeferCallRef == NULL))
 		{
+			if ((methodDef->mIsOverride) && (mModule->mCurMethodInstance->mIsReified))
+			{				
+				// Ensure that declaring method gets referenced
+				auto typeInstance = methodInstance->GetOwner();
+				auto& vEntry = typeInstance->mVirtualMethodTable[methodInstance->mVirtualTableIdx];
+				BfMethodInstance* declaringMethodInstance = vEntry.mDeclaringMethod;
+				if ((declaringMethodInstance->mMethodInstanceGroup->mOnDemandKind < BfMethodOnDemandKind_InWorkList) || (!methodInstance->mIsReified))
+					mModule->GetMethodInstance(declaringMethodInstance);
+			}
+
 			auto funcType = mModule->mBfIRBuilder->MapMethod(methodInstance);
 			auto funcPtrType1 = mModule->mBfIRBuilder->GetPointerTo(funcType);
 			auto funcPtrType2 = mModule->mBfIRBuilder->GetPointerTo(funcPtrType1);
