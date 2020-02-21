@@ -7170,7 +7170,7 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 	bool wasBaseLookup = false;
 	if (auto qualifiedLeftName = BfNodeDynCast<BfQualifiedNameNode>(nameNode->mLeft))
 	{
-		if ((qualifiedLeftName->mRight->GetSrcLength() == 4) && (qualifiedLeftName->mRight->ToStringView() == "base"))
+		if (CheckIsBase(qualifiedLeftName->mRight))
 		{
 			wasBaseLookup = true;
 			auto type = mModule->ResolveTypeRef(qualifiedLeftName->mLeft, NULL);
@@ -7338,7 +7338,7 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 	if (mPropDef != NULL)
 	{
 		mOrigPropTarget = origResult;
-		if ((nameNode->mLeft->ToString() == "base") || (wasBaseLookup))
+		if ((CheckIsBase(nameNode->mLeft)) || (wasBaseLookup))
 		{
 			mPropDefBypassVirtual = true;
 		}		
@@ -7367,7 +7367,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	bool wasBaseLookup = false;
 	if (auto qualifiedLeftName = BfNodeDynCast<BfQualifiedNameNode>(nameLeft))
 	{
-		if (qualifiedLeftName->mRight->ToString() == "base")
+		if (CheckIsBase(qualifiedLeftName->mRight))
 		{
 			wasBaseLookup = true;
 			auto type = mModule->ResolveTypeRef(qualifiedLeftName->mLeft, NULL);
@@ -7549,7 +7549,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	if (mPropDef != NULL)
 	{
 		mOrigPropTarget = origResult;
-		if ((nameLeft->ToString() == "base") || (wasBaseLookup))
+		if ((CheckIsBase(nameLeft)) || (wasBaseLookup))
 		{
 			mPropDefBypassVirtual = true;
 		}
@@ -7760,19 +7760,20 @@ void BfExprEvaluator::Visit(BfQualifiedNameNode* nameNode)
 }
 
 void BfExprEvaluator::Visit(BfThisExpression* thisExpr)
-{
+{	
   	mResult = mModule->GetThis();
 	if (!mResult)
 	{
 		mModule->Fail("Static methods don't have 'this'", thisExpr);
 		return;
 	}
-	//if (mResult.mType->IsTypedPrimitive())
-	{		
-		
-		mResultLocalVar = mModule->GetThisVariable();
-		mResultFieldInstance = NULL;
-	}
+
+	auto autoComplete = GetAutoComplete();
+	if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(thisExpr)))	
+		autoComplete->SetDefinitionLocation(mModule->mCurTypeInstance->mTypeDef->GetRefNode());			
+
+	mResultLocalVar = mModule->GetThisVariable();
+	mResultFieldInstance = NULL;	
 }
 
 void BfExprEvaluator::Visit(BfBaseExpression* baseExpr)
@@ -7787,6 +7788,11 @@ void BfExprEvaluator::Visit(BfBaseExpression* baseExpr)
 	auto baseType = mModule->mCurTypeInstance->mBaseType;
 	if (baseType == NULL)
 		baseType = mModule->mContext->mBfObjectType;	
+
+	auto autoComplete = GetAutoComplete();
+	if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(baseExpr)))
+		autoComplete->SetDefinitionLocation(baseType->mTypeDef->GetRefNode());
+
 	mModule->PopulateType(baseType, BfPopulateType_Data);
 	mResult = mModule->Cast(baseExpr, mResult, baseType, BfCastFlags_Explicit);
 }
@@ -13408,10 +13414,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			GetAutoComplete()->CheckMemberReference(qualifiedName->mLeft, qualifiedName->mDot, qualifiedName->mRight);
 		
 		if (qualifiedName->mLeft->GetSrcLength() == 4)
-		{
-			StringT<16> leftName;
-			qualifiedName->mLeft->ToString(leftName);
-			if (leftName == "base")
+		{			
+			if (CheckIsBase(qualifiedName->mLeft))
 				bypassVirtual = true;
 		}
 
@@ -14279,6 +14283,21 @@ void BfExprEvaluator::MakeResultAsValue()
 	// Expressions like parens will turn a variable reference into a simple value 	
 	mResultLocalVar = NULL;
 	mResultFieldInstance = NULL;
+}
+
+bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
+{
+	if (checkNode == NULL)
+		return false;
+
+	auto autoComplete = GetAutoComplete();
+	if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(checkNode)))
+	{
+		if ((mModule->mCurTypeInstance != NULL) && (mModule->mCurTypeInstance->mBaseType != NULL))
+			autoComplete->SetDefinitionLocation(mModule->mCurTypeInstance->mBaseType->mTypeDef->GetRefNode());
+	}
+
+	return checkNode->Equals("base");
 }
 
 bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut)

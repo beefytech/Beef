@@ -234,7 +234,10 @@ void BfSourceClassifier::Visit(BfIdentifierNode* identifier)
 
 	Visit(identifier->ToBase());
 
-	SetElementType(identifier, BfSourceElementType_Identifier);
+	if ((identifier->Equals("this")) || (identifier->Equals("base")))
+		SetElementType(identifier, BfSourceElementType_Keyword);
+	else
+		SetElementType(identifier, BfSourceElementType_Identifier);
 }
 
 void BfSourceClassifier::Visit(BfQualifiedNameNode* qualifiedName)

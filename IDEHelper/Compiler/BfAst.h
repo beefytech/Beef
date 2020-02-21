@@ -1031,6 +1031,7 @@ public:
 	StringView ToStringView();
 	void ToString(StringImpl& str);
 	bool Equals(const StringImpl& str);
+	bool Equals(const char* str);
 	void Init(BfParser* bfParser);
 	void Accept(BfStructuralVisitor* bfVisitor);
 	static void ClassAccept(BfAstNode* node, BfStructuralVisitor* bfVisitor) { bfVisitor->Visit(node); }

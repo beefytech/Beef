@@ -336,6 +336,7 @@ public:
 	void MarkResultUsed();
 	void MarkResultAssigned();
 	void MakeResultAsValue();	
+	bool CheckIsBase(BfAstNode* checkNode);
 	bool CheckModifyResult(BfTypedValue typeValue, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut = false);
 	bool CheckGenericCtor(BfGenericParamType* genericParamType, BfResolvedArgs& argValues, BfAstNode* targetSrc);
 	BfTypedValue LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags = BfLookupFieldFlag_None);	

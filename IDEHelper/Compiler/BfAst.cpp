@@ -977,6 +977,27 @@ bool BfAstNode::Equals(const StringImpl& str)
 	return strncmp(str.GetPtr(), source->mSrc + mSrcStart, len) == 0;
 }
 
+bool BfAstNode::Equals(const char* str)
+{	
+	auto source = GetSourceData();
+	const char* ptrLhs = source->mSrc + mSrcStart;
+	const char* ptrLhsEnd = source->mSrc + mSrcEnd;
+	const char* ptrRhs = str;
+
+	while (true)
+	{
+		char cRhs = *(ptrRhs++);		
+		if (cRhs == 0)
+			return ptrLhs == ptrLhsEnd;
+		if (ptrLhs == ptrLhsEnd)
+			return false;
+		char cLhs = *(ptrLhs++);
+		if (cLhs != cRhs)
+			return false;
+	}
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 
 void BfBlock::Init(const SizedArrayImpl<BfAstNode*>& vec, BfAstAllocator* alloc)

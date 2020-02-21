@@ -2330,9 +2330,11 @@ void BfAutoComplete::CheckLocalRef(BfIdentifierNode* identifierNode, BfLocalVari
 	if (mResolveType == BfResolveType_GoToDefinition)
 	{
 		if (IsAutocompleteNode(identifierNode))
-		{
+		{			
 			if (varDecl->mNameNode != NULL)
 				SetDefinitionLocation(varDecl->mNameNode);
+			else if (varDecl->mIsThis)
+				SetDefinitionLocation(mModule->mCurTypeInstance->mTypeDef->GetRefNode());
 		}
 	}
 	else if (mResolveType == BfResolveType_GetSymbolInfo)
@@ -2351,15 +2353,19 @@ void BfAutoComplete::CheckLocalRef(BfIdentifierNode* identifierNode, BfLocalVari
 			if (rootMethodInstance == NULL)
 				return;
 			
-			auto resolvePassData = mModule->mCompiler->mResolvePassData;
-			mReplaceLocalId = varDecl->mLocalVarId;			
+			if (varDecl->mIsThis)
+				return;
+
+			auto resolvePassData = mModule->mCompiler->mResolvePassData;			
 			mDefType = mModule->mCurTypeInstance->mTypeDef;
+			
+			mReplaceLocalId = varDecl->mLocalVarId;
 			mDefMethod = rootMethodInstance->mMethodDef;
 			if (mInsertStartIdx == -1)
 			{
 				mInsertStartIdx = identifierNode->GetSrcStart();
 				mInsertEndIdx = identifierNode->GetSrcEnd();
-			}
+			}			
 		}
 	}	
 }
