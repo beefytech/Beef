@@ -4039,14 +4039,12 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		numExpressions += (int)switchCase->mCaseExpressions.size();
 	}
 
+	defaultBlock = mBfIRBuilder->CreateBlock("default");
 	if (switchStmt->mDefaultCase != NULL)
-	{
-		defaultBlock = mBfIRBuilder->CreateBlock("default");
+	{		
 		blocks.push_back(defaultBlock);
 	}
-	else
-		defaultBlock = endBlock;
-
+	
 	SizedArray<BfDeferredLocalAssignData, 8> deferredLocalAssignDataVec;
 	deferredLocalAssignDataVec.resize(blocks.size());
 
@@ -4581,6 +4579,14 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			if (!hadReturn)
 				allHadReturns = false;
 		}				
+	}
+	else
+	{
+		mBfIRBuilder->AddBlock(defaultBlock);
+		mBfIRBuilder->SetInsertPoint(defaultBlock);
+		if (isComprehensive)
+			mBfIRBuilder->CreateUnreachable();
+		mBfIRBuilder->CreateBr(endBlock);
 	}
 
 	if (isComprehensive)
