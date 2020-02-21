@@ -4040,10 +4040,9 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	}
 
 	defaultBlock = mBfIRBuilder->CreateBlock("default");
-	if (switchStmt->mDefaultCase != NULL)
-	{		
-		blocks.push_back(defaultBlock);
-	}
+	bool hasDefaultCase = switchStmt->mDefaultCase != NULL;
+	if (hasDefaultCase)	
+		blocks.push_back(defaultBlock);	
 	
 	SizedArray<BfDeferredLocalAssignData, 8> deferredLocalAssignDataVec;
 	deferredLocalAssignDataVec.resize(blocks.size());
@@ -4585,8 +4584,14 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		mBfIRBuilder->AddBlock(defaultBlock);
 		mBfIRBuilder->SetInsertPoint(defaultBlock);
 		if (isComprehensive)
+		{
 			mBfIRBuilder->CreateUnreachable();
-		mBfIRBuilder->CreateBr(endBlock);
+			//TODO: This masks a bug in our backend
+			if (IsTargetingBeefBackend())
+				mBfIRBuilder->CreateBr(endBlock);
+		}
+		else		
+			mBfIRBuilder->CreateBr(endBlock);
 	}
 
 	if (isComprehensive)
@@ -4601,12 +4606,6 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			if (deferredLocalAssignData->mHadFallthrough)
 				continue;
 
-// 			if ((deferredLocalAssignData->mHadFallthrough) && (blockIdx < (int)blocks.size() - 1))
-// 			{
-// 				auto nextDeferredLocalAssignData = &deferredLocalAssignDataVec[blockIdx + 1];
-// 				deferredLocalAssignData->SetUnion(*nextDeferredLocalAssignData);
-// 			}
-
 			if (mergedDeferredLocalAssignData == NULL)
 				mergedDeferredLocalAssignData = deferredLocalAssignData;
 			else
@@ -4618,12 +4617,12 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	}
 
 	if ((caseCount > 0) && (allHadReturns) &&
-		((defaultBlock != endBlock) || (isComprehensive)))
+		((hasDefaultCase) || (isComprehensive)))
 	{
 		mCurMethodState->SetHadReturn(true);
 		mCurMethodState->mLeftBlockUncond = true;
 
-		if ((defaultBlock != endBlock) && (switchStmt->mDefaultCase != NULL))
+		if ((!hasDefaultCase) && (!isComprehensive))
 			mBfIRBuilder->DeleteBlock(endBlock);						
 		else
 		{

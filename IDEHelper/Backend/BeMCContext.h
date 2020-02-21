@@ -606,7 +606,7 @@ public:
 	{
 		return (mKind <= BeMCInstKind_Unwind_SetBP);
 	}	
-
+	
 	BeMCOperand* GetDest()
 	{
 		if (mResult)
