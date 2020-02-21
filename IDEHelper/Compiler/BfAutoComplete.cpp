@@ -1974,6 +1974,13 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			methodName += " ";
 			methodName += methodDef->mParams[paramIdx]->mName;
 
+			auto paramInitializer = methodInst->GetParamInitializer(paramIdx);
+			if (paramInitializer != NULL)
+			{
+				methodName += " = ";
+				paramInitializer->ToString(methodName);
+			}
+
 			if (!isAbstract)
 				impString += methodDef->mParams[paramIdx]->mName;
 		}
@@ -2087,7 +2094,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
-	BfTypeInstance* curType = mModule->mCurTypeInstance;		
+	BfTypeInstance* curType = mModule->mCurTypeInstance;
 	while (curType != NULL)
 	{
 		for (auto methodDef : curType->mTypeDef->mMethods)
@@ -2118,6 +2125,13 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			if ((!methodDef->mIsVirtual) || (methodDef->mIsOverride) || (methodDef->mMethodType != BfMethodType_Normal))
 				continue;
 			
+			if ((methodInst->mVirtualTableIdx >= 0) && (methodInst->mVirtualTableIdx < mModule->mCurTypeInstance->mVirtualMethodTable.size()))
+			{
+				auto& vEntry = mModule->mCurTypeInstance->mVirtualMethodTable[methodInst->mVirtualTableIdx];
+				if (vEntry.mImplementingMethod.mTypeInstance == mModule->mCurTypeInstance)
+					continue;
+			}
+
 			StringT<512> insertString;
 			GetMethodInfo(methodInst, &insertString, &insertString, true, false);
 			if (insertString.IsEmpty())
