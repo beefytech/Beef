@@ -40,7 +40,7 @@ namespace IDE.ui
 			mClassViewPanel.Resize(0, 0, width, height - GS!(34));
 		}
 
-		public override void PopupWindow(WidgetWindow parentWindow, float offsetX, float offsetY)
+		public override void PopupWindow(WidgetWindow parentWindow, float offsetX = 0, float offsetY = 0)
 		{
 			base.PopupWindow(parentWindow, offsetX, offsetY);
 			mClassViewPanel.[Friend]mSearchEdit.SetFocus();

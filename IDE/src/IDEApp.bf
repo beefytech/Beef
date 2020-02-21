@@ -5341,7 +5341,7 @@ namespace IDE
                 return DarkTheme.sDarkTheme.mSmallFont.GetWidth(mLabel) + DarkTheme.GetScaled(40);
             }
 
-			public override void Activate(bool setFocus)
+			public override void Activate(bool setFocus = true)
 			{
 				base.Activate(setFocus);
 

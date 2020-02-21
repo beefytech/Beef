@@ -1462,7 +1462,7 @@ namespace IDE.ui
             PasteText(theString, false);
         }
 
-        public override void InsertAtCursor(String theString, InsertFlags insertFlags)
+        public override void InsertAtCursor(String theString, InsertFlags insertFlags = .None)
         {
 			var insertFlags;
 

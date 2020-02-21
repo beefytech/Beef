@@ -4350,7 +4350,7 @@ namespace IDE.ui
 			Content.Data.mCurQuickFind = mQuickFind;
         }
 
-        public override void FindNext(int32 dir)
+        public override void FindNext(int32 dir = 1)
         {
 			var activePanel = GetActivePanel();
 			if (activePanel != this)
