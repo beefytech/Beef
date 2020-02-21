@@ -4623,7 +4623,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		mCurMethodState->SetHadReturn(true);
 		mCurMethodState->mLeftBlockUncond = true;
 
-		if (defaultBlock != endBlock)
+		if ((defaultBlock != endBlock) && (switchStmt->mDefaultCase != NULL))
 			mBfIRBuilder->DeleteBlock(endBlock);						
 		else
 		{
