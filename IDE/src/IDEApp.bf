@@ -259,7 +259,7 @@ namespace IDE
 		public bool mStartedWithTestScript;
 		public bool mExitWhenTestScriptDone = true;
 		public ScriptManager mScriptManager = new ScriptManager() ~ delete _;
-		public TestManager mTestManager;
+		public TestManager mTestManager ~ delete _;
         public bool mExecutionPaused = false;
 		public HotResolveState mHotResolveState;
 		public int mHotResolveTryIdx;

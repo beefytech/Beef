@@ -939,13 +939,21 @@ namespace IDE
 		    var bfProject = gApp.mBfBuildSystem.mProjectMap[project];
 		    bool bfHadOutputChanges = false;
 		    List<String> bfFileNames = scope List<String>();
-			if (project.mCurBfOutputFileNames == null)
+			if (hotProject == null)
 			{
-				project.mCurBfOutputFileNames = new .();
-				bfCompiler.GetOutputFileNames(bfProject, true, out bfHadOutputChanges, project.mCurBfOutputFileNames);
+				if (project.mCurBfOutputFileNames == null)
+				{
+					project.mCurBfOutputFileNames = new .();
+					bfCompiler.GetOutputFileNames(bfProject, true, out bfHadOutputChanges, project.mCurBfOutputFileNames);
+				}
+				for (var fileName in project.mCurBfOutputFileNames)
+					bfFileNames.Add(fileName);
 			}
-			for (var fileName in project.mCurBfOutputFileNames)
-				bfFileNames.Add(fileName);
+			else
+			{
+				bfCompiler.GetOutputFileNames(bfProject, true, out bfHadOutputChanges, bfFileNames);
+				defer:: ClearAndDeleteItems(bfFileNames);
+			}
 		    if (bfHadOutputChanges)
 		        project.mNeedsTargetRebuild = true;
 
@@ -1031,7 +1039,8 @@ namespace IDE
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)
 			{
-				DoPostBuild();
+				if (hotProject == null)
+					DoPostBuild();
 				return true; 
 			}
 
