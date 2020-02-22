@@ -81,6 +81,31 @@ namespace IDE.ui
 
 			CreatePrevNextButtons();
 
+			if (var editWidget = gApp.GetActiveWindow().mFocusWidget as EditWidget)
+			{
+				var content = editWidget.mEditWidgetContent;
+				int selStart = content.mSelection.Value.MinPos;
+				int selEnd = content.mSelection.Value.MaxPos;
+				bool isMultiline = false;
+				for (int i = selStart; i < selEnd; i++)
+				{
+				    if (content.mData.mText[i].mChar == '\n')
+				    {
+				        isMultiline = true;
+				        break;
+				    }
+				}
+
+				if (!isMultiline)
+				{
+					var selText = scope String();
+					content.GetSelectionText(selText);
+					mEditWidget.SetText(selText);
+					mEditWidget.Content.SelectAll();
+				}
+			}
+			
+
 			UpdateUI();
             //mEditWidget.mKeyDownHandler += EditKeyDownHandler;
             //mEditWidget.mContentChangedHandler += (evt) => mFilterChanged = true;
