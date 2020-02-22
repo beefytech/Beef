@@ -1579,10 +1579,15 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		(!typeInstance->mTypeFailed))
 	{
 		for (auto baseTypeRef : typeDef->mBaseTypes)
-		{
+		{			
+			auto declTypeDef = typeDef;
+			if (typeDef->mIsCombinedPartial)
+				declTypeDef = typeDef->mPartials.front();
+			SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, declTypeDef);
+
 			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, baseTypeRef);
 			// We ignore errors here to avoid double-errors for type lookups, but this is where data cycles are detected
-			//  but that type of error supercedes the mIgnorErrors setting
+			//  but that type of error supersedes the mIgnoreErrors setting
 			SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);
 			// Temporarily allow us to derive from private classes, to avoid infinite loop from TypeIsSubTypeOf
 			SetAndRestoreValue<bool> prevSkipTypeProtectionChecks(typeInstance->mSkipTypeProtectionChecks, true);
@@ -1966,8 +1971,21 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if ((baseTypeInst != NULL) && (typeInstance->mBaseType == NULL))
 	{
 		//curFieldDataIdx = 1;
-		if (!typeInstance->mTypeFailed)
-			PopulateType(baseTypeInst, BfPopulateType_Data);
+// 		if (!typeInstance->mTypeFailed)
+// 			PopulateType(baseTypeInst, BfPopulateType_Data);
+
+		if (typeInstance->mTypeFailed)
+		{
+			if (baseTypeInst->IsDataIncomplete())
+			{
+				if (baseTypeInst->IsStruct())
+					baseTypeInst = ResolveTypeDef(mCompiler->mValueTypeTypeDef)->ToTypeInstance();
+				else if (baseTypeInst->IsObject())
+					baseTypeInst = ResolveTypeDef(mCompiler->mBfObjectTypeDef)->ToTypeInstance();
+			}
+		}
+		PopulateType(baseTypeInst, BfPopulateType_Data);
+
 		typeInstance->mBaseTypeMayBeIncomplete = false;
 
 		typeInstance->mMergedFieldDataCount = baseTypeInst->mMergedFieldDataCount;
@@ -2846,7 +2864,14 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		BfHotTypeVersion* hotTypeVersion = new BfHotTypeVersion();
 		hotTypeVersion->mTypeId = typeInstance->mTypeId;
 		if (typeInstance->mBaseType != NULL)
-			hotTypeVersion->mBaseType = typeInstance->mBaseType->mHotTypeData->GetLatestVersion();
+		{			
+			if (typeInstance->mBaseType->mHotTypeData != NULL)
+				hotTypeVersion->mBaseType = typeInstance->mBaseType->mHotTypeData->GetLatestVersion();
+			else
+			{
+				AssertErrorState();
+			}
+		}
 		hotTypeVersion->mDeclHotCompileIdx = mCompiler->mOptions.mHotCompileIdx;
 		if (mCompiler->IsHotCompile())
 			hotTypeVersion->mCommittedHotCompileIdx = -1;
@@ -2855,7 +2880,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		hotTypeVersion->mRefCount++;
 		typeInstance->mHotTypeData->mTypeVersions.Add(hotTypeVersion);
 
-		if (typeInstance->mBaseType != NULL)
+		if ((typeInstance->mBaseType != NULL) && (typeInstance->mBaseType->mHotTypeData != NULL))
 		{
 			hotTypeVersion->mMembers.Add(typeInstance->mBaseType->mHotTypeData->GetLatestVersion());
 		}
@@ -3442,12 +3467,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 	// Generate all methods. Pass 1
 	for (auto methodDef : typeDef->mMethods)
-	{	
-		if (methodDef->mMethodType == BfMethodType_CtorClear)
-		{
-			NOP;
-		}
-
+	{			
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
 
 		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
@@ -4246,11 +4266,6 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		BF_ASSERT(mIsModuleMutable || mReifyQueued);
 
 	BF_ASSERT(mBfIRBuilder != NULL);
-
-	if (methodInstance->mMethodDef->mName == "Hey")
-	{
-		NOP;
-	}
 
 	BfLogSysM("Adding to mMethodWorkList Module: %p IncompleteMethodCount: %d Type %p MethodInstance: %p Name:%s TypeRevision: %d ModuleRevision: %d ReqId:%d\n", this, mIncompleteMethodCount, typeInstance, methodInstance, methodInstance->mMethodDef->mName.c_str(), methodProcessRequest->mRevision, methodProcessRequest->mFromModuleRevision, methodProcessRequest->mReqId);
 
@@ -6086,11 +6101,6 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 				if (checkTypeInst == skipCheckBaseType)
 					break;
 
-				if (checkTypeInst->mTypeDef == mCompiler->mNullableTypeDef)
-				{
-					NOP;
-				}				
-
 				checkTypeInst = GetBaseType(checkTypeInst);
 				allowPrivate = false;
 			}			
@@ -7132,11 +7142,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				return ResolveTypeResult(typeRef, resolvedType, populateType, resolveFlags);
 			}
 		}
-	}
-
-	if (typeRef->ToString() == "Issue.I?")
-	{
-		NOP;
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
@@ -9068,9 +9073,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							mCompiler->mPassInstance->MoreInfo("See conversion operator", opMethodInstance->mMethodDef->GetRefNode());
 					}
 
-					BfModuleMethodInstance moduleMethodInstance = GetMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef, BfTypeVector());
+					BfMethodInstance* methodInstance = GetRawMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef);
 					
-					auto methodDeclaration = moduleMethodInstance.mMethodInstance->mMethodDef->GetMethodDeclaration();
+					auto methodDeclaration = methodInstance->mMethodDef->GetMethodDeclaration();
 					if (methodDeclaration->mBody == NULL)
 					{						
 						// Handle the typedPrim<->underlying part implicitly
@@ -9097,6 +9102,8 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					
 					if (ignoreWrites)
 						return mBfIRBuilder->GetFakeVal();
+
+					BfModuleMethodInstance moduleMethodInstance = GetMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef, BfTypeVector());
 
 					SizedArray<BfIRValue, 1> args;					
 					exprEvaluator.PushArg(castedFromValue, args);

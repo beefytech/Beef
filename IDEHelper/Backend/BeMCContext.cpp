@@ -4208,7 +4208,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 		genLivenessIdx++;
 		auto inst = block->mInstructions[instIdx];		
 		auto prevLiveness = inst->mLiveness;
-
+		
 		genCtx->mInstructions++;
 
 		SizedArray<int, 16> removeVec;
@@ -4463,21 +4463,14 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 		if (newSuccLiveness == pred->mSuccLiveness)
 			continue;
 		pred->mSuccLiveness = newSuccLiveness;
-
-		/*if (mVRegInitializedContext.HasExtraBitsSet(pred->mSuccVRegsInitialized.mBits, vregsInitialized.mBits))
-		{					
-			mVRegInitializedContext.MergeInplace(pred->mSuccVRegsInitialized.mBits, vregsInitialized.mBits);
-		}*/
 		
-		//if (mVRegInitializedContext.HasExtraEntries(pred->mSuccVRegsInitialized.mList, vregsInitialized.mList))
 		pred->mSuccVRegsInitialized = mVRegInitializedContext.Merge(pred->mSuccVRegsInitialized, vregsInitialized);
 				
 		if (pred->mBlockIdx > block->mBlockIdx)
 			modifiedBlockAfter = true;
 		else
 			modifiedBlockBefore = true;
-		entry.mGenerateQueued = true;		
-		//GenerateLiveness(pred, liveRegs, vregsInitialized, mcColorizer, livenessStats);
+		entry.mGenerateQueued = true;				
 	}
 }
 
@@ -6169,14 +6162,14 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 		genCtx->mInstructions++;
 
 		mInsertInstIdxRef = &instIdx;
-
-		auto inst = mcBlock->mInstructions[instIdx];		
+		auto inst = mcBlock->mInstructions[instIdx];
+		
 		inst->mVRegsInitialized = vregsInitialized;
 
 		bool deepSet = false;
 
 		if (inst->mKind == BeMCInstKind_LifetimeStart)
-			continue;
+			continue;		
 		
 		SizedArray<int, 16> removeVec;
 		SizedArray<int, 16> addVec;
@@ -6608,19 +6601,21 @@ bool BeMCContext::DoInitializedPass()
 		// If mPredVRegsInitialized is NULL, this blocks is unreachable.  It could still be in some other block's preds so we don't
 		//  completely erase it, just empty it
 		if (genCtx.mBlocks[mcBlock->mBlockIdx].mGenerateCount == 0)
-		{			
-			//BF_ASSERT((blockIdx != 0) && (mcBlock->mPreds.size() == 0));
-			mcBlock->mInstructions.Clear();
+		{	
+			// Unused block - clear almost all instructions
+			int newIdx = 0;
+// 			for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
+// 			{				
+// 				auto inst = mcBlock->mInstructions[instIdx];
+// 				if (inst->mKind == BeMCInstKind_ValueScopeHardEnd)
+// 				{
+// 					mcBlock->mInstructions[newIdx++] = inst;
+// 				}
+// 			}
+			mcBlock->mInstructions.mSize = newIdx;
 			continue;
 		}
-
-		/*int vregIdx = -1;
-		while (true)
-		{
-			vregIdx = mVRegInitializedContext.GetNextSetIdx(mcBlock->mPredVRegsInitialized, vregIdx);
-			if (vregIdx == -1)
-				break;*/
-
+		
 		for (int vregIdx : *mcBlock->mPredVRegsInitialized)
 		{										
 			if (vregIdx >= mVRegInitializedContext.mNumItems)
@@ -6637,8 +6632,6 @@ bool BeMCContext::DoInitializedPass()
 				vregInfo->mHasAmbiguousInitialization = true;				
 			}
 		}
-
-		//
 	}
 
 	bool needsReRun = false;
@@ -6762,21 +6755,15 @@ void BeMCContext::DoChainedBlockMerge()
 			auto lastInst = mcBlock->mInstructions.back();
 			// Last instruction of current block is an unconditional branch to the next block
 			if ((lastInst->mKind == BeMCInstKind_Br) && (lastInst->mArg0.mBlock == nextMcBlock))
-			{
-				//auto itr = std::find(mcBlock->mSuccs.begin(), mcBlock->mSuccs.end(), nextMcBlock);
-				//mcBlock->mSuccs.erase(itr);
+			{				
 				mcBlock->mSuccs.Remove(nextMcBlock);
 				for (auto succ : nextMcBlock->mSuccs)
-				{
-					//auto itr = std::find(mcBlock->mSuccs.begin(), mcBlock->mSuccs.end(), succ);
-					//if (itr == mcBlock->mSuccs.end())
+				{					
 					if (!mcBlock->mSuccs.Contains(succ))
 					{
 						mcBlock->mSuccs.push_back(succ);
 						succ->mPreds.push_back(mcBlock);
-					}
-					/*itr = std::find(succ->mPreds.begin(), succ->mPreds.end(), nextMcBlock);
-					succ->mPreds.erase(itr);*/
+					}					
 					succ->mPreds.Remove(nextMcBlock);
 				}
 
@@ -6869,6 +6856,7 @@ bool BeMCContext::CheckVRegEqualityRange(BeMCBlock* mcBlock, int instIdx, const 
 	for (int checkInstIdx = instIdx + 1; checkInstIdx < (int)mcBlock->mInstructions.size(); checkInstIdx++)
 	{
 		auto checkInst = mcBlock->mInstructions[checkInstIdx];
+
 		if ((!IsLive(checkInst->mLiveness, vreg0.mVRegIdx, regRemaps)) ||
 			((!onlyCheckFirstLifetime) && (!IsLive(checkInst->mLiveness, vreg1.mVRegIdx, regRemaps))))
 		{
@@ -14705,7 +14693,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?Hey@Blurg@bf@@SAXXZ";
+	//mDebugging = function->mName == "?Unwrap@?$Result@Tint@@@System@bf@@AEAATint@@XZ";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
@@ -14831,6 +14819,15 @@ void BeMCContext::Generate(BeFunction* function)
 				{
 					auto mcInst = AllocInst();
 					mcInst->mKind = BeMCInstKind_Unreachable;
+
+// 					if (instIdx == beBlock->mInstructions.size() - 1)
+// 					{
+// 						// Fake branch to exit
+// 						mcInst = AllocInst();
+// 						mcInst->mKind = BeMCInstKind_Br;
+// 						mcInst->mArg0 = BeMCOperand::FromBlock(mBlocks.back());
+// 						mcInst->mArg0.mBlock->AddPred(mcBlock);
+// 					}
 				}
 				break;
 			case BeEnsureInstructionAtInst::TypeId:

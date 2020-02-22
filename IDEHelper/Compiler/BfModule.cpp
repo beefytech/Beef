@@ -10884,7 +10884,7 @@ void BfModule::AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInsta
 			BfMethodRef methodRef = methodInstance;			
 			BfSpecializedMethodRefInfo* specializedMethodRefInfo = NULL;
 			bool isNew = mCurTypeInstance->mSpecializedMethodReferences.TryAdd(methodRef, NULL, &specializedMethodRefInfo);
-						
+	
 			if (((flags & BfGetMethodInstanceFlag_Unreified) == 0) &&
 				((flags & BfGetMethodInstanceFlag_NoForceReification) == 0) &&
 				(mIsReified))
