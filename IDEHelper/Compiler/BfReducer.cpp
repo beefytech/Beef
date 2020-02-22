@@ -1931,6 +1931,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				{
 					if (tokenNode->GetToken() == BfToken_LChevron)
 					{
+						mVisitorPos.MoveNext();
 						auto genericParamsDecl = CreateGenericArguments(tokenNode);
 						MEMBER_SET_CHECKED(delegateBindExpr, mGenericArgs, genericParamsDecl);
 					}
@@ -6851,6 +6852,7 @@ BfDelegateBindExpression* BfReducer::CreateDelegateBindExpression(BfAstNode* all
 	{
 		if (tokenNode->GetToken() == BfToken_LChevron)
 		{
+			mVisitorPos.MoveNext();
 			auto genericParamsDecl = CreateGenericArguments(tokenNode);
 			MEMBER_SET_CHECKED(delegateBindExpr, mGenericArgs, genericParamsDecl);
 		}
