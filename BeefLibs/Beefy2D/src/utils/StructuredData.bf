@@ -800,7 +800,7 @@ namespace Beefy.utils
 			}
 		}
 
-        public IDisposable Open(StringView name)
+        public DisposeProxy Open(StringView name)
         {
             if (mStructuredDisposeProxy == null)
             {
@@ -879,7 +879,7 @@ namespace Beefy.utils
 		    return enumerator;
 		}
 
-        IDisposable GetDisposeProxy()
+        DisposeProxy GetDisposeProxy()
         {
             if (mStructuredDisposeProxy == null)
             {
@@ -890,16 +890,6 @@ namespace Beefy.utils
             return mStructuredDisposeProxy;
         }
 
-        /*public IDisposable Open(int index)
-        {
-			ThrowUnimplemented();
-        }
-
-		public IDisposable Open(Enumerator enumerator)
-		{
-			ThrowUnimplemented();
-		}*/
-
 		public void CreateNew()
 		{
 			if (mCurrent.mValues == null)
@@ -909,7 +899,7 @@ namespace Beefy.utils
 			}
 		}
 
-        public IDisposable CreateArray()
+        public DisposeProxy CreateArray()
         {
             Values values = new:mBumpAllocator Values();
             DoAdd(ref mCurrent, values);
@@ -918,7 +908,7 @@ namespace Beefy.utils
             return GetDisposeProxy();
         }
 
-        public IDisposable CreateObject(bool forceInline = false)
+        public DisposeProxy CreateObject(bool forceInline = false)
         {
 			NamedValues values;
 			if (forceInline)
@@ -932,7 +922,7 @@ namespace Beefy.utils
 			return GetDisposeProxy();
         }
 
-        public IDisposable CreateArray(String name, bool forceInline = false)
+        public DisposeProxy CreateArray(String name, bool forceInline = false)
         {
 			Values values;
 			if (forceInline)
@@ -946,7 +936,7 @@ namespace Beefy.utils
 			return GetDisposeProxy();
         }
 
-        public IDisposable CreateObject(String name, bool forceInline = false)
+        public DisposeProxy CreateObject(String name, bool forceInline = false)
         {
             NamedValues values;
 			if (forceInline)
