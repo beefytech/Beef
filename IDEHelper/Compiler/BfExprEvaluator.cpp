@@ -18514,33 +18514,59 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 	case BfBinaryOp_Compare:				
 		{
 			auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
+			if ((convLeftValue.IsConst()) && (convRightValue.IsConst()))
+			{
+				auto cmpLtVal = mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSignedInt());
+				auto ltConstant = mModule->mBfIRBuilder->GetConstant(cmpLtVal);
+				if (ltConstant->mBool)
+				{
+					mResult = BfTypedValue(mModule->GetConstValue(-1, mModule->GetPrimitiveType(BfTypeCode_IntPtr)), intType);
+				}
+				else
+				{
+					auto cmpGtVal = mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSignedInt());
+					auto rtConstant = mModule->mBfIRBuilder->GetConstant(cmpGtVal);
+					if (rtConstant->mBool)
+						mResult = BfTypedValue(mModule->GetConstValue(1, mModule->GetPrimitiveType(BfTypeCode_IntPtr)), intType);
+					else
+						mResult = BfTypedValue(mModule->GetConstValue(0, mModule->GetPrimitiveType(BfTypeCode_IntPtr)), intType);
+				}
+			}
+			else if ((resultType->IsIntegral()) && (resultType->mSize < intType->mSize))
+			{
+				auto leftIntValue = mModule->mBfIRBuilder->CreateNumericCast(convLeftValue, resultType->IsSignedInt(), BfTypeCode_IntPtr);
+				auto rightIntValue = mModule->mBfIRBuilder->CreateNumericCast(convRightValue, resultType->IsSignedInt(), BfTypeCode_IntPtr);							
+				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateSub(leftIntValue, rightIntValue), intType);
+			}
+			else
+			{
+				BfIRBlock checkGtBlock = mModule->mBfIRBuilder->CreateBlock("cmpCheckGt");
+				BfIRBlock eqBlock = mModule->mBfIRBuilder->CreateBlock("cmpEq");
+				BfIRBlock endBlock = mModule->mBfIRBuilder->CreateBlock("cmpEnd");
 
-			BfIRBlock checkGtBlock = mModule->mBfIRBuilder->CreateBlock("cmpCheckGt");			
-			BfIRBlock eqBlock = mModule->mBfIRBuilder->CreateBlock("cmpEq");
-			BfIRBlock endBlock = mModule->mBfIRBuilder->CreateBlock("cmpEnd");
+				auto startBlock = mModule->mBfIRBuilder->GetInsertBlock();
 
-			auto startBlock = mModule->mBfIRBuilder->GetInsertBlock();
+				auto cmpLtVal = mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSignedInt());
+				mModule->mBfIRBuilder->CreateCondBr(cmpLtVal, endBlock, checkGtBlock);
 
-			auto cmpLtVal = mModule->mBfIRBuilder->CreateCmpLT(convLeftValue, convRightValue, resultType->IsSignedInt());
-			mModule->mBfIRBuilder->CreateCondBr(cmpLtVal, endBlock, checkGtBlock);
+				mModule->mBfIRBuilder->AddBlock(checkGtBlock);
+				mModule->mBfIRBuilder->SetInsertPoint(checkGtBlock);
+				auto cmpGtVal = mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSignedInt());
+				mModule->mBfIRBuilder->CreateCondBr(cmpGtVal, endBlock, eqBlock);
 
-			mModule->mBfIRBuilder->AddBlock(checkGtBlock);
-			mModule->mBfIRBuilder->SetInsertPoint(checkGtBlock);
-			auto cmpGtVal = mModule->mBfIRBuilder->CreateCmpGT(convLeftValue, convRightValue, resultType->IsSignedInt());
-			mModule->mBfIRBuilder->CreateCondBr(cmpGtVal, endBlock, eqBlock);
+				mModule->mBfIRBuilder->AddBlock(eqBlock);
+				mModule->mBfIRBuilder->SetInsertPoint(eqBlock);
+				mModule->mBfIRBuilder->CreateBr(endBlock);
 
-			mModule->mBfIRBuilder->AddBlock(eqBlock);
-			mModule->mBfIRBuilder->SetInsertPoint(eqBlock);
-			mModule->mBfIRBuilder->CreateBr(endBlock);
+				mModule->mBfIRBuilder->AddBlock(endBlock);
+				mModule->mBfIRBuilder->SetInsertPoint(endBlock);
+				auto phiVal = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(intType), 3);
+				mModule->mBfIRBuilder->AddPhiIncoming(phiVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, -1), startBlock);
+				mModule->mBfIRBuilder->AddPhiIncoming(phiVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1), checkGtBlock);
+				mModule->mBfIRBuilder->AddPhiIncoming(phiVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), eqBlock);
 
-			mModule->mBfIRBuilder->AddBlock(endBlock);
-			mModule->mBfIRBuilder->SetInsertPoint(endBlock);
-			auto phiVal = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(intType), 3);
-			mModule->mBfIRBuilder->AddPhiIncoming(phiVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, -1), startBlock);
-			mModule->mBfIRBuilder->AddPhiIncoming(phiVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1), checkGtBlock);
-			mModule->mBfIRBuilder->AddPhiIncoming(phiVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), eqBlock);
-
-			mResult = BfTypedValue(phiVal, intType);
+				mResult = BfTypedValue(phiVal, intType);
+			}
 		}
 		break;
 	default:
