@@ -4397,6 +4397,20 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				lastDefaultBlock = notEqBB;
 		}
 
+		if ((whenExpr != NULL) && (switchCase->mCaseExpressions.size() == 1))
+		{
+			// This was a "case when" expression, always matches
+			mayHaveMatch = true;
+
+			auto notEqBB = mBfIRBuilder->CreateBlock(StrFormat("switch.notEq_when.%d", blockIdx));
+
+			mBfIRBuilder->CreateBr(caseBlock);			
+			mBfIRBuilder->AddBlock(notEqBB);
+			mBfIRBuilder->SetInsertPoint(notEqBB);
+
+			lastNotEqBlock = notEqBB;
+		}
+
 		if (lastDefaultBlock)
 			mBfIRBuilder->SetSwitchDefaultDest(switchStatement, lastDefaultBlock);
 

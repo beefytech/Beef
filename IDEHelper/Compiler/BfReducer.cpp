@@ -3264,11 +3264,15 @@ BfSwitchStatement* BfReducer::CreateSwitchStatement(BfTokenNode* tokenNode)
 				{
 					auto nextNode = mVisitorPos.GetNext();
 					whenToken = BfNodeDynCast<BfTokenNode>(nextNode);
-					if ((whenToken != NULL) && (whenToken->GetToken() != BfToken_When))
+					if ((whenToken != NULL) && (whenToken->GetToken() == BfToken_When))
+					{
+						mVisitorPos.MoveNext();
+					}
+					else
 						whenToken = NULL;
 				}
 				if (whenToken != NULL)
-				{
+				{					
 					auto whenExpr = mAlloc->Alloc<BfWhenExpression>();
 					whenExpr->mWhenToken = whenToken;
 					ReplaceNode(whenToken, whenExpr);

@@ -748,8 +748,7 @@ public:
 	bool mMustExist; // Regs we must be able to debug
 	// Must be refreshed with RefreshRefCounts	
 	int mRefCount;
-	int mAssignCount;
-	int mDefOrderIdx; // Indicates instruction # in def assignment
+	int mAssignCount;	
 
 	BeMCBlock* mClosedBlock;
 	int mClosedInstIdx;
@@ -789,8 +788,7 @@ public:
 		mAssignCount = -1;
 		mVolatileVRegSave = -1;
 		mMustExist = false;		
-		mIsRetVal = false;
-		mDefOrderIdx = -1;		
+		mIsRetVal = false;		
 
 		mClosedBlock = NULL;
 		mClosedInstIdx = -1;

@@ -416,7 +416,7 @@ void Beefy::BFFatalError(const StringImpl& message, const StringImpl& file, int 
 #endif
 
 #ifdef _DEBUG
-  	OutputDebugStrF("FATAL ERROR: %s\n", message.c_str());
+   	OutputDebugStrF("FATAL ERROR: %s\n", message.c_str());
    	_wassert(UTF8Decode(message).c_str(), UTF8Decode(file).c_str(), line);
 #else
 	String error = StrFormat("%s in %s:%d", message.c_str(), file.c_str(), line);

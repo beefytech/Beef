@@ -7576,16 +7576,14 @@ void BeMCContext::DoInstCombinePass()
 			continue;
 		auto vregInfoFrom = mVRegInfo[remapFrom];
 		auto vregInfoTo = mVRegInfo[remapTo];
-		int bestVRegIdx = (vregInfoFrom->mDefOrderIdx < vregInfoTo->mDefOrderIdx) ? remapFrom : remapTo;
+		int bestVRegIdx = remapTo;
 		//auto itr = defMap.find(remapTo);
 		//if (itr != defMap.end())
 
 		int* prevBestVRegIdxPtr = NULL;
 		if (defMap.TryGetValue(remapTo, &prevBestVRegIdxPtr))
 		{
-			auto prevBestVRegIdx = *prevBestVRegIdxPtr;
-			if (mVRegInfo[bestVRegIdx]->mDefOrderIdx < mVRegInfo[prevBestVRegIdx]->mDefOrderIdx)
-				defMap[remapTo] = bestVRegIdx;
+			
 		}
 		else
 			defMap[remapTo] = bestVRegIdx;
