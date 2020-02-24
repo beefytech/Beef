@@ -31,10 +31,11 @@ public:
 		this->mPtr = sv.mPtr;
 		this->mLength = sv.mLength;
 	}
-
+	
 	StringView(const StringImpl& str);
 	StringView(const StringImpl& str, int offset);
 	StringView(const StringImpl& str, int offset, int length);
+	StringView(char c);
 
 	StringView(const char* ptr)
 	{
@@ -107,12 +108,19 @@ public:
 		return mLength == 0;
 	}
 
+	intptr length() const
+	{
+		return mLength;
+	}
+
 	intptr IndexOf(const StringView& subStr, bool ignoreCase = false) const;
 	intptr IndexOf(const StringView& subStr, int32 startIdx) const;
 	intptr IndexOf(const StringView& subStr, int64 startIdx) const;
-	intptr IndexOf(char c, intptr startIdx = 0) const;
+	intptr IndexOf(char c, int32 startIdx = 0) const;
+	intptr IndexOf(char c, int64 startIdx) const;
 	intptr LastIndexOf(char c) const;
-	intptr LastIndexOf(char c, intptr startCheck) const;
+	intptr LastIndexOf(char c, int startCheck) const;
+	intptr LastIndexOf(char c, int64 startCheck) const;
 	String ToString() const;
 	void ToString(StringImpl& str) const;
 	void RemoveFromStart(intptr length)
@@ -961,7 +969,8 @@ public:
 	intptr IndexOf(const StringView& subStr, bool ignoreCase = false) const;
 	intptr IndexOf(const StringView& subStr, int32 startIdx) const;
 	intptr IndexOf(const StringView& subStr, int64 startIdx) const;	
-	intptr IndexOf(char c, intptr startIdx = 0) const;	
+	intptr IndexOf(char c, int32 startIdx = 0) const;	
+	intptr IndexOf(char c, int64 startIdx) const;
 	intptr LastIndexOf(char c) const;	
 	intptr LastIndexOf(char c, intptr startCheck) const;
 	
