@@ -9231,8 +9231,16 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 
 				if (type->IsUnspecializedType())
 					type = ResolveGenericType(type, *methodGenericArgs);
-			}			
-			methodName += TypeToString(type, typeNameFlags);
+			}
+
+			if ((methodGenericArgs == NULL) && (mCurMethodInstance == NULL) && (mCurTypeInstance == NULL))
+			{
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, methodInst->GetOwner());
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInst);
+				methodName += TypeToString(type, typeNameFlags);
+			}
+			else
+				methodName += TypeToString(type, typeNameFlags);
 		}
 		methodName += ">";		
 	}

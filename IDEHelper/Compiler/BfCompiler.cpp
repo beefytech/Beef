@@ -791,10 +791,24 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 		if (!isTest)
 			return;
 
+		if (methodInstance->mIsUnspecialized)
+		{
+			if (!typeInstance->IsSpecializedType())
+			{
+				bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it's generic", bfModule->MethodToString(methodInstance).c_str()),
+					methodInstance->mMethodDef->GetRefNode());
+			}
+			bfModule->mHadBuildError = true;
+			return;
+		}
+
 		if (!methodInstance->mMethodDef->mIsStatic)
 		{
-			bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it is not static", bfModule->MethodToString(methodInstance).c_str()),
-				methodInstance->mMethodDef->GetRefNode());
+			if (!typeInstance->IsSpecializedType())
+			{
+				bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it's not static", bfModule->MethodToString(methodInstance).c_str()),
+					methodInstance->mMethodDef->GetRefNode());
+			}
 			bfModule->mHadBuildError = true;
 			return;
 		}
@@ -804,8 +818,11 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 			if ((methodInstance->GetParamInitializer(0) == NULL) &&
 				(methodInstance->GetParamKind(0) != BfParamKind_Params))
 			{
-				bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it contains parameters without defaults", bfModule->MethodToString(methodInstance).c_str()),
-					methodInstance->mMethodDef->GetRefNode());
+				if (!typeInstance->IsSpecializedType())
+				{
+					bfModule->Fail(StrFormat("Method '%s' cannot be used for testing because it contains parameters without defaults", bfModule->MethodToString(methodInstance).c_str()),
+						methodInstance->mMethodDef->GetRefNode());
+				}
 				bfModule->mHadBuildError = true;
 				return;
 			}
@@ -831,12 +848,13 @@ void BfCompiler::GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& test
 		if (typeInstance == NULL)
 			continue;
 
+		if (typeInstance->IsUnspecializedType())
+			continue;
+
 		for (auto& methodInstanceGroup : typeInstance->mMethodInstanceGroups)
 		{
-			if (methodInstanceGroup.mDefault != NULL)
-			{
-				_CheckMethod(typeInstance, methodInstanceGroup.mDefault);
-			}
+			if (methodInstanceGroup.mDefault != NULL)			
+				_CheckMethod(typeInstance, methodInstanceGroup.mDefault);						
 		}
 	}
 }
