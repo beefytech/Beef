@@ -41,7 +41,7 @@ BfPrinter::BfPrinter(BfRootNode* rootNode, BfRootNode* sidechannelRootNode, BfRo
 	mCurTypeDecl = NULL;
 }
 
-void BfPrinter::Write(const StringImpl& str)
+void BfPrinter::Write(const StringView& str)
 {	
 	mOutString.Append(str);
 	if (mCharMapping != NULL)
@@ -866,6 +866,72 @@ void BfPrinter::Visit(BfTokenNode* tokenNode)
 void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 {
 	Visit(literalExpr->ToBase());
+
+	if (literalExpr->mValue.mTypeCode == BfTypeCode_CharPtr)
+	{
+		bool isMultiLine = false;
+
+		auto sourceData = literalExpr->GetSourceData();
+		for (int i = literalExpr->GetSrcStart(); i < (int)literalExpr->GetSrcEnd(); i++)
+		{
+			char c = sourceData->mSrc[i];
+			if (c == '\n')
+			{
+				isMultiLine = true;
+				break;
+			}
+		}
+				
+
+		if (isMultiLine)
+		{
+			int srcLineStart = 0;
+
+			int checkIdx = literalExpr->GetSrcStart() - 1;
+			while (checkIdx >= 0)
+			{
+				char c = sourceData->mSrc[checkIdx];
+				if (c == '\n')
+				{
+					srcLineStart = checkIdx + 1;
+					break;
+				}
+				checkIdx--;
+			}
+			
+			int queuedSpaceCount = mQueuedSpaceCount;
+			FlushIndent();
+
+			for (int i = literalExpr->GetSrcStart(); i < (int)literalExpr->GetSrcEnd(); i++)
+			{
+				char c = sourceData->mSrc[i];
+				Write(c);
+				if (c == '\n')
+				{
+					i++;
+					int srcIdx = srcLineStart;
+					while (true)
+					{
+						char srcC = sourceData->mSrc[srcIdx++];
+						char litC = sourceData->mSrc[i];
+
+						if (srcC != litC)
+							break;
+						if ((srcC != ' ') && (srcC != '\t'))
+							break;
+						i++;
+					}
+
+					mQueuedSpaceCount = queuedSpaceCount;
+					FlushIndent();
+
+					i--;
+				}									
+			}
+			
+			return;
+		}
+	}
 
 	WriteSourceString(literalExpr);	
 }

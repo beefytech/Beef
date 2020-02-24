@@ -80,7 +80,7 @@ public:
 public:	
 	bool CheckReplace(BfAstNode* astNode);
 	void FlushIndent();
-	void Write(const StringImpl& str);
+	void Write(const StringView& str);
 	void Write(BfAstNode* node, int start, int len);
 	void WriteSourceString(BfAstNode* node);
 	void QueueVisitChild(BfAstNode* astNode);
