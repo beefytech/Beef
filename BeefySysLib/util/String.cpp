@@ -108,7 +108,7 @@ intptr StringView::IndexOf(char c, int startIdx) const
 intptr StringView::IndexOf(char c, int64 startIdx) const
 {
 	auto ptr = mPtr;
-	for (intptr i = startIdx; i < mLength; i++)
+	for (int64 i = startIdx; i < mLength; i++)
 		if (ptr[i] == c)
 			return i;
 	return -1;
@@ -812,7 +812,7 @@ intptr StringImpl::IndexOf(char c, int startIdx) const
 intptr StringImpl::IndexOf(char c, int64 startIdx) const
 {
 	auto ptr = GetPtr();
-	for (intptr i = startIdx; i < mLength; i++)
+	for (int64 i = startIdx; i < mLength; i++)
 		if (ptr[i] == c)
 			return i;
 	return -1;
@@ -827,7 +827,7 @@ intptr StringImpl::LastIndexOf(char c) const
 	return -1;
 }
 
-intptr StringImpl::LastIndexOf(char c, int64 startCheck) const
+intptr StringImpl::LastIndexOf(char c, intptr startCheck) const
 {
 	auto ptr = GetPtr();
 	for (intptr i = startCheck; i >= 0; i--)
