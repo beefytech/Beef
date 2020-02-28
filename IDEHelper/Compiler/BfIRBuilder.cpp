@@ -344,6 +344,29 @@ bool BfIRConstHolder::TryGetBool(BfIRValue id, bool& boolVal)
 	return false;
 }
 
+int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
+{
+	auto constLHS = GetConstant(lhs);
+	if (constLHS == NULL)
+		return -1;
+	auto constRHS = GetConstant(rhs);
+	if (constRHS == NULL)
+		return -1;
+	
+	if (constLHS->mConstType == BfConstType_BitCast)
+		return CheckConstEquality(BfIRValue(BfIRValueFlags_Const, ((BfConstantBitCast*)constLHS)->mTarget), rhs);	
+	if (constRHS->mConstType == BfConstType_BitCast)
+		return CheckConstEquality(lhs, BfIRValue(BfIRValueFlags_Const, ((BfConstantBitCast*)constRHS)->mTarget));
+
+	if ((constLHS->mConstType == BfConstType_GlobalVar) &&
+		(constRHS->mConstType == BfConstType_GlobalVar))
+	{
+		return (constLHS == constRHS) ? 1 : 0;
+	}
+	
+	return -1;
+}
+
 BfIRValue BfIRConstHolder::CreateConst(BfTypeCode typeCode, uint64 val)
 {
 	if (typeCode == BfTypeCode_IntUnknown)

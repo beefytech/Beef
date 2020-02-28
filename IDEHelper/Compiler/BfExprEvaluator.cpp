@@ -17660,6 +17660,41 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		}		
 	}
 
+	// Check for constant equality checks (mostly for strings)
+	if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
+	{
+		auto leftConstant = mModule->mBfIRBuilder->GetConstant(leftValue.mValue);
+		auto rightConstant = mModule->mBfIRBuilder->GetConstant(rightValue.mValue);
+
+		if ((leftConstant != NULL) && (rightConstant != NULL))
+		{
+			auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
+			int leftStringPoolIdx = mModule->GetStringPoolIdx(leftValue.mValue, mModule->mBfIRBuilder);
+			if (leftStringPoolIdx != -1)
+			{
+				int rightStringPoolIdx = mModule->GetStringPoolIdx(rightValue.mValue, mModule->mBfIRBuilder);
+				if (rightStringPoolIdx != -1)
+				{
+					bool isEqual = leftStringPoolIdx == rightStringPoolIdx;
+					if (binaryOp == BfBinaryOp_InEquality)
+						isEqual = !isEqual;
+					mResult = BfTypedValue(mModule->GetConstValue(isEqual ? 1 : 0, boolType), boolType);
+					return;
+				}
+			}
+
+			int eqResult = mModule->mBfIRBuilder->CheckConstEquality(leftValue.mValue, rightValue.mValue);
+			if (eqResult != -1)
+			{				
+				bool isEqual = eqResult == 1;
+				if (binaryOp == BfBinaryOp_InEquality)
+					isEqual = !isEqual;
+				mResult = BfTypedValue(mModule->GetConstValue(isEqual ? 1 : 0, boolType), boolType);
+				return;
+			}
+		}
+	}
+
 	if ((leftValue.mType->IsTypeInstance()) || (leftValue.mType->IsGenericParam()) || 
 		(rightValue.mType->IsTypeInstance()) || (rightValue.mType->IsGenericParam()))
 	{

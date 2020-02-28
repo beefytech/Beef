@@ -830,6 +830,7 @@ public:
 	BfConstant* GetConstantById(int id);	
 	BfConstant* GetConstant(BfIRValue id);
 	bool TryGetBool(BfIRValue id, bool& boolVal);
+	int CheckConstEquality(BfIRValue lhs, BfIRValue rhs); // -1 = fail, 0 = false, 1 = true
 
 	BfIRValue CreateConst(BfTypeCode typeCode, uint64 val);	
 	BfIRValue CreateConst(BfTypeCode typeCode, int val);
@@ -840,7 +841,7 @@ public:
 	BfIRValue CreateConstStructZero(BfIRType aggType);
 	BfIRValue CreateConstArray(BfIRType type, const BfSizedArray<BfIRValue>& values);
 	BfIRValue CreateTypeOf(BfType* type);
-	BfIRValue GetUndefConstValue(BfTypeCode typeCode);
+	BfIRValue GetUndefConstValue(BfTypeCode typeCode);	
 };
 
 enum BfIRPopulateType
