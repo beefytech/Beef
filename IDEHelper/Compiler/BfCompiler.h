@@ -338,8 +338,9 @@ public:
 	BfTypeDef* mClassVDataTypeDef;		
 	
 	BfTypeDef* mDbgRawAllocDataTypeDef;
-	BfTypeDef* mDeferredCallTypeDef;	
+	BfTypeDef* mDeferredCallTypeDef;		
 	BfTypeDef* mDelegateTypeDef;
+	BfTypeDef* mActionTypeDef;
 	BfTypeDef* mEnumTypeDef;
 	BfTypeDef* mStringTypeDef;
 	BfTypeDef* mTypeTypeDef;

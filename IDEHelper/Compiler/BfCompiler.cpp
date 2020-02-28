@@ -389,6 +389,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mDbgRawAllocDataTypeDef = NULL;
 	mDeferredCallTypeDef = NULL;
 	mDelegateTypeDef = NULL;	
+	mActionTypeDef = NULL;
 	mEnumTypeDef = NULL;
 	mFriendAttributeTypeDef = NULL;
 	mCheckedAttributeTypeDef = NULL;
@@ -5916,6 +5917,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mDbgRawAllocDataTypeDef = _GetRequiredType("System.DbgRawAllocData");
 	mDeferredCallTypeDef = _GetRequiredType("System.DeferredCall");
 	mDelegateTypeDef = _GetRequiredType("System.Delegate");
+	mActionTypeDef = _GetRequiredType("System.Action");
 	mEnumTypeDef = _GetRequiredType("System.Enum");
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
 	mCheckedAttributeTypeDef = _GetRequiredType("System.CheckedAttribute");

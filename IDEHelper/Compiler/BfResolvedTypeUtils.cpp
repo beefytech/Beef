@@ -1760,6 +1760,7 @@ void BfTypeInstance::CalcHotVirtualData(Array<int>* ifaceMapping)
 BfClosureType::BfClosureType(BfTypeInstance* srcDelegate, Val128 closureHash) :
 	mSource(srcDelegate->mTypeDef->mSystem)
 {		
+	BF_ASSERT(srcDelegate->IsDelegate());
 	mSrcDelegate = srcDelegate;
 	mTypeDef = mSrcDelegate->mTypeDef;
 	mCreatedTypeDef = false;

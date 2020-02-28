@@ -464,7 +464,7 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 			auto argInvokeMethod = mModule->GetRawMethodByName(argType->ToTypeInstance(), "Invoke");
 			auto wantInvokeMethod = mModule->GetRawMethodByName(wantType->ToTypeInstance(), "Invoke");
 			
-			if (argInvokeMethod->GetParamCount() == wantInvokeMethod->GetParamCount())
+			if ((argInvokeMethod != NULL) && (wantInvokeMethod != NULL) && (argInvokeMethod->GetParamCount() == wantInvokeMethod->GetParamCount()))
 			{
 				InferGenericArgument(methodInstance, argInvokeMethod->mReturnType, wantInvokeMethod->mReturnType, BfIRValue(), checkedTypeSet);
 				for (int argIdx = 0; argIdx < (int)argInvokeMethod->GetParamCount(); argIdx++)				
@@ -9604,13 +9604,13 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	sBindCount++;	
 
 	bool isFunctionBind = false;
-
+	
 	BfTypeInstance* delegateTypeInstance = NULL;
 	BfMethodInstance* invokeMethodInstance = NULL;
 	if (mExpectingType == NULL)
 	{
 		mModule->Fail("Cannot infer delegate type", lambdaBindExpr);
-		delegateTypeInstance = mModule->mContext->mBfObjectType;
+		delegateTypeInstance = mModule->ResolveTypeDef(mModule->mCompiler->mActionTypeDef)->ToTypeInstance();
 	}
 	else
 	{
@@ -9620,7 +9620,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		{
 			if (lambdaBindExpr->mFatArrowToken != NULL)
 				mModule->Fail("Can only bind lambdas to delegate types", lambdaBindExpr->mFatArrowToken);
-			delegateTypeInstance = mModule->mContext->mBfObjectType;
+			delegateTypeInstance = mModule->ResolveTypeDef(mModule->mCompiler->mActionTypeDef)->ToTypeInstance();
 		}
 		else
 		{
