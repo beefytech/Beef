@@ -31,10 +31,9 @@ namespace IDE.ui
             mSelection = EditSelection(lineStart, lineEnd);
 			var selectionText = scope String();
             GetSelectionText(selectionText);
-            //if (selectionText.Length > 512)
-                //return false;
 
-			//int idx = selectionText.IndexOf("line ");
+			if (selectionText.Length > 1024) // Remove middle
+				selectionText.Remove(1024/2, selectionText.Length - 1024);
 
 			int32 errLine = 0;
 			int32 errLineChar = 0;
@@ -50,7 +49,7 @@ namespace IDE.ui
 
 			int32 inTextPos = -1;
 
-			for (int32 i = 1; i < Math.Min(512, selectionText.Length); i++)
+			for (int32 i = 1; i < selectionText.Length; i++)
 			{
 				if (success)
 					break;

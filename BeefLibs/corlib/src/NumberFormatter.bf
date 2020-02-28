@@ -109,7 +109,7 @@ namespace System
 			1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
 		};*/
 
-		private static uint64[2048] MantissaBitsTable = (
+		private static uint64[2048] MantissaBitsTable = .(
 			4556951262222748432UL, 9113902524445496865UL, 1822780504889099373UL, 
 			3645561009778198746UL, 7291122019556397492UL, 14582244039112794984UL, 
 			2916448807822558996UL, 5832897615645117993UL, 11665795231290235987UL, 
@@ -794,7 +794,7 @@ namespace System
 			4602094425247528723UL, 9204188850495057447UL, 1840837770099011489UL, 
 			3681675540198022979UL, 7363351080396045958UL);
 
-		private static int32[2048] TensExponentTable = (
+		private static int32[2048] TensExponentTable = .(
 			-323, -323, -322, -322, -322, -322, -321, -321, -321, -320, -320, -320, 
 			-319, -319, -319, -319, -318, -318, -318, -317, -317, -317, -316, -316, 
 			-316, -316, -315, -315, -315, -314, -314, -314, -313, -313, -313, -313, 
@@ -966,9 +966,9 @@ namespace System
 			284, 284, 284, 285, 285, 285, 286, 286, 286, 286, 287, 287, 
 			287, 288, 288, 288, 289, 289, 289, 289, 290, 290, 290, 291, 
 			291, 291, 292, 292, 292, 293, 293, 293 );
-		private static char8[16] DigitLowerTable = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
-		private static char8[16] DigitUpperTable = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F');
-		private static int64[19] TenPowersList = (
+		private static char8[16] DigitLowerTable = .('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+		private static char8[16] DigitUpperTable = .('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F');
+		private static int64[19] TenPowersList = .(
 			1L,
 			10L,
 			100L,
@@ -991,7 +991,7 @@ namespace System
 
 		// DecHexDigits s a translation table from a decimal number to its
 		// digits hexadecimal representation (e.g. DecHexDigits [34] = 0x34).
-		private static int32[100] DecHexDigits = (
+		private static int32[100] DecHexDigits = .(
 			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 
 			0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 
 			0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 
@@ -2749,7 +2749,7 @@ namespace System
 
 			public static void GetActiveSection (StringView format, ref bool positive, bool zero, ref int32 offset, ref int32 length)
 			{
-				int32[3] lens = (0,);
+				int32[3] lens = .(0,);
 				int32 index = 0;
 				int32 lastPos = 0;
 				bool quoted = false;

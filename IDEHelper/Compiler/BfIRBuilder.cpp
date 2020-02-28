@@ -2415,7 +2415,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 							bool useIntConstant = false;
 
 							bool wasMadeAddr = false;
-
+							
 							String fieldName = fieldDef->mName;
 							BfIRValue intConstant;
 							if (constant != NULL)
@@ -2424,7 +2424,8 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								if (isOptimized)
 									continue;
 
-								if (constant->mConstType == BfConstType_Array)
+								if ((constant->mConstType == BfConstType_Array) ||
+									(constant->mConstType == BfConstType_AggZero))
 								{										
 									staticValue = ConstToMemory(staticValue);
 									wasMadeAddr = true;									

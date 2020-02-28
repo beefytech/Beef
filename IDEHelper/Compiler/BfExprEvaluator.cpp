@@ -15554,16 +15554,7 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 }
 
 void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
-{
-	if (mExpectingType != NULL)
-	{
-		if (mExpectingType->IsSizedArray())
-		{			
-			InitializedSizedArray((BfSizedArrayType*)mExpectingType, tupleExpr->mOpenParen, tupleExpr->mValues, tupleExpr->mCommas, tupleExpr->mCloseParen);
-			return;
-		}
-	}
-
+{	
 	BfTupleType* tupleType = NULL;
 	bool hadFullMatch = false;
 	if ((mExpectingType != NULL) && (mExpectingType->IsTuple()))

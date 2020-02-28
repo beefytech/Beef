@@ -2436,7 +2436,8 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 	{
 		if ((arrayType->mDimensions == 1) && (arrayType->mParams.size() != 0))
 		{
-			int elemHash = Hash(arrayType->mElementType, ctx) ^ HASH_SIZED_ARRAY;
+			int rawElemHash = Hash(arrayType->mElementType, ctx);
+			int elemHash = rawElemHash ^ HASH_SIZED_ARRAY;
 			int hashVal = (elemHash << 5) - elemHash;
 
 			// Sized array
@@ -2460,25 +2461,15 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 				{
 					int elemHash = Hash(typedVal.mType, ctx);
-
-					/*BF_ASSERT(typedVal.mType->IsGenericParam());
-					auto genericParamInstance = ctx->mModule->GetGenericParamInstance((BfGenericParamType*)typedVal.mType);
-					if ((genericParamInstance->mTypeConstraint == NULL) ||
-						(!ctx->mModule->CanCast(BfTypedValue(ctx->mModule->mBfIRBuilder->GetFakeVal(), genericParamInstance->mTypeConstraint),
-							ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr))))
-					{
-						ctx->mModule->Fail(StrFormat("Generic constraint '%s' is not convertible to 'int'", ctx->mModule->TypeToString(typedVal.mType).c_str()), sizeExpr);
-					}*/
-
 					hashVal = ((hashVal ^ elemHash) << 5) - hashVal;
 					return hashVal;
 				}
 				if (!typedVal)	
-					ctx->mFailed = true;				
+					ctx->mFailed = true;
 				if (typedVal)
 					typedVal = ctx->mModule->Cast(sizeExpr, typedVal, intType);
 				if (typedVal)
-				{						
+				{
 					auto constant = ctx->mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
 					if (constant->mConstType == BfConstType_Undef)
 					{
@@ -3132,6 +3123,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 	{
 		auto rhsArrayTypeRef = BfNodeDynCastExact<BfArrayTypeRef>(rhs);
 		if (rhsArrayTypeRef == NULL)
+			return false;
+		if (!rhsArrayTypeRef->mParams.IsEmpty())
 			return false;
 		BfArrayType* lhsArrayType = (BfArrayType*) lhs;
 		if (lhsArrayType->mDimensions != rhsArrayTypeRef->mDimensions)

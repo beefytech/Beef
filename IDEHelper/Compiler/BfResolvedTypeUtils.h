@@ -2247,15 +2247,15 @@ public:
 		BfHashFlag_AllowRef = 1,
 		BfHashFlag_AllowGenericParamConstValue = 2
 	};
-
+	
 	class LookupContext
-	{
+	{	
 	public:
 		BfModule* mModule;
 		BfTypeReference* mRootTypeRef;
 		BfTypeDef* mRootTypeDef;
 		BfType* mResolvedType;		
-		bool mFailed;
+		bool mFailed;		
 
 	public:
 		LookupContext()
