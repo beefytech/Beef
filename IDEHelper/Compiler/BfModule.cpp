@@ -1442,19 +1442,15 @@ BfIRValue BfModule::CreateStringCharPtr(const StringImpl& str, int stringId, boo
 {	
 	String stringDataName = StrFormat("__bfStrData%d", stringId);
 
-	BfIRType strCharType;
-	//
-	{		
-		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites);
-		strCharType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->GetPrimitiveType(BfTypeCode_Char8), (int)str.length() + 1);
-	}
-
+	auto charType = GetPrimitiveType(BfTypeCode_Char8);
+ 	BfIRType irStrCharType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->MapType(charType), (int)str.length() + 1);
+ 	
 	BfIRValue strConstant;
 	if (define)
 	{		
 		strConstant = mBfIRBuilder->CreateConstString(str);		
 	}
-	BfIRValue gv = mBfIRBuilder->CreateGlobalVariable(strCharType,
+	BfIRValue gv = mBfIRBuilder->CreateGlobalVariable(irStrCharType,
 		true, BfIRLinkageType_External,
 		strConstant, stringDataName);
 
@@ -1501,7 +1497,8 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 		
 		stringValData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(stringTypeInst, BfIRPopulateType_Full), typeValueParams);
 	}
-	
+		
+	mBfIRBuilder->PopulateType(stringTypeInst);
 	auto stringValLiteral = mBfIRBuilder->CreateGlobalVariable(
 		mBfIRBuilder->MapTypeInst(stringTypeInst),
 		true,
@@ -3283,8 +3280,6 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites, true);
 		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
 		
-		BfConstResolver constResolver(this);
-
 		BfMethodState methodState;
 		SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
 		methodState.mTempKind = BfMethodState::TempKind_Static;

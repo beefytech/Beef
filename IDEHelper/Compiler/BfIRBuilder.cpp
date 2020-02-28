@@ -1736,10 +1736,16 @@ void BfIRBuilder::Write(BfTypeCode typeCode)
 	mStream.Write((uint8)typeCode);	
 }
 
-void BfIRBuilder::Write(BfIRTypeData type)
+void BfIRBuilder::Write(const BfIRTypeData& type)
 {
 	mStream.Write((uint8)type.mKind);
-	if (type.mKind != BfIRTypeData::TypeKind_None)
+	if (type.mKind == BfIRTypeData::TypeKind_SizedArray)
+	{
+		auto sizedArrayType = (BfConstantSizedArrayType*)GetConstantById(type.mId);
+		Write(sizedArrayType->mType);
+		WriteSLEB128(sizedArrayType->mLength);
+	}
+	else if (type.mKind != BfIRTypeData::TypeKind_None)
 		WriteSLEB128(type.mId);
 }
  
@@ -2422,6 +2428,12 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								{										
 									staticValue = ConstToMemory(staticValue);
 									wasMadeAddr = true;									
+								}
+								else if (resolvedFieldType->IsPointer())
+								{
+									int stringId = constant->mInt32;
+									const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
+									staticValue = mModule->GetStringCharPtr(str);
 								}
 								else
 								{
@@ -3260,9 +3272,26 @@ BfIRType BfIRBuilder::GetPointerTo(BfIRType type)
 
 BfIRType BfIRBuilder::GetSizedArrayType(BfIRType elementType, int length)
 {
-	BfIRType retType = WriteCmd(BfIRCmd_GetSizedArrayType, elementType, length);
-	NEW_CMD_INSERTED_IRTYPE;
-	return retType;
+	if (mIgnoreWrites)
+	{
+		auto constSizedArrayType = mTempAlloc.Alloc<BfConstantSizedArrayType>();
+		constSizedArrayType->mConstType = BfConstType_SizedArrayType;
+		constSizedArrayType->mType = elementType;
+		constSizedArrayType->mLength = length;
+
+		int chunkId = mTempAlloc.GetChunkedId(constSizedArrayType);
+
+		BfIRType retType;
+		retType.mKind = BfIRTypeData::TypeKind_SizedArray;
+		retType.mId = chunkId;
+		return retType;
+	}
+	else
+	{
+		BfIRType retType = WriteCmd(BfIRCmd_GetSizedArrayType, elementType, length);
+		NEW_CMD_INSERTED_IRTYPE;
+		return retType;
+	}
 }
 
 BfIRValue BfIRBuilder::CreateConstStruct(BfIRType type, const BfSizedArray<BfIRValue>& values)

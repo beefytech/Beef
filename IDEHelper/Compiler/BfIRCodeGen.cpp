@@ -510,6 +510,14 @@ void BfIRCodeGen::Read(llvm::Type*& llvmType)
 		return;
 	}
 
+	if (typeKind == BfIRType::TypeKind::TypeKind_SizedArray)
+	{
+		CMD_PARAM(llvm::Type*, elementType);
+		CMD_PARAM(int, length);
+		llvmType = llvm::ArrayType::get(elementType, length);
+		return;
+	}
+
 	int typeId = (int)ReadSLEB128();
 	auto& typeEntry = GetTypeEntry(typeId);
 	if (typeKind == BfIRType::TypeKind::TypeKind_TypeId)

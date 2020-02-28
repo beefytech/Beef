@@ -74,6 +74,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 					(toType == mResult.mType)))
 			{
 				auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
+				
 				if (constant->mTypeCode == BfTypeCode_NullPtr)
 				{
 					return mModule->GetDefaultTypedValue(toType);
@@ -82,7 +83,15 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 				{
 					int stringId = mModule->GetStringPoolIdx(mResult.mValue);
 					BF_ASSERT(stringId >= 0);
-					return BfTypedValue(mModule->GetConstValue(stringId), toType);
+
+					if ((flags & BfConstResolveFlag_RemapFromStringId) != 0)
+					{
+						ignoreWrites.Restore();
+						mModule->mBfIRBuilder->PopulateType(mResult.mType);
+						return BfTypedValue(mModule->GetStringObjectValue(stringId), mResult.mType);
+					}
+
+					return BfTypedValue(mModule->GetConstValue32(stringId), toType);
 				}
 			}
 		}
@@ -168,7 +177,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		mModule->mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 	}*/
 
-	mModule->FixIntUnknown(mResult);
+	mModule->FixIntUnknown(mResult);	
 
 	return mResult;
 }
@@ -360,7 +369,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 		auto arrayType = mModule->mBfIRBuilder->GetSizedArrayType(mModule->mBfIRBuilder->MapType(expandedParamsElementType), (int)expandedParamsConstValues.size());
 		auto constArray = mModule->mBfIRBuilder->CreateConstArray(arrayType, expandedParamsConstValues);
 		llvmArgs.push_back(constArray);
-	}
+	}	
 
 	return true;
 }

@@ -170,6 +170,14 @@ bool BeContext::AreTypesEqual(BeType* lhs, BeType* rhs)
 		return true;
 	case BeTypeCode_Pointer:
 		return AreTypesEqual(((BePointerType*)lhs)->mElementType, ((BePointerType*)rhs)->mElementType);	
+	case BeTypeCode_SizedArray:
+		{
+			auto lhsSizedArray = (BeSizedArrayType*)lhs;
+			auto rhsSizedArray = (BeSizedArrayType*)rhs;
+			if (lhsSizedArray->mLength != rhsSizedArray->mLength)
+				return false;
+			return AreTypesEqual(lhsSizedArray->mElementType, rhsSizedArray->mElementType);
+		}
 	}
 	return false;
 }

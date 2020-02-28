@@ -1247,7 +1247,7 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 	{
 		if (auto beConst = BeValueDynCast<BeConstant>(dbgVar->mValue))
 		{
-			if (!beConst->mType->IsPointer())
+			if ((beConst->mType != NULL) && (!beConst->mType->IsPointer()))
 			{
 				int64 writeVal = beConst->mInt64;
 				if (beConst->mType->mTypeCode == BfTypeCode_Single)

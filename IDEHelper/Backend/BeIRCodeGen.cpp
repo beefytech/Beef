@@ -561,6 +561,14 @@ void BeIRCodeGen::Read(BeType*& beType)
 		return;
 	}
 
+	if (typeKind == BfIRType::TypeKind::TypeKind_SizedArray)
+	{
+		CMD_PARAM(BeType*, elementType);
+		CMD_PARAM(int, length);
+		beType = mBeContext->CreateSizedArrayType(elementType, length);
+		return;
+	}
+
 	int typeId = (int)ReadSLEB128();
 	auto& typeEntry = GetTypeEntry(typeId);
 	if (typeKind == BfIRType::TypeKind::TypeKind_TypeId)
@@ -1631,9 +1639,10 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				globalVariable->mAlign = varType->mAlign;
 				BF_ASSERT(varType->mAlign > 0);
+				BF_ASSERT(mBeContext->AreTypesEqual(varType, initializer->GetType()));
 			}
 			else
-				globalVariable->mAlign = -1;
+				globalVariable->mAlign = -1;			
 			
 			SetResult(curId, globalVariable);
 		}

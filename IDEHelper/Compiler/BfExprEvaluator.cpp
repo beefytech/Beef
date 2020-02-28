@@ -17351,6 +17351,30 @@ bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken,
 	return false;
 }
 
+void BfExprEvaluator::AddStrings(const BfTypedValue& leftValue, const BfTypedValue& rightValue, BfAstNode* refNode)
+{
+	if ((leftValue.mValue.IsConst()) && (rightValue.mValue.IsConst()))
+	{
+		String* lhsStr = mModule->GetStringPoolString(leftValue.mValue, mModule->mBfIRBuilder);
+		String* rhsStr = mModule->GetStringPoolString(rightValue.mValue, mModule->mBfIRBuilder);
+
+		if ((lhsStr != NULL) && (rhsStr != NULL))
+		{
+			String resultStr = *lhsStr + *rhsStr;
+
+			BfVariant variant;
+			variant.mTypeCode = BfTypeCode_CharPtr;
+			variant.mString = &resultStr;
+
+			GetLiteral(refNode, variant);
+			return;
+		}
+	}
+
+	mModule->Fail("Strings can only be added when they are constants. Consider allocating a string and using Concat.", refNode);
+	return;
+}
+
 void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNode* rightExpression, BfBinaryOp binaryOp, BfAstNode* opToken, BfBinOpFlags flags, BfTypedValue leftValue, BfTypedValue rightValue)
 {
 	bool noClassify = (flags & BfBinOpFlag_NoClassify) != 0;
@@ -17905,6 +17929,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		
 	if (resultType->IsPointer() && otherType->IsPointer())
 	{
+		if ((binaryOp == BfBinaryOp_Add) && (resultType == otherType) &&
+			(resultType->GetUnderlyingType() == mModule->GetPrimitiveType(BfTypeCode_Char8)))			
+		{
+			AddStrings(leftValue, rightValue, opToken);
+			return;
+		}
+
 		//TODO: Allow all pointer comparisons, but only allow SUBTRACTION between equal pointer types
 		if (binaryOp == BfBinaryOp_Subtract)
 		{			
@@ -17993,17 +18024,24 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		return;
 	}	
 	
+	
+
 	if ((resultType->IsFunction()) || (resultType->IsPointer()) || (resultType->IsObject()) || (resultType->IsInterface()) || (resultType->IsGenericParam()))
 	{
-		//if ((resultType->IsFunction()) || (resultType->IsObject()) || (resultType->IsInterface()) || (resultType->IsGenericParam()))
+		if ((binaryOp == BfBinaryOp_Add) && 
+			(resultType->IsInstanceOf(mModule->mCompiler->mStringTypeDef)) && 
+			(otherType->IsInstanceOf(mModule->mCompiler->mStringTypeDef)))
 		{
-			if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality))
-			{
-				//mModule->Fail("Invalid operation for objects", opToken);
-				_OpFail();
-				return;
-			}
+			AddStrings(leftValue, rightValue, opToken);			
+			return;
 		}
+		
+		if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality))
+		{
+			//mModule->Fail("Invalid operation for objects", opToken);
+			_OpFail();
+			return;
+		}		
 
 		if (resultType->IsInterface())
 		{

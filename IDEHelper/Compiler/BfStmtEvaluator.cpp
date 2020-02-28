@@ -1479,9 +1479,9 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			if (isConst)
 			{
 				BfConstResolver constResolver(this);
-				initValue = constResolver.Resolve(varDecl->mInitializer, resolvedType);
+				initValue = constResolver.Resolve(varDecl->mInitializer, resolvedType, BfConstResolveFlag_RemapFromStringId);
 				if (!initValue)
-					initValue = GetDefaultTypedValue(resolvedType);
+					initValue = GetDefaultTypedValue(resolvedType);				
 			}
 			else if (varDecl->mInitializer->IsA<BfUninitializedExpression>())				
 			{				

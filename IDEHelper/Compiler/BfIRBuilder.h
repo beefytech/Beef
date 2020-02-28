@@ -125,7 +125,8 @@ enum BfConstType
 	BfConstType_TypeOf,
 	BfConstType_AggZero,
 	BfConstType_Array,
-	BfConstType_Undef
+	BfConstType_Undef,
+	BfConstType_SizedArrayType
 
 };
 
@@ -543,6 +544,7 @@ struct BfIRTypeData
 		TypeKind_TypeInstId,
 		TypeKind_TypeInstPtrId,
 		TypeKind_Stream,
+		TypeKind_SizedArray
 	};
 
 	TypeKind mKind;
@@ -766,6 +768,13 @@ public:
 	}
 };
 
+struct BfConstantSizedArrayType
+{
+	BfConstType mConstType;
+	BfIRType mType;
+	intptr mLength;
+};
+
 struct BfConstantUndef
 {
 	BfConstType mConstType;
@@ -894,9 +903,9 @@ public:
 	void Write(int val);
 	void Write(int64 val);
 	void Write(const StringImpl& str);
-	void Write(const BfIRValue& irValue);	
+	void Write(const BfIRValue& irValue);
 	void Write(BfTypeCode typeCode);
-	void Write(BfIRTypeData type);	
+	void Write(const BfIRTypeData& type);	
 	void Write(BfIRFunctionType func);
 	void Write(BfIRFunction funcType);
 	void Write(BfIRBlock block);

@@ -15,6 +15,7 @@ enum BfConstResolveFlags
 	BfConstResolveFlag_ExplicitCast = 1,
 	BfConstResolveFlag_NoCast = 2,
 	BfConstResolveFlag_AllowSoftFail = 4,
+	BfConstResolveFlag_RemapFromStringId = 8
 };
 
 class BfConstResolver : public BfExprEvaluator

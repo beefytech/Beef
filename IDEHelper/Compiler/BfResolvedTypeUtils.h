@@ -409,10 +409,11 @@ public:
 	BfTypeInstance* FindUnderlyingTypeInstance();
 
 	virtual BfModule* GetModule();
-
+	
 	int GetStride() { return BF_ALIGN(mSize, mAlign); }	
 	bool IsSizeAligned() { return (mSize == 0) || (mSize % mAlign == 0); }
 	virtual bool NeedsExplicitAlignment() { return !IsSizeAligned(); }
+	virtual bool IsInstanceOf(BfTypeDef* typeDef) { return false; }
 
 	virtual bool HasBeenReferenced() { return mDefineState != BfTypeDefineState_Undefined; }
 	virtual bool HasTypeFailed() { return false; }
@@ -1671,6 +1672,7 @@ public:
 	
 	~BfTypeInstance();	
 
+	virtual bool IsInstanceOf(BfTypeDef* typeDef) { return typeDef == mTypeDef; }
 	virtual BfModule* GetModule() override { return mModule; }
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }

@@ -240,5 +240,20 @@ namespace Tests
 			Test.Assert(iVal == 123);
 			Test.Assert(iVal == 123.0f);
 		}
+
+		const String cStrD = "D";
+		const char8* cStrPD = "D";
+
+		[Test]
+		public static void TestStringOp()
+		{
+			const String cStr1 = "A" + "B";
+			const String cStr2 = cStr1 + "C" + cStrD;
+			Test.Assert(cStr2 == "ABCD");
+
+			const char8* cStr3 = "A" + "B";
+			const char8* cStr4 = cStr1 + "C" + cStrPD;
+			Test.Assert(StringView(cStr4) == "ABCD");
+		}
 	}
 }
