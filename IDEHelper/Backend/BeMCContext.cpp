@@ -6096,6 +6096,8 @@ void BeMCContext::VRegSetInitialized(BeMCBlock* mcBlock, BeMCInst* inst, const B
 		int insertIdx = FindSafeInstInsertPos(*mInsertInstIdxRef);
 		AllocInst(BeMCInstKind_Def, operand, insertIdx);
 		vregInfo->mDefOnFirstUse = false;
+		if (insertIdx <= *mInsertInstIdxRef)
+			(*mInsertInstIdxRef)++;
 	}
 		
 	if (vregInfo->mRelTo)
@@ -6155,6 +6157,11 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 	BeVTrackingList* vregsInitialized = mcBlock->mPredVRegsInitialized;
 	
 	//OutputDebugStrF("InitializedPassHelper %@\n", vregsInitialized.mList);
+
+	if (mDebugging)
+	{
+		NOP;
+	}
 
 	mActiveBlock = mcBlock;		
 	for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
@@ -11701,12 +11708,14 @@ void BeMCContext::DoCodeEmission()
 	int hotJumpLen = 5;
 	int funcCodePos = 0;
 
+	Array<BeDbgVariable*> deferredGapEnds;
+
 	BeVTrackingList* vregsLive = mLivenessContext.AllocEmptyList();
 	BeVTrackingList* vregsInitialized = mVRegInitializedContext.AllocEmptyList();
 	for (auto mcBlock : mBlocks)
 	{
 		for (auto inst : mcBlock->mInstructions)
-		{
+		{			
 			if (mDebugging)
 			{
 				ToString(inst, dbgStr, true, true);				
@@ -11726,6 +11735,19 @@ void BeMCContext::DoCodeEmission()
 					{
 						//
 					}
+				}
+			}
+
+			while (!deferredGapEnds.IsEmpty())
+			{
+				BeDbgVariable* dbgVar = deferredGapEnds.back();
+				deferredGapEnds.pop_back();
+
+				auto& range = dbgVar->mGaps.back();
+				range.mLength = funcCodePos - range.mOffset;
+				if (range.mLength <= 0)
+				{
+					dbgVar->mGaps.pop_back();
 				}
 			}
 						
@@ -11845,11 +11867,7 @@ void BeMCContext::DoCodeEmission()
 								// We have to check for this because it's possible we get multiple adds
 								if (range.mLength == -1)
 								{
-									range.mLength = funcCodePos - range.mOffset;								
-									if (range.mLength <= 0)
-									{
-										dbgVar->mGaps.pop_back();
-									}
+									deferredGapEnds.Add(dbgVar);									
 								}
 
 								if (mDebugging)
@@ -14691,7 +14709,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?Unwrap@?$Result@Tint@@@System@bf@@AEAATint@@XZ";
+	//mDebugging = function->mName == "?Hey@Blurg@bf@@SAXXZ";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
