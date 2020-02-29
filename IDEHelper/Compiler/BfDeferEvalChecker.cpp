@@ -16,6 +16,7 @@ void BfDeferEvalChecker::Visit(BfLiteralExpression* literalExpr)
 {
 	switch (literalExpr->mValue.mTypeCode)
 	{
+	case BfTypeCode_NullPtr:
 	case BfTypeCode_Boolean:
 	case BfTypeCode_Char8:
 	case BfTypeCode_Int8:
@@ -82,9 +83,11 @@ void BfDeferEvalChecker::Visit(BfInvocationExpression* invocationExpr)
 }
 
 void BfDeferEvalChecker::Visit(BfConditionalExpression* condExpr)
-{		
+{	
+	VisitChild(condExpr->mConditionExpression);
+	bool prev = mNeedsDeferEval;
 	VisitChild(condExpr->mTrueExpression);
-	bool prev = mNeedsDeferEval;	
+	prev |= mNeedsDeferEval;	
 	VisitChild(condExpr->mFalseExpression);
 	mNeedsDeferEval |= prev;
 }
