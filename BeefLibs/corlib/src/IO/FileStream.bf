@@ -96,7 +96,6 @@ namespace System.IO
 		{
 			mBfpFile = handle;
 			mFileAccess = access;
-
 		}
 
 		public override bool CanRead
@@ -115,12 +114,12 @@ namespace System.IO
 			}
 		}
 
-		public Result<void, FileOpenError> Create(StringView path, FileAccess access = .ReadWrite, FileShare share = .None, int bufferSize = 4096, FileOptions options= .None, SecurityAttributes* secAttrs = null)
+		public Result<void, FileOpenError> Create(StringView path, FileAccess access = .ReadWrite, FileShare share = .None, int bufferSize = 4096, FileOptions options = .None, SecurityAttributes* secAttrs = null)
 		{
 			return Open(path, FileMode.Create, access, share, bufferSize, options, secAttrs);
 		}
 
-		public Result<void, FileOpenError> Open(StringView path, FileAccess access = .ReadWrite, FileShare share = .None, int bufferSize = 4096, FileOptions options= .None, SecurityAttributes* secAttrs = null)
+		public Result<void, FileOpenError> Open(StringView path, FileAccess access = .ReadWrite, FileShare share = .None, int bufferSize = 4096, FileOptions options = .None, SecurityAttributes* secAttrs = null)
 		{
 			return Open(path, FileMode.Open, access, share, bufferSize, options, secAttrs);
 		}
@@ -129,6 +128,7 @@ namespace System.IO
 		{
 			Platform.BfpFileResult fileResult = .Ok;
 			mBfpFile = Platform.BfpFile_GetStd(stdKind, &fileResult);
+			mFileAccess = .ReadWrite;
 
 			if ((mBfpFile == null) || (fileResult != .Ok))
 			{
@@ -145,7 +145,7 @@ namespace System.IO
 			return .Ok;
 		}
 
-		public Result<void, FileOpenError> Open(StringView path, FileMode mode, FileAccess access, FileShare share = .None, int bufferSize = 4096, FileOptions options= .None, SecurityAttributes* secAttrs = null)
+		public Result<void, FileOpenError> Open(StringView path, FileMode mode, FileAccess access, FileShare share = .None, int bufferSize = 4096, FileOptions options = .None, SecurityAttributes* secAttrs = null)
 		{
 			Runtime.Assert(mBfpFile == null);
 
@@ -199,14 +199,22 @@ namespace System.IO
 					return .Err(.Unknown);
 				}
 			}
+			mFileAccess = access;
 
 			return .Ok;
 		}
 
-		public void Attach(Platform.BfpFile* bfpFile)
+		public void Attach(Platform.BfpFile* bfpFile, FileAccess access = .ReadWrite)
 		{
 			Close();
 			mBfpFile = bfpFile;
+			mFileAccess = access;
+		}
+
+		public override void Close()
+		{
+			base.Close();
+			mFileAccess = default;
 		}
 	}
 }
