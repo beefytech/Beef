@@ -108,6 +108,7 @@ public:
 
 	T& operator[](int idx) const
 	{
+		BF_ASSERT((uint)idx < (uint)mSize);
 		return mVals[idx];
 	}
 

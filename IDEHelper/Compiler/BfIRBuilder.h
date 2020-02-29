@@ -830,6 +830,7 @@ public:
 	BfConstant* GetConstantById(int id);	
 	BfConstant* GetConstant(BfIRValue id);
 	bool TryGetBool(BfIRValue id, bool& boolVal);
+	int IsZero(BfIRValue val);
 	int CheckConstEquality(BfIRValue lhs, BfIRValue rhs); // -1 = fail, 0 = false, 1 = true
 
 	BfIRValue CreateConst(BfTypeCode typeCode, uint64 val);	

@@ -344,6 +344,35 @@ bool BfIRConstHolder::TryGetBool(BfIRValue id, bool& boolVal)
 	return false;
 }
 
+int BfIRConstHolder::IsZero(BfIRValue value)
+{
+	auto constant = GetConstant(value);
+	if (constant == NULL)
+		return -1;
+
+	if ((constant->mTypeCode >= BfTypeCode_Boolean) && (constant->mTypeCode <= BfTypeCode_Double))
+	{
+		return (constant->mUInt64 == 0) ? 1 : 0;
+	}
+
+	if (constant->mConstType == BfConstType_AggZero)
+		return 1;
+
+	if (constant->mConstType == BfConstType_Array)
+	{
+		auto constArr = (BfConstantArray*)constant;
+		for (int i = 0; i < constArr->mValues.mSize; i++)
+		{
+			int elemResult = IsZero(constArr->mValues[i]);
+			if (elemResult != 1)
+				return elemResult;
+		}
+		return 1;
+	}
+
+	return -1;
+}
+
 int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 {
 	auto constLHS = GetConstant(lhs);
@@ -358,10 +387,37 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 	if (constRHS->mConstType == BfConstType_BitCast)
 		return CheckConstEquality(lhs, BfIRValue(BfIRValueFlags_Const, ((BfConstantBitCast*)constRHS)->mTarget));
 
-	if ((constLHS->mConstType == BfConstType_GlobalVar) &&
-		(constRHS->mConstType == BfConstType_GlobalVar))
+	int lhsZero = IsZero(lhs);
+	if (lhsZero != -1)
 	{
-		return (constLHS == constRHS) ? 1 : 0;
+		int rhsZero = IsZero(rhs);
+		if (rhsZero != -1)
+			return (lhsZero == rhsZero) ? 1 : 0;
+	}
+
+	if (constLHS->mTypeCode != constRHS->mTypeCode)
+		return -1;
+	
+	if ((constLHS->mTypeCode >= BfTypeCode_Boolean) && (constLHS->mTypeCode <= BfTypeCode_Double))
+	{
+		return (constLHS->mUInt64 == constRHS->mUInt16) ? 1 : 0;
+	}
+	
+	if (constLHS->mConstType == BfConstType_Array)
+	{
+		auto arrayLHS = (BfConstantArray*)constLHS;
+		auto arrayRHS = (BfConstantArray*)constRHS;
+		
+		if (arrayLHS->mValues.mSize != arrayRHS->mValues.mSize)
+			return -1;
+
+		for (int i = 0; i < arrayLHS->mValues.mSize; i++)
+		{
+			int elemResult = CheckConstEquality(arrayLHS->mValues[i], arrayRHS->mValues[i]);
+			if (elemResult != 1)
+				return elemResult;
+		}
+		return 1;
 	}
 	
 	return -1;
