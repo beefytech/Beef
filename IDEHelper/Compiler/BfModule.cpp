@@ -6469,15 +6469,16 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	Array<String> methodParamNameOverrides;
 	auto _TypeToString = [&](BfType* type)
 	{
-		if (methodParamNameOverrides.IsEmpty())
+		if (genericParamSource.mMethodInstance != NULL)
 		{
-			if (genericParamSource.mMethodInstance != NULL)
+			if (methodParamNameOverrides.IsEmpty())
 			{
 				for (auto genericParam : genericParamSource.mMethodInstance->mMethodDef->mGenericParams)
 					methodParamNameOverrides.Add(genericParam->mName);
 			}
+			return TypeToString(type, &methodParamNameOverrides);
 		}
-		return TypeToString(type, &methodParamNameOverrides);
+		return TypeToString(type);
 	};
 
 	bool ignoreErrors = mIgnoreErrors || (errorOut == NULL) ||
