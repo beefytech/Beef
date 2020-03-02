@@ -1292,7 +1292,7 @@ namespace IDE.ui
                                                         }
 
                                                         return showBorder;
-                                                    };
+                                                    }
 
                                                     bool leftBorder = neighborCoverageFunc(-1);
                                                     bool rightBorder = neighborCoverageFunc(1);
@@ -1344,7 +1344,7 @@ namespace IDE.ui
                                                             showBorder = !neighborEntry.mIsSelected;
                                                         }
                                                         return showBorder;
-                                                    };
+                                                    }
 
                                                     bool leftBorder = neighborCoverageFunc(-1);
                                                     bool rightBorder = neighborCoverageFunc(1);

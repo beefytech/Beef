@@ -2441,7 +2441,7 @@ namespace IDE.ui
                     sourceEditWidgetContent.PersistentTextPositions.Remove(persistentTextPositon);
 					delete persistentTextPositon;
                 }
-            };                        
+            }
 
             mTargetEditWidget.Content.EnsureCursorVisible();
             if ((insertType != null) && (insertText.Length > 0))

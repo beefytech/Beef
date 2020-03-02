@@ -386,7 +386,7 @@ namespace System {
             //
             
             // Find first "d".
-            for (i = index - 1; i >= 0 && format[i] != patternToMatch; i--) {  /*Do nothing here */ };
+            for (i = index - 1; i >= 0 && format[i] != patternToMatch; i--) {  /*Do nothing here */ }
         
             if (i >= 0) {
                 // Find a "d", so look back to see how many "d" that we can find.
@@ -409,7 +409,7 @@ namespace System {
             //
 
             // Find first "d"
-            for (i = index + tokenLen; i < format.Length && format[i] != patternToMatch; i++) { /* Do nothing here */ };
+            for (i = index + tokenLen; i < format.Length && format[i] != patternToMatch; i++) { /* Do nothing here */ }
 
             if (i < format.Length) {
                 repeatVal = 0;
