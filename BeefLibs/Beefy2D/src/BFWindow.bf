@@ -462,6 +462,18 @@ namespace Beefy
             BFWindow_SetNonExclusiveMouseCapture(mNativeWindow);            
         }
 
+		public bool HasParent(BFWindow widgetWindow)
+		{
+			var checkParent = mParent;
+			while (checkParent != null)
+			{
+				if (checkParent == widgetWindow)
+					return true;
+				checkParent = checkParent.mParent;
+			}
+			return false;
+		}
+
         public virtual void Closed()
         {
 			if (mHasClosed)

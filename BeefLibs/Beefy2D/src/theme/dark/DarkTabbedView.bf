@@ -38,6 +38,18 @@ namespace Beefy.theme.dark
                 if (tabButton.mCloseClickedEvent.HasListeners)
                     tabButton.mCloseClickedEvent();
             }
+
+			public override void MouseMove(float x, float y)
+			{
+				base.MouseMove(x, y);
+				MarkDirty();
+			}
+
+			public override void MouseLeave()
+			{
+				base.MouseLeave();
+				MarkDirty();
+			}
         }
 
         public class DarkTabButton : TabbedView.TabButton

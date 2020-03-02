@@ -35,6 +35,7 @@ namespace Beefy.theme.dark
 		public Insets mRelWidgetMouseInsets ~ delete _;
 		public bool mAllowMouseInsideSelf;
 		public bool mAllowMouseOutside;
+		public int mAutoCloseDelay;
 
         public const float cShadowSize = 8;
 
@@ -199,7 +200,8 @@ namespace Beefy.theme.dark
             WidgetWindow widgetWindow = (WidgetWindow)evt.mSender;
             if (widgetWindow == mWidgetWindow)
                 return;
-
+			if (widgetWindow.HasParent(mWidgetWindow))
+				return;
             Close();
         }
 
@@ -208,6 +210,8 @@ namespace Beefy.theme.dark
             WidgetWindow widgetWindow = (WidgetWindow)evt.mSender;
             if (widgetWindow == mWidgetWindow)
                 return;
+			if (widgetWindow.HasParent(mWidgetWindow))
+				return;
             //if ((!(widgetWindow.mRootWidget is HoverWatch)) && (!(widgetWindow.mRootWidget is MenuWidget)))
             Close();
         }
@@ -220,6 +224,12 @@ namespace Beefy.theme.dark
         public override void Update()
         {
             base.Update();
+
+			if (mAutoCloseDelay > 0)
+			{
+				mAutoCloseDelay--;
+				return;
+			}
 
             if (mWidgetWindow == null)
                 return;
@@ -242,9 +252,18 @@ namespace Beefy.theme.dark
 
 			if ((mWidgetWindow.mHasMouseInside) && (mAllowMouseInsideSelf))
 				return;
+
+			var checkWindow = BFApp.sApp.FocusedWindow;
+			if ((checkWindow != null) && (checkWindow.HasParent(mWidgetWindow)))
+				return;
 			
 			Close();
         }
+
+		public void ExpandAllowedRegion()
+		{
+
+		}
 
 		protected override void RemovedFromWindow()
 		{

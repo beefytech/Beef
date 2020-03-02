@@ -108,7 +108,7 @@ namespace Beefy.theme.dark
         {
             float spaceWidth = mFont.GetWidth((char32)' ');
             if (mTabSize == 0)
-                return startX + spaceWidth;
+                return startX + spaceWidth*4;
             return (float)Math.Truncate((startX + spaceWidth) / mTabSize + 0.999f) * mTabSize;
         }
 
@@ -299,15 +299,17 @@ namespace Beefy.theme.dark
             mFont = font;
             if (isMonospace)
             {
-                mCharWidth = mFont.GetWidth((char32)' ');
-                //Debug.Assert(mFont.GetWidth((char32)'W') == mCharWidth);
+                mCharWidth = mFont.GetWidth(' ');
 				if (mTabSize == 0)
                 	mTabSize = mTabLength * mCharWidth;
 				else
 					mTabSize = (float)Math.Round(mTabSize / mCharWidth) * mCharWidth;
             }
             else
+			{
                 mCharWidth = -1;
+				mTabSize = mTabLength * mFont.GetWidth('W');
+			}
             if (virtualCursor)
                 Debug.Assert(isMonospace);
             mAllowVirtualCursor = virtualCursor;

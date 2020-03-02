@@ -83,17 +83,21 @@ namespace IDE.ui
 
 			if (var editWidget = gApp.GetActiveWindow().mFocusWidget as EditWidget)
 			{
-				var content = editWidget.mEditWidgetContent;
-				int selStart = content.mSelection.Value.MinPos;
-				int selEnd = content.mSelection.Value.MaxPos;
 				bool isMultiline = false;
-				for (int i = selStart; i < selEnd; i++)
+
+				var content = editWidget.mEditWidgetContent;
+				if (content.mSelection.HasValue)
 				{
-				    if (content.mData.mText[i].mChar == '\n')
-				    {
-				        isMultiline = true;
-				        break;
-				    }
+					int selStart = content.mSelection.Value.MinPos;
+					int selEnd = content.mSelection.Value.MaxPos;
+					for (int i = selStart; i < selEnd; i++)
+					{
+					    if (content.mData.mText[i].mChar == '\n')
+					    {
+					        isMultiline = true;
+					        break;
+					    }
+					}
 				}
 
 				if (!isMultiline)

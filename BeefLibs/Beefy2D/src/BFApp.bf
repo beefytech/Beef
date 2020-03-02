@@ -300,6 +300,17 @@ namespace Beefy
             }
         }
 
+		public BFWindow FocusedWindow
+		{
+			get
+			{
+				for (var window in mWindows)
+					if (window.mHasFocus)
+						return window;
+				return null;
+			}
+		}
+
 		public static void Startup(String[] args, Action startupCallback)
 		{
 			/*string[] newArgs = new string[args.Length + 1];

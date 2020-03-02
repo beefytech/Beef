@@ -572,6 +572,8 @@ namespace IDE.ui
 		public int mMaxShowSize = cMoreBlockSize;
 		public DarkButton mMoreButton;
 		public QuickFind mQuickFind;
+		public DarkTabbedView.DarkTabMenuButton mMenuButton;
+		public bool mViewWhiteSpace;
 
         public this(String text, String evalStr)
         {
@@ -614,6 +616,36 @@ namespace IDE.ui
 
 			if (evalStr != null)
 				mEvalString.Set(evalStr);
+
+			mMenuButton = new DarkTabbedView.DarkTabMenuButton();
+			AddWidget(mMenuButton);
+			
+			mMenuButton.mOnMouseDown.Add(new (evt) =>
+				{
+					float x = mMenuButton.mX + GS!(14);
+					float y = mMenuButton.mY + GS!(6);
+
+					Menu menu = new Menu();
+					var menuItem = menu.AddItem("Show Whitespace");
+					if (mViewWhiteSpace)
+						menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+					menuItem.mOnMenuItemSelected.Add(new (menu) =>
+						{
+							mViewWhiteSpace = !mViewWhiteSpace;
+							var darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
+							darkEditWidgetContent.mViewWhiteSpaceColor = mViewWhiteSpace ? SourceEditWidgetContent.sTextColors[(int)SourceElementType.VisibleWhiteSpace] : 0;
+						});
+
+					MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+					menuWidget.Init(this, x, y, true);
+
+					menu.mOnMenuClosed.Add(new (menu, itemSelected) =>
+						{
+							if (DarkTooltipManager.sTooltip != null)
+								DarkTooltipManager.sTooltip.mAutoCloseDelay = 90;
+						});
+					//menuWidget.mWidgetWindow.mOnWindowClosed.Add(new => MenuClosed);
+				});
         }
 
 		public void ShowQuickFind(bool isReplace)
@@ -750,8 +782,8 @@ namespace IDE.ui
 			}
 
 			g.DrawString(textPosString, 16, textY, .Left, mWidth - GS!(140), .Ellipsis);
-            g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(120), textY);
-            g.DrawString(StackStringFormat!("Col {0}", col + 1), mWidth - GS!(60), textY);
+            g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(130), textY);
+            g.DrawString(StackStringFormat!("Col {0}", col + 1), mWidth - GS!(70), textY);
 
 			//using (g.PushColor(0xD0FFFFFF))
 				base.DrawAll(g);
@@ -764,6 +796,8 @@ namespace IDE.ui
             mEditWidget.Resize(0, 0, width, height - GS!(16));
 			if (mQuickFind != null)
 				mQuickFind.ResizeSelf();
+
+			mMenuButton.Resize(width - GS!(26), height - GS!(12), GS!(16), GS!(16));
         }
 
         public float GetWantHeight(float wantWidth)
