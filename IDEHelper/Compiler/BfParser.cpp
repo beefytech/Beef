@@ -3507,7 +3507,9 @@ BF_EXPORT const char* BF_CALLTYPE BfParser_GetDebugExpressionAt(BfParser* bfPars
 
 	if ((exprNode->IsA<BfMethodDeclaration>()) ||
 		(exprNode->IsA<BfBlock>()) ||
-		(exprNode->IsA<BfStatement>()))
+		(exprNode->IsA<BfStatement>()) ||
+		(exprNode->IsA<BfTokenNode>())
+		)
 	{
 		return NULL;
 	}

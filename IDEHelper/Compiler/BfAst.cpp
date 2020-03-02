@@ -738,6 +738,16 @@ bool BfAstNode::IsMissingSemicolon()
 {
 	if (auto deferStmt = BfNodeDynCast<BfDeferStatement>(this))
 		return BfNodeDynCastExact<BfBlock>(deferStmt->mTargetNode) == NULL;
+	if (auto stmt = BfNodeDynCast<BfCompoundStatement>(this))
+	{
+		if (auto repeatStmt = BfNodeDynCast<BfRepeatStatement>(this))
+		{
+			if (repeatStmt->mWhileToken == NULL)
+				return false;
+		}
+		else
+			return false;
+	}
 	if (auto stmt = BfNodeDynCast<BfStatement>(this))
 		return stmt->mTrailingSemicolon == NULL;
 

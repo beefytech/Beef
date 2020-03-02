@@ -3891,8 +3891,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 						if (fieldInstance->mConstIdx != -1)
 						{													
 							auto constant = typeInst->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-							auto retVal = module->ConstantToCurrent(constant, typeInst->mConstHolder, typeInst);
-							BfTypedValue typedValue = BfTypedValue(retVal, typeInst);
+							auto retVal = module->ConstantToCurrent(constant, typeInst->mConstHolder, fieldInstance->mResolvedType);
+							BfTypedValue typedValue = BfTypedValue(retVal, fieldInstance->mResolvedType);
 							autoComplete->CheckResult(fieldDef->GetRefNode(), typedValue);							
 						}
 					}

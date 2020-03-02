@@ -1176,12 +1176,23 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		(targetTypeInstance != NULL) && (targetTypeInstance->IsObject()))
 	{
 		mModule->PopulateType(targetTypeInstance, BfPopulateType_DataAndMethods);
-		BfVirtualMethodEntry& vEntry = targetTypeInstance->mVirtualMethodTable[methodInstance->mVirtualTableIdx];
-		auto implMethod = (BfMethodInstance*)vEntry.mImplementingMethod;
-		if (implMethod != methodInstance)
+		if ((methodInstance->mVirtualTableIdx < targetTypeInstance->mVirtualMethodTable.mSize) && (methodInstance->mVirtualTableIdx >= 0))
 		{
-			SetAndRestoreValue<bool> prevBypassVirtual(mBypassVirtual, true);
-			return CheckMethod(targetTypeInstance, implMethod->GetOwner(), implMethod->mMethodDef, isFailurePass);
+			BfVirtualMethodEntry& vEntry = targetTypeInstance->mVirtualMethodTable[methodInstance->mVirtualTableIdx];
+			auto implMethod = (BfMethodInstance*)vEntry.mImplementingMethod;
+			if (implMethod != methodInstance)
+			{
+				SetAndRestoreValue<bool> prevBypassVirtual(mBypassVirtual, true);
+				return CheckMethod(targetTypeInstance, implMethod->GetOwner(), implMethod->mMethodDef, isFailurePass);
+			}
+		}
+		else
+		{
+			// Being in autocomplete mode is the only excuse for not having the virtual method table slotted
+			if ((!mModule->mCompiler->IsAutocomplete()) && (!targetTypeInstance->mTypeFailed))
+			{
+				mModule->AssertErrorState();
+			}
 		}
 	}
 
