@@ -5442,11 +5442,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 		if ((argValue) && (arg != NULL))
 		{	
-			//
+			if (mModule->mCurMethodState != NULL)
 			{
 				SetAndRestoreValue<BfScopeData*> prevScopeData(mModule->mCurMethodState->mOverrideScope, boxScopeData);
 				argValue = mModule->Cast(arg, argValue, wantType);
 			}
+			else
+				argValue = mModule->Cast(arg, argValue, wantType);
 
 			if (!argValue)
 			{
