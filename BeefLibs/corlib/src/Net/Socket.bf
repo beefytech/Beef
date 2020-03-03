@@ -146,10 +146,13 @@ namespace System.Net
 
 		[CLink, StdCall]
 		internal static extern int32 connect(HSocket s, SockAddr* name, int32 nameLen);
-
+#if BF_PLATFORM_WINDOWS
 		[CLink, StdCall]
 		internal static extern int32 closesocket(HSocket s);
-
+#else
+		[CLink, StdCall]
+		internal static extern int32 close(HSocket s);
+#endif
 		[CLink, StdCall]
 		internal static extern int32 bind(HSocket s, SockAddr* name, int32 nameLen);
 
@@ -174,7 +177,11 @@ namespace System.Net
 		public ~this()
 		{
 			if (mHandle != INVALID_SOCKET)
+#if BF_PLATFORM_WINDOWS
 				closesocket(mHandle);
+#else
+				close(mHandle);
+#endif
 		}
 
 		public static void Init()
@@ -352,7 +359,11 @@ namespace System.Net
 		public void Close()
 		{
 			mIsConnected = false;
+#if BF_PLATFORM_WINDOWS
 			closesocket(mHandle);
+#else
+			close(mHandle);
+#endif
 			mHandle = INVALID_SOCKET;
 		}
 
@@ -365,3 +376,4 @@ namespace System.Net
 		}
 	}
 }
+
