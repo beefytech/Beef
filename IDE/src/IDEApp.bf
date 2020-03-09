@@ -8205,10 +8205,13 @@ namespace IDE
 #endif
 			if (mBfResolveCompiler != null)
 			{
-	            if (reparseFiles)
-	                QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder);
-	            mBfResolveCompiler.QueueDeferredResolveAll();
-	            mBfResolveCompiler.QueueRefreshViewCommand();
+				if (IsProjectEnabled(project))
+				{
+		            if (reparseFiles)
+		                QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder);
+		            mBfResolveCompiler.QueueDeferredResolveAll();
+		            mBfResolveCompiler.QueueRefreshViewCommand();
+				}
 			}
 			else
 			{
