@@ -135,7 +135,7 @@ namespace System.Net
 		static extern int32 WSAGetLastError();
 #else
 		[CLink]
-		internal static int32 errno;
+		static int32 errno;
 #endif
 
 		[CLink, StdCall]
