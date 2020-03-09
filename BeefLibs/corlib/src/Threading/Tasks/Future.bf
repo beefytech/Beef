@@ -9,11 +9,11 @@ namespace System.Threading.Tasks
 {
 	public class Task<TResult> : Task
 	{
-		internal TResult m_result; // The value itself, if set.
+		protected TResult m_result; // The value itself, if set.
 		protected bool mHasCompleted;
 		protected int32 mRefCount = 1;		
 
-		internal TResult ResultOnSuccess
+		TResult ResultOnSuccess
 		{
 		    get
 		    {
@@ -24,7 +24,7 @@ namespace System.Threading.Tasks
 
 		public TResult Result
 		{
-		    get { return IsWaitNotificationEnabledOrNotRanToCompletion ? GetResultCore(true) : m_result; }
+		    get { return this.[Friend]IsWaitNotificationEnabledOrNotRanToCompletion ? GetResultCore(true) : m_result; }
 		}
 
 		protected this()
@@ -33,14 +33,14 @@ namespace System.Threading.Tasks
 		}
 
 		public this(Func<Object, TResult> func, Object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
-		    : this(func, state, Task.InternalCurrentIfAttached(creationOptions), cancellationToken,
+		    : this(func, state, Task.[Friend]InternalCurrentIfAttached(creationOptions), cancellationToken,
 		            creationOptions, InternalTaskOptions.None, null)
 		{
 		    //StackCrawlMark stackMark = StackCrawlMark.LookForMyCaller;
 		    //PossiblyCaptureContext(ref stackMark);
 		}
 
-		internal this(Func<TResult> valueSelector, Task parent, CancellationToken cancellationToken,
+		this(Func<TResult> valueSelector, Task parent, CancellationToken cancellationToken,
 		    TaskCreationOptions creationOptions, InternalTaskOptions internalOptions, TaskScheduler scheduler) :
 		    base(valueSelector, null, parent, cancellationToken, creationOptions, internalOptions, scheduler)
 		{
@@ -50,7 +50,7 @@ namespace System.Threading.Tasks
 		    }
 		}
 
-		internal this(Delegate valueSelector, Object state, Task parent, CancellationToken cancellationToken,
+		this(Delegate valueSelector, Object state, Task parent, CancellationToken cancellationToken,
 		    TaskCreationOptions creationOptions, InternalTaskOptions internalOptions, TaskScheduler scheduler) :
 		    base(valueSelector, state, parent, cancellationToken, creationOptions, internalOptions, scheduler)
 		{
@@ -85,10 +85,10 @@ namespace System.Threading.Tasks
 		}
 
 		// Implements Result.  Result delegates to this method if the result isn't already available.
-		internal TResult GetResultCore(bool waitCompletionNotification)
+		protected TResult GetResultCore(bool waitCompletionNotification)
 		{
 		    // If the result has not been calculated yet, wait for it.
-		    if (!IsCompleted) InternalWait(Timeout.Infinite, default(CancellationToken)); // won't throw if task faulted or canceled; that's handled below
+		    if (!IsCompleted) this.[Friend]InternalWait(Timeout.Infinite, default(CancellationToken)); // won't throw if task faulted or canceled; that's handled below
 
 		    // Notify the debugger of the wait completion if it's requested such a notification
 		    //TODO: Implement

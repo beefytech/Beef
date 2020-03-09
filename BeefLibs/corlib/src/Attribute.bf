@@ -26,10 +26,12 @@ namespace System
 		Invocation   = 0x10000,
 		MemberAccess = 0x20000,
 		Alloc        = 0x40000,
+		Delete       = 0x80000,
 
 	    All = Assembly | Module | Class | Struct | Enum | Constructor |
 	        Method | Property | Field | StaticField | Interface | Parameter |
-	    	Delegate | Function | ReturnValue | GenericParameter | Invocation | MemberAccess,
+	    	Delegate | Function | ReturnValue | GenericParameter | Invocation | MemberAccess |
+			Alloc | Delete,
 	}
 
 	public enum ReflectKind
@@ -58,22 +60,22 @@ namespace System
 
     public sealed struct AttributeUsageAttribute : Attribute
 	{
-	    internal AttributeTargets mAttributeTarget = .All;
-		internal AttributeFlags mAttributeFlags = .None;
-		internal ReflectKind mReflectUser = .None;
+	    AttributeTargets mAttributeTarget = .All;
+		AttributeFlags mAttributeFlags = .None;
+		ReflectKind mReflectUser = .None;
 
 	    public this(AttributeTargets validOn)
 	    {
 	        mAttributeTarget = validOn;
 	    }
 
-		internal this(AttributeTargets validOn, AttributeFlags flags)
+		public this(AttributeTargets validOn, AttributeFlags flags)
 		{
 		    mAttributeTarget = validOn;
 			mAttributeFlags = flags;
 		}
 
-	    internal this(AttributeTargets validOn, bool allowMultiple, bool inherited)
+	    public this(AttributeTargets validOn, bool allowMultiple, bool inherited)
 	    {
 	        mAttributeTarget = validOn;
 			if (!allowMultiple)
@@ -126,7 +128,7 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.MemberAccess)]
+	[AttributeUsage(.MemberAccess | .Alloc)]
 	public struct FriendAttribute : Attribute
 	{
 	    

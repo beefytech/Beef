@@ -46,12 +46,12 @@ namespace Beefy.gfx
         public void* mNativeRenderState;
         public bool mIsFromDefaultRenderState;
 
-        internal this()
+        public this()
         {
 
         }
 
-		internal ~this()
+		public ~this()
 		{
 			RenderState_Delete(mNativeRenderState);
 		}

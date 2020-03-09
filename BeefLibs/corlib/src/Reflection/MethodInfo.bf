@@ -9,14 +9,14 @@ namespace System.Reflection
 	[CRepr, AlwaysInclude]
 	public struct MethodInfo
 	{
-		internal TypeInstance mTypeInstance;
-		internal TypeInstance.MethodData* mMethodData;
+		TypeInstance mTypeInstance;
+		TypeInstance.MethodData* mMethodData;
 
 		public StringView Name
 		{
 			get
 			{
-				return mMethodData.mName;
+				return mMethodData.[Friend]mName;
 			}
 		}
 
@@ -24,7 +24,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				return mMethodData.mParamCount;
+				return mMethodData.[Friend]mParamCount;
 			}
 		}
 
@@ -49,7 +49,7 @@ namespace System.Reflection
 		public Type GetParamType(int paramIdx)
 		{
 			Debug.Assert((uint)paramIdx < (uint)mMethodData.mParamCount);
-			return Type.GetType(mMethodData.mParamData[paramIdx].mType);
+			return Type.[Friend]GetType(mMethodData.mParamData[paramIdx].mType);
 		}
 
 		public StringView GetParamName(int paramIdx)
@@ -77,7 +77,7 @@ namespace System.Reflection
 
 		public Result<Variant, CallError> Invoke(Object target, params Object[] args)
 		{
-			var retType = Type.GetType(mMethodData.mReturnType);
+			var retType = Type.[Friend]GetType(mMethodData.mReturnType);
 
 			FFIABI abi = .Default;
 #if BF_PLATFORM_WINDOWS && BF_32_BIT
@@ -112,17 +112,17 @@ namespace System.Reflection
 					SplatArg(type.BaseType, ptr);
 
 				bool isEnum = type.IsEnum;
-				for (int fieldIdx < type.mFieldDataCount)
+				for (int fieldIdx < type.[Friend]mFieldDataCount)
 				{
-					let fieldData = ref type.mFieldDataPtr[fieldIdx];
-					let fieldType = Type.GetType(fieldData.mFieldTypeId);
+					let fieldData = ref type.[Friend]mFieldDataPtr[fieldIdx];
+					let fieldType = Type.[Friend]GetType(fieldData.mFieldTypeId);
 					if (fieldData.mFlags.HasFlag(.Static))
 					{
 						if (isEnum)
 							break; // Already got payload and discriminator
 						continue;
 					}
-					if (fieldType.mSize == 0)
+					if (fieldType.[Friend]mSize == 0)
 						continue;
 
 					if (fieldType.IsStruct)
@@ -142,8 +142,8 @@ namespace System.Reflection
 				bool unbox = false;
 				bool unboxToPtr = false;
 
-				let argType = arg.RawGetType();
-				void* dataPtr = (uint8*)Internal.UnsafeCastToPtr(arg) + argType.mMemberDataOffset;
+				let argType = arg.[Friend]RawGetType();
+				void* dataPtr = (uint8*)Internal.UnsafeCastToPtr(arg) + argType.[Friend]mMemberDataOffset;
 				bool isValid = true;
 
 				if (paramType.IsValueType)
@@ -201,20 +201,20 @@ namespace System.Reflection
 					}
 					else if (splat)
 					{
-						if (paramTypeInst.mFieldDataCount > 0)
+						if (paramTypeInst.[Friend]mFieldDataCount > 0)
 						{
 							SplatArg(paramTypeInst, dataPtr);
 						}
 						else
 						{
-							let splatData = (TypeInstance.FieldSplatData*)paramTypeInst.mFieldDataPtr;
+							let splatData = (TypeInstance.FieldSplatData*)paramTypeInst.[Friend]mFieldDataPtr;
 							for (int splatIdx < 3)
 							{
 								let splatTypeId = splatData.mSplatTypes[splatIdx];
 								if (splatTypeId == 0)
 									break;
 
-								let splatType = Type.GetType(splatTypeId);
+								let splatType = Type.[Friend]GetType(splatTypeId);
 								ffiParamList.Add(GetFFIType!:mixin(splatType));
 								ffiArgList.Add((uint8*)dataPtr + splatData.mSplatOffsets[splatIdx]);
 							}
@@ -290,7 +290,7 @@ namespace System.Reflection
 			for (var arg in ref args)
 			{
 				let paramData = ref mMethodData.mParamData[@arg];
-				let argType = Type.GetType(paramData.mType);
+				let argType = Type.[Friend]GetType(paramData.mType);
 				AddArg!::(@arg, arg, &arg, argType, paramData.mParamFlags.HasFlag(.Splat));
 			}
 
@@ -336,13 +336,13 @@ namespace System.Reflection
 			return retVal;
 		}
 
-		internal struct Enumerator : IEnumerator<MethodInfo>
+		public struct Enumerator : IEnumerator<MethodInfo>
 		{
 			BindingFlags mBindingFlags;
 		    TypeInstance mTypeInstance;
 		    int32 mIdx;
 
-		    internal this(TypeInstance typeInst, BindingFlags bindingFlags)
+		    public this(TypeInstance typeInst, BindingFlags bindingFlags)
 		    {
 		        mTypeInstance = typeInst;
 				mBindingFlags = bindingFlags;
@@ -366,10 +366,10 @@ namespace System.Reflection
 				for (;;)
 				{
 					mIdx++;
-					if (mIdx == mTypeInstance.mMethodDataCount)
+					if (mIdx == mTypeInstance.[Friend]mMethodDataCount)
 						return false;
 #unwarn
-					var methodData = &mTypeInstance.mMethodDataPtr[mIdx];
+					var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
 					/*bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (methodData.mFlags.HasFlag(FieldFlags.Static)));
 					matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!methodData.mFlags.HasFlag(FieldFlags.Static)));*/
 					bool matches = true;
@@ -383,7 +383,7 @@ namespace System.Reflection
 		    {
 		        get
 		        {
-					var methodData = &mTypeInstance.mMethodDataPtr[mIdx];
+					var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
 		            return MethodInfo(mTypeInstance, methodData);
 		        }
 		    }

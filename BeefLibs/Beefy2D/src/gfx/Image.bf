@@ -69,7 +69,7 @@ namespace Beefy.gfx
         [StdCall, CLink]
         static extern int32 Gfx_Texture_GetHeight(void* textureSegment);
 
-        internal this()
+        public this()
         {            
         }
 

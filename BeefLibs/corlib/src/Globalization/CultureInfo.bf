@@ -21,7 +21,7 @@ namespace System.Globalization
 		private static CultureInfo tlCurrentUICulture;
 
 		String m_name ~ delete _;
-		internal bool m_isInherited;
+		bool m_isInherited;
 		DateTimeFormatInfo dateTimeInfo ~ delete _;
 		CultureData m_cultureData ~ delete _;
 		Calendar calendar ~ delete _;
@@ -29,13 +29,13 @@ namespace System.Globalization
 
 		// LOCALE constants of interest to us internally and privately for LCID functions
 		// (ie: avoid using these and use names if possible)
-		internal const int LOCALE_NEUTRAL              = 0x0000;
-		private  const int LOCALE_USER_DEFAULT         = 0x0400;
-		private  const int LOCALE_SYSTEM_DEFAULT       = 0x0800;
-		internal const int LOCALE_CUSTOM_DEFAULT       = 0x0c00;
-		internal const int LOCALE_CUSTOM_UNSPECIFIED   = 0x1000;
-		internal const int LOCALE_INVARIANT            = 0x007F;
-		private  const int LOCALE_TRADITIONAL_SPANISH  = 0x040a;
+		private const int LOCALE_NEUTRAL              = 0x0000;
+		private const int LOCALE_USER_DEFAULT         = 0x0400;
+		private const int LOCALE_SYSTEM_DEFAULT       = 0x0800;
+		private const int LOCALE_CUSTOM_DEFAULT       = 0x0c00;
+		private const int LOCALE_CUSTOM_UNSPECIFIED   = 0x1000;
+		private const int LOCALE_INVARIANT            = 0x007F;
+		private const int LOCALE_TRADITIONAL_SPANISH  = 0x040a;
 
 		public static CultureInfo DefaultThreadCurrentCulture
 		{
@@ -121,10 +121,10 @@ namespace System.Globalization
 		            //Contract.Assert(this.m_cultureData.CalendarIds.Length > 0, "this.m_cultureData.CalendarIds.Length > 0");
 		            // Get the default calendar for this culture.  Note that the value can be
 		            // from registry if this is a user default culture.
-		            Calendar newObj = this.m_cultureData.DefaultCalendar;
+		            Calendar newObj = this.m_cultureData.[Friend]DefaultCalendar;
 
 		            Interlocked.Fence();
-		            newObj.SetReadOnlyState(m_isReadOnly);
+		            newObj.[Friend]SetReadOnlyState(m_isReadOnly);
 		            calendar = newObj;
 		        }
 		        return (calendar);
@@ -239,14 +239,14 @@ namespace System.Globalization
 		public this(String name, bool useUserOverride)
 		{
 		    // Get our data providing record
-		    this.m_cultureData = CultureData.GetCultureData(name, useUserOverride);
+		    this.m_cultureData = CultureData.[Friend]GetCultureData(name, useUserOverride);
 
 		    if (this.m_cultureData == null) {
 		        //throw new CultureNotFoundException("name", name, Environment.GetResourceString("Argument_CultureNotSupported"));
 				Runtime.FatalError();
 		    }
 
-		    this.m_name = new String(this.m_cultureData.CultureName);
+		    this.m_name = new String(this.m_cultureData.[Friend]CultureName);
 		    this.m_isInherited = (this.GetType() != typeof(System.Globalization.CultureInfo));
 		}
 
@@ -262,7 +262,7 @@ namespace System.Globalization
 
 		private static volatile bool s_isTaiwanSku;
 		private static volatile bool s_haveIsTaiwanSku;
-		internal static bool IsTaiwanSku
+		static bool IsTaiwanSku
 		{
 		    get
 		    {
@@ -326,7 +326,7 @@ namespace System.Globalization
 
 		// Helper function both both overloads of GetCachedReadOnlyCulture.  If lcid is 0, we use the name.
 		// If lcid is -1, use the altName and create one of those special SQL cultures.
-		internal static CultureInfo GetCultureInfoHelper(int lcid, StringView name, StringView altName)
+		static CultureInfo GetCultureInfoHelper(int lcid, StringView name, StringView altName)
 		{
 			return new CultureInfo();
 		}
@@ -336,9 +336,9 @@ namespace System.Globalization
 		    //NotImplemented
 		}
 
-		internal static Calendar GetCalendarInstance(int calType)
+		static Calendar GetCalendarInstance(int calType)
 		{
-		    if (calType==Calendar.CAL_GREGORIAN) {
+		    if (calType==Calendar.[Friend]CAL_GREGORIAN) {
 		        return new GregorianCalendar();
 		    }
 			Runtime.NotImplemented();

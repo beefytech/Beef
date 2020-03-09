@@ -32,16 +32,16 @@ namespace System {
     public struct DateTimeOffset : IHashable // : IFormattable,IComparable<DateTimeOffset>, IEquatable<DateTimeOffset>
 	{
         // Constants
-        internal const int64 MaxOffset = TimeSpan.TicksPerHour * 14;
-        internal const int64 MinOffset = -MaxOffset;
+        const int64 MaxOffset = TimeSpan.TicksPerHour * 14;
+        const int64 MinOffset = -MaxOffset;
 
-        private const int64 UnixEpochTicks = TimeSpan.TicksPerDay * DateTime.DaysTo1970; // 621,355,968,000,000,000
+        private const int64 UnixEpochTicks = TimeSpan.TicksPerDay * DateTime.[Friend]DaysTo1970; // 621,355,968,000,000,000
         private const int64 UnixEpochSeconds = UnixEpochTicks / TimeSpan.TicksPerSecond; // 62,135,596,800
         private const int64 UnixEpochMilliseconds = UnixEpochTicks / TimeSpan.TicksPerMillisecond; // 62,135,596,800,000
     
         // Static Fields
-        public static readonly DateTimeOffset MinValue = DateTimeOffset(DateTime.MinTicks, TimeSpan.Zero);
-        public static readonly DateTimeOffset MaxValue = DateTimeOffset(DateTime.MaxTicks, TimeSpan.Zero);        
+        public static readonly DateTimeOffset MinValue = DateTimeOffset(DateTime.[Friend]MinTicks, TimeSpan.Zero);
+        public static readonly DateTimeOffset MaxValue = DateTimeOffset(DateTime.[Friend]MaxTicks, TimeSpan.Zero);        
     
         // Instance Fields
         private DateTime m_dateTime;
@@ -66,7 +66,7 @@ namespace System {
             if (dateTime.Kind != DateTimeKind.Utc)
 			{
                 // Local and Unspecified are both treated as Local
-                offset = TimeZoneInfo.GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime);
+                offset = TimeZoneInfo.[Friend]GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime);
             }
             else {            
                 offset = TimeSpan(0);
@@ -80,7 +80,7 @@ namespace System {
         // the offset corresponds to the local.
         public this(DateTime dateTime, TimeSpan offset) {
             if (dateTime.Kind == DateTimeKind.Local) {
-                if (offset != TimeZoneInfo.GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime)) {
+                if (offset != TimeZoneInfo.[Friend]GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime)) {
                     //throw new ArgumentException(Environment.GetResourceString("Argument_OffsetLocalMismatch"), "offset");
 					Runtime.FatalError();
                 }
@@ -473,8 +473,8 @@ namespace System {
         }
 
         public static Result<DateTimeOffset> FromUnixTimeSeconds(int64 seconds) {
-            const int64 MinSeconds = DateTime.MinTicks / TimeSpan.TicksPerSecond - UnixEpochSeconds;
-            const int64 MaxSeconds = DateTime.MaxTicks / TimeSpan.TicksPerSecond - UnixEpochSeconds;
+            const int64 MinSeconds = DateTime.[Friend]MinTicks / TimeSpan.TicksPerSecond - UnixEpochSeconds;
+            const int64 MaxSeconds = DateTime.[Friend]MaxTicks / TimeSpan.TicksPerSecond - UnixEpochSeconds;
 
             if (seconds < MinSeconds || seconds > MaxSeconds) {
 				return .Err;
@@ -487,8 +487,8 @@ namespace System {
         }
 
         public static Result<DateTimeOffset> FromUnixTimeMilliseconds(int64 milliseconds) {
-            const int64 MinMilliseconds = DateTime.MinTicks / TimeSpan.TicksPerMillisecond - UnixEpochMilliseconds;
-            const int64 MaxMilliseconds = DateTime.MaxTicks / TimeSpan.TicksPerMillisecond - UnixEpochMilliseconds;
+            const int64 MinMilliseconds = DateTime.[Friend]MinTicks / TimeSpan.TicksPerMillisecond - UnixEpochMilliseconds;
+            const int64 MaxMilliseconds = DateTime.[Friend]MaxTicks / TimeSpan.TicksPerMillisecond - UnixEpochMilliseconds;
 
             if (milliseconds < MinMilliseconds || milliseconds > MaxMilliseconds) {
 				return .Err;
@@ -656,9 +656,9 @@ namespace System {
             return ToLocalTime(false);
         }
 
-        internal DateTimeOffset ToLocalTime(bool throwOnOverflow)
+        DateTimeOffset ToLocalTime(bool throwOnOverflow)
         {
-            return DateTimeOffset(UtcDateTime.ToLocalTime(throwOnOverflow));
+            return DateTimeOffset(UtcDateTime.[Friend]ToLocalTime(throwOnOverflow));
         }
 
         /*public override String ToString() {
@@ -763,7 +763,7 @@ namespace System {
             // This operation cannot overflow because offset should have already been validated to be within
             // 14 hours and the DateTime instance is more than that distance from the boundaries of Int64.
             int64 utcTicks = dateTime.Ticks - offset.Ticks;
-            if (utcTicks < DateTime.MinTicks || utcTicks > DateTime.MaxTicks)
+            if (utcTicks < DateTime.[Friend]MinTicks || utcTicks > DateTime.[Friend]MaxTicks)
 			{
            		return .Err;
                 //throw new ArgumentOutOfRangeException("offset", Environment.GetResourceString("Argument_UTCOutOfRange"));                

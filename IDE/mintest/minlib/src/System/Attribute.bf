@@ -6,31 +6,33 @@ namespace System
 
     public enum AttributeTargets
     {
-        Assembly     = 0x0001,
-        Module       = 0x0002,
-        Class        = 0x0004,
-        Struct       = 0x0008,
-        Enum         = 0x0010,
-        Constructor  = 0x0020,
-        Method       = 0x0040,
-        Property     = 0x0080,
-        Field        = 0x0100,
-        StaticField  = 0x0200,
-        Interface    = 0x0400,
-        Parameter    = 0x0800,
-        Delegate     = 0x1000,
+	    Assembly     = 0x0001,
+	    Module       = 0x0002,
+	    Class        = 0x0004,
+	    Struct       = 0x0008,
+	    Enum         = 0x0010,
+	    Constructor  = 0x0020,
+	    Method       = 0x0040,
+	    Property     = 0x0080,
+	    Field        = 0x0100,
+	    StaticField  = 0x0200,
+	    Interface    = 0x0400,
+	    Parameter    = 0x0800,
+	    Delegate     = 0x1000,
 		Function     = 0x2000,
-        ReturnValue  = 0x4000,
-        //@todo GENERICS: document GenericParameter
-        GenericParameter = 0x8000,
+	    ReturnValue  = 0x4000,
+	    //@todo GENERICS: document GenericParameter
+	    GenericParameter = 0x8000,
 		Invocation   = 0x10000,
 		MemberAccess = 0x20000,
 		Alloc        = 0x40000,
+		Delete       = 0x80000,
 
-        All = Assembly | Module | Class | Struct | Enum | Constructor |
-            Method | Property | Field | StaticField | Interface | Parameter |
-        	Delegate | Function | ReturnValue | GenericParameter | Invocation | MemberAccess,
-    }
+	    All = Assembly | Module | Class | Struct | Enum | Constructor |
+	        Method | Property | Field | StaticField | Interface | Parameter |
+	    	Delegate | Function | ReturnValue | GenericParameter | Invocation | MemberAccess |
+			Alloc | Delete,
+	}
 
 	public enum ReflectKind
 	{
@@ -58,22 +60,22 @@ namespace System
 
     public sealed struct AttributeUsageAttribute : Attribute
 	{
-	    internal AttributeTargets mAttributeTarget = AttributeTargets.All;
-		internal AttributeFlags mAttributeFlags = .None;
-		internal ReflectKind mReflectUser = .None;
+	    AttributeTargets mAttributeTarget = .All;
+		AttributeFlags mAttributeFlags = .None;
+		ReflectKind mReflectUser = .None;
 
 	    public this(AttributeTargets validOn)
 	    {
 	        mAttributeTarget = validOn;
 	    }
 
-		internal this(AttributeTargets validOn, AttributeFlags flags)
+		public this(AttributeTargets validOn, AttributeFlags flags)
 		{
 		    mAttributeTarget = validOn;
 			mAttributeFlags = flags;
 		}
 
-	    internal this(AttributeTargets validOn, bool allowMultiple, bool inherited)
+	    public this(AttributeTargets validOn, bool allowMultiple, bool inherited)
 	    {
 	        mAttributeTarget = validOn;
 			if (!allowMultiple)
@@ -126,7 +128,7 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.MemberAccess)]
+	[AttributeUsage(.MemberAccess | .Alloc | .Delete)]
 	public struct FriendAttribute : Attribute
 	{
 	    

@@ -8,19 +8,19 @@ namespace System
 		static readonly string NewLine = new string("\n");
 #endif // !PLATFORM_UNIX
 
-        internal static String GetResourceString(String key) 
+        public static String GetResourceString(String key) 
         {
             return key;
             //return GetResourceFromDefault(key);
         }
 
-        internal static String GetResourceString(String key, params Object[] values) 
+        public static String GetResourceString(String key, params Object[] values) 
         {
             return key;
             //return GetResourceFromDefault(key);
         }
 
-        internal static String GetRuntimeResourceString(String key, String defaultValue = null) 
+        public static String GetRuntimeResourceString(String key, String defaultValue = null) 
         {
             if (defaultValue != null)
                 return defaultValue;

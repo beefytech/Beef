@@ -1910,9 +1910,7 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 
 	QueueVisitChild(ctorDeclaration->mAttributes);
 	ExpectNewLine();
-	QueueVisitChild(ctorDeclaration->mProtectionSpecifier);
-	ExpectSpace();
-	QueueVisitChild(ctorDeclaration->mInternalSpecifier);
+	QueueVisitChild(ctorDeclaration->mProtectionSpecifier);	
 	ExpectSpace();
 	QueueVisitChild(ctorDeclaration->mNewSpecifier);
 	ExpectSpace();
@@ -1958,9 +1956,7 @@ void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 
 	QueueVisitChild(dtorDeclaration->mAttributes);
 	ExpectNewLine();
-	QueueVisitChild(dtorDeclaration->mProtectionSpecifier);
-	ExpectSpace();
-	QueueVisitChild(dtorDeclaration->mInternalSpecifier);
+	QueueVisitChild(dtorDeclaration->mProtectionSpecifier);	
 	ExpectSpace();
 	QueueVisitChild(dtorDeclaration->mNewSpecifier);
 	ExpectSpace();
@@ -2016,13 +2012,7 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 		ExpectSpace();
 		QueueVisitChild(methodDeclaration->mProtectionSpecifier);		
 	}
-
-	if (methodDeclaration->mInternalSpecifier != NULL)
-	{		
-		ExpectSpace();
-		QueueVisitChild(methodDeclaration->mInternalSpecifier);		
-	}
-
+	
 	if (methodDeclaration->mNewSpecifier != NULL)
 	{		
 		ExpectSpace();
@@ -2146,9 +2136,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	ExpectNewLine();
 	QueueVisitChild(propertyDeclaration->mAttributes);
-	ExpectNewLine();
-	QueueVisitChild(propertyDeclaration->mInternalSpecifier);
-	ExpectSpace();
+	ExpectNewLine();	
 	QueueVisitChild(propertyDeclaration->mProtectionSpecifier);
 	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mConstSpecifier);
@@ -2238,9 +2226,7 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 	{
 		QueueVisitChild(fieldDeclaration->mAttributes);
 		ExpectNewLine();
-	}
-	QueueVisitChild(fieldDeclaration->mInternalSpecifier);
-	ExpectSpace();
+	}	
 	QueueVisitChild(fieldDeclaration->mProtectionSpecifier);
 	ExpectSpace();
 	QueueVisitChild(fieldDeclaration->mConstSpecifier);
@@ -2356,9 +2342,7 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 	QueueVisitChild(typeDeclaration->mAbstractSpecifier);
 	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mSealedSpecifier);
-	ExpectSpace();
-	QueueVisitChild(typeDeclaration->mInternalSpecifier);
-	ExpectSpace();
+	ExpectSpace();	
 	QueueVisitChild(typeDeclaration->mProtectionSpecifier);
 	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mStaticSpecifier);

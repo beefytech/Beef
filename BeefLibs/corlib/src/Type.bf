@@ -15,16 +15,16 @@ namespace System
     [CRepr, AlwaysInclude(AssumeInstantiated=true)]
     public class Type
     {
-		internal extern const Type* sTypes;
+		extern const Type* sTypes;
 
 		protected const BindingFlags cDefaultLookup = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 
-        internal int32 mSize;
-        internal TypeId mTypeId;
-        internal TypeFlags mTypeFlags;
-        internal int32 mMemberDataOffset;
-        internal TypeCode mTypeCode;
-        internal uint8 mAlign;
+        protected int32 mSize;
+        protected TypeId mTypeId;
+        protected TypeFlags mTypeFlags;
+        protected int32 mMemberDataOffset;
+        protected TypeCode mTypeCode;
+        protected uint8 mAlign;
         
         public int32 Size
         {
@@ -372,12 +372,12 @@ namespace System
             return (int32)mTypeId;
         }
         
-        internal static Type GetType(TypeId typeId)
+        protected static Type GetType(TypeId typeId)
         {
             return sTypes[(int32)typeId];
         }
 
-		internal static Type GetType_(int32 typeId)
+		protected static Type GetType_(int32 typeId)
 		{
 		    return sTypes[typeId];
 		}
@@ -493,50 +493,50 @@ namespace System
 
 namespace System.Reflection
 {
-    internal struct TypeId : int32
+    public struct TypeId : int32
     {
         public Type ToType()
         {
-            return Type.sTypes[(int32)this];
+            return Type.[Friend]sTypes[(int32)this];
         }        
     }
 
     [CRepr, AlwaysInclude(AssumeInstantiated=true)]
-    internal class TypeInstance : Type
+    public class TypeInstance : Type
     {
         [CRepr, AlwaysInclude]
-        internal struct FieldData
+        public struct FieldData
         {
-            internal String mName;
-            internal int64 mConstValue;
-            internal int32 mDataOffset;
-            internal TypeId mFieldTypeId;
-            internal FieldFlags mFlags;
-            internal int32 mCustomAttributesIdx;
+            public String mName;
+            public int64 mConstValue;
+            public int32 mDataOffset;
+            public TypeId mFieldTypeId;
+            public FieldFlags mFlags;
+            public int32 mCustomAttributesIdx;
         }
 
 		// This is only valid if there is no FieldData on a splattable struct
 		[CRepr, AlwaysInclude]
-		internal struct FieldSplatData
+		public struct FieldSplatData
 		{
-			internal TypeId[3] mSplatTypes;
-			internal int32[3] mSplatOffsets;
+			public TypeId[3] mSplatTypes;
+			public int32[3] mSplatOffsets;
 		}
 
         [CRepr, AlwaysInclude]
-        internal struct MethodData
+        public struct MethodData
         {
-            internal String mName; // mName
-            internal void* mFuncPtr;
-			internal ParamData* mParamData;
-			internal TypeId mReturnType;
-			internal int16 mParamCount;
-			internal MethodFlags mFlags;
-			internal int32 mVirtualIdx;
-			internal int32 mCustomAttributesIdx;
+            public String mName; // mName
+            public void* mFuncPtr;
+			public ParamData* mParamData;
+			public TypeId mReturnType;
+			public int16 mParamCount;
+			public MethodFlags mFlags;
+			public int32 mVirtualIdx;
+			public int32 mCustomAttributesIdx;
         }
 
-		internal enum ParamFlags : int16
+		public enum ParamFlags : int16
 		{
 			None = 0,
 			Splat = 1,
@@ -544,39 +544,39 @@ namespace System.Reflection
 		}
 
 		[CRepr, AlwaysInclude]
-		internal struct ParamData
+		public struct ParamData
 		{
-			internal String mName;
-			internal TypeId mType;
-			internal ParamFlags mParamFlags;
-			internal int32 mDefaultIdx;
+			public String mName;
+			public TypeId mType;
+			public ParamFlags mParamFlags;
+			public int32 mDefaultIdx;
 		}
 
-        internal ClassVData* mTypeClassVData;
-        internal String mName;
-        internal String mNamespace;
-        internal int32 mInstSize;
-        internal int32 mInstAlign;
-		internal int32 mCustomAttributesIdx;
-        internal TypeId mBaseType;
-        internal TypeId mUnderlyingType;
-		internal TypeId mOuterType;
-		internal int32 mInheritanceId;
-		internal int32 mInheritanceCount;
+        ClassVData* mTypeClassVData;
+        String mName;
+        String mNamespace;
+        int32 mInstSize;
+        int32 mInstAlign;
+		int32 mCustomAttributesIdx;
+        TypeId mBaseType;
+        TypeId mUnderlyingType;
+		TypeId mOuterType;
+		int32 mInheritanceId;
+		int32 mInheritanceCount;
 
-		internal uint8 mInterfaceSlot;
-        internal uint8 mInterfaceCount;        
-        internal int16 mMethodDataCount;
-        internal int16 mPropertyDataCount;
-        internal int16 mFieldDataCount;
-        internal int16 mConstructorDataCount;
+		uint8 mInterfaceSlot;
+        uint8 mInterfaceCount;        
+        int16 mMethodDataCount;
+        int16 mPropertyDataCount;
+        int16 mFieldDataCount;
+        int16 mConstructorDataCount;
 
-        internal void* mInterfaceDataPtr;
-        internal MethodData* mMethodDataPtr;
-        internal void* mPropertyDataPtr;
-        internal FieldData* mFieldDataPtr;
-        internal void* mConstructorDataPtr;
-        internal void** mCustomAttrDataPtr;
+        void* mInterfaceDataPtr;
+        MethodData* mMethodDataPtr;
+        void* mPropertyDataPtr;
+        FieldData* mFieldDataPtr;
+        void* mConstructorDataPtr;
+        void** mCustomAttrDataPtr;
 
 
         public override int32 InstanceSize
@@ -607,7 +607,7 @@ namespace System.Reflection
         {
             get
             {
-                return (TypeInstance)Type.GetType(mBaseType);
+                return (TypeInstance)Type.[Friend]GetType(mBaseType);
             }
         }
 
@@ -615,7 +615,7 @@ namespace System.Reflection
 		{
 		    get
 		    {
-		        return (TypeInstance)Type.GetType(mOuterType);
+		        return (TypeInstance)Type.[Friend]GetType(mOuterType);
 		    }
 		}
 
@@ -623,7 +623,7 @@ namespace System.Reflection
 		{
 		    get
 		    {
-		        return Type.GetType(mUnderlyingType);
+		        return Type.[Friend]GetType(mUnderlyingType);
 		    }
 		}
 
@@ -644,7 +644,7 @@ namespace System.Reflection
 		            return true;
 		        if (curType.mBaseType == 0)
 		            return false;
-		        curType = (TypeInstance)Type.GetType(curType.mBaseType);
+		        curType = (TypeInstance)Type.[Friend]GetType(curType.mBaseType);
 		    }
 		}
 
@@ -657,7 +657,7 @@ namespace System.Reflection
 				{
 					if (fieldIdx > 0)
 						strBuffer.Append(", ");
-					GetType(mFieldDataPtr[fieldIdx].mFieldTypeId).GetFullName(strBuffer);
+					GetType(mFieldDataPtr[fieldIdx].[Friend]mFieldTypeId).GetFullName(strBuffer);
 				}
 				strBuffer.Append(')');
 			}
@@ -688,7 +688,7 @@ namespace System.Reflection
 		    for (int32 i = 0; i < mFieldDataCount; i++)
 		    {
 		        FieldData* fieldData = &mFieldDataPtr[i];
-		        if (fieldData.mName == fieldName)
+		        if (fieldData.[Friend]mName == fieldName)
 		            return FieldInfo(this, fieldData);
 		    }
 		    return .Err;
@@ -701,15 +701,15 @@ namespace System.Reflection
     }
 
 	[CRepr, AlwaysInclude(AssumeInstantiated=true)]
-	internal class PointerType : Type
+	class PointerType : Type
 	{
-		internal TypeId mElementType;
+		TypeId mElementType;
 
 		public override Type UnderlyingType
 		{
 			get
 			{
-				return Type.GetType(mElementType);
+				return Type.[Friend]GetType(mElementType);
 			}
 		}
 
@@ -721,16 +721,16 @@ namespace System.Reflection
 	}
 
 	[CRepr, AlwaysInclude(AssumeInstantiated=true)]
-	internal class SizedArrayType : Type
+	class SizedArrayType : Type
 	{
-	    internal TypeId mElementType;
-		internal int32 mElementCount;
+	    TypeId mElementType;
+		int32 mElementCount;
 
 		public override Type UnderlyingType
 		{
 			get
 			{
-				return Type.GetType(mElementType);
+				return Type.[Friend]GetType(mElementType);
 			}
 		}
 
@@ -752,31 +752,31 @@ namespace System.Reflection
 	}
 
     [CRepr, AlwaysInclude(AssumeInstantiated=true)]
-    internal class UnspecializedGenericType : TypeInstance
+    class UnspecializedGenericType : TypeInstance
     {
         [CRepr, AlwaysInclude]
-        internal struct GenericParam
+        struct GenericParam
         {
-            internal String mName;
+            String mName;
         }
 
-        internal uint8 mGenericParamCount;
+        uint8 mGenericParamCount;
     }
 
     // Only for resolved types
     [CRepr, AlwaysInclude(AssumeInstantiated=true)]
-    internal class SpecializedGenericType : TypeInstance
+    class SpecializedGenericType : TypeInstance
     {
-        internal TypeId mUnspecializedType;
-        internal TypeId* mResolvedTypeRefs;
+        TypeId mUnspecializedType;
+        TypeId* mResolvedTypeRefs;
 
 		public override int32 GenericParamCount
 		{
 			get
 			{
-				var unspecializedTypeG = Type.GetType(mUnspecializedType);
+				var unspecializedTypeG = Type.[Friend]GetType(mUnspecializedType);
 				var unspecializedType = (UnspecializedGenericType)unspecializedTypeG;
-				return unspecializedType.mGenericParamCount;
+				return unspecializedType.[Friend]mGenericParamCount;
 			}
 		}
 
@@ -787,7 +787,7 @@ namespace System.Reflection
 
 		public override void GetFullName(String strBuffer)
 		{
-			var unspecializedTypeG = Type.GetType(mUnspecializedType);
+			var unspecializedTypeG = Type.[Friend]GetType(mUnspecializedType);
 			var unspecializedType = (UnspecializedGenericType)unspecializedTypeG;
 			base.GetFullName(strBuffer);
 
@@ -796,14 +796,14 @@ namespace System.Reflection
 			if (outerType != null)
 				outerGenericCount = outerType.GenericParamCount;
 
-			if (outerGenericCount < unspecializedType.mGenericParamCount)
+			if (outerGenericCount < unspecializedType.[Friend]mGenericParamCount)
 			{
 				strBuffer.Append('<');
-				for (int i = outerGenericCount; i < unspecializedType.mGenericParamCount; i++)
+				for (int i = outerGenericCount; i < unspecializedType.[Friend]mGenericParamCount; i++)
 				{
 					if (i > 0)
 						strBuffer.Append(", ");
-					Type.GetType(mResolvedTypeRefs[i]).GetFullName(strBuffer);
+					Type.[Friend]GetType(mResolvedTypeRefs[i]).GetFullName(strBuffer);
 				}
 				strBuffer.Append('>');
 			}
@@ -811,15 +811,15 @@ namespace System.Reflection
     }
 
     [CRepr, AlwaysInclude(AssumeInstantiated=true)]
-    internal class ArrayType : SpecializedGenericType
+    class ArrayType : SpecializedGenericType
     {
-        internal int32 mElementSize;
-        internal uint8 mRank;
-        internal uint8 mElementsDataOffset;
+        int32 mElementSize;
+        uint8 mRank;
+        uint8 mElementsDataOffset;
 
 		public override void GetFullName(String strBuffer)
 		{
-			Type.GetType(mResolvedTypeRefs[0]).GetFullName(strBuffer);
+			Type.[Friend]GetType(mResolvedTypeRefs[0]).GetFullName(strBuffer);
 			strBuffer.Append('[');
 			for (int commaNum < mRank - 1)
 				strBuffer.Append(',');

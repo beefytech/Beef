@@ -11,9 +11,9 @@ namespace System.Threading.Tasks
 	class Task : IAsyncResult, IThreadPoolWorkItem
 	{
 		[ThreadStatic]
-		internal static Task t_currentTask;  // The currently executing task.
+		static Task t_currentTask;  // The currently executing task.
 
-		internal Object m_action ~ delete _;    // The body of the task.  Might be Action<object>, Action<TState> or Action.  Or possibly a Func.
+		Object m_action ~ delete _;    // The body of the task.  Might be Action<object>, Action<TState> or Action.  Or possibly a Func.
 		// If m_action is set to null it will indicate that we operate in the
 		// "externally triggered completion" mode, which is exclusively meant 
 		// for the signalling Task<TResult> (aka. promise). In this mode,
@@ -21,10 +21,10 @@ namespace System.Threading.Tasks
 		// the completion event which will be set when the Future class calls Finish().
 		// But the event would now be signalled if Cancel() is called
 
-		internal Object m_stateObject; // A state object that can be optionally supplied, passed to action.
-		internal TaskScheduler m_taskScheduler; // The task scheduler this task runs under. 
-		internal readonly Task m_parent; // A task's parent, or null if parent-less.
-		internal volatile int32 m_stateFlags;
+		protected Object m_stateObject; // A state object that can be optionally supplied, passed to action.
+		protected TaskScheduler m_taskScheduler; // The task scheduler this task runs under. 
+		protected readonly Task m_parent; // A task's parent, or null if parent-less.
+		protected volatile int32 m_stateFlags;
 
 		// m_continuationObject is set to this when the task completes.
 		private static readonly Object s_taskCompletionSentinel = new Object() ~ delete _;
@@ -41,22 +41,22 @@ namespace System.Threading.Tasks
 		private const int CANCELLATION_REQUESTED = 0x1;//
 
 		private const int32 OptionsMask = 0xFFFF; // signifies the Options portion of m_stateFlags bin: 0000 0000 0000 0000 1111 1111 1111 1111
-		internal const int32 TASK_STATE_STARTED = 0x10000;                                       //bin: 0000 0000 0000 0001 0000 0000 0000 0000
-		internal const int32 TASK_STATE_DELEGATE_INVOKED = 0x20000;                              //bin: 0000 0000 0000 0010 0000 0000 0000 0000
-		internal const int32 TASK_STATE_DISPOSED = 0x40000;                                      //bin: 0000 0000 0000 0100 0000 0000 0000 0000
-		internal const int32 TASK_STATE_EXCEPTIONOBSERVEDBYPARENT = 0x80000;                     //bin: 0000 0000 0000 1000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_CANCELLATIONACKNOWLEDGED = 0x100000;                     //bin: 0000 0000 0001 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_FAULTED = 0x200000;                                      //bin: 0000 0000 0010 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_CANCELED = 0x400000;                                     //bin: 0000 0000 0100 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_WAITING_ON_CHILDREN = 0x800000;                          //bin: 0000 0000 1000 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_RAN_TO_COMPLETION = 0x01000000;                           //bin: 0000 0001 0000 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_WAITINGFORACTIVATION = 0x02000000;                        //bin: 0000 0010 0000 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_COMPLETION_RESERVED = 0x04000000;                         //bin: 0000 0100 0000 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_THREAD_WAS_ABORTED = 0x08000000;                          //bin: 0000 1000 0000 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_WAIT_COMPLETION_NOTIFICATION = 0x10000000;               //bin: 0001 0000 0000 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_STARTED = 0x10000;                                       //bin: 0000 0000 0000 0001 0000 0000 0000 0000
+		protected const int32 TASK_STATE_DELEGATE_INVOKED = 0x20000;                              //bin: 0000 0000 0000 0010 0000 0000 0000 0000
+		protected const int32 TASK_STATE_DISPOSED = 0x40000;                                      //bin: 0000 0000 0000 0100 0000 0000 0000 0000
+		protected const int32 TASK_STATE_EXCEPTIONOBSERVEDBYPARENT = 0x80000;                     //bin: 0000 0000 0000 1000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_CANCELLATIONACKNOWLEDGED = 0x100000;                     //bin: 0000 0000 0001 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_FAULTED = 0x200000;                                      //bin: 0000 0000 0010 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_CANCELED = 0x400000;                                     //bin: 0000 0000 0100 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_WAITING_ON_CHILDREN = 0x800000;                          //bin: 0000 0000 1000 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_RAN_TO_COMPLETION = 0x01000000;                           //bin: 0000 0001 0000 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_WAITINGFORACTIVATION = 0x02000000;                        //bin: 0000 0010 0000 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_COMPLETION_RESERVED = 0x04000000;                         //bin: 0000 0100 0000 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_THREAD_WAS_ABORTED = 0x08000000;                          //bin: 0000 1000 0000 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_WAIT_COMPLETION_NOTIFICATION = 0x10000000;               //bin: 0001 0000 0000 0000 0000 0000 0000 0000
 		//This could be moved to InternalTaskOptions enum
-		internal const int32 TASK_STATE_EXECUTIONCONTEXT_IS_NULL = 0x20000000;                   //bin: 0010 0000 0000 0000 0000 0000 0000 0000
-		internal const int32 TASK_STATE_TASKSCHEDULED_WAS_FIRED = 0x40000000;                    //bin: 0100 0000 0000 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_EXECUTIONCONTEXT_IS_NULL = 0x20000000;                   //bin: 0010 0000 0000 0000 0000 0000 0000 0000
+		protected const int32 TASK_STATE_TASKSCHEDULED_WAS_FIRED = 0x40000000;                    //bin: 0100 0000 0000 0000 0000 0000 0000 0000
 
 		// A mask for all of the final states a task may be in
 		private const int32 TASK_STATE_COMPLETED_MASK = TASK_STATE_CANCELED | TASK_STATE_FAULTED | TASK_STATE_RAN_TO_COMPLETION;
@@ -74,7 +74,7 @@ namespace System.Threading.Tasks
 		}
 		protected DetachState mDetachState = default;
 
-		internal static Task InternalCurrent
+		protected static Task InternalCurrent
 		{
 		    get { return t_currentTask; }
 		}
@@ -115,21 +115,21 @@ namespace System.Threading.Tasks
 		    get { return m_stateObject; }
 		}
 
-		internal class ContingentProperties
+		protected class ContingentProperties
 		{
-			internal CancellationToken m_cancellationToken;
-			internal volatile int m_internalCancellationRequested;
+			protected CancellationToken m_cancellationToken;
+			protected volatile int m_internalCancellationRequested;
 			//internal CancellationTokenRegistration* m_cancellationRegistration;
-			internal int m_completionCountdown;
-			internal volatile WaitEvent m_completionEvent ~ delete _;
+			protected int m_completionCountdown;
+			protected volatile WaitEvent m_completionEvent ~ delete _;
 
-			internal void SetCompleted()
+			protected void SetCompleted()
 			{
 			    var mres = m_completionEvent;
 			    if (mres != null) mres.Set();
 			}
 
-			internal void DeregisterCancellationCallback()
+			protected void DeregisterCancellationCallback()
 			{
 			    /*if (m_cancellationRegistration != null)
 			    {
@@ -143,26 +143,26 @@ namespace System.Threading.Tasks
 			}
 		}
 
-		internal volatile ContingentProperties m_contingentProperties;
+		protected volatile ContingentProperties m_contingentProperties;
 
-		internal bool IsCancellationRequested
+		protected bool IsCancellationRequested
 		{
 		    get
 		    {
 		        // check both the internal cancellation request flag and the CancellationToken attached to this task
 		        var props = m_contingentProperties;
 		        return props != null &&
-		            (props.m_internalCancellationRequested == CANCELLATION_REQUESTED ||
-		             props.m_cancellationToken.IsCancellationRequested);
+		            (props.[Friend]m_internalCancellationRequested == CANCELLATION_REQUESTED ||
+		             props.[Friend]m_cancellationToken.IsCancellationRequested);
 		    }
 		}
 
-		internal bool IsRanToCompletion
+		protected bool IsRanToCompletion
 		{
 		    get { return (m_stateFlags & TASK_STATE_COMPLETED_MASK) == TASK_STATE_RAN_TO_COMPLETION; }
 		}
 
-		internal TaskScheduler ExecutingTaskScheduler
+		protected TaskScheduler ExecutingTaskScheduler
 		{
 		    get { return m_taskScheduler; }
 		}
@@ -176,7 +176,7 @@ namespace System.Threading.Tasks
 		    }
 		}*/
 
-		internal TaskCreationOptions Options
+		protected TaskCreationOptions Options
 		{
 		    get
 		    {
@@ -187,7 +187,7 @@ namespace System.Threading.Tasks
 
 		// Similar to Options property, but allows for the use of a cached flags value rather than
 		// a read of the volatile m_stateFlags field.
-		internal static TaskCreationOptions OptionsMethod(int32 flags)
+		protected static TaskCreationOptions OptionsMethod(int32 flags)
 		{
 		    Contract.Assert((OptionsMask & 1) == 1, "OptionsMask needs a shift in Options.get");
 		    return (TaskCreationOptions)(flags & OptionsMask);
@@ -207,7 +207,7 @@ namespace System.Threading.Tasks
 			get { return Options & (TaskCreationOptions)(~InternalTaskOptions.InternalOptionsMask); }
 		}
 
-		internal bool IsCancellationAcknowledged
+		protected bool IsCancellationAcknowledged
 		{
 		    get { return (m_stateFlags & TASK_STATE_CANCELLATIONACKNOWLEDGED) != 0; }
 		}
@@ -220,7 +220,7 @@ namespace System.Threading.Tasks
 		    }
 		}
 
-		internal bool IsDelegateInvoked
+		protected bool IsDelegateInvoked
 		{
 		    get
 		    {
@@ -228,7 +228,7 @@ namespace System.Threading.Tasks
 		    }
 		}
 
-		internal bool IsWaitNotificationEnabledOrNotRanToCompletion
+		protected bool IsWaitNotificationEnabledOrNotRanToCompletion
 		{
 		    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		    get
@@ -262,7 +262,7 @@ namespace System.Threading.Tasks
 		    //PossiblyCaptureContext(ref stackMark);
 		}
 
-		internal this(Delegate action, Object state, Task parent, CancellationToken cancellationToken,
+		protected this(Delegate action, Object state, Task parent, CancellationToken cancellationToken,
             TaskCreationOptions creationOptions, InternalTaskOptions internalOptions, TaskScheduler scheduler)
         {
             if (action == null)
@@ -334,7 +334,7 @@ namespace System.Threading.Tasks
 		    }
 		}
 
-		internal void FinishStageTwo()
+		protected void FinishStageTwo()
 		{
 		    //AddExceptionsFromChildren();
 
@@ -391,15 +391,15 @@ namespace System.Threading.Tasks
 		    var cp = m_contingentProperties;
 		    if (cp != null)
 		    {
-		        cp.SetCompleted();
-		        cp.DeregisterCancellationCallback();
+		        cp.[Friend]SetCompleted();
+		        cp.[Friend]DeregisterCancellationCallback();
 		    }
 
 		    // ready to run continuations and notify parent.
 		    FinishStageThree();
 		}
 
-		internal void FinishStageThree()
+		protected void FinishStageThree()
 		{
 			delete m_action;
 		    // Release the action so that holding this task object alive doesn't also
@@ -427,7 +427,7 @@ namespace System.Threading.Tasks
 			//TODO:
 		}
 
-		internal void FinishContinuations()
+		protected void FinishContinuations()
 		{
 		    // Atomically store the fact that this task is completing.  From this point on, the adding of continuations will
 		    // result in the continuations being run/launched directly rather than being added to the continuation list.
@@ -548,7 +548,7 @@ namespace System.Threading.Tasks
 		    }
 		}
 
-		internal void ProcessChildCompletion(Task childTask)
+		protected void ProcessChildCompletion(Task childTask)
 		{
 		    Contract.Requires(childTask != null);
 		    Contract.Requires(childTask.IsCompleted, "ProcessChildCompletion was called for an uncompleted task");
@@ -581,7 +581,7 @@ namespace System.Threading.Tasks
 
 		    }*/
 
-		    if (Interlocked.Decrement(ref props.m_completionCountdown) == 0)
+		    if (Interlocked.Decrement(ref props.[Friend]m_completionCountdown) == 0)
 		    {
 		        // This call came from the final child to complete, and apparently we have previously given up this task's right to complete itself.
 		        // So we need to invoke the final finish stage.
@@ -590,7 +590,7 @@ namespace System.Threading.Tasks
 		    }
 		}
 
-		internal void Finish(bool bUserDelegateExecuted)
+		protected void Finish(bool bUserDelegateExecuted)
 		{
 			if (!bUserDelegateExecuted)
 			{
@@ -602,12 +602,12 @@ namespace System.Threading.Tasks
 			    var props = m_contingentProperties;
 
 			    if (props == null || // no contingent properties means no children, so it's safe to complete ourselves
-			        (props.m_completionCountdown == 1 && !IsSelfReplicatingRoot) ||
+			        (props.[Friend]m_completionCountdown == 1 && !IsSelfReplicatingRoot) ||
 			        // Count of 1 => either all children finished, or there were none. Safe to complete ourselves 
 			        // without paying the price of an Interlocked.Decrement.
 			        // However we need to exclude self replicating root tasks from this optimization, because
 			        // they can have children joining in, or finishing even after the root task delegate is done.
-			        Interlocked.Decrement(ref props.m_completionCountdown) == 0) // Reaching this sub clause means there may be remaining active children,
+			        Interlocked.Decrement(ref props.[Friend]m_completionCountdown) == 0) // Reaching this sub clause means there may be remaining active children,
 			    // and we could be racing with one of them to call FinishStageTwo().
 			    // So whoever does the final Interlocked.Dec is responsible to finish.
 			    {
@@ -641,7 +641,7 @@ namespace System.Threading.Tasks
 			}
 		}
 
-		internal bool FireTaskScheduledIfNeeded(TaskScheduler ts)
+		protected bool FireTaskScheduledIfNeeded(TaskScheduler ts)
 		{
 		    /*var etwLog = TplEtwProvider.Log;
 		    if (etwLog.IsEnabled() && (m_stateFlags & Task.TASK_STATE_TASKSCHEDULED_WAS_FIRED) == 0)
@@ -659,7 +659,7 @@ namespace System.Threading.Tasks
 		        return false;
 		}
 
-		internal void TaskConstructorCore(Object action, Object state, CancellationToken cancellationToken,
+		protected void TaskConstructorCore(Object action, Object state, CancellationToken cancellationToken,
 		    TaskCreationOptions creationOptions, InternalTaskOptions internalOptions, TaskScheduler scheduler)
 		{
 		    m_action = action;
@@ -740,7 +740,7 @@ namespace System.Threading.Tasks
 		{
 		    if (m_taskScheduler == null)
 		        return false;
-			return m_taskScheduler.TryRunInline(this, true);
+			return m_taskScheduler.[Friend]TryRunInline(this, true);
 		}
 
 		private bool SpinWait(int millisecondsTimeout)
@@ -754,7 +754,7 @@ namespace System.Threading.Tasks
 		    }
 
 		    //This code is pretty similar to the custom spinning in MRES except there is no yieling after we exceed the spin count
-		    int spinCount = Platform.IsSingleProcessor ? 1 : System.Threading.SpinWait.YIELD_THRESHOLD; //spin only once if we are running on a single CPU
+		    int spinCount = Platform.IsSingleProcessor ? 1 : System.Threading.SpinWait.[Friend]YIELD_THRESHOLD; //spin only once if we are running on a single CPU
 		    for (int i = 0; i < spinCount; i++)
 		    {
 		        if (IsCompleted)
@@ -832,7 +832,7 @@ namespace System.Threading.Tasks
 		/// The core wait function, which is only accesible internally. It's meant to be used in places in TPL code where 
 		/// the current context is known or cached.
 		//[MethodImpl(MethodImplOptions.NoOptimization)]  // this is needed for the parallel debugger
-		internal bool InternalWait(int millisecondsTimeout, CancellationToken cancellationToken)
+		protected bool InternalWait(int millisecondsTimeout, CancellationToken cancellationToken)
 		{
 			Debug.Assert(!mDetachState.HasFlag(.Deatched));
 
@@ -945,7 +945,7 @@ namespace System.Threading.Tasks
 		    ScheduleAndStart(true);
 		}
 
-		internal bool AtomicStateUpdate(int32 newBits, int32 illegalBits)
+		protected bool AtomicStateUpdate(int32 newBits, int32 illegalBits)
 		{
 		    // This could be implemented in terms of:
 		    //     internal bool AtomicStateUpdate(int newBits, int illegalBits, ref int oldFlags);
@@ -965,7 +965,7 @@ namespace System.Threading.Tasks
 			while (true);
 		}
 
-		internal bool AtomicStateUpdate(int32 newBits, int32 illegalBits, ref int32 oldFlags)
+		protected bool AtomicStateUpdate(int32 newBits, int32 illegalBits, ref int32 oldFlags)
 		{
 		    SpinWait sw = .();
 		    repeat
@@ -983,18 +983,18 @@ namespace System.Threading.Tasks
 
 		// ASSUMES THAT A SUCCESSFUL CANCELLATION HAS JUST OCCURRED ON THIS TASK!!!
 		// And this method should be called at most once per task.
-		internal void CancellationCleanupLogic()
+		protected void CancellationCleanupLogic()
 		{
 			Interlocked.Exchange(ref m_stateFlags, m_stateFlags | TASK_STATE_CANCELED);
 
 		}
 
-		internal bool MarkStarted()
+		protected bool MarkStarted()
 		{
 		    return AtomicStateUpdate(TASK_STATE_STARTED, TASK_STATE_CANCELED | TASK_STATE_STARTED);
 		}
 
-		internal void ScheduleAndStart(bool needsProtection)
+		protected void ScheduleAndStart(bool needsProtection)
 		{
 		    Contract.Assert(m_taskScheduler != null, "expected a task scheduler to have been selected");
 		    Contract.Assert((m_stateFlags & TASK_STATE_STARTED) == 0, "task has already started");
@@ -1025,7 +1025,7 @@ namespace System.Threading.Tasks
 		    }*/
 
 
-			m_taskScheduler.InternalQueueTask(this);
+			m_taskScheduler.[Friend]InternalQueueTask(this);
 
 		    /*try
 		    {
@@ -1067,7 +1067,7 @@ namespace System.Threading.Tasks
 		    }*/
 		}
 
-		internal bool ExecuteEntry(bool bPreventDoubleExecution)
+		protected bool ExecuteEntry(bool bPreventDoubleExecution)
 		{
 		    if (bPreventDoubleExecution || ((Options & (TaskCreationOptions)InternalTaskOptions.SelfReplicating) != 0))
 		    {
@@ -1191,7 +1191,7 @@ namespace System.Threading.Tasks
 		/// Since a child task can only be created from the thread executing the action delegate
 		/// of this task, reentrancy is neither required nor supported. This should not be called from
 		/// anywhere other than the task construction/initialization codepaths.
-		internal void AddNewChild()
+		protected void AddNewChild()
 		{
 			ThrowUnimplemented();
 			//TODO:
@@ -1221,7 +1221,7 @@ namespace System.Threading.Tasks
 		    return props != null ? props : EnsureContingentPropertiesInitializedCore(needsProtection);
 		}*/
 
-		internal bool IsSelfReplicatingRoot
+		protected bool IsSelfReplicatingRoot
 		{
 		    get
 		    {
@@ -1236,12 +1236,12 @@ namespace System.Threading.Tasks
 		    return TaskAwaiter(this);
 		}
 
-		internal static Task InternalCurrentIfAttached(TaskCreationOptions creationOptions)
+		protected static Task InternalCurrentIfAttached(TaskCreationOptions creationOptions)
 		{
 		    return (creationOptions & TaskCreationOptions.AttachedToParent) != 0 ? InternalCurrent : null;
 		}
 
-		internal void AddCompletionAction(ITaskCompletionAction action)
+		protected void AddCompletionAction(ITaskCompletionAction action)
 		{
 		    AddCompletionAction(action, false);
 		}
@@ -1345,7 +1345,7 @@ namespace System.Threading.Tasks
 		}
 	}
 
-	internal interface ITaskCompletionAction
+	interface ITaskCompletionAction
 	{
 	    void Invoke(Task completingTask);
 	}
@@ -1382,7 +1382,7 @@ namespace System.Threading.Tasks
 	    RunContinuationsAsynchronously = 0x40
 	}
 
-	internal enum InternalTaskOptions
+	public enum InternalTaskOptions
 	{
 	    /// Specifies "No internal task options"
 	    None,

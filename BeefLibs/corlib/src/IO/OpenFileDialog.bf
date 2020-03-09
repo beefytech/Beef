@@ -85,7 +85,7 @@ namespace System.IO
 
 	abstract class FileDialog : CommonDialog
 	{
-		internal abstract Result<DialogResult> RunFileDialog(ref Windows.OpenFileName ofn);
+		protected abstract Result<DialogResult> RunFileDialog(ref Windows.OpenFileName ofn);
 
 		protected override Result<DialogResult> RunDialog(Windows.HWnd hWndOwner)
 		{
@@ -93,9 +93,9 @@ namespace System.IO
 		}
 
 		private const int32 FILEBUFSIZE = 8192;
-		internal const int32 OPTION_ADDEXTENSION = (int32)0x80000000;
+		protected const int32 OPTION_ADDEXTENSION = (int32)0x80000000;
 
-		internal int32 mOptions;
+		protected int32 mOptions;
 		private String mTitle ~ delete _;
 		private String mInitialDir ~ delete _;
 		private String mDefaultExt ~ delete _;
@@ -323,12 +323,12 @@ namespace System.IO
 			return .Ok;
 		}
 
-		internal bool GetOption(int32 option)
+		protected bool GetOption(int32 option)
 		{
 			return (mOptions & option) != 0;
 		}
 
-		internal void SetOption(int32 option, bool value)
+		protected void SetOption(int32 option, bool value)
 		{
 			if (value)
 			{
@@ -496,7 +496,7 @@ namespace System.IO
 		    }
 		}
 
-		internal override Result<DialogResult> RunFileDialog(ref Windows.OpenFileName ofn)
+		protected override Result<DialogResult> RunFileDialog(ref Windows.OpenFileName ofn)
 		{
 			bool result = Windows.GetOpenFileNameW(ref ofn);
 			if (!result)

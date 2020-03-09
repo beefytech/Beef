@@ -325,7 +325,7 @@ public:
 	BfType* ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	void ResolveGenericType();	
 	void ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveArgFlags flags = BfResolveArgFlag_None);
-	BfAllocTarget ResolveAllocTarget(BfAstNode* newNode, BfTokenNode*& newToken);
+	BfAllocTarget ResolveAllocTarget(BfAstNode* newNode, BfTokenNode*& newToken, BfCustomAttributes** outCustomAttributes = NULL);
 	BfTypedValue ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue = NULL, BfParamKind paramKind = BfParamKind_Normal);
 	BfMethodDef* GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind);
 	BfModuleMethodInstance GetPropertyMethodInstance(BfMethodDef* methodDef);

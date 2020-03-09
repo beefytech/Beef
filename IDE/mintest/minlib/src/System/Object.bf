@@ -71,16 +71,16 @@ namespace System
 #else            
             type = mClassVData.mType;
 #endif            
-            if ((type.mTypeFlags & TypeFlags.Boxed) != 0)
+            if ((type.[Friend]mTypeFlags & TypeFlags.Boxed) != 0)
             {
                 //int32 underlyingType = (int32)((TypeInstance)type).mUnderlyingType;
-                type = Type.GetType(((TypeInstance)type).mUnderlyingType);
+                type = Type.[Friend]GetType(((TypeInstance)type).[Friend]mUnderlyingType);
             }
             return type;
         }
 
 		[NoShow]
-        internal Type RawGetType()
+        Type RawGetType()
         {
             Type type;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
@@ -96,7 +96,7 @@ namespace System
 		[NoShow]
         public virtual Object DynamicCastToTypeId(int32 typeId)
         {
-            if (typeId == (int32)RawGetType().mTypeId)
+            if (typeId == (int32)RawGetType().[Friend]mTypeId)
                 return this;
             return null;
         }
@@ -477,8 +477,8 @@ namespace System
 			var typeInst = (TypeInstance)typeof(T);
 			for (var field in typeInst.GetFields())
 			{
-				if (str == field.mFieldData.mName)
-					return .Ok(*((T*)(&field.mFieldData.mConstValue)));
+				if (str == field.[Friend]mFieldData.mName)
+					return .Ok(*((T*)(&field.[Friend]mFieldData.mConstValue)));
 			}
 
 			return .Err;

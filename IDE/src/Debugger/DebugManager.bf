@@ -591,7 +591,7 @@ namespace IDE.Debugger
 			void* nativeBreakpoint = null;
 			if (addr != (int)0)
 			{
-				nativeBreakpoint = Breakpoint.Debugger_CreateMemoryBreakpoint(addr, (.)byteCount);
+				nativeBreakpoint = Breakpoint.[Friend]Debugger_CreateMemoryBreakpoint(addr, (.)byteCount);
 				if (nativeBreakpoint == null)
 					return null;
 			}

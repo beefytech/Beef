@@ -10,7 +10,7 @@ namespace System.Reflection
 		public static Result<void> GetCustomAttribute(void* inAttrData, Type attributeType, Object targetAttr)
 		{
 
-			TypeId findTypeId = attributeType.mTypeId;
+			TypeId findTypeId = attributeType.[Friend]mTypeId;
 
 			void* data = inAttrData;
 			data++;
@@ -32,11 +32,11 @@ namespace System.Reflection
 			    
 			    var methodIdx = Decode!<uint16>(data);
 			    
-			    Type attrType = Type.GetType(typeId);
+			    Type attrType = Type.[Friend]GetType(typeId);
 			    TypeInstance attrTypeInst = attrType as TypeInstance;
-				MethodInfo methodInfo = .(attrTypeInst, attrTypeInst.mMethodDataPtr + methodIdx);
+				MethodInfo methodInfo = .(attrTypeInst, attrTypeInst.[Friend]mMethodDataPtr + methodIdx);
 
-			    Object[] args = scope Object[methodInfo.mMethodData.mParamCount];
+			    Object[] args = scope Object[methodInfo.[Friend]mMethodData.mParamCount];
 
 				int argIdx = 0;
 			    while (data < endPtr)

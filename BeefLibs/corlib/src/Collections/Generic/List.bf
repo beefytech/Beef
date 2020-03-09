@@ -530,7 +530,7 @@ namespace System.Collections.Generic
 		public void Sort(Comparison<T> comp)
 		{
 			var sorter = Sorter<T, void>(mItems, null, mSize, comp);
-			sorter.Sort(0, mSize);
+			sorter.[Friend]Sort(0, mSize);
 		}
 
 		public int RemoveAll(Predicate<T> match)
@@ -622,7 +622,7 @@ namespace System.Collections.Generic
 			if (mItems == null)
 				return;
 			let type = typeof(T);
-			if ((type.mTypeFlags & .WantsMark) == 0)
+			if ((type.[Friend]mTypeFlags & .WantsMark) == 0)
 				return;
 		    for (int i < mSize)
 		    {
@@ -639,7 +639,7 @@ namespace System.Collections.Generic
 #endif
 	        private T* mCurrent;
 
-	        internal this(List<T> list)
+	        public this(List<T> list)
 	        {
 	            mList = list;
 	            mIndex = 0;

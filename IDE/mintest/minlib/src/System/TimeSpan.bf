@@ -22,20 +22,20 @@ namespace System
         private const int32 MillisPerHour = MillisPerMinute * 60;   //  3,600,000
         private const int32 MillisPerDay = MillisPerHour * 24;      // 86,400,000
 
-        internal const int64 MaxSeconds = Int64.MaxValue / TicksPerSecond;
-        internal const int64 MinSeconds = Int64.MinValue / TicksPerSecond;
+        private const int64 MaxSeconds = Int64.MaxValue / TicksPerSecond;
+        private const int64 MinSeconds = Int64.MinValue / TicksPerSecond;
 
-        internal const int64 MaxMilliSeconds = Int64.MaxValue / TicksPerMillisecond;
-        internal const int64 MinMilliSeconds = Int64.MinValue / TicksPerMillisecond;
+        private const int64 MaxMilliSeconds = Int64.MaxValue / TicksPerMillisecond;
+        private const int64 MinMilliSeconds = Int64.MinValue / TicksPerMillisecond;
         
-        internal const int64 TicksPerTenthSecond = TicksPerMillisecond * 100;
+        private const int64 TicksPerTenthSecond = TicksPerMillisecond * 100;
 
         //public static readonly TimeSpan Zero = new TimeSpan(0);
 
         //public static readonly TimeSpan MaxValue = new TimeSpan(Int64.MaxValue);
         //public static readonly TimeSpan MinValue = new TimeSpan(Int64.MinValue);
         
-        internal int64 _ticks;
+        private int64 _ticks;
 
         //public TimeSpan() {
         //    _ticks = 0;

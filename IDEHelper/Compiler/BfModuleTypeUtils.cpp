@@ -485,7 +485,6 @@ bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 	return PopulateType(resolvedTypeRef, populateType);
 }
 
-
 void BfModule::AddFieldDependency(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfType* fieldType)
 {
 	auto fieldTypeInstance = fieldType->ToTypeInstance();

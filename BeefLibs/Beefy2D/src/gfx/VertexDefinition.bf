@@ -76,7 +76,7 @@ namespace Beefy.gfx
         }
 #endif
 
-        internal this()
+        public this()
         {
 
         }

@@ -3,7 +3,7 @@ namespace System.Threading
     using System;
     using System.Diagnostics;
     
-    internal delegate Object InternalCrossContextDelegate(Object[] args);
+    public delegate Object InternalCrossContextDelegate(Object[] args);
     
     public delegate void ThreadStart();
     public delegate void ParameterizedThreadStart(Object obj);

@@ -16,7 +16,7 @@ namespace System.Collections.Generic
 		private int mCount;
 	    private Comparison<T> comparer;    
 
-	    internal this(T* keys, T2* items, int count, Comparison<T> comparer) 
+	    public this(T* keys, T2* items, int count, Comparison<T> comparer) 
 	    {
 	        this.keys = keys;
 	        this.items = items;
@@ -24,7 +24,7 @@ namespace System.Collections.Generic
 	        this.comparer = comparer;
 	    }
 
-		internal static int FloorLog2(int n)
+		public static int FloorLog2(int n)
 		{
 		    int result = 0;
 			int val = n;
@@ -44,7 +44,7 @@ namespace System.Collections.Generic
 		    return low + ((hi - low) >> 1);
 		}
 
-	    internal void SwapIfGreaterWithItems(int a, int b)
+	    public void SwapIfGreaterWithItems(int a, int b)
 	    {
 	        if (a != b)
 	        {
@@ -77,7 +77,7 @@ namespace System.Collections.Generic
 	        }
 	    }
 
-	    internal void Sort(int left, int length)
+	    public void Sort(int left, int length)
 	    {
 	        IntrospectiveSort(left, length);
 	    }

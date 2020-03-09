@@ -196,7 +196,7 @@ namespace System
         protected override void GCMarkMembers()
         {
 			let type = typeof(T);
-			if ((type.mTypeFlags & .WantsMark) == 0)
+			if ((type.[Friend]mTypeFlags & .WantsMark) == 0)
 				return;
             for (int i = 0; i < mLength; i++)
             {

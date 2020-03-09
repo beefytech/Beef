@@ -23,7 +23,7 @@ namespace System
 
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 		[NoShow]
-		internal int32 GetFlags()
+		int32 GetFlags()
 		{
 			return (int32)mClassVData & 0xFF;
 		}
@@ -50,16 +50,16 @@ namespace System
 #else
             type = mClassVData.mType;
 #endif
-            if ((type.mTypeFlags & TypeFlags.Boxed) != 0)
+            if ((type.[Friend]mTypeFlags & TypeFlags.Boxed) != 0)
             {
                 //int32 underlyingType = (int32)((TypeInstance)type).mUnderlyingType;
-                type = Type.GetType(((TypeInstance)type).mUnderlyingType);
+                type = Type.[Friend]GetType(((TypeInstance)type).[Friend]mUnderlyingType);
             }
             return type;
         }
 
 		[NoShow]
-        internal Type RawGetType()
+        Type RawGetType()
         {
             Type type;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
@@ -75,7 +75,7 @@ namespace System
 		[NoShow]
 		public virtual Object DynamicCastToTypeId(int32 typeId)
 		{
-		    if (typeId == (int32)RawGetType().mTypeId)
+		    if (typeId == (int32)RawGetType().[Friend]mTypeId)
 		        return this;
 		    return null;
 		}

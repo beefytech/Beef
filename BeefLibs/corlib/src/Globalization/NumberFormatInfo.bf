@@ -90,46 +90,45 @@ namespace System.Globalization {
         // DO NOT UPDATE THIS WITHOUT UPDATING THAT STRUCTURE. IF YOU ADD BOOL, ADD THEM AT THE END.
         // ALSO MAKE SURE TO UPDATE mscorlib.h in the VM directory to check field offsets.
         // READTHIS READTHIS READTHIS
-        internal int32[] numberGroupSizes = new int32[] {3} ~ delete _;
-        internal int32[] currencyGroupSizes = new int32[] {3} ~ delete _;
-        internal int32[] percentGroupSizes = new int32[] {3} ~ delete _;
-        internal OwnedString positiveSign = .("+") ~ _.Dispose();
-        internal OwnedString negativeSign = .("-") ~ _.Dispose();
-        internal OwnedString numberDecimalSeparator = .(".") ~ _.Dispose();
-        internal OwnedString numberGroupSeparator = .(",") ~ _.Dispose();
-        internal OwnedString currencyGroupSeparator = .(",") ~ _.Dispose();;
-        internal OwnedString currencyDecimalSeparator = .(".") ~ _.Dispose();
-        internal OwnedString currencySymbol = .("\u{00a4}") ~ _.Dispose();  // U+00a4 is the symbol for International Monetary Fund.
+        protected int32[] numberGroupSizes = new int32[] {3} ~ delete _;
+        protected int32[] currencyGroupSizes = new int32[] {3} ~ delete _;
+        protected int32[] percentGroupSizes = new int32[] {3} ~ delete _;
+        protected OwnedString positiveSign = .("+") ~ _.Dispose();
+        protected OwnedString negativeSign = .("-") ~ _.Dispose();
+        protected OwnedString numberDecimalSeparator = .(".") ~ _.Dispose();
+        protected OwnedString numberGroupSeparator = .(",") ~ _.Dispose();
+        protected OwnedString currencyGroupSeparator = .(",") ~ _.Dispose();;
+        protected OwnedString currencyDecimalSeparator = .(".") ~ _.Dispose();
+        protected OwnedString currencySymbol = .("\u{00a4}") ~ _.Dispose();  // U+00a4 is the symbol for International Monetary Fund.
         // The alternative currency symbol used in Win9x ANSI codepage, that can not roundtrip between ANSI and Unicode.
         // Currently, only ja-JP and ko-KR has non-null values (which is U+005c, backslash)
         // NOTE: The only legal values for this string are null and "\u005c"
-        internal String ansiCurrencySymbol = null;
-        internal OwnedString nanSymbol = .("NaN") ~ _.Dispose();
-        internal OwnedString positiveInfinitySymbol = .("Infinity") ~ _.Dispose();
-        internal OwnedString negativeInfinitySymbol = .("-Infinity") ~ _.Dispose();
-        internal OwnedString percentDecimalSeparator = .(".") ~ _.Dispose();
-        internal OwnedString percentGroupSeparator = .(",") ~ _.Dispose();
-        internal OwnedString percentSymbol = .("%") ~ _.Dispose();
-        internal OwnedString perMilleSymbol = .("\u{2030}") ~ _.Dispose();
+        protected String ansiCurrencySymbol = null;
+        protected OwnedString nanSymbol = .("NaN") ~ _.Dispose();
+        protected OwnedString positiveInfinitySymbol = .("Infinity") ~ _.Dispose();
+        protected OwnedString negativeInfinitySymbol = .("-Infinity") ~ _.Dispose();
+        protected OwnedString percentDecimalSeparator = .(".") ~ _.Dispose();
+        protected OwnedString percentGroupSeparator = .(",") ~ _.Dispose();
+        protected OwnedString percentSymbol = .("%") ~ _.Dispose();
+        protected OwnedString perMilleSymbol = .("\u{2030}") ~ _.Dispose();
 
-        internal String[] nativeDigits = new .[] {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"} ~ DeleteNativeDigits();
+        protected String[] nativeDigits = new .[] {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"} ~ DeleteNativeDigits();
 
-        internal int32 numberDecimalDigits = 2;
-        internal int32 currencyDecimalDigits = 2;
-        internal int32 currencyPositivePattern = 0;
-        internal int32 currencyNegativePattern = 0;
-        internal int32 numberNegativePattern = 1;
-        internal int32 percentPositivePattern = 0;
-        internal int32 percentNegativePattern = 0;
-        internal int32 percentDecimalDigits = 2;
+        protected int32 numberDecimalDigits = 2;
+        protected int32 currencyDecimalDigits = 2;
+        protected int32 currencyPositivePattern = 0;
+        protected int32 currencyNegativePattern = 0;
+        protected int32 numberNegativePattern = 1;
+        protected int32 percentPositivePattern = 0;
+        protected int32 percentNegativePattern = 0;
+        protected int32 percentDecimalDigits = 2;
 
+        protected int32 digitSubstitution = 1; // DigitShapes.None
 
-        internal int32 digitSubstitution = 1; // DigitShapes.None
-
-        internal bool isReadOnly=false;
+        protected bool isReadOnly=false;
         
         // Is this NumberFormatInfo for invariant culture?
-        internal bool m_isInvariant=false;
+        protected bool m_isInvariant=false;
 
 		void DeleteNativeDigits()
 		{
@@ -211,13 +210,13 @@ namespace System.Globalization {
 
         // We aren't persisting dataItem any more (since its useless & we weren't using it),
         // Ditto with m_useUserOverride.  Don't use them, we use a local copy of everything.
-        internal this(CultureData cultureData)
+        public this(CultureData cultureData)
         {
             if (cultureData != null)
             {
                 // We directly use fields here since these data is coming from data table or Win32, so we
                 // don't need to verify their values (except for invalid parsing situations).
-                cultureData.GetNFIValues(this);
+                cultureData.[Friend]GetNFIValues(this);
 
                 if (cultureData.IsInvariantCulture)
                 {
@@ -339,7 +338,7 @@ namespace System.Globalization {
         // Every element in the groupSize array should be between 1 and 9
         // excpet the last element could be zero.
         //
-        static internal void CheckGroupSize(String propName, int[] groupSize)
+        static protected void CheckGroupSize(String propName, int[] groupSize)
         {
             for (int i = 0; i < groupSize.Count; i++)
             {

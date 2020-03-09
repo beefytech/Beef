@@ -14,10 +14,10 @@ namespace System.Diagnostics
 		//public Windows.Handle ErrorDialogParentHandle;
 		//public ProcessWindowStyle WindowStyle;
 
-		internal String mFileName = new String() ~ delete _;
-		internal String mArguments = new String() ~ delete _;
-		internal String mDirectory = new String() ~ delete _;
-		internal String mVerb = new String("Open") ~ delete _;
+		String mFileName = new String() ~ delete _;
+		String mArguments = new String() ~ delete _;
+		String mDirectory = new String() ~ delete _;
+		String mVerb = new String("Open") ~ delete _;
 
 		public Dictionary<String, String> mEnvironmentVariables ~ DeleteDictionaryAndKeysAndItems!(_); 
 
@@ -27,8 +27,8 @@ namespace System.Diagnostics
 		public bool RedirectStandardError { get { return mRedirectStandardError; } set { mRedirectStandardError = value; } };
 		public bool CreateNoWindow { get { return mCreateNoWindow; } set { mCreateNoWindow = value; } };
 
-		internal Encoding StandardOutputEncoding;
-		internal Encoding StandardErrorEncoding;
+		Encoding StandardOutputEncoding;
+		Encoding StandardErrorEncoding;
 
 		//public bool redirectStandardInput { get { return redirectStandardInput; } set { redirectStandardInput = value; } };
 		//public bool redirectStandardInput { get { return redirectStandardInput; } set { redirectStandardInput = value; } };

@@ -5,8 +5,14 @@ namespace System.Reflection
 	[CRepr, AlwaysInclude]
 	public struct FieldInfo
 	{
-	    internal TypeInstance mTypeInstance;
-	    internal TypeInstance.FieldData* mFieldData;
+		public enum Error
+		{
+			InvalidTargetType,
+			InvalidValueType
+		}
+
+	    TypeInstance mTypeInstance;
+	    TypeInstance.FieldData* mFieldData;
 
 	    public this(TypeInstance typeInstance, TypeInstance.FieldData* fieldData)
 	    {
@@ -26,7 +32,7 @@ namespace System.Reflection
 	    {
 	        get
 	        {
-	            return Type.GetType(mFieldData.mFieldTypeId);
+	            return Type.[Friend]GetType(mFieldData.mFieldTypeId);
 	        }
 	    }
 
@@ -38,56 +44,76 @@ namespace System.Reflection
 			}
 		}
 
-	    public Result<void> SetValue(Object obj, Object value)
+	    public Result<void, Error> SetValue(Object obj, Object value)
 	    {    
 	        int32 dataOffsetAdjust = 0;
 	        if (mTypeInstance.IsStruct)
 	        {
-	            Type boxedType = obj.RawGetType();
+	            Type boxedType = obj.[Friend]RawGetType();
 	            bool typeMatched = false;
 	            if (boxedType.IsBoxed)
 	            {
 	                if (mTypeInstance == boxedType.UnderlyingType)
 	                {
-	                    dataOffsetAdjust = boxedType.mMemberDataOffset;
+	                    dataOffsetAdjust = boxedType.[Friend]mMemberDataOffset;
 	                    typeMatched = true;
 	                }
 	            }
 	            if (!typeMatched)
-	                return .Err; // "Invalid target type");
+	                return .Err(.InvalidTargetType); // "Invalid target type");
 	        }
 
-	        Type fieldType = Type.GetType(mFieldData.mFieldTypeId);
-	        //Type objType = obj.GetType();
-	        
-	        void* dataAddr = ((uint8*)(void*)obj) + mFieldData.mDataOffset + dataOffsetAdjust;
+	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
+	        void* fieldDataAddr = ((uint8*)(void*)obj) + mFieldData.mDataOffset + dataOffsetAdjust;
 
-	        switch (fieldType.mTypeCode)
-	        {                             
-	        case TypeCode.Int32:
+			Type rawValueType = value.[Friend]RawGetType();
+			void* valueDataAddr = ((uint8*)(void*)value) + rawValueType.[Friend]mMemberDataOffset;
+			
+			Type valueType = value.GetType();
+
+			if ((valueType != fieldType) && (valueType.IsTypedPrimitive))
+				valueType = valueType.UnderlyingType;
+
+			if (valueType == fieldType)
+			{
+				Internal.MemCpy(fieldDataAddr, valueDataAddr, fieldType.[Friend]mSize);
+			}
+			else
+			{
+				return .Err(.InvalidValueType);
+			}
+
+	        /*switch (fieldType.mTypeCode)
+	        {
+            case .Boolean:
+				if (!value is bool)
+				return .Err(.InvalidValueType);
+				*(bool*)(uint8*)dataAddr = (.)value;
+				break;        
+	        case .Int32:
 	            if (!value is int32)
-	                return .Err; //("Invalid type");
-	            *(int32*)(uint8*)dataAddr = (int32)value;
+	                return .Err(.InvalidValueType);
+	            *(int32*)(uint8*)dataAddr = (.)value;
 	            break;
 	        default:
-	            return .Err; //("Invalid type");
-	        }
+	            return .Err(.InvalidValueType);
+	        }*/
 	                  
 	        return .Ok;
 	    }
-
+			
 		public Result<void> SetValue(Object obj, Variant value)
 		{    
 		    int32 dataOffsetAdjust = 0;
 		    if (mTypeInstance.IsStruct)
 		    {
-		        Type boxedType = obj.RawGetType();
+		        Type boxedType = obj.[Friend]RawGetType();
 		        bool typeMatched = false;
 		        if (boxedType.IsBoxed)
 		        {
 		            if (mTypeInstance == boxedType.UnderlyingType)
 		            {
-		                dataOffsetAdjust = boxedType.mMemberDataOffset;
+		                dataOffsetAdjust = boxedType.[Friend]mMemberDataOffset;
 		                typeMatched = true;
 		            }
 		        }
@@ -95,8 +121,7 @@ namespace System.Reflection
 		            return .Err;//("Invalid target type");
 		    }
 
-		    Type fieldType = Type.GetType(mFieldData.mFieldTypeId);
-		    //Type objType = obj.GetType();
+		    Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 		    
 		    void* dataAddr = ((uint8*)(void*)obj) + mFieldData.mDataOffset + dataOffsetAdjust;
 
@@ -105,26 +130,6 @@ namespace System.Reflection
 
 			value.CopyValueData(dataAddr);
 
-			//TypeCode typeCode = fieldType.mTypeCode;
-
-			/*if (typeCode == TypeCode.Enum)
-				typeCode = fieldType.GetUnderlyingType().mTypeCode;
-
-		    switch (typeCode)
-		    {                             
-		    case TypeCode.Int32:
-		        *(int32*)dataAddr = value.Get<int32>();
-		        break;
-			case TypeCode.Boolean:
-				*(bool*)dataAddr = value.Get<bool>();
-				break;
-			case TypeCode.Object:
-				*(Object*)dataAddr = value.Get<Object>();
-				break;
-		    default:
-		        return .Err;//("Invalid type");
-		    }*/
-		              
 		    return .Ok;
 		}
 	    
@@ -135,12 +140,10 @@ namespace System.Reflection
 
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
-			return .Err;
-
 			/*if (mFieldData.mCustomAttributesIdx == -1)
 			    return .Err;
 
-			void* data = mTypeInstance.mCustomAttrDataPtr[mFieldData.mCustomAttributesIdx];
+			void* data = mTypeInstance.[Friend]mCustomAttrDataPtr[mFieldData.mCustomAttributesIdx];
 
 			T attrInst = ?;
 			switch (AttributeInfo.GetCustomAttribute(data, typeof(T), &attrInst))
@@ -149,21 +152,17 @@ namespace System.Reflection
 			default:
 				return .Err;
 			}*/
+			return .Err;
 		}
 
 	    void* GetDataPtrAndType(Object value, out Type type)
 	    {
-	        type = value.RawGetType();
+	        type = value.[Friend]RawGetType();
 	        /*if (type.IsStruct)
 	            return &value;*/
 
-			if (type.IsStruct)
-			{
-				NOP!();
-			}	
-
 	        if (type.IsBoxed)
-	            return ((uint8*)(void*)value) + type.mMemberDataOffset;
+	            return ((uint8*)(void*)value) + type.[Friend]mMemberDataOffset;
 	        return ((uint8*)(void*)value);
 	    }
 
@@ -173,37 +172,26 @@ namespace System.Reflection
 
 	        Type tTarget;
 	        void* targetDataAddr = GetDataPtrAndType(target, out tTarget);
-			//Type tTarget = target.RawGetType();
-			//void* targetDataAddr = (void*)&target;
-	        
+			
 	        Type tMember = typeof(TMember);
 
 	        targetDataAddr = (uint8*)targetDataAddr + mFieldData.mDataOffset;
 	        
-	        Type fieldType = Type.GetType(mFieldData.mFieldTypeId);
+	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
-			if (tMember.mTypeCode == TypeCode.Object)
+			if (tMember.[Friend]mTypeCode == TypeCode.Object)
 			{
 				if (!tTarget.IsSubtypeOf(mTypeInstance))
 					Runtime.FatalError();
 				value = *(TMember*)targetDataAddr;
 			}
-	        else if (tMember.mTypeCode == TypeCode.Int32)
-	        {
-	            if (fieldType.mTypeCode == TypeCode.Int32)
-	            {
-	                if (tMember.mTypeCode != TypeCode.Int32)
-	                    Runtime.FatalError("Expected int");
-	                *(int32*)&value = *(int32*)targetDataAddr;
-	            }
-	            else
-	            {
-	                return .Err;//("Invalid type");
-	            }
-	        }
+			else if (fieldType.[Friend]mTypeCode == tMember.[Friend]mTypeCode)
+			{
+				Internal.MemCpy(&value, targetDataAddr, tMember.Size);
+			}
 	        else
 	        {
-	            return .Err;//("Invalid type");
+	            return .Err;
 	        }
 	        
 	        return .Ok;
@@ -215,66 +203,27 @@ namespace System.Reflection
 
 			Type tTarget;
 			void* targetDataAddr = GetDataPtrAndType(target, out tTarget);
-			//Type tTarget = target.RawGetType();
-			//void* targetDataAddr = (void*)&target;
 
 			if (!tTarget.IsSubtypeOf(mTypeInstance))
 			    Runtime.FatalError("Invalid type");   
 
 			targetDataAddr = (uint8*)targetDataAddr + mFieldData.mDataOffset;
 
-			Type fieldType = Type.GetType(mFieldData.mFieldTypeId);
+			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
-			/*if (fieldType.IsNullable)
-			{
-				var specializedType = (SpecializedGenericType)fieldType;
-				var genericArg = specializedType.GetGenericArg(0);
-
-				bool hasValue = *(bool*)((uint8*)targetDataAddr + genericArg.mSize);
-				if (!hasValue)
-					return .Err;
-				fieldType = genericArg;
-			}*/
-
-			//value.mStructType = (int)(void*)fieldType;
-
-			TypeCode typeCode = fieldType.mTypeCode;
+			TypeCode typeCode = fieldType.[Friend]mTypeCode;
 			if (typeCode == TypeCode.Enum)
-				typeCode = fieldType.UnderlyingType.mTypeCode;
+				typeCode = fieldType.UnderlyingType.[Friend]mTypeCode;
 
-		    /*if (typeCode == TypeCode.Int32)
+		    if (typeCode == TypeCode.Object)
 		    {
-		        *(int32*)&value.mData = *(int32*)targetDataAddr;
-		    }
-			else if (typeCode == TypeCode.Boolean)
-			{
-			    *(bool*)&value.mData = *(bool*)targetDataAddr;
-			}
-			else */if (typeCode == TypeCode.Object)
-		    {
-				value.mStructType = 0;
-		        value.mData = *(int*)targetDataAddr;
+				value.[Friend]mStructType = 0;
+		        value.[Friend]mData = *(int*)targetDataAddr;
 		    }
 			else
 			{
 				value = Variant.Create(fieldType, targetDataAddr);
 			}
-
-		    /*else if (fieldType.mSize <= sizeof(int))
-			{
-				value.mStructType = (int)(void*)fieldType;
-				Internal.MemCpy(&value.mData, targetDataAddr, fieldType.mSize);
-			}
-			else
-			{
-				value.mStructType = (int)(void*)fieldType;
-				void* data = new uint8[fieldType.mSize]*;
-				Internal.MemCpy(data, targetDataAddr, fieldType.mSize);
-				value.mData = (int)data;
-			}*/
-		    /*{
-		        return .Err;
-		    }*/
 
 			return value;
 		}
@@ -296,21 +245,21 @@ namespace System.Reflection
 #unwarn
 			void* targetDataAddr = (void*)(int)mFieldData.mConstValue;
 
-			Type fieldType = Type.GetType(mFieldData.mFieldTypeId);
-			value.mStructType = (int)(void*)fieldType;
+			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
+			value.[Friend]mStructType = (int)(void*)fieldType;
 
-			TypeCode typeCode = fieldType.mTypeCode;
+			TypeCode typeCode = fieldType.[Friend]mTypeCode;
 			if (typeCode == TypeCode.Enum)
-				typeCode = fieldType.UnderlyingType.mTypeCode;
+				typeCode = fieldType.UnderlyingType.[Friend]mTypeCode;
 			
 		    if (typeCode == TypeCode.Int32)
 		    {
-		        *(int32*)&value.mData = *(int32*)targetDataAddr;
+		        *(int32*)&value.[Friend]mData = *(int32*)targetDataAddr;
 		    }
 			else if (typeCode == TypeCode.Object)
 		    {
-				value.mStructType = 0;
-		        value.mData = (int)targetDataAddr;
+				value.[Friend]mStructType = 0;
+		        value.[Friend]mData = (int)targetDataAddr;
 		    }
 		    else
 		    {
@@ -320,13 +269,13 @@ namespace System.Reflection
 			return value;
 		}
 
-	    internal struct Enumerator : IEnumerator<FieldInfo>
+	    public struct Enumerator : IEnumerator<FieldInfo>
 	    {
 			BindingFlags mBindingFlags;
 	        TypeInstance mTypeInstance;
 	        int32 mIdx;
 
-	        internal this(TypeInstance typeInst, BindingFlags bindingFlags)
+	        public this(TypeInstance typeInst, BindingFlags bindingFlags)
 	        {
 	            mTypeInstance = typeInst;
 				mBindingFlags = bindingFlags;
@@ -350,9 +299,9 @@ namespace System.Reflection
 				for (;;)
 				{
 					mIdx++;
-					if (mIdx == mTypeInstance.mFieldDataCount)
+					if (mIdx == mTypeInstance.[Friend]mFieldDataCount)
 						return false;
-					var fieldData = &mTypeInstance.mFieldDataPtr[mIdx];
+					var fieldData = &mTypeInstance.[Friend]mFieldDataPtr[mIdx];
 					bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (fieldData.mFlags.HasFlag(FieldFlags.Static)));
 					matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!fieldData.mFlags.HasFlag(FieldFlags.Static)));
 					if (matches)
@@ -365,7 +314,7 @@ namespace System.Reflection
 	        {
 	            get
 	            {
-					var fieldData = &mTypeInstance.mFieldDataPtr[mIdx];
+					var fieldData = &mTypeInstance.[Friend]mFieldDataPtr[mIdx];
 	                return FieldInfo(mTypeInstance, fieldData);
 	            }
 	        }

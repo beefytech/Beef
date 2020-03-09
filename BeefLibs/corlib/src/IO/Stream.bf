@@ -179,15 +179,15 @@ namespace System.IO
 		// with a single allocation.
 		private sealed class ReadWriteTask : Task<int>, ITaskCompletionAction
 		{
-		    internal readonly bool _isRead;
-		    internal Stream _stream;
-		    internal uint8 [] _buffer;
-		    internal int _offset;
-		    internal int _count;
+		    readonly bool _isRead;
+		    Stream _stream;
+		    uint8 [] _buffer;
+		    int _offset;
+		    int _count;
 		    private AsyncCallback _callback;
 		    //private ExecutionContext _context;
 
-		    internal void ClearBeginState() // Used to allow the args to Read/Write to be made available for GC
+		    void ClearBeginState() // Used to allow the args to Read/Write to be made available for GC
 		    {
 		        _stream = null;
 		        _buffer = null;
@@ -243,7 +243,7 @@ namespace System.IO
 		    }
 		}
 
-		internal IAsyncResult BeginReadInternal(uint8[] buffer, int offset, int count, AsyncCallback callback, Object state, bool serializeAsynchronously)
+		IAsyncResult BeginReadInternal(uint8[] buffer, int offset, int count, AsyncCallback callback, Object state, bool serializeAsynchronously)
 		{
 			// To avoid a race with a stream's position pointer & generating ---- 
 			// conditions with internal buffer indexes in our own streams that 
@@ -270,12 +270,12 @@ namespace System.IO
 			    // The ReadWriteTask stores all of the parameters to pass to Read.
 			    // As we're currently inside of it, we can get the current task
 			    // and grab the parameters from it.
-			    var thisTask = Task.InternalCurrent as ReadWriteTask;
+			    var thisTask = Task.[Friend]InternalCurrent as ReadWriteTask;
 			    Contract.Assert(thisTask != null, "Inside ReadWriteTask, InternalCurrent should be the ReadWriteTask");
 
 			    // Do the Read and return the number of bytes read
-			    int bytesRead = thisTask._stream.TryRead(.(thisTask._buffer, thisTask._offset, thisTask._count));
-			    thisTask.ClearBeginState(); // just to help alleviate some memory pressure
+			    int bytesRead = thisTask.[Friend]_stream.TryRead(.(thisTask.[Friend]_buffer, thisTask.[Friend]_offset, thisTask.[Friend]_count));
+			    thisTask.[Friend]ClearBeginState(); // just to help alleviate some memory pressure
 			    return bytesRead;
 			}, state, this, buffer, offset, count, callback);
 
@@ -308,7 +308,7 @@ namespace System.IO
 		    {
 		        Runtime.FatalError();
 		    }
-		    else if (!readTask._isRead)
+		    else if (!readTask.[Friend]_isRead)
 		    {
 		        Runtime.FatalError();
 		    }

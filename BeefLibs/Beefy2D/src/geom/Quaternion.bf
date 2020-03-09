@@ -714,7 +714,7 @@ namespace Beefy.geom
             ThrowUnimplemented();
         }
 
-        internal Matrix4 ToMatrix()
+        public Matrix4 ToMatrix()
         {
             Matrix4 matrix = Matrix4.Identity;
             ToMatrix(out matrix);
@@ -762,7 +762,7 @@ namespace Beefy.geom
             matrix.m33 = 1.0f;
         }
 
-        internal Vector3 XYZ
+        public Vector3 XYZ
         {
             get
             {

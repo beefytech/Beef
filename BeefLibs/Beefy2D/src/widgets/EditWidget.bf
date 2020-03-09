@@ -915,11 +915,11 @@ namespace Beefy.widgets
 				mCursorTextPos = Math.Clamp(mCursorTextPos + (int32)ofs, 0, mData.mTextLength + 1);
 			if (HasSelection())
 			{				
-				if (((ofs > 0) && (mSelection.mValue.mStartPos >= index)) ||
-					((ofs < 0) && (mSelection.mValue.mStartPos > index)))
-					mSelection.mValue.mStartPos += (int32)ofs;
-				if (mSelection.mValue.mEndPos > index)
-					mSelection.mValue.mEndPos += (int32)ofs;
+				if (((ofs > 0) && (mSelection.Value.mStartPos >= index)) ||
+					((ofs < 0) && (mSelection.Value.mStartPos > index)))
+					mSelection.ValueRef.mStartPos += (int32)ofs;
+				if (mSelection.Value.mEndPos > index)
+					mSelection.ValueRef.mEndPos += (int32)ofs;
 			}
 		}
 
@@ -3052,8 +3052,8 @@ namespace Beefy.widgets
                             lineCharIdx--;
 							if (prevSelection != null)
 							{
-								prevSelection.mValue.mStartPos--;
-								prevSelection.mValue.mEndPos--;
+								prevSelection.ValueRef.mStartPos--;
+								prevSelection.ValueRef.mEndPos--;
 							}
                             Backspace();
                             if (c == '\t')

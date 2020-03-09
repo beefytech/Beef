@@ -73,7 +73,7 @@ namespace IDE.Compiler
 		public bool mFailed;
 
         public int32 mId = sCurId++;
-        internal String mDbgStr ~ delete _;
+        public String mDbgStr ~ delete _;
 
         public this(void* nativePassInstance)
         {

@@ -328,7 +328,7 @@ namespace System
 			}
 		}
 
-		internal static bool EqualsHelper(char8* a, char8* b, int length)
+		public static bool EqualsHelper(char8* a, char8* b, int length)
 		{
 			for (int i = 0; i < length; i++)
 				if (a[i] != b[i])
@@ -409,7 +409,7 @@ namespace System
 			mAllocSizeAndFlags = (uint32)newSize | DynAllocFlag | StrPtrFlag;
 		}
 
-		internal void Append(char8* appendPtr, int length)
+		public void Append(char8* appendPtr, int length)
 		{
 			int32 newCurrentIndex = (int32)(mLength + length);
 			if (newCurrentIndex >= AllocSize)

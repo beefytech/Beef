@@ -150,7 +150,7 @@ namespace System
 			static Type Object_GetType(Object obj)
 			{
 #if BF_DBG_RUNTIME
-				return obj.RawGetType();
+				return obj.[Friend]RawGetType();
 #else
 				return null;
 #endif

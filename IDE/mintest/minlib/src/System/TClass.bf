@@ -10,3 +10,17 @@ class Foogie<T> where T : IHashable
 		val.GetHashCode();
 	}
 }
+
+struct Zorbble
+{
+	public int mA;
+	public void MainMethod()
+	{
+
+	}
+
+	static void Zoff()
+	{
+
+	}
+}

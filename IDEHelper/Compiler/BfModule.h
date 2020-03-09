@@ -476,6 +476,7 @@ public:
 	BfScopedInvocationTarget* mScopedInvocationTarget;
 	int mAlignOverride;
 	BfCaptureInfo mCaptureInfo;
+	bool mIsFriend;
 
 public:
 	BfAllocTarget()
@@ -485,6 +486,7 @@ public:
 		mCustomAllocator = NULL;
 		mScopedInvocationTarget = NULL;
 		mAlignOverride = -1;
+		mIsFriend = false;
 	}
 
 	BfAllocTarget(BfScopeData* scopeData)
@@ -1405,7 +1407,7 @@ public:
 	void AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
 	bool CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate);
 	void GetAccessAllowed(BfTypeInstance* checkType, bool& allowProtected, bool& allowPrivate);
-	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProtection memberProtection, BfTypeInstance* lookupStartType);
+	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType);
 	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);	
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	
@@ -1584,6 +1586,7 @@ public:
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
 	void CheckInjectNewRevision(BfTypeInstance* typeInstance);
 	bool InitType(BfType* resolvedTypeRef, BfPopulateType populateType);
+	BfProtection FixProtection(BfProtection protection, BfProject* defProject);
 	bool CheckAccessMemberProtection(BfProtection protection, BfType* memberType);
 	bool CheckDefineMemberProtection(BfProtection protection, BfType* memberType);	
 	void CheckMemberNames(BfTypeInstance* typeInst);	

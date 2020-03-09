@@ -20,19 +20,19 @@ namespace System
 		public const bool IsFileSystemCaseSensitive = true;
 #endif
 
-		internal static String GetResourceString(String key)
+		static String GetResourceString(String key)
 		{
 			return key;
             //return GetResourceFromDefault(key);
 		}
 
-		internal static String GetResourceString(String key, params Object[] values)
+		static String GetResourceString(String key, params Object[] values)
 		{
 			return key;
             //return GetResourceFromDefault(key);
 		}
 
-		internal static String GetRuntimeResourceString(String key, String defaultValue = null)
+		static String GetRuntimeResourceString(String key, String defaultValue = null)
 		{
 			if (defaultValue != null)
 				return defaultValue;

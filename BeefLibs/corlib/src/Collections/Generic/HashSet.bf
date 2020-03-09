@@ -988,7 +988,7 @@ namespace System.Collections.Generic
 		}*/
 
 		/// Copies this to an array. Used for DebugView
-		internal T[] ToArray()
+		T[] ToArray()
 		{
 			T[] newArray = new T[Count];
 			CopyTo(newArray);
@@ -1074,17 +1074,17 @@ namespace System.Collections.Generic
 		#endregion
 
 		// used for set checking operations (using enumerables) that rely on counting
-		internal struct ElementCount
+		struct ElementCount
 		{
-			internal int32 mUniqueCount;
-			internal int32 mUnfoundCount;
+			public int32 mUniqueCount;
+			public int32 mUnfoundCount;
 		}
 
-		internal struct Slot
+		struct Slot
 		{
-			internal int32 mHashCode;      // Lower 31 bits of hash code, -1 if unused
-			internal T mValue;
-			internal int32 mNext;          // Index of next entry, -1 if last
+			public int32 mHashCode;      // Lower 31 bits of hash code, -1 if unused
+			public T mValue;
+			public int32 mNext;          // Index of next entry, -1 if last
 		}
 
 		public struct Enumerator : IEnumerator<T>
@@ -1096,7 +1096,7 @@ namespace System.Collections.Generic
 #endif
 			private T mCurrent;
 
-			internal this(HashSet<T> set)
+			public this(HashSet<T> set)
 			{
 				this.mSet = set;
 				mIndex = 0;

@@ -127,19 +127,19 @@ namespace System
 		public static void Sort<T>(T[] array, Comparison<T> comp)
 		{
 			var sorter = Sorter<T, void>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
-			sorter.Sort(0, array.[Friend]mLength);
+			sorter.[Friend]Sort(0, array.[Friend]mLength);
 		}
 
 		public static void Sort<T, T2>(T[] keys, T2[] items, Comparison<T> comp)
 		{
 			var sorter = Sorter<T, T2>(&keys.[Friend]mFirstElement, &items.[Friend]mFirstElement, keys.[Friend]mLength, comp);
-			sorter.Sort(0, keys.[Friend]mLength);
+			sorter.[Friend]Sort(0, keys.[Friend]mLength);
 		}
 
 		public static void Sort<T>(T[] array, int index, int count, Comparison<T> comp)
 		{
 			var sorter = Sorter<T, void>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
-			sorter.Sort(index, count);
+			sorter.[Friend]Sort(index, count);
 		}
 	}
 
@@ -228,7 +228,7 @@ namespace System
         protected override void GCMarkMembers()
         {
 			let type = typeof(T);
-			if ((type.mTypeFlags & .WantsMark) == 0)
+			if ((type.[Friend]mTypeFlags & .WantsMark) == 0)
 				return;
             for (int i = 0; i < mLength; i++)
             {

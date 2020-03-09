@@ -31,62 +31,62 @@ namespace System.Globalization {
     {
 
         // Number of 100ns (10E-7 second) ticks per time unit
-        internal const int64 TicksPerMillisecond   = 10000;
-        internal const int64 TicksPerSecond        = TicksPerMillisecond * 1000;
-        internal const int64 TicksPerMinute        = TicksPerSecond * 60;
-        internal const int64 TicksPerHour          = TicksPerMinute * 60;
-        internal const int64 TicksPerDay           = TicksPerHour * 24;
+        protected const int64 TicksPerMillisecond   = 10000;
+        protected const int64 TicksPerSecond        = TicksPerMillisecond * 1000;
+        protected const int64 TicksPerMinute        = TicksPerSecond * 60;
+        protected const int64 TicksPerHour          = TicksPerMinute * 60;
+        protected const int64 TicksPerDay           = TicksPerHour * 24;
 
         // Number of milliseconds per time unit
-        internal const int MillisPerSecond        = 1000;
-        internal const int MillisPerMinute        = MillisPerSecond * 60;
-        internal const int MillisPerHour          = MillisPerMinute * 60;
-        internal const int MillisPerDay           = MillisPerHour * 24;
+        protected const int MillisPerSecond        = 1000;
+        protected const int MillisPerMinute        = MillisPerSecond * 60;
+        protected const int MillisPerHour          = MillisPerMinute * 60;
+        protected const int MillisPerDay           = MillisPerHour * 24;
 
         // Number of days in a non-leap year
-        internal const int DaysPerYear            = 365;
+        protected const int DaysPerYear            = 365;
         // Number of days in 4 years
-        internal const int DaysPer4Years          = DaysPerYear * 4 + 1;
+        protected const int DaysPer4Years          = DaysPerYear * 4 + 1;
         // Number of days in 100 years
-        internal const int DaysPer100Years        = DaysPer4Years * 25 - 1;
+        protected const int DaysPer100Years        = DaysPer4Years * 25 - 1;
         // Number of days in 400 years
-        internal const int DaysPer400Years        = DaysPer100Years * 4 + 1;
+        protected const int DaysPer400Years        = DaysPer100Years * 4 + 1;
 
         // Number of days from 1/1/0001 to 1/1/10000
-        internal const int DaysTo10000            = DaysPer400Years * 25 - 366;
+        protected const int DaysTo10000            = DaysPer400Years * 25 - 366;
 
-        internal const int64 MaxMillis             = (int64)DaysTo10000 * MillisPerDay;
+        protected const int64 MaxMillis             = (int64)DaysTo10000 * MillisPerDay;
 
         //
         //  Calendar ID Values.  This is used to get data from calendar.nlp.
         //  The order of calendar ID means the order of data items in the table.
         //
 
-        internal const int CAL_GREGORIAN                  = 1 ;     // Gregorian (localized) calendar
-        internal const int CAL_GREGORIAN_US               = 2 ;     // Gregorian (U.S.) calendar
-        internal const int CAL_JAPAN                      = 3 ;     // Japanese Emperor Era calendar
-        internal const int CAL_TAIWAN                     = 4 ;     // Taiwan Era calendar
-        internal const int CAL_KOREA                      = 5 ;     // Korean Tangun Era calendar
-        internal const int CAL_HIJRI                      = 6 ;     // Hijri (Arabic Lunar) calendar
-        internal const int CAL_THAI                       = 7 ;     // Thai calendar
-        internal const int CAL_HEBREW                     = 8 ;     // Hebrew (Lunar) calendar
-        internal const int CAL_GREGORIAN_ME_FRENCH        = 9 ;     // Gregorian Middle East French calendar
-        internal const int CAL_GREGORIAN_ARABIC           = 10;     // Gregorian Arabic calendar
-        internal const int CAL_GREGORIAN_XLIT_ENGLISH     = 11;     // Gregorian Transliterated English calendar
-        internal const int CAL_GREGORIAN_XLIT_FRENCH      = 12;
-        internal const int CAL_JULIAN                     = 13;
-        internal const int CAL_JAPANESELUNISOLAR          = 14;
-        internal const int CAL_CHINESELUNISOLAR           = 15;
-        internal const int CAL_SAKA                       = 16;     // reserved to match Office but not implemented in our code
-        internal const int CAL_LUNAR_ETO_CHN              = 17;     // reserved to match Office but not implemented in our code
-        internal const int CAL_LUNAR_ETO_KOR              = 18;     // reserved to match Office but not implemented in our code
-        internal const int CAL_LUNAR_ETO_ROKUYOU          = 19;     // reserved to match Office but not implemented in our code
-        internal const int CAL_KOREANLUNISOLAR            = 20;
-        internal const int CAL_TAIWANLUNISOLAR            = 21;
-        internal const int CAL_PERSIAN                    = 22;
-        internal const int CAL_UMALQURA                   = 23;
+        const int CAL_GREGORIAN                  = 1 ;     // Gregorian (localized) calendar
+        const int CAL_GREGORIAN_US               = 2 ;     // Gregorian (U.S.) calendar
+        const int CAL_JAPAN                      = 3 ;     // Japanese Emperor Era calendar
+        const int CAL_TAIWAN                     = 4 ;     // Taiwan Era calendar
+        const int CAL_KOREA                      = 5 ;     // Korean Tangun Era calendar
+        const int CAL_HIJRI                      = 6 ;     // Hijri (Arabic Lunar) calendar
+        const int CAL_THAI                       = 7 ;     // Thai calendar
+        const int CAL_HEBREW                     = 8 ;     // Hebrew (Lunar) calendar
+        const int CAL_GREGORIAN_ME_FRENCH        = 9 ;     // Gregorian Middle East French calendar
+        const int CAL_GREGORIAN_ARABIC           = 10;     // Gregorian Arabic calendar
+        const int CAL_GREGORIAN_XLIT_ENGLISH     = 11;     // Gregorian Transliterated English calendar
+        const int CAL_GREGORIAN_XLIT_FRENCH      = 12;
+        const int CAL_JULIAN                     = 13;
+        const int CAL_JAPANESELUNISOLAR          = 14;
+        const int CAL_CHINESELUNISOLAR           = 15;
+        const int CAL_SAKA                       = 16;     // reserved to match Office but not implemented in our code
+        const int CAL_LUNAR_ETO_CHN              = 17;     // reserved to match Office but not implemented in our code
+        const int CAL_LUNAR_ETO_KOR              = 18;     // reserved to match Office but not implemented in our code
+        const int CAL_LUNAR_ETO_ROKUYOU          = 19;     // reserved to match Office but not implemented in our code
+        const int CAL_KOREANLUNISOLAR            = 20;
+        const int CAL_TAIWANLUNISOLAR            = 21;
+        const int CAL_PERSIAN                    = 22;
+        const int CAL_UMALQURA                   = 23;
 
-        internal int m_currentEraValue = -1;
+        int m_currentEraValue = -1;
 
         private bool m_isReadOnly = false;
 
@@ -116,7 +116,7 @@ namespace System.Globalization {
         ///
         // This can not be abstract, otherwise no one can create a subclass of Calendar.
         //
-        internal virtual int ID {
+        protected virtual int ID {
             get {
                 return (-1);
             }
@@ -126,7 +126,7 @@ namespace System.Globalization {
         // Return the Base calendar ID for calendars that didn't have defined data in calendarData
         //
 
-        internal virtual int BaseCalendarID
+        protected virtual int BaseCalendarID
         {
             get { return ID; }
         }
@@ -189,7 +189,7 @@ namespace System.Globalization {
 			Runtime.NotImplemented();
         }
 
-        internal Result<void> VerifyWritable()
+        Result<void> VerifyWritable()
         {
             if (m_isReadOnly)
             {
@@ -199,7 +199,7 @@ namespace System.Globalization {
 			return .Ok;
         }
 
-        internal void SetReadOnlyState(bool readOnly)
+        void SetReadOnlyState(bool readOnly)
         {
             m_isReadOnly = readOnly;
         }
@@ -214,14 +214,14 @@ namespace System.Globalization {
         ** The value is from calendar.nlp.
         ============================================================================*/
 
-        internal virtual int CurrentEraValue
+        protected virtual int CurrentEraValue
 		{
             get
 			{
                 // The following code assumes that the current era value can not be -1.
                 if (m_currentEraValue == -1) {
                     Contract.Assert(BaseCalendarID > 0, "[Calendar.CurrentEraValue] Expected ID > 0");
-                    m_currentEraValue = CalendarData.GetCalendarData(BaseCalendarID).iCurrentEra;
+                    m_currentEraValue = CalendarData.[Friend]GetCalendarData(BaseCalendarID).[Friend]iCurrentEra;
                 }
                 return (m_currentEraValue);
             }
@@ -231,9 +231,9 @@ namespace System.Globalization {
 
         public const int CurrentEra = 0;
 
-        internal int twoDigitYearMax = -1;
+        protected int twoDigitYearMax = -1;
 
-        internal static Result<void> CheckAddResult(int64 ticks, DateTime minValue, DateTime maxValue) {
+        static Result<void> CheckAddResult(int64 ticks, DateTime minValue, DateTime maxValue) {
             if (ticks < minValue.Ticks || ticks > maxValue.Ticks) {
 				return .Err;
                 /*throw new ArgumentException(
@@ -244,7 +244,7 @@ namespace System.Globalization {
 			return .Ok;
         }
 
-        internal Result<DateTime> Add(DateTime time, double value, int scale) {
+        Result<DateTime> Add(DateTime time, double value, int scale) {
             // From ECMA CLI spec, Partition III, section 3.27:
             //
             // If overflow occurs converting a floating-point type to an integer, or if the floating-point value 
@@ -516,7 +516,7 @@ namespace System.Globalization {
         **      So Week of year = (GetDayOfYear(time) + offset - 1) / 7 + 1
         ============================================================================*/
 
-        internal Result<int> GetFirstDayWeekOfYear(DateTime time, int firstDayOfWeek) {
+        Result<int> GetFirstDayWeekOfYear(DateTime time, int firstDayOfWeek) {
             int dayOfYear = Try!(GetDayOfYear(time)) - 1;   // Make the day of year to be 0-based, so that 1/1 is day 0.
             // Calculate the day of week for the first day of the year.
             // dayOfWeek - (dayOfYear % 7) is the day of week for the first day of this year.  Note that
@@ -755,7 +755,7 @@ namespace System.Globalization {
 
         public abstract Result<DateTime> ToDateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int era);
 
-        internal virtual bool TryToDateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int era, out DateTime result) {
+        protected virtual bool TryToDateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int era, out DateTime result) {
             result = DateTime.MinValue;
             switch (ToDateTime(year, month, day, hour, minute, second, millisecond, era))
 			{
@@ -766,15 +766,15 @@ namespace System.Globalization {
 			}
         }
         
-        internal virtual bool IsValidYear(int year, int era) {
+        protected virtual bool IsValidYear(int year, int era) {
             return (year >= GetYear(MinSupportedDateTime).Get() && year <= GetYear(MaxSupportedDateTime).Get());
         }
         
-        internal virtual bool IsValidMonth(int year, int month, int era) {
+        protected virtual bool IsValidMonth(int year, int month, int era) {
             return (IsValidYear(year, era) && month >= 1 && month <= GetMonthsInYear(year, era).Get());
         }
         
-        internal virtual bool IsValidDay(int year, int month, int day, int era)
+        protected virtual bool IsValidDay(int year, int month, int day, int era)
         {
             return (IsValidMonth(year, month, era) && day >= 1 && day <= GetDaysInMonth(year, month, era).Get());
         }
@@ -822,7 +822,7 @@ namespace System.Globalization {
 
         // Return the tick count corresponding to the given hour, minute, second.
         // Will check the if the parameters are valid.
-        internal static Result<int64> TimeToTicks(int hour, int minute, int second, int millisecond)
+        static Result<int64> TimeToTicks(int hour, int minute, int second, int millisecond)
         {
             if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60 && second >=0 && second < 60)
             {
@@ -834,16 +834,16 @@ namespace System.Globalization {
                                     Environment.GetResourceString("ArgumentOutOfRange_Range"), 0, MillisPerSecond - 1));*/
 					return .Err;
                 }
-                return Try!(TimeSpan.TimeToTicks(hour, minute, second)) + millisecond * TicksPerMillisecond;
+                return Try!(TimeSpan.[Friend]TimeToTicks(hour, minute, second)) + millisecond * TicksPerMillisecond;
             }
             //throw new ArgumentOutOfRangeException(null, Environment.GetResourceString("ArgumentOutOfRange_BadHourMinuteSecond"));
 			return .Err;
         }
 
-        internal static int GetSystemTwoDigitYearSetting(int CalID, int defaultYearValue)
+        protected static int GetSystemTwoDigitYearSetting(int CalID, int defaultYearValue)
         {
             // Call nativeGetTwoDigitYearMax
-            int twoDigitYearMax = CalendarData.nativeGetTwoDigitYearMax(CalID);
+            int twoDigitYearMax = CalendarData.[Friend]nativeGetTwoDigitYearMax(CalID);
             if (twoDigitYearMax < 0)
             {
                 twoDigitYearMax = defaultYearValue;

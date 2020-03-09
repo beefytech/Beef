@@ -745,7 +745,7 @@ namespace System
 			Append(str.Ptr + offset, length);
 		}
 
-		internal void Append(char8* appendPtr)
+		public void Append(char8* appendPtr)
 		{
 			int_strsize length = StrLen(appendPtr);
 			int_strsize newCurrentIndex = mLength + length;
@@ -767,7 +767,7 @@ namespace System
 			mLength = newCurrentIndex;
 		}
 
-		internal void Append(char8* appendPtr, int length)
+		public void Append(char8* appendPtr, int length)
 		{
 			int newCurrentIndex = mLength + length;
 			char8* ptr;
@@ -788,7 +788,7 @@ namespace System
 			mLength = (int_strsize)newCurrentIndex;
 		}
 
-		internal void Append(char8[] arr, int idx, int length)
+		public void Append(char8[] arr, int idx, int length)
 		{
 			int newCurrentIndex = mLength + length;
 			char8* ptr;
@@ -1474,7 +1474,7 @@ namespace System
 			mLength = newLength;
 		}
 
-		internal static bool EqualsHelper(char8* a, char8* b, int length)
+		static bool EqualsHelper(char8* a, char8* b, int length)
 		{
 			for (int i = 0; i < length; i++)
 				if (a[i] != b[i])
@@ -1482,7 +1482,7 @@ namespace System
 			return true;
 		}
 
-		internal static bool EqualsIgnoreCaseHelper(char8* a, char8* b, int length)
+		static bool EqualsIgnoreCaseHelper(char8* a, char8* b, int length)
 		{
 			char8* curA = a;
 			char8* curB = b;
@@ -2682,7 +2682,7 @@ namespace System
 				return true;
 			if ((ptr1 == null) || (ptr2 == null))
 				return false;
-			return String.EqualsHelper(ptr1, ptr2, val1.mLength);
+			return String.[Friend]EqualsHelper(ptr1, ptr2, val1.mLength);
 		}
 
 		public static bool operator==(StringView val1, String val2)
@@ -2695,7 +2695,7 @@ namespace System
 				return true;
 			if ((ptr1 == null) || (ptr2 == null))
 				return false;
-			return String.EqualsHelper(ptr1, ptr2, val1.mLength);
+			return String.[Friend]EqualsHelper(ptr1, ptr2, val1.mLength);
 		}
 
 		public static int Compare(StringView val1, StringView val2, bool ignoreCase = false)
@@ -2710,7 +2710,7 @@ namespace System
 		{
 			if (mLength != str.[Friend]mLength)
 				return false;
-			return String.EqualsHelper(str.Ptr, mPtr, mLength);
+			return String.[Friend]EqualsHelper(str.Ptr, mPtr, mLength);
 		}
 
 		public bool Equals(StringView str, bool ignoreCase)
@@ -2718,8 +2718,8 @@ namespace System
 			if (mLength != str.[Friend]mLength)
 				return false;
 			if (ignoreCase)
-				return String.EqualsIgnoreCaseHelper(str.Ptr, mPtr, mLength);
-			return String.EqualsHelper(str.Ptr, mPtr, mLength);
+				return String.[Friend]EqualsIgnoreCaseHelper(str.Ptr, mPtr, mLength);
+			return String.[Friend]EqualsHelper(str.Ptr, mPtr, mLength);
 		}
 
 		public int IndexOf(StringView subStr, bool ignoreCase = false)
@@ -2813,8 +2813,8 @@ namespace System
 			if (mLength < b.mLength)
 				return false;
 			if (comparisonType == StringComparison.OrdinalIgnoreCase)
-				return String.EqualsIgnoreCaseHelper(this.Ptr, b.Ptr, b.Length);
-			return String.EqualsHelper(this.Ptr, b.Ptr, b.mLength);
+				return String.[Friend]EqualsIgnoreCaseHelper(this.Ptr, b.Ptr, b.Length);
+			return String.[Friend]EqualsHelper(this.Ptr, b.Ptr, b.mLength);
 		}
 
 		public bool EndsWith(StringView b, StringComparison comparisonType = StringComparison.Ordinal)
@@ -2822,8 +2822,8 @@ namespace System
 			if (mLength < b.mLength)
 				return false;
 			if (comparisonType == StringComparison.OrdinalIgnoreCase)
-				return String.EqualsIgnoreCaseHelper(Ptr + mLength - b.mLength, b.Ptr, b.mLength);
-			return String.EqualsHelper(this.Ptr + mLength - b.mLength, b.Ptr, b.mLength);
+				return String.[Friend]EqualsIgnoreCaseHelper(Ptr + mLength - b.mLength, b.Ptr, b.mLength);
+			return String.[Friend]EqualsHelper(this.Ptr + mLength - b.mLength, b.Ptr, b.mLength);
 		}
 
 		public void TrimEnd() mut

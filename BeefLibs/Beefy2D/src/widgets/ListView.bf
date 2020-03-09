@@ -27,7 +27,7 @@ namespace Beefy.widgets
 		//int mIdx = sIdx++;
 		//static int sIdx = 0;
 
-        internal this()
+        public this()
         {
         }
 
@@ -715,7 +715,7 @@ namespace Beefy.widgets
             return null;
         }
 
-        internal virtual ListViewItem CreateListViewItem_Internal()
+        public virtual ListViewItem CreateListViewItem_Internal()
         {
             var listViewItem = CreateListViewItem();
 			listViewItem.Init(this);

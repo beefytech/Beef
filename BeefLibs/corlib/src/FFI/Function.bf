@@ -63,7 +63,7 @@ namespace System.FFI
 			if (type.IsTypedPrimitive)
 				type = type.UnderlyingType;
 
-			switch (type.mTypeCode)
+			switch (type.[Friend]mTypeCode)
 			{
 			case .None:
 				return &FFIType.Void;
@@ -100,8 +100,8 @@ namespace System.FFI
 				}
 
 				FFIType* ffiType = (FFIType*)allocBytes;
-				ffiType.mSize = type.mSize;
-				ffiType.mAlignment = type.mAlign;
+				ffiType.mSize = type.[Friend]mSize;
+				ffiType.mAlignment = type.[Friend]mAlign;
 				ffiType.mElements = null;
 				ffiType.mTypeKind = .Struct;
 				return ffiType;

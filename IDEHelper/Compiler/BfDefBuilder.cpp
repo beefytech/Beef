@@ -370,7 +370,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 }
 
 BfProtection BfDefBuilder::GetProtection(BfTokenNode* protectionToken)
-{	
+{		
 	if (protectionToken == NULL)
 	{
 		if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
@@ -380,9 +380,9 @@ BfProtection BfDefBuilder::GetProtection(BfTokenNode* protectionToken)
 	}
 
 	if (protectionToken->GetToken() == BfToken_Public)
-		return BfProtection_Public;
+		return BfProtection_Public;	
 	if (protectionToken->GetToken() == BfToken_Protected)
-		return BfProtection_Protected;		
+		return BfProtection_Protected;
 	return BfProtection_Private;
 }
 
@@ -412,11 +412,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	methodDef->mMethodDeclaration = methodDeclaration;
 	methodDef->mExplicitInterface = methodDeclaration->mExplicitInterface;
 	methodDef->mReturnTypeRef = methodDeclaration->mReturnType;	
-	methodDef->mProtection = GetProtection(methodDeclaration->mProtectionSpecifier);
-	//if (mCurTypeDef->mIsPartial)
-	//methodDef->mProtection = BfProtection_Public;
-	if (methodDeclaration->mInternalSpecifier != NULL) // TODO: Do this properly
-		methodDef->mProtection = BfProtection_Public;
+	methodDef->mProtection = GetProtection(methodDeclaration->mProtectionSpecifier);	
 	methodDef->mIsReadOnly = methodDeclaration->mReadOnlySpecifier != NULL;
 	methodDef->mIsStatic = methodDeclaration->mStaticSpecifier != NULL;
 	methodDef->mIsVirtual = methodDeclaration->mVirtualSpecifier != NULL;	
@@ -826,9 +822,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	BfPropertyDef* propertyDef = new BfPropertyDef();
 	mCurTypeDef->mProperties.push_back(propertyDef);
-	propertyDef->mProtection = GetProtection(propertyDeclaration->mProtectionSpecifier);
-	if (propertyDeclaration->mInternalSpecifier != NULL) // TODO: Do this properly
-		propertyDef->mProtection = BfProtection_Public;
+	propertyDef->mProtection = GetProtection(propertyDeclaration->mProtectionSpecifier);	
 	propertyDef->mIdx = (int)mCurTypeDef->mProperties.size() - 1;
 	propertyDef->mIsConst = false;
 	propertyDef->mIsStatic = propertyDeclaration->mStaticSpecifier != NULL;
@@ -1013,9 +1007,7 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 	if (mCurTypeDef->mIsPartial)
 		fieldDef->mProtection = BfProtection_Public;
 	else if (isEnumEntryDecl)
-		fieldDef->mProtection = BfProtection_Public;
-	if (fieldDeclaration->mInternalSpecifier != NULL) // TODO: Do this properly
-		fieldDef->mProtection = BfProtection_Public;
+		fieldDef->mProtection = BfProtection_Public;	
 	fieldDef->mIsReadOnly = fieldDeclaration->mReadOnlySpecifier != NULL;	
 	fieldDef->mIsInline = (fieldDeclaration->mReadOnlySpecifier != NULL) && (fieldDeclaration->mReadOnlySpecifier->GetToken() == BfToken_Inline);
 	fieldDef->mIsExtern = (fieldDeclaration->mExternSpecifier != NULL);
@@ -1271,15 +1263,13 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	
 	BfLogSys(mCurSource->mSystem, "DefBuilder %p %p TypeDecl:%s\n", mCurTypeDef, mCurSource, mCurTypeDef->mName->ToString().mPtr);
 
-	mCurTypeDef->mProtection = (outerTypeDef == NULL) ? BfProtection_Public : BfProtection_Private;
-	if (typeDeclaration->mInternalSpecifier != NULL)
-		mCurTypeDef->mProtection = BfProtection_Public;
+	mCurTypeDef->mProtection = (outerTypeDef == NULL) ? BfProtection_Public : BfProtection_Private;	
 	if (typeDeclaration->mProtectionSpecifier != NULL)
 	{
 		if ((outerTypeDef == NULL) && (typeDeclaration->mProtectionSpecifier->GetToken() != BfToken_Public))
 		{
 			//CS1527
-			Fail("Elements defined in a namespace cannot be explicitly declared as private, protected, or protected internal", typeDeclaration->mProtectionSpecifier);
+			Fail("Elements defined in a namespace cannot be explicitly declared as private or protected", typeDeclaration->mProtectionSpecifier);
 		}
 		else
 		{
@@ -1305,8 +1295,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		HashNode(*mSignatureHashCtx, baseClassNode);
 	HashNode(*mSignatureHashCtx, typeDeclaration->mAttributes);
 	HashNode(*mSignatureHashCtx, typeDeclaration->mAbstractSpecifier);
-	HashNode(*mSignatureHashCtx, typeDeclaration->mSealedSpecifier);
-	HashNode(*mSignatureHashCtx, typeDeclaration->mInternalSpecifier);
+	HashNode(*mSignatureHashCtx, typeDeclaration->mSealedSpecifier);	
 	HashNode(*mSignatureHashCtx, typeDeclaration->mProtectionSpecifier);
 	HashNode(*mSignatureHashCtx, typeDeclaration->mPartialSpecifier);
 	HashNode(*mSignatureHashCtx, typeDeclaration->mNameNode);

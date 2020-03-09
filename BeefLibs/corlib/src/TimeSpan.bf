@@ -24,13 +24,13 @@ namespace System
         private const int32 MillisPerHour = MillisPerMinute * 60;   //  3,600,000
         private const int32 MillisPerDay = MillisPerHour * 24;      // 86,400,000
 
-        internal const int64 MaxSeconds = Int64.MaxValue / TicksPerSecond;
-        internal const int64 MinSeconds = Int64.MinValue / TicksPerSecond;
+        protected const int64 MaxSeconds = Int64.MaxValue / TicksPerSecond;
+        protected const int64 MinSeconds = Int64.MinValue / TicksPerSecond;
 
-        internal const int64 MaxMilliSeconds = Int64.MaxValue / TicksPerMillisecond;
-        internal const int64 MinMilliSeconds = Int64.MinValue / TicksPerMillisecond;
+        protected const int64 MaxMilliSeconds = Int64.MaxValue / TicksPerMillisecond;
+        protected const int64 MinMilliSeconds = Int64.MinValue / TicksPerMillisecond;
         
-        internal const int64 TicksPerTenthSecond = TicksPerMillisecond * 100;
+        protected const int64 TicksPerTenthSecond = TicksPerMillisecond * 100;
 
         public static readonly TimeSpan Zero = TimeSpan(0);
 
@@ -134,7 +134,7 @@ namespace System
             get { return (double)(int64)this * SecondsPerTick; }
         }
 
-		internal static Result<int64> TimeToTicks(int hour, int minute, int second) {
+		protected static Result<int64> TimeToTicks(int hour, int minute, int second) {
 		    // totalSeconds is bounded by 2^31 * 2^12 + 2^31 * 2^8 + 2^31,
 		    // which is less than 2^44, meaning we won't overflow totalSeconds.
 		    int64 totalSeconds = (int64)hour * 3600 + (int64)minute * 60 + (int64)second;
@@ -152,17 +152,17 @@ namespace System
 
 		public override void ToString(String outStr)
 		{
-		    TimeSpanFormat.Format(this, .(), null, outStr);
+		    TimeSpanFormat.[Friend]Format(this, .(), null, outStr);
 		}
 
 		public void ToString(String outStr, String format)
 		{
-		    TimeSpanFormat.Format(this, format, null, outStr);
+		    TimeSpanFormat.[Friend]Format(this, format, null, outStr);
 		}
 
 		public void ToString(String outStr, String format, IFormatProvider formatProvider)
 		{
-		    TimeSpanFormat.Format(this, format, formatProvider, outStr);
+		    TimeSpanFormat.[Friend]Format(this, format, formatProvider, outStr);
 		}
     }
 }

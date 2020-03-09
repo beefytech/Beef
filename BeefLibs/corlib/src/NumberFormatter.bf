@@ -36,7 +36,7 @@ using System.Threading;
 
 namespace System
 {
-	internal sealed class NumberFormatter
+	sealed class NumberFormatter
 	{
 		#region Static Fields
 

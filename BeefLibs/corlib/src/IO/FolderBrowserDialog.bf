@@ -273,13 +273,13 @@ namespace System.IO
 			}
 		}
 
-		internal struct COMDLG_FILTERSPEC
+		struct COMDLG_FILTERSPEC
 		{
-		    internal char16* pszName;
-		    internal char16* pszSpec;
+		    public char16* pszName;
+		    public char16* pszSpec;
 		}
 
-		internal enum FDAP : uint32
+		enum FDAP : uint32
 		{
 		    FDAP_BOTTOM = 0x00000000,
 		    FDAP_TOP = 0x00000001,

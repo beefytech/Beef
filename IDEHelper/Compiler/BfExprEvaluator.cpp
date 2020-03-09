@@ -1003,8 +1003,8 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 
 bool BfMethodMatcher::WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInstance* startTypeInstance, BfTypeInstance* checkTypeInstance, BfMethodDef* checkMethod)
 {
-	MatchFailKind matchFailKind = MatchFailKind_None;
-	if (!mModule->CheckProtection(flags, checkTypeInstance, checkMethod->mProtection, startTypeInstance))
+	MatchFailKind matchFailKind = MatchFailKind_None;	
+	if (!mModule->CheckProtection(flags, checkTypeInstance, checkMethod->mDeclaringType->mProject, checkMethod->mProtection, startTypeInstance))
 	{
 		if ((mBypassVirtual) && (checkMethod->mProtection == BfProtection_Protected) && (mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, startTypeInstance)))
 		{
@@ -1777,7 +1777,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 			}
 
 			MatchFailKind matchFailKind = MatchFailKind_None;			
-			if (!mModule->CheckProtection(protectionCheckFlags, curTypeInst, checkMethod->mProtection, typeInstance))
+			if (!mModule->CheckProtection(protectionCheckFlags, curTypeInst, checkMethod->mDeclaringType->mProject, checkMethod->mProtection, typeInstance))
 			{
 				if ((mBypassVirtual) && (checkMethod->mProtection == BfProtection_Protected) && (mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, typeInstance)))
 				{
@@ -3307,7 +3307,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				auto field = nextField;
 				nextField = nextField->mNextWithSameName;
 								
-				if ((!isFailurePass) && (!mModule->CheckProtection(protectionCheckFlags, curCheckType, field->mProtection, startCheckType)))
+				if ((!isFailurePass) && (!mModule->CheckProtection(protectionCheckFlags, curCheckType, field->mDeclaringType->mProject, field->mProtection, startCheckType)))
 				{					
 					continue;					
 				}				
@@ -3721,7 +3721,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					auto prop = nextProp;
 					nextProp = nextProp->mNextWithSameName;
 
-					if ((!isFailurePass) && (!mModule->CheckProtection(protectionCheckFlags, curCheckType, prop->mProtection, startCheckType)))
+					if ((!isFailurePass) && (!mModule->CheckProtection(protectionCheckFlags, curCheckType, prop->mDeclaringType->mProject, prop->mProtection, startCheckType)))
 					{
 						continue;
 					}
@@ -5666,8 +5666,8 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 				else
 				{
 					if (checkProt == BfProtection_Protected) // Treat protected constructors as private
-						checkProt = BfProtection_Private;
-					if (!mModule->CheckProtection(protectionCheckFlags, curTypeInst, checkProt, curTypeInst))
+						checkProt = BfProtection_Private;					
+					if (!mModule->CheckProtection(protectionCheckFlags, curTypeInst, checkMethod->mDeclaringType->mProject, checkProt, curTypeInst))
 						continue;
 				}
 			}
@@ -10888,9 +10888,12 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	//if (objCreateExpr->mArraySizeSpecifier == NULL)
 		CheckObjectCreateTypeRef(mExpectingType, objCreateExpr->mNewNode);			
 
+	BfAttributeState attributeState;	
+	attributeState.mTarget = BfAttributeTargets_Alloc;
+	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, &attributeState);	
 	BfTokenNode* newToken = NULL;
-	BfAllocTarget allocTarget = ResolveAllocTarget(objCreateExpr->mNewNode, newToken);
-		
+	BfAllocTarget allocTarget = ResolveAllocTarget(objCreateExpr->mNewNode, newToken, &attributeState.mCustomAttributes);	
+	
 	bool isScopeAlloc = newToken->GetToken() == BfToken_Scope;
 	bool isAppendAlloc = newToken->GetToken() == BfToken_Append;
 	bool isStackAlloc = (newToken->GetToken() == BfToken_Stack) || (isScopeAlloc);
@@ -11882,7 +11885,7 @@ void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
 	}
 }
 
-BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenNode*& newToken)
+BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenNode*& newToken, BfCustomAttributes** outCustomAttributes)
 {
 	auto autoComplete = GetAutoComplete();
 	BfAttributeDirective* attributeDirective = NULL;
@@ -11941,7 +11944,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 				if (attrib.mType->mTypeDef == mModule->mCompiler->mAlignAttributeTypeDef)
 				{
 					allocTarget.mAlignOverride = 16; // System conservative default
-					
+
 					if (!attrib.mCtorArgs.IsEmpty())
 					{
 						BfIRConstHolder* constHolder = mModule->mCurTypeInstance->mConstHolder;
@@ -11952,13 +11955,18 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 							if ((alignOverride & (alignOverride - 1)) == 0)
 								allocTarget.mAlignOverride = alignOverride;
 							else
-								mModule->Fail("Alignment must be a power of 2", attrib.GetRefNode());							
+								mModule->Fail("Alignment must be a power of 2", attrib.GetRefNode());
 						}
 					}
 				}
+				else if (attrib.mType->mTypeDef == mModule->mCompiler->mFriendAttributeTypeDef)
+					allocTarget.mIsFriend = true;
 			}
 
-			delete customAttrs;
+			if (outCustomAttributes != NULL)
+				*outCustomAttributes = customAttrs;
+			else
+				delete customAttrs;
 		}
 	}
 

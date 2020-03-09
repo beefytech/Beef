@@ -12,17 +12,17 @@ namespace System.Globalization {
     using System.Globalization;
 	using System.Collections.Generic;
 
-    internal static class TimeSpanFormat
+    static class TimeSpanFormat
 	{
         private static void IntToString(int n, int digits, String outStr)
 		{
 			((int32)n).[Friend]ToString(outStr, digits);
         }
 
-        internal static readonly FormatLiterals PositiveInvariantFormatLiterals  = TimeSpanFormat.FormatLiterals.InitInvariant(false /*isNegative*/) ~ _.Dispose();
-        internal static readonly FormatLiterals NegativeInvariantFormatLiterals  = TimeSpanFormat.FormatLiterals.InitInvariant(true  /*isNegative*/) ~ _.Dispose();
+        protected static readonly FormatLiterals PositiveInvariantFormatLiterals  = TimeSpanFormat.FormatLiterals.[Friend]InitInvariant(false /*isNegative*/) ~ _.Dispose();
+        protected static readonly FormatLiterals NegativeInvariantFormatLiterals  = TimeSpanFormat.FormatLiterals.[Friend]InitInvariant(true  /*isNegative*/) ~ _.Dispose();
 
-        internal enum Pattern {
+        protected enum Pattern {
             None    = 0,
             Minimum = 1,
             Full    = 2,
@@ -33,7 +33,7 @@ namespace System.Globalization {
         //
         //  Actions: Main method called from TimeSpan.ToString
         // 
-        internal static Result<void> Format(TimeSpan value, StringView format, IFormatProvider formatProvider, String outStr)
+        protected static Result<void> Format(TimeSpan value, StringView format, IFormatProvider formatProvider, String outStr)
 		{
 			var format;
 
@@ -54,9 +54,9 @@ namespace System.Globalization {
                     DateTimeFormatInfo dtfi = DateTimeFormatInfo.GetInstance(formatProvider);
 
                     if ((int64)value < 0)
-                        format = dtfi.FullTimeSpanNegativePattern;
+                        format = dtfi.[Friend]FullTimeSpanNegativePattern;
                     else
-                        format = dtfi.FullTimeSpanPositivePattern;
+                        format = dtfi.[Friend]FullTimeSpanPositivePattern;
                     if (f == 'g')
                         pattern = Pattern.Minimum;
                     else
@@ -99,27 +99,27 @@ namespace System.Globalization {
             }
             else {
                 literal = FormatLiterals();
-                literal.Init(format, pattern == Pattern.Full);
+                literal.[Friend]Init(format, pattern == Pattern.Full);
             }
             if (fraction != 0) { // truncate the partial second to the specified length
-                fraction = (int)((int64)fraction / (int64)Math.Pow(10, DateTimeFormat.MaxSecondsFractionDigits - literal.ff));
+                fraction = (int)((int64)fraction / (int64)Math.Pow(10, DateTimeFormat.[Friend]MaxSecondsFractionDigits - literal.[Friend]ff));
             }
 
             // Pattern.Full: [-]dd.hh:mm:ss.fffffff
             // Pattern.Minimum: [-][d.]hh:mm:ss[.fffffff] 
 
-            outStr.Append(literal.Start);                           // [-]
+            outStr.Append(literal.[Friend]Start);                           // [-]
             if (pattern == Pattern.Full || day != 0) {          //
 				day.ToString(outStr);							// [dd]
-                outStr.Append(literal.DayHourSep);                  // [.]
+                outStr.Append(literal.[Friend]DayHourSep);                  // [.]
             }                                                   //
-            IntToString(hours, literal.hh, outStr);          // hh
-            outStr.Append(literal.HourMinuteSep);                   // :
-            IntToString(minutes, literal.mm, outStr);        // mm
-            outStr.Append(literal.MinuteSecondSep);                 // :
-            IntToString(seconds, literal.ss, outStr);        // ss
+            IntToString(hours, literal.[Friend]hh, outStr);          // hh
+            outStr.Append(literal.[Friend]HourMinuteSep);                   // :
+            IntToString(minutes, literal.[Friend]mm, outStr);        // mm
+            outStr.Append(literal.[Friend]MinuteSecondSep);                 // :
+            IntToString(seconds, literal.[Friend]ss, outStr);        // ss
             if (!isInvariant && pattern == Pattern.Minimum) {
-                int effectiveDigits = literal.ff;
+                int effectiveDigits = literal.[Friend]ff;
                 while (effectiveDigits > 0) {
                     if (fraction % 10 == 0) {
                         fraction = fraction / 10;
@@ -130,15 +130,15 @@ namespace System.Globalization {
                     }
                 }
                 if (effectiveDigits > 0) {
-                    outStr.Append(literal.SecondFractionSep);           // [.FFFFFFF]
-                    (fraction).ToString(outStr, DateTimeFormat.fixedNumberFormats[effectiveDigits - 1], CultureInfo.InvariantCulture);
+                    outStr.Append(literal.[Friend]SecondFractionSep);           // [.FFFFFFF]
+                    (fraction).ToString(outStr, DateTimeFormat.[Friend]fixedNumberFormats[effectiveDigits - 1], CultureInfo.InvariantCulture);
                 }
             }
             else if (pattern == Pattern.Full || fraction != 0) {
-                outStr.Append(literal.SecondFractionSep);           // [.]
-                IntToString(fraction, literal.ff, outStr);   // [fffffff]
+                outStr.Append(literal.[Friend]SecondFractionSep);           // [.]
+                IntToString(fraction, literal.[Friend]ff, outStr);   // [fffffff]
             }                                                   //
-            outStr.Append(literal.End);                             //
+            outStr.Append(literal.[Friend]End);                             //
 			return .Ok;
         }
 
@@ -150,7 +150,7 @@ namespace System.Globalization {
         //
         //  Actions: Format the TimeSpan instance using the specified format.
         // 
-        internal static Result<void> FormatCustomized(TimeSpan value, StringView format, DateTimeFormatInfo dtfi, String result)
+        protected static Result<void> FormatCustomized(TimeSpan value, StringView format, DateTimeFormatInfo dtfi, String result)
 		{                      
 
             Contract.Assert(dtfi != null, "dtfi == null");
@@ -176,50 +176,50 @@ namespace System.Globalization {
                 int nextChar;
                 switch (ch) {
                 case 'h':
-                    tokenLen = DateTimeFormat.ParseRepeatPattern(format, i, ch);
+                    tokenLen = DateTimeFormat.[Friend]ParseRepeatPattern(format, i, ch);
                     if (tokenLen > 2)
                         //throw new FormatException(Environment.GetResourceString("Format_InvalidString"));
 						return .Err;
-                    DateTimeFormat.FormatDigits(result, hours, tokenLen);
+                    DateTimeFormat.[Friend]FormatDigits(result, hours, tokenLen);
                     break;
                 case 'm':
-                    tokenLen = DateTimeFormat.ParseRepeatPattern(format, i, ch);
+                    tokenLen = DateTimeFormat.[Friend]ParseRepeatPattern(format, i, ch);
                     if (tokenLen > 2)
 						return .Err;
                         //throw new FormatException(Environment.GetResourceString("Format_InvalidString"));
-                    DateTimeFormat.FormatDigits(result, minutes, tokenLen);
+                    DateTimeFormat.[Friend]FormatDigits(result, minutes, tokenLen);
                     break;
                 case 's':
-                    tokenLen = DateTimeFormat.ParseRepeatPattern(format, i, ch);
+                    tokenLen = DateTimeFormat.[Friend]ParseRepeatPattern(format, i, ch);
                     if (tokenLen > 2)
 						return .Err;
                         //throw new FormatException(Environment.GetResourceString("Format_InvalidString"));
-                    DateTimeFormat.FormatDigits(result, seconds, tokenLen);
+                    DateTimeFormat.[Friend]FormatDigits(result, seconds, tokenLen);
                     break;
                 case 'f':
                     //
                     // The fraction of a second in single-digit precision. The remaining digits are truncated. 
                     //
-                    tokenLen = DateTimeFormat.ParseRepeatPattern(format, i, ch);
-                    if (tokenLen > DateTimeFormat.MaxSecondsFractionDigits)
+                    tokenLen = DateTimeFormat.[Friend]ParseRepeatPattern(format, i, ch);
+                    if (tokenLen > DateTimeFormat.[Friend]MaxSecondsFractionDigits)
 						return .Err;
                         //throw new FormatException(Environment.GetResourceString("Format_InvalidString"));
 
                     tmp = (int64)fraction;
-                    tmp /= (int64)Math.Pow(10, DateTimeFormat.MaxSecondsFractionDigits - tokenLen);
-                    (tmp).ToString(result, DateTimeFormat.fixedNumberFormats[tokenLen - 1], CultureInfo.InvariantCulture);
+                    tmp /= (int64)Math.Pow(10, DateTimeFormat.[Friend]MaxSecondsFractionDigits - tokenLen);
+                    (tmp).ToString(result, DateTimeFormat.[Friend]fixedNumberFormats[tokenLen - 1], CultureInfo.InvariantCulture);
                     break;
                 case 'F':
                     //
                     // Displays the most significant digit of the seconds fraction. Nothing is displayed if the digit is zero.
                     //
-                    tokenLen = DateTimeFormat.ParseRepeatPattern(format, i, ch);
-                    if (tokenLen > DateTimeFormat.MaxSecondsFractionDigits)
+                    tokenLen = DateTimeFormat.[Friend]ParseRepeatPattern(format, i, ch);
+                    if (tokenLen > DateTimeFormat.[Friend]MaxSecondsFractionDigits)
 						return .Err;
                         //throw new FormatException(Environment.GetResourceString("Format_InvalidString"));
 
                     tmp = (int64)fraction;
-                    tmp /= (int64)Math.Pow(10, DateTimeFormat.MaxSecondsFractionDigits - tokenLen);
+                    tmp /= (int64)Math.Pow(10, DateTimeFormat.[Friend]MaxSecondsFractionDigits - tokenLen);
                     int effectiveDigits = tokenLen;
                     while (effectiveDigits > 0) {
                         if (tmp % 10 == 0) {
@@ -231,7 +231,7 @@ namespace System.Globalization {
                         }
                     }
                     if (effectiveDigits > 0) {
-                        (tmp).ToString(result, DateTimeFormat.fixedNumberFormats[effectiveDigits - 1], CultureInfo.InvariantCulture);
+                        (tmp).ToString(result, DateTimeFormat.[Friend]fixedNumberFormats[effectiveDigits - 1], CultureInfo.InvariantCulture);
                     }
                     break;
                 case 'd':
@@ -239,23 +239,23 @@ namespace System.Globalization {
                     // tokenLen == 1 : Day as digits with no leading zero.
                     // tokenLen == 2+: Day as digits with leading zero for single-digit days.
                     //
-                    tokenLen = DateTimeFormat.ParseRepeatPattern(format, i, ch);
+                    tokenLen = DateTimeFormat.[Friend]ParseRepeatPattern(format, i, ch);
                     if (tokenLen > 8)
 						return .Err;
                         //throw new FormatException(Environment.GetResourceString("Format_InvalidString"));
-                    DateTimeFormat.FormatDigits(result, day, tokenLen, true);
+                    DateTimeFormat.[Friend]FormatDigits(result, day, tokenLen, true);
                     break;
                 case '\'':
                 case '\"':
                     //StringBuilder enquotedString = new StringBuilder();
-                    tokenLen = DateTimeFormat.ParseQuoteString(format, i, result); 
+                    tokenLen = DateTimeFormat.[Friend]ParseQuoteString(format, i, result); 
                     //result.Append(enquotedString);
                     break;
                 case '%':
                     // Optional format character.
                     // For example, format string "%d" will print day 
                     // Most of the cases, "%" can be ignored.
-                    nextChar = DateTimeFormat.ParseNextChar(format, i);
+                    nextChar = DateTimeFormat.[Friend]ParseNextChar(format, i);
                     // nextChar will be -1 if we already reach the end of the format string.
                     // Besides, we will not allow "%%" appear in the pattern.
                     if (nextChar >= 0 && nextChar != (int)'%')
@@ -277,7 +277,7 @@ namespace System.Globalization {
                     // Escaped character.  Can be used to insert character into the format string.
                     // For example, "\d" will insert the character 'd' into the string.
                     //
-                    nextChar = DateTimeFormat.ParseNextChar(format, i);
+                    nextChar = DateTimeFormat.[Friend]ParseNextChar(format, i);
                     if (nextChar >= 0)
                     {
                         result.Append(((char8)nextChar));
@@ -304,43 +304,43 @@ namespace System.Globalization {
 
 
 
-        internal struct FormatLiterals {
-            internal String Start {
+        protected struct FormatLiterals {
+            String Start {
                 get {
                     return literals[0];
                 }
             }
-            internal String DayHourSep {
+            String DayHourSep {
                 get {
                     return literals[1];
                 }
             }
-            internal String HourMinuteSep {
+            String HourMinuteSep {
                 get {
                     return literals[2];
                 }
             }
-            internal String MinuteSecondSep {
+            String MinuteSecondSep {
                 get {
                     return literals[3];
                 }
             }
-            internal String SecondFractionSep {
+            String SecondFractionSep {
                 get {
                     return literals[4];
                 }
             }
-            internal String End {
+            String End {
                 get {
                     return literals[5];
                 }
             }
-            internal String AppCompatLiteral;
-            internal int dd;
-            internal int hh;
-            internal int mm;
-            internal int ss;
-            internal int ff;  
+            String AppCompatLiteral;
+            int dd;
+            int hh;
+            int mm;
+            int ss;
+            int ff;  
 
             private String[] literals;
 			private List<String> ownedStrs;
@@ -365,7 +365,7 @@ namespace System.Globalization {
 			}
 
             /* factory method for static invariant FormatLiterals */
-            internal static FormatLiterals InitInvariant(bool isNegative) {
+            static FormatLiterals InitInvariant(bool isNegative) {
                 FormatLiterals x = FormatLiterals();
                 x.literals = new String[6];
                 x.literals[0] = isNegative ? "-" : String.Empty;
@@ -379,7 +379,7 @@ namespace System.Globalization {
                 x.hh = 2;
                 x.mm = 2;
                 x.ss = 2;
-                x.ff = DateTimeFormat.MaxSecondsFractionDigits;
+                x.ff = DateTimeFormat.[Friend]MaxSecondsFractionDigits;
                 return x;
             }
 
@@ -387,7 +387,7 @@ namespace System.Globalization {
             // the constants guaranteed to include DHMSF ordered greatest to least significant.
             // Once the data becomes more complex than this we will need to write a proper tokenizer for
             // parsing and formatting
-            internal void Init(StringView format, bool useInvariantFieldLengths) mut
+            void Init(StringView format, bool useInvariantFieldLengths) mut
 			{
                 literals = new String[6];
                 for (int i = 0; i < literals.Count; i++) 
@@ -498,7 +498,7 @@ namespace System.Globalization {
                     hh = 2;
                     mm = 2;
                     ss = 2;
-                    ff = DateTimeFormat.MaxSecondsFractionDigits;
+                    ff = DateTimeFormat.[Friend]MaxSecondsFractionDigits;
                 }
                 else {
                     if (dd < 1 || dd > 2) dd = 2;   // The DTFI property has a problem. let's try to make the best of the situation.

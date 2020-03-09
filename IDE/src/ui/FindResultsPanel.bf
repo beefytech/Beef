@@ -182,8 +182,8 @@ namespace IDE.ui
 							for (let c32 in line.DecodedChars)
 							{
 								if ((isNewStart) && (mSearchOptions.mMatchCase ?
-									String.EqualsHelper(linePtr + lineIdx, searchPtr, searchLength) :
-									String.EqualsIgnoreCaseHelper(linePtr + lineIdx, searchPtr, searchLength)))
+									String.[Friend]EqualsHelper(linePtr + lineIdx, searchPtr, searchLength) :
+									String.[Friend]EqualsIgnoreCaseHelper(linePtr + lineIdx, searchPtr, searchLength)))
 								{
 									int checkIdx = lineIdx + searchLength;
 									if (checkIdx >= line.Length)

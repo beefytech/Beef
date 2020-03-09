@@ -3543,11 +3543,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 			auto nextNode = mVisitorPos.GetNext();
 			if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
 			{
-				if (tokenNode->GetToken() == BfToken_Append)
-				{
-					MEMBER_SET(deleteStmt, mTargetTypeToken, tokenNode);
-				}
-				else if (tokenNode->GetToken() == BfToken_Colon)
+				if (tokenNode->GetToken() == BfToken_Colon)
 				{
 					MEMBER_SET(deleteStmt, mTargetTypeToken, tokenNode);
 					mVisitorPos.MoveNext();
@@ -3569,6 +3565,19 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 							MEMBER_SET(deleteStmt, mAllocExpr, allocExpr);
 						}
 					}
+				}
+			}
+
+			nextNode = mVisitorPos.GetNext();
+			if ((tokenNode = BfNodeDynCast<BfTokenNode>(nextNode)))
+			{
+				if (tokenNode->mToken == BfToken_LBracket)
+				{
+					mVisitorPos.MoveNext();
+					auto attrib = CreateAttributeDirective(tokenNode);
+					if (attrib == NULL)
+						return deleteStmt;
+					MEMBER_SET(deleteStmt, mAttributes, attrib);
 				}
 			}
 
@@ -5468,8 +5477,7 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 		MEMBER_SET(fieldDeclaration, mPrecedingComma, tokenNode);
 		MEMBER_SET(fieldDeclaration, mNameNode, nameIdentifier);
 		fieldDeclaration->mDocumentation = prevFieldDeclaration->mDocumentation;
-		fieldDeclaration->mAttributes = prevFieldDeclaration->mAttributes;
-		fieldDeclaration->mInternalSpecifier = prevFieldDeclaration->mInternalSpecifier;
+		fieldDeclaration->mAttributes = prevFieldDeclaration->mAttributes;		
 		fieldDeclaration->mProtectionSpecifier = prevFieldDeclaration->mProtectionSpecifier;
 		fieldDeclaration->mStaticSpecifier = prevFieldDeclaration->mStaticSpecifier;
 		fieldDeclaration->mTypeRef = prevFieldDeclaration->mTypeRef;
@@ -5799,8 +5807,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
 	case BfToken_Virtual:
 	case BfToken_Override:
 	case BfToken_Abstract:
-	case BfToken_Concrete:
-	case BfToken_Internal:
+	case BfToken_Concrete:	
 	case BfToken_Extern:
 	case BfToken_New:	
 	case BfToken_Implicit:
@@ -5874,18 +5881,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
 		MEMBER_SET(memberDecl, mProtectionSpecifier, tokenNode);
 		return memberDecl;
 	}
-
-	if (token == BfToken_Internal)
-	{
-		if (memberDecl->mInternalSpecifier != NULL)
-		{
-			AddErrorNode(memberDecl->mInternalSpecifier);
-			Fail("Internal already specified", memberDecl->mInternalSpecifier);
-		}
-		MEMBER_SET(memberDecl, mInternalSpecifier, tokenNode);
-		return memberDecl;
-	}
-
+	
 	if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(memberDecl))
 	{
 		if ((token == BfToken_Virtual) ||
@@ -6029,12 +6025,6 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
 			handled = true;
 		}
 
-		if (token == BfToken_Internal)
-		{
-			MEMBER_SET(fieldDecl, mInternalSpecifier, tokenNode);
-			handled = true;
-		}
-
 		if (token == BfToken_New)
 		{
 			if (fieldDecl->mNewSpecifier != NULL)
@@ -6103,8 +6093,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 			token = tokenNode->GetToken();
 			if ((token == BfToken_Private) ||
 				(token == BfToken_Protected) ||
-				(token == BfToken_Public) ||
-				(token == BfToken_Internal))
+				(token == BfToken_Public))
 			{
 				if (protectionSpecifier != NULL)
 				{
@@ -7718,8 +7707,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 	
 	case BfToken_Sealed:
 	case BfToken_Abstract:
-	case BfToken_Concrete:
-	case BfToken_Internal:
+	case BfToken_Concrete:	
 	case BfToken_Public:
 	case BfToken_Private:
 	case BfToken_Protected:
@@ -7780,16 +7768,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			}
 			MEMBER_SET(typeDeclaration, mProtectionSpecifier, tokenNode);
 		}
-
-		if (token == BfToken_Internal)
-		{
-			if (typeDeclaration->mInternalSpecifier != NULL)
-			{
-				Fail("Internal already specified", typeDeclaration->mInternalSpecifier);
-			}
-			MEMBER_SET(typeDeclaration, mInternalSpecifier, tokenNode);
-		}
-
+		
 		if (token == BfToken_Static)
 		{
 			if (typeDeclaration->mStaticSpecifier != NULL)

@@ -4,8 +4,8 @@ namespace System.Reflection
 	{
 		static (Type type, void* ptr) GetTypeAndPointer(Object obj)
 		{
-			var objType = obj.RawGetType();
-			void* dataPtr = (uint8*)Internal.UnsafeCastToPtr(obj) + objType.mMemberDataOffset;
+			var objType = obj.[Friend]RawGetType();
+			void* dataPtr = (uint8*)Internal.UnsafeCastToPtr(obj) + objType.[Friend]mMemberDataOffset;
 			if (objType.IsBoxed)
 				objType = objType.UnderlyingType;
 			if (objType.IsTypedPrimitive)
@@ -16,7 +16,7 @@ namespace System.Reflection
 		public static Result<int64> ToInt64(Object obj)
 		{
 			var (objType, dataPtr) = GetTypeAndPointer(obj);
-			switch (objType.mTypeCode)
+			switch (objType.[Friend]mTypeCode)
 			{
 			case .Int8: return (.)*(int8*)dataPtr;
 			case .Int16: return (.)*(int16*)dataPtr;
@@ -34,7 +34,7 @@ namespace System.Reflection
 
 		public static bool IntCanFit(int64 val, Type type)
 		{
-			switch (type.mTypeCode)
+			switch (type.[Friend]mTypeCode)
 			{
 			case .Int8: return (val >= -0x80) && (val <= 0x7F);
 			case .Int16: return (val >= -0x8000) && (val <= 0x7FFF);
@@ -68,7 +68,7 @@ namespace System.Reflection
 				if (objType.IsInteger)
 				{
 					int64 intVal = ToInt64(obj);
-					switch (type.mTypeCode)
+					switch (type.[Friend]mTypeCode)
 					{
 					case .Float:
 						float val = (.)intVal;
@@ -86,8 +86,8 @@ namespace System.Reflection
 				}
 				else if (objType.IsFloatingPoint)
 				{
-					if ((type.mTypeCode == .Double) &&
-						(objType.mTypeCode == .Float))
+					if ((type.[Friend]mTypeCode == .Double) &&
+						(objType.[Friend]mTypeCode == .Float))
 					{
 						double val = (.)*(float*)dataPtr;
 						return Variant.Create(type, &val);

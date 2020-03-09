@@ -1,6 +1,6 @@
 namespace System.Globalization
 {
-    internal enum CalendarId : uint16
+    enum CalendarId : uint16
     {
         GREGORIAN                  = 1 ,     // Gregorian (localized) calendar
         GREGORIAN_US               = 2 ,     // Gregorian (U.S.) calendar

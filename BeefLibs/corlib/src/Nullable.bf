@@ -6,8 +6,8 @@ namespace System
 {
     struct Nullable<T> where T : struct
     {
-        internal T mValue;
-        internal bool mHasValue;
+        T mValue;
+        bool mHasValue;
         
         public this(T value)
         {

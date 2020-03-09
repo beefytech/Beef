@@ -3626,6 +3626,11 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		}
 	}
 
+	BfAttributeState attributeState;
+	attributeState.mTarget = BfAttributeTargets_Delete;
+	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mAttributeState, &attributeState);
+	attributeState.mCustomAttributes = GetCustomAttributes(deleteStmt->mAttributes, attributeState.mTarget);
+
 	if (deleteStmt->mExpression == NULL)
 	{
 		AssertErrorState();

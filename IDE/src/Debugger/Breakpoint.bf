@@ -92,7 +92,7 @@ namespace IDE.Debugger
 		static extern void* Debugger_GetActiveBreakpoint();
 
 		[StdCall, CLink]
-		internal static extern void* Debugger_CreateMemoryBreakpoint(int addr, int32 byteCount);
+		static extern void* Debugger_CreateMemoryBreakpoint(int addr, int32 byteCount);
 
         public void* mNativeBreakpoint;
        	public String mSymbol ~ delete _;
@@ -116,7 +116,7 @@ namespace IDE.Debugger
 
 		public Event<Action> mOnDelete;
 
-        internal ~this()
+        public ~this()
         {
 			mOnDelete();
             mIsDisposed = true;
