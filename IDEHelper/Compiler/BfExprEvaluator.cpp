@@ -3236,12 +3236,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 	BfTypeInstance* startCheckType = mModule->mCurTypeInstance;
 	mPropDef = NULL;		
 	mPropDefBypassVirtual = false;
-
-	if ((target.mType != NULL) && (mModule->mCurMethodState != NULL))
-	{										
-		mModule->PopulateType(target.mType, BfPopulateType_BaseType);
-	}
-
+	
 	if (target)
 	{	
 		if ((!target.mType->IsValueType()) && (target.IsAddr()))
@@ -3264,6 +3259,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 	{		
 		startCheckType = target.mType->ToTypeInstance();
 	}
+
+	if ((startCheckType != NULL) && (startCheckType->mBaseType == NULL))	
+		mModule->PopulateType(startCheckType, BfPopulateType_BaseType);	
 
 	String findName;
 	int varSkipCount = 0;

@@ -2236,76 +2236,83 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 
 		int enumCaseEntryIdx = 0;
-		for (auto field : typeDef->mFields)
+		for (int pass = 0; pass < 2; pass++)
 		{
-			auto fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
-			if ((fieldInstance->mResolvedType != NULL) || (!fieldInstance->mFieldIncluded))
-				continue;			
-
-			SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, field);
-
-			BfType* resolvedFieldType = NULL;
-
-			if (field->IsEnumCaseEntry())
+			for (auto field : typeDef->mFields)
 			{
-				fieldInstance->mDataIdx = -(enumCaseEntryIdx++) - 1;
-				resolvedFieldType = typeInstance;
+				// Do consts then non-consts. Somewhat of a hack for using consts as sized array size
+				if (field->mIsConst != (pass == 0))
+					continue;
 
-				BfType* payloadType = NULL;
-				if (field->mTypeRef != NULL)
-					payloadType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoResolveGenericParam);
-				if (payloadType == NULL)
+				auto fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
+				if ((fieldInstance->mResolvedType != NULL) || (!fieldInstance->mFieldIncluded))
+					continue;
+
+				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, field);
+
+				BfType* resolvedFieldType = NULL;
+
+				if (field->IsEnumCaseEntry())
 				{
-					if (!typeInstance->IsTypedPrimitive())
-						payloadType = CreateTupleType(BfTypeVector(), Array<String>());
+					fieldInstance->mDataIdx = -(enumCaseEntryIdx++) - 1;
+					resolvedFieldType = typeInstance;
+
+					BfType* payloadType = NULL;
+					if (field->mTypeRef != NULL)
+						payloadType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoResolveGenericParam);
+					if (payloadType == NULL)
+					{
+						if (!typeInstance->IsTypedPrimitive())
+							payloadType = CreateTupleType(BfTypeVector(), Array<String>());
+					}
+					if (payloadType != NULL)
+					{
+						AddDependency(payloadType, typeInstance, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
+						BF_ASSERT(payloadType->IsTuple());
+						resolvedFieldType = payloadType;
+						fieldInstance->mIsEnumPayloadCase = true;
+					}
 				}
-				if (payloadType != NULL)
+				else if ((field->mTypeRef != NULL) && ((field->mTypeRef->IsExact<BfVarTypeReference>()) || (field->mTypeRef->IsExact<BfLetTypeReference>()) || (field->mTypeRef->IsExact<BfDeclTypeRef>())))
 				{
-					AddDependency(payloadType, typeInstance, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
-					BF_ASSERT(payloadType->IsTuple());
-					resolvedFieldType = payloadType;
-					fieldInstance->mIsEnumPayloadCase = true;
+					resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);
+
+					DeferredResolveEntry resolveEntry;
+					resolveEntry.mFieldDef = field;
+					resolveEntry.mTypeArrayIdx = (int)llvmFieldTypes.size();
+					deferredVarResolves.push_back(resolveEntry);
+
+					fieldInstance->mIsInferredType = true;
+					// For 'let', make read-only
 				}
-			}
-			else if ((field->mTypeRef != NULL) && ((field->mTypeRef->IsExact<BfVarTypeReference>()) || (field->mTypeRef->IsExact<BfLetTypeReference>()) || (field->mTypeRef->IsExact<BfDeclTypeRef>())))
-			{
-				resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);
-
-				DeferredResolveEntry resolveEntry;
-				resolveEntry.mFieldDef = field;
-				resolveEntry.mTypeArrayIdx = (int)llvmFieldTypes.size();
-				deferredVarResolves.push_back(resolveEntry);
-
-				fieldInstance->mIsInferredType = true;
-				// For 'let', make read-only
-			}
-			else
-			{				
-				resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
-				if (resolvedFieldType == NULL)
+				else
 				{
-					// Failed, just put in placeholder 'var'
-					AssertErrorState();
-					resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);					
+					resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
+					if (resolvedFieldType == NULL)
+					{
+						// Failed, just put in placeholder 'var'
+						AssertErrorState();
+						resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);
+					}
 				}
-			}
 
-			if (resolvedFieldType->IsMethodRef())
-			{
-				auto methodRefType = (BfMethodRefType*)resolvedFieldType;
-			}
+				if (resolvedFieldType->IsMethodRef())
+				{
+					auto methodRefType = (BfMethodRefType*)resolvedFieldType;
+				}
 
-			if (fieldInstance->mResolvedType == NULL)
-				fieldInstance->mResolvedType = resolvedFieldType;
+				if (fieldInstance->mResolvedType == NULL)
+					fieldInstance->mResolvedType = resolvedFieldType;
 
-			if (field->mIsConst)
-			{
-				// Resolve in ResolveConstField after we finish populating entire FieldInstance list							
-			}
-			else if (field->mIsStatic)
-			{
-				// Don't allocate this until after we're finished populating entire FieldInstance list,
-				//  because we may have re-entry and create multiple instances of this static field				
+				if (field->mIsConst)
+				{
+					// Resolve in ResolveConstField after we finish populating entire FieldInstance list							
+				}
+				else if (field->mIsStatic)
+				{
+					// Don't allocate this until after we're finished populating entire FieldInstance list,
+					//  because we may have re-entry and create multiple instances of this static field				
+				}
 			}
 		}
 
