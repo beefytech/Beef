@@ -329,7 +329,7 @@ public:
 	BfTypedValue ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue = NULL, BfParamKind paramKind = BfParamKind_Normal);
 	BfMethodDef* GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind);
 	BfModuleMethodInstance GetPropertyMethodInstance(BfMethodDef* methodDef);
-	void CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance* methodInstance);
+	void CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance* methodInstance, bool checkProt);
 	bool HasResult();
 	BfTypedValue GetResult(bool clearResult = false, bool resolveGenericType = false);				
 	void CheckResultForReading(BfTypedValue& typedValue);

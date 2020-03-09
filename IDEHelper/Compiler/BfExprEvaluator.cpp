@@ -13985,11 +13985,12 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 	return mModule->GetMethodInstance(propTypeInst, methodDef, BfTypeVector(), mPropGetMethodFlags);
 }
 
-void BfExprEvaluator::CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance* methodInstance)
+void BfExprEvaluator::CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance* methodInstance, bool checkProt)
 {
 	auto propTypeInst = mPropTarget.mType->ToTypeInstance();
 	// If mExplicitInterface is null then we are implicitly calling through an interface
-	if ((propTypeInst != NULL) && (methodInstance->GetExplicitInterface() == NULL) && (!mModule->CheckAccessMemberProtection(propMethodDef->mProtection, propTypeInst)))
+	if ((checkProt) && (propTypeInst != NULL) && (methodInstance->GetExplicitInterface() == NULL) && 
+		(!mModule->CheckAccessMemberProtection(propMethodDef->mProtection, propTypeInst)))
 		mModule->Fail(StrFormat("'%s' is inaccessible due to its protection level", mModule->MethodToString(methodInstance).c_str()), mPropSrc);
 	else if (mPropCheckedKind != methodInstance->mMethodDef->mCheckedKind)
 	{
@@ -14069,9 +14070,8 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 
 			if (mPropSrc != NULL)
 				mModule->UpdateExprSrcPos(mPropSrc);
-
-			if ((mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0)
-				CheckPropFail(matchedMethod, methodInstance.mMethodInstance);
+			
+			CheckPropFail(matchedMethod, methodInstance.mMethodInstance, (mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0);
 			PerformCallChecks(methodInstance.mMethodInstance, mPropSrc);
 
 			if (methodInstance.mMethodInstance->IsSkipCall())
@@ -14910,8 +14910,8 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			if (methodInstance.mMethodInstance == NULL)
 				return;
 			BF_ASSERT(methodInstance.mMethodInstance->mMethodDef == setMethod);
-			CheckPropFail(setMethod, methodInstance.mMethodInstance);
-	
+			CheckPropFail(setMethod, methodInstance.mMethodInstance, (mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0);	
+
 			BfTypedValue convVal;
 			if (binaryOp != BfBinaryOp_None)
 			{
