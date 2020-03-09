@@ -1484,8 +1484,8 @@ BpResult BpManager::Init(const char* serverName, const char* sessionName)
 	}
 
 	mRootCmdTarget.Init();
-		
-	mThread = BfpThread_Create(ThreadProcThunk, (void*)this, 64 * 1024, BfpThreadCreateFlag_StackSizeReserve, &mThreadId);
+	
+	mThread = BfpThread_Create(ThreadProcThunk, (void*)this, 512 * 1024, BfpThreadCreateFlag_StackSizeReserve, &mThreadId);
 	return BpResult_Ok;
 }
 
