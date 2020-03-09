@@ -2980,7 +2980,40 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			splatIterate(typeInstance);
 
 			if (isCRepr)
+			{				
 				typeInstance->mIsSplattable = false;
+
+				if ((mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) && (mCompiler->mSystem->mPtrSize == 4))
+				{					
+					// Win32 splat rules
+					if ((typeInstance->mBaseType->mInstSize == 0) && (typeInstance->mInstSize <= 16))
+					{
+						typeInstance->mIsSplattable = true;
+
+						for (int fieldIdx = 0; fieldIdx < (int)typeInstance->mFieldInstances.size(); fieldIdx++)
+						{
+							auto fieldInstance = (BfFieldInstance*)&typeInstance->mFieldInstances[fieldIdx];
+							if (fieldInstance->mDataIdx >= 0)
+							{
+								if (!fieldInstance->mResolvedType->IsPrimitiveType())
+									typeInstance->mIsSplattable = false;
+								else
+								{
+									auto primType = (BfPrimitiveType*)fieldInstance->mResolvedType;
+									if ((primType->mTypeDef->mTypeCode != BfTypeCode_Int32) &&
+										(primType->mTypeDef->mTypeCode != BfTypeCode_UInt32) &&
+										(primType->mTypeDef->mTypeCode != BfTypeCode_IntPtr) &&
+										(primType->mTypeDef->mTypeCode != BfTypeCode_UIntPtr) &&
+										(primType->mTypeDef->mTypeCode != BfTypeCode_Pointer) &&
+										(primType->mTypeDef->mTypeCode != BfTypeCode_Single) &&
+										(primType->mTypeDef->mTypeCode != BfTypeCode_Double))
+										typeInstance->mIsSplattable = false;
+								}
+							}
+						}
+					}
+				}
+			}
 			else
 				typeInstance->mIsSplattable = (dataCount <= 3) && (!hadNonSplattable);
 		}

@@ -5495,7 +5495,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	BfIRType fieldDataPtrType = mBfIRBuilder->GetPointerTo(reflectFieldDataIRType);
 	if (fieldTypes.size() == 0)
 	{
-		if ((type->IsSplattable()) && (type->IsStruct()) && (!type->IsValuelessType()))
+		if ((type->IsSplattable()) && (type->IsStruct()) && (!type->IsValuelessType()) && (!typeInstance->mIsCRepr))
 		{
 			BfTypeInstance* reflectFieldSplatDataType = ResolveTypeDef(mCompiler->mReflectFieldSplatDataDef)->ToTypeInstance();
 			
@@ -14067,7 +14067,13 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 				isSplattable = true;
 			else if (resolvedTypeRef->IsSplattable())
 			{
-				if (resolvedTypeRef->GetSplatCount() + argIdx <= mCompiler->mOptions.mMaxSplatRegs)
+				auto resolvedTypeInst = resolvedTypeRef->ToTypeInstance();
+				if ((resolvedTypeInst != NULL) && (resolvedTypeInst->mIsCRepr))
+				{
+					// crepr splat is always splattable
+					isSplattable = true;
+				}
+				else if (resolvedTypeRef->GetSplatCount() + argIdx <= mCompiler->mOptions.mMaxSplatRegs)
 					isSplattable = true;
 			}			
 		}
@@ -15148,9 +15154,18 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			}
 			else if (resolvedType->IsComposite() && resolvedType->IsSplattable())
 			{
-				int splatCount = resolvedType->GetSplatCount();
-				if (argIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
+				auto resolvedTypeInst = resolvedType->ToTypeInstance();
+				if ((resolvedTypeInst != NULL) && (resolvedTypeInst->mIsCRepr))
+				{
+					// crepr splat is always splat
 					paramVar->mIsSplat = true;
+				}
+				else
+				{
+					int splatCount = resolvedType->GetSplatCount();
+					if (argIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
+						paramVar->mIsSplat = true;
+				}
 			}
 		}
 		else

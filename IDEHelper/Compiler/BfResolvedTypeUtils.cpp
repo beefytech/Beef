@@ -949,7 +949,15 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			int splatCount = checkType->GetSplatCount();
 			doSplat = ((checkType->IsSplattable()) && ((paramIdx != -1) || (!mMethodDef->mIsMutating)));
 			if ((int)paramTypes.size() + splatCount > module->mCompiler->mOptions.mMaxSplatRegs)
-				doSplat = false;
+			{
+				auto checkTypeInst = checkType->ToTypeInstance();
+				if ((checkTypeInst != NULL) && (checkTypeInst->mIsCRepr))
+				{
+					// CRepr splat means always splat
+				}
+				else
+					doSplat = false;
+			}
 		}
 
 		auto _AddType = [&](BfType* type)

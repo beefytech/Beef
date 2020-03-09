@@ -4564,10 +4564,19 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 					//byval
 				}
 				else
-				{					
-					mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_NoCapture);
+				{
 					mModule->PopulateType(paramType, BfPopulateType_Data);
-					addDeref = paramType->mSize;
+
+					auto typeInst = paramType->ToTypeInstance();
+					if ((typeInst != NULL) && (typeInst->mIsCRepr) && (typeInst->IsSplattable()))
+					{
+						// We're splatting
+					}
+					else
+					{
+						mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_NoCapture);						
+						addDeref = paramType->mSize;
+					}
 				}
 			}
 			else if (paramType->IsPrimitiveType())
@@ -4822,9 +4831,15 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 		return;
 
 	bool wantSplat = false;
-	if ((argVal.mType->IsSplattable()) && (!disableSplat))
+	if (argVal.mType->IsSplattable())
 	{
-		if ((int)irArgs.size() + argVal.mType->GetSplatCount() <= mModule->mCompiler->mOptions.mMaxSplatRegs)
+		auto argTypeInstance = argVal.mType->ToTypeInstance();
+		if ((argTypeInstance != NULL) && (argTypeInstance->mIsCRepr))
+		{
+			// Always splat for crepr splattables
+			wantSplat = true;
+		}
+		else if ((!disableSplat) && (int)irArgs.size() + argVal.mType->GetSplatCount() <= mModule->mCompiler->mOptions.mMaxSplatRegs)
 			wantSplat = true;
 	}
 
