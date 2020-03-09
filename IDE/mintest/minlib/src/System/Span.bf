@@ -145,7 +145,7 @@ namespace System
 		    private int mIndex;
 		    private T* mCurrent;
 
-		    internal this(Span<T> list)
+		    public this(Span<T> list)
 		    {
 		        mList = list;
 		        mIndex = 0;

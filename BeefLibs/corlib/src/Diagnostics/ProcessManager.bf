@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace System.Diagnostics
 {
-	internal static class ProcessManager
+	static class ProcessManager
 	{
 #if BF_PLATFORM_WINDOWS
 

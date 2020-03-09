@@ -145,7 +145,7 @@ namespace IDE
                 procInfo.CreateNoWindow = true;
                 procInfo.SetArguments("--version");
 
-				Debug.WriteLine("ProcStartInfo {0} Verb: {1}", procInfo, procInfo.mVerb);
+				Debug.WriteLine("ProcStartInfo {0} Verb: {1}", procInfo, procInfo.[Friend]mVerb);
 
 				/*Process process = null;
 				if (!case .Ok(out process) = Process.Start(procInfo))

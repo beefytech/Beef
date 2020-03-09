@@ -599,7 +599,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 			continue;
 
 		if ((CHECK_STATIC(fieldDef->mIsStatic)) && 
-			((mIsGetDefinition) || (mModule->CheckProtection(protectionCheckFlags, typeInst, fieldDef->mProtection, startType))))
+			((mIsGetDefinition) || (mModule->CheckProtection(protectionCheckFlags, typeInst, fieldDef->mDeclaringType->mProject, fieldDef->mProtection, startType))))
 		{
 			if ((!typeInst->IsTypeMemberIncluded(fieldDef->mDeclaringType, activeTypeDef, mModule)) ||
 				(!typeInst->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
@@ -644,7 +644,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		else
 		{
 			canUseMethod &= (CHECK_STATIC(methodDef->mIsStatic) &&
-				(mModule->CheckProtection(protectionCheckFlags, typeInst, methodDef->mProtection, startType)));				
+				(mModule->CheckProtection(protectionCheckFlags, typeInst, methodDef->mDeclaringType->mProject, methodDef->mProtection, startType)));				
 		}
 		if (canUseMethod)
 		{
@@ -661,7 +661,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 			(!typeInst->IsTypeMemberAccessible(propDef->mDeclaringType, activeTypeDef)))
 			continue;
 
-		if ((CHECK_STATIC(propDef->mIsStatic)) && (mModule->CheckProtection(protectionCheckFlags, typeInst, propDef->mProtection, startType)))
+		if ((CHECK_STATIC(propDef->mIsStatic)) && (mModule->CheckProtection(protectionCheckFlags, typeInst, propDef->mDeclaringType->mProject, propDef->mProtection, startType)))
 		{
 			if ((!allowInterfaces) && (propDef->HasExplicitInterface()))
 				continue;

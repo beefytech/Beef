@@ -38,7 +38,7 @@ namespace System.IO
 		// Make this public sometime.
 		// The max total path is 260, and the max individual component length is 255. 
 		// For example, D:\<256 char8 file name> isn't legal, even though it's under 260 char8s.
-		internal const int32 MaxPath = 260;
+		protected const int32 MaxPath = 260;
 		private const int32 MaxDirectoryLength = 255;
 
 		public static void GetFullPath(String inPartialPath, String outFullPath)
@@ -49,7 +49,7 @@ namespace System.IO
 				});
 		}
 
-		internal static void CheckInvalidPathChars(StringView path, bool checkAdditional = false)
+		protected static void CheckInvalidPathChars(StringView path, bool checkAdditional = false)
 		{
 
 		}
@@ -74,30 +74,30 @@ namespace System.IO
 			outFileName.Append(inPath);
 		}
 
-		internal static String NormalizePath(String path, bool fullCheck) 
+		static String NormalizePath(String path, bool fullCheck) 
         {
 		    return NormalizePath(path, fullCheck, MaxPath);
 		}
 
 		
-		internal static String NormalizePath(String path, bool fullCheck, bool expandShortPaths)
+		static String NormalizePath(String path, bool fullCheck, bool expandShortPaths)
 		{
 		    return NormalizePath(path, fullCheck, MaxPath, expandShortPaths);
 		}
 
 		
-		internal static String NormalizePath(String path, bool fullCheck, int32 maxPathLength) 
+		static String NormalizePath(String path, bool fullCheck, int32 maxPathLength) 
         {
 		    return NormalizePath(path, fullCheck, maxPathLength, true);
 		}
 
-		internal static String NormalizePath(String path, bool fullCheck, int32 maxPathLength, bool expandShortPaths)
+		static String NormalizePath(String path, bool fullCheck, int32 maxPathLength, bool expandShortPaths)
 		{
 			//TODO: Implement
 			return path;
 		}
 
-		internal static String RemoveLongPathPrefix(String path)
+		static String RemoveLongPathPrefix(String path)
 		{
 			//TODO: Implement
 			return path;
@@ -171,7 +171,7 @@ namespace System.IO
 		// Gets the length of the root DirectoryInfo or whatever DirectoryInfo markers
 				// are specified for the first part of the DirectoryInfo name.
 				// 
-        internal static int GetRootLength(String path)
+        static int GetRootLength(String path)
 		{
 			CheckInvalidPathChars(path);
 
@@ -205,7 +205,7 @@ namespace System.IO
 #endif //BF_PLATFORM_WINDOWS
         }
 
-		internal static bool IsDirectorySeparator(char8 c) 
+		static bool IsDirectorySeparator(char8 c) 
         {
 		    return (c==DirectorySeparatorChar || c == AltDirectorySeparatorChar);
 		}

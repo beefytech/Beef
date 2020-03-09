@@ -5,11 +5,11 @@ using System.Collections.Generic;
 
 namespace System.Diagnostics
 {
-	internal delegate void UserCallBack(String data);
+	delegate void UserCallBack(String data);
 
 	class AsyncStreamReader
 	{
-		internal const int32 DefaultBufferSize = 1024;  // Byte buffer size
+		private const int32 DefaultBufferSize = 1024;  // Byte buffer size
 		private const int32 MinBufferSize = 128;
 
 		private Stream stream;
@@ -41,12 +41,12 @@ namespace System.Diagnostics
 		// Cache the last position scanned in sb when searching for lines.
 		private int currentLinePos;
 
-		internal this(Process process, Stream stream, UserCallBack callback, Encoding encoding)
+		this(Process process, Stream stream, UserCallBack callback, Encoding encoding)
 		: this(process, stream, callback, encoding, DefaultBufferSize)
 		{
 		}
 
-		internal ~this()
+		~this()
 		{
 			for (var msg in messageQueue)
 				delete msg;
@@ -57,7 +57,7 @@ namespace System.Diagnostics
 		// character encoding is set by encoding and the buffer size, 
 		// in number of 16-bit characters, is set by bufferSize.  
 		//
-		internal this(Process process, Stream stream, UserCallBack callback, Encoding encoding, int32 bufferSize)
+		this(Process process, Stream stream, UserCallBack callback, Encoding encoding, int32 bufferSize)
 		{
 			Debug.Assert(process != null && stream != null && encoding != null && callback != null, "Invalid arguments!");
 			Debug.Assert(stream.CanRead, "Stream must be readable!");
@@ -116,7 +116,7 @@ namespace System.Diagnostics
 		}
 
 		// User calls BeginRead to start the asynchronous read
-		internal void BeginReadLine()
+		void BeginReadLine()
 		{
 			if (cancelOperation)
 			{
@@ -134,7 +134,7 @@ namespace System.Diagnostics
 			}
 		}
 
-		internal void CancelOperation()
+		void CancelOperation()
 		{
 			cancelOperation = true;
 		}
@@ -290,7 +290,7 @@ namespace System.Diagnostics
 
 		// Wait until we hit EOF. This is called from Process.WaitForExit
 		// We will lose some information if we don't do this.
-		internal void WaitUtilEOF()
+		void WaitUtilEOF()
 		{
 			if (eofEvent != null)
 			{

@@ -532,7 +532,7 @@ namespace System.Collections.Generic
 #endif
 	        private T* mCurrent;
 
-	        internal this(List<T> list)
+	        public this(List<T> list)
 	        {
 	            mList = list;
 	            mIndex = 0;

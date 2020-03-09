@@ -51,9 +51,9 @@ class BfPassInstance;
 enum BfProtection : uint8
 {
 	BfProtection_Hidden,
-	BfProtection_Private,
+	BfProtection_Private,	
 	BfProtection_Protected,
-	BfProtection_Public,
+	BfProtection_Public
 };
 
 enum BfCheckedKind : int8
@@ -64,7 +64,7 @@ enum BfCheckedKind : int8
 };
 
 static bool CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate)
-{	
+{		
 	return (protection == BfProtection_Public) ||
 		((protection == BfProtection_Protected) && (allowProtected)) ||
 		((protection == BfProtection_Private) && (allowPrivate));
@@ -2131,8 +2131,7 @@ public:
 	BfCommentNode* mDocumentation;
 	BfAttributeDirective* mAttributes;
 	BfTokenNode* mAbstractSpecifier;	
-	BfTokenNode* mSealedSpecifier;
-	BfTokenNode* mInternalSpecifier;
+	BfTokenNode* mSealedSpecifier;	
 	BfTokenNode* mProtectionSpecifier;
 	BfTokenNode* mStaticSpecifier;
 	BfTokenNode* mPartialSpecifier;
@@ -2603,6 +2602,7 @@ public:
 	BfTokenNode* mDeleteToken;	
 	BfTokenNode* mTargetTypeToken; // colon token
 	BfAstNode* mAllocExpr;
+	BfAttributeDirective* mAttributes;
 	BfExpression* mExpression;
 };	BF_AST_DECL(BfDeleteStatement, BfStatement);
 
@@ -2688,8 +2688,7 @@ class BfMemberDeclaration : public BfAstNode
 public:
 	BF_AST_TYPE(BfMemberDeclaration, BfAstNode);
 
-	BfAttributeDirective* mAttributes;
-	BfTokenNode* mInternalSpecifier;
+	BfAttributeDirective* mAttributes;	
 	BfTokenNode* mProtectionSpecifier;
 	BfTokenNode* mStaticSpecifier;	
 	BfTokenNode* mReadOnlySpecifier; // Also stores 'inline'

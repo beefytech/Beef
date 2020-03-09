@@ -18,7 +18,7 @@ namespace System.Threading
 		    get { return m_state >= NOTIFYING; }
 		}
 
-		internal bool CanBeCanceled
+		bool CanBeCanceled
 		{
 		    get { return m_state != CANNOT_BE_CANCELED; }
 		}

@@ -132,7 +132,7 @@ namespace System.Globalization
 
 		}
 
-		internal void GetNFIValues(NumberFormatInfo nfi)
+		void GetNFIValues(NumberFormatInfo nfi)
 		{
 
 		}
@@ -145,7 +145,7 @@ namespace System.Globalization
 			}
 		}
 
-		internal Calendar DefaultCalendar
+		Calendar DefaultCalendar
 		{
 		    get
 		    {
@@ -158,11 +158,11 @@ namespace System.Globalization
 		        return CultureInfo.GetCalendarInstance(defaultCalId);*/
 				//Runtime.NotImplemented();
 				// NotImplemented
-				return CultureInfo.GetCalendarInstance(Calendar.CAL_GREGORIAN);
+				return CultureInfo.[Friend]GetCalendarInstance(Calendar.[Friend]CAL_GREGORIAN);
 		    }
 		}
 
-		internal StringView CultureName
+		StringView CultureName
 		{
 			get
 			{
@@ -176,7 +176,7 @@ namespace System.Globalization
 			}
 		}
 
-		internal String[] LongTimes
+		String[] LongTimes
 		{
 		    get
 		    {
@@ -205,7 +205,7 @@ namespace System.Globalization
 		    }
 		}
 
-		internal String[] ShortTimes
+		String[] ShortTimes
 		{
 		    get
 		    {
@@ -237,7 +237,7 @@ namespace System.Globalization
 		    }
 		}
 
-		internal static CultureData GetCultureData(StringView cultureName, bool useUserOverride)
+		static CultureData GetCultureData(StringView cultureName, bool useUserOverride)
 		{
 			CultureData culture = CreateCultureData(cultureName, useUserOverride);
 			return culture;
@@ -290,7 +290,7 @@ namespace System.Globalization
 		//
 		// We don't build the stringbuilder unless we find something to change
 		////////////////////////////////////////////////////////////////////////////
-		static internal void ReescapeWin32String(String inStr)
+		static void ReescapeWin32String(String inStr)
 		{
 		    // If we don't have data, then don't try anything
 		    if (inStr == null)
@@ -342,7 +342,7 @@ namespace System.Globalization
 		    }
 		}
 
-		static internal void ReescapeWin32Strings(String[] inArray)
+		static void ReescapeWin32Strings(String[] inArray)
 		{
 		    if (inArray != null)
 		    {
@@ -353,7 +353,7 @@ namespace System.Globalization
 		    }
 		}
 
-		internal bool UseUserOverride
+		bool UseUserOverride
 		{
 		    get
 		    {
@@ -361,7 +361,7 @@ namespace System.Globalization
 		    }
 		}
 
-		internal bool IsSupplementalCustomCulture
+		bool IsSupplementalCustomCulture
 		{
 		    get
 		    {
@@ -376,9 +376,9 @@ namespace System.Globalization
 		        Environment.OSVersion.Version < Version(6, 2); // Win7 is 6.1.Build.Revision so we have to check for anything less than 6.2
 		}
 
-		internal CalendarData GetCalendar(int calendarId)
+		CalendarData GetCalendar(int calendarId)
 		{
-		    Debug.Assert(calendarId > 0 && calendarId <= CalendarData.MAX_CALENDARS,
+		    Debug.Assert(calendarId > 0 && calendarId <= CalendarData.[Friend]MAX_CALENDARS,
 		        "[CultureData.GetCalendar] Expect calendarId to be in a valid range");
 
 		    // arrays are 0 based, calendarIds are 1 based
@@ -387,7 +387,7 @@ namespace System.Globalization
 		    // Have to have calendars
 		    if (calendars == null)
 		    {
-		        calendars = new CalendarData[CalendarData.MAX_CALENDARS];
+		        calendars = new CalendarData[CalendarData.[Friend]MAX_CALENDARS];
 		    }
 
 		    // we need the following local variable to avoid returning null
@@ -417,77 +417,77 @@ namespace System.Globalization
 		    return calendarData;
 		}
 
-		internal String[] ShortDates(int calendarId)
+		String[] ShortDates(int calendarId)
 		{
-		    return GetCalendar(calendarId).saShortDates;
+		    return GetCalendar(calendarId).[Friend]saShortDates;
 		}
 
-		internal String[] LongDates(int calendarId)
+		String[] LongDates(int calendarId)
 		{
-		    return GetCalendar(calendarId).saLongDates;
+		    return GetCalendar(calendarId).[Friend]saLongDates;
 		}
 
 		// (user can override) date year/month format.
-		internal String[] YearMonths(int calendarId)
+		String[] YearMonths(int calendarId)
 		{
-		    return GetCalendar(calendarId).saYearMonths;
+		    return GetCalendar(calendarId).[Friend]saYearMonths;
 		}
 
 		// day names
-		internal String[] DayNames(int calendarId)
+		String[] DayNames(int calendarId)
 		{
-		    return GetCalendar(calendarId).saDayNames;
+		    return GetCalendar(calendarId).[Friend]saDayNames;
 		}
 
 		// abbreviated day names
-		internal String[] AbbreviatedDayNames(int calendarId)
+		String[] AbbreviatedDayNames(int calendarId)
 		{
 		    // Get abbreviated day names for this calendar from the OS if necessary
-		    return GetCalendar(calendarId).saAbbrevDayNames;
+		    return GetCalendar(calendarId).[Friend]saAbbrevDayNames;
 		}
 
 		// The super short day names
-		internal String[] SuperShortDayNames(int calendarId)
+		String[] SuperShortDayNames(int calendarId)
 		{
-		    return GetCalendar(calendarId).saSuperShortDayNames;
+		    return GetCalendar(calendarId).[Friend]saSuperShortDayNames;
 		}
 
 		// month names
-		internal String[] MonthNames(int calendarId)
+		String[] MonthNames(int calendarId)
 		{
-		    return GetCalendar(calendarId).saMonthNames;
+		    return GetCalendar(calendarId).[Friend]saMonthNames;
 		}
 
 		// Genitive month names
-		internal String[] GenitiveMonthNames(int calendarId)
+		String[] GenitiveMonthNames(int calendarId)
 		{
-		    return GetCalendar(calendarId).saMonthGenitiveNames;
+		    return GetCalendar(calendarId).[Friend]saMonthGenitiveNames;
 		}
 
 		// month names
-		internal String[] AbbreviatedMonthNames(int calendarId)
+		String[] AbbreviatedMonthNames(int calendarId)
 		{
-		    return GetCalendar(calendarId).saAbbrevMonthNames;
+		    return GetCalendar(calendarId).[Friend]saAbbrevMonthNames;
 		}
 
 		// Genitive month names
-		internal String[] AbbreviatedGenitiveMonthNames(int calendarId)
+		String[] AbbreviatedGenitiveMonthNames(int calendarId)
 		{
-		    return GetCalendar(calendarId).saAbbrevMonthGenitiveNames;
+		    return GetCalendar(calendarId).[Friend]saAbbrevMonthGenitiveNames;
 		}
 
 		// Leap year month names
 		// Note: This only applies to Hebrew, and it basically adds a "1" to the 6th month name
 		// the non-leap names skip the 7th name in the normal month name array
-		internal String[] LeapYearMonthNames(int calendarId)
+		String[] LeapYearMonthNames(int calendarId)
 		{
-		    return GetCalendar(calendarId).saLeapYearMonthNames;
+		    return GetCalendar(calendarId).[Friend]saLeapYearMonthNames;
 		}
 
 		// month/day format (single string, no override)
-		internal String MonthDay(int calendarId)
+		String MonthDay(int calendarId)
 		{
-		    return GetCalendar(calendarId).sMonthDay;
+		    return GetCalendar(calendarId).[Friend]sMonthDay;
 		}
 
 		void DoGetLocaleInfo(uint lctype, String outStr)
@@ -560,7 +560,7 @@ namespace System.Globalization
 		    GetSeparator(format, "Hhms", outStr);
 		}
 
-		internal String TimeSeparator
+		String TimeSeparator
 		{
 		    get
 		    {

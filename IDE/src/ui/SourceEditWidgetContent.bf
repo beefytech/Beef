@@ -1991,8 +1991,8 @@ namespace IDE.ui
 				UndoBatchStart undoBatchStart = new UndoBatchStart("embeddedToggleComment");
 				mData.mUndoManager.Add(undoBatchStart);
 
-				int minPos = mSelection.mValue.MinPos;
-				int maxPos = mSelection.mValue.MaxPos;
+				int minPos = mSelection.GetValueOrDefault().MinPos;
+				int maxPos = mSelection.GetValueOrDefault().MaxPos;
 				mSelection = null;
 
 				var str = scope String();
@@ -2280,7 +2280,7 @@ namespace IDE.ui
 							char8 c = beforeCursorLineText[checkIdx];
 							if (!c.IsWhiteSpace)
 								break;
-							mSelection.mValue.mStartPos--;
+							mSelection.ValueRef.mStartPos--;
 						}
 						insertFlags |= .NoRestoreSelectionOnUndo;
 					}
@@ -2490,8 +2490,8 @@ namespace IDE.ui
 						UndoBatchStart undoBatchStart = new UndoBatchStart("blockSurround");
 						mData.mUndoManager.Add(undoBatchStart);                
 
-						int minPos = mSelection.mValue.MinPos;
-						int maxPos = mSelection.mValue.MaxPos;
+						int minPos = mSelection.GetValueOrDefault().MinPos;
+						int maxPos = mSelection.GetValueOrDefault().MaxPos;
 						mSelection = null;
 						CursorTextPos = minPos;
 						String insertStr = scope String();

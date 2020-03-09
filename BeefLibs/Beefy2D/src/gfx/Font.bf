@@ -347,7 +347,7 @@ namespace Beefy.gfx
 			}
 		}
 
-        internal bool Load(StringView fontName, float pointSize = -1)
+        public bool Load(StringView fontName, float pointSize = -1)
         {
 			Dispose();
 

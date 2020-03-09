@@ -29,42 +29,42 @@ namespace System.Globalization
     // WARNING: The type loader will rearrange class member offsets so the mscorwks!CalendarDataBaseObject
     // WARNING: must be manually structured to match the true loaded class layout
     //
-    internal class CalendarData
+    class CalendarData
     {
         // Max calendars
-        internal const int MAX_CALENDARS = 23;
+        const int MAX_CALENDARS = 23;
 
         // Identity
-        internal String     sNativeName              ~ delete _; // Calendar Name for the locale
+        String     sNativeName              ~ delete _; // Calendar Name for the locale
 
         // Formats
-        internal String[]   saShortDates             ~ DeleteContainerAndItems!(_); // Short Data format, default first
-        internal String[]   saYearMonths             ~ DeleteContainerAndItems!(_); // Year/Month Data format, default first
-        internal String[]   saLongDates              ~ DeleteContainerAndItems!(_); // Long Data format, default first
-        internal String     sMonthDay                ~ delete _; // Month/Day format
+        String[]   saShortDates             ~ DeleteContainerAndItems!(_); // Short Data format, default first
+        String[]   saYearMonths             ~ DeleteContainerAndItems!(_); // Year/Month Data format, default first
+        String[]   saLongDates              ~ DeleteContainerAndItems!(_); // Long Data format, default first
+        String     sMonthDay                ~ delete _; // Month/Day format
 
         // Calendar Parts Names
-        internal String[]   saEraNames               ~ DeleteContainerAndItems!(_); // Names of Eras
-        internal String[]   saAbbrevEraNames         ~ DeleteContainerAndItems!(_); // Abbreviated Era Names
-        internal String[]   saAbbrevEnglishEraNames  ~ DeleteContainerAndItems!(_); // Abbreviated Era Names in English
-        internal String[]   saDayNames               ~ DeleteContainerAndItems!(_); // Day Names, null to use locale data, starts on Sunday
-        internal String[]   saAbbrevDayNames         ~ DeleteContainerAndItems!(_); // Abbrev Day Names, null to use locale data, starts on Sunday
-        internal String[]   saSuperShortDayNames     ~ DeleteContainerAndItems!(_); // Super short Day of week names
-        internal String[]   saMonthNames             ~ DeleteContainerAndItems!(_); // Month Names (13)
-        internal String[]   saAbbrevMonthNames       ~ DeleteContainerAndItems!(_); // Abbrev Month Names (13)
-        internal String[]   saMonthGenitiveNames     ~ DeleteContainerAndItems!(_); // Genitive Month Names (13)
-        internal String[]   saAbbrevMonthGenitiveNames~ DeleteContainerAndItems!(_); // Genitive Abbrev Month Names (13)
-        internal String[]   saLeapYearMonthNames     ~ DeleteContainerAndItems!(_); // Multiple strings for the month names in a leap year.
+        String[]   saEraNames               ~ DeleteContainerAndItems!(_); // Names of Eras
+        String[]   saAbbrevEraNames         ~ DeleteContainerAndItems!(_); // Abbreviated Era Names
+        String[]   saAbbrevEnglishEraNames  ~ DeleteContainerAndItems!(_); // Abbreviated Era Names in English
+        String[]   saDayNames               ~ DeleteContainerAndItems!(_); // Day Names, null to use locale data, starts on Sunday
+        String[]   saAbbrevDayNames         ~ DeleteContainerAndItems!(_); // Abbrev Day Names, null to use locale data, starts on Sunday
+        String[]   saSuperShortDayNames     ~ DeleteContainerAndItems!(_); // Super short Day of week names
+        String[]   saMonthNames             ~ DeleteContainerAndItems!(_); // Month Names (13)
+        String[]   saAbbrevMonthNames       ~ DeleteContainerAndItems!(_); // Abbrev Month Names (13)
+        String[]   saMonthGenitiveNames     ~ DeleteContainerAndItems!(_); // Genitive Month Names (13)
+        String[]   saAbbrevMonthGenitiveNames~ DeleteContainerAndItems!(_); // Genitive Abbrev Month Names (13)
+        String[]   saLeapYearMonthNames     ~ DeleteContainerAndItems!(_); // Multiple strings for the month names in a leap year.
 
         // Integers at end to make marshaller happier
-        internal int        iTwoDigitYearMax=2029    ; // Max 2 digit year (for Y2K bug data entry)
-        internal int        iCurrentEra=0            ;  // current era # (usually 1)
+        int        iTwoDigitYearMax=2029    ; // Max 2 digit year (for Y2K bug data entry)
+        int        iCurrentEra=0            ;  // current era # (usually 1)
 
         // Use overrides?
-        internal bool       bUseUserOverrides        ; // True if we want user overrides.
+        bool       bUseUserOverrides        ; // True if we want user overrides.
 
         // Static invariant for the invariant locale
-        internal static CalendarData Invariant ~ delete _;
+        static CalendarData Invariant ~ delete _;
 
         // Private constructor
         private this() {}
@@ -128,7 +128,7 @@ namespace System.Globalization
         //
         // Get a bunch of data for a calendar
         //
-        internal this(String localeName, int calendarId, bool bUseUserOverrides)
+        public this(String localeName, int calendarId, bool bUseUserOverrides)
         {
 			String[] Clone(String[] strs)
 			{
@@ -169,16 +169,16 @@ namespace System.Globalization
 
             // Clean up the escaping of the formats
             
-			CultureData.ReescapeWin32Strings(this.saShortDates);
-            CultureData.ReescapeWin32Strings(this.saLongDates);
-            CultureData.ReescapeWin32Strings(this.saYearMonths);
-            CultureData.ReescapeWin32String(this.sMonthDay);
+			CultureData.[Friend]ReescapeWin32Strings(this.saShortDates);
+            CultureData.[Friend]ReescapeWin32Strings(this.saLongDates);
+            CultureData.[Friend]ReescapeWin32Strings(this.saYearMonths);
+            CultureData.[Friend]ReescapeWin32String(this.sMonthDay);
 
             if ((CalendarId)calendarId == CalendarId.TAIWAN)
             {
                 // for Geo----al reasons, the ----ese native name should only be returned when 
                 // for ----ese SKU
-                if (CultureInfo.IsTaiwanSku)
+                if (CultureInfo.[Friend]IsTaiwanSku)
                 {
                     // We got the month/day names from the OS (same as gregorian), but the native name is wrong
                     this.sNativeName = "\x4e2d\x83ef\x6c11\x570b\x66c6";
@@ -273,7 +273,7 @@ namespace System.Globalization
                 // for Geo----al reasons, the ----ese native name should only be returned when 
                 // for ----ese SKU
 				DeleteContainerAndItems!(this.saEraNames);
-                if (CultureInfo.IsTaiwanSku)
+                if (CultureInfo.[Friend]IsTaiwanSku)
                 {
                     // 
                     this.saEraNames = AllocStrings("\x4e2d\x83ef\x6c11\x570b");
@@ -381,7 +381,7 @@ namespace System.Globalization
             }
         }
 
-        internal static CalendarData GetCalendarData(int calendarId)
+        static CalendarData GetCalendarData(int calendarId)
         {
             /*//
             // Get a calendar.
@@ -406,34 +406,34 @@ namespace System.Globalization
         {
             switch (calendarId)
             {
-                case Calendar.CAL_GREGORIAN_US: 
+                case Calendar.[Friend]CAL_GREGORIAN_US: 
                     return "fa-IR";             // "fa-IR" Iran
                     
-                case Calendar.CAL_JAPAN:
+                case Calendar.[Friend]CAL_JAPAN:
                     return "ja-JP";             // "ja-JP" Japan
                 
-                case Calendar.CAL_TAIWAN:
+                case Calendar.[Friend]CAL_TAIWAN:
                     return "zh-TW";             // zh-TW Taiwan
                 
-                case Calendar.CAL_KOREA:            
+                case Calendar.[Friend]CAL_KOREA:            
                     return "ko-KR";             // "ko-KR" Korea
                     
-                case Calendar.CAL_HIJRI:
-                case Calendar.CAL_GREGORIAN_ARABIC:
-                case Calendar.CAL_UMALQURA:
+                case Calendar.[Friend]CAL_HIJRI:
+                case Calendar.[Friend]CAL_GREGORIAN_ARABIC:
+                case Calendar.[Friend]CAL_UMALQURA:
                     return "ar-SA";             // "ar-SA" Saudi Arabia
 
-                case Calendar.CAL_THAI:
+                case Calendar.[Friend]CAL_THAI:
                     return "th-TH";             // "th-TH" Thailand
                     
-                case Calendar.CAL_HEBREW:
+                case Calendar.[Friend]CAL_HEBREW:
                     return "he-IL";             // "he-IL" Israel
                     
-                case Calendar.CAL_GREGORIAN_ME_FRENCH:
+                case Calendar.[Friend]CAL_GREGORIAN_ME_FRENCH:
                     return "ar-DZ";             // "ar-DZ" Algeria
                 
-                case Calendar.CAL_GREGORIAN_XLIT_ENGLISH:
-                case Calendar.CAL_GREGORIAN_XLIT_FRENCH:
+                case Calendar.[Friend]CAL_GREGORIAN_XLIT_ENGLISH:
+                case Calendar.[Friend]CAL_GREGORIAN_XLIT_FRENCH:
                     return "ar-IQ";             // "ar-IQ"; Iraq
                 
                 default:
@@ -482,7 +482,7 @@ namespace System.Globalization
 
         
         
-        internal static int nativeGetTwoDigitYearMax(int calID)
+        static int nativeGetTwoDigitYearMax(int calID)
 		{
 			Runtime.NotImplemented();
 		}
@@ -494,7 +494,7 @@ namespace System.Globalization
 			return true;
 		}
 
-        internal static int nativeGetCalendars(String localeName, bool useUserOverride, int[] calendars)
+        static int nativeGetCalendars(String localeName, bool useUserOverride, int[] calendars)
 		{
 			Runtime.NotImplemented();
 		}

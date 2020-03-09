@@ -12,7 +12,7 @@ namespace System.Threading.Tasks
 	{
 		private readonly Task m_task;
 
-		internal this(Task task)
+		public this(Task task)
 		{
 		    //Contract.Requires(task != null, "Constructing an awaiter requires a task to await.");
 		    m_task = task;
@@ -28,10 +28,10 @@ namespace System.Threading.Tasks
 		    ValidateEnd(m_task);
 		}
 
-		internal static void ValidateEnd(Task task)
+		public static void ValidateEnd(Task task)
 		{
 		    // Fast checks that can be inlined.
-		    if (task.IsWaitNotificationEnabledOrNotRanToCompletion)
+		    if (task.[Friend]IsWaitNotificationEnabledOrNotRanToCompletion)
 		    {
 		        // If either the end await bit is set or we're not completed successfully,
 		        // fall back to the slower path.
@@ -50,7 +50,7 @@ namespace System.Threading.Tasks
 		    // but where for one reason or another synchronous rather than asynchronous waiting is needed.
 		    if (!task.IsCompleted)
 		    {
-		        bool taskCompleted = task.InternalWait(Timeout.Infinite, default(CancellationToken));
+		        bool taskCompleted = task.[Friend]InternalWait(Timeout.Infinite, default(CancellationToken));
 		        Contract.Assert(taskCompleted, "With an infinite timeout, the task should have always completed.");
 		    }
 
@@ -59,7 +59,7 @@ namespace System.Threading.Tasks
             //task.NotifyDebuggerOfWaitCompletionIfNecessary();
 
 		    // And throw an exception if the task is faulted or canceled.
-		    if (!task.IsRanToCompletion)
+		    if (!task.[Friend]IsRanToCompletion)
             {    
 				ThrowUnimplemented();
             	//ThrowForNonSuccess(task);
@@ -71,7 +71,7 @@ namespace System.Threading.Tasks
 	{
 		private readonly Task<TResult> m_task;
 
-		internal this(Task<TResult> task)
+		public this(Task<TResult> task)
 		{
 		    //Contract.Requires(task != null, "Constructing an awaiter requires a task to await.");
 		    m_task = task;
@@ -85,7 +85,7 @@ namespace System.Threading.Tasks
 		public TResult GetResult()
 		{
 		    TaskAwaiter.ValidateEnd(m_task);
-		    return m_task.ResultOnSuccess;
+		    return m_task.[Friend]ResultOnSuccess;
 		}
 	}
 }

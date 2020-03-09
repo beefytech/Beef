@@ -555,8 +555,8 @@ namespace Beefy.theme.dark
 			if (mChildItems != null)
 			{
 				//mChildItems.BinarySearch()
-				float drawStartY = g.mClipRect.mValue.mY - g.mMatrix.ty;
-				float drawEndY = g.mClipRect.mValue.Bottom - g.mMatrix.ty;
+				float drawStartY = g.mClipRect.Value.mY - g.mMatrix.ty;
+				float drawEndY = g.mClipRect.Value.Bottom - g.mMatrix.ty;
 				int itemStart = 0;
 				if (drawStartY > 0)
 					itemStart = Math.Max(0, FindItemAtY(drawStartY) - 1);

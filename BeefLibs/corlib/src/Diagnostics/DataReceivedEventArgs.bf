@@ -12,9 +12,9 @@ namespace System.Diagnostics
 
 	public class DataReceivedEventArgs : EventArgs
 	{
-		internal String _data;
+		String _data;
 
-		internal this(String data)
+		this(String data)
 		{
 			_data = data;
 		}

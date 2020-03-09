@@ -25,39 +25,39 @@ namespace System.Threading.Tasks
 		    }
 		}
 
-		internal static TaskScheduler InternalCurrent
+		protected static TaskScheduler InternalCurrent
 		{
 		    get
 		    {
-		        Task currentTask = Task.InternalCurrent;
+		        Task currentTask = Task.[Friend]InternalCurrent;
 		        return ( (currentTask != null) 
 		            && ((currentTask.CreationOptions & TaskCreationOptions.HideScheduler) == 0)
-		            ) ? currentTask.ExecutingTaskScheduler : null;
+		            ) ? currentTask.[Friend]ExecutingTaskScheduler : null;
 		    }
 		}
 
-		protected internal abstract void QueueTask(Task task);
+		protected abstract void QueueTask(Task task);
 		protected abstract bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued);
 
 		/// <summary>
 		/// Notifies the scheduler that a work item has made progress.
 		/// </summary>
-		internal virtual void NotifyWorkItemProgress()
+		protected virtual void NotifyWorkItemProgress()
 		{
 
 		}
 
-		internal bool TryRunInline(Task task, bool taskWasPreviouslyQueued)
+		protected bool TryRunInline(Task task, bool taskWasPreviouslyQueued)
 		{
-			TaskScheduler ets = task.ExecutingTaskScheduler;
+			TaskScheduler ets = task.[Friend]ExecutingTaskScheduler;
 
 			// Delegate cross-scheduler inlining requests to target scheduler
 			if(ets != this && ets !=null) return ets.TryRunInline(task, taskWasPreviouslyQueued);
 
 			//StackGuard currentStackGuard;
 			if( (ets == null) ||
-			    (task.m_action == null) ||
-			    task.IsDelegateInvoked || 
+			    (task.[Friend]m_action == null) ||
+			    task.[Friend]IsDelegateInvoked || 
 			    task.IsCanceled
 				//|| (currentStackGuard = Task.CurrentStackGuard).TryBeginInliningScope() == false
 				)
@@ -71,7 +71,7 @@ namespace System.Threading.Tasks
 			bool bInlined = false;
 			//try
 			{
-			    task.FireTaskScheduledIfNeeded(this);
+			    task.[Friend]FireTaskScheduledIfNeeded(this);
 			    bInlined = TryExecuteTaskInline(task, taskWasPreviouslyQueued);
 			}
 			/*finally
@@ -89,18 +89,18 @@ namespace System.Threading.Tasks
 			return bInlined;
 		}
 
-		internal void InternalQueueTask(Task task)
+		protected void InternalQueueTask(Task task)
 		{
 		    //task.FireTaskScheduledIfNeeded(this);
 		    this.QueueTask(task);
 		}
 
-		protected internal virtual bool TryDequeue(Task task)
+		protected virtual bool TryDequeue(Task task)
 		{
 		    return false;
 		}
 
-		internal virtual bool RequiresAtomicStartTransition
+		protected virtual bool RequiresAtomicStartTransition
 		{
 		    get { return true; }
 		}

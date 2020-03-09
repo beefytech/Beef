@@ -22,7 +22,7 @@ namespace Beefy.sys
         public Event<MenuItemUpdateHandler> mOnMenuItemUpdate ~ _.Dispose();
         public List<SysMenu> mChildren ~ DeleteContainerAndItems!(_);
 
-        internal this()
+        public this()
         {
         }
 

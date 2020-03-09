@@ -196,7 +196,7 @@ namespace System.Collections.Generic
 			return false;
 		}
 
-		internal T GetElement(int i)
+		T GetElement(int i)
 		{
 			return mArray[(mHead + i) % mArray.Count];
 		}
@@ -270,7 +270,7 @@ namespace System.Collections.Generic
 #endif
 			private T mCurrentElement;
 
-			internal this(Queue<T> q)
+			public this(Queue<T> q)
 			{
 				mQueue = q;
 #if VERSION_QUEUE

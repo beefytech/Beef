@@ -47,7 +47,7 @@ namespace System.Diagnostics
 
 		public Result<void> Start(ProcessStartInfo startInfo)
 		{
-			String fileName = startInfo.mFileName;
+			String fileName = startInfo.[Friend]mFileName;
 
 			Platform.BfpSpawnFlags spawnFlags = .None;
 			if (startInfo.ErrorDialog)
@@ -55,8 +55,8 @@ namespace System.Diagnostics
 			if (startInfo.UseShellExecute)
 			{
                 spawnFlags |= .UseShellExecute;
-				if (!startInfo.mVerb.IsEmpty)
-					fileName = scope:: String(fileName, "|", startInfo.mVerb);
+				if (!startInfo.[Friend]mVerb.IsEmpty)
+					fileName = scope:: String(fileName, "|", startInfo.[Friend]mVerb);
 			}
 			if (startInfo.CreateNoWindow)
 				spawnFlags |= .NoWindow;
@@ -75,7 +75,7 @@ namespace System.Diagnostics
 			Span<char8> envSpan = env;
 
 			Platform.BfpSpawnResult result = .Ok;
-			mSpawn = Platform.BfpSpawn_Create(fileName, startInfo.mArguments, startInfo.mDirectory, envSpan.Ptr, spawnFlags, &result);
+			mSpawn = Platform.BfpSpawn_Create(fileName, startInfo.[Friend]mArguments, startInfo.[Friend]mDirectory, envSpan.Ptr, spawnFlags, &result);
 
 			if ((mSpawn == null) || (result != .Ok))
 				return .Err;

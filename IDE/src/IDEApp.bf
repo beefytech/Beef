@@ -7356,16 +7356,16 @@ namespace IDE
 
 			if (mVerbosity >= .Detailed)
 			{
-				String showArgs = startInfo.mArguments;
+				String showArgs = startInfo.[Friend]mArguments;
 				if ((mRunningTestScript) && (showArgs.Length > 1024))
 				{
 					showArgs = scope:: String(showArgs, 0, 1024);
 					showArgs.Append("...");
 				}
 
-				if (!startInfo.mFileName.IsEmpty)
+				if (!startInfo.[Friend]mFileName.IsEmpty)
                 {
-                	OutputLine("Executing: {0} {1}", startInfo.mFileName, showArgs);                	
+                	OutputLine("Executing: {0} {1}", startInfo.[Friend]mFileName, showArgs);                	
                 	if ((mVerbosity >= .Diagnostic) && (useArgsFile != .None))
                 		OutputLine("Arg file contents: {0}", args);
                 }

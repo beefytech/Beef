@@ -120,25 +120,24 @@ namespace System {
     */    
 
     //This class contains only static members and does not require the serializable attribute.    
-    internal static
-    class DateTimeFormat {
+    static class DateTimeFormat {
         
-        internal const int MaxSecondsFractionDigits = 7;
-        internal static readonly TimeSpan NullOffset = TimeSpan.MinValue;
+        const int MaxSecondsFractionDigits = 7;
+        static readonly TimeSpan NullOffset = TimeSpan.MinValue;
         
-        internal static char8[] allStandardFormats = new char8[]
+        static char8[] allStandardFormats = new char8[]
         {
             'd', 'D', 'f', 'F', 'g', 'G', 
             'm', 'M', 'o', 'O', 'r', 'R', 
             's', 't', 'T', 'u', 'U', 'y', 'Y',
         } ~ delete _;
         
-        internal const String RoundtripFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss.fffffffK";
-        internal const String RoundtripDateTimeUnfixed = "yyyy'-'MM'-'ddTHH':'mm':'ss zzz";
+        const String RoundtripFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss.fffffffK";
+        const String RoundtripDateTimeUnfixed = "yyyy'-'MM'-'ddTHH':'mm':'ss zzz";
     
         private const int DEFAULT_ALL_DATETIMES_SIZE = 132; 
         
-        internal static String[] fixedNumberFormats = new String[] {
+        static String[] fixedNumberFormats = new String[] {
             "0",
             "00",
             "000",
@@ -162,12 +161,12 @@ namespace System {
         //  The function can format to Int32.MaxValue.
         //
         ////////////////////////////////////////////////////////////////////////////
-        internal static void FormatDigits(String outputBuffer, int value, int len) {
+        static void FormatDigits(String outputBuffer, int value, int len) {
             Contract.Assert(value >= 0, "DateTimeFormat.FormatDigits(): value >= 0");
             FormatDigits(outputBuffer, value, len, false);
         }
 
-        internal static void FormatDigits(String outputBuffer, int value, int len, bool overrideLengthLimit) {
+        static void FormatDigits(String outputBuffer, int value, int len, bool overrideLengthLimit) {
             Contract.Assert(value >= 0, "DateTimeFormat.FormatDigits(): value >= 0");
 
 			var len;
@@ -206,7 +205,7 @@ namespace System {
 			digits.ToString(outputBuffer);
         }
         
-        internal static int ParseRepeatPattern(StringView format, int pos, char8 patternChar)
+        static int ParseRepeatPattern(StringView format, int pos, char8 patternChar)
         {
             int len = format.Length;
             int index = pos + 1;
@@ -295,7 +294,7 @@ namespace System {
         // The pos should point to a quote character. This method will
         // get the string encloed by the quote character.
         //
-        internal static Result<int> ParseQuoteString(StringView format, int pos, String result)
+        static Result<int> ParseQuoteString(StringView format, int pos, String result)
         {
 			var pos;
 
@@ -356,7 +355,7 @@ namespace System {
         // Return value of -1 means 'pos' is already at the end of the 'format' string.
         // Otherwise, return value is the int value of the next character.
         //
-        internal static int ParseNextChar(StringView format, int pos)
+        static int ParseNextChar(StringView format, int pos)
         {
             if (pos >= format.Length - 1)
             {
@@ -439,7 +438,7 @@ namespace System {
             Calendar cal = dtfi.Calendar;
             // This is a flag to indicate if we are format the dates using Hebrew calendar.
 
-            bool isHebrewCalendar = (cal.ID == Calendar.CAL_HEBREW);
+            bool isHebrewCalendar = (cal.[Friend]ID == Calendar.[Friend]CAL_HEBREW);
             // This is a flag to indicate if we are formating hour/minute/second only.
             bool bTimeOnly = true;
                         
@@ -480,7 +479,7 @@ namespace System {
                     case 'F':
                         tokenLen = ParseRepeatPattern(format, i, ch);
                         if (tokenLen <= MaxSecondsFractionDigits) {
-                            int64 fraction = (dateTime.Ticks % Calendar.TicksPerSecond);
+                            int64 fraction = (dateTime.Ticks % Calendar.[Friend]TicksPerSecond);
                             fraction = fraction / (int64)Math.Pow(10, 7 - tokenLen);
                             if (ch == 'f') {
 								((int)fraction).ToString(result, fixedNumberFormats[tokenLen - 1], CultureInfo.InvariantCulture);
@@ -585,7 +584,7 @@ namespace System {
 								FormatHebrewMonthName(dateTime, month, tokenLen, dtfi, result);
                             } else {             
                                 if ((dtfi.FormatFlags & DateTimeFormatFlags.UseGenitiveMonth) != 0 && tokenLen >= 4) {
-									dtfi.internalGetMonthName(
+									dtfi.[Friend]internalGetMonthName(
 										month, 
 										IsUseGenitiveForm(format, i, tokenLen, 'd')? MonthNameStyles.Genitive : MonthNameStyles.Regular, 
 										false, result);
@@ -607,7 +606,7 @@ namespace System {
                         if (dtfi.HasForceTwoDigitYears) {
                             FormatDigits(result, year, tokenLen <= 2 ? tokenLen : 2);
                         }
-                        else if (cal.ID == Calendar.CAL_HEBREW) {
+                        else if (cal.[Friend]ID == Calendar.[Friend]CAL_HEBREW) {
                             HebrewFormatDigits(result, year);
                         }
                         else {
@@ -715,10 +714,10 @@ namespace System {
             if (dateTimeFormat) {
                 // No offset. The instance is a DateTime and the output should be the local time zone
                 
-                if (timeOnly && dateTime.Ticks < Calendar.TicksPerDay) {
+                if (timeOnly && dateTime.Ticks < Calendar.[Friend]TicksPerDay) {
                     // For time only format and a time only input, the time offset on 0001/01/01 is less 
                     // accurate than the system's current offset because of daylight saving time.
-                    offset = TimeZoneInfo.GetLocalUtcOffset(DateTime.Now, TimeZoneInfoOptions.NoThrowOnInvalidTime);
+                    offset = TimeZoneInfo.[Friend]GetLocalUtcOffset(DateTime.Now, TimeZoneInfoOptions.NoThrowOnInvalidTime);
                 } else if (dateTime.Kind == DateTimeKind.Utc) {
 #if FEATURE_CORECLR
                     offset = TimeSpan.Zero;
@@ -730,10 +729,10 @@ namespace System {
                     // explicitly emit the local time offset, which we can do by removing the UTC flag.
                     InvalidFormatForUtc(format, dateTime);
                     dateTime = DateTime.SpecifyKind(dateTime, DateTimeKind.Local);
-                    offset = TimeZoneInfo.GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime);
+                    offset = TimeZoneInfo.[Friend]GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime);
 #endif // FEATURE_CORECLR
                 } else {
-                    offset = TimeZoneInfo.GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime);
+                    offset = TimeZoneInfo.[Friend]GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime);
                 }
             }
             if (offset >= TimeSpan.Zero) {
@@ -773,7 +772,7 @@ namespace System {
                 switch (dateTime.Kind) {
                     case DateTimeKind.Local: 
                         // This should output the local offset, e.g. "-07:30"
-                        offset = TimeZoneInfo.GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime);
+                        offset = TimeZoneInfo.[Friend]GetLocalUtcOffset(dateTime, TimeZoneInfoOptions.NoThrowOnInvalidTime);
                         // fall through to shared time zone output code
                         break;
                     case DateTimeKind.Utc:
@@ -798,7 +797,7 @@ namespace System {
         }
         
     
-        internal static Result<void> GetRealFormat(StringView format, DateTimeFormatInfo dtfi, String realFormat)
+        static Result<void> GetRealFormat(StringView format, DateTimeFormatInfo dtfi, String realFormat)
         {
             switch (format[0])
             {
@@ -916,12 +915,12 @@ namespace System {
 			return .Ok;
         }
 
-        internal static void Format(DateTime dateTime, StringView format, DateTimeFormatInfo dtfi, String outStr)
+        static void Format(DateTime dateTime, StringView format, DateTimeFormatInfo dtfi, String outStr)
 		{
             Format(dateTime, format, dtfi, NullOffset, outStr);
         }
         
-        internal static void Format(DateTime dateTime, StringView format, DateTimeFormatInfo dtfi, TimeSpan offset, String outStr)
+        static void Format(DateTime dateTime, StringView format, DateTimeFormatInfo dtfi, TimeSpan offset, String outStr)
         {
 			StringView useFormat = format;
 
@@ -933,7 +932,7 @@ namespace System {
             if (format.IsEmpty)
 			{
                 bool timeOnlySpecialCase = false;
-                if (dateTime.Ticks < Calendar.TicksPerDay) {
+                if (dateTime.Ticks < Calendar.[Friend]TicksPerDay) {
                     // If the time is less than 1 day, consider it as time of day.
                     // Just print out the short time format.
                     //
@@ -947,14 +946,14 @@ namespace System {
                     // thrown when we try to get the Japanese year for Gregorian year 0001.
                     // Therefore, the workaround allows them to call ToString() for time of day from a DateTime by
                     // formatting as ISO 8601 format.
-                    switch (dtfi.Calendar.ID) {
-                        case Calendar.CAL_JAPAN: 
-                        case Calendar.CAL_TAIWAN:
-                        case Calendar.CAL_HIJRI:
-                        case Calendar.CAL_HEBREW:
-                        case Calendar.CAL_JULIAN:
-                        case Calendar.CAL_UMALQURA:
-                        case Calendar.CAL_PERSIAN:
+                    switch (dtfi.Calendar.[Friend]ID) {
+                        case Calendar.[Friend]CAL_JAPAN: 
+                        case Calendar.[Friend]CAL_TAIWAN:
+                        case Calendar.[Friend]CAL_HIJRI:
+                        case Calendar.[Friend]CAL_HEBREW:
+                        case Calendar.[Friend]CAL_JULIAN:
+                        case Calendar.[Friend]CAL_UMALQURA:
+                        case Calendar.[Friend]CAL_PERSIAN:
                             timeOnlySpecialCase = true;
                             dtfi = DateTimeFormatInfo.InvariantInfo;
                             break;                        
@@ -992,7 +991,7 @@ namespace System {
             FormatCustomized(dateTime, useFormat, dtfi, offset, outStr);
         }
     
-        internal static Result<void> GetAllDateTimes(DateTime dateTime, char8 format, DateTimeFormatInfo dtfi, List<String> outResults)
+        static Result<void> GetAllDateTimes(DateTime dateTime, char8 format, DateTimeFormatInfo dtfi, List<String> outResults)
         {
             Contract.Requires(dtfi != null);
             //String [] allFormats    = null;
@@ -1048,7 +1047,7 @@ namespace System {
             return .Ok;
         }
     
-        internal static String[] GetAllDateTimes(DateTime dateTime, DateTimeFormatInfo dtfi)
+        static String[] GetAllDateTimes(DateTime dateTime, DateTimeFormatInfo dtfi)
         {
             List<String> results = new List<String>(DEFAULT_ALL_DATETIMES_SIZE);
             for (int i = 0; i < allStandardFormats.Count; i++)
@@ -1062,14 +1061,14 @@ namespace System {
         
         // This is a placeholder for an MDA to detect when the user is using a
         // local DateTime with a format that will be interpreted as UTC.
-        internal static void InvalidFormatForLocal(StringView format, DateTime dateTime)
+        static void InvalidFormatForLocal(StringView format, DateTime dateTime)
 		{
         }
 
         // This is an MDA for cases when the user is using a local format with
         // a Utc DateTime.
         
-        internal static void InvalidFormatForUtc(StringView format, DateTime dateTime) {
+        static void InvalidFormatForUtc(StringView format, DateTime dateTime) {
 #if MDA_SUPPORTED
             Mda.DateTimeInvalidLocalFormat();
 #endif

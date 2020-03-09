@@ -36,12 +36,12 @@ namespace System
 		// Number of days from 1/1/0001 to 12/30/1899
 		private const int32 DaysTo1899 = DaysPer400Years * 4 + DaysPer100Years * 3 - 367;
 		// Number of days from 1/1/0001 to 12/31/1969
-		internal const int32 DaysTo1970 = DaysPer400Years * 4 + DaysPer100Years * 3 + DaysPer4Years * 17 + DaysPerYear; // 719,162
+		private const int32 DaysTo1970 = DaysPer400Years * 4 + DaysPer100Years * 3 + DaysPer4Years * 17 + DaysPerYear; // 719,162
 		// Number of days from 1/1/0001 to 12/31/9999
 		private const int32 DaysTo10000 = DaysPer400Years * 25 - 366;  // 3652059
 
-		internal const int64 MinTicks = 0;
-		internal const int64 MaxTicks = DaysTo10000 * TicksPerDay - 1;
+		private const int64 MinTicks = 0;
+		private const int64 MaxTicks = DaysTo10000 * TicksPerDay - 1;
 		private const int64 MaxMillis = (int64)DaysTo10000 * MillisPerDay;
 
 		private const int64 FileTimeOffset = DaysTo1601 * TicksPerDay;
@@ -90,7 +90,7 @@ namespace System
 		//               UTC time.
 		private uint64 dateData;
 
-		internal int64 InternalTicks
+		int64 InternalTicks
 		{
 			get
 			{
@@ -138,7 +138,7 @@ namespace System
 			this.dateData = ((uint64)ticks | ((uint64)kind << KindShift));
 		}
 
-		internal this(int64 ticks, DateTimeKind kind, bool isAmbiguousDst)
+		public this(int64 ticks, DateTimeKind kind, bool isAmbiguousDst)
 		{
 			if (ticks < MinTicks || ticks > MaxTicks)
 			{
@@ -203,7 +203,7 @@ namespace System
 			//we need to put some error checking out here.
 			if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60 && second >= 0 && second < 60)
 			{
-				return (TimeSpan.TimeToTicks(hour, minute, second));
+				return (TimeSpan.[Friend]TimeToTicks(hour, minute, second));
 			}
 			return .Err;
 		}
@@ -354,7 +354,7 @@ namespace System
 			}
 		}
 
-		internal bool IsAmbiguousDaylightSavingTime()
+		bool IsAmbiguousDaylightSavingTime()
 		{
 			return (InternalKind == KindLocalAmbiguousDst);
 		}
@@ -440,7 +440,7 @@ namespace System
 
 				DateTime utc = UtcNow;
 				bool isAmbiguousLocalDst = false;
-				int64 offset = TimeZoneInfo.GetDateTimeNowUtcOffsetFromUtc(utc, out isAmbiguousLocalDst).Ticks;
+				int64 offset = TimeZoneInfo.[Friend]GetDateTimeNowUtcOffsetFromUtc(utc, out isAmbiguousLocalDst).Ticks;
 				int64 tick = utc.Ticks + offset;
 				if (tick > DateTime.MaxTicks)
 				{
@@ -768,7 +768,7 @@ namespace System
 			return ToLocalTime(false);
 		}
 
-		internal DateTime ToLocalTime(bool throwOnOverflow)
+		DateTime ToLocalTime(bool throwOnOverflow)
 		{
 			if (Kind == DateTimeKind.Local)
 			{
@@ -779,7 +779,7 @@ namespace System
 			bool isAmbiguousLocalDst = false;
 			//int64 offset = 0;
 			//ThrowUnimplemented();
-			int64 offset = TimeZoneInfo.GetUtcOffsetFromUtc(this, TimeZoneInfo.Local, out isDaylightSavings, out isAmbiguousLocalDst).Ticks;
+			int64 offset = TimeZoneInfo.[Friend]GetUtcOffsetFromUtc(this, TimeZoneInfo.Local, out isDaylightSavings, out isAmbiguousLocalDst).Ticks;
 #unwarn
 			int64 tick = Ticks + offset;
 			if (tick > DateTime.MaxTicks)
@@ -802,47 +802,47 @@ namespace System
 
 		public void ToLongDateString(String outString)
 		{
-			DateTimeFormat.Format(this, "D", DateTimeFormatInfo.CurrentInfo, outString);
+			DateTimeFormat.[Friend]Format(this, "D", DateTimeFormatInfo.CurrentInfo, outString);
 		}
 
 		public void ToLongTimeString(String outString)
 		{
-			DateTimeFormat.Format(this, "T", DateTimeFormatInfo.CurrentInfo, outString);
+			DateTimeFormat.[Friend]Format(this, "T", DateTimeFormatInfo.CurrentInfo, outString);
 		}
 
 		public void ToShortDateString(String outString)
 		{
-			DateTimeFormat.Format(this, "d", DateTimeFormatInfo.CurrentInfo, outString);
+			DateTimeFormat.[Friend]Format(this, "d", DateTimeFormatInfo.CurrentInfo, outString);
 		}
 
 		public void ToShortTimeString(String outString)
 		{
-			DateTimeFormat.Format(this, "t", DateTimeFormatInfo.CurrentInfo, outString);
+			DateTimeFormat.[Friend]Format(this, "t", DateTimeFormatInfo.CurrentInfo, outString);
 		}
 
 		public void ToString(String outString)
 		{
-			DateTimeFormat.Format(this, .(), DateTimeFormatInfo.CurrentInfo, outString);
+			DateTimeFormat.[Friend]Format(this, .(), DateTimeFormatInfo.CurrentInfo, outString);
 		}
 
 		public void ToString(String outString, String format)
 		{
-			DateTimeFormat.Format(this, format, DateTimeFormatInfo.CurrentInfo, outString);
+			DateTimeFormat.[Friend]Format(this, format, DateTimeFormatInfo.CurrentInfo, outString);
 		}
 
 		public void ToString(String outString, IFormatProvider provider)
 		{
-			DateTimeFormat.Format(this, .(), DateTimeFormatInfo.GetInstance(provider), outString);
+			DateTimeFormat.[Friend]Format(this, .(), DateTimeFormatInfo.GetInstance(provider), outString);
 		}
 
 		public void ToString(String outString, String format, IFormatProvider provider)
 		{
-			DateTimeFormat.Format(this, format, DateTimeFormatInfo.GetInstance(provider), outString);
+			DateTimeFormat.[Friend]Format(this, format, DateTimeFormatInfo.GetInstance(provider), outString);
 		}
 
 		public DateTime ToUniversalTime()
 		{
-			return TimeZoneInfo.ConvertTimeToUtc(this, TimeZoneInfoOptions.NoThrowOnInvalidTime);
+			return TimeZoneInfo.[Friend]ConvertTimeToUtc(this, TimeZoneInfoOptions.NoThrowOnInvalidTime);
 		}
 
 
@@ -865,7 +865,7 @@ namespace System
 			return DateTimeParse.TryParseExactMultiple(s, formats, DateTimeFormatInfo.GetInstance(provider), style, out result);
 		}*/
 
-		internal static Result<DateTime> TryCreate(int year, int month, int day, int hour, int minute, int second, int millisecond)
+		static Result<DateTime> TryCreate(int year, int month, int day, int hour, int minute, int second, int millisecond)
 		{
 			if (year < 1 || year > 9999 || month < 1 || month > 12)
 			{

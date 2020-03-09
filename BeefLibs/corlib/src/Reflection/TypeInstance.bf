@@ -21,14 +21,14 @@ namespace System
 			MethodInfo matched = default;
 			for (let methodInfo in GetMethods(bindingFlags))
 			{
-				if (methodInfo.mMethodData.mName == methodName)
+				if (methodInfo.[Friend]mMethodData.[Friend]mName == methodName)
 				{
-					if (matched.mMethodData != null)
+					if (matched.[Friend]mMethodData != null)
 						return .Err(.MultipleResults);
 				}
 			}
 
-			if (matched.mMethodData == null)
+			if (matched.[Friend]mMethodData == null)
 				return .Err(.NoResults);
 			return .Ok(matched);
 		}
@@ -44,7 +44,7 @@ namespace System.Reflection
 		    for (int32 i = 0; i < mFieldDataCount; i++)
 		    {
 		        FieldData* fieldData = &mFieldDataPtr[i];
-		        if (fieldData.mName == fieldName)
+		        if (fieldData.[Friend]mName == fieldName)
 		            return FieldInfo(this, fieldData);
 		    }
 		    return .Err;

@@ -37,7 +37,7 @@ namespace System
         public const double PositiveInfinity = (double)1.0 / (double)(0.0);
         public const double NaN = (double)0.0 / (double)0.0;
         
-        internal static double NegativeZero = BitConverter.Int64BitsToDouble((int64)(0x8000000000000000UL));
+        public static double NegativeZero = BitConverter.Int64BitsToDouble((int64)(0x8000000000000000UL));
 
 		public static int operator<=>(Double lhs, Double rhs)
 		{
@@ -95,7 +95,7 @@ namespace System
 			}
 		}
 		        
-		internal bool IsNegative
+		public bool IsNegative
 		{
 			get
 			{

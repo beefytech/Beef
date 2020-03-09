@@ -877,10 +877,10 @@ namespace IDE.ui
 				if (curVariantType.IsNullable)
 				{
 					let elementType = ((SpecializedGenericType)curVariantType).GetGenericArg(0);
-					if (elementType.mTypeCode == .Int32)
+					if (elementType.[Friend]mTypeCode == .Int32)
 					{
 						handled = true;
-						editingProp.mCurValue.mData = 0;
+						editingProp.mCurValue.[Friend]mData = 0;
 						int32? value = null;
 						if ((newValue.Length != 0) && (!String.Equals(newValue, "Not Set", .OrdinalIgnoreCase)))
 						{
@@ -896,11 +896,11 @@ namespace IDE.ui
 							}
 						}
 
-						*((bool*)&editingProp.mCurValue.mData + elementType.mSize) = value.HasValue;
+						*((bool*)&editingProp.mCurValue.[Friend]mData + elementType.[Friend]mSize) = value.HasValue;
 						if (value.HasValue)
 						{
 							void* valueData = editingProp.mCurValue.GetValueData();
-							Internal.MemCpy(valueData, &value.mValue, elementType.mSize);
+							Internal.MemCpy(valueData, &value.[Friend]mValue, elementType.[Friend]mSize);
 						}
 						multiCopyToOthers = true;
 					}
@@ -972,7 +972,7 @@ namespace IDE.ui
                         }
                         editingProp.mCurValue = Variant.Create(entries, true);
                     }
-                    else if (curVariantType.mTypeCode == .Int32)
+                    else if (curVariantType.[Friend]mTypeCode == .Int32)
 					{
 						if (int32.Parse(newValue) case .Ok(let intVal))
 						{
@@ -999,7 +999,7 @@ namespace IDE.ui
 							setValue = false;
 						}
 					}
-					else if (curVariantType.mTypeCode == .Float)
+					else if (curVariantType.[Friend]mTypeCode == .Float)
 					{
 						if (float.Parse(newValue) case .Ok(let floatVal))
 						{
@@ -1115,13 +1115,13 @@ namespace IDE.ui
 					let genericType = (SpecializedGenericType)curVariantType;
 					let elementType = genericType.GetGenericArg(0);
 
-					propEntry.mCurValue.mData = 0;
-					*((bool*)&propEntry.mCurValue.mData + elementType.mSize) = value.HasValue;
+					propEntry.mCurValue.[Friend]mData = 0;
+					*((bool*)&propEntry.mCurValue.[Friend]mData + elementType.[Friend]mSize) = value.HasValue;
 					if (value.HasValue)
 					{
 						void* valueData = propEntry.mCurValue.GetValueData();
 						var copyValue = value;
-						Internal.MemCpy(valueData, copyValue.GetValueData(), elementType.mSize);
+						Internal.MemCpy(valueData, copyValue.GetValueData(), elementType.[Friend]mSize);
 					}
 				}
 				else
@@ -1339,7 +1339,7 @@ namespace IDE.ui
 				let genericType = (SpecializedGenericType)curVariantType;
 				let elementType = genericType.GetGenericArg(0);
 
-				bool hasValue = *((bool*)&propEntry.mCurValue.mData + elementType.mSize);
+				bool hasValue = *((bool*)&propEntry.mCurValue.[Friend]mData + elementType.[Friend]mSize);
 				curVariantType = elementType;
 				if (!hasValue)
 				{
@@ -1638,7 +1638,7 @@ namespace IDE.ui
 			{
 				//Variant.Create();
 
-				var data = prevVariant.mData;
+				var data = prevVariant.[Friend]mData;
 				return Variant.Create(prevVariant.VariantType, &data);
 
 				/*if (type == typeof(bool))

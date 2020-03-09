@@ -68,7 +68,7 @@ namespace Beefy.gfx
             [StdCall, CLink]
             extern static void ModelDefAnimation_Clip(void* nativeAnimation, int32 startFrame, int32 numFrames);
 
-            internal this(void* nativeModelDefAnimation)
+            public this(void* nativeModelDefAnimation)
             {
                 mNativeModelDefAnimation = nativeModelDefAnimation;
                 mFrameCount = ModelDefAnimation_GetFrameCount(mNativeModelDefAnimation);
@@ -166,7 +166,7 @@ namespace Beefy.gfx
         public float mAnimSpeed = 1.0f;
         public bool mLoop;
 
-        internal this(void* nativeModelInstance, ModelDef modelDef)
+        public this(void* nativeModelInstance, ModelDef modelDef)
         {
             mNativeRenderCmd = nativeModelInstance;
             mModelDef = modelDef;

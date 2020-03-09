@@ -260,7 +260,7 @@ namespace System
             {
                 if (x.IsNegative)
                 {
-                    return Double.NegativeZero;
+                    return Double.[Friend]NegativeZero;
                 }
             }
             double alternativeResult;

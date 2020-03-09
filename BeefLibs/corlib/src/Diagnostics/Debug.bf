@@ -34,7 +34,7 @@ namespace System.Diagnostics
 		public static void AssertNotStack(Object obj)
 		{
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-			if ((obj != null) && (obj.GetFlags() & 8 != 0))
+			if ((obj != null) && (obj.[Friend]GetFlags() & 8 != 0))
 				Internal.FatalError("Assert failed", 1);
 #endif
 		}

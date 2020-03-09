@@ -2,17 +2,17 @@ namespace System
 {
 	struct Char16 : char16, IHashable
 	{
-		internal const int UNICODE_PLANE00_END = 0x00ffff;
+		const int UNICODE_PLANE00_END = 0x00ffff;
 		// The starting codepoint for Unicode plane 1.  Plane 1 contains 0x010000 ~ 0x01ffff.
-		internal const int UNICODE_PLANE01_START = 0x10000;
+		const int UNICODE_PLANE01_START = 0x10000;
 		// The end codepoint for Unicode plane 16.  This is the maximum code point value allowed for Unicode.
 		// Plane 16 contains 0x100000 ~ 0x10ffff.
-		internal const int UNICODE_PLANE16_END   = 0x10ffff;
+		const int UNICODE_PLANE16_END   = 0x10ffff;
 
-		internal const char16 HIGH_SURROGATE_START = (char16)0xd800;
-		internal const char16 LOW_SURROGATE_END    = (char16)0xdfff;
-		internal const char16 HIGH_SURROGATE_END   = (char16)0xdbff;
-		internal const char16 LOW_SURROGATE_START  = (char16)0xdc00;
+		const char16 HIGH_SURROGATE_START = (char16)0xd800;
+		const char16 LOW_SURROGATE_END    = (char16)0xdfff;
+		const char16 HIGH_SURROGATE_END   = (char16)0xdbff;
+		const char16 LOW_SURROGATE_START  = (char16)0xdc00;
 
 		public int GetHashCode()
 		{

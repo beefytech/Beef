@@ -19,12 +19,12 @@ namespace System.Globalization {
 
 	public enum GregorianCalendarTypes
 	{
-	    Localized = Calendar.CAL_GREGORIAN,
-	    USEnglish = Calendar.CAL_GREGORIAN_US,
-	    MiddleEastFrench = Calendar.CAL_GREGORIAN_ME_FRENCH,
-	    Arabic = Calendar.CAL_GREGORIAN_ARABIC,
-	    TransliteratedEnglish = Calendar.CAL_GREGORIAN_XLIT_ENGLISH,
-	    TransliteratedFrench = Calendar.CAL_GREGORIAN_XLIT_FRENCH,
+	    Localized = Calendar.[Friend]CAL_GREGORIAN,
+	    USEnglish = Calendar.[Friend]CAL_GREGORIAN_US,
+	    MiddleEastFrench = Calendar.[Friend]CAL_GREGORIAN_ME_FRENCH,
+	    Arabic = Calendar.[Friend]CAL_GREGORIAN_ARABIC,
+	    TransliteratedEnglish = Calendar.[Friend]CAL_GREGORIAN_XLIT_ENGLISH,
+	    TransliteratedFrench = Calendar.[Friend]CAL_GREGORIAN_XLIT_FRENCH,
 	}
 
     // This calendar recognizes two era values:
@@ -40,25 +40,25 @@ namespace System.Globalization {
         public const int ADEra = 1;
 
 
-        internal const int DatePartYear = 0;
-        internal const int DatePartDayOfYear = 1;
-        internal const int DatePartMonth = 2;
-        internal const int DatePartDay = 3;
+        const int DatePartYear = 0;
+        const int DatePartDayOfYear = 1;
+        const int DatePartMonth = 2;
+        const int DatePartDay = 3;
 
         //
         // This is the max Gregorian year can be represented by DateTime class.  The limitation
         // is derived from DateTime class.
         //
-        internal const int MaxYear = 9999;
+        const int MaxYear = 9999;
 
-        internal GregorianCalendarTypes m_type;
+        GregorianCalendarTypes m_type;
 
-        internal static readonly int[] DaysToMonth365 = new int[]
+        static readonly int[] DaysToMonth365 = new int[]
         {
             0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365
         } ~ delete _;
 
-        internal static readonly int[] DaysToMonth366 = new int[]
+        static readonly int[] DaysToMonth366 = new int[]
         {
             0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366
         } ~ delete _;
@@ -115,7 +115,7 @@ namespace System.Globalization {
         **Exceptions:
         ============================================================================*/
 
-        internal static Calendar GetDefaultInstance() {
+        static Calendar GetDefaultInstance() {
             if (s_defaultInstance == null) {
                 s_defaultInstance = new GregorianCalendar();
             }
@@ -148,7 +148,7 @@ namespace System.Globalization {
             }
 
             set {
-                VerifyWritable();
+                this.[Friend]VerifyWritable();
 
                 switch (value)
 				{
@@ -168,7 +168,7 @@ namespace System.Globalization {
             }
         }
 
-        internal override int ID {
+        protected override int ID {
             get {
                 // By returning different ID for different variations of GregorianCalendar,
                 // we can support the Transliterated Gregorian calendar.
@@ -180,7 +180,7 @@ namespace System.Globalization {
 
         // Returns a given date part of this DateTime. This method is used
         // to compute the year, day-of-year, month, or day part.
-        internal virtual int GetDatePart(int64 ticks, int part)
+        protected virtual int GetDatePart(int64 ticks, int part)
         {
             // n = number of days since 1/1/0001
             int n = (int)(ticks / TicksPerDay);
@@ -247,7 +247,7 @@ namespace System.Globalization {
         **
         ============================================================================*/
 
-        internal static Result<int64> GetAbsoluteDate(int year, int month, int day) {
+        static Result<int64> GetAbsoluteDate(int year, int month, int day) {
             if (year >= 1 && year <= MaxYear && month >= 1 && month <= 12)
             {
                 int[] days = ((year % 4 == 0 && (year % 100 != 0 || year % 400 == 0))) ? DaysToMonth366: DaysToMonth365;
@@ -263,7 +263,7 @@ namespace System.Globalization {
 
         // Returns the tick count corresponding to the given year, month, and day.
         // Will check the if the parameters are valid.
-        internal virtual Result<int64> DateToTicks(int year, int month, int day) {
+        protected virtual Result<int64> DateToTicks(int year, int month, int day) {
             return (Try!(GetAbsoluteDate(year, month,  day)) * TicksPerDay);
         }
 
@@ -320,7 +320,7 @@ namespace System.Globalization {
                 d = days;
             }
             int64 ticks = Try!(DateToTicks(y, m, d)) + time.Ticks % TicksPerDay;
-            Try!(Calendar.CheckAddResult(ticks, MinSupportedDateTime, MaxSupportedDateTime));
+            Try!(Calendar.[Friend]CheckAddResult(ticks, MinSupportedDateTime, MaxSupportedDateTime));
 
             return (DateTime(ticks));
         }
@@ -597,9 +597,9 @@ namespace System.Globalization {
 			return .Err;
         }
 
-        internal override bool TryToDateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int era, out DateTime result) {
+        protected override bool TryToDateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int era, out DateTime result) {
             if (era == CurrentEra || era == ADEra) {
-                switch (DateTime.TryCreate(year, month, day, hour, minute, second, millisecond))
+                switch (DateTime.[Friend]TryCreate(year, month, day, hour, minute, second, millisecond))
 				{
 				case .Ok(out result):
 					return true;
@@ -617,13 +617,13 @@ namespace System.Globalization {
         {
             get {
                 if (twoDigitYearMax == -1) {
-                    twoDigitYearMax = GetSystemTwoDigitYearSetting(ID, DEFAULT_TWO_DIGIT_YEAR_MAX);
+                    twoDigitYearMax = GetSystemTwoDigitYearSetting([Friend]ID, DEFAULT_TWO_DIGIT_YEAR_MAX);
                 }
                 return (twoDigitYearMax);
             }
 
             set {
-                VerifyWritable();
+                this.[Friend]VerifyWritable();
                 if (value < 99 || value > MaxYear) {
                     /*throw new ArgumentOutOfRangeException(
                                 "year",

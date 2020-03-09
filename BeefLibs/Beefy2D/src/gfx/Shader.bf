@@ -8,7 +8,7 @@ namespace Beefy.gfx
     {        
         public void* mNativeShaderParam;
 
-        internal this(void* shaderParam)
+        public this(void* shaderParam)
         {
         }
     }
@@ -38,7 +38,7 @@ namespace Beefy.gfx
             return aShader;
         }        
 
-        internal this(void* nativeShader)
+        public this(void* nativeShader)
         {
             mNativeShader = nativeShader;        
         }

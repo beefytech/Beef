@@ -208,7 +208,7 @@ namespace System.IO
 			StreamReader mStreamReader;
 			WaitEvent mDoneEvent = new WaitEvent() ~ delete _;
 
-			internal this(StreamReader streamReader)
+			public this(StreamReader streamReader)
 			{
 				Debug.WriteLine("ReadLineTask this {0}", this);
 
@@ -216,7 +216,7 @@ namespace System.IO
 				ThreadPool.QueueUserWorkItem(new => Proc);
 			}
 
-			internal ~this()
+			public ~this()
 			{
 				//Debug.WriteLine("ReadLineTask ~this waiting {0}", this);
 				mDoneEvent.WaitFor();
@@ -384,7 +384,7 @@ namespace System.IO
 			}
 		}
 
-		internal virtual Result<int> ReadBuffer()
+		protected virtual Result<int> ReadBuffer()
 		{
 			mCharLen = 0;
 			mCharPos = 0;
@@ -578,7 +578,7 @@ namespace System.IO
 			String mCurrentLine;
 			Result<void> mLastReadResult;
 
-			internal this(StreamReader streamReader)
+			public this(StreamReader streamReader)
 			{
 				mStreamReader = streamReader;
 				mCurrentLine = new String();

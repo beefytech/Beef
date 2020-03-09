@@ -3400,7 +3400,7 @@ namespace IDE.ui
 		{
 			Reload();
 			if (mRequestedLineAndColumn != null)
-				ShowFileLocation(-1, mRequestedLineAndColumn.mValue.mLine, mRequestedLineAndColumn.mValue.mColumn, .Always);
+				ShowFileLocation(-1, mRequestedLineAndColumn.Value.mLine, mRequestedLineAndColumn.Value.mColumn, .Always);
 			FocusEdit();
 
 			if ((!(mWantHash case .None)) && (mEditData != null) && (!mEditData.CheckHash(mWantHash)))
@@ -4065,7 +4065,7 @@ namespace IDE.ui
                     if (IDEApp.sApp.mExecutionPaused)
                     {
                         int addr;
-                        String fileName = scope String(Path.MaxPath);
+                        String fileName = scope String(Path.[Friend]MaxPath);
                         int hotIdx;
                         int defLineStart;
                         int defLineEnd;

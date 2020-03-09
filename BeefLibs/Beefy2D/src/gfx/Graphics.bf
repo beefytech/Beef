@@ -93,7 +93,7 @@ namespace Beefy.gfx
 
         public int32 mDrawNestingDepth;
 
-        internal this()
+        public this()
         {
             mZDepthStack = StateStack<float>(256, 0.0f, new => PopZDepth);
 
@@ -433,7 +433,7 @@ namespace Beefy.gfx
         [StdCall, CLink]
         extern static void Gfx_SetTexture_TextureSegment(int32 textureIdx, void* textureSegment);
         
-        internal this()
+        public this()
         {
             mRenderStateDisposeProxy.mDisposeProxyDelegate = new => PopRenderState;
         }

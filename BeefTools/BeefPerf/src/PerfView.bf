@@ -1613,13 +1613,13 @@ namespace BeefPerf
 
 			if (mWantOfsY.HasValue)
 			{
-				float delta = mWantOfsY.mValue - mOfsY;
+				float delta = mWantOfsY.Value - mOfsY;
 				float deltaAdd = delta / 5;
 				deltaAdd += Math.Sign(delta) * 1;
 
 				if (Math.Abs(deltaAdd) >= Math.Abs(delta))
 				{
-					mOfsY = mWantOfsY.mValue;
+					mOfsY = mWantOfsY.Value;
 					mWantOfsY = null;
 				}
 				else

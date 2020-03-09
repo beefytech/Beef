@@ -966,8 +966,7 @@ void BfElementVisitor::Visit(BfMethodDeclaration* methodDeclaration)
 {
 	Visit(methodDeclaration->ToBase());
 
-	VisitChild(methodDeclaration->mAttributes);
-	VisitChild(methodDeclaration->mInternalSpecifier);
+	VisitChild(methodDeclaration->mAttributes);	
 	VisitChild(methodDeclaration->mProtectionSpecifier);
 	VisitChild(methodDeclaration->mReadOnlySpecifier);
 	VisitChild(methodDeclaration->mStaticSpecifier);
@@ -1027,8 +1026,7 @@ void BfElementVisitor::Visit(BfPropertyDeclaration* propertyDeclaration)
 {
 	Visit(propertyDeclaration->ToBase());
 
-	VisitChild(propertyDeclaration->mAttributes);
-	VisitChild(propertyDeclaration->mInternalSpecifier);
+	VisitChild(propertyDeclaration->mAttributes);	
 	VisitChild(propertyDeclaration->mProtectionSpecifier);
 	VisitChild(propertyDeclaration->mStaticSpecifier);
 
@@ -1068,8 +1066,7 @@ void BfElementVisitor::Visit(BfFieldDeclaration* fieldDeclaration)
 {
 	Visit(fieldDeclaration->ToBase());
 
-	VisitChild(fieldDeclaration->mAttributes);
-	VisitChild(fieldDeclaration->mInternalSpecifier);
+	VisitChild(fieldDeclaration->mAttributes);	
 	VisitChild(fieldDeclaration->mProtectionSpecifier);
 	VisitChild(fieldDeclaration->mStaticSpecifier);
 
@@ -1112,8 +1109,7 @@ void BfElementVisitor::Visit(BfTypeDeclaration* typeDeclaration)
 
 	VisitChild(typeDeclaration->mAttributes);
 	VisitChild(typeDeclaration->mAbstractSpecifier);
-	VisitChild(typeDeclaration->mSealedSpecifier);
-	VisitChild(typeDeclaration->mInternalSpecifier);
+	VisitChild(typeDeclaration->mSealedSpecifier);	
 	VisitChild(typeDeclaration->mProtectionSpecifier);
 	VisitChild(typeDeclaration->mStaticSpecifier);
 	VisitChild(typeDeclaration->mPartialSpecifier);

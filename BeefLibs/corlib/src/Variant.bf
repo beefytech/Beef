@@ -4,8 +4,8 @@ namespace System
 {
     struct Variant
 	{
-		internal int mStructType; // 0 = unowned object, 1 = owned object, 2 = null value (mData is type), otherwise is struct type
-		internal int mData; // This is either an Object reference, struct data, or a pointer to struct data
+		int mStructType; // 0 = unowned object, 1 = owned object, 2 = null value (mData is type), otherwise is struct type
+		int mData; // This is either an Object reference, struct data, or a pointer to struct data
 
 		public bool OwnsMemory
 		{
@@ -135,12 +135,12 @@ namespace System
 			if (type.Size <= sizeof(int))
 			{
 				variant.mData = 0;
-				Internal.MemCpy(&variant.mData, val, type.mSize);
+				Internal.MemCpy(&variant.mData, val, type.[Friend]mSize);
 			}
 			else
 			{
-				void* data = new uint8[type.mSize]*;
-				Internal.MemCpy(data, val, type.mSize);
+				void* data = new uint8[type.[Friend]mSize]*;
+				Internal.MemCpy(data, val, type.[Friend]mSize);
 				variant.mData = (int)data;
 			}
 			return variant;
@@ -164,7 +164,7 @@ namespace System
 				}
 				else
 				{
-					void* data = new uint8[type.mSize]*;
+					void* data = new uint8[type.[Friend]mSize]*;
 					variant.mData = (int)data;
 					return data;
 				}
@@ -268,9 +268,9 @@ namespace System
 				return false;
 
 			let type = v1.VariantType;
-			if (type.mSize <= sizeof(int))
+			if (type.[Friend]mSize <= sizeof(int))
 				return v1.mData == v2.mData;
-			for (int i < type.mSize)
+			for (int i < type.[Friend]mSize)
 			{
 				if (((uint8*)(void*)v1.mData)[i] != ((uint8*)(void*)v2.mData)[i])
 					return false;

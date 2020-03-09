@@ -21,7 +21,7 @@ namespace System.Threading
 		public volatile int32 mActive;
 	}
 
-	internal interface IThreadPoolWorkItem
+	interface IThreadPoolWorkItem
 	{
 	    void ExecuteWorkItem();
 	    void MarkAborted();

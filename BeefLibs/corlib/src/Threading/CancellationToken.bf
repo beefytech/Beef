@@ -25,7 +25,7 @@ namespace System.Threading
 		{
 		    get
 		    {
-		        return m_source != null && m_source.CanBeCanceled;
+		        return m_source != null && m_source.[Friend]CanBeCanceled;
 		    }
 		}
 	}

@@ -218,7 +218,7 @@ namespace System.Collections.Generic
 
 		public Enumerator GetEnumerator()
 		{
-			return Enumerator(this, Enumerator.KeyValuePair);
+			return Enumerator(this, Enumerator.[Friend]KeyValuePair);
 		}
 
 		[DisableObjectAccessChecks]
@@ -572,10 +572,10 @@ namespace System.Collections.Generic
 			//private KeyValuePair<TKey, TValue> current;
 			private int_cosize mGetEnumeratorRetType;  // What should Enumerator.Current return?
 
-			internal const int_cosize DictEntry = 1;
-			internal const int_cosize KeyValuePair = 2;
+			const int_cosize DictEntry = 1;
+			const int_cosize KeyValuePair = 2;
 
-			internal this(Dictionary<TKey, TValue> dictionary, int_cosize getEnumeratorRetType)
+			public this(Dictionary<TKey, TValue> dictionary, int_cosize getEnumeratorRetType)
 			{
 				mDictionary = dictionary;
 #if VERSION_DICTIONARY
@@ -718,10 +718,10 @@ namespace System.Collections.Generic
 			private int_cosize mIndex;
 			private TValue mCurrent;
 
-			internal const int_cosize cDictEntry = 1;
-			internal const int_cosize cKeyValuePair = 2;
+			const int_cosize cDictEntry = 1;
+			const int_cosize cKeyValuePair = 2;
 
-			internal this(Dictionary<TKey, TValue> dictionary)
+			public this(Dictionary<TKey, TValue> dictionary)
 			{
 				mDictionary = dictionary;
 #if VERSION_DICTIONARY
@@ -819,10 +819,10 @@ namespace System.Collections.Generic
 			private int_cosize mIndex;
 			private TKey* mCurrent;
 
-			internal const int_cosize DictEntry = 1;
-			internal const int_cosize KeyValuePair = 2;
+			const int_cosize DictEntry = 1;
+			const int_cosize KeyValuePair = 2;
 
-			internal this(Dictionary<TKey, TValue> dictionary)
+			public this(Dictionary<TKey, TValue> dictionary)
 			{
 				mDictionary = dictionary;
 #if VERSION_DICTIONARY

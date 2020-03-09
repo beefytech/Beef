@@ -34,7 +34,7 @@ namespace System.IO
 		    }
 		}
 
-		internal override Result<DialogResult> RunFileDialog(ref Windows.OpenFileName ofn)
+		protected override Result<DialogResult> RunFileDialog(ref Windows.OpenFileName ofn)
 		{
 			bool result = Windows.GetSaveFileNameW(ref ofn);
 			if (!result)

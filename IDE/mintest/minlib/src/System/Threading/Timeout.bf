@@ -19,7 +19,7 @@ namespace System.Threading {
         //public static readonly TimeSpan InfiniteTimeSpan = TimeSpan(0, 0, 0, 0, Timeout.Infinite);
 
         public const int32 Infinite = -1;
-        internal const uint32 UnsignedInfinite = unchecked((uint32)-1);
+        public const uint32 UnsignedInfinite = unchecked((uint32)-1);
     }
 
 }

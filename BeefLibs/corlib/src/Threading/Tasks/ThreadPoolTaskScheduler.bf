@@ -7,7 +7,7 @@ namespace System.Threading.Tasks
 	class ThreadPoolTaskScheduler : TaskScheduler
 	{
 		/// Constructs a new ThreadPool task scheduler object
-		internal this()
+		public this()
 		{
 		}
 
@@ -19,14 +19,14 @@ namespace System.Threading.Tasks
 		    //Contract.Requires(obj != null, "TaskScheduler.LongRunningThreadWork: obj is null");
 		    Task t = obj as Task;
 		    //Contract.Assert(t != null, "TaskScheduler.LongRunningThreadWork: t is null");
-		    t.ExecuteEntry(false);
+		    t.[Friend]ExecuteEntry(false);
 		}
 
 		/// Schedules a task to the ThreadPool.
 		/// @param task The task to schedule.
-		protected internal override void QueueTask(Task task)
+		protected override void QueueTask(Task task)
 		{
-		    if ((task.Options & TaskCreationOptions.LongRunning) != 0)
+		    if ((task.[Friend]Options & TaskCreationOptions.LongRunning) != 0)
 		    {
 		        // Run LongRunning tasks on their own dedicated thread.
 		        Thread thread = new Thread(new => LongRunningThreadWork);
@@ -58,7 +58,7 @@ namespace System.Threading.Tasks
 		    bool rval = false;
 		    //try
 		    {
-		        rval = task.ExecuteEntry(false); // handles switching Task.Current etc.
+		        rval = task.[Friend]ExecuteEntry(false); // handles switching Task.Current etc.
 		    }
 		    /*finally
 		    {
@@ -69,7 +69,7 @@ namespace System.Threading.Tasks
 		    return rval;
 		}
 
-		protected internal override bool TryDequeue(Task task)
+		protected override bool TryDequeue(Task task)
 		{
 		    // just delegate to TP
 		    return ThreadPool.TryPopCustomWorkItem(task);
@@ -92,14 +92,14 @@ namespace System.Threading.Tasks
 		}*/
 
 		/// Notifies the scheduler that work is progressing (no-op).
-		internal override void NotifyWorkItemProgress()
+		protected override void NotifyWorkItemProgress()
 		{
 		    //ThreadPool.NotifyWorkItemProgress();
 		}
 
 		/// This is the only scheduler that returns false for this property, indicating that the task entry codepath is unsafe (CAS free)
 		/// since we know that the underlying scheduler already takes care of atomic transitions from queued to non-queued.
-		internal override bool RequiresAtomicStartTransition
+		protected override bool RequiresAtomicStartTransition
 		{
 		    get { return false; }
 		}

@@ -825,7 +825,7 @@ namespace IDE.ui
                 }
             }
 
-			String callstackFileName = scope String(Path.MaxPath);
+			String callstackFileName = scope String(Path.[Friend]MaxPath);
 			int callstackLineNum = -1;			
 
 			Image linePointerImage = DarkTheme.sDarkTheme.GetImage(.LinePointer);
