@@ -10934,9 +10934,9 @@ int WinDebugger::GetJmpState(int stackFrameIdx)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
-	if (mCallStack.size() == 0)
-		UpdateCallStack();
-
+	if (!FixCallStackIdx(stackFrameIdx))
+		return -1;
+	
 	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
 	UpdateCallStackMethod(actualStackFrameIdx);
 	WdStackFrame* wdStackFrame = mCallStack[actualStackFrameIdx];
@@ -10954,8 +10954,8 @@ intptr WinDebugger::GetStackFrameCalleeAddr(int stackFrameIdx)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
-	if (mCallStack.size() == 0)
-		UpdateCallStack();
+	if (!FixCallStackIdx(stackFrameIdx))
+		return -1;
 
 	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
 	UpdateCallStackMethod(actualStackFrameIdx);
@@ -10978,8 +10978,8 @@ String WinDebugger::GetStackMethodOwner(int stackFrameIdx, int& language)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
-	if (mCallStack.size() == 0)
-		UpdateCallStack();
+	if (!FixCallStackIdx(stackFrameIdx))
+		return "";
 	
 	int actualStackFrameIdx = BF_MAX(0, stackFrameIdx);
 	if (actualStackFrameIdx >= (int)mCallStack.size())
