@@ -9139,18 +9139,25 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					if (!castedFromValue)
 						return BfIRValue();
 					
+					BfTypedValue operatorOut;
 					if (ignoreWrites)
-						return mBfIRBuilder->GetFakeVal();
-
-					BfModuleMethodInstance moduleMethodInstance = GetMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef, BfTypeVector());
-
-					SizedArray<BfIRValue, 1> args;					
-					exprEvaluator.PushArg(castedFromValue, args);
-					auto operatorOut = exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, mCompiler->IsSkippingExtraResolveChecks() ? BfIRValue() : moduleMethodInstance.mFunc, false, args);
-					if ((operatorOut.mType != NULL) && (operatorOut.mType->IsSelf()))
 					{
-						BF_ASSERT(IsInGeneric());
-						operatorOut = GetDefaultTypedValue(opMethodSrcType);
+						if (opMethodInstance->mReturnType == toType)
+							return mBfIRBuilder->GetFakeVal();
+						operatorOut = GetDefaultTypedValue(opMethodInstance->mReturnType);
+					}
+					else
+					{
+						BfModuleMethodInstance moduleMethodInstance = GetMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef, BfTypeVector());
+
+						SizedArray<BfIRValue, 1> args;
+						exprEvaluator.PushArg(castedFromValue, args);
+						operatorOut = exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, mCompiler->IsSkippingExtraResolveChecks() ? BfIRValue() : moduleMethodInstance.mFunc, false, args);
+						if ((operatorOut.mType != NULL) && (operatorOut.mType->IsSelf()))
+						{
+							BF_ASSERT(IsInGeneric());
+							operatorOut = GetDefaultTypedValue(opMethodSrcType);
+						}
 					}
 
 					return CastToValue(srcNode, operatorOut, toType, castFlags, resultFlags);
