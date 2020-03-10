@@ -4772,7 +4772,11 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 		}		
 	}
 
-	if (retValue.mType->IsVoid())
+	if (retValue.mType->IsVar())
+	{
+		EmitReturn(BfIRValue());
+	}
+	else if (retValue.mType->IsVoid())
 	{				
 		if (retType->IsVoid())
 		{
