@@ -2736,7 +2736,10 @@ bool BfModule::CheckAccessMemberProtection(BfProtection protection, BfType* memb
 	bool allowPrivate = (memberType == mCurTypeInstance) || (IsInnerType(mCurTypeInstance, memberType));
 	if (!allowPrivate)
 		allowPrivate |= memberType->IsInterface();
-	bool allowProtected = allowPrivate;// allowPrivate || TypeIsSubTypeOf(mCurTypeInstance, memberType->ToTypeInstance());
+	bool allowProtected = allowPrivate;
+	//TODO: We had this commented out, but this makes accessing protected properties fail
+	if (mCurTypeInstance != NULL)
+		allowProtected |= TypeIsSubTypeOf(mCurTypeInstance, memberType->ToTypeInstance());
 	if (!CheckProtection(protection, allowProtected, allowPrivate))
 	{
 		return false;
@@ -3314,7 +3317,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		fieldType = fieldInstance->GetResolvedType();
 		if ((fieldType == NULL) || (fieldType->IsVar()))
 		{
-			AssertErrorState();
+			AssertZeberrorState();
 			// Default const type is 'int'
 			BfTypedValue initValue = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_IntPtr));
 			if (fieldInstance != NULL)
@@ -3360,7 +3363,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 
 	if ((!field->mIsStatic) && (typeDef->mIsStatic))
 	{
-		AssertErrorState();		
+		AssertZeberrorState();		
 		return GetPrimitiveType(BfTypeCode_Var);
 	}
 	
@@ -12944,10 +12947,14 @@ void BfModule::EmitReturn(BfIRValue val)
 	else
 	{
 		EmitDeferredScopeCalls(false, NULL);
-		if (mCurMethodInstance->mReturnType->IsValuelessType())
-			mBfIRBuilder->CreateRetVoid();
-		else
-			mBfIRBuilder->CreateRet(val);
+
+		if (val)
+		{
+			if (mCurMethodInstance->mReturnType->IsValuelessType())
+				mBfIRBuilder->CreateRetVoid();
+			else
+				mBfIRBuilder->CreateRet(val);
+		}
 	}
 
 	mCurMethodState->SetHadReturn(true);
