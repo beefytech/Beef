@@ -3317,7 +3317,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		fieldType = fieldInstance->GetResolvedType();
 		if ((fieldType == NULL) || (fieldType->IsVar()))
 		{
-			AssertZeberrorState();
+			AssertErrorState();
 			// Default const type is 'int'
 			BfTypedValue initValue = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_IntPtr));
 			if (fieldInstance != NULL)
@@ -3363,7 +3363,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 
 	if ((!field->mIsStatic) && (typeDef->mIsStatic))
 	{
-		AssertZeberrorState();		
+		AssertErrorState();		
 		return GetPrimitiveType(BfTypeCode_Var);
 	}
 	

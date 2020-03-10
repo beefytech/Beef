@@ -178,14 +178,21 @@ namespace IDE.ui
             if (all)
             {
                 mEditWidget.SetFocus();
-                replaceCount = Replace();
+                replaceCount = Replace(true);
                 if (replaceCount > 0)
                     IDEApp.sApp.MessageDialog("Replace Results", StackStringFormat!("{0} instance(s) replaced.", replaceCount));
+
+				if (replaceCount != -1)
+				{
+				    if (replaceCount == 0)
+				        IDEApp.sApp.Fail("The search text wasn't found.");
+				    mWidgetWindow.mIsKeyDownHandled = true;
+				}
             }
             else
             {
                 //replaceCount = Replace((byte)SourceElementFlags.Find_CurrentSelection);
-                var content = mEditWidget.Content;
+                /*var content = mEditWidget.Content;
                 String replaceText = scope String();
                 mReplaceEditWidget.GetText(replaceText);
                 bool hasMatch = false;
@@ -203,15 +210,9 @@ namespace IDE.ui
                 {
                     content.InsertAtCursor(replaceText);
                     mCurFindIdx = (int32)content.CursorTextPos - 1;
-                }
-                FindNext(1, false);
-            }
-
-            if (replaceCount != -1)
-            {
-                if (replaceCount == 0)
-                    IDEApp.sApp.Fail("The search text wasn't found.");
-                mWidgetWindow.mIsKeyDownHandled = true;
+                }*/
+				Replace(false);
+				FindNext(1, true);
             }
         }
 
@@ -545,7 +546,7 @@ namespace IDE.ui
 
         static int32 sReentryCount;
 
-        public int32 Replace()
+        public int32 Replace(bool replaceAll)
         {
 			scope AutoBeefPerf("QuickFind.Replace");
 
@@ -561,6 +562,8 @@ namespace IDE.ui
 
 			//Profiler.StartSampling();
 
+			SourceElementFlags findFlags = replaceAll ? .Find_Matches : .Find_CurrentSelection;
+
             while (true)
             {
                 int32 selEnd = -1;
@@ -568,7 +571,7 @@ namespace IDE.ui
                 var text = mEditWidget.Content.mData.mText;
                 for (int32 i = searchStart; i < mEditWidget.Content.mData.mTextLength; i++)
                 {
-                    if ((text[i].mDisplayFlags & (uint8)SourceElementFlags.Find_Matches) != 0)
+                    if ((text[i].mDisplayFlags & (uint8)findFlags) != 0)
                     {
                         if (selStart == -1)
                             selStart = i;
@@ -600,8 +603,12 @@ namespace IDE.ui
 					insertFlags |= .IsGroupStart;
                 ewc.InsertAtCursor(replaceText, insertFlags);
 
+				/*if (selStart <= mCurFindIdx)
+					mCurFindIdx += (int32)(replaceText.Length - findText.Length);*/
+
                 searchStart = selStart + (int32)replaceText.Length;
                 searchCount++;
+				DataUpdated();
 
                 /*if (flags == (byte)SourceElementFlags.Find_CurrentSelection)
                 {
@@ -620,13 +627,18 @@ namespace IDE.ui
             return searchCount;
         }        
 
+		void DataUpdated()
+		{
+			mLastTextVersion = mEditWidget.Content.mData.mCurTextVersionId;
+		}
+
         public void UpdateData()
         {
             if (mLastTextVersion != mEditWidget.Content.mData.mCurTextVersionId)
             {
                 if (mIsShowingMatches)
                     FindAll();
-                mLastTextVersion = mEditWidget.Content.mData.mCurTextVersionId;
+                DataUpdated();
             }
 
             UpdateCursorPos();
