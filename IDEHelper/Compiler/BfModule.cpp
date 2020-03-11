@@ -3758,6 +3758,12 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 	SizedArray<BfIRValue, 8> args;
 	BfExprEvaluator exprEvaluator(this);
 
+	if (mCurMethodInstance->HasStructRet())
+	{
+		auto retPtrType = CreatePointerType(mCurMethodInstance->mReturnType);		
+		exprEvaluator.PushArg(GetDefaultTypedValue(retPtrType, true, BfDefaultValueKind_Const), args);
+	}
+
 	if (mCurMethodInstance->HasThis())
 	{
 		auto thisValue = GetDefaultTypedValue(mCurMethodInstance->GetOwner(), true);
