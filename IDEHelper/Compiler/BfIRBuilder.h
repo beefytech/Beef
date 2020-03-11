@@ -128,7 +128,6 @@ enum BfConstType
 	BfConstType_Array,
 	BfConstType_Undef,
 	BfConstType_SizedArrayType
-
 };
 
 enum BfIRValueFlags : uint8

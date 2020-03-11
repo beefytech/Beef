@@ -458,6 +458,7 @@ namespace System
 	{   
 	    None,
 	    CharPtr,
+		StringId,
 	    Pointer,
 	    NullPtr,
 		Self,
