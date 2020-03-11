@@ -91,7 +91,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 						return BfTypedValue(mModule->GetStringObjectValue(stringId), mResult.mType);
 					}
 
-					return BfTypedValue(mModule->GetConstValue32(stringId), toType);
+					return BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_StringId, stringId), toType);
 				}
 			}
 		}

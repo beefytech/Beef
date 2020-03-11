@@ -81,8 +81,9 @@ enum BfTypeCode : uint8
 {	
 	BfTypeCode_None,
 	BfTypeCode_CharPtr,
+	BfTypeCode_StringId,
 	BfTypeCode_Pointer,
-	BfTypeCode_NullPtr,
+	BfTypeCode_NullPtr,	
 	BfTypeCode_Self,
 	BfTypeCode_Dot,
 	BfTypeCode_Var,

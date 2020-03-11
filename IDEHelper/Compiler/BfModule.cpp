@@ -1518,7 +1518,7 @@ int BfModule::GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHold
 		constHolder = mBfIRBuilder;
 
 	auto constant = constHolder->GetConstant(constantStr);
-	if (constant->mTypeCode == BfTypeCode_Int32)
+	if (constant->mTypeCode == BfTypeCode_StringId)
 	{
 		return constant->mInt32;
 	}
@@ -6075,7 +6075,7 @@ BfIRFunction BfModule::GetIntrinsic(BfMethodInstance* methodInstance, bool repor
 			auto constant = methodOwner->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);			
 			String error;
 			
-			if ((constant != NULL) && (BfIRConstHolder::IsInt(constant->mTypeCode)))
+			if ((constant != NULL) && (constant->mTypeCode = BfTypeCode_StringId))
 			{
 				int stringId = constant->mInt32;
 				auto entry = mContext->mStringObjectIdMap[stringId];
@@ -9335,7 +9335,7 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 	int stringPoolIdx = GetStringPoolIdx(irVal, mBfIRBuilder);
 	if (stringPoolIdx != -1)
 	{
-		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConst(BfTypeCode_Int32, stringPoolIdx);
+		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConst(BfTypeCode_StringId, stringPoolIdx);
 		return;
 	}
 
@@ -9374,56 +9374,70 @@ void BfModule::ClearConstData()
 }
 
 BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType)
-{		
-
-	bool isString = false;
-	isString = (wantType->IsObject()) && (wantType->ToTypeInstance()->mTypeDef == mCompiler->mStringTypeDef);
-	if (wantType->IsPointer())
-		isString = true;
-	
-	if (!isString)	
+{				
+	switch (constant->mTypeCode)
 	{
-		switch (constant->mTypeCode)
+	case BfTypeCode_StringId:
+	case BfTypeCode_Boolean:
+	case BfTypeCode_Int8:
+	case BfTypeCode_UInt8:
+	case BfTypeCode_Int16:
+	case BfTypeCode_UInt16:
+	case BfTypeCode_Int32:
+	case BfTypeCode_UInt32:
+	case BfTypeCode_Int64:
+	case BfTypeCode_UInt64:
+	case BfTypeCode_IntPtr:
+	case BfTypeCode_UIntPtr:
+	case BfTypeCode_IntUnknown:
+	case BfTypeCode_UIntUnknown:
+	case BfTypeCode_Char8:
+	case BfTypeCode_Char16:
+	case BfTypeCode_Char32:
+	case BfTypeCode_Single:
+	case BfTypeCode_Double:
 		{
-		case BfTypeCode_Boolean:
-		case BfTypeCode_Int8:
-		case BfTypeCode_UInt8:
-		case BfTypeCode_Int16:
-		case BfTypeCode_UInt16:
-		case BfTypeCode_Int32:
-		case BfTypeCode_UInt32:
-		case BfTypeCode_Int64:
-		case BfTypeCode_UInt64:
-		case BfTypeCode_IntPtr:
-		case BfTypeCode_UIntPtr:
-		case BfTypeCode_IntUnknown:
-		case BfTypeCode_UIntUnknown:
-		case BfTypeCode_Char8:
-		case BfTypeCode_Char16:
-		case BfTypeCode_Char32:
-		case BfTypeCode_Single:
-		case BfTypeCode_Double:
+			auto constVal = mBfIRBuilder->CreateConst(constant, constHolder);
+			BfTypedValue typedValue;
+
+			if (constant->mTypeCode == BfTypeCode_StringId)
+			{
+				if ((wantType->IsInstanceOf(mCompiler->mStringTypeDef)) ||
+					((wantType->IsPointer()) && (wantType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))))
+				{
+					typedValue = BfTypedValue(ConstantToCurrent(constant, constHolder, wantType), wantType);
+					return typedValue;
+				}
+
+				auto stringType = ResolveTypeDef(mCompiler->mStringTypeDef);
+				typedValue = BfTypedValue(ConstantToCurrent(constant, constHolder, stringType), stringType);
+			}
+			
+			if (!typedValue)
 			{
 				auto constVal = mBfIRBuilder->CreateConst(constant, constHolder);
-				auto typedValue = BfTypedValue(constVal, GetPrimitiveType(constant->mTypeCode));
-				if (typedValue.mType == wantType)
-					return typedValue;
-				if (wantType->IsTypedPrimitive())
-				{
-					if (typedValue.mType == wantType->GetUnderlyingType())
-					{
-						typedValue.mType = wantType;
-						return typedValue;
-					}
-				}				
-				auto castedTypedValue = Cast(NULL, typedValue, wantType, (BfCastFlags)(BfCastFlags_SilentFail | BfCastFlags_Explicit));
-				BF_ASSERT(castedTypedValue);
-				return castedTypedValue;
+				typedValue = BfTypedValue(constVal, GetPrimitiveType(constant->mTypeCode));
 			}
-			break;
-		default: break;
+
+			if (typedValue.mType == wantType)
+				return typedValue;
+			if (wantType->IsTypedPrimitive())
+			{
+				if (typedValue.mType == wantType->GetUnderlyingType())
+				{
+					typedValue.mType = wantType;
+					return typedValue;
+				}
+			}				
+			auto castedTypedValue = Cast(NULL, typedValue, wantType, (BfCastFlags)(BfCastFlags_SilentFail | BfCastFlags_Explicit));			
+			if (!castedTypedValue)
+				return BfTypedValue();				
+			return castedTypedValue;
 		}
+		break;
+	default: break;
 	}
+	
 	BfIRValue irValue = ConstantToCurrent(constant, constHolder, wantType);
 	BF_ASSERT(irValue);
 	if (!irValue)
@@ -9438,17 +9452,19 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		return GetDefaultValue(wantType);
 	}
 
-	bool isString = false;
-	isString = (wantType->IsObject()) && (wantType->ToTypeInstance()->mTypeDef == mCompiler->mStringTypeDef);
-	if (((wantType->IsPointer()) || (isString)) && (mBfIRBuilder->IsInt(constant->mTypeCode)))
-	{		
-		const StringImpl& str = mContext->mStringObjectIdMap[constant->mInt32].mString;
-		BfIRValue stringObjConst = GetStringObjectValue(str);
-		if (wantType->IsObject())
-			return stringObjConst;		
-		return GetStringCharPtr(stringObjConst);
-	}	
-		
+	if (constant->mTypeCode == BfTypeCode_StringId)
+	{
+		if ((wantType->IsInstanceOf(mCompiler->mStringTypeDef)) || 
+			((wantType->IsPointer()) && (wantType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))))
+		{
+			const StringImpl& str = mContext->mStringObjectIdMap[constant->mInt32].mString;
+			BfIRValue stringObjConst = GetStringObjectValue(str);
+			if (wantType->IsPointer())
+				return GetStringCharPtr(stringObjConst);
+			return stringObjConst;
+		}
+	}
+
 	if (constant->mConstType == BfConstType_Array)
 	{
 		auto elementType = wantType->GetUnderlyingType();

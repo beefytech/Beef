@@ -573,12 +573,12 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		}
 		return CreateConstArray(constArray->mType, copiedVals);
 	}
-	else if ((IsInt(fromConst->mTypeCode)) || (fromConst->mTypeCode == BfTypeCode_Boolean))
+	else if ((IsInt(fromConst->mTypeCode)) || (fromConst->mTypeCode == BfTypeCode_Boolean) || (fromConst->mTypeCode == BfTypeCode_StringId))
 	{		
 		return CreateConst(fromConst->mTypeCode, fromConst->mUInt64);		
 	}
 	else if ((fromConst->mTypeCode == BfTypeCode_Single) || (fromConst->mTypeCode == BfTypeCode_Double))
-	{		
+	{
 		return CreateConst(fromConst->mTypeCode, fromConst->mDouble);
 	}	
 	else if (fromConst->mTypeCode == BfTypeCode_NullPtr)

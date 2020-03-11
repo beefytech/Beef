@@ -4536,6 +4536,9 @@ BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
 		case BfTypeCode_UIntUnknown:
 			primType = (BfPrimitiveType*)ResolveTypeDef(mSystem->mTypeUIntUnknown);
 			break;
+		case BfTypeCode_StringId:
+			BF_FATAL("Invalid use of StringId");
+			break;
 		default: break;
 		}
 		mContext->mPrimitiveTypes[typeCode] = primType;

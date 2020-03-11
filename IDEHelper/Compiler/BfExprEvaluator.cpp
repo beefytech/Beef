@@ -5389,6 +5389,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			if (!argValue)
 			{				
 				argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, wantType);
+				if (!argValue)
+					mModule->Fail("Default parameter value failed", targetSrc);
 			}			
 		}
 		else

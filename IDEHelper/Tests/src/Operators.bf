@@ -231,6 +231,13 @@ namespace Tests
 			{
 				return val.mA;
 			}
+
+			public static implicit operator Self(int val)
+			{
+				IntStruct sVal;
+				sVal.mA = val;
+				return sVal;
+			}
 		}
 
 		[Test]
@@ -244,6 +251,12 @@ namespace Tests
 		const String cStrD = "D";
 		const char8* cStrPD = "D";
 
+		public static void TestDefaults(StringView sv = "ABC", IntStruct intStruct = 123)
+		{
+			Test.Assert(sv == "ABC");
+			Test.Assert(intStruct.mA == 123);
+		}
+
 		[Test]
 		public static void TestStringOp()
 		{
@@ -254,6 +267,8 @@ namespace Tests
 			const char8* cStr3 = "A" + "B";
 			const char8* cStr4 = cStr1 + "C" + cStrPD;
 			Test.Assert(StringView(cStr4) == "ABCD");
+
+			TestDefaults();
 		}
 	}
 }
