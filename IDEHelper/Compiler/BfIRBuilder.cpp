@@ -392,7 +392,10 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 	{
 		int rhsZero = IsZero(rhs);
 		if (rhsZero != -1)
-			return (lhsZero == rhsZero) ? 1 : 0;
+		{
+			if (lhsZero || rhsZero)
+				return (lhsZero == rhsZero) ? 1 : 0;
+		}
 	}
 
 	if (constLHS->mTypeCode != constRHS->mTypeCode)
