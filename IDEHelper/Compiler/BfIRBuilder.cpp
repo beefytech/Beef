@@ -403,7 +403,7 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 	
 	if ((constLHS->mTypeCode >= BfTypeCode_Boolean) && (constLHS->mTypeCode <= BfTypeCode_Double))
 	{
-		return (constLHS->mUInt64 == constRHS->mUInt16) ? 1 : 0;
+		return (constLHS->mUInt64 == constRHS->mUInt64) ? 1 : 0;
 	}
 	
 	if (constLHS->mConstType == BfConstType_Array)
