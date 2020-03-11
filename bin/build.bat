@@ -10,10 +10,20 @@ PUSHD %~dp0..\
 @ECHO Performing clean build
 :BUILD
 
+@IF EXIST stats GOTO STATS_HAS
+mkdir stats
+:STATS_HAS
+
 @IF EXIST extern\llvm-project_8_0_1 GOTO LLVM_HAS
 call extern\llvm_build.bat
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 :LLVM_HAS
+
+@IF EXIST IDE\dist\llvm\bin\lld-link.exe GOTO LLD_HAS
+@ECHO ========== MISSING LLVM TOOLS ==========
+@ECHO IDE\dist\llvm\bin\lld-link.exe not found. Copy in from a Beef install or an LLVM/Clang install.
+@GOTO HADERROR
+:LLD_HAS
 
 CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
