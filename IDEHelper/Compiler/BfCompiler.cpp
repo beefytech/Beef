@@ -3018,8 +3018,8 @@ void BfCompiler::UpdateRevisedTypes()
 						if (compositeTypeDef->mNextRevision != NULL)
 						{
 							// This is an old 'next revision'
-							delete compositeTypeDef->mNextRevision;
-							compositeTypeDef->mNextRevision = NULL;	
+							mSystem->InjectNewRevision(compositeTypeDef);							
+							BF_ASSERT(compositeTypeDef->mNextRevision == NULL);	
 						}
 					}
 				}
@@ -3169,6 +3169,7 @@ void BfCompiler::UpdateRevisedTypes()
 						BF_ASSERT(rootTypeDef == NULL);
 						latestCompositeTypeDef->mTypeCode = BfTypeCode_Object;
 					}
+					
 					BfLogSysM("Partial combined type typedef %p updated from parser %p\n", compositeTypeDef, latestCompositeTypeDef->mTypeDeclaration->GetSourceData());
 				}				
 			}			
