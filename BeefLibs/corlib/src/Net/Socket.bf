@@ -164,8 +164,13 @@ namespace System.Net
 		[CLink, StdCall]
 		static extern HSocket accept(HSocket s, SockAddr* addr, int32* addrLen);
 
+#if BF_PLATFORM_WINDOWS
 		[CLink, StdCall]
 		static extern int32 ioctlsocket(HSocket s, int cmd, int* argp);
+#else
+		[CLink, StdCall]
+		static extern int32 ioctl(HSocket s, int cmd, int* argp);
+#endif
 
 		[CLink, StdCall]
 		static extern int32 select(int nfds, FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, TimeVal* timeVal);
@@ -221,7 +226,12 @@ namespace System.Net
 
 			mHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 			int param = 1;
+
+#if BF_PLATFORM_WINDOWS
 			ioctlsocket(mHandle, FIONBIO, &param);
+#else
+			ioctl(mHandle, FIONBIO, &param);
+#endif
 			if (mHandle == INVALID_SOCKET)
 			{
 #unwarn
@@ -270,7 +280,12 @@ namespace System.Net
 				return .Err;
 
 			int param = 1;
+
+#if BF_PLATFORM_WINDOWS
 			ioctlsocket(mHandle, FIONBIO, &param);
+#else
+			ioctl(mHandle, FIONBIO, &param);
+#endif
 			if (mHandle == INVALID_SOCKET)
 			{
 #unwarn
