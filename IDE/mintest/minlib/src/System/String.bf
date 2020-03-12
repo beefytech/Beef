@@ -26,6 +26,7 @@ namespace System
         char8* mPtr = null;
 
 		extern const String* sStringLiterals;
+		public const String Empty = "";
 
 #if BF_LARGE_STRINGS
 		const uint64 SizeFlags = 0x3FFFFFFF'FFFFFFFF;
@@ -424,6 +425,16 @@ namespace System
 			Internal.MemCpy(ptr + mLength, appendPtr, length);
 			mLength = newCurrentIndex;
 			ptr[mLength] = 0;
+		}
+
+		private void Append(char8[] arr, int idx, int length)
+		{
+			Append(&arr.getRef(idx), length);
+		}
+
+		public void Append(StringView arr, int idx, int length)
+		{
+			Append(arr.Ptr + idx, length);
 		}
 
         public void Append(StringView value)

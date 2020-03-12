@@ -461,7 +461,7 @@ namespace System {
         // not equal.
         //
         public static bool Equals(DateTimeOffset first, DateTimeOffset second) {
-            return DateTime.Equals(first.UtcDateTime, second.UtcDateTime);
+            return first.UtcDateTime == second.UtcDateTime;
         }
                     
         // Creates a DateTimeOffset from a Windows filetime. A Windows filetime is

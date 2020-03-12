@@ -12092,9 +12092,7 @@ BfTypedValue BfModule::GetThis()
 
 		return BfTypedValue();
 	}
-	
-	bool preferValue = !IsTargetingBeefBackend(); 
-
+			
 	if (useMethodState->mLocals.IsEmpty())
 	{
 		// This can happen in rare non-capture cases, such as when we need to do a const expression resolve for a sized-array return type on a local method
@@ -12104,9 +12102,18 @@ BfTypedValue BfModule::GetThis()
 
 	auto thisLocal = useMethodState->mLocals[0];
 	BF_ASSERT(thisLocal->mIsThis);
+
+	bool preferValue = !IsTargetingBeefBackend();
+	if (!thisLocal->mAddr)
+		preferValue = true;
+	
+	bool usedVal = false;
 	BfIRValue thisValue;
-	if ((preferValue) || (!thisLocal->mAddr) /*|| (thisLocal->mIsSplat)*/)
+	if ((preferValue) && (!thisLocal->mIsLowered))
+	{
 		thisValue = thisLocal->mValue;
+		usedVal = true;
+	}
 	else if ((thisLocal->mIsSplat) || (thisLocal->mIsLowered))
 		thisValue = thisLocal->mAddr;
 	else

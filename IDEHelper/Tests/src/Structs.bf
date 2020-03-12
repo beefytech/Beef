@@ -31,9 +31,25 @@ namespace Tests
 
 		struct StructC
 		{
-			int8 mA;
-			int32 mB;
-			int8 mC;
+			public int8 mA;
+			public int32 mB;
+			public int8 mC;
+
+			public int A
+			{
+				get mut
+				{
+					return mA;
+				}
+			}
+
+			public int B
+			{
+				get
+				{
+					return mB;
+				}
+			}
 		}
 
 		[Ordered]
@@ -50,6 +66,28 @@ namespace Tests
 			int8 mA;
 			int32 mB;
 			int8 mC;
+		}
+
+		[CRepr]
+		struct Color
+		{
+			public uint8 mR, mG, mB, mA;
+
+			public uint8 R
+			{
+				get mut
+				{
+					return mR;
+				}
+			}
+
+			public uint8 G
+			{
+				get
+				{
+					return mG;
+				}
+			}
 		}
 
 		struct StructF : StructC
@@ -133,6 +171,25 @@ namespace Tests
 			StringView sv = "Hey";
 			Span<char8> span = sv;
 			Test.Assert(Test(sv) == 22);
+		}
+
+		[Test]
+		static void TestProperties()
+		{
+			StructC sc = .();
+			sc.mA = 11;
+			sc.mB = 22;
+			sc.mC = 33;
+			Test.Assert(sc.A == 11);
+			Test.Assert(sc.B == 22);
+
+			Color clr;
+			clr.mR = 10;
+			clr.mG = 20;
+			clr.mB = 30;
+			clr.mA = 40;
+			Test.Assert(clr.R == 10);
+			Test.Assert(clr.G == 20);
 		}
 	}
 }
