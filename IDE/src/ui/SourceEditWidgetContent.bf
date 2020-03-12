@@ -2964,6 +2964,12 @@ namespace IDE.ui
 			var useX = x;
 			var useY = y;
 
+			if ((btn == 0) && (mWidgetWindow.IsKeyDown(.Control)))
+			{
+				gApp.GoToDefinition();
+				return;
+			}
+
             if ((btn == 1) && (mSourceViewPanel != null))
             {
 #unwarn

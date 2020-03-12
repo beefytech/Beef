@@ -3688,17 +3688,18 @@ namespace IDE.ui
                 return null;
             }
 
+			int lineIdx;
+			int lineCharIdx;
+			mEditWidget.Content.GetLineCharAtIdx(mEditWidget.Content.CursorTextPos, out lineIdx, out lineCharIdx);
+			return ToggleBreakpointAt(lineIdx, lineCharIdx, setKind, flags, threadId);
+		}
+
+		public Breakpoint ToggleBreakpointAt(int lineIdx, int lineCharIdx, Breakpoint.SetKind setKind = .Toggle, Breakpoint.SetFlags flags = .None, int threadId = -1)
+		{
+			var lineIdx;
+			var lineCharIdx;
+
             DebugManager debugManager = IDEApp.sApp.mDebugger;
-
-            int lineIdx;
-            int lineCharIdx;
-            mEditWidget.Content.GetLineCharAtIdx(mEditWidget.Content.CursorTextPos, out lineIdx, out lineCharIdx);
-
-			/*let lineAndCol = mEditWidget.Content.CursorLineAndColumn;
-			if (SelectBreakpointsAtLine(lineAndCol.mLine))
-			{
-				gApp.mBreakpointPanel.ConfigureBreakpoints(mWidgetWindow);
-			}*/
 
 			HashSet<Breakpoint> breakpoints = scope .();
 
@@ -3742,7 +3743,7 @@ namespace IDE.ui
                 int textPos = mEditWidget.Content.CursorTextPos - lineCharIdx;
                 lineCharIdx = 0;
 
-                // Find first non-space char8
+                // Find first non-space char
                 while ((textPos < editWidgetContent.mData.mTextLength) && (((char8)editWidgetContent.mData.mText[textPos].mChar).IsWhiteSpace))
                 {
                     textPos++;
@@ -6134,7 +6135,7 @@ namespace IDE.ui
 
 		public int GetLineAt(float x, float y)
 		{
-			if (x > GS!(40))
+			if (x > mEditWidget.mX - GS!(4))
 				return -1;
 
 			DarkEditWidgetContent darkEditWidgetContent = (DarkEditWidgetContent)mEditWidget.Content;
@@ -6177,6 +6178,19 @@ namespace IDE.ui
 		public override void MouseClicked(float x, float y, int32 btn)
 		{
 			base.MouseClicked(x, y, btn);
+
+			if (btn == 0)
+			{
+				if ((x >= GS!(3)) && (x < mEditWidget.mX - GS!(8)))
+				{
+					int lineClick = GetLineAt(x, y);
+					if (lineClick >= 0)
+					{
+						ToggleBreakpointAt(lineClick, 0);
+					}
+					return;
+				}
+			}
 
 			if (btn == 1)
 			{
