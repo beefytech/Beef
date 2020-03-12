@@ -16431,9 +16431,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 		if (methodInstance->HasStructRet())		
 			argIdx++;		
-
-		//
-		bool doDbgAgg = false;
+		
 		Array<BfIRValue> splatAddrValues;
 
 		for ( ; argIdx < irParamCount; localIdx++)
@@ -16469,7 +16467,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 // 				wantsAddr = true;
 // 			}
 
-			if ((!doDbgAgg) && (paramVar->mIsSplat))
+			if (paramVar->mIsSplat)
 			{				
 				auto prevInsert = mBfIRBuilder->GetInsertBlock();
 				mBfIRBuilder->SetInsertPoint(mCurMethodState->mIRHeadBlock);
@@ -16499,15 +16497,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					BfIRType thisAddrType = mBfIRBuilder->MapType(thisType);
 					if (paramVar->mIsSplat)
 					{
-						if (doDbgAgg)
-						{
-							auto allocaInst = mBfIRBuilder->CreateAlloca(thisAddrType);
-							mBfIRBuilder->SetName(allocaInst, paramVar->mName + ".addr");
-							mBfIRBuilder->SetAllocaAlignment(allocaInst, thisType->mAlign);
-							paramVar->mAddr = allocaInst;
-							if (WantsLifetimes())
-								mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
-						}												
+						//
 					}
 					else
 					{
@@ -16646,7 +16636,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					}
 				}
 				
-				if ((!paramVar->mIsSplat) || (doDbgAgg))
+				if (!paramVar->mIsSplat)
 				{
 					if (paramVar->mResolvedType->IsValuelessType())
 					{
@@ -16687,67 +16677,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				if (paramVar->mIsSplat)
 				{
 					mBfIRBuilder->PopulateType(paramVar->mResolvedType);
-					if (doDbgAgg)
-					{
-						auto curArgIdx = argIdx;
-						std::function<void(BfType*, BfIRValue)> checkTypeLambda = [&](BfType* checkType, BfIRValue curDestAddr)
-						{
-							if (checkType->IsStruct())
-							{
-								auto checkTypeInstance = checkType->ToTypeInstance();
-								if (checkTypeInstance->mBaseType != NULL)
-								{
-									auto baseDestAddr = mBfIRBuilder->CreateBitCast(curDestAddr, mBfIRBuilder->MapTypeInstPtr(checkTypeInstance->mBaseType));
-									checkTypeLambda(checkTypeInstance->mBaseType, baseDestAddr);
-								}
-
-								if (checkTypeInstance->mIsUnion)
-								{
-									auto unionInnerType = checkTypeInstance->GetUnionInnerType();
-									if (!unionInnerType->IsValuelessType())
-									{
-										auto newDestAddr = mBfIRBuilder->CreateInBoundsGEP(curDestAddr, 0, 1);
-										checkTypeLambda(unionInnerType, newDestAddr);
-									}
-
-									if (checkTypeInstance->IsEnum())
-									{
-										auto dscrType = checkTypeInstance->GetDiscriminatorType();
-										auto newDestAddr = mBfIRBuilder->CreateInBoundsGEP(curDestAddr, 0, 2);
-										checkTypeLambda(dscrType, newDestAddr);
-									}
-								}
-								else
-								{
-									for (int fieldIdx = 0; fieldIdx < (int)checkTypeInstance->mFieldInstances.size(); fieldIdx++)
-									{
-										auto fieldInstance = (BfFieldInstance*)&checkTypeInstance->mFieldInstances[fieldIdx];
-										if (fieldInstance->mDataIdx >= 0)
-										{
-											auto newDestAddr = mBfIRBuilder->CreateInBoundsGEP(curDestAddr, 0, fieldInstance->mDataIdx);
-											checkTypeLambda(fieldInstance->GetResolvedType(), newDestAddr);
-										}
-									}
-								}
-							}
-							else if (checkType->IsMethodRef())
-							{
-								BF_FATAL("Unimplemented");
-// 								BfMethodRefType* methodRefType = (BfMethodRefType*)checkType;
-// 								for (int dataIdx = 0; dataIdx < methodRefType->GetCaptureDataCount(); dataIdx++)
-// 								{
-// 									checkTypeLambda->
-// 								}
-							}
-							else if (!checkType->IsValuelessType())
-							{
-								mBfIRBuilder->CreateAlignedStore(mBfIRBuilder->GetArgument(curArgIdx), curDestAddr, paramVar->mResolvedType->mAlign);
-								curArgIdx++;
-							}
-						};
-						
-						checkTypeLambda(paramVar->mResolvedType, paramVar->mAddr);
-					}					
+					//					
 				}
 				else
 				{
@@ -16787,7 +16717,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				UseDefaultSrcPos();
 			
 			// Write our argument value into the .addr
-			if ((!doDbgAgg) && (paramVar->mIsSplat))
+			if (paramVar->mIsSplat)
 			{
 				int splatComponentIdx = 0;
 
