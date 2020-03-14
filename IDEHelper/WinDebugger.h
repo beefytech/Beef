@@ -421,8 +421,9 @@ public:
 	DWORD mDebuggerThreadId;
 	
 	WdMemoryBreakpointBind mMemoryBreakpoints[4];
-	Dictionary<addr_target, int> mBreakpointAddrMap; // To make sure we don't create multiple physical breakpoints at the same addr
-	Array<WdBreakpoint*> mBreakpoints;
+	Dictionary<addr_target, int> mPhysBreakpointAddrMap; // To make sure we don't create multiple physical breakpoints at the same addr	
+	Array<WdBreakpoint*> mBreakpoints;	
+	Dictionary<addr_target, WdBreakpoint*> mBreakpointAddrMap;
 	Array<int> mFreeMemoryBreakIndices;
 	Array<WdStackFrame*> mCallStack;
 	bool mIsPartialCallStack;
@@ -477,6 +478,7 @@ public:
 	void ThreadRestoreUnpause();	
 	void UpdateThreadDebugRegisters(WdThreadInfo* threadInfo);
 	void UpdateThreadDebugRegisters();
+	void ValidateBreakpoints();
 	void PhysSetBreakpoint(addr_target address);
 	void SetBreakpoint(addr_target address, bool fromRehup = false);
 	void SetTempBreakpoint(addr_target address);
@@ -598,7 +600,7 @@ public:
 	virtual void MoveMemoryBreakpoint(Breakpoint* breakpoint, intptr addr, int byteCount) override;
 	virtual void DisableBreakpoint(Breakpoint* breakpoint) override;
 	virtual void SetBreakpointCondition(Breakpoint* breakpoint, const StringImpl& condition) override;
-	virtual void SetBreakpointLogging(Breakpoint* wdBreakpoint, const StringImpl& logging, bool breakAfterLogging) override;
+	virtual void SetBreakpointLogging(Breakpoint* wdBreakpoint, const StringImpl& logging, bool breakAfterLogging) override;	
 	virtual Breakpoint* FindBreakpointAt(intptr address) override;
 	virtual Breakpoint* GetActiveBreakpoint() override;
 	virtual void BreakAll() override;

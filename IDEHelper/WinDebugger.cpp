@@ -700,7 +700,7 @@ void WinDebugger::PhysSetBreakpoint(addr_target address)
 void WinDebugger::SetBreakpoint(addr_target address, bool fromRehup)
 {			
 	int* countPtr = NULL;
-	if (mBreakpointAddrMap.TryAdd(address, NULL, &countPtr))
+	if (mPhysBreakpointAddrMap.TryAdd(address, NULL, &countPtr))
 	{
 		BfLogDbg("SetBreakpoint %p\n", address);
 		*countPtr = 1;
@@ -752,7 +752,7 @@ void WinDebugger::PhysRemoveBreakpoint(addr_target address)
 void WinDebugger::RemoveBreakpoint(addr_target address)
 {		
 	int* countPtr = NULL;
-	mBreakpointAddrMap.TryGetValue(address, &countPtr);
+	mPhysBreakpointAddrMap.TryGetValue(address, &countPtr);
 
 	// This can happen when we shutdown and we're continuing from a breakpoint
 	//BF_ASSERT(*countPtr != NULL);
@@ -768,7 +768,7 @@ void WinDebugger::RemoveBreakpoint(addr_target address)
 		(*countPtr)--;
 		return;
 	}	
-	mBreakpointAddrMap.Remove(address);
+	mPhysBreakpointAddrMap.Remove(address);
 	PhysRemoveBreakpoint(address);
 }
 
@@ -842,25 +842,47 @@ bool WinDebugger::ContinueFromBreakpoint()
 	return true;
 }
 
-Breakpoint* WinDebugger::FindBreakpointAt(intptr addressIn)
-{
-	addr_target address = addressIn;
+void WinDebugger::ValidateBreakpoints()
+{	
+	HashSet<addr_target> usedBreakpoints;
 
-	WdBreakpoint* found = NULL;
-	for (auto breakpoint : mBreakpoints)
-	{
-		if (breakpoint->mAddr == address)
-			found = breakpoint;
+	std::function<void(WdBreakpoint*)> _AddBreakpoint = [&](WdBreakpoint* breakpoint)
+	{		
+		if (breakpoint->mAddr != 0)
+		{
+			usedBreakpoints.Add(breakpoint->mAddr);
+
+			WdBreakpoint* foundBreakpoint = NULL;
+			mBreakpointAddrMap.TryGetValue(breakpoint->mAddr, &foundBreakpoint);
+			BF_ASSERT(breakpoint == foundBreakpoint);
+		}
 
 		auto checkSibling = (WdBreakpoint*)breakpoint->mLinkedSibling;
 		while (checkSibling != NULL)
 		{
-			if (checkSibling->mAddr == address)
-				found = checkSibling;
+			_AddBreakpoint(checkSibling);
 			checkSibling = (WdBreakpoint*)checkSibling->mLinkedSibling;
-		}
+		}		
+	};
+
+	for (auto breakpoint : mBreakpoints)
+		_AddBreakpoint(breakpoint);
+	
+	for (auto& entry : mBreakpointAddrMap)
+	{
+		BF_ASSERT(usedBreakpoints.Contains(entry.mKey));
 	}
-	return found;
+}
+
+Breakpoint* WinDebugger::FindBreakpointAt(intptr address)
+{
+#ifdef _DEBUG
+	ValidateBreakpoints();
+#endif
+
+	WdBreakpoint* breakpoint = NULL;
+	mBreakpointAddrMap.TryGetValue(address, &breakpoint);
+	return breakpoint;
 }
 
 Breakpoint* WinDebugger::GetActiveBreakpoint()
@@ -899,6 +921,10 @@ void WinDebugger::DebugThreadProc()
 	for (int i = 0; i < (int) mBreakpoints.size(); i++)
 	{
 		WdBreakpoint* wdBreakpoint = mBreakpoints[i];
+
+		if (wdBreakpoint->mAddr != 0)
+			mBreakpointAddrMap.Remove(wdBreakpoint->mAddr, wdBreakpoint);
+
 		wdBreakpoint->mAddr = 0;
 		wdBreakpoint->mLineData = DbgLineDataEx();
 		wdBreakpoint->mSrcFile = NULL;
@@ -1351,6 +1377,7 @@ void WinDebugger::Detach()
 	mGotStartupEvent = false;	
 		
 	mIsDebuggerWaiting = false;
+	mPhysBreakpointAddrMap.Clear();
 	mBreakpointAddrMap.Clear();
 	
 	gDebugUpdateCnt = 0;	
@@ -3039,7 +3066,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 					wdBreakpoint->mSrcFile = ctx.mSrcFile;
 					wdBreakpoint->mLineData = DbgLineDataEx(lineData, subProgram);
 					wdBreakpoint->mBreakpointType = BreakpointType_User;
-					wdBreakpoint->mAddr = address;
+					wdBreakpoint->mAddr = address;					
 
 					if ((mDebuggerWaitingThread != NULL) && (mDebuggerWaitingThread->mStoppedAtAddress == address))
 					{
@@ -3049,6 +3076,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 
 					BfLogDbg("Breakpoint %p found at %s in %s\n", wdBreakpoint, subProgram->mName, GetFileName(subProgram->mCompileUnit->mDbgModule->mFilePath).c_str());
 
+					mBreakpointAddrMap.ForceAdd(address, wdBreakpoint);
 					SetBreakpoint(address);
 
 					foundInSequence = true;
@@ -3239,7 +3267,8 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 				{
 					wdBreakpoint->mAddr = targetAddr;
 					wdBreakpoint->mBreakpointType = BreakpointType_User;
-					SetBreakpoint(wdBreakpoint->mAddr);
+					mBreakpointAddrMap.ForceAdd(wdBreakpoint->mAddr, wdBreakpoint);
+					SetBreakpoint(wdBreakpoint->mAddr);					
 				}
 				else
 				{
@@ -3385,6 +3414,7 @@ Breakpoint* WinDebugger::CreateAddressBreakpoint(intptr inAddress)
 	addr_target address = (addr_target)inAddress;
 	WdBreakpoint* wdBreakpoint = new WdBreakpoint();
 	wdBreakpoint->mAddr = address;
+	mBreakpointAddrMap.ForceAdd(wdBreakpoint->mAddr, wdBreakpoint);
 	SetBreakpoint(address);
 
 	if ((mDebuggerWaitingThread != NULL) && (mDebuggerWaitingThread->mStoppedAtAddress == address))
@@ -3431,6 +3461,7 @@ void WinDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 
 	if (wdBreakpoint->mAddr != 0)
 	{	
+		mBreakpointAddrMap.Remove(wdBreakpoint->mAddr, wdBreakpoint);
 		RemoveBreakpoint(wdBreakpoint->mAddr);	
 
 		for (auto thread : mThreadList)
@@ -3463,13 +3494,14 @@ void WinDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 
 	if (wdBreakpoint->mAddr != 0)
 	{
+		mBreakpointAddrMap.Remove(wdBreakpoint->mAddr, wdBreakpoint);
 		RemoveBreakpoint(wdBreakpoint->mAddr);
 		if ((mDebuggerWaitingThread != NULL) && (mDebuggerWaitingThread->mIsAtBreakpointAddress == wdBreakpoint->mAddr))
 			mDebuggerWaitingThread->mIsAtBreakpointAddress = NULL;
 		if ((mDebuggerWaitingThread != NULL) && (mDebuggerWaitingThread->mBreakpointAddressContinuing == wdBreakpoint->mAddr))
 			mDebuggerWaitingThread->mBreakpointAddressContinuing = NULL;
 		wdBreakpoint->mLineData = DbgLineDataEx();
-		wdBreakpoint->mAddr = 0;
+		wdBreakpoint->mAddr = 0;		
 	}
 
 	if (wdBreakpoint->mCondition != NULL)
@@ -5056,7 +5088,7 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 				{
 					for (addr_target addr = jmpInstStart; addr < jmpInstEnd; addr++)
 					{
-						if (mBreakpointAddrMap.ContainsKey(addr))
+						if (mPhysBreakpointAddrMap.ContainsKey(addr))
 						{
 							removedBreakpoint = true;
 							RemoveBreakpoint(addr);
