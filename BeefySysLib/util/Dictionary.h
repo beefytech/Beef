@@ -115,19 +115,28 @@ public:
 			return prevVal;
 		}
 
-		/*iterator& operator--()
+		bool NextWithSameKey(const TKey& key)
 		{
-			mPtr--;
-			return *this;
+			int_cosize hashCode = (int_cosize)BeefHash<TKey>()(key) & 0x7FFFFFFF;
+
+			while ((uintptr)mIdx < (uintptr)mDictionary->mCount)
+			{
+				if (mDictionary->mEntries[mIdx].mHashCode < 0)
+					break;
+
+				mCurrentIdx = mIdx;
+				mIdx++;
+
+				if ((mDictionary->mEntries[mCurrentIdx].mHashCode == hashCode) &&
+					(mDictionary->mEntries[mCurrentIdx].mKey == key))
+					return true;
+			}
+
+			mIdx = mDictionary->mCount + 1;
+			mCurrentIdx = -1;
+			return false;
 		}
-
-		iterator operator--(int)
-		{
-			auto prevVal = *this;
-			mPtr--;
-			return prevVal;
-		}*/
-
+		
 		bool operator!=(const iterator& itr) const
 		{
 			return (itr.mDictionary != mDictionary) || (itr.mIdx != mIdx);
@@ -261,31 +270,27 @@ private:
 		mFreeList = -1;		
 	}
 
-	bool Insert(const TKey& key, bool add, TKey** keyPtr, TValue** valuePtr)
+	bool Insert(const TKey& key, bool forceAdd, TKey** keyPtr, TValue** valuePtr)
 	{		
 		if (mBuckets == NULL) Initialize(0);
 		int_cosize hashCode = (int_cosize)BeefHash<TKey>()(key) & 0x7FFFFFFF;
 		int_cosize targetBucket = hashCode % (int_cosize)mAllocSize;
 
-		for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
+		if (!forceAdd)
 		{
-			if ((mEntries[i].mHashCode == hashCode) && (*(TKey*)&mEntries[i].mKey == key))
+			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
 			{
-				if (add)
+				if ((mEntries[i].mHashCode == hashCode) && (*(TKey*)&mEntries[i].mKey == key))
 				{
-					BF_FATAL("Duplicate key");
-					//ThrowUnimplemented();
-					//ThrowHelper.ThrowArgumentException(ExceptionResource.Argument_AddingDuplicate);
+					if (keyPtr != NULL)
+						*keyPtr = (TKey*)&mEntries[i].mKey;
+					if (valuePtr != NULL)
+						*valuePtr = (TValue*)&mEntries[i].mValue;
+					return false;
 				}
-				//entries[i].value = value;
-				//mVersion++;
-				if (keyPtr != NULL)
-					*keyPtr = (TKey*)&mEntries[i].mKey;
-				if (valuePtr != NULL)
-					*valuePtr = (TValue*)&mEntries[i].mValue;
-				return false;
 			}
 		}
+
 		int_cosize index;
 		if (mFreeCount > 0)
 		{
@@ -308,8 +313,7 @@ private:
 		mEntries[index].mNext = mBuckets[targetBucket];
 		new (&mEntries[index].mKey) TKey(key);
 		mBuckets[targetBucket] = index;
-		//mVersion++;
-
+		
 		if (keyPtr != NULL)
 			*keyPtr = (TKey*)&mEntries[index].mKey;
 		if (valuePtr != NULL)
@@ -431,7 +435,7 @@ public:
 	{
 		Clear();
 		for (auto& kv : rhs)
-			TryAdd(kv.mKey, kv.mValue);
+			ForceAdd(kv.mKey, kv.mValue);
 		return *this;
 	}
 
@@ -473,6 +477,13 @@ public:
 			return mEntries[i].mValue;					
 		BF_FATAL("Key not found");
 		return TValue();
+	}
+
+	void ForceAdd(const TKey& key, const TValue& value)
+	{
+		TValue* valuePtr = NULL;
+		Insert(key, true, NULL, &valuePtr);			
+		new (valuePtr) TValue(value);
 	}
 
 	bool TryAdd(const TKey& key, const TValue& value)
@@ -592,6 +603,26 @@ public:
 		return false;
 	}
 
+	bool Remove(const TKey& key, const TValue& value)
+	{
+		if (mBuckets != NULL)
+		{
+			int_cosize hashCode = (int_cosize)BeefHash<TKey>()(key) & 0x7FFFFFFF;
+			int_cosize bucket = hashCode % (int_cosize)mAllocSize;
+			int_cosize last = -1;
+			for (int_cosize i = mBuckets[bucket]; i >= 0; last = i, i = mEntries[i].mNext)
+			{
+				if ((mEntries[i].mHashCode == hashCode) && (*(TKey*)&mEntries[i].mKey == key) &&
+					(*(TValue*)&mEntries[i].mValue == value))
+				{
+					RemoveIdx(bucket, i, last);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	iterator Remove(const iterator& itr)
 	{
 		iterator nextItr = itr;
@@ -655,8 +686,8 @@ public:
 	bool ContainsKey(const TKey& key)
 	{
 		return FindEntry(key) >= 0;
-	}
-
+	}	
+	
 	iterator begin() const
 	{
 		iterator itr((Dictionary*)this, 0);
