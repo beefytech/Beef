@@ -111,6 +111,13 @@ namespace Tests
 			int8 mD;
 		}
 
+		[Packed]
+		struct StructJ
+		{
+			int8 mA;
+			int32 mB;
+		}
+
 		[Test]
 		static void TestBasics()
 		{
@@ -153,6 +160,10 @@ namespace Tests
 			Test.Assert(sizeof(StructI) == 16);
 			Test.Assert(alignof(StructI) == 4);
 			Test.Assert(strideof(StructI) == 16);
+
+			Test.Assert(sizeof(StructJ) == 5);
+			Test.Assert(alignof(StructJ) == 1);
+			Test.Assert(strideof(StructJ) == 5);
 		}
 
 		public int Test<T>(T val)

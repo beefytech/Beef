@@ -2146,6 +2146,8 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	bool isCRepr = false;
 	bool isOrdered = false;
 	ProcessTypeInstCustomAttributes(isPacked, isUnion, isCRepr, isOrdered);
+	if (isPacked) // Packed infers ordered
+		isOrdered = true;
 	typeInstance->mIsUnion = isUnion;
 	if ((typeInstance->IsEnum()) && (typeInstance->IsStruct()))
 		typeInstance->mIsUnion = true;
@@ -2783,7 +2785,9 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
 
-			int nextDataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
+			int nextDataPos = dataPos;
+			if (!isPacked)
+				nextDataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
 			int padding = nextDataPos - dataPos;
 			if ((alignSize > 1) && (needsExplicitAlignment) && (padding > 0))
 			{				
