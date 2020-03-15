@@ -853,8 +853,16 @@ void WinDebugger::ValidateBreakpoints()
 			usedBreakpoints.Add(breakpoint->mAddr);
 
 			WdBreakpoint* foundBreakpoint = NULL;
-			mBreakpointAddrMap.TryGetValue(breakpoint->mAddr, &foundBreakpoint);
-			BF_ASSERT(breakpoint == foundBreakpoint);
+			auto itr = mBreakpointAddrMap.Find(breakpoint->mAddr);
+			bool found = false;
+			while (itr != mBreakpointAddrMap.end())
+			{
+				WdBreakpoint* foundBreakpoint = itr->mValue;
+				found |= foundBreakpoint == breakpoint;
+				itr.NextWithSameKey(breakpoint->mAddr);
+			}
+
+			BF_ASSERT(found);
 		}
 
 		auto checkSibling = (WdBreakpoint*)breakpoint->mLinkedSibling;

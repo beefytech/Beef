@@ -119,17 +119,18 @@ public:
 		{
 			int_cosize hashCode = (int_cosize)BeefHash<TKey>()(key) & 0x7FFFFFFF;
 
-			while ((uintptr)mIdx < (uintptr)mDictionary->mCount)
-			{
-				if (mDictionary->mEntries[mIdx].mHashCode < 0)
+			while (mCurrentIdx >= 0)
+			{	
+				mCurrentIdx = mDictionary->mEntries[mCurrentIdx].mNext;
+				if (mCurrentIdx < 0)
 					break;
 
-				mCurrentIdx = mIdx;
-				mIdx++;
-
 				if ((mDictionary->mEntries[mCurrentIdx].mHashCode == hashCode) &&
-					(mDictionary->mEntries[mCurrentIdx].mKey == key))
+					((*(TKey*)&mDictionary->mEntries[mCurrentIdx].mKey) == key))
+				{
+					mIdx = mCurrentIdx;
 					return true;
+				}				
 			}
 
 			mIdx = mDictionary->mCount + 1;
