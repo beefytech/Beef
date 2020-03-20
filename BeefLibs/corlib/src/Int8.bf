@@ -1,6 +1,6 @@
 namespace System
 {
-	struct Int8 : int8, IInteger, ISigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable
+	struct Int8 : int8, IInteger, ISigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable
 	{
 		public const int32 MaxValue = 0x7F;
 		public const int32 MinValue = -0x80;
@@ -13,6 +13,11 @@ namespace System
 		public static Self operator+(Self lhs, Self rhs)
 		{
 			return (SelfBase)lhs + (SelfBase)rhs;
+		}
+
+		public static Self operator-(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs - (SelfBase)rhs;
 		}
 
 		public static Self operator-(Self value)
