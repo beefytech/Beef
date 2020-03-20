@@ -345,6 +345,7 @@ public:
 	BfTypeDef* mStringTypeDef;
 	BfTypeDef* mTypeTypeDef;
 	BfTypeDef* mValueTypeTypeDef;	
+	BfTypeDef* mResultTypeDef;
 	BfTypeDef* mFunctionTypeDef;
 	BfTypeDef* mGCTypeDef;	
 	BfTypeDef* mGenericIEnumerableTypeDef;

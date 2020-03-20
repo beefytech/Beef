@@ -5578,6 +5578,9 @@ void BeMCContext::DisableRegister(const BeMCOperand& operand, X64CPURegister reg
 	case X64Reg_RAX:
 		vregInfo->mDisableRAX = true;
 		break;
+	case X64Reg_RDX:
+		vregInfo->mDisableRDX = true;
+		break;
 	case X64Reg_SIL:
 		vregInfo->mDisableEx = true;
 		break;
@@ -9228,6 +9231,8 @@ bool BeMCContext::DoLegalization()
 									{
 										// This is to avoid overlap with PreserveRAX
 										DisableRegister(inst->mArg0, X64Reg_RAX);
+										if (preserveRDX)
+											DisableRegister(inst->mArg0, X64Reg_RDX);
 									}
 								}								
 								AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
@@ -14709,7 +14714,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?Hey@Blurg@bf@@SAXXZ";
+	mDebugging = function->mName == "?Dequeue@?$Queue@Tint@@@Generic@Collections@System@bf@@QEAATint@@XZ";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 

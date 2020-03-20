@@ -428,6 +428,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mTypeTypeDef = NULL;
 	mUnboundAttributeTypeDef = NULL;	
 	mValueTypeTypeDef = NULL;
+	mResultTypeDef = NULL;
 	mObsoleteAttributeTypeDef = NULL;
 	mErrorAttributeTypeDef = NULL;
 	mWarnAttributeTypeDef = NULL;
@@ -5923,6 +5924,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
 	mCheckedAttributeTypeDef = _GetRequiredType("System.CheckedAttribute");
 	mUncheckedAttributeTypeDef = _GetRequiredType("System.UncheckedAttribute");
+	mResultTypeDef = _GetRequiredType("System.Result", 1);
 	mFunctionTypeDef = _GetRequiredType("System.Function");
 	mGCTypeDef = _GetRequiredType("System.GC");	
 	mGenericIEnumerableTypeDef = _GetRequiredType("System.Collections.Generic.IEnumerable");
