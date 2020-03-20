@@ -5874,6 +5874,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	
 	BfModuleMethodInstance getNextMethodInst;
 
+	BfType* nextEmbeddedType = NULL;
 	BfTypedValue nextResult;
 	if ((refItrInterface) || (itrInterface))
 	{
@@ -5889,7 +5890,14 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		}
 		BF_ASSERT(getNextMethodInst);
 		nextResult = BfTypedValue(CreateAlloca(getNextMethodInst.mMethodInstance->mReturnType), getNextMethodInst.mMethodInstance->mReturnType, true);
+
+		if (nextResult.mType->IsGenericTypeInstance())
+		{
+			nextEmbeddedType = ((BfGenericTypeInstance*)nextResult.mType)->mTypeGenericArguments[0];
+		}
 	}
+	if (nextEmbeddedType == NULL)
+		nextEmbeddedType = mContext->mBfObjectType;
 
 	BfLocalVariable* itrLocalDef = NULL;
 
@@ -6233,10 +6241,14 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		else
 		{
 			if (needsValCopy)
-			{
-				auto valAddr = mBfIRBuilder->CreateBitCast(nextResult.mValue, mBfIRBuilder->MapType(CreatePointerType(varType)));
-				auto val = mBfIRBuilder->CreateLoad(valAddr);
-				mBfIRBuilder->CreateStore(val, varInst);
+			{				
+				auto nextVal = BfTypedValue(mBfIRBuilder->CreateBitCast(nextResult.mValue, mBfIRBuilder->MapType(CreatePointerType(nextEmbeddedType))), nextEmbeddedType, true);
+				if (isRefExpression)
+					nextVal = BfTypedValue(nextVal.mValue, CreateRefType(nextVal.mType->GetUnderlyingType()), true);
+				nextVal = Cast(forEachStmt->mCollectionExpression, nextVal, varType, BfCastFlags_Explicit);
+				nextVal = LoadValue(nextVal);
+				if (nextVal)
+					mBfIRBuilder->CreateStore(nextVal.mValue, varInst);
 			}
 		}
 	}
