@@ -1,6 +1,6 @@
 namespace System
 {
-	struct UInt : uint, IInteger, IUnsigned, IHashable, IOpComparable, IFormattable, IIsNaN, IOpAddable
+	struct UInt : uint, IInteger, IUnsigned, IHashable, IOpComparable, IFormattable, IIsNaN, IOpAddable, IOpSubtractable
 	{
 		public enum ParseError
 		{
@@ -25,6 +25,11 @@ namespace System
 		public static Self operator+(Self lhs, Self rhs)
 		{
 			return (SelfBase)lhs + (SelfBase)rhs;
+		}
+
+		public static Self operator-(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs - (SelfBase)rhs;
 		}
 
 		public int GetHashCode()

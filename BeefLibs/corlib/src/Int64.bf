@@ -25,6 +25,11 @@ namespace System
 			return (SelfBase)lhs + (SelfBase)rhs;
 		}
 
+		public static Self operator-(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs - (SelfBase)rhs;
+		}
+
 		public static Int64 operator-(Int64 value)
 		{
 			return -(SelfBase)value;

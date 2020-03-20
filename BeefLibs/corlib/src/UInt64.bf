@@ -24,6 +24,11 @@ namespace System
 			return (SelfBase)lhs + (SelfBase)rhs;
 		}
 
+		public static Self operator-(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs - (SelfBase)rhs;
+		}
+
 	    public int GetHashCode()
 		{
 			return (int)this;

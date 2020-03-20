@@ -43,6 +43,11 @@ namespace System
 		static Self operator+(Self lhs, Self rhs);
 	}
 
+	interface IOpSubtractable
+	{
+		static Self operator-(Self lhs, Self rhs);
+	}
+
 	interface IOpNegatable
 	{
 		static Self operator-(Self value);
