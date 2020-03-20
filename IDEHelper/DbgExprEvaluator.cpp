@@ -7389,7 +7389,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	{
 		if ((argValues.size() == 2) && (argValues[0]) && (argValues[1]))
 		{
-			uint64 val = (uint64)argValues[0].GetInt64();
+			uint64 val = argValues[0].mUInt64;
 			int bitCount = (int)argValues[1].GetInt64();
 
 			DbgTypedValue result;
@@ -7402,7 +7402,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	{
 		if ((argValues.size() == 2) && (argValues[0]) && (argValues[1]))
 		{
-			uint64 val = (uint64)argValues[0].GetInt64();
+			uint64 val = argValues[0].mUInt64;
 			int bitCount = (int)argValues[1].GetInt64();
 
 			if (bitCount <= 0)
