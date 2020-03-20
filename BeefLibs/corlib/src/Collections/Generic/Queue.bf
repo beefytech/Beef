@@ -51,8 +51,8 @@ namespace System.Collections.Generic
 		[AllowAppend]
 		public this(int capacity)
 		{
+			Debug.Assert((uint)capacity <= (uint)SizeFlags);
 			T* items = append T[capacity]* (?);
-			Debug.Assert(capacity >= 0);
 			mItems = items;
 			mHead = 0;
 			mTail = 0;
