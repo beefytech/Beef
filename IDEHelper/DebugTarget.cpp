@@ -749,8 +749,7 @@ bool DebugTarget::GetAutoLocalsInBlock(Array<String>& outLocals, DbgSubprogram* 
 				continue;
 		}
 
-		if (//(dwLineData->mLine >= variable->mDeclLine) &&
-			(variable->mName[0] != '$'))
+		if ((variable->mName[0] != '$'))
 			_AddLocal(variable->mName);
 	}
 
@@ -2264,12 +2263,9 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 		}
 	};
 	
-	//for (auto variable : dwBlock->mVariables)
 	for (int varIdx = (int)checkVars.size() - 1; varIdx >= 0; varIdx--)
 	{
 		auto variable = checkVars[varIdx];
-// 		if (variable->mDeclFileIdx == 0)
-// 			continue;
 
 		if (variable->mRangeStart != 0)
 		{
@@ -2339,10 +2335,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 	if (dwBlock == &dwSubprogram->mBlock)
 	{
 		for (auto variable : dwSubprogram->mParams)
-		{
-			/*if (variable->mDeclFileIdx == 0)
-			continue;*/
-
+		{			
 			if (variable->mName == NULL)
 				continue;
 

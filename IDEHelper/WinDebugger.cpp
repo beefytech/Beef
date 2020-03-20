@@ -10632,11 +10632,8 @@ void WinDebugger::GetCodeAddrInfo(intptr addr, String* outFile, int* outHotIdx, 
 		}
 
 		if (dwEndLineData != NULL)
-		{
-			if (subProgram->mDeclLine != 0)
-				*outDefLineStart = subProgram->mDeclLine - 1;
-			else
-				*outDefLineStart = dwStartLineData->mLine;
+		{			
+			*outDefLineStart = dwStartLineData->mLine;
 			*outDefLineEnd = dwEndLineData->mLine;
 		}
 	}
@@ -10754,27 +10751,18 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 	{		
 		WdStackFrame* nextStackFrame = mCallStack[actualStackFrameIdx - 1];
 		auto subProgram = nextStackFrame->mSubProgram;
-// 		int callFileIdx = subProgram->mDeclFileIdx;
-// 		if (callFileIdx > 0)
-// 		{
-// 			DbgSrcFile* srcFile = subProgram->mCompileUnit->mSrcFileRefs[callFileIdx - 1].mSrcFile;
-// 			_CheckHashSrcFile(*outFile, subProgram->mCompileUnit->mDbgModule, srcFile);
-// 			*outFile = srcFile->GetLocalPath();
-// 			*outLine = subProgram->mDeclLine - 1;
-// 		}
-// 		else
-		{
-			FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);			
-			DbgSubprogram* parentSubprogram = subProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
-			auto foundLine = parentSubprogram->FindClosestLine(subProgram->mBlock.mLowPC, &parentSubprogram);
-			if (foundLine != NULL)
-			{				
-				auto srcFile = parentSubprogram->GetLineSrcFile(*foundLine);
-				*outFile = srcFile->GetLocalPath();
-				_CheckHashSrcFile(*outFile, subProgram->mCompileUnit->mDbgModule, srcFile);
-				*outLine = foundLine->mLine;
-			}
+
+		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);			
+		DbgSubprogram* parentSubprogram = subProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
+		auto foundLine = parentSubprogram->FindClosestLine(subProgram->mBlock.mLowPC, &parentSubprogram);
+		if (foundLine != NULL)
+		{				
+			auto srcFile = parentSubprogram->GetLineSrcFile(*foundLine);
+			*outFile = srcFile->GetLocalPath();
+			_CheckHashSrcFile(*outFile, subProgram->mCompileUnit->mDbgModule, srcFile);
+			*outLine = foundLine->mLine;
 		}
+
 		*outLanguage = subProgram->GetLanguage();
 		*outHotIdx = subProgram->mCompileUnit->mDbgModule->mHotIdx;		
 		*outColumn = -1;
@@ -10879,11 +10867,8 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 			*outLanguage = (int)dwSubprogram->mCompileUnit->mLanguage;
 
 			if (dwEndLineData != NULL)
-			{
-				if (dwSubprogram->mDeclLine != 0)
-					*outDefLineStart = dwSubprogram->mDeclLine - 1;
-				else
-					*outDefLineStart = dwStartLineData->mLine;
+			{				
+				*outDefLineStart = dwStartLineData->mLine;
 				*outDefLineEnd = dwEndLineData->mLine;
 			}
 

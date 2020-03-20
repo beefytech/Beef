@@ -955,16 +955,12 @@ void DbgSrcFile::GetHash(String& outStr)
 
 DbgType::DbgType()
 {
-	mTypeIdx = -1;
-	//mHash = 0;
+	mTypeIdx = -1;	
 	mIsDeclaration = false;		
-	mParent = NULL;
-	//mName = NULL;
+	mParent = NULL;	
 	mTypeName = NULL;
 	mTypeCode = DbgType_Null;
-	mSize = 0;
-	//mArraySize = 0;	
-	mDeclLine = 0;
+	mSize = 0;		
 	mPtrType = NULL;
 	mTypeParam = NULL;
 	mBlockParam = NULL;
@@ -1833,6 +1829,7 @@ void DbgType::ToString(StringImpl& str, DbgLanguage language, bool allowDirectBf
 				str += " ";
 				mTypeParam->ToString(str, language, allowDirectBfObject, internalName);
 			}
+			return;
 		}
 		if (mTypeParam == NULL)
 		{

@@ -375,8 +375,7 @@ public:
 
 	const char* mName;	
 	const char* mLinkName;
-	int mTemplateNameIdx;	
-	int mDeclLine;	
+	int mTemplateNameIdx;		
 	int mFrameBaseLen;	
 	int mPrologueSize;
 	const uint8* mFrameBaseData;
@@ -386,15 +385,15 @@ public:
 	int mStepFilterVersion;	
 	LocalBaseRegKind mParamBaseReg;
 	LocalBaseRegKind mLocalBaseReg;
-	bool mHasQualifiedName;
-	bool mIsStepFiltered;
-	bool mIsStepFilteredDefault;
-	bool mVirtual;
-	bool mHasThis;
-	bool mNeedLineDataFixup;	
-	HotReplaceKind mHotReplaceKind;	
-	bool mIsOptimized;
-	bool mHasLineAddrGaps; // There are gaps of addresses which are not covered by lineinfo			
+	bool mHasQualifiedName:1;
+	bool mIsStepFiltered:1;
+	bool mIsStepFilteredDefault:1;
+	bool mVirtual:1;
+	bool mHasThis:1;
+	bool mNeedLineDataFixup:1;		
+	bool mIsOptimized:1;
+	bool mHasLineAddrGaps:1; // There are gaps of addresses which are not covered by lineinfo			
+	HotReplaceKind mHotReplaceKind;
 	DbgLineInfo* mLineInfo;
 	DbgInlineeInfo* mInlineeInfo;
 	DbgType* mParentType;
@@ -416,9 +415,7 @@ public:
 		mHotReplaceKind = HotReplaceKind_None;		
 		mHasLineAddrGaps = false; 
 		mPrologueSize = -1;
-		mParentType = NULL;		
-		mDeclLine = 0;
-		//mInlinerData = NULL;
+		mParentType = NULL;						
 		mInlineeInfo = NULL;
 		mFrameBaseData = NULL;
 		mFrameBaseLen = 0;
@@ -560,20 +557,18 @@ public:
 	const char* mTypeName;
 	intptr mSize; // In bytes
 	int mTemplateNameIdx;	
-	int mAlign;
-	int mDeclFileIdx;
-	int mDeclLine;	
+	int mAlign;		
 	int mTypeIdx;
 	uint16 mDefinedMembersSize;
 	uint16 mMethodsWithParamsCount;	
-	bool mIsIncomplete; // Not fully loaded
-	bool mIsPacked;
-	bool mNeedsGlobalsPopulated;
-	bool mHasGlobalsPopulated;	
-	bool mIsDeclaration;	
-	bool mHasStaticMembers;
-	bool mHasVTable;
-	bool mFixedName;
+	bool mIsIncomplete:1; // Not fully loaded
+	bool mIsPacked:1;
+	bool mNeedsGlobalsPopulated:1;
+	bool mHasGlobalsPopulated:1;	
+	bool mIsDeclaration:1;	
+	bool mHasStaticMembers:1;
+	bool mHasVTable:1;
+	bool mFixedName:1;
 	DbgLanguage mLanguage;
 	DbgExtType mExtType;
 	DbgTypePriority mPriority; // Is the one stored in the type map
