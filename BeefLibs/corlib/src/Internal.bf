@@ -8,6 +8,17 @@ namespace System
 		public Type mType;
 		public void* mMarkFunc;
 		public int32 mMaxStackTrace;
+
+		public struct Unmarked<T>
+		{
+			public static DbgRawAllocData sRawAllocData;
+			public static this()
+			{
+				sRawAllocData.mMarkFunc = null;
+				sRawAllocData.mMaxStackTrace = 1;
+				sRawAllocData.mType = typeof(T);
+			}
+		}
 	}
 
 	[AlwaysInclude]
@@ -79,6 +90,17 @@ namespace System
 		static void SetModuleHandle(void* handle)
 		{
 			sModuleHandle = handle;
+		}
+
+		public static T* AllocRawArrayUnmarked<T>(int size)
+		{
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+			// We don't want to use the default mark function because the GC will mark the entire array,
+			//  whereas we have a custom marking routine because we only want to mark up to mSize
+			return (T*)Internal.Dbg_RawAlloc(size * strideof(T), &DbgRawAllocData.Unmarked<T>.sRawAllocData);
+#else
+			return new T[size]*(?);
+#endif
 		}
 
 		public static Object ObjectAlloc(TypeInstance typeInst, int size)

@@ -35,16 +35,6 @@ namespace System.Collections.Generic
 		const int_cosize DynAllocFlag = (int_cosize)0x80000000;
 #endif
 
-#if BF_ENABLE_REALTIME_LEAK_CHECK
-		static DbgRawAllocData sRawAllocData;
-		public static this()
-		{
-			sRawAllocData.mMarkFunc = null;
-			sRawAllocData.mMaxStackTrace = 1;
-			sRawAllocData.mType = typeof(T);
-		}
-#endif
-
 		private T* mItems;
 		private int_cosize mSize;
 		private int_cosize mAllocSizeAndFlags;
@@ -262,13 +252,7 @@ namespace System.Collections.Generic
 
 		protected T* Alloc(int size)
 		{
-#if BF_ENABLE_REALTIME_LEAK_CHECK
-			// We don't want to use the default mark function because the GC will mark the entire array,
-			//  whereas we have a custom marking routine because we only want to mark up to mSize
-			return (T*)Internal.Dbg_RawAlloc(size * strideof(T), &sRawAllocData);
-#else
-			return new T[size]*(?);
-#endif
+			return Internal.AllocRawArrayUnmarked<T>(size);
 		}
 
 		protected void Free(T* val)

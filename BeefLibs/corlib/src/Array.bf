@@ -111,6 +111,12 @@ namespace System
 				arr[i] = default(T);
 		}
 
+		public static void Clear<T>(T* arr, int length)
+		{
+			for (int i = 0; i < length; i++)
+				arr[i] = default(T);
+		}
+
 		public static void Copy<T, T2>(T[] arrayFrom, int srcOffset, T2[] arrayTo, int dstOffset, int length) where T : var where T2 : var
 		{
 			if (((Object)arrayTo == (Object)arrayFrom) && (dstOffset > srcOffset))

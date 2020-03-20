@@ -219,9 +219,35 @@ DisplayString = "{{ count={mSize} }}"
 [[Type.Expand.Item]]
 Name = "[Count]"
 Value = "mSize"
+[[Type.Expand.Item]]
+Condition = "__getHighBits(mAllocSizeAndFlags, 1) == 1"
+Name = "[AllocSize]"
+Value = "__clearHighBits(mAllocSizeAndFlags, 1)"
+[[Type.Expand.Item]]
+Condition = "__getHighBits(mAllocSizeAndFlags, 1) == 0"
+Name = "[InternalSize]"
+Value = "__clearHighBits(mAllocSizeAndFlags, 1)"
 [Type.Expand.ArrayItems]
 Size = "mSize"
 ValuePointer = "mItems"
+
+[[Type]]
+Name = "System.Collections.Generic.Queue<*>"
+DisplayString = "{{ count={mSize} }}"
+[[Type.Expand.Item]]
+Name = "[Count]"
+Value = "mSize"
+[[Type.Expand.Item]]
+Condition = "__getHighBits(mAllocSizeAndFlags, 1) == 1"
+Name = "[AllocSize]"
+Value = "__clearHighBits(mAllocSizeAndFlags, 1)"
+[[Type.Expand.Item]]
+Condition = "__getHighBits(mAllocSizeAndFlags, 1) == 0"
+Name = "[InternalSize]"
+Value = "__clearHighBits(mAllocSizeAndFlags, 1)"
+[Type.Expand.IndexListItems]
+Size = "mSize"
+ValueNode = "mItems[($i + mHead) % __clearHighBits(mAllocSizeAndFlags, 2)]"
 
 [[Type]]
 Name = "System.Collections.Generic.Dictionary<*, *>"
