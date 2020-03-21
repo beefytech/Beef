@@ -23,9 +23,9 @@ namespace IDE.ui
 		public float mJmpIconY;
 		public int mJmpState = -1;
 
-        public override void MouseClicked(float x, float y, int32 btn)
+        public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
         {
-            base.MouseClicked(x, y, btn);
+            base.MouseClicked(x, y, origX, origY, btn);
 
             if (btn == 1)
             {

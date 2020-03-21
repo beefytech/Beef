@@ -2762,7 +2762,7 @@ namespace IDE.ui
 			if (keyCode == KeyCode.Apps)
 			{
 				GetTextCoordAtCursor(var x, var y);
-				MouseClicked(x, y, 1);
+				MouseClicked(x, y, x, y, 1);
 				return;
 			}
 
@@ -2957,14 +2957,14 @@ namespace IDE.ui
 			IDEUtils.ClampMenuCoords(ref x, ref y, mEditWidget, scope .(0, 0, GetLineHeight(0), GS!(32)));
 		}
 
-        public override void MouseClicked(float x, float y, int32 btn)
+        public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
         {
-            base.MouseClicked(x, y, btn);
+            base.MouseClicked(x, y, origX, origY, btn);
 
 			var useX = x;
 			var useY = y;
 
-			if ((btn == 0) && (mWidgetWindow.IsKeyDown(.Control)))
+			if ((btn == 0) && (mWidgetWindow.IsKeyDown(.Control)) && (x == origX) && (y == origY))
 			{
 				gApp.GoToDefinition();
 				return;

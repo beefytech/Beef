@@ -1217,9 +1217,9 @@ namespace IDE.ui
             base.DrawAll(g);         
         }
 
-        public override void MouseClicked(float x, float y, int32 btn)
+        public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
         {
-            base.MouseClicked(x, y, btn);
+            base.MouseClicked(x, y, origX, origY, btn);
 
             if (btn == 1) //
             {

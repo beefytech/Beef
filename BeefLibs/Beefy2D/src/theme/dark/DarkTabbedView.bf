@@ -30,9 +30,9 @@ namespace Beefy.theme.dark
                     g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Close), GS!(-4), GS!(-4));
             }
 
-            public override void MouseClicked(float x, float y, int32 btn)
+            public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
             {
-                base.MouseClicked(x, y, btn);
+                base.MouseClicked(x, y, origX, origY, btn);
 
                 var tabButton = (DarkTabButton)mParent;
                 if (tabButton.mCloseClickedEvent.HasListeners)
@@ -312,7 +312,7 @@ namespace Beefy.theme.dark
             {
                 if (mMenuClosedTick != mUpdateCnt)
                 {
-                    ShowMenu(mMenuButton.mX + GS!(14), mMenuButton.mY + GS!(6));                    
+                    ShowMenu(mMenuButton.mX + GS!(14), mMenuButton.mY + GS!(14));                    
                 }
             }
 

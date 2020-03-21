@@ -19,7 +19,10 @@ namespace Beefy.widgets
             base.KeyDown(keyCode, isRepeat);
 
             if ((keyCode == KeyCode.Return) || (keyCode == KeyCode.Space))
-                MouseDown(0, 0, 3, 1);
+            {
+				MouseDown(0, 0, 3, 1);
+				MouseClicked(0, 0, 0, 0, 3);
+			}
             else
                 mParent.KeyDown(keyCode, isRepeat);            
         }

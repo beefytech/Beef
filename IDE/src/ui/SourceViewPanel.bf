@@ -6175,9 +6175,9 @@ namespace IDE.ui
 			return true;
 		}
 
-		public override void MouseClicked(float x, float y, int32 btn)
+		public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
 		{
-			base.MouseClicked(x, y, btn);
+			base.MouseClicked(x, y, origX, origY, btn);
 
 			if (btn == 0)
 			{
@@ -6276,6 +6276,27 @@ namespace IDE.ui
 		        else
 		            idx++;
 		    }
+		}
+
+		public bool HasTextAtCursor()
+		{
+			let ewc = mEditWidget.mEditWidgetContent;
+			int textPos = mEditWidget.mEditWidgetContent.CursorTextPos;
+			if (textPos >= ewc.mData.mTextLength)
+				return false;
+
+			for (int offset = -1; offset <= 0; offset++)
+			{
+				int checkPos = textPos + offset;
+				if (checkPos < 0)
+					continue;
+
+				let c = ewc.mData.mText[checkPos].mChar;
+				if ((c.IsLetterOrDigit) || (c == '_') || (c == '@'))
+					return true;
+			}
+
+			return false;
 		}
     }
 }

@@ -184,7 +184,7 @@ namespace Beefy.widgets
         protected void EditCancelHandler(EditEvent theEvent)
         {
             if (mEscButton != null)
-                mEscButton.MouseClicked(0, 0, 3);
+                mEscButton.MouseClicked(0, 0, 0, 0, 3);
         }
 
         public virtual void AddCloseButton(DialogEventHandler closeHandler, int32 theDefault = -1)
@@ -310,13 +310,13 @@ namespace Beefy.widgets
 
 		public virtual void Escape()
 		{
-			mEscButton.MouseClicked(0, 0, 3);
+			mEscButton.MouseClicked(0, 0, 0, 0, 3);
 		}
 
 		public virtual void Submit()
 		{
 			if ((mDefaultButton != null) && (!mDefaultButton.mDisabled))
-				mDefaultButton.MouseClicked(0, 0, 3);
+				mDefaultButton.MouseClicked(0, 0, 0, 0, 3);
 		}
 
         void WindowKeyDown(KeyDownEvent evt)

@@ -35,7 +35,7 @@ namespace Beefy.theme.dark
 			if (DarkTheme.CheckUnderlineKeyCode(mLabel, keyCode))
 			{
 				mDrawDownPct = 1.0f;
-				MouseClicked(0, 0, 3);
+				MouseClicked(0, 0, 0, 0, 3);
 				return true;
 			}
 			return false;

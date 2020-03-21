@@ -36,9 +36,9 @@ namespace IDE.ui
 				gApp.SetCursor(.Pointer);
 			}
 
-			public override void MouseClicked(float x, float y, int32 btn)
+			public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
 			{
-				base.MouseClicked(x, y, btn);
+				base.MouseClicked(x, y, origX, origY, btn);
 
 				gApp.[Friend]mDeferredOpen = .Workspace;
 				String.NewOrSet!(gApp.[Friend]mDeferredOpenFileName, mPath);

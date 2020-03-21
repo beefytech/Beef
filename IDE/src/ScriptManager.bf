@@ -1396,7 +1396,7 @@ namespace IDE
 				{
 					if (button.Label == buttonName)
 					{
-						button.MouseClicked(0, 0, 0);
+						button.MouseClicked(0, 0, 0, 0, 0);
 						return;
 					}
 				}

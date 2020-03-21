@@ -195,9 +195,9 @@ namespace IDE.ui
             return false;
         }
 
-		public override void MouseClicked(float x, float y, int32 btn)
+		public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
 		{
-			base.MouseClicked(x, y, btn);
+			base.MouseClicked(x, y, origX, origY, btn);
 
 			if (btn == 1)
 			{
@@ -241,7 +241,7 @@ namespace IDE.ui
 			if (keyCode == .Apps)
 			{
 				GetTextCoordAtCursor(var x, var y);
-				MouseClicked(x, y, 1);
+				MouseClicked(x, y, x, y, 1);
 			}
 		}
     }

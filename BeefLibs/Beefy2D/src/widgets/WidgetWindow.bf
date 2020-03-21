@@ -52,6 +52,8 @@ namespace Beefy.widgets
         public int32 mClientMouseY;
         public float mMouseX;
         public float mMouseY;
+		public float mMouseDownX;
+		public float mMouseDownY;
         public bool mIsMouseMoving;
         public bool mHasMouseInside;
         public bool mHasProxyMouseInside;
@@ -623,6 +625,8 @@ namespace Beefy.widgets
 
         public override void MouseDown(int32 inX, int32 inY, int32 btn, int32 btnCount)
         {
+			let oldFlags = mMouseFlags;
+
             mMouseFlags |= (MouseFlag)(1 << btn);
             if ((!mHasFocus) && (mParent == null))
             {
@@ -636,6 +640,12 @@ namespace Beefy.widgets
             TranslateMouseCoords(inX, inY, out x, out y);
 
             MouseMove(inX, inY);
+
+			if (oldFlags == default)
+			{
+				mMouseDownX = mMouseX;
+				mMouseDownY = mMouseY;
+			}
 
             if ((mOnMouseDown.HasListeners) || (sOnMouseDown.HasListeners))
             {
@@ -672,11 +682,22 @@ namespace Beefy.widgets
             Widget aWidget = mCaptureWidget ?? mOverWidget;
             if (aWidget != null)
             {
-                float childX;
-                float childY;
-                aWidget.RootToSelfTranslate(mMouseX, mMouseY, out childX, out childY);
-                aWidget.MouseUp(childX, childY, btn);
+                float origX;
+                float origY;
+                aWidget.RootToSelfTranslate(mMouseDownX, mMouseDownY, out origX, out origY);
+                aWidget.MouseUp(origX, origY, btn);
+
+				float childX;
+				float childY;
+				aWidget.RootToSelfTranslate(mMouseX, mMouseY, out childX, out childY);
+				aWidget.MouseUp(childX, childY, btn);
+
+				if (aWidget.mMouseOver)
+				{
+					aWidget.MouseClicked(childX, childY, origX, origY, btn);
+				}
             }
+
         }
 
 		public void ReleaseMouseCaptures()

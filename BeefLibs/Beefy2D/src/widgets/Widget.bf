@@ -695,7 +695,7 @@ namespace Beefy.widgets
             }
         }
 
-        public virtual void MouseClicked(float x, float y, int32 btn)
+        public virtual void MouseClicked(float x, float y, float origX, float origY, int32 btn)
         {
             if (mOnMouseClick.HasListeners)
             {
@@ -733,9 +733,6 @@ namespace Beefy.widgets
             mMouseDown = mMouseFlags != 0;
             if ((hadPhysMouseDown) && (!hasPhysMouseDown))
                 ReleaseMouseCapture();
-
-            if ((mMouseOver) || (btn == 3))
-                MouseClicked(x, y, btn);
 
             if (mOnMouseUp.HasListeners)
             {
