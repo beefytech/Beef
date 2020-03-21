@@ -2979,6 +2979,16 @@ void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& 
 	}
 }
 
+void BfAutoComplete::FixitAddNamespace(BfAstNode* refNode, const StringImpl& namespaceStr)
+{
+	auto parserData = refNode->GetParserData();
+
+	BfUsingFinder usingFinder;
+	usingFinder.VisitMembers(refNode->GetSourceData()->mRootNode);
+	AddEntry(AutoCompleteEntry("fixit", StrFormat("using %s;\tusing|%s|%d||using %s;", namespaceStr.c_str(), parserData->mFileName.c_str(),
+		usingFinder.mLastIdx, namespaceStr.c_str()).c_str()));
+}
+
 void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfTypeReference* typeRef, BfTokenNode* nextDotToken)
 {
 	if (nextDotToken == NULL)
@@ -3001,9 +3011,6 @@ void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfTypeReferen
 	}
 	else
 	{	
-		BfUsingFinder usingFinder;
-		usingFinder.VisitMembers(typeRef->GetSourceData()->mRootNode);
-		mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("using %s;\tusing|%s|%d||using %s;", namespaceString.c_str(), parserData->mFileName.c_str(), 
-			usingFinder.mLastIdx, namespaceString.c_str()).c_str()));
+		FixitAddNamespace(typeRef, namespaceString);
 	}
 }

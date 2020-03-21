@@ -3189,6 +3189,26 @@ void BfExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 				autoComplete->FixitAddMember(mModule->mCurTypeInstance, fieldType, identifierNode->ToString(), true, mModule->mCurTypeInstance);
 				if (!mModule->mCurMethodInstance->mMethodDef->mIsStatic)
 					autoComplete->FixitAddMember(mModule->mCurTypeInstance, fieldType, identifierNode->ToString(), false, mModule->mCurTypeInstance);
+
+				for (auto typeDef : mModule->mSystem->mTypeDefs)
+				{
+					if (!typeDef->mIsCombinedPartial)
+						continue;
+					if (!typeDef->IsGlobalsContainer())
+						continue;
+				
+					typeDef->PopulateMemberSets();
+
+					String findName = identifierNode->ToString();
+					BfMemberSetEntry* memberSetEntry;
+					if ((typeDef->mMethodSet.TryGetWith(findName, &memberSetEntry)) ||
+						(typeDef->mFieldSet.TryGetWith(findName, &memberSetEntry)) ||
+						(typeDef->mPropertySet.TryGetWith(findName, &memberSetEntry)))
+					{
+						if (mModule->GetActiveTypeDef()->mProject->ContainsReference(typeDef->mProject))
+							autoComplete->FixitAddNamespace(identifierNode, typeDef->mNamespace.ToString());
+					}
+				}				
 			}
 		}
 

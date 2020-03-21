@@ -250,10 +250,11 @@ public:
 	void CheckEmptyStart(BfAstNode* prevNode, BfType* type);	
 	bool CheckFixit(BfAstNode* node);	
 	void CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);
-
+	
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic, BfTypeInstance* referencedFrom);
 	void FixitAddCase(BfTypeInstance * typeInst, const StringImpl & caseName, const BfTypeVector & fieldTypes);
 	void FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic);
+	void FixitAddNamespace(BfAstNode* refNode, const StringImpl& namespacStr);
 	void FixitCheckNamespace(BfTypeDef* activeTypeDef, BfTypeReference* typeRef, BfTokenNode* nextDotToken);
 };
 
