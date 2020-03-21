@@ -374,7 +374,7 @@ void X86Instr::MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm)
 	}
 }
 
-uint32 X86Instr::GetTarget(X86CPURegisters* registers)
+uint32 X86Instr::GetTarget(Debugger* debugger, X86CPURegisters* registers)
 {	
 	const MCInstrDesc &instDesc = mX86->mInstrInfo->get(mMCInst.getOpcode());
 	
@@ -388,7 +388,7 @@ uint32 X86Instr::GetTarget(X86CPURegisters* registers)
 		opIdx = 4;
 		operand = mMCInst.getOperand(opIdx);
 	}
-
+	
 	if (operand.isImm())
 	{
 		auto targetAddr = (uint32)operand.getImm();
@@ -400,6 +400,11 @@ uint32 X86Instr::GetTarget(X86CPURegisters* registers)
 		return targetAddr;
 	}
 	return 0;
+}
+
+bool X86Instr::PartialSimulate(Debugger* debugger, X86CPURegisters* registers)
+{
+	return false;
 }
 
 X86CPU::X86CPU() :

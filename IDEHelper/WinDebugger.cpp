@@ -11710,15 +11710,16 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 				if (!mDebugTarget->DecodeInstruction(addr, &inst))
 					break;
 
+				*registers.GetPCRegisterRef() = addr;
 				if (inst.IsCall())
 				{
 					bool addSymbol = true;
 
 					if (addr < (addr_target)inAddress)
 						callAddresses += "-";
-					callAddresses += EncodeDataPtr(addr, false);
+					callAddresses += EncodeDataPtr(addr, false);					
 
-					addr_target targetAddr = inst.GetTarget(&registers);
+					addr_target targetAddr = inst.GetTarget(this, &registers);
 					if (targetAddr != 0)
 					{
 						String outSymbol;
@@ -11784,6 +11785,7 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 						callAddresses += "\n";
 				}
 
+				inst.PartialSimulate(this, &registers);
 				addr += inst.GetLength();
 			}
 		};

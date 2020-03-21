@@ -466,7 +466,8 @@ public:
 	int GetJmpState(int flags);
 	void MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm);
 
-	uint64 GetTarget(X64CPURegisters* registers = NULL);
+	uint64 GetTarget(Debugger* debugger = NULL, X64CPURegisters* registers = NULL);
+	bool PartialSimulate(Debugger* debugger, X64CPURegisters* registers);
 };
 
 

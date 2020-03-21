@@ -2992,15 +2992,18 @@ BfTypeDef* BfSystem::GetCombinedPartial(BfTypeDef* typeDef)
 {
 	if ((!typeDef->mIsPartial) || (typeDef->mIsCombinedPartial))
 		return typeDef;
-		
-	auto itr = mTypeDefs.TryGet(typeDef->mFullName);
+
+	bool foundPartial = false;
+	BfTypeDef* checkTypeDef = typeDef;
+	auto itr = mTypeDefs.TryGet(checkTypeDef->mFullName);
 	do
 	{
-		BF_ASSERT(typeDef->mIsPartial);
-		typeDef = *itr;
+		if (checkTypeDef == typeDef)
+			foundPartial = true;
+		checkTypeDef = *itr;
 		itr.MoveToNextHashMatch();
-	} while (!typeDef->mIsCombinedPartial);
-	return typeDef;
+	} while ((!checkTypeDef->mIsCombinedPartial) || (!foundPartial));
+	return checkTypeDef;
 }
 
 BfTypeDef* BfSystem::GetOuterTypeNonPartial(BfTypeDef* typeDef)

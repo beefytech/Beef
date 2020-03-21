@@ -520,10 +520,14 @@ bool X64Instr::GetIndexRegisterAndOffset(int* outRegister, int* outOffset)
 	if ((form == llvm::X86II::MRMDestMem) || (form == llvm::X86II::MRMSrcMem) ||
 		((form >= llvm::X86II::MRM0m) && (form <= llvm::X86II::MRM7m)))
 	{
-		auto baseReg = mMCInst.getOperand(llvm::X86::AddrBaseReg);
-		auto scaleAmt = mMCInst.getOperand(llvm::X86::AddrScaleAmt);
-		auto indexReg = mMCInst.getOperand(llvm::X86::AddrIndexReg);
-		auto addrDisp = mMCInst.getOperand(llvm::X86::AddrDisp);
+		int regOffset = 0;
+		if (form == llvm::X86II::MRMSrcMem)
+			regOffset = 1;
+
+		auto baseReg = mMCInst.getOperand(regOffset + llvm::X86::AddrBaseReg);
+		auto scaleAmt = mMCInst.getOperand(regOffset + llvm::X86::AddrScaleAmt);
+		auto indexReg = mMCInst.getOperand(regOffset + llvm::X86::AddrIndexReg);
+		auto addrDisp = mMCInst.getOperand(regOffset + llvm::X86::AddrDisp);
 
 		/*bool a = baseReg.isReg();
 		bool b = scaleAmt.isImm();
@@ -695,19 +699,35 @@ void X64Instr::MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm)
 	}
 }
 
-uint64 X64Instr::GetTarget(X64CPURegisters* registers)
+uint64 X64Instr::GetTarget(Debugger* debugger, X64CPURegisters* registers)
 {
 	const MCInstrDesc &instDesc = mX64->mInstrInfo->get(mMCInst.getOpcode());
 
 	if (mMCInst.getNumOperands() < 1)
 		return 0;
 
+	/*if ((debugger != NULL) && (registers != NULL))
+	{
+		int regNum = 0;
+		int offset = 0;
+		if (GetIndexRegisterAndOffset(&regNum, &offset))
+		{
+			uint64 addr = registers->mIntRegsArray[regNum] + offset;
+			uint64 val = 0;
+			debugger->ReadMemory(addr, 8, &val);
+			return val;
+		}
+	}*/
+
 	int opIdx = 0;
 	auto operand = mMCInst.getOperand(0);
-	if ((instDesc.OpInfo[0].OperandType == MCOI::OPERAND_REGISTER) && (instDesc.OpInfo[4].OperandType == MCOI::OPERAND_MEMORY))
+	if (mMCInst.getNumOperands() > 4)
 	{
-		opIdx = 4;
-		operand = mMCInst.getOperand(opIdx);
+		if ((instDesc.OpInfo[0].OperandType == MCOI::OPERAND_REGISTER) && (instDesc.OpInfo[4].OperandType == MCOI::OPERAND_MEMORY))
+		{
+			opIdx = 4;
+			operand = mMCInst.getOperand(opIdx);
+		}
 	}
 
 	if (operand.isImm())
@@ -718,6 +738,72 @@ uint64 X64Instr::GetTarget(X64CPURegisters* registers)
 		return targetAddr;
 	}
 	return 0;
+}
+
+bool X64Instr::PartialSimulate(Debugger* debugger, X64CPURegisters* registers)
+{
+//	const MCInstrDesc &instDesc = mX64->mInstrInfo->get(mMCInst.getOpcode());
+//
+//	for (int i = 0; i < instDesc.NumOperands; i++)
+//	{
+//		auto regInfo = mMCInst.getOperand(i);
+//		NOP;
+//	}
+//
+//	if (instDesc.getOpcode() == X86::MOV64rm)
+//	{
+//		auto form = (instDesc.TSFlags & llvm::X86II::FormMask);
+//
+//		if ((form == llvm::X86II::MRMSrcMem) && (instDesc.NumOperands == 6))
+//		{			
+//			auto destReg = mMCInst.getOperand(llvm::X86::AddrBaseReg);
+//			if (destReg.isReg())
+//			{				
+//				int regNum = 0;
+//				int offset = 0;
+//				if (GetIndexRegisterAndOffset(&regNum, &offset))
+//				{
+//					uint64 addr = registers->mIntRegsArray[regNum] + offset;
+//					uint64 val = 0;
+//					debugger->ReadMemory(addr, 8, &val);
+//					
+//					switch (destReg.getReg())
+//					{
+//
+//					}
+//				}
+//			}
+//		}
+//
+//// 		if ((form == llvm::X86II::MRMDestMem) || (form == llvm::X86II::MRMSrcMem) ||
+//// 			((form >= llvm::X86II::MRM0m) && (form <= llvm::X86II::MRM7m)))
+//// 		{
+//// 		}		
+//	}
+//
+//	if (instDesc.getOpcode() == X86::XOR8rr)
+//	{
+//		if (instDesc.NumOperands == 3)
+//		{
+//			auto destReg = mMCInst.getOperand(0);
+//			auto srcReg = mMCInst.getOperand(1);
+//
+//			if ((destReg.isReg()) && (srcReg.isReg()))
+//			{
+//				if (destReg.getReg() == srcReg.getReg())
+//				{					
+//					switch (destReg.getReg())
+//					{
+//					case X86::AL:
+//						((uint8*)&registers->mIntRegs.rax)[0] = 0;
+//						break;
+//					}
+//				}
+//			}
+//		}
+//	}
+
+	return false;
 }
 
 X64CPU::X64CPU() :

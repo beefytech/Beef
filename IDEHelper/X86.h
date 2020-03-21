@@ -303,7 +303,8 @@ public:
 	int GetJmpState(int flags);
 	void MarkRegsUsed(Array<RegForm>& regsUsed, bool overrideForm);
 
-	uint32 GetTarget(X86CPURegisters* registers = NULL);
+	uint32 GetTarget(Debugger* debugger = NULL, X86CPURegisters* registers = NULL);
+	bool PartialSimulate(Debugger* debugger, X86CPURegisters* registers);
 };
 
 class X86CPU
