@@ -2064,10 +2064,10 @@ String BeMCContext::ToString(const BeMCOperand& operand)
 			else
 				str += "null";
 			return str;
-		case BeMCOperandKind_Immediate_f32: return StrFormat("f32 %f", operand.mImmFloat);
-		case BeMCOperandKind_Immediate_f32_Packed128: return StrFormat("f32_packed %f", operand.mImmFloat);
-		case BeMCOperandKind_Immediate_f64: return StrFormat("f64 %f", operand.mImmFloat);
-		case BeMCOperandKind_Immediate_f64_Packed128: return StrFormat("f64_packed %f", operand.mImmFloat);
+		case BeMCOperandKind_Immediate_f32: return StrFormat("f32 %f", operand.mImmF32);
+		case BeMCOperandKind_Immediate_f32_Packed128: return StrFormat("f32_packed %f", operand.mImmF32);
+		case BeMCOperandKind_Immediate_f64: return StrFormat("f64 %f", operand.mImmF64);
+		case BeMCOperandKind_Immediate_f64_Packed128: return StrFormat("f64_packed %f", operand.mImmF64);
 		}
 		//if (operand.mImmediate < 10)
 			str += StrFormat("%lld", operand.mImmediate);
@@ -2196,11 +2196,11 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 			case BeTypeCode_Int32: mcOperand.mKind = BeMCOperandKind_Immediate_i32; break;			
 			case BeTypeCode_Int64: mcOperand.mKind = BeMCOperandKind_Immediate_i64; break;
 			case BeTypeCode_Float:
-				mcOperand.mImmFloat = constant->mDouble;
+				mcOperand.mImmF32 = constant->mDouble;
 				mcOperand.mKind = BeMCOperandKind_Immediate_f32;
 				return mcOperand;				
 			case BeTypeCode_Double:
-				mcOperand.mImmFloat = constant->mDouble;
+				mcOperand.mImmF64 = constant->mDouble;
 				mcOperand.mKind = BeMCOperandKind_Immediate_f64;
 				return mcOperand;
 			case BeTypeCode_Pointer:
@@ -6025,29 +6025,25 @@ void BeMCContext::EmitModRM_XMM_IMM(int rx, BeMCOperand & imm)
 
 	BeMCSymbol* sym = NULL;
 	if (imm.mKind == BeMCOperandKind_Immediate_f32)
-	{
-		float floatVal = (float)imm.mImmFloat;
-		String name = StrFormat("__real@%08x", *(int*)&floatVal);
-		sym = mCOFFObject->GetCOMDAT(name, &floatVal, 4, 4);
+	{		
+		String name = StrFormat("__real@%08x", *(int*)&imm.mImmF32);
+		sym = mCOFFObject->GetCOMDAT(name, &imm.mImmF32, 4, 4);
 	}
 	else if (imm.mKind == BeMCOperandKind_Immediate_f64)
-	{
-		double floatVal = imm.mImmFloat;
-		String name = StrFormat("__real@%016llx", *(int64*)&floatVal);
-		sym = mCOFFObject->GetCOMDAT(name, &floatVal, 8, 8);
+	{		
+		String name = StrFormat("__real@%016llx", *(int64*)&imm.mImmF64);
+		sym = mCOFFObject->GetCOMDAT(name, &imm.mImmF64, 8, 8);
 	}
 	else if (imm.mKind == BeMCOperandKind_Immediate_f32_Packed128)
-	{
-		float floatVal = (float)imm.mImmFloat;
-		String name = StrFormat("__real@%08x_packed", *(int*)&floatVal);
-		float data[4] = { floatVal, 0, 0, 0 };
+	{		
+		String name = StrFormat("__real@%08x_packed", *(int*)&imm.mImmF32);
+		float data[4] = { imm.mImmF32, 0, 0, 0 };
 		sym = mCOFFObject->GetCOMDAT(name, data, 16, 16);
 	}
 	else if (imm.mKind == BeMCOperandKind_Immediate_f64_Packed128)
-	{
-		double floatVal = imm.mImmFloat;
-		String name = StrFormat("__real@%016llx_packed", *(int64*)&floatVal);
-		double data[2] = { floatVal, 0 };
+	{		
+		String name = StrFormat("__real@%016llx_packed", *(int64*)&imm.mImmF64);
+		double data[2] = { imm.mImmF64, 0 };
 		sym = mCOFFObject->GetCOMDAT(name, data, 16, 16);
 	}
 	else
@@ -6464,9 +6460,19 @@ void BeMCContext::DoInitInjectionPass()
 					else
 						zeroVal.mKind = BeMCOperandKind_Immediate_f64;
 					if (initType == BfIRInitType_Uninitialized)
-						zeroVal.mImmFloat = NAN;
+					{
+						if (varType->mTypeCode == BeTypeCode_Float)
+							zeroVal.mImmF32 = NAN;
+						else
+							zeroVal.mImmF64 = NAN;
+					}
 					else
-						zeroVal.mImmFloat = 0;
+					{
+						if (varType->mTypeCode == BeTypeCode_Float)
+							zeroVal.mImmF32 = 0;
+						else
+							zeroVal.mImmF64 = 0;
+					}
 					AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregIdx), zeroVal, instIdx + 1);
 				}
 				else if (varType->IsComposite())
@@ -9136,10 +9142,15 @@ bool BeMCContext::DoLegalization()
 					{
 						inst->mKind = BeMCInstKind_Xor;
 						if (arg0Type->mTypeCode == BeTypeCode_Float)
+						{							
 							inst->mArg1.mKind = BeMCOperandKind_Immediate_f32_Packed128;
+							inst->mArg1.mImmF32 = -0.0;
+						}
 						else
+						{
 							inst->mArg1.mKind = BeMCOperandKind_Immediate_f64_Packed128;
-						inst->mArg1.mImmFloat = -0.0;
+							inst->mArg1.mImmF64 = -0.0;
+						}						
 					}
 				}
 				break;
@@ -9706,10 +9717,16 @@ bool BeMCContext::DoLegalization()
 							AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(labelIdx), BeMCOperand::FromCmpKind(BeCmpKind_SGE), instIdx + 4);
 							BeMCOperand mcOffset;
 							if (arg0Type->mSize == 8)
+							{
 								mcOffset.mKind = BeMCOperandKind_Immediate_f64;
+								mcOffset.mImmF64 = 1.8446744073709552e+19;
+							}
 							else
+							{
 								mcOffset.mKind = BeMCOperandKind_Immediate_f32;
-							mcOffset.mImmFloat = 1.8446744073709552e+19;
+								mcOffset.mImmF32 = 1.8446744073709552e+19;
+							}
+							
 							AllocInst(BeMCInstKind_Add, inst->mArg0, mcOffset, instIdx + 5);
 							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx + 7);
 
@@ -11345,8 +11362,8 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 	case BeMCInstForm_XMM32_RM32:
 	case BeMCInstForm_XMM32_IMM:
 	case BeMCInstForm_XMM32_FRM32:
-	case BeMCInstForm_XMM64_FRM32: // CVTSS2SD
-		Emit(0xF3); EmitREX(inst->mArg0, inst->mArg1, is64Bit);
+	case BeMCInstForm_XMM64_FRM32:
+		Emit(0xF3); EmitREX(inst->mArg0, inst->mArg1, is64Bit);		
 		Emit(0x0F); Emit(opcode);
 		EmitModRM(inst->mArg0, inst->mArg1);
 		return true;
@@ -11359,8 +11376,8 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 	case BeMCInstForm_XMM64_RM32:
 	case BeMCInstForm_XMM64_IMM:
 	case BeMCInstForm_XMM64_FRM64:
-	case BeMCInstForm_XMM32_FRM64: // CVTSD2SS
-		Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, is64Bit);
+	case BeMCInstForm_XMM32_FRM64:
+		Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, is64Bit);		
 		Emit(0x0F); Emit(opcode);
 		EmitModRM(inst->mArg0, inst->mArg1);
 		return true;
@@ -12530,7 +12547,7 @@ void BeMCContext::DoCodeEmission()
 								EmitREX(BeMCOperand(), inst->mArg0, false);
 								Emit(0xC7);
 								EmitModRM(0, inst->mArg0, -4);
-								float val = inst->mArg1.mImmFloat;
+								float val = inst->mArg1.mImmF32;
 								mOut.Write(*(int32*)&val);								
 								break;
 							}
@@ -13605,7 +13622,7 @@ void BeMCContext::DoCodeEmission()
 							isZeroing = true;							
 						}	
 					}
-
+					
 					if (isZeroing)
 					{
 						int size = 0;
@@ -13631,6 +13648,14 @@ void BeMCContext::DoCodeEmission()
 						break;
 					}
 
+					if (modInst.mArg1.IsImmediateFloat())
+					{ //ANDPS
+						bool is64Bit = (modInst.mArg1.mKind == BeMCOperandKind_Immediate_f64_Packed128);						
+						Emit(0x0F); Emit(0x54);
+						EmitModRM(inst->mArg0, inst->mArg1);
+						break;
+					}
+					
 					EmitStdInst(instForm, &modInst, 0x21, 0x23, 0x81, 0x4, 0x83, 0x4);
 				}
 				break;
@@ -14652,14 +14677,14 @@ BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand&
 
 	if (identityKind == BeMCBinIdentityKind_Any_IsOne)
 	{
-		if (((lhs.IsImmediateFloat()) && (lhs.mImmFloat == 1.0)) ||
+		if (((lhs.IsImmediateFloat()) && (lhs.GetImmediateDouble() == 1.0)) ||
 			((lhs.IsImmediateInt()) && (lhs.mImmediate == 1)))
 			return rhs;
 	}
 	
 	if (identityKind == BeMCBinIdentityKind_Right_IsOne_Result_Zero)
 	{
-		if (((rhs.IsImmediateFloat()) && (rhs.mImmFloat == 1.0)) ||
+		if (((rhs.IsImmediateFloat()) && (rhs.GetImmediateDouble() == 1.0)) ||
 			((rhs.IsImmediateInt()) && (rhs.mImmediate == 1)))
 		{
 			BeMCOperand operand = rhs;
@@ -14670,21 +14695,21 @@ BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand&
 
 	if ((identityKind == BeMCBinIdentityKind_Right_IsOne) || (identityKind == BeMCBinIdentityKind_Any_IsOne))
 	{
-		if (((rhs.IsImmediateFloat()) && (rhs.mImmFloat == 1.0)) ||
+		if (((rhs.IsImmediateFloat()) && (rhs.GetImmediateDouble() == 1.0)) ||
 			((rhs.IsImmediateInt()) && (rhs.mImmediate == 1)))
 			return lhs;
 	}
 
 	if ((identityKind == BeMCBinIdentityKind_Right_IsZero) || (identityKind == BeMCBinIdentityKind_Any_IsZero))
 	{		
-		if (((rhs.IsImmediateFloat()) && (rhs.mImmFloat == 0.0)) ||
+		if (((rhs.IsImmediateFloat()) && (rhs.GetImmediateDouble() == 0.0)) ||
 			((rhs.IsImmediateInt()) && (rhs.mImmediate == 0)))
 			return lhs;
 	}
 
 	if (identityKind == BeMCBinIdentityKind_Any_IsZero)
 	{
-		if (((lhs.IsImmediateFloat()) && (lhs.mImmFloat == 0.0)) ||
+		if (((lhs.IsImmediateFloat()) && (lhs.GetImmediateDouble() == 0.0)) ||
 			((lhs.IsImmediateInt()) && (lhs.mImmediate == 0)))
 			return rhs;		
 	}
@@ -14714,7 +14739,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = function->mName == "?Dequeue@?$Queue@Tint@@@Generic@Collections@System@bf@@QEAATint@@XZ";
+	mDebugging = function->mName == "?Hey@Blurg@bf@@SAXXZ";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
@@ -15118,7 +15143,7 @@ void BeMCContext::Generate(BeFunction* function)
 					
 					if (castedInst->mOpKind == BeBinaryOpKind_Subtract)
 					{
-						if (((mcLHS.IsImmediateFloat()) && (mcLHS.mImmFloat == 0.0)) ||
+						if (((mcLHS.IsImmediateFloat()) && (mcLHS.GetImmediateDouble() == 0.0)) ||
 							((mcLHS.IsImmediateInt()) && (mcLHS.mImmediate == 0)))
 						{
 							auto castedInst = (BeNumericCastInst*)inst;
@@ -15865,6 +15890,30 @@ void BeMCContext::Generate(BeFunction* function)
 					{
 						switch (intrin->mKind)
 						{
+						case BfIRIntrinsic_Abs:														
+							{
+								auto mcValue = GetOperand(castedInst->mArgs[0].mValue);
+
+								auto mcType = GetType(mcValue);
+								BeMCOperand andValue;
+
+								if (mcType->mSize == 4)								
+								{
+									andValue.mKind = BeMCOperandKind_Immediate_f32_Packed128;
+									andValue.mImmediate = 0x7FFFFFFF;									                        
+								}
+								else
+								{
+									andValue.mKind = BeMCOperandKind_Immediate_f64_Packed128;
+									andValue.mImmediate = 0x7FFFFFFFFFFFFFFFLL;
+								}
+								
+								result = AllocVirtualReg(GetType(mcValue));
+								CreateDefineVReg(result);
+								AllocInst(BeMCInstKind_Mov, result, mcValue);
+								AllocInst(BeMCInstKind_And, result, andValue);
+							}
+							break;
 						case BfIRIntrinsic_AtomicAdd:
 						case BfIRIntrinsic_AtomicSub:
 							{
@@ -15887,8 +15936,10 @@ void BeMCContext::Generate(BeFunction* function)
 									if ((intrin->mKind == BfIRIntrinsic_AtomicSub) && (mcVal.IsImmediate()))
 									{
 										BeMCOperand mcNeg = mcVal;
-										if (mcVal.IsImmediateFloat())
-											mcNeg.mImmFloat = -mcNeg.mImmFloat;
+										if (mcVal.mKind == BeMCOperandKind_Immediate_f32)
+											mcNeg.mImmF32 = -mcNeg.mImmF32;
+										else if (mcVal.mKind == BeMCOperandKind_Immediate_f64)
+											mcNeg.mImmF64 = -mcNeg.mImmF64;
 										else
 											mcNeg.mImmediate = -mcNeg.mImmediate;
 										AllocInst(BeMCInstKind_Mov, scratchReg, mcNeg);

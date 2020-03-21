@@ -386,6 +386,7 @@ enum BfIRConfigConst : uint8
 
 enum BfIRIntrinsic : uint8
 {
+	BfIRIntrinsic_Abs,
 	BfIRIntrinsic_AtomicAdd,
 	BfIRIntrinsic_AtomicAnd,
 	BfIRIntrinsic_AtomicCmpStore,

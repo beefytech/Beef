@@ -1919,6 +1919,9 @@ void BeIRCodeGen::HandleNextCmd()
 
 			switch (intrin->mKind)
 			{			
+			case BfIRIntrinsic_Abs:
+				intrin->mReturnType = paramTypes[0];
+				break;
 			case BfIRIntrinsic_AtomicAdd:
 			case BfIRIntrinsic_AtomicAnd:
 			case BfIRIntrinsic_AtomicCmpXChg:

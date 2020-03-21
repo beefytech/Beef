@@ -234,7 +234,8 @@ public:
 		int mFrameObjNum;
 		int64 mImmediate;
 		BeType* mType;
-		double mImmFloat;
+		float mImmF32;
+		double mImmF64;
 		BeMCBlock* mBlock;
 		BeMCPhi* mPhi;
 		BeNotResult* mNotResult;
@@ -308,8 +309,10 @@ public:
 		// Either intptr or int
 		if (mKind == BeMCOperandKind_CmpKind)
 			return mCmpKind == other.mCmpKind;
-		if ((mKind == BeMCOperandKind_Immediate_f32) || (mKind == BeMCOperandKind_Immediate_f64))
-			return mImmFloat == other.mImmFloat;
+		if (mKind == BeMCOperandKind_Immediate_f32)
+			return mImmF32 == other.mImmF32;
+		if (mKind == BeMCOperandKind_Immediate_f64)
+			return mImmF64 == other.mImmF64;
 		if ((mKind >= BeMCOperandKind_Immediate_i8) && (mKind <= BeMCOperandKind_Block))
 			return mImmediate == other.mImmediate;
 		if (mKind == BeMCOperandKind_Immediate_Null)
@@ -333,10 +336,19 @@ public:
 		return false;
 	}
 
-	int64 GetImmediateInt()
+	int64 GetImmediateInt() const
 	{
 		if ((mKind >= BeMCOperandKind_Immediate_i8) && (mKind <= BeMCOperandKind_Immediate_i64))
 			return mImmediate;
+		return 0;
+	}
+
+	double GetImmediateDouble() const
+	{
+		if (mKind == BeMCOperandKind_Immediate_f32)
+			return mImmF32;
+		if (mKind == BeMCOperandKind_Immediate_f64)
+			return mImmF64;
 		return 0;
 	}
 	

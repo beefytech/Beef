@@ -125,6 +125,7 @@ struct BuiltinEntry
 
 static const BuiltinEntry gIntrinEntries[] =
 {
+	{"abs"},
 	{"atomic_add"},
 	{"atomic_and"},
 	{"atomic_cmpstore"},
@@ -1847,79 +1848,73 @@ void BfIRCodeGen::HandleNextCmd()
 			}
 			
 			llvm::Function* func = NULL;
-			llvm::Function** funcPtr = NULL;			
-			if (mIntrinsicMap.TryAdd(intrinId, NULL, &funcPtr))
+			
+			struct _Intrinsics
 			{
-				struct _Intrinsics
-				{
-					llvm::Intrinsic::ID mID;
-					int mArg0;
-					int mArg1;
-					int mArg2;
-				};
+				llvm::Intrinsic::ID mID;
+				int mArg0;
+				int mArg1;
+				int mArg2;
+			};
 
-				static _Intrinsics intrinsics[] =
-				{
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicAdd,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicAnd,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpStore,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpStore_Weak,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpXChg,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicFence,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicLoad,					
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicMax,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicMin,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicNAnd,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicOr,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicStore,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicSub,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicUMax,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicUMin,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicXChg,
-					{ (llvm::Intrinsic::ID)-1, -1}, // AtomicXor,
-					{ llvm::Intrinsic::bswap, -1},
-					{ (llvm::Intrinsic::ID) - 1, -1}, // cast,
-					{ llvm::Intrinsic::cos, -1},
-					{ llvm::Intrinsic::floor, -1},
-					{ (llvm::Intrinsic::ID)-1, -1}, // free					
-					{ llvm::Intrinsic::log, -1},
-					{ llvm::Intrinsic::log10, -1},
-					{ llvm::Intrinsic::log2, -1},
-					{ (llvm::Intrinsic::ID)-1}, // memset
-					{ llvm::Intrinsic::memcpy, 0, 1, 2},
-					{ llvm::Intrinsic::memmove, 0, 2},
-					{ llvm::Intrinsic::memset, 0, 2},
-					{ llvm::Intrinsic::pow, 0, -1},
-					{ llvm::Intrinsic::powi, 0, -1},
-					{ llvm::Intrinsic::round, 0, -1},
-					{ llvm::Intrinsic::sin, 0, -1},
-					{ llvm::Intrinsic::sqrt, 0, -1},					
-				};
-				BF_STATIC_ASSERT(BF_ARRAY_COUNT(intrinsics) == BfIRIntrinsic_COUNT);
+			static _Intrinsics intrinsics[] =
+			{
+				{ llvm::Intrinsic::fabs, 0, -1},
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicAdd,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicAnd,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpStore,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpStore_Weak,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpXChg,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicFence,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicLoad,					
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicMax,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicMin,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicNAnd,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicOr,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicStore,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicSub,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicUMax,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicUMin,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicXChg,
+				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicXor,
+				{ llvm::Intrinsic::bswap, -1},
+				{ (llvm::Intrinsic::ID)-1, -1}, // cast,
+				{ llvm::Intrinsic::cos, 0, -1},
+				{ llvm::Intrinsic::floor, 0, -1},
+				{ (llvm::Intrinsic::ID)-1, -1}, // free					
+				{ llvm::Intrinsic::log, 0, -1},
+				{ llvm::Intrinsic::log10, 0, -1},
+				{ llvm::Intrinsic::log2, 0, -1},
+				{ (llvm::Intrinsic::ID)-1}, // memset
+				{ llvm::Intrinsic::memcpy, 0, 1, 2},
+				{ llvm::Intrinsic::memmove, 0, 2},
+				{ llvm::Intrinsic::memset, 0, 2},
+				{ llvm::Intrinsic::pow, 0, -1},
+				{ llvm::Intrinsic::powi, 0, -1},
+				{ llvm::Intrinsic::round, 0, -1},
+				{ llvm::Intrinsic::sin, 0, -1},
+				{ llvm::Intrinsic::sqrt, 0, -1},					
+			};
+			BF_STATIC_ASSERT(BF_ARRAY_COUNT(intrinsics) == BfIRIntrinsic_COUNT);
 
-				CmdParamVec<llvm::Type*> useParams;
-				if (intrinsics[intrinId].mArg0 != -1)
+			CmdParamVec<llvm::Type*> useParams;
+			if (intrinsics[intrinId].mArg0 != -1)
+			{
+				useParams.push_back(paramTypes[0]);
+				if (intrinsics[intrinId].mArg1 != -1)
 				{
-					useParams.push_back(paramTypes[0]);
-					if (intrinsics[intrinId].mArg1 != -1)
+					useParams.push_back(paramTypes[1]);
+					if (intrinsics[intrinId].mArg2 != -1)
 					{
-						useParams.push_back(paramTypes[1]);
-						if (intrinsics[intrinId].mArg2 != -1)
-						{
-							useParams.push_back(paramTypes[2]);
-						}
+						useParams.push_back(paramTypes[2]);
 					}
 				}
+			}
 
-				BF_ASSERT(intrinsics[intrinId].mID != (llvm::Intrinsic::ID) - 1);
-				func = llvm::Intrinsic::getDeclaration(mLLVMModule, intrinsics[intrinId].mID, useParams);
-				*funcPtr = func;
-				mIntrinsicReverseMap[func] = intrinId;				
-			}
-			else
-			{
-				func = *funcPtr;
-			}
+			BF_ASSERT(intrinsics[intrinId].mID != (llvm::Intrinsic::ID) - 1);
+			func = llvm::Intrinsic::getDeclaration(mLLVMModule, intrinsics[intrinId].mID, useParams);			
+			mIntrinsicReverseMap[func] = intrinId;				
+			
 			SetResult(curId, func);			
 		}
 		break;

@@ -111,7 +111,11 @@ namespace System
                 return regularMod;
             }
         }
-		  
+
+		[Intrinsic("abs")]
+		public static extern float Abs(float value);
+		[Intrinsic("abs")]
+		public static extern double Abs(double value);
 		[Inline]
 		public static T Abs<T>(T value) where T : IOpComparable, IOpNegatable
         {
