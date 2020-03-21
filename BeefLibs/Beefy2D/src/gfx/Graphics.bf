@@ -30,7 +30,7 @@ namespace Beefy.gfx
 				delete mDisposeProxy;
 			}
 
-            public IDisposable Push(T newValue) mut
+            public DisposeProxy Push(T newValue) mut
             {
                 mStack[++mIdx] = newValue;
                 return mDisposeProxy;
@@ -169,7 +169,7 @@ namespace Beefy.gfx
             mClipPoolStarts.RemoveAt(mClipPoolStarts.Count - 1);
         }
 
-        public IDisposable PushTranslate(float x, float y)
+        public DisposeProxy PushTranslate(float x, float y)
         {
             mMatrixStackIdx++;
             mMatrixStack[mMatrixStackIdx].SetMultiplied(x, y, ref mMatrix);
@@ -178,7 +178,7 @@ namespace Beefy.gfx
             return mMatrixDisposeProxy;
         }
 
-        public IDisposable PushScale(float scaleX, float scaleY)
+        public DisposeProxy PushScale(float scaleX, float scaleY)
         {
             Matrix m = Matrix.IdentityMatrix;
             m.Identity();
@@ -186,7 +186,7 @@ namespace Beefy.gfx
             return PushMatrix(m);
         }
 
-        public IDisposable PushScale(float scaleX, float scaleY, float x, float y)
+        public DisposeProxy PushScale(float scaleX, float scaleY, float x, float y)
         {
             Matrix m = Matrix.IdentityMatrix;
             m.Identity();
@@ -196,7 +196,7 @@ namespace Beefy.gfx
             return PushMatrix(m);
         }
 
-        public IDisposable PushRotate(float rot)
+        public DisposeProxy PushRotate(float rot)
         {
             Matrix m = Matrix.IdentityMatrix;
             m.Identity();
@@ -204,7 +204,7 @@ namespace Beefy.gfx
             return PushMatrix(m);
         }
 
-		public IDisposable PushRotate(float rot, float x, float y)
+		public DisposeProxy PushRotate(float rot, float x, float y)
 		{
 			Matrix m = Matrix.IdentityMatrix;
 			m.Identity();
@@ -214,7 +214,7 @@ namespace Beefy.gfx
 			return PushMatrix(m);
 		}
 
-        public IDisposable PushMatrix(Matrix matrix)
+        public DisposeProxy PushMatrix(Matrix matrix)
         {
             mMatrixStackIdx++;
             mMatrixStack[mMatrixStackIdx].SetMultiplied(matrix, mMatrix);
@@ -223,7 +223,7 @@ namespace Beefy.gfx
             return mMatrixDisposeProxy;
         }
 
-        public IDisposable PushMatrixOverride(Matrix matrix)
+        public DisposeProxy PushMatrixOverride(Matrix matrix)
         {
             mMatrixStackIdx++;
             mMatrixStack[mMatrixStackIdx].Set(matrix);
@@ -237,7 +237,7 @@ namespace Beefy.gfx
             mMatrix = mMatrixStack[--mMatrixStackIdx];
         }
 
-        public IDisposable PushDrawLayer(DrawLayer drawLayer)
+        public DisposeProxy PushDrawLayer(DrawLayer drawLayer)
         {
             mDrawLayerStackIdx++;
             mDrawLayerStack[mDrawLayerStackIdx] = drawLayer;
@@ -254,7 +254,7 @@ namespace Beefy.gfx
                 mDrawLayer.Activate();
         }
 
-        public IDisposable PushZDepth(float zDepth)
+        public DisposeProxy PushZDepth(float zDepth)
         {
             ZDepth = zDepth;
             return mZDepthStack.Push(ZDepth);
@@ -265,7 +265,7 @@ namespace Beefy.gfx
             ZDepth = mZDepthStack.Pop();
         }
 
-        public IDisposable PushColor(Color color)
+        public DisposeProxy PushColor(Color color)
         {
             Color physColor = color;
 
@@ -275,7 +275,7 @@ namespace Beefy.gfx
             return mColorDisposeProxy;
         }
 
-        public IDisposable PushColorOverride(Color color)
+        public DisposeProxy PushColorOverride(Color color)
         {
             Color physColor = color;
 
@@ -305,10 +305,10 @@ namespace Beefy.gfx
             mFont = font;
         }
 
-        public abstract IDisposable PushRenderState(RenderState renderState);
+        public abstract DisposeProxy PushRenderState(RenderState renderState);
         public abstract void PopRenderState();
         
-        public IDisposable PushClip(float x, float y, float width, float height)
+        public DisposeProxy PushClip(float x, float y, float width, float height)
         {            
             Matrix m = Matrix();
             m.SetMultiplied(x, y, width, height, ref mMatrix);
@@ -370,7 +370,7 @@ namespace Beefy.gfx
 			return renderState;
 		}
 
-        public IDisposable PushClipDisable()
+        public DisposeProxy PushClipDisable()
         {
 			mClipStackIdx++;
 			mClipStack[mClipStackIdx] = null;
@@ -471,7 +471,7 @@ namespace Beefy.gfx
             Gfx_SetRenderState(renderState.mNativeRenderState);
         }
 
-        public override IDisposable PushRenderState(RenderState renderState)
+        public override DisposeProxy PushRenderState(RenderState renderState)
         {
             Gfx_SetRenderState(renderState.mNativeRenderState);
             mRenderStateStack[++mRenderStateStackIdx] = renderState;
@@ -919,7 +919,7 @@ namespace Beefy.gfx
             Debug.Assert(mColorStackIdx == 0);
         }*/
 
-        public override IDisposable PushRenderState(RenderState renderState)
+        public override DisposeProxy PushRenderState(RenderState renderState)
         {
             BFApp.sApp.mStudioHost.Proxy.Gfx_SetRenderState(renderState.mStudioRenderState);
             mRenderStateStack[++mRenderStateStackIdx] = renderState;
