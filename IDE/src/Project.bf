@@ -864,12 +864,12 @@ namespace IDE
         public enum TargetType
         {
 			case BeefConsoleApplication,
-				 BeefWindowsApplication,
+				 BeefGUIApplication,
 				 BeefLib,
 				 BeefDynLib,
 				 CustomBuild,
 				 C_ConsoleApplication,
-				 C_WindowsApplication,
+				 C_GUIApplication,
 				 BeefTest,
 				 BeefApplication_StaticLib,
 				 BeefApplication_DynamicLib;
@@ -881,7 +881,7 @@ namespace IDE
 					switch (this)
 					{
 					case BeefConsoleApplication,
-						 BeefWindowsApplication,
+						 BeefGUIApplication,
 						 BeefLib,
 						 BeefDynLib,
 						 BeefTest:
@@ -899,7 +899,7 @@ namespace IDE
 					switch (this)
 					{
 					case BeefConsoleApplication,
-						 BeefWindowsApplication:
+						 BeefGUIApplication:
 						return true;
 					default:
 						return false;
@@ -1783,7 +1783,18 @@ namespace IDE
 					typeOptions.Deserialize(data);
 					mBeefGlobalOptions.mDistinctBuildOptions.Add(typeOptions);
 				}
-				mGeneralOptions.mTargetType = data.GetEnum<TargetType>("TargetType", GetDefaultTargetType());
+
+				var targetTypeName = scope String();
+				data.GetString("TargetType", targetTypeName);
+				switch (targetTypeName)
+				{ // Handle Legacy names first
+				case "BeefWindowsApplication":
+					mGeneralOptions.mTargetType = .BeefGUIApplication;
+				case "C_WindowsApplication":
+					mGeneralOptions.mTargetType = .C_GUIApplication;
+				default:
+					mGeneralOptions.mTargetType = data.GetEnum<TargetType>("TargetType", GetDefaultTargetType());
+				}
 			}
 
 			using (data.Open("Platform"))

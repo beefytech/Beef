@@ -3736,6 +3736,9 @@ namespace IDE
                 int lineChar;
                 sourceViewPanel.mEditWidget.Content.GetCursorLineChar(out line, out lineChar);
 
+				if (!sourceViewPanel.HasTextAtCursor())
+					return;
+
 #if IDE_C_SUPPORT
                 if (sourceViewPanel.mIsClang)
                 {
@@ -8647,7 +8650,7 @@ namespace IDE
 								newString = scope:ReplaceBlock String();
 
 								if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
-									(project.mGeneralOptions.mTargetType == .BeefWindowsApplication) ||
+									(project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
 									(project.mGeneralOptions.mTargetType == .BeefDynLib) ||
 									((options.mBuildOptions.mBuildKind == .Test) && (project == mWorkspace.mStartupProject)))
 								{
@@ -9005,7 +9008,7 @@ namespace IDE
 
 #if BF_PLATFORM_WINDOWS
 			if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
-				(project.mGeneralOptions.mTargetType == .BeefWindowsApplication))
+				(project.mGeneralOptions.mTargetType == .BeefGUIApplication))
 			{
 				if (workspaceOptions.mToolsetType != .GNU)
 				{
@@ -9990,7 +9993,7 @@ namespace IDE
 				// temporarily break on _main and then we single step                                    
 				//mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("_ZN3Hey4Dude3Bro9TestClass4MainEv");
                 if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefConsoleApplication) ||
-                    (project.mGeneralOptions.mTargetType == Project.TargetType.BeefWindowsApplication))
+                    (project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication))
                     mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-BeefStartProgram");
                 else
 				{

@@ -282,8 +282,8 @@ namespace IDE
 					linkLine.Append(" ");
 			    }*/
 
-			    if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefWindowsApplication) ||
-			        (project.mGeneralOptions.mTargetType == Project.TargetType.C_WindowsApplication))
+			    if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication) ||
+			        (project.mGeneralOptions.mTargetType == Project.TargetType.C_GUIApplication))
 			    {
 			        linkLine.Append("-mwindows ");
 			    }
@@ -591,9 +591,9 @@ namespace IDE
 
 				if (testProjectInfo != null)
 					linkLine.Append("-subsystem:console ");
-			    else if (project.mGeneralOptions.mTargetType == .BeefWindowsApplication)
+			    else if (project.mGeneralOptions.mTargetType == .BeefGUIApplication)
 					linkLine.Append("-subsystem:windows ");
-			    else if (project.mGeneralOptions.mTargetType == .C_WindowsApplication)
+			    else if (project.mGeneralOptions.mTargetType == .C_GUIApplication)
 			    	linkLine.Append("-subsystem:console ");
 				else if (project.mGeneralOptions.mTargetType == .BeefDynLib)
 				{
@@ -687,8 +687,8 @@ namespace IDE
 					linkLine.Append("-nodefaultlib ");
 
 					String minRTModName = scope String();
-					if ((project.mGeneralOptions.mTargetType == .BeefWindowsApplication) ||
-						(project.mGeneralOptions.mTargetType == .C_WindowsApplication))
+					if ((project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
+						(project.mGeneralOptions.mTargetType == .C_GUIApplication))
 						minRTModName.Append("g");
 					if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
 						minRTModName.Append("d");
