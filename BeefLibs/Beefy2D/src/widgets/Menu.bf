@@ -98,7 +98,7 @@ namespace Beefy.widgets
         public MenuItemWidget mParentMenuItemWidget;
         public Menu mMenu;        
         //public BFWindowBase.Flags mWindowFlags = BFWindowBase.Flags.ClientSized | BFWindowBase.Flags.NoActivate | BFWindowBase.Flags.NoMouseActivate;
-		public BFWindowBase.Flags mWindowFlags = .ClientSized | .FakeFocus;
+		public BFWindowBase.Flags mWindowFlags = .ClientSized | .FakeFocus | .PopupPosition;
         public int32 mSelectIdx = -1;
         public Widget mRelativeWidget;
         public List<MenuItemWidget> mItemWidgets = new List<MenuItemWidget>() ~ delete _;
