@@ -18,7 +18,7 @@ namespace IDE.ui
 		public DarkComboBox mTargetComboBox;
 		static String[5] sApplicationTypeNames =
 			.("Console Application",
-				"Windows Application",
+				"GUI Application",
 				"Library",
 				"Dynamic Library",
 				"Custom Build");
@@ -116,7 +116,7 @@ namespace IDE.ui
 				return false;
 			}	
 
-			Project.TargetType targetType = .BeefWindowsApplication;
+			Project.TargetType targetType = .BeefGUIApplication;
 			for (var applicationTypeName in sApplicationTypeNames)
 			{
 				if (applicationTypeName == mTargetComboBox.Label)

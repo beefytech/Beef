@@ -629,7 +629,7 @@ namespace IDE.ui
 			AddPropertiesItem(root, "Target Type", "mTargetType", scope String[]
 				{
 					"Console Application",
-					"Windows Application",
+					"GUI Application",
 					"Library",
 					"Dynamic Library",
 					"Custom Build"

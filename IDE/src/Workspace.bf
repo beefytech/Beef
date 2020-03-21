@@ -253,7 +253,7 @@ namespace IDE
 			{
 				return ((mBuildKind == .Test) &&
 					((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
-					 (project.mGeneralOptions.mTargetType == .BeefWindowsApplication) ||
+					 (project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
 					 (project.mGeneralOptions.mTargetType == .BeefConsoleApplication)));
 			}
 			
