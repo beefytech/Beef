@@ -7559,20 +7559,64 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			{
 				SetAndRestoreValue<BfVisitorPos> prevVisitorPos(mVisitorPos, BfVisitorPos(block));
 				mVisitorPos.MoveNext();
+				
+				bool hadIllegal = false;
+				bool inAssignment = false;
 
-				BfAstNode* headNode = block->mChildArr.GetAs<BfAstNode*>(0);
-				if (auto nameNode = BfNodeDynCast<BfIdentifierNode>(headNode))
+				int checkIdx = 0;
+				while (true)
 				{
-					auto nextNode = mVisitorPos.Get(1);
-					if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
+					auto node = block->mChildArr.Get(checkIdx);
+					if (node == NULL)
+						break;
+
+					if (auto identifierNode = BfNodeDynCast<BfIdentifierNode>(node))
 					{
-						if ((nextToken->GetToken() == BfToken_Comma) || (nextToken->GetToken() == BfToken_AssignEquals))
-							isSimpleEnum = true;
+						// Allow
 					}
-					if (nextNode == NULL)
-						isSimpleEnum = true;
+					else if (auto tokenNode = BfNodeDynCast<BfTokenNode>(node))
+					{
+						if (tokenNode->mToken == BfToken_Comma)
+						{
+							// Allow
+							inAssignment = false;
+						}
+						else if (tokenNode->mToken == BfToken_AssignEquals)
+						{
+							inAssignment = true;
+						}
+						else if (tokenNode->mToken == BfToken_Semicolon)
+						{
+							hadIllegal = true;
+							break;
+						}
+						else
+						{
+							if (!inAssignment)
+							{
+								hadIllegal = true;
+								break;
+							}
+						}
+					}
+					else
+					{
+						if (!inAssignment)
+						{
+							hadIllegal = true;
+							break;
+						}
+					}
+
+					checkIdx++;
+				}				
+
+				if (!hadIllegal) 				 
+				{
+					isSimpleEnum = true;
 				}
-				break;
+				
+ 				break;
 			}
 
 			checkReadPos++;
