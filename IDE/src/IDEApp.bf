@@ -382,6 +382,7 @@ namespace IDE
         class StartDebugCmd : ExecutionCmd
         {
 			public bool mWasCompiled;
+			public bool mHotCompileEnabled;
 
 			public this()
 			{
@@ -1297,6 +1298,8 @@ namespace IDE
 			}
 
 			StringView useText = text;
+
+			Debug.Assert(!text.Contains('\r'));
 
 			if (lineEndingKind != .Lf)
 			{
@@ -6372,6 +6375,8 @@ namespace IDE
 					if ((aliasFilePath != null) && (sourceViewPanel.mAliasFilePath == null))
 						String.NewOrSet!(sourceViewPanel.mAliasFilePath, aliasFilePath);
 
+					
+
 					if (sourceViewPanel.mLoadFailed)
 					{
 						sourceViewPanel.mWantHash = hash;
@@ -6380,11 +6385,16 @@ namespace IDE
 							sourceViewPanel.SetLoadCmd(loadCmd);
 						}
 					}
-					else if ((hash != .None) && (sourceViewPanel.mEditData != null) && (!sourceViewPanel.mEditData.CheckHash(hash)))
+					else if ((gApp.mDebugger.mIsRunningWithHotSwap) && (sourceViewPanel.mIsBeefSource))
+					{
+						// No 'wrong hash' warnings
+					}
+					else if (((hash != .None) && (sourceViewPanel.mEditData != null) && (!sourceViewPanel.mEditData.CheckHash(hash))) ||
+						(sourceViewPanel.mHasChangedSinceLastCompile))
 					{
 						sourceViewPanel.ShowWrongHash();
 					}
-
+					
                     int showHotIdx = -1;
                     if (!onlyShowCurrent)
                     {
@@ -7774,12 +7784,12 @@ namespace IDE
             return worked;
         }
 
-        public bool FindProjectSourceContent(ProjectSource projectSource, out IdSpan char8IdData, bool loadOnFail, String sourceContent)
+        public bool FindProjectSourceContent(ProjectSource projectSource, out IdSpan char8IdData, bool loadOnFail, String sourceContent, SourceHash* sourceHash)
         {
             char8IdData = IdSpan();
             var fullPath = scope String();
 			projectSource.GetFullImportPath(fullPath);
-
+			
 			//SourceViewPanel sourceViewPanel = null;
             
             using (mMonitor.Enter())
@@ -7798,6 +7808,12 @@ namespace IDE
 	                    {
 	                        char8IdData = projectSource.mEditData.mEditWidget.mEditWidgetContent.mData.mTextIdData.Duplicate();
 	                        projectSource.mEditData.mEditWidget.GetText(sourceContent);
+							if (sourceHash != null)
+							{
+								*sourceHash = SourceHash.Create(.MD5, sourceContent, projectSource.mEditData.mLineEndingKind);
+								if (*sourceHash case .MD5(let md5Hash))
+									projectSource.mEditData.mMD5Hash = md5Hash;
+							}
 							return true;
 	                    }
 					}
@@ -7806,6 +7822,8 @@ namespace IDE
 					{
 					    char8IdData = projectSource.mEditData.mSavedCharIdData.Duplicate();
 					    sourceContent.Set(projectSource.mEditData.mSavedContent);
+						if ((!projectSource.mEditData.mMD5Hash.IsZero) && (sourceHash != null))
+							*sourceHash = .MD5(projectSource.mEditData.mMD5Hash);
 						return true;
 					}
                 }
@@ -7815,8 +7833,8 @@ namespace IDE
             {
                 String text = scope String();
 				bool isValid = false;
-                if (LoadTextFile(fullPath, text) case .Ok)
-				{	
+                if (LoadTextFile(fullPath, text, true, scope [&] () => { if (sourceHash != null) *sourceHash = SourceHash.Create(.MD5, text); } ) case .Ok)
+				{
                     mFileWatcher.FileIsValid(fullPath);
 					isValid = true;
 				}
@@ -7834,6 +7852,11 @@ namespace IDE
 					{
 						editData.SetSavedData(null, IdSpan());
 						editData.mFileDeleted = true;
+					}
+					if (sourceHash != null)
+					{
+						if (*sourceHash case .MD5(let md5Hash))
+							editData.mMD5Hash = md5Hash;
 					}
 				}
 				return isValid;
@@ -7931,7 +7954,7 @@ namespace IDE
 							if (bfCompiler != null)
 							{
 								// Process change in resolve compiler
-								bfCompiler.QueueProjectSource(projectSource);
+								bfCompiler.QueueProjectSource(projectSource, !bfCompiler.mIsResolveOnly);
 							}
 						}
 						else // Actual build
@@ -7941,7 +7964,7 @@ namespace IDE
 								// mHasChangedSinceLastCompile is safe to set 'false' here since it just determines whether or not
 								//  we rebuild the TypeDefs from the sources.  It isn't affected by any compilation errors.
 								projectSource.mHasChangedSinceLastCompile = false;
-		                        bfCompiler.QueueProjectSource(projectSource);
+		                        bfCompiler.QueueProjectSource(projectSource, !bfCompiler.mIsResolveOnly);
 								hadBeef = true;
 							}
 						}
@@ -9428,9 +9451,12 @@ namespace IDE
 
             if ((runAfter) && (success))
             {
+				var options = GetCurWorkspaceOptions();
+
                 var startDebugCmd = new StartDebugCmd();
 				startDebugCmd.mWasCompiled = true;
                 startDebugCmd.mOnlyIfNotFailed = true;
+				startDebugCmd.mHotCompileEnabled = options.mAllowHotSwapping;
                 mExecutionQueue.Add(startDebugCmd);
             }
             
@@ -9963,7 +9989,7 @@ namespace IDE
 				return false;
 			}
 
-            if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled))
+            if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping))
             {
 				DeleteAndNullify!(mCompileAndRunStopwatch);
                 return false;
@@ -10877,7 +10903,7 @@ namespace IDE
 							return;
 				        var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
 				        if (resolveCompiler == mBfResolveCompiler)
-				            resolveCompiler.QueueProjectSource(projectSource);
+				            resolveCompiler.QueueProjectSource(projectSource, false);
 						projectSource.mHasChangedSinceLastCompile = true;
 				    }
 				});
@@ -11773,8 +11799,8 @@ namespace IDE
 				{
 					if (IsBeefFile(newPath))
 					{
-						mBfResolveCompiler.QueueProjectSource(projectSource);
-						mBfBuildCompiler.QueueProjectSource(projectSource);
+						mBfResolveCompiler.QueueProjectSource(projectSource, false);
+						mBfBuildCompiler.QueueProjectSource(projectSource, true);
 					}
 					else
 					{
@@ -12053,7 +12079,7 @@ namespace IDE
 				{
 					if (mBfResolveCompiler != null)
 					{
-						mBfResolveCompiler.QueueProjectSource(projectSource);
+						mBfResolveCompiler.QueueProjectSource(projectSource, false);
 						mBfResolveCompiler.QueueDeferredResolveAll();
 						mBfResolveCompiler.QueueRefreshViewCommand();
 					}

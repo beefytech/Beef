@@ -332,7 +332,7 @@ namespace IDE.ui
 			var envBlock = scope List<char8>();
 			Environment.EncodeEnvironmentVariables(envVars, envBlock);
 
-			if (!gApp.mDebugger.OpenFile(targetPath, targetPath, arguments, workingDir, envBlock, false))
+			if (!gApp.mDebugger.OpenFile(targetPath, targetPath, arguments, workingDir, envBlock, false, false))
 			{
 				gApp.Fail(scope String()..AppendF("Unable to open executable for debugging: {0}", targetPath));
 			    return;

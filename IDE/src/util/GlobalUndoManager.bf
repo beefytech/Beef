@@ -83,7 +83,7 @@ namespace IDE.Util
 					for (var projectSource in editData.mProjectSources)
 					{
 						projectSource.HasChangedSinceLastCompile = true;
-						IDEApp.sApp.mBfResolveCompiler.QueueProjectSource(projectSource);
+						IDEApp.sApp.mBfResolveCompiler.QueueProjectSource(projectSource, false);
 					}
 				}
             }
@@ -127,7 +127,7 @@ namespace IDE.Util
 					for (var projectSource in editData.mProjectSources)
 					{
 						projectSource.HasChangedSinceLastCompile = true;
-						IDEApp.sApp.mBfResolveCompiler.QueueProjectSource(projectSource);
+						IDEApp.sApp.mBfResolveCompiler.QueueProjectSource(projectSource, false);
 					}
 				}
             }

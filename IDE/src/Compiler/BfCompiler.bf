@@ -9,6 +9,7 @@ using Beefy;
 using Beefy.utils;
 using IDE.Util;
 using IDE.ui;
+using IDE.util;
 
 namespace IDE.Compiler
 {
@@ -373,13 +374,19 @@ namespace IDE.Compiler
 							bfProject = mBfSystem.GetBfProject(projectSource.mProject);
 	                    }
 
+						bool wantsHash = !mIsResolveOnly;
+
 						bool canMoveSourceString = true;
 	                    IdSpan char8IdData = projectSourceCommand.mSourceCharIdData;
 	                    String data = projectSourceCommand.mSourceString;
+						SourceHash hash = .None;
+						if (wantsHash)
+							hash = projectSourceCommand.mSourceHash;
 	                    if (char8IdData.IsEmpty)
 	                    {
 	                        data = scope:ProjectSourceCommandBlock String();
-	                        if (gApp.LoadTextFile(sourceFilePath, data) case .Err)
+
+	                        if (gApp.LoadTextFile(sourceFilePath, data, true, scope [&] () => { if (wantsHash) hash = SourceHash.Create(.MD5, data); } ) case .Err)
 								data = null;
 	                        if (data != null)
 	                        {
@@ -390,6 +397,8 @@ namespace IDE.Compiler
 								using (gApp.mMonitor.Enter())
 								{
 									editData.SetSavedData(data, char8IdData);
+									if (hash case .MD5(let md5Hash))
+										editData.mMD5Hash = md5Hash;
 								}
 								canMoveSourceString = false;
 							}                        
@@ -418,6 +427,9 @@ namespace IDE.Compiler
 						else
 							bfParser.SetSource("", sourceFilePath);
 						bfParser.SetCharIdData(ref char8IdData);
+
+						if (hash case .MD5(let md5Hash))
+							bfParser.SetHashMD5(md5Hash);
 
 						//passInstance.SetProject(bfProject);
 						worked &= bfParser.Parse(passInstance, false);

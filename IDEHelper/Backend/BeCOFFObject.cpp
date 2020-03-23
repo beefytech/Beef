@@ -1635,6 +1635,21 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 			}
 		}
 
+		Array<int> fileDataPositions;
+		///
+		{
+			int fileDataPos = 0;
+			for (auto dbgFile : mBeModule->mDbgModule->mFiles)
+			{
+				fileDataPositions.Add(fileDataPos);
+				fileDataPos += 4;
+				if (dbgFile->mMD5Hash.IsZero())
+					fileDataPos += 4;
+				else
+					fileDataPos += 20;
+			}
+		}
+
 		int emissionStartIdx = 0;
 		BeDbgFile* curDbgFile = NULL;
 		for (int emissionIdx = 0; emissionIdx < (int)emissions.size(); emissionIdx++)
@@ -1657,7 +1672,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 				curDbgFile = dbgFile;
 				
 				lastBlockStartPos = outS.GetPos();
-				outS.Write((int32)dbgFile->mIdx * 8);
+				outS.Write((int32)fileDataPositions[dbgFile->mIdx]);
 				outS.Write((int32)0); // placeholder nLines
 				outS.Write((int32)0); // placeholder cbBlock
 
@@ -1779,7 +1794,19 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 	for (auto dbgFile : mBeModule->mDbgModule->mFiles)
 	{
 		outS.Write((int32)strTable.size());
-		outS.Write((int32)0); // hashLen, hashType, padding		
+
+		if (dbgFile->mMD5Hash.IsZero())
+		{
+			outS.Write((int32)0); // hashLen, hashType, padding	
+		}
+		else
+		{
+			outS.Write((uint8)16); // hashLen
+			outS.Write((uint8)1); // hashType
+			outS.Write(&dbgFile->mMD5Hash, 16);
+			outS.Write((int8)0); // padding
+			outS.Write((int8)0);
+		}
 
 		String fullPath;
 		dbgFile->ToString(fullPath);

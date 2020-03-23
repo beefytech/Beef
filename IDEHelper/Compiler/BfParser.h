@@ -68,6 +68,7 @@ public:
 	BfParser* mUniqueParser; // For non-cached usage (ie: autocomplete)
 	String mFileName;
 	uint8* mCharIdData;
+	Val128 mMD5Hash;
 
 	HashSet<String> mDefines_Def;
 	HashSet<String> mDefines_NoDef;

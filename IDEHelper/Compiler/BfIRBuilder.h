@@ -58,6 +58,7 @@ class BfFieldInstance;
 class BfFileInstance;
 class BfParser;
 class BfParserData;
+class Val128;
 
 class BfFilePosition
 {
@@ -905,6 +906,7 @@ public:
 	void Write(bool val);
 	void Write(int val);
 	void Write(int64 val);
+	void Write(Val128 val);
 	void Write(const StringImpl& str);
 	void Write(const BfIRValue& irValue);
 	void Write(BfTypeCode typeCode);
@@ -1195,7 +1197,7 @@ public:
 	void DbgAddPrefix(String& name);
 	BfIRMDNode DbgCreateCompileUnit(int lang, const StringImpl& filename, const StringImpl& directory, const StringImpl& producer, bool isOptimized, 
 		const StringImpl& flags, int runtimeVer, bool linesOnly);	
-	BfIRMDNode DbgCreateFile(const StringImpl& fileName, const StringImpl& directory);
+	BfIRMDNode DbgCreateFile(const StringImpl& fileName, const StringImpl& directory, const Val128& md5Hash);
 	BfIRMDNode DbgGetCurrentLocation();
 	void DbgSetType(BfType * type, BfIRMDNode diType);
 	void DbgSetInstType(BfType * type, BfIRMDNode diType);	

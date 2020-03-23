@@ -3382,6 +3382,12 @@ BF_EXPORT void BF_CALLTYPE BfParser_SetCharIdData(BfParser* bfParser, uint8* dat
 	memcpy(bfParser->mParserData->mCharIdData, data, length);
 }
 
+BF_EXPORT void BF_CALLTYPE BfParser_SetHashMD5(BfParser* bfParser, Val128* md5Hash)
+{
+	if (md5Hash != NULL)
+		bfParser->mParserData->mMD5Hash = *md5Hash;
+}
+
 BF_EXPORT void BF_CALLTYPE BfParser_Delete(BfParser* bfParser)
 {
 	if (bfParser->mNextRevision != NULL)

@@ -96,6 +96,7 @@ uint64 Hash64(uint64 hash, uint64 seed);
 uint64 Hash64(const void* data, int length, uint64 seed = 0);
 Val128 Hash128(const void* data, int length);
 Val128 Hash128(const void* data, int length, const Val128& seed);
+Val128 HashMD5(const void* data, int length);
 String HashEncode64(uint64 val); // Note: this only encodes the low 60 bits.  Returns up to 10 characters.
 StringT<21> HashEncode128(Val128 val); // Returns up to 20 characters.
 
@@ -138,7 +139,7 @@ public:
 	void MixinStr(const char* str);
 	void MixinStr(const StringImpl& str);
 	Val128 Finish128();
-	uint64 Finish64();
+	uint64 Finish64();	
 };
 
 NS_BF_END

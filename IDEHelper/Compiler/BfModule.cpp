@@ -2168,7 +2168,7 @@ BfFileInstance* BfModule::GetFileFromNode(BfAstNode* astNode)
 					fileName[i] = DIR_SEP_CHAR;
 			}
 
-			bfFileInstance->mDIFile = mBfIRBuilder->DbgCreateFile(fileName.Substring(slashPos + 1), fileName.Substring(0, slashPos));
+			bfFileInstance->mDIFile = mBfIRBuilder->DbgCreateFile(fileName.Substring(slashPos + 1), fileName.Substring(0, slashPos), bfParser->mMD5Hash);
 		}
 		return bfFileInstance;	
 	}

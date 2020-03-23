@@ -1289,7 +1289,10 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	SetAndRestoreValue<HashContext*> prevSignatureHashCtx(mSignatureHashCtx, &signatureHashCtx);
 	
 	if (bfParser != NULL)
+	{
 		mSignatureHashCtx->MixinStr(bfParser->mFileName);
+		mSignatureHashCtx->Mixin(bfParser->mParserData->mMD5Hash);
+	}
 	HashNode(*mSignatureHashCtx, typeDeclaration->mTypeNode);
 	for (auto& baseClassNode : typeDeclaration->mBaseClasses)
 		HashNode(*mSignatureHashCtx, baseClassNode);

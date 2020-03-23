@@ -111,6 +111,7 @@ public:
 	void Read(StringImpl& str);	
 	void Read(int& i);
 	void Read(int64& i);
+	void Read(Val128& i);
 	void Read(bool& val);
 	void Read(BfIRTypeEntry*& type);
 	void Read(llvm::Type*& llvmType);

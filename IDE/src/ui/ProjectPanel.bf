@@ -352,7 +352,7 @@ namespace IDE.ui
                 var resolveCompiler = gApp.GetProjectCompilerForFile(projectSource.mName);
                 if (resolveCompiler != null)
                 {
-                    resolveCompiler.QueueProjectSource(projectSource);
+                    resolveCompiler.QueueProjectSource(projectSource, false);
                     resolveCompiler.QueueDeferredResolveAll();
                 }
 				projectSource.mHasChangedSinceLastCompile = true;

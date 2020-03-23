@@ -4,12 +4,14 @@ using System.IO;
 using Beefy.utils;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using IDE.util;
 
 namespace IDE
 {
 	[AllowDuplicates]
 	public enum LineEndingKind
 	{
+		Unknown,
 		Lf,   // \n
 		CrLf, // \r\n
 		Cr,   // \r

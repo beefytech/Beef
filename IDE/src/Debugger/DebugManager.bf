@@ -349,6 +349,7 @@ namespace IDE.Debugger
 		public String mRunningPath ~ delete _;
 		public bool mIsRunning;
 		public bool mIsRunningCompiled;
+		public bool mIsRunningWithHotSwap;
 		//public RunState mLastUpdatedRunState;
 		public bool mCallStackDirty;
 		public int32 mActiveCallStackIdx;
@@ -400,12 +401,13 @@ namespace IDE.Debugger
 			Debugger_FullReportMemory();
 		}
 
-		public bool OpenFile(String launchPath, String targetPath, String args, String workingDir, Span<char8> envBlock, bool isCompiled)
+		public bool OpenFile(String launchPath, String targetPath, String args, String workingDir, Span<char8> envBlock, bool isCompiled, bool hotSwapEnabled)
 		{
 			DeleteAndNullify!(mRunningPath);
 			mRunningPath = new String(launchPath);
 
 			mIsRunningCompiled = isCompiled;
+			mIsRunningWithHotSwap = hotSwapEnabled;
 			return Debugger_OpenFile(launchPath, targetPath, args, workingDir, envBlock.Ptr, (int32)envBlock.Length);
 		}
 

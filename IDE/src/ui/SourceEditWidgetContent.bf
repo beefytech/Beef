@@ -453,6 +453,7 @@ namespace IDE.ui
 			}
 
 		    Debug.Assert(endingText == text);
+			Debug.Assert(!endingText.Contains('\r'));
 		    
 			//mClangSourceChanged = false;
 			//mLastFileTextVersion = mEditWidget.Content.mData.mCurTextVersionId;

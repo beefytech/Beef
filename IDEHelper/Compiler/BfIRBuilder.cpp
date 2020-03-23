@@ -1651,6 +1651,12 @@ void BfIRBuilder::Write(int64 intVal)
 	WriteSLEB128(intVal);
 }
 
+void BfIRBuilder::Write(Val128 val)
+{
+	WriteSLEB128((int64)val.mLow);
+	WriteSLEB128((int64)val.mHigh);
+}
+
 void BfIRBuilder::Write(const StringImpl&str)
 {
 	WriteSLEB128((int)str.length());
@@ -4718,9 +4724,9 @@ BfIRMDNode BfIRBuilder::DbgCreateCompileUnit(int lang, const StringImpl& fileNam
 	return retVal;
 }
 
-BfIRMDNode BfIRBuilder::DbgCreateFile(const StringImpl& fileName, const StringImpl& directory)
+BfIRMDNode BfIRBuilder::DbgCreateFile(const StringImpl& fileName, const StringImpl& directory, const Val128& md5Hash)
 {	
-	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateFile, fileName, directory);
+	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateFile, fileName, directory, md5Hash);
 	NEW_CMD_INSERTED_IRMD;
 
 	if (mDbgVerifyCodeGen && gDebugDbgLoc)

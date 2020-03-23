@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Beefy.utils;
 using Beefy;
 using System.IO;
+using IDE.util;
 
 namespace IDE.Compiler
 {
@@ -36,6 +37,7 @@ namespace IDE.Compiler
             public ProjectSource mProjectSource;
             public IdSpan mSourceCharIdData ~ _.Dispose();
             public String mSourceString ~ delete _;
+			public SourceHash mSourceHash;
         }
 
         protected class CompileCommand : Command
@@ -55,12 +57,12 @@ namespace IDE.Compiler
             mResolveAllWait = 2;
         }
 
-        public virtual void QueueProjectSource(ProjectSource projectSource)
+        public virtual void QueueProjectSource(ProjectSource projectSource, bool wantsHash)
         {
             ProjectSourceCommand command = new ProjectSourceCommand();
             command.mProjectSource = projectSource;
             command.mSourceString = new String();
-            IDEApp.sApp.FindProjectSourceContent(projectSource, out command.mSourceCharIdData, false, command.mSourceString);
+            IDEApp.sApp.FindProjectSourceContent(projectSource, out command.mSourceCharIdData, false, command.mSourceString, wantsHash ? &command.mSourceHash : null);
 			if (gApp.mBfBuildCompiler == this)
 			{
 				if (gApp.mDbgVersionedCompileDir != null)

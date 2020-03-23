@@ -1,6 +1,7 @@
 #include "BfIRCodeGen.h"
 #include "BfModule.h"
 #include "BeefySysLib/util/BeefPerf.h"
+#include "BeefySysLib/util/Hash.h"
 
 #pragma warning(push)
 #pragma warning(disable:4141)
@@ -113,6 +114,7 @@
 USING_NS_BF;
 
 #pragma warning(disable:4146)
+#pragma warning(disable:4996)
 
 struct BuiltinEntry
 {
@@ -475,6 +477,12 @@ void BfIRCodeGen::Read(int& i)
 void BfIRCodeGen::Read(int64& i)
 {
 	i = ReadSLEB128();
+}
+
+void BfIRCodeGen::Read(Val128& i)
+{
+	i.mLow = (uint64)ReadSLEB128();
+	i.mHigh = (uint64)ReadSLEB128();
 }
 
 void BfIRCodeGen::Read(bool& val)
@@ -2741,7 +2749,14 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(String, fileName);
 			CMD_PARAM(String, directory);
-			SetResult(curId, mDIBuilder->createFile(fileName.c_str(), directory.c_str()));
+			CMD_PARAM(Val128, md5Hash);
+
+			char hashStr[64];
+			for (int i = 0; i < 16; i++)
+				sprintf(&hashStr[i * 2], "%.2x", ((uint8*)&md5Hash)[i]);
+
+			SetResult(curId, mDIBuilder->createFile(fileName.c_str(), directory.c_str(), 
+				llvm::DIFile::ChecksumInfo<llvm::StringRef>(llvm::DIFile::CSK_MD5, hashStr)));
 		}
 		break;
 	case BfIRCmd_ConstValueI64:

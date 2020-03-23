@@ -9,6 +9,7 @@ using IDE.ui;
 using System.IO;
 using System.Threading;
 using Beefy;
+using System.Security.Cryptography;
 
 namespace IDE.Compiler
 {
@@ -93,6 +94,9 @@ namespace IDE.Compiler
 
         [StdCall, CLink]
         static extern void BfParser_SetCharIdData(void* bfParser, uint8* data, int32 length);
+
+		[StdCall, CLink]
+		static extern void BfParser_SetHashMD5(void* bfParser, ref MD5Hash md5Hash);
 
         [StdCall, CLink]
         static extern void BfParser_SetNextRevision(void* bfParser, void* nextParser);
@@ -351,6 +355,12 @@ namespace IDE.Compiler
 		public void SetCompleteParse()
 		{
 			BfParser_SetCompleteParse(mNativeBfParser);
+		}
+
+		public void SetHashMD5(MD5Hash md5Hash)
+		{
+			var md5Hash;
+			BfParser_SetHashMD5(mNativeBfParser, ref md5Hash);
 		}
     }
 }

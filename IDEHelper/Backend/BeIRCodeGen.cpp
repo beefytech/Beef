@@ -4,6 +4,7 @@
 #include "BeefySysLib/util/BeefPerf.h"
 
 #include "BeefySysLib/util/AllocDebug.h"
+#include "BeefySysLib/util/Hash.h"
 
 USING_NS_BF;
 
@@ -516,6 +517,12 @@ void BeIRCodeGen::Read(int64& i)
 	BE_MEM_START;
 	i = ReadSLEB128();
 	BE_MEM_END("int64");
+}
+
+void BeIRCodeGen::Read(Val128& i)
+{
+	i.mLow = (uint64)ReadSLEB128();
+	i.mHigh = (uint64)ReadSLEB128();
 }
 
 void BeIRCodeGen::Read(bool& val)
@@ -2362,10 +2369,12 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(String, fileName);
 			CMD_PARAM(String, directory);
+			CMD_PARAM(Val128, md5Hash);
 
 			auto dbgFile = mBeModule->mDbgModule->mFiles.Alloc();
-			dbgFile->mFileName = fileName;
+			dbgFile->mFileName = fileName;			
 			dbgFile->mDirectory = directory;
+			dbgFile->mMD5Hash = md5Hash;
 			dbgFile->mIdx = (int)mBeModule->mDbgModule->mFiles.size() - 1;
 
 			SetResult(curId, dbgFile);			

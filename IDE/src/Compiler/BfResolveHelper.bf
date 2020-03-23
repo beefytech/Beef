@@ -112,7 +112,7 @@ namespace IDE.Compiler
 								projectSource.GetFullImportPath(fullPath);
                                 if (Path.Equals(fullPath, entry.mFilePath))
                                 {
-                                    app.mBfResolveCompiler.QueueProjectSource(projectSource);
+                                    app.mBfResolveCompiler.QueueProjectSource(projectSource, false);
                                     needsResolveAll = true;
                                     DeferRefreshVisibleViews(entry.mExludeSourceViewPanel);
                                 }

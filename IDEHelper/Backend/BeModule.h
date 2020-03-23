@@ -1847,35 +1847,7 @@ public:
 		}*/
 	}
 	
-	virtual void HashContent(BeHashContext& hashCtx) override
-	{
-		hashCtx.Mixin(TypeId);
-		hashCtx.Mixin(mLine);
-		hashCtx.MixinStr(mName);
-		hashCtx.MixinStr(mLinkageName);
-		mType->HashReference(hashCtx);
-		for (auto genericArg : mGenericArgs)
-			genericArg->HashReference(hashCtx);
-		for (auto genericConstValueArgs : mGenericArgs)
-			genericConstValueArgs->HashReference(hashCtx);
-		if (mValue != NULL)
-			mValue->HashReference(hashCtx);
-		hashCtx.Mixin(mIsLocalToUnit);
-		hashCtx.Mixin(mIsStaticMethod);
-		hashCtx.Mixin(mFlags);
-		hashCtx.Mixin(mVK);
-		hashCtx.Mixin(mVIndex);
-		hashCtx.Mixin(mVariables.size());
-		for (auto& variable : mVariables)
-		{
-			if (variable == NULL)
-				hashCtx.Mixin(-1);
-			else
-				variable->HashReference(hashCtx);
-		}
-		hashCtx.Mixin(mPrologSize);
-		hashCtx.Mixin(mCodeLen);
-	}
+	virtual void HashContent(BeHashContext& hashCtx) override;
 };
 
 class BeDbgInlinedScope : public BeMDNode
@@ -1982,8 +1954,9 @@ public:
 	BE_VALUE_TYPE(BeDbgFile, BeMDNode);
 
 public:
-	String mFileName;
+	String mFileName;	
 	String mDirectory;
+	Val128 mMD5Hash;
 	int mIdx;	
 
 	void ToString(String& str);	
@@ -1992,6 +1965,7 @@ public:
 	{
 		hashCtx.Mixin(TypeId);
 		hashCtx.MixinStr(mFileName);
+		hashCtx.Mixin(mMD5Hash);
 		hashCtx.MixinStr(mDirectory);
 	}
 };

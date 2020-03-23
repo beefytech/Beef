@@ -884,6 +884,38 @@ int BeDbgLoc::GetInlineMatchDepth(BeDbgLoc* other)
 	return matchDepth;
 }
 
+void BeDbgFunction::HashContent(BeHashContext& hashCtx)
+{
+	hashCtx.Mixin(TypeId);
+	if (mFile != NULL)
+		mFile->HashReference(hashCtx);
+	hashCtx.Mixin(mLine);
+	hashCtx.MixinStr(mName);
+	hashCtx.MixinStr(mLinkageName);
+	mType->HashReference(hashCtx);
+	for (auto genericArg : mGenericArgs)
+		genericArg->HashReference(hashCtx);
+	for (auto genericConstValueArgs : mGenericArgs)
+		genericConstValueArgs->HashReference(hashCtx);
+	if (mValue != NULL)
+		mValue->HashReference(hashCtx);
+	hashCtx.Mixin(mIsLocalToUnit);
+	hashCtx.Mixin(mIsStaticMethod);
+	hashCtx.Mixin(mFlags);
+	hashCtx.Mixin(mVK);
+	hashCtx.Mixin(mVIndex);
+	hashCtx.Mixin(mVariables.size());
+	for (auto& variable : mVariables)
+	{
+		if (variable == NULL)
+			hashCtx.Mixin(-1);
+		else
+			variable->HashReference(hashCtx);
+	}
+	hashCtx.Mixin(mPrologSize);
+	hashCtx.Mixin(mCodeLen);
+}
+
 void BeDbgStructType::SetMembers(SizedArrayImpl<BeMDNode*>& members)
 {
 	mIsFullyDefined = true;
