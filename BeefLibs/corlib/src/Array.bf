@@ -147,6 +147,41 @@ namespace System
 			var sorter = Sorter<T, void>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
 			sorter.[Friend]Sort(index, count);
 		}
+
+		// Reverses all elements of the given array. Following a call to this
+		// method, an element previously located at index i will now be
+		// located at index length - i - 1, where length is the
+		// length of the array.
+		public static void Reverse<T>(T[] arr)
+		{
+			Debug.Assert(arr != null);
+							   
+			Reverse(arr, 0, arr.Count);
+		}
+
+		// Reverses the elements in a range of an array. Following a call to this
+		// method, an element in the range given by index and count
+		// which was previously located at index i will now be located at
+		// index index + (index + count - i - 1).
+		// Reliability note: This may fail because it may have to box objects.
+		public static void Reverse<T>(T[] arr, int index, int length)
+		{
+			Debug.Assert(arr != null);
+			Debug.Assert(index >= 0);
+			Debug.Assert(length >= 0);
+			Debug.Assert(length >= arr.Count - index);
+			
+			int i = index;
+			int j = index + length - 1;
+			while (i < j)
+			{
+				let temp = arr[i];
+				arr[i] = arr[j];
+				arr[j] = temp;
+				i++;
+				j--;
+			}
+		}
 	}
 
 	[CRepr]
@@ -268,19 +303,19 @@ namespace System
 		}
 
 		[Inline]
-		public ref T getRef(int idx)
+		public ref T GetRef(int idx)
 		{
 			return ref (&mFirstElement)[idx];
 		}
 
 		[Inline]
-		public ref T getRef(int idx0, int idx1)
+		public ref T GetRef(int idx0, int idx1)
 		{
 			return ref (&mFirstElement)[idx0*mLength1 + idx1];
 		}
 
 		[Inline]
-		public ref T getRefChecked(int idx)
+		public ref T GetRefChecked(int idx)
 		{
 			if ((uint)idx >= (uint)mLength)
 				Internal.ThrowIndexOutOfRange(1);
@@ -288,7 +323,7 @@ namespace System
 		}
 
 		[Inline]
-		public ref T getRefChecked(int idx0, int idx1)
+		public ref T GetRefChecked(int idx0, int idx1)
 		{
 			int idx = idx0*mLength1 + idx1;
 			if (((uint)idx >= (uint)mLength) ||
