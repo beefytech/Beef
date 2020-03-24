@@ -3421,7 +3421,7 @@ DbgTypedValue DbgExprEvaluator::LookupIdentifier(BfAstNode* identifierNode, bool
 	}	
 
 	String findName = identifierNode->ToString();	
-	if ((findName[0] == '$') && (findName != "$prim"))
+	if ((findName.StartsWith('$')) && (findName != "$prim"))
 	{	
 		if (IsAutoCompleteNode(identifierNode))
 		{
