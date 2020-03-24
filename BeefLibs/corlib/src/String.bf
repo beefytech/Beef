@@ -1422,10 +1422,7 @@ namespace System
 			int_strsize length = (int_strsize)addString.Length;
 			int_strsize newLength = mLength + length;
 			if (newLength > AllocSize)
-			{
-				int newSize = Math.Max(AllocSize * 2, newLength);
-				Realloc(newSize);
-			}
+				Realloc(CalcNewSize(newLength));
 
 			let moveChars = mLength - idx;
 			let ptr = Ptr;
@@ -1435,43 +1432,71 @@ namespace System
 			mLength = newLength;
 		}
 
-		public void Insert(int_strsize idx, char8 c)
+		public void Insert(int_strsize idx, char8 c, int count = 1)
 		{
 			Contract.Requires(idx >= 0);
 
-			int_strsize newLength = mLength + 1;
-			if (newLength > AllocSize)
-			{
-				int newSize = Math.Max(AllocSize * 2, newLength);
-				Realloc(newSize);
-			}
-
-			let moveChars = mLength - idx;
-			let ptr = Ptr;
-			if (moveChars > 0)
-				Internal.MemMove(ptr + idx + 1, ptr + idx, moveChars);
-			ptr[idx] = c;
-			mLength = newLength;
-		}
-
-		public void Insert(int_strsize idx, char8 c, int count)
-		{
-			Contract.Requires(idx >= 0);
+			if (count == 0)
+				return;
 
 			int_strsize newLength = mLength + (int_strsize)count;
 			if (newLength > AllocSize)
-			{
-				int newSize = Math.Max(AllocSize * 2, newLength);
-				Realloc(newSize);
-			}
+				Realloc(CalcNewSize(newLength));
 
 			let moveChars = mLength - idx;
 			let ptr = Ptr;
 			if (moveChars > 0)
 				Internal.MemMove(ptr + idx + count, ptr + idx, moveChars);
-			for (int i < count)
+			for (int_strsize i < count)
 				ptr[idx + i] = c;
 			mLength = newLength;
+		}
+
+		public void Insert(int_strsize idx, char32 c, int count = 1)
+		{
+			Contract.Requires(idx >= 0);
+
+			if (count == 0)
+				return;
+
+			int encodedLen = UTF8.GetEncodedLength(c);
+
+			if (mLength + count * encodedLen > AllocSize)
+				Realloc(CalcNewSize(mLength + count * encodedLen));
+
+			let moveChars = mLength - idx;
+			let ptr = Ptr;
+			if (moveChars > 0)
+				Internal.MemMove(ptr + idx + count, ptr + idx, moveChars);
+			for (int_strsize i < count)
+			{
+				if (c < (char32)0x80)
+	            {
+				    ptr[idx + i] = (char8)c;
+					mLength++;
+				}
+				else if (c < (char32)0x800)
+	            {
+				    ptr[idx + i] = (char8)(c>>6) | (char8)0xC0;
+				    ptr[idx + i + 1] = (char8)(c & (char8)0x3F) | (char8)0x80;
+					mLength += 2;
+				}
+				else if (c < (char32)0x10000)
+	            {
+				    ptr[idx + i] = (char8)(c>>12) | (char8)0xE0;
+				    ptr[idx + i + 1] = (char8)((c>>6) & (char8)0x3F) | (char8)0x80;
+				    ptr[idx + i + 2] = (char8)(c & (char8)0x3F) | (char8)0x80;
+					mLength += 3;
+				}
+				else if (c < (char32)0x110000)
+	            {
+				    ptr[idx + i] = (char8)((c>>18) | (char8)0xF0);
+				    ptr[idx + i + 1] = (char8)((c>>12) & (char8)0x3F) | (char8)0x80;
+				    ptr[idx + i + 2] = (char8)((c>>6) & (char8)0x3F) | (char8)0x80;
+				    ptr[idx + i + 3] = (char8)(c & (char8)0x3F) | (char8)0x80;
+					mLength += 4;
+				}
+			}
 		}
 
 		static bool EqualsHelper(char8* a, char8* b, int length)
