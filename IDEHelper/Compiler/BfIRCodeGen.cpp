@@ -106,6 +106,8 @@
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
+#include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvm/Transforms/IPO.h"
 
 #include "../LLVMUtils.h"
 
@@ -3580,11 +3582,16 @@ static void PopulateModulePassManager(llvm::legacy::PassManagerBase &MPM, const 
 // 		MPM.add(createPruneEHPass());
 // 		MPM.add(createSampleProfileLoaderPass(PGOSampleUse));
 // 	}
-	llvm::Pass* Inliner = NULL;
+	llvm::Pass* Inliner;
 	bool prepareForLTO = false;
 	bool prepareForThinLTO = options.mLTOType == BfLTOType_Thin;
 	bool performThinLTO = false;
 	bool enableNonLTOGlobalsModRef = false;
+
+	if (GetOptLevel(options.mOptLevel) > 0)
+		Inliner = llvm::createFunctionInliningPass(GetOptLevel(options.mOptLevel), options.mSizeLevel, false);
+	else
+		Inliner = llvm::createAlwaysInlinerLegacyPass();
 
 	// Allow forcing function attributes as a debugging and tuning aid.
 	MPM.add(llvm::createForceFunctionAttrsLegacyPass());
