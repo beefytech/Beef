@@ -8099,9 +8099,14 @@ namespace IDE
 				optimizationLevel = .O0;
 			}
 
-			var ltoType = workspaceOptions.mLTOType;
-			if (options.mBeefOptions.mLTOType != null)
-				ltoType = options.mBeefOptions.mLTOType.Value;
+			BuildOptions.LTOType ltoType = .None;
+
+			if (!bfCompiler.mIsResolveOnly)
+			{
+				ltoType = workspaceOptions.mLTOType;
+				if (options.mBeefOptions.mLTOType != null)
+					ltoType = options.mBeefOptions.mLTOType.Value;
+			}
 			
 			var targetType = project.mGeneralOptions.mTargetType;
 
