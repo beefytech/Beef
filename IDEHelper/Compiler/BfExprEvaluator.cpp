@@ -2460,6 +2460,13 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 	BfTypedValue caseValAddr;
 	if (caseExpr->mValueExpression != NULL)
     	caseValAddr = mModule->CreateValueFromExpression(caseExpr->mValueExpression);	
+
+	if ((caseValAddr.mType != NULL) && (caseValAddr.mType->IsPointer()))
+	{
+		caseValAddr = mModule->LoadValue(caseValAddr);
+		caseValAddr = BfTypedValue(caseValAddr.mValue, caseValAddr.mType->GetUnderlyingType(), true);
+	}
+
 	if (caseValAddr.mType != NULL)
 		mModule->mBfIRBuilder->PopulateType(caseValAddr.mType);
 	
@@ -2563,13 +2570,7 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 		auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
 		mResult = mModule->GetDefaultTypedValue(boolType);
 		return;		
-	}
-	
-	if ((caseValAddr.mType != NULL) && (caseValAddr.mType->IsPointer()))
-	{
-		caseValAddr = mModule->LoadValue(caseValAddr);
-		caseValAddr = BfTypedValue(caseValAddr.mValue, caseValAddr.mType->GetUnderlyingType(), true);
-	}
+	}		
 
 	auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
 	BfTypedValue caseMatch;
