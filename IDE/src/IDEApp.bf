@@ -3671,6 +3671,17 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void Cmd_QuickInfo()
+		{
+		    var sourceViewPanel = GetActiveSourceViewPanel(true);
+		    if (sourceViewPanel != null)
+		    {
+				if (sourceViewPanel.mEditWidget.mEditWidgetContent.GetCursorLineChar(var line, var lineChar))
+					sourceViewPanel.UpdateMouseover(true, true, line, lineChar);
+			}
+		}
+
+		[IDECommand]
         public void Cmd_ReformatDocument()
         {
             var sourceViewPanel = GetActiveSourceViewPanel(true);
