@@ -100,6 +100,13 @@ namespace System
 			str.AppendF(fmt, params args);
 			Write(str);
 		}
+		
+		public static void Write(Object obj)
+		{
+			String str = scope String();
+			obj.ToString(str);
+			Write(str);
+		}
 
 		public static void WriteLine(String line)
 		{
@@ -119,6 +126,11 @@ namespace System
 			String str = scope String();
 			obj.ToString(str);
 			WriteLine(str);
+		}
+		
+		[Inline]
+		public static void WriteLine(){
+			Out.Write("\n").IgnoreError();
 		}
 	}
 }
