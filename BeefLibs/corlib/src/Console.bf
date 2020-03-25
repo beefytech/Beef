@@ -113,5 +113,12 @@ namespace System
 			str.AppendF(fmt, params args);
 			WriteLine(str);
 		}
+		
+		public static void WriteLine(Object obj)
+		{
+			String str = scope String();
+			obj.ToString(str);
+			WriteLine(str);
+		}
 	}
 }
