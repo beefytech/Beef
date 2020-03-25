@@ -857,7 +857,7 @@ namespace System
 			ptr[mLength++] = c;
 		}
 
-		public void Append(char8 c, int count = 1)
+		public void Append(char8 c, int count)
 		{
 			if (count == 0)
 				return;
@@ -869,10 +869,51 @@ namespace System
 				ptr[mLength++] = c;
 		}
 
-		public void Append(char32 c, int count = 1)
+		public void Append(char32 c)
+		{
+			let ptr = Ptr;
+			if (c < (char32)0x80)
+		    {
+				if (mLength + 1 > AllocSize)
+					Realloc(CalcNewSize(mLength + 1));
+			    ptr[mLength++] = (char8)c;
+			}
+			else if (c < (char32)0x800)
+		    {
+				if (mLength + 2 > AllocSize)
+					Realloc(CalcNewSize(mLength + 2));
+			    ptr[mLength++] = (char8)(c>>6) | (char8)0xC0;
+			    ptr[mLength++] = (char8)(c & (char8)0x3F) | (char8)0x80;
+			}
+			else if (c < (char32)0x10000)
+		    {
+				if (mLength + 3 > AllocSize)
+					Realloc(CalcNewSize(mLength + 3));
+			    ptr[mLength++] = (char8)(c>>12) | (char8)0xE0;
+			    ptr[mLength++] = (char8)((c>>6) & (char8)0x3F) | (char8)0x80;
+			    ptr[mLength++] = (char8)(c & (char8)0x3F) | (char8)0x80;
+			}
+			else if (c < (char32)0x110000)
+		    {
+				if (mLength + 4 > AllocSize)
+					Realloc(CalcNewSize(mLength + 4));
+			    ptr[mLength++] = (char8)((c>>18) | (char8)0xF0);
+			    ptr[mLength++] = (char8)((c>>12) & (char8)0x3F) | (char8)0x80;
+			    ptr[mLength++] = (char8)((c>>6) & (char8)0x3F) | (char8)0x80;
+			    ptr[mLength++] = (char8)(c & (char8)0x3F) | (char8)0x80;
+			}
+		}
+
+		public void Append(char32 c, int count)
 		{
 			if (count == 0)
 				return;
+
+			if (count == 1)
+			{
+				Append(c);
+				return;
+			}
 
 			int encodedLen = UTF8.GetEncodedLength(c);
 
@@ -906,11 +947,6 @@ namespace System
 				}
 			}
 		}
-
-		/*public void Substring(int idx, int len, String outBuffer)
-		{
-			outBuffer.Append(this, idx, len);
-		}*/
 
 		public void EnsureNullTerminator()
 		{
