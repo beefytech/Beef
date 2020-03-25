@@ -41,6 +41,30 @@ namespace System.Diagnostics
 
 		static extern void Write(char8* str, int strLen);
 
+		public static void Write(String line)
+		{
+			Write(line.Ptr, line.Length);
+		}
+
+		public static void Write(String fmt, params Object[] args)
+		{
+			String str = scope String(256);
+			str.AppendF(fmt, params args);
+			Write(str);
+		}
+
+		public static void Write(Object obj)
+		{
+			String str = scope String(256);
+			obj.ToString(str);
+			Write(str);
+		}
+
+		public static void WriteLine()
+		{
+			Write("\n", 1);
+		}
+
 		public static void WriteLine(StringView line)
 		{
 			Write(line.Ptr, line.Length);

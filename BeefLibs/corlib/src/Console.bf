@@ -96,41 +96,40 @@ namespace System
 
 		public static void Write(String fmt, params Object[] args)
 		{
-			String str = scope String();
+			String str = scope String(256);
 			str.AppendF(fmt, params args);
 			Write(str);
 		}
 		
 		public static void Write(Object obj)
 		{
-			String str = scope String();
+			String str = scope String(256);
 			obj.ToString(str);
 			Write(str);
 		}
 
+		public static void WriteLine()
+		{
+			Out.Write("\n").IgnoreError();
+		}
+
 		public static void WriteLine(String line)
 		{
-			//PrintF("Hey!");
 			Out.WriteLine(line).IgnoreError();
 		}
 
 		public static void WriteLine(StringView fmt, params Object[] args)
 		{
-			String str = scope String();
+			String str = scope String(256);
 			str.AppendF(fmt, params args);
 			WriteLine(str);
 		}
 		
 		public static void WriteLine(Object obj)
 		{
-			String str = scope String();
+			String str = scope String(256);
 			obj.ToString(str);
 			WriteLine(str);
-		}
-		
-		[Inline]
-		public static void WriteLine(){
-			Out.Write("\n").IgnoreError();
 		}
 	}
 }
