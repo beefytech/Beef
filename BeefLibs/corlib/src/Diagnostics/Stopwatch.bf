@@ -35,6 +35,7 @@ namespace System.Diagnostics
 
 		public this()
 		{
+            Reset();
 		}
 
 		public this(bool startNow)
