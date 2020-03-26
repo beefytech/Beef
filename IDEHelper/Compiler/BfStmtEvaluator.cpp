@@ -3890,6 +3890,16 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		switchValue = GetDefaultTypedValue(mContext->mBfObjectType);
 	}
 
+	if (switchValue.mType->IsPointer())
+	{
+		auto underlyingType = switchValue.mType->GetUnderlyingType();
+		if (underlyingType->IsEnum())
+		{
+			switchValue = LoadValue(switchValue);
+			switchValue = BfTypedValue(switchValue.mValue, underlyingType, true);
+		}
+	}
+
 	// We make the switch value conditional, but all other uses of this scope is conditional since it's conditional on cases
 	newScope.mInnerIsConditional = true;
 	
@@ -3988,42 +3998,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				localDef->mIsSplat = false;
 			}
 		}				
-	}
-
-// 	bool firstCaseHandled = false;
-// 	if (!switchStmt->mSwitchCases.IsEmpty())
-// 	{
-// 		auto switchCase = switchStmt->mSwitchCases[0];
-// 		if (switchCase->mCaseExpressions.size() == 0)
-// 		{
-// 			auto caseExpr = switchCase->mCaseExpressions[0];
-// 			if (auto literalExpr = BfNodeDynCast<BfLiteralExpression>(caseExpr))
-// 			{
-// 				if (literalExpr->mValue.mTypeCode == BfTypeCode_NullPtr)
-// 				{
-// 				}
-// 			}
-// 		}
-// 	}
-
- 	BfIRBlock derefBlock;
- 	BfIRBlock derefContBlock;
- 
- 	BfTypedValue derefSwitchValue;
- 	if (switchValue.mType->IsPointer())
- 	{
- 		auto underlyingType = switchValue.mType->GetUnderlyingType();
- 		if (underlyingType->IsEnum())
- 		{
- 			derefSwitchValue = BfTypedValue(switchValue.mValue, underlyingType, true);
- 			
- 			derefBlock = mBfIRBuilder->CreateBlock("switch.deref");
- 
- 			derefContBlock = mBfIRBuilder->CreateBlock("switch.deref");
- 			mBfIRBuilder->AddBlock(derefContBlock);
- 			mBfIRBuilder->SetInsertPoint(derefContBlock);			
- 		}
- 	}
+	} 	 	
 
 	AddLocalVariableDef(localDef, addDebugInfo, true);
 

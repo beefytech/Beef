@@ -3671,6 +3671,17 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void Cmd_QuickInfo()
+		{
+		    var sourceViewPanel = GetActiveSourceViewPanel(true);
+		    if (sourceViewPanel != null)
+		    {
+				if (sourceViewPanel.mEditWidget.mEditWidgetContent.GetCursorLineChar(var line, var lineChar))
+					sourceViewPanel.UpdateMouseover(true, true, line, lineChar);
+			}
+		}
+
+		[IDECommand]
         public void Cmd_ReformatDocument()
         {
             var sourceViewPanel = GetActiveSourceViewPanel(true);
@@ -8099,9 +8110,14 @@ namespace IDE
 				optimizationLevel = .O0;
 			}
 
-			var ltoType = workspaceOptions.mLTOType;
-			if (options.mBeefOptions.mLTOType != null)
-				ltoType = options.mBeefOptions.mLTOType.Value;
+			BuildOptions.LTOType ltoType = .None;
+
+			if (!bfCompiler.mIsResolveOnly)
+			{
+				ltoType = workspaceOptions.mLTOType;
+				if (options.mBeefOptions.mLTOType != null)
+					ltoType = options.mBeefOptions.mLTOType.Value;
+			}
 			
 			var targetType = project.mGeneralOptions.mTargetType;
 

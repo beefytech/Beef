@@ -224,6 +224,7 @@ namespace IDE
 			Add("Open Project", new => gApp.Cmd_OpenProject);
 			Add("Open Workspace", new => gApp.OpenWorkspace);
 			Add("Profile", new => gApp.[Friend]DoProfile);
+			Add("Quick Info", new => gApp.Cmd_QuickInfo);
 			Add("Reformat Document", new => gApp.Cmd_ReformatDocument);
 			Add("Remove All Breakpoints", new => gApp.[Friend]RemoveAllBreakpoints);
 			Add("Rename Item", new => gApp.Cmd_RenameItem);

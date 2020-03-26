@@ -1952,7 +1952,7 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 
 void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 {
-	Visit((BfAstNode*)dtorDeclaration);
+	//Visit((BfAstNode*)dtorDeclaration);
 
 	QueueVisitChild(dtorDeclaration->mAttributes);
 	ExpectNewLine();
@@ -2176,6 +2176,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	QueueVisitChild(propertyDeclaration->mEqualsNode);
 	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mInitializer);
+	FlushVisitChild();
 
 	if (auto block = BfNodeDynCast<BfBlock>(propertyDeclaration->mDefinitionBlock))
 	{
@@ -2184,7 +2185,8 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 		for (auto method : propertyDeclaration->mMethods)
 		{
 			Visit(method);
-		}		
+		}
+		FlushVisitChild();
 		DoBlockClose(block, true, doInlineBlock);
 	}
 	else

@@ -150,5 +150,32 @@ namespace System.Text
 			}
 			return len;
 		}
+
+		public static void Encode(char32 c, ref char8* dest)
+		{
+			if (c < (char32)0x80)
+		    {
+				*dest++ = (char8)c;
+			}
+			else if (c < (char32)0x800)
+		    {
+				*dest++ = (.)(((uint32)c >> 6) | 0xC0);
+				*dest++ = (.)(((uint32)c & 0x3F) | 0x80);
+			}
+			else if (c < (char32)0x10000)
+		    {
+				
+				*dest++ = (.)(((uint32)c >> 12) | 0xE0);
+				*dest++ = (.)((((uint32)c >> 6) & 0x3F) | 0x80);
+				*dest++ = (.)(((uint32)c & 0x3F) | 0x80);
+			}
+			else if (c < (char32)0x110000)
+		    {
+				*dest++ = (.)(((uint32)c >> 18) | 0xF0);
+				*dest++ = (.)((((uint32)c >> 12) & 0x3F) | 0x80);
+				*dest++ = (.)((((uint32)c >> 6) & 0x3F) | 0x80);
+				*dest++ = (.)(((uint32)c & 0x3F) | 0x80);
+			}
+		}
 	}
 }

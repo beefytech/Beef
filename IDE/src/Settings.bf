@@ -440,6 +440,8 @@ namespace IDE
 				Add("Open File in Workspace", "Shift+Alt+O");
 				Add("Open File", "Ctrl+O");
 				Add("Open Workspace", "Ctrl+Shift+O");
+				Add("Quick Info", "Ctrl+K, Ctrl+I");
+				Add("Reformat Document", "Ctrl+K, Ctrl+D");
 				Add("Remove All Breakpoints", "Ctrl+Shift+F9");
 				Add("Rename Symbol", "Ctrl+R");
 				Add("Rename Item", "F2");
