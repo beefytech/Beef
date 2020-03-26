@@ -30,8 +30,8 @@ namespace System.Threading {
 
 		static extern void ForeachInternal(void* arrOfPointers, int count, void* func);
 
-		// TODO: Make this generic after ICollection is available
-		public static void Foreach<T>(List<T> arr, function void(T item) func)
+		// TODO: Make this also available for Dictionary
+		public static void Foreach<T>(Span<T> arr, function void(T item) func)
 		{
 			List<void*> lv=scope List<void*>();
 
@@ -39,18 +39,7 @@ namespace System.Threading {
 			    lv.Add(&i);
 			}
 
-			ForeachInternal(lv.Ptr, arr.Count, (void*)func);
-		}
-
-		public static void Foreach<T>(T[] arr, function void(T item) func)
-		{
-			List<void*> lv=scope List<void*>();
-
-			for(ref T i in ref arr){
-			    lv.Add(&i);
-			}
-
-			ForeachInternal(lv.Ptr, arr.Count, (void*)func);
+			ForeachInternal(lv.Ptr, arr.Length, (void*)func);
 		}
 #endif
 	}
