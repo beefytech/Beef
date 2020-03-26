@@ -2796,26 +2796,20 @@ namespace IDE
 
 		bool LoadWorkspaceUserData(StructuredData data)
 		{
-			String configName = scope String();
-			data.GetString("LastConfig", configName);
-			if (!configName.IsEmpty)
-			{
-				 mConfigName.Set(configName);
-			}
-
 			//
 			{
+				String configName = scope String();
+				data.GetString("LastConfig", configName);
+				if (!configName.IsEmpty)
+				{
+					 mConfigName.Set(configName);
+				}
+			
 				String platformName = scope String();
 				data.GetString("LastPlatform", platformName);
 				if (!platformName.IsEmpty)
 				{
-				    Workspace.Config config;
-				    mWorkspace.mConfigs.TryGetValue(mConfigName, out config);
-				    if (config != null)
-				    {
-				        if (Utils.Contains(config.mPlatforms.Keys, platformName))
-				            mPlatformName.Set(platformName);
-				    }
+					mPlatformName.Set(platformName);
 				}
 			}
 
