@@ -7,6 +7,7 @@ namespace System.Threading {
 	public function void ForFunctionInt(int32 idx);
 
 	public sealed class Parallel {
+#if BF_PLATFORM_WINDOWS
 		static extern void InvokeInternal(void* func1, int count);
 
 		public static void Invoke(InvokeFunction[] funcs)
@@ -51,5 +52,6 @@ namespace System.Threading {
 
 			ForeachInternal(lv.Ptr, arr.Count, (void*)func);
 		}
+#endif
 	}
 }
