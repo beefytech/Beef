@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ppl.h>
-#include <vector>
 
 #include "BeefySysLib/Common.h"
 #include "BfObjects.h"
