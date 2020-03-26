@@ -1458,10 +1458,7 @@ namespace System
 			int_strsize length = (int_strsize)addString.Length;
 			int_strsize newLength = mLength + length;
 			if (newLength > AllocSize)
-			{
-				int newSize = Math.Max(AllocSize * 2, newLength);
-				Realloc(newSize);
-			}
+				Realloc(CalcNewSize(newLength));
 
 			let moveChars = mLength - idx;
 			let ptr = Ptr;
@@ -1475,12 +1472,9 @@ namespace System
 		{
 			Contract.Requires(idx >= 0);
 
-			int_strsize newLength = mLength + 1;
+			let newLength = mLength + 1;
 			if (newLength > AllocSize)
-			{
-				int newSize = Math.Max(AllocSize * 2, newLength);
-				Realloc(newSize);
-			}
+				Realloc(CalcNewSize(newLength));
 
 			let moveChars = mLength - idx;
 			let ptr = Ptr;
@@ -1494,19 +1488,121 @@ namespace System
 		{
 			Contract.Requires(idx >= 0);
 
-			int_strsize newLength = mLength + (int_strsize)count;
+			if (count <= 0)
+				return;
+
+			let newLength = mLength + (int_strsize)count;
 			if (newLength > AllocSize)
-			{
-				int newSize = Math.Max(AllocSize * 2, newLength);
-				Realloc(newSize);
-			}
+				Realloc(CalcNewSize(newLength));
 
 			let moveChars = mLength - idx;
 			let ptr = Ptr;
 			if (moveChars > 0)
 				Internal.MemMove(ptr + idx + count, ptr + idx, moveChars);
-			for (int i < count)
+			for (let i < count)
 				ptr[idx + i] = c;
+			mLength = newLength;
+		}
+
+		public void Insert(int_strsize idx, char32 c)
+		{
+			Contract.Requires(idx >= 0);
+
+			let moveChars = mLength - idx;
+			let ptr = Ptr;
+			if (c < (char32)0x80)
+		    {
+				if (mLength + 1 > AllocSize)
+					Realloc(CalcNewSize(mLength + 1));
+				if (moveChars > 0)
+					Internal.MemMove(ptr + idx + 1, ptr + idx, moveChars);
+			    ptr[idx] = (char8)c;
+				mLength++;
+			}
+			else if (c < (char32)0x800)
+		    {
+				if (mLength + 2 > AllocSize)
+					Realloc(CalcNewSize(mLength + 2));
+				if (moveChars > 0)
+					Internal.MemMove(ptr + idx + 2, ptr + idx, moveChars);
+			    ptr[idx] = (char8)(c>>6) | (char8)0xC0;
+			    ptr[idx + 1] = (char8)(c & (char8)0x3F) | (char8)0x80;
+				mLength += 2;
+			}
+			else if (c < (char32)0x10000)
+		    {
+				if (mLength + 3 > AllocSize)
+					Realloc(CalcNewSize(mLength + 3));
+				if (moveChars > 0)
+					Internal.MemMove(ptr + idx + 3, ptr + idx, moveChars);
+			    ptr[idx] = (char8)(c>>12) | (char8)0xE0;
+			    ptr[idx + 1] = (char8)((c>>6) & (char8)0x3F) | (char8)0x80;
+			    ptr[idx + 2] = (char8)(c & (char8)0x3F) | (char8)0x80;
+				mLength += 3;
+			}
+			else if (c < (char32)0x110000)
+		    {
+				if (mLength + 4 > AllocSize)
+					Realloc(CalcNewSize(mLength + 4));
+				if (moveChars > 0)
+					Internal.MemMove(ptr + idx + 4, ptr + idx, moveChars);
+			    ptr[idx] = (char8)((c>>18) | (char8)0xF0);
+			    ptr[idx + 1] = (char8)((c>>12) & (char8)0x3F) | (char8)0x80;
+			    ptr[idx + 2] = (char8)((c>>6) & (char8)0x3F) | (char8)0x80;
+			    ptr[idx + 3] = (char8)(c & (char8)0x3F) | (char8)0x80;
+				mLength += 4;
+			}
+		}
+
+		public void Insert(int_strsize idx, char32 c, int count)
+		{
+			Contract.Requires(idx >= 0);
+
+			if (count <= 0)
+				return;
+
+			if (count == 1)
+			{
+				Insert(idx, c);
+				return;
+			}
+
+			let encodedLen = UTF8.GetEncodedLength(c);
+			let newLength = mLength + (int_strsize)(count * encodedLen);
+			if (newLength > AllocSize)
+				Realloc(CalcNewSize(newLength));
+
+			let moveChars = mLength - idx;
+			let ptr = Ptr;
+			if (moveChars > 0)
+				Internal.MemMove(ptr + idx + count * encodedLen, ptr + idx, moveChars);
+			for (let i < count)
+			{
+				let ofs = idx + i * encodedLen;
+				if (c < (char32)0x80)
+	            {
+				    ptr[ofs] = (char8)c;
+				}
+				else if (c < (char32)0x800)
+	            {
+				    ptr[ofs] = (char8)(c>>6) | (char8)0xC0;
+				    ptr[ofs + 1] = (char8)(c & (char8)0x3F) | (char8)0x80;
+				}
+				else if (c < (char32)0x10000)
+	            {
+				    ptr[ofs] = (char8)(c>>12) | (char8)0xE0;
+				    ptr[ofs + 1] = (char8)((c>>6) & (char8)0x3F) | (char8)0x80;
+				    ptr[ofs + 2] = (char8)(c & (char8)0x3F) | (char8)0x80;
+				}
+				else if (c < (char32)0x110000)
+	            {
+				    ptr[ofs] = (char8)((c>>18) | (char8)0xF0);
+				    ptr[ofs + 1] = (char8)((c>>12) & (char8)0x3F) | (char8)0x80;
+				    ptr[ofs + 2] = (char8)((c>>6) & (char8)0x3F) | (char8)0x80;
+				    ptr[ofs + 3] = (char8)(c & (char8)0x3F) | (char8)0x80;
+				}
+			}
+
 			mLength = newLength;
 		}
 

@@ -14587,6 +14587,24 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		mCurMethodState->mCurAppendAlign = methodInstance->mAppendAllocAlign;
 	}
 
+	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL) && (ctorDeclaration->mInitializer->mArguments.size() == 1) && (targetType != NULL))
+	{
+		if (auto tokenNode = BfNodeDynCast<BfUninitializedExpression>(ctorDeclaration->mInitializer->mArguments[0]))
+		{
+			if (targetType == mCurTypeInstance)
+			{
+				auto thisVariable = GetThisVariable();
+				if (thisVariable != NULL)
+				{
+					thisVariable->mUnassignedFieldFlags = 0;
+					thisVariable->mIsAssigned = true;
+				}
+			}
+
+			targetType = NULL;
+		}		
+	}
+
 	if (targetType != NULL)
 	{
 		BfAstNode* refNode = methodDeclaration;
