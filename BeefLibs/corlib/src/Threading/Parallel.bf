@@ -2,9 +2,7 @@ using System;
 using System.Collections.Generic;
 
 namespace System.Threading {
-	public delegate void InvokeFunction();
-	public delegate void ForFunction(int64 idx);
-	public delegate void StatedForFunction(int64 idx, ref ParallelState pState);
+	public delegate void InvokableFunction();
 
 #if BF_PLATFORM_WINDOWS
 	// The 'V' in the name means that the item is passed by value
@@ -100,7 +98,7 @@ namespace System.Threading {
 
 		private static extern void InvokeInternal(void* func1, int count);
 
-		public static void Invoke(InvokeFunction[] funcs)
+		public static void Invoke(InvokableFunction[] funcs)
 		{
 		    InvokeInternal(funcs.CArray(), funcs.Count);	
 		}
