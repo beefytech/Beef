@@ -3533,7 +3533,7 @@ namespace IDE
 		{
 			if (IsCompiling)
 			{
-				Fail("Cannot clean while compilign");
+				Fail("Cannot clean while compiling");
 				return; // Ignore
 			}
 			if (mDebugger.mIsRunning)
@@ -3549,7 +3549,7 @@ namespace IDE
 		{
 			if (IsCompiling)
 			{
-				Fail("Cannot clean while compilign");
+				Fail("Cannot clean while compiling");
 				return; // Ignore
 			}
 			if (mDebugger.mIsRunning)
