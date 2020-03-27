@@ -3,8 +3,7 @@ using System.Collections.Generic;
 
 namespace System.Threading {
 	public function void InvokeFunction();
-	public function void ForFunctionLong(int64 idx);
-	public function void ForFunctionInt(int32 idx);
+	public function void ForFunction(int64 idx);
 
 	public sealed class Parallel {
 #if BF_PLATFORM_WINDOWS
@@ -16,19 +15,13 @@ namespace System.Threading {
 		}
 
 		static extern void ForInternal(int64 from, int64 to, void* func);
-		static extern void ForInternal(int32 from, int32 to, void* func);
 
-		public static void For(int64 from, int64 to, ForFunctionLong func)
+		public static void For(int64 from, int64 to, ForFunction func)
 		{
 			ForInternal(from, to, (void*)func);
 		}
 
-		public static void For(int32 from, int32 to, ForFunctionInt func)
-		{
-			ForInternal(from, to, (void*)func);
-		}
-
-		static extern void ForeachInternal(void* arrOfPointers, int count, void* func);
+		static extern void ForeachInternal(void* arrOfPointers, int count, int32 elementSize, void* func);
 
 		// TODO: Make this also available for Dictionary
 		public static void Foreach<T>(Span<T> arr, function void(T item) func)
@@ -39,7 +32,7 @@ namespace System.Threading {
 			    lv.Add(&i);
 			}
 
-			ForeachInternal(lv.Ptr, arr.Length, (void*)func);
+			ForeachInternal(lv.Ptr, arr.Length, sizeof(T), (void*)func);
 		}
 #endif
 	}
