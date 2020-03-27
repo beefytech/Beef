@@ -60,7 +60,7 @@ namespace System.Threading {
 			ForInternal(from, to, (void*)func);
 		}
 
-		static extern void ForeachInternal(void* arrOfPointers, int count, int32 elementSize, void* func);
+		private static extern void ForeachInternal(void* arrOfPointers, int count, int32 elementSize, void* func);
 
 		// TODO: Make this also available for Dictionary
 		public static void Foreach<T>(Span<T> arr, function void(T item) func)
