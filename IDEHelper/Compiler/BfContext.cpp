@@ -822,6 +822,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		return;
 	}
 
+	// We need to verify lookups before we rebuild the type, because a type lookup change needs to count as a TypeDataChanged
+	VerifyTypeLookups(typeInst);
+
 	if (typeInst->mRevision != mCompiler->mRevision)
 	{
 		BfLogSysM("Setting revision.  Type: %p  Revision: %d\n", typeInst, mCompiler->mRevision);
@@ -2069,7 +2072,7 @@ void BfContext::UpdateRevisedTypes()
 }
 
 void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
-{	
+{
 	for (auto& lookupEntryPair : typeInst->mLookupResults)
 	{
 		BfTypeLookupEntry& lookupEntry = lookupEntryPair.mKey;
@@ -2104,7 +2107,10 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 		}		
 
 		if (isDirty)
-		{
+		{						
+			// Clear lookup results to avoid infinite recursion
+			typeInst->mLookupResults.Clear();
+
 			// We need to treat this lookup as if it changed the whole type signature
 			TypeDataChanged(typeInst, true);
 			TypeMethodSignaturesChanged(typeInst);
