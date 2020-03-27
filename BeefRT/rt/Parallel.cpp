@@ -60,7 +60,7 @@ void Parallel::ForInternal(long long from, long long to, void* pState, void* met
 void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, int elementSize, void* wrapper, void* func)
 {
 	// A char is 1 byte
-	char** refArr = (char**)arrOfPointers;
+	char* refArr = (char*)arrOfPointers;
 	PForeachFunc pf = (PForeachFunc)func;
 	concurrency::parallel_for(BF_INT(0), count, [&](BF_INT_T idx) {
 		pf(wrapper, refArr + idx * elementSize);
@@ -69,7 +69,7 @@ void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, int elementS
 
 void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, int elementSize, void* pState, void* meta, void* wrapper, void* func)
 {
-	char** refArr = (char**)arrOfPointers;
+	char* refArr = (char*)arrOfPointers;
 	PStatedForeachFunc pf = (PStatedForeachFunc)func;
 	ParallelMetadata* pMeta = (ParallelMetadata*)meta;
 	pMeta->cts = concurrency::cancellation_token_source();
