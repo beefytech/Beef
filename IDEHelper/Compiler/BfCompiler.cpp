@@ -7041,23 +7041,38 @@ void BfCompiler::GenerateAutocompleteInfo()
 							auto genericParamType = (BfGenericParamType*)type;
 							if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
 							{
-								if (methodInstance->GetNumGenericParams() > 0)
+								BfMethodInstance* checkMethodInstance = methodInstance;
+								if (checkMethodInstance->GetNumGenericParams() == 0)
+									checkMethodInstance = methodEntry.mCurMethodInstance;
+
+								if (genericParamType->mGenericParamIdx < checkMethodInstance->GetNumGenericParams())
 								{
-									auto genericParamInstance = methodInstance->mMethodInfoEx->mGenericParams[genericParamType->mGenericParamIdx];
+									auto genericParamInstance = checkMethodInstance->mMethodInfoEx->mGenericParams[genericParamType->mGenericParamIdx];
 									methodText += genericParamInstance->GetGenericParamDef()->mName;
 								}
 								else
 								{
-									BfMethodInstance* curMethodInstance = methodEntry.mCurMethodInstance;
-									auto genericParamInstance = curMethodInstance->mMethodInfoEx->mGenericParams[genericParamType->mGenericParamIdx];
-									methodText += genericParamInstance->GetGenericParamDef()->mName;
+									methodText += StrFormat("@M%d", genericParamType->mGenericParamIdx);
 								}
 							}
 							else
 							{
-								BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)methodEntry.mTypeInstance;
-								auto genericParamInstance = genericType->mGenericParams[genericParamType->mGenericParamIdx];
-								methodText += genericParamInstance->GetGenericParamDef()->mName;
+								BfGenericTypeInstance* genericType = methodEntry.mTypeInstance->ToGenericTypeInstance();
+								if (genericType == NULL)
+								{
+									if (methodEntry.mCurMethodInstance != NULL)
+										genericType = methodEntry.mCurMethodInstance->GetOwner()->ToGenericTypeInstance();
+								}
+
+								if ((genericType != NULL) && (genericParamType->mGenericParamIdx < (int)genericType->mGenericParams.size()))
+								{
+									auto genericParamInstance = genericType->mGenericParams[genericParamType->mGenericParamIdx];
+									methodText += genericParamInstance->GetGenericParamDef()->mName;
+								}
+								else
+								{
+									methodText += StrFormat("@T%d", genericParamType->mGenericParamIdx);
+								}
 							}
 						}
 						else
