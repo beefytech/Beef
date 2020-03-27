@@ -2,20 +2,70 @@ using System;
 using System.Collections.Generic;
 
 namespace System.Threading {
-	public function void InvokeFunction();
-	public function void ForFunction(int64 idx);
+	public delegate void InvokeFunction();
+	public delegate void ForFunction(int64 idx);
+	public delegate void StatedForFunction(int64 idx, ref ParallelState pState);
 
 #if BF_PLATFORM_WINDOWS
-	public sealed class ParallelState{
+	// The 'V' in the name means that the item is passed by value
+	struct VDelegateWrapper<T>
+	{
+		public delegate void(T item) mDelegate;
+
+		public static void Call(Self* sf, void* item)
+		{
+		    T itm=*((T*)item);
+			(*sf).mDelegate(itm);
+		}
+	}
+
+	struct VStatedDelegateWrapper<T>
+	{
+		public delegate void(T item, ref ParallelState ps) mDelegate;
+
+		public static void Call(Self* sf, void* item, void* pState)
+		{
+		    ParallelState state=*((ParallelState*)pState);
+			T itm=*((T*)item);
+			(*sf).mDelegate(itm, ref state);
+		}
+	}
+
+	struct DelegateWrapper<T>
+	{
+		public delegate void(ref T item) mDelegate;
+
+		public static void Call(Self* sf, void* item)
+		{
+		    T itm=*((T*)item);
+			(*sf).mDelegate(ref itm);
+		}
+	}
+
+	struct StatedDelegateWrapper<T>
+	{
+		public delegate void(ref T item, ref ParallelState ps) mDelegate;
+
+		public static void Call(Self* sf, void* item, void* pState)
+		{
+			ParallelState state=*((ParallelState*)pState);
+			T itm=*((T*)item);
+			(*sf).mDelegate(ref itm, ref state);
+		}
+	}
+
+	public sealed class ParallelState
+	{
 		private static extern void InitializeMeta(void* meta);
 		private static extern void BreakInternal(void* meta);
 		private static extern void StopInternal(void* meta);
 		private static extern bool StoppedInternal(void* meta);
 		private static extern bool ShouldStopInternal(void* meta);
 
-		private void* meta;
+		public void* meta;
 
-		public this(){
+		public this()
+		{
 		    InitializeMeta(meta);
 		}
 
@@ -35,11 +85,13 @@ namespace System.Threading {
 			}
 		}
 
-		public void Break(){
+		public void Break()
+		{
 			BreakInternal(meta);
 		}
 
-		public void Stop(){
+		public void Stop()
+		{
 			StopInternal(meta);
 		}
 	}
@@ -53,17 +105,33 @@ namespace System.Threading {
 		    InvokeInternal(funcs.CArray(), funcs.Count);	
 		}
 
-		private static extern void ForInternal(int64 from, int64 to, void* func);
+		private static extern void ForInternal(int64 from, int64 to, void* wrapper, void* func);
+		private static extern void ForInternal(int64 from, int64 to, void* pState, void* meta, void* wrapper, void* func);
 
-		public static void For(int64 from, int64 to, ForFunction func)
+		public static void For(int64 from, int64 to, delegate void(int64 item) func)
 		{
-			ForInternal(from, to, (void*)func);
+			VDelegateWrapper<int64> wDlg;
+			wDlg.mDelegate=func;
+			function void(VDelegateWrapper<int64>* wr, void* item) fn= =>VDelegateWrapper<int64>.Call;
+			ForInternal(from, to, &wDlg, (void*)fn);
 		}
 
-		private static extern void ForeachInternal(void* arrOfPointers, int count, int32 elementSize, void* func);
+		public static void For(int64 from, int64 to, delegate void(int64 item, ref ParallelState ps) func)
+		{
+			VStatedDelegateWrapper<int64> wDlg;
+			wDlg.mDelegate=func;
+			function void(VStatedDelegateWrapper<int64>* wr, void* item, void* pState) fn= =>VStatedDelegateWrapper<int64>.Call;
+
+			ParallelState parState=scope ParallelState();
+
+			ForInternal(from, to,&parState,parState.meta, &wDlg, (void*)fn);
+		}
+
+		private static extern void ForeachInternal(void* arrOfPointers, int count, int32 elementSize, void* wrappedFunc, void* func);
+		private static extern void ForeachInternal(void* arrOfPointers, int count, int elementSize, void* pState, void* meta, void* wrapper, void* func);
 
 		// TODO: Make this also available for Dictionary
-		public static void Foreach<T>(Span<T> arr, function void(T item) func)
+		public static void Foreach<T>(Span<T> arr, delegate void(ref T item) func)
 		{
 			List<void*> lv=scope List<void*>();
 
@@ -71,9 +139,29 @@ namespace System.Threading {
 			    lv.Add(&i);
 			}
 
-			ForeachInternal(lv.Ptr, arr.Length, sizeof(T), (void*)func);
+			DelegateWrapper<T> wDlg;
+			wDlg.mDelegate=func;
+			function void(DelegateWrapper<T>* wr, void* item) fn= =>DelegateWrapper<T>.Call;
+
+			ForeachInternal(lv.Ptr, arr.Length, sizeof(T), &wDlg, (void*)fn);
 		}
 
+		public static void Foreach<T>(Span<T> arr, delegate void(ref T item, ref ParallelState ps) func)
+		{
+			List<void*> lv=scope List<void*>();
+
+			for(ref T i in ref arr){
+			    lv.Add(&i);
+			}
+
+			StatedDelegateWrapper<T> wDlg;
+			wDlg.mDelegate=func;
+			function void(StatedDelegateWrapper<T>* wr, void* item, void* pState) fn= =>StatedDelegateWrapper<T>.Call;
+
+			ParallelState parState=scope ParallelState();
+
+			ForeachInternal(lv.Ptr, arr.Length, sizeof(T), &parState, parState.meta, &wDlg, (void*)fn);
+		}
 	}
 #endif
 }
