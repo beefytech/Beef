@@ -5,16 +5,55 @@ namespace System.Threading {
 	public function void InvokeFunction();
 	public function void ForFunction(int64 idx);
 
-	public sealed class Parallel {
 #if BF_PLATFORM_WINDOWS
-		static extern void InvokeInternal(void* func1, int count);
+	public sealed class ParallelState{
+		private static extern void InitializeMeta(void* meta);
+		private static extern void BreakInternal(void* meta);
+		private static extern void StopInternal(void* meta);
+		private static extern bool StoppedInternal(void* meta);
+		private static extern bool ShouldStopInternal(void* meta);
+
+		private void* meta;
+
+		public this(){
+		    InitializeMeta(meta);
+		}
+
+		public bool IsStopped
+		{
+			get
+			{
+				return StoppedInternal(meta);
+			}
+		}
+
+		public bool ShouldExitCurrentIteration
+		{
+			get
+			{
+			    return ShouldStopInternal(meta);
+			}
+		}
+
+		public void Break(){
+			BreakInternal(meta);
+		}
+
+		public void Stop(){
+			StopInternal(meta);
+		}
+	}
+
+	public sealed class Parallel {
+
+		private static extern void InvokeInternal(void* func1, int count);
 
 		public static void Invoke(InvokeFunction[] funcs)
 		{
 		    InvokeInternal(funcs.CArray(), funcs.Count);	
 		}
 
-		static extern void ForInternal(int64 from, int64 to, void* func);
+		private static extern void ForInternal(int64 from, int64 to, void* func);
 
 		public static void For(int64 from, int64 to, ForFunction func)
 		{
@@ -34,6 +73,7 @@ namespace System.Threading {
 
 			ForeachInternal(lv.Ptr, arr.Length, sizeof(T), (void*)func);
 		}
-#endif
+
 	}
+#endif
 }
