@@ -1,17 +1,14 @@
 #include "Parallel.h"
 
-// parallel_invoke can accept 2-10 params, this is used to simplify the calling
-#define PAR_INVOKE(...) concurrency::parallel_invoke(__VA_ARGS__)
-
-// This is used to simplify the switch...case part
-#define PAR_FUNCS_CASE(num,...) \
-case num:                       \
-PAR_INVOKE(__VA_ARGS__);        \
+// This is used to simplify the switch..case part
+#define PAR_FUNCS_CASE(num,...)            \
+case num:                                  \
+concurrency::parallel_invoke(__VA_ARGS__); \
 break
 
 using namespace bf::System::Threading;
 
-void Parallel::InvokeInternal(void* funcs, int count)
+void Parallel::InvokeInternal(void* funcs, BF_INT_T count)
 {
 	BF_ASSERT((count > 1));
 
@@ -29,7 +26,9 @@ void Parallel::InvokeInternal(void* funcs, int count)
 		PAR_FUNCS_CASE(10, pFuncs[0], pFuncs[1], pFuncs[2], pFuncs[3], pFuncs[4], pFuncs[5], pFuncs[6], pFuncs[7], pFuncs[8], pFuncs[9]);
 
 	default:
-		// TODO: Implement invoking 10+ functions with std::thread
+		concurrency::parallel_for(BF_INT(0), count - BF_INT(1), [&](BF_INT_T idx) {
+			pFuncs[idx];
+			});
 		break;
 	}
 }
@@ -38,19 +37,15 @@ void Parallel::ForInternal(long long from, long long to, void* func)
 {
 	// According to C#, `from` is inclusive, `to` is exclusive 
 	to -= 1;
-	concurrency::parallel_for(from, to, (PForFuncLong)func);
+	concurrency::parallel_for(from, to, (PForFunc)func);
 }
 
-void Parallel::ForInternal(int from, int to, void* func)
+void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, int elementSize, void* func)
 {
-	// According to C#, `from` is inclusive, `to` is exclusive 
-	to -= 1;
-	concurrency::parallel_for(from, to, (PForFuncInt)func);
-}
-
-void Parallel::ForeachInternal(void* arrOfPointers, int count, void* func)
-{
-	// I must cast it to an int** here, because a void** cannot be used as a iterater
-	int** refArr = (int**)arrOfPointers;
-	concurrency::parallel_for_each(refArr, refArr + count, (PForeachFunc)func);
+	// A char is 1 byte
+	char** refArr = (char**)arrOfPointers;
+	PForeachFunc pf = (PForeachFunc)func;
+	concurrency::parallel_for(BF_INT(0), count - BF_INT(1), [&](BF_INT_T idx) {
+		pf(refArr + idx * elementSize);
+		});
 }
