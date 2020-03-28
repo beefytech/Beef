@@ -3520,6 +3520,39 @@ namespace IDE.ui
             return hasFocus ? mHiliteColor : mUnfocusedHiliteColor;
         }
 
+		public override void LinePullup(int textPos)
+		{
+			bool isInComment = false;
+			if (textPos > 0)
+			{
+				if (mData.mText[textPos - 1].mDisplayTypeId == (uint8)BfSourceElementType.Comment)
+					isInComment = true;
+			}
+
+			if (!isInComment)
+				return;
+
+			int checkPos = textPos;
+			if (mData.SafeGetChar(checkPos) == '*')
+				checkPos++;
+			else
+			{
+				while (checkPos < mData.mTextLength)
+				{
+					if (mData.mText[checkPos].mChar != '/')
+						break;
+					checkPos++;
+				}
+			}
+
+			int32 deleteLen = (int32)(checkPos - textPos);
+			if (deleteLen > 0)
+			{
+				mData.mUndoManager.Add(new DeleteCharAction(this, 0, deleteLen));
+				PhysDeleteChars(0, deleteLen);
+			}
+		}
+
         public override void Draw(Graphics g)
         {
             base.Draw(g);

@@ -683,6 +683,7 @@ namespace IDE.ui
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Link Dependencies", "mBuildOptions.mLinkDependencies");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Prebuild Commands", "mBuildOptions.mPreBuildCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Postbuild Commands", "mBuildOptions.mPostBuildCmds");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Clean Commands", "mBuildOptions.mCleanCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Compile", "mBuildOptions.mBuildCommandsOnCompile");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Run", "mBuildOptions.mBuildCommandsOnRun");
 		}
@@ -943,6 +944,7 @@ namespace IDE.ui
 			AddPropertiesItem(root, "Build Commands", "mBuildOptions.mPostBuildCmds");
 			AddPropertiesItem(root, "Build Commands on Compile", "mBuildOptions.mBuildCommandsOnCompile");
 			AddPropertiesItem(root, "Build Commands on Run", "mBuildOptions.mBuildCommandsOnRun");
+			AddPropertiesItem(root, "Clean Commands", "mBuildOptions.mCleanCmds");
 		    //parent.MakeParent();
 		    root.Open(true, true);
 		}
