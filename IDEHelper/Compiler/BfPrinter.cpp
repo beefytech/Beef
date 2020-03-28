@@ -1,18 +1,21 @@
 #include "BfPrinter.h"
 #include "BfParser.h"
 #include "BfUtil.h"
+#include "BeefySysLib/util/UTF8.h"
 
 USING_NS_BF;
 
-BfPrinter::BfPrinter(BfRootNode* rootNode, BfRootNode* sidechannelRootNode, BfRootNode* errorRootNode)
-{	
+// This is a really long line, I'm testing to see what's up. This is a really long line, I'm testing to see what's up. This is a really long line, I'm testing to see what's up.
+// This is a really long line, I'm testing to see what's up.
+BfPrinter::BfPrinter(BfRootNode *rootNode, BfRootNode *sidechannelRootNode, BfRootNode *errorRootNode)
+{
 	mSource = rootNode->GetSourceData();
-	mParser = mSource->ToParserData();	
+	mParser = mSource->ToParserData();
 
 	if (sidechannelRootNode != NULL)
 		mSidechannelItr = sidechannelRootNode->begin();
 	mSidechannelNextNode = mSidechannelItr.Get();
-	
+
 	if (errorRootNode != NULL)
 		mErrorItr = errorRootNode->begin();	
 	mErrorNextNode = mErrorItr.Get();	
@@ -39,10 +42,28 @@ BfPrinter::BfPrinter(BfRootNode* rootNode, BfRootNode* sidechannelRootNode, BfRo
 	mVirtualNewLineIdx = 0;
 	mHighestCharId = 0;
 	mCurTypeDecl = NULL;
+	mCurCol = 0;
+	mMaxCol = 120;
 }
 
 void BfPrinter::Write(const StringView& str)
 {	
+	if (str == '\n')
+		mCurCol = 0;
+	else if (mMaxCol > 0)
+	{
+		int startCol = mCurCol;
+
+		for (int i = 0; i < (int)str.mLength; i++)
+		{
+			char c = str[i];
+			if (c == '\t')
+				mCurCol = ((mCurCol + 1) & ~3) + 4;			
+			else
+				mCurCol++;
+		}	
+	}	
+
 	mOutString.Append(str);
 	if (mCharMapping != NULL)
 	{
@@ -108,6 +129,28 @@ void BfPrinter::FlushIndent()
 void BfPrinter::Write(BfAstNode* node, int start, int len)
 {
 	FlushIndent();	
+
+	if (mMaxCol > 0)
+	{
+		int startCol = mCurCol;
+		
+		auto parserData = node->GetParserData();
+
+		for (int i = 0; i < len; i++)
+		{
+			char c = parserData->mSrc[start + i];
+			if (c == '\t')
+				mCurCol = ((mCurCol + 1) & ~3) + 4;
+			else
+				mCurCol++;
+		}
+
+ 		if ((mCurCol > mMaxCol) && (startCol != 0))
+ 		{
+			NOP;
+ 		}
+	}
+
 	mOutString.Append(node->GetSourceData()->mSrc + start, len);
 	if (mCharMapping != NULL)
 	{
@@ -256,6 +299,8 @@ int BfPrinter::CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx)
 
 void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 {
+	bool wasExpectingNewLine = mExpectingNewLine;
+
 	mTriviaIdx = std::max(mTriviaIdx, node->GetTriviaStart());
 	int endIdx = mTriviaIdx;	
 	int crCount = 0;
@@ -290,6 +335,46 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 		}
 	}	
 
+	auto commentNode = BfNodeDynCast<BfCommentNode>(node);
+	bool isBlockComment = false;
+	bool isStarredBlockComment = false;
+
+	if (commentNode != NULL)
+	{
+		if ((commentNode->mCommentKind == BfCommentKind_Block) ||
+			(commentNode->mCommentKind == BfCommentKind_Documentation_Block_Pre) ||
+			(commentNode->mCommentKind == BfCommentKind_Documentation_Block_Post))
+		{
+			isBlockComment = true;
+
+			int lineCount = 0;
+			bool onNewLine = false;
+			for (int srcIdx = startIdx; srcIdx < endIdx; srcIdx++)
+			{
+				char checkC = astNodeSrc->mSrc[srcIdx];
+				if (checkC == '\n')
+				{
+					onNewLine = true;
+					lineCount++;
+					if (lineCount >= 2)
+						break;
+				}
+				else if ((checkC == '*') && (onNewLine))
+					isStarredBlockComment = true;
+				else if ((checkC != ' ') && (checkC != '\t'))
+					onNewLine = false;
+			}
+		}
+	}
+	bool doWrap = (commentNode != NULL) && (mMaxCol > 0);
+	bool prevHadWrap = false;
+
+	if (commentNode != NULL)
+	{
+		Visit((BfAstNode*)node);
+		startIdx = node->mSrcStart;
+	}
+
 	// This handles tab adjustment within multiline comments
 	FlushIndent();	
 	bool isNewLine = false;	
@@ -300,9 +385,90 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 #endif
 
 		bool emitChar = true;
+		
 		char c = astNodeSrc->mSrc[srcIdx];
-		if (c == '\n')		
-			isNewLine = true;		
+		if (c == '\n')
+		{
+			isNewLine = true;
+
+			if (prevHadWrap)
+			{
+				bool merging = false;
+
+				int blockContentStart = -1;
+
+				bool foundStar = false;
+				int startIdx = srcIdx;
+				for (int checkIdx = srcIdx + 1; checkIdx < endIdx + 1; checkIdx++)
+				{
+					char checkC = astNodeSrc->mSrc[checkIdx];					
+
+					if (isBlockComment)
+					{
+						if (checkC == '\n')
+							break;
+
+						if ((isStarredBlockComment) && (!foundStar) && (checkC == '*'))
+						{
+							foundStar = true;
+							continue;
+						}
+
+						if ((checkC != ' ') && (checkC != '\t'))
+						{
+							if (blockContentStart == -1)
+							{
+								blockContentStart = checkIdx;
+							}
+
+							// Only do merge if we have content on this line
+							if (isalnum(checkC))
+							{
+								srcIdx = blockContentStart;
+								merging = true;
+								break;
+							}
+						}
+					}
+					else
+					{
+						if ((checkC == '/') && (astNodeSrc->mSrc[checkIdx + 1] == '/'))
+						{
+							srcIdx = checkIdx;
+							while (srcIdx < endIdx)
+							{
+								char checkC = astNodeSrc->mSrc[srcIdx];
+								if (checkC != '/')
+									break;
+								srcIdx++;
+							}
+							merging = true;
+							break;
+						}
+
+						if ((checkC != ' ') && (checkC != '\t'))
+							break;
+					}					
+				}
+
+				if (merging)
+				{
+					srcIdx--;
+					while (srcIdx < endIdx - 1)
+					{
+						char checkC = astNodeSrc->mSrc[srcIdx + 1];
+						if ((checkC != ' ') && (checkC != '\t'))
+							break;
+						srcIdx++;
+					}
+					Write(" ");
+					continue;
+				}
+			}
+
+			mCurCol = 0;
+			prevHadWrap = false;
+		}
 		else if (isNewLine) 
 		{
 			if (c == ' ')
@@ -319,21 +485,78 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 			{					
 				// Leave left-aligned preprocessor nodes that are commented out
 				if ((c != '#') || (mQueuedSpaceCount > 0))
-					mQueuedSpaceCount = std::max(0, mQueuedSpaceCount + mLastSpaceOffset);				
+					mQueuedSpaceCount = std::max(0, mQueuedSpaceCount + mLastSpaceOffset);
+				else
+					mQueuedSpaceCount = mCurIndentLevel * 4; // Do default indent
 				isNewLine = false;				
 			}
 		}
 
 		if (emitChar)
-		{						
-			FlushIndent();
-			mOutString.Append(c);
-			if (mCharMapping != NULL)
+		{	
+			int startIdx = srcIdx;
+
+			if (c != '\n')
 			{
-				if (srcIdx < mParser->mSrcLength)				
-					mCharMapping->push_back(srcIdx);				
-				else
-					mCharMapping->push_back(-1);
+				while (srcIdx < endIdx)
+				{				
+					char c = astNodeSrc->mSrc[srcIdx + 1];
+					if (isspace((uint8)c))
+						break;
+					srcIdx++;
+				}
+			}
+			
+			if (doWrap)
+			{
+				int len = 0;
+				for (int idx = startIdx; idx <= srcIdx; idx++)
+				{
+					char c = astNodeSrc->mSrc[idx];
+					if (isutf(c))
+						len++;
+				}
+				
+				if (mCurCol + len > mMaxCol)
+				{
+					Write("\n");
+					mQueuedSpaceCount = mCurIndentLevel * 4;
+					FlushIndent();
+
+					if (isStarredBlockComment)
+						Write(" * ");
+					else if (!isBlockComment)					
+						Write("// ");
+					prevHadWrap = true;					
+					
+					while (startIdx < endIdx)
+					{
+						char c = astNodeSrc->mSrc[startIdx];
+						if (!isspace((uint8)c))
+							break;
+						startIdx++;
+					}
+				}
+			}
+
+			FlushIndent();			
+
+			for (int idx = startIdx; idx <= srcIdx; idx++)
+			{
+				char c = astNodeSrc->mSrc[idx];
+				mOutString.Append(c);
+				if (mCharMapping != NULL)
+				{
+					if (idx < mParser->mSrcLength)
+						mCharMapping->push_back(idx);
+					else
+						mCharMapping->push_back(-1);
+				}
+
+				if (c == '\n')
+					mCurCol = 0;				
+				else if (isutf(c))
+					mCurCol++;
 			}
 		}
 	}
@@ -342,6 +565,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 
 	mTriviaIdx = endIdx;	
 	mIsFirstStatementInBlock = false;
+	mExpectingNewLine = wasExpectingNewLine;
 }
 
 void BfPrinter::Visit(BfAstNode* bfAstNode)
@@ -496,7 +720,7 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 								// Found previous line
 								usedTrivia = true;
 								Write("\n");
-								mQueuedSpaceCount = mCurIndentLevel * 4;																
+								mQueuedSpaceCount = mCurIndentLevel * 4;
 
 								// Indents extra if we have a statement split over multiple lines
 								if (!mExpectingNewLine)
@@ -2171,7 +2395,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 		}
 		QueueVisitChild(indexerDeclaration->mCloseBracket);
 		ExpectSpace();
-	}
+	}	
 
 	QueueVisitChild(propertyDeclaration->mEqualsNode);
 	ExpectSpace();

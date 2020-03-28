@@ -5712,6 +5712,12 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 {
 	BP_ZONE("BfCompiler::Compile");
 	
+	if (mSystem->mTypeDefs.mCount == 0)
+	{
+		// No-source bailout
+		return true;
+	}
+
 	if (!mOptions.mErrorString.IsEmpty())
 	{
 		mPassInstance->Fail(mOptions.mErrorString);

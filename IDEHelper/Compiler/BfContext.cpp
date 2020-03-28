@@ -772,30 +772,30 @@ void BfContext::AddTypeToWorkList(BfType* type)
 void BfContext::ValidateDependencies()
 {
 #if _DEBUG
-	BP_ZONE("BfContext::ValidateDependencies");
-	BfLogSysM("ValidateDependencies\n");
-
-	bool deletedNewTypes = false;
-	auto itr = mResolvedTypes.begin();
-	while (itr != mResolvedTypes.end())
-	{
-		auto type = itr.mCurEntry->mValue;		
-		if ((type->IsGenericTypeInstance()) && (type->mDefineState > BfTypeDefineState_Undefined))
-		{
-			// We can't contain deleted generic arguments without being deleted ourselves
-			BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;
-
-			for (auto genericTypeArg : genericType->mTypeGenericArguments)
-			{
-				auto depType = genericTypeArg->ToDependedType();
-				if (depType != NULL)
-				{
-					BF_ASSERT(depType->mDependencyMap.mTypeSet.ContainsKey(type));					
-				}
-			}
-		}
-		++itr;
-	}
+// 	BP_ZONE("BfContext::ValidateDependencies");
+// 	BfLogSysM("ValidateDependencies\n");
+// 
+// 	bool deletedNewTypes = false;
+// 	auto itr = mResolvedTypes.begin();
+// 	while (itr != mResolvedTypes.end())
+// 	{
+// 		auto type = itr.mCurEntry->mValue;		
+// 		if ((type->IsGenericTypeInstance()) && (type->mDefineState > BfTypeDefineState_Undefined))
+// 		{
+// 			// We can't contain deleted generic arguments without being deleted ourselves
+// 			BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;
+// 
+// 			for (auto genericTypeArg : genericType->mTypeGenericArguments)
+// 			{
+// 				auto depType = genericTypeArg->ToDependedType();
+// 				if (depType != NULL)
+// 				{
+// 					BF_ASSERT(depType->mDependencyMap.mTypeSet.ContainsKey(type));					
+// 				}
+// 			}
+// 		}
+// 		++itr;
+// 	}
 #endif
 }
 

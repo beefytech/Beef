@@ -62,6 +62,8 @@ public:
 	int mQueuedSpaceCount;
 	int mLastSpaceOffset; // Indent difference from original to new	
 	bool mExpectingNewLine;
+	int mCurCol;
+	int mMaxCol;
 
 	bool mIsFirstStatementInBlock;
 	bool mForceUseTrivia;

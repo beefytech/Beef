@@ -1784,6 +1784,13 @@ BfBinaryOp Beefy::BfGetFlippedBinaryOp(BfBinaryOp origOp)
 	return BfBinaryOp_None;
 }
 
+bool Beefy::BfIsCommentBlock(BfCommentKind commentKind)
+{
+	return
+		(commentKind == BfCommentKind_Block) ||
+		(commentKind == BfCommentKind_Documentation_Block_Pre) ||
+		(commentKind == BfCommentKind_Documentation_Block_Post);
+}
 
 BfInlineAsmInstruction::AsmArg::AsmArg()
 	: mType(ARGTYPE_Immediate)
