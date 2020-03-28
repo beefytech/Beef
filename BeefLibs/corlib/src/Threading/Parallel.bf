@@ -125,8 +125,8 @@ namespace System.Threading {
 			ForInternal(from, to,&parState,parState.meta, &wDlg, (void*)fn);
 		}
 
-		private static extern void ForeachInternal(void* arrOfPointers, int count, int32 elementSize, void* wrappedFunc, void* func);
-		private static extern void ForeachInternal(void* arrOfPointers, int count, int elementSize, void* pState, void* meta, void* wrapper, void* func);
+		private static extern void ForeachInternal(void* arrOfPointers, int count, void* wrappedFunc, void* func);
+		private static extern void ForeachInternal(void* arrOfPointers, int count, void* pState, void* meta, void* wrapper, void* func);
 
 		// TODO: Make this also available for Dictionary
 		public static void Foreach<T>(Span<T> arr, delegate void(ref T item) func)
@@ -141,7 +141,7 @@ namespace System.Threading {
 			wDlg.mDelegate=func;
 			function void(DelegateWrapper<T>* wr, void* item) fn= =>DelegateWrapper<T>.Call;
 
-			ForeachInternal(lv.Ptr, arr.Length, sizeof(T), &wDlg, (void*)fn);
+			ForeachInternal(lv.Ptr, arr.Length, &wDlg, (void*)fn);
 		}
 
 		public static void Foreach<T>(Span<T> arr, delegate void(ref T item, ref ParallelState ps) func)
@@ -158,7 +158,7 @@ namespace System.Threading {
 
 			ParallelState parState=scope ParallelState();
 
-			ForeachInternal(lv.Ptr, arr.Length, sizeof(T), &parState, parState.meta, &wDlg, (void*)fn);
+			ForeachInternal(lv.Ptr, arr.Length, &parState, parState.meta, &wDlg, (void*)fn);
 		}
 	}
 #endif
