@@ -10675,6 +10675,14 @@ namespace IDE
 				squiggleScale = (float)Math.Round(squiggleScale);
 			mSquiggleImage.Scale(squiggleScale);
 			mCircleImage.Scale(DarkTheme.sScale);
+
+			mMainWindow?.SetMinimumSize(GS!(480), GS!(360));
+
+			/*for (var window in gApp.mWindows)
+			{
+				
+				window.SetMinimumSize(GS!());
+			}*/
 		}
 
         void HandleWindowClosed(BFWindow window)
@@ -11130,6 +11138,16 @@ namespace IDE
 
 						for (var project in mWorkspace.mProjects)
 						{
+							let options = GetCurProjectOptions(project);
+							if (options == null)
+								continue;
+							if (!options.mBuildOptions.mCleanCmds.IsEmpty)
+							{
+								if (mBuildContext == null)
+									mBuildContext = new BuildContext();
+								mBuildContext.QueueProjectCustomBuildCommands(project, "", .Always, options.mBuildOptions.mCleanCmds);
+							}
+
 							// Force running the "if files changed" commands
 							project.mForceCustomCommands = true;
 							project.mNeedsTargetRebuild = true;
@@ -11141,9 +11159,6 @@ namespace IDE
 							List<String> projectFiles = scope .();
 							defer ClearAndDeleteItems(projectFiles);
 
-							let options = GetCurProjectOptions(project);
-							if (options == null)
-								continue;
 							GetTargetPaths(project, mPlatformName, workspaceOptions, options, projectFiles);
 
 							for (let filePath in projectFiles)
