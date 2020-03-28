@@ -62,8 +62,8 @@ namespace bf
 				typedef void (*PForeachFunc)(void* wr, void* item);
 				typedef void (*PStatedForeachFunc)(void* wr, void* item, void* state);
 
-				BFRT_EXPORT static void ForeachInternal(void* arrOfPointers, BF_INT_T count, int elementSize, void* wrapper, void* func);
-				BFRT_EXPORT static void ForeachInternal(void* arrOfPointers, BF_INT_T count, int elementSize, void* pState, void* meta, void* wrapper, void* func);
+				BFRT_EXPORT static void ForeachInternal(void* arrOfPointers, BF_INT_T count, void* wrapper, void* func);
+				BFRT_EXPORT static void ForeachInternal(void* arrOfPointers, BF_INT_T count, void* pState, void* meta, void* wrapper, void* func);
 
 			public:
 				BF_DECLARE_CLASS(Parallel, Object);
