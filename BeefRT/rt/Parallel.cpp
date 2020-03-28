@@ -59,17 +59,17 @@ void Parallel::ForInternal(long long from, long long to, void* pState, void* met
 
 void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, void* wrapper, void* func)
 {
-	// A char is 1 byte
-	char* refArr = (char*)arrOfPointers;
+	// A int* has the same size as void*
+	int** refArr = (int**)arrOfPointers;
 	PForeachFunc pf = (PForeachFunc)func;
 	concurrency::parallel_for(BF_INT(0), count, [&](BF_INT_T idx) {
-		pf(wrapper, refArr + idx * sizeof(void*));
+		pf(wrapper, refArr + idx);
 		});
 }
 
 void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, void* pState, void* meta, void* wrapper, void* func)
 {
-	char* refArr = (char*)arrOfPointers;
+	int** refArr = (int**)arrOfPointers;
 	PStatedForeachFunc pf = (PStatedForeachFunc)func;
 	ParallelMetadata* pMeta = (ParallelMetadata*)meta;
 	pMeta->cts = concurrency::cancellation_token_source();
@@ -78,7 +78,7 @@ void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, void* pState
 		concurrency::parallel_for(BF_INT(0), count, [&](BF_INT_T idx) {
 			if (pMeta->running.load()) {
 				pMeta->taskCount += 1;
-				pf(wrapper, refArr + idx * sizeof(void*), pState);
+				pf(wrapper, refArr + idx, pState);
 				pMeta->taskCount -= 1;
 			}
 			});
