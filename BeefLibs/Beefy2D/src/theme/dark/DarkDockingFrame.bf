@@ -28,6 +28,21 @@ namespace Beefy.theme.dark
 		{
 		}
 
+		public override void RehupScale(float oldScale, float newScale)
+		{
+			base.RehupScale(oldScale, newScale);
+
+			mMinWindowSize = GS!(100);
+
+			mMinWindowSize = GS!(32);
+			mDragMarginSize = GS!(64);
+			mDragWindowMarginSize = GS!(10);
+
+			mWindowMargin = 0;
+			mSplitterSize = GS!(6.0f);
+			mWindowSpacing = GS!(2.0f);
+		}
+
 		public override void RemovedFromParent(Widget previousParent, WidgetWindow window)
 		{
 			base.RemovedFromParent(previousParent, window);
