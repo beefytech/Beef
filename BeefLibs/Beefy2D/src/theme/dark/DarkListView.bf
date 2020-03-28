@@ -200,7 +200,6 @@ namespace Beefy.theme.dark
 			if ((listView.mFont != null) && (mSelfHeight != 0))
 				mSelfHeight = listView.mFont.GetLineSpacing();
 			Utils.RoundScale(ref mBottomPadding, newScale / oldScale);
-
 			if (mChildItems != null)
 			{
 				for (var child in mChildItems)

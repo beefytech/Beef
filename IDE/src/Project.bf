@@ -1039,6 +1039,8 @@ namespace IDE
 			public List<String> mPreBuildCmds = new List<String>() ~ DeleteContainerAndItems!(_);
 			[Reflect]
 			public List<String> mPostBuildCmds = new List<String>() ~ DeleteContainerAndItems!(_);
+			[Reflect]
+			public List<String> mCleanCmds = new List<String>() ~ DeleteContainerAndItems!(_);
 		}
 
         public class DebugOptions
@@ -1157,6 +1159,7 @@ namespace IDE
 				Set!(newOptions.mBuildOptions.mLinkDependencies, mBuildOptions.mLinkDependencies);
 				Set!(newOptions.mBuildOptions.mPreBuildCmds, mBuildOptions.mPreBuildCmds);
 				Set!(newOptions.mBuildOptions.mPostBuildCmds, mBuildOptions.mPostBuildCmds);
+				Set!(newOptions.mBuildOptions.mCleanCmds, mBuildOptions.mCleanCmds);
 
 				Set!(newOptions.mBeefOptions.mPreprocessorMacros, mBeefOptions.mPreprocessorMacros);
 				Set!(newOptions.mBeefOptions.mOptimizationLevel, mBeefOptions.mOptimizationLevel);
@@ -1545,6 +1548,7 @@ namespace IDE
 								WriteStrings("LinkDependencies", options.mBuildOptions.mLinkDependencies);
 								WriteStrings("PreBuildCmds", options.mBuildOptions.mPreBuildCmds);
 								WriteStrings("PostBuildCmds", options.mBuildOptions.mPostBuildCmds);
+								WriteStrings("CleanCmds", options.mBuildOptions.mCleanCmds);
 								
 								// DebugOptions
 							    data.ConditionalAdd("DebugCommand", options.mDebugOptions.mCommand, "$(TargetPath)");
@@ -1878,6 +1882,7 @@ namespace IDE
 					ReadStrings("LinkDependencies", options.mBuildOptions.mLinkDependencies);
 					ReadStrings("PreBuildCmds", options.mBuildOptions.mPreBuildCmds);
 					ReadStrings("PostBuildCmds", options.mBuildOptions.mPostBuildCmds);
+					ReadStrings("CleanCmds", options.mBuildOptions.mCleanCmds);
 					
 			    	// DebugOptions
 			        data.GetString("DebugCommand", options.mDebugOptions.mCommand, "$(TargetPath)");

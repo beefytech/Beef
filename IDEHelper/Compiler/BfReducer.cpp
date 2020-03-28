@@ -8330,14 +8330,15 @@ BfCommentNode * BfReducer::FindDocumentation(BfAstNode* defNodeHead, BfAstNode* 
 	while (mDocumentCheckIdx < mSource->mSidechannelRootNode->mChildArr.mSize)
 	{
 		auto checkComment = BfNodeDynCast<BfCommentNode>(mSource->mSidechannelRootNode->mChildArr[mDocumentCheckIdx]);
-		if ((checkComment == NULL) || (checkComment->mCommentKind == BfCommentKind_Normal))
+		if ((checkComment == NULL) || (checkComment->mCommentKind == BfCommentKind_Block) || (checkComment->mCommentKind == BfCommentKind_Line))
 		{
 			mDocumentCheckIdx++;
 			continue;
 		}
 		if (checkComment->GetSrcEnd() > defNodeEnd->GetSrcStart())
 		{
-			if (checkComment->mCommentKind == BfCommentKind_Documentation_Post)
+			if ((checkComment->mCommentKind == BfCommentKind_Documentation_Line_Post) ||
+				(checkComment->mCommentKind == BfCommentKind_Documentation_Block_Post))
 			{
 				int defEnd = defNodeEnd->GetSrcEnd();
 				if (checkDocAfter)
@@ -8368,7 +8369,8 @@ BfCommentNode * BfReducer::FindDocumentation(BfAstNode* defNodeHead, BfAstNode* 
 			return NULL;
 		}
 
-		if (checkComment->mCommentKind != BfCommentKind_Documentation_Pre)
+		if ((checkComment->mCommentKind != BfCommentKind_Documentation_Line_Pre) && 
+			(checkComment->mCommentKind != BfCommentKind_Documentation_Block_Pre))
 		{
 			// Skip this, not used
 			mDocumentCheckIdx++;

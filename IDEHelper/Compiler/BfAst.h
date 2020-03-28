@@ -1760,9 +1760,12 @@ public:
 
 enum BfCommentKind
 {
-	BfCommentKind_Normal,
-	BfCommentKind_Documentation_Pre,
-	BfCommentKind_Documentation_Post,
+	BfCommentKind_Line,
+	BfCommentKind_Block,
+	BfCommentKind_Documentation_Block_Pre,
+	BfCommentKind_Documentation_Line_Pre,
+	BfCommentKind_Documentation_Block_Post,
+	BfCommentKind_Documentation_Line_Post,			
 };
 
 class BfCommentNode : public BfAstNode
@@ -3182,5 +3185,6 @@ const char* BfGetOpName(BfUnaryOp unaryOp);
 BfBinaryOp BfTokenToBinaryOp(BfToken token);
 BfUnaryOp BfTokenToUnaryOp(BfToken token);
 BfAssignmentOp BfTokenToAssignmentOp(BfToken token);
+bool BfIsCommentBlock(BfCommentKind commentKind);
 
 NS_BF_END

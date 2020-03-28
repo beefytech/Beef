@@ -23,6 +23,12 @@ namespace IDE.ui
 		public bool mSortDirty;
 		public bool mWantsRehup;
 
+		public override void RehupScale(float oldScale, float newScale)
+		{
+			base.RehupScale(oldScale, newScale);
+			Utils.SnapScale(ref mLabelOffset, newScale / oldScale);
+		}
+
         protected override float GetLabelOffset()
         {
             return mLabelOffset;
@@ -165,6 +171,7 @@ namespace IDE.ui
 
 		public override void RehupScale(float oldScale, float newScale)
 		{
+			mListView.mOpenButtonX = GS!(4);
 			base.RehupScale(oldScale, newScale);
 			SetScaleData();
 		}

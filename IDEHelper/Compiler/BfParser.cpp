@@ -626,17 +626,17 @@ void BfParser::AddErrorNode(int startIdx, int endIdx)
 
 BfCommentKind BfParser::GetCommentKind(int startIdx)
 {
-	if (((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '*') && (mSrc[startIdx + 2] == '*') && (mSrc[startIdx + 3] == '<')) ||
-		((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '/') && (mSrc[startIdx + 2] == '/') && (mSrc[startIdx + 3] == '<')))
-	{
-		return BfCommentKind_Documentation_Post;
-	}
-	if (((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '*') && (mSrc[startIdx + 2] == '*') && (mSrc[startIdx + 3] != '/')) ||
-		((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '/') && (mSrc[startIdx + 2] == '/') && (mSrc[startIdx + 3] != '/')))
-	{
-		return BfCommentKind_Documentation_Pre;
-	}
-	return BfCommentKind_Normal;
+	if ((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '*') && (mSrc[startIdx + 2] == '*') && (mSrc[startIdx + 3] == '<'))
+		return BfCommentKind_Documentation_Block_Post;
+	if ((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '/') && (mSrc[startIdx + 2] == '/') && (mSrc[startIdx + 3] == '<'))
+		return BfCommentKind_Documentation_Line_Post;
+	if ((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '*') && (mSrc[startIdx + 2] == '*') && (mSrc[startIdx + 3] != '/'))
+		return BfCommentKind_Documentation_Block_Pre;
+	if ((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '/') && (mSrc[startIdx + 2] == '/') && (mSrc[startIdx + 3] != '/'))
+		return BfCommentKind_Documentation_Line_Pre;
+	if ((mSrc[startIdx] == '/') && (mSrc[startIdx + 1] == '*'))
+		return BfCommentKind_Block;
+	return BfCommentKind_Line;
 }
 
 bool BfParser::EvaluatePreprocessor(BfExpression* expr)
@@ -1950,6 +1950,7 @@ void BfParser::NextToken(int endIdx)
 
 				if (mPreprocessorIgnoredSectionNode == NULL)
 				{
+					auto commentKind = GetCommentKind(mTokenStart);
 					bool handled = false;
 					if (!mPendingSideNodes.IsEmpty())
 					{
@@ -1957,8 +1958,10 @@ void BfParser::NextToken(int endIdx)
 						{							
 							// This is required for folding '///' style multi-line documentation into a single node
 							if (prevComment->GetTriviaStart() == mTriviaStart)
-							{
-								if (GetCommentKind(prevComment->mSrcStart) == GetCommentKind(mTokenStart))
+							{								
+								auto prevCommentKind = GetCommentKind(prevComment->mSrcStart);
+
+								if ((!BfIsCommentBlock(commentKind)) && (commentKind == prevCommentKind))
 								{
 									prevComment->SetSrcEnd(mSrcIdx);
 									handled = true;
@@ -1971,7 +1974,7 @@ void BfParser::NextToken(int endIdx)
 					{
 						auto bfCommentNode = mAlloc->Alloc<BfCommentNode>();
 						bfCommentNode->Init(this);						
-						bfCommentNode->mCommentKind = GetCommentKind(mTokenStart);
+						bfCommentNode->mCommentKind = commentKind;
 						mSidechannelRootNode->Add(bfCommentNode);
 						mPendingSideNodes.push_back(bfCommentNode);
 					}
@@ -2025,11 +2028,12 @@ void BfParser::NextToken(int endIdx)
 										// This is required for folding documentation into a single node
 										if (prevComment->GetTriviaStart() == mTriviaStart)
 										{
-											if (GetCommentKind(prevComment->mSrcStart) == GetCommentKind(mTokenStart))
-											{
-												prevComment->SetSrcEnd(mSrcIdx);
-												handled = true;
-											}
+											//TODO: Why did we allow merging BLOCKS of comments together? This messes up BfPrinter word wrapping on comments
+// 											if (GetCommentKind(prevComment->mSrcStart) == GetCommentKind(mTokenStart))
+// 											{
+// 												prevComment->SetSrcEnd(mSrcIdx);
+// 												handled = true;
+// 											}
 										}
 									}
 								}

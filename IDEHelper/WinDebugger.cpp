@@ -885,7 +885,7 @@ void WinDebugger::ValidateBreakpoints()
 Breakpoint* WinDebugger::FindBreakpointAt(intptr address)
 {
 #ifdef _DEBUG
-	ValidateBreakpoints();
+	//ValidateBreakpoints();
 #endif
 
 	WdBreakpoint* breakpoint = NULL;

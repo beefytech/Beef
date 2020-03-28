@@ -17673,6 +17673,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			if (resultType->IsNullable())
 			{	
 				auto elementType = resultType->GetUnderlyingType();
+				mModule->PopulateType(elementType);
 				if (elementType->IsValuelessType())
 				{
 					mModule->mBfIRBuilder->PopulateType(resultType);
