@@ -1531,7 +1531,12 @@ namespace Beefy.widgets
 
             CursorLineAndColumn = prevCursorLineAndCol;
         }
-        
+
+		public virtual void LinePullup(int textPos)
+		{
+
+		}
+
         public virtual void DeleteChar()
         {
             if (HasSelection())
@@ -1602,7 +1607,10 @@ namespace Beefy.widgets
 
                     char8 c = (char8)mData.mText[textPos].mChar;
                     if ((c == '\n') || (!c.IsWhiteSpace))
-                        break;                    
+					{
+						LinePullup(textPos);
+                        break;
+					}
                 }
 
 				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);

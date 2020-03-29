@@ -20,6 +20,145 @@ public:
 	int mLength;
 
 public:
+	struct iterator
+	{
+	public:
+		typedef std::random_access_iterator_tag iterator_category;
+		typedef char value_type;
+		typedef intptr difference_type;
+
+		typedef char* pointer;
+		typedef char& reference;
+
+	public:
+		char* mPtr;
+
+	public:
+		iterator(char* ptr)
+		{
+			mPtr = ptr;
+		}
+
+		iterator& operator++()
+		{
+			mPtr++;
+			return *this;
+		}
+
+		iterator operator++(int)
+		{
+			auto prevVal = *this;
+			mPtr++;
+			return prevVal;
+		}
+
+		bool operator!=(const iterator& itr) const
+		{
+			return itr.mPtr != mPtr;
+		}
+
+		bool operator==(const iterator& itr) const
+		{
+			return itr.mPtr == mPtr;
+		}
+
+		intptr operator-(const iterator& itr) const
+		{
+			return mPtr - itr.mPtr;
+		}
+
+		iterator operator+(intptr offset) const
+		{
+			iterator itr(mPtr + offset);
+			return itr;
+		}
+
+		char& operator*()
+		{
+			return *mPtr;
+		}
+
+		char* operator->()
+		{
+			return mPtr;
+		}
+
+		bool operator<(const iterator& val2)
+		{
+			return mPtr < val2.mPtr;
+		}
+	};
+
+	struct const_iterator
+	{
+	public:
+		typedef std::random_access_iterator_tag iterator_category;
+		typedef char value_type;
+		typedef intptr difference_type;
+
+		typedef const char* pointer;
+		typedef const char& reference;
+
+	public:
+		const char* mPtr;
+
+	public:
+		const_iterator(const char* ptr)
+		{
+			mPtr = ptr;
+		}
+
+		const_iterator& operator++()
+		{
+			mPtr++;
+			return *this;
+		}
+
+		const_iterator operator++(int)
+		{
+			auto prevVal = *this;
+			mPtr++;
+			return prevVal;
+		}
+
+		bool operator!=(const const_iterator& itr) const
+		{
+			return itr.mPtr != mPtr;
+		}
+
+		bool operator==(const const_iterator& itr) const
+		{
+			return itr.mPtr == mPtr;
+		}
+
+		intptr operator-(const iterator& itr) const
+		{
+			return mPtr - itr.mPtr;
+		}
+
+		const_iterator operator+(intptr offset) const
+		{
+			const_iterator itr(mPtr + offset);
+			return itr;
+		}
+
+		const char& operator*()
+		{
+			return *mPtr;
+		}
+
+		const char* operator->()
+		{
+			return mPtr;
+		}
+
+		bool operator<(const const_iterator& val2)
+		{
+			return mPtr < val2.mPtr;
+		}
+	};
+
+public:
 	StringView()
 	{
 		this->mPtr = NULL;
@@ -151,6 +290,16 @@ public:
 	}	
 
 	StringSplitEnumerator Split(char c);	
+
+	const_iterator begin() const
+	{
+		return mPtr;
+	}
+
+	const_iterator end() const
+	{
+		return mPtr + this->mLength;
+	}	
 };
 
 struct StringSplitEnumerator
@@ -351,143 +500,7 @@ public:
 	char* mPtr;
 
 public:
-	struct iterator
-	{
-	public:
-		typedef std::random_access_iterator_tag iterator_category;
-		typedef char value_type;
-		typedef intptr difference_type;
-
-		typedef char* pointer;
-		typedef char& reference;
-
-	public:
-		char* mPtr;
-
-	public:
-		iterator(char* ptr)
-		{
-			mPtr = ptr;
-		}
-
-		iterator& operator++()
-		{
-			mPtr++;
-			return *this;
-		}
-
-		iterator operator++(int)
-		{
-			auto prevVal = *this;
-			mPtr++;
-			return prevVal;
-		}
-
-		bool operator!=(const iterator& itr) const
-		{
-			return itr.mPtr != mPtr;
-		}
-
-		bool operator==(const iterator& itr) const
-		{
-			return itr.mPtr == mPtr;
-		}
-
-		intptr operator-(const iterator& itr) const
-		{
-			return mPtr - itr.mPtr;
-		}
-
-		iterator operator+(intptr offset) const
-		{
-			iterator itr(mPtr + offset);			
-			return itr;
-		}
-
-		char& operator*()
-		{
-			return *mPtr;
-		}
-
-		char* operator->()
-		{
-			return mPtr;
-		}
-
-		bool operator<(const iterator& val2)
-		{
-			return mPtr < val2.mPtr;
-		}
-	};
-
-	struct const_iterator
-	{
-	public:
-		typedef std::random_access_iterator_tag iterator_category;
-		typedef char value_type;
-		typedef intptr difference_type;
-
-		typedef const char* pointer;
-		typedef const char& reference;
-
-	public:
-		const char* mPtr;
-
-	public:
-		const_iterator(const char* ptr)
-		{
-			mPtr = ptr;
-		}
-
-		const_iterator& operator++()
-		{
-			mPtr++;
-			return *this;
-		}
-
-		const_iterator operator++(int)
-		{
-			auto prevVal = *this;
-			mPtr++;
-			return prevVal;
-		}
-
-		bool operator!=(const const_iterator& itr) const
-		{
-			return itr.mPtr != mPtr;
-		}
-
-		bool operator==(const const_iterator& itr) const
-		{
-			return itr.mPtr == mPtr;
-		}
-
-		intptr operator-(const iterator& itr) const
-		{
-			return mPtr - itr.mPtr;
-		}
-
-		const_iterator operator+(intptr offset) const
-		{
-			const_iterator itr(mPtr + offset);
-			return itr;
-		}
-
-		const char& operator*()
-		{
-			return *mPtr;
-		}
-
-		const char* operator->()
-		{
-			return mPtr;
-		}
-
-		bool operator<(const const_iterator& val2)
-		{
-			return mPtr < val2.mPtr;
-		}
-	};
+	
 
 protected:
 	void EnsureMutable()
@@ -989,22 +1002,22 @@ public:
 		return IndexOf(str) != -1;
 	}
 
-	const_iterator begin() const
+	StringView::const_iterator begin() const
 	{
 		return GetPtr();
 	}
 
-	const_iterator end() const
+	StringView::const_iterator end() const
 	{
 		return GetPtr() + this->mLength;
 	}
 
-	iterator begin()
+	StringView::iterator begin()
 	{
 		return GetMutablePtr();
 	}
 
-	iterator end()
+	StringView::iterator end()
 	{
 		return GetMutablePtr() + this->mLength;
 	}
