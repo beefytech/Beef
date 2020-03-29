@@ -506,7 +506,7 @@ namespace Beefy.theme.dark
 	                if (tabIdx < mTabs.Count - 1)
 	                {
 	                    tabButton.mWidth = (float)Math.Round(Math.Min(tabButton.mWantWidth, showWidth + GS!(8)));
-	                    tabButton.mCloseButton.mVisible = tabButton.mWidth >= tabButton.mWantWidth;
+	                    tabButton.mCloseButton.mVisible = tabButton.mWidth + 1 >= tabButton.mWantWidth;
 	                }
 	                else
 	                {
