@@ -1043,7 +1043,9 @@ namespace IDE.ui
             mTargetEditWidget.Content.GetTextCoordAtLineChar(line, column, out x, out y);            
 
 			mTargetEditWidget.Content.GetTextCoordAtCursor(var cursorX, var cursorY);
-			y = Math.Max(y, cursorY);
+
+			if (!mInvokeWidget.mIsAboveText)
+				y = Math.Max(y, cursorY + gApp.mCodeFont.GetHeight() * 0.0f);
 
             float screenX;
             float screenY;
@@ -1167,7 +1169,15 @@ namespace IDE.ui
                 screenX += mTargetEditWidget.mWidgetWindow.mClientX;
                 screenY += mTargetEditWidget.mWidgetWindow.mClientY;
 
-                if (screenY >= mInvokeWindow.mY - 8)
+                //if (screenY >= mInvokeWindow.mY - 8)
+
+				int invokeLine = 0;
+				int invokeColumn = 0;
+				if (mInvokeSrcPositions != null)
+					mTargetEditWidget.Content.GetLineCharAtIdx(mInvokeSrcPositions[0], out invokeLine, out invokeColumn);
+
+				int insertLine = line;
+				if ((insertLine != invokeLine) && ((insertLine - invokeLine) * gApp.mCodeFont.GetHeight() < GS!(40)))
                 {
                     mInvokeWidget.mIgnoreMove = true;
                     if (mListWindow != null)
@@ -1993,7 +2003,7 @@ namespace IDE.ui
                 int insertColumn = 0;
                 mTargetEditWidget.Content.GetLineCharAtIdx(mTargetEditWidget.Content.CursorTextPos, out insertLine, out insertColumn);
 
-                if (insertLine != invokeLine)
+                if ((insertLine != invokeLine) && ((insertLine - invokeLine) * gApp.mCodeFont.GetHeight() < GS!(40)))
                     mInvokeWidget.mIsAboveText = true;
             }
 
