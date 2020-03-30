@@ -40,49 +40,21 @@ void Parallel::ForInternal(long long from, long long to, void* wrapper, void* fu
 		});
 }
 
-void Parallel::ForInternal(long long from, long long to, void* pState, void* meta, void* wrapper, void* func)
+void Parallel::ForInternal(long long from, long long to, void* meta, void* wrapper, void* func)
 {
-	PStatedForFunc pFunc = (PStatedForFunc)func;
+	PForFunc pFunc = (PForFunc)func;
 	ParallelMetadata* pMeta = (ParallelMetadata*)meta;
-	pMeta->cts = concurrency::cancellation_token_source();
+	//pMeta->cts = concurrency::cancellation_token_source();
 
-	concurrency::run_with_cancellation_token([&]() {
-		concurrency::parallel_for(from, to, [&](long long idx) {
-			if (pMeta->running.load()) {
-				pMeta->taskCount += 1;
-				pFunc(wrapper, idx, pState);
-				pMeta->taskCount -= 1;
-			}
-			});
-		}, pMeta->cts.get_token());
-}
-
-void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, void* wrapper, void* func)
-{
-	// A int* has the same size as void*
-	int** refArr = (int**)arrOfPointers;
-	PForeachFunc pf = (PForeachFunc)func;
-	concurrency::parallel_for(BF_INT(0), count, [&](BF_INT_T idx) {
-		pf(wrapper, refArr + idx);
+	//concurrency::run_with_cancellation_token([&]() {
+	concurrency::parallel_for(from, to, [&](long long idx) {
+		if (pMeta->running.load()) {
+			pMeta->taskCount += 1;
+			pFunc(wrapper, idx);
+			pMeta->taskCount -= 1;
+		}
 		});
-}
-
-void Parallel::ForeachInternal(void* arrOfPointers, BF_INT_T count, void* pState, void* meta, void* wrapper, void* func)
-{
-	int** refArr = (int**)arrOfPointers;
-	PStatedForeachFunc pf = (PStatedForeachFunc)func;
-	ParallelMetadata* pMeta = (ParallelMetadata*)meta;
-	pMeta->cts = concurrency::cancellation_token_source();
-
-	concurrency::run_with_cancellation_token([&]() {
-		concurrency::parallel_for(BF_INT(0), count, [&](BF_INT_T idx) {
-			if (pMeta->running.load()) {
-				pMeta->taskCount += 1;
-				pf(wrapper, refArr + idx, pState);
-				pMeta->taskCount -= 1;
-			}
-			});
-		}, pMeta->cts.get_token());
+	//}, pMeta->cts.get_token());
 }
 
 void ParallelState::InitializeMeta(void* meta)
@@ -99,7 +71,7 @@ void ParallelState::BreakInternal(void* meta)
 void ParallelState::StopInternal(void* meta)
 {
 	ParallelMetadata* pMeta = (ParallelMetadata*)meta;
-	pMeta->cts.cancel();
+	//pMeta->cts.cancel();
 }
 
 bool ParallelState::StoppedInternal(void* meta)
