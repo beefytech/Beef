@@ -1362,6 +1362,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 	auto& outS = mDebugSSect.mData;
 	outS.Write((int)CV_SIGNATURE_C13);
 		
+	Array<int> fileDataPositions;
 	Array<BeDbgFunction*> inlinees;
 		
 	// Funcs
@@ -1634,8 +1635,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 				emissions.push_back(newEmission);
 			}
 		}
-
-		Array<int> fileDataPositions;
+		
 		///
 		{
 			int fileDataPos = 0;
@@ -1702,7 +1702,7 @@ void BeCOFFObject::DbgGenerateModuleInfo()
 			outS.Write(inlinedDbgFunc->mCvFuncId);
 			
 			auto dbgFile = inlinedDbgFunc->mFile;
-			outS.Write((int32)dbgFile->mIdx * 8);
+			outS.Write((int32)fileDataPositions[dbgFile->mIdx]);
 			outS.Write((int32)inlinedDbgFunc->mLine + 1);
 		}
 		DbgEndSection();
