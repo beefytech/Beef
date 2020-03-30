@@ -31,7 +31,7 @@ namespace IDE.ui
 			mSettingHistoryManager = gApp.mLaunchHistoryManager;
 
 			mTitle = new .("Launch Executable");
-            mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable;
+            mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable | .PopupPosition;
 
             AddOkCancelButtons(new (evt) => { evt.mCloseDialog = false; Launch(); }, null, 0, 1);
 

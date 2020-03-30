@@ -497,7 +497,7 @@ namespace IDE.ui
         {
 			//mMinWidth = GS!(320);
 
-            mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable;
+            mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable | .PopupPosition;
 
             mButtonBottomMargin = GS!(6);
             mButtonRightMargin = GS!(6);

@@ -25,7 +25,7 @@ namespace IDE.ui
 			AddDialogComponent(mThreadCombo);
 
 			mWindowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.TopMost | BFWindow.Flags.Caption |
-			    BFWindow.Flags.Border | BFWindow.Flags.SysMenu | BFWindow.Flags.Resizable;
+			    BFWindow.Flags.Border | BFWindow.Flags.SysMenu | BFWindow.Flags.Resizable | .PopupPosition;
 
 			mSampleRateEdit = AddEdit(scope String()..AppendF("{0}", gApp.mSettings.mDebuggerSettings.mProfileSampleRate));
 

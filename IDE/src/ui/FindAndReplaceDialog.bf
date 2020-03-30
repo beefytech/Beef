@@ -28,7 +28,7 @@ namespace IDE.ui
 
 			mIsReplace = isReplace;
             mWindowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.TopMost | BFWindow.Flags.Caption |
-                BFWindow.Flags.Border | BFWindow.Flags.SysMenu | BFWindow.Flags.Resizable;
+                BFWindow.Flags.Border | BFWindow.Flags.SysMenu | BFWindow.Flags.Resizable | .PopupPosition;
 
             AddOkCancelButtons(new (evt) => { DoFind(); }, null, 0, 1);
 

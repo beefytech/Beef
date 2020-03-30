@@ -1044,8 +1044,11 @@ namespace IDE.ui
 
 			mTargetEditWidget.Content.GetTextCoordAtCursor(var cursorX, var cursorY);
 
-			if (!mInvokeWidget.mIsAboveText)
+			if (mInvokeWidget?.mIsAboveText != true)
 				y = Math.Max(y, cursorY + gApp.mCodeFont.GetHeight() * 0.0f);
+
+			/*if (cursorY > y + gApp.mCodeFont.GetHeight() * 2.5f)
+				y = cursorY;*/
 
             float screenX;
             float screenY;
