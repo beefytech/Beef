@@ -10111,7 +10111,7 @@ bool BfModule::TryGetConstString(BfIRConstHolder* constHolder, BfIRValue irValue
 	auto constant = constHolder->GetConstant(irValue);
 	if (constant == NULL)
 		return false;
-	if (!BfIRConstHolder::IsInt(constant->mTypeCode))
+	if (constant->mTypeCode != BfTypeCode_StringId)
 		return false;
 	int stringId = constant->mInt32;
 	BfStringPoolEntry* entry = NULL;
