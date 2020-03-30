@@ -680,7 +680,8 @@ namespace IDE.ui
 		    (listViewItem, propEntry) = AddPropertiesItem(root, "C Library", "mBuildOptions.mCLibType");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Beef Library", "mBuildOptions.mBeefLibType");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Stack Size", "mBuildOptions.mStackSize");
-			(listViewItem, propEntry) = AddPropertiesItem(root, "Link Dependencies", "mBuildOptions.mLinkDependencies");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Additional Lib Paths", "mBuildOptions.mLibPaths");
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Rebuild Dependencies", "mBuildOptions.mLinkDependencies");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Prebuild Commands", "mBuildOptions.mPreBuildCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Postbuild Commands", "mBuildOptions.mPostBuildCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Clean Commands", "mBuildOptions.mCleanCmds");
