@@ -685,7 +685,6 @@ namespace Beefy.widgets
                 float origX;
                 float origY;
                 aWidget.RootToSelfTranslate(mMouseDownX, mMouseDownY, out origX, out origY);
-                aWidget.MouseUp(origX, origY, btn);
 
 				float childX;
 				float childY;
