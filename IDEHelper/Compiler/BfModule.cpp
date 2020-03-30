@@ -12062,7 +12062,7 @@ BfTypedValue BfModule::GetThis()
 			if (checkMethodState->mMixinState != NULL)
 			{
 				BfTypedValue thisValue = checkMethodState->mMixinState->mTarget;
-				if (thisValue)
+				if (thisValue.HasType())
 				{
 					checkMethodState->mMixinState->mLastTargetAccessId = useMethodState->GetRootMethodState()->mCurAccessId++;
 					if (!thisValue.mType->IsValueType())
