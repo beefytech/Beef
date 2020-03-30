@@ -181,6 +181,7 @@ namespace Beefy.theme.dark
 			CheckIndeterminate,
 			CodeError,
 			CodeWarning,
+			ComboBoxFrameless,
 
             COUNT
         };

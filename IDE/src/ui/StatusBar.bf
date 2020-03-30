@@ -27,11 +27,13 @@ namespace IDE.ui
 
         public this()
         {
-            mConfigComboBox = new DarkComboBox();            
+            mConfigComboBox = new DarkComboBox();
+			mConfigComboBox.mFrameKind = .Frameless;
             mConfigComboBox.mPopulateMenuAction.Add(new => PopulateConfigMenu);
             AddWidget(mConfigComboBox);
 
-            mPlatformComboBox = new DarkComboBox();            
+            mPlatformComboBox = new DarkComboBox();
+			mPlatformComboBox.mFrameKind = .Frameless;
             mPlatformComboBox.mPopulateMenuAction.Add(new => PopulatePlatformMenu);
             AddWidget(mPlatformComboBox);
         }
@@ -94,8 +96,8 @@ namespace IDE.ui
         void ResizeComponents()
         {
 			int btnLeft = gApp.mSettings.mEnableDevMode ? GS!(380) : GS!(300);
-            mConfigComboBox.Resize(mWidth - btnLeft, 0, GS!(120), mHeight + 2);
-            mPlatformComboBox.Resize(mWidth - btnLeft - GS!(120), 0, GS!(120), mHeight + 2);
+            mConfigComboBox.Resize(mWidth - btnLeft, GS!(0), GS!(120), GS!(24));
+            mPlatformComboBox.Resize(mWidth - btnLeft - GS!(120), GS!(0), GS!(120), GS!(24));
 
 			if (mCancelSymSrvButton != null)
 				mCancelSymSrvButton.Resize(GS!(546), 0, GS!(20), GS!(20));

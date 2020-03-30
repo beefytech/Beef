@@ -481,7 +481,7 @@ namespace Beefy.theme.dark
 					useWidth = Math.Max(mWidth - GS!(36), 0);
 				useWidth = (float)Math.Round(useWidth);
 
-                tabButton.Resize(curX, tabButton.mY, useWidth, tabButton.mHeight);
+                tabButton.Resize(curX, tabButton.mY, useWidth, DarkTheme.sUnitSize);
 
                 //float offset = tabIdx - leftObscure;
                 float widthSubtract = Math.Max(0, leftObscure);
@@ -590,7 +590,7 @@ namespace Beefy.theme.dark
 
                 mChildWidgets.Insert(0, tabButton);
 
-                tabButton.Resize(curX, tabButton.mY, tabButton.mWidth, tabButton.mHeight);
+                tabButton.Resize(curX, tabButton.mY, tabButton.mWidth, DarkTheme.sUnitSize);
                 
                 curX += showWidth;                
             }

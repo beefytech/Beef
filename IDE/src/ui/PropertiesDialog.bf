@@ -1877,7 +1877,7 @@ namespace IDE.ui
 					if (propIdx == 0)
 					{
 				        var comboBox = new DarkComboBox();
-				        comboBox.mFrameless = true;
+				        comboBox.mFrameKind = .Transparent;
 				        comboBox.mPopulateMenuAction.Add(new (menu) => { PopulateComboBox(menu, propEntries); });
 				        subItem.AddWidget(comboBox);
 				        subItem.mOnResized.Add(new (evt) => { comboBox.Resize(0, 0, GetValueEditWidth(subItem), subItem.mHeight + 1); });
