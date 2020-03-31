@@ -9530,6 +9530,62 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 		return BfTypedValue();
 	}
 
+	// Function->Function and Delegate->Delegate where type is compatible but not exact
+	if (((typedVal.mType->IsDelegate()) || (typedVal.mType->IsFunction())) &&
+		((typedVal.mType->IsDelegate()) == (toType->IsDelegate())) &&
+		((typedVal.mType->IsFunction()) == (toType->IsFunction())))
+	{
+		auto fromDelegateType = (BfDelegateType*)typedVal.mType->ToTypeInstance();
+		auto toDelegateType = (BfDelegateType*)toType;
+
+		if (fromDelegateType->mReturnType == toDelegateType->mReturnType)
+		{
+			auto fromMethodInst = GetRawMethodByName(fromDelegateType, "Invoke");
+			auto toMethodInst = GetRawMethodByName(toDelegateType, "Invoke");
+			
+			if ((fromMethodInst->mMethodDef->mCallingConvention == toMethodInst->mMethodDef->mCallingConvention) &&
+				(fromMethodInst->mReturnType == toMethodInst->mReturnType) &&
+				(fromMethodInst->GetParamCount() == toMethodInst->GetParamCount()))
+			{	
+				bool matched = true;
+
+				StringT<64> fromParamName;
+				StringT<64> toParamName;
+
+				for (int paramIdx = 0; paramIdx < (int)fromMethodInst->GetParamCount(); paramIdx++)
+				{
+					bool nameMatches = true;
+
+					if (!explicitCast)
+					{
+						fromMethodInst->GetParamName(paramIdx, fromParamName);
+						toMethodInst->GetParamName(paramIdx, toParamName);
+						if ((!fromParamName.IsEmpty()) && (!toParamName.IsEmpty()))
+							nameMatches = fromParamName == toParamName;
+					}
+
+					if ((fromMethodInst->GetParamKind(paramIdx) == toMethodInst->GetParamKind(paramIdx)) &&
+						(fromMethodInst->GetParamType(paramIdx) == toMethodInst->GetParamType(paramIdx)) &&
+						(nameMatches))
+					{
+						// Matched, required for implicit/explicit
+					}					
+					else
+					{
+						matched = false;
+						break;
+					}					
+				}
+
+				if (matched)
+				{
+					BfTypedValue loadedVal = LoadValue(typedVal);					
+					return BfTypedValue(mBfIRBuilder->CreateBitCast(loadedVal.mValue, mBfIRBuilder->MapType(toType)), toType);
+				}
+			}
+		}
+	}
+
 	// Struct truncate
 	if ((typedVal.mType->IsStruct()) && (toType->IsStruct()))
 	{
@@ -10012,6 +10068,16 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 
 		auto methodDef = delegateType->mTypeDef->mMethods[0];
 		
+		switch (methodDef->mCallingConvention)
+		{
+		case BfCallingConvention_Stdcall:
+			str += "[StdCall] ";
+			break;
+		case BfCallingConvention_Fastcall:
+			str += "[FastCall] ";
+			break;
+		}
+
 		if (resolvedType->IsDelegateFromTypeRef())
 			str += "delegate ";
 		else
@@ -10024,13 +10090,14 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 				str += ", ";
 			auto paramDef = methodDef->mParams[paramIdx];
 			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
-
-			//TODO: Why was this necessary? It made some errors show incorrectly
-// 			if (delegateType->mIsUnspecializedTypeVariation)
-// 				innerFlags = (BfTypeNameFlags)(innerFlags & ~BfTypeNameFlag_ResolveGenericParamNames);
+			
 			DoTypeToString(str, delegateType->mParams[paramIdx], innerFlags, genericMethodNameOverrides);
-			str += " ";
-			str += paramDef->mName;
+
+			if (!paramDef->mName.IsEmpty())
+			{
+				str += " ";
+				str += paramDef->mName;
+			}
 		}
 
 		str += ")";

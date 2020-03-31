@@ -4602,7 +4602,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 
 					BfDeferredAstSizedArray<BfParameterDeclaration*> params(delegateTypeRef->mParams, mAlloc);
 					BfDeferredAstSizedArray<BfTokenNode*> commas(delegateTypeRef->mCommas, mAlloc);
-					auto closeNode = ParseMethodParams(delegateTypeRef, &params, &commas, BfToken_RParen);
+					auto closeNode = ParseMethodParams(delegateTypeRef, &params, &commas, BfToken_RParen, false);
 					if (closeNode == NULL)
 					{
 						if (!params.empty())
@@ -6523,7 +6523,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 			if (openToken == NULL)
 				return indexerDeclaration;
 			MEMBER_SET(indexerDeclaration, mOpenBracket, openToken);
-			auto endToken = ParseMethodParams(indexerDeclaration, &params, &commas, BfToken_RBracket);
+			auto endToken = ParseMethodParams(indexerDeclaration, &params, &commas, BfToken_RBracket, true);
 			if (endToken == NULL)
 				return indexerDeclaration;
 			MEMBER_SET(indexerDeclaration, mCloseBracket, endToken);
@@ -8401,7 +8401,7 @@ BfCommentNode * BfReducer::FindDocumentation(BfAstNode* defNodeHead, BfAstNode* 
 	return NULL;
 }
 
-BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken)
+BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken, bool requireNames)
 {
 	BfAstNode* nameAfterNode = node;
 
@@ -8713,18 +8713,29 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 
 		if (paramDecl->mNameNode == NULL)
 		{
-			auto nameIdentifierNode = ExpectIdentifierAfter(node, "parameter name");
-			if (nameIdentifierNode == NULL)
+			BfAstNode* nameIdentifierNode;
+			if (requireNames)
 			{
-				if (!allowNameFail)
-					return NULL;
+				nameIdentifierNode = ExpectIdentifierAfter(node, "parameter name");
+				if (nameIdentifierNode == NULL)
+				{
+					if (!allowNameFail)
+						return NULL;
+				}
 			}
 			else
 			{
+				nameIdentifierNode = BfNodeDynCast<BfIdentifierNode>(mVisitorPos.GetNext());
+				if (nameIdentifierNode != NULL)
+					mVisitorPos.MoveNext();
+			}
+			
+			if (nameIdentifierNode != NULL)
+			{
 				paramDecl->mNameNode = nameIdentifierNode;
 				MoveNode(nameIdentifierNode, paramDecl);
-				nameAfterNode = nameIdentifierNode;
-			}
+				nameAfterNode = nameIdentifierNode;				
+			}			
 		}
 	}
 
@@ -8770,7 +8781,7 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 	methodDeclaration->mOpenParen = tokenNode;
 	MoveNode(methodDeclaration->mOpenParen, methodDeclaration);
 
-	methodDeclaration->mCloseParen = ParseMethodParams(methodDeclaration, params, commas, BfToken_RParen);
+	methodDeclaration->mCloseParen = ParseMethodParams(methodDeclaration, params, commas, BfToken_RParen, true);
 
 	// RParen	
 	if (methodDeclaration->mCloseParen == NULL)

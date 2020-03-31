@@ -12444,6 +12444,9 @@ void BfModule::CreateDIRetVal()
 
 void BfModule::CheckVariableDef(BfLocalVariable* variableDef)
 {	
+	if (variableDef->mName.IsEmpty())
+		return;
+
 	BfLocalVarEntry* localVarEntryPtr = NULL;
 	if ((mCurMethodState != NULL) && (mCurMethodState->mLocalVarSet.TryGet(BfLocalVarEntry(variableDef), &localVarEntryPtr)))
 	{

@@ -676,18 +676,22 @@ int BfMethodInstance::GetImplicitParamCount()
 	return 0;
 }
 
-String BfMethodInstance::GetParamName(int paramIdx)
+void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name)
 {
 	if (paramIdx == -1)
 	{
 		BF_ASSERT(!mMethodDef->mIsStatic);
-		return "this";
+		name = "this";
+		return;
 	}
 
 	if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodDef->mIsLocalMethod))
 	{
 		if (paramIdx < (int)mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries.size())
-			return mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[paramIdx].mName;
+		{
+			name = mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[paramIdx].mName;
+			return;
+		}
 	}
 
 	BfMethodParam* methodParam = &mParams[paramIdx];
@@ -696,11 +700,19 @@ String BfMethodInstance::GetParamName(int paramIdx)
 	{
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
 		if (methodParam->mDelegateParamNameCombine)
-			return paramDef->mName + "__" + invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
+			name = paramDef->mName + "__" + invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
 		else
-			return invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
+			invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx, name);
+		return;
 	}
-	return paramDef->mName;
+	name = paramDef->mName;
+}
+
+String BfMethodInstance::GetParamName(int paramIdx)
+{
+	String paramName;
+	GetParamName(paramIdx, paramName);
+	return paramName;
 }
 
 BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
@@ -2644,11 +2656,6 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 			BfTypeReference* fieldType = param->mTypeRef;
 			hashVal = ((hashVal ^ (Hash(fieldType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
 			hashVal = ((hashVal ^ (HashNode(param->mNameNode))) << 5) - hashVal;
-
-			if (param->mNameNode == NULL)
-			{
-				ctx->mFailed = true;
-			}
 		}
 
 		return hashVal;
@@ -3158,7 +3165,11 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		{
 			if (!Equals(lhsInvokeMethodInstance->GetParamType(paramIdx), rhsDelegateType->mParams[paramIdx]->mTypeRef, ctx))
 				return false;
-			if (lhsInvokeMethodInstance->GetParamName(paramIdx) != rhsDelegateType->mParams[paramIdx]->mNameNode->ToString())
+			StringView rhsParamName;
+			if (rhsDelegateType->mParams[paramIdx]->mNameNode != NULL)
+				rhsParamName = rhsDelegateType->mParams[paramIdx]->mNameNode->ToStringView();
+
+			if (lhsInvokeMethodInstance->GetParamName(paramIdx) != rhsParamName)
 				return false;
 		}
 		return true;

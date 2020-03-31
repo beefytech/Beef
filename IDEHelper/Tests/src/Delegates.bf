@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 
 namespace Tests
@@ -136,6 +138,17 @@ namespace Tests
 			val1.TestLambda();
 			ClassA ca = scope .();
 			ca.TestLambda();
+		}
+
+		public static void TestCasting()
+		{
+			delegate int(int, int) dlg0 = null;
+			delegate int(int a, int b) dlg1 = dlg0;
+			delegate int(int a2, int b2) dlg2 = (.)dlg1;
+
+			function int(int, int) func0 = null;
+			function int(int a, int b) func1 = func0;
+			function int(int a2, int b2) func2 = (.)func1;
 		}
 	}
 }

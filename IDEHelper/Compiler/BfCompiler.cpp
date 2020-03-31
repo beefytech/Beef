@@ -7024,6 +7024,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 
 					int dispParamIdx = 0;
 
+					StringT<64> paramName;
 					for (int paramIdx = 0; paramIdx < (int)methodInstance->GetParamCount(); paramIdx++)
 					{
 						auto paramKind = methodInstance->GetParamKind(paramIdx);
@@ -7083,8 +7084,12 @@ void BfCompiler::GenerateAutocompleteInfo()
 						}
 						else
 							methodText += bfModule->TypeToString(type, BfTypeNameFlag_ResolveGenericParamNames, genericMethodNameOverridesPtr);
-						methodText += " ";
-						methodText += methodInstance->GetParamName(paramIdx);
+						methodInstance->GetParamName(paramIdx, paramName);
+						if (!paramName.IsEmpty())
+						{
+							methodText += " ";
+							methodText += paramName;
+						}
 
 						if (paramInitializer != NULL)
 						{
