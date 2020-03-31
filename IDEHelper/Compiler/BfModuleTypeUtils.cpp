@@ -9532,58 +9532,57 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 
 	// Function->Function and Delegate->Delegate where type is compatible but not exact
 	if (((typedVal.mType->IsDelegate()) || (typedVal.mType->IsFunction())) &&
+		(typedVal.mType != toType) && // Don't bother to check for exact match, let CastToValue handle this
 		((typedVal.mType->IsDelegate()) == (toType->IsDelegate())) &&
 		((typedVal.mType->IsFunction()) == (toType->IsFunction())))
 	{
-		auto fromDelegateType = (BfDelegateType*)typedVal.mType->ToTypeInstance();
-		auto toDelegateType = (BfDelegateType*)toType;
+		auto fromTypeInst = typedVal.mType->ToTypeInstance();
+		auto toTypeInst = toType->ToTypeInstance();
+		
+		auto fromMethodInst = GetRawMethodByName(fromTypeInst, "Invoke", -1, true);
+		auto toMethodInst = GetRawMethodByName(toTypeInst, "Invoke", -1, true);
+				
+		if ((fromMethodInst != NULL) && (toMethodInst != NULL) &&
+			(fromMethodInst->mMethodDef->mCallingConvention == toMethodInst->mMethodDef->mCallingConvention) &&
+			(fromMethodInst->mReturnType == toMethodInst->mReturnType) &&			
+			(fromMethodInst->GetParamCount() == toMethodInst->GetParamCount()))
+		{	
+			bool matched = true;
 
-		if (fromDelegateType->mReturnType == toDelegateType->mReturnType)
-		{
-			auto fromMethodInst = GetRawMethodByName(fromDelegateType, "Invoke");
-			auto toMethodInst = GetRawMethodByName(toDelegateType, "Invoke");
-			
-			if ((fromMethodInst->mMethodDef->mCallingConvention == toMethodInst->mMethodDef->mCallingConvention) &&
-				(fromMethodInst->mReturnType == toMethodInst->mReturnType) &&
-				(fromMethodInst->GetParamCount() == toMethodInst->GetParamCount()))
-			{	
-				bool matched = true;
+			StringT<64> fromParamName;
+			StringT<64> toParamName;
 
-				StringT<64> fromParamName;
-				StringT<64> toParamName;
+			for (int paramIdx = 0; paramIdx < (int)fromMethodInst->GetParamCount(); paramIdx++)
+			{
+				bool nameMatches = true;
 
-				for (int paramIdx = 0; paramIdx < (int)fromMethodInst->GetParamCount(); paramIdx++)
+				if (!explicitCast)
 				{
-					bool nameMatches = true;
-
-					if (!explicitCast)
-					{
-						fromMethodInst->GetParamName(paramIdx, fromParamName);
-						toMethodInst->GetParamName(paramIdx, toParamName);
-						if ((!fromParamName.IsEmpty()) && (!toParamName.IsEmpty()))
-							nameMatches = fromParamName == toParamName;
-					}
-
-					if ((fromMethodInst->GetParamKind(paramIdx) == toMethodInst->GetParamKind(paramIdx)) &&
-						(fromMethodInst->GetParamType(paramIdx) == toMethodInst->GetParamType(paramIdx)) &&
-						(nameMatches))
-					{
-						// Matched, required for implicit/explicit
-					}					
-					else
-					{
-						matched = false;
-						break;
-					}					
+					fromMethodInst->GetParamName(paramIdx, fromParamName);
+					toMethodInst->GetParamName(paramIdx, toParamName);
+					if ((!fromParamName.IsEmpty()) && (!toParamName.IsEmpty()))
+						nameMatches = fromParamName == toParamName;
 				}
 
-				if (matched)
+				if ((fromMethodInst->GetParamKind(paramIdx) == toMethodInst->GetParamKind(paramIdx)) &&
+					(fromMethodInst->GetParamType(paramIdx) == toMethodInst->GetParamType(paramIdx)) &&
+					(nameMatches))
 				{
-					BfTypedValue loadedVal = LoadValue(typedVal);					
-					return BfTypedValue(mBfIRBuilder->CreateBitCast(loadedVal.mValue, mBfIRBuilder->MapType(toType)), toType);
-				}
+					// Matched, required for implicit/explicit
+				}					
+				else
+				{
+					matched = false;
+					break;
+				}					
 			}
-		}
+
+			if (matched)
+			{
+				BfTypedValue loadedVal = LoadValue(typedVal);					
+				return BfTypedValue(mBfIRBuilder->CreateBitCast(loadedVal.mValue, mBfIRBuilder->MapType(toType)), toType);
+			}
+		}		
 	}
 
 	// Struct truncate
