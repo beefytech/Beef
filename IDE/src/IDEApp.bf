@@ -6771,7 +6771,7 @@ namespace IDE
             OutputSmart(useStr);
         }
 
-		public void SetScale(float scale, bool force = false)
+		public void PhysSetScale(float scale, bool force = false)
 		{
 			var prevScale = DarkTheme.sScale;
 			float useScale = Math.Clamp(scale, 0.5f, 4.0f);
@@ -6816,6 +6816,12 @@ namespace IDE
 			    }
 				widgetWindow.mIsDirty = true;
 			}
+		}
+
+		public void SetScale(float scale, bool force = false)
+		{
+			PhysSetScale(scale, force);
+			gApp.mSettings.mEditorSettings.mUIScale = DarkTheme.sScale * 100.0f;
 		}
 
         void SysKeyDown(KeyDownEvent evt)

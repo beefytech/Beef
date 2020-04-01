@@ -3114,8 +3114,8 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		}
 	}
 
-	if (!thisValue)
-		thisValue = BfTypedValue(mModule->mCurTypeInstance);
+	if (!thisValue.HasType())	
+		thisValue = BfTypedValue(mModule->mCurTypeInstance);	
 	BfTypedValue result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_IsImplicitThis);
 	if (mPropDef != NULL)
 	{

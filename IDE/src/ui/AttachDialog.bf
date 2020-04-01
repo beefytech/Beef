@@ -28,7 +28,7 @@ namespace IDE.ui
 		public this()
 		{
 			mWindowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.TopMost | BFWindow.Flags.Caption |
-			    BFWindow.Flags.Border | BFWindow.Flags.SysMenu | BFWindow.Flags.Resizable;
+			    BFWindow.Flags.Border | BFWindow.Flags.SysMenu | BFWindow.Flags.Resizable | .PopupPosition;
 
 			AddOkCancelButtons(new (evt) => { Attach(); }, null, 0, 1);
 			//mApplyButton = AddButton("Apply", (evt) => { evt.mCloseDialog = false; ApplyChanges(); });

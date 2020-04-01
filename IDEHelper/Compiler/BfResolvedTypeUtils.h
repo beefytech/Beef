@@ -817,7 +817,8 @@ public:
 	bool IsTestMethod();
 	int GetParamCount();
 	int GetImplicitParamCount();
-	String GetParamName(int paramIdx);
+	void GetParamName(int paramIdx, StringImpl& name);
+	String GetParamName(int paramIdx);	
 	BfType* GetParamType(int paramIdx, bool useResolvedType = true);	
 	bool GetParamIsSplat(int paramIdx);
 	BfParamKind GetParamKind(int paramIdx);

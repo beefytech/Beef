@@ -38,7 +38,8 @@ namespace Beefy.theme.dark
 			mDragMarginSize = GS!(64);
 			mDragWindowMarginSize = GS!(10);
 
-			mWindowMargin = 0;
+			if (mParentDockingFrame == null)
+				mWindowMargin = GS!(1);
 			mSplitterSize = GS!(6.0f);
 			mWindowSpacing = GS!(2.0f);
 		}

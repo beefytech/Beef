@@ -497,7 +497,7 @@ namespace IDE.ui
         {
 			//mMinWidth = GS!(320);
 
-            mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable;
+            mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable | .PopupPosition;
 
             mButtonBottomMargin = GS!(6);
             mButtonRightMargin = GS!(6);
@@ -1877,7 +1877,7 @@ namespace IDE.ui
 					if (propIdx == 0)
 					{
 				        var comboBox = new DarkComboBox();
-				        comboBox.mFrameless = true;
+				        comboBox.mFrameKind = .Transparent;
 				        comboBox.mPopulateMenuAction.Add(new (menu) => { PopulateComboBox(menu, propEntries); });
 				        subItem.AddWidget(comboBox);
 				        subItem.mOnResized.Add(new (evt) => { comboBox.Resize(0, 0, GetValueEditWidth(subItem), subItem.mHeight + 1); });

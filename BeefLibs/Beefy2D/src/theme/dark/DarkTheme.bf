@@ -181,6 +181,7 @@ namespace Beefy.theme.dark
 			CheckIndeterminate,
 			CodeError,
 			CodeWarning,
+			ComboBoxFrameless,
 
             COUNT
         };
@@ -431,7 +432,7 @@ namespace Beefy.theme.dark
         {
             DarkDockingFrame dockingFrame = new DarkDockingFrame();
             if (parent == null)
-                dockingFrame.mWindowMargin = 1;
+                dockingFrame.mWindowMargin = GS!(1);
 			else if (var darkParent = parent as DarkDockingFrame)
 			{
 				dockingFrame.mDrawBkg = darkParent.mDrawBkg;

@@ -481,7 +481,7 @@ namespace Beefy.theme.dark
 					useWidth = Math.Max(mWidth - GS!(36), 0);
 				useWidth = (float)Math.Round(useWidth);
 
-                tabButton.Resize(curX, tabButton.mY, useWidth, tabButton.mHeight);
+                tabButton.Resize(curX, tabButton.mY, useWidth, DarkTheme.sUnitSize);
 
                 //float offset = tabIdx - leftObscure;
                 float widthSubtract = Math.Max(0, leftObscure);
@@ -506,7 +506,7 @@ namespace Beefy.theme.dark
 	                if (tabIdx < mTabs.Count - 1)
 	                {
 	                    tabButton.mWidth = (float)Math.Round(Math.Min(tabButton.mWantWidth, showWidth + GS!(8)));
-	                    tabButton.mCloseButton.mVisible = tabButton.mWidth >= tabButton.mWantWidth;
+	                    tabButton.mCloseButton.mVisible = tabButton.mWidth + 1 >= tabButton.mWantWidth;
 	                }
 	                else
 	                {
@@ -590,7 +590,7 @@ namespace Beefy.theme.dark
 
                 mChildWidgets.Insert(0, tabButton);
 
-                tabButton.Resize(curX, tabButton.mY, tabButton.mWidth, tabButton.mHeight);
+                tabButton.Resize(curX, tabButton.mY, tabButton.mWidth, DarkTheme.sUnitSize);
                 
                 curX += showWidth;                
             }

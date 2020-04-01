@@ -10111,7 +10111,7 @@ bool BfModule::TryGetConstString(BfIRConstHolder* constHolder, BfIRValue irValue
 	auto constant = constHolder->GetConstant(irValue);
 	if (constant == NULL)
 		return false;
-	if (!BfIRConstHolder::IsInt(constant->mTypeCode))
+	if (constant->mTypeCode != BfTypeCode_StringId)
 		return false;
 	int stringId = constant->mInt32;
 	BfStringPoolEntry* entry = NULL;
@@ -12062,7 +12062,7 @@ BfTypedValue BfModule::GetThis()
 			if (checkMethodState->mMixinState != NULL)
 			{
 				BfTypedValue thisValue = checkMethodState->mMixinState->mTarget;
-				if (thisValue)
+				if (thisValue.HasType())
 				{
 					checkMethodState->mMixinState->mLastTargetAccessId = useMethodState->GetRootMethodState()->mCurAccessId++;
 					if (!thisValue.mType->IsValueType())
@@ -12444,6 +12444,9 @@ void BfModule::CreateDIRetVal()
 
 void BfModule::CheckVariableDef(BfLocalVariable* variableDef)
 {	
+	if (variableDef->mName.IsEmpty())
+		return;
+
 	BfLocalVarEntry* localVarEntryPtr = NULL;
 	if ((mCurMethodState != NULL) && (mCurMethodState->mLocalVarSet.TryGet(BfLocalVarEntry(variableDef), &localVarEntryPtr)))
 	{

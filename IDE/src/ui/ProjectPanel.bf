@@ -26,7 +26,8 @@ namespace IDE.ui
 		public override void RehupScale(float oldScale, float newScale)
 		{
 			base.RehupScale(oldScale, newScale);
-			Utils.SnapScale(ref mLabelOffset, newScale / oldScale);
+			if (mLabelOffset != 0)
+				mLabelOffset = GS!(-16);
 		}
 
         protected override float GetLabelOffset()

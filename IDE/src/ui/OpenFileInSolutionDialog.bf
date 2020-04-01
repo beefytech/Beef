@@ -67,7 +67,7 @@ namespace IDE.ui
         
         public this()
         {
-            mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable;
+            mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable | .PopupPosition;
 
             AddOkCancelButtons(new (evt) => { GotoFile(); }, null, 0, 1);
             //mApplyButton = AddButton("Apply", (evt) => { evt.mCloseDialog = false; ApplyChanges(); });

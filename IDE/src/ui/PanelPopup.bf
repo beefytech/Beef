@@ -11,7 +11,7 @@ namespace IDE.ui
 	class PanelPopup : Widget
 	{
 		public Panel mPanel;
-		public BFWindowBase.Flags mWindowFlags = .ClientSized | .NoActivate | .NoMouseActivate | .DestAlpha;
+		public BFWindowBase.Flags mWindowFlags = .ClientSized | .NoActivate | .NoMouseActivate | .DestAlpha | .PopupPosition;
 		Widget mRelativeWidget;
 		bool mReverse;
 		float mMinContainerWidth = 32;

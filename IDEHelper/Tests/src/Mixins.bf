@@ -7,6 +7,7 @@ namespace Tests
 		class MixClass
 		{
 			public int mA = 100;
+			public static int sA = 200;
 
 			public mixin MixA(var addTo)
 			{
@@ -22,6 +23,11 @@ namespace Tests
 
 				AddIt();
 			}
+
+			public static mixin MixC(var val)
+			{
+				val + sA
+			}
 		}
 
 		[Test]
@@ -32,6 +38,7 @@ namespace Tests
 			Test.Assert(mc.mA == 110);
 			mc.MixB!(10);
 			Test.Assert(mc.mA == 120);
+			Test.Assert(MixClass.MixC!(30) == 230);
 		}
 
 		[Test]

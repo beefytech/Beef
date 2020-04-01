@@ -792,7 +792,7 @@ namespace IDE
 			gApp.mSettings.mEditorSettings.mFontSize = Math.Clamp(gApp.mSettings.mEditorSettings.mFontSize, 6.0f, 72.0f);
 
 			Font.ClearFontNameCache();
-			gApp.SetScale(gApp.mSettings.mEditorSettings.mUIScale / 100.0f, true);
+			gApp.PhysSetScale(gApp.mSettings.mEditorSettings.mUIScale / 100.0f, true);
 
 			DeleteAndNullify!(gApp.mKeyChordState);
 
