@@ -20843,8 +20843,8 @@ void BfModule::DbgFinish()
 			bool hasConfirmedReference = false;
 			for (auto& methodInstGroup : ownedType->mMethodInstanceGroups)
 			{
-				if ((methodInstGroup.IsImplemented()) && (methodInstGroup.mDefault != NULL) && 
-					(!methodInstGroup.mDefault->mMethodDef->mIsStatic) && (methodInstGroup.mDefault->mIsReified) &&
+				if ((methodInstGroup.IsImplemented()) && (methodInstGroup.mDefault != NULL) && 					
+					(!methodInstGroup.mDefault->mMethodDef->mIsStatic) && (methodInstGroup.mDefault->mIsReified) && (!methodInstGroup.mDefault->mAlwaysInline) &&
 					((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Referenced)))
 				{
 					hasConfirmedReference = true;
