@@ -2010,11 +2010,6 @@ void BeCOFFObject::Generate(BeModule* module)
 
 			BF_ASSERT(globalVar->mAlign != -1);
 
-			if (globalVar->mName == "sBfTypeData._J")
-			{
-				NOP;
-			}
-
 			if (globalVar->mIsConstant)
 			{
 				auto constVal = BeValueDynCast<BeConstant>(globalVar->mInitializer);

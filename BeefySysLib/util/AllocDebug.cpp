@@ -2,6 +2,7 @@
 #include "CritSect.h"
 #include "util/Dictionary.h"
 
+
 #ifdef DEF_BF_ALLOCDEBUG
 #define USE_BF_ALLOCDEBUG
 #endif
@@ -18,6 +19,8 @@ USING_NS_BF;
 #define USE_STOMP
 
 #define STOMP_MAGIC 0xBF12BF34
+
+#ifdef BF_PLATFORM_WINDOWS
 
 class BfBitSet
 {
@@ -326,6 +329,8 @@ void DbgHeapFree(const void* ptr, const char* fileName, int lineNum)
 
 	assert("Not found" == 0);
 }
+
+#endif
 
 #ifdef DEF_BF_ALLOCDEBUG
 
