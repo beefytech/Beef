@@ -4461,7 +4461,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto pointerTypeData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectPointerType, BfIRPopulateType_Full), pointerTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectPointerType), true,
 					BfIRLinkageType_External, pointerTypeData, typeDataName);				
-
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 			}
 			else if (type->IsSizedArray())
@@ -4478,18 +4478,19 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto sizedArrayTypeData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectSizedArrayType, BfIRPopulateType_Full), sizedArrayTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectSizedArrayType), true,
 					BfIRLinkageType_External, sizedArrayTypeData, typeDataName);
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 			}
 			else
 			{
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(mContext->mBfTypeType), true,
 					BfIRLinkageType_External, typeData, typeDataName);
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 			}
 		}
 		else
 			typeDataVar = mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(mContext->mBfTypeType));
-		
-		mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
+				
 		mTypeDataRefs[typeInstance] = typeDataVar;
 
 		return typeDataVar;

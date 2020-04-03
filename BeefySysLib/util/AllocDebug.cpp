@@ -12,7 +12,6 @@
 
 USING_NS_BF;
 
-#ifdef DEF_BF_ALLOCDEBUG
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -190,7 +189,7 @@ void StompInit()
 	gStompInside = false;
 }
 
-static void* StompAlloc(int size)
+void* StompAlloc(int size)
 {
 	//return malloc(size);
 
@@ -222,7 +221,7 @@ static void* StompAlloc(int size)
 	gStompInside = false;
 }
 
-static void StompFree(void* addr)
+void StompFree(void* addr)
 {
 	if (gSA_CritSect == NULL)
 		StompInit();
@@ -328,6 +327,8 @@ void DbgHeapFree(const void* ptr, const char* fileName, int lineNum)
 	assert("Not found" == 0);
 }
 
+#ifdef DEF_BF_ALLOCDEBUG
+
 void DbgHeapCheck()
 {
 	for (int i = 0; i < (int) gDbgHeapRecords.size(); i++)
@@ -391,7 +392,7 @@ void* __cdecl operator new(std::size_t size)
 #ifdef USE_STOMP
 	return StompAlloc((int)size);
 #else
-	return DbgHeapAlloc(size, fileName, lineNum);
+	return DbgHeapAlloc(size, "", 0);
 #endif
 }
 
@@ -427,7 +428,7 @@ void operator delete(void* ptr)
 #ifdef USE_STOMP
 	StompFree(ptr);
 #else
-	DbgHeapFree(ptr, fileName, lineNum);
+	DbgHeapFree(ptr, "", 0);
 #endif
 }
 
@@ -436,7 +437,7 @@ void operator delete[](void* ptr)
 #ifdef USE_STOMP
 	StompFree(ptr);
 #else
-	DbgHeapFree(ptr, fileName, lineNum);
+	DbgHeapFree(ptr, "", 0);
 #endif
 }
 
