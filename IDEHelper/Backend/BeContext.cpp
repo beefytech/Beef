@@ -108,7 +108,10 @@ void BeContext::SetStructBody(BeStructType* structType, const SizedArrayImpl<BeT
 		member.mType = beType;
 		member.mByteOffset = dataPos;
 		dataPos += beType->mSize;
-		structType->mAlign = std::max(structType->mAlign, beType->mAlign);
+		if (packed)
+			structType->mAlign = 1;
+		else
+			structType->mAlign = std::max(structType->mAlign, beType->mAlign);
 		structType->mMembers.push_back(member);
 	}
 	if (!packed)

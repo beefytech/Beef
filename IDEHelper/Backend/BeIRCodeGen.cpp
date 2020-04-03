@@ -634,7 +634,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				globalVariable->mName = name;
 				globalVariable->mIsTLS = isTLS;
 				globalVariable->mAlign = varType->mAlign;
-				globalVariable->mUnnamedAddr = false;
+				globalVariable->mUnnamedAddr = false;				
 				BF_ASSERT(varType->mAlign > 0);
 
 				SetResult(streamId, globalVariable);

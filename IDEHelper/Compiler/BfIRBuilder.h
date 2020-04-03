@@ -715,6 +715,7 @@ struct BfGlobalVar
 	int mStreamId;
 	BfIRValue mInitializer;
 	bool mIsTLS;	
+	int mAlignment;
 };
 
 struct BfGlobalVar_TypeInst

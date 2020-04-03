@@ -3153,6 +3153,7 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 				initValue,
 				staticVarName,					
 				isThreadLocal);
+			mBfIRBuilder->GlobalVar_SetAlignment(globalVar, fieldType->mAlign);
 			
 			BF_ASSERT(globalVar);
 			mStaticFieldRefs[fieldInstance] = globalVar;
@@ -4114,7 +4115,7 @@ BfIRValue BfModule::CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* ou
 				true,
 				BfIRLinkageType_External,
 				BfIRValue(),
-				classVDataName);
+				classVDataName);		
 
 		mClassVDataRefs[typeInstance] = globalVariable;
 	}
@@ -4459,7 +4460,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto reflectPointerType = ResolveTypeDef(mCompiler->mReflectPointerType)->ToTypeInstance();
 				auto pointerTypeData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectPointerType, BfIRPopulateType_Full), pointerTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectPointerType), true,
-					BfIRLinkageType_External, pointerTypeData, typeDataName);
+					BfIRLinkageType_External, pointerTypeData, typeDataName);				
+
 				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 			}
 			else if (type->IsSizedArray())
@@ -4487,6 +4489,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		else
 			typeDataVar = mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(mContext->mBfTypeType));
 		
+		mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 		mTypeDataRefs[typeInstance] = typeDataVar;
 
 		return typeDataVar;

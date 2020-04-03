@@ -4628,7 +4628,8 @@ void DbgExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		Fail("Expected single index", indexerExpr->mOpenBracket);
 		return;
 	}
-	DbgTypedValue indexArgument = indexerValues[0];
+	DbgTypedValue indexArgument = indexerValues[0];	
+	indexArgument.mType = indexArgument.mType->RemoveModifiers();
 	if (!indexArgument.mType->IsInteger())
 	{
 		mResult = DbgTypedValue();
