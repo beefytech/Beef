@@ -140,6 +140,12 @@ namespace System
 	    
 	}
 
+	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
+	public struct UseLLVMAttribute : Attribute
+	{
+	    
+	}
+
     [AttributeUsage(.Method /*2*/ | .StaticField)]
     public struct CLinkAttribute : Attribute
     {

@@ -135,6 +135,12 @@ namespace System
 	}
 
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
+	public struct UseLLVMAttribute : Attribute
+	{
+	    
+	}
+
+	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
 	public struct OptimizeAttribute : Attribute
 	{
 	    
