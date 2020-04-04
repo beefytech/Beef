@@ -12,8 +12,7 @@ namespace System
 #else
 	typealias int_arsize = int32;
 #endif
-
-	[CRepr]
+	
 	class Array
 	{
 		protected int_arsize mLength;
@@ -184,7 +183,7 @@ namespace System
 		}
 	}
 
-	[CRepr]
+	[Ordered]
 	class Array1<T> : Array
 	{
 		T mFirstElement;
@@ -278,7 +277,7 @@ namespace System
 		}
 	}
 
-	[CRepr]
+	[Ordered]
 	class Array2<T> : Array
 	{
 		int_arsize mLength1;
@@ -389,7 +388,7 @@ namespace System
 		}
 	}
 
-	[CRepr]
+	[Ordered]
 	class Array3<T> : Array
 	{
 		int_arsize mLength1;
@@ -505,7 +504,7 @@ namespace System
 		}
 	}
 
-	[CRepr]
+	[Ordered]
 	class Array4<T> : Array
 	{
 		int_arsize mLength1;

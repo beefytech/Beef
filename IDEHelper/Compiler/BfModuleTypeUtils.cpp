@@ -509,6 +509,26 @@ void BfModule::AddFieldDependency(BfTypeInstance* typeInstance, BfFieldInstance*
 	}
 }
 
+BfFieldInstance* BfModule::GetFieldByName(BfTypeInstance* typeInstance, const StringImpl& fieldName, bool isRequired, BfAstNode* refNode)
+{
+	PopulateType(typeInstance);
+	typeInstance->mTypeDef->PopulateMemberSets();
+	BfMemberSetEntry* entry = NULL;
+	BfFieldDef* fieldDef = NULL;
+	if (typeInstance->mTypeDef->mFieldSet.TryGetWith(fieldName, &entry))
+	{
+		fieldDef = (BfFieldDef*)entry->mMemberDef;
+		return &typeInstance->mFieldInstances[fieldDef->mIdx];
+	}
+
+	if (isRequired)
+	{
+		FailInternal(StrFormat("Field '%s' not found in '%s'", fieldName.c_str(), TypeToString(typeInstance).c_str()), refNode);
+	}
+
+	return NULL;
+}
+
 void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 {
 	struct MemberRef
@@ -4268,7 +4288,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		if (!mIsModuleMutable)
 			PrepareForIRWriting(methodInstance->GetOwner());
 		
-		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);		
+		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);				
 		methodInstance->mIRFunction = func;
 		mFuncReferences[methodInstance] = func;		
 	}

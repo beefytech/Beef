@@ -2622,6 +2622,14 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	return bfError;
 }
 
+BfError* BfModule::FailInternal(const StringImpl& error, BfAstNode* refNode)
+{
+	if (mHadBuildError)
+		return NULL;
+
+	return Fail(error, refNode);
+}
+
 BfError* BfModule::FailAfter(const StringImpl& error, BfAstNode* refNode)
 {
 	if (mIgnoreErrors)
@@ -9057,29 +9065,6 @@ bool BfModule::HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodNa
 		typeInstance = typeInstance->mBaseType;
 	}
 	return BfModuleMethodInstance();
-}
-
-BfFieldInstance* BfModule::GetFieldByName(BfTypeInstance* typeInstance, const StringImpl& fieldName)
-{
-	PopulateType(typeInstance, BfPopulateType_DataAndMethods);
-
-	typeInstance->mTypeDef->PopulateMemberSets();
-	BfMemberSetEntry* entry = NULL;
-	BfFieldDef* fieldDef = NULL;
-	if (typeInstance->mTypeDef->mFieldSet.TryGetWith(fieldName, &entry))
-	{
-		fieldDef = (BfFieldDef*)entry->mMemberDef;
-		return &typeInstance->mFieldInstances[fieldDef->mIdx];
-	}
-
-// 	for (auto& fieldInst : typeInstance->mFieldInstances)
-// 	{
-// 		auto fieldDef = fieldInst.GetFieldDef();
-// 		if ((fieldDef != NULL) && (fieldDef->mName == fieldName))
-// 			return &fieldInst;
-// 	}
-
-	return NULL;
 }
 
 String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* methodGenericArgs)
