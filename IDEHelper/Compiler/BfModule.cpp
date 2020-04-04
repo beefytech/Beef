@@ -4259,7 +4259,7 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 	else
 	{
 		typeDataName += "sBfTypeData.";
-		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type);
+		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, this);
 	}
 
 	BfLogSysM("Creating TypeData %s\n", typeDataName.c_str());
