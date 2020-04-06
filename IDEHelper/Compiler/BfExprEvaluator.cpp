@@ -5515,10 +5515,14 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				}
 				else 
 				{
-					argValue = mModule->LoadValue(argValue);
-					auto firstAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 1);
-					auto indexedAddr = mModule->CreateIndexedValue(argValue.mType, firstAddr, extendedParamIdx);
-					auto storeInst = mModule->mBfIRBuilder->CreateAlignedStore(argValue.mValue, indexedAddr, argValue.mType->mAlign);
+					auto firstElem = mModule->GetFieldByName(expandedParamsArray.mType->ToTypeInstance(), "mFirstElement");
+					if (firstElem != NULL)					
+					{
+						argValue = mModule->LoadValue(argValue);
+						auto firstAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, firstElem->mDataIdx);
+						auto indexedAddr = mModule->CreateIndexedValue(argValue.mType, firstAddr, extendedParamIdx);
+						auto storeInst = mModule->mBfIRBuilder->CreateAlignedStore(argValue.mValue, indexedAddr, argValue.mType->mAlign);
+					}
 				}				
 			}
 			extendedParamIdx++;
@@ -11511,7 +11515,17 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 			mModule->Fail("INTERNAL ERROR: Unable to find array 'length' field", objCreateExpr);
 			return;
 		}		
-		auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayBits, 0, 1/*, "length"*/);
+
+		mResult = arrayValue;
+
+		auto lengthFieldInstance = mModule->GetFieldByName(arrayType->mBaseType->ToTypeInstance(), "mLength");
+		if (lengthFieldInstance == NULL)		
+			return;		
+		auto firstElementFieldInstance = mModule->GetFieldByName(arrayType->ToTypeInstance(), "mFirstElement");
+		if (firstElementFieldInstance == NULL)
+			return;
+
+		auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayBits, 0, lengthFieldInstance->mDataIdx);
 
 		if (arrayLengthBitCount == 64)
 			mModule->mBfIRBuilder->CreateAlignedStore(arraySize, addr, 8);
@@ -11523,7 +11537,12 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 
 		for (int lowerDim = 1; lowerDim < (int)dimLengthVals.size(); lowerDim++)
 		{
-			addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayValue.mValue, 0, lowerDim/*, "dimLength"*/); // mDimLengthX
+			auto length1FieldInstance = mModule->GetFieldByName(arrayType->ToTypeInstance(), "mLength1");
+			if (length1FieldInstance == NULL)
+				return;
+
+			addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayValue.mValue, 0, length1FieldInstance->mDataIdx + lowerDim - 1);
+
 			auto lowerDimVal = mModule->mBfIRBuilder->CreateNumericCast(dimLengthVals[lowerDim], true, (arrayLengthBitCount == 64) ? BfTypeCode_Int64 : BfTypeCode_Int32);
 			mModule->mBfIRBuilder->CreateStore(lowerDimVal, addr);
 		}
@@ -11531,10 +11550,9 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		if (resultType->IsValuelessType())
 			addr = mModule->mBfIRBuilder->GetFakeVal();
 		else
-			addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayValue.mValue, 0, (int)dimLengthVals.size()/*, "elem"*/); // mFirstElement
+			addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayValue.mValue, 0, firstElementFieldInstance->mDataIdx);
 		_HandleInitExprs(addr, 0, objCreateExpr->mArguments);
-
-		mResult = arrayValue;
+		
 		return;
 	}
 	else

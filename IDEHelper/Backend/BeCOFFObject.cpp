@@ -1829,12 +1829,16 @@ void BeCOFFObject::InitSect(BeCOFFSection& sect, const StringImpl& name, int cha
 		MarkSectionUsed(sect, makeSectSymbol);
 }
 
-void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
-{	
+void BeCOFFObject::AlignConst(BeCOFFSection& sect, BeConstant* constVal)
+{
 	auto beType = constVal->GetType();
 	sect.mAlign = BF_MAX(sect.mAlign, beType->mAlign);
 	sect.mData.Align(beType->mAlign);
+}
 
+void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
+{	
+	auto beType = constVal->GetType();	
 	if (auto globalVar = BeValueDynCast<BeGlobalVariable>(constVal))
 	{
 		auto sym = GetSymbol(globalVar);
@@ -1881,14 +1885,7 @@ void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
 		}
 		else
 			BF_FATAL("Invalid StructConst type");
-	}
-	else if (auto constArr = BeValueDynCast<BeStructConstant>(constVal))
-	{
-		for (auto member : constArr->mMemberValues)
-		{
-			WriteConst(sect, member);
-		}
-	}
+	}	
 	else if (auto constStr = BeValueDynCast<BeStringConstant>(constVal))
 	{
 		sect.mData.Write((void*)constStr->mString.c_str(), (int)constStr->mString.length() + 1);
@@ -1995,7 +1992,7 @@ void BeCOFFObject::Generate(BeModule* module)
 		sym->mIsStatic = globalVar->mLinkageType == BfIRLinkageType_Internal;
 		sym->mSymKind = BeMCSymbolKind_External;
 		sym->mIdx = (int)mSymbols.size() - 1;
-		sym->mIsTLS = globalVar->mIsTLS;
+		sym->mIsTLS = globalVar->mIsTLS;		
 
 		globalVarSyms.push_back(sym);
 		mSymbolMap[globalVar] = sym;
@@ -2021,9 +2018,9 @@ void BeCOFFObject::Generate(BeModule* module)
 				sym->mSectionNum = mRDataSect.mSectionIdx + 1;
 				mRDataSect.mData.Align(globalVar->mAlign);
 				mRDataSect.mAlign = BF_MAX(mRDataSect.mAlign, globalVar->mAlign);
-				sym->mValue = mRDataSect.mData.GetSize();
-				//mRDataSect.mSizeOverride += globalVar->mType->mSize;
 
+				AlignConst(mRDataSect, constVal);
+				sym->mValue = mRDataSect.mData.GetSize();				
 				WriteConst(mRDataSect, constVal);
 			}
 			else if (globalVar->mIsTLS)

@@ -3312,7 +3312,7 @@ void BfIRCodeGen::HandleNextCmd()
 			//BF_ASSERT(file != NULL);
 			llvm::DIExpression* diExpr = NULL;			
 			auto gve = mDIBuilder->createGlobalVariableExpression((llvm::DIScope*)context, name.c_str(), linkageName.c_str(), (llvm::DIFile*)file, lineNum, (llvm::DIType*)type,
-				isLocalToUnit, diExpr, decl);
+				isLocalToUnit, diExpr, decl);			
 			
 			if (val != NULL)
 			{
@@ -3320,7 +3320,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{
 					globalVar->addDebugInfo(gve);
 				}
-			}
+			}			
 
 			SetResult(curId, diExpr);
 		}

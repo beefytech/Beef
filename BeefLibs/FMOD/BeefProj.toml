@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "FMOD"
+TargetType = "BeefLib"
+StartupObject = "Program"
+
+[Configs.Debug.Win64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
+
+[Configs.Release.Win64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]

@@ -2540,6 +2540,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								if (wasMadeAddr)
 									useType = mModule->CreatePointerType(useType);
 								staticValue = CreateGlobalVariable(mModule->mBfIRBuilder->MapType(useType), true, BfIRLinkageType_Internal, staticValue, staticVarName);
+								GlobalVar_SetAlignment(staticValue, useType->mAlign);
 							}
 
 							int flags = 0;

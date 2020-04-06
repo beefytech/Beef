@@ -113,7 +113,7 @@ namespace System
 
         public static bool operator==<TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where bool : operator T == TOther where TOther : struct
         {
-            if ((!lhs.mHasValue) || (!rhs.mHasValue)) return false;
+            if ((!lhs.mHasValue) || (!rhs.mHasValue)) return !lhs.mHasValue && !rhs.mHasValue; // Only both being null results in 'true'
             return lhs.mValue == rhs.mValue;
         }
 
@@ -133,7 +133,7 @@ namespace System
 
         public static bool operator!=<TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where bool : operator T != TOther where TOther : struct
         {
-            if ((!lhs.mHasValue) || (!rhs.mHasValue)) return false;
+            if ((!lhs.mHasValue) || (!rhs.mHasValue)) return !(!lhs.mHasValue && !rhs.mHasValue); // Only both being null results in 'false'
             return lhs.mValue != rhs.mValue;
         }
 

@@ -509,6 +509,26 @@ void BfModule::AddFieldDependency(BfTypeInstance* typeInstance, BfFieldInstance*
 	}
 }
 
+BfFieldInstance* BfModule::GetFieldByName(BfTypeInstance* typeInstance, const StringImpl& fieldName, bool isRequired, BfAstNode* refNode)
+{
+	PopulateType(typeInstance);
+	typeInstance->mTypeDef->PopulateMemberSets();
+	BfMemberSetEntry* entry = NULL;
+	BfFieldDef* fieldDef = NULL;
+	if (typeInstance->mTypeDef->mFieldSet.TryGetWith(fieldName, &entry))
+	{
+		fieldDef = (BfFieldDef*)entry->mMemberDef;
+		return &typeInstance->mFieldInstances[fieldDef->mIdx];
+	}
+
+	if (isRequired)
+	{
+		FailInternal(StrFormat("Field '%s' not found in '%s'", fieldName.c_str(), TypeToString(typeInstance).c_str()), refNode);
+	}
+
+	return NULL;
+}
+
 void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 {
 	struct MemberRef
@@ -2096,42 +2116,45 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	typeInstance->mInstSize = std::max(0, typeInstance->mInstSize);
 	typeInstance->mInstAlign = std::max(0, typeInstance->mInstAlign);
 
-	if ((typeInstance->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->mTypeDeclaration->mAttributes != NULL))
+	if (!typeInstance->IsBoxed())
 	{
-		BfAttributeTargets attrTarget;
-		if ((typeDef->mIsDelegate) || (typeDef->mIsFunction))
-			attrTarget = BfAttributeTargets_Delegate;
-		else if (typeInstance->IsEnum())
-			attrTarget = BfAttributeTargets_Enum;
-		else if (typeInstance->IsInterface())
-			attrTarget = BfAttributeTargets_Interface;
-		else if (typeInstance->IsStruct())
-			attrTarget = BfAttributeTargets_Struct;
-		else
-			attrTarget = BfAttributeTargets_Class;
-		if (!typeInstance->mTypeFailed)
+		if ((typeInstance->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->mTypeDeclaration->mAttributes != NULL))
 		{
-			// This allows us to avoid reentrancy when checking for inner types
-			SetAndRestoreValue<bool> prevSkipTypeProtectionChecks(typeInstance->mSkipTypeProtectionChecks, true);
-			if (typeDef->mIsCombinedPartial)
-			{
-				for (auto partialTypeDef : typeDef->mPartials)
-				{
-					if (partialTypeDef->mTypeDeclaration->mAttributes == NULL)
-						continue;
-					BfTypeState typeState;
-					typeState.mPrevState = mContext->mCurTypeState;
-					typeState.mCurTypeDef = partialTypeDef;
-					typeState.mTypeInstance = typeInstance;
-					SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-
-					if (typeInstance->mCustomAttributes == NULL)
-						typeInstance->mCustomAttributes = new BfCustomAttributes();
-					GetCustomAttributes(typeInstance->mCustomAttributes, partialTypeDef->mTypeDeclaration->mAttributes, attrTarget);
-				}
-			}
+			BfAttributeTargets attrTarget;
+			if ((typeDef->mIsDelegate) || (typeDef->mIsFunction))
+				attrTarget = BfAttributeTargets_Delegate;
+			else if (typeInstance->IsEnum())
+				attrTarget = BfAttributeTargets_Enum;
+			else if (typeInstance->IsInterface())
+				attrTarget = BfAttributeTargets_Interface;
+			else if (typeInstance->IsStruct())
+				attrTarget = BfAttributeTargets_Struct;
 			else
-				typeInstance->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, attrTarget);
+				attrTarget = BfAttributeTargets_Class;
+			if (!typeInstance->mTypeFailed)
+			{
+				// This allows us to avoid reentrancy when checking for inner types
+				SetAndRestoreValue<bool> prevSkipTypeProtectionChecks(typeInstance->mSkipTypeProtectionChecks, true);
+				if (typeDef->mIsCombinedPartial)
+				{
+					for (auto partialTypeDef : typeDef->mPartials)
+					{
+						if (partialTypeDef->mTypeDeclaration->mAttributes == NULL)
+							continue;
+						BfTypeState typeState;
+						typeState.mPrevState = mContext->mCurTypeState;
+						typeState.mCurTypeDef = partialTypeDef;
+						typeState.mTypeInstance = typeInstance;
+						SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
+						if (typeInstance->mCustomAttributes == NULL)
+							typeInstance->mCustomAttributes = new BfCustomAttributes();
+						GetCustomAttributes(typeInstance->mCustomAttributes, partialTypeDef->mTypeDeclaration->mAttributes, attrTarget);
+					}
+				}
+				else
+					typeInstance->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, attrTarget);
+			}
 		}
 	}
 
@@ -4265,7 +4288,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		if (!mIsModuleMutable)
 			PrepareForIRWriting(methodInstance->GetOwner());
 		
-		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);		
+		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);				
 		methodInstance->mIRFunction = func;
 		mFuncReferences[methodInstance] = func;		
 	}

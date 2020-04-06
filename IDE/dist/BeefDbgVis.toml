@@ -250,6 +250,16 @@ Size = "mSize"
 ValueNode = "mItems[($i + mHead) % __clearHighBits(mAllocSizeAndFlags, 2)]"
 
 [[Type]]
+Name = "System.Collections.Generic.BinaryHeap<*>"
+DisplayString = "{{ count={mSize} }}"
+[[Type.Expand.Item]]
+Name = "[Count]"
+Value = "mSize"
+[Type.Expand.ArrayItems]
+Size = "mSize"
+ValuePointer = "&this.mData.mFirstElement"
+
+[[Type]]
 Name = "System.Collections.Generic.Dictionary<*, *>"
 DisplayString = "{{ count={mCount - mFreeCount} }}"
 [[Type.Expand.Item]]

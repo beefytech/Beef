@@ -5,9 +5,15 @@
 #include "../Common.h"
 
 //#define BUMPALLOC_TRACKALLOCS
+//#define BUMPALLOC_STOMPALLOC
 
 #ifdef BUMPALLOC_ETW_TRACING
 #include "VSCustomNativeHeapEtwProvider.h"
+#endif
+
+#ifdef BUMPALLOC_STOMPALLOC
+void* StompAlloc(int size);
+void StompFree(void* addr);
 #endif
 
 #ifdef BUMPALLOC_TRACKALLOCS
@@ -74,7 +80,11 @@ public:
 		mCurAlloc = NULL;
 		mCurPtr = (uint8*)(intptr)ALLOC_SIZE;
 		for (auto ptr : mPools)
+#ifdef BUMPALLOC_STOMPALLOC
+			StompFree(ptr);
+#else
 			free(ptr);
+#endif
 		mPools.Clear();
 		mSizes.Clear();
 		mCurChunkNum = -1;
@@ -130,7 +140,11 @@ public:
 		int curSize = (int)(mCurPtr - mCurAlloc);
 		mPrevSizes += curSize;
 		mSizes.push_back(curSize);
-		mCurAlloc = (uint8*)malloc(ALLOC_SIZE);			
+#ifdef BUMPALLOC_STOMPALLOC
+		mCurAlloc = (uint8*)StompAlloc(ALLOC_SIZE);			
+#else
+		mCurAlloc = (uint8*)malloc(ALLOC_SIZE);
+#endif
 		memset(mCurAlloc, 0, ALLOC_SIZE);
 		mPools.push_back(mCurAlloc);			
 		mCurPtr = mCurAlloc;		
@@ -205,7 +219,11 @@ public:
 
 		if (wantSize > ALLOC_SIZE / 2)
 		{
+#ifdef BUMPALLOC_STOMPALLOC
+			uint8* bigData = (uint8*)StompAlloc((int)wantSize);
+#else
 			uint8* bigData = (uint8*)malloc(wantSize);
+#endif
 			memset(bigData, 0, wantSize);
 			mPools.push_back(bigData);
 			return bigData;

@@ -589,6 +589,23 @@ namespace Beefy.utils
 			return;
         }
 
+		public T GetCurEnum<T>(T theDefault = default) where T : Enum
+		{
+			Object obj = GetCurrent();
+			
+			Result<T> result;
+			if (let str = obj as String)
+				result = Enum.Parse<T>(str);
+			else if (obj is StringView)
+				result = Enum.Parse<T>((StringView)obj);
+			else
+				return theDefault;
+
+			if (result case .Ok(var val))
+				return val;
+			return theDefault;
+		}
+
         public int32 GetCurInt(int32 theDefault = 0)
         {
             Object aVal = GetCurrent();

@@ -2622,6 +2622,14 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	return bfError;
 }
 
+BfError* BfModule::FailInternal(const StringImpl& error, BfAstNode* refNode)
+{
+	if (mHadBuildError)
+		return NULL;
+
+	return Fail(error, refNode);
+}
+
 BfError* BfModule::FailAfter(const StringImpl& error, BfAstNode* refNode)
 {
 	if (mIgnoreErrors)
@@ -3153,6 +3161,7 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 				initValue,
 				staticVarName,					
 				isThreadLocal);
+			mBfIRBuilder->GlobalVar_SetAlignment(globalVar, fieldType->mAlign);
 			
 			BF_ASSERT(globalVar);
 			mStaticFieldRefs[fieldInstance] = globalVar;
@@ -4114,7 +4123,7 @@ BfIRValue BfModule::CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* ou
 				true,
 				BfIRLinkageType_External,
 				BfIRValue(),
-				classVDataName);
+				classVDataName);		
 
 		mClassVDataRefs[typeInstance] = globalVariable;
 	}
@@ -4258,7 +4267,7 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 	else
 	{
 		typeDataName += "sBfTypeData.";
-		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type);
+		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, this);
 	}
 
 	BfLogSysM("Creating TypeData %s\n", typeDataName.c_str());
@@ -4459,7 +4468,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto reflectPointerType = ResolveTypeDef(mCompiler->mReflectPointerType)->ToTypeInstance();
 				auto pointerTypeData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectPointerType, BfIRPopulateType_Full), pointerTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectPointerType), true,
-					BfIRLinkageType_External, pointerTypeData, typeDataName);
+					BfIRLinkageType_External, pointerTypeData, typeDataName);				
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 			}
 			else if (type->IsSizedArray())
@@ -4476,17 +4486,19 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto sizedArrayTypeData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectSizedArrayType, BfIRPopulateType_Full), sizedArrayTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectSizedArrayType), true,
 					BfIRLinkageType_External, sizedArrayTypeData, typeDataName);
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 			}
 			else
 			{
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(mContext->mBfTypeType), true,
 					BfIRLinkageType_External, typeData, typeDataName);
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 			}
 		}
 		else
 			typeDataVar = mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(mContext->mBfTypeType));
-		
+				
 		mTypeDataRefs[typeInstance] = typeDataVar;
 
 		return typeDataVar;
@@ -9053,29 +9065,6 @@ bool BfModule::HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodNa
 		typeInstance = typeInstance->mBaseType;
 	}
 	return BfModuleMethodInstance();
-}
-
-BfFieldInstance* BfModule::GetFieldByName(BfTypeInstance* typeInstance, const StringImpl& fieldName)
-{
-	PopulateType(typeInstance, BfPopulateType_DataAndMethods);
-
-	typeInstance->mTypeDef->PopulateMemberSets();
-	BfMemberSetEntry* entry = NULL;
-	BfFieldDef* fieldDef = NULL;
-	if (typeInstance->mTypeDef->mFieldSet.TryGetWith(fieldName, &entry))
-	{
-		fieldDef = (BfFieldDef*)entry->mMemberDef;
-		return &typeInstance->mFieldInstances[fieldDef->mIdx];
-	}
-
-// 	for (auto& fieldInst : typeInstance->mFieldInstances)
-// 	{
-// 		auto fieldDef = fieldInst.GetFieldDef();
-// 		if ((fieldDef != NULL) && (fieldDef->mName == fieldName))
-// 			return &fieldInst;
-// 	}
-
-	return NULL;
 }
 
 String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* methodGenericArgs)
@@ -20843,8 +20832,8 @@ void BfModule::DbgFinish()
 			bool hasConfirmedReference = false;
 			for (auto& methodInstGroup : ownedType->mMethodInstanceGroups)
 			{
-				if ((methodInstGroup.IsImplemented()) && (methodInstGroup.mDefault != NULL) && 
-					(!methodInstGroup.mDefault->mMethodDef->mIsStatic) && (methodInstGroup.mDefault->mIsReified) &&
+				if ((methodInstGroup.IsImplemented()) && (methodInstGroup.mDefault != NULL) && 					
+					(!methodInstGroup.mDefault->mMethodDef->mIsStatic) && (methodInstGroup.mDefault->mIsReified) && (!methodInstGroup.mDefault->mAlwaysInline) &&
 					((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Referenced)))
 				{
 					hasConfirmedReference = true;

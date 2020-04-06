@@ -98,6 +98,15 @@ namespace Tests
 		}
 
 		[Test]
+		static void TestTypes()
+		{
+			Type t = typeof(int32);
+			Test.Assert(t.InstanceSize == 4);
+			t = typeof(int64);
+			Test.Assert(t.InstanceSize == 8);
+		}
+
+		[Test]
 		static void TestA()
 		{
 			ClassA ca = scope ClassA();

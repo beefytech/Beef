@@ -3139,8 +3139,16 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		auto rhsArrayTypeRef = BfNodeDynCastExact<BfArrayTypeRef>(rhs);
 		if (rhsArrayTypeRef == NULL)
 			return false;
-		if (!rhsArrayTypeRef->mParams.IsEmpty())
-			return false;
+		// Any non-comma param means it's a sized array
+		for (auto param : rhsArrayTypeRef->mParams)
+		{
+			bool isComma = false;
+			if (auto tokenNode = BfNodeDynCast<BfTokenNode>(param))
+				isComma = tokenNode->mToken == BfToken_Comma;
+			if (!isComma)
+				return false;
+		}
+
 		BfArrayType* lhsArrayType = (BfArrayType*) lhs;
 		if (lhsArrayType->mDimensions != rhsArrayTypeRef->mDimensions)
 			return false;
