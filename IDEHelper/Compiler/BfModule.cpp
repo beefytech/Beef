@@ -6038,7 +6038,7 @@ BfIRValue BfModule::FixClassVData(BfIRValue value)
 void BfModule::CheckStaticAccess(BfTypeInstance* typeInstance)
 {	
 	// Note: this is not just for perf, it fixes a field var-type resolution issue
-	if (!mBfIRBuilder->mIgnoreWrites)
+	if (mBfIRBuilder->mIgnoreWrites)
 		return;
 
 	PopulateType(typeInstance, BfPopulateType_DataAndMethods);
