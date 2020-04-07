@@ -103,7 +103,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 {
 	BfTypeState typeState;
 	typeState.mPrevState = mContext->mCurTypeState;
-	typeState.mBuildingGenericParams = true;
+	typeState.mResolveKind = BfTypeState::ResolveKind_BuildingGenericParams;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 	BF_ASSERT(mCurMethodInstance == NULL);
@@ -2886,7 +2886,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if ((mCompiler->mOptions.mAllowHotSwapping) && (typeInstance->mDefineState < BfTypeDefineState_Defined))
 	{
 		if (typeInstance->mHotTypeData == NULL)
+		{
 			typeInstance->mHotTypeData = new BfHotTypeData();
+			BfLogSysM("Created HotTypeData %p created for type %p in DoPopulateType\n", typeInstance->mHotTypeData, typeInstance);
+		}
 
 		// Clear any unused versions (if we have errors, etc)
 		if (mCompiler->mHotState != NULL)
@@ -9817,7 +9820,7 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 						//  Otherwise "T<A> where T : IB" declared in a lib won't be able to match a type B in a using project 'C',
 						//  because this check will see the lib using 'C', which it won't consider visible							
 						if ((checkActiveTypeDef != NULL) &&
-							((mCurMethodInstance != NULL) && (mContext->mCurTypeState != NULL) && (!mContext->mCurTypeState->mBuildingGenericParams)))
+							((mCurMethodInstance != NULL) && (mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mResolveKind != BfTypeState::ResolveKind_BuildingGenericParams)))
 						{
 							if ((!srcType->IsTypeMemberAccessible(ifaceInst.mDeclaringType, checkActiveTypeDef)) ||
 								(!srcType->IsTypeMemberIncluded(ifaceInst.mDeclaringType, checkActiveTypeDef, this)))

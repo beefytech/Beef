@@ -1226,6 +1226,7 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 			hotTypeData->mVTableOrigLength = typeInstance->mVirtualMethodTableSize;
 			hotTypeData->mOrigInterfaceMethodsLength = typeInstance->GetIFaceVMethodSize();
 		}
+		BfLogSysM("PopulateHotTypeDataVTable set %p HotDataType->mVTableOrigLength To %d\n", typeInstance, hotTypeData->mVTableOrigLength);
 	}	
 
 	int vTableStart = -1;
