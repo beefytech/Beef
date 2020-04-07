@@ -985,7 +985,7 @@ void BfModule::FinishInit()
 		}		
 		mBfIRBuilder->Module_AddModuleFlag("Debug Info Version", 3);
 
-		mDICompileUnit = mBfIRBuilder->DbgCreateCompileUnit(llvm::dwarf::DW_LANG_C_plus_plus, mModuleName, ".", "Beef Compiler 0.42", /*moduleOptions.mOptLevel > 0*/false, "", 0, !mHasFullDebugInfo);
+		mDICompileUnit = mBfIRBuilder->DbgCreateCompileUnit(llvm::dwarf::DW_LANG_C_plus_plus, mModuleName, ".", "Beef Compiler 0.42.2", /*moduleOptions.mOptLevel > 0*/false, "", 0, !mHasFullDebugInfo);
 	}	
 
 	mAwaitingInitFinish = false;	
