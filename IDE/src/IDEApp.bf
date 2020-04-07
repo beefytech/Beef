@@ -3735,15 +3735,20 @@ namespace IDE
 			mInDisassemblyView = true;
         }
 
-        public void GoToDefinition()
+        public void GoToDefinition(bool force)
         {
             var sourceViewPanel = GetActiveSourceViewPanel();
             if (sourceViewPanel != null)
             {
-                int line;
-                int lineChar;
-                sourceViewPanel.mEditWidget.Content.GetCursorLineChar(out line, out lineChar);
+				if (!force)
+				{
+					if ((!sourceViewPanel.mIsBeefSource) || (sourceViewPanel.mProjectSource == null))
+						return;
+				}
 
+                if ((!sourceViewPanel.mEditWidget.Content.GetCursorLineChar(var line, var lineChar)) && (!force))
+					return;
+				
 				if (!sourceViewPanel.HasTextAtCursor())
 					return;
 

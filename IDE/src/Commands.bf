@@ -200,7 +200,7 @@ namespace IDE
 			Add("Find in Files", new => gApp.Cmd_Find);
 			Add("Find Next", new => gApp.Cmd_FindNext);
 			Add("Find Prev", new => gApp.Cmd_FindPrev);
-			Add("Goto Definition", new => gApp.GoToDefinition);
+			Add("Goto Definition", new () => gApp.GoToDefinition(true));
 			Add("Goto Line", new => gApp.Cmd_GotoLine);
 			Add("Goto Method", new => gApp.Cmd_GotoMethod);
 			Add("Goto Next Item", new => gApp.Cmd_GotoNextItem);

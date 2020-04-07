@@ -801,7 +801,7 @@ namespace IDE.ui
 				if (gApp.mBfResolveCompiler.HasResolvedAll())
 				{
 					Close();
-					gApp.GoToDefinition();
+					gApp.GoToDefinition(true);
 				}
 
 				if (mSourceViewPanel.EditWidget.Content.CursorTextPos != mCursorPos)
