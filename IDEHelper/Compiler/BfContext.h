@@ -110,6 +110,14 @@ public:
 class BfTypeState
 {
 public:
+	enum ResolveKind
+	{
+		ResolveKind_None,
+		ResolveKind_BuildingGenericParams,
+		ResolveKind_ResolvingVarType
+	};
+
+public:
 	BfTypeState* mPrevState;
 
 	BfTypeInstance* mTypeInstance;
@@ -121,7 +129,7 @@ public:
 	BfTypeReference* mCurAttributeTypeRef;
 	BfFieldDef* mCurFieldDef;	
 	BfTypeDef* mCurTypeDef;
-	bool mBuildingGenericParams;
+	ResolveKind mResolveKind;
 
 public:
 	BfTypeState()
@@ -135,7 +143,7 @@ public:
 		mCurFieldDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
-		mBuildingGenericParams = false;
+		mResolveKind = ResolveKind_None;
 	}
 
 	BfTypeState(BfTypeInstance* typeInstance, BfTypeState* prevState = NULL)
@@ -149,7 +157,7 @@ public:
 		mCurFieldDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
-		mBuildingGenericParams = false;
+		mResolveKind = ResolveKind_None;
 	}
 };
 

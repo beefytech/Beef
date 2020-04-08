@@ -1895,7 +1895,7 @@ namespace Beefy.widgets
 
         public bool GetCursorLineChar(out int line, out int lineChar)
         {
-            if (mCursorTextPos != -1)
+            if (mVirtualCursorPos == null)
             {
                 GetLineCharAtIdx_Fast(mCursorTextPos, true, out line, out lineChar);
                 return true;

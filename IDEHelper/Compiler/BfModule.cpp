@@ -985,7 +985,7 @@ void BfModule::FinishInit()
 		}		
 		mBfIRBuilder->Module_AddModuleFlag("Debug Info Version", 3);
 
-		mDICompileUnit = mBfIRBuilder->DbgCreateCompileUnit(llvm::dwarf::DW_LANG_C_plus_plus, mModuleName, ".", "Beef Compiler 0.42", /*moduleOptions.mOptLevel > 0*/false, "", 0, !mHasFullDebugInfo);
+		mDICompileUnit = mBfIRBuilder->DbgCreateCompileUnit(llvm::dwarf::DW_LANG_C_plus_plus, mModuleName, ".", "Beef Compiler 0.42.2", /*moduleOptions.mOptLevel > 0*/false, "", 0, !mHasFullDebugInfo);
 	}	
 
 	mAwaitingInitFinish = false;	
@@ -3410,8 +3410,15 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 
 	BfType* resolvedType = NULL;
 	if (!hadInferenceCycle)
-	{		
-		SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites, true);
+	{	
+		BfTypeState typeState;
+		typeState.mPrevState = mContext->mCurTypeState;
+		typeState.mTypeInstance = typeInstance;
+		typeState.mCurFieldDef = field;
+		typeState.mResolveKind = BfTypeState::ResolveKind_ResolvingVarType;
+		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
+		SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites, true);		
 		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL/*ctorMethod.mMethodInstance*/);
 		
 		auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
@@ -3450,7 +3457,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	{
 		
 	}
-	else if (fieldInstance->mDataIdx <= 0)
+	else if (fieldInstance->mDataIdx >= 0)
 	{
 		
 	}
@@ -6030,6 +6037,10 @@ BfIRValue BfModule::FixClassVData(BfIRValue value)
 
 void BfModule::CheckStaticAccess(BfTypeInstance* typeInstance)
 {	
+	// Note: this is not just for perf, it fixes a field var-type resolution issue
+	if (mBfIRBuilder->mIgnoreWrites)
+		return;
+
 	PopulateType(typeInstance, BfPopulateType_DataAndMethods);
 
 	//TODO: Create a hashset of these, we don't need to repeatedly call static ctors for a given type
@@ -14973,8 +14984,11 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 		if (markMemberMethodInstance)
 		{
 			SizedArray<BfIRValue, 1> args;
-            //(1, markVal.mValue);
-			//exprEvaluator.PushArg(markVal, args);
+            
+			auto methodOwner = markMemberMethodInstance.mMethodInstance->GetOwner();
+			if (markVal.mType != methodOwner)
+				markVal = Cast(NULL, markVal, methodOwner);
+
 			exprEvaluator.PushThis(NULL, markVal, markMemberMethodInstance.mMethodInstance, args);
 			exprEvaluator.CreateCall(markMemberMethodInstance.mMethodInstance, markMemberMethodInstance.mFunc, false, args);
 		}
@@ -15034,7 +15048,10 @@ void BfModule::AddHotDataReferences(BfHotDataReferenceBuilder* builder)
 	BF_ASSERT(mCurMethodInstance->mIsReified);
 
 	if (mCurTypeInstance->mHotTypeData == NULL)
+	{
 		mCurTypeInstance->mHotTypeData = new BfHotTypeData();
+		BfLogSysM("Created HotTypeData %p created for type %p in AddHotDataReferences\n", mCurTypeInstance->mHotTypeData, mCurTypeInstance);
+	}
 
 	auto hotMethod = mCurMethodInstance->mHotMethod;	
 	for (auto depData : hotMethod->mReferences)
@@ -18653,7 +18670,8 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 
 	if (isTemporaryFunc)
 	{
-		BF_ASSERT((mCompiler->mIsResolveOnly) && (mCompiler->mResolvePassData->mAutoComplete != NULL));
+		BF_ASSERT(((mCompiler->mIsResolveOnly) && (mCompiler->mResolvePassData->mAutoComplete != NULL)) ||
+			(methodInstance->GetOwner()->mDefineState < BfTypeDefineState_Defined));
 		mangledName = "autocomplete_tmp";
 	}
 
@@ -18870,6 +18888,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 {
 	BP_ZONE("BfModule::BfMethodDeclaration");	
 
+	// If we are doing this then we may end up creating methods when var types are unknown still, failing on splat/zero-sized info
+	BF_ASSERT((!mContext->mResolvingVarField) || (mBfIRBuilder->mIgnoreWrites));
+
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized);
@@ -18882,6 +18903,12 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingReference;
 
 	bool ignoreWrites = mBfIRBuilder->mIgnoreWrites;
+	
+ 	if ((!isTemporaryFunc) && (mCurTypeInstance->mDefineState < BfTypeDefineState_Defined))
+ 	{
+		BF_ASSERT(mContext->mResolvingVarField);
+		isTemporaryFunc = true;
+ 	}
 
 	if (mAwaitingInitFinish)
 		FinishInit();
@@ -19731,9 +19758,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	if (isTemporaryFunc)
 	{
 		// This handles temporary methods for autocomplete types
-		BF_ASSERT(mIsScratchModule);
-		BF_ASSERT(mCompiler->IsAutocomplete());
-		BfLogSysM("DoMethodDeclaration autocomplete bailout\n");
+		//BF_ASSERT(mIsScratchModule);
+		//BF_ASSERT(mCompiler->IsAutocomplete());
+		BfLogSysM("DoMethodDeclaration isTemporaryFunc bailout\n");
 		return; // Bail out early for autocomplete pass
 	}			
 

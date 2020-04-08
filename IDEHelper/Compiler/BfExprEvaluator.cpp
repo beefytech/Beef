@@ -1745,6 +1745,29 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 			auto checkMethod = nextMethodDef;
 			nextMethodDef = nextMethodDef->mNextWithSameName;
 
+			if (mModule->mContext->mResolvingVarField)
+			{
+				bool isResolvingVarField = false;
+
+				auto checkTypeState = mModule->mContext->mCurTypeState;
+				while (checkTypeState != NULL)
+				{
+					if ((checkTypeState->mResolveKind == BfTypeState::ResolveKind_ResolvingVarType) &&
+						(checkTypeState->mTypeInstance == typeInstance))
+						isResolvingVarField = true;
+					checkTypeState = checkTypeState->mPrevState;
+				}
+
+				if (isResolvingVarField)				
+				{
+					// Don't even consider - we can't do method calls on ourselves when we are resolving var fields, because
+					// we are not allowed to generate methods when our field types are unknown. We may fix this in the future,
+					// but currently it breaks out expected order of operations. One issue is that our call signatures change
+					// depending on whether we are valueless or splattable, which depend on underlying type information
+					break; 
+				}
+			}
+
 			if ((checkExtensionBase) && (curTypeInst == mModule->mCurTypeInstance))
 			{				
 				// Accept either a method in the same project but that's the root definition, OR a method that's in a dependent project
@@ -5084,7 +5107,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			moduleMethodInstance.mFunc = mModule->mBfIRBuilder->CreateIntToPtr(target.mValue, funcPtrType);
 		}
 		else 
-		{
+		{			
 			mModule->CheckStaticAccess(methodInstance->mMethodInstanceGroup->mOwner);
 
 			if (target)

@@ -2967,7 +2967,7 @@ namespace IDE.ui
 
 			if ((btn == 0) && (mWidgetWindow.IsKeyDown(.Control)) && (x == origX) && (y == origY))
 			{
-				gApp.GoToDefinition();
+				gApp.GoToDefinition(false);
 				return;
 			}
 
@@ -3003,7 +3003,7 @@ namespace IDE.ui
 
 						menuItem = menu.AddItem("Go to Definition");
 						menuItem.SetDisabled(!hasText);
-	                    menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.GoToDefinition());
+	                    menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.GoToDefinition(true));
 
 						menuItem = menu.AddItem("Rename Symbol");
 						menuItem.SetDisabled(!hasText);
