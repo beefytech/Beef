@@ -227,6 +227,15 @@ namespace System.Collections.Generic
 #endif
 			}
 		}
+
+		public ref T Front
+		{
+			get
+			{
+				Debug.Assert(mSize != 0);
+				return ref mItems[0];
+			}
+		}
 		
 		public ref T Back
 		{
