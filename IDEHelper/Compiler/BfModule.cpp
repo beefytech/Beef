@@ -14984,8 +14984,11 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 		if (markMemberMethodInstance)
 		{
 			SizedArray<BfIRValue, 1> args;
-            //(1, markVal.mValue);
-			//exprEvaluator.PushArg(markVal, args);
+            
+			auto methodOwner = markMemberMethodInstance.mMethodInstance->GetOwner();
+			if (markVal.mType != methodOwner)
+				markVal = Cast(NULL, markVal, methodOwner);
+
 			exprEvaluator.PushThis(NULL, markVal, markMemberMethodInstance.mMethodInstance, args);
 			exprEvaluator.CreateCall(markMemberMethodInstance.mMethodInstance, markMemberMethodInstance.mFunc, false, args);
 		}
