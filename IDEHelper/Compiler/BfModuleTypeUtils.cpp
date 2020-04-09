@@ -1467,12 +1467,20 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if (typeInstance->mResolvingConstField)
 		return !typeInstance->mTypeFailed;
 
-	if (typeInstance->mNeedsMethodProcessing)
+	auto _CheckTypeDone = [&]()
 	{
-		if ((canDoMethodProcessing) && (populateType >= BfPopulateType_DataAndMethods))
-			DoTypeInstanceMethodProcessing(typeInstance);
-		return true;
-	}
+		if (typeInstance->mNeedsMethodProcessing)
+		{
+			BF_ASSERT(typeInstance->mDefineState >= BfTypeDefineState_Defined);
+			if ((canDoMethodProcessing) && (populateType >= BfPopulateType_DataAndMethods))
+				DoTypeInstanceMethodProcessing(typeInstance);
+			return true;
+		}
+		return false;
+	};
+
+	if (_CheckTypeDone())
+		return true;	
 
 	// Partial population break out point
 	if ((populateType >= BfPopulateType_Identity) && (populateType <= BfPopulateType_IdentityNoRemapAlias))
@@ -1508,6 +1516,9 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if (genericTypeInst->mGenericParams.size() == 0)
 			BuildGenericParams(resolvedTypeRef);
 	}
+
+	if (_CheckTypeDone())
+		return true;
 
 	// Don't do TypeToString until down here.	Otherwise we can infinitely loop on BuildGenericParams
 
@@ -2108,6 +2119,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
+	BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
 	typeInstance->mDefineState = BfTypeDefineState_HasInterfaces;
 	if (populateType <= BfPopulateType_Interfaces)
 		return true;
