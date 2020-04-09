@@ -1131,7 +1131,19 @@ void WinBFApp::GetDesktopResolution(int& width, int& height)
 void WinBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
 {
 	RECT desktopRect;
-	::SystemParametersInfo(SPI_GETWORKAREA, NULL, &desktopRect, NULL);
+
+	if (::GetSystemMetrics(SM_CMONITORS) > 1) 
+	{
+		desktopRect.left = ::GetSystemMetrics(SM_XVIRTUALSCREEN);
+		desktopRect.right = ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
+		desktopRect.top = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
+		desktopRect.bottom = ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
+	}
+	else
+	{
+		::SystemParametersInfo(SPI_GETWORKAREA, NULL, &desktopRect, NULL);	
+	}
+
 	x = desktopRect.left;
 	y = desktopRect.top;
 	width = desktopRect.right - desktopRect.left;
