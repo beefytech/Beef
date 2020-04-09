@@ -127,7 +127,10 @@ void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 					extraDataSize += (1 + stackTraceCount) * sizeof(intptr);
 				}
 
-				typedef void(*MarkFunc)(void*);
+				struct MarkTarget
+				{
+				};
+				typedef void(MarkTarget::*MarkFunc)();
 				MarkFunc markFunc = *(MarkFunc*)&rawAllocData->mMarkFunc;
 				 
 				// It's possible we can overestimate elemCount, particularly for large allocations. This doesn't cause a problem
@@ -136,8 +139,8 @@ void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 				intptr dataSize = elementSize - extraDataSize;
 				intptr elemCount = dataSize / elemStride;
 				for (intptr elemIdx = 0; elemIdx < elemCount; elemIdx++)
-				{
-				 	markFunc((uint8*)spanPtr + elemIdx * elemStride);
+				{					
+					(((MarkTarget*)((uint8*)spanPtr + elemIdx * elemStride))->*markFunc)();
 				}
 			}
 		}
