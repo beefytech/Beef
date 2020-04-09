@@ -6812,7 +6812,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		{
 			if ((!resolvedTypeInstance->IsStruct()) && (!resolvedTypeInstance->IsTypedPrimitive()))
 			{
-				mModule->Fail("Objects must be allocated through 'new' or 'stack'", targetSrc);
+				mModule->Fail("Objects must be allocated through 'new' or 'scope'", targetSrc);
 				return BfTypedValue();
 			}
 			
