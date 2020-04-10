@@ -2023,7 +2023,25 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 								if ((localVar->mUnassignedFieldFlags & checkMask) != 0)
 								{
 									auto fieldDef = fieldInstance.GetFieldDef();
-									if (fieldDef->mProtection != BfProtection_Hidden)										
+									if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(fieldDef->mFieldDeclaration))
+									{
+										String propName;
+										if (propertyDeclaration->mNameNode != NULL)
+											propertyDeclaration->mNameNode->ToString(propName);
+
+										if (checkTypeInstance == mCurTypeInstance)
+										{
+											Fail(StrFormat("Auto-implemented property '%s' must be fully assigned before control is returned to the caller",
+												propName.c_str()), localNameNode, deferFullAnalysis); // 0171
+										}
+										else
+										{
+											Fail(StrFormat("Auto-implemented property '%s.%s' must be fully assigned before control is returned to the caller",
+												TypeToString(checkTypeInstance).c_str(),
+												propName.c_str()), localNameNode, deferFullAnalysis); // 0171
+										}
+									}
+									else
 									{
 										if (checkTypeInstance == mCurTypeInstance)
 										{
@@ -7127,11 +7145,6 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 		if (exprEvaluator.mIsVolatileReference)
 			typedVal = LoadValue(typedVal, 0, exprEvaluator.mIsVolatileReference);
 	}
-
-// 	if ((typedVal.IsSplat()) && ((flags & BfEvalExprFlags_AllowSplat) == 0))
-// 		typedVal = MakeAddressable(typedVal);
-
-	//typedVal = AggregateSplat(typedVal);	
 
 	if ((typedVal.mType->IsValueType()) && ((flags & BfEvalExprFlags_NoValueAddr) != 0))
 		typedVal = LoadValue(typedVal, 0, exprEvaluator.mIsVolatileReference);	
@@ -14358,10 +14371,12 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 					if (fieldDef->mInitializer == NULL)
 					{
-						if (fieldDef->mProtection != BfProtection_Hidden)
-							continue;
-						if (mCurTypeInstance->IsObject()) // Already zeroed out
-							continue;						
+						continue;
+
+//  					if (fieldDef->mProtection != BfProtection_Hidden)
+//  						continue;
+// 						if (mCurTypeInstance->IsObject()) // Already zeroed out
+// 							continue;						
 					}
 
 					if (fieldInst->mResolvedType == NULL)
@@ -17325,17 +17340,16 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 						else if (mCurTypeInstance->IsObject())
 							lookupValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(GetThis().mValue, 0, fieldInstance->mDataIdx), fieldInstance->mResolvedType, true);
 						else
-							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mFieldIdx);						
-						if (!methodInstance->mReturnType->IsRef())
-							lookupValue = LoadValue(lookupValue);
-						mBfIRBuilder->CreateRet(lookupValue.mValue);
+							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mFieldIdx);												
+						lookupValue = LoadOrAggregateValue(lookupValue);						
+						CreateReturn(lookupValue.mValue);
 						EmitLifetimeEnds(&mCurMethodState->mHeadScope);
 					}
 					else
 					{
 						// This can happen if we have two properties with the same name but different types
-						AssertErrorState();
-						mBfIRBuilder->CreateRet(GetDefaultValue(methodInstance->mReturnType));
+						CreateReturn(GetDefaultValue(mCurMethodInstance->mReturnType));
+						EmitDefaultReturn();
 					}
 				}
 				else
@@ -17370,7 +17384,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 								thisValue = LoadValue(thisValue);							
 							lookupAddr = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInstance->mDataIdx);							
 						}
-						mBfIRBuilder->CreateStore(lastParam->mValue, lookupAddr);
+
+						BfExprEvaluator exprEvaluator(this);
+						auto localVal = exprEvaluator.LoadLocal(lastParam);
+						localVal = LoadOrAggregateValue(localVal);						
+						mBfIRBuilder->CreateStore(localVal.mValue, lookupAddr);
 					}
 					else if (!fieldInstance->mResolvedType->IsValuelessType())
 					{
