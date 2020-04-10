@@ -2059,6 +2059,10 @@ namespace IDE.ui
         {
 			scope AutoBeefPerf("SEWC.KeyChar");
 
+			var keyChar;
+			if (keyChar == '\x7F') // Ctrl+Backspace
+				keyChar = '\b';
+
 			if (mIgnoreKeyChar)
 			{
 				mIgnoreKeyChar = false;

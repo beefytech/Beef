@@ -1074,13 +1074,6 @@ namespace Beefy.widgets
 			bool atEnd = textPos == mData.mTextLength;
 
 		    String insertStr = text;
-			if (!mIsMultiline)
-			{
-				int crPos = insertStr.IndexOf('\n');
-				if (crPos != -1)
-					insertStr = scope:: String(text, 0, crPos);
-			}
-
 		   	InsertText((int32)textPos, insertStr);
 
 			if (atEnd)
@@ -1130,11 +1123,15 @@ namespace Beefy.widgets
         {
 			scope AutoBeefPerf("EWC.InsertAtCursor");
 
-			
-		    
 			//String insertText = scope String();
 
 			String insertString = theString;
+			if (!mIsMultiline)
+			{
+				int crPos = insertString.IndexOf('\n');
+				if (crPos != -1)
+					insertString = scope:: String(theString, 0, crPos);
+			}
 
 			bool doCheck = true;
 
@@ -1668,6 +1665,9 @@ namespace Beefy.widgets
 			char32 useChar = theChar;
 
             mCursorBlinkTicks = 0;			
+
+			if (useChar == '\x7F') // Ctrl+Backspace
+				useChar = '\b';
 
             if (useChar == '\b')
             {
