@@ -234,7 +234,7 @@ namespace System
 			{
 				switch (this)
 				{
-				case ' ', '\t', '\n', '\r', '\xa0', '\x85': return true;
+				case ' ', '\t', '\n', '\r', (.)'\xa0', (.)'\x85': return true;
 				default: return false;
 				}
 			}
