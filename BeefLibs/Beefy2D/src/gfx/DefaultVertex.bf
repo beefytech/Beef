@@ -21,5 +21,22 @@ namespace Beefy.gfx
 		{
 			sVertexDefinition = new VertexDefinition(typeof(DefaultVertex));
 		}
+
+		public this()
+		{
+			this = default;
+		}
+
+		public this(float x, float y, float u, float v, Color color)
+		{
+			mPos.mX = x;
+			mPos.mY = y;
+			mPos.mZ = 0;
+
+			mTexCoords.mU = u;
+			mTexCoords.mV = v;
+
+			mColor = (.)color;
+		}
     }
 }
