@@ -3586,7 +3586,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						}
 					}
 
-					int fieldIdx = -1;
+					int fieldIdx = mResultLocalVarField - 1;
 					if (fieldIdx == -1)
 					{							
 						mResultLocalVarField = minMergedDataIdx + 1;
