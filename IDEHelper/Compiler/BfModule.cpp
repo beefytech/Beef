@@ -7122,7 +7122,14 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 	}
 
 	if (!typedVal.mType->IsComposite()) // Load non-structs by default
+	{
+		if ((!mBfIRBuilder->mIgnoreWrites) && (!typedVal.mType->IsValuelessType()) && (!typedVal.mType->IsVar()))
+		{
+			BF_ASSERT(!typedVal.mValue.IsFake());
+		}
+
 		typedVal = LoadValue(typedVal, 0, exprEvaluator.mIsVolatileReference);
+	}
 
 	if (wantTypeRef != NULL)
 	{
@@ -10224,7 +10231,7 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 	if (!typedValue.IsAddr())
 		return typedValue;
 
-	if (typedValue.mType->IsValuelessType())
+	if ((typedValue.mType->IsValuelessType()) || (typedValue.mType->IsVar()))
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), typedValue.mType, false);
 
 	BfIRValue loadedVal = typedValue.mValue;
@@ -12282,7 +12289,7 @@ void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 }
 
 BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
-{
+{	
 	if ((localVarDef->mValue) && (!localVarDef->mAddr) && (IsTargetingBeefBackend()))
 	{
 		if ((!localVarDef->mValue.IsConst()) && (!localVarDef->mValue.IsArg()) && (!localVarDef->mValue.IsFake()))

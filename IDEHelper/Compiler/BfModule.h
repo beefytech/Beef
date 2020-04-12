@@ -311,7 +311,7 @@ public:
 	bool mOuterIsConditional;
 	bool mInnerIsConditional;
 	bool mHadOuterDynStack;
-	bool mAllowTargeting;
+	bool mAllowTargeting;	
 	bool mHadScopeValueRetain;	
 	bool mIsDeferredBlock;
 	BfBlock* mAstBlock;
@@ -345,7 +345,7 @@ public:
 		mHadOuterDynStack = false;		
 		mHadScopeValueRetain = false;
 		mIsDeferredBlock = false;
-		mAllowTargeting = true;
+		mAllowTargeting = true;		
 		mMixinDepth = 0;
 		mScopeDepth = 0;
 	}	

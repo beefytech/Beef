@@ -15446,18 +15446,22 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 					if (expr != NULL)
 					{	
 						bool tryDefer = false;						
-						if ((checkArrayType->IsComposite()) && 
-							((expr->IsA<BfInvocationExpression>()) || (expr->IsExact<BfTupleExpression>())))
+ 						if ((checkArrayType->IsComposite()) && 
+ 							((expr->IsA<BfInvocationExpression>()) || (expr->IsExact<BfTupleExpression>())))
+ 						{
+							// We evaluate with a new scope because this expression may create variables that we don't want to be visible to other
+							//  non-deferred evaluations (since the value may actually be a FakeVal)
+							SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+							elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType, BfEvalExprFlags_CreateConditionalScope);
+							deferredValue = !prevIgnoreWrites.mPrevVal && elementValue.mValue.IsFake();
+ 						}
+						else
 						{
-							tryDefer = true;
+							elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType);
 						}
 
-						SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, mModule->mBfIRBuilder->mIgnoreWrites || tryDefer);
-						elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType);
 						if (!elementValue)
-							elementValue = mModule->GetDefaultTypedValue(checkArrayType->mElementType);
-
-						deferredValue = !prevIgnoreWrites.mPrevVal && elementValue.mValue.IsFake();
+							elementValue = mModule->GetDefaultTypedValue(checkArrayType->mElementType);						
 
 						if ((!elementValue) || (!CheckAllowValue(elementValue, expr)))
 							elementValue = mModule->GetDefaultTypedValue(checkArrayType->mElementType);
