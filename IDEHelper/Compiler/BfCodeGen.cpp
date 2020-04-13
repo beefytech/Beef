@@ -449,7 +449,7 @@ void BfCodeGenThread::RunLoop()
 				DoBfLog(2, "Generating obj %s\n", request->mOutFileName.c_str());
 
 				BeCOFFObject coffObject;
-				coffObject.mWriteToLib = (request->mOptions.mWriteToLib) && (!request->mOptions.mIsHotCompile);				
+				coffObject.mWriteToLib = request->mOptions.mWriteToLib;				
 				if (!coffObject.Generate(beIRCodeGen->mBeModule, objFileName))
 					errorMsg = StrFormat("Failed to write object file: %s", objFileName.c_str());				
 

@@ -19350,7 +19350,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		bool wasGenericParam = false;
 		if (resolvedParamType == NULL)
 		{			
-			SetAndRestoreValue<bool> prevIngoreErrors(mIgnoreErrors, mIgnoreErrors || (methodDef->GetPropertyDeclaration() != NULL));
 			resolvedParamType = ResolveTypeRef(paramDef->mTypeRef, BfPopulateType_Declaration, 
 				(BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowRef | BfResolveTypeRefFlag_AllowRefGeneric | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
 		}
@@ -21011,7 +21010,8 @@ bool BfModule::Finish()
 		mCompiler->mStats.mConstBytes += mBfIRBuilder->mTempAlloc.GetAllocSize();
 
 		bool allowWriteToLib = true;
-		if ((allowWriteToLib) && (codeGenOptions.mOptLevel == BfOptLevel_OgPlus) && (mModuleName != "vdata"))
+		if ((allowWriteToLib) && (codeGenOptions.mOptLevel == BfOptLevel_OgPlus) && 
+			(!mCompiler->IsHotCompile()) && (mModuleName != "vdata"))
 		{
 			codeGenOptions.mWriteToLib = true;
 			mWroteToLib = true;
@@ -21065,15 +21065,9 @@ bool BfModule::Finish()
 		if (mCompiler->IsHotCompile())
 		{
 			codeGenOptions.mIsHotCompile = true;
-			//TODO: Why did we have this 'mWroteToLib' check? 'vdata' didn't get this flag set, which
-			// is required for rebuilding vdata after we hot create a vdata
-			//if (mWroteToLib)
-			
-			{
-				if (mParentModule != NULL)
-					mParentModule->mHadHotObjectWrites = true;
-				mHadHotObjectWrites = true;
-			}
+			if (mParentModule != NULL)
+				mParentModule->mHadHotObjectWrites = true;
+			mHadHotObjectWrites = true;			
 		}
 
 

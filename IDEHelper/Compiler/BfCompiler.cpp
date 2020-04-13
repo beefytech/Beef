@@ -3949,7 +3949,15 @@ void BfCompiler::ProcessAutocompleteTempType()
 		auto propDeclaration = BfNodeDynCast<BfPropertyDeclaration>(propDef->mFieldDeclaration);
 		if (propDeclaration != NULL)
 			autoComplete->CheckProperty(propDeclaration);
-		module->ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_AllowRef);
+		module->ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowRef);
+
+		if (auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propDef->mFieldDeclaration))
+		{
+			for (auto paramDecl : indexerDeclaration->mParams)
+			{				
+				module->ResolveTypeRef(paramDecl->mTypeRef, BfPopulateType_Identity);
+			}
+		}
 
 		if ((autoComplete->mIsGetDefinition) && (propDef->mFieldDeclaration != NULL) && (autoComplete->IsAutocompleteNode(propDef->mFieldDeclaration->mNameNode)))
 		{
@@ -6520,19 +6528,24 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 #ifdef BF_PLATFORM_WINDOWS
 	if (!mIsResolveOnly)
-	{				
-		for (auto mainModule : mContext->mModules)
-		{				
-			BfModule* bfModule = mainModule;
-			if (bfModule->mIsReified)														
+	{
+		if (!IsHotCompile())
+		{
+			// Remove individually-written object files from any libs that previously had them,
+			// in the case that lib settings changed (ie: switching a module from Og+ to O0)
+			for (auto mainModule : mContext->mModules)
 			{
-				for (auto outFileName : bfModule->mOutFileNames)					
+				BfModule* bfModule = mainModule;
+				if (bfModule->mIsReified)
 				{
-					if (outFileName.mModuleWritten)
-						BeLibManager::Get()->AddUsedFileName(outFileName.mFileName);                        
+					for (auto outFileName : bfModule->mOutFileNames)
+					{
+						if (outFileName.mModuleWritten)
+							BeLibManager::Get()->AddUsedFileName(outFileName.mFileName);
+					}
 				}
 			}
-		}		
+		}
 
 		auto libManager = BeLibManager::Get();
 		libManager->Finish();
