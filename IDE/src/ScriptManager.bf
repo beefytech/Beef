@@ -398,10 +398,15 @@ namespace IDE
 						if (argView.IsEmpty)
 							continue;
 
-						if (argView.StartsWith("\""))
+						else if ((argView.StartsWith("\"")) || (argView.StartsWith("@\"")))
 						{
 							var str = scope:: String();
-							if (argView.UnQuoteString(str) case .Err)
+
+							if (argView.StartsWith("@"))
+							{
+								str.Append(argView, 2, argView.Length - 3);
+							}
+							else if (argView.UnQuoteString(str) case .Err)
 								Fail("Failed to unquote string");
 
 							if (str.Contains('$'))
