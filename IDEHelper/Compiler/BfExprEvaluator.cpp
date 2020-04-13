@@ -5276,6 +5276,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			wantType = methodInstance->GetParamType(paramIdx);
 			if (wantType->IsSelf())
 				wantType = methodInstance->GetOwner();
+			if (wantType->IsVar())
+			{
+				// Case happens when we can't find the argument type
+				failed = true;
+			}
 			BfParamKind paramKind = methodInstance->GetParamKind(paramIdx);
 
 			if (paramKind == BfParamKind_Params)
