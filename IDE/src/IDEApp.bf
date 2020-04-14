@@ -3170,6 +3170,13 @@ namespace IDE
 
         public Dialog Fail(String text, Widget addWidget = null, WidgetWindow parentWindow = null)
         {
+			var text;
+			if (text.Contains('\t'))
+			{
+				text = scope:: String()..Append(text);
+				text.Replace("\t", "    ");
+			}
+
 			// Always write to STDOUT even if we're running as a GUI, allowing cases like RunAndWait to pass us a stdout handle
 			Console.Error.WriteLine("ERROR: {0}", text);
 
@@ -7946,7 +7953,7 @@ namespace IDE
 			return hadBeef;
 		}
 
-        public bool QueueParseBeefFiles(BfCompiler bfCompiler, bool forceQueue, ProjectFolder projectFolder)
+        public bool QueueParseBeefFiles(BfCompiler bfCompiler, bool forceQueue, ProjectFolder projectFolder, Project hotProject)
         {
             bool hadBeef = false;       
               
@@ -7970,7 +7977,7 @@ namespace IDE
 							if (bfCompiler != null)
 							{
 								// Process change in resolve compiler
-								bfCompiler.QueueProjectSource(projectSource, !bfCompiler.mIsResolveOnly);
+								bfCompiler.QueueProjectSource(projectSource, .None, !bfCompiler.mIsResolveOnly);
 							}
 						}
 						else // Actual build
@@ -7980,7 +7987,15 @@ namespace IDE
 								// mHasChangedSinceLastCompile is safe to set 'false' here since it just determines whether or not
 								//  we rebuild the TypeDefs from the sources.  It isn't affected by any compilation errors.
 								projectSource.mHasChangedSinceLastCompile = false;
-		                        bfCompiler.QueueProjectSource(projectSource, !bfCompiler.mIsResolveOnly);
+
+								SourceHash sourceHash = .None;
+								if ((hotProject != null) && (!mWorkspace.mCompileInstanceList.IsEmpty))
+								{
+									let compileInstance = mWorkspace.GetProjectSourceCompileInstance(projectSource, 0);
+									sourceHash = compileInstance.mSourceHash;
+								}
+
+		                        bfCompiler.QueueProjectSource(projectSource, sourceHash, !bfCompiler.mIsResolveOnly);
 								hadBeef = true;
 							}
 						}
@@ -7990,7 +8005,7 @@ namespace IDE
                 if (item is ProjectFolder)
                 {
                     var innerProjectFolder = (ProjectFolder)item;
-                    hadBeef |= QueueParseBeefFiles(bfCompiler, forceQueue, innerProjectFolder);
+                    hadBeef |= QueueParseBeefFiles(bfCompiler, forceQueue, innerProjectFolder, hotProject);
                 }
             }
 
@@ -8255,7 +8270,7 @@ namespace IDE
 				if (IsProjectEnabled(project))
 				{
 		            if (reparseFiles)
-		                QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder);
+		                QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder, null);
 		            mBfResolveCompiler.QueueDeferredResolveAll();
 		            mBfResolveCompiler.QueueRefreshViewCommand();
 				}
@@ -8263,7 +8278,7 @@ namespace IDE
 			else
 			{
 				if (reparseFiles)
-					QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder);
+					QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder, null);
 			}
         }
 
@@ -8423,7 +8438,7 @@ namespace IDE
 	            {
 	                if (SetupBeefProjectSettings(bfSystem, bfCompiler, project))
 	                {
-	                    doCompile |= QueueParseBeefFiles(bfCompiler, !workspaceOptions.mIncrementalBuild, project.mRootFolder);
+	                    doCompile |= QueueParseBeefFiles(bfCompiler, !workspaceOptions.mIncrementalBuild, project.mRootFolder, hotProject);
 	                }
 	                else if (IsProjectEnabled(project))
 	                    success = false;
@@ -10932,7 +10947,7 @@ namespace IDE
 							return;
 				        var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
 				        if (resolveCompiler == mBfResolveCompiler)
-				            resolveCompiler.QueueProjectSource(projectSource, false);
+				            resolveCompiler.QueueProjectSource(projectSource, .None, false);
 						projectSource.mHasChangedSinceLastCompile = true;
 				    }
 				});
@@ -11835,8 +11850,8 @@ namespace IDE
 				{
 					if (IsBeefFile(newPath))
 					{
-						mBfResolveCompiler.QueueProjectSource(projectSource, false);
-						mBfBuildCompiler.QueueProjectSource(projectSource, true);
+						mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
+						mBfBuildCompiler.QueueProjectSource(projectSource, .None, true);
 					}
 					else
 					{
@@ -12115,7 +12130,7 @@ namespace IDE
 				{
 					if (mBfResolveCompiler != null)
 					{
-						mBfResolveCompiler.QueueProjectSource(projectSource, false);
+						mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
 						mBfResolveCompiler.QueueDeferredResolveAll();
 						mBfResolveCompiler.QueueRefreshViewCommand();
 					}

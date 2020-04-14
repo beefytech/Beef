@@ -1290,8 +1290,8 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	
 	if (bfParser != NULL)
 	{
-		mSignatureHashCtx->MixinStr(bfParser->mFileName);
-		mSignatureHashCtx->Mixin(bfParser->mParserData->mMD5Hash);
+		mFullHashCtx->MixinStr(bfParser->mFileName);
+		mFullHashCtx->Mixin(bfParser->mParserData->mMD5Hash);
 	}
 	HashNode(*mSignatureHashCtx, typeDeclaration->mTypeNode);
 	for (auto& baseClassNode : typeDeclaration->mBaseClasses)
@@ -2065,6 +2065,13 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	}
 
 	HashContext inlineHashCtx;
+
+	if (mCurSource != NULL)
+	{
+		auto bfParser = mCurSource->ToParser();
+		if (bfParser != NULL)
+			inlineHashCtx.MixinStr(bfParser->mFileName);
+	}
 
 	//for (auto methodDef : mCurTypeDef->mMethods)
 	for (int methodIdx = 0; methodIdx < (int)mCurTypeDef->mMethods.size(); methodIdx++)

@@ -740,7 +740,7 @@ namespace IDE.ui
 						if ((mKind == Kind.Rename) && (IDEApp.IsBeefFile(editData.mFilePath)))
 						{
 							for (var projectSource in editData.mProjectSources)
-								app.mBfResolveCompiler.QueueProjectSource(projectSource, false);
+								app.mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
 							app.mBfResolveCompiler.QueueDeferredResolveAll();
 						}
 	                }
