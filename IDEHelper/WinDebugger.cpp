@@ -1059,6 +1059,8 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 {		
 	AutoCrit autoCrit(mDebugManager->mCritSect);	
 
+	BfLogDbg("WinDebugger::HotLoad Start %d\n", hotIdx);	
+
 	SetAndRestoreValue<int> prevHotIdx(mActiveHotIdx, hotIdx);
 
 	BF_ASSERT(mHotThreadStates.empty());
@@ -1082,8 +1084,7 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	}
 
 	int startingModuleIdx = (int)mDebugTarget->mDbgModules.size();
-
-	BfLogDbg("WinDebugger::HotLoad\n");
+	
 	bool failed = false;
 	for (auto fileName : objectFiles)
 	{
@@ -5055,6 +5056,8 @@ bool WinDebugger::RollBackStackFrame(CPURegisters* registers, bool isStackStart)
 
 bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize)
 {
+	BfLogDbg("SetHotJump %s %p->%p\n", oldSubprogram->mName, oldSubprogram->mBlock.mLowPC, newTarget);
+
 	//AutoCrit autoCrit(mDebugManager->mCritSect);
 	BF_ASSERT(mDebugManager->mCritSect.mLockCount == 1);
 

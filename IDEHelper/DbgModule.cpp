@@ -5333,10 +5333,12 @@ void DbgModule::HotReplaceType(DbgType* newType)
 
 	bool setHotJumpFailed = false;
 	while (!newType->mMethodList.IsEmpty())
-	{
+	{		
 		DbgSubprogram* newMethod = newType->mMethodList.PopFront();
 		if (!newMethod->mBlock.IsEmpty())
 		{
+			BfLogDbg("Hot added new method %p %s Address:%p\n", newMethod, newMethod->mName, newMethod->mBlock.mLowPC);
+
 			newMethod->PopulateSubprogram();			
 
 			auto symInfo = mDebugTarget->mSymbolMap.Get(newMethod->mBlock.mLowPC);
@@ -5523,6 +5525,8 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
  	//if (this == mDebugTarget->mTargetBinary)
  		//mMemReporter = new MemReporter();
+
+	BfLogDbg("DbgModule::ReadCOFF %s\n", mFilePath.c_str());
 
 	if (mMemReporter != NULL)
 	{

@@ -2561,7 +2561,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 				}
 
 				Fail("Static variable not found, may have be optimized out", targetSrc);
-				BfLogDbgExpr(" Static variable optimized out\n");
+				//BfLogDbgExpr(" Static variable optimized out\n");
 			}
 			else 
 			{
@@ -4776,7 +4776,7 @@ void DbgExprEvaluator::Visit(BfThisExpression* thisExpr)
 
 void DbgExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 {	
-	BfLogDbgExpr("Visit BfIdentifierNode %s\n", identifierNode->ToString().c_str());
+	//BfLogDbgExpr("Visit BfIdentifierNode %s\n", identifierNode->ToString().c_str());
 
 	mResult = LookupIdentifier(identifierNode, false, NULL);
 	if (!mResult)
