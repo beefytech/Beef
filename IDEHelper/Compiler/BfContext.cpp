@@ -1213,8 +1213,11 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 	
 	if (typeInstance->IsIncomplete())
 	{
-		// Should already be populated
-		BF_ASSERT(hotTypeData->mVTableOrigLength != -1);
+		if (mCompiler->mHotState->mCommittedHotCompileIdx > 0)
+		{
+			// Should already be populated
+			BF_ASSERT(hotTypeData->mVTableOrigLength != -1);
+		}
 		return;
 	}
 
