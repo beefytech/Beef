@@ -7398,10 +7398,16 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					displayStrFormatInfo.mTotalSummaryLength = formatInfo.mTotalSummaryLength + (int)retVal.length();
 					displayStrFormatInfo.mExpandItemDepth++;
 					displayStrFormatInfo.mHidePointers = false;
-					retVal += DbgTypedValueToString(tupleVal, tupleExpr, displayStrFormatInfo, NULL);
+					retVal += DbgTypedValueToString(tupleVal, tupleExpr, displayStrFormatInfo, NULL);					
 					int idx = (int)retVal.IndexOf('\n');
 					if (idx != -1)
 					{
+						if ((idx > 2) && (strncmp(retVal.c_str() + idx - 2, "()", 2) == 0))
+						{
+							// Take off a terminating "()" on the value, if there is one
+							retVal.Remove(idx - 2, 2);
+						}
+
 						String typeName = innerType->ToString(DbgLanguage_Unknown, true);
 						typeName += " ";
 						retVal.Insert(idx + 1, typeName);
