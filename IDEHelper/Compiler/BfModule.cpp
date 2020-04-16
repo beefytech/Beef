@@ -11136,7 +11136,7 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 }
 
 BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags, BfTypeInstance* foreignType)
-{
+{	
 	if (((flags & BfGetMethodInstanceFlag_ForceInline) != 0) && (mCompiler->mIsResolveOnly))
 	{
 		// Don't bother inlining for resolve-only
@@ -18904,7 +18904,10 @@ void BfModule::CheckHotMethod(BfMethodInstance* methodInstance, const StringImpl
 #ifdef BF_DBG_HOTMETHOD_NAME
 		hotMethod->mMangledName = mangledName;
 #endif
-		methodInstance->mHotMethod = hotMethod;
+		if ((methodInstance->mMethodInstanceGroup->IsImplemented()) && (!mCompiler->IsHotCompile()))
+			hotMethod->mFlags = (BfHotDepDataFlags)(hotMethod->mFlags | BfHotDepDataFlag_IsOriginalBuild);
+
+		methodInstance->mHotMethod = hotMethod;		
 	}
 }
 
@@ -19787,6 +19790,14 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		BfLogSysM("DoMethodDeclaration isTemporaryFunc bailout\n");
 		return; // Bail out early for autocomplete pass
 	}			
+
+	if ((methodInstance->GetImportCallKind() != BfImportCallKind_None) && (!mBfIRBuilder->mIgnoreWrites) && (!methodInstance->mIRFunction))
+	{		
+		BfLogSysM("DllImportGlobalVar DoMethodDeclaration processing %p\n", methodInstance);		
+		BfIRValue dllImportGlobalVar = CreateDllImportGlobalVar(methodInstance, true);
+		methodInstance->mIRFunction = mBfIRBuilder->GetFakeVal();
+		mFuncReferences[mCurMethodInstance] = dllImportGlobalVar;		
+	}
 
 	//TODO: We used to have this (this != mContext->mExternalFuncModule) check, but it caused us to keep around 
 	//  an invalid mFuncRefernce (which came from GetMethodInstanceAtIdx) which later got remapped by the

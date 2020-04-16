@@ -4215,6 +4215,15 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 			mModule->mFuncReferences.TryGetValue(methodInstance, &funcCallInst);
 		}
 
+		if ((importCallKind == BfImportCallKind_GlobalVar) &&
+			(methodInstance->mHotMethod == NULL) &&
+			(mModule->mCompiler->IsHotCompile()))
+		{
+			// This may actually be a BfImportCallKind_GlobalVar_Hot, so check it...
+			mModule->CheckHotMethod(methodInstance, "");
+			importCallKind = methodInstance->GetImportCallKind();
+		}
+
 		if (importCallKind == BfImportCallKind_GlobalVar_Hot)
 		{
 			//TODO: Check against NULL for calling BfLoadSharedLibraries
