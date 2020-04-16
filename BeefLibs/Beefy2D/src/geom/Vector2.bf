@@ -25,6 +25,14 @@ namespace Beefy.geom
             }
         }
 
+		public float Angle
+		{
+			get
+			{
+				return Math.Atan2(mY, mX);
+			}
+		}
+
         public this(float x, float y)
         {
             mX = x;
