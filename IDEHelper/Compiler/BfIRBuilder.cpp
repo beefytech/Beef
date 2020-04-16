@@ -1831,7 +1831,7 @@ void BfIRBuilder::Write(const BfIRTypeData& type)
 	{
 		auto sizedArrayType = (BfConstantSizedArrayType*)GetConstantById(type.mId);
 		Write(sizedArrayType->mType);
-		WriteSLEB128(sizedArrayType->mLength);
+		WriteSLEB128((int64)sizedArrayType->mLength);
 	}
 	else if (type.mKind != BfIRTypeData::TypeKind_None)
 		WriteSLEB128(type.mId);

@@ -123,10 +123,19 @@ intptr StringView::LastIndexOf(char c) const
 	return -1;
 }
 
-intptr StringView::LastIndexOf(char c, intptr startCheck) const
+intptr StringView::LastIndexOf(char c, int startCheck) const
 {
 	auto ptr = mPtr;
 	for (intptr i = startCheck; i >= 0; i--)
+		if (ptr[i] == c)
+			return i;
+	return -1;
+}
+
+intptr StringView::LastIndexOf(char c, int64 startCheck) const
+{
+	auto ptr = mPtr;
+	for (intptr i = (intptr)startCheck; i >= 0; i--)
 		if (ptr[i] == c)
 			return i;
 	return -1;
