@@ -924,6 +924,7 @@ void WinDebugger::DebugThreadProc()
 	{		
 		DoUpdate();
 	}
+
 	mIsRunning = false;
 
 	for (int i = 0; i < (int) mBreakpoints.size(); i++)
@@ -1314,6 +1315,11 @@ void WinDebugger::Detach()
 		Sleep(1);
 	}
 
+	for (auto profiler : mProfilerSet)
+		profiler->Stop();
+
+	BfLogDbg("Debugger Detach - thread finished\n");
+
 	mPendingProfilerMap.Clear();
 	for (auto profiler : mNewProfilerList)
 		delete profiler;
@@ -1405,6 +1411,18 @@ Profiler* WinDebugger::PopProfiler()
 	auto profiler = (DbgProfiler*)mNewProfilerList[0];	
 	mNewProfilerList.erase(mNewProfilerList.begin());
 	return profiler;
+}
+
+void WinDebugger::AddProfiler(DbgProfiler * profiler)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	mProfilerSet.Add(profiler);
+}
+
+void WinDebugger::RemoveProfiler(DbgProfiler * profiler)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	mProfilerSet.Remove(profiler);
 }
 
 void WinDebugger::ReportMemory(MemReporter* memReporter)
