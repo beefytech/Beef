@@ -7982,17 +7982,26 @@ namespace IDE
 						}
 						else // Actual build
 						{
-							if ((projectSource.HasChangedSinceLastCompile) || (projectSource.mLoadFailed) || (forceQueue))
+							bool wantsHashRefresh = false;
+							if ((hotProject == null) && (projectSource.mWasBuiltWithOldHash))
+								wantsHashRefresh = true;
+								
+							if ((projectSource.HasChangedSinceLastCompile) || (projectSource.mLoadFailed) || (forceQueue) || (wantsHashRefresh))
 							{
 								// mHasChangedSinceLastCompile is safe to set 'false' here since it just determines whether or not
 								//  we rebuild the TypeDefs from the sources.  It isn't affected by any compilation errors.
 								projectSource.mHasChangedSinceLastCompile = false;
+								projectSource.mWasBuiltWithOldHash = false;
 
 								SourceHash sourceHash = .None;
-								if ((hotProject != null) && (!mWorkspace.mCompileInstanceList.IsEmpty))
+
+								if (hotProject != null)
 								{
-									let compileInstance = mWorkspace.GetProjectSourceCompileInstance(projectSource, 0);
-									sourceHash = compileInstance.mSourceHash;
+									if (!mWorkspace.mCompileInstanceList.IsEmpty)
+									{
+										let compileInstance = mWorkspace.GetProjectSourceCompileInstance(projectSource, 0);
+										sourceHash = compileInstance.mSourceHash;
+									}
 								}
 
 		                        bfCompiler.QueueProjectSource(projectSource, sourceHash, !bfCompiler.mIsResolveOnly);

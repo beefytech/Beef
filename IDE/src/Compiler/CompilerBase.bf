@@ -62,12 +62,16 @@ namespace IDE.Compiler
             ProjectSourceCommand command = new ProjectSourceCommand();
             command.mProjectSource = projectSource;
             command.mSourceString = new String();
-			command.mSourceHash = sourceHash;
-
+			
 			var wantsHash;
-			if (!(sourceHash case .None))
-				wantsHash = false;
             IDEApp.sApp.FindProjectSourceContent(projectSource, out command.mSourceCharIdData, false, command.mSourceString, wantsHash ? &command.mSourceHash : null);
+
+			if (!(sourceHash case .None))
+			{
+				if (command.mSourceHash != sourceHash)
+					projectSource.mWasBuiltWithOldHash = true;
+				command.mSourceHash = sourceHash;
+			}
 
 			if (gApp.mBfBuildCompiler == this)
 			{
