@@ -19794,7 +19794,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	if ((methodInstance->GetImportCallKind() != BfImportCallKind_None) && (!mBfIRBuilder->mIgnoreWrites) && (!methodInstance->mIRFunction))
 	{		
 		BfLogSysM("DllImportGlobalVar DoMethodDeclaration processing %p\n", methodInstance);		
-		BfIRValue dllImportGlobalVar = CreateDllImportGlobalVar(methodInstance, true);
+		// If this is in an extension then we did create the global variable already in the original obj
+		bool doDefine = mExtensionCount == 0;
+		BfIRValue dllImportGlobalVar = CreateDllImportGlobalVar(methodInstance, doDefine);
 		methodInstance->mIRFunction = mBfIRBuilder->GetFakeVal();
 		mFuncReferences[mCurMethodInstance] = dllImportGlobalVar;		
 	}
