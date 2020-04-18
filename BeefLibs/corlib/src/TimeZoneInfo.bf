@@ -250,7 +250,9 @@ namespace System {
                     TimeZoneInfo currentYear = GetCurrentOneYearLocal();
 					defer delete currentYear;
                     AdjustmentRule rule = currentYear.m_adjustmentRules == null ? null : currentYear.m_adjustmentRules[0];
-                    oneYearLocFromUtc = new OffsetAndRule(year, currentYear.BaseUtcOffset, rule.Clone());
+					if (rule != null)
+						rule = rule.Clone();
+                    oneYearLocFromUtc = new OffsetAndRule(year, currentYear.BaseUtcOffset, rule);
                     m_oneYearLocalFromUtc = oneYearLocFromUtc;
                 }
                 return oneYearLocFromUtc;

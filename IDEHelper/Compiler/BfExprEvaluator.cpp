@@ -3349,11 +3349,11 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				auto field = nextField;
 				nextField = nextField->mNextWithSameName;
 								
-				if ((!isFailurePass) && (!mModule->CheckProtection(protectionCheckFlags, curCheckType, field->mDeclaringType->mProject, field->mProtection, startCheckType)))
+				if (((flags & BfLookupFieldFlag_IgnoreProtection) == 0) &&  (!isFailurePass) &&
+					(!mModule->CheckProtection(protectionCheckFlags, curCheckType, field->mDeclaringType->mProject, field->mProtection, startCheckType)))
 				{					
 					continue;					
 				}				
-
 				
 				bool isResolvingFields = curCheckType->mResolvingConstField || curCheckType->mResolvingVarField;
 				
@@ -3586,7 +3586,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						}
 					}
 
-					int fieldIdx = -1;
+					int fieldIdx = mResultLocalVarField - 1;
 					if (fieldIdx == -1)
 					{							
 						mResultLocalVarField = minMergedDataIdx + 1;
@@ -3852,6 +3852,37 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						{
 							autoComplete->mDefProp = basePropDef;
 							autoComplete->mDefType = baseTypeInst->mTypeDef;
+						}
+					}
+
+					// Check for direct auto-property access
+					if (startCheckType == mModule->mCurTypeInstance)
+					{
+						if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mPropDef->mFieldDeclaration))
+						{
+							if (curCheckType->mTypeDef->HasAutoProperty(propertyDeclaration))
+							{
+								bool hasSetter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet) != NULL;
+								auto autoFieldName = curCheckType->mTypeDef->GetAutoPropertyName(propertyDeclaration);
+								auto result = LookupField(targetSrc, target, autoFieldName, BfLookupFieldFlag_IgnoreProtection);
+								if (result)
+								{
+									if (!hasSetter)
+									{
+										if (((mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)) &&
+											(startCheckType == mModule->mCurTypeInstance))
+										{
+											// Allow writing inside ctor
+										}
+										else
+											result.MakeReadOnly();
+									}
+									mPropDef = NULL;
+									mPropSrc = NULL;
+									mOrigPropTarget = NULL;									
+									return result;
+								}
+							}
 						}
 					}
 
@@ -4182,6 +4213,15 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		if ((funcCallInst.IsFake()) && (!mModule->mBfIRBuilder->mIgnoreWrites))
 		{			
 			mModule->mFuncReferences.TryGetValue(methodInstance, &funcCallInst);
+		}
+
+		if ((importCallKind == BfImportCallKind_GlobalVar) &&
+			(methodInstance->mHotMethod == NULL) &&
+			(mModule->mCompiler->IsHotCompile()))
+		{
+			// This may actually be a BfImportCallKind_GlobalVar_Hot, so check it...
+			mModule->CheckHotMethod(methodInstance, "");
+			importCallKind = methodInstance->GetImportCallKind();
 		}
 
 		if (importCallKind == BfImportCallKind_GlobalVar_Hot)
@@ -5245,6 +5285,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			wantType = methodInstance->GetParamType(paramIdx);
 			if (wantType->IsSelf())
 				wantType = methodInstance->GetOwner();
+			if (wantType->IsVar())
+			{
+				// Case happens when we can't find the argument type
+				failed = true;
+			}
 			BfParamKind paramKind = methodInstance->GetParamKind(paramIdx);
 
 			if (paramKind == BfParamKind_Params)
@@ -14502,6 +14547,15 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
 							mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					}
+					else if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mResultFieldInstance->GetFieldDef()->mFieldDeclaration))
+					{
+						String propNam;
+						if (propertyDeclaration->mNameNode != NULL)
+							propertyDeclaration->mNameNode->ToString(propNam);
+
+						error = mModule->Fail(StrFormat("Cannot %s auto-implemented property '%s.%s' without set accessor", modifyType,
+							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), propNam.c_str()), refNode);
+					}
 					else
 					{
 						error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct method '%s'. Consider adding 'mut' specifier to this method.", modifyType,
@@ -15406,18 +15460,22 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 					if (expr != NULL)
 					{	
 						bool tryDefer = false;						
-						if ((checkArrayType->IsComposite()) && 
-							((expr->IsA<BfInvocationExpression>()) || (expr->IsExact<BfTupleExpression>())))
+ 						if ((checkArrayType->IsComposite()) && 
+ 							((expr->IsA<BfInvocationExpression>()) || (expr->IsExact<BfTupleExpression>())))
+ 						{
+							// We evaluate with a new scope because this expression may create variables that we don't want to be visible to other
+							//  non-deferred evaluations (since the value may actually be a FakeVal)
+							SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+							elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType, BfEvalExprFlags_CreateConditionalScope);
+							deferredValue = !prevIgnoreWrites.mPrevVal && elementValue.mValue.IsFake();
+ 						}
+						else
 						{
-							tryDefer = true;
+							elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType);
 						}
 
-						SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, mModule->mBfIRBuilder->mIgnoreWrites || tryDefer);
-						elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType);
 						if (!elementValue)
-							elementValue = mModule->GetDefaultTypedValue(checkArrayType->mElementType);
-
-						deferredValue = !prevIgnoreWrites.mPrevVal && elementValue.mValue.IsFake();
+							elementValue = mModule->GetDefaultTypedValue(checkArrayType->mElementType);						
 
 						if ((!elementValue) || (!CheckAllowValue(elementValue, expr)))
 							elementValue = mModule->GetDefaultTypedValue(checkArrayType->mElementType);

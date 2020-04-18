@@ -3,45 +3,69 @@ Dependencies = {}
 
 [Project]
 Name = "minlib"
-TargetType = "BeefLib"
 DefaultNamespace = ""
 Aliases = ["corlib"]
 
 [Configs.Debug.Win32]
 OtherLinkFlags = ""
-OptimizationLevel = "O0"
 
 [[Configs.Debug.Win32.DistinctOptions]]
 Filter = "[System.Optimize]"
-BfOptimizationLevel = "O2"
-RuntimeChecks = false
-EmitDynamicCastCheck = false
-EmitObjectAccessCheck = false
+
+[[Configs.Debug.Win32.DistinctOptions]]
+Filter = "[System.UseLLVM]"
 
 [Configs.Debug.Win64]
 CLibType = "Static"
 
 [[Configs.Debug.Win64.DistinctOptions]]
 Filter = "[System.Optimize]"
-BfOptimizationLevel = "O2"
-RuntimeChecks = false
-EmitDynamicCastCheck = false
-EmitObjectAccessCheck = false
+
+[[Configs.Debug.Win64.DistinctOptions]]
+Filter = "[System.UseLLVM]"
 
 [Configs.Debug.WinFart]
 OtherLinkFlags = ""
 CLibType = "Static"
 BeefLibType = "Static"
 
+[[Configs.Debug.WinFart.DistinctOptions]]
+Filter = "[System.UseLLVM]"
+
+[[Configs.Debug.Linux64.DistinctOptions]]
+Filter = "[System.UseLLVM]"
+
+[[Configs.Debug.macOS.DistinctOptions]]
+Filter = "[System.UseLLVM]"
+
+[Configs.Debug.iOS]
+BuildKind = "StaticLib"
+
+[[Configs.Debug.iOS.DistinctOptions]]
+Filter = "[System.UseLLVM]"
+
+[Configs.Debug.aarch64-none-linux-android21]
+BuildKind = "StaticLib"
+RelocType = "PIC"
+
+[[Configs.Debug.aarch64-none-linux-android21.DistinctOptions]]
+Filter = "[System.UseLLVM]"
+
 [Configs.Release.Win32]
 OtherLinkFlags = ""
-OptimizationLevel = "O2"
 
 [Configs.Release.Win64]
 OtherLinkFlags = ""
 
 [Configs.Release.WinFart]
 OtherLinkFlags = ""
+
+[Configs.Release.iOS]
+BuildKind = "StaticLib"
+
+[Configs.Release.aarch64-none-linux-android21]
+BuildKind = "StaticLib"
+RelocType = "PIC"
 
 [Configs.Test.WinFart]
 BuildKind = "Normal"
@@ -59,3 +83,10 @@ CLibType = "Static"
 OtherLinkFlags = ""
 CLibType = "Static"
 BeefLibType = "Static"
+
+[Configs.Paranoid.iOS]
+BuildKind = "StaticLib"
+
+[Configs.Paranoid.aarch64-none-linux-android21]
+BuildKind = "StaticLib"
+RelocType = "PIC"

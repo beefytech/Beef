@@ -1917,10 +1917,10 @@ void BfParser::NextToken(int endIdx)
 				{
 					mLiteral.mInt64 = (uint8)strLiteral[0];
 				}
-
-				if (mLiteral.mInt64 >= 0x10000)
+				
+				if (mLiteral.mInt64 >= 0x8000) // Use 0x8000 to remain UTF16-compatible
 					mLiteral.mTypeCode = BfTypeCode_Char32;
-				else if (mLiteral.mInt64 >= 0x100)
+				else if (mLiteral.mInt64 >= 0x80) // Use 0x80 to remain UTF8-compatible
 					mLiteral.mTypeCode = BfTypeCode_Char16;
 			}
 			else

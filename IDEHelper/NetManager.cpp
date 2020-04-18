@@ -450,7 +450,7 @@ NetManager::~NetManager()
 NetRequest* NetManager::CreateGetRequest(const StringImpl& url, const StringImpl& destPath, bool useCache)
 {
 	AutoCrit autoCrit(mThreadPool.mCritSect);
-
+		
 	NetRequest* netRequest = new NetRequest();
 	netRequest->mNetManager = this;
 	netRequest->mURL = url;

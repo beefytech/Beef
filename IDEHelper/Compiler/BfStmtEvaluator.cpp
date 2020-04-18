@@ -3924,7 +3924,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 	bool tryExtendValue = false;
 	bool addDebugInfo = true;
-	if ((wantsDebugInfo) && (!switchValue.mType->IsValuelessType()))
+	if ((wantsDebugInfo) && (!switchValue.mType->IsValuelessType()) && (!switchValue.mType->IsVar()))
 	{
 		if (IsTargetingBeefBackend())
 		{
@@ -4000,7 +4000,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		}				
 	} 	 	
 
-	AddLocalVariableDef(localDef, addDebugInfo, true);
+	if (!localDef->mResolvedType->IsVar())
+		AddLocalVariableDef(localDef, addDebugInfo, true);
 
 	BfDeferredLocalAssignData deferredLocalAssignData(mCurMethodState->mCurScope);
 	deferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
@@ -4062,7 +4063,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			enumTagVal = LoadValue(enumTagVal);
 			switchStatement = mBfIRBuilder->CreateSwitch(enumTagVal.mValue, noSwitchBlock, numExpressions);
 		}
-		else if (!isConstSwitch)
+		else if ((!isConstSwitch) && (!switchValue.mType->IsVar()))
 			switchStatement = mBfIRBuilder->CreateSwitch(switchValue.mValue, noSwitchBlock, numExpressions);			
 	}
 

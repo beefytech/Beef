@@ -1,24 +1,17 @@
+// more text at the end of the first line. This is more text.
+
 using System;
 
-#define SMz
-
-#if SM
-typealias int_test = int32;
-#else
-typealias int_test =  int64;
-#endif
-
-struct Floof
+class Pooble
 {
-	public static int32 Hey()
+	public void Test(int abcdefgh, int abcdefgh2, int abcdefgh3, int abcdefgh4, int abcdefgh5, int abcdefgh6, int abcdefgh7, int abcdefgh8)
 	{
-		Result<int> res = 123;
-		switch (res)
-		{
-		case .Ok(let val):
-		default:
-		}
+	}
 
-		return 123;
+	public static float sVal = 9;
+
+	public static mixin Zorp(var z)
+	{
+		z * sVal
 	}
 }

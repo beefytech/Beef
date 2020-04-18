@@ -419,7 +419,7 @@ namespace IDE.Compiler
 							projectSourceCommand.mProjectSource.mLoadFailed = data == null;
 
 	                    if ((!mIsResolveOnly) && (data != null))
-	                        IDEApp.sApp.mWorkspace.ProjectSourceCompiled(projectSource, data, char8IdData, canMoveSourceString);
+	                        IDEApp.sApp.mWorkspace.ProjectSourceCompiled(projectSource, data, hash, char8IdData, canMoveSourceString);
 
 	                    var bfParser = mBfSystem.CreateParser(projectSourceCommand.mProjectSource);
 						if (data != null)

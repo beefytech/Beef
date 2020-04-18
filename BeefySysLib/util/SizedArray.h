@@ -113,6 +113,16 @@ public:
 		{
 			return mPtr < val2.mPtr;
 		}
+
+		bool operator>(const iterator& val2)
+		{
+			return mPtr > val2.mPtr;
+		}
+
+		bool operator>=(const iterator& val2)
+		{
+			return mPtr >= val2.mPtr;
+		}
 	};
 
 	struct const_iterator

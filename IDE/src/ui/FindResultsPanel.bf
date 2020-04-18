@@ -708,7 +708,7 @@ namespace IDE.ui
 						if ((IDEApp.IsBeefFile(filePath)) && (gApp.mBfResolveCompiler != null))
 						{
 							for (var projectSource in editData.mProjectSources)
-								gApp.mBfResolveCompiler.QueueProjectSource(projectSource, false);
+								gApp.mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
 							gApp.mBfResolveCompiler.QueueDeferredResolveAll();
 						}
 

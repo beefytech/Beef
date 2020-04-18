@@ -498,7 +498,7 @@ namespace Beefy
                 StructuredData structuredData = scope StructuredData();
                 structuredData.Load(resFileName);
                 mResourceManager.ParseConfigData(structuredData);
-            }            
+            }
         }
 
         public void InitGraphics()

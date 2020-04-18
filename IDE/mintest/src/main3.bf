@@ -1,56 +1,43 @@
-//using Squarf;
-
-//GORB
 #pragma warning disable 168
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Collections.Generic;
 
-#region EnumA Crapsos
-[AllowDuplicates]
-enum EnumA
+struct Smibbs
 {
-	Abo = 1,
-	Boop = _*2,
-	Croop = _*2,
-
-	Zoop = 1
+	public int16 mX = 11;
+	public int16 mY = 22;
+	public int16 mZ = 33;
 }
 
-struct StructA
+namespace PropertyStructCrash
 {
-	public int mA;
-	public int mB;
+	struct B
+	{
+		public int c;
+	}
+
+	struct A
+	{
+		public B Prop { get; set; }
+	}
+
+	class Program
+	{
+		public static void Main()
+		{
+			var c = '¥';
+		}
+	}
 }
 
-#region Blurg
 struct Blurg
 {
-	static mixin MixA(var sa2)
+	public static void Hey()
 	{
-		sa2.mA++;
-	}
-
-	static mixin MixB(mut StructA sa2)
-	{
-		sa2.mA++;
-	}
-
-	static void MethodA(mut StructA sa)
-	{
-		MixA!(sa);
-		//MixB!(mut sa);
-	}
-
-	public static int32 Hey()
-	{
-		StructA sa = .();
-		sa.mA = 123
-		
-		
-		return (int32)123;
+		PropertyStructCrash.Program.Main();
 	}
 }
 

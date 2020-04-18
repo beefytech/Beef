@@ -89,6 +89,14 @@ BuildKind = "StaticLib"
 RelocType = "PIC"
 
 [[ProjectFolder.Items]]
+Type = "Folder"
+Name = "snorg"
+
+[[ProjectFolder.Items.Items]]
+Type = "IgnoreSource"
+Name = "Zap.bf"
+
+[[ProjectFolder.Items]]
 Type = "Source"
 Path = "../../../temp/test.txt"
 

@@ -714,6 +714,19 @@ public:
 		//return (mKind != BfTypedValueKind_NoValue) && ((mValue) || ((mType != NULL) && (IsValuelessType())));
 		return (mKind != BfTypedValueKind_NoValue);
 	}
+
+	void MakeReadOnly()
+	{
+		switch (mKind)
+		{
+		case BfTypedValueKind_Addr:
+			mKind = BfTypedValueKind_ReadOnlyAddr;
+			break;
+		case BfTypedValueKind_TempAddr:
+			mKind = BfTypedValueKind_ReadOnlyTempAddr;
+			break;
+		}
+	}
 };
 
 #define BF_AST_TYPE(name, TBase) \

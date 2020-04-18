@@ -13,6 +13,7 @@ using IDE.ui;
 using IDE.Util;
 using System.Threading;
 using System.Diagnostics;
+using IDE.util;
 
 namespace IDE
 {    
@@ -276,6 +277,7 @@ namespace IDE
         public FileEditData mEditData;
 
 		public bool mHasChangedSinceLastCompile = true;
+		public bool mWasBuiltWithOldHash;
 		public bool mHasChangedSinceLastSuccessfulCompile = true;
 		public bool mLoadFailed;
 		public bool HasChangedSinceLastCompile

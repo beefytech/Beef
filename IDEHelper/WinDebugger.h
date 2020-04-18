@@ -21,6 +21,7 @@ namespace Beefy
 
 NS_BF_DBG_BEGIN
 
+class DbgProfiler;
 class DbgModule;
 class DbgSrcFile;
 class DbgLineData;
@@ -467,6 +468,7 @@ public:
 	
 	Dictionary<int, Profiler*> mPendingProfilerMap;
 	Array<Profiler*> mNewProfilerList;
+	HashSet<Profiler*> mProfilerSet;
 		
 	addr_target mMemCacheAddr;
 	uint8 mMemCacheData[WD_MEMCACHE_SIZE];	
@@ -660,7 +662,10 @@ public:
 	virtual void Detach() override;	
 	virtual Profiler* StartProfiling() override;
 	virtual Profiler* PopProfiler() override;
-	virtual void ReportMemory(MemReporter* memReporter) override;
+	void AddProfiler(DbgProfiler* profiler);
+	void RemoveProfiler(DbgProfiler* profiler);
+
+	virtual void ReportMemory(MemReporter* memReporter) override;	
 
 	virtual bool IsOnDemandDebugger() override { return false; }
 	virtual bool IsMiniDumpDebugger() { return false; }
