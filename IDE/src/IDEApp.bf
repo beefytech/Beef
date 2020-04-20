@@ -8386,7 +8386,7 @@ namespace IDE
 			for (var window in closeList)
 				window.Close(true);
 
-			delete project;
+			IdleDeferDelete(project);
         }
 
         BfPassInstance CompileBeef(Project hotProject, int32 hotIdx, bool lastCompileHadMessages, out bool hadBeef)
