@@ -439,7 +439,7 @@ public:
 	virtual bool IsVoid() { return false; }
 	virtual bool IsVoidPtr() { return false; }
 	virtual bool CanBeValuelessType() { return false; }
-	virtual bool IsValuelessType() { BF_ASSERT(mSize != -1); return mSize == 0; }
+	virtual bool IsValuelessType() { BF_ASSERT(mSize != -1); BF_ASSERT(mDefineState >= BfTypeDefineState_Defined); return mSize == 0; }
 	virtual bool IsSelf() { return false; }
 	virtual bool IsDot() { return false; }
 	virtual bool IsVar() { return false; }
