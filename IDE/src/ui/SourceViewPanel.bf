@@ -2143,38 +2143,18 @@ namespace IDE.ui
 				mSplitTopPanel.DetachFromProjectItem();
 		}
 
-        public override void Dispose()
-        {
-			if (mDisposed)
-				return;
+		public void CloseEdit()
+		{
+			mEditWidget.mPanel = null;
 
-			ProcessDeferredResolveResults(-1);
-
-			if (IDEApp.sApp.mLastActiveSourceViewPanel == this)
-				IDEApp.sApp.mLastActiveSourceViewPanel = null;
-
-			if (IDEApp.sApp.mLastActivePanel == this)
-				IDEApp.sApp.mLastActivePanel = null;
-
-			if (Content.Data.mCurQuickFind != null)
-			{
-				//Content.Data.mCurQuickFind.Close();
-				Content.Data.mCurQuickFind = null;
-			}
-
-            mEditWidget.mPanel = null;
-
-            if (mFilePath != null)            
-                IDEApp.sApp.mFileWatcher.RemoveWatch(mFilePath);            
-
-            var editWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
+			var editWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
 			if (editWidgetContent.mAutoComplete != null)
 				editWidgetContent.mAutoComplete.Close();
 			DeleteAndNullify!(editWidgetContent.mOnGenerateAutocomplete);
-            DeleteAndNullify!(editWidgetContent.mOnEscape);
-            DeleteAndNullify!(editWidgetContent.mOnFinishAsyncAutocomplete);
-            DeleteAndNullify!(editWidgetContent.mOnCancelAsyncAutocomplete);
-            editWidgetContent.mSourceViewPanel = null;
+			DeleteAndNullify!(editWidgetContent.mOnEscape);
+			DeleteAndNullify!(editWidgetContent.mOnFinishAsyncAutocomplete);
+			DeleteAndNullify!(editWidgetContent.mOnCancelAsyncAutocomplete);
+			editWidgetContent.mSourceViewPanel = null;
 			mEditWidget.RemoveSelf();
 
 			if ((mEditData != null) && (mEditData.mEditWidget == mEditWidget))
@@ -2208,6 +2188,32 @@ namespace IDE.ui
 				// This isn't needed anymore...
 				gApp.DeleteEditData(mEditData);
 			}
+			mEditData = null;
+		}
+
+        public override void Dispose()
+        {
+			if (mDisposed)
+				return;
+
+			ProcessDeferredResolveResults(-1);
+
+			if (IDEApp.sApp.mLastActiveSourceViewPanel == this)
+				IDEApp.sApp.mLastActiveSourceViewPanel = null;
+
+			if (IDEApp.sApp.mLastActivePanel == this)
+				IDEApp.sApp.mLastActivePanel = null;
+
+			if (Content.Data.mCurQuickFind != null)
+			{
+				//Content.Data.mCurQuickFind.Close();
+				Content.Data.mCurQuickFind = null;
+			}
+
+			if (mFilePath != null)            
+				IDEApp.sApp.mFileWatcher.RemoveWatch(mFilePath);
+
+            CloseEdit();
 
             /*if (mProjectSource != null)
                 mProjectSource.ClearUnsavedData();*/
@@ -2928,9 +2934,7 @@ namespace IDE.ui
 			{
 			    for (String filePath in fileDialog.FileNames)
 			    {
-			        delete mAliasFilePath;
-					mAliasFilePath = mFilePath;
-					mFilePath = new String(filePath);
+					mFilePath.Set(filePath);
 					RehupAlias();
 					RetryLoad();
 					break;
@@ -3254,9 +3258,19 @@ namespace IDE.ui
 
         public void Reload()
         {
+			bool needsFreshLoad = mLoadFailed;
+			if ((mEditData != null) && (!Path.Equals(mFilePath, mEditData.mFilePath)))
+			{
+				// This can happen if we do an Auto Find for source, which finds an incorrect file but then we Brose
+				// to the correct version
+				CloseEdit();
+				needsFreshLoad = true;
+			}
+
 			//TODO: Why did we ClearTrackedElements here? It caused reloads to not move breakpoints and stuff...
 			//ClearTrackedElements();
-			if (mLoadFailed)
+
+			if (needsFreshLoad)
 			{
 				Show(mFilePath);
 				ResizeComponents();
@@ -3321,6 +3335,8 @@ namespace IDE.ui
 
 		void RetryLoad()
 		{
+			CloseHeader();
+
 			Reload();
 			if (mRequestedLineAndColumn != null)
 				ShowFileLocation(-1, mRequestedLineAndColumn.Value.mLine, mRequestedLineAndColumn.Value.mColumn, .Always);
@@ -5820,9 +5836,7 @@ namespace IDE.ui
 
 					if (foundPath != null)
 					{
-						delete mAliasFilePath;
-						mAliasFilePath = mFilePath;
-						mFilePath = new String(foundPath);
+						mFilePath.Set(foundPath);
 						RehupAlias();
 					}
 

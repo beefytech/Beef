@@ -850,7 +850,7 @@ DbgSubprogram* DebugTarget::FindSubProgram(addr_target pc, DbgOnDemandKind onDem
 					}
 
 					if (module->RequestDebugInfo(onDemandKind == DbgOnDemandKind_AllowRemote))
-					{
+					{						
 						// Give another chance to ParseCompileUnit and then match again
 						found = true;
 						pass = -1;
@@ -2071,13 +2071,15 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 	// Fall through after this, we need to process a 'return'
 	bool alreadyRolledBackPC = false;
 	bool success = RollBackStackFrame_ExceptionDirectory(registers, outReturnAddressLoc, alreadyRolledBackPC);
-	if (!success)
-	{
-		if (mDebugger->IsMiniDumpDebugger())
-		{
-			return false;
-		}
-	}
+
+	///TODO: Why did we break when there was a minidump? This breaks default-rollback of just a 'ret'
+// 	if (!success)
+// 	{
+// 		if (mDebugger->IsMiniDumpDebugger())
+// 		{
+// 			return false;
+// 		}
+// 	}
 	if (alreadyRolledBackPC)
 		return true;
 
