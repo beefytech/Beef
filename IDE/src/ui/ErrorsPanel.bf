@@ -276,7 +276,7 @@ namespace IDE.ui
 						SetLabel(item, codeStr);
 
 						let descItem = item.GetSubItem(1);
-						SetLabel(descItem, scope String(32)..AppendF(error.mError));
+						SetLabel(descItem, scope String(32)..Append(error.mError));
 
 						let projectItem = item.GetSubItem(2);
 						SetLabel(projectItem, error.mProject);

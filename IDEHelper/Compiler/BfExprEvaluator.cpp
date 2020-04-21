@@ -6867,6 +6867,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				mModule->mCompiler->mResolvePassData->HandleTypeReference(targetSrc, resolvedTypeInstance->mTypeDef);
 
 			BfTypedValue structInst;
+			mModule->PopulateType(resolvedTypeInstance);
 			if (!resolvedTypeInstance->IsValuelessType())
 			{
 				if ((mReceivingValue != NULL) && (mReceivingValue->mType == resolvedTypeInstance) && (mReceivingValue->IsAddr()))
