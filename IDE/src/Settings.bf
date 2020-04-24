@@ -354,9 +354,9 @@ namespace IDE
 			{
 				mFonts.Add(new String("fonts/SourceCodePro-Regular.ttf"));
 				mFonts.Add(new String("Segoe UI"));
-				mFonts.Add(new String("Segoe UI Symbol"));
-				mFonts.Add(new String("Segoe UI Historic"));
-				mFonts.Add(new String("Segoe UI Emoji"));
+				mFonts.Add(new String("?Segoe UI Symbol"));
+				mFonts.Add(new String("?Segoe UI Historic"));
+				mFonts.Add(new String("?Segoe UI Emoji"));
 			}
 
 			public void Apply()
