@@ -36,6 +36,7 @@ namespace Beefy.theme.dark
 		public bool mAllowMouseInsideSelf;
 		public bool mAllowMouseOutside;
 		public int mAutoCloseDelay;
+		public bool mIsClipped;
 
         public const float cShadowSize = 8;
 
@@ -50,19 +51,26 @@ namespace Beefy.theme.dark
             mText = new String(text);
             mAllowResize = allowResize;
 
+			BFApp.sApp.GetWorkspaceRect(var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
+			float maxWidth = workspaceWidth - GS!(32);
+
             FontMetrics fontMetrics = .();
             float height = mFont.Draw(null, mText, x, y, 0, 0, FontOverflowMode.Overflow, &fontMetrics);
-            mWidth = Math.Max(minWidth, fontMetrics.mMaxWidth + GS!(32));
-            mHeight = Math.Max(minHeight, height + GS!(16));
-            
+            mWidth = Math.Max(fontMetrics.mMaxWidth + GS!(32), minWidth);
+            mHeight = Math.Clamp(height + GS!(16), minHeight, workspaceHeight);
+
+			if (mWidth > maxWidth)
+			{
+				mIsClipped = true;
+				mWidth = maxWidth;
+			}
+
             float screenX;
             float screenY;
             relWidget.SelfToRootTranslate(x, y, out screenX, out screenY);
             screenX += relWidget.mWidgetWindow.mClientX;
             screenY += relWidget.mWidgetWindow.mClientY;
-            //screenX -= 2;
-            //screenY += 14;
-
+            
             BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.PopupPosition | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha;                                        
             WidgetWindow widgetWindow = new WidgetWindow(relWidget.mWidgetWindow,
                 "Tooltip",
@@ -170,7 +178,10 @@ namespace Beefy.theme.dark
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth, mHeight);
 
             g.SetFont(mFont);
-            g.DrawString(mText, 0, GS!(5), FontAlign.Centered, mWidth);
+			if (mIsClipped)
+            	g.DrawString(mText, GS!(8), GS!(5), .Left, mWidth - GS!(16), .Ellipsis);
+			else
+				g.DrawString(mText, 0, GS!(5), .Centered, mWidth);
 
             if (mAllowResize)
                 g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ResizeGrabber), mWidth - GS!(22), mHeight - GS!(22));
