@@ -6846,6 +6846,11 @@ namespace IDE
 
             var window = (WidgetWindow)evt.mSender;                     
 
+			if (window.mFocusWidget is KeysEditWidget)
+			{
+				return;
+			}
+
 			IDECommand.ContextFlags useFlags = .None;
 			var activeWindow = GetActiveWindow();
 			bool isMainWindow = activeWindow.mRootWidget is MainFrame;
