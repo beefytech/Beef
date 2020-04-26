@@ -632,7 +632,7 @@ namespace IDE.ui
                 }
                 else if (elementFlags.HasFlag(SourceElementFlags.SpellingError))
                 {
-                    underlineColor = 0xE0FF3000;
+					underlineColor = 0x80FFD200;
                 }
 
                 if (underlineColor != 0)

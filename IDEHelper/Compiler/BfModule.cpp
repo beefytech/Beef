@@ -2372,7 +2372,9 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 			auto mixinOwner = mCurMethodState->mMixinState->mMixinMethodInstance->GetOwner();
 			curCheckType = mixinOwner;
 		}
-		bool allowPrivate = (memberOwner->mTypeDef == curCheckType->mTypeDef) || (IsInnerType(curCheckType->mTypeDef, memberOwner->mTypeDef));
+		bool allowPrivate = (memberOwner->mTypeDef == curCheckType->mTypeDef);
+		if (curCheckType != NULL)
+			allowPrivate |= IsInnerType(curCheckType->mTypeDef, memberOwner->mTypeDef);
 		if (allowPrivate)
 			flags = (BfProtectionCheckFlags)(flags | BfProtectionCheckFlag_AllowPrivate | BfProtectionCheckFlag_CheckedPrivate);
 		else

@@ -39,20 +39,36 @@ namespace IDE
 			{
 				sd.GetString("Bin32Path", mBin32Path);
 				sd.GetString("Bin64Path", mBin64Path);
-				ClearAndDeleteItems(mLib32Paths);
-				for (sd.Enumerate("Lib32Paths"))
+
+				void ReadPaths(String pathName, List<String> paths)
 				{
-					var str = new String();
-					sd.GetCurString(str);
-					mLib32Paths.Add(str);
+					HashSet<String> newPaths = scope .();
+					List<String> prevPaths = scope .();
+					for (var str in paths)
+						prevPaths.Add(str);
+					paths.Clear();
+					
+					for (sd.Enumerate(pathName))
+					{
+						var str = new String();
+						sd.GetCurString(str);
+						if (newPaths.Add(str))
+							paths.Add(str);
+						else
+							delete str;
+					}
+
+					for (var path in prevPaths)
+					{
+						if (!newPaths.Contains(path))
+							paths.Add(path);
+						else
+							delete path;
+					}
 				}
-				ClearAndDeleteItems(mLib64Paths);
-				for (sd.Enumerate("Lib64Paths"))
-				{
-					var str = new String();
-					sd.GetCurString(str);
-					mLib64Paths.Add(str);
-				}
+
+				ReadPaths("Lib32Paths", mLib32Paths);
+				ReadPaths("Lib64Paths", mLib64Paths);
 			}
 
 			[CLink, StdCall]
@@ -67,6 +83,9 @@ namespace IDE
 			{
 #if BF_PLATFORM_WINDOWS
 				StringView vsInfo = .(VSSupport_Find());
+
+				ClearAndDeleteItems(mLib32Paths);
+				ClearAndDeleteItems(mLib64Paths);
 
 				for (var infoStr in vsInfo.Split('\n'))
 				{
@@ -354,9 +373,9 @@ namespace IDE
 			{
 				mFonts.Add(new String("fonts/SourceCodePro-Regular.ttf"));
 				mFonts.Add(new String("Segoe UI"));
-				mFonts.Add(new String("Segoe UI Symbol"));
-				mFonts.Add(new String("Segoe UI Historic"));
-				mFonts.Add(new String("Segoe UI Emoji"));
+				mFonts.Add(new String("?Segoe UI Symbol"));
+				mFonts.Add(new String("?Segoe UI Historic"));
+				mFonts.Add(new String("?Segoe UI Emoji"));
 			}
 
 			public void Apply()

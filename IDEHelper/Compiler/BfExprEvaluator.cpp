@@ -3827,7 +3827,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 								mModule->TypeToString(curCheckType).c_str(), mPropDef->mName.c_str()), targetSrc);
 						}
 					}
-
+					
 					if (prop->mIsStatic)
 						mPropTarget = BfTypedValue(curCheckType);
 					else if (isBaseLookup)
@@ -3837,6 +3837,13 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					}
 					else
 						mPropTarget = target;
+
+					if (mPropTarget.mType->IsStructPtr())
+					{
+						mPropTarget = mModule->LoadValue(mPropTarget);
+						mPropTarget = BfTypedValue(mPropTarget.mValue, mPropTarget.mType->GetUnderlyingType(), mPropTarget.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+					}
+
 					mOrigPropTarget = mPropTarget;
 
 					auto autoComplete = GetAutoComplete();
@@ -12118,6 +12125,14 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 		return target;
 	}
 
+	if ((target.mType->IsPointer()) && (target.mType->GetUnderlyingType()->IsObjectOrInterface()))
+	{
+		mModule->Fail(StrFormat("Methods cannot be called on type '%s' because the type is a pointer to a reference type (ie: a double-reference).", 
+			mModule->TypeToString(target.mType).c_str()), targetSrc);
+		target.mType = mModule->mContext->mBfObjectType;
+		return target;
+	}
+
 	if (target.mType->IsWrappableType())
 	{
 		auto primStructType = mModule->GetWrappedStructType(target.mType);
@@ -12148,7 +12163,7 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 
 	if ((!target.mType->IsTypeInstance()) && (!target.mType->IsConcreteInterfaceType()))
 	{
-		mModule->Fail(StrFormat("Invalid target type: '%s'", mModule->TypeToString(target.mType).c_str()), targetSrc);
+		mModule->Fail(StrFormat("Methods cannot be called on type '%s'", mModule->TypeToString(target.mType).c_str()), targetSrc);
 		return BfTypedValue();
 	}
 

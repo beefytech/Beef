@@ -2984,6 +2984,9 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			std::function<void(BfType*)> splatIterate;
 			splatIterate = [&](BfType* checkType)
 			{
+				if (checkType->IsValueType())
+					PopulateType(checkType, BfPopulateType_Data);
+
 				if (checkType->IsMethodRef())
 				{
 					// For simplicitly, any methodRef inside a struct makes the struct non-splattable.  This reduces cases of needing to 
@@ -2991,8 +2994,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					hadNonSplattable = true;
 				}
 				else if (checkType->IsStruct())
-				{
-					PopulateType(checkType, BfPopulateType_Data);
+				{					
 					auto checkTypeInstance = checkType->ToTypeInstance();
 					if (checkTypeInstance->mBaseType != NULL)
 						splatIterate(checkTypeInstance->mBaseType);

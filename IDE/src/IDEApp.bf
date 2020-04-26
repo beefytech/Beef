@@ -4368,6 +4368,9 @@ namespace IDE
 
 		void ShowPanel(Panel panel, String label, bool setFocus = true)
 		{
+			if (!mInitialized)
+				return;
+
 			mLastActivePanel = panel;
 			RecordHistoryLocation();
 			ShowTab(panel, label, false, setFocus);
@@ -6842,6 +6845,11 @@ namespace IDE
 				return;
 
             var window = (WidgetWindow)evt.mSender;                     
+
+			if (window.mFocusWidget is KeysEditWidget)
+			{
+				return;
+			}
 
 			IDECommand.ContextFlags useFlags = .None;
 			var activeWindow = GetActiveWindow();
@@ -10646,19 +10654,22 @@ namespace IDE
 			float fontSize = DarkTheme.sScale * mSettings.mEditorSettings.mFontSize;
 			float tinyFontSize = fontSize * 8.0f/9.0f;
 
-			bool failed = false;
+			String err = scope String();
 			void FontFail(StringView name)
 			{
-				String err = scope String()..AppendF("Failed to load font '{}'", name);
-				OutputErrorLine(err);
-				if (!failed)
-					Fail(err);
-				failed = true;
+				if (!err.IsEmpty)
+					err.Append("\n");
+				err.AppendF("Failed to load font '{}'", name);
 			}
 
 			bool isFirstFont = true;
-			for (let fontName in mSettings.mEditorSettings.mFonts)
+			for (var fontName in mSettings.mEditorSettings.mFonts)
+			FontLoop:
 			{
+				bool isOptional;
+				if (isOptional = fontName.StartsWith("?"))
+					fontName = scope:FontLoop String(fontName, "?".Length);
+
 				if (isFirstFont)
 				{
 					mTinyCodeFont.Dispose(true);
@@ -10670,7 +10681,7 @@ namespace IDE
 				else
 				{
 					mTinyCodeFont.AddAlternate(fontName, tinyFontSize).IgnoreError();
-					if (mCodeFont.AddAlternate(fontName, fontSize) case .Err)
+					if ((mCodeFont.AddAlternate(fontName, fontSize) case .Err) && (!isOptional))
 						FontFail(fontName);
 				}
 			}
@@ -10685,12 +10696,12 @@ namespace IDE
 			if (mCodeFont.GetWidth('😊') == 0)
 			{
 				mCodeFont.AddAlternate("Segoe UI", fontSize);
-				mCodeFont.AddAlternate("Segoe UI Symbol", fontSize);
+				mCodeFont.AddAlternate("Segoe UI Symbol", fontSize).IgnoreError();
 				mCodeFont.AddAlternate("Segoe UI Historic", fontSize).IgnoreError();
 				mCodeFont.AddAlternate("Segoe UI Emoji", fontSize).IgnoreError();
 
 				mTinyCodeFont.AddAlternate("Segoe UI", tinyFontSize);
-				mTinyCodeFont.AddAlternate("Segoe UI Symbol", tinyFontSize);
+				mTinyCodeFont.AddAlternate("Segoe UI Symbol", tinyFontSize).IgnoreError();
 				mTinyCodeFont.AddAlternate("Segoe UI Historic", tinyFontSize).IgnoreError();
 				mTinyCodeFont.AddAlternate("Segoe UI Emoji", tinyFontSize).IgnoreError();
 
@@ -10701,6 +10712,12 @@ namespace IDE
 				mTinyCodeFont.AddAlternate(new String("fonts/segoeui.ttf"), tinyFontSize);
 				mTinyCodeFont.AddAlternate(new String("fonts/seguisym.ttf"), tinyFontSize);
 				mTinyCodeFont.AddAlternate(new String("fonts/seguihis.ttf"), tinyFontSize);*/
+			}
+
+			if (!err.IsEmpty)
+			{
+				OutputErrorLine(err);
+				Fail(err);
 			}
 
 			//mTinyCodeFont.Load(scope String(BFApp.sApp.mInstallDir, "fonts/SourceCodePro-Regular.ttf"), fontSize);

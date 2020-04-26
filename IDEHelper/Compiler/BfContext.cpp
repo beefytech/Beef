@@ -1335,8 +1335,8 @@ void BfContext::SaveDeletingType(BfType* type)
 	}
 	else
 	{
-		savedTypeData = *savedTypeDataPtr;
-		BF_DBG_FATAL("mSavedTypeData already had type name");
+		// This can happen if we have a conflicting type definition
+		savedTypeData = *savedTypeDataPtr;		
 	}
 	savedTypeData->mTypeId = type->mTypeId;
 	while ((int)mSavedTypeData.size() <= savedTypeData->mTypeId)
