@@ -2751,7 +2751,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				
 				bool isConst = false;
 				int64 constVal = 0;
-				if ((compileUnit->mLanguage == DbgLanguage_Beef) && (name[0] != '$'))
+				if ((compileUnit->mLanguage == DbgLanguage_Beef) && (name != NULL) && (name[0] != '$'))
 				{
 					for (char* cPtr = name + 1; true; cPtr++)
 					{
