@@ -12189,7 +12189,9 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 	auto resolvedCurTypeInst = curTypeInst;//mModule->ResolveGenericType(curTypeInst)->ToTypeInstance();
 	bool hasDifferentResolvedTypes = resolvedCurTypeInst != curTypeInst;
 	BfTypeVector resolvedGenericArguments;
-	auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();
+	BfMethodState* rootMethodState = NULL;
+	if (mModule->mCurMethodState != NULL)
+		rootMethodState = mModule->mCurMethodState->GetRootMethodState();
 
 	int localInferrableGenericArgCount = -1;
 
