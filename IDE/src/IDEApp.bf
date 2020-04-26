@@ -1956,14 +1956,16 @@ namespace IDE
 
 				let workspaceOptions = GetCurWorkspaceOptions();
 				let options = GetCurProjectOptions(project);
-				if (!options.mDebugOptions.mCommand.IsWhiteSpace)
-				{
-					String execCmd = scope .();
-					ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "command", execCmd);
 
+				String execCmd = scope .();
+				ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "command", execCmd);
+
+				if (!execCmd.IsWhiteSpace)
+				{
 					String initialDir = scope .();
-					Path.GetDirectoryPath(execCmd, initialDir);
-					dialog.InitialDirectory = initialDir;
+					Path.GetDirectoryPath(execCmd, initialDir).IgnoreError();
+					if (!initialDir.IsWhiteSpace)
+						dialog.InitialDirectory = initialDir;
 					dialog.SetFilter("Debug Session (*.bfdbg)|*.bfdbg");
 					dialog.DefaultExt = ".bfdbg";
 
@@ -9660,7 +9662,7 @@ namespace IDE
 
 			if (mWorkspace.mStartupProject != null)
 			{
-				if (mWorkspace.mStartupProject.IsEmpty)
+				if ((mWorkspace.mStartupProject.IsEmpty) && (!mWorkspace.IsDebugSession))
 				{
 #if !CLI
 					DarkDialog dlg = new DarkDialog("Initialize Project?",
@@ -10007,8 +10009,14 @@ namespace IDE
 			IDEUtils.FixFilePath(launchPath);
 			IDEUtils.FixFilePath(targetPath);
 
+			if (launchPath.IsEmpty)
+			{
+				OutputErrorLine("No debug target path was specified");
+				return false;
+			}
+
 			if (workingDir.IsEmpty)
-				Path.GetDirectoryPath(launchPath, workingDir);
+				Path.GetDirectoryPath(launchPath, workingDir).IgnoreError();
 
 			if (!Directory.Exists(workingDir))
 			{
