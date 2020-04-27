@@ -2781,9 +2781,11 @@ void BfParser::NextToken(int endIdx)
 						if (SrcPtrHasToken("new"))
 							mToken = BfToken_New;
 						break;
-					case TOKEN_HASH('n', 'u', 'l', 'l'):
+					case TOKEN_HASH('n', 'u', 'l', 'l'):						
 						if (SrcPtrHasToken("null"))
 							mToken = BfToken_Null;
+						else if (SrcPtrHasToken("nullable"))
+							mToken = BfToken_Nullable;
 						break;
 					case TOKEN_HASH('o', 'p', 'e', 'r'):
 						if (SrcPtrHasToken("operator"))

@@ -2050,7 +2050,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 			trackDIType = true;			
 		}
 	}
-	else if ((type->IsGenericParam()) || (type->IsRetTypeType()))
+	else if ((type->IsGenericParam()) || (type->IsModifiedTypeType()))
 	{
 		//mModule->PopulateType(mModule->mContext->mBfObjectType, BfPopulateType_Declaration);
 		irType = MapType(mModule->mContext->mBfObjectType);	

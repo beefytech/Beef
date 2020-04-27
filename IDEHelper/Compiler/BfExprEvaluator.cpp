@@ -6695,7 +6695,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 								delegateFailed = false;
 								if (mModule->mCurMethodInstance->mIsUnspecialized)
 								{
-									auto retTypeType = mModule->CreateRetTypeType(fieldVal.mType);
+									auto retTypeType = mModule->CreateModifiedTypeType(fieldVal.mType, BfToken_RetType);
 									return mModule->GetFakeTypedValue(retTypeType);
 								}
 							}
@@ -15918,6 +15918,10 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 		mModule->Fail("Null conditional reference not valid for static field references", dotToken);
 		return thisValue;
 	}
+	
+	auto opResult = PerformUnaryOperation_TryOperator(thisValue, NULL, BfUnaryOp_NullConditional, dotToken);
+	if (opResult)
+		thisValue = opResult;
 
 	//TODO: But make null conditional work for Nullable types
 	if (thisValue.mType->IsNullable())
@@ -15955,7 +15959,8 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 		mModule->AddBasicBlock(pendingNullCond->mCheckBB);
 	}
 
-	BfIRValue isNotNull;
+ 	BfIRValue isNotNull;
+
 	if (thisValue.mType->IsNullable())
 	{		
 		BfGenericTypeInstance* nullableType = (BfGenericTypeInstance*)thisValue.mType->ToTypeInstance();
@@ -16645,6 +16650,123 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 	BfExprEvaluator::PerformUnaryOperation_OnResult(unaryOpExpr, unaryOp, opToken);
 }
 
+BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedValue& inValue, BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken)
+{
+	if ((!inValue.mType->IsTypeInstance()) && (!inValue.mType->IsGenericParam()))
+		return BfTypedValue();
+	
+	SizedArray<BfResolvedArg, 1> args;
+	BfResolvedArg resolvedArg;
+	resolvedArg.mTypedValue = inValue;
+	args.push_back(resolvedArg);
+	BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
+	BfBaseClassWalker baseClassWalker(inValue.mType, NULL, mModule);
+
+	BfUnaryOp findOp = unaryOp;
+	bool isPostOp = false;
+
+	if (findOp == BfUnaryOp_PostIncrement)
+	{
+		findOp = BfUnaryOp_Increment;
+		isPostOp = true;
+	}
+
+	if (findOp == BfUnaryOp_PostDecrement)
+	{
+		findOp = BfUnaryOp_Decrement;
+		isPostOp = true;
+	}
+
+	BfType* bestSelfType = NULL;
+	while (true)
+	{
+		auto entry = baseClassWalker.Next();
+		auto checkType = entry.mTypeInstance;
+		if (checkType == NULL)
+			break;
+		for (auto operatorDef : checkType->mTypeDef->mOperators)
+		{
+			if (operatorDef->mOperatorDeclaration->mUnaryOp == findOp)
+			{
+				if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
+					continue;
+				if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
+					methodMatcher.mSelfType = entry.mSrcType;
+			}
+		}
+	}
+
+	if (methodMatcher.mBestMethodDef == NULL)
+	{
+		// Check method generic constraints
+		if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+		{
+			for (int genericParamIdx = 0; genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+			{
+				auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+				for (auto& opConstraint : genericParam->mOperatorConstraints)
+				{
+					if (opConstraint.mUnaryOp == findOp)
+					{
+						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))
+						{
+							return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);							
+						}
+					}
+				}
+			}
+		}
+
+		// Check type generic constraints
+		if ((mModule->mCurTypeInstance->IsGenericTypeInstance()) && (mModule->mCurTypeInstance->IsUnspecializedType()))
+		{
+			auto genericTypeInst = (BfGenericTypeInstance*)mModule->mCurTypeInstance;
+			for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericParams.size(); genericParamIdx++)
+			{
+				auto genericParam = mModule->GetGenericTypeParamInstance(genericParamIdx);
+				for (auto& opConstraint : genericParam->mOperatorConstraints)
+				{
+					if (opConstraint.mUnaryOp == findOp)
+					{
+						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))
+						{
+							return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);							
+						}
+					}
+				}
+			}
+		}
+
+		return BfTypedValue();
+	}
+	
+	if (!baseClassWalker.mMayBeFromInterface)
+		mModule->SetElementType(opToken, BfSourceElementType_Method);
+
+	auto methodDef = methodMatcher.mBestMethodDef;
+	auto autoComplete = GetAutoComplete();
+	if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(opToken)))
+	{
+		auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDef->mMethodDeclaration);
+		if ((operatorDecl != NULL) && (operatorDecl->mOpTypeToken != NULL))
+			autoComplete->SetDefinitionLocation(operatorDecl->mOpTypeToken);
+	}
+
+	SizedArray<BfExpression*, 2> argSrcs;
+	argSrcs.push_back(unaryOpExpr);
+	auto result = CreateCall(&methodMatcher, BfTypedValue());
+
+	if ((result.mType != NULL) && (methodMatcher.mSelfType != NULL) && (result.mType->IsSelf()))
+	{
+		BF_ASSERT(mModule->IsInGeneric());
+		result = mModule->GetDefaultTypedValue(methodMatcher.mSelfType);
+	}
+
+	if (isPostOp)
+		result = args[0].mTypedValue;
+	return result;
+}
+
 void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken)
 {
 	BfAstNode* propSrc = mPropSrc;
@@ -16666,117 +16788,13 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 		return;
 	}
 
-	if ((mResult.mType->IsTypeInstance()) || (mResult.mType->IsGenericParam()))
+	if (BfCanOverloadOperator(unaryOp))
 	{
-		SizedArray<BfResolvedArg, 1> args;
-		BfResolvedArg resolvedArg;
-		resolvedArg.mTypedValue = mResult;
-		args.push_back(resolvedArg);		
- 		BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
-		BfBaseClassWalker baseClassWalker(mResult.mType, NULL, mModule);
-		
-		BfUnaryOp findOp = unaryOp;
-		bool isPostOp = false;
-
-		if (findOp == BfUnaryOp_PostIncrement)
+		auto opResult = PerformUnaryOperation_TryOperator(mResult, unaryOpExpr, unaryOp, opToken);
+		if (opResult)
 		{
-			findOp = BfUnaryOp_Increment;
-			isPostOp = true;
-		}
-
-		if (findOp == BfUnaryOp_PostDecrement)
-		{
-			findOp = BfUnaryOp_Decrement;
-			isPostOp = true;
-		}
-
-		BfType* bestSelfType = NULL;
-		while (true)
-		{
-			auto entry = baseClassWalker.Next();
-			auto checkType = entry.mTypeInstance;
-			if (checkType == NULL)
-				break;
-			for (auto operatorDef : checkType->mTypeDef->mOperators)
-			{
-				if (operatorDef->mOperatorDeclaration->mUnaryOp == findOp)
-				{
-					if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
-						continue;
-					if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
-						methodMatcher.mSelfType = entry.mSrcType;
-				}
-			}			
-		}
-		
-		if (methodMatcher.mBestMethodDef != NULL)
-		{
-			if (!baseClassWalker.mMayBeFromInterface)
-				mModule->SetElementType(opToken, BfSourceElementType_Method);
-
-			auto methodDef = methodMatcher.mBestMethodDef;
-			auto autoComplete = GetAutoComplete();
-			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(opToken)))
-			{						
-				auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDef->mMethodDeclaration);
-				if ((operatorDecl != NULL) && (operatorDecl->mOpTypeToken != NULL))
-					autoComplete->SetDefinitionLocation(operatorDecl->mOpTypeToken);
-			}
-
-			SizedArray<BfExpression*, 2> argSrcs;
-			argSrcs.push_back(unaryOpExpr);			
-			mResult = CreateCall(&methodMatcher, BfTypedValue());
-
-			if ((mResult.mType != NULL) && (methodMatcher.mSelfType != NULL) && (mResult.mType->IsSelf()))
-			{
-				BF_ASSERT(mModule->IsInGeneric());
-				mResult = mModule->GetDefaultTypedValue(methodMatcher.mSelfType);
-			}
-
-			if (isPostOp)
-				mResult = args[0].mTypedValue;
+			mResult = opResult;
 			return;
-		}
-
-		// Check method generic constraints
-		if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
-		{
-			for (int genericParamIdx = 0; genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
-			{
-				auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
-				for (auto& opConstraint : genericParam->mOperatorConstraints)
-				{
-					if (opConstraint.mUnaryOp == findOp)
-					{
-						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))
-						{
-							mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
-							return;
-						}
-					}
-				}
-			}
-		}
-		
-		// Check type generic constraints
-		if ((mModule->mCurTypeInstance->IsGenericTypeInstance()) && (mModule->mCurTypeInstance->IsUnspecializedType()))
-		{
-			auto genericTypeInst = (BfGenericTypeInstance*)mModule->mCurTypeInstance;
-			for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericParams.size(); genericParamIdx++)
-			{
-				auto genericParam = mModule->GetGenericTypeParamInstance(genericParamIdx);
-				for (auto& opConstraint : genericParam->mOperatorConstraints)
-				{
-					if (opConstraint.mUnaryOp == findOp)
-					{
-						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))
-						{
-							mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
-							return;
-						}
-					}
-				}
-			}
 		}
 	}
 

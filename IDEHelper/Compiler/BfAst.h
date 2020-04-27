@@ -149,6 +149,7 @@ enum BfToken : uint8
 	BfToken_Namespace,
 	BfToken_New,	
 	BfToken_Null,
+	BfToken_Nullable,
 	BfToken_Operator,
 	BfToken_Out,
 	BfToken_Override,
@@ -359,7 +360,7 @@ class BfGenericConstraintsDeclaration;
 class BfAttributeDirective;
 class BfNullableTypeRef;
 class BfRefTypeRef;
-class BfRetTypeTypeRef;
+class BfModifiedTypeRef;
 class BfConstTypeRef;
 class BfConstExprTypeRef;
 class BfInlineAsmStatement;
@@ -443,7 +444,7 @@ public:
 	virtual void Visit(BfConstTypeRef* typeRef);
 	virtual void Visit(BfConstExprTypeRef* typeRef);
 	virtual void Visit(BfRefTypeRef* typeRef);
-	virtual void Visit(BfRetTypeTypeRef* typeRef);
+	virtual void Visit(BfModifiedTypeRef* typeRef);
 	virtual void Visit(BfArrayTypeRef* typeRef);
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef);
 	virtual void Visit(BfTupleTypeRef* typeRef);
@@ -1737,10 +1738,11 @@ enum BfUnaryOp
 	BfUnaryOp_Decrement,
 	BfUnaryOp_PostIncrement,
 	BfUnaryOp_PostDecrement,
+	BfUnaryOp_NullConditional,
 	BfUnaryOp_Ref,
 	BfUnaryOp_Out,
 	BfUnaryOp_Mut,
-	BfUnaryOp_Params,
+	BfUnaryOp_Params,	
 };
 
 class BfTokenNode : public BfAstNode
@@ -2317,15 +2319,15 @@ public:
 	ASTREF(BfTypeReference*) mElementType;
 };	BF_AST_DECL(BfElementedTypeRef, BfTypeReference);
 
-class BfRetTypeTypeRef : public BfElementedTypeRef
+class BfModifiedTypeRef : public BfElementedTypeRef
 {
 public:
-	BF_AST_TYPE(BfRetTypeTypeRef, BfElementedTypeRef);
+	BF_AST_TYPE(BfModifiedTypeRef, BfElementedTypeRef);
 
 	BfTokenNode* mRetTypeToken;
 	BfTokenNode* mOpenParen;
 	BfTokenNode* mCloseParen;
-};	BF_AST_DECL(BfRetTypeTypeRef, BfElementedTypeRef);
+};	BF_AST_DECL(BfModifiedTypeRef, BfElementedTypeRef);
 
 class BfArrayTypeRef : public BfElementedTypeRef
 {
@@ -3195,6 +3197,7 @@ BfBinaryOp BfGetFlippedBinaryOp(BfBinaryOp origOp);
 int BfGetBinaryOpPrecendence(BfBinaryOp binOp);
 const char* BfGetOpName(BfBinaryOp binOp);
 const char* BfGetOpName(BfUnaryOp unaryOp);
+bool BfCanOverloadOperator(BfUnaryOp unaryOp);
 BfBinaryOp BfTokenToBinaryOp(BfToken token);
 BfUnaryOp BfTokenToUnaryOp(BfToken token);
 BfAssignmentOp BfTokenToAssignmentOp(BfToken token);

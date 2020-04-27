@@ -1352,7 +1352,7 @@ BfIRValue BfModule::GetDefaultValue(BfType* type)
 	}
 	
 	if (type->IsPointer() || type->IsObjectOrInterface() || type->IsGenericParam() || type->IsVar() || type->IsRef() || type->IsNull() ||
-		type->IsRetTypeType() || type->IsConcreteInterfaceType())
+		type->IsModifiedTypeType() || type->IsConcreteInterfaceType())
 		return mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(type));
 	if ((type->IsIntegral()) || (type->IsBoolean()))
 	{

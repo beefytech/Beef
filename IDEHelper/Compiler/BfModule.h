@@ -1628,7 +1628,7 @@ public:
 	BfTupleType* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames);	
 	BfTupleType* SantizeTupleType(BfTupleType* tupleType);	
 	BfRefType* CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind = BfRefType::RefKind_Ref);
-	BfRetTypeType* CreateRetTypeType(BfType* resolvedTypeRef);
+	BfModifiedTypeType* CreateModifiedTypeType(BfType* resolvedTypeRef, BfToken modifiedKind);
 	BfConcreteInterfaceType* CreateConcreteInterfaceType(BfTypeInstance* interfaceType);
 	BfTypeInstance* GetWrappedStructType(BfType* type, bool allowSpecialized = true);
 	BfTypeInstance* GetPrimitiveStructType(BfTypeCode typeCode);

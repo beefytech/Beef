@@ -489,7 +489,7 @@ public:
 	virtual bool IsTuple() { return false; }
 	virtual bool IsOnDemand() { return false; }
 	virtual bool IsTemporary() { return false; }	
-	virtual bool IsRetTypeType() { return false; }
+	virtual bool IsModifiedTypeType() { return false; }
 	virtual bool IsConcreteInterfaceType() { return false; }
 	virtual bool IsTypeAlias() { return false; }
 	virtual bool HasPackingHoles() { return false; }
@@ -921,13 +921,14 @@ public:
 	virtual bool IsReified() override { return false; }
 };
 
-// This just captures rettype(T) since it can't be resolved directly
-class BfRetTypeType : public BfType
+// This just captures rettype(T)/nullable(T) since it can't be resolved directly
+class BfModifiedTypeType : public BfType
 {
 public:
+	BfToken mModifiedKind;
 	BfType* mElementType;
 
-	virtual bool IsRetTypeType() override { return true; }
+	virtual bool IsModifiedTypeType() override { return true; }
 	virtual bool CanBeValuelessType() override { return true; }
 	virtual bool IsValuelessType() override { return true; }
 

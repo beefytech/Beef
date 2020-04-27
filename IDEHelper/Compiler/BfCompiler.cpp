@@ -4150,7 +4150,7 @@ void BfCompiler::AddToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeIn
 
 	bool allowRebuild = ((!typeInst->IsGenericTypeInstance()) ||
 		((typeInst->IsUnspecializedType()) && (!typeInst->IsUnspecializedTypeVariation())));
-	if ((typeInst->IsClosure()) || (typeInst->IsConcreteInterfaceType()) || (typeInst->IsRetTypeType()))
+	if ((typeInst->IsClosure()) || (typeInst->IsConcreteInterfaceType()) || (typeInst->IsModifiedTypeType()))
 		allowRebuild = false;
 	if (allowRebuild)
 		rebuildTypeInstList.Add(typeInst);

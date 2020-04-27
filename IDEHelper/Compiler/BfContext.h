@@ -370,7 +370,7 @@ public:
 	BfAllocPool<BfBoxedType> mBoxedTypePool;
 	BfAllocPool<BfTupleType> mTupleTypePool;
 	BfAllocPool<BfRefType> mRefTypePool;
-	BfAllocPool<BfRetTypeType> mRetTypeTypePool;
+	BfAllocPool<BfModifiedTypeType> mRetTypeTypePool;
 	BfAllocPool<BfGenericTypeInstance> mGenericTypeInstancePool;
 	BfAllocPool<BfGenericTypeAliasType> mGenericTypeAliasPool;
 	BfAllocPool<BfArrayType> mArrayTypeInstancePool;
