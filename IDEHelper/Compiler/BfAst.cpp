@@ -246,7 +246,7 @@ void BfStructuralVisitor::Visit(BfRefTypeRef* typeRef)
 	Visit(typeRef->ToBase());
 }
 
-void BfStructuralVisitor::Visit(BfRetTypeTypeRef* typeRef)
+void BfStructuralVisitor::Visit(BfModifiedTypeRef* typeRef)
 {
 	Visit(typeRef->ToBase());
 }
@@ -1309,6 +1309,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "new";	
 	case BfToken_Null:
 		return "null";
+	case BfToken_Nullable:
+		return "nullable";
 	case BfToken_Operator:
 		return "operator";
 	case BfToken_Out:
@@ -1618,6 +1620,7 @@ const char* Beefy::BfGetOpName(BfUnaryOp unaryOp)
 	case BfUnaryOp_Decrement: return "--";
 	case BfUnaryOp_PostIncrement: return "++";
 	case BfUnaryOp_PostDecrement: return "--";
+	case BfUnaryOp_NullConditional: return "?";
 	case BfUnaryOp_Ref: return "ref";
 	case BfUnaryOp_Out: return "out";
 	case BfUnaryOp_Mut: return "mut";
@@ -1695,6 +1698,8 @@ BfUnaryOp Beefy::BfTokenToUnaryOp(BfToken token)
 		return BfUnaryOp_Increment;
 	case BfToken_DblMinus:
 		return BfUnaryOp_Decrement;
+	case BfToken_Question:
+		return BfUnaryOp_NullConditional;
 	case BfToken_Ref:
 		return BfUnaryOp_Ref;
 	case BfToken_Mut:
@@ -1705,6 +1710,25 @@ BfUnaryOp Beefy::BfTokenToUnaryOp(BfToken token)
 		return BfUnaryOp_Params;
 	default:
 		return BfUnaryOp_None;
+	}
+}
+
+bool Beefy::BfCanOverloadOperator(BfUnaryOp unaryOp)
+{
+	switch (unaryOp)
+	{
+	case BfUnaryOp_Negate:
+	case BfUnaryOp_Not:
+	case BfUnaryOp_Positive:
+	case BfUnaryOp_InvertBits:
+	case BfUnaryOp_Increment:
+	case BfUnaryOp_Decrement:
+	case BfUnaryOp_PostIncrement:
+	case BfUnaryOp_PostDecrement:
+	case BfUnaryOp_NullConditional:
+		return true;
+	default:
+		return false;
 	}
 }
 
