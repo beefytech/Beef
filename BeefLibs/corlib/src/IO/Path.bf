@@ -54,6 +54,34 @@ namespace System.IO
 
 		}
 
+		public static void ChangeExtension(StringView path, StringView ext, String outPath)
+		{
+			if (path.IsNull)
+				return;
+
+			CheckInvalidPathChars(path);
+
+			outPath.Set(path);
+			for (int i = path.Length; --i >= 0;)
+			{
+				let ch = path[i];
+				if (ch == '.')
+				{
+					outPath.Set(path.Substring(0, i));
+					break;
+				}
+				if (ch == DirectorySeparatorChar || ch == AltDirectorySeparatorChar || ch == VolumeSeparatorChar) break;
+			}
+			if (!ext.IsNull && path.Length != 0)
+			{
+				if (ext.IsEmpty || ext[0] != '.')
+				{
+					outPath.Append('.');
+				}
+				outPath.Append(ext);
+			}
+		}
+
 		public static void GetFileName(StringView inPath, String outFileName)
 		{
 			if (inPath.IsEmpty)
