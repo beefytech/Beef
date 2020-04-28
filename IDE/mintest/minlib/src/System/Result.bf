@@ -1,6 +1,6 @@
 namespace System
 {
-	enum Result<T>
+	enum Result<T> : IDisposable
 	{
 		case Ok(T _val);
 		case Err(void _err);
@@ -105,7 +105,7 @@ namespace System
 		}
 	}*/
 
-	enum Result<T, TErr>
+	enum Result<T, TErr> : IDisposable
 	{
 		case Ok(T val);
 		case Err(TErr err);
