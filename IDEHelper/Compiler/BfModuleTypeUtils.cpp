@@ -7228,11 +7228,22 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				typeVec.push_back(resolvedType);
 				resolvedType = ResolveTypeDef(mCompiler->mNullableTypeDef, typeVec, BfPopulateType_Declaration);
 			}
-			else if ((resolvedType != NULL) && (resolvedType->IsValueType()))
-			{
-				BfTypeVector typeVec;
-				typeVec.push_back(resolvedType);
-				resolvedType = ResolveTypeDef(mCompiler->mNullableTypeDef, typeVec, BfPopulateType_Declaration);
+			else if (resolvedType != NULL)
+			{				
+				if (resolvedType->IsValueType())
+				{
+					if (InDefinitionSection())
+						Warn(0, StrFormat("Consider using '%s?' instead of nullable modifier", TypeToString(resolvedType).c_str()), retTypeTypeRef);
+
+					BfTypeVector typeVec;
+					typeVec.push_back(resolvedType);
+					resolvedType = ResolveTypeDef(mCompiler->mNullableTypeDef, typeVec, BfPopulateType_Declaration);
+				}
+				else
+				{
+					if (InDefinitionSection())
+						Warn(0, StrFormat("Unneeded nullable modifier, %s is already nullable", TypeToString(resolvedType).c_str()), retTypeTypeRef->mRetTypeToken);
+				}
 			}
 			if (resolvedType != NULL)
 				PopulateType(resolvedType, populateType);
