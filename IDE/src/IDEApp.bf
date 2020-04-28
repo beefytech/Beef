@@ -3188,7 +3188,7 @@ namespace IDE
 #endif
 
 #unwarn
-			if (mMainWindow == null)
+			if ((mMainWindow == null) || (mShuttingDown))
 			{
 				mDeferredFails.Add(new String(text));
 				return null;
@@ -4372,7 +4372,7 @@ namespace IDE
 		{
 			if (!mInitialized)
 				return;
-
+#if !CLI
 			mLastActivePanel = panel;
 			RecordHistoryLocation();
 			ShowTab(panel, label, false, setFocus);
@@ -4380,6 +4380,7 @@ namespace IDE
 				panel.FocusForKeyboard();
 			if ((!panel.mWidgetWindow.mHasFocus) && (!mRunningTestScript))
 				panel.mWidgetWindow.SetForeground();
+#endif
 		}
 
 		[IDECommand]
@@ -6127,13 +6128,16 @@ namespace IDE
 			TabbedView.TabButton nextTab = null;
 			bool foundRemovedTab = false;
 			// Select the previous tab or the next one (if this is the first)
-			tabbedView.WithTabs(scope [&] (checkTab) =>
-                {
-					if (checkTab == tabButton)
-						foundRemovedTab = true;
-					else if ((!foundRemovedTab) || (nextTab == null))
-						nextTab = checkTab;
-                });
+			if (tabButton.mIsActive)
+			{
+				tabbedView.WithTabs(scope [&] (checkTab) =>
+	                {
+						if (checkTab == tabButton)
+							foundRemovedTab = true;
+						else if ((!foundRemovedTab) || (nextTab == null))
+							nextTab = checkTab;
+	                });
+			}
 
 			tabbedView.RemoveTab(tabButton);
 			if (nextTab != null)
@@ -6493,7 +6497,7 @@ namespace IDE
 				case "-testNoExit":
 					mExitWhenTestScriptDone = false;
 				case "-firstRun":
-					mForceFirstRun = true;
+					mForceFirstRun = true;																														  
 					mIsFirstRun = true;
 				case "-clean":
 					mWantsClean = true;
@@ -6505,7 +6509,7 @@ namespace IDE
 				case "-launchPaused":
 					if (mLaunchData != null)
 						mLaunchData.mPaused = true;
-					else
+					else																												   
 						Fail("'-launchPaused' can only be used after '-launch'");
 				default:
 					return false;
