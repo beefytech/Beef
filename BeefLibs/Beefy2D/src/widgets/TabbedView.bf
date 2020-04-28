@@ -107,6 +107,12 @@ namespace Beefy.widgets
 
             public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
             {
+				if (btn == 2)
+				{
+					mCloseClickedEvent();
+					return;
+				}
+
 				bool wasMouseDown = mMouseDown;
                 base.MouseDown(x, y, btn, btnCount);
                 Activate();
