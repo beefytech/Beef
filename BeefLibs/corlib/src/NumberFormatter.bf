@@ -1018,7 +1018,7 @@ namespace System
 		static char8[] sEmtpyBuf = new char8[0] ~ delete _;
 
 		//part of the private stringbuffer
-		private char8[] _cbuf;
+		private char8[] _cbuf ~ delete _;
 		private int32 mBufSize;
 
 		private bool _NaN;
