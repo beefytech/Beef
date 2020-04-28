@@ -65,10 +65,11 @@ namespace System
 		        }
 		        else
 		        {
-		        // On X86 this can be inlined to just a few instructions
+		        	// On X86 this can be inlined to just a few instructions
 		            curValue = Round(curValue);
 		        }
 		        curValue /= power10;
+				return curValue;
 		    }
 		    return value;
 		}
@@ -90,10 +91,11 @@ namespace System
                 }
                 else
                 {
-		        // On X86 this can be inlined to just a few instructions
+		        	// On X86 this can be inlined to just a few instructions
                     curValue = Round(curValue);
                 }
                 curValue /= power10;
+				return curValue;
             }
             return value;
         }
