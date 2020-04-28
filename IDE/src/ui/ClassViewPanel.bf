@@ -477,8 +477,8 @@ namespace IDE.ui
 
 		public override void RehupScale(float oldScale, float newScale)
 		{
-			SetScaleData();
 			base.RehupScale(oldScale, newScale);
+			SetScaleData();
 		}
 
 		public override void FocusForKeyboard()
