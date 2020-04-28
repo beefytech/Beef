@@ -13,7 +13,7 @@ namespace System.Collections.Generic
 	using System.Diagnostics;
 	using System.Diagnostics.Contracts;
 
-	public class Dictionary<TKey, TValue> where TKey : IHashable //: IDictionary<TKey, TValue>, IDictionary, IReadOnlyDictionary<TKey, TValue>, ISerializable, IDeserializationCallback
+	public class Dictionary<TKey, TValue> : ICollection<KeyValuePair<TKey, TValue>> where TKey : IHashable //: IDictionary<TKey, TValue>, IDictionary, IReadOnlyDictionary<TKey, TValue>, ISerializable, IDeserializationCallback
 	{
 		private struct Entry			
 		{
@@ -106,6 +106,11 @@ namespace System.Collections.Generic
 		public void Add(TKey key, TValue value)
 		{
 			Insert(key, value, true);
+		}
+		
+		public void Add(KeyValuePair<TKey, TValue> kvPair)
+		{
+			Insert(kvPair.Key, kvPair.Value, true);
 		}
 
 		public bool TryAdd(TKey key, TValue value)
@@ -214,6 +219,36 @@ namespace System.Collections.Generic
 				}*/
 			}
 			return false;
+		}
+		
+		public bool Contains(KeyValuePair<TKey, TValue> kvPair)
+		{
+			TValue value;
+			if(TryGetValue(kvPair.Key, out value))
+			{
+				return value == kvPair.Value;
+			}else{
+				return false;
+			}
+		}
+		
+		public void CopyTo(KeyValuePair<TKey, TValue>[] kvPair, int index)
+		{
+			Keys.Reset();
+			Values.Reset();
+			int i = 0;
+
+			repeat
+			{
+				if(i >= index)
+				{
+					kvPair[i] = KeyValuePair<TKey,TValue>(Keys.Current, Values.CurrentRef);
+				}
+			}
+			while(Keys.MoveNext() && Values.MoveNext());
+
+			Keys.Reset();
+			Values.Reset();
 		}
 
 		public Enumerator GetEnumerator()
@@ -458,6 +493,12 @@ namespace System.Collections.Generic
 				}
 			}
 			return false;
+		}
+		
+		[Inline]
+		public bool Remove(KeyValuePair<TKey, TValue> kvPair)
+		{
+			return Remove(kvPair.Key);
 		}
 
 		public Result<(TKey key, TValue value)> GetAndRemove(TKey key)
