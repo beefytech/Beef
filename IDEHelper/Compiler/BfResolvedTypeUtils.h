@@ -381,6 +381,7 @@ enum BfTypeDefineState : uint8
 {
 	BfTypeDefineState_Undefined,
 	BfTypeDefineState_Declared,
+	BfTypeDefineState_ResolvingBaseType,
 	BfTypeDefineState_HasInterfaces,
 	BfTypeDefineState_Defined,
 	BfTypeDefineState_DefinedAndMethodsSlotted,

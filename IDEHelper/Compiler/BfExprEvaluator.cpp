@@ -3304,8 +3304,15 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		startCheckType = target.mType->ToTypeInstance();
 	}
 
-	if ((startCheckType != NULL) && (startCheckType->mBaseType == NULL))	
-		mModule->PopulateType(startCheckType, BfPopulateType_BaseType);	
+	if ((startCheckType != NULL) && (startCheckType->mBaseType == NULL))
+	{
+		if (startCheckType->mDefineState == BfTypeDefineState_ResolvingBaseType)
+		{
+			// Fixes cases where we have something like 'Base[Value]' as a base typeref
+			return BfTypedValue();
+		}
+		mModule->PopulateType(startCheckType, BfPopulateType_BaseType);
+	}
 
 	String findName;
 	int varSkipCount = 0;

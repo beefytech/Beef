@@ -1614,7 +1614,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if (typeDef->mIsCombinedPartial)
 				declTypeDef = typeDef->mPartials.front();
 			SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, declTypeDef);
-
+			SetAndRestoreValue<BfTypeDefineState> prevDefineState(typeInstance->mDefineState, BfTypeDefineState_ResolvingBaseType);
 			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, baseTypeRef);
 			// We ignore errors here to avoid double-errors for type lookups, but this is where data cycles are detected
 			//  but that type of error supersedes the mIgnoreErrors setting
@@ -1850,6 +1850,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if (typeDef->mIsCombinedPartial)
 				declTypeDef = typeDef->mPartials.front();
 			SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, declTypeDef);
+			SetAndRestoreValue<BfTypeDefineState> prevDefineState(typeInstance->mDefineState, BfTypeDefineState_ResolvingBaseType);
 
 			bool populateBase = !typeInstance->mTypeFailed;
 			auto checkType = ResolveTypeRef(checkTypeRef, populateBase ? BfPopulateType_Data : BfPopulateType_Declaration);
