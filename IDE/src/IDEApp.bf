@@ -168,6 +168,7 @@ namespace IDE
         public Image mTransparencyGridImage ~ delete _;
         public Image mSquiggleImage ~ delete _;
         public Image mCircleImage ~ delete _;
+		public bool mWantShowOutput;
 
         public OutputPanel mOutputPanel;
         public ImmediatePanel mImmediatePanel;
@@ -6692,7 +6693,7 @@ namespace IDE
 
 		public void OutputErrorLine(String format, params Object[] args)
 		{
-			ShowOutput();
+			mWantShowOutput = true;
 			var errStr = scope String();
 			errStr.Append("ERROR: ", format);
 			OutputLineSmart(errStr, params args);
@@ -12401,6 +12402,12 @@ namespace IDE
 			{
 
 			}*/
+
+			if (mWantShowOutput)
+			{
+				ShowOutput();
+				mWantShowOutput = false;
+			}
 
 			if (mDbgFastUpdate)
 			{
