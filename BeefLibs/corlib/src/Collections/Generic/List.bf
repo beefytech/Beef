@@ -23,7 +23,7 @@ namespace System.Collections.Generic
 		}
 	}
 
-	public class List<T> : IEnumerable<T>, IList
+	public class List<T> : IEnumerable<T>, IList, ICollection<T>
 	{
 		private const int_cosize cDefaultCapacity = 4;
 
