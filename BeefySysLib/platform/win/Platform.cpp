@@ -3260,10 +3260,14 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* ou
 				subName[j] = DIR_SEP_CHAR;
 		info.szDisplayName[0] = 0;		
 		int32 size = (int32)sizeof(SHFILEINFOW);
-		if (SHGetFileInfoW(UTF8Decode(subName).c_str(), 0, &info, (int32)sizeof(SHFILEINFOW), SHGFI_DISPLAYNAME))
+
+		WIN32_FIND_DATAW findData;
+		HANDLE handleVal = FindFirstFileW(UTF8Decode(subName).c_str(), &findData);
+		if (handleVal != INVALID_HANDLE_VALUE)
 		{
-			outPath.Append(UTF8Encode(info.szDisplayName));
-		}
+			outPath.Append(UTF8Encode(findData.cFileName));
+			FindClose(handleVal);
+		}		
 		else
 		{
 			// most likely file does not exist.
