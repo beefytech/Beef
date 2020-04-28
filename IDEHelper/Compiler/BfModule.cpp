@@ -10811,9 +10811,11 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 			return false;
 		auto operatorA = (BfOperatorDef*)methodA->mMethodDef;
 		auto operatorB = (BfOperatorDef*)methodB->mMethodDef;
-		if (operatorA->mOperatorDeclaration->mBinOp != operatorB->mOperatorDeclaration->mBinOp)
-			return false;
 		if (operatorA->mOperatorDeclaration->mUnaryOp != operatorB->mOperatorDeclaration->mUnaryOp)
+			return false;
+		if (operatorA->mOperatorDeclaration->mBinOp != operatorB->mOperatorDeclaration->mBinOp)
+			return false;		
+		if (operatorA->mOperatorDeclaration->mAssignOp != operatorB->mOperatorDeclaration->mAssignOp)
 			return false;
 		if (operatorA->mOperatorDeclaration->mIsConvOperator)
 		{
