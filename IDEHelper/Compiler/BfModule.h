@@ -1537,6 +1537,7 @@ public:
 	BfTypedValue GetThis();
 	BfLocalVariable* GetThisVariable();
 	bool IsInGeneric();
+	bool InDefinitionSection();
 	bool IsInSpecializedGeneric();
 	bool IsInSpecializedSection(); // Either a specialized generic or an injected mixin
 	bool IsInUnspecializedGeneric();

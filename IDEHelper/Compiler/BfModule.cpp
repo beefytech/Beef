@@ -12225,8 +12225,18 @@ bool BfModule::IsInGeneric()
 	return (mCurMethodInstance->GetNumGenericArguments() != 0) || (mCurTypeInstance->IsGenericTypeInstance());
 }
 
-bool BfModule::IsInSpecializedGeneric()
+bool BfModule::InDefinitionSection()
 {
+	if (mCurTypeInstance != NULL)
+	{
+		if (mCurTypeInstance->IsUnspecializedTypeVariation())
+			return false;		
+	}
+	return !IsInSpecializedSection();
+}
+
+bool BfModule::IsInSpecializedGeneric()
+{	
 	if ((mCurMethodInstance == NULL) || (mCurMethodInstance->mIsUnspecialized))
 		return false;
 	return (mCurMethodInstance->GetNumGenericArguments() != 0) || (mCurTypeInstance->IsGenericTypeInstance());
@@ -16991,7 +17001,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		skipEndChecks = true;
 		
 		if (HasCompiledOutput())
-		{	
+		{
 			// Clear out DebugLoc - to mark the ".addr" code as part of prologue
 			mBfIRBuilder->ClearDebugLocation();
 
@@ -17016,6 +17026,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					auto retVal = GetDefaultValue(methodInstance->mReturnType);
 					CreateReturn(retVal);
 				}
+				else
+					mBfIRBuilder->CreateRetVoid();
 			}
 			else
 			{
