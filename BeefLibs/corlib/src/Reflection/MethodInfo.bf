@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using System.FFI;
 using System.Diagnostics;
-using System.Collections.Generic;
+using System.Collections;
 
 namespace System.Reflection
 {

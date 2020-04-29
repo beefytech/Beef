@@ -4,7 +4,7 @@
 
 using System.Diagnostics;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	public class BinaryHeap<T>
 	{

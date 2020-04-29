@@ -8,13 +8,12 @@
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Text;
 using System.Security;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	/// Implementation notes:
 	/// This uses an array-based implementation similar to Dictionary<T>, using a buckets array

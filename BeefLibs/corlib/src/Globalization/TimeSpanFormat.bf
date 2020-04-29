@@ -10,7 +10,7 @@ namespace System.Globalization {
     using System;
     using System.Diagnostics.Contracts;
     using System.Globalization;
-	using System.Collections.Generic;
+	using System.Collections;
 
     static class TimeSpanFormat
 	{

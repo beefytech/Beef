@@ -1,5 +1,5 @@
 using System.IO;
-using System.Collections.Generic;
+using System.Collections;
 
 namespace System.Diagnostics
 {

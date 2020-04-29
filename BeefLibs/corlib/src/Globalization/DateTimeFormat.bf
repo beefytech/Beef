@@ -6,7 +6,7 @@ namespace System {
     using System.Text;
     using System.Threading;
     using System.Globalization;
-    using System.Collections.Generic;
+    using System.Collections;
     using System.Security;
     using System.Diagnostics.Contracts;
 

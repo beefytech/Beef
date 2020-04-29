@@ -6,7 +6,7 @@
 #define VERSION_DICTIONARY
 #endif
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	using System;
 	using System.Collections;
