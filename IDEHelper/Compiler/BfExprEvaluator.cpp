@@ -4134,77 +4134,8 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 void BfExprEvaluator::PerformCallChecks(BfMethodInstance* methodInstance, BfAstNode* targetSrc)
 {
 	BfCustomAttributes* customAttributes = methodInstance->GetCustomAttributes();
-	if (customAttributes != NULL)
-	{
-		auto _AddMethodDeclarationMoreInfo = [&]()
-		{
-			if (methodInstance->mMethodDef->mMethodDeclaration != NULL)
-				mModule->mCompiler->mPassInstance->MoreInfo(
-					StrFormat("See method declaration '%s'", mModule->MethodToString(methodInstance).c_str()),
-					methodInstance->mMethodDef->GetRefNode());
-		};
-
-		BfIRConstHolder* constHolder = methodInstance->GetOwner()->mConstHolder;
-		auto customAttribute = customAttributes->Get(mModule->mCompiler->mObsoleteAttributeTypeDef);
-		if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
-		{
-			String err;
-			err = StrFormat("'%s' is obsolete", mModule->MethodToString(methodInstance).c_str());
-
-			bool isError = false;
-
-			auto constant = constHolder->GetConstant(customAttribute->mCtorArgs[0]);
-			if (constant->mTypeCode == BfTypeCode_Boolean)
-			{
-				isError = constant->mBool;
-			}
-			else if (customAttribute->mCtorArgs.size() >= 2)
-			{
-				String* str = mModule->GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
-				if (str != NULL)
-				{
-					err += ":\n    '";
-					err += *str;
-					err += "'";
-				}
-
-				constant = constHolder->GetConstant(customAttribute->mCtorArgs[1]);
-				isError = constant->mBool;
-			}
-
-			BfError* error = NULL;
-			if (isError)
-				error = mModule->Fail(err, targetSrc);
-			else
-				error = mModule->Warn(0, err, targetSrc);
-			if (error != NULL)
-				_AddMethodDeclarationMoreInfo();
-		}
-
-		customAttribute = customAttributes->Get(mModule->mCompiler->mErrorAttributeTypeDef);
-		if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
-		{
-			String err = StrFormat("Method error: '", mModule->MethodToString(methodInstance).c_str());
-			String* str = mModule->GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
-			if (str != NULL)
-				err += *str;
-			err += "'";
-			if (mModule->Fail(err, targetSrc) != NULL)
-				_AddMethodDeclarationMoreInfo();
-		}
-
-		customAttribute = customAttributes->Get(mModule->mCompiler->mWarnAttributeTypeDef);
-		if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
-		{
-			String err = StrFormat("Method warning: '", mModule->MethodToString(methodInstance).c_str());
-			String* str = mModule->GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
-			if (str != NULL)
-				err += *str;
-			err += "'";
-			if (mModule->Warn(0, err, targetSrc) != NULL)
-				_AddMethodDeclarationMoreInfo();
-		}
-	}
+	if (customAttributes != NULL)	
+		mModule->CheckErrorAttributes(methodInstance->GetOwner(), methodInstance, customAttributes, targetSrc);	
 }
 
 BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret, bool isTailCall)

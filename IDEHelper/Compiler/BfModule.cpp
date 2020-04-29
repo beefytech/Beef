@@ -1557,7 +1557,7 @@ String* BfModule::GetStringPoolString(BfIRValue constantStr, BfIRConstHolder * c
 	{
 		auto& entry = mContext->mStringObjectIdMap[strId];		
 		return &entry.mString;
-	}
+	}	
 	return NULL;
 }
 
@@ -2745,6 +2745,98 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 		}
 	}
 	return bfError;
+}
+
+void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc)
+{
+	auto _AddDeclarationMoreInfo = [&]()
+	{
+		if (methodInstance != NULL)
+		{
+			if (methodInstance->mMethodDef->mMethodDeclaration != NULL)
+				mCompiler->mPassInstance->MoreInfo(
+					StrFormat("See method declaration '%s'", MethodToString(methodInstance).c_str()),
+					methodInstance->mMethodDef->GetRefNode());
+		}
+		else
+		{			
+			mCompiler->mPassInstance->MoreInfo(
+				StrFormat("See type declaration '%s'", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str()),
+				typeInstance->mTypeDef->GetRefNode());
+		}
+	};
+
+	BfIRConstHolder* constHolder = typeInstance->mConstHolder;
+	auto customAttribute = customAttributes->Get(mCompiler->mObsoleteAttributeTypeDef);
+	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
+	{
+		String err;
+		if (methodInstance != NULL)
+			err = StrFormat("'%s' is obsolete", MethodToString(methodInstance).c_str());
+		else
+			err = StrFormat("'%s' is obsolete", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
+
+		bool isError = false;
+
+		auto constant = constHolder->GetConstant(customAttribute->mCtorArgs[0]);
+		if (constant->mTypeCode == BfTypeCode_Boolean)
+		{
+			isError = constant->mBool;
+		}
+		else if (customAttribute->mCtorArgs.size() >= 2)
+		{
+			String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+			if (str != NULL)
+			{
+				err += ":\n    '";
+				err += *str;
+				err += "'";
+			}
+
+			constant = constHolder->GetConstant(customAttribute->mCtorArgs[1]);
+			isError = constant->mBool;
+		}
+
+		BfError* error = NULL;
+		if (isError)
+			error = Fail(err, targetSrc);
+		else
+			error = Warn(0, err, targetSrc);
+		if (error != NULL)
+			_AddDeclarationMoreInfo();
+	}
+
+	customAttribute = customAttributes->Get(mCompiler->mErrorAttributeTypeDef);
+	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
+	{
+		String err;
+		if (methodInstance != NULL)
+			StrFormat("Method error: '", MethodToString(methodInstance).c_str());
+		else
+			StrFormat("Type error: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
+		String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+		if (str != NULL)
+			err += *str;
+		err += "'";
+		if (Fail(err, targetSrc) != NULL)
+			_AddDeclarationMoreInfo();
+	}
+
+	customAttribute = customAttributes->Get(mCompiler->mWarnAttributeTypeDef);
+	if ((customAttribute != NULL) && (!customAttribute->mCtorArgs.IsEmpty()))
+	{
+		String err;
+		if (methodInstance != NULL)
+			StrFormat("Method warning: '", MethodToString(methodInstance).c_str());
+		else
+			StrFormat("Type warning: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
+		String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
+		if (str != NULL)
+			err += *str;
+		err += "'";
+		if (Warn(0, err, targetSrc) != NULL)
+			_AddDeclarationMoreInfo();
+	}
 }
 
 void BfModule::CheckRangeError(BfType* type, BfAstNode* refNode)
@@ -9351,6 +9443,7 @@ static String GetAttributesTargetListString(BfAttributeTargets attrTarget)
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_Invocation, resultStr, "invocations");	
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_MemberAccess, resultStr, "member access");
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_Alloc, resultStr, "allocations");
+	AddAttributeTargetName(flagsLeft, BfAttributeTargets_Alias, resultStr, "aliases");
 	if (resultStr.IsEmpty())
 		return "<nothing>";
 	return resultStr;

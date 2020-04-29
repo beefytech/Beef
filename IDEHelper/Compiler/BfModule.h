@@ -1413,6 +1413,7 @@ public:
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	
 	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false);
+	void CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc);
 	void CheckRangeError(BfType* type, BfAstNode* refNode);
 	bool CheckCircularDataError();
 	BfFileInstance* GetFileFromNode(BfAstNode* astNode);

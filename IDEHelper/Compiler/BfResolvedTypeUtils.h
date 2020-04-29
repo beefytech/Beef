@@ -20,14 +20,15 @@ enum BfTypeNameFlags : uint16
 {
 	BfTypeNameFlags_None = 0,
 	BfTypeNameFlag_ResolveGenericParamNames = 1,
-	BfTypeNameFlag_OmitNamespace = 2,
-	BfTypeNameFlag_OmitOuterType = 4,
-	BfTypeNameFlag_ReduceName = 8,
-	BfTypeNameFlag_UseArrayImplType = 0x10,
-	BfTypeNameFlag_DisambiguateDups = 0x20, // Add a disambiguation if mDupDetectedRevision is set	
-	BfTypeNameFlag_AddGlobalContainerName = 0x40,
-	BfTypeNameFlag_InternalName = 0x80, // Use special delimiters to remove ambiguities (ie: '+' for inner types)	
-	BfTypeNameFlag_HideGlobalName = 0x100
+	BfTypeNameFlag_UseUnspecializedGenericParamNames = 2,
+	BfTypeNameFlag_OmitNamespace = 4,
+	BfTypeNameFlag_OmitOuterType = 8,
+	BfTypeNameFlag_ReduceName = 0x10,
+	BfTypeNameFlag_UseArrayImplType = 0x20,
+	BfTypeNameFlag_DisambiguateDups = 0x40, // Add a disambiguation if mDupDetectedRevision is set	
+	BfTypeNameFlag_AddGlobalContainerName = 0x80,
+	BfTypeNameFlag_InternalName = 0x100, // Use special delimiters to remove ambiguities (ie: '+' for inner types)	
+	BfTypeNameFlag_HideGlobalName = 0x200,
 };
 
 enum BfMethodNameFlags : uint8
@@ -1401,28 +1402,29 @@ enum BfAttributeTargets : int32
 {
 	BfAttributeTargets_SkipValidate = -1,
 
-	BfAttributeTargets_None = 0,
-	BfAttributeTargets_Assembly = 0x0001,
-	BfAttributeTargets_Module = 0x0002,
-	BfAttributeTargets_Class = 0x0004,
-	BfAttributeTargets_Struct = 0x0008,
-	BfAttributeTargets_Enum = 0x0010,
-	BfAttributeTargets_Constructor = 0x0020,
-	BfAttributeTargets_Method = 0x0040,
-	BfAttributeTargets_Property = 0x0080,
-	BfAttributeTargets_Field = 0x0100,
-	BfAttributeTargets_StaticField = 0x0200,
-	BfAttributeTargets_Interface = 0x0400,
-	BfAttributeTargets_Parameter = 0x0800,
-	BfAttributeTargets_Delegate = 0x1000,
-	BfAttributeTargets_Function = 0x2000,
-	BfAttributeTargets_ReturnValue = 0x4000,	
+	BfAttributeTargets_None         = 0,
+	BfAttributeTargets_Assembly     = 0x0001,
+	BfAttributeTargets_Module       = 0x0002,
+	BfAttributeTargets_Class        = 0x0004,
+	BfAttributeTargets_Struct       = 0x0008,
+	BfAttributeTargets_Enum         = 0x0010,
+	BfAttributeTargets_Constructor  = 0x0020,
+	BfAttributeTargets_Method       = 0x0040,
+	BfAttributeTargets_Property     = 0x0080,
+	BfAttributeTargets_Field        = 0x0100,
+	BfAttributeTargets_StaticField  = 0x0200,
+	BfAttributeTargets_Interface    = 0x0400,
+	BfAttributeTargets_Parameter    = 0x0800,
+	BfAttributeTargets_Delegate     = 0x1000,
+	BfAttributeTargets_Function     = 0x2000,
+	BfAttributeTargets_ReturnValue  = 0x4000,	
 	BfAttributeTargets_GenericParameter = 0x8000,
-	BfAttributeTargets_Invocation = 0x10000,
+	BfAttributeTargets_Invocation   = 0x10000,
 	BfAttributeTargets_MemberAccess = 0x20000,
-	BfAttributeTargets_Alloc = 0x40000,
-	BfAttributeTargets_Delete = 0x80000,
-	BfAttributeTargets_All = 0xFFFFF
+	BfAttributeTargets_Alloc        = 0x40000,
+	BfAttributeTargets_Delete       = 0x80000,
+	BfAttributeTargets_Alias        = 0x100000,
+	BfAttributeTargets_All          = 0x1FFFFF
 };
 
 class BfAttributeData

@@ -949,6 +949,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		}
 		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
 		resolvedTypeRef->mRebuildFlags = BfTypeRebuildFlag_None;
+		typeAlias->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
 
 		return true;
 	}
@@ -6046,10 +6047,9 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		}
 	}
 
-	BfGenericTypeInstance* genericTypeInstance = NULL;
-	if (resolvedTypeRef != NULL)
-		genericTypeInstance = resolvedTypeRef->ToGenericTypeInstance();
-	
+	BfTypeInstance* typeInstance = resolvedTypeRef->ToTypeInstance();
+	BfGenericTypeInstance* genericTypeInstance = resolvedTypeRef->ToGenericTypeInstance();	
+		
 	bool hadError = false;
 	hadError = !PopulateType(resolvedTypeRef, populateType);
 	
@@ -6064,11 +6064,23 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	if (populateType != BfPopulateType_IdentityNoRemapAlias)
 	{
 		while ((resolvedTypeRef != NULL) && (resolvedTypeRef->IsTypeAlias()))
-		{
+		{			
 			if (mCurTypeInstance != NULL)
 				AddDependency(resolvedTypeRef, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
+			if ((typeInstance->mCustomAttributes != NULL) && (!typeRef->IsTemporary()))
+				CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);
 			resolvedTypeRef = resolvedTypeRef->GetUnderlyingType();
+			if (resolvedTypeRef != NULL)
+				typeInstance = resolvedTypeRef->ToTypeInstance();
+			else
+				typeInstance = NULL;
 		}
+	}
+
+	if (typeInstance != NULL)
+	{
+		if ((typeInstance->mCustomAttributes != NULL) && (!typeRef->IsTemporary()))
+			CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);
 	}
 
 	return resolvedTypeRef;
@@ -10416,6 +10428,12 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 								// We don't want the param names, just the commas (this is an unspecialized type reference)
 								if (i > prevGenericParamCount)
 									str += ',';
+
+								if ((typeNameFlags & BfTypeNameFlag_UseUnspecializedGenericParamNames) != 0)
+								{
+									str += checkTypeDef->mGenericParamDefs[i]->mName;
+								}
+
 								continue;
 							}
 						}

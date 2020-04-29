@@ -654,3 +654,9 @@ namespace System.Collections
 	    }
 	}
 }
+
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic containers have been moved into System.Collections", false)]
+	typealias List<T> = System.Collections.List<T>;
+}

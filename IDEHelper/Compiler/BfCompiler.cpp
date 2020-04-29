@@ -4623,6 +4623,16 @@ void BfCompiler::MarkStringPool(BfModule* module)
 		MarkStringPool(specModulePair.mValue);
 }
 
+void BfCompiler::MarkStringPool(BfIRConstHolder* constHolder, BfIRValue irValue)
+{
+	auto constant = constHolder->GetConstant(irValue);
+	if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_StringId))
+	{
+		BfStringPoolEntry& stringPoolEntry = mContext->mStringObjectIdMap[constant->mInt32];
+		stringPoolEntry.mLastUsedRevision = mRevision;
+	}
+}
+
 void BfCompiler::ClearUnusedStringPoolEntries()
 {
 	BF_ASSERT(!IsHotCompile());
@@ -4630,6 +4640,24 @@ void BfCompiler::ClearUnusedStringPoolEntries()
 	for (auto module : mContext->mModules)
 	{			
 		MarkStringPool(module);
+	}	
+
+	for (auto type : mContext->mResolvedTypes)
+	{
+		auto typeInstance = type->ToTypeInstance();
+		if (typeInstance == NULL)
+			continue;
+		if (typeInstance->mCustomAttributes == NULL)
+			continue;
+		for (auto& attribute : typeInstance->mCustomAttributes->mAttributes)
+		{
+			for (auto arg : attribute.mCtorArgs)
+				MarkStringPool(typeInstance->mConstHolder, arg);
+			for (auto setValue : attribute.mSetProperties)
+				MarkStringPool(typeInstance->mConstHolder, setValue.mParam.mValue);
+			for (auto setValue : attribute.mSetField)
+				MarkStringPool(typeInstance->mConstHolder, setValue.mParam.mValue);
+		}
 	}
 
 	for (auto itr = mContext->mStringObjectIdMap.begin(); itr != mContext->mStringObjectIdMap.end(); )
