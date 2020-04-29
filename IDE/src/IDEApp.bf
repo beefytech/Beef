@@ -9658,7 +9658,9 @@ namespace IDE
 			if (projectSource == null)
 				return;
 
+#if !CLI
 			ShowSourceFile(srcPath);
+#endif
 		}
 
         protected bool Compile(CompileKind compileKind = .Normal, Project hotProject = null)
