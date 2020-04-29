@@ -59,6 +59,18 @@ namespace IDE.ui
 				Path.GetFileName(projDirectory, projName);
 			}
 
+			if (projDirectory.IsEmpty)
+			{
+				projDirectory.Set(projName);
+			}
+
+			//
+			{
+				String origDirectory = scope String(projDirectory);
+				projDirectory.Clear();
+				Path.GetAbsolutePath(origDirectory, gApp.mWorkspace.mDir, projDirectory);
+			}
+
             bool isNameValid = projName.Length > 0;
 			for (int32 i = 0; i < projName.Length; i++)
             {
