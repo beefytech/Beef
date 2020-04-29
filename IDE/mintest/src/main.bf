@@ -12,9 +12,9 @@
 //using IDE;
 using System;
 //using System.Threading;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
-using System.Collections.Generic;
+using System.Collections;
 using System.Collections;
 using System.Threading;
 
@@ -237,7 +237,8 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
-			Blurg.Hey();
+			for (int i < 10)
+				Blurg.Hey();
 			return 1;
 		}
 

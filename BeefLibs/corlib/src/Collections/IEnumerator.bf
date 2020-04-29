@@ -1,6 +1,6 @@
 using System;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
     interface IEnumerator<T>
     {

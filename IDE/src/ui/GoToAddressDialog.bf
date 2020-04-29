@@ -2,7 +2,7 @@ using Beefy.theme.dark;
 using Beefy.widgets;
 using Beefy.gfx;
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using IDE.Debugger;
 
 namespace IDE.ui

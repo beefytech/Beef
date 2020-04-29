@@ -12,7 +12,7 @@ using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Reflection;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	interface IList
 	{

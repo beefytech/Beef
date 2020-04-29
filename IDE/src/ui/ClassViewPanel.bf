@@ -6,7 +6,7 @@ using Beefy.events;
 using Beefy.utils;
 using System.Diagnostics;
 using IDE.Compiler;
-using System.Collections.Generic;
+using System.Collections;
 using System.Threading;
 
 namespace IDE.ui

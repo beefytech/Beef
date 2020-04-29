@@ -1,7 +1,7 @@
 using System;
 using System.Security.Cryptography;
 using System.Text;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.IO;
 using System.Reflection;

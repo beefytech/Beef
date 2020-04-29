@@ -3,7 +3,7 @@
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
 using System.Diagnostics.Contracts;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;

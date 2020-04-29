@@ -1,4 +1,4 @@
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	class TClass<T> : IDisposable
 	{

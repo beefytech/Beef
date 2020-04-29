@@ -5,7 +5,7 @@ using System;
 using System.IO;
 using Beefy.utils;
 using System.Threading;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 
 namespace LogViewer

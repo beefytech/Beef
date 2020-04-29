@@ -2,7 +2,7 @@ using Beefy.theme.dark;
 using Beefy.widgets;
 using Beefy.events;
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using Beefy.gfx;
 using IDE.Util;
 using System.IO;

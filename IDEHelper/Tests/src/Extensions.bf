@@ -2,7 +2,7 @@
 
 using System;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	extension List<T> where T : Tests.Extensions.IGetExVal
 	{
@@ -18,7 +18,7 @@ namespace System.Collections.Generic
 	}
 }
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	extension TClass<T>
 	{
@@ -148,7 +148,7 @@ namespace Tests
 		[Test]
 		public static void TestList()
 		{
-			System.Collections.Generic.List<ImpGetExVal> list = scope .();
+			System.Collections.List<ImpGetExVal> list = scope .();
 
 			ImpGetExVal val0 = scope ImpGetExVal();
 			list.Add(val0);

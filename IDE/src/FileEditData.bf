@@ -2,7 +2,7 @@ using IDE.ui;
 using System;
 using System.IO;
 using Beefy.utils;
-using System.Collections.Generic;
+using System.Collections;
 using System.Security.Cryptography;
 using IDE.util;
 

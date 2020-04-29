@@ -3,41 +3,29 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
-using System.Collections.Generic;
-
-struct Smibbs
-{
-	public int16 mX = 11;
-	public int16 mY = 22;
-	public int16 mZ = 33;
-}
-
-namespace PropertyStructCrash
-{
-	struct B
-	{
-		public int c;
-	}
-
-	struct A
-	{
-		public B Prop { get; set; }
-	}
-
-	class Program
-	{
-		public static void Main()
-		{
-			var c = '¥';
-		}
-	}
-}
+using System.Collections;
 
 struct Blurg
 {
 	public static void Hey()
 	{
-		PropertyStructCrash.Program.Main();
+		
 	}
+
 }
 
+struct StructA
+{
+	public int mA = 99;
+}
+
+/*namespace System
+{
+	extension String
+	{
+		public String SubText(String input, int position, int length)
+		{
+			return 0;
+		}
+	}
+}*/

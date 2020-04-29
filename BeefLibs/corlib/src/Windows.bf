@@ -1,7 +1,7 @@
 #if BF_PLATFORM_WINDOWS
 
 using System.IO;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 
 namespace System

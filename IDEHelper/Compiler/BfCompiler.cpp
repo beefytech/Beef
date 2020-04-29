@@ -3291,7 +3291,7 @@ void BfCompiler::UpdateRevisedTypes()
 	//		latestTypeDef->mOuterType = mSystem->GetOuterTypeNonPartial(latestTypeDef);
 
 	//	/*String fullName = typeDef->mFullNameEx.ToString();
-	//	if (fullName == "System.Collections.Generic.List`1.Enumerator`1")
+	//	if (fullName == "System.Collections.List`1.Enumerator`1")
 	//	{
 	//		NOP;
 	//	}
@@ -5941,9 +5941,9 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mResultTypeDef = _GetRequiredType("System.Result", 1);
 	mFunctionTypeDef = _GetRequiredType("System.Function");
 	mGCTypeDef = _GetRequiredType("System.GC");	
-	mGenericIEnumerableTypeDef = _GetRequiredType("System.Collections.Generic.IEnumerable");
-	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.Generic.IEnumerator");
-	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.Generic.IRefEnumerator");	
+	mGenericIEnumerableTypeDef = _GetRequiredType("System.Collections.IEnumerable", 1);
+	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.IEnumerator", 1);
+	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.IRefEnumerator", 1);	
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
