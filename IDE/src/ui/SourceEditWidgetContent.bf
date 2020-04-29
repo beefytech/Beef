@@ -2075,7 +2075,7 @@ namespace IDE.ui
                 return;
             }
 
-			bool isTab = (keyChar == '\t') && (!mWidgetWindow.IsKeyDown(.Shift));
+			bool isCompletionChar = ((keyChar == '\t') || (keyChar == '\r')) && (!mWidgetWindow.IsKeyDown(.Shift));
             if ((gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.IsRenaming))
             {         
                 if ((keyChar == '\r') || (keyChar == '\n'))
@@ -2100,7 +2100,7 @@ namespace IDE.ui
 
             int32 startRevision = mData.mCurTextVersionId;
             
-            bool doAutocomplete = isTab;
+            bool doAutocomplete = isCompletionChar;
 			if ((mAutoComplete != null) && (keyChar == '\r') &&
 				((!mIsMultiline) || (mAutoComplete.mIsUserRequested)))
 				doAutocomplete = true;
@@ -2113,7 +2113,7 @@ namespace IDE.ui
 
 			if (gApp.mSettings.mEditorSettings.mAutoCompleteRequireTab)
 			{
-				doAutocomplete = isTab;
+				doAutocomplete = isCompletionChar;
 				if (keyChar == '\r')
 				{
 					if (mAutoComplete != null)
