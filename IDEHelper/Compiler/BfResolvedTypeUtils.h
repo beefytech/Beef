@@ -1049,7 +1049,7 @@ public:
 	{
 		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
 			return mTypeDef->mGenericParamDefs[mGenericIdx]->mName;
-		return NULL;
+		return "???";
 	}
 };
 

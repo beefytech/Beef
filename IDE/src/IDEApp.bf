@@ -10355,7 +10355,8 @@ namespace IDE
 				Environment.GetExecutableFilePath(exeFilePath);
 				mVersionInfo = new .();
 				mVersionInfo.GetVersionInfo(exeFilePath).IgnoreError();
-				Debug.Assert(mVersionInfo.FileVersion == cVersion);
+				if (!String.IsNullOrEmpty(mVersionInfo.FileVersion))
+					Debug.Assert(mVersionInfo.FileVersion == cVersion);
 #if BF_PLATFORM_WINDOWS
 				exeTime = File.GetLastWriteTime(exeFilePath).GetValueOrDefault();
 #endif
