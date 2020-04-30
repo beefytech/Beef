@@ -6648,14 +6648,6 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 
 				if ((genericParamDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)									
 				{
-					if ((genericTypeConstraint != NULL) && (expectingType != NULL))
-					{
-						if (!CanCast(BfTypedValue(mBfIRBuilder->GetFakeVal(), genericTypeConstraint), expectingType))
-						{
-							Fail(StrFormat("Generic constraint '%s' is not convertible to 'int'", TypeToString(genericTypeConstraint).c_str()), identifierNode);
-						}
-					}
-
 					BfTypedValue result;
 					result.mType = genericParamResult;
 					result.mKind = BfTypedValueKind_GenericConstValue;
@@ -8828,7 +8820,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					auto undefConst = (BfConstantUndef*)constant;
 					
 					auto fakeVal = GetFakeTypedValue(GetPrimitiveType(undefConst->mTypeCode));
-					auto val = CastToValue(srcNode, fakeVal, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit));
+					// Why did we have this BfCastFlags_Explicit? It broke creating errors on things like "int16 val = TCount;"
+					//auto val = CastToValue(srcNode, fakeVal, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit));
+					auto val = CastToValue(srcNode, fakeVal, toType, castFlags);
 					if (val)
 						return val;
 				}
