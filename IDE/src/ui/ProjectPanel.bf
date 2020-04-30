@@ -2036,7 +2036,13 @@ namespace IDE.ui
 								gApp.mWorkspace.SetChanged();
 							}
 					    });
-					
+
+					item = menu.AddItem("Remove...");
+					item.mOnMenuItemSelected.Add(new (item) =>
+						{
+							RemoveSelectedItems();
+						});
+
 					item = menu.AddItem("Rename");
 					item.mOnMenuItemSelected.Add(new (item) =>
 						{
