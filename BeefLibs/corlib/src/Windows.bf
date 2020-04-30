@@ -197,8 +197,6 @@ namespace System
 
 		public const int32 REG_OPTION_NON_VOLATILE = 0;
 
-		public const int32 KEY_ALL_ACCESS = 0x000f003f;
-
 		public const int32 MB_OK 				= 0;
 		public const int32 MB_OKCANCEL			= 1;
 		public const int32 MB_YESNO 			= 4;
@@ -949,6 +947,10 @@ namespace System
 		public const int32 PAGE_READWRITE = 0x04;
 		public const int32 PAGE_WRITECOPY = 0x08;
 
+		public const int32 KEY_EXECUTE     		= (0x20019);
+		public const int32 KEY_READ     		= (0x20019);
+		public const int32 KEY_WRITE     		= (0x20006);
+		public const int32 KEY_ALL_ACCESS               = (0xf003f);
 		public const int32 KEY_QUERY_VALUE         	= (0x0001);
 		public const int32 KEY_SET_VALUE           	= (0x0002);
 		public const int32 KEY_CREATE_SUB_KEY      	= (0x0004);
