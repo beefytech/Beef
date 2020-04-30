@@ -100,6 +100,7 @@ namespace IDE
     public class IDEApp : BFApp
     {
 		public static String sRTVersionStr = "042";
+		public const String cVersion = "0.42.4";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -1449,6 +1450,12 @@ namespace IDE
 					return SaveFileAs(sourceViewPanel);
 				}
 
+				if (sourceViewPanel.mEditData == null)
+				{
+					sourceViewPanel.mEditData = GetEditData(forcePath, true, false);
+					sourceViewPanel.mEditData.mEditWidget = sourceViewPanel.mEditWidget;
+				}
+
 				if (!SaveFile(sourceViewPanel.mEditData, forcePath))
 					return false;
 
@@ -1786,6 +1793,8 @@ namespace IDE
         {
 			// Don't save if we didn't finish creating the workspace
 			if (mWorkspace.mNeedsCreate)
+				return false;
+			if (!mWorkspace.IsInitialized)
 				return false;
 
 			if (mWorkspace.IsDebugSession)
@@ -4817,6 +4826,54 @@ namespace IDE
 			ToggleCheck(ideCommand.mMenuItem, ref mTestEnableConsole);
 		}
 
+		public void UpdateMenuItem_HasActivePanel(IMenu menu)
+		{
+			menu.SetDisabled(GetActivePanel() == null);
+		}
+
+		public void UpdateMenuItem_HasActiveDocument(IMenu menu)
+		{
+			menu.SetDisabled(GetActiveDocumentPanel() == null);
+		}
+
+		public void UpdateMenuItem_HasWorkspace(IMenu menu)
+		{
+			menu.SetDisabled(!gApp.mWorkspace.IsInitialized);
+		}
+
+		public void UpdateMenuItem_DebugPaused(IMenu menu)
+		{
+			menu.SetDisabled(!mDebugger.mIsRunning || !mExecutionPaused);
+		}
+
+		public void UpdateMenuItem_DebugPausedOrStopped_HasWorkspace(IMenu menu)
+		{
+			if (mDebugger.mIsRunning)
+				menu.SetDisabled(!mExecutionPaused);
+			else
+				menu.SetDisabled(!mWorkspace.IsInitialized);
+		}
+
+		public void UpdateMenuItem_DebugNotPaused(IMenu menu)
+		{
+			menu.SetDisabled(!mDebugger.mIsRunning || mExecutionPaused);
+		}
+
+		public void UpdateMenuItem_DebugRunning(IMenu menu)
+		{
+			menu.SetDisabled(!mDebugger.mIsRunning);
+		}
+
+		public void UpdateMenuItem_DebugStopped_HasWorkspace(IMenu menu)
+		{
+			menu.SetDisabled(mDebugger.mIsRunning || !mWorkspace.IsInitialized);
+		}
+
+		public void UpdateMenuItem_DebugStopped(IMenu menu)
+		{
+			menu.SetDisabled(mDebugger.mIsRunning);
+		}
+
         public void CreateMenu()
         {
 			scope AutoBeefPerf("IDEApp.CreateMenu");
@@ -4870,31 +4927,31 @@ namespace IDE
 			mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedFile].mMenu = recentMenu.AddMenuItem("Open Recent &File");
 			mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedCrashDump].mMenu = recentMenu.AddMenuItem("Open Recent &Crash Dump");
 
-            AddMenuItem(subMenu, "&Save File","Save File");
-            AddMenuItem(subMenu, "Save &As...", "Save As");
+            AddMenuItem(subMenu, "&Save File","Save File", new => UpdateMenuItem_HasActiveDocument);
+            AddMenuItem(subMenu, "Save &As...", "Save As", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(subMenu, "Save A&ll", "Save All");
 			let prefMenu = subMenu.AddMenuItem("&Preferences");
 			//prefMenu.AddMenuItem("&Keyboard Shortcuts", null, new (evt) => { ShowKeyboardShortcuts(); });
 			AddMenuItem(prefMenu, "&Settings", "Settings");
-			AddMenuItem(subMenu, "Close Workspace", "Close Workspace");
+			AddMenuItem(subMenu, "Close Workspace", "Close Workspace", new => UpdateMenuItem_HasWorkspace);
             AddMenuItem(subMenu, "E&xit", "Exit");
 
 			//////////
 
             subMenu = root.AddMenuItem("&Edit");
-            AddMenuItem(subMenu, "Quick &Find...", "Find in Document");
-            AddMenuItem(subMenu, "Quick &Replace...", "Replace in Document");
+            AddMenuItem(subMenu, "Quick &Find...", "Find in Document", new => UpdateMenuItem_HasActivePanel);
+            AddMenuItem(subMenu, "Quick &Replace...", "Replace in Document", new => UpdateMenuItem_HasActiveDocument);
             AddMenuItem(subMenu, "Find in &Files...", "Find in Files");
             AddMenuItem(subMenu, "Replace in Files...", "Replace in Files");
-			AddMenuItem(subMenu, "Find Prev", "Find Prev");
-            AddMenuItem(subMenu, "Find Next", "Find Next");
+			AddMenuItem(subMenu, "Find Prev", "Find Prev", new => UpdateMenuItem_HasActivePanel);
+            AddMenuItem(subMenu, "Find Next", "Find Next", new => UpdateMenuItem_HasActivePanel);
 			AddMenuItem(subMenu, "Show &Current", "Show Current");
 			
-            AddMenuItem(subMenu, "&Goto Line...", "Goto Line");
-            AddMenuItem(subMenu, "Goto &Method...", "Goto Method");
-            AddMenuItem(subMenu, "&Rename Symbol", "Rename Symbol");
-			AddMenuItem(subMenu, "Show Fi&xit", "Show Fixit");
-			AddMenuItem(subMenu, "Find &All References", "Find All References");
+            AddMenuItem(subMenu, "&Goto Line...", "Goto Line", new => UpdateMenuItem_HasActiveDocument);
+            AddMenuItem(subMenu, "Goto &Method...", "Goto Method", new => UpdateMenuItem_HasActiveDocument);
+            AddMenuItem(subMenu, "&Rename Symbol", "Rename Symbol", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(subMenu, "Show Fi&xit", "Show Fixit", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(subMenu, "Find &All References", "Find All References", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(subMenu, "Find C&lass...", "Find Class");
 			subMenu.AddMenuItem(null);
 
@@ -4983,9 +5040,9 @@ namespace IDE
 			//////////
 
             subMenu = root.AddMenuItem("&Build");
-			AddMenuItem(subMenu, "&Build Solution", "Build Solution");
-            AddMenuItem(subMenu, "&Clean", "Clean");
-            AddMenuItem(subMenu, "Clean Beef", "Clean Beef");
+			AddMenuItem(subMenu, "&Build Solution", "Build Solution", new => UpdateMenuItem_HasWorkspace);
+            AddMenuItem(subMenu, "&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+            AddMenuItem(subMenu, "Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });
             AddMenuItem(subMenu, "Cancel Build", "Cancel Build", new (menu) => { menu.SetDisabled(!IsCompiling); });
 
@@ -5000,25 +5057,25 @@ namespace IDE
 			//////////
 
             subMenu = root.AddMenuItem("&Debug");
-			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging");
-			AddMenuItem(subMenu, "Start Wit&hout Debugging", "Start Without Debugging");
-			AddMenuItem(subMenu, "&Launch Process...", "Launch Process");
-			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process");
-			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging");
-            AddMenuItem(subMenu, "Break All", "Break All");
+			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			AddMenuItem(subMenu, "Start Wit&hout Debugging", "Start Without Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
+			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
+			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugNotPaused);
+            AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
             AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
             AddMenuItem(subMenu, "Show &Disassembly", "Show Disassembly");
-			AddMenuItem(subMenu, "&Quick Watch", "Show QuickWatch");
-			AddMenuItem(subMenu, "&Profile", "Profile");
+			AddMenuItem(subMenu, "&Quick Watch", "Show QuickWatch", new => UpdateMenuItem_DebugPaused);
+			AddMenuItem(subMenu, "&Profile", "Profile", new => UpdateMenuItem_HasWorkspace);
 			subMenu.AddMenuItem(null);
-			AddMenuItem(subMenu, "Step Into", "Step Into");
-			AddMenuItem(subMenu, "Step Over", "Step Over");
-			AddMenuItem(subMenu, "Step Out", "Step Out");
+			AddMenuItem(subMenu, "Step Into", "Step Into", new => UpdateMenuItem_DebugPausedOrStopped_HasWorkspace);
+			AddMenuItem(subMenu, "Step Over", "Step Over", new => UpdateMenuItem_DebugPausedOrStopped_HasWorkspace);
+			AddMenuItem(subMenu, "Step Out", "Step Out", new => UpdateMenuItem_DebugPaused);
 			subMenu.AddMenuItem(null);
-			AddMenuItem(subMenu, "To&ggle Breakpoint", "Breakpoint Toggle");
-			AddMenuItem(subMenu, "Toggle Thread Breakpoint", "Breakpoint Toggle Thread");
+			AddMenuItem(subMenu, "To&ggle Breakpoint", "Breakpoint Toggle", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(subMenu, "Toggle Thread Breakpoint", "Breakpoint Toggle Thread", new => UpdateMenuItem_HasActiveDocument);
 			var newBreakpointMenu = subMenu.AddMenuItem("New &Breakpoint");
-			AddMenuItem(newBreakpointMenu, "&Memory Breakpoint...", "Breakpoint Memory");
+			AddMenuItem(newBreakpointMenu, "&Memory Breakpoint...", "Breakpoint Memory", new => UpdateMenuItem_DebugRunning);
 			AddMenuItem(newBreakpointMenu, "&Symbol Breakpoint...", "Breakpoint Symbol");
 
 			if (mSettings.mEnableDevMode)
@@ -5061,11 +5118,11 @@ namespace IDE
 			//////////
 
 			var testMenu = root.AddMenuItem("&Test");
-			var testRunMenu = testMenu.AddMenuItem("&Run");
+			var testRunMenu = testMenu.AddMenuItem("&Run", null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(testRunMenu, "&Normal Tests", "Run Normal Tests");
 			AddMenuItem(testRunMenu, "&All Tests", "Run All Tests");
 
-			var testDebugMenu = testMenu.AddMenuItem("&Debug");
+			var testDebugMenu = testMenu.AddMenuItem("&Debug", null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(testDebugMenu, "&Normal Tests", "Debug Normal Tests");
 			AddMenuItem(testDebugMenu, "&All Tests", "Debug All Tests");
 
@@ -5074,10 +5131,10 @@ namespace IDE
 			//////////
 
             mWindowMenu = root.AddMenuItem("&Window");
-            AddMenuItem(mWindowMenu, "&Close", "Close Window");
+            AddMenuItem(mWindowMenu, "&Close", "Close Window", new => UpdateMenuItem_HasActivePanel);
 			AddMenuItem(mWindowMenu, "&Close All", "Close All Windows");
-			AddMenuItem(mWindowMenu, "&New View into File", "View New");
-			AddMenuItem(mWindowMenu, "&Split View", "View Split");
+			AddMenuItem(mWindowMenu, "&New View into File", "View New", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(mWindowMenu, "&Split View", "View Split", new => UpdateMenuItem_HasActiveDocument);
 
             subMenu = root.AddMenuItem("&Help");
             AddMenuItem(subMenu, "&About", "About");
@@ -9428,7 +9485,7 @@ namespace IDE
 			{
 				if (!mDebugger.mIsRunning)
 				{
-					OutputSmart("Hot compile failed - target no longer running");
+					OutputErrorLine("Hot compile failed - target no longer running");
 					CompileFailed();
 					return;
 				}
@@ -10298,6 +10355,7 @@ namespace IDE
 				Environment.GetExecutableFilePath(exeFilePath);
 				mVersionInfo = new .();
 				mVersionInfo.GetVersionInfo(exeFilePath).IgnoreError();
+				Debug.Assert(mVersionInfo.FileVersion == cVersion);
 #if BF_PLATFORM_WINDOWS
 				exeTime = File.GetLastWriteTime(exeFilePath).GetValueOrDefault();
 #endif
