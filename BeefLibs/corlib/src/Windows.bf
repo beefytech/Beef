@@ -1167,6 +1167,9 @@ namespace System
 		public static extern int32 GetDynamicTimeZoneInformation(out DynamicTimeZoneInformation dynamicTimeZoneInformation);
 
 		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegOpenKeyExW(HKey hKey, char16* lpSubKey, uint32 ulOptions, uint32 samDesired, out HKey phkResult);
+
+		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegOpenKeyExA(HKey hKey, char8* lpSubKey, uint32 ulOptions, uint32 samDesired, out HKey phkResult);
 
 		[Import("advapi32.lib"), CLink, StdCall]
@@ -1174,22 +1177,44 @@ namespace System
 			SecurityAttributes* lpSecurityAttributes, out HKey phkResult, uint32* lpdwDisposition);
 
 		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegCreateKeyExA(HKey hKey, char8* lpSubKey, uint32 reserved, char8* lpClass, uint32 dwOptions, uint32 samDesired,
+			SecurityAttributes* lpSecurityAttributes, out HKey phkResult, uint32* lpdwDisposition);
+
+		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegCloseKey(HKey hKey);
 
 		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegDeleteKeyW(HKey hKey, char16* lpSubKey);
+
+		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegDeleteKeyA(HKey hKey, char8* lpSubKey);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegDeleteValueW(HKey hKey, char16* lpSubKey);
 
 		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegDeleteValueA(HKey hKey, char8* lpSubKey);
 
 		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegQueryValueExW(HKey hKey, char16* lpValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
+		
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegQueryValueExA(HKey hKey, char8* lpValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
 
 		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegEnumValueW(HKey hKey, int32 dwIndex, char16* lpValueName, uint32* lpcchValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
 
 		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegEnumValueA(HKey hKey, int32 dwIndex, char8* lpValueName, uint32* lpcchValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegGetValueW(HKey hkey, char16* lpSubKey, char16* lpValue, uint32 dwFlags, uint32* pdwType, void* pvData, uint32* pcbData);
+
+		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegGetValueA(HKey hkey, char8* lpSubKey, char8* lpValue, uint32 dwFlags, uint32* pdwType, void* pvData, uint32* pcbData);
+
+		[Import("advapi32.lib"), CLink, StdCall]
+		public static extern int32 RegSetValueExW(HKey hkey, char16* lpValue, uint32 reserved, uint32 dwType, void* pvData, uint32 cbData);
 
 		[Import("advapi32.lib"), CLink, StdCall]
 		public static extern int32 RegSetValueExA(HKey hkey, char8* lpValue, uint32 reserved, uint32 dwType, void* pvData, uint32 cbData);
@@ -1246,6 +1271,9 @@ namespace System
 		public static extern FileHandle GetStdHandle(int32 stdHandle);
 
 		[CLink, StdCall]
+		public static extern Handle ShellExecuteW(Handle hwnd, char16* operation, char16* file, char16* parameters, char16* directory, int32 showCmd); 
+
+		[CLink, StdCall]
 		public static extern Handle ShellExecuteA(Handle hwnd, char8* operation, char8* file, char8* parameters, char8* directory, int32 showCmd); 
 
 		[CLink, StdCall]
@@ -1253,6 +1281,10 @@ namespace System
 
 		[CLink, StdCall]
 		public static extern void GetStartupInfoA(StartupInfo* startupInfo);
+
+		[CLink, StdCall]
+		public static extern IntBool CreateProcessW(char16* applicationName, char16* commandLine, SecurityAttributes* processAttributes, SecurityAttributes* threadAttributes,
+        	IntBool inheritHandles, int32 creationFlags, void* environment, char16* currentDirectory, StartupInfo* startupInfo, ProcessInformation* processInformation);
 
 		[CLink, StdCall]
 		public static extern IntBool CreateProcessA(char8* applicationName, char8* commandLine, SecurityAttributes* processAttributes, SecurityAttributes* threadAttributes,
@@ -1326,22 +1358,40 @@ namespace System
                     int32 dwFlagsAndAttributes, Handle hTemplateFile);
 
 		[CLink, StdCall]
+		public static extern uint32 GetWindowsDirectoryW(char16* lpBuffer, uint32 uSize);
+
+		[CLink, StdCall]
 		public static extern uint32 GetWindowsDirectoryA(char8* lpBuffer, uint32 uSize);
 
 		[CLink, StdCall]
 		public static extern IntBool CreateDirectoryW(char16* pathName, SecurityAttributes* securityAttributes);
+		
+		[CLink, StdCall]
+		public static extern IntBool CreateDirectoryA(char8* pathName, SecurityAttributes* securityAttributes);
 
 		[CLink, StdCall]
 		public static extern IntBool RemoveDirectoryW(char16* pathName);
+		
+		[CLink, StdCall]
+		public static extern IntBool RemoveDirectoryA(char8* pathName);
 
 		[CLink, StdCall]
 		public static extern IntBool DeleteFileW(char16* pathName);
+		
+		[CLink, StdCall]
+		public static extern IntBool DeleteFileA(char8* pathName);
 
 		[CLink, StdCall]
 		public static extern IntBool CopyFileW(char16* srcName, char16* dstName, IntBool failIfExists);
+		
+		[CLink, StdCall]
+		public static extern IntBool CopyFileA(char8* srcName, char8* dstName, IntBool failIfExists);
 
 		[CLink, StdCall]
 		public static extern IntBool MoveFileW(char16* srcName, char16* dstName);
+		
+		[CLink, StdCall]
+		public static extern IntBool MoveFileA(char8* srcName, char8* dstName);
 
 		[CLink, StdCall]
 		public static extern int32 ReadFile(Handle handle, uint8* bytes, int32 numBytesToRead, out int32 numBytesRead, Overlapped* overlapped);
@@ -1442,6 +1492,9 @@ namespace System
 
 		[Import("user32.lib"), CLink, StdCall]
 		public static extern HWnd FindWindowW(char16* className, char16* windowName);
+		
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern HWnd FindWindowA(char8* className, char8* windowName);
 
 		[Import("user32.lib"), CLink, StdCall]
 		public static extern IntBool IsWindowVisible(HWnd hWnd);
@@ -1451,6 +1504,9 @@ namespace System
 
 		[Import("user32.lib"), CLink, StdCall]
 		public static extern int32 GetWindowTextW(HWnd hWnd, char16* ptr, int32 length);
+		
+		[Import("user32.lib"), CLink, StdCall]
+		public static extern int32 GetWindowTextA(HWnd hWnd, char8* ptr, int32 length);
 
 		[CLink, StdCall]
 		public static extern int32 GetWindowThreadProcessId(HWnd handle, out int32 processId);
@@ -1463,9 +1519,15 @@ namespace System
 
 		[CLink, StdCall]
 		public static extern HModule GetModuleHandleW(char16* modName);
+		
+		[CLink, StdCall]
+		public static extern HModule GetModuleHandleA(char8* modName);
 
 		[CLink, StdCall]
 		public static extern uint32 GetTempFileNameW(char16* tmpPath, char16* prefix, uint32 uniqueIdOrZero, char16* tmpFileName);
+		
+		[CLink, StdCall]
+		public static extern uint32 GetTempFileNameA(char8* tmpPath, char8* prefix, uint32 uniqueIdOrZero, char8* tmpFileName);
 
 		[CLink, StdCall]
 		public static extern uint32 GetTempPathW(int32 bufferLen, char16* buffer);
@@ -1501,9 +1563,15 @@ namespace System
 
 		[CLink, StdCall]
 		public static extern HInstance LoadLibraryW(char16* libFileName);
+		
+		[CLink, StdCall]
+		public static extern HInstance LoadLibraryA(char8* libFileName);
 
 		[CLink, StdCall]
 		public static extern HInstance LoadLibraryExW(char16* libFileName, HModule hFile, uint32 dwFlags);
+		
+		[CLink, StdCall]
+		public static extern HInstance LoadLibraryExA(char8* libFileName, HModule hFile, uint32 dwFlags);
 
 		[CLink, StdCall]
 		public static extern IntBool FreeLibrary(HModule module);
