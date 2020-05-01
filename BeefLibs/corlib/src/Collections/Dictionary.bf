@@ -13,9 +13,9 @@ namespace System.Collections
 	using System.Diagnostics;
 	using System.Diagnostics.Contracts;
 
-	public class Dictionary<TKey, TValue> : ICollection<(TKey key, TValue* value)>, IEnumerable<(TKey key, TValue* value)> where TKey : IHashable //: IDictionary<TKey, TValue>, IDictionary, IReadOnlyDictionary<TKey, TValue>, ISerializable, IDeserializationCallback
+	public class Dictionary<TKey, TValue> : ICollection<(TKey key, TValue value)>, IEnumerable<(TKey key, TValue value)> where TKey : IHashable
 	{
-		typealias KeyValuePair=(TKey key, TValue* value);
+		typealias KeyValuePair=(TKey key, TValue value);
 
 		private struct Entry			
 		{
@@ -112,7 +112,7 @@ namespace System.Collections
 
 		public void Add(KeyValuePair kvPair)
 		{
-			Insert(kvPair.key, *kvPair.value, true);
+			Insert(kvPair.key, kvPair.value, true);
 		}
 
 		public bool TryAdd(TKey key, TValue value)
@@ -226,10 +226,12 @@ namespace System.Collections
 		public bool Contains(KeyValuePair kvPair)
 		{
 			TValue value;
-			if(TryGetValue(kvPair.key, out value))
+			if (TryGetValue(kvPair.key, out value))
 			{
-				return value == *kvPair.value;
-			}else{
+				return value == kvPair.value;
+			}
+			else
+			{
 				return false;
 			}
 		}
@@ -242,9 +244,9 @@ namespace System.Collections
 
 			repeat
 			{
-				if(i >= index)
+				if (i >= index)
 				{
-					kvPair[i]=(Keys.Current, &Values.CurrentRef);
+					kvPair[i] = (Keys.Current, Values.Current);
 				}
 			}
 			while(Keys.MoveNext() && Values.MoveNext());
@@ -682,7 +684,7 @@ namespace System.Collections
 
 			public KeyValuePair Current
 			{
-				get { return (mDictionary.mEntries[mCurrentIndex].mKey, &mDictionary.mEntries[mCurrentIndex].mValue); }
+				get { return (mDictionary.mEntries[mCurrentIndex].mKey, mDictionary.mEntries[mCurrentIndex].mValue); }
 			}
 
 			public void Dispose()

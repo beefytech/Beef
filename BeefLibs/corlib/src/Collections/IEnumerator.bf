@@ -5,7 +5,6 @@ namespace System.Collections
     interface IEnumerator<T>
     {
 		Result<T> GetNext() mut;
-		T Current { get; };
     }
 
 	interface IResettable

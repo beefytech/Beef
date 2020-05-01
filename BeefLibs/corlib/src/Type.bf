@@ -570,15 +570,12 @@ namespace System.Reflection
         int16 mMethodDataCount;
         int16 mPropertyDataCount;
         int16 mFieldDataCount;
-        int16 mConstructorDataCount;
 
         void* mInterfaceDataPtr;
         MethodData* mMethodDataPtr;
         void* mPropertyDataPtr;
         FieldData* mFieldDataPtr;
-        void* mConstructorDataPtr;
         void** mCustomAttrDataPtr;
-
 
         public override int32 InstanceSize
         {
@@ -873,7 +870,7 @@ namespace System.Reflection
 		EnumDiscriminator		= 0x0200
     }
 
-	public enum MethodFlags : int16
+	public enum MethodFlags : uint16
 	{
 		MethodAccessMask    	=  0x0007,
 		PrivateScope        	=  0x0000,     // Member not referenceable.
@@ -906,6 +903,7 @@ namespace System.Reflection
 		StdCall					=  0x1000,
 		FastCall				=  0x2000,
 		ThisCall				=  0x3000, // Purposely resuing StdCall|FastCall
-		Mutating				=  0x4000
+		Mutating				=  0x4000,
+		Constructor				=  0x8000,
 	}
 }

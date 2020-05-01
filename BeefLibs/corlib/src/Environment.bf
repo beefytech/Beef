@@ -120,7 +120,7 @@ namespace System
 			for (let kv in envVars)
 			{
 				keys[idx] = kv.key;
-				values[idx] = *kv.value;
+				values[idx] = kv.value;
 				++idx;
 			}
 
@@ -158,7 +158,7 @@ namespace System
 			for (let kv in envVars)
 			{
 				keys[idx] = kv.key;
-				values[idx] = *kv.value;
+				values[idx] = kv.value;
 				++idx;
 			}
 

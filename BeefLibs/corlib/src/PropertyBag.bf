@@ -76,7 +76,7 @@ namespace System
 
 			for (let kv in lhs.mProperties)
 			{
-				Object lhsVal = *kv.value;
+				Object lhsVal = kv.value;
 				Object rhsVal;
 				if (!rhs.Get(kv.key, out rhsVal))
 					return false;
