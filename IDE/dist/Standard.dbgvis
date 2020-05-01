@@ -620,7 +620,7 @@
     },
 
     "Type": {
-        "Name": "System.Collections.List<*>",
+        "Name": "System.Collections.Generic.List<*>",
         "DisplayString": "{{ count={mSize} }}",
         "Expand": {
             "Item": {
@@ -635,7 +635,7 @@
     },
 
     "Type": {
-        "Name": "System.Collections.Dictionary<*, *>",
+        "Name": "System.Collections.Generic.Dictionary<*, *>",
         "DisplayString": "{{ count={mCount - mFreeCount} }}",
         "Expand": {
             "Item": {
@@ -654,7 +654,7 @@
     },
 
     "Type": {
-        "Name": "System.Collections.Dictionary<*, *>.Entry",
+        "Name": "System.Collections.Generic.Dictionary<*, *>.Entry",
         "DisplayString": "{{[{mKey}, {mValue}]}}",        
         "Expand": {
             "Item": {
@@ -669,7 +669,7 @@
     },
 
     "Type": {
-        "Name": "System.Collections.HashSet<*>",
+        "Name": "System.Collections.Generic.HashSet<*>",
         "DisplayString": "{{ count={mCount} }}",
         "Expand": {
             "Item": {
@@ -680,6 +680,21 @@
                 "Size": "mCount",                
                 "ValuePointer": "&mSlots.mFirstElement",
                 "Condition": "mHashCode >= 0"
+            }
+        }
+    },
+
+    "Type": {
+        "Name": "System.Collections.Generic.KeyValuePair<*, *>",
+        "DisplayString": "{{{mKey}, {mValue}}}",
+        "Expand": {
+            "Item": {
+                "Name": "[Key]",
+                "Value": "mKey"
+            },
+            "Item": {
+                "Name": "[Value]",
+                "Value": "mValue"
             }
         }
     },
