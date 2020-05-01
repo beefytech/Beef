@@ -13,9 +13,13 @@ namespace System.Collections
 	using System.Diagnostics;
 	using System.Diagnostics.Contracts;
 
-	public class Dictionary<TKey, TValue> : ICollection<(TKey key, TValue value)>, IEnumerable<(TKey key, TValue value)> where TKey : IHashable
+	public class Dictionary<TKey, TValue> :
+		ICollection<(TKey key, TValue value)>,
+		IEnumerable<(TKey key, TValue value)>,
+		IRefEnumerable<(TKey key, TValue* valueRef)> where TKey : IHashable
 	{
 		typealias KeyValuePair=(TKey key, TValue value);
+		typealias KeyRefValuePair=(TKey key, TValue* valueRef);
 
 		private struct Entry			
 		{
@@ -606,7 +610,7 @@ namespace System.Collections
 			return (key is TKey);
 		}
 
-		public struct Enumerator : IEnumerator<KeyValuePair>//, IDictionaryEnumerator
+		public struct Enumerator : IEnumerator<KeyValuePair>, IRefEnumerator<KeyRefValuePair>
 		{
 			private Dictionary<TKey, TValue>  mDictionary;
 #if VERSION_DICTIONARY
@@ -687,6 +691,11 @@ namespace System.Collections
 				get { return (mDictionary.mEntries[mCurrentIndex].mKey, mDictionary.mEntries[mCurrentIndex].mValue); }
 			}
 
+			public KeyRefValuePair CurrentRef
+			{
+				get { return (mDictionary.mEntries[mCurrentIndex].mKey, &mDictionary.mEntries[mCurrentIndex].mValue); }
+			}
+
 			public void Dispose()
 			{
 
@@ -753,9 +762,16 @@ namespace System.Collections
 					return .Err;
 				return Current;
 			}
+
+			public Result<KeyRefValuePair> GetNextRef() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return CurrentRef;
+			}
 		}
 
-		public struct ValueEnumerator : IRefEnumerator<TValue>, IResettable
+		public struct ValueEnumerator : IRefEnumerator<TValue*>, IEnumerator<TValue>, IResettable
 		{
 			private Dictionary<TKey, TValue> mDictionary;
 #if VERSION_DICTIONARY

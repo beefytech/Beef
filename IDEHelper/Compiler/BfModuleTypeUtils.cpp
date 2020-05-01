@@ -906,9 +906,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			if (typeAliasDecl->mAliasToType != NULL)
 				aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);
 		}
-		//typeAlias->mModule = mContext->mScratchModule;
-		typeAlias->mTypeIncomplete = false;
-		typeAlias->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
+		
 		if (aliasToType != NULL)
 		{
 			AddDependency(aliasToType, typeAlias, BfDependencyMap::DependencyFlag_DerivedFrom);
@@ -951,7 +949,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		resolvedTypeRef->mRebuildFlags = BfTypeRebuildFlag_None;
 		typeAlias->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
 
-		return true;
+		// Fall through so generic params are populated in DoPopulateType
 	}
 
 	if (resolvedTypeRef->IsSizedArray())
@@ -1159,6 +1157,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		case BfTypeCode_Struct:
 		case BfTypeCode_Interface:
 		case BfTypeCode_Enum:		
+		case BfTypeCode_TypeAlias:
 			// Implemented below
 			break;
 		case BfTypeCode_Extension:
@@ -1516,6 +1515,13 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		auto genericTypeInst = (BfGenericTypeInstance*)typeInstance;
 		if (genericTypeInst->mGenericParams.size() == 0)
 			BuildGenericParams(resolvedTypeRef);
+	}
+
+	if (resolvedTypeRef->IsTypeAlias())
+	{
+		typeInstance->mTypeIncomplete = false;
+		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
+		return true;
 	}
 
 	if (_CheckTypeDone())

@@ -12150,7 +12150,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			if ((invocationExpr != NULL) && (invocationExpr->mGenericArgs != NULL))
 			{
 				errorNode = invocationExpr->mGenericArgs->mGenericArgs[(int)methodDef->mGenericParams.size()];
-				if (errorNode == NULL)
+				if ((errorNode == NULL) && (!invocationExpr->mGenericArgs->mCommas.IsEmpty()))
 					errorNode = invocationExpr->mGenericArgs->mCommas[(int)methodDef->mGenericParams.size() - 1];
 			}
 			mModule->Fail(StrFormat("Too many generic arguments, expected %d fewer", genericArgCountDiff), errorNode);
