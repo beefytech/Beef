@@ -13249,7 +13249,7 @@ void BeMCContext::DoCodeEmission()
 					else
 					{
 						if (((instForm == BeMCInstForm_RM64_IMM16) || (instForm == BeMCInstForm_RM64_IMM32)) &&
-							(inst->mArg0.mReg == X64Reg_RAX))
+							(inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX))
 						{
 							// Emit as ADD RAX, <imm32>
 							EmitREX(inst->mArg0, BeMCOperand(), true);
@@ -13289,7 +13289,7 @@ void BeMCContext::DoCodeEmission()
 					else
 					{
 						if (((instForm == BeMCInstForm_RM64_IMM16) || (instForm == BeMCInstForm_RM64_IMM32)) &&
-							(inst->mArg0.mReg == X64Reg_RAX))
+							(inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX))
 						{
 							// Emit as SUB RAX, <imm32>
 							EmitREX(inst->mArg0, BeMCOperand(), true);
