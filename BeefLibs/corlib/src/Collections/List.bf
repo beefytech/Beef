@@ -12,7 +12,7 @@ using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Reflection;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	interface IList
 	{
@@ -23,7 +23,7 @@ namespace System.Collections.Generic
 		}
 	}
 
-	public class List<T> : IEnumerable<T>, IList
+	public class List<T> : IEnumerable<T>, IList, ICollection<T>
 	{
 		private const int_cosize cDefaultCapacity = 4;
 
@@ -225,6 +225,15 @@ namespace System.Collections.Generic
 #if VERSION_LIST
 				mVersion++;
 #endif
+			}
+		}
+
+		public ref T Front
+		{
+			get
+			{
+				Debug.Assert(mSize != 0);
+				return ref mItems[0];
 			}
 		}
 		
@@ -788,4 +797,10 @@ namespace System.Collections.Generic
 			 mAlloc.Free(ptr);
 		}*/
 	}
+}
+
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic types have been moved into System.Collections", false)]
+	typealias List<T> = System.Collections.List<T>;
 }

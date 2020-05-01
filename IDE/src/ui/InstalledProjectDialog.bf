@@ -2,7 +2,7 @@ using Beefy.theme.dark;
 using Beefy.widgets;
 using Beefy.events;
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using Beefy.gfx;
 using IDE.Util;
 using System.IO;
@@ -32,7 +32,7 @@ namespace IDE.ui
 
 		public this()
 		{
-		    mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable;
+		    mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Resizable | .PopupPosition;
 
 		    AddOkCancelButtons(new (evt) => { DoImport(); }, null, 0, 1);
 		    //mApplyButton = AddButton("Apply", (evt) => { evt.mCloseDialog = false; ApplyChanges(); });

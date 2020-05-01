@@ -1831,7 +1831,7 @@ void BfIRBuilder::Write(const BfIRTypeData& type)
 	{
 		auto sizedArrayType = (BfConstantSizedArrayType*)GetConstantById(type.mId);
 		Write(sizedArrayType->mType);
-		WriteSLEB128(sizedArrayType->mLength);
+		WriteSLEB128((int64)sizedArrayType->mLength);
 	}
 	else if (type.mKind != BfIRTypeData::TypeKind_None)
 		WriteSLEB128(type.mId);
@@ -2050,7 +2050,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 			trackDIType = true;			
 		}
 	}
-	else if ((type->IsGenericParam()) || (type->IsRetTypeType()))
+	else if ((type->IsGenericParam()) || (type->IsModifiedTypeType()))
 	{
 		//mModule->PopulateType(mModule->mContext->mBfObjectType, BfPopulateType_Declaration);
 		irType = MapType(mModule->mContext->mBfObjectType);	
@@ -2540,6 +2540,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								if (wasMadeAddr)
 									useType = mModule->CreatePointerType(useType);
 								staticValue = CreateGlobalVariable(mModule->mBfIRBuilder->MapType(useType), true, BfIRLinkageType_Internal, staticValue, staticVarName);
+								GlobalVar_SetAlignment(staticValue, useType->mAlign);
 							}
 
 							int flags = 0;

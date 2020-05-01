@@ -6,9 +6,9 @@ TargetType = "BeefLib"
 StartupObject = "Program"
 
 [Configs.Debug.Win64]
-OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/SDL2.lib\" \"$(ProjectDir)/dist/SDL2_ttf.lib\" \"$(ProjectDir)/dist/SDL2_image.lib\" \"$(ProjectDir)/dist/SDL2_mixer.lib\""
+LibPaths = ["$(ProjectDir)/dist/SDL2.lib", "$(ProjectDir)/dist/SDL2_ttf.lib", "$(ProjectDir)/dist/SDL2_image.lib", "$(ProjectDir)/dist/SDL2_mixer.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
 
 [Configs.Release.Win64]
-OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/SDL2.lib\" \"$(ProjectDir)/dist/SDL2_ttf.lib\" \"$(ProjectDir)/dist/SDL2_image.lib\" \"$(ProjectDir)/dist/SDL2_mixer.lib\""
+LibPaths = ["$(ProjectDir)/dist/SDL2.lib", "$(ProjectDir)/dist/SDL2_ttf.lib", "$(ProjectDir)/dist/SDL2_image.lib", "$(ProjectDir)/dist/SDL2_mixer.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]

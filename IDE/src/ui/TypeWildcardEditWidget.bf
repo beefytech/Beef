@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Collections.Generic;
+using System.Collections;
 using Beefy.gfx;
 
 namespace IDE.ui

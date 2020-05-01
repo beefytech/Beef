@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using Beefy.widgets;
 using Beefy.gfx;
@@ -41,10 +41,17 @@ namespace Beefy.theme.dark
             }
         }*/
 
+		public enum FrameKind
+		{
+			OnWindow,
+			Frameless,
+			Transparent
+		}
+
         String mLabel ~ delete _;
         public float mLabelX = GS!(8);
         public FontAlign mLabelAlign = FontAlign.Centered;
-        public bool mFrameless = false;
+        public FrameKind mFrameKind = .OnWindow;
 
         public Event<Action<Menu>> mPopulateMenuAction ~ _.Dispose();
         public CBMenuWidget mCurMenuWidget;
@@ -96,12 +103,12 @@ namespace Beefy.theme.dark
                 return;
             }
 
-            if (!mFrameless)
+            if ((mFrameKind == .OnWindow) || (mFrameKind == .Frameless))
             {
-                Image texture = DarkTheme.sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.ComboBox];
-                g.DrawBox(texture, 0, -2, mWidth, mHeight);
+                Image texture = DarkTheme.sDarkTheme.mImages[(mFrameKind == .OnWindow) ? (int32)DarkTheme.ImageIdx.ComboBox : (int32)DarkTheme.ImageIdx.ComboBoxFrameless];
+                g.DrawBox(texture, 0, GS!(-2), mWidth, mHeight);
             }
-            else 
+            else
             {
                 if (mBkgColor != 0)
                 {
@@ -125,7 +132,7 @@ namespace Beefy.theme.dark
 						float fontHeight = g.mFont.GetHeight();
 
                         //g.DrawString(label, mLabelX, (mHeight - GS!(24)) / 2, mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
-						g.DrawString(label, mLabelX, (mHeight - fontHeight) / 2 - GS!(2) - 1, mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
+						g.DrawString(label, mLabelX, (mHeight - fontHeight) / 2 - (int)GS!(3.5f), mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
                     }
                 }
 
@@ -134,7 +141,10 @@ namespace Beefy.theme.dark
 				    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
 				        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Outline), GS!(2), 0, mWidth - GS!(4), mHeight - GS!(4));
 				}
-            }            
+            }
+
+			/*using (g.PushColor(0x1FFF0000))
+				g.FillRect(0, 0, mWidth, mHeight);*/
         }
 
 		public void GetLabel(String label)
@@ -184,7 +194,7 @@ namespace Beefy.theme.dark
                 popupXOfs = GS!(2);
                 popupYOfs = GS!(2);
             }
-            else if (mFrameless)
+            else if (mFrameKind == .Transparent)
             {
                 popupXOfs = GS!(2);
                 popupYOfs = GS!(2);

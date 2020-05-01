@@ -12,9 +12,9 @@
 //using IDE;
 using System;
 //using System.Threading;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
-using System.Collections.Generic;
+using System.Collections;
 using System.Collections;
 using System.Threading;
 
@@ -28,6 +28,12 @@ public enum QIntDisplayType
     Hexadecimal,
     Binary,
     COUNT																									  
+}
+
+[CRepr]
+public struct ALLEGRO_COLOR
+{
+    public float r, g, b, a;
 }
 
 namespace Hey.Dude.Bro
@@ -66,13 +72,21 @@ namespace Hey.Dude.Bro
 #if BF_64_BIT
 		[Import(@"C:\Beef\BeefTools\TestDLL\x64\Debug\TestDLL.dll"), LinkName("Test2")]
 		public static extern void Test2(int32 a, int32 b, int32 c, int32 d);
+
+		[Import(@"C:\Beef\BeefTools\TestDLL\x64\Debug\TestDLL.dll"), LinkName("Test3")]
+		public static extern void Test3(void* ptr, ALLEGRO_COLOR color);
 #else
 		[Import(@"C:\Beef\BeefTools\TestDLL\Debug\TestDLL.dll"), LinkName("Test2")]
 		public static extern void Test2(int32 a, int32 b, int32 c, int32 d);
+
+		[Import(@"C:\Beef\BeefTools\TestDLL\Debug\TestDLL.dll"), LinkName("Test3")]
+		public static extern void Test3(void* ptr, ALLEGRO_COLOR color);
+
+		[Import(@"C:\Beef\BeefTools\TestDLL\Debug\TestDLL.dll"), LinkName("Test4")]
+		public static extern void Test4(void* ptr, ALLEGRO_COLOR* color);
 #endif
 
-		[Import(@"C:\Beef\BeefTools\TestDLL\x64\Debug\TestDLL.dll"), CLink]
-		public static extern void Test4(int32 a, int32 b);
+		
 
 		
 		static uint32 sStaticVar = 234;
@@ -223,16 +237,8 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
-			function void() func = => Florgs;
-			int32 val = (int32)(int)(void*)func;
-
-			//void* ptr = "Hey";
-			//val = (int32)ptr;
-
-
-			//Test2(1, 2, val, 4);
-
-			Blurg.Hey();
+			for (int i < 10)
+				Blurg.Hey();
 			return 1;
 		}
 

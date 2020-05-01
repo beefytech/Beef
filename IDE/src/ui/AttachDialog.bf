@@ -1,6 +1,6 @@
 using System;
 using System.Threading;
-using System.Collections.Generic;
+using System.Collections;
 using Beefy.events;
 using Beefy.widgets;
 using Beefy.theme.dark;
@@ -28,7 +28,7 @@ namespace IDE.ui
 		public this()
 		{
 			mWindowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.TopMost | BFWindow.Flags.Caption |
-			    BFWindow.Flags.Border | BFWindow.Flags.SysMenu | BFWindow.Flags.Resizable;
+			    BFWindow.Flags.Border | BFWindow.Flags.SysMenu | BFWindow.Flags.Resizable | .PopupPosition;
 
 			AddOkCancelButtons(new (evt) => { Attach(); }, null, 0, 1);
 			//mApplyButton = AddButton("Apply", (evt) => { evt.mCloseDialog = false; ApplyChanges(); });

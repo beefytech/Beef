@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
@@ -632,7 +632,7 @@ namespace IDE.ui
                 }
                 else if (elementFlags.HasFlag(SourceElementFlags.SpellingError))
                 {
-                    underlineColor = 0xE0FF3000;
+					underlineColor = 0x80FFD200;
                 }
 
                 if (underlineColor != 0)
@@ -2059,6 +2059,10 @@ namespace IDE.ui
         {
 			scope AutoBeefPerf("SEWC.KeyChar");
 
+			var keyChar;
+			if (keyChar == '\x7F') // Ctrl+Backspace
+				keyChar = '\b';
+
 			if (mIgnoreKeyChar)
 			{
 				mIgnoreKeyChar = false;
@@ -2071,7 +2075,7 @@ namespace IDE.ui
                 return;
             }
 
-			bool isTab = (keyChar == '\t') && (!mWidgetWindow.IsKeyDown(.Shift));
+			bool isCompletionChar = ((keyChar == '\t') || (keyChar == '\r')) && (!mWidgetWindow.IsKeyDown(.Shift));
             if ((gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.IsRenaming))
             {         
                 if ((keyChar == '\r') || (keyChar == '\n'))
@@ -2096,7 +2100,7 @@ namespace IDE.ui
 
             int32 startRevision = mData.mCurTextVersionId;
             
-            bool doAutocomplete = isTab;
+            bool doAutocomplete = isCompletionChar;
 			if ((mAutoComplete != null) && (keyChar == '\r') &&
 				((!mIsMultiline) || (mAutoComplete.mIsUserRequested)))
 				doAutocomplete = true;
@@ -2109,7 +2113,7 @@ namespace IDE.ui
 
 			if (gApp.mSettings.mEditorSettings.mAutoCompleteRequireTab)
 			{
-				doAutocomplete = isTab;
+				doAutocomplete = isCompletionChar;
 				if (keyChar == '\r')
 				{
 					if (mAutoComplete != null)
@@ -2967,7 +2971,7 @@ namespace IDE.ui
 
 			if ((btn == 0) && (mWidgetWindow.IsKeyDown(.Control)) && (x == origX) && (y == origY))
 			{
-				gApp.GoToDefinition();
+				gApp.GoToDefinition(false);
 				return;
 			}
 
@@ -3003,7 +3007,7 @@ namespace IDE.ui
 
 						menuItem = menu.AddItem("Go to Definition");
 						menuItem.SetDisabled(!hasText);
-	                    menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.GoToDefinition());
+	                    menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.GoToDefinition(true));
 
 						menuItem = menu.AddItem("Rename Symbol");
 						menuItem.SetDisabled(!hasText);

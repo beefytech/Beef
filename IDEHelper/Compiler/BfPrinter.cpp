@@ -1050,7 +1050,7 @@ void BfPrinter::Visit(BfGenericArgumentsNode* genericArgumentsNode)
 	{
 		if (i > 0)
 		{
-			VisitChild(genericArgumentsNode->mCommas[i]);
+			VisitChild(genericArgumentsNode->mCommas[i - 1]);
 			ExpectSpace();
 		}
 		VisitChild(genericArgumentsNode->mGenericArgs[i]);		

@@ -1,7 +1,7 @@
 using Beefy.widgets;
 using Beefy.theme.dark;
 using IDE.Compiler;
-using System.Collections.Generic;
+using System.Collections;
 using System.Threading;
 using System;
 using Beefy.gfx;
@@ -276,7 +276,10 @@ namespace IDE.ui
 						SetLabel(item, codeStr);
 
 						let descItem = item.GetSubItem(1);
-						SetLabel(descItem, scope String(32)..AppendF(error.mError));
+						String errStr = scope String(32)..Append(error.mError);
+						errStr.Replace('\n', ' ');
+
+						SetLabel(descItem, errStr);
 
 						let projectItem = item.GetSubItem(2);
 						SetLabel(projectItem, error.mProject);

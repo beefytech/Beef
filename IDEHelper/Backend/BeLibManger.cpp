@@ -246,6 +246,13 @@ bool BeLibFile::Finish()
 		return false;
 	}
 
+	if ((!mOldEntries.IsEmpty()) && (!mOldFileStream.IsOpen()))
+	{
+		// We failed to open the old stream but we still had old entries to references..
+		mFailed = true;
+		return false;
+	}
+
 	mFileStream.Write("!<arch>\n", 8);
 
 	std::sort(libEntries.begin(), libEntries.end(), 

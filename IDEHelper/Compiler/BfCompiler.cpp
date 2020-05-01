@@ -3291,7 +3291,7 @@ void BfCompiler::UpdateRevisedTypes()
 	//		latestTypeDef->mOuterType = mSystem->GetOuterTypeNonPartial(latestTypeDef);
 
 	//	/*String fullName = typeDef->mFullNameEx.ToString();
-	//	if (fullName == "System.Collections.Generic.List`1.Enumerator`1")
+	//	if (fullName == "System.Collections.List`1.Enumerator`1")
 	//	{
 	//		NOP;
 	//	}
@@ -3949,7 +3949,15 @@ void BfCompiler::ProcessAutocompleteTempType()
 		auto propDeclaration = BfNodeDynCast<BfPropertyDeclaration>(propDef->mFieldDeclaration);
 		if (propDeclaration != NULL)
 			autoComplete->CheckProperty(propDeclaration);
-		module->ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_AllowRef);
+		module->ResolveTypeRef(propDef->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowRef);
+
+		if (auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propDef->mFieldDeclaration))
+		{
+			for (auto paramDecl : indexerDeclaration->mParams)
+			{				
+				module->ResolveTypeRef(paramDecl->mTypeRef, BfPopulateType_Identity);
+			}
+		}
 
 		if ((autoComplete->mIsGetDefinition) && (propDef->mFieldDeclaration != NULL) && (autoComplete->IsAutocompleteNode(propDef->mFieldDeclaration->mNameNode)))
 		{
@@ -4142,7 +4150,7 @@ void BfCompiler::AddToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeIn
 
 	bool allowRebuild = ((!typeInst->IsGenericTypeInstance()) ||
 		((typeInst->IsUnspecializedType()) && (!typeInst->IsUnspecializedTypeVariation())));
-	if ((typeInst->IsClosure()) || (typeInst->IsConcreteInterfaceType()) || (typeInst->IsRetTypeType()))
+	if ((typeInst->IsClosure()) || (typeInst->IsConcreteInterfaceType()) || (typeInst->IsModifiedTypeType()))
 		allowRebuild = false;
 	if (allowRebuild)
 		rebuildTypeInstList.Add(typeInst);
@@ -4615,6 +4623,16 @@ void BfCompiler::MarkStringPool(BfModule* module)
 		MarkStringPool(specModulePair.mValue);
 }
 
+void BfCompiler::MarkStringPool(BfIRConstHolder* constHolder, BfIRValue irValue)
+{
+	auto constant = constHolder->GetConstant(irValue);
+	if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_StringId))
+	{
+		BfStringPoolEntry& stringPoolEntry = mContext->mStringObjectIdMap[constant->mInt32];
+		stringPoolEntry.mLastUsedRevision = mRevision;
+	}
+}
+
 void BfCompiler::ClearUnusedStringPoolEntries()
 {
 	BF_ASSERT(!IsHotCompile());
@@ -4622,6 +4640,24 @@ void BfCompiler::ClearUnusedStringPoolEntries()
 	for (auto module : mContext->mModules)
 	{			
 		MarkStringPool(module);
+	}	
+
+	for (auto type : mContext->mResolvedTypes)
+	{
+		auto typeInstance = type->ToTypeInstance();
+		if (typeInstance == NULL)
+			continue;
+		if (typeInstance->mCustomAttributes == NULL)
+			continue;
+		for (auto& attribute : typeInstance->mCustomAttributes->mAttributes)
+		{
+			for (auto arg : attribute.mCtorArgs)
+				MarkStringPool(typeInstance->mConstHolder, arg);
+			for (auto setValue : attribute.mSetProperties)
+				MarkStringPool(typeInstance->mConstHolder, setValue.mParam.mValue);
+			for (auto setValue : attribute.mSetField)
+				MarkStringPool(typeInstance->mConstHolder, setValue.mParam.mValue);
+		}
 	}
 
 	for (auto itr = mContext->mStringObjectIdMap.begin(); itr != mContext->mStringObjectIdMap.end(); )
@@ -5933,9 +5969,9 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mResultTypeDef = _GetRequiredType("System.Result", 1);
 	mFunctionTypeDef = _GetRequiredType("System.Function");
 	mGCTypeDef = _GetRequiredType("System.GC");	
-	mGenericIEnumerableTypeDef = _GetRequiredType("System.Collections.Generic.IEnumerable");
-	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.Generic.IEnumerator");
-	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.Generic.IRefEnumerator");	
+	mGenericIEnumerableTypeDef = _GetRequiredType("System.Collections.IEnumerable", 1);
+	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.IEnumerator", 1);
+	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.IRefEnumerator", 1);	
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
@@ -6520,19 +6556,24 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 #ifdef BF_PLATFORM_WINDOWS
 	if (!mIsResolveOnly)
-	{				
-		for (auto mainModule : mContext->mModules)
-		{				
-			BfModule* bfModule = mainModule;
-			if (bfModule->mIsReified)														
+	{
+		if (!IsHotCompile())
+		{
+			// Remove individually-written object files from any libs that previously had them,
+			// in the case that lib settings changed (ie: switching a module from Og+ to O0)
+			for (auto mainModule : mContext->mModules)
 			{
-				for (auto outFileName : bfModule->mOutFileNames)					
+				BfModule* bfModule = mainModule;
+				if (bfModule->mIsReified)
 				{
-					if (outFileName.mModuleWritten)
-						BeLibManager::Get()->AddUsedFileName(outFileName.mFileName);                        
+					for (auto outFileName : bfModule->mOutFileNames)
+					{
+						if (outFileName.mModuleWritten)
+							BeLibManager::Get()->AddUsedFileName(outFileName.mFileName);
+					}
 				}
 			}
-		}		
+		}
 
 		auto libManager = BeLibManager::Get();
 		libManager->Finish();
@@ -7024,6 +7065,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 
 					int dispParamIdx = 0;
 
+					StringT<64> paramName;
 					for (int paramIdx = 0; paramIdx < (int)methodInstance->GetParamCount(); paramIdx++)
 					{
 						auto paramKind = methodInstance->GetParamKind(paramIdx);
@@ -7083,8 +7125,12 @@ void BfCompiler::GenerateAutocompleteInfo()
 						}
 						else
 							methodText += bfModule->TypeToString(type, BfTypeNameFlag_ResolveGenericParamNames, genericMethodNameOverridesPtr);
-						methodText += " ";
-						methodText += methodInstance->GetParamName(paramIdx);
+						methodInstance->GetParamName(paramIdx, paramName);
+						if (!paramName.IsEmpty())
+						{
+							methodText += " ";
+							methodText += paramName;
+						}
 
 						if (paramInitializer != NULL)
 						{

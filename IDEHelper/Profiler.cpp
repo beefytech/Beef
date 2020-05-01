@@ -99,10 +99,14 @@ DbgProfiler::DbgProfiler(WinDebugger* debugger) : mShutdownEvent(true)
 
 	mStartTick = BFTickCount();
 	mEndTick = 0;
+
+	mDebugger->AddProfiler(this);
 }
 
 DbgProfiler::~DbgProfiler()
 {
+	mDebugger->RemoveProfiler(this);
+
 	Stop();
 
 	DoClear();

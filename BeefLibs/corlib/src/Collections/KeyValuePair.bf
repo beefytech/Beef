@@ -1,4 +1,4 @@
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	public struct KeyValuePair<TKey, TValue>
 	{
@@ -36,4 +36,10 @@ namespace System.Collections.Generic
 			strOut.Append(']');
 		}
 	}
+}
+
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic types have been moved into System.Collections", false)]
+	typealias KeyValuePair<TKey, TValue> = System.Collections.KeyValuePair<TKey, TValue>;
 }

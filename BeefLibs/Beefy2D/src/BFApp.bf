@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Diagnostics;
 using System.IO;
@@ -498,7 +498,7 @@ namespace Beefy
                 StructuredData structuredData = scope StructuredData();
                 structuredData.Load(resFileName);
                 mResourceManager.ParseConfigData(structuredData);
-            }            
+            }
         }
 
         public void InitGraphics()

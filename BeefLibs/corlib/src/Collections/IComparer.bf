@@ -1,0 +1,4 @@
+namespace System.Collections
+{
+	
+}

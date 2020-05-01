@@ -1,6 +1,6 @@
 namespace System
 {
-	enum Result<T>
+	enum Result<T> : IDisposable
 	{
 		case Ok(T val);
 		case Err(void err);
@@ -59,6 +59,15 @@ namespace System
 			return default(T);
 		}
 
+		public static nullable(T) operator?(Self val)
+		{
+			switch (val)
+			{
+			case .Ok(let inner): return inner;
+			case .Err: return null;
+			}
+		}
+
 		[SkipCall]
 		public void Dispose()
 		{
@@ -93,7 +102,7 @@ namespace System
 		}
 	}
 
-	enum Result<T, TErr>
+	enum Result<T, TErr> : IDisposable
 	{
 		case Ok(T val);
 		case Err(TErr err);
@@ -149,6 +158,15 @@ namespace System
 			if (this case .Ok(var val))
 				return val;
 			return default(T);
+		}
+
+		public static nullable(T) operator?(Self val)
+		{
+			switch (val)
+			{
+			case .Ok(let inner): return inner;
+			case .Err: return null;
+			}
 		}
 
 		[SkipCall]

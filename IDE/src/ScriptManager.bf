@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Reflection;
 using System.IO;
 using System.Diagnostics;
@@ -398,10 +398,15 @@ namespace IDE
 						if (argView.IsEmpty)
 							continue;
 
-						if (argView.StartsWith("\""))
+						else if ((argView.StartsWith("\"")) || (argView.StartsWith("@\"")))
 						{
 							var str = scope:: String();
-							if (argView.UnQuoteString(str) case .Err)
+
+							if (argView.StartsWith("@"))
+							{
+								str.Append(argView, 2, argView.Length - 3);
+							}
+							else if (argView.UnQuoteString(str) case .Err)
 								Fail("Failed to unquote string");
 
 							if (str.Contains('$'))
@@ -450,7 +455,11 @@ namespace IDE
 								return;
 							}
 						}
-						else // Integer
+						else if ((argView == "false") || (argView == "true"))
+						{
+							args.Add(scope:: box (argView == "true"));
+						}
+						else // Integer					   
 						{
 							switch (int.Parse(argView))
 							{
@@ -716,6 +725,8 @@ namespace IDE
 	{
 		public EditWidgetContent.LineAndColumn mMarkedPos;
 		public ScriptManager mScriptManager;
+		bool mIsFirstBreak = true;
+		bool mWaitForExecutionPaused = true;
 
 		public this(ScriptManager scriptManager)
 		{
@@ -857,6 +868,12 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void SetWaitForExecutionPaused(bool value)
+		{
+			mWaitForExecutionPaused = value;
+		}
+
+		[IDECommand]
 		public void OutputLine(Object obj)
 		{
 			gApp.OutputLine("SCRIPT: {0}", obj);
@@ -889,8 +906,6 @@ namespace IDE
 			if ((++curCmd.mIntParam <= wantTicks) || (length < 0)) // Negative is forever
 				curCmd.mHandled = false;
 		}
-
-		bool mIsFirstBreak = true;
 
 		public bool IsPaused()
 		{
@@ -966,8 +981,11 @@ namespace IDE
 			if (gApp.mDebugger.HasPendingDebugLoads())
 				return false;
 
-			if ((!gApp.mExecutionPaused) && (gApp.mDebugger.mIsRunning))
-				return false;
+			if (mWaitForExecutionPaused)
+			{
+				if ((!gApp.mExecutionPaused) && (gApp.mDebugger.mIsRunning))
+					return false;
+			}
 
 			var runState = gApp.mDebugger.GetRunState();
 			if (runState == .Terminating)
@@ -988,8 +1006,15 @@ namespace IDE
 			if (runState == .Running_ToTempBreakpoint)
 				return false;
 
-			Debug.Assert((runState == .NotStarted) || (runState == .Paused) || (runState == .Running_ToTempBreakpoint) ||
-				(runState == .Exception) || (runState == .Breakpoint) || (runState == .Terminated));
+			if ((!mWaitForExecutionPaused) && (runState == .Running))
+			{
+
+			}
+			else
+			{
+				Debug.Assert((runState == .NotStarted) || (runState == .Paused) || (runState == .Running_ToTempBreakpoint) ||
+					(runState == .Exception) || (runState == .Breakpoint) || (runState == .Terminated));
+			}
 			/*if (runState == .Paused)
 			{
 				NOP!();
@@ -1308,9 +1333,15 @@ namespace IDE
 		}
 
 		[IDECommand]
-		public void Execute(String path)
+		public void Execute(String cmd)
 		{
-			ExecuteRaw(path);
+			ExecuteRaw(cmd);
+		}
+
+		[IDECommand]
+		public void ExecuteCommandFile(String path)
+		{
+			mScriptManager.QueueCommandFile(path);
 		}
 
 		[IDECommand]
@@ -2230,6 +2261,13 @@ namespace IDE
 			DeleteAndNullify!(ScriptManager.sActiveManager.mExpectingError);
 			ScriptManager.sActiveManager.mExpectingError = new String(error);
 			ScriptManager.sActiveManager.mHadExpectingError = true;
+		}
+
+		[IDECommand]
+		public void ClearExpectError()
+		{
+			DeleteAndNullify!(ScriptManager.sActiveManager.mExpectingError);
+			ScriptManager.sActiveManager.mHadExpectingError = false;
 		}
 
 		[IDECommand]

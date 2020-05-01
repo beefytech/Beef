@@ -410,6 +410,8 @@ struct BfCodeGenOptions
 		HashContext hashCtx;
 
 		hashCtx.Mixin(mWriteObj);
+		hashCtx.Mixin(mWriteBitcode);
+		hashCtx.Mixin(mAsmKind);
 		hashCtx.Mixin(mWriteToLib);
 		hashCtx.Mixin(mWriteLLVMIR);
 		hashCtx.Mixin(mVirtualMethodOfs);

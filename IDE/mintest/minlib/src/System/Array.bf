@@ -2,12 +2,16 @@
 // of an open-sourcing initiative in 2014 of the C# core libraries.
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 
 namespace System
 {
-	typealias int_arsize = int;
+#if BF_LARGE_COLLECTIONS
+	typealias int_arsize = int64;
+#else
+	typealias int_arsize = int32;
+#endif
 
 	class Array
 	{
@@ -18,9 +22,9 @@ namespace System
 			[Inline]
 			set
 			{
-				// We only allow reducing the length - consider using System.Collections.Generic.List<T> when dynamic sizing is required
+				// We only allow reducing the length - consider using System.Collections.List<T> when dynamic sizing is required
 				Runtime.Assert(value <= mLength);
-				mLength = value;
+				mLength = (.)value;
 			}
 
 			[Inline]
@@ -112,8 +116,58 @@ namespace System
 			var sorter = Sorter<T, void>(&array.[Friend]mFirstElement, null, array.[Friend]mLength, comp);
 			sorter.Sort(index, count);
 		}
+
+		// Reverses the elements in a range of an array. Following a call to this
+		// method, an element in the range given by index and count
+		// which was previously located at index i will now be located at
+		// index index + (index + count - i - 1).
+		// Reliability note: This may fail because it may have to box objects.
+		[DisableChecks]
+		public static void Reverse<T>(T[] arr, int index, int length)
+		{
+			Debug.Assert(arr != null);
+			Debug.Assert(index >= 0);
+			Debug.Assert(length >= 0);
+			Debug.Assert(length >= arr.Count - index);
+
+			int i = index;
+			int j = index + length - 1;
+			while (i < j)
+			{
+				let temp = arr[i];
+				arr[i] = arr[j];
+				arr[j] = temp;
+				i++;
+				j--;
+			}
+		}
+
+		// Reverses the elements in a range of an array. Following a call to this
+		// method, an element in the range given by index and count
+		// which was previously located at index i will now be located at
+		// index index + (index + count - i - 1).
+		// Reliability note: This may fail because it may have to box objects.
+		public static void SlowReverse<T>(T[] arr, int index, int length)
+		{
+			Debug.Assert(arr != null);
+			Debug.Assert(index >= 0);
+			Debug.Assert(length >= 0);
+			Debug.Assert(length >= arr.Count - index);
+
+			int i = index;
+			int j = index + length - 1;
+			while (i < j)
+			{
+				let temp = arr[i];
+				arr[i] = arr[j];
+				arr[j] = temp;
+				i++;
+				j--;
+			}
+		}
 	}
 	
+	[Ordered]
 	class Array1<T> : Array
 	{
 		T mFirstElement;

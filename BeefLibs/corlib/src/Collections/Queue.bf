@@ -6,7 +6,7 @@
 #define VERSION_QUEUE
 #endif
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	using System;
 	using System.Diagnostics;
@@ -459,4 +459,10 @@ namespace System.Collections.Generic
 			}
 		}
 	}
+}
+
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic types have been moved into System.Collections", false)]
+	typealias Queue<T> = System.Collections.Queue<T>;
 }

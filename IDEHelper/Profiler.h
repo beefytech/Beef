@@ -117,7 +117,7 @@ class DbgProfiler : public Profiler
 {
 public:
 	WinDebugger* mDebugger;
-	bool mIsRunning;
+	volatile bool mIsRunning;
 	bool mWantsClear;
 	SyncEvent mShutdownEvent;	
 	bool mNeedsProcessing;

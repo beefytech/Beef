@@ -311,7 +311,7 @@ public:
 	bool mOuterIsConditional;
 	bool mInnerIsConditional;
 	bool mHadOuterDynStack;
-	bool mAllowTargeting;
+	bool mAllowTargeting;	
 	bool mHadScopeValueRetain;	
 	bool mIsDeferredBlock;
 	BfBlock* mAstBlock;
@@ -345,7 +345,7 @@ public:
 		mHadOuterDynStack = false;		
 		mHadScopeValueRetain = false;
 		mIsDeferredBlock = false;
-		mAllowTargeting = true;
+		mAllowTargeting = true;		
 		mMixinDepth = 0;
 		mScopeDepth = 0;
 	}	
@@ -1410,8 +1410,10 @@ public:
 	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType);
 	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);	
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false);
+	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	
 	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false);
+	void CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc);
 	void CheckRangeError(BfType* type, BfAstNode* refNode);
 	bool CheckCircularDataError();
 	BfFileInstance* GetFileFromNode(BfAstNode* astNode);
@@ -1516,8 +1518,7 @@ public:
 	void EmitEnsureInstructionAt();
 	void EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* targetType, BfIRBlock trueBlock, BfIRBlock falseBlock, bool nullSucceeds = false);
 	void EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool allowNull);
-	void CheckStaticAccess(BfTypeInstance* typeInstance);
-	BfFieldInstance* GetFieldByName(BfTypeInstance* typeInstance, const StringImpl& fieldName);
+	void CheckStaticAccess(BfTypeInstance* typeInstance);	
 	BfTypedValue RemoveRef(BfTypedValue typedValue);
 	BfTypedValue LoadOrAggregateValue(BfTypedValue typedValue);
 	BfTypedValue LoadValue(BfTypedValue typedValue, BfAstNode* refNode = NULL, bool isVolatile = false);	
@@ -1537,6 +1538,7 @@ public:
 	BfTypedValue GetThis();
 	BfLocalVariable* GetThisVariable();
 	bool IsInGeneric();
+	bool InDefinitionSection();
 	bool IsInSpecializedGeneric();
 	bool IsInSpecializedSection(); // Either a specialized generic or an injected mixin
 	bool IsInUnspecializedGeneric();
@@ -1608,6 +1610,7 @@ public:
 	static BfModule* GetModuleFor(BfType* type);
 	void DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance);
 	void RebuildMethods(BfTypeInstance* typeInstance);
+	BfFieldInstance* GetFieldByName(BfTypeInstance* typeInstance, const StringImpl& fieldName, bool isRequired = true, BfAstNode* refNode = NULL);
 	void CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLocal = false);
 	void ResolveConstField(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field, bool forceResolve = false);
 	BfTypedValue GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer = NULL, BfFieldDef* fieldDef = NULL, BfType* fieldType = NULL);
@@ -1627,7 +1630,7 @@ public:
 	BfTupleType* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames);	
 	BfTupleType* SantizeTupleType(BfTupleType* tupleType);	
 	BfRefType* CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind = BfRefType::RefKind_Ref);
-	BfRetTypeType* CreateRetTypeType(BfType* resolvedTypeRef);
+	BfModifiedTypeType* CreateModifiedTypeType(BfType* resolvedTypeRef, BfToken modifiedKind);
 	BfConcreteInterfaceType* CreateConcreteInterfaceType(BfTypeInstance* interfaceType);
 	BfTypeInstance* GetWrappedStructType(BfType* type, bool allowSpecialized = true);
 	BfTypeInstance* GetPrimitiveStructType(BfTypeCode typeCode);
@@ -1759,7 +1762,7 @@ public:
 	BfMethodInstance* GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL);	
 	BfMethodInstance* GetRawMethodInstance(BfTypeInstance* typeInstance, BfMethodDef* methodDef);
 	BfMethodInstance* GetRawMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false, bool allowMixin = false);
-	BfMethodInstance* GetUnspecializedMethodInstance(BfMethodInstance* methodInstance); // Unspecialized owner type and unspecialized method type	
+	BfMethodInstance* GetUnspecializedMethodInstance(BfMethodInstance* methodInstance); // Unspecialized owner type and unspecialized method type		
 	int GetGenericParamAndReturnCount(BfMethodInstance* methodInstance);	
 	BfModule* GetSpecializedMethodModule(const SizedArrayImpl<BfProject*>& projectList);	
 	BfModuleMethodInstance GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL);	

@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
@@ -83,7 +83,7 @@ namespace IDE.Util
 					for (var projectSource in editData.mProjectSources)
 					{
 						projectSource.HasChangedSinceLastCompile = true;
-						IDEApp.sApp.mBfResolveCompiler.QueueProjectSource(projectSource, false);
+						IDEApp.sApp.mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
 					}
 				}
             }
@@ -127,7 +127,7 @@ namespace IDE.Util
 					for (var projectSource in editData.mProjectSources)
 					{
 						projectSource.HasChangedSinceLastCompile = true;
-						IDEApp.sApp.mBfResolveCompiler.QueueProjectSource(projectSource, false);
+						IDEApp.sApp.mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
 					}
 				}
             }

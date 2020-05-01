@@ -27,11 +27,12 @@ namespace System
 		MemberAccess = 0x20000,
 		Alloc        = 0x40000,
 		Delete       = 0x80000,
+		Alias        = 0x100000,
 
 	    All = Assembly | Module | Class | Struct | Enum | Constructor |
 	        Method | Property | Field | StaticField | Interface | Parameter |
 	    	Delegate | Function | ReturnValue | GenericParameter | Invocation | MemberAccess |
-			Alloc | Delete,
+			Alloc | Delete | Alias,
 	}
 
 	public enum ReflectKind
@@ -136,6 +137,12 @@ namespace System
 
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
 	public struct OptimizeAttribute : Attribute
+	{
+	    
+	}
+
+	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
+	public struct UseLLVMAttribute : Attribute
 	{
 	    
 	}
@@ -338,7 +345,7 @@ namespace System
 	{
 	}
 
-	[AttributeUsage(.Method | .Constructor)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias)]
 	public struct ObsoleteAttribute : Attribute
 	{
 		public this(bool isError)
@@ -346,7 +353,7 @@ namespace System
 
 		}
 
-		public this(String message, bool isError)
+		public this(String error, bool isError)
 		{
 
 		}
@@ -358,7 +365,7 @@ namespace System
 
 	}
 
-	[AttributeUsage(.Method | .Constructor)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias)]
 	public struct ErrorAttribute : Attribute
 	{
 		public this(String error)
@@ -367,7 +374,7 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.Method | .Constructor)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias)]
 	public struct WarnAttribute : Attribute
 	{
 		public this(String error)

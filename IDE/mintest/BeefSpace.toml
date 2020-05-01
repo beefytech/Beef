@@ -5,7 +5,6 @@ Projects = {mintest = {Path = "."}, minlib = {Path = "minlib"}, LibA = {Path = "
 StartupProject = "mintest"
 
 [Configs.Debug.Win32]
-BfOptimizationLevel = "OgPlus"
 InitLocalVariables = true
 IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {mintest2 = {Enabled = false}}
@@ -55,7 +54,9 @@ AllocStackTraceDepth = 0
 IntermediateType = "ObjectAndIRCode"
 
 [Configs.Release.Win64]
+Toolset = "LLVM"
 BfSIMDSetting = "SSE3"
+LTOType = "Thin"
 AllocStackTraceDepth = 0
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O3"
@@ -93,8 +94,6 @@ AllocStackTraceDepth = 0
 CSIMDSetting = "None"
 COptimizationLevel = "O2"
 ConfigSelections = {mintest = {Config = "Debug"}}
-
-[Configs.Test.Win64]
 
 [Configs.Test.WinFart]
 Toolset = "GNU"

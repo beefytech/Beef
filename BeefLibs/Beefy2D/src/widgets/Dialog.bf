@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using Beefy.gfx;
@@ -20,7 +20,7 @@ namespace Beefy.widgets
         public String mTitle ~ delete _;
         public String mText ~ delete _;
         public Image mIcon;
-        public BFWindowBase.Flags mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Modal;
+        public BFWindowBase.Flags mWindowFlags = .ClientSized | .TopMost | .Caption | .Border | .SysMenu | .Modal | .PopupPosition;
         public List<ButtonWidget> mButtons = new List<ButtonWidget>() ~ delete _;
         public List<Widget> mTabWidgets = new List<Widget>() ~ delete _;
         public Dictionary<ButtonWidget, DialogEventHandler> mHandlers = new Dictionary<ButtonWidget, DialogEventHandler>() ~ delete _;

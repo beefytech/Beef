@@ -3,7 +3,7 @@ using Beefy;
 using Beefy.gfx;
 using Beefy.widgets;
 using Beefy.geom;
-using System.Collections.Generic;
+using System.Collections;
 using Beefy.utils;
 using System.Diagnostics;
 using Beefy.theme.dark;

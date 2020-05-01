@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using Beefy.gfx;
@@ -634,7 +634,7 @@ namespace IDE.ui
 					    configItem = listViewItem.CreateSubItem(1);                
 					    configItem.Label = configSelection.mConfig;
 					    configComboBox = new DarkComboBox();
-					    configComboBox.mFrameless = true;
+					    configComboBox.mFrameKind = .Transparent;
 					    configComboBox.mPopulateMenuAction.Add(new (menu) => { PopulateProjectConfigMenu(menu, configItem, project, newConfigSelection); });
 					    configItem.AddWidget(configComboBox);                
 					    configItem.mOnResized.Add(new (evt) => { configComboBox.Resize(0, 0, configItem.mWidth, configItem.mHeight + 1); });
@@ -643,7 +643,7 @@ namespace IDE.ui
 					    platformItem = listViewItem.CreateSubItem(2);                
 					    platformItem.Label = configSelection.mPlatform;
 					    platformComboBox = new DarkComboBox();
-					    platformComboBox.mFrameless = true;
+					    platformComboBox.mFrameKind = .Transparent;
 					    platformComboBox.mPopulateMenuAction.Add(new (menu) => { PopulateProjectPlatformMenu(menu, platformItem, project, newConfigSelection); });
 					    platformItem.AddWidget(platformComboBox);
 					    platformItem.mOnResized.Add(new (evt) => { platformComboBox.Resize(0, 0, GetValueEditWidth(platformItem), platformItem.mHeight + 1); });

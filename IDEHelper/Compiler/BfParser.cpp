@@ -1917,10 +1917,10 @@ void BfParser::NextToken(int endIdx)
 				{
 					mLiteral.mInt64 = (uint8)strLiteral[0];
 				}
-
-				if (mLiteral.mInt64 >= 0x10000)
+				
+				if (mLiteral.mInt64 >= 0x8000) // Use 0x8000 to remain UTF16-compatible
 					mLiteral.mTypeCode = BfTypeCode_Char32;
-				else if (mLiteral.mInt64 >= 0x100)
+				else if (mLiteral.mInt64 >= 0x80) // Use 0x80 to remain UTF8-compatible
 					mLiteral.mTypeCode = BfTypeCode_Char16;
 			}
 			else
@@ -2781,9 +2781,11 @@ void BfParser::NextToken(int endIdx)
 						if (SrcPtrHasToken("new"))
 							mToken = BfToken_New;
 						break;
-					case TOKEN_HASH('n', 'u', 'l', 'l'):
+					case TOKEN_HASH('n', 'u', 'l', 'l'):						
 						if (SrcPtrHasToken("null"))
 							mToken = BfToken_Null;
+						else if (SrcPtrHasToken("nullable"))
+							mToken = BfToken_Nullable;
 						break;
 					case TOKEN_HASH('o', 'p', 'e', 'r'):
 						if (SrcPtrHasToken("operator"))

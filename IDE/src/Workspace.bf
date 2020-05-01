@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using Beefy;
@@ -7,6 +7,7 @@ using Beefy.utils;
 using System.Diagnostics;
 using System.Threading;
 using IDE.Util;
+using IDE.util;
 
 namespace IDE
 {
@@ -86,7 +87,7 @@ namespace IDE
 				case "Linux64":
 					outTriple.Append("x86_64-unknown-linux-gnu");
 				case "macOS":
-					outTriple.Append("x86_64-apple-macosx10.14.0");
+					outTriple.Append("x86_64-apple-macosx10.8.0");
 				case "iOS":
 					outTriple.Append("arm64-apple-ios");
 				default:
@@ -316,6 +317,7 @@ namespace IDE
         public class ProjectSourceCompileInstance
         {
             public String mSource ~ delete _;
+			public SourceHash mSourceHash;
             public IdSpan mSourceCharIdData ~ _.Dispose();
 			public int32 mRefCount = 1;
 
@@ -1126,7 +1128,7 @@ namespace IDE
 			}
 		}
 
-        public void ProjectSourceCompiled(ProjectSource projectSource, String source, IdSpan sourceCharIdData, bool canMoveSourceString = false)
+        public void ProjectSourceCompiled(ProjectSource projectSource, String source, SourceHash sourceHash, IdSpan sourceCharIdData, bool canMoveSourceString = false)
         {
             using (mMonitor.Enter())
             {
@@ -1141,6 +1143,7 @@ namespace IDE
 					source.MoveTo(projectSourceCompileInstance.mSource, true);
 				else
 					projectSourceCompileInstance.mSource.Set(source);
+				projectSourceCompileInstance.mSourceHash = sourceHash;
                 projectSourceCompileInstance.mSourceCharIdData = sourceCharIdData.Duplicate();
 
 				ProjectItem* keyPtr;

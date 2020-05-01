@@ -1,7 +1,7 @@
 using Beefy.widgets;
 using Beefy.gfx;
 using Beefy.theme.dark;
-using System.Collections.Generic;
+using System.Collections;
 using System;
 using Beefy.geom;
 using System.Diagnostics;

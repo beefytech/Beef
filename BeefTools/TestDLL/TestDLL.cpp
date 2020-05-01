@@ -202,11 +202,23 @@ __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 	int c = 345;
 }
 
-extern "C"
-__declspec(dllexport) void Test3(int a, int b)
+struct ALLEGRO_COLOR
 {
-	
- 	
+	float r, g, b, a;
+};
+
+extern "C"
+__declspec(dllexport) void Test4(void* ptr, ALLEGRO_COLOR* colorPtr)
+{
+	printf("Color: %f %f %f %f\n", colorPtr->r, colorPtr->g, colorPtr->b, colorPtr->a);
+}
+
+extern "C"
+__declspec(dllexport) void Test3(void* ptr, ALLEGRO_COLOR color)
+{
+	printf("Color: %f %f %f %f\n", color.r, color.g, color.b, color.a);
+ 
+	Test4(ptr, &color);
 	//printf("Hey!\n");
 
 

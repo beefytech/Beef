@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Collections;
 using System;
 using IDE.Compiler;
 using System.IO;
@@ -611,6 +611,35 @@ namespace IDE
 
 				CopyLibFiles(targetPath, workspaceOptions, options);
 
+				List<String> libPaths = scope .();
+				defer ClearAndDeleteItems(libPaths);
+				void AddLibPath(StringView libPathIn, Project project, Project.Options projectOptions)
+				{
+					var libPath = new String();
+					if (gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, projectOptions, libPathIn, "lib paths", libPath))
+					{
+						IDEUtils.FixFilePath(libPath);
+						libPaths.Add(libPath);
+					}
+				}
+
+				List<String> depPaths = scope .();
+				defer ClearAndDeleteItems(depPaths);
+				void AddDepPath(StringView depPathIn, Project project, Project.Options projectOptions)
+				{
+					var depPath = new String();
+					if (gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, projectOptions, depPathIn, "dep paths", depPath))
+					{
+						IDEUtils.FixFilePath(depPath);
+						depPaths.Add(depPath);
+					}
+				}
+
+				for (let libPath in options.mBuildOptions.mLibPaths)
+					AddLibPath(libPath, project, options);
+				for (let depPath in options.mBuildOptions.mLinkDependencies)
+					AddDepPath(depPath, project, options);
+
 			    List<Project> depProjectList = scope List<Project>();
 			    gApp.GetDependentProjectList(project, depProjectList);
 			    if (depProjectList.Count > 0)
@@ -656,6 +685,11 @@ namespace IDE
 								gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
 								if (!linkFlags.IsWhiteSpace)
 									linkLine.Append(linkFlags, " ");
+
+								for (let libPath in depProjectOptions.mBuildOptions.mLibPaths)
+									AddLibPath(libPath, depProject, depProjectOptions);
+								for (let depPath in depProjectOptions.mBuildOptions.mLinkDependencies)
+									AddDepPath(depPath, depProject, depProjectOptions);
 							}
 			            }
 			        }
@@ -701,6 +735,13 @@ namespace IDE
 						linkLine.Append(gApp.mInstallDir, @"lib\x64\msvcrt.lib Beef", IDEApp.sRTVersionStr,"MinRT64", minRTModName, ".lib ");
 					linkLine.Append("ntdll.lib user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib ole32.lib rpcrt4.lib version.lib comdlg32.lib chkstk.obj -ignore:4049 -ignore:4217 ");
 				}
+
+				for (var libPath in libPaths)
+				{
+					IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
+					linkLine.Append(" ");
+				}
+
 				linkLine.Append("-nologo ");
 				//linkLine.Append("-fixed ");
 
@@ -792,7 +833,9 @@ namespace IDE
 				cacheStr.AppendF("Copyright\t{}\n", project.mWindowsOptions.mCopyright);
 				cacheStr.AppendF("FileVersion\t{}\n", project.mWindowsOptions.mFileVersion);
 				cacheStr.AppendF("ProductVersion\t{}\n", project.mWindowsOptions.mProductVersion);
-				for (var linkDep in options.mBuildOptions.mLinkDependencies)
+				for (var linkDep in depPaths)
+					AddBuildFileDependency(linkDep, true);
+				for (var linkDep in libPaths)
 					AddBuildFileDependency(linkDep, true);
 
 				String prevCacheStr = scope .();
@@ -999,7 +1042,7 @@ namespace IDE
 		        project.mNeedsTargetRebuild = true;
 
 				String targetDir = scope String();
-				Path.GetDirectoryPath(targetPath, targetDir);
+				Path.GetDirectoryPath(targetPath, targetDir).IgnoreError();
 				if (!targetDir.IsEmpty)
 					Directory.CreateDirectory(targetDir).IgnoreError();
 			}

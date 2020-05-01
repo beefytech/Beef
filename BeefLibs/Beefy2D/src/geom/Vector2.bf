@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 
 namespace Beefy.geom
@@ -24,6 +24,14 @@ namespace Beefy.geom
                 return mX * mX + mY * mY;
             }
         }
+
+		public float Angle
+		{
+			get
+			{
+				return Math.Atan2(mY, mX);
+			}
+		}
 
         public this(float x, float y)
         {

@@ -3,7 +3,7 @@
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
 using System.Diagnostics.Contracts;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
@@ -3021,6 +3021,13 @@ namespace System
 		{
 			TrimStart();
 			TrimEnd();
+		}
+
+		public bool StartsWith(char8 c)
+		{
+			if (mLength == 0)
+				return false;
+			return Ptr[0] == c;
 		}
 
 		public bool EndsWith(char8 c)

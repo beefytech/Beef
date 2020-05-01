@@ -3,18 +3,17 @@ Dependencies = {Beefy2D = "*", corlib = "*"}
 
 [Project]
 Name = "IDE"
-TargetType = "BeefWindowsApplication"
+TargetType = "BeefGUIApplication"
 StartupObject = "IDE.Program"
 
 [Platform.Windows]
 IconFile = "$(WorkspaceDir)/Resources/Beef.ico"
 ManifestFile = "$(WorkspaceDir)/Resources/IDE.manifest"
 Description = "Beef IDE"
-Comments = "a"
 Company = "BeefyTech LLC"
 Product = "Beef IDE"
 Copyright = "Copyright 2019 BeefyTech"
-FileVersion = "0.42"
+FileVersion = "0.42.4"
 ProductVersion = "0000000000000000"
 
 [Configs.Debug.Win32]
@@ -25,8 +24,8 @@ OtherLinkFlags = ""
 TargetDirectory = "$(WorkspaceDir)/dist"
 TargetName = "BeefIDE_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib"
-DebugCommandArguments = "-proddir=c:\\beef\\idehelper\\tests"
-DebugWorkingDirectory = "c:\\Beef\\IDE\\Tests\\EmptyTest"
+DebugCommandArguments = "-proddir=E:\\_Beef\\TestAPp"
+DebugWorkingDirectory = "c:\\Beef"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 
 [Configs.Release.Win32]

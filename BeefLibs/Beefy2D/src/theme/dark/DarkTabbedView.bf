@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using Beefy.widgets;
 using Beefy.gfx;
@@ -481,11 +481,11 @@ namespace Beefy.theme.dark
 					useWidth = Math.Max(mWidth - GS!(36), 0);
 				useWidth = (float)Math.Round(useWidth);
 
-                tabButton.Resize(curX, tabButton.mY, useWidth, tabButton.mHeight);
+                tabButton.Resize(curX, tabButton.mY, useWidth, DarkTheme.sUnitSize);
 
                 //float offset = tabIdx - leftObscure;
                 float widthSubtract = Math.Max(0, leftObscure);
-                leftObscure -= tabButton.mWantWidth;
+				leftObscure -= tabButton.mWantWidth;
 
                 float showWidth = 0;
                 tabButton.mVisible = leftObscure < 1536.0f;
@@ -506,7 +506,7 @@ namespace Beefy.theme.dark
 	                if (tabIdx < mTabs.Count - 1)
 	                {
 	                    tabButton.mWidth = (float)Math.Round(Math.Min(tabButton.mWantWidth, showWidth + GS!(8)));
-	                    tabButton.mCloseButton.mVisible = tabButton.mWidth >= tabButton.mWantWidth;
+	                    tabButton.mCloseButton.mVisible = tabButton.mWidth + 1 >= tabButton.mWantWidth;
 	                }
 	                else
 	                {
@@ -528,7 +528,7 @@ namespace Beefy.theme.dark
                     }
                     else
                     {                        
-                        tabButton.mObscuredDir = pixelsOffscreen;                        
+                        tabButton.mObscuredDir = Math.Round(pixelsOffscreen);
                     }
                 }
                 tabButton.mVisible = true;                
@@ -590,7 +590,7 @@ namespace Beefy.theme.dark
 
                 mChildWidgets.Insert(0, tabButton);
 
-                tabButton.Resize(curX, tabButton.mY, tabButton.mWidth, tabButton.mHeight);
+                tabButton.Resize(curX, tabButton.mY, tabButton.mWidth, DarkTheme.sUnitSize);
                 
                 curX += showWidth;                
             }
@@ -599,7 +599,7 @@ namespace Beefy.theme.dark
             {
                 var activeTab = (DarkTabButton)GetActiveTab();
                 float pixelsLeft = maxAreaWidth - curX;
-                if ((activeTab != null) && (pixelsLeft > mAllowRightSpace))
+                if ((activeTab != null) && (pixelsLeft > mAllowRightSpace + 1))
                     activeTab.mObscuredDir = -pixelsLeft;
             }
 

@@ -634,7 +634,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				globalVariable->mName = name;
 				globalVariable->mIsTLS = isTLS;
 				globalVariable->mAlign = varType->mAlign;
-				globalVariable->mUnnamedAddr = false;
+				globalVariable->mUnnamedAddr = false;				
 				BF_ASSERT(varType->mAlign > 0);
 
 				SetResult(streamId, globalVariable);
@@ -1658,6 +1658,9 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(bool, unnamedAddr);
+
+			BF_ASSERT(BeValueDynCast<BeGlobalVariable>(val) != NULL);
+
 			((BeGlobalVariable*)val)->mUnnamedAddr = true;			
 		}
 		break;
@@ -1665,6 +1668,8 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(BeConstant*, initializer);
+			
+			BF_ASSERT(BeValueDynCast<BeGlobalVariable>(val) != NULL);
 
 			auto globalVariable = (BeGlobalVariable*)val;
 			globalVariable->mInitializer = initializer;			
@@ -1680,6 +1685,8 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(int, alignment);
+
+			BF_ASSERT(BeValueDynCast<BeGlobalVariable>(val) != NULL);
 
 			auto globalVariable = (BeGlobalVariable*)val;
 			globalVariable->mAlign = alignment;

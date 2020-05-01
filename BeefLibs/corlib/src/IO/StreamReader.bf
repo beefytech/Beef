@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Collections.Generic;
+using System.Collections;
 
 namespace System.IO
 {

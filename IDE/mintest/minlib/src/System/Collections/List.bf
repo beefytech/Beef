@@ -12,7 +12,7 @@ using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Reflection;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	interface IList
 	{
@@ -653,4 +653,10 @@ namespace System.Collections.Generic
 			}
 	    }
 	}
+}
+
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic containers have been moved into System.Collections", false)]
+	typealias List<T> = System.Collections.List<T>;
 }

@@ -6,7 +6,7 @@ using Beefy.events;
 using Beefy.utils;
 using System.Diagnostics;
 using IDE.Compiler;
-using System.Collections.Generic;
+using System.Collections;
 using System.Threading;
 
 namespace IDE.ui
@@ -477,8 +477,8 @@ namespace IDE.ui
 
 		public override void RehupScale(float oldScale, float newScale)
 		{
-			SetScaleData();
 			base.RehupScale(oldScale, newScale);
+			SetScaleData();
 		}
 
 		public override void FocusForKeyboard()

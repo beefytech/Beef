@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using Beefy.events;
@@ -188,14 +188,14 @@ namespace IDE.ui
             mFilterString = null;
         }
 
-		bool mShowingDropdown;
+		bool mIgnoreShowDropdown;
 
         public override MenuWidget ShowDropdown()
         {
-			if (mShowingDropdown)
+			if (mIgnoreShowDropdown)
 				return null;
-			mShowingDropdown = true;
-			defer { mShowingDropdown = false; }
+			mIgnoreShowDropdown = true;
+			defer { mIgnoreShowDropdown = false; }
 
 			/*var stopWatch = scope Stopwatch();
 			stopWatch.Start();*/
@@ -246,7 +246,12 @@ namespace IDE.ui
 		void SelectionChanged(int selIdx)
 		{
 			if (mEditWidget.mEditWidgetContent.HasSelection())
+			{
+				bool prevIgnoreShowDropdown = mIgnoreShowDropdown;
+				mIgnoreShowDropdown = true;
 				mEditWidget.SetText("");
+				mIgnoreShowDropdown = prevIgnoreShowDropdown;
+			}
 		}
 
         public override void MenuClosed()

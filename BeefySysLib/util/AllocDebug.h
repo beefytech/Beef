@@ -85,3 +85,6 @@ void BpDump();
 #define BP_ALLOC_RAW_T(T)
 
 #endif
+
+void* StompAlloc(int size);
+void StompFree(void* addr);

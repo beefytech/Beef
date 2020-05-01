@@ -539,10 +539,15 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		AddPrefix(mangleContext, name, startIdx, "R");
 		return;
 	}
-	else if (type->IsRetTypeType())
+	else if (type->IsModifiedTypeType())
 	{
-		BfRetTypeType* retTypeType = (BfRetTypeType*)type;
-		name += "U7rettype";
+		BfModifiedTypeType* retTypeType = (BfModifiedTypeType*)type;
+		if (retTypeType->mModifiedKind == BfToken_RetType)
+			name += "U7rettype";
+		else if (retTypeType->mModifiedKind == BfToken_Nullable)
+			name += "U8nullable";
+		else
+			BF_FATAL("Unhandled");
 		Mangle(mangleContext, name, retTypeType->mElementType);
 		return;
 	}
@@ -1573,10 +1578,15 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			name += "out$";
 		Mangle(mangleContext, name, refType->mElementType);
 	}	
-	else if (type->IsRetTypeType())
+	else if (type->IsModifiedTypeType())
 	{
-		auto retType = (BfRetTypeType*)type;
-		name += "rettype$";
+		auto retType = (BfModifiedTypeType*)type;
+		if (retType->mModifiedKind == BfToken_RetType)
+			name += "rettype$";
+		else if (retType->mModifiedKind == BfToken_Nullable)
+			name += "nullable$";
+		else
+			BF_FATAL("Unhandled");
 		Mangle(mangleContext, name, retType->mElementType);
 	}
 	else if (type->IsConcreteInterfaceType())

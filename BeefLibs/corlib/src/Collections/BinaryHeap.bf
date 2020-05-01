@@ -4,7 +4,7 @@
 
 using System.Diagnostics;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	public class BinaryHeap<T>
 	{
@@ -115,4 +115,10 @@ namespace System.Collections.Generic
 			}
 		}
 	}
+}
+
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic types have been moved into System.Collections", false)]
+	typealias BinaryHeap<T> = System.Collections.BinaryHeap<T>;
 }

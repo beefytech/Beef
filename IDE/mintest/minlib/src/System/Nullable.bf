@@ -1,5 +1,5 @@
 using System.Reflection;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 
 namespace System

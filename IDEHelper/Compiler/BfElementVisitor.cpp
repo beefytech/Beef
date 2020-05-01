@@ -325,7 +325,7 @@ void BfElementVisitor::Visit(BfRefTypeRef* typeRef)
 	VisitChild(typeRef->mElementType);
 }
 
-void BfElementVisitor::Visit(BfRetTypeTypeRef * typeRef)
+void BfElementVisitor::Visit(BfModifiedTypeRef * typeRef)
 {	
 	Visit((BfTypeReference*)typeRef); // Skip the Elemented part so we can put the element in the right spot
 

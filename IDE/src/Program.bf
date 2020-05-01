@@ -1,6 +1,6 @@
 using System;
 
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading;
 using System.Diagnostics;
@@ -14,7 +14,7 @@ namespace IDE
 {
     public class Program
     {
-		//System.Collections.Generic.List<System.String> list;
+		//System.Collections.List<System.String> list;
         static int32 Main(String[] args)
         {
 #if SMALLTEST

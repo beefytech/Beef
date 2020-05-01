@@ -2,7 +2,7 @@
 // of an open-sourcing initiative in 2014 of the C# core libraries.
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 
 namespace System
@@ -12,8 +12,7 @@ namespace System
 #else
 	typealias int_arsize = int32;
 #endif
-
-	[CRepr]
+	
 	class Array
 	{
 		protected int_arsize mLength;
@@ -23,7 +22,7 @@ namespace System
 			[Inline]
 			set
 			{
-				// We only allow reducing the length - consider using System.Collections.Generic.List<T> when dynamic sizing is required
+				// We only allow reducing the length - consider using System.Collections.List<T> when dynamic sizing is required
 				Runtime.Assert(value <= mLength);
 				mLength = (int_arsize)value;
 			}
@@ -184,7 +183,7 @@ namespace System
 		}
 	}
 
-	[CRepr]
+	[Ordered]
 	class Array1<T> : Array
 	{
 		T mFirstElement;
@@ -278,7 +277,7 @@ namespace System
 		}
 	}
 
-	[CRepr]
+	[Ordered]
 	class Array2<T> : Array
 	{
 		int_arsize mLength1;
@@ -389,7 +388,7 @@ namespace System
 		}
 	}
 
-	[CRepr]
+	[Ordered]
 	class Array3<T> : Array
 	{
 		int_arsize mLength1;
@@ -505,7 +504,7 @@ namespace System
 		}
 	}
 
-	[CRepr]
+	[Ordered]
 	class Array4<T> : Array
 	{
 		int_arsize mLength1;

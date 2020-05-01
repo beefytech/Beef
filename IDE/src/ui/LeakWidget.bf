@@ -3,7 +3,7 @@ using Beefy.gfx;
 using Beefy.geom;
 using Beefy.theme.dark;
 using System;
-using System.Collections.Generic;
+using System.Collections;
 
 namespace IDE.ui
 {

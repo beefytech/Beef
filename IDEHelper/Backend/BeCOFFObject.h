@@ -272,6 +272,7 @@ public:
 	void DbgEndLineBlock(BeDbgFunction* dbgFunc, const Array<BeDbgCodeEmission>& emissions, int blockStartPos, int emissionStartIdx, int lineCount);
 	void DbgGenerateModuleInfo();	
 	void InitSect(BeCOFFSection& sect, const StringImpl& name, int characteristics, bool addNow, bool makeSectSymbol);
+	void AlignConst(BeCOFFSection& sect, BeConstant* constVal);
 	void WriteConst(BeCOFFSection& sect, BeConstant* constVal);
 	
 	void Generate(BeModule* module);

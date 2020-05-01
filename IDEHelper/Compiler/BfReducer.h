@@ -179,7 +179,7 @@ public:
 	BfExpression* CheckBinaryOperatorPrecedence(BfBinaryOperatorExpression* binOpExpression);
 	BfExpression* ApplyToFirstExpression(BfUnaryOperatorExpression* unaryOp, BfExpression* target);
 	BfIdentifierNode* ExtractExplicitInterfaceRef(BfAstNode* memberDeclaration, BfIdentifierNode* nameIdentifier, BfTypeReference** outExplicitInterface, BfTokenNode** outExplicitInterfaceDotToken);
-	BfTokenNode* ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken);
+	BfTokenNode* ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken, bool requireNames);
 	BfTokenNode* ReadArguments(BfAstNode* parentNode, BfAstNode* afterNode, SizedArrayImpl<BfExpression*>* arguments, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken, bool allowSkippedArgs = false, CreateExprFlags createExprFlags = CreateExprFlags_None);
 	void ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, BfBlock* block);
 	BfAstNode* ReadTypeMember(BfTokenNode* node, int depth = 0);

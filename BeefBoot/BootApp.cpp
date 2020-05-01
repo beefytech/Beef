@@ -167,7 +167,7 @@ BootApp::BootApp()
 #ifdef BF_PLATFORM_WINDOWS
 	mTargetTriple = "x86_64-pc-windows-msvc";
 #elif defined BF_PLATFORM_MACOS
-	mTargetTriple = "x86_64-apple-macosx10.14.0";
+	mTargetTriple = "x86_64-apple-macosx10.8.0";
 #else
 	mTargetTriple = "x86_64-unknown-linux-gnu";
 #endif

@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using Beefy;
@@ -740,7 +740,7 @@ namespace IDE.ui
 						if ((mKind == Kind.Rename) && (IDEApp.IsBeefFile(editData.mFilePath)))
 						{
 							for (var projectSource in editData.mProjectSources)
-								app.mBfResolveCompiler.QueueProjectSource(projectSource, false);
+								app.mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
 							app.mBfResolveCompiler.QueueDeferredResolveAll();
 						}
 	                }
@@ -801,7 +801,7 @@ namespace IDE.ui
 				if (gApp.mBfResolveCompiler.HasResolvedAll())
 				{
 					Close();
-					gApp.GoToDefinition();
+					gApp.GoToDefinition(true);
 				}
 
 				if (mSourceViewPanel.EditWidget.Content.CursorTextPos != mCursorPos)

@@ -154,11 +154,15 @@ namespace System
 				}
 				else if ((c >= 'a') && (c <= 'f'))
 				{
+					if (radix != 0x10)
+						return .Err(.InvalidChar(result));
 					result *= radix;
 					result += c - 'a' + 10;
 				}
 				else if ((c >= 'A') && (c <= 'F'))
 				{
+					if (radix != 0x10)
+						return .Err(.InvalidChar(result));
 					result *= radix;
 					result += c - 'A' + 10;
 				}

@@ -1,56 +1,31 @@
-//using Squarf;
-
-//GORB
 #pragma warning disable 168
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Collections;
 
-#region EnumA Crapsos
-[AllowDuplicates]
-enum EnumA
+struct Blurg
 {
-	Abo = 1,
-	Boop = _*2,
-	Croop = _*2,
+	public static void Hey()
+	{
+		
+	}
 
-	Zoop = 1
 }
 
 struct StructA
 {
-	public int mA;
-	public int mB;
+	public int mA = 99;
 }
 
-#region Blurg
-struct Blurg
+/*namespace System
 {
-	static mixin MixA(var sa2)
+	extension String
 	{
-		sa2.mA++;
+		public String SubText(String input, int position, int length)
+		{
+			return 0;
+		}
 	}
-
-	static mixin MixB(mut StructA sa2)
-	{
-		sa2.mA++;
-	}
-
-	static void MethodA(mut StructA sa)
-	{
-		MixA!(sa);
-		//MixB!(mut sa);
-	}
-
-	public static int32 Hey()
-	{
-		StructA sa = .();
-		sa.mA = 123
-		
-		
-		return (int32)123;
-	}
-}
-
+}*/

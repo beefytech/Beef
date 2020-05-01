@@ -1213,8 +1213,11 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 	
 	if (typeInstance->IsIncomplete())
 	{
-		// Should already be populated
-		BF_ASSERT(hotTypeData->mVTableOrigLength != -1);
+		if (mCompiler->mHotState->mCommittedHotCompileIdx > 0)
+		{
+			// Should already be populated
+			BF_ASSERT(hotTypeData->mVTableOrigLength != -1);
+		}
 		return;
 	}
 
@@ -1226,6 +1229,7 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 			hotTypeData->mVTableOrigLength = typeInstance->mVirtualMethodTableSize;
 			hotTypeData->mOrigInterfaceMethodsLength = typeInstance->GetIFaceVMethodSize();
 		}
+		BfLogSysM("PopulateHotTypeDataVTable set %p HotDataType->mVTableOrigLength To %d\n", typeInstance, hotTypeData->mVTableOrigLength);
 	}	
 
 	int vTableStart = -1;
@@ -1331,8 +1335,8 @@ void BfContext::SaveDeletingType(BfType* type)
 	}
 	else
 	{
-		savedTypeData = *savedTypeDataPtr;
-		BF_DBG_FATAL("mSavedTypeData already had type name");
+		// This can happen if we have a conflicting type definition
+		savedTypeData = *savedTypeDataPtr;		
 	}
 	savedTypeData->mTypeId = type->mTypeId;
 	while ((int)mSavedTypeData.size() <= savedTypeData->mTypeId)

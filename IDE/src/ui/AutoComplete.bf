@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
@@ -397,15 +397,6 @@ namespace IDE.ui
 					int32 startIdx = (int32)(scrollPos / mAutoCompleteListWidget.mItemSpacing);
 					int32 endIdx = Math.Min((int32)((scrollPos + mAutoCompleteListWidget.mHeight)/ mAutoCompleteListWidget.mItemSpacing) + 1, (int32)mAutoCompleteListWidget.mEntryList.Count);
 
-                    for (int32 itemIdx = startIdx; itemIdx < endIdx; itemIdx++)
-                    {
-                        var entry = (EntryWidget)mAutoCompleteListWidget.mEntryList[itemIdx];
-
-						float curY = entry.Y;
-                        using (g.PushTranslate(4, curY))
-							entry.Draw(g);
-                    }
-
 					if (mAutoCompleteListWidget.mSelectIdx != -1)
 					{
 						var selectedEntry = mAutoCompleteListWidget.mEntryList[mAutoCompleteListWidget.mSelectIdx];
@@ -421,6 +412,15 @@ namespace IDE.ui
 						    g.DrawButton(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.MenuSelect), GS!(4), selectedEntry.Y - GS!(2), width);
 						}
 					}
+
+                    for (int32 itemIdx = startIdx; itemIdx < endIdx; itemIdx++)
+                    {
+                        var entry = (EntryWidget)mAutoCompleteListWidget.mEntryList[itemIdx];
+
+						float curY = entry.Y;
+                        using (g.PushTranslate(4, curY))
+							entry.Draw(g);
+                    }
                 }
 
 				public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
@@ -1043,7 +1043,12 @@ namespace IDE.ui
             mTargetEditWidget.Content.GetTextCoordAtLineChar(line, column, out x, out y);            
 
 			mTargetEditWidget.Content.GetTextCoordAtCursor(var cursorX, var cursorY);
-			y = Math.Max(y, cursorY);
+
+			if (mInvokeWidget?.mIsAboveText != true)
+				y = Math.Max(y, cursorY + gApp.mCodeFont.GetHeight() * 0.0f);
+
+			/*if (cursorY > y + gApp.mCodeFont.GetHeight() * 2.5f)
+				y = cursorY;*/
 
             float screenX;
             float screenY;
@@ -1167,7 +1172,15 @@ namespace IDE.ui
                 screenX += mTargetEditWidget.mWidgetWindow.mClientX;
                 screenY += mTargetEditWidget.mWidgetWindow.mClientY;
 
-                if (screenY >= mInvokeWindow.mY - 8)
+                //if (screenY >= mInvokeWindow.mY - 8)
+
+				int invokeLine = 0;
+				int invokeColumn = 0;
+				if (mInvokeSrcPositions != null)
+					mTargetEditWidget.Content.GetLineCharAtIdx(mInvokeSrcPositions[0], out invokeLine, out invokeColumn);
+
+				int insertLine = line;
+				if ((insertLine != invokeLine) && ((insertLine - invokeLine) * gApp.mCodeFont.GetHeight() < GS!(40)))
                 {
                     mInvokeWidget.mIgnoreMove = true;
                     if (mListWindow != null)
@@ -1993,7 +2006,7 @@ namespace IDE.ui
                 int insertColumn = 0;
                 mTargetEditWidget.Content.GetLineCharAtIdx(mTargetEditWidget.Content.CursorTextPos, out insertLine, out insertColumn);
 
-                if (insertLine != invokeLine)
+                if ((insertLine != invokeLine) && ((insertLine - invokeLine) * gApp.mCodeFont.GetHeight() < GS!(40)))
                     mInvokeWidget.mIsAboveText = true;
             }
 

@@ -924,6 +924,7 @@ void WinDebugger::DebugThreadProc()
 	{		
 		DoUpdate();
 	}
+
 	mIsRunning = false;
 
 	for (int i = 0; i < (int) mBreakpoints.size(); i++)
@@ -1059,6 +1060,8 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 {		
 	AutoCrit autoCrit(mDebugManager->mCritSect);	
 
+	BfLogDbg("WinDebugger::HotLoad Start %d\n", hotIdx);	
+
 	SetAndRestoreValue<int> prevHotIdx(mActiveHotIdx, hotIdx);
 
 	BF_ASSERT(mHotThreadStates.empty());
@@ -1082,8 +1085,7 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	}
 
 	int startingModuleIdx = (int)mDebugTarget->mDbgModules.size();
-
-	BfLogDbg("WinDebugger::HotLoad\n");
+	
 	bool failed = false;
 	for (auto fileName : objectFiles)
 	{
@@ -1313,6 +1315,11 @@ void WinDebugger::Detach()
 		Sleep(1);
 	}
 
+	for (auto profiler : mProfilerSet)
+		profiler->Stop();
+
+	BfLogDbg("Debugger Detach - thread finished\n");
+
 	mPendingProfilerMap.Clear();
 	for (auto profiler : mNewProfilerList)
 		delete profiler;
@@ -1404,6 +1411,18 @@ Profiler* WinDebugger::PopProfiler()
 	auto profiler = (DbgProfiler*)mNewProfilerList[0];	
 	mNewProfilerList.erase(mNewProfilerList.begin());
 	return profiler;
+}
+
+void WinDebugger::AddProfiler(DbgProfiler * profiler)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	mProfilerSet.Add(profiler);
+}
+
+void WinDebugger::RemoveProfiler(DbgProfiler * profiler)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	mProfilerSet.Remove(profiler);
 }
 
 void WinDebugger::ReportMemory(MemReporter* memReporter)
@@ -5055,6 +5074,8 @@ bool WinDebugger::RollBackStackFrame(CPURegisters* registers, bool isStackStart)
 
 bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize)
 {
+	BfLogDbg("SetHotJump %s %p->%p\n", oldSubprogram->mName, oldSubprogram->mBlock.mLowPC, newTarget);
+
 	//AutoCrit autoCrit(mDebugManager->mCritSect);
 	BF_ASSERT(mDebugManager->mCritSect.mLockCount == 1);
 
@@ -7395,10 +7416,16 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 					displayStrFormatInfo.mTotalSummaryLength = formatInfo.mTotalSummaryLength + (int)retVal.length();
 					displayStrFormatInfo.mExpandItemDepth++;
 					displayStrFormatInfo.mHidePointers = false;
-					retVal += DbgTypedValueToString(tupleVal, tupleExpr, displayStrFormatInfo, NULL);
+					retVal += DbgTypedValueToString(tupleVal, tupleExpr, displayStrFormatInfo, NULL);					
 					int idx = (int)retVal.IndexOf('\n');
 					if (idx != -1)
 					{
+						if ((idx > 2) && (strncmp(retVal.c_str() + idx - 2, "()", 2) == 0))
+						{
+							// Take off a terminating "()" on the value, if there is one
+							retVal.Remove(idx - 2, 2);
+						}
+
 						String typeName = innerType->ToString(DbgLanguage_Unknown, true);
 						typeName += " ";
 						retVal.Insert(idx + 1, typeName);

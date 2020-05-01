@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
@@ -57,12 +57,22 @@ namespace IDE.Compiler
             mResolveAllWait = 2;
         }
 
-        public virtual void QueueProjectSource(ProjectSource projectSource, bool wantsHash)
+        public virtual void QueueProjectSource(ProjectSource projectSource, SourceHash sourceHash, bool wantsHash)
         {
             ProjectSourceCommand command = new ProjectSourceCommand();
             command.mProjectSource = projectSource;
             command.mSourceString = new String();
+			
+			var wantsHash;
             IDEApp.sApp.FindProjectSourceContent(projectSource, out command.mSourceCharIdData, false, command.mSourceString, wantsHash ? &command.mSourceHash : null);
+
+			if (!(sourceHash case .None))
+			{
+				if (command.mSourceHash != sourceHash)
+					projectSource.mWasBuiltWithOldHash = true;
+				command.mSourceHash = sourceHash;
+			}
+
 			if (gApp.mBfBuildCompiler == this)
 			{
 				if (gApp.mDbgVersionedCompileDir != null)

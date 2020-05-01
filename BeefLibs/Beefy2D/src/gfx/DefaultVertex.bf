@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using Beefy.geom;
@@ -20,6 +20,23 @@ namespace Beefy.gfx
 		public static void Init()
 		{
 			sVertexDefinition = new VertexDefinition(typeof(DefaultVertex));
+		}
+
+		public this()
+		{
+			this = default;
+		}
+
+		public this(float x, float y, float u, float v, Color color)
+		{
+			mPos.mX = x;
+			mPos.mY = y;
+			mPos.mZ = 0;
+
+			mTexCoords.mU = u;
+			mTexCoords.mV = v;
+
+			mColor = (.)color;
 		}
     }
 }

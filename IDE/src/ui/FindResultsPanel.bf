@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using Beefy.widgets;
@@ -708,7 +708,7 @@ namespace IDE.ui
 						if ((IDEApp.IsBeefFile(filePath)) && (gApp.mBfResolveCompiler != null))
 						{
 							for (var projectSource in editData.mProjectSources)
-								gApp.mBfResolveCompiler.QueueProjectSource(projectSource, false);
+								gApp.mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
 							gApp.mBfResolveCompiler.QueueDeferredResolveAll();
 						}
 

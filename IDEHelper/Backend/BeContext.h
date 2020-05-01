@@ -131,7 +131,7 @@ public:
 	{		
 		BF_ASSERT(mTypeCode < BeTypeCode_Struct);
 		hashCtx.Mixin(mTypeCode);
-	}
+	}	
 };
 
 class BeStructMember

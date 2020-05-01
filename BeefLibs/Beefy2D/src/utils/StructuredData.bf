@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Collections;
 using System.Text;
 using System.Diagnostics;
@@ -588,6 +588,23 @@ namespace Beefy.utils
 				outString.Append(theDefault);
 			return;
         }
+
+		public T GetCurEnum<T>(T theDefault = default) where T : Enum
+		{
+			Object obj = GetCurrent();
+			
+			Result<T> result;
+			if (let str = obj as String)
+				result = Enum.Parse<T>(str);
+			else if (obj is StringView)
+				result = Enum.Parse<T>((StringView)obj);
+			else
+				return theDefault;
+
+			if (result case .Ok(var val))
+				return val;
+			return theDefault;
+		}
 
         public int32 GetCurInt(int32 theDefault = 0)
         {

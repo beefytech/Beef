@@ -676,18 +676,22 @@ int BfMethodInstance::GetImplicitParamCount()
 	return 0;
 }
 
-String BfMethodInstance::GetParamName(int paramIdx)
+void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name)
 {
 	if (paramIdx == -1)
 	{
 		BF_ASSERT(!mMethodDef->mIsStatic);
-		return "this";
+		name = "this";
+		return;
 	}
 
 	if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodDef->mIsLocalMethod))
 	{
 		if (paramIdx < (int)mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries.size())
-			return mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[paramIdx].mName;
+		{
+			name = mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[paramIdx].mName;
+			return;
+		}
 	}
 
 	BfMethodParam* methodParam = &mParams[paramIdx];
@@ -696,11 +700,19 @@ String BfMethodInstance::GetParamName(int paramIdx)
 	{
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
 		if (methodParam->mDelegateParamNameCombine)
-			return paramDef->mName + "__" + invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
+			name = paramDef->mName + "__" + invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
 		else
-			return invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
+			invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx, name);
+		return;
 	}
-	return paramDef->mName;
+	name = paramDef->mName;
+}
+
+String BfMethodInstance::GetParamName(int paramIdx)
+{
+	String paramName;
+	GetParamName(paramIdx, paramName);
+	return paramName;
 }
 
 BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
@@ -1709,6 +1721,7 @@ bool BfTypeInstance::IsValuelessType()
 	if (mTypeDef->mIsOpaque)
 		return false;
 
+	BF_ASSERT(mDefineState >= BfTypeDefineState_Defined);
 	BF_ASSERT(mInstSize >= 0);
 	if (mInstSize == 0)
 	{				
@@ -2186,9 +2199,9 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 		int elemHash = Hash(refType->mElementType, ctx) ^ (HASH_VAL_REF + (int)refType->mRefKind);
 		return (elemHash << 5) - elemHash;
 	}	
-	else if (type->IsRetTypeType())
+	else if (type->IsModifiedTypeType())
 	{
-		auto retTypeType = (BfRetTypeType*)type;
+		auto retTypeType = (BfModifiedTypeType*)type;
 		int elemHash = Hash(retTypeType->mElementType, ctx) ^ HASH_RETTYPE;
 		return (elemHash << 5) - elemHash;
 	}
@@ -2608,7 +2621,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		auto primType = ctx->mModule->GetPrimitiveType(BfTypeCode_Let);
 		return Hash(primType, ctx);
 	}
-	else if (auto retTypeTypeRef = BfNodeDynCastExact<BfRetTypeTypeRef>(typeRef))
+	else if (auto retTypeTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(typeRef))
 	{	
 		// Don't cause infinite loop, but if we have an inner 'rettype' then try to directly resolve that --
 		//  Only use the HAS_RETTYPE for root-level rettype insertions
@@ -2644,11 +2657,6 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 			BfTypeReference* fieldType = param->mTypeRef;
 			hashVal = ((hashVal ^ (Hash(fieldType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
 			hashVal = ((hashVal ^ (HashNode(param->mNameNode))) << 5) - hashVal;
-
-			if (param->mNameNode == NULL)
-			{
-				ctx->mFailed = true;
-			}
 		}
 
 		return hashVal;
@@ -2874,13 +2882,14 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfRefType* rhsRefType = (BfRefType*)rhs;
 		return (lhsRefType->mElementType == rhsRefType->mElementType) && (lhsRefType->mRefKind == rhsRefType->mRefKind);
 	}
-	else if (lhs->IsRetTypeType())
+	else if (lhs->IsModifiedTypeType())
 	{
-		if (!rhs->IsRetTypeType())
+		if (!rhs->IsModifiedTypeType())
 			return false;
-		BfRetTypeType* lhsRetTypeType = (BfRetTypeType*)lhs;
-		BfRetTypeType* rhsRetTypeType = (BfRetTypeType*)rhs;
-		return (lhsRetTypeType->mElementType == rhsRetTypeType->mElementType);
+		BfModifiedTypeType* lhsRetTypeType = (BfModifiedTypeType*)lhs;
+		BfModifiedTypeType* rhsRetTypeType = (BfModifiedTypeType*)rhs;
+		return (lhsRetTypeType->mModifiedKind == rhsRetTypeType->mModifiedKind) && 
+			(lhsRetTypeType->mElementType == rhsRetTypeType->mElementType);
 	}
 	else if (lhs->IsConcreteInterfaceType())
 	{
@@ -3085,7 +3094,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 	if (ctx->mRootTypeRef != rhs)
 	{
-		if (auto retTypeRef = BfNodeDynCastExact<BfRetTypeTypeRef>(rhs))
+		if (auto retTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(rhs))
 		{
 			auto resolvedType = ctx->mModule->ResolveTypeRef(rhs);
 			return lhs == resolvedType;
@@ -3132,8 +3141,16 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		auto rhsArrayTypeRef = BfNodeDynCastExact<BfArrayTypeRef>(rhs);
 		if (rhsArrayTypeRef == NULL)
 			return false;
-		if (!rhsArrayTypeRef->mParams.IsEmpty())
-			return false;
+		// Any non-comma param means it's a sized array
+		for (auto param : rhsArrayTypeRef->mParams)
+		{
+			bool isComma = false;
+			if (auto tokenNode = BfNodeDynCast<BfTokenNode>(param))
+				isComma = tokenNode->mToken == BfToken_Comma;
+			if (!isComma)
+				return false;
+		}
+
 		BfArrayType* lhsArrayType = (BfArrayType*) lhs;
 		if (lhsArrayType->mDimensions != rhsArrayTypeRef->mDimensions)
 			return false;
@@ -3158,7 +3175,11 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		{
 			if (!Equals(lhsInvokeMethodInstance->GetParamType(paramIdx), rhsDelegateType->mParams[paramIdx]->mTypeRef, ctx))
 				return false;
-			if (lhsInvokeMethodInstance->GetParamName(paramIdx) != rhsDelegateType->mParams[paramIdx]->mNameNode->ToString())
+			StringView rhsParamName;
+			if (rhsDelegateType->mParams[paramIdx]->mNameNode != NULL)
+				rhsParamName = rhsDelegateType->mParams[paramIdx]->mNameNode->ToStringView();
+
+			if (lhsInvokeMethodInstance->GetParamName(paramIdx) != rhsParamName)
 				return false;
 		}
 		return true;
@@ -3321,11 +3342,13 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		return (lhsRefType->mRefKind == refKind) &&
 			Equals(lhsRefType->mElementType, rhsRefTypeRef->mElementType, ctx);
 	}
-	else if (lhs->IsRetTypeType())
+	else if (lhs->IsModifiedTypeType())
 	{
-		auto lhsRetTypeType = (BfRetTypeType*)lhs;
-		auto rhsRetTypeTypeRef = BfNodeDynCastExact<BfRetTypeTypeRef>(rhs);
+		auto lhsRetTypeType = (BfModifiedTypeType*)lhs;
+		auto rhsRetTypeTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(rhs);
 		if (rhsRetTypeTypeRef == NULL)
+			return false;
+		if (lhsRetTypeType->mModifiedKind != rhsRetTypeTypeRef->mRetTypeToken->mToken)
 			return false;
 		return Equals(lhsRetTypeType->mElementType, rhsRetTypeTypeRef->mElementType, ctx);
 	}

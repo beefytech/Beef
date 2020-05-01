@@ -266,7 +266,8 @@ enum BfLookupFieldFlags
 {
 	BfLookupFieldFlag_None = 0,
 	BfLookupFieldFlag_IsImplicitThis = 1,
-	BfLookupFieldFlag_CheckingOuter = 2
+	BfLookupFieldFlag_CheckingOuter = 2,
+	BfLookupFieldFlag_IgnoreProtection = 4
 };
 
 enum BfBinOpFlags
@@ -388,6 +389,7 @@ public:
 	void VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration* fieldDtor);	
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic);	
 	void PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);
+	BfTypedValue PerformUnaryOperation_TryOperator(const BfTypedValue& inValue, BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);
 	void PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);
 	void PerformAssignment(BfAssignmentExpression* assignExpr, bool evaluatedLeft, BfTypedValue rightValue, BfTypedValue* outCascadeValue = NULL);	
 	void PopulateDeferrredTupleAssignData(BfTupleExpression* tupleExr, DeferredTupleAssignData& deferredTupleAssignData);

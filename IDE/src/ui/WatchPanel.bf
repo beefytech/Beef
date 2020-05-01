@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
@@ -1624,8 +1624,8 @@ namespace IDE.ui
 
 		public override void RehupScale(float oldScale, float newScale)
 		{
-			SetScaleData();
 			base.RehupScale(oldScale, newScale);
+			SetScaleData();
 		}
 
 		public void Serialize(StructuredData data, bool includeItems)
