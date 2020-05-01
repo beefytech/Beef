@@ -2,7 +2,9 @@
 echo Starting build.sh
 
 PATH=/usr/local/bin:$PATH:$HOME/bin
-cd "$(dirname "$0")"
+SCRIPT="$(realpath "$0")"
+SCRIPTPATH="$(dirname "$SCRIPT")"
+cd $SCRIPTPATH
 
 # exit when any command fails
 set -e
@@ -14,14 +16,14 @@ if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
 	cd ../BeefySysLib/third_party/libffi
 	./configure
 	make
-	cd "$(dirname "$0")"
+	cd $SCRIPTPATH
 fi
 
 if [ ! -d ../extern/llvm_linux_8_0_0 ]; then
 	echo Building LLVM...
 	cd ../extern
 	./llvm_build.sh
-	cd "$(dirname "$0")"
+	cd $SCRIPTPATH
 fi
 
 ### LIBS ###
