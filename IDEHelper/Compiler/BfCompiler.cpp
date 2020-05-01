@@ -1278,6 +1278,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			continue;
 
 		bool needsTypeData = (needsTypeList) || ((type->IsObject()) && (needsObjectTypeData));
+		bool needsVData = (type->IsObject()) && (typeInst->mHasBeenInstantiated);
 
 		bool forceReflectFields = false;
 
@@ -1287,8 +1288,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			if (type->IsEnum())
 				forceReflectFields = true;
 		}
-
-		bool needsVData = (type->IsObject()) && (typeInst->mHasBeenInstantiated);
+		
 		BfIRValue typeVariable;
 		
 		if ((needsTypeData) || (needsVData))
@@ -1330,6 +1330,11 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		auto typeDataConst = bfModule->mBfIRBuilder->CreateConstArray(arrayType, typeDataVector);
 		BfIRValue typeDataArray = bfModule->mBfIRBuilder->CreateGlobalVariable(arrayType, true, BfIRLinkageType_External,
 			typeDataConst, typesVariableName);
+
+		StringT<128> typeCountVariableName;
+		BfMangler::MangleStaticFieldName(typeCountVariableName, GetMangleKind(), typeDefType->ToTypeInstance(), "sTypeCount", bfModule->GetPrimitiveType(BfTypeCode_Int32));
+		bfModule->mBfIRBuilder->CreateGlobalVariable(bfModule->mBfIRBuilder->MapType(bfModule->GetPrimitiveType(BfTypeCode_Int32)), true, BfIRLinkageType_External,
+			bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, (int)typeDataVector.size()), typeCountVariableName);
 	}
 		
 	HashSet<int> foundStringIds;
