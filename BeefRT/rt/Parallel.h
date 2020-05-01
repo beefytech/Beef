@@ -2,6 +2,8 @@
 
 #include <ppl.h>
 #include <atomic>
+#include <algorithm>
+#include <execution>
 
 #include "BeefySysLib/Common.h"
 #include "BfObjects.h"
@@ -24,7 +26,6 @@ namespace bf
 			{
 				std::atomic_bool running = true;
 				std::atomic_int  taskCount = 0;
-			//	concurrency::cancellation_token_source cts;
 			};
 
 			class ParallelState :public Object
@@ -39,6 +40,7 @@ namespace bf
 				BFRT_EXPORT static bool StoppedInternal(void* meta);
 
 				BFRT_EXPORT static bool ShouldStopInternal(void* meta);
+
 			public:
 				BF_DECLARE_CLASS(ParallelState, Object);
 			};
@@ -47,11 +49,10 @@ namespace bf
 			{
 			private:
 
-				typedef void (*PInvokeFunc)();
+				typedef void (*PInvokeFunc)(void* wr, BF_INT_T idx);
+				typedef void (*PForFunc)(void* wr, BF_INT_T idx);
 
-				BFRT_EXPORT static void InvokeInternal(void* funcs, BF_INT_T count);
-
-				typedef void (*PForFunc)(void* wr, long long idx);
+				BFRT_EXPORT static void InvokeInternal(void* wrapper, void* func, BF_INT_T count);
 				BFRT_EXPORT static void ForInternal(long long from, long long to, void* wrapper, void* func);
 				BFRT_EXPORT static void ForInternal(long long from, long long to, void* meta, void* wrapper, void* func);
 

@@ -1,10 +1,20 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 
-namespace System.Threading {
+namespace System.Threading
+{
 	public delegate void InvokableFunction();
 
-#if BF_PLATFORM_WINDOWS
+	struct PInvokeWrapper
+	{
+		public InvokableFunction[] delegates;
+
+		public static void Call(Self* sf, int idx)
+		{
+			sf.delegates[idx]();
+		}
+	}
+
 	struct PForWrapper
 	{
 		public delegate void(int64 item) mDelegate;
@@ -31,9 +41,9 @@ namespace System.Threading {
 		public delegate void(ref T item) mDelegate;
 		public T*[] ptrs;
 
-		public static void Call(Self* sf, int64 idx)
+		public static void Call(Self* sf, int idx)
 		{
-			 sf.mDelegate(ref *(sf.ptrs[idx]));
+			sf.mDelegate(ref *(sf.ptrs[idx]));
 		}
 	}
 
@@ -43,7 +53,7 @@ namespace System.Threading {
 		public T*[] ptrs;
 		public ParallelState ps;
 
-		public static void Call(Self* sf, int64 idx)
+		public static void Call(Self* sf, int idx)
 		{
 			sf.mDelegate(ref *(sf.ptrs[idx]), ref sf.ps);
 		}
@@ -61,7 +71,7 @@ namespace System.Threading {
 
 		public this()
 		{
-		    InitializeMeta(meta);
+			InitializeMeta(meta);
 		}
 
 		public bool IsStopped
@@ -76,7 +86,7 @@ namespace System.Threading {
 		{
 			get
 			{
-			    return ShouldStopInternal(meta);
+				return ShouldStopInternal(meta);
 			}
 		}
 
@@ -85,20 +95,23 @@ namespace System.Threading {
 			BreakInternal(meta);
 		}
 
-		
+
 		public void Stop()
 		{
 			StopInternal(meta);
 		}
 	}
 
-	public sealed class Parallel {
-
-		private static extern void InvokeInternal(void* func1, int count);
+	public sealed class Parallel
+	{
+		private static extern void InvokeInternal(void* wrapper, void* func, int count);
 
 		public static void Invoke(InvokableFunction[] funcs)
 		{
-		    InvokeInternal((void*)(*(funcs.CArray())), funcs.Count);	
+			PInvokeWrapper wDlg;
+			wDlg.delegates = funcs;
+			function void(PInvokeWrapper*, int) fn = =>PInvokeWrapper.Call; 
+			InvokeInternal(&wDlg, (void*)fn, funcs.Count);
 		}
 
 		private static extern void ForInternal(int64 from, int64 to, void* wrapper, void* func);
@@ -108,8 +121,8 @@ namespace System.Threading {
 		public static void For(int64 from, int64 to, delegate void(int64 item) func)
 		{
 			PForWrapper wDlg;
-			wDlg.mDelegate=func;
-			function void(PForWrapper* wr, int64 idx) fn= =>PForWrapper.Call;
+			wDlg.mDelegate = func;
+			function void(PForWrapper*, int64) fn = => PForWrapper.Call;
 			ForInternal(from, to, &wDlg, (void*)fn);
 		}
 
@@ -117,9 +130,9 @@ namespace System.Threading {
 		public static void For(int64 from, int64 to, delegate void(int64 item, ref ParallelState ps) func)
 		{
 			StatedPForWrapper wDlg;
-			wDlg.mDelegate=func;
-			wDlg.ps=new ParallelState();
-			function void(StatedPForWrapper* wr, int64 idx) fn= => StatedPForWrapper.Call;
+			wDlg.mDelegate = func;
+			wDlg.ps = new ParallelState();
+			function void(StatedPForWrapper*, int64) fn = => StatedPForWrapper.Call;
 
 			ForInternal(from, to, wDlg.ps.meta, &wDlg, (void*)fn);
 		}
@@ -128,14 +141,32 @@ namespace System.Threading {
 		public static void Foreach<T>(Span<T> arr, delegate void(ref T item) func)
 		{
 			PForeachWrapper<T> wDlg;
-			wDlg.mDelegate=func;
-			wDlg.ptrs=new T*[arr.Length];
-			function void(PForeachWrapper<T>* wr, int64 idx) fn= =>PForeachWrapper<T>.Call;
+			wDlg.mDelegate = func;
+			wDlg.ptrs = new T*[arr.Length];
+			function void(PForeachWrapper<T>* wr, int idx) fn = => PForeachWrapper<T>.Call;
 
-			int idx=0;
-			for(ref T i in ref arr){
-			    wDlg.ptrs[idx]= &i;
-			    idx+=1;
+			int idx = 0;
+			for (ref T i in ref arr)
+			{
+				wDlg.ptrs[idx] = &i;
+				idx += 1;
+			}
+
+			ForInternal(0, arr.Length, &wDlg, (void*)fn);
+		}
+
+		public static void Foreach<T>(Span<T> arr, delegate void(ref T item) func)
+		{
+			PForeachWrapper<T> wDlg;
+			wDlg.mDelegate = func;
+			wDlg.ptrs = new T*[arr.Length];
+			function void(PForeachWrapper<T>* wr, int idx) fn = => PForeachWrapper<T>.Call;
+
+			int idx = 0;
+			for (ref T i in ref arr)
+			{
+				wDlg.ptrs[idx] = &i;
+				idx += 1;
 			}
 
 			ForInternal(0, arr.Length, &wDlg, (void*)fn);
@@ -144,19 +175,19 @@ namespace System.Threading {
 		public static void Foreach<T>(Span<T> arr, delegate void(ref T item, ref ParallelState ps) func)
 		{
 			StatedPForeachWrapper<T> wDlg;
-			wDlg.mDelegate=func;
-			wDlg.ps=new ParallelState();
-			wDlg.ptrs=new T*[arr.Length];
-			function void(StatedPForeachWrapper<T>* wr, int64 idx) fn= =>StatedPForeachWrapper<T>.Call;
+			wDlg.mDelegate = func;
+			wDlg.ps = new ParallelState();
+			wDlg.ptrs = new T*[arr.Length];
+			function void(StatedPForeachWrapper<T>* wr, int idx) fn = => StatedPForeachWrapper<T>.Call;
 
-			int idx=0;
-			for(ref T i in ref arr){
-			    wDlg.ptrs[idx]=&i;
-			    idx+=1;
+			int idx = 0;
+			for (ref T i in ref arr)
+			{
+				wDlg.ptrs[idx] = &i;
+				idx += 1;
 			}
 
 			ForInternal(0, arr.Length, wDlg.ps.meta, &wDlg, (void*)fn);
 		}
 	}
-#endif
 }

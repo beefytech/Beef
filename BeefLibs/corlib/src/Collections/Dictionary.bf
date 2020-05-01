@@ -602,7 +602,7 @@ namespace System.Collections
 			return (key is TKey);
 		}
 
-		public struct Enumerator : IEnumerator<(TKey key, TValue value)>//, IDictionaryEnumerator
+		public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>//, IDictionaryEnumerator
 		{
 			private Dictionary<TKey, TValue>  mDictionary;
 #if VERSION_DICTIONARY
@@ -678,9 +678,12 @@ namespace System.Collections
 				}
 			}
 
-			public (TKey key, TValue value) Current
+			public KeyValuePair<TKey, TValue> Current
 			{
-				get { return (mDictionary.mEntries[mCurrentIndex].mKey, mDictionary.mEntries[mCurrentIndex].mValue); }
+				get
+				{
+					return KeyValuePair(mDictionary.mEntries[mCurrentIndex].mKey, mDictionary.mEntries[mCurrentIndex].mValue);
+				}
 			}
 
 			public void Dispose()
@@ -742,7 +745,7 @@ namespace System.Collections
 				}
 			}*/
 
-			public Result<(TKey key, TValue value)> GetNext() mut
+			public Result<KeyValuePair<TKey, TValue>> GetNext() mut
 			{
 				if (!MoveNext())
 					return .Err;

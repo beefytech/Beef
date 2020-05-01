@@ -260,6 +260,7 @@
     <ClCompile Include="rt\Chars.cpp" />
     <ClCompile Include="rt\Internal.cpp" />
     <ClCompile Include="rt\Math.cpp" />
+    <ClCompile Include="rt\Parallel.cpp" />
     <ClCompile Include="rt\StompAlloc.cpp" />
     <ClCompile Include="rt\Thread.cpp" />
     <ClCompile Include="rt\ThreadLocalStorage.cpp" />
@@ -275,6 +276,7 @@
     <ClInclude Include="..\BeefySysLib\util\String.h" />
     <ClInclude Include="..\BeefySysLib\util\UTF8.h" />
     <ClInclude Include="rt\BfObjects.h" />
+    <ClInclude Include="rt\Parallel.h" />
     <ClInclude Include="rt\StompAlloc.h" />
     <ClInclude Include="rt\Thread.h" />
     <ClInclude Include="rt\ThreadLocalStorage.h" />
