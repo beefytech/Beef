@@ -3643,6 +3643,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				implRequired = true;
 				declRequired = true;
 			}
+			if (typeInstance->mIncludeAllMethods)
+				implRequired = true;
 
 			if (typeInstance->IsInterface())
 				declRequired = true;
@@ -8319,7 +8321,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 				if ((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr)) ||
 					((genericParamInst->mTypeConstraint != NULL) &&
-					((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
+					((genericParamInst->mTypeConstraint->IsPointer()) || 
+						(genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || 
+						(genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
 				{
 					return GetDefaultValue(toType);
 				}
@@ -8371,6 +8375,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)toType);
 		if (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var)
 			return GetDefaultValue(toType);
+		
 		if (typedVal.mType->IsNull())
 		{
 			bool allowCast = (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Class) || (genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr);
@@ -8385,9 +8390,18 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			auto castedVal = CastToValue(srcNode, typedVal, genericParamInst->mTypeConstraint, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
 			if (castedVal)
 				return castedVal;
-
-			//TODO: WHy did we do 'GetDefaultValue'? This messes up setting up method param defaults, which is important for inferring const generic params
-				//return GetDefaultValue(toType);
+		}
+		
+		if (explicitCast)
+		{
+			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr) ||
+				((genericParamInst->mTypeConstraint != NULL) && genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))
+			{
+				auto voidPtrType = CreatePointerType(GetPrimitiveType(BfTypeCode_None));
+				auto castedVal = CastToValue(srcNode, typedVal, voidPtrType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
+				if (castedVal)
+					return castedVal;
+			}
 		}
 	}
 
