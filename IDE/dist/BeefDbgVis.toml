@@ -214,7 +214,7 @@ Size = "mLength"
 ValuePointer = "mPtr"
 
 [[Type]]
-Name = "System.Collections.Generic.List<*>"
+Name = "System.Collections.List<*>"
 DisplayString = "{{ count={mSize} }}"
 [[Type.Expand.Item]]
 Name = "[Count]"
@@ -232,7 +232,7 @@ Size = "mSize"
 ValuePointer = "mItems"
 
 [[Type]]
-Name = "System.Collections.Generic.Queue<*>"
+Name = "System.Collections.Queue<*>"
 DisplayString = "{{ count={mSize} }}"
 [[Type.Expand.Item]]
 Name = "[Count]"
@@ -250,7 +250,7 @@ Size = "mSize"
 ValueNode = "mItems[($i + mHead) % __clearHighBits(mAllocSizeAndFlags, 2)]"
 
 [[Type]]
-Name = "System.Collections.Generic.BinaryHeap<*>"
+Name = "System.Collections.BinaryHeap<*>"
 DisplayString = "{{ count={mSize} }}"
 [[Type.Expand.Item]]
 Name = "[Count]"
@@ -260,7 +260,7 @@ Size = "mSize"
 ValuePointer = "&this.mData.mFirstElement"
 
 [[Type]]
-Name = "System.Collections.Generic.Dictionary<*, *>"
+Name = "System.Collections.Dictionary<*, *>"
 DisplayString = "{{ count={mCount - mFreeCount} }}"
 [[Type.Expand.Item]]
 Name = "[Count]"
@@ -274,7 +274,7 @@ Value = "mValue"
 Next = "mNext"
 
 [[Type]]
-Name = "System.Collections.Generic.Dictionary<*, *>.Entry"
+Name = "System.Collections.Dictionary<*, *>.Entry"
 DisplayString = "{{[{mKey}, {mValue}]}}"
 [[Type.Expand.Item]]
 Name = "[Key]"
@@ -284,7 +284,7 @@ Name = "[Value]"
 Value = "mValue"
 
 [[Type]]
-Name = "System.Collections.Generic.HashSet<*>"
+Name = "System.Collections.HashSet<*>"
 DisplayString = "{{ count={mCount} }}"
 [[Type.Expand.Item]]
 Name = "[Count]"
@@ -293,16 +293,6 @@ Value = "mCount"
 Size = "mCount"
 ValuePointer = "&mSlots.mFirstElement"
 Condition = "mHashCode >= 0"
-
-[[Type]]
-Name = "System.Collections.Generic.KeyValuePair<*, *>"
-DisplayString = "{{{mKey}, {mValue}}}"
-[[Type.Expand.Item]]
-Name = "[Key]"
-Value = "mKey"
-[[Type.Expand.Item]]
-Name = "[Value]"
-Value = "mValue"
 
 #################### C++ Standard Types ####################
 
