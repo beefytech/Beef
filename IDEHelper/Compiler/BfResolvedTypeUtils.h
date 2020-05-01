@@ -484,7 +484,7 @@ public:
 	virtual bool IsFloat() { return false; }		
 	virtual bool IsPointer() { return false; }
 	virtual bool IsIntPtrable() { return false;  }	
-	virtual bool IsRef() { return false; }
+	virtual bool IsRef() { return false; }	
 	virtual bool IsGenericParam() { return false; }
 	virtual bool IsClosure() { return false; }	
 	virtual bool IsMethodRef() { return false; }
@@ -1000,7 +1000,7 @@ public:
 	virtual BfConstraintDef* GetConstraintDef() = 0;
 	virtual BfGenericParamDef* GetGenericParamDef() = 0;
 	virtual BfExternalConstraintDef* GetExternConstraintDef() = 0;
-	virtual String GetName() = 0;
+	virtual String GetName() = 0;	
 };
 
 class BfGenericTypeParamInstance : public BfGenericParamInstance
@@ -1607,6 +1607,7 @@ public:
 	int16 mInheritDepth;
 	int16 mSlotNum;
 	bool mHasBeenInstantiated;
+	bool mIncludeAllMethods;
 	bool mIsReified;
 	bool mIsTypedPrimitive;
 	bool mIsCRepr;	
@@ -1670,6 +1671,7 @@ public:
 		mResolvingConstField = false;
 		mHasPackingHoles = false;				
 		mHasBeenInstantiated = false;
+		mIncludeAllMethods = false;
 		mWantsGCMarking = false;
 		mHasParameterizedBase = false;
 		mMergedFieldDataCount = 0;
@@ -1985,7 +1987,7 @@ public:
 	void Finish();
 
 	virtual bool IsOnDemand() override { return true; }
-	virtual bool IsTuple() override { return true; }
+	virtual bool IsTuple() override { return true; }	
 
 	virtual bool IsUnspecializedType() override { return mHasUnspecializedMembers; }
 	virtual bool IsUnspecializedTypeVariation() override { return mHasUnspecializedMembers; }
@@ -2094,7 +2096,7 @@ public:
 	virtual bool IsIncomplete() override { CheckElement(); return mDefineState < BfTypeDefineState_Defined; }
 	virtual bool IsReified() override { return mElementType->IsReified(); }
 
-	virtual bool IsRef() override { return true; }
+	virtual bool IsRef() override { return true; }	
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
