@@ -148,7 +148,7 @@ namespace System.Net
 		static extern int32 connect(HSocket s, SockAddr* name, int32 nameLen);
     
 #if BF_PLATFORM_WINDOWS
-		[CLink, StdCall]
+		[Import("wsock32.lib"), CLink, StdCall]
 		static extern int32 closesocket(HSocket s);
 #else
 		[CLink, StdCall]
