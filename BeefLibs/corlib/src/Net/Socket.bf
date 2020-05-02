@@ -391,6 +391,14 @@ namespace System.Net
 				return mIsConnected;
 			}
 		}
+		
+		public HSocket NativeSocket
+		{
+			get
+			{
+				return mHandle;
+			}
+		}
 	}
 }
 
