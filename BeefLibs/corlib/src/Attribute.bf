@@ -120,12 +120,14 @@ namespace System
 	[AttributeUsage(.Class | .Struct | .Interface | .Method | .Constructor)]
 	public struct AlwaysIncludeAttribute : Attribute
 	{
-		bool mAssumeInstantiated;
-
 	    public bool AssumeInstantiated
 		{
-			get { return mAssumeInstantiated; }
-			set mut { mAssumeInstantiated = value; }
+			set { }
+		}
+
+		public bool IncludeAllMethods
+		{
+			set { }
 		}
 	}
 

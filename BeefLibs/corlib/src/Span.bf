@@ -184,7 +184,7 @@ namespace System
 			return Enumerator(this);
 		}
 
-		public struct Enumerator : IEnumerator<T>, IRefEnumerator<T>
+		public struct Enumerator : IEnumerator<T>, IRefEnumerator<T*>
 		{
 		    private Span<T> mList;
 		    private int mIndex;

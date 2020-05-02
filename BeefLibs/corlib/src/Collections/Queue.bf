@@ -351,7 +351,7 @@ namespace System.Collections
 		/// Implements an enumerator for a Queue.  The enumerator uses the
 		/// internal version number of the list to ensure that no modifications are
 		/// made to the list while an enumeration is in progress.
-		public struct Enumerator : IRefEnumerator<T>
+		public struct Enumerator : IRefEnumerator<T*>, IEnumerator<T>
 		{
 			private Queue<T> mQueue;
 			private int32 mIndex;   // -1 = not started, -2 = ended/disposed

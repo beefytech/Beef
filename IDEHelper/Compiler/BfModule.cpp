@@ -5740,7 +5740,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	BfType* reflectParamDataType = ResolveTypeDef(mCompiler->mReflectParamDataDef);
 	BfType* reflectParamDataPtrType = CreatePointerType(reflectParamDataType);
 
-	SizedArray<BfIRValue, 16> methodTypes;
+	SizedArray<BfIRValue, 16> methodTypes;	
 	for (int methodIdx = 0; methodIdx < (int)typeDef->mMethods.size(); methodIdx++)
 	{
 		if (!needsTypeData)
@@ -5837,6 +5837,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			MethodFlags_FastCall = 0x2000,
 			MethodFlags_ThisCall = 0x3000,
 			MethodFlags_Mutating = 0x4000,
+			MethodFlags_Constructor = 0x8000,
 		};
 
 		MethodFlags methodFlags = (MethodFlags)0;
@@ -5853,6 +5854,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_FastCall);
 		if (methodDef->mIsMutating)
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Mutating);
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Constructor);
 
 		auto callingConvention = GetIRCallingConvention(defaultMethod);
 		if (callingConvention == BfIRCallingConv_ThisCall)
@@ -5948,7 +5951,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				GetConstValue(vDataVal, intType),
 				GetConstValue(-1, intType),
 			};
-		auto methodData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectMethodDataType->ToTypeInstance(), BfIRPopulateType_Full), methodDataVals);
+		auto methodData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectMethodDataType->ToTypeInstance(), BfIRPopulateType_Full), methodDataVals);		
 		methodTypes.push_back(methodData);
 	}
 
@@ -5964,7 +5967,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			methodDataConst, "methods." + typeDataName);
 		methodDataPtr = mBfIRBuilder->CreateBitCast(methodDataArray, methodDataPtrType);
 	}
-
+	
 	/////
 
 	int underlyingType = 0;	
@@ -6011,14 +6014,12 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			GetConstValue(0, byteType), // mInterfaceCount
 			GetConstValue((int)methodTypes.size(), shortType), // mMethodDataCount
 			GetConstValue(0, shortType), // mPropertyDataCount
-			GetConstValue((int)fieldTypes.size(), shortType), // mFieldDataCount
-			GetConstValue(0, shortType), // mConstructorDataCount
+			GetConstValue((int)fieldTypes.size(), shortType), // mFieldDataCount			
 
 			voidPtrNull, // mInterfaceDataPtr
 			methodDataPtr, // mMethodDataPtr
 			voidPtrNull, // mPropertyDataPtr
-			fieldDataPtr, // mFieldDataPtr
-			voidPtrNull, // mConstructorDataPtr
+			fieldDataPtr, // mFieldDataPtr			
 
 			customAttrDataPtr, // mCustomAttrDataPtr
 		};
@@ -10145,6 +10146,12 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 						auto constant = mCurTypeInstance->mConstHolder->GetConstant(setProp.mParam.mValue);
 						if ((constant != NULL) && (constant->mBool))
 							mCurTypeInstance->mHasBeenInstantiated = true;
+					}
+					else if (propertyDef->mName == "IncludeAllMethods")
+					{
+						auto constant = mCurTypeInstance->mConstHolder->GetConstant(setProp.mParam.mValue);
+						if ((constant != NULL) && (constant->mBool))
+							mCurTypeInstance->mIncludeAllMethods = true;
 					}
 				}
 			}

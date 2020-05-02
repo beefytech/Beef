@@ -906,9 +906,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			if (typeAliasDecl->mAliasToType != NULL)
 				aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);
 		}
-		//typeAlias->mModule = mContext->mScratchModule;
-		typeAlias->mTypeIncomplete = false;
-		typeAlias->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
+		
 		if (aliasToType != NULL)
 		{
 			AddDependency(aliasToType, typeAlias, BfDependencyMap::DependencyFlag_DerivedFrom);
@@ -951,7 +949,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		resolvedTypeRef->mRebuildFlags = BfTypeRebuildFlag_None;
 		typeAlias->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
 
-		return true;
+		// Fall through so generic params are populated in DoPopulateType
 	}
 
 	if (resolvedTypeRef->IsSizedArray())
@@ -1159,6 +1157,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		case BfTypeCode_Struct:
 		case BfTypeCode_Interface:
 		case BfTypeCode_Enum:		
+		case BfTypeCode_TypeAlias:
 			// Implemented below
 			break;
 		case BfTypeCode_Extension:
@@ -1516,6 +1515,13 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		auto genericTypeInst = (BfGenericTypeInstance*)typeInstance;
 		if (genericTypeInst->mGenericParams.size() == 0)
 			BuildGenericParams(resolvedTypeRef);
+	}
+
+	if (resolvedTypeRef->IsTypeAlias())
+	{
+		typeInstance->mTypeIncomplete = false;
+		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
+		return true;
 	}
 
 	if (_CheckTypeDone())
@@ -3643,6 +3649,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				implRequired = true;
 				declRequired = true;
 			}
+			if (typeInstance->mIncludeAllMethods)
+				implRequired = true;
 
 			if (typeInstance->IsInterface())
 				declRequired = true;
@@ -8319,7 +8327,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 				if ((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr)) ||
 					((genericParamInst->mTypeConstraint != NULL) &&
-					((genericParamInst->mTypeConstraint->IsPointer()) || (genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
+					((genericParamInst->mTypeConstraint->IsPointer()) || 
+						(genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || 
+						(genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
 				{
 					return GetDefaultValue(toType);
 				}
@@ -8371,6 +8381,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)toType);
 		if (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var)
 			return GetDefaultValue(toType);
+		
 		if (typedVal.mType->IsNull())
 		{
 			bool allowCast = (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Class) || (genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr);
@@ -8385,9 +8396,18 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			auto castedVal = CastToValue(srcNode, typedVal, genericParamInst->mTypeConstraint, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
 			if (castedVal)
 				return castedVal;
-
-			//TODO: WHy did we do 'GetDefaultValue'? This messes up setting up method param defaults, which is important for inferring const generic params
-				//return GetDefaultValue(toType);
+		}
+		
+		if (explicitCast)
+		{
+			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr) ||
+				((genericParamInst->mTypeConstraint != NULL) && genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))
+			{
+				auto voidPtrType = CreatePointerType(GetPrimitiveType(BfTypeCode_None));
+				auto castedVal = CastToValue(srcNode, typedVal, voidPtrType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
+				if (castedVal)
+					return castedVal;
+			}
 		}
 	}
 

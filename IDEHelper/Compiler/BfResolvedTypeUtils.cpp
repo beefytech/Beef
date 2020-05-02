@@ -3768,7 +3768,28 @@ String BfTypeUtils::TypeToString(BfTypeReference* typeRef)
 	}
 	if (auto directStrTypeName = BfNodeDynCast<BfDirectStrTypeReference>(typeRef))
 		return directStrTypeName->mTypeName;
-	BF_FATAL("Not implemented");
+
+	if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))
+	{
+		String name = "(";
+
+		for (int i = 0; i < tupleTypeRef->mFieldTypes.size(); i++)
+		{
+			if (i > 0)
+				name += ", ";
+			name += TypeToString(tupleTypeRef->mFieldTypes[i]);			
+			if ((i < tupleTypeRef->mFieldNames.size()) && (tupleTypeRef->mFieldNames[i] != NULL))
+			{
+				name += " ";
+				name += tupleTypeRef->mFieldNames[i]->ToString();
+			}
+		}
+
+		name += ")";
+		return name;
+	}
+
+	BF_DBG_FATAL("Not implemented");
 	return "???";
 }
 

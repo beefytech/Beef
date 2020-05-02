@@ -2360,7 +2360,7 @@ namespace System
 			}
 		}
 
-		public struct RawEnumerator : IRefEnumerator<char8>
+		public struct RawEnumerator : IRefEnumerator<char8*>, IEnumerator<char8>
 		{
 			char8* mPtr;
 			int_strsize mIdx;

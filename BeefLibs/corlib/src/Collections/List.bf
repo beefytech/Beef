@@ -623,7 +623,7 @@ namespace System.Collections
 			}
 		}
 
-		public struct Enumerator : IRefEnumerator<T>, IResettable
+		public struct Enumerator : IRefEnumerator<T*>, IEnumerator<T>, IResettable
 		{
 	        private List<T> mList;
 	        private int mIndex;

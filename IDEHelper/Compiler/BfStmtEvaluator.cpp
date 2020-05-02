@@ -3696,6 +3696,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 	if (checkType->IsPointer())
 	{
 		auto innerType = checkType->GetUnderlyingType();
+		PopulateType(innerType);
 		if (innerType->IsValuelessType())
 			mayBeSentinel = true;
 	}
@@ -5383,7 +5384,7 @@ void BfModule::Visit(BfForStatement* forStmt)
 }
 
 void BfModule::DoForLess(BfForEachStatement* forEachStmt)
-{
+{	
 	UpdateSrcPos(forEachStmt);
 
 	BfScopeData scopeData;
@@ -5714,8 +5715,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					{
 						if (genericItrInterface != NULL)
 						{							
-							Fail(StrFormat("Type '%s' implements multiple %s<T> interfaces", TypeToString(itr.mType).c_str(), isRefExpression ? "IRefEnumerator" : "IEnumerator"), forEachStmt->mCollectionExpression);
-							return;
+							Fail(StrFormat("Type '%s' implements multiple %s<T> interfaces", TypeToString(itr.mType).c_str(), isRefExpression ? "IRefEnumerator" : "IEnumerator"), forEachStmt->mCollectionExpression);														
 						}
 
 						itrInterface = interface;
@@ -5724,7 +5724,11 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 						{
 							varType = genericItrInterface->mTypeGenericArguments[0];
 							if (isRefExpression)
-								varType = CreateRefType(varType);
+							{
+								if (varType->IsPointer())
+									varType = CreateRefType(varType->GetUnderlyingType());
+							}							
+
 						}
 					}
 				}
@@ -5737,7 +5741,10 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					{
 						varType = genericItrInterface->mTypeGenericArguments[0];
 						if (isRefExpression)
-							varType = CreateRefType(varType);
+						{
+							if (varType->IsPointer())
+								varType = CreateRefType(varType);
+						}
 					}
 				}
 			}
@@ -5761,9 +5768,9 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					refItrInterface = itrInterface;
 					PopulateType(refItrInterface);
 					// Must IRefEnumeratorf<T> must include only IEnumerator<T>
-					BF_ASSERT(refItrInterface->mInterfaces.size() == 1);
-					if (refItrInterface->mInterfaces.size() == 1)
-						itrInterface = refItrInterface->mInterfaces[0].mInterfaceType;
+// 					BF_ASSERT(refItrInterface->mInterfaces.size() == 1);
+// 					if (refItrInterface->mInterfaces.size() == 1)
+// 						itrInterface = refItrInterface->mInterfaces[0].mInterfaceType;
 				}
 				itr = MakeAddressable(itr);
 				itr = RemoveReadOnly(itr);
@@ -6220,7 +6227,10 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			{				
 				auto nextVal = BfTypedValue(mBfIRBuilder->CreateBitCast(nextResult.mValue, mBfIRBuilder->MapType(CreatePointerType(nextEmbeddedType))), nextEmbeddedType, true);
 				if (isRefExpression)
-					nextVal = BfTypedValue(nextVal.mValue, CreateRefType(nextVal.mType->GetUnderlyingType()), true);
+				{
+					if (nextVal.mType->IsPointer())
+						nextVal = BfTypedValue(nextVal.mValue, CreateRefType(nextVal.mType->GetUnderlyingType()), true);
+				}
 				nextVal = Cast(forEachStmt->mCollectionExpression, nextVal, varType, BfCastFlags_Explicit);
 				nextVal = LoadValue(nextVal);
 				if (nextVal)
