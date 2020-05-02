@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
@@ -57,6 +57,18 @@ namespace IDE.ui
 				while ((projDirectory.EndsWith('/')) || (projDirectory.EndsWith('\\')))
 					projDirectory.RemoveFromEnd(1);
 				Path.GetFileName(projDirectory, projName);
+			}
+
+			if (projDirectory.IsEmpty)
+			{
+				projDirectory.Set(projName);
+			}
+
+			//
+			{
+				String origDirectory = scope String(projDirectory);
+				projDirectory.Clear();
+				Path.GetAbsolutePath(origDirectory, gApp.mWorkspace.mDir, projDirectory);
 			}
 
             bool isNameValid = projName.Length > 0;

@@ -1,6 +1,6 @@
 using System;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
     interface IEnumerator<T>
     {
@@ -12,13 +12,18 @@ namespace System.Collections.Generic
 		void Reset() mut;
 	}
     
-	interface IRefEnumerator<T> : IEnumerator<T>
+	interface IRefEnumerator<T>
 	{
-		Result<T*> GetNextRef() mut;
+		Result<T> GetNextRef() mut;
 	}
 
     concrete interface IEnumerable<T>
     {
         concrete IEnumerator<T> GetEnumerator();
     }
+
+	concrete interface IRefEnumerable<T>
+	{
+	    concrete IRefEnumerator<T> GetEnumerator();
+	}
 }

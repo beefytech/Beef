@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using System.Collections.Generic;
+using System.Collections;
 
 namespace System
 {
@@ -184,7 +184,7 @@ namespace System
 			return Enumerator(this);
 		}
 
-		public struct Enumerator : IEnumerator<T>, IRefEnumerator<T>
+		public struct Enumerator : IEnumerator<T>, IRefEnumerator<T*>
 		{
 		    private Span<T> mList;
 		    private int mIndex;

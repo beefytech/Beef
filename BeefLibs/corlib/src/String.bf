@@ -3,7 +3,7 @@
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
 using System.Diagnostics.Contracts;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
@@ -2360,7 +2360,7 @@ namespace System
 			}
 		}
 
-		public struct RawEnumerator : IRefEnumerator<char8>
+		public struct RawEnumerator : IRefEnumerator<char8*>, IEnumerator<char8>
 		{
 			char8* mPtr;
 			int_strsize mIdx;

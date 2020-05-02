@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using Beefy;
@@ -87,7 +87,7 @@ namespace IDE
 				case "Linux64":
 					outTriple.Append("x86_64-unknown-linux-gnu");
 				case "macOS":
-					outTriple.Append("x86_64-apple-macosx10.14.0");
+					outTriple.Append("x86_64-apple-macosx10.8.0");
 				case "iOS":
 					outTriple.Append("arm64-apple-ios");
 				default:

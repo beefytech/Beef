@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using System.FFI;
 using System.Diagnostics;
-using System.Collections.Generic;
+using System.Collections;
 
 namespace System.Reflection
 {
@@ -11,6 +11,14 @@ namespace System.Reflection
 	{
 		TypeInstance mTypeInstance;
 		TypeInstance.MethodData* mMethodData;
+
+		public bool IsInitialized
+		{
+			get
+			{
+				return mMethodData != null;
+			}
+		}
 
 		public StringView Name
 		{
@@ -157,7 +165,7 @@ namespace System.Reflection
 					if ((paramType.IsPrimitive) && (underlyingType.IsTypedPrimitive)) // Boxed primitive?
 						underlyingType = underlyingType.UnderlyingType;
 
-					if (argType.IsBoxedStructPtr)
+					if ((argType.IsBoxedStructPtr) || (argIdx == -1))
 					{
 						dataPtr = *(void**)dataPtr;
 						handled = true;

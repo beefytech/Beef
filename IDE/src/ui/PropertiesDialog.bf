@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
@@ -80,7 +80,7 @@ namespace IDE.ui
 			{
 				if ((evt.mKeyFlags == 0) &&
 					((evt.mKeyCode == .Delete) || (evt.mKeyCode == .Backspace)) &&
-					(Content.HasSelection()))
+					((Content.HasSelection()) || (!HasKeys)))
 				{
 					if ((evt.mKeyCode == .Delete) || (evt.mKeyCode == .Backspace))
 					{
@@ -949,10 +949,11 @@ namespace IDE.ui
 					
 					if (curVariantType == typeof(List<KeyState>))
 					{
-						if (!newValue.IsEmpty && !newValue.StartsWith("<"))
+						if (!newValue.StartsWith("<"))
 						{
 							let entries = new List<KeyState>();
-							KeyState.Parse(newValue, entries);
+							if (!newValue.IsEmpty)
+								KeyState.Parse(newValue, entries);
 							editingProp.mCurValue = Variant.Create(entries, true);
 						}
 						else
@@ -1386,6 +1387,13 @@ namespace IDE.ui
 
 				var str = scope String();
 				KeyState.ToString(keyList, str);
+				if (str.IsEmpty)
+				{
+					let origEntry = propEntry.mOrigValue.Get<List<KeyState>>();
+					if (!origEntry.IsEmpty)
+						str.Append("< Removed >");
+				}
+
 				valueItem.Label = str;
 			}
             else if (curVariantType.IsGenericType)

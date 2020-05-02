@@ -6,15 +6,21 @@
 #define VERSION_DICTIONARY
 #endif
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	using System;
 	using System.Collections;
 	using System.Diagnostics;
 	using System.Diagnostics.Contracts;
 
-	public class Dictionary<TKey, TValue> where TKey : IHashable //: IDictionary<TKey, TValue>, IDictionary, IReadOnlyDictionary<TKey, TValue>, ISerializable, IDeserializationCallback
+	public class Dictionary<TKey, TValue> :
+		ICollection<(TKey key, TValue value)>,
+		IEnumerable<(TKey key, TValue value)>,
+		IRefEnumerable<(TKey key, TValue* valueRef)> where TKey : IHashable
 	{
+		typealias KeyValuePair=(TKey key, TValue value);
+		typealias KeyRefValuePair=(TKey key, TValue* valueRef);
+
 		private struct Entry			
 		{
 			public TKey mKey;           // Key of entry
@@ -106,6 +112,11 @@ namespace System.Collections.Generic
 		public void Add(TKey key, TValue value)
 		{
 			Insert(key, value, true);
+		}
+
+		public void Add(KeyValuePair kvPair)
+		{
+			Insert(kvPair.key, kvPair.value, true);
 		}
 
 		public bool TryAdd(TKey key, TValue value)
@@ -214,6 +225,38 @@ namespace System.Collections.Generic
 				}*/
 			}
 			return false;
+		}
+		
+		public bool Contains(KeyValuePair kvPair)
+		{
+			TValue value;
+			if (TryGetValue(kvPair.key, out value))
+			{
+				return value == kvPair.value;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		public void CopyTo(KeyValuePair[] kvPair, int index)
+		{
+			Keys.Reset();
+			Values.Reset();
+			int i = 0;
+
+			repeat
+			{
+				if (i >= index)
+				{
+					kvPair[i] = (Keys.Current, Values.Current);
+				}
+			}
+			while(Keys.MoveNext() && Values.MoveNext());
+
+			Keys.Reset();
+			Values.Reset();
 		}
 
 		public Enumerator GetEnumerator()
@@ -459,6 +502,12 @@ namespace System.Collections.Generic
 			}
 			return false;
 		}
+		
+		[Inline]
+		public bool Remove(KeyValuePair kvPair)
+		{
+			return Remove(kvPair.key);
+		}
 
 		public Result<(TKey key, TValue value)> GetAndRemove(TKey key)
 		{
@@ -561,7 +610,7 @@ namespace System.Collections.Generic
 			return (key is TKey);
 		}
 
-		public struct Enumerator : IEnumerator<(TKey key, TValue value)>//, IDictionaryEnumerator
+		public struct Enumerator : IEnumerator<KeyValuePair>, IRefEnumerator<KeyRefValuePair>
 		{
 			private Dictionary<TKey, TValue>  mDictionary;
 #if VERSION_DICTIONARY
@@ -637,13 +686,19 @@ namespace System.Collections.Generic
 				}
 			}
 
-			public (TKey key, TValue value) Current
+			public KeyValuePair Current
 			{
 				get { return (mDictionary.mEntries[mCurrentIndex].mKey, mDictionary.mEntries[mCurrentIndex].mValue); }
 			}
 
+			public KeyRefValuePair CurrentRef
+			{
+				get { return (mDictionary.mEntries[mCurrentIndex].mKey, &mDictionary.mEntries[mCurrentIndex].mValue); }
+			}
+
 			public void Dispose()
 			{
+
 			}
 
 			public void SetValue(TValue value)
@@ -701,15 +756,22 @@ namespace System.Collections.Generic
 				}
 			}*/
 
-			public Result<(TKey key, TValue value)> GetNext() mut
+			public Result<KeyValuePair> GetNext() mut
 			{
 				if (!MoveNext())
 					return .Err;
 				return Current;
 			}
+
+			public Result<KeyRefValuePair> GetNextRef() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return CurrentRef;
+			}
 		}
 
-		public struct ValueEnumerator : IRefEnumerator<TValue>, IResettable
+		public struct ValueEnumerator : IRefEnumerator<TValue*>, IEnumerator<TValue>, IResettable
 		{
 			private Dictionary<TKey, TValue> mDictionary;
 #if VERSION_DICTIONARY
@@ -898,4 +960,10 @@ namespace System.Collections.Generic
 			}
 		}
 	}
+}
+
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic types have been moved into System.Collections", false)]
+	typealias Dictionary<TKey, TValue> = System.Collections.Dictionary<TKey, TValue>;
 }

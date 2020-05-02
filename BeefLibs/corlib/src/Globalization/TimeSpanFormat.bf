@@ -10,7 +10,7 @@ namespace System.Globalization {
     using System;
     using System.Diagnostics.Contracts;
     using System.Globalization;
-	using System.Collections.Generic;
+	using System.Collections;
 
     static class TimeSpanFormat
 	{
@@ -347,7 +347,6 @@ namespace System.Globalization {
 
 			public void Dispose() mut
 			{
-				DeleteAndNullify!(AppCompatLiteral);
 				DeleteAndNullify!(literals);
 				if (ownedStrs != null)
 				{
@@ -485,7 +484,7 @@ namespace System.Globalization {
                 }
 
                 Contract.Assert(field == 5);
-                AppCompatLiteral = new String(MinuteSecondSep, SecondFractionSep);
+                AppCompatLiteral = AddOwnedStr(new String(MinuteSecondSep, SecondFractionSep));
 
                 Contract.Assert(0 < dd && dd < 3, "0 < dd && dd < 3, Bug in System.Globalization.DateTimeFormatInfo.FullTimeSpan[Positive|Negative]Pattern");
                 Contract.Assert(0 < hh && hh < 3, "0 < hh && hh < 3, Bug in System.Globalization.DateTimeFormatInfo.FullTimeSpan[Positive|Negative]Pattern");

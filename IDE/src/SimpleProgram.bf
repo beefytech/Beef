@@ -3,7 +3,7 @@
 using System;
 using Beefy;
 using Beefy.utils;
-using System.Collections.Generic;
+using System.Collections;
 using Beefy.widgets;
 using System.Diagnostics;
 using Beefy.res;

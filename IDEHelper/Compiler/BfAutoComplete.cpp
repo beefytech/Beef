@@ -1511,6 +1511,16 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 			{
 				if (dotTokenNode->GetToken() == BfToken_QuestionDot)
 				{
+					if (!targetValue.mType->IsNullable())
+					{
+						// We need this for Result<T>
+						SetAndRestoreValue<bool> prevIgnore(mModule->mBfIRBuilder->mIgnoreWrites, true);
+						BfExprEvaluator exprEvaluator(mModule);
+						auto opResult = exprEvaluator.PerformUnaryOperation_TryOperator(targetValue, NULL, BfUnaryOp_NullConditional, dotTokenNode);
+						if (opResult)
+							targetValue = opResult;
+					}
+
 					// ?. should look inside nullable types
 					if (targetValue.mType->IsNullable())
 					{
@@ -1518,7 +1528,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 						targetValue = mModule->MakeAddressable(targetValue);
 						BfIRValue valuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(targetValue.mValue, 0, 1); // mValue
 						targetValue = BfTypedValue(valuePtr, nullableType->mTypeGenericArguments[0], true);
-					}
+					}										
 				}
 			}
 

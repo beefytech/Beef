@@ -5519,6 +5519,29 @@ bool DbgModule::CanRead(DataStream* stream, DebuggerResult* outResult)
 	return true;
 }
 
+const char* DbgModule::GetStringTable(DataStream* stream, int stringTablePos)
+{
+	if (mStringTable == NULL)
+	{
+		int prevPos = stream->GetPos();
+		stream->SetPos(stringTablePos);
+		int strTableSize = 0;
+		stream->Read(&strTableSize, 4);
+		if (strTableSize != 0)
+		{
+			strTableSize -= 4;
+
+			char* strTableData = new char[strTableSize + 4];
+			memcpy(strTableData, &strTableSize, 4);
+			stream->Read(strTableData + 4, strTableSize);
+			mStringTable = strTableData;
+		}
+
+		stream->SetPos(prevPos);
+	}
+	return mStringTable;
+}
+
 bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 {
 	BP_ZONE("DbgModule::ReadCOFF");	
@@ -5628,15 +5651,19 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		miniDumpDebugger->MapMemory((addr_target)mImageBase, (uint8*)mMappedImageFile->mData, 0x1000);
 	}
 
+	bool wantStringTable = isObjectFile;
+
 	stream->SetPos(sectionStartPos);
 	for (int dirNum = 0; dirNum < (int) ntHdr.mFileHeader.mNumberOfSections; dirNum++)
 	{
 		PESectionHeader sectHdr;
+
+		char* name = sectHdr.mName;		
 		stream->Read(&sectHdr, sizeof(PESectionHeader));
 		if (sectHdr.mSizeOfRawData > 0)
-			sectionDataEndPos = sectHdr.mPointerToRawData + sectHdr.mSizeOfRawData;
+			sectionDataEndPos = BF_MAX(sectionDataEndPos, (int)(sectHdr.mPointerToRawData + sectHdr.mSizeOfRawData));
 		if (sectHdr.mNumberOfRelocations > 0)
-			sectionDataEndPos = sectHdr.mPointerToRelocations + sectHdr.mNumberOfRelocations * sizeof(COFFRelocation);
+			sectionDataEndPos = BF_MAX(sectionDataEndPos, (int)(sectHdr.mPointerToRelocations + sectHdr.mNumberOfRelocations * sizeof(COFFRelocation)));
 					
 		if (miniDumpDebugger != NULL)
 		{
@@ -5653,23 +5680,10 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	mSymbolData = symbolData;
 	stream->Read(symbolData, ntHdr.mFileHeader.mNumberOfSymbols * 18);
 
-	int curPos = stream->GetPos();
-
-	int strTableSize = 0;
-	char* strTableData = NULL;
-	if (!stream->Eof())
-	{		
-		stream->Read(&strTableSize, 4);
-		if (strTableSize != 0)
-		{
-			strTableSize -= 4;
-	
-			strTableData = new char[strTableSize + 4];
-			memcpy(strTableData, &strTableSize, 4);
-			stream->Read(strTableData + 4, strTableSize);
-			mStringTable = strTableData;
-		}
-	}
+	int curPos = stream->GetPos();	
+	int stringTablePos = curPos;
+	if (isObjectFile)
+		GetStringTable(stream, stringTablePos);
 	
 	int mDebugFrameDataLen = 0;		
 	
@@ -5701,11 +5715,11 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		PESectionHeader& sectHdr = sectionHeaders[sectNum];
 		//stream->Read(&sectHdr, sizeof(PESectionHeader));		
 
-		char* name = sectHdr.mName;
+		const char* name = sectHdr.mName;
 		if (name[0] == '/')
 		{
 			int strIdx = atoi(name + 1);
-			name = &strTableData[strIdx];
+			name = &GetStringTable(stream, stringTablePos)[strIdx];
 		}
 
 		sectionNames[sectNum] = name;
@@ -6184,7 +6198,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 				}
 			}
 			else
-				name = strTableData + symInfo->mNameOfs[1];
+				name = (char*)GetStringTable(stream, stringTablePos) + symInfo->mNameOfs[1];
 
 			if ((symInfo->mStorageClass == COFF_SYM_CLASS_EXTERNAL) ||
 				(symInfo->mStorageClass == COFF_SYM_CLASS_STATIC))

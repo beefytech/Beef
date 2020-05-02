@@ -54,7 +54,7 @@ public:
 	virtual void Visit(BfConstTypeRef* typeRef);
 	virtual void Visit(BfConstExprTypeRef* typeRef);
 	virtual void Visit(BfRefTypeRef* typeRef);
-	virtual void Visit(BfRetTypeTypeRef* typeRef);
+	virtual void Visit(BfModifiedTypeRef* typeRef);
 	virtual void Visit(BfArrayTypeRef* typeRef);
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef);
 	virtual void Visit(BfTupleTypeRef* typeRef);

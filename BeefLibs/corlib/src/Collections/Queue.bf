@@ -6,7 +6,7 @@
 #define VERSION_QUEUE
 #endif
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	using System;
 	using System.Diagnostics;
@@ -351,7 +351,7 @@ namespace System.Collections.Generic
 		/// Implements an enumerator for a Queue.  The enumerator uses the
 		/// internal version number of the list to ensure that no modifications are
 		/// made to the list while an enumeration is in progress.
-		public struct Enumerator : IRefEnumerator<T>
+		public struct Enumerator : IRefEnumerator<T*>, IEnumerator<T>
 		{
 			private Queue<T> mQueue;
 			private int32 mIndex;   // -1 = not started, -2 = ended/disposed
@@ -459,4 +459,10 @@ namespace System.Collections.Generic
 			}
 		}
 	}
+}
+
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic types have been moved into System.Collections", false)]
+	typealias Queue<T> = System.Collections.Queue<T>;
 }

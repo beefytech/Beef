@@ -2199,9 +2199,9 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 		int elemHash = Hash(refType->mElementType, ctx) ^ (HASH_VAL_REF + (int)refType->mRefKind);
 		return (elemHash << 5) - elemHash;
 	}	
-	else if (type->IsRetTypeType())
+	else if (type->IsModifiedTypeType())
 	{
-		auto retTypeType = (BfRetTypeType*)type;
+		auto retTypeType = (BfModifiedTypeType*)type;
 		int elemHash = Hash(retTypeType->mElementType, ctx) ^ HASH_RETTYPE;
 		return (elemHash << 5) - elemHash;
 	}
@@ -2621,7 +2621,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		auto primType = ctx->mModule->GetPrimitiveType(BfTypeCode_Let);
 		return Hash(primType, ctx);
 	}
-	else if (auto retTypeTypeRef = BfNodeDynCastExact<BfRetTypeTypeRef>(typeRef))
+	else if (auto retTypeTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(typeRef))
 	{	
 		// Don't cause infinite loop, but if we have an inner 'rettype' then try to directly resolve that --
 		//  Only use the HAS_RETTYPE for root-level rettype insertions
@@ -2882,13 +2882,14 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfRefType* rhsRefType = (BfRefType*)rhs;
 		return (lhsRefType->mElementType == rhsRefType->mElementType) && (lhsRefType->mRefKind == rhsRefType->mRefKind);
 	}
-	else if (lhs->IsRetTypeType())
+	else if (lhs->IsModifiedTypeType())
 	{
-		if (!rhs->IsRetTypeType())
+		if (!rhs->IsModifiedTypeType())
 			return false;
-		BfRetTypeType* lhsRetTypeType = (BfRetTypeType*)lhs;
-		BfRetTypeType* rhsRetTypeType = (BfRetTypeType*)rhs;
-		return (lhsRetTypeType->mElementType == rhsRetTypeType->mElementType);
+		BfModifiedTypeType* lhsRetTypeType = (BfModifiedTypeType*)lhs;
+		BfModifiedTypeType* rhsRetTypeType = (BfModifiedTypeType*)rhs;
+		return (lhsRetTypeType->mModifiedKind == rhsRetTypeType->mModifiedKind) && 
+			(lhsRetTypeType->mElementType == rhsRetTypeType->mElementType);
 	}
 	else if (lhs->IsConcreteInterfaceType())
 	{
@@ -3093,7 +3094,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 	if (ctx->mRootTypeRef != rhs)
 	{
-		if (auto retTypeRef = BfNodeDynCastExact<BfRetTypeTypeRef>(rhs))
+		if (auto retTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(rhs))
 		{
 			auto resolvedType = ctx->mModule->ResolveTypeRef(rhs);
 			return lhs == resolvedType;
@@ -3341,11 +3342,13 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		return (lhsRefType->mRefKind == refKind) &&
 			Equals(lhsRefType->mElementType, rhsRefTypeRef->mElementType, ctx);
 	}
-	else if (lhs->IsRetTypeType())
+	else if (lhs->IsModifiedTypeType())
 	{
-		auto lhsRetTypeType = (BfRetTypeType*)lhs;
-		auto rhsRetTypeTypeRef = BfNodeDynCastExact<BfRetTypeTypeRef>(rhs);
+		auto lhsRetTypeType = (BfModifiedTypeType*)lhs;
+		auto rhsRetTypeTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(rhs);
 		if (rhsRetTypeTypeRef == NULL)
+			return false;
+		if (lhsRetTypeType->mModifiedKind != rhsRetTypeTypeRef->mRetTypeToken->mToken)
 			return false;
 		return Equals(lhsRetTypeType->mElementType, rhsRetTypeTypeRef->mElementType, ctx);
 	}
@@ -3765,7 +3768,28 @@ String BfTypeUtils::TypeToString(BfTypeReference* typeRef)
 	}
 	if (auto directStrTypeName = BfNodeDynCast<BfDirectStrTypeReference>(typeRef))
 		return directStrTypeName->mTypeName;
-	BF_FATAL("Not implemented");
+
+	if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))
+	{
+		String name = "(";
+
+		for (int i = 0; i < tupleTypeRef->mFieldTypes.size(); i++)
+		{
+			if (i > 0)
+				name += ", ";
+			name += TypeToString(tupleTypeRef->mFieldTypes[i]);			
+			if ((i < tupleTypeRef->mFieldNames.size()) && (tupleTypeRef->mFieldNames[i] != NULL))
+			{
+				name += " ";
+				name += tupleTypeRef->mFieldNames[i]->ToString();
+			}
+		}
+
+		name += ")";
+		return name;
+	}
+
+	BF_DBG_FATAL("Not implemented");
 	return "???";
 }
 

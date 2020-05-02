@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Collections;
 using System;
 using IDE.Compiler;
 using System.IO;
@@ -1042,7 +1042,7 @@ namespace IDE
 		        project.mNeedsTargetRebuild = true;
 
 				String targetDir = scope String();
-				Path.GetDirectoryPath(targetPath, targetDir);
+				Path.GetDirectoryPath(targetPath, targetDir).IgnoreError();
 				if (!targetDir.IsEmpty)
 					Directory.CreateDirectory(targetDir).IgnoreError();
 			}

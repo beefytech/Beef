@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using Beefy.widgets;
 using Beefy.gfx;
@@ -1923,12 +1923,51 @@ namespace IDE.ui
             Menu menu = new Menu();
             bool handled = false;
 
+			void AddOpenContainingFolder()
+			{
+				var item = menu.AddItem("Open Containing Folder");
+				item.mOnMenuItemSelected.Add(new (item) =>
+				    {
+						let projectItem = GetSelectedProjectItem();
+						String path = scope String();
+						if (projectItem == null)
+						{
+							path.Set(gApp.mWorkspace.mDir);
+						}
+						else if (let projectFolder = projectItem as ProjectFolder)
+						{
+							if (projectFolder.mParentFolder == null)
+							{
+								path.Set(projectFolder.mProject.mProjectDir);
+							}
+							else
+								projectFolder.GetFullImportPath(path);
+						}
+						else
+							projectItem.mParentFolder.GetFullImportPath(path);
+
+						if (!path.IsWhiteSpace)
+						{
+							ProcessStartInfo psi = scope ProcessStartInfo();
+							psi.SetFileName(path);
+							psi.UseShellExecute = true;
+							psi.SetVerb("Open");
+
+							var process = scope SpawnedProcess();
+							process.Start(psi).IgnoreError();
+						}
+				    });
+			}
+
             if (projectItem == null)
             {
 				Menu anItem;
 
 				if (gApp.mWorkspace.IsInitialized)
 				{
+					AddOpenContainingFolder();
+					menu.AddItem();
+
 	                anItem = menu.AddItem("Add New Project...");
 	                anItem.mOnMenuItemSelected.Add(new (item) => { AddNewProject(); });                
 
@@ -1938,6 +1977,7 @@ namespace IDE.ui
 					anItem = menu.AddItem("Add From Installed...");
 					anItem.mOnMenuItemSelected.Add(new (item) => { mImportInstalledDeferred = true; });
 
+					menu.AddItem();
 	                anItem = menu.AddItem("Properties...");
 	                anItem.mOnMenuItemSelected.Add(new (item) => { ShowWorkspaceProperties(); });
 
@@ -1996,7 +2036,13 @@ namespace IDE.ui
 								gApp.mWorkspace.SetChanged();
 							}
 					    });
-					
+
+					item = menu.AddItem("Remove...");
+					item.mOnMenuItemSelected.Add(new (item) =>
+						{
+							RemoveSelectedItems();
+						});
+
 					item = menu.AddItem("Rename");
 					item.mOnMenuItemSelected.Add(new (item) =>
 						{
@@ -2026,6 +2072,8 @@ namespace IDE.ui
 								}
 							}
 					    });
+
+					AddOpenContainingFolder();
 
 					menu.AddItem();
 				}
@@ -2168,24 +2216,7 @@ namespace IDE.ui
 							
 					    });
 
-					item = menu.AddItem("Open Containing Folder");
-					item.mOnMenuItemSelected.Add(new (item) =>
-                        {
-							let projectItem = GetSelectedProjectItem();
-							String path = scope String();
-							if (let projectFolder = projectItem as ProjectFolder)
-								projectFolder.GetFullImportPath(path);
-							else
-								projectItem.mParentFolder.GetFullImportPath(path);
-
-							ProcessStartInfo psi = scope ProcessStartInfo();
-							psi.SetFileName(path);
-							psi.UseShellExecute = true;
-							psi.SetVerb("Open");
-
-							var process = scope SpawnedProcess();
-							process.Start(psi).IgnoreError();
-                        });
+					AddOpenContainingFolder();
 
 					menu.AddItem();
                 }

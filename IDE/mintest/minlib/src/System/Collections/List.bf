@@ -12,7 +12,7 @@ using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Reflection;
 
-namespace System.Collections.Generic
+namespace System.Collections
 {
 	interface IList
 	{
@@ -27,12 +27,17 @@ namespace System.Collections.Generic
 	{
 		private const int_cosize cDefaultCapacity = 4;
 
-#if BF_LARGE_COLLECTIONS
-		const int_cosize SizeFlags = 0x7FFFFFFF'FFFFFFFF;
-		const int_cosize DynAllocFlag = (int_cosize)0x80000000'00000000;
-#else
 		const int_cosize SizeFlags = 0x7FFFFFFF;
 		const int_cosize DynAllocFlag = (int_cosize)0x80000000;
+
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+		static DbgRawAllocData sRawAllocData;
+		public static this()
+		{
+			sRawAllocData.mMarkFunc = null;
+			sRawAllocData.mMaxStackTrace = 1;
+			sRawAllocData.mType = typeof(T);
+		}
 #endif
 
 		private T* mItems;
@@ -63,6 +68,10 @@ namespace System.Collections.Generic
 
 		public this()
 		{
+			if (((int)Internal.UnsafeCastToPtr(this) & 0xFFFF) == 0x4BA0)
+			{
+				NOP!();
+			}
 		}
 
 		public this(IEnumerator<T> enumerator)
@@ -75,7 +84,7 @@ namespace System.Collections.Generic
 		public this(int capacity)
 		{
 			Debug.Assert((uint)capacity <= (uint)SizeFlags);
-			T* items = append T[capacity]* (?);
+			T* items = append T[capacity]*;
 			if (capacity > 0)
 			{
 				mItems = items;
@@ -103,14 +112,7 @@ namespace System.Collections.Generic
 #endif
 
 			if (IsDynAlloc)
-			{
-				var items = mItems;
-#if BF_ENABLE_REALTIME_LEAK_CHECK				
-				mItems = null;
-				Interlocked.Fence();
-#endif
-				Free(items);
-			}
+				Free(mItems);
 		}
 
 		public T* Ptr
@@ -153,17 +155,9 @@ namespace System.Collections.Generic
 
 						if (mSize > 0)
 							Internal.MemCpy(newItems, mItems, mSize * strideof(T), alignof(T));
-
-						var oldItems = mItems;
-						mItems = newItems;
 						if (IsDynAlloc)
-						{
-#if BF_ENABLE_REALTIME_LEAK_CHECK
-							// We need to avoid scanning a deleted mItems
-							Interlocked.Fence();
-#endif						
-							Free(oldItems);
-						}
+							Free(mItems);
+						mItems = newItems;
 						mAllocSizeAndFlags = (.)(value | DynAllocFlag);
 					}
 					else
@@ -198,24 +192,27 @@ namespace System.Collections.Generic
 			[Checked]
 			get
 			{
-				Runtime.Assert((uint)index < (uint)mSize);
-				return ref mItems[index];
-			}
-
-			[Unchecked, Inline]
-			get
-			{
+				Debug.Assert((uint)index < (uint)mSize);
 				return ref mItems[index];
 			}
 
 			[Checked]
 			set
 			{
-				Runtime.Assert((uint)index < (uint)mSize);
+				Debug.Assert((uint)index < (uint)mSize);
 				mItems[index] = value;
 #if VERSION_LIST
 				mVersion++;
 #endif
+			}
+		}
+
+		public ref T this[int index]
+		{
+			[Unchecked, Inline]
+			get
+			{
+				return ref mItems[index];
 			}
 
 			[Unchecked, Inline]
@@ -228,15 +225,6 @@ namespace System.Collections.Generic
 			}
 		}
 
-		public ref T Front
-		{
-			get
-			{
-				Debug.Assert(mSize != 0);
-				return ref mItems[0];
-			}
-		}
-		
 		public ref T Back
 		{
 			get
@@ -261,7 +249,13 @@ namespace System.Collections.Generic
 
 		protected T* Alloc(int size)
 		{
-			return Internal.AllocRawArrayUnmarked<T>(size);
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+			// We don't want to use the default mark function because it will mark the entire array,
+			//  whereas we have a custom marking routine because we only want to mark up to mSize
+			return (T*)Internal.Dbg_RawAlloc(size * strideof(T), &sRawAllocData);
+#else
+			return new T[size]*(?);
+#endif
 		}
 
 		protected void Free(T* val)
@@ -291,19 +285,13 @@ namespace System.Collections.Generic
 		/// Adds an item to the back of the list.
 		public void Add(T item)
 		{
+			if (((int)Internal.UnsafeCastToPtr(this) & 0xFFFF) == 0x4BA0)
+			{
+				NOP!();
+			}
+
 			if (mSize == AllocSize) EnsureCapacity(mSize + 1);
 			mItems[mSize++] = item;
-#if VERSION_LIST
-			mVersion++;
-#endif
-		}
-
-		/// Adds an item to the back of the list.
-		public void Add(Span<T> addSpan)
-		{
-			if (mSize == AllocSize) EnsureCapacity(mSize + addSpan.Length);
-			for (var val in ref addSpan)
-				mItems[mSize++] = val;
 #if VERSION_LIST
 			mVersion++;
 #endif
@@ -374,15 +362,8 @@ namespace System.Collections.Generic
 		public void CopyTo(T[] array, int arrayIndex)
 		{
 			// Delegate rest of error checking to Array.Copy.
-			for (int i = 0; i < mSize; i++)
+			for (int_cosize i = 0; i < mSize; i++)
 				array[i + arrayIndex] = mItems[i];
-		}
-
-		public void CopyTo(int index, T[] array, int arrayIndex, int count)
-		{
-			// Delegate rest of error checking to Array.Copy.
-			for (int i = 0; i < count; i++)
-				array[i + arrayIndex] = mItems[i + index];
 		}
 
 		public void EnsureCapacity(int min)
@@ -390,13 +371,11 @@ namespace System.Collections.Generic
 			int allocSize = AllocSize;
 			if (allocSize < min)
 			{
-				int newCapacity = allocSize == 0 ? cDefaultCapacity : allocSize + allocSize / 2;
-				// If we overflow, try to set to max. The "< min" check after still still bump us up
-				// if necessary
-				if (newCapacity > SizeFlags) 
-					newCapacity = SizeFlags;
-				if (newCapacity < min)
-					newCapacity = min;
+				int_cosize newCapacity = (int_cosize)(allocSize == 0 ? cDefaultCapacity : allocSize * 2);
+				// Allow the list to grow to maximum possible capacity (~2G elements) before encountering overflow.
+				// Note that this check works even when mItems.Length overflowed thanks to the (uint) cast
+				//if ((uint)newCapacity > Array.MaxArrayLength) newCapacity = Array.MaxArrayLength;
+				if (newCapacity < min) newCapacity = (int_cosize)min;
 				Capacity = newCapacity;
 			}
 		}
@@ -411,43 +390,28 @@ namespace System.Collections.Generic
 			return Enumerator(this);
 		}
 
-		public int FindIndex(Predicate<T> match)
+		public int_cosize IndexOf(T item)
 		{
-			for (int i = 0; i < mSize; i++)
-				if (match(mItems[i]))
-					return i;
-			return -1;
-		}
-
-		public int IndexOf(T item)
-		{
+			//return Array.IndexOf(mItems, item, 0, mSize);
 			for (int i = 0; i < mSize; i++)
 				if (mItems[i] == item)
-					return i;
+					return (int_cosize)i;
 			return -1;
 		}
 
-		public int LastIndexOf(T item)
-		{
-			for (int i = mSize - 1; i >= 0; i--)
-				if (mItems[i] == item)
-					return i;
-			return -1;
-		}
-
-		public int IndexOf(T item, int index)
+		public int_cosize IndexOf(T item, int index)
 		{
 			for (int i = index; i < mSize; i++)
 				if (mItems[i] == item)
-					return i;
+					return (int_cosize)i;
 			return -1;
 		}
 
-		public int IndexOf(T item, int index, int count)
+		public int_cosize IndexOf(T item, int index, int count)
 		{
 			for (int i = index; i < index + count; i++)
 				if (mItems[i] == item)
-					return i;
+					return (int_cosize)i;
 			return -1;
 		}
 
@@ -469,21 +433,15 @@ namespace System.Collections.Generic
 		{
 			if (items.Length == 0)
 				return;
-			int addCount = items.Length;
-			if (mSize + addCount > AllocSize) EnsureCapacity(mSize + addCount);
-			if (index < mSize)
-			{
-				Internal.MemCpy(mItems + index + addCount, mItems + index, (mSize - index) * strideof(T), alignof(T));
-			}
-			Internal.MemCpy(mItems + index, items.Ptr, addCount * strideof(T));
-			mSize += (int_cosize)addCount;
-#if VERSION_LIST
-			mVersion++;
-#endif
 		}
 
 		public void RemoveAt(int index)
 		{
+			if (((int)Internal.UnsafeCastToPtr(this) & 0xFFFF) == 0x4BA0)
+			{
+				NOP!();
+			}
+
 			Debug.Assert((uint)index < (uint)mSize);
 			if (index < mSize - 1)
 			{
@@ -523,36 +481,7 @@ namespace System.Collections.Generic
 		public void Sort(Comparison<T> comp)
 		{
 			var sorter = Sorter<T, void>(mItems, null, mSize, comp);
-			sorter.[Friend]Sort(0, mSize);
-		}
-
-		public int RemoveAll(Predicate<T> match)
-		{
-			int_cosize freeIndex = 0;   // the first free slot in items array
-
-			// Find the first item which needs to be removed.
-			while (freeIndex < mSize && !match(mItems[freeIndex])) freeIndex++;
-			if (freeIndex >= mSize) return 0;
-
-			int_cosize current = freeIndex + 1;
-			while (current < mSize)
-			{
-				// Find the first item which needs to be kept.
-				while (current < mSize && match(mItems[current])) current++;
-
-				if (current < mSize)
-				{
-					// copy item to the free slot.
-					mItems[freeIndex++] = mItems[current++];
-				}
-			}
-
-			int_cosize result = mSize - freeIndex;
-			mSize = freeIndex;
-#if VERSION_LIST
-			mVersion++;
-#endif
-			return result;
+			sorter.Sort(0, mSize);
 		}
 
 		public T PopBack()
@@ -571,7 +500,7 @@ namespace System.Collections.Generic
 
 		public bool Remove(T item)
 		{
-			int index = IndexOf(item);
+			int_cosize index = IndexOf(item);
 			if (index >= 0)
 			{
 				RemoveAt(index);
@@ -581,30 +510,6 @@ namespace System.Collections.Generic
 			return false;
 		}
 
-		/// The method returns the index of the given value in the list. If the
-		/// list does not contain the given value, the method returns a negative
-		/// integer. The bitwise complement operator (~) can be applied to a
-		/// negative result to produce the index of the first element (if any) that
-		/// is larger than the given search value. This is also the index at which
-		/// the search value should be inserted into the list in order for the list
-		/// to remain sorted.
-		/// 
-		/// The method uses the Array.BinarySearch method to perform the
-		/// search.
-		///
-		/// @brief Searches a section of the list for a given element using a binary search algorithm.
-		public int BinarySearch(T item, delegate int(T lhs, T rhs) comparer)
-		{
-			return Array.BinarySearch(mItems, Count, item, comparer);
-		}
-
-		public int BinarySearch(int index, int count, T item, delegate int(T lhs, T rhs) comparer)
-		{
-			Debug.Assert((uint)index <= (uint)mSize);
-			Debug.Assert(index + count <= mSize);
-			return (int)Array.BinarySearch(mItems + index, count, item, comparer);
-		}
-
 		public static operator Span<T>(List<T> list)
 		{
 			return Span<T>(list.mItems, list.mSize);
@@ -612,18 +517,13 @@ namespace System.Collections.Generic
 
 		protected override void GCMarkMembers()
 		{
-			if (mItems == null)
-				return;
-			let type = typeof(T);
-			if ((type.[Friend]mTypeFlags & .WantsMark) == 0)
-				return;
 		    for (int i < mSize)
 		    {
 		        GC.Mark_Unbound(mItems[i]); 
 			}
 		}
 
-		public struct Enumerator : IRefEnumerator<T>, IResettable
+		public struct Enumerator : IRefEnumerator<T>
 		{
 	        private List<T> mList;
 	        private int mIndex;
@@ -682,11 +582,6 @@ namespace System.Collections.Generic
 	            {
 	                return *mCurrent;
 	            }
-
-				set
-				{
-					*mCurrent = value;
-				}
 	        }
 
 			public ref T CurrentRef
@@ -742,6 +637,7 @@ namespace System.Collections.Generic
 	            mCurrent = null;
 	        }
 
+
 			public Result<T> GetNext() mut
 			{
 				if (!MoveNext())
@@ -757,44 +653,10 @@ namespace System.Collections.Generic
 			}
 	    }
 	}
+}
 
-	extension List<T> where T : IOpComparable
-	{
-		public int BinarySearch(T item)
-		{
-			return (int)Array.BinarySearch(mItems, Count, item);
-		}
-
-		public int BinarySearch(int index, int count, T item)
-		{
-			Debug.Assert((uint)index <= (uint)mSize);
-			Debug.Assert(index + count <= mSize);
-			return (int)Array.BinarySearch(mItems + index, count, item);
-		}
-
-		public void Sort()
-		{
-			Sort(scope (lhs, rhs) => lhs <=> rhs);
-		}
-	}
-
-	class ListWithAlloc<T> : List<T>
-	{
-		IRawAllocator mAlloc;
-
-		public this(IRawAllocator alloc)
-		{
-			mAlloc = alloc;
-		}
-
-		/*protected override void* Alloc(int size, int align)
-		{
-			 return mAlloc.Alloc(size, align);
-		}
-
-		protected override void Free(void* ptr)
-		{
-			 mAlloc.Free(ptr);
-		}*/
-	}
+namespace System.Collections.Generic
+{
+	[Obsolete("The System.Collections.Generic containers have been moved into System.Collections", false)]
+	typealias List<T> = System.Collections.List<T>;
 }

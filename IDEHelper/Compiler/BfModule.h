@@ -1413,6 +1413,7 @@ public:
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	
 	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false);
+	void CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc);
 	void CheckRangeError(BfType* type, BfAstNode* refNode);
 	bool CheckCircularDataError();
 	BfFileInstance* GetFileFromNode(BfAstNode* astNode);
@@ -1537,6 +1538,7 @@ public:
 	BfTypedValue GetThis();
 	BfLocalVariable* GetThisVariable();
 	bool IsInGeneric();
+	bool InDefinitionSection();
 	bool IsInSpecializedGeneric();
 	bool IsInSpecializedSection(); // Either a specialized generic or an injected mixin
 	bool IsInUnspecializedGeneric();
@@ -1628,7 +1630,7 @@ public:
 	BfTupleType* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames);	
 	BfTupleType* SantizeTupleType(BfTupleType* tupleType);	
 	BfRefType* CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind = BfRefType::RefKind_Ref);
-	BfRetTypeType* CreateRetTypeType(BfType* resolvedTypeRef);
+	BfModifiedTypeType* CreateModifiedTypeType(BfType* resolvedTypeRef, BfToken modifiedKind);
 	BfConcreteInterfaceType* CreateConcreteInterfaceType(BfTypeInstance* interfaceType);
 	BfTypeInstance* GetWrappedStructType(BfType* type, bool allowSpecialized = true);
 	BfTypeInstance* GetPrimitiveStructType(BfTypeCode typeCode);

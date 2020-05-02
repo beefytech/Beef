@@ -20,14 +20,15 @@ enum BfTypeNameFlags : uint16
 {
 	BfTypeNameFlags_None = 0,
 	BfTypeNameFlag_ResolveGenericParamNames = 1,
-	BfTypeNameFlag_OmitNamespace = 2,
-	BfTypeNameFlag_OmitOuterType = 4,
-	BfTypeNameFlag_ReduceName = 8,
-	BfTypeNameFlag_UseArrayImplType = 0x10,
-	BfTypeNameFlag_DisambiguateDups = 0x20, // Add a disambiguation if mDupDetectedRevision is set	
-	BfTypeNameFlag_AddGlobalContainerName = 0x40,
-	BfTypeNameFlag_InternalName = 0x80, // Use special delimiters to remove ambiguities (ie: '+' for inner types)	
-	BfTypeNameFlag_HideGlobalName = 0x100
+	BfTypeNameFlag_UseUnspecializedGenericParamNames = 2,
+	BfTypeNameFlag_OmitNamespace = 4,
+	BfTypeNameFlag_OmitOuterType = 8,
+	BfTypeNameFlag_ReduceName = 0x10,
+	BfTypeNameFlag_UseArrayImplType = 0x20,
+	BfTypeNameFlag_DisambiguateDups = 0x40, // Add a disambiguation if mDupDetectedRevision is set	
+	BfTypeNameFlag_AddGlobalContainerName = 0x80,
+	BfTypeNameFlag_InternalName = 0x100, // Use special delimiters to remove ambiguities (ie: '+' for inner types)	
+	BfTypeNameFlag_HideGlobalName = 0x200,
 };
 
 enum BfMethodNameFlags : uint8
@@ -381,6 +382,7 @@ enum BfTypeDefineState : uint8
 {
 	BfTypeDefineState_Undefined,
 	BfTypeDefineState_Declared,
+	BfTypeDefineState_ResolvingBaseType,
 	BfTypeDefineState_HasInterfaces,
 	BfTypeDefineState_Defined,
 	BfTypeDefineState_DefinedAndMethodsSlotted,
@@ -482,14 +484,14 @@ public:
 	virtual bool IsFloat() { return false; }		
 	virtual bool IsPointer() { return false; }
 	virtual bool IsIntPtrable() { return false;  }	
-	virtual bool IsRef() { return false; }
+	virtual bool IsRef() { return false; }	
 	virtual bool IsGenericParam() { return false; }
 	virtual bool IsClosure() { return false; }	
 	virtual bool IsMethodRef() { return false; }
 	virtual bool IsTuple() { return false; }
 	virtual bool IsOnDemand() { return false; }
 	virtual bool IsTemporary() { return false; }	
-	virtual bool IsRetTypeType() { return false; }
+	virtual bool IsModifiedTypeType() { return false; }
 	virtual bool IsConcreteInterfaceType() { return false; }
 	virtual bool IsTypeAlias() { return false; }
 	virtual bool HasPackingHoles() { return false; }
@@ -921,13 +923,14 @@ public:
 	virtual bool IsReified() override { return false; }
 };
 
-// This just captures rettype(T) since it can't be resolved directly
-class BfRetTypeType : public BfType
+// This just captures rettype(T)/nullable(T) since it can't be resolved directly
+class BfModifiedTypeType : public BfType
 {
 public:
+	BfToken mModifiedKind;
 	BfType* mElementType;
 
-	virtual bool IsRetTypeType() override { return true; }
+	virtual bool IsModifiedTypeType() override { return true; }
 	virtual bool CanBeValuelessType() override { return true; }
 	virtual bool IsValuelessType() override { return true; }
 
@@ -997,7 +1000,7 @@ public:
 	virtual BfConstraintDef* GetConstraintDef() = 0;
 	virtual BfGenericParamDef* GetGenericParamDef() = 0;
 	virtual BfExternalConstraintDef* GetExternConstraintDef() = 0;
-	virtual String GetName() = 0;
+	virtual String GetName() = 0;	
 };
 
 class BfGenericTypeParamInstance : public BfGenericParamInstance
@@ -1046,7 +1049,7 @@ public:
 	{
 		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
 			return mTypeDef->mGenericParamDefs[mGenericIdx]->mName;
-		return NULL;
+		return "???";
 	}
 };
 
@@ -1399,28 +1402,29 @@ enum BfAttributeTargets : int32
 {
 	BfAttributeTargets_SkipValidate = -1,
 
-	BfAttributeTargets_None = 0,
-	BfAttributeTargets_Assembly = 0x0001,
-	BfAttributeTargets_Module = 0x0002,
-	BfAttributeTargets_Class = 0x0004,
-	BfAttributeTargets_Struct = 0x0008,
-	BfAttributeTargets_Enum = 0x0010,
-	BfAttributeTargets_Constructor = 0x0020,
-	BfAttributeTargets_Method = 0x0040,
-	BfAttributeTargets_Property = 0x0080,
-	BfAttributeTargets_Field = 0x0100,
-	BfAttributeTargets_StaticField = 0x0200,
-	BfAttributeTargets_Interface = 0x0400,
-	BfAttributeTargets_Parameter = 0x0800,
-	BfAttributeTargets_Delegate = 0x1000,
-	BfAttributeTargets_Function = 0x2000,
-	BfAttributeTargets_ReturnValue = 0x4000,	
+	BfAttributeTargets_None         = 0,
+	BfAttributeTargets_Assembly     = 0x0001,
+	BfAttributeTargets_Module       = 0x0002,
+	BfAttributeTargets_Class        = 0x0004,
+	BfAttributeTargets_Struct       = 0x0008,
+	BfAttributeTargets_Enum         = 0x0010,
+	BfAttributeTargets_Constructor  = 0x0020,
+	BfAttributeTargets_Method       = 0x0040,
+	BfAttributeTargets_Property     = 0x0080,
+	BfAttributeTargets_Field        = 0x0100,
+	BfAttributeTargets_StaticField  = 0x0200,
+	BfAttributeTargets_Interface    = 0x0400,
+	BfAttributeTargets_Parameter    = 0x0800,
+	BfAttributeTargets_Delegate     = 0x1000,
+	BfAttributeTargets_Function     = 0x2000,
+	BfAttributeTargets_ReturnValue  = 0x4000,	
 	BfAttributeTargets_GenericParameter = 0x8000,
-	BfAttributeTargets_Invocation = 0x10000,
+	BfAttributeTargets_Invocation   = 0x10000,
 	BfAttributeTargets_MemberAccess = 0x20000,
-	BfAttributeTargets_Alloc = 0x40000,
-	BfAttributeTargets_Delete = 0x80000,
-	BfAttributeTargets_All = 0xFFFFF
+	BfAttributeTargets_Alloc        = 0x40000,
+	BfAttributeTargets_Delete       = 0x80000,
+	BfAttributeTargets_Alias        = 0x100000,
+	BfAttributeTargets_All          = 0x1FFFFF
 };
 
 class BfAttributeData
@@ -1603,6 +1607,7 @@ public:
 	int16 mInheritDepth;
 	int16 mSlotNum;
 	bool mHasBeenInstantiated;
+	bool mIncludeAllMethods;
 	bool mIsReified;
 	bool mIsTypedPrimitive;
 	bool mIsCRepr;	
@@ -1666,6 +1671,7 @@ public:
 		mResolvingConstField = false;
 		mHasPackingHoles = false;				
 		mHasBeenInstantiated = false;
+		mIncludeAllMethods = false;
 		mWantsGCMarking = false;
 		mHasParameterizedBase = false;
 		mMergedFieldDataCount = 0;
@@ -1981,7 +1987,7 @@ public:
 	void Finish();
 
 	virtual bool IsOnDemand() override { return true; }
-	virtual bool IsTuple() override { return true; }
+	virtual bool IsTuple() override { return true; }	
 
 	virtual bool IsUnspecializedType() override { return mHasUnspecializedMembers; }
 	virtual bool IsUnspecializedTypeVariation() override { return mHasUnspecializedMembers; }
@@ -2090,7 +2096,7 @@ public:
 	virtual bool IsIncomplete() override { CheckElement(); return mDefineState < BfTypeDefineState_Defined; }
 	virtual bool IsReified() override { return mElementType->IsReified(); }
 
-	virtual bool IsRef() override { return true; }
+	virtual bool IsRef() override { return true; }	
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }

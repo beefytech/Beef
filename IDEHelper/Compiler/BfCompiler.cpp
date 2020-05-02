@@ -1278,6 +1278,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			continue;
 
 		bool needsTypeData = (needsTypeList) || ((type->IsObject()) && (needsObjectTypeData));
+		bool needsVData = (type->IsObject()) && (typeInst->mHasBeenInstantiated);
 
 		bool forceReflectFields = false;
 
@@ -1287,8 +1288,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			if (type->IsEnum())
 				forceReflectFields = true;
 		}
-
-		bool needsVData = (type->IsObject()) && (typeInst->mHasBeenInstantiated);
+		
 		BfIRValue typeVariable;
 		
 		if ((needsTypeData) || (needsVData))
@@ -1330,6 +1330,11 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		auto typeDataConst = bfModule->mBfIRBuilder->CreateConstArray(arrayType, typeDataVector);
 		BfIRValue typeDataArray = bfModule->mBfIRBuilder->CreateGlobalVariable(arrayType, true, BfIRLinkageType_External,
 			typeDataConst, typesVariableName);
+
+		StringT<128> typeCountVariableName;
+		BfMangler::MangleStaticFieldName(typeCountVariableName, GetMangleKind(), typeDefType->ToTypeInstance(), "sTypeCount", bfModule->GetPrimitiveType(BfTypeCode_Int32));
+		bfModule->mBfIRBuilder->CreateGlobalVariable(bfModule->mBfIRBuilder->MapType(bfModule->GetPrimitiveType(BfTypeCode_Int32)), true, BfIRLinkageType_External,
+			bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, (int)typeDataVector.size()), typeCountVariableName);
 	}
 		
 	HashSet<int> foundStringIds;
@@ -3291,7 +3296,7 @@ void BfCompiler::UpdateRevisedTypes()
 	//		latestTypeDef->mOuterType = mSystem->GetOuterTypeNonPartial(latestTypeDef);
 
 	//	/*String fullName = typeDef->mFullNameEx.ToString();
-	//	if (fullName == "System.Collections.Generic.List`1.Enumerator`1")
+	//	if (fullName == "System.Collections.List`1.Enumerator`1")
 	//	{
 	//		NOP;
 	//	}
@@ -4150,7 +4155,7 @@ void BfCompiler::AddToRebuildTypeList(BfTypeInstance* typeInst, HashSet<BfTypeIn
 
 	bool allowRebuild = ((!typeInst->IsGenericTypeInstance()) ||
 		((typeInst->IsUnspecializedType()) && (!typeInst->IsUnspecializedTypeVariation())));
-	if ((typeInst->IsClosure()) || (typeInst->IsConcreteInterfaceType()) || (typeInst->IsRetTypeType()))
+	if ((typeInst->IsClosure()) || (typeInst->IsConcreteInterfaceType()) || (typeInst->IsModifiedTypeType()))
 		allowRebuild = false;
 	if (allowRebuild)
 		rebuildTypeInstList.Add(typeInst);
@@ -4623,6 +4628,16 @@ void BfCompiler::MarkStringPool(BfModule* module)
 		MarkStringPool(specModulePair.mValue);
 }
 
+void BfCompiler::MarkStringPool(BfIRConstHolder* constHolder, BfIRValue irValue)
+{
+	auto constant = constHolder->GetConstant(irValue);
+	if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_StringId))
+	{
+		BfStringPoolEntry& stringPoolEntry = mContext->mStringObjectIdMap[constant->mInt32];
+		stringPoolEntry.mLastUsedRevision = mRevision;
+	}
+}
+
 void BfCompiler::ClearUnusedStringPoolEntries()
 {
 	BF_ASSERT(!IsHotCompile());
@@ -4630,6 +4645,24 @@ void BfCompiler::ClearUnusedStringPoolEntries()
 	for (auto module : mContext->mModules)
 	{			
 		MarkStringPool(module);
+	}	
+
+	for (auto type : mContext->mResolvedTypes)
+	{
+		auto typeInstance = type->ToTypeInstance();
+		if (typeInstance == NULL)
+			continue;
+		if (typeInstance->mCustomAttributes == NULL)
+			continue;
+		for (auto& attribute : typeInstance->mCustomAttributes->mAttributes)
+		{
+			for (auto arg : attribute.mCtorArgs)
+				MarkStringPool(typeInstance->mConstHolder, arg);
+			for (auto setValue : attribute.mSetProperties)
+				MarkStringPool(typeInstance->mConstHolder, setValue.mParam.mValue);
+			for (auto setValue : attribute.mSetField)
+				MarkStringPool(typeInstance->mConstHolder, setValue.mParam.mValue);
+		}
 	}
 
 	for (auto itr = mContext->mStringObjectIdMap.begin(); itr != mContext->mStringObjectIdMap.end(); )
@@ -5941,9 +5974,9 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mResultTypeDef = _GetRequiredType("System.Result", 1);
 	mFunctionTypeDef = _GetRequiredType("System.Function");
 	mGCTypeDef = _GetRequiredType("System.GC");	
-	mGenericIEnumerableTypeDef = _GetRequiredType("System.Collections.Generic.IEnumerable");
-	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.Generic.IEnumerator");
-	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.Generic.IRefEnumerator");	
+	mGenericIEnumerableTypeDef = _GetRequiredType("System.Collections.IEnumerable", 1);
+	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.IEnumerator", 1);
+	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.IRefEnumerator", 1);	
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");

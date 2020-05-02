@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Diagnostics;
-using System.Collections.Generic;
+using System.Collections;
 using IDE.Util;
 
 namespace BeefBuild

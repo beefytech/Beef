@@ -437,6 +437,7 @@ public:
 	BfTypeDef* GetArrayTypeDef(int dimensions);
 	void GenerateAutocompleteInfo();
 	void MarkStringPool(BfModule* module);
+	void MarkStringPool(BfIRConstHolder* constHolder, BfIRValue irValue);
 	void ClearUnusedStringPoolEntries();
 	void ClearBuildCache();
 	int GetDynCastVDataCount();

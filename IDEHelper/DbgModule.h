@@ -1127,7 +1127,7 @@ public:
 	const uint8** mDebugAbbrevPtrData;	
 	Array<DbgSectionData> mExceptionDirectory;	
 	const uint8* mEHFrameData;
-	const char* mStringTable;
+	const char* mStringTable;	
 	const uint8* mSymbolData;
 	addr_target mEHFrameAddress;
 	addr_target mTLSAddr;
@@ -1225,6 +1225,7 @@ public:
 	virtual bool DbgIsStrMutable(const char* str) { return true; } // Always assume its a copy
 	virtual addr_target LocateSymbol(const StringImpl& name) { return 0; }
 	virtual DbgSubprogram* FindSubprogram(DbgType* dbgType, const char* methodName);
+	const char* GetStringTable(DataStream* stream, int stringTablePos);
 
 	void Fail(const StringImpl& error);
 	void FindTemplateStr(const char*& name, int& templateNameIdx);

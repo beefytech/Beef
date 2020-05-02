@@ -2,7 +2,7 @@
 // of an open-sourcing initiative in 2014 of the C# core libraries.
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
 
 namespace System
@@ -22,7 +22,7 @@ namespace System
 			[Inline]
 			set
 			{
-				// We only allow reducing the length - consider using System.Collections.Generic.List<T> when dynamic sizing is required
+				// We only allow reducing the length - consider using System.Collections.List<T> when dynamic sizing is required
 				Runtime.Assert(value <= mLength);
 				mLength = (.)value;
 			}

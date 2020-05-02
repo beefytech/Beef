@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -87,9 +87,9 @@ namespace IDE.ui
                             (isHilighted ? 0xFFffeafe : 0xFF8a7489) :
                             (isHilighted ? 0xFFeaf5ff : 0xFF72828f);
 
-                        float minY = 0 + minLine * lineSpacing + 6;
-                        float maxY = 0 + maxLine * lineSpacing + 6;
-                        float width = 21 + jumpEntry.mDepth * 7;
+                        float minY = 0 + minLine * lineSpacing + GS!(6);
+                        float maxY = 0 + maxLine * lineSpacing + GS!(6);
+                        float width = GS!(21) + jumpEntry.mDepth * GS!(7);
 
                         using (g.PushColor(color))
                         {
@@ -98,19 +98,23 @@ namespace IDE.ui
 							//g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrow), 50 - width, minY - 4, width, maxY - minY + 7);
 
                             if (!jumpEntry.mIsReverse)
-                                g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrow), 50 - width, minY - 4, width, maxY - minY + 7);
+							{
+                                g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrow), GS!(50) - width, minY - GS!(4), width, maxY - minY + GS!(7));
+							}
                             else
-                                g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrowRev), 50 - width, minY - 4, width, maxY - minY + 7);
+							{
+                                g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrowRev), GS!(50) - width, minY - GS!(4), width, maxY - minY + GS!(7));
+							}
                         }
 
                         for (var overlapDepth in jumpEntry.mOverlapsAtMin)
                         {
-                            g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrowShadow), 26 - overlapDepth * 7, minY - 10);
+                            g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrowShadow), GS!(26) - overlapDepth * GS!(7), minY - GS!(10));
                         }
 
                         for (var overlapDepth in jumpEntry.mOverlapsAtMax)
                         {
-                            g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrowShadow), 26 - overlapDepth * 7, maxY - 10);
+                            g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.AsmArrowShadow), GS!(26) - overlapDepth * GS!(7), maxY - GS!(10));
                         }
                     }
                 }
@@ -481,11 +485,9 @@ namespace IDE.ui
 		    mPanelHeader = new PanelHeader();
 		    mPanelHeader.Label = "Showing disassembly.";
 
-		    var font = DarkTheme.sDarkTheme.mSmallFont;
 			if (mStayInDisassemblyCheckbox == null)
 				mStayInDisassemblyCheckbox = new DarkCheckBox();
 		    mStayInDisassemblyCheckbox.Label = "Stay in dis&assembly mode.";
-		    mStayInDisassemblyCheckbox.Resize(font.GetWidth(mPanelHeader.mLabel) + 30, 6, mStayInDisassemblyCheckbox.CalcWidth(), 20);
 		    //if (mStayInDisassemblyCheckbox != null)
 		        //checkbox.mChecked = mStayInDisassemblyCheckbox.mChecked;
 		    mPanelHeader.AddWidget(mStayInDisassemblyCheckbox);
@@ -872,7 +874,7 @@ namespace IDE.ui
                         {
                             var lineData = mLineDatas[lineIdx];
                             if (lineData.mSourceFile != null)
-                                g.DrawString(StackStringFormat!("{0}", lineData.mSourceLineNum + 1), 8, 2 + lineIdx * lineSpacing, FontAlign.Right, 18);
+                                g.DrawString(StackStringFormat!("{0}", lineData.mSourceLineNum + 1), GS!(8), GS!(2) + lineIdx * lineSpacing, FontAlign.Right, GS!(18));
                         }
                     }
 
@@ -884,14 +886,14 @@ namespace IDE.ui
                         {
                             //g.Draw(DarkTheme.sDarkTheme.GetImage(.RedDot), mEditWidget.mX - 20,
                                 //0 + lineIdx * lineSpacing);
-							using (g.PushTranslate(mEditWidget.mX - 20, 0 + lineIdx * lineSpacing))
+							using (g.PushTranslate(mEditWidget.mX - GS!(20), 0 + lineIdx * lineSpacing))
 								breakpoint.Draw(g, false);
                         }
 
                         if ((lineData.mAddr != (int)0) && (curCallStackAddr >= lineData.mAddr) && (curCallStackAddr < lineData.mAddrEnd))
                         {
                             Image img = (IDEApp.sApp.mDebugger.mActiveCallStackIdx == 0) ? linePointerImage : DarkTheme.sDarkTheme.GetImage(.ReturnPointer);
-                            g.Draw(img, mEditWidget.mX - 20,
+                            g.Draw(img, mEditWidget.mX - GS!(20),
                                 0 + lineIdx * lineSpacing);
 
 							/*if (jmpState != -1)
@@ -908,7 +910,7 @@ namespace IDE.ui
 						{                            
 						    //RemapCompiledToActiveLine(hotIdx, ref lineNum, ref column);
 						    Image img = (IDEApp.sApp.mDebugger.mActiveCallStackIdx == 0) ? linePointerImage : DarkTheme.sDarkTheme.GetImage(.LinePointer_Prev);
-						    g.Draw(img, mEditWidget.mX - 20,
+						    g.Draw(img, mEditWidget.mX - GS!(20),
 						        0 + lineIdx * lineSpacing);
 						}
                     }                    
@@ -1137,8 +1139,13 @@ namespace IDE.ui
         {
             base.ResizeComponents();
             if (mPanelHeader != null)
-                mPanelHeader.Resize(30, 0, Math.Max(mWidth - 30, 0), 32);
-            mEditWidget.Resize(30, 32, Math.Max(mWidth - 30, 0), Math.Max(mHeight - 32, 0));
+                mPanelHeader.Resize(GS!(30), 0, Math.Max(mWidth - GS!(30), 0), GS!(32));
+
+			var font = DarkTheme.sDarkTheme.mSmallFont;
+			if (mStayInDisassemblyCheckbox != null)
+				mStayInDisassemblyCheckbox.Resize(font.GetWidth(mPanelHeader.mLabel) + GS!(30), GS!(6), mStayInDisassemblyCheckbox.CalcWidth(), GS!(20));
+
+            mEditWidget.Resize(GS!(30), GS!(32), Math.Max(mWidth - GS!(30), 0), Math.Max(mHeight - GS!(32), 0));
         }
 
         public override void Resize(float x, float y, float width, float height)

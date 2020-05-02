@@ -2751,7 +2751,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				
 				bool isConst = false;
 				int64 constVal = 0;
-				if ((compileUnit->mLanguage == DbgLanguage_Beef) && (name[0] != '$'))
+				if ((compileUnit->mLanguage == DbgLanguage_Beef) && (name != NULL) && (name[0] != '$'))
 				{
 					for (char* cPtr = name + 1; true; cPtr++)
 					{
@@ -3183,7 +3183,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		case 0x1176:			
 			break;
 		default:
-			BF_FATAL("Unhandled");
+			BF_DBG_FATAL("Unhandled");
 			break;
 		}
 

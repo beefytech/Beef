@@ -1,6 +1,6 @@
 using System;
 using System.Threading;
-using System.Collections.Generic;
+using System.Collections;
 using Beefy.events;
 using Beefy.widgets;
 using Beefy.theme.dark;

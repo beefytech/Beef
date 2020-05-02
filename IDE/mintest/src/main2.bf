@@ -1,17 +1,42 @@
-// more text at the end of the first line. This is more text.
+using System;
 
 using System;
 
-class Pooble
+
+
+class Program
 {
-	public void Test(int abcdefgh, int abcdefgh2, int abcdefgh3, int abcdefgh4, int abcdefgh5, int abcdefgh6, int abcdefgh7, int abcdefgh8)
-	{
-	}
+    private function bool on_send_recv_delegate(uint8* data, ref int length);
 
-	public static float sVal = 9;
+    struct plugin_header
+    {
+        public on_send_recv_delegate on_recv;
+        public on_send_recv_delegate on_send;
+    }
 
-	public static mixin Zorp(var z)
-	{
-		z * sVal
-	}
+    private static bool on_recv(uint8* data, ref int length)
+    {
+         //Console.WriteLine(scope String().AppendF("RECV\tID: {}", data[0]));
+         return true;
+    }
+
+    private static bool on_send(uint8* data, ref int length)
+    {
+         //Console.WriteLine(scope String().AppendF("SEND\tID: {}", data[0]));
+         return true;
+    }
+
+
+    [CLink]
+    [Export]
+    public static void Install(void* ptr)
+    {
+        plugin_header* plugin = (plugin_header*) ptr;
+
+        plugin.on_recv = => on_recv;
+        plugin.on_send = => on_send;
+    
+        //Console.WriteLine("INSTALLED!!!");
+    }
 }
+
