@@ -86,6 +86,12 @@ namespace System
 		    mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 		    mLength = 0;
 		}
+		
+		[AllowAppend]
+		public this(StringView format, params Object[] args) : this()
+		{
+			AppendF(format, params args);
+		}
 
 		[AllowAppend]
 		public this(String str)
