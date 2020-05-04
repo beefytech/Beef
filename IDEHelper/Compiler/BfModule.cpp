@@ -1098,8 +1098,8 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
                 (mModuleName == "-")
-				//|| (mModuleName == "System_Internal")
-				//|| (mModuleName == "vdata")
+				//|| (mModuleName == "Vec2")
+				//|| (mModuleName == "System_Int32")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
 				)
 				mBfIRBuilder->mDbgVerifyCodeGen = true;
@@ -3874,7 +3874,7 @@ void BfModule::EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRB
 void BfModule::CreateFakeCallerMethod(const String& funcName)
 {	
 	BF_ASSERT(mCurMethodInstance->mIRFunction);
-
+	
 	auto voidType = mBfIRBuilder->MapType(GetPrimitiveType(BfTypeCode_None));
 	SizedArray<BfIRType, 4> paramTypes;
 	BfIRFunctionType funcType = mBfIRBuilder->CreateFunctionType(voidType, paramTypes);
@@ -3882,6 +3882,10 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 	mBfIRBuilder->SetActiveFunction(func);
 	auto entryBlock = mBfIRBuilder->CreateBlock("main", true);
 	mBfIRBuilder->SetInsertPoint(entryBlock);
+	
+	BfMethodState methodState;	
+	methodState.mIRHeadBlock = entryBlock;
+	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
 
 	SizedArray<BfIRValue, 8> args;
 	BfExprEvaluator exprEvaluator(this);
@@ -15277,13 +15281,15 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			paramVar->mValue = mBfIRBuilder->GetArgument(argIdx);
 		else
 			paramVar->mValue = mBfIRBuilder->GetFakeVal();
-		if (thisType->IsComposite())
+		
+		
+		if ((thisType->IsSplattable()) && (methodInstance->AllowsThisSplatting()))		
 		{
-			if ((thisType->IsSplattable()) && (methodInstance->AllowsThisSplatting()))
+			if (!thisType->IsTypedPrimitive())
 				paramVar->mIsSplat = true;
-			else
-				paramVar->mIsLowered = thisType->GetLoweredType() != BfTypeCode_None;
 		}
+		else if (!methodDef->mIsMutating)
+			paramVar->mIsLowered = thisType->GetLoweredType() != BfTypeCode_None;
 
 		auto thisTypeInst = thisType->ToTypeInstance();
 		paramVar->mIsStruct = isThisStruct;
