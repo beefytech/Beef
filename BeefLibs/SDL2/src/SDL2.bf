@@ -5121,13 +5121,17 @@ namespace SDL2
 			SDL_SYSWM_ANDROID
 		}
 
+
 		// FIXME: I wish these weren't public...
 		[CRepr]
 		public struct INTERNAL_windows_wminfo
 		{
+#if BF_PLATFORM_WINDOWS
 			public Windows.HWnd window; // Refers to an HWND
 			public Windows.Handle hdc; // Refers to an HDC
+#endif
 		}
+
 
 		[CRepr]
 		public struct INTERNAL_winrt_wminfo
