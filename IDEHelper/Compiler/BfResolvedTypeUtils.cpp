@@ -737,7 +737,7 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
 			return mMethodInfoEx->mClosureInstanceInfo->mThisOverride;
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())))
+		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (owner->GetLoweredType() == BfTypeCode_None))
 			return owner->mModule->CreatePointerType(owner);
 		return owner;
 	}
