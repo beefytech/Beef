@@ -214,7 +214,7 @@ namespace SDL2
 					case .KeyDown:
 						KeyDown(event.key);
 					case .KeyUp:
-						KeyDown(event.key);
+						KeyUp(event.key);
 					case .MouseButtonDown:
 						MouseDown(event.button);
 					case .MouseButtonUp:
