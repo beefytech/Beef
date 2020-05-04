@@ -4955,7 +4955,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	if (argVal.mType->IsValuelessType())
 		return;
 
-	if ((argVal.mType->IsTypedPrimitive()) && (!methodInstance->AllowsThisSplatting()))
+	if (!methodInstance->AllowsThisSplatting())
 	{
 		argVal = mModule->MakeAddressable(argVal);
 		irArgs.push_back(argVal.mValue);
@@ -5010,7 +5010,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
  	if (!mModule->mCompiler->mIsResolveOnly)
 		sCallIdx++;
 	int callIdx = sCallIdx;
-	if (callIdx == 7462)
+	if (callIdx == 44)
 	{
 		NOP;
 	}

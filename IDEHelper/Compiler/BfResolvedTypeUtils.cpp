@@ -940,7 +940,33 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			checkType = GetParamType(paramIdx);
 		}		
 
-		if ((paramIdx != -1) || (!mMethodDef->mNoSplat && !mMethodDef->mIsMutating))
+
+		bool checkLowered = false;		
+		bool doSplat = false;
+		if (paramIdx == -1)
+		{
+			if ((checkType->IsSplattable()) && (AllowsThisSplatting()))
+			{
+				doSplat = true;
+			}
+			else if (!mMethodDef->mIsMutating)
+				checkLowered = true;
+		}
+		else
+		{			
+			if (checkType->IsMethodRef())
+			{
+				doSplat = true;
+			}
+			else if ((checkType->IsSplattable()) && (AllowsSplatting()))
+			{
+				doSplat = true;
+			}
+			else
+				checkLowered = true;
+		}
+
+		if (checkLowered)
 		{
 			auto loweredTypeCode = checkType->GetLoweredType();
 			if (loweredTypeCode != BfTypeCode_None)
@@ -960,20 +986,10 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			module->PopulateType(checkType, BfPopulateType_Data);
 		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
 			continue;
-
-		bool doSplat = false;
-		if (checkType->IsMethodRef())
+		
+		if (doSplat)
 		{
-			doSplat = true;
-		}
-		else if (mMethodDef->mNoSplat)
-		{
-			doSplat = false;
-		}
-		else if ((paramIdx == -1) ? AllowsThisSplatting() : AllowsSplatting())
-		{
-			int splatCount = checkType->GetSplatCount();
-			doSplat = ((checkType->IsSplattable()) && ((paramIdx != -1) || (!mMethodDef->mIsMutating)));
+			int splatCount = checkType->GetSplatCount();			
 			if ((int)paramTypes.size() + splatCount > module->mCompiler->mOptions.mMaxSplatRegs)
 			{
 				auto checkTypeInst = checkType->ToTypeInstance();
