@@ -1730,8 +1730,7 @@ public:
 	void EmitCtorCalcAppend();	
 	void CreateStaticCtor();	
 	BfIRValue CreateDllImportGlobalVar(BfMethodInstance* methodInstance, bool define = false);
-	void CreateDllImportMethod();			
-	BfIRCallingConv GetIRCallingConvention(BfTypeInstance* typeInst, BfMethodDef* methodDef);
+	void CreateDllImportMethod();	
 	BfIRCallingConv GetIRCallingConvention(BfMethodInstance* methodInstance);
 	void SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined);
 	void EmitCtorBody(bool& skipBody);

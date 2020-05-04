@@ -655,6 +655,20 @@ bool BfMethodInstance::IsTestMethod()
 		(mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes != NULL) && (mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes->Contains(GetOwner()->mModule->mCompiler->mTestAttributeTypeDef));
 }
 
+bool BfMethodInstance::AllowsSplatting()
+{
+	if (mCallingConvention != BfCallingConvention_Unspecified)
+		return false;
+	return !mMethodDef->mNoSplat;
+}
+
+bool BfMethodInstance::AllowsThisSplatting()
+{
+	if (mCallingConvention != BfCallingConvention_Unspecified)
+		return false;
+	return !mMethodDef->HasNoThisSplat();
+}
+
 bool BfMethodInstance::HasThis()
 {
 	if (mMethodDef->mIsStatic)
@@ -723,7 +737,7 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
 			return mMethodInfoEx->mClosureInstanceInfo->mThisOverride;
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (mMethodDef->mNoSplat)))
+		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())))
 			return owner->mModule->CreatePointerType(owner);
 		return owner;
 	}
@@ -743,7 +757,7 @@ bool BfMethodInstance::GetParamIsSplat(int paramIdx)
 	{
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		if ((owner->IsValueType()) && (mMethodDef->mIsMutating || mMethodDef->mNoSplat))
+		if ((owner->IsValueType()) && (mMethodDef->mIsMutating || !AllowsSplatting()))
 			return false;
 		return owner->mIsSplattable;
 	}	
@@ -947,7 +961,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
 			continue;
 
-		bool doSplat = true;
+		bool doSplat = false;
 		if (checkType->IsMethodRef())
 		{
 			doSplat = true;
@@ -956,7 +970,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		{
 			doSplat = false;
 		}
-		else
+		else if ((paramIdx == -1) ? AllowsThisSplatting() : AllowsSplatting())
 		{
 			int splatCount = checkType->GetSplatCount();
 			doSplat = ((checkType->IsSplattable()) && ((paramIdx != -1) || (!mMethodDef->mIsMutating)));
@@ -3789,8 +3803,15 @@ String BfTypeUtils::TypeToString(BfTypeReference* typeRef)
 		return name;
 	}
 
+	if (auto constTypeRef = BfNodeDynCast<BfConstExprTypeRef>(typeRef))
+	{
+		String name = "const ";
+		name += constTypeRef->mConstExpr->ToString();
+		return name;
+	}
+
 	BF_DBG_FATAL("Not implemented");
-	return "???";
+	return typeRef->ToString();
 }
 
 bool BfTypeUtils::TypeEquals(BfType* typeA, BfType* typeB, BfType* selfType)

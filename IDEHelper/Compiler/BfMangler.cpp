@@ -355,7 +355,8 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 
 		auto typeDef = useTypeInst->mTypeDef;
 
-		FindOrCreateNameSub(mangleContext, name, NameSubstitute(NameSubstitute::Kind_NamespaceAtom, typeInst->mModule->mSystem->mBfAtom), curMatchIdx, matchFailed);
+		if (!mangleContext.mCPPMangle)
+			FindOrCreateNameSub(mangleContext, name, NameSubstitute(NameSubstitute::Kind_NamespaceAtom, typeInst->mModule->mSystem->mBfAtom), curMatchIdx, matchFailed);
 		
 		for (int i = 0; i < typeDef->mNamespace.mSize; i++)
 			FindOrCreateNameSub(mangleContext, name, NameSubstitute(NameSubstitute::Kind_NamespaceAtom, typeDef->mNamespace.mParts[i]), curMatchIdx, matchFailed);
@@ -667,13 +668,42 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 		return methodInst->mMethodDef->mName;
 	}
 
+	auto methodDef = methodInst->mMethodDef;
+	auto typeInst = methodInst->GetOwner();
+	auto typeDef = typeInst->mTypeDef;
+
 	MangleContext mangleContext;	
 	mangleContext.mModule = methodInst->GetOwner()->mModule;
-	mangleContext.mCCompat = methodInst->mMethodDef->mIsExtern;
-	//auto substituteListPtr = doSubstitute ? &mangleContext.mSubstituteList : NULL;
+	if (methodInst->mCallingConvention != BfCallingConvention_Unspecified)
+		mangleContext.mCCompat = true;	
+	auto customAttributes = methodInst->GetCustomAttributes();
+	if (customAttributes != NULL)
+	{
+		auto linkNameAttr = customAttributes->Get(typeInst->mModule->mCompiler->mLinkNameAttributeTypeDef);
+		if (linkNameAttr != NULL)
+		{
+			if (linkNameAttr->mCtorArgs.size() == 1)
+			{
+				if (typeInst->mModule->TryGetConstString(typeInst->mConstHolder, linkNameAttr->mCtorArgs[0], name))
+					if (!name.IsWhitespace())
+						return name;
 
-	auto typeInst = methodInst->GetOwner();
-	auto methodDef = methodInst->mMethodDef;
+				auto constant = typeInst->mConstHolder->GetConstant(linkNameAttr->mCtorArgs[0]);
+				if (constant != NULL)
+				{
+					if (constant->mInt32 == 1) // C
+					{
+						name += methodInst->mMethodDef->mName;
+						return name;
+					}
+					else if (constant->mInt32 == 2) // CPP
+					{
+						mangleContext.mCPPMangle = true;
+					}
+				}
+			}
+		}
+	}
 
 	bool mangledMethodIdx = false;
 	bool prefixLen = false;
@@ -862,8 +892,8 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 		{
 			addProjectName = true;
 
-			if ((methodInst->mMethodDef->mCallingConvention == BfCallingConvention_Cdecl) ||
-				(methodInst->mMethodDef->mCallingConvention == BfCallingConvention_Stdcall))
+			if ((methodInst->mCallingConvention == BfCallingConvention_Cdecl) ||
+				(methodInst->mCallingConvention == BfCallingConvention_Stdcall))
 			{
 				addProjectName = false;
 				addIndex = false;
@@ -1308,7 +1338,8 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfTypeI
 				FindOrCreateNameSub(mangleContext, name, NameSubstitute(BfMangler::NameSubstitute::Kind_NamespaceAtom, namePart));
 			}
 
-			FindOrCreateNameSub(mangleContext, name, NameSubstitute(BfMangler::NameSubstitute::Kind_NamespaceAtom, useModule->mSystem->mBfAtom));
+			if (!mangleContext.mCPPMangle)
+				FindOrCreateNameSub(mangleContext, name, NameSubstitute(BfMangler::NameSubstitute::Kind_NamespaceAtom, useModule->mSystem->mBfAtom));
 		}
 
 		name += '@';
@@ -1738,8 +1769,9 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	
 	MangleContext mangleContext;
 	mangleContext.mIs64Bit = is64Bit;
-	mangleContext.mModule = methodInst->GetOwner()->mModule;
-	mangleContext.mCCompat = methodInst->mMethodDef->mIsExtern;	
+	mangleContext.mModule = methodInst->GetOwner()->mModule;	
+	if (methodInst->mCallingConvention != BfCallingConvention_Unspecified)
+		mangleContext.mCCompat = true;
 	auto customAttributes = methodInst->GetCustomAttributes();
 	if (customAttributes != NULL)
 	{
@@ -1749,7 +1781,22 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 			if (linkNameAttr->mCtorArgs.size() == 1)
 			{				
 				if (typeInst->mModule->TryGetConstString(typeInst->mConstHolder, linkNameAttr->mCtorArgs[0], name))
-					return;
+					if (!name.IsWhitespace())
+						return;
+
+				auto constant = typeInst->mConstHolder->GetConstant(linkNameAttr->mCtorArgs[0]);
+				if (constant != NULL)
+				{
+					if (constant->mInt32 == 1) // C
+					{
+						name += methodInst->mMethodDef->mName;
+						return;
+					}
+					else if (constant->mInt32 == 2) // CPP
+					{
+						mangleContext.mCPPMangle = true;
+					}
+				}
 			}
 		}
 	}
@@ -1965,8 +2012,8 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 		{	
 			addProjectName = true;
 
-			if ((methodInst->mMethodDef->mCallingConvention == BfCallingConvention_Cdecl) ||
-				(methodInst->mMethodDef->mCallingConvention == BfCallingConvention_Stdcall))
+			if ((methodInst->mCallingConvention == BfCallingConvention_Cdecl) ||
+				(methodInst->mCallingConvention == BfCallingConvention_Stdcall))
 			{
 				addProjectName = false;
 				addIndex = false;
@@ -2040,7 +2087,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 		name += qualifier;
 	}	
 
-	auto callingConvention = mangleContext.mModule->GetIRCallingConvention(typeInst, methodDef);
+	auto callingConvention = mangleContext.mModule->GetIRCallingConvention(methodInst);
 
 	char callingConv = 'A';
 	if (callingConvention == BfIRCallingConv_StdCall)

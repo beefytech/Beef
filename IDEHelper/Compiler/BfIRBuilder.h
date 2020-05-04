@@ -346,6 +346,7 @@ enum BfIRCallingConv
 	BfIRCallingConv_ThisCall,
 	BfIRCallingConv_StdCall,
 	BfIRCallingConv_CDecl,
+	BfIRCallingConv_FastCall
 };
 
 enum BfIRParamType : uint8

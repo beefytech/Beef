@@ -152,8 +152,11 @@ namespace System.Threading
             }
         }
 
+		[CallingConvention(.Cdecl)]
         extern void ManualThreadInit();
+		[CallingConvention(.Cdecl)]
         extern void StartInternal();
+		[CallingConvention(.Cdecl)]
         extern void SetStackStart(void* ptr);
 
         public void Start(bool autoDelete = true)
@@ -266,7 +269,8 @@ namespace System.Threading
         {
             SpinWaitInternal((int32)iterations);
         }
-        
+
+		[CallingConvention(.Cdecl)]
         private static extern bool YieldInternal();
         
         public static bool Yield()

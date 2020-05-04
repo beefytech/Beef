@@ -93,6 +93,7 @@ public:
 	public:
 		BfModule* mModule;
 		bool mCCompat;
+		bool mCPPMangle;
 		bool mInArgs;
 		bool mPrefixObjectPointer;
 		llvm::SmallVector<NameSubstitute, 32> mSubstituteList;
@@ -102,6 +103,7 @@ public:
 		{
 			mModule = NULL;
 			mCCompat = false;
+			mCPPMangle = false;
 			mInArgs = false;
 			mPrefixObjectPointer = false;
 		}
@@ -136,6 +138,7 @@ public:
 
 		BfModule* mModule;
 		bool mCCompat;
+		bool mCPPMangle;
 		bool mIs64Bit;		
 		SizedArray<NameSubstitute, 10> mSubstituteList;
 		SizedArray<BfType*, 10> mSubstituteTypeList;
@@ -151,6 +154,7 @@ public:
 			mModule = NULL;
 			mCCompat = false;
 			mIs64Bit = false;
+			mCPPMangle = false;
 			mWantsGroupStart = false;
 			mInArgs = false;
 			mInRet = false;

@@ -747,6 +747,7 @@ public:
 	bool mDisallowCalling:1;	
 	bool mIsGenericMethodInstance:1;	
 	BfMethodChainType mChainType;
+	BfCallingConvention mCallingConvention;
 	BfMethodInstanceGroup* mMethodInstanceGroup;
 	BfMethodDef* mMethodDef;
 	BfType* mReturnType;
@@ -781,6 +782,7 @@ public:
 		mDisallowCalling = false;				
 		mIsGenericMethodInstance = false;		
 		mChainType = BfMethodChainType_None;
+		mCallingConvention = BfCallingConvention_Unspecified;
 		mMethodInstanceGroup = NULL;
 		mMethodDef = NULL;									
 		mReturnType = NULL;		
@@ -817,8 +819,10 @@ public:
 	bool AlwaysInline();
 	BfImportCallKind GetImportCallKind();	
 	bool IsTestMethod();
+	bool AllowsSplatting();
+	bool AllowsThisSplatting();
 	int GetParamCount();
-	int GetImplicitParamCount();
+	int GetImplicitParamCount();	
 	void GetParamName(int paramIdx, StringImpl& name);
 	String GetParamName(int paramIdx);	
 	BfType* GetParamType(int paramIdx, bool useResolvedType = true);	

@@ -5862,6 +5862,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_ThisCall);
 		else if (callingConvention == BfIRCallingConv_StdCall)
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_StdCall);
+		else if (callingConvention == BfIRCallingConv_FastCall)
+			methodFlags = (MethodFlags)(methodFlags | MethodFlags_FastCall);
 		
 		int customAttrIdx = _HandleCustomAttrs(methodCustomAttributes);
 
@@ -13276,7 +13278,7 @@ void BfModule::CreateDelegateInvokeMethod()
 	BfIRValue nonStaticResult;
 	BfIRValue staticResult;
 
-	auto callingConv = GetIRCallingConvention(mCurTypeInstance, mCurMethodInstance->mMethodDef);
+	auto callingConv = GetIRCallingConvention(mCurMethodInstance);
 
 	/// Non-static invocation
 	{	
@@ -14041,7 +14043,7 @@ BfIRValue BfModule::CreateDllImportGlobalVar(BfMethodInstance* methodInstance, b
 	auto typeInstance = methodInstance->GetOwner();
 
 	bool foundDllImportAttr = false;
-	BfCallingConvention callingConvention = methodInstance->mMethodDef->mCallingConvention;
+	BfCallingConvention callingConvention = methodInstance->mCallingConvention;
 	for (auto customAttr : methodInstance->GetCustomAttributes()->mAttributes)
 	{
 		if (customAttr.mType->mTypeDef->mFullName.ToString() == "System.ImportAttribute")
@@ -14107,7 +14109,7 @@ void BfModule::CreateDllImportMethod()
 		mBfIRBuilder->CreateCall(loadSharedLibsFunc, SizedArray<BfIRValue, 0>());
 	}
 
-	auto callingConvention = GetIRCallingConvention(mCurTypeInstance, mCurMethodInstance->mMethodDef);
+	auto callingConvention = GetIRCallingConvention(mCurMethodInstance);
 
 	BfIRType returnType;
 	SizedArray<BfIRType, 8> paramTypes;
@@ -14126,6 +14128,8 @@ void BfModule::CreateDllImportMethod()
 		auto result = mBfIRBuilder->CreateCall(funcVal, args);
 		if (callingConvention == BfIRCallingConv_StdCall)
 			mBfIRBuilder->SetCallCallingConv(result, BfIRCallingConv_StdCall);
+		else if (callingConvention == BfIRCallingConv_FastCall)
+			mBfIRBuilder->SetCallCallingConv(result, BfIRCallingConv_FastCall);
 		else
 			mBfIRBuilder->SetCallCallingConv(result, BfIRCallingConv_CDecl);
 		if (allowTailCall)
@@ -14143,18 +14147,6 @@ void BfModule::CreateDllImportMethod()
 	}
 }
 
-BfIRCallingConv BfModule::GetIRCallingConvention(BfTypeInstance* typeInst, BfMethodDef* methodDef)
-{
-	if ((mCompiler->mOptions.mMachineType != BfMachineType_x86) || (mCompiler->mOptions.mPlatformType != BfPlatformType_Windows))
-		return BfIRCallingConv_CDecl;			
-	if (methodDef->mCallingConvention == BfCallingConvention_Stdcall)
-		return BfIRCallingConv_StdCall;
-	if ((!methodDef->mIsStatic) && (!typeInst->IsValuelessType()) &&
-		((!typeInst->IsSplattable()) || (methodDef->HasNoThisSplat())))
-		return BfIRCallingConv_ThisCall;
-	return BfIRCallingConv_CDecl;
-}
-
 BfIRCallingConv BfModule::GetIRCallingConvention(BfMethodInstance* methodInstance)
 {
 	auto methodDef = methodInstance->mMethodDef;
@@ -14163,7 +14155,19 @@ BfIRCallingConv BfModule::GetIRCallingConvention(BfMethodInstance* methodInstanc
 		owner = methodInstance->GetParamType(-1)->ToTypeInstance();
 	if (owner == NULL)
 		owner = methodInstance->GetOwner();
-	return GetIRCallingConvention(owner, methodInstance->mMethodDef);
+
+	if ((mCompiler->mOptions.mMachineType != BfMachineType_x86) || (mCompiler->mOptions.mPlatformType != BfPlatformType_Windows))
+		return BfIRCallingConv_CDecl;
+	if (methodInstance->mCallingConvention == BfCallingConvention_Stdcall)
+		return BfIRCallingConv_StdCall;
+	if (methodInstance->mCallingConvention == BfCallingConvention_Fastcall)
+		return BfIRCallingConv_FastCall;
+	if ((!methodDef->mIsStatic) && (!owner->IsValuelessType()) &&
+		((!owner->IsSplattable()) || (methodDef->HasNoThisSplat())))
+		return BfIRCallingConv_ThisCall;
+	return BfIRCallingConv_CDecl;
+
+	//return GetIRCallingConvention(owner, methodInstance->mMethodDef);
 }
 
 void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined)
@@ -14214,6 +14218,11 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 		argIdx++;
 	}
 
+	if (methodDef->mName == "Hello")
+	{
+		NOP;
+	}
+
 	while (argIdx < argCount)
 	{
 		while ((paramIdx != -1) && (methodInstance->IsParamSkipped(paramIdx)))
@@ -14230,15 +14239,15 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 				resolvedTypeRef = mCurMethodState->mClosureState->mClosureType;
 			else
 				resolvedTypeRef = methodInstance->GetOwner();
-			isSplattable = (resolvedTypeRef->IsSplattable()) && (!methodDef->HasNoThisSplat());
+			isSplattable = (resolvedTypeRef->IsSplattable()) && (methodInstance->AllowsThisSplatting());
         }
-		else if (!methodDef->mNoSplat)
+		else
 		{
 			paramName = methodInstance->GetParamName(paramIdx);
         	resolvedTypeRef = methodInstance->GetParamType(paramIdx);
 			if (resolvedTypeRef->IsMethodRef())
 				isSplattable = true;
-			else if (resolvedTypeRef->IsSplattable())
+			else if ((resolvedTypeRef->IsSplattable()) && (methodInstance->AllowsSplatting()))
 			{
 				auto resolvedTypeInst = resolvedTypeRef->ToTypeInstance();
 				if ((resolvedTypeInst != NULL) && (resolvedTypeInst->mIsCRepr))
@@ -15268,9 +15277,9 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			paramVar->mValue = mBfIRBuilder->GetArgument(argIdx);
 		else
 			paramVar->mValue = mBfIRBuilder->GetFakeVal();
-		if ((thisType->IsComposite()) && (!methodDef->HasNoThisSplat()))
+		if (thisType->IsComposite())
 		{
-			if (thisType->IsSplattable())
+			if ((thisType->IsSplattable()) && (methodInstance->AllowsThisSplatting()))
 				paramVar->mIsSplat = true;
 			else
 				paramVar->mIsLowered = thisType->GetLoweredType() != BfTypeCode_None;
@@ -15359,7 +15368,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 					// crepr splat is always splat
 					paramVar->mIsSplat = true;
 				}
-				else
+				else if (methodInstance->AllowsSplatting())
 				{
 					int splatCount = resolvedType->GetSplatCount();
 					if (argIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
@@ -16844,9 +16853,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				}
 				else
 				{
-					bool handled = false;
-					//if ((!isThis) || (!methodDef->mIsMutating && !methodDef->mNoSplat))
-
+					bool handled = false;					
 					if (paramVar->mIsLowered)
 					{						
 						auto loweredTypeCode = paramVar->mResolvedType->GetLoweredType();
@@ -17223,10 +17230,13 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		mCurMethodState->mIgnoreObjectAccessCheck = true;
 	}
 	auto customAttributes = methodInstance->GetCustomAttributes();
-	if ((customAttributes != NULL) && (customAttributes->Contains(mCompiler->mDisableObjectAccessChecksAttributeTypeDef)))
-		mCurMethodState->mIgnoreObjectAccessCheck = true;
-	if ((customAttributes != NULL) && (customAttributes->Contains(mCompiler->mDisableChecksAttributeTypeDef)))
-		mCurMethodState->mDisableChecks = true;
+	if (customAttributes != NULL)
+	{
+		if (customAttributes->Contains(mCompiler->mDisableObjectAccessChecksAttributeTypeDef))
+			mCurMethodState->mIgnoreObjectAccessCheck = true;
+		if (customAttributes->Contains(mCompiler->mDisableChecksAttributeTypeDef))
+			mCurMethodState->mDisableChecks = true;				
+	}	
 	
 	if ((methodDef->mMethodType == BfMethodType_CtorNoBody) && (!methodDef->mIsStatic) &&
 		((methodInstance->mChainType == BfMethodChainType_ChainHead) || (methodInstance->mChainType == BfMethodChainType_None)))
@@ -18747,7 +18757,8 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 {
 	auto methodDef = methodInstance->mMethodDef;
 	
-	if (methodInstance->GetCustomAttributes() != NULL)
+	auto customAttributes = methodInstance->GetCustomAttributes();	
+	if (customAttributes != NULL)
 		return;
 		
 	auto methodDeclaration = methodDef->GetMethodDeclaration();
@@ -18769,7 +18780,30 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 		if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes == NULL)
 			methodInstance->mMethodInfoEx->mMethodCustomAttributes = new BfMethodCustomAttributes();
 		methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(propertyMethodDeclaration->mAttributes, BfAttributeTargets_Method);
-	}	
+	}
+
+	customAttributes = methodInstance->GetCustomAttributes();
+	if (customAttributes == NULL)
+	{
+		auto owner = methodInstance->GetOwner();
+		if ((owner->IsDelegate()) || (owner->IsFunction()))
+			customAttributes = owner->mCustomAttributes;
+	}
+
+	methodInstance->mCallingConvention = methodDef->mCallingConvention;
+	if (customAttributes != NULL)
+	{
+		auto linkNameAttr = customAttributes->Get(typeInstance->mModule->mCompiler->mCallingConventionAttributeTypeDef);
+		if (linkNameAttr != NULL)
+		{
+			if (linkNameAttr->mCtorArgs.size() == 1)
+			{
+				auto constant = typeInstance->mConstHolder->GetConstant(linkNameAttr->mCtorArgs[0]);
+				if (constant != NULL)
+					methodInstance->mCallingConvention = (BfCallingConvention)constant->mInt32;
+			}
+		}
+	}
 }
 
 void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& mangledName, bool isTemporaryFunc, bool* outIsIntrinsic)
@@ -19712,7 +19746,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		{
 			methodParam.mIsSplat = true;
 		}
-		else if (methodParam.mResolvedType->IsComposite())
+		else if ((methodParam.mResolvedType->IsComposite()) && (methodInstance->AllowsSplatting()))
 		{
 			PopulateType(methodParam.mResolvedType, BfPopulateType_Data);
 			if (methodParam.mResolvedType->IsSplattable())

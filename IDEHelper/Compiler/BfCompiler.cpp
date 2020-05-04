@@ -405,6 +405,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mIPrintableTypeDef = NULL;
 	mIHashableTypeDef = NULL;
 	mLinkNameAttributeTypeDef = NULL;
+	mCallingConventionAttributeTypeDef = NULL;
 	mMethodRefTypeDef = NULL;
 	mNullableTypeDef = NULL;
 	mOrderedAttributeTypeDef = NULL;
@@ -481,7 +482,7 @@ bool BfCompiler::IsTypeAccessible(BfType* checkType, BfProject* curProject)
 }
 
 bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
-{	
+{		
 	if (mOptions.mCompileOnDemandKind == BfCompileOnDemandKind_AlwaysInclude)
 		return IsTypeAccessible(checkType, curProject);
 
@@ -516,6 +517,12 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
 			for (auto genericArg : genericTypeInst->mTypeGenericArguments)
 				if (!IsTypeUsed(genericArg, curProject))
 					return false;
+		}
+
+		if (checkType->IsFunction())
+		{
+			// These don't get their own modules so just assume "always used" at this point
+			return true;
 		}
 
 		auto module = typeInst->GetModule();
@@ -5983,6 +5990,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mIPrintableTypeDef = _GetRequiredType("System.IPrintable");
 	mIHashableTypeDef = _GetRequiredType("System.IHashable");
 	mLinkNameAttributeTypeDef = _GetRequiredType("System.LinkNameAttribute");
+	mCallingConventionAttributeTypeDef = _GetRequiredType("System.CallingConventionAttribute");
 	mMethodRefTypeDef = _GetRequiredType("System.MethodReference", 1);
 	mNullableTypeDef = _GetRequiredType("System.Nullable");
 	mOrderedAttributeTypeDef = _GetRequiredType("System.OrderedAttribute");
