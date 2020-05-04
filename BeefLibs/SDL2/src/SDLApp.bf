@@ -85,6 +85,7 @@ namespace SDL2
 		public int32 mWidth = 1024;
 		public int32 mHeight = 768;
 		public bool* mKeyboardState;
+		public bool mHasAudio;
 
 		public this()
 		{
@@ -120,7 +121,7 @@ namespace SDL2
 			mRenderer = SDL.CreateRenderer(mWindow, -1, .Accelerated);
 			mScreen = SDL.GetWindowSurface(mWindow);
 			SDLImage.Init(.PNG | .JPG);
-			SDLMixer.OpenAudio(44100, SDLMixer.MIX_DEFAULT_FORMAT, 2, 4096);
+			mHasAudio = SDLMixer.OpenAudio(44100, SDLMixer.MIX_DEFAULT_FORMAT, 2, 4096) >= 0;
 
 			SDLTTF.Init();
 		}
@@ -181,6 +182,9 @@ namespace SDL2
 
 		public void PlaySound(Sound sound, float volume = 1.0f, float pan = 0.5f)
 		{
+			if (sound == null)
+				return;
+
 			int32 channel = SDLMixer.PlayChannel(-1, sound.mChunk, 0);
 			//SDLMixer.SetPanning()
 			SDLMixer.Volume(channel, (int32)(volume * 128));
