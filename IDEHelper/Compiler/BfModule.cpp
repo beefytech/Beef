@@ -3873,6 +3873,9 @@ void BfModule::EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRB
 
 void BfModule::CreateFakeCallerMethod(const String& funcName)
 {	
+	if (mCurMethodInstance->mHasFailed)
+		return;
+
 	BF_ASSERT(mCurMethodInstance->mIRFunction);
 	
 	auto voidType = mBfIRBuilder->MapType(GetPrimitiveType(BfTypeCode_None));
@@ -13170,6 +13173,8 @@ void BfModule::AssertErrorState()
 	if (mCurMethodInstance != NULL)
 	{
 		if (mCurMethodInstance->mIsUnspecializedVariation)
+			return;
+		if (mCurMethodInstance->mHasFailed)
 			return;
 	}
 
