@@ -318,6 +318,7 @@ namespace IDE
 			public bool mPerforceAutoCheckout = true;
 			public bool mSpellCheckEnabled = true;
 			public bool mShowLineNumbers = true;
+			public bool mFreeCursorMovement; 
 
 			public void Serialize(StructuredData sd)
 			{
@@ -338,6 +339,7 @@ namespace IDE
 				sd.Add("PerforceAutoCheckout", mPerforceAutoCheckout);
 				sd.Add("SpellCheckEnabled", mSpellCheckEnabled);
 				sd.Add("ShowLineNumbers", mShowLineNumbers);
+				sd.Add("FreeCursorMovement", mFreeCursorMovement);
 
 				using (sd.CreateObject("Colors"))
 					mColors.Serialize(sd);
@@ -364,6 +366,7 @@ namespace IDE
 				sd.Get("PerforceAutoCheckout", ref mPerforceAutoCheckout);
 				sd.Get("SpellCheckEnabled", ref mSpellCheckEnabled);
 				sd.Get("ShowLineNumbers", ref mShowLineNumbers);
+				sd.Get("FreeCursorMovement", ref mFreeCursorMovement);
 
 				using (sd.Open("Colors"))
 					mColors.Deserialize(sd);

@@ -739,6 +739,7 @@ namespace Beefy.widgets
                 StartSelection();
 
             MoveCursorToCoord(x, y);
+			ClampCursor();
 
             //PrintF("~TestStruct() %d\n", mInner.mVal1);            
 
@@ -808,6 +809,7 @@ namespace Beefy.widgets
             if ((mMouseDown) && (mMouseFlags == .Left))
             {
                 MoveCursorToCoord(x, y);
+				ClampCursor();
                 SelectToCursor();                
             }
         }
@@ -2151,7 +2153,10 @@ namespace Beefy.widgets
 	                            CursorLineAndColumn = LineAndColumn(lineAndColumn.mLine, lineAndColumn.mColumn + 1);
 	                            EnsureCursorVisible(true, false, false);
 	                            CursorMoved();
-	                            break;
+
+								ClampCursor();
+								if (lineAndColumn != CursorLineAndColumn)
+	                            	break;
 	                        }
 						}
 
@@ -2223,8 +2228,6 @@ namespace Beefy.widgets
 
                     if (mWidgetWindow.IsKeyDown(KeyCode.Control))
                     {
-                        //mEditWidget.Resize(mEditWidget.mX, mEditWidget.mY, mEditWidget.mWidth, mEditWidget.mHeight + aDir);
-
                         mEditWidget.VertScrollTo(mEditWidget.mVertPos.mDest + aDir * mEditWidget.mScrollContentContainer.mHeight * 0.25f);
                         EnsureCursorVisible(false);
                         return;
@@ -2238,30 +2241,23 @@ namespace Beefy.widgets
 							float cursorX;
 							float cursorY;
 							GetTextCoordAtCursor(out cursorX, out cursorY);
-							mCursorWantX = cursorX;
+							//mCursorWantX = cursorX;
 						}
 
-                        //if (!mAllowVirtualCursor)
-                        {
-                            lineIdx += aDir;
+                        lineIdx += aDir;
 
-                            float wantedX = mCursorWantX;
+                        float wantedX = mCursorWantX;
 
-                            float aX;
-                            float aY;
-                            GetTextCoordAtLineChar(lineIdx, 0, out aX, out aY);
-                            MoveCursorToCoord(mCursorWantX, aY);
+                        float aX;
+                        float aY;
+                        GetTextCoordAtLineChar(lineIdx, 0, out aX, out aY);
+                        MoveCursorToCoord(mCursorWantX, aY);
 
-                            // Restore old desired X
-                            mCursorWantX = wantedX;
-                        }
-                        /*else                            
-                        {                                
-                            mCursorBlinkTicks = 0;
-                            var prevLineAndColumn = CursorLineAndColumn;
-                            CursorLineAndColumn = LineAndColumn(Math.Max(0, prevLineAndColumn.mLine + aDir), prevLineAndColumn.mColumn);
-                            CursorMoved();
-                        }*/
+						ClampCursor();
+
+						// Restore old desired X
+						mCursorWantX = wantedX;
+                        
                     }
 
                     if (didSelectionMove)                        

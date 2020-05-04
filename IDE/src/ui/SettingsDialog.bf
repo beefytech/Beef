@@ -103,6 +103,7 @@ namespace IDE.ui
 				});
 
 			AddPropertiesItem(category, "Show Line Numbers", "mShowLineNumbers");
+			AddPropertiesItem(category, "Free Cursor Movement", "mFreeCursorMovement");
 
 			category.Open(true, true);
 

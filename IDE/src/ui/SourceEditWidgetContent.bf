@@ -3409,6 +3409,29 @@ namespace IDE.ui
                 IDEApp.sApp.mSymbolReferenceHelper.SourceUpdateText(this, index);
         }
 
+		public override void ClampCursor()
+		{
+			base.ClampCursor();
+
+			if (mVirtualCursorPos == null)
+				return;
+			if (gApp.mSettings.mEditorSettings.mFreeCursorMovement)
+				return;
+
+			int line;
+			int lineChar;
+			GetCursorLineChar(out line, out lineChar);            
+			
+			float wantWidth = 0;
+			int virtualEnd = GetLineEndColumn(line, false, false, false, false, &wantWidth);
+
+			String curLineStr = scope String();
+			GetLineText(line, curLineStr);
+			int32 lineEnd = (int32)curLineStr.Length;
+
+			mVirtualCursorPos.ValueRef.mColumn = (.)Math.Min(mVirtualCursorPos.Value.mColumn, Math.Max(virtualEnd, lineEnd));
+		}
+
         public override void PhysCursorMoved()
         {			
 			//Debug.WriteLine("Cursor moved {0} {1}", CursorLineAndColumn.mLine, CursorLineAndColumn.mColumn);
