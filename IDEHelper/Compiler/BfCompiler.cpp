@@ -1614,12 +1614,16 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		bfModule->mBfIRBuilder->CreateRetVoid();
 	}
 
+	auto targetType = project->mTargetType;
+	if ((targetType == BfTargetType_BeefWindowsApplication) && (mOptions.mPlatformType != BfPlatformType_Windows))
+		targetType = BfTargetType_BeefConsoleApplication;
+
 	// Generate "main"
 	if (!IsHotCompile())
 	{
 		BfIRFunctionType mainFuncType;
 		BfIRFunction mainFunc;
-		if ((project->mTargetType == BfTargetType_BeefConsoleApplication) || (project->mTargetType == BfTargetType_BeefTest))
+		if ((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefTest))
 		{
 			SmallVector<BfIRType, 2> paramTypes;
 			paramTypes.push_back(int32Type);
@@ -1628,7 +1632,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
             mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "main");			
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}
-		else if (project->mTargetType == BfTargetType_BeefDynLib)
+		else if (targetType == BfTargetType_BeefDynLib)
 		{		
 			SmallVector<BfIRType, 4> paramTypes;
 			paramTypes.push_back(nullPtrType); // hinstDLL			
@@ -1640,7 +1644,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 				bfModule->mBfIRBuilder->SetFuncCallingConv(mainFunc, BfIRCallingConv_StdCall);
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
 		}
-		else if (project->mTargetType == BfTargetType_BeefWindowsApplication)
+		else if (targetType == BfTargetType_BeefWindowsApplication)
 		{				
 			SmallVector<BfIRType, 4> paramTypes;
 			paramTypes.push_back(nullPtrType); // hInstance
@@ -1685,7 +1689,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 #endif
 		
 		BfIRBlock initSkipBlock;
-		if (project->mTargetType == BfTargetType_BeefDynLib)
+		if (targetType == BfTargetType_BeefDynLib)
 		{
 			auto initBlock = bfModule->mBfIRBuilder->CreateBlock("doInit", false);
 			initSkipBlock = bfModule->mBfIRBuilder->CreateBlock("skipInit", false);
@@ -1749,8 +1753,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		}
 
 		BfIRValue retValue;
-		if ((project->mTargetType == BfTargetType_BeefConsoleApplication) || (project->mTargetType == BfTargetType_BeefWindowsApplication) ||
-			(project->mTargetType == BfTargetType_BeefApplication_StaticLib) || (project->mTargetType == BfTargetType_BeefApplication_DynamicLib))
+		if ((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefWindowsApplication) ||
+			(targetType == BfTargetType_BeefApplication_StaticLib) || (targetType == BfTargetType_BeefApplication_DynamicLib))
 		{
 			bool hadRet = false;
 
@@ -1890,16 +1894,16 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			if (!hadRet)
 				retValue = bfModule->GetConstValue32(0);
 		}	
-		else if (project->mTargetType == BfTargetType_BeefDynLib)
+		else if (targetType == BfTargetType_BeefDynLib)
 		{
 			retValue = bfModule->GetConstValue32(1);
 		}
 
-		if (project->mTargetType == BfTargetType_BeefTest)
+		if (targetType == BfTargetType_BeefTest)
 			EmitTestMethod(bfModule, testMethods, retValue);
 
 		BfIRBlock deinitSkipBlock;
-		if (project->mTargetType == BfTargetType_BeefDynLib)
+		if (targetType == BfTargetType_BeefDynLib)
 		{			
 			auto deinitBlock = bfModule->mBfIRBuilder->CreateBlock("doDeinit", false);
 			deinitSkipBlock = bfModule->mBfIRBuilder->CreateBlock("skipDeinit", false);
