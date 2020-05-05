@@ -5230,12 +5230,18 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 	}
 
 	bool isInfiniteLoop = false;
+	bool isFalseLoop = false;
 
 	if (checkVal.mValue.IsConst())
 	{
+		mBfIRBuilder->CreateEnsureInstructionAt();
+
 		auto constVal = mBfIRBuilder->GetConstantById(checkVal.mValue.mId);
 		if (constVal->mTypeCode == BfTypeCode_Boolean)
+		{
 			isInfiniteLoop = constVal->mBool;
+			isFalseLoop = !isInfiniteLoop;
+		}
 	}
 
 	// We may have a call in the loop body
@@ -5254,7 +5260,13 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 	mBfIRBuilder->SetInsertPoint(bodyBB);	
 	if (whileStmt->mEmbeddedStatement != NULL)
 	{
-		VisitEmbeddedStatement(whileStmt->mEmbeddedStatement);		
+		if (isFalseLoop)
+		{
+			SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+			VisitEmbeddedStatement(whileStmt->mEmbeddedStatement);
+		}
+		else
+			VisitEmbeddedStatement(whileStmt->mEmbeddedStatement);		
 	}
 	else
 	{
@@ -5264,10 +5276,18 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 	{
 		isInfiniteLoop = false;
 	}
-	if (!mCurMethodState->mLeftBlockUncond)
+
+	if (!isFalseLoop)	
 	{
-		mBfIRBuilder->CreateBr(condBB);		
-	}	
+		if (!mCurMethodState->mLeftBlockUncond)
+		{
+			mBfIRBuilder->CreateBr(condBB);
+		}
+	}
+
+	if (!isInfiniteLoop)
+		mCurMethodState->mHadReturn = false;
+
 	mCurMethodState->mLeftBlockUncond = false;	
 	mCurMethodState->mLeftBlockCond = false;	
 
