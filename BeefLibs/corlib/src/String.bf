@@ -1937,7 +1937,7 @@ namespace System
 			{
 				// Optimized version for single-character replacements
 				char8 findC = find[0];
-				while (inIdx < mLength - find.mLength)
+				while (inIdx < mLength)
 				{
 					if (ptr[inIdx] == findC)
 					{
