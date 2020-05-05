@@ -40,9 +40,9 @@ namespace System
 				return 5;
 			case .DarkYellow:
 				return 6;
-			case .DarkGray:
-				return 7;
 			case .Gray:
+				return 7;
+			case .DarkGray:
 				return 8;
 			case .Blue:
 				return 9;
