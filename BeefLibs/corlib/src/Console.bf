@@ -6,37 +6,63 @@ namespace System
 {
 	public static class Console
 	{
-		public static Encoding InputEncoding = Encoding.ASCII;
-		public static Encoding OutputEncoding = Encoding.ASCII;
+		static Encoding InputEncoding = Encoding.ASCII;
+		static Encoding OutputEncoding = Encoding.ASCII;
 		
-		private static ConsoleColor mForegroundColor = .White;
-		private static ConsoleColor mBackgroundColor = .Black;
+		static ConsoleColor sForegroundColor = .White;
+		static ConsoleColor sBackgroundColor = .Black;
 
-		private static readonly ConsoleColor mOriginalForegroundColor = mForegroundColor;
-		private static readonly ConsoleColor mOriginalBackgroundColor = mBackgroundColor;
+		static readonly ConsoleColor sOriginalForegroundColor = sForegroundColor;
+		static readonly ConsoleColor sOriginalBackgroundColor = sBackgroundColor;
 
 		public static ConsoleColor ForegroundColor
 		{
-			get { return mForegroundColor; }
-			set { mForegroundColor = value; SetColors(); }
+			get { return sForegroundColor; }
+			set { sForegroundColor = value; SetColors(); }
 		}
 
 		public static ConsoleColor BackgroundColor
 		{
-			get { return mBackgroundColor; }
-			set { mBackgroundColor = value; SetColors(); }
+			get { return sBackgroundColor; }
+			set { sBackgroundColor = value; SetColors(); }
 		}
 		
-		private const uint32 STD_INPUT_HANDLE  = (uint32) - 10;
-		private const uint32 STD_OUTPUT_HANDLE = (uint32) - 11;
-		private const uint32 STD_ERROR_HANDLE  = (uint32) - 12;
+		const uint32 STD_INPUT_HANDLE  = (uint32)-10;
+		const uint32 STD_OUTPUT_HANDLE = (uint32)-11;
+		const uint32 STD_ERROR_HANDLE  = (uint32)-12;
 
-		[Import("kernel32.dll"), CLink]
-		private static extern bool SetConsoleTextAttribute(void* hConsoleOutput, uint16 wAttributes);
+		[CRepr]
+		struct CONSOLE_SCREEN_BUFFER_INFO
+		{
+			public uint16[2] mSize;
+			public uint16[2] mCursorPosition;
+			public uint16 mAttributes;
+			public uint16[4] mWindow;
+			public uint16[2] mMaximumWindowSize;
+		}
 
-		[Import("kernel32.dll"), CLink]
-		private static extern void* GetStdHandle(uint32 nStdHandle);
-		
+		[CLink]
+		static extern int SetConsoleTextAttribute(void* hConsoleOutput, uint16 wAttributes);
+
+		[CLink]
+		static extern int GetConsoleScreenBufferInfo(void* hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo);
+
+		[CLink]
+		static extern void* GetStdHandle(uint32 nStdHandle);
+
+#if BF_PLATFORM_WINDOWS
+		public static this()
+		{
+			let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+			CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
+			if (GetConsoleScreenBufferInfo(handle, out consoleInfo) != 0)
+			{
+				sOriginalForegroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes & 0xF);
+				sOriginalBackgroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes >> 4);
+			}
+		}
+#endif
+
 		static StreamWriter OpenStreamWriter(Platform.BfpFileStdKind stdKind, ref StreamWriter outStreamWriter)
 		{
 			if (outStreamWriter == null)
@@ -162,20 +188,20 @@ namespace System
 		
 		public static void ResetColor()
 		{
-			mForegroundColor = mOriginalForegroundColor;
-			mBackgroundColor = mOriginalBackgroundColor;
+			sForegroundColor = sOriginalForegroundColor;
+			sBackgroundColor = sOriginalBackgroundColor;
 
 #if !BF_PLATFORM_WINDOWS
 			Write("\x1B[0m");
 #endif
 		}
 
-		private static void SetColors()
+		static void SetColors()
 		{
 #if BF_PLATFORM_WINDOWS
 			let handle = GetStdHandle(STD_OUTPUT_HANDLE);
-			let fgColor = ForegroundColor.ToConsoleTextAttribute();
-			let bgColor = BackgroundColor.ToConsoleTextAttribute();
+			let fgColor = ForegroundColor.ConsoleTextAttribute;
+			let bgColor = BackgroundColor.ConsoleTextAttribute;
 			SetConsoleTextAttribute(handle, bgColor * 16 + fgColor);
 #else
 			Write("\x1B[{}m", ForegroundColor.ToAnsi());
