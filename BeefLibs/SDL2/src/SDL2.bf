@@ -5122,12 +5122,14 @@ namespace SDL2
 		}
 
 		// FIXME: I wish these weren't public...
+#if BF_PLATFORM_WINDOWS
 		[CRepr]
 		public struct INTERNAL_windows_wminfo
 		{
 			public Windows.HWnd window; // Refers to an HWND
 			public Windows.Handle hdc; // Refers to an HDC
 		}
+#endif
 
 		[CRepr]
 		public struct INTERNAL_winrt_wminfo
@@ -5190,7 +5192,9 @@ namespace SDL2
 		[CRepr, Union]
 		public struct INTERNAL_SysWMDriverUnion
 		{
+#if BF_PLATFORM_WINDOWS
 			public INTERNAL_windows_wminfo win;
+#endif
 			public INTERNAL_winrt_wminfo winrt;
 			public INTERNAL_x11_wminfo x11;
 			public INTERNAL_directfb_wminfo dfb;

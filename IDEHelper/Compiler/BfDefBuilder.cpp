@@ -558,7 +558,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 					methodDef->mCallingConvention = BfCallingConvention_Stdcall;
 			}
 			attributes = attributes->mNextAttribute;
-		}
+		}		
 	}
 	else if (methodDeclaration->mMixinSpecifier != NULL)
 	{
@@ -773,7 +773,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				{
 					methodDef->mCommutableKind = BfCommutableKind_Forward;
 				}
-			}
+			}			
 		}
 
 		attributes = attributes->mNextAttribute;

@@ -70,6 +70,7 @@ namespace System
 			return true;
 		}
 
+		[CallingConvention(.Cdecl)]
 		extern static void ReportTLSMember(int moduleTLSIndex, void* addr, void* markFunc);
 		static void ReportTLSMember(void* addr, void* markFunc)
 		{
@@ -91,8 +92,11 @@ namespace System
 		}
 
 #if BF_ENABLE_REALTIME_LEAK_CHECK || BF_DEBUG_ALLOC
+		[CallingConvention(.Cdecl)]
 		public extern static void Report();
+		[CallingConvention(.Cdecl)]
 		public extern static void Shutdown();
+		[CallingConvention(.Cdecl)]
 		public extern static void SetMaxRawDeferredObjectFreePercentage(int maxPercentage);
 #else
 		public static void Report() {}
@@ -101,19 +105,31 @@ namespace System
 #endif
 
 #if BF_ENABLE_REALTIME_LEAK_CHECK
+		[CallingConvention(.Cdecl)]
 		private extern static void Init();
+		[CallingConvention(.Cdecl)]
         public extern static void Collect(bool async = true);
+		[CallingConvention(.Cdecl)]
 		private extern static void StopCollecting();
+		[CallingConvention(.Cdecl)]
 		private extern static void AddStackMarkableObject(Object obj);
+		[CallingConvention(.Cdecl)]
 		private extern static void RemoveStackMarkableObject(Object obj);
-		[AlwaysInclude]
+		[CallingConvention(.Cdecl), AlwaysInclude]
 		private extern static void MarkAllStaticMembers();
+		[CallingConvention(.Cdecl)]
 		private extern static void FindAllTLSMembers();
+		[CallingConvention(.Cdecl)]
 		public extern static void DebugDumpLeaks();
+		[CallingConvention(.Cdecl)]
         public extern static void Mark(Object obj);
+		[CallingConvention(.Cdecl)]
 		public extern static void Mark(void* ptr, int size);
+		[CallingConvention(.Cdecl)]
 		public extern static void SetAutoCollectPeriod(int periodMS); // <= -1 to disable, 0 to constantly run. Defaults to -1
+		[CallingConvention(.Cdecl)]
 		public extern static void SetCollectFreeThreshold(int freeBytes); // -1 to disable, 0 to trigger collection after every single free. Defaults to 64MB
+		[CallingConvention(.Cdecl)]
 		public extern static void SetMaxPausePercentage(int maxPausePercentage); // 0 = disabled. Defaults to 20.
 #else
 		public static void Collect(bool async = true) {}

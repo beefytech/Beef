@@ -180,6 +180,8 @@ static int GetLLVMCallingConv(BfIRCallingConv callingConv)
 		llvmCallingConv = llvm::CallingConv::X86_ThisCall;
 	else if (callingConv == BfIRCallingConv_StdCall)
 		llvmCallingConv = llvm::CallingConv::X86_StdCall;
+	else if (callingConv == BfIRCallingConv_FastCall)
+		llvmCallingConv = llvm::CallingConv::X86_FastCall;
 	else if (callingConv == BfIRCallingConv_CDecl)
 		llvmCallingConv = llvm::CallingConv::C;
 	return llvmCallingConv;

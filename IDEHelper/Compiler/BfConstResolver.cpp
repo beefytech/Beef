@@ -328,6 +328,8 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 		if ((arg.mArgFlags & BfArgFlag_DeferredEval) != 0)
 		{
 			mExpectingType = arg.mExpectedType;
+			if (mExpectingType == NULL)
+				mExpectingType = wantType;
 
 			if (auto expr = BfNodeDynCast<BfExpression>(argExpr))
 				argValue = Resolve(expr, mExpectingType);

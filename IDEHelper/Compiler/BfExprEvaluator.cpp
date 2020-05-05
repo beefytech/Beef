@@ -4504,7 +4504,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		firstArg = irArgs[0];
 	
 	auto methodInstOwner = methodInstance->GetOwner();
-	auto expectCallingConvention = mModule->GetIRCallingConvention(methodInstOwner, methodDef);
+	auto expectCallingConvention = mModule->GetIRCallingConvention(methodInstance);
 	if ((methodInstOwner->IsFunction()) && (methodInstance->GetParamCount() > 0) && (methodInstance->GetParamName(0) == "this"))
 	{
 		auto paramType = methodInstance->GetParamType(0);
@@ -4563,7 +4563,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		{
 			if (paramType->IsStruct())
 			{
-				if ((!doingThis) || (!methodDef->mIsMutating && !methodDef->mNoSplat))
+				if ((!doingThis) || (!methodDef->mIsMutating && methodInstance->AllowsSplatting()))
 				{
 					auto loweredTypeCode = paramType->GetLoweredType();
 					if (loweredTypeCode != BfTypeCode_None)
@@ -4955,7 +4955,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	if (argVal.mType->IsValuelessType())
 		return;
 
-	if ((argVal.mType->IsTypedPrimitive()) && (methodDef->HasNoThisSplat()))
+	if ((!methodInstance->AllowsThisSplatting()) && (methodDef->mIsMutating))
 	{
 		argVal = mModule->MakeAddressable(argVal);
 		irArgs.push_back(argVal.mValue);
@@ -4963,7 +4963,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	}
 
 	auto thisType = methodInstance->GetParamType(-1);
-	PushArg(argVal, irArgs, methodDef->HasNoThisSplat(), thisType->IsPointer());
+	PushArg(argVal, irArgs, !methodInstance->AllowsThisSplatting(), thisType->IsPointer());
 }
 
 void BfExprEvaluator::FinishDeferredEvals(SizedArrayImpl<BfResolvedArg>& argValues)
@@ -5007,10 +5007,10 @@ void BfExprEvaluator::AddCallDependencies(BfMethodInstance* methodInstance)
 BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValue& inTarget, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance moduleMethodInstance, bool bypassVirtual, SizedArrayImpl<BfResolvedArg>& argValues, bool skipThis)
 {
 	static int sCallIdx = 0;
-	if (!mModule->mCompiler->mIsResolveOnly)
+ 	if (!mModule->mCompiler->mIsResolveOnly)
 		sCallIdx++;
 	int callIdx = sCallIdx;
-	if (callIdx == 0x0000042B)
+	if (callIdx == 4348)
 	{
 		NOP;
 	}
@@ -9195,7 +9195,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		return;
 	}
 
-	bool hasIncompatibleCallingConventions = !mModule->mSystem->IsCompatibleCallingConvention(methodInstance->mMethodDef->mCallingConvention, bindMethodInstance->mMethodDef->mCallingConvention);
+	bool hasIncompatibleCallingConventions = !mModule->mSystem->IsCompatibleCallingConvention(methodInstance->mCallingConvention, bindMethodInstance->mCallingConvention);
 
 	auto _GetInvokeMethodName = [&]()
 	{
@@ -9359,7 +9359,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 	bool isStructTarget = (target) && (target.mType->IsStruct());
 	bool bindCapturesThis = bindMethodInstance->HasThis() && !isStructTarget;
-	bool needsSplat = (isStructTarget) && (!bindMethodInstance->mMethodDef->mIsMutating) && (!bindMethodInstance->mMethodDef->mNoSplat);
+	bool needsSplat = (isStructTarget) && (!bindMethodInstance->mMethodDef->mIsMutating) && (bindMethodInstance->AllowsSplatting());
 	bool captureThisByValue = isStructTarget;	
 	if (bindMethodInstance->mMethodDef->mIsLocalMethod)
 	{
@@ -9529,8 +9529,10 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		funcValue = mModule->mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, methodName);
 
 		auto srcCallingConv = mModule->GetIRCallingConvention(methodInstance);
-		if ((!hasThis) && (methodInstance->mMethodDef->mCallingConvention == BfCallingConvention_Stdcall))
+		if ((!hasThis) && (methodInstance->mCallingConvention == BfCallingConvention_Stdcall))
 			srcCallingConv = BfIRCallingConv_StdCall;
+		else if (methodInstance->mCallingConvention == BfCallingConvention_Fastcall)
+			srcCallingConv = BfIRCallingConv_FastCall;
 		mModule->mBfIRBuilder->SetFuncCallingConv(funcValue, srcCallingConv);
 		
 		mModule->mBfIRBuilder->SetActiveFunction(funcValue);

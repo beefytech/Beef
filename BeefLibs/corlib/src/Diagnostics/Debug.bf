@@ -39,6 +39,7 @@ namespace System.Diagnostics
 #endif
 		}
 
+		[CallingConvention(.Cdecl)]
 		static extern void Write(char8* str, int strLen);
 
 		public static void Write(String line)

@@ -16,6 +16,7 @@ namespace System
     public class Type
     {
 		extern const Type* sTypes;
+		extern static int32 sTypeCount;
 
 		protected const BindingFlags cDefaultLookup = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 
@@ -25,7 +26,15 @@ namespace System
         protected int32 mMemberDataOffset;
         protected TypeCode mTypeCode;
         protected uint8 mAlign;
-        
+
+		public static TypeId TypeIdEnd
+		{
+			get
+			{
+				return (.)sTypeCount;
+			}
+		}
+
         public int32 Size
         {
             get

@@ -655,6 +655,20 @@ bool BfMethodInstance::IsTestMethod()
 		(mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes != NULL) && (mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes->Contains(GetOwner()->mModule->mCompiler->mTestAttributeTypeDef));
 }
 
+bool BfMethodInstance::AllowsSplatting()
+{
+	if (mCallingConvention != BfCallingConvention_Unspecified)
+		return false;
+	return !mMethodDef->mNoSplat;
+}
+
+bool BfMethodInstance::AllowsThisSplatting()
+{
+	if (mCallingConvention != BfCallingConvention_Unspecified)
+		return false;
+	return !mMethodDef->HasNoThisSplat();
+}
+
 bool BfMethodInstance::HasThis()
 {
 	if (mMethodDef->mIsStatic)
@@ -723,7 +737,7 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
 			return mMethodInfoEx->mClosureInstanceInfo->mThisOverride;
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (mMethodDef->mNoSplat)))
+		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (owner->GetLoweredType() == BfTypeCode_None))
 			return owner->mModule->CreatePointerType(owner);
 		return owner;
 	}
@@ -743,7 +757,7 @@ bool BfMethodInstance::GetParamIsSplat(int paramIdx)
 	{
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		if ((owner->IsValueType()) && (mMethodDef->mIsMutating || mMethodDef->mNoSplat))
+		if ((owner->IsValueType()) && (mMethodDef->mIsMutating || !AllowsSplatting()))
 			return false;
 		return owner->mIsSplattable;
 	}	
@@ -926,7 +940,33 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			checkType = GetParamType(paramIdx);
 		}		
 
-		if ((paramIdx != -1) || (!mMethodDef->mNoSplat && !mMethodDef->mIsMutating))
+
+		bool checkLowered = false;		
+		bool doSplat = false;
+		if (paramIdx == -1)
+		{
+			if ((checkType->IsSplattable()) && (AllowsThisSplatting()))
+			{
+				doSplat = true;
+			}
+			else if (!mMethodDef->mIsMutating)
+				checkLowered = true;
+		}
+		else
+		{			
+			if (checkType->IsMethodRef())
+			{
+				doSplat = true;
+			}
+			else if ((checkType->IsSplattable()) && (AllowsSplatting()))
+			{
+				doSplat = true;
+			}
+			else
+				checkLowered = true;
+		}
+
+		if (checkLowered)
 		{
 			auto loweredTypeCode = checkType->GetLoweredType();
 			if (loweredTypeCode != BfTypeCode_None)
@@ -946,20 +986,10 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			module->PopulateType(checkType, BfPopulateType_Data);
 		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
 			continue;
-
-		bool doSplat = true;
-		if (checkType->IsMethodRef())
+		
+		if (doSplat)
 		{
-			doSplat = true;
-		}
-		else if (mMethodDef->mNoSplat)
-		{
-			doSplat = false;
-		}
-		else
-		{
-			int splatCount = checkType->GetSplatCount();
-			doSplat = ((checkType->IsSplattable()) && ((paramIdx != -1) || (!mMethodDef->mIsMutating)));
+			int splatCount = checkType->GetSplatCount();			
 			if ((int)paramTypes.size() + splatCount > module->mCompiler->mOptions.mMaxSplatRegs)
 			{
 				auto checkTypeInst = checkType->ToTypeInstance();
@@ -3789,8 +3819,15 @@ String BfTypeUtils::TypeToString(BfTypeReference* typeRef)
 		return name;
 	}
 
+	if (auto constTypeRef = BfNodeDynCast<BfConstExprTypeRef>(typeRef))
+	{
+		String name = "const ";
+		name += constTypeRef->mConstExpr->ToString();
+		return name;
+	}
+
 	BF_DBG_FATAL("Not implemented");
-	return "???";
+	return typeRef->ToString();
 }
 
 bool BfTypeUtils::TypeEquals(BfType* typeA, BfType* typeB, BfType* selfType)

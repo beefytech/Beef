@@ -282,8 +282,9 @@ namespace IDE
 					linkLine.Append(" ");
 			    }*/
 
-			    if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication) ||
-			        (project.mGeneralOptions.mTargetType == Project.TargetType.C_GUIApplication))
+				if ((mPlatformType == .Windows) &&
+			    	((project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication) ||
+			        (project.mGeneralOptions.mTargetType == Project.TargetType.C_GUIApplication)))
 			    {
 			        linkLine.Append("-mwindows ");
 			    }

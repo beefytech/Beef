@@ -17,9 +17,9 @@ namespace System
         public static extern Object UnsafeCastToObject(void* ptr);
 		[Intrinsic("cast")]
 		public static extern void* UnsafeCastToPtr(Object obj);
-		[NoReturn]
+		[CallingConvention(.Cdecl), NoReturn]
 		public static extern void ThrowIndexOutOfRange(int stackOffset = 0);
-		[NoReturn]
+		[CallingConvention(.Cdecl), NoReturn]
 		public static extern void FatalError(String error, int stackOffset = 0);
 		[Intrinsic("memcpy")]
 		public static extern void MemCpy(void* dest, void* src, int length, int32 align = 1, bool isVolatile = false);
@@ -35,43 +35,70 @@ namespace System
 		public static extern void* StdMalloc(int size);
 		[LinkName("free")]
 		public static extern void StdFree(void* ptr);
-		public static extern void* VirtualAlloc(int size, bool canExecute, bool canWrite);		
+		[CallingConvention(.Cdecl)]
+		public static extern void* VirtualAlloc(int size, bool canExecute, bool canWrite);
+		[CallingConvention(.Cdecl)]
 		public static extern int32 CStrLen(char8* charPtr);
+		[CallingConvention(.Cdecl)]
 		public static extern int64 GetTickCountMicro();
+		[CallingConvention(.Cdecl)]
 		public static extern void BfDelegateTargetCheck(void* target);
-		[AlwaysInclude]
+		[CallingConvention(.Cdecl), AlwaysInclude]
 		public static extern void* LoadSharedLibrary(char8* filePath);
-		[AlwaysInclude]
+		[CallingConvention(.Cdecl), AlwaysInclude]
 		public static extern void LoadSharedLibraryInto(char8* filePath, void** libDest);
-		[AlwaysInclude]
+		[CallingConvention(.Cdecl), AlwaysInclude]
 		public static extern void* GetSharedProcAddress(void* libHandle, char8* procName);
-		[AlwaysInclude]
+		[CallingConvention(.Cdecl), AlwaysInclude]
 		public static extern void GetSharedProcAddressInto(void* libHandle, char8* procName, void** procDest);
+		[CallingConvention(.Cdecl)]
 		public static extern char8* GetCommandLineArgs();
+		[CallingConvention(.Cdecl)]
 		public static extern void ProfilerCmd(char8* str);
+		[CallingConvention(.Cdecl)]
 		public static extern void ReportMemory();
+		[CallingConvention(.Cdecl)]
 		public static extern void ObjectDynCheck(Object obj, int32 typeId, bool allowNull);
+		[CallingConvention(.Cdecl)]
 		public static extern void ObjectDynCheckFailed(Object obj, int32 typeId);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectCreated(Object obj, int size, ClassVData* classVData);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectCreatedEx(Object obj, int size, ClassVData* classVData);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectAllocated(Object obj, int size, ClassVData* classVData);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectAllocatedEx(Object obj, int size, ClassVData* classVData);
+		[CallingConvention(.Cdecl)]
 		public static extern int Dbg_PrepareStackTrace(int baseAllocSize, int maxStackTraceDepth);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectStackInit(Object object, ClassVData* classVData);
+		[CallingConvention(.Cdecl)]
 		public static extern Object Dbg_ObjectAlloc(TypeInstance typeInst, int size);
+		[CallingConvention(.Cdecl)]
 		public static extern Object Dbg_ObjectAlloc(ClassVData* classVData, int size, int align, int maxStackTraceDepth);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectPreDelete(Object obj);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectPreCustomDelete(Object obj);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_MarkObjectDeleted(Object obj);
+		[CallingConvention(.Cdecl)]
 		public static extern void* Dbg_RawAlloc(int size);
+		[CallingConvention(.Cdecl)]
 		public static extern void* Dbg_RawObjectAlloc(int size);
+		[CallingConvention(.Cdecl)]
 		public static extern void* Dbg_RawAlloc(int size, DbgRawAllocData* rawAllocData);
+		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_RawFree(void* ptr);
 
-		[AlwaysInclude]
+		[CallingConvention(.Cdecl), AlwaysInclude]
 		static extern void Shutdown();
+		[CallingConvention(.Cdecl)]
 		static extern void Test_Init(char8* testData);
+		[CallingConvention(.Cdecl)]
 		static extern int32 Test_Query();
+		[CallingConvention(.Cdecl)]
 		static extern void Test_Finish();
 
 		static void* sModuleHandle;

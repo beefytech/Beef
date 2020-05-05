@@ -7275,8 +7275,16 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
  			auto resolvedType = ResolveTypeRef(refTypeRef->mElementType, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
  			if (resolvedType != NULL)
  			{
-				if ((resolvedType->IsComposite()) || (resolvedType->IsGenericParam()))
-					needsRefWrap = true;								
+				if ((resolvedType->IsValueType()) || (resolvedType->IsGenericParam()))
+					needsRefWrap = true;
+
+				if ((InDefinitionSection()) && (!resolvedType->IsGenericParam()))
+				{
+					if (!resolvedType->IsValueType())
+						Warn(0, StrFormat("Specified 'mut' has no effect on '%s' since reference types are always mutable", TypeToString(resolvedType).c_str()), refTypeRef->mRefToken);
+					else
+						Warn(0, "Use 'mut' for generic arguments which may or may not be reference types. Consider using 'ref' here, instead.", refTypeRef->mRefToken);
+				}
  			}			
 
 			if (!needsRefWrap)

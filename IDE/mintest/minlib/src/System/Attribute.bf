@@ -156,11 +156,40 @@ namespace System
 	[AttributeUsage(.Method /*2*/ | .StaticField)]
 	public struct LinkNameAttribute : Attribute
 	{
+		public enum MangleKind
+		{
+			Beef,
+			C,
+			CPP
+		}
+
 		public this(String linkName)
 		{
 			
 		}
+
+		public this(MangleKind mangleKind)
+		{
+		}
 	}
+
+	[AttributeUsage(.Method | .Delegate | .Function)]
+	public struct CallingConventionAttribute : Attribute
+	{
+		public enum Kind
+		{
+			Unspecified,
+			Cdecl,
+			Stdcall,
+			Fastcall,
+		}
+
+		public this(Kind callingConvention)
+		{
+
+		}
+	}
+
 
 	[AttributeUsage(.Method | .Delegate | .Function)]
 	public struct StdCallAttribute : Attribute

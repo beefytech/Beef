@@ -6,9 +6,63 @@ namespace System
 {
 	public static class Console
 	{
-		public static Encoding InputEncoding = Encoding.ASCII;
-		public static Encoding OutputEncoding = Encoding.ASCII;
+		static Encoding InputEncoding = Encoding.ASCII;
+		static Encoding OutputEncoding = Encoding.ASCII;
 		
+		static ConsoleColor sForegroundColor = .White;
+		static ConsoleColor sBackgroundColor = .Black;
+
+		static readonly ConsoleColor sOriginalForegroundColor = sForegroundColor;
+		static readonly ConsoleColor sOriginalBackgroundColor = sBackgroundColor;
+
+		public static ConsoleColor ForegroundColor
+		{
+			get { return sForegroundColor; }
+			set { sForegroundColor = value; SetColors(); }
+		}
+
+		public static ConsoleColor BackgroundColor
+		{
+			get { return sBackgroundColor; }
+			set { sBackgroundColor = value; SetColors(); }
+		}
+		
+		const uint32 STD_INPUT_HANDLE  = (uint32)-10;
+		const uint32 STD_OUTPUT_HANDLE = (uint32)-11;
+		const uint32 STD_ERROR_HANDLE  = (uint32)-12;
+
+		[CRepr]
+		struct CONSOLE_SCREEN_BUFFER_INFO
+		{
+			public uint16[2] mSize;
+			public uint16[2] mCursorPosition;
+			public uint16 mAttributes;
+			public uint16[4] mWindow;
+			public uint16[2] mMaximumWindowSize;
+		}
+
+		[CLink]
+		static extern int SetConsoleTextAttribute(void* hConsoleOutput, uint16 wAttributes);
+
+		[CLink]
+		static extern int GetConsoleScreenBufferInfo(void* hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo);
+
+		[CLink]
+		static extern void* GetStdHandle(uint32 nStdHandle);
+
+#if BF_PLATFORM_WINDOWS
+		public static this()
+		{
+			let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+			CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
+			if (GetConsoleScreenBufferInfo(handle, out consoleInfo) != 0)
+			{
+				sOriginalForegroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes & 0xF);
+				sOriginalBackgroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes >> 4);
+			}
+		}
+#endif
+
 		static StreamWriter OpenStreamWriter(Platform.BfpFileStdKind stdKind, ref StreamWriter outStreamWriter)
 		{
 			if (outStreamWriter == null)
@@ -130,6 +184,29 @@ namespace System
 			String str = scope String(256);
 			obj.ToString(str);
 			WriteLine(str);
+		}
+		
+		public static void ResetColor()
+		{
+			sForegroundColor = sOriginalForegroundColor;
+			sBackgroundColor = sOriginalBackgroundColor;
+
+#if !BF_PLATFORM_WINDOWS
+			Write("\x1B[0m");
+#endif
+		}
+
+		static void SetColors()
+		{
+#if BF_PLATFORM_WINDOWS
+			let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+			let fgColor = ForegroundColor.ConsoleTextAttribute;
+			let bgColor = BackgroundColor.ConsoleTextAttribute;
+			SetConsoleTextAttribute(handle, bgColor * 16 + fgColor);
+#else
+			Write("\x1B[{}m", ForegroundColor.ToAnsi());
+			Write("\x1B[{}m", BackgroundColor.ToAnsi() + 10);
+#endif
 		}
 	}
 }

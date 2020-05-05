@@ -5191,6 +5191,8 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 {
 	UpdateSrcPos(whileStmt);
 
+	bool prevHadReturn = mCurMethodState->mHadReturn;
+
 	auto condBB = mBfIRBuilder->CreateBlock("while.cond");
 	auto bodyBB = mBfIRBuilder->CreateBlock("while.body");	
 	auto endBB = mBfIRBuilder->CreateBlock("while.end");	
@@ -5230,18 +5232,30 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 	}
 
 	bool isInfiniteLoop = false;
+	bool isFalseLoop = false;
 
 	if (checkVal.mValue.IsConst())
 	{
+		mBfIRBuilder->CreateEnsureInstructionAt();
+
 		auto constVal = mBfIRBuilder->GetConstantById(checkVal.mValue.mId);
 		if (constVal->mTypeCode == BfTypeCode_Boolean)
+		{
 			isInfiniteLoop = constVal->mBool;
+			isFalseLoop = !isInfiniteLoop;
+		}
 	}
 
 	// We may have a call in the loop body
 	mCurMethodState->mMayNeedThisAccessCheck = true;
 
-	mBfIRBuilder->CreateCondBr(checkVal.mValue, bodyBB, endBB);
+	// For BeefBackend we continue to do CondBr because it helps our flow analysis and we optimize it anyway
+	if ((isInfiniteLoop) && (!IsTargetingBeefBackend()))
+		mBfIRBuilder->CreateBr(bodyBB);
+	else if ((isFalseLoop) && (!IsTargetingBeefBackend()))
+		mBfIRBuilder->CreateBr(endBB);
+	else	
+		mBfIRBuilder->CreateCondBr(checkVal.mValue, bodyBB, endBB);
 
 	// Apply deferred local assign to mEmbeddedStatement and itrStmt
 	BfDeferredLocalAssignData deferredLocalAssignData(mCurMethodState->mCurScope);
@@ -5254,7 +5268,13 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 	mBfIRBuilder->SetInsertPoint(bodyBB);	
 	if (whileStmt->mEmbeddedStatement != NULL)
 	{
-		VisitEmbeddedStatement(whileStmt->mEmbeddedStatement);		
+		if (isFalseLoop)
+		{
+			SetAndRestoreValue<bool> ignoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+			VisitEmbeddedStatement(whileStmt->mEmbeddedStatement);
+		}
+		else
+			VisitEmbeddedStatement(whileStmt->mEmbeddedStatement);		
 	}
 	else
 	{
@@ -5264,15 +5284,25 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 	{
 		isInfiniteLoop = false;
 	}
-	if (!mCurMethodState->mLeftBlockUncond)
+	
+	if ((!mCurMethodState->mLeftBlockUncond) && (!isFalseLoop))
 	{
-		mBfIRBuilder->CreateBr(condBB);		
+		mBfIRBuilder->CreateBr(condBB);
 	}	
+
+	if (!isInfiniteLoop)
+		mCurMethodState->mHadReturn = prevHadReturn;
+
 	mCurMethodState->mLeftBlockUncond = false;	
 	mCurMethodState->mLeftBlockCond = false;	
 
 	mBfIRBuilder->AddBlock(endBB);
 	mBfIRBuilder->SetInsertPoint(endBB);
+
+	if (isFalseLoop)
+	{
+		mBfIRBuilder->EraseFromParent(bodyBB);		
+	}
 
 	RestoreScopeState();
 

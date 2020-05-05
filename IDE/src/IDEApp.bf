@@ -6011,6 +6011,9 @@ namespace IDE
 
         void ShowRecentFile(int idx, bool setFocus = true)
         {
+			if (idx >= mRecentlyDisplayedFiles.Count)
+				return;
+
             String sourceFile = mRecentlyDisplayedFiles[idx];
             if (sourceFile == DisassemblyPanel.sPanelName)
             {
@@ -6181,6 +6184,12 @@ namespace IDE
 				delete mRecentlyDisplayedFiles[recentFileIdx];
 				mRecentlyDisplayedFiles.RemoveAt(recentFileIdx);
 	            UpdateRecentDisplayedFilesMenuItems();
+			}
+
+			if (tabButton.mIsActive)
+			{
+				// If this succeeds then tabbUtton.mIsActive will be false, otherwise we do the 'nextTab' logic below
+				ShowRecentFile(0);
 			}
 
 			TabbedView.TabButton nextTab = null;

@@ -204,12 +204,15 @@ namespace System.Threading
 		}
 
         public void Suspend() { SuspendInternal(); }
+		[CallingConvention(.Cdecl)]
         private extern void SuspendInternal();
 
         public void Resume() { ResumeInternal(); }
+		[CallingConvention(.Cdecl)]
         private extern void ResumeInternal();
 
         public void Interrupt() { InterruptInternal(); }
+		[CallingConvention(.Cdecl)]
         private extern void InterruptInternal();
 
         public ThreadPriority Priority
@@ -217,7 +220,9 @@ namespace System.Threading
             get { return (ThreadPriority)GetPriorityNative(); }
             set { SetPriorityNative((int32)value); }
         }
+		[CallingConvention(.Cdecl)]
         private extern int32 GetPriorityNative();
+		[CallingConvention(.Cdecl)]
         private extern void SetPriorityNative(int32 priority);
 
         extern bool GetIsAlive();
@@ -229,6 +234,7 @@ namespace System.Threading
             }
         }
 
+		[CallingConvention(.Cdecl)]
         extern bool GetIsThreadPoolThread();
         public bool IsThreadPoolThread
         {
@@ -305,6 +311,7 @@ namespace System.Threading
             }
         }
 
+		[CallingConvention(.Cdecl)]
         private static extern Thread GetCurrentThreadNative();
         
         void SetStart(Delegate start, int32 maxStackSize)
@@ -323,7 +330,8 @@ namespace System.Threading
             // Thread owns delegate
             delete mDelegate;
         }
-        
+
+		[CallingConvention(.Cdecl)]
         private extern void InternalFinalize();
 
         public bool IsBackground
@@ -331,16 +339,18 @@ namespace System.Threading
             get { return IsBackgroundNative(); }
             set { SetBackgroundNative(value); }
         }
+		[CallingConvention(.Cdecl)]
         private extern bool IsBackgroundNative();
+		[CallingConvention(.Cdecl)]
         private extern void SetBackgroundNative(bool isBackground);
-
+		[CallingConvention(.Cdecl)]
 		public extern void SetJoinOnDelete(bool joinOnDelete);
 
         public ThreadState ThreadState
         {
             get { return (ThreadState)GetThreadStateNative(); }
         }
-        
+        [CallingConvention(.Cdecl)]
         private extern int32 GetThreadStateNative();
 
         public void SetName(String name)
@@ -363,7 +373,7 @@ namespace System.Threading
             if (mName != null)
                 outName.Append(mName);
         }
-        
+        [CallingConvention(.Cdecl)]
         private extern void InformThreadNameChange(String name);
     }
 }
