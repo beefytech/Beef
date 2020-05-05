@@ -1,6 +1,4 @@
-using System;
-
-namespace ColorSteak
+namespace System
 {
 	public enum ConsoleColor
 	{
