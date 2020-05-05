@@ -9,6 +9,34 @@ namespace System
 		public static Encoding InputEncoding = Encoding.ASCII;
 		public static Encoding OutputEncoding = Encoding.ASCII;
 		
+		private static ConsoleColor mForegroundColor = .White;
+		private static ConsoleColor mBackgroundColor = .Black;
+
+		private static readonly ConsoleColor mOriginalForegroundColor = mForegroundColor;
+		private static readonly ConsoleColor mOriginalBackgroundColor = mBackgroundColor;
+
+		public static ConsoleColor ForegroundColor
+		{
+			get { return mForegroundColor; }
+			set { mForegroundColor = value; SetColors(); }
+		}
+
+		public static ConsoleColor BackgroundColor
+		{
+			get { return mBackgroundColor; }
+			set { mBackgroundColor = value; SetColors(); }
+		}
+		
+		private const uint32 STD_INPUT_HANDLE  = (uint32) - 10;
+		private const uint32 STD_OUTPUT_HANDLE = (uint32) - 11;
+		private const uint32 STD_ERROR_HANDLE  = (uint32) - 12;
+
+		[Import("kernel32.dll"), CLink]
+		private static extern bool SetConsoleTextAttribute(void* hConsoleOutput, uint16 wAttributes);
+
+		[Import("kernel32.dll"), CLink]
+		private static extern void* GetStdHandle(uint32 nStdHandle);
+		
 		static StreamWriter OpenStreamWriter(Platform.BfpFileStdKind stdKind, ref StreamWriter outStreamWriter)
 		{
 			if (outStreamWriter == null)
@@ -130,6 +158,29 @@ namespace System
 			String str = scope String(256);
 			obj.ToString(str);
 			WriteLine(str);
+		}
+		
+		public static void ResetColor()
+		{
+			mForegroundColor = mOriginalForegroundColor;
+			mBackgroundColor = mOriginalBackgroundColor;
+
+#if !BF_PLATFORM_WINDOWS
+			Write("\x1B[0m");
+#endif
+		}
+
+		private static void SetColors()
+		{
+#if BF_PLATFORM_WINDOWS
+			let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+			let fgColor = ForegroundColor.ToConsoleTextAttribute();
+			let bgColor = BackgroundColor.ToConsoleTextAttribute();
+			SetConsoleTextAttribute(handle, bgColor * 16 + fgColor);
+#else
+			Write("\x1B[{}m", ForegroundColor.ToAnsi());
+			Write("\x1B[{}m", BackgroundColor.ToAnsi() + 10);
+#endif
 		}
 	}
 }
