@@ -137,16 +137,20 @@ namespace System
 				major = 0;
 				minor = 0;
 				build = 0;
-				uint32 VerSize, Wnd;
+				uint32 verSize, wnd;
 				VSFixedFileInfo* FI = &VSFixedFileInfo();
 
-				uint32 InfoSize = GetFileVersionInfoSizeA("kernel32.dll", &Wnd);
+				uint32 infoSize = GetFileVersionInfoSizeA("kernel32.dll", &wnd);
 
-				if (InfoSize != 0) {
-					void* VerBuf = Internal.StdMalloc(InfoSize);
+				if (infoSize != 0)
+				{
+					void* verBuf = new uint8[infoSize]*;
+					defer delete verBuf;
 
-					if (GetFileVersionInfoA("kernel32.dll", &Wnd, InfoSize, VerBuf)) {
-						if (VerQueryValueA(VerBuf, "\\", (void**)(&FI), &VerSize)) {
+					if (GetFileVersionInfoA("kernel32.dll", &wnd, infoSize, verBuf))
+					{
+						if (VerQueryValueA(verBuf, "\\", (void**)(&FI), &verSize))
+						{
 							major = FI.dwProductVersionMS >> 16;
 							minor = (uint16)FI.dwProductVersionMS;
 							build = FI.dwProductVersionLS >> 16;
@@ -154,7 +158,7 @@ namespace System
 						}
 					}
 
-					Internal.StdFree(VerBuf);
+					Internal.StdFree(verBuf);
 				}
 
 				return result;
@@ -165,10 +169,13 @@ namespace System
 				LPWKSTA_INFO_100 LBuf = null;
 				bool result = NetWkstaGetInfo(null, 100, &LBuf) == 0;
 
-				if (result) {
+				if (result)
+				{
 					major = LBuf.wki100_ver_major;
 					minor = LBuf.wki100_ver_minor;
-				} else {
+				}
+				else
+				{
 					major = 0;
 					minor = 0;
 				}
@@ -195,12 +202,16 @@ namespace System
 			if (Version.Check(5, 1)) // GetNativeSystemInfo not supported on Windows 2000
 				GetNativeSystemInfo(&SysInfo);
 
-			if ((Version.Major > 6) || ((Version.Major == 6) && (Version.Minor > 1))) {
-				if (GetProductVersion(out MajorNum, out MinorNum, out BuildNum)) {
+			if ((Version.Major > 6) || ((Version.Major == 6) && (Version.Minor > 1)))
+			{
+				if (GetProductVersion(out MajorNum, out MinorNum, out BuildNum))
+				{
 					Version.Major = MajorNum;
 					Version.Minor = MinorNum;
 					Version.Build = BuildNum;
-				} else if (GetNetWkstaMajorMinor(out MajorNum, out MinorNum)) {
+				}
+				else if (GetNetWkstaMajorMinor(out MajorNum, out MinorNum))
+				{
 					Version.Major = MajorNum;
 					Version.Minor = MinorNum;
 				}
