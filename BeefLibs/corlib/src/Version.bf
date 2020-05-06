@@ -2,18 +2,18 @@ namespace System
 {
 	struct Version
 	{
-		public int32 Major;
-		public int32 Minor;
-		public int32 Build = -1;
-		public int32 Revision = -1;
+		public uint32 Major;
+		public uint32 Minor;
+		public uint32 Build = 0;
+		public uint32 Revision = 0;
 
-		public this(int32 major, int32 minor)
+		public this(uint32 major, uint32 minor)
 		{
 			Major = major;
 			Minor = minor;
 		}
 
-		public this(int32 major, int32 minor, int32 build, int32 revision)
+		public this(uint32 major, uint32 minor, uint32 build, uint32 revision)
 		{
 			Major = major;
 			Minor = minor;
@@ -48,6 +48,33 @@ namespace System
 			        return -1;
 
 			return 0;
+		}
+
+		[Inline]
+		public bool Check(uint32 major)
+		{
+			return Major == major;
+		}
+
+		[Inline]
+		public bool Check(uint32 major, uint32 minor)
+		{
+			return (Major > major) || ((Major == major) && (Minor >= minor));
+		}
+
+		[Inline]
+		public bool Check(uint32 major, uint32 minor, uint32 build)
+		{
+			return (Major > major) || ((Major == major) && (Minor > minor)) ||
+				((Major == major) && (Minor == minor) && (Build >= build));
+		}
+
+		[Inline]
+		public bool Check(uint32 major, uint32 minor, uint32 build, uint32 revision)
+		{
+			return (Major > major) || ((Major == major) && (Minor > minor)) ||
+				((Major == major) && (Minor == minor) && (Build > build)) ||
+				((Major == major) && (Minor == minor) && (Build == build) && (Revision >= revision));
 		}
 	}
 }
