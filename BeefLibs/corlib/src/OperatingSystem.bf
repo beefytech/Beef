@@ -157,8 +157,6 @@ namespace System
 							result = true;
 						}
 					}
-
-					Internal.StdFree(verBuf);
 				}
 
 				return result;
