@@ -4955,7 +4955,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	if (argVal.mType->IsValuelessType())
 		return;
 
-	if ((!methodInstance->AllowsThisSplatting()) && (methodDef->mIsMutating))
+	if ((!methodInstance->AllowsThisSplatting()) || (methodDef->mIsMutating))
 	{
 		argVal = mModule->MakeAddressable(argVal);
 		irArgs.push_back(argVal.mValue);

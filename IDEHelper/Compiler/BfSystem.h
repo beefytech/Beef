@@ -710,8 +710,7 @@ public:
 	bool mHasAppend;
 	bool mAlwaysInline;	
 	bool mNoReturn;
-	bool mIsMutating;
-	bool mNoSplat;
+	bool mIsMutating;	
 	bool mNoReflect;
 	bool mIsSkipCall;
 	bool mIsOperator;
@@ -737,8 +736,7 @@ public:
 		mIsPartial = false;
 		mCLink = false;		
 		mNoReturn = false;
-		mIsMutating = false;
-		mNoSplat = false;
+		mIsMutating = false;		
 		mNoReflect = false;
 		mIsSkipCall = false;
 		mIsOperator = false;
@@ -763,7 +761,7 @@ public:
 	virtual ~BfMethodDef();
 
 	static BfImportKind GetImportKindFromPath(const StringImpl& filePath);
-	bool HasNoThisSplat() { return mIsMutating || mNoSplat; }
+	bool HasNoThisSplat() { return mIsMutating; }
 	void Reset();
 	void FreeMembers();
 	BfMethodDeclaration* GetMethodDeclaration();	
