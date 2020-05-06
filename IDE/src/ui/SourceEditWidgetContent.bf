@@ -3009,6 +3009,10 @@ namespace IDE.ui
 						menuItem.SetDisabled(!hasText);
 	                    menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.GoToDefinition(true));
 
+						menuItem = menu.AddItem("Find All References");
+						menuItem.SetDisabled(!hasText);
+						menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.Cmd_FindAllReferences());
+
 						menuItem = menu.AddItem("Rename Symbol");
 						menuItem.SetDisabled(!hasText);
 						menuItem.mOnMenuItemSelected.Add(new (evt) => gApp.Cmd_RenameSymbol());

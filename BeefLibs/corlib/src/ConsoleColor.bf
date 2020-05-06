@@ -9,8 +9,8 @@ namespace System
 		case DarkRed;
 		case DarkMagenta;
 		case DarkYellow;
-		case DarkGray;
 		case Gray;
+		case DarkGray;
 		case Blue;
 		case Green;
 		case Cyan;
