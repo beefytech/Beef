@@ -2,18 +2,19 @@ namespace System
 {
 	class OperatingSystem
 	{
-		#if BF_PLATFORM_WINDOWS
-		private const String Arch32 = "32-bit Edition";
-		private const String Arch64 = "64-bit Edition";
+#if BF_PLATFORM_WINDOWS
+		const String Arch32 = "32-bit Edition";
+		const String Arch64 = "64-bit Edition";
 
-		private const uint8 VER_EQUAL                    = 1;
-		private const uint8 VER_PRODUCT_TYPE             = 0x00000080;
-		private const uint8 VER_NT_WORKSTATION           = 0x00000001;
-		private const uint8 PROCESSOR_ARCHITECTURE_AMD64 = 9;
-		private const uint8 SM_SERVERR2                  = 89;
+		const uint8 VER_EQUAL = 1;
+		const uint8 VER_PRODUCT_TYPE = 0x00000080;
+		const uint8 VER_NT_WORKSTATION = 0x00000001;
+		const uint8 PROCESSOR_ARCHITECTURE_AMD64 = 9;
+		const uint8 SM_SERVERR2 = 89;
 
 		[CRepr]
-		private struct OSVersionInfoA {
+		struct OSVersionInfoA
+		{
 			public uint32 dwOSVersionInfoSize;
 			public uint32 dwMajorVersion;
 			public uint32 dwMinorVersion;
@@ -23,7 +24,8 @@ namespace System
 
 		}
 		[CRepr]
-		private struct OSVersionInfoExA : OSVersionInfoA {
+		struct OSVersionInfoExA : OSVersionInfoA
+		{
 			public uint16 wServicePackMajor;
 			public uint16 wServicePackMinor;
 			public uint16 wSuiteMask;
@@ -32,7 +34,8 @@ namespace System
 		}
 
 		[CRepr]
-		private struct SystemInfo {
+		struct SystemInfo
+		{
 			public uint16 wProcessorArchitecture;
 			public uint16 wReserved;
 			public uint32 dwPageSize;
@@ -47,7 +50,7 @@ namespace System
 		}
 
 		[CRepr]
-		private struct WKSTA_INFO_100
+		struct WKSTA_INFO_100
 		{
 			public uint32 wki100_platform_id;
 			public uint32 wki100_computername;
@@ -58,7 +61,7 @@ namespace System
 		typealias LPWKSTA_INFO_100 = WKSTA_INFO_100*;
 
 		[CRepr]
-		private struct VSFixedFileInfo
+		struct VSFixedFileInfo
 		{
 			public uint32 dwSignature;        // e.g. $feef04bd
 			public uint32 dwStrucVersion;     // e.g. $00000042 = "0.42"
@@ -75,47 +78,47 @@ namespace System
 			public uint32 dwFileDateLS;       // e.g. 0
 		}
 
-		[Import("Kernel32.lib"), CLink, StdCall]
-		private extern static bool GetVersionExA(OSVersionInfoExA* lpVersionInformation);
+		[CLink, StdCall]
+		extern static bool GetVersionExA(OSVersionInfoExA* lpVersionInformation);
 
-		[Import("Kernel32.lib"), CLink, StdCall]
-		private extern static bool VerifyVersionInfoA(OSVersionInfoExA* lpVersionInformation, uint32 dwTypeMask, uint64 dwlConditionMask);
+		[CLink, StdCall]
+		extern static bool VerifyVersionInfoA(OSVersionInfoExA* lpVersionInformation, uint32 dwTypeMask, uint64 dwlConditionMask);
 
-		[Import("Kernel32.lib"), CLink, StdCall]
-		private extern static uint64 VerSetConditionMask(uint64 dwlConditionMask, uint32 dwTypeBitMask, uint8 dwConditionMask);
+		[CLink, StdCall]
+		extern static uint64 VerSetConditionMask(uint64 dwlConditionMask, uint32 dwTypeBitMask, uint8 dwConditionMask);
 
-		[Import("Kernel32.lib"), CLink, StdCall]
-		private extern static void GetNativeSystemInfo(SystemInfo* lpSystemInformation);
-		[Import("Kernel32.lib"), CLink, StdCall]
-		private extern static void GetSystemInfo(SystemInfo* lpSystemInfo);
+		[CLink, StdCall]
+		extern static void GetNativeSystemInfo(SystemInfo* lpSystemInformation);
+		[CLink, StdCall]
+		extern static void GetSystemInfo(SystemInfo* lpSystemInfo);
 
 		[Import("netapi32.lib"), CLink, StdCall]
-		private extern static uint32 NetWkstaGetInfo(char16* ServerName, uint32 Level, LPWKSTA_INFO_100* BufPtr);
+		extern static uint32 NetWkstaGetInfo(char16* ServerName, uint32 Level, LPWKSTA_INFO_100* BufPtr);
 		[Import("netapi32.lib"), CLink, StdCall]
-		private extern static int32 NetApiBufferFree(LPWKSTA_INFO_100 BufPtr);
+		extern static int32 NetApiBufferFree(LPWKSTA_INFO_100 BufPtr);
 
-		[Import("Kernel32.lib"), CLink, StdCall]
-		private extern static uint32 GetFileVersionInfoSizeA(char8* lptstrFilename, uint32* lpdwHandle);
+		[CLink, StdCall]
+		extern static uint32 GetFileVersionInfoSizeA(char8* lptstrFilename, uint32* lpdwHandle);
 
-		[Import("Version.lib"), CLink, StdCall]
-		private extern static bool GetFileVersionInfoA(char8* lptstrFilename, uint32* dwHandle, uint32 dwLen, void* lpData);
-		[Import("Version.lib"), CLink, StdCall]
-		private extern static bool VerQueryValueA(void* pBlock, char8* lpSubBlock, void** lplpBuffer, uint32* puLen);
+		[Import("version.lib"), CLink, StdCall]
+		extern static bool GetFileVersionInfoA(char8* lptstrFilename, uint32* dwHandle, uint32 dwLen, void* lpData);
+		[Import("version.lib"), CLink, StdCall]
+		extern static bool VerQueryValueA(void* pBlock, char8* lpSubBlock, void** lplpBuffer, uint32* puLen);
 
-		[Import("User32.lib"), CLink, StdCall]
-		private extern static int GetSystemMetrics(int nIndex);
+		[Import("user32.lib"), CLink, StdCall]
+		extern static int GetSystemMetrics(int nIndex);
 		#endif
 
 		public Version Version;
 		public PlatformID Platform;
 		public String Name = new .() ~ delete _;
-		#if BF_PLATFORM_LINUX
+#if BF_PLATFORM_LINUX
 		public String PrettyName = new .() ~ delete _;
-		#endif
+#endif
 
 		public this()
 		{
-		#if BF_PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS
 			bool isWinSrv()
 			{
 				OSVersionInfoExA osvi = .();
@@ -205,15 +208,18 @@ namespace System
 
 			Name.Append("Windows");
 
-			switch(Version.Major) {
+			switch(Version.Major)
+			{
 			case 10:
-				switch(Version.Minor) {
+				switch(Version.Minor)
+				{
 				case 0: Name.Append(!isWinSrv() ? " 10" : " Server 2016");
 					// Server 2019 is also 10.0
 				}
 				break;
 			case 6:
-				switch(Version.Minor) {
+				switch(Version.Minor)
+				{
 				case 0: Name.Append(VerInfo.wProductType == VER_NT_WORKSTATION ? " Vista" : " Server 2008");
 				case 1: Name.Append(VerInfo.wProductType == VER_NT_WORKSTATION ? " 7" : " Server 2008 R2");
 				case 2: Name.Append(VerInfo.wProductType == VER_NT_WORKSTATION ? " 8" : " Server 2012");
@@ -221,7 +227,8 @@ namespace System
 				}
 				break;
 			case 5:
-				switch(Version.Minor) {
+				switch(Version.Minor)
+				{
 				case 0: Name.Append(" 2000");
 				case 1: Name.Append(" XP");
 				case 2:
@@ -236,34 +243,33 @@ namespace System
 				}
 				break;
 			}
-		#elif BF_PLATFORM_LINUX
+#elif BF_PLATFORM_LINUX
 			Version.Major = 5; //TODO:
 			Platform = PlatformID.Unix;
-		#else // MACOS and ANDROID
+#else // MACOS and ANDROID
 			Version.Major = 5; //TODO:
 			Platform = PlatformID.MacOSX;
-		#endif
+#endif
 		}
 
 		public override void ToString(String outVar)
 		{
-		#if BF_PLATFORM_WINDOWS
-			#if BF_64_BIT
-			String arch = Arch64;
-			#else
-			String arch = Arch32;
-			#endif
+#if BF_PLATFORM_WINDOWS
 
-			if (Version.Revision == 0) {
+#if BF_64_BIT
+			String arch = Arch64;
+#else
+			String arch = Arch32;
+#endif
+			if (Version.Revision == 0)
 				outVar.AppendF("{} (Version {}.{}, Build {}, {})", Name, Version.Major, Version.Minor, Version.Build, arch);
-			} else {
+			else
 				outVar.AppendF("{} Service Pack {} (Version {}.{}, Build {}, {})", Name, Version.Revision, Version.Major, Version.Minor, Version.Build, arch);
-			}
-		#elif BF_PLATFORM_LINUX
+#elif BF_PLATFORM_LINUX
 			outVar.AppendF("{} {} (Version {}.{}.{})", PrettyName, Name, Version.Major, Version.Minor, Version.Revision);
-		#else // MACOS and ANDROID
+#else // MACOS and ANDROID
 			outVar.AppendF("{} (Version {}.{}.{})", Name, Version.Major, Version.Minor, Version.Revision);
-		#endif
+#endif
 		}
 	}
 }

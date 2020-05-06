@@ -50,26 +50,22 @@ namespace System
 			return 0;
 		}
 
-		[Inline]
 		public bool Check(uint32 major)
 		{
 			return Major == major;
 		}
 
-		[Inline]
 		public bool Check(uint32 major, uint32 minor)
 		{
 			return (Major > major) || ((Major == major) && (Minor >= minor));
 		}
 
-		[Inline]
 		public bool Check(uint32 major, uint32 minor, uint32 build)
 		{
 			return (Major > major) || ((Major == major) && (Minor > minor)) ||
 				((Major == major) && (Minor == minor) && (Build >= build));
 		}
 
-		[Inline]
 		public bool Check(uint32 major, uint32 minor, uint32 build, uint32 revision)
 		{
 			return (Major > major) || ((Major == major) && (Minor > minor)) ||
