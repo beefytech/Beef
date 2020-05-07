@@ -2456,6 +2456,16 @@ bool BfExprEvaluator::HasVariableDeclaration(BfAstNode* checkNode)
 void BfExprEvaluator::Visit(BfVariableDeclaration* varDecl)
 {	
 	mModule->UpdateExprSrcPos(varDecl);
+
+	if ((mModule->mCurMethodState == NULL) || (!mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations))
+	{
+		mModule->Fail("Variable declarations are not allowed in this context", varDecl);
+		if (varDecl->mInitializer != NULL)
+		{
+			VisitChild(varDecl->mInitializer);
+		}		
+		return;
+	}
 	
 	CheckVariableDeclaration(varDecl, true, false, false);
 	if (varDecl->mInitializer == NULL)
@@ -5017,6 +5027,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	// Temporarily disable so we don't capture calls in params	
 	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
+	SetAndRestoreValue<bool> prevAllowVariableDeclarations(mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations, false); // Don't allow variable declarations in arguments
 
 	BfMethodInstance* methodInstance = moduleMethodInstance.mMethodInstance;	
 
@@ -5827,7 +5838,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 			{
 				BfExprEvaluator exprEvaluator(mModule);
 				exprEvaluator.mReceivingValue = receivingValue;
-				BfEvalExprFlags flags = BfEvalExprFlags_NoCast;
+				BfEvalExprFlags flags = (BfEvalExprFlags)(BfEvalExprFlags_NoCast);
 				if ((paramKind == BfParamKind_Params) || (paramKind == BfParamKind_DelegateParam))
 					flags = (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowParamsExpr);
 
@@ -6154,6 +6165,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	// Temporarily disable so we don't capture calls in params
 	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
+	SetAndRestoreValue<bool> prevAllowVariableDeclarations(mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations, false); // Don't allow variable declarations in arguments
 
 	sInvocationIdx++;
 	

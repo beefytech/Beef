@@ -1591,7 +1591,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	bool wantsStore = false;
 	if ((initValue) && (!handledVarStore) && (!isConst) && (!initHandled))
-	{
+	{		
 		initValue = LoadValue(initValue);
 		if (initValue.IsSplat())
 		{

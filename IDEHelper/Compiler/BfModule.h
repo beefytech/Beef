@@ -66,7 +66,7 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_FieldInitializer = 0x2000,
 	BfEvalExprFlags_VariableDeclaration = 0x4000,
 	BfEvalExprFlags_NoAutoComplete = 0x8000,
-	BfEvalExprFlags_AllowNonConst = 0x10000
+	BfEvalExprFlags_AllowNonConst = 0x10000	
 };
 
 enum BfCastFlags
@@ -314,6 +314,7 @@ public:
 	bool mAllowTargeting;	
 	bool mHadScopeValueRetain;	
 	bool mIsDeferredBlock;
+	bool mAllowVariableDeclarations;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
 	BfExprEvaluator* mExprEvaluator;
@@ -346,6 +347,7 @@ public:
 		mHadScopeValueRetain = false;
 		mIsDeferredBlock = false;
 		mAllowTargeting = true;		
+		mAllowVariableDeclarations = true;
 		mMixinDepth = 0;
 		mScopeDepth = 0;
 	}	
