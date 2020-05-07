@@ -39,7 +39,7 @@ namespace Tests
 		public static void CheckBasics()
 		{
 			int val = Default0();
-			Test.Assert(val == 23012);
+			Test.Assert(val == 234045);
 			val = Default1();
 			Test.Assert(val == 23012);
 		}
