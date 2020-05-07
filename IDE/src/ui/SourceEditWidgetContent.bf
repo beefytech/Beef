@@ -2061,7 +2061,23 @@ namespace IDE.ui
 
 			var keyChar;
 			if (keyChar == '\x7F') // Ctrl+Backspace
-				keyChar = '\b';
+			{
+				int line;
+				int lineChar;
+				GetCursorLineChar(out line, out lineChar);
+
+				int startIdx = CursorTextPos;
+				SelectLeft(line, lineChar, true, false);
+				mSelection = EditSelection(CursorTextPos, startIdx);
+				
+				var action = new DeleteSelectionAction(this);
+				action.mMoveCursor = true;
+				mData.mUndoManager.Add(action);
+				action.mCursorTextPos = (.)startIdx;
+				PhysDeleteSelection(true);
+
+				return;
+			}
 
 			if (mIgnoreKeyChar)
 			{

@@ -2471,8 +2471,12 @@ namespace IDE.ui
 						if (startContentIdx == -1)
 						{
 							lineLeft = trackedElementView.mTextPosition.mIndex;
+
 							repeat
 							{
+								if (lineLeft >= editContent.mData.mTextLength)
+									break;
+
 							    if (!((char8)editContent.mData.mText[lineLeft].mChar).IsWhiteSpace)
 								{
 							        startContentIdx = lineLeft;
