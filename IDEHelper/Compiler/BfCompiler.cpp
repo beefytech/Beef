@@ -984,7 +984,12 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 			{
 				for (int defaultIdx = 0; defaultIdx < (int)methodInstance->mDefaultValues.size(); defaultIdx++)
 				{
-					irArgs.Add(methodInstance->mDefaultValues[defaultIdx]);
+					auto castedVal = bfModule->Cast(methodInstance->mMethodDef->GetRefNode(), methodInstance->mDefaultValues[defaultIdx], methodInstance->GetParamType(defaultIdx));
+					if (castedVal)
+					{
+						BfExprEvaluator exprEvaluator(bfModule);
+						exprEvaluator.PushArg(castedVal, irArgs);
+					}
 				}
 			}
 		}

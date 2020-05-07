@@ -14797,7 +14797,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		{			
 			auto localVar = mCurMethodState->GetRootMethodState()->mLocals[1];
 			BF_ASSERT(localVar->mName == "appendIdx");
-			auto intRefType = CreateRefType(localVar->mResolvedType);
+			auto intRefType = localVar->mResolvedType;
 			appendIdxVal = BfTypedValue(localVar->mValue, intRefType);
 			mCurMethodState->mCurAppendAlign = 1; // Don't make any assumptions about how the base leaves the alignment
 		}
@@ -19599,10 +19599,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				{
 					BF_ASSERT(defaultValue.mValue.IsConst());
 					while ((int)mCurMethodInstance->mDefaultValues.size() < paramDefIdx)
-						mCurMethodInstance->mDefaultValues.Add(BfIRValue());
+						mCurMethodInstance->mDefaultValues.Add(BfTypedValue());
 
 					CurrentAddToConstHolder(defaultValue.mValue);
-					mCurMethodInstance->mDefaultValues.Add(defaultValue.mValue);
+					mCurMethodInstance->mDefaultValues.Add(defaultValue);
 				}
 			}
 		}		

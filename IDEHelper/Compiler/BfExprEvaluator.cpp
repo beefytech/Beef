@@ -5324,7 +5324,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			hadMissingArg = true;
 		
 		BfTypedValue argValue;
-
+				
 		if (hadMissingArg)
 		{
 			if (expandedParamsArray)
@@ -5417,7 +5417,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			}			
 
 			auto foreignDefaultVal = methodInstance->mDefaultValues[argIdx];
-			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(methodInstance->mDefaultValues[argIdx]);		
+			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(foreignDefaultVal.mValue);
 
 			if (foreignConst->mConstType == BfConstType_AggZero)
 			{
@@ -5433,7 +5433,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 			if (!argValue)
 			{				
-				argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, wantType);
+				argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, foreignDefaultVal.mType);
 				if (!argValue)
 					mModule->Fail("Default parameter value failed", targetSrc);
 			}			
@@ -5500,15 +5500,19 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			failed = true;			
 		}
 
-		if ((argValue) && (arg != NULL))
+		if (argValue)
 		{	
+			BfAstNode* refNode = arg;
+			if (refNode == NULL)
+				refNode = targetSrc;
+
 			if (mModule->mCurMethodState != NULL)
 			{
 				SetAndRestoreValue<BfScopeData*> prevScopeData(mModule->mCurMethodState->mOverrideScope, boxScopeData);
-				argValue = mModule->Cast(arg, argValue, wantType);
+				argValue = mModule->Cast(refNode, argValue, wantType);
 			}
 			else
-				argValue = mModule->Cast(arg, argValue, wantType);
+				argValue = mModule->Cast(refNode, argValue, wantType);
 
 			if (!argValue)
 			{
@@ -5806,7 +5810,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 				auto intPtrRefType = mModule->CreateRefType(intPtrType);
 				if (target.mValue.IsFake())
 				{
-					resolvedArg.mTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), intPtrType);
+					resolvedArg.mTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), intPtrRefType);
 				}
 				else
 				{					
@@ -6163,10 +6167,22 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 // 		NOP;
 // 	}
 
+	bool prevAllowVariableDeclarations = true;
+	if (mModule->mCurMethodState != NULL)
+	{
+		// Don't allow variable declarations in arguments for this method call
+		prevAllowVariableDeclarations = mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations;
+		mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations = false;
+	}
+	defer
+	(		
+		if (mModule->mCurMethodState != NULL)
+			mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations = prevAllowVariableDeclarations;		
+	);
+
 	// Temporarily disable so we don't capture calls in params
 	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
-	SetAndRestoreValue<bool> prevAllowVariableDeclarations(mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations, false); // Don't allow variable declarations in arguments
-
+	
 	sInvocationIdx++;
 	
 	bool wantCtor = methodName.IsEmpty();
@@ -12243,7 +12259,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 							{
 								BfTypedValue constExprVal;
 								constExprVal.mType = genericParam->mTypeConstraint;
- 								auto constant = curTypeInst->mConstHolder->GetConstant(defaultVal); 								
+ 								auto constant = curTypeInst->mConstHolder->GetConstant(defaultVal.mValue); 								
 								constExprVal.mValue = mModule->ConstantToCurrent(constant, curTypeInst->mConstHolder, genericParam->mTypeConstraint);
 								genericArg = mModule->CreateConstExprValueType(constExprVal);
 							}
