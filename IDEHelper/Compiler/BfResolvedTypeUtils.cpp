@@ -659,7 +659,7 @@ bool BfMethodInstance::AllowsSplatting()
 {
 	if (mCallingConvention != BfCallingConvention_Unspecified)
 		return false;
-	return !mMethodDef->mNoSplat;
+	return true;
 }
 
 bool BfMethodInstance::AllowsThisSplatting()
@@ -949,7 +949,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			{
 				doSplat = true;
 			}
-			else if (!mMethodDef->mIsMutating)
+			else if ((!mMethodDef->mIsMutating) && (mCallingConvention == BfCallingConvention_Unspecified))
 				checkLowered = true;
 		}
 		else

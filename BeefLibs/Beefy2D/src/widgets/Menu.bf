@@ -178,7 +178,7 @@ namespace Beefy.widgets
             base.Resize(x, y, width, height);
         }
 
-        public virtual void CalcContainerSize(MenuContainer menuContainer, bool allowScrollable, ref float screenX, ref float screenY, out float width, out float height)
+        public virtual void CalcContainerSize(float x, float y, MenuContainer menuContainer, bool allowScrollable, ref float screenX, ref float screenY, out float width, out float height)
         {
             Rect menuRect = menuContainer.CalcRectFromContent();
             width = Math.Min(mMaxContainerWidth, Math.Max(mMinContainerWidth, menuRect.mWidth));
@@ -188,7 +188,7 @@ namespace Beefy.widgets
             int workspaceY;
             int workspaceWidth;
             int workspaceHeight;
-            BFApp.sApp.GetWorkspaceRect(out workspaceX, out workspaceY, out workspaceWidth, out workspaceHeight);
+            BFApp.sApp.GetWorkspaceRectFrom((.)x, (.)y, 0, 0, out workspaceX, out workspaceY, out workspaceWidth, out workspaceHeight);
 
 			float maxY = workspaceY + workspaceHeight;
 
@@ -250,13 +250,14 @@ namespace Beefy.widgets
 				float screenX;
 				float screenY;
 				relativeWidget.SelfToRootTranslate(0, curY, out screenX, out screenY);
+				screenX += relativeWidget.mWidgetWindow.mClientX;
 				screenY += relativeWidget.mWidgetWindow.mClientY;
 
 				int wsX;
 				int wsY;
 				int wsWidth;
 				int wsHeight;
-				BFApp.sApp.GetWorkspaceRect(out wsX, out wsY, out wsWidth, out wsHeight);
+				BFApp.sApp.GetWorkspaceRectFrom((.)screenX, (.)screenY, 0, 0, out wsX, out wsY, out wsWidth, out wsHeight);
 				float spaceLeft = (wsY + wsHeight) - (screenY);
 				if (spaceLeft < minHeight)
 				{
@@ -299,7 +300,10 @@ namespace Beefy.widgets
 
                 float screenWidth;
                 float screenHeight;
-                CalcContainerSize(menuContainer, allowScrollable, ref screenX, ref screenY, out screenWidth, out screenHeight);
+                CalcContainerSize(screenX, screenY, menuContainer, allowScrollable, ref screenX, ref screenY, out screenWidth, out screenHeight);
+
+				screenWidth = Math.Max(screenWidth, 32);
+				screenHeight = Math.Max(screenHeight, 32);
 
 				WidgetWindow parentWindow = (relativeWidget != null) ? relativeWidget.mWidgetWindow : null;
                 curWidgetWindow = new WidgetWindow(parentWindow,
@@ -332,7 +336,7 @@ namespace Beefy.widgets
 
                 float screenWidth;
                 float screenHeight;
-                CalcContainerSize(menuContainer, allowScrollable, ref screenX, ref screenY, out screenWidth, out screenHeight);
+                CalcContainerSize(x, y, menuContainer, allowScrollable, ref screenX, ref screenY, out screenWidth, out screenHeight);
 
                 curWidgetWindow.Resize((int32)(screenX), (int32)(screenY),
                     (int32)screenWidth, (int32)screenHeight);

@@ -1098,7 +1098,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
                 (mModuleName == "-")
-				//|| (mModuleName == "Vec2")
+				//|| (mModuleName == "Raylib_Color")
 				//|| (mModuleName == "System_Int32")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
 				)
@@ -15143,6 +15143,11 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 			if (markVal.mType != methodOwner)
 				markVal = Cast(NULL, markVal, methodOwner);
 
+			if (markMemberMethodInstance.mMethodInstance->mIdHash == 0x1500000236LL)
+			{
+				NOP;
+			}
+
 			exprEvaluator.PushThis(NULL, markVal, markMemberMethodInstance.mMethodInstance, args);
 			exprEvaluator.CreateCall(markMemberMethodInstance.mMethodInstance, markMemberMethodInstance.mFunc, false, args);
 		}
@@ -15286,14 +15291,13 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			paramVar->mValue = mBfIRBuilder->GetArgument(argIdx);
 		else
 			paramVar->mValue = mBfIRBuilder->GetFakeVal();
-		
-		
+				
 		if ((thisType->IsSplattable()) && (methodInstance->AllowsThisSplatting()))		
 		{
 			if (!thisType->IsTypedPrimitive())
 				paramVar->mIsSplat = true;
 		}
-		else if (!methodDef->mIsMutating)
+		else if ((!methodDef->mIsMutating) && (methodInstance->mCallingConvention == BfCallingConvention_Unspecified))
 			paramVar->mIsLowered = thisType->GetLoweredType() != BfTypeCode_None;
 
 		auto thisTypeInst = thisType->ToTypeInstance();

@@ -43,6 +43,38 @@ static BOOL CALLBACK BFEnumResNameProc(
 	return FALSE;
 }
 
+struct AdjustedMonRect
+{
+	int mMonCount;
+	int mX;
+	int mY;
+	int mWidth;
+	int mHeight;
+};
+
+static BOOL ClipToMonitor(HMONITOR mon, HDC hdc, LPRECT monRect, LPARAM userArg)
+{
+	AdjustedMonRect* outRect = (AdjustedMonRect*)userArg;
+	
+	MONITORINFO monitorInfo = { sizeof(MONITORINFO) };
+	if (::GetMonitorInfo(mon, &monitorInfo) == 0)
+		return TRUE;
+
+	outRect->mMonCount++;
+	
+	if (outRect->mX < monitorInfo.rcWork.left)
+		outRect->mX = monitorInfo.rcWork.left;
+ 	else if (outRect->mX + outRect->mWidth >= monitorInfo.rcWork.right)
+		outRect->mX = BF_MAX((int)monitorInfo.rcWork.left, monitorInfo.rcWork.right - outRect->mWidth);
+ 
+ 	if (outRect->mY < monitorInfo.rcWork.top)
+		outRect->mY = monitorInfo.rcWork.top;
+ 	else if (outRect->mY + outRect->mHeight >= monitorInfo.rcWork.bottom)
+		outRect->mY = BF_MAX((int)monitorInfo.rcWork.top, monitorInfo.rcWork.bottom - outRect->mHeight);
+	
+	return TRUE;
+}
+
 WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
 	HINSTANCE hInstance = GetModuleHandle(NULL);
@@ -128,18 +160,16 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	
 	if (windowFlags & BFWINDOW_POPUP_POSITION)
 	{
-		RECT desktopRect;
-		::SystemParametersInfo(SPI_GETWORKAREA, NULL, &desktopRect, NULL);		
+		AdjustedMonRect adjustRect = { 0, x, y, width, height };		
+		RECT wantRect = { x, y, x + width, y + height };
 
-		if (x < desktopRect.left)
-			x = desktopRect.left;
-		else if (x + width >= desktopRect.right)
-			x = BF_MAX((int)desktopRect.left, desktopRect.right - width);
-
-		if (y < desktopRect.top)
-			y = desktopRect.top;
-		else if (y + height >= desktopRect.bottom)
-			y = BF_MAX((int)desktopRect.top, desktopRect.bottom - height);
+		EnumDisplayMonitors(NULL, &wantRect, ClipToMonitor, (LPARAM)&adjustRect);
+		if (adjustRect.mMonCount == 0)
+			EnumDisplayMonitors(NULL, NULL, ClipToMonitor, (LPARAM)&adjustRect);
+		x = adjustRect.mX;
+		y = adjustRect.mY;
+		width = adjustRect.mWidth;
+		height = adjustRect.mHeight;
 	}
 	
 	mFlags = windowFlags;
@@ -1128,26 +1158,70 @@ void WinBFApp::GetDesktopResolution(int& width, int& height)
 	height = ::GetSystemMetrics(SM_CYSCREEN);
 }
 
-void WinBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
+static BOOL InflateRectToMonitor(HMONITOR mon, HDC hdc, LPRECT monRect, LPARAM userArg)
 {
-	RECT desktopRect;
+	AdjustedMonRect* inflatedRect = (AdjustedMonRect*)userArg;
 
-	if (::GetSystemMetrics(SM_CMONITORS) > 1) 
+	MONITORINFO monitorInfo = { sizeof(MONITORINFO) };
+	if (::GetMonitorInfo(mon, &monitorInfo) == 0)
+		return TRUE;
+
+	inflatedRect->mMonCount++;
+	if (inflatedRect->mMonCount == 1)
 	{
-		desktopRect.left = ::GetSystemMetrics(SM_XVIRTUALSCREEN);
-		desktopRect.right = ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
-		desktopRect.top = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
-		desktopRect.bottom = ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
+		inflatedRect->mX = monitorInfo.rcWork.left;
+		inflatedRect->mY = monitorInfo.rcWork.top;
+		inflatedRect->mWidth = monitorInfo.rcWork.right - monitorInfo.rcWork.left;
+		inflatedRect->mHeight = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
 	}
 	else
 	{
-		::SystemParametersInfo(SPI_GETWORKAREA, NULL, &desktopRect, NULL);	
+		int minLeft = BF_MIN(inflatedRect->mX, monitorInfo.rcWork.left);
+		int minTop = BF_MIN(inflatedRect->mY, monitorInfo.rcWork.top);
+		int maxRight = BF_MAX(inflatedRect->mX + inflatedRect->mWidth, monitorInfo.rcWork.right);
+		int maxBottom = BF_MAX(inflatedRect->mY + inflatedRect->mHeight, monitorInfo.rcWork.bottom);
+
+		inflatedRect->mX = minLeft;
+		inflatedRect->mY = minTop;
+		inflatedRect->mWidth = maxRight - minLeft;
+		inflatedRect->mHeight = maxBottom - minTop;
 	}
 
-	x = desktopRect.left;
-	y = desktopRect.top;
-	width = desktopRect.right - desktopRect.left;
-	height = desktopRect.bottom - desktopRect.top;
+	return TRUE;
+}
+
+void WinBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
+{	
+	AdjustedMonRect inflateRect = { 0 };
+
+	EnumDisplayMonitors(NULL, NULL, InflateRectToMonitor, (LPARAM)&inflateRect);
+	x = inflateRect.mX;
+	y = inflateRect.mY;
+	width = inflateRect.mWidth;
+	height = inflateRect.mHeight;
+}
+
+void WinBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int & outX, int & outY, int & outWidth, int & outHeight)
+{
+	AdjustedMonRect inflateRect = { 0 };
+
+	RECT wantRect;
+	wantRect.left = fromX;
+	wantRect.top = fromY;
+	wantRect.right = fromX + BF_MAX(fromWidth, 1);
+	wantRect.bottom = fromY + BF_MAX(fromHeight, 1);
+	EnumDisplayMonitors(NULL, &wantRect, InflateRectToMonitor, (LPARAM)&inflateRect);
+
+	if (inflateRect.mMonCount == 0)
+	{
+		GetWorkspaceRect(outX, outY, outWidth, outHeight);
+		return;
+	}
+
+	outX = inflateRect.mX;
+	outY = inflateRect.mY;
+	outWidth = inflateRect.mWidth;
+	outHeight = inflateRect.mHeight;
 }
 
 BFWindow* WinBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)

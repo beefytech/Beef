@@ -204,8 +204,8 @@ namespace System
 			let bgColor = BackgroundColor.ConsoleTextAttribute;
 			SetConsoleTextAttribute(handle, bgColor * 16 + fgColor);
 #else
-			Write("\x1B[{}m", ForegroundColor.ToAnsi());
-			Write("\x1B[{}m", BackgroundColor.ToAnsi() + 10);
+			Write("\x1B[{}m", ForegroundColor.AnsiCode);
+			Write("\x1B[{}m", BackgroundColor.AnsiCode + 10);
 #endif
 		}
 	}

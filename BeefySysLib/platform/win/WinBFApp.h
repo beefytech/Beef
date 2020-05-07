@@ -105,8 +105,9 @@ public:
 	virtual void			Init() override;
 	virtual void			Run() override;		
 
-	virtual void			GetDesktopResolution(int& width, int& height);
-	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height);
+	virtual void			GetDesktopResolution(int& width, int& height) override;
+	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) override;
+	virtual void			GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight) override;
 	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) override;	
 	virtual DrawLayer*		CreateDrawLayer(BFWindow* window);
 

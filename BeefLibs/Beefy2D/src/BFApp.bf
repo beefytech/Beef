@@ -81,6 +81,9 @@ namespace Beefy
         [StdCall, CLink]
         static extern void BFApp_GetWorkspaceRect(out int32 x, out int32 y, out int32 width, out int32 height);
 
+		[StdCall, CLink]
+		static extern void BFApp_GetWorkspaceRectFrom(int32 x, int32 y, int32 width, int32 height, out int32 outX, out int32 outY, out int32 outWidth, out int32 outHeight);
+
         [StdCall, CLink]
         static extern void BFApp_Create();
 
@@ -446,6 +449,19 @@ namespace Beefy
 			width = widthOut;
 			height = heightOut;
         }
+
+		public void GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, out int outX, out int outY, out int outWidth, out int outHeight)
+		{
+			int32 xOut;
+			int32 yOut;
+			int32 widthOut;
+			int32 heightOut;
+		    BFApp_GetWorkspaceRectFrom((.)fromX, (.)fromY, (.)fromWidth, (.)fromHeight, out xOut, out yOut, out widthOut, out heightOut);
+			outX = xOut;
+			outY = yOut;
+			outWidth = widthOut;
+			outHeight = heightOut;
+		}
 
         public bool HasModalDialogs()
         {

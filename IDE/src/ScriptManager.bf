@@ -310,7 +310,8 @@ namespace IDE
 				bool matched = false;
 				if (var targetCompleteCmd = gApp.mExecutionQueue[0] as IDEApp.TargetCompletedCmd)
 				{
-					if (targetCompleteCmd.mProject.mProjectName == projectName)
+					if ((targetCompleteCmd.mProject.mProjectName == projectName) &&
+						(!targetCompleteCmd.mIsReady))
 					{
 						targetCompleteCmd.mIsReady = true;
 						matched = true;

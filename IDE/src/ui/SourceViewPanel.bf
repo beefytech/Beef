@@ -2289,7 +2289,7 @@ namespace IDE.ui
         public void FocusEdit()
         {
 			let activePanel = GetActivePanel();
-            activePanel.mEditWidget.SetFocus();
+            activePanel.mEditWidget?.SetFocus();
 
 			if (!mWidgetWindow.mHasFocus)
 				EditGotFocus();

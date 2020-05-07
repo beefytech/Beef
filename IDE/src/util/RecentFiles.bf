@@ -42,6 +42,11 @@ namespace IDE.util
 
 		public static void UpdateMenu(List<String> items, SysMenu menu, List<SysMenu> menuItems, delegate void(int idx, SysMenu sysMenu) onNewEntry)
 		{
+			if ((menuItems.IsEmpty) && (!items.IsEmpty))
+			{
+				menuItems.Add(menu.AddMenuItem(null, null));
+			}
+			
 			int32 i;
 			for (i = 0; i < items.Count; i++)
 			{
@@ -50,15 +55,12 @@ namespace IDE.util
 			        title.AppendF("1&0 {1}", i + 1, items[i]);
 			    else
 			        title.AppendF("&{0} {1}", i + 1, items[i]);
-			    if (i < menuItems.Count)
+			    if (i < menuItems.Count - 1)
 			    {
-			        menuItems[i].Modify(title);
+			        menuItems[i + 1].Modify(title);
 			    }
 			    else
 			    {
-					if ((menuItems.IsEmpty) && (menu.mChildren != null) && (!menu.mChildren.IsEmpty))
-						menu.AddMenuItem(null, null);
-
 			        int32 idx = i;
 
 					let newMenuItem = menu.AddMenuItem(title);
@@ -69,17 +71,23 @@ namespace IDE.util
 			    }
 			}
 
-			while (i < menuItems.Count)
+			while (i < menuItems.Count - 1)
 			{
-			    menuItems[i].Dispose();
-			    menuItems.RemoveAt(i);
+			    menuItems[i + 1].Dispose();
+			    menuItems.RemoveAt(i + 1);
 			}
 
-			if (menu.ChildCount == 0)
+			if ((!menuItems.IsEmpty) && (items.IsEmpty))
+			{
+				menuItems[0].Dispose();
+				menuItems.Clear();
+			}
+
+			/*if (menu.ChildCount == 0)
 			{
 				let newMenuItem = menu.AddMenuItem("< None >", null, null, null, null, false);
 				menuItems.Add(newMenuItem);
-			}
+			}*/
 		}
 
 		public static void Add(List<String> list, StringView path, int32 maxCount = 10)

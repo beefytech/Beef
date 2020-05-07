@@ -1972,8 +1972,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, false, BF_METHODNAME_MARKMEMBERS);
 			methodDef->mIsVirtual = true;
 			methodDef->mIsOverride = true;
-			methodDef->mNoReflect = true;
-			methodDef->mNoSplat = true;
+			methodDef->mNoReflect = true;			
+			methodDef->mCallingConvention = BfCallingConvention_Cdecl;
 			mCurTypeDef->mHasOverrideMethods = true;
 		}
 	}

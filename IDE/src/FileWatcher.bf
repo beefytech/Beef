@@ -148,7 +148,16 @@ namespace IDE
                 DepInfo depInfo;
                 mWatchedFiles.TryGetValue(fixedFilePath, out depInfo);
                 if (depInfo == null)
-                    return;
+                {
+					if (changeType == .Deleted)
+					{
+						fixedFilePath.Append(IDEUtils.cNativeSlash);
+						mWatchedFiles.TryGetValue(fixedFilePath, out depInfo);
+					}
+
+					if (depInfo == null)
+						return;
+				}
 
                 if (depInfo.mContent != null)
                 {

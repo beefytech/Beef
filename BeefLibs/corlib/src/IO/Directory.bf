@@ -43,7 +43,7 @@ namespace System.IO
 		{
 			Platform.BfpFileResult result = default;
 			Platform.BfpDirectory_Delete(path.ToScopeCStr!(), &result);
-			if (result != .Ok)
+			if ((result != .Ok) && (result != .NotFound))
 				return .Err(result);
 			return .Ok;
 		}

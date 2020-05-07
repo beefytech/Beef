@@ -96,12 +96,12 @@ namespace System
                 GC.Mark(Internal.UnsafeCastToObject((void*)mData));
 		}
 
-		public void Add(T dlg) mut
+		public void Add(T ownDelegate) mut
 		{
 			Object data = Target;
 			if (data == null)
 			{
-				Target = dlg;
+				Target = ownDelegate;
 				return;
 			}
 
@@ -110,18 +110,18 @@ namespace System
 			if (type == typeof(List<T>))
 			{
 				var list = (List<T>)data;
-				list.Add(dlg);
+				list.Add(ownDelegate);
 			}
 			else
 			{
 				var list = new List<T>();
 				list.Add((T)data);
-				list.Add(dlg);
+				list.Add(ownDelegate);
 				Target = list;
 			}
 		}
 
-		public void Remove(T dlg, bool deleteDelegate = false) mut
+		public void Remove(T compareDelegate, bool deleteDelegate = false) mut
 		{
 			Object data = Target;
 
@@ -131,7 +131,7 @@ namespace System
 				var list = (List<T>)data;
 				int32 idx = -1;
 				for (int32 i = 0; i < list.Count; i++)
-					if (Delegate.Equals(list[i], dlg))
+					if (Delegate.Equals(list[i], compareDelegate))
 					{
 						idx = i;
 						break;
@@ -164,7 +164,7 @@ namespace System
 			else
 			{
 				T dlgMember = (T)data;				
-				if (Delegate.Equals(dlg, dlgMember))
+				if (Delegate.Equals(compareDelegate, dlgMember))
 				{
 					if (deleteDelegate)
 						delete dlgMember;
