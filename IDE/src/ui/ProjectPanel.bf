@@ -596,7 +596,17 @@ namespace IDE.ui
         public void NewFolder(ProjectFolder folder)
         {
             ProjectFolder projectFolder = new ProjectFolder();
-            projectFolder.mName.Set("New Folder");
+
+			int checkIdx = 0;
+			while (true)
+			{
+	            projectFolder.mName.Set("New folder");
+				if (checkIdx > 0)
+					projectFolder.mName.AppendF("{}", checkIdx + 1);
+				if (!folder.mChildMap.ContainsKey(projectFolder.mName))
+					break;
+				checkIdx++;
+			}
             projectFolder.mProject = folder.mProject;
 			projectFolder.mPath = new String();
 			if (folder.mParentFolder == null)
@@ -614,6 +624,14 @@ namespace IDE.ui
 			}
 			if (projectFolder.mIncludeKind != .Auto)
 				projectFolder.mProject.SetChanged();
+
+			String fullPath = scope String();
+			projectFolder.GetFullImportPath(fullPath);
+			if (Directory.CreateDirectory(fullPath) case .Err(let err))
+			{
+				if (err != .AlreadyExists)
+					gApp.Fail(scope String()..AppendF("Failed to create directory '{]'", fullPath));
+			}
         }
 
         public void NewClass(ProjectFolder folder)
@@ -1309,6 +1327,8 @@ namespace IDE.ui
 	                DoDeleteItem(selectedItem, scope [&] (filePath) =>
 						{
 							if (File.Delete(filePath) case .Ok)
+								return true;
+							if (Directory.Delete(filePath) case .Ok)
 								return true;
 
 							fileErrorCount++;
