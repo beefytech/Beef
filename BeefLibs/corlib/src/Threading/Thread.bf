@@ -314,9 +314,9 @@ namespace System.Threading
 		[CallingConvention(.Cdecl)]
         private static extern Thread GetCurrentThreadNative();
         
-        void SetStart(Delegate start, int32 maxStackSize)
+        void SetStart(Delegate ownStartDelegate, int32 maxStackSize)
         {
-            mDelegate = start;
+            mDelegate = ownStartDelegate;
             mMaxStackSize = maxStackSize;
         }
 
