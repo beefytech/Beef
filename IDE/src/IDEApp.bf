@@ -8709,6 +8709,7 @@ namespace IDE
 									newString = mLaunchData.mWorkingDir;
 								else
 									newString = options.mDebugOptions.mWorkingDirectory;
+								IDEUtils.FixFilePath(newString);
 							case "TargetDir":
 								{
 									if (project.IsDebugSession)
@@ -8724,6 +8725,7 @@ namespace IDE
 									DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
 									newString = scope:ReplaceBlock String();
 									Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
+									IDEUtils.FixFilePath(newString);
 								}
 							case "TargetPath":
 		                        {
@@ -8783,6 +8785,7 @@ namespace IDE
 										}
 									}
 		                        }
+								IDEUtils.FixFilePath(newString);
 		                    case "ProjectDir":
 								if (project.IsDebugSession)
 								{
@@ -8791,9 +8794,11 @@ namespace IDE
 								}
 								else
 		                        	newString = project.mProjectDir;
+								IDEUtils.FixFilePath(newString);
 		                    case "BuildDir":
 								newString = scope:ReplaceBlock String();
 		                        GetProjectBuildDir(project, newString);
+								IDEUtils.FixFilePath(newString);
 								//Debug.WriteLine("BuildDir: {0}", newString);
 							case "LinkFlags":
 								newString = scope:ReplaceBlock String();
@@ -8836,10 +8841,13 @@ namespace IDE
 									newString = gApp.mSettings.mVSSettings.mBin32Path;
 								else
 									newString = gApp.mSettings.mVSSettings.mBin64Path;
+								IDEUtils.FixFilePath(newString);
 							case "VSToolPath_x86":
 								newString = gApp.mSettings.mVSSettings.mBin32Path;
+								IDEUtils.FixFilePath(newString);
 							case "VSToolPath_x64":
 								newString = gApp.mSettings.mVSSettings.mBin64Path;
+								IDEUtils.FixFilePath(newString);
 							}
 						}
 
