@@ -10572,7 +10572,7 @@ namespace IDE
 			//
 			{
 				BFWindow.Flags flags = .Border | .ThickFrame | .Resizable | .SysMenu |
-	                .Caption | .Minimize | .Maximize | .QuitOnClose | .Menu;
+	                .Caption | .Minimize | .Maximize | .QuitOnClose | .Menu | .PopupPosition;
 				if (mRunningTestScript)
 					flags |= .NoActivate;
 

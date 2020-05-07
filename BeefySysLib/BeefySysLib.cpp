@@ -79,6 +79,11 @@ BF_EXPORT void BF_CALLTYPE BFApp_GetWorkspaceRect(int& x, int& y, int& width, in
 	gBFApp->GetWorkspaceRect(x, y, width, height);
 }
 
+BF_EXPORT void BF_CALLTYPE BFApp_GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight)
+{
+	gBFApp->GetWorkspaceRectFrom(fromX, fromY, fromWidth, fromHeight, outX, outY, outWidth, outHeight);
+}
+
 BF_EXPORT void BF_CALLTYPE BFApp_Create()
 {
 	new PlatformBFApp();

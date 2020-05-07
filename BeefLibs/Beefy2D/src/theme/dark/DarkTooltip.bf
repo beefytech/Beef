@@ -51,7 +51,7 @@ namespace Beefy.theme.dark
             mText = new String(text);
             mAllowResize = allowResize;
 
-			BFApp.sApp.GetWorkspaceRect(var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
+			BFApp.sApp.GetWorkspaceRectFrom((.)x, (.)y, 0, 0, var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
 			float maxWidth = workspaceWidth - GS!(32);
 
             FontMetrics fontMetrics = .();
