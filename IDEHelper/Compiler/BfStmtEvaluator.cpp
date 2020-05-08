@@ -3581,27 +3581,7 @@ void BfModule::Visit(BfThrowStatement* throwStmt)
 
 	UpdateSrcPos(throwStmt->mThrowToken);
 	auto throwValue = CreateValueFromExpression(throwStmt->mExpression);
-	if (throwValue)
-	{
-		//TODO: Actually call some sort of 'ExceptionThrown' function
-		auto internalType = ResolveTypeDef(mCompiler->mInternalTypeDef);
-		PopulateType(internalType);
-		auto moduleMethodInstance = GetMethodByName(internalType->ToTypeInstance(), "Throw");
-		if (!moduleMethodInstance)
-			Fail("Internal error: System.Internal doesn't contain Throw method");
-		else
-		{
-			auto exType = moduleMethodInstance.mMethodInstance->GetParamType(0);
-
-			auto exTypedValue = Cast(throwStmt->mExpression, throwValue, exType);
-			if ((exTypedValue) && (!mCompiler->IsSkippingExtraResolveChecks()))
-			{				
-				SizedArray<BfIRValue, 1> llvmArgs;
-				llvmArgs.push_back(exTypedValue.mValue);
-				mBfIRBuilder->CreateCall(moduleMethodInstance.mFunc, llvmArgs);
-			}
-		}
-	}
+	Fail("Exceptions are not supported", throwStmt->mThrowToken);
 
 	if (mCurMethodInstance->mReturnType->IsVoid())
 		EmitReturn(BfIRValue());
