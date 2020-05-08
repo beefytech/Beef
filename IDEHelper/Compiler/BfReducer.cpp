@@ -6157,17 +6157,36 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 			bodyAfterNode = tokenNode;
 
 			mVisitorPos.MoveNext();
-			child = mVisitorPos.GetCurrent();
+			child = mVisitorPos.GetNext();
 		}
 
-		auto endSemicolon = BfNodeDynCast<BfTokenNode>(child);
-		if ((endSemicolon != NULL) && (endSemicolon->GetToken() == BfToken_Semicolon))
+		bool handled = false;
+		BfTokenNode* fatArrowToken = NULL;
+		BfAstNode* endSemicolon = NULL;
+		if (tokenNode = BfNodeDynCast<BfTokenNode>(child))
 		{
-			body = endSemicolon;
-			mVisitorPos.MoveNext();
-		}
+			if ((tokenNode->GetToken() == BfToken_Semicolon))
+			{
+				handled = true;
+				endSemicolon = tokenNode;
+				mVisitorPos.MoveNext();
+			}
+			else if (tokenNode->mToken == BfToken_FatArrow)
+			{	
+				handled = true;
+				fatArrowToken = tokenNode;
+				mVisitorPos.MoveNext();
 
-		if (body == NULL)
+				auto expr = CreateExpressionAfter(tokenNode);
+				if (expr != NULL)
+				{
+					body = expr;
+					endSemicolon = ExpectTokenAfter(expr, BfToken_Semicolon);
+				}				
+			}
+		}		
+
+		if (!handled)
 		{
 			if (bodyAfterNode != NULL)
 			{
@@ -6175,8 +6194,12 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 			}
 			else
 			{
-				auto accessorBlock = BfNodeDynCast<BfBlock>(child);
-				if (accessorBlock == NULL)
+				if (auto accessorBlock = BfNodeDynCast<BfBlock>(child))
+				{
+					body = accessorBlock;
+					mVisitorPos.MoveNext();
+				}							
+				if (body == NULL)
 				{
 					if (child != NULL)
 					{
@@ -6185,9 +6208,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 						mVisitorPos.MoveNext();
 					}
 					continue;
-				}
-				body = accessorBlock;
-				mVisitorPos.MoveNext();
+				}				
 			}
 		}
 
@@ -6200,7 +6221,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 			}
 		}
 
-		if (body == NULL)
+		if ((body == NULL) && (!handled))
 		{
 			if (protectionSpecifier != NULL)
 				AddErrorNode(protectionSpecifier);
@@ -6213,6 +6234,11 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 
 		auto method = mAlloc->Alloc<BfPropertyMethodDeclaration>();
 		method->mPropertyDeclaration = propertyDeclaration;
+		
+		if (fatArrowToken != NULL)
+			MEMBER_SET(method, mFatArrowToken, fatArrowToken);
+		if (endSemicolon != NULL)
+			MEMBER_SET(method, mEndSemicolon, endSemicolon);
 		if (protectionSpecifier != NULL)
 			MEMBER_SET(method, mProtectionSpecifier, protectionSpecifier);
 		if (accessorIdentifier != NULL)

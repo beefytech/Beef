@@ -2574,7 +2574,7 @@ public:
 	BfTokenNode* mCloseParen;		
 	BfSizedArray<ASTREF(BfIdentifierNode*)> mParams;
 	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
-	BfTokenNode* mFatArrowToken;
+	BfTokenNode* mFatArrowToken;	
 	BfAstNode* mBody; // Either expression or block
 	BfFieldDtorDeclaration* mDtor;
 };	BF_AST_DECL(BfLambdaBindExpression, BfExpression);
@@ -2827,7 +2827,7 @@ public:
 	ASTREF(BfGenericConstraintsDeclaration*) mGenericConstraintsDeclaration;
 	ASTREF(BfAstNode*) mEndSemicolon;
 	ASTREF(BfTokenNode*) mFatArrowToken;
-	ASTREF(BfAstNode*) mBody; // Either expression or block
+	ASTREF(BfAstNode*) mBody; // Either expression or block	
 
 	//BfMethodDef* mMethodDef;
 
@@ -2916,7 +2916,9 @@ public:
 	BfTokenNode* mProtectionSpecifier;
 	BfTokenNode* mMutSpecifier;	
 	BfIdentifierNode* mNameNode;
+	BfTokenNode* mFatArrowToken;
 	BfAstNode* mBody;		
+	BfAstNode* mEndSemicolon;
 };	BF_AST_DECL(BfPropertyMethodDeclaration, BfAstNode);
 
 class BfPropertyBodyExpression : public BfAstNode

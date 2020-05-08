@@ -13447,7 +13447,7 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 	auto methodDecl = methodDef->GetMethodDeclaration();
 	auto methodDeclBlock = BfNodeDynCast<BfBlock>(methodDecl->mBody);
 	if (methodDeclBlock == NULL)
-		return BfTypedValue();
+		return GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_IntPtr)); // Must not have an append alloc at all!
 
 	BfTypedValue constValue;
 
@@ -17596,7 +17596,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					isExpressionBody = true;
 			}
 			else if (auto propertyDeclaration = methodDef->GetPropertyDeclaration())
-			{
+			{				
+				auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration();
+				if ((propertyMethodDeclaration != NULL) && (propertyMethodDeclaration->mFatArrowToken != NULL))
+					isExpressionBody = true;
 				if (auto propBodyExpr = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
 				{
 					isExpressionBody = true;
@@ -17636,42 +17639,45 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 			else if (auto expressionBody = BfNodeDynCast<BfExpression>(methodDef->mBody))
 			{	
-				if ((methodDef->mMethodType != BfMethodType_Normal) && (propertyDeclaration == NULL))
-				{
-					BF_ASSERT(methodDeclaration->mFatArrowToken != NULL);
-					Fail("Only normal methods can have expression bodies", methodDeclaration->mFatArrowToken);
-				}
+// 				if ((methodDef->mMethodType != BfMethodType_Normal) && (propertyDeclaration == NULL))
+// 				{
+// 					BF_ASSERT(methodDeclaration->mFatArrowToken != NULL);
+// 					Fail("Only normal methods can have expression bodies", methodDeclaration->mFatArrowToken);
+// 				}
 
 				auto expectingType = mCurMethodInstance->mReturnType;
+				// What was this error for?
 // 				if ((expectingType->IsVoid()) && (IsInSpecializedSection()))
 // 				{
 // 					Warn(0, "Using a 'void' return with an expression-bodied method isn't needed. Consider removing '=>' token", methodDeclaration->mFatArrowToken);
 // 				}
-				
-				//TODO: Why did we have all this stuff for handling void?
-// 				if (expectingType->IsVoid())
-// 				{
-// 					bool wasReturnGenericParam = false;
-// 					if ((mCurMethodState->mClosureState != NULL) && (mCurMethodState->mClosureState->mReturnType != NULL))
-// 					{
-// 						wasReturnGenericParam = mCurMethodState->mClosureState->mReturnType->IsGenericParam();
-// 					}
-// 					else
-// 					{
-// 						auto unspecializedMethodInstance = GetUnspecializedMethodInstance(mCurMethodInstance);
-// 						if ((unspecializedMethodInstance != NULL) && (unspecializedMethodInstance->mReturnType->IsGenericParam()))
-// 							wasReturnGenericParam = true;
-// 					}
-// 					
-// 					// If we the void return was from a generic specialization, allow us to return a void result,
-// 					//  otherwise treat expression as though it must be a statement
-// 					bool isStatement = expressionBody->VerifyIsStatement(mCompiler->mPassInstance, wasReturnGenericParam);
-// 					if (isStatement)
-// 						expectingType = NULL;
-// 				}
+								
+				BfEvalExprFlags exprEvalFlags = BfEvalExprFlags_None;
+				if (expectingType->IsVoid())
+				{
+					exprEvalFlags = BfEvalExprFlags_NoCast;
+
+					bool wasReturnGenericParam = false;
+					if ((mCurMethodState->mClosureState != NULL) && (mCurMethodState->mClosureState->mReturnType != NULL))
+					{
+						wasReturnGenericParam = mCurMethodState->mClosureState->mReturnType->IsGenericParam();
+					}
+					else
+					{
+						auto unspecializedMethodInstance = GetUnspecializedMethodInstance(mCurMethodInstance);
+						if ((unspecializedMethodInstance != NULL) && (unspecializedMethodInstance->mReturnType->IsGenericParam()))
+							wasReturnGenericParam = true;
+					}
+					
+					// If we the void return was from a generic specialization, allow us to return a void result,
+					//  otherwise treat expression as though it must be a statement
+					bool isStatement = expressionBody->VerifyIsStatement(mCompiler->mPassInstance, wasReturnGenericParam);
+					if (isStatement)
+						expectingType = NULL;
+				}
 
 				UpdateSrcPos(expressionBody);
-				auto retVal = CreateValueFromExpression(expressionBody, expectingType);
+				auto retVal = CreateValueFromExpression(expressionBody, expectingType, exprEvalFlags);
 				if ((retVal) && (expectingType != NULL))
 				{
 					mCurMethodState->mHadReturn = true;
@@ -20881,7 +20887,13 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				{
 					auto propertyMethodDecl = methodDef->GetPropertyMethodDeclaration();
 
-					Fail(StrFormat("Property '%s' %s accessor not defined in interface '%s'", propertyDecl->mNameNode->ToString().c_str(),
+					String name;
+					if (auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propertyDecl))
+						name = "this[]";
+					else if (propertyDecl->mNameNode != NULL)
+						propertyDecl->mNameNode->ToString(name);
+						
+					Fail(StrFormat("Property '%s' %s accessor not defined in interface '%s'", name.c_str(),
 						(methodDef->mMethodType == BfMethodType_PropertyGetter) ? "get" : "set", TypeToString(ifaceInst).c_str()), methodDef->GetRefNode(), true);
 				}
 				else
