@@ -2132,7 +2132,12 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			}
 			auto methodInst = methodGroup.mDefault;
 
-			if ((!methodDef->mIsVirtual) || (methodDef->mIsOverride) || (methodDef->mMethodType != BfMethodType_Normal))
+			if ((!methodDef->mIsVirtual) || (methodDef->mIsOverride))
+				continue;
+			
+			if ((methodDef->mMethodType != BfMethodType_Normal) &&
+				(methodDef->mMethodType != BfMethodType_PropertyGetter) &&
+				(methodDef->mMethodType != BfMethodType_PropertySetter))
 				continue;
 			
 			if ((methodInst->mVirtualTableIdx >= 0) && (methodInst->mVirtualTableIdx < mModule->mCurTypeInstance->mVirtualMethodTable.size()))
