@@ -528,8 +528,6 @@ namespace System
 			mMethodId = 0;
 		}
 	}
-
-	delegate int32 Comparison<T>(T a, T b);
 }
 
 static
