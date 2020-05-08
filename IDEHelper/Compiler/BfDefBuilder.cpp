@@ -1453,6 +1453,57 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	if (outerTypeDef != NULL)
 		numGenericParams += (int)outerTypeDef->mGenericParamDefs.size();
 	
+	mCurTypeDef->mSource = mCurSource;
+	mCurTypeDef->mSource->mRefCount++;
+	mCurTypeDef->mTypeDeclaration = typeDeclaration;
+	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);
+	mCurTypeDef->mIsConcrete = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Concrete);
+	mCurTypeDef->mIsStatic = typeDeclaration->mStaticSpecifier != NULL;
+	mCurTypeDef->mIsDelegate = false;
+	mCurTypeDef->mIsFunction = false;
+
+	BfToken typeToken = BfToken_None;
+	if (typeDeclaration->mTypeNode != NULL)
+		typeToken = typeDeclaration->mTypeNode->GetToken();
+
+	if (typeDeclaration->mTypeNode == NULL)
+	{
+		// Globals
+		mCurTypeDef->mTypeCode = BfTypeCode_Struct;
+	}
+	else if (typeToken == BfToken_Class)
+	{
+		mCurTypeDef->mTypeCode = BfTypeCode_Object;
+	}
+	else if (typeToken == BfToken_Delegate)
+	{
+		mCurTypeDef->mTypeCode = BfTypeCode_Object;
+		mCurTypeDef->mIsDelegate = true;
+	}
+	else if (typeToken == BfToken_Function)
+	{
+		mCurTypeDef->mTypeCode = BfTypeCode_Struct;
+		mCurTypeDef->mIsFunction = true;
+	}
+	else if (typeToken == BfToken_Interface)
+	{
+		mCurTypeDef->mTypeCode = BfTypeCode_Interface;
+	}
+	else if (typeToken == BfToken_Enum)
+	{
+		mCurTypeDef->mTypeCode = BfTypeCode_Enum;
+	}
+	else if (typeToken == BfToken_TypeAlias)
+	{
+		mCurTypeDef->mTypeCode = BfTypeCode_TypeAlias;
+	}
+	else if (typeToken == BfToken_Struct)
+		mCurTypeDef->mTypeCode = BfTypeCode_Struct;
+	else if (typeToken == BfToken_Extension)
+		mCurTypeDef->mTypeCode = BfTypeCode_Extension;
+	else
+		BF_FATAL("Unknown type token");
+
 	if (!isAutoCompleteTempType)
 	{
 		BfTypeDef* prevDef = NULL;
@@ -1487,7 +1538,9 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 					{
 						// We don't allow "new revision" semantics if the 'isExtension' state changes, or
 						//  if the outer type did not use "new revision" semantics (for isExtension change on itself or other outer type)
+						
 						bool isCompatible = (isExtension == (checkTypeDef->mTypeCode == BfTypeCode_Extension)) &&
+							(checkTypeDef->mTypeCode == mCurTypeDef->mTypeCode) &&
 							(checkTypeDef->mOuterType == actualOuterTypeDef);
 						
 						if (isCompatible)
@@ -1558,58 +1611,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	}
 
 	BfLogSysM("Creating TypeDef %p Hash:%d from TypeDecl: %p Source: %p ResolvePass: %d AutoComplete:%d\n", mCurTypeDef, mSystem->mTypeDefs.GetHash(mCurTypeDef), typeDeclaration, 
-		typeDeclaration->GetSourceData(), mResolvePassData != NULL, isAutoCompleteTempType);
-			
-	mCurTypeDef->mSource = mCurSource;
-	mCurTypeDef->mSource->mRefCount++;
-	mCurTypeDef->mTypeDeclaration = typeDeclaration;
-	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);
-	mCurTypeDef->mIsConcrete = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Concrete);
-	mCurTypeDef->mIsStatic = typeDeclaration->mStaticSpecifier != NULL;
-	mCurTypeDef->mIsDelegate = false;
-	mCurTypeDef->mIsFunction = false;
-
-	BfToken typeToken = BfToken_None;
-	if (typeDeclaration->mTypeNode != NULL)
-		typeToken = typeDeclaration->mTypeNode->GetToken();
-
-	if (typeDeclaration->mTypeNode == NULL)
-	{
-		// Globals
-		mCurTypeDef->mTypeCode = BfTypeCode_Struct;
-	}
-	else if (typeToken == BfToken_Class)
-	{
-		mCurTypeDef->mTypeCode = BfTypeCode_Object;
-	}
-	else if (typeToken == BfToken_Delegate)
-	{
-		mCurTypeDef->mTypeCode = BfTypeCode_Object;
-		mCurTypeDef->mIsDelegate = true;
-	}
-	else if (typeToken == BfToken_Function)
-	{
-		mCurTypeDef->mTypeCode = BfTypeCode_Struct;
-		mCurTypeDef->mIsFunction = true;
-	}
-	else if (typeToken == BfToken_Interface)
-	{
-		mCurTypeDef->mTypeCode = BfTypeCode_Interface;
-	}
-	else if (typeToken == BfToken_Enum)
-	{
-		mCurTypeDef->mTypeCode = BfTypeCode_Enum;
-	}
-	else if (typeToken == BfToken_TypeAlias)
-	{
-		mCurTypeDef->mTypeCode = BfTypeCode_TypeAlias;
-	}
-	else if (typeToken == BfToken_Struct)
-		mCurTypeDef->mTypeCode = BfTypeCode_Struct;
-	else if (typeToken == BfToken_Extension)
-		mCurTypeDef->mTypeCode = BfTypeCode_Extension;
-	else
-		BF_FATAL("Unknown type token");
+		typeDeclaration->GetSourceData(), mResolvePassData != NULL, isAutoCompleteTempType);				
 
 	int outerGenericSize = 0;
 	if (mCurTypeDef->mOuterType != NULL)
