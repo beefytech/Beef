@@ -518,6 +518,8 @@ namespace System
 		}
     }
 
+	delegate void Action();
+
     struct DeferredCall
     {
 		public int64 mMethodId;
