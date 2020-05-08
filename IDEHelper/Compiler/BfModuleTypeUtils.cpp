@@ -10233,10 +10233,10 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		}
 		if (methodInstance == NULL)
 		{
-			str += "method NULL";
+			str += "method reference NULL";
 			return;
 		}
-		str += "method ";
+		str += "method reference ";
 		str += MethodToString(methodInstance);
 		return;
 	}
