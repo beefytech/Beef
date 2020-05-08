@@ -22,7 +22,7 @@ namespace Tests
 
 		struct StructB
 		{
-			public StructA B { get; set; }
+			public StructA B { get; set mut; }
 
 			int mZ = 9;
 
