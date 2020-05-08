@@ -18006,18 +18006,18 @@ BfMethodDef* BfModule::GetLocalMethodDef(BfLocalMethod* localMethod)
 
 	BfMethodDef* methodDef;
 
+	BfMethodDef* outerMethodDef = NULL;
+	if (localMethod->mOuterLocalMethod != NULL)
+		outerMethodDef = localMethod->mOuterLocalMethod->mMethodDef;
+	else
+		outerMethodDef = rootMethodState->mMethodInstance->mMethodDef;
+
 	if (methodDeclaration != NULL)
 	{
 		BfDefBuilder defBuilder(mCompiler->mSystem);
 		defBuilder.mPassInstance = mCompiler->mPassInstance;
 		defBuilder.mCurTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
-
-		BfMethodDef* outerMethodDef = NULL;
-		if (localMethod->mOuterLocalMethod != NULL)
-			outerMethodDef = localMethod->mOuterLocalMethod->mMethodDef;
-		else
-			outerMethodDef = rootMethodState->mMethodInstance->mMethodDef;
-
+		
 		methodDef = defBuilder.CreateMethodDef(methodDeclaration, outerMethodDef);
 	}
 	else
@@ -18044,6 +18044,16 @@ BfMethodDef* BfModule::GetLocalMethodDef(BfLocalMethod* localMethod)
  			paramDef->mName = paramName;
  			methodDef->mParams.Add(paramDef);
  		}
+
+		if (outerMethodDef != NULL)
+		{
+			for (auto genericParam : outerMethodDef->mGenericParams)
+			{
+				auto* copiedGenericParamDef = new BfGenericParamDef();
+				*copiedGenericParamDef = *genericParam;
+				methodDef->mGenericParams.Add(copiedGenericParamDef);
+			}
+		}
 	}
 
 	methodDef->mIdx = ~methodLocalIdx;
