@@ -397,7 +397,7 @@ namespace Beefy.theme.dark
 			return tabCount;
 		}
 
-        public override void WithTabs(Action<TabbedView.TabButton> func)
+        public override void WithTabs(delegate void(TabbedView.TabButton) func)
         {
             for (var tab in mTabs)
                 func(tab);

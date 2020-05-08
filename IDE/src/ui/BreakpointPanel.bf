@@ -60,7 +60,7 @@ namespace IDE.ui
 		public String mPendingEvalStr ~ delete _;
 		public String mCurEvalExpr ~ delete _;
 		public Breakpoint mPendingMemoryBreakpoint ~ { if (_ != null) _.Deref(); };
-		public Action<int, int, String> mOnPendingMemoryBreakpoint ~ delete _;
+		public delegate void(int, int, String) mOnPendingMemoryBreakpoint ~ delete _;
 
         public this()
         {
@@ -488,7 +488,7 @@ namespace IDE.ui
 			return true;
 		}
 
-        public MemoryBreakpointResult TryCreateMemoryBreakpoint(String evalStr, out int addr, out int32 byteCount, String addrType, Action<int, int, String> pendingHandler)
+        public MemoryBreakpointResult TryCreateMemoryBreakpoint(String evalStr, out int addr, out int32 byteCount, String addrType, delegate void(int, int, String) pendingHandler)
         {
             addr = 0;
             byteCount = 0;

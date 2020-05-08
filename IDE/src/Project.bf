@@ -2184,7 +2184,7 @@ namespace IDE
             
         }
 
-        public void WithProjectItems(Action<ProjectItem> func)
+        public void WithProjectItems(delegate void(ProjectItem) func)
         {
             List<int32> idxStack = scope List<int32>();
             List<ProjectFolder> folderStack = scope List<ProjectFolder>();

@@ -80,7 +80,7 @@ namespace Beefy.widgets
         public Event<RemovedFromParentHandler> mOnRemovedFromParent ~ _.Dispose();
         public Event<AddedToParentHandler> mOnAddedToParent ~ _.Dispose();
         public Event<KeyDownHandler> mOnKeyDown ~ _.Dispose();
-		public Event<Action<Widget>> mOnDeleted ~ _.Dispose();
+		public Event<delegate void(Widget)> mOnDeleted ~ _.Dispose();
 
         public Matrix Transform 
         {

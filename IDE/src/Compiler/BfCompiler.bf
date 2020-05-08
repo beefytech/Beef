@@ -301,6 +301,7 @@ namespace IDE.Compiler
 
             BfPassInstance passInstance = null;
             bool didPassInstanceAlloc = false;
+			bool wantsRemoveOldData = false;
 
             mBfSystem.Lock(0);
 
@@ -488,8 +489,7 @@ namespace IDE.Compiler
                         QueueDeferredResolveAll();
 					
                     delete resolvePassData;
-                    mBfSystem.RemoveOldParsers();
-                    mBfSystem.RemoveOldData();
+					wantsRemoveOldData = true;
 					passKind = .Classify;
 
 					// End after resolveAll
@@ -519,6 +519,12 @@ namespace IDE.Compiler
 				if ((passKind != .None) && (mIsResolveOnly))
 					gApp.mErrorsPanel.ProcessPassInstance(passInstance, passKind);
 				delete passInstance;
+			}
+
+			if (wantsRemoveOldData)
+			{
+				mBfSystem.RemoveOldParsers();
+				mBfSystem.RemoveOldData();
 			}
         }
 

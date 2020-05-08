@@ -835,7 +835,7 @@ namespace BeefPerf
 			OpenedNew
 		}
 
-		public void WithDocumentTabbedViews(Action<DarkTabbedView> func)
+		public void WithDocumentTabbedViews(delegate void(DarkTabbedView) func)
 		{
 		    for (int32 windowIdx = 0; windowIdx < mWindows.Count; windowIdx++)
 		    {
@@ -860,7 +860,7 @@ namespace BeefPerf
 		    }
 		}
 
-		public void WithTabs(Action<TabbedView.TabButton> func)
+		public void WithTabs(delegate void(TabbedView.TabButton) func)
 		{
 		    WithDocumentTabbedViews(scope (documentTabbedView) =>
 		        {

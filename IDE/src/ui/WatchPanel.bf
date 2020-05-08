@@ -2800,7 +2800,7 @@ namespace IDE.ui
 					}
 				}
 
-				void WithSelected(Action<ListViewItem> func)
+				void WithSelected(delegate void(ListViewItem) func)
 				{
 					var root = listView.GetRoot();
 					root.WithSelectedItems(func, false, true);

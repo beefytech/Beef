@@ -5,26 +5,48 @@ using System.Diagnostics;
 using System.Threading;
 using System.Collections;
 
-[Obsolete("This is old", false)]
-class Bloops
+struct Zoops
 {
+	public int mA = 123;
+	public int mB = 234;
 
+	public static implicit operator Zoops(float f)
+	{
+		Zoops val = default;
+		val.mA = (.)f;
+		val.mB = 200;
+		return val;
+	}
+
+	public static implicit operator Zoops(float[2] f)
+	{
+		Zoops val = default;
+		val.mA = (.)f[0];
+		val.mB = (.)f[1];
+		return val;
+	}
 }
 
 struct Blurg
 {
-	[LinkName(.Empty)]
-	public static void Hello()
+	public void Foo<T>()
 	{
 
+		
+	}
+
+	public void Zarf<T>()
+	{
+		T Yorp<T2>(T2 val)
+		{
+			return default;
+		}
 	}
 
 	[CallingConvention(.Cdecl)]
 	public static void Hey()
 	{
-		Hello();
-
-		//int a = LinkNameAttribute(.);
+		
 	}
 
 }

@@ -1383,7 +1383,7 @@ namespace BeefPerf
 			return dc.mSelection;
 		}
 
-		void WithNodes(TrackNode node, Action<TrackNode> act)
+		void WithNodes(TrackNode node, delegate void(TrackNode) act)
 		{
 			act(node);
 			var group = node as TrackNodeGroup;

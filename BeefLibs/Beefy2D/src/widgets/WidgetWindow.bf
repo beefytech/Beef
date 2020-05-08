@@ -29,7 +29,7 @@ namespace Beefy.widgets
         public Event<MouseWheelHandler> mOnMouseWheel ~ _.Dispose();
         public Event<MenuItemSelectedHandler> mOnMenuItemSelected ~ _.Dispose();
         public Event<KeyDownHandler> mOnWindowKeyDown ~ _.Dispose();
-    	public Event<Func<int32, int32, HitTestResult>> mOnHitTest ~ _.Dispose();
+    	public Event<delegate HitTestResult(int32, int32)> mOnHitTest ~ _.Dispose();
 
         public static Event<MouseLeftWindowHandler> sOnMouseLeftWindow ~ _.Dispose();
         public static Event<WindowLostFocusHandler> sOnWindowLostFocus ~ _.Dispose();

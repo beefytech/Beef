@@ -346,7 +346,7 @@ namespace Beefy.widgets
 			int32 mRefCount = 1;
 
 			public Event<OpenNewWindowDelegate> mOpenNewWindowDelegate ~ _.Dispose();
-			public Event<Action<TabbedView>> mTabbedViewClosed ~ _.Dispose();
+			public Event<delegate void(TabbedView)> mTabbedViewClosed ~ _.Dispose();
 
 			public SharedData Ref()
 			{
@@ -363,7 +363,7 @@ namespace Beefy.widgets
 
         public delegate void OpenNewWindowDelegate(TabbedView tabbedView, WidgetWindow newWindow);
 
-        public Action<Menu> mPopulateMenuEvent;
+        public delegate void(Menu) mPopulateMenuEvent;
         public float mTabHeight;
         public float mTabAreaWidth;
         public bool mNeedResizeTabs;        
@@ -417,7 +417,7 @@ namespace Beefy.widgets
             return mTabs.Count;
         }
         
-        public virtual void WithTabs(Action<TabbedView.TabButton> func)
+        public virtual void WithTabs(delegate void(TabbedView.TabButton) func)
         {
             for (var tab in mTabs)
                 func(tab);

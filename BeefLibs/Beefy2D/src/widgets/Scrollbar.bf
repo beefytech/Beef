@@ -14,7 +14,7 @@ namespace Beefy.widgets
         {
             public Scrollbar mScrollbar;
             public DragHelper mDraggableHelper ~ delete _;
-			public Event<Action<float, float>> mOnDrag ~ _.Dispose();
+			public Event<delegate void(float, float)> mOnDrag ~ _.Dispose();
 
             public this()
             {

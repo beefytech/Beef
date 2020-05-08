@@ -6641,7 +6641,7 @@ namespace IDE.ui
         }
 		
 
-		public void WithTrackedElementsAtCursor<T>(List<T> trackedElementList, Action<T> func) where T : TrackedTextElement
+		public void WithTrackedElementsAtCursor<T>(List<T> trackedElementList, delegate void(T) func) where T : TrackedTextElement
 		{
 		    int lineIdx;
 		    int lineCharIdx;

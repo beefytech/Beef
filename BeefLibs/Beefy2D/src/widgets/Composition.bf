@@ -376,7 +376,7 @@ namespace Beefy.widgets
         }
 
         protected void SerializeTimeline<T>(StructuredData data, TimelineData<T> timelineData, String name,
-            String[] componentNames, Action<StructuredData, T>[] writeActions, T theDefault) where T : IEquatable<T>
+            String[] componentNames, Delegate[] writeActions, T theDefault) where T : IEquatable<T>
         {                        
             /*if ((timelineData.mEntries != null) && (timelineData.mEntries.Count > 0))
             {
@@ -433,7 +433,7 @@ namespace Beefy.widgets
                 data.Add("ResId", resIdStr);
 			}
 
-            SerializeTimeline(data, mTimelineAnchor, "Anchor",
+            /*SerializeTimeline(data, mTimelineAnchor, "Anchor",
                 scope String[] { "X", "Y" },
                 scope Action<StructuredData, CompositionPos>[] { scope => CompositionPos.WriteX, scope => CompositionPos.WriteY },
                 CompositionPos(0, 0));
@@ -451,7 +451,7 @@ namespace Beefy.widgets
             SerializeTimeline(data, mTimelineRot, "Rotation",
                 scope String[] { "Angle" },
                 null,
-                0.0f);
+                0.0f);*/
         }
         
         public void RebuildChildIndices()

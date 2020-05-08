@@ -17,7 +17,7 @@ namespace IDE.ui
             mIsReadOnly = true;
         }
 
-		public Event<Func<int, int, bool>> mGotoReferenceEvent ~ _.Dispose();
+		public Event<delegate bool(int, int)> mGotoReferenceEvent ~ _.Dispose();
         public bool GotoRefrenceAtLine(int line, int lineOfs = 0)
         {
             //bool selectLine = true;

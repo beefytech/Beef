@@ -209,7 +209,7 @@ namespace IDE
         public Targets mTargets = new Targets() ~ delete _;
         public DebugManager mDebugger ~ delete _;
 		public String mSymSrvStatus = new String() ~ delete _;
-		public Action<String> mPendingDebugExprHandler = null;
+		public delegate void(String) mPendingDebugExprHandler = null;
 		public bool mIsImmediateDebugExprEval;
         public BookmarkManager mBookmarkManager = new BookmarkManager() ~ delete _;
         public HistoryManager mHistoryManager = new HistoryManager() ~ delete _;
@@ -435,9 +435,9 @@ namespace IDE
             public String mTempFileName ~ delete _;
             public int32 mParallelGroup = -1;
             public Task<String> mReadTask /*~ delete _*/;
-            public Action<Task<String>> mOnReadTaskComplete /*~ delete _*/;
+            public delegate void(Task<String>) mOnReadTaskComplete /*~ delete _*/;
             public Task<String> mErrorTask /*~ delete _*/;
-            public Action<Task<String>> mOnErrorTaskComplete /*~ delete _*/;
+            public delegate void(Task<String>) mOnErrorTaskComplete /*~ delete _*/;
 			public Monitor mMonitor = new Monitor() ~ delete _;
 			public String mStdInData ~ delete _;
 
@@ -5243,7 +5243,7 @@ namespace IDE
                 });
         }
 
-        public void WithDocumentTabbedViews(Action<DarkTabbedView> func)
+        public void WithDocumentTabbedViews(delegate void(DarkTabbedView) func)
         {
             for (int32 windowIdx = 0; windowIdx < mWindows.Count; windowIdx++)
             {
@@ -5347,7 +5347,7 @@ namespace IDE
 		    return null;
 		}
         
-        public void WithTabs(Action<TabbedView.TabButton> func)
+        public void WithTabs(delegate void(TabbedView.TabButton) func)
         {
             WithDocumentTabbedViews(scope (documentTabbedView) =>
                 {
@@ -5366,7 +5366,7 @@ namespace IDE
             return tab;
         }        
 
-        public void WithSourceViewPanels(Action<SourceViewPanel> func)
+        public void WithSourceViewPanels(delegate void(SourceViewPanel) func)
         {            
             WithTabs(scope (tab) =>
                 {
@@ -5839,7 +5839,7 @@ namespace IDE
 
 			if (showType != SourceShowType.New)
 			{
-				Action<TabbedView.TabButton> tabFunc = scope [&] (tabButton) =>
+				delegate void(TabbedView.TabButton) tabFunc = scope [&] (tabButton) =>
 	                {
 	                    var darkTabButton = (DarkTabbedView.DarkTabButton)tabButton;
 	                    if (tabButton.mContent is SourceViewPanel)
@@ -10866,7 +10866,8 @@ namespace IDE
 			Pending
 		}
 
-		public EvalResult DebugEvaluate(String expectedType, String expr, String outVal, int cursorPos = -1, DebugManager.Language language = .NotSet, DebugManager.EvalExpressionFlags expressionFlags = .None, Action<String> pendingHandler = null)
+		public EvalResult DebugEvaluate(String expectedType, String expr, String outVal, int cursorPos = -1, DebugManager.Language language = .NotSet,
+			DebugManager.EvalExpressionFlags expressionFlags = .None, delegate void(String) pendingHandler = null)
 		{
 			defer
 			{

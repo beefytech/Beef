@@ -177,10 +177,10 @@ namespace IDE.ui
 			OnlyShowInvoke = 4
 		}
 
-        public Action<char32, AutoCompleteOptions> mOnGenerateAutocomplete ~ delete _;
+        public delegate void(char32, AutoCompleteOptions) mOnGenerateAutocomplete ~ delete _;
         public Action mOnFinishAsyncAutocomplete ~ delete _;
         public Action mOnCancelAsyncAutocomplete ~ delete _;
-        public Func<bool> mOnEscape ~ delete _; // returns 'true' if did work
+        public delegate bool() mOnEscape ~ delete _; // returns 'true' if did work
         public AutoComplete mAutoComplete ~ delete _;
         List<QueuedTextEntry> mQueuedText = new List<QueuedTextEntry>() ~ delete _;
         List<QueuedUnderlineEntry> mQueuedUnderlines = new List<QueuedUnderlineEntry>() ~ delete _;        
