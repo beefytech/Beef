@@ -790,7 +790,7 @@ bool BfTypeDef::HasAutoProperty(BfPropertyDeclaration* propertyDeclaration)
 	
 	for (auto methodDeclaration : propertyDeclaration->mMethods)
 	{
-		if (BfNodeDynCast<BfTokenNode>(methodDeclaration->mBody) != NULL)
+		if (methodDeclaration->mBody == NULL)
 			return true;
 	}
 	return false;

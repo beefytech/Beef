@@ -14227,11 +14227,6 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 		argIdx++;
 	}
 
-	if (methodDef->mName == "Hello")
-	{
-		NOP;
-	}
-
 	while (argIdx < argCount)
 	{
 		while ((paramIdx != -1) && (methodInstance->IsParamSkipped(paramIdx)))
@@ -15142,11 +15137,6 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 			auto methodOwner = markMemberMethodInstance.mMethodInstance->GetOwner();
 			if (markVal.mType != methodOwner)
 				markVal = Cast(NULL, markVal, methodOwner);
-
-			if (markMemberMethodInstance.mMethodInstance->mIdHash == 0x1500000236LL)
-			{
-				NOP;
-			}
 
 			exprEvaluator.PushThis(NULL, markVal, markMemberMethodInstance.mMethodInstance, args);
 			exprEvaluator.CreateCall(markMemberMethodInstance.mMethodInstance, markMemberMethodInstance.mFunc, false, args);
@@ -17427,40 +17417,14 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			skipBody = true;
 			skipEndChecks = true;
 		}
-		else if (HasCompiledOutput())
-		{
-			if ((methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))
-			{
-				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
-				{
-					EmitGCMarkMembers();
-				}
-				else if (!mCurTypeInstance->IsObject())
-				{
-
-				}
-			}
-			else if (methodDef->mName == BF_METHODNAME_FIND_TLS_MEMBERS)
-			{
-				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
-				{
-					EmitGCFindTLSMembers();
-				}
-			}
-		}
-	}
-	else if (!skipBody)
-	{		
-		bool isEmptyBodied = BfNodeDynCast<BfTokenNode>(methodDef->mBody) != NULL;
-
-		if (isEmptyBodied) // Generate autoProperty things
-		{
+		else
+		{			
 			auto propertyDeclaration = methodDef->GetPropertyDeclaration();
 			if ((propertyDeclaration != NULL) && (!typeDef->HasAutoProperty(propertyDeclaration)))
 			{
 				if ((!mCurTypeInstance->IsInterface()) && (!hasExternSpecifier))
 					Fail("Body expected", methodDef->mBody);
-			}			
+			}
 			else if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 			{
 				if (methodInstance->mReturnType->IsValuelessType())
@@ -17488,8 +17452,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 						else if (mCurTypeInstance->IsObject())
 							lookupValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(GetThis().mValue, 0, fieldInstance->mDataIdx), fieldInstance->mResolvedType, true);
 						else
-							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mFieldIdx);												
-						lookupValue = LoadOrAggregateValue(lookupValue);						
+							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mFieldIdx);
+						lookupValue = LoadOrAggregateValue(lookupValue);
 						CreateReturn(lookupValue.mValue);
 						EmitLifetimeEnds(&mCurMethodState->mHeadScope);
 					}
@@ -17509,7 +17473,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 			else if (methodDef->mMethodType == BfMethodType_PropertySetter)
 			{
-				if (!mCompiler->IsAutocomplete())
+				if (!methodDef->mIsMutating)
+				{
+					Fail("Auto-setter must be marked as 'mut'", methodDef->GetRefNode(), true);
+				}
+				else if (!mCompiler->IsAutocomplete())
 				{
 					String autoPropName = typeDef->GetAutoPropertyName(propertyDeclaration);
 					BfFieldInstance* fieldInstance = GetFieldByName(mCurTypeInstance, autoPropName);
@@ -17529,13 +17497,13 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 								BF_FATAL("Should not happen");
 							}
 							if (mCurTypeInstance->IsObject())
-								thisValue = LoadValue(thisValue);							
-							lookupAddr = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInstance->mDataIdx);							
+								thisValue = LoadValue(thisValue);
+							lookupAddr = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInstance->mDataIdx);
 						}
 
 						BfExprEvaluator exprEvaluator(this);
 						auto localVal = exprEvaluator.LoadLocal(lastParam);
-						localVal = LoadOrAggregateValue(localVal);						
+						localVal = LoadOrAggregateValue(localVal);
 						mBfIRBuilder->CreateStore(localVal.mValue, lookupAddr);
 					}
 					else if (!fieldInstance->mResolvedType->IsValuelessType())
@@ -17545,7 +17513,31 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					}
 				}
 			}
+			else if ((methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))
+			{
+				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
+				{
+					if (HasCompiledOutput())
+						EmitGCMarkMembers();
+				}
+				else if (!mCurTypeInstance->IsObject())
+				{
+
+				}
+			}
+			else if (methodDef->mName == BF_METHODNAME_FIND_TLS_MEMBERS)
+			{
+				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
+				{
+					if (HasCompiledOutput())
+						EmitGCFindTLSMembers();
+				}
+			}
 		}
+	}
+	else if (!skipBody)
+	{
+		bool isEmptyBodied = BfNodeDynCast<BfTokenNode>(methodDef->mBody) != NULL;
 
 		if ((!mCurMethodInstance->mReturnType->IsValuelessType()) && (!isEmptyBodied))
 		{			
