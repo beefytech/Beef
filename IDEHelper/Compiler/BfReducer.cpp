@@ -4613,8 +4613,9 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					}
 					MEMBER_SET_CHECKED(delegateTypeRef, mCloseParen, closeNode);
 					mVisitorPos.MoveNext();
-
-					return delegateTypeRef;
+					
+					isHandled = true;
+					firstNode = delegateTypeRef;
 				}
 				else if (token == BfToken_Decltype)
 				{
