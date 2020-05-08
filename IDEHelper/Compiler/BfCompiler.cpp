@@ -2988,6 +2988,8 @@ void BfCompiler::UpdateRevisedTypes()
 						// This is an old 'next revision'
 						delete compositeTypeDef->mNextRevision;
 						compositeTypeDef->mNextRevision = NULL;
+						if (compositeTypeDef->mDefState != BfTypeDef::DefState_Deleted)
+							compositeTypeDef->mDefState = BfTypeDef::DefState_Defined;
 					}
 					checkTypeDefEntry = checkTypeDefEntry->mNext;
 				}
