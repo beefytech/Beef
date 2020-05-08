@@ -17473,7 +17473,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 			else if (methodDef->mMethodType == BfMethodType_PropertySetter)
 			{
-				if (!methodDef->mIsMutating)
+				if ((!methodDef->mIsMutating) && (mCurTypeInstance->IsValueType()))
 				{
 					Fail("Auto-setter must be marked as 'mut'", methodDef->GetRefNode(), true);
 				}
