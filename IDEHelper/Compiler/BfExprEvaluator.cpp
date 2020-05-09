@@ -4346,7 +4346,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 				auto typeInstance = methodInstance->GetOwner();
 				auto& vEntry = typeInstance->mVirtualMethodTable[methodInstance->mVirtualTableIdx];
 				BfMethodInstance* declaringMethodInstance = vEntry.mDeclaringMethod;
-				if ((declaringMethodInstance->mMethodInstanceGroup->mOnDemandKind < BfMethodOnDemandKind_InWorkList) || (!methodInstance->mIsReified))
+				if ((declaringMethodInstance->mMethodInstanceGroup->mOnDemandKind < BfMethodOnDemandKind_InWorkList) || (!declaringMethodInstance->mIsReified))
 					mModule->GetMethodInstance(declaringMethodInstance);
 			}
 
@@ -6373,7 +6373,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	BfTypeVector checkMethodGenericArguments;
 
 	BfTypeInstance* curTypeInst = targetTypeInst;
-	
+
 	BfMethodMatcher methodMatcher(targetSrc, mModule, methodName, argValues.mResolvedArgs, methodGenericArguments);
 	methodMatcher.mCheckedKind = checkedKind;
 	methodMatcher.mAllowImplicitThis = allowImplicitThis;
@@ -6534,8 +6534,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				}
 			}
 		}
-	}
-	
+	}	
+
 	bool isFailurePass = false;
 	if (methodMatcher.mBestMethodDef == NULL)
 	{
@@ -7136,6 +7136,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	
 	prevBindResult.Restore();
 
+	// Check mut
 	if ((callTarget.mType != NULL) &&
 		(callTarget.mType->IsGenericParam()) && 
 		((!callTarget.IsAddr()) || (callTarget.IsReadOnly())) &&
@@ -7161,6 +7162,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 	}
 
+	// Check mut on interface
 	if ((callTarget.mType != NULL) &&
 		(callTarget.mType->IsInterface()) &&
 		(target.IsThis()) &&

@@ -4702,7 +4702,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		SizedArray<BfIRValue, 1> extVTableData;
 		
 		SizedArrayImpl<BfIRValue>* vFuncDataExt = &extVTableData;
-		
+
 		if (!typeInstance->IsInterface())
 		{
 			Array<int32> dynCastData;
