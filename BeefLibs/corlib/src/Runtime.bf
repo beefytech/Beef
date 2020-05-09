@@ -323,7 +323,7 @@ namespace System
 		public static void Assert(bool condition, String error) 
 		{
 			if (!condition)
-				Internal.FatalError("Assert failed", 1);
+				Internal.FatalError(error, 1);
 		}
 	}
 }
