@@ -4948,29 +4948,41 @@ void BfCompiler::PopulateReified()
 					}
 				}
 
-				for (auto& ifaceTypeInst : typeInst->mInterfaces)
+				auto checkType = typeInst;
+				while (checkType != NULL)
 				{
-					auto ifaceInst = ifaceTypeInst.mInterfaceType;
-					int startIdx = ifaceTypeInst.mStartInterfaceTableIdx;
-					int iMethodCount = (int)ifaceInst->mMethodInstanceGroups.size();
-					auto declTypeDef = ifaceTypeInst.mDeclaringType;
-
-					for (int iMethodIdx = 0; iMethodIdx < iMethodCount; iMethodIdx++)
+					if ((checkType != typeInst) && (checkType->mHasBeenInstantiated))
 					{
-						auto ifaceMethodInst = ifaceInst->mMethodInstanceGroups[iMethodIdx].mDefault;
-						if ((ifaceMethodInst == NULL) || (!ifaceMethodInst->IsReifiedAndImplemented()))
-							continue;
+						// We will already check this type here in its own loop
+						break;
+					}
 
-						auto implMethodRef = &typeInst->mInterfaceMethodTable[iMethodIdx + startIdx].mMethodRef;
-						BfMethodInstance* implMethod = *implMethodRef;
-						if (implMethod == NULL)
-							continue;
-						if (!implMethod->IsReifiedAndImplemented())
+					for (auto& ifaceTypeInst : checkType->mInterfaces)
+					{
+						auto ifaceInst = ifaceTypeInst.mInterfaceType;
+						int startIdx = ifaceTypeInst.mStartInterfaceTableIdx;
+						int iMethodCount = (int)ifaceInst->mMethodInstanceGroups.size();
+						auto declTypeDef = ifaceTypeInst.mDeclaringType;
+
+						for (int iMethodIdx = 0; iMethodIdx < iMethodCount; iMethodIdx++)
 						{
-							didWork = true;
-							typeInst->mModule->GetMethodInstance(implMethod);
+							auto ifaceMethodInst = ifaceInst->mMethodInstanceGroups[iMethodIdx].mDefault;
+							if ((ifaceMethodInst == NULL) || (!ifaceMethodInst->IsReifiedAndImplemented()))
+								continue;
+
+							auto implMethodRef = &checkType->mInterfaceMethodTable[iMethodIdx + startIdx].mMethodRef;
+							BfMethodInstance* implMethod = *implMethodRef;
+							if (implMethod == NULL)
+								continue;
+							if (!implMethod->IsReifiedAndImplemented())
+							{
+								didWork = true;
+								checkType->mModule->GetMethodInstance(implMethod);
+							}
 						}
 					}
+
+					checkType = checkType->mBaseType;
 				}
 			}
 		}
