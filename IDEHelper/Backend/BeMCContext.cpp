@@ -2753,6 +2753,15 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand &func, const SizedArrayImp
 
 BeMCOperand BeMCContext::CreateLoad(const BeMCOperand& mcTarget)
 {
+	if (mcTarget.mKind == BeMCOperandKind_Immediate_Null)
+	{		
+		auto fakeType = GetType(mcTarget);
+		auto fakePtr = AllocVirtualReg(fakeType);
+		CreateDefineVReg(fakePtr);
+		AllocInst(BeMCInstKind_Mov, fakePtr, BeMCOperand::FromImmediate(0));
+		return CreateLoad(fakePtr);
+	}
+
 	BeMCOperand result;
 
 	auto loadedTarget = BeMCOperand::ToLoad(mcTarget);
