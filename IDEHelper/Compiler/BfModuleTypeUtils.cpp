@@ -4316,8 +4316,11 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 			PrepareForIRWriting(methodInstance->GetOwner());
 		
 		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);				
-		methodInstance->mIRFunction = func;
-		mFuncReferences[methodInstance] = func;		
+		if (func)
+		{
+			methodInstance->mIRFunction = func;
+			mFuncReferences[methodInstance] = func;
+		}
 	}
 	
 	BF_ASSERT(methodInstance->mDeclModule == this);
