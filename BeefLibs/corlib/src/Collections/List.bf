@@ -105,7 +105,8 @@ namespace System.Collections
 			if (IsDynAlloc)
 			{
 				var items = mItems;
-#if BF_ENABLE_REALTIME_LEAK_CHECK				
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+				// To avoid scanning items being deleted
 				mItems = null;
 				Interlocked.Fence();
 #endif
@@ -138,41 +139,9 @@ namespace System.Collections
 				Debug.Assert((uint)value <= (uint)SizeFlags);
 				if (value != AllocSize)
 				{
-					if (value > 0)
-					{
-						T* newItems = Alloc(value);
-
-#if DBG
-						int typeId = typeof(T).GetTypeId();
-						if (typeId == sDebugTypeId)
-						{
-							Debug.WriteLine("Alloc {0} {1} {2}", scope Object[] { this, newItems, sDebugIdx } );
-							sDebugIdx++;
-						}
-#endif
-
-						if (mSize > 0)
-							Internal.MemCpy(newItems, mItems, mSize * strideof(T), alignof(T));
-
-						var oldItems = mItems;
-						mItems = newItems;
-						if (IsDynAlloc)
-						{
-#if BF_ENABLE_REALTIME_LEAK_CHECK
-							// We need to avoid scanning a deleted mItems
-							Interlocked.Fence();
-#endif						
-							Free(oldItems);
-						}
-						mAllocSizeAndFlags = (.)(value | DynAllocFlag);
-					}
-					else
-					{
-						if (IsDynAlloc)
-							Free(mItems);
-						mItems = null;
-						mAllocSizeAndFlags = 0;
-					}
+					T* oldAlloc = Realloc(value, true);
+					if (oldAlloc != null)
+						Free(oldAlloc);
 				}
 			}
 		}
@@ -259,39 +228,58 @@ namespace System.Collections
 			}
 		}
 
-		protected T* Alloc(int size)
+		protected virtual T* Alloc(int size)
 		{
 			return Internal.AllocRawArrayUnmarked<T>(size);
 		}
 
-		protected void Free(T* val)
+		protected virtual void Free(T* val)
 		{
 			delete (void*)val;
 		}
-		/*protected T[] Alloc(int size)
-		{
-			return new:this T[size];
-		}
 
-		protected void Free(Object obj)
+		T* Realloc(int newSize, bool autoFree)
 		{
-			delete:this obj;
-		}
+			T* oldAlloc = null;
+			if (newSize > 0)
+			{
+				T* newItems = Alloc(newSize);
 
-		protected virtual Object AllocObject(TypeInstance type, int size)
-		{
-			return Internal.ObjectAlloc(type, size);
-		}
+				if (mSize > 0)
+					Internal.MemCpy(newItems, mItems, mSize * strideof(T), alignof(T));
+				if (IsDynAlloc)
+					oldAlloc = mItems;
+				mItems = newItems;
+				mAllocSizeAndFlags = (.)(newSize | DynAllocFlag);
+			}
+			else
+			{
+				if (IsDynAlloc)
+					oldAlloc = mItems;
+				mItems = null;
+				mAllocSizeAndFlags = 0;
+			}
 
-		protected virtual void FreeObject(Object obj)
-		{
-			delete obj;
-		}*/
+			if ((autoFree) && (oldAlloc != null))
+			{
+				Free(oldAlloc);
+				return null;
+			}
+
+			return oldAlloc;
+		}
 
 		/// Adds an item to the back of the list.
 		public void Add(T item)
 		{
-			if (mSize == AllocSize) EnsureCapacity(mSize + 1);
+			if (mSize == AllocSize)
+			{
+				// We free after the insert to allow for inserting a ref to another list element
+				let oldPtr = EnsureCapacity(mSize + 1, false);
+				mItems[mSize++] = item;
+				Free(oldPtr);
+				return;
+			}
 			mItems[mSize++] = item;
 #if VERSION_LIST
 			mVersion++;
@@ -301,7 +289,14 @@ namespace System.Collections
 		/// Adds an item to the back of the list.
 		public void Add(Span<T> addSpan)
 		{
-			if (mSize == AllocSize) EnsureCapacity(mSize + addSpan.Length);
+			if (mSize == AllocSize)
+			{
+				let oldPtr = EnsureCapacity(mSize + addSpan.Length, false);
+				for (var val in ref addSpan)
+					mItems[mSize++] = val;
+				Free(oldPtr);
+				return;
+			}
 			for (var val in ref addSpan)
 				mItems[mSize++] = val;
 #if VERSION_LIST
@@ -312,7 +307,7 @@ namespace System.Collections
 		/// Returns a pointer to the start of the added uninitialized section
 		public T* GrowUnitialized(int addSize)
 		{
-			if (mSize + addSize > AllocSize) EnsureCapacity(mSize + addSize);
+			if (mSize + addSize > AllocSize) EnsureCapacity(mSize + addSize, true);
 			mSize += (int_cosize)addSize;
 #if VERSION_LIST
 			mVersion++;
@@ -365,7 +360,7 @@ namespace System.Collections
 
 		public void CopyTo(List<T> destList)
 		{
-			destList.EnsureCapacity(mSize);
+			destList.EnsureCapacity(mSize, true);
 			destList.mSize = mSize;
 			if (mSize > 0)
 				Internal.MemCpy(destList.mItems, mItems, mSize * strideof(T), alignof(T));
@@ -385,25 +380,23 @@ namespace System.Collections
 				array[i + arrayIndex] = mItems[i + index];
 		}
 
-		public void EnsureCapacity(int min)
+		public T* EnsureCapacity(int min, bool autoFree)
 		{
 			int allocSize = AllocSize;
-			if (allocSize < min)
-			{
-				int newCapacity = allocSize == 0 ? cDefaultCapacity : allocSize + allocSize / 2;
-				// If we overflow, try to set to max. The "< min" check after still still bump us up
-				// if necessary
-				if (newCapacity > SizeFlags) 
-					newCapacity = SizeFlags;
-				if (newCapacity < min)
-					newCapacity = min;
-				Capacity = newCapacity;
-			}
+			if (allocSize >= min)
+				return null;
+			
+			int_cosize newCapacity = (int_cosize)(allocSize == 0 ? cDefaultCapacity : allocSize * 2);
+			// Allow the list to grow to maximum possible capacity (~2G elements) before encountering overflow.
+			// Note that this check works even when mItems.Length overflowed thanks to the (uint) cast
+			//if ((uint)newCapacity > Array.MaxArrayLength) newCapacity = Array.MaxArrayLength;
+			if (newCapacity < min) newCapacity = (int_cosize)min;
+			return Realloc(newCapacity, autoFree);
 		}
 
 		public void Reserve(int size)
 		{
-			EnsureCapacity(size);
+			EnsureCapacity(size, true);
 		}
 
 		public Enumerator GetEnumerator()
@@ -453,7 +446,8 @@ namespace System.Collections
 
 		public void Insert(int index, T item)
 		{
-			if (mSize == AllocSize) EnsureCapacity(mSize + 1);
+			var item; // This creates a copy - required if item is a ref to an element
+			if (mSize == AllocSize) EnsureCapacity(mSize + 1, true);
 			if (index < mSize)
 			{
 				Internal.MemCpy(mItems + index + 1, mItems + index, (mSize - index) * strideof(T), alignof(T));
@@ -467,10 +461,12 @@ namespace System.Collections
 
 		public void Insert(int index, Span<T> items)
 		{
+			//TODO: Handle case where Span is a reference to ourselves
+
 			if (items.Length == 0)
 				return;
 			int addCount = items.Length;
-			if (mSize + addCount > AllocSize) EnsureCapacity(mSize + addCount);
+			if (mSize + addCount > AllocSize) EnsureCapacity(mSize + addCount, true);
 			if (index < mSize)
 			{
 				Internal.MemCpy(mItems + index + addCount, mItems + index, (mSize - index) * strideof(T), alignof(T));

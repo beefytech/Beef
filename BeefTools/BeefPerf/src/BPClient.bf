@@ -183,7 +183,7 @@ namespace BeefPerf
 				if (mStreamDataList.Capacity == 0)
 					mStreamDataList.Capacity = srcStreamDataList.Count;
 				else
-					mStreamDataList.EnsureCapacity(srcStreamDataList.Count);
+					mStreamDataList.EnsureCapacity(srcStreamDataList.Count, true);
 				mStreamDataList.GrowUnitialized(idx - (int32)mStreamDataList.Count + 1);
 			}
 

@@ -12,6 +12,7 @@ namespace System.Collections
 	using System.Collections;
 	using System.Diagnostics;
 	using System.Diagnostics.Contracts;
+	using System.Threading;
 
 	public class Dictionary<TKey, TValue> :
 		ICollection<(TKey key, TValue value)>,
@@ -29,8 +30,8 @@ namespace System.Collections
 			public int_cosize mNext;        // Index of next entry, -1 if last
 		}
 
-		int_cosize* mBuckets ~ delete _;
-		Entry* mEntries ~ delete _;
+		int_cosize* mBuckets;
+		Entry* mEntries;
 		int_cosize mAllocSize;
 		int_cosize mCount;
 		int_cosize mFreeList;
@@ -48,6 +49,20 @@ namespace System.Collections
 			if (capacity > 0) Initialize(capacity);
 			//TODO: this.comparer = comparer ?? EqualityComparer<TKey>.Default;
         }
+
+		public ~this()
+		{
+			if (mEntries != null)
+			{
+				var entries = mEntries;
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+				// To avoid scanning items being deleted
+				mEntries = null;
+				Interlocked.Fence();
+#endif
+				Free(entries);
+			}
+		}
 
 		public int Count
 		{
@@ -123,7 +138,7 @@ namespace System.Collections
 		{
 			TKey* keyPtr;
 			TValue* valuePtr;
-			bool inserted = Insert(key, false, out keyPtr, out valuePtr);
+			bool inserted = Insert(key, false, out keyPtr, out valuePtr, null);
 			if (!inserted)
 				return false;
 			*keyPtr = key;
@@ -133,7 +148,32 @@ namespace System.Collections
 
 		public bool TryAdd(TKey key, out TKey* keyPtr, out TValue* valuePtr)
 		{
-            return Insert(key, false, out keyPtr, out valuePtr);
+            return Insert(key, false, out keyPtr, out valuePtr, null);
+		}
+
+		protected virtual (Entry*, int_cosize*) Alloc(int size)
+		{
+			int byteSize = size * (strideof(Entry) + sizeof(int_cosize));
+			uint8* allocPtr = new uint8[byteSize]*;
+			return ((Entry*)allocPtr, (int_cosize*)(allocPtr + size * strideof(Entry)));
+		}
+
+		protected virtual void Free(Entry* entryPtr)
+		{
+			delete (void*)entryPtr;
+		}
+
+		protected override void GCMarkMembers()
+		{
+			if (mEntries == null)
+				return;
+			let type = typeof(Entry);
+			if ((type.[Friend]mTypeFlags & .WantsMark) == 0)
+				return;
+		    for (int i < mCount)
+		    {
+		        GC.Mark_Unbound(mEntries[i]); 
+			}
 		}
 
 		public enum AddResult
@@ -145,8 +185,8 @@ namespace System.Collections
 		public AddResult TryAdd(TKey key)
 		{
 			TKey* keyPtr;
-			TValue* valuePtr;
-			if (Insert(key, false, out keyPtr, out valuePtr))
+			TValue* valuePtr;			
+			if (Insert(key, false, out keyPtr, out valuePtr, null))
 				return .Added(keyPtr, valuePtr);
 			return .Exists(keyPtr, valuePtr);
 		}
@@ -299,9 +339,8 @@ namespace System.Collections
 		private void Initialize(int capacity)
 		{
 			int_cosize size = GetPrimeish((int_cosize)capacity);
-			mBuckets = new int_cosize[size]*;
+			(mEntries, mBuckets) = Alloc(size);
 			for (int_cosize i < (int_cosize)size) mBuckets[i] = -1;
-			mEntries = new Entry[size]*;
 			mAllocSize = size;
 			mFreeList = -1;
 		}
@@ -328,6 +367,7 @@ namespace System.Collections
 				} 
 		    }
 			int_cosize index;
+			Entry* oldData = null;
 			if (mFreeCount > 0)
 			{
 				index = mFreeList;
@@ -338,7 +378,7 @@ namespace System.Collections
 			{
 				if (mCount == mAllocSize)
 				{
-					Resize();
+					oldData = Resize(false);
 					targetBucket = hashCode % (int_cosize)mAllocSize;
 				}
 				index = mCount;
@@ -350,17 +390,18 @@ namespace System.Collections
 			mEntries[index].mKey = key;
 			mEntries[index].mValue = value;
 			mBuckets[targetBucket] = index;
+			if (oldData != null)
+				Free(oldData);
 #if VERSION_DICTIONARY
 			mVersion++;
 #endif
 		}
 
-		private bool Insert(TKey key, bool add, out TKey* keyPtr, out TValue* valuePtr)
+		private bool Insert(TKey key, bool add, out TKey* keyPtr, out TValue* valuePtr, Entry** outOldData)
 		{
 			if (mBuckets == null) Initialize(0);
 			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
 			int_cosize targetBucket = hashCode % (int_cosize)mAllocSize;
-
 			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
 			{
 				if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key))
@@ -371,10 +412,13 @@ namespace System.Collections
 					}
 					keyPtr = &mEntries[i].mKey;
 					valuePtr = &mEntries[i].mValue;
+					if (outOldData != null)
+						*outOldData = null;
 					return false;
 				} 
             }
 			int_cosize index;
+			Entry* oldData = null;
 			if (mFreeCount > 0)
 			{
 				index = mFreeList;
@@ -385,7 +429,7 @@ namespace System.Collections
 			{
 				if (mCount == mAllocSize)
 				{
-					Resize();
+					oldData = Resize(false);
 					targetBucket = hashCode % (int_cosize)mAllocSize;
 				}
 				index = mCount;
@@ -402,6 +446,10 @@ namespace System.Collections
 
 			keyPtr = &mEntries[index].mKey;
 			valuePtr = &mEntries[index].mValue;
+			if (outOldData != null)
+				*outOldData = oldData;
+			else
+				Free(oldData);
 			return true;
         }
 
@@ -418,17 +466,16 @@ namespace System.Collections
             return GetPrimeish(newSize);
 		}
 
-		private void Resize()
+		private Entry* Resize(bool autoFree)
 		{
-			Resize(ExpandSize(mCount), false);
+			return Resize(ExpandSize(mCount), false, autoFree);
 		}
 
-		private void Resize(int newSize, bool forceNewHashCodes)
+		private Entry* Resize(int newSize, bool forceNewHashCodes, bool autoFree)
 		{
 			Contract.Assert(newSize >= mAllocSize);
-			int_cosize* newBuckets = new int_cosize[newSize]*;
+			(var newEntries, var newBuckets) = Alloc(newSize);
 			for (int_cosize i = 0; i < newSize; i++) newBuckets[i] = -1;
-			Entry* newEntries = new Entry[newSize]*;
 			Internal.MemCpy(newEntries, mEntries, mCount * strideof(Entry), alignof(Entry));
 
 			if (forceNewHashCodes)
@@ -451,12 +498,17 @@ namespace System.Collections
 				}
 			}
 
-			delete mBuckets;
-			delete mEntries;
-
+			let oldPtr = mEntries;
 			mBuckets = newBuckets;
 			mEntries = newEntries;
 			mAllocSize = (int_cosize)newSize;
+
+			if (autoFree)
+			{
+				Free(oldPtr);
+				return null;
+			}
+			return oldPtr;
 		}
 
 		public bool Remove(TKey key)
@@ -875,7 +927,7 @@ namespace System.Collections
 		public struct KeyEnumerator : IEnumerator<TKey>, IResettable
 		{
 			private Dictionary<TKey, TValue> mDictionary;
-# if VERSION_DICTIONARY
+#if VERSION_DICTIONARY
 			private int32 mVersion;
 #endif
 			private int_cosize mIndex;
