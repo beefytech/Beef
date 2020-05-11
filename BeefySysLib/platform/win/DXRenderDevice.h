@@ -48,6 +48,7 @@
 
 NS_BF_BEGIN;
 
+class WinBFWindow;
 class BFApp;
 class DXRenderDevice;
 
@@ -150,7 +151,7 @@ public:
 	virtual void			PhysSetAsTarget();
 
 public:
-	DXRenderWindow(DXRenderDevice* renderDevice, HWND hWnd, bool windowed);
+	DXRenderWindow(DXRenderDevice* renderDevice, WinBFWindow* window, bool windowed);
 	~DXRenderWindow();
 
 	void ReleaseNative();

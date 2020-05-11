@@ -118,7 +118,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	int aWindowFlags = 0;
 	bool hasDestAlpha = (windowFlags & BFWINDOW_DEST_ALPHA) != 0;
-
+	
 	if (windowFlags & BFWINDOW_MENU)
 	{
 		WinBFMenu* aMenu = new WinBFMenu();
@@ -250,8 +250,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	SetTimer(mHWnd, 0, 10, NULL);
 	
 	mIsMouseInside = false;
-	mRenderWindow = new DXRenderWindow((DXRenderDevice*) gBFApp->mRenderDevice, mHWnd, (windowFlags & BFWINDOW_FULLSCREEN) == 0);
-	mRenderWindow->mWindow = this;
+	mRenderWindow = new DXRenderWindow((DXRenderDevice*) gBFApp->mRenderDevice, this, (windowFlags & BFWINDOW_FULLSCREEN) == 0);	
 	gBFApp->mRenderDevice->AddRenderWindow(mRenderWindow);
 
 	SetWindowLongPtr(mHWnd, GWLP_USERDATA, (LONG_PTR)this);

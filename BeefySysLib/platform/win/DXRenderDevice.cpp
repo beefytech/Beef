@@ -1033,7 +1033,7 @@ void DXSetConstantData::Render(RenderDevice* renderDevice, RenderWindow* renderW
 
 ///
 
-DXRenderWindow::DXRenderWindow(DXRenderDevice* renderDevice, HWND hWnd, bool windowed)
+DXRenderWindow::DXRenderWindow(DXRenderDevice* renderDevice, WinBFWindow* window, bool windowed)
 {
 	BP_ZONE("DXRenderWindow::DXRenderWindow");
 
@@ -1046,7 +1046,8 @@ DXRenderWindow::DXRenderWindow(DXRenderDevice* renderDevice, HWND hWnd, bool win
 
 	mRenderDevice = renderDevice;
 	mDXRenderDevice = renderDevice;
-	mHWnd = hWnd;
+	mWindow = window;
+	mHWnd = window->mHWnd;
 
 	Resized();
 
@@ -1120,6 +1121,9 @@ void DXRenderWindow::ReinitNative()
 	descDepth.CPUAccessFlags = 0;
 	descDepth.MiscFlags = 0;
 	mDXRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer);
+	
+	if ((mWindow->mFlags & BFWINDOW_ALLOW_FULLSCREEN) == 0)
+		mDXRenderDevice->mDXGIFactory->MakeWindowAssociation(mHWnd, DXGI_MWA_NO_ALT_ENTER);
 
 	DXCHECK(mDXRenderDevice->mD3DDevice->CreateDepthStencilView(mD3DDepthBuffer, NULL, &mD3DDepthStencilView));
 }
