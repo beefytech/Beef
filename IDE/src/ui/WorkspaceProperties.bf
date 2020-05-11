@@ -672,7 +672,7 @@ namespace IDE.ui
 				DistinctBuildOptions defaultTypeOptions = scope:: .();
 				for (var typeOption in gApp.mWorkspace.mBeefGlobalOptions.mDistinctBuildOptions)
 					targetDict[typeOption] = defaultTypeOptions;
-				var generalOptions = scope Workspace.BeefGlobalOptions;
+				var generalOptions = scope Workspace.BeefGlobalOptions();
 				targetDict[mCurPropertiesTargets[0]] = generalOptions;
 				UpdateFromTarget(targetDict);
 			case .Beef_Targeted:

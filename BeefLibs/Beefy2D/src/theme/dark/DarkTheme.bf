@@ -310,7 +310,7 @@ namespace Beefy.theme.dark
 				delete mWindowTopImage;
 			}
 
-			Image themeImg = Image.LoadFromFile(scope String..Append(tempStr, BFApp.sApp.mInstallDir, "images/DarkTheme.png"), .AllowRead);
+			Image themeImg = Image.LoadFromFile(scope String()..Append(tempStr, BFApp.sApp.mInstallDir, "images/DarkTheme.png"), .AllowRead);
 			defer delete themeImg;
 			uint32[5] bits = ?;
 			themeImg.GetBits(0, 0, bits.Count, 1, bits.Count, &bits);
@@ -335,7 +335,7 @@ namespace Beefy.theme.dark
 
 			mIconError = LoadSizedImage("IconError");
 			mIconWarning = LoadSizedImage("IconWarning");
-			mThemeImage = Image.LoadFromFile(scope String..Append(tempStr, BFApp.sApp.mInstallDir, "images/", uiFileName));
+			mThemeImage = Image.LoadFromFile(scope String()..Append(tempStr, BFApp.sApp.mInstallDir, "images/", uiFileName));
 
 			for (int32 i = 0; i < (int32)ImageIdx.COUNT; i++)
 			{

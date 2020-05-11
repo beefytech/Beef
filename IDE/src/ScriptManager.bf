@@ -1401,7 +1401,7 @@ namespace IDE
 		public void OpenWorkspace(String dirPath)
 		{
 			gApp.[Friend]mDeferredOpen = .Workspace;
-			var selectedPath = scope String..AppendF(dirPath);
+			var selectedPath = scope String()..AppendF(dirPath);
 			selectedPath.Append(Path.DirectorySeparatorChar);
 			selectedPath.Append("BeefSpace.toml");
 			IDEUtils.FixFilePath(selectedPath);

@@ -45,7 +45,7 @@ namespace BeefPerf
 		public Socket mListenSocket ~ delete _;
 		public Thread mSocketThread ~ delete _;
 		public List<BpClient> mClients = new List<BpClient>() ~ delete _;
-		public List<BpSession> mSessions = new List<BpSession> ~ DeleteContainerAndItems!(_);
+		public List<BpSession> mSessions = new List<BpSession>() ~ DeleteContainerAndItems!(_);
 		public Monitor mClientMonitor = new Monitor() ~ delete _;
 		public WaitEvent mShutdownEvent = new WaitEvent() ~ delete _;
 		public BpSession mCurSession;

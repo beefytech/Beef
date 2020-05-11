@@ -852,7 +852,7 @@ namespace IDE
 			//folderDialog.
 			if (folderDialog.ShowDialog(GetActiveWindow()).GetValueOrDefault() == .OK)
 			{
-				var selectedPath = scope String..AppendF(folderDialog.SelectedPath);
+				var selectedPath = scope String()..AppendF(folderDialog.SelectedPath);
 				selectedPath.Append(Path.DirectorySeparatorChar);
 				selectedPath.Append("BeefSpace.toml");
 				String.NewOrSet!(mDeferredOpenFileName, selectedPath);
@@ -2062,7 +2062,7 @@ namespace IDE
 			if (relPath.EndsWith(endStr))
 				relPath.RemoveToEnd(relPath.Length - endStr.Length);*/
 
-			var projectSpec = new Workspace.ProjectSpec;
+			var projectSpec = new Workspace.ProjectSpec();
 			projectSpec.mProjectName = new .(project.mProjectName);
 			if (verSpec != null)
 			{
@@ -2430,7 +2430,7 @@ namespace IDE
 					}
 				}
 
-				var projSpec = new Workspace.ProjectSpec;
+				var projSpec = new Workspace.ProjectSpec();
 				projSpec.mProjectName = new String(project.mProjectName);
 				projSpec.mVerSpec = new VerSpecRecord();
 				projSpec.mVerSpec.SetPath(".");
@@ -2488,7 +2488,7 @@ namespace IDE
 				{
 					for (var projectName in data.Enumerate("Projects"))
 					{
-						var projSpec = new Workspace.ProjectSpec;
+						var projSpec = new Workspace.ProjectSpec();
 						projSpec.mProjectName = new String(projectName);
 						projSpec.mVerSpec = new VerSpecRecord();
 						mWorkspace.mProjectSpecs.Add(projSpec);
@@ -9823,7 +9823,7 @@ namespace IDE
 					{
 						if (err != .NotFound)
 						{
-							Fail(scope String..AppendF("Failed to rename {0} to {1}", dbgBuildDir, tempDirName));
+							Fail(scope String()..AppendF("Failed to rename {0} to {1}", dbgBuildDir, tempDirName));
 							return false;
 						}
 					}

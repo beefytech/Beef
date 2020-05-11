@@ -128,7 +128,7 @@ namespace System.IO
 				char16* cStr = null;
 				if (shellItem.VT.GetDisplayName(shellItem, .FILESYSPATH, out cStr) == .OK)
 				{
-					let str = scope String..Append(cStr);
+					let str = scope String()..Append(cStr);
 					mSelectedPath.Append(str);
 					Windows.COM_IUnknown.CoTaskMemFree(cStr);
 					result = .OK;

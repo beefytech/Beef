@@ -411,7 +411,7 @@ namespace IDE.ui
 			switch ((CategoryType)mPropPage.mCategoryType)
 			{
 			case .Project:
-				var generalOptions = scope Project.GeneralOptions;
+				var generalOptions = scope Project.GeneralOptions();
 				mProject.SetupDefault(generalOptions);
 				targetDict[mCurPropertiesTargets[0]] = generalOptions;
 				UpdateFromTarget(targetDict);
@@ -420,7 +420,7 @@ namespace IDE.ui
 				DistinctBuildOptions defaultTypeOptions = scope:: .();
 				for (var typeOption in mProject.mBeefGlobalOptions.mDistinctBuildOptions)
 					targetDict[typeOption] = defaultTypeOptions;
-				var generalOptions = scope Project.BeefGlobalOptions;
+				var generalOptions = scope Project.BeefGlobalOptions();
 				mProject.SetupDefault(generalOptions);
 				targetDict[mCurPropertiesTargets[0]] = generalOptions;
 				UpdateFromTarget(targetDict);
