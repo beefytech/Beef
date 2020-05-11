@@ -7302,13 +7302,20 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 	if (typeRef == NULL)
 		return objectCreateExpr;
 
+	bool isArray = false;
+
 	if (auto ptrType = BfNodeDynCast<BfPointerTypeRef>(typeRef))
 	{
 		if (auto arrayType = BfNodeDynCast<BfArrayTypeRef>(ptrType->mElementType))
 		{
 			MEMBER_SET(objectCreateExpr, mStarToken, ptrType->mStarNode);
 			typeRef = ptrType->mElementType;
+			isArray = true;
 		}
+	}
+	else if (auto arrayType = BfNodeDynCast<BfArrayTypeRef>(typeRef))
+	{
+		isArray = true;
 	}
 
 	MEMBER_SET(objectCreateExpr, mTypeRef, typeRef);
@@ -7324,16 +7331,28 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 		}
 		MEMBER_SET(objectCreateExpr, mCloseToken, block->mCloseBrace);
 		return objectCreateExpr;
+	}	
+
+	if (isArray)
+	{
+		tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
+
+		if (tokenNode == NULL)
+			return objectCreateExpr;
+		if (tokenNode->GetToken() != BfToken_LParen)
+			return objectCreateExpr;
+
+		mVisitorPos.MoveNext();
 	}
-
-	tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
-
-	if (tokenNode == NULL)
-		return objectCreateExpr;
-	if (tokenNode->GetToken() != BfToken_LParen)
-		return objectCreateExpr;
-
-	mVisitorPos.MoveNext();
+	else
+	{
+		// Note- if there WERE an LBracket here then we'd have an 'isArray' case. We pass this in here for 
+		// error display purposes
+		tokenNode = ExpectTokenAfter(objectCreateExpr, BfToken_LParen, BfToken_LBracket);
+		if (tokenNode == NULL)
+			return objectCreateExpr;
+	}
+	
 	MEMBER_SET(objectCreateExpr, mOpenToken, tokenNode);
 
 	BfToken endToken = (BfToken)(tokenNode->GetToken() + 1);
