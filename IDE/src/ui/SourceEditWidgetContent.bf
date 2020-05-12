@@ -2091,7 +2091,11 @@ namespace IDE.ui
                 return;
             }
 
-			bool isCompletionChar = ((keyChar == '\t') || (keyChar == '\r')) && (!mWidgetWindow.IsKeyDown(.Shift));
+			bool isCompletionChar =
+				((keyChar == '\t') ||
+				 ((keyChar == '\r') && (gApp.mSettings.mEditorSettings.mAutoCompleteOnEnter))) &&
+				(!mWidgetWindow.IsKeyDown(.Shift));
+
             if ((gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.IsRenaming))
             {         
                 if ((keyChar == '\r') || (keyChar == '\n'))
