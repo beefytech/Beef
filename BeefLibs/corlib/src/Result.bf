@@ -11,9 +11,9 @@ namespace System
 			switch (this)
 			{
 			case .Ok(var val): return val;
-			case .Err:
+			case .Err(let err):
 				{
-					Internal.FatalError("Unhandled error in result", 2);
+					Internal.FatalError(scope String()..AppendF("Unhandled error in result:\n {}", err), 2);
 				}
 			}
 		}
@@ -88,7 +88,7 @@ namespace System
 		public void ReturnValueDiscarded()
 		{
 		    if (this case .Err(let err))
-				Internal.FatalError("Unhandled error in result", 1);
+				Internal.FatalError(scope String()..AppendF("Unhandled error in result:\n {}", err), 1);
 			NoDispose<T>();
 		}
 	}
