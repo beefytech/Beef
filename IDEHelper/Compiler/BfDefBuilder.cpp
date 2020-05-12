@@ -1541,6 +1541,8 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 						
 						bool isCompatible = (isExtension == (checkTypeDef->mTypeCode == BfTypeCode_Extension)) &&
 							(checkTypeDef->mTypeCode == mCurTypeDef->mTypeCode) &&
+							(checkTypeDef->mIsDelegate == mCurTypeDef->mIsDelegate) &&
+							(checkTypeDef->mIsFunction == mCurTypeDef->mIsFunction) &&
 							(checkTypeDef->mOuterType == actualOuterTypeDef);
 						
 						if (isCompatible)
@@ -1655,6 +1657,8 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	// Map methods into the correct index from previous revision
 	if (prevRevisionTypeDef != NULL)
 	{
+		BF_ASSERT(mCurTypeDef->mTypeCode == prevRevisionTypeDef->mTypeCode);
+
 		if ((mCurTypeDef->mFullHash == prevRevisionTypeDef->mFullHash) && (!mFullRefresh))
 		{
 			BfLogSys(bfParser->mSystem, "DefBuilder deleting typeDef with no changes %p\n", prevRevisionTypeDef);
@@ -1669,7 +1673,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		else if (mCurTypeDef->mInlineHash != prevRevisionTypeDef->mInlineHash)
 			prevRevisionTypeDef->mDefState = BfTypeDef::DefState_InlinedInternals_Changed;
 		else
-			prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Internals_Changed;
+			prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Internals_Changed;		
 	}
 	
 	// There's a new type with this name...

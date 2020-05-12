@@ -1351,8 +1351,15 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 		if (typeInstance->IsTypedPrimitive())
 		{
 			auto underlyingType = typeInstance->GetUnderlyingType();
-			String typeName = TypeToString(underlyingType);
-			_CheckTypeName(typeName);
+			if (underlyingType != NULL)						
+			{
+				String typeName = TypeToString(underlyingType);
+				_CheckTypeName(typeName);
+			}
+			else
+			{
+				// Can this only happen for functions that are being extended?
+			}
 		}
 
 		if ((!typeInstance->IsBoxed()) && (typeInstance->mTypeDef == mCompiler->mPointerTTypeDef))
@@ -1612,6 +1619,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 	}
+// 	else if (typeInstance->IsFunction())
+// 	{
+// 		underlyingType = GetPrimitiveType(BfTypeCode_NullPtr);
+// 	}
 	else if (((typeInstance->IsStruct()) || (typeInstance->IsTypedPrimitive())) &&
 		(!typeInstance->mTypeFailed))
 	{
@@ -2529,6 +2540,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		BfSizedVector<BfFieldInstance*, 16> dataFieldVec;
 		
+		bool allowInstanceFields = (underlyingType == NULL);
+		if (typeInstance->IsTypedPrimitive())
+			allowInstanceFields = false;
+
 		// We've resolved all the 'var' entries, so now build the actual composite type
 		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 		{
@@ -2618,10 +2633,12 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						if (nameRefNode == NULL)
 							nameRefNode = fieldDef->mTypeRef;
 
-						if (underlyingType != NULL)
+						if (!allowInstanceFields)
 						{
 							if (typeInstance->IsEnum())
 								Fail("Cannot declare instance members in an enum", nameRefNode, true);
+							else if (typeInstance->IsFunction())
+								Fail("Cannot declare instance members in a function", nameRefNode, true);
 							else
 								Fail("Cannot declare instance members in a typed primitive struct", nameRefNode, true);
 							TypeFailed(typeInstance);

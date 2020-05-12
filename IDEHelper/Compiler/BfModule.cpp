@@ -5309,7 +5309,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				}
 			}
 
-			checkTypeInstance = GetOuterType(checkTypeInstance);
+			checkTypeInstance = mContext->mUnreifiedModule->GetOuterType(checkTypeInstance);
 		}
 	}
 
@@ -5986,7 +5986,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	}
 
 	int outerTypeId = 0;
-	auto outerType = GetOuterType(typeInstance);
+	auto outerType = mContext->mUnreifiedModule->GetOuterType(typeInstance);
 	if (outerType != NULL)
 		outerTypeId = outerType->mTypeId;
 

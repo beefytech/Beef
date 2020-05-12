@@ -6133,7 +6133,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			{
 				AssertErrorState();
 			}
-			if (retVal)
+			if ((retVal) && (!retVal.mType->IsVar()))
 			{
 				auto i8Result = ExtractValue(nextResult, NULL, 2);
 				i8Result = LoadValue(i8Result);

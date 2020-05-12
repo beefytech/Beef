@@ -2587,6 +2587,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mFullHash = nextTypeDef->mFullHash;
 	typeDef->mInlineHash = nextTypeDef->mInlineHash;
 	typeDef->mNestDepth = nextTypeDef->mNestDepth;
+
 	typeDef->mOuterType = nextTypeDef->mOuterType;
 	//typeDef->mOuterType = nextTypeDef->mOuterType;
 	typeDef->mNamespace = nextTypeDef->mNamespace;
@@ -2598,6 +2599,9 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mProtection = nextTypeDef->mProtection;	
 	if ((typeDef->mTypeCode != BfTypeCode_Extension) && (!typeDef->mIsCombinedPartial))
 		BF_ASSERT(nextTypeDef->mTypeCode != BfTypeCode_Extension);
+
+	BF_ASSERT(typeDef->mTypeCode == nextTypeDef->mTypeCode);
+
 	typeDef->mTypeCode = nextTypeDef->mTypeCode;
 	typeDef->mIsAlwaysInclude = nextTypeDef->mIsAlwaysInclude;
 	typeDef->mIsNoDiscard = nextTypeDef->mIsNoDiscard;
@@ -2679,6 +2683,8 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 
 	bool isFirst = false;
 
+	BF_ASSERT(compositeTypeDef->mFullNameEx == partialTypeDef->mFullNameEx);
+
 	auto typeDef = compositeTypeDef->mNextRevision;
 	if (typeDef == NULL)
 	{
@@ -2693,6 +2699,8 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 
 		typeDef->mSystem = partialTypeDef->mSystem;
 		typeDef->mTypeCode = partialTypeDef->mTypeCode;
+		typeDef->mIsFunction = partialTypeDef->mIsFunction;
+		typeDef->mIsDelegate = partialTypeDef->mIsDelegate;
 		typeDef->mNestDepth = partialTypeDef->mNestDepth;
 		typeDef->mOuterType = partialTypeDef->mOuterType;
 		typeDef->mNamespace = partialTypeDef->mNamespace;		
@@ -2732,8 +2740,8 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		if (partialTypeDef->mTypeCode != BfTypeCode_Extension)
 		{
 			typeDef->mTypeCode = partialTypeDef->mTypeCode;
-			typeDef->mTypeDeclaration = partialTypeDef->mTypeDeclaration;
-		}				
+			typeDef->mTypeDeclaration = partialTypeDef->mTypeDeclaration;		
+		}		
 	}	
 
 	// Merge attributes together

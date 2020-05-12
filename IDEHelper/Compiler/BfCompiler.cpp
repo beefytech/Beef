@@ -2954,9 +2954,21 @@ void BfCompiler::UpdateRevisedTypes()
 						continue;
 					}
 
-					rootTypeDef = checkTypeDef;
-					rootTypeDefEntry = checkTypeDefEntry;
+					// Only allow extending structs and objects
+					if ((checkTypeDef->mTypeCode == BfTypeCode_Struct) || 
+						(checkTypeDef->mTypeCode == BfTypeCode_Object) ||
+						(checkTypeDef->mTypeCode == BfTypeCode_Enum))
+					{
+						rootTypeDef = checkTypeDef;
+						rootTypeDefEntry = checkTypeDefEntry;
+					}
+					
 					checkTypeDefEntry = checkTypeDefEntry->mNext;
+
+					if (compositeTypeDef != NULL)
+					{
+						BF_ASSERT(rootTypeDef->mFullNameEx == compositeTypeDef->mFullNameEx);
+					}
 				}
 			}
 			else if ((outerTypeDef->mIsExplicitPartial) && (!outerTypeDef->mPartialUsed))
@@ -2983,6 +2995,10 @@ void BfCompiler::UpdateRevisedTypes()
 					}
 
 					compositeTypeDef = checkTypeDef;
+					if (rootTypeDef != NULL)
+					{
+						BF_ASSERT(rootTypeDef->mFullNameEx == compositeTypeDef->mFullNameEx);
+					}
 					if (compositeTypeDef->mNextRevision != NULL)
 					{
 						// This is an old 'next revision'
@@ -3004,7 +3020,12 @@ void BfCompiler::UpdateRevisedTypes()
 
 				if (compositeTypeDef == NULL)
 				{
-					if ((rootTypeDef->mIsExplicitPartial) || (rootTypeDefEntry->mNext == NULL) || (!rootTypeDefEntry->mNext->mValue->mIsCombinedPartial))
+					if ((rootTypeDef->mIsExplicitPartial) || (rootTypeDefEntry->mNext == NULL) || 
+						(!rootTypeDefEntry->mNext->mValue->mIsCombinedPartial) ||
+						(rootTypeDefEntry->mNext->mValue->mTypeCode != rootTypeDef->mTypeCode) ||
+						(rootTypeDefEntry->mNext->mValue->mIsFunction != rootTypeDef->mIsFunction) ||
+						(rootTypeDefEntry->mNext->mValue->mIsDelegate != rootTypeDef->mIsDelegate) ||
+						(rootTypeDefEntry->mNext->mValue->mGenericParamDefs.size() != rootTypeDef->mGenericParamDefs.size()))
 					{
 						compositeTypeDef = new BfTypeDef();
 						compositeTypeDef->mSystem = rootTypeDef->mSystem;
@@ -3016,9 +3037,11 @@ void BfCompiler::UpdateRevisedTypes()
 						compositeTypeDef->mNameEx->Ref();
 						compositeTypeDef->mProtection = rootTypeDef->mProtection;
 						compositeTypeDef->mNamespace = rootTypeDef->mNamespace;
-						compositeTypeDef->mTypeCode = BfTypeCode_Extension;
+						compositeTypeDef->mTypeCode = rootTypeDef->mTypeCode;
 						compositeTypeDef->mFullName = rootTypeDef->mFullName;
 						compositeTypeDef->mFullNameEx = rootTypeDef->mFullNameEx;
+						compositeTypeDef->mIsFunction = rootTypeDef->mIsFunction;
+						compositeTypeDef->mIsDelegate = rootTypeDef->mIsDelegate;
 						compositeTypeDef->mIsCombinedPartial = true;
 
 						for (auto prevGenericParam : rootTypeDef->mGenericParamDefs)
@@ -3039,6 +3062,10 @@ void BfCompiler::UpdateRevisedTypes()
 					{
 						BF_ASSERT(rootTypeDefEntry->mNext->mValue->NameEquals(rootTypeDef));
 						compositeTypeDef = rootTypeDefEntry->mNext->mValue;
+						if (rootTypeDef != NULL)
+						{
+							BF_ASSERT(rootTypeDef->mFullNameEx == compositeTypeDef->mFullNameEx);
+						}
 						if (compositeTypeDef->mNextRevision != NULL)
 						{
 							// This is an old 'next revision'
@@ -3168,6 +3195,7 @@ void BfCompiler::UpdateRevisedTypes()
 					if (compositeIsNew)
 					{
 						compositeTypeDef->mDefState = BfTypeDef::DefState_New;
+						compositeTypeDef->mTypeCode = compositeTypeDef->mNextRevision->mTypeCode;
 						mSystem->InjectNewRevision(compositeTypeDef);
 						// Reset 'New' state
 						compositeTypeDef->mDefState = BfTypeDef::DefState_New;
@@ -3259,21 +3287,6 @@ void BfCompiler::UpdateRevisedTypes()
 							}
 						}
 					}					
-				}			
-
-				if (outerTypeDef->mDefState != BfTypeDef::DefState_Deleted)
-					checkMasterTypeDef = outerTypeDef;
-
-				if ((deletedCombinedPartial != NULL) && (checkMasterTypeDef != NULL) &&
-					(deletedCombinedPartial->NameEquals(checkMasterTypeDef)))
-				{
-					// Remap nested types to their master typeDef
-					for (auto nestedType : deletedCombinedPartial->mNestedTypes)
-					{
-						nestedType->mOuterType = checkMasterTypeDef;
-					}
-					deletedCombinedPartial = NULL;
-					checkMasterTypeDef = NULL;
 				}
 
 				outerTypeDefEntry = nextTypeDefEntry;				
@@ -3701,53 +3714,68 @@ void BfCompiler::ProcessAutocompleteTempType()
 	typeState.mCurTypeDef = tempTypeDef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(module->mContext->mCurTypeState, &typeState);	
 
-	BfTypeDef* actualTypeDef = NULL;
-	auto typeName = tempTypeDef->mFullName;
-	int wantNumGenericParams = (int)tempTypeDef->mGenericParamDefs.size();
-	auto actualTypeDefItr = mSystem->mTypeDefs.TryGet(typeName);
-	while (actualTypeDefItr)
-	{
-		auto checkTypeDef = *actualTypeDefItr;
-		if ((!checkTypeDef->mIsPartial) /*&& (checkTypeDef->mTypeCode != BfTypeCode_Extension)*/ &&
-            ((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension)))
+	auto _FindAcutalTypeDef = [&](BfTypeDef* tempTypeDef)
+	{		
+		auto typeName = tempTypeDef->mFullName;
+		int wantNumGenericParams = (int)tempTypeDef->mGenericParamDefs.size();
+		auto actualTypeDefItr = mSystem->mTypeDefs.TryGet(typeName);
+		while (actualTypeDefItr)
 		{
-			if ((checkTypeDef->NameEquals(tempTypeDef)) && (checkTypeDef->mIsCombinedPartial) && 
-				(checkTypeDef->mGenericParamDefs.size() == tempTypeDef->mGenericParamDefs.size()) &&
-				(tempTypeDef->mProject->ContainsReference(checkTypeDef->mProject)))
+			auto checkTypeDef = *actualTypeDefItr;
+			if ((!checkTypeDef->mIsPartial) /*&& (checkTypeDef->mTypeCode != BfTypeCode_Extension)*/ &&
+				((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension)))
 			{
-				actualTypeDef = mSystem->FilterDeletedTypeDef(checkTypeDef);
-				break;
+				if ((checkTypeDef->NameEquals(tempTypeDef)) && (checkTypeDef->mIsCombinedPartial) &&
+					(checkTypeDef->mGenericParamDefs.size() == tempTypeDef->mGenericParamDefs.size()) &&
+					(tempTypeDef->mProject->ContainsReference(checkTypeDef->mProject)))
+				{
+					return mSystem->FilterDeletedTypeDef(checkTypeDef);					
+				}
+
+				if ((checkTypeDef->mGenericParamDefs.size() == wantNumGenericParams) &&
+					(FileNameEquals(tempTypeDef->mSource->mSourceData->ToParserData()->mFileName, checkTypeDef->mSource->mSourceData->ToParserData()->mFileName)) &&
+					(tempTypeDef->mProject == checkTypeDef->mProject))
+				{
+					return mSystem->FilterDeletedTypeDef(checkTypeDef);					
+				}
 			}
 
-			if ((checkTypeDef->mGenericParamDefs.size() == wantNumGenericParams) &&
-				(FileNameEquals(tempTypeDef->mSource->mSourceData->ToParserData()->mFileName, checkTypeDef->mSource->mSourceData->ToParserData()->mFileName)) &&
-				(tempTypeDef->mProject == checkTypeDef->mProject))
+			actualTypeDefItr.MoveToNextHashMatch();
+		}
+		return (BfTypeDef*)NULL;
+	};
+
+	if (tempTypeDef->mTypeCode == BfTypeCode_Extension)
+	{
+		BfTypeInstance* outerTypeInstance;
+
+		if (tempTypeDef->mOuterType != NULL)
+		{
+			auto outerTypeDef = _FindAcutalTypeDef(tempTypeDef->mOuterType);
+			if (outerTypeDef != NULL)
 			{
-				actualTypeDef = mSystem->FilterDeletedTypeDef(checkTypeDef);
-				break;
+				outerTypeInstance = (BfTypeInstance*)module->ResolveTypeDef(outerTypeDef, BfPopulateType_IdentityNoRemapAlias);
+				if ((outerTypeInstance != NULL) && (outerTypeInstance->IsIncomplete()))
+					module->PopulateType(outerTypeInstance, BfPopulateType_Full);
 			}
 		}
-		
-		actualTypeDefItr.MoveToNextHashMatch();
-	}
 
-	if ((actualTypeDef == NULL) || (actualTypeDef->mTypeDeclaration == NULL))
-	{
+		SetAndRestoreValue<BfTypeInstance*>  prevCurTypeInstance(module->mCurTypeInstance, outerTypeInstance);
+
 		auto autoComplete = mResolvePassData->mAutoComplete;
 		if (autoComplete->IsAutocompleteNode(tempTypeDef->mTypeDeclaration->mNameNode))
 		{
-			BfIdentifierNode* nameNode = tempTypeDef->mTypeDeclaration->mNameNode;
-			if (tempTypeDef->mTypeCode == BfTypeCode_Extension)
-			{
-				autoComplete->AddTopLevelNamespaces(nameNode);
-				autoComplete->AddTopLevelTypes(nameNode);
-				autoComplete->mInsertStartIdx = nameNode->GetSrcStart();
-				autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();
-			}
+			BfIdentifierNode* nameNode = tempTypeDef->mTypeDeclaration->mNameNode;			
+			autoComplete->AddTopLevelNamespaces(nameNode);
+			autoComplete->AddTopLevelTypes(nameNode);
+			autoComplete->mInsertStartIdx = nameNode->GetSrcStart();
+			autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();			
 		}
+	}
 
-		//mResolvePassData->mSourceClassifier->MarkSkipped(tempTypeDef->mTypeDeclaration);
-
+	BfTypeDef* actualTypeDef = _FindAcutalTypeDef(tempTypeDef);
+	if ((actualTypeDef == NULL) || (actualTypeDef->mTypeDeclaration == NULL))
+	{				
 		GenerateAutocompleteInfo();
 		return;
 	}
