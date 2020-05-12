@@ -2217,12 +2217,25 @@ namespace IDE
 
         public bool HasDependency(String projectName)
         {
-            for (var dependency in mDependencies)
-            {
-                if (dependency.mProjectName == projectName)
-                    return true;
-            }
-            return false;
+			HashSet<Project> checkedProject = scope .();
+
+			bool CheckDependency(Project project)
+			{
+				if (!checkedProject.Add(project))
+					return false;
+
+				for (var dependency in project.mDependencies)
+				{
+				    if (dependency.mProjectName == projectName)
+				        return true;
+					let depProject = gApp.mWorkspace.FindProject(dependency.mProjectName);
+					if ((depProject != null) && (CheckDependency(depProject)))
+						return true;
+				}
+				return false;
+			}
+
+            return CheckDependency(this);
         }
 
 		public void SetupDefault(Options options, String configName, String platformName)

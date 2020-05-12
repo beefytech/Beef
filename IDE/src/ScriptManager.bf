@@ -1242,8 +1242,13 @@ namespace IDE
 			if (depProject == null)
 				return;
 
+			List<Project> depProjectList = scope .();
+			gApp.GetDependentProjectList(depProject, depProjectList);
+
 			for (let checkProject in gApp.mWorkspace.mProjects)
 			{
+				if (checkProject.mGeneralOptions.mTargetType == .BeefLib)
+					continue;
 				if (checkProject.HasDependency(depProject.mProjectName))
 				{
 					List<String> targetPaths = scope .();
