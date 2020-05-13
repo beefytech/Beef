@@ -2599,6 +2599,8 @@ void BfIRCodeGen::HandleNextCmd()
 			mSavedDebugLocs.pop_back();
 		}
 		break;
+	case BfIRCmd_DupDebugLocation:
+		break;
 	case BfIRCmd_ClearDebugLocation:
 		{
 			mDebugLoc = llvm::DebugLoc();
