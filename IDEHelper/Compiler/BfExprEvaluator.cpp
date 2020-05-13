@@ -9542,7 +9542,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		{
 			hasThis = true;
 			methodInstance->GetIRFunctionInfo(mModule, irReturnType, irParamTypes);
-			irParamTypes[0] = mModule->mBfIRBuilder->MapType(useTypeInstance);
+			int thisIdx = methodInstance->HasStructRet() ? 1 : 0;
+			irParamTypes[thisIdx] = mModule->mBfIRBuilder->MapType(useTypeInstance);
 		}
 		else
 		{
@@ -9558,6 +9559,12 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		auto funcType = mModule->mBfIRBuilder->CreateFunctionType(irReturnType, irParamTypes);
 		funcValue = mModule->mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, methodName);
 
+		if (methodInstance->HasStructRet())
+		{
+			mModule->mBfIRBuilder->Func_AddAttribute(funcValue, 1, BfIRAttribute_NoAlias);
+			mModule->mBfIRBuilder->Func_AddAttribute(funcValue, 1, BfIRAttribute_StructRet);
+		}
+
 		auto srcCallingConv = mModule->GetIRCallingConvention(methodInstance);
 		if ((!hasThis) && (methodInstance->mCallingConvention == BfCallingConvention_Stdcall))
 			srcCallingConv = BfIRCallingConv_StdCall;
@@ -9571,6 +9578,11 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 		fieldIdx = 0;
 		SizedArray<BfIRValue, 8> irArgs;
+
+		int argIdx = 0;
+		if (methodInstance->HasStructRet())
+			irArgs.push_back(mModule->mBfIRBuilder->GetArgument(argIdx++));
+
 		for (int implicitParamIdx = bindMethodInstance->HasThis() ? -1 : 0; implicitParamIdx < implicitParamCount; implicitParamIdx++)
 		{
 			auto fieldInst = &useTypeInstance->mFieldInstances[fieldIdx];
@@ -9585,13 +9597,16 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					disableSplat = true;
 				}
 			}
-			auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mModule->mBfIRBuilder->GetArgument(0), 0, gepIdx);
+			int thisIdx = methodInstance->HasStructRet() ? 1 : 0;
+			auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mModule->mBfIRBuilder->GetArgument(thisIdx), 0, gepIdx);
 			BfTypedValue typedVal(fieldPtr, fieldType, true);
 			PushArg(typedVal, irArgs, disableSplat);
 			fieldIdx++;
 		}
 
-		int argIdx = hasThis ? 1 : 0;
+		if (hasThis)
+			argIdx++;
+
 		for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
 		{
 			auto paramType = methodInstance->GetParamType(paramIdx);
@@ -9608,17 +9623,19 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		auto bindFuncVal = bindResult.mFunc;
 		if (mModule->mCompiler->mOptions.mAllowHotSwapping)
 			bindFuncVal = mModule->mBfIRBuilder->RemapBindFunction(bindFuncVal);
-		auto result = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
+		auto callInst = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
+		if (methodInstance->HasStructRet())
+			mModule->mBfIRBuilder->Call_AddAttribute(callInst, 1, BfIRAttribute_StructRet);
 		auto destCallingConv = mModule->GetIRCallingConvention(bindMethodInstance);
 		if (destCallingConv != BfIRCallingConv_CDecl)
-			mModule->mBfIRBuilder->SetCallCallingConv(result, destCallingConv);
-		if (methodInstance->mReturnType->IsValuelessType())
+			mModule->mBfIRBuilder->SetCallCallingConv(callInst, destCallingConv);
+		if ((methodInstance->mReturnType->IsValuelessType()) || (methodInstance->HasStructRet()))
 		{
 			mModule->mBfIRBuilder->CreateRetVoid();
 		}
 		else
 		{
-			mModule->mBfIRBuilder->CreateRet(result);
+			mModule->mBfIRBuilder->CreateRet(callInst);
 		}
 
 		mModule->mBfIRBuilder->SetActiveFunction(prevActiveFunction);
@@ -10383,14 +10400,10 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	// If we are allowing hot swapping, we need to always mangle the name to non-static because if we add a capture
 	//  later then we need to have the mangled names match
 	methodDef->mIsStatic = (closureTypeInst == NULL) && (!mModule->mCompiler->mOptions.mAllowHotSwapping);
-
-	SizedArray<BfIRType, 3> newTypes;
+	
 	SizedArray<BfIRType, 8> origParamTypes;
 	BfIRType origReturnType;
-
-	if (!methodDef->mIsStatic)
-		newTypes.push_back(mModule->mBfIRBuilder->MapType(useTypeInstance));
-
+	
 	if (invokeMethodInstance != NULL)
 	{
 		auto invokeFunctionType = mModule->mBfIRBuilder->MapMethod(invokeMethodInstance);
@@ -10401,7 +10414,19 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		origReturnType = mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_None));
 	}
 
-	for (int i = methodDef->mIsStatic ? 0 : 1; i < (int)origParamTypes.size(); i++)
+	SizedArray<BfIRType, 3> newTypes;
+	if (invokeMethodInstance->HasStructRet())
+		newTypes.push_back(origParamTypes[0]);
+	if (!methodDef->mIsStatic)
+		newTypes.push_back(mModule->mBfIRBuilder->MapType(useTypeInstance));
+
+	int paramStartIdx = 0;
+	if (invokeMethodInstance->HasStructRet())
+		paramStartIdx++;
+	if (!methodDef->mIsStatic)
+		paramStartIdx++;
+
+	for (int i = paramStartIdx; i < (int)origParamTypes.size(); i++)
 		newTypes.push_back(origParamTypes[i]);
 	auto closureFuncType = mModule->mBfIRBuilder->CreateFunctionType(origReturnType, newTypes, false);
 
@@ -13195,11 +13220,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		mModule->Warn(0, "Scope specifier was not referenced in mixin", scopedInvocationTarget->mScopeName);
 	}	
 
-	// It's tempting to do this, but it is really just covering up other issues. 
-	//mModule->mBfIRBuilder->SetCurrentDebugLocation(prevDebugLoc);	
-
-	// But does THIS work?
 	mModule->mBfIRBuilder->RestoreDebugLocation();
+	mModule->mBfIRBuilder->DupDebugLocation();
 }
 
 void BfExprEvaluator::SetMethodElementType(BfAstNode* target)

@@ -1098,7 +1098,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
                 (mModuleName == "-")
-				//|| (mModuleName == "Raylib_Color")
+				//|| (mModuleName == "Blurg")
 				//|| (mModuleName == "System_Int32")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
 				)
@@ -13301,6 +13301,8 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, memberFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
 		nonStaticResult = mBfIRBuilder->CreateCall(funcPtr, memberFuncArgs);
+		if (mCurMethodInstance->HasStructRet())
+			mBfIRBuilder->Call_AddAttribute(nonStaticResult, 1, BfIRAttribute_StructRet);
 		if (callingConv != BfIRCallingConv_CDecl)
 			mBfIRBuilder->SetCallCallingConv(nonStaticResult, callingConv);
 		mCurMethodState->SetHadReturn(false);
@@ -13317,6 +13319,8 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, staticFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
 		staticResult = mBfIRBuilder->CreateCall(funcPtr, staticFuncArgs);
+		if (mCurMethodInstance->HasStructRet())
+			mBfIRBuilder->Call_AddAttribute(staticResult, 1, BfIRAttribute_StructRet);
 		if (callingConv == BfIRCallingConv_ThisCall)
 			callingConv = BfIRCallingConv_CDecl;
 		if (callingConv != BfIRCallingConv_CDecl)
@@ -20021,7 +20025,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		
 	if ((!methodInstance->IsSpecializedGenericMethodOrType()) && (!mCurTypeInstance->IsBoxed()) && 
 		(!methodDef->mIsLocalMethod) &&
-		(!CheckDefineMemberProtection(methodDef->mProtection, methodInstance->mReturnType)))
+		(!CheckDefineMemberProtection(methodDef->mProtection, methodInstance->mReturnType)) &&
+		(!methodDef->mReturnTypeRef->IsTemporary()))
 	{
 		if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 		{

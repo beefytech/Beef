@@ -73,5 +73,25 @@ namespace Tests
 			delete dlg;
 			Test.Assert(b == 221);
 		}
+
+		struct StructA
+		{
+			public int mA0;
+			public this(int v) { mA0 = v; }
+		}
+
+		[Test]
+		public static void TestStructRetCapture()
+		{
+			StructA sa = .(5);
+			StructA saGetter() { return sa; }
+			delegate StructA() myTest = scope => saGetter;
+			var ret = myTest();
+			Test.Assert(ret.mA0 == 5);
+
+			delegate StructA() myTest2 = scope [&] () => { return saGetter(); };
+			var ret2 = myTest2();
+			Test.Assert(ret2.mA0 == 5);
+		}
 	}
 }
