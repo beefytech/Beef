@@ -76,7 +76,10 @@ namespace System.Reflection
 
 			if (valueType == fieldType)
 			{
-				Internal.MemCpy(fieldDataAddr, valueDataAddr, fieldType.[Friend]mSize);
+				if (valueType.IsObject)
+					*((void**)fieldDataAddr) = Internal.UnsafeCastToPtr(value);
+				else
+					Internal.MemCpy(fieldDataAddr, valueDataAddr, fieldType.[Friend]mSize);
 			}
 			else
 			{

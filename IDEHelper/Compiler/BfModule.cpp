@@ -1495,6 +1495,16 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 		}
 		typeValueParams.push_back(stringCharsVal); // mPtr
 		
+		for (int fieldIdx = 0; fieldIdx < (int)stringTypeInst->mFieldInstances.size(); fieldIdx++)
+		{
+			auto fieldInstance = &stringTypeInst->mFieldInstances[fieldIdx];
+			if (fieldInstance->mDataIdx < 4)
+				continue;
+			while (fieldInstance->mDataIdx >= typeValueParams.size())
+				typeValueParams.Add(BfIRValue());
+			typeValueParams[fieldInstance->mDataIdx] = GetDefaultValue(fieldInstance->mResolvedType);
+		}
+
 		stringValData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(stringTypeInst, BfIRPopulateType_Full), typeValueParams);
 	}
 		
@@ -2845,11 +2855,30 @@ void BfModule::CheckRangeError(BfType* type, BfAstNode* refNode)
 		Fail(StrFormat("Result out of range for type '%s'", TypeToString(type).c_str()), refNode);
 }
 
+void BfModule::FatalError(const StringImpl& error, const char* file, int line)
+{
+	String fullError = error;
+
+	if (file != NULL)
+		fullError += StrFormat(" at %s:%d", file, line);
+
+	fullError += StrFormat("\nModule: %s", mModuleName.c_str());
+	
+	if (mCurTypeInstance != NULL)
+		fullError += StrFormat("\nType: %s", TypeToString(mCurTypeInstance).c_str());
+	if (mCurMethodInstance != NULL)
+		fullError += StrFormat("\nMethod: %s", MethodToString(mCurMethodInstance).c_str());
+
+	if ((mCurFilePosition.mFileInstance != NULL) && (mCurFilePosition.mFileInstance->mParser != NULL))	
+		fullError += StrFormat("\nSource Location: %s:%d", mCurFilePosition.mFileInstance->mParser->mFileName.c_str(), mCurFilePosition.mCurLine + 1);	
+	
+	BfpSystem_FatalError(fullError.c_str(), "FATAL MODULE ERROR");
+}
+
 void BfModule::NotImpl(BfAstNode* astNode)
 {
 	Fail("INTERNAL ERROR: Not implemented", astNode);
 }
-
 
 bool BfModule::CheckAccessMemberProtection(BfProtection protection, BfType* memberType)
 {
@@ -5431,16 +5460,16 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					}
 					else if (constant->mTypeCode == BfTypeCode_Object)
 					{
-						BF_FATAL("Unhandled");
+						BFMODULE_FATAL(this, "Unhandled");
 					}
 					else
 					{
-						BF_FATAL("Unhandled");
+						BFMODULE_FATAL(this, "Unhandled");
 					}
 				}
 				else if (!handled)
 				{
-					BF_FATAL("Unhandled");
+					BFMODULE_FATAL(this, "Unhandled");
 				}
 
 				argIdx++;
@@ -10660,7 +10689,7 @@ BfIRValue BfModule::ExtractSplatValue(BfTypedValue typedValue, int componentIdx,
 		return val;
 	}
 
-	BF_FATAL("Splat not found");
+	BFMODULE_FATAL(this, "Splat not found");
 	return BfIRValue();	
 }
 
@@ -11278,7 +11307,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			return GetLocalMethodInstance(localMethod, methodGenericArguments);
 		}
 
- 		BF_FATAL("Cannot find local method");
+		BFMODULE_FATAL(this, "Cannot find local method");
  		return BfModuleMethodInstance();
 	}
 
@@ -11887,7 +11916,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		if (methodDef->mGenericParams.size() != sanitizedMethodGenericArguments.size())
 		{
 			Fail("Internal error");
-			BF_FATAL("Generic method argument counts mismatch");
+			BFMODULE_FATAL(this, "Generic method argument counts mismatch");
 			return NULL;
 		}
 
@@ -15832,7 +15861,7 @@ void BfModule::EmitGCMarkMembers()
 					}
 					else if (checkType->IsMethodRef())
 					{
-						BF_FATAL("Not handled");
+						BFMODULE_FATAL(this, "Not handled");
 					}
 					else if (checkType->WantsGCMarking())
 					{
@@ -17499,7 +17528,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 							auto thisValue = GetThis();
 							if (thisValue.IsSplat())
 							{
-								BF_FATAL("Should not happen");
+								BFMODULE_FATAL(this, "Should not happen");
 							}
 							if (mCurTypeInstance->IsObject())
 								thisValue = LoadValue(thisValue);
@@ -19126,6 +19155,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	auto methodDef = mCurMethodInstance->mMethodDef;	
 	
 	BF_ASSERT(methodDef->mName != "__ASSERTNAME");
+	if (methodDef->mName == "__FATALERRORNAME")
+		BFMODULE_FATAL(this, "__FATALERRORNAME");
 
 	if (typeInstance->IsClosure())
 	{
@@ -21253,7 +21284,7 @@ bool BfModule::Finish()
 			}
 			else if ((!mCompiler->mOptions.mGenerateObj) && (!mCompiler->mOptions.mGenerateBitcode) && (!mCompiler->mOptions.mWriteIR))
 			{
-				BF_FATAL("Neither obj nor IR specified");
+				BFMODULE_FATAL(this, "Neither obj nor IR specified");
 			}
 
 			moduleFileName.mModuleWritten = writeModule;

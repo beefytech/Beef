@@ -84,6 +84,7 @@ namespace Tests
 			[AttrB(44, 55)]
 			public int mB = 2;
 			public int mC = 3;
+			public String mStr = "ABC";
 		}
 
 		[Reflect(.Type)]
@@ -171,7 +172,7 @@ namespace Tests
 				fieldIdx++;
 			}
 
-			let fieldInfo = cb.GetType().GetField("mC").Value;
+			var fieldInfo = cb.GetType().GetField("mC").Value;
 			int cVal = 0;
 			fieldInfo.GetValue(cb, out cVal);
 			fieldInfo.SetValue(cb, cVal + 1000);
@@ -180,6 +181,13 @@ namespace Tests
 			Variant variantVal = Variant.Create(123);
 			fieldInfo.SetValue(cb, variantVal);
 			Test.Assert(cb.mC == 123);
+
+			fieldInfo = cb.GetType().GetField("mStr").Value;
+			String str = null;
+			fieldInfo.GetValue(cb, out str);
+			Test.Assert(str == "ABC");
+			fieldInfo.SetValue(cb, "DEF");
+			Test.Assert(cb.mStr == "DEF");
 		}
 	}
 }

@@ -1161,7 +1161,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);
 	if (methodInstance == NULL)
 	{		
-		BF_FATAL("Failed to get raw method in BfMethodMatcher::CheckMethod");
+		BFMODULE_FATAL(mModule, "Failed to get raw method in BfMethodMatcher::CheckMethod");
 		return false;
 	}
 
@@ -5814,7 +5814,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 				}
 				else
 				{					
-					BF_FATAL("Bad");
+					BFMODULE_FATAL(mModule, "Bad");
 				}
 			}
 			methodMatcher.mArguments.Insert(0, resolvedArg);

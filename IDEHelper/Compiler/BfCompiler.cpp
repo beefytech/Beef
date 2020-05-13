@@ -3747,7 +3747,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 	if (tempTypeDef->mTypeCode == BfTypeCode_Extension)
 	{
-		BfTypeInstance* outerTypeInstance;
+		BfTypeInstance* outerTypeInstance = NULL;
 
 		if (tempTypeDef->mOuterType != NULL)
 		{

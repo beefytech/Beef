@@ -362,7 +362,7 @@ namespace IDE
         class ProcessBfCompileCmd : ExecutionCmd
         {
             public BfPassInstance mBfPassInstance;
-            public bool mRunAfter;
+            public CompileKind mCompileKind;
             public Project mHotProject;
             public Stopwatch mStopwatch ~ delete _;
 			public Profiler mProfiler;
@@ -424,6 +424,7 @@ namespace IDE
             public int32 mParallelGroup = -1;
 			public bool mIsTargetRun;
 			public String mStdInData ~ delete _;
+			public RunFlags mRunFlags;
         }
         public List<ExecutionCmd> mExecutionQueue = new List<ExecutionCmd>() ~ DeleteContainerAndItems!(_);
 
@@ -3959,7 +3960,7 @@ namespace IDE
 		void RunWithStep()
 		{
 			mTargetStartWithStep = true;
-			CompileAndRun();
+			CompileAndRun(true);
 		}
 
 		[IDECommand]
@@ -4043,7 +4044,7 @@ namespace IDE
 			else
 			{
 			    mTargetStartWithStep = false;
-			    CompileAndRun();
+			    CompileAndRun(true);
 			}
 		}
 
@@ -4058,6 +4059,28 @@ namespace IDE
 				startDebugCmd.mWasCompiled = false;
 			    startDebugCmd.mOnlyIfNotFailed = true;
 			    mExecutionQueue.Add(startDebugCmd);
+			}
+		}
+
+		[IDECommand]
+		void RunWithoutDebugging()
+		{
+			if (mDebugger.mIsRunning)
+			{                            
+			    if (mDebugger.IsPaused())
+			    {
+			        DebuggerUnpaused();
+			        mDebugger.Continue();
+			    }                            
+			}
+			else if (AreTestsRunning())
+			{
+				// Ignore
+			}
+			else
+			{
+			    mTargetStartWithStep = false;
+			    CompileAndRun(false);
 			}
 		}
 
@@ -4094,7 +4117,7 @@ namespace IDE
 			else
 			{
 			    mTargetStartWithStep = false;
-			    CompileAndRun();
+			    CompileAndRun(true);
 			}
 		}
 
@@ -5059,6 +5082,7 @@ namespace IDE
             subMenu = root.AddMenuItem("&Debug");
 			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "Start Wit&hout Debugging", "Start Without Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugNotPaused);
@@ -7410,7 +7434,9 @@ namespace IDE
 		public enum RunFlags
 		{
 			None,
-			ShellCommand = 1
+			ShellCommand = 1,
+			NoRedirect = 2,
+			NoWait = 4,
 		}
 
         public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None)
@@ -7426,11 +7452,14 @@ namespace IDE
             	startInfo.SetFileName(fileName);
             startInfo.SetWorkingDirectory(workingDir);
             startInfo.SetArguments(args);
-            startInfo.RedirectStandardOutput = true;
-            startInfo.RedirectStandardError = true;
-			if (stdInData != null)
-				startInfo.RedirectStandardInput = true;
-            startInfo.CreateNoWindow = true;
+			if ((!runFlags.HasFlag(.NoRedirect)) && (!runFlags.HasFlag(.NoWait)))
+			{
+	            startInfo.RedirectStandardOutput = true;
+	            startInfo.RedirectStandardError = true;
+				if (stdInData != null)
+					startInfo.RedirectStandardInput = true;
+	            startInfo.CreateNoWindow = true;
+			}
 
 			if (runFlags.HasFlag(.ShellCommand))
 			{
@@ -7450,7 +7479,6 @@ namespace IDE
 			}
 
             var executionInstance = new ExecutionInstance();
-			mExecutionInstances.Add(executionInstance);
 
             if (useArgsFile != .None)
             {
@@ -7511,6 +7539,14 @@ namespace IDE
 				return executionInstance;
 			}
 
+			if (runFlags.HasFlag(.NoWait))
+			{
+				delete process;
+				delete executionInstance;
+				return null;
+			}
+
+			mExecutionInstances.Add(executionInstance);
             executionInstance.mStopwatch.Start();
             executionInstance.mProcess = process;
 
@@ -7764,7 +7800,7 @@ namespace IDE
 						compileInstance.mCompileResult = .Failure;
 					}
 
-                    ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mRunAfter, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
+                    ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mCompileKind, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
 					if (mHotResolveState != .None)
 					{
 						if (compileInstance.mCompileResult == .Success)
@@ -7794,7 +7830,7 @@ namespace IDE
 					if (!buildFailed)
 					{
 						var startDebugCmd = (StartDebugCmd)next;
-	                    if (DebugProject(startDebugCmd.mWasCompiled))
+	                    if (StartupProject(true, startDebugCmd.mWasCompiled))
 	                    {
 	                        OutputLine("Debugger started");
 	                    }
@@ -7805,9 +7841,12 @@ namespace IDE
                 else if (next is ExecutionQueueCmd)
                 {
                     var executionQueueCmd = (ExecutionQueueCmd)next;
-                    var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile, executionQueueCmd.mEnvVars, executionQueueCmd.mStdInData);
-                    executionInstance.mParallelGroup = executionQueueCmd.mParallelGroup;
-					executionInstance.mIsTargetRun = executionQueueCmd.mIsTargetRun;
+                    var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile, executionQueueCmd.mEnvVars, executionQueueCmd.mStdInData, executionQueueCmd.mRunFlags);
+					if (executionInstance != null)
+					{
+	                    executionInstance.mParallelGroup = executionQueueCmd.mParallelGroup;
+						executionInstance.mIsTargetRun = executionQueueCmd.mIsTargetRun;
+					}
                 }
                 else if (next is BuildCompletedCmd)
                 {
@@ -9419,7 +9458,7 @@ namespace IDE
 			}
 		}
 
-        void ProcessBeefCompileResults(BfPassInstance passInstance, bool runAfter, Project hotProject, Stopwatch startStopWatch)
+        void ProcessBeefCompileResults(BfPassInstance passInstance, CompileKind compileKind, Project hotProject, Stopwatch startStopWatch)
         {
 			bool didCompileSucceed = true;
 			if (passInstance != null)
@@ -9555,7 +9594,7 @@ namespace IDE
 
             for (var project in orderedProjectList)
             {
-                if (!mBuildContext.QueueProjectCompile(project, hotProject, completedCompileCmd, hotFileNames, runAfter))
+                if (!mBuildContext.QueueProjectCompile(project, hotProject, completedCompileCmd, hotFileNames, compileKind))
                     success = false;
             }
 
@@ -9583,15 +9622,22 @@ namespace IDE
             if (!success)
                 CompileFailed();
 
-            if ((runAfter) && (success))
+            if (success)
             {
 				var options = GetCurWorkspaceOptions();
 
-                var startDebugCmd = new StartDebugCmd();
-				startDebugCmd.mWasCompiled = true;
-                startDebugCmd.mOnlyIfNotFailed = true;
-				startDebugCmd.mHotCompileEnabled = options.mAllowHotSwapping;
-                mExecutionQueue.Add(startDebugCmd);
+				if (compileKind == .DebugAfter)
+				{
+	                var startDebugCmd = new StartDebugCmd();
+					startDebugCmd.mWasCompiled = true;
+	                startDebugCmd.mOnlyIfNotFailed = true;
+					startDebugCmd.mHotCompileEnabled = options.mAllowHotSwapping;
+	                mExecutionQueue.Add(startDebugCmd);
+				}
+				else if (compileKind == .RunAfter)
+				{
+					StartupProject(false, true);
+				}
             }
             
 			if (startStopWatch != null)
@@ -9604,7 +9650,7 @@ namespace IDE
             mExecutionQueue.Add(completedCompileCmd);
         }
 
-        bool CompileAndRun()
+        bool CompileAndRun(bool debug)
         {
 			if (AreTestsRunning())
 				return false;
@@ -9615,7 +9661,7 @@ namespace IDE
             {
                 if (var processCompileCmd = mExecutionQueue.Back as ProcessBfCompileCmd)
                 {
-                    processCompileCmd.mRunAfter = true;
+                    processCompileCmd.mCompileKind = debug ? .DebugAfter : .RunAfter;
                 }
 
                 return false;
@@ -9626,7 +9672,7 @@ namespace IDE
 
             mOutputPanel.Clear();            
             OutputLine("Compiling...");
-            if (!Compile(.RunAfter))
+            if (!Compile(debug ? .DebugAfter : .RunAfter))
 				return false;
 			return true;
         }
@@ -9664,13 +9710,6 @@ namespace IDE
 			{
 				mDebugger.StopDebugging();
 			}
-		}
-
-		enum CompileKind
-		{
-			Normal,
-			RunAfter,
-			Test
 		}
 
 		public void AutoGenerateStartupCode(Project project)
@@ -9882,7 +9921,7 @@ namespace IDE
 			}
 
 			var workspaceOptions = GetCurWorkspaceOptions();
-			if (compileKind == .RunAfter)
+			if ((compileKind == .RunAfter) || (compileKind == .DebugAfter))
 			{
 				if (workspaceOptions.mBuildKind == .Test)
 				{
@@ -9995,7 +10034,7 @@ namespace IDE
             
             SaveClangFiles();            
 
-            if (compileKind == .RunAfter)
+            if ((compileKind == .RunAfter) || (compileKind == .DebugAfter))
             {
 				DeleteAndNullify!(mCompileAndRunStopwatch);
                 mCompileAndRunStopwatch = new Stopwatch();
@@ -10016,7 +10055,7 @@ namespace IDE
 
             ProcessBfCompileCmd processCompileCmd = new ProcessBfCompileCmd();
             processCompileCmd.mBfPassInstance = passInstance;
-            processCompileCmd.mRunAfter = compileKind == .RunAfter;
+            processCompileCmd.mCompileKind = compileKind;
             processCompileCmd.mHotProject = hotProject;
             processCompileCmd.mStopwatch = new Stopwatch();
             processCompileCmd.mStopwatch.Start();
@@ -10050,7 +10089,7 @@ namespace IDE
 			//mDebugger.LoadDebugVisualizers(scope String(mInstallDir, "BeefDbgVis.toml"));
 		}
 
-        bool DebugProject(bool wasCompiled)
+        bool StartupProject(bool doDebug, bool wasCompiled)
         {
 			mProfilePanel.Clear();
 
@@ -10129,6 +10168,13 @@ namespace IDE
 			{
 				Fail(scope String()..AppendF("No debug command specified in '{}' properties", project.mProjectName));
 				return false;
+			}
+
+			if (!doDebug)
+			{
+				let runCmd = QueueRun(launchPath, arguments, workingDir, .None);
+				runCmd.mRunFlags |= .NoWait;
+				return true;
 			}
 
             if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping))
@@ -10663,7 +10709,7 @@ namespace IDE
 					if (mLaunchData.mPaused)
 						RunWithStep();
 					else
-						CompileAndRun();
+						CompileAndRun(true);
 				}
 				else
 					LaunchDialog.DoLaunch(null, mLaunchData.mTargetPath, mLaunchData.mArgs ?? "", mLaunchData.mWorkingDir ?? "", "", mLaunchData.mPaused, true);
@@ -11027,7 +11073,7 @@ namespace IDE
 			if (hotResult.IsEmpty)
 			{
 				//OutputLineSmart("Hot type data changes have been resolved");
-				ProcessBeefCompileResults(null, false, mWorkspace.mStartupProject, null);
+				ProcessBeefCompileResults(null, .Normal, mWorkspace.mStartupProject, null);
 			}
 			else
 			{
@@ -12550,7 +12596,7 @@ namespace IDE
 				else
 				{
 				    mTargetStartWithStep = false;
-				    CompileAndRun();
+				    CompileAndRun(true);
 					mRunTestDelay = 200;
 				}
 			}
