@@ -1495,6 +1495,16 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 		}
 		typeValueParams.push_back(stringCharsVal); // mPtr
 		
+		for (int fieldIdx = 0; fieldIdx < (int)stringTypeInst->mFieldInstances.size(); fieldIdx++)
+		{
+			auto fieldInstance = &stringTypeInst->mFieldInstances[fieldIdx];
+			if (fieldInstance->mDataIdx < 4)
+				continue;
+			while (fieldInstance->mDataIdx >= typeValueParams.size())
+				typeValueParams.Add(BfIRValue());
+			typeValueParams[fieldInstance->mDataIdx] = GetDefaultValue(fieldInstance->mResolvedType);
+		}
+
 		stringValData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(stringTypeInst, BfIRPopulateType_Full), typeValueParams);
 	}
 		
