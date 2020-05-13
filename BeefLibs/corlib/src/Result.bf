@@ -114,7 +114,7 @@ namespace System
 			case .Ok(var val): return val;
 			case .Err(var err):
 				{
-					Internal.FatalError(scope String()..AppendF("Unhandled error in result:\n ", err), 2);
+					Internal.FatalError(scope String()..AppendF("Unhandled error in result:\n {}", err), 2);
 				}
 			}
 		}
@@ -190,7 +190,7 @@ namespace System
 		{
 		    if (this case .Err(var err))
 			{
-				Internal.FatalError(scope String()..AppendF("Unhandled error in result:\n ", err), 1);
+				Internal.FatalError(scope String()..AppendF("Unhandled error in result:\n {}", err), 1);
 			}
 			NoDispose<T>();
 			NoDispose<TErr>();
