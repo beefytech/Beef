@@ -5085,7 +5085,7 @@ namespace IDE
 			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
-			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugNotPaused);
+			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugRunning);
             AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
             AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
             AddMenuItem(subMenu, "Show &Disassembly", "Show Disassembly");
