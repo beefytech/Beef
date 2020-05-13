@@ -704,6 +704,12 @@ bool BfModule::CheckCircularDataError()
 		if (checkTypeState == NULL)
 			return hadError;
 
+		if (checkTypeState->mResolveKind == BfTypeState::ResolveKind_UnionInnerType)
+		{
+			checkTypeState = checkTypeState->mPrevState;
+			continue;
+		}
+
 		if (isPreBaseCheck)
 		{
 			if (checkTypeState->mPopulateType != BfPopulateType_Declaration)
@@ -729,7 +735,15 @@ bool BfModule::CheckCircularDataError()
 	{
 		if (checkTypeState == NULL)
 			return hadError;
-		if ((checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL))
+
+		if (checkTypeState->mResolveKind == BfTypeState::ResolveKind_UnionInnerType)
+		{
+			// Skip over this to actual data references
+			checkTypeState = checkTypeState->mPrevState;
+			continue;
+		}
+
+		if ((checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL) )
 			return hadError;
 
 		// We only get one chance to fire off these errors, they can't be ignored.
@@ -2762,7 +2776,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 		if (typeInstance->mIsUnion)
-			unionInnerType = typeInstance->GetUnionInnerType();		
+		{
+			SetAndRestoreValue<BfTypeState::ResolveKind> prevResolveKind(typeState.mResolveKind, BfTypeState::ResolveKind_UnionInnerType);
+			unionInnerType = typeInstance->GetUnionInnerType();
+		}
 
 		if (!isOrdered)
 		{

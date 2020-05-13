@@ -1283,6 +1283,10 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 	if (!mIsUnion)
 		return NULL;	
 
+	BfTypeState typeState(this, mContext->mCurTypeState);
+	typeState.mPopulateType = BfPopulateType_Data;
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
 	int unionSize = 0;
 	BfType* unionInnerType = NULL;	
 	bool makeRaw = false;
@@ -1309,6 +1313,8 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 
 		if (checkInnerType != NULL)
 		{
+			SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
+
 			mModule->PopulateType(checkInnerType);
 			if (checkInnerType->mSize > unionSize)
 				unionSize = checkInnerType->mSize;	
