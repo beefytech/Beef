@@ -500,6 +500,7 @@ namespace IDE
 				Add("Show Workspace Explorer", "Ctrl+Alt+S");
 				Add("Start Debugging", "F5");
 				Add("Start Without Debugging", "Ctrl+F5");
+				Add("Start Without Compiling", "Alt+F5");
 				Add("Step Into", "F11");
 				Add("Step Out", "Shift+F11");
 				Add("Step Over", "F10");

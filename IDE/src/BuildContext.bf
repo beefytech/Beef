@@ -8,6 +8,22 @@ using IDE.util;
 
 namespace IDE
 {
+	enum CompileKind
+	{
+		case Normal;
+		case RunAfter;
+		case DebugAfter;
+		case Test;
+
+		public bool WantsRunAfter
+		{
+			get
+			{
+				return (this == .RunAfter) || (this == .DebugAfter);
+			}
+		}
+	}
+
 	class BuildContext
 	{
 		public int32 mUpdateCnt;
@@ -949,7 +965,7 @@ namespace IDE
 			return true;
 		}
 
-		public bool QueueProjectCompile(Project project, Project hotProject, IDEApp.BuildCompletedCmd completedCompileCmd, List<String> hotFileNames, bool runAfter)
+		public bool QueueProjectCompile(Project project, Project hotProject, IDEApp.BuildCompletedCmd completedCompileCmd, List<String> hotFileNames, CompileKind compileKind)
 		{
 			project.mLastDidBuild = false;
 
@@ -1045,7 +1061,7 @@ namespace IDE
 
 			if (hotProject == null)
 			{
-				switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPreBuildCmds))
+				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPreBuildCmds))
 				{
 				case .NoCommands:
 				case .HadCommands:
@@ -1056,7 +1072,7 @@ namespace IDE
 
 			void DoPostBuild()
 			{
-				switch (QueueProjectCustomBuildCommands(project, targetPath, runAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
 				{
 				case .NoCommands:
 				case .HadCommands:

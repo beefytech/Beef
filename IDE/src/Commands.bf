@@ -265,7 +265,8 @@ namespace IDE
 			Add("Show Watches", new => gApp.ShowWatches);
 			Add("Show Workspace Explorer", new => gApp.ShowWorkspacePanel);
 			Add("Start Debugging", new => gApp.[Friend]RunWithCompiling);
-			Add("Start Without Debugging", new => gApp.[Friend]RunWithoutCompiling);
+			Add("Start Without Debugging", new => gApp.[Friend]RunWithoutDebugging);
+			Add("Start Without Compiling", new => gApp.[Friend]RunWithoutCompiling);
 			Add("Step Into", new => gApp.[Friend]StepInto);
 			Add("Step Out", new => gApp.[Friend]StepOut);
 			Add("Step Over", new => gApp.[Friend]StepOver);
