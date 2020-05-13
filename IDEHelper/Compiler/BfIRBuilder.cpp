@@ -4584,6 +4584,12 @@ void BfIRBuilder::RestoreDebugLocation()
 	}
 }
 
+void BfIRBuilder::DupDebugLocation()
+{
+	WriteCmd(BfIRCmd_DupDebugLocation);	
+	NEW_CMD_INSERTED;
+}
+
 bool BfIRBuilder::HasDebugLocation()
 {	
 	return mHasDebugLoc;

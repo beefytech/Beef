@@ -842,8 +842,8 @@ namespace Beefy.theme.dark
 		public SortType mSortType = SortType() ~ { mSortType.mColumn = -1; };
 		public Insets mInsets ~ delete _;
 
-        public Event<Action<DragEvent>> mOnDragUpdate ~ _.Dispose();
-        public Event<Action<DragEvent>> mOnDragEnd ~ _.Dispose();
+        public Event<delegate void(DragEvent)> mOnDragUpdate ~ _.Dispose();
+        public Event<delegate void(DragEvent)> mOnDragEnd ~ _.Dispose();
 
         public this()
         {

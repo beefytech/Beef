@@ -1320,7 +1320,8 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfTypeI
 		}
 		else
 		{
-			auto outerType = useModule->GetOuterType(typeInstance);
+			auto unreifiedModule = useModule->mContext->mUnreifiedModule;
+			auto outerType = unreifiedModule->GetOuterType(typeInstance);
 			if (outerType != NULL)
 				Mangle(mangleContext, name, outerType, true, true);
 			else	

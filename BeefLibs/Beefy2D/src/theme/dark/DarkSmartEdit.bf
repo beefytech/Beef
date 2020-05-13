@@ -14,7 +14,7 @@ namespace Beefy.theme.dark
         public bool mAllowEdit = true;        
         public Object mValue;
         public List<Widget> mMoveWidgets;
-        public Action<DarkSmartEdit> mValueChangedAction;
+        public delegate void(DarkSmartEdit) mValueChangedAction;
 
         bool mCancelingEdit;
         float mMouseDownX;

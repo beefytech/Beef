@@ -1027,7 +1027,7 @@ namespace IDE
             }
         }
 
-        public void WithProjectItems(Action<ProjectItem> func)
+        public void WithProjectItems(delegate void(ProjectItem) func)
         {
             for (var project in mProjects)
             {

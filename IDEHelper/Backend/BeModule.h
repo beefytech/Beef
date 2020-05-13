@@ -2104,6 +2104,8 @@ public:
 	BeDbgLoc* GetCurrentDebugLocation();
 	void SetCurrentDebugLocation(BeDbgLoc* dbgLoc);
 	void SetCurrentDebugLocation(int line, int column, BeMDNode* diScope, BeDbgLoc* diInlinedAt);
+	BeDbgLoc* DupDebugLocation(BeDbgLoc* dbgLoc);
+	void DupCurrentDebugLocation();
 
 	///
 	BeNopInst* CreateNop();

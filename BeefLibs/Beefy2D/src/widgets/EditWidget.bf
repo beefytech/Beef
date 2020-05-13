@@ -756,7 +756,9 @@ namespace Beefy.widgets
                     //Nothing
                 }
                 else if ((textPos < mData.mTextLength) && (!IsNonBreakingChar((char8)mData.mText[textPos].mChar)))
-                {                    
+                {                
+   					if ((char8)mData.mText[textPos].mChar == '\n')
+						return;
                     mSelection.ValueRef.mEndPos++;
                 }
                 else
@@ -1982,6 +1984,60 @@ namespace Beefy.widgets
 			    PasteText(aText);
 		}
 
+		protected void SelectLeft(int lineIdx, int lineChar, bool isChunkMove, bool isWordMove)
+		{
+			var lineIdx;
+			var lineChar;
+
+			int anIndex = GetTextIdx(lineIdx, lineChar);
+			char8 prevC = 0;
+			CharType prevCharType = (anIndex > 0) ? GetCharType((char8)mData.mText[anIndex - 1].mChar) : .Unknown;
+			while (true)
+			{
+			    if (lineChar > 0)
+			        MoveCursorTo(lineIdx, lineChar - 1);
+			    else if (lineIdx > 0)
+			    {
+			        int cursorIdx = mCursorTextPos;
+					String lineText = scope String();
+					GetLineText(lineIdx - 1, lineText);
+			        MoveCursorTo(lineIdx - 1, (int32)lineText.Length);
+			        if ((!mAllowVirtualCursor) && (cursorIdx == mCursorTextPos))
+			            MoveCursorTo(lineIdx - 1, (int32)lineText.Length - 1);
+			        break;
+			    }
+
+			    if (!isChunkMove)
+			        break;
+
+			    //mInner.mVal1 = inVal;
+			    //PrintF("TestStruct() %d\n", inVal);
+
+			    GetLineCharAtIdx(CursorTextPos, out lineIdx, out lineChar);
+			    anIndex = CursorTextPos;
+			    if (anIndex == 0)
+			        break;
+
+			    char8 c = (char8)mData.mText[anIndex - 1].mChar;
+			    CharType char8Type = GetCharType(c);
+			    if (prevCharType == .Opening)
+			        break;
+			    if (char8Type != prevCharType)
+			    {
+			        if ((char8Type == 0) && (prevCharType != 0))
+			            break;
+			        if ((prevCharType == .NewLine) || (prevCharType == .NonBreaking) || (prevCharType == .Other))
+			            break;
+			    }
+
+				if ((isWordMove) && (c.IsLower) && (prevC.IsUpper))
+					break;
+
+			    prevCharType = char8Type;
+				prevC = c;
+			}
+		}
+
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
         {
             base.KeyDown(keyCode, isRepeat);
@@ -2073,55 +2129,9 @@ namespace Beefy.widgets
 						    }
 						}
 
-						bool isWordMove = mWidgetWindow.IsKeyDown(.Alt);
+						
                         wasMoveKey = true;
-                        int anIndex = GetTextIdx(lineIdx, lineChar);
-						char8 prevC = 0;
-                        CharType prevCharType = (anIndex > 0) ? GetCharType((char8)mData.mText[anIndex - 1].mChar) : .Unknown;
-                        while (true)
-                        {
-                            if (lineChar > 0)
-                                MoveCursorTo(lineIdx, lineChar - 1);
-                            else if (lineIdx > 0)
-                            {
-                                int cursorIdx = mCursorTextPos;
-								String lineText = scope String();
-								GetLineText(lineIdx - 1, lineText);
-                                MoveCursorTo(lineIdx - 1, (int32)lineText.Length);
-                                if ((!mAllowVirtualCursor) && (cursorIdx == mCursorTextPos))
-                                    MoveCursorTo(lineIdx - 1, (int32)lineText.Length - 1);
-                                break;
-                            }
-
-                            if (!mWidgetWindow.IsKeyDown(KeyCode.Control))
-                                break;
-
-                            //mInner.mVal1 = inVal;
-                            //PrintF("TestStruct() %d\n", inVal);
-
-                            GetLineCharAtIdx(CursorTextPos, out lineIdx, out lineChar);
-                            anIndex = CursorTextPos;
-                            if (anIndex == 0)
-                                break;
-
-                            char8 c = (char8)mData.mText[anIndex - 1].mChar;
-                            CharType char8Type = GetCharType(c);
-                            if (prevCharType == .Opening)
-                                break;
-                            if (char8Type != prevCharType)
-                            {
-                                if ((char8Type == 0) && (prevCharType != 0))
-                                    break;
-                                if ((prevCharType == .NewLine) || (prevCharType == .NonBreaking) || (prevCharType == .Other))
-                                    break;
-                            }
-
-							if ((isWordMove) && (c.IsLower) && (prevC.IsUpper))
-								break;
-
-                            prevCharType = char8Type;
-							prevC = c;
-                        }
+						SelectLeft(lineIdx, lineChar, mWidgetWindow.IsKeyDown(KeyCode.Control), mWidgetWindow.IsKeyDown(KeyCode.Alt));
                     }
                 }
                 break;

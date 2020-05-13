@@ -39,6 +39,8 @@ namespace System
 		}
 	}
 
+	delegate void Action();
+
 	struct Function : int
 	{
 

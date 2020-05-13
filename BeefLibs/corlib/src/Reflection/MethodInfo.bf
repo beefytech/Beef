@@ -252,7 +252,7 @@ namespace System.Reflection
 				{
 					if (unboxToPtr)
 					{
-						int* stackDataPtr = scope:mixin int;
+						int* stackDataPtr = scope:mixin int();
 						*stackDataPtr = (int)dataPtr;
 						ffiArgList.Add(stackDataPtr);
 					}

@@ -2349,9 +2349,12 @@ void BfPrinter::Visit(BfPropertyMethodDeclaration* propertyMethodDeclaration)
 	ExpectSpace();
 	QueueVisitChild(propertyMethodDeclaration->mMutSpecifier);
 	ExpectSpace();
+	QueueVisitChild(propertyMethodDeclaration->mFatArrowToken);
+	ExpectSpace();
 	if (auto block = BfNodeDynCast<BfBlock>(propertyMethodDeclaration->mBody))	
 		ExpectNewLine();	
 	QueueVisitChild(propertyMethodDeclaration->mBody);
+	QueueVisitChild(propertyMethodDeclaration->mEndSemicolon);
 }
 
 void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)

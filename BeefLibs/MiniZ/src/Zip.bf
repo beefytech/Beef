@@ -40,7 +40,7 @@ using System.Diagnostics;
 #define MINIZ_LITTLE_ENDIAN
 #define MINIZ_USE_UNALIGNED_LOADS_AND_STORES
 
-namespace IDE.Util
+namespace MiniZ
 {
 	class ZipFile
 	{

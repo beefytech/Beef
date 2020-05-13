@@ -255,7 +255,7 @@ namespace System.Threading.Tasks
 		    
 		}
 
-		public this(Action<Object> action, Object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
+		public this(delegate void(Object) action, Object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
 		    : this(action, state, Task.InternalCurrentIfAttached(creationOptions), cancellationToken, creationOptions, InternalTaskOptions.None, null)
 		{
 		    //StackCrawlMark stackMark = StackCrawlMark.LookForMyCaller;
@@ -1121,7 +1121,7 @@ namespace System.Threading.Tasks
 			    action();
 			    return;
 			}
-			var actionWithState = m_action as Action<Object>;
+			var actionWithState = m_action as delegate void(Object);
 			if (actionWithState != null)
 			{
 			    actionWithState(m_stateObject);

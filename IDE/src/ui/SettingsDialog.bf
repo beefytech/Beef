@@ -78,6 +78,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "UI Scale", "mUIScale");
 			AddPropertiesItem(category, "Autocomplete", "mAutoCompleteShowKind");
 			AddPropertiesItem(category, "Autocomplete Require Tab", "mAutoCompleteRequireTab");
+			AddPropertiesItem(category, "Autocomplete on Enter", "mAutoCompleteOnEnter");
 			AddPropertiesItem(category, "Autocomplete Show Documentation", "mAutoCompleteShowDocumentation");
 			AddPropertiesItem(category, "Show Locator Animation", "mShowLocatorAnim");
 			AddPropertiesItem(category, "Hilite Symbol at Cursor", "mHiliteCursorReferences");

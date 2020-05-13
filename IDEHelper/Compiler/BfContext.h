@@ -114,7 +114,8 @@ public:
 	{
 		ResolveKind_None,
 		ResolveKind_BuildingGenericParams,
-		ResolveKind_ResolvingVarType
+		ResolveKind_ResolvingVarType,
+		ResolveKind_UnionInnerType,
 	};
 
 public:

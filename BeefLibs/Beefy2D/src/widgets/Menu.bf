@@ -110,7 +110,7 @@ namespace Beefy.widgets
         public float mMaxContainerWidth = Int32.MaxValue;
         public Insets mPopupInsets = new Insets() ~ delete _;
 		public bool mHasClosed;
-		public Event<Action<int>> mOnSelectionChanged ~ _.Dispose();
+		public Event<delegate void(int)> mOnSelectionChanged ~ _.Dispose();
 		public bool mWasInitialized;
 
         public this(Menu menu)

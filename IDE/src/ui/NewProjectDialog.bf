@@ -111,6 +111,7 @@ namespace IDE.ui
 					dialog.AddButton("Yes", new (evt) =>
 						{
 							CreateProject(createFlags | .NonEmptyDirOkay);
+							Close();
 						});
 					dialog.AddButton("No", new (evt) =>
 						{

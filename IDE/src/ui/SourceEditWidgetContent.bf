@@ -177,10 +177,10 @@ namespace IDE.ui
 			OnlyShowInvoke = 4
 		}
 
-        public Action<char32, AutoCompleteOptions> mOnGenerateAutocomplete ~ delete _;
+        public delegate void(char32, AutoCompleteOptions) mOnGenerateAutocomplete ~ delete _;
         public Action mOnFinishAsyncAutocomplete ~ delete _;
         public Action mOnCancelAsyncAutocomplete ~ delete _;
-        public Func<bool> mOnEscape ~ delete _; // returns 'true' if did work
+        public delegate bool() mOnEscape ~ delete _; // returns 'true' if did work
         public AutoComplete mAutoComplete ~ delete _;
         List<QueuedTextEntry> mQueuedText = new List<QueuedTextEntry>() ~ delete _;
         List<QueuedUnderlineEntry> mQueuedUnderlines = new List<QueuedUnderlineEntry>() ~ delete _;        
@@ -2061,7 +2061,23 @@ namespace IDE.ui
 
 			var keyChar;
 			if (keyChar == '\x7F') // Ctrl+Backspace
-				keyChar = '\b';
+			{
+				int line;
+				int lineChar;
+				GetCursorLineChar(out line, out lineChar);
+
+				int startIdx = CursorTextPos;
+				SelectLeft(line, lineChar, true, false);
+				mSelection = EditSelection(CursorTextPos, startIdx);
+				
+				var action = new DeleteSelectionAction(this);
+				action.mMoveCursor = true;
+				mData.mUndoManager.Add(action);
+				action.mCursorTextPos = (.)startIdx;
+				PhysDeleteSelection(true);
+
+				return;
+			}
 
 			if (mIgnoreKeyChar)
 			{
@@ -2075,7 +2091,11 @@ namespace IDE.ui
                 return;
             }
 
-			bool isCompletionChar = ((keyChar == '\t') || (keyChar == '\r')) && (!mWidgetWindow.IsKeyDown(.Shift));
+			bool isCompletionChar =
+				((keyChar == '\t') ||
+				 ((keyChar == '\r') && (gApp.mSettings.mEditorSettings.mAutoCompleteOnEnter))) &&
+				(!mWidgetWindow.IsKeyDown(.Shift));
+
             if ((gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.IsRenaming))
             {         
                 if ((keyChar == '\r') || (keyChar == '\n'))

@@ -1242,8 +1242,13 @@ namespace IDE
 			if (depProject == null)
 				return;
 
+			List<Project> depProjectList = scope .();
+			gApp.GetDependentProjectList(depProject, depProjectList);
+
 			for (let checkProject in gApp.mWorkspace.mProjects)
 			{
+				if (checkProject.mGeneralOptions.mTargetType == .BeefLib)
+					continue;
 				if (checkProject.HasDependency(depProject.mProjectName))
 				{
 					List<String> targetPaths = scope .();
@@ -1401,7 +1406,7 @@ namespace IDE
 		public void OpenWorkspace(String dirPath)
 		{
 			gApp.[Friend]mDeferredOpen = .Workspace;
-			var selectedPath = scope String..AppendF(dirPath);
+			var selectedPath = scope String()..AppendF(dirPath);
 			selectedPath.Append(Path.DirectorySeparatorChar);
 			selectedPath.Append("BeefSpace.toml");
 			IDEUtils.FixFilePath(selectedPath);

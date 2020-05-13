@@ -1098,7 +1098,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
                 (mModuleName == "-")
-				//|| (mModuleName == "Raylib_Color")
+				//|| (mModuleName == "Blurg")
 				//|| (mModuleName == "System_Int32")
 				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
 				)
@@ -4702,7 +4702,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		SizedArray<BfIRValue, 1> extVTableData;
 		
 		SizedArrayImpl<BfIRValue>* vFuncDataExt = &extVTableData;
-		
+
 		if (!typeInstance->IsInterface())
 		{
 			Array<int32> dynCastData;
@@ -5309,7 +5309,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				}
 			}
 
-			checkTypeInstance = GetOuterType(checkTypeInstance);
+			checkTypeInstance = mContext->mUnreifiedModule->GetOuterType(checkTypeInstance);
 		}
 	}
 
@@ -5986,7 +5986,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	}
 
 	int outerTypeId = 0;
-	auto outerType = GetOuterType(typeInstance);
+	auto outerType = mContext->mUnreifiedModule->GetOuterType(typeInstance);
 	if (outerType != NULL)
 		outerTypeId = outerType->mTypeId;
 
@@ -10342,6 +10342,7 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 	if (!typedValue.IsAddr())
 		return typedValue;
 
+	PopulateType(typedValue.mType);
 	if ((typedValue.mType->IsValuelessType()) || (typedValue.mType->IsVar()))
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), typedValue.mType, false);
 
@@ -12412,7 +12413,7 @@ void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 }
 
 BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
-{	
+{		
 	if ((localVarDef->mValue) && (!localVarDef->mAddr) && (IsTargetingBeefBackend()))
 	{
 		if ((!localVarDef->mValue.IsConst()) && (!localVarDef->mValue.IsArg()) && (!localVarDef->mValue.IsFake()))
@@ -13300,6 +13301,8 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, memberFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
 		nonStaticResult = mBfIRBuilder->CreateCall(funcPtr, memberFuncArgs);
+		if (mCurMethodInstance->HasStructRet())
+			mBfIRBuilder->Call_AddAttribute(nonStaticResult, 1, BfIRAttribute_StructRet);
 		if (callingConv != BfIRCallingConv_CDecl)
 			mBfIRBuilder->SetCallCallingConv(nonStaticResult, callingConv);
 		mCurMethodState->SetHadReturn(false);
@@ -13316,6 +13319,8 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, staticFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
 		staticResult = mBfIRBuilder->CreateCall(funcPtr, staticFuncArgs);
+		if (mCurMethodInstance->HasStructRet())
+			mBfIRBuilder->Call_AddAttribute(staticResult, 1, BfIRAttribute_StructRet);
 		if (callingConv == BfIRCallingConv_ThisCall)
 			callingConv = BfIRCallingConv_CDecl;
 		if (callingConv != BfIRCallingConv_CDecl)
@@ -13447,7 +13452,7 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 	auto methodDecl = methodDef->GetMethodDeclaration();
 	auto methodDeclBlock = BfNodeDynCast<BfBlock>(methodDecl->mBody);
 	if (methodDeclBlock == NULL)
-		return BfTypedValue();
+		return GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_IntPtr)); // Must not have an append alloc at all!
 
 	BfTypedValue constValue;
 
@@ -14227,11 +14232,6 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 		argIdx++;
 	}
 
-	if (methodDef->mName == "Hello")
-	{
-		NOP;
-	}
-
 	while (argIdx < argCount)
 	{
 		while ((paramIdx != -1) && (methodInstance->IsParamSkipped(paramIdx)))
@@ -14797,7 +14797,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		{			
 			auto localVar = mCurMethodState->GetRootMethodState()->mLocals[1];
 			BF_ASSERT(localVar->mName == "appendIdx");
-			auto intRefType = CreateRefType(localVar->mResolvedType);
+			auto intRefType = localVar->mResolvedType;
 			appendIdxVal = BfTypedValue(localVar->mValue, intRefType);
 			mCurMethodState->mCurAppendAlign = 1; // Don't make any assumptions about how the base leaves the alignment
 		}
@@ -15142,11 +15142,6 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 			auto methodOwner = markMemberMethodInstance.mMethodInstance->GetOwner();
 			if (markVal.mType != methodOwner)
 				markVal = Cast(NULL, markVal, methodOwner);
-
-			if (markMemberMethodInstance.mMethodInstance->mIdHash == 0x1500000236LL)
-			{
-				NOP;
-			}
 
 			exprEvaluator.PushThis(NULL, markVal, markMemberMethodInstance.mMethodInstance, args);
 			exprEvaluator.CreateCall(markMemberMethodInstance.mMethodInstance, markMemberMethodInstance.mFunc, false, args);
@@ -17427,40 +17422,14 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			skipBody = true;
 			skipEndChecks = true;
 		}
-		else if (HasCompiledOutput())
-		{
-			if ((methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))
-			{
-				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
-				{
-					EmitGCMarkMembers();
-				}
-				else if (!mCurTypeInstance->IsObject())
-				{
-
-				}
-			}
-			else if (methodDef->mName == BF_METHODNAME_FIND_TLS_MEMBERS)
-			{
-				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
-				{
-					EmitGCFindTLSMembers();
-				}
-			}
-		}
-	}
-	else if (!skipBody)
-	{		
-		bool isEmptyBodied = BfNodeDynCast<BfTokenNode>(methodDef->mBody) != NULL;
-
-		if (isEmptyBodied) // Generate autoProperty things
-		{
+		else
+		{			
 			auto propertyDeclaration = methodDef->GetPropertyDeclaration();
 			if ((propertyDeclaration != NULL) && (!typeDef->HasAutoProperty(propertyDeclaration)))
 			{
 				if ((!mCurTypeInstance->IsInterface()) && (!hasExternSpecifier))
 					Fail("Body expected", methodDef->mBody);
-			}			
+			}
 			else if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 			{
 				if (methodInstance->mReturnType->IsValuelessType())
@@ -17488,8 +17457,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 						else if (mCurTypeInstance->IsObject())
 							lookupValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(GetThis().mValue, 0, fieldInstance->mDataIdx), fieldInstance->mResolvedType, true);
 						else
-							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mFieldIdx);												
-						lookupValue = LoadOrAggregateValue(lookupValue);						
+							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mFieldIdx);
+						lookupValue = LoadOrAggregateValue(lookupValue);
 						CreateReturn(lookupValue.mValue);
 						EmitLifetimeEnds(&mCurMethodState->mHeadScope);
 					}
@@ -17509,7 +17478,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 			else if (methodDef->mMethodType == BfMethodType_PropertySetter)
 			{
-				if (!mCompiler->IsAutocomplete())
+				if ((!methodDef->mIsMutating) && (mCurTypeInstance->IsValueType()))
+				{
+					Fail("Auto-setter must be marked as 'mut'", methodDef->GetRefNode(), true);
+				}
+				else if (!mCompiler->IsAutocomplete())
 				{
 					String autoPropName = typeDef->GetAutoPropertyName(propertyDeclaration);
 					BfFieldInstance* fieldInstance = GetFieldByName(mCurTypeInstance, autoPropName);
@@ -17529,13 +17502,13 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 								BF_FATAL("Should not happen");
 							}
 							if (mCurTypeInstance->IsObject())
-								thisValue = LoadValue(thisValue);							
-							lookupAddr = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInstance->mDataIdx);							
+								thisValue = LoadValue(thisValue);
+							lookupAddr = mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, fieldInstance->mDataIdx);
 						}
 
 						BfExprEvaluator exprEvaluator(this);
 						auto localVal = exprEvaluator.LoadLocal(lastParam);
-						localVal = LoadOrAggregateValue(localVal);						
+						localVal = LoadOrAggregateValue(localVal);
 						mBfIRBuilder->CreateStore(localVal.mValue, lookupAddr);
 					}
 					else if (!fieldInstance->mResolvedType->IsValuelessType())
@@ -17545,7 +17518,31 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					}
 				}
 			}
+			else if ((methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC))
+			{
+				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
+				{
+					if (HasCompiledOutput())
+						EmitGCMarkMembers();
+				}
+				else if (!mCurTypeInstance->IsObject())
+				{
+
+				}
+			}
+			else if (methodDef->mName == BF_METHODNAME_FIND_TLS_MEMBERS)
+			{
+				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
+				{
+					if (HasCompiledOutput())
+						EmitGCFindTLSMembers();
+				}
+			}
 		}
+	}
+	else if (!skipBody)
+	{
+		bool isEmptyBodied = BfNodeDynCast<BfTokenNode>(methodDef->mBody) != NULL;
 
 		if ((!mCurMethodInstance->mReturnType->IsValuelessType()) && (!isEmptyBodied))
 		{			
@@ -17596,7 +17593,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					isExpressionBody = true;
 			}
 			else if (auto propertyDeclaration = methodDef->GetPropertyDeclaration())
-			{
+			{				
+				auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration();
+				if ((propertyMethodDeclaration != NULL) && (propertyMethodDeclaration->mFatArrowToken != NULL))
+					isExpressionBody = true;
 				if (auto propBodyExpr = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
 				{
 					isExpressionBody = true;
@@ -17636,42 +17636,45 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 			else if (auto expressionBody = BfNodeDynCast<BfExpression>(methodDef->mBody))
 			{	
-				if ((methodDef->mMethodType != BfMethodType_Normal) && (propertyDeclaration == NULL))
-				{
-					BF_ASSERT(methodDeclaration->mFatArrowToken != NULL);
-					Fail("Only normal methods can have expression bodies", methodDeclaration->mFatArrowToken);
-				}
+// 				if ((methodDef->mMethodType != BfMethodType_Normal) && (propertyDeclaration == NULL))
+// 				{
+// 					BF_ASSERT(methodDeclaration->mFatArrowToken != NULL);
+// 					Fail("Only normal methods can have expression bodies", methodDeclaration->mFatArrowToken);
+// 				}
 
 				auto expectingType = mCurMethodInstance->mReturnType;
+				// What was this error for?
 // 				if ((expectingType->IsVoid()) && (IsInSpecializedSection()))
 // 				{
 // 					Warn(0, "Using a 'void' return with an expression-bodied method isn't needed. Consider removing '=>' token", methodDeclaration->mFatArrowToken);
 // 				}
-				
-				//TODO: Why did we have all this stuff for handling void?
-// 				if (expectingType->IsVoid())
-// 				{
-// 					bool wasReturnGenericParam = false;
-// 					if ((mCurMethodState->mClosureState != NULL) && (mCurMethodState->mClosureState->mReturnType != NULL))
-// 					{
-// 						wasReturnGenericParam = mCurMethodState->mClosureState->mReturnType->IsGenericParam();
-// 					}
-// 					else
-// 					{
-// 						auto unspecializedMethodInstance = GetUnspecializedMethodInstance(mCurMethodInstance);
-// 						if ((unspecializedMethodInstance != NULL) && (unspecializedMethodInstance->mReturnType->IsGenericParam()))
-// 							wasReturnGenericParam = true;
-// 					}
-// 					
-// 					// If we the void return was from a generic specialization, allow us to return a void result,
-// 					//  otherwise treat expression as though it must be a statement
-// 					bool isStatement = expressionBody->VerifyIsStatement(mCompiler->mPassInstance, wasReturnGenericParam);
-// 					if (isStatement)
-// 						expectingType = NULL;
-// 				}
+								
+				BfEvalExprFlags exprEvalFlags = BfEvalExprFlags_None;
+				if (expectingType->IsVoid())
+				{
+					exprEvalFlags = BfEvalExprFlags_NoCast;
+
+					bool wasReturnGenericParam = false;
+					if ((mCurMethodState->mClosureState != NULL) && (mCurMethodState->mClosureState->mReturnType != NULL))
+					{
+						wasReturnGenericParam = mCurMethodState->mClosureState->mReturnType->IsGenericParam();
+					}
+					else
+					{
+						auto unspecializedMethodInstance = GetUnspecializedMethodInstance(mCurMethodInstance);
+						if ((unspecializedMethodInstance != NULL) && (unspecializedMethodInstance->mReturnType->IsGenericParam()))
+							wasReturnGenericParam = true;
+					}
+					
+					// If we the void return was from a generic specialization, allow us to return a void result,
+					//  otherwise treat expression as though it must be a statement
+					bool isStatement = expressionBody->VerifyIsStatement(mCompiler->mPassInstance, wasReturnGenericParam);
+					if (isStatement)
+						expectingType = NULL;
+				}
 
 				UpdateSrcPos(expressionBody);
-				auto retVal = CreateValueFromExpression(expressionBody, expectingType);
+				auto retVal = CreateValueFromExpression(expressionBody, expectingType, exprEvalFlags);
 				if ((retVal) && (expectingType != NULL))
 				{
 					mCurMethodState->mHadReturn = true;
@@ -18006,18 +18009,18 @@ BfMethodDef* BfModule::GetLocalMethodDef(BfLocalMethod* localMethod)
 
 	BfMethodDef* methodDef;
 
+	BfMethodDef* outerMethodDef = NULL;
+	if (localMethod->mOuterLocalMethod != NULL)
+		outerMethodDef = localMethod->mOuterLocalMethod->mMethodDef;
+	else
+		outerMethodDef = rootMethodState->mMethodInstance->mMethodDef;
+
 	if (methodDeclaration != NULL)
 	{
 		BfDefBuilder defBuilder(mCompiler->mSystem);
 		defBuilder.mPassInstance = mCompiler->mPassInstance;
 		defBuilder.mCurTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
-
-		BfMethodDef* outerMethodDef = NULL;
-		if (localMethod->mOuterLocalMethod != NULL)
-			outerMethodDef = localMethod->mOuterLocalMethod->mMethodDef;
-		else
-			outerMethodDef = rootMethodState->mMethodInstance->mMethodDef;
-
+		
 		methodDef = defBuilder.CreateMethodDef(methodDeclaration, outerMethodDef);
 	}
 	else
@@ -18044,6 +18047,16 @@ BfMethodDef* BfModule::GetLocalMethodDef(BfLocalMethod* localMethod)
  			paramDef->mName = paramName;
  			methodDef->mParams.Add(paramDef);
  		}
+
+		if (outerMethodDef != NULL)
+		{
+			for (auto genericParam : outerMethodDef->mGenericParams)
+			{
+				auto* copiedGenericParamDef = new BfGenericParamDef();
+				*copiedGenericParamDef = *genericParam;
+				methodDef->mGenericParams.Add(copiedGenericParamDef);
+			}
+		}
 	}
 
 	methodDef->mIdx = ~methodLocalIdx;
@@ -18780,6 +18793,8 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 	auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration();
 	auto typeInstance = methodInstance->GetOwner();
 
+	BfTypeState typeState(typeInstance);
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
 
@@ -19599,10 +19614,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				{
 					BF_ASSERT(defaultValue.mValue.IsConst());
 					while ((int)mCurMethodInstance->mDefaultValues.size() < paramDefIdx)
-						mCurMethodInstance->mDefaultValues.Add(BfIRValue());
+						mCurMethodInstance->mDefaultValues.Add(BfTypedValue());
 
 					CurrentAddToConstHolder(defaultValue.mValue);
-					mCurMethodInstance->mDefaultValues.Add(defaultValue.mValue);
+					mCurMethodInstance->mDefaultValues.Add(defaultValue);
 				}
 			}
 		}		
@@ -20010,7 +20025,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		
 	if ((!methodInstance->IsSpecializedGenericMethodOrType()) && (!mCurTypeInstance->IsBoxed()) && 
 		(!methodDef->mIsLocalMethod) &&
-		(!CheckDefineMemberProtection(methodDef->mProtection, methodInstance->mReturnType)))
+		(!CheckDefineMemberProtection(methodDef->mProtection, methodInstance->mReturnType)) &&
+		(!methodDef->mReturnTypeRef->IsTemporary()))
 	{
 		if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 		{
@@ -20871,7 +20887,13 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				{
 					auto propertyMethodDecl = methodDef->GetPropertyMethodDeclaration();
 
-					Fail(StrFormat("Property '%s' %s accessor not defined in interface '%s'", propertyDecl->mNameNode->ToString().c_str(),
+					String name;
+					if (auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propertyDecl))
+						name = "this[]";
+					else if (propertyDecl->mNameNode != NULL)
+						propertyDecl->mNameNode->ToString(name);
+						
+					Fail(StrFormat("Property '%s' %s accessor not defined in interface '%s'", name.c_str(),
 						(methodDef->mMethodType == BfMethodType_PropertyGetter) ? "get" : "set", TypeToString(ifaceInst).c_str()), methodDef->GetRefNode(), true);
 				}
 				else

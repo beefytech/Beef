@@ -310,6 +310,7 @@ namespace IDE
 			public Colors mColors = new .() ~ delete _;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
 			public bool mAutoCompleteRequireTab = false;
+			public bool mAutoCompleteOnEnter = true;
 			public bool mAutoCompleteShowDocumentation = true;
 			public bool mShowLocatorAnim = true;
 			public bool mHiliteCursorReferences = true;
@@ -331,6 +332,7 @@ namespace IDE
 				sd.Add("UIScale", mUIScale);
 				sd.Add("AutoCompleteShowKind", mAutoCompleteShowKind);
 				sd.Add("AutoCompleteRequireTab", mAutoCompleteRequireTab);
+				sd.Add("AutoCompleteOnEnter", mAutoCompleteOnEnter);
 				sd.Add("AutoCompleteShowDocumentation", mAutoCompleteShowDocumentation);
 				sd.Add("ShowLocatorAnim", mShowLocatorAnim);
 				sd.Add("HiliteCursorReferences", mHiliteCursorReferences);
@@ -358,6 +360,7 @@ namespace IDE
 				sd.Get("UIScale", ref mUIScale);
 				sd.Get("AutoCompleteShowKind", ref mAutoCompleteShowKind);
 				sd.Get("AutoCompleteRequireTab", ref mAutoCompleteRequireTab);
+				sd.Get("AutoCompleteOnEnter", ref mAutoCompleteOnEnter);
 				sd.Get("AutoCompleteShowDocumentation", ref mAutoCompleteShowDocumentation);
 				sd.Get("ShowLocatorAnim", ref mShowLocatorAnim);
 				sd.Get("HiliteCursorReferences", ref mHiliteCursorReferences);

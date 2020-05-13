@@ -518,6 +518,8 @@ namespace System
 		}
     }
 
+	delegate void Action();
+
     struct DeferredCall
     {
 		public int64 mMethodId;
@@ -528,14 +530,6 @@ namespace System
 			mMethodId = 0;
 		}
 	}
-
-	delegate void Action();
-	delegate void Action<T1>(T1 p1);
-	delegate void Action<T1, T2>(T1 p1, T2 p2);
-	delegate TResult Func<TResult>();
-	delegate TResult Func<T1, TResult>(T1 p1);
-	delegate TResult Func<T1, T2, TResult>(T1 p1, T2 p2);
-	delegate int32 Comparison<T>(T a, T b);
 }
 
 static

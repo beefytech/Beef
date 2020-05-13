@@ -752,7 +752,7 @@ public:
 	BfMethodDef* mMethodDef;
 	BfType* mReturnType;
 	Array<BfMethodParam> mParams;	
-	Array<BfIRValue> mDefaultValues; // ConstIdx		
+	Array<BfTypedValue> mDefaultValues;
 	BfModule* mDeclModule;
 	BfMethodProcessRequest* mMethodProcessRequest;	
 	BfMethodInfoEx* mMethodInfoEx;	

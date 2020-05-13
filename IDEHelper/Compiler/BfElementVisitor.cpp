@@ -1012,7 +1012,9 @@ void BfElementVisitor::Visit(BfPropertyMethodDeclaration* propertyDeclaration)
 	VisitChild(propertyDeclaration->mProtectionSpecifier);
 	VisitChild(propertyDeclaration->mNameNode);
 	VisitChild(propertyDeclaration->mMutSpecifier);
+	VisitChild(propertyDeclaration->mFatArrowToken);	
 	VisitChild(propertyDeclaration->mBody);
+	VisitChild(propertyDeclaration->mEndSemicolon);
 }
 
 void BfElementVisitor::Visit(BfPropertyBodyExpression* propertyBodyExpression)

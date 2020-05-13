@@ -264,6 +264,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 			}
 		}
 
+		BfTypedValue argValue;
 		BfAstNode* argExpr = NULL;
 		if (argIdx < (int)arguments.size())
 		{
@@ -314,28 +315,25 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 			}
 
 			auto foreignDefaultVal = methodInstance->mDefaultValues[argIdx];
-			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(methodInstance->mDefaultValues[argIdx]);
-			auto constVal = mModule->ConstantToCurrent(foreignConst, methodInstance->GetOwner()->mConstHolder, wantType);			
-			llvmArgs.push_back(constVal);
-			argIdx++;
-			paramIdx++;
-			continue;
+			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(foreignDefaultVal.mValue);			
+			argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, foreignDefaultVal.mType);
 		}
 
-		auto argValue = arguments[argIdx].mTypedValue;
-
-		auto& arg = arguments[argIdx];
-		if ((arg.mArgFlags & BfArgFlag_DeferredEval) != 0)
+		if ((!argValue) && (argIdx < arguments.size()))
 		{
-			mExpectingType = arg.mExpectedType;
-			if (mExpectingType == NULL)
-				mExpectingType = wantType;
+			argValue = arguments[argIdx].mTypedValue;
+			auto& arg = arguments[argIdx];
+			if ((arg.mArgFlags & BfArgFlag_DeferredEval) != 0)
+			{
+				mExpectingType = arg.mExpectedType;
+				if (mExpectingType == NULL)
+					mExpectingType = wantType;
 
-			if (auto expr = BfNodeDynCast<BfExpression>(argExpr))
-				argValue = Resolve(expr, mExpectingType);
-			arg.mArgFlags = BfArgFlag_None;
+				if (auto expr = BfNodeDynCast<BfExpression>(argExpr))
+					argValue = Resolve(expr, mExpectingType);
+				arg.mArgFlags = BfArgFlag_None;
+			}
 		}
-
 		
 		if (!argValue)
 			return BfTypedValue();

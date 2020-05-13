@@ -111,7 +111,7 @@ namespace Beefy.utils
             Clear();
         }
 
-        public void WithActions(Action<UndoAction> func)
+        public void WithActions(delegate void(UndoAction) func)
         {
             for (var action in mUndoList)
                 func(action);

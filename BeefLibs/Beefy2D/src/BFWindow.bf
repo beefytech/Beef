@@ -47,6 +47,7 @@ namespace Beefy
 			FakeFocus = 0x0100'0000,
 			ShowMinimized = 0x0200'0000,
 			ShowMaximized = 0x0400'0000,
+			AllowFullscreen = 0x0800'0000,
         };
 
 		[AllowDuplicates]

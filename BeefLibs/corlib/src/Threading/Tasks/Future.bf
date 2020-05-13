@@ -32,7 +32,7 @@ namespace System.Threading.Tasks
 
 		}
 
-		public this(Func<Object, TResult> func, Object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
+		public this(delegate TResult(Object) func, Object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
 		    : this(func, state, Task.[Friend]InternalCurrentIfAttached(creationOptions), cancellationToken,
 		            creationOptions, InternalTaskOptions.None, null)
 		{
@@ -40,7 +40,7 @@ namespace System.Threading.Tasks
 		    //PossiblyCaptureContext(ref stackMark);
 		}
 
-		this(Func<TResult> valueSelector, Task parent, CancellationToken cancellationToken,
+		this(delegate TResult() valueSelector, Task parent, CancellationToken cancellationToken,
 		    TaskCreationOptions creationOptions, InternalTaskOptions internalOptions, TaskScheduler scheduler) :
 		    base(valueSelector, null, parent, cancellationToken, creationOptions, internalOptions, scheduler)
 		{
@@ -103,9 +103,9 @@ namespace System.Threading.Tasks
 		    return m_result;
 		}
 
-		List<Action<Task<TResult>>> mContinuations = new List<Action<Task<TResult>>>() ~ delete _;
+		List<delegate void(Task<TResult>)> mContinuations = new .() ~ delete _;
 
-		public Task ContinueWith(Action<Task<TResult>> continuationAction)
+		public Task ContinueWith(delegate void(Task<TResult>) continuationAction)
 		{
 			bool callDirectly = false;
 			using (mMonitor.Enter())
@@ -130,7 +130,7 @@ namespace System.Threading.Tasks
 
 		public void Notify(bool allowDelete = true)
 		{
-			var continueList = scope List<Action<Task<TResult>>>(16);
+			var continueList = scope List<delegate void(Task<TResult>)>(16);
 			using (mMonitor.Enter())
 			{
 				mHasCompleted = true;

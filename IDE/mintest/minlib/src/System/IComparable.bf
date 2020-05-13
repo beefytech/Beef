@@ -99,4 +99,6 @@ namespace System
 	{
 		
 	}
+
+	public delegate int Comparison<T>(T lhs, T rhs);
 }

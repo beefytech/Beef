@@ -427,7 +427,7 @@ namespace IDE.ui
 
             Menu menu = new Menu();
 
-            Action<String, bool> addSubMenu = scope (label, useRepType) => {
+            delegate void(String, bool) addSubMenu = scope (label, useRepType) => {
                 
                 Menu subMenu = menu.AddItem(label);
 

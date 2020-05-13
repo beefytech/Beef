@@ -45,7 +45,7 @@ namespace BeefPerf
 		public Socket mListenSocket ~ delete _;
 		public Thread mSocketThread ~ delete _;
 		public List<BpClient> mClients = new List<BpClient>() ~ delete _;
-		public List<BpSession> mSessions = new List<BpSession> ~ DeleteContainerAndItems!(_);
+		public List<BpSession> mSessions = new List<BpSession>() ~ DeleteContainerAndItems!(_);
 		public Monitor mClientMonitor = new Monitor() ~ delete _;
 		public WaitEvent mShutdownEvent = new WaitEvent() ~ delete _;
 		public BpSession mCurSession;
@@ -835,7 +835,7 @@ namespace BeefPerf
 			OpenedNew
 		}
 
-		public void WithDocumentTabbedViews(Action<DarkTabbedView> func)
+		public void WithDocumentTabbedViews(delegate void(DarkTabbedView) func)
 		{
 		    for (int32 windowIdx = 0; windowIdx < mWindows.Count; windowIdx++)
 		    {
@@ -860,7 +860,7 @@ namespace BeefPerf
 		    }
 		}
 
-		public void WithTabs(Action<TabbedView.TabButton> func)
+		public void WithTabs(delegate void(TabbedView.TabButton) func)
 		{
 		    WithDocumentTabbedViews(scope (documentTabbedView) =>
 		        {

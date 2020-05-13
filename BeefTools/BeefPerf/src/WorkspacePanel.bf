@@ -110,7 +110,7 @@ namespace BeefPerf
 					BpClient.TimeToStr(timeUS, timeStr, false);
 					g.DrawString(timeStr, 4, 40, .Left, width - 8, .Ellipsis);
 
-					g.DrawString(scope String..AppendF("BPS: {0}k", session.mDispBPS), 4, 40, .Right, width - 8);
+					g.DrawString(scope String()..AppendF("BPS: {0}k", session.mDispBPS), 4, 40, .Right, width - 8);
 				}
 
 				curY += boxHeight + 4;

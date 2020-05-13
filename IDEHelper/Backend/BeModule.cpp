@@ -2609,6 +2609,9 @@ void BeModule::DoInlining(BeFunction* func)
 				if (funcInlined.find(inlineFunc) != funcInlined.end())
 					continue; // Don't recursively inline
 
+				// Incase we have multiple inlines from the same location, those need to have unique dbgLocs
+				callInst->mDbgLoc = DupDebugLocation(callInst->mDbgLoc);
+
 				hadInlining = true;
 
 				BeInliner inliner;
@@ -3093,6 +3096,32 @@ void BeModule::SetCurrentDebugLocation(int line, int column, BeMDNode* dbgScope,
 		dbgInlinedAt->mHadInline = true;		
 	}
 
+	mLastDbgLoc = mCurDbgLoc;
+}
+
+BeDbgLoc* BeModule::DupDebugLocation(BeDbgLoc* dbgLoc)
+{
+	if (dbgLoc == NULL)
+		return dbgLoc;
+	
+	auto newDbgLoc = mAlloc.Alloc<BeDbgLoc>();
+	newDbgLoc->mLine = dbgLoc->mLine;
+	newDbgLoc->mColumn = dbgLoc->mColumn;
+	newDbgLoc->mDbgScope = dbgLoc->mDbgScope;
+	newDbgLoc->mDbgInlinedAt = dbgLoc->mDbgInlinedAt;
+	newDbgLoc->mIdx = mCurDbgLocIdx++;
+
+	if ((newDbgLoc->mDbgInlinedAt != NULL) && (!newDbgLoc->mDbgInlinedAt->mHadInline))
+	{
+		newDbgLoc->mDbgInlinedAt->mHadInline = true;
+	}
+
+	return newDbgLoc;
+}
+
+void BeModule::DupCurrentDebugLocation()
+{
+	mCurDbgLoc = DupDebugLocation(mCurDbgLoc);
 	mLastDbgLoc = mCurDbgLoc;
 }
 

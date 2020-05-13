@@ -213,7 +213,7 @@ namespace Beefy.widgets
 			return parentFrame;
 		}
 
-        public void WithAllDockedWidgets(Action<DockedWidget> func)
+        public void WithAllDockedWidgets(delegate void(DockedWidget) func)
         {
             for (var dockedWidget in mDockedWidgets)
             {                

@@ -283,6 +283,7 @@ enum BfIRCmd : uint8
 
 	BfIRCmd_SaveDebugLocation,
 	BfIRCmd_RestoreDebugLocation,
+	BfIRCmd_DupDebugLocation,
 	BfIRCmd_ClearDebugLocation,
 	BfIRCmd_ClearDebugLocationInst,
 	BfIRCmd_ClearDebugLocationInstLast,
@@ -1181,6 +1182,7 @@ public:
 	
 	void SaveDebugLocation();
 	void RestoreDebugLocation();
+	void DupDebugLocation();
 	bool HasDebugLocation();
 	void ClearDebugLocation();	
 	void ClearDebugLocation(BfIRValue inst);

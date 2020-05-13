@@ -53,7 +53,7 @@ namespace Beefy.theme.dark
         public FontAlign mLabelAlign = FontAlign.Centered;
         public FrameKind mFrameKind = .OnWindow;
 
-        public Event<Action<Menu>> mPopulateMenuAction ~ _.Dispose();
+        public Event<delegate void(Menu)> mPopulateMenuAction ~ _.Dispose();
         public CBMenuWidget mCurMenuWidget;
         bool mJustClosed;
         public uint32 mBkgColor;

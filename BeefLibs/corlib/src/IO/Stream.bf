@@ -195,7 +195,7 @@ namespace System.IO
 
 		    public this(
 		        bool isRead,
-		        Func<Object, int> func, Object state,
+		        delegate int(Object) func, Object state,
 		        Stream stream, uint8[] buffer, int offset, int count, AsyncCallback callback) :
 		        	base(func, state, CancellationToken.None, TaskCreationOptions.DenyChildAttach)
 		    {

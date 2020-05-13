@@ -2471,8 +2471,12 @@ namespace IDE.ui
 						if (startContentIdx == -1)
 						{
 							lineLeft = trackedElementView.mTextPosition.mIndex;
+
 							repeat
 							{
+								if (lineLeft >= editContent.mData.mTextLength)
+									break;
+
 							    if (!((char8)editContent.mData.mText[lineLeft].mChar).IsWhiteSpace)
 								{
 							        startContentIdx = lineLeft;
@@ -6637,7 +6641,7 @@ namespace IDE.ui
         }
 		
 
-		public void WithTrackedElementsAtCursor<T>(List<T> trackedElementList, Action<T> func) where T : TrackedTextElement
+		public void WithTrackedElementsAtCursor<T>(List<T> trackedElementList, delegate void(T) func) where T : TrackedTextElement
 		{
 		    int lineIdx;
 		    int lineCharIdx;

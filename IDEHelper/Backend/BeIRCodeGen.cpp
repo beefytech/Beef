@@ -2270,6 +2270,11 @@ void BeIRCodeGen::HandleNextCmd()
 			mSavedDebugLocs.pop_back();
 		}
 		break;
+	case BfIRCmd_DupDebugLocation:
+		{
+			mBeModule->DupCurrentDebugLocation();
+		}
+		break;
 	case BfIRCmd_ClearDebugLocation:
 		{
 			mBeModule->SetCurrentDebugLocation(NULL);

@@ -2456,6 +2456,16 @@ bool BfExprEvaluator::HasVariableDeclaration(BfAstNode* checkNode)
 void BfExprEvaluator::Visit(BfVariableDeclaration* varDecl)
 {	
 	mModule->UpdateExprSrcPos(varDecl);
+
+	if ((mModule->mCurMethodState == NULL) || (!mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations))
+	{
+		mModule->Fail("Variable declarations are not allowed in this context", varDecl);
+		if (varDecl->mInitializer != NULL)
+		{
+			VisitChild(varDecl->mInitializer);
+		}		
+		return;
+	}
 	
 	CheckVariableDeclaration(varDecl, true, false, false);
 	if (varDecl->mInitializer == NULL)
@@ -3138,7 +3148,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	}
 
 	if (!thisValue.HasType())	
-		thisValue = BfTypedValue(mModule->mCurTypeInstance);	
+		thisValue = BfTypedValue(mModule->mCurTypeInstance);
 	BfTypedValue result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_IsImplicitThis);
 	if (mPropDef != NULL)
 	{
@@ -4336,7 +4346,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 				auto typeInstance = methodInstance->GetOwner();
 				auto& vEntry = typeInstance->mVirtualMethodTable[methodInstance->mVirtualTableIdx];
 				BfMethodInstance* declaringMethodInstance = vEntry.mDeclaringMethod;
-				if ((declaringMethodInstance->mMethodInstanceGroup->mOnDemandKind < BfMethodOnDemandKind_InWorkList) || (!methodInstance->mIsReified))
+				if ((declaringMethodInstance->mMethodInstanceGroup->mOnDemandKind < BfMethodOnDemandKind_InWorkList) || (!declaringMethodInstance->mIsReified))
 					mModule->GetMethodInstance(declaringMethodInstance);
 			}
 
@@ -5017,6 +5027,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	// Temporarily disable so we don't capture calls in params	
 	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
+	SetAndRestoreValue<bool> prevAllowVariableDeclarations(mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations, false); // Don't allow variable declarations in arguments
 
 	BfMethodInstance* methodInstance = moduleMethodInstance.mMethodInstance;	
 
@@ -5313,7 +5324,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			hadMissingArg = true;
 		
 		BfTypedValue argValue;
-
+				
 		if (hadMissingArg)
 		{
 			if (expandedParamsArray)
@@ -5406,7 +5417,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			}			
 
 			auto foreignDefaultVal = methodInstance->mDefaultValues[argIdx];
-			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(methodInstance->mDefaultValues[argIdx]);		
+			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(foreignDefaultVal.mValue);
 
 			if (foreignConst->mConstType == BfConstType_AggZero)
 			{
@@ -5422,7 +5433,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 			if (!argValue)
 			{				
-				argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, wantType);
+				argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, foreignDefaultVal.mType);
 				if (!argValue)
 					mModule->Fail("Default parameter value failed", targetSrc);
 			}			
@@ -5489,15 +5500,19 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			failed = true;			
 		}
 
-		if ((argValue) && (arg != NULL))
+		if (argValue)
 		{	
+			BfAstNode* refNode = arg;
+			if (refNode == NULL)
+				refNode = targetSrc;
+
 			if (mModule->mCurMethodState != NULL)
 			{
 				SetAndRestoreValue<BfScopeData*> prevScopeData(mModule->mCurMethodState->mOverrideScope, boxScopeData);
-				argValue = mModule->Cast(arg, argValue, wantType);
+				argValue = mModule->Cast(refNode, argValue, wantType);
 			}
 			else
-				argValue = mModule->Cast(arg, argValue, wantType);
+				argValue = mModule->Cast(refNode, argValue, wantType);
 
 			if (!argValue)
 			{
@@ -5795,7 +5810,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 				auto intPtrRefType = mModule->CreateRefType(intPtrType);
 				if (target.mValue.IsFake())
 				{
-					resolvedArg.mTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), intPtrType);
+					resolvedArg.mTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), intPtrRefType);
 				}
 				else
 				{					
@@ -5827,7 +5842,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 			{
 				BfExprEvaluator exprEvaluator(mModule);
 				exprEvaluator.mReceivingValue = receivingValue;
-				BfEvalExprFlags flags = BfEvalExprFlags_NoCast;
+				BfEvalExprFlags flags = (BfEvalExprFlags)(BfEvalExprFlags_NoCast);
 				if ((paramKind == BfParamKind_Params) || (paramKind == BfParamKind_DelegateParam))
 					flags = (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowParamsExpr);
 
@@ -6152,9 +6167,22 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 // 		NOP;
 // 	}
 
+	bool prevAllowVariableDeclarations = true;
+	if (mModule->mCurMethodState != NULL)
+	{
+		// Don't allow variable declarations in arguments for this method call
+		prevAllowVariableDeclarations = mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations;
+		mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations = false;
+	}
+	defer
+	(		
+		if (mModule->mCurMethodState != NULL)
+			mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations = prevAllowVariableDeclarations;		
+	);
+
 	// Temporarily disable so we don't capture calls in params
 	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
-
+	
 	sInvocationIdx++;
 	
 	bool wantCtor = methodName.IsEmpty();
@@ -6345,7 +6373,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	BfTypeVector checkMethodGenericArguments;
 
 	BfTypeInstance* curTypeInst = targetTypeInst;
-	
+
 	BfMethodMatcher methodMatcher(targetSrc, mModule, methodName, argValues.mResolvedArgs, methodGenericArguments);
 	methodMatcher.mCheckedKind = checkedKind;
 	methodMatcher.mAllowImplicitThis = allowImplicitThis;
@@ -6506,8 +6534,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				}
 			}
 		}
-	}
-	
+	}	
+
 	bool isFailurePass = false;
 	if (methodMatcher.mBestMethodDef == NULL)
 	{
@@ -7108,6 +7136,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	
 	prevBindResult.Restore();
 
+	// Check mut
 	if ((callTarget.mType != NULL) &&
 		(callTarget.mType->IsGenericParam()) && 
 		((!callTarget.IsAddr()) || (callTarget.IsReadOnly())) &&
@@ -7133,6 +7162,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 	}
 
+	// Check mut on interface
 	if ((callTarget.mType != NULL) &&
 		(callTarget.mType->IsInterface()) &&
 		(target.IsThis()) &&
@@ -9512,7 +9542,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		{
 			hasThis = true;
 			methodInstance->GetIRFunctionInfo(mModule, irReturnType, irParamTypes);
-			irParamTypes[0] = mModule->mBfIRBuilder->MapType(useTypeInstance);
+			int thisIdx = methodInstance->HasStructRet() ? 1 : 0;
+			irParamTypes[thisIdx] = mModule->mBfIRBuilder->MapType(useTypeInstance);
 		}
 		else
 		{
@@ -9528,6 +9559,12 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		auto funcType = mModule->mBfIRBuilder->CreateFunctionType(irReturnType, irParamTypes);
 		funcValue = mModule->mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, methodName);
 
+		if (methodInstance->HasStructRet())
+		{
+			mModule->mBfIRBuilder->Func_AddAttribute(funcValue, 1, BfIRAttribute_NoAlias);
+			mModule->mBfIRBuilder->Func_AddAttribute(funcValue, 1, BfIRAttribute_StructRet);
+		}
+
 		auto srcCallingConv = mModule->GetIRCallingConvention(methodInstance);
 		if ((!hasThis) && (methodInstance->mCallingConvention == BfCallingConvention_Stdcall))
 			srcCallingConv = BfIRCallingConv_StdCall;
@@ -9541,6 +9578,11 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 		fieldIdx = 0;
 		SizedArray<BfIRValue, 8> irArgs;
+
+		int argIdx = 0;
+		if (methodInstance->HasStructRet())
+			irArgs.push_back(mModule->mBfIRBuilder->GetArgument(argIdx++));
+
 		for (int implicitParamIdx = bindMethodInstance->HasThis() ? -1 : 0; implicitParamIdx < implicitParamCount; implicitParamIdx++)
 		{
 			auto fieldInst = &useTypeInstance->mFieldInstances[fieldIdx];
@@ -9555,13 +9597,16 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					disableSplat = true;
 				}
 			}
-			auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mModule->mBfIRBuilder->GetArgument(0), 0, gepIdx);
+			int thisIdx = methodInstance->HasStructRet() ? 1 : 0;
+			auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mModule->mBfIRBuilder->GetArgument(thisIdx), 0, gepIdx);
 			BfTypedValue typedVal(fieldPtr, fieldType, true);
 			PushArg(typedVal, irArgs, disableSplat);
 			fieldIdx++;
 		}
 
-		int argIdx = hasThis ? 1 : 0;
+		if (hasThis)
+			argIdx++;
+
 		for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
 		{
 			auto paramType = methodInstance->GetParamType(paramIdx);
@@ -9578,17 +9623,19 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		auto bindFuncVal = bindResult.mFunc;
 		if (mModule->mCompiler->mOptions.mAllowHotSwapping)
 			bindFuncVal = mModule->mBfIRBuilder->RemapBindFunction(bindFuncVal);
-		auto result = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
+		auto callInst = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
+		if (methodInstance->HasStructRet())
+			mModule->mBfIRBuilder->Call_AddAttribute(callInst, 1, BfIRAttribute_StructRet);
 		auto destCallingConv = mModule->GetIRCallingConvention(bindMethodInstance);
 		if (destCallingConv != BfIRCallingConv_CDecl)
-			mModule->mBfIRBuilder->SetCallCallingConv(result, destCallingConv);
-		if (methodInstance->mReturnType->IsValuelessType())
+			mModule->mBfIRBuilder->SetCallCallingConv(callInst, destCallingConv);
+		if ((methodInstance->mReturnType->IsValuelessType()) || (methodInstance->HasStructRet()))
 		{
 			mModule->mBfIRBuilder->CreateRetVoid();
 		}
 		else
 		{
-			mModule->mBfIRBuilder->CreateRet(result);
+			mModule->mBfIRBuilder->CreateRet(callInst);
 		}
 
 		mModule->mBfIRBuilder->SetActiveFunction(prevActiveFunction);
@@ -10353,14 +10400,10 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	// If we are allowing hot swapping, we need to always mangle the name to non-static because if we add a capture
 	//  later then we need to have the mangled names match
 	methodDef->mIsStatic = (closureTypeInst == NULL) && (!mModule->mCompiler->mOptions.mAllowHotSwapping);
-
-	SizedArray<BfIRType, 3> newTypes;
+	
 	SizedArray<BfIRType, 8> origParamTypes;
 	BfIRType origReturnType;
-
-	if (!methodDef->mIsStatic)
-		newTypes.push_back(mModule->mBfIRBuilder->MapType(useTypeInstance));
-
+	
 	if (invokeMethodInstance != NULL)
 	{
 		auto invokeFunctionType = mModule->mBfIRBuilder->MapMethod(invokeMethodInstance);
@@ -10371,7 +10414,19 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		origReturnType = mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_None));
 	}
 
-	for (int i = methodDef->mIsStatic ? 0 : 1; i < (int)origParamTypes.size(); i++)
+	SizedArray<BfIRType, 3> newTypes;
+	if (invokeMethodInstance->HasStructRet())
+		newTypes.push_back(origParamTypes[0]);
+	if (!methodDef->mIsStatic)
+		newTypes.push_back(mModule->mBfIRBuilder->MapType(useTypeInstance));
+
+	int paramStartIdx = 0;
+	if (invokeMethodInstance->HasStructRet())
+		paramStartIdx++;
+	if (!methodDef->mIsStatic)
+		paramStartIdx++;
+
+	for (int i = paramStartIdx; i < (int)origParamTypes.size(); i++)
 		newTypes.push_back(origParamTypes[i]);
 	auto closureFuncType = mModule->mBfIRBuilder->CreateFunctionType(origReturnType, newTypes, false);
 
@@ -12231,7 +12286,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 							{
 								BfTypedValue constExprVal;
 								constExprVal.mType = genericParam->mTypeConstraint;
- 								auto constant = curTypeInst->mConstHolder->GetConstant(defaultVal); 								
+ 								auto constant = curTypeInst->mConstHolder->GetConstant(defaultVal.mValue); 								
 								constExprVal.mValue = mModule->ConstantToCurrent(constant, curTypeInst->mConstHolder, genericParam->mTypeConstraint);
 								genericArg = mModule->CreateConstExprValueType(constExprVal);
 							}
@@ -13165,11 +13220,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		mModule->Warn(0, "Scope specifier was not referenced in mixin", scopedInvocationTarget->mScopeName);
 	}	
 
-	// It's tempting to do this, but it is really just covering up other issues. 
-	//mModule->mBfIRBuilder->SetCurrentDebugLocation(prevDebugLoc);	
-
-	// But does THIS work?
 	mModule->mBfIRBuilder->RestoreDebugLocation();
+	mModule->mBfIRBuilder->DupDebugLocation();
 }
 
 void BfExprEvaluator::SetMethodElementType(BfAstNode* target)

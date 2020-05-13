@@ -558,7 +558,7 @@ namespace IDE
 #endif
         }
 
-        public void Update(Action<String, String, WatcherChangeTypes> fileChangeHandler = null)
+        public void Update(delegate void(String, String, WatcherChangeTypes) fileChangeHandler = null)
         {
 			while (true)
 			{

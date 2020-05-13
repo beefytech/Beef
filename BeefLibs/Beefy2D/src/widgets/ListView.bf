@@ -137,7 +137,7 @@ namespace Beefy.widgets
 			}
 		}
 
-        public void WithItems(Action<ListViewItem> func)
+        public void WithItems(delegate void(ListViewItem) func)
         {                                    
             if (mChildItems != null)
             {                
@@ -149,7 +149,7 @@ namespace Beefy.widgets
             }
         }
 
-        public void WithSelectedItems(Action<ListViewItem> func, bool skipSelectedChildrenOnSelectedItems = false, bool skipClosed = false)
+        public void WithSelectedItems(delegate void(ListViewItem) func, bool skipSelectedChildrenOnSelectedItems = false, bool skipClosed = false)
         {
             bool selfSelected = Selected;
             if (selfSelected)
@@ -684,7 +684,7 @@ namespace Beefy.widgets
         protected ListViewItem mRoot;
         public bool mListSizeDirty;
         public float mHeaderHeight;
-        public Event<Action<ListViewItem>> mOnFocusChanged ~ _.Dispose();
+        public Event<delegate void(ListViewItem)> mOnFocusChanged ~ _.Dispose();
         public float mBottomInset = 8;
         public bool mAllowMultiSelect = true;
 		public Event<delegate void(ListViewItem item, float x, float y, int32 btnNum, int32 btnCount)> mOnItemMouseDown ~ _.Dispose();

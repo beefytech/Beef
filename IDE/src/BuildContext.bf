@@ -58,6 +58,9 @@ namespace IDE
 			if (trigger == .Never)
 				return .NoCommands;
 
+			List<Project> depProjectList = scope .();
+			gApp.GetDependentProjectList(project, depProjectList);
+
 			if ((trigger == .IfFilesChanged) && (!project.mForceCustomCommands))
 			{
 				int64 highestDateTime = 0;
@@ -66,7 +69,7 @@ namespace IDE
 
 				bool forceRebuild = false;
 
-				for (var depName in project.mDependencies)
+				for (var depName in depProjectList)
 				{
 					var depProject = gApp.mWorkspace.FindProject(depName.mProjectName);
 					if (depProject != null)
@@ -341,46 +344,36 @@ namespace IDE
 			    gApp.GetDependentProjectList(project, depProjectList);
 			    if (depProjectList.Count > 0)
 			    {
-			        for (var dep in project.mDependencies)
+			        for (var depProject in depProjectList)
 			        {
-			            var depProject = gApp.mWorkspace.FindProject(dep.mProjectName);
-			            if (depProject == null)
-			            {
-			                gApp.OutputLine("Failed to locate dependent library: {0}", dep.mProjectName);
-			                return false;
-			            }
-			            else
-			            {                                                        
-		                    /*if (depProject.mNeedsTargetRebuild)
-		                        project.mNeedsTargetRebuild = true;*/
+	                    /*if (depProject.mNeedsTargetRebuild)
+	                        project.mNeedsTargetRebuild = true;*/
 
-		                    var depOptions = gApp.GetCurProjectOptions(depProject);
+	                    var depOptions = gApp.GetCurProjectOptions(depProject);
 
-		                    if (depOptions.mClangObjectFiles != null)
-		                    {
-		                        var argBuilder = scope IDEApp.ArgBuilder(linkLine, true);
+	                    if (depOptions.mClangObjectFiles != null)
+	                    {
+	                        var argBuilder = scope IDEApp.ArgBuilder(linkLine, true);
 
-		                        for (var fileName in depOptions.mClangObjectFiles)
-		                        {
-		                            //AppendWithOptionalQuotes(linkLine, fileName);
-		                            argBuilder.AddFileName(fileName);
-		                            argBuilder.AddSep();
-		                        }
-		                    }
+	                        for (var fileName in depOptions.mClangObjectFiles)
+	                        {
+	                            //AppendWithOptionalQuotes(linkLine, fileName);
+	                            argBuilder.AddFileName(fileName);
+	                            argBuilder.AddSep();
+	                        }
+	                    }
 
+	                    /*String depLibTargetPath = scope String();
+	                    ResolveConfigString(depProject, depOptions, "$(TargetPath)", error, depLibTargetPath);
+	                    IDEUtils.FixFilePath(depLibTargetPath);
 
-		                    /*String depLibTargetPath = scope String();
-		                    ResolveConfigString(depProject, depOptions, "$(TargetPath)", error, depLibTargetPath);
-		                    IDEUtils.FixFilePath(depLibTargetPath);
+	                    String depDir = scope String();
+	                    Path.GetDirectoryName(depLibTargetPath, depDir);
+	                    String depFileName = scope String();
+	                    Path.GetFileNameWithoutExtension(depLibTargetPath, depFileName);
 
-		                    String depDir = scope String();
-		                    Path.GetDirectoryName(depLibTargetPath, depDir);
-		                    String depFileName = scope String();
-		                    Path.GetFileNameWithoutExtension(depLibTargetPath, depFileName);
-
-		                    AppendWithOptionalQuotes(linkLine, depLibTargetPath);
-		                    linkLine.Append(" ");*/
-			            }
+	                    AppendWithOptionalQuotes(linkLine, depLibTargetPath);
+	                    linkLine.Append(" ");*/
 			        }
 			    }
 
@@ -645,54 +638,45 @@ namespace IDE
 			    gApp.GetDependentProjectList(project, depProjectList);
 			    if (depProjectList.Count > 0)
 			    {
-			        for (var dep in project.mDependencies)
+			        for (var depProject in depProjectList)
 			        {
-			            var depProject = gApp.mWorkspace.FindProject(dep.mProjectName);
-			            if (depProject == null)
-			            {
-			                gApp.OutputLine("Failed to locate dependent library: {0}", dep.mProjectName);
-			                return false;
-			            }
-			            else
-			            {
-			                var depOptions = gApp.GetCurProjectOptions(depProject);
-							if (depOptions != null)
-							{
-								if (depOptions.mClangObjectFiles != null)
-		                        {
-									var argBuilder = scope IDEApp.ArgBuilder(linkLine, true);
+		                var depOptions = gApp.GetCurProjectOptions(depProject);
+						if (depOptions != null)
+						{
+							if (depOptions.mClangObjectFiles != null)
+	                        {
+								var argBuilder = scope IDEApp.ArgBuilder(linkLine, true);
 
-									for (var fileName in depOptions.mClangObjectFiles)
-									{
-										argBuilder.AddFileName(fileName);
-										argBuilder.AddSep();
-									}
-								}    
-							}
-
-							if (depProject.mGeneralOptions.mTargetType == .BeefDynLib)
-							{
-								if (mImpLibMap.TryGetValue(depProject, var libPath))
+								for (var fileName in depOptions.mClangObjectFiles)
 								{
-									IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
-									linkLine.Append(" ");
+									argBuilder.AddFileName(fileName);
+									argBuilder.AddSep();
 								}
-							}
+							}    
+						}
 
-							if (depProject.mGeneralOptions.mTargetType == .BeefLib)
+						if (depProject.mGeneralOptions.mTargetType == .BeefDynLib)
+						{
+							if (mImpLibMap.TryGetValue(depProject, var libPath))
 							{
-								let depProjectOptions = gApp.GetCurProjectOptions(depProject);
-								var linkFlags = scope String();
-								gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
-								if (!linkFlags.IsWhiteSpace)
-									linkLine.Append(linkFlags, " ");
-
-								for (let libPath in depProjectOptions.mBuildOptions.mLibPaths)
-									AddLibPath(libPath, depProject, depProjectOptions);
-								for (let depPath in depProjectOptions.mBuildOptions.mLinkDependencies)
-									AddDepPath(depPath, depProject, depProjectOptions);
+								IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
+								linkLine.Append(" ");
 							}
-			            }
+						}
+
+						if (depProject.mGeneralOptions.mTargetType == .BeefLib)
+						{
+							let depProjectOptions = gApp.GetCurProjectOptions(depProject);
+							var linkFlags = scope String();
+							gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+							if (!linkFlags.IsWhiteSpace)
+								linkLine.Append(linkFlags, " ");
+
+							for (let libPath in depProjectOptions.mBuildOptions.mLibPaths)
+								AddLibPath(libPath, depProject, depProjectOptions);
+							for (let depPath in depProjectOptions.mBuildOptions.mLinkDependencies)
+								AddDepPath(depPath, depProject, depProjectOptions);
+						}
 			        }
 			    }
 
