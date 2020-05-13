@@ -1307,6 +1307,8 @@ public:
 	}
 };
 
+#define BFMODULE_FATAL(module, msg) (module)->FatalError((msg), __FILE__, __LINE__)
+
 class BfModule : public BfStructuralVisitor
 {
 public:
@@ -1405,6 +1407,7 @@ public:
 	bool mHadHotObjectWrites;
 
 public:	
+	void FatalError(const StringImpl& error, const char* file = NULL, int line = -1);
 	void NotImpl(BfAstNode* astNode);	
 	void AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
 	bool CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate);

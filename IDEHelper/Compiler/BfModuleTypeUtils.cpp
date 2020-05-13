@@ -1179,7 +1179,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			break;
 		default:
 			//NotImpl(resolvedTypeRef->mTypeRef);
-			BF_FATAL("Invalid type");
+			BFMODULE_FATAL(this, "Invalid type");
 			return false;
 		}
 		//////////////////////////////////////////////////////////////////////////				
@@ -4628,7 +4628,7 @@ BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
 			primType = (BfPrimitiveType*)ResolveTypeDef(mSystem->mTypeUIntUnknown);
 			break;
 		case BfTypeCode_StringId:
-			BF_FATAL("Invalid use of StringId");
+			BFMODULE_FATAL(this, "Invalid use of StringId");
 			break;
 		default: break;
 		}
@@ -4881,7 +4881,7 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 		resolvedTypeRef = GetPrimitiveStructType(primType->mTypeDef->mTypeCode);
 		if (resolvedTypeRef == NULL)
 		{
-			BF_FATAL("Unable to find primitive type");
+			BFMODULE_FATAL(this, "Unable to find primitive type");
 			return NULL;
 		}
 	}
@@ -5881,7 +5881,7 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 			{
 				if ((mCompiler->mResolvePassData == NULL) || (mCompiler->mResolvePassData->mAutoComplete == NULL))
 				{
-					BF_FATAL("Invalid GetGenericParamInstance with extension");
+					BFMODULE_FATAL(this, "Invalid GetGenericParamInstance with extension");
 				}
 			}
 		}
@@ -6415,7 +6415,7 @@ BfTypeDef* BfModule::FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeI
 		if (directStrTypeDef != NULL)
 			findNameStr = directStrTypeDef->mTypeName;
 		else
-			BF_FATAL("Error?");
+			BFMODULE_FATAL(this, "Error?");
 	}
 
 	if (findNameStr.mLength == 6)
@@ -7300,7 +7300,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			return resolvedType;
 		}
 		else
-			BF_FATAL("Unhandled");
+			BFMODULE_FATAL(this, "Unhandled");
 	}
 
 	if (auto refTypeRef = BfNodeDynCastExact<BfRefTypeRef>(typeRef))
@@ -7950,7 +7950,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 	else
 	{
-		BF_FATAL("Not implemented!");
+		BFMODULE_FATAL(this, "Not implemented!");
 		NotImpl(typeRef);
 		return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 	}
@@ -10673,7 +10673,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	{
 		auto constExprValueType = (BfConstExprValueType*)resolvedType;
 		str += "const ";
-
+		 
 		DoTypeToString(str, constExprValueType->mType, typeNameFlags, genericMethodNameOverrides);
 		str += " ";
 
@@ -10681,7 +10681,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		
 		return;
 	}
-	BF_FATAL("Not implemented");
+	BFMODULE_FATAL(this, "Not implemented");
 	str += "???";
 	return;
 }

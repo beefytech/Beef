@@ -414,15 +414,9 @@ void Beefy::BFFatalError(const StringImpl& message, const StringImpl& file, int 
    	if (gBFApp != NULL)
 		gBFApp->mSysDialogCnt++;
 #endif
-
-#ifdef _DEBUG
-   	OutputDebugStrF("FATAL ERROR: %s\n", message.c_str());
-   	_wassert(UTF8Decode(message).c_str(), UTF8Decode(file).c_str(), line);
-#else
-	String error = StrFormat("%s in %s:%d", message.c_str(), file.c_str(), line);
-	::MessageBoxA(NULL, error.c_str(), "FATAL ERROR", MB_ICONERROR | MB_OK);
-	exit(1);
-#endif
+	
+	String failMsg = StrFormat("%s in %s:%d", message.c_str(), file.c_str(), line);		
+	BfpSystem_FatalError(failMsg.c_str(), "FATAL ERROR");
 
 #ifndef BF_NO_BFAPP
 	if (gBFApp != NULL)
