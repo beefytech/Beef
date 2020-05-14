@@ -74,6 +74,8 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfGenericTypeInstan
 	{
 		auto genericParamInstance = new BfGenericTypeParamInstance(partialTypeDef, paramIdx);
 		genericParamInstance->mExternType = GetGenericParamType(BfGenericParamKind_Type, paramIdx);
+
+		auto prevPtr = genericExEntry->mGenericParams.mVals;
 		genericExEntry->mGenericParams.push_back(genericParamInstance);
 	}
 
@@ -961,7 +963,8 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		}
 		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
 		resolvedTypeRef->mRebuildFlags = BfTypeRebuildFlag_None;
-		typeAlias->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
+		if ((typeInstance->mCustomAttributes == NULL) && (typeDef->mTypeDeclaration != NULL) && (typeDef->mTypeDeclaration->mAttributes != NULL))
+			typeInstance->mCustomAttributes = GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, BfAttributeTargets_Alias);
 
 		// Fall through so generic params are populated in DoPopulateType
 	}

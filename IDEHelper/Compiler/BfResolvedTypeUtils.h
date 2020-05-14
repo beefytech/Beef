@@ -1749,6 +1749,38 @@ public:
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };
 
+template <typename T>
+class LogAlloc
+{
+public:
+	T* allocate(intptr count)
+	{
+		auto ptr = (T*)malloc(sizeof(T) * count);
+		OutputDebugStrF("LogAlloc.allocate: %p\n", ptr);
+		return ptr;
+	}
+
+	void deallocate(T* ptr)
+	{
+		OutputDebugStrF("LogAlloc.deallocate: %p\n", ptr);
+		free(ptr);
+	}
+
+	void* rawAllocate(intptr size)
+	{
+		auto ptr = malloc(size);
+		OutputDebugStrF("LogAlloc.rawAllocate: %p\n", ptr);
+		return ptr;
+	}
+
+	void rawDeallocate(void* ptr)
+	{
+		OutputDebugStrF("LogAlloc.rawFree: %p\n", ptr);
+		free(ptr);
+	}
+};
+
+
 class BfBoxedType : public BfTypeInstance
 {
 public:
@@ -1801,7 +1833,7 @@ public:
 class BfGenericExtensionEntry
 {
 public:	
-	Array<BfGenericTypeParamInstance*> mGenericParams;	
+	Array<BfGenericTypeParamInstance*> mGenericParams;
 	bool mConstraintsPassed;	
 
 public:

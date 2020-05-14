@@ -398,6 +398,18 @@ public:
 	}
 
 	~Dictionary()
+	{		
+		DeleteData();
+	}
+
+	void AllocData(intptr size, Entry*& outEntries, int_cosize*& outBuckets)
+	{
+		uint8* data = new uint8[size * (sizeof(Entry) + sizeof(int_cosize))];
+		outEntries = (Entry*)data;
+		outBuckets = (int_cosize*)(data + size * sizeof(Entry));
+	}
+
+	void DeleteData()
 	{
 		if (!std::is_pod<TKey>::value)
 		{
@@ -417,18 +429,6 @@ public:
 			}
 		}
 
-		DeleteData();
-	}
-
-	void AllocData(intptr size, Entry*& outEntries, int_cosize*& outBuckets)
-	{
-		uint8* data = new uint8[size * (sizeof(Entry) + sizeof(int_cosize))];
-		outEntries = (Entry*)data;
-		outBuckets = (int_cosize*)(data + size * sizeof(Entry));
-	}
-
-	void DeleteData()
-	{
 		delete mEntries;
 	}
 
