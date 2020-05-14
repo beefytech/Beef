@@ -4971,6 +4971,8 @@ void BfCompiler::PopulateReified()
 						if ((implMethod != NULL) && ((!implMethod->mMethodInstanceGroup->IsImplemented()) || (!implMethod->mIsReified)))
 						{
 							didWork = true;
+							if (!typeInst->mModule->mIsModuleMutable)
+								typeInst->mModule->StartExtension();
 							typeInst->mModule->GetMethodInstance(implMethod);
 						}
 					}
