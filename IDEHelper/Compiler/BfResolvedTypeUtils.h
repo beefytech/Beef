@@ -1837,6 +1837,12 @@ public:
 	bool mConstraintsPassed;	
 
 public:
+	BfGenericExtensionEntry(BfGenericExtensionEntry&& prev) : 
+		mGenericParams(std::move(prev.mGenericParams)),
+		mConstraintsPassed(prev.mConstraintsPassed)
+	{
+	}
+
 	BfGenericExtensionEntry()
 	{
 		mConstraintsPassed = true;
