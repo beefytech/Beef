@@ -3622,7 +3622,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 3)
+		if (mcOperand.mVRegIdx == 15)
 		{
 			NOP;
 		}		
@@ -9332,11 +9332,22 @@ bool BeMCContext::DoLegalization()
 						{							
 							BF_ASSERT(inst->mResult);
 
+							auto srcVRegInfo = GetVRegInfo(inst->mArg0);							
 							// Int8 multiplies can only be done on AL
 							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
+
+							auto vregInfo0 = GetVRegInfo(inst->mArg0);
+							if (vregInfo0 != NULL)
+								vregInfo0->mDisableRAX = true;
+							auto vregInfo1 = GetVRegInfo(inst->mArg1);
+							if (vregInfo1 != NULL)
+								vregInfo1->mDisableRAX = true;
+
+							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AH), inst->mArg1, instIdx++);
 							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg0, instIdx++);
 							AllocInst(BeMCInstKind_Mov, inst->mResult, BeMCOperand::FromReg(X64Reg_AL), instIdx++ + 1);
 							inst->mArg0 = BeMCOperand::FromReg(X64Reg_AL);
+							inst->mArg1 = BeMCOperand::FromReg(X64Reg_AH);
 							inst->mResult = BeMCOperand();
 							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
 
@@ -9348,7 +9359,7 @@ bool BeMCContext::DoLegalization()
 
 						if (inst->mArg1.IsImmediateInt())
 						{
-							ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
+							ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);							
 						}
 
 						BF_ASSERT(!inst->mResult);

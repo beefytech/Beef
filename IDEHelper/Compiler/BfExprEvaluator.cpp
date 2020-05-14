@@ -16317,8 +16317,6 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 
 						if (checkMethod->mExplicitInterface != NULL)
 							continue;
-						if (checkMethod->mIsOverride)
-							continue;
 
 						auto autoComplete = GetAutoComplete();
 						bool wasCapturingMethodMatchInfo = false;
