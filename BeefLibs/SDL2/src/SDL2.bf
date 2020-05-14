@@ -52,10 +52,10 @@ namespace SDL2
 		}
 
 		[LinkName("SDL_malloc")]
-		static extern void* malloc(int size);
+		public static extern void* malloc(int size);
 
 		[LinkName("SDL_free")]
-		static extern void free(void* memblock);
+		public static extern void free(void* memblock);
 
 		public struct RWOps;
 

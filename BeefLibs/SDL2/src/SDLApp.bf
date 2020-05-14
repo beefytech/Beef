@@ -166,6 +166,11 @@ namespace SDL2
 
 		}
 
+		public virtual void HandleEvent(SDL.Event evt)
+		{
+
+		}
+
 		public void Draw(Image image, float x, float y)
 		{
 			SDL.Rect srcRect = .(0, 0, image.mSurface.w, image.mSurface.h);
@@ -226,8 +231,7 @@ namespace SDL2
 					default:
 					}
 
-					if (event.type == .Quit)
-						return;
+					HandleEvent(event);
 					
 					waitTime = 0;
 				}
