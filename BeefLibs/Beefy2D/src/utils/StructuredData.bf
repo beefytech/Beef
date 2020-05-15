@@ -266,6 +266,32 @@ namespace Beefy.utils
             get { return GetCurrent().GetType() == typeof(NamedValues); }
         }
 
+		public bool IsEmpty
+		{
+			get
+			{
+				if (mCurrent.mLastValue != -1)
+				{
+					if (mValues[mCurrent.mLastValue] != sEmptySentinel)
+						return false;
+					else
+					{
+						// We need a (potentially) full value pass if we have sEmptySentinel
+						int checkValue = mCurrent.mValues.mValueIdx;
+						while (checkValue != -1)
+						{
+							if (mValues[checkValue] != sEmptySentinel)
+							{
+								return false;
+							}
+							checkValue = mNextValues[checkValue];
+						}
+					}
+				}
+				return true;
+			}
+		}
+
 		public int GetValueCount()
 		{
 			int count = 0;
