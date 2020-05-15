@@ -3014,7 +3014,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 		{
 			auto dwType = origDwType->RemoveModifiers();
 			if (dwType->IsTypedPrimitive())
-				dwType = dwType->GetRootBaseType();
+				dwType = dwType->GetUnderlyingType();
 			if (dwType->mTypeCode == DbgType_Single)
 				result.mSingle = *(float*)((float*)registers->mXmmRegsArray + (result.mRegNum - CPUReg_XMMREG_FIRST));
 			else if (dwType->mTypeCode == DbgType_Double)
