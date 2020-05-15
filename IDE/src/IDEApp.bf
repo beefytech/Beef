@@ -1686,12 +1686,6 @@ namespace IDE
 			        sd.Add(recentFile);
 			}
 
-			using (sd.CreateArray("UserPlatforms"))
-			{
-			    for (var platformName in gApp.mWorkspace.mUserPlatforms)
-			        sd.Add(platformName);
-			}
-
 			using (sd.CreateArray("Breakpoints"))
 			{
 			    for (var breakpoint in mDebugger.mBreakpointList)
@@ -2844,18 +2838,6 @@ namespace IDE
 		        mRecentlyDisplayedFiles.Add(fileStr);
 			}
 
-			DeleteAndClearItems!(gApp.mWorkspace.mUserPlatforms);
-			for (data.Enumerate("UserPlatforms"))
-			{
-				String platformName = scope String();
-				data.GetCurString(platformName);
-				if (!gApp.mWorkspace.mUserPlatforms.Contains(platformName))
-				{
-					gApp.mWorkspace.mUserPlatforms.Add(new String(platformName));
-					gApp.mWorkspace.FixOptionsForPlatform(platformName);
-				}
-			}
-    
 			for (var _breakpoint in data.Enumerate("Breakpoints"))
 		    {
 	            String fileName = scope String();

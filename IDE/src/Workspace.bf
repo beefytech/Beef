@@ -103,16 +103,11 @@ namespace IDE
 			case Microsoft;
 			case LLVM;
 
-			public static ToolsetType Default
+			public static ToolsetType GetDefaultFor(PlatformType platformType)
 			{
-				get
-				{
-#if BF_PLATFORM_WINDOWS
+				if (platformType == .Windows)
 					return Microsoft;
-#else
-					return .GNU;
-#endif
-				}
+				return .GNU;
 			}
 		}
 
@@ -313,6 +308,7 @@ namespace IDE
 
 		public BeefGlobalOptions mBeefGlobalOptions = new BeefGlobalOptions() ~ delete _;
         public Dictionary<String, Config> mConfigs = new Dictionary<String, Config>() ~ DeleteDictionaryAndKeysAndItems!(_);
+		public HashSet<String> mExtraPlatforms = new .() ~ DeleteContainerAndItems!(_);
 
         public class ProjectSourceCompileInstance
         {
@@ -378,7 +374,6 @@ namespace IDE
 		public bool mForceNextCompile;
         public List<CompileInstance> mCompileInstanceList = new List<CompileInstance>() ~ DeleteContainerAndItems!(_); // First item is primary compile, secondaries are hot reloads
 		public List<String> mPlatforms = new List<String>() ~ DeleteContainerAndItems!(_);
-		public List<String> mUserPlatforms = new List<String>() ~ DeleteContainerAndItems!(_);
 		public bool mIsDebugSession;
 
 		public int32 HotCompileIdx
@@ -457,6 +452,9 @@ namespace IDE
 							Add(platform);
 					}
 				}*/
+
+				for (let extraPlatform in mExtraPlatforms)
+					Add(extraPlatform);
 
 				mPlatforms.Sort(scope (a, b) => String.Compare(a, b, true));
 			}
@@ -567,6 +565,20 @@ namespace IDE
 				}
 			}
 
+			HashSet<String> seenPlatforms = scope .();
+			HashSet<String> writtenPlatforms = scope .();
+			writtenPlatforms.Add(IDEApp.sPlatform32Name);
+			writtenPlatforms.Add(IDEApp.sPlatform64Name);
+			for (let platformName in mExtraPlatforms)
+				seenPlatforms.Add(platformName);
+
+			HashSet<String> seenConfigs = scope .();
+			HashSet<String> writtenConfigs = scope .();
+			writtenConfigs.Add("Debug");
+			writtenConfigs.Add("Release");
+			writtenConfigs.Add("Paranoid");
+			writtenConfigs.Add("Test");
+
             using (data.CreateObject("Configs"))
             {
                 for (var configKeyValue in mConfigs)
@@ -598,7 +610,7 @@ namespace IDE
 									data.RemoveIfEmpty();
 								}
 
-								data.ConditionalAdd("Toolset", options.mToolsetType, ToolsetType.Default);
+								data.ConditionalAdd("Toolset", options.mToolsetType, ToolsetType.GetDefaultFor(platformType));
 								data.ConditionalAdd("BuildKind", options.mBuildKind, isTest ? .Test : .Normal);
                                 data.ConditionalAdd("BfSIMDSetting", options.mBfSIMDSetting, .SSE2);
 								if (platformType == .Windows)
@@ -619,9 +631,9 @@ namespace IDE
                                 data.ConditionalAdd("EmitDynamicCastCheck", options.mEmitDynamicCastCheck, !isRelease);
                                 data.ConditionalAdd("EnableObjectDebugFlags", options.mEnableObjectDebugFlags, !isRelease);
                                 data.ConditionalAdd("EmitObjectAccessCheck", options.mEmitObjectAccessCheck, !isRelease);
-                                data.ConditionalAdd("EnableRealtimeLeakCheck", options.mEnableRealtimeLeakCheck, !isRelease);
-                                data.ConditionalAdd("EnableSideStack", options.mEnableSideStack, isParanoid);
-								data.ConditionalAdd("AllowHotSwapping", options.mAllowHotSwapping, !isRelease);
+                                data.ConditionalAdd("EnableRealtimeLeakCheck", options.mEnableRealtimeLeakCheck, (platformType == .Windows) && !isRelease);
+                                data.ConditionalAdd("EnableSideStack", options.mEnableSideStack, (platformType == .Windows) && isParanoid);
+								data.ConditionalAdd("AllowHotSwapping", options.mAllowHotSwapping, (platformType == .Windows) && !isRelease);
 								data.ConditionalAdd("AllocStackTraceDepth", options.mAllocStackTraceDepth, 1);
 
 								data.ConditionalAdd("IncrementalBuild", options.mIncrementalBuild, !isRelease);
@@ -655,11 +667,44 @@ namespace IDE
                                 }
 
 								WriteDistinctOptions(options.mDistinctBuildOptions);
+
+								if (!data.IsEmpty)
+									writtenPlatforms.Add(platformName);
+								seenPlatforms.Add(platformName);
                             }
                         }
+
+						
+						if (!data.IsEmpty)
+							writtenConfigs.Add(configName);
+						seenConfigs.Add(configName);
                     }
                 }
             }
+
+			void WriteExtra(String name, HashSet<String> seenSet, HashSet<String> writtenSet)
+			{
+				List<String> extraList = scope .();
+				for (let platformName in seenSet)
+				{
+					if (!writtenSet.Contains(platformName))
+					{
+						extraList.Add(platformName);
+					}
+				}
+				if (!extraList.IsEmpty)
+				{
+					extraList.Sort();
+					using (data.CreateArray(name))
+					{
+						for (let platformName in extraList)
+							data.Add(platformName);
+					}
+				}
+			}
+
+			WriteExtra("ExtraConfigs", seenConfigs, writtenConfigs);
+			WriteExtra("ExtraPlatforms", seenPlatforms, writtenPlatforms);
         }
 
 		public void ClearProjectNameCache()
@@ -759,13 +804,15 @@ namespace IDE
 			{
 				options.mEnableRealtimeLeakCheck = !isRelease;
 				options.mEnableSideStack = isParanoid;
+				options.mAllowHotSwapping = !isRelease;
 			}
 			else
 			{
 	            options.mEnableRealtimeLeakCheck = false;
 	            options.mEnableSideStack = false;
+				options.mAllowHotSwapping = false;
 			}
-			options.mAllowHotSwapping = !isRelease;
+			
 			options.mIncrementalBuild = !isRelease;
 
             options.mAllocStackTraceDepth = 1;
@@ -829,7 +876,7 @@ namespace IDE
 				        options.mPreprocessorMacros.Add(str);
 					}
 
-					options.mToolsetType = data.GetEnum<ToolsetType>("Toolset", ToolsetType.Default);
+					options.mToolsetType = data.GetEnum<ToolsetType>("Toolset", ToolsetType.GetDefaultFor(platformType));
 					options.mBuildKind = data.GetEnum<BuildKind>("BuildKind", isTest ? .Test : .Normal);
 					options.mBfSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("BfSIMDSetting", .SSE2);
 					if (platformType == .Windows)
@@ -851,9 +898,9 @@ namespace IDE
                     options.mEmitDynamicCastCheck = data.GetBool("EmitDynamicCastCheck", !isRelease);
                     options.mEnableObjectDebugFlags = data.GetBool("EnableObjectDebugFlags", !isRelease);
                     options.mEmitObjectAccessCheck = data.GetBool("EmitObjectAccessCheck", !isRelease);
-                    options.mEnableRealtimeLeakCheck = data.GetBool("EnableRealtimeLeakCheck", !isRelease);
-                    options.mEnableSideStack = data.GetBool("EnableSideStack", isParanoid);
-					options.mAllowHotSwapping = data.GetBool("AllowHotSwapping", !isRelease);
+                    options.mEnableRealtimeLeakCheck = data.GetBool("EnableRealtimeLeakCheck", (platformType == .Windows) && !isRelease);
+                    options.mEnableSideStack = data.GetBool("EnableSideStack", (platformType == .Windows) && isParanoid);
+					options.mAllowHotSwapping = data.GetBool("AllowHotSwapping", (platformType == .Windows) && !isRelease);
 					options.mAllocStackTraceDepth = data.GetInt("AllocStackTraceDepth", 1);
 
 					options.mIncrementalBuild = data.GetBool("IncrementalBuild", !isRelease);
@@ -892,6 +939,28 @@ namespace IDE
 					}
                 }
             }
+
+			for (var configNameSV in data.Enumerate("ExtraConfigs"))
+			{
+				String configName = new String(configNameSV);
+				bool added = mConfigs.TryAdd(configName) case .Added(let keyPtr, let valuePtr);
+				if (!added)
+				{
+					delete configName;
+					continue;
+				}
+
+				Config config = new Config();
+				*valuePtr = config;
+			}
+
+			for (data.Enumerate("ExtraPlatforms"))
+			{
+				String platformName = scope .();
+				data.GetCurString(platformName);
+				if (mExtraPlatforms.TryAdd(platformName, var entryPtr))
+					*entryPtr = new String(platformName);
+			}
         }
 
 		public void FinishDeserialize(StructuredData data)
