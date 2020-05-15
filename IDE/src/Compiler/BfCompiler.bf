@@ -589,9 +589,10 @@ namespace IDE.Compiler
 			SetOpt(options.mEmitDynamicCastCheck, .EmitDynamicCastCheck);
 			SetOpt(enableObjectDebugFlags, .EnableObjectDebugFlags);
 			SetOpt(emitObjectAccessCheck, .EmitObjectAccessCheck);
-#if BF_PLATFORM_WINDOWS
-			SetOpt(options.mEnableRealtimeLeakCheck, .EnableRealtimeLeakCheck);
-#endif
+
+			if (options.LeakCheckingEnabled)
+				SetOpt(options.mEnableRealtimeLeakCheck, .EnableRealtimeLeakCheck);
+
 			SetOpt(options.mEnableSideStack, .EnableSideStack);
 #if !CLI
 			SetOpt(options.mAllowHotSwapping, .EnableHotSwapping);

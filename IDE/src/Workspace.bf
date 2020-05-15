@@ -245,6 +245,18 @@ namespace IDE
 					delete configSel;
 			}
 
+			public bool LeakCheckingEnabled
+			{
+				get
+				{
+#if BF_PLATFORM_WINDOWS
+					return mEnableRealtimeLeakCheck && mEnableObjectDebugFlags && (mAllocType == .Debug);
+#else
+					return false;
+#endif
+				}
+			}
+
 			public bool IsTestProject(Project project)
 			{
 				return ((mBuildKind == .Test) &&

@@ -7180,13 +7180,12 @@ namespace IDE
 
 			// Only supported on Windows at the moment
 			bool hasLeakCheck = false;
-#if BF_PLATFORM_WINDOWS
-            if (workspaceOptions.mEnableRealtimeLeakCheck && workspaceOptions.mEnableObjectDebugFlags)
+            if (workspaceOptions.LeakCheckingEnabled)
 			{
 				hasLeakCheck = true;
                 macroList.Add("BF_ENABLE_REALTIME_LEAK_CHECK");
 			}
-#endif
+
 			if ((workspaceOptions.mAllocType == .Debug) || (hasLeakCheck))
 				macroList.Add("BF_DEBUG_ALLOC");
 
