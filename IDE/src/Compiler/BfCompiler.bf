@@ -150,6 +150,11 @@ namespace IDE.Compiler
             public BfPassInstance mPassInstance;
         }
 
+		class DeletePassInstanceCommand : Command
+		{
+		    public BfPassInstance mPassInstance;
+		}
+
         class SetupProjectSettingsCommand : Command
         {
             public Project mProject;
@@ -265,6 +270,13 @@ namespace IDE.Compiler
             QueueCommand(command);
         }
 
+		public void QueueDeletePassInstance(BfPassInstance passInstance)
+		{
+		    DeletePassInstanceCommand command = new DeletePassInstanceCommand();
+		    command.mPassInstance = passInstance;            
+		    QueueCommand(command);
+		}
+
         public void QueueSetupProjectSettings(Project project)
         {
             SetupProjectSettingsCommand command = new SetupProjectSettingsCommand();
@@ -338,6 +350,13 @@ namespace IDE.Compiler
                 {
                     var setPassInstanceCommand = (SetPassInstanceCommand)command;
                     passInstance = setPassInstanceCommand.mPassInstance;
+                }
+				else if (command is DeletePassInstanceCommand)
+                {
+                    var deletePassInstanceCommand = (DeletePassInstanceCommand)command;
+					if (passInstance == deletePassInstanceCommand.mPassInstance)
+						passInstance = null;
+                    delete deletePassInstanceCommand.mPassInstance;
                 }
                 else if (passInstance == null)
                 {

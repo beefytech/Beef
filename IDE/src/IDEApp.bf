@@ -8272,7 +8272,12 @@ namespace IDE
 
 			if (bfSystem != mBfResolveSystem)
 			{
-				if (options.mBuildOptions.mBuildKind == .Test)
+				if (options.mBuildOptions.mBuildKind == .NotSupported)
+				{
+					OutputErrorLine("Project '{0}' is marked as 'not supported' for this platform/configuration", project.mProjectName);
+					success = false;
+				}
+				else if (options.mBuildOptions.mBuildKind == .Test)
 				{
 					if (workspaceOptions.mBuildKind == .Test)
 					{
@@ -8575,7 +8580,10 @@ namespace IDE
 			}
 
             if (!success)
+			{
+				bfCompiler.QueueDeletePassInstance(passInstance);
                 return null;
+			}
 
             for (var project in mWorkspace.mProjects)
             {
@@ -9824,8 +9832,18 @@ namespace IDE
 				canCompile = false;
 			}
 
-			//TODO:
 			canCompile = true;
+			switch (platform)
+			{
+			case .iOS:
+				canCompile = hostPlatform == .macOS;
+			case .Android:
+				canCompile = true;
+			case .Unknown:
+				canCompile = true;
+			default:
+				canCompile = platform == hostPlatform;
+			}
 			
 			if (!canCompile)
 			{
