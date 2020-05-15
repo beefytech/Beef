@@ -237,8 +237,12 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
-			for (int i < 10)
-				Blurg.Hey();
+			Blurg.Hey();
+			while (true)
+			{
+				new String();
+				GC.Collect();
+			}
 			return 1;
 		}
 
