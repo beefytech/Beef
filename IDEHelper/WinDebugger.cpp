@@ -3704,7 +3704,7 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 			conditional->mDbgEvaluationContext->mDbgExprEvaluator->mSubjectExpr = subjectExpr;
 			conditional->mDbgEvaluationContext->mDbgExprEvaluator->mDbgCompileUnit = subprogram->mCompileUnit;
 			conditional->mDbgEvaluationContext->mDbgExprEvaluator->mCallStackIdx = 0;
-			conditional->mDbgEvaluationContext->mDbgExprEvaluator->mExpressionFlags = (DwEvalExpressionFlags)(DwEvalExpressionFlag_AllowSideEffects | DwEvalExpressionFlag_AllowCalls);
+			conditional->mDbgEvaluationContext->mDbgExprEvaluator->mExpressionFlags = (DwEvalExpressionFlags)(DwEvalExpressionFlag_AllowSideEffects);
 		}
 
 		WdStackFrame* wdStackFrame = new WdStackFrame();
@@ -3724,6 +3724,11 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 			}
 			String condError = StrFormat("error Conditional breakpoint expression '%s' failed: %s", conditional->mExpr.c_str(), errorStr.c_str());
 			mDebugManager->mOutMessages.push_back(condError);
+			return true;
+		}
+		else if (conditional->mDbgEvaluationContext->mDbgExprEvaluator->mBlockedSideEffects)
+		{
+			mDebugManager->mOutMessages.push_back(StrFormat("error Conditional breakpoint expression '%s' contained function calls, which is not allowed", conditional->mExpr.c_str()));
 			return true;
 		}
 		else if ((!result) || (!result.mType->IsBoolean()))

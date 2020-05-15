@@ -7937,6 +7937,11 @@ DbgTypedValue DbgExprEvaluator::Resolve(BfExpression* expr, DbgType* wantType)
 	SetAndRestoreValue<DbgType*> prevType(mExpectingType, wantType);
 	SetAndRestoreValue<DbgTypedValue> prevResult(mResult, DbgTypedValue());
 
+	if ((mExpressionFlags & DwEvalExpressionFlag_AllowCalls) != 0)
+	{
+		BF_ASSERT(mCallResults != NULL);
+	}
+
 	if (mExplicitThis)
 		mExplicitThis = FixThis(mExplicitThis);
 
