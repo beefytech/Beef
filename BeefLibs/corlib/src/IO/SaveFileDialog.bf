@@ -97,4 +97,15 @@ namespace System.IO
 	}
 }
 
+#else
+
+namespace System.IO
+{
+	[Error("This class is only available on Windows")]
+	class SaveFileDialog
+	{
+
+	}
+}
+
 #endif
