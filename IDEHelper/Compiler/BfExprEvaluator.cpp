@@ -10415,13 +10415,13 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	}
 
 	SizedArray<BfIRType, 3> newTypes;
-	if (invokeMethodInstance->HasStructRet())
+	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->HasStructRet()))
 		newTypes.push_back(origParamTypes[0]);
 	if (!methodDef->mIsStatic)
 		newTypes.push_back(mModule->mBfIRBuilder->MapType(useTypeInstance));
 
 	int paramStartIdx = 0;
-	if (invokeMethodInstance->HasStructRet())
+	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->HasStructRet()))
 		paramStartIdx++;
 	if (!methodDef->mIsStatic)
 		paramStartIdx++;
