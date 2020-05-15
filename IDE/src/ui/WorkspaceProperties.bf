@@ -141,11 +141,6 @@ namespace IDE.ui
 
 		public override void GetPlatformList(List<String> platformNames)
 		{
-			/*var configName = mConfigNames[0];
-			for (var platformName in gApp.mWorkspace.mConfigs[configName].mPlatforms.Keys)
-				platformNames.Add(platformName);
-			if (platformNames.IsEmpty)
-				platformNames.Add(IDEApp.sPlatform64Name);*/
 			gApp.mWorkspace.GetPlatformList(platformNames);
 		}
 		
@@ -358,36 +353,17 @@ namespace IDE.ui
                 String platformName = scope String(name);
                 platformName.Trim();
                 if (!platformName.IsEmpty)
-                {            
-                    /*for (var workspaceConfig in workspace.mConfigs)
-                    {
-						if (!workspaceConfig.value.mPlatforms.ContainsKey(useName))
-						{
-	                        Workspace.Options workspaceOptions = new Workspace.Options();
-							workspace.SetupDefault(workspaceOptions, workspaceConfig.key, useName);
-	                        workspaceConfig.value.mPlatforms[new String(useName)] = workspaceOptions;
-						}
-                    }
-
-					for (var project in workspace.mProjects)
-					{
-					    for (var projectConfigKV in project.mConfigs)
-					    {
-							let projectConfig = projectConfigKV.value;
-							if (!projectConfig.mPlatforms.ContainsKey(useName))
-					        {
-								project.CreateConfig(projectConfigKV.key, useName);
-							}
-					    }                            
-					}*/
-
-                    //IDEApp.sApp.mWorkspace.SetChanged();
+                {
 					gApp.mWorkspace.FixOptionsForPlatform(platformName);
+					gApp.mWorkspace.SetChanged();
                     SelectPlatform(platformName);
 
 					gApp.mWorkspace.MarkPlatformNamesDirty();
-					if (!gApp.mWorkspace.mUserPlatforms.Contains(platformName))
-						gApp.mWorkspace.mUserPlatforms.Add(new String(platformName));
+					if (gApp.mWorkspace.mExtraPlatforms.TryAdd(platformName, var entryPtr))
+					{
+						*entryPtr = new String(platformName);
+						gApp.mWorkspace.SetChanged();
+					}
                 }
             }
         }

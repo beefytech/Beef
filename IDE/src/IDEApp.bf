@@ -1686,12 +1686,6 @@ namespace IDE
 			        sd.Add(recentFile);
 			}
 
-			using (sd.CreateArray("UserPlatforms"))
-			{
-			    for (var platformName in gApp.mWorkspace.mUserPlatforms)
-			        sd.Add(platformName);
-			}
-
 			using (sd.CreateArray("Breakpoints"))
 			{
 			    for (var breakpoint in mDebugger.mBreakpointList)
@@ -2844,18 +2838,6 @@ namespace IDE
 		        mRecentlyDisplayedFiles.Add(fileStr);
 			}
 
-			DeleteAndClearItems!(gApp.mWorkspace.mUserPlatforms);
-			for (data.Enumerate("UserPlatforms"))
-			{
-				String platformName = scope String();
-				data.GetCurString(platformName);
-				if (!gApp.mWorkspace.mUserPlatforms.Contains(platformName))
-				{
-					gApp.mWorkspace.mUserPlatforms.Add(new String(platformName));
-					gApp.mWorkspace.FixOptionsForPlatform(platformName);
-				}
-			}
-    
 			for (var _breakpoint in data.Enumerate("Breakpoints"))
 		    {
 	            String fileName = scope String();
@@ -7198,13 +7180,12 @@ namespace IDE
 
 			// Only supported on Windows at the moment
 			bool hasLeakCheck = false;
-#if BF_PLATFORM_WINDOWS
-            if (workspaceOptions.mEnableRealtimeLeakCheck && workspaceOptions.mEnableObjectDebugFlags)
+            if (workspaceOptions.LeakCheckingEnabled)
 			{
 				hasLeakCheck = true;
                 macroList.Add("BF_ENABLE_REALTIME_LEAK_CHECK");
 			}
-#endif
+
 			if ((workspaceOptions.mAllocType == .Debug) || (hasLeakCheck))
 				macroList.Add("BF_DEBUG_ALLOC");
 
@@ -8272,7 +8253,12 @@ namespace IDE
 
 			if (bfSystem != mBfResolveSystem)
 			{
-				if (options.mBuildOptions.mBuildKind == .Test)
+				if (options.mBuildOptions.mBuildKind == .NotSupported)
+				{
+					OutputErrorLine("Project '{0}' is marked as 'not supported' for this platform/configuration", project.mProjectName);
+					success = false;
+				}
+				else if (options.mBuildOptions.mBuildKind == .Test)
 				{
 					if (workspaceOptions.mBuildKind == .Test)
 					{
@@ -8575,7 +8561,10 @@ namespace IDE
 			}
 
             if (!success)
+			{
+				bfCompiler.QueueDeletePassInstance(passInstance);
                 return null;
+			}
 
             for (var project in mWorkspace.mProjects)
             {
@@ -9824,8 +9813,18 @@ namespace IDE
 				canCompile = false;
 			}
 
-			//TODO:
 			canCompile = true;
+			switch (platform)
+			{
+			case .iOS:
+				canCompile = hostPlatform == .macOS;
+			case .Android:
+				canCompile = true;
+			case .Unknown:
+				canCompile = true;
+			default:
+				canCompile = platform == hostPlatform;
+			}
 			
 			if (!canCompile)
 			{

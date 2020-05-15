@@ -2776,7 +2776,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 						}						
 					}
 				}
-
+				
 				if ((name != NULL) && (name[0] == '#'))
 				{
 					if (strcmp(name + 1, "StepOver") == 0)
@@ -2789,6 +2789,8 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				}				
 
 				DbgType* varType = CvGetType(localSym.typind, cvCompileUnit); 
+				if (varType == NULL)
+					varType = CvGetType(T_VOID);
 
 				if (name != NULL)
 				{
@@ -3300,18 +3302,18 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 							_RecurseBlock(&checkSubprogram->mBlock);
 						}
 					}*/
-				}
-							
-				if (compileUnit->mLanguage != DbgLanguage_Beef)
+				}				
+			}
+
+			if ((compileUnit->mLanguage != DbgLanguage_Beef) && (localVar->mName != NULL))
+			{
+				for (char* cPtr = (char*)localVar->mName; true; cPtr++)
 				{
-					for (char* cPtr = (char*)localVar->mName; true; cPtr++)
-					{
-						char c = *cPtr;
-						if (c == 0)
-							break;
-						if ((c == '<') || (c == '>'))
-							*cPtr = '$';						
-					}
+					char c = *cPtr;
+					if (c == 0)
+						break;
+					if ((c == '<') || (c == '>'))
+						*cPtr = '$';
 				}
 			}
 		}

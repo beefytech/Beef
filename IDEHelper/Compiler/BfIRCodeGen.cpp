@@ -1939,11 +1939,16 @@ void BfIRCodeGen::HandleNextCmd()
 		}
 		break;
 	case BfIRCmd_CreateFunction:
-		{
+		{			
 			CMD_PARAM(llvm::FunctionType*, type);
 			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();
 			CMD_PARAM(String, name);			
-			SetResult(curId, llvm::Function::Create(type, LLVMMapLinkageType(linkageType), name.c_str(), mLLVMModule));
+
+			auto func = mLLVMModule->getFunction(name.c_str());
+			if ((func == NULL) || (func->getFunctionType() != type))
+				func = llvm::Function::Create(type, LLVMMapLinkageType(linkageType), name.c_str(), mLLVMModule);
+			
+			SetResult(curId, func);
 		}
 		break;
 	case BfIRCmd_EnsureFunctionPatchable:

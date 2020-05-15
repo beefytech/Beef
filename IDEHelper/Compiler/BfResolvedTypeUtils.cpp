@@ -1587,7 +1587,8 @@ BfGenericTypeInstance::~BfGenericTypeInstance()
 {
 	for (auto genericParamInstance : mGenericParams)
 		genericParamInstance->Release();
-	delete mGenericExtensionInfo;
+	if (mGenericExtensionInfo != NULL)
+		delete mGenericExtensionInfo;
 }
 
 BfGenericTypeInstance::GenericParamsVector* BfGenericTypeInstance::GetGenericParamsVector(BfTypeDef* declaringTypeDef)

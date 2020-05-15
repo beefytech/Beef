@@ -24,8 +24,9 @@ namespace System.Diagnostics
 
 #if !DEBUG
 		[CallingConvention(.Cdecl), SkipCall]
-#endif
+#else
 		[CallingConvention(.Cdecl)]
+#endif
 		static extern void Write(char8* str, int strLen);
 
 		public static void WriteLine(StringView line)

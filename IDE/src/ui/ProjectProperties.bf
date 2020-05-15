@@ -166,17 +166,7 @@ namespace IDE.ui
 
 		public override void GetPlatformList(List<String> platformNames)
 		{
-			/*var configName = mConfigNames[0];
-			for (var platformName in mProject.mConfigs[configName].mPlatforms.Keys)
-				platformNames.Add(platformName);*/
-			
-			HashSet<String> platformSet = scope .();
-			for (var config in mProject.mConfigs.Values)
-			{
-				for (var platform in config.mPlatforms.Keys)
-					if (platformSet.Add(platform))
-						platformNames.Add(platform);
-			}
+			gApp.mWorkspace.GetPlatformList(platformNames);
 		}
 
         public override bool CreateNewConfig(String name, String copiedFromConfig)
@@ -307,6 +297,9 @@ namespace IDE.ui
 						if ((!entry.mDelete) && (entry.mNewName == null))
 							continue;
 
+						if (entry.mDelete)
+							gApp.mWorkspace.mExtraPlatforms.Remove(entry.mOrigName);
+
 						ConfigLoop: for (var configName in mConfigNames)
 						{
 							Project.Config config;
@@ -392,14 +385,12 @@ namespace IDE.ui
                 name.Trim();
                 if (name.Length > 0)
                 {
-                    for (var projectConfig in mProject.mConfigs.Values)
-                    {
-                        Project.Options projectOptions = new Project.Options();
-                        projectConfig.mPlatforms[new String(name)] = projectOptions;
-                    }
-
-                    mProject.SetChanged();                    
                     SelectPlatform(name);
+					if (gApp.mWorkspace.mExtraPlatforms.TryAdd(name, var entryPtr))
+					{
+						*entryPtr = new String(name);
+						gApp.mWorkspace.SetChanged();
+					}
 					gApp.mWorkspace.MarkPlatformNamesDirty();
                 }
             }

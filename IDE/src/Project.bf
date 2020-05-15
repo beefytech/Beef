@@ -818,6 +818,7 @@ namespace IDE
 			case Test;
 			case StaticLib;
 			case DynamicLib;
+			case NotSupported;
 
 			public bool IsApplicationLib
 			{

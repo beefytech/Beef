@@ -8120,10 +8120,20 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 			}
 		}		
 
+		bool wasAllocated = false;
 		if (!result)
 		{			
 			if (hasCustomAllocator)
 				result = AllocBytes(allocTarget.mRefNode, allocTarget, typeInstance, sizeValue, GetConstValue(typeInstance->mInstAlign), (BfAllocFlags)(BfAllocFlags_ZeroMemory | BfAllocFlags_NoDefaultToMalloc));				
+			else if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mCompiler->mOptions.mDebugAlloc))
+			{
+				SizedArray<BfIRValue, 4> llvmArgs;
+				llvmArgs.push_back(sizeValue);
+				auto irFunc = GetBuiltInFunc(BfBuiltInFuncType_Malloc);
+				result = mBfIRBuilder->CreateCall(irFunc, llvmArgs);
+				result = mBfIRBuilder->CreateBitCast(result, mBfIRBuilder->MapTypeInstPtr(typeInstance));
+				wasAllocated = true;
+			}
 		}
 
 		if (result)
@@ -8139,6 +8149,16 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					(isResultInitialized ? "Dbg_ObjectCreatedEx" : "Dbg_ObjectAllocatedEx") : 
 					(isResultInitialized ? "Dbg_ObjectCreated" : "Dbg_ObjectAllocated"));
 				mBfIRBuilder->CreateCall(objectCreatedMethod.mFunc, llvmArgs);
+
+				if (wasAllocated)
+				{
+					auto byteType = GetPrimitiveType(BfTypeCode_UInt8);
+					auto bytePtrType = CreatePointerType(byteType);
+					auto flagsPtr = mBfIRBuilder->CreateBitCast(result, mBfIRBuilder->MapType(bytePtrType));
+					auto flagsVal = mBfIRBuilder->CreateLoad(flagsPtr);
+					auto modifiedFlagsVal = mBfIRBuilder->CreateOr(flagsVal, mBfIRBuilder->CreateConst(BfTypeCode_UInt8, /*BF_OBJECTFLAG_ALLOCATED*/4));
+					mBfIRBuilder->CreateStore(modifiedFlagsVal, flagsPtr);
+				}
 			}
 			else
 			{				
@@ -8170,7 +8190,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 			else
 			{
 				SizedArray<BfIRValue, 4> llvmArgs;
-				llvmArgs.push_back(sizeValue);				
+				llvmArgs.push_back(sizeValue);
 				BfIRFunction irFunc;
 				if (mCompiler->mOptions.mDebugAlloc)
 				{
