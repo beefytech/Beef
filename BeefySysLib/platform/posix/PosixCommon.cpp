@@ -1364,7 +1364,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_Release(BfpThreadInfo* threadInfo)
 	delete threadInfo;
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_GetStackInfo(BfpThreadInfo* threadInfo, intptr* outStackBase, int* outStackLimit, BfpThreadResult* outResult)
+BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_GetStackInfo(BfpThreadInfo* threadInfo, intptr* outStackBase, int* outStackLimit, BfpThreadInfoFlags flags, BfpThreadResult* outResult)
 {
 #ifdef BFP_HAS_PTHREAD_GETATTR_NP
 	if (threadInfo == NULL)
