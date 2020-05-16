@@ -7768,6 +7768,24 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 			else
 				lookupType = BfTypedValue(type);
 			auto findName = nameRight->ToString();
+
+			if ((lookupType.mType != NULL) && (lookupType.mType->IsGenericParam()))
+			{
+				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)lookupType.mType);
+				if (genericParamInstance->mTypeConstraint != NULL)
+				{
+					mResult = LookupField(nameRight, BfTypedValue(genericParamInstance->mTypeConstraint), findName);
+					if ((mResult) || (mPropDef != NULL))
+						return;
+				}
+				for (auto constraint : genericParamInstance->mInterfaceConstraints)
+				{
+					mResult = LookupField(nameRight, BfTypedValue(constraint), findName);
+					if ((mResult) || (mPropDef != NULL))
+						return;
+				}
+			}
+
 			/*if (findName == "base")
 			{
 			mResult = BfTypedValue(lookupType);
