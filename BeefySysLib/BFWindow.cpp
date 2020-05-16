@@ -160,7 +160,12 @@ BFWindow::BFWindow()
 	for (int i = 0; i < KEYCODE_MAX; i++)
 		mIsKeyDown[i] = false;
 	for (int i = 0; i < MOUSEBUTTON_MAX; i++)
+	{
 		mIsMouseDown[i] = false;
+		mMouseClickCount[i] = 0;
+		mMouseDownTicks[i] = 0;
+		mMouseDownCoords[i] = { -1, -1 };
+	}
 }
 
 BFWindow::~BFWindow()
