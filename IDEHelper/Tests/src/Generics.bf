@@ -4,8 +4,42 @@ namespace Tests
 {
 	class Generics
 	{
-		class ClassA : IDisposable
+		class ClassA : IDisposable, LibA.IVal
 		{
+			int LibA.IVal.Val
+			{
+				get
+				{
+					return 123;
+				}
+
+				set
+				{
+
+				}
+			}
+
+			void IDisposable.Dispose()
+			{
+
+			}
+		}
+
+		class ClassB : IDisposable, LibA.IVal
+		{
+			public int Val
+			{
+				get
+				{
+					return 234;
+				}
+
+				set
+				{
+
+				}
+			}
+
 			public void Dispose()
 			{
 
@@ -55,7 +89,16 @@ namespace Tests
 		[Test]
 		public static void TestBasics()
 		{
+			ClassA ca = scope .();
+			ClassB cb = scope .();
+			Test.Assert(LibA.LibA0.GetVal(ca) == 123);
+			Test.Assert(LibA.LibA0.GetVal(cb) == 234);
 
+			LibA.LibA0.Dispose(ca);
+			LibA.LibA0.Dispose(cb);
+
+			LibA.LibA0.Alloc<ClassA>();
+			LibA.LibA0.Alloc<ClassB>();
 		}
 	}
 
