@@ -11,7 +11,6 @@ Description = "Mintest"
 
 [Configs.Debug.Win64]
 CLibType = "Static"
-BeefLibType = "DynamicDebug"
 StackSize = 4194304
 DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"\"\"abc efg\"\"\""
 DebugWorkingDirectory = ".\\"
@@ -91,10 +90,6 @@ RelocType = "PIC"
 [[ProjectFolder.Items]]
 Type = "Folder"
 Name = "snorg"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "Zap.bf"
 
 [[ProjectFolder.Items]]
 Type = "Source"

@@ -1,0 +1,10 @@
+ShowFile("src/TypedPrimitives.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+
+AssertEvalEquals("sa", "{ 1.2 }")
+AssertEvalEquals("sa + 30", "31.2")
+AssertEvalEquals("sa == sa", "true")
+AssertEvalEquals("sa == 1.2f", "true")

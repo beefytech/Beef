@@ -3014,7 +3014,7 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 		{
 			auto dwType = origDwType->RemoveModifiers();
 			if (dwType->IsTypedPrimitive())
-				dwType = dwType->GetRootBaseType();
+				dwType = dwType->GetUnderlyingType();
 			if (dwType->mTypeCode == DbgType_Single)
 				result.mSingle = *(float*)((float*)registers->mXmmRegsArray + (result.mRegNum - CPUReg_XMMREG_FIRST));
 			else if (dwType->mTypeCode == DbgType_Double)
@@ -7936,6 +7936,11 @@ DbgTypedValue DbgExprEvaluator::Resolve(BfExpression* expr, DbgType* wantType)
 
 	SetAndRestoreValue<DbgType*> prevType(mExpectingType, wantType);
 	SetAndRestoreValue<DbgTypedValue> prevResult(mResult, DbgTypedValue());
+
+	if ((mExpressionFlags & DwEvalExpressionFlag_AllowCalls) != 0)
+	{
+		BF_ASSERT(mCallResults != NULL);
+	}
 
 	if (mExplicitThis)
 		mExplicitThis = FixThis(mExplicitThis);

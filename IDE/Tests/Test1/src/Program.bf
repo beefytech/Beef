@@ -28,6 +28,7 @@ namespace IDETest
 			MemoryBreakpointTester.Test();
 			SplatTester.Test();
 			Stepping_Scope.Test();
+			TypedPrimitives.Test();
 			Unions.Test();
 			Virtuals.Test();
 

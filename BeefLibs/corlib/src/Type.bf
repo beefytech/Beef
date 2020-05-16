@@ -35,6 +35,14 @@ namespace System
 			}
 		}
 
+		public static Enumerator Types
+		{
+			get
+			{
+				return .();
+			}
+		}
+
         public int32 Size
         {
             get
@@ -461,6 +469,24 @@ namespace System
 		{
 		    return FieldInfo.Enumerator(null, bindingFlags);
 		}
+
+		public struct Enumerator : IEnumerator<Type>
+		{
+			int32 mCurId;
+
+			public Result<Type> GetNext() mut
+			{
+				while (true)
+				{
+					if (mCurId >= sTypeCount)
+						return .Err;
+					let type = sTypes[mCurId++];
+					if (type != null)
+						return .Ok(type);
+				}
+			}
+		}	
+
     }
 
     enum TypeCode : uint8

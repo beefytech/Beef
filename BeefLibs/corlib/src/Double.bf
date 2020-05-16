@@ -41,17 +41,8 @@ namespace System
 			    // Ensure that 0 and -0 have the same hash code
 			    return 0;
 			}
-
-			if (sizeof(int) == sizeof(double))
-			{
-				var val = (double)this;
-				return *(int*)(&val);
-			}
-			else
-			{
-				int64 value = *(int64*)(&d);
-				return ((int32)value) ^ ((int32)(value >> 32));
-			}
+			return *((int*)&d) ^ ((int32*)&d)[1];
+			
 		}
         
         public bool IsInfinity
