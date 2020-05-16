@@ -945,7 +945,12 @@ namespace IDE
 							IDEUtils.AppendWithOptionalQuotes(linkLine, ltoPath);
 						}
 					}
-					
+
+					if (options.mBuildOptions.mBeefLibType != .DynamicDebug)
+					{
+						linkLine.Append(" /ignore:4099");
+					}
+
 			        var runCmd = gApp.QueueRun(linkerPath, linkLine, gApp.mInstallDir, .UTF16WithBom);
 			        runCmd.mOnlyIfNotFailed = true;
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
