@@ -24,6 +24,7 @@ typedef uint64 BfpTimeStamp;
 
 typedef intptr BfpThreadId;
 struct BfpThread;
+struct BfpThreadInfo;
 struct BfpFile;
 struct BfpSpawn;
 struct BfpFileWatcher;
@@ -231,6 +232,12 @@ enum BfpThreadPriority
 	BfpThreadPriority_VeryHigh =2
 };
 
+enum BfpThreadInfoFlags
+{
+	BfpThreadInfoFlags_None = 0,
+	BfpThreadInfoFlags_NoCache = 1
+};
+
 enum BfpThreadResult
 {
 	BfpThreadResult_Ok					= BfpResult_Ok,
@@ -251,9 +258,12 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_SetPriority(BfpThread* thread, BfpThreadP
 BFP_EXPORT void BFP_CALLTYPE BfpThread_Suspend(BfpThread* thread, BfpThreadResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpThread_Resume(BfpThread* thread, BfpThreadResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr* outStackPtr, intptr* outIntRegs, int* inOutIntRegCount, BfpThreadResult* outResult);
-BFP_EXPORT void BFP_CALLTYPE BfpThread_GetStackInfo(BfpThread* thread, intptr* outStackBase, int* outStackLimit, BfpThreadResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpThread_Sleep(int sleepMS);
 BFP_EXPORT bool BFP_CALLTYPE BfpThread_Yield();
+
+BFP_EXPORT BfpThreadInfo* BFP_CALLTYPE BfpThreadInfo_Create();
+BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_Release(BfpThreadInfo* threadInfo);
+BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_GetStackInfo(BfpThreadInfo* thread, intptr* outStackBase, int* outStackLimit, BfpThreadInfoFlags flags, BfpThreadResult* outResult);
 
 struct BfpCritSect;
 BFP_EXPORT BfpCritSect* BFP_CALLTYPE BfpCritSect_Create();

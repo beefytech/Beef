@@ -214,6 +214,8 @@ BFGC::ThreadInfo::~ThreadInfo()
 {
 	if (mThreadHandle != NULL)
 		BfpThread_Release(mThreadHandle);
+	if (mThreadInfo != NULL)
+		BfpThreadInfo_Release(mThreadInfo);
 }
 
 bool BFGC::ThreadInfo::WantsSuspend()
@@ -224,6 +226,14 @@ bool BFGC::ThreadInfo::WantsSuspend()
 #else
 	return true;
 #endif
+}
+
+void BFGC::ThreadInfo::CalcStackStart()
+{
+	intptr stackBase;
+	int stackLimit;
+	BfpThreadInfo_GetStackInfo(mThreadInfo, &stackBase, &stackLimit, BfpThreadInfoFlags_NoCache, NULL);
+	mStackStart = stackBase;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1447,6 +1457,7 @@ bool BFGC::ScanThreads()
 		
 		mQueueMarkObjects = true;
 		ConservativeScan(regVals, regValCount * sizeof(intptr));
+		thread->CalcStackStart();
 		int length = thread->mStackStart - stackPtr;		
 		
 		AdjustStackPtr(stackPtr, length);
@@ -1895,11 +1906,9 @@ void BFGC::ThreadStarted()
 	thread->mThreadHandle = BfpThread_GetCurrent();
 	thread->mThreadId = BfpThread_GetCurrentId();
 	thread->mTEB = GetTEB((HANDLE)thread->mThreadHandle);
-	
-	intptr stackBase;
-	int stackLimit;
-	BfpThread_GetStackInfo(thread->mThreadHandle, &stackBase, &stackLimit, NULL);
-	thread->mStackStart = stackBase;
+	thread->mThreadInfo = BfpThreadInfo_Create();
+
+	thread->CalcStackStart();
 
 	mThreadList.Add(thread);
 

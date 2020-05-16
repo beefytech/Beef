@@ -1166,6 +1166,7 @@ struct BfpThreadInfo
 {
     intptr mStackBase;
     int mStackLimit;
+	pthread_t mPThread;
 };
 
 static __thread BfpThread* gCurrentThread;
@@ -1338,32 +1339,6 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr
     NOT_IMPL;
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpThread_GetStackInfo(BfpThread* thread, intptr* outStackBase, int* outStackLimit, BfpThreadResult* outResult)
-{
-#ifdef BFP_HAS_PTHREAD_GETATTR_NP
-    if (gCurrentThreadInfo.mStackBase == 0)
-    {
-        void* stackBase = 0;
-        size_t stackLimit = 0;
-
-        pthread_attr_t attr;
-        pthread_getattr_np(pthread_self(), &attr);
-        pthread_attr_getstack(&attr, &stackBase, &stackLimit);
-
-        gCurrentThreadInfo.mStackBase = (intptr)stackBase + stackLimit;
-        gCurrentThreadInfo.mStackLimit = (int)stackLimit;
-        pthread_attr_destroy(&attr);
-    }
-
-    *outStackBase = gCurrentThreadInfo.mStackBase;
-    *outStackLimit = gCurrentThreadInfo.mStackLimit;
-
-	OUTRESULT(BfpThreadResult_Ok);
-#else
-    OUTRESULT(BfpThreadResult_UnknownError);
-#endif
-}
-
 BFP_EXPORT void BFP_CALLTYPE BfpThread_Sleep(int sleepMS)
 {
     usleep(sleepMS * 1000);
@@ -1373,6 +1348,55 @@ BFP_EXPORT bool BFP_CALLTYPE BfpThread_Yield()
 {
     return sched_yield() == 0;
 }
+
+///
+
+BFP_EXPORT BfpThreadInfo* BFP_CALLTYPE BfpThreadInfo_Create()
+{
+	BfpThreadInfo* threadInfo = new BfpThreadInfo();
+	threadInfo->mStackBase = 0;
+	threadInfo->mStackLimit = 0;	
+	threadInfo->mPThread = pthread_self();
+}
+
+BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_Release(BfpThreadInfo* threadInfo)
+{
+	delete threadInfo;
+}
+
+BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_GetStackInfo(BfpThreadInfo* threadInfo, intptr* outStackBase, int* outStackLimit, BfpThreadResult* outResult)
+{
+#ifdef BFP_HAS_PTHREAD_GETATTR_NP
+	if (threadInfo == NULL)
+	{
+		threadInfo = &gCurrentThreadInfo;
+		threadInfo->mPThread = pthread_self();
+	}
+
+	if (threadInfo->mStackBase == 0)
+	{
+		void* stackBase = 0;
+		size_t stackLimit = 0;
+
+		pthread_attr_t attr;
+		pthread_getattr_np(threadInfo->mPThread, &attr);
+		pthread_attr_getstack(&attr, &stackBase, &stackLimit);
+
+		threadInfo->mStackBase = (intptr)stackBase + stackLimit;
+		threadInfo->mStackLimit = (int)stackLimit;
+		pthread_attr_destroy(&attr);
+	}
+
+	*outStackBase = threadInfo->mStackBase;
+	*outStackLimit = threadInfo->mStackLimit;
+
+	OUTRESULT(BfpThreadResult_Ok);
+#else
+	OUTRESULT(BfpThreadResult_UnknownError);
+#endif
+}
+
+///
 
 struct BfpCritSect
 {
