@@ -5714,9 +5714,12 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 			if (checkMethod->mIsStatic)
 				continue;
 
-			if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
-				(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, activeTypeDef)))
-				continue;
+			if (!mModule->IsInSpecializedSection())
+			{
+				if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
+					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, activeTypeDef)))
+					continue;
+			}
 			
 			auto checkProt = checkMethod->mProtection;
 
@@ -12383,7 +12386,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 
 	if (methodDef->IsEmptyPartial())
 		return methodInstance;
-	
+		
 	for (int checkGenericIdx = 0; checkGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size(); checkGenericIdx++)
 	{
 		auto& genericParams = methodInstance.mMethodInstance->mMethodInfoEx->mGenericParams;
@@ -12400,7 +12403,8 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			paramSrc = methodMatcher.mArguments[methodMatcher.mBestMethodGenericArgumentSrcs[checkGenericIdx]].mExpression;
 
 		BfError* error = NULL;
-		if ((!failed) && (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams[checkGenericIdx], &methodMatcher.mBestMethodGenericArguments, &error)))
+		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams[checkGenericIdx], &methodMatcher.mBestMethodGenericArguments, 
+			failed ? NULL : &error))
 		{
 			if (methodInstance.mMethodInstance->IsSpecializedGenericMethod())
 			{
@@ -14057,8 +14061,11 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 
 				for (auto& iface : checkTypeInst->mInterfaces)
 				{
-					if (!checkTypeInst->IsTypeMemberAccessible(iface.mDeclaringType, activeTypeDef))
-						continue;
+					if (!mModule->IsInSpecializedSection())
+					{
+						if (!checkTypeInst->IsTypeMemberAccessible(iface.mDeclaringType, activeTypeDef))
+							continue;
+					}
 
 					if (iface.mInterfaceType == mPropTarget.mType)
 					{
