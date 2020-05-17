@@ -263,7 +263,8 @@ namespace Beefy.widgets
             {
                 // Automatically close when last docked widget is removed
                 //  Should only happen on tool windows
-                mWidgetWindow.Close();                
+				if (!mWidgetWindow.mWindowFlags.HasFlag(.QuitOnClose))
+                	mWidgetWindow.Close();                
             }            
         }
 
