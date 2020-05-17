@@ -6284,7 +6284,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 		case 1:
 			{
 				char c = GET_FROM(bufPtr, char);
-				if (c != 0)
+				if ((c != 0) || (formatInfo.mOverrideCount != -1))
 				{
 					if ((uint8)c >= 0x80)
 						hasHighAscii = true;
@@ -6297,7 +6297,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 		case 2:
 			{
 				uint16 c16 = GET_FROM(bufPtr, uint16);
-				if (c16 != 0)
+				if ((c16 != 0) || (formatInfo.mOverrideCount != -1))
 				{
 					char str[8];
 					u8_toutf8(str, 8, c16);
@@ -6310,7 +6310,7 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 		case 4:
 			{
 				uint32 c32 = GET_FROM(bufPtr, uint32);
-				if (c32 != 0)
+				if ((c32 != 0) || (formatInfo.mOverrideCount != -1))
 				{
 					char str[8];
 					u8_toutf8(str, 8, c32);
@@ -7002,7 +7002,17 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if ((!typedValue.mIsLiteral) && (!formatInfo.mHidePointers))
 				retVal = EncodeDataPtr(ptrVal, true);
 
-			String strResult = ReadString(unmodInnerType->mTypeCode, typedValue.mLocalIntPtr, typedValue.mIsLiteral, typedValue.mIsLiteral ? strlen(typedValue.mCharPtr) : -1, formatInfo);
+			int strLen = -1;
+			if (typedValue.mIsLiteral)
+			{
+				if (typedValue.mDataLen > 0)
+					strLen = typedValue.mDataLen;
+				else
+					strLen = strlen(typedValue.mCharPtr);
+			}
+
+			SetAndRestoreValue<intptr> prevOverrideLen(formatInfo.mOverrideCount, strLen);
+			String strResult = ReadString(unmodInnerType->mTypeCode, typedValue.mLocalIntPtr, typedValue.mIsLiteral, strLen, formatInfo);
 			if (formatInfo.mRawString)
 				return strResult;
 			if (!strResult.IsEmpty())
