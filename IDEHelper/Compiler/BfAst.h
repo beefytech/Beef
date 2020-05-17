@@ -1399,6 +1399,17 @@ public:
 		val->InitWithTypeId(T::sTypeInfo.mTypeId);
 		return val;
 	}
+
+	template <typename T>
+	static void Zero(T* val)
+	{		
+#ifdef BF_AST_COMPACT
+		memset((uint8*)val + offsetof(T, mAstInfo), 0, sizeof(T) - offsetof(T, mAstInfo));
+#else
+		memset((uint8*)val + offsetof(T, mTriviaStart), 0, sizeof(T) - offsetof(T, mTriviaStart));
+#endif
+		val->InitWithTypeId(T::sTypeInfo.mTypeId);		
+	}
 #endif
 };
 #ifdef BF_AST_DO_IMPL

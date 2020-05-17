@@ -10058,6 +10058,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 			BfParameterDef* paramDef = new BfParameterDef();
 			paramDef->mParamDeclaration = tempParamDecls.Alloc();
+			BfAstNode::Zero(paramDef->mParamDeclaration);			
 
 			BfLocalVariable* localVar = new BfLocalVariable();
 			if (paramIdx < (int)lambdaBindExpr->mParams.size())
