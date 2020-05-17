@@ -6165,7 +6165,6 @@ namespace IDE
                     }
                 });
 
-            Debug.Assert(tabbedView != null);
             if (tabbedView == null)
                 return;
 

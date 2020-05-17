@@ -235,7 +235,11 @@ namespace Beefy.widgets
         public void Simplify()
         {            
             if ((mDockedWidgets.Count == 0) && (mParentDockingFrame != null))
+			{
                 mParentDockingFrame.RemoveWidget(this);
+				mParentDockingFrame.mDockedWidgets.Remove(this);
+				BFApp.sApp.DeferDelete(this);
+			}
             else if ((mDockedWidgets.Count == 1) && (mParentDockingFrame != null))
             {
                 // Just a single object, remove ourselves from the frame
