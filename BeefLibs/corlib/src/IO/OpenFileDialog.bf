@@ -418,7 +418,7 @@ namespace System.IO
 			if (mInitialDir != null)
 	        	ofn.mInitialDir = mInitialDir.ToScopedNativeWChar!::();
 			if (mTitle != null)
-	        	ofn.mTitle = mTitle.ToScopedNativeWChar!();
+	        	ofn.mTitle = mTitle.ToScopedNativeWChar!::();
 	        ofn.mFlags = Options | (Windows.OFN_EXPLORER | Windows.OFN_ENABLEHOOK | Windows.OFN_ENABLESIZING);
 	        ofn.mHook = hookProcPtr;
 			ofn.mCustData = (int)(void*)this;
