@@ -9446,6 +9446,14 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 
 			methodName += " ";
 			methodName += methodInst->GetParamName(paramIdx);
+
+			auto paramInitializer = methodInst->GetParamInitializer(paramIdx);
+			if (paramInitializer != NULL)
+			{
+				methodName += " = ";
+				methodName += paramInitializer->ToString();
+			}
+
 			dispParamIdx++;
 		}
 		methodName += ")";

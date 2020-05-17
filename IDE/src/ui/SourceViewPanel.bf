@@ -4767,7 +4767,8 @@ namespace IDE.ui
 				{
 					let resolveParams = scope ResolveParams();
 					resolveParams.mOverrideCursorPos = (int32)textIdx;
-					Classify(ResolveType.GetResultString, resolveParams);
+					if (!gApp.mDebugger.IsPaused())
+						Classify(ResolveType.GetResultString, resolveParams);
 					if (!String.IsNullOrEmpty(resolveParams.mResultString))
 					{
 						origDebugExpr = scope:: String();

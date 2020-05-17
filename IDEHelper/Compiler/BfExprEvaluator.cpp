@@ -3414,7 +3414,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				auto fieldInstance = &curCheckType->mFieldInstances[field->mIdx];
 				
 				bool isResolvingFields = curCheckType->mResolvingConstField || curCheckType->mResolvingVarField;
-				
+								
 				if (field->mIsVolatile)
 					mIsVolatileReference = true;
 
@@ -3473,7 +3473,31 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				auto autoComplete = GetAutoComplete();
 				if (autoComplete != NULL)
+				{
 					autoComplete->CheckFieldRef(BfNodeDynCast<BfIdentifierNode>(targetSrc), fieldInstance);
+					if ((autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)))
+					{						
+						autoComplete->mResultString = ":";
+						autoComplete->mResultString += mModule->TypeToString(fieldInstance->mResolvedType);
+						autoComplete->mResultString += " ";
+						autoComplete->mResultString += mModule->TypeToString(curCheckType);
+						autoComplete->mResultString += ".";
+						autoComplete->mResultString += field->mName;
+
+						if (fieldInstance->mConstIdx != -1)
+						{ 
+							String constStr = autoComplete->ConstantToString(curCheckType->mConstHolder, BfIRValue(BfIRValueFlags_Const, fieldInstance->mConstIdx));
+							if (!constStr.IsEmpty())
+							{
+								autoComplete->mResultString += " = ";
+								if (constStr.StartsWith(':'))
+									autoComplete->mResultString.Append(StringView(constStr, 1, constStr.mLength - 1));
+								else
+									autoComplete->mResultString += constStr;
+							}
+						}
+					}
+				}
 
 				if (field->mIsStatic)
 				{
@@ -3877,6 +3901,18 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 							autoComplete->mDefProp = basePropDef;
 							autoComplete->mDefType = baseTypeInst->mTypeDef;
 						}
+					}
+
+					if ((autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)))
+					{	
+						BfPropertyDef* basePropDef = mPropDef;
+						BfTypeInstance* baseTypeInst = curCheckType;
+						mModule->GetBasePropertyDef(basePropDef, baseTypeInst);
+						
+						autoComplete->mResultString = ":";
+						autoComplete->mResultString += mModule->TypeToString(baseTypeInst);
+						autoComplete->mResultString += ".";
+						autoComplete->mResultString += basePropDef->mName;
 					}
 
 					// Check for direct auto-property access
@@ -5763,6 +5799,11 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	if (mModule->mCompiler->mResolvePassData != NULL)
 		mModule->mCompiler->mResolvePassData->HandleMethodReference(targetSrc, curTypeInst->mTypeDef, methodDef);
 
+	// There should always be a constructor
+	BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
+
+	auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher.mBestMethodGenericArguments);
+
 	BfAutoComplete* autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)
 	{		
@@ -5781,15 +5822,15 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 				else if (resolvedTypeInstance->mTypeDef->mTypeDeclaration != NULL)
 					autoComplete->SetDefinitionLocation(resolvedTypeInstance->mTypeDef->mTypeDeclaration->mNameNode, true);
 			}
-		}					
+		}	
+		else if ((autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)) &&
+			(moduleMethodInstance.mMethodInstance != NULL))
+		{
+			autoComplete->mResultString = ":";
+			autoComplete->mResultString += mModule->MethodToString(moduleMethodInstance.mMethodInstance);
+		}
 	}
 
-
-	// There should always be a constructor
-	BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
-	
-	auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher.mBestMethodGenericArguments);
-	
 	BfConstructorDeclaration* ctorDecl = (BfConstructorDeclaration*)methodMatcher.mBestMethodDef->mMethodDeclaration;
 	if ((methodMatcher.mBestMethodDef->mHasAppend) && (targetType->IsObject()))
 	{
@@ -7113,6 +7154,12 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				{
 					autoComplete->mDefMethod = methodDef;
 					autoComplete->mDefType = curTypeInst->mTypeDef;
+				}
+
+				if (autoComplete->mResolveType == BfResolveType_GetResultString)
+				{
+					autoComplete->mResultString = ":";
+					autoComplete->mResultString += mModule->MethodToString(moduleMethodInstance.mMethodInstance);
 				}
 			}
 		}
@@ -14228,6 +14275,17 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			if (mPropSrc != NULL)
 				mModule->UpdateExprSrcPos(mPropSrc);
 			
+			auto autoComplete = GetAutoComplete();
+			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(mPropSrc)) && (autoComplete->mResolveType == BfResolveType_GetResultString))
+			{				
+				autoComplete->mResultString = ":";
+				autoComplete->mResultString += mModule->TypeToString(methodInstance.mMethodInstance->mReturnType);
+				autoComplete->mResultString += " ";
+				autoComplete->mResultString += mModule->TypeToString(methodInstance.mMethodInstance->GetOwner());
+				autoComplete->mResultString += ".";
+				autoComplete->mResultString += mPropDef->mName;
+			}
+
 			CheckPropFail(matchedMethod, methodInstance.mMethodInstance, (mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0);
 			PerformCallChecks(methodInstance.mMethodInstance, mPropSrc);
 
@@ -15077,6 +15135,17 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 				return;
 			BF_ASSERT(methodInstance.mMethodInstance->mMethodDef == setMethod);
 			CheckPropFail(setMethod, methodInstance.mMethodInstance, (mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0);	
+
+			auto autoComplete = GetAutoComplete();
+			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(mPropSrc)) && (autoComplete->mResolveType == BfResolveType_GetResultString))
+			{
+				autoComplete->mResultString = ":";
+				autoComplete->mResultString += mModule->TypeToString(methodInstance.mMethodInstance->GetParamType(0));
+				autoComplete->mResultString += " ";
+				autoComplete->mResultString += mModule->TypeToString(methodInstance.mMethodInstance->GetOwner());
+				autoComplete->mResultString += ".";
+				autoComplete->mResultString += mPropDef->mName;
+			}
 
 			BfTypedValue convVal;
 			if (binaryOp != BfBinaryOp_None)

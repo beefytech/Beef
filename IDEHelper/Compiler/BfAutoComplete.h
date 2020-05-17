@@ -222,6 +222,7 @@ public:
 	void FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr);
 	int FixitGetMemberInsertPos(BfTypeDef* typeDef);
 	String FixitGetLocation(BfParserData* parserData, int insertPos);
+	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);
 
 public:
 	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete);

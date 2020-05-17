@@ -3839,6 +3839,12 @@ void BfCompiler::ProcessAutocompleteTempType()
 			autoComplete->mDefType = actualTypeDef;
 			autoComplete->mInsertStartIdx = nameNode->GetSrcStart();
 			autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();
+
+			if (autoComplete->mResolveType == BfResolveType_GetResultString)
+			{
+				autoComplete->mResultString = ":";
+				autoComplete->mResultString += module->TypeToString(typeInst);
+			}
 		}		
 	}	
 	autoComplete->CheckInterfaceFixit(typeInst, tempTypeDef->mTypeDeclaration->mNameNode);
