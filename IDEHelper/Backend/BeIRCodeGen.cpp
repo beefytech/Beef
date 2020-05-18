@@ -720,7 +720,14 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();
 			constStruct->mType = type;
 			for (auto val : values)
-				constStruct->mMemberValues.push_back(BeValueDynCast<BeConstant>(val));
+			{
+				BeConstant* constant = BeValueDynCast<BeConstant>(val);
+				constStruct->mMemberValues.push_back(constant);
+#ifdef _DEBUG
+				auto memberType = constant->GetType();
+				BF_ASSERT(memberType == arrayType->mElementType);
+#endif
+			}
 			beValue = constStruct;
 			BE_MEM_END("ParamType_Const_Array");
 			return;

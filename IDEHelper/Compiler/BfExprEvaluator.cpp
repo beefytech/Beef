@@ -15590,8 +15590,9 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 						// For now, we can't properly create const-valued non-size-aligned composites
 						if (checkArrayType->mElementType->NeedsExplicitAlignment())
 							isAllConst = false;
-
 						if (!elementValue.mValue.IsConst())
+							isAllConst = false;
+						if (elementValue.IsAddr())
 							isAllConst = false;
 
 						InitValue initValue;
