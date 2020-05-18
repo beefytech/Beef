@@ -4282,37 +4282,33 @@ void BfCompiler::GetSymbolReferences()
 		while (attrib != NULL)
 		{
 			if (attrib->mAttributeTypeRef != NULL)
-			{
-				String attrName = attrib->mAttributeTypeRef->ToString();
-				BfType* attrType = NULL;
-
-				BfAtomComposite nameComposite;
-				if (mSystem->ParseAtomComposite(attrName + "Attribute", nameComposite))
+			{				
+				auto attrType = module->ResolveTypeRef(attrib->mAttributeTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_Attribute);
+				BfTypeDef* attrTypeDef = NULL;
+				if ((attrType != NULL) && (attrType->IsTypeInstance()))
+					attrTypeDef = attrType->ToTypeInstance()->mTypeDef;				
+				if (attrTypeDef != NULL)
 				{
-					BfTypeDef* attrTypeDef = module->FindTypeDefRaw(nameComposite, 0, replaceTypeInst, declaringType, NULL);
-					if (attrTypeDef != NULL)
-					{
-						mResolvePassData->HandleTypeReference(attrib->mAttributeTypeRef, attrTypeDef);
+					mResolvePassData->HandleTypeReference(attrib->mAttributeTypeRef, attrTypeDef);
 
-						attrTypeDef->PopulateMemberSets();
-						for (auto argExpr : attrib->mArguments)
+					attrTypeDef->PopulateMemberSets();
+					for (auto argExpr : attrib->mArguments)
+					{
+						if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(argExpr))
 						{
-							if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(argExpr))
+							auto propName = assignExpr->mLeft->ToString();
+							BfMemberSetEntry* propDefEntry;
+							if (attrTypeDef->mPropertySet.TryGetWith(propName, &propDefEntry))
 							{
-								auto propName = assignExpr->mLeft->ToString();
-								BfMemberSetEntry* propDefEntry;
-								if (attrTypeDef->mPropertySet.TryGetWith(propName, &propDefEntry))
-								{
-									mResolvePassData->HandlePropertyReference(assignExpr->mLeft, attrTypeDef, (BfPropertyDef*)propDefEntry->mMemberDef);
-								}
-								else if (attrTypeDef->mFieldSet.TryGetWith(propName, &propDefEntry))
-								{
-									mResolvePassData->HandleFieldReference(assignExpr->mLeft, attrTypeDef, (BfFieldDef*)propDefEntry->mMemberDef);
-								}
+								mResolvePassData->HandlePropertyReference(assignExpr->mLeft, attrTypeDef, (BfPropertyDef*)propDefEntry->mMemberDef);
+							}
+							else if (attrTypeDef->mFieldSet.TryGetWith(propName, &propDefEntry))
+							{
+								mResolvePassData->HandleFieldReference(assignExpr->mLeft, attrTypeDef, (BfFieldDef*)propDefEntry->mMemberDef);
 							}
 						}
 					}
-				}
+				}				
 			}
 
 			attrib = attrib->mNextAttribute;

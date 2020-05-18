@@ -9791,17 +9791,11 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			continue;
 		}
 
-		String attrName = attributesDirective->mAttributeTypeRef->ToString();
-		BfType* attrType = NULL;
-		BfAtomComposite nameComposite;
-		BfTypeDef* attrTypeDef = NULL;
-		if (mSystem->ParseAtomComposite(attrName + "Attribute", nameComposite))
-		{
-			BfTypeLookupError error;
-			error.mRefNode = attributesDirective->mAttributeTypeRef;
-			attrTypeDef = FindTypeDefRaw(nameComposite, 0, mCurTypeInstance, GetActiveTypeDef(NULL, true), &error);			
-		}
-				
+		BfType* attrType = ResolveTypeRef(attributesDirective->mAttributeTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_Attribute);
+		BfTypeDef* attrTypeDef = NULL;										
+		if ((attrType != NULL) && (attrType->IsTypeInstance()))
+			attrTypeDef = attrType->ToTypeInstance()->mTypeDef;
+
 		if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
 		{
 			mCompiler->mResolvePassData->mAutoComplete->CheckAttributeTypeRef(attributesDirective->mAttributeTypeRef);
@@ -9809,26 +9803,17 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 				mCompiler->mResolvePassData->HandleTypeReference(attributesDirective->mAttributeTypeRef, attrTypeDef);
 		}
 
-		if (attrTypeDef == NULL)
-		{
-			TypeRefNotFound(attributesDirective->mAttributeTypeRef, "Attribute");
-			continue;
-		}
-
 		bool isBypassedAttr = false;
 
 		if (attrTypeDef != NULL)
-		{
-			attrType = mContext->mUnreifiedModule->ResolveTypeDef(attrTypeDef, BfPopulateType_Identity);
-						
+		{						
 			// 'Object' has some dependencies on some attributes, but those attributes are classes so we have a circular dependency issue
 			//  We solve it by having a 'bypass' for known attributes that Object depends on
 			if ((attributesDirective->mArguments.empty()) && (autoComplete == NULL) && (attrType != NULL) && (attrType->IsTypeInstance()))
 			{
-				if (attrTypeDef == mCompiler->mCReprAttributeTypeDef)
-				{
-					BfTypeInstance* attrTypeInst = attrType->ToTypeInstance();
-
+				//if (attrTypeDef == mCompiler->mCReprAttributeTypeDef)
+				if (attrType->IsInstanceOf(mCompiler->mCReprAttributeTypeDef))
+				{										
 					for (auto methodDef : attrTypeDef->mMethods)
 					{
 						if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mProtection == BfProtection_Public))
@@ -9859,17 +9844,6 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 				mContext->mUnreifiedModule->ResolveTypeResult(attributesDirective->mAttributeTypeRef, attrType, BfPopulateType_BaseType, (BfResolveTypeRefFlags)0);
 			}
 		}		
-		
-		// Don't allow this
-		/*else if (mContext->mCurTypeState != NULL)
-		{
-			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurAttributeTypeRef, attributesDirective->mAttributeTypeRef);
-			attrType = mContext->mUnreifiedModule->ResolveTypeRef(attributesDirective->mAttributeTypeRef, BfPopulateType_DataAndMethods);
-		}
-		else
-		{
-			attrType = mContext->mUnreifiedModule->ResolveTypeRef(attributesDirective->mAttributeTypeRef);
-		}*/
 		
 		BfTypeInstance* attrTypeInst = NULL;
 		if (attrType == NULL)

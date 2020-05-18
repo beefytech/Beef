@@ -5062,8 +5062,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	}
 
 	// Temporarily disable so we don't capture calls in params	
-	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
-	SetAndRestoreValue<bool> prevAllowVariableDeclarations(mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations, false); // Don't allow variable declarations in arguments
+	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);	
+	SetAndRestoreValue<bool> prevAllowVariableDeclarations;
+	if (mModule->mCurMethodState != NULL)
+		prevAllowVariableDeclarations.Init(mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations, false);	
 
 	BfMethodInstance* methodInstance = moduleMethodInstance.mMethodInstance;	
 

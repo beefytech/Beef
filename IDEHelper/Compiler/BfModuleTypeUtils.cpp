@@ -6398,7 +6398,7 @@ BfTypeDef* BfModule::FindTypeDef(const StringImpl& typeName, int numGenericArgs,
 	return result;
 }
 
-BfTypeDef* BfModule::FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error, int numGenericParams)
+BfTypeDef* BfModule::FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeInstanceOverride, BfTypeLookupError* error, int numGenericParams, BfResolveTypeRefFlags resolveFlags)
 {
 	BP_ZONE("BfModule::FindTypeDef_5");
 
@@ -6442,10 +6442,20 @@ BfTypeDef* BfModule::FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeI
 	}	
 
 	BfSizedAtomComposite findName;
-	if (!mSystem->ParseAtomComposite(findNameStr, findName))
+	if ((resolveFlags & BfResolveTypeRefFlag_Attribute) != 0)
 	{
-		return NULL;
+		String attributeName;
+		attributeName += findNameStr;
+		attributeName += "Attribute";
+		if (!mSystem->ParseAtomComposite(attributeName, findName))		
+			return NULL;		
 	}
+	else
+	{
+		if (!mSystem->ParseAtomComposite(findNameStr, findName))		
+			return NULL;		
+	}
+		
 	
 #ifdef BF_AST_HAS_PARENT_MEMBER
 	if (auto parentGenericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef->mParent))
@@ -6972,7 +6982,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	{
 		BfTypeLookupError error;
 		error.mRefNode = typeRef;
-		typeDef = FindTypeDef(typeRef, contextTypeInstance, &error);
+		typeDef = FindTypeDef(typeRef, contextTypeInstance, &error, 0, resolveFlags);
 
 		if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
 		{
