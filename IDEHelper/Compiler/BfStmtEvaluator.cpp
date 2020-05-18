@@ -637,7 +637,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 						mBfIRBuilder->AddBlock(ddSize1Block);
 						mBfIRBuilder->SetInsertPoint(ddSize1Block);
 						auto intPtrVal = mBfIRBuilder->CreateBitCast(ptrValue, mBfIRBuilder->MapType(intPtrType));
-						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, 0xDDDDDDDDDDDDDDDDULL), intPtrVal);
+						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, (uint64)0xDDDDDDDDDDDDDDDDULL), intPtrVal);
 						mBfIRBuilder->CreateBr(ddDoneBlock);
 
 						mBfIRBuilder->AddBlock(ddDoneBlock);
@@ -670,7 +670,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 						mBfIRBuilder->AddBlock(ddSizePtrBlock);
 						mBfIRBuilder->SetInsertPoint(ddSizePtrBlock);
 						auto intptrPtrVal = mBfIRBuilder->CreateBitCast(ptrValue, mBfIRBuilder->MapType(intptrPtrType));
-						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0xDDDDDDDDDDDDDDDDULL), intptrPtrVal);
+						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)0xDDDDDDDDDDDDDDDDULL), intptrPtrVal);
 						mBfIRBuilder->CreateBr(ddDoneBlock);
 
 						mBfIRBuilder->AddBlock(ddCheck1Block);
@@ -684,7 +684,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 							mBfIRBuilder->SetInsertPoint(ddSize1Block);
 						}
 						auto intPtrVal = mBfIRBuilder->CreateBitCast(ptrValue, mBfIRBuilder->MapType(intPtrType));
-						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, 0xDDDDDDDDDDDDDDDDULL), intPtrVal);
+						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, (uint64)0xDDDDDDDDDDDDDDDDULL), intPtrVal);
 						mBfIRBuilder->CreateBr(ddDoneBlock);
 
 						mBfIRBuilder->AddBlock(ddDoneBlock);
@@ -703,7 +703,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 				else
 				{
 					auto intPtrVal = mBfIRBuilder->CreateBitCast(ptrValue, mBfIRBuilder->MapType(intPtrType));
-					mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, 0xDDDDDDDDDDDDDDDDULL), intPtrVal);
+					mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, (uint64)0xDDDDDDDDDDDDDDDDULL), intPtrVal);
 				}
 			}
 			return;
