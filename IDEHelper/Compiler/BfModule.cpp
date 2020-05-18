@@ -1809,7 +1809,7 @@ BfIRValue BfModule::CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime,
 	return allocaInst;
 }
 
-void BfModule::AddStackAlloc(BfTypedValue val, BfAstNode* refNode, BfScopeData* scopeData, bool condAlloca, bool mayEscape)
+void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scopeData, bool condAlloca, bool mayEscape)
 {
 	//This was removed because we want the alloc to be added to the __deferred list if it's actually a "stack"
 	// 'stack' in a head scopeData is really the same as 'scopeData', so use the simpler scopeData handling	
@@ -1869,41 +1869,84 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfAstNode* refNode, BfScopeData* 
 	//TODO: In the future we could be smarter about statically determining that our value hasn't escaped and eliding this		
 	if (mayEscape)
 	{
-		// Is this worth it?
-// 		if ((!IsOptimized()) && (val.mType->IsComposite()) && (!val.mType->IsValuelessType()) && (!mBfIRBuilder->mIgnoreWrites) && (!mCompiler->mIsResolveOnly))
-// 		{			
-// 			auto nullPtrType = GetPrimitiveType(BfTypeCode_NullPtr);
-// 			bool isDyn = mCurMethodState->mCurScope->IsDyn(scopeData);
-// 			if (!isDyn)
-// 			{
-// 				int clearSize = val.mType->mSize;				
-// 				BfModuleMethodInstance dtorMethodInstance = GetInternalMethod("MemSet");
-// 				BF_ASSERT(dtorMethodInstance.mMethodInstance != NULL);
-// 				SizedArray<BfIRValue, 1> llvmArgs;
-// 				llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
-// 				llvmArgs.push_back(GetConstValue8(0xDD));
-// 				llvmArgs.push_back(GetConstValue(clearSize));
-// 				llvmArgs.push_back(GetConstValue32(val.mType->mAlign));
-// 				llvmArgs.push_back(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0));
-// 				AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
-// 			}
-// 			else
-// 			{
-// 				const char* funcName = "SetDeleted1";
-// 				if (val.mType->mSize >= 16)
-// 					funcName = "SetDeleted16";
-// 				else if (val.mType->mSize >= 8)
-// 					funcName = "SetDeleted8";
-// 				else if (val.mType->mSize >= 4)
-// 					funcName = "SetDeleted4";
-// 
-// 				BfModuleMethodInstance dtorMethodInstance = GetInternalMethod(funcName);
-// 				BF_ASSERT(dtorMethodInstance.mMethodInstance != NULL);
-// 				SizedArray<BfIRValue, 1> llvmArgs;
-// 				llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
-// 				AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
-// 			}
-// 		}
+
+		if ((!IsOptimized()) && (!val.mType->IsValuelessType()) && (!mBfIRBuilder->mIgnoreWrites) && (!mCompiler->mIsResolveOnly))
+		{			
+			auto nullPtrType = GetPrimitiveType(BfTypeCode_NullPtr);
+			bool isDyn = mCurMethodState->mCurScope->IsDyn(scopeData);
+			if (!isDyn)
+			{								
+				const char* methodName = arraySize ? "SetDeletedArray" : "SetDeleted";
+				BfModuleMethodInstance dtorMethodInstance = GetInternalMethod(methodName);
+				BF_ASSERT(dtorMethodInstance.mMethodInstance != NULL);
+				if (!dtorMethodInstance.mMethodInstance)
+				{
+					Fail(StrFormat("Unable to find %s", methodName));
+				}
+				else
+				{
+					SizedArray<BfIRValue, 1> llvmArgs;
+					llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
+					llvmArgs.push_back(GetConstValue(val.mType->mSize));
+					llvmArgs.push_back(GetConstValue32(val.mType->mAlign));
+					if (arraySize)
+						llvmArgs.push_back(arraySize);
+					AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
+				}
+			}			
+			else
+			{
+				if ((arraySize) && (!arraySize.IsConst()) && (val.mType->mSize < mSystem->mPtrSize))
+				{
+					BfIRValue clearSize = arraySize;
+					if (val.mType->GetStride() > 1)
+						clearSize = mBfIRBuilder->CreateMul(clearSize, GetConstValue(val.mType->GetStride()));					
+
+					const char* methodName = "SetDeletedX";
+					BfModuleMethodInstance dtorMethodInstance = GetInternalMethod(methodName);
+					BF_ASSERT(dtorMethodInstance);
+					if (!dtorMethodInstance)
+					{
+						Fail(StrFormat("Unable to find %s", methodName));
+					}
+					else
+					{
+						SizedArray<BfIRValue, 1> llvmArgs;
+						llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
+						llvmArgs.push_back(clearSize);
+						AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
+					}
+				}
+				else
+				{
+					intptr clearSize = val.mType->mSize;
+					auto constant = mBfIRBuilder->GetConstant(arraySize);
+					if (constant != NULL)
+						clearSize = (intptr)(clearSize * constant->mInt64);
+
+					const char* funcName = "SetDeleted1";
+					if (clearSize >= 16)
+						funcName = "SetDeleted16";
+					else if (clearSize >= 8)
+						funcName = "SetDeleted8";
+					else if (clearSize >= 4)
+						funcName = "SetDeleted4";
+
+					BfModuleMethodInstance dtorMethodInstance = GetInternalMethod(funcName);
+					BF_ASSERT(dtorMethodInstance.mMethodInstance != NULL);
+					if (!dtorMethodInstance)
+					{
+						Fail(StrFormat("Unable to find %s", funcName));
+					}
+					else
+					{
+						SizedArray<BfIRValue, 1> llvmArgs;
+						llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
+						AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -3903,6 +3946,8 @@ void BfModule::EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRB
 void BfModule::CreateFakeCallerMethod(const String& funcName)
 {	
 	if (mCurMethodInstance->mHasFailed)
+		return;
+	if (mCurMethodInstance->mMethodDef->mIsSkipCall)
 		return;
 
 	BF_ASSERT(mCurMethodInstance->mIRFunction);
@@ -7809,7 +7854,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 							mBfIRBuilder->SetInsertPoint(clearBlock);
 						}
 
-						AddStackAlloc(typedVal, NULL, scopeData, false, true);
+						AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
 
 						if (!isConstSize)
 						{
@@ -7839,7 +7884,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					auto loadedPtr = _CreateDynAlloc(sizeValue, arrayType->mAlign);
 					auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(loadedPtr, mBfIRBuilder->MapType(arrayType)), arrayType);
 					if (!noDtorCall)
-						AddStackAlloc(typedVal, NULL, scopeData, false, true);
+						AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
 					InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
 					return typedVal.mValue;
 				}
@@ -7878,7 +7923,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					if (!isDynAlloc)
 						mBfIRBuilder->SetInsertPoint(prevBlock);
 					if (!noDtorCall)
-						AddStackAlloc(typedVal, NULL, scopeData, false, true);
+						AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
 					InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
 					return typedVal.mValue;
 				}
@@ -7898,7 +7943,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				auto loadedPtr = _CreateDynAlloc(sizeValue, typeInstance->mAlign);
 				auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(loadedPtr, mBfIRBuilder->MapTypeInstPtr(typeInstance)), typeInstance);				
 				if (!noDtorCall)
-					AddStackAlloc(typedVal, NULL, scopeData, mCurMethodState->mInConditionalBlock, true);
+					AddStackAlloc(typedVal, arraySize, NULL, scopeData, mCurMethodState->mInConditionalBlock, true);
 				InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
 				return typedVal.mValue;
 			}
@@ -7965,7 +8010,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					bool doCondAlloca = false;
 					if (!IsTargetingBeefBackend())
 						doCondAlloca = !wasDynAlloc && isDynAlloc && mCurMethodState->mInConditionalBlock;
-					AddStackAlloc(typedVal, NULL, scopeData, doCondAlloca, true);
+					AddStackAlloc(typedVal, arraySize, NULL, scopeData, doCondAlloca, true);
 				}
 				InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);				
 				
@@ -8009,7 +8054,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				}
 			}
 			if (!noDtorCall)
-				AddStackAlloc(typedVal, NULL, scopeData, false, true);
+				AddStackAlloc(typedVal, BfIRValue(), NULL, scopeData, false, true);
 			if (typeInstance != NULL)
 			{
 				InitTypeInst(typedVal, scopeData, zeroMemory, GetConstValue(typeInstance->mInstSize));

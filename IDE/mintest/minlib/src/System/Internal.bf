@@ -118,23 +118,20 @@ namespace System
 #endif
 		}
 
-		static void SetDeleted1(void* dest)
-		{
-			*((uint8*)dest) = 0xDD;
-		}
-		static void SetDeleted4(void* dest)
-		{
-			*((uint32*)dest) = 0xDDDDDDDD;
-		}
-		static void SetDeleted8(void* dest)
-		{
-			*((uint64*)dest) = 0xDDDDDDDDDDDDDDDDUL;
-		}
-		static void SetDeleted16(void* dest)
-		{
-			*((uint64*)dest) = 0xDDDDDDDDDDDDDDDDUL;
-			*((uint64*)dest + 1) = 0xDDDDDDDDDDDDDDDDUL;
-		}
+		[Error("Cannot be called directly"), SkipCall]
+		static void SetDeleted1(void* dest);		
+		[Error("Cannot be called directly"), SkipCall]
+		static void SetDeleted4(void* dest);		
+		[Error("Cannot be called directly"), SkipCall]
+		static void SetDeleted8(void* dest);		
+		[Error("Cannot be called directly"), SkipCall]
+		static void SetDeleted16(void* dest);		
+		[Error("Cannot be called directly"), SkipCall]
+		static extern void SetDeletedX(void* dest, int size);		
+		[Error("Cannot be called directly"), SkipCall]
+		static extern void SetDeleted(void* dest, int size, int32 align, int arrayCount);
+		[Error("Cannot be called directly"), SkipCall]
+		static extern void SetDeletedArray(void* dest, int size, int32 align, int arrayCount);
 
 		public static int MemCmp(void* memA, void* memB, int length)
 		{
