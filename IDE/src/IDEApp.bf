@@ -6165,7 +6165,6 @@ namespace IDE
                     }
                 });
 
-            Debug.Assert(tabbedView != null);
             if (tabbedView == null)
                 return;
 
@@ -8462,6 +8461,7 @@ namespace IDE
 				{
 					if (dep.mProjectName == project.mProjectName)
 					{
+						checkProject.SetChanged();
 						@dep.Remove();
 						delete dep;
 					}

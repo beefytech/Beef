@@ -2253,39 +2253,6 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr
 	*inOutIntRegCount = (int)(curPtr - outIntRegs);	
 }
 
-struct BfpThreadStackInfo
-{
-	intptr mStackBase;
-	intptr mStackLimit;
-};
-static __declspec(thread) BfpThreadStackInfo gThreadStackInfo;
-
-BFP_EXPORT void BFP_CALLTYPE BfpThread_GetStackInfo(BfpThread* thread, intptr* outStackBase, int* outStackLimit, BfpThreadResult* outResult)
-{	
-	if (gThreadStackInfo.mStackBase == 0)
-	{
-		auto teb = (NT_TIB*)NtCurrentTeb();
-
-		MEMORY_BASIC_INFORMATION stackInfo = { 0 };
-		// We subtract one page for our request. VirtualQuery rounds UP to the next page.
-		// Unfortunately, the stack grows down. If we're on the first page (last page in the
-		// VirtualAlloc), we'll be moved to the next page, which is off the stack!  Note this
-		// doesn't work right for IA64 due to bigger pages.
-		void* currentAddr = (void*)((intptr_t)&stackInfo - 4096);
-
-		// Query for the current stack allocation information.
-		VirtualQuery(currentAddr, &stackInfo, sizeof(MEMORY_BASIC_INFORMATION));
-
-		gThreadStackInfo.mStackBase = (uintptr_t)teb->StackBase;
-		gThreadStackInfo.mStackLimit = (uintptr_t)stackInfo.AllocationBase;
-	}
-
-	*outStackBase = (intptr)gThreadStackInfo.mStackBase;
-	*outStackLimit = (int)(gThreadStackInfo.mStackBase - gThreadStackInfo.mStackLimit);
-	OUTRESULT(BfpThreadResult_Ok);
-	return;
-}
-
 struct BfpCritSect																																																														
 {
 	CRITICAL_SECTION mCritSect;
@@ -2299,6 +2266,62 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Sleep(int sleepMS)
 BFP_EXPORT bool BFP_CALLTYPE BfpThread_Yield()
 {
 	return ::SwitchToThread();
+}
+
+///
+
+struct BfpThreadInfo
+{
+	intptr mStackBase;
+	intptr mStackLimit;
+	NT_TIB* mTeb;
+};
+
+BFP_EXPORT BfpThreadInfo* BFP_CALLTYPE BfpThreadInfo_Create()
+{
+	BfpThreadInfo* threadInfo = new BfpThreadInfo();
+	threadInfo->mStackBase = 0;
+	threadInfo->mStackLimit = 0;
+	threadInfo->mTeb = (NT_TIB*)NtCurrentTeb();
+	return threadInfo;
+}
+
+BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_Release(BfpThreadInfo* threadInfo)
+{
+	delete threadInfo;
+}
+
+static __declspec(thread) BfpThreadInfo gThreadStackInfo;
+
+BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_GetStackInfo(BfpThreadInfo* threadInfo, intptr* outStackBase, int* outStackLimit, BfpThreadInfoFlags flags, BfpThreadResult* outResult)
+{
+	if (threadInfo == NULL)
+	{
+		threadInfo = &gThreadStackInfo;
+		if (threadInfo->mTeb == NULL)
+			threadInfo->mTeb = (NT_TIB*)NtCurrentTeb();
+	}
+
+	if ((threadInfo->mStackBase == 0) || ((flags & BfpThreadInfoFlags_NoCache) != 0))
+	{		
+		MEMORY_BASIC_INFORMATION stackInfo = { 0 };
+		// We subtract one page for our request. VirtualQuery rounds UP to the next page.
+		// Unfortunately, the stack grows down. If we're on the first page (last page in the
+		// VirtualAlloc), we'll be moved to the next page, which is off the stack!  Note this
+		// doesn't work right for IA64 due to bigger pages.
+		void* currentAddr = (void*)((intptr_t)&stackInfo - 4096);
+
+		// Query for the current stack allocation information.
+		VirtualQuery(currentAddr, &stackInfo, sizeof(MEMORY_BASIC_INFORMATION));
+
+		threadInfo->mStackBase = (uintptr_t)threadInfo->mTeb->StackBase;
+		threadInfo->mStackLimit = (uintptr_t)stackInfo.AllocationBase;
+	}
+
+	*outStackBase = (intptr)threadInfo->mStackBase;
+	*outStackLimit = (int)(threadInfo->mStackBase - threadInfo->mStackLimit);
+	OUTRESULT(BfpThreadResult_Ok);
+	return;
 }
 
 ///

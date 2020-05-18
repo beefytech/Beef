@@ -83,7 +83,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mMinHeight = 128;	
 
 	WNDCLASSW wc;
-	wc.style = CS_DBLCLKS;
+	wc.style = 0;
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
 	wc.hbrBackground = NULL;
@@ -567,51 +567,50 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				
 				bool checkNonTransparentMousePosition = mNonExclusiveMouseCapture;
 
+				auto _BtnDown = [&](int btn)
+				{
+					DWORD tickNow = BFTickCount();
+
+					SetCapture(hWnd);
+					mIsMouseDown[btn] = true;
+					BFCoord mouseCoords = { x, y };
+					if ((mouseCoords.mX != mMouseDownCoords[btn].mX) || (mouseCoords.mY != mMouseDownCoords[btn].mY) || 
+						(tickNow - mMouseDownTicks[btn] > ::GetDoubleClickTime()))
+						mMouseClickCount[btn] = 0;
+					mMouseDownCoords[btn] = mouseCoords;
+					mMouseClickCount[btn]++;
+					mMouseDownTicks[btn] = tickNow;
+					mMouseDownFunc(this, x, y, btn, mMouseClickCount[btn]);
+				};
+
+				auto _BtnUp = [&](int btn)
+				{
+					releaseCapture = true;
+					mIsMouseDown[btn] = false;
+					mMouseUpFunc(this, x, y, btn);
+				};
+
 				switch (uMsg)
 				{
 				case WM_LBUTTONDOWN:
 					//OutputDebugStrF("WM_LBUTTONDOWN Capture HWnd: %X\n", hWnd);
-					SetCapture(hWnd);
-					mIsMouseDown[0] = true;
-					mMouseDownFunc(this, x, y, 0, 1);
+					_BtnDown(0);
 					break;
 				case WM_RBUTTONDOWN:
 					//OutputDebugStrF("WM_RBUTTONDOWN Capture HWnd: %X\n", hWnd);
-					SetCapture(hWnd);
-					mIsMouseDown[1] = true;
-					mMouseDownFunc(this, x, y, 1, 1);						
+					_BtnDown(1);
 					break;
 				case WM_MBUTTONDOWN:
-					SetCapture(hWnd);
-					mIsMouseDown[2] = true;
-					mMouseDownFunc(this, x, y, 2, 1);						
-					break;
-				case WM_LBUTTONDBLCLK:
-					SetCapture(hWnd);
-					mMouseDownFunc(this, x, y, 0, 2);
-					break;
-				case WM_RBUTTONDBLCLK:
-					SetCapture(hWnd);
-					mMouseDownFunc(this, x, y, 1, 2);
-					break;
-				case WM_MBUTTONDBLCLK:
-					SetCapture(hWnd);
-					mMouseDownFunc(this, x, y, 2, 2);
-					break;
+					_BtnDown(2);
+					break;				
 				case WM_LBUTTONUP:
-					releaseCapture = true;					
-					mIsMouseDown[0] = false;
-					mMouseUpFunc(this, x, y, 0);
+					_BtnUp(0);					
 					break;
 				case WM_RBUTTONUP:							
-					releaseCapture = true;
-					mIsMouseDown[1] = false;
-					mMouseUpFunc(this, x, y, 1);
+					_BtnUp(1);
 					break;
 				case WM_MBUTTONUP:							
-					releaseCapture = true;
-					mIsMouseDown[2] = false;
-					mMouseUpFunc(this, x, y, 2);
+					_BtnUp(2);
 					break;			
 				case WM_MOUSEWHEEL:
 					{

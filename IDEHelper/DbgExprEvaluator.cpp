@@ -789,6 +789,7 @@ DbgTypedValue DbgExprEvaluator::GetString(const StringImpl& str)
 		dbgValue.mType = charPtrType;
 		dbgValue.mLocalPtr = resultPtr->c_str();
 		dbgValue.mIsLiteral = true;
+		dbgValue.mDataLen = resultPtr->mLength;
 	}	
 
 	return dbgValue;

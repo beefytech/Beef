@@ -170,6 +170,7 @@ public:
 
 		Beefy::CritSect mCritSect;
 		BfpThread* mThreadHandle;
+		BfpThreadInfo* mThreadInfo;
 		BfpThreadId mThreadId;
 		void* mTEB;
 		intptr mStackStart;
@@ -180,6 +181,7 @@ public:
 		{
 			mThreadId = 0;
 			mThreadHandle = NULL;
+			mThreadInfo = NULL;
 			mTEB = NULL;
 			mStackStart = NULL;
 			mRunning = true;
@@ -188,6 +190,7 @@ public:
 		~ThreadInfo();
 
 		bool WantsSuspend();
+		void CalcStackStart();
 	};
 
 	struct RawLeakInfo

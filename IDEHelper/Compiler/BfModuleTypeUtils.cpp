@@ -6002,7 +6002,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		
 		if (autoComplete != NULL)
 		{
-			isGetDefinition = autoComplete->mIsGetDefinition;
+			isGetDefinition = autoComplete->mIsGetDefinition || (autoComplete->mResolveType == BfResolveType_GetResultString);
 		}
 
 		if (((mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Type) || (isGetDefinition)) &&
@@ -6021,7 +6021,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 					if (mCompiler->IsAutocomplete())
 					{
 						BfAutoComplete* autoComplete = mCompiler->mResolvePassData->mAutoComplete;
-						if ((autoComplete->mIsGetDefinition) && (autoComplete->IsAutocompleteNode(elementTypeRef)))
+						if ((isGetDefinition) && (autoComplete->IsAutocompleteNode(elementTypeRef)))
 						{
 							BfAstNode* baseNode = elementTypeRef;
 							while (true)
@@ -6060,6 +6060,12 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 								{
 									autoComplete->mDefType = elementTypeInst->mTypeDef;
 									autoComplete->SetDefinitionLocation(elementTypeInst->mTypeDef->mTypeDeclaration->mNameNode);
+								}
+
+								if ((autoComplete->mResolveType == BfResolveType_GetResultString) && (resolvedTypeRef != NULL))
+								{
+									autoComplete->mResultString = ":";
+									autoComplete->mResultString += TypeToString(resolvedTypeRef);
 								}
 							}
 						}

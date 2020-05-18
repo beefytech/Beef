@@ -672,8 +672,11 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 			if (propDef->mFieldDeclaration != NULL)
 				documentation = propDef->mFieldDeclaration->mDocumentation;
 			AutoCompleteEntry entry("property", propDef->mName, documentation);						
-			if ((AddEntry(entry, filter)) && (mIsGetDefinition) && (propDef->mFieldDeclaration != NULL))
-				SetDefinitionLocation(propDef->mFieldDeclaration->mNameNode);			
+			if (AddEntry(entry, filter)) 
+			{
+				if ((mIsGetDefinition) && (propDef->mFieldDeclaration != NULL))
+					SetDefinitionLocation(propDef->mFieldDeclaration->mNameNode);				
+			}
 		}
 	}
 	
@@ -2383,6 +2386,24 @@ void BfAutoComplete::CheckLocalRef(BfIdentifierNode* identifierNode, BfLocalVari
 			}			
 		}
 	}	
+	else if (mResolveType == BfResolveType_GetResultString)
+	{
+		if (IsAutocompleteNode(identifierNode))
+		{						
+			String constStr;
+			if (varDecl->mConstValue)			
+				constStr = ConstantToString(mModule->mBfIRBuilder, varDecl->mConstValue);							
+			if (!constStr.IsEmpty())
+			{
+				mResultString = constStr;
+			}
+			else
+			{
+				mResultString = ":";
+				mResultString += mModule->TypeToString(varDecl->mResolvedType);
+			}
+		}
+	}	
 }
 
 void BfAutoComplete::CheckFieldRef(BfIdentifierNode* identifierNode, BfFieldInstance* fieldInst)
@@ -2940,6 +2961,64 @@ String BfAutoComplete::FixitGetLocation(BfParserData* parser, int insertPos)
 	int lineChar = 0;
 	parser->GetLineCharAtIdx(insertPos, line, lineChar);
 	return StrFormat("%s|%d:%d", parser->mFileName.c_str(), line, lineChar);
+}
+
+String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfIRValue id)
+{
+	char str[32];
+	
+	int stringId = mModule->GetStringPoolIdx(id, constHolder);
+	if (stringId != -1)
+	{
+		BfStringPoolEntry* entry;
+		if (mModule->mContext->mStringObjectIdMap.TryGetValue(stringId, &entry))
+		{
+			String result = "\"";			
+			result += SlashString(entry->mString, true, true, true);
+			result += "\"";
+			return result;
+		}		
+	}
+		
+	auto constant = constHolder->GetConstant(id);
+	switch (constant->mTypeCode)
+	{
+	case BfTypeCode_UInt8:
+		return StrFormat(":(uint8) %llu", constant->mUInt64);		
+	case BfTypeCode_UInt16:
+		return StrFormat(":(uint16) %llu", constant->mUInt64);		
+	case BfTypeCode_UInt32:
+		return StrFormat(":(uint32) %llu", constant->mUInt64);		
+	case BfTypeCode_UInt64:
+		return StrFormat(":(uint64) %llu", constant->mUInt64);		
+
+	case BfTypeCode_Int8:
+		return StrFormat(":(int8) %lld", constant->mInt64);		
+	case BfTypeCode_Int16:
+		return StrFormat(":(int16) %lld", constant->mInt64);
+	case BfTypeCode_Int32:
+		return StrFormat(":(int32) %lld", constant->mInt64);		
+	case BfTypeCode_Int64:
+		return StrFormat(":(int64) %lld", constant->mInt64);		
+
+	case BfTypeCode_Single:		
+		{			
+			ExactMinimalFloatToStr((float)constant->mDouble, str);
+			String result;
+			result += str;			
+			result += "f";
+			return result;
+		}		
+	case BfTypeCode_Double:
+		{
+			ExactMinimalDoubleToStr(constant->mDouble, str);
+			String result;
+			result += str;			
+			return result;
+		}
+	}
+
+	return "";
 }
 
 void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic)

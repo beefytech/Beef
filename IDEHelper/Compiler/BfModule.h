@@ -1468,7 +1468,7 @@ public:
 	void NewScopeState(bool createLexicalBlock = true, bool flushValueScope = true); // returns prev scope data
 	BfIRValue CreateAlloca(BfType* type, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime = true, const char* name = NULL);
-	void AddStackAlloc(BfTypedValue val, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false);
+	void AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false);
 	void RestoreScoreState_LocalVariables();
 	void RestoreScopeState();	
 	void MarkDynStack(BfScopeData* scope);
@@ -1490,7 +1490,7 @@ public:
 	bool AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfScopeData* scope);
 	void AddDeferredBlock(BfBlock* block, BfScopeData* scope, Array<BfDeferredCapture>* captures = NULL);
 	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false);	
-	void EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry);
+	void EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool moveBlocks);
 	void EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);	
 	bool CanCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags = BfCastFlags_None);
 	bool AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNeedsMemberCasting);

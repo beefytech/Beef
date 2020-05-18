@@ -3839,6 +3839,12 @@ void BfCompiler::ProcessAutocompleteTempType()
 			autoComplete->mDefType = actualTypeDef;
 			autoComplete->mInsertStartIdx = nameNode->GetSrcStart();
 			autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();
+
+			if (autoComplete->mResolveType == BfResolveType_GetResultString)
+			{
+				autoComplete->mResultString = ":";
+				autoComplete->mResultString += module->TypeToString(typeInst);
+			}
 		}		
 	}	
 	autoComplete->CheckInterfaceFixit(typeInst, tempTypeDef->mTypeDeclaration->mNameNode);
@@ -4275,31 +4281,34 @@ void BfCompiler::GetSymbolReferences()
 
 		while (attrib != NULL)
 		{
-			String attrName = attrib->mAttributeTypeRef->ToString();
-			BfType* attrType = NULL;
-
-			BfAtomComposite nameComposite;
-			if (mSystem->ParseAtomComposite(attrName + "Attribute", nameComposite))
+			if (attrib->mAttributeTypeRef != NULL)
 			{
-				BfTypeDef* attrTypeDef = module->FindTypeDefRaw(nameComposite, 0, replaceTypeInst, declaringType, NULL);
-				if (attrTypeDef != NULL)
-				{
-					mResolvePassData->HandleTypeReference(attrib->mAttributeTypeRef, attrTypeDef);
+				String attrName = attrib->mAttributeTypeRef->ToString();
+				BfType* attrType = NULL;
 
-					attrTypeDef->PopulateMemberSets();
-					for (auto argExpr : attrib->mArguments)
+				BfAtomComposite nameComposite;
+				if (mSystem->ParseAtomComposite(attrName + "Attribute", nameComposite))
+				{
+					BfTypeDef* attrTypeDef = module->FindTypeDefRaw(nameComposite, 0, replaceTypeInst, declaringType, NULL);
+					if (attrTypeDef != NULL)
 					{
-						if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(argExpr))
+						mResolvePassData->HandleTypeReference(attrib->mAttributeTypeRef, attrTypeDef);
+
+						attrTypeDef->PopulateMemberSets();
+						for (auto argExpr : attrib->mArguments)
 						{
-							auto propName = assignExpr->mLeft->ToString();
-							BfMemberSetEntry* propDefEntry;
-							if (attrTypeDef->mPropertySet.TryGetWith(propName, &propDefEntry))
+							if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(argExpr))
 							{
-								mResolvePassData->HandlePropertyReference(assignExpr->mLeft, attrTypeDef, (BfPropertyDef*)propDefEntry->mMemberDef);
-							}
-							else if (attrTypeDef->mFieldSet.TryGetWith(propName, &propDefEntry))
-							{
-								mResolvePassData->HandleFieldReference(assignExpr->mLeft, attrTypeDef, (BfFieldDef*)propDefEntry->mMemberDef);
+								auto propName = assignExpr->mLeft->ToString();
+								BfMemberSetEntry* propDefEntry;
+								if (attrTypeDef->mPropertySet.TryGetWith(propName, &propDefEntry))
+								{
+									mResolvePassData->HandlePropertyReference(assignExpr->mLeft, attrTypeDef, (BfPropertyDef*)propDefEntry->mMemberDef);
+								}
+								else if (attrTypeDef->mFieldSet.TryGetWith(propName, &propDefEntry))
+								{
+									mResolvePassData->HandleFieldReference(assignExpr->mLeft, attrTypeDef, (BfFieldDef*)propDefEntry->mMemberDef);
+								}
 							}
 						}
 					}

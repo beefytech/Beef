@@ -1,8 +1,31 @@
 using System;
 namespace LibA
 {
+	interface IVal
+	{
+		int Val
+		{
+			get; set;
+		}
+	}
+
 	class LibA0
 	{
+		public static int GetVal<T>(T val) where T : IVal
+		{
+			return val.Val;
+		}
+
+		public static void Dispose<T>(mut T val) where T : IDisposable
+		{
+			val.Dispose();
+		}
+
+		public static void Alloc<T>() where T : new, delete
+		{
+			let t = new T();
+			delete t;
+		}
 	}
 }
 

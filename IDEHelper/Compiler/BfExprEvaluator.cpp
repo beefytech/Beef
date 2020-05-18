@@ -3414,7 +3414,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				auto fieldInstance = &curCheckType->mFieldInstances[field->mIdx];
 				
 				bool isResolvingFields = curCheckType->mResolvingConstField || curCheckType->mResolvingVarField;
-				
+								
 				if (field->mIsVolatile)
 					mIsVolatileReference = true;
 
@@ -3473,7 +3473,31 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				auto autoComplete = GetAutoComplete();
 				if (autoComplete != NULL)
+				{
 					autoComplete->CheckFieldRef(BfNodeDynCast<BfIdentifierNode>(targetSrc), fieldInstance);
+					if ((autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)))
+					{						
+						autoComplete->mResultString = ":";
+						autoComplete->mResultString += mModule->TypeToString(fieldInstance->mResolvedType);
+						autoComplete->mResultString += " ";
+						autoComplete->mResultString += mModule->TypeToString(curCheckType);
+						autoComplete->mResultString += ".";
+						autoComplete->mResultString += field->mName;
+
+						if (fieldInstance->mConstIdx != -1)
+						{ 
+							String constStr = autoComplete->ConstantToString(curCheckType->mConstHolder, BfIRValue(BfIRValueFlags_Const, fieldInstance->mConstIdx));
+							if (!constStr.IsEmpty())
+							{
+								autoComplete->mResultString += " = ";
+								if (constStr.StartsWith(':'))
+									autoComplete->mResultString.Append(StringView(constStr, 1, constStr.mLength - 1));
+								else
+									autoComplete->mResultString += constStr;
+							}
+						}
+					}
+				}
 
 				if (field->mIsStatic)
 				{
@@ -3877,6 +3901,18 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 							autoComplete->mDefProp = basePropDef;
 							autoComplete->mDefType = baseTypeInst->mTypeDef;
 						}
+					}
+
+					if ((autoComplete != NULL) && (autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)))
+					{	
+						BfPropertyDef* basePropDef = mPropDef;
+						BfTypeInstance* baseTypeInst = curCheckType;
+						mModule->GetBasePropertyDef(basePropDef, baseTypeInst);
+						
+						autoComplete->mResultString = ":";
+						autoComplete->mResultString += mModule->TypeToString(baseTypeInst);
+						autoComplete->mResultString += ".";
+						autoComplete->mResultString += basePropDef->mName;
 					}
 
 					// Check for direct auto-property access
@@ -5714,9 +5750,12 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 			if (checkMethod->mIsStatic)
 				continue;
 
-			if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
-				(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, activeTypeDef)))
-				continue;
+			if (!mModule->IsInSpecializedSection())
+			{
+				if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
+					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, activeTypeDef)))
+					continue;
+			}
 			
 			auto checkProt = checkMethod->mProtection;
 
@@ -5760,6 +5799,11 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	if (mModule->mCompiler->mResolvePassData != NULL)
 		mModule->mCompiler->mResolvePassData->HandleMethodReference(targetSrc, curTypeInst->mTypeDef, methodDef);
 
+	// There should always be a constructor
+	BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
+
+	auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher.mBestMethodGenericArguments);
+
 	BfAutoComplete* autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)
 	{		
@@ -5778,15 +5822,15 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 				else if (resolvedTypeInstance->mTypeDef->mTypeDeclaration != NULL)
 					autoComplete->SetDefinitionLocation(resolvedTypeInstance->mTypeDef->mTypeDeclaration->mNameNode, true);
 			}
-		}					
+		}	
+		else if ((autoComplete->mResolveType == BfResolveType_GetResultString) && (autoComplete->IsAutocompleteNode(targetSrc)) &&
+			(moduleMethodInstance.mMethodInstance != NULL))
+		{
+			autoComplete->mResultString = ":";
+			autoComplete->mResultString += mModule->MethodToString(moduleMethodInstance.mMethodInstance);
+		}
 	}
 
-
-	// There should always be a constructor
-	BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
-	
-	auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher.mBestMethodGenericArguments);
-	
 	BfConstructorDeclaration* ctorDecl = (BfConstructorDeclaration*)methodMatcher.mBestMethodDef->mMethodDeclaration;
 	if ((methodMatcher.mBestMethodDef->mHasAppend) && (targetType->IsObject()))
 	{
@@ -6793,6 +6837,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 				if ((refType != NULL) && (refType->IsPrimitiveType()))
 				{
+					FinishDeferredEvals(argValues.mResolvedArgs);
+
 					if (argValues.mResolvedArgs.size() != 1)
 					{
 						mModule->Fail("Cast requires one parameter", targetSrc);
@@ -7110,6 +7156,12 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				{
 					autoComplete->mDefMethod = methodDef;
 					autoComplete->mDefType = curTypeInst->mTypeDef;
+				}
+
+				if (autoComplete->mResolveType == BfResolveType_GetResultString)
+				{
+					autoComplete->mResultString = ":";
+					autoComplete->mResultString += mModule->MethodToString(moduleMethodInstance.mMethodInstance);
 				}
 			}
 		}
@@ -10008,6 +10060,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 			BfParameterDef* paramDef = new BfParameterDef();
 			paramDef->mParamDeclaration = tempParamDecls.Alloc();
+			BfAstNode::Zero(paramDef->mParamDeclaration);			
 
 			BfLocalVariable* localVar = new BfLocalVariable();
 			if (paramIdx < (int)lambdaBindExpr->mParams.size())
@@ -11108,8 +11161,8 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 				if (auto dotTypeRef = BfNodeDynCast<BfDotTypeReference>(arrayTypeRef->mElementType))
 				{
 					if ((mExpectingType != NULL) && 
-						((mExpectingType->IsArray()) || (mExpectingType->IsSizedArray())))
-						unresolvedTypeRef = mExpectingType->GetUnderlyingType();
+						((mExpectingType->IsArray()) || (mExpectingType->IsPointer()) || (mExpectingType->IsSizedArray())))
+						unresolvedTypeRef = mExpectingType->GetUnderlyingType();					
 				}
 				if (unresolvedTypeRef == NULL)
 					unresolvedTypeRef = mModule->ResolveTypeRef(arrayTypeRef->mElementType);
@@ -12383,7 +12436,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 
 	if (methodDef->IsEmptyPartial())
 		return methodInstance;
-	
+		
 	for (int checkGenericIdx = 0; checkGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size(); checkGenericIdx++)
 	{
 		auto& genericParams = methodInstance.mMethodInstance->mMethodInfoEx->mGenericParams;
@@ -12400,7 +12453,8 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			paramSrc = methodMatcher.mArguments[methodMatcher.mBestMethodGenericArgumentSrcs[checkGenericIdx]].mExpression;
 
 		BfError* error = NULL;
-		if ((!failed) && (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams[checkGenericIdx], &methodMatcher.mBestMethodGenericArguments, &error)))
+		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams[checkGenericIdx], &methodMatcher.mBestMethodGenericArguments, 
+			failed ? NULL : &error))
 		{
 			if (methodInstance.mMethodInstance->IsSpecializedGenericMethod())
 			{
@@ -14057,8 +14111,11 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 
 				for (auto& iface : checkTypeInst->mInterfaces)
 				{
-					if (!checkTypeInst->IsTypeMemberAccessible(iface.mDeclaringType, activeTypeDef))
-						continue;
+					if (!mModule->IsInSpecializedSection())
+					{
+						if (!checkTypeInst->IsTypeMemberAccessible(iface.mDeclaringType, activeTypeDef))
+							continue;
+					}
 
 					if (iface.mInterfaceType == mPropTarget.mType)
 					{
@@ -14221,6 +14278,17 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			if (mPropSrc != NULL)
 				mModule->UpdateExprSrcPos(mPropSrc);
 			
+			auto autoComplete = GetAutoComplete();
+			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(mPropSrc)) && (autoComplete->mResolveType == BfResolveType_GetResultString))
+			{				
+				autoComplete->mResultString = ":";
+				autoComplete->mResultString += mModule->TypeToString(methodInstance.mMethodInstance->mReturnType);
+				autoComplete->mResultString += " ";
+				autoComplete->mResultString += mModule->TypeToString(methodInstance.mMethodInstance->GetOwner());
+				autoComplete->mResultString += ".";
+				autoComplete->mResultString += mPropDef->mName;
+			}
+
 			CheckPropFail(matchedMethod, methodInstance.mMethodInstance, (mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0);
 			PerformCallChecks(methodInstance.mMethodInstance, mPropSrc);
 
@@ -15071,6 +15139,17 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			BF_ASSERT(methodInstance.mMethodInstance->mMethodDef == setMethod);
 			CheckPropFail(setMethod, methodInstance.mMethodInstance, (mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0);	
 
+			auto autoComplete = GetAutoComplete();
+			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(mPropSrc)) && (autoComplete->mResolveType == BfResolveType_GetResultString))
+			{
+				autoComplete->mResultString = ":";
+				autoComplete->mResultString += mModule->TypeToString(methodInstance.mMethodInstance->GetParamType(0));
+				autoComplete->mResultString += " ";
+				autoComplete->mResultString += mModule->TypeToString(methodInstance.mMethodInstance->GetOwner());
+				autoComplete->mResultString += ".";
+				autoComplete->mResultString += mPropDef->mName;
+			}
+
 			BfTypedValue convVal;
 			if (binaryOp != BfBinaryOp_None)
 			{
@@ -15511,8 +15590,9 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 						// For now, we can't properly create const-valued non-size-aligned composites
 						if (checkArrayType->mElementType->NeedsExplicitAlignment())
 							isAllConst = false;
-
 						if (!elementValue.mValue.IsConst())
+							isAllConst = false;
+						if (elementValue.IsAddr())
 							isAllConst = false;
 
 						InitValue initValue;

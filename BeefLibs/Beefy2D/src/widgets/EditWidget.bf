@@ -743,7 +743,12 @@ namespace Beefy.widgets
 
             //PrintF("~TestStruct() %d\n", mInner.mVal1);            
 
-            if ((btnCount > 1) && (!mWidgetWindow.IsKeyDown(KeyCode.Shift)))
+			if ((btn == 0) && (btnCount >= 3) && (!mWidgetWindow.IsKeyDown(KeyCode.Shift)))
+			{
+				GetLinePosition(CursorLineAndColumn.mLine, var lineStart, var lineEnd);
+				mSelection = EditSelection(lineStart, lineEnd);
+			}
+            else if ((btn == 0) && (btnCount >= 2) && (!mWidgetWindow.IsKeyDown(KeyCode.Shift)))
             {
                 // Select word
                 StartSelection();

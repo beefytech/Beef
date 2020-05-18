@@ -25,7 +25,7 @@ bool StackHelper::CanStackExpand(int wantBytes)
 	intptr stackBase = 0;
 	int stackLimit = 0;
 	BfpThreadResult threadResult;
-	BfpThread_GetStackInfo(NULL, &stackBase, &stackLimit, &threadResult);
+	BfpThreadInfo_GetStackInfo(NULL, &stackBase, &stackLimit, BfpThreadInfoFlags_None, &threadResult);
 	if (threadResult != BfpThreadResult_Ok)
 		return true;
 

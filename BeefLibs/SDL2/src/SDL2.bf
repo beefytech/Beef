@@ -810,7 +810,7 @@ namespace SDL2
 		}
 
 		/* IntPtr and window refer to an SDL_GLContext and SDL_Window* */
-		[LinkName("SDL_GLContext")]
+		[LinkName("SDL_GL_CreateContext")]
 		public static extern SDL_GLContext GL_CreateContext(Window* window);
 
 		/* context refers to an SDL_GLContext */

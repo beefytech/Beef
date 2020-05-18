@@ -84,6 +84,12 @@ class BFSysBitmap;
 
 class BFWindow;
 
+struct BFCoord
+{
+	int mX;
+	int mY;
+};
+
 class BFWindow
 {
 public:
@@ -92,6 +98,10 @@ public:
 	int						mFlags;
 	bool					mIsKeyDown[KEYCODE_MAX];
 	bool					mIsMouseDown[MOUSEBUTTON_MAX];
+	BFCoord					mMouseDownCoords[MOUSEBUTTON_MAX];
+	int						mMouseClickCount[MOUSEBUTTON_MAX];
+	uint32					mMouseDownTicks[MOUSEBUTTON_MAX];
+
 	BFMenu*					mMenu;
 	RenderWindow*			mRenderWindow;		
 	bool					mNonExclusiveMouseCapture;

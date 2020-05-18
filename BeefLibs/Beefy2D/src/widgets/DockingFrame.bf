@@ -235,7 +235,11 @@ namespace Beefy.widgets
         public void Simplify()
         {            
             if ((mDockedWidgets.Count == 0) && (mParentDockingFrame != null))
+			{
                 mParentDockingFrame.RemoveWidget(this);
+				mParentDockingFrame.mDockedWidgets.Remove(this);
+				BFApp.sApp.DeferDelete(this);
+			}
             else if ((mDockedWidgets.Count == 1) && (mParentDockingFrame != null))
             {
                 // Just a single object, remove ourselves from the frame
@@ -259,7 +263,8 @@ namespace Beefy.widgets
             {
                 // Automatically close when last docked widget is removed
                 //  Should only happen on tool windows
-                mWidgetWindow.Close();                
+				if (!mWidgetWindow.mWindowFlags.HasFlag(.QuitOnClose))
+                	mWidgetWindow.Close();                
             }            
         }
 

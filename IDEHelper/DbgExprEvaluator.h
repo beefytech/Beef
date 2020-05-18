@@ -51,7 +51,11 @@ public:
 	bool mIsLiteral;	
 	bool mHasNoValue;
 	bool mIsReadOnly;
-	int mRegNum;
+	union 
+	{
+		int mRegNum;
+		int mDataLen;
+	};	
 	addr_target mSrcAddress;
 
 public:

@@ -505,7 +505,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 		mCurMethodState->mDeferredLoopListEntryCount++;			
 		auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
 			varName, mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, deferDIType);
-		mBfIRBuilder->DbgInsertDeclare(deferredAlloca, diVariable);		
+		mBfIRBuilder->DbgInsertDeclare(deferredAlloca, diVariable);
 	}
 
 	return true;
@@ -539,7 +539,177 @@ BfDeferredCallEntry* BfModule::AddDeferredCall(const BfModuleMethodInstance& mod
 }
 
 void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfDeferredBlockFlags flags)
-{
+{	
+	if (moduleMethodInstance.mMethodInstance->GetOwner()->IsInstanceOf(mCompiler->mInternalTypeDef))
+	{
+		if (moduleMethodInstance.mMethodInstance->mMethodDef->mName.StartsWith("SetDeleted"))
+		{			
+			intptr typeSize = 0;
+			intptr typeAlign = 1;
+			intptr clearSize = 0;
+			bool isDynSize = false;
+
+			bool mayBeZero = false;
+			auto ptrValue = llvmArgs[0];
+			BfIRValue arraySize;
+
+			if ((moduleMethodInstance.mMethodInstance->mMethodDef->mName == "SetDeleted") ||
+				(moduleMethodInstance.mMethodInstance->mMethodDef->mName == "SetDeletedArray"))
+			{				
+				auto constant = mBfIRBuilder->GetConstant(llvmArgs[1]);
+				if (constant != NULL)
+					typeSize = constant->mInt64;
+				constant = mBfIRBuilder->GetConstant(llvmArgs[2]);
+				if (constant != NULL)
+					typeAlign = constant->mInt64;
+				if (llvmArgs.size() >= 4)
+					arraySize = llvmArgs[3];	
+
+				intptr allocSize = typeSize;
+				if (arraySize)
+				{
+					allocSize = BF_ALIGN(typeSize, typeAlign);
+					auto constant = mBfIRBuilder->GetConstant(arraySize);
+					if (constant != NULL)
+						allocSize = allocSize * (intptr)constant->mInt64;
+					else
+					{
+						isDynSize = true;
+						mayBeZero = true;
+					}
+				}
+
+				clearSize = BF_MIN(allocSize, mSystem->mPtrSize);
+			}
+			else if (moduleMethodInstance.mMethodInstance->mMethodDef->mName == "SetDeletedX")
+			{
+				// Note: this infers that mayBeZero is false still, because the deferred call would not have
+				//  been added if the array size was zero
+				typeSize = 1;
+				clearSize = typeSize;
+				arraySize = llvmArgs[1];
+				isDynSize = true;
+			}			
+			else if (moduleMethodInstance.mMethodInstance->mMethodDef->mName == "SetDeleted1")
+			{
+				clearSize = 1;
+			}
+			else if (moduleMethodInstance.mMethodInstance->mMethodDef->mName == "SetDeleted2")
+			{
+				clearSize = 2;
+			}
+			else if (moduleMethodInstance.mMethodInstance->mMethodDef->mName == "SetDeleted4")
+			{
+				clearSize = 4;
+			}
+			else if (moduleMethodInstance.mMethodInstance->mMethodDef->mName == "SetDeleted8")
+			{
+				clearSize = 8;
+			}
+			else if (moduleMethodInstance.mMethodInstance->mMethodDef->mName == "SetDeleted16")
+			{
+				clearSize = 16;
+			}
+
+			if (clearSize > 0)
+			{
+				BfTypeCode clearTypeCode = BfTypeCode_Int8;
+				if (clearSize >= mSystem->mPtrSize)
+					clearTypeCode = BfTypeCode_IntPtr;
+				else if (clearSize >= 4)
+					clearTypeCode = BfTypeCode_Int32;
+				else if (clearSize >= 2)
+					clearTypeCode = BfTypeCode_Int16;
+
+				auto intType = GetPrimitiveType(clearTypeCode);
+				auto intPtrType = CreatePointerType(intType);
+
+				if (isDynSize)
+				{
+					if (clearSize >= mSystem->mPtrSize)
+					{
+						auto ddSize1Block = mBfIRBuilder->CreateBlock("DDSize1");
+						auto ddDoneBlock = mBfIRBuilder->CreateBlock("DDDone");
+
+						auto cmp = mBfIRBuilder->CreateCmpGT(arraySize, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), true);
+						mBfIRBuilder->CreateCondBr(cmp, ddSize1Block, ddDoneBlock);
+
+						mBfIRBuilder->AddBlock(ddSize1Block);
+						mBfIRBuilder->SetInsertPoint(ddSize1Block);
+						auto intPtrVal = mBfIRBuilder->CreateBitCast(ptrValue, mBfIRBuilder->MapType(intPtrType));
+						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, (uint64)0xDDDDDDDDDDDDDDDDULL), intPtrVal);
+						mBfIRBuilder->CreateBr(ddDoneBlock);
+
+						mBfIRBuilder->AddBlock(ddDoneBlock);
+						mBfIRBuilder->SetInsertPoint(ddDoneBlock);
+
+						if ((flags & BfDeferredBlockFlag_MoveNewBlocksToEnd) != 0)
+						{							
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddSize1Block);
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddDoneBlock);
+						}
+					}
+					else
+					{
+						// If we allocate at least this many then we can do an IntPtr-sized marking, otherwise just one element's worth
+						int intPtrCount = (int)((mSystem->mPtrSize + typeSize - 1) / typeSize);
+
+						BfIRBlock ddSizePtrBlock = mBfIRBuilder->CreateBlock("DDSizePtr");
+						BfIRBlock ddCheck1Block = mBfIRBuilder->CreateBlock("DDCheck1");
+						BfIRBlock ddSize1Block;
+						if (mayBeZero)
+							ddSize1Block = mBfIRBuilder->CreateBlock("DDSize1");
+						BfIRBlock ddDoneBlock = mBfIRBuilder->CreateBlock("DDDone");
+
+						auto intptrType = GetPrimitiveType(BfTypeCode_IntPtr);
+						auto intptrPtrType = CreatePointerType(intptrType);
+
+						auto cmpPtr = mBfIRBuilder->CreateCmpGTE(arraySize, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, intPtrCount), true);
+						mBfIRBuilder->CreateCondBr(cmpPtr, ddSizePtrBlock, ddCheck1Block);
+
+						mBfIRBuilder->AddBlock(ddSizePtrBlock);
+						mBfIRBuilder->SetInsertPoint(ddSizePtrBlock);
+						auto intptrPtrVal = mBfIRBuilder->CreateBitCast(ptrValue, mBfIRBuilder->MapType(intptrPtrType));
+						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)0xDDDDDDDDDDDDDDDDULL), intptrPtrVal);
+						mBfIRBuilder->CreateBr(ddDoneBlock);
+
+						mBfIRBuilder->AddBlock(ddCheck1Block);
+						mBfIRBuilder->SetInsertPoint(ddCheck1Block);
+						if (mayBeZero)
+						{
+							auto cmp1 = mBfIRBuilder->CreateCmpGT(arraySize, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), true);
+							mBfIRBuilder->CreateCondBr(cmp1, ddSize1Block, ddDoneBlock);
+
+							mBfIRBuilder->AddBlock(ddSize1Block);
+							mBfIRBuilder->SetInsertPoint(ddSize1Block);
+						}
+						auto intPtrVal = mBfIRBuilder->CreateBitCast(ptrValue, mBfIRBuilder->MapType(intPtrType));
+						mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, (uint64)0xDDDDDDDDDDDDDDDDULL), intPtrVal);
+						mBfIRBuilder->CreateBr(ddDoneBlock);
+
+						mBfIRBuilder->AddBlock(ddDoneBlock);
+						mBfIRBuilder->SetInsertPoint(ddDoneBlock);
+
+						if ((flags & BfDeferredBlockFlag_MoveNewBlocksToEnd) != 0)
+						{
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddSizePtrBlock);
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddCheck1Block);
+							if (mayBeZero)
+								mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddSize1Block);
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddDoneBlock);
+						}
+					}
+				}
+				else
+				{
+					auto intPtrVal = mBfIRBuilder->CreateBitCast(ptrValue, mBfIRBuilder->MapType(intPtrType));
+					mBfIRBuilder->CreateStore(mBfIRBuilder->CreateConst(clearTypeCode, (uint64)0xDDDDDDDDDDDDDDDDULL), intPtrVal);
+				}
+			}
+			return;
+		}
+	}
+
 	if (moduleMethodInstance.mMethodInstance == mContext->mValueTypeDeinitSentinel)
 	{
 		BF_ASSERT(llvmArgs.size() == 3);
@@ -610,7 +780,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 	}		
 }
 
-void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry)
+void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool moveBlocks)
 {	
 	if ((mCompiler->mIsResolveOnly) && (deferredCallEntry.mHandlerCount > 0))
 	{
@@ -659,8 +829,7 @@ void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry)
 		RestoreScopeState();
 		return;
 	}
-
-	auto moduleMethodInstance = deferredCallEntry.mModuleMethodInstance;	
+		
 	auto args = deferredCallEntry.mScopeArgs;
 	if (deferredCallEntry.mArgsNeedLoad)
 	{
@@ -680,6 +849,8 @@ void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry)
 		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_BypassVirtual);
 	if (deferredCallEntry.mDoNullCheck)
 		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_DoNullChecks | BfDeferredBlockFlag_SkipObjectAccessCheck | BfDeferredBlockFlag_MoveNewBlocksToEnd);
+	if (moveBlocks)
+		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_MoveNewBlocksToEnd);
 
 	EmitDeferredCall(deferredCallEntry.mModuleMethodInstance, args, flags);
 }
@@ -843,7 +1014,7 @@ void BfModule::EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntr
 		}
 
 		auto prevHead = callEntries.mHead;
-		EmitDeferredCall(*deferredCallEntry);
+		EmitDeferredCall(*deferredCallEntry, moveBlocks);
 		ValueScopeEnd(valueScopeStart);
 		mBfIRBuilder->CreateBr(condBB);
 
