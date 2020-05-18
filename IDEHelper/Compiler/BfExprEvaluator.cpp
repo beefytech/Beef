@@ -6837,6 +6837,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 				if ((refType != NULL) && (refType->IsPrimitiveType()))
 				{
+					FinishDeferredEvals(argValues.mResolvedArgs);
+
 					if (argValues.mResolvedArgs.size() != 1)
 					{
 						mModule->Fail("Cast requires one parameter", targetSrc);
