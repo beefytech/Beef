@@ -11159,8 +11159,8 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 				if (auto dotTypeRef = BfNodeDynCast<BfDotTypeReference>(arrayTypeRef->mElementType))
 				{
 					if ((mExpectingType != NULL) && 
-						((mExpectingType->IsArray()) || (mExpectingType->IsSizedArray())))
-						unresolvedTypeRef = mExpectingType->GetUnderlyingType();
+						((mExpectingType->IsArray()) || (mExpectingType->IsPointer()) || (mExpectingType->IsSizedArray())))
+						unresolvedTypeRef = mExpectingType->GetUnderlyingType();					
 				}
 				if (unresolvedTypeRef == NULL)
 					unresolvedTypeRef = mModule->ResolveTypeRef(arrayTypeRef->mElementType);
