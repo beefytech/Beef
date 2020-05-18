@@ -178,7 +178,7 @@ static
 		}
 	}
 
-	public static mixin DeleteDictionaryAndItems(var container)
+	public static mixin DeleteDictionaryAndValues(var container)
 	{
 		if (container != null)
 		{
