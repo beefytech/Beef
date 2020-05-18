@@ -13045,7 +13045,7 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 						continue;
 					}
 					auto prevHead = checkScope->mDeferredCallEntries.mHead;
-					EmitDeferredCall(*deferredCallEntry);
+					EmitDeferredCall(*deferredCallEntry, true);
 					if (prevHead != checkScope->mDeferredCallEntries.mHead)
 					{
 						// The list changed, start over and ignore anything we've already handled
@@ -13056,7 +13056,7 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 				}
 				else
 				{
-					EmitDeferredCall(*deferredCallEntry);
+					EmitDeferredCall(*deferredCallEntry, true);
 					deferredCallEntry = deferredCallEntry->mNext;
 				}
 			}

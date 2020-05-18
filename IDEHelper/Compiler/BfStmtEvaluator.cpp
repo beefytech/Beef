@@ -562,7 +562,8 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 				constant = mBfIRBuilder->GetConstant(llvmArgs[2]);
 				if (constant != NULL)
 					typeAlign = constant->mInt64;
-				auto arraySize = llvmArgs[3];	
+				if (llvmArgs.size() >= 4)
+					arraySize = llvmArgs[3];	
 
 				intptr allocSize = typeSize;
 				if (arraySize)
@@ -641,6 +642,12 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 
 						mBfIRBuilder->AddBlock(ddDoneBlock);
 						mBfIRBuilder->SetInsertPoint(ddDoneBlock);
+
+						if ((flags & BfDeferredBlockFlag_MoveNewBlocksToEnd) != 0)
+						{							
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddSize1Block);
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddDoneBlock);
+						}
 					}
 					else
 					{
@@ -682,6 +689,15 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 
 						mBfIRBuilder->AddBlock(ddDoneBlock);
 						mBfIRBuilder->SetInsertPoint(ddDoneBlock);
+
+						if ((flags & BfDeferredBlockFlag_MoveNewBlocksToEnd) != 0)
+						{
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddSizePtrBlock);
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddCheck1Block);
+							if (mayBeZero)
+								mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddSize1Block);
+							mCurMethodState->mCurScope->mAtEndBlocks.push_back(ddDoneBlock);
+						}
 					}
 				}
 				else
@@ -764,7 +780,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 	}		
 }
 
-void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry)
+void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool moveBlocks)
 {	
 	if ((mCompiler->mIsResolveOnly) && (deferredCallEntry.mHandlerCount > 0))
 	{
@@ -833,6 +849,8 @@ void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry)
 		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_BypassVirtual);
 	if (deferredCallEntry.mDoNullCheck)
 		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_DoNullChecks | BfDeferredBlockFlag_SkipObjectAccessCheck | BfDeferredBlockFlag_MoveNewBlocksToEnd);
+	if (moveBlocks)
+		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_MoveNewBlocksToEnd);
 
 	EmitDeferredCall(deferredCallEntry.mModuleMethodInstance, args, flags);
 }
@@ -996,7 +1014,7 @@ void BfModule::EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntr
 		}
 
 		auto prevHead = callEntries.mHead;
-		EmitDeferredCall(*deferredCallEntry);
+		EmitDeferredCall(*deferredCallEntry, moveBlocks);
 		ValueScopeEnd(valueScopeStart);
 		mBfIRBuilder->CreateBr(condBB);
 

@@ -129,7 +129,7 @@ namespace System
 		[Error("Cannot be called directly"), SkipCall]
 		static extern void SetDeletedX(void* dest, int size);		
 		[Error("Cannot be called directly"), SkipCall]
-		static extern void SetDeleted(void* dest, int size, int32 align, int arrayCount);
+		static extern void SetDeleted(void* dest, int size, int32 align);
 		[Error("Cannot be called directly"), SkipCall]
 		static extern void SetDeletedArray(void* dest, int size, int32 align, int arrayCount);
 
