@@ -8461,6 +8461,7 @@ namespace IDE
 				{
 					if (dep.mProjectName == project.mProjectName)
 					{
+						checkProject.SetChanged();
 						@dep.Remove();
 						delete dep;
 					}
