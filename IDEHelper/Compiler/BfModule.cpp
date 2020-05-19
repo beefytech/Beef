@@ -11416,7 +11416,6 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				if (!instModule->mReifyQueued)
 				{
 					BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
-
 					BfLogSysM("Queueing ReifyModule: %p\n", instModule);
 					mContext->mReifyModuleWorkList.Add(instModule);
 					instModule->mReifyQueued = true;
