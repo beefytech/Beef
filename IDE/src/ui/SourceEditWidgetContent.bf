@@ -3088,7 +3088,7 @@ namespace IDE.ui
 	                        });
 
 						// Fixits
-						if ((mSourceViewPanel.mIsBeefSource) && (mSourceViewPanel.mProjectSource != null))
+						if ((mSourceViewPanel.mIsBeefSource) && (mSourceViewPanel.mProjectSource != null) && (gApp.mSymbolReferenceHelper?.IsLocked != true))
 						{
 							ResolveParams resolveParams = scope .();
 							mSourceViewPanel.DoClassify(ResolveType.GetFixits, resolveParams, true);
