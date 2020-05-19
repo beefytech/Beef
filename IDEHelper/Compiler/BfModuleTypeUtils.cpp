@@ -786,7 +786,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		return true;
 	
 	// Are we "demanding" to reify a type that is currently resolve-only?
-	if (mIsReified)
+	if ((mIsReified) && (populateType >= BfPopulateType_Declaration))
 	{
 		if (resolvedTypeRef->IsTypeInstance())
 		{
@@ -6103,9 +6103,13 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 
 	BfTypeInstance* typeInstance = resolvedTypeRef->ToTypeInstance();
 	BfGenericTypeInstance* genericTypeInstance = resolvedTypeRef->ToGenericTypeInstance();	
-		
+	
+	auto populateModule = this;
+	if ((resolveFlags & BfResolveTypeRefFlag_NoReify) != 0)
+		populateModule = mContext->mUnreifiedModule;
+
 	bool hadError = false;
-	hadError = !PopulateType(resolvedTypeRef, populateType);
+	hadError = !populateModule->PopulateType(resolvedTypeRef, populateType);
 	
 	if ((genericTypeInstance != NULL) && (genericTypeInstance != mCurTypeInstance) && (populateType > BfPopulateType_Identity))
 	{
@@ -7369,6 +7373,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		return ResolveTypeResult(typeRef, resolvedEntry->mValue, populateType, resolveFlags);
 	}
 
+	BfModule* populateModule = this;
+	if ((resolveFlags & BfResolveTypeRefFlag_NoReify) != 0)
+		populateModule = mContext->mUnreifiedModule;
+
 	if (typeRef->IsTypeDefTypeReference())
 	{
 		//BF_ASSERT(typeDefTypeRef->mTypeDef != NULL); // Resolved higher up
@@ -7379,7 +7387,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			primType->mTypeDef = typeDef;
 			resolvedEntry->mValue = primType;
 			BF_ASSERT(BfResolvedTypeSet::Hash(primType, &lookupCtx, false) == resolvedEntry->mHash);
-			InitType(primType, populateType);
+			populateModule->InitType(primType, populateType);
 			return ResolveTypeResult(typeRef, primType, populateType, resolveFlags);
 		}
 
@@ -7431,7 +7439,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 				resolvedEntry->mValue = genericTypeInst;
 				BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);
-				InitType(genericTypeInst, populateType);
+				populateModule->InitType(genericTypeInst, populateType);
 				return ResolveTypeResult(typeRef, genericTypeInst, populateType, resolveFlags);
 			}
 		}
@@ -7457,7 +7465,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		}
 		resolvedEntry->mValue = typeInst;
 		BF_ASSERT(BfResolvedTypeSet::Hash(typeInst, &lookupCtx) == resolvedEntry->mHash);
-		InitType(typeInst, populateType);
+		populateModule->InitType(typeInst, populateType);
 		return ResolveTypeResult(typeRef, typeInst, populateType, resolveFlags);
 	}	
 	else if (auto arrayTypeRef = BfNodeDynCast<BfArrayTypeRef>(typeRef))
@@ -7502,7 +7510,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					resolvedEntry->mValue = arrayType;
 
 					BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHash);
-					InitType(arrayType, populateType);
+					populateModule->InitType(arrayType, populateType);
 					return ResolveTypeResult(typeRef, arrayType, populateType, resolveFlags);
 				}
 
@@ -7535,7 +7543,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			resolvedEntry->mValue = arrayType;
 
 			BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHash);
-			InitType(arrayType, populateType);
+			populateModule->InitType(arrayType, populateType);
 			return ResolveTypeResult(typeRef, arrayType, populateType, resolveFlags);
 		}
 
@@ -7549,7 +7557,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		CheckUnspecializedGenericType(arrayType, populateType);
 
 		BF_ASSERT(BfResolvedTypeSet::Hash(arrayType, &lookupCtx) == resolvedEntry->mHash);
-		InitType(arrayType, populateType);
+		populateModule->InitType(arrayType, populateType);
 		return ResolveTypeResult(typeRef, arrayType, populateType, resolveFlags);
 	}
 	else if (auto genericTypeInstRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
@@ -7668,7 +7676,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		CheckUnspecializedGenericType(genericTypeInst, populateType);
 
 		BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);
-		InitType(genericTypeInst, populateType);
+		populateModule->InitType(genericTypeInst, populateType);
 		return ResolveTypeResult(typeRef, genericTypeInst, populateType, resolveFlags);
 	}
 	else if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))
@@ -7723,7 +7731,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		resolvedEntry->mValue = tupleType;
 		BF_ASSERT(BfResolvedTypeSet::Hash(tupleType, &lookupCtx) == resolvedEntry->mHash);
-		InitType(tupleType, populateType);
+		populateModule->InitType(tupleType, populateType);
 		return ResolveTypeResult(typeRef, tupleType, populateType, resolveFlags);
 	}
 	else if (auto nullableTypeRef = BfNodeDynCast<BfNullableTypeRef>(typeRef))
@@ -7751,7 +7759,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		resolvedEntry->mValue = genericTypeInst;
 		BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);
-		InitType(genericTypeInst, populateType);
+		populateModule->InitType(genericTypeInst, populateType);
 		return ResolveTypeResult(typeRef, genericTypeInst, populateType, resolveFlags);
 	}
 	else if (auto pointerTypeRef = BfNodeDynCast<BfPointerTypeRef>(typeRef))
@@ -7771,7 +7779,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		//int hashVal = mContext->mResolvedTypes.Hash(typeRef, &lookupCtx);
 		BF_ASSERT(BfResolvedTypeSet::Hash(pointerType, &lookupCtx) == resolvedEntry->mHash);
 
-		InitType(pointerType, populateType);
+		populateModule->InitType(pointerType, populateType);
 		return ResolveTypeResult(typeRef, pointerType, populateType, resolveFlags);
 	}
 	else if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(typeRef))
@@ -7794,7 +7802,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		resolvedEntry->mValue = refType;
 		BF_ASSERT(BfResolvedTypeSet::Hash(refType, &lookupCtx) == resolvedEntry->mHash);
-		InitType(refType, populateType);
+		populateModule->InitType(refType, populateType);
 		return ResolveTypeResult(typeRef, refType, populateType, resolveFlags);
 	}
 	else if (auto delegateTypeRef = BfNodeDynCast<BfDelegateTypeRef>(typeRef))
@@ -7898,7 +7906,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		delegateType->mContext = mContext;
 		delegateType->mTypeDef = typeDef;
-		InitType(delegateType, populateType);
+		populateModule->InitType(delegateType, populateType);
 		resolvedEntry->mValue = delegateType;
 
 // #ifdef _DEBUG
@@ -7931,7 +7939,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		resolvedEntry->mValue = retTypeType;
 		BF_ASSERT(BfResolvedTypeSet::Hash(retTypeType, &lookupCtx) == resolvedEntry->mHash);
 
-		InitType(retTypeType, populateType);
+		populateModule->InitType(retTypeType, populateType);
 		return ResolveTypeResult(typeRef, retTypeType, populateType, resolveFlags);
 	}
 	else if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
@@ -7964,7 +7972,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		resolvedEntry->mValue = constExprType;
 		BF_ASSERT(BfResolvedTypeSet::Hash(constExprType, &lookupCtx) == resolvedEntry->mHash);
 
-		InitType(constExprType, populateType);
+		populateModule->InitType(constExprType, populateType);
 		return constExprType;
 	}
 	else

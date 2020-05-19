@@ -1276,7 +1276,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_AllowGenericParamConstValue = 0x10 | 0x20,
 	BfResolveTypeRefFlag_AutoComplete = 0x40,
 	BfResolveTypeRefFlag_FromIndirectSource = 0x80, // Such as a type alias or a generic parameter 
-	BfResolveTypeRefFlag_Attribute = 0x100
+	BfResolveTypeRefFlag_Attribute = 0x100,
+	BfResolveTypeRefFlag_NoReify = 0x200
 };
 
 enum BfSrcPosFlags

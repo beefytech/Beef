@@ -9791,7 +9791,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 			continue;
 		}
 
-		BfType* attrType = ResolveTypeRef(attributesDirective->mAttributeTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_Attribute);
+		BfType* attrType = ResolveTypeRef(attributesDirective->mAttributeTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_Attribute | BfResolveTypeRefFlag_NoReify));
 		BfTypeDef* attrTypeDef = NULL;										
 		if ((attrType != NULL) && (attrType->IsTypeInstance()))
 			attrTypeDef = attrType->ToTypeInstance()->mTypeDef;
