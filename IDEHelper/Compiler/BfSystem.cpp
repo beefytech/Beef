@@ -873,6 +873,7 @@ BfProject::BfProject()
 	mBuildConfigChanged = false;	
 	mSingleModule = false;
 	mAlwaysIncludeAll = false;
+	mDeleteStage = BfProject::DeleteStage_None;
 	mSystem = NULL;
 	mIdx = -1;
 }
@@ -3188,13 +3189,32 @@ void BfSystem::RemoveOldData()
 {	
 	{
 		AutoCrit autoCrit(mDataLock);
+
 		for (auto typeDef : mTypeDefDeleteQueue)
 			delete typeDef;
 		mTypeDefDeleteQueue.Clear();
 
-		for (auto project : mProjectDeleteQueue)
-			delete project;
-		mProjectDeleteQueue.Clear();
+		
+		if (!mProjectDeleteQueue.IsEmpty())
+		{
+			for (auto project : mProjectDeleteQueue)
+				project->mDeleteStage = BfProject::DeleteStage_AwaitingRefs;
+
+			for (auto typeDef : mTypeDefs)
+				if (typeDef->mProject->mDeleteStage == BfProject::DeleteStage_AwaitingRefs)
+					typeDef->mProject->mDeleteStage = BfProject::DeleteStage_Queued;
+
+			for (int projectIdx = 0; projectIdx < (int)mProjectDeleteQueue.size(); projectIdx++)
+			{
+				auto project = mProjectDeleteQueue[projectIdx];
+				if (project->mDeleteStage == BfProject::DeleteStage_AwaitingRefs)
+				{
+					mProjectDeleteQueue.RemoveAtFast(projectIdx);
+					delete project;
+					projectIdx--;
+				}
+			}
+		}		
 	}
 
 	RemoveOldParsers();
@@ -3642,6 +3662,8 @@ BF_EXPORT void BF_CALLTYPE BfProject_Delete(BfProject* bfProject)
 {
 	auto bfSystem = bfProject->mSystem;
 	AutoCrit autoCrit(bfSystem->mSystemLock);
+	bfProject->mDeleteStage = BfProject::DeleteStage_Queued;
+
 	bfSystem->mProjectDeleteQueue.push_back(bfProject);	
 	
 	BF_ASSERT(bfSystem->mProjects[bfProject->mIdx] == bfProject);	
