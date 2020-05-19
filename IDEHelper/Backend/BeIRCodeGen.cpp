@@ -2115,6 +2115,11 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_CreateRet:
 		{
 			CMD_PARAM(BeValue*, val);
+#ifdef _DEBUG
+			auto retType = val->GetType();
+			auto funcType = mActiveFunction->GetFuncType();
+			BF_ASSERT(retType == funcType->mReturnType);
+#endif
 			SetResult(curId, mBeModule->CreateRet(val));
 		}
 		break;
