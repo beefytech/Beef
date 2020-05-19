@@ -1236,6 +1236,27 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void RemoveProject(String projectName)
+		{
+			let project = gApp.mWorkspace.FindProject(projectName);
+			if (project == null)
+			{
+				mScriptManager.Fail("Unable to find project");
+				return;
+			}
+
+			bool success = gApp.mProjectPanel.mProjectToListViewMap.TryGetValue(project.mRootFolder, var projectItem);
+			if (!success)
+			{
+				mScriptManager.Fail("Unable to find project in panel");
+				return;
+			}
+
+			gApp.mProjectPanel.mListView.GetRoot().SelectItemExclusively(projectItem);
+			gApp.mProjectPanel.[Friend]RemoveSelectedItems(false);
+		}
+
+		[IDECommand]
 		public void CopyToDependents(String srcPath)
 		{
 			let depProject = GetProject();
