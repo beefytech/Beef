@@ -714,7 +714,7 @@ namespace IDE.Debugger
 			else
 			{
 				if (mIsRunning)
-					breakpoint.CreateNative();
+					breakpoint.CreateNative(true, true);
 			}
 			mBreakpointsChangedDelegate();
 		}

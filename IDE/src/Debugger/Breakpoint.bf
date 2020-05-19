@@ -135,20 +135,31 @@ namespace IDE.Debugger
 				Breakpoint_SetThreadId(mNativeBreakpoint, mThreadId);
 		}
 
-        public void CreateNative(bool bindNow = true)
+        public void CreateNative(bool bindNow = true, bool force = false)
         {
             //var debugger = IDEApp.sApp.mDebugger;
             if (mNativeBreakpoint == null)
             {
                 if (mIsMemoryBreakpoint)
                 {
-					// Wait for a 'rehup'
-                    //mNativeBreakpoint = Debugger_CreateMemoryBreakpoint((void*)mMemoryAddress, mByteCount);
+					if (force)
+						mNativeBreakpoint = Debugger_CreateMemoryBreakpoint(mMemoryAddress, mByteCount);
+					else
+					{
+						// Wait for a 'rehup'
+					}
                 }
                 else if (mAddressRequested)
                 {
-					// Wait for a 'rehup'
-                    //mNativeBreakpoint = Debugger_CreateAddressBreakpoint(mMemoryAddress);
+					if (force)
+					{
+						//mNativeBreakpoint = Debugger_CreateAddressBreakpoint(mMemoryAddress);
+					}
+					else
+					{
+						// Wait for a 'rehup'
+					}
+                    
                 }
                 else if (mFileName != null)
                 {
