@@ -563,7 +563,9 @@ namespace IDE.ui
 				Debug.WriteLine("DoAutoComplete ignored");
 				return;
 			}*/
-				
+
+			if (ResolveCompiler == null)
+				return;
 
 			if (ResolveCompiler.mThreadWorkerHi.mThreadRunning)
 			{
@@ -6173,7 +6175,7 @@ namespace IDE.ui
 					var symbolReferenceHelper = IDEApp.sApp.mSymbolReferenceHelper;
                     if (symbolReferenceHelper == null)
                     {
-						if (!compiler.mThreadWorkerHi.mThreadRunning)
+						if ((compiler != null) && (!compiler.mThreadWorkerHi.mThreadRunning))
 						{
                         	ShowSymbolReferenceHelper(SymbolReferenceHelper.Kind.ShowFileReferences);
 						}
@@ -6199,7 +6201,7 @@ namespace IDE.ui
 					mWantsCurrentLocation = true;
 				}
 
-				if ((mWantsCurrentLocation) && (!compiler.mThreadWorkerHi.mThreadRunning))
+				if ((mWantsCurrentLocation) && (compiler != null) && (!compiler.mThreadWorkerHi.mThreadRunning))
 				{
 					bool canClassify = true;
 #if IDE_C_SUPPORT
@@ -6221,7 +6223,7 @@ namespace IDE.ui
 				}
             }
 
-			if ((mQueuedAutoComplete != null) & (!compiler.mThreadWorkerHi.mThreadRunning))
+			if ((mQueuedAutoComplete != null) & (compiler != null) && (!compiler.mThreadWorkerHi.mThreadRunning))
 			{
 				DoAutoComplete(mQueuedAutoComplete.mKeyChar, mQueuedAutoComplete.mOptions);
 				DeleteAndNullify!(mQueuedAutoComplete);
