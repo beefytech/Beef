@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {Bug = {Path = "."}, SDL2 = "*"}
+
+[Workspace]
+StartupProject = "Bug"

@@ -752,6 +752,7 @@ namespace IDE.Compiler
 			{
                 if (mWantsRemoveOldData)
 				{
+					mBfSystem.RemoveOldParsers();
 					mBfSystem.RemoveOldData();
 					mWantsRemoveOldData = false;
 				}

@@ -4134,12 +4134,10 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 					{
 						BfResolvedArg compositeResolvedArg;
 						auto compositeLocalVar = methodState->mLocals[localVar->mLocalVarIdx + compositeIdx + 1];
-						auto argValue = exprEvaluator.LoadLocal(compositeLocalVar);
+						auto argValue = exprEvaluator.LoadLocal(compositeLocalVar, true);
 						if (argValue)
 						{
-							if (argValue.mType->IsRef())
-								argValue.mKind = BfTypedValueKind_Value;
-							else if (!argValue.mType->IsStruct())
+							if (!argValue.mType->IsStruct())
 								argValue = mModule->LoadValue(argValue, NULL, exprEvaluator.mIsVolatileReference);
 						}
 						resolvedArg.mTypedValue = argValue;
@@ -5062,8 +5060,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	}
 
 	// Temporarily disable so we don't capture calls in params	
-	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
-	SetAndRestoreValue<bool> prevAllowVariableDeclarations(mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations, false); // Don't allow variable declarations in arguments
+	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);	
+	SetAndRestoreValue<bool> prevAllowVariableDeclarations;
+	if (mModule->mCurMethodState != NULL)
+		prevAllowVariableDeclarations.Init(mModule->mCurMethodState->mCurScope->mAllowVariableDeclarations, false);	
 
 	BfMethodInstance* methodInstance = moduleMethodInstance.mMethodInstance;	
 
@@ -8048,11 +8048,6 @@ void BfExprEvaluator::Visit(BfSizedArrayCreateExpression* createExpr)
 void BfExprEvaluator::Visit(BfCollectionInitializerExpression* arrayInitExpr)
 {	
 	mModule->Fail("Collection initializer not usable here", arrayInitExpr);
-}
-
-void BfExprEvaluator::Visit(BfParamsExpression* paramsExpr)
-{
-	mModule->Fail("Params expression is only usable as a call parameter", paramsExpr);
 }
 
 void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)

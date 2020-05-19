@@ -301,11 +301,6 @@ void BfStructuralVisitor::Visit(BfParameterDeclaration* paramDecl)
 	Visit(paramDecl->ToBase());
 }
 
-void BfStructuralVisitor::Visit(BfParamsExpression* paramsExpr)
-{
-	Visit(paramsExpr->ToBase());
-}
-
 void BfStructuralVisitor::Visit(BfTypeAttrExpression* typeAttrExpr)
 {
 	Visit(typeAttrExpr->ToBase());

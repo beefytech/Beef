@@ -1034,6 +1034,14 @@ enum BfProjectFlags
 
 class BfProject
 {
+public:
+	enum DeleteStage
+	{
+		DeleteStage_None,
+		DeleteStage_Queued,
+		DeleteStage_AwaitingRefs,
+	};
+
 public:	
 	BfSystem* mSystem;
 	String mName;
@@ -1043,6 +1051,7 @@ public:
 	bool mDisabled;
 	bool mSingleModule;
 	bool mAlwaysIncludeAll;
+	DeleteStage mDeleteStage;
 	int mIdx;
 
 	String mStartupObject;

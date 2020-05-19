@@ -146,6 +146,7 @@ void DbgEvaluationContext::Init(WinDebugger* winDebugger, DbgModule* dbgModule, 
 	{
 		mDbgExprEvaluator->mExplicitThis = formatInfo->mExplicitThis;
 		mDbgExprEvaluator->mCallStackIdx = formatInfo->mCallStackIdx;
+		mDbgExprEvaluator->mLanguage = formatInfo->mLanguage;
 	}
 }
 
@@ -7002,8 +7003,8 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if ((!typedValue.mIsLiteral) && (!formatInfo.mHidePointers))
 				retVal = EncodeDataPtr(ptrVal, true);
 
-			int strLen = -1;
-			if (typedValue.mIsLiteral)
+			int strLen = formatInfo.mOverrideCount;
+			if ((strLen == -1) && (typedValue.mIsLiteral))
 			{
 				if (typedValue.mDataLen > 0)
 					strLen = typedValue.mDataLen;

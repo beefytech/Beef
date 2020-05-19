@@ -2890,13 +2890,18 @@ bool BfIRBuilder::WantsDbgDefinition(BfType* type)
 
 void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 {	
+	auto populateModule = mModule->mContext->mUnreifiedModule;
+	auto typeInstance = type->ToTypeInstance();
+	if (typeInstance != NULL)
+		populateModule = typeInstance->mModule;
+
 	// This PopulateType is generally NOT needed, but here is a scenario in which it is:
 	//  ClassB derives from ClassA.  ClassC uses ClassB.  A method inside ClassA gets modified,
 	//  marking ClassA as incomplete, and then ClassC rebuilds and calls MapType on ClassB.
 	//  "ClassB" itself is still populated, but its base class (ClassA) is not -- until we call 
 	//  this PopulateType below.
 	if (type->IsDataIncomplete())
-		mModule->PopulateType(type, BfPopulateType_Data);	
+		populateModule->PopulateType(type, BfPopulateType_Data);
 
 	bool isDefiningModule = ((type->GetModule() == mModule) || (type->IsFunction()));
 	if (mModule->mExtensionCount != 0)
@@ -2906,7 +2911,7 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 // 		isDefiningModule = true;
 
 	if ((isDefiningModule) || (type->IsValueType()))
-		mModule->PopulateType(type, BfPopulateType_DataAndMethods);
+		populateModule->PopulateType(type, BfPopulateType_DataAndMethods);
 
 	if ((!isDefiningModule) && (!type->IsUnspecializedType()) && (type->IsValueType()) && (mHasDebugInfo))
 	{
@@ -2914,8 +2919,7 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 	}
 	
 	bool isPrimEnum = (type->IsEnum()) && (type->IsTypedPrimitive());
-				
-	auto typeInstance = type->ToTypeInstance();
+					
 	if (typeInstance == NULL)
 		return;		
 

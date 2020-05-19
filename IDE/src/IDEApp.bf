@@ -546,8 +546,10 @@ namespace IDE
 
         public void GetBfCompilers(List<BfCompiler> compiler)
         {
-            compiler.Add(mBfBuildCompiler);
-            compiler.Add(mBfResolveCompiler);
+			if (mBfBuildCompiler != null)
+            	compiler.Add(mBfBuildCompiler);
+			if (mBfResolveCompiler != null)
+            	compiler.Add(mBfResolveCompiler);
         }
 
         public bool HaveSourcesChanged()
@@ -2676,7 +2678,8 @@ namespace IDE
 
 			mWorkspace.FixOptions(mConfigName, mPlatformName);
 #if !CLI
-			PreConfigureBeefSystem(mBfResolveSystem, mBfResolveCompiler);
+			if (mBfResolveSystem != null)
+				PreConfigureBeefSystem(mBfResolveSystem, mBfResolveCompiler);
 #endif
             for (var project in mWorkspace.mProjects)
             {
@@ -11124,7 +11127,7 @@ namespace IDE
 				    if (projectSource != null)
 				    {
 				        var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
-				        if (resolveCompiler == mBfResolveCompiler)
+				        if ((resolveCompiler == mBfResolveCompiler) && (resolveCompiler != null))
 				            resolveCompiler.QueueProjectSourceRemoved(projectSource);
 
 						if (IsBeefFile(projectSource.mPath))

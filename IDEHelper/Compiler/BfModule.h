@@ -1276,6 +1276,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_AllowGenericParamConstValue = 0x10 | 0x20,
 	BfResolveTypeRefFlag_AutoComplete = 0x40,
 	BfResolveTypeRefFlag_FromIndirectSource = 0x80, // Such as a type alias or a generic parameter 
+	BfResolveTypeRefFlag_Attribute = 0x100,
+	BfResolveTypeRefFlag_NoReify = 0x200
 };
 
 enum BfSrcPosFlags
@@ -1689,7 +1691,7 @@ public:
 	BfTypeDef* FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error);
 	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL);
 	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL);
-	BfTypeDef* FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL, int numGenericParams = 0);
+	BfTypeDef* FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL, int numGenericParams = 0, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	BfTypedValue TryLookupGenericConstVaue(BfIdentifierNode* identifierNode, BfType* expectingType);
 	void CheckTypeRefFixit(BfAstNode* typeRef, const char* appendName = NULL);
 	void CheckIdentifierFixit(BfAstNode* node);

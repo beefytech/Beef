@@ -413,7 +413,17 @@ namespace IDE.ui
         void HandleMouseDown(MouseEvent evt)
         {
             WidgetWindow widgetWindow = (WidgetWindow)evt.mSender;
-            if ((!(widgetWindow.mRootWidget is HoverWatch)) && (!(widgetWindow.mRootWidget is DarkMenuContainer)) && (!(widgetWindow.mRootWidget is DarkTooltipContainer)))
+			bool canClose = true;
+
+			var checkWindow = widgetWindow;
+			while (checkWindow != null)
+			{
+				if ((checkWindow.mRootWidget is HoverWatch) || (widgetWindow.mRootWidget is DarkMenuContainer) || (widgetWindow.mRootWidget is DarkTooltipContainer))
+					canClose = false;
+				checkWindow = checkWindow.mParent as WidgetWindow;
+			}
+
+			if (canClose)
                 Close();
         }
 

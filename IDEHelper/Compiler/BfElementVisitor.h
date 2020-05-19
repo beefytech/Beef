@@ -64,8 +64,7 @@ public:
 	virtual void Visit(BfNullableTypeRef* typeRef);
 	virtual void Visit(BfVariableDeclaration* varDecl);
 	virtual void Visit(BfLocalMethodDeclaration* methodDecl);
-	virtual void Visit(BfParameterDeclaration* paramDecl);	
-	virtual void Visit(BfParamsExpression* paramsExpr);
+	virtual void Visit(BfParameterDeclaration* paramDecl);		
 	virtual void Visit(BfTypeAttrExpression* typeAttrExpr);		
 	virtual void Visit(BfDefaultExpression* defaultExpr);
 	virtual void Visit(BfUninitializedExpression* uninitializedExpr);
