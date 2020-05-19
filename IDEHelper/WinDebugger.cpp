@@ -146,6 +146,7 @@ void DbgEvaluationContext::Init(WinDebugger* winDebugger, DbgModule* dbgModule, 
 	{
 		mDbgExprEvaluator->mExplicitThis = formatInfo->mExplicitThis;
 		mDbgExprEvaluator->mCallStackIdx = formatInfo->mCallStackIdx;
+		mDbgExprEvaluator->mLanguage = formatInfo->mLanguage;
 	}
 }
 
