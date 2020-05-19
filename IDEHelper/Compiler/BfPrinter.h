@@ -146,8 +146,7 @@ public:
 	virtual void Visit(BfPointerTypeRef* typeRef) override;
 	virtual void Visit(BfNullableTypeRef* typeRef) override;
 	virtual void Visit(BfVariableDeclaration* varDecl) override;
-	virtual void Visit(BfParameterDeclaration* paramDecl) override;
-	virtual void Visit(BfParamsExpression* paramsExpr) override;
+	virtual void Visit(BfParameterDeclaration* paramDecl) override;	
 	virtual void Visit(BfTypeOfExpression* typeOfExpr) override;
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr) override;
 	virtual void Visit(BfDefaultExpression* defaultExpr) override;

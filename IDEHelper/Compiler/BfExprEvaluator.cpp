@@ -4134,12 +4134,10 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 					{
 						BfResolvedArg compositeResolvedArg;
 						auto compositeLocalVar = methodState->mLocals[localVar->mLocalVarIdx + compositeIdx + 1];
-						auto argValue = exprEvaluator.LoadLocal(compositeLocalVar);
+						auto argValue = exprEvaluator.LoadLocal(compositeLocalVar, true);
 						if (argValue)
 						{
-							if (argValue.mType->IsRef())
-								argValue.mKind = BfTypedValueKind_Value;
-							else if (!argValue.mType->IsStruct())
+							if (!argValue.mType->IsStruct())
 								argValue = mModule->LoadValue(argValue, NULL, exprEvaluator.mIsVolatileReference);
 						}
 						resolvedArg.mTypedValue = argValue;
@@ -8050,11 +8048,6 @@ void BfExprEvaluator::Visit(BfSizedArrayCreateExpression* createExpr)
 void BfExprEvaluator::Visit(BfCollectionInitializerExpression* arrayInitExpr)
 {	
 	mModule->Fail("Collection initializer not usable here", arrayInitExpr);
-}
-
-void BfExprEvaluator::Visit(BfParamsExpression* paramsExpr)
-{
-	mModule->Fail("Params expression is only usable as a call parameter", paramsExpr);
 }
 
 void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)

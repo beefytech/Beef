@@ -1462,13 +1462,6 @@ void BfPrinter::Visit(BfParameterDeclaration* paramDecl)
 	Visit(paramDecl->ToBase());
 }
 
-void BfPrinter::Visit(BfParamsExpression* paramsExpr)
-{
-	Visit(paramsExpr->ToBase());
-
-	VisitChild(paramsExpr->mParamsToken);
-}
-
 void BfPrinter::Visit(BfTypeOfExpression* typeOfExpr)
 {
 	Visit(typeOfExpr->ToBase());

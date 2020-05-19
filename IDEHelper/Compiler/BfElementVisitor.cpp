@@ -446,13 +446,6 @@ void BfElementVisitor::Visit(BfParameterDeclaration* paramDecl)
 	VisitChild(paramDecl->mModToken); // 'Params'
 }
 
-void BfElementVisitor::Visit(BfParamsExpression* paramsExpr)
-{
-	Visit(paramsExpr->ToBase());
-
-	VisitChild(paramsExpr->mParamsToken);
-}
-
 void BfElementVisitor::Visit(BfTypeAttrExpression* typeAttrExpr)
 {
 	Visit(typeAttrExpr->ToBase());

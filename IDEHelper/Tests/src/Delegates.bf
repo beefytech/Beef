@@ -140,6 +140,29 @@ namespace Tests
 			ca.TestLambda();
 		}
 
+		public static void Modify(ref int a, ref Splattable b)
+		{
+			a += 1000;
+			b.mA += 2000;
+			b.mB += 3000;
+		}
+
+		[Test]
+		public static void TestRefs()
+		{
+			delegate void(ref int a, ref Splattable b) dlg = scope => Modify;
+
+			int a = 123;
+			Splattable splat = .();
+			splat.mA = 234;
+			splat.mB = 345;
+
+			dlg(ref a, ref splat);
+			Test.Assert(a == 1123);
+			Test.Assert(splat.mA == 2234);
+			Test.Assert(splat.mB == 3345);
+		}
+
 		public static void TestCasting()
 		{
 			delegate int(int, int) dlg0 = null;

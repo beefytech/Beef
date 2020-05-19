@@ -268,7 +268,6 @@ class BfOperatorDeclaration;
 class BfFieldDeclaration;
 class BfEnumCaseDeclaration;
 class BfParameterDeclaration;
-class BfParamsExpression;
 class BfForStatement;
 class BfUsingStatement;
 class BfDoStatement;
@@ -454,8 +453,7 @@ public:
 	virtual void Visit(BfNullableTypeRef* typeRef);
 	virtual void Visit(BfVariableDeclaration* varDecl);	
 	virtual void Visit(BfLocalMethodDeclaration* methodDecl);
-	virtual void Visit(BfParameterDeclaration* paramDecl);	
-	virtual void Visit(BfParamsExpression* paramsExpr);
+	virtual void Visit(BfParameterDeclaration* paramDecl);		
 	virtual void Visit(BfTypeAttrExpression* typeAttrExpr);
 	virtual void Visit(BfTypeOfExpression* typeOfExpr);
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr);	
@@ -2471,14 +2469,6 @@ public:
 	BF_AST_TYPE(BfRefTypeRef, BfElementedTypeRef);
 	BfTokenNode* mRefToken;
 };	BF_AST_DECL(BfRefTypeRef, BfElementedTypeRef);
-
-class BfParamsExpression : public BfExpression
-{
-public:
-	BF_AST_TYPE(BfParamsExpression, BfExpression);
-
-	BfTokenNode* mParamsToken;	
-};	BF_AST_DECL(BfParamsExpression, BfExpression);
 
 class BfTypeAttrExpression : public BfExpression
 {
