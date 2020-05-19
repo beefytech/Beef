@@ -7004,12 +7004,14 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 				retVal = EncodeDataPtr(ptrVal, true);
 
 			int strLen = formatInfo.mOverrideCount;
-			if ((strLen == -1) && (typedValue.mIsLiteral))
+			if (typedValue.mIsLiteral)
 			{
+				if (strLen == -1)
+					strLen = 0x7FFFFFFF;
 				if (typedValue.mDataLen > 0)
-					strLen = typedValue.mDataLen;
+					strLen = BF_MIN(strLen, typedValue.mDataLen);
 				else
-					strLen = strlen(typedValue.mCharPtr);
+					strLen = BF_MIN(strLen, strlen(typedValue.mCharPtr));
 			}
 
 			SetAndRestoreValue<intptr> prevOverrideLen(formatInfo.mOverrideCount, strLen);
