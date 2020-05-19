@@ -1,0 +1,14 @@
+# This test ensures we can remove a project, properly fail, and then compile without it
+
+ShowFile("src/Program.bf")
+Compile()
+
+RemoveProject("SDL2")
+
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
+
+ToggleCommentAt("Main_Start")
+
+Compile()
