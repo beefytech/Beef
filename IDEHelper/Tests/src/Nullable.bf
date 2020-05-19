@@ -31,5 +31,32 @@ namespace Tests
 			Test.Assert(!intn2.TryGetValue(ref i));
 			Test.Assert(i == 100);
 		}
+
+		[Test]
+		public static void TestOperators()
+		{
+			int? iNull = null;
+			bool? bNull = null;
+
+			Test.Assert(!(iNull == 0));
+			Test.Assert(!(iNull <= 0));
+			Test.Assert(!(iNull >= 0));
+
+			Test.Assert(!(bNull == false));
+			Test.Assert(!(bNull == true));
+			Test.Assert(bNull != true);
+			Test.Assert(bNull != false);
+
+			iNull = 100;
+			bNull = false;
+
+			Test.Assert(iNull >= 50);
+			Test.Assert(!(iNull >= 150));
+			Test.Assert(iNull < 150);
+			Test.Assert(!(iNull < 50));
+			Test.Assert(iNull == 100);
+			Test.Assert(iNull != 99);
+			Test.Assert(!(iNull != 100));
+		}
 	}
 }

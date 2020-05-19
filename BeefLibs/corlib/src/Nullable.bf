@@ -121,13 +121,13 @@ namespace System
 
         public static bool operator!=<TOther>(Nullable<T> lhs, TOther rhs) where bool : operator T != TOther
         {
-            if (!lhs.mHasValue) return false;
+            if (!lhs.mHasValue) return true;
             return lhs.mValue != rhs;
         }
 
         public static bool operator!=<TOther>(TOther lhs, Nullable<T> rhs) where bool : operator TOther != T
         {
-            if (!rhs.mHasValue) return false;
+            if (!rhs.mHasValue) return true;
             return lhs != rhs;
         }
 
