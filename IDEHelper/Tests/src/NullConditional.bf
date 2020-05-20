@@ -55,7 +55,7 @@ namespace Tests
 				Test.FatalError();
 
 			Test.Assert(ca?.mCondB?.mStr == null);
-			Test.Assert(!(ca?.mCondB?.mStr?.Length != 0));
+			Test.Assert(ca?.mCondB?.mStr?.Length != 0);
 			Test.Assert(!(ca?.mCondB?.mStr?.Length == 0));
 
 			if (let i = ca?.mCondB?.mInt)

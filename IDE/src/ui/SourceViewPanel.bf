@@ -6100,7 +6100,8 @@ namespace IDE.ui
                 }*/
             }
 
-            if (HasUnsavedChanges())
+			// When files changes we move it to the permanent area
+            if ((HasUnsavedChanges()) && (gApp.mSymbolReferenceHelper?.IsRenaming != true))
             {
                 var parent = mParent;
                 while (parent != null)
@@ -6113,7 +6114,6 @@ namespace IDE.ui
                         // Debug.Assert(activeTab.mContent == this);
                         if (activeTab.mIsRightTab)
                         {
-                            // When files changes we move it to the permanent area
                             IDEApp.sApp.ShowSourceFile(mFilePath, mProjectSource, SourceShowType.ShowExisting, false);
                         }
                         break;

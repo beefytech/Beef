@@ -107,6 +107,14 @@ namespace IDE.ui
 			}
 		}
 
+		public bool IsLocked
+		{
+			get
+			{
+				return mDoLock;
+			}
+		}
+
 		/*public this()
 		{
 
