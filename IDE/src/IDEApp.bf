@@ -90,10 +90,29 @@ namespace IDE
 
 	public class IDETabbedView : DarkTabbedView
 	{
+		public this(SharedData sharedData) : base(sharedData)
+		{
+			if (sharedData == null)
+			{
+				mSharedData.mOpenNewWindowDelegate.Add(new (fromTabbedView, newWindow) => gApp.SetupNewWindow(newWindow, true));
+				mSharedData.mTabbedViewClosed.Add(new (tabbedView) =>
+				    {
+						if (tabbedView == gApp.mActiveDocumentsTabbedView)
+							gApp.mActiveDocumentsTabbedView = null;
+				    });
+			}
+		}
+
 		public ~this()
 		{
 			if (gApp.mActiveDocumentsTabbedView == this)
 				gApp.mActiveDocumentsTabbedView = null;
+		}
+
+		public override TabbedView CreateTabbedView(SharedData sharedData)
+		{
+			IDETabbedView tabbedView = new IDETabbedView(sharedData);
+			return tabbedView;
 		}
 	}
 
@@ -3396,8 +3415,15 @@ namespace IDE
 				nextTabbedView = firstTabbedView;
 			if (nextTabbedView != null)
 			{
+				if (!nextTabbedView.mWidgetWindow.mHasFocus)
+					nextTabbedView.mWidgetWindow.SetForeground();
 				var activeTab = nextTabbedView.GetActiveTab();
 				activeTab.Activate();
+
+				if (let sourceViewPanel = activeTab.mContent as SourceViewPanel)
+				{
+					sourceViewPanel.HilitePosition(.Always);
+				}
 			}
 		}
 
@@ -5151,14 +5177,7 @@ namespace IDE
 
         IDETabbedView CreateTabbedView()
         {
-            var tabbedView = new IDETabbedView();
-            tabbedView.mSharedData.mOpenNewWindowDelegate.Add(new (fromTabbedView, newWindow) => SetupNewWindow(newWindow, true));
-			tabbedView.mSharedData.mTabbedViewClosed.Add(new (tabbedView) =>
-                {
-					if (tabbedView == mActiveDocumentsTabbedView)
-						mActiveDocumentsTabbedView = null;
-                });
-            return tabbedView;
+            return new IDETabbedView(null);
         }
 
         public void SetupNewWindow(WidgetWindow window, bool isMainWindow)
@@ -6935,6 +6954,7 @@ namespace IDE
 			IDECommand.ContextFlags useFlags = .None;
 			var activeWindow = GetActiveWindow();
 			bool isMainWindow = activeWindow.mRootWidget is MainFrame;
+			bool isWorkWindow = isMainWindow || (activeWindow.mRootWidget is DarkDockingFrame);
 
 			var activePanel = GetActivePanel() as Panel;
 			if (activePanel is SourceViewPanel)
@@ -6944,6 +6964,8 @@ namespace IDE
 
 			if (isMainWindow)
 				useFlags |= .MainWindow;
+			if (isWorkWindow)
+				useFlags |= .WorkWindow;
 
 			if (evt.mKeyCode == .Tab)
 			{
@@ -6989,6 +7011,8 @@ namespace IDE
 								matches |= useFlags.HasFlag(.Editor);
 							if (checkCommand.mContextFlags.HasFlag(.MainWindow))
 								matches |= useFlags.HasFlag(.MainWindow);
+							if (checkCommand.mContextFlags.HasFlag(.WorkWindow))
+								matches |= useFlags.HasFlag(.WorkWindow);
 
 							if (matches)
 							{
@@ -12168,6 +12192,14 @@ namespace IDE
 				if (projectSourceDep != null)
 				{
 					// We process these projectSources directly from the filename below
+				}
+			}
+
+			if ((mFileChangedDialog != null) && (mFileChangedDialog.mDialogKind == .Deleted))
+			{
+				for (let fileName in mFileChangedDialog.mFileNames)
+				{
+					mFileWatcher.RemoveChangedFile(fileName);
 				}
 			}
 
