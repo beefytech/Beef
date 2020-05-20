@@ -402,12 +402,10 @@ namespace Beefy.widgets
 
                 if (mOffset < 0)
 				{
-                    //mText = deleteCharAction.mText + mText;
 					mText.Insert(0, deleteCharAction.mText);
 				}
                 else
 				{
-                    //mText = mText + deleteCharAction.mText;
 					mText.Append(deleteCharAction.mText);
 				}
 
@@ -1653,6 +1651,8 @@ namespace Beefy.widgets
         
         public void InsertCharPair(String char8Pair)
         {
+			if (CheckReadOnly())
+				return;
             InsertAtCursor(char8Pair);
             MoveCursorToIdx(CursorTextPos - 1);            
             mJustInsertedCharPair = true;
