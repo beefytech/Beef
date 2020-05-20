@@ -842,6 +842,7 @@ namespace IDE.ui
 			{
                 mEditData.mLastFileTextVersion = mEditWidget.Content.mData.mCurTextVersionId;
 				mEditData.mHadRefusedFileChange = false;
+				mEditData.mFileDeleted = false;
 			
 				var editText = scope String();
 				mEditWidget.GetText(editText);
@@ -2120,15 +2121,28 @@ namespace IDE.ui
 					mEditData.Ref();
 					mProjectSource.mEditData = mEditData;
 					mEditData.mProjectSources.Add(mProjectSource);
+					// Rehup mFileDeleted if necessary
+					if (mEditData.mFileDeleted)
+						mEditData.IsFileDeleted();
 				}
 			}
 			QueueFullRefresh(true);
 		}
 
-		public void DetachFromProjectItem()
+		public void DetachFromProjectItem(bool fileDeleted)
 		{
 			if (mProjectSource == null)
 				return;
+
+			if (fileDeleted)
+			{
+				// We manually add this change record because it may not get caught since the watch dep may be gone
+				// This will allow the "File Deleted" dialog to show.
+				var changeRecord = new FileWatcher.ChangeRecord();
+				changeRecord.mChangeType = .Deleted;
+				changeRecord.mPath = new String(mFilePath);
+				gApp.mFileWatcher.AddChangedFile(changeRecord);
+			}
 
 			ProcessDeferredResolveResults(-1);
 
@@ -2140,9 +2154,9 @@ namespace IDE.ui
 			QueueFullRefresh(true);
 
 			if (mOldVersionPanel != null)
-				mOldVersionPanel.DetachFromProjectItem();
+				mOldVersionPanel.DetachFromProjectItem(false);
 			if (mSplitTopPanel != null)
-				mSplitTopPanel.DetachFromProjectItem();
+				mSplitTopPanel.DetachFromProjectItem(false);
 		}
 
 		public void CloseEdit()

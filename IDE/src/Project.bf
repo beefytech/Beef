@@ -249,7 +249,8 @@ namespace IDE
 			{
 				mParentFolder.mChildMap.Remove(mName);
 				mName.Set(newName);
-				mParentFolder.mChildMap.Add(mName, this);
+				bool added = mParentFolder.mChildMap.TryAdd(mName, this);
+				Debug.Assert(added);
 			}
 
 			if ((didNameMatch) && (changePath))
