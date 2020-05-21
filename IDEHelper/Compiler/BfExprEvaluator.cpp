@@ -14609,10 +14609,15 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 						else
 							error = mModule->Fail(StrFormat("Cannot %s 'this' within struct lambda. Consider adding by-reference capture specifier [&] to lambda.", modifyType), refNode);
 					}
-					else
+					else if (localVar->mResolvedType->IsValueType())
 					{
 						error = mModule->Fail(StrFormat("Cannot %s 'this' within struct method '%s'. Consider adding 'mut' specifier to this method.", modifyType,
 			                mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+					}
+					else
+					{						
+						error = mModule->Fail(StrFormat("Cannot %s 'this' because '%s' is a reference type.", modifyType,
+							mModule->TypeToString(localVar->mResolvedType).c_str()), refNode);
 					}
 					return false;
 				}
@@ -17171,8 +17176,10 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				mModule->Fail(StrFormat("Invalid usage of '%s' expression", BfGetOpName(unaryOp)), opToken);
 				return;
 			}
-
+			
 			ResolveGenericType();
+			if (mResult.mType->IsVar())
+				break;
 			mResult = BfTypedValue(mResult.mValue, mModule->CreateRefType(mResult.mType, (unaryOp == BfUnaryOp_Ref) ? BfRefType::RefKind_Ref : BfRefType::RefKind_Mut));
 		}
 		break;
@@ -17199,6 +17206,8 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 
 			MarkResultUsed();
 			ResolveGenericType();
+			if (mResult.mType->IsVar())
+				break;
 			mResult = BfTypedValue(mResult.mValue, mModule->CreateRefType(mResult.mType, BfRefType::RefKind_Out));
 		}
 		break;
