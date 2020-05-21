@@ -2,8 +2,8 @@
 echo Starting build.sh
 
 PATH=/usr/local/bin:$PATH:$HOME/bin
-SCRIPT="$(realpath "$0")"
-SCRIPTPATH="$(dirname "$SCRIPT")"
+SCRIPTPATH=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+echo Building from from $SCRIPTPATH
 cd $SCRIPTPATH
 
 # exit when any command fails
@@ -15,11 +15,11 @@ if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
 	echo Building libffi...
 	cd ../BeefySysLib/third_party/libffi
 	./configure
-	make
+	make	
 	cd $SCRIPTPATH
 fi
 
-if [ ! -d ../extern/llvm_linux_8_0_0 ]; then
+if [ ! -d ../extern/llvm_linux_8_0_0/bin ]; then
 	echo Building LLVM...
 	cd ../extern
 	./llvm_build.sh
