@@ -73,7 +73,7 @@ elseif (${APPLE})
     ../BeefySysLib/  
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
-    ../BeefySysLib/third_party/libffi/x86_64-apple-darwin12.5.0/include
+    ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/include
     ../  
     ../extern
     ../extern/llvm/include  
@@ -251,15 +251,13 @@ elseif (${APPLE})
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/darwin/BFPlatform.cpp
         ../BeefySysLib/platform/darwin/DarwinCommon.cpp
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/prep_cif.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/types.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/raw_api.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/java_raw_api.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/closures.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/ffi64.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/unix64.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/ffiw64.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/win64.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/types.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/closures.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/ffi64.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/darwin64.o
     )
 elseif (${ANDROID})
   file(GLOB SRC_FILES_OS
