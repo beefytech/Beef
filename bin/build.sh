@@ -44,10 +44,9 @@ cd ../IDE/dist
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
 	LIBEXT=dylib
-	LINKOPTS="-Wl,-rpath -Wl,@executable_path"	
+	LINKOPTS="-Wl,-no_compact_unwind -Wl,-rpath -Wl,@executable_path"	
 else
-	LIBEXT=so
-	#LINKOPTS="-ldl -lpthread -ltinfo -Wl,-rpath -Wl,\$ORIGIN"
+	LIBEXT=so	
 	LINKOPTS="-ldl -lpthread -Wl,-rpath -Wl,\$ORIGIN"
 fi
 
@@ -67,8 +66,6 @@ echo Building BeefBuild_bootd
 ../../jbuild_d/Debug/bin/BeefBoot --out="BeefBuild_bootd" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT_d.a ./libIDEHelper_d.$LIBEXT ./libBeefySysLib_d.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs_d.txt) $LINKOPTS"
 echo Building BeefBuild_d
 ./BeefBuild_bootd -clean -proddir=../../BeefBuild -config=Debug
-#./BeefBuild_d -proddir=../../TestApp
-#../../TestApp/build/Debug_Linux64/TestApp/TestApp
 echo Testing IDEHelper/Tests in BeefBuild_d
 ./BeefBuild_d -proddir=../../IDEHelper/Tests -test
 
@@ -78,7 +75,5 @@ echo Building BeefBuild_boot
 ../../jbuild/Release/bin/BeefBoot --out="BeefBuild_boot" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --startup=BeefBuild.Program --linkparams="./libBeefRT.a ./libIDEHelper.$LIBEXT ./libBeefySysLib.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs.txt) $LINKOPTS"
 echo Building BeefBuild
 ./BeefBuild_boot -clean -proddir=../../BeefBuild -config=Release
-#./BeefBuild_d -proddir=../../TestApp
-#../../TestApp/build/Debug_Linux64/TestApp/TestApp
 echo Testing IDEHelper/Tests in BeefBuild
 ./BeefBuild -proddir=../../IDEHelper/Tests -test

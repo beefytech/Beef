@@ -122,10 +122,7 @@ if(MSVC)
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /GL /Od /Oi /Gy /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")  
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-  endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")    
 endif(NOT MSVC)
 
 ################ Files ################
@@ -194,17 +191,10 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-set(TARGET_LIBS_OS "")
+set(TARGET_LIBS_OS "${LLVM_SYSTEM_LIBS}")
+
 if (HAVE_BACKTRACE_HEADERS)
-  set(TARGET_LIBS_OS "-lbacktrace")
-endif()
-
-set(TARGET_LIBS_OS "${TARGET_LIBS_OS} ${LLVM_SYSTEM_LIBS}")    
-
-if (${APPLE})
-    set(TARGET_LIBS_OS "${TARGET_LIBS_OS} ncurses")
-else()
-    
+  set(TARGET_LIBS_OS " -lbacktrace")
 endif()
 
 list(APPEND LLVM_LIBS
