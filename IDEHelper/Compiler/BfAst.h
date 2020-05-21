@@ -724,6 +724,8 @@ public:
 		case BfTypedValueKind_TempAddr:
 			mKind = BfTypedValueKind_ReadOnlyTempAddr;
 			break;
+		default:
+			break;
 		}
 	}
 };

@@ -733,7 +733,11 @@ void BootApp::DoLinkMS()
 
 void BootApp::DoLinkGNU()
 {
-    String linkerPath = "/usr/bin/c++";
+    String linkerPath;
+    if (FileExists("/usr/bin/clang++"))
+    	linkerPath = "/usr/bin/clang++";
+    else
+    	linkerPath = "/usr/bin/c++";
 
     String linkLine;
 

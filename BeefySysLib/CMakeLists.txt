@@ -34,6 +34,8 @@ add_definitions(
    -DBP_DYNAMIC
 )
 
+set (CMAKE_CXX_STANDARD 11)
+
 if (${APPLE})
     include_directories(
       .
@@ -97,7 +99,7 @@ endif(MSVC)
 if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-multichar")  
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
   endif()
 endif(NOT MSVC)
 

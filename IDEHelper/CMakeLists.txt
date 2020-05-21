@@ -33,6 +33,9 @@ add_definitions(
    -DBFSYSLIB_DYNAMIC
 )
 
+set (CMAKE_CXX_STANDARD 11)
+#add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
+
 if (${APPLE})
   include_directories(
     .
@@ -115,7 +118,7 @@ endif(MSVC)
 if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")  
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
   endif()
 endif(NOT MSVC)
 
@@ -182,20 +185,19 @@ add_library(${PROJECT_NAME} SHARED
 if (${APPLE})
     set(TARGET_LIBS_OS "ncurses")
 else()
-    set(TARGET_LIBS_OS "backtrace")
+    #set(TARGET_LIBS_OS "backtrace")
 endif()
 
 # Link with other dependencies.
 if(MSVC)
   target_link_libraries(${PROJECT_NAME} BeefySysLib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib LLVMX86Disassembler.lib LLVMMCDisassembler.lib LLVMSupport.lib LLVMX86Info.lib LLVMX86Utils.lib LLVMX86AsmPrinter.lib LLVMX86Desc.lib %(AdditionalDependencies) LLVMMC.lib LLVMObject.lib LLVMCore.lib LLVMBitReader.lib LLVMAsmParser.lib LLVMMCParser.lib LLVMCodeGen.lib LLVMTarget.lib LLVMX86CodeGen.lib LLVMScalarOpts.lib LLVMInstCombine.lib LLVMSelectionDAG.lib LLVMProfileData.lib LLVMTransformUtils.lib LLVMAnalysis.lib LLVMX86AsmParser.lib LLVMAsmPrinter.lib LLVMBitWriter.lib LLVMVectorize.lib LLVMipo.lib LLVMInstrumentation.lib LLVMDebugInfoDWARF.lib LLVMDebugInfoPDB.lib LLVMDebugInfoCodeView.lib LLVMGlobalISel.lib LLVMBinaryFormat.lib LLVMAggressiveInstCombine.lib libcurl_a.lib)
 else()
-  target_link_libraries(${PROJECT_NAME} BeefySysLib hunspell pthread dl ${TARGET_LIBS_OS}
+  target_link_libraries(${PROJECT_NAME} BeefySysLib hunspell pthread dl ${TARGET_LIBS_OS}    
     ${LLVM_LIB}/libLLVMCore.a
     ${LLVM_LIB}/libLLVMMC.a
     ${LLVM_LIB}/libLLVMMCParser.a
     ${LLVM_LIB}/libLLVMCodeGen.a    
-    ${LLVM_LIB}/libLLVMMCDisassembler.a
-    ${LLVM_LIB}/libLLVMSupport.a    
+    ${LLVM_LIB}/libLLVMMCDisassembler.a    
     ${LLVM_LIB}/libLLVMObject.a
     ${LLVM_LIB}/libLLVMBitReader.a
     ${LLVM_LIB}/libLLVMAsmParser.a    
@@ -215,11 +217,9 @@ else()
     ${LLVM_LIB}/libLLVMDebugInfoPDB.a
     ${LLVM_LIB}/libLLVMDebugInfoCodeView.a
     ${LLVM_LIB}/libLLVMGlobalISel.a
-    ${LLVM_LIB}/libLLVMBinaryFormat.a
-    ${LLVM_LIB}/libLLVMObject.a
+    ${LLVM_LIB}/libLLVMBinaryFormat.a    
     ${LLVM_LIB}/libLLVMIRReader.a
-    ${LLVM_LIB}/libLLVMLinker.a
-    ${LLVM_LIB}/libLLVMDemangle.a
+    ${LLVM_LIB}/libLLVMLinker.a    
     ${LLVM_LIB}/libLLVMAggressiveInstCombine.a
 
     ${LLVM_LIB}/libLLVMX86Info.a
@@ -245,5 +245,8 @@ else()
     ${LLVM_LIB}/libLLVMAArch64CodeGen.a
     ${LLVM_LIB}/libLLVMAArch64AsmParser.a
     ${LLVM_LIB}/libLLVMAArch64Disassembler.a
+
+    ${LLVM_LIB}/libLLVMSupport.a
+    ${LLVM_LIB}/libLLVMDemangle.a
   )
 endif()

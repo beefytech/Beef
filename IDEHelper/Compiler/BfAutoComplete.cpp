@@ -3016,6 +3016,8 @@ String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfIRValue 
 			result += str;			
 			return result;
 		}
+	default:
+		break;
 	}
 
 	return "";

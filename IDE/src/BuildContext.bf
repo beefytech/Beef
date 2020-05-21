@@ -399,6 +399,17 @@ namespace IDE
 #else
 		        String gccExePath = "/usr/bin/c++";
 		        String clangExePath = scope String("/usr/bin/c++");
+
+		        if (File.Exists("/usr/bin/clang++"))
+		        {
+					gccExePath = "/usr/bin/clang++";
+		        	clangExePath = scope String("/usr/bin/clang++");
+		        }
+		        else
+		        {
+					gccExePath = "/usr/bin/c++";
+		        	clangExePath = scope String("/usr/bin/c++");
+		        }
 #endif
 
 			    if (project.mNeedsTargetRebuild)

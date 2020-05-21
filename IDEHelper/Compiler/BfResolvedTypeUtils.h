@@ -1684,7 +1684,7 @@ public:
 	
 	~BfTypeInstance();	
 
-	virtual bool IsInstanceOf(BfTypeDef* typeDef) { return typeDef == mTypeDef; }
+	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { return typeDef == mTypeDef; }
 	virtual BfModule* GetModule() override { return mModule; }
 	virtual BfTypeInstance* ToTypeInstance() override { return this; }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }

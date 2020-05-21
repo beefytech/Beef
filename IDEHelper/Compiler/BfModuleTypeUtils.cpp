@@ -10259,6 +10259,8 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		case BfCallingConvention_Fastcall:
 			str += "[FastCall] ";
 			break;
+		default:
+			break;
 		}
 
 		if (resolvedType->IsDelegateFromTypeRef())

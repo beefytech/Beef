@@ -35,6 +35,23 @@ add_definitions(
    -DBFRTMERGED
 )
 
+set (CMAKE_CXX_STANDARD 11)
+
+INCLUDE(CheckIncludeFiles)
+CHECK_INCLUDE_FILES(backtrace.h HAVE_BACKTRACE_HEADERS)
+if (HAVE_BACKTRACE_HEADERS)
+   add_definitions(-DBFP_HAS_BACKTRACE) 
+endif ()
+
+#find_package(Backtrace)
+#if(Backtrace_FOUND)
+#  include_directories(${Backtrace_INCLUDE_DIRS})
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Backtrace_LIBRARIES}")
+#  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${Backtrace_LIBRARIES}")
+#  add_definitions(-DBFP_HAS_BACKTRACE)
+#  add_definitions(-DBFP_BACKTRACE_PATH="${Backtrace_HEADER}")
+#endif(Backtrace_FOUND)
+
 if (${IOS})  
   include_directories(
     .
@@ -188,7 +205,7 @@ endif(MSVC)
 if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")  
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
   endif()
 endif(NOT MSVC)
 
@@ -277,7 +294,8 @@ elseif (${ANDROID})
   #target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../BeefySysLib/third_party/libffi/aarch64-unknown-linux-gnu/.libs/libffi.a)
   #target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../BeefySysLib/third_party/libffi/i686-pc-linux-gnu/.libs/libffi.a)
 else()
-  target_link_libraries(${PROJECT_NAME} pthread ffi backtrace)
+  #target_link_libraries(${PROJECT_NAME} pthread ffi backtrace)
+  target_link_libraries(${PROJECT_NAME} pthread ffi)
 endif()
 
 # Link with other dependencies.

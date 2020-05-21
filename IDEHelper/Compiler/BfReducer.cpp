@@ -6163,7 +6163,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 		bool handled = false;
 		BfTokenNode* fatArrowToken = NULL;
 		BfAstNode* endSemicolon = NULL;
-		if (tokenNode = BfNodeDynCast<BfTokenNode>(child))
+		if ((tokenNode = BfNodeDynCast<BfTokenNode>(child)))
 		{
 			if ((tokenNode->GetToken() == BfToken_Semicolon))
 			{
