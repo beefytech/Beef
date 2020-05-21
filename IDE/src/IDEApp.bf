@@ -7459,6 +7459,7 @@ namespace IDE
             	startInfo.SetFileName(fileName);
             startInfo.SetWorkingDirectory(workingDir);
             startInfo.SetArguments(args);
+
 			if ((!runFlags.HasFlag(.NoRedirect)) && (!runFlags.HasFlag(.NoWait)))
 			{
 	            startInfo.RedirectStandardOutput = true;
@@ -7848,6 +7849,16 @@ namespace IDE
                 else if (next is ExecutionQueueCmd)
                 {
                     var executionQueueCmd = (ExecutionQueueCmd)next;
+
+					ReplaceVariables(executionQueueCmd.mFileName);
+					ReplaceVariables(executionQueueCmd.mArgs);
+					ReplaceVariables(executionQueueCmd.mWorkingDir);
+					if (executionQueueCmd.mEnvVars != null)
+					{
+						for (let kv in executionQueueCmd.mEnvVars)
+							ReplaceVariables(kv.value);
+					}
+
                     var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile, executionQueueCmd.mEnvVars, executionQueueCmd.mStdInData, executionQueueCmd.mRunFlags);
 					if (executionInstance != null)
 					{
@@ -8724,6 +8735,8 @@ namespace IDE
 								}
 								else
 									cmdErr = "Invalid number of arguments";
+							case "Var":
+								break ReplaceBlock;
 							}
 
 							if (newString == null)
@@ -8961,6 +8974,98 @@ namespace IDE
 
 			return !hadError;
         }
+
+		public void ReplaceVariables(String result)
+		{
+			int i = 0;
+			for ( ; i < result.Length - 2; i++)
+			{
+			    if ((result[i] == '$') && (result[i + 1] == '('))
+			    {
+					int parenPos = -1;
+					int openCount = 1;
+					bool inString = false;
+					char8 prevC = 0;
+					for (int checkIdx = i + 2; checkIdx < result.Length; checkIdx++)
+					{
+						char8 c = result[checkIdx];
+						if (inString)
+						{
+							if (prevC == '\\')
+							{
+								// Slashed char
+								prevC = 0;
+								continue;
+							}
+
+							if (c == '"')
+								inString = false;
+						}
+						else
+						{
+							if (c == '"')
+								inString = true;
+							else if (c == '(')
+								openCount++;
+							else if (c == ')')
+							{
+								openCount--;
+								if (openCount == 0)
+								{
+									parenPos = checkIdx;
+									break;
+								}	
+							}
+						}
+
+						prevC = c;
+					}
+
+			        if (parenPos != -1)
+					ReplaceBlock:
+					do
+			        {
+			            String replaceStr = scope String(result, i + 2, parenPos - i - 2);
+
+						if (!replaceStr.StartsWith("Var "))
+							continue;
+
+						String varName = scope String(replaceStr, 4);
+						String newString = null;
+
+						if (mScriptManager.mContext.mVars.TryGetValue(varName, var value))
+						{
+							if (value.VariantType == typeof(String))
+							{
+								newString = scope:ReplaceBlock String(value.Get<String>());
+							}
+						}
+
+						if (newString == null)
+						{
+							if (mBuildContext != null)
+							{
+								if (mBuildContext.mScriptContext.mVars.TryGetValue(varName, var value))
+								{
+									if (value.VariantType == typeof(String))
+									{
+										newString = scope:ReplaceBlock String(value.Get<String>());
+									}
+								}
+							}
+						}
+
+						if (newString != null)
+						{
+							result.Remove(i, parenPos - i + 1);
+							result.Insert(i, newString);
+							i--;
+						}
+			        }
+			    }
+			}
+
+		}
 
         public bool ResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String errorContext, String outResult)
         {

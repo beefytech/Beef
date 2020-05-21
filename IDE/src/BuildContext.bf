@@ -35,6 +35,7 @@ namespace IDE
 				delete val;
 			delete _;
 		};
+		public ScriptManager.Context mScriptContext = new .() ~ _.ReleaseLastRef();
 		public ScriptManager mScriptManager ~ delete _;
 
 		public bool Failed
@@ -152,7 +153,7 @@ namespace IDE
 
 				if (mScriptManager == null)
 				{
-					mScriptManager = new .();
+					mScriptManager = new .(mScriptContext);
 					mScriptManager.mProjectName = new String(project.mProjectName);
 					mScriptManager.mIsBuildScript = true;
 					mScriptManager.mSoftFail = true;

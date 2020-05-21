@@ -17,6 +17,19 @@ namespace IDE
 	{
 		public static ScriptManager sActiveManager;
 
+		public class Context : RefCounted
+		{
+			public Dictionary<String, Variant> mVars = new .() ~
+			{
+				for (var kv in _)
+				{
+					delete kv.key;
+					kv.value.Dispose();
+				}
+				delete _;
+			};
+		}
+
 		class Target
 		{
 			public class Cmd
@@ -54,15 +67,8 @@ namespace IDE
 
 		ScriptHelper mScriptHelper = new ScriptHelper(this) ~ delete _;
 		Target mRoot = new Target() ~ delete _;
-		Dictionary<String, Variant> mVars = new .() ~
-			{
-				for (var kv in _)
-				{
-					delete kv.key;
-					kv.value.Dispose();
-				}
-				delete _;
-			};
+		public Context mContext ~ _.ReleaseRef();
+
 		List<QueuedCmd> mCmdList = new .() ~ DeleteContainerAndItems!(_);
 		public bool mFailed;
 		public bool mCancelled;
@@ -93,8 +99,16 @@ namespace IDE
 			}
 		}
 
-		public this()
+		public this(Context context = null)
 		{
+			if (context != null)
+			{
+				context.AddRef();
+				mContext = context;
+			}
+			else
+				mContext = new Context();
+
 			AddTarget(mScriptHelper);
 
 			//Exec("OutputLine(\"Hey bro!\", 2)");
@@ -520,7 +534,7 @@ namespace IDE
 						{
 							String* keyPtr;
 							Variant* valuePtr;
-							if (mVars.TryAdd(scope String(varName), out keyPtr, out valuePtr))
+							if (mContext.mVars.TryAdd(scope String(varName), out keyPtr, out valuePtr))
 								*keyPtr = new String(varName);
 							else
 								valuePtr.Dispose();
@@ -2450,6 +2464,35 @@ namespace IDE
 #if BF_PLATFORM_WINDOWS
 			Windows.MessageBoxA((Windows.HWnd)0, "Waiting for user input", "Beef IDE", 0);
 #endif
+		}
+
+		[IDECommand]
+		public void SetVal(String valName, String value)
+		{
+			bool added = mScriptManager.mContext.mVars.TryAdd(valName, var keyPtr, var valuePtr);
+			if (added)
+				*keyPtr = new String(valName);
+			else
+				valuePtr.Dispose();
+			*valuePtr = Variant.Create<String>(new String(value), true);
+		}
+
+		[IDECommand]
+		public void ReadFile(String filePath, String valName)
+		{
+			String value = scope .();
+			if (File.ReadAllText(filePath, value) case .Err)
+			{
+				mScriptManager.Fail(scope String()..AppendF("Failed to read file '{}'", filePath));
+				return;
+			}
+
+			bool added = mScriptManager.mContext.mVars.TryAdd(valName, var keyPtr, var valuePtr);
+			if (added)
+				*keyPtr = new String(valName);
+			else
+				valuePtr.Dispose();
+			*valuePtr = Variant.Create<String>(new String(value), true);
 		}
 	}
 }

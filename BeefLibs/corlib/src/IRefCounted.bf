@@ -47,6 +47,16 @@ namespace System
 			}
 		}
 
+		public void ReleaseLastRef()
+		{
+			int refCount = Interlocked.Decrement(ref mRefCount);
+			Debug.Assert(refCount == 0);
+			if (refCount == 0)
+			{
+				delete this;
+			}
+		}
+
 		public int ReleaseRefNoDelete()
 		{
 			int refCount = Interlocked.Decrement(ref mRefCount);
