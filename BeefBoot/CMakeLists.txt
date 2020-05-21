@@ -133,11 +133,19 @@ add_executable(${PROJECT_NAME}
    ${SRC_FILES}
 )
 
+execute_process(
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_8_0_0/bin/llvm-config --system-libs --link-static
+  OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 if (${APPLE})
     set(TARGET_LIBS_OS "")
 else()
-    #set(TARGET_LIBS_OS "tinfo")
-    set(TARGET_LIBS_OS "-Xlinker --no-demangle -v")
+    #set(TARGET_LIBS_OS "curses")
+    #set(TARGET_LIBS_OS "-Xlinker --no-demangle -v")
+
+    set(TARGET_LIBS_OS "${LLVM_SYSTEM_LIBS}")
 endif()
 
 # Link with other dependencies.

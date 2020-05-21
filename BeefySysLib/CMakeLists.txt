@@ -34,6 +34,12 @@ add_definitions(
    -DBP_DYNAMIC
 )
 
+INCLUDE(CheckIncludeFiles)
+CHECK_INCLUDE_FILES(backtrace.h HAVE_BACKTRACE_HEADERS)
+if (HAVE_BACKTRACE_HEADERS)
+   add_definitions(-DBFP_HAS_BACKTRACE) 
+endif ()
+
 set (CMAKE_CXX_STANDARD 11)
 
 if (${APPLE})
