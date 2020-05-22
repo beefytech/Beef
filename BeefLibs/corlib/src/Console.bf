@@ -142,6 +142,14 @@ namespace System
 				return OpenStreamReader(.In, ref mIn);
 			}
 		}
+		
+		public static Result<char8> Read() => In.Read();
+
+		public static Result<void> ReadLine(String strBuffer) => In.ReadLine(strBuffer);
+
+		public static Task<String> ReadLineAsync() => In.ReadLineAsync();
+
+		public static Result<void> ReadToEnd(String outText) => In.ReadToEnd(outText);
 
 		public static void Write(String line)
 		{
