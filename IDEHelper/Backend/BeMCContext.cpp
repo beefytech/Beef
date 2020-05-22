@@ -3838,9 +3838,9 @@ bool BeMCContext::HasSymbolAddr(const BeMCOperand& operand)
 	return false;
 }
 
-BeMCOperand BeMCContext::ReplaceWithNewVReg(BeMCOperand& operand, int& instIdx, bool isInput, bool mustBeReg)
+BeMCOperand BeMCContext::ReplaceWithNewVReg(BeMCOperand& operand, int& instIdx, bool isInput, bool mustBeReg, bool preserveDeref)
 {
-	if ((isInput) && (operand.mKind == BeMCOperandKind_VRegLoad))
+	if ((isInput) && (operand.mKind == BeMCOperandKind_VRegLoad) && (preserveDeref))
 	{
 		BeMCOperand addrOperand = BeMCOperand::ToAddr(operand);
 		BeMCOperand scratchReg = AllocVirtualReg(GetType(addrOperand), 2, mustBeReg);
@@ -8356,7 +8356,7 @@ bool BeMCContext::DoLegalization()
 			{
 				if ((HasSymbolAddr(inst->mArg0)) && (inst->mKind != BeMCInstKind_Call))
 				{
-					ReplaceWithNewVReg(inst->mArg0, instIdx, true, false);
+					ReplaceWithNewVReg(inst->mArg0, instIdx, true, false, true);
 					isFinalRun = false;
 					// 				if (debugging)
 					// 					OutputDebugStrF(" SymbolAddr0\n");
@@ -14769,7 +14769,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?Hey@Blurg@bf@@SAXXZ";
+	//mDebugging = function->mName == "?DrawBox@Graphics@gfx@Beefy@bf@@QEAAXPEAVImage@234@MMMM@Z";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 

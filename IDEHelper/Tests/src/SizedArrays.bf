@@ -35,8 +35,8 @@ namespace Tests
 			Test.Assert(iArr[3] == 0);
 
 			iArr[0] += 1000;
-			iArr[2] += 2000;
-			iArr[3] += 3000;
+			iArr[1] += 2000;
+			iArr[2] += 3000;
 			iArr[3] += 4000;
 
 			Test.Assert(iArr[0] == 1123);

@@ -1317,7 +1317,7 @@ public:
 	BeMCOperand AllocRelativeVirtualReg(BeType* type, const BeMCOperand& relTo, const BeMCOperand& relOffset, int relScale);	
 	BeMCVRegInfo* GetVRegInfo(const BeMCOperand& operand);
 	bool HasSymbolAddr(const BeMCOperand& operand);
-	BeMCOperand ReplaceWithNewVReg(BeMCOperand& operand, int& instIdx, bool isInput, bool mustBeReg = true);
+	BeMCOperand ReplaceWithNewVReg(BeMCOperand& operand, int& instIdx, bool isInput, bool mustBeReg = true, bool preserveDeref = false);
 	BeMCOperand RemapOperand(BeMCOperand& operand, BeMCRemapper& regRemaps);	
 	bool IsLive(BeVTrackingList* liveRegs, int vregIdx, BeMCRemapper& regRemaps);
 	void AddRegRemap(int from, int to, BeMCRemapper& regRemaps, bool allowRemapToDbgVar = false);
