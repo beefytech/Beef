@@ -312,6 +312,9 @@ namespace IDE
 				if (mPlatformType == .Linux)
 					linkLine.Append("-no-pie ");
 
+				if (mPlatformType == .macOS)
+					linkLine.Append("-Wl,-no_compact_unwind ");
+
 			    linkLine.Append(objectsArg);
 
 				//var destDir = scope String();

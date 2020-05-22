@@ -34,6 +34,12 @@ add_definitions(
    -DBP_DYNAMIC
 )
 
+INCLUDE(CheckIncludeFiles)
+CHECK_INCLUDE_FILES(backtrace.h HAVE_BACKTRACE_HEADERS)
+if (HAVE_BACKTRACE_HEADERS)
+   add_definitions(-DBFP_HAS_BACKTRACE) 
+endif ()
+
 set (CMAKE_CXX_STANDARD 11)
 
 if (${APPLE})
@@ -98,9 +104,6 @@ if(MSVC)
 endif(MSVC)
 if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-multichar")  
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-  endif()
 endif(NOT MSVC)
 
 ################ Files ################
