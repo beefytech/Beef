@@ -3622,7 +3622,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 15)
+		if (mcOperand.mVRegIdx == 4)
 		{
 			NOP;
 		}		
@@ -3840,6 +3840,16 @@ bool BeMCContext::HasSymbolAddr(const BeMCOperand& operand)
 
 BeMCOperand BeMCContext::ReplaceWithNewVReg(BeMCOperand& operand, int& instIdx, bool isInput, bool mustBeReg)
 {
+	if ((isInput) && (operand.mKind == BeMCOperandKind_VRegLoad))
+	{
+		BeMCOperand addrOperand = BeMCOperand::ToAddr(operand);
+		BeMCOperand scratchReg = AllocVirtualReg(GetType(addrOperand), 2, mustBeReg);
+		CreateDefineVReg(scratchReg, instIdx++);		
+		AllocInst(BeMCInstKind_Mov, scratchReg, addrOperand, instIdx++);
+		operand = BeMCOperand::ToLoad(scratchReg);
+		return scratchReg;
+	}
+
 	BeMCOperand scratchReg = AllocVirtualReg(GetType(operand), 2, mustBeReg);
 	CreateDefineVReg(scratchReg, instIdx++);
 	if (isInput)
