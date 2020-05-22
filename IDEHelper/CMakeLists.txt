@@ -194,7 +194,7 @@ execute_process(
 set(TARGET_LIBS_OS "${LLVM_SYSTEM_LIBS}")
 
 if (HAVE_BACKTRACE_HEADERS)
-  set(TARGET_LIBS_OS " -lbacktrace")
+  string(APPEND TARGET_LIBS_OS " -lbacktrace")
 endif()
 
 list(APPEND LLVM_LIBS
