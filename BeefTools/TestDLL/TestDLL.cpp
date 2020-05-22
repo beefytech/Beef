@@ -167,6 +167,13 @@ void Test3(int a)
 extern "C"
 __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 {	
+	int a = 1234;
+
+	for (int i = 0; i < 100; i++)
+	{
+		a++;
+	}
+
 	Test3(10);
 
 	char* strP = "Hey yo";
@@ -195,11 +202,7 @@ __declspec(dllexport) void Test2(int aa, int bb, int cc, int dd)
 	str.push_back((char)0x85);
 	std::wstring str2 = L"Hey Dude";
 	str2.push_back((wchar_t)0x85);
-	str2.push_back((wchar_t)0x263a);
-
-	int a = 123;
-	int b = 234;
-	int c = 345;
+	str2.push_back((wchar_t)0x263a);	
 }
 
 struct ALLEGRO_COLOR

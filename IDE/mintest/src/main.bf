@@ -194,6 +194,8 @@ namespace Hey.Dude.Bro
 			PrintF("C...\n");
 			Thread.Sleep(1000);
 			PrintF("D...\n");
+
+			int abc = 234;
 		}
 
 		static int GetVal()
@@ -237,12 +239,9 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
+			//Test2(1, 2, 3, 4);
+			
 			Blurg.Hey();
-			while (true)
-			{
-				new String();
-				GC.Collect();
-			}
 			return 1;
 		}
 

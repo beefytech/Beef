@@ -2,25 +2,25 @@
 
 using System;
 
-class Foogie<T> where T : IHashable
+interface IItem
 {
-	public void Do()
-	{
-		T val = default;
-		val.GetHashCode();
-	}
+	public int Id { get; set; }
 }
 
-struct Zorbble
+class Mintesto
 {
-	public int mA;
-	public void MainMethod()
+	public static T Alloc<T>() where T : new
 	{
-
+		return new T();
 	}
 
-	static void Zoff()
+	public static void Dispose<T>(mut T val) where T : IDisposable
 	{
+		val.Dispose();
+	}
 
+	public static int Get<T>(mut T val) where T : IItem
+	{
+		return val.Id;
 	}
 }
