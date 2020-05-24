@@ -81,7 +81,8 @@ enum BfCastFlags
 	BfCastFlags_FromCompiler = 0x40, // Not user specified
 	BfCastFlags_Force = 0x80,
 	BfCastFlags_PreferAddr = 0x100,
-	BfCastFlags_WarnOnBox = 0x200
+	BfCastFlags_WarnOnBox = 0x200,
+	BfCastFlags_IsCastCheck = 0x400
 };
 
 enum BfCastResultFlags
@@ -1646,7 +1647,7 @@ public:
 	BfType* FixIntUnknown(BfType* type);
 	void FixIntUnknown(BfTypedValue& typedVal);	
 	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);
-	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef);	
+	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL);
 	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data);	
 	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized);
 	String GenericParamSourceToString(const BfGenericParamSource& genericParamSource);
@@ -1677,7 +1678,7 @@ public:
 	void EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scope, BfIRBlock doneBlock = BfIRBlock());	
 	void MarkScopeLeft(BfScopeData* scopeData);
 	BfGenericParamType* GetGenericParamType(BfGenericParamKind paramKind, int paramIdx);
-	BfType* ResolveGenericType(BfType* unspecializedType, const BfTypeVector& methodGenericArguments, bool allowFail = false);	
+	BfType* ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, bool allowFail = false);
 	bool IsUnboundGeneric(BfType* type);
 	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type);	

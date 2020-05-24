@@ -758,8 +758,9 @@ BfType * BfContext::FindTypeById(int typeId)
 
 void BfContext::AddTypeToWorkList(BfType* type)
 {
+	BF_ASSERT((type->mRebuildFlags & BfTypeRebuildFlag_InTempPool) == 0);
 	if ((type->mRebuildFlags & BfTypeRebuildFlag_AddedToWorkList) == 0)
-	{
+	{		
 		type->mRebuildFlags = (BfTypeRebuildFlags)(type->mRebuildFlags | BfTypeRebuildFlag_AddedToWorkList);
 
 		BfTypeProcessRequest* typeProcessRequest = mPopulateTypeWorkList.Alloc();
@@ -2221,9 +2222,10 @@ void BfContext::GenerateModuleName_Type(BfType* type, String& name)
 
 	if (type->IsDelegateFromTypeRef() || type->IsFunctionFromTypeRef())
 	{
-		auto delegateType = (BfDelegateType*)type;
+		auto typeInst = type->ToTypeInstance();
+		auto delegateInfo = type->GetDelegateInfo();
 
-		auto methodDef = delegateType->mTypeDef->mMethods[0];		
+		auto methodDef = typeInst->mTypeDef->mMethods[0];		
 
 		if (type->IsDelegateFromTypeRef())
 			name += "DELEGATE_";

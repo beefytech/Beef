@@ -374,6 +374,7 @@ enum BfTypeRebuildFlags
 	BfTypeRebuildFlag_SpecializedByAutocompleteMethod = 0x200,
 	BfTypeRebuildFlag_UnderlyingTypeDeferred = 0x400,
 	BfTypeRebuildFlag_TypeDataSaved = 0x800,
+	BfTypeRebuildFlag_InTempPool = 0x1000
 };
 
 class BfTypeDIReplaceCallback;
@@ -386,6 +387,26 @@ enum BfTypeDefineState : uint8
 	BfTypeDefineState_HasInterfaces,
 	BfTypeDefineState_Defined,
 	BfTypeDefineState_DefinedAndMethodsSlotted,
+};
+
+class BfDelegateInfo
+{
+public:
+	Array<BfAstNode*> mDirectAllocNodes;
+	BfType* mReturnType;
+	Array<BfType*> mParams;
+
+public:
+	BfDelegateInfo()
+	{
+		mReturnType = NULL;
+	}
+
+	~BfDelegateInfo()
+	{
+		for (auto directAllocNode : mDirectAllocNodes)
+			delete directAllocNode;
+	}
 };
 
 class BfType
@@ -469,6 +490,7 @@ public:
 	virtual bool IsFunction() { return false; }
 	virtual bool IsDelegateFromTypeRef() { return false; }
 	virtual bool IsFunctionFromTypeRef() { return false; }
+	virtual BfDelegateInfo* GetDelegateInfo() { return NULL;  }
 	virtual bool IsValueType() { return false; }	
 	virtual bool IsValueTypeOrValueTypePtr() { return false; }	
 	virtual bool IsWrappableType() { return false; }
@@ -1968,21 +1990,16 @@ public:
 
 class BfDelegateType : public BfTypeInstance
 {
-public:
-	Array<BfAstNode*> mDirectAllocNodes;
-	// These depend on the params in Invoke
+public:		
+	BfDelegateInfo mDelegateInfo;
 	bool mIsUnspecializedType;
-	bool mIsUnspecializedTypeVariation;	
-	
-	BfType* mReturnType;
-	Array<BfType*> mParams;
+	bool mIsUnspecializedTypeVariation;
 
 public:
 	BfDelegateType()
 	{
 		mIsUnspecializedType = false;
-		mIsUnspecializedTypeVariation = false;		
-		mReturnType = NULL;		
+		mIsUnspecializedTypeVariation = false;
 	}
 	~BfDelegateType();
 	
@@ -1996,6 +2013,30 @@ public:
 
 	virtual bool IsUnspecializedType() override { return mIsUnspecializedType; }
 	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedTypeVariation; }
+
+	virtual BfDelegateInfo* GetDelegateInfo() { return &mDelegateInfo; }
+};
+
+class BfGenericDelegateType : public BfGenericTypeInstance
+{
+public:	
+	BfDelegateInfo mDelegateInfo;
+
+public:
+	BfGenericDelegateType()
+	{		
+		
+	}	
+
+	virtual bool IsOnDemand() override { return true; }
+
+	virtual bool IsDelegate() override { return mTypeDef->mIsDelegate; }
+	virtual bool IsDelegateFromTypeRef() override { return mTypeDef->mIsDelegate; }
+
+	virtual bool IsFunction() override { return !mTypeDef->mIsDelegate; }
+	virtual bool IsFunctionFromTypeRef() override { return !mTypeDef->mIsDelegate; }
+	
+	virtual BfDelegateInfo* GetDelegateInfo() override { return &mDelegateInfo; }
 	//virtual bool IsReified() override { return mIsReified; }	
 };
 
@@ -2303,7 +2344,7 @@ public:
 	public:
 		BfModule* mModule;
 		BfTypeReference* mRootTypeRef;
-		BfTypeDef* mRootTypeDef;
+		BfTypeDef* mRootTypeDef;		
 		BfType* mResolvedType;		
 		bool mFailed;		
 
@@ -2311,14 +2352,14 @@ public:
 		LookupContext()
 		{			
 			mRootTypeRef = NULL;
-			mRootTypeDef = NULL;
+			mRootTypeDef = NULL;			
 			mModule = NULL;
 			mResolvedType = NULL;
 			mFailed = false;
 		}
 
 		BfType* ResolveTypeRef(BfTypeReference* typeReference);
-		BfTypeDef* ResolveToTypeDef(BfTypeReference* typeReference);
+		BfTypeDef* ResolveToTypeDef(BfTypeReference* typeReference, BfType** outType = NULL);
 	};
 
 public:
@@ -2327,9 +2368,12 @@ public:
 	static bool GenericTypeEquals(BfGenericTypeInstance* lhsGenericType, BfTypeVector* typeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
 	static void HashGenericArguments(BfTypeReference* typeRef, LookupContext* ctx, int& hash);
 	static int Hash(BfType* type, LookupContext* ctx, bool allowRef = false);
+	static int DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None);
 	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None);
 	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);
+	static bool EqualsNoAlias(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
+	static bool Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
 
 public:
 	BfResolvedTypeSet()

@@ -4881,7 +4881,8 @@ void BfCompiler::PopulateReified()
 
 			auto typeInst = type->ToTypeInstance();
 			
-			if ((typeInst != NULL) && (typeInst->IsGenericTypeInstance()) && (!typeInst->IsUnspecializedType()))
+			if ((typeInst != NULL) && (typeInst->IsGenericTypeInstance()) && (!typeInst->IsUnspecializedType()) &&
+				(!typeInst->IsDelegateFromTypeRef()) && (!typeInst->IsFunctionFromTypeRef()))
 			{
 				auto unspecializedType = module->GetUnspecializedTypeInstance(typeInst);
 				if (!unspecializedType->mIsReified)

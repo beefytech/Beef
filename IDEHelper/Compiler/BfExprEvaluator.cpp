@@ -562,9 +562,9 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			BfType* origPrevParamType = prevParamType;
 
 			if ((genericArgumentsSubstitute != NULL) && (paramType->IsUnspecializedType()))
-				paramType = mModule->ResolveGenericType(paramType, *genericArgumentsSubstitute, allowSpecializeFail);
+				paramType = mModule->ResolveGenericType(paramType, NULL, genericArgumentsSubstitute, allowSpecializeFail);
 			if ((prevGenericArgumentsSubstitute != NULL) && (prevParamType->IsUnspecializedType()))
-				prevParamType = mModule->ResolveGenericType(prevParamType, *prevGenericArgumentsSubstitute, allowSpecializeFail);
+				prevParamType = mModule->ResolveGenericType(prevParamType, NULL, prevGenericArgumentsSubstitute, allowSpecializeFail);
 
 			if ((wasGenericParam) || (prevWasGenericParam))
 			{
@@ -957,7 +957,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 					}
 
 					if ((genericArgumentsSubstitute != NULL) && (expectType->IsUnspecializedType()))
-						expectType = mModule->ResolveGenericType(expectType, *genericArgumentsSubstitute, true);
+						expectType = mModule->ResolveGenericType(expectType, NULL, genericArgumentsSubstitute, true);
 				}
 				
 				exprEvaluator.mExpectingType = expectType;
@@ -1067,13 +1067,13 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* generi
 	{
 		auto leftType = checkOpConstraint.mLeftType;
 		if ((leftType != NULL) && (leftType->IsUnspecializedType()))
-			leftType = mModule->ResolveGenericType(leftType, *methodGenericArgs);
+			leftType = mModule->ResolveGenericType(leftType, NULL, methodGenericArgs);
 		if (leftType != NULL)
 			leftType = mModule->FixIntUnknown(leftType);
 
 		auto rightType = checkOpConstraint.mRightType;
 		if ((rightType != NULL) && (rightType->IsUnspecializedType()))
-			rightType = mModule->ResolveGenericType(rightType, *methodGenericArgs);
+			rightType = mModule->ResolveGenericType(rightType, NULL, methodGenericArgs);
 		if (rightType != NULL)
 			rightType = mModule->FixIntUnknown(rightType);
 
@@ -1309,7 +1309,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 			if ((checkType != NULL) && (genericArgumentsSubstitute != NULL) && (checkType->IsUnspecializedType()))
 			{
-				checkType = mModule->ResolveGenericType(origCheckType, *genericArgumentsSubstitute);				
+				checkType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute);				
 			}
 
 			if (wantType->IsUnspecializedType())
@@ -1453,7 +1453,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		auto wantType = methodInstance->GetParamType(paramIdx);
 		if ((genericArgumentsSubstitute != NULL) && (wantType->IsUnspecializedType()))
 		{
-			auto resolvedType = mModule->ResolveGenericType(wantType, *genericArgumentsSubstitute);
+			auto resolvedType = mModule->ResolveGenericType(wantType, NULL, genericArgumentsSubstitute);
 			if (resolvedType == NULL)
 				goto NoMatch;
 			wantType = resolvedType;
@@ -6306,7 +6306,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	if (isUnboundCall)
 	{
-		if (mModule->mCurMethodInstance->mIsUnspecialized)
+		if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
 		{
 			auto varType = mModule->GetPrimitiveType(BfTypeCode_Var);
 

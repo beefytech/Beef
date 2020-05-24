@@ -6861,7 +6861,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			BfType* convCheckConstraint = genericParamInst->mTypeConstraint;
 			if ((convCheckConstraint->IsUnspecializedType()) && (methodGenericArgs != NULL))
-				convCheckConstraint = ResolveGenericType(convCheckConstraint, *methodGenericArgs);
+				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);
 			if ((checkArgType->IsMethodRef()) && (convCheckConstraint->IsDelegate()))
 			{
 				auto methodRefType = (BfMethodRefType*)checkArgType;
@@ -6932,7 +6932,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		BfType* convCheckConstraint = checkConstraint;
 		if (convCheckConstraint->IsUnspecializedType())
-			convCheckConstraint = ResolveGenericType(convCheckConstraint, *methodGenericArgs);		
+			convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);		
 
 		BfTypeInstance* typeConstraintInst = convCheckConstraint->ToTypeInstance();	
 		
@@ -6973,13 +6973,13 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		auto leftType = checkOpConstraint.mLeftType;
 		if ((leftType != NULL) && (leftType->IsUnspecializedType()))
-			leftType = ResolveGenericType(leftType, *methodGenericArgs);
+			leftType = ResolveGenericType(leftType, NULL, methodGenericArgs);
 		if (leftType != NULL)
 			leftType = FixIntUnknown(leftType);		
 		
 		auto rightType = checkOpConstraint.mRightType;
 		if ((rightType != NULL) && (rightType->IsUnspecializedType()))
-			rightType = ResolveGenericType(rightType, *methodGenericArgs);
+			rightType = ResolveGenericType(rightType, NULL, methodGenericArgs);
 		if (rightType != NULL)
 			rightType = FixIntUnknown(rightType);
 
@@ -8792,16 +8792,27 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	bool isStructPtr = typedVal.mType->IsStructPtr();
 	if (fromStructTypeInstance == NULL)	
 	{	
-		auto primType = (BfPrimitiveType*)typedVal.mType;
-		fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
+		auto primType = (BfPrimitiveType*)typedVal.mType;		
+		
+		if ((typedVal.mType->IsPointer()) && (toTypeInstance->IsInstanceOf(mCompiler->mIHashableTypeDef)))
+		{
+			// Can always do IHashable
+			alreadyCheckedCast = true;
+		}
+
+		if ((!typedVal.mType->IsPointer()) || (toTypeInstance == mContext->mBfObjectType))
+			fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
 
 		if (isStructPtr)
 		{
-			if ((toTypeInstance != NULL) && (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
+			if ((toTypeInstance != NULL) && (fromStructTypeInstance != NULL) && (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
 				alreadyCheckedCast = true;
 
 			fromStructTypeInstance = typedVal.mType->GetUnderlyingType()->ToTypeInstance();
 		}		
+		
+		if ((fromStructTypeInstance == NULL) && (alreadyCheckedCast))
+			fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
 	}
 	if (fromStructTypeInstance == NULL)
 		return BfTypedValue();	
@@ -8810,7 +8821,7 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	bool isBoxedType = (fromStructTypeInstance != NULL) && (toType->IsBoxed());
 	
 	if ((toType == NULL) || (toType == mContext->mBfObjectType) || (isBoxedType) || (alreadyCheckedCast) ||  (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
-	{	
+	{
 		if (mBfIRBuilder->mIgnoreWrites)
 			return BfTypedValue(mBfIRBuilder->GetFakeVal(), (toType != NULL) ? toType : CreateBoxedType(typedVal.mType));
 
@@ -9307,7 +9318,7 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 
 	BfType* type = methodInst->mMethodInstanceGroup->mOwner;
 	if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
-		type = ResolveGenericType(type, *methodGenericArgs);
+		type = ResolveGenericType(type, NULL, methodGenericArgs);
 	String methodName;
 	if ((methodNameFlags & BfMethodNameFlag_OmitTypeName) == 0)
 	{
@@ -9453,7 +9464,7 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 				}
 
 				if (type->IsUnspecializedType())
-					type = ResolveGenericType(type, *methodGenericArgs);
+					type = ResolveGenericType(type, NULL, methodGenericArgs);
 			}
 
 			if ((methodGenericArgs == NULL) && (mCurMethodInstance == NULL) && (mCurTypeInstance == NULL))
@@ -9486,7 +9497,7 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 			BfType* type = methodInst->GetParamType(paramIdx);
 			if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
-				type = ResolveGenericType(type, *methodGenericArgs);
+				type = ResolveGenericType(type, NULL, methodGenericArgs);
 			methodName += TypeToString(type, typeNameFlags);
 
 			methodName += " ";
