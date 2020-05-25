@@ -393,8 +393,6 @@ namespace Beefy.gfx
 			mPath = new String();
 			GetFontPath(fontName, mPath);
 
-			Console.WriteLine("Font loading {} from {}", fontName, mPath);
-
 			if (mPath.IsEmpty)
 				return false;
 
