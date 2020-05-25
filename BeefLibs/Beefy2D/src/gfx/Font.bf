@@ -355,9 +355,9 @@ namespace Beefy.gfx
 				{
 					if (sFontNameMap == null)
 						BuildFontNameCache();
+					String pathStr;
 #if BF_PLATFORM_WINDOWS
 					let lookupStr = scope String(fontName)..ToUpper();
-					String pathStr;
 					if (sFontNameMap.TryGetValue(lookupStr, out pathStr))
 					{
 						if (!pathStr.Contains(':'))
