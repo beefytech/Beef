@@ -616,6 +616,9 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			auto module = workItem.mFromModule;
 			auto methodInstance = workItem.mMethodInstance;
 
+			BF_ASSERT(module->mIsModuleMutable);
+			module->PrepareForIRWriting(methodInstance->GetOwner());
+
 			workIdx = mInlineMethodWorkList.RemoveAt(workIdx);
 
 			BfLogSysM("Module %p inlining method %p into func:%p\n", module, methodInstance, workItem.mFunc);
@@ -647,7 +650,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			module->mBfIRBuilder->Func_SetLinkage(workItem.mFunc, BfIRLinkageType_Internal);
 			
 			BF_ASSERT(module->mContext == this);
-			BF_ASSERT(module->mIsModuleMutable);			
+			BF_ASSERT(module->mIsModuleMutable);
+
 			if (module->WantsFinishModule())
 			{
 				BfLogSysM("Module finished: %s (from inlining)\n", module->mModuleName.c_str());

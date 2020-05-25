@@ -4412,7 +4412,7 @@ BfIRValue BfModule::CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTy
 			if ((methodInstance != NULL) && (!methodInstance->mMethodDef->mIsAbstract))
 			{
 				BF_ASSERT(implTypeInst->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject));
-				auto moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx);
+				auto moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx, NULL, BfGetMethodInstanceFlag_NoInline);
 				auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 				vValue = funcPtr;
 			}
@@ -5023,7 +5023,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						if ((methodInstance != NULL) && (!methodInstance->mMethodDef->mIsAbstract))
 						{
 							BF_ASSERT(typeInstance->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject));
-							moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx);
+							moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx, NULL, BfGetMethodInstanceFlag_NoInline);
 							auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 							vValue = funcPtr;
 						}
@@ -5118,7 +5118,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						BF_ASSERT(methodInstance->mIsReified);
 						// This doesn't work because we may have FOREIGN methods from implicit interface methods
 						//auto moduleMethodInst = GetMethodInstanceAtIdx(methodRef.mTypeInstance, methodRef.mMethodNum);						
-						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance);
+						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance, BfGetMethodInstanceFlag_NoInline);
 						auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 						pushValue = funcPtr;
 					}
@@ -5173,7 +5173,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						BF_ASSERT(methodInstance->mIsReified);
 						// This doesn't work because we may have FOREIGN methods from implicit interface methods
 						//auto moduleMethodInst = GetMethodInstanceAtIdx(methodRef.mTypeInstance, methodRef.mMethodNum);						
-						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance);
+						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance, BfGetMethodInstanceFlag_NoInline);
 						auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 
 						int idx = checkIFace.mStartVirtualIdx + ifaceMethodInstance->mVirtualTableIdx;
@@ -5901,7 +5901,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			(!methodDef->mIsAbstract) &&
 			(methodDef->mGenericParams.size() == 0))
 		{
-			moduleMethodInstance = GetMethodInstanceAtIdx(typeInstance, methodIdx);
+			moduleMethodInstance = GetMethodInstanceAtIdx(typeInstance, methodIdx, NULL, BfGetMethodInstanceFlag_NoInline);
 			if (moduleMethodInstance.mFunc)
 				funcVal = mBfIRBuilder->CreateBitCast(moduleMethodInstance.mFunc, voidPtrIRType);
 		}
@@ -9135,7 +9135,7 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	return func;
 }
 
-BfModuleMethodInstance BfModule::GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName)
+BfModuleMethodInstance BfModule::GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName, BfGetMethodInstanceFlags flags)
 {	
 	if (assertName != NULL)
 	{
@@ -9159,7 +9159,7 @@ BfModuleMethodInstance BfModule::GetMethodInstanceAtIdx(BfTypeInstance* typeInst
 		return BfModuleMethodInstance(methodInstance, func);
 	}
 
-	return GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector());	
+	return GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector(), flags);	
 }
 
 BfModuleMethodInstance BfModule::GetMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount, bool checkBase)
@@ -11197,7 +11197,7 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 		mFuncReferences[methodRef] = func;
 	BfLogSysM("Adding func reference. Module:%p MethodInst:%p NewLLVMFunc:%d OldLLVMFunc:%d\n", this, methodInstance, func.mId, methodInstance->mIRFunction.mId);
 
-	if ((isInlined) && (!mIsScratchModule))
+	if ((isInlined) && (!mIsScratchModule) && ((flags & BfGetMethodInstanceFlag_NoInline) == 0))
 	{
 		// We can't just add a dependency to mCurTypeInstance because we may have nested inlined functions, and
 		//   mCurTypeInstance will just reflect the owner of the method currently being inlined, not the top-level
@@ -11210,13 +11210,12 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 		if ((!mCompiler->mIsResolveOnly) && (mIsReified) && (!methodInstance->mIsUnspecialized))
 		{
 			mIncompleteMethodCount++;
-
 			BfInlineMethodRequest* inlineMethodRequest = mContext->mInlineMethodWorkList.Alloc();
 			inlineMethodRequest->mType = methodInstance->GetOwner();
 			inlineMethodRequest->mFromModule = this;
 			inlineMethodRequest->mFunc = func;
 			inlineMethodRequest->mFromModuleRevision = mRevision;
-			inlineMethodRequest->mMethodInstance = methodInstance;		
+			inlineMethodRequest->mMethodInstance = methodInstance;					
 			BF_ASSERT(mIsModuleMutable);
 
 			BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in ReferenceExternalMethodInstance\n", inlineMethodRequest, methodInstance, this);
@@ -11838,7 +11837,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					inlineMethodRequest->mFromModule = this;
 					inlineMethodRequest->mFunc = methodInstance->mIRFunction;
 					inlineMethodRequest->mFromModuleRevision = mRevision;
-					inlineMethodRequest->mMethodInstance = methodInstance;
+					inlineMethodRequest->mMethodInstance = methodInstance;					
 
 					BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in GetMethodInstance\n", inlineMethodRequest, methodInstance, this);
 					BF_ASSERT(mIsModuleMutable);

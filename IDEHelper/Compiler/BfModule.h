@@ -1772,7 +1772,7 @@ public:
 	BfMethodInstance* GetUnspecializedMethodInstance(BfMethodInstance* methodInstance); // Unspecialized owner type and unspecialized method type		
 	int GetGenericParamAndReturnCount(BfMethodInstance* methodInstance);	
 	BfModule* GetSpecializedMethodModule(const SizedArrayImpl<BfProject*>& projectList);	
-	BfModuleMethodInstance GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL);	
+	BfModuleMethodInstance GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
 	BfModuleMethodInstance GetMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false);
 	BfModuleMethodInstance GetMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, const Array<BfType*>& paramTypes, bool checkBase = false);
 	BfModuleMethodInstance GetInternalMethod(const StringImpl& methodName, int paramCount = -1);
