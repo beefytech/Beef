@@ -5091,7 +5091,15 @@ namespace IDE
 			//////////
 
             subMenu = root.AddMenuItem("&Debug");
-			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging", new (item) =>
+				{
+					SysMenu sysMenu = (.)item; 
+					if (mDebugger.mIsRunning)
+						sysMenu.Modify("&Continue", sysMenu.mHotKey, null, mDebugger.IsPaused());
+					else
+						sysMenu.Modify("&Start Debugging", sysMenu.mHotKey, null, mWorkspace.IsInitialized);
+					
+				});
 			AddMenuItem(subMenu, "Start Wit&hout Debugging", "Start Without Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
@@ -5995,7 +6003,7 @@ namespace IDE
             if (mWindowMenu == null)
                 return;
 
-			RecentFiles.UpdateMenu(mRecentlyDisplayedFiles, mWindowMenu, mRecentlyDisplayedFilesMenuItems, scope (idx, sysMenu) =>
+			RecentFiles.UpdateMenu(mRecentlyDisplayedFiles, mWindowMenu, mRecentlyDisplayedFilesMenuItems, true, scope (idx, sysMenu) =>
 				{
 					sysMenu.mOnMenuItemSelected.Add(new (evt) => ShowRecentFile(idx));
 				});
@@ -6007,7 +6015,7 @@ namespace IDE
 			if (entry.mMenu == null)
 				return;
 
-			RecentFiles.UpdateMenu(entry.mList, entry.mMenu, entry.mMenuItems, scope (idx, sysMenu) =>
+			RecentFiles.UpdateMenu(entry.mList, entry.mMenu, entry.mMenuItems, false, scope (idx, sysMenu) =>
 				{
 					sysMenu.mOnMenuItemSelected.Add(new (evt) => ShowRecentFile(recentKind, idx));
 				});
