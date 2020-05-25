@@ -9335,13 +9335,11 @@ bool BeMCContext::DoLegalization()
 				break;
 			case BeMCInstKind_Mul:
 			case BeMCInstKind_IMul:
-				{
+				{					
 					if (arg0Type->mSize == 1)
 					{
 						if ((!arg0.IsNativeReg()) || (arg0.mReg != X64Reg_AL) || (inst->mResult))
-						{							
-							BF_ASSERT(inst->mResult);
-
+						{														
 							auto srcVRegInfo = GetVRegInfo(inst->mArg0);							
 							// Int8 multiplies can only be done on AL
 							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
@@ -9354,8 +9352,8 @@ bool BeMCContext::DoLegalization()
 								vregInfo1->mDisableRAX = true;
 
 							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AH), inst->mArg1, instIdx++);
-							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg0, instIdx++);
-							AllocInst(BeMCInstKind_Mov, inst->mResult, BeMCOperand::FromReg(X64Reg_AL), instIdx++ + 1);
+							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg0, instIdx++);							
+							AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(X64Reg_AL), instIdx++ + 1);
 							inst->mArg0 = BeMCOperand::FromReg(X64Reg_AL);
 							inst->mArg1 = BeMCOperand::FromReg(X64Reg_AH);
 							inst->mResult = BeMCOperand();
@@ -14769,7 +14767,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?DrawBox@Graphics@gfx@Beefy@bf@@QEAAXPEAVImage@234@MMMM@Z";
+	//mDebugging = function->mName == "?BytesToPixels@Sprite@Strawberry@bf@@AEAAXPEAV?$Array1@E@System@3@PEAV?$Array1@UColor@Strawberry@bf@@@53@W4Modes@123@1@Z";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
