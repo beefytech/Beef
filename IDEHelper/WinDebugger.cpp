@@ -10791,11 +10791,26 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 			srcFile->GetHash(outStr);			
 		}
 	};
-	
+
+	auto _SetFlags = [&](DbgSubprogram* dwSubprogram)
+	{
+		DbgModule* dbgModule = dwSubprogram->mCompileUnit->mDbgModule;
+		if (dwSubprogram->mIsOptimized)
+			*outFlags |= FrameFlags_Optimized;
+		if (dbgModule->HasPendingDebugInfo())
+			*outFlags |= FrameFlags_HasPendingDebugInfo;
+		if (dbgModule->CanGetOldSource())
+			*outFlags |= FrameFlags_CanGetOldSource;
+		if ((dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) || (dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Invalid))
+			*outFlags |= FrameFlags_WasHotReplaced;
+	};
+
 	if (wdStackFrame->mInInlineMethod)
 	{		
 		WdStackFrame* nextStackFrame = mCallStack[actualStackFrameIdx - 1];
 		auto subProgram = nextStackFrame->mSubProgram;
+
+		_SetFlags(subProgram);
 
 		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);			
 		DbgSubprogram* parentSubprogram = subProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
@@ -10836,9 +10851,6 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 	DbgSubprogram* dwSubprogram = wdStackFrame->mSubProgram;
 	if (dwSubprogram != NULL)
 	{
-		if (dwSubprogram->mIsOptimized)
-			*outFlags |= FrameFlags_Optimized;
-
 		String demangledName;
 		if ((dwSubprogram->mName != NULL) && (strncmp(dwSubprogram->mName, ":Sep@", 5) == 0))
 		{
@@ -10894,12 +10906,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		if ((dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) || (dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Invalid))
 			demangledName = "#" + demangledName;
 
-		if (dbgModule->HasPendingDebugInfo())
-			*outFlags |= FrameFlags_HasPendingDebugInfo;
-		if (dbgModule->CanGetOldSource())
-			*outFlags |= FrameFlags_CanGetOldSource;
-		if ((dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Replaced) || (dwSubprogram->mHotReplaceKind == DbgSubprogram::HotReplaceKind_Invalid))
-			*outFlags |= FrameFlags_WasHotReplaced;
+		_SetFlags(dwSubprogram);
 
 		if ((dwLineData != NULL) && (dwSrcFile != NULL))
 		{
@@ -10977,25 +10984,44 @@ String WinDebugger::Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 	UpdateCallStackMethod(actualStackFrameIdx);
 	WdStackFrame* wdStackFrame = mCallStack[actualStackFrameIdx];
 
-	DbgSubprogram* dwSubprogram = wdStackFrame->mSubProgram;
-	if (dwSubprogram != NULL)
-	{	
-		DbgSrcFile* dwSrcFile = NULL;
-		DbgLineData* dwLineData = NULL;
+	DbgModule* dbgModule = NULL;
+	DbgSrcFile* dbgSrcFile = NULL;
 
-		FixupLineDataForSubprogram(dwSubprogram);
-		addr_target findAddress = wdStackFrame->GetSourcePC();
+	if (wdStackFrame->mInInlineMethod)
+	{
+		WdStackFrame* nextStackFrame = mCallStack[actualStackFrameIdx - 1];
+		auto subProgram = nextStackFrame->mSubProgram;
+		dbgModule = subProgram->mCompileUnit->mDbgModule;
+		
+		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
+		DbgSubprogram* parentSubprogram = subProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
+		auto foundLine = parentSubprogram->FindClosestLine(subProgram->mBlock.mLowPC, &parentSubprogram);
+		if (foundLine != NULL)		
+			dbgSrcFile = parentSubprogram->GetLineSrcFile(*foundLine);
 
-		DbgSubprogram* dbgSubprogram = NULL;
-		DbgSrcFile* dbgSrcFile = NULL;
-		dwLineData = dwSubprogram->FindClosestLine(findAddress, &dbgSubprogram, &dbgSrcFile);
+		DbgSubprogram* callingSubProgram = NULL;
+		DbgLineData* callingLineData = FindLineDataAtAddress(nextStackFrame->mSubProgram->mBlock.mLowPC - 1, &callingSubProgram);
+		if ((callingLineData != NULL) && (callingSubProgram == wdStackFrame->mSubProgram))		
+			dbgSrcFile = callingSubProgram->GetLineSrcFile(*callingLineData);					
+	}
+	else
+	{
+		DbgSubprogram* dwSubprogram = wdStackFrame->mSubProgram;
+		if (dwSubprogram != NULL)
+		{						
+			FixupLineDataForSubprogram(dwSubprogram);
+			addr_target findAddress = wdStackFrame->GetSourcePC();
 
-		DbgModule* dbgModule = dwSubprogram->mCompileUnit->mDbgModule;
-		if (dbgSrcFile != NULL)
-		{			
-			// Note: we must use mFilePath here, make sure we don't use GetLocalPath()
-			return dbgModule->GetOldSourceCommand(dbgSrcFile->mFilePath);
+			DbgSubprogram* dbgSubprogram = NULL;			
+			DbgLineData* dwLineData = dwSubprogram->FindClosestLine(findAddress, &dbgSubprogram, &dbgSrcFile);
+			dbgModule = dwSubprogram->mCompileUnit->mDbgModule;
 		}
+	}
+	
+	if (dbgSrcFile != NULL)
+	{
+		// Note: we must use mFilePath here, make sure we don't use GetLocalPath()
+		return dbgModule->GetOldSourceCommand(dbgSrcFile->mFilePath);
 	}
 	return "";
 }
