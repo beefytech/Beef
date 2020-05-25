@@ -11423,22 +11423,26 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			if ((mIsReified) && (!instModule->mIsReified))
 			{
-				if (!instModule->mReifyQueued)
+				if (!typeInst->IsUnspecializedTypeVariation())
 				{
-					BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
-					BfLogSysM("Queueing ReifyModule: %p\n", instModule);
-					mContext->mReifyModuleWorkList.Add(instModule);
-					instModule->mReifyQueued = true;
-				}
+					if (!instModule->mReifyQueued)
+					{
+						BF_ASSERT((instModule != mContext->mUnreifiedModule) && (instModule != mContext->mScratchModule));
+						BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
+						BfLogSysM("Queueing ReifyModule: %p\n", instModule);
+						mContext->mReifyModuleWorkList.Add(instModule);
+						instModule->mReifyQueued = true;
+					}
 
-				// This ensures that the method will actually be created when it gets reified
-				BfMethodSpecializationRequest* specializationRequest = mContext->mMethodSpecializationWorkList.Alloc();
-				specializationRequest->mFromModule = typeInst->mModule;
-				specializationRequest->mFromModuleRevision = typeInst->mModule->mRevision;
-				specializationRequest->mMethodDef = methodDef;
-				specializationRequest->mMethodGenericArguments = methodGenericArguments;
-				specializationRequest->mType = typeInst;				
-				specializationRequest->mFlags = flags;
+					// This ensures that the method will actually be created when it gets reified
+					BfMethodSpecializationRequest* specializationRequest = mContext->mMethodSpecializationWorkList.Alloc();
+					specializationRequest->mFromModule = typeInst->mModule;
+					specializationRequest->mFromModuleRevision = typeInst->mModule->mRevision;
+					specializationRequest->mMethodDef = methodDef;
+					specializationRequest->mMethodGenericArguments = methodGenericArguments;
+					specializationRequest->mType = typeInst;
+					specializationRequest->mFlags = flags;
+				}
 			}
 
 			auto defFlags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
@@ -19306,6 +19310,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	if (methodDef->mMethodType == BfMethodType_Mixin)
 		methodInstance->mIsUnspecialized = true;	
+
+	if (methodInstance->mIsUnspecialized)
+	{		
+		//BF_ASSERT(methodInstance->mDeclModule == methodInstance->GetOwner()->mModule);
+	}
 
 	BfAutoComplete* bfAutocomplete = NULL;
 	if (mCompiler->mResolvePassData != NULL)

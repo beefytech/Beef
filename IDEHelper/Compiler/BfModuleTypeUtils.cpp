@@ -829,6 +829,8 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 
 					BfLogSysM("Queued reification of type %p in module %p in PopulateType\n", resolvedTypeRef, typeModule);
 
+					BF_ASSERT((typeModule != mContext->mUnreifiedModule) && (typeModule != mContext->mScratchModule));
+
 					BF_ASSERT(!typeModule->mIsSpecialModule);
 					// This caused issues - we may need to reify a type and then request a method
 					typeModule->mReifyQueued = true;
