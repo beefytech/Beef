@@ -119,7 +119,7 @@ namespace IDE
     public class IDEApp : BFApp
     {
 		public static String sRTVersionStr = "042";
-		public const String cVersion = "0.42.4";
+		public const String cVersion = "0.42.5";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -10633,6 +10633,8 @@ namespace IDE
 				}
 #endif
 			}
+
+			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
 
             DarkTheme aTheme = new DarkTheme();
             aTheme.Init();
