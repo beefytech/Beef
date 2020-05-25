@@ -139,7 +139,7 @@ namespace Beefy.widgets
 			ScrollSetLevel(accelFrac);
 		}
 
-        public virtual void FixedScroll(int32 delta)
+        public virtual void FixedScroll(float delta)
         {
             HandleScroll(delta * mFixedScrollAmt);
         }
@@ -238,7 +238,7 @@ namespace Beefy.widgets
             mDownTick = 0;
         }
 
-        public override void MouseWheel(float x, float y, int32 delta)
+        public override void MouseWheel(float x, float y, float delta)
         {
             FixedScroll(-delta);
         }

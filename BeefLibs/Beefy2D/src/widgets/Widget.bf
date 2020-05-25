@@ -708,7 +708,7 @@ namespace Beefy.widgets
             }
         }
 
-        public virtual void MouseWheel(float x, float y, int32 delta)
+        public virtual void MouseWheel(float x, float y, float delta)
         {
 			MarkDirty();
 

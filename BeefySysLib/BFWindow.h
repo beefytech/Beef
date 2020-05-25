@@ -20,7 +20,7 @@ typedef void (*BFWindow_MouseMove)(BFWindow* window, int x, int y);
 typedef void (*BFWindow_MouseProxyMove)(BFWindow* window, int x, int y);
 typedef void (*BFWindow_MouseDown)(BFWindow* window, int x, int y, int btn, int btnCount);
 typedef void (*BFWindow_MouseUp)(BFWindow* window, int x, int y, int btn);
-typedef void (*BFWindow_MouseWheel)(BFWindow* window, int x, int y, int delta);
+typedef void (*BFWindow_MouseWheel)(BFWindow* window, int x, int y, float delta);
 typedef void (*BFWindow_MouseLeave)(BFWindow* window);
 typedef void (*BFWindow_MenuItemSelectedFunc)(BFWindow* window, BFMenu* menu);
 

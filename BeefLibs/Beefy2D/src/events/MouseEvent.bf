@@ -11,7 +11,7 @@ namespace Beefy.events
         public float mY;
         public int32 mBtn;
         public int32 mBtnCount;
-        public int32 mWheelDelta;
+        public float mWheelDelta;
 
         public void GetRootCoords(out float x, out float y)
         {

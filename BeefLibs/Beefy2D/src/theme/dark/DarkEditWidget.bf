@@ -889,7 +889,7 @@ namespace Beefy.theme.dark
 
             base.InitScrollbars(wantHorz, wantVert);
 
-            float scrollIncrement = ((DarkEditWidgetContent) mEditWidgetContent).mFont.GetLineSpacing() * GS!(3);
+            float scrollIncrement = ((DarkEditWidgetContent) mEditWidgetContent).mFont.GetLineSpacing();
             if (mHorzScrollbar != null)
                 mHorzScrollbar.mScrollIncrement = scrollIncrement;
             if (mVertScrollbar != null)
