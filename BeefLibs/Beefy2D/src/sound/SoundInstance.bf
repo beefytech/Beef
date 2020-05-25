@@ -4,13 +4,13 @@ namespace Beefy.sound
 {
 	struct SoundInstance
 	{
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void* BFSoundInstance_Play(void* nativeSoundInstance, bool looping, bool autoRelease);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void BFSoundInstance_Release(void* nativeSoundInstance);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern bool BFSoundInstance_IsPlaying(void* nativeSoundInstance);
 
 		void* mNativeSoundInstance;

@@ -130,7 +130,7 @@ namespace System
                 return 1;
         }
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 ftoa(float val, char8* str);
 
 		static extern int32 ToString(float val, char8* str);

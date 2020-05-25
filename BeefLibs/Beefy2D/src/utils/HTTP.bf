@@ -13,13 +13,13 @@ namespace Beefy2D.utils
 
 		void* mNativeNetRequest;
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* HTTP_GetFile(char8* url, char8* destPath);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 HTTP_GetResult(void* netRequest, int32 waitMS);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void HTTP_Delete(void* netRequest);
 
 		public ~this()

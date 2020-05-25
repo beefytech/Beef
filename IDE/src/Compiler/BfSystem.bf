@@ -9,77 +9,77 @@ namespace IDE.Compiler
 {
     public class BfSystem
     {
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfSystem_CheckLock(void* bfSystem);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_Create();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfSystem_Delete(void* bfSystem);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfSystem_ReportMemory(void* bfSystem);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfSystem_Update(void* bfSystem);        
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_CreatePassInstance(void* bfSystem);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfSystem_GetNamespaceSearch(void* bfSystem, char8* typeName, void* project);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_CreateProject(void* bfSystem, char8* projectName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfSystem_ClearTypeOptions(void* bfSystem);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfSystem_AddTypeOptions(void* bfSystem, char8* filter, int32 simdSetting, int32 optimizationLevel, int32 emitDebugInfo, int32 runtimeChecks,
             int32 initLocalVariables, int32 emitDynamicCastCheck, int32 emitObjectAccessCheck, int32 allocStackTraceDepth);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_CreateParser(void* bfSystem, void* bfProject);
         
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_CreateCompiler(void* bfSystem, bool isResolveOnly = false);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_RemoveDeletedParsers(void* bfSystem);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_RemoveOldParsers(void* bfSystem);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_RemoveOldData(void* bfSystem);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_NotifyWillRequestLock(void* bfSystem, int32 priority);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_Lock(void* bfSystem, int32 priority);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfSystem_PerfZoneStart(char8* name);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfSystem_PerfZoneEnd();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_Unlock(void* bfSystem);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfSystem_StartTiming();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfSystem_StopTiming();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfSystem_DbgPrintTimings();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BfSystem_Log(void* bfSystem, char8* str);
 
         public void* mNativeBfSystem;

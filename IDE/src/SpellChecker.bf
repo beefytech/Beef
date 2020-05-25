@@ -10,19 +10,19 @@ namespace IDE
 {
     public class SpellChecker : CommandQueueManager
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* SpellChecker_Create(char8* langPath);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void SpellChecker_Delete(void* nativeSpellchecker);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool SpellChecker_IsWord(void* nativeSpellchecker, char8* word);
 
-        [StdCall, CLink]        
+        [CallingConvention(.Stdcall), CLink]        
         static extern void SpellChecker_AddWord(void* nativeSpellchecker, char8* word);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* SpellChecker_GetSuggestions(void* spellChecker, char8* word);
 
         void* mNativeSpellChecker;

@@ -285,11 +285,11 @@ namespace MiniZ
 			DoNotSortCentralDirectory = 0x0800
 		}
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void* malloc(int size);
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void free(void* ptr);
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void* realloc(void* ptr, int newSize);
 
 		static void* def_alloc_func(void* opaque, int items, int size)
@@ -2726,42 +2726,42 @@ namespace MiniZ
 		const int32 SEEK_END = 2;
 		const int32 SEEK_SET = 0;
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern FILE* fopen(char8* fileName, char8* mode);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern FILE* freopen(char8* fileName, char8* mode, FILE* stream);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 fclose(FILE* stream);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 fflush(FILE* stream);
 
-		//[StdCall, CLink]
+		//[CallingConvention(.Stdcall), CLink]
 		//static extern int64 ftell64(FILE* stream);
 		static int64 ftell64(FILE* stream)
 		{
 			return _ftelli64(stream);
 		}
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int64 _ftelli64(FILE* stream);
 
-		//[StdCall, CLink]
+		//[CallingConvention(.Stdcall), CLink]
 		//static extern int64 fseek64(FILE* stream, int64 offset, int32 origin);
 		static int32 fseek64(FILE* stream, int64 offset, int32 origin)
 		{
 			return _fseeki64(stream, offset, origin);
 		}
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 _fseeki64(FILE* stream, int64 offset, int32 origin);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int fread(void* buf, int elementSize, int elementCount, FILE* stream);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int fwrite(void* buf, int elementSize, int elementCount, FILE* stream);
 
 		public struct ZipInternalState
@@ -2840,13 +2840,13 @@ namespace MiniZ
 			public int32 tm_isdst; // daylight savings time flag
 		};
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern time_t time(out time_t time);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern time_t mktime(tm* time);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern tm* localtime(time_t* time);
 
 		static time_t zip_dos_to_time_t(int32 dos_time, int32 dos_date)
@@ -2895,7 +2895,7 @@ namespace MiniZ
 			public time_t modtime;     // modification time
 		};
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 _utime64(char8* fileName, utimbuf* t);
 
 		static bool zip_set_file_times(char8* pFilename, time_t access_time, time_t modified_time)
@@ -4663,7 +4663,7 @@ namespace MiniZ
 			public time_t st_ctime;
 		};
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 _fstat64i32(char8* fileName, FILE_STAT_STRUCT* stat);
 
 		bool zip_add_mem_to_archive_file_in_place(char8* pZip_filename, char8* pArchive_name, void* pBuf, int buf_size, void* pComment, uint16 comment_size, ZipFlags level_and_flags_in)

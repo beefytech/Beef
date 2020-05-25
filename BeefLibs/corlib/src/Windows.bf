@@ -79,7 +79,7 @@ namespace System
 				}
 			}
 
-			[Import("ole32.lib"), CLink, StdCall]
+			[Import("ole32.lib"), CLink, CallingConvention(.Stdcall)]
 			public static extern HResult CoCreateInstanceFromApp(ref Guid clsid, COM_IUnknown* unkOuter, ClsContext clsCtx, void* reserved, uint32 count, MULTI_QI* result);
 
 			struct MULTI_QI
@@ -89,10 +89,10 @@ namespace System
 				public HResult mHR;
 			}
 
-			[Import("ole32.lib"), CLink, StdCall]
+			[Import("ole32.lib"), CLink, CallingConvention(.Stdcall)]
 			public static extern HResult CoCreateInstance(ref Guid clsId, COM_IUnknown* unkOuter, ClsContext clsCtx, ref Guid iid, void** result);
 
-			[Import("ole32.lib"), CLink, StdCall]
+			[Import("ole32.lib"), CLink, CallingConvention(.Stdcall)]
 			public static extern void CoTaskMemFree(void* ptr);
 		}
 
@@ -1107,19 +1107,19 @@ namespace System
 		    TRUSTEE_W    Trustee;
 		}
 
-		[Import("version.lib"), CLink, StdCall]
+		[Import("version.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetFileVersionInfoW(char16* lptstrFilename, uint32 dwHandle, uint32 dwLen, void* lpData);
 
-		[Import("version.lib"), CLink, StdCall]
+		[Import("version.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 GetFileVersionInfoSizeW(char16* lptstrFilename, out uint32 lpdwHandle);
 
-		[Import("version.lib"), CLink, StdCall]
+		[Import("version.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool VerQueryValueW(void* pBlock, char16* lpSubBlock, ref void* lplpBuffer, out int32 puLen);
 
-		[Import("version.lib"), CLink, StdCall]
+		[Import("version.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 VerLanguageNameW(uint32  wLang, char16* szLang, uint32 cchLang);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 GetNamedSecurityInfoW(
 		  char16*              pObjectName,
 		  SE_OBJECT_TYPE       ObjectType,
@@ -1131,7 +1131,7 @@ namespace System
 		  SECURITY_DESCRIPTOR* *ppSecurityDescriptor
 		);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern void BuildExplicitAccessWithNameW(
 		  EXPLICIT_ACCESS_W* pExplicitAccess,
 		  char16*             pTrusteeName,
@@ -1140,7 +1140,7 @@ namespace System
 		  uint32              Inheritance
 		);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 SetEntriesInAclW(
 		  uint32              cCountOfExplicitEntries,
 		  EXPLICIT_ACCESS_W* pListOfExplicitEntries,
@@ -1148,7 +1148,7 @@ namespace System
 		  ACL**           	 NewAcl
 		);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 SetNamedSecurityInfoW(
 		  char16*              pObjectName,
 		  SE_OBJECT_TYPE       ObjectType,
@@ -1159,282 +1159,282 @@ namespace System
 		  ACL*                 pSacl
 		);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void LocalFree(void* ptr);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetTimeZoneInformation(out TimeZoneInformation dynamicTimeZoneInformation);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetDynamicTimeZoneInformation(out DynamicTimeZoneInformation dynamicTimeZoneInformation);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegOpenKeyExW(HKey hKey, char16* lpSubKey, uint32 ulOptions, uint32 samDesired, out HKey phkResult);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegOpenKeyExA(HKey hKey, char8* lpSubKey, uint32 ulOptions, uint32 samDesired, out HKey phkResult);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegCreateKeyExW(HKey hKey, char16* lpSubKey, uint32 reserved, char16* lpClass, uint32 dwOptions, uint32 samDesired,
 			SecurityAttributes* lpSecurityAttributes, out HKey phkResult, uint32* lpdwDisposition);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegCreateKeyExA(HKey hKey, char8* lpSubKey, uint32 reserved, char8* lpClass, uint32 dwOptions, uint32 samDesired,
 			SecurityAttributes* lpSecurityAttributes, out HKey phkResult, uint32* lpdwDisposition);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegCloseKey(HKey hKey);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegDeleteKeyW(HKey hKey, char16* lpSubKey);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegDeleteKeyA(HKey hKey, char8* lpSubKey);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegDeleteValueW(HKey hKey, char16* lpSubKey);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegDeleteValueA(HKey hKey, char8* lpSubKey);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegQueryValueExW(HKey hKey, char16* lpValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
 		
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegQueryValueExA(HKey hKey, char8* lpValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegEnumValueW(HKey hKey, int32 dwIndex, char16* lpValueName, uint32* lpcchValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegEnumValueA(HKey hKey, int32 dwIndex, char8* lpValueName, uint32* lpcchValueName, uint32* lpReserved, uint32* lpType, void* lpData, uint32* lpcbData);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegGetValueW(HKey hkey, char16* lpSubKey, char16* lpValue, uint32 dwFlags, uint32* pdwType, void* pvData, uint32* pcbData);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegGetValueA(HKey hkey, char8* lpSubKey, char8* lpValue, uint32 dwFlags, uint32* pdwType, void* pvData, uint32* pcbData);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegSetValueExW(HKey hkey, char16* lpValue, uint32 reserved, uint32 dwType, void* pvData, uint32 cbData);
 
-		[Import("advapi32.lib"), CLink, StdCall]
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 RegSetValueExA(HKey hkey, char8* lpValue, uint32 reserved, uint32 dwType, void* pvData, uint32 cbData);
 
-		[Import("shell32.lib"), CLink, StdCall]
+		[Import("shell32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 SHGetSpecialFolderLocation(HWnd hwnd, int32 csidl, ref int ppidl);
 
-		[Import("shell32.lib"), CLink, StdCall]
+		[Import("shell32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern bool SHGetPathFromIDList(int pidl, char8* path);
 
-		[Import("shell32.lib"), CLink, StdCall]
+		[Import("shell32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int SHBrowseForFolder(ref BrowseInfo bi);
 
-		[Import("shell32.lib"), CLink, StdCall]
+		[Import("shell32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern COM_IUnknown.HResult SHCreateItemFromParsingName(char16* pszPath, COM_IBindCtx *pbc, Guid riid, void **ppv);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetLastError();
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetExitCodeProcess(ProcessHandle process, out int32 exitCode);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetExitCodeThread(Handle process, out int32 exitCode);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 ResumeThread(Handle thread);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern ProcessHandle GetCurrentProcess();
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetCurrentProcessId();
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern ProcessHandle OpenProcess(int32 desiredAccess, IntBool inheritHandle, int32 processId);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern Handle CreateRemoteThread(ProcessHandle process, SecurityAttributes* threadAttributes, int stackSize, void* startAddress, void* parameter, int32 creationFlags, int32* threadId);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool WriteProcessMemory(ProcessHandle process, void* baseAddress, void* buffer, int size, int* numberOfBytesWritten);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void* GetProcAddress(HModule module, char8* procName);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void* VirtualAllocEx(ProcessHandle process, void* address, int size, int32 allocationType, int32 protect);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void* VirtualFreeEx(ProcessHandle process, void* address, int size, int32 allocationType);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern FileHandle GetStdHandle(int32 stdHandle);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern Handle ShellExecuteW(Handle hwnd, char16* operation, char16* file, char16* parameters, char16* directory, int32 showCmd); 
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern Handle ShellExecuteA(Handle hwnd, char8* operation, char8* file, char8* parameters, char8* directory, int32 showCmd); 
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool ShellExecuteExA(ShellExecuteInfo* shellExecuteInfo); 
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void GetStartupInfoA(StartupInfo* startupInfo);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CreateProcessW(char16* applicationName, char16* commandLine, SecurityAttributes* processAttributes, SecurityAttributes* threadAttributes,
         	IntBool inheritHandles, int32 creationFlags, void* environment, char16* currentDirectory, StartupInfo* startupInfo, ProcessInformation* processInformation);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CreateProcessA(char8* applicationName, char8* commandLine, SecurityAttributes* processAttributes, SecurityAttributes* threadAttributes,
         	IntBool inheritHandles, int32 creationFlags, void* environment, char8* currentDirectory, StartupInfo* startupInfo, ProcessInformation* processInformation);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool TerminateProcess(ProcessHandle process);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CreatePipe(out Handle readPipe, out Handle writePipe, SecurityAttributes* pipeAttributes, int32 size);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern Handle CreateNamedPipeA(char8* lpName, uint32 dwOpenMode, uint32 dwPipeMode, uint32 nMaxInstances, uint32 nOutBufferSize, uint32 nInBufferSize,
    			uint32 nDefaultTimeOut, SecurityAttributes* lpSecurityAttributes);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool ConnectNamedPipe(Handle handle, Overlapped* overlapped);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CallNamedPipeA(char8* name, void* inBuffer, int32 inBufferSize, void* outBuffer, int32 outBufferSize, int32* bytesRead, int32 timeOut);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool DisconnectNamedPipe(Handle handle);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern EventHandle CreateEventA(SecurityAttributes* eventAttribuetes, IntBool manualReset, IntBool initialState, char8* name);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool SetEvent(EventHandle eventHandle);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool ResetEvent(EventHandle eventHandle);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 WaitForSingleObject(Handle handle, int32 milliseconds);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 WaitForMultipleObjects(int32 count, Handle* handles, IntBool waitAll, int32 milliseconds);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
         public static extern IOCompletionHandle CreateIoCompletionPort(FileHandle fileHandle, IOCompletionHandle existingCompletionPort, int completionKey, int32 numberOfConcurrentThreads);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetQueuedCompletionStatus(IOCompletionHandle completionPort, out int32 numberOfBytes, out int completionKey, out Overlapped* overlapped, int32 milliseconds);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool PostQueuedCompletionStatus(IOCompletionHandle completionPort, int32 numberOfBytes, int completionKey, Overlapped* overlapped);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool DuplicateHandle(Handle sourceProcessHandle, Handle sourceHandle, Handle targetProcessHandle, Handle* targetHandle, int32 desiredAccess, IntBool inheritHandle, int32 options);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CloseHandle(Handle handle);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetFileType(FileHandle handle);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetFileSize(FileHandle handle, int32* sizeHigh);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern FileHandle CreateFileA(char8* lpFileName,
 		            int32 dwDesiredAccess, System.IO.FileShare dwShareMode,
 		            SecurityAttributes* securityAttrs, System.IO.FileMode dwCreationDisposition,
 		            int32 dwFlagsAndAttributes, Handle hTemplateFile);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern FileHandle CreateFileW(char16* lpFileName,
                     int32 dwDesiredAccess, System.IO.FileShare dwShareMode,
                     SecurityAttributes* securityAttrs, System.IO.FileMode dwCreationDisposition,
                     int32 dwFlagsAndAttributes, Handle hTemplateFile);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 GetWindowsDirectoryW(char16* lpBuffer, uint32 uSize);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 GetWindowsDirectoryA(char8* lpBuffer, uint32 uSize);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CreateDirectoryW(char16* pathName, SecurityAttributes* securityAttributes);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CreateDirectoryA(char8* pathName, SecurityAttributes* securityAttributes);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool RemoveDirectoryW(char16* pathName);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool RemoveDirectoryA(char8* pathName);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool DeleteFileW(char16* pathName);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool DeleteFileA(char8* pathName);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CopyFileW(char16* srcName, char16* dstName, IntBool failIfExists);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool CopyFileA(char8* srcName, char8* dstName, IntBool failIfExists);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool MoveFileW(char16* srcName, char16* dstName);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool MoveFileA(char8* srcName, char8* dstName);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 ReadFile(Handle handle, uint8* bytes, int32 numBytesToRead, out int32 numBytesRead, Overlapped* overlapped);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 WriteFile(Handle handle, uint8* bytes, int32 numBytesToWrite, out int32 numBytesWritten, Overlapped* overlapped);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern FindHandle FindFirstFileW(char16* fileName, ref NativeFindData findFileData);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool FindNextFileW(FindHandle findHandle, ref NativeFindData findFileData);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool FindClose(FindHandle findHandle);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetFileAttributesExW(char16* name, int32 fileInfoLevel, FileAttributeData* fileInformation);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool SetFileAttributesW(char16* name, int32 attribs);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 MessageBoxA(HWnd hWnd, char8* text, char8* caption, int32 type);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 MessageBoxW(HWnd hWnd, char16* text, char16* caption, int32 type);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 SetErrorMode(int32 errorMode);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd GetActiveWindow();
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd SetActiveWindow(HWnd wnd);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int CallWindowProcA(int wndProc, HWnd hWnd, int32 msg, int wParam, int lParam);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int CallWindowProcW(int wndProc, HWnd hWnd, int32 msg, int wParam, int lParam);
 
 		public static int GetWindowLong(HWnd hWnd, int32 nIndex)
@@ -1450,10 +1450,10 @@ namespace System
 		}
 
 #if BF32
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int GetWindowLongA(int hWnd, int nIndex);
 #else
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int GetWindowLongPtrW(int hWnd, int32 nIndex);
 #endif
 
@@ -1467,118 +1467,118 @@ namespace System
 		}
 
 #if BF32
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int SetWindowLongA(int hWnd, int nIndex, int value);
 #else
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int SetWindowLongPtrW(int hWnd, int32 nIndex, int value);
 #endif
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool PostMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 SendMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 SendMessageTimeoutW(HWnd hWnd, int32 msg, int wParam, int lParam, int32 flags, int32 timeout, int32* result);
 
-		[Import("user32.lib "), CLink, StdCall]
+		[Import("user32.lib "), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd SetFocus(HWnd hWnd);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool EnumWindows(void* callback, void* extraData);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd GetWindow(HWnd hWnd, int32 uCmd);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd FindWindowW(char16* className, char16* windowName);
 		
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd FindWindowA(char8* className, char8* windowName);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool IsWindowVisible(HWnd hWnd);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetWindowTextLengthW(HWnd hWnd);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetWindowTextW(HWnd hWnd, char16* ptr, int32 length);
 		
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetWindowTextA(HWnd hWnd, char8* ptr, int32 length);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetWindowThreadProcessId(HWnd handle, out int32 processId);
 
-		[Import("comdlg32.lib"), CLink, StdCall]
+		[Import("comdlg32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetOpenFileNameW(ref OpenFileName ofn);
 
-		[Import("comdlg32.lib"), CLink, StdCall]
+		[Import("comdlg32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetSaveFileNameW(ref OpenFileName ofn);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern HModule GetModuleHandleW(char16* modName);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern HModule GetModuleHandleA(char8* modName);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 GetTempFileNameW(char16* tmpPath, char16* prefix, uint32 uniqueIdOrZero, char16* tmpFileName);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 GetTempFileNameA(char8* tmpPath, char8* prefix, uint32 uniqueIdOrZero, char8* tmpFileName);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 GetTempPathW(int32 bufferLen, char16* buffer);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetComputerNameA(char8* buffer, ref int32 size);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 NtQuerySystemInformation(int32 query, void* dataPtr, int32 size, out int32 returnedSize);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool ReadDirectoryChangesW(FileHandle handle, uint8* buffer, int32 bufferLength, IntBool watchSubtree, NotifyFilters notifyFilter, 
         	out int32 bytesReturned, Overlapped* overlapped, void* completionRoutine);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 SetFilePointer(FileHandle handle, int32 distanceToMove, int32* distanceToMoveHigh, int32 moveMethod);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool SHGetFileInfoW(char16* pszPath, uint32 fileAttributes, SHFileInfo* psfi, uint32 cbFileInfo, uint32 flags);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern char16* GetEnvironmentStringsW();
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void FreeEnvironmentStringsW(char16* ptr);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetFileMUIPath(uint32 dwFlags, char16* pcwszFilePath, char16* pwszLanguage, uint32* pcchLanguage,
 			char16* pwszFileMUIPath, uint32* pcchFileMUIPath, uint64* pululEnumerator);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool SetDllDirectoryW(char16* libFileName);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern HInstance LoadLibraryW(char16* libFileName);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern HInstance LoadLibraryA(char8* libFileName);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern HInstance LoadLibraryExW(char16* libFileName, HModule hFile, uint32 dwFlags);
 		
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern HInstance LoadLibraryExA(char8* libFileName, HModule hFile, uint32 dwFlags);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool FreeLibrary(HModule module);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 LoadStringW(HInstance hInstance, uint32 uID, char16* lpBuffer, int32 cchBufferMax);
 
 		public static Result<FileHandle, FileOpenError> SafeCreateFile(String lpFileName,

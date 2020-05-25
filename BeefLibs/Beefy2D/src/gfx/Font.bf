@@ -38,19 +38,19 @@ namespace Beefy.gfx
 
     public class Font
     {
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern FTFont* FTFont_Load(char8* fileName, float pointSize);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void FTFont_Delete(FTFont* ftFont, bool cacheRetain);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void FTFont_ClearCache();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern FTGlyph* FTFont_AllocGlyph(FTFont* ftFont, int32 char8Code, bool allowDefault);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 FTFont_GetKerning(FTFont* font, int32 char8CodeA, int32 char8CodeB);
 
 		static Dictionary<String, String> sFontNameMap ~ DeleteDictionaryAndKeysAndItems!(_);

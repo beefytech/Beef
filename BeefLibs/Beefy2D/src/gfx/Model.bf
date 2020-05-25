@@ -56,16 +56,16 @@ namespace Beefy.gfx
             public String mName;
             public int32 mAnimIdx;
 
-            [StdCall, CLink]
+            [CallingConvention(.Stdcall), CLink]
             extern static void ModelDefAnimation_GetJointTranslation(void* nativeAnimation, int32 jointIdx, float frame, out JointTranslation jointTranslation);
 
-            [StdCall, CLink]
+            [CallingConvention(.Stdcall), CLink]
             extern static int32 ModelDefAnimation_GetFrameCount(void* nativeAnimation);
 
-            [StdCall, CLink]
+            [CallingConvention(.Stdcall), CLink]
             extern static char8* ModelDefAnimation_GetName(void* nativeAnimation);
 
-            [StdCall, CLink]
+            [CallingConvention(.Stdcall), CLink]
             extern static void ModelDefAnimation_Clip(void* nativeAnimation, int32 startFrame, int32 numFrames);
 
             public this(void* nativeModelDefAnimation)
@@ -93,22 +93,22 @@ namespace Beefy.gfx
         public Animation[] mAnims;
         public Dictionary<String, Animation> mAnimMap = new Dictionary<String, Animation>();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void* Res_OpenFBX(String fileName, void* nativeVertexDef);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void* ModelDef_CreateModelInstance(void* nativeModel);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static float ModelDef_GetFrameRate(void* nativeModel);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static int32 ModelDef_GetJointCount(void* nativeModel);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static int32 ModelDef_GetAnimCount(void* nativeModel);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void* ModelDef_GetAnimation(void* nativeModel, int32 animIdx);
 
         this(void* nativeModelDef)
@@ -154,10 +154,10 @@ namespace Beefy.gfx
 
     public class ModelInstance : RenderCmd
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetJointTranslation(void* nativeModelInstance, int32 jointIdx, ref ModelDef.JointTranslation jointTranslation);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetMeshVisibility(void* nativeModelInstance, int32 jointIdx, int32 visibility);
 
         public ModelDef mModelDef;

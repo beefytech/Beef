@@ -179,71 +179,71 @@ namespace Beefy
         static NativeMouseLeaveDelegate sNativeMouseLeaveDelegate ~ delete _;
         static NativeMenuItemSelectedDelegate sNativeMenuItemSelectedDelegate ~ delete _;
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BFApp_CreateWindow(void* parent, char8* title, int32 x, int32 y, int32 width, int32 height, int32 windowFlags);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* BFWindow_GetNativeUnderlying(void* window);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_SetCallbacks(void* window, void* movedDelegate, void* closeQueryDelegate, void* closedDelegate, 
             void* gotFocusDelegate, void* lostFocusDelegate,
 			void* keyCharDelegate, void* keyDownDelegate, void* keyUpDelegate, void* hitTestDelegate,
             void* mouseMoveDelegate, void* mouseProxyMoveDelegate, void* mouseDownDelegate, void* mouseUpDelegate, void* mouseWheelDelegate, void* mouseLeaveDelegate,
             void* menuItemSelectedDelegate);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BFWindow_SetTitle(void* window, char8* title);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_SetMinimumSize(void* window, int32 minWidth, int32 minHeight, bool clientSized);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_GetPosition(void* window, out int32 x, out int32 y, out int32 width, out int32 height, out int32 clientX, out int32 clientY, out int32 clientWidth, out int32 clientHeight);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BFWindow_GetPlacement(void* window, out int32 normX, out int32 normY, out int32 normWidth, out int32 normHeight, out int32 showKind);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_Resize(void* window, int32 x, int32 y, int32 width, int32 height, int showKind);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_Close(void* window, int32 force);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_SetForeground(void* window);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_LostFocus(void* window, void* newFocus);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_SetNonExclusiveMouseCapture(void* window);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_SetClientPosition(void* window, int32 x, int32 y);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_SetAlpha(void* window, float alpha, uint32 destAlphaSrcMask, int32 mouseVisible);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_SetMouseVisible(void* window, bool mouseVisible);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BFWindow_CaptureMouse(void* window);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool BFWindow_IsMouseCaptured(void* window);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BFWindow_AddMenuItem(void* window, void* parent, int32 insertIdx, char8* text, char8* hotKey, void* bitmap, int32 enabled, int32 checkState, int32 radioCheck);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BFWindow_ModifyMenuItem(void* window, void* item, char8* text, char8* hotKey, void* bitmap, int32 enabled, int32 checkState, int32 radioCheck);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BFWindow_DeleteMenuItem(void* window, void* item);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int BFWindow_GetDPI(void* window);
 
         public static BFWindow GetBFWindow(void* window)

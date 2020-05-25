@@ -4,34 +4,34 @@ namespace Beefy.utils
 {
 	static class BeefPerf
 	{
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpInit(char8* severName, char8* sessionName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpShutdown();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpRetryConnect();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpPause();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpUnpause();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpSetThreadName(char8* threadName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpEnter(char8* name);        
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpLeave();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static void BpEvent(char8* name, char8* details);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		extern static char8* BpDynStr(char8* string);
 
 		public static void Init(StringView serverName, StringView sessionName)

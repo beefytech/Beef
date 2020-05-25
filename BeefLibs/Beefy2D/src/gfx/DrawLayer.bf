@@ -13,19 +13,19 @@ namespace Beefy.gfx
 #if !STUDIO_CLIENT
     public class DrawLayer
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* DrawLayer_Create(void* window);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void DrawLayer_Delete(void* drawLayer);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void DrawLayer_Clear(void* drawLayer);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void DrawLayer_Activate(void* drawLayer);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void DrawLayer_DrawToRenderTarget(void* drawLayer, void* texture);
 
         public void* mNativeDrawLayer;

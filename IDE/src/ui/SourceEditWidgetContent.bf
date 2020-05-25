@@ -262,7 +262,7 @@ namespace IDE.ui
 			}
 		}
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfDiff_DiffText(char8* text1, char8* text2);
 
 		struct TextLineSegment

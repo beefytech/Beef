@@ -86,58 +86,58 @@ namespace IDE.Compiler
 			str.AppendF("Idx:{0}", mIdx);
 		}
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfSystem_DeleteParser(void* bfSystem, void* bfParser);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_SetSource(void* bfParser, char8* data, int32 length, char8* fileName);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_SetCharIdData(void* bfParser, uint8* data, int32 length);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfParser_SetHashMD5(void* bfParser, ref MD5Hash md5Hash);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_SetNextRevision(void* bfParser, void* nextParser);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfParser_SetCursorIdx(void* bfParser, int32 cursorIdx);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfParser_SetAutocomplete(void* bfParser, int32 cursorIdx);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfParser_SetIsClassifying(void* bfParser);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfParser_Parse(void* bfParser, void* bfPassInstance, bool compatMode);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfParser_Reduce(void* bfParser, void* bfPassInstance);
 
-        [StdCall, CLink]        
+        [CallingConvention(.Stdcall), CLink]        
         static extern char8* BfParser_Format(void* bfParser, int32 formatEnd, int32 formatStart, out int32* outCharMapping);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* BfParser_GetDebugExpressionAt(void* bfParser, int32 cursorIdx);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BfParser_CreateResolvePassData(void* bfSystem, int32 resolveType);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfParser_BuildDefs(void* bfParser, void* bfPassInstance, void* bfResolvePassData, bool fullRefresh);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_RemoveDefs(void* bfParser);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_ClassifySource(void* bfParser, void* elementTypeArray, bool preserveFlags);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfParser_GenerateAutoCompletionFrom(void* bfParser, int32 srcPosition);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfParser_SetCompleteParse(void* bfParser);
 
 		public BfSystem mSystem;

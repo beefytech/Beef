@@ -1158,7 +1158,7 @@ namespace IDE.ui
                 bfCompiler.QueueDeferredResolveAll();
         }
 
-        //[StdCall, CLink]
+        //[CallingConvention(.Stdcall), CLink]
         //static extern char8* BfDiff_DiffText(char8* text1, char8* text2);
 
         public void DoFastClassify()

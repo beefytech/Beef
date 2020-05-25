@@ -78,34 +78,34 @@ namespace System
 			public uint32 dwFileDateLS;       // e.g. 0
 		}
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		extern static bool GetVersionExA(OSVersionInfoExA* lpVersionInformation);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		extern static bool VerifyVersionInfoA(OSVersionInfoExA* lpVersionInformation, uint32 dwTypeMask, uint64 dwlConditionMask);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		extern static uint64 VerSetConditionMask(uint64 dwlConditionMask, uint32 dwTypeBitMask, uint8 dwConditionMask);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		extern static void GetNativeSystemInfo(SystemInfo* lpSystemInformation);
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		extern static void GetSystemInfo(SystemInfo* lpSystemInfo);
 
-		[Import("netapi32.lib"), CLink, StdCall]
+		[Import("netapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		extern static uint32 NetWkstaGetInfo(char16* ServerName, uint32 Level, LPWKSTA_INFO_100* BufPtr);
-		[Import("netapi32.lib"), CLink, StdCall]
+		[Import("netapi32.lib"), CLink, CallingConvention(.Stdcall)]
 		extern static int32 NetApiBufferFree(LPWKSTA_INFO_100 BufPtr);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		extern static uint32 GetFileVersionInfoSizeA(char8* lptstrFilename, uint32* lpdwHandle);
 
-		[Import("version.lib"), CLink, StdCall]
+		[Import("version.lib"), CLink, CallingConvention(.Stdcall)]
 		extern static bool GetFileVersionInfoA(char8* lptstrFilename, uint32* dwHandle, uint32 dwLen, void* lpData);
-		[Import("version.lib"), CLink, StdCall]
+		[Import("version.lib"), CLink, CallingConvention(.Stdcall)]
 		extern static bool VerQueryValueA(void* pBlock, char8* lpSubBlock, void** lplpBuffer, uint32* puLen);
 
-		[Import("user32.lib"), CLink, StdCall]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		extern static int GetSystemMetrics(int nIndex);
 		#endif
 

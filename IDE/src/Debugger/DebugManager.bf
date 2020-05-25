@@ -112,238 +112,238 @@ namespace IDE.Debugger
 		public List<Breakpoint> mBreakpointList = new List<Breakpoint>();
 		public Dictionary<String, StepFilter> mStepFilterList = new Dictionary<String, StepFilter>();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_Create();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_Delete();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int32 Debugger_GetAddrSize();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_FullReportMemory();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_OpenMiniDump(char8* filename);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_OpenFile(char8* launchPath, char8* targetPath, char8* args, char8* workingDir, void* envBlockPtr, int32 envBlockLen);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_Attach(int32 processId, AttachFlags attachFlags);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_Run();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_HotLoad(char8* objectFileNames, int32 hotIdx);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_LoadDebugVisualizers(char8* fileName);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_StopDebugging();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_Terminate();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_Detach();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern RunState Debugger_GetRunState();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetCurrentException();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_Continue();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_BreakAll();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_StepInto(bool inAssembly);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_StepIntoSpecific(int addr);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_StepOver(bool inAssembly);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_StepOut(bool inAssembly);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_SetNextStatement(bool inAssembly, char8* fileName, int wantLineNumOrAsmAddr, int32 wantColumn);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_Update();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void* Debugger_CreateAddressBreakpoint(int address);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void* Debugger_CreateStepFilter(char8* filter, bool isGlobal, StepFilterKind stepFilterKind);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_SetDisplayTypes(char8* referenceId, IntDisplayType intDisplayType, MmDisplayType mmDisplayType);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_GetDisplayTypes(char8* referenceId, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetDisplayTypeNames();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_EvaluateContinue();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_EvaluateContinueKeep();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_Evaluate(char8* expr, int32 callStackIdx, int32 cursorPos, int32 language, EvalExpressionFlags expressionFlags);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_EvaluateToAddress(char8* expr, int32 callStackIdx, int32 cursorPos);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_EvaluateAtAddress(char8* expr, int addr, int32 cursorPos);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetAutoExpressions(int32 callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetAutoLocals(int32 callStackIdx, bool showRegs);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_CompactChildExpression(char8* expr, char8* parentExpr, int32 callStackIdx);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetCollectionContinuation(char8* continuationData, int32 callStackIdx, int32 count);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_ForegroundTarget();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void CallStack_Update();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void CallStack_Rehup();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int32 CallStack_GetCount();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int32 CallStack_GetRequestedStackFrameIdx();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int32 CallStack_GetBreakStackFrameIdx();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetCodeAddrInfo(int addr, out int32 hotIdx, out int32 defLineStart, out int32 defLineEnd, out int32 line, out int32 column);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_GetStackAllocInfo(int addr, out int threadId, int32* outStackIdx);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* CallStack_GetStackFrameInfo(int32 stackFrameIdx, out int addr, out char8* outFile, out int32 hotIdx, out int32 defLineStart, out int32 defLineEnd, out int32 outLine, out int32 outColumn, out int32 outLanguage, out int32 outStackSize, out FrameFlags flags);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Callstack_GetStackFrameOldFileInfo(int32 stackFrameIdx);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int32 CallStack_GetJmpState(int32 stackFrameIdx);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int Debugger_GetStackFrameCalleeAddr(int32 stackFrameIdx);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* CallStack_GetStackMethodOwner(int32 stackFrameIdx, out int32 language);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetThreadInfo();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_SetActiveThread(int threadId);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int Debugger_GetActiveThread();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_FreezeThread(int threadId);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_ThawThread(int threadId);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_IsActiveThreadWaiting();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_PopMessage();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_HasMessages();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_FindCodeAddresses(char8* file, int32 line, int32 column, bool allowAutoResolve);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetAddressSourceLocation(int addr);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetAddressSymbolName(int addr, bool demangle);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_FindLineCallAddresses(int addr);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_DisassembleAt(int addr);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_ReadMemory(int addr, int size, uint8* data);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_WriteMemory(int addr, int size, uint8* data);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void* Debugger_StartProfiling(int threadId, char8* desc, int32 sampleRate);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void* Debugger_PopProfiler();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_SetSymSrvOptions(char8* symCacheDir, char8* symSrvStr, int32 flags);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_CancelSymSrv();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetModulesInfo();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_HasPendingDebugLoads();
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int32 Debugger_LoadImageForModuleWith(char8* moduleName, char8* imageFileName);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int32 Debugger_LoadDebugInfoForModule(char8* moduleName);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern int32 Debugger_LoadDebugInfoForModuleWith(char8* moduleName, char8* debugFileName);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_SetStepOverExternalFiles(bool stepOverExternalFiles);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_InitiateHotResolve(int32 flags);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetHotResolveData(uint8* outTypeData, int32* outTypeDataSize);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_SetAliasPath(char8* origPath, char8* localPath);
 
 		public String mRunningPath ~ delete _;

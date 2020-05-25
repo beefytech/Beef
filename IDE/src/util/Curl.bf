@@ -854,25 +854,25 @@ namespace CURL
 			HTTP2Stream,            /* 92 - stream error in HTTP/2 framing layer */
 		}
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void* curl_easy_init();
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int curl_easy_setopt(void* curl, int option, int optVal);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void* curl_easy_duphandle(void* curl);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void* curl_easy_cleanup(void* curl);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int curl_easy_perform(void* curl);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void* curl_easy_getinfo(void* curl, Option option, void* ptr);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void* curl_easy_reset(void* curl);
 
 		void* mCURL;

@@ -7,10 +7,10 @@ namespace IDE
 {
     public class Targets
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Targets_Create();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Targets_Delete();
 
         public this()

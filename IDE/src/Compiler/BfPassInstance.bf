@@ -17,27 +17,27 @@ namespace IDE.Compiler
 			Classify
 		}
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfPassInstance_Delete(void* bfSystem);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* BfPassInstance_PopOutString(void* bfSystem);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfPassInstance_SetClassifierPassId(void* bfResolvePassData, uint8 classifierPassId);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int32 BfPassInstance_GetErrorCount(void* mNativeResolvePassData);        
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* BfPassInstance_GetErrorData(void* mNativeResolvePassData, int32 errorIdx, out int32 code, out bool isWarning,
             out bool isAfter, out bool isDeferred, out bool isWhileSpecializing, out bool isPersistent, out char8* projectName,
 			out char8* fileName, out int32 srcStart, out int32 srcEnd, int32* srcLine, int32* srcColumn, out int32 moreInfoCount);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfPassInstance_Error_GetMoreInfoData(void* mNativeResolvePassData, int32 errorIdx, int32 moreInfoIdx, out char8* fileName, out int32 srcStart, out int32 srcEnd, int32* srcLine, int32* srcColumn);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfPassInstance_HadSignatureChanges(void* mNativeResolvePassData);
 
         public class BfError

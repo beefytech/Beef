@@ -5,43 +5,43 @@ namespace DocPrep
 {
 	class Program
 	{
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* BfSystem_Create();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfSystem_Delete(void* bfSystem);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* BfSystem_CreateParser(void* bfSystem, void* bfProject);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* BfSystem_CreatePassInstance(void* bfSystem);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfPassInstance_Delete(void* bfSystem);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfSystem_DeleteParser(void* bfSystem, void* bfParser);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfParser_SetSource(void* bfParser, char8* data, int32 length, char8* fileName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool BfParser_Parse(void* bfParser, void* bfPassInstance, bool compatMode);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool BfParser_Reduce(void* bfParser, void* bfPassInstance);
 
-		[StdCall, CLink]        
+		[CallingConvention(.Stdcall), CLink]        
 		static extern char8* BfParser_Format(void* bfParser, int32 formatEnd, int32 formatStart, out int32* outCharMapping);
 
-		[StdCall, CLink]        
+		[CallingConvention(.Stdcall), CLink]        
 		static extern char8* BfParser_DocPrep(void* bfParser);
 
-		/*[StdCall, CLink]        
+		/*[CallingConvention(.Stdcall), CLink]        
 		static extern char8* BfParser_Prep*/
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* BfSystem_CreateProject(void* bfSystem, char8* projectName);
 
 		String mSrcDirPath;

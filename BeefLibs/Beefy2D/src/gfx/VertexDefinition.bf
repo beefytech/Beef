@@ -34,10 +34,10 @@ namespace Beefy.gfx
         }
 
 #if !STUDIO_CLIENT
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_CreateVertexDefinition(VertexDefData* elementData, int32 numElements);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_VertexDefinition_Delete(void* nativeVertexDefinition);
 
         public void* mNativeVertexDefinition;
