@@ -1176,8 +1176,8 @@ namespace IDE.ui
 			BFApp.sApp.GetWorkspaceRect(out workspaceX, out workspaceY, out workspaceWidth, out workspaceHeight);
 			if (screenX + width > workspaceWidth)
 				screenX = workspaceWidth - width;
-			if (screenX < 0)
-				screenX = 0;
+			if (screenX < workspaceX)
+				screenX = workspaceX;
 
 			if (rootWidget == mAutoCompleteListWidget)
 			{
