@@ -15495,7 +15495,7 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 			{
 				if (initCountDiff > 0)
 				{
-					mModule->Fail(StrFormat("Too many initializers, expected %d fewer", initCountDiff), valueExprs[(int)checkArrayType->mElementCount]);
+					mModule->Fail(StrFormat("Too many initializers, expected %d fewer", initCountDiff), valueExprs[BF_MAX((int)checkArrayType->mElementCount, 0)]);
 					failedAt.Add(depth);
 				}
 				else
