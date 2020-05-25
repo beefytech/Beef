@@ -13245,7 +13245,7 @@ void BfModule::EmitDefaultReturn()
 }
 
 void BfModule::AssertErrorState()
-{
+{	
 	if (mIgnoreErrors)
 		return;
 	if (mHadBuildError)
@@ -13285,6 +13285,10 @@ void BfModule::AssertErrorState()
 		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && (mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
 			return;
 	}
+
+	if (mCompiler->IsAutocomplete())
+		return;
+
 	BF_ASSERT(mCompiler->mPassInstance->HasFailed());
 }
 
