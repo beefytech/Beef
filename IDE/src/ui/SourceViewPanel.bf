@@ -3323,15 +3323,27 @@ namespace IDE.ui
 
 		void CheckAdjustFile()
 		{
-			if (mEditData == null)
+			var wantHash = mWantHash;
+			if (wantHash case .None)
+			{
+				if (mEditData != null)
+				{
+					if (!mEditData.mSHA256Hash.IsZero)
+						wantHash = .SHA256(mEditData.mSHA256Hash);
+					else if (!mEditData.mMD5Hash.IsZero)
+						wantHash = .MD5(mEditData.mMD5Hash);
+				}
+			}
+
+			if (wantHash case .None)
 				return;
 
 			String text = scope .();
 			if (File.ReadAllText(mFilePath, text, true) case .Err)
 				return;
 			
-			SourceHash textHash = SourceHash.Create(.MD5, text);
-			if (mEditData.CheckHash(textHash))
+			SourceHash textHash = SourceHash.Create(wantHash.GetKind(), text);
+			if (textHash == wantHash)
 				return;
 
 			if (text.Contains('\r'))
@@ -3342,8 +3354,8 @@ namespace IDE.ui
 			{
 				text.Replace("\n", "\r\n");
 			}
-			textHash = SourceHash.Create(.MD5, text);
-			if (mEditData.CheckHash(textHash))
+			textHash = SourceHash.Create(wantHash.GetKind(), text);
+			if (textHash == wantHash)
 			{
 				if (File.WriteAllText(mFilePath, text) case .Err)
 				{
