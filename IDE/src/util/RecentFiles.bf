@@ -40,13 +40,15 @@ namespace IDE.util
 			return mRecents[(int)recentKind].mList;
 		}
 
-		public static void UpdateMenu(List<String> items, SysMenu menu, List<SysMenu> menuItems, delegate void(int idx, SysMenu sysMenu) onNewEntry)
+		public static void UpdateMenu(List<String> items, SysMenu menu, List<SysMenu> menuItems, bool showSplit, delegate void(int idx, SysMenu sysMenu) onNewEntry)
 		{
-			if ((menuItems.IsEmpty) && (!items.IsEmpty))
+			if ((menuItems.IsEmpty) && (!items.IsEmpty) && (showSplit))
 			{
 				menuItems.Add(menu.AddMenuItem(null, null));
 			}
-			
+
+			int offset = showSplit ? 1 : 0;
+
 			int32 i;
 			for (i = 0; i < items.Count; i++)
 			{
@@ -55,9 +57,9 @@ namespace IDE.util
 			        title.AppendF("1&0 {1}", i + 1, items[i]);
 			    else
 			        title.AppendF("&{0} {1}", i + 1, items[i]);
-			    if (i < menuItems.Count - 1)
+			    if (i < menuItems.Count - offset)
 			    {
-			        menuItems[i + 1].Modify(title);
+			        menuItems[i + offset].Modify(title);
 			    }
 			    else
 			    {
@@ -71,9 +73,9 @@ namespace IDE.util
 			    }
 			}
 
-			while (i < menuItems.Count - 1)
+			while (i < menuItems.Count - offset)
 			{
-			    menuItems[i + 1].Dispose();
+			    menuItems[i + offset].Dispose();
 			    menuItems.RemoveAt(i + 1);
 			}
 
