@@ -71,16 +71,16 @@ namespace System
 		    char8[] strChars = scope:: char8[22];
 			int32 char8Idx = 20;
 			int64 valLeft = (int64)this;
-			bool isNeg = false;
+			bool isNeg = true;
 			int minNumeralsLeft = 0;
-			if (valLeft < 0)
+			if (valLeft >= 0)
 			{
 				valLeft = -valLeft;
-				isNeg = true;
+				isNeg = false;
 			}
-			while ((valLeft > 0) || (minNumeralsLeft > 0))
+			while ((valLeft < 0) || (minNumeralsLeft > 0))
 			{
-			    strChars[char8Idx] = (char8)('0' + (valLeft % 10));
+			    strChars[char8Idx] = (char8)('0' - (valLeft % 10));
 			    valLeft /= 10;
 			    char8Idx--;
 				minNumeralsLeft--;
