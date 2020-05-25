@@ -14992,11 +14992,25 @@ void BeMCContext::Generate(BeFunction* function)
 
 						break;
 					}
-
+					
 					auto aggType = GetType(mcAgg);
-					BF_ASSERT(aggType->IsStruct());
-					BeStructType* structType = (BeStructType*)aggType;
-					auto& structMember = structType->mMembers[castedInst->mIdx];
+					int byteOffset = 0;
+					BeType* memberType = NULL;
+
+					if (aggType->IsSizedArray())
+					{
+						auto sizedArray = (BeSizedArrayType*)aggType;
+						memberType = sizedArray->mElementType;
+						byteOffset = BF_ALIGN(memberType->mSize, memberType->mAlign) * castedInst->mIdx;
+					}
+					else
+					{
+						BF_ASSERT(aggType->IsStruct());
+						BeStructType* structType = (BeStructType*)aggType;
+						auto& structMember = structType->mMembers[castedInst->mIdx];
+						byteOffset = structMember.mByteOffset;
+						memberType = structMember.mType;
+					}
 
 					if (mcAgg.mKind == BeMCOperandKind_VReg)
 						mcAgg.mKind = BeMCOperandKind_VRegAddr;
@@ -15004,8 +15018,8 @@ void BeMCContext::Generate(BeFunction* function)
 						mcAgg.mKind = BeMCOperandKind_VReg;
 					else
 						NotImpl();
-					auto memberPtrType = mModule->mContext->GetPointerTo(structMember.mType);
-					result = AllocRelativeVirtualReg(memberPtrType, mcAgg, BeMCOperand::FromImmediate(structMember.mByteOffset), 1);
+					auto memberPtrType = mModule->mContext->GetPointerTo(memberType);
+					result = AllocRelativeVirtualReg(memberPtrType, mcAgg, BeMCOperand::FromImmediate(byteOffset), 1);
 					result.mKind = BeMCOperandKind_VRegLoad;
 					CreateDefineVReg(result);
 				}
