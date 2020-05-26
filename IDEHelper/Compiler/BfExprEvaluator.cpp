@@ -2290,6 +2290,15 @@ void BfExprEvaluator::Evaluate(BfAstNode* astNode, bool propogateNullConditional
 	}
 }
 
+void BfExprEvaluator::Visit(BfErrorNode* errorNode)
+{
+	mModule->Fail("Invalid token", errorNode);
+
+	auto autoComplete = GetAutoComplete();
+	if (autoComplete != NULL)
+		autoComplete->CheckIdentifier(errorNode->mRefNode, true);
+}
+
 void BfExprEvaluator::Visit(BfTypeReference* typeRef)
 {
 	mResult.mType = ResolveTypeRef(typeRef, BfPopulateType_Declaration);
@@ -3583,7 +3592,10 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					bool isStaticCtor = (mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor) &&
 						(mModule->mCurMethodInstance->mMethodDef->mIsStatic);
 					if ((field->mIsReadOnly) && (!isStaticCtor))
-						retVal = mModule->LoadValue(retVal, NULL, mIsVolatileReference);
+					{
+						if (retVal.IsAddr())
+							retVal.mKind = BfTypedValueKind_ReadOnlyAddr;
+					}						
 					else
 						mIsHeapReference = true;
 					return retVal;

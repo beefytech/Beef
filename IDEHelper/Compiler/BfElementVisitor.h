@@ -10,7 +10,7 @@ public:
 	BfElementVisitor();
 
 	virtual void Visit(BfAstNode* bfAstNode) {}
-	virtual void Visit(BfErrorNode* bfErrorNode) {}		
+	virtual void Visit(BfErrorNode* bfErrorNode);
 	virtual void Visit(BfScopeNode* scopeNode);
 	virtual void Visit(BfNewNode* newNode);
 	virtual void Visit(BfLabeledBlock* labeledBlock);

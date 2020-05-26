@@ -405,6 +405,7 @@ public:
 
 	//////////////////////////////////////////////////////////////////////////
 	
+	virtual void Visit(BfErrorNode* errorNode) override;
 	virtual void Visit(BfTypeReference* typeRef) override;
 	virtual void Visit(BfAttributedExpression* attribExpr) override;
 	virtual void Visit(BfBlock* blockExpr) override;

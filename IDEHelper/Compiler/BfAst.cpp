@@ -51,6 +51,11 @@ void BfStructuralVisitor::Visit(BfLabeledBlock* labeledBlock)
 	Visit(labeledBlock->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfErrorNode* bfErrorNode)
+{
+	Visit(bfErrorNode->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfScopeNode* scopeNode)
 {
 	Visit(scopeNode->ToBase());

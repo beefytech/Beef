@@ -399,7 +399,7 @@ public:
 	BfStructuralVisitor();
 
 	virtual void Visit(BfAstNode* bfAstNode) {}	
-	virtual void Visit(BfErrorNode* bfErrorNode) {}		
+	virtual void Visit(BfErrorNode* bfErrorNode);
 	virtual void Visit(BfScopeNode* scopeNode);
 	virtual void Visit(BfNewNode* newNode);
 	virtual void Visit(BfLabeledBlock* labeledBlock);
@@ -1461,15 +1461,6 @@ T* BfNodeDynCastExact(BfAstNode* node)
 BfIdentifierNode* BfIdentifierCast(BfAstNode* node);
 BfAstNode* BfNodeToNonTemporary(BfAstNode* node);
 
-class BfErrorNode : public BfAstNode
-{
-public:
-	BF_AST_TYPE(BfErrorNode, BfAstNode);
-
-	BfAstNode* mRefNode;
-};	BF_AST_DECL(BfErrorNode, BfAstNode);
-	
-
 class BfStatement : public BfAstNode
 {
 public:
@@ -1495,6 +1486,14 @@ public:
 
 	bool VerifyIsStatement(BfPassInstance* passInstance, bool ignoreError = false);
 };	BF_AST_DECL(BfExpression, BfAstNode);
+
+class BfErrorNode : public BfExpression
+{
+public:
+	BF_AST_TYPE(BfErrorNode, BfExpression);
+
+	BfAstNode* mRefNode;
+};	BF_AST_DECL(BfErrorNode, BfExpression);
 
 class BfExpressionStatement : public BfStatement
 {

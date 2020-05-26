@@ -175,7 +175,7 @@ public:
 	BfAstNode* mGetDefinitionNode;
 	BfResolveType mResolveType;
 	BfTypeInstance* mShowAttributeProperties;
-	BfIdentifierNode* mIdentifierUsed;
+	BfAstNode* mIdentifierUsed;
 	bool mIgnoreFixits;
 	bool mHasFriendSet;
 	bool mUncertain; // May be an unknown identifier, do not aggressively autocomplete
@@ -212,8 +212,8 @@ public:
 	void AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeInstance* selfType, const StringImpl& filter, bool allowPrivate);
 	bool InitAutocomplete(BfAstNode* dotNode, BfAstNode* nameNode, String& filter);
 	void AddEnumTypeMembers(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate);	
-	void AddTopLevelNamespaces(BfIdentifierNode* identifierNode);
-	void AddTopLevelTypes(BfIdentifierNode* identifierNode, bool onlyAttribute = false);
+	void AddTopLevelNamespaces(BfAstNode* identifierNode);
+	void AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttribute = false);
 	void AddOverrides(const StringImpl& filter);
 	void UpdateReplaceData();	
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);
@@ -233,7 +233,7 @@ public:
 	void RemoveMethodMatchInfo();
 	void ClearMethodMatchEntries();
 
-	void CheckIdentifier(BfIdentifierNode* identifierNode, bool isInExpression = false, bool isUsingDirective = false);
+	void CheckIdentifier(BfAstNode* identifierNode, bool isInExpression = false, bool isUsingDirective = false);
 	bool CheckMemberReference(BfAstNode* target, BfAstNode* dotToken, BfAstNode* memberName, bool onlyShowTypes = false, BfType* expectingType = NULL, bool isUsingDirective = false, bool onlyAttribute = false);
 	bool CheckExplicitInterface(BfTypeInstance* interfaceType, BfAstNode* dotToken, BfAstNode* memberName);
 	void CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier, bool isInExpression = false, bool onlyAttribute = false);
@@ -244,10 +244,10 @@ public:
 	void CheckProperty(BfPropertyDeclaration* propertyDeclaration);	
 	void CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedTypeRef);
 	void CheckResult(BfAstNode* node, const BfTypedValue& typedValue);
-	void CheckLocalDef(BfIdentifierNode* identifierNode, BfLocalVariable* varDecl);
-	void CheckLocalRef(BfIdentifierNode* identifierNode, BfLocalVariable* varDecl);
-	void CheckFieldRef(BfIdentifierNode* identifierNode, BfFieldInstance* fieldInst);
-	void CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* precedingNode = NULL);
+	void CheckLocalDef(BfAstNode* identifierNode, BfLocalVariable* varDecl);
+	void CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* varDecl);
+	void CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* fieldInst);
+	void CheckLabel(BfAstNode* identifierNode, BfAstNode* precedingNode = NULL);
 	void CheckEmptyStart(BfAstNode* prevNode, BfType* type);	
 	bool CheckFixit(BfAstNode* node);	
 	void CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);

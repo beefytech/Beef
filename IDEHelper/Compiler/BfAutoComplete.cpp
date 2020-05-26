@@ -921,7 +921,7 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 // 	return IsInExpression(node->mParent);
 // }
 
-void BfAutoComplete::AddTopLevelNamespaces(BfIdentifierNode* identifierNode)
+void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
 {	
 	String filter;
 	if (identifierNode != NULL)
@@ -964,7 +964,7 @@ void BfAutoComplete::AddTopLevelNamespaces(BfIdentifierNode* identifierNode)
 	}
 }
 
-void BfAutoComplete::AddTopLevelTypes(BfIdentifierNode* identifierNode, bool onlyAttribute)
+void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttribute)
 {
 	String filter;
 	
@@ -1144,7 +1144,7 @@ void BfAutoComplete::AddTopLevelTypes(BfIdentifierNode* identifierNode, bool onl
 	}
 }
 
-void BfAutoComplete::CheckIdentifier(BfIdentifierNode* identifierNode, bool isInExpression, bool isUsingDirective)
+void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpression, bool isUsingDirective)
 {	
 	if ((identifierNode != NULL) && (!IsAutocompleteNode(identifierNode)))
 		return;
@@ -2335,12 +2335,12 @@ void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue
 	}	
 }
 
-void BfAutoComplete::CheckLocalDef(BfIdentifierNode* identifierNode, BfLocalVariable* varDecl)
+void BfAutoComplete::CheckLocalDef(BfAstNode* identifierNode, BfLocalVariable* varDecl)
 {
 	CheckLocalRef(identifierNode, varDecl);
 }
 
-void BfAutoComplete::CheckLocalRef(BfIdentifierNode* identifierNode, BfLocalVariable* varDecl)
+void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* varDecl)
 {
 	if (mReplaceLocalId != -1)
 		return;
@@ -2406,7 +2406,7 @@ void BfAutoComplete::CheckLocalRef(BfIdentifierNode* identifierNode, BfLocalVari
 	}	
 }
 
-void BfAutoComplete::CheckFieldRef(BfIdentifierNode* identifierNode, BfFieldInstance* fieldInst)
+void BfAutoComplete::CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* fieldInst)
 {	
 	if (mResolveType == BfResolveType_GetSymbolInfo)
 	{
@@ -2438,7 +2438,7 @@ void BfAutoComplete::CheckFieldRef(BfIdentifierNode* identifierNode, BfFieldInst
 	}
 }
 
-void BfAutoComplete::CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* precedingNode)
+void BfAutoComplete::CheckLabel(BfAstNode* identifierNode, BfAstNode* precedingNode)
 {
 	String filter;
 	if (identifierNode != NULL)

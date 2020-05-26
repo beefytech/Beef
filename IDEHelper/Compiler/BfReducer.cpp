@@ -1402,15 +1402,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 	AssertCurrentNode(node);
 
-	/*if (auto block = BfNodeDynCast<BfBlock>(node))
-	{
-	HandleBlock(block, true);
-	return block;
-	}*/
-
 	auto rhsCreateExprFlags = (CreateExprFlags)(createExprFlags & CreateExprFlags_BreakOnRChevron);
-
-	node = ReplaceTokenStarter(node);
 
 	auto exprLeft = BfNodeDynCast<BfExpression>(node);
 
@@ -2431,6 +2423,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 								{
 									if (nextTokenNode->GetToken() == BfToken_Dot)
 									{
+										TryIdentifierConvert(checkIdx + 2);
+
 										auto nextNextCheckNode = mVisitorPos.Get(checkIdx + 2);
 
 										if (auto identifierNode = BfNodeDynCast<BfIdentifierNode>(nextNextCheckNode))
@@ -4265,8 +4259,6 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 {
 	AssertCurrentNode(node);
 
-	node = ReplaceTokenStarter(node);
-
 	if ((createStmtFlags & CreateStmtFlags_AllowUnterminatedExpression) != 0)
 	{
 		if (IsTerminatingExpression(node))
@@ -5033,11 +5025,6 @@ BfTypeReference* BfReducer::CreateTypeRef(BfAstNode* firstNode, CreateTypeRefFla
 			}
 			return CreateRefTypeRef(typeRef, tokenNode);
 		}
-		else if ((token == BfToken_In) || (token == BfToken_As))
-		{
-			// This is mostly to allow a partially typed 'int' to be parsed as 'in' to make autocomplete nicer
-			return CreateTypeRef(ReplaceTokenStarter(firstNode), createTypeRefFlags);
-		}
 	}
 	return DoCreateTypeRef(firstNode, createTypeRefFlags);
 }
@@ -5108,7 +5095,19 @@ BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode)
 		auto nextNextToken = mVisitorPos.Get(mVisitorPos.mReadPos + 2);
 		auto rightIdentifier = BfNodeDynCast<BfIdentifierNode>(nextNextToken);
 		if (rightIdentifier == NULL)
-			return leftIdentifier;
+		{
+			if (auto rightToken = BfNodeDynCast<BfTokenNode>(nextNextToken))			
+			{
+				if (BfTokenIsKeyword(rightToken->mToken))
+				{
+					rightIdentifier = mAlloc->Alloc<BfIdentifierNode>();
+					ReplaceNode(rightToken, rightIdentifier);
+				}
+			}
+			
+			if (rightIdentifier == NULL)
+				return leftIdentifier;
+		}
 
 		// If the previous dotted span failed (IE: had chevrons) then don't insert qualified names in the middle of it
 		auto prevNodeToken = BfNodeDynCast<BfTokenNode>(prevNode);
@@ -5129,6 +5128,20 @@ BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode)
 	}
 
 	return leftIdentifier;
+}
+
+void BfReducer::TryIdentifierConvert(int readPos)
+{
+	auto node = mVisitorPos.Get(readPos);
+	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(node))
+	{
+		if (BfTokenIsKeyword(tokenNode->mToken))
+		{
+			auto identifierNode = mAlloc->Alloc<BfIdentifierNode>();
+			ReplaceNode(tokenNode, identifierNode);
+			mVisitorPos.Set(readPos, identifierNode);
+		}
+	}	
 }
 
 void BfReducer::CreateQualifiedNames(BfAstNode* node)
@@ -6265,8 +6278,6 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 		prevTypeMemberNodeStart.Set();
 
 	AssertCurrentNode(node);
-
-	node = ReplaceTokenStarter(node);
 
 	BfTokenNode* refToken = NULL;
 
@@ -7583,7 +7594,7 @@ BfAstNode* BfReducer::HandleTopLevel(BfBlock* node)
 
 		isDone = !mVisitorPos.MoveNext();
 		if (newNode != NULL)
-			mVisitorPos.Write(newNode);
+			mVisitorPos.Write(newNode);		
 	}
 	mVisitorPos.Trim();
 	return node;
@@ -9296,21 +9307,7 @@ void BfReducer::HandleBlock(BfBlock* block, bool allowEndingExpression)
 
 		auto statement = CreateStatement(node, flags);
 		if (statement == NULL)
-		{
-			auto nextNode = mVisitorPos.GetNext();
-			isDone = !mVisitorPos.MoveNext();
-#ifdef BF_AST_HAS_PARENT_MEMBER
-			BF_ASSERT(node->mParent != NULL);
-#endif
-
-			node->RemoveSelf();
-			BF_ASSERT(node->GetSourceData() == mSource->mSourceData);
-			mSource->AddErrorNode(node);
-
-			if (nextNode == NULL)
-				break;
-			continue;
-		}
+			statement = mSource->CreateErrorNode(node);
 
 		isDone = !mVisitorPos.MoveNext();
 		mVisitorPos.Write(statement);

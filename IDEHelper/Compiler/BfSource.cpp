@@ -58,7 +58,7 @@ bool BfSource::WantsStats()
 	return ((int)parser->mFileName.IndexOf("main2.cs") != -1);
 }
 
-void BfSource::AddErrorNode(BfAstNode* astNode)
+BfErrorNode* BfSource::CreateErrorNode(BfAstNode* astNode)
 {
 	BfErrorNode* errorNode = BfNodeDynCast<BfErrorNode>(astNode);
 	if (errorNode == NULL)
@@ -67,8 +67,12 @@ void BfSource::AddErrorNode(BfAstNode* astNode)
 		errorNode->Init(astNode->GetSrcStart(), astNode->GetSrcStart(), astNode->GetSrcEnd());
 		errorNode->mRefNode = astNode;
 	}
+	return errorNode;
+}
 
-	mPendingErrorNodes.push_back(errorNode);
+void BfSource::AddErrorNode(BfAstNode* astNode)
+{	
+	mPendingErrorNodes.push_back(CreateErrorNode(astNode));
 }
 
 int BfSource::AllocChars(int charCount)
