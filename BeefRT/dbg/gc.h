@@ -174,12 +174,14 @@ public:
 		BfpThreadId mThreadId;
 		void* mTEB;
 		intptr mStackStart;
+		intptr mLastStackPtr;
 		bool mRunning;
 		Beefy::Array<bf::System::Object*> mStackMarkableObjects;
 
 		ThreadInfo()
 		{
 			mThreadId = 0;
+			mLastStackPtr = 0;
 			mThreadHandle = NULL;
 			mThreadInfo = NULL;
 			mTEB = NULL;

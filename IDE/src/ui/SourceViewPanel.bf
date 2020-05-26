@@ -842,6 +842,7 @@ namespace IDE.ui
 			{
                 mEditData.mLastFileTextVersion = mEditWidget.Content.mData.mCurTextVersionId;
 				mEditData.mHadRefusedFileChange = false;
+				mEditData.mFileDeleted = false;
 			
 				var editText = scope String();
 				mEditWidget.GetText(editText);
@@ -2120,15 +2121,28 @@ namespace IDE.ui
 					mEditData.Ref();
 					mProjectSource.mEditData = mEditData;
 					mEditData.mProjectSources.Add(mProjectSource);
+					// Rehup mFileDeleted if necessary
+					if (mEditData.mFileDeleted)
+						mEditData.IsFileDeleted();
 				}
 			}
 			QueueFullRefresh(true);
 		}
 
-		public void DetachFromProjectItem()
+		public void DetachFromProjectItem(bool fileDeleted)
 		{
 			if (mProjectSource == null)
 				return;
+
+			if (fileDeleted)
+			{
+				// We manually add this change record because it may not get caught since the watch dep may be gone
+				// This will allow the "File Deleted" dialog to show.
+				var changeRecord = new FileWatcher.ChangeRecord();
+				changeRecord.mChangeType = .Deleted;
+				changeRecord.mPath = new String(mFilePath);
+				gApp.mFileWatcher.AddChangedFile(changeRecord);
+			}
 
 			ProcessDeferredResolveResults(-1);
 
@@ -2140,9 +2154,9 @@ namespace IDE.ui
 			QueueFullRefresh(true);
 
 			if (mOldVersionPanel != null)
-				mOldVersionPanel.DetachFromProjectItem();
+				mOldVersionPanel.DetachFromProjectItem(false);
 			if (mSplitTopPanel != null)
-				mSplitTopPanel.DetachFromProjectItem();
+				mSplitTopPanel.DetachFromProjectItem(false);
 		}
 
 		public void CloseEdit()
@@ -3309,15 +3323,27 @@ namespace IDE.ui
 
 		void CheckAdjustFile()
 		{
-			if (mEditData == null)
+			var wantHash = mWantHash;
+			if (wantHash case .None)
+			{
+				if (mEditData != null)
+				{
+					if (!mEditData.mSHA256Hash.IsZero)
+						wantHash = .SHA256(mEditData.mSHA256Hash);
+					else if (!mEditData.mMD5Hash.IsZero)
+						wantHash = .MD5(mEditData.mMD5Hash);
+				}
+			}
+
+			if (wantHash case .None)
 				return;
 
 			String text = scope .();
 			if (File.ReadAllText(mFilePath, text, true) case .Err)
 				return;
 			
-			SourceHash textHash = SourceHash.Create(.MD5, text);
-			if (mEditData.CheckHash(textHash))
+			SourceHash textHash = SourceHash.Create(wantHash.GetKind(), text);
+			if (textHash == wantHash)
 				return;
 
 			if (text.Contains('\r'))
@@ -3328,8 +3354,8 @@ namespace IDE.ui
 			{
 				text.Replace("\n", "\r\n");
 			}
-			textHash = SourceHash.Create(.MD5, text);
-			if (mEditData.CheckHash(textHash))
+			textHash = SourceHash.Create(wantHash.GetKind(), text);
+			if (textHash == wantHash)
 			{
 				if (File.WriteAllText(mFilePath, text) case .Err)
 				{

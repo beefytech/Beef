@@ -18,7 +18,7 @@ namespace IDE.ui
 			COUNT
 		}
 
-        List<String> mFileNames = new List<String>() ~ DeleteContainerAndItems!(_);
+        public List<String> mFileNames = new List<String>() ~ DeleteContainerAndItems!(_);
         public bool?[(int)DialogKind.COUNT] mApplyAllResult;
 		public DialogKind mDialogKind;
 

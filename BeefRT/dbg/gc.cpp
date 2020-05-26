@@ -1457,7 +1457,10 @@ bool BFGC::ScanThreads()
 		
 		mQueueMarkObjects = true;
 		ConservativeScan(regVals, regValCount * sizeof(intptr));
-		thread->CalcStackStart();
+		intptr prevStackStart = thread->mStackStart;
+		thread->CalcStackStart();		
+
+		thread->mLastStackPtr = stackPtr;
 		int length = thread->mStackStart - stackPtr;		
 		
 		AdjustStackPtr(stackPtr, length);

@@ -185,6 +185,7 @@ public:
 	BfAstNode* ReadTypeMember(BfTokenNode* node, int depth = 0);
 	BfAstNode* ReadTypeMember(BfAstNode* node, int depth = 0);
 	BfIdentifierNode* CompactQualifiedName(BfAstNode* leftNode);
+	void TryIdentifierConvert(int readPos);
 	void CreateQualifiedNames(BfAstNode* node);
 	BfFieldDtorDeclaration* CreateFieldDtorDeclaration(BfAstNode* srcNode);
 	BfFieldDeclaration* CreateFieldDeclaration(BfTokenNode* tokenNode, BfTypeReference* typeRef, BfIdentifierNode* nameIdentifier, BfFieldDeclaration* prevFieldDeclaration);

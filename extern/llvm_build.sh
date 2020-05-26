@@ -3,10 +3,6 @@ set -e
 
 if [ ! -d llvm-project_8_0_0 ]; then
 	git clone https://github.com/llvm/llvm-project.git llvm-project_8_0_0
-else
-	cd llvm-project_8_0_0
-	git pull origin master	
-	cd ..
 fi
 
 if [ -d llvm-project_8_0_0 ]; then
@@ -16,7 +12,10 @@ if [ -d llvm-project_8_0_0 ]; then
 fi 
 
 if [ ! -d llvm_linux_8_0_0 ]; then
-	mkdir llvm_linux_8_0_0
+	mkdir llvm_linux_8_0_0	
+fi
+
+if [ ! -d llvm_linux_8_0_0/bin ]; then
 	cd llvm_linux_8_0_0
 	cmake ../llvm-project_8_0_0/llvm
 	cmake --build .
@@ -24,7 +23,10 @@ if [ ! -d llvm_linux_8_0_0 ]; then
 fi
 
 if [ ! -d llvm_linux_rel_8_0_0 ]; then
-	mkdir llvm_linux_rel_8_0_0
+	mkdir llvm_linux_rel_8_0_0	
+fi
+
+if [ ! -d llvm_linux_rel_8_0_0/bin ]; then
 	cd llvm_linux_rel_8_0_0
 	cmake ../llvm-project_8_0_0/llvm -DCMAKE_BUILD_TYPE:String=Release
 	cmake --build .

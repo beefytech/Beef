@@ -160,6 +160,8 @@ namespace BeefBuild
 				case "-version":
 					mVerb = .GetVersion;
 					return true;
+				case "-crash":
+					Runtime.FatalError("-crash specified on command line");
 				}
 			}
 			else

@@ -125,6 +125,11 @@ void BfElementVisitor::Visit(BfLabelableStatement* labelableStmt)
 	}
 }
 
+void BfElementVisitor::Visit(BfErrorNode* bfErrorNode)
+{
+	Visit(bfErrorNode->mRefNode);
+}
+
 void BfElementVisitor::Visit(BfScopeNode* scopeNode)
 {
 	Visit(scopeNode->ToBase());

@@ -634,10 +634,15 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 										aWindow->mIsMouseInside = true;
 										cursorWindow = aWindow;
 									}									
-								}								
+								}
 								++itr;
 							}
 						}
+
+						UINT ucNumLines = 0;
+						SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, &ucNumLines, 0);
+						if (ucNumLines == 0)
+							ucNumLines = 3; // Default
 
 						if ((cursorWindow != this) && (mIsMouseInside))
 						{
@@ -648,7 +653,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 						POINT pt = {x, y};
 						ScreenToClient(cursorWindow->mHWnd, &pt);
 
-						int delta = ((int16)HIWORD(wParam)) / 120;
+						float delta = ((int16)HIWORD(wParam)) / 120.0f * (float)ucNumLines;
 						mMouseWheelFunc(cursorWindow, pt.x, pt.y, delta);						
 					}
 					break;

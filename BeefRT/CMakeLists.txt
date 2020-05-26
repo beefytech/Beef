@@ -35,6 +35,14 @@ add_definitions(
    -DBFRTMERGED
 )
 
+set (CMAKE_CXX_STANDARD 11)
+
+INCLUDE(CheckIncludeFiles)
+CHECK_INCLUDE_FILES(backtrace.h HAVE_BACKTRACE_HEADERS)
+if (HAVE_BACKTRACE_HEADERS)
+   add_definitions(-DBFP_HAS_BACKTRACE) 
+endif ()
+
 if (${IOS})  
   include_directories(
     .
@@ -56,7 +64,7 @@ elseif (${APPLE})
     ../BeefySysLib/  
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
-    ../BeefySysLib/third_party/libffi/x86_64-apple-darwin12.5.0/include
+    ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/include
     ../  
     ../extern
     ../extern/llvm/include  
@@ -186,10 +194,7 @@ if(MSVC)
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /GL /Od /Oi /Gy /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")  
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-  endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -Wno-multichar -Wno-invalid-offsetof")    
 endif(NOT MSVC)
 
 ################ Files ################
@@ -234,15 +239,13 @@ elseif (${APPLE})
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/darwin/BFPlatform.cpp
         ../BeefySysLib/platform/darwin/DarwinCommon.cpp
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/prep_cif.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/types.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/raw_api.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/java_raw_api.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/closures.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/ffi64.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/unix64.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/ffiw64.o
-        ../BeefySysLib/third_party/libffi/build_macosx-x86_64/src/x86/win64.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/types.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/closures.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/ffi64.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/darwin64.o
     )
 elseif (${ANDROID})
   file(GLOB SRC_FILES_OS
@@ -270,14 +273,18 @@ add_library(${PROJECT_NAME} STATIC
    ${SRC_FILES_OS}
 )
 
+set(TARGET_LIBS_OS "")
+if (HAVE_BACKTRACE_HEADERS)
+  set(TARGET_LIBS_OS "backtrace")
+endif()
+
 if (${APPLE})
   target_link_libraries(${PROJECT_NAME} pthread ffi)
-elseif (${ANDROID})
-  set(TARGET_LIBS_OS "")
+elseif (${ANDROID})  
   #target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../BeefySysLib/third_party/libffi/aarch64-unknown-linux-gnu/.libs/libffi.a)
   #target_link_libraries(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../BeefySysLib/third_party/libffi/i686-pc-linux-gnu/.libs/libffi.a)
-else()
-  target_link_libraries(${PROJECT_NAME} pthread ffi backtrace)
+else()  
+  target_link_libraries(${PROJECT_NAME} pthread ffi ${TARGET_LIBS_OS})
 endif()
 
 # Link with other dependencies.

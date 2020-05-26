@@ -616,6 +616,9 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			auto module = workItem.mFromModule;
 			auto methodInstance = workItem.mMethodInstance;
 
+			BF_ASSERT(module->mIsModuleMutable);
+			module->PrepareForIRWriting(methodInstance->GetOwner());
+
 			workIdx = mInlineMethodWorkList.RemoveAt(workIdx);
 
 			BfLogSysM("Module %p inlining method %p into func:%p\n", module, methodInstance, workItem.mFunc);
@@ -647,7 +650,8 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			module->mBfIRBuilder->Func_SetLinkage(workItem.mFunc, BfIRLinkageType_Internal);
 			
 			BF_ASSERT(module->mContext == this);
-			BF_ASSERT(module->mIsModuleMutable);			
+			BF_ASSERT(module->mIsModuleMutable);
+
 			if (module->WantsFinishModule())
 			{
 				BfLogSysM("Module finished: %s (from inlining)\n", module->mModuleName.c_str());
@@ -758,8 +762,9 @@ BfType * BfContext::FindTypeById(int typeId)
 
 void BfContext::AddTypeToWorkList(BfType* type)
 {
+	BF_ASSERT((type->mRebuildFlags & BfTypeRebuildFlag_InTempPool) == 0);
 	if ((type->mRebuildFlags & BfTypeRebuildFlag_AddedToWorkList) == 0)
-	{
+	{		
 		type->mRebuildFlags = (BfTypeRebuildFlags)(type->mRebuildFlags | BfTypeRebuildFlag_AddedToWorkList);
 
 		BfTypeProcessRequest* typeProcessRequest = mPopulateTypeWorkList.Alloc();
@@ -2221,9 +2226,10 @@ void BfContext::GenerateModuleName_Type(BfType* type, String& name)
 
 	if (type->IsDelegateFromTypeRef() || type->IsFunctionFromTypeRef())
 	{
-		auto delegateType = (BfDelegateType*)type;
+		auto typeInst = type->ToTypeInstance();
+		auto delegateInfo = type->GetDelegateInfo();
 
-		auto methodDef = delegateType->mTypeDef->mMethods[0];		
+		auto methodDef = typeInst->mTypeDef->mMethods[0];		
 
 		if (type->IsDelegateFromTypeRef())
 			name += "DELEGATE_";

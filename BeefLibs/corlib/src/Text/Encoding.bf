@@ -65,7 +65,7 @@ namespace System.Text
 			int utf8Len = GetDecodedUTF8Size(inBytes);
 
 			int prevSize = outStr.Length;
-			switch (DecodeToUTF8(inBytes, StringView(outStr.PrepareBuffer(utf8Len))))
+			switch (DecodeToUTF8(inBytes, StringView(outStr.PrepareBuffer(utf8Len), utf8Len)))
 			{
 			case .Ok(let val):
 				 return .Ok(val);

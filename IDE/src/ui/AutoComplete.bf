@@ -184,9 +184,10 @@ namespace IDE.ui
         {
             public AutoComplete mAutoComplete;
             public bool mIsInitted;
-            public bool mIgnoreMove;
+            public int mIgnoreMove;
 			public bool mOwnsWindow;
 			public float mRightBoxAdjust;
+			public float mWantHeight;
 
             public this(AutoComplete autoComplete)
             {
@@ -224,7 +225,7 @@ namespace IDE.ui
 						return;
 				}
 
-                if ((!mIgnoreMove) && (mWidgetWindow != null) && (!mWidgetWindow.mHasClosed))
+                if ((mIgnoreMove == 0) && (mWidgetWindow != null) && (!mWidgetWindow.mHasClosed))
                     mAutoComplete.Close();
             }
 
@@ -305,14 +306,16 @@ namespace IDE.ui
             {
                 base.Draw(g);
 
+				float drawHeight = (mWantHeight != 0) ? mWantHeight : mHeight;
+
 				if (mOwnsWindow)
 				{
 	                using (g.PushColor(0x80000000))
-	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), GS!(2), GS!(2), mWidth - GS!(2) - mRightBoxAdjust, mHeight - GS!(2));
+	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), GS!(2), GS!(2), mWidth - GS!(2) - mRightBoxAdjust, drawHeight - GS!(2));
 
 	                base.Draw(g);
 	                using (g.PushColor(0xFFFFFFFF))
-	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth - GS!(8) - mRightBoxAdjust, mHeight - GS!(8));
+	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth - GS!(8) - mRightBoxAdjust, drawHeight - GS!(8));
 				}
 
                 g.SetFont(IDEApp.sApp.mCodeFont);
@@ -320,6 +323,17 @@ namespace IDE.ui
 				/*using (g.PushColor(0x80FF0000))
 					g.FillRect(0, 0, mWidth, mHeight);*/
             }
+
+			public override void Resize(float x, float y, float width, float height)
+			{
+				base.Resize(x, y, width, height);
+			}
+
+			public override void Update()
+			{
+				base.Update();
+				Debug.Assert((mIgnoreMove >= 0) && (mIgnoreMove <= 4));
+			}
         }
 
         public class AutoCompleteListWidget : AutoCompleteContent
@@ -331,6 +345,7 @@ namespace IDE.ui
 			public int32 mSelectIdx = -1;
 			public float mMaxWidth;
 			public float mDocWidth;
+			public float mDocHeight;
 			public int mDocumentationDelay = -1;
 
 			public ~this()
@@ -473,6 +488,7 @@ namespace IDE.ui
 
 
 				float docWidth = 0.0f;
+				float docHeight = 0;
 				if ((mSelectIdx != -1) && (mSelectIdx < mEntryList.Count))
 				{
 					let selectedEntry = mEntryList[mSelectIdx];
@@ -481,31 +497,50 @@ namespace IDE.ui
 						DocumentationParser docParser = scope DocumentationParser(selectedEntry.mDocumentation);
 						var showDocString = docParser.ShowDocString;
 						docWidth = font.GetWidth(showDocString) + GS!(24);
+
+						int drawScreenX = (.)(mWidgetWindow.mX + mWidth - mDocWidth);
+						gApp.GetWorkspaceRectFrom(drawScreenX, mWidgetWindow.mY, 0, 0, var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
+						float maxWidth = workspaceWidth - drawScreenX - GS!(8);
+						float newDocWidth = Math.Min(docWidth, workspaceWidth - drawScreenX - GS!(8));
+						newDocWidth = Math.Max(newDocWidth, GS!(80));
+						if (docWidth > maxWidth)
+						{
+							docWidth = newDocWidth;
+							docHeight = font.GetWrapHeight(showDocString, docWidth - GS!(20)) + GS!(17);
+						}
+						else
+							docHeight = GS!(32);
 					}
 				}
 
-				if ((mOwnsWindow) && ((prevMaxWidth != mMaxWidth) || (docWidth != mDocWidth)) && (mWidgetWindow != null))
+				if ((mOwnsWindow) && ((prevMaxWidth != mMaxWidth) || (docWidth != mDocWidth) || (docHeight != mDocHeight)) && (mWidgetWindow != null))
 				{
+					if (mWantHeight == 0)
+						mWantHeight = mHeight;
+
 					mDocWidth = docWidth;
+					mDocHeight = docHeight;
 					mRightBoxAdjust = docWidth;
 					int32 windowWidth = (int32)mMaxWidth;
 					windowWidth += (.)mDocWidth;
-					windowWidth += GS!(16);
+					windowWidth += GS!(32);
 
 					if (mVertScrollbar != null)
 					{
 						windowWidth += GS!(12);
 					}
 
-					mIgnoreMove = true;
+					int windowHeight = (int)(mWantHeight + Math.Max(0, mDocHeight - GS!(32)));
+
+					mIgnoreMove++;
 					if (mAutoComplete.mInvokeWidget != null)
-						mAutoComplete.mInvokeWidget.mIgnoreMove = true;
-					mWidgetWindow.Resize(mWidgetWindow.mX, mWidgetWindow.mY, windowWidth, mWidgetWindow.mWindowHeight);
+						mAutoComplete.mInvokeWidget.mIgnoreMove++;
+					mWidgetWindow.Resize(mWidgetWindow.mX, mWidgetWindow.mY, windowWidth, windowHeight);
 					mScrollContent.mWidth = mWidth;
 					//Resize(0, 0, mWidgetWindow.mClientWidth, mWidgetWindow.mClientHeight);
-					mIgnoreMove = false;
+					mIgnoreMove--;
 					if (mAutoComplete.mInvokeWidget != null)
-						mAutoComplete.mInvokeWidget.mIgnoreMove = false;
+						mAutoComplete.mInvokeWidget.mIgnoreMove--;
 					ResizeContent(-1, -1, mVertScrollbar != null);
 				}
 			}
@@ -631,7 +666,8 @@ namespace IDE.ui
 							{
 								float drawX = mWidth - mDocWidth - GS!(6);
 								float drawY = GS!(4);
-								float drawHeight = GS!(32);
+								//float drawHeight = GS!(32);
+								float drawHeight = mDocHeight;
 								
 							    using (g.PushColor(0x80000000))
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.DropShadow), drawX + GS!(2), drawY + GS!(2), mRightBoxAdjust - GS!(2), drawHeight - GS!(2));
@@ -640,7 +676,7 @@ namespace IDE.ui
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.Menu), drawX, drawY, mRightBoxAdjust - GS!(8), drawHeight - GS!(8));
 
 								using (g.PushColor(0xFFC0C0C0))
-									g.DrawString(docParser.ShowDocString, drawX + GS!(8), drawY + GS!(4), .Left, mDocWidth, .Ellipsis);
+									g.DrawString(docParser.ShowDocString, drawX + GS!(8), drawY + GS!(4), .Left, mDocWidth - GS!(20), .Wrap);
 							}
 						}
 						else
@@ -798,9 +834,9 @@ namespace IDE.ui
 				{
 					if (mOwnsWindow)
 					{
-						mIgnoreMove = true;
+						mIgnoreMove++;
 						mAutoComplete.UpdateWindow(ref mWidgetWindow, this, mAutoComplete.mInvokeSrcPositions[0], (int32)extWidth, (int32)extHeight);
-						mIgnoreMove = false;
+						mIgnoreMove--;
 					}
 					else
 					{
@@ -924,14 +960,51 @@ namespace IDE.ui
 					var docString = docParser.mBriefString ?? docParser.mDocString;
 
 					curX = GS!(32);
-					curY += font.GetLineSpacing() + GS!(4);
+
+					float docHeight = 0;
+					if (mWidgetWindow == null)
+					{
+						docHeight = font.GetHeight();
+					}
+					else
+					{
+						int drawScreenX = (.)(mWidgetWindow.mX + curX);
+						gApp.GetWorkspaceRectFrom(drawScreenX, mWidgetWindow.mY, 0, 0, var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
+						float maxDocWidth = workspaceWidth - drawScreenX - GS!(8);
+						maxDocWidth = Math.Min(maxDocWidth, workspaceWidth - drawScreenX - GS!(8));
+						maxDocWidth = Math.Max(maxDocWidth, GS!(80));
+
+						curY += font.GetLineSpacing() + GS!(4);
+						if (g != null)
+						{
+							using (g.PushColor(0xFFC0C0C0))
+								docHeight = g.DrawString(docString, curX, curY, .Left, maxDocWidth, .Wrap);
+						}
+						else
+							docHeight = font.GetWrapHeight(docString, maxDocWidth);
+
+						extWidth = Math.Max(extWidth, Math.Min(font.GetWidth(docString), maxDocWidth) + GS!(48));
+					}
+					extHeight += docHeight + GS!(4);
+
+					/*if (docWidth > maxDocWidth)
+					{
+						docWidth = newDocWidth;
+						docHeight = font.GetWrapHeight(showDocString, docWidth - GS!(20)) + GS!(17);
+					}
+					else
+						docHeight = GS!(32);*/
+
+
+					/*curY += font.GetLineSpacing() + GS!(4);
 					if (g != null)
 					{
 						using (g.PushColor(0xFFC0C0C0))
 							g.DrawString(docString, curX, curY, .Left, mWidth, .Ellipsis);
 					}
 					extWidth = Math.Max(extWidth, font.GetWidth(docString) + GS!(48));
-					extHeight += font.GetLineSpacing() + GS!(4);
+					extHeight += font.GetLineSpacing() + GS!(4);*/
+
 
 					if (docParser.mParamInfo != null)
 					{
@@ -1103,8 +1176,8 @@ namespace IDE.ui
 			BFApp.sApp.GetWorkspaceRect(out workspaceX, out workspaceY, out workspaceWidth, out workspaceHeight);
 			if (screenX + width > workspaceWidth)
 				screenX = workspaceWidth - width;
-			if (screenX < 0)
-				screenX = 0;
+			if (screenX < workspaceX)
+				screenX = workspaceX;
 
 			if (rootWidget == mAutoCompleteListWidget)
 			{
@@ -1182,18 +1255,18 @@ namespace IDE.ui
 				int insertLine = line;
 				if ((insertLine != invokeLine) && ((insertLine - invokeLine) * gApp.mCodeFont.GetHeight() < GS!(40)))
                 {
-                    mInvokeWidget.mIgnoreMove = true;
+                    mInvokeWidget.mIgnoreMove++;
                     if (mListWindow != null)
-                        mAutoCompleteListWidget.mIgnoreMove = true;
+                        mAutoCompleteListWidget.mIgnoreMove++;
                     mInvokeWidget.mIsAboveText = true;
 					mInvokeWidget.ResizeContent(false);
                     UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);                    
                     if (mListWindow != null)
                     {
                         UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, mListWindow.mWindowWidth, mListWindow.mWindowHeight);
-                        mAutoCompleteListWidget.mIgnoreMove = false;
+                        mAutoCompleteListWidget.mIgnoreMove--;
                     }
-                    mInvokeWidget.mIgnoreMove = false;
+                    mInvokeWidget.mIgnoreMove--;
                 }
             }
 
@@ -1417,9 +1490,9 @@ namespace IDE.ui
 		public void SetIgnoreMove(bool ignoreMove)
 		{
 			if (mAutoCompleteListWidget != null)
-			    mAutoCompleteListWidget.mIgnoreMove = ignoreMove;
+			    mAutoCompleteListWidget.mIgnoreMove += ignoreMove ? 1 : -1;
 			if (mInvokeWidget != null)
-			    mInvokeWidget.mIgnoreMove = ignoreMove;	
+			    mInvokeWidget.mIgnoreMove += ignoreMove ? 1 : -1;	
 		}
 
 		bool DoesFilterMatch(String entry, String filter)
@@ -1613,6 +1686,7 @@ namespace IDE.ui
 						mInvokeWidget.mOwnsWindow = true;
 						mInvokeWidget.ResizeContent(false);
 	                    UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);
+						mInvokeWidget.ResizeContent(true);
 					}
                 }
                 else
@@ -1651,7 +1725,10 @@ namespace IDE.ui
 					contentHeight += GS!(8);
 					mAutoCompleteListWidget.ResizeContent(windowWidth, contentHeight, wantScrollbar);
 					if ((mInsertStartIdx != -1) && (!IsInPanel()))
+					{
 						UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, windowWidth, windowHeight);
+						mAutoCompleteListWidget.mWantHeight = windowHeight;
+					}
 					mAutoCompleteListWidget.UpdateScrollbars();
 					mAutoCompleteListWidget.CenterSelection();
 					mAutoCompleteListWidget.UpdateWidth();
@@ -1768,7 +1845,7 @@ namespace IDE.ui
             {
                 if (mAutoCompleteListWidget != null)
                 {
-					mAutoCompleteListWidget.mIgnoreMove = true;
+					mAutoCompleteListWidget.mIgnoreMove++;
 					if (IsInPanel())
 					{
 						mAutoCompleteListWidget.RemoveSelf();

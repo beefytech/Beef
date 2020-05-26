@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include "BFPlatform.h"
 #include "Array.h"
 #include "SizedArray.h"

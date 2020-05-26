@@ -90,17 +90,36 @@ namespace IDE
 
 	public class IDETabbedView : DarkTabbedView
 	{
+		public this(SharedData sharedData) : base(sharedData)
+		{
+			if (sharedData == null)
+			{
+				mSharedData.mOpenNewWindowDelegate.Add(new (fromTabbedView, newWindow) => gApp.SetupNewWindow(newWindow, true));
+				mSharedData.mTabbedViewClosed.Add(new (tabbedView) =>
+				    {
+						if (tabbedView == gApp.mActiveDocumentsTabbedView)
+							gApp.mActiveDocumentsTabbedView = null;
+				    });
+			}
+		}
+
 		public ~this()
 		{
 			if (gApp.mActiveDocumentsTabbedView == this)
 				gApp.mActiveDocumentsTabbedView = null;
+		}
+
+		public override TabbedView CreateTabbedView(SharedData sharedData)
+		{
+			IDETabbedView tabbedView = new IDETabbedView(sharedData);
+			return tabbedView;
 		}
 	}
 
     public class IDEApp : BFApp
     {
 		public static String sRTVersionStr = "042";
-		public const String cVersion = "0.42.4";
+		public const String cVersion = "0.42.5";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -3396,8 +3415,15 @@ namespace IDE
 				nextTabbedView = firstTabbedView;
 			if (nextTabbedView != null)
 			{
+				if (!nextTabbedView.mWidgetWindow.mHasFocus)
+					nextTabbedView.mWidgetWindow.SetForeground();
 				var activeTab = nextTabbedView.GetActiveTab();
 				activeTab.Activate();
+
+				if (let sourceViewPanel = activeTab.mContent as SourceViewPanel)
+				{
+					sourceViewPanel.HilitePosition(.Always);
+				}
 			}
 		}
 
@@ -5065,7 +5091,15 @@ namespace IDE
 			//////////
 
             subMenu = root.AddMenuItem("&Debug");
-			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging", new (item) =>
+				{
+					SysMenu sysMenu = (.)item; 
+					if (mDebugger.mIsRunning)
+						sysMenu.Modify("&Continue", sysMenu.mHotKey, null, mDebugger.IsPaused());
+					else
+						sysMenu.Modify("&Start Debugging", sysMenu.mHotKey, null, mWorkspace.IsInitialized);
+					
+				});
 			AddMenuItem(subMenu, "Start Wit&hout Debugging", "Start Without Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
@@ -5151,14 +5185,7 @@ namespace IDE
 
         IDETabbedView CreateTabbedView()
         {
-            var tabbedView = new IDETabbedView();
-            tabbedView.mSharedData.mOpenNewWindowDelegate.Add(new (fromTabbedView, newWindow) => SetupNewWindow(newWindow, true));
-			tabbedView.mSharedData.mTabbedViewClosed.Add(new (tabbedView) =>
-                {
-					if (tabbedView == mActiveDocumentsTabbedView)
-						mActiveDocumentsTabbedView = null;
-                });
-            return tabbedView;
+            return new IDETabbedView(null);
         }
 
         public void SetupNewWindow(WidgetWindow window, bool isMainWindow)
@@ -5976,7 +6003,7 @@ namespace IDE
             if (mWindowMenu == null)
                 return;
 
-			RecentFiles.UpdateMenu(mRecentlyDisplayedFiles, mWindowMenu, mRecentlyDisplayedFilesMenuItems, scope (idx, sysMenu) =>
+			RecentFiles.UpdateMenu(mRecentlyDisplayedFiles, mWindowMenu, mRecentlyDisplayedFilesMenuItems, true, scope (idx, sysMenu) =>
 				{
 					sysMenu.mOnMenuItemSelected.Add(new (evt) => ShowRecentFile(idx));
 				});
@@ -5988,7 +6015,7 @@ namespace IDE
 			if (entry.mMenu == null)
 				return;
 
-			RecentFiles.UpdateMenu(entry.mList, entry.mMenu, entry.mMenuItems, scope (idx, sysMenu) =>
+			RecentFiles.UpdateMenu(entry.mList, entry.mMenu, entry.mMenuItems, false, scope (idx, sysMenu) =>
 				{
 					sysMenu.mOnMenuItemSelected.Add(new (evt) => ShowRecentFile(recentKind, idx));
 				});
@@ -6935,6 +6962,7 @@ namespace IDE
 			IDECommand.ContextFlags useFlags = .None;
 			var activeWindow = GetActiveWindow();
 			bool isMainWindow = activeWindow.mRootWidget is MainFrame;
+			bool isWorkWindow = isMainWindow || (activeWindow.mRootWidget is DarkDockingFrame);
 
 			var activePanel = GetActivePanel() as Panel;
 			if (activePanel is SourceViewPanel)
@@ -6944,6 +6972,8 @@ namespace IDE
 
 			if (isMainWindow)
 				useFlags |= .MainWindow;
+			if (isWorkWindow)
+				useFlags |= .WorkWindow;
 
 			if (evt.mKeyCode == .Tab)
 			{
@@ -6989,6 +7019,8 @@ namespace IDE
 								matches |= useFlags.HasFlag(.Editor);
 							if (checkCommand.mContextFlags.HasFlag(.MainWindow))
 								matches |= useFlags.HasFlag(.MainWindow);
+							if (checkCommand.mContextFlags.HasFlag(.WorkWindow))
+								matches |= useFlags.HasFlag(.WorkWindow);
 
 							if (matches)
 							{
@@ -7435,6 +7467,7 @@ namespace IDE
             	startInfo.SetFileName(fileName);
             startInfo.SetWorkingDirectory(workingDir);
             startInfo.SetArguments(args);
+
 			if ((!runFlags.HasFlag(.NoRedirect)) && (!runFlags.HasFlag(.NoWait)))
 			{
 	            startInfo.RedirectStandardOutput = true;
@@ -7824,6 +7857,16 @@ namespace IDE
                 else if (next is ExecutionQueueCmd)
                 {
                     var executionQueueCmd = (ExecutionQueueCmd)next;
+
+					ReplaceVariables(executionQueueCmd.mFileName);
+					ReplaceVariables(executionQueueCmd.mArgs);
+					ReplaceVariables(executionQueueCmd.mWorkingDir);
+					if (executionQueueCmd.mEnvVars != null)
+					{
+						for (let kv in executionQueueCmd.mEnvVars)
+							ReplaceVariables(kv.value);
+					}
+
                     var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile, executionQueueCmd.mEnvVars, executionQueueCmd.mStdInData, executionQueueCmd.mRunFlags);
 					if (executionInstance != null)
 					{
@@ -8700,6 +8743,8 @@ namespace IDE
 								}
 								else
 									cmdErr = "Invalid number of arguments";
+							case "Var":
+								break ReplaceBlock;
 							}
 
 							if (newString == null)
@@ -8937,6 +8982,98 @@ namespace IDE
 
 			return !hadError;
         }
+
+		public void ReplaceVariables(String result)
+		{
+			int i = 0;
+			for ( ; i < result.Length - 2; i++)
+			{
+			    if ((result[i] == '$') && (result[i + 1] == '('))
+			    {
+					int parenPos = -1;
+					int openCount = 1;
+					bool inString = false;
+					char8 prevC = 0;
+					for (int checkIdx = i + 2; checkIdx < result.Length; checkIdx++)
+					{
+						char8 c = result[checkIdx];
+						if (inString)
+						{
+							if (prevC == '\\')
+							{
+								// Slashed char
+								prevC = 0;
+								continue;
+							}
+
+							if (c == '"')
+								inString = false;
+						}
+						else
+						{
+							if (c == '"')
+								inString = true;
+							else if (c == '(')
+								openCount++;
+							else if (c == ')')
+							{
+								openCount--;
+								if (openCount == 0)
+								{
+									parenPos = checkIdx;
+									break;
+								}	
+							}
+						}
+
+						prevC = c;
+					}
+
+			        if (parenPos != -1)
+					ReplaceBlock:
+					do
+			        {
+			            String replaceStr = scope String(result, i + 2, parenPos - i - 2);
+
+						if (!replaceStr.StartsWith("Var "))
+							continue;
+
+						String varName = scope String(replaceStr, 4);
+						String newString = null;
+
+						if (mScriptManager.mContext.mVars.TryGetValue(varName, var value))
+						{
+							if (value.VariantType == typeof(String))
+							{
+								newString = scope:ReplaceBlock String(value.Get<String>());
+							}
+						}
+
+						if (newString == null)
+						{
+							if (mBuildContext != null)
+							{
+								if (mBuildContext.mScriptContext.mVars.TryGetValue(varName, var value))
+								{
+									if (value.VariantType == typeof(String))
+									{
+										newString = scope:ReplaceBlock String(value.Get<String>());
+									}
+								}
+							}
+						}
+
+						if (newString != null)
+						{
+							result.Remove(i, parenPos - i + 1);
+							result.Insert(i, newString);
+							i--;
+						}
+			        }
+			    }
+			}
+
+		}
 
         public bool ResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String errorContext, String outResult)
         {
@@ -10496,6 +10633,8 @@ namespace IDE
 				}
 #endif
 			}
+
+			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
 
             DarkTheme aTheme = new DarkTheme();
             aTheme.Init();
@@ -12168,6 +12307,14 @@ namespace IDE
 				if (projectSourceDep != null)
 				{
 					// We process these projectSources directly from the filename below
+				}
+			}
+
+			if ((mFileChangedDialog != null) && (mFileChangedDialog.mDialogKind == .Deleted))
+			{
+				for (let fileName in mFileChangedDialog.mFileNames)
+				{
+					mFileWatcher.RemoveChangedFile(fileName);
 				}
 			}
 

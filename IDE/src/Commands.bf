@@ -105,7 +105,8 @@ namespace IDE
 		{
 			None = 0,
 			MainWindow = 1,
-			Editor = 2,
+			WorkWindow = 2,
+			Editor = 4,
 		}
 
 		public String mName ~ delete _;
@@ -159,7 +160,7 @@ namespace IDE
 			};
 		public CommandMap mKeyMap = new .() ~ delete _;
 
-		void Add(StringView name, Action act, IDECommand.ContextFlags contextFlags = .MainWindow)
+		void Add(StringView name, Action act, IDECommand.ContextFlags contextFlags = .WorkWindow)
 		{
 			let cmd = new IDECommand();
 			cmd.mName = new String(name);

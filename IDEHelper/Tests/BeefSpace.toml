@@ -9,10 +9,6 @@ StartupProject = "Tests"
 BfOptimizationLevel = "O0"
 IntermediateType = "ObjectAndIRCode"
 
-[Configs.Debug.Linux64]
-Toolset = "GNU"
-EnableRealtimeLeakCheck = false
-
 [Configs.Test.Win64]
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O2"

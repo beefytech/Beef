@@ -56,7 +56,7 @@ namespace IDE
 #endif
 
 #if BF_PLATFORM_MACOS
-				return .Linux;
+				return .macOS;
 #endif
 
 #unwarn

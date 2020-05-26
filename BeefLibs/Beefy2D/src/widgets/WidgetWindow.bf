@@ -708,7 +708,7 @@ namespace Beefy.widgets
 			mCaptureWidget = null;
 		}
 
-        public override void MouseWheel(int32 inX, int32 inY, int32 delta)
+        public override void MouseWheel(int32 inX, int32 inY, float delta)
         {
             float x;
             float y;

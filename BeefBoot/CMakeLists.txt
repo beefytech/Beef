@@ -15,6 +15,11 @@ set(OUTPUT_RELEASE Release/bin)
 
 project(${PROJECT_NAME} CXX C)
 
+set (CMAKE_CXX_STANDARD 11)
+add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
+
+#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # Define Release by default.
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
@@ -110,7 +115,7 @@ endif(MSVC)
 if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-multichar -Wno-invalid-offsetof")  
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
   endif()
 endif(NOT MSVC)
 
@@ -128,17 +133,29 @@ add_executable(${PROJECT_NAME}
    ${SRC_FILES}
 )
 
+execute_process(
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_8_0_0/bin/llvm-config --system-libs --link-static
+  OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 if (${APPLE})
     set(TARGET_LIBS_OS "")
 else()
-    set(TARGET_LIBS_OS "tinfo")
+    #set(TARGET_LIBS_OS "curses")
+    #set(TARGET_LIBS_OS "-Xlinker --no-demangle -v")
+
+    set(TARGET_LIBS_OS "${LLVM_SYSTEM_LIBS}")
 endif()
 
 # Link with other dependencies.
 if(MSVC)
    target_link_libraries(${PROJECT_NAME} BeefySysLib IDEHelper kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib)
 else()
-    target_link_libraries(${PROJECT_NAME} BeefySysLib IDEHelper ${TARGET_LIBS_OS}
-        #${LLVM_LIB}/libLLVMMC.a
+    target_link_libraries(${PROJECT_NAME} BeefySysLib 
+        IDEHelper 
+        ${TARGET_LIBS_OS}
+        
+        #${LLVM_LIB}/libLLVMSupport.a 
         )    
 endif()

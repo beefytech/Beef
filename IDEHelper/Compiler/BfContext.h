@@ -382,6 +382,7 @@ public:
 	BfAllocPool<BfConcreteInterfaceType> mConcreteInterfaceTypePool;
 	BfAllocPool<BfConstExprValueType> mConstExprValueTypePool;
 	BfAllocPool<BfDelegateType> mDelegateTypePool;
+	BfAllocPool<BfGenericDelegateType> mGenericDelegateTypePool;
 	BfPrimitiveType* mPrimitiveTypes[BfTypeCode_Length];
 	BfPrimitiveType* mPrimitiveStructTypes[BfTypeCode_Length];
 

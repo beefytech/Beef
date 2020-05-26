@@ -98,6 +98,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfGenericTypeInstan
 		if (genericParam->mTypeConstraint != NULL)
 			AddDependency(genericParam->mTypeConstraint, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 	}
+
 	return genericExEntry;
 }
 
@@ -123,7 +124,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 	{
 		auto genericParamInstance = new BfGenericTypeParamInstance(typeDef, paramIdx);
 		genericParamInstance->mExternType = GetGenericParamType(BfGenericParamKind_Type, paramIdx);
-		genericTypeInst->mGenericParams.push_back(genericParamInstance);
+		genericTypeInst->mGenericParams.push_back(genericParamInstance);		
 	}	
 
 	if (!typeDef->mPartials.empty())
@@ -193,7 +194,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 		if (genericParam->mTypeConstraint != NULL)
 			AddDependency(genericParam->mTypeConstraint, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 	}
-
+	
 	return true;
 }
 
@@ -423,6 +424,10 @@ bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 	if (resolvedTypeRef->IsGenericTypeInstance())
 	{
 		auto genericTypeInst = (BfGenericTypeInstance*)resolvedTypeRef;
+		//BF_ASSERT(genericTypeInst->mGenericParams.size() <= genericTypeInst->mTypeGenericArguments.size());
+// 		BF_ASSERT((genericTypeInst->mGenericParams.size() == 0) || 
+// 			(genericTypeInst->mGenericParams.size() == genericTypeInst->mTypeGenericArguments.size()));
+
 		for (auto typeGenericArg : genericTypeInst->mTypeGenericArguments)
 			BF_ASSERT((typeGenericArg->mRebuildFlags & BfTypeRebuildFlag_Deleted) == 0);
 	}
@@ -824,6 +829,8 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 
 					BfLogSysM("Queued reification of type %p in module %p in PopulateType\n", resolvedTypeRef, typeModule);
 
+					BF_ASSERT((typeModule != mContext->mUnreifiedModule) && (typeModule != mContext->mScratchModule));
+
 					BF_ASSERT(!typeModule->mIsSpecialModule);
 					// This caused issues - we may need to reify a type and then request a method
 					typeModule->mReifyQueued = true;
@@ -908,7 +915,10 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	if (resolvedTypeRef->IsTypeAlias())
 	{
 		auto typeAlias = (BfTypeInstance*)resolvedTypeRef;
-		SetAndRestoreValue<BfTypeInstance*> prevCurType(mCurTypeInstance, typeAlias);
+		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
+		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+		SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
+		BF_ASSERT(mCurMethodInstance == NULL);		
 		auto typeDef = typeAlias->mTypeDef;
 		auto typeAliasDecl = (BfTypeAliasDeclaration*)typeDef->mTypeDeclaration;
 		BfType* aliasToType = NULL;
@@ -920,7 +930,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		if (!CheckCircularDataError())
 		{
 			if (typeAliasDecl->mAliasToType != NULL)
-				aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);
+				aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);				
 		}
 		
 		if (aliasToType != NULL)
@@ -1728,7 +1738,9 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					BfLogSysM("Adding generic dependency of %p for type %p\n", genericType, genericTypeInstance);
 				}
 			}
-			if (genericTypeInstance->IsSpecializedType())
+			if ((genericTypeInstance->IsSpecializedType()) &&
+				(!genericTypeInstance->IsDelegateFromTypeRef()) &&
+				(!genericTypeInstance->IsFunctionFromTypeRef()))
 			{
 				// This ensures we rebuild the unspecialized type whenever the specialized type rebuilds. This is important
 				// for generic type binding
@@ -1854,6 +1866,13 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if (baseType != NULL)
 		defaultBaseTypeInst = baseType->ToTypeInstance();
 
+	struct _DeferredValidate
+	{
+		BfTypeReference* mTypeRef;
+		BfGenericTypeInstance* mGenericType;
+	};
+	Array<_DeferredValidate> deferredTypeValidateList;
+
 	BfTypeReference* baseTypeRef = NULL;
 	if ((typeDef->mIsDelegate) && (!typeInstance->IsClosure()))
 	{
@@ -1876,21 +1895,34 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			baseType = ResolveTypeDef(mCompiler->mFunctionTypeDef)->ToTypeInstance();
 	}
 	else
-	{
+	{		
 		for (auto checkTypeRef : typeDef->mBaseTypes)
 		{
-			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, checkTypeRef);
-
 			auto declTypeDef = typeDef;
 			if (typeDef->mIsCombinedPartial)
 				declTypeDef = typeDef->mPartials.front();
 			SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, declTypeDef);
-			SetAndRestoreValue<BfTypeDefineState> prevDefineState(typeInstance->mDefineState, BfTypeDefineState_ResolvingBaseType);
+			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, checkTypeRef);
+			SetAndRestoreValue<BfTypeDefineState> prevDefineState(typeInstance->mDefineState, BfTypeDefineState_ResolvingBaseType);						
 
 			bool populateBase = !typeInstance->mTypeFailed;
 			auto checkType = ResolveTypeRef(checkTypeRef, populateBase ? BfPopulateType_Data : BfPopulateType_Declaration);
-			if (checkType != NULL)
+
+			if (typeInstance->mDefineState >= BfTypeDefineState_Defined)
 			{
+				prevDefineState.CancelRestore();
+				return true;
+			}
+
+			if (checkType != NULL)
+			{	
+				if (auto genericTypeInst = checkType->ToGenericTypeInstance())
+				{
+					// Specialized type variations don't need to validate their constraints
+					if (!typeInstance->IsUnspecializedTypeVariation())
+						deferredTypeValidateList.Add({ checkTypeRef, genericTypeInst });
+				}
+
 				auto checkTypeInst = checkType->ToTypeInstance();
 				bool canDeriveFrom = checkTypeInst != NULL;
 				if ((typeInstance->IsStruct()) || (typeInstance->IsTypedPrimitive()) || (typeInstance->IsBoxed()))
@@ -1966,7 +1998,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				AssertErrorState();
 				// Why did we go around setting mTypeFailed on all these things?
 				//typeInstance->mTypeFailed = true;
-			}
+			}			
 		}
 
 		for (auto partialTypeDef : typeDef->mPartials)
@@ -2157,6 +2189,12 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
 	typeInstance->mDefineState = BfTypeDefineState_HasInterfaces;
+
+	for (auto& validateEntry : deferredTypeValidateList)
+	{		
+		ValidateGenericConstraints(validateEntry.mTypeRef, validateEntry.mGenericType, false);
+	}
+
 	if (populateType <= BfPopulateType_Interfaces)
 		return true;
 
@@ -5397,12 +5435,16 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& generic
 		genericInstType = mContext->mGenericTypeAliasPool.Get();
 	else
 		genericInstType = mContext->mGenericTypeInstancePool.Get();
+	BF_ASSERT(genericInstType->mGenericParams.size() == 0);
+	BF_ASSERT((genericInstType->mRebuildFlags & BfTypeRebuildFlag_AddedToWorkList) == 0);
+	genericInstType->mRebuildFlags = (BfTypeRebuildFlags)(genericInstType->mRebuildFlags & ~BfTypeRebuildFlag_InTempPool);
 	genericInstType->mContext = mContext;
 	auto typeRef = mContext->mTypeDefTypeRefPool.Get();
 	typeRef->mTypeDef = typeDef;
 	genericInstType->mTypeDef = typeDef;
 	genericInstType->mIsUnspecialized = false;
 	genericInstType->mTypeGenericArguments.clear();
+	genericInstType->mTypeFailed = false;
 	for (auto genericArg : genericArgs)
 	{
 		genericInstType->mIsUnspecialized |= genericArg->IsGenericParam();
@@ -5419,9 +5461,38 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& generic
 		}
 	}
 
-	auto resolvedType = ResolveType(genericInstType, populateType);
-	if (resolvedType != genericInstType)
+	BfType* resolvedType = NULL;
+
+	bool failed = false;
+// 	if (typeDef->mTypeCode == BfTypeCode_TypeAlias)
+// 	{
+// 		auto aliasType = (BfGenericTypeAliasType*)genericInstType;
+// 		aliasType->mAliasToType = NULL;
+// 		auto typeAliasDecl = (BfTypeAliasDeclaration*)typeDef->mTypeDeclaration;
+// 		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, aliasType);
+// 		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+//  		BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
+// 		typeState.mCurTypeDef = typeDef; 		
+//  		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+// 		if (typeAliasDecl->mAliasToType != NULL)			
+// 			aliasType->mAliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType);			
+// 
+// 		resolvedType = ResolveType(genericInstType, BfPopulateType_IdentityNoRemapAlias);
+// 		if ((resolvedType != NULL) && (populateType >= BfPopulateType_Declaration))
+// 			PopulateType(resolvedType, populateType);
+// 	}
+// 	else
 	{
+		resolvedType = ResolveType(genericInstType, populateType);
+	}
+	
+	
+	if (resolvedType != genericInstType)
+	{		
+		BF_ASSERT(genericInstType->mGenericParams.size() == 0);
+		BF_ASSERT((genericInstType->mRebuildFlags & BfTypeRebuildFlag_AddedToWorkList) == 0);
+		genericInstType->mRebuildFlags = (BfTypeRebuildFlags)(genericInstType->mRebuildFlags | BfTypeRebuildFlag_InTempPool);
+
 		if (typeDef->mTypeCode == BfTypeCode_TypeAlias)
 			mContext->mGenericTypeAliasPool.GiveBack((BfGenericTypeAliasType*)genericInstType);
 		else
@@ -5434,8 +5505,11 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& generic
 
 int checkIdx = 0;
 
-BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef)
+BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType)
 {
+	if (outType != NULL)
+		*outType = NULL;
+
 	BfTypeReference* typeRef = genericTypeRef->mElementType;
 	int numGenericParams = genericTypeRef->GetGenericArgCount();
 
@@ -5512,49 +5586,7 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 			if (wasGenericParam)
 				Fail("Cannot use generic param as generic instance type", typeRef);
 		}
-
-		//if (mCurTypeInstance != NULL)
-		//{
-		//	String findName;
-		//	if (directStrTypeDef != NULL)
-		//		findName = directStrTypeDef->mTypeName;
-		//	else
-		//		findName = namedTypeRef->mNameNode->ToString();
-		//	auto outerTypeInstance = mCurTypeInstance;
-
-		//	for (int pass = 0; pass < 2; pass++)
-		//	{
-		//		bool isFailurePass = pass == 1;
-		//		bool allowPrivate = true;
-		//		bool allowProtected = true;
-
-		//		auto checkOuterType = outerTypeInstance;
-		//		while (checkOuterType != NULL)
-		//		{
-		//			for (auto checkType : checkOuterType->mTypeDef->mNestedTypes)
-		//			{
-		//				if ((!isFailurePass) && (!CheckProtection(checkType->mProtection, allowProtected, allowPrivate)))
-		//					continue;
-
-		//				if (checkType->mName->mString == findName)
-		//				{
-		//					if (isFailurePass)
-		//					{
-		//						// This is the one error we don't ignore when ignoreErrors is set
-		//						Fail(StrFormat("'%s.%s' is inaccessible due to its protection level", TypeToString(checkOuterType).c_str(), BfTypeUtils::TypeToString(namedTypeRef).c_str()), namedTypeRef); // CS0122
-		//					}
-
-		//					return checkType;
-		//				}
-		//			}
-		//			allowPrivate = false;
-		//			if (checkOuterType == mContext->mBfObjectType)
-		//				break;
-		//			checkOuterType = GetBaseType(checkOuterType);
-		//		}
-		//	}
-		//}
-
+		
 		if (typeDef == NULL)
 		{
 			TypeRefNotFound(typeRef);
@@ -5568,6 +5600,8 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 		auto type = ResolveTypeRef(qualifiedTypeRef, BfPopulateType_TypeDef);
 		if (type == NULL)
 			return NULL;
+		if (outType != NULL)
+			*outType = type;
 		auto typeInst = type->ToTypeInstance();
 		if (typeInst != NULL)
 			return typeInst->mTypeDef;
@@ -5577,19 +5611,23 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 	return NULL;
 }
 
-BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVector& methodGenericArguments, bool allowFail)
+BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, bool allowFail)
 {	
 	if (unspecializedType->IsGenericParam())
 	{
 		auto genericParam = (BfGenericParamType*)unspecializedType;
-		if (genericParam->mGenericParamKind == BfGenericParamKind_Method)
+		if ((genericParam->mGenericParamKind == BfGenericParamKind_Type) && (typeGenericArguments != NULL))
 		{
-			if (genericParam->mGenericParamIdx < (int)methodGenericArguments.size())
-			{
-				return methodGenericArguments[genericParam->mGenericParamIdx];				
-			}
+			if (genericParam->mGenericParamIdx < (int)typeGenericArguments->size())
+				return (*typeGenericArguments)[genericParam->mGenericParamIdx];
 			BF_ASSERT(allowFail);
 		}
+		if ((genericParam->mGenericParamKind == BfGenericParamKind_Method) && (methodGenericArguments != NULL))
+		{
+			if (genericParam->mGenericParamIdx < (int)methodGenericArguments->size())			
+				return (*methodGenericArguments)[genericParam->mGenericParamIdx];							
+			BF_ASSERT(allowFail);
+		}		
 		return unspecializedType;
 	}
 
@@ -5599,10 +5637,10 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 	if (unspecializedType->IsUnknownSizedArray())
 	{
 		auto* arrayType = (BfUnknownSizedArrayType*)unspecializedType;
-		auto elementType = ResolveGenericType(arrayType->mElementType, methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;		
-		auto sizeType = ResolveGenericType(arrayType->mElementCountSource, methodGenericArguments, allowFail);
+		auto sizeType = ResolveGenericType(arrayType->mElementCountSource, typeGenericArguments, methodGenericArguments, allowFail);
 		if (sizeType == NULL)
 			return NULL;
 		if (sizeType->IsConstExprValue())
@@ -5615,7 +5653,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 	if (unspecializedType->IsSizedArray())
 	{
 		auto* arrayType = (BfSizedArrayType*)unspecializedType;
-		auto elementType = ResolveGenericType(arrayType->mElementType, methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		return CreateSizedArrayType(elementType, (int)arrayType->mElementCount);
@@ -5624,7 +5662,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 	if (unspecializedType->IsRef())
 	{
 		auto refType = (BfRefType*)unspecializedType;
-		auto elementType = ResolveGenericType(refType->GetUnderlyingType(), methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(refType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		return CreateRefType(elementType, refType->mRefKind);
@@ -5633,7 +5671,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 	if (unspecializedType->IsPointer())
 	{
 		auto ptrType = (BfPointerType*)unspecializedType;
-		auto elementType = ResolveGenericType(ptrType->GetUnderlyingType(), methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(ptrType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		return CreatePointerType(elementType);
@@ -5642,31 +5680,10 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 	if (unspecializedType->IsArray())
 	{
 		auto arrayType = (BfArrayType*)unspecializedType;
-		auto elementType = ResolveGenericType(arrayType->GetUnderlyingType(), methodGenericArguments, allowFail);
+		auto elementType = ResolveGenericType(arrayType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;
 		return CreateArrayType(elementType, arrayType->mDimensions);
-	}
-
-	if (unspecializedType->IsGenericTypeInstance())
-	{
-		auto genericTypeInst = (BfGenericTypeInstance*)unspecializedType;
-
-		BfTypeVector genericArgs;
-		for (auto genericArg : genericTypeInst->mTypeGenericArguments)
-		{
-			if (genericArg->IsUnspecializedType())
-			{
-				auto resolvedArg = ResolveGenericType(genericArg, methodGenericArguments, allowFail);
-				if (resolvedArg == NULL)
-					return NULL;
-				genericArgs.push_back(resolvedArg);
-			}
-			else
-				genericArgs.push_back(genericArg);
-		}
-
-		return ResolveTypeDef(genericTypeInst->mTypeDef, genericArgs);
 	}
 
 	if (unspecializedType->IsTuple())
@@ -5681,7 +5698,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 		{
 			names.push_back(fieldInstance.GetFieldDef()->mName);
 			auto origGenericArg = fieldInstance.mResolvedType;
-			auto newGenericArg = ResolveGenericType(origGenericArg, methodGenericArguments, allowFail);
+			auto newGenericArg = ResolveGenericType(origGenericArg, typeGenericArguments, methodGenericArguments, allowFail);
 			if (newGenericArg == NULL)
 				return NULL;
 			if (newGenericArg != origGenericArg)
@@ -5694,24 +5711,89 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 		return CreateTupleType(genericArgs, names);
 	}
 
-	if (unspecializedType->IsDelegate())
+	if ((unspecializedType->IsDelegateFromTypeRef()) || (unspecializedType->IsFunctionFromTypeRef()))
 	{
-		BfDelegateType* unspecializedDelegateType = (BfDelegateType*)unspecializedType;
-		BfDelegateType* delegateType = mContext->mDelegateTypePool.Get();
+		BfTypeInstance* unspecializedDelegateType = (BfTypeInstance*)unspecializedType;
+		BfGenericTypeInstance* unspecializedGenericDelegateType = unspecializedType->ToGenericTypeInstance();
+		BfDelegateInfo* unspecializedDelegateInfo = unspecializedType->GetDelegateInfo();
 	
+		bool wantGeneric = false;
+		bool isUnspecialized = false;
+		auto _CheckType = [&](BfType* type)
+		{
+			if (type->IsGenericParam())
+				wantGeneric = true;
+			if (type->IsUnspecializedType())
+				isUnspecialized = true;
+		};
+
 		bool failed = false;
 
-		auto returnType = ResolveGenericType(unspecializedDelegateType->mReturnType, methodGenericArguments, allowFail);
+		bool hasTypeGenerics = false;
+		auto returnType = ResolveGenericType(unspecializedDelegateInfo->mReturnType, typeGenericArguments, methodGenericArguments, allowFail);
 		if (returnType == NULL)
 			return NULL;
+		_CheckType(returnType);
+		if (returnType->IsGenericParam())
+			hasTypeGenerics |= ((BfGenericParamType*)returnType)->mGenericParamKind == BfGenericParamKind_Type;
+		Array<BfType*> paramTypes;
+		for (auto param : unspecializedDelegateInfo->mParams)
+		{
+			auto paramType = ResolveGenericType(param, typeGenericArguments, methodGenericArguments, allowFail);
+			if (paramType == NULL)
+				return NULL;
+			paramTypes.Add(paramType);		
+			_CheckType(paramType);
+		}
 
-		auto baseDelegateType = ResolveTypeDef(mCompiler->mDelegateTypeDef)->ToTypeInstance();
-		
-		delegateType->mIsUnspecializedType = false;
-		delegateType->mIsUnspecializedTypeVariation = false;
+		if (unspecializedGenericDelegateType == NULL)
+			wantGeneric = false;
+
+		BfTypeInstance* delegateType = NULL;		
+		auto baseDelegateType = ResolveTypeDef(mCompiler->mDelegateTypeDef)->ToTypeInstance();				
+				
+		if (wantGeneric)
+		{
+			Array<BfType*> genericArgs;
+			for (int genericArgIdx = 0; genericArgIdx < (int)unspecializedGenericDelegateType->mTypeGenericArguments.size(); genericArgIdx++)
+			{
+				BfType* resolvedArg = unspecializedGenericDelegateType->mTypeGenericArguments[genericArgIdx];
+				if (resolvedArg->IsUnspecializedType())
+				{
+					resolvedArg = ResolveGenericType(resolvedArg, typeGenericArguments, methodGenericArguments, allowFail);
+					if (resolvedArg == NULL)
+						return NULL;					
+				}				
+				genericArgs.push_back(resolvedArg);
+			}
+
+			auto dlgType = mContext->mGenericDelegateTypePool.Get();
+			dlgType->mIsUnspecialized = false;
+			dlgType->mIsUnspecializedVariation = false;
+			dlgType->mTypeGenericArguments = genericArgs;
+			for (int genericArgIdx = 0; genericArgIdx < (int)unspecializedGenericDelegateType->mTypeGenericArguments.size(); genericArgIdx++)
+			{
+				auto typeGenericArg = genericArgs[genericArgIdx];
+				if ((typeGenericArg->IsGenericParam()) || (typeGenericArg->IsUnspecializedType()))
+					dlgType->mIsUnspecialized = true;
+				dlgType->mGenericParams.push_back(unspecializedGenericDelegateType->mGenericParams[genericArgIdx]->AddRef());
+			}
+			CheckUnspecializedGenericType(dlgType, BfPopulateType_Identity);
+			delegateType = dlgType;
+		}
+		else
+		{
+			auto dlgType = mContext->mDelegateTypePool.Get();
+			dlgType->mIsUnspecializedType = isUnspecialized;
+			dlgType->mIsUnspecializedTypeVariation = isUnspecialized;
+			delegateType = dlgType;			
+		}
+
 		if (delegateType->mTypeDef != NULL)
 			delete delegateType->mTypeDef;
-		delegateType->mParams.Clear();
+		BfDelegateInfo* delegateInfo = delegateType->GetDelegateInfo();
+		delegateInfo->mParams.Clear();
+		
 
 		BfTypeDef* typeDef = new BfTypeDef();
 
@@ -5730,7 +5812,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 		methodDef->mIsStatic = !typeDef->mIsDelegate;
 
 		auto directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
-		delegateType->mDirectAllocNodes.push_back(directTypeRef);
+		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
 		if (typeDef->mIsDelegate)
 			directTypeRef->Init(delegateType);
 		else
@@ -5738,40 +5820,27 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 		typeDef->mBaseTypes.push_back(directTypeRef);
 
 		directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
-		delegateType->mDirectAllocNodes.push_back(directTypeRef);
+		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
 		directTypeRef->Init(returnType);
 		methodDef->mReturnTypeRef = directTypeRef;
-		delegateType->mReturnType = returnType;
+		delegateInfo->mReturnType = returnType;
 
 		AddDependency(directTypeRef->mType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		
 		BfMethodDef* unspecializedInvokeMethodDef = unspecializedDelegateType->mTypeDef->GetMethodByName("Invoke");
 
 		int paramIdx = 0;
-		for (auto param : unspecializedDelegateType->mParams)
+		for (int paramIdx = 0; paramIdx < (int)paramTypes.size(); paramIdx++)		
 		{			
-			auto paramType = ResolveGenericType(param, methodGenericArguments, allowFail);
-			if (paramType == NULL)
-			{
-				failed = true;
-				break;
-			}
+			auto paramType = paramTypes[paramIdx];
 					
 			BfParameterDef* unspecializedParamDef = unspecializedInvokeMethodDef->mParams[paramIdx];
 			
-			if (paramType->IsUnspecializedType())
-				delegateType->mIsUnspecializedType = true;
-			if (paramType->IsUnspecializedTypeVariation())
-				delegateType->mIsUnspecializedTypeVariation = true;
 			if (!paramType->IsReified())
 				delegateType->mIsReified = false;
-			if (paramType->IsGenericParam())
-			{
-				delegateType->mIsUnspecializedTypeVariation = true;
-			}
-
+			
 			auto directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
-			delegateType->mDirectAllocNodes.push_back(directTypeRef);
+			delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
 			directTypeRef->Init(paramType);
 
 			BfParameterDef* paramDef = new BfParameterDef();
@@ -5781,7 +5850,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 			methodDef->mParams.push_back(paramDef);
 			paramIdx++;
 
-			delegateType->mParams.Add(paramType);
+			delegateInfo->mParams.Add(paramType);
 			AddDependency(paramType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		}
 
@@ -5801,12 +5870,41 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, const BfTypeVect
 			resolvedType = ResolveType(delegateType, BfPopulateType_Identity);
 		if (resolvedType != delegateType)
 		{
-			mContext->mDelegateTypePool.GiveBack(delegateType);
-			//mContext->mTypeDefTypeRefPool.GiveBack(typeRef);
+			if (delegateType->IsGenericTypeInstance())
+			{
+				auto dlgType = (BfGenericDelegateType*)delegateType;
+				for (auto genericParam : dlgType->mGenericParams)
+					genericParam->Release();
+				dlgType->mGenericParams.Clear();
+				mContext->mGenericDelegateTypePool.GiveBack(dlgType);
+			}
+			else
+				mContext->mDelegateTypePool.GiveBack((BfDelegateType*)delegateType);			
 		}
 		BF_ASSERT((resolvedType == NULL) || resolvedType->IsTypeInstance() || resolvedType->IsPrimitiveType());
 		return resolvedType;
 
+	}
+
+	if (unspecializedType->IsGenericTypeInstance())
+	{
+		auto genericTypeInst = (BfGenericTypeInstance*)unspecializedType;
+
+		BfTypeVector genericArgs;
+		for (auto genericArg : genericTypeInst->mTypeGenericArguments)
+		{
+			if (genericArg->IsUnspecializedType())
+			{
+				auto resolvedArg = ResolveGenericType(genericArg, typeGenericArguments, methodGenericArguments, allowFail);
+				if (resolvedArg == NULL)
+					return NULL;
+				genericArgs.push_back(resolvedArg);
+			}
+			else
+				genericArgs.push_back(genericArg);
+		}
+
+		return ResolveTypeDef(genericTypeInst->mTypeDef, genericArgs);
 	}
 
 	return unspecializedType;
@@ -6091,8 +6189,8 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	}
 	else if (resolvedTypeRef->IsDelegateFromTypeRef() || resolvedTypeRef->IsFunctionFromTypeRef())
 	{
-		auto delegateType = (BfDelegateType*)resolvedTypeRef;
-		auto invokeMethod = GetDelegateInvokeMethod(delegateType);
+		auto delegateInfo = resolvedTypeRef->GetDelegateInfo();
+		auto invokeMethod = GetDelegateInvokeMethod(resolvedTypeRef->ToTypeInstance());
 		
 		AddDependency(invokeMethod->mReturnType, mCurTypeInstance, BfDependencyMap::DependencyFlag_TypeReference);
 		for (auto& param : invokeMethod->mParams)
@@ -6112,10 +6210,11 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	hadError = !populateModule->PopulateType(resolvedTypeRef, populateType);
 	
 	if ((genericTypeInstance != NULL) && (genericTypeInstance != mCurTypeInstance) && (populateType > BfPopulateType_Identity))
-	{
+	{		
 		if (((genericTypeInstance->mHadValidateErrors) || (!genericTypeInstance->mValidatedGenericConstraints) || (genericTypeInstance->mIsUnspecializedVariation)) &&
 			((mCurMethodInstance == NULL) || (!mCurMethodInstance->mIsUnspecializedVariation)) &&
-			((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsUnspecializedTypeVariation())))
+			((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsUnspecializedTypeVariation())) &&
+			((mContext->mCurTypeState == NULL) || (mContext->mCurTypeState->mCurBaseTypeRef == NULL))) // We validate constraints for base types later
 			ValidateGenericConstraints(typeRef, genericTypeInstance, false);
 	}
 
@@ -7436,10 +7535,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				}
 
 				CheckUnspecializedGenericType(genericTypeInst, populateType);
-
 				resolvedEntry->mValue = genericTypeInst;
-				BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);
 				populateModule->InitType(genericTypeInst, populateType);
+				BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);				
 				return ResolveTypeResult(typeRef, genericTypeInst, populateType, resolveFlags);
 			}
 		}
@@ -7464,8 +7562,22 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 		resolvedEntry->mValue = typeInst;
-		BF_ASSERT(BfResolvedTypeSet::Hash(typeInst, &lookupCtx) == resolvedEntry->mHash);
+
+#ifdef _DEBUG
+		int typeRefash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
+#endif
+
 		populateModule->InitType(typeInst, populateType);
+		
+		if (BfResolvedTypeSet::Hash(typeInst, &lookupCtx) != resolvedEntry->mHash)
+		{
+			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
+			int typeHash = BfResolvedTypeSet::Hash(typeInst, &lookupCtx);
+			BF_ASSERT(refHash == typeHash);
+		}
+		{
+			BF_ASSERT(BfResolvedTypeSet::Hash(typeInst, &lookupCtx) == resolvedEntry->mHash);
+		}		
 		return ResolveTypeResult(typeRef, typeInst, populateType, resolveFlags);
 	}	
 	else if (auto arrayTypeRef = BfNodeDynCast<BfArrayTypeRef>(typeRef))
@@ -7565,63 +7677,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		int wantNumGenericParams = genericTypeInstRef->GetGenericArgCount();
 		BfTypeDef* ambiguousTypeDef = NULL;
 
-		BfTypeDef* typeDef = ResolveGenericInstanceDef(genericTypeInstRef);
-
-		BfGenericTypeInstance* genericTypeInst;
-		if ((typeDef != NULL) && (typeDef->mTypeCode == BfTypeCode_TypeAlias))
-		{
-			auto typeAliasType = new BfGenericTypeAliasType();
-			genericTypeInst = typeAliasType;
-		}
-		else
-			genericTypeInst = new BfGenericTypeInstance();
-		genericTypeInst->mContext = mContext;
-
-		if (ambiguousTypeDef != NULL)
-			ShowAmbiguousTypeError(typeRef, typeDef, ambiguousTypeDef);
-		if (typeDef == NULL)
-		{
-			Fail("Unable to resolve type", typeRef);
-			delete genericTypeInst;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
-		}
-
-		BF_ASSERT(typeDef->mDefState != BfTypeDef::DefState_Deleted);
-
-		if (typeDef->mGenericParamDefs.size() == 0)
-		{
-			Fail("Not a generic type", typeRef);
-			delete genericTypeInst;
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
-		}
-
-		int startDefGenericParamIdx = 0;
-		genericTypeInst->mTypeDef = typeDef;
-
-		if (mCurTypeInstance != NULL)
-		{
-			// Copy generic params for our parent type if the current type instance shares that parent type			
-			//auto outerType = mSystem->GetOuterTypeNonPartial(typeDef);
-			auto outerType = typeDef->mOuterType;
-			BfTypeDef* commonOuterType = FindCommonOuterType(mCurTypeInstance->mTypeDef, outerType);
-			if ((commonOuterType) && (mCurTypeInstance->IsGenericTypeInstance()))
-			{
-				startDefGenericParamIdx = (int)commonOuterType->mGenericParamDefs.size();
-				auto parentTypeInstance = (BfGenericTypeInstance*)mCurTypeInstance;
-				if (parentTypeInstance->IsTypeAlias())
-					parentTypeInstance = (BfGenericTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
-				for (int i = 0; i < startDefGenericParamIdx; i++)
-				{
-					genericTypeInst->mGenericParams.push_back(parentTypeInstance->mGenericParams[i]->AddRef());
-					genericTypeInst->mTypeGenericArguments.push_back(parentTypeInstance->mTypeGenericArguments[i]);
-					auto typeGenericArg = genericTypeInst->mTypeGenericArguments[i];
-					genericTypeInst->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
-				}
-			}
-		}
-
 		Array<BfTypeReference*> genericArguments;
 		std::function<void(BfTypeReference*)> _GetTypeRefs = [&](BfTypeReference* typeRef)
 		{
@@ -7638,15 +7693,109 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			{
 				for (auto genericArg : genericTypeRef->mGenericArguments)
 					genericArguments.push_back(genericArg);
-			}						   
+			}
 		};
 		_GetTypeRefs(genericTypeInstRef);
 
-		int wantedGenericParams = (int)typeDef->mGenericParamDefs.size() - startDefGenericParamIdx;
+		BfTypeVector genericArgs;
+
+		BfType* type = NULL;
+		BfTypeDef* typeDef = ResolveGenericInstanceDef(genericTypeInstRef, &type);
+		if(ambiguousTypeDef != NULL)
+			ShowAmbiguousTypeError(typeRef, typeDef, ambiguousTypeDef);
+		if (typeDef == NULL)
+		{
+			Fail("Unable to resolve type", typeRef);			
+			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+		}
+
+		auto outerType = typeDef->mOuterType;
+		BfTypeDef* commonOuterType = NULL;
+		if (mCurTypeInstance != NULL)
+		{
+			// Copy generic params for our parent type if the current type instance shares that parent type						
+			auto outerType = typeDef->mOuterType;
+			commonOuterType = FindCommonOuterType(mCurTypeInstance->mTypeDef, outerType);
+			if ((commonOuterType) && (mCurTypeInstance->IsGenericTypeInstance()))
+			{
+				int startDefGenericParamIdx = (int)commonOuterType->mGenericParamDefs.size();
+				auto parentTypeInstance = (BfGenericTypeInstance*)mCurTypeInstance;
+				if (parentTypeInstance->IsTypeAlias())
+					parentTypeInstance = (BfGenericTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
+				for (int i = 0; i < startDefGenericParamIdx; i++)
+					genericArgs.push_back(parentTypeInstance->mTypeGenericArguments[i]);
+			}
+		}
+
+		for (auto genericArgRef : genericArguments)
+		{
+			auto genericArg = ResolveTypeRef(genericArgRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericMethodParamConstValue);
+			if (genericArg == NULL)
+			{
+				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+			}
+			genericArgs.Add(genericArg);
+		}		
+
+		BfGenericTypeInstance* genericTypeInst;
+		if ((type != NULL) && 
+			((type->IsDelegateFromTypeRef()) || (type->IsFunctionFromTypeRef())))
+		{
+			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+			return ResolveGenericType(type, &genericArgs, NULL);
+		}
+		else if ((typeDef != NULL) && (typeDef->mTypeCode == BfTypeCode_TypeAlias))
+		{
+			auto typeAliasType = new BfGenericTypeAliasType();
+			genericTypeInst = typeAliasType;
+		}
+		else
+			genericTypeInst = new BfGenericTypeInstance();
+		genericTypeInst->mContext = mContext;
+
+
+		BF_ASSERT(typeDef->mDefState != BfTypeDef::DefState_Deleted);
+
+		int genericParamCount = (int)typeDef->mGenericParamDefs.size();
+		if ((type != NULL) && (type->IsGenericTypeInstance()))
+		{
+			// Is a generic type for sure...
+			// We need this case for generic methods
+			genericParamCount = (int)((BfGenericTypeInstance*)type)->mTypeGenericArguments.size();
+		}
+		else if (typeDef->mGenericParamDefs.size() == 0)
+		{
+			Fail("Not a generic type", typeRef);
+			delete genericTypeInst;
+			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+		}
+
+		int startDefGenericParamIdx = 0;
+		genericTypeInst->mTypeDef = typeDef;
+
+		if ((commonOuterType != NULL) && (mCurTypeInstance->IsGenericTypeInstance()))
+		{			
+			auto parentTypeInstance = (BfGenericTypeInstance*)mCurTypeInstance;
+			if (parentTypeInstance->IsTypeAlias())
+				parentTypeInstance = (BfGenericTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
+			for (int i = 0; i < startDefGenericParamIdx; i++)
+			{
+				genericTypeInst->mGenericParams.push_back(parentTypeInstance->mGenericParams[i]->AddRef());
+				genericTypeInst->mTypeGenericArguments.push_back(parentTypeInstance->mTypeGenericArguments[i]);
+				auto typeGenericArg = genericTypeInst->mTypeGenericArguments[i];
+				genericTypeInst->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
+			}			
+		}
+		
+
+		int wantedGenericParams = genericParamCount - startDefGenericParamIdx;
 		int genericArgDiffCount = (int)genericArguments.size() - wantedGenericParams;
 		if (genericArgDiffCount != 0)
 		{
-			int innerWantedGenericParams = (int)typeDef->mGenericParamDefs.size();
+			int innerWantedGenericParams = genericParamCount;
 			if (typeDef->mOuterType != NULL)
 				innerWantedGenericParams -= (int)typeDef->mOuterType->mGenericParamDefs.size();
 			ShowGenericArgCountError(genericTypeInstRef, innerWantedGenericParams);			
@@ -7658,14 +7807,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		int genericParamIdx = 0;
 		for (auto genericArgRef : genericArguments)
 		{
-			auto genericArg = ResolveTypeRef(genericArgRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericMethodParamConstValue);
-			if (genericArg == NULL)
-			{
-				delete genericTypeInst;
-				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
-			}
-
+			auto genericArg = genericArgs[genericParamIdx + startDefGenericParamIdx];
 			genericTypeInst->mTypeGenericArguments.push_back(genericArg);
 			genericTypeInst->mTypeGenericArgumentRefs.push_back(genericArgRef);
 			genericParamIdx++;
@@ -7674,9 +7816,22 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		resolvedEntry->mValue = genericTypeInst;
 
 		CheckUnspecializedGenericType(genericTypeInst, populateType);
-
-		BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);
 		populateModule->InitType(genericTypeInst, populateType);
+
+#ifdef _DEBUG
+		if (BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) != resolvedEntry->mHash)
+		{
+			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
+			int typeHash = BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx);
+			BF_ASSERT(refHash == typeHash);
+		}
+		if (!BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx))
+		{
+			BF_ASSERT(BfResolvedTypeSet::Equals(genericTypeInst, typeRef, &lookupCtx));
+		}
+#endif
+
+		BF_ASSERT(BfResolvedTypeSet::Hash(genericTypeInst, &lookupCtx) == resolvedEntry->mHash);		
 		return ResolveTypeResult(typeRef, genericTypeInst, populateType, resolveFlags);
 	}
 	else if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))
@@ -7806,18 +7961,67 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		return ResolveTypeResult(typeRef, refType, populateType, resolveFlags);
 	}
 	else if (auto delegateTypeRef = BfNodeDynCast<BfDelegateTypeRef>(typeRef))
-	{		
+	{	
+		bool wantGeneric = false;
+		bool isUnspecialized = false;		
+		auto _CheckType = [&](BfType* type)
+		{
+			if (type->IsGenericParam())						
+				wantGeneric = true;					
+			if (type->IsUnspecializedType())			
+				isUnspecialized = true;			
+		};
+
 		auto returnType = ResolveTypeRef(delegateTypeRef->mReturnType);
 		if (returnType == NULL)
+			returnType = GetPrimitiveType(BfTypeCode_Var);
+		_CheckType(returnType);
+
+		Array<BfType*> paramTypes;
+		for (auto param : delegateTypeRef->mParams)
 		{
-			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
-			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+			auto paramType = ResolveTypeRef(param->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowRef);
+			if (paramType == NULL)
+				paramType = GetPrimitiveType(BfTypeCode_Var);
+			paramTypes.Add(paramType);
+			_CheckType(paramType);
 		}
+
+		if ((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsGenericTypeInstance()))
+			wantGeneric = false;
 
 		auto baseDelegateType = ResolveTypeDef(mCompiler->mDelegateTypeDef)->ToTypeInstance();
 
-		BfDelegateType* delegateType = new BfDelegateType();		
-		
+		BfDelegateInfo* delegateInfo = NULL;
+		BfTypeInstance* delegateType = NULL;
+		if (wantGeneric)
+		{
+			BfGenericTypeInstance* genericTypeInst = new BfGenericDelegateType();
+			delegateType = genericTypeInst;
+			delegateInfo = delegateType->GetDelegateInfo();
+						
+			if (mCurTypeInstance->IsGenericTypeInstance())
+			{								
+				auto parentTypeInstance = (BfGenericTypeInstance*)mCurTypeInstance;
+				for (int i = 0; i < parentTypeInstance->mGenericParams.size(); i++)
+				{
+					genericTypeInst->mGenericParams.push_back(parentTypeInstance->mGenericParams[i]->AddRef());
+					genericTypeInst->mTypeGenericArguments.push_back(parentTypeInstance->mTypeGenericArguments[i]);
+					auto typeGenericArg = genericTypeInst->mTypeGenericArguments[i];
+					genericTypeInst->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
+				}
+				CheckUnspecializedGenericType(genericTypeInst, populateType);
+			}
+		}
+		else
+		{
+			auto dlgType = new BfDelegateType();
+			delegateInfo = dlgType->GetDelegateInfo();
+			dlgType->mIsUnspecializedType = isUnspecialized;
+			dlgType->mIsUnspecializedTypeVariation = isUnspecialized;
+			delegateType = dlgType;
+		}
+				
 		Val128 hashContext;
 
 		BfTypeDef* typeDef = new BfTypeDef();
@@ -7843,7 +8047,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		methodDef->mIsStatic = !typeDef->mIsDelegate;
 
 		auto directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
-		delegateType->mDirectAllocNodes.push_back(directTypeRef);
+		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
 		if (typeDef->mIsDelegate)
 			directTypeRef->Init(delegateType);
 		else
@@ -7851,38 +8055,32 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		typeDef->mBaseTypes.push_back(directTypeRef);		
 
 		directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
-		delegateType->mDirectAllocNodes.push_back(directTypeRef);		
+		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
 		directTypeRef->Init(returnType);
 		methodDef->mReturnTypeRef = directTypeRef;
-		delegateType->mReturnType = returnType;
+		delegateInfo->mReturnType = returnType;
 
 		AddDependency(directTypeRef->mType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 
 		auto hashVal = mContext->mResolvedTypes.Hash(typeRef, &lookupCtx);
-
-		int paramIdx = 0;
-		for (auto param : delegateTypeRef->mParams)
+		
+		for (int paramIdx = 0; paramIdx < (int)paramTypes.size(); paramIdx++)
 		{
-			auto paramType = ResolveTypeRef(param->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowRef);
+			auto param = delegateTypeRef->mParams[paramIdx];
+			auto paramType = paramTypes[paramIdx];
 			if (paramType == NULL)
 				paramType = GetPrimitiveType(BfTypeCode_Var);
+
 			String paramName;
 			if (param->mNameNode != NULL)
 				paramName = param->mNameNode->ToString();
 
-			if (paramType->IsUnspecializedType())
-				delegateType->mIsUnspecializedType = true;
-			if (paramType->IsUnspecializedTypeVariation())
-				delegateType->mIsUnspecializedTypeVariation = true;
 			if (!paramType->IsReified())
 				delegateType->mIsReified = false;
-			if (paramType->IsGenericParam())
-			{
-				delegateType->mIsUnspecializedTypeVariation = true;
-			}
+			
 
 			auto directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
-			delegateType->mDirectAllocNodes.push_back(directTypeRef);
+			delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
 			directTypeRef->Init(paramType);
 
 			BfParameterDef* paramDef = new BfParameterDef();
@@ -7890,9 +8088,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			paramDef->mTypeRef = directTypeRef;
 			paramDef->mName = paramName;
 			methodDef->mParams.push_back(paramDef);
-			paramIdx++;
-
-			delegateType->mParams.Add(paramType);
+			
+			delegateInfo->mParams.Add(paramType);
 			AddDependency(paramType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		}
 
@@ -7916,9 +8113,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 // 			int typeHash = BfResolvedTypeSet::Hash(delegateType, &lookupCtx);
 // 			BF_ASSERT(refHash == typeHash);
 // 		}
-// #endif
+// #endif		
 
 		BF_ASSERT(BfResolvedTypeSet::Hash(delegateType, &lookupCtx) == resolvedEntry->mHash);
+
 		return ResolveTypeResult(typeRef, delegateType, populateType, resolveFlags);
 	}
 	else if (auto genericParamTypeRef = BfNodeDynCast<BfGenericParamTypeRef>(typeRef))
@@ -8040,6 +8238,8 @@ BfTypeInstance* BfModule::GetUnspecializedTypeInstance(BfTypeInstance* typeInst)
 	if (!typeInst->IsGenericTypeInstance())
 		return typeInst;
 
+	BF_ASSERT((!typeInst->IsDelegateFromTypeRef()) && (!typeInst->IsFunctionFromTypeRef()));
+
 	auto genericTypeInst = (BfGenericTypeInstance*)typeInst;
 	auto result = ResolveTypeDef(genericTypeInst->mTypeDef, BfPopulateType_Declaration);
 	BF_ASSERT((result != NULL) && (result->IsUnspecializedType()));
@@ -8143,7 +8343,7 @@ bool BfModule::CanCast(BfTypedValue typedVal, BfType* toType, BfCastFlags castFl
 	BP_ZONE("BfModule::CanCast");
 
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
-	return CastToValue(NULL, typedVal, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));			
+	return CastToValue(NULL, typedVal, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail | BfCastFlags_IsCastCheck));			
 }
 
 bool BfModule::AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNeedsMemberCasting)
@@ -10240,7 +10440,8 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	{
 		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance);
 
-		auto delegateType = (BfDelegateType*)resolvedType;
+		auto delegateType = (BfTypeInstance*)resolvedType;
+		auto delegateInfo = resolvedType->GetDelegateInfo();
 
 		if (mCurTypeInstance == delegateType)
 		{
@@ -10259,13 +10460,15 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		case BfCallingConvention_Fastcall:
 			str += "[FastCall] ";
 			break;
+		default:
+			break;
 		}
 
 		if (resolvedType->IsDelegateFromTypeRef())
 			str += "delegate ";
 		else
 			str += "function ";
-		DoTypeToString(str, delegateType->mReturnType);
+		DoTypeToString(str, delegateInfo->mReturnType, typeNameFlags, genericMethodNameOverrides);
 		str += "(";
 		for (int paramIdx = 0; paramIdx < methodDef->mParams.size(); paramIdx++)
 		{
@@ -10274,7 +10477,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			auto paramDef = methodDef->mParams[paramIdx];
 			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
 			
-			DoTypeToString(str, delegateType->mParams[paramIdx], innerFlags, genericMethodNameOverrides);
+			DoTypeToString(str, delegateInfo->mParams[paramIdx], innerFlags, genericMethodNameOverrides);
 
 			if (!paramDef->mName.IsEmpty())
 			{
@@ -10307,9 +10510,6 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	else if (resolvedType->IsTypeInstance())
 	{
 		BfTypeInstance* typeInstance = (BfTypeInstance*)resolvedType;
-		
-		//auto checkTypeInst = typeInstance;
-		//auto checkTypeDef = typeInstance->mTypeDef;
 							
 		bool omitNamespace = (typeNameFlags & BfTypeNameFlag_OmitNamespace) != 0;
 		if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
@@ -10331,38 +10531,6 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			}
 		}
 		
-		//_AddTypeName(typeInstance->mTypeDef, 0);
-
-		//std::function<void(String& str, BfTypeInstance*, BfTypeDef*, int, BfTypeNameFlags)> _AddTypeName = [&](StringImpl& str, BfTypeInstance*& checkTypeInst, BfTypeDef* checkTypeDef, int depth, BfTypeNameFlags typeNameFlags)
-		
-// 		BfTypeDef* endTypeDef = NULL;
-// 		if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
-// 		{
-// 			auto checkTypeInst = typeInstance;
-// 			auto checkTypeDef = typeInstance->mTypeDef;
-// 
-// 			auto outerTypeInst = GetOuterType(checkTypeInst);
-// 			if (outerTypeInst == NULL)
-// 				return;
-// 			checkTypeInst = outerTypeInst;
-// 
-// 			auto checkCurTypeInst = mCurTypeInstance; // Only used for ReduceName
-// 			BfTypeDef* checkCurTypeDef = NULL;
-// 			if (checkCurTypeInst != NULL)
-// 				checkCurTypeDef = checkCurTypeInst->mTypeDef;
-// 
-// 			while (checkCurTypeDef->mNestDepth > checkTypeDef->mNestDepth)
-// 			{
-// 				checkCurTypeInst = GetOuterType(checkCurTypeInst);
-// 				checkCurTypeDef = checkCurTypeInst->mTypeDef;
-// 			}
-// 
-// 			if (TypeIsSubTypeOf(checkCurTypeInst, checkTypeInst))
-// 				endTypeDef = checkCurTypeDef;
-// 		}
-
-		
-
 		SizedArray<BfTypeDef*, 8> typeDefStack;		
 		
 		BfTypeDef* endTypeDef = NULL;
@@ -10427,37 +10595,6 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			BfTypeDef* checkTypeDef = typeDefStack.back();
 			int depth = (int)typeDefStack.size() - 1;
 			typeDefStack.pop_back();
-
-// 			if (depth > 0)
-// 			{
-// 				if ((typeNameFlags & BfTypeNameFlag_OmitOuterType) != 0)
-// 					return;
-// 
-// 				if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
-// 				{
-// 					auto outerTypeInst = GetOuterType(checkTypeInst);
-// 					if (outerTypeInst == NULL)
-// 						return;
-// 					checkTypeInst = outerTypeInst;
-// 
-// 					while (checkCurTypeDef->mNestDepth > checkTypeDef->mNestDepth)
-// 					{
-// 						checkCurTypeInst = GetOuterType(checkCurTypeInst);
-// 						checkCurTypeDef = checkCurTypeInst->mTypeDef;
-// 					}
-// 
-// 					if (TypeIsSubTypeOf(checkCurTypeInst, checkTypeInst))
-// 						return; // Found outer type				
-// 				}
-// 			}
-
-// 			auto parentTypeDef = checkTypeDef->mOuterType;
-// 			if (parentTypeDef != NULL)
-// 			{
-// 				//_AddTypeName(parentTypeDef, depth + 1);
-// 				typeDefStack.Add(parentTypeDef);
-// 				continue;
-// 			}
 
 			if (checkTypeDef->IsGlobalsContainer())
 			{

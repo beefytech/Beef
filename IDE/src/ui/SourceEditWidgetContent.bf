@@ -1985,6 +1985,9 @@ namespace IDE.ui
 
 		public bool ToggleComment()
 		{
+			if (CheckReadOnly())
+				return false;
+
 		    if ((HasSelection()) && (mSelection.Value.Length > 1))
 		    {
 				var startLineAndCol = CursorLineAndColumn ;
@@ -2748,7 +2751,7 @@ namespace IDE.ui
         /// param.isRepeat = "Whether the key is repeated"
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
         {
-			 mIgnoreKeyChar = false;
+			mIgnoreKeyChar = false;
 
 			if (((keyCode == .Up) || (keyCode == .Down)) &&
 				(mAutoComplete != null) && (mAutoComplete.IsShowing()) && (mAutoComplete.mListWindow != null) &&

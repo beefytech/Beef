@@ -3092,7 +3092,7 @@ void BfCompiler::UpdateRevisedTypes()
 					if (checkTypeDef != rootTypeDef)
 					{
 						if ((checkTypeDef->mIsCombinedPartial) ||
-							(!checkTypeDef->mIsPartial) ||
+							((!checkTypeDef->mIsPartial) && (checkTypeDef->mTypeCode != BfTypeCode_Extension)) ||
 							(checkTypeDef->mPartialUsed) ||
 							(!checkTypeDef->NameEquals(rootTypeDef)) ||
 							(checkTypeDef->mGenericParamDefs.size() != rootTypeDef->mGenericParamDefs.size()) ||
@@ -3101,6 +3101,12 @@ void BfCompiler::UpdateRevisedTypes()
 							checkTypeDefEntry = checkTypeDefEntry->mNext;
 							continue;
 						}
+					}
+
+					if (checkTypeDef->mTypeCode == BfTypeCode_Extension)
+					{
+						// This was an extension that was orphaned but now we're taking it back
+						checkTypeDef->mIsPartial = true;
 					}
 
 					compositeTypeDef->mPartialUsed = true;
@@ -4881,7 +4887,8 @@ void BfCompiler::PopulateReified()
 
 			auto typeInst = type->ToTypeInstance();
 			
-			if ((typeInst != NULL) && (typeInst->IsGenericTypeInstance()) && (!typeInst->IsUnspecializedType()))
+			if ((typeInst != NULL) && (typeInst->IsGenericTypeInstance()) && (!typeInst->IsUnspecializedType()) &&
+				(!typeInst->IsDelegateFromTypeRef()) && (!typeInst->IsFunctionFromTypeRef()))
 			{
 				auto unspecializedType = module->GetUnspecializedTypeInstance(typeInst);
 				if (!unspecializedType->mIsReified)

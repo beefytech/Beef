@@ -4412,7 +4412,7 @@ BfIRValue BfModule::CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTy
 			if ((methodInstance != NULL) && (!methodInstance->mMethodDef->mIsAbstract))
 			{
 				BF_ASSERT(implTypeInst->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject));
-				auto moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx);
+				auto moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx, NULL, BfGetMethodInstanceFlag_NoInline);
 				auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 				vValue = funcPtr;
 			}
@@ -5023,7 +5023,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						if ((methodInstance != NULL) && (!methodInstance->mMethodDef->mIsAbstract))
 						{
 							BF_ASSERT(typeInstance->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject));
-							moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx);
+							moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx, NULL, BfGetMethodInstanceFlag_NoInline);
 							auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 							vValue = funcPtr;
 						}
@@ -5118,7 +5118,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						BF_ASSERT(methodInstance->mIsReified);
 						// This doesn't work because we may have FOREIGN methods from implicit interface methods
 						//auto moduleMethodInst = GetMethodInstanceAtIdx(methodRef.mTypeInstance, methodRef.mMethodNum);						
-						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance);
+						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance, BfGetMethodInstanceFlag_NoInline);
 						auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 						pushValue = funcPtr;
 					}
@@ -5173,7 +5173,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						BF_ASSERT(methodInstance->mIsReified);
 						// This doesn't work because we may have FOREIGN methods from implicit interface methods
 						//auto moduleMethodInst = GetMethodInstanceAtIdx(methodRef.mTypeInstance, methodRef.mMethodNum);						
-						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance);
+						auto moduleMethodInst = ReferenceExternalMethodInstance(methodInstance, BfGetMethodInstanceFlag_NoInline);
 						auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 
 						int idx = checkIFace.mStartVirtualIdx + ifaceMethodInstance->mVirtualTableIdx;
@@ -5901,7 +5901,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			(!methodDef->mIsAbstract) &&
 			(methodDef->mGenericParams.size() == 0))
 		{
-			moduleMethodInstance = GetMethodInstanceAtIdx(typeInstance, methodIdx);
+			moduleMethodInstance = GetMethodInstanceAtIdx(typeInstance, methodIdx, NULL, BfGetMethodInstanceFlag_NoInline);
 			if (moduleMethodInstance.mFunc)
 				funcVal = mBfIRBuilder->CreateBitCast(moduleMethodInstance.mFunc, voidPtrIRType);
 		}
@@ -6861,7 +6861,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			BfType* convCheckConstraint = genericParamInst->mTypeConstraint;
 			if ((convCheckConstraint->IsUnspecializedType()) && (methodGenericArgs != NULL))
-				convCheckConstraint = ResolveGenericType(convCheckConstraint, *methodGenericArgs);
+				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);
 			if ((checkArgType->IsMethodRef()) && (convCheckConstraint->IsDelegate()))
 			{
 				auto methodRefType = (BfMethodRefType*)checkArgType;
@@ -6932,7 +6932,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		BfType* convCheckConstraint = checkConstraint;
 		if (convCheckConstraint->IsUnspecializedType())
-			convCheckConstraint = ResolveGenericType(convCheckConstraint, *methodGenericArgs);		
+			convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);		
 
 		BfTypeInstance* typeConstraintInst = convCheckConstraint->ToTypeInstance();	
 		
@@ -6973,13 +6973,13 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		auto leftType = checkOpConstraint.mLeftType;
 		if ((leftType != NULL) && (leftType->IsUnspecializedType()))
-			leftType = ResolveGenericType(leftType, *methodGenericArgs);
+			leftType = ResolveGenericType(leftType, NULL, methodGenericArgs);
 		if (leftType != NULL)
 			leftType = FixIntUnknown(leftType);		
 		
 		auto rightType = checkOpConstraint.mRightType;
 		if ((rightType != NULL) && (rightType->IsUnspecializedType()))
-			rightType = ResolveGenericType(rightType, *methodGenericArgs);
+			rightType = ResolveGenericType(rightType, NULL, methodGenericArgs);
 		if (rightType != NULL)
 			rightType = FixIntUnknown(rightType);
 
@@ -8792,16 +8792,27 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	bool isStructPtr = typedVal.mType->IsStructPtr();
 	if (fromStructTypeInstance == NULL)	
 	{	
-		auto primType = (BfPrimitiveType*)typedVal.mType;
-		fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
+		auto primType = (BfPrimitiveType*)typedVal.mType;		
+		
+		if ((typedVal.mType->IsPointer()) && (toTypeInstance->IsInstanceOf(mCompiler->mIHashableTypeDef)))
+		{
+			// Can always do IHashable
+			alreadyCheckedCast = true;
+		}
+
+		if ((!typedVal.mType->IsPointer()) || (toTypeInstance == mContext->mBfObjectType))
+			fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
 
 		if (isStructPtr)
 		{
-			if ((toTypeInstance != NULL) && (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
+			if ((toTypeInstance != NULL) && (fromStructTypeInstance != NULL) && (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
 				alreadyCheckedCast = true;
 
 			fromStructTypeInstance = typedVal.mType->GetUnderlyingType()->ToTypeInstance();
 		}		
+		
+		if ((fromStructTypeInstance == NULL) && (alreadyCheckedCast))
+			fromStructTypeInstance = GetWrappedStructType(typedVal.mType);
 	}
 	if (fromStructTypeInstance == NULL)
 		return BfTypedValue();	
@@ -8810,7 +8821,7 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	bool isBoxedType = (fromStructTypeInstance != NULL) && (toType->IsBoxed());
 	
 	if ((toType == NULL) || (toType == mContext->mBfObjectType) || (isBoxedType) || (alreadyCheckedCast) ||  (TypeIsSubTypeOf(fromStructTypeInstance, toTypeInstance)))
-	{	
+	{
 		if (mBfIRBuilder->mIgnoreWrites)
 			return BfTypedValue(mBfIRBuilder->GetFakeVal(), (toType != NULL) ? toType : CreateBoxedType(typedVal.mType));
 
@@ -9124,7 +9135,7 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	return func;
 }
 
-BfModuleMethodInstance BfModule::GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName)
+BfModuleMethodInstance BfModule::GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName, BfGetMethodInstanceFlags flags)
 {	
 	if (assertName != NULL)
 	{
@@ -9148,7 +9159,7 @@ BfModuleMethodInstance BfModule::GetMethodInstanceAtIdx(BfTypeInstance* typeInst
 		return BfModuleMethodInstance(methodInstance, func);
 	}
 
-	return GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector());	
+	return GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector(), flags);	
 }
 
 BfModuleMethodInstance BfModule::GetMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount, bool checkBase)
@@ -9307,7 +9318,7 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 
 	BfType* type = methodInst->mMethodInstanceGroup->mOwner;
 	if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
-		type = ResolveGenericType(type, *methodGenericArgs);
+		type = ResolveGenericType(type, NULL, methodGenericArgs);
 	String methodName;
 	if ((methodNameFlags & BfMethodNameFlag_OmitTypeName) == 0)
 	{
@@ -9453,7 +9464,7 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 				}
 
 				if (type->IsUnspecializedType())
-					type = ResolveGenericType(type, *methodGenericArgs);
+					type = ResolveGenericType(type, NULL, methodGenericArgs);
 			}
 
 			if ((methodGenericArgs == NULL) && (mCurMethodInstance == NULL) && (mCurTypeInstance == NULL))
@@ -9486,7 +9497,7 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 			BfType* type = methodInst->GetParamType(paramIdx);
 			if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
-				type = ResolveGenericType(type, *methodGenericArgs);
+				type = ResolveGenericType(type, NULL, methodGenericArgs);
 			methodName += TypeToString(type, typeNameFlags);
 
 			methodName += " ";
@@ -11186,7 +11197,7 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 		mFuncReferences[methodRef] = func;
 	BfLogSysM("Adding func reference. Module:%p MethodInst:%p NewLLVMFunc:%d OldLLVMFunc:%d\n", this, methodInstance, func.mId, methodInstance->mIRFunction.mId);
 
-	if ((isInlined) && (!mIsScratchModule))
+	if ((isInlined) && (!mIsScratchModule) && ((flags & BfGetMethodInstanceFlag_NoInline) == 0))
 	{
 		// We can't just add a dependency to mCurTypeInstance because we may have nested inlined functions, and
 		//   mCurTypeInstance will just reflect the owner of the method currently being inlined, not the top-level
@@ -11199,13 +11210,12 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 		if ((!mCompiler->mIsResolveOnly) && (mIsReified) && (!methodInstance->mIsUnspecialized))
 		{
 			mIncompleteMethodCount++;
-
 			BfInlineMethodRequest* inlineMethodRequest = mContext->mInlineMethodWorkList.Alloc();
 			inlineMethodRequest->mType = methodInstance->GetOwner();
 			inlineMethodRequest->mFromModule = this;
 			inlineMethodRequest->mFunc = func;
 			inlineMethodRequest->mFromModuleRevision = mRevision;
-			inlineMethodRequest->mMethodInstance = methodInstance;		
+			inlineMethodRequest->mMethodInstance = methodInstance;					
 			BF_ASSERT(mIsModuleMutable);
 
 			BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in ReferenceExternalMethodInstance\n", inlineMethodRequest, methodInstance, this);
@@ -11413,22 +11423,26 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			if ((mIsReified) && (!instModule->mIsReified))
 			{
-				if (!instModule->mReifyQueued)
+				if (!typeInst->IsUnspecializedTypeVariation())
 				{
-					BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
-					BfLogSysM("Queueing ReifyModule: %p\n", instModule);
-					mContext->mReifyModuleWorkList.Add(instModule);
-					instModule->mReifyQueued = true;
-				}
+					if (!instModule->mReifyQueued)
+					{
+						BF_ASSERT((instModule != mContext->mUnreifiedModule) && (instModule != mContext->mScratchModule));
+						BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
+						BfLogSysM("Queueing ReifyModule: %p\n", instModule);
+						mContext->mReifyModuleWorkList.Add(instModule);
+						instModule->mReifyQueued = true;
+					}
 
-				// This ensures that the method will actually be created when it gets reified
-				BfMethodSpecializationRequest* specializationRequest = mContext->mMethodSpecializationWorkList.Alloc();
-				specializationRequest->mFromModule = typeInst->mModule;
-				specializationRequest->mFromModuleRevision = typeInst->mModule->mRevision;
-				specializationRequest->mMethodDef = methodDef;
-				specializationRequest->mMethodGenericArguments = methodGenericArguments;
-				specializationRequest->mType = typeInst;				
-				specializationRequest->mFlags = flags;
+					// This ensures that the method will actually be created when it gets reified
+					BfMethodSpecializationRequest* specializationRequest = mContext->mMethodSpecializationWorkList.Alloc();
+					specializationRequest->mFromModule = typeInst->mModule;
+					specializationRequest->mFromModuleRevision = typeInst->mModule->mRevision;
+					specializationRequest->mMethodDef = methodDef;
+					specializationRequest->mMethodGenericArguments = methodGenericArguments;
+					specializationRequest->mType = typeInst;
+					specializationRequest->mFlags = flags;
+				}
 			}
 
 			auto defFlags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
@@ -11827,7 +11841,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					inlineMethodRequest->mFromModule = this;
 					inlineMethodRequest->mFunc = methodInstance->mIRFunction;
 					inlineMethodRequest->mFromModuleRevision = mRevision;
-					inlineMethodRequest->mMethodInstance = methodInstance;
+					inlineMethodRequest->mMethodInstance = methodInstance;					
 
 					BfLogSysM("mInlineMethodWorkList %p for method %p in module %p in GetMethodInstance\n", inlineMethodRequest, methodInstance, this);
 					BF_ASSERT(mIsModuleMutable);
@@ -12139,7 +12153,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 	{
 		// Just fake it for the extern and unspecialized modules
 		auto ptrType = CreatePointerType(fieldInstance->GetResolvedType());
-		return BfTypedValue(GetDefaultValue(ptrType), fieldInstance->GetResolvedType(), true);
+		return BfTypedValue(mBfIRBuilder->GetFakeVal(), fieldInstance->GetResolvedType(), true);
 	}
 	
 	BfIRValue globalValue;
@@ -13234,7 +13248,7 @@ void BfModule::EmitDefaultReturn()
 }
 
 void BfModule::AssertErrorState()
-{
+{	
 	if (mIgnoreErrors)
 		return;
 	if (mHadBuildError)
@@ -13274,6 +13288,10 @@ void BfModule::AssertErrorState()
 		if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && (mCurMethodState->mMixinState->mMixinMethodInstance->mMethodDef->mDeclaringType->mSource->mParsingFailed))
 			return;
 	}
+
+	if (mCompiler->IsAutocomplete())
+		return;
+
 	BF_ASSERT(mCompiler->mPassInstance->HasFailed());
 }
 
@@ -17532,7 +17550,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 						else if (mCurTypeInstance->IsObject())
 							lookupValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(GetThis().mValue, 0, fieldInstance->mDataIdx), fieldInstance->mResolvedType, true);
 						else
-							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mFieldIdx);
+							lookupValue = ExtractValue(GetThis(), fieldInstance, fieldInstance->mDataIdx);
 						lookupValue = LoadOrAggregateValue(lookupValue);
 						CreateReturn(lookupValue.mValue);
 						EmitLifetimeEnds(&mCurMethodState->mHeadScope);
@@ -19292,6 +19310,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	if (methodDef->mMethodType == BfMethodType_Mixin)
 		methodInstance->mIsUnspecialized = true;	
+
+	if (methodInstance->mIsUnspecialized)
+	{		
+		//BF_ASSERT(methodInstance->mDeclModule == methodInstance->GetOwner()->mModule);
+	}
 
 	BfAutoComplete* bfAutocomplete = NULL;
 	if (mCompiler->mResolvePassData != NULL)

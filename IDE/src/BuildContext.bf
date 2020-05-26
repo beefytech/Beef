@@ -35,6 +35,7 @@ namespace IDE
 				delete val;
 			delete _;
 		};
+		public ScriptManager.Context mScriptContext = new .() ~ _.ReleaseLastRef();
 		public ScriptManager mScriptManager ~ delete _;
 
 		public bool Failed
@@ -152,7 +153,7 @@ namespace IDE
 
 				if (mScriptManager == null)
 				{
-					mScriptManager = new .();
+					mScriptManager = new .(mScriptContext);
 					mScriptManager.mProjectName = new String(project.mProjectName);
 					mScriptManager.mIsBuildScript = true;
 					mScriptManager.mSoftFail = true;
@@ -311,6 +312,9 @@ namespace IDE
 				if (mPlatformType == .Linux)
 					linkLine.Append("-no-pie ");
 
+				if (mPlatformType == .macOS)
+					linkLine.Append("-Wl,-no_compact_unwind ");
+
 			    linkLine.Append(objectsArg);
 
 				//var destDir = scope String();
@@ -399,6 +403,17 @@ namespace IDE
 #else
 		        String gccExePath = "/usr/bin/c++";
 		        String clangExePath = scope String("/usr/bin/c++");
+
+		        if (File.Exists("/usr/bin/clang++"))
+		        {
+					gccExePath = "/usr/bin/clang++";
+		        	clangExePath = scope String("/usr/bin/clang++");
+		        }
+		        else
+		        {
+					gccExePath = "/usr/bin/c++";
+		        	clangExePath = scope String("/usr/bin/c++");
+		        }
 #endif
 
 			    if (project.mNeedsTargetRebuild)

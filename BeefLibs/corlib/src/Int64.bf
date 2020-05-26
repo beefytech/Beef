@@ -11,9 +11,9 @@ namespace System
 			case InvalidChar(int64 partialResult);
 		}
 
-	    public const int64 MaxValue = 0x7FFFFFFFFFFFFFFFL;
-	    //public const long MinValue = -0x8000000000000000L;
-	    public const int64 MinValue = -0x7FFFFFFFFFFFFFFFL; //TODO: Should be one lower!
+		public const int64 MaxValue = 0x7FFFFFFFFFFFFFFFL;
+		//public const long MinValue = -0x8000000000000000L;
+		public const int64 MinValue = -0x7FFFFFFFFFFFFFFFL; //TODO: Should be one lower!
 
 		public static int operator<=>(Int64 a, Int64 b)
 		{
@@ -67,26 +67,26 @@ namespace System
 
 		public override void ToString(String strBuffer)
 		{
-		    // Dumb, make better.
-		    char8[] strChars = scope:: char8[22];
+			// Dumb, make better.
+			char8[] strChars = scope:: char8[22];
 			int32 char8Idx = 20;
 			int64 valLeft = (int64)this;
-			bool isNeg = false;
+			bool isNeg = true;
 			int minNumeralsLeft = 0;
-			if (valLeft < 0)
+			if (valLeft >= 0)
 			{
 				valLeft = -valLeft;
-				isNeg = true;
+				isNeg = false;
 			}
-			while ((valLeft > 0) || (minNumeralsLeft > 0))
+			while ((valLeft < 0) || (minNumeralsLeft > 0))
 			{
-			    strChars[char8Idx] = (char8)('0' + (valLeft % 10));
-			    valLeft /= 10;
-			    char8Idx--;
+				strChars[char8Idx] = (char8)('0' - (valLeft % 10));
+				valLeft /= 10;
+				char8Idx--;
 				minNumeralsLeft--;
-			}			
+			}
 			if (char8Idx == 20)
-			    strChars[char8Idx--] = '0';
+				strChars[char8Idx--] = '0';
 			if (isNeg)
 				strChars[char8Idx--] = '-';
 			char8* char8Ptr = &strChars[char8Idx + 1];
@@ -104,7 +104,7 @@ namespace System
 			int64 result = 0;
 
 			int64 radix = style.HasFlag(.AllowHexSpecifier) ? 0x10 : 10;
-						
+
 			for (int32 i = 0; i < val.Length; i++)
 			{
 				char8 c = val[i];
@@ -143,7 +143,7 @@ namespace System
 				else
 					return .Err(.InvalidChar(result));
 			}
-			
+
 			return isNeg ? -result : result;
 		}
 

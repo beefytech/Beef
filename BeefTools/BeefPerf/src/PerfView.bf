@@ -2025,7 +2025,7 @@ namespace BeefPerf
 			gApp.SetCursor(wantCursor);
 		}
 
-		public override void MouseWheel(float x, float y, int32 delta)
+		public override void MouseWheel(float x, float y, float delta)
 		{
 			base.MouseWheel(x, y, delta);
 

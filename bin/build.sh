@@ -2,8 +2,8 @@
 echo Starting build.sh
 
 PATH=/usr/local/bin:$PATH:$HOME/bin
-SCRIPT="$(realpath "$0")"
-SCRIPTPATH="$(dirname "$SCRIPT")"
+SCRIPTPATH=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+echo Building from from $SCRIPTPATH
 cd $SCRIPTPATH
 
 # exit when any command fails
@@ -15,11 +15,11 @@ if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
 	echo Building libffi...
 	cd ../BeefySysLib/third_party/libffi
 	./configure
-	make
+	make	
 	cd $SCRIPTPATH
 fi
 
-if [ ! -d ../extern/llvm_linux_8_0_0 ]; then
+if [ ! -d ../extern/llvm_linux_8_0_0/bin ]; then
 	echo Building LLVM...
 	cd ../extern
 	./llvm_build.sh
@@ -44,10 +44,10 @@ cd ../IDE/dist
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
 	LIBEXT=dylib
-	LINKOPTS="-Wl,-rpath -Wl,@executable_path"	
+	LINKOPTS="-Wl,-no_compact_unwind -Wl,-rpath -Wl,@executable_path"	
 else
-	LIBEXT=so
-	LINKOPTS="-ldl -lpthread -ltinfo -Wl,-rpath -Wl,\$ORIGIN"
+	LIBEXT=so	
+	LINKOPTS="-ldl -lpthread -Wl,-rpath -Wl,\$ORIGIN"
 fi
 
 if [ ! -L libBeefRT_d.a ]; then	
@@ -63,21 +63,17 @@ fi
 ### DEBUG ###
 
 echo Building BeefBuild_bootd
-../../jbuild_d/Debug/bin/BeefBoot --out="BeefBuild_bootd" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT_d.a ./libIDEHelper_d.$LIBEXT ./libBeefySysLib_d.$LIBEXT ../../extern/llvm_linux_8_0_0/lib/libLLVMCore.a ../../extern/llvm_linux_8_0_0/lib/libLLVMMC.a ../../extern/llvm_linux_8_0_0/lib/libLLVMMCParser.a ../../extern/llvm_linux_8_0_0/lib/libLLVMCodeGen.a ../../extern/llvm_linux_8_0_0/lib/libLLVMX86Disassembler.a ../../extern/llvm_linux_8_0_0/lib/libLLVMMCDisassembler.a ../../extern/llvm_linux_8_0_0/lib/libLLVMSupport.a ../../extern/llvm_linux_8_0_0/lib/libLLVMX86Info.a ../../extern/llvm_linux_8_0_0/lib/libLLVMX86Utils.a ../../extern/llvm_linux_8_0_0/lib/libLLVMX86AsmPrinter.a ../../extern/llvm_linux_8_0_0/lib/libLLVMX86Desc.a ../../extern/llvm_linux_8_0_0/lib/libLLVMObject.a ../../extern/llvm_linux_8_0_0/lib/libLLVMBitReader.a ../../extern/llvm_linux_8_0_0/lib/libLLVMAsmParser.a ../../extern/llvm_linux_8_0_0/lib/libLLVMTarget.a ../../extern/llvm_linux_8_0_0/lib/libLLVMX86CodeGen.a ../../extern/llvm_linux_8_0_0/lib/libLLVMScalarOpts.a ../../extern/llvm_linux_8_0_0/lib/libLLVMInstCombine.a ../../extern/llvm_linux_8_0_0/lib/libLLVMSelectionDAG.a ../../extern/llvm_linux_8_0_0/lib/libLLVMProfileData.a ../../extern/llvm_linux_8_0_0/lib/libLLVMTransformUtils.a ../../extern/llvm_linux_8_0_0/lib/libLLVMAnalysis.a ../../extern/llvm_linux_8_0_0/lib/libLLVMX86AsmParser.a ../../extern/llvm_linux_8_0_0/lib/libLLVMAsmPrinter.a ../../extern/llvm_linux_8_0_0/lib/libLLVMBitWriter.a ../../extern/llvm_linux_8_0_0/lib/libLLVMVectorize.a ../../extern/llvm_linux_8_0_0/lib/libLLVMipo.a ../../extern/llvm_linux_8_0_0/lib/libLLVMInstrumentation.a ../../extern/llvm_linux_8_0_0/lib/libLLVMDebugInfoDWARF.a ../../extern/llvm_linux_8_0_0/lib/libLLVMDebugInfoPDB.a ../../extern/llvm_linux_8_0_0/lib/libLLVMDebugInfoCodeView.a ../../extern/llvm_linux_8_0_0/lib/libLLVMGlobalISel.a ../../extern/llvm_linux_8_0_0/lib/libLLVMBinaryFormat.a ../../extern/llvm_linux_8_0_0/lib/libLLVMDemangle.a $LINKOPTS"
+../../jbuild_d/Debug/bin/BeefBoot --out="BeefBuild_bootd" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT_d.a ./libIDEHelper_d.$LIBEXT ./libBeefySysLib_d.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs_d.txt) $LINKOPTS"
 echo Building BeefBuild_d
 ./BeefBuild_bootd -clean -proddir=../../BeefBuild -config=Debug
-#./BeefBuild_d -proddir=../../TestApp
-#../../TestApp/build/Debug_Linux64/TestApp/TestApp
 echo Testing IDEHelper/Tests in BeefBuild_d
 ./BeefBuild_d -proddir=../../IDEHelper/Tests -test
 
 ### RELEASE ###
 
 echo Building BeefBuild_boot
-../../jbuild/Release/bin/BeefBoot --out="BeefBuild_boot" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT.a ./libIDEHelper.$LIBEXT ./libBeefySysLib.$LIBEXT ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMCore.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMC.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMCParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMCodeGen.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Disassembler.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMMCDisassembler.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMSupport.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Info.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Utils.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86AsmPrinter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86Desc.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMObject.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBitReader.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAsmParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMTarget.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86CodeGen.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMScalarOpts.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMInstCombine.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMSelectionDAG.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMProfileData.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMTransformUtils.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAnalysis.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMX86AsmParser.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMAsmPrinter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBitWriter.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMVectorize.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMipo.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMInstrumentation.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoDWARF.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoPDB.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDebugInfoCodeView.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMGlobalISel.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMBinaryFormat.a ../../extern/llvm_linux_rel_8_0_0/lib/libLLVMDemangle.a $LINKOPTS"
+../../jbuild/Release/bin/BeefBoot --out="BeefBuild_boot" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --startup=BeefBuild.Program --linkparams="./libBeefRT.a ./libIDEHelper.$LIBEXT ./libBeefySysLib.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs.txt) $LINKOPTS"
 echo Building BeefBuild
 ./BeefBuild_boot -clean -proddir=../../BeefBuild -config=Release
-#./BeefBuild_d -proddir=../../TestApp
-#../../TestApp/build/Debug_Linux64/TestApp/TestApp
 echo Testing IDEHelper/Tests in BeefBuild
 ./BeefBuild -proddir=../../IDEHelper/Tests -test

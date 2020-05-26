@@ -2787,9 +2787,15 @@ void BfPrinter::Visit(BfRootNode* rootNode)
 		child->Accept(this);
 	}
 
+	// Flush whitespace at the end of the document
 	BfParserData* bfParser = rootNode->GetSourceData()->ToParserData();
 	if (bfParser != NULL)
-		Write(rootNode, rootNode->GetSrcEnd(), bfParser->mSrcLength - rootNode->GetSrcEnd());
+	{
+		BfAstNode endNode;
+		BfAstNode::Zero<BfAstNode>(&endNode);
+		endNode.Init(rootNode->GetSrcEnd(), rootNode->GetSrcEnd(), bfParser->mSrcLength - rootNode->GetSrcEnd());		
+		Visit(&endNode);
+	}
 
 	if (mCharMapping != NULL)
 	{

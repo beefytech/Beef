@@ -27,8 +27,14 @@
 #endif
 
 #ifdef BFP_HAS_BACKTRACE
+
+#ifdef BFP_BACKTRACE_PATH
+#include BFP_BACKTRACE_PATH
+#else
 #include "backtrace.h"
 #include "backtrace-supported.h"
+#endif
+
 #endif
 #include "../third_party/stb/stb_sprintf.h"
 #include <cxxabi.h>
@@ -1357,6 +1363,7 @@ BFP_EXPORT BfpThreadInfo* BFP_CALLTYPE BfpThreadInfo_Create()
 	threadInfo->mStackBase = 0;
 	threadInfo->mStackLimit = 0;	
 	threadInfo->mPThread = pthread_self();
+    return threadInfo;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpThreadInfo_Release(BfpThreadInfo* threadInfo)

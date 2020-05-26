@@ -224,7 +224,7 @@ namespace Beefy.widgets
             mDownTick = 0;
         }
 
-        public override void MouseWheel(float x, float y, int32 delta)
+        public override void MouseWheel(float x, float y, float delta)
         {            
             Scroll(GetScrollIncrement() * -delta);
         }

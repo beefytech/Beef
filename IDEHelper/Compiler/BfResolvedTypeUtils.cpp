@@ -1907,9 +1907,7 @@ void BfClosureType::Finish()
 
 BfDelegateType::~BfDelegateType()
 {	
-	delete mTypeDef;
-	for (auto directAllocNode : mDirectAllocNodes)
-		delete directAllocNode;
+	delete mTypeDef;	
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2129,6 +2127,19 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 {
 	//BP_ZONE("BfResolvedTypeSet::Hash");
 
+// 	if (type->IsTypeAlias())
+// 	{
+// 		auto underlyingType = type->GetUnderlyingType();
+// 		BF_ASSERT(underlyingType != NULL);
+// 		if (underlyingType == NULL)
+// 		{
+// 			ctx->mFailed = true;
+// 			return 0;
+// 		}
+// 		return Hash(underlyingType, ctx, allowRef);
+// 	}
+// 	else 
+		
 	if (type->IsBoxed())
 	{
 		BfBoxedType* boxedType = (BfBoxedType*)type;
@@ -2142,21 +2153,22 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 		return (elemHash << 5) - elemHash;
 	}	
 	else if (type->IsDelegateFromTypeRef() || type->IsFunctionFromTypeRef())
-	{
-		auto delegateType = (BfDelegateType*)type;
-
+	{		
+		auto typeInst = (BfTypeInstance*)type;
 		int hashVal = HASH_DELEGATE;
 		
-		hashVal = ((hashVal ^ (Hash(delegateType->mReturnType, ctx))) << 5) - hashVal;
+		auto delegateInfo = type->GetDelegateInfo();
 
-		auto methodDef = delegateType->mTypeDef->mMethods[0];
+		hashVal = ((hashVal ^ (Hash(delegateInfo->mReturnType, ctx))) << 5) - hashVal;
+
+		auto methodDef = typeInst->mTypeDef->mMethods[0];
 		BF_ASSERT(methodDef->mName == "Invoke");
-		BF_ASSERT(delegateType->mParams.size() == methodDef->mParams.size());
+		BF_ASSERT(delegateInfo->mParams.size() == methodDef->mParams.size());
 
-		for (int paramIdx = 0; paramIdx < delegateType->mParams.size(); paramIdx++)
+		for (int paramIdx = 0; paramIdx < delegateInfo->mParams.size(); paramIdx++)
 		{
 			// Parse attributes?			
-			hashVal = ((hashVal ^ (Hash(delegateType->mParams[paramIdx], ctx))) << 5) - hashVal;
+			hashVal = ((hashVal ^ (Hash(delegateInfo->mParams[paramIdx], ctx))) << 5) - hashVal;
 			String paramName = methodDef->mParams[paramIdx]->mName;
 			int nameHash = (int)Hash64(paramName.c_str(), (int)paramName.length());
 			hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
@@ -2313,61 +2325,28 @@ static int HashNode(BfAstNode* node)
 	return (int)Hash64(nameStr, node->GetSrcLength());
 }
 
+int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags)
+{
+	bool isHeadType = typeRef == ctx->mRootTypeRef;
+
+	BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None;
+	if ((flags & BfHashFlag_AllowGenericParamConstValue) != 0)
+		resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowGenericParamConstValue);
+
+	auto resolvedType = ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, resolveFlags);
+	if (resolvedType == NULL)
+	{
+		ctx->mFailed = true;
+		return 0;
+	}
+	return Hash(resolvedType, ctx);
+}
+
 int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags)
 {
-// 	if (auto typeDefTypeRef = BfNodeDynCast<BfTypeDefTypeReference>(typeRef))
-// 	{
-// 		if (typeDefTypeRef->mTypeDef != NULL)
-// 		{
-// 			int hashVal = typeDefTypeRef->mTypeDef->mHash;
-// 
-// 			if (typeDefTypeRef->mTypeDef->mGenericParamDefs.size() != 0)
-// 			{	
-// 				auto checkTypeInstance = ctx->mModule->mCurTypeInstance;
-// 				if (checkTypeInstance->IsBoxed())
-// 					checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
-// 
-// 				//if (!module->TypeHasParent(module->mCurTypeInstance->mTypeDef, typeDefTypeRef->mTypeDef->mParentType))
-// 				auto outerType = ctx->mModule->mSystem->GetOuterTypeNonPartial(typeDefTypeRef->mTypeDef);
-// 				BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
-// 				//BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->GetActiveTypeDef(), typeDefTypeRef->mTypeDef->mOuterType);
-// 				if ((commonOuterType == NULL) || (commonOuterType->mGenericParamDefs.size() == 0))
-// 				{
-// 					ctx->mModule->Fail("Generic arguments expected", typeDefTypeRef);
-// 					ctx->mFailed = true;
-// 					return 0;
-// 				}
-// 
-// 				BF_ASSERT(checkTypeInstance->IsGenericTypeInstance());
-// 				auto curGenericTypeInst = (BfGenericTypeInstance*)checkTypeInstance;
-// 				//int numParentGenericParams = (int)typeDefTypeRef->mTypeDef->mGenericParams.size();				
-// 				int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
-// 				for (int i = 0; i < numParentGenericParams; i++)
-// 				{
-// 					hashVal = ((hashVal ^ (Hash(curGenericTypeInst->mTypeGenericArguments[i], ctx))) << 5) - hashVal;
-// 				}
-// 			}
-// 
-// 			return hashVal;
-// 		}
-// 		
-// 		bool isHeadType = typeRef == ctx->mRootTypeRef;
-// 
-// 		BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None;
-// 		if ((flags & BfHashFlag_AllowGenericParamConstValue) != 0)
-// 			resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowGenericParamConstValue);
-// 
-// 		auto resolvedType = ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, resolveFlags);
-// 		if (resolvedType == NULL)
-// 		{
-// 			ctx->mFailed = true;
-// 			return 0;
-// 		}		
-// 		return Hash(resolvedType, ctx);
-// 	}
-
-	if ((typeRef == ctx->mRootTypeRef) && (ctx->mRootTypeDef != NULL))
-	{
+	if ((typeRef == ctx->mRootTypeRef) && (ctx->mRootTypeDef != NULL) &&
+		((typeRef->IsNamedTypeReference()) || (BfNodeIsA<BfDirectTypeDefReference>(typeRef))))
+	{		
 		BfTypeDef* typeDef = ctx->mRootTypeDef;
 	
 		int hashVal = typeDef->mHash;
@@ -2401,24 +2380,48 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 
 	if (typeRef->IsNamedTypeReference())
 	{
-		bool isHeadType = typeRef == ctx->mRootTypeRef;
-		 
-		BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None;
-		if ((flags & BfHashFlag_AllowGenericParamConstValue) != 0)
-		 	resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowGenericParamConstValue);
-		 
-		auto resolvedType = ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, resolveFlags);
-		if (resolvedType == NULL)
-		{
-		 	ctx->mFailed = true;
-		 	return 0;
-		}		
-		return Hash(resolvedType, ctx);
+		return DirectHash(typeRef, ctx, flags);
 	}
 	else if (auto genericInstTypeRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(typeRef))
 	{
 		//BfType* type = NULL;
 		BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(genericInstTypeRef);
+
+		if (elementTypeDef == NULL)
+		{
+			ctx->mFailed = true;
+			return 0;
+		}
+
+		// Don't translate aliases for the root type, just element types
+		if (ctx->mRootTypeRef == typeRef)
+		{
+			BF_ASSERT((ctx->mRootTypeDef == NULL) || (ctx->mRootTypeDef == elementTypeDef));
+			ctx->mRootTypeDef = elementTypeDef;
+		}
+		else if (elementTypeDef->mTypeCode == BfTypeCode_TypeAlias)
+		{			
+			BfTypeVector genericArgs;
+			for (auto genericArgTypeRef : genericInstTypeRef->mGenericArguments)
+			{
+				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, BfPopulateType_Identity);
+				if (argType != NULL)
+					genericArgs.Add(argType);
+				else
+					ctx->mFailed = true;				
+			}
+
+			if (!ctx->mFailed)
+			{
+				auto resolvedType = ctx->mModule->ResolveTypeDef(elementTypeDef, genericArgs);
+				if ((resolvedType != NULL) && (resolvedType->IsTypeAlias()))
+				{
+					auto underlyingType = resolvedType->GetUnderlyingType();
+					return Hash(underlyingType, ctx, flags);
+				}
+			}
+		}
+
 		int hashVal;
 		/*if (type != NULL)
 		{
@@ -2426,17 +2429,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		}
 		else */
 		{
-			if (elementTypeDef == NULL)
-			{
-				ctx->mFailed = true;
-				return 0;
-			}
-
-			if (ctx->mRootTypeRef == typeRef)
-			{
-				BF_ASSERT((ctx->mRootTypeDef == NULL) || (ctx->mRootTypeDef == elementTypeDef));
-				ctx->mRootTypeDef = elementTypeDef;
-			}
+			
 
 			hashVal = elementTypeDef->mHash;
 		}
@@ -2810,22 +2803,22 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			if (!rhs->IsDelegateFromTypeRef() && !rhs->IsFunctionFromTypeRef())
 				return false;
 			if (lhs->IsDelegate() != rhs->IsDelegate())
-				return false;
-			BfDelegateType* lhsDelegateType = (BfDelegateType*)lhs;
-			BfDelegateType* rhsDelegateType = (BfDelegateType*)rhs;
-			if (lhsDelegateType->mTypeDef->mIsDelegate != rhsDelegateType->mTypeDef->mIsDelegate)
+				return false;			
+			BfDelegateInfo* lhsDelegateInfo = lhs->GetDelegateInfo();
+			BfDelegateInfo* rhsDelegateInfo = rhs->GetDelegateInfo();
+			if (lhsInst->mTypeDef->mIsDelegate != rhsInst->mTypeDef->mIsDelegate)
 				return false;
 
-			auto lhsMethodDef = lhsDelegateType->mTypeDef->mMethods[0];
-			auto rhsMethodDef = rhsDelegateType->mTypeDef->mMethods[0];
+			auto lhsMethodDef = lhsInst->mTypeDef->mMethods[0];
+			auto rhsMethodDef = rhsInst->mTypeDef->mMethods[0];
 
-			if (lhsDelegateType->mReturnType != rhsDelegateType->mReturnType)
+			if (lhsDelegateInfo->mReturnType != rhsDelegateInfo->mReturnType)
 				return false;
-			if (lhsDelegateType->mParams.size() != rhsDelegateType->mParams.size())
+			if (lhsDelegateInfo->mParams.size() != rhsDelegateInfo->mParams.size())
 				return false;
-			for (int paramIdx = 0; paramIdx < lhsDelegateType->mParams.size(); paramIdx++)
+			for (int paramIdx = 0; paramIdx < lhsDelegateInfo->mParams.size(); paramIdx++)
 			{
-				if (lhsDelegateType->mParams[paramIdx] != rhsDelegateType->mParams[paramIdx])
+				if (lhsDelegateInfo->mParams[paramIdx] != rhsDelegateInfo->mParams[paramIdx])
 					return false;
 				if (lhsMethodDef->mParams[paramIdx]->mName != rhsMethodDef->mParams[paramIdx]->mName)
 					return false;
@@ -3104,8 +3097,11 @@ BfType* BfResolvedTypeSet::LookupContext::ResolveTypeRef(BfTypeReference* typeRe
 	return mModule->ResolveTypeRef(typeReference, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
 }
 
-BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* typeReference)
+BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* typeReference, BfType** outType)
 {
+	if (outType != NULL)
+		*outType = NULL;
+
 	if (typeReference == mRootTypeRef)
 		return mRootTypeDef;
 
@@ -3114,9 +3110,11 @@ BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* t
 		return typeDefTypeRef->mTypeDef;
 	}
 
-	auto type = mModule->ResolveTypeRef(typeReference, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
+	auto type = mModule->ResolveTypeRef(typeReference, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);	
 	if (type == NULL)
 		return NULL;
+	if (outType != NULL)
+		*outType = type;
 	if (type->IsPrimitiveType())
 		return ((BfPrimitiveType*)type)->mTypeDef;
 	auto typeInst = type->ToTypeInstance();
@@ -3125,9 +3123,26 @@ BfTypeDef* BfResolvedTypeSet::LookupContext::ResolveToTypeDef(BfTypeReference* t
 	return typeInst->mTypeDef;
 }
 
-bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx)
+bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx)
+{	
+	auto rhsType = ctx->mModule->ResolveTypeDef(rhsTypeDef, BfPopulateType_Identity);
+	if (rhsType == NULL)
+	{
+		ctx->mFailed = true;
+		return false;
+	}
+
+	return BfResolvedTypeSet::Equals(lhs, rhsType, ctx);
+}
+
+bool BfResolvedTypeSet::EqualsNoAlias(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx)
 {
 	//BP_ZONE("BfResolvedTypeSet::Equals");
+	
+// 	if ((rhs == ctx->mRootTypeRef) && (ctx->mRootTypeDef != NULL) && (ctx->mRootTypeDef->mTypeCode == BfTypeCode_TypeAlias))
+// 	{
+// 		return lhs == ctx->mResolvedType;
+// 	}
 
 	if (ctx->mRootTypeRef != rhs)
 	{
@@ -3138,7 +3153,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		}
 	}
 
-	if (rhs->IsNamedTypeReference())
+ 	if (rhs->IsNamedTypeReference())
 	{
 		if ((ctx->mRootTypeRef != rhs) || (ctx->mRootTypeDef == NULL))
 		{
@@ -3198,9 +3213,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		auto rhsDelegateType = BfNodeDynCastExact<BfDelegateTypeRef>(rhs);
 		if (rhsDelegateType == NULL)
 			return false;		
-		BfDelegateType* lhsDelegateType = (BfDelegateType*)lhs;		
+		BfDelegateInfo* lhsDelegateType = lhs->GetDelegateInfo();		
 
-		BfMethodInstance* lhsInvokeMethodInstance = ctx->mModule->GetRawMethodInstanceAtIdx(lhsDelegateType->ToTypeInstance(), 0, "Invoke");
+		BfMethodInstance* lhsInvokeMethodInstance = ctx->mModule->GetRawMethodInstanceAtIdx(lhs->ToTypeInstance(), 0, "Invoke");
 		
 		if ((lhs->IsDelegate()) != (rhsDelegateType->mTypeToken->GetToken() == BfToken_Delegate))
 			return false;
@@ -3227,9 +3242,13 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		
 		if (lhs->IsGenericTypeInstance())
 		{
-			auto rhsTypeDef = ctx->ResolveToTypeDef(rhs);
-			if (rhsTypeDef == NULL)
-				return false;
+			BfType* rhsType = NULL;
+ 			auto rhsTypeDef = ctx->ResolveToTypeDef(rhs, &rhsType);
+ 			if (rhsTypeDef == NULL)
+ 				return false;
+
+			if (rhsType != NULL)
+				return lhs == rhsType;
 
 			BfGenericTypeInstance* lhsGenericType = (BfGenericTypeInstance*) lhs;
 			return GenericTypeEquals(lhsGenericType, &lhsGenericType->mTypeGenericArguments, rhs, rhsTypeDef, ctx);
@@ -3329,6 +3348,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 		BfPrimitiveType* lhsPrimType = (BfPrimitiveType*)lhs;				
 		auto rhsTypeDef = ctx->ResolveToTypeDef(rhs);		
+// 		if (rhsTypeDef->mTypeCode == BfTypeCode_TypeAlias)		
+// 			return Equals(lhs, rhs, rhsTypeDef, ctx);		
 		return lhsPrimType->mTypeDef == rhsTypeDef;
 	}
 	else if (lhs->IsPointer())
@@ -3479,6 +3500,22 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 	{
 		BF_FATAL("Not handled");
 	}	
+
+	return false;
+}
+
+bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx)
+{
+	if (EqualsNoAlias(lhs, rhs, ctx))
+		return true;
+
+// 	if (lhs->IsTypeAlias())
+// 	{
+// 		auto underylingType = lhs->GetUnderlyingType();
+// 		BF_ASSERT(underylingType != NULL);
+// 		if (underylingType != NULL)
+// 			return Equals(underylingType, rhs, ctx);
+// 	}
 
 	return false;
 }
@@ -3833,7 +3870,7 @@ String BfTypeUtils::TypeToString(BfTypeReference* typeRef)
 		return name;
 	}
 
-	BF_DBG_FATAL("Not implemented");
+	//BF_DBG_FATAL("Not implemented");
 	return typeRef->ToString();
 }
 

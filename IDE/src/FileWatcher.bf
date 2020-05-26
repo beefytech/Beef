@@ -614,9 +614,29 @@ namespace IDE
 		{
 			using (mMonitor.Enter())
 			{
-				mChangeList.Add(changeRecord);
-				bool added = mChangeMap.TryAdd(changeRecord.mPath, changeRecord);
-				Debug.Assert(added);
+				bool added = mChangeMap.TryAdd(changeRecord.mPath, var keyPtr, var valuePtr);
+				if (added)
+				{
+					*keyPtr = changeRecord.mPath;
+					*valuePtr = changeRecord;
+					mChangeList.Add(changeRecord);
+				}
+				else
+				{
+					delete changeRecord;
+				}
+			}
+		}
+
+		public void RemoveChangedFile(String str)
+		{
+			using (mMonitor.Enter())
+			{
+				if (mChangeMap.GetAndRemove(str) case .Ok(let kv))
+				{
+					mChangeList.Remove(kv.value);
+					delete kv.value;
+				}
 			}
 		}
 

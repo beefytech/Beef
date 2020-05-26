@@ -2407,7 +2407,7 @@ void BfParser::NextToken(int endIdx)
 							val = -val;
 
 						if ((numberBase == 0x10) &&
-							((hexDigits == 16) || ((hadSeps) && (hexDigits > 8)) || ((hadLeadingHexSep) && (hexDigits == 8))))
+							((hexDigits >= 16) || ((hadSeps) && (hexDigits > 8)) || ((hadLeadingHexSep) && (hexDigits == 8))))
 						{
 							if (hexDigits > 16)
 								mPassInstance->FailAt("Too many hex digits for int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
@@ -2516,8 +2516,11 @@ void BfParser::NextToken(int endIdx)
 						if (val != 0)
 							signMatched = (val < 0) == wasNeg;
 
-						if (hexDigits > 16)
-							mPassInstance->FailAt("Too many hex digits for int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
+						if (numberBase == 0x10)
+						{
+							if (hexDigits > 16)
+								mPassInstance->FailAt("Too many hex digits for int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
+						}
 						else if ((hadOverflow) || (!signMatched))
 							mPassInstance->FailAt("Value doesn't fit into int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 						mSyntaxToken = BfSyntaxToken_Literal;

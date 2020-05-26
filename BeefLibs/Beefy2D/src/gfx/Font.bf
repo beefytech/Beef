@@ -54,6 +54,7 @@ namespace Beefy.gfx
 		static extern int32 FTFont_GetKerning(FTFont* font, int32 char8CodeA, int32 char8CodeB);
 
 		static Dictionary<String, String> sFontNameMap ~ DeleteDictionaryAndKeysAndItems!(_);
+		static Dictionary<String, String> sFontFailMap ~ DeleteDictionaryAndKeysAndItems!(_);
 		static Monitor sMonitor = new .() ~ delete _;
 
 		struct FTFont
@@ -205,6 +206,29 @@ namespace Beefy.gfx
 			}
 		}
 
+		public static void AddFontFailEntry(StringView mapFrom, StringView mapTo)
+		{
+			using (sMonitor.Enter())
+			{
+				if (sFontFailMap == null)
+					sFontFailMap = new .();
+
+				String str = new String(mapFrom);
+				str.ToUpper();
+				bool added = sFontFailMap.TryAdd(str, var keyPtr, var valuePtr);
+				if (added)
+				{
+					*keyPtr = str;
+					*valuePtr = new String(mapTo);
+				}
+				else
+				{
+					delete str;
+					(*valuePtr).Set(mapTo);
+				}
+			}
+		}
+
 		public void Dispose(bool cacheRetain)
 		{
 			if (mFTFont != null)
@@ -331,18 +355,28 @@ namespace Beefy.gfx
 				{
 					if (sFontNameMap == null)
 						BuildFontNameCache();
-#if BF_PLATFORM_WINDOWS
-					let lookupStr = scope String(fontName)..ToUpper();
 					String pathStr;
+					let lookupStr = scope String(fontName)..ToUpper();
+#if BF_PLATFORM_WINDOWS
 					if (sFontNameMap.TryGetValue(lookupStr, out pathStr))
 					{
-						char8[256] windowsDir;
-						Windows.GetWindowsDirectoryA(&windowsDir, 256);
-						path.Append(&windowsDir);
-						path.Append(@"\Fonts\");
+						if (!pathStr.Contains(':'))
+						{
+							char8[256] windowsDir;
+							Windows.GetWindowsDirectoryA(&windowsDir, 256);
+							path.Append(&windowsDir);
+							path.Append(@"\Fonts\");
+						}
+
 						path.Append(pathStr);
+						return;
 					}
 #endif
+					if ((sFontFailMap != null) && (sFontFailMap.TryGetValue(lookupStr, out pathStr)))
+					{
+						path.Append(pathStr);
+						return;
+					}
 				}
 			}
 		}
@@ -358,6 +392,7 @@ namespace Beefy.gfx
 			float usePointSize = pointSize;
 			mPath = new String();
 			GetFontPath(fontName, mPath);
+
 			if (mPath.IsEmpty)
 				return false;
 

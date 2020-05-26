@@ -5,18 +5,55 @@ using System.Diagnostics;
 using System.Threading;
 using System.Collections;
 
+namespace SDL
+{
+	struct SDL_Cursor
+	{
+		int mA;
+	}
+}
+
+struct ImGui
+{
+	public enum MouseCursor
+	{
+		A,
+		B,
+		C,
+		D,
+		COUNT
+	}
+}
 
 struct Blurg
 {
+	//private static SDL.SDL_Cursor*[(.)ImGui.MouseCursor.COUNT] g_MouseCursors = .(null,);
 
-	
+	private static SDL.SDL_Cursor*[(.)ImGui.MouseCursor.COUNT] g_MouseCursors = .(null,);
+
 	public static void Hey()
 	{
-		String str = new String();
-		delete str;
+		let cur = new SDL.SDL_Cursor();
 
-		//Internal.Malloc(123);
-		Internal.StdMalloc(123);
+		g_MouseCursors[0] = cur;
+		g_MouseCursors[1] = cur;
+		g_MouseCursors[2] = cur;
 	}
 
+}
+
+
+class TestClass
+{
+	public void GetIt(ref TestClass tc)
+	{
+
+	}
+
+	public this()
+	{
+		/*let a = &this;
+
+		GetIt(ref this);*/
+	}
 }

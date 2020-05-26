@@ -1173,7 +1173,7 @@ namespace IDE.ui
 			            if ((sourceViewPanel != null) && (sourceViewPanel.mProjectSource == projectSource))
 			            {
 							if (isRemovingProjectSource)
-			                	sourceViewPanel.DetachFromProjectItem();
+			                	sourceViewPanel.DetachFromProjectItem(true);
 							else
 								sourceViewPanel.QueueFullRefresh(true);
 			            }
@@ -1217,7 +1217,7 @@ namespace IDE.ui
 							 (sourceViewPanel.mProjectSource != null) &&
 							 (sourceViewPanel.mProjectSource.mProject == project))
 					    {
-					        sourceViewPanel.DetachFromProjectItem();
+					        sourceViewPanel.DetachFromProjectItem(true);
 					    }
 					});
 
@@ -1228,7 +1228,7 @@ namespace IDE.ui
             if (listItem.mChildItems != null)
             {
 				for (int childIdx = listItem.mChildItems.Count - 1; childIdx >= 0; childIdx--)
-                    DoDeleteItem(listItem.mChildItems[childIdx], deletePathFunc);
+                    DoDeleteItem(listItem.mChildItems[childIdx], deletePathFunc, true);
             }
 			
             if (projectItem == null)

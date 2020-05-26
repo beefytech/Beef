@@ -313,7 +313,7 @@ namespace Beefy.widgets
                 else
                 {
                     // Create new tabbed view to put this in
-                    TabbedView tabbedView = ThemeFactory.mDefault.CreateTabbedView(mTabbedView.mSharedData);
+                    TabbedView tabbedView = mTabbedView.CreateTabbedView(mTabbedView.mSharedData);
 					//tabbedView.mSharedData = mTabbedView.mSharedData.Ref();					
                     //tabbedView.mSharedData.mOpenNewWindowDelegate = mTabbedView.mSharedData.mOpenNewWindowDelegate;
                     tabbedView.SetRequestedSize(mTabbedView.mWidth, mTabbedView.mHeight);
@@ -383,6 +383,11 @@ namespace Beefy.widgets
 		{
 			for (var tab in mTabs)
 				Widget.RemoveAndDelete(tab);
+		}
+
+		public virtual TabbedView CreateTabbedView(TabbedView.SharedData sharedData)
+		{
+			return ThemeFactory.mDefault.CreateTabbedView(sharedData);
 		}
 
 		public void Closed()

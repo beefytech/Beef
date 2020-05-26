@@ -3517,11 +3517,15 @@ void BfModule::Visit(BfUncheckedStatement* uncheckedStmt)
 
 void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool includeFalseStmt)
 {
+	auto autoComplete = mCompiler->GetAutoComplete();
+	if (autoComplete != NULL)
+		autoComplete->CheckIdentifier(ifStmt->mIfToken, true);
+
 	if (ifStmt->mCondition == NULL)
 	{
 		AssertErrorState();
 		return;
-	}
+	}	
 
 	//TODO: Only conditionally create the scopeData here if we create a variable inside the condition statement
 
@@ -3763,6 +3767,10 @@ void BfModule::Visit(BfThrowStatement* throwStmt)
 void BfModule::Visit(BfDeleteStatement* deleteStmt)
 {	
 	UpdateSrcPos(deleteStmt);
+
+	auto autoComplete = mCompiler->GetAutoComplete();
+	if (autoComplete != NULL)
+		autoComplete->CheckIdentifier(deleteStmt->mDeleteToken, true);
 
 	bool isAppendDelete = false;
 	BfTypedValue customAllocator;
@@ -5463,6 +5471,10 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 
 void BfModule::Visit(BfForStatement* forStmt)
 {
+	auto autoComplete = mCompiler->GetAutoComplete();
+	if (autoComplete != NULL)
+		autoComplete->CheckIdentifier(forStmt->mForToken, true);
+
 	UpdateSrcPos(forStmt);
 
 	auto startBB = mBfIRBuilder->CreateBlock("for.start", true);
