@@ -102,7 +102,7 @@ public:
 
 	virtual BfParser* ToParser() { return NULL; }	
 	
-	BfErrorNode* BfSource::CreateErrorNode(BfAstNode* astNode);
+	BfErrorNode* CreateErrorNode(BfAstNode* astNode);
 	void AddErrorNode(BfAstNode* astNode);	
 	int AllocChars(int charCount);	
 	void FinishSideNodes();
