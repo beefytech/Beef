@@ -53,7 +53,6 @@ namespace System.Collections
 		{
 			Debug.Assert((uint)capacity <= (uint)SizeFlags);
 			T* items = append T[capacity]* (?);
-			mItems = items;
 			mHead = 0;
 			mTail = 0;
 			mSize = 0;
@@ -123,12 +122,12 @@ namespace System.Collections
 			get { return mSize; }
 		}
 
-		protected T* Alloc(int size)
+		protected virtual T* Alloc(int size)
 		{
 			return Internal.AllocRawArrayUnmarked<T>(size);
 		}
 
-		protected void Free(T* val)
+		protected virtual void Free(T* val)
 		{
 			delete (void*)val;
 		}
