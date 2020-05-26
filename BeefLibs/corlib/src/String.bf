@@ -1277,6 +1277,32 @@ namespace System
 			return -1;
 		}
 
+		public int IndexOfAny(char8[] targets)
+		{
+			return IndexOfAny(targets, 0, mLength);
+		}
+
+		public int IndexOfAny(char8[] targets, int startIdx)
+		{
+			return IndexOfAny(targets, startIdx, mLength - startIdx);
+		}
+
+		public int IndexOfAny(char8[] targets, int startIdx, int count)
+		{
+			let ptr = Ptr;
+			for (var i = startIdx; i < count; i++)
+			{
+				let ch = ptr[i];
+				for (let tag in targets)
+				{
+					if (ch == tag)
+						return i;
+				}
+			}
+
+			return -1;
+		}
+
 		public bool Contains(String str)
 		{
 			return IndexOf(str) != -1;
@@ -2919,6 +2945,32 @@ namespace System
 			for (int i = startCheck; i >= 0; i--)
 				if (ptr[i] == c)
 					return i;
+			return -1;
+		}
+
+		public int IndexOfAny(char8[] targets)
+		{
+			return IndexOfAny(targets, 0, mLength);
+		}
+
+		public int IndexOfAny(char8[] targets, int startIdx)
+		{
+			return IndexOfAny(targets, startIdx, mLength - startIdx);
+		}
+
+		public int IndexOfAny(char8[] targets, int startIdx, int count)
+		{
+			let ptr = mPtr;
+			for (var i = startIdx; i < count; i++)
+			{
+				let ch = ptr[i];
+				for (let tag in targets)
+				{
+					if (ch == tag)
+						return i;
+				}
+			}
+
 			return -1;
 		}
 
