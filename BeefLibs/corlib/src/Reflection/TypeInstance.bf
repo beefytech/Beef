@@ -25,6 +25,8 @@ namespace System
 				{
 					if (matched.[Friend]mMethodData != null)
 						return .Err(.MultipleResults);
+					else
+					        matched = methodInfo;
 				}
 			}
 
