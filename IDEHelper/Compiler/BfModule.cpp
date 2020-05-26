@@ -12153,7 +12153,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 	{
 		// Just fake it for the extern and unspecialized modules
 		auto ptrType = CreatePointerType(fieldInstance->GetResolvedType());
-		return BfTypedValue(GetDefaultValue(ptrType), fieldInstance->GetResolvedType(), true);
+		return BfTypedValue(mBfIRBuilder->GetFakeVal(), fieldInstance->GetResolvedType(), true);
 	}
 	
 	BfIRValue globalValue;
