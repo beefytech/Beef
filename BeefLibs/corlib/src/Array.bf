@@ -116,6 +116,14 @@ namespace System
 				arr[i] = default(T);
 		}
 
+		public static void Copy<T, T2>(T[] sourceArray, T2[] destinationArray, int length) where T : var where T2 : var
+		{
+			Debug.Assert(sourceArray != null);
+			Debug.Assert(destinationArray != null);
+
+		    Copy(sourceArray, 0, destinationArray, 0, length);
+		}
+
 		public static void Copy<T, T2>(T[] arrayFrom, int srcOffset, T2[] arrayTo, int dstOffset, int length) where T : var where T2 : var
 		{
 			if (((Object)arrayTo == (Object)arrayFrom) && (dstOffset > srcOffset))
