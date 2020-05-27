@@ -1254,11 +1254,11 @@ void BfPassInstance::MessageAt(const StringImpl& msgPrefix, const StringImpl& er
 	
 	if (isFullUnderline)
 	{
-		isFullUnderline = true;
-		for (int i = srcIdx; i < srcIdx + srcLen; VisibleAdvance(bfParser->mSrc, bfParser->mSrcLength, i))
+		isFullUnderline = false;
+		for (int i = srcIdx; i <= srcIdx + srcLen; VisibleAdvance(bfParser->mSrc, bfParser->mSrcLength, i))
 		{
 			char c = bfParser->mSrc[i];
-			if (c == '\n')
+			if ((c == '\n') || (c == '\0'))
 			{
 				isFullUnderline = true;
 				break;

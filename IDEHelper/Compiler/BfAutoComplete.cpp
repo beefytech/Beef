@@ -1546,8 +1546,10 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 				
 				auto _HandleGenericParamInstance = [&](BfGenericParamInstance* genericParamInstance)
 				{
+					bool showStatics = !targetValue.mValue;
+
 					for (auto interfaceConstraint : genericParamInstance->mInterfaceConstraints)
-						AddTypeMembers(interfaceConstraint, false, true, filter, interfaceConstraint, true, false);
+						AddTypeMembers(interfaceConstraint, showStatics, !showStatics, filter, interfaceConstraint, true, false);
 
 					if (genericParamInstance->mTypeConstraint != NULL)
 						checkType = genericParamInstance->mTypeConstraint;
@@ -1928,15 +1930,19 @@ void BfAutoComplete::CheckNode(BfAstNode* node)
 
 bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* showString, StringImpl* insertString, bool isImplementing, bool isExplicitInterface)
 {
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mModule->mCurMethodInstance, methodInst);
+
 	auto methodDef = methodInst->mMethodDef;
 	bool isInterface = methodInst->GetOwner()->IsInterface();
+
+	BfTypeNameFlags nameFlags = (BfTypeNameFlags)(BfTypeNameFlag_ReduceName | BfTypeNameFlag_ResolveGenericParamNames);
 
 	if (methodDef->mMethodType == BfMethodType_Normal)
 	{
 		StringT<128> methodPrefix;
 		StringT<128> methodName;
-		StringT<256> impString;
-		
+		StringT<256> impString;				
+
 		bool isAbstract = methodDef->mIsAbstract || isInterface;// (methodDef->mIsAbstract) && (!isInterface);
 
 		if (isAbstract)
@@ -1965,15 +1971,33 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			methodPrefix += methodDeclaration->mProtectionSpecifier->ToString() + " ";
 		if (!isInterface)
 			methodPrefix += "override ";
-		methodPrefix += mModule->TypeToString(methodInst->mReturnType, BfTypeNameFlag_ReduceName);
+		if (methodDef->mIsStatic)
+			methodPrefix += "static ";
+
+		methodPrefix += mModule->TypeToString(methodInst->mReturnType, nameFlags);
 		methodPrefix += " ";
 		if (isExplicitInterface)
 		{
-			methodName += mModule->TypeToString(methodInst->GetOwner(), BfTypeNameFlag_ReduceName);
+			methodName += mModule->TypeToString(methodInst->GetOwner(), nameFlags);
 			methodName += ".";
 		}
 
 		methodName += methodDef->mName;
+
+		if (methodInst->GetNumGenericArguments() > 0)
+		{
+			methodName += "<";
+			for (int genericArgIdx = 0; genericArgIdx < (int)methodInst->mMethodInfoEx->mGenericParams.size(); genericArgIdx++)
+			{
+				if (genericArgIdx > 0)
+					methodName += ", ";
+
+				auto genericParam = methodInst->mMethodInfoEx->mGenericParams[genericArgIdx];
+				methodName += genericParam->GetName();
+			}
+			methodName += ">";
+		}
+
 		methodName += "(";
 		for (int paramIdx = 0; paramIdx < (int)methodInst->GetParamCount(); paramIdx++)
 		{
@@ -1983,7 +2007,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 				if (!isAbstract)
 					impString += ", ";
 			}
-			methodName += mModule->TypeToString(methodInst->GetParamType(paramIdx), BfTypeNameFlag_ReduceName);
+			methodName += mModule->TypeToString(methodInst->GetParamType(paramIdx), nameFlags);
 			methodName += " ";
 			methodName += methodDef->mParams[paramIdx]->mName;
 
@@ -1998,6 +2022,33 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 				impString += methodDef->mParams[paramIdx]->mName;
 		}
 		methodName += ")";
+
+		if (methodInst->GetNumGenericArguments() > 0)
+		{			
+			for (int genericArgIdx = 0; genericArgIdx < (int)methodInst->mMethodInfoEx->mGenericParams.size(); genericArgIdx++)
+			{				
+				auto genericParam = methodInst->mMethodInfoEx->mGenericParams[genericArgIdx];
+		
+				if (genericParam->mTypeConstraint != NULL)				
+					methodName += " where " + genericParam->GetName() + " : " + mModule->TypeToString(genericParam->mTypeConstraint, nameFlags);
+				
+				for (auto ifaceConstraint : genericParam->mInterfaceConstraints)
+					methodName += " where " + genericParam->GetName() + " : " + mModule->TypeToString(ifaceConstraint, nameFlags);
+
+				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Class) != 0)
+					methodName += " where " + genericParam->GetName() + " : class";
+				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Struct) != 0)
+					methodName += " where " + genericParam->GetName() + " : struct";
+				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_StructPtr) != 0)
+					methodName += " where " + genericParam->GetName() + " : struct*";
+				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_New) != 0)
+					methodName += " where " + genericParam->GetName() + " : new";
+				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Delete) != 0)
+					methodName += " where " + genericParam->GetName() + " : delete";
+				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+					methodName += " where " + genericParam->GetName() + " : var";				
+			}			
+		}
 
 		if (!isAbstract)
 			impString += ");";
@@ -2037,11 +2088,11 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			BfType* propType = methodInst->mReturnType;
 			if (methodDef->mMethodType == BfMethodType_PropertySetter)
 				propType = methodInst->GetParamType(0);
-			impl += mModule->TypeToString(propType, BfTypeNameFlag_ReduceName);
+			impl += mModule->TypeToString(propType, nameFlags);
 			impl += " ";
 			if (isExplicitInterface)
 			{
-				impl += mModule->TypeToString(methodInst->GetOwner(), BfTypeNameFlag_ReduceName);
+				impl += mModule->TypeToString(methodInst->GetOwner(), nameFlags);
 				impl += ".";
 			}
 
@@ -2589,9 +2640,6 @@ void BfAutoComplete::CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 			if (ifaceMethodInst == NULL)
 				continue;
 
-			// Don't even try to match generics
-			if (!ifaceMethodInst->mMethodDef->mGenericParams.IsEmpty())
-				continue;
 			auto iReturnType = ifaceMethodInst->mReturnType;
 			if (iReturnType->IsSelf())
 				iReturnType = typeInstance;

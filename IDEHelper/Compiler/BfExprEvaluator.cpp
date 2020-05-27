@@ -1527,20 +1527,11 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				goto NoMatch;
 			}
 
-// 			if (genericArg->IsPrimitiveType())
-// 			{
-// 				auto primType = (BfPrimitiveType*) genericArg;
-// 				genericArg = mModule->GetPrimitiveStructType(primType->mTypeDef->mTypeCode);
-// 			}
-
 			if (genericArg == NULL)
 				goto NoMatch;
-
-			//SetAndRestoreValue<bool> ignoreError(mModule->mIgnoreErrors, true);
-			if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, NULL, genericParams[checkGenericIdx], genericArgumentsSubstitute, NULL))
-			{				
-				goto NoMatch;
-			}
+			
+			if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, NULL, genericParams[checkGenericIdx], genericArgumentsSubstitute, NULL))			
+				goto NoMatch;			
 		}
 	}
 
@@ -1894,7 +1885,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 }
 
 void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* origTarget, BfTypedValue* staticResult)
-{		
+{
 	if ((mBestMethodDef == NULL) || (target.mType == NULL))
 		return;
 
@@ -1903,6 +1894,11 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 
 	if (mModule->mBfIRBuilder->mIgnoreWrites)
 		return;
+
+	if (mBestMethodDef->mName == "Quab")
+	{
+		NOP;
+	}
 
 	if (mBestMethodTypeInstance->IsInterface())
 	{
@@ -5680,10 +5676,22 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					{
 						// Allow a base call to be defined
 					}
+					else if ((methodInstance->IsSpecializedGenericMethod()) && (origTarget) && (!origTarget.mType->IsInterface()))
+					{
+						if (!mModule->mBfIRBuilder->mIgnoreWrites)
+							mModule->AssertErrorState();
+					}
 					else if ((!mModule->mCurMethodInstance->mIsUnspecialized))
 					{
 						// Compiler error?
-						mModule->Fail(StrFormat("Unable to dynamically dispatch '%s'", mModule->MethodToString(methodInstance).c_str()), targetSrc);
+
+						String errorString = "Unable to dynamically dispatch '%s'";
+						if (methodInstance->IsSpecializedGenericMethod())
+							errorString = "Unable to dynamically dispatch '%s' because generic methods can only be directly dispatched";
+						if (methodInstance->mReturnType->IsConcreteInterfaceType())
+							errorString = "Unable to dynamically dispatch '%s' because the concrete return type is unknown";
+						
+						mModule->Fail(StrFormat(errorString.c_str(), mModule->MethodToString(methodInstance).c_str()), targetSrc);
 					}
 
 					//BF_ASSERT(mModule->mCurMethodInstance->mIsUnspecialized);
@@ -6599,7 +6607,12 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		if (lookupTypeInst != NULL)
 			methodMatcher.CheckType(lookupTypeInst, target, true);		
 	}
-	
+
+	if ((methodMatcher.mBestMethodDef != NULL) && (methodMatcher.mBestMethodDef->mName == "Zorf"))
+	{
+		NOP;
+	}
+
 	BfTypedValue staticResult;
 	methodMatcher.TryDevirtualizeCall(target, &origTarget, &staticResult);
 	if (staticResult)
@@ -7055,6 +7068,11 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	else
 		MakeBaseConcrete(target);
 
+	if ((moduleMethodInstance.mMethodInstance->mMethodDef->mName == "GetVal") && (targetTypeInst != NULL) && (mModule->mCurTypeInstance->mTypeDef->mName->ToString() == "ClassD"))
+	{
+		NOP;
+	}
+
 	BfTypedValue callTarget;
 	if (isSkipCall)
 	{
@@ -7070,6 +7088,13 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 		else
 			callTarget = target;
+
+		if ((callTarget) && (moduleMethodInstance.mMethodInstance->GetOwner()->IsInterface()))
+		{
+			auto wantThis = moduleMethodInstance.mMethodInstance->GetParamType(-1);			
+			if ((callTarget.mType != wantThis) && (wantThis->IsInterface()))
+				callTarget = mModule->Cast(targetSrc, callTarget, wantThis, BfCastFlags_Explicit);
+		}
 	}
 	else if (target)
 	{
@@ -17776,7 +17801,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		// If one of these is a constant that can be converted into a smaller type, then do that
 		if (rightValue.mValue.IsConst())
 		{
-			if (mModule->CanCast(rightValue, leftValue.mType))			
+			if (mModule->CanCast(rightValue, leftValue.mType, BfCastFlags_NoBox))			
 			{
 				resultType = leftValue.mType;			
 				handled = true;
@@ -18392,7 +18417,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		}
 		else
 		{
-			auto convertedValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType);
+			auto convertedValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, BfCastFlags_NoBox);
 			if (!convertedValue)
 				return;
 			if (binaryOp == BfBinaryOp_Equality)

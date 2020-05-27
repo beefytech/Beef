@@ -2542,7 +2542,6 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
  	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecializedVariation))
 		return NULL; // Ignore errors on unspecialized variations, they are always dups
-
 	if (!mHadBuildError)
 		mHadBuildError = true;
 	if (mParentModule != NULL)
@@ -6862,6 +6861,8 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			BfType* convCheckConstraint = genericParamInst->mTypeConstraint;
 			if ((convCheckConstraint->IsUnspecializedType()) && (methodGenericArgs != NULL))
 				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);
+			if (convCheckConstraint == NULL)
+				return false;
 			if ((checkArgType->IsMethodRef()) && (convCheckConstraint->IsDelegate()))
 			{
 				auto methodRefType = (BfMethodRefType*)checkArgType;
@@ -6933,6 +6934,8 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		BfType* convCheckConstraint = checkConstraint;
 		if (convCheckConstraint->IsUnspecializedType())
 			convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);		
+		if (convCheckConstraint == NULL)
+			return false;
 
 		BfTypeInstance* typeConstraintInst = convCheckConstraint->ToTypeInstance();	
 		
@@ -10994,7 +10997,7 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 	else if (methodA->mMethodDef->mName != methodB->mMethodDef->mName)
 		return false;			
 	if (methodA->mMethodDef->mCheckedKind != methodB->mMethodDef->mCheckedKind)
-		return false;
+		return false;	
 
 	if (methodA->mMethodDef->mMethodType == BfMethodType_Ctor)
 	{
@@ -11056,6 +11059,17 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 				return false;
 	}	
 
+	return true;
+}
+
+bool BfModule::StrictCompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstance* methodB)
+{
+	if (!CompareMethodSignatures(methodA, methodB))
+		return false;
+	if (methodA->mReturnType != methodB->mReturnType)
+		return false;
+	if (methodA->mMethodDef->mIsStatic != methodB->mMethodDef->mIsStatic)
+		return false;
 	return true;
 }
 
@@ -13239,7 +13253,7 @@ void BfModule::EmitDefaultReturn()
 	{
 		if (mCurMethodInstance->mReturnType->IsVoid())
 			mBfIRBuilder->CreateRetVoid();
-		else
+		else if (!mCurMethodInstance->HasStructRet())		
 			mBfIRBuilder->CreateRet(GetDefaultValue(mCurMethodInstance->mReturnType));
 	}
 
@@ -17564,8 +17578,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				}
 				else
 				{
-					// During autocomplete, the actual type may not have the proper field instance
-					mBfIRBuilder->CreateRet(GetDefaultValue(methodInstance->mReturnType));
+					CreateReturn(GetDefaultValue(mCurMethodInstance->mReturnType));
+					EmitDefaultReturn();
 				}
 				mCurMethodState->SetHadReturn(true);
 			}
@@ -20963,7 +20977,8 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 
 			if (storeIFaceMethod)
 			{
-				_AddVirtualDecl(iMethodInst);				
+				if (methodInstance->GetNumGenericParams() != 0)
+					_AddVirtualDecl(iMethodInst);
 				*iMethodPtr = methodInstance;
 			}
 

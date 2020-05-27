@@ -4660,6 +4660,11 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 
 						if (tokenNode->GetToken() == BfToken_RParen)
 						{
+							if ((fieldTypes.size() == 1) && ((createTypeRefFlags & CreateTypeRefFlags_AllowSingleMemberTuple) == 0))
+							{
+								Fail("Tuple types must contain more than one member", tokenNode);
+							}
+
 							MEMBER_SET(tupleTypeRef, mCloseParen, tokenNode);
 							//return tupleTypeRef;
 							firstNode = tupleTypeRef;
@@ -5733,7 +5738,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
 			tokenNode = ExpectTokenAfter(enumEntry, BfToken_Comma, BfToken_AssignEquals, BfToken_LParen, BfToken_Semicolon);
 			if ((tokenNode != NULL) && (tokenNode->GetToken() == BfToken_LParen))
 			{
-				auto typeRef = CreateTypeRef(tokenNode);
+				auto typeRef = CreateTypeRef(tokenNode, CreateTypeRefFlags_AllowSingleMemberTuple);
 				tokenNode = NULL;
 				auto tupleType = BfNodeDynCast<BfTupleTypeRef>(typeRef);
 				if (tupleType != NULL)
@@ -9202,7 +9207,10 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 					if (opConstraint->mOpToken == NULL)
 					{
 						if (opToken == NULL)
+						{
+							Fail("Conversion operators require either 'implicit' or 'explicit' qualifiers", opConstraint->mOperatorToken);
 							break;
+						}
 						MEMBER_SET(opConstraint, mOpToken, opToken);
 						mVisitorPos.MoveNext();
 					}

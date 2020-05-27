@@ -192,7 +192,7 @@ BfMethodInstance* BfNonGenericMethodRef::operator->() const
 }
 
 BfNonGenericMethodRef& BfNonGenericMethodRef::operator=(BfMethodInstance* methodInstance)
-{
+{	
 	if (methodInstance == NULL)
 	{
 		mTypeInstance = NULL;
@@ -202,7 +202,8 @@ BfNonGenericMethodRef& BfNonGenericMethodRef::operator=(BfMethodInstance* method
 	{
 		mTypeInstance = methodInstance->mMethodInstanceGroup->mOwner;
 		mMethodNum = methodInstance->mMethodInstanceGroup->mMethodIdx;
-		BF_ASSERT(methodInstance->GetNumGenericArguments() == 0);		
+		BF_ASSERT((methodInstance->GetNumGenericArguments() == 0) || 
+			((methodInstance->mIsUnspecialized) && (!methodInstance->mIsUnspecializedVariation)));
 		mSignatureHash = (int)mTypeInstance->mTypeDef->mSignatureHash;
 	}
 	return *this;

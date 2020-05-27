@@ -2954,10 +2954,11 @@ void BfCompiler::UpdateRevisedTypes()
 						continue;
 					}
 
-					// Only allow extending structs and objects
+					// Only allow extending structs, objects, and interfaces
 					if ((checkTypeDef->mTypeCode == BfTypeCode_Struct) || 
 						(checkTypeDef->mTypeCode == BfTypeCode_Object) ||
-						(checkTypeDef->mTypeCode == BfTypeCode_Enum))
+						(checkTypeDef->mTypeCode == BfTypeCode_Enum) ||
+						(checkTypeDef->mTypeCode == BfTypeCode_Interface))
 					{
 						rootTypeDef = checkTypeDef;
 						rootTypeDefEntry = checkTypeDefEntry;
@@ -5016,7 +5017,10 @@ void BfCompiler::PopulateReified()
 							BfMethodInstance* implMethod = *implMethodRef;
 							if (implMethod == NULL)
 								continue;
-							if (!implMethod->IsReifiedAndImplemented())
+
+							// Reify any interface methods that could be called dynamically
+							if ((!implMethod->IsReifiedAndImplemented()) && (implMethod->GetNumGenericParams() == 0) && (!implMethod->mMethodDef->mIsStatic) &&
+								(!implMethod->mReturnType->IsConcreteInterfaceType()))
 							{
 								didWork = true;
 								checkType->mModule->GetMethodInstance(implMethod);

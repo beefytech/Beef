@@ -270,5 +270,17 @@ namespace Tests
 
 			TestDefaults();
 		}
+
+		public static TTo Convert<TFrom, TTo>(TFrom val) where TTo : operator explicit TFrom
+		{
+			return (TTo)val;
+		}
+
+		[Test]
+		public static void TestConversion()
+		{
+			int a = 123;
+			float f = Convert<int, float>(a);
+		}
 	}
 }

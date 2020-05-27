@@ -76,13 +76,14 @@ enum BfCastFlags
 	BfCastFlags_Unchecked = 2,
 	BfCastFlags_Internal = 4,
 	BfCastFlags_SilentFail = 8,
-	BfCastFlags_NoBoxDtor = 0x10,
-	BfCastFlags_NoConversionOperator = 0x20,
-	BfCastFlags_FromCompiler = 0x40, // Not user specified
-	BfCastFlags_Force = 0x80,
-	BfCastFlags_PreferAddr = 0x100,
-	BfCastFlags_WarnOnBox = 0x200,
-	BfCastFlags_IsCastCheck = 0x400
+	BfCastFlags_NoBox = 0x10,
+	BfCastFlags_NoBoxDtor = 0x20,
+	BfCastFlags_NoConversionOperator = 0x40,
+	BfCastFlags_FromCompiler = 0x80, // Not user specified
+	BfCastFlags_Force = 0x100,
+	BfCastFlags_PreferAddr = 0x200,
+	BfCastFlags_WarnOnBox = 0x400,
+	BfCastFlags_IsCastCheck = 0x800
 };
 
 enum BfCastResultFlags
@@ -1778,7 +1779,8 @@ public:
 	BfModuleMethodInstance GetInternalMethod(const StringImpl& methodName, int paramCount = -1);
 	bool IsMethodImplementedAndReified(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false);
 	bool HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount, bool checkBase = false);
-	bool CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstance* methodB); // Doesn't compare return types
+	bool CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstance* methodB); // Doesn't compare return types nor static
+	bool StrictCompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstance* methodB); // Compares return types and static
 	bool IsCompatibleInterfaceMethod(BfMethodInstance* methodA, BfMethodInstance* methodB);
 	void UniqueSlotVirtualMethod(BfMethodInstance* methodInstance);	
 	void CompareDeclTypes(BfTypeDef* newDeclType, BfTypeDef* prevDeclType, bool& isBetter, bool& isWorse);

@@ -4093,10 +4093,6 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				if (ifaceMethodInst == NULL)
 					continue;
 
-				// Don't even try to match generics
-				if (!ifaceMethodInst->mMethodDef->mGenericParams.IsEmpty())
-					continue;
-
 				auto iReturnType = ifaceMethodInst->mReturnType;
 				if (iReturnType->IsSelf())
 					iReturnType = typeInstance;
@@ -4117,6 +4113,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 				bool hadMatch = matchedMethod != NULL;
 				bool hadPubFailure = false;
+				bool hadStaticFailure = false;
 				bool hadMutFailure = false;
 
 				if (hadMatch)
@@ -4125,6 +4122,12 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 					{
 						hadMatch = false;
 						hadPubFailure = true;						
+					}
+
+					if (matchedMethod->mMethodDef->mIsStatic != ifaceMethodInst->mMethodDef->mIsStatic)
+					{
+						hadMatch = false;
+						hadStaticFailure = true;
 					}
 					
 					if (ifaceMethodInst->mVirtualTableIdx != -1)
@@ -4207,7 +4210,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 							if (bestMethodInst->mReturnType != ifaceMethodInst->mReturnType)
 							{
-								auto error = Fail(StrFormat("Default interface method '%s' cannot be used does not have the return type '%s'",
+								auto error = Fail(StrFormat("Default interface method '%s' cannot be used because it doesn't have the return type '%s'",
 									MethodToString(bestMethodInst).c_str(), TypeToString(ifaceMethodInst->mReturnType).c_str()), declTypeDef->mTypeDeclaration->mNameNode);
 								if (error != NULL)
 								{
@@ -4217,7 +4220,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 							}
 						}
 
-						if ((bestMethodInst->mMethodDef->HasBody()) && (bestMethodInst->mMethodDef->mGenericParams.size() == 0) && (matchedMethod == NULL))
+						if ((bestMethodInst->mMethodDef->HasBody()) && (matchedMethod == NULL))
 						{
 							auto methodDef = bestMethodInst->mMethodDef;
 							BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_ForeignMethodDef;
@@ -4250,31 +4253,52 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 							}
 						}
 						else
-						{							
+						{			
+							String methodString;
+							///
+							{
+								SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, ifaceMethodInst);
+								methodString = MethodToString(ifaceMethodInst);
+							}
+
 							BfTypeDeclaration* typeDecl = declTypeDef->mTypeDeclaration;
-							BfError* error = Fail(StrFormat("'%s' does not implement interface member '%s'", TypeToString(typeInstance).c_str(), MethodToString(ifaceMethodInst).c_str()), typeDecl->mNameNode, true);
+							BfError* error = Fail(StrFormat("'%s' does not implement interface member '%s'", TypeToString(typeInstance).c_str(), methodString.c_str()), typeDecl->mNameNode, true);
 							if ((matchedMethod != NULL) && (error != NULL))
 							{
-								if (hadPubFailure)
+								if (hadStaticFailure)
 								{
-									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it is not public",
-										MethodToString(matchedMethod).c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
+									auto staticNodeRef = matchedMethod->mMethodDef->GetRefNode();
+									if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(matchedMethod->mMethodDef->mMethodDeclaration))
+										if (methodDecl->mStaticSpecifier != NULL)
+											staticNodeRef = methodDecl->mStaticSpecifier;
+
+									if (matchedMethod->mMethodDef->mIsStatic)
+										mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it's static",
+											methodString.c_str()), staticNodeRef);
+									else
+										mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it's not static",
+											methodString.c_str()), staticNodeRef);
+								}
+								else if (hadPubFailure)
+								{
+									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it's not public",
+										methodString.c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
 								}
 								else if (ifaceMethodInst->mReturnType->IsConcreteInterfaceType())
 								{
 									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it does not have a concrete return type that implements '%s'",
-										MethodToString(matchedMethod).c_str(), TypeToString(ifaceMethodInst->mReturnType).c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
+										methodString.c_str(), TypeToString(ifaceMethodInst->mReturnType).c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
 								}					
 								else if (hadMutFailure)
 								{
-									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it is market as 'mut' but interface method does not allow it",
-										MethodToString(matchedMethod).c_str()), matchedMethod->mMethodDef->GetMutNode());
+									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it's market as 'mut' but interface method does not allow it",
+										methodString.c_str()), matchedMethod->mMethodDef->GetMutNode());
 									mCompiler->mPassInstance->MoreInfo(StrFormat("Declare the interface method as 'mut' to allow matching 'mut' implementations"), ifaceMethodInst->mMethodDef->mMethodDeclaration);
 								}
 								else
 								{
 									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because because it does not have the return type '%s'",
-										MethodToString(matchedMethod).c_str(), TypeToString(ifaceMethodInst->mReturnType).c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
+										methodString.c_str(), TypeToString(ifaceMethodInst->mReturnType).c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
 									if ((ifaceMethodInst->mVirtualTableIdx != -1) && (ifaceMethodInst->mReturnType->IsInterface()))
 										mCompiler->mPassInstance->MoreInfo("Declare the interface method as 'concrete' to allow matching concrete return values", ifaceMethodInst->mMethodDef->GetMethodDeclaration()->mVirtualSpecifier);
 								}
@@ -6882,6 +6906,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 	BfTypeInstance* contextTypeInstance = mCurTypeInstance;
 	BfMethodInstance* contextMethodInstance = mCurMethodInstance;
+
+	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsForeignMethodDef))
+		contextTypeInstance = mCurMethodInstance->mMethodInfoEx->mForeignType;
+
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
 	{
 		contextTypeInstance = mCurMethodState->mMixinState->mMixinMethodInstance->GetOwner();
@@ -9698,7 +9726,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 	}
 
-	if (mayBeBox)
+	if ((mayBeBox) && ((castFlags & BfCastFlags_NoBox) == 0))
 	{
 		BfScopeData* scopeData = NULL;
 		if (mCurMethodState != NULL)
