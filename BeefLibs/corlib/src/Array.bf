@@ -274,12 +274,12 @@ namespace System
 			Internal.MemCpy(destination.Ptr, &GetRef(0), strideof(T) * mLength, alignof(T));
 		}
 
-		public void CopyTo(Span<T> destination, int srcOffset, int length)
+		public void CopyTo(Span<T> destination, int srcOffset)
 		{
-			Debug.Assert(length >= 0);
-			Debug.Assert((uint)srcOffset + (uint)length <= (uint)mLength);
-			Debug.Assert((uint)length <= (uint)destination.Length);
-			Internal.MemCpy(destination.Ptr, &GetRef(srcOffset), strideof(T) * length, alignof(T));
+			Debug.Assert(destination.Length >= mLength);
+			Debug.Assert((uint)srcOffset <= (uint)mLength);
+
+			Internal.MemCpy(destination.Ptr, &GetRef(srcOffset), strideof(T) * (mLength - srcOffset), alignof(T));
 		}
 
 		public Span<T>.Enumerator GetEnumerator()
