@@ -12,8 +12,7 @@ namespace System
 		}
 
 		public const int64 MaxValue = 0x7FFFFFFFFFFFFFFFL;
-		//public const long MinValue = -0x8000000000000000L;
-		public const int64 MinValue = -0x7FFFFFFFFFFFFFFFL; //TODO: Should be one lower!
+		public const int64 MinValue = -0x8000000000000000L;
 
 		public static int operator<=>(Int64 a, Int64 b)
 		{
