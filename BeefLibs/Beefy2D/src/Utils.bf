@@ -13,10 +13,10 @@ namespace Beefy
     {
         static Random mRandom = new Random() ~ delete _;
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int32 BF_TickCount();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int32 BF_TickCountMicroFast();
 
         public static float Deg2Rad = Math.PI_f / 180.0f;

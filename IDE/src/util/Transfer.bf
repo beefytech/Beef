@@ -97,7 +97,7 @@ namespace IDE.Util
 			UpdateBytesPerSecond();
 		}
 
-		[StdCall]
+		[CallingConvention(.Stdcall)]
 		static int Callback(void *p, int dltotal, int dlnow, int ultotal, int ulnow)
 		{
 			Transfer transfer = (Transfer)Internal.UnsafeCastToObject(p);
@@ -111,7 +111,7 @@ namespace IDE.Util
 			return 0;
 		}
 
-		[StdCall]
+		[CallingConvention(.Stdcall)]
 		static int Write(void* dataPtr, int size, int count, void* ctx)
 		{
 			Transfer transfer = (Transfer)Internal.UnsafeCastToObject(ctx);

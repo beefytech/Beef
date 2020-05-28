@@ -43,46 +43,46 @@ namespace IDE.Clang
         {
             public List<String> mFileRefs = new List<String>();
         }
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* ClangHelper_Create(bool isForResolve);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void ClangHelper_Delete(void* clangHelper);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void ClangHelper_AddTranslationUnit(void* clangHelper, char8* fileName, char8* headerPrefix, char8* clangArgs, void* elementTypeArray, int32 char8Len);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void ClangHelper_RemoveTranslationUnit(void* clangHelper, char8* fileName);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* ClangHelper_Classify(void* clangHelper, char8* fileName, void* elementTypeArray, int32 char8Len, int32 cursorIdx, int32 errorLookupTextIdx,bool ignoreErrors);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* ClangHelper_Autocomplete(void* clangHelper, char8* fileName, void* elementTypeArray, int32 char8Len, int32 cursorIdx);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* ClangHelper_FindDefinition(void* clangHelper, char8* fileName, int32 defPos, out int32 outDefLine, out int32 outDefColumn);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* ClangHelper_GetNavigationData(void* clangHelper, char8* fileName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* ClangHelper_GetCurrentLocation(void* clangHelper, char8* fileName, int32 defPos);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* ClangHelper_DetermineFilesReferenced(void* clangHelper, char8* fileName);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void CDep_ClearCache();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void CDep_Shutdown();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* CDep_DetermineFilesReferenced(char8* fileName, String cArgs);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int32 CDep_GetIncludePosition(char8* sourceFileName, char8* sourceContent, char8* headerFileName, String cArgs);
 
 		//static int sRefCount = 0;

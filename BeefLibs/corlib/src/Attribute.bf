@@ -191,6 +191,7 @@ namespace System
 		}
 	}
 
+	[Obsolete("Use [CallingConvention(.Stdcall)] instead. ", false)]
 	[AttributeUsage(.Method | .Delegate | .Function)]
 	public struct StdCallAttribute : Attribute
 	{

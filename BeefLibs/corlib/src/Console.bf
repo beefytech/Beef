@@ -42,13 +42,13 @@ namespace System
 			public uint16[2] mMaximumWindowSize;
 		}
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int SetConsoleTextAttribute(void* hConsoleOutput, uint16 wAttributes);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int GetConsoleScreenBufferInfo(void* hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern void* GetStdHandle(uint32 nStdHandle);
 
 #if BF_PLATFORM_WINDOWS

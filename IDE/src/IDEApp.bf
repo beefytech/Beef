@@ -529,9 +529,9 @@ namespace IDE
 			}
 		}
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void IDEHelper_ProgramStart();
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void IDEHelper_ProgramDone();
 
         public this()
@@ -12917,7 +12917,7 @@ namespace IDE
         }
 
 #if BF_PLATFORM_WINDOWS
-        [Import("user32.lib"), CLink, StdCall]
+        [Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
         public static extern bool MessageBeep(MessageBeepType type);
 #endif
     }

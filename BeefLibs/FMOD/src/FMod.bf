@@ -1601,7 +1601,7 @@ namespace FMOD
 
         #region importfunctions
 
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Create                      (out int system);
 
         #endregion
@@ -1627,9 +1627,9 @@ namespace FMOD
 
         #region importfunctions
 
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Memory_Initialize(int poolmem, int32 poollen, MEMORY_ALLOC_CALLBACK useralloc, MEMORY_REALLOC_CALLBACK userrealloc, MEMORY_FREE_CALLBACK userfree, MEMORY_TYPE memtypeflags);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Memory_GetStats(out int32 currentalloced, out int32 maxalloced, bool blocking);
 
         #endregion
@@ -1645,7 +1645,7 @@ namespace FMOD
 
         #region importfunctions
 
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Debug_Initialize(DEBUG_FLAGS flags, DEBUG_MODE mode, DEBUG_CALLBACK callback, String filename);
 
         #endregion
@@ -2313,189 +2313,189 @@ namespace FMOD
 
 
         #region importfunctions
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Release                (int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetOutput              (int system, OUTPUTTYPE output);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetOutput              (int system, out OUTPUTTYPE output);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetNumDrivers          (int system, out int32 numdrivers);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetDriverInfo          (int system, int32 id, char8* name, int32 namelen, out Guid guid, out int32 systemrate, out SPEAKERMODE speakermode, out int32 speakermodechannels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetDriver              (int system, int32 driver);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetDriver              (int system, out int32 driver);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetSoftwareChannels    (int system, int32 numsoftwarechannels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetSoftwareChannels    (int system, out int32 numsoftwarechannels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetSoftwareFormat      (int system, int32 samplerate, SPEAKERMODE speakermode, int32 numrawspeakers);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetSoftwareFormat      (int system, out int32 samplerate, out SPEAKERMODE speakermode, out int32 numrawspeakers);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetDSPBufferSize       (int system, uint32 bufferlength, int32 numbuffers);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetDSPBufferSize       (int system, out uint32 bufferlength, out int32 numbuffers);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetFileSystem          (int system, FILE_OPENCALLBACK useropen, FILE_CLOSECALLBACK userclose, FILE_READCALLBACK userread, FILE_SEEKCALLBACK userseek, FILE_ASYNCREADCALLBACK userasyncread, FILE_ASYNCCANCELCALLBACK userasynccancel, int32 blockalign);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_AttachFileSystem       (int system, FILE_OPENCALLBACK useropen, FILE_CLOSECALLBACK userclose, FILE_READCALLBACK userread, FILE_SEEKCALLBACK userseek);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetPluginPath          (int system, char8* path);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_LoadPlugin             (int system, char8* filename, out uint32 handle, uint32 priority);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_UnloadPlugin           (int system, uint32 handle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetNumNestedPlugins    (int system, uint32 handle, out int32 count);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetNestedPlugin        (int system, uint32 handle, int32 index, out uint32 nestedhandle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetNumPlugins          (int system, PLUGINTYPE plugintype, out int32 numplugins);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetPluginHandle        (int system, PLUGINTYPE plugintype, int32 index, out uint32 handle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetPluginInfo          (int system, uint32 handle, out PLUGINTYPE plugintype, char8* name, int32 namelen, out uint32 version);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateDSPByPlugin      (int system, uint32 handle, out int dsp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetOutputByPlugin      (int system, uint32 handle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetOutputByPlugin      (int system, out uint32 handle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetDSPInfoByPlugin     (int system, uint32 handle, out int description);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         //private static extern RESULT FMOD_System_RegisterCodec          (int system, out CODEC_DESCRIPTION description, out uint32 handle, uint32 priority);
-        //[Import(VERSION.dll), CLink, StdCall]
+        //[Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_RegisterDSP            (int system, ref DSP_DESCRIPTION description, out uint32 handle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         //private static extern RESULT FMOD_System_RegisterOutput         (int system, ref OUTPUT_DESCRIPTION description, out uint32 handle);
-        //[Import(VERSION.dll), CLink, StdCall]
+        //[Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Init                   (int system, int32 maxchannels, INITFLAGS flags, int extradriverdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Close                  (int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Update                 (int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetAdvancedSettings    (int system, ref ADVANCEDSETTINGS settings);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetAdvancedSettings    (int system, ref ADVANCEDSETTINGS settings);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Set3DRolloffCallback   (int system, CB_3D_ROLLOFFCALLBACK callback);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_MixerSuspend           (int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_MixerResume            (int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetDefaultMixMatrix    (int system, SPEAKERMODE sourcespeakermode, SPEAKERMODE targetspeakermode, float[] matrix, int32 matrixhop);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetSpeakerModeChannels (int system, SPEAKERMODE mode, out int32 channels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetCallback            (int system, SYSTEM_CALLBACK callback, SYSTEM_CALLBACK_TYPE callbackmask);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetSpeakerPosition     (int system, SPEAKER speaker, float x, float y, bool active);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetSpeakerPosition     (int system, SPEAKER speaker, out float x, out float y, out bool active);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Set3DSettings          (int system, float dopplerscale, float distancefactor, float rolloffscale);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Get3DSettings          (int system, out float dopplerscale, out float distancefactor, out float rolloffscale);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Set3DNumListeners      (int system, int32 numlisteners);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Get3DNumListeners      (int system, out int32 numlisteners);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Set3DListenerAttributes(int system, int32 listener, ref VECTOR pos, ref VECTOR vel, ref VECTOR forward, ref VECTOR up);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_Get3DListenerAttributes(int system, int32 listener, out VECTOR pos, out VECTOR vel, out VECTOR forward, out VECTOR up);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetStreamBufferSize    (int system, uint32 filebuffersize, TIMEUNIT filebuffersizetype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetStreamBufferSize    (int system, out uint32 filebuffersize, out TIMEUNIT filebuffersizetype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetVersion             (int system, out uint32 version);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetOutputHandle        (int system, out int handle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetChannelsPlaying     (int system, out int32 channels, out int32 realchannels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetCPUUsage            (int system, out float dsp, out float stream, out float geometry, out float update, out float total);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetFileUsage            (int system, out Int64 sampleuint8sRead, out Int64 streamuint8sRead, out Int64 otheruint8sRead);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetSoundRAM            (int system, out int32 currentalloced, out int32 maxalloced, out int32 total);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateSound            (int system, char8* name_or_data, MODE mode, ref CREATESOUNDEXINFO exinfo, out int sound);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateStream           (int system, char8* name_or_data, MODE mode, ref CREATESOUNDEXINFO exinfo, out int sound);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateDSP              (int system, ref DSP_DESCRIPTION description, out int dsp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateDSPByType        (int system, DSP_TYPE type, out int dsp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateChannelGroup     (int system, char8* name, out int channelgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateSoundGroup       (int system, char8* name, out int soundgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateReverb3D         (int system, out int reverb);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_PlaySound              (int system, int sound, int channelGroup, bool paused, out int channel);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_PlayDSP                (int system, int dsp, int channelGroup, bool paused, out int channel);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetChannel             (int system, int32 channelid, out int channel);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetMasterChannelGroup  (int system, out int channelgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetMasterSoundGroup    (int system, out int soundgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_AttachChannelGroupToPort  (int system, uint32 portType, uint64 portIndex, int channelgroup, bool passThru);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_DetachChannelGroupFromPort(int system, int channelgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetReverbProperties    (int system, int32 instance, ref REVERB_PROPERTIES prop);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetReverbProperties    (int system, int32 instance, out REVERB_PROPERTIES prop);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_LockDSP                (int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_UnlockDSP              (int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetRecordNumDrivers    (int system, out int32 numdrivers, out int32 numconnected);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetRecordDriverInfo    (int system, int32 id, char8* name, int32 namelen, out Guid guid, out int32 systemrate, out SPEAKERMODE speakermode, out int32 speakermodechannels, out DRIVER_STATE state);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetRecordPosition      (int system, int32 id, out uint32 position);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_RecordStart            (int system, int32 id, int sound, bool loop);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_RecordStop             (int system, int32 id);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_IsRecording            (int system, int32 id, out bool recording);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_CreateGeometry         (int system, int32 maxpolygons, int32 maxvertices, out int geometry);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetGeometrySettings    (int system, float maxworldsize);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetGeometrySettings    (int system, out float maxworldsize);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_LoadGeometry           (int system, int data, int32 datasize, out int geometry);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetGeometryOcclusion   (int system, ref VECTOR listener, ref VECTOR source, out float direct, out float reverb);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetNetworkProxy        (int system, char8* proxy);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetNetworkProxy        (int system, char8* proxy, int32 proxylen);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetNetworkTimeout      (int system, int32 timeout);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetNetworkTimeout      (int system, out int32 timeout);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_SetUserData            (int system, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_System_GetUserData            (int system, out int userdata);
         #endregion
 
@@ -2747,91 +2747,91 @@ namespace FMOD
 
 
         #region importfunctions
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Release                 (int sound);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetSystemObject         (int sound, out int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Lock                   (int sound, uint32 offset, uint32 length, out int ptr1, out int ptr2, out uint32 len1, out uint32 len2);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Unlock                  (int sound, int ptr1,  int ptr2, uint32 len1, uint32 len2);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SetDefaults             (int sound, float frequency, int32 priority);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetDefaults             (int sound, out float frequency, out int32 priority);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Set3DMinMaxDistance     (int sound, float min, float max);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Get3DMinMaxDistance     (int sound, out float min, out float max);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Set3DConeSettings       (int sound, float insideconeangle, float outsideconeangle, float outsidevolume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Get3DConeSettings       (int sound, out float insideconeangle, out float outsideconeangle, out float outsidevolume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Set3DCustomRolloff      (int sound, ref VECTOR points, int32 numpoints);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_Get3DCustomRolloff      (int sound, out int points, out int32 numpoints);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetSubSound             (int sound, int32 index, out int subsound);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetSubSoundParent       (int sound, out int parentsound);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetName                 (int sound, char8* name, int32 namelen);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetLength               (int sound, out uint32 length, TIMEUNIT lengthtype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetFormat               (int sound, out SOUND_TYPE type, out SOUND_FORMAT format, out int32 channels, out int32 bits);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetNumSubSounds         (int sound, out int32 numsubsounds);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetNumTags              (int sound, out int32 numtags, out int32 numtagsupdated);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetTag                  (int sound, char8* name, int32 index, out TAG tag);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetOpenState            (int sound, out OPENSTATE openstate, out uint32 percentbuffered, out bool starving, out bool diskbusy);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_ReadData                (int sound, int buffer, uint32 lenuint8s, out uint32 read);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SeekData                (int sound, uint32 pcm);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SetSoundGroup           (int sound, int soundgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetSoundGroup           (int sound, out int soundgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetNumSyncPoints        (int sound, out int32 numsyncpoints);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetSyncPoint            (int sound, int32 index, out int point);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetSyncPointInfo        (int sound, int point, char8* name, int32 namelen, out uint32 offset, TIMEUNIT offsettype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_AddSyncPoint            (int sound, uint32 offset, TIMEUNIT offsettype, char8* name, out int point);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_DeleteSyncPoint         (int sound, int point);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SetMode                 (int sound, MODE mode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetMode                 (int sound, out MODE mode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SetLoopCount            (int sound, int32 loopcount);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetLoopCount            (int sound, out int32 loopcount);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SetLoopPoints           (int sound, uint32 loopstart, TIMEUNIT loopstarttype, uint32 loopend, TIMEUNIT loopendtype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetLoopPoints           (int sound, out uint32 loopstart, TIMEUNIT loopstarttype, out uint32 loopend, TIMEUNIT loopendtype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetMusicNumChannels     (int sound, out int32 numchannels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SetMusicChannelVolume   (int sound, int32 channel, float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetMusicChannelVolume   (int sound, int32 channel, out float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SetMusicSpeed           (int sound, float speed);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetMusicSpeed           (int sound, out float speed);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_SetUserData             (int sound, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Sound_GetUserData             (int sound, out int userdata);
         #endregion
 
@@ -3127,129 +3127,129 @@ namespace FMOD
 
         #region importfunctions
 
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Stop(int channelgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetPaused(int channelgroup, bool paused);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetPaused(int channelgroup, out bool paused);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetVolume(int channelgroup, out float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetVolumeRamp(int channelgroup, bool ramp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetVolumeRamp(int channelgroup, out bool ramp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetAudibility(int channelgroup, out float audibility);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetPitch(int channelgroup, float pitch);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetPitch(int channelgroup, out float pitch);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetMute(int channelgroup, bool mute);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetMute(int channelgroup, out bool mute);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetReverbProperties(int channelgroup, int32 instance, float wet);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetReverbProperties(int channelgroup, int32 instance, out float wet);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetLowPassGain(int channelgroup, float gain);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetLowPassGain(int channelgroup, out float gain);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetMode(int channelgroup, MODE mode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetMode(int channelgroup, out MODE mode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetCallback(int channelgroup, CHANNEL_CALLBACK callback);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_IsPlaying(int channelgroup, out bool isplaying);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetPan(int channelgroup, float pan);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetMixLevelsOutput(int channelgroup, float frontleft, float frontright, float center, float lfe, float surroundleft, float surroundright, float backleft, float backright);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetMixLevelsInput(int channelgroup, float[] levels, int32 numlevels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetMixMatrix(int channelgroup, float[] matrix, int32 outchannels, int32 inchannels, int32 inchannel_hop);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetMixMatrix(int channelgroup, float[] matrix, out int32 outchannels, out int32 inchannels, int32 inchannel_hop);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetDSPClock(int channelgroup, out uint64 dspclock, out uint64 parentclock);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetDelay(int channelgroup, uint64 dspclock_start, uint64 dspclock_end, bool stopchannels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetDelay(int channelgroup, out uint64 dspclock_start, out uint64 dspclock_end, out bool stopchannels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_AddFadePoint(int channelgroup, uint64 dspclock, float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetFadePointRamp(int channelgroup, uint64 dspclock, float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_RemoveFadePoints(int channelgroup, uint64 dspclock_start, uint64 dspclock_end);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetFadePoints(int channelgroup, ref uint32 numpoints, uint64[] point_dspclock, float[] point_volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DAttributes(int channelgroup, ref VECTOR pos, ref VECTOR vel, ref VECTOR alt_pan_pos);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DAttributes(int channelgroup, out VECTOR pos, out VECTOR vel, out VECTOR alt_pan_pos);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DMinMaxDistance(int channelgroup, float mindistance, float maxdistance);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DMinMaxDistance(int channelgroup, out float mindistance, out float maxdistance);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DConeSettings(int channelgroup, float insideconeangle, float outsideconeangle, float outsidevolume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DConeSettings(int channelgroup, out float insideconeangle, out float outsideconeangle, out float outsidevolume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DConeOrientation(int channelgroup, ref VECTOR orientation);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DConeOrientation(int channelgroup, out VECTOR orientation);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DCustomRolloff(int channelgroup, ref VECTOR points, int32 numpoints);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DCustomRolloff(int channelgroup, out int points, out int32 numpoints);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DOcclusion(int channelgroup, float directocclusion, float reverbocclusion);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DOcclusion(int channelgroup, out float directocclusion, out float reverbocclusion);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DSpread(int channelgroup, float angle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DSpread(int channelgroup, out float angle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DLevel(int channelgroup, float level);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DLevel(int channelgroup, out float level);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DDopplerLevel(int channelgroup, float level);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DDopplerLevel(int channelgroup, out float level);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Set3DDistanceFilter(int channelgroup, bool custom, float customLevel, float centerFreq);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Get3DDistanceFilter(int channelgroup, out bool custom, out float customLevel, out float centerFreq);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetSystemObject(int channelgroup, out int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetVolume(int channelgroup, float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetDSP(int channelgroup, int32 index, out int dsp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_AddDSP(int channelgroup, int32 index, int dsp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_RemoveDSP(int channelgroup, int dsp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetNumDSPs(int channelgroup, out int32 numdsps);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetDSPIndex(int channelgroup, int dsp, int32 index);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetDSPIndex(int channelgroup, int dsp, out int32 index);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_OverridePanDSP(int channelgroup, int pan);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_SetUserData(int channelgroup, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetUserData(int channelgroup, out int userdata);
 
         #endregion
@@ -3348,43 +3348,43 @@ namespace FMOD
 
         #region importfunctions
 
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_SetFrequency          (int channel, float frequency);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetFrequency          (int channel, out float frequency);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_SetPriority           (int channel, int32 priority);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetPriority           (int channel, out int32 priority);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_SetChannelGroup       (int channel, int channelgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetChannelGroup       (int channel, out int channelgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_IsVirtual             (int channel, out bool isvirtual);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetCurrentSound       (int channel, out int sound);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetIndex              (int channel, out int32 index);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_SetPosition           (int channel, uint32 position, TIMEUNIT postype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetPosition           (int channel, out uint32 position, TIMEUNIT postype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_SetMode               (int channel, MODE mode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetMode               (int channel, out MODE mode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_SetLoopCount          (int channel, int32 loopcount);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetLoopCount          (int channel, out int32 loopcount);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_SetLoopPoints         (int channel, uint32  loopstart, TIMEUNIT loopstarttype, uint32  loopend, TIMEUNIT loopendtype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetLoopPoints         (int channel, out uint32 loopstart, TIMEUNIT loopstarttype, out uint32 loopend, TIMEUNIT loopendtype);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_SetUserData           (int channel, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Channel_GetUserData           (int channel, out int userdata);
         #endregion
 
@@ -3480,21 +3480,21 @@ namespace FMOD
         }
 
         #region importfunctions
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_Release          (int channelgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_AddGroup         (int channelgroup, int group, bool propagatedspclock, out int connection);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetNumGroups     (int channelgroup, out int32 numgroups);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetGroup         (int channelgroup, int32 index, out int group);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetParentGroup   (int channelgroup, out int group);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetName          (int channelgroup, char8* name, int32 namelen);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetNumChannels   (int channelgroup, out int32 numchannels);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_ChannelGroup_GetChannel       (int channelgroup, int32 index, out int channel);
         #endregion
 
@@ -3618,39 +3618,39 @@ namespace FMOD
         }
 
         #region importfunctions
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_Release            (int soundgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetSystemObject    (int soundgroup, out int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_SetMaxAudible      (int soundgroup, int32 maxaudible);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetMaxAudible      (int soundgroup, out int32 maxaudible);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_SetMaxAudibleBehavior(int soundgroup, SOUNDGROUP_BEHAVIOR behavior);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetMaxAudibleBehavior(int soundgroup, out SOUNDGROUP_BEHAVIOR behavior);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_SetMuteFadeSpeed   (int soundgroup, float speed);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetMuteFadeSpeed   (int soundgroup, out float speed);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_SetVolume          (int soundgroup, float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetVolume          (int soundgroup, out float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_Stop               (int soundgroup);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetName            (int soundgroup, char8* name, int32 namelen);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetNumSounds       (int soundgroup, out int32 numsounds);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetSound           (int soundgroup, int32 index, out int sound);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetNumPlaying      (int soundgroup, out int32 numplaying);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_SetUserData        (int soundgroup, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_SoundGroup_GetUserData        (int soundgroup, out int userdata);
         #endregion
 
@@ -3895,83 +3895,83 @@ namespace FMOD
 
         #region importfunctions
 
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_Release                   (int dsp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetSystemObject           (int dsp, out int system);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_AddInput                  (int dsp, int target, out int connection, DSPCONNECTION_TYPE type);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_DisconnectFrom            (int dsp, int target, int connection);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_DisconnectAll             (int dsp, bool inputs, bool outputs);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetNumInputs              (int dsp, out int32 numinputs);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetNumOutputs             (int dsp, out int32 numoutputs);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetInput                  (int dsp, int32 index, out int input, out int inputconnection);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetOutput                 (int dsp, int32 index, out int output, out int outputconnection);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetActive                 (int dsp, bool active);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetActive                 (int dsp, out bool active);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetBypass                 (int dsp, bool bypass);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetBypass                 (int dsp, out bool bypass);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetWetDryMix              (int dsp, float prewet, float postwet, float dry);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetWetDryMix              (int dsp, out float prewet, out float postwet, out float dry);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetChannelFormat          (int dsp, CHANNELMASK channelmask, int32 numchannels, SPEAKERMODE source_speakermode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetChannelFormat          (int dsp, out CHANNELMASK channelmask, out int32 numchannels, out SPEAKERMODE source_speakermode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetOutputChannelFormat    (int dsp, CHANNELMASK inmask, int32 inchannels, SPEAKERMODE inspeakermode, out CHANNELMASK outmask, out int32 outchannels, out SPEAKERMODE outspeakermode);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_Reset                     (int dsp);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetParameterFloat         (int dsp, int32 index, float value);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetParameterInt           (int dsp, int32 index, int32 value);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetParameterBool          (int dsp, int32 index, bool value);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetParameterData          (int dsp, int32 index, uint8* data, uint32 length);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetParameterFloat         (int dsp, int32 index, out float value, int valuestr, int32 valuestrlen);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetParameterInt           (int dsp, int32 index, out int32 value, int valuestr, int32 valuestrlen);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetParameterBool          (int dsp, int32 index, out bool value, int valuestr, int32 valuestrlen);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetParameterData          (int dsp, int32 index, out int data, out uint32 length, int valuestr, int32 valuestrlen);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetNumParameters          (int dsp, out int32 numparams);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetParameterInfo          (int dsp, int32 index, out int desc);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetDataParameterIndex     (int dsp, int32 datatype, out int32 index);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_ShowConfigDialog          (int dsp, int hwnd, bool show);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetInfo                   (int dsp, char8* name, out uint32 version, out int32 channels, out int32 configwidth, out int32 configheight);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetType                   (int dsp, out DSP_TYPE type);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetIdle                   (int dsp, out bool idle);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_SetUserData               (int dsp, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSP_GetUserData               (int dsp, out int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         public static extern RESULT FMOD_DSP_SetMeteringEnabled         (int dsp, bool inputEnabled, bool outputEnabled);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         public static extern RESULT FMOD_DSP_GetMeteringEnabled         (int dsp, out bool inputEnabled, out bool outputEnabled);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         public static extern RESULT FMOD_DSP_GetMeteringInfo            (int dsp, DSP_METERING_INFO inputInfo, DSP_METERING_INFO outputInfo);
         #endregion
 
@@ -4043,23 +4043,23 @@ namespace FMOD
         }
 
         #region importfunctions
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_GetInput        (int dspconnection, out int input);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_GetOutput       (int dspconnection, out int output);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_SetMix          (int dspconnection, float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_GetMix          (int dspconnection, out float volume);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_SetMixMatrix    (int dspconnection, float[] matrix, int32 outchannels, int32 inchannels, int32 inchannel_hop);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_GetMixMatrix    (int dspconnection, float[] matrix, out int32 outchannels, out int32 inchannels, int32 inchannel_hop);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_GetType         (int dspconnection, out DSPCONNECTION_TYPE type);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_SetUserData     (int dspconnection, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_DSPConnection_GetUserData     (int dspconnection, out int userdata);
         #endregion
 
@@ -4171,45 +4171,45 @@ namespace FMOD
         }
 
         #region importfunctions
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_Release              (int geometry);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_AddPolygon           (int geometry, float directocclusion, float reverbocclusion, bool doublesided, int32 numvertices, VECTOR[] vertices, out int32 polygonindex);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetNumPolygons       (int geometry, out int32 numpolygons);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetMaxPolygons       (int geometry, out int32 maxpolygons, out int32 maxvertices);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetPolygonNumVertices(int geometry, int32 index, out int32 numvertices);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_SetPolygonVertex     (int geometry, int32 index, int32 vertexindex, ref VECTOR vertex);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetPolygonVertex     (int geometry, int32 index, int32 vertexindex, out VECTOR vertex);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_SetPolygonAttributes (int geometry, int32 index, float directocclusion, float reverbocclusion, bool doublesided);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetPolygonAttributes (int geometry, int32 index, out float directocclusion, out float reverbocclusion, out bool doublesided);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_SetActive            (int geometry, bool active);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetActive            (int geometry, out bool active);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_SetRotation          (int geometry, ref VECTOR forward, ref VECTOR up);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetRotation          (int geometry, out VECTOR forward, out VECTOR up);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_SetPosition          (int geometry, ref VECTOR position);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetPosition          (int geometry, out VECTOR position);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_SetScale             (int geometry, ref VECTOR scale);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetScale             (int geometry, out VECTOR scale);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_Save                 (int geometry, int data, out int32 datasize);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_SetUserData          (int geometry, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Geometry_GetUserData          (int geometry, out int userdata);
         #endregion
 
@@ -4276,23 +4276,23 @@ namespace FMOD
         }
 
         #region importfunctions
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_Release(int reverb);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_Set3DAttributes(int reverb, ref VECTOR position, float mindistance, float maxdistance);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_Get3DAttributes(int reverb, ref VECTOR position, ref float mindistance, ref float maxdistance);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_SetProperties(int reverb, ref REVERB_PROPERTIES properties);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_GetProperties(int reverb, ref REVERB_PROPERTIES properties);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_SetActive(int reverb, bool active);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_GetActive(int reverb, out bool active);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_SetUserData(int reverb, int userdata);
-        [Import(VERSION.dll), CLink, StdCall]
+        [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
         private static extern RESULT FMOD_Reverb3D_GetUserData(int reverb, out int userdata);
         #endregion
 

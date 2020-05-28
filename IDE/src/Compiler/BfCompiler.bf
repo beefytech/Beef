@@ -39,72 +39,72 @@ namespace IDE.Compiler
 			NoFramePointerElim = 0x20000,
 		}
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfCompiler_Compile(void* bfCompiler, void* bfPassInstance, char8* outputDirectory);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool BfCompiler_ClearResults(void* bfCompiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool BfCompiler_VerifyTypeName(void* bfCompiler, char8* typeName, int32 cursorPos);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool BfCompiler_ClassifySource(void* bfCompiler, void* bfPassInstance, void* bfParser, void* bfResolvePassData, void* char8Data);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* BfCompiler_GetAutocompleteInfo(void* bfCompiler);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* BfCompiler_GetSymbolReferences(void* bfCompiler, void* bfPassInstance, void* bfResolvePassData);        
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_Cancel(void* bfCompiler);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_ClearCompletionPercentage(void* bfCompiler);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern float BfCompiler_GetCompletionPercentage(void* bfCompiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 BfCompiler_GetCompileRevision(void* bfCompiler);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_Delete(void* bfCompiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_ClearBuildCache(void* bfCompiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_SetBuildValue(void* bfCompiler, char8* cacheDir, char8* key, char8* value);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetBuildValue(void* bfCompiler, char8* cacheDir, char8* key);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_WriteBuildCache(void* bfCompiler, char8* cacheDir);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* BfCompiler_GetOutputFileNames(void* bfCompiler, void* bfProject, out bool hadOutputChanges);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetUsedOutputFileNames(void* bfCompiler, void* bfProject, bool flushQueuedHotFiles, out bool hadOutputChanges);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetTypeDefList(void* bfCompiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetTypeDefMatches(void* bfCompiler, char8* searchStr);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetTypeDefInfo(void* bfCompiler, char8* typeDefName);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_SetOptions(void* bfCompiler,
             void* hotProject, int32 hotIdx, char8* targetTriple, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
             OptionFlags optionsFlags, char8* mallocName, char8* freeName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_ForceRebuild(void* bfCompiler);
 
 		public enum HotTypeFlags
@@ -115,10 +115,10 @@ namespace IDE.Compiler
 			Heap		= 4,
 		};
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool BfCompiler_GetHasHotPendingDataChanges(void* bfCompiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_HotCommit(void* bfCompiler);
 
 		public enum HotResolveFlags
@@ -127,22 +127,22 @@ namespace IDE.Compiler
 			HadDataChanges = 1
 		}
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_HotResolve_Start(void* bfCompiler, int32 flags);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_HotResolve_AddActiveMethod(void* bfCompiler, char8* methodName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_HotResolve_AddDelegateMethod(void* bfCompiler, char8* methodName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_HotResolve_ReportType(void* bfCompiler, int typeId, int usageKind);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_HotResolve_ReportTypeRange(void* bfCompiler, char8* typeName, int usageKind);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_HotResolve_Finish(void* bfCompiler);
 
         class SetPassInstanceCommand : Command

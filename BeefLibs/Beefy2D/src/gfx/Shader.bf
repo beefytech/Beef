@@ -19,13 +19,13 @@ namespace Beefy.gfx
         public void* mNativeShader;
         public Dictionary<String, ShaderParam> mShaderParamMap;
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_LoadShader(char8* fileName, void* vertexDefinition);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_Shader_Delete(void* shader);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_GetShaderParam(void* shader, String paramName);
 
         public static Shader CreateFromFile(String fileName, VertexDefinition vertexDefinition)

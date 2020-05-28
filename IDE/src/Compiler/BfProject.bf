@@ -20,19 +20,19 @@ namespace IDE.Compiler
 			AsmOutput_ATT	= 0x40,
 		}
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfProject_Delete(void* nativeBfProject);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfProject_ClearDependencies(void* nativeBfProject);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfProject_AddDependency(void* nativeBfProject, void* nativeDepProject);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfProject_SetDisabled(void* nativeBfProject, bool disabled);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void BfProject_SetOptions(void* nativeBfProject, int32 targetType, char8* startupObject, char8* preprocessorMacros,
             int32 optLevel, int32 ltoType, int32 relocType, int32 picLevel, Flags flags);
 

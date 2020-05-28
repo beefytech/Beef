@@ -4,10 +4,10 @@ namespace IDE.util
 {
 	class BfLog
 	{
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfLog_Log(char8* str);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfLog_LogDbg(char8* str);
 
 		public static void Log(StringView str, params Object[] strParams)

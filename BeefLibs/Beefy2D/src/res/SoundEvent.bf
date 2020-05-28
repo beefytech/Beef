@@ -7,7 +7,7 @@ namespace Beefy.res
 {
     /*public class SoundEvent
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Wwise_SendEvent(uint32 eventId, void* objectId);
 
         public uint32 mWwiseEventId;

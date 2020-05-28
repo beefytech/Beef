@@ -19,7 +19,7 @@ namespace IDE.Debugger
         public bool mIsGlobal;
 		public StepFilterKind mKind;
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void StepFilter_Delete(char8* filter);
 
         public ~this()

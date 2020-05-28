@@ -190,10 +190,10 @@ namespace IDE.Util
 		}
 
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void git_strarray_free(git_strarray *array);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern int32 git_strarray_copy(git_strarray *tgt, git_strarray *src);
 
 		/** Time in a signature */
@@ -604,16 +604,16 @@ namespace IDE.Util
 			public void* remote_cb_payload;
 		}
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 git_libgit2_init();
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 git_libgit2_shutdown();
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 git_clone(git_repository** repoOut, char8* url, char8* local_path, git_clone_options* options);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void git_repository_free(git_repository *repo);
 	}
 }

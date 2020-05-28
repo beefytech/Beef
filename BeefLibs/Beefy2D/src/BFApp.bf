@@ -72,64 +72,64 @@ namespace Beefy
 		public Matrix4? mColorMatrix;
 		public ConstantDataDefinition mColorMatrixDataDef = new ConstantDataDefinition(16, new ConstantDataDefinition.DataType[] { ConstantDataDefinition.DataType.Matrix | ConstantDataDefinition.DataType.PixelShaderUsage }) ~ delete _;
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Lib_Startup(int32 argc, char8** argv, void* startupCallback);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_GetDesktopResolution(out int32 width, out int32 height);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_GetWorkspaceRect(out int32 x, out int32 y, out int32 width, out int32 height);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BFApp_GetWorkspaceRectFrom(int32 x, int32 y, int32 width, int32 height, out int32 outX, out int32 outY, out int32 outWidth, out int32 outHeight);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_Create();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_Delete();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_SetRefreshRate(int32 rate);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         public static extern void BFApp_SetDrawEnabled(int32 enabled);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_Init();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_Run();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_Shutdown();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_SetCallbacks(void* updateDelegate, void* drawDelegate);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern char8* BFApp_GetInstallDir();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_SetCursor(int32 cursor);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* BFApp_GetClipboardData(char8* format, out int32 size);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_ReleaseClipboardData(void* ptr);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_SetClipboardData(char8* format, void* ptr, int32 size, int32 resetClipboard);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void BFApp_CheckMemory();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void BFApp_RehupMouse();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void* BFApp_GetSoundManager();
 
         UpdateDelegate mUpdateDelegate ~ delete _;

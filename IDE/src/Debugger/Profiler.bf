@@ -12,25 +12,25 @@ namespace IDE.Debugger
 		public int mIdx;
 		public bool mIsManual;
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* Profiler_Delete(void* nativeProfiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Profiler_Stop(void* nativeProfiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Profiler_Clear(void* nativeProfiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* Profiler_GetThreadList(void* nativeProfiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* Profiler_GetOverview(void* nativeProfiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool Profiler_IsRunning(void* nativeProfiler);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* Profiler_GetCallTree(void* nativeProfiler, int32 threadId, bool reverse);
 
 		void* mNativeProfiler;

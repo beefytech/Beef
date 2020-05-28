@@ -6,25 +6,25 @@ namespace Beefy.utils
 {
     public abstract class PerfTimer
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void PerfTimer_ZoneStart(char8* name);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void PerfTimer_ZoneEnd();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void PerfTimer_Message(char8* theString);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static int32 PerfTimer_IsRecording();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void PerfTimer_StartRecording();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void PerfTimer_StopRecording();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void PerfTimer_DbgPrint();
 
         static DisposeProxy mZoneEndDisposeProxy ~ delete _;

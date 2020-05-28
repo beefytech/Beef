@@ -22,25 +22,25 @@ namespace Beefy.gfx
 #if !STUDIO_CLIENT
     public class RenderState
     {        
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_CreateRenderState(void* srcNativeRenderState);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_Delete(void* renderState);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetClip(void* renderState, float x, float y, float width, float height);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_DisableClip(void* renderState);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetShader(void* nativeRenderState, void* nativeShader);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetDepthFunc(void* nativeRenderState, int32 depthFunc);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetDepthWrite(void* nativeRenderState, int32 depthWrite);
 
         public void* mNativeRenderState;

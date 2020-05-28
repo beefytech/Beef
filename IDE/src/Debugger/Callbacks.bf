@@ -5,7 +5,7 @@ namespace Debugger
 {
 	static class Callbacks
 	{
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Debugger_SetCallbacks(void* callback);
 
 		public static void Init()

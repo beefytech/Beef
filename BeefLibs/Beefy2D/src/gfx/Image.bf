@@ -33,40 +33,40 @@ namespace Beefy.gfx
         public void* mNativeTextureSegment;
         public PixelSnapping mPixelSnapping = PixelSnapping.Auto;
         
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         public static extern void Gfx_DrawTextureSegment(void* textureSegment, float a, float b, float c, float d, float tx, float ty, float z, uint32 color, int32 pixelSnapping);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_LoadTexture(char8* fileName, int32 flags);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_CreateDynTexture(int32 width, int32 height);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_CreateRenderTarget(int32 width, int32 height, int32 destAlpha);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_ModifyTextureSegment(void* destSegment, void* srcTextureSegment, int32 srcX, int32 srcY, int32 srcWidth, int32 srcHeight);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_CreateTextureSegment(void* textureSegment, int32 srcX, int32 srcY, int32 srcWidth, int32 srcHeight);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void Gfx_SetDrawSize(void* textureSegment, int32 width, int32 height);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Texture_SetBits(void* textureSegment, int32 destX, int32 destY, int32 destWidth, int32 destHeight, int32 srcPitch, uint32* bits);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Texture_GetBits(void* textureSegment, int32 srcX, int32 srcY, int32 srcWidth, int32 srcHeight, int32 destPitch, uint32* bits);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_Texture_Delete(void* textureSegment);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int32 Gfx_Texture_GetWidth(void* textureSegment);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int32 Gfx_Texture_GetHeight(void* textureSegment);
 
         public this()

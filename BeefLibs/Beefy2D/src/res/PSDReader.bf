@@ -8,13 +8,13 @@ namespace Beefy.res
 #if !STUDIO_CLIENT
     public class PSDLayer
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void Res_PSDLayer_GetSize(void* layerInfo, out int32 x, out int32 y, out int32 width, out int32 height);
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static int32 Res_PSDLayer_GetLayerId(void* layerInfo);
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static char8* Res_PSDLayer_GetName(void* layerInfo);
-     	[StdCall, CLink]
+     	[CallingConvention(.Stdcall), CLink]
         extern static int32 Res_PSDLayer_IsVisible(void* layerInfo);
 
         public void* mNativeLayerInfo;
@@ -49,22 +49,22 @@ namespace Beefy.res
 
     public class PSDReader
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void* Res_OpenPSD(String fileName);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void Res_DeletePSDReader(void* pSDReader);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static int32 Res_PSD_GetLayerCount(void* pSDReader);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void* Res_PSD_GetLayerTexture(void* pSDReader, int32 layerIdx, out int32 xOfs, out int32 yOfs);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void* Res_PSD_GetMergedLayerTexture(void* pSDReader, void* layerIndices, int32 count, out int32 xOfs, out int32 yOfs);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void* Res_PSD_GetLayerInfo(void* pSDReader, int32 layerIdx);
         
         void* mNativePSDReader;

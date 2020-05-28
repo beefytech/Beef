@@ -128,57 +128,57 @@ namespace System.Net
 		}
 
 #if BF_PLATFORM_WINDOWS
-		[Import("wsock32.lib"), CLink, StdCall]
+		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSAStartup(uint16 versionRequired, WSAData* wsaData);
 
-		[Import("wsock32.lib"), CLink, StdCall]
+		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSAGetLastError();
 #else
 		[CLink]
 		static int32 errno;
 #endif
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern HostEnt* gethostbyname(char8* name);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern HSocket socket(int32 af, int32 type, int32 protocol);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 connect(HSocket s, SockAddr* name, int32 nameLen);
     
 #if BF_PLATFORM_WINDOWS
-		[Import("wsock32.lib"), CLink, StdCall]
+		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 closesocket(HSocket s);
 #else
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 close(HSocket s);
 #endif
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 bind(HSocket s, SockAddr* name, int32 nameLen);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 listen(HSocket s, int32 backlog);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern HSocket accept(HSocket s, SockAddr* addr, int32* addrLen);
 
 #if BF_PLATFORM_WINDOWS
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 ioctlsocket(HSocket s, int cmd, int* argp);
 #else
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 ioctl(HSocket s, int cmd, int* argp);
 #endif
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 select(int nfds, FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, TimeVal* timeVal);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 recv(HSocket s, void* ptr, int32 len, int32 flags);
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 send(HSocket s, void* ptr, int32 len, int32 flags);
 
 		public ~this()

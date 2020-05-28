@@ -71,7 +71,7 @@ namespace IDE
 				ReadPaths("Lib64Paths", mLib64Paths);
 			}
 
-			[CLink, StdCall]
+			[CLink, CallingConvention(.Stdcall)]
 			static extern char8* VSSupport_Find();
 
 			public bool IsConfigured()

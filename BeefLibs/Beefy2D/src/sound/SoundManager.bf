@@ -17,10 +17,10 @@ namespace Beefy.sound
 	{
 		void* mNativeSoundManager;
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern int32 BFSoundManager_LoadSound(void* nativeSoundManager, char8* fileName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void* BFSoundManager_GetSoundInstance(void* nativeSoundManager, int32 sfxId);
 
 		public SoundSource LoadSound(StringView fileName)

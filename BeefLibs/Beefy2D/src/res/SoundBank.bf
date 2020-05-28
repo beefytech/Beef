@@ -7,7 +7,7 @@ namespace Beefy.res
 {
     /*public class SoundBank
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Wwise_LoadBankByName(String name);
 
         public String mName;

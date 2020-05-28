@@ -12,19 +12,19 @@ namespace IDE.Clang
 {
     public class ClangHelper : CompilerBase
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern IntPtr ClangHelper_Create();
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void ClangHelper_Delete(IntPtr clangHelper);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern IntPtr ClangHelper_Classify(IntPtr clangHelper, char* fileName, void* elementTypeArray, int charLen, int cursorIdx);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern IntPtr ClangHelper_FindDefinition(IntPtr clangHelper, char* fileName, int line, int column, out int outDefLine, out int outDefColumn);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern IntPtr ClangHelper_Autocomplete(IntPtr clangHelper, char* fileName, int cursorIdx);
 
         IntPtr mNativeClangHelper;

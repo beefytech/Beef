@@ -7,7 +7,7 @@ namespace Beefy.res
 {
     /*public class SoundParameter
     {
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int32 Wwise_SetRTPCValue(uint32 paramId, float value, void* soundGameObject);
 
         public uint32 mWwiseParamId;

@@ -42,28 +42,28 @@ namespace Hey.Dude.Bro
 	{
 		static int gApzong = 123;
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern void OutputDebugStringA(char8* str);
 
-		/*[CLink, StdCall]
+		/*[CLink, CallingConvention(.Stdcall)]
 		internal static extern void OutputDebugStringW(char16* str);*/
 
-		[CLink, StdCall]
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 GetTickCount();
 
-		[Import("winmm.lib"), CLink, StdCall]
+		[Import("winmm.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern uint32 timeGetTime();
 
 		/*public const String cDllName = @"C:\proj\TestDLL2\x64\Debug\TestDLL2.dll";
-		[DllImport(cDllName), CLink, StdCall]
+		[DllImport(cDllName), CLink, CallingConvention(.Stdcall)]
 		public static extern void Test2(int a, int b, int c, int d);*/
 
-		//[DllImport(cDllName), CLink, StdCall] public static extern void Test3();
+		//[DllImport(cDllName), CLink, CallingConvention(.Stdcall)] public static extern void Test3();
 
-		//[DllImport(@"C:\Beef\IDE\dist\IDEHelper64_d.dll"), CLink, StdCall]
+		//[DllImport(@"C:\Beef\IDE\dist\IDEHelper64_d.dll"), CLink, CallingConvention(.Stdcall)]
 		//public static extern void BFTest();
 
-		/*[StdCall, CLink]
+		/*[CallingConvention(.Stdcall), CLink]
 		public static extern void ExTest2();*/
 
 		//[DllImport(@"\beef\ide\dist\TestDLL.dll"), CLink]

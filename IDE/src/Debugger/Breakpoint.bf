@@ -34,64 +34,64 @@ namespace IDE.Debugger
 			Disable
 		}
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Breakpoint_Delete(void* nativeBreakpoint);
         
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 Breakpoint_GetPendingHotBindIdx(void* nativeBreakpoint);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Breakpoint_HotBindBreakpoint(void* breakpoint, int32 lineNum, int32 hotIdx);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int Breakpoint_GetAddress(void* nativeBreakpoint, out void* linkedSibling);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool Breakpoint_SetCondition(void* nativeBreakpoint, char8* condition);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern bool Breakpoint_SetLogging(void* nativeBreakpoint, char8* logging, bool breakAfterLogging);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern bool Breakpoint_IsMemoryBreakpointBound(void* nativeBreakpoint);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern int32 Breakpoint_GetLineNum(void* nativeBreakpoint);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Breakpoint_Move(void* nativeBreakpoint, int32 wantLineNum, int32 wantColumn, bool rebindNow);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Breakpoint_MoveMemoryBreakpoint(void* nativeBreakpoint, int addr, int32 byteCount);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Breakpoint_Disable(void* nativeBreakpoint);        
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void* Debugger_CreateBreakpoint(char8* fileName, int32 wantLineNum, int32 wantColumn, int32 instrOffset);
 
-		[StdCall,CLink]
+		[CallingConvention(.Stdcall),CLink]
 		static extern void* Debugger_CreateSymbolBreakpoint(char8* symbolName);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* Breakpoint_Check(void* nativeBreakpoint);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Breakpoint_SetThreadId(void* nativeBreakpoint, int threadId);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 Breakpoint_GetHitCount(void* nativeBreakpoint);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern int32 Breakpoint_ClearHitCount(void* nativeBreakpoint);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Breakpoint_SetHitCountTarget(void* nativeBreakpoint, int hitCountTarget, HitCountBreakKind breakKind);
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* Debugger_GetActiveBreakpoint();
 
-		[StdCall, CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void* Debugger_CreateMemoryBreakpoint(int addr, int32 byteCount);
 
         public void* mNativeBreakpoint;

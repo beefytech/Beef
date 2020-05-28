@@ -28,7 +28,7 @@ namespace Beefy.res
 
     public class ResourceManager
     {
-        /*[StdCall, CLink]
+        /*[CallingConvention(.Stdcall), CLink]
         static extern void Wwise_Shutdown();*/
 
         public Dictionary<String, ResGroup> mResGroupMap = new Dictionary<String, ResGroup>() ~ delete _;

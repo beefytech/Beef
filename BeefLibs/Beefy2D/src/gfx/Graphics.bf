@@ -400,37 +400,37 @@ namespace Beefy.gfx
 #if !STUDIO_CLIENT
     public class Graphics : GraphicsBase
     {               
-        [StdCall, CLink]	
+        [CallingConvention(.Stdcall), CLink]	
         static extern void Gfx_SetRenderState(void* renderState);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_AllocTris(void* textureSegment, int32 vtxCount);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_SetDrawVertex(int32 idx, float x, float y, float z, float u, float v, uint32 color);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_CopyDrawVertex(int32 destIdx, int32 srcIdx);
 
-        //[StdCall, CLink]
+        //[CallingConvention(.Stdcall), CLink]
         //static unsafe extern void Gfx_DrawIndexedVertices2D(void* vtxData, int vtxCount, int* idxData, int idxCount, float a, float b, float c, float d, float tx, float ty, float z);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_DrawIndexedVertices2D(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount, float a, float b, float c, float d, float tx, float ty, float z);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_SetShaderConstantData(int32 slotIdx, void* data, int32 size);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_SetShaderConstantDataTyped(int32 slotIdx, void* data, int32 size, int32* typeData, int32 typeCount);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_DrawQuads(void* textureSegment, Vertex3D* vertices, int32 vtxCount);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void* Gfx_QueueRenderCmd(void* nativeRenderCmd);
 
-        [StdCall, CLink]
+        [CallingConvention(.Stdcall), CLink]
         extern static void Gfx_SetTexture_TextureSegment(int32 textureIdx, void* textureSegment);
         
         public this()
