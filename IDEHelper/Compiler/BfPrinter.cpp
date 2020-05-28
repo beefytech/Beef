@@ -1588,6 +1588,12 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 	
 	VisitChild(newExpr->mTypeRef);	
 
+	if (newExpr->mStarToken != NULL)
+	{
+		VisitChild(newExpr->mStarToken);
+		ExpectSpace();
+	}
+
 	VisitChild(newExpr->mOpenToken);
 	for (int i = 0; i < (int)newExpr->mArguments.size(); i++)
 	{
@@ -1598,13 +1604,7 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 		}
 		VisitChild(newExpr->mArguments[i]);		
 	}
-	VisitChild(newExpr->mCloseToken);		
-
-	if (newExpr->mStarToken != NULL)
-	{
-		VisitChild(newExpr->mStarToken);
-		ExpectSpace();
-	}
+	VisitChild(newExpr->mCloseToken);			
 }
 
 void BfPrinter::Visit(BfBoxExpression* boxExpr)
