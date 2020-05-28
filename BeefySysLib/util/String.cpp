@@ -153,7 +153,7 @@ void StringView::ToString(StringImpl& str) const
 
 StringSplitEnumerator StringView::Split(char c)
 {
-	return StringSplitEnumerator(mPtr, mLength, c, 0x7FFFFFFF, false);
+	return StringSplitEnumerator(mPtr, (int)mLength, c, 0x7FFFFFFF, false);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -314,11 +314,11 @@ bool StringImpl::EqualsHelper(const char * a, const char * b, intptr length)
 	return strncmp(a, b, length) == 0;
 }
 
-bool StringImpl::EqualsIgnoreCaseHelper(const char * a, const char * b, int length)
+bool StringImpl::EqualsIgnoreCaseHelper(const char * a, const char * b, intptr length)
 {
 	const char* curA = a;
 	const char* curB = b;
-	int curLength = length;
+	intptr curLength = length;
 
 	/*Contract.Requires(strA != null);
 	Contract.Requires(strB != null);
@@ -627,11 +627,11 @@ intptr StringImpl::Compare(const StringImpl & strA, intptr indexA, const StringI
 
 void StringImpl::ReplaceLargerHelper(const StringView& find, const StringView& replace)
 {
-	Array<int> replaceEntries;
+	Array<intptr> replaceEntries;
 
-	int_strsize moveOffset = replace.mLength - find.mLength;
+	intptr moveOffset = replace.mLength - find.mLength;
 
-	for (int startIdx = 0; startIdx < mLength - find.mLength; startIdx++)
+	for (intptr startIdx = 0; startIdx < mLength - find.mLength; startIdx++)
 	{
 		if (EqualsHelper(GetPtr() + startIdx, find.mPtr, find.mLength))
 		{
@@ -684,8 +684,8 @@ void StringImpl::Replace(const StringView& find, const StringView & replace)
 	auto findPtr = find.mPtr;
 	auto replacePtr = replace.mPtr;
 
-	int_strsize inIdx = 0;
-	int_strsize outIdx = 0;
+	intptr inIdx = 0;
+	intptr outIdx = 0;
 
 	while (inIdx < mLength - find.mLength)
 	{
@@ -721,7 +721,7 @@ void StringImpl::Replace(const StringView& find, const StringView & replace)
 	}
 
 	ptr[outIdx] = 0;
-	mLength = outIdx;
+	mLength = (int_strsize)outIdx;
 }
 
 void StringImpl::TrimEnd()

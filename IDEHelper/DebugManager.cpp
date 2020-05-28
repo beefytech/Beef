@@ -39,6 +39,8 @@
 
 #include "BeefySysLib/util/AllocDebug.h"
 
+#pragma warning(disable:4190)
+
 #define ENABLE_DBG_32
 
 //#define BF_DBG_32
@@ -1219,7 +1221,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_EvaluateContinueKeep()
 	debugger->EvaluateContinueKeep();	
 }
 
-BF_EXPORT const char* BF_CALLTYPE Debugger_Evaluate(const char* expr, int callStackIdx, int cursorPos, int32 language, int8 expressionFlags)
+BF_EXPORT StringView BF_CALLTYPE Debugger_Evaluate(const char* expr, int callStackIdx, int cursorPos, int32 language, int8 expressionFlags)
 {	
 	auto debugger = gDebugger;
 
@@ -1238,7 +1240,7 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_Evaluate(const char* expr, int callSt
 			BfLogDbg("Debugger_Evaluate Result=%s\n", outString.c_str());
 	}
 #endif
-	return outString.c_str();
+	return outString;
 }
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_EvaluateToAddress(const char* expr, int callStackIdx, int cursorPos)

@@ -18,7 +18,7 @@ class StringView
 {
 public:
 	const char* mPtr;
-	int mLength;
+	intptr mLength;
 
 public:
 	struct iterator
@@ -270,12 +270,12 @@ public:
 		mLength -= (int)length;
 	}
 
-	void RemoveToEnd(int startIdx)
+	void RemoveToEnd(intptr startIdx)
 	{
 		RemoveFromEnd(mLength - startIdx);
 	}
 
-	void RemoveFromEnd(int length)
+	void RemoveFromEnd(intptr length)
 	{
 		mLength -= length;
 	}
@@ -530,17 +530,17 @@ protected:
 	void Realloc(intptr newSize, bool copyStr = true);
 	void Realloc(char* newPtr, intptr newSize);		
 	static bool EqualsHelper(const char* a, const char* b, intptr length);	
-	static bool EqualsIgnoreCaseHelper(const char* a, const char* b, int length);	
+	static bool EqualsIgnoreCaseHelper(const char* a, const char* b, intptr length);	
 	static int CompareOrdinalIgnoreCaseHelper(const StringImpl& strA, const StringImpl& strB);
 	static intptr CompareOrdinalIgnoreCaseHelper(const char* strA, intptr lengthA, const char* strB, intptr lengthB);
 	static intptr CompareOrdinalIgnoreCaseHelper(const StringImpl& strA, intptr indexA, intptr lengthA, const StringImpl& strB, intptr indexB, intptr lengthB);	
 	static intptr CompareOrdinalHelper(const char* strA, intptr lengthA, const char* strB, intptr lengthB);
 	static intptr CompareOrdinalHelper(const StringImpl& strA, intptr indexA, intptr lengthA, const StringImpl& strB, intptr indexB, intptr lengthB);
 
-	void Init(const char* charPtr, int_strsize count)
+	void Init(const char* charPtr, intptr count)
 	{
 		int_strsize internalSize = (int_strsize)(sizeof(StringImpl) - offsetof(StringImpl, mPtr));
-		int_strsize allocSize = count + 1;
+		int_strsize allocSize = (int_strsize)count + 1;
 
 		if (allocSize <= internalSize)
 		{
@@ -549,7 +549,7 @@ protected:
 			memcpy(ptr, charPtr, count);
 			ptr[count] = 0;
 			mAllocSizeAndFlags = internalSize;
-			this->mLength = count;
+			this->mLength = (int_strsize)count;
 		}
 		else
 		{
@@ -559,7 +559,7 @@ protected:
 			ptr[count] = 0;
 			this->mPtr = ptr;
 			mAllocSizeAndFlags = allocSize | DynAllocFlag | StrPtrFlag;
-			this->mLength = count;
+			this->mLength = (int_strsize)count;
 		}
 	}
 

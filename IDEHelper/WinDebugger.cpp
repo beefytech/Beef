@@ -5455,7 +5455,7 @@ bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& format
 				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
 				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
 				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mOverrideCount = (intptr)countValue.GetInt64();
+					formatInfo->mMaxCount = (intptr)countValue.GetInt64();
 				if (dbgEvaluationContext.HadError())
 				{
 					if (errorString != NULL)

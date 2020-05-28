@@ -203,7 +203,7 @@ namespace IDE.Debugger
 		static extern void Debugger_EvaluateContinueKeep();
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern char8* Debugger_Evaluate(char8* expr, int32 callStackIdx, int32 cursorPos, int32 language, EvalExpressionFlags expressionFlags);
+		static extern StringView Debugger_Evaluate(char8* expr, int32 callStackIdx, int32 cursorPos, int32 language, EvalExpressionFlags expressionFlags);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_EvaluateToAddress(char8* expr, int32 callStackIdx, int32 cursorPos);
@@ -760,9 +760,7 @@ namespace IDE.Debugger
 		// AllowAssignment, allowCalls
 		public void Evaluate(String expr, String outVal, int cursorPos = -1, int language = -1, EvalExpressionFlags expressionFlags = EvalExpressionFlags.None)
 		{
-			char8* result = Debugger_Evaluate(expr, (expressionFlags.HasFlag(.DeselectCallStackIdx)) ? -1 : mActiveCallStackIdx, (int32)cursorPos, (int32)language, expressionFlags);
-			if (result == null)
-				return;
+			StringView result = Debugger_Evaluate(expr, (expressionFlags.HasFlag(.DeselectCallStackIdx)) ? -1 : mActiveCallStackIdx, (int32)cursorPos, (int32)language, expressionFlags);
 			outVal.Append(result);
 		}
 
