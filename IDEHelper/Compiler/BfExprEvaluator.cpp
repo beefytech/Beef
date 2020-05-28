@@ -7072,11 +7072,6 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	else
 		MakeBaseConcrete(target);
 
-	if ((moduleMethodInstance.mMethodInstance->mMethodDef->mName == "GetVal") && (targetTypeInst != NULL) && (mModule->mCurTypeInstance->mTypeDef->mName->ToString() == "ClassD"))
-	{
-		NOP;
-	}
-
 	BfTypedValue callTarget;
 	if (isSkipCall)
 	{
