@@ -143,18 +143,7 @@ namespace System.Reflection
 
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
-			if (mFieldData.mCustomAttributesIdx == -1)
-			    return .Err;
-
-			void* data = mTypeInstance.[Friend]mCustomAttrDataPtr[mFieldData.mCustomAttributesIdx];
-
-			T attrInst = ?;
-			switch (AttributeInfo.GetCustomAttribute(data, typeof(T), &attrInst))
-			{
-			case .Ok: return .Ok(attrInst);
-			default:
-				return .Err;
-			}
+			return mTypeInstance.[Friend]GetCustomAttribute<T>(mFieldData.mCustomAttributesIdx);
 		}
 
 	    void* GetDataPtrAndType(Object value, out Type type)

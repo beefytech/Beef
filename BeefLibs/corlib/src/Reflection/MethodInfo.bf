@@ -54,6 +54,12 @@ namespace System.Reflection
 			}
 		}
 
+		public this(TypeInstance typeInstance, TypeInstance.MethodData* methodData)
+		{
+		    mTypeInstance = typeInstance;
+		    mMethodData = methodData;
+		}
+
 		public Type GetParamType(int paramIdx)
 		{
 			Debug.Assert((uint)paramIdx < (uint)mMethodData.mParamCount);
@@ -66,10 +72,9 @@ namespace System.Reflection
 			return mMethodData.mParamData[paramIdx].mName;
 		}
 
-		public this(TypeInstance typeInstance, TypeInstance.MethodData* methodData)
+		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
-		    mTypeInstance = typeInstance;
-		    mMethodData = methodData;
+			return mTypeInstance.[Friend]GetCustomAttribute<T>(mMethodData.mCustomAttributesIdx);
 		}
 
 		public enum CallError

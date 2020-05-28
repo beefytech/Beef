@@ -26,8 +26,21 @@ namespace Tests
 		[AttributeUsage(.Field)]
 		struct AttrBAttribute : Attribute
 		{
-			int32 mA;
-			float mB;
+			public int32 mA;
+			public float mB;
+
+			public this(int32 a, float b)
+			{
+				mA = a;
+				mB = b;
+			}
+		}
+
+		[AttributeUsage(.Class | .Method, .ReflectAttribute)]
+		struct AttrCAttribute : Attribute
+		{
+			public int32 mA;
+			public float mB;
 
 			public this(int32 a, float b)
 			{
@@ -40,7 +53,7 @@ namespace Tests
 		[Reflect]
 		class ClassA
 		{
-			[AlwaysInclude]
+			[AlwaysInclude, AttrC(71, 72)]
 			static float StaticMethodA(int32 a, int32 b, float c)
 			{
 				return a + b + c;
@@ -76,7 +89,7 @@ namespace Tests
 			}
 		}
 
-		[Reflect(.All)]
+		[Reflect(.All), AttrC(1, 2)]
 		class ClassB
 		{
 			[AttrA(11, 22, "StrA", "StrB")]
@@ -127,6 +140,10 @@ namespace Tests
 					var result = methodInfo.Invoke(null, 100, (int32)20, 3.0f).Get();
 					Test.Assert(result.Get<float>() == 123);
 					result.Dispose();
+
+					let attrC = methodInfo.GetCustomAttribute<AttrCAttribute>().Get();
+					Test.Assert(attrC.mA == 71);
+					Test.Assert(attrC.mB == 72);
 				case 1:
 					Test.Assert(methodInfo.Name == "MemberMethodA");
 					var result = methodInfo.Invoke(ca, 100, (int32)20, 3.0f).Get();
@@ -188,6 +205,14 @@ namespace Tests
 			Test.Assert(str == "ABC");
 			fieldInfo.SetValue(cb, "DEF");
 			Test.Assert(cb.mStr == "DEF");
+		}
+
+		[Test]
+		static void TestC()
+		{
+			let attrC = typeof(ClassB).GetCustomAttribute<AttrCAttribute>().Get();
+			Test.Assert(attrC.mA == 1);
+			Test.Assert(attrC.mB == 2);
 		}
 	}
 }
