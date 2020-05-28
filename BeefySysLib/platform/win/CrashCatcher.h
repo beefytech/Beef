@@ -23,13 +23,13 @@ public:
 public:
 	CrashCatcher();
 
-	void Init();
-	void AddCrashInfoFunc(CrashInfoFunc crashInfoFunc);
-	void AddInfo(const StringImpl& str);
+	virtual void Init();
+	virtual void AddCrashInfoFunc(CrashInfoFunc crashInfoFunc);
+	virtual void AddInfo(const StringImpl& str);
 
-	void Test();
-	void Crash(const StringImpl& str);	
-	void SetCrashReportKind(BfpCrashReportKind crashReportKind);	
+	virtual void Test();
+	virtual void Crash(const StringImpl& str);
+	virtual void SetCrashReportKind(BfpCrashReportKind crashReportKind);
 
 	static CrashCatcher* Get();
 };
