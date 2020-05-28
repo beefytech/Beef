@@ -2,6 +2,8 @@
 #include "BfModule.h"
 #include "BeefySysLib/util/BeefPerf.h"
 #include "BeefySysLib/util/Hash.h"
+#include <io.h>
+#include <fcntl.h> 
 
 #pragma warning(push)
 #pragma warning(disable:4141)
@@ -215,6 +217,147 @@ static llvm::Attribute::AttrKind LLVMMapAttribute(BfIRAttribute attr)
 	return llvm::Attribute::None;
 }
 
+#ifdef BF_PLATFORM_WINDOWS
+struct BfTempFile
+{
+	String mContents;
+	String mFilePath;
+	CritSect mCritSect;
+	FILE* mFP;	
+
+	BfTempFile()
+	{
+		mFP = NULL;		
+	}
+
+	~BfTempFile()
+	{
+		if (mFP != NULL)
+			fclose(mFP);					
+		if (!mFilePath.IsEmpty())		
+			::DeleteFileW(UTF8Decode(mFilePath).c_str());					
+	}
+
+	bool Create()
+	{
+		AutoCrit autoCrit(mCritSect);
+		if (mFP != NULL)
+			return false;
+
+		WCHAR wPath[4096];
+		wPath[0] = 0;
+		::GetTempPathW(4096, wPath);
+
+		WCHAR wFilePath[4096];
+		wFilePath[0] = 0;
+		GetTempFileNameW(wPath, L"bftmp", 0, wFilePath);
+
+		mFilePath = UTF8Encode(wFilePath);
+		mFP = _wfopen(wFilePath, L"w+D");
+		return mFP != NULL;
+	}
+
+	String GetContents()
+	{
+		AutoCrit autoCrit(mCritSect);
+
+		if (mFP != NULL)
+		{
+			fseek(mFP, 0, SEEK_END);
+			int size = (int)ftell(mFP);
+			fseek(mFP, 0, SEEK_SET);
+
+			char* str = new char[size];
+			int readSize = (int)fread(str, 1, size, mFP);
+			mContents.Append(str, readSize);
+			delete [] str;			
+			fclose(mFP);
+			mFP = NULL;
+
+			::DeleteFileW(UTF8Decode(mFilePath).c_str());
+		}
+		return mContents;
+	}
+};
+
+static BfTempFile gTempFile;
+
+static void AddStdErrCrashInfo()
+{	
+	String tempContents = gTempFile.GetContents();	
+	if (!tempContents.IsEmpty())	
+		BfpSystem_AddCrashInfo(tempContents.c_str());	
+}
+
+#endif
+
+///
+
+BfIRCodeGen::BfIRCodeGen()
+{
+	mStream = NULL;
+	mBfIRBuilder = NULL;
+
+	mNopInlineAsm = NULL;
+	mAsmObjectCheckAsm = NULL;
+	mHasDebugLoc = false;
+	mAttrSet = NULL;
+	mIRBuilder = NULL;
+	mDIBuilder = NULL;
+	mDICompileUnit = NULL;
+	mActiveFunction = NULL;
+
+	mLLVMContext = new llvm::LLVMContext();
+	mLLVMModule = NULL;
+	mIsCodeView = false;
+	mCmdCount = 0;
+	
+#ifdef BF_PLATFORM_WINDOWS
+	if (::GetStdHandle(STD_ERROR_HANDLE) == 0)
+	{
+		if (gTempFile.Create())
+		{			
+			_dup2(fileno(gTempFile.mFP), 2);			
+			BfpSystem_AddCrashInfoFunc(AddStdErrCrashInfo);
+		}
+	}
+#endif
+}
+
+BfIRCodeGen::~BfIRCodeGen()
+{
+	mDebugLoc = llvm::DebugLoc();
+	mSavedDebugLocs.Clear();
+
+	delete mStream;
+	delete mIRBuilder;
+	delete mDIBuilder;
+	delete mLLVMModule;
+	delete mLLVMContext;
+}
+
+void BfIRCodeGen::Fail(const StringImpl& error)
+{
+	if (mFailed)
+		return;
+
+	if (mHasDebugLoc)
+	{
+		auto dbgLoc = mIRBuilder->getCurrentDebugLocation();
+		if (dbgLoc)
+		{
+			llvm::DIFile* file = NULL;
+			if (llvm::DIScope* scope = llvm::dyn_cast<llvm::DIScope>(dbgLoc.getScope()))
+			{
+				BfIRCodeGenBase::Fail(StrFormat("%s at line %d:%d in %s/%s", error.c_str(), dbgLoc.getLine(), dbgLoc.getCol(), scope->getDirectory().data(), scope->getFilename().data()));
+				return;
+			}
+		}
+	}
+
+	BfIRCodeGenBase::Fail(error);
+}
+
 void BfIRCodeGen::PrintModule()
 {
 	Beefy::debug_ostream os;
@@ -360,60 +503,6 @@ void BfIRCodeGen::SetResult(int id, llvm::MDNode* md)
 	entry.mKind = BfIRCodeGenEntryKind_LLVMMetadata;
 	entry.mLLVMMetadata = md;
 	mResults.TryAdd(id, entry);
-}
-
-BfIRCodeGen::BfIRCodeGen()
-{
-	mStream = NULL;
-	mBfIRBuilder = NULL;
-	
-	mNopInlineAsm = NULL;
-	mAsmObjectCheckAsm = NULL;
-	mHasDebugLoc = false;
-	mAttrSet = NULL;	
-	mIRBuilder = NULL;
-	mDIBuilder = NULL;
-	mDICompileUnit = NULL;
-	mActiveFunction = NULL;
-
-    mLLVMContext = new llvm::LLVMContext();
-	mLLVMModule = NULL;
-	mIsCodeView = false;
-	mCmdCount = 0;
-}
-
-BfIRCodeGen::~BfIRCodeGen()
-{
-	mDebugLoc = llvm::DebugLoc();
-	mSavedDebugLocs.Clear();
-
-	delete mStream;
-	delete mIRBuilder;
-	delete mDIBuilder;	
-	delete mLLVMModule;
-	delete mLLVMContext;		
-}
-
-void BfIRCodeGen::Fail(const StringImpl& error)
-{
-	if (mFailed)
-		return;
-
-	if (mHasDebugLoc)
-	{
-		auto dbgLoc = mIRBuilder->getCurrentDebugLocation();
-		if (dbgLoc)
-		{
-			llvm::DIFile* file = NULL;
-			if (llvm::DIScope* scope = llvm::dyn_cast<llvm::DIScope>(dbgLoc.getScope()))		
-			{			
-				BfIRCodeGenBase::Fail(StrFormat("%s at line %d:%d in %s/%s", error.c_str(), dbgLoc.getLine(), dbgLoc.getCol(), scope->getDirectory().data(), scope->getFilename().data()));
-				return;
-			}
-		}
-	}
-	
-	BfIRCodeGenBase::Fail(error);
 }
 
 void BfIRCodeGen::ProcessBfIRData(const BfSizedArray<uint8>& buffer)

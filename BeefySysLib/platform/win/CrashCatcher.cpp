@@ -1,5 +1,4 @@
 #include "CrashCatcher.h"
-#include "../util/CritSect.h"
 #include "../util/Dictionary.h"
 #include <commdlg.h>
 #include <time.h>
@@ -51,15 +50,7 @@ static SYMFUNCTIONTABLEACCESSPROC gSymFunctionTableAccess = NULL;
 static SYMGETMODULEBASEPROC gSymGetModuleBase = NULL;
 static SYMGETSYMFROMADDRPROC gSymGetSymFromAddr = NULL;
 static SYMGETLINEFROMADDR gSymGetLineFromAddr = NULL;
-static Array<CrashInfoFunc> gCrashInfoFuncs;
-static StringT<0> gCrashInfo;
-static bool gCrashed = false;
-extern CritSect gBfpCritSect;
 
-static EXCEPTION_POINTERS* gExceptionPointers = NULL;
-static LPTOP_LEVEL_EXCEPTION_FILTER gPreviousFilter = NULL;
-
-static bool gDebugError = false;
 
 static bool CreateMiniDump(EXCEPTION_POINTERS* pep, const StringImpl& filePath);
 
@@ -162,7 +153,6 @@ struct
 	{ 0xFFFFFFFF,                      "" }
 };
 
-static bool gUseDefaultFonts;
 static HFONT gDialogFont;
 static HFONT gBoldFont;
 static String gErrorTitle;
@@ -171,10 +161,9 @@ static HWND gDebugButtonWindow = NULL;
 static HWND gYesButtonWindow = NULL;
 static HWND gNoButtonWindow = NULL;
 static bool gExiting = false;
-static BfpCrashReportKind gCrashReportKind = BfpCrashReportKind_Default;
 
 static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
+{	
 	switch (uMsg)
 	{
 	case WM_COMMAND:
@@ -198,7 +187,7 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 			if (::GetSaveFileNameW(&openFileName))
 			{
-				CreateMiniDump(gExceptionPointers, UTF8Encode(fileName));
+				CreateMiniDump(CrashCatcher::Get()->mExceptionPointers, UTF8Encode(fileName));
 			}			
 		}
 		else if (hwndCtl == gNoButtonWindow)
@@ -207,7 +196,7 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		}
 		else if (hwndCtl == gDebugButtonWindow)
 		{
-			gDebugError = true;
+			CrashCatcher::Get()->mDebugError = true;
 			gExiting = true;
 		}
 	}
@@ -222,6 +211,8 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& errorText)
 {
+	bool gUseDefaultFonts;
+
 	HINSTANCE gHInstance = ::GetModuleHandle(NULL);
 
 	OSVERSIONINFO aVersionInfo;
@@ -246,7 +237,6 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 
 	gErrorTitle = errorTitle;
 	gErrorText = errorText;
-
 
 	WNDCLASSW wc;
 	wc.style = 0;
@@ -810,18 +800,18 @@ static String GetVersion(const StringImpl& fileName)
 
 static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 {
-	if (gCrashed)
+	if (CrashCatcher::Get()->mCrashed)
 		return;
-	gCrashed = true;
+	CrashCatcher::Get()->mCrashed = true;
 
 	HMODULE hMod = GetModuleHandleA(NULL);
 		
 	PIMAGE_DOS_HEADER pDosHdr = (PIMAGE_DOS_HEADER)hMod;
 	PIMAGE_NT_HEADERS pNtHdr = (PIMAGE_NT_HEADERS)((uint8*)hMod + pDosHdr->e_lfanew);
 	bool isCLI = pNtHdr->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI;
-	if (gCrashReportKind == BfpCrashReportKind_GUI)
+	if (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_GUI)
 		isCLI = false;
-	else if ((gCrashReportKind == BfpCrashReportKind_Console) || (gCrashReportKind == BfpCrashReportKind_PrintOnly))
+	else if ((CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_Console) || (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_PrintOnly))
 		isCLI = true;
 	
 	bool hasImageHelp = LoadImageHelp();
@@ -858,12 +848,12 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 			aDebugDump += StrFormat("Crash minidump saved as %s\n", crashPath.c_str());
 		}
 	}
-
-	for (auto func : gCrashInfoFuncs)
+	
+	for (auto func : CrashCatcher::Get()->mCrashInfoFuncs)
 		func();
 
-	aDebugDump.Append(gCrashInfo);
-
+	aDebugDump.Append(CrashCatcher::Get()->mCrashInfo);
+	
 	for (int i = 0; i < (int)aDebugDump.length(); i++)
 	{
 		char c = aDebugDump[i];
@@ -994,26 +984,31 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 
 CrashCatcher::CrashCatcher()
 {
-
+	mCrashed = false;
+	mInitialized = false;	
+	mExceptionPointers = NULL;
+	mPreviousFilter = NULL;
+	mDebugError = false;
+	mCrashReportKind = BfpCrashReportKind_Default;
 }
 
 static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 {	
- 	OutputDebugStrF("SEH Filter! CraskReportKind:%d\n", gCrashReportKind);
+ 	OutputDebugStrF("SEH Filter! CraskReportKind:%d\n", CrashCatcher::Get()->mCrashReportKind);
 
-	if (gCrashReportKind == BfpCrashReportKind_None)
+	if (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_None)
 	{	
 		OutputDebugStrF("Silent Exiting\n");
 		::TerminateProcess(GetCurrentProcess(), lpExceptPtr->ExceptionRecord->ExceptionCode);
 	}
 
-	AutoCrit autoCrit(gBfpCritSect);
+	AutoCrit autoCrit(CrashCatcher::Get()->mBfpCritSect);
 	//::ExitProcess();
 	//quick_exit(1);
 
-	if (!gCrashed)
+	if (!CrashCatcher::Get()->mCrashed)
 	{
-		gExceptionPointers = lpExceptPtr;
+		CrashCatcher::Get()->mExceptionPointers = lpExceptPtr;
 		//CreateMiniDump(lpExceptPtr);
 		DoHandleDebugEvent(lpExceptPtr);
 	}
@@ -1021,7 +1016,7 @@ static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
  	//if (!gDebugError)
  		//SetErrorMode(SEM_NOGPFAULTERRORBOX);		
 	
-	if (gCrashReportKind == BfpCrashReportKind_PrintOnly)
+	if (CrashCatcher::Get()->mCrashReportKind == BfpCrashReportKind_PrintOnly)
 	{
 		::TerminateProcess(GetCurrentProcess(), lpExceptPtr->ExceptionRecord->ExceptionCode);
 	}
@@ -1039,9 +1034,13 @@ static long __stdcall VectorExceptionHandler(LPEXCEPTION_POINTERS lpExceptPtr)
 
 
 void CrashCatcher::Init()
-{		
- 	gPreviousFilter = SetUnhandledExceptionFilter(SEHFilter);	
- 	OutputDebugStrF("Setting SEH filter %p\n", gPreviousFilter);
+{	
+	if (mInitialized)
+		return;
+
+	mPreviousFilter = SetUnhandledExceptionFilter(SEHFilter);
+ 	OutputDebugStrF("Setting SEH filter %p\n", mPreviousFilter);
+	mInitialized = true;
 
 // 	OutputDebugStrF("AddVectoredExceptionHandler 2\n");
 // 	AddVectoredExceptionHandler(0, VectorExceptionHandler);
@@ -1065,30 +1064,33 @@ void CrashCatcher::Test()
 
 void CrashCatcher::AddCrashInfoFunc(CrashInfoFunc crashInfoFunc)
 {
-	AutoCrit autoCrit(gBfpCritSect);
-	gCrashInfoFuncs.Add(crashInfoFunc);
+	AutoCrit autoCrit(mBfpCritSect);
+	mCrashInfoFuncs.Add(crashInfoFunc);
 }
 
 void CrashCatcher::AddInfo(const StringImpl& str)
 {
-	AutoCrit autoCrit(gBfpCritSect);
-	gCrashInfo.Append(str);
+	AutoCrit autoCrit(mBfpCritSect);
+	mCrashInfo.Append(str);
+	if (!str.EndsWith('\n'))
+		mCrashInfo.Append('\n');
 }
 
 void CrashCatcher::Crash(const StringImpl& str)
 {	
 	OutputDebugStrF("CrashCatcher::Crash\n");
 
-	gBfpCritSect.Lock();
-	gCrashInfo.Append(str);
+	mBfpCritSect.Lock();
+	mCrashInfo.Append(str);
+	mCrashInfo.Append("\n");
 
-	if (gPreviousFilter == NULL)
+	if (mPreviousFilter == NULL)
 	{
 		// A little late, but install handler now so we can catch this crash
 		Init();
 	}
 
-	gBfpCritSect.Unlock();
+	mBfpCritSect.Unlock();
 
 
 	__debugbreak();
@@ -1104,11 +1106,74 @@ void CrashCatcher::Crash(const StringImpl& str)
 	{
 
 	}*/
-		
+
 	exit(1);
 }
 
 void CrashCatcher::SetCrashReportKind(BfpCrashReportKind crashReportKind)
 {
-	gCrashReportKind = crashReportKind;
+	mCrashReportKind = crashReportKind;
+}
+
+struct CrashCatchMemory
+{
+public:
+	CrashCatcher* mBpManager;
+	int mABIVersion;
+};
+
+#define CRASHCATCH_ABI_VERSION 1
+
+static CrashCatcher* sCrashCatcher = NULL;
+CrashCatcher* CrashCatcher::Get()
+{
+	if (sCrashCatcher != NULL)
+		return sCrashCatcher;
+
+	char mutexName[128];
+	sprintf(mutexName, "BfCrashCatch_mutex_%d", GetCurrentProcessId());
+	char memName[128];
+	sprintf(memName, "BfCrashCatch_mem_%d", GetCurrentProcessId());
+
+	auto mutex = ::CreateMutexA(NULL, TRUE, mutexName);
+	if (mutex != NULL)
+	{
+		HANDLE fileMapping = ::OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, memName);
+		if (fileMapping != NULL)
+		{
+			CrashCatchMemory* sharedMem = (CrashCatchMemory*)MapViewOfFile(fileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(CrashCatchMemory));
+			if (sharedMem != NULL)
+			{
+				if (sharedMem->mABIVersion == CRASHCATCH_ABI_VERSION)				
+					sCrashCatcher = sharedMem->mBpManager;				
+				::UnmapViewOfFile(sharedMem);
+			}			
+			::CloseHandle(fileMapping);
+		}
+		else
+		{
+			fileMapping = ::CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(CrashCatchMemory), memName);
+			if (fileMapping != NULL)
+			{
+				CrashCatchMemory* sharedMem = (CrashCatchMemory*)MapViewOfFile(fileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(CrashCatchMemory));
+				if (sharedMem != NULL)
+				{
+					sCrashCatcher = new CrashCatcher();					
+					sharedMem->mBpManager = sCrashCatcher;
+					sharedMem->mABIVersion = CRASHCATCH_ABI_VERSION;
+					::UnmapViewOfFile(sharedMem);
+					::ReleaseMutex(mutex);
+				}
+				else
+				{					
+					::CloseHandle(fileMapping);
+					::CloseHandle(mutex);
+				}
+			}			
+		}
+	}
+
+	if (sCrashCatcher == NULL)
+		sCrashCatcher = new	CrashCatcher();
+	return sCrashCatcher;
 }

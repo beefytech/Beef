@@ -23,8 +23,6 @@
 
 #include "util/AllocDebug.h"
 
-//kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)
-
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "user32.lib")
@@ -47,10 +45,6 @@ struct WindowsSharedInfo
 
 static WindowsSharedInfo* gGlobalPlatformInfo = NULL;
 static HANDLE gGlobalMutex = 0;
-static CrashCatcher gCrashCatcher;
-
-//#define HANDLE_TO_BFPFILE(val) ((BfpFile*)(val))
-//#define BFPFILE_TO_HANDLE(val) ((HANDLE)(val))
 
 #define STATUS_INFO_LENGTH_MISMATCH 0xc0000004
 typedef LONG KPRIORITY;
@@ -950,11 +944,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 		// Then we install our abort handler.
 		signal(SIGABRT, &AbortHandler);
 
-		gCrashCatcher.Init();
-
+		CrashCatcher::Get()->Init();		
 		if ((flags & BfpSystemInitFlag_SilentCrash) != 0)
-			gCrashCatcher.SetCrashReportKind(BfpCrashReportKind_None);
-	}
+			CrashCatcher::Get()->SetCrashReportKind(BfpCrashReportKind_None);
+	}	
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
@@ -964,17 +957,17 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashReportKind(BfpCrashReportKind crashReportKind)
 {
-	gCrashCatcher.SetCrashReportKind(crashReportKind);
+	CrashCatcher::Get()->SetCrashReportKind(crashReportKind);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfoFunc(BfpCrashInfoFunc crashInfoFunc)
 {
-	gCrashCatcher.AddCrashInfoFunc(crashInfoFunc);
+	CrashCatcher::Get()->AddCrashInfoFunc(crashInfoFunc);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfo(const char* str)
 {
-	gCrashCatcher.AddInfo(str);
+	CrashCatcher::Get()->AddInfo(str);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Shutdown()
@@ -1077,9 +1070,9 @@ BFP_EXPORT uint64 BFP_CALLTYPE BfpSystem_InterlockedCompareExchange64(uint64* pt
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_FatalError(const char* error, const char* title)
 {	
 	if (title != NULL)
-		gCrashCatcher.Crash(String(title) + "\n" + String(error));
+		CrashCatcher::Get()->Crash(String(title) + "\n" + String(error));
 	else
-		gCrashCatcher.Crash(error);
+		CrashCatcher::Get()->Crash(error);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetCommandLine(char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
