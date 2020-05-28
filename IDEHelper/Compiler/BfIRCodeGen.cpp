@@ -2,8 +2,10 @@
 #include "BfModule.h"
 #include "BeefySysLib/util/BeefPerf.h"
 #include "BeefySysLib/util/Hash.h"
+
+#ifdef BF_PLATFORM_WINDOWS
 #include <io.h>
-#include <fcntl.h> 
+#endif
 
 #pragma warning(push)
 #pragma warning(disable:4141)
