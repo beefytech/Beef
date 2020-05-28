@@ -251,7 +251,7 @@ namespace System
 			Internal.MemCpy(&arrayTo.GetRef(dstOffset), &GetRef(srcOffset), strideof(T) * length, alignof(T));
 		}
 
-		public void CopyTo<T2>(T2[] arrayTo, int srcOffset, int dstOffset, int length) where T2 : var
+		public void CopyTo<T2>(T2[] arrayTo, int srcOffset, int dstOffset, int length) where T2 : operator explicit T
 		{
 			Debug.Assert(length >= 0);
 			Debug.Assert((uint)srcOffset + (uint)length <= (uint)mLength);
@@ -270,18 +270,22 @@ namespace System
 
 		public void CopyTo(Span<T> destination)
 		{
-			Debug.Assert(destination.[Friend]mPtr != null);
 			Debug.Assert(destination.[Friend]mLength >= mLength);
-
 			Internal.MemCpy(destination.Ptr, &GetRef(0), strideof(T) * mLength, alignof(T));
 		}
 
 		public void CopyTo(Span<T> destination, int srcOffset)
 		{
-			Debug.Assert(destination.[Friend]mPtr != null);
-			Debug.Assert((uint)destination.[Friend]mLength - (uint)srcOffset < (uint)mLength);
+			Debug.Assert((uint)srcOffset + (uint)destination.[Friend]mLength <= (uint)mLength);
+			Internal.MemCpy(destination.Ptr, &GetRef(srcOffset), strideof(T) * (destination.[Friend]mLength - srcOffset), alignof(T));
+		}
 
-			Internal.MemCpy(destination.Ptr, &GetRef(srcOffset), strideof(T) * (destination.Length - srcOffset), alignof(T));
+		public void CopyTo<T2>(Span<T2> destination, int srcOffset) where T2 : operator explicit T
+		{
+			Debug.Assert((uint)srcOffset + (uint)destination.[Friend]mLength <= (uint)mLength);
+			var ptr = destination.[Friend]mPtr;
+			for (int i = 0; i < destination.[Friend]mLength; i++)
+				ptr[i] = (T2)GetRef(i + srcOffset);
 		}
 
 		public Span<T>.Enumerator GetEnumerator()
