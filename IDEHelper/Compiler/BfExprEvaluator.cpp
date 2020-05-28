@@ -7048,6 +7048,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		if ((target.mType == NULL) && ((mModule->mCurMethodInstance->mIsForeignMethodDef) || (mModule->mCurTypeInstance->IsInterface())))
 			isConstrained = true;
 
+		// If mIgnoreWrites is off then we skip devirtualization, so allow this
+		if ((target.mType != NULL) && (!target.mType->IsInterface()) && (mModule->mBfIRBuilder->mIgnoreWrites))
+			isConstrained = true;
+
 		if (!isConstrained)
 		{
 			if (mModule->mCurTypeInstance->IsInterface())
