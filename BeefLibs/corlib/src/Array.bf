@@ -268,6 +268,22 @@ namespace System
 				arrayTo.GetRef(i + dstOffset) = (T2)GetRef(i + srcOffset);
 		}
 
+		public void CopyTo(Span<T> destination)
+		{
+			Debug.Assert(destination.[Friend]mPtr != null);
+			Debug.Assert(destination.[Friend]mLength >= mLength);
+
+			Internal.MemCpy(destination.Ptr, &GetRef(0), strideof(T) * mLength, alignof(T));
+		}
+
+		public void CopyTo(Span<T> destination, int srcOffset)
+		{
+			Debug.Assert(destination.[Friend]mPtr != null);
+			Debug.Assert((uint)destination.[Friend]mLength - (uint)srcOffset < (uint)mLength);
+
+			Internal.MemCpy(destination.Ptr, &GetRef(srcOffset), strideof(T) * (destination.Length - srcOffset), alignof(T));
+		}
+
 		public Span<T>.Enumerator GetEnumerator()
 		{
 			return .(this);
