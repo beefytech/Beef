@@ -6020,7 +6020,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			if (vDataVal == -1)
 				vDataVal = vDataIdx * mSystem->mPtrSize;
 		}
-
+		
 		SizedArray<BfIRValue, 8> methodDataVals =
 			{
 				emptyValueType,
@@ -6031,7 +6031,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				GetConstValue((int)paramVals.size(), shortType),
 				GetConstValue(methodFlags, shortType),
 				GetConstValue(vDataVal, intType),
-				GetConstValue(-1, intType),
+				GetConstValue(customAttrIdx, intType),
 			};
 		auto methodData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectMethodDataType->ToTypeInstance(), BfIRPopulateType_Full), methodDataVals);		
 		methodTypes.push_back(methodData);
@@ -16693,6 +16693,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 	mBfIRBuilder->SetInsertPoint(llvmEntryBlock);
 	
+	if (methodDef->mName == "__MALFORMED")
+	{
+		auto newBlock = mBfIRBuilder->CreateBlock("malformed", true);
+		mBfIRBuilder->SetInsertPoint(newBlock);
+	}
+
 	if (methodDef->mBody != NULL)
 	{
 		UpdateSrcPos(methodDef->mBody, BfSrcPosFlag_NoSetDebugLoc);
@@ -18460,7 +18466,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	//methodState.mCurLocalVarId = declMethodState->mCurLocalVarId;
 	methodState.mIRFunction = declMethodState->mIRFunction;
 	methodState.mDeferredLocalAssignData = &deferredLocalAssignData;
-
+	
 	if (auto blockBody = BfNodeDynCast<BfBlock>(body))
 	{
 		methodState.mCurScope->mAstBlock = blockBody;
