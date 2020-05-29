@@ -1428,12 +1428,6 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 	BfTypeInstance* typeInst = type->ToTypeInstance();
 	if (typeInst != NULL)
 	{
-// 		if (typeInst->mTypeDef->IsGlobalsContainer())
-// 		{
-// 			bool worked = mSystem->mGlobalsMap.Remove(typeInst->mTypeDef->mNamespace);
-// 			BF_ASSERT(worked);
-// 		}
-
 		if (mCompiler->mHotState != NULL)
 		{
 			if ((typeInst->mHotTypeData != NULL) && (typeInst->mHotTypeData->mPendingDataChange))
@@ -1540,11 +1534,6 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 				mFailTypes.Add(dependentTypeInst);
 			else
 			{
-// 				BfTypeProcessRequest* typeProcessRequest = mPopulateTypeWorkList.Alloc();
-// 				typeProcessRequest->mType = dependentType;
-// 				typeProcessRequest->mRebuildType = true;
-// 				mCompiler->mStats.mTypesQueued++;
-// 				mCompiler->UpdateCompletion();
 				rebuildTypeQueue.Add(dependentType);
 			}
 		}			
@@ -2109,7 +2098,9 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 				BfTypeDef* ambiguousTypeDef = NULL;
 				BfTypeDef* result = mSystem->FindTypeDef(lookupEntry.mName, lookupEntry.mNumGenericParams, useTypeDef->mProject, useTypeDef->mNamespaceSearch, &ambiguousTypeDef);
 				if (result != lookupEntryPair.mValue.mTypeDef)
+				{					
 					isDirty = true;
+				}
 				else
 					lookupEntry.mAtomUpdateIdx = atomUpdateIdx;
 			}

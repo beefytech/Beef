@@ -89,11 +89,7 @@ void BfDefBuilder::Process(BfPassInstance* passInstance, BfSource* bfSource, boo
 		mSystem->mNeedsTypesHandledByCompiler = true;
 
 	mPassInstance = passInstance;
-	/*if (parser->mCursorIdx == -1)
-	{
-		//gDefBuilderPerfManager.StartRecording();	
-	}*/
-
+	
 	bool isAutocomplete = false;
 	if ((mResolvePassData != NULL) && (mResolvePassData->mAutoComplete != NULL))
 	{		
@@ -106,12 +102,6 @@ void BfDefBuilder::Process(BfPassInstance* passInstance, BfSource* bfSource, boo
 
 	mFullRefresh = fullRefresh;
  
-// 	for (auto typeDef : mSystem->mTypeDefs)
-// 	{	
-// 		if ((!typeDef->mIsCombinedPartial) && (typeDef->GetLastSource() == bfSource->mPrevRevision))
-// 			typeDef->mDefState = BfTypeDef::DefState_AwaitingNewVersion;
-// 	}
-
 	if (bfSource->mPrevRevision != NULL)
 	{
 		for (auto typeDef : bfSource->mPrevRevision->mTypeDefs)
@@ -216,8 +206,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 				checkTypeDef = checkTypeDef->mOuterType;
 			}
 			
-			auto genericParamDef = new BfGenericParamDef();
-			//genericParamDef->mOwner = mCurActualTypeDef;
+			auto genericParamDef = new BfGenericParamDef();			
 			genericParamDef->mName = name;
 			genericParamDef->mNameNodes.Add(genericParamNode);
 			genericParamDef->mGenericParamFlags = BfGenericParamFlag_None;			
@@ -1508,11 +1497,6 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	{
 		BfTypeDef* prevDef = NULL;
 		
-// 		auto checkTypeDef = mSystem->mTypeDefs.Find(fullName);
-// 		while (checkTypeDef != NULL)
-
-		
-
 		auto itr = mSystem->mTypeDefs.TryGet(fullName);		
 		while (itr)
 		{

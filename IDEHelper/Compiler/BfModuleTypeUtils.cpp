@@ -2176,6 +2176,8 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			typeInterfaceInst.mStartVirtualIdx = -1;
 			typeInterfaceInst.mIsRedeclared = false;
 			typeInstance->mInterfaces.push_back(typeInterfaceInst);
+			
+			AddDependency(checkInterface, typeInstance, BfDependencyMap::DependencyFlag_ImplementsInterface);
 
 			// Interfaces can list other interfaces in their declaration, so pull those in too
 			for (auto depIFace : checkInterface->mInterfaces)
@@ -3501,10 +3503,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	auto checkTypeInstance = typeInstance;
 	while (checkTypeInstance != NULL)
 	{
-		for (auto&& interfaceEntry : checkTypeInstance->mInterfaces)
-		{
-			AddDependency(interfaceEntry.mInterfaceType, typeInstance, BfDependencyMap::DependencyFlag_ImplementsInterface);
-		}
+		// These may have been already added
+		for (auto&& interfaceEntry : checkTypeInstance->mInterfaces)		
+			AddDependency(interfaceEntry.mInterfaceType, typeInstance, BfDependencyMap::DependencyFlag_ImplementsInterface);		
 		checkTypeInstance = checkTypeInstance->GetImplBaseType();
 	}
 
