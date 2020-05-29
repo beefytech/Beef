@@ -222,6 +222,15 @@ MiniDumpDebugger::MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* mini
 		{
 			const char* report = &mMiniDump->GetStreamData<char>(section);			
 		}
+		else if (section.mStreamType == 0x4b6b0002) // Stability report
+		{
+			const char* report = &mMiniDump->GetStreamData<char>(section);		
+		}
+		else if (section.mStreamType == 0xBEEF00) // Error text
+		{
+			char* text = &mMiniDump->GetStreamData<char>(section);
+			OutputMessage(String(text, section.mDataSize));
+		}
 	}
 
 	Run();

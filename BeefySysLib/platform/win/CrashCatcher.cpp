@@ -560,22 +560,25 @@ static bool CreateMiniDump(EXCEPTION_POINTERS* pep, const StringImpl& filePath)
 
 	MINIDUMP_TYPE mdt = (MINIDUMP_TYPE)(MiniDumpWithIndirectlyReferencedMemory | MiniDumpScanMemory);
 
+	CrashCatcher* crashCatcher = CrashCatcher::Get();
+
+	MINIDUMP_USER_STREAM user_info_stream = {
+	  0xBEEF00,
+	  (ULONG)crashCatcher->mCrashInfo.length(),
+	  (void*)crashCatcher->mCrashInfo.c_str()
+	};
+	MINIDUMP_USER_STREAM_INFORMATION user_stream_info = {
+		1,
+		&user_info_stream
+	};
+
 	BOOL rv = (*pFn)(GetCurrentProcess(), GetCurrentProcessId(),
-		hFile, mdt, (pep != 0) ? &mdei : 0, 0, &mci);
+		hFile, mdt, (pep != 0) ? &mdei : 0, &user_stream_info, &mci);
 				
 	// Close the file 
 	CloseHandle(hFile);	
 	return true;
 }
-
-//
-//LONG WINAPI MyUnhandledExceptionFilter(
-//	struct _EXCEPTION_POINTERS *ExceptionInfo
-//)
-//{
-//	CreateMiniDump(ExceptionInfo);
-//	return EXCEPTION_EXECUTE_HANDLER;
-//}
 
 static String ImageHelpWalk(PCONTEXT theContext, int theSkipCount)
 {
@@ -818,41 +821,24 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 
 	String anErrorTitle;
 	String aDebugDump;
+	String& crashInfo = CrashCatcher::Get()->mCrashInfo;
 
 	char aBuffer[2048];
 
 	if (isCLI)
 		aDebugDump += "**** FATAL APPLICATION ERROR ****\n";
-
-	WCHAR exeFilePathW[MAX_PATH];
-	exeFilePathW[0] = 0;
-	::GetModuleFileNameW(hMod, exeFilePathW, MAX_PATH);
-	String exeFilePath = UTF8Encode(exeFilePathW);
-	String exeDir = GetFileDir(exeFilePath);
-	String crashPath = exeDir + "\\CrashDumps";
-	if (BfpDirectory_Exists(crashPath.c_str()))
-	{
-		crashPath += "\\" + GetFileName(exeFilePath);
-		crashPath.RemoveToEnd((int)crashPath.length() - 4);
-		crashPath += "_";
-
-		time_t curTime = time(NULL);
-		auto time_info = localtime(&curTime);
-		crashPath += StrFormat("%4d%02d%02d_%02d%02d%02d",
-			time_info->tm_year + 1900, time_info->tm_mon + 1, time_info->tm_mday,
-			time_info->tm_hour, time_info->tm_min, time_info->tm_sec);
-		crashPath += ".dmp";
-
-		if (CreateMiniDump(lpEP, crashPath))
-		{
-			aDebugDump += StrFormat("Crash minidump saved as %s\n", crashPath.c_str());
-		}
-	}
-	
+		
 	for (auto func : CrashCatcher::Get()->mCrashInfoFuncs)
 		func();
 
-	aDebugDump.Append(CrashCatcher::Get()->mCrashInfo);
+	CHAR path[MAX_PATH];
+	GetModuleFileNameA(NULL, path, MAX_PATH);
+	crashInfo += "\nExecutable: ";
+	crashInfo += path;
+	crashInfo += "\r\n";
+	crashInfo += GetVersion(path);	
+
+	aDebugDump.Append(crashInfo);
 	
 	for (int i = 0; i < (int)aDebugDump.length(); i++)
 	{
@@ -879,7 +865,32 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 
 		aDebugDump += "\r\n";
 	}
-	
+		
+	WCHAR exeFilePathW[MAX_PATH];
+	exeFilePathW[0] = 0;
+	::GetModuleFileNameW(hMod, exeFilePathW, MAX_PATH);
+	String exeFilePath = UTF8Encode(exeFilePathW);
+	String exeDir = GetFileDir(exeFilePath);
+	String crashPath = exeDir + "\\CrashDumps";
+	if (BfpDirectory_Exists(crashPath.c_str()))
+	{
+		crashPath += "\\" + GetFileName(exeFilePath);
+		crashPath.RemoveToEnd((int)crashPath.length() - 4);
+		crashPath += "_";
+
+		time_t curTime = time(NULL);
+		auto time_info = localtime(&curTime);
+		crashPath += StrFormat("%4d%02d%02d_%02d%02d%02d",
+			time_info->tm_year + 1900, time_info->tm_mon + 1, time_info->tm_mday,
+			time_info->tm_hour, time_info->tm_min, time_info->tm_sec);
+		crashPath += ".dmp";
+
+		if (CreateMiniDump(lpEP, crashPath))
+		{
+			aDebugDump += StrFormat("Crash minidump saved as %s\n", crashPath.c_str());
+		}
+	}
+
 	///////////////////////////
 	// first name the exception	
 	char  *szName = NULL;
@@ -910,14 +921,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 	uintptr section, offset;
 	GetLogicalAddress(lpEP->ExceptionRecord->ExceptionAddress, aBuffer, sizeof(aBuffer), section, offset);
 	
-	CHAR path[MAX_PATH];
-	GetModuleFileNameA(NULL, path, MAX_PATH);
-	aDebugDump += "Executable: ";
-	aDebugDump += path;
-	aDebugDump += "\r\n";
-	aDebugDump += GetVersion(path);
-	aDebugDump += "\r\n";
-	
+
 	aDebugDump += StrFormat("Logical Address: %04X:%@\r\n", section, offset);	
 
 	aDebugDump += "\r\n";

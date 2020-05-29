@@ -11,14 +11,14 @@ class CrashCatcher
 {
 public:
 	Array<CrashInfoFunc> mCrashInfoFuncs;
-	StringT<0> mCrashInfo;
+	String mCrashInfo;
 	bool mCrashed;
 	bool mInitialized;
 	CritSect mBfpCritSect;	
 	EXCEPTION_POINTERS* mExceptionPointers;
 	LPTOP_LEVEL_EXCEPTION_FILTER mPreviousFilter;
 	bool mDebugError;
-	BfpCrashReportKind mCrashReportKind;
+	BfpCrashReportKind mCrashReportKind;	
 
 public:
 	CrashCatcher();
