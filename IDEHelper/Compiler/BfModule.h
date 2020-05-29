@@ -1646,8 +1646,9 @@ public:
 	BfPrimitiveType* GetPrimitiveType(BfTypeCode typeCode);	
 	BfMethodRefType* CreateMethodRefType(BfMethodInstance* methodInstance, bool mustAlreadyExist = false);
 	BfType* FixIntUnknown(BfType* type);
-	void FixIntUnknown(BfTypedValue& typedVal);	
+	void FixIntUnknown(BfTypedValue& typedVal, BfType* matchType = NULL);	
 	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);
+	bool TypeEquals(BfTypedValue& val, BfType* type);
 	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL);
 	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data);	
 	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized);

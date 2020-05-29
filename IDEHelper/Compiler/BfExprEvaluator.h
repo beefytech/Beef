@@ -161,6 +161,7 @@ public:
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute, 
 		bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail);
 	void FlushAmbiguityError();		
+	bool IsType(BfTypedValue& val, BfType* type);
 
 public:
 	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments);

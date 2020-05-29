@@ -4806,7 +4806,7 @@ BfType* BfModule::FixIntUnknown(BfType* type)
 	return type;
 }
 
-void BfModule::FixIntUnknown(BfTypedValue& typedVal)
+void BfModule::FixIntUnknown(BfTypedValue& typedVal, BfType* matchType)
 {
 	if (!typedVal.mValue.IsConst())
 	{
@@ -4832,6 +4832,23 @@ void BfModule::FixIntUnknown(BfTypedValue& typedVal)
 		return;
 
 	auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
+
+	if ((matchType != NULL) && (matchType->IsPrimitiveType()) && (mBfIRBuilder->IsInt(matchType->ToPrimitiveType()->mTypeDef->mTypeCode)))
+	{
+		auto wantTypeCode = matchType->ToPrimitiveType()->mTypeDef->mTypeCode;
+		if (matchType->mSize < 8)
+		{
+			int64 minVal = -(1LL << (8 * matchType->mSize - 1));
+			int64 maxVal = (1LL << (8 * matchType->mSize - 1)) - 1;
+			if ((constant->mInt64 >= minVal) && (constant->mInt64 <= maxVal))
+			{
+				typedVal.mValue = mBfIRBuilder->CreateNumericCast(typedVal.mValue, mBfIRBuilder->IsSigned(wantTypeCode), wantTypeCode);
+				typedVal.mType = GetPrimitiveType(wantTypeCode);
+				return;
+			}
+		}
+	}
+
 	if (mSystem->mPtrSize == 4)
 	{
 		if (primType->mTypeDef->mTypeCode == BfTypeCode_IntUnknown)

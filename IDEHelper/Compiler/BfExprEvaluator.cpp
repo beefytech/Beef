@@ -545,7 +545,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		{
 			BfResolvedArg resolvedArg = mArguments[argIdx];;
 			BfTypedValue arg = resolvedArg.mTypedValue;
-
+			
 			int newArgIdx = argIdx + newImplicitParamCount;
 			int prevArgIdx = argIdx + prevImplicitParamCount;
 
@@ -562,9 +562,15 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			BfType* origPrevParamType = prevParamType;
 
 			if ((genericArgumentsSubstitute != NULL) && (paramType->IsUnspecializedType()))
+			{
 				paramType = mModule->ResolveGenericType(paramType, NULL, genericArgumentsSubstitute, allowSpecializeFail);
+				paramType = mModule->FixIntUnknown(paramType);
+			}
 			if ((prevGenericArgumentsSubstitute != NULL) && (prevParamType->IsUnspecializedType()))
+			{
 				prevParamType = mModule->ResolveGenericType(prevParamType, NULL, prevGenericArgumentsSubstitute, allowSpecializeFail);
+				prevParamType = mModule->FixIntUnknown(prevParamType);
+			}
 
 			if ((wasGenericParam) || (prevWasGenericParam))
 			{
@@ -596,9 +602,9 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 					{
 						// The resolved argument type may actually match for both considered functions. IE:
 						// Method(int8 val) and Method(int16 val) called with Method(0) will create arguments that match their param types
-						if ((paramType == arg.mType) && (prevParamType != resolvedArg.mBestBoundType))
+						if ((IsType(arg, paramType)) && (prevParamType != resolvedArg.mBestBoundType))
 							isBetter = true;
-						else if ((prevParamType == arg.mType) && (paramType != arg.mType))
+						else if ((IsType(arg, prevParamType)) && (!IsType(arg, paramType)))
 							isWorse = true;
 						else
 						{
@@ -629,7 +635,6 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 							}							
 						}
 						
-
 						/*if ((paramType->IsIntegral()) && (prevParamType->IsIntegral()))
 						{
 							if (paramType == arg.mType)
@@ -1690,6 +1695,40 @@ void BfMethodMatcher::FlushAmbiguityError()
 
 		mAmbiguousEntries.Clear();
 	}
+}
+
+bool BfMethodMatcher::IsType(BfTypedValue& typedVal, BfType* type)
+{
+	if (typedVal.mType == type)
+		return true;
+
+	if (!typedVal.mType->IsPrimitiveType())
+		return false;
+	if (!type->IsPrimitiveType())
+		return false;
+
+	auto fromPrimType = typedVal.mType->ToPrimitiveType();
+	if ((fromPrimType->mTypeDef->mTypeCode != BfTypeCode_IntUnknown) &&
+		(fromPrimType->mTypeDef->mTypeCode != BfTypeCode_UIntUnknown))
+		return false;
+
+	auto constant = mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
+	if (constant == NULL)
+		return false;
+
+	auto toPrimType = type->ToPrimitiveType();	
+	if (!mModule->mBfIRBuilder->IsInt(toPrimType->mTypeDef->mTypeCode))
+		return false;
+
+	if (type->mSize == 8)
+		return false;
+	
+	int64 minVal = -(1LL << (8 * type->mSize - 1));
+	int64 maxVal = (1LL << (8 * type->mSize - 1)) - 1;
+	if ((constant->mInt64 >= minVal) && (constant->mInt64 <= maxVal))	
+		return true;	
+
+	return false;
 }
 
 // This method checks all base classes before checking interfaces.  Is that correct?
@@ -12131,7 +12170,7 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 			{
 				auto targetIdentifier = BfNodeDynCast<BfIdentifierNode>(scopeNode->mTargetNode);
 				if ((scopeNode->mTargetNode == NULL) || (targetIdentifier != NULL))
-					autoComplete->CheckLabel(targetIdentifier, scopeNode->mColonToken);
+					autoComplete->CheckLabel(targetIdentifier, scopeNode->mColonToken, allocTarget.mScopeData);
 			}
 			attributeDirective = scopeNode->mAttributes;
 		}
@@ -12309,8 +12348,10 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			if ((invocationExpr != NULL) && (invocationExpr->mGenericArgs != NULL))
 			{
 				errorNode = invocationExpr->mGenericArgs->mGenericArgs[(int)methodDef->mGenericParams.size()];
-				if ((errorNode == NULL) && (!invocationExpr->mGenericArgs->mCommas.IsEmpty()))
-					errorNode = invocationExpr->mGenericArgs->mCommas[(int)methodDef->mGenericParams.size() - 1];
+				if (errorNode == NULL)
+					invocationExpr->mGenericArgs->mCommas.GetSafe((int)methodDef->mGenericParams.size() - 1, errorNode);
+				if (errorNode == NULL)
+					errorNode = targetSrc;
 			}
 			mModule->Fail(StrFormat("Too many generic arguments, expected %d fewer", genericArgCountDiff), errorNode);
 		}
@@ -13388,7 +13429,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		if (autoComplete != NULL)
 		{
 			if (auto identifier = BfNodeDynCast<BfIdentifierNode>(scopedTarget->mScopeName))
-				autoComplete->CheckLabel(identifier, scopedTarget->mColonToken);
+				autoComplete->CheckLabel(identifier, scopedTarget->mColonToken, NULL);
 		}
 		//mModule->FindScope(scopedTarget->mScopeName);
 	}

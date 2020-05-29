@@ -350,6 +350,13 @@ public:
 		return mVals[idx];
 	}
 
+	void GetSafe(intptr idx, T& val)
+	{
+		if ((idx < 0) || (idx >= mSize))
+			return;
+		val = mVals[idx];
+	}
+
 	T GetLastSafe()
 	{
 		if (mSize == 0)
