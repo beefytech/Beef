@@ -2434,7 +2434,7 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 			{
 				mInsertStartIdx = identifierNode->GetSrcStart();
 				mInsertEndIdx = identifierNode->GetSrcEnd();
-			}			
+			}
 		}
 	}	
 	else if (mResolveType == BfResolveType_GetResultString)
@@ -2489,13 +2489,47 @@ void BfAutoComplete::CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* f
 	}
 }
 
-void BfAutoComplete::CheckLabel(BfAstNode* identifierNode, BfAstNode* precedingNode)
+void BfAutoComplete::CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* precedingNode, BfScopeData* scopeData)
 {
 	String filter;
 	if (identifierNode != NULL)
 	{
+		if ((mModule->mCompiler->mResolvePassData != NULL) && (scopeData != NULL))
+		{			
+			auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();
+			mModule->mCompiler->mResolvePassData->HandleLocalReference(identifierNode, rootMethodState->mMethodInstance->GetOwner()->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, scopeData->mScopeLocalId);
+		}
+
 		if (!IsAutocompleteNode(identifierNode))
 			return;
+		
+		if (scopeData != NULL)
+		{
+			if (mResolveType == BfResolveType_GoToDefinition)
+			{
+				SetDefinitionLocation(scopeData->mLabelNode);
+			}
+			else if (mResolveType == BfResolveType_GetSymbolInfo)
+			{
+				auto rootMethodInstance = mModule->mCurMethodState->GetRootMethodState()->mMethodInstance;
+				if (rootMethodInstance == NULL)
+					return;
+
+				mDefType = mModule->mCurTypeInstance->mTypeDef;
+
+				mReplaceLocalId = scopeData->mScopeLocalId;
+				mDefMethod = rootMethodInstance->mMethodDef;
+				if (mInsertStartIdx == -1)
+				{
+					mInsertStartIdx = identifierNode->GetSrcStart();
+					mInsertEndIdx = identifierNode->GetSrcEnd();
+				}
+			}
+
+			if (scopeData->mLabelNode == identifierNode)
+				return;
+		}
+
 		filter = identifierNode->ToString();
 		mInsertStartIdx = identifierNode->GetSrcStart();
 		mInsertEndIdx = identifierNode->GetSrcEnd();

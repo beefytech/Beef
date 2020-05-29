@@ -1654,7 +1654,15 @@ void BfModule::NewScopeState(bool createLexicalBlock, bool flushValueScope)
 {
 	auto curScope = mCurMethodState->mCurScope;
 	if (curScope->mLabelNode != NULL)
+	{
 		curScope->mLabelNode->ToString(curScope->mLabel);
+
+		auto rootMethodState = mCurMethodState->GetRootMethodState();
+		curScope->mScopeLocalId = rootMethodState->mCurLocalVarId++;
+		auto autoComplete = mCompiler->GetAutoComplete();
+		if (autoComplete != NULL)
+			autoComplete->CheckLabel(curScope->mLabelNode, NULL, curScope);		
+	}
 
 	if (!mCurMethodState->mCurScope->mLabel.IsEmpty())
 	{

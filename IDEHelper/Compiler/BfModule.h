@@ -303,10 +303,11 @@ public:
 	BfIRMDNode mDIScope;
 	BfIRMDNode mDIInlinedAt;	
 	String mLabel;
-	BfAstNode* mLabelNode;
+	BfIdentifierNode* mLabelNode;
 	int mLocalVarStart;		
 	int mScopeDepth;
-	int mMixinDepth;	
+	int mMixinDepth;
+	int mScopeLocalId;
 	bool mIsScopeHead; // For first scope data or for inlined start
 	bool mIsLoop;
 	bool mIsConditional; // Rarely set - usually we rely on OuterIsConditional or InnerIsConditional
@@ -352,6 +353,7 @@ public:
 		mAllowVariableDeclarations = true;
 		mMixinDepth = 0;
 		mScopeDepth = 0;
+		mScopeLocalId = -1;
 	}	
 
 	~BfScopeData()
@@ -937,7 +939,7 @@ public:
 	bool mAllowUinitReads;
 	bool mCancelledDeferredCall;	
 	bool mNoObjectAccessChecks;
-	int mCurLocalVarId;
+	int mCurLocalVarId; // Can also refer to a label
 	int mCurAccessId; // For checking to see if a block reads from or writes to a local
 
 public:

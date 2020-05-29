@@ -12964,7 +12964,14 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	{
 		auto targetScope = mModule->FindScope(scopedInvocationTarget->mScopeName, curMethodState->mMixinState);
 		if (targetScope != NULL)
+		{
 			mixinState->mTargetScope = targetScope;
+			if (autoComplete != NULL)
+			{
+				if (auto identifer = BfNodeDynCast<BfIdentifierNode>(scopedInvocationTarget->mScopeName))
+					autoComplete->CheckLabel(identifer, NULL, targetScope);
+			}
+		}
 	}
 	
 	mModule->mBfIRBuilder->SaveDebugLocation();

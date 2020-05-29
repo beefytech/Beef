@@ -246,8 +246,8 @@ public:
 	void CheckResult(BfAstNode* node, const BfTypedValue& typedValue);
 	void CheckLocalDef(BfAstNode* identifierNode, BfLocalVariable* varDecl);
 	void CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* varDecl);
-	void CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* fieldInst);
-	void CheckLabel(BfAstNode* identifierNode, BfAstNode* precedingNode = NULL);
+	void CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* fieldInst);	
+	void CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* precedingNode, BfScopeData* scopeData);
 	void CheckEmptyStart(BfAstNode* prevNode, BfType* type);	
 	bool CheckFixit(BfAstNode* node);	
 	void CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);

@@ -4950,13 +4950,7 @@ void BfModule::Visit(BfYieldStatement* yieldStmt)
 void BfModule::Visit(BfBreakStatement* breakStmt)
 {
 	bool inMixinDecl = (mCurMethodInstance != NULL) && (mCurMethodInstance->IsMixin());
-
-	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
-	{
-		if (auto identifer = BfNodeDynCast<BfIdentifierNode>(breakStmt->mLabel))
-			mCompiler->mResolvePassData->mAutoComplete->CheckLabel(identifer, breakStmt->mBreakNode);
-	}
-
+	
 	UpdateSrcPos(breakStmt);
 	mBfIRBuilder->CreateEnsureInstructionAt();
 
@@ -4973,6 +4967,15 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 				break;
 			breakData = breakData->mPrevBreakData;
 		}		
+	}
+
+	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+	{
+		BfScopeData* scope = NULL;
+		if (breakData != NULL)
+			scope = breakData->mScope;
+		if (auto identifer = BfNodeDynCast<BfIdentifierNode>(breakStmt->mLabel))
+			mCompiler->mResolvePassData->mAutoComplete->CheckLabel(identifer, breakStmt->mBreakNode, scope);
 	}
 
 	if ((breakData == NULL) || (!breakData->mIRBreakBlock))
@@ -5038,13 +5041,7 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 void BfModule::Visit(BfContinueStatement* continueStmt)
 {
 	bool inMixinDecl = (mCurMethodInstance != NULL) && (mCurMethodInstance->IsMixin());
-
-	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
-	{
-		if (auto identifer = BfNodeDynCast<BfIdentifierNode>(continueStmt->mLabel))
-			mCompiler->mResolvePassData->mAutoComplete->CheckLabel(identifer, continueStmt->mContinueNode);
-	}
-	
+		
 	UpdateSrcPos(continueStmt);
 	mBfIRBuilder->CreateEnsureInstructionAt();
 
@@ -5068,6 +5065,15 @@ void BfModule::Visit(BfContinueStatement* continueStmt)
 			breakData = breakData->mPrevBreakData;
 		}
 	}	
+
+	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+	{
+		BfScopeData* scope = NULL;
+		if (breakData != NULL)
+			scope = breakData->mScope;
+		if (auto identifer = BfNodeDynCast<BfIdentifierNode>(continueStmt->mLabel))
+			mCompiler->mResolvePassData->mAutoComplete->CheckLabel(identifer, continueStmt->mContinueNode, scope);
+	}
 
 	if ((breakData == NULL) || (!breakData->mIRContinueBlock))
 	{
@@ -6489,14 +6495,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 
 	UpdateSrcPos(deferStmt);	
 	EmitEnsureInstructionAt();
-	
-	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
-	{
-		auto targetIdentifier = BfNodeDynCast<BfIdentifierNode>(deferStmt->mScopeName);
-		if ((deferStmt->mScopeName == NULL) || (targetIdentifier != NULL))
-			mCompiler->mResolvePassData->mAutoComplete->CheckLabel(targetIdentifier, deferStmt->mColonToken);		
-	}
-
+		
 	BfScopeData* scope = NULL;
 
 	if (deferStmt->mScopeToken != NULL)
@@ -6510,6 +6509,13 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 		scope = FindScope(deferStmt->mScopeName, true);
 	else
 		scope = mCurMethodState->mCurScope;
+
+	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+	{		
+		auto targetIdentifier = BfNodeDynCast<BfIdentifierNode>(deferStmt->mScopeName);
+		if ((deferStmt->mScopeName == NULL) || (targetIdentifier != NULL))
+			mCompiler->mResolvePassData->mAutoComplete->CheckLabel(targetIdentifier, deferStmt->mColonToken, scope);
+	}
 
 	if ((scope == mCurMethodState->mCurScope) && (scope->mCloseNode == NULL))
 	{
