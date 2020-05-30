@@ -6,7 +6,7 @@ Compile()
 RemoveProject("SDL2")
 
 WaitForResolve()
-SleepTicks(20)
+SleepTicks(100)
 AssertFileErrors()
 
 ToggleCommentAt("Main_Start")
