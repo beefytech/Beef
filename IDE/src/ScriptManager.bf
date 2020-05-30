@@ -81,7 +81,6 @@ namespace IDE
 		public bool mIsBuildScript;
 		public bool mSoftFail;
 		public Verbosity mVerbosity = .Quiet;
-		public String mProjectName ~ delete _;
 
 		public bool Failed
 		{
@@ -429,9 +428,10 @@ namespace IDE
 								if (workspaceOptions == null)
 								{
 									workspaceOptions = gApp.GetCurWorkspaceOptions();
-									if (mProjectName != null)
+									if (mCurCmd.mSrcFile?.StartsWith("project ") == true)
 									{
-										project = gApp.mWorkspace.FindProject(mProjectName);
+										String projectName = scope String()..Append(mCurCmd.mSrcFile, "Project ".Length);
+										project = gApp.mWorkspace.FindProject(projectName);
 										if (project != null)
 											projectOptions = gApp.GetCurProjectOptions(project);
 									}
@@ -1133,11 +1133,11 @@ namespace IDE
 			}
 		}
 
-		/*[IDECommand]
-		public void Copy(String srcPath, String destPath)
+		[IDECommand]
+		public void Echo(String str)
 		{
-
-		}*/
+			gApp.OutputLine(str);
+		}
 
 		[IDECommand]
 		public void CopyFilesIfNewer(String srcPath, String destPath)
@@ -1234,16 +1234,16 @@ namespace IDE
 
 		public Project GetProject()
 		{
-			if (mScriptManager.mProjectName == null)
+			if (!mScriptManager.mCurCmd.mSrcFile.StartsWith("project "))
 			{
 				mScriptManager.Fail("Only usable in the context of a project");
 				return null;
 			}
-
-			let project = gApp.mWorkspace.FindProject(mScriptManager.mProjectName);
+			let projectName = scope String()..Append(mScriptManager.mCurCmd.mSrcFile, "Project ".Length);
+			let project = gApp.mWorkspace.FindProject(projectName);
 			if (project == null)
 			{
-				mScriptManager.Fail("Unable to find project '{}'", mScriptManager.mProjectName);
+				mScriptManager.Fail("Unable to find project '{}'", projectName);
 				return null;
 			}
 			return project;

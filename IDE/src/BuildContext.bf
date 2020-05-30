@@ -154,14 +154,13 @@ namespace IDE
 				if (mScriptManager == null)
 				{
 					mScriptManager = new .(mScriptContext);
-					mScriptManager.mProjectName = new String(project.mProjectName);
 					mScriptManager.mIsBuildScript = true;
 					mScriptManager.mSoftFail = true;
 					mScriptManager.mVerbosity = gApp.mVerbosity;
 					didCommands = true;
 				}
 
-				mScriptManager.QueueCommands(customCmd, project.mProjectName, .NoLines);
+				mScriptManager.QueueCommands(customCmd, scope String()..AppendF("project {}", project.mProjectName), .NoLines);
 				continue;
 			}
 
