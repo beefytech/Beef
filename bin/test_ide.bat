@@ -55,15 +55,14 @@ PUSHD %~dp0..\
 	%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i
 	@IF !ERRORLEVEL! NEQ 0 GOTO:EOF
 
-	@IF !FASTTEST! NEQ 1 (
-		echo DOING %FASTTEST%
+	@IF !FASTTEST! NEQ 1 (		
 		@ECHO Testing %%i in BeefIDE - Win64
 		%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i
 		@IF !ERRORLEVEL! NEQ 0 GOTO:EOF	
 
-			@ECHO Testing %%i - Win32
-			%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i -platform=Win32
-			@IF !ERRORLEVEL! NEQ 0 GOTO:EOF
+		@ECHO Testing %%i - Win32
+		%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -proddir=%~dp0..\%TESTPATH% -test=%cd%\%%i -platform=Win32
+		@IF !ERRORLEVEL! NEQ 0 GOTO:EOF
 	)
 )
 GOTO:EOF
