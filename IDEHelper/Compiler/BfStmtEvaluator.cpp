@@ -5267,15 +5267,16 @@ void BfModule::Visit(BfDoStatement* doStmt)
 	mBfIRBuilder->CreateBr(bodyBB);
 	mBfIRBuilder->SetInsertPoint(bodyBB);	
 	VisitEmbeddedStatement(doStmt->mEmbeddedStatement);	
+
+	RestoreScopeState();
+
 	if (!mCurMethodState->mLeftBlockUncond)
 		mBfIRBuilder->CreateBr(endBB);
 	mCurMethodState->SetHadReturn(false);
 	mCurMethodState->mLeftBlockUncond = false;
 
 	mBfIRBuilder->AddBlock(endBB);
-	mBfIRBuilder->SetInsertPoint(endBB);
-
-	RestoreScopeState();
+	mBfIRBuilder->SetInsertPoint(endBB);	
 }
 
 void BfModule::Visit(BfRepeatStatement* repeatStmt)
