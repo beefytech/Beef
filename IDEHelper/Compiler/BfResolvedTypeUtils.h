@@ -2371,8 +2371,7 @@ public:
 	static int Hash(BfType* type, LookupContext* ctx, bool allowRef = false);
 	static int DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None);
 	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None);
-	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);
-	static bool EqualsNoAlias(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
+	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);	
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
 

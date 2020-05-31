@@ -3010,7 +3010,9 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 			{
 				if (lhsGenericType->mTypeDef != ctx->mModule->mContext->mCompiler->mNullableTypeDef)
 					return false;
-				return Equals(lhsGenericType->mTypeGenericArguments[0], rhsNullableTypeRef->mElementType, ctx);
+
+				auto rhsElemType = ctx->mModule->ResolveTypeRef(rhsNullableTypeRef->mElementType, BfPopulateType_Identity);
+				return lhsGenericType->mTypeGenericArguments[0] == rhsElemType;
 			}
 		}
 
@@ -3038,14 +3040,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 		}
 
 		if (auto rhsQualifiedTypeRef = BfNodeDynCastExact<BfQualifiedTypeReference>(rhs))
-		{
-			/*auto rhsLeftType = ctx->mModule->ResolveTypeRef(rhsQualifiedTypeRef->mLeft, BfPopulateType_Identity);
-			if (rhsLeftType == NULL)
-				return false;
-			auto rhsRightType = ctx->mModule->ResolveInnerType(rhsLeftType, rhsQualifiedTypeRef->mRight);
-			if (rhsRightType == NULL)
-				return false;*/
-
+		{			
 			auto rhsRightType = ctx->mModule->ResolveTypeRef(rhs, BfPopulateType_Identity);
 			return rhsRightType == lhsGenericType;
 		}
@@ -3075,17 +3070,6 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 				}
 		}
 	}
-
-	/*if (lhsTypeGenericArguments->size() != rhsGenericTypeInstRef->mGenericArguments.size() + genericParamOffset)
-	{
-		return false;
-	}
-
-	for (int i = 0; i < (int) rhsGenericTypeInstRef->mGenericArguments.size(); i++)
-	{
-		if (!Equals(lhsGenericType->mTypeGenericArguments[i + genericParamOffset], rhsGenericTypeInstRef->mGenericArguments[i], module))
-			return false;
-	}*/
 
 	if (!GenericTypeEquals(lhsGenericType, lhsTypeGenericArguments, rhs, ctx, genericParamOffset))
 		return false;
@@ -3136,15 +3120,10 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, BfTypeDef* rhs
 	return BfResolvedTypeSet::Equals(lhs, rhsType, ctx);
 }
 
-bool BfResolvedTypeSet::EqualsNoAlias(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx)
+bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx)
 {
 	//BP_ZONE("BfResolvedTypeSet::Equals");
 	
-// 	if ((rhs == ctx->mRootTypeRef) && (ctx->mRootTypeDef != NULL) && (ctx->mRootTypeDef->mTypeCode == BfTypeCode_TypeAlias))
-// 	{
-// 		return lhs == ctx->mResolvedType;
-// 	}
-
 	if (ctx->mRootTypeRef != rhs)
 	{
 		if (auto retTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(rhs))
@@ -3163,17 +3142,6 @@ bool BfResolvedTypeSet::EqualsNoAlias(BfType* lhs, BfTypeReference* rhs, LookupC
 		}
 	}
 	
-	// 	auto rhsTypeDefTypeRef = BfNodeDynCast<BfTypeDefTypeReference>(rhs);
-// 	if (rhsTypeDefTypeRef != NULL)
-// 	{
-// 		// mTypeDef not set, need to resolve in module
-// 		if (rhsTypeDefTypeRef->mTypeDef == NULL)
-// 		{
-// 			auto rhsResolvedType = ctx->mModule->ResolveTypeRef(rhsTypeDefTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowGenericParamConstValue);
-// 			return Equals(lhs, rhsResolvedType, ctx);
-// 		}
-// 	}
-
 	if (auto declTypeRef = BfNodeDynCastExact<BfDeclTypeRef>(rhs))
 	{
 		BF_ASSERT(ctx->mResolvedType != NULL);
@@ -3501,22 +3469,6 @@ bool BfResolvedTypeSet::EqualsNoAlias(BfType* lhs, BfTypeReference* rhs, LookupC
 	{
 		BF_FATAL("Not handled");
 	}	
-
-	return false;
-}
-
-bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx)
-{
-	if (EqualsNoAlias(lhs, rhs, ctx))
-		return true;
-
-// 	if (lhs->IsTypeAlias())
-// 	{
-// 		auto underylingType = lhs->GetUnderlyingType();
-// 		BF_ASSERT(underylingType != NULL);
-// 		if (underylingType != NULL)
-// 			return Equals(underylingType, rhs, ctx);
-// 	}
 
 	return false;
 }
