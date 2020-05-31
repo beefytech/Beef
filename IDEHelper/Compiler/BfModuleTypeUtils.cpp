@@ -4136,12 +4136,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 						if (matchedMethod->mReturnType != iReturnType)
 							hadMatch = false;
 					}
-					else 
+					else
 					{
-						// Concrete
-						if (matchedMethod->mReturnType->IsInterface())
-							hadMatch = false;
-						else if (!CanCast(GetFakeTypedValue(matchedMethod->mReturnType), iReturnType))
+						// Concrete/generic
+						if (!CanCast(GetFakeTypedValue(matchedMethod->mReturnType), iReturnType))
 							hadMatch = false;
 					}
 					
