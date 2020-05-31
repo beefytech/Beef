@@ -1436,7 +1436,7 @@ String BfAutoComplete::GetFilter(BfAstNode* node)
 		// Only use member name up to cursor
 		auto bfParser = node->GetSourceData()->ToParser();
 		int cursorIdx = bfParser->mCursorIdx;
-		filter = filter.Substring(0, BF_MIN(cursorIdx - node->GetSrcStart(), (int)filter.length()));
+		filter = filter.Substring(0, BF_CLAMP(cursorIdx - node->GetSrcStart(), 0, (int)filter.length()));
 		mInsertEndIdx = cursorIdx;
 	}
 	return filter;
