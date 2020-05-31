@@ -16,7 +16,7 @@ void BfNamespaceVisitor::Visit(BfUsingDirective* usingDirective)
 	
 	String usingString = usingDirective->mNamespace->ToString();
 	BfAtomComposite usingComposite;
-	mSystem->ParseAtomComposite(usingString, usingComposite, true);
+	mSystem->ParseAtomComposite(usingString, usingComposite);
 
 	if (mResolvePassData->mAutoComplete != NULL)
 		mResolvePassData->mAutoComplete->CheckNamespace(usingDirective->mNamespace, usingComposite);
@@ -43,7 +43,7 @@ void BfNamespaceVisitor::Visit(BfUsingStaticDirective* usingDirective)
 	String usingString = useNode->ToString();
 	
 	BfAtomComposite usingComposite;
-	if (mSystem->ParseAtomComposite(usingString, usingComposite, true))
+	if (mSystem->ParseAtomComposite(usingString, usingComposite))
 		mResolvePassData->HandleNamespaceReference(useNode, usingComposite);
 }
 
@@ -54,25 +54,20 @@ void BfNamespaceVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 	if (namespaceDeclaration->mNameNode == NULL)
 		return;
 
-	Array<BfAtom*> derefAtoms;
-
 	String namespaceLeft = namespaceDeclaration->mNameNode->ToString();
 	while (true)
 	{
 		int dotIdx = (int)namespaceLeft.IndexOf('.');
 		if (dotIdx == -1)
 		{
-			BfAtom* namespaceAtom = mSystem->GetAtom(namespaceLeft);
-			mNamespace.Set(mNamespace.mParts, mNamespace.mSize, &namespaceAtom, 1);			
-			derefAtoms.Add(namespaceAtom);
+			BfAtom* namespaceAtom = mSystem->FindAtom(namespaceLeft);
+			mNamespace.Set(mNamespace.mParts, mNamespace.mSize, &namespaceAtom, 1);						
 			break;
 		}
 
-		BfAtom* namespaceAtom = mSystem->GetAtom(namespaceLeft.Substring(0, dotIdx));
+		BfAtom* namespaceAtom = mSystem->FindAtom(namespaceLeft.Substring(0, dotIdx));
 		mNamespace.Set(mNamespace.mParts, mNamespace.mSize, &namespaceAtom, 1);
 		namespaceLeft = namespaceLeft.Substring(dotIdx + 1);
-
-		derefAtoms.Add(namespaceAtom);		
 	}
 
 	if (mResolvePassData->mAutoComplete != NULL)
@@ -80,9 +75,6 @@ void BfNamespaceVisitor::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 	mResolvePassData->HandleNamespaceReference(namespaceDeclaration->mNameNode, mNamespace);
 	VisitChild(namespaceDeclaration->mBlock);	
 	mNamespace = prevNamespace;
-
-	for (auto atom : derefAtoms)
-		mSystem->ReleaseAtom(atom);
 }
 
 void BfNamespaceVisitor::Visit(BfBlock* block)
