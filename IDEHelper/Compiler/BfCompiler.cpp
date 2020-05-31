@@ -28,6 +28,7 @@
 #include "BfResolvePass.h"
 #include "BeefySysLib/util/BeefPerf.h"
 #include "../LLVMUtils.h"
+#include "BfNamespaceVisitor.h"
 
 #pragma warning(pop)
 
@@ -3503,7 +3504,7 @@ void BfCompiler::VisitSourceExteriorNodes()
 					BF_ASSERT(mContext->mScratchModule->mCurTypeInstance == NULL);
 
 					SetAndRestoreValue<BfTypeInstance*> prevCurTypeInstance(mContext->mScratchModule->mCurTypeInstance, NULL);
-					mContext->mScratchModule->ResolveTypeRef(usingDirective->mTypeRef, NULL);
+					mContext->mScratchModule->ResolveTypeRef(usingDirective->mTypeRef, BfPopulateType_Identity);
 					if ((mResolvePassData != NULL) && (mResolvePassData->mAutoComplete != NULL))
 						mResolvePassData->mAutoComplete->CheckTypeRef(usingDirective->mTypeRef, false, false);
 					return;
@@ -3541,10 +3542,11 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 	auto autoComplete = mResolvePassData->mAutoComplete;
 	BfLogSysM("ProcessAutocompleteTempType %d\n", autoComplete->mResolveType);
-
+	
 	SetAndRestoreValue<bool> prevCanceling(mCanceling, false);
 
 	BF_ASSERT(mResolvePassData->mAutoComplete->mDefMethod == NULL);
+
 	if (autoComplete->mResolveType == BfResolveType_GetNavigationData)
 	{
 		for (auto node : mResolvePassData->mParser->mSidechannelRootNode->mChildArr)
@@ -3691,6 +3693,14 @@ void BfCompiler::ProcessAutocompleteTempType()
 		VisitAutocompleteExteriorIdentifiers();
 	}	
 	VisitSourceExteriorNodes();
+
+	if (autoComplete->mResolveType == BfResolveType_GetSymbolInfo)
+	{
+		BfNamespaceVisitor namespaceVisitor;
+		namespaceVisitor.mResolvePassData = mResolvePassData;
+		namespaceVisitor.mSystem = mSystem;
+		namespaceVisitor.Visit(mResolvePassData->mParser->mRootNode);
+	}
 
 	BfTypeDef* tempTypeDef = NULL;
 	for (auto checkTempType : mResolvePassData->mAutoCompleteTempTypes)
@@ -4248,32 +4258,66 @@ void BfCompiler::GetSymbolReferences()
 	if (mResolvePassData->mAutoComplete != NULL)
 		mResolvePassData->mAutoComplete->SetModule(module);
 	
-	const char* strPtr = mResolvePassData->mQueuedReplaceTypeDef.c_str();	
-	BfTypeDef* typeDef = mSystem->FindTypeDefEx(strPtr);
-	if ((typeDef == NULL) || (typeDef->mTypeDeclaration == NULL))
-		return;
-	mResolvePassData->mSymbolReferenceTypeDef = typeDef;
-	auto replaceType = module->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);
-	module->PopulateType(replaceType);
-	auto replaceTypeInst = replaceType->ToTypeInstance();
-
+	BfTypeDef* typeDef = NULL;
 	HashSet<BfTypeInstance*> rebuildTypeInstList;
-	if (mResolvePassData->mGetSymbolReferenceKind != BfGetSymbolReferenceKind_Local)	
+	if (!mResolvePassData->mQueuedSymbolReferenceNamespace.IsEmpty())
 	{
-		AddDepsToRebuildTypeList(replaceTypeInst, rebuildTypeInstList);
-		// For generic types, add all references from all specialized versions
-		if (replaceTypeInst->IsGenericTypeInstance())
+		if (!mSystem->ParseAtomComposite(mResolvePassData->mQueuedSymbolReferenceNamespace, mResolvePassData->mSymbolReferenceNamespace))
+			return;
+
+		for (auto type : mContext->mResolvedTypes)
 		{
-			for (auto type : mContext->mResolvedTypes)
+			auto typeInst = type->ToTypeInstance();
+			if (typeInst == NULL)
+				continue;				
+
+			for (auto& lookupKV : typeInst->mLookupResults)
 			{				
-				auto typeInst = type->ToTypeInstance();
-				if ((typeInst != replaceTypeInst) && (typeInst != NULL) && (typeInst->mTypeDef == typeDef))
-					AddDepsToRebuildTypeList(typeInst, rebuildTypeInstList);
-			}			
+				auto typeDef = lookupKV.mValue.mTypeDef;
+				if (typeDef->mNamespace.StartsWith(mResolvePassData->mSymbolReferenceNamespace))
+				{
+					rebuildTypeInstList.Add(typeInst);
+				}
+			}
+		}
+
+		for (auto parser : mSystem->mParsers)
+		{
+			BfNamespaceVisitor namespaceVisitor;
+			namespaceVisitor.mResolvePassData = mResolvePassData;
+			namespaceVisitor.mSystem = mSystem;
+			namespaceVisitor.Visit(parser->mRootNode);
 		}
 	}
-	
-	AddToRebuildTypeList(replaceTypeInst, rebuildTypeInstList);
+	else
+	{
+		const char* strPtr = mResolvePassData->mQueuedReplaceTypeDef.c_str();
+		typeDef = mSystem->FindTypeDefEx(strPtr);
+		if ((typeDef == NULL) || (typeDef->mTypeDeclaration == NULL))
+			return;
+
+		mResolvePassData->mSymbolReferenceTypeDef = typeDef;
+		auto replaceType = module->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);
+		module->PopulateType(replaceType);
+		auto replaceTypeInst = replaceType->ToTypeInstance();
+		
+		if (mResolvePassData->mGetSymbolReferenceKind != BfGetSymbolReferenceKind_Local)
+		{
+			AddDepsToRebuildTypeList(replaceTypeInst, rebuildTypeInstList);
+			// For generic types, add all references from all specialized versions
+			if (replaceTypeInst->IsGenericTypeInstance())
+			{
+				for (auto type : mContext->mResolvedTypes)
+				{
+					auto typeInst = type->ToTypeInstance();
+					if ((typeInst != replaceTypeInst) && (typeInst != NULL) && (typeInst->mTypeDef == typeDef))
+						AddDepsToRebuildTypeList(typeInst, rebuildTypeInstList);
+				}
+			}
+		}
+
+		AddToRebuildTypeList(replaceTypeInst, rebuildTypeInstList);
+	}
 
 	//TODO: Did we need this to be rebuildTypeInst->mModule???  Why?
 	//auto rebuildModule = rebuildTypeInst->mModule;
@@ -6100,6 +6144,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}
 		
 	mSystem->CheckLockYield();
+
+	mContext->mScratchModule->ResolveTypeDef(mBfObjectTypeDef);
 	VisitSourceExteriorNodes();
 
 	//BF_ASSERT(hasRequiredTypes);
@@ -6918,7 +6964,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 		};
 
 		if (autoComplete->mResolveType == BfResolveType_GetSymbolInfo)
-		{
+		{			
 			if (autoComplete->mDefTypeGenericParamIdx != -1)
 			{
 				autoCompleteResultString += StrFormat("typeGenericParam\t%d\n", autoComplete->mDefTypeGenericParamIdx);
@@ -6953,7 +6999,11 @@ void BfCompiler::GenerateAutocompleteInfo()
 			{
 				autoCompleteResultString += StrFormat("typeRef\t%s\n", _EncodeTypeDef(autoComplete->mDefType).c_str());
 			}
-			
+			else if (!autoComplete->mDefNamespace.IsEmpty())
+			{
+				autoCompleteResultString += StrFormat("namespaceRef\t%s\n", autoComplete->mDefNamespace.ToString().c_str());
+			}
+
 			if (autoComplete->mInsertEndIdx > 0)
 			{
 				if (mResolvePassData->mParser->mSrc[autoComplete->mInsertEndIdx - 1] == '!')

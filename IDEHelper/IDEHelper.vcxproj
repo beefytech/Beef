@@ -309,6 +309,7 @@
     <ClCompile Include="Compiler\BfIRBuilder.cpp" />
     <ClCompile Include="Compiler\BfIRCodeGen.cpp" />
     <ClCompile Include="Compiler\BfModuleTypeUtils.cpp" />
+    <ClCompile Include="Compiler\BfNamespaceVisitor.cpp" />
     <ClCompile Include="Compiler\BfResolvePass.cpp" />
     <ClCompile Include="Compiler\BfSource.cpp" />
     <ClCompile Include="Compiler\BfConstResolver.cpp" />
@@ -375,6 +376,7 @@
     <ClInclude Include="Compiler\BfIRBuilder.h" />
     <ClInclude Include="Compiler\BfIRCodeGen.h" />
     <ClInclude Include="Compiler\BfModuleTypeUtils.h" />
+    <ClInclude Include="Compiler\BfNamespaceVisitor.h" />
     <ClInclude Include="Compiler\BfResolvePass.h" />
     <ClInclude Include="Compiler\BfSource.h" />
     <ClInclude Include="Compiler\BfConstResolver.h" />

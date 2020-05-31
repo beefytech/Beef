@@ -227,6 +227,9 @@ namespace IDE.ui
 				    mResolveParams.mTypeGenericParamIdx = int32.Parse(lineDataItr.GetNext().Get());
 				case "methodGenericParam":
 				    mResolveParams.mMethodGenericParamIdx = int32.Parse(lineDataItr.GetNext().Get());
+				case "namespaceRef":
+					mResolveParams.mNamespace = new String(lineDataItr.GetNext().Get());
+					foundSymbol = true;
 				case "defLoc":
 					if (mKind == .Rename)
 					{
@@ -421,6 +424,8 @@ namespace IDE.ui
 					mResolvePassData.SetTypeGenericParamIdx(resolveParams.mTypeGenericParamIdx);
 				if (resolveParams.mMethodGenericParamIdx != -1)
 					mResolvePassData.SetMethodGenericParamIdx(resolveParams.mMethodGenericParamIdx);
+				if (resolveParams.mNamespace != null)
+					mResolvePassData.SetSymbolReferenceNamespace(resolveParams.mNamespace);
             }
 
 			mDoLock = mKind == Kind.Rename;

@@ -105,38 +105,70 @@ void BfResolvePassData::HandleLocalReference(BfIdentifierNode* identifier, BfIde
 	}
 }
 
+BfAstNode* BfResolvePassData::FindBaseNode(BfAstNode* node)
+{
+	BfAstNode* baseNode = node;
+	while (true)
+	{
+		if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(baseNode))
+		{
+			baseNode = qualifiedTypeRef->mRight;
+		}
+		else if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(baseNode))
+		{
+			baseNode = elementedTypeRef->mElementType;
+		}
+		else if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(baseNode))
+		{
+			baseNode = namedTypeRef->mNameNode;
+		}
+		else if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(baseNode))
+		{
+			baseNode = qualifiedNameNode->mRight;
+		}
+		else if (auto declTypeRef = BfNodeDynCast<BfDeclTypeRef>(baseNode))
+		{
+			baseNode = NULL;
+			break;
+		}
+		else
+			break;
+	}
+	return baseNode;
+}
+
 void BfResolvePassData::HandleTypeReference(BfAstNode* node, BfTypeDef* typeDef)
 {
 	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Type) && (mSymbolReferenceTypeDef == typeDef))
 	{
-		BfAstNode* baseNode = node;
-		while (true)
+		auto baseNode = FindBaseNode(node);
+		if (baseNode != NULL)
+			RecordReplaceNode(baseNode);
+	}
+}
+
+void BfResolvePassData::HandleNamespaceReference(BfAstNode* node, const BfAtomComposite& namespaceName)
+{
+	if ((mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Namespace) && (namespaceName.StartsWith(mSymbolReferenceNamespace)))
+	{
+		BfAstNode* recordNode = node;
+
+		int leftCount = namespaceName.mSize - mSymbolReferenceNamespace.mSize;
+		for (int i = 0; i < leftCount; i++)
 		{
-		 	if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(baseNode))
-		 	{
-				baseNode = qualifiedTypeRef->mRight;
-		 	}
-		 	else if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(baseNode))
-		 	{
-				baseNode = elementedTypeRef->mElementType;
-		 	}
-		 	else if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(baseNode))
-		 	{
-				baseNode = namedTypeRef->mNameNode;
-		 	}
-		 	else if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(baseNode))
-		 	{
-				baseNode = qualifiedNameNode->mRight;
-		 	}
-		 	else if (auto declTypeRef = BfNodeDynCast<BfDeclTypeRef>(baseNode))
-		 	{
-				baseNode = NULL;
-		 		break;
-		 	}
-		 	else
-		 		break;
+			if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(recordNode))
+			{
+				recordNode = qualifiedTypeRef->mLeft;
+			}
+			else if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(recordNode))
+			{
+				recordNode = qualifiedNameNode->mLeft;
+			}
+			else
+				return;
 		}
 
+		auto baseNode = FindBaseNode(recordNode);
 		if (baseNode != NULL)
 			RecordReplaceNode(baseNode);
 	}

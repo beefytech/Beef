@@ -205,6 +205,9 @@
     <ClCompile Include="Compiler\BfTargetTriple.cpp">
       <Filter>Debugger</Filter>
     </ClCompile>
+    <ClCompile Include="Compiler\BfNamespaceVisitor.cpp">
+      <Filter>Debugger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Compiler\BfAst.h">
@@ -389,5 +392,6 @@
     <ClInclude Include="Compiler\BfTargetTriple.h">
       <Filter>Compiler</Filter>
     </ClInclude>
+    <ClInclude Include="Compiler\BfNamespaceVisitor.h" />
   </ItemGroup>
 </Project>

@@ -53,6 +53,7 @@ namespace IDE.Compiler
         public int32 mLocalId = -1;
         public String mReplaceStr ~ delete _;
         public String mTypeDef ~ delete _;
+		public String mNamespace ~ delete _;
         public int32 mFieldIdx = -1;
         public int32 mMethodIdx = -1;
         public int32 mPropertyIdx = -1;

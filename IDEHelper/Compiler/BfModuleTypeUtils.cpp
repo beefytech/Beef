@@ -6051,7 +6051,10 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		bool isGetDefinition = false;
 		BfAutoComplete* autoComplete = NULL;
 		if (mCompiler->IsAutocomplete())
+		{
 			autoComplete = mCompiler->mResolvePassData->mAutoComplete;
+			isGetDefinition = autoComplete->mIsGetDefinition || (autoComplete->mResolveType == BfResolveType_GetResultString);
+		}
 
 		BfSourceData* typeRefSource = NULL;
 		if (typeRef->IsTemporary())
@@ -6064,8 +6067,14 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		}
 		else
 			typeRefSource = typeRef->GetSourceData();
-		if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (typeRefSource != NULL) && (mCompiler->mResolvePassData->mParser != NULL) && 
-			(typeRefSource == mCompiler->mResolvePassData->mParser->mSourceData))
+
+		bool wantsFileNamespaceInfo = (((mCompiler->mResolvePassData->mSourceClassifier != NULL) || (isGetDefinition) || (mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Namespace)) &&
+			(typeRefSource != NULL) && (mCompiler->mResolvePassData->mParser != NULL) &&
+			(typeRefSource == mCompiler->mResolvePassData->mParser->mSourceData));
+
+		bool wantsAllNamespaceInfo = (mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Namespace) && (mCompiler->mResolvePassData->mParser == NULL);
+
+		if (wantsFileNamespaceInfo || wantsAllNamespaceInfo)
 		{
 			//TODO: By only breaking out for "mIgnoreErrors", we classified elements (below) even when a resolvedTypeRef was not found!
 			//Why did we have this mIgnoreErrors check in there?
@@ -6102,7 +6111,8 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				StringView leftString = qualifiedTypeRef->mLeft->ToStringView();
 				BfSizedAtomComposite leftComposite;
 				bool isValid = mSystem->ParseAtomComposite(leftString, leftComposite);
-				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
+				if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
+					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
 				if (resolvedTypeInstance == NULL)
 				{
 					if ((isValid) && (mCompiler->mSystem->ContainsNamespace(leftComposite, mCurTypeInstance->mTypeDef->mProject)))
@@ -6110,8 +6120,14 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				}
 				else if ((isValid) && (resolvedTypeInstance->mTypeDef->mNamespace.EndsWith(leftComposite)))
 				{
-					if ((autoComplete != NULL) && (autoComplete->CheckFixit(typeRef)))
-						autoComplete->FixitCheckNamespace(GetActiveTypeDef(), qualifiedTypeRef->mLeft, qualifiedTypeRef->mDot);
+					if (autoComplete != NULL)
+					{
+						if (autoComplete->CheckFixit(typeRef))
+							autoComplete->FixitCheckNamespace(GetActiveTypeDef(), qualifiedTypeRef->mLeft, qualifiedTypeRef->mDot);
+						autoComplete->CheckNamespace(qualifiedTypeRef->mLeft, resolvedTypeInstance->mTypeDef->mNamespace);
+					}
+					mCompiler->mResolvePassData->HandleNamespaceReference(qualifiedTypeRef->mLeft, resolvedTypeInstance->mTypeDef->mNamespace);
+					
 					isNamespace = true;
 				}
 				checkTypeRef = qualifiedTypeRef->mLeft;
@@ -6126,7 +6142,8 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 					StringView leftString =  qualifiedNameNode->mLeft->ToStringView();
 					BfSizedAtomComposite leftComposite;
 					bool isValid = mSystem->ParseAtomComposite(leftString, leftComposite);
-					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
+					if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
+						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
 					if (resolvedTypeInstance == NULL)
 					{
 						if ((isValid) && (mCompiler->mSystem->ContainsNamespace(leftComposite, mCurTypeInstance->mTypeDef->mProject)))
@@ -6135,14 +6152,10 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 					else if ((isValid) && (resolvedTypeInstance->mTypeDef->mNamespace.EndsWith(leftComposite)))
 						isNamespace = true;
 					checkNameNode = qualifiedNameNode->mLeft;
-				}				
-				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
+				}
+				if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
+					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
 			}
-		}
-		
-		if (autoComplete != NULL)
-		{
-			isGetDefinition = autoComplete->mIsGetDefinition || (autoComplete->mResolveType == BfResolveType_GetResultString);
 		}
 
 		if (((mCompiler->mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Type) || (isGetDefinition)) &&
@@ -6488,6 +6501,11 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	{
 		if (mCompiler->mResolvePassData->mAutoCompleteTempTypes.Contains(useTypeDef))
 			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error);
+	}
+
+	if (typeInstance->mTypeDef->mName->ToString() == "ClassA")
+	{
+		NOP;
 	}
 
 	BfTypeLookupEntry typeLookupEntry;
@@ -7282,7 +7300,11 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 				BfTypeDef* ambiguousTypeDef = NULL;
 
-				auto typeDef = mSystem->FindTypeDef(findName, wantNumGenericArgs, bfProject, {}, &ambiguousTypeDef);
+				//auto typeDef = mSystem->FindTypeDef(findName, wantNumGenericArgs, bfProject, {}, &ambiguousTypeDef);
+
+				//auto typeDef = mSystem->FindTypeDef(findName, wantNumGenericArgs, bfProject, {}, &ambiguousTypeDef);
+				BfTypeLookupError lookupError;
+				auto typeDef = FindTypeDef(findName, wantNumGenericArgs, NULL, &lookupError);
 				if (typeDef != NULL)
 				{
 					if (ambiguousTypeDef != NULL)

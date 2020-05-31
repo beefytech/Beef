@@ -34,7 +34,8 @@ enum BfGetSymbolReferenceKind
 	BfGetSymbolReferenceKind_Property,
 	BfGetSymbolReferenceKind_Type,
 	BfGetSymbolReferenceKind_TypeGenericParam,
-	BfGetSymbolReferenceKind_MethodGenericParam
+	BfGetSymbolReferenceKind_MethodGenericParam,
+	BfGetSymbolReferenceKind_Namespace
 };
 
 class BfResolvePassData
@@ -49,9 +50,10 @@ public:
 	Array<BfAstNode*> mExteriorAutocompleteCheckNodes;
 
 	BfGetSymbolReferenceKind mGetSymbolReferenceKind;	
-	BfTypeDef* mSymbolReferenceTypeDef;
-	
 	String mQueuedReplaceTypeDef;
+	BfTypeDef* mSymbolReferenceTypeDef;
+	String mQueuedSymbolReferenceNamespace;
+	BfAtomComposite mSymbolReferenceNamespace;		
 	int mSymbolReferenceLocalIdx;
 	int mSymbolReferenceFieldIdx;
 	int mSymbolReferenceMethodIdx;
@@ -66,6 +68,7 @@ public:
 public:
 	void RecordReplaceNode(BfParserData* parser, int srcStart, int srcLen);
 	void RecordReplaceNode(BfAstNode* node);	
+	BfAstNode* FindBaseNode(BfAstNode* node);
 
 public:
 	BfResolvePassData();
@@ -78,6 +81,7 @@ public:
 	void HandleFieldReference(BfAstNode* node, BfTypeDef* typeDef, BfFieldDef* fieldDef);
 	void HandlePropertyReference(BfAstNode* node, BfTypeDef* typeDef, BfPropertyDef* propDef);
 	void HandleTypeReference(BfAstNode* node, BfTypeDef* typeDef);	
+	void HandleNamespaceReference(BfAstNode* node, const BfAtomComposite& namespaceName);
 
 	//void ReplaceIdentifiers();
 };

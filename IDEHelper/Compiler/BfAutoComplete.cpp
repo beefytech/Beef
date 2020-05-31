@@ -2564,6 +2564,43 @@ void BfAutoComplete::CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* pre
 	}
 }
 
+void BfAutoComplete::CheckNamespace(BfAstNode* node, const BfAtomComposite& namespaceName)
+{
+	if (mResolveType == BfResolveType_GetSymbolInfo)
+	{		
+		if (IsAutocompleteNode(node))
+		{			
+			int namespaceCount = namespaceName.mSize;
+			auto checkNode = node;
+			
+			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkNode))
+			{
+				if (!IsAutocompleteNode(qualifiedTypeRef->mLeft))
+					break;
+				namespaceCount--;
+				checkNode = qualifiedTypeRef->mLeft;
+			}
+			while (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNode))
+			{
+				if (!IsAutocompleteNode(qualifiedNameNode->mLeft))
+					break;
+				namespaceCount--;
+				checkNode = qualifiedNameNode->mLeft;
+			}
+			
+			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkNode))			
+				checkNode = qualifiedTypeRef->mRight;			
+			while (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNode))
+				checkNode = qualifiedNameNode->mRight;
+
+			mInsertStartIdx = checkNode->GetSrcStart();
+			mInsertEndIdx = checkNode->GetSrcEnd();
+			
+			mDefNamespace.Set(namespaceName.mParts, namespaceCount, NULL, 0);
+		}
+	}	
+}
+
 void BfAutoComplete::AddTypeInstanceEntry(BfTypeInstance* typeInst)
 {	
 	String bestTypeName = mModule->TypeToString(typeInst, BfTypeNameFlag_ReduceName);

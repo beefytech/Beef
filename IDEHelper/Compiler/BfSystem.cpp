@@ -3341,6 +3341,12 @@ BF_EXPORT void BF_CALLTYPE BfResolvePassData_SetSymbolReferenceTypeDef(BfResolve
 	resolvePassData->mGetSymbolReferenceKind = BfGetSymbolReferenceKind_Type;
 }
 
+BF_EXPORT void BF_CALLTYPE BfResolvePassData_SetSymbolReferenceNamespace(BfResolvePassData* resolvePassData, const char* namespaceName)
+{
+	resolvePassData->mQueuedSymbolReferenceNamespace = namespaceName;
+	resolvePassData->mGetSymbolReferenceKind = BfGetSymbolReferenceKind_Namespace;
+}
+
 BF_EXPORT void BF_CALLTYPE BfResolvePassData_SetSymbolReferenceFieldIdx(BfResolvePassData* resolvePassData, int fieldIdx)
 {
 	resolvePassData->mSymbolReferenceFieldIdx = fieldIdx;

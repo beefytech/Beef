@@ -182,14 +182,12 @@ public:
 	int mCursorLineStart;
 	int mCursorLineEnd;
 	
-	//BfMethodInstance* mReplaceMethodInstance;
-	
-	int mReplaceLocalId;
-	//int mDefMethodIdx;
+	int mReplaceLocalId;	
 	BfMethodDef* mDefMethod;
 	BfTypeDef* mDefType;
 	BfFieldDef* mDefField;
 	BfPropertyDef* mDefProp;
+	BfAtomComposite mDefNamespace;
 	int mDefMethodGenericParamIdx;
 	int mDefTypeGenericParamIdx;
 
@@ -248,6 +246,7 @@ public:
 	void CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* varDecl);
 	void CheckFieldRef(BfAstNode* identifierNode, BfFieldInstance* fieldInst);	
 	void CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* precedingNode, BfScopeData* scopeData);
+	void CheckNamespace(BfAstNode* node, const BfAtomComposite& namespaceName);
 	void CheckEmptyStart(BfAstNode* prevNode, BfType* type);	
 	bool CheckFixit(BfAstNode* node);	
 	void CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode* node);

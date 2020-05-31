@@ -20,7 +20,10 @@ namespace IDE.Compiler
 		static extern void BfResolvePassData_SetMethodGenericParamIdx(void* resolvePassData, int typeGenericParamIdx);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void BfResolvePassData_SetSymbolReferenceTypeDef(void* bfResolvePassData, char8* replaceStr);
+        static extern void BfResolvePassData_SetSymbolReferenceTypeDef(void* bfResolvePassData, char8* typeDefName);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfResolvePassData_SetSymbolReferenceNamespace(void* bfResolvePassData, char8* namespaceName);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void BfResolvePassData_SetSymbolReferenceFieldIdx(void* bfResolvePassData, int32 fieldIdx);
@@ -65,6 +68,11 @@ namespace IDE.Compiler
         {
             BfResolvePassData_SetSymbolReferenceTypeDef(mNativeResolvePassData, typeDefName);
         }
+
+		public void SetSymbolReferenceNamespace(String namespaceName)
+		{
+		    BfResolvePassData_SetSymbolReferenceNamespace(mNativeResolvePassData, namespaceName);
+		}
 
         public void SetSymbolReferenceFieldIdx(int32 fieldIdx)
         {

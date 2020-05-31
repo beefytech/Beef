@@ -1451,14 +1451,13 @@ BF_EXPORT void BF_CALLTYPE Debugger_ReadMemory(uintptr address, uintptr size, un
 {
 	if (gDebugger == NULL)
 		return;
-
-	//CDH TODO internally clamps to 32-bit here, need to make this more obvious in IDE memory panel etc.
 	gDebugger->ReadMemory(address, size, data);
 }
 
 BF_EXPORT void BF_CALLTYPE Debugger_WriteMemory(uintptr address, uintptr size, unsigned char* data)
 {
-	//CDH TODO internally clamps to 32-bit here, need to make this more obvious in IDE memory panel etc.
+	if (gDebugger == NULL)
+		return;
 	gDebugger->WriteMemory(address, data, size);
 }
 
