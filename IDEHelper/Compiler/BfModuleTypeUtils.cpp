@@ -6501,11 +6501,6 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error);
 	}
 
-	if (typeInstance->mTypeDef->mName->ToString() == "ClassA")
-	{
-		NOP;
-	}
-
 	BfTypeLookupEntry typeLookupEntry;
 	typeLookupEntry.mName = findName;
 	typeLookupEntry.mNumGenericParams = numGenericArgs;
