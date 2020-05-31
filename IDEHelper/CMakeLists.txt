@@ -158,6 +158,7 @@ file(GLOB SRC_FILES
     Compiler/BfDeferEvalChecker.cpp
     Compiler/BfDemangler.cpp
     Compiler/BfElementVisitor.cpp
+    Compiler/BfNamespaceVisitor.cpp
     Compiler/BfExprEvaluator.cpp
     Compiler/BfIRBuilder.cpp
     Compiler/BfIRCodeGen.cpp
