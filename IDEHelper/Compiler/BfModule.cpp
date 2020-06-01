@@ -20008,7 +20008,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				break;
 			}			
 
-			methodInstance->mParams[paramIdx + implicitParamCount].mWasGenericParam = defaultMethodInstance->mParams[defaultParamIdx + defaultImplicitParamCount].mResolvedType->IsGenericParam();			
+			BfType* paramType = defaultMethodInstance->mParams[defaultParamIdx + defaultImplicitParamCount].mResolvedType;
+			if (paramType->IsRef())
+				paramType = paramType->GetUnderlyingType();
+
+			methodInstance->mParams[paramIdx + implicitParamCount].mWasGenericParam = paramType->IsGenericParam();			
 			paramIdx++;
 			defaultParamIdx++;
 		}		
