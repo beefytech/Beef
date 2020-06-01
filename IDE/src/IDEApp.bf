@@ -7472,8 +7472,7 @@ namespace IDE
 			{
 	            startInfo.RedirectStandardOutput = true;
 	            startInfo.RedirectStandardError = true;
-				if (stdInData != null)
-					startInfo.RedirectStandardInput = true;
+				startInfo.RedirectStandardInput = true;
 	            startInfo.CreateNoWindow = true;
 			}
 
