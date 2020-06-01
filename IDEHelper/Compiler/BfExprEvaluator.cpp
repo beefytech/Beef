@@ -11846,16 +11846,12 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	bindResult.mWantsArgs = true;
 	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, &bindResult);	
 
-	BfIRValue appendSizeValue;
-	//BfTypedValue emtpyThis(BfIRValue(), resolvedTypeRef, resolvedTypeRef->IsStruct());
+	BfIRValue appendSizeValue;	
 	BfTypedValue emtpyThis(mModule->mBfIRBuilder->GetFakeVal(), resolvedTypeRef, resolvedTypeRef->IsStruct());
 	
 	BfResolvedArgs argValues(objCreateExpr->mOpenToken, &objCreateExpr->mArguments, &objCreateExpr->mCommas, objCreateExpr->mCloseToken);	
 	ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval); ////
 	
-	/*SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, mPrefixedAttributeState);
-	if (mPrefixedAttributeState != NULL)
-		mPrefixedAttributeState->mUsed = true;*/
 	if (typeInstance == NULL)
 	{						
 		// No CTOR needed
@@ -11871,8 +11867,8 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		MatchConstructor(objCreateExpr->mTypeRef, objCreateExpr, emtpyThis, typeInstance, argValues, false, true);
 		if ((wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo))
 		{
-			autoComplete->mIsCapturingMethodMatchInfo = true;
-			BF_ASSERT(autoComplete->mMethodMatchInfo != NULL);
+			if (autoComplete->mMethodMatchInfo != NULL)
+				autoComplete->mIsCapturingMethodMatchInfo = true;
 		}
 		else
 			autoComplete->mIsCapturingMethodMatchInfo = false;
@@ -11883,14 +11879,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	}	
 	mModule->ValidateAllocation(typeInstance, objCreateExpr->mTypeRef);
 
-	//prevAttributeState.Restore();
 	prevBindResult.Restore();
-	
-	/*if ((typeInstance != NULL) && (bindResult.mMethodInstance == NULL))
-	{
-		mModule->AssertErrorState();
-		return;
-	}*/
 
 	int allocAlign = resolvedTypeRef->mAlign;
 	if (typeInstance != NULL)
