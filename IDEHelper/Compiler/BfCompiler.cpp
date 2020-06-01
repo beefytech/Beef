@@ -4367,7 +4367,11 @@ void BfCompiler::GetSymbolReferences()
 	};
 
 	for (auto rebuildTypeInst : rebuildTypeInstList)
-	{		
+	{	
+		// These never have a definition. Also note that BfGenericDelegateType does not have proper generic defs
+		if (rebuildTypeInst->IsOnDemand())
+			continue;
+
 		auto context = mContext;
 		auto module = context->mScratchModule;
 		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(module->mCurTypeInstance, rebuildTypeInst);
