@@ -2989,24 +2989,27 @@ void BfModule::AddDependency(BfType* usedType, BfType* usingType, BfDependencyMa
 	if (usedType->IsSpecializedByAutoCompleteMethod())
 		return;
 
-	if ((mCurMethodState != NULL) && (mCurMethodState->mHotDataReferenceBuilder != NULL) && (usedType != mCurTypeInstance) &&
-		((flags & (BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_Allocates)) != 0))
+	BfType* origUsedType = usedType;
+	bool isDataAccess = ((flags & (BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_Allocates)) != 0);
+	if (isDataAccess)
 	{
-		bool addType = true;
-		auto checkType = usedType;
-
 		while (true)
 		{
-			if ((checkType->IsPointer()) || (checkType->IsRef()) || (checkType->IsSizedArray()))
-				checkType = checkType->GetUnderlyingType();			
-			else if (checkType->IsArray())
+			if ((usedType->IsPointer()) || (usedType->IsRef()) || (usedType->IsSizedArray()))
+				usedType = usedType->GetUnderlyingType();
+			else if (usedType->IsArray())
 			{
-				checkType = ((BfGenericTypeInstance*)checkType)->mTypeGenericArguments[0];
+				usedType = ((BfGenericTypeInstance*)usedType)->mTypeGenericArguments[0];
 			}
 			else
 				break;
 		}
-		
+	}
+
+	if ((mCurMethodState != NULL) && (mCurMethodState->mHotDataReferenceBuilder != NULL) && (usedType != mCurTypeInstance) && (isDataAccess))
+	{
+		bool addType = true;
+		auto checkType = usedType;		
 		PopulateType(checkType, BfPopulateType_Data);
 		if (checkType->IsValuelessType())
 			addType = false;
@@ -3046,22 +3049,6 @@ void BfModule::AddDependency(BfType* usedType, BfType* usingType, BfDependencyMa
 		}
 	}
 
-	//BP_ZONE("BfModule::AddDependency");
-	
-	/*if (usedType->IsMethodRef())
-	{
-		auto methodRefType = (BfMethodRefType*)usedType;
-		AddDependency(methodRefType->mMethodRef->GetOwner(), usingType, flags);
-		return;
-	}*/
-
-	// Why in the world were we doing this?
-	//  This caused functions to get immediately deleted since they appear to have no references ever....
-// 	if (usedType->IsFunction())
-// 	{
-// 		usedType = ResolveTypeDef(mCompiler->mFunctionTypeDef);
-// 	}
-
 	if ((!mCompiler->mIsResolveOnly) && (mIsReified))
 	{
 		auto usingModule = usingType->GetModule();		
@@ -3090,7 +3077,6 @@ void BfModule::AddDependency(BfType* usedType, BfType* usingType, BfDependencyMa
 			if (genericArg == usedType)
 				return;
 	}
-
 
 	auto underlyingType = usedType->GetUnderlyingType();
 	if (underlyingType != NULL) // Not really a "GenericArg", but... same purpose.
@@ -15374,9 +15360,7 @@ void BfModule::AddHotDataReferences(BfHotDataReferenceBuilder* builder)
 		auto depData = hotMethod->mReferences[refIdx];
 		BF_ASSERT(depData != NULL);
 		depData->mRefCount++;
-	}
-
-	//hotMethod->mReferences.Sort([](BfHotDepData* lhs, BfHotDepData* rhs) { return lhs < rhs; });
+	}	
 }
 
 void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfType* thisType, bool wantsDIData, SizedArrayImpl<BfIRMDNode>* diParams)

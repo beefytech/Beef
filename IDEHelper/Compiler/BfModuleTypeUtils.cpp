@@ -62,10 +62,6 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfGenericTypeInstan
 	typeState.mCurTypeDef = partialTypeDef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
-	//auto genericExEntry = new BfGenericExtensionEntry();
-	//auto insertPair = genericExtensionInfo->mExtensionMap.insert(std::make_pair(partialTypeDef, BfGenericExtensionEntry()));
-	//auto genericExEntry = &insertPair.first->second;
-
 	BfGenericExtensionEntry* genericExEntry;
 	genericExtensionInfo->mExtensionMap.TryAdd(partialTypeDef, NULL, &genericExEntry);
 

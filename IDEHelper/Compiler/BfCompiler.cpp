@@ -3327,25 +3327,6 @@ void BfCompiler::UpdateRevisedTypes()
 	}
 	mContext->RemoveInvalidWorkItems();	
 	
-	//for (auto typeDef : mSystem->mTypeDefs)
-	//{
-	//	auto latestTypeDef = typeDef->GetLatest();
-	//	if ((latestTypeDef->mOuterType != NULL) && (latestTypeDef->mOuterType->mIsPartial) && (latestTypeDef->mIsCombinedPartial))
-	//		//((!latestTypeDef->mIsPartial) || (latestTypeDef->mIsCombinedPartial)))
-	//		latestTypeDef->mOuterType = mSystem->GetOuterTypeNonPartial(latestTypeDef);
-
-	//	/*String fullName = typeDef->mFullNameEx.ToString();
-	//	if (fullName == "System.Collections.List`1.Enumerator`1")
-	//	{
-	//		NOP;
-	//	}
-
-	//	if ((typeDef->mOuterType != NULL) && (!typeDef->mIsPartial) && (typeDef->mOuterType->mIsPartial) && (!typeDef->mOuterType->mIsCombinedPartial))
-	//	{
-	//		NOP;
-	//	}*/
-	//}
-
 	mSystem->mNeedsTypesHandledByCompiler = false;
 
 	//TODO:
@@ -5143,7 +5124,7 @@ void BfCompiler::HotCommit()
 void BfCompiler::HotResolve_Start(HotResolveFlags flags)
 {
 	BfLogSysM("BfCompiler::HotResolve_Start\n");
-
+	
 	delete mHotResolveData;
 	mHotResolveData = new HotResolveData();
 	mHotResolveData->mFlags = flags;
@@ -5163,8 +5144,18 @@ void BfCompiler::HotResolve_Start(HotResolveFlags flags)
 	}
 }
 
+//#define HOT_DEBUG_NAME
+
 bool BfCompiler::HotResolve_AddReachableMethod(BfHotMethod* hotMethod, HotTypeFlags flags, bool devirtualized, bool forceProcess)
 {
+#ifdef HOT_DEBUG_NAME
+	HotResolve_PopulateMethodNameMap();
+	String* namePtr = NULL;
+	if (mHotData->mMethodNameMap.TryGetValue(hotMethod, &namePtr))
+	{		
+	}
+#endif
+
 	HotReachableData* hotReachableData;
 	if (mHotResolveData->mReachableMethods.TryAdd(hotMethod, NULL, &hotReachableData))
 	{
@@ -5268,6 +5259,14 @@ void BfCompiler::HotResolve_AddReachableMethod(const StringImpl& methodName)
 
 void BfCompiler::HotResolve_AddActiveMethod(BfHotMethod* hotMethod)
 {
+#ifdef HOT_DEBUG_NAME
+	HotResolve_PopulateMethodNameMap();
+	String* namePtr = NULL;
+	if (mHotData->mMethodNameMap.TryGetValue(hotMethod, &namePtr))
+	{
+	}
+#endif
+
 	if (mHotResolveData->mActiveMethods.Add(hotMethod))
 	{
 		hotMethod->mRefCount++;
@@ -5401,6 +5400,22 @@ void BfCompiler::HotResolve_ReportType(int typeId, HotTypeFlags flags)
 	mHotResolveData->mHotTypeIdFlags[typeId] = (HotTypeFlags)(flags | mHotResolveData->mHotTypeIdFlags[typeId]);
 }
 
+void BfCompiler::HotResolve_PopulateMethodNameMap()
+{
+	if (!mHotData->mMethodNameMap.IsEmpty())
+		return;
+	
+	for (auto& kv : mHotData->mMethodMap)
+	{
+		auto hotMethod = kv.mValue;
+		while (hotMethod != NULL)
+		{
+			mHotData->mMethodNameMap[hotMethod] = &kv.mKey;
+			hotMethod = hotMethod->mPrevVersion;
+		}
+	}	
+}
+
 String BfCompiler::HotResolve_Finish()
 {
 	BfLogSysM("HotResolve_Finish\n");
@@ -5461,8 +5476,8 @@ String BfCompiler::HotResolve_Finish()
 
 				for (auto ref : hotMethod->mReferences)
 				{
-					if (ref->mDataKind == BfHotDepDataKind_ThisType)
-						continue;
+					if (ref->mDataKind == BfHotDepDataKind_ThisType)							
+						continue;					
 					if (ref->mDataKind != BfHotDepDataKind_VirtualDecl)
 						break;
 
@@ -5470,6 +5485,14 @@ String BfCompiler::HotResolve_Finish()
 					HotReachableData* hotReachableData;
 					if (mHotResolveData->mReachableMethods.TryGetValue(hotVirtualDecl->mMethod, &hotReachableData))
 					{
+#ifdef HOT_DEBUG_NAME
+						HotResolve_PopulateMethodNameMap();
+						String* namePtr = NULL;
+						if (mHotData->mMethodNameMap.TryGetValue(hotVirtualDecl->mMethod, &namePtr))
+						{							
+						}
+#endif
+
 						if (hotReachableData->mHadNonDevirtualizedCall)
 						{
 							typeFlags = hotReachableData->mTypeFlags;
@@ -5533,21 +5556,10 @@ String BfCompiler::HotResolve_Finish()
 						auto hotMethod = (BfHotMethod*)reason;
 						reasonIsActiveMethod = mHotResolveData->mActiveMethods.Contains(hotMethod);
 
-						if (methodNameMap.IsEmpty())
-						{
-							for (auto& kv : mHotData->mMethodMap)
-							{
-								auto hotMethod = kv.mValue;
-								while (hotMethod != NULL)
-								{
-									methodNameMap[hotMethod] = &kv.mKey;
-									hotMethod = hotMethod->mPrevVersion;
-								}
-							}
-						}
+						HotResolve_PopulateMethodNameMap();
 
 						String** strPtr;
-						if (methodNameMap.TryGetValue(hotMethod, &strPtr))
+						if (mHotData->mMethodNameMap.TryGetValue(hotMethod, &strPtr))
 						{
 							methodReason += BfDemangler::Demangle((**strPtr), DbgLanguage_Beef, BfDemangler::Flag_BeefFixed);
 						}

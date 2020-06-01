@@ -239,6 +239,7 @@ public:
 	public:
 		BfCompiler* mCompiler;
 		Dictionary<String, BfHotMethod*> mMethodMap;
+		Dictionary<BfHotMethod*, String*> mMethodNameMap;
 		Dictionary<BfHotTypeVersion*, BfHotThisType*> mThisType;
 		Dictionary<BfHotTypeVersion*, BfHotAllocation*> mAllocation;
 		Dictionary<BfHotMethod*, BfHotDevirtualizedMethod*> mDevirtualizedMethods;
@@ -455,6 +456,7 @@ public:
 
 	void HotCommit();	
 	void HotResolve_Start(HotResolveFlags flags);
+	void HotResolve_PopulateMethodNameMap();
 	bool HotResolve_AddReachableMethod(BfHotMethod* hotMethod, HotTypeFlags flags, bool devirtualized, bool forceProcess = false);
 	void HotResolve_AddReachableMethod(const StringImpl& methodName);
 	void HotResolve_AddActiveMethod(BfHotMethod* hotMethod);
