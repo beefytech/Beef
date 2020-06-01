@@ -472,6 +472,11 @@ bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 	{
 		auto genericTypeInstance = (BfGenericTypeInstance*)resolvedTypeRef;				
 
+#ifdef _DEBUG
+		for (auto genericArg : genericTypeInstance->mTypeGenericArguments)
+			BF_ASSERT(!genericArg->IsVar());
+#endif
+
 		// Do it here so the location we attempted to specialize this type will throw the failure if there is one
 		if (!BuildGenericParams(resolvedTypeRef))
 			return false;
@@ -5680,6 +5685,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;		
+		if (elementType->IsVar())
+			return elementType;
 		auto sizeType = ResolveGenericType(arrayType->mElementCountSource, typeGenericArguments, methodGenericArguments, allowFail);
 		if (sizeType == NULL)
 			return NULL;
@@ -5696,6 +5703,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;
+		if (elementType->IsVar())
+			return elementType;
 		return CreateSizedArrayType(elementType, (int)arrayType->mElementCount);
 	}
 
@@ -5705,6 +5714,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		auto elementType = ResolveGenericType(refType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;
+		if (elementType->IsVar())
+			return elementType;
 		return CreateRefType(elementType, refType->mRefKind);
 	}
 
@@ -5714,6 +5725,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		auto elementType = ResolveGenericType(ptrType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;
+		if (elementType->IsVar())
+			return elementType;
 		return CreatePointerType(elementType);
 	}
 
@@ -5723,6 +5736,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		auto elementType = ResolveGenericType(arrayType->GetUnderlyingType(), typeGenericArguments, methodGenericArguments, allowFail);
 		if (elementType == NULL)
 			return NULL;
+		if (elementType->IsVar())
+			return elementType;
 		return CreateArrayType(elementType, arrayType->mDimensions);
 	}
 
@@ -5741,6 +5756,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			auto newGenericArg = ResolveGenericType(origGenericArg, typeGenericArguments, methodGenericArguments, allowFail);
 			if (newGenericArg == NULL)
 				return NULL;
+			if (newGenericArg->IsVar())
+				return newGenericArg;
 			if (newGenericArg != origGenericArg)
 				hadChange = true;
 			genericArgs.push_back(newGenericArg);
@@ -5773,6 +5790,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		auto returnType = ResolveGenericType(unspecializedDelegateInfo->mReturnType, typeGenericArguments, methodGenericArguments, allowFail);
 		if (returnType == NULL)
 			return NULL;
+		if (returnType->IsVar())
+			return returnType;
 		_CheckType(returnType);
 		if (returnType->IsGenericParam())
 			hasTypeGenerics |= ((BfGenericParamType*)returnType)->mGenericParamKind == BfGenericParamKind_Type;
@@ -5782,6 +5801,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			auto paramType = ResolveGenericType(param, typeGenericArguments, methodGenericArguments, allowFail);
 			if (paramType == NULL)
 				return NULL;
+			if (paramType->IsVar())
+				return paramType;
 			paramTypes.Add(paramType);		
 			_CheckType(paramType);
 		}
@@ -5803,6 +5824,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 					resolvedArg = ResolveGenericType(resolvedArg, typeGenericArguments, methodGenericArguments, allowFail);
 					if (resolvedArg == NULL)
 						return NULL;					
+					if (resolvedArg->IsVar())
+						return resolvedArg;
 				}				
 				genericArgs.push_back(resolvedArg);
 			}
@@ -5938,6 +5961,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 				auto resolvedArg = ResolveGenericType(genericArg, typeGenericArguments, methodGenericArguments, allowFail);
 				if (resolvedArg == NULL)
 					return NULL;
+				if (resolvedArg->IsVar())
+					return resolvedArg;
 				genericArgs.push_back(resolvedArg);
 			}
 			else

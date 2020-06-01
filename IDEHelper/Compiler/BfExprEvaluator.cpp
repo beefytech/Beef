@@ -156,6 +156,7 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	mActiveTypeDef = NULL;
 	mBestMethodDef = NULL;	
 	mBackupMethodDef = NULL;
+	mBestRawMethodInstance = NULL;
 	mBestMethodTypeInstance = NULL;
 	mExplicitInterfaceCheck = NULL;
 	mSelfType = NULL;
@@ -169,6 +170,7 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	mAllowNonStatic = true;
 	mSkipImplicitParams = false;
 	mAllowImplicitThis = false;
+	mHadVarConflictingReturnType = false;
 	mMethodCheckCount = 0;
 	mInferGenericProgressIdx = 0;
 	mCheckedKind = BfCheckedKind_NotSet;
@@ -178,7 +180,15 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	{
 		auto bfType = arg.mTypedValue.mType;
 		if (bfType != NULL)
+		{
 			mHasVarArguments |= bfType->IsVar();
+			if (bfType->IsGenericParam())
+			{
+				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)bfType);
+				if ((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+					mHasVarArguments = true;
+			}
+		}
 	}
 
 	if (methodGenericArguments != NULL)
@@ -186,8 +196,6 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 		for (BfTypeReference* genericArg : *methodGenericArguments)
 		{
 			auto genericArgType = mModule->ResolveTypeRef(genericArg);
-// 			if (genericArgType == NULL)
-// 				return;
 			mExplicitMethodGenericArguments.push_back(genericArgType);
 		}
 		mHadExplicitGenericArguments = true;
@@ -213,9 +221,7 @@ bool BfMethodMatcher::IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* de
 bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue, HashSet<BfType*>& checkedTypeSet)
 {
 	if (argType == NULL)
-		return false;
-	if (argType->IsVar())
-		return false;
+		return false;	
 	
 	if (!wantType->IsUnspecializedType())
 		return true;
@@ -235,9 +241,7 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 
 		BfType* methodGenericTypeConstraint = NULL;
 		auto _SetGeneric = [&]()
-		{	
-			BF_ASSERT((argType == NULL) || (!argType->IsVar()));
-
+		{			
 			if (argType != NULL)
 			{
 				// Disallow illegal types
@@ -300,6 +304,12 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 			mPrevArgValues[wantGenericParam->mGenericParamIdx] = argValue;			
 		};
 		
+		if (argType->IsVar())
+		{
+			_SetGeneric();
+			return true;
+		}
+
 		if (wantGenericParam->mGenericParamKind == BfGenericParamKind_Method)
 		{
 			auto genericParamInst = methodInstance->mMethodInfoEx->mGenericParams[wantGenericParam->mGenericParamIdx];
@@ -381,8 +391,33 @@ bool BfMethodMatcher::InferGenericArgument(BfMethodInstance* methodInstance, BfT
 	if ((wantType->IsGenericTypeInstance()) && (wantType->IsUnspecializedTypeVariation()))
 	{
 		auto wantGenericType = (BfGenericTypeInstance*)wantType;
+		if (argType->IsGenericParam())
+		{
+			auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)argType);
+			if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+			{
+				InferGenericArgument(methodInstance, mModule->GetPrimitiveType(BfTypeCode_Var), wantType, BfIRValue(), checkedTypeSet);
+				return true;
+			}
+
+			if ((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsGenericTypeInstance()))
+				InferGenericArgument(methodInstance, genericParam->mTypeConstraint, wantType, BfIRValue(), checkedTypeSet);			
+		}
+
+		if (argType->IsVar())
+		{
+			for (int genericArgIdx = 0; genericArgIdx < (int)wantGenericType->mTypeGenericArguments.size(); genericArgIdx++)
+			{
+				BfType* wantGenericArgument = wantGenericType->mTypeGenericArguments[genericArgIdx];
+				if (!wantGenericArgument->IsUnspecializedType())
+					continue;				
+				InferGenericArgument(methodInstance, mModule->GetPrimitiveType(BfTypeCode_Var), wantGenericArgument, BfIRValue(), checkedTypeSet);
+			}
+			return true;
+		}
+
 		if (!argType->IsGenericTypeInstance())
-			return true;		
+			return true;
 		auto argGenericType = (BfGenericTypeInstance*)argType;
 		if (argGenericType->mTypeDef != wantGenericType->mTypeDef)
 			return true;
@@ -1555,7 +1590,12 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		//  And if neither better nor worse then they are equally good, which is not allowed either
 		if (((!isBetter) && (!isWorse)) || ((isBetter) && (isWorse)))
 		{
-			if (!mHasVarArguments)
+			if (mHasVarArguments)
+			{
+				if (prevMethodInstance->mReturnType != prevMethodInstance->mReturnType)
+					mHadVarConflictingReturnType = true;
+			}
+			else
 			{
 				BfAmbiguousEntry ambiguousEntry;
 				ambiguousEntry.mMethodInstance = methodInstance;
@@ -1588,6 +1628,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	mAmbiguousEntries.Clear();
 	hadMatch = true;
 	mBestMethodDef = checkMethod;
+	mBestRawMethodInstance = methodInstance;
 
 	for (auto& arg : mArguments)
 		arg.mBestBoundType = arg.mTypedValue.mType;
@@ -1646,10 +1687,10 @@ NoMatch:
 			if (genericArgumentsSubstitute != NULL)
 			{
 				mBestMethodGenericArguments = *genericArgumentsSubstitute;
-#ifdef _DEBUG
-				for (auto arg : mBestMethodGenericArguments)
-					BF_ASSERT((arg == NULL) || (!arg->IsVar()));
-#endif
+// #ifdef _DEBUG
+// 				for (auto arg : mBestMethodGenericArguments)
+// 					BF_ASSERT((arg == NULL) || (!arg->IsVar()));
+// #endif
 			}
 			else
 				mBestMethodGenericArguments.clear();
@@ -2085,6 +2126,17 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 		}		
 		mBypassVirtual = true;
 	}
+}
+
+bool BfMethodMatcher::HasVarGenerics()
+{
+	for (auto genericArg : mBestMethodGenericArguments)
+		if (genericArg->IsVar())
+			return true;
+	for (auto genericArg : mExplicitMethodGenericArguments)
+		if (genericArg->IsVar())
+			return true;
+	return false;
 }
 
 void BfMethodMatcher::CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, bool isFailurePass)
@@ -7050,20 +7102,29 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			mModule->Fail(StrFormat("Method '%s' does not exist", methodName.c_str()), targetSrc);				
 		return BfTypedValue();
 	}		
-			
-	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
-	{		
-		for (auto& arg : methodMatcher.mBestMethodGenericArguments)
-		{
-			if ((arg != NULL) && (arg->IsVar()))
-				return mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
-		}
-	}
-
+				
 	if ((prevBindResult.mPrevVal != NULL) && (methodMatcher.mMethodCheckCount > 1))
 		prevBindResult.mPrevVal->mCheckedMultipleMethods = true;
 
 	BfModuleMethodInstance moduleMethodInstance = GetSelectedMethod(targetSrc, curTypeInst, methodDef, methodMatcher);
+
+	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
+	{
+		if (methodMatcher.mHasVarArguments)
+		{
+			BfType* retType = mModule->GetPrimitiveType(BfTypeCode_Var);
+
+			if ((!methodMatcher.mHadVarConflictingReturnType) && (methodMatcher.mBestRawMethodInstance != NULL) && (!methodMatcher.mBestRawMethodInstance->mReturnType->IsUnspecializedTypeVariation()))
+			{
+				if ((!methodMatcher.mBestRawMethodInstance->mReturnType->IsGenericParam()) ||
+					(((BfGenericParamType*)methodMatcher.mBestRawMethodInstance->mReturnType)->mGenericParamKind != BfGenericParamKind_Method))
+					retType = methodMatcher.mBestRawMethodInstance->mReturnType;
+			}
+			
+			return mModule->GetDefaultTypedValue(retType);
+		}
+	}
+
 	if ((bypassVirtual) && (!target.mValue) && (target.mType->IsInterface()))
 	{
 		target = mModule->GetThis();
@@ -12361,6 +12422,8 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 
 	BfMethodInstance* unspecializedMethod = NULL;
 
+	bool hasVarGenerics = false;
+
 	for (int checkGenericIdx = 0; checkGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size(); checkGenericIdx++)	
 	{		
 		BfMethodInstance* outerMethodInstance = NULL;
@@ -12440,6 +12503,12 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 		}
 		else
 		{	
+			if (genericArg->IsVar())
+			{
+				BF_ASSERT(methodMatcher.mHasVarArguments);
+				hasVarGenerics = true;
+			}
+
 			if (genericArg->IsIntUnknown())
 				genericArg = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 
@@ -12448,7 +12517,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 				hasDifferentResolvedTypes = true;
 			resolvedGenericArguments.push_back(resolvedGenericArg);
 		}
-	}	
+	}
 
 	BfTypeInstance* foreignType = NULL;
 	BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None;
@@ -12478,6 +12547,9 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			}
 		}
 	}	
+
+	if (hasVarGenerics)
+		return BfModuleMethodInstance();
 
 	BfModuleMethodInstance methodInstance;
 	if (methodMatcher.mBestMethodInstance)
@@ -12598,21 +12670,24 @@ void BfExprEvaluator::CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* ty
 				if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mCapturing))
 				{
 					BfModuleMethodInstance moduleMethodInstance = GetSelectedMethod(targetSrc, typeInstance, matchedLocalMethod->mMethodDef, methodMatcher);
-					auto methodInstance = moduleMethodInstance.mMethodInstance;
-
-					if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureClosureState != NULL))
+					if (moduleMethodInstance)
 					{
-						// The called method is calling us from its mLocalMethodRefs set.  Stretch our mCaptureStartAccessId back to incorporate its 
-						//  captures as well
-						if (methodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureClosureState->mCaptureStartAccessId < mModule->mCurMethodState->mClosureState->mCaptureStartAccessId)
-							mModule->mCurMethodState->mClosureState->mCaptureStartAccessId = methodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureClosureState->mCaptureStartAccessId;
-					}
-					else
-					{						
-						if (methodInstance->mDisallowCalling) // We need to process the captures from this guy
+						auto methodInstance = moduleMethodInstance.mMethodInstance;
+
+						if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureClosureState != NULL))
 						{
-							if (mModule->mCurMethodState->mClosureState->mLocalMethodRefSet.Add(methodInstance))
-								mModule->mCurMethodState->mClosureState->mLocalMethodRefs.Add(methodInstance);
+							// The called method is calling us from its mLocalMethodRefs set.  Stretch our mCaptureStartAccessId back to incorporate its 
+							//  captures as well
+							if (methodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureClosureState->mCaptureStartAccessId < mModule->mCurMethodState->mClosureState->mCaptureStartAccessId)
+								mModule->mCurMethodState->mClosureState->mCaptureStartAccessId = methodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureClosureState->mCaptureStartAccessId;
+						}
+						else
+						{
+							if (methodInstance->mDisallowCalling) // We need to process the captures from this guy
+							{
+								if (mModule->mCurMethodState->mClosureState->mLocalMethodRefSet.Add(methodInstance))
+									mModule->mCurMethodState->mClosureState->mLocalMethodRefs.Add(methodInstance);
+							}
 						}
 					}
 				}

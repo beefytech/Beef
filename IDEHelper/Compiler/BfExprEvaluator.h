@@ -127,12 +127,13 @@ public:
 	BfMethodType mMethodType;
 	BfCheckedKind mCheckedKind;
 	bool mHadExplicitGenericArguments;	
-	bool mHasVarArguments;		
+	bool mHasVarArguments;	
+	bool mHadVarConflictingReturnType;
 	bool mBypassVirtual;
 	bool mAllowImplicitThis;
 	bool mAllowStatic;
 	bool mAllowNonStatic;	
-	bool mSkipImplicitParams;
+	bool mSkipImplicitParams;	
 	int mMethodCheckCount;
 	int mInferGenericProgressIdx;
 	BfType* mExplicitInterfaceCheck;	
@@ -146,6 +147,7 @@ public:
 	int mBackupArgMatchCount;
 	BfMethodDef* mBestMethodDef;
 	BfTypeInstance* mBestMethodTypeInstance;		
+	BfMethodInstance* mBestRawMethodInstance;
 	BfModuleMethodInstance mBestMethodInstance;
 	SizedArray<int, 4> mBestMethodGenericArgumentSrcs;
 	BfTypeVector mBestMethodGenericArguments;
@@ -173,6 +175,8 @@ public:
 	bool WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInstance* startTypeInstance, BfTypeInstance* checkTypeInstance, BfMethodDef* methodDef);
 	bool CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInstance* typeInstance, BfMethodDef* checkMethod, bool isFailurePass);
 	void TryDevirtualizeCall(BfTypedValue target, BfTypedValue* origTarget = NULL, BfTypedValue* staticResult = NULL);
+	bool HasVarGenerics();
+	bool IsVarCall(BfType*& outReturnType);
 };
 
 
