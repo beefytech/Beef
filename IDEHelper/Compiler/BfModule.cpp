@@ -3205,6 +3205,17 @@ void BfModule::PopulateGlobalContainersList(const BfGlobalLookup& globalLookup)
 	}
 }
 
+BfStaticSearch* BfModule::GetStaticSearch()
+{
+	auto activeTypeDef = GetActiveTypeDef();
+	BfStaticSearch* staticSearch = NULL;
+	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->mStaticSearchMap.TryGetValue(activeTypeDef, &staticSearch)))
+		return staticSearch;
+	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mStaticSearchMap.TryGetValue(activeTypeDef, &staticSearch)))
+		return staticSearch;
+	return NULL;
+}
+
 void PrintUsers(llvm::MDNode* md);
 
 BfModuleOptions BfModule::GetModuleOptions()

@@ -1609,6 +1609,7 @@ public:
 	void TypeFailed(BfTypeInstance* typeInstance);
 	bool IsAttribute(BfTypeInstance* typeInst);
 	void PopulateGlobalContainersList(const BfGlobalLookup& globalLookup);
+	BfStaticSearch* GetStaticSearch();
 	void AddFailType(BfTypeInstance* typeInstance);
 	void MarkDerivedDirty(BfTypeInstance* typeInst);
 	void CheckAddFailType();

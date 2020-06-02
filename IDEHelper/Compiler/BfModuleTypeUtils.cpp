@@ -1770,9 +1770,10 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						}
 						else
 						{
+							staticSearch->mStaticTypes.Add(staticTypeInst);
 							AddDependency(staticTypeInst, typeInstance, BfDependencyMap::DependencyFlag_StaticValue);
 						}
-					}
+					}										
 				}
 			}			
 		};

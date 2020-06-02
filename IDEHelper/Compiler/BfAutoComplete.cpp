@@ -1233,40 +1233,17 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 			AddTypeMembers(globalContainer.mTypeInst, true, false, filter, globalContainer.mTypeInst, true, true);
 		}
 	}
-	
-	//////////////////////////////////////////////////////////////////////////
-
+		
+	BfStaticSearch* staticSearch = mModule->GetStaticSearch();
+	if (staticSearch != NULL)
 	{
-		auto activeTypeDef = mModule->GetActiveTypeDef();
-
-		BfStaticSearch* staticSearch;
-		if ((mModule->mCurTypeInstance != NULL) && (mModule->mCurTypeInstance->mStaticSearchMap.TryGetValue(activeTypeDef, &staticSearch)))
+		for (auto typeInst : staticSearch->mStaticTypes)
 		{
-			for (auto typeInst : staticSearch->mStaticTypes)
-			{
-				AddTypeMembers(typeInst, true, false, filter, typeInst, true, true);
-				AddInnerTypes(typeInst, filter, false, false);
-			}
-		}
-		else if ((activeTypeDef != NULL) && (!activeTypeDef->mStaticSearch.IsEmpty()))
-		{
-			BF_ASSERT(mModule->mCompiler->IsAutocomplete());
-			for (auto typeRef : activeTypeDef->mStaticSearch)
-			{
-				auto type = mModule->ResolveTypeRef(typeRef, NULL, BfPopulateType_Declaration);
-				if (type != NULL)
-				{
-					auto typeInst = type->ToTypeInstance();
-					if (typeInst != NULL)
-					{
-						AddTypeMembers(typeInst, true, false, filter, typeInst, true, true);
-						AddInnerTypes(typeInst, filter, false, false);
-					}
-				}
-			}
+			AddTypeMembers(typeInst, true, false, filter, typeInst, true, true);
+			AddInnerTypes(typeInst, filter, false, false);
 		}
 	}
-
+	
 	//////////////////////////////////////////////////////////////////////////
 
 	BfMethodInstance* curMethodInstance = mModule->mCurMethodInstance;

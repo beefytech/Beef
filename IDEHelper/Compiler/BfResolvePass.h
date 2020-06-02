@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BfSystem.h"
+#include "BfResolvedTypeUtils.h"
 
 NS_BF_BEGIN
 
@@ -46,6 +47,7 @@ public:
 	BfParser* mParser;
 	BfAutoComplete* mAutoComplete;
 	Array<BfTypeDef*> mAutoCompleteTempTypes; // Contains multiple values when we have nested types
+	Dictionary<BfTypeDef*, BfStaticSearch> mStaticSearchMap;
 	BfSourceClassifier* mSourceClassifier;
 	Array<BfAstNode*> mExteriorAutocompleteCheckNodes;
 

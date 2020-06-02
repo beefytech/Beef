@@ -3692,7 +3692,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 			mContext->HandleChangedTypeDef(tempTypeDef, true);
 		}
 	}
-	
+
 	if (tempTypeDef == NULL)
 	{
 		GenerateAutocompleteInfo();
@@ -3705,12 +3705,27 @@ void BfCompiler::ProcessAutocompleteTempType()
 		BfLogSysM("ProcessAutocompleteTempType - project disabled\n");
 		return;
 	}
-
+	
 	SetAndRestoreValue<BfMethodState*> prevMethodState(module->mCurMethodState, NULL);
 
 	BfTypeState typeState;
 	typeState.mCurTypeDef = tempTypeDef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(module->mContext->mCurTypeState, &typeState);	
+
+	BfStaticSearch* staticSearch = NULL;
+	if (mResolvePassData->mStaticSearchMap.TryAdd(tempTypeDef, NULL, &staticSearch))
+	{
+		for (auto typeRef : tempTypeDef->mStaticSearch)
+		{
+			auto type = module->ResolveTypeRef(typeRef, NULL, BfPopulateType_Declaration);
+			if (type != NULL)
+			{
+				auto typeInst = type->ToTypeInstance();
+				if (typeInst != NULL)
+					staticSearch->mStaticTypes.Add(typeInst);
+			}
+		}
+	}
 
 	auto _FindAcutalTypeDef = [&](BfTypeDef* tempTypeDef)
 	{		

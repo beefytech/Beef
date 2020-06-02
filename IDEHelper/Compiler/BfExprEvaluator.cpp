@@ -1680,12 +1680,14 @@ NoMatch:
 	}
 	
 	if (hadMatch)
-	{
+	{		
 		mBestMethodTypeInstance = typeInstance;
 		if (genericArgumentsSubstitute != &mBestMethodGenericArguments)
 		{
 			if (genericArgumentsSubstitute != NULL)
 			{
+				for (auto& genericArg : *genericArgumentsSubstitute)
+					genericArg = mModule->FixIntUnknown(genericArg);
 				mBestMethodGenericArguments = *genericArgumentsSubstitute;
 // #ifdef _DEBUG
 // 				for (auto arg : mBestMethodGenericArguments)
@@ -3272,9 +3274,19 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				result = LookupField(identifierNode, thisValue, findName);
 				if ((result) || (mPropDef != NULL))
 					return result;
-			}
+			}			
+		}
 
-			//TODO: Try static search
+		auto staticSearch = mModule->GetStaticSearch();
+		if (staticSearch != NULL)
+		{
+			for (auto typeInst : staticSearch->mStaticTypes)
+			{
+				thisValue = BfTypedValue(typeInst);
+				result = LookupField(identifierNode, thisValue, findName);
+				if ((result) || (mPropDef != NULL))
+					return result;
+			}
 		}
 	}
 
@@ -7060,6 +7072,25 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				curTypeInst = methodMatcher.mBestMethodTypeInstance;
 				methodDef = methodMatcher.mBestMethodDef;
 				break;
+			}
+		}
+
+		if (methodDef == NULL)
+		{			
+			BfStaticSearch* staticSearch = mModule->GetStaticSearch();
+			if (staticSearch != NULL)
+			{
+				for (auto typeInst : staticSearch->mStaticTypes)
+				{
+					methodMatcher.CheckType(typeInst, BfTypedValue(), false);
+					if (methodMatcher.mBestMethodDef != NULL)
+					{
+						isFailurePass = false;
+						curTypeInst = methodMatcher.mBestMethodTypeInstance;
+						methodDef = methodMatcher.mBestMethodDef;
+						break;
+					}
+				}
 			}
 		}
 	}
