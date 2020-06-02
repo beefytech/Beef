@@ -3273,6 +3273,8 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				if ((result) || (mPropDef != NULL))
 					return result;
 			}
+
+			//TODO: Try static search
 		}
 	}
 
@@ -7120,8 +7122,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 					(((BfGenericParamType*)methodMatcher.mBestRawMethodInstance->mReturnType)->mGenericParamKind != BfGenericParamKind_Method))
 					retType = methodMatcher.mBestRawMethodInstance->mReturnType;
 			}
-			
-			return mModule->GetDefaultTypedValue(retType);
+						
+			return mModule->GetDefaultTypedValue(retType, true, BfDefaultValueKind_Addr);
 		}
 	}
 
