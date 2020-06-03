@@ -222,7 +222,7 @@ void BfReducer::AddErrorNode(BfAstNode* astNode, bool removeNode)
 }
 
 bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int* outEndNode, bool* couldBeExpr, bool* isGenericType, bool* isTuple)
-{
+{	
 	AssertCurrentNode(checkNode);
 
 	if (couldBeExpr != NULL)
@@ -402,9 +402,11 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 			}
 			else
 			{
-				if ((checkToken == successToken) && (checkTokenNode != firstNode))
-				{
-					bool doEnding = true;
+				bool doEnding = (checkToken == successToken) && (checkTokenNode != firstNode) && (tokenStack.size() <= 1);
+				if ((doEnding) && (tokenStack.size() == 1))
+					doEnding = checkToken == tokenStack.back();
+				if (doEnding)
+				{					
 					bool success = false;
 
 					if ((lastToken != NULL) && ((lastToken->GetToken() == BfToken_RChevron) || (lastToken->GetToken() == BfToken_RDblChevron)))
@@ -414,7 +416,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 					}
 
 					if (successToken == BfToken_RParen)
-					{
+					{						
 						success = (chevronDepth == 0) && (bracketDepth == 0) && (parenDepth == 1);
 
 						if (success)
@@ -422,7 +424,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 							// Check identifierExpected - this catches (.) casts
 							if ((identifierExpected) && (couldBeExpr != NULL))
 								*couldBeExpr = false;
-						}
+						}						
 					}
 					else if ((successToken == BfToken_Comma) ||
 						(successToken == BfToken_LBracket))
@@ -455,17 +457,27 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 
 				if (checkToken == BfToken_LParen)
 				{
-					if ((hadIdentifier) && (chevronDepth == 0) && (bracketDepth == 0) && (parenDepth == 0))
+					if (chevronDepth > 0)
+					{
+						SetAndRestoreValue<int> prevIdx(mVisitorPos.mReadPos, checkIdx);
+
+						int endToken = 0;
+						if (!IsTypeReference(checkNode, BfToken_RParen, &endToken, NULL, NULL, NULL))
+							return false;
+						checkIdx = endToken + 1;
+						continue;
+					}
+					else if ((hadIdentifier) && (chevronDepth == 0) && (bracketDepth == 0) && (parenDepth == 0))
 						isDone = true;
 					else
 					{
-						tokenStack.Add(BfToken_LParen);
+						tokenStack.Add(BfToken_RParen);
 						parenDepth++;
 					}
 				}
 				else if (checkToken == BfToken_RParen)
 				{
-					if ((parenDepth == 0) || (tokenStack.back() != BfToken_LParen))
+					if ((parenDepth == 0) || (tokenStack.back() != BfToken_RParen))
 					{
 						if (outEndNode != NULL)
 							*outEndNode = checkIdx;
@@ -478,11 +490,13 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 					{
 						// if we are embedded in a multi-tuple like (A, (B, C), D) then we expect a , or ) after
 						//  closing an inner tuple.  Otherwise this is an expression like ((Type)a)
-						auto nextNode = mVisitorPos.GetNext();
+						auto nextNode = mVisitorPos.Get(checkIdx + 1);
 						bool isOkay = false;
 						if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
 						{
-							isOkay = (nextToken->GetToken() == BfToken_Comma) || (nextToken->GetToken() == BfToken_RParen);
+							isOkay = (nextToken->mToken == BfToken_Comma) || (nextToken->mToken == BfToken_RParen);
+							if ((!tokenStack.IsEmpty()) && (nextToken->mToken == tokenStack.back()))
+								isOkay = true;
 						}
 						if (!isOkay)
 						{
@@ -555,13 +569,13 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 				{
 					identifierExpected = true;
 					chevronDepth++;
-					tokenStack.Add(BfToken_LChevron);
+					tokenStack.Add(BfToken_RChevron);
 				}
 				else if ((checkToken == BfToken_RChevron) || (checkToken == BfToken_RDblChevron))
 				{
 					for (int i = 0; i < ((checkToken == BfToken_RDblChevron) ? 2 : 1); i++)
 					{
-						if ((tokenStack.IsEmpty()) || (tokenStack.back() != BfToken_LChevron))
+						if ((tokenStack.IsEmpty()) || (tokenStack.back() != BfToken_RChevron))
 						{
 							if (outEndNode != NULL)
 								*outEndNode = checkIdx;
@@ -596,7 +610,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 						return false;
 					}
 
-					if ((!tokenStack.IsEmpty()) && (tokenStack.back() == BfToken_LParen))
+					if ((!tokenStack.IsEmpty()) && (tokenStack.back() == BfToken_RParen))
 					{
 						hadTupleComma = true;
 						if (isTuple != NULL)
@@ -2406,6 +2420,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 						isDotName = qualifiedIdentifierNode->mTarget == NULL;
 					}
 
+					int chevronDepth = 0;
+
 					bool didSplit = false;
 					for (int checkIdx = curNodeEndIdx; checkIdx >= mVisitorPos.mReadPos; checkIdx--)
 					{
@@ -2416,7 +2432,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 						if (auto tokenNode = BfNodeDynCast<BfTokenNode>(checkNode))
 						{
 							BfToken token = tokenNode->GetToken();
-							if ((token == BfToken_RChevron) || (token == BfToken_RDblChevron))
+							if (((token == BfToken_RChevron) || (token == BfToken_RDblChevron)) && (chevronDepth == 0))
 							{
 								auto nextCheckNode = mVisitorPos.Get(checkIdx + 1);
 								if (auto nextTokenNode = BfNodeDynCast<BfTokenNode>(nextCheckNode))
@@ -2489,6 +2505,15 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 									}
 								}
 							}
+
+							if (token == BfToken_RChevron)
+								chevronDepth++;
+							else if (token == BfToken_RDblChevron)
+								chevronDepth += 2;
+							else if (token == BfToken_LChevron)
+								chevronDepth--;
+							else if (token == BfToken_LDblChevron)
+								chevronDepth -= 2;
 						}
 					}
 
@@ -8844,6 +8869,15 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 	}
 	methodDeclaration->mOpenParen = tokenNode;
 	MoveNode(methodDeclaration->mOpenParen, methodDeclaration);
+
+	if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+	{
+		if (nextToken->mToken == BfToken_This)
+		{
+			MEMBER_SET(methodDeclaration, mThisToken, nextToken);			
+			mVisitorPos.MoveNext();
+		}
+	}
 
 	methodDeclaration->mCloseParen = ParseMethodParams(methodDeclaration, params, commas, BfToken_RParen, true);
 
