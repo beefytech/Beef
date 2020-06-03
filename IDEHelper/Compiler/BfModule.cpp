@@ -3755,6 +3755,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 					//  auto-created underlying type and it will cause an 'error flash'. We defer errors until the full resolve for that purpose
 					resolveFlags = BfConstResolveFlag_NoCast;
 				}
+				UpdateSrcPos(initializer);
 				return constResolver.Resolve(initializer, fieldType, resolveFlags);
 			}
 		}
@@ -9333,7 +9334,7 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 		methodName = TypeToString(type, typeNameFlags);
 		if (methodName == "$")
 			methodName = "";
-		else
+		else if (!methodName.IsEmpty())
 			methodName += ".";
 	}
 	String accessorString;
@@ -12608,32 +12609,35 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 				}				
 			}
 						
-			auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
-				localVarDef->mName, mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, diType, initType);
-			localVarDef->mDbgVarInst = diVariable;
-			
-			if (mBfIRBuilder->HasDebugLocation())
+			if (!mBfIRBuilder->mIgnoreWrites)
 			{
-				if ((isConstant) && (!didConstToMem))
-				{
-					localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(localVarDef->mConstValue, diVariable);
-				}
-				else
-				{					
-					if ((IsTargetingBeefBackend()) && (doAliasValue))
-					{						
-						diValue = mBfIRBuilder->CreateAliasValue(diValue);
-						mCurMethodState->mCurScope->mDeferredLifetimeEnds.Add(diValue);
-					}
+				auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
+					localVarDef->mName, mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, diType, initType);
+				localVarDef->mDbgVarInst = diVariable;
 
-					if (isByAddr)
-						localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertDeclare(diValue, diVariable, declareBefore);
-					else if (diValue)
+				if (mBfIRBuilder->HasDebugLocation())
+				{
+					if ((isConstant) && (!didConstToMem))
 					{
-						localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(diValue, diVariable);
+						localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(localVarDef->mConstValue, diVariable);
 					}
-					else if (mCompiler->mOptions.mToolsetType != BfToolsetType_GNU) // DWARF chokes on this:
-						localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(BfIRValue(), diVariable);
+					else
+					{
+						if ((IsTargetingBeefBackend()) && (doAliasValue))
+						{
+							diValue = mBfIRBuilder->CreateAliasValue(diValue);
+							mCurMethodState->mCurScope->mDeferredLifetimeEnds.Add(diValue);
+						}
+
+						if (isByAddr)
+							localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertDeclare(diValue, diVariable, declareBefore);
+						else if (diValue)
+						{
+							localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(diValue, diVariable);
+						}
+						else if (mCompiler->mOptions.mToolsetType != BfToolsetType_GNU) // DWARF chokes on this:
+							localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(BfIRValue(), diVariable);
+					}
 				}
 			}
 		}		
@@ -19488,7 +19492,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	}
 
 	BfType* resolvedReturnType = NULL;
-	if (((methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_CtorCalcAppend) || (methodDef->mMethodType == BfMethodType_PropertyGetter) || (methodDef->mMethodType == BfMethodType_Operator)) &&
+	if (((methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Extension) || (methodDef->mMethodType == BfMethodType_CtorCalcAppend) ||
+		 (methodDef->mMethodType == BfMethodType_PropertyGetter) || (methodDef->mMethodType == BfMethodType_Operator)) &&
 		(methodDef->mReturnTypeRef != NULL))
 	{
 		SetAndRestoreValue<bool> prevIngoreErrors(mIgnoreErrors, mIgnoreErrors || (methodDef->GetPropertyDeclaration() != NULL));
