@@ -196,7 +196,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 }
 
 bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfGenericTypeInstance* genericTypeInst, bool ignoreErrors)
-	
+{
 	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsTypeAlias()))
 	{
 		// Don't validate constraints during the population of a concrete generic type alias instance, we want to
