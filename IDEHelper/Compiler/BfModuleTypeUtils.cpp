@@ -103,11 +103,12 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 	BfTypeState typeState;
 	typeState.mPrevState = mContext->mCurTypeState;
 	typeState.mResolveKind = BfTypeState::ResolveKind_BuildingGenericParams;
+	typeState.mTypeInstance = resolvedTypeRef->ToTypeInstance();
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 	BF_ASSERT(mCurMethodInstance == NULL);
 
-	auto genericTypeInst = (BfGenericTypeInstance*)resolvedTypeRef;
+	auto genericTypeInst = resolvedTypeRef->ToGenericTypeInstance();
 
 	if (genericTypeInst->mTypeGenericArguments[0]->IsGenericParam())
 	{
@@ -195,7 +196,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 }
 
 bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfGenericTypeInstance* genericTypeInst, bool ignoreErrors)
-{
+	
 	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsTypeAlias()))
 	{
 		// Don't validate constraints during the population of a concrete generic type alias instance, we want to
@@ -1470,7 +1471,7 @@ void BfModule::SetTypeOptions(BfTypeInstance* typeInstance)
 }
 
 bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
-{
+{	
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
 	auto typeDef = typeInstance->mTypeDef;	
 
@@ -2064,9 +2065,22 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		BF_ASSERT(typeInstance->mBaseType == baseTypeInst);
 	}
 
-	BfType* outerType = GetOuterType(typeInstance);
-	if (outerType != NULL)
-		AddDependency(outerType, typeInstance, BfDependencyMap::DependencyFlag_OuterType);
+		
+	if (auto genericTypeInst = typeInstance->ToGenericTypeInstance())
+	{
+		if ((genericTypeInst->IsSpecializedType()) && (!genericTypeInst->mValidatedGenericConstraints) && (!typeInstance->IsBoxed()))
+		{			
+			SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, true);
+			ValidateGenericConstraints(NULL, genericTypeInst, false);				
+		}
+	}
+
+	if (!typeInstance->IsBoxed())
+	{		
+		BfType* outerType = GetOuterType(typeInstance);
+		if (outerType != NULL)
+			AddDependency(outerType, typeInstance, BfDependencyMap::DependencyFlag_OuterType);
+	}
 
 	if ((baseTypeInst != NULL) && (typeInstance->mBaseType == NULL))
 	{
@@ -5654,7 +5668,7 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 }
 
 BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, bool allowFail)
-{	
+{
 	if (unspecializedType->IsGenericParam())
 	{
 		auto genericParam = (BfGenericParamType*)unspecializedType;
@@ -5966,7 +5980,17 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 				genericArgs.push_back(genericArg);
 		}
 
-		return ResolveTypeDef(genericTypeInst->mTypeDef, genericArgs);
+		auto resolvedType = ResolveTypeDef(genericTypeInst->mTypeDef, genericArgs, BfPopulateType_BaseType);
+		BfGenericTypeInstance* specializedType = NULL;
+		if (resolvedType != NULL)
+			specializedType = resolvedType->ToGenericTypeInstance();
+		if (specializedType != NULL)
+		{			
+			if (specializedType->mHadValidateErrors)
+				return NULL;
+		}
+
+		return specializedType;
 	}
 
 	return unspecializedType;
@@ -6285,11 +6309,24 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	hadError = !populateModule->PopulateType(resolvedTypeRef, populateType);
 	
 	if ((genericTypeInstance != NULL) && (genericTypeInstance != mCurTypeInstance) && (populateType > BfPopulateType_Identity))
-	{		
-		if (((genericTypeInstance->mHadValidateErrors) || (!genericTypeInstance->mValidatedGenericConstraints) || (genericTypeInstance->mIsUnspecializedVariation)) &&
-			((mCurMethodInstance == NULL) || (!mCurMethodInstance->mIsUnspecializedVariation)) &&
-			((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsUnspecializedTypeVariation())) &&
-			((mContext->mCurTypeState == NULL) || (mContext->mCurTypeState->mCurBaseTypeRef == NULL))) // We validate constraints for base types later
+	{	
+		bool doValidate = (genericTypeInstance->mHadValidateErrors) || (!genericTypeInstance->mValidatedGenericConstraints) || (genericTypeInstance->mIsUnspecializedVariation);
+		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecializedVariation))
+			doValidate = false;
+		if (mCurTypeInstance != NULL)
+		{
+			if (mCurTypeInstance->IsUnspecializedTypeVariation())
+				doValidate = false;
+			if (auto curGenericTypeInstance = mCurTypeInstance->ToGenericTypeInstance())
+			{
+				if (curGenericTypeInstance->mHadValidateErrors)
+					doValidate = false;
+			}
+			if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mCurBaseTypeRef != NULL)) // We validate constraints for base types later
+				doValidate = false;
+		}
+
+		if (doValidate)
 			ValidateGenericConstraints(typeRef, genericTypeInstance, false);
 	}
 
@@ -6396,8 +6433,13 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 	}
 
 	BfTypeInstance* skipCheckBaseType = NULL;	
-	if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mCurBaseTypeRef != NULL))
-		skipCheckBaseType = mContext->mCurTypeState->mTypeInstance;
+	if (mContext->mCurTypeState != NULL)
+	{
+		if (mContext->mCurTypeState->mCurBaseTypeRef != NULL)
+			skipCheckBaseType = mContext->mCurTypeState->mTypeInstance;
+		if (mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_BuildingGenericParams)
+			skipCheckBaseType = mContext->mCurTypeState->mTypeInstance;
+	}
 
 	BfTypeDefLookupContext lookupCtx;
 	bool allowPrivate = true;
@@ -6407,7 +6449,9 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 
 	BfTypeDef* protErrorTypeDef = NULL;
 	BfTypeInstance* protErrorOuterType = NULL;
+
 	
+
 	if (!lookupCtx.HasValidMatch())
 	{
 		std::function<bool(BfTypeInstance*)> _CheckType = [&](BfTypeInstance* typeInstance)

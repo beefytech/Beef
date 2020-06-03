@@ -1224,7 +1224,9 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 						}
 					}
 					else
-						mContext->RebuildType(typeInst, false, false, false);
+						//TODO: Why weren't we placing specialzied in purgatory here originally? This caused failed types to stick around too long
+						mContext->RebuildType(typeInst, false, false, true);
+						//mContext->RebuildType(typeInst, false, false, false);
 				}
 				else
 				{
@@ -2978,9 +2980,9 @@ bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memb
 	return true;
 }
 
-void BfModule::AddDependency(BfType* usedType, BfType* usingType, BfDependencyMap::DependencyDependencyFlag flags)
-{	
-	if (usedType == usingType)
+void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyDependencyFlag flags)
+{
+	if (usedType == userType)
 		return;	
 
 	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsAutocompleteMethod))
@@ -3051,7 +3053,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* usingType, BfDependencyMa
 
 	if ((!mCompiler->mIsResolveOnly) && (mIsReified))
 	{
-		auto usingModule = usingType->GetModule();		
+		auto usingModule = userType->GetModule();		
 		BfModule* usedModule;
 		if (usedType->IsFunction())
 		{
@@ -3080,7 +3082,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* usingType, BfDependencyMa
 
 	auto underlyingType = usedType->GetUnderlyingType();
 	if (underlyingType != NULL) // Not really a "GenericArg", but... same purpose.
-		AddDependency(underlyingType, usingType, BfDependencyMap::DependencyFlag_GenericArgRef);
+		AddDependency(underlyingType, userType, BfDependencyMap::DependencyFlag_GenericArgRef);
 
 	BfDependedType* checkDType = usedType->ToDependedType();
 	if (checkDType == NULL)
@@ -3089,15 +3091,24 @@ void BfModule::AddDependency(BfType* usedType, BfType* usingType, BfDependencyMa
 	if ((usedType->mRebuildFlags & BfTypeRebuildFlag_AwaitingReference) != 0)
 		mContext->MarkAsReferenced(checkDType);
 
-	checkDType->mDependencyMap.AddUsedBy(usingType, flags);
+	if (!checkDType->mDependencyMap.AddUsedBy(userType, flags))
+		return;
 	if (checkDType->IsGenericTypeInstance())
 	{
 		auto genericTypeInstance = (BfGenericTypeInstance*) checkDType;
 		for (auto genericArg : genericTypeInstance->mTypeGenericArguments)
 		{
-			AddDependency(genericArg, usingType, BfDependencyMap::DependencyFlag_GenericArgRef);
+			AddDependency(genericArg, userType, BfDependencyMap::DependencyFlag_GenericArgRef);
 		}
-	}	
+	}
+	if (checkDType->IsTuple())
+	{
+		for (auto& field : checkDType->ToTypeInstance()->mFieldInstances)
+		{
+			if (field.mDataIdx != -1)
+				AddDependency(field.mResolvedType, userType, BfDependencyMap::DependencyFlag_GenericArgRef);
+		}
+	}
 }
 
 void BfModule::AddCallDependency(BfMethodInstance* methodInstance, bool devirtualized)

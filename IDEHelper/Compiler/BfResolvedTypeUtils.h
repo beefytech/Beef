@@ -82,7 +82,8 @@ public:
 		DependencyFlag_TypeReference		= 0x100000, // Explicit type reference for things like tuples, so all referencing types get passed over on symbol reference
 		DependencyFlag_Allocates			= 0x200000,
 		DependencyFlag_NameReference		= 0x400000,
-		DependencyFlag_VirtualCall			= 0x800000
+		DependencyFlag_VirtualCall			= 0x800000,
+		DependencyFlag_WeakReference		= 0x1000000, // Keeps alive but won't rebuild
 	};
 
 	struct DependencyEntry
@@ -102,7 +103,7 @@ public:
 	TypeMap mTypeSet;
 
 public:
-	void AddUsedBy(BfType* dependentType, DependencyDependencyFlag flags);	
+	bool AddUsedBy(BfType* dependentType, DependencyDependencyFlag flags);	
 	bool IsEmpty();
 	TypeMap::iterator begin();
 	TypeMap::iterator end();

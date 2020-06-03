@@ -415,11 +415,22 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 			return true;
 		}
 
+		auto typeInstance = argType->ToTypeInstance();
+		if (typeInstance == NULL)
+			return true;
+		if (wantGenericType->IsInterface())
+		{
+			for (auto& ifaceEntry : typeInstance->mInterfaces)
+				InferGenericArgument(methodInstance, ifaceEntry.mInterfaceType, wantType, BfIRValue());
+		}
+		else if (typeInstance->mBaseType != NULL)
+			InferGenericArgument(methodInstance, typeInstance->mBaseType, wantType, BfIRValue());
+
 		if (!argType->IsGenericTypeInstance())
 			return true;
 		auto argGenericType = (BfGenericTypeInstance*)argType;
 		if (argGenericType->mTypeDef != wantGenericType->mTypeDef)
-			return false;
+			return true;
 		
 		for (int genericArgIdx = 0; genericArgIdx < (int)argGenericType->mTypeGenericArguments.size(); genericArgIdx++)
 		{
@@ -1546,7 +1557,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		auto wantType = methodInstance->GetParamType(paramIdx);
 		if ((genericArgumentsSubstitute != NULL) && (wantType->IsUnspecializedType()))
 		{
-			auto resolvedType = mModule->ResolveGenericType(wantType, NULL, genericArgumentsSubstitute);
+			auto resolvedType = mModule->ResolveGenericType(wantType, NULL, genericArgumentsSubstitute, false);
 			if (resolvedType == NULL)
 				goto NoMatch;
 			wantType = resolvedType;
@@ -2164,7 +2175,7 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 			auto useModule = mModule->mContext->mUnreifiedModule;
 			boxedType = useModule->CreateBoxedType(target.mType);
 			useModule->PopulateType(boxedType, BfPopulateType_DataAndMethods);
-			useModule->AddDependency(boxedType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);
+			useModule->AddDependency(boxedType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_WeakReference);
 		}
 		else
 		{
@@ -12739,8 +12750,9 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 		else
 			paramSrc = methodMatcher.mArguments[methodMatcher.mBestMethodGenericArgumentSrcs[checkGenericIdx]].mExpression;
 
+		// Note: don't pass methodMatcher.mBestMethodGenericArguments into here, this method is already specialized
 		BfError* error = NULL;
-		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams[checkGenericIdx], &methodMatcher.mBestMethodGenericArguments, 
+		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams[checkGenericIdx], NULL, 
 			failed ? NULL : &error))
 		{
 			if (methodInstance.mMethodInstance->IsSpecializedGenericMethod())

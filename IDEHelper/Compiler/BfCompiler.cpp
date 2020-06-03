@@ -2051,7 +2051,14 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 		madeFullPass = false;
 	if ((mResolvePassData != NULL) && (mResolvePassData->mParser != NULL))
 		madeFullPass = false;
-	
+
+	if ((deleteUnusued) && (madeFullPass))
+	{
+		// Work queues should be empty if we're not canceling				
+		BF_ASSERT(mContext->mPopulateTypeWorkList.size() == 0);
+		BF_ASSERT(mContext->mMethodWorkList.size() == 0);
+	}
+
 	// Remove old data in dependency maps, and find types which don't have any references (direct or indirect)
 	//  to a non-generic type and remove them
 	for (int pass = 0; true; pass++)
@@ -2070,7 +2077,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 				auto typeInst = type->ToTypeInstance();
 			
 				if (depType != NULL)
-				{
+				{					
 					extern BfModule* gLastCreatedModule;
 						
 					for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end(); ++itr)
@@ -2090,7 +2097,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 						auto depTypeInst = dependentType->ToTypeInstance();
 						auto& depData = itr->mValue;
 							
-						bool isInvalidVersion = (dependentType->mRevision > depData.mRevision) && (deleteUnusued) && (madeFullPass);
+						bool isInvalidVersion = (dependentType->mRevision > depData.mRevision);// && (deleteUnusued) && (madeFullPass);
 							
 						//TODO: Just to cause crash if dependentType is deleted
 						bool isIncomplete = dependentType->IsIncomplete();
@@ -2109,11 +2116,16 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 
 						if ((dependentType->IsDeleting()) || (isInvalidVersion))
 						{							
-							// If we're deleting the type, OR the dependency of the type has been removed.
-							//  We detect a removed dependency by the dependent type changing but the dependency revision
-							//  is older than the dependent type.
-							BfLogSysM("Removing old dependent %p from %p\n", dependentType, depType);
-  							itr = depType->mDependencyMap.erase(itr);
+							if (dependentType->IsDeleting() || ((deleteUnusued) && (madeFullPass)))
+							{
+								// If we're deleting the type, OR the dependency of the type has been removed.
+								//  We detect a removed dependency by the dependent type changing but the dependency revision
+								//  is older than the dependent type.
+								BfLogSysM("Removing old dependent %p from %p\n", dependentType, depType);
+								itr = depType->mDependencyMap.erase(itr);
+							}
+							else
+								++itr;
 						}
 						else
 						{
@@ -2121,20 +2133,30 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 							//  Keep in mind that actually invoking a generic method creates a DependencyFlag_LocalUsage dependency.  The 
 							//  DependencyFlag_MethodGenericArg is just used by the owner during creation of the method specialization
 							bool isDependentUsage =
-                                (depData.mFlags != BfDependencyMap::DependencyFlag_UnspecializedType) &&
-                                (depData.mFlags != BfDependencyMap::DependencyFlag_MethodGenericArg);
+								(depData.mFlags & ~(
+									BfDependencyMap::DependencyFlag_UnspecializedType |
+									BfDependencyMap::DependencyFlag_MethodGenericArg |
+									BfDependencyMap::DependencyFlag_GenericArgRef)) != 0;
 								
 							// We need to consider specialized generic types separately, to remove unused specializations
 							if (typeInst != NULL)
 							{
+								bool isDirectReference = (depTypeInst != NULL) && (!depTypeInst->IsOnDemand()) && (!dependentType->IsGenericTypeInstance());
+
 								if ((depTypeInst != NULL) && (typeInst->mLastNonGenericUsedRevision != mRevision) && (isDependentUsage) &&
-									((!dependentType->IsGenericTypeInstance()) || (dependentType->IsUnspecializedType()) || (depTypeInst->mLastNonGenericUsedRevision == mRevision)))
-								{										
-									typeInst->mLastNonGenericUsedRevision = mRevision;
-									foundNew = true;
+									((isDirectReference) || (dependentType->IsUnspecializedType()) || (depTypeInst->mLastNonGenericUsedRevision == mRevision)))
+								{					
+									//if (deleteUnusued)
+									{
+										typeInst->mLastNonGenericUsedRevision = mRevision;
+										foundNew = true;
+									}
 										
 									if (!typeInst->HasBeenReferenced())
+									{
 										mContext->AddTypeToWorkList(typeInst);
+										foundNew = true;
+									}
 								}
 							}
 								
@@ -2299,6 +2321,9 @@ void BfCompiler::ProcessPurgatory(bool reifiedOnly)
 		{
 			auto type = mGenericInstancePurgatory[i];
 			if ((reifiedOnly) && (!type->IsReified()))
+				continue;			
+
+			if ((reifiedOnly) && ((type->mRebuildFlags & BfTypeRebuildFlag_AwaitingReference) != 0))
 				continue;
 
 			if (!type->IsDeleting())

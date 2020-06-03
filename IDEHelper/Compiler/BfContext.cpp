@@ -1527,7 +1527,7 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 				continue;
 			}
 
-			if ((dependencyEntry.mFlags & ~(BfDependencyMap::DependencyFlag_UnspecializedType)) == 0)
+			if ((dependencyEntry.mFlags & ~(BfDependencyMap::DependencyFlag_UnspecializedType | BfDependencyMap::DependencyFlag_WeakReference)) == 0)
 				continue; // Not a cause for rebuilding
 
 			if ((deferDepRebuilds) && (dependentTypeInst != NULL))
