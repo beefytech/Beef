@@ -4,6 +4,13 @@ namespace Tests
 {
 	class Mixins
 	{
+		static mixin MixNums(int a, int b)
+		{
+			(a << 8) | b
+		}
+
+		const int cVal = MixNums!(3, 5);
+
 		class MixClass
 		{
 			public int mA = 100;
@@ -39,6 +46,7 @@ namespace Tests
 			mc.MixB!(10);
 			Test.Assert(mc.mA == 120);
 			Test.Assert(MixClass.MixC!(30) == 230);
+			Test.Assert(cVal == 0x305);
 		}
 
 		[Test]
