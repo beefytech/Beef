@@ -15,6 +15,11 @@ namespace System
 		{
 			return new box this;
 		}
+
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.AppendF("0x{0:P}", (uint)(void*)mVal);
+		}
 	}
 
 	struct Pointer<T> : IHashable
@@ -24,6 +29,13 @@ namespace System
 		public int GetHashCode()
 		{
 			return (int)(void*)mVal;
+		}
+
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.Append("(");
+			typeof(T).GetFullName(strBuffer);
+			strBuffer.AppendF("*)0x{0:P}", (uint)(void*)mVal);
 		}
 	}
 }
