@@ -101,6 +101,18 @@ public:
 	void HandleFixits(BfModule* module);
 };
 
+class BfGenericInferContext
+{
+public:
+	HashSet<BfType*> mCheckedTypeSet;
+	BfModule* mModule;
+	BfTypeVector* mCheckMethodGenericArguments;
+	SizedArray<BfIRValue, 4> mPrevArgValues;
+
+public:
+	bool InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue);
+};
+
 class BfMethodMatcher
 {
 public:
@@ -119,9 +131,10 @@ public:
 
 public:
 	BfAstNode* mTargetSrc;
+	BfTypedValue mTarget;
 	BfModule* mModule;
 	BfTypeDef* mActiveTypeDef;
-	String mMethodName;
+	String mMethodName;	
 	BfMethodInstance* mInterfaceMethodInstance;
 	SizedArrayImpl<BfResolvedArg>& mArguments;
 	BfMethodType mMethodType;
@@ -134,13 +147,12 @@ public:
 	bool mAllowStatic;
 	bool mAllowNonStatic;	
 	bool mSkipImplicitParams;	
-	int mMethodCheckCount;
-	int mInferGenericProgressIdx;
+	bool mAutoFlushAmbiguityErrors;
+	int mMethodCheckCount;	
 	BfType* mExplicitInterfaceCheck;	
 	MatchFailKind mMatchFailKind;
 		
-	BfTypeVector mCheckMethodGenericArguments;	
-	SizedArray<BfIRValue, 4> mPrevArgValues;
+	BfTypeVector mCheckMethodGenericArguments;		
 
 	BfType* mSelfType; // Only when matching interfaces when 'Self' needs to refer back to the implementing type
 	BfMethodDef* mBackupMethodDef;
@@ -153,11 +165,10 @@ public:
 	BfTypeVector mBestMethodGenericArguments;
 	BfTypeVector mExplicitMethodGenericArguments;
 	bool mFakeConcreteTarget;
-	Array<BfAmbiguousEntry> mAmbiguousEntries;
+	Array<BfAmbiguousEntry> mAmbiguousEntries;	
 
 public:
-	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute);
-	bool InferGenericArgument(BfMethodInstance* methodInstance, BfType* argType, BfType* wantType, BfIRValue argValue, HashSet<BfType*>& checkedTypeSet);
+	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute);	
 	bool InferFromGenericConstraints(BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs);
 	void CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute, 
@@ -170,7 +181,7 @@ public:
 	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* interfaceMethodInstance, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments = NULL);
 	void Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments);
 	bool IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* declaringType);
-	bool CheckType(BfTypeInstance* typeInstance, BfTypedValue target, bool isFailurePass);
+	bool CheckType(BfTypeInstance* typeInstance, BfTypedValue target, bool isFailurePass, bool forceOuterCheck = false);
 	void CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, bool isFailurePass);
 	bool WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInstance* startTypeInstance, BfTypeInstance* checkTypeInstance, BfMethodDef* methodDef);
 	bool CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInstance* typeInstance, BfMethodDef* checkMethod, bool isFailurePass);

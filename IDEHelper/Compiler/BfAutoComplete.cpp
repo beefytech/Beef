@@ -910,16 +910,104 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 	}	
 }
 
-// bool BfAutoComplete::IsInExpression(BfAstNode* node)
-// {	
-// 	if (mModule->mCurMethodInstance != NULL)
-// 		return true;
-// 	if (node == NULL)
-// 		return false;	
-// 	if ((node->IsA<BfExpression>()) && (!node->IsA<BfIdentifierNode>()) && (!node->IsA<BfBlock>()))
-// 		return true;
-// 	return IsInExpression(node->mParent);
-// }
+void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInstance* extensionContainer, const StringImpl & filter, bool allowProtected, bool allowPrivate)
+{
+	if (!extensionContainer->mTypeDef->mHasExtensionMethods)
+		return;
+
+	mModule->PopulateType(extensionContainer, BfPopulateType_Data);
+
+	for (auto methodDef : extensionContainer->mTypeDef->mMethods)
+	{
+		if (methodDef->mMethodType != BfMethodType_Extension)
+			continue;		
+		if (methodDef->mIsNoShow)
+			continue;
+		if (methodDef->mName.IsEmpty())
+			continue;
+		
+		bool canUseMethod = true;		
+		canUseMethod &= CheckProtection(methodDef->mProtection, allowProtected, allowPrivate);
+		
+		auto methodInstance = mModule->GetRawMethodInstanceAtIdx(extensionContainer, methodDef->mIdx);
+		if (methodInstance == NULL)
+			continue;
+
+		// Do filter match first- may be cheaper than generic validation
+		if (!DoesFilterMatch(methodDef->mName.c_str(), filter.c_str()))
+			continue;
+
+		auto thisType = methodInstance->GetParamType(0);		
+		bool paramValidated = false;
+		if (methodInstance->GetNumGenericParams() > 0)
+		{
+			if ((thisType->IsGenericParam()) && (methodInstance->GetNumGenericParams() == 1))
+			{
+				auto genericParamType = (BfGenericParamType*)thisType;
+				if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
+				{
+					auto& genericParams = methodInstance->mMethodInfoEx->mGenericParams;
+					if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), targetType, NULL, genericParams[genericParamType->mGenericParamIdx], NULL, NULL))
+						continue;
+					paramValidated = true;
+				}
+			}
+
+			if (((thisType->IsUnspecializedTypeVariation()) || (thisType->IsGenericParam())) &&
+				(!paramValidated))
+			{
+				BfTypeVector genericTypeVector;
+				genericTypeVector.resize(methodInstance->GetNumGenericParams());
+				BfGenericInferContext genericInferContext;
+				genericInferContext.mCheckMethodGenericArguments = &genericTypeVector;
+				genericInferContext.mModule = mModule;
+				genericInferContext.mPrevArgValues.resize(methodInstance->GetNumGenericParams());
+
+				if (!genericInferContext.InferGenericArgument(methodInstance, targetType, thisType, BfIRValue()))
+					continue;
+
+				thisType = mModule->ResolveGenericType(thisType, NULL, &genericTypeVector, false);
+				if (thisType == NULL)
+					continue;
+
+				auto& genericParams = methodInstance->mMethodInfoEx->mGenericParams;
+				bool validateError = false;
+				for (int genericIdx = 0; genericIdx < (int)genericTypeVector.size(); genericIdx++)
+				{
+					auto genericArg = genericTypeVector[genericIdx];
+					if (genericArg == NULL)
+						continue;
+					if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, NULL, genericParams[genericIdx], &genericTypeVector, NULL))
+					{
+						validateError = true;
+						break;
+					}
+				}
+
+				if (validateError)
+					continue;
+			}
+		}
+
+		if (!paramValidated)
+		{
+			if (!mModule->CanCast(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), targetType), thisType))
+				continue;
+		}
+
+		if (canUseMethod)
+		{
+			if (auto methodDeclaration = methodDef->GetMethodDeclaration())
+			{
+				String replaceName;
+				AutoCompleteEntry entry("method", methodDef->mName, methodDeclaration->mDocumentation);
+				if ((AddEntry(entry)) && (mIsGetDefinition))
+				{
+				}
+			}
+		}
+	}
+}
 
 void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
 {	
@@ -988,35 +1076,6 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 		}
 		
 		AddCurrentTypes(mModule->mCurTypeInstance, filter, true, true, onlyAttribute);
-
-		// Do inners
-// 		bool allowInnerPrivate = false;
-// 		auto checkTypeInst = mModule->mCurTypeInstance;
-// 		while (checkTypeInst != NULL)
-// 		{
-// 			auto checkTypeDef = checkTypeInst->mTypeDef;			
-// 			for (auto nestedTypeDef : checkTypeDef->mNestedTypes)
-// 			{
-// 				if (CheckProtection(nestedTypeDef->mProtection, true, allowInnerPrivate))
-// 					AddTypeDef(nestedTypeDef, filter, onlyAttribute);
-// 			}
-// 
-// 			checkTypeInst = mModule->GetOuterType(mModule->mCurTypeInstance);
-// 			if (checkTypeInst != NULL)
-// 				AddInnerTypes(checkTypeInst, filter, true, true);
-// 			 
-// 			AddOuterTypes(checkTypeInst, filter, true, true);
-// 
-// 			checkTypeInst = mModule->GetBaseType(checkTypeInst);
-// 			allowInnerPrivate = false;
-// 		}
-
-// 		allowInnerPrivate = true;		
-// 		checkTypeInst = mModule->GetOuterType(mModule->mCurTypeInstance);
-// 		if (checkTypeInst != NULL)
-// 			AddInnerTypes(checkTypeInst, filter, true, true);
-// 
-// 		AddOuterTypes(mModule->mCurTypeInstance, filter, true, true);
 	}
 
 	if (mModule->mCurMethodInstance != NULL)
@@ -1090,29 +1149,6 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 				}
 			}
 		}
-		
-// 		BfStaticSearch* staticSearch;
-// 		if (mModule->mCurTypeInstance->mStaticSearchMap.TryGetValue(activeTypeDef, &staticSearch))
-// 		{
-// 			for (auto typeInst : staticSearch->mStaticTypes)
-// 			{
-// 				AddTypeDef(typeInst->mTypeDef, filter, onlyAttribute);
-// 			}
-// 		}
-// 		else if (!activeTypeDef->mStaticSearch.IsEmpty())
-// 		{
-// 			BF_ASSERT(mModule->mCompiler->IsAutocomplete());
-// 			for (auto typeRef : activeTypeDef->mStaticSearch)
-// 			{
-// 				auto type = mModule->ResolveTypeRef(typeRef, NULL, BfPopulateType_Declaration);
-// 				if (type != NULL)
-// 				{
-// 					auto typeInst = type->ToTypeInstance();
-// 					if (typeInst != NULL)
-// 						AddTypeDef(typeInst->mTypeDef, filter, onlyAttribute);
-// 				}
-// 			}
-// 		}
 	}
 	else
 	{
@@ -1567,7 +1603,37 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 					AddInnerTypes(typeInst, filter, allowProtected, allowPrivate);
 
 				if (!onlyShowTypes)
+				{
 					AddTypeMembers(typeInst, isStatic, !isStatic, filter, typeInst, false, false);
+
+					if (!isStatic)
+					{
+						auto checkTypeInst = mModule->mCurTypeInstance;
+						while (checkTypeInst != NULL)
+						{
+							AddExtensionMethods(typeInst, checkTypeInst, filter, allowProtected, allowPrivate);
+							checkTypeInst = mModule->GetOuterType(checkTypeInst);
+						}
+
+						if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mTypeInstance != NULL))
+						{
+							BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mTypeInstance);
+
+							BfGlobalLookup globalLookup;
+							globalLookup.mKind = BfGlobalLookup::Kind_All;
+							mModule->PopulateGlobalContainersList(globalLookup);
+							for (auto& globalContainer : mModule->mContext->mCurTypeState->mGlobalContainers)							
+								AddExtensionMethods(typeInst, globalContainer.mTypeInst, filter, false, false);
+						}
+
+						BfStaticSearch* staticSearch = mModule->GetStaticSearch();
+						if (staticSearch != NULL)
+						{
+							for (auto staticTypeInst : staticSearch->mStaticTypes)
+								AddExtensionMethods(typeInst, staticTypeInst, filter, false, false);
+						}
+					}
+				}
 
 				if (typeInst->IsInterface())
 				{

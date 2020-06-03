@@ -2810,26 +2810,27 @@ public:
 	BF_AST_TYPE(BfMethodDeclaration, BfMemberDeclaration);
 	
 	BfCommentNode* mDocumentation;
-	ASTREF(BfAttributeDirective*) mReturnAttributes;
-	ASTREF(BfTokenNode*) mExternSpecifier;
-	ASTREF(BfTokenNode*) mVirtualSpecifier; // either 'virtual', 'override', or 'abstract'
-	ASTREF(BfTokenNode*) mNewSpecifier;
-	ASTREF(BfTokenNode*) mMixinSpecifier;
-	ASTREF(BfTokenNode*) mPartialSpecifier;
-	ASTREF(BfTokenNode*) mMutSpecifier;
-	ASTREF(BfTypeReference*) mReturnType;
-	ASTREF(BfTypeReference*) mExplicitInterface;
-	ASTREF(BfTokenNode*) mExplicitInterfaceDotToken;
-	ASTREF(BfIdentifierNode*) mNameNode;	
-	ASTREF(BfTokenNode*) mOpenParen;	
-	BfSizedArray<ASTREF(BfParameterDeclaration*)> mParams;
-	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
-	ASTREF(BfTokenNode*) mCloseParen;
-	ASTREF(BfGenericParamsDeclaration*) mGenericParams;
-	ASTREF(BfGenericConstraintsDeclaration*) mGenericConstraintsDeclaration;
-	ASTREF(BfAstNode*) mEndSemicolon;
-	ASTREF(BfTokenNode*) mFatArrowToken;
-	ASTREF(BfAstNode*) mBody; // Either expression or block	
+	BfAttributeDirective* mReturnAttributes;
+	BfTokenNode* mExternSpecifier;
+	BfTokenNode* mVirtualSpecifier; // either 'virtual', 'override', or 'abstract'
+	BfTokenNode* mNewSpecifier;
+	BfTokenNode* mMixinSpecifier;
+	BfTokenNode* mPartialSpecifier;
+	BfTokenNode* mMutSpecifier;
+	BfTypeReference* mReturnType;
+	BfTypeReference* mExplicitInterface;
+	BfTokenNode* mExplicitInterfaceDotToken;
+	BfIdentifierNode* mNameNode;	
+	BfTokenNode* mOpenParen;
+	BfTokenNode* mThisToken;
+	BfSizedArray<BfParameterDeclaration*> mParams;
+	BfSizedArray<BfTokenNode*> mCommas;
+	BfTokenNode* mCloseParen;
+	BfGenericParamsDeclaration* mGenericParams;
+	BfGenericConstraintsDeclaration* mGenericConstraintsDeclaration;
+	BfAstNode* mEndSemicolon;
+	BfTokenNode* mFatArrowToken;
+	BfAstNode* mBody; // Either expression or block	
 
 	//BfMethodDef* mMethodDef;
 

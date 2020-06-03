@@ -2290,6 +2290,7 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 	}
 
 	QueueVisitChild(methodDeclaration->mOpenParen);
+	QueueVisitChild(methodDeclaration->mThisToken);	
 	for (int i = 0; i < (int) methodDeclaration->mParams.size(); i++)
 	{
 		if (i > 0)

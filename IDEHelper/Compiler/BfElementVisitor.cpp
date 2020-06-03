@@ -981,6 +981,7 @@ void BfElementVisitor::Visit(BfMethodDeclaration* methodDeclaration)
 	VisitChild(methodDeclaration->mExplicitInterfaceDotToken);
 	VisitChild(methodDeclaration->mNameNode);
 	VisitChild(methodDeclaration->mOpenParen);
+	VisitChild(methodDeclaration->mThisToken);
 	for (auto& param : methodDeclaration->mParams)
 		VisitChild(param);
 	for (auto& comma : methodDeclaration->mCommas)

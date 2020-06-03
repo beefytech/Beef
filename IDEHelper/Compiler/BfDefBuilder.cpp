@@ -409,7 +409,10 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	methodDef->mIsNew = methodDeclaration->mNewSpecifier != NULL;
 	methodDef->mIsMutating = methodDeclaration->mMutSpecifier != NULL;
 	methodDef->mIsExtern = methodDeclaration->mExternSpecifier != NULL;
-	methodDef->mBody = methodDeclaration->mBody;	
+	methodDef->mBody = methodDeclaration->mBody;
+
+	if (methodDeclaration->mThisToken != NULL)
+		methodDef->mMethodType = BfMethodType_Extension;
 
 	HashContext signatureHashCtx;
 	HashNode(signatureHashCtx, methodDeclaration, methodDef->mBody);
@@ -553,15 +556,19 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	{
 		if (methodDeclaration->mNameNode != NULL)
 			methodDef->mName = methodDeclaration->mNameNode->ToString();
-		methodDef->mMethodType = BfMethodType_Mixin;
-		/*if (!methodDef->mIsStatic)
-			Fail("Mixin must be declared static", methodDeclaration->mMixinSpecifier);*/
+		methodDef->mMethodType = BfMethodType_Mixin;				
 	}
 	else
 	{
 		if (methodDeclaration->mNameNode != NULL)
 			methodDef->mName = methodDeclaration->mNameNode->ToString();		
 		methodDef->mMethodType = BfMethodType_Normal;
+
+		if (methodDeclaration->mThisToken != NULL)
+		{
+			methodDef->mMethodType = BfMethodType_Extension;
+			mCurTypeDef->mHasExtensionMethods = true;
+		}
 	}
 
 	if (outerMethodDef != NULL)

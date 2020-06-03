@@ -2618,6 +2618,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mIsStatic = nextTypeDef->mIsStatic;
 	typeDef->mHasAppendCtor = nextTypeDef->mHasAppendCtor;
 	typeDef->mHasOverrideMethods = nextTypeDef->mHasOverrideMethods;
+	typeDef->mHasExtensionMethods = nextTypeDef->mHasExtensionMethods;
 	typeDef->mIsOpaque = nextTypeDef->mIsOpaque;
 	
 	typeDef->mDupDetectedRevision = nextTypeDef->mDupDetectedRevision;	
@@ -2718,6 +2719,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mIsConcrete = partialTypeDef->mIsConcrete;
 		typeDef->mIsStatic = partialTypeDef->mIsStatic;
 		typeDef->mHasAppendCtor = partialTypeDef->mHasAppendCtor;		
+		typeDef->mHasExtensionMethods = partialTypeDef->mHasExtensionMethods;
 		typeDef->mHasOverrideMethods = partialTypeDef->mHasOverrideMethods;
 
 		for (auto generic : partialTypeDef->mGenericParamDefs)
@@ -2750,6 +2752,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 	typeDef->mIsConcrete |= partialTypeDef->mIsConcrete;
 	typeDef->mIsStatic |= partialTypeDef->mIsStatic;
 	typeDef->mHasAppendCtor |= partialTypeDef->mHasAppendCtor;
+	typeDef->mHasExtensionMethods |= partialTypeDef->mHasExtensionMethods;
 	typeDef->mHasOverrideMethods |= partialTypeDef->mHasOverrideMethods;
 	typeDef->mProtection = BF_MIN(typeDef->mProtection, partialTypeDef->mProtection);	
 

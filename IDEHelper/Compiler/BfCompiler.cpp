@@ -3666,6 +3666,10 @@ void BfCompiler::ProcessAutocompleteTempType()
 		return;
 	}
 
+	SetAndRestoreValue<BfMethodState*> prevMethodState(module->mCurMethodState, NULL);
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(module->mCurTypeInstance, NULL);
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(module->mCurMethodInstance, NULL);
+
 	// >>> VisitExteriorIdentifiers
 	mResolvePassData->mAutoComplete->SetModule(module);
 	{		
@@ -3705,8 +3709,6 @@ void BfCompiler::ProcessAutocompleteTempType()
 		BfLogSysM("ProcessAutocompleteTempType - project disabled\n");
 		return;
 	}
-	
-	SetAndRestoreValue<BfMethodState*> prevMethodState(module->mCurMethodState, NULL);
 
 	BfTypeState typeState;
 	typeState.mCurTypeDef = tempTypeDef;
@@ -4096,6 +4098,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 		methodInstance->mMethodDef = methodDef;
 		methodInstance->mMethodInstanceGroup = &methodInstanceGroup;
 		methodInstance->mIsAutocompleteMethod = true;
+
+		methodInstanceGroup.mDefault = methodInstance;
+		defer(methodInstanceGroup.mDefault = NULL);
 		
 		for (int genericParamIdx = 0; genericParamIdx < (int)methodDef->mGenericParams.size(); genericParamIdx++)
 		{

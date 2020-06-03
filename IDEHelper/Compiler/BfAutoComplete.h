@@ -210,6 +210,7 @@ public:
 	void AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeInstance* selfType, const StringImpl& filter, bool allowPrivate);
 	bool InitAutocomplete(BfAstNode* dotNode, BfAstNode* nameNode, String& filter);
 	void AddEnumTypeMembers(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate);	
+	void AddExtensionMethods(BfTypeInstance* targetType, BfTypeInstance* extensionContainer, const StringImpl& filter, bool allowProtected, bool allowPrivate);
 	void AddTopLevelNamespaces(BfAstNode* identifierNode);
 	void AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttribute = false);
 	void AddOverrides(const StringImpl& filter);

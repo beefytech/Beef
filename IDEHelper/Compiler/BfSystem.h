@@ -631,7 +631,8 @@ enum BfMethodType : uint8
 	BfMethodType_CtorClear,
 	BfMethodType_Dtor,
 	BfMethodType_Operator,
-	BfMethodType_Mixin
+	BfMethodType_Mixin,
+	BfMethodType_Extension
 };
 
 enum BfCallingConvention : uint8
@@ -898,7 +899,8 @@ public:
 	bool mIsConcrete;
 	bool mIsStatic;	
 	bool mHasAppendCtor;
-	bool mHasOverrideMethods;
+	bool mHasExtensionMethods;
+	bool mHasOverrideMethods;	
 	bool mIsOpaque;
 	bool mIsNextRevision;	
 
@@ -934,6 +936,7 @@ public:
 		mIsClosure = false;
 		mIsStatic = false;
 		mHasAppendCtor = false;
+		mHasExtensionMethods = false;
 		mHasOverrideMethods = false;
 		mIsOpaque = false;
 		mPartialUsed = false;
