@@ -7147,7 +7147,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 					BF_ASSERT(payloadType->IsTuple());
 					if (payloadType->IsTuple())
 					{
-						auto tupleType = (BfTupleType*)payloadType;
+						auto tupleType = (BfTypeInstance*)payloadType;
 						for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 						{
 							auto fieldInstance = &tupleType->mFieldInstances[fieldIdx];
@@ -8279,7 +8279,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 	reducer.mAllowTypeWildcard = true;
 
 	if (parser.mRootNode->mChildArr.mSize == 0)
-		return false;
+		return "";
 
 	bool attribWasClosed = false;
 	bool isAttributeRef = false;
