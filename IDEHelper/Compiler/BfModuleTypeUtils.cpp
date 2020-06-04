@@ -404,12 +404,12 @@ bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 
 		if (resolvedTypeRef->IsTuple())
 		{
-			auto tupleType = (BfTupleType*)resolvedTypeRef;
+			auto tupleType = (BfTypeInstance*)resolvedTypeRef;
 			for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 			{
 				auto fieldInstance = (BfFieldInstance*)&tupleType->mFieldInstances[fieldIdx];
-				if (fieldInstance->GetResolvedType()->IsUnspecializedType())
-					tupleType->mHasUnspecializedMembers = true;
+// 				if (fieldInstance->GetResolvedType()->IsUnspecializedType())
+// 					tupleType->mHasUnspecializedMembers = true;
 			}
 		}
 		
@@ -880,11 +880,6 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			}
 			else
 				resolvedTypeRef->mTypeId = mCompiler->mCurTypeId++;
-
-			if ((resolvedTypeRef->mTypeId == 2599) && (!mCompiler->mIsResolveOnly))
-			{
-				NOP;
-			}
 
 			while (resolvedTypeRef->mTypeId >= (int)mContext->mTypes.size())
 				mContext->mTypes.Add(NULL);
@@ -5052,37 +5047,44 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 	return (BfBoxedType*)resolvedBoxedType;
 }
 
-BfTupleType* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames)
+BfTypeInstance* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames)
 {
-	auto tupleType = mContext->mTupleTypePool.Get();
-	tupleType->mContext = mContext;
-	tupleType->mFieldInstances.Resize(fieldTypes.size());
-
 	auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef);
-	tupleType->Init(baseType->mTypeDef->mProject, baseType);
+
+	BfTypeInstance* tupleType = NULL;
+	
+	auto actualTupleType = mContext->mTupleTypePool.Get();
+	actualTupleType->Init(baseType->mTypeDef->mProject, baseType);
 
 	for (int fieldIdx = 0; fieldIdx < (int)fieldTypes.size(); fieldIdx++)
 	{
-		BfFieldInstance* fieldInstance = (BfFieldInstance*)&tupleType->mFieldInstances[fieldIdx];
-		fieldInstance->mFieldIdx = fieldIdx;
-		fieldInstance->SetResolvedType(fieldTypes[fieldIdx]);
-		fieldInstance->mOwner = tupleType;
-
 		String fieldName;
 		if (fieldIdx < (int)fieldNames.size())
 			fieldName = fieldNames[fieldIdx];
 		if (fieldName.empty())
 			fieldName = StrFormat("%d", fieldIdx);
-		BfFieldDef* fieldDef = tupleType->AddField(fieldName);
+		BfFieldDef* fieldDef = actualTupleType->AddField(fieldName);
+	}
+	tupleType = actualTupleType;
+
+	tupleType->mContext = mContext;
+	tupleType->mFieldInstances.Resize(fieldTypes.size());
+	for (int fieldIdx = 0; fieldIdx < (int)fieldTypes.size(); fieldIdx++)
+	{
+		BfFieldInstance* fieldInstance = (BfFieldInstance*)&tupleType->mFieldInstances[fieldIdx];
+		fieldInstance->mFieldIdx = fieldIdx;
+		fieldInstance->SetResolvedType(fieldTypes[fieldIdx]);
+		fieldInstance->mOwner = tupleType;		
 	}
 
 	auto resolvedTupleType = ResolveType(tupleType);
-	if (resolvedTupleType != tupleType)
-		mContext->mTupleTypePool.GiveBack(tupleType);
+	if (resolvedTupleType != tupleType)	
+		mContext->mTupleTypePool.GiveBack((BfTupleType*)tupleType);
+	
 	return (BfTupleType*)resolvedTupleType;
 }
 
-BfTupleType * BfModule::SantizeTupleType(BfTupleType* tupleType)
+BfTypeInstance* BfModule::SantizeTupleType(BfTypeInstance* tupleType)
 {
 	bool needsSanitize = false;
 	for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
@@ -5774,29 +5776,130 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 
 	if (unspecializedType->IsTuple())
 	{
-		auto tupleType = (BfTupleType*)unspecializedType;
-		Array<String> names;
+		bool wantGeneric = false;
+		bool isUnspecialized = false;
 
-		BfTypeVector genericArgs;
+		auto unspecializedTupleType = (BfTypeInstance*)unspecializedType;
+		auto unspecializedGenericTupleType = unspecializedTupleType->ToGenericTypeInstance();
+		Array<String> fieldNames;		
+		BfTypeVector fieldTypes;
 		bool hadChange = false;
 
-		for (auto& fieldInstance : tupleType->mFieldInstances)
+		for (auto& fieldInstance : unspecializedTupleType->mFieldInstances)
 		{
-			names.push_back(fieldInstance.GetFieldDef()->mName);
+			fieldNames.push_back(fieldInstance.GetFieldDef()->mName);
 			auto origGenericArg = fieldInstance.mResolvedType;
 			auto newGenericArg = ResolveGenericType(origGenericArg, typeGenericArguments, methodGenericArguments, allowFail);
 			if (newGenericArg == NULL)
 				return NULL;
 			if (newGenericArg->IsVar())
 				return newGenericArg;
+
+			if (newGenericArg->IsGenericParam())
+				wantGeneric = true;
+			if (newGenericArg->IsUnspecializedType())
+				isUnspecialized = true;
+
 			if (newGenericArg != origGenericArg)
 				hadChange = true;
-			genericArgs.push_back(newGenericArg);
+			fieldTypes.push_back(newGenericArg);
 		}
+
 		if (!hadChange)
 			return unspecializedType;
+		
+		if (unspecializedGenericTupleType == NULL)
+			wantGeneric = false;
 
-		return CreateTupleType(genericArgs, names);
+		auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef);
+
+		BfTypeInstance* tupleType = NULL;
+		if (wantGeneric)
+		{
+ 			Array<BfType*> genericArgs;
+			for (int genericArgIdx = 0; genericArgIdx < (int)unspecializedGenericTupleType->mTypeGenericArguments.size(); genericArgIdx++)
+			{
+				BfType* resolvedArg = unspecializedGenericTupleType->mTypeGenericArguments[genericArgIdx];
+				if (resolvedArg->IsUnspecializedType())
+				{
+					resolvedArg = ResolveGenericType(resolvedArg, typeGenericArguments, methodGenericArguments, allowFail);
+					if (resolvedArg == NULL)
+						return NULL;
+					if (resolvedArg->IsVar())
+						return resolvedArg;
+				}
+				genericArgs.push_back(resolvedArg);
+			}
+
+			auto actualTupleType = mContext->mGenericTupleTypePool.Get();
+			actualTupleType->mIsUnspecialized = false;
+			actualTupleType->mIsUnspecializedVariation = false;
+			actualTupleType->mTypeGenericArguments = genericArgs;
+			for (int genericArgIdx = 0; genericArgIdx < (int)unspecializedGenericTupleType->mTypeGenericArguments.size(); genericArgIdx++)
+			{
+				auto typeGenericArg = genericArgs[genericArgIdx];
+				if ((typeGenericArg->IsGenericParam()) || (typeGenericArg->IsUnspecializedType()))
+					actualTupleType->mIsUnspecialized = true;
+				actualTupleType->mGenericParams.push_back(unspecializedGenericTupleType->mGenericParams[genericArgIdx]->AddRef());
+			}
+			CheckUnspecializedGenericType(actualTupleType, BfPopulateType_Identity);
+
+			actualTupleType->Init(baseType->mTypeDef->mProject, baseType);
+
+			for (int fieldIdx = 0; fieldIdx < (int)fieldTypes.size(); fieldIdx++)
+			{
+				String fieldName = fieldNames[fieldIdx];
+				BfFieldDef* fieldDef = actualTupleType->AddField(fieldName);
+			}
+
+			tupleType = actualTupleType;
+		}
+		else
+		{
+			auto actualTupleType = new BfTupleType();
+			actualTupleType->mIsUnspecializedType = isUnspecialized;
+			actualTupleType->mIsUnspecializedTypeVariation = isUnspecialized;
+
+			actualTupleType->Init(baseType->mTypeDef->mProject, baseType);
+
+			for (int fieldIdx = 0; fieldIdx < (int)fieldTypes.size(); fieldIdx++)
+			{
+				String fieldName = fieldNames[fieldIdx];				
+				BfFieldDef* fieldDef = actualTupleType->AddField(fieldName);
+			}
+
+			tupleType = actualTupleType;
+		}
+
+		tupleType->mFieldInstances.Resize(fieldTypes.size());
+		for (int fieldIdx = 0; fieldIdx < (int)fieldTypes.size(); fieldIdx++)
+		{
+			BfFieldInstance* fieldInstance = (BfFieldInstance*)&tupleType->mFieldInstances[fieldIdx];
+			fieldInstance->mFieldIdx = fieldIdx;
+			fieldInstance->SetResolvedType(fieldTypes[fieldIdx]);
+			fieldInstance->mOwner = tupleType;
+		}
+
+		bool failed = false;
+		BfType* resolvedType = NULL;
+		if (!failed)
+			resolvedType = ResolveType(tupleType, BfPopulateType_Identity);
+		
+		if (resolvedType != tupleType)
+		{
+			if (tupleType->IsGenericTypeInstance())
+			{
+				auto genericTupleType = (BfGenericTupleType*)tupleType;
+				for (auto genericParam : genericTupleType->mGenericParams)
+					genericParam->Release();
+				genericTupleType->mGenericParams.Clear();
+				mContext->mGenericTupleTypePool.GiveBack(genericTupleType);
+			}
+			else
+				mContext->mTupleTypePool.GiveBack((BfTupleType*)tupleType);
+		}
+		BF_ASSERT((resolvedType == NULL) || resolvedType->IsTypeInstance() || resolvedType->IsPrimitiveType());
+		return resolvedType;
 	}
 
 	if ((unspecializedType->IsDelegateFromTypeRef()) || (unspecializedType->IsFunctionFromTypeRef()))
@@ -5917,9 +6020,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
 		directTypeRef->Init(returnType);
 		methodDef->mReturnTypeRef = directTypeRef;
-		delegateInfo->mReturnType = returnType;
-
-		AddDependency(directTypeRef->mType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
+		delegateInfo->mReturnType = returnType;		
 		
 		BfMethodDef* unspecializedInvokeMethodDef = unspecializedDelegateType->mTypeDef->GetMethodByName("Invoke");
 
@@ -5945,7 +6046,6 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			paramIdx++;
 
 			delegateInfo->mParams.Add(paramType);
-			AddDependency(paramType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		}
 
 		typeDef->mMethods.push_back(methodDef);
@@ -5962,7 +6062,13 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		BfType* resolvedType = NULL;
 		if (!failed)
 			resolvedType = ResolveType(delegateType, BfPopulateType_Identity);
-		if (resolvedType != delegateType)
+		if (resolvedType == delegateType)
+		{
+			AddDependency(directTypeRef->mType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
+			for (auto paramType : paramTypes)
+				AddDependency(paramType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);			
+		}
+		else
 		{
 			if (delegateType->IsGenericTypeInstance())
 			{
@@ -5977,7 +6083,6 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		}
 		BF_ASSERT((resolvedType == NULL) || resolvedType->IsTypeInstance() || resolvedType->IsPrimitiveType());
 		return resolvedType;
-
 	}
 
 	if (unspecializedType->IsGenericTypeInstance())
@@ -6034,8 +6139,16 @@ BfType* BfModule::ResolveType(BfType* lookupType, BfPopulateType populateType)
 
 	if (lookupType->IsTuple())
 	{
-		auto tupleType = (BfTupleType*)lookupType;
-		tupleType->Finish();
+		if (lookupType->IsGenericTypeInstance())
+		{
+			auto tupleType = (BfGenericTupleType*)lookupType;
+			tupleType->Finish();
+		}
+		else
+		{
+			auto tupleType = (BfTupleType*)lookupType;
+			tupleType->Finish();
+		}		
 	}
 
 	resolvedEntry->mValue = lookupType;
@@ -6303,7 +6416,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	{
 		// Add the fields from the tuple as references since those inner fields types would have been explicitly stated, so we need
 		//  to make sure to record the current type instance as a referring type.  This mostly matters for symbol renaming.
-		BfTupleType* payloadTupleType = (BfTupleType*)resolvedTypeRef;
+		BfTypeInstance* payloadTupleType = (BfTypeInstance*)resolvedTypeRef;
 		for (auto& payloadFieldInst : payloadTupleType->mFieldInstances)
 		{
 			auto payloadFieldType = payloadFieldInst.mResolvedType;			
@@ -7904,6 +8017,11 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveGenericType(type, &genericArgs, NULL);
 		}
+		else if ((type != NULL) && (type->IsTuple()))
+		{
+			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+			return ResolveGenericType(type, &genericArgs, NULL);
+		}
 		else if ((typeDef != NULL) && (typeDef->mTypeCode == BfTypeCode_TypeAlias))
 		{
 			auto typeAliasType = new BfGenericTypeAliasType();
@@ -7997,6 +8115,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		Array<BfType*> types;
 		Array<String> names;
 
+		bool wantGeneric = false;
+		bool isUnspecialized = false;
+
 		for (int fieldIdx = 0; fieldIdx < (int)tupleTypeRef->mFieldTypes.size(); fieldIdx++)
 		{
 			BfTypeReference* typeRef = tupleTypeRef->mFieldTypes[fieldIdx];
@@ -8017,30 +8138,66 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			else
 				fieldName = StrFormat("%d", fieldIdx);
 
+			if (type->IsGenericParam())
+				wantGeneric = true;
+			if (type->IsUnspecializedType())
+				isUnspecialized = true;
+
 			String typeName = TypeToString(type);
 			types.push_back(type);
 			names.push_back(fieldName);
 		}
 
 		auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef, BfPopulateType_Identity);
-		BfTupleType* tupleType = new BfTupleType();
-		//TODO: Add to correct project
-		tupleType->Init(baseType->mTypeDef->mProject, baseType);
+		BfTypeInstance* tupleType = NULL;
+		if (wantGeneric)
+		{
+			BfGenericTupleType* actualTupleType = new BfGenericTupleType();
+			actualTupleType->Init(baseType->mTypeDef->mProject, baseType);
+			for (int fieldIdx = 0; fieldIdx < (int)types.size(); fieldIdx++)
+			{
+				BfFieldDef* fieldDef = actualTupleType->AddField(names[fieldIdx]);
+				fieldDef->mProtection = (names[fieldIdx][0] == '_') ? BfProtection_Private : BfProtection_Public;
+			}
+			actualTupleType->Finish();
+
+			if (mCurTypeInstance->IsGenericTypeInstance())
+			{
+				auto parentTypeInstance = (BfGenericTypeInstance*)mCurTypeInstance;
+				for (int i = 0; i < parentTypeInstance->mGenericParams.size(); i++)
+				{
+					actualTupleType->mGenericParams.push_back(parentTypeInstance->mGenericParams[i]->AddRef());
+					actualTupleType->mTypeGenericArguments.push_back(parentTypeInstance->mTypeGenericArguments[i]);
+					auto typeGenericArg = actualTupleType->mTypeGenericArguments[i];
+					actualTupleType->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
+				}
+				CheckUnspecializedGenericType(actualTupleType, populateType);
+			}
+			tupleType = actualTupleType;
+		}
+		else
+		{
+			BfTupleType* actualTupleType = new BfTupleType();
+			actualTupleType->Init(baseType->mTypeDef->mProject, baseType);
+			for (int fieldIdx = 0; fieldIdx < (int)types.size(); fieldIdx++)
+			{
+				BfFieldDef* fieldDef = actualTupleType->AddField(names[fieldIdx]);
+				fieldDef->mProtection = (names[fieldIdx][0] == '_') ? BfProtection_Private : BfProtection_Public;
+			}
+			actualTupleType->Finish();
+			tupleType = actualTupleType;
+			actualTupleType->mIsUnspecializedType = isUnspecialized;
+			actualTupleType->mIsUnspecializedTypeVariation = isUnspecialized;
+		}				
 
 		tupleType->mFieldInstances.Resize(types.size());
-
 		for (int fieldIdx = 0; fieldIdx < (int)types.size(); fieldIdx++)
 		{
-			BfFieldDef* fieldDef = tupleType->AddField(names[fieldIdx]);
-			fieldDef->mProtection = (names[fieldIdx][0] == '_') ? BfProtection_Private : BfProtection_Public;
-
 			BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
 			fieldInstance->mFieldIdx = fieldIdx;
 			fieldInstance->SetResolvedType(types[fieldIdx]);
 			fieldInstance->mOwner = tupleType;
 		}
-
-		tupleType->Finish();
 
 		resolvedEntry->mValue = tupleType;
 		BF_ASSERT(BfResolvedTypeSet::Hash(tupleType, &lookupCtx) == resolvedEntry->mHash);
@@ -8121,7 +8278,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	else if (auto delegateTypeRef = BfNodeDynCast<BfDelegateTypeRef>(typeRef))
 	{	
 		bool wantGeneric = false;
-		bool isUnspecialized = false;		
+		bool isUnspecialized = false;
 		auto _CheckType = [&](BfType* type)
 		{
 			if (type->IsGenericParam())						
@@ -8217,9 +8374,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		directTypeRef->Init(returnType);
 		methodDef->mReturnTypeRef = directTypeRef;
 		delegateInfo->mReturnType = returnType;
-
-		AddDependency(directTypeRef->mType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
-
+		
 		auto hashVal = mContext->mResolvedTypes.Hash(typeRef, &lookupCtx);
 		
 		for (int paramIdx = 0; paramIdx < (int)paramTypes.size(); paramIdx++)
@@ -8247,8 +8402,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			paramDef->mName = paramName;
 			methodDef->mParams.push_back(paramDef);
 			
-			delegateInfo->mParams.Add(paramType);
-			AddDependency(paramType, baseDelegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
+			delegateInfo->mParams.Add(paramType);			
 		}
 
 		typeDef->mMethods.push_back(methodDef);
@@ -8263,6 +8417,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		delegateType->mTypeDef = typeDef;
 		populateModule->InitType(delegateType, populateType);
 		resolvedEntry->mValue = delegateType;
+
+		AddDependency(directTypeRef->mType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
+		for (auto paramType : paramTypes)
+			AddDependency(paramType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 
 // #ifdef _DEBUG
 // 		if (BfResolvedTypeSet::Hash(delegateType, &lookupCtx) != resolvedEntry->mHash)
@@ -9127,8 +9285,8 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// Tuple -> Tuple
 	if ((typedVal.mType->IsTuple()) && (toType->IsTuple()))
 	{
-		auto fromTupleType = (BfTupleType*)typedVal.mType;
-		auto toTupleType = (BfTupleType*)toType;
+		auto fromTupleType = (BfTypeInstance*)typedVal.mType;
+		auto toTupleType = (BfTypeInstance*)toType;
 		if (fromTupleType->mFieldInstances.size() == toTupleType->mFieldInstances.size())
 		{
 			typedVal = LoadValue(typedVal);
@@ -9964,8 +10122,8 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 		//auto loadedVal = LoadValue(typedVal);
 		PopulateType(toType);
 
-		auto fromTupleType = (BfTupleType*)typedVal.mType;
-		auto toTupleType = (BfTupleType*)toType;
+		auto fromTupleType = (BfTypeInstance*)typedVal.mType;
+		auto toTupleType = (BfTypeInstance*)toType;
 		if (fromTupleType == toTupleType)
 			return typedVal;
 
@@ -10572,7 +10730,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	}
 	else if (resolvedType->IsTuple())
 	{
-		BfTupleType* tupleType = (BfTupleType*)resolvedType;
+		BfTypeInstance* tupleType = (BfTypeInstance*)resolvedType;
 
 		str += "(";
 		for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
@@ -10582,7 +10740,8 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 
 			BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
 			BfFieldDef* fieldDef = fieldInstance->GetFieldDef();
-			DoTypeToString(str, fieldInstance->GetResolvedType(), (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType)), genericMethodNameOverrides);
+			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
+			DoTypeToString(str, fieldInstance->GetResolvedType(), innerFlags, genericMethodNameOverrides);
 
 			char c = fieldDef->mName[0];
 			if ((c < '0') || (c > '9'))

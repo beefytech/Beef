@@ -6270,7 +6270,7 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 			}
 
 			BF_ASSERT(fieldInstance->mResolvedType->IsTuple());
-			auto tupleType = (BfTupleType*)fieldInstance->mResolvedType;
+			auto tupleType = (BfTypeInstance*)fieldInstance->mResolvedType;
 			mModule->mBfIRBuilder->PopulateType(tupleType);
 	
 			BfIRValue fieldPtr;
@@ -15290,14 +15290,14 @@ void BfExprEvaluator::PopulateDeferrredTupleAssignData(BfTupleExpression* tupleE
 			fieldNames.push_back(requestedName->mNameNode->ToString());
 	}
 
-	BfTupleType* tupleType = mModule->CreateTupleType(fieldTypes, fieldNames);
+	BfTypeInstance* tupleType = mModule->CreateTupleType(fieldTypes, fieldNames);
 	deferredTupleAssignData.mTupleType = tupleType;	
 }
 
 void BfExprEvaluator::AssignDeferrredTupleAssignData(BfAssignmentExpression* assignExpr, DeferredTupleAssignData& deferredTupleAssignData, BfTypedValue rightValue)
 {	
 	BF_ASSERT(rightValue.mType->IsTuple());
-	auto tupleType = (BfTupleType*)rightValue.mType;
+	auto tupleType = (BfTypeInstance*)rightValue.mType;
 	for (int valueIdx = 0; valueIdx < (int)deferredTupleAssignData.mChildren.size(); valueIdx++)
 	{			
 		auto& child = deferredTupleAssignData.mChildren[valueIdx];
@@ -15338,7 +15338,7 @@ void BfExprEvaluator::DoTupleAssignment(BfAssignmentExpression* assignExpr)
 
 	DeferredTupleAssignData deferredTupleAssignData;
 	PopulateDeferrredTupleAssignData(tupleExpr, deferredTupleAssignData);
-	BfTupleType* tupleType = deferredTupleAssignData.mTupleType;
+	BfTypeInstance* tupleType = deferredTupleAssignData.mTupleType;
 	
 	BfTypedValue rightValue;
 	if (assignExpr->mRight != NULL)
@@ -16137,11 +16137,11 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 
 void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 {	
-	BfTupleType* tupleType = NULL;
+	BfTypeInstance* tupleType = NULL;
 	bool hadFullMatch = false;
 	if ((mExpectingType != NULL) && (mExpectingType->IsTuple()))
 	{
-		tupleType = (BfTupleType*)mExpectingType;
+		tupleType = (BfTypeInstance*)mExpectingType;
 		hadFullMatch = tupleType->mFieldInstances.size() == tupleExpr->mValues.size();
 	}	
 	
@@ -18803,8 +18803,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		bool areEquivalentTuples = false;
 		if ((leftValue.mType->IsTuple()) && (rightValue.mType->IsTuple()))
 		{
-			auto leftTupleType = (BfTupleType*)leftValue.mType;
-			auto rightTupleType = (BfTupleType*)rightValue.mType;
+			auto leftTupleType = (BfTypeInstance*)leftValue.mType;
+			auto rightTupleType = (BfTypeInstance*)rightValue.mType;
 
 			// We only do this for tuples, because we would allow an implicit struct
 			//  truncation if we allow it for all structs, which would result in only

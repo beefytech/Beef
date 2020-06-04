@@ -2055,22 +2055,8 @@ public:
 	virtual bool IsFunction() override { return !mTypeDef->mIsDelegate; }
 	virtual bool IsFunctionFromTypeRef() override { return !mTypeDef->mIsDelegate; }
 	
-	virtual BfDelegateInfo* GetDelegateInfo() override { return &mDelegateInfo; }
-	//virtual bool IsReified() override { return mIsReified; }	
+	virtual BfDelegateInfo* GetDelegateInfo() override { return &mDelegateInfo; }	
 };
-
-/*class BfFunctionType : public BfTypeInstance
-{
-public:
-	BfType* mReturnType;
-	Array<BfType*> mParamTypes;
-	Array<String> mParamNames;
-
-public:
-	virtual bool IsOnDemand() override { return true; }
-	virtual bool IsFunction() override { return true; }
-	virtual bool IsFunctionFromTypeRef() override { return true; }
-};*/
 
 class BfTupleType : public BfTypeInstance
 {
@@ -2078,10 +2064,11 @@ public:
 	bool mCreatedTypeDef;
 	String mNameAdd;	
 	BfSource* mSource;
-	bool mHasUnspecializedMembers;
-
+	bool mIsUnspecializedType;
+	bool mIsUnspecializedTypeVariation;
+	
 public:
-	BfTupleType();	
+	BfTupleType();
 	~BfTupleType();
 
 	void Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance);
@@ -2091,8 +2078,27 @@ public:
 	virtual bool IsOnDemand() override { return true; }
 	virtual bool IsTuple() override { return true; }	
 
-	virtual bool IsUnspecializedType() override { return mHasUnspecializedMembers; }
-	virtual bool IsUnspecializedTypeVariation() override { return mHasUnspecializedMembers; }
+	virtual bool IsUnspecializedType() override { return mIsUnspecializedType; }
+	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedTypeVariation; }
+};
+
+class BfGenericTupleType : public BfGenericTypeInstance
+{
+public:
+	bool mCreatedTypeDef;
+	String mNameAdd;
+	BfSource* mSource;
+	
+public:
+	BfGenericTupleType();
+	~BfGenericTupleType();
+
+	void Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance);
+	BfFieldDef* AddField(const StringImpl& name);
+	void Finish();
+
+	virtual bool IsOnDemand() override { return true; }
+	virtual bool IsTuple() override { return true; }
 };
 
 class BfConcreteInterfaceType : public BfType

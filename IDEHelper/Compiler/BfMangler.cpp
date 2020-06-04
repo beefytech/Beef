@@ -280,7 +280,7 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 	
 	if (typeInst->IsTuple())
 	{		
-		auto tupleType = (BfTupleType*)typeInst;
+		auto tupleType = (BfTypeInstance*)typeInst;
 		name += "N7__TUPLEI";
 		mangleContext.mSubstituteList.push_back(NameSubstitute(BfGNUMangler::NameSubstitute::Kind_None, NULL)); // Insert entry for '__TUPLE'
 		for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
@@ -1131,7 +1131,7 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 
 		if (newNameSub.mTypeInst->IsTuple())
 		{
-			auto tupleType = (BfTupleType*)newNameSub.mType;			
+			auto tupleType = (BfTypeInstance*)newNameSub.mType;
 			name += "?$__TUPLE";
 			SizedArray<BfType*, 8> typeVec;
 			for (auto& fieldInst : tupleType->mFieldInstances)

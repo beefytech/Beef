@@ -16,7 +16,21 @@ namespace Tests
 			public typealias AliasA3 = delegate T();
 			public typealias AliasA4<T2> = delegate T(T2 val);
 
+			public typealias AliasA5 = (int, T);
+			public typealias AliasA6<T2> = (T, T2);
+
 			public delegate T Zag();
+		}
+
+		public static void Test<T>()
+		{
+			T LocalA(int16 a)
+			{
+				return default(T);
+			}
+
+			ClassA<T>.AliasA6<float> t0 = (default(T), 1.2f);
+			ClassA<T>.AliasA4<int16> dlg0 = scope => LocalA;
 		}
 
 		[Test]
@@ -33,6 +47,12 @@ namespace Tests
 
 			delegate double(char8) dlg3 = default;
 			ClassA<double>.AliasA4<char8> dlg4 = dlg3;
+
+			var t0 = (123, 1.2f);
+			ClassA<float>.AliasA5 t1 = t0;
+
+			var t2 = (1.2f, 3.4);
+			ClassA<float>.AliasA6<double> v3 = t2;
 		}
 	}
 }

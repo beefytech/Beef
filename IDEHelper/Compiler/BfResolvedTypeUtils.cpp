@@ -1479,7 +1479,7 @@ bool BfTypeInstance::GetResultInfo(BfType*& valueType, int& okTagId)
 
 		if ((fieldInstance.mIsEnumPayloadCase) && (fieldInstance.GetFieldDef()->mName == "Ok") && (fieldInstance.mResolvedType->IsTuple()))
 		{
-			auto tupleType = (BfTupleType*)fieldInstance.mResolvedType;			
+			auto tupleType = (BfTypeInstance*)fieldInstance.mResolvedType;
 			if (tupleType->mFieldInstances.size() == 1)
 			{
 				valueType = tupleType->mFieldInstances[0].mResolvedType;
@@ -1922,8 +1922,9 @@ BfTupleType::BfTupleType()
 {
 	mCreatedTypeDef = false;
 	mSource = NULL;
-	mTypeDef = NULL;
-	mHasUnspecializedMembers = false;
+	mTypeDef = NULL;	
+	mIsUnspecializedType = false;
+	mIsUnspecializedTypeVariation = false;
 }
 
 BfTupleType::~BfTupleType()
@@ -1971,8 +1972,62 @@ void BfTupleType::Finish()
 	BfDefBuilder bfDefBuilder(bfSystem);
 	bfDefBuilder.mCurTypeDef = mTypeDef;
 	bfDefBuilder.FinishTypeDef(true);
+}
 
-	mHasUnspecializedMembers = false;
+//////////////////////////////////////////////////////////////////////////
+
+BfGenericTupleType::BfGenericTupleType()
+{
+	mCreatedTypeDef = false;
+	mSource = NULL;
+	mTypeDef = NULL;
+}
+
+BfGenericTupleType::~BfGenericTupleType()
+{
+	if (mCreatedTypeDef)
+		delete mTypeDef;
+	delete mSource;
+}
+
+void BfGenericTupleType::Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance)
+{
+	auto srcTypeDef = valueTypeInstance->mTypeDef;
+	auto system = valueTypeInstance->mModule->mSystem;
+
+	if (mTypeDef == NULL)
+		mTypeDef = new BfTypeDef();
+	for (auto field : mTypeDef->mFields)
+		delete field;
+	mTypeDef->mFields.Clear();
+	mTypeDef->mSystem = system;
+	mTypeDef->mProject = bfProject;
+	mTypeDef->mTypeCode = srcTypeDef->mTypeCode;
+	mTypeDef->mName = system->mEmptyAtom;
+	mTypeDef->mSystem = system;
+
+	mTypeDef->mHash = srcTypeDef->mHash;
+	mTypeDef->mSignatureHash = srcTypeDef->mSignatureHash;
+	mTypeDef->mTypeCode = BfTypeCode_Struct;
+
+	mCreatedTypeDef = true;
+}
+
+BfFieldDef* BfGenericTupleType::AddField(const StringImpl& name)
+{
+	return BfDefBuilder::AddField(mTypeDef, NULL, name);
+}
+
+void BfGenericTupleType::Finish()
+{
+	auto bfSystem = mTypeDef->mSystem;
+	mSource = new BfSource(bfSystem);
+	mTypeDef->mSource = mSource;
+	mTypeDef->mSource->mRefCount++;
+
+	BfDefBuilder bfDefBuilder(bfSystem);
+	bfDefBuilder.mCurTypeDef = mTypeDef;
+	bfDefBuilder.FinishTypeDef(true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2195,18 +2250,12 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 			if (closureType->mIsUnique)
 				return false;
 			hashVal = ((hashVal ^ (int)closureType->mClosureHash.mLow) << 5) - hashVal;
-		}		
-		else if (type->IsGenericTypeInstance())
-		{
-			BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;
-			for (auto genericArg : genericType->mTypeGenericArguments)
-				hashVal = ((hashVal ^ (Hash(genericArg, ctx))) << 5) - hashVal;
-		}
+		}				
 		else if (type->IsTuple())
 		{
 			hashVal = HASH_VAL_TUPLE;
 
-			BfTupleType* tupleType = (BfTupleType*)type;
+			BfTypeInstance* tupleType = (BfTypeInstance*)type;
 			for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 			{
 				BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
@@ -2229,6 +2278,12 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 				}
 				hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
 			}
+		}
+		else if (type->IsGenericTypeInstance())
+		{
+			BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;
+			for (auto genericArg : genericType->mTypeGenericArguments)
+				hashVal = ((hashVal ^ (Hash(genericArg, ctx))) << 5) - hashVal;
 		}
 		return hashVal;
 	}
@@ -2831,31 +2886,14 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			}
 			return true;
 		}
-
-		if (lhs->IsGenericTypeInstance())
-		{
-			if (!rhs->IsGenericTypeInstance())
-				return false;
-			BfGenericTypeInstance* lhsGenericType = (BfGenericTypeInstance*)lhs;
-			BfGenericTypeInstance* rhsGenericType = (BfGenericTypeInstance*)rhs;
-			if (lhsGenericType->mTypeGenericArguments.size() != rhsGenericType->mTypeGenericArguments.size())
-				return false;
-			if (lhsGenericType->mTypeDef != rhsGenericType->mTypeDef)
-				return false;
-			for (int i = 0; i < (int)lhsGenericType->mTypeGenericArguments.size(); i++)
-			{
-				if (!Equals(lhsGenericType->mTypeGenericArguments[i], rhsGenericType->mTypeGenericArguments[i], ctx))
-					return false;
-			}			
-		}
-
+		
 		if (lhs->IsTuple())
 		{
 			if (!rhs->IsTuple())
 				return false;
 
-			BfTupleType* lhsTupleType = (BfTupleType*)lhs;
-			BfTupleType* rhsTupleType = (BfTupleType*)rhs;
+			BfTypeInstance* lhsTupleType = (BfTypeInstance*)lhs;
+			BfTypeInstance* rhsTupleType = (BfTypeInstance*)rhs;
 			if (lhsTupleType->mFieldInstances.size() != rhsTupleType->mFieldInstances.size())
 				return false;
 			for (int fieldIdx = 0; fieldIdx < (int)lhsTupleType->mFieldInstances.size(); fieldIdx++)
@@ -2881,6 +2919,23 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 				}				
 			}
 			return true;
+		}
+
+		if (lhs->IsGenericTypeInstance())
+		{
+			if (!rhs->IsGenericTypeInstance())
+				return false;
+			BfGenericTypeInstance* lhsGenericType = (BfGenericTypeInstance*)lhs;
+			BfGenericTypeInstance* rhsGenericType = (BfGenericTypeInstance*)rhs;
+			if (lhsGenericType->mTypeGenericArguments.size() != rhsGenericType->mTypeGenericArguments.size())
+				return false;
+			if (lhsGenericType->mTypeDef != rhsGenericType->mTypeDef)
+				return false;
+			for (int i = 0; i < (int)lhsGenericType->mTypeGenericArguments.size(); i++)
+			{
+				if (!Equals(lhsGenericType->mTypeGenericArguments[i], rhsGenericType->mTypeGenericArguments[i], ctx))
+					return false;
+			}
 		}
 
 		return lhsInst->mTypeDef == rhsInst->mTypeDef;
@@ -3138,7 +3193,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		}
 	}
 
- 	if (rhs->IsNamedTypeReference())
+ 	if ((rhs->IsNamedTypeReference()) || (rhs->IsA<BfGenericInstanceTypeRef>()))
 	{
 		if ((ctx->mRootTypeRef != rhs) || (ctx->mRootTypeDef == NULL))
 		{
@@ -3214,27 +3269,14 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 	{		
 		BfTypeInstance* lhsInst = (BfTypeInstance*) lhs;		
 		
-		if (lhs->IsGenericTypeInstance())
-		{
-			BfType* rhsType = NULL;
- 			auto rhsTypeDef = ctx->ResolveToTypeDef(rhs, &rhsType);
- 			if (rhsTypeDef == NULL)
- 				return false;
-
-			if (rhsType != NULL)
-				return lhs == rhsType;
-
-			BfGenericTypeInstance* lhsGenericType = (BfGenericTypeInstance*) lhs;
-			return GenericTypeEquals(lhsGenericType, &lhsGenericType->mTypeGenericArguments, rhs, rhsTypeDef, ctx);
-		}
 		if (lhs->IsTuple())
-		{			
+		{
 			if (!rhs->IsA<BfTupleTypeRef>())
 				return false;
 
-			BfTupleTypeRef* rhsTupleTypeRef = (BfTupleTypeRef*)rhs;			
-			BfTupleType* lhsTupleType = (BfTupleType*)lhs;
-			
+			BfTupleTypeRef* rhsTupleTypeRef = (BfTupleTypeRef*)rhs;
+			BfTypeInstance* lhsTupleType = (BfTypeInstance*)lhs;
+
 			if (lhsTupleType->mFieldInstances.size() != rhsTupleTypeRef->mFieldTypes.size())
 				return false;
 
@@ -3262,11 +3304,24 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 					sprintf(nameStr, "%d", fieldIdx);
 					if (fieldTypeDef->mName != nameStr)
 						return false;
-				}								
+				}
 			}
 
 			return true;
 		}
+		else if (lhs->IsGenericTypeInstance())
+		{
+			BfType* rhsType = NULL;
+ 			auto rhsTypeDef = ctx->ResolveToTypeDef(rhs, &rhsType);
+ 			if (rhsTypeDef == NULL)
+ 				return false;
+
+			if (rhsType != NULL)
+				return lhs == rhsType;
+
+			BfGenericTypeInstance* lhsGenericType = (BfGenericTypeInstance*) lhs;
+			return GenericTypeEquals(lhsGenericType, &lhsGenericType->mTypeGenericArguments, rhs, rhsTypeDef, ctx);
+		}		
 		else
 		{
 			if (rhs->IsA<BfElementedTypeRef>())

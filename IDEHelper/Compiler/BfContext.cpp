@@ -2217,7 +2217,7 @@ void BfContext::GenerateModuleName_Type(BfType* type, String& name)
 
 	if (type->IsTuple())
 	{
-		auto tupleType = (BfTupleType*)type;
+		auto tupleType = (BfTypeInstance*)type;
 		name += "TUPLE_";		
 		for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
 		{

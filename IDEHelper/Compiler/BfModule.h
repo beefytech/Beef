@@ -1623,8 +1623,8 @@ public:
 	BfPointerType* CreatePointerType(BfTypeReference* typeRef);
 	BfConstExprValueType* CreateConstExprValueType(const BfTypedValue& typedValue);
 	BfBoxedType* CreateBoxedType(BfType* resolvedTypeRef);	
-	BfTupleType* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames);	
-	BfTupleType* SantizeTupleType(BfTupleType* tupleType);	
+	BfTypeInstance* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames);
+	BfTypeInstance* SantizeTupleType(BfTypeInstance* tupleType);
 	BfRefType* CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind = BfRefType::RefKind_Ref);
 	BfModifiedTypeType* CreateModifiedTypeType(BfType* resolvedTypeRef, BfToken modifiedKind);
 	BfConcreteInterfaceType* CreateConcreteInterfaceType(BfTypeInstance* interfaceType);

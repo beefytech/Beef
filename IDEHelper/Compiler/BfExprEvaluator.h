@@ -265,7 +265,7 @@ struct DeferredTupleAssignData
 	};
 
 	Array<Entry> mChildren;
-	BfTupleType* mTupleType;
+	BfTypeInstance* mTupleType;
 
 	~DeferredTupleAssignData();
 };

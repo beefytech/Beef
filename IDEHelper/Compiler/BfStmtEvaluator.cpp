@@ -1957,9 +1957,9 @@ void BfModule::CheckTupleVariableDeclaration(BfTupleExpression* tupleExpr, BfTyp
 	if (initType == NULL)
 		return;
 
-	BfTupleType* initTupleType = NULL;
+	BfTypeInstance* initTupleType = NULL;
 	if ((initType != NULL) && (initType->IsTuple()))
-		initTupleType = (BfTupleType*)initType;
+		initTupleType = (BfTypeInstance*)initType;
 
 	if (initTupleType != NULL)
 	{
@@ -1987,9 +1987,9 @@ void BfModule::CheckTupleVariableDeclaration(BfTupleExpression* tupleExpr, BfTyp
 
 void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, BfTupleExpression* tupleExpr, BfTypedValue initTupleValue, bool isReadOnly, bool isConst, bool forceAddr, BfIRBlock* declBlock)
 {
-	BfTupleType* initTupleType = NULL;	
+	BfTypeInstance* initTupleType = NULL;
 	if ((initTupleValue) && (initTupleValue.mType->IsTuple()))
-		initTupleType = (BfTupleType*)initTupleValue.mType;
+		initTupleType = (BfTypeInstance*)initTupleValue.mType;
 
 	CheckTupleVariableDeclaration(tupleExpr, initTupleValue.mType);
 	
@@ -2425,7 +2425,7 @@ BfTypedValue BfModule::TryCaseTupleMatch(BfTypedValue tupleVal, BfTupleExpressio
 	if (!tupleVal.mType->IsTuple())
 		return BfTypedValue();
 
-	auto tupleType = (BfTupleType*)tupleVal.mType;
+	auto tupleType = (BfTypeInstance*)tupleVal.mType;
 
 	BfAstNode* tooFewRef = tupleExpr->mCloseParen;
 	if ((tooFewRef == NULL) && (!tupleExpr->mCommas.IsEmpty()))
@@ -2672,7 +2672,7 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			}
 
 			BF_ASSERT(fieldInstance->mResolvedType->IsTuple());
-			auto tupleType = (BfTupleType*)fieldInstance->mResolvedType;
+			auto tupleType = (BfTypeInstance*)fieldInstance->mResolvedType;
 			PopulateType(tupleType);
 			mBfIRBuilder->PopulateType(tupleType);
 
@@ -6039,7 +6039,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			
 			if (varType->IsTuple())
 			{
-				auto tupleType = (BfTupleType*)varType;
+				auto tupleType = (BfTypeInstance*)varType;
 
 				for (int idx = 0; idx < BF_MIN((int)tupleExpr->mValues.size(), (int)tupleType->mFieldInstances.size()); idx++)
 				{					
@@ -6127,7 +6127,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		if (!tupleBinds.IsEmpty())
 		{			
 			BF_ASSERT(varType->IsTuple());
-			auto tupleType = (BfTupleType*)varType;
+			auto tupleType = (BfTypeInstance*)varType;
 
 			// Tuple binds			
 			needsValCopy = false;

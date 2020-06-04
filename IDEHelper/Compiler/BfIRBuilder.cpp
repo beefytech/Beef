@@ -1922,22 +1922,26 @@ BfIRMDNode BfIRBuilder::CreateNamespaceScope(BfType* type, BfIRMDNode fileDIScop
 
 String BfIRBuilder::GetDebugTypeName(BfTypeInstance* typeInstance, bool includeOuterTypeName)
 {
+	BfTypeNameFlags typeNameFlags = BfTypeNameFlag_AddGlobalContainerName;
+	if (!typeInstance->IsUnspecializedTypeVariation())
+		typeNameFlags = (BfTypeNameFlags)(typeNameFlags | BfTypeNameFlag_ResolveGenericParamNames);
+
 	String typeName;
 	if (typeInstance->IsBoxed())
 	{
 		BfBoxedType* boxedType = (BfBoxedType*)typeInstance;
-		typeName = mModule->TypeToString(boxedType->mElementType, (BfTypeNameFlags)(BfTypeNameFlag_ResolveGenericParamNames | BfTypeNameFlag_AddGlobalContainerName));
+		typeName = mModule->TypeToString(boxedType->mElementType, (BfTypeNameFlags)(typeNameFlags));
 		if (boxedType->IsBoxedStructPtr())
 			typeName += "*";
 		typeName = "Box<" + typeName + ">";
 	}	
 	else if (includeOuterTypeName)
-	{				
-		typeName = mModule->TypeToString(typeInstance, (BfTypeNameFlags)(BfTypeNameFlag_ResolveGenericParamNames | BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_AddGlobalContainerName));
+	{
+		typeName = mModule->TypeToString(typeInstance, (BfTypeNameFlags)(typeNameFlags | BfTypeNameFlag_OmitNamespace));
 	}
 	else
 	{
-		typeName = mModule->TypeToString(typeInstance, (BfTypeNameFlags)(BfTypeNameFlag_ResolveGenericParamNames | BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_AddGlobalContainerName | BfTypeNameFlag_OmitOuterType));
+		typeName = mModule->TypeToString(typeInstance, (BfTypeNameFlags)(typeNameFlags | BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
 	}
 
 	for (int i = 0; i < (int)typeName.length(); i++)

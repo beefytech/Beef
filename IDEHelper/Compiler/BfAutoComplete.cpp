@@ -893,7 +893,7 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 			bool hasPayload = false;
 			if ((fieldInst.mIsEnumPayloadCase) && (fieldInst.mResolvedType->IsTuple()))
 			{
-				auto payloadType = (BfTupleType*)fieldInst.mResolvedType;
+				auto payloadType = (BfTypeInstance*)fieldInst.mResolvedType;
 				if (!payloadType->mFieldInstances.empty())
 					hasPayload = true;
 			}
