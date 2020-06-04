@@ -929,6 +929,26 @@ String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[
 String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na, {mFieldInstances.mVals[3].mResolvedType,na}, ... )"
 
 [[Type]]
+Name = "Beefy::BfGenericTupleType"
+[[Type.DisplayString]]
+Condition = "mFieldInstances.mSize == 0"
+String = "( )"
+[[Type.DisplayString]]
+Condition = "mFieldInstances.mSize == 1"
+String = "( {mFieldInstances.mVals[0].mResolvedType,na} )"
+[[Type.DisplayString]]
+Condition = "mFieldInstances.mSize == 2"
+String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na} )"
+[[Type.DisplayString]]
+Condition = "mFieldInstances.mSize == 3"
+String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na} )"
+[[Type.DisplayString]]
+Condition = "mFieldInstances.mSize == 4"
+String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na, {mFieldInstances.mVals[3].mResolvedType,na} )"
+[[Type.DisplayString]]
+String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na, {mFieldInstances.mVals[3].mResolvedType,na}, ... )"
+
+[[Type]]
 Name = "Beefy::BfPrimitiveType"
 DisplayString = "{{{mTypeDef->mName,na}}}"
 
