@@ -317,6 +317,7 @@ public:
 	BfConstraintState* mCurConstraintState;
 	bool mResolvingVarField;
 	int mMappedObjectRevision;
+	bool mAssertOnPopulateType;
 
 	BfSystem* mSystem;
 	BfCompiler* mCompiler;		

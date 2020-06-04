@@ -881,6 +881,11 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			else
 				resolvedTypeRef->mTypeId = mCompiler->mCurTypeId++;
 
+			if ((resolvedTypeRef->mTypeId == 2599) && (!mCompiler->mIsResolveOnly))
+			{
+				NOP;
+			}
+
 			while (resolvedTypeRef->mTypeId >= (int)mContext->mTypes.size())
 				mContext->mTypes.Add(NULL);
 			mContext->mTypes[resolvedTypeRef->mTypeId] = resolvedTypeRef;
@@ -3648,6 +3653,13 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		}
 	}
 
+	bool isFailedType = mCurTypeInstance->mTypeFailed;
+	if (auto genericTypeInst = mCurTypeInstance->ToGenericTypeInstance())
+	{
+		if (genericTypeInst->mHadValidateErrors)
+			isFailedType = true;
+	}
+
 	// Generate all methods. Pass 1
 	for (auto methodDef : typeDef->mMethods)
 	{			
@@ -3655,6 +3667,12 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
 			continue;
+
+		if (isFailedType)
+		{
+			// We don't want method decls from failed generic types to clog up our type system
+			continue;
+		}
 
 		// This should still be set to the default value
 		BF_ASSERT(methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet);
@@ -4014,7 +4032,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		mCompiler->mHotState->mHasNewInterfaceTypes = true;		
 	}
 
-	if ((!typeInstance->IsInterface()) && (!typeInstance->IsUnspecializedTypeVariation()) && (!isBoxed))
+	if ((!typeInstance->IsInterface()) && (!typeInstance->IsUnspecializedTypeVariation()) && (!isBoxed) && (!isFailedType))
 	{
 		if (!typeInstance->mTypeDef->mIsAbstract)
 		{
@@ -4542,6 +4560,8 @@ BfUnknownSizedArrayType* BfModule::CreateUnknownSizedArrayType(BfType* resolvedT
 
 BfPointerType* BfModule::CreatePointerType(BfType* resolvedType)
 {
+	BF_ASSERT(!resolvedType->IsVar());
+
 	auto pointerType = mContext->mPointerTypePool.Get();
 	pointerType->mContext = mContext;
 	pointerType->mElementType = resolvedType;
@@ -6273,16 +6293,20 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	}
 
 	if (resolvedTypeRef == NULL)
-		return NULL;	
+		return NULL;		
 
-	if (resolvedTypeRef->IsTuple())
+	if (mCurTypeInstance == NULL)
+	{
+		// No deps
+	}
+	else if (resolvedTypeRef->IsTuple())
 	{
 		// Add the fields from the tuple as references since those inner fields types would have been explicitly stated, so we need
 		//  to make sure to record the current type instance as a referring type.  This mostly matters for symbol renaming.
 		BfTupleType* payloadTupleType = (BfTupleType*)resolvedTypeRef;
 		for (auto& payloadFieldInst : payloadTupleType->mFieldInstances)
 		{
-			auto payloadFieldType = payloadFieldInst.mResolvedType;
+			auto payloadFieldType = payloadFieldInst.mResolvedType;			
 			AddDependency(payloadFieldType, mCurTypeInstance, BfDependencyMap::DependencyFlag_TypeReference);
 		}
 	}
@@ -7408,7 +7432,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		if (leftType == NULL)
 		{
 			BfAutoParentNodeEntry autoParentNodeEntry(this, qualifiedTypeRef);
-			leftType = ResolveTypeRef(qualifiedTypeRef->mLeft, BfPopulateType_Declaration, BfResolveTypeRefFlag_IgnoreLookupError); // We throw an error below if we can't find the type
+			leftType = ResolveTypeRef(qualifiedTypeRef->mLeft, BfPopulateType_Identity, (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_IgnoreLookupError)); // We throw an error below if we can't find the type
 		}
 				
 		if (leftType == NULL)
@@ -7582,6 +7606,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
+	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & BfResolveTypeRefFlag_NoCreate);
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
@@ -7597,6 +7622,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	{
 		BF_ASSERT(resolvedEntry->mValue != NULL);
 		return ResolveTypeResult(typeRef, resolvedEntry->mValue, populateType, resolveFlags);
+	}
+
+	if ((resolveFlags & BfResolveTypeRefFlag_NoCreate) != 0)
+	{
+		mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+		return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 	}
 
 	BfModule* populateModule = this;
@@ -9724,7 +9755,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 
 		// Check type generic constraints
-		if ((mCurTypeInstance->IsGenericTypeInstance()) && (mCurTypeInstance->IsUnspecializedType()))
+		if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsGenericTypeInstance()) && (mCurTypeInstance->IsUnspecializedType()))
 		{
 			auto genericTypeInst = (BfGenericTypeInstance*)mCurTypeInstance;
 			for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericParams.size(); genericParamIdx++)

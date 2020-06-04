@@ -2052,6 +2052,8 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 	if ((mResolvePassData != NULL) && (mResolvePassData->mParser != NULL))
 		madeFullPass = false;
 
+	SetAndRestoreValue<bool> prevAssertOnPopulateType(mContext->mAssertOnPopulateType, deleteUnusued && madeFullPass);
+
 	if ((deleteUnusued) && (madeFullPass))
 	{
 		// Work queues should be empty if we're not canceling				
@@ -2077,7 +2079,12 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 				auto typeInst = type->ToTypeInstance();
 			
 				if (depType != NULL)
-				{					
+				{
+					if ((depType->mTypeId == 2574) && (!mIsResolveOnly) && (deleteUnusued))
+					{
+						NOP;
+					}
+
 					extern BfModule* gLastCreatedModule;
 						
 					for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end(); ++itr)
@@ -2145,12 +2152,9 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 
 								if ((depTypeInst != NULL) && (typeInst->mLastNonGenericUsedRevision != mRevision) && (isDependentUsage) &&
 									((isDirectReference) || (dependentType->IsUnspecializedType()) || (depTypeInst->mLastNonGenericUsedRevision == mRevision)))
-								{					
-									//if (deleteUnusued)
-									{
-										typeInst->mLastNonGenericUsedRevision = mRevision;
-										foundNew = true;
-									}
+								{									
+									typeInst->mLastNonGenericUsedRevision = mRevision;
+									foundNew = true;
 										
 									if (!typeInst->HasBeenReferenced())
 									{
@@ -8247,6 +8251,92 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeDefInfo(BfCompiler* bfCompil
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
 	outString = bfCompiler->GetTypeDefInfo(typeDefName);
+	return outString.c_str();
+}
+
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler, const char* name)
+{
+	String& outString = *gTLStrReturn.Get();
+	outString = "";
+
+	String typeName = name;
+
+	auto system = bfCompiler->mSystem;
+	AutoCrit autoCrit(system->mSystemLock);
+
+	String& autoCompleteResultString = *gTLStrReturn.Get();
+	autoCompleteResultString.Clear();
+
+	BfPassInstance passInstance(bfCompiler->mSystem);
+
+	BfParser parser(bfCompiler->mSystem);
+	parser.SetSource(typeName.c_str(), (int)typeName.length());
+	parser.Parse(&passInstance);
+
+	BfReducer reducer;
+	reducer.mAlloc = parser.mAlloc;
+	reducer.mPassInstance = &passInstance;
+	reducer.mAllowTypeWildcard = true;
+
+	if (parser.mRootNode->mChildArr.mSize == 0)
+		return false;
+
+	bool attribWasClosed = false;
+	bool isAttributeRef = false;
+	auto firstNode = parser.mRootNode->mChildArr[0];
+	auto endIdx = parser.mRootNode->mSrcEnd;
+	reducer.mVisitorPos = BfReducer::BfVisitorPos(parser.mRootNode);
+	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(firstNode))
+	{
+		if (tokenNode->mToken == BfToken_LBracket)
+		{
+			if (auto lastToken = BfNodeDynCast<BfTokenNode>(parser.mRootNode->mChildArr.back()))
+			{
+				if (lastToken->mToken == BfToken_RBracket)
+				{
+					attribWasClosed = true;
+					endIdx = lastToken->mSrcStart;
+				}
+			}
+
+			isAttributeRef = true;
+			if (parser.mRootNode->mChildArr.mSize < 2)
+				return false;
+			firstNode = parser.mRootNode->mChildArr[1];
+			reducer.mVisitorPos.MoveNext();
+		}
+	}
+
+	reducer.mVisitorPos.MoveNext();
+	auto typeRef = reducer.CreateTypeRef(firstNode);
+	if (typeRef == NULL)
+		return "";
+
+	BfResolvePassData resolvePass;
+	SetAndRestoreValue<bool> prevIgnoreError(bfCompiler->mContext->mScratchModule->mIgnoreErrors, true);
+	SetAndRestoreValue<bool> prevIgnoreWarnings(bfCompiler->mContext->mScratchModule->mIgnoreWarnings, true);
+	SetAndRestoreValue<BfResolvePassData*> prevResolvePass(bfCompiler->mResolvePassData, &resolvePass);	
+
+	auto type = bfCompiler->mContext->mScratchModule->ResolveTypeRef(typeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoCreate);
+	if (type != NULL)
+	{
+		outString += "Found";
+		if (auto typeInst = type->ToTypeInstance())
+		{
+			if (typeInst->mIsReified)
+				outString += " Reified";
+			if (typeInst->mHasBeenInstantiated)
+				outString += " Instantiated";
+			if (typeInst->mTypeFailed)
+				outString += " TypeFailed";
+			if (auto genericTypeInst = typeInst->ToGenericTypeInstance())
+			{
+				if (genericTypeInst->mHadValidateErrors)
+					outString += " ValidateErrors";
+			}
+		}
+	}
+
 	return outString.c_str();
 }
 

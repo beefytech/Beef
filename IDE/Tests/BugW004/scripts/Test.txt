@@ -1,0 +1,21 @@
+# This tests that types that fail generic tests don't create types referenced in methods
+# and also that they get deleted immediately when they are dereferenced.
+
+ShowFile("src/Program.bf")
+
+SetExpectError("Generic argument")
+Compile()
+ExpectError()
+
+AssertTypeInfo(1, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>", "Found Reified ValidateErrors")
+AssertTypeInfo(1, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>.Entry", "Found Reified ValidateErrors")
+
+ToggleCommentAt("Method3_BadCall")
+ToggleCommentAt("Method3_GoodCall")
+
+Compile()
+
+AssertTypeInfo(0, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>", "")
+AssertTypeInfo(0, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>.Entry", "")
+AssertTypeInfo(0, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>", "")
+AssertTypeInfo(0, "System.Collections.Dictionary<System.Collections.Dictionary<int, float>.Enumerator, (int key, float value)>.Entry", "")

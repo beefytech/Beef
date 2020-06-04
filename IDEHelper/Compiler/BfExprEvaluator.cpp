@@ -1369,9 +1369,9 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		
 		if (checkMethod->mMethodType == BfMethodType_Extension)
 		{
-			argIdx--;
-			paramOfs++;
+			argIdx--;			
 		}
+		paramIdx += paramOfs;
 
 		for ( ; argIdx < (int)mArguments.size(); argIdx++)
 		{
@@ -1845,7 +1845,8 @@ bool BfMethodMatcher::IsType(BfTypedValue& typedVal, BfType* type)
 
 // This method checks all base classes before checking interfaces.  Is that correct?
 bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue target, bool isFailurePass, bool forceOuterCheck)
-{	
+{
+	BfMethodDef* prevBesstMethodDef = mBestMethodDef;
 	auto curTypeInst = typeInstance;
 	auto curTypeDef = typeInstance->mTypeDef;
 		
@@ -2041,7 +2042,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 	if (mAutoFlushAmbiguityErrors)
 		FlushAmbiguityError();
 
-	return mBestMethodDef != NULL;
+	return mBestMethodDef != prevBesstMethodDef;
 }
 
 void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* origTarget, BfTypedValue* staticResult)
@@ -7155,9 +7156,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	{
 		auto checkTypeInst = mModule->mCurTypeInstance;		
 		methodMatcher.mMethodType = BfMethodType_Extension;
-		methodMatcher.CheckType(checkTypeInst, BfTypedValue(), false, true);
-		if (methodMatcher.mBestMethodDef != NULL)
-		{
+		if (methodMatcher.CheckType(checkTypeInst, BfTypedValue(), false, true))		
+		{			
 			isFailurePass = false;
 			curTypeInst = methodMatcher.mBestMethodTypeInstance;
 			methodDef = methodMatcher.mBestMethodDef;
@@ -7178,9 +7178,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				if (globalContainer.mTypeInst == NULL)
 					continue;
 				methodMatcher.mMethodType = wantsExtensionCheck ? BfMethodType_Extension : BfMethodType_Normal;
-				methodMatcher.CheckType(globalContainer.mTypeInst, BfTypedValue(), false);
-				
-				if (methodMatcher.mBestMethodDef != NULL)
+				if (methodMatcher.CheckType(globalContainer.mTypeInst, BfTypedValue(), false))				
 				{
 					isFailurePass = false;
 					curTypeInst = methodMatcher.mBestMethodTypeInstance;
@@ -7202,8 +7200,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			for (auto typeInst : staticSearch->mStaticTypes)
 			{
 				methodMatcher.mMethodType = wantsExtensionCheck ? BfMethodType_Extension : BfMethodType_Normal;
-				methodMatcher.CheckType(typeInst, BfTypedValue(), false);				
-				if (methodMatcher.mBestMethodDef != NULL)
+				if (methodMatcher.CheckType(typeInst, BfTypedValue(), false))				
 				{
 					isFailurePass = false;
 					curTypeInst = methodMatcher.mBestMethodTypeInstance;
@@ -11995,7 +11992,11 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	}
 	else
 	{
-		if ((!resolvedTypeRef->IsObjectOrInterface()) && (!resolvedTypeRef->IsGenericParam()))
+		if (resolvedTypeRef->IsVar())
+		{
+			// Leave as a var
+		}
+		else if ((!resolvedTypeRef->IsObjectOrInterface()) && (!resolvedTypeRef->IsGenericParam()))
 		{
 			resultType = mModule->CreatePointerType(resolvedTypeRef);
 		}

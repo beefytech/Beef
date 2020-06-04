@@ -4417,7 +4417,8 @@ namespace IDE
 			if (!mInitialized)
 				return;
 #if !CLI
-			mLastActivePanel = panel;
+			if (setFocus)
+				mLastActivePanel = panel;
 			RecordHistoryLocation();
 			ShowTab(panel, label, false, setFocus);
 			if (setFocus)
@@ -4580,7 +4581,7 @@ namespace IDE
 		[IDECommand]
 		public void ShowOutput()
 		{
-		    ShowPanel(mOutputPanel, "Output");
+		    ShowPanel(mOutputPanel, "Output", false);
 		}
 
 		[IDECommand]

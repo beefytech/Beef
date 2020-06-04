@@ -1514,6 +1514,17 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void AssertTypeInfo(int compilerId, String typeName, String wantTypeInfo)
+		{
+			String typeInfo = scope String();
+			var compiler = (compilerId == 0) ? gApp.mBfResolveCompiler : gApp.mBfBuildCompiler;
+			compiler.GetTypeInfo(typeName, typeInfo);
+
+			if (typeInfo != wantTypeInfo)
+				mScriptManager.Fail("Assert failed: {0} == {1}", typeInfo, wantTypeInfo);
+		}
+
+		[IDECommand]
 		public void AddWatch(String evalStr)
 		{
 			gApp.mWatchPanel.AddWatchItem(evalStr);

@@ -16,6 +16,23 @@ class BfTypeInstance;
 class BfContext;
 class BfCustomAttributes;
 
+enum BfResolveTypeRefFlags
+{
+	BfResolveTypeRefFlag_None = 0,
+	BfResolveTypeRefFlag_NoResolveGenericParam = 1,
+	BfResolveTypeRefFlag_AllowRef = 2,
+	BfResolveTypeRefFlag_AllowRefGeneric = 4,
+	BfResolveTypeRefFlag_IgnoreLookupError = 8,
+	BfResolveTypeRefFlag_AllowGenericTypeParamConstValue = 0x10,
+	BfResolveTypeRefFlag_AllowGenericMethodParamConstValue = 0x20,
+	BfResolveTypeRefFlag_AllowGenericParamConstValue = 0x10 | 0x20,
+	BfResolveTypeRefFlag_AutoComplete = 0x40,
+	BfResolveTypeRefFlag_FromIndirectSource = 0x80, // Such as a type alias or a generic parameter 
+	BfResolveTypeRefFlag_Attribute = 0x100,
+	BfResolveTypeRefFlag_NoReify = 0x200,
+	BfResolveTypeRefFlag_NoCreate = 0x400
+};
+
 enum BfTypeNameFlags : uint16
 {
 	BfTypeNameFlags_None = 0,
@@ -2348,16 +2365,18 @@ public:
 		BfTypeReference* mRootTypeRef;
 		BfTypeDef* mRootTypeDef;		
 		BfType* mResolvedType;		
+		BfResolveTypeRefFlags mResolveFlags;
 		bool mFailed;		
 
 	public:
 		LookupContext()
-		{			
+		{
 			mRootTypeRef = NULL;
 			mRootTypeDef = NULL;			
 			mModule = NULL;
 			mResolvedType = NULL;
 			mFailed = false;
+			mResolveFlags = BfResolveTypeRefFlag_None;
 		}
 
 		BfType* ResolveTypeRef(BfTypeReference* typeReference);

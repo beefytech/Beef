@@ -2991,6 +2991,16 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 	if (usedType->IsSpecializedByAutoCompleteMethod())
 		return;
 
+// 	if (usedType->IsBoxed())
+// 	{
+// 		NOP;
+// 		auto underlyingType = usedType->GetUnderlyingType()->ToTypeInstance();
+// 		if ((underlyingType != NULL) && (underlyingType->IsInstanceOf(mCompiler->mSizedArrayTypeDef)))
+// 		{
+// 			BfLogSysM("AddDependency UsedType:%p UserType:%p Method:%p\n", usedType, userType, mCurMethodInstance);
+// 		}
+// 	}
+
 	BfType* origUsedType = usedType;
 	bool isDataAccess = ((flags & (BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_Allocates)) != 0);
 	if (isDataAccess)
@@ -18581,6 +18591,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 		
 		BF_ASSERT(methodInstance->mMethodInfoEx != NULL);		
 		methodState.mGenericTypeBindings = &methodInstance->mMethodInfoEx->mGenericTypeBindings;
+		methodState.mMethodInstance = methodInstance;
 
 		NewScopeState();
 		ProcessMethod_SetupParams(methodInstance, NULL, false, NULL);

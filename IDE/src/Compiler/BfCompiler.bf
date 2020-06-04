@@ -99,6 +99,9 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetTypeDefInfo(void* bfCompiler, char8* typeDefName);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetTypeInfo(void* bfCompiler, char8* typeName);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_SetOptions(void* bfCompiler,
             void* hotProject, int32 hotIdx, char8* targetTriple, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
@@ -680,6 +683,11 @@ namespace IDE.Compiler
 		public void GetTypeDefInfo(String typeDefName, String outStr)
 		{
 			outStr.Append(BfCompiler_GetTypeDefInfo(mNativeBfCompiler, typeDefName));
+		}
+
+		public void GetTypeInfo(String typeDefName, String outStr)
+		{
+			outStr.Append(BfCompiler_GetTypeInfo(mNativeBfCompiler, typeDefName));
 		}
 
 		public void ClearBuildCache()

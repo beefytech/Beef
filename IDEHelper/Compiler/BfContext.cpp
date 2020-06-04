@@ -48,6 +48,7 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mCurTypeState = NULL;
 	mCurConstraintState = NULL;
 	mResolvingVarField = false;
+	mAssertOnPopulateType = false;
 	
 	for (int i = 0; i < BfTypeCode_Length; i++)
 	{
@@ -762,6 +763,8 @@ BfType * BfContext::FindTypeById(int typeId)
 
 void BfContext::AddTypeToWorkList(BfType* type)
 {
+	BF_ASSERT(!mAssertOnPopulateType);
+
 	BF_ASSERT((type->mRebuildFlags & BfTypeRebuildFlag_InTempPool) == 0);
 	if ((type->mRebuildFlags & BfTypeRebuildFlag_AddedToWorkList) == 0)
 	{		
@@ -1464,8 +1467,8 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 				}
 			}
 		}
-	}
-	
+	}		
+
 	type->mRebuildFlags = (BfTypeRebuildFlags)((type->mRebuildFlags | BfTypeRebuildFlag_Deleted) & ~BfTypeRebuildFlag_DeleteQueued);
 	SaveDeletingType(type);
 	
@@ -1529,6 +1532,19 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 
 			if ((dependencyEntry.mFlags & ~(BfDependencyMap::DependencyFlag_UnspecializedType | BfDependencyMap::DependencyFlag_WeakReference)) == 0)
 				continue; // Not a cause for rebuilding
+
+			if (dependentTypeInst->IsOnDemand())
+			{
+				// Force on-demand dependencies to rebuild themselves
+				DeleteType(dependentType, deferDepRebuilds);
+				continue;
+			}
+
+			if (dType->IsBoxed())
+			{
+				// Allow these to just be implicitly used. This solves some issues with switching between ignoreWrites settings in resolveOnly compilation
+				continue;
+			}
 
 			if ((deferDepRebuilds) && (dependentTypeInst != NULL))
 				mFailTypes.Add(dependentTypeInst);

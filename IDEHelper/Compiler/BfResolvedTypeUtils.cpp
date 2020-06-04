@@ -2335,7 +2335,7 @@ int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, 
 {
 	bool isHeadType = typeRef == ctx->mRootTypeRef;
 
-	BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None;
+	BfResolveTypeRefFlags resolveFlags = ctx->mResolveFlags;
 	if ((flags & BfHashFlag_AllowGenericParamConstValue) != 0)
 		resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowGenericParamConstValue);
 
@@ -2410,7 +2410,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 			BfTypeVector genericArgs;
 			for (auto genericArgTypeRef : genericInstTypeRef->mGenericArguments)
 			{
-				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, BfPopulateType_Identity);
+				auto argType = ctx->mModule->ResolveTypeRef(genericArgTypeRef, BfPopulateType_Identity, ctx->mResolveFlags);
 				if (argType != NULL)
 					genericArgs.Add(argType);
 				else
@@ -2602,7 +2602,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		}
 		else
 		{			
-			ctx->mModule->ResolveTypeRef(typeRef); // To throw an error...
+			ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, ctx->mResolveFlags); // To throw an error...
 			ctx->mFailed = true;
 			return 0;			
 			//return Hash(refType->mElementType, ctx);
@@ -2635,7 +2635,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		}
 		return Hash(rightType, ctx);*/
 
-		auto resolvedType = ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity);
+		auto resolvedType = ctx->mModule->ResolveTypeRef(typeRef, BfPopulateType_Identity, ctx->mResolveFlags);
 		if (resolvedType == NULL)
 		{
 			ctx->mFailed = true;
@@ -2663,7 +2663,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		//  Only use the HAS_RETTYPE for root-level rettype insertions
 		if (ctx->mRootTypeRef != retTypeTypeRef)
 		{
-			auto type = ctx->mModule->ResolveTypeRef(retTypeTypeRef);
+			auto type = ctx->mModule->ResolveTypeRef(retTypeTypeRef, BfPopulateType_Identity, ctx->mResolveFlags);
 			return Hash(type, ctx, flags);
 		}
 
@@ -2750,7 +2750,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 	}
 	else if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(typeRef))
 	{
-		ctx->mModule->ResolveTypeRef(dotTypeRef);
+		ctx->mModule->ResolveTypeRef(dotTypeRef, BfPopulateType_Identity, ctx->mResolveFlags);
 		ctx->mFailed = true;
 		return 0;
 	}
@@ -3016,7 +3016,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 				if (lhsGenericType->mTypeDef != ctx->mModule->mContext->mCompiler->mNullableTypeDef)
 					return false;
 
-				auto rhsElemType = ctx->mModule->ResolveTypeRef(rhsNullableTypeRef->mElementType, BfPopulateType_Identity);
+				auto rhsElemType = ctx->mModule->ResolveTypeRef(rhsNullableTypeRef->mElementType, BfPopulateType_Identity, ctx->mResolveFlags);
 				return lhsGenericType->mTypeGenericArguments[0] == rhsElemType;
 			}
 		}
@@ -3046,7 +3046,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 
 		if (auto rhsQualifiedTypeRef = BfNodeDynCastExact<BfQualifiedTypeReference>(rhs))
 		{			
-			auto rhsRightType = ctx->mModule->ResolveTypeRef(rhs, BfPopulateType_Identity);
+			auto rhsRightType = ctx->mModule->ResolveTypeRef(rhs, BfPopulateType_Identity, ctx->mResolveFlags);
 			return rhsRightType == lhsGenericType;
 		}
 		
