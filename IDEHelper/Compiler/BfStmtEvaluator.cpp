@@ -5874,7 +5874,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		auto targetTypeInstance = target.mType->ToTypeInstance();		
 				
 		itr = target;
-		bool hadGetEnumeratorType;
+		bool hadGetEnumeratorType = false;
 
 		if (targetTypeInstance != NULL)
 		{
