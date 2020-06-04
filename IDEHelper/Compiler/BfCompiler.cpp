@@ -8301,7 +8301,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 
 			isAttributeRef = true;
 			if (parser.mRootNode->mChildArr.mSize < 2)
-				return false;
+				return "";
 			firstNode = parser.mRootNode->mChildArr[1];
 			reducer.mVisitorPos.MoveNext();
 		}
