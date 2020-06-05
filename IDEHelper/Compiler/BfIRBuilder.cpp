@@ -2307,6 +2307,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 
 		if (type->IsTypedPrimitive())
 		{
+			mModule->PopulateType(type);
 			auto underlyingType = type->GetUnderlyingType();			
 			irType = MapType(underlyingType);		
 			SetType(type, irType);
@@ -2508,6 +2509,9 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 
 							bool wasMadeAddr = false;
 							
+							StringT<128> staticVarName;
+							BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
+
 							String fieldName = fieldDef->mName;
 							BfIRValue intConstant;
 							if (constant != NULL)
@@ -2517,27 +2521,30 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 									continue;
 
 								if ((constant->mConstType == BfConstType_Array) ||
-									(constant->mConstType == BfConstType_AggZero))
+									(constant->mConstType == BfConstType_AggZero) ||
+									(constant->mTypeCode == BfTypeCode_NullPtr))
 								{										
 									staticValue = ConstToMemory(staticValue);
 									wasMadeAddr = true;									
-								}
+								}								
 								else if (resolvedFieldType->IsPointer())
 								{
 									int stringId = constant->mInt32;
 									const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
 									staticValue = mModule->GetStringCharPtr(str);
-								}
-								else
+								}								
+								else if (constant->mTypeCode == BfTypeCode_StringId)
 								{
 									int stringId = constant->mInt32;									
 									const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
 									staticValue = mModule->GetStringObjectValue(str);																		
 								}
+								else
+								{
+									mModule->FatalError(StrFormat("Invalid constant type for %s", staticVarName.c_str()));
+								}
 							}
-
-							StringT<128> staticVarName;
-							BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
+							
 							if (!useIntConstant)
 							{								
 								auto useType = resolvedFieldType;
@@ -3431,6 +3438,8 @@ BfIRValue BfIRBuilder::ConstToMemory(BfIRValue constVal)
 	if (constant->mConstType == BfConstType_Array)
 		constType = ((BfConstantArray*)constant)->mType;
 	else if (constant->mConstType == BfConstType_AggZero)
+		constType = constant->mIRType;
+	else if (constant->mTypeCode == BfTypeCode_NullPtr)
 		constType = constant->mIRType;
 	else
 		BF_FATAL("Invalid const type for ConstToMemory");

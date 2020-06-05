@@ -2080,11 +2080,6 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 			
 				if (depType != NULL)
 				{
-					if ((depType->mTypeId == 2574) && (!mIsResolveOnly) && (deleteUnusued))
-					{
-						NOP;
-					}
-
 					extern BfModule* gLastCreatedModule;
 						
 					for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end(); ++itr)
