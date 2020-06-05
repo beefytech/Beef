@@ -183,6 +183,20 @@ namespace IDE.ui
 					delete verSpec;
 					return;
 				}
+				if (project.mProjectName != entry.mName)
+				{
+					gApp.OutputLineSmart("WARNING: Project directory name '{}' does not match project name '{}' specified in '{}'.\n Project will be referenced by relative path rather than by name.", entry.mName, project.mProjectName, project.mProjectPath);
+
+					String relProjectPath = scope .();
+					Path.GetRelativePath(project.mProjectDir, gApp.mWorkspace.mDir, relProjectPath);
+					for (var projectSpec in gApp.mWorkspace.mProjectSpecs)
+					{
+						if (projectSpec.mProjectName == project.mProjectName)
+						{
+							projectSpec.mVerSpec.SetPath(relProjectPath);
+						}
+					}
+				}
 				project.mLocked = true;
 				project.mLockedDefault = true;
 			}
