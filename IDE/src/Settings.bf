@@ -309,6 +309,7 @@ namespace IDE
 			public float mUIScale = 100;
 			public Colors mColors = new .() ~ delete _;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
+			public bool mAutoCompleteRequireControl = true;
 			public bool mAutoCompleteRequireTab = false;
 			public bool mAutoCompleteOnEnter = true;
 			public bool mAutoCompleteShowDocumentation = true;
@@ -331,6 +332,7 @@ namespace IDE
 				sd.Add("FontSize", mFontSize);
 				sd.Add("UIScale", mUIScale);
 				sd.Add("AutoCompleteShowKind", mAutoCompleteShowKind);
+				sd.Add("AutoCompleteRequireControl", mAutoCompleteRequireControl);
 				sd.Add("AutoCompleteRequireTab", mAutoCompleteRequireTab);
 				sd.Add("AutoCompleteOnEnter", mAutoCompleteOnEnter);
 				sd.Add("AutoCompleteShowDocumentation", mAutoCompleteShowDocumentation);
@@ -359,6 +361,7 @@ namespace IDE
 				sd.Get("FontSize", ref mFontSize);
 				sd.Get("UIScale", ref mUIScale);
 				sd.Get("AutoCompleteShowKind", ref mAutoCompleteShowKind);
+				sd.Get("AutoCompleteRequireControl", ref mAutoCompleteRequireControl);
 				sd.Get("AutoCompleteRequireTab", ref mAutoCompleteRequireTab);
 				sd.Get("AutoCompleteOnEnter", ref mAutoCompleteOnEnter);
 				sd.Get("AutoCompleteShowDocumentation", ref mAutoCompleteShowDocumentation);
