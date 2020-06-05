@@ -59,7 +59,7 @@ namespace IDE.ui
 		    AddCategoryItem(root, "Debugger");
 			AddCategoryItem(root, "Visual Studio");
 
-			if (gApp.mSettings.mVSSettings.IsConfigured())
+			if (!gApp.mSettings.mVSSettings.IsConfigured())
 				gApp.mSettings.mVSSettings.SetDefaults();
 			if (gApp.mSettings.mVSSettings.IsConfigured())
 				mHideVSHelper = true;
