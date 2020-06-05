@@ -618,6 +618,13 @@ namespace IDE.ui
 			DeleteAndNullify!(mQueuedAutoComplete);
 		}
 
+		public void CloseAutocomplete()
+		{
+			var editWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
+			if (editWidgetContent.mAutoComplete != null)
+				editWidgetContent.mAutoComplete.Close();
+		}
+
         void SetupEditWidget()
         {
 			if (mEditWidget.mParent == null)
@@ -2391,8 +2398,8 @@ namespace IDE.ui
 #endif
         }
 
-        public override void RemovedFromParent(Widget previousParent, WidgetWindow window)
-        {
+		protected override void RemovedFromWindow()
+		{
 			if (mHoverWatch != null)
 				mHoverWatch.Close();
 
@@ -2406,8 +2413,8 @@ namespace IDE.ui
 					sourceEditWidgetContent.mAutoComplete.Close();
 			}
 
-            base.RemovedFromParent(previousParent, window);
-            CloseOldVersion();
+			base.RemovedFromWindow();
+			CloseOldVersion();
 
 			if (NeedsPostRemoveUpdate)
 			{

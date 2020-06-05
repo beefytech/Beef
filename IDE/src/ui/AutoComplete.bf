@@ -2142,6 +2142,8 @@ namespace IDE.ui
 				if ((mAutoCompleteListWidget != null) && (mAutoCompleteListWidget.mWidgetWindow == null))
 				{
 					mAutoCompleteListWidget.Cleanup();
+					if (mListWindow?.mRootWidget == mAutoCompleteListWidget)
+						mListWindow.mRootWidget = null;
 					delete mAutoCompleteListWidget;
 				}
 				
@@ -2154,6 +2156,8 @@ namespace IDE.ui
 				if ((mInvokeWidget != null) && (mInvokeWidget.mWidgetWindow == null))
 				{
 					mInvokeWidget.Cleanup();
+					if (mInvokeWindow?.mRootWidget == mInvokeWidget)
+						mInvokeWindow.mRootWidget = null;
 					delete mInvokeWidget;
 				}
 

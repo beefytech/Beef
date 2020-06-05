@@ -218,6 +218,23 @@ namespace IDE.ui
 		bool mHasCustomColors;
 		FastCursorState mFastCursorState ~ delete _;
 
+		
+		public List<PersistentTextPosition> PersistentTextPositions
+		{
+			get
+			{
+				return ((Data)mData).mPersistentTextPositions;
+			}
+		}
+
+		public Data	Data
+		{
+			get
+			{
+				return (Data)mData;
+			}
+		}
+
         public this(EditWidgetContent refContent = null) : base(refContent)
         {            
             mAllowVirtualCursor = true;
@@ -244,22 +261,6 @@ namespace IDE.ui
 		protected override EditWidgetContent.Data CreateEditData()
 		{
 			return new Data();
-		}
-
-		public List<PersistentTextPosition> PersistentTextPositions
-		{
-			get
-			{
-				return ((Data)mData).mPersistentTextPositions;
-			}
-		}
-        
-		public Data	Data
-		{
-			get
-			{
-				return (Data)mData;
-			}
 		}
 
 		[CallingConvention(.Stdcall), CLink]
