@@ -6020,6 +6020,8 @@ namespace IDE
 				{
 					sysMenu.mOnMenuItemSelected.Add(new (evt) => ShowRecentFile(recentKind, idx));
 				});
+
+			entry.mMenu.SetDisabled(entry.mMenuItems.Count == 0);
 		}
 
 		public void UpdateRecentFileMenuItems()
