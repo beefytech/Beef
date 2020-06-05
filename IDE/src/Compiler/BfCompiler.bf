@@ -390,7 +390,6 @@ namespace IDE.Compiler
 					if (projectSource.mIncludeKind != .Ignore)
 					{
 						BfProject bfProject = null;
-
 	                    using (projectSource.mProject.mMonitor.Enter())
 	                    {
 	                        projectSourceCommand.mProjectSource.GetFullImportPath(sourceFilePath);
@@ -454,10 +453,8 @@ namespace IDE.Compiler
 						if (hash case .MD5(let md5Hash))
 							bfParser.SetHashMD5(md5Hash);
 
-						//passInstance.SetProject(bfProject);
 						worked &= bfParser.Parse(passInstance, false);
 						worked &= bfParser.Reduce(passInstance);
-						//passInstance.SetProject(bfProject);
 	                    worked &= bfParser.BuildDefs(passInstance, null, false);
 
 						passKind = .Parse;

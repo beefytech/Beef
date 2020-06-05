@@ -1234,6 +1234,7 @@ namespace IDE.ui
 					    }
 					});
 
+				project.mRootFolder.Dispose();
 			    RemoveProject(project);
 				return;
 			}

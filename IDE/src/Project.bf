@@ -447,6 +447,14 @@ namespace IDE
 				StopWatching();
 		}
 
+		public override void Dispose()
+		{
+			for (var item in mChildItems)
+			{
+				item.Dispose();
+			}
+		}
+
         public void GetRelDir(String path)
         {
 			if (mPath != null)
