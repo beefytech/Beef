@@ -18,7 +18,7 @@ namespace System
 
 		public override void ToString(String strBuffer)
 		{
-			strBuffer.AppendF("0x{0:P}", (uint)(void*)mVal);
+			strBuffer.AppendF("0x{0:A}", (uint)(void*)mVal);
 		}
 	}
 
@@ -35,7 +35,7 @@ namespace System
 		{
 			strBuffer.Append("(");
 			typeof(T).GetFullName(strBuffer);
-			strBuffer.AppendF("*)0x{0:P}", (uint)(void*)mVal);
+			strBuffer.AppendF("*)0x{0:A}", (uint)(void*)mVal);
 		}
 	}
 }

@@ -1297,7 +1297,7 @@ namespace System
 			_defPrecision = defPrecision;
 			_positive = value >= 0;
 
-			if (value == 0 || _specifier == 'X') {
+			if (value == 0 || _specifier == 'X' || _specifier == 'A') {
 				InitHex ((uint64)value);
 				return;
 			}
@@ -1314,7 +1314,7 @@ namespace System
 			_defPrecision = defPrecision;
 			_positive = true;
 
-			if (value == 0 || _specifier == 'X') {
+			if (value == 0 || _specifier == 'X' || _specifier == 'A') {
 				InitHex (value);
 				return;
 			}
@@ -1330,7 +1330,7 @@ namespace System
 			_defPrecision = Int64DefPrecision;
 			_positive = value >= 0;
 
-			if (value == 0 || _specifier == 'X') {
+			if (value == 0 || _specifier == 'X' || _specifier == 'A') {
 				InitHex ((uint64)value);
 				return;
 			}
@@ -1347,7 +1347,7 @@ namespace System
 			_defPrecision = UInt64DefPrecision;
 			_positive = true;
 
-			if (value == 0 || _specifier == 'X') {
+			if (value == 0 || _specifier == 'X' || _specifier == 'A') {
 				InitHex ((uint64)value);
 				return;
 			}
@@ -1809,7 +1809,10 @@ namespace System
 		private void IntegerToString (StringView format, IFormatProvider fp, String outString)
 		{
 			NumberFormatInfo nfi = GetNumberFormatInstance (fp);
-			switch (_specifier) {
+			switch (_specifier)
+			{
+			case 'A':
+				FormatAddress(outString);
 			case 'C':
 				FormatCurrency (_precision, nfi, outString);
 			case 'D':
@@ -2040,6 +2043,33 @@ namespace System
 				val >>= 4;
 			}
 			outString.Append(_cbuf, 0, _ind);
+		}
+
+		private void FormatAddress(String outString)
+		{
+			char8* digits = _specifierIsUpper ? &DigitUpperTable : &DigitLowerTable;
+
+			const int bufLen = 18;
+			char8* strChars = scope:: char8[bufLen]* (?);	
+			int32 curLen = 0;	
+			uint64 valLeft = _val1 | ((uint64)_val2 << 32);
+			while (valLeft > 0)	
+			{	
+				if (curLen == 8)	
+					strChars[bufLen - curLen++ - 1] = '\'';	
+			    strChars[bufLen - curLen++ - 1] = digits[(int)(valLeft & 0xF)];	
+			    valLeft >>= 4;	
+			}	
+
+			while (curLen < 10)	
+			{	
+				if (curLen == 8)	
+					strChars[bufLen - curLen++ - 1] = '\'';	
+				strChars[bufLen - curLen++ - 1] = '0';	
+			}	
+
+			char8* char8Ptr = &strChars[bufLen - curLen];	
+			outString.Append(char8Ptr, curLen);
 		}
 
 		void FormatFixedPoint (int32 precision, NumberFormatInfo nfi, String outString)
