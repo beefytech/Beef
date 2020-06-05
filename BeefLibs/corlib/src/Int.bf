@@ -2,7 +2,7 @@ using System;
 
 namespace System
 {
-	struct Int : int, IInteger, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable
+	struct Int : int, IInteger, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
     {
 		public enum ParseError
 		{
@@ -29,6 +29,16 @@ namespace System
 		public static Self operator-(Self value)
 		{
 			return (SelfBase)value;
+		}
+
+		public static Self operator*(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs * (SelfBase)rhs;
+		}
+
+		public static Self operator/(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs / (SelfBase)rhs;
 		}
 
 		public int GetHashCode()

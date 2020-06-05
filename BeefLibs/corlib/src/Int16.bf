@@ -1,6 +1,6 @@
 namespace System
 {
-	struct Int16 : int16, IInteger, ISigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable
+	struct Int16 : int16, IInteger, ISigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
 	{
 		public const int32 MaxValue = 0x7FFF;
 		public const int32 MinValue = -0x8000;
@@ -23,6 +23,16 @@ namespace System
 		public static Self operator-(Self value)
 		{
 			return (SelfBase)value;
+		}
+
+		public static Self operator*(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs * (SelfBase)rhs;
+		}
+
+		public static Self operator/(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs / (SelfBase)rhs;
 		}
 
 		public int GetHashCode()

@@ -48,6 +48,16 @@ namespace System
 		static Self operator-(Self lhs, Self rhs);
 	}
 
+	interface IOpMultiplicable 
+	{
+		static Self operator*(Self lhs, Self rhs);
+	}
+
+	interface IOpDividable
+	{
+		static Self operator/(Self lhs, Self rhs);
+	}
+
 	interface IOpNegatable
 	{
 		static Self operator-(Self value);

@@ -9,7 +9,7 @@ namespace System
     using System.Diagnostics.Contracts;
 	using System.Diagnostics;
     
-    public struct Double : double, IFloating, ISigned, IFormattable, IHashable, IOpComparable, IOpNegatable, ICanBeNaN
+    public struct Double : double, IFloating, ISigned, IFormattable, IHashable, IOpComparable, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable, ICanBeNaN
     {
         public const double MinValue = -1.7976931348623157E+308;
         public const double MaxValue = 1.7976931348623157E+308;
@@ -32,6 +32,26 @@ namespace System
         {
             return (double)value;
         }
+
+		public static Self operator+(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs + (SelfBase)rhs;
+		}
+
+		public static Self operator-(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs - (SelfBase)rhs;
+		}
+
+		public static Self operator*(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs * (SelfBase)rhs;
+		}
+
+		public static Self operator/(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs / (SelfBase)rhs;
+		}
 
 		public int GetHashCode()
 		{

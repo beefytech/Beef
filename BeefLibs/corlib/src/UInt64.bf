@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace System
 {
-	struct UInt64 : uint64, IInteger, IUnsigned, IHashable, IOpComparable, IIsNaN, IFormattable, IOpAddable, IOpSubtractable
+	struct UInt64 : uint64, IInteger, IUnsigned, IHashable, IOpComparable, IIsNaN, IFormattable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
 	{
 		public const uint64 MaxValue = 0xFFFFFFFFFFFFFFFFUL;
 		public const uint64 MinValue = 0;
@@ -27,6 +27,16 @@ namespace System
 		public static Self operator-(Self lhs, Self rhs)
 		{
 			return (SelfBase)lhs - (SelfBase)rhs;
+		}
+
+		public static Self operator*(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs * (SelfBase)rhs;
+		}
+
+		public static Self operator/(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs / (SelfBase)rhs;
 		}
 
 	    public int GetHashCode()
