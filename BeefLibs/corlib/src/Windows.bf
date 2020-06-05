@@ -1159,6 +1159,37 @@ namespace System
 		  ACL*                 pSacl
 		);
 
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern uint32 GetExplicitEntriesFromAclW(
+		  ACL*               	pacl,
+		  uint32*	            pcCountOfExplicitEntries,
+		  EXPLICIT_ACCESS_W** 	pListOfExplicitEntries
+		);
+
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern uint32 GetEffectiveRightsFromAclW(
+		  ACL*         pacl,
+		  TRUSTEE_W*   pTrustee,
+		  uint32* 	   pAccessRights
+		);
+
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern IntBool LookupAccountSidW(
+		  char16*      lpSystemName,
+		  SID*          Sid,
+		  char16*       Name,
+		  uint32*       cchName,
+		  char16*         ReferencedDomainName,
+		  uint32*       cchReferencedDomainName,
+		  int* 		    peUse
+		);
+
+		[Import("advapi32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern IntBool ConvertStringSidToSidW(
+		  char16* StringSid,
+		  SID** Sid
+		);
+
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern void LocalFree(void* ptr);
 
