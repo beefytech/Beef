@@ -5073,6 +5073,9 @@ void BfCompiler::PopulateReified()
 						break;
 					}
 
+					if (checkType->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
+						break;
+
 					for (auto& ifaceTypeInst : checkType->mInterfaces)
 					{
 						auto ifaceInst = ifaceTypeInst.mInterfaceType;
