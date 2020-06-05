@@ -62,28 +62,34 @@ namespace System.Text
 			return (c, trailingBytes + 1);
 		}
 
-		public static Result<(char32, int32)> TryDecode(char8* buf, int bufSize)
+		public enum DecodeError
+		{
+			case BufferTooSmall(int neededSize);
+			case InvalidData;
+		}
+
+		public static Result<(char32, int32), DecodeError> TryDecode(char8* buf, int bufSize)
 		{
 			char32 c = *buf;
 			int8 trailingBytes = UTF8.sTrailingBytesForUTF8[c];
 			if (trailingBytes > bufSize)
-				return .Ok(((char32)-1, trailingBytes + 1));
+				return .Err(.BufferTooSmall(trailingBytes + 1));
 
 			switch (trailingBytes)
 			{
 			case 1:
 				char8 c2 = buf[1];
 				if (((uint8)c2 & 0xC0) != 0x80)
-					return .Err;
+					return .Err(.InvalidData);
 				c <<= 6;
 				c += (int32)c2;
 			case 2:
 				char8 c2 = buf[1];
 				if (((uint8)c2 & 0xC0) != 0x80)
-					return .Err;
+					return .Err(.InvalidData);
 				char8 c3 = buf[2];
 				if (((uint8)c3 & 0xC0) != 0x80)
-					return .Err;
+					return .Err(.InvalidData);
 				c <<= 6;
 				c += (int32)c2;
 				c <<= 6;
@@ -91,13 +97,13 @@ namespace System.Text
 			case 3:
 				char8 c2 = buf[1];
 				if (((uint8)c2 & 0xC0) != 0x80)
-					return .Err;
+					return .Err(.InvalidData);
 				char8 c3 = buf[2];
 				if (((uint8)c3 & 0xC0) != 0x80)
-					return .Err;
+					return .Err(.InvalidData);
 				char8 c4 = buf[3];
 				if (((uint8)c4 & 0xC0) != 0x80)
-					return .Err;
+					return .Err(.InvalidData);
 				c <<= 6;
 				c += (int32)c2;
 				c <<= 6;
