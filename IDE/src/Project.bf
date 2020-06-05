@@ -38,11 +38,11 @@ namespace IDE
         public String mName = new String() ~ delete _;
         public String mComment = new String() ~ delete _;
 
-		public bool IncludeInMap
+		public virtual bool IncludeInMap
 		{
 			get
 			{
-				return mIncludeKind != .Manual;
+				return true;
 			}
 		}
 
@@ -113,6 +113,18 @@ namespace IDE
 	{
 		public String mPath ~ delete _;
 		public bool mIsWatching;
+
+		public override bool IncludeInMap
+		{
+			get
+			{
+				if ((mPath == null) || (mParentFolder.mPath == null))
+					return true;
+				String dirPath = scope .();
+				Path.GetDirectoryPath(mPath, dirPath);
+				return Path.Equals(dirPath, mParentFolder.mPath);
+			}
+		}
 
 		public this()
 		{
@@ -2010,10 +2022,12 @@ namespace IDE
 			if (!IsSingleFile)
 			{
 				mRootFolder.mPath = new String("src");
-				if (Directory.Exists(scope String(mProjectDir, "/src")))
+				using (data.Open("ProjectFolder"))
+					mRootFolder.Deserialize(data);
+				/*if (Directory.Exists(scope String(mProjectDir, "/src")))
 				{
 					mRootFolder.Populate("src");
-				}
+				}*/
 			}
 			else
 			{
@@ -2028,10 +2042,11 @@ namespace IDE
 				srcFile.mPath = new String(CompositeFile.sMainFileName);
 				srcFile.mName.Set(CompositeFile.sMainFileName);
 				mRootFolder.AddChild(srcFile);
+
+				using (data.Open("ProjectFolder"))
+					mRootFolder.Deserialize(data);
 			}
 
-			using (data.Open("ProjectFolder"))
-			    mRootFolder.Deserialize(data);
 			mRootFolder.StartWatching();
         }
 

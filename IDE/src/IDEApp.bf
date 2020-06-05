@@ -8225,8 +8225,16 @@ namespace IDE
 
 		public bool IsProjectSourceEnabled(ProjectSource projectSource)
 		{
-			if (projectSource.mIncludeKind == .Ignore)
-				return false;
+			ProjectItem checkItem = projectSource;
+			while (checkItem != null)
+			{
+				if (checkItem.mIncludeKind == .Manual)
+					break;
+				if (checkItem.mIncludeKind == .Ignore)
+					return false;
+				checkItem = checkItem.mParentFolder;
+			}
+
 			if (!IsProjectEnabled(projectSource.mProject))
 				return false;
 			return true;
@@ -12204,7 +12212,7 @@ namespace IDE
 			{
 				if (projectItem.mIncludeKind == .Auto)
 				{
-					mProjectPanel?.DoDeleteItem(listViewItem, null, true);
+					mProjectPanel?.DoDeleteItem(listViewItem, null, .ForceRemove);
 				}
 			}
 			else if (changeType == .FileCreated)

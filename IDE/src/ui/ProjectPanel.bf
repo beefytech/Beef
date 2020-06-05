@@ -354,6 +354,7 @@ namespace IDE.ui
         public ProjectListViewItem AddProjectItem(ProjectItem projectItem, ProjectListViewItem existingListViewItem = null)
         {
             var projectSource = projectItem as ProjectSource;
+
             ProjectListViewItem listViewItem = null;
             if ((projectSource != null) && (gApp.IsProjectSourceEnabled(projectSource)))
             {
@@ -474,10 +475,14 @@ namespace IDE.ui
 				projectSource.mProject = projectFolder.mProject;
 				projectSource.mName.Set(fileName);
 
-				projectSource.mPath = new String();
-				projectSource.mPath.Append(projectFolder.mPath);
-				projectSource.mPath.Append("/");
-				projectSource.mPath.Append(fileName);
+				//if (projectFolder.mPath != null)
+				{
+					projectSource.mPath = new String();
+					projectSource.mPath.Append(projectFolder.mPath);
+					projectSource.mPath.Append("/");
+					projectSource.mPath.Append(fileName);
+				}
+				projectSource.mIncludeKind = .Auto;
 				projectFolder.AddChild(projectSource);
 
 				AddProjectItem(projectSource);
@@ -521,6 +526,7 @@ namespace IDE.ui
 				childProjectFolder.mPath.Append("/");
 				childProjectFolder.mPath.Append(dirName);
 				childProjectFolder.mAutoInclude = true;
+				childProjectFolder.mIncludeKind = .Auto;
 				projectFolder.AddChild(childProjectFolder);
 
 				if (clearAutoItems)
@@ -549,7 +555,7 @@ namespace IDE.ui
 						((clearAutoItems) && (child.mIncludeKind == .Auto) && (!foundAutoItems.Contains(child))))
 					{
 						var listItem = mProjectToListViewMap[child];
-						DoDeleteItem(listItem, null, true);
+						DoDeleteItem(listItem, null, .ForceRemove);
 						continue;
 					}
 
@@ -1144,13 +1150,13 @@ namespace IDE.ui
 			var projectSource = projectItem as ProjectSource;
 			if (projectSource != null)
 			{
-				bool isProjectEnabled = gApp.IsProjectSourceEnabled(projectSource);
+				bool isProjectSourceEnabled = gApp.IsProjectSourceEnabled(projectSource);
 
 			    String fullPath = scope String();
 			    projectSource.GetFullImportPath(fullPath);
 				gApp.mWorkspace.mForceNextCompile = true;
 
-			    if ((IDEApp.IsBeefFile(fullPath)) && (isProjectEnabled))
+			    if ((IDEApp.IsBeefFile(fullPath)) && (isProjectSourceEnabled))
 			    {
 					var compilers = scope List<BfCompiler>();
 					IDEApp.sApp.GetBfCompilers(compilers);
@@ -1179,7 +1185,7 @@ namespace IDE.ui
 			            }
 			        });
 
-				if (isProjectEnabled)
+				if (isProjectSourceEnabled)
 				{
 					if (isRemovingProjectSource)
 					{
@@ -1196,7 +1202,14 @@ namespace IDE.ui
 
 		}
 
-        public void DoDeleteItem(ListViewItem listItem, delegate bool(String path) deletePathFunc, bool forceRemove = false)
+		enum DeleteItemKind
+		{
+			Normal,
+			ForceRemove,
+			Ignore
+		}
+
+        public void DoDeleteItem(ListViewItem listItem, delegate bool(String path) deletePathFunc, DeleteItemKind deleteKind = .Normal)
         {
 			var projectItemRoot = mListViewToProjectMap[listItem];
 			var projectItem = projectItemRoot;
@@ -1228,7 +1241,12 @@ namespace IDE.ui
             if (listItem.mChildItems != null)
             {
 				for (int childIdx = listItem.mChildItems.Count - 1; childIdx >= 0; childIdx--)
-                    DoDeleteItem(listItem.mChildItems[childIdx], deletePathFunc, true);
+                {
+					var childDeleteKind = deleteKind;
+					if (childDeleteKind == .Normal)
+						childDeleteKind = .ForceRemove;
+					DoDeleteItem(listItem.mChildItems[childIdx], deletePathFunc, childDeleteKind);
+				}
             }
 			
             if (projectItem == null)
@@ -1236,7 +1254,7 @@ namespace IDE.ui
 
 			bool doReleaseRef = false;
 			bool didRemove = false;
-			if ((forceRemove) || (projectItem.mParentFolder == null) || (projectItem.mParentFolder.mIncludeKind == .Manual) || (projectItem.mIncludeKind == .Manual) || (deletePathFunc != null))
+			if ((deleteKind == .ForceRemove) || (projectItem.mParentFolder == null) || (projectItem.mParentFolder.mIncludeKind == .Manual) || (projectItem.mIncludeKind == .Manual) || (deletePathFunc != null))
 			{
 				bool doRemove = true;
 
@@ -1267,17 +1285,6 @@ namespace IDE.ui
 			}
 			else
 			{
-				// Mark item as ignored - note, this was removed at some point. Why? Did this trigger some bug?
-				ProjectItem.IncludeKind includeKind = .Ignore;
-				if (projectItem.mParentFolder.mIncludeKind == .Ignore)
-					includeKind = .Auto;
-
-				if (projectItem.mIncludeKind != includeKind)
-				{
-					projectItem.mIncludeKind = includeKind;
-					projectItem.mProject.SetChanged();
-				}
-				
 				if (let projectSource = projectItem as ProjectSource)
 				{
 					String path = scope .();
@@ -2124,11 +2131,10 @@ namespace IDE.ui
 								{
 									ProjectItem projectItem;
                                     mListViewToProjectMap.TryGetValue(selectedItem, out projectItem);
-									DoDeleteItem(selectedItem, null);
+									DoDeleteItem(selectedItem, null, .Ignore);
 									if (projectItem != null)
 									{
-										//ProjectItemUnregister(projectItem);
-                                        projectItem.mIncludeKind = .Ignore;
+									    projectItem.mIncludeKind = .Ignore;
 										projectItem.mProject.SetChanged();
 									}
 								}
@@ -2214,7 +2220,7 @@ namespace IDE.ui
 												if (childItem.mIncludeKind == .Auto)
 												{
 													let listViewItem = (ProjectListViewItem)mProjectToListViewMap[childItem];
-													DoDeleteItem(listViewItem, null, true);
+													DoDeleteItem(listViewItem, null, .ForceRemove);
 												}
 											}
 										}
