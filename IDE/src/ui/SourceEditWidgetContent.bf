@@ -2811,30 +2811,32 @@ namespace IDE.ui
                 mSelection = null;
             }
 
-            if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)) &&
-                (mWidgetWindow.IsKeyDown(KeyCode.Control)))
+            if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
             {
-                if (mAutoComplete != null)
-                {
-                    if (mAutoComplete.mAutoCompleteListWidget != null)
-                    {
-                        int32 pageSize = (int32)(mAutoComplete.mAutoCompleteListWidget.mScrollContentContainer.mHeight / mAutoComplete.mAutoCompleteListWidget.mItemSpacing - 0.5f);
-                        int32 moveDir = 0;
-                        switch (keyCode)
-                        {
-                        case KeyCode.Up: moveDir = -1; break;
-                        case KeyCode.Down: moveDir = 1; break;
-                        case KeyCode.PageUp: moveDir = -pageSize; break;
-                        case KeyCode.PageDown: moveDir = pageSize; break;
-						default:
-                        }
-                        mAutoComplete.mAutoCompleteListWidget.SelectDirection(moveDir);
-                    }
-                    else if (mAutoComplete.mInvokeWidget != null)
-                    {
-                        mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1);
-                    }
-                }
+				if (!gApp.mSettings.mEditorSettings.mAutoCompleteRequireControl || mWidgetWindow.IsKeyDown(KeyCode.Control))
+				{
+	                if (mAutoComplete != null)
+	                {
+	                    if (mAutoComplete.mAutoCompleteListWidget != null)
+	                    {
+	                        int32 pageSize = (int32)(mAutoComplete.mAutoCompleteListWidget.mScrollContentContainer.mHeight / mAutoComplete.mAutoCompleteListWidget.mItemSpacing - 0.5f);
+	                        int32 moveDir = 0;
+	                        switch (keyCode)
+	                        {
+	                        case KeyCode.Up: moveDir = -1; break;
+	                        case KeyCode.Down: moveDir = 1; break;
+	                        case KeyCode.PageUp: moveDir = -pageSize; break;
+	                        case KeyCode.PageDown: moveDir = pageSize; break;
+							default:
+	                        }
+	                        mAutoComplete.mAutoCompleteListWidget.SelectDirection(moveDir);
+	                    }
+	                    else if (mAutoComplete.mInvokeWidget != null)
+	                    {
+	                        mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1);
+	                    }
+	                }
+				}
 
 				// Disabled window-scroll code for ctrl+up/ctrl+down when autocomplete is not up
 				return;

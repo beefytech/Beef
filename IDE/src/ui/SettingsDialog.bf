@@ -77,6 +77,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Font Size", "mFontSize");
 			AddPropertiesItem(category, "UI Scale", "mUIScale");
 			AddPropertiesItem(category, "Autocomplete", "mAutoCompleteShowKind");
+			AddPropertiesItem(category, "Autocomplete Require Control", "mAutoCompleteRequireControl");
 			AddPropertiesItem(category, "Autocomplete Require Tab", "mAutoCompleteRequireTab");
 			AddPropertiesItem(category, "Autocomplete on Enter", "mAutoCompleteOnEnter");
 			AddPropertiesItem(category, "Autocomplete Show Documentation", "mAutoCompleteShowDocumentation");
