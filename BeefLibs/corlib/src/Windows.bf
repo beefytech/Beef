@@ -1258,6 +1258,9 @@ namespace System
 		public static extern Handle CreateRemoteThread(ProcessHandle process, SecurityAttributes* threadAttributes, int stackSize, void* startAddress, void* parameter, int32 creationFlags, int32* threadId);
 
 		[CLink, CallingConvention(.Stdcall)]
+		public static extern IntBool ReadProcessMemory(ProcessHandle process, void* baseAddress, void* buffer, int size, int* numberOfBytesRead);
+
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool WriteProcessMemory(ProcessHandle process, void* baseAddress, void* buffer, int size, int* numberOfBytesWritten);
 
 		[CLink, CallingConvention(.Stdcall)]
