@@ -7183,7 +7183,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 					else
 						methodInstance = bfModule->GetRawMethodInstanceAtIdx(methodEntry.mTypeInstance, methodEntry.mMethodDef->mIdx);
 					auto curMethodInstance = methodInstance;
-					curMethodInstance = methodMatchInfo->mCurMethodInstance;
+					curMethodInstance = methodMatchInfo->mCurMethodInstance;					
 
 					SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(bfModule->mCurTypeInstance, methodMatchInfo->mCurTypeInstance);
 					SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(bfModule->mCurMethodInstance, curMethodInstance);
@@ -7209,6 +7209,9 @@ void BfCompiler::GenerateAutocompleteInfo()
 							genericMethodNameOverrides.push_back(argName);
 						}
 					}
+
+					if (methodInstance->mMethodDef->mMethodType == BfMethodType_Extension)
+						methodText += "(extension) ";
 
 					if (methodInstance->mMethodDef->mMethodType != BfMethodType_Ctor)
 					{
@@ -7265,10 +7268,13 @@ void BfCompiler::GenerateAutocompleteInfo()
 					{
 						auto paramKind = methodInstance->GetParamKind(paramIdx);
 						if ((paramKind == BfParamKind_ImplicitCapture) || (paramKind == BfParamKind_AppendIdx))
-							continue;
+							continue;						
 
 						if (dispParamIdx > 0)
 							methodText += ",\x1 ";
+
+						if ((paramIdx == 0) && (methodInstance->mMethodDef->mMethodType == BfMethodType_Extension))
+							continue;
 
 						auto type = methodInstance->GetParamType(paramIdx);						
 						BfExpression* paramInitializer = methodInstance->GetParamInitializer(paramIdx);

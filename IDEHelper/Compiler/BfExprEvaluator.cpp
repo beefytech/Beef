@@ -1283,11 +1283,14 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	if ((mModule->mCompiler->mResolvePassData != NULL) && (!isFailurePass))
 		autoComplete = mModule->mCompiler->mResolvePassData->mAutoComplete;
 
-	if (((checkMethod->mIsStatic) && (!mAllowStatic)) ||
-		((!checkMethod->mIsStatic) && (!mAllowNonStatic)))
+	if (checkMethod->mMethodType != BfMethodType_Extension)
 	{
-		if (!typeInstance->IsFunction())
-			autoComplete = NULL;
+		if (((checkMethod->mIsStatic) && (!mAllowStatic)) ||
+			((!checkMethod->mIsStatic) && (!mAllowNonStatic)))
+		{
+			if (!typeInstance->IsFunction())
+				autoComplete = NULL;
+		}
 	}
 
 	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo))
@@ -7326,12 +7329,14 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	else
 		MakeBaseConcrete(target);
 
+	BfType* callTargetType = curTypeInst;
 	if (methodDef->mMethodType == BfMethodType_Extension)
 	{
-		auto thisType = moduleMethodInstance.mMethodInstance->GetParamType(0);
-		curTypeInst = thisType->ToTypeInstance();
-		if (curTypeInst == NULL)
-			curTypeInst = mModule->mContext->mBfObjectType;
+		callTargetType = moduleMethodInstance.mMethodInstance->GetParamType(0);		
+		if ((callTargetType->IsRef()) && (target.IsAddr()) && (!target.IsReadOnly()) && (target.mType->IsValueType()))
+		{
+			target = BfTypedValue(target.mValue, mModule->CreateRefType(target.mType));
+		}
 	}
 
 	BfTypedValue callTarget;
@@ -7341,7 +7346,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		if (target)
 			callTarget = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), targetTypeInst);
 	}
-	else if (targetTypeInst == curTypeInst)
+	else if (targetTypeInst == callTargetType)
 	{
 		if ((target) && (methodDef->HasNoThisSplat()))
 		{
@@ -7361,10 +7366,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	{
 		if (methodMatcher.mFakeConcreteTarget)
 		{
-			BF_ASSERT(curTypeInst->IsInterface());
-			callTarget = mModule->GetDefaultTypedValue(mModule->CreateConcreteInterfaceType(curTypeInst));
+			BF_ASSERT(callTargetType->IsInterface());
+			callTarget = mModule->GetDefaultTypedValue(mModule->CreateConcreteInterfaceType(callTargetType->ToTypeInstance()));
 		}
-		else if (((target.mType->IsGenericParam()) || (target.mType->IsConcreteInterfaceType())) && (curTypeInst->IsInterface()))
+		else if (((target.mType->IsGenericParam()) || (target.mType->IsConcreteInterfaceType())) && (callTargetType->IsInterface()))
 		{
 			// Leave as generic
 			callTarget = target;
@@ -7373,7 +7378,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		{
 			bool handled = false;
 
-			if ((target.mType->IsTypedPrimitive()) && (curTypeInst->IsTypedPrimitive()))
+			if ((target.mType->IsTypedPrimitive()) && (callTargetType->IsTypedPrimitive()))
 			{
 				handled = true;
 				callTarget = target;
@@ -7381,10 +7386,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			else if ((target.mType->IsStructOrStructPtr()) || (target.mType->IsTypedPrimitive()))
 			{
 				//BF_ASSERT(target.IsAddr());
-				if (curTypeInst->IsObjectOrInterface())
+				if (callTargetType->IsObjectOrInterface())
 				{
 					// Box it
-					callTarget = mModule->Cast(targetSrc, target, curTypeInst, BfCastFlags_Explicit);
+					callTarget = mModule->Cast(targetSrc, target, callTargetType, BfCastFlags_Explicit);
 					handled = true;
 				}
 				else
@@ -7398,7 +7403,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			if (!handled)
 			{
 				// Could we have just unconditionally done this?
-				callTarget = mModule->Cast(targetSrc, target, curTypeInst, BfCastFlags_Explicit);
+				callTarget = mModule->Cast(targetSrc, target, callTargetType, BfCastFlags_Explicit);
 			}
 		}
 	}
@@ -7424,7 +7429,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			identifierNode = qualifiedNameNode->mRight;
 		if ((identifierNode != NULL) && (methodDef->mIdx >= 0) && (!isIndirectMethodCall))
 		{
-			mModule->mCompiler->mResolvePassData->HandleMethodReference(identifierNode, curTypeInst->mTypeDef, methodDef);
+			mModule->mCompiler->mResolvePassData->HandleMethodReference(identifierNode, moduleMethodInstance.mMethodInstance->GetOwner()->mTypeDef, methodDef);
 			auto autoComplete = GetAutoComplete();
 			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(identifierNode)))
 			{		
@@ -7453,7 +7458,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				if (autoComplete->mDefType == NULL)
 				{
 					autoComplete->mDefMethod = methodDef;
-					autoComplete->mDefType = curTypeInst->mTypeDef;
+					autoComplete->mDefType = moduleMethodInstance.mMethodInstance->GetOwner()->mTypeDef;
 				}
 
 				if (autoComplete->mResolveType == BfResolveType_GetResultString)
