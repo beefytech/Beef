@@ -47,73 +47,14 @@ namespace System
 		static String sHexLowerChars = "0123456789abcdef";
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
-			if (format != null)
+			if(format == null || format.IsEmpty)
 			{
-				if (format == "P")
-				{
-					String hexChars = (format == "p") ? sHexLowerChars : sHexUpperChars;
-
-					const int bufLen = 18;
-					char8* strChars = scope:: char8[bufLen]* (?);
-					int32 curLen = 0;
-					uint64 valLeft = (uint64)this;
-					while (valLeft > 0)
-					{
-						if (curLen == 8)
-							strChars[bufLen - curLen++ - 1] = '\'';
-					    strChars[bufLen - curLen++ - 1] = hexChars[(int)(valLeft & 0xF)];
-					    valLeft >>= 4;
-					}
-
-					while (curLen < 10)
-					{
-						if (curLen == 8)
-							strChars[bufLen - curLen++ - 1] = '\'';
-						strChars[bufLen - curLen++ - 1] = '0';
-					}
-
-					char8* char8Ptr = &strChars[bufLen - curLen];
-					outString.Append(char8Ptr, curLen);
-
-					return;
-				}
-
-				if (format.StartsWith("X", StringComparison.OrdinalIgnoreCase))
-				{
-					String hexChars = (format == "x") ? sHexLowerChars : sHexUpperChars;
-
-					const int bufLen = 18;
-					char8* strChars = scope:: char8[bufLen]* (?);
-					int32 curLen = 0;
-					uint64 valLeft = (uint64)this;
-					while (valLeft > 0)
-					{
-					    strChars[bufLen - curLen - 1] = hexChars[(int)(valLeft & 0xF)];
-					    valLeft >>= 4;
-					    curLen++;
-					}
-
-					int32 minChars = 1;
-					if (format.Length > 0)
-					{
-						if (Int32.Parse(StringView(format, 1)) case .Ok(out minChars))
-						   minChars = Math.Max(1, minChars);
-					}
-
-					while (curLen < minChars)
-					{
-						strChars[bufLen - curLen - 1] = '0';
-						curLen++;
-					}
-
-					char8* char8Ptr = &strChars[bufLen - curLen];
-					outString.Append(char8Ptr, curLen);
-
-					return;
-				}
+				ToString(outString);
 			}
-
-			ToString(outString);
+			else
+			{
+				NumberFormatter.NumberToString(format, (uint64)this, formatProvider, outString);
+			}
 		}
 
 		public override void ToString(String strBuffer)

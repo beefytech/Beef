@@ -41,12 +41,14 @@ namespace System
 
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
-			if ((format != null) && (format.StartsWith("X")))
+			if(format == null || format.IsEmpty)
 			{
-				((uint64)this).ToString(outString, format, formatProvider);
-				return;
+				ToString(outString);
 			}
-			((int64)this).ToString(outString, format, formatProvider);
+			else
+			{
+				NumberFormatter.NumberToString(format, (int32)this, formatProvider, outString);
+			}
 		}
 	}
 }

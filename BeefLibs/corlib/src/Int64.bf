@@ -55,13 +55,14 @@ namespace System
 		static String sHexLowerChars = "0123456789abcdef";
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
-			if ((format != null) && (!format.IsEmpty))
+			if(format == null || format.IsEmpty)
 			{
-				((UInt64)this).ToString(outString, format, formatProvider);
-				return;
+				ToString(outString);
 			}
-
-			ToString(outString);
+			else
+			{
+				NumberFormatter.NumberToString(format, (int64)this, formatProvider, outString);
+			}
 		}
 
 		public override void ToString(String strBuffer)

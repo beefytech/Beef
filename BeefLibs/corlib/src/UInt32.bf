@@ -97,27 +97,14 @@ namespace System
 
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
-			int minNumerals = -1;
-
-			//TOTAL HACK:
-			if (format != null)
+			if(format == null || format.IsEmpty)
 			{
-				if (format.StartsWith("X"))
-				{
-					((UInt64)(uint32)this).ToString(outString, format, formatProvider);
-					return;
-				}
-
-				if ((format.Length > 0) && (format[0] == '0'))
-				{
-					if (Int32.Parse(format) case .Ok(let wantLen))
-					{								
-						minNumerals = wantLen;
-					}
-				}
+				ToString(outString);
 			}
-
-			ToString(outString, minNumerals);
+			else
+			{
+				NumberFormatter.NumberToString(format, (uint32)this, formatProvider, outString);
+			}
 		}
 
 		public static Result<uint32, ParseError> Parse(StringView val)
