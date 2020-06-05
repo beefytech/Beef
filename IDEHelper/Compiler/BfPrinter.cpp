@@ -2791,11 +2791,10 @@ void BfPrinter::Visit(BfRootNode* rootNode)
 	// Flush whitespace at the end of the document
 	BfParserData* bfParser = rootNode->GetSourceData()->ToParserData();
 	if (bfParser != NULL)
-	{
-		BfAstNode endNode;
-		BfAstNode::Zero<BfAstNode>(&endNode);
-		endNode.Init(rootNode->GetSrcEnd(), rootNode->GetSrcEnd(), bfParser->mSrcLength - rootNode->GetSrcEnd());		
-		Visit(&endNode);
+	{		
+		BfAstNode* endNode = mSource->mAlloc.Alloc<BfAstNode>();
+		endNode->Init(rootNode->GetSrcEnd(), bfParser->mSrcLength, bfParser->mSrcLength);
+		Visit(endNode);
 	}
 
 	if (mCharMapping != NULL)
