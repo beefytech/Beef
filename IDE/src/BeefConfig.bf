@@ -63,6 +63,43 @@ namespace IDE
 					regEntry.mLocation.Parse(data).IgnoreError();
 			}
 
+			void AddFromLibraryPath(String absPath)
+			{
+				for (var entry in Directory.EnumerateDirectories(absPath))
+				{
+					String projName = scope .();
+					entry.GetFileName(projName);
+					
+					String filePath = scope .();
+					entry.GetFilePath(filePath);
+
+					String projFilePath = scope .();
+					projFilePath.Concat(filePath, "/BeefProj.toml");
+
+					if (File.Exists(projFilePath))
+					{
+						RegistryEntry regEntry = new RegistryEntry();
+						regEntry.mProjName = new String(projName);
+						mRegistry.Add(regEntry);
+
+						regEntry.mConfigFile = configFile;
+
+						var verString = scope String();
+						data.GetString("Version", verString);
+						regEntry.mVersion = new SemVer();
+						regEntry.mVersion.Parse("0.0.0");
+
+						regEntry.mLocation = new VerSpecRecord();
+						using (data.Open("Location"))
+							regEntry.mLocation.SetPath(filePath);
+					}
+					else
+					{
+						AddFromLibraryPath(filePath);
+					}
+				}
+			}
+
 			for (data.Enumerate("UnversionedLibDirs"))
 			{
 				String dirStr = scope .();
@@ -78,35 +115,7 @@ namespace IDE
 					String absPath = scope .();
 					Path.GetAbsolutePath(libDir.mPath, configFile.mConfigDir, absPath);
 
-					for (var entry in Directory.EnumerateDirectories(absPath))
-					{
-						String projName = scope .();
-						entry.GetFileName(projName);
-						
-						String filePath = scope .();
-						entry.GetFilePath(filePath);
-
-						String projFilePath = scope .();
-						projFilePath.Concat(filePath, "/BeefProj.toml");
-
-						if (File.Exists(projFilePath))
-						{
-							RegistryEntry regEntry = new RegistryEntry();
-							regEntry.mProjName = new String(projName);
-							mRegistry.Add(regEntry);
-
-							regEntry.mConfigFile = configFile;
-
-							var verString = scope String();
-							data.GetString("Version", verString);
-							regEntry.mVersion = new SemVer();
-							regEntry.mVersion.Parse("0.0.0");
-
-							regEntry.mLocation = new VerSpecRecord();
-							using (data.Open("Location"))
-								regEntry.mLocation.SetPath(filePath);
-						}
-					}
+					AddFromLibraryPath(absPath);
 				}
 			}
 
