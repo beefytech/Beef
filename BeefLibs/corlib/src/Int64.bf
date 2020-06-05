@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace System
 {
-	struct Int64 : int64, IInteger, ISigned, IFormattable, IHashable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable
+	struct Int64 : int64, IInteger, ISigned, IFormattable, IHashable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
 	{
 		public enum ParseError
 		{
@@ -32,6 +32,16 @@ namespace System
 		public static Int64 operator-(Int64 value)
 		{
 			return -(SelfBase)value;
+		}
+
+		public static Self operator*(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs * (SelfBase)rhs;
+		}
+
+		public static Self operator/(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs / (SelfBase)rhs;
 		}
 
 		public int GetHashCode()

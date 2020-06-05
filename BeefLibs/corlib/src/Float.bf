@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace System
 {
-	struct Float : float, IFloating, ISigned, IFormattable, IHashable, IEquatable<float>, IOpComparable, IOpNegatable, IOpAddable, IOpSubtractable, ICanBeNaN
+	struct Float : float, IFloating, ISigned, IFormattable, IHashable, IEquatable<float>, IOpComparable, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable, ICanBeNaN
     {
 		public const float MinValue = (float)-3.40282346638528859e+38;
 		public const float Epsilon = (float)1.4e-45;
@@ -32,6 +32,16 @@ namespace System
 		public static Self operator-(Self lhs, Self rhs)
 		{
 			return (SelfBase)lhs - (SelfBase)rhs;
+		}
+
+		public static Self operator*(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs * (SelfBase)rhs;
+		}
+
+		public static Self operator/(Self lhs, Self rhs)
+		{
+			return (SelfBase)lhs / (SelfBase)rhs;
 		}
 
 		/*public bool IsNegative
