@@ -211,11 +211,11 @@ void BfGNUMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl&
 		}
 
 		BF_ASSERT(checkType->IsGenericTypeInstance());
-		BfGenericTypeInstance* genericTypeInstance = (BfGenericTypeInstance*)checkType;
+		BfTypeInstance* genericTypeInstance = (BfTypeInstance*)checkType;
 
 		for (int genericParamIdx = genericParamStart; genericParamIdx < (int) typeDef->mGenericParamDefs.size(); genericParamIdx++)
 		{	
-			auto genericParam = genericTypeInstance->mTypeGenericArguments[genericParamIdx];
+			auto genericParam = genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments[genericParamIdx];
 
 			Mangle(mangleContext, name, genericParam);			
 		}
@@ -1203,9 +1203,9 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 		{
 			auto typeDef = newNameSub.mTypeInst->mTypeDef;
 
-			BfGenericTypeInstance* genericTypeInst = NULL;
+			BfTypeInstance* genericTypeInst = NULL;
 			if (newNameSub.mTypeInst->IsGenericTypeInstance())		
-				genericTypeInst = (BfGenericTypeInstance*)newNameSub.mTypeInst;			
+				genericTypeInst = (BfTypeInstance*)newNameSub.mTypeInst;			
 
 			int numOuterGenericParams = 0;
 			if ((!mangleContext.mIsSafeMangle) && (typeDef->mOuterType != NULL))
@@ -1249,7 +1249,7 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 
 			if (genericTypeInst != NULL)
 			{
-				AddGenericArgs(mangleContext, name, genericTypeInst->mTypeGenericArguments, numOuterGenericParams);				
+				AddGenericArgs(mangleContext, name, genericTypeInst->mGenericTypeInfo->mTypeGenericArguments, numOuterGenericParams);
 				name += '@';
 			}
 		}
@@ -1276,10 +1276,10 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 
 void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfTypeInstance* typeInstance, bool isAlreadyStarted, bool isOuterType)
 {		
-	BfGenericTypeInstance* genericTypeInst = NULL;
+	BfTypeInstance* genericTypeInst = NULL;
 	if (typeInstance->IsGenericTypeInstance())
 	{
-		genericTypeInst = (BfGenericTypeInstance*)typeInstance;
+		genericTypeInst = (BfTypeInstance*)typeInstance;
 	}
 
 	auto typeDef = typeInstance->mTypeDef;

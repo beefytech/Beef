@@ -265,6 +265,9 @@ void BfContext::QueueFinishModule(BfModule* module)
 {
 	bool needsDefer = false;
 
+	BF_ASSERT(module != mScratchModule);
+	BF_ASSERT(module != mUnreifiedModule);
+
 	if (mCompiler->mMaxInterfaceSlots == -1)
 	{
 		if (module->mUsedSlotCount == 0)
@@ -791,7 +794,7 @@ void BfContext::ValidateDependencies()
 // 		if ((type->IsGenericTypeInstance()) && (type->mDefineState > BfTypeDefineState_Undefined))
 // 		{
 // 			// We can't contain deleted generic arguments without being deleted ourselves
-// 			BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;
+// 			BfTypeInstance* genericType = (BfTypeInstance*)type;
 // 
 // 			for (auto genericTypeArg : genericType->mTypeGenericArguments)
 // 			{
@@ -1015,16 +1018,16 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 
 	if (typeInst->IsGenericTypeInstance())
 	{
-		auto genericTypeInstance = (BfGenericTypeInstance*)typeInst;
-		genericTypeInstance->mTypeGenericArgumentRefs.Clear();
-		for (auto genericParam : genericTypeInstance->mGenericParams)
+		auto genericTypeInstance = (BfTypeInstance*)typeInst;
+		genericTypeInstance->mGenericTypeInfo->mTypeGenericArgumentRefs.Clear();
+		for (auto genericParam : genericTypeInstance->mGenericTypeInfo->mGenericParams)
 			genericParam->Release();
-		genericTypeInstance->mGenericParams.Clear();				
-		genericTypeInstance->mValidatedGenericConstraints = false;
-		genericTypeInstance->mHadValidateErrors = false;
-		delete genericTypeInstance->mGenericExtensionInfo;
-		genericTypeInstance->mGenericExtensionInfo = NULL;
-		genericTypeInstance->mProjectsReferenced.Clear();
+		genericTypeInstance->mGenericTypeInfo->mGenericParams.Clear();
+		genericTypeInstance->mGenericTypeInfo->mValidatedGenericConstraints = false;
+		genericTypeInstance->mGenericTypeInfo->mHadValidateErrors = false;
+		delete genericTypeInstance->mGenericTypeInfo->mGenericExtensionInfo;
+		genericTypeInstance->mGenericTypeInfo->mGenericExtensionInfo = NULL;
+		genericTypeInstance->mGenericTypeInfo->mProjectsReferenced.Clear();
 	}	
 
 	typeInst->mStaticSearchMap.Clear();
@@ -1609,9 +1612,9 @@ void BfContext::UpdateAfterDeletingTypes()
 				if (type->IsGenericTypeInstance())
 				{
 					// We can't contain deleted generic arguments without being deleted ourselves
-					BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;
+					BfTypeInstance* genericType = (BfTypeInstance*)type;
 
-					for (auto genericTypeArg : genericType->mTypeGenericArguments)
+					for (auto genericTypeArg : genericType->mGenericTypeInfo->mTypeGenericArguments)
 					{
 						BF_ASSERT((!genericTypeArg->IsDeleting()));
 					}
@@ -2177,9 +2180,9 @@ void BfContext::GenerateModuleName_TypeInst(BfTypeInstance* typeInst, String& na
 
 	for (int genericIdx = startGenericIdx; genericIdx < (int)typeInst->mTypeDef->mGenericParamDefs.size(); genericIdx++)
 	{
-		auto genericType = (BfGenericTypeInstance*)typeInst;
+		auto genericType = (BfTypeInstance*)typeInst;
 		
-		auto type = genericType->mTypeGenericArguments[genericIdx];
+		auto type = genericType->mGenericTypeInfo->mTypeGenericArguments[genericIdx];
 		GenerateModuleName_Type(type, name);
 	}
 }

@@ -255,18 +255,18 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 				{
 					if (methodGenericTypeConstraint->IsGenericTypeInstance())
 					{						
-						auto wantGenericType = (BfGenericTypeInstance*)methodGenericTypeConstraint;
+						auto wantGenericType = (BfTypeInstance*)methodGenericTypeConstraint;
 
 						auto checkArgType = argType;
 						while (checkArgType != NULL)
 						{
 							if (checkArgType->IsGenericTypeInstance())
 							{
-								auto argGenericType = (BfGenericTypeInstance*)checkArgType;
+								auto argGenericType = (BfTypeInstance*)checkArgType;
 								if (argGenericType->mTypeDef == wantGenericType->mTypeDef)
 								{
-									for (int genericArgIdx = 0; genericArgIdx < (int)argGenericType->mTypeGenericArguments.size(); genericArgIdx++)
-										InferGenericArgument(methodInstance, argGenericType->mTypeGenericArguments[genericArgIdx], wantGenericType->mTypeGenericArguments[genericArgIdx], BfIRValue());
+									for (int genericArgIdx = 0; genericArgIdx < (int)argGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); genericArgIdx++)
+										InferGenericArgument(methodInstance, argGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], wantGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], BfIRValue());
 								}
 							}
 							else if (checkArgType->IsSizedArray())
@@ -274,10 +274,10 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 								auto sizedArrayType = (BfSizedArrayType*)checkArgType;
 								if (wantGenericType->mTypeDef == mModule->mCompiler->mSizedArrayTypeDef)
 								{
-									InferGenericArgument(methodInstance, sizedArrayType->mElementType, wantGenericType->mTypeGenericArguments[0], BfIRValue());
+									InferGenericArgument(methodInstance, sizedArrayType->mElementType, wantGenericType->mGenericTypeInfo->mTypeGenericArguments[0], BfIRValue());
 									auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 									BfTypedValue arraySize = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)sizedArrayType->mElementCount), intType);
-									InferGenericArgument(methodInstance, mModule->CreateConstExprValueType(arraySize), wantGenericType->mTypeGenericArguments[1], BfIRValue());
+									InferGenericArgument(methodInstance, mModule->CreateConstExprValueType(arraySize), wantGenericType->mGenericTypeInfo->mTypeGenericArguments[1], BfIRValue());
 								}
 							}
 							else if (checkArgType->IsPointer())
@@ -285,7 +285,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 								auto pointerType = (BfPointerType*)checkArgType;
 								if (wantGenericType->mTypeDef == mModule->mCompiler->mPointerTTypeDef)
 								{
-									InferGenericArgument(methodInstance, pointerType->mElementType, wantGenericType->mTypeGenericArguments[0], BfIRValue());
+									InferGenericArgument(methodInstance, pointerType->mElementType, wantGenericType->mGenericTypeInfo->mTypeGenericArguments[0], BfIRValue());
 								}
 							}
 
@@ -389,7 +389,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 
 	if ((wantType->IsGenericTypeInstance()) && (wantType->IsUnspecializedTypeVariation()))
 	{
-		auto wantGenericType = (BfGenericTypeInstance*)wantType;
+		auto wantGenericType = (BfTypeInstance*)wantType;
 		if (argType->IsGenericParam())
 		{
 			auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)argType);
@@ -405,9 +405,9 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 
 		if (argType->IsVar())
 		{
-			for (int genericArgIdx = 0; genericArgIdx < (int)wantGenericType->mTypeGenericArguments.size(); genericArgIdx++)
+			for (int genericArgIdx = 0; genericArgIdx < (int)wantGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); genericArgIdx++)
 			{
-				BfType* wantGenericArgument = wantGenericType->mTypeGenericArguments[genericArgIdx];
+				BfType* wantGenericArgument = wantGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx];
 				if (!wantGenericArgument->IsUnspecializedType())
 					continue;				
 				InferGenericArgument(methodInstance, mModule->GetPrimitiveType(BfTypeCode_Var), wantGenericArgument, BfIRValue());
@@ -428,18 +428,18 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 
 		if (!argType->IsGenericTypeInstance())
 			return true;
-		auto argGenericType = (BfGenericTypeInstance*)argType;
+		auto argGenericType = (BfTypeInstance*)argType;
 		if (argGenericType->mTypeDef != wantGenericType->mTypeDef)
 			return true;
 		
-		for (int genericArgIdx = 0; genericArgIdx < (int)argGenericType->mTypeGenericArguments.size(); genericArgIdx++)
+		for (int genericArgIdx = 0; genericArgIdx < (int)argGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); genericArgIdx++)
 		{
-			BfType* wantGenericArgument = wantGenericType->mTypeGenericArguments[genericArgIdx];
+			BfType* wantGenericArgument = wantGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx];
 			if (!wantGenericArgument->IsUnspecializedType())
 				continue;
 			if (!_AddToCheckedSet(argType, mCheckedTypeSet, alreadyChecked))
 				return true;
-			InferGenericArgument(methodInstance, argGenericType->mTypeGenericArguments[genericArgIdx], wantGenericArgument, BfIRValue());
+			InferGenericArgument(methodInstance, argGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], wantGenericArgument, BfIRValue());
 		}
 		return true;
 	}
@@ -824,12 +824,12 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		{
 			if ((newType->IsUnspecializedType()) && (newType->IsGenericTypeInstance()))
 			{
-				BfGenericTypeInstance* newGenericType = (BfGenericTypeInstance*)newType;
-				BfGenericTypeInstance* prevGenericType = (BfGenericTypeInstance*)prevType;
+				BfTypeInstance* newGenericType = (BfTypeInstance*)newType;
+				BfTypeInstance* prevGenericType = (BfTypeInstance*)prevType;
 
-				for (int genericArgIdx = 0; genericArgIdx < (int)newGenericType->mTypeGenericArguments.size(); genericArgIdx++)
+				for (int genericArgIdx = 0; genericArgIdx < (int)newGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); genericArgIdx++)
 				{
-					_CompareParamTypes(newGenericType->mTypeGenericArguments[genericArgIdx], prevGenericType->mTypeGenericArguments[genericArgIdx]);
+					_CompareParamTypes(newGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx], prevGenericType->mGenericTypeInfo->mTypeGenericArguments[genericArgIdx]);
 				}
 			}
 		}
@@ -901,13 +901,13 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	auto owner = newMethodInstance->GetOwner();
 	if ((newMethodDef->mDeclaringType != prevMethodDef->mDeclaringType) && (owner->IsGenericTypeInstance()))
 	{
-		auto genericOwner = (BfGenericTypeInstance*)owner;
-		if (genericOwner->mGenericExtensionInfo != NULL)
+		auto genericOwner = (BfTypeInstance*)owner;
+		if (genericOwner->mGenericTypeInfo->mGenericExtensionInfo != NULL)
 		{			
 			BfGenericExtensionEntry* newGenericExtesionEntry = NULL;
 			BfGenericExtensionEntry* prevGenericExtesionEntry = NULL;
-			if ((genericOwner->mGenericExtensionInfo->mExtensionMap.TryGetValue(newMethodDef->mDeclaringType, &newGenericExtesionEntry)) &&
-				(genericOwner->mGenericExtensionInfo->mExtensionMap.TryGetValue(prevMethodDef->mDeclaringType, &prevGenericExtesionEntry)))
+			if ((genericOwner->mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.TryGetValue(newMethodDef->mDeclaringType, &newGenericExtesionEntry)) &&
+				(genericOwner->mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.TryGetValue(prevMethodDef->mDeclaringType, &prevGenericExtesionEntry)))
 			{
 				if ((newGenericExtesionEntry->mGenericParams.size() == prevGenericExtesionEntry->mGenericParams.size()))
 				{
@@ -1520,7 +1520,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			if (paramsArrayType->IsArray())
 			{
 				auto arrayType = (BfArrayType*)paramsArrayType;
-				paramsElementType = arrayType->mTypeGenericArguments[0];
+				paramsElementType = arrayType->mGenericTypeInfo->mTypeGenericArguments[0];
 
 				while (argIdx < (int)mArguments.size())
 				{
@@ -5495,7 +5495,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					{
 						BfArrayType* arrayType = (BfArrayType*)wantType;
 						mModule->PopulateType(arrayType, BfPopulateType_DataAndMethods);
-						expandedParamsElementType = arrayType->mTypeGenericArguments[0];
+						expandedParamsElementType = arrayType->mGenericTypeInfo->mTypeGenericArguments[0];
 
 						int arrayClassSize = arrayType->mInstSize - expandedParamsElementType->mSize;
 
@@ -5527,10 +5527,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					{
 						int numElements = (int)argValues.size() - argIdx;
 						auto genericTypeInst = wantType->ToGenericTypeInstance();
-						expandedParamsElementType = genericTypeInst->mTypeGenericArguments[0];
+						expandedParamsElementType = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0];
 
 						expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);						
-						expandedParamAlloca = mModule->CreateAlloca(genericTypeInst->mTypeGenericArguments[0], true, NULL, mModule->GetConstValue(numElements));
+						expandedParamAlloca = mModule->CreateAlloca(genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0], true, NULL, mModule->GetConstValue(numElements));
 						mModule->mBfIRBuilder->CreateStore(expandedParamAlloca, mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 1));
 						mModule->mBfIRBuilder->CreateStore(mModule->GetConstValue(numElements), mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 2));						
 
@@ -8447,7 +8447,7 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 	else if (memberName == "GenericParamCount")
 	{
 		auto genericTypeInst = type->ToGenericTypeInstance();
-		_Int32Result((genericTypeInst != NULL) ? (int)genericTypeInst->mTypeGenericArguments.size() : 0);
+		_Int32Result((genericTypeInst != NULL) ? (int)genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.size() : 0);
 	}
 	else if (memberName == "Size")
 		_Int32Result(type->mSize);
@@ -11338,7 +11338,7 @@ void BfExprEvaluator::CheckObjectCreateTypeRef(BfType* expectingType, BfAstNode*
 			while (expectingType->IsArray())
 			{
 				auto arrayType = (BfArrayType*)expectingType;
-				expectingType = arrayType->mTypeGenericArguments[0];
+				expectingType = arrayType->mGenericTypeInfo->mTypeGenericArguments[0];
 			}
 
 			auto expectingTypeInst = expectingType->ToTypeInstance();
@@ -14549,12 +14549,12 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 		bool handled = false;
 		if (mPropTarget.mType->IsGenericTypeInstance())
 		{
-			auto genericTypeInst = (BfGenericTypeInstance*)mPropTarget.mType;
+			auto genericTypeInst = (BfTypeInstance*)mPropTarget.mType;
 			if (genericTypeInst->mTypeDef == mModule->mCompiler->mSizedArrayTypeDef)
 			{				
 				if (mPropDef->mName == "Count")
 				{
-					auto sizedType = genericTypeInst->mTypeGenericArguments[1];
+					auto sizedType = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[1];
 					if (sizedType->IsConstExprValue())
 					{
 						auto constExprType = (BfConstExprValueType*)sizedType;						
@@ -16371,7 +16371,7 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 
 	if (thisValue.mType->IsNullable())
 	{		
-		BfGenericTypeInstance* nullableType = (BfGenericTypeInstance*)thisValue.mType->ToTypeInstance();
+		BfTypeInstance* nullableType = (BfTypeInstance*)thisValue.mType->ToTypeInstance();
 		auto elementType = nullableType->GetUnderlyingType();
 		if (elementType->IsValuelessType())
 		{
@@ -17126,8 +17126,8 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 		// Check type generic constraints
 		if ((mModule->mCurTypeInstance->IsGenericTypeInstance()) && (mModule->mCurTypeInstance->IsUnspecializedType()))
 		{
-			auto genericTypeInst = (BfGenericTypeInstance*)mModule->mCurTypeInstance;
-			for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericParams.size(); genericParamIdx++)
+			auto genericTypeInst = (BfTypeInstance*)mModule->mCurTypeInstance;
+			for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericTypeInfo->mGenericParams.size(); genericParamIdx++)
 			{
 				auto genericParam = mModule->GetGenericTypeParamInstance(genericParamIdx);
 				for (auto& opConstraint : genericParam->mOperatorConstraints)
@@ -18498,8 +18498,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				// Check type generic constraints
 				if ((mModule->mCurTypeInstance->IsGenericTypeInstance()) && (mModule->mCurTypeInstance->IsUnspecializedType()))
 				{
-					auto genericTypeInst = (BfGenericTypeInstance*)mModule->mCurTypeInstance;
-					for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericParams.size(); genericParamIdx++)
+					auto genericTypeInst = (BfTypeInstance*)mModule->mCurTypeInstance;
+					for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericTypeInfo->mGenericParams.size(); genericParamIdx++)
 					{
 						auto genericParam = mModule->GetGenericTypeParamInstance(genericParamIdx);
 						for (auto& opConstraint : genericParam->mOperatorConstraints)

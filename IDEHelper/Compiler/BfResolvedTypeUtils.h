@@ -375,7 +375,7 @@ public:
 
 class BfDependedType;
 class BfTypeInstance;
-class BfGenericTypeInstance;
+class BfTypeInstance;
 class BfPrimitiveType;
 
 enum BfTypeRebuildFlags
@@ -466,7 +466,7 @@ public:
 	
 	virtual BfDependedType* ToDependedType() { return NULL; }
 	virtual BfTypeInstance* ToTypeInstance() { return NULL; }
-	virtual BfGenericTypeInstance* ToGenericTypeInstance() { return NULL; }
+	virtual BfTypeInstance* ToGenericTypeInstance() { return NULL; }
 	virtual BfPrimitiveType* ToPrimitiveType() { return NULL; }	
 	virtual bool IsDependendType() { return false; }
 	virtual bool IsTypeInstance() { return false; }
@@ -1610,6 +1610,66 @@ public:
 	}
 };
 
+
+class BfGenericExtensionEntry
+{
+public:
+	Array<BfGenericTypeParamInstance*> mGenericParams;
+	bool mConstraintsPassed;
+
+public:
+	BfGenericExtensionEntry(BfGenericExtensionEntry&& prev) :
+		mGenericParams(std::move(prev.mGenericParams)),
+		mConstraintsPassed(prev.mConstraintsPassed)
+	{
+	}
+
+	BfGenericExtensionEntry()
+	{
+		mConstraintsPassed = true;
+	}
+	~BfGenericExtensionEntry();
+};
+
+class BfGenericExtensionInfo
+{
+public:
+	Dictionary<BfTypeDef*, BfGenericExtensionEntry> mExtensionMap;
+};
+
+// Note on nested generic types- mGenericParams is the accumulation of all generic params from outer to inner, so
+// class ClassA<T> { class ClassB<T2> {} } will create a ClassA.ClassB<T, T2>
+class BfGenericTypeInfo
+{
+public:
+	typedef Array<BfGenericTypeParamInstance*> GenericParamsVector;
+
+	Array<BfTypeReference*> mTypeGenericArgumentRefs;
+	BfTypeVector mTypeGenericArguments;
+	GenericParamsVector mGenericParams;
+	BfGenericExtensionInfo* mGenericExtensionInfo;
+	bool mIsUnspecialized;
+	bool mIsUnspecializedVariation;
+	bool mValidatedGenericConstraints;
+	bool mHadValidateErrors;
+	Array<BfProject*> mProjectsReferenced; // Generic methods that only refer to these projects don't need a specialized extension
+
+public:
+	BfGenericTypeInfo()
+	{
+		mGenericExtensionInfo = NULL;
+		mHadValidateErrors = false;
+		mIsUnspecialized = false;
+		mIsUnspecializedVariation = false;
+		mValidatedGenericConstraints = false;
+	}
+
+	~BfGenericTypeInfo();
+	
+	void ReportMemory(MemReporter* memReporter);
+};
+
+
 // Instance of struct or class
 class BfTypeInstance : public BfDependedType
 {
@@ -1625,6 +1685,7 @@ public:
 	BfCustomAttributes* mCustomAttributes;
 	BfAttributeData* mAttributeData;
 	BfTypeInfoEx* mTypeInfoEx;
+	BfGenericTypeInfo* mGenericTypeInfo;
 
 	Array<BfTypeInterfaceEntry> mInterfaces;	
 	Array<BfTypeInterfaceMethodEntry> mInterfaceMethodTable;
@@ -1690,6 +1751,7 @@ public:
 		mCustomAttributes = NULL;
 		mAttributeData = NULL;
 		mTypeInfoEx = NULL;
+		mGenericTypeInfo = NULL;
 		//mClassVData = NULL;
 		mVirtualMethodTableSize = 0;
 		mHotTypeData = NULL;		
@@ -1767,6 +1829,18 @@ public:
 	virtual bool WantsGCMarking() override;
 	virtual BfTypeCode GetLoweredType() override;
 
+	BfGenericTypeInfo* GetGenericTypeInfo() { return mGenericTypeInfo; }
+ 
+	virtual BfTypeInstance* ToGenericTypeInstance() { return (mGenericTypeInfo != NULL) ? this : NULL; }
+ 	virtual bool IsGenericTypeInstance() override { return mGenericTypeInfo != NULL; }
+ 	virtual bool IsSpecializedType() override { return (mGenericTypeInfo != NULL) && (!mGenericTypeInfo->mIsUnspecialized); }
+ 	virtual bool IsSpecializedByAutoCompleteMethod() override;
+ 	virtual bool IsUnspecializedType() override { return (mGenericTypeInfo != NULL) && (mGenericTypeInfo->mIsUnspecialized); }
+ 	virtual bool IsUnspecializedTypeVariation() override { return (mGenericTypeInfo != NULL) && (mGenericTypeInfo->mIsUnspecializedVariation); }
+ 	virtual bool IsNullable() override;
+ 	virtual bool HasVarConstraints();	
+ 	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) override;
+
 	virtual BfTypeInstance* GetImplBaseType() { return mBaseType; }
 
 	virtual bool IsIRFuncUsed(BfIRFunction func);
@@ -1786,6 +1860,8 @@ public:
 	int GetInstStride() { return BF_ALIGN(mInstSize, mInstAlign); }
 	bool HasOverrideMethods();	
 	bool GetResultInfo(BfType*& valueType, int& okTagId);
+	BfGenericTypeInfo::GenericParamsVector* GetGenericParamsVector(BfTypeDef* declaringTypeDef);
+	void GenerateProjectsReferenced();
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };
@@ -1856,7 +1932,7 @@ public:
 	virtual bool IsDependentOnUnderlyingType() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
 	
-	virtual BfGenericTypeInstance* ToGenericTypeInstance() override { return mElementType->ToGenericTypeInstance(); }
+	virtual BfTypeInstance* ToGenericTypeInstance() override { return mElementType->ToGenericTypeInstance(); }
 	virtual bool IsSpecializedType() override { return !mElementType->IsUnspecializedType(); }
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
 	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedTypeVariation(); }		
@@ -1869,79 +1945,6 @@ public:
 	}
 
 	BfType* GetModifiedElementType();
-};
-
-class BfGenericExtensionEntry
-{
-public:	
-	Array<BfGenericTypeParamInstance*> mGenericParams;
-	bool mConstraintsPassed;	
-
-public:
-	BfGenericExtensionEntry(BfGenericExtensionEntry&& prev) : 
-		mGenericParams(std::move(prev.mGenericParams)),
-		mConstraintsPassed(prev.mConstraintsPassed)
-	{
-	}
-
-	BfGenericExtensionEntry()
-	{
-		mConstraintsPassed = true;
-	}
-	~BfGenericExtensionEntry();	
-};
-
-class BfGenericExtensionInfo
-{
-public:	
-	Dictionary<BfTypeDef*, BfGenericExtensionEntry> mExtensionMap;
-};
-
-// Note on nested generic types- mGenericParams is the accumulation of all generic params from outer to inner, so
-// class ClassA<T> { class ClassB<T2> {} } will create a ClassA.ClassB<T, T2>
-class BfGenericTypeInstance : public BfTypeInstance
-{
-public:
-	typedef Array<BfGenericTypeParamInstance*> GenericParamsVector;
-
-	Array<BfTypeReference*> mTypeGenericArgumentRefs;
-	BfTypeVector mTypeGenericArguments;
-	GenericParamsVector mGenericParams;
-	BfGenericExtensionInfo* mGenericExtensionInfo;
-	bool mIsUnspecialized;
-	bool mIsUnspecializedVariation;
-	bool mValidatedGenericConstraints;
-	bool mHadValidateErrors;		
-	Array<BfProject*> mProjectsReferenced; // Generic methods that only refer to these projects don't need a specialized extension
-
-public:
-	BfGenericTypeInstance()
-	{
-		mGenericExtensionInfo = NULL;
-		mHadValidateErrors = false;
-		mIsUnspecialized = false;
-		mIsUnspecializedVariation = false;
-		mValidatedGenericConstraints = false;
-	}
-
-	~BfGenericTypeInstance();	
-
-	GenericParamsVector* GetGenericParamsVector(BfTypeDef* declaringTypeDef);	
-	void GenerateProjectsReferenced();
-
-	virtual BfGenericTypeInstance* ToGenericTypeInstance() override { return this; }	
-
-	virtual bool IsGenericTypeInstance() override { return true; }	
-	virtual bool IsSpecializedType() override { return !mIsUnspecialized; }
-	virtual bool IsSpecializedByAutoCompleteMethod() override;
-	virtual bool IsUnspecializedType() override { return mIsUnspecialized; }
-	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedVariation; }
-	virtual bool IsNullable() override;
-	virtual bool HasVarConstraints();
-	virtual BfType* GetUnderlyingType() override { return mIsTypedPrimitive ? BfTypeInstance::GetUnderlyingType() : mTypeGenericArguments[0]; }
-	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef, BfModule* module) override;	
-
-	virtual void ReportMemory(MemReporter* memReporter) override;
 };
 
 class BfTypeAliasType : public BfTypeInstance
@@ -1957,22 +1960,6 @@ public:
 
 	virtual bool IsTypeAlias() override { return true; }	
 	virtual BfType* GetUnderlyingType() override { return mAliasToType; }
-};
-
-class BfGenericTypeAliasType : public BfGenericTypeInstance
-{
-public:
-	BfType* mAliasToType;
-
-public:
-	BfGenericTypeAliasType()
-	{
-		mAliasToType = NULL;
-	}
-
-	virtual bool IsTypeAlias() override { return true; }	
-	virtual BfType* GetUnderlyingType() override { return mAliasToType; }
-
 	virtual bool WantsGCMarking() override { return mAliasToType->WantsGCMarking(); }
 };
 
@@ -2036,28 +2023,6 @@ public:
 	virtual BfDelegateInfo* GetDelegateInfo() { return &mDelegateInfo; }
 };
 
-class BfGenericDelegateType : public BfGenericTypeInstance
-{
-public:	
-	BfDelegateInfo mDelegateInfo;
-
-public:
-	BfGenericDelegateType()
-	{		
-		
-	}	
-
-	virtual bool IsOnDemand() override { return true; }
-
-	virtual bool IsDelegate() override { return mTypeDef->mIsDelegate; }
-	virtual bool IsDelegateFromTypeRef() override { return mTypeDef->mIsDelegate; }
-
-	virtual bool IsFunction() override { return !mTypeDef->mIsDelegate; }
-	virtual bool IsFunctionFromTypeRef() override { return !mTypeDef->mIsDelegate; }
-	
-	virtual BfDelegateInfo* GetDelegateInfo() override { return &mDelegateInfo; }	
-};
-
 class BfTupleType : public BfTypeInstance
 {
 public:		
@@ -2080,25 +2045,6 @@ public:
 
 	virtual bool IsUnspecializedType() override { return mIsUnspecializedType; }
 	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedTypeVariation; }
-};
-
-class BfGenericTupleType : public BfGenericTypeInstance
-{
-public:
-	bool mCreatedTypeDef;
-	String mNameAdd;
-	BfSource* mSource;
-	
-public:
-	BfGenericTupleType();
-	~BfGenericTupleType();
-
-	void Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance);
-	BfFieldDef* AddField(const StringImpl& name);
-	void Finish();
-
-	virtual bool IsOnDemand() override { return true; }
-	virtual bool IsTuple() override { return true; }
 };
 
 class BfConcreteInterfaceType : public BfType
@@ -2213,7 +2159,7 @@ public:
 	virtual bool IsValuelessType() override { return mElementType->IsValuelessType(); }		
 };
 
-class BfArrayType : public BfGenericTypeInstance
+class BfArrayType : public BfTypeInstance
 {
 public:
 	int mDimensions;
@@ -2391,8 +2337,8 @@ public:
 
 public:
 	static BfVariant EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& constGenericParam);
-	static bool GenericTypeEquals(BfGenericTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset);
-	static bool GenericTypeEquals(BfGenericTypeInstance* lhsGenericType, BfTypeVector* typeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
+	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset);
+	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* typeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
 	static void HashGenericArguments(BfTypeReference* typeRef, LookupContext* ctx, int& hash);
 	static int Hash(BfType* type, LookupContext* ctx, bool allowRef = false);
 	static int DirectHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None);
@@ -2483,7 +2429,7 @@ public:
 			auto genericTypeInst = typeInst->ToGenericTypeInstance();
 			if (genericTypeInst != NULL)
 			{
-				for (auto genericArg : genericTypeInst->mTypeGenericArguments)
+				for (auto genericArg : genericTypeInst->mGenericTypeInfo->mTypeGenericArguments)
 					GetProjectList(genericArg, projectList, immutableLength);
 			}
 

@@ -1540,10 +1540,10 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 					// ?. should look inside nullable types
 					if (targetValue.mType->IsNullable())
 					{
-						BfGenericTypeInstance* nullableType = (BfGenericTypeInstance*)targetValue.mType->ToTypeInstance();
+						BfTypeInstance* nullableType = (BfTypeInstance*)targetValue.mType->ToTypeInstance();
 						targetValue = mModule->MakeAddressable(targetValue);
 						BfIRValue valuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(targetValue.mValue, 0, 1); // mValue
-						targetValue = BfTypedValue(valuePtr, nullableType->mTypeGenericArguments[0], true);
+						targetValue = BfTypedValue(valuePtr, nullableType->mGenericTypeInfo->mTypeGenericArguments[0], true);
 					}										
 				}
 			}

@@ -258,7 +258,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 					BfArrayType* arrayType = (BfArrayType*)wantType;
 					if (arrayType->IsIncomplete())
 						mModule->PopulateType(arrayType, BfPopulateType_DataAndMethods);
-					expandedParamsElementType = arrayType->mTypeGenericArguments[0];
+					expandedParamsElementType = arrayType->mGenericTypeInfo->mTypeGenericArguments[0];
 					continue;
 				}
 			}

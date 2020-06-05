@@ -2969,8 +2969,8 @@ bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memb
 	if (memberTypeInstance->IsGenericTypeInstance())
 	{
 		// When we're a generic struct, our data layout can depend on our generic parameters as well
-		auto genericTypeInstance = (BfGenericTypeInstance*) memberTypeInstance;
-		for (auto typeGenericArg : genericTypeInstance->mTypeGenericArguments)
+		auto genericTypeInstance = (BfTypeInstance*) memberTypeInstance;
+		for (auto typeGenericArg : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
 		{
 			if (!CheckDefineMemberProtection(protection, typeGenericArg))
 				return false;
@@ -3011,7 +3011,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 				usedType = usedType->GetUnderlyingType();
 			else if (usedType->IsArray())
 			{
-				usedType = ((BfGenericTypeInstance*)usedType)->mTypeGenericArguments[0];
+				usedType = ((BfTypeInstance*)usedType)->mGenericTypeInfo->mTypeGenericArguments[0];
 			}
 			else
 				break;
@@ -3105,8 +3105,8 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 		return;
 	if (checkDType->IsGenericTypeInstance())
 	{
-		auto genericTypeInstance = (BfGenericTypeInstance*) checkDType;
-		for (auto genericArg : genericTypeInstance->mTypeGenericArguments)
+		auto genericTypeInstance = (BfTypeInstance*) checkDType;
+		for (auto genericArg : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
 		{
 			AddDependency(genericArg, userType, BfDependencyMap::DependencyFlag_GenericArgRef);
 		}
@@ -6147,7 +6147,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		SizedArray<BfIRValue, 4> unspecializedData =
 		{
 			typeInstanceData,			
-			GetConstValue((int)genericTypeInstance->mTypeGenericArguments.size(), byteType), // mGenericParamCount			
+			GetConstValue((int)genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments.size(), byteType), // mGenericParamCount			
 		};
 		auto reflectUnspecializedGenericType = ResolveTypeDef(mCompiler->mReflectUnspecializedGenericType);
 		typeInstanceDataType = mBfIRBuilder->MapTypeInst(reflectUnspecializedGenericType->ToTypeInstance(), BfIRPopulateType_Full);
@@ -6160,7 +6160,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		auto unspecializedType = ResolveTypeDef(typeInstance->mTypeDef);
 
 		SizedArray<BfIRValue, 4> resolvedTypes;
-		for (auto typeGenericArg : genericTypeInstance->mTypeGenericArguments)
+		for (auto typeGenericArg : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
 			resolvedTypes.push_back(GetConstValue(typeGenericArg->mTypeId, typeIdType));
 
 		auto typeIRType = mBfIRBuilder->MapType(typeIdType);
@@ -6185,7 +6185,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		{
 			auto arrayType = (BfArrayType*)typeInstance;
 
-			BfType* elementType = genericTypeInstance->mTypeGenericArguments[0];
+			BfType* elementType = genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments[0];
 			BfFieldInstance* elementFieldInstance = &genericTypeInstance->mFieldInstances[0];
 
 			SizedArray<BfIRValue, 4> arrayData  =
@@ -6911,12 +6911,12 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					auto sizedArrayType = (BfSizedArrayType*)origCheckArgType;
 					if (convCheckConstraint->IsGenericTypeInstance())
 					{
-						auto convCheckConstraintInst = (BfGenericTypeInstance*)convCheckConstraint;
+						auto convCheckConstraintInst = (BfTypeInstance*)convCheckConstraint;
 						if (convCheckConstraintInst->mTypeDef == mCompiler->mSizedArrayTypeDef)
 						{
-							if (convCheckConstraintInst->mTypeGenericArguments[0] == sizedArrayType->mElementType)
+							if (convCheckConstraintInst->mGenericTypeInfo->mTypeGenericArguments[0] == sizedArrayType->mElementType)
 							{
-								auto constExprValueType = (BfConstExprValueType*)convCheckConstraintInst->mTypeGenericArguments[1];
+								auto constExprValueType = (BfConstExprValueType*)convCheckConstraintInst->mGenericTypeInfo->mTypeGenericArguments[1];
 								if (sizedArrayType->mElementCount == constExprValueType->mValue.mInt64)
 									constraintMatched = true;
 							}							
@@ -9023,12 +9023,15 @@ BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* met
 {
 	if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mMethodGenericArguments.size() != 0))
 		methodInstance = methodInstance->mMethodInstanceGroup->mDefault;
-
+	
 	auto owner = methodInstance->mMethodInstanceGroup->mOwner;
 	if (!owner->IsGenericTypeInstance())
 		return methodInstance;
-	
-	auto genericType = (BfGenericTypeInstance*)owner;
+
+	BF_ASSERT(!owner->IsDelegateFromTypeRef());
+	BF_ASSERT(!owner->IsTuple());
+
+	auto genericType = (BfTypeInstance*)owner;
 	if (genericType->IsUnspecializedType())
 		return methodInstance;
 	
@@ -11540,10 +11543,10 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			isExternalExtensionMethod = true;
 			if (typeInst->IsGenericTypeInstance())
 			{
-				auto genericTypeInst = (BfGenericTypeInstance*)typeInst;
-				if (genericTypeInst->mProjectsReferenced.empty())
+				auto genericTypeInst = (BfTypeInstance*)typeInst;
+				if (genericTypeInst->mGenericTypeInfo->mProjectsReferenced.empty())
 					genericTypeInst->GenerateProjectsReferenced();
-				if (genericTypeInst->mProjectsReferenced.Contains(specProject))
+				if (genericTypeInst->mGenericTypeInfo->mProjectsReferenced.Contains(specProject))
 				{
 					// This is a generic type where a generic param is already confined to the project in question
 					isExternalExtensionMethod = false;
@@ -11563,11 +11566,11 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		int typeProjectsCounts = 0;
 		if (typeInst->IsGenericTypeInstance())
 		{
-			auto genericTypeInst = (BfGenericTypeInstance*)typeInst;
-			if (genericTypeInst->mProjectsReferenced.empty())
+			auto genericTypeInst = (BfTypeInstance*)typeInst;
+			if (genericTypeInst->mGenericTypeInfo->mProjectsReferenced.empty())
 				genericTypeInst->GenerateProjectsReferenced();			
-			typeProjectsCounts = (int)genericTypeInst->mProjectsReferenced.size();
-			projectList.Insert(0, &genericTypeInst->mProjectsReferenced[0], genericTypeInst->mProjectsReferenced.size());
+			typeProjectsCounts = (int)genericTypeInst->mGenericTypeInfo->mProjectsReferenced.size();
+			projectList.Insert(0, &genericTypeInst->mGenericTypeInfo->mProjectsReferenced[0], genericTypeInst->mGenericTypeInfo->mProjectsReferenced.size());
 		}
 		else
 		{
@@ -15235,7 +15238,7 @@ void BfModule::EmitIteratorBlock(bool& skipBody)
 		if ((retTypeInst->mTypeDef == mCompiler->mGenericIEnumerableTypeDef) || 
 			(retTypeInst->mTypeDef == mCompiler->mGenericIEnumeratorTypeDef))
 		{						
-			innerRetType = retTypeInst->mTypeGenericArguments[0];
+			innerRetType = retTypeInst->mGenericTypeInfo->mTypeGenericArguments[0];
 		}		
 	}
 

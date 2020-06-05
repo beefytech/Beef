@@ -19,6 +19,9 @@ namespace Tests
 			public typealias AliasA5 = (int, T);
 			public typealias AliasA6<T2> = (T, T2);
 
+			public typealias AliasA7 = T[];
+			public typealias AliasA8 = T[3];
+
 			public delegate T Zag();
 		}
 
@@ -31,6 +34,10 @@ namespace Tests
 
 			ClassA<T>.AliasA6<float> t0 = (default(T), 1.2f);
 			ClassA<T>.AliasA4<int16> dlg0 = scope => LocalA;
+
+			ClassA<T>.AliasA7 arr0 = scope T[123];
+			T[3] arr1 = .(default, default, default);
+			ClassA<T>.AliasA8 arr2 = arr1;
 		}
 
 		[Test]

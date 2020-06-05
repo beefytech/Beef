@@ -2245,7 +2245,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 			if (checkType->IsArray())
 			{
 				BfArrayType* arrayType = (BfArrayType*)checkType;
-				checkType = arrayType->mTypeGenericArguments[0];
+				checkType = arrayType->mGenericTypeInfo->mTypeGenericArguments[0];
 			}
 			BfTypeInstance* outerType = NULL;
 			if (!checkType->IsBoxed())

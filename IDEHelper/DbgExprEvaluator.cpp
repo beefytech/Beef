@@ -86,8 +86,8 @@ DwMethodMatcher::DwMethodMatcher(BfAstNode* targetSrc, DbgExprEvaluator* exprEva
 	{
 		if (!argType->IsGenericTypeInstance())
 			return true;
-		auto wantGenericType = (BfGenericTypeInstance*)wantType;
-		auto argGenericType = (BfGenericTypeInstance*)argType;
+		auto wantGenericType = (BfTypeInstance*)wantType;
+		auto argGenericType = (BfTypeInstance*)argType;
 		if (argGenericType->mTypeDef != wantGenericType->mTypeDef)
 			return true;
 

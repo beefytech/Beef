@@ -466,7 +466,7 @@ bool BfCompiler::IsTypeAccessible(BfType* checkType, BfProject* curProject)
 		auto genericTypeInst = typeInst->ToGenericTypeInstance();
 		if (genericTypeInst != NULL)
 		{
-			for (auto genericArg : genericTypeInst->mTypeGenericArguments)
+			for (auto genericArg : genericTypeInst->mGenericTypeInfo->mTypeGenericArguments)
 				if (!IsTypeAccessible(genericArg, curProject))
 					return false;
 		}
@@ -515,7 +515,7 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
 		auto genericTypeInst = typeInst->ToGenericTypeInstance();
 		if (genericTypeInst != NULL)
 		{
-			for (auto genericArg : genericTypeInst->mTypeGenericArguments)
+			for (auto genericArg : genericTypeInst->mGenericTypeInfo->mTypeGenericArguments)
 				if (!IsTypeUsed(genericArg, curProject))
 					return false;
 		}
@@ -3858,9 +3858,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 	if ((tempTypeDef->IsExtension()) && (actualTypeDef->mIsCombinedPartial) && (typeInst->IsGenericTypeInstance()))
 	{
 		// Add to our extension info map and then take it out at the end...
-		auto genericTypeInst = (BfGenericTypeInstance*)typeInst;
+		auto genericTypeInst = (BfTypeInstance*)typeInst;
 		module->BuildGenericExtensionInfo(genericTypeInst, tempTypeDef);		
-		genericTypeInst->mGenericExtensionInfo->mExtensionMap.TryGetValue(tempTypeDef, &genericExEntry);
+		genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.TryGetValue(tempTypeDef, &genericExEntry);
 		BF_ASSERT(genericExEntry != NULL);
 		hadTempExtensionInfo = true;
 	}
@@ -4195,8 +4195,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 	if (hadTempExtensionInfo)
 	{
-		auto genericTypeInst = (BfGenericTypeInstance*)typeInst;
-		genericTypeInst->mGenericExtensionInfo->mExtensionMap.Remove(tempTypeDef);
+		auto genericTypeInst = (BfTypeInstance*)typeInst;
+		genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.Remove(tempTypeDef);
 	}
 
 	for (auto checkNode : mResolvePassData->mExteriorAutocompleteCheckNodes)
@@ -4478,9 +4478,9 @@ void BfCompiler::GetSymbolReferences()
 		{
 			if (rebuildTypeInst->IsGenericTypeInstance())
 			{
-				auto genericTypeInstance = (BfGenericTypeInstance*)rebuildTypeInst;
+				auto genericTypeInstance = (BfTypeInstance*)rebuildTypeInst;
 
-				for (int genericParamIdx = 0; genericParamIdx < (int)genericTypeInstance->mTypeGenericArguments.size(); genericParamIdx++)
+				for (int genericParamIdx = 0; genericParamIdx < (int)genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments.size(); genericParamIdx++)
 				{
 					BfGenericTypeParamInstance genericParamInstance(genericTypeInstance->mTypeDef, genericParamIdx);
 					auto genericParamDef = typeDef->mGenericParamDefs[genericParamIdx];
@@ -4967,7 +4967,7 @@ void BfCompiler::PopulateReified()
 			auto typeInst = type->ToTypeInstance();
 			
 			if ((typeInst != NULL) && (typeInst->IsGenericTypeInstance()) && (!typeInst->IsUnspecializedType()) &&
-				(!typeInst->IsDelegateFromTypeRef()) && (!typeInst->IsFunctionFromTypeRef()))
+				(!typeInst->IsDelegateFromTypeRef()) && (!typeInst->IsFunctionFromTypeRef()) && (!typeInst->IsTuple()))
 			{
 				auto unspecializedType = module->GetUnspecializedTypeInstance(typeInst);
 				if (!unspecializedType->mIsReified)
@@ -4977,7 +4977,7 @@ void BfCompiler::PopulateReified()
 			// Check reifications forced by virtuals or interfaces
 			if ((!mIsResolveOnly) && (typeInst != NULL) && (typeInst->mIsReified) && (typeInst->IsObject()) && (!typeInst->IsUnspecializedType())
 				&& (typeInst->mHasBeenInstantiated) && (!typeInst->IsIncomplete()))
-			{				
+			{
 				// If we have chained methods, make sure we implement the chain members if the chain head is implemented and reified
 				if (typeInst->mTypeDef->mIsCombinedPartial)
 				{
@@ -7302,16 +7302,16 @@ void BfCompiler::GenerateAutocompleteInfo()
 							}
 							else
 							{
-								BfGenericTypeInstance* genericType = methodEntry.mTypeInstance->ToGenericTypeInstance();
+								BfTypeInstance* genericType = methodEntry.mTypeInstance->ToGenericTypeInstance();
 								if (genericType == NULL)
 								{
 									if (methodEntry.mCurMethodInstance != NULL)
 										genericType = methodEntry.mCurMethodInstance->GetOwner()->ToGenericTypeInstance();
 								}
 
-								if ((genericType != NULL) && (genericParamType->mGenericParamIdx < (int)genericType->mGenericParams.size()))
+								if ((genericType != NULL) && (genericParamType->mGenericParamIdx < (int)genericType->mGenericTypeInfo->mGenericParams.size()))
 								{
-									auto genericParamInstance = genericType->mGenericParams[genericParamType->mGenericParamIdx];
+									auto genericParamInstance = genericType->mGenericTypeInfo->mGenericParams[genericParamType->mGenericParamIdx];
 									methodText += genericParamInstance->GetGenericParamDef()->mName;
 								}
 								else
@@ -8331,7 +8331,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 				outString += " TypeFailed";
 			if (auto genericTypeInst = typeInst->ToGenericTypeInstance())
 			{
-				if (genericTypeInst->mHadValidateErrors)
+				if (genericTypeInst->mGenericTypeInfo->mHadValidateErrors)
 					outString += " ValidateErrors";
 			}
 		}

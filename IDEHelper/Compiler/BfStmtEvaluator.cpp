@@ -5845,10 +5845,10 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 
 			if (genericParamInst->mTypeConstraint->IsGenericTypeInstance())
 			{
-				auto genericConstraintType = (BfGenericTypeInstance*)genericParamInst->mTypeConstraint;				
+				auto genericConstraintType = (BfTypeInstance*)genericParamInst->mTypeConstraint;				
 				if (genericConstraintType->mTypeDef == mCompiler->mSizedArrayTypeDef)
 				{
-					varType = genericConstraintType->mTypeGenericArguments[0];
+					varType = genericConstraintType->mGenericTypeInfo->mTypeGenericArguments[0];
 					isVarEnumerator = true;
 				}				
 			}			
@@ -5909,7 +5909,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		{
 			PopulateType(itr.mType, BfPopulateType_DataAndMethods);
 
-			BfGenericTypeInstance* genericItrInterface = NULL;
+			BfTypeInstance* genericItrInterface = NULL;
 
 			auto _CheckInterface = [&](BfTypeInstance* interface)
 			{
@@ -5924,7 +5924,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					genericItrInterface = itrInterface->ToGenericTypeInstance();
 					if (inferVarType)
 					{
-						varType = genericItrInterface->mTypeGenericArguments[0];
+						varType = genericItrInterface->mGenericTypeInfo->mTypeGenericArguments[0];
 						if (isRefExpression)
 						{
 							if (varType->IsPointer())
@@ -5950,7 +5950,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					genericItrInterface = itrInterface->ToGenericTypeInstance();
 					if (inferVarType)
 					{
-						varType = genericItrInterface->mTypeGenericArguments[0];
+						varType = genericItrInterface->mGenericTypeInfo->mTypeGenericArguments[0];
 						if (isRefExpression)
 						{
 							if (varType->IsPointer())
@@ -6093,7 +6093,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 
 		if (nextResult.mType->IsGenericTypeInstance())
 		{
-			nextEmbeddedType = ((BfGenericTypeInstance*)nextResult.mType)->mTypeGenericArguments[0];
+			nextEmbeddedType = ((BfTypeInstance*)nextResult.mType)->mGenericTypeInfo->mTypeGenericArguments[0];
 		}
 	}
 	if (nextEmbeddedType == NULL)

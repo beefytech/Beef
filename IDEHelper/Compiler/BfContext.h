@@ -371,11 +371,10 @@ public:
 	BfAllocPool<BfUnknownSizedArrayType> mUnknownSizedArrayTypePool;
 	BfAllocPool<BfBoxedType> mBoxedTypePool;
 	BfAllocPool<BfTupleType> mTupleTypePool;
-	BfAllocPool<BfGenericTupleType> mGenericTupleTypePool;
+	BfAllocPool<BfTypeAliasType> mAliasTypePool;
 	BfAllocPool<BfRefType> mRefTypePool;
 	BfAllocPool<BfModifiedTypeType> mRetTypeTypePool;
-	BfAllocPool<BfGenericTypeInstance> mGenericTypeInstancePool;
-	BfAllocPool<BfGenericTypeAliasType> mGenericTypeAliasPool;
+	BfAllocPool<BfTypeInstance> mGenericTypeInstancePool;	
 	BfAllocPool<BfArrayType> mArrayTypeInstancePool;
 	BfAllocPool<BfGenericParamType> mGenericParamTypePool;
 	BfAllocPool<BfDirectTypeDefReference> mTypeDefTypeRefPool;
@@ -383,8 +382,7 @@ public:
 	BfAllocPool<BfGenericInstanceTypeRef> mGenericTypeRefPool;	
 	BfAllocPool<BfConcreteInterfaceType> mConcreteInterfaceTypePool;
 	BfAllocPool<BfConstExprValueType> mConstExprValueTypePool;
-	BfAllocPool<BfDelegateType> mDelegateTypePool;
-	BfAllocPool<BfGenericDelegateType> mGenericDelegateTypePool;
+	BfAllocPool<BfDelegateType> mDelegateTypePool;	
 	BfPrimitiveType* mPrimitiveTypes[BfTypeCode_Length];
 	BfPrimitiveType* mPrimitiveStructTypes[BfTypeCode_Length];
 

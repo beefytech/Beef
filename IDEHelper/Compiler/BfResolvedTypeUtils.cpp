@@ -579,8 +579,8 @@ bool Beefy::BfMethodInstance::IsSpecializedGenericMethodOrType()
 	auto owner = GetOwner();
 	if (!owner->IsGenericTypeInstance())
 		return false;
-	BfGenericTypeInstance* genericTypeInstance = (BfGenericTypeInstance*)owner;
-	return !genericTypeInstance->mIsUnspecialized;
+	BfTypeInstance* genericTypeInstance = (BfTypeInstance*)owner;
+	return !genericTypeInstance->mGenericTypeInfo->mIsUnspecialized;
 }
 
 bool BfMethodInstance::IsSpecializedByAutoCompleteMethod()
@@ -1190,6 +1190,7 @@ BfMethodInstanceGroup::~BfMethodInstanceGroup()
 BfTypeInstance::~BfTypeInstance()
 {
 	delete mTypeInfoEx;
+	delete mGenericTypeInfo;
 	delete mCustomAttributes;
 	delete mAttributeData;
 	for (auto methodInst : mInternalMethods)
@@ -1494,6 +1495,9 @@ bool BfTypeInstance::GetResultInfo(BfType*& valueType, int& okTagId)
 
 void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 {
+	if (mGenericTypeInfo != NULL)
+		mGenericTypeInfo->ReportMemory(memReporter);
+
 	memReporter->Add(sizeof(BfTypeInstance));
 
 	int depSize = 0;	
@@ -1589,7 +1593,7 @@ BfGenericExtensionEntry::~BfGenericExtensionEntry()
 
 ///
 
-BfGenericTypeInstance::~BfGenericTypeInstance()
+BfGenericTypeInfo::~BfGenericTypeInfo()
 {
 	for (auto genericParamInstance : mGenericParams)
 		genericParamInstance->Release();
@@ -1597,33 +1601,39 @@ BfGenericTypeInstance::~BfGenericTypeInstance()
 		delete mGenericExtensionInfo;
 }
 
-BfGenericTypeInstance::GenericParamsVector* BfGenericTypeInstance::GetGenericParamsVector(BfTypeDef* declaringTypeDef)
+BfGenericTypeInfo::GenericParamsVector* BfTypeInstance::GetGenericParamsVector(BfTypeDef* declaringTypeDef)
 {
+	if (mGenericTypeInfo == NULL)
+		return NULL;
 	if ((declaringTypeDef == mTypeDef) ||
 		(declaringTypeDef->mTypeDeclaration == mTypeDef->mTypeDeclaration))
-		return &mGenericParams;
+		return &mGenericTypeInfo->mGenericParams;
 
-	if (mGenericExtensionInfo == NULL)
+	if (mGenericTypeInfo->mGenericExtensionInfo == NULL)
 		return NULL;
 
 	BfGenericExtensionEntry* genericExEntry = NULL;
-	if (mGenericExtensionInfo->mExtensionMap.TryGetValue(declaringTypeDef, &genericExEntry))	
+	if (mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.TryGetValue(declaringTypeDef, &genericExEntry))
 		return &genericExEntry->mGenericParams;
 	
-	return &mGenericParams;
+	return &mGenericTypeInfo->mGenericParams;
 }
 
-void BfGenericTypeInstance::GenerateProjectsReferenced()
+void BfTypeInstance::GenerateProjectsReferenced()
 {
-	BF_ASSERT(mProjectsReferenced.empty());
-	mProjectsReferenced.push_back(mTypeDef->mProject);
-	for (auto genericArgType : mTypeGenericArguments)
-		BfTypeUtils::GetProjectList(genericArgType, &mProjectsReferenced, 0);
+	if (mGenericTypeInfo == NULL)
+		return;
+	BF_ASSERT(mGenericTypeInfo->mProjectsReferenced.empty());
+	mGenericTypeInfo->mProjectsReferenced.push_back(mTypeDef->mProject);
+	for (auto genericArgType : mGenericTypeInfo->mTypeGenericArguments)
+		BfTypeUtils::GetProjectList(genericArgType, &mGenericTypeInfo->mProjectsReferenced, 0);
 }
 
-bool BfGenericTypeInstance::IsSpecializedByAutoCompleteMethod()
+bool BfTypeInstance::IsSpecializedByAutoCompleteMethod()
 {
-	for (auto methodArg : mTypeGenericArguments)
+	if (mGenericTypeInfo == NULL)
+		return false;
+	for (auto methodArg : mGenericTypeInfo->mTypeGenericArguments)
 	{
 		// If we are specialized by an autocompleted method reference
 		if (methodArg->IsMethodRef())
@@ -1637,14 +1647,16 @@ bool BfGenericTypeInstance::IsSpecializedByAutoCompleteMethod()
 	return false;
 }
 
-bool BfGenericTypeInstance::IsNullable()
+bool BfTypeInstance::IsNullable()
 { 
 	return (mTypeDef == mContext->mCompiler->mNullableTypeDef);
 }
 
-bool BfGenericTypeInstance::HasVarConstraints()
+bool BfTypeInstance::HasVarConstraints()
 {
-	for (auto genericParam : mGenericParams)
+	if (mGenericTypeInfo == NULL)
+		return false;
+	for (auto genericParam : mGenericTypeInfo->mGenericParams)
 	{
 		if (genericParam->mGenericParamFlags & BfGenericParamFlag_Var)
 			return true;
@@ -1652,9 +1664,11 @@ bool BfGenericTypeInstance::HasVarConstraints()
 	return false;
 }
 
-bool BfGenericTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeTypeDef, BfModule* module)
+bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeTypeDef, BfModule* module)
 {	
-	if (mGenericExtensionInfo == NULL)
+	if (mGenericTypeInfo == NULL)
+		return true;
+	if (mGenericTypeInfo->mGenericExtensionInfo == NULL)
 		return true;
 	if ((typeDef == NULL) || (typeDef == activeTypeDef))
 		return true;
@@ -1666,10 +1680,10 @@ bool BfGenericTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* 
 		return true;
 	
 	BfGenericExtensionEntry* genericExEntry = NULL;
-	if (!mGenericExtensionInfo->mExtensionMap.TryGetValue(typeDef, &genericExEntry))
+	if (!mGenericTypeInfo->mGenericExtensionInfo->mExtensionMap.TryGetValue(typeDef, &genericExEntry))
 		return true;
 
-	if (mIsUnspecialized)
+	if (mGenericTypeInfo->mIsUnspecialized)
 	{
 		if (module == NULL)
 			return true; // During population
@@ -1678,7 +1692,7 @@ bool BfGenericTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* 
 
 		for (int genericIdx = 0; genericIdx < (int)declConstraints->size(); genericIdx++)
 		{
-			auto genericType = mTypeGenericArguments[genericIdx];
+			auto genericType = mGenericTypeInfo->mTypeGenericArguments[genericIdx];
 
 			auto declGenericParam = (*declConstraints)[genericIdx];
 			if (!module->CheckGenericConstraints(BfGenericParamSource(), genericType, NULL, declGenericParam))
@@ -1719,10 +1733,9 @@ bool BfGenericTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* 
 	return genericExEntry->mConstraintsPassed;
 }
 
-void BfGenericTypeInstance::ReportMemory(MemReporter* memReporter)
-{
-	BfTypeInstance::ReportMemory(memReporter);
-	memReporter->Add(sizeof(BfGenericTypeInstance) - sizeof(BfTypeInstance));
+void BfGenericTypeInfo::ReportMemory(MemReporter* memReporter)
+{	
+	memReporter->Add(sizeof(BfGenericTypeInfo));
 	memReporter->AddVec(mTypeGenericArgumentRefs, false);
 	memReporter->AddVec(mTypeGenericArguments, false);
 	memReporter->AddVec(mGenericParams, false);
@@ -1732,7 +1745,11 @@ void BfGenericTypeInstance::ReportMemory(MemReporter* memReporter)
 BfType* BfTypeInstance::GetUnderlyingType()
 {
 	if (!mIsTypedPrimitive)
+	{
+		if (mGenericTypeInfo != NULL)
+			return mGenericTypeInfo->mTypeGenericArguments[0];
 		return NULL;
+	}
 
 	if (mTypeInfoEx == NULL)
 		mTypeInfoEx = new BfTypeInfoEx();
@@ -1976,62 +1993,6 @@ void BfTupleType::Finish()
 
 //////////////////////////////////////////////////////////////////////////
 
-BfGenericTupleType::BfGenericTupleType()
-{
-	mCreatedTypeDef = false;
-	mSource = NULL;
-	mTypeDef = NULL;
-}
-
-BfGenericTupleType::~BfGenericTupleType()
-{
-	if (mCreatedTypeDef)
-		delete mTypeDef;
-	delete mSource;
-}
-
-void BfGenericTupleType::Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance)
-{
-	auto srcTypeDef = valueTypeInstance->mTypeDef;
-	auto system = valueTypeInstance->mModule->mSystem;
-
-	if (mTypeDef == NULL)
-		mTypeDef = new BfTypeDef();
-	for (auto field : mTypeDef->mFields)
-		delete field;
-	mTypeDef->mFields.Clear();
-	mTypeDef->mSystem = system;
-	mTypeDef->mProject = bfProject;
-	mTypeDef->mTypeCode = srcTypeDef->mTypeCode;
-	mTypeDef->mName = system->mEmptyAtom;
-	mTypeDef->mSystem = system;
-
-	mTypeDef->mHash = srcTypeDef->mHash;
-	mTypeDef->mSignatureHash = srcTypeDef->mSignatureHash;
-	mTypeDef->mTypeCode = BfTypeCode_Struct;
-
-	mCreatedTypeDef = true;
-}
-
-BfFieldDef* BfGenericTupleType::AddField(const StringImpl& name)
-{
-	return BfDefBuilder::AddField(mTypeDef, NULL, name);
-}
-
-void BfGenericTupleType::Finish()
-{
-	auto bfSystem = mTypeDef->mSystem;
-	mSource = new BfSource(bfSystem);
-	mTypeDef->mSource = mSource;
-	mTypeDef->mSource->mRefCount++;
-
-	BfDefBuilder bfDefBuilder(bfSystem);
-	bfDefBuilder.mCurTypeDef = mTypeDef;
-	bfDefBuilder.FinishTypeDef(true);
-}
-
-//////////////////////////////////////////////////////////////////////////
-
 BfType* BfBoxedType::GetModifiedElementType()
 {	
 	if ((mBoxedFlags & BoxedFlags_StructPtr) != 0)
@@ -2210,7 +2171,7 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 	else if (type->IsArray())
 	{
 		BfArrayType* arrayType = (BfArrayType*)type;
-		int elemHash = Hash(arrayType->mTypeGenericArguments[0], ctx) ^ (arrayType->mDimensions << 8);
+		int elemHash = Hash(arrayType->mGenericTypeInfo->mTypeGenericArguments[0], ctx) ^ (arrayType->mDimensions << 8);
 		return (elemHash << 5) - elemHash;
 	}	
 	else if (type->IsDelegateFromTypeRef() || type->IsFunctionFromTypeRef())
@@ -2281,8 +2242,8 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 		}
 		else if (type->IsGenericTypeInstance())
 		{
-			BfGenericTypeInstance* genericType = (BfGenericTypeInstance*)type;
-			for (auto genericArg : genericType->mTypeGenericArguments)
+			BfTypeInstance* genericType = (BfTypeInstance*)type;
+			for (auto genericArg : genericType->mGenericTypeInfo->mTypeGenericArguments)
 				hashVal = ((hashVal ^ (Hash(genericArg, ctx))) << 5) - hashVal;
 		}
 		return hashVal;
@@ -2428,11 +2389,11 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 			}
 
 			BF_ASSERT(checkTypeInstance->IsGenericTypeInstance());
-			auto curGenericTypeInst = (BfGenericTypeInstance*)checkTypeInstance;
+			auto curGenericTypeInst = (BfTypeInstance*)checkTypeInstance;
 			int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
 			for (int i = 0; i < numParentGenericParams; i++)
 			{
-				hashVal = ((hashVal ^ (Hash(curGenericTypeInst->mTypeGenericArguments[i], ctx))) << 5) - hashVal;
+				hashVal = ((hashVal ^ (Hash(curGenericTypeInst->mGenericTypeInfo->mTypeGenericArguments[i], ctx))) << 5) - hashVal;
 			}
 		}
 
@@ -2501,10 +2462,10 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 			BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, elementTypeDef->mOuterType);
 			if (commonOuterType != NULL)
 			{
-				auto parentTypeInstance = (BfGenericTypeInstance*)ctx->mModule->mCurTypeInstance;
+				auto parentTypeInstance = (BfTypeInstance*)ctx->mModule->mCurTypeInstance;
 				int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
 				for (int i = 0; i < numParentGenericParams; i++)			
-					hashVal = ((hashVal ^ (Hash(parentTypeInstance->mTypeGenericArguments[i], ctx))) << 5) - hashVal;
+					hashVal = ((hashVal ^ (Hash(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i], ctx))) << 5) - hashVal;
 			}
 		}
 
@@ -2837,7 +2798,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		BfArrayType* rhsArrayType = (BfArrayType*) rhs;
 		if (lhsArrayType->mDimensions != rhsArrayType->mDimensions)
 			return false;
-		return Equals(lhsArrayType->mTypeGenericArguments[0], rhsArrayType->mTypeGenericArguments[0], ctx);
+		return Equals(lhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0], rhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0], ctx);
 	}	
 	else if (lhs->IsTypeInstance())
 	{
@@ -2925,15 +2886,15 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 		{
 			if (!rhs->IsGenericTypeInstance())
 				return false;
-			BfGenericTypeInstance* lhsGenericType = (BfGenericTypeInstance*)lhs;
-			BfGenericTypeInstance* rhsGenericType = (BfGenericTypeInstance*)rhs;
-			if (lhsGenericType->mTypeGenericArguments.size() != rhsGenericType->mTypeGenericArguments.size())
+			BfTypeInstance* lhsGenericType = (BfTypeInstance*)lhs;
+			BfTypeInstance* rhsGenericType = (BfTypeInstance*)rhs;
+			if (lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size() != rhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size())
 				return false;
 			if (lhsGenericType->mTypeDef != rhsGenericType->mTypeDef)
 				return false;
-			for (int i = 0; i < (int)lhsGenericType->mTypeGenericArguments.size(); i++)
+			for (int i = 0; i < (int)lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size(); i++)
 			{
-				if (!Equals(lhsGenericType->mTypeGenericArguments[i], rhsGenericType->mTypeGenericArguments[i], ctx))
+				if (!Equals(lhsGenericType->mGenericTypeInfo->mTypeGenericArguments[i], rhsGenericType->mGenericTypeInfo->mTypeGenericArguments[i], ctx))
 					return false;
 			}
 		}
@@ -3027,7 +2988,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 	return 0;
 }
 
-bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset)
+bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset)
 {
 	//BP_ZONE("BfResolvedTypeSet::GenericTypeEquals");
 
@@ -3059,7 +3020,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 	return true;
 }
 
-bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx)
+bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx)
 {	
 	auto rhsGenericTypeInstRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(rhs);
 	if (rhsGenericTypeInstRef == NULL)
@@ -3072,7 +3033,7 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 					return false;
 
 				auto rhsElemType = ctx->mModule->ResolveTypeRef(rhsNullableTypeRef->mElementType, BfPopulateType_Identity, ctx->mResolveFlags);
-				return lhsGenericType->mTypeGenericArguments[0] == rhsElemType;
+				return lhsGenericType->mGenericTypeInfo->mTypeGenericArguments[0] == rhsElemType;
 			}
 		}
 
@@ -3089,11 +3050,11 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 					checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
 				BF_ASSERT(checkTypeInstance->IsGenericTypeInstance());
 				int numParentGenericParams = (int) commonOuterType->mGenericParamDefs.size();
-				auto curTypeInstance = (BfGenericTypeInstance*)checkTypeInstance;
-				if (lhsGenericType->mTypeGenericArguments.size() != numParentGenericParams)
+				auto curTypeInstance = (BfTypeInstance*)checkTypeInstance;
+				if (lhsGenericType->mGenericTypeInfo->mTypeGenericArguments.size() != numParentGenericParams)
 					return false;
 				for (int i = 0; i < (int) numParentGenericParams; i++)
-					if ((*lhsTypeGenericArguments)[i] != curTypeInstance->mTypeGenericArguments[i])
+					if ((*lhsTypeGenericArguments)[i] != curTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i])
 						return false;
 				return true;
 			}
@@ -3120,12 +3081,12 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfGenericTypeInstance* lhsGenericType,
 		BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, elementTypeDef->mOuterType);
 		if (commonOuterType != NULL)
 		{
-			auto parentTypeInstance = (BfGenericTypeInstance*)ctx->mModule->mCurTypeInstance;
+			auto parentTypeInstance = (BfTypeInstance*)ctx->mModule->mCurTypeInstance;
 			genericParamOffset = (int) commonOuterType->mGenericParamDefs.size();
 			for (int i = 0; i < genericParamOffset; i++)
-				for (auto genericArg : parentTypeInstance->mTypeGenericArguments)
+				for (auto genericArg : parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
 				{
-				if (parentTypeInstance->mTypeGenericArguments[i] != (*lhsTypeGenericArguments)[i])
+				if (parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i] != (*lhsTypeGenericArguments)[i])
 					return false;
 				}
 		}
@@ -3193,7 +3154,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		}
 	}
 
- 	if ((rhs->IsNamedTypeReference()) || (rhs->IsA<BfGenericInstanceTypeRef>()))
+ 	if ((rhs->IsNamedTypeReference()) || (rhs->IsA<BfGenericInstanceTypeRef>()) || (rhs->IsA<BfQualifiedTypeReference>()))
 	{
 		if ((ctx->mRootTypeRef != rhs) || (ctx->mRootTypeDef == NULL))
 		{
@@ -3235,7 +3196,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		BfArrayType* lhsArrayType = (BfArrayType*) lhs;
 		if (lhsArrayType->mDimensions != rhsArrayTypeRef->mDimensions)
 			return false;
-		return Equals(lhsArrayType->mTypeGenericArguments[0], rhsArrayTypeRef->mElementType, ctx);
+		return Equals(lhsArrayType->mGenericTypeInfo->mTypeGenericArguments[0], rhsArrayTypeRef->mElementType, ctx);
 	}
 	else if (lhs->IsDelegateFromTypeRef() || lhs->IsFunctionFromTypeRef())
 	{
@@ -3319,8 +3280,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			if (rhsType != NULL)
 				return lhs == rhsType;
 
-			BfGenericTypeInstance* lhsGenericType = (BfGenericTypeInstance*) lhs;
-			return GenericTypeEquals(lhsGenericType, &lhsGenericType->mTypeGenericArguments, rhs, rhsTypeDef, ctx);
+			BfTypeInstance* lhsGenericType = (BfTypeInstance*) lhs;
+			return GenericTypeEquals(lhsGenericType, &lhsGenericType->mGenericTypeInfo->mTypeGenericArguments, rhs, rhsTypeDef, ctx);
 		}		
 		else
 		{

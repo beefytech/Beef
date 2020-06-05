@@ -1575,9 +1575,9 @@ public:
 	virtual void Visit(BfInlineAsmStatement* asmStmt) override;
 
 	// Type helpers	
-	BfGenericExtensionEntry* BuildGenericExtensionInfo(BfGenericTypeInstance* genericTypeInst, BfTypeDef* partialTypeDef);
+	BfGenericExtensionEntry* BuildGenericExtensionInfo(BfTypeInstance* genericTypeInst, BfTypeDef* partialTypeDef);
 	bool BuildGenericParams(BfType* resolvedTypeRef);
-	bool ValidateGenericConstraints(BfTypeReference* typeRef, BfGenericTypeInstance* genericTypeInstance, bool ignoreErrors);
+	bool ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstance* genericTypeInstance, bool ignoreErrors);
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
 	bool CheckConstraintState(BfAstNode* refNode);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
@@ -1614,7 +1614,7 @@ public:
 	bool IsThreadLocal(BfFieldInstance* fieldInstance);
 	BfType* ResolveVarFieldType(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field);	
 	void FindSubTypes(BfTypeInstance* classType, SizedArrayImpl<int>* outVals, SizedArrayImpl<BfTypeInstance*>* exChecks, bool isInterfacePass);
-	BfType* CheckUnspecializedGenericType(BfGenericTypeInstance* genericTypeInst, BfPopulateType populateType);
+	BfType* CheckUnspecializedGenericType(BfTypeInstance* genericTypeInst, BfPopulateType populateType);
 	BfTypeInstance* GetUnspecializedTypeInstance(BfTypeInstance* typeInst);
 	BfArrayType* CreateArrayType(BfType* resolvedType, int dimensions);
 	BfSizedArrayType* CreateSizedArrayType(BfType* resolvedType, int size);
