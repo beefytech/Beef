@@ -880,25 +880,30 @@ String = "{{{mOuterType,na}.{mName,na}}}"
 
 [[Type]]
 Name = "Beefy::BfTypeInstance"
-DisplayString = "{{{mTypeDef,na}}}"
+[[Type.DisplayString]]
+Condition = "mGenericTypeInfo != null"
+String = "{{{mTypeDef,na}{mGenericTypeInfo,na}}}"
+[[Type.DisplayString]]
+Condition = "mGenericTypeInfo == null"
+String = "{{{mTypeDef,na}}}"
 
 [[Type]]
-Name = "Beefy::BfGenericTypeInstance"
+Name = "Beefy::BfGenericTypeInfo"
 [[Type.DisplayString]]
 Condition = "mTypeGenericArguments.mSize == 1"
-String = "{{{mTypeDef,na}<{mTypeGenericArguments.mVals[0],na}>}}"
+String = "{{<{mTypeGenericArguments.mVals[0],na}>}}"
 [[Type.DisplayString]]
 Condition = "mTypeGenericArguments.mSize == 2"
-String = "{{{mTypeDef}<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}>}}"
+String = "{{<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}>}}"
 [[Type.DisplayString]]
 Condition = "mTypeGenericArguments.mSize == 3"
-String = "{{{mTypeDef}<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}>}}"
+String = "{{<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}>}}"
 [[Type.DisplayString]]
 Condition = "mTypeGenericArguments.mSize == 4"
-String = "{{{mTypeDef}<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}, {mTypeGenericArguments.mVals[3]}>}}"
+String = "{{<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}, {mTypeGenericArguments.mVals[3]}>}}"
 [[Type.DisplayString]]
 Condition = "mTypeGenericArguments.mSize >= 5"
-String = "{{{mTypeDef}<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}, {mTypeGenericArguments.mVals[3]}, ...>}}"
+String = "{{<{mTypeGenericArguments.mVals[0],na}, {mTypeGenericArguments.mVals[1],na}, {mTypeGenericArguments.mVals[2],na}, {mTypeGenericArguments.mVals[3]}, ...>}}"
 
 [[Type]]
 Name = "Beefy::BfPointerType"
@@ -910,26 +915,6 @@ DisplayString = "{{boxed {mElementType,na}*}}"
 
 [[Type]]
 Name = "Beefy::BfTupleType"
-[[Type.DisplayString]]
-Condition = "mFieldInstances.mSize == 0"
-String = "( )"
-[[Type.DisplayString]]
-Condition = "mFieldInstances.mSize == 1"
-String = "( {mFieldInstances.mVals[0].mResolvedType,na} )"
-[[Type.DisplayString]]
-Condition = "mFieldInstances.mSize == 2"
-String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na} )"
-[[Type.DisplayString]]
-Condition = "mFieldInstances.mSize == 3"
-String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na} )"
-[[Type.DisplayString]]
-Condition = "mFieldInstances.mSize == 4"
-String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na, {mFieldInstances.mVals[3].mResolvedType,na} )"
-[[Type.DisplayString]]
-String = "( {mFieldInstances.mVals[0].mResolvedType,na}, {mFieldInstances.mVals[1].mResolvedType,na}, {mFieldInstances.mVals[2].mResolvedType,na, {mFieldInstances.mVals[3].mResolvedType,na}, ... )"
-
-[[Type]]
-Name = "Beefy::BfGenericTupleType"
 [[Type.DisplayString]]
 Condition = "mFieldInstances.mSize == 0"
 String = "( )"
