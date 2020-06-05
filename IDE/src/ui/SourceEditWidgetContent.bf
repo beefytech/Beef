@@ -2757,6 +2757,7 @@ namespace IDE.ui
 			if (((keyCode == .Up) || (keyCode == .Down)) &&
 				(mAutoComplete != null) && (mAutoComplete.IsShowing()) && (mAutoComplete.mListWindow != null) &&
 				(!mAutoComplete.IsInPanel()) &&
+				(gApp.mSettings.mEditorSettings.mAutoCompleteRequireControl) &&
 				(!gApp.mSettings.mTutorialsFinished.mCtrlCursor))
 			{
 				if (mWidgetWindow.IsKeyDown(.Control))
@@ -2814,7 +2815,7 @@ namespace IDE.ui
 
             if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
             {
-				if (!gApp.mSettings.mEditorSettings.mAutoCompleteRequireControl || mWidgetWindow.IsKeyDown(KeyCode.Control))
+				if ((!gApp.mSettings.mEditorSettings.mAutoCompleteRequireControl) || (mWidgetWindow.IsKeyDown(KeyCode.Control)))
 				{
 	                if (mAutoComplete != null)
 	                {
@@ -2836,11 +2837,13 @@ namespace IDE.ui
 	                    {
 	                        mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1);
 	                    }
+						return;
 	                }
 				}
 
 				// Disabled window-scroll code for ctrl+up/ctrl+down when autocomplete is not up
-				return;
+				if (mWidgetWindow.IsKeyDown(KeyCode.Control))
+					return;
             }
 
             //var lineAndColumn = CursorLineAndColumn;
