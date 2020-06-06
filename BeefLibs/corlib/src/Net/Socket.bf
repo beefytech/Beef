@@ -109,12 +109,17 @@ namespace System.Net
 			public char8** h_addr_list; /* list of addresses */
 		}
 
-		const HSocket INVALID_SOCKET = (HSocket)-1;
+		const HSocket INVALID_SOCKET = (HSocket)0xffffffff;
 		const int32 SOCKET_ERROR = -1;
 		const int AF_INET = 2;
 		const int SOCK_STREAM = 1;
 		const int IPPROTO_TCP = 6;
+
+#if BF_PLATFORM_WINDOWS
 		const int FIONBIO = (int)0x8004667e;
+#else
+		const int FIONBIO = (int)0x00005421;
+#endif
 
 		HSocket mHandle = INVALID_SOCKET;
 		bool mIsConnected = true;
