@@ -863,6 +863,7 @@ public:
 	int GetStructRetIdx();
 	bool HasSelf();
 	bool GetLoweredReturnType(BfTypeCode* loweredTypeCode = NULL, BfTypeCode* loweredTypeCode2 = NULL);
+	bool WantsIRStructsByVal();
 	bool IsAutocompleteMethod() { /*return mIdHash == -1;*/ return mIsAutocompleteMethod; }
 	bool IsSkipCall(bool bypassVirtual = false);	
 	bool IsVarArgs();

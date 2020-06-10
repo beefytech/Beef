@@ -14469,7 +14469,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 					PopulateType(resolvedTypeRef, BfPopulateType_Data);
 					addDeref = resolvedTypeRef->mSize;
 				}
-				else
+				else if (methodInstance->WantsIRStructsByVal())
 				{
 					mBfIRBuilder->PopulateType(resolvedTypeRef);
 					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal, mSystem->mPtrSize);
