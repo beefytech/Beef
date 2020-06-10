@@ -37,10 +37,10 @@ add_definitions(
 
 set (CMAKE_CXX_STANDARD 11)
 
-INCLUDE(CheckIncludeFiles)
-CHECK_INCLUDE_FILES(backtrace.h HAVE_BACKTRACE_HEADERS)
+INCLUDE(CheckIncludeFileCXX)
+CHECK_INCLUDE_FILE_CXX(backtrace.h HAVE_BACKTRACE_HEADERS)
 if (HAVE_BACKTRACE_HEADERS)
-   add_definitions(-DBFP_HAS_BACKTRACE) 
+   add_definitions(-DBFP_HAS_BACKTRACE)
 endif ()
 
 if (${IOS})  
