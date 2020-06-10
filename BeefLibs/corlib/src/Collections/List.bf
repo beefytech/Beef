@@ -289,7 +289,7 @@ namespace System.Collections
 		/// Adds an item to the back of the list.
 		public void Add(Span<T> addSpan)
 		{
-			if (mSize == AllocSize)
+			if (mSize + addSpan.Length > AllocSize)
 			{
 				let oldPtr = EnsureCapacity(mSize + addSpan.Length, false);
 				for (var val in ref addSpan)

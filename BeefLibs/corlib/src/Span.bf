@@ -184,6 +184,13 @@ namespace System
 			return Enumerator(this);
 		}
 
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.Append("(");
+			typeof(T).GetFullName(strBuffer);
+			strBuffer.AppendF("*)0x{0:A}[{1}]", (uint)(void*)mPtr, mLength);
+		}
+
 		public struct Enumerator : IEnumerator<T>, IRefEnumerator<T*>
 		{
 		    private Span<T> mList;
