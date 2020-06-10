@@ -7,3 +7,11 @@ StartupObject = "Tests.Program"
 
 [Configs.Test.Win64]
 BeefLibType = "DynamicDebug"
+LibPaths = ["$(ProjectDir)/CLib/x64/Debug/CLib.lib"]
+
+[Configs.Test.Win32]
+LibPaths = ["$(ProjectDir)/CLib/Debug/CLib.lib"]
+
+[Configs.Test.Linux64]
+OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/CLib/main.o -Wl,--export-dynamic"
+PreBuildCmds = ["/usr/bin/c++ $(ProjectDir)/CLib/main.cpp -c -o $(ProjectDir)/CLib/main.o"]
