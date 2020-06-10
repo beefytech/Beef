@@ -6176,11 +6176,6 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 	
 	//OutputDebugStrF("InitializedPassHelper %@\n", vregsInitialized.mList);
 
-	if (mDebugging)
-	{
-		NOP;
-	}
-
 	mActiveBlock = mcBlock;		
 	for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 	{
@@ -9177,7 +9172,7 @@ bool BeMCContext::DoLegalization()
 			case BeMCInstKind_IDiv:
 			case BeMCInstKind_Rem:
 			case BeMCInstKind_IRem:
-				{					
+				{
 					// Unsigned div and rem can be implemented with bitwise operations
 					//  Negative values cannot (at least following C standards, because of rounding issues)
 					if ((inst->mKind == BeMCInstKind_Div) || (inst->mKind == BeMCInstKind_Rem))
@@ -9225,6 +9220,35 @@ bool BeMCContext::DoLegalization()
 					auto arg0Type = GetType(arg0);
 					if (arg0Type->IsInt())
 					{
+						if (arg1.mKind == BeMCOperandKind_NativeReg)
+						{
+							// We can't allow division by RDX because we need RAX:RDX for the dividend
+							auto divisorReg = ResizeRegister(arg1.mReg, 8);
+							if ((arg1.IsNativeReg()) &&
+								((divisorReg == X64Reg_RDX) || (divisorReg == X64Reg_RAX)))
+							{
+								BF_ASSERT(inst->mArg1.IsVRegAny());
+								int vregIdx = GetUnderlyingVReg(inst->mArg1.mVRegIdx);
+								auto vregInfo = mVRegInfo[vregIdx];
+								if (vregInfo != NULL)
+								{
+									vregInfo->mDisableRAX = true;
+									vregInfo->mDisableRDX = true;
+									isFinalRun = false;
+									if (debugging)
+										OutputDebugStrF(" Div/Rem invalid reg\n");
+								}
+							}
+						}
+						else
+						{
+							auto vregInfo = GetVRegInfo(arg1);
+							if ((vregInfo != NULL) && (vregInfo->mIsExpr))
+							{
+								ReplaceWithNewVReg(inst->mArg1, instIdx, true);
+							}
+						}
+
 						// DIV/IDIV can only operate on the RDX:RAX pair, except for i8 divide which just uses AX
 						bool isRegADividend = (arg0.mReg == X64Reg_RAX) || (arg0.mReg == X64Reg_EAX) || (arg0.mReg == X64Reg_AX) || (arg0.mReg == X64Reg_AL);
 						if ((!arg0.IsNativeReg()) || (!isRegADividend) ||
@@ -9294,25 +9318,7 @@ bool BeMCContext::DoLegalization()
 										OutputDebugStrF(" Div/Rem Preserve\n");
 								}
 							}
-						}
-
-						// We can't allow division by RDX because we need RAX:RDX for the dividend
-						auto divisorReg = ResizeRegister(arg1.mReg, 8);
-						if ((arg1.IsNativeReg()) && 
-							((divisorReg == X64Reg_RDX) || (divisorReg == X64Reg_RAX)))
-						{
-							BF_ASSERT(inst->mArg1.IsVRegAny());
-							int vregIdx = GetUnderlyingVReg(inst->mArg1.mVRegIdx);
-							auto vregInfo = mVRegInfo[vregIdx];
-							if (vregInfo != NULL)
-							{
-								vregInfo->mDisableRAX = true;
-								vregInfo->mDisableRDX = true;
-								isFinalRun = false;
-								if (debugging)
-									OutputDebugStrF(" Div/Rem invalid reg\n");
-							}
-						}
+						}						
 					}
 					else if (inst->mKind == BeMCInstKind_IRem)
 					{	
@@ -14767,7 +14773,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?BytesToPixels@Sprite@Strawberry@bf@@AEAAXPEAV?$Array1@E@System@3@PEAV?$Array1@UColor@Strawberry@bf@@@53@W4Modes@123@1@Z";
+	//mDebugging = function->mName == "?Main$oB@Program@GameOfLife@bf@@QEAAXPEAVWindow@Window@SFML@3@UMouseButtonEventData@563@@Z";
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
