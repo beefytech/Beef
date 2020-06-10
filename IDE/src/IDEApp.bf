@@ -7479,6 +7479,7 @@ namespace IDE
 	            startInfo.CreateNoWindow = true;
 			}
 
+#if BF_PLATFORM_WINDOWS
 			if (runFlags.HasFlag(.ShellCommand))
 			{
 				String shellArgs = scope .();
@@ -7489,6 +7490,7 @@ namespace IDE
 				startInfo.SetFileName("cmd.exe");
 				startInfo.SetArguments(shellArgs);
 			}
+#endif
 
 			if (envVars != null)
 			{

@@ -60,8 +60,12 @@ namespace IDE
 				{
 		            if (wordResult case .Err)
 						break;
-					AddWord(wordResult);
-					mCustomDictionaryWordList.Add(new String(wordResult));
+					if (wordResult.Value.IsEmpty)
+						continue;
+					String wordStr = new String(wordResult);
+					AddWord(wordStr);
+					if (!mCustomDictionaryWordList.Add(wordStr))
+						delete wordStr;
 				}
 			}
             
