@@ -180,6 +180,25 @@ namespace Tests
 				return ret;
 			}
 		};
+
+		struct StructJ
+		{
+			char* mPtr;
+			intptr_t mLength;
+
+			int MethodJ0(int arg0)
+			{
+				return arg0 + (int)mLength * 100;
+			}
+
+			StructJ MethodJ1(StructJ other, int arg0)
+			{
+				StructJ ret;
+				ret.mPtr = other.mPtr;
+				ret.mLength = other.mLength + arg0;
+				return ret;
+			}
+		};
 	};
 }
 
@@ -339,6 +358,16 @@ extern "C" int Func3G(Interop::StructG* ptr)
 	return ptr[0].mA + ptr[1].mA * 100;
 }
 
+//////////////////////////////////////////////////////////////////////////
+
+extern "C" Interop::StructJ Func4J(Interop::StructJ arg0, Interop::StructJ arg1, Interop::StructJ arg2, Interop::StructJ arg3)
+{
+	Interop::StructJ ret;
+	ret.mPtr = arg0.mPtr;
+	ret.mLength = arg0.mLength + arg1.mLength * 100 + arg2.mLength * 10000 + arg3.mLength * 1000000;
+	return ret;
+}
+
 void UseIt()
 {
 	Interop::StructA sa;
@@ -368,4 +397,7 @@ void UseIt()
 	Interop::StructI si;
 	si.MethodI0(0);
 	si.MethodI1(si, 1);
+	Interop::StructJ sj;
+	sj.MethodJ0(0);
+	sj.MethodJ1(sj, 1);
 }

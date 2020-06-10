@@ -119,6 +119,18 @@ namespace Tests
 			public extern StructI MethodI1(StructI sa, int32 arg0) mut;
 		}
 
+		[CRepr]
+		public struct StructJ
+		{
+			public char8* mPtr;
+			public int mLength;
+
+			[LinkName(.CPP)]
+			public extern int32 MethodJ0(int32 arg0) mut;
+			[LinkName(.CPP)]
+			public extern StructJ MethodJ1(StructJ sa, int32 arg0) mut;
+		}
+
 		[LinkName(.C)]
 		public static extern int32 Func0(int32 a, int32 b);
 
@@ -159,6 +171,9 @@ namespace Tests
 		public static extern StructH Func2H(StructH arg0, int32 arg2);
 		[LinkName(.C)]
 		public static extern StructI Func2I(StructI arg0, int32 arg2);
+
+		[LinkName(.C)]
+		public static extern StructJ Func4J(StructJ arg0, StructJ arg1, StructJ arg2, StructJ arg3);
 
 		[Test]
 		public static void TestBasics()
@@ -256,6 +271,21 @@ namespace Tests
 			Test.Assert(si0.MethodI0(12) == 9012);
 			Test.Assert(si0.MethodI1(si1, 12).mA == (int8)193);
 			Test.Assert(Func2I(si0, 12).mA == 102);
+
+			StructJ sj0;
+			sj0.mPtr = "ABC";
+			sj0.mLength = 3;
+			StructJ sj1;
+			sj1.mPtr = "DEFG";
+			sj1.mLength = 4;
+			StructJ sj2;
+			sj2.mPtr = "HIJKL";
+			sj2.mLength = 5;
+			StructJ sj3;
+			sj3.mPtr = "MNOPQR";
+			sj3.mLength = 6;
+			var sjRet = Func4J(sj0, sj1, sj2, sj3);
+			Test.Assert(sjRet.mLength == 6050403);
 		}
 	}
 }
