@@ -4885,12 +4885,12 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 	BfType* origType;
 	BfExprEvaluator exprEvaluator(this);
 	bool alreadyWritten = false;
-	if (mCurMethodInstance->HasStructRet())	
+	if (mCurMethodInstance->GetStructRetIdx() != -1)	
 		exprEvaluator.mReceivingValue = &mCurMethodState->mRetVal;	
 	if (mCurMethodInstance->mMethodDef->mIsReadOnly)
 		exprEvaluator.mAllowReadOnlyReference = true;
 	auto retValue = CreateValueFromExpression(exprEvaluator, returnStmt->mExpression, expectingReturnType, BfEvalExprFlags_AllowRefExpr, &origType);	
-	if (mCurMethodInstance->HasStructRet())	
+	if (mCurMethodInstance->GetStructRetIdx() != -1)
 		alreadyWritten = exprEvaluator.mReceivingValue == NULL;
 	MarkScopeLeft(&mCurMethodState->mHeadScope);
 	

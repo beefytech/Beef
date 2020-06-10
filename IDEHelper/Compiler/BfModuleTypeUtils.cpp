@@ -3136,37 +3136,6 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if (isCRepr)
 			{				
 				typeInstance->mIsSplattable = false;
-
-				if ((mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) && (mCompiler->mSystem->mPtrSize == 4))
-				{					
-					// Win32 splat rules
-					if ((typeInstance->mBaseType->mInstSize == 0) && (typeInstance->mInstSize <= 16))
-					{
-						typeInstance->mIsSplattable = true;
-
-						for (int fieldIdx = 0; fieldIdx < (int)typeInstance->mFieldInstances.size(); fieldIdx++)
-						{
-							auto fieldInstance = (BfFieldInstance*)&typeInstance->mFieldInstances[fieldIdx];
-							if (fieldInstance->mDataIdx >= 0)
-							{
-								if (!fieldInstance->mResolvedType->IsPrimitiveType())
-									typeInstance->mIsSplattable = false;
-								else
-								{
-									auto primType = (BfPrimitiveType*)fieldInstance->mResolvedType;
-									if ((primType->mTypeDef->mTypeCode != BfTypeCode_Int32) &&
-										(primType->mTypeDef->mTypeCode != BfTypeCode_UInt32) &&
-										(primType->mTypeDef->mTypeCode != BfTypeCode_IntPtr) &&
-										(primType->mTypeDef->mTypeCode != BfTypeCode_UIntPtr) &&
-										(primType->mTypeDef->mTypeCode != BfTypeCode_Pointer) &&
-										(primType->mTypeDef->mTypeCode != BfTypeCode_Single) &&
-										(primType->mTypeDef->mTypeCode != BfTypeCode_Double))
-										typeInstance->mIsSplattable = false;
-								}
-							}
-						}
-					}
-				}
 			}
 			else
 				typeInstance->mIsSplattable = (dataCount <= 3) && (!hadNonSplattable);
@@ -4734,6 +4703,18 @@ BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
 		mContext->mPrimitiveTypes[typeCode] = primType;
 	}	
 	return primType;
+}
+
+BfIRType BfModule::GetIRLoweredType(BfTypeCode loweredTypeCode, BfTypeCode loweredTypeCode2)
+{
+	BF_ASSERT(loweredTypeCode != BfTypeCode_None);	
+	if (loweredTypeCode2 == BfTypeCode_None)	
+		return mBfIRBuilder->GetPrimitiveType(loweredTypeCode);	
+		
+	SizedArray<BfIRType, 2> types;
+	types.push_back(mBfIRBuilder->GetPrimitiveType(loweredTypeCode));
+	types.push_back(mBfIRBuilder->GetPrimitiveType(loweredTypeCode2));
+	return mBfIRBuilder->CreateStructType(types);	
 }
 
 BfMethodRefType* BfModule::CreateMethodRefType(BfMethodInstance* methodInstance, bool mustAlreadyExist)
@@ -7803,6 +7784,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					genericTypeInst = new BfTypeInstance();
 				genericTypeInst->mGenericTypeInfo = new BfGenericTypeInfo();
 				genericTypeInst->mTypeDef = typeDef;
+
+				if (parentGenericTypeInstance->mGenericTypeInfo->mGenericParams.IsEmpty())
+					PopulateType(parentGenericTypeInstance, BfPopulateType_Declaration);
+
 				for (int i = 0; i < numParentGenericParams; i++)
 				{
 					genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(parentGenericTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());

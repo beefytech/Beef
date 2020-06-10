@@ -3,13 +3,14 @@ set -e
 
 if [ ! -d llvm-project_8_0_0 ]; then
 	git clone https://github.com/llvm/llvm-project.git llvm-project_8_0_0
-fi
 
-if [ -d llvm-project_8_0_0 ]; then
-	cd llvm-project_8_0_0
- 	git checkout llvmorg-8.0.0
-	cd ..
-fi 
+	if [ -d llvm-project_8_0_0 ]; then
+		cd llvm-project_8_0_0
+ 		git checkout llvmorg-8.0.0
+		cd ..
+	fi 
+
+fi
 
 if [ ! -d llvm_linux_8_0_0 ]; then
 	mkdir llvm_linux_8_0_0	

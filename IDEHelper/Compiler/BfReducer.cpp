@@ -7370,7 +7370,8 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 			SetAndRestoreValue<BfVisitorPos> prevVisitorPos(mVisitorPos, BfVisitorPos(block));
 			ReadArguments(objectCreateExpr, objectCreateExpr, &arguments, &commas, BfToken_None, true);
 		}
-		MEMBER_SET(objectCreateExpr, mCloseToken, block->mCloseBrace);
+		if (block->mCloseBrace != NULL)
+			MEMBER_SET(objectCreateExpr, mCloseToken, block->mCloseBrace);
 		return objectCreateExpr;
 	}	
 

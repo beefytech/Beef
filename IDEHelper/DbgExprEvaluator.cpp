@@ -6734,7 +6734,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 
 		if ((param != NULL) && (param->mType != NULL) && (param->mType->IsCompositeType()))
 		{
-			if (splatParams.Contains(param->mName))
+			if ((param->mName != NULL) && (splatParams.Contains(param->mName)))
 			{
 				std::function<void(const DbgTypedValue& typedVal)> _SplatArgs = [&](const DbgTypedValue& typedVal)
 				{
@@ -7267,7 +7267,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	}
 	else if (methodName == "__demangleMethod")
 	{
-		if (argValues.size() == 1)
+		if (argValues.size() == 2)
 		{
 			auto checkType = argValues[0].mType;
 			if (checkType->IsPointer())
@@ -7291,6 +7291,27 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 					return result;
 				}
 			}
+		}
+	}
+	else if (methodName == "__demangle")
+	{
+		if (argValues.size() == 1)
+		{
+			auto rawTextType = mDbgModule->GetPrimitiveType(DbgType_RawText, GetLanguage());
+
+			String mangledName = argValues[0].mCharPtr;
+
+			static String demangledName;
+			demangledName = BfDemangler::Demangle(mangledName, DbgLanguage_Unknown);
+
+			if (demangledName.StartsWith("bf."))
+				demangledName.Remove(0, 3);
+
+			DbgTypedValue result;
+			result.mType = rawTextType;
+			result.mCharPtr = demangledName.c_str();
+			result.mIsLiteral = true;
+			return result;
 		}
 	}
 	else if (methodName == "__demangleFakeMember")

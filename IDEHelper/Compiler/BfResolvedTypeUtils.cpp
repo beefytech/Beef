@@ -611,9 +611,24 @@ bool BfMethodInstance::HasParamsArray()
 	return GetParamKind((int)mParams.size() - 1) == BfParamKind_Params;
 }
 
-bool BfMethodInstance::HasStructRet()
+int BfMethodInstance::GetStructRetIdx()
 {
-	return (mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (mReturnType->GetLoweredType() == BfTypeCode_None);
+	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType()))
+	{
+		auto owner = mMethodInstanceGroup->mOwner;
+		if (owner->mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
+			return 0;
+
+		if (!HasThis())
+			return 0;		
+		if (!owner->IsValueType())
+			return 1;		
+		if ((mMethodDef->mIsMutating) || ((!AllowsSplatting()) && (!owner->GetLoweredType(BfTypeUsage_Parameter))))
+			return 1;
+		return 0;		
+	}
+
+	return -1;
 }
 
 bool BfMethodInstance::HasSelf()
@@ -624,6 +639,11 @@ bool BfMethodInstance::HasSelf()
 		if (GetParamType(paramIdx)->IsSelf())
 			return true;
 	return false;
+}
+
+bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeCode* loweredTypeCode2)
+{	
+	return mReturnType->GetLoweredType(mMethodDef->mIsStatic ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
 }
 
 bool BfMethodInstance::IsSkipCall(bool bypassVirtual)
@@ -743,7 +763,7 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
 			return mMethodInfoEx->mClosureInstanceInfo->mThisOverride;
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (owner->GetLoweredType() == BfTypeCode_None))
+		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (!owner->GetLoweredType(BfTypeUsage_Parameter)))
 			return owner->mModule->CreatePointerType(owner);
 		return owner;
 	}
@@ -849,8 +869,6 @@ BfIdentifierNode* BfMethodInstance::GetParamNameNode(int paramIdx)
 	BfParameterDef* paramDef = mMethodDef->mParams[methodParam->mParamDefIdx];
 	if (paramDef->mParamDeclaration != NULL)
 		return BfNodeDynCast<BfIdentifierNode>(paramDef->mParamDeclaration->mNameNode);
-// 	else if ((mClosureInstanceInfo != NULL) && (paramIdx < (int)mClosureInstanceInfo->mCaptureNodes.size()))
-// 		return mClosureInstanceInfo->mCaptureNodes[paramIdx];
 	return NULL;
 }
 
@@ -894,37 +912,39 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 }
 
 void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic)
-{	
+{
 	module->PopulateType(mReturnType);
-
-	BfType* loweredReturnType = mReturnType;
-	auto loweredReturnTypeCode = mReturnType->GetLoweredType();
-	if (loweredReturnTypeCode != BfTypeCode_None)
-		loweredReturnType = module->GetPrimitiveType(loweredReturnTypeCode);
-
-	if (loweredReturnType->IsValuelessType())
+	
+	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
+	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
+	if (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2))
+	{
+		auto irReturnType = module->GetIRLoweredType(loweredReturnTypeCode, loweredReturnTypeCode2);
+		returnType = irReturnType;
+	}
+	else if (mReturnType->IsValuelessType())
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
 	}
-	else if (loweredReturnType->IsComposite())
+	else if (mReturnType->IsComposite())
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
-		auto typeInst = loweredReturnType->ToTypeInstance();
+		auto typeInst = mReturnType->ToTypeInstance();
 		if (typeInst != NULL)
 		{
 			paramTypes.push_back(module->mBfIRBuilder->MapTypeInstPtr(typeInst));
 		}
 		else
 		{
-			auto ptrType = module->CreatePointerType(loweredReturnType);
+			auto ptrType = module->CreatePointerType(mReturnType);
 			paramTypes.push_back(module->mBfIRBuilder->MapType(ptrType));
 		}
 	}
 	else
 	{
-		returnType = module->mBfIRBuilder->MapType(loweredReturnType);
+		returnType = module->mBfIRBuilder->MapType(mReturnType);
 	}	
 
 	for (int paramIdx = -1; paramIdx < GetParamCount(); paramIdx++)
@@ -972,11 +992,18 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 				checkLowered = true;
 		}
 
+		BfType* checkType2 = NULL;
 		if (checkLowered)
 		{
-			auto loweredTypeCode = checkType->GetLoweredType();
-			if (loweredTypeCode != BfTypeCode_None)
-				checkType = module->GetPrimitiveType(loweredTypeCode);
+			BfTypeCode loweredTypeCode = BfTypeCode_None;
+			BfTypeCode loweredTypeCode2 = BfTypeCode_None;
+			if (checkType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
+			{
+				paramTypes.push_back(module->mBfIRBuilder->GetPrimitiveType(loweredTypeCode));
+				if (loweredTypeCode2 != BfTypeCode_None)
+					paramTypes.push_back(module->mBfIRBuilder->GetPrimitiveType(loweredTypeCode2));
+				continue;
+			}							
 		}
 
 		if ((paramIdx == 0) && (GetParamName(0) == "this") && (checkType->IsPointer()))
@@ -1032,8 +1059,15 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			}, checkType);
 		}
 		else
-			_AddType(checkType);
-		
+			_AddType(checkType);		
+
+		if (checkType2 != NULL)
+			_AddType(checkType2);
+	}
+
+	if ((GetStructRetIdx() == 1) && (!forceStatic))
+	{		
+		BF_SWAP(paramTypes[0], paramTypes[1]);
 	}
 }
 
@@ -1414,19 +1448,100 @@ BfPrimitiveType* BfTypeInstance::GetDiscriminatorType(int* outDataIdx)
 	return (BfPrimitiveType*)fieldInstance.mResolvedType;
 }
 
-BfTypeCode BfTypeInstance::GetLoweredType()
-{
-	if ((mTypeDef->mTypeCode != BfTypeCode_Struct) || (mIsSplattable))
-		return BfTypeCode_None;
+bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCode, BfTypeCode* outTypeCode2)
+{	 	
+	if ((mTypeDef->mTypeCode != BfTypeCode_Struct) || (IsBoxed()) || (mIsSplattable))
+		return false;
+
+	if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows)
+	{
+		// Odd Windows rule: composite returns for non-static methods are always sret
+		if (typeUsage == BfTypeUsage_Return_NonStatic)
+			return false;
+	}
+	else
+	{		
+		// Non-Windows systems allow lowered splitting of composites over two int params
+ 		if (mModule->mSystem->mPtrSize == 8)
+ 		{
+ 			if (mInstSize == 12)
+ 			{
+ 				if (outTypeCode != NULL)
+ 					*outTypeCode = BfTypeCode_Int64;
+ 				if (outTypeCode2 != NULL)
+ 					*outTypeCode2 = BfTypeCode_Int32;
+ 				return true;
+ 			}
+ 
+ 			if (mInstSize == 16)
+ 			{
+ 				if (outTypeCode != NULL)
+ 					*outTypeCode = BfTypeCode_Int64;
+ 				if (outTypeCode2 != NULL)
+ 					*outTypeCode2 = BfTypeCode_Int64;
+ 				return true;
+ 			}
+ 		}	
+	}
+
+	BfTypeCode typeCode = BfTypeCode_None;
+	BfTypeCode pow2TypeCode = BfTypeCode_None;
 	
 	switch (mInstSize)
 	{
-	case 1: return BfTypeCode_Int8;
-	case 2: return BfTypeCode_Int16;
-	case 4: return BfTypeCode_Int32;
-	case 8: if (mModule->mSystem->mPtrSize == 8) return BfTypeCode_Int64;
+	case 1: 
+		pow2TypeCode = BfTypeCode_Int8;
+		break;
+	case 2: 
+		pow2TypeCode = BfTypeCode_Int16;
+		break;
+	case 3:
+		typeCode = BfTypeCode_Int24;
+		break;
+	case 4: 
+		pow2TypeCode = BfTypeCode_Int32;
+		break;
+	case 5:
+		typeCode = BfTypeCode_Int40;
+		break;
+	case 6:
+		typeCode = BfTypeCode_Int48;
+		break;
+	case 7:
+		typeCode = BfTypeCode_Int56;
+		break;
+	case 8: 					
+		if (mModule->mSystem->mPtrSize == 8)
+		{
+			pow2TypeCode = BfTypeCode_Int64;
+			break;
+		}
+		if (typeUsage == BfTypeUsage_Return_Static)
+		{
+			pow2TypeCode = BfTypeCode_Int64;
+			break;
+		}
+		break;	
 	}
-	return BfTypeCode_None;
+
+	if (pow2TypeCode != BfTypeCode_None)
+	{
+		if (outTypeCode != NULL)
+			*outTypeCode = pow2TypeCode;
+		return true;
+	}
+	
+	if (mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
+	{
+		if (typeCode != BfTypeCode_None)
+		{
+			if (outTypeCode != NULL)
+				*outTypeCode = typeCode;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool BfTypeInstance::HasEquivalentLayout(BfTypeInstance* compareTo)

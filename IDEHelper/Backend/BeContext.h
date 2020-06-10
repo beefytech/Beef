@@ -226,14 +226,16 @@ public:
 	//BumpAllocator mAlloc;
 	BeType* mPrimitiveTypes[BeTypeCode_COUNT];
 	OwnedVector<BeType> mTypes;
+	Dictionary<Array<BeType*>, BeStructType*> mAnonymousStructMap;
 
 public:
 	void NotImpl();
 
 public:
 	BeContext();	
-	BeType* GetPrimitiveType(BeTypeCode typeCode);
+	BeType* GetPrimitiveType(BeTypeCode typeCode);	
 	BeStructType* CreateStruct(const StringImpl& name);
+	BeStructType* CreateStruct(const SizedArrayImpl<BeType*>& types);
 	BePointerType* GetPointerTo(BeType* beType);
 	void SetStructBody(BeStructType* structType, const SizedArrayImpl<BeType*>& types, bool packed);
 	BeSizedArrayType* CreateSizedArrayType(BeType* type, int length);

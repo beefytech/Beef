@@ -410,6 +410,7 @@ public:
 	bool mNoCapture;
 	bool mZExt;
 	int mDereferenceableSize;
+	int mByValSize;
 
 	BeFunctionParam()
 	{
@@ -418,6 +419,7 @@ public:
 		mNoCapture = false;
 		mZExt = false;
 		mDereferenceableSize = -1;
+		mByValSize = -1;
 	}
 };
 
@@ -1207,6 +1209,7 @@ public:
 	{
 		BeValue* mValue;
 		int mDereferenceableSize;
+		int mByRefSize;
 		bool mStructRet;
 		bool mZExt;
 		bool mNoAlias;
@@ -1219,6 +1222,7 @@ public:
 			mNoAlias = false;
 			mNoCapture = false;
 			mDereferenceableSize = -1;
+			mByRefSize = -1;
 		}
 	};
 
@@ -1254,6 +1258,8 @@ public:
 			arg.mValue->HashReference(hashCtx);
 			hashCtx.Mixin(arg.mStructRet);
 			hashCtx.Mixin(arg.mZExt);
+			hashCtx.Mixin(arg.mDereferenceableSize);
+			hashCtx.Mixin(arg.mByRefSize);
 		}
 		hashCtx.Mixin(mCallingConv);
 		hashCtx.Mixin(mNoReturn);

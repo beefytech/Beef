@@ -532,6 +532,7 @@ void BeFunction::HashContent(BeHashContext& hashCtx)
 		hashCtx.Mixin(param.mStructRet);
 		hashCtx.Mixin(param.mZExt);
 		hashCtx.Mixin(param.mDereferenceableSize);
+		hashCtx.Mixin(param.mByValSize);
 	}
 	if (mDbgFunction != NULL)
 		mDbgFunction->HashReference(hashCtx);

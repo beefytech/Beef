@@ -2496,6 +2496,8 @@ void MsDemangleScanner::Process(const StringImpl& mangledName)
 
 String BfDemangler::Demangle(const StringImpl& mangledName, DbgLanguage language, Flags flags)
 {	
+	if (mangledName.IsEmpty())
+		return "";
 	if (mangledName[0] == '?')
 	{
 		MsDemangler demangler;

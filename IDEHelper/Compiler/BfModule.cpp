@@ -1088,7 +1088,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			}
 		}
 		else if (!mIsReified)
-		{			
+		{
 			mBfIRBuilder->mIgnoreWrites = true;
 		}
 		else
@@ -1097,10 +1097,9 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "-")
-				//|| (mModuleName == "Blurg")
-				//|| (mModuleName == "System_Int32")
-				//|| (mModuleName == "Hey_Dude_Bro_TestClass")
+                (mModuleName == "-") 
+				//|| (mModuleName == "Tests_FuncRefs_Class")
+				//|| (mModuleName == "Tests_FuncRefs")
 				)
 				mBfIRBuilder->mDbgVerifyCodeGen = true;
 			
@@ -3993,7 +3992,7 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 	SizedArray<BfIRValue, 8> args;
 	BfExprEvaluator exprEvaluator(this);
 
-	if (mCurMethodInstance->HasStructRet())
+	if (mCurMethodInstance->GetStructRetIdx() != -1)
 	{
 		auto retPtrType = CreatePointerType(mCurMethodInstance->mReturnType);		
 		exprEvaluator.PushArg(GetDefaultTypedValue(retPtrType, true, BfDefaultValueKind_Const), args);
@@ -4001,7 +4000,7 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 
 	if (mCurMethodInstance->HasThis())
 	{
-		auto thisValue = GetDefaultTypedValue(mCurMethodInstance->GetOwner(), true);
+		auto thisValue = GetDefaultTypedValue(mCurMethodInstance->GetOwner(), true, mCurTypeInstance->IsComposite() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Const);
 		exprEvaluator.PushThis(NULL, thisValue, mCurMethodInstance, args);
 	}
 
@@ -12705,7 +12704,7 @@ void BfModule::CreateDIRetVal()
 	{		
 		BfType* dbgType = mCurMethodInstance->mReturnType;
 		BfIRValue dbgValue = mCurMethodState->mRetVal.mValue;
-		if (mCurMethodInstance->HasStructRet())
+		if (mCurMethodInstance->GetStructRetIdx() != -1)
 		{
 			BF_ASSERT(mCurMethodState->mRetValAddr);
 			dbgType = CreatePointerType(dbgType);
@@ -13207,11 +13206,11 @@ void BfModule::MarkScopeLeft(BfScopeData* scopeData)
 
 void BfModule::CreateReturn(BfIRValue val)
 {
-	if (mCurMethodInstance->HasStructRet())
+	if (mCurMethodInstance->GetStructRetIdx() != -1)
 	{
 		// Store to sret
 		BF_ASSERT(val);
-		mBfIRBuilder->CreateStore(val, mBfIRBuilder->GetArgument(0));
+		mBfIRBuilder->CreateStore(val, mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()));
 		mBfIRBuilder->CreateRetVoid();
 	}
 	else
@@ -13222,14 +13221,18 @@ void BfModule::CreateReturn(BfIRValue val)
 		}
 		else if (mCurMethodInstance->mReturnType->IsStruct())
 		{
-			auto loweredType = GetPrimitiveType(mCurMethodInstance->mReturnType->GetLoweredType());			
-			auto ptrReturnType = CreatePointerType(mCurMethodInstance->mReturnType);
-			auto ptrLoweredValue = CreateAlloca(loweredType);
-			auto ptrReturnValue = mBfIRBuilder->CreateBitCast(ptrLoweredValue, mBfIRBuilder->MapType(ptrReturnType));
-			mBfIRBuilder->CreateStore(val, ptrReturnValue);
+			BfTypeCode loweredReturnType = BfTypeCode_None;
+			BfTypeCode loweredReturnType2 = BfTypeCode_None;
+			mCurMethodInstance->GetLoweredReturnType(&loweredReturnType, &loweredReturnType2);
 
-			auto loadedLoweredValue = mBfIRBuilder->CreateLoad(ptrLoweredValue);
-			mBfIRBuilder->CreateRet(loadedLoweredValue);
+			auto retVal = CreateAlloca(mCurMethodInstance->mReturnType);
+			mBfIRBuilder->CreateStore(val, retVal);
+
+			auto irRetType = GetIRLoweredType(loweredReturnType, loweredReturnType2);
+			irRetType = mBfIRBuilder->GetPointerTo(irRetType);
+			auto ptrReturnValue = mBfIRBuilder->CreateBitCast(retVal, irRetType);
+			auto loadedReturnValue = mBfIRBuilder->CreateLoad(ptrReturnValue);
+			mBfIRBuilder->CreateRet(loadedReturnValue);
 		}
 		else
 		{
@@ -13286,7 +13289,7 @@ void BfModule::EmitDefaultReturn()
 	{
 		if (mCurMethodInstance->mReturnType->IsVoid())
 			mBfIRBuilder->CreateRetVoid();
-		else if (!mCurMethodInstance->HasStructRet())		
+		else if (mCurMethodInstance->GetStructRetIdx() == -1)		
 			mBfIRBuilder->CreateRet(GetDefaultValue(mCurMethodInstance->mReturnType));
 	}
 
@@ -13394,16 +13397,20 @@ void BfModule::CreateDelegateInvokeMethod()
 
 	if (mCurMethodInstance->mReturnType->IsValueType())
 		mBfIRBuilder->PopulateType(mCurMethodInstance->mReturnType, BfIRPopulateType_Full);
+		
+	if (mCurMethodInstance->GetStructRetIdx() != 0)
+		memberFuncArgs.push_back(BfIRValue()); // Push 'target'
 
 	int thisIdx = 0;
-	if (mCurMethodInstance->HasStructRet())
-	{
-		thisIdx = 1;
-		staticFuncArgs.push_back(mBfIRBuilder->GetArgument(0));
-		memberFuncArgs.push_back(mBfIRBuilder->GetArgument(0));
+	if (mCurMethodInstance->GetStructRetIdx() != -1)
+	{		
+		thisIdx = mCurMethodInstance->GetStructRetIdx() ^ 1;
+		staticFuncArgs.push_back(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()));
+		memberFuncArgs.push_back(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()));
 	}
-	
-	memberFuncArgs.push_back(BfIRValue()); // Push 'target'
+
+	if (mCurMethodInstance->GetStructRetIdx() == 0)
+		memberFuncArgs.push_back(BfIRValue()); // Push 'target'
 
 	mCurMethodInstance->GetIRFunctionInfo(this, origReturnType, staticParamTypes, true);
 	
@@ -13441,8 +13448,8 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, memberFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
 		nonStaticResult = mBfIRBuilder->CreateCall(funcPtr, memberFuncArgs);
-		if (mCurMethodInstance->HasStructRet())
-			mBfIRBuilder->Call_AddAttribute(nonStaticResult, 1, BfIRAttribute_StructRet);
+		if (mCurMethodInstance->GetStructRetIdx() != -1)
+			mBfIRBuilder->Call_AddAttribute(nonStaticResult, mCurMethodInstance->GetStructRetIdx() + 1, BfIRAttribute_StructRet);
 		if (callingConv != BfIRCallingConv_CDecl)
 			mBfIRBuilder->SetCallCallingConv(nonStaticResult, callingConv);
 		mCurMethodState->SetHadReturn(false);
@@ -13459,8 +13466,11 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, staticFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateLoad(funcPtrPtr);		
 		staticResult = mBfIRBuilder->CreateCall(funcPtr, staticFuncArgs);
-		if (mCurMethodInstance->HasStructRet())
-			mBfIRBuilder->Call_AddAttribute(staticResult, 1, BfIRAttribute_StructRet);
+		if (mCurMethodInstance->GetStructRetIdx() != -1)
+		{
+			// Note: since this is a forced static invocation, we know the sret will be the first parameter
+			mBfIRBuilder->Call_AddAttribute(staticResult, 0 + 1, BfIRAttribute_StructRet);
+		}
 		if (callingConv == BfIRCallingConv_ThisCall)
 			callingConv = BfIRCallingConv_CDecl;
 		if (callingConv != BfIRCallingConv_CDecl)
@@ -13473,16 +13483,20 @@ void BfModule::CreateDelegateInvokeMethod()
 
 	mBfIRBuilder->AddBlock(doneBB);
 	mBfIRBuilder->SetInsertPoint(doneBB);
-	if ((mCurMethodInstance->mReturnType->IsValuelessType()) || (mCurMethodInstance->HasStructRet()))
+	if ((mCurMethodInstance->mReturnType->IsValuelessType()) || (mCurMethodInstance->GetStructRetIdx() != -1))
 	{
 		mBfIRBuilder->CreateRetVoid();
 	}
 	else
 	{
-		auto loweredReturnType = mCurMethodInstance->mReturnType;
-		if (loweredReturnType->GetLoweredType() != BfTypeCode_None)
-			loweredReturnType = GetPrimitiveType(loweredReturnType->GetLoweredType());
-		auto phi = mBfIRBuilder->CreatePhi(mBfIRBuilder->MapType(loweredReturnType), 2);
+		BfIRType loweredIRReturnType;
+		BfTypeCode loweredTypeCode = BfTypeCode_None;
+		BfTypeCode loweredTypeCode2 = BfTypeCode_None;
+		if (mCurMethodInstance->GetLoweredReturnType(&loweredTypeCode, &loweredTypeCode2))
+			loweredIRReturnType = GetIRLoweredType(loweredTypeCode, loweredTypeCode2);
+		else
+			loweredIRReturnType = mBfIRBuilder->MapType(mCurMethodInstance->mReturnType);
+		auto phi = mBfIRBuilder->CreatePhi(loweredIRReturnType, 2);
 		mBfIRBuilder->AddPhiIncoming(phi, nonStaticResult, trueBB);
 		mBfIRBuilder->AddPhiIncoming(phi, staticResult, falseBB);		
 		mBfIRBuilder->CreateRet(phi);
@@ -14364,22 +14378,25 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 	}
 
 	int argCount = methodInstance->GetIRFunctionParamCount(this);
-
-	if (methodInstance->HasStructRet())
-	{				
-		mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_NoAlias);
-		mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_StructRet);
-		argIdx++;
-	}
-
+	
 	while (argIdx < argCount)
 	{
+		if (argIdx == methodInstance->GetStructRetIdx())
+		{
+			mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_NoAlias);
+			mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_StructRet);
+			argIdx++;
+			continue;
+		}
+
 		while ((paramIdx != -1) && (methodInstance->IsParamSkipped(paramIdx)))
 			paramIdx++;
 
 		BfType* resolvedTypeRef = NULL;
+		BfType* resolvedTypeRef2 = NULL;
 		String paramName;
 		bool isSplattable = false;
+		bool tryLowering = true;
 		bool isThis = paramIdx == -1;
 		if (isThis)
 		{
@@ -14389,6 +14406,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 			else
 				resolvedTypeRef = methodInstance->GetOwner();
 			isSplattable = (resolvedTypeRef->IsSplattable()) && (methodInstance->AllowsThisSplatting());
+			tryLowering = methodInstance->AllowsThisSplatting();
         }
 		else
 		{
@@ -14409,11 +14427,24 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 			}			
 		}
 
-		//
+		if (tryLowering)
 		{
-			auto loweredTypeCode = resolvedTypeRef->GetLoweredType();
-			if (loweredTypeCode != BfTypeCode_None)
-				resolvedTypeRef = GetPrimitiveType(loweredTypeCode);
+			BfTypeCode loweredTypeCode = BfTypeCode_None;
+			BfTypeCode loweredTypeCode2 = BfTypeCode_None;
+			if (resolvedTypeRef->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
+			{	
+				mBfIRBuilder->Func_SetParamName(func, argIdx + 1, paramName + "__1");
+				argIdx++;
+
+				if (loweredTypeCode2 != BfTypeCode_None)
+				{
+					mBfIRBuilder->Func_SetParamName(func, argIdx + 1, paramName + "__2");
+					argIdx++;
+				}
+
+				paramIdx++;
+				continue;
+			}			
 		}
 
 		auto _SetupParam = [&](const StringImpl& paramName, BfType* resolvedTypeRef)
@@ -14432,15 +14463,16 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 			}
 			if ((resolvedTypeRef->IsComposite()) && (!resolvedTypeRef->IsTypedPrimitive()))
 			{
-				if (mCompiler->mOptions.mAllowStructByVal)
-				{
-					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal);
-				}
-				else
+				if (paramIdx == -1)
 				{
 					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_NoCapture);
 					PopulateType(resolvedTypeRef, BfPopulateType_Data);
 					addDeref = resolvedTypeRef->mSize;
+				}
+				else
+				{
+					mBfIRBuilder->PopulateType(resolvedTypeRef);
+					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal, mSystem->mPtrSize);
 				}
 			}
 			else if (resolvedTypeRef->IsPrimitiveType())
@@ -14521,8 +14553,9 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 		}
 
 		_SetupParam(paramName, resolvedTypeRef);
-		
-		//argIdx++;
+		if (resolvedTypeRef2 != NULL)
+			_SetupParam(paramName, resolvedTypeRef2);
+				
 		paramIdx++;
 	}
 }
@@ -15412,11 +15445,15 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		isThisStruct = thisType->IsStruct() && !thisType->IsTypedPrimitive();
 	
 	int argIdx = 0;
-	if (methodInstance->HasStructRet())
+	
+	if (argIdx == methodInstance->GetStructRetIdx())
 		argIdx++;
 
 	if (!methodDef->mIsStatic)
 	{
+		BfTypeCode loweredTypeCode = BfTypeCode_None;
+		BfTypeCode loweredTypeCode2 = BfTypeCode_None;
+
 		BfLocalVariable* paramVar = new BfLocalVariable();
 		paramVar->mResolvedType = thisType;
 		paramVar->mName = "this";
@@ -15431,7 +15468,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 				paramVar->mIsSplat = true;
 		}
 		else if ((!methodDef->mIsMutating) && (methodInstance->mCallingConvention == BfCallingConvention_Unspecified))
-			paramVar->mIsLowered = thisType->GetLoweredType() != BfTypeCode_None;
+			paramVar->mIsLowered = thisType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2) != BfTypeCode_None;
 
 		auto thisTypeInst = thisType->ToTypeInstance();
 		paramVar->mIsStruct = isThisStruct;
@@ -15472,7 +15509,13 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 				argIdx++;
 			}
 		}
+
+		if (loweredTypeCode2 != BfTypeCode_None)
+			argIdx++;
 	}
+
+	if (argIdx == methodInstance->GetStructRetIdx())
+		argIdx++;
 
 	bool hadParams = false;
 	bool hasDefault = false;
@@ -15480,10 +15523,13 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 	int compositeVariableIdx = -1;
 	int paramIdx = 0;
 	for (paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
-	{
+	{		
 		// We already issues a type error for this param if we had one in declaration processing
 		SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
 		BfLocalVariable* paramVar = new BfLocalVariable();
+
+		BfTypeCode loweredTypeCode = BfTypeCode_None;
+		BfTypeCode loweredTypeCode2 = BfTypeCode_None;
 
 		bool isParamSkipped = methodInstance->IsParamSkipped(paramIdx);
 
@@ -15529,7 +15575,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			paramVar->mIsSplat = true; // Treat skipped (valueless) as a splat
 			paramVar->mValue = mBfIRBuilder->GetFakeVal();
 		}
-		paramVar->mIsLowered = resolvedType->GetLoweredType() != BfTypeCode_None;
+		paramVar->mIsLowered = resolvedType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2) != BfTypeCode_None;
 		paramVar->mIsStruct = resolvedType->IsComposite() && !resolvedType->IsTypedPrimitive();
 		paramVar->mParamIdx = paramIdx;
 		paramVar->mIsImplicitParam = methodInstance->IsImplicitCapture(paramIdx);
@@ -15639,6 +15685,9 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			{
 				argIdx++;
 			}
+
+			if (loweredTypeCode2 != BfTypeCode_None)
+				argIdx++;
 		}
 	}
 
@@ -16754,10 +16803,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	{
 		int localIdx = 0;
 		int argIdx = 0;				
-
-		if (methodInstance->HasStructRet())		
-			argIdx++;		
-		
+				
 		Array<BfIRValue> splatAddrValues;
 
 		for ( ; argIdx < irParamCount; localIdx++)
@@ -16765,6 +16811,13 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			bool isThis = ((localIdx == 0) && (!mCurMethodInstance->mMethodDef->mIsStatic));
 			if ((isThis) && (thisType->IsValuelessType()))
 				isThis = false;
+
+			if (methodInstance->GetStructRetIdx() == argIdx)
+			{
+				argIdx++;
+				if (argIdx == irParamCount)
+					break;
+			}
 
 			BfLocalVariable* paramVar = NULL;
 			while (true)
@@ -16782,7 +16835,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				paramVar->mIsReadOnly = true;
 			}
 			
-			bool wantsAddr = (wantsDIVariables) || (!paramVar->mIsReadOnly) || (paramVar->mResolvedType->GetLoweredType() != BfTypeCode_None);
+			bool wantsAddr = (wantsDIVariables) || (!paramVar->mIsReadOnly) || (paramVar->mResolvedType->GetLoweredType(BfTypeUsage_Parameter));
 
 			if (paramVar->mResolvedType->IsMethodRef())
 				wantsAddr = false;			
@@ -16895,6 +16948,15 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			{
 				BfTypeUtils::SplatIterate([&](BfType* checkType) { argIdx++; }, paramVar->mResolvedType);
 			}
+			else if (paramVar->mIsLowered)
+			{
+				BfTypeCode loweredTypeCode = BfTypeCode_None;
+				BfTypeCode loweredTypeCode2 = BfTypeCode_None;
+				paramVar->mResolvedType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2);
+				argIdx++;
+				if (loweredTypeCode2 != BfTypeCode_None)
+					argIdx++;
+			}
 			else
 			{
 				argIdx++;
@@ -16909,12 +16971,13 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		int declArgIdx = 0;
 		localIdx = 0;
 		argIdx = 0;
-		if (methodInstance->HasStructRet())
-			argIdx++;				
-	
+		
 		int splatAddrIdx = 0;		
 		while (localIdx < (int)methodState.mLocals.size())
 		{
+			if (argIdx == methodInstance->GetStructRetIdx())
+				argIdx++;
+
 			int curLocalIdx = localIdx++;
 			BfLocalVariable* paramVar = methodState.mLocals[curLocalIdx];
 			if (!paramVar->IsParam())
@@ -17010,19 +17073,34 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					bool handled = false;					
 					if (paramVar->mIsLowered)
 					{						
-						auto loweredTypeCode = paramVar->mResolvedType->GetLoweredType();
-						BF_ASSERT(loweredTypeCode != BfTypeCode_None);
-						if (loweredTypeCode != BfTypeCode_None)
+						BfTypeCode loweredTypeCode = BfTypeCode_None;
+						BfTypeCode loweredTypeCode2 = BfTypeCode_None;						
+						if (paramVar->mResolvedType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
 						{
 							// We have a lowered type coming in, so we have to cast the .addr before storing
-							auto primType = GetPrimitiveType(loweredTypeCode);
-							auto primPtrType = CreatePointerType(primType);
-							auto primPtrVal = mBfIRBuilder->CreateBitCast(paramVar->mAddr, mBfIRBuilder->MapType(primPtrType));
-							mBfIRBuilder->CreateAlignedStore(paramVar->mValue, primPtrVal, paramVar->mResolvedType->mSize);
+							auto primType = mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
+							auto primPtrType = mBfIRBuilder->GetPointerTo(primType);
+							auto primPtrVal = mBfIRBuilder->CreateBitCast(paramVar->mAddr, primPtrType);
+							mBfIRBuilder->CreateStore(paramVar->mValue, primPtrVal);
+
+							if (loweredTypeCode2 != BfTypeCode_None)
+							{
+								declArgIdx++;
+
+								auto primType2 = mBfIRBuilder->GetPrimitiveType(loweredTypeCode2);
+								auto primPtrType2 = mBfIRBuilder->GetPointerTo(primType2);
+								auto primPtrVal2 = mBfIRBuilder->CreateBitCast(mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), primPtrType2);
+								mBfIRBuilder->CreateStore(mBfIRBuilder->GetArgument(argIdx + 1), primPtrVal2);
+							}
+
 							// We don't want to allow directly using value
 							paramVar->mValue = BfIRValue();
 							handled = true;
 						}						
+						else
+						{
+							BF_ASSERT("Expected lowered");
+						}
 					}
 
 					if (!handled)
@@ -17190,6 +17268,15 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			{
 				BfTypeUtils::SplatIterate([&](BfType* checkType) { argIdx++; }, paramVar->mResolvedType);
 			}
+			else if (paramVar->mIsLowered)
+			{
+				argIdx++;
+				BfTypeCode loweredTypeCode = BfTypeCode_None;
+				BfTypeCode loweredTypeCode2 = BfTypeCode_None;
+				paramVar->mResolvedType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2);
+				if (loweredTypeCode != BfTypeCode_None)
+					argIdx++;
+			}
 			else if (!paramVar->mResolvedType->IsValuelessType())
 			{
 				argIdx++;
@@ -17322,10 +17409,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				{
 					BF_ASSERT(innerType->IsUnspecializedType());
 				}
-				else if (methodInstance->HasStructRet())
+				else if (methodInstance->GetStructRetIdx() != -1)
 				{
 					mBfIRBuilder->PopulateType(methodInstance->mReturnType);
-					auto returnType = BfTypedValue(mBfIRBuilder->GetArgument(0), methodInstance->mReturnType, true);
+					auto returnType = BfTypedValue(mBfIRBuilder->GetArgument(methodInstance->GetStructRetIdx()), methodInstance->mReturnType, true);
 					exprEvaluator.mReceivingValue = &returnType;
 					auto retVal = exprEvaluator.CreateCall(innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, true);					
 					BF_ASSERT(exprEvaluator.mReceivingValue == NULL); // Ensure it was actually used
@@ -17692,11 +17779,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		{			
 			mBfIRBuilder->PopulateType(mCurMethodInstance->mReturnType);
 			
-			if (mCurMethodInstance->HasStructRet())
+			if (mCurMethodInstance->GetStructRetIdx() != -1)
 			{			
 				auto ptrType = CreatePointerType(mCurMethodInstance->mReturnType);
 				auto allocaInst = AllocLocalVariable(ptrType, "__return.addr", false);				
-				auto storeInst = mBfIRBuilder->CreateStore(mBfIRBuilder->GetArgument(0), allocaInst);
+				auto storeInst = mBfIRBuilder->CreateStore(mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()), allocaInst);
 				mBfIRBuilder->ClearDebugLocation(storeInst);
 				mCurMethodState->mRetValAddr = allocaInst;
 			}
@@ -17886,7 +17973,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 	if (mCurMethodState->mIRExitBlock)
 	{
-		if ((mCurMethodState->mRetVal) && (!mCurMethodInstance->HasStructRet()))
+		if ((mCurMethodState->mRetVal) && (mCurMethodInstance->GetStructRetIdx() == -1))
 		{			
 			auto loadedVal = mBfIRBuilder->CreateLoad(mCurMethodState->mRetVal.mValue);
 			
@@ -19913,9 +20000,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	}
 
 	int argIdx = 0;
-	PopulateType(methodInstance->mReturnType, BfPopulateType_Data);
-	if (methodInstance->HasStructRet())
-		argIdx++;
+	PopulateType(methodInstance->mReturnType, BfPopulateType_Data);	
 	if (!methodDef->mIsStatic)
     {
 		if (methodInstance->GetParamIsSplat(-1))
@@ -19923,6 +20008,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		else if (!methodInstance->GetOwner()->IsValuelessType())
 			argIdx++;
 	}
+
+	if (methodInstance->GetStructRetIdx() != -1)
+		argIdx++;
+
 	for (auto& methodParam : mCurMethodInstance->mParams)
 	{
 		if (methodParam.mResolvedType->IsMethodRef())

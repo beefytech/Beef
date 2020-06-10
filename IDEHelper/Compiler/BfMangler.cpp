@@ -1566,7 +1566,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 		}
 	}
 	else if (type->IsTypeInstance())
-	{		
+	{
 		auto typeInstance = (BfTypeInstance*)type;
 		auto typeDef = typeInstance->mTypeDef;
 
@@ -1577,7 +1577,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 				name += "E";
 			name += "A";
 		}
-		else if (((type->IsGenericTypeInstance()) || (type->IsTuple()) || (type->IsEnum())) && (mangleContext.mInRet))
+		else if (((type->IsGenericTypeInstance()) || (type->IsComposite()) || (type->IsEnum())) && (mangleContext.mInRet))
 			name += "?A";
 
 		Mangle(mangleContext, name, typeInstance, false);		

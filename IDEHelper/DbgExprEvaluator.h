@@ -158,6 +158,18 @@ public:
 		return mPtr;
 	}
 
+	String GetString() const
+	{
+		if (!mType->IsPointer())
+			return "";
+		if ((mType->mTypeParam->mTypeCode != DbgType_SChar) && (mType->mTypeParam->mTypeCode != DbgType_UChar))
+			return "";
+		if (mIsLiteral)
+			return mCharPtr;
+		//return (const char*)mPtr;
+		return "";
+	}
+
 	operator bool() const
 	{
 		return (mType != NULL) && (!mHasNoValue);

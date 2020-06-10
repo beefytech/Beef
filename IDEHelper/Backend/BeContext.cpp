@@ -71,6 +71,22 @@ BeStructType* BeContext::CreateStruct(const StringImpl& name)
 	return structType;
 }
 
+BeStructType* BeContext::CreateStruct(const SizedArrayImpl<BeType*>& types)
+{	
+	BeStructType** valuePtr = NULL;	
+	if (mAnonymousStructMap.TryGetValueWith(types, &valuePtr))	
+		return *valuePtr;	
+
+	Array<BeType*> key;
+	for (auto type : types)
+		key.Add(type);
+	
+	BeStructType* structType = CreateStruct("");
+	SetStructBody(structType, types, false);
+	mAnonymousStructMap.TryAdd(key, structType);	
+	return structType;
+}
+
 BePointerType* BeContext::GetPointerTo(BeType* beType)
 {
 	if (beType->mPointerType == NULL)

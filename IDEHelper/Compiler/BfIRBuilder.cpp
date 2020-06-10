@@ -3305,6 +3305,13 @@ BfIRType BfIRBuilder::CreateStructType(const StringImpl& name)
 	return retType;
 }
 
+BfIRType BfIRBuilder::CreateStructType(const BfSizedArray<BfIRType>& memberTypes)
+{
+	BfIRType retType = WriteCmd(BfIRCmd_CreateAnonymousStruct, memberTypes);
+	NEW_CMD_INSERTED_IRTYPE;
+	return retType;
+}
+
 void BfIRBuilder::StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& memberTypes, bool isPacked)
 {
 	WriteCmd(BfIRCmd_StructSetBody, type, memberTypes, isPacked);
@@ -4420,6 +4427,11 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 	BfIRFunction retVal = WriteCmd(BfIRCmd_CreateFunction, funcType, (uint8)linkageType, name);	
 	NEW_CMD_INSERTED_IRVALUE;	
 	mFunctionMap[name] = retVal;
+
+	if (name == "?TestStructRetCapture$Rt@Lambdas@Tests@bf@@QEAA?AUStructA@123@XZ")
+	{
+		NOP;
+	}
 
 	//BfLogSys(mModule->mSystem, "BfIRBuilder::CreateFunction: %d %s Module:%p\n", retVal.mId, name.c_str(), mModule);
 

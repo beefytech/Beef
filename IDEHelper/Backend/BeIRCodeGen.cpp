@@ -963,6 +963,13 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, mBeContext->CreateStruct(typeName));
 		}
 		break;
+	case BfIRCmd_CreateAnonymousStruct:
+		{
+			CMD_PARAM(CmdParamVec<BeType*>, members);
+			BeStructType* structType = mBeContext->CreateStruct(members);
+			SetResult(curId, structType);
+		}
+		break;
 	case BfIRCmd_StructSetBody:
 		{			
 			CMD_PARAM(BeType*, type);
@@ -2143,7 +2150,8 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				if (attribute == BfIRAttribute_StructRet)
 				{
-					BF_ASSERT(argIdx == 1);
+					auto valType = callInst->mArgs[argIdx - 1].mValue->GetType();
+					BF_ASSERT(valType->IsPointer());
 					callInst->mArgs[argIdx - 1].mStructRet = true;
 				}
 				else if (attribute == BfIRAttribute_ZExt)
@@ -2152,6 +2160,9 @@ void BeIRCodeGen::HandleNextCmd()
 					callInst->mArgs[argIdx - 1].mNoAlias = true;
 				else if (attribute == BfIRAttribute_NoCapture)
 					callInst->mArgs[argIdx - 1].mNoCapture = true;
+				else if (attribute == BfIRAttribute_ByVal)
+				{									
+				}
 				else
 					BF_FATAL("Unhandled");
 			}
@@ -2177,7 +2188,21 @@ void BeIRCodeGen::HandleNextCmd()
 				if (argIdx > 0)
 				{
 					if (attribute == BfIRAttribute_Dereferencable)
+					{
 						callInst->mArgs[argIdx - 1].mDereferenceableSize = arg;
+						if (auto func = BeValueDynCast<BeFunction>(callInst->mFunc))
+						{
+							BF_ASSERT(func->mParams[argIdx - 1].mDereferenceableSize == arg);
+						}
+					}
+					else if (attribute == BfIRAttribute_ByVal)
+					{
+						callInst->mArgs[argIdx - 1].mByRefSize = arg;
+						if (auto func = BeValueDynCast<BeFunction>(callInst->mFunc))
+						{
+							BF_ASSERT(func->mParams[argIdx - 1].mByValSize == arg);
+						}
+					}
 					else
 						BF_FATAL("Unhandled");
 				}
@@ -2242,6 +2267,8 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				if (attribute == BfIRAttribute_Dereferencable)
 					func->mParams[argIdx - 1].mDereferenceableSize = arg;
+				else if (attribute == BfIRAttribute_ByVal)				
+					func->mParams[argIdx - 1].mByValSize = arg;				
 				else
 					BF_FATAL("Unhandled");
 			}

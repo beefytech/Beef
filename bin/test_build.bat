@@ -9,11 +9,15 @@ md stats
 
 @REM GOTO RANDO
 
+
 @ECHO Testing IDEHelper\Tests
+CALL bin/msbuild.bat IDEHelper\Tests\CLib\CLib.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m
+@IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 IDE\dist\BeefBuild_d -proddir=IDEHelper\Tests -test
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 @ECHO Testing IDEHelper\Tests (Win32)
+CALL bin/msbuild.bat IDEHelper\Tests\CLib\CLib.vcxproj /p:Configuration=Debug /p:Platform=x86 /p:SolutionDir=%cd%\ /v:m
 IDE\dist\BeefBuild_d -proddir=IDEHelper\Tests -test -platform=Win32
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 

@@ -428,6 +428,14 @@ public:
 	}
 };
 
+enum BfTypeUsage
+{
+	BfTypeUsage_Unspecified,
+	BfTypeUsage_Return_Static,
+	BfTypeUsage_Return_NonStatic,	
+	BfTypeUsage_Parameter,
+};
+
 class BfType
 {
 public:
@@ -539,7 +547,7 @@ public:
 	virtual bool IsConstExprValue() { return false; }
 	virtual bool IsDependentOnUnderlyingType() { return false; }
 	virtual bool WantsGCMarking() { return false; }
-	virtual BfTypeCode GetLoweredType() { return BfTypeCode_None; }
+	virtual bool GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCode = NULL, BfTypeCode* outTypeCode2 = NULL) { return false; }
 	virtual BfType* GetUnderlyingType() { return NULL; }	
 	virtual bool HasWrappedRepresentation() { return IsWrappableType(); }
 	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) { return true; } // May be 'false' only for generic extensions with constraints
@@ -852,8 +860,9 @@ public:
 	bool IsSpecializedByAutoCompleteMethod();
 	bool HasThis();	
 	bool HasParamsArray();
-	bool HasStructRet();
+	int GetStructRetIdx();
 	bool HasSelf();
+	bool GetLoweredReturnType(BfTypeCode* loweredTypeCode = NULL, BfTypeCode* loweredTypeCode2 = NULL);
 	bool IsAutocompleteMethod() { /*return mIdHash == -1;*/ return mIsAutocompleteMethod; }
 	bool IsSkipCall(bool bypassVirtual = false);	
 	bool IsVarArgs();
@@ -1827,11 +1836,11 @@ public:
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) override;
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) override;	
 	virtual bool WantsGCMarking() override;
-	virtual BfTypeCode GetLoweredType() override;
+	virtual bool GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCode = NULL, BfTypeCode* outTypeCode2 = NULL) override;
 
 	BfGenericTypeInfo* GetGenericTypeInfo() { return mGenericTypeInfo; }
  
-	virtual BfTypeInstance* ToGenericTypeInstance() { return (mGenericTypeInfo != NULL) ? this : NULL; }
+	virtual BfTypeInstance* ToGenericTypeInstance() override { return (mGenericTypeInfo != NULL) ? this : NULL; }
  	virtual bool IsGenericTypeInstance() override { return mGenericTypeInfo != NULL; }
  	virtual bool IsSpecializedType() override { return (mGenericTypeInfo != NULL) && (!mGenericTypeInfo->mIsUnspecialized); }
  	virtual bool IsSpecializedByAutoCompleteMethod() override;
@@ -2020,7 +2029,7 @@ public:
 	virtual bool IsUnspecializedType() override { return mIsUnspecializedType; }
 	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedTypeVariation; }
 
-	virtual BfDelegateInfo* GetDelegateInfo() { return &mDelegateInfo; }
+	virtual BfDelegateInfo* GetDelegateInfo() override { return &mDelegateInfo; }
 };
 
 class BfTupleType : public BfTypeInstance

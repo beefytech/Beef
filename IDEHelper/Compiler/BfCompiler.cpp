@@ -3470,6 +3470,8 @@ void BfCompiler::VisitSourceExteriorNodes()
 		if (parser->mAwaitingDelete)
 			return;		
 
+		if (parser->mParserData == NULL)
+			return;
 		if (parser->mParserData->mExteriorNodesCheckIdx == mSystem->mTypeMapVersion)
 			return;
 

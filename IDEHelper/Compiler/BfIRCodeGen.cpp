@@ -434,17 +434,42 @@ llvm::Type* BfIRCodeGen::GetLLVMType(BfTypeCode typeCode, bool& isSigned)
 	case BfTypeCode_UInt16:
 	case BfTypeCode_Char16:
 		return llvm::Type::getInt16Ty(*mLLVMContext);
+	case BfTypeCode_Int24:
+		isSigned = true;
+		return llvm::Type::getIntNTy(*mLLVMContext, 24);
+	case BfTypeCode_UInt24:
+		return llvm::Type::getIntNTy(*mLLVMContext, 24);
 	case BfTypeCode_Int32:
 		isSigned = true;
 		return llvm::Type::getInt32Ty(*mLLVMContext);
 	case BfTypeCode_UInt32:
 	case BfTypeCode_Char32:
 		return llvm::Type::getInt32Ty(*mLLVMContext);
+	case BfTypeCode_Int40:
+		isSigned = true;
+		return llvm::Type::getIntNTy(*mLLVMContext, 40);
+	case BfTypeCode_UInt40:
+		return llvm::Type::getIntNTy(*mLLVMContext, 40);
+	case BfTypeCode_Int48:
+		isSigned = true;
+		return llvm::Type::getIntNTy(*mLLVMContext, 48);
+	case BfTypeCode_UInt48:
+		return llvm::Type::getIntNTy(*mLLVMContext, 48);
+	case BfTypeCode_Int56:
+		isSigned = true;
+		return llvm::Type::getIntNTy(*mLLVMContext, 56);
+	case BfTypeCode_UInt56:
+		return llvm::Type::getIntNTy(*mLLVMContext, 56);
 	case BfTypeCode_Int64:
 		isSigned = true;
 		return llvm::Type::getInt64Ty(*mLLVMContext);
 	case BfTypeCode_UInt64:
 		return llvm::Type::getInt64Ty(*mLLVMContext);
+	case BfTypeCode_Int128:
+		isSigned = true;
+		return llvm::Type::getInt128Ty(*mLLVMContext);
+	case BfTypeCode_UInt128:
+		return llvm::Type::getInt128Ty(*mLLVMContext);
 	case BfTypeCode_IntPtr:
 		BF_FATAL("Illegal");
 		/*isSigned = true;
@@ -1116,12 +1141,19 @@ void BfIRCodeGen::HandleNextCmd()
 			SetResult(curId, GetLLVMType(typeCode, isSigned));
 		}
 		break;
+	case BfIRCmd_CreateAnonymousStruct:
+		{
+			CMD_PARAM(CmdParamVec<llvm::Type*>, members);
+			llvm::StructType* structType = llvm::StructType::get(*mLLVMContext, members);			
+			SetResult(curId, structType);
+		}
+		break;
 	case BfIRCmd_CreateStruct:
 		{
 			CMD_PARAM(String, typeName);
 			SetResult(curId, llvm::StructType::create(*mLLVMContext, typeName.c_str()));
 		}
-		break;
+		break;	
 	case BfIRCmd_StructSetBody:
 		{
 			CMD_PARAM(llvm::Type*, type);
@@ -2621,6 +2653,15 @@ void BfIRCodeGen::HandleNextCmd()
 				{
 					((llvm::CallInst*)callInst)->addDereferenceableAttr(argIdx, arg);
 				}
+				else if (attribute == BfIRAttribute_ByVal)
+				{
+					llvm::AttrBuilder B;
+					B.addAttribute(llvm::Attribute::ByVal);
+					B.addAlignmentAttr(arg);
+					auto attrList = ((llvm::CallInst*)callInst)->getAttributes();
+					attrList = attrList.addAttributes(*mLLVMContext, argIdx, B);
+					((llvm::CallInst*)callInst)->setAttributes(attrList);
+				}
 			}
 		}
 		break;
@@ -2654,6 +2695,15 @@ void BfIRCodeGen::HandleNextCmd()
 			if (attribute == BfIRAttribute_Dereferencable)
 			{
 				((llvm::Function*)func)->addDereferenceableAttr(argIdx, arg);		
+			}
+			else if (attribute == BfIRAttribute_ByVal)
+			{
+				llvm::AttrBuilder B;
+				B.addAttribute(llvm::Attribute::ByVal);
+				B.addAlignmentAttr(arg);
+				auto attrList = ((llvm::Function*)func)->getAttributes();
+				attrList = attrList.addAttributes(*mLLVMContext, argIdx, B);
+				((llvm::Function*)func)->setAttributes(attrList);				
 			}
 		}
 		break;

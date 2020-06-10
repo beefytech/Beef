@@ -4484,7 +4484,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		}
 		else
 		{						
-			auto val = mModule->GetDefaultTypedValue(returnType, true, methodInstance->HasStructRet() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
+			auto val = mModule->GetDefaultTypedValue(returnType, true, (methodInstance->GetStructRetIdx() != -1) ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
 			if (val.mKind == BfTypedValueKind_Addr)
 				val.mKind = BfTypedValueKind_TempAddr;
 			return val;
@@ -4492,7 +4492,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	};
 
 	mModule->PopulateType(origReturnType, BfPopulateType_Data);
-	if (methodInstance->HasStructRet())
+	if (methodInstance->GetStructRetIdx() != -1)
 	{
 		// We need to ensure that mReceivingValue has the correct type, otherwise it's possible that a conversion operator needs to be applied
 		//  This happens for returning Result<T>'s with a 'T' value
@@ -4756,13 +4756,23 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		mModule->mBfIRBuilder->PopulateType(returnType);
 	
 	BfIRValue callInst;
+	int callIRArgCount = (int)irArgs.size();
 	if (sret != NULL)
 	{
 		SizedArray<BfIRValue, 8> sretIRArgs; 
-		sretIRArgs.push_back(sret->mValue);
-		if (!irArgs.IsEmpty())
-			sretIRArgs.Insert(sretIRArgs.size(), &irArgs[0], irArgs.size());
+		int sretIdx = methodInstance->GetStructRetIdx();
+		int inIdx = 0;
+		for (int outIdx = 0; outIdx < irArgs.size() + 1; outIdx++)
+		{
+			if (outIdx == sretIdx)
+			{
+				sretIRArgs.Add(sret->mValue);
+				continue;
+			}
+			sretIRArgs.Add(irArgs[inIdx++]);
+		}
 		callInst = mModule->mBfIRBuilder->CreateCall(funcCallInst, sretIRArgs);
+		callIRArgCount++;
 	}
 	else
 	{
@@ -4780,18 +4790,23 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	int paramIdx = 0;
 	bool doingThis = !methodDef->mIsStatic;
 	int argIdx = 0;
-	if (sret != NULL)
+	
+
+	if (methodInstance->mIdHash == 1140)
 	{
-		mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_StructRet);
-		argIdx++;
+		NOP;
 	}
 
 	int paramCount = methodInstance->GetParamCount();
 
-	for ( ; argIdx < (int)irArgs.size(); /*argIdx++*/)
+	for ( ; argIdx < callIRArgCount ; )
 	{	
-		if (argIdx >= paramCount)
-			break;
+		if (argIdx == methodInstance->GetStructRetIdx())
+		{
+			mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_StructRet);
+			argIdx++;
+			continue;
+		}
 
 		auto _HandleParamType = [&] (BfType* paramType)
 		{
@@ -4799,10 +4814,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 			{
 				if ((!doingThis) || (!methodDef->mIsMutating && methodInstance->AllowsSplatting()))
 				{
-					auto loweredTypeCode = paramType->GetLoweredType();
-					if (loweredTypeCode != BfTypeCode_None)
+					BfTypeCode loweredTypeCode = BfTypeCode_None;
+					BfTypeCode loweredTypeCode2 = BfTypeCode_None;					
+					if (paramType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
 					{
 						argIdx++;
+						if (loweredTypeCode2 != BfTypeCode_None)
+							argIdx++;
 						return; // Lowering never requires attributes
 					}
 				}
@@ -4818,8 +4836,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 				if ((addDeref <= 0) && (!elementType->IsValuelessType()))
 					mModule->AssertErrorState();
 			}
+
 			if ((paramType->IsComposite()) && (!paramType->IsTypedPrimitive()))
-			{				
+			{
 				if (mModule->mCompiler->mOptions.mAllowStructByVal)
 				{
 					//byval
@@ -4835,8 +4854,15 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 					}
 					else
 					{
-						mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_NoCapture);						
-						addDeref = paramType->mSize;
+						if (doingThis)
+						{
+							mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_NoCapture);
+							addDeref = paramType->mSize;
+						}
+						else
+						{
+							mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_ByVal, mModule->mSystem->mPtrSize);
+						}
 					}
 				}
 			}
@@ -4876,13 +4902,28 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		}
 		else
 		{
+			if (paramIdx >= methodInstance->GetParamCount())
+				break;
+
 			paramType = methodInstance->GetParamType(paramIdx);
+
+			BfTypeCode loweredTypeCode = BfTypeCode_None;
+			BfTypeCode loweredTypeCode2 = BfTypeCode_None;
+			if (paramType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
+			{
+				argIdx++;
+				paramIdx++;
+				if (loweredTypeCode2 != BfTypeCode_None)
+					argIdx++;
+				continue;
+			}
+
 			if ((paramType->IsValuelessType()) && (!paramType->IsMethodRef()))
 			{
 				paramIdx++;
 				continue;
 			}
-			//if (resolvedTypeRef->IsSplattable())
+			
 			if (methodInstance->GetParamIsSplat(paramIdx))
 			{
 				BfTypeUtils::SplatIterate(_HandleParamType, paramType);
@@ -4892,8 +4933,6 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 			else
 				_HandleParamType(methodInstance->GetParamType(paramIdx));
 		}
-
-		
 
 		if (doingThis)
 			doingThis = false;
@@ -4936,13 +4975,14 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		result = *sret;
 	else if (hasResult)
 	{
-		if (methodInstance->mReturnType->GetLoweredType() != BfTypeCode_None)
+		BfTypeCode loweredRetType = BfTypeCode_None;
+		BfTypeCode loweredRetType2 = BfTypeCode_None;		
+		if (methodInstance->GetLoweredReturnType(&loweredRetType, &loweredRetType2))
 		{
-			auto loweredType = mModule->GetPrimitiveType(methodInstance->mReturnType->GetLoweredType());
-			auto loweredPtrType = mModule->CreatePointerType(loweredType);
-
 			auto retVal = mModule->CreateAlloca(methodInstance->mReturnType);
-			auto castedRetVal = mModule->mBfIRBuilder->CreateBitCast(retVal, mModule->mBfIRBuilder->MapType(loweredPtrType));
+			BfIRType loweredIRType = mModule->GetIRLoweredType(loweredRetType, loweredRetType2);			
+			loweredIRType = mModule->mBfIRBuilder->GetPointerTo(loweredIRType);							
+			auto castedRetVal = mModule->mBfIRBuilder->CreateBitCast(retVal, loweredIRType);
 			mModule->mBfIRBuilder->CreateStore(callInst, castedRetVal);
 			result = BfTypedValue(retVal, methodInstance->mReturnType, BfTypedValueKind_TempAddr);
 		}
@@ -5116,14 +5156,40 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 			
 			if (!disableLowering)
 			{
-				auto loweredTypeCode = argVal.mType->GetLoweredType();
-				if (loweredTypeCode != BfTypeCode_None)
+				BfTypeCode loweredTypeCode = BfTypeCode_None;
+				BfTypeCode loweredTypeCode2 = BfTypeCode_None;				
+				if (argVal.mType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
 				{
-					auto primType = mModule->GetPrimitiveType(loweredTypeCode);
-					auto ptrType = mModule->CreatePointerType(primType);
-					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argVal.mValue, mModule->mBfIRBuilder->MapType(ptrType));
+// 					auto primType = mModule->GetPrimitiveType(loweredTypeCode);
+// 					auto ptrType = mModule->CreatePointerType(primType);
+// 					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argVal.mValue, mModule->mBfIRBuilder->MapType(ptrType));
+// 					auto primVal = mModule->mBfIRBuilder->CreateLoad(primPtrVal);
+// 					irArgs.push_back(primVal);
+// 
+// 					if (loweredTypeCode2 != BfTypeCode_None)
+// 					{
+// 						auto primType2 = mModule->GetPrimitiveType(loweredTypeCode2);
+// 						auto ptrType2 = mModule->CreatePointerType(primType2);
+// 						BfIRValue primPtrVal2 = mModule->mBfIRBuilder->CreateBitCast(mModule->mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), mModule->mBfIRBuilder->MapType(ptrType2));
+// 						auto primVal2 = mModule->mBfIRBuilder->CreateLoad(primPtrVal2);
+// 						irArgs.push_back(primVal2);
+// 					}
+
+					auto primType = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
+					auto ptrType = mModule->mBfIRBuilder->GetPointerTo(primType);
+					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argVal.mValue, ptrType);
 					auto primVal = mModule->mBfIRBuilder->CreateLoad(primPtrVal);
 					irArgs.push_back(primVal);
+
+					if (loweredTypeCode2 != BfTypeCode_None)
+					{
+						auto primType2 = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode2);
+						auto ptrType2 = mModule->mBfIRBuilder->GetPointerTo(primType2);
+						BfIRValue primPtrVal2 = mModule->mBfIRBuilder->CreateBitCast(mModule->mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), ptrType2);
+						auto primVal2 = mModule->mBfIRBuilder->CreateLoad(primPtrVal2);
+						irArgs.push_back(primVal2);
+					}
+
 					return;
 				}
 			}			
@@ -5244,7 +5310,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
  	if (!mModule->mCompiler->mIsResolveOnly)
 		sCallIdx++;
 	int callIdx = sCallIdx;
-	if (callIdx == 4348)
+	if (callIdx == 1177)
 	{
 		NOP;
 	}
@@ -5436,9 +5502,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		}
 		else
 		{
-			wantsSplat = methodInstance->GetParamIsSplat(paramIdx);
+			wantsSplat = methodInstance->GetParamIsSplat(paramIdx);			
 			if (methodInstance->IsImplicitCapture(paramIdx))
 			{
+				auto paramType = methodInstance->GetParamType(paramIdx);
 				if (mModule->mCurMethodInstance->IsMixin())
 				{					
 					// Don't bother, also- can fail on captures					
@@ -5461,10 +5528,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						{
 							SplatArgs(lookupVal, irArgs);
 						}
-						else
+						else if (paramType->IsRef())
 						{														
 							irArgs.push_back(lookupVal.mValue);
 						}
+						else
+							PushArg(lookupVal, irArgs, true);
 					}
 				}
 				paramIdx++;
@@ -5549,7 +5618,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		bool hadMissingArg = false;
 
 		int argExprIdx = argIdx;
-		if ((methodDef->mMethodType == BfMethodType_Extension))
+		if (methodDef->mMethodType == BfMethodType_Extension)
 		{
 			argExprIdx--;
 			if (argExprIdx == -1)
@@ -5718,12 +5787,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					{
 					 	if (methodRefType->WantsDataPassedAsSplat(dataIdx))
 					 		SplatArgs(lookupVal, irArgs);
-						else if (lookupVal.mType->IsComposite())
-						{
-							irArgs.push_back(lookupVal.mValue);
-						}
 						else
-					 		irArgs.push_back(lookupVal.mValue);
+							irArgs.push_back(lookupVal.mValue);
 					}
 				}
 
@@ -6812,11 +6877,6 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		isFailurePass = true;
 		if (lookupTypeInst != NULL)
 			methodMatcher.CheckType(lookupTypeInst, target, true);		
-	}
-
-	if ((methodMatcher.mBestMethodDef != NULL) && (methodMatcher.mBestMethodDef->mName == "Zorf"))
-	{
-		NOP;
 	}
 
 	BfTypedValue staticResult;
@@ -9909,8 +9969,10 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		if (hasCaptures)
 		{
 			hasThis = true;
-			methodInstance->GetIRFunctionInfo(mModule, irReturnType, irParamTypes);
-			int thisIdx = methodInstance->HasStructRet() ? 1 : 0;
+			methodInstance->GetIRFunctionInfo(mModule, irReturnType, irParamTypes);			
+			int thisIdx = 0;
+			if (methodInstance->GetStructRetIdx() == 0)
+				thisIdx = 1;
 			irParamTypes[thisIdx] = mModule->mBfIRBuilder->MapType(useTypeInstance);
 		}
 		else
@@ -9927,10 +9989,10 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		auto funcType = mModule->mBfIRBuilder->CreateFunctionType(irReturnType, irParamTypes);
 		funcValue = mModule->mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, methodName);
 
-		if (methodInstance->HasStructRet())
-		{
-			mModule->mBfIRBuilder->Func_AddAttribute(funcValue, 1, BfIRAttribute_NoAlias);
-			mModule->mBfIRBuilder->Func_AddAttribute(funcValue, 1, BfIRAttribute_StructRet);
+		if (methodInstance->GetStructRetIdx() != -1)
+		{			
+			mModule->mBfIRBuilder->Func_AddAttribute(funcValue, methodInstance->GetStructRetIdx() + 1, BfIRAttribute_NoAlias);
+			mModule->mBfIRBuilder->Func_AddAttribute(funcValue, methodInstance->GetStructRetIdx() + 1, BfIRAttribute_StructRet);
 		}
 
 		auto srcCallingConv = mModule->GetIRCallingConvention(methodInstance);
@@ -9947,10 +10009,18 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		fieldIdx = 0;
 		SizedArray<BfIRValue, 8> irArgs;
 
-		int argIdx = 0;
-		if (methodInstance->HasStructRet())
-			irArgs.push_back(mModule->mBfIRBuilder->GetArgument(argIdx++));
+		if (methodInstance->mIdHash == 775)
+		{
+			NOP;
+		}
 
+		int argIdx = 0;
+		if (bindMethodInstance->GetStructRetIdx() == 0)
+		{
+			irArgs.push_back(mModule->mBfIRBuilder->GetArgument(methodInstance->GetStructRetIdx()));
+			argIdx++;
+		}
+		
 		for (int implicitParamIdx = bindMethodInstance->HasThis() ? -1 : 0; implicitParamIdx < implicitParamCount; implicitParamIdx++)
 		{
 			auto fieldInst = &useTypeInstance->mFieldInstances[fieldIdx];
@@ -9965,7 +10035,10 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					disableSplat = true;
 				}
 			}
-			int thisIdx = methodInstance->HasStructRet() ? 1 : 0;
+			
+			int thisIdx = 0;
+			if (methodInstance->GetStructRetIdx() == 0)
+				thisIdx = 1;
 			auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mModule->mBfIRBuilder->GetArgument(thisIdx), 0, gepIdx);
 			BfTypedValue typedVal(fieldPtr, fieldType, true);
 			PushArg(typedVal, irArgs, disableSplat);
@@ -9974,6 +10047,12 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 		if (hasThis)
 			argIdx++;
+		
+		if (bindMethodInstance->GetStructRetIdx() == 1)
+		{
+			irArgs.push_back(mModule->mBfIRBuilder->GetArgument(methodInstance->GetStructRetIdx()));
+			argIdx++;
+		}
 
 		for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
 		{
@@ -9992,12 +10071,12 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		if (mModule->mCompiler->mOptions.mAllowHotSwapping)
 			bindFuncVal = mModule->mBfIRBuilder->RemapBindFunction(bindFuncVal);
 		auto callInst = mModule->mBfIRBuilder->CreateCall(bindFuncVal, irArgs);
-		if (methodInstance->HasStructRet())
-			mModule->mBfIRBuilder->Call_AddAttribute(callInst, 1, BfIRAttribute_StructRet);
+		if (bindMethodInstance->GetStructRetIdx() != -1)
+			mModule->mBfIRBuilder->Call_AddAttribute(callInst, bindMethodInstance->GetStructRetIdx() + 1, BfIRAttribute_StructRet);
 		auto destCallingConv = mModule->GetIRCallingConvention(bindMethodInstance);
 		if (destCallingConv != BfIRCallingConv_CDecl)
 			mModule->mBfIRBuilder->SetCallCallingConv(callInst, destCallingConv);
-		if ((methodInstance->mReturnType->IsValuelessType()) || (methodInstance->HasStructRet()))
+		if ((methodInstance->mReturnType->IsValuelessType()) || (methodInstance->GetStructRetIdx() != -1))
 		{
 			mModule->mBfIRBuilder->CreateRetVoid();
 		}
@@ -10783,14 +10862,17 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		origReturnType = mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_None));
 	}
 
-	SizedArray<BfIRType, 3> newTypes;
-	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->HasStructRet()))
+	SizedArray<BfIRType, 3> newTypes;	
+
+	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx() == 0))
 		newTypes.push_back(origParamTypes[0]);
 	if (!methodDef->mIsStatic)
 		newTypes.push_back(mModule->mBfIRBuilder->MapType(useTypeInstance));
+	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx() == 1))
+		newTypes.push_back(origParamTypes[1]);
 
 	int paramStartIdx = 0;
-	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->HasStructRet()))
+	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx() != -1))
 		paramStartIdx++;
 	if (!methodDef->mIsStatic)
 		paramStartIdx++;
@@ -14585,6 +14667,11 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				return mResult;
 			}
 
+			if (matchedMethod->mName == "get__CultureName")
+			{
+				NOP;
+			}
+
 			auto methodInstance = GetPropertyMethodInstance(matchedMethod);
 			if (methodInstance.mMethodInstance == NULL)
 				return mResult;
@@ -14662,7 +14749,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 					}
 					else
 					{
-						auto val = mModule->GetDefaultTypedValue(returnType, true, methodInstance.mMethodInstance->HasStructRet() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
+						auto val = mModule->GetDefaultTypedValue(returnType, true, (methodInstance.mMethodInstance->GetStructRetIdx() != -1) ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
 						if (val.mKind == BfTypedValueKind_Addr)
 							val.mKind = BfTypedValueKind_TempAddr;
 						return val;

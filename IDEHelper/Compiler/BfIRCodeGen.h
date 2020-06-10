@@ -82,7 +82,7 @@ public:
 	Dictionary<int, BfIRCodeGenEntry> mResults;
 	Dictionary<int, BfIRTypeEntry> mTypes;
 	Dictionary<int, llvm::Function*> mIntrinsicMap;
-	Dictionary<llvm::Function*, int> mIntrinsicReverseMap;
+	Dictionary<llvm::Function*, int> mIntrinsicReverseMap;	
 	Array<llvm::Constant*> mConfigConsts32;
 	Array<llvm::Constant*> mConfigConsts64;	
 

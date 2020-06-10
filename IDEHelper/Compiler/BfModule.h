@@ -1631,6 +1631,7 @@ public:
 	BfTypeInstance* GetWrappedStructType(BfType* type, bool allowSpecialized = true);
 	BfTypeInstance* GetPrimitiveStructType(BfTypeCode typeCode);
 	BfPrimitiveType* GetPrimitiveType(BfTypeCode typeCode);	
+	BfIRType GetIRLoweredType(BfTypeCode loweredTypeCode, BfTypeCode loweredTypeCode2);
 	BfMethodRefType* CreateMethodRefType(BfMethodInstance* methodInstance, bool mustAlreadyExist = false);
 	BfType* FixIntUnknown(BfType* type);
 	void FixIntUnknown(BfTypedValue& typedVal, BfType* matchType = NULL);	

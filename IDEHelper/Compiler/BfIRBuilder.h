@@ -94,10 +94,20 @@ enum BfTypeCode : uint8
 	BfTypeCode_UInt8,
 	BfTypeCode_Int16,
 	BfTypeCode_UInt16,
+	BfTypeCode_Int24,
+	BfTypeCode_UInt24,
 	BfTypeCode_Int32,
 	BfTypeCode_UInt32,
+	BfTypeCode_Int40,
+	BfTypeCode_UInt40,
+	BfTypeCode_Int48,
+	BfTypeCode_UInt48,
+	BfTypeCode_Int56,
+	BfTypeCode_UInt56,
 	BfTypeCode_Int64,
-	BfTypeCode_UInt64,	
+	BfTypeCode_UInt64,
+	BfTypeCode_Int128,
+	BfTypeCode_UInt128,
 	BfTypeCode_IntPtr,
 	BfTypeCode_UIntPtr,
 	BfTypeCode_IntUnknown,
@@ -152,6 +162,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_SetType,
 	BfIRCmd_SetInstType,	
 	BfIRCmd_PrimitiveType,
+	BfIRCmd_CreateAnonymousStruct,
 	BfIRCmd_CreateStruct,
 	BfIRCmd_StructSetBody,
 	BfIRCmd_Type,
@@ -1050,6 +1061,7 @@ public:
 
 	BfIRType GetPrimitiveType(BfTypeCode typeCode);
 	BfIRType CreateStructType(const StringImpl& name);
+	BfIRType CreateStructType(const BfSizedArray<BfIRType>& memberTypes);
 	void StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& memberTypes, bool isPacked);	
 	BfIRType MapType(BfType* type, BfIRPopulateType populateType = BfIRPopulateType_Declaration);
 	BfIRType MapTypeInst(BfTypeInstance* typeInst, BfIRPopulateType populateType = BfIRPopulateType_Declaration);
