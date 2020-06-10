@@ -136,11 +136,14 @@ void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 				// It's possible we can overestimate elemCount, particularly for large allocations. This doesn't cause a problem
 				//  because we can safely mark on complete random memory -- pointer values are always validated before being followed
 				intptr elemStride = BF_ALIGN(rawAllocData->mType->mSize, rawAllocData->mType->mAlign);
-				intptr dataSize = elementSize - extraDataSize;
-				intptr elemCount = dataSize / elemStride;
-				for (intptr elemIdx = 0; elemIdx < elemCount; elemIdx++)
-				{					
-					(((MarkTarget*)((uint8*)spanPtr + elemIdx * elemStride))->*markFunc)();
+				if (elemStride > 0)
+				{
+					intptr dataSize = elementSize - extraDataSize;
+					intptr elemCount = dataSize / elemStride;
+					for (intptr elemIdx = 0; elemIdx < elemCount; elemIdx++)
+					{
+						(((MarkTarget*)((uint8*)spanPtr + elemIdx * elemStride))->*markFunc)();
+					}
 				}
 			}
 		}
@@ -284,7 +287,8 @@ void BFGC::RawReportHandleSpan(tcmalloc_raw::Span* span, int expectedStartPage, 
 						typeSize = rawAllocData->mType->mSize;
 					else
 						typeSize = ((bf::System::Type_NOFLAGS*)rawAllocData->mType)->mSize;
-					rawLeakInfo.mDataCount = (elementSize - extraDataSize) / typeSize;
+					if (typeSize > 0)
+						rawLeakInfo.mDataCount = (elementSize - extraDataSize) / typeSize;
 				}
 				else
 					rawLeakInfo.mDataCount = 1;
