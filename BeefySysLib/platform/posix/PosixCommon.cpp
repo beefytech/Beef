@@ -30,7 +30,7 @@
 
 #ifdef BFP_BACKTRACE_PATH
 #include BFP_BACKTRACE_PATH
-#else
+#elif BFP_HAS_BACKTRACE
 #include "backtrace.h"
 #include "backtrace-supported.h"
 #endif
@@ -44,6 +44,9 @@
 #define BFP_PRINTF(...) printf (__VA_ARGS__)
 #define BFP_ERRPRINTF(...) fprintf (stderr, __VA_ARGS__)
 #endif
+
+//#include <cxxabi.h>
+//using __cxxabiv1::__cxa_demangle;
 
 USING_NS_BF;
 
@@ -395,7 +398,7 @@ static String gUnwindExecStr;
 static int gUnwindIdx = 0;
 
 static _Unwind_Reason_Code UnwindHandler(struct _Unwind_Context* context, void* ref)
-{   
+{       
     gUnwindIdx++;
     if (gUnwindIdx < 2)
         return _URC_NO_REASON;
@@ -406,9 +409,14 @@ static _Unwind_Reason_Code UnwindHandler(struct _Unwind_Context* context, void* 
     gUnwindExecStr += StrFormat(" %p", addr);
 #else
     Dl_info info;
-    if (dladdr(addr, &info) && info.dli_sname)
+    if (dladdr(addr, &info))
     {
-        BFP_ERRPRINTF("0x%p %s\n", addr, info.dli_sname);
+        if (info.dli_sname)
+            BFP_ERRPRINTF("0x%p %s\n", addr, info.dli_sname);
+        else if (info.dli_fname)
+            BFP_ERRPRINTF("0x%p %s\n", addr, info.dli_fname);
+        else
+            BFP_ERRPRINTF("0x%p\n", addr);
     }
 #endif
     return _URC_NO_REASON;
@@ -457,7 +465,7 @@ static void Crashed()
 
         size = backtrace(array, 64);
         strings = backtrace_symbols(array, size);
-
+      
         for (i = 0; i < size; i++)
             BFP_ERRPRINTF("%s\n", strings[i]);
 
@@ -503,9 +511,20 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
         BfpSystem_FatalError(StrFormat("Bfp build version '%d' does not match requested version '%d'", BFP_VERSION, version).c_str(), "BFP FATAL ERROR");
     }
 
-    signal(SIGSEGV, SigHandler);
-    signal(SIGFPE, SigHandler);
-    signal(SIGABRT, SigHandler);
+    //if (ptrace(PTRACE_TRACEME, 0, 1, 0) != -1)
+    {
+        //ptrace(PTRACE_DETACH, 0, 1, 0);
+        //signal(SIGSEGV, SigHandler);
+        //signal(SIGFPE, SigHandler);
+        //signal(SIGABRT, SigHandler);
+
+        /*struct sigaction action;
+        memset(&action, 0, sizeof(action));
+        action.sa_sigaction = signal_segv;
+        action.sa_flags = SA_SIGINFO;
+        if(sigaction(SIGSEGV, &action, NULL) < 0)
+            perror("sigaction");*/
+    }
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
