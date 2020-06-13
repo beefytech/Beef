@@ -2725,13 +2725,13 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					break;
 				REGREL32* regRel32 = (REGREL32*)dataStart;
 				const char* name = DbgDupString((const char*)regRel32->name);
-				DbgType* varType = CvGetType(regRel32->typind);
+				DbgType* varType = CvGetType(regRel32->typind);				
 
 				_NextUnrangedLocalVar(name, varType);
 
 				localVar->mName = name;
 				localVar->mCompileUnit = compileUnit;				
-				if ((localVar->mType != NULL) && (!localVar->mType->IsPointer()) && (varType->IsPointer()))
+				if ((localVar->mType != NULL) && (!localVar->mType->IsPointer()) && (varType != NULL) && (varType->IsPointer()))
 					localVar->mSigNoPointer = true;
 				localVar->mType = varType;
 				// This is location data now, not just a S_LOCAL opener
