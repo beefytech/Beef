@@ -298,6 +298,9 @@ namespace IDE.ui
 			if (mProfiler == null)
 				return;
 
+			if (mProfiler.IsSampling)
+				return;
+
 			var subItem = menu.AddItem("All Threads");
 			subItem.mOnMenuItemSelected.Add(new (item) => { Show(0, .()); });
 
