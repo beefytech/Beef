@@ -11796,174 +11796,193 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		
 		int writeIdx = 0;
 
-		std::function<void(BfIRValue addr, int curDim, const BfSizedArray<BfExpression*>& valueExprs)> _HandleInitExprs = [&](BfIRValue addr, int curDim, const BfSizedArray<BfExpression*>& valueExprs)
+		struct BfInitContext
 		{
-			int exprIdx = 0;			
-			int dimWriteIdx = 0;
-			bool isUninit = false;
-			
-			int dimLength = -1;
-			if (dimLengthVals[curDim].IsConst())
+		public:
+			BfModule* mModule;
+			BfType* resultType;			
+			int dimensions;
+			SizedArray<BfIRValue, 2>& dimLengthVals;
+			BfIRValue arraySize;
+			int& writeIdx;									
+
+			BfInitContext(BfModule* module, BfType* resultType, int dimensions, SizedArray<BfIRValue, 2>& dimLengthVals, BfIRValue arraySize, int& writeIdx) :
+				mModule(module), resultType(resultType), dimensions(dimensions), dimLengthVals(dimLengthVals), arraySize(arraySize), writeIdx(writeIdx)
 			{
-				auto constant = mModule->mBfIRBuilder->GetConstant(dimLengthVals[curDim]);
-				dimLength = constant->mInt32;
+
 			}
 
-			while (exprIdx < (int)valueExprs.size())
+			void Handle(BfIRValue addr, int curDim, const BfSizedArray<BfExpression*>& valueExprs)
 			{
-				auto initExpr = valueExprs[exprIdx];
-				exprIdx++;
-				if (!initExpr)
-					break;
-				if (auto unintExpr = BfNodeDynCastExact<BfUninitializedExpression>(initExpr))
+				int exprIdx = 0;
+				int dimWriteIdx = 0;
+				bool isUninit = false;
+
+				int dimLength = -1;
+				if (dimLengthVals[curDim].IsConst())
 				{
-					isUninit = true;
-					break;
+					auto constant = mModule->mBfIRBuilder->GetConstant(dimLengthVals[curDim]);
+					dimLength = constant->mInt32;
 				}
 
-				if (exprIdx > dimLength)
-					break;
-				
-				if (curDim < dimensions - 1)
-				{					
-					if (auto innerTupleExpr = BfNodeDynCast<BfTupleExpression>(initExpr))
+				while (exprIdx < (int)valueExprs.size())
+				{
+					auto initExpr = valueExprs[exprIdx];
+					exprIdx++;
+					if (!initExpr)
+						break;
+					if (auto unintExpr = BfNodeDynCastExact<BfUninitializedExpression>(initExpr))
 					{
-						_HandleInitExprs(addr, curDim + 1, innerTupleExpr->mValues);
-					}
-					else if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(initExpr))
-					{
-						SizedArray<BfExpression*, 1> values;
-						values.Add(parenExpr->mExpression);						
-						_HandleInitExprs(addr, curDim + 1, values);
-					}
-					else if (auto innerInitExpr = BfNodeDynCast<BfCollectionInitializerExpression>(initExpr))
-					{
-						_HandleInitExprs(addr, curDim + 1, innerInitExpr->mValues);
+						isUninit = true;
+						break;
 					}
 
-					dimWriteIdx++;
-					continue;
-				}
+					if (exprIdx > dimLength)
+						break;
 
-				auto elemAddr = mModule->CreateIndexedValue(resultType, addr, writeIdx);
-				writeIdx++;
-				dimWriteIdx++;
-
-				BfTypedValue elemPtrTypedVal = BfTypedValue(elemAddr, resultType, BfTypedValueKind_Addr);
-
-				BfExprEvaluator exprEvaluator(mModule);
-				exprEvaluator.mExpectingType = resultType;
-				exprEvaluator.mReceivingValue = &elemPtrTypedVal;
-				exprEvaluator.Evaluate(initExpr);
-				exprEvaluator.GetResult();
-
-				if (exprEvaluator.mReceivingValue == NULL)
-				{
-					// We wrote directly to the array in-place, we're done with this element
-					continue;
-				}
-				auto storeValue = exprEvaluator.mResult;
-				if (!storeValue)
-					continue;
-				storeValue = mModule->Cast(initExpr, storeValue, resultType);
-				if (!storeValue)
-					continue;
-				if (!resultType->IsValuelessType())
-				{
-					storeValue = mModule->LoadValue(storeValue);
-					mModule->mBfIRBuilder->CreateStore(storeValue.mValue, elemAddr);
-				}
-			}
-
-			int clearFromIdx = writeIdx;
-			int sectionElemCount = 1;
-
-			BfIRValue numElemsLeft = arraySize;
-			if (dimLength != -1)
-			{
-				int clearCount = dimLength - dimWriteIdx;
-				if (clearCount > 0)
-				{
-					for (int checkDim = curDim + 1; checkDim < (int)dimLengthVals.size(); checkDim++)
+					if (curDim < dimensions - 1)
 					{
-						if (dimLengthVals[checkDim].IsConst())
+						if (auto innerTupleExpr = BfNodeDynCast<BfTupleExpression>(initExpr))
 						{
-							auto constant = mModule->mBfIRBuilder->GetConstant(dimLengthVals[checkDim]);
-							clearCount *= constant->mInt32;
-							sectionElemCount *= constant->mInt32;
+							Handle(addr, curDim + 1, innerTupleExpr->mValues);
+						}
+						else if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(initExpr))
+						{
+							SizedArray<BfExpression*, 1> values;
+							values.Add(parenExpr->mExpression);
+							Handle(addr, curDim + 1, values);
+						}
+						else if (auto innerInitExpr = BfNodeDynCast<BfCollectionInitializerExpression>(initExpr))
+						{
+							Handle(addr, curDim + 1, innerInitExpr->mValues);
+						}
+
+						dimWriteIdx++;
+						continue;
+					}
+
+					auto elemAddr = mModule->CreateIndexedValue(resultType, addr, writeIdx);
+					writeIdx++;
+					dimWriteIdx++;
+
+					BfTypedValue elemPtrTypedVal = BfTypedValue(elemAddr, resultType, BfTypedValueKind_Addr);
+
+					BfExprEvaluator exprEvaluator(mModule);
+					exprEvaluator.mExpectingType = resultType;
+					exprEvaluator.mReceivingValue = &elemPtrTypedVal;
+					exprEvaluator.Evaluate(initExpr);
+					exprEvaluator.GetResult();
+
+					if (exprEvaluator.mReceivingValue == NULL)
+					{
+						// We wrote directly to the array in-place, we're done with this element
+						continue;
+					}
+					auto storeValue = exprEvaluator.mResult;
+					if (!storeValue)
+						continue;
+					storeValue = mModule->Cast(initExpr, storeValue, resultType);
+					if (!storeValue)
+						continue;
+					if (!resultType->IsValuelessType())
+					{
+						storeValue = mModule->LoadValue(storeValue);
+						mModule->mBfIRBuilder->CreateStore(storeValue.mValue, elemAddr);
+					}
+				}
+
+				int clearFromIdx = writeIdx;
+				int sectionElemCount = 1;
+
+				BfIRValue numElemsLeft = arraySize;
+				if (dimLength != -1)
+				{
+					int clearCount = dimLength - dimWriteIdx;
+					if (clearCount > 0)
+					{
+						for (int checkDim = curDim + 1; checkDim < (int)dimLengthVals.size(); checkDim++)
+						{
+							if (dimLengthVals[checkDim].IsConst())
+							{
+								auto constant = mModule->mBfIRBuilder->GetConstant(dimLengthVals[checkDim]);
+								clearCount *= constant->mInt32;
+								sectionElemCount *= constant->mInt32;
+							}
 						}
 					}
+
+					writeIdx += clearCount;
+					numElemsLeft = mModule->GetConstValue(clearCount);
 				}
 
-				writeIdx += clearCount;
-				numElemsLeft = mModule->GetConstValue(clearCount);
-			}
+				// Actually leave it alone?
+				if ((isUninit) && (mModule->IsOptimized()))
+					return;
 
-			// Actually leave it alone?
-			if ((isUninit) && (mModule->IsOptimized()))
-				return;
-			
-			bool doClear = true;
-			if (numElemsLeft.IsConst())
-			{
-				auto constant = mModule->mBfIRBuilder->GetConstant(numElemsLeft);
-				doClear = constant->mInt64 > 0;
-			}
-			if (doClear)
-			{
-				// We multiply by GetStride.  This relies on the fact that we over-allocate on the array allocation -- the last 
-				//  element doesn't need to be padded out to the element alignment, but we do anyway.  Otherwise this would be
-				//  a more complicated computation
-				auto clearBytes = mModule->mBfIRBuilder->CreateMul(numElemsLeft, mModule->GetConstValue(resultType->GetStride()));
-
-				if (isUninit)
+				bool doClear = true;
+				if (numElemsLeft.IsConst())
 				{
-					// Limit to a reasonable number of bytes to stomp with 0xCC
-					int maxStompBytes = BF_MIN(128, resultType->GetStride() * sectionElemCount);
-					if (clearBytes.IsConst())
-					{
-						auto constant = mModule->mBfIRBuilder->GetConstant(clearBytes);
-						if (constant->mInt64 > maxStompBytes)
-							clearBytes = mModule->GetConstValue(maxStompBytes);
-					}
-					else
-					{
-						auto insertBlock = mModule->mBfIRBuilder->GetInsertBlock();
-
-						auto gtBlock = mModule->mBfIRBuilder->CreateBlock("unint.gt");
-						auto contBlock = mModule->mBfIRBuilder->CreateBlock("unint.cont");
-						
-						auto cmp = mModule->mBfIRBuilder->CreateCmpLTE(clearBytes, mModule->GetConstValue(maxStompBytes), true);
-						mModule->mBfIRBuilder->CreateCondBr(cmp, contBlock, gtBlock);
-
-						mModule->mBfIRBuilder->AddBlock(gtBlock);
-						mModule->mBfIRBuilder->SetInsertPoint(gtBlock);
-						mModule->mBfIRBuilder->CreateBr(contBlock);
-
-						mModule->mBfIRBuilder->AddBlock(contBlock);
-						mModule->mBfIRBuilder->SetInsertPoint(contBlock);
-						auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_IntPtr)), 2);
-						mModule->mBfIRBuilder->AddPhiIncoming(phi, clearBytes, insertBlock);
-						mModule->mBfIRBuilder->AddPhiIncoming(phi, mModule->GetConstValue(maxStompBytes), gtBlock);
-
-						clearBytes = phi;
-					}
+					auto constant = mModule->mBfIRBuilder->GetConstant(numElemsLeft);
+					doClear = constant->mInt64 > 0;
 				}
-
-				mModule->mBfIRBuilder->PopulateType(resultType);
-				if (!resultType->IsValuelessType())
+				if (doClear)
 				{
-					mModule->mBfIRBuilder->CreateMemSet(mModule->CreateIndexedValue(resultType, addr, clearFromIdx),
-						mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, isUninit ? 0xCC : 0), clearBytes, resultType->mAlign);
+					// We multiply by GetStride.  This relies on the fact that we over-allocate on the array allocation -- the last 
+					//  element doesn't need to be padded out to the element alignment, but we do anyway.  Otherwise this would be
+					//  a more complicated computation
+					auto clearBytes = mModule->mBfIRBuilder->CreateMul(numElemsLeft, mModule->GetConstValue(resultType->GetStride()));
+
+					if (isUninit)
+					{
+						// Limit to a reasonable number of bytes to stomp with 0xCC
+						int maxStompBytes = BF_MIN(128, resultType->GetStride() * sectionElemCount);
+						if (clearBytes.IsConst())
+						{
+							auto constant = mModule->mBfIRBuilder->GetConstant(clearBytes);
+							if (constant->mInt64 > maxStompBytes)
+								clearBytes = mModule->GetConstValue(maxStompBytes);
+						}
+						else
+						{
+							auto insertBlock = mModule->mBfIRBuilder->GetInsertBlock();
+
+							auto gtBlock = mModule->mBfIRBuilder->CreateBlock("unint.gt");
+							auto contBlock = mModule->mBfIRBuilder->CreateBlock("unint.cont");
+
+							auto cmp = mModule->mBfIRBuilder->CreateCmpLTE(clearBytes, mModule->GetConstValue(maxStompBytes), true);
+							mModule->mBfIRBuilder->CreateCondBr(cmp, contBlock, gtBlock);
+
+							mModule->mBfIRBuilder->AddBlock(gtBlock);
+							mModule->mBfIRBuilder->SetInsertPoint(gtBlock);
+							mModule->mBfIRBuilder->CreateBr(contBlock);
+
+							mModule->mBfIRBuilder->AddBlock(contBlock);
+							mModule->mBfIRBuilder->SetInsertPoint(contBlock);
+							auto phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(mModule->GetPrimitiveType(BfTypeCode_IntPtr)), 2);
+							mModule->mBfIRBuilder->AddPhiIncoming(phi, clearBytes, insertBlock);
+							mModule->mBfIRBuilder->AddPhiIncoming(phi, mModule->GetConstValue(maxStompBytes), gtBlock);
+
+							clearBytes = phi;
+						}
+					}
+
+					mModule->mBfIRBuilder->PopulateType(resultType);
+					if (!resultType->IsValuelessType())
+					{
+						mModule->mBfIRBuilder->CreateMemSet(mModule->CreateIndexedValue(resultType, addr, clearFromIdx),
+							mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, isUninit ? 0xCC : 0), clearBytes, resultType->mAlign);
+					}
 				}
 			}
 		};
+
+		BfInitContext initContext(mModule, resultType, dimensions, dimLengthVals, arraySize, writeIdx);
 		
 		if (resultType->IsVar())
 		{
 			SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
 			mResult = BfTypedValue(BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), mModule->GetPrimitiveType(BfTypeCode_Var)));
-			_HandleInitExprs(mResult.mValue, 0, objCreateExpr->mArguments);
+			initContext.Handle(mResult.mValue, 0, objCreateExpr->mArguments);
 			return;
 		}
 
@@ -11978,7 +11997,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 				arrayValue = BfTypedValue(mModule->AllocFromType(resultType, allocTarget, BfIRValue(), arraySize, (int)dimLengthVals.size(), allocFlags, allocTarget.mAlignOverride), ptrType);
 			}
 
-			_HandleInitExprs(arrayValue.mValue, 0, objCreateExpr->mArguments);
+			initContext.Handle(arrayValue.mValue, 0, objCreateExpr->mArguments);
 			
 			mResult = arrayValue;
 			return;
@@ -12073,7 +12092,8 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 			addr = mModule->mBfIRBuilder->GetFakeVal();
 		else
 			addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayValue.mValue, 0, firstElementFieldInstance->mDataIdx);
-		_HandleInitExprs(addr, 0, objCreateExpr->mArguments);
+		
+		initContext.Handle(addr, 0, objCreateExpr->mArguments);
 		
 		return;
 	}
@@ -14370,13 +14390,18 @@ void BfExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
 
 				int arrSize = 0;
 
+				BfTypeState typeState;
+				typeState.mArrayInitializerSize = (int)invocationExpr->mArguments.size();
+				SetAndRestoreValue<BfTypeState*> prevTypeState(mModule->mContext->mCurTypeState, &typeState);
+
 				if (indexerExpr->mArguments.size() != 0)
 				{
 					BfConstResolver constResolver(mModule);
 					auto arg = indexerExpr->mArguments[0];
+					constResolver.mExpectingType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 
 					if (arg != NULL)
-						constResolver.Resolve(arg);
+						constResolver.Resolve(arg, NULL, BfConstResolveFlag_ArrayInitSize);
 
 					if (constResolver.mResult.mValue.IsConst())
 					{

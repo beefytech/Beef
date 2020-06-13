@@ -1563,6 +1563,10 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 	}
 	else
 	{
+		BfTypeState typeState;
+		typeState.mCurVarInitializer = varDecl->mInitializer;
+		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
 		unresolvedType = ResolveTypeRef(varDecl->mTypeRef, BfPopulateType_Data, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowRef));
 		if (unresolvedType == NULL)
 			unresolvedType = GetPrimitiveType(BfTypeCode_Var);													  

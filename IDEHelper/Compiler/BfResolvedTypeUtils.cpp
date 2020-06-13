@@ -2654,7 +2654,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 				BfType* intType = ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 				constResolver.mAllowGenericConstValue = true;
 				constResolver.mExpectingType = intType;
-				BfTypedValue typedVal = constResolver.Resolve(sizeExpr);
+				BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 				{
 					int elemHash = Hash(typedVal.mType, ctx);
@@ -3550,7 +3550,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			BfType* intType = ctx->mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 			constResolver.mAllowGenericConstValue = true;
 			constResolver.mExpectingType = intType;			
-			BfTypedValue typedVal = constResolver.Resolve(sizeExpr);
+			BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
 			if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 			{
 				if (!lhs->IsUnknownSizedArray())

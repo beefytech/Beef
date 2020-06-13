@@ -3721,7 +3721,7 @@ bool BfModule::IsThreadLocal(BfFieldInstance * fieldInstance)
 	return false;
 }
 
-BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer, BfFieldDef* fieldDef, BfType* fieldType)
+BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer, BfFieldDef* fieldDef, BfType* fieldType, bool doStore)
 {	
 	if (fieldDef == NULL)
 		fieldDef = fieldInstance->GetFieldDef();
@@ -3733,6 +3733,8 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 			return BfTypedValue();
 		initializer = fieldDef->mInitializer;
 	}
+
+	BfTypedValue staticVarRef;
 
 	BfTypedValue result;
 	if (initializer == NULL)
@@ -3779,15 +3781,33 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 				return constResolver.Resolve(initializer, fieldType, resolveFlags);
 			}
 		}
-		
+				
+		BfExprEvaluator exprEvaluator(this);
+		if (doStore)
+		{
+			staticVarRef = ReferenceStaticField(fieldInstance);
+			exprEvaluator.mReceivingValue = &staticVarRef;
+		}
 		if (fieldType->IsVar())
-			result = CreateValueFromExpression(initializer, NULL, (BfEvalExprFlags)(BfEvalExprFlags_NoValueAddr | BfEvalExprFlags_FieldInitializer));
+			result = CreateValueFromExpression(exprEvaluator, initializer, NULL, (BfEvalExprFlags)(BfEvalExprFlags_NoValueAddr | BfEvalExprFlags_FieldInitializer));
 		else
-			result = CreateValueFromExpression(initializer, fieldType, (BfEvalExprFlags)(BfEvalExprFlags_NoValueAddr | BfEvalExprFlags_FieldInitializer));
+			result = CreateValueFromExpression(exprEvaluator, initializer, fieldType, (BfEvalExprFlags)(BfEvalExprFlags_NoValueAddr | BfEvalExprFlags_FieldInitializer));
+		if (doStore)
+		{
+			if (exprEvaluator.mReceivingValue == NULL)
+				doStore = false; // Already stored
+		}
 	}
 
 	if (fieldInstance != NULL)
 		MarkFieldInitialized(fieldInstance);
+
+	if (doStore)
+	{
+		result = LoadValue(result);
+		if (!result.mType->IsValuelessType())		
+			mBfIRBuilder->CreateStore(result.mValue, staticVarRef.mValue);		
+	}
 
 	return result;
 }
@@ -13893,16 +13913,8 @@ void BfModule::CreateStaticCtor()
 				{					
 					continue;
 				}
-				auto assignValue = GetFieldInitializerValue(fieldInst);
-				if (assignValue)
-				{
-					assignValue = LoadValue(assignValue);
-					if (!assignValue.mType->IsValuelessType())
-					{
-						auto staticVarRef = ReferenceStaticField(fieldInst).mValue;
-						mBfIRBuilder->CreateStore(assignValue.mValue, staticVarRef);
-					}
-				}
+				GetFieldInitializerValue(fieldInst, NULL, NULL, NULL, true);
+				
 			}
 		}
 	}
@@ -16457,7 +16469,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 	
 	BfTypeState typeState(mCurTypeInstance);
-	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);			
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 	bool isGenericVariation = (methodInstance->mIsUnspecializedVariation) || (mCurTypeInstance->IsUnspecializedTypeVariation());
 

@@ -7870,7 +7870,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				BfTypedValue typedVal;
 				{
 					SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
-					typedVal = constResolver.Resolve(sizeExpr);
+					typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
 				}
 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 				{

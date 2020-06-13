@@ -36,6 +36,38 @@ BfConstResolver::BfConstResolver(BfModule* bfModule) : BfExprEvaluator(bfModule)
 
 BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfConstResolveFlags flags)
 {	
+	// Handle the 'int[?] val = .(1, 2, 3)' case
+	if ((flags & BfConstResolveFlag_ArrayInitSize) != 0)
+	{
+		if (auto uninitExpr = BfNodeDynCast<BfUninitializedExpression>(expr))
+		{
+			BfAstNode* initializer = NULL;
+			int arraySize = -1;
+
+			if (mModule->mContext->mCurTypeState != NULL)
+			{
+				if (mModule->mContext->mCurTypeState->mCurFieldDef != NULL)
+					initializer = mModule->mContext->mCurTypeState->mCurFieldDef->mInitializer;
+				if (mModule->mContext->mCurTypeState->mCurVarInitializer != NULL)
+					initializer = mModule->mContext->mCurTypeState->mCurVarInitializer;
+				if (mModule->mContext->mCurTypeState->mArrayInitializerSize != -1)
+					arraySize = mModule->mContext->mCurTypeState->mArrayInitializerSize;
+			}
+
+			if (initializer != NULL)
+			{
+				if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(initializer))
+					arraySize = (int)invocationExpr->mArguments.size();				
+			}
+
+			if (arraySize != -1)
+			{				
+				mResult = BfTypedValue(mModule->GetConstValue(arraySize), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+				return mResult;
+			}
+		}
+	}
+
 	bool explicitCast = (flags & BfConstResolveFlag_ExplicitCast) != 0;
 	bool noCast = (flags & BfConstResolveFlag_NoCast) != 0;
 	bool allowSoftFail = (flags & BfConstResolveFlag_AllowSoftFail) != 0;

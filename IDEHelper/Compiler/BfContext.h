@@ -116,6 +116,7 @@ public:
 		ResolveKind_BuildingGenericParams,
 		ResolveKind_ResolvingVarType,
 		ResolveKind_UnionInnerType,
+		ResolveKind_LocalVariable,
 	};
 
 public:
@@ -131,6 +132,8 @@ public:
 	BfFieldDef* mCurFieldDef;	
 	BfTypeDef* mCurTypeDef;
 	ResolveKind mResolveKind;
+	BfAstNode* mCurVarInitializer;
+	int mArrayInitializerSize;
 
 public:
 	BfTypeState()
@@ -144,6 +147,8 @@ public:
 		mCurFieldDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
+		mCurVarInitializer = NULL;
+		mArrayInitializerSize = -1;
 		mResolveKind = ResolveKind_None;
 	}
 
@@ -158,6 +163,8 @@ public:
 		mCurFieldDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
+		mCurVarInitializer = NULL;
+		mArrayInitializerSize = -1;
 		mResolveKind = ResolveKind_None;
 	}
 };

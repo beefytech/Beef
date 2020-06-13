@@ -5,6 +5,7 @@ namespace Tests
 	class SizedArrays
 	{
 		public static int[8] iArr = .(123, 234, 345, );
+		public static int[?] iArr2 = .(12, 23, 34);
 
 		[Test]
 		static void TestBasics()
@@ -24,6 +25,12 @@ namespace Tests
 			val2[0][0] = 9;
 			Test.Assert(val0 != val2);
 			Test.Assert(val2[1] == val1);
+
+			int[?] val3 = .(9, 10);
+			Test.Assert(val3[0] == 9);
+
+			var val4 = int[?](11, 12);
+			Test.Assert(val4[0] == 11);
 		}
 
 		[Test]

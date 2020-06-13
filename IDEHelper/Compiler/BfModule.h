@@ -1609,7 +1609,7 @@ public:
 	BfFieldInstance* GetFieldByName(BfTypeInstance* typeInstance, const StringImpl& fieldName, bool isRequired = true, BfAstNode* refNode = NULL);
 	void CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLocal = false);
 	void ResolveConstField(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field, bool forceResolve = false);
-	BfTypedValue GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer = NULL, BfFieldDef* fieldDef = NULL, BfType* fieldType = NULL);
+	BfTypedValue GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer = NULL, BfFieldDef* fieldDef = NULL, BfType* fieldType = NULL, bool doStore = false);
 	void MarkFieldInitialized(BfFieldInstance* fieldInstance);
 	bool IsThreadLocal(BfFieldInstance* fieldInstance);
 	BfType* ResolveVarFieldType(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field);	
