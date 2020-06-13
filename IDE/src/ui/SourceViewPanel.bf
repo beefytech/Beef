@@ -1242,7 +1242,7 @@ namespace IDE.ui
 				chars[i] = (char8)char8Data[i].mChar;
 			}
 
-		    String text = scope String(chars, 0, chars.Count);
+		    String text = scope String()..Append(StringView(chars, 0, chars.Count));
 		    
 		    BfProject bfProject = null;
 		    if ((projectSource != null) && (mIsBeefSource))

@@ -55,7 +55,7 @@ namespace IDE.util
 			{
 				if (lineEndingKind == .CrLf)
 				{
-					String newStr = scope .(str);
+					String newStr = scope .(8192)..Append(str);
 					newStr.Replace("\n", "\r\n");
 					return Create(kind, newStr);
 				}
