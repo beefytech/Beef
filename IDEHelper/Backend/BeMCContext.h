@@ -695,17 +695,21 @@ public:
 	int FindLabelInstIdx(int labelIdx);
 };
 
+class BeMCContext;
+
 class BeInstEnumerator
 {
 public:
+	BeMCContext* mContext;
 	BeMCBlock* mBlock;
 	int mReadIdx;
 	int mWriteIdx;
 	bool mRemoveCurrent;
 
 public:
-	BeInstEnumerator(BeMCBlock* block)
+	BeInstEnumerator(BeMCContext* context, BeMCBlock* block)
 	{
+		mContext = context;
 		mBlock = block;
 		mReadIdx = 0;
 		mWriteIdx = 0;
@@ -720,26 +724,8 @@ public:
 		}
 	}
 
-	void Next()
-	{
-		if (mRemoveCurrent)
-		{
-			mBlock->mInstructions[mReadIdx] = NULL;
-			mRemoveCurrent = false;
-		}
-		else
-		{
-			if (mWriteIdx != mReadIdx)
-			{
-				mBlock->mInstructions[mWriteIdx] = mBlock->mInstructions[mReadIdx];
-				mBlock->mInstructions[mReadIdx] = NULL;
-			}
-			mWriteIdx++;
-		}
-
-		mReadIdx++;
-	}
-
+	void Next();
+	
 	bool HasMore()
 	{
 		return mReadIdx < mBlock->mInstructions.mSize;
@@ -1356,7 +1342,8 @@ public:
 	BeMCInst* AllocInst(BeMCInstKind instKind, int insertIdx = -1);
 	BeMCInst* AllocInst(BeMCInstKind instKind, const BeMCOperand& arg0, int insertIdx = -1);
 	BeMCInst* AllocInst(BeMCInstKind instKind, const BeMCOperand& arg0, const BeMCOperand& arg1, int insertIdx = -1);	
-	void RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerged = true);
+	void MergeInstFlags(BeMCInst* prevInst, BeMCInst* inst, BeMCInst* nextInst);
+	void RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerged = true, bool removeFromList = true);
 	BeMCOperand AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand & lhs, const BeMCOperand & rhs, BeMCBinIdentityKind identityKind);
 	BeMCOperand GetCallArgVReg(int argIdx, BeTypeCode typeCode);	
 	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, bool isVarArg = false);

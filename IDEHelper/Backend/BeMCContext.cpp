@@ -1873,6 +1873,31 @@ int BeMCBlock::FindLabelInstIdx(int labelIdx)
 
 //////////////////////////////////////////////////////////////////////////
 
+void BeInstEnumerator::Next()
+{
+	if (mRemoveCurrent)
+	{
+		if ((mWriteIdx > 0) && (mReadIdx < mBlock->mInstructions.size() - 1))
+			mContext->MergeInstFlags(mBlock->mInstructions[mWriteIdx - 1], mBlock->mInstructions[mReadIdx], mBlock->mInstructions[mReadIdx + 1]);
+
+		mBlock->mInstructions[mReadIdx] = NULL;
+		mRemoveCurrent = false;
+	}
+	else
+	{
+		if (mWriteIdx != mReadIdx)
+		{
+			mBlock->mInstructions[mWriteIdx] = mBlock->mInstructions[mReadIdx];
+			mBlock->mInstructions[mReadIdx] = NULL;
+		}
+		mWriteIdx++;
+	}
+
+	mReadIdx++;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 BeMCContext::BeMCContext(BeCOFFObject* coffObject) : mOut(coffObject->mTextSect.mData), mLivenessContext(this), mVRegInitializedContext(this), mColorizer(this)
 {
 	mLivenessContext.mTrackKindCount = 1;
@@ -2636,7 +2661,16 @@ BeMCInst* BeMCContext::AllocInst(BeMCInstKind instKind, const BeMCOperand& arg0,
 	return mcInst;
 }
 
-void BeMCContext::RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerged)
+void BeMCContext::MergeInstFlags(BeMCInst* prevInst, BeMCInst* inst, BeMCInst* nextInst)
+{
+	if (prevInst->mVRegsInitialized == inst->mVRegsInitialized)
+		return;
+
+	if ((inst->mVRegsInitialized != NULL) && (nextInst->mVRegsInitialized != NULL))	
+		nextInst->mVRegsInitialized = mVRegInitializedContext.MergeChanges(nextInst->mVRegsInitialized, inst->mVRegsInitialized);	
+}
+
+void BeMCContext::RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerged, bool removeFromList)
 {
 	// If neither the instruction before or after this one shares the vregsInitialized flags, then we need to
 	//  merge down our Changes to the next instruction	
@@ -2660,7 +2694,8 @@ void BeMCContext::RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerg
 		}
 	}
 
-	block->mInstructions.RemoveAt(instIdx);
+	if (removeFromList)
+		block->mInstructions.RemoveAt(instIdx);
 }
 
 
@@ -11128,7 +11163,7 @@ void BeMCContext::DoRegFinalization()
 		mActiveBlock = mcBlock;
 
 		//for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
-		for (auto instEnum = BeInstEnumerator(mcBlock); instEnum.HasMore(); instEnum.Next())
+		for (auto instEnum = BeInstEnumerator(this, mcBlock); instEnum.HasMore(); instEnum.Next())
 		{
 			auto inst = instEnum.Get();
 			SetCurrentInst(inst);
@@ -11136,9 +11171,7 @@ void BeMCContext::DoRegFinalization()
 			{
 				auto vregInfo = GetVRegInfo(inst->mArg0);
 				if (vregInfo->mDbgVariable != NULL)
-					vregInfo->mAwaitingDbgStart = true;
-				//RemoveInst(mcBlock, instIdx);
-				//instIdx--;
+					vregInfo->mAwaitingDbgStart = true;				
 				instEnum.RemoveCurrent();
 				continue;
 			}
@@ -15438,7 +15471,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ");
+	//mDebugging = (function->mName == "?FindSourceViewPanel@IDEApp@IDE@bf@@QEAAPEAVSourceViewPanel@ui@23@PEAVString@System@3@@Z");
 // 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
 // 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 // 		;
