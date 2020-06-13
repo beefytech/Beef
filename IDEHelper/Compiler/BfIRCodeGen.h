@@ -76,7 +76,8 @@ public:
 	llvm::InlineAsm* mAsmObjectCheckAsm;	
 	llvm::DebugLoc mDebugLoc;
 	bool mHasDebugLoc;	
-	bool mIsCodeView;	
+	bool mIsCodeView;
+	int mConstArrayIdx;
 
 	int mCmdCount;
 	Dictionary<int, BfIRCodeGenEntry> mResults;
@@ -96,6 +97,7 @@ public:
 	void SetResult(int id, llvm::MDNode* value);	
 	void CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value* size, int alignment, bool isVolatile = false);
 	void AddNop();
+	bool TryMemCpy(llvm::Value* ptr, llvm::Value* val);	
 
 public:
 	BfIRCodeGen();

@@ -312,6 +312,7 @@ BfIRCodeGen::BfIRCodeGen()
 	mLLVMContext = new llvm::LLVMContext();
 	mLLVMModule = NULL;
 	mIsCodeView = false;
+	mConstArrayIdx = 0;
 	mCmdCount = 0;
 	
 #ifdef BF_PLATFORM_WINDOWS
@@ -959,6 +960,55 @@ void BfIRCodeGen::AddNop()
 
 	llvm::CallInst* callInst = mIRBuilder->CreateCall(mNopInlineAsm);
 	callInst->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::NoUnwind);
+}
+
+bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
+{
+	auto arrayType = llvm::dyn_cast<llvm::ArrayType>(val->getType());
+	if (arrayType == NULL)
+		return false;
+	// LLVM has perf issues with large arrays - it treats each element as a unique value,
+	//  which is great for optimizing small data but is a perf killer for large data.
+	if (arrayType->getNumElements() <= 64)
+		return false;
+
+	auto int8Ty = llvm::Type::getInt8Ty(*mLLVMContext);
+	auto int8PtrTy = int8Ty->getPointerTo();
+	int arrayBytes = arrayType->getScalarSizeInBits() / 8;
+
+	if (auto loadInst = llvm::dyn_cast<llvm::LoadInst>(val))
+	{		
+		mIRBuilder->CreateMemCpy(
+			mIRBuilder->CreateBitCast(ptr, int8PtrTy),
+			1,
+			mIRBuilder->CreateBitCast(loadInst->getPointerOperand(), int8PtrTy),
+			1,
+			llvm::ConstantInt::get(int8Ty, arrayBytes));
+		return true;		
+	}
+
+	auto constVal = llvm::dyn_cast<llvm::Constant>(val);
+	if (constVal == NULL)
+		return false;					
+
+	auto globalVariable = new llvm::GlobalVariable(
+		*mLLVMModule,
+		arrayType,
+		true,
+		llvm::GlobalValue::InternalLinkage,
+		constVal,
+		StrFormat("__ConstArray__%d", mConstArrayIdx++).c_str(), 
+		NULL, 
+		llvm::GlobalValue::NotThreadLocal);
+	
+	mIRBuilder->CreateMemCpy(
+		mIRBuilder->CreateBitCast(ptr, int8PtrTy),
+		1,
+		mIRBuilder->CreateBitCast(globalVariable, int8PtrTy),
+		1,
+		llvm::ConstantInt::get(int8Ty, arrayBytes));
+
+	return true;
 }
 
 void BfIRCodeGen::CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value* size, int alignment, bool isVolatile)
@@ -1700,7 +1750,9 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(llvm::Value*, ptr);
 			CMD_PARAM(bool, isVolatile);
-			SetResult(curId, mIRBuilder->CreateStore(val, ptr, isVolatile));
+
+			if (!TryMemCpy(ptr, val))
+				SetResult(curId, mIRBuilder->CreateStore(val, ptr, isVolatile));
 		}
 		break;
 	case BfIRCmd_AlignedStore:
@@ -1709,7 +1761,8 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, ptr);
 			CMD_PARAM(int, alignment);
 			CMD_PARAM(bool, isVolatile);
-			SetResult(curId, mIRBuilder->CreateAlignedStore(val, ptr, alignment, isVolatile));
+			if (!TryMemCpy(ptr, val))
+				SetResult(curId, mIRBuilder->CreateAlignedStore(val, ptr, alignment, isVolatile));
 		}
 		break;
 	case BfIRCmd_MemSet:
@@ -1759,7 +1812,7 @@ void BfIRCodeGen::HandleNextCmd()
 				isConstant,
 				LLVMMapLinkageType(linkageType),
 				initializer,
-				name.c_str(), NULL, isTLS ? llvm::GlobalValue::GeneralDynamicTLSModel : llvm::GlobalValue::NotThreadLocal);
+				name.c_str());
 			SetResult(curId, globalVariable);
 		}
 		break;

@@ -4428,11 +4428,6 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 	NEW_CMD_INSERTED_IRVALUE;	
 	mFunctionMap[name] = retVal;
 
-	if (name == "?TestStructRetCapture$Rt@Lambdas@Tests@bf@@QEAA?AUStructA@123@XZ")
-	{
-		NOP;
-	}
-
 	//BfLogSys(mModule->mSystem, "BfIRBuilder::CreateFunction: %d %s Module:%p\n", retVal.mId, name.c_str(), mModule);
 
 	return retVal;
