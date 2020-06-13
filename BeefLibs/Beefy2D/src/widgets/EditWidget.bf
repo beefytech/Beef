@@ -1668,10 +1668,30 @@ namespace Beefy.widgets
 		    return (int32)Math.Round(mTabSize / mCharWidth);
 		}
 
-        public override void KeyChar(char32 theChar)
+        public override void KeyChar(char32 keyChar)
         {
-            base.KeyChar(theChar);
-			char32 useChar = theChar;
+            base.KeyChar(keyChar);
+
+			if (keyChar == '\x7F') // Ctrl+Backspace
+			{
+				int line;
+				int lineChar;
+				GetCursorLineChar(out line, out lineChar);
+
+				int startIdx = CursorTextPos;
+				SelectLeft(line, lineChar, true, false);
+				mSelection = EditSelection(CursorTextPos, startIdx);
+				
+				var action = new DeleteSelectionAction(this);
+				action.mMoveCursor = true;
+				mData.mUndoManager.Add(action);
+				action.mCursorTextPos = (.)startIdx;
+				PhysDeleteSelection(true);
+
+				return;
+			}
+
+			char32 useChar = keyChar;
 
             mCursorBlinkTicks = 0;			
 
@@ -2043,6 +2063,65 @@ namespace Beefy.widgets
 			}
 		}
 
+		protected void SelectRight(int lineIdx, int lineChar, bool isChunkMove, bool isWordMove)
+		{
+			var lineIdx;
+			var lineChar;
+
+			int anIndex = GetTextIdx(lineIdx, lineChar);
+			char8 prevC = 0;
+			CharType prevCharType = (anIndex < mData.mTextLength) ? GetCharType((char8)mData.mText[anIndex].mChar) : .Unknown;
+			while (true)
+			{
+			    int lineStart;
+			    int lineEnd;
+			    GetLinePosition(lineIdx, out lineStart, out lineEnd);
+			    int lineLen = lineEnd - lineStart;
+
+			    int nextLineChar = lineChar + 1;
+			    bool isWithinLine = nextLineChar < lineLen;
+			    if (nextLineChar == lineLen)
+			    {
+			        GetTextData();
+			        if ((mData.mTextFlags == null) || ((mData.mTextFlags[lineEnd] & (int32)TextFlags.Wrap) == 0))
+			        {
+			            isWithinLine = true;
+			        }
+			    }
+
+			    if (isWithinLine)
+			        MoveCursorTo(lineIdx, lineChar + 1, false, 1);
+			    else if (lineIdx < GetLineCount() - 1)
+			        MoveCursorTo(lineIdx + 1, 0);
+
+			    if (!mWidgetWindow.IsKeyDown(KeyCode.Control))
+			        break;
+
+			    GetLineCharAtIdx(CursorTextPos, out lineIdx, out lineChar);
+			    anIndex = GetTextIdx(lineIdx, lineChar);
+			    if (anIndex == mData.mTextLength)
+			        break;
+
+			    char8 c = (char8)mData.mText[anIndex].mChar;
+			    CharType char8Type = GetCharType(c);
+			    if (char8Type == .Opening)
+			        break;
+			    if (char8Type != prevCharType)
+			    {
+			        if ((char8Type != .WhiteSpace) && (prevCharType == .WhiteSpace))
+			            break;
+			        if ((char8Type == .NewLine) || (char8Type == .NonBreaking) || (char8Type == .Other))
+			            break;
+			    }
+
+				if ((isWordMove) && (c.IsUpper) && (prevC.IsLower))
+					break;
+
+			    prevCharType = char8Type;
+				prevC = c;
+			}
+		}
+
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
         {
             base.KeyDown(keyCode, isRepeat);
@@ -2062,21 +2141,21 @@ namespace Beefy.widgets
             int prevCursorPos;
             bool gotCursorPos = TryGetCursorTextPos(out prevCursorPos);
 
-            if (mWidgetWindow.GetKeyFlags() == KeyFlags.Ctrl)
+            if (mWidgetWindow.GetKeyFlags() == .Ctrl)
             {
                 switch (keyCode)
                 {
-                case (KeyCode)'A':
+                case (.)'A':
                     SelectAll();
-                case (KeyCode)'C':
+                case (.)'C':
 					CopyText();
-                case (KeyCode)'X':
+                case (.)'X':
                     CutText();
-                case (KeyCode)'V':
+                case (.)'V':
                     PasteText();
-                case (KeyCode)'Z':
+                case (.)'Z':
                     Undo();
-                case (KeyCode)'Y':
+                case (.)'Y':
                     Redo();
 				case .Return:
 					if (mIsMultiline)
@@ -2084,6 +2163,16 @@ namespace Beefy.widgets
 				default:
                 }
             }
+
+			if (mWidgetWindow.GetKeyFlags() == .Ctrl | .Shift)
+			{
+				switch (keyCode)
+				{
+				case (.)'Z':
+					Redo();
+				default:
+				}
+			}
 
             switch (keyCode)
             {
@@ -2175,60 +2264,8 @@ namespace Beefy.widgets
 	                        }
 						}
 
-						bool isWordMove = mWidgetWindow.IsKeyDown(.Alt);
                         wasMoveKey = true;
-                        int anIndex = GetTextIdx(lineIdx, lineChar);
-						char8 prevC = 0;
-                        CharType prevCharType = (anIndex < mData.mTextLength) ? GetCharType((char8)mData.mText[anIndex].mChar) : .Unknown;
-                        while (true)
-                        {
-                            int lineStart;
-                            int lineEnd;
-                            GetLinePosition(lineIdx, out lineStart, out lineEnd);
-                            int lineLen = lineEnd - lineStart;
-
-                            int nextLineChar = lineChar + 1;
-                            bool isWithinLine = nextLineChar < lineLen;
-                            if (nextLineChar == lineLen)
-                            {
-                                GetTextData();
-                                if ((mData.mTextFlags == null) || ((mData.mTextFlags[lineEnd] & (int32)TextFlags.Wrap) == 0))
-                                {
-                                    isWithinLine = true;
-                                }
-                            }
-
-                            if (isWithinLine)
-                                MoveCursorTo(lineIdx, lineChar + 1, false, 1);
-                            else if (lineIdx < GetLineCount() - 1)
-                                MoveCursorTo(lineIdx + 1, 0);
-
-                            if (!mWidgetWindow.IsKeyDown(KeyCode.Control))
-                                break;
-
-                            GetLineCharAtIdx(CursorTextPos, out lineIdx, out lineChar);
-                            anIndex = GetTextIdx(lineIdx, lineChar);
-                            if (anIndex == mData.mTextLength)
-                                break;
-
-                            char8 c = (char8)mData.mText[anIndex].mChar;
-                            CharType char8Type = GetCharType(c);
-                            if (char8Type == .Opening)
-                                break;
-                            if (char8Type != prevCharType)
-                            {
-                                if ((char8Type != .WhiteSpace) && (prevCharType == .WhiteSpace))
-                                    break;
-                                if ((char8Type == .NewLine) || (char8Type == .NonBreaking) || (char8Type == .Other))
-                                    break;
-                            }
-
-							if ((isWordMove) && (c.IsUpper) && (prevC.IsLower))
-								break;
-
-                            prevCharType = char8Type;
-							prevC = c;
-                        }
+						SelectRight(lineIdx, lineChar, mWidgetWindow.IsKeyDown(KeyCode.Control), mWidgetWindow.IsKeyDown(KeyCode.Alt));
                     }
                 }
                 break;
@@ -2371,9 +2408,58 @@ namespace Beefy.widgets
                 }
                 break;
             case KeyCode.Insert:
+				if ((mWidgetWindow.IsKeyDown(.Control)) && (mWidgetWindow.IsKeyDown(.Shift)))
+					break;
+				if (mWidgetWindow.IsKeyDown(.Control))
+				{
+					CopyText();
+					break;
+				}
+				if (mWidgetWindow.IsKeyDown(.Shift))
+				{
+					PasteText();
+					break;
+				}
                 mOverTypeMode = !mOverTypeMode;
                 break;
             case KeyCode.Delete:
+				if (mWidgetWindow.IsKeyDown(.Control))
+				{
+					if (mWidgetWindow.IsKeyDown(.Shift))
+					{
+						int startIdx = CursorTextPos;
+						CursorToLineEnd();
+						mSelection = EditSelection(CursorTextPos, startIdx);
+						var action = new DeleteSelectionAction(this);
+						action.mMoveCursor = true;
+						mData.mUndoManager.Add(action);
+						action.mCursorTextPos = (.)startIdx;
+						PhysDeleteSelection(true);
+						break;
+					}
+
+					int line;
+					int lineChar2;
+					GetCursorLineChar(out line, out lineChar2);
+
+					int startIdx = CursorTextPos;
+					SelectRight(line, lineChar, true, false);
+					mSelection = EditSelection(CursorTextPos, startIdx);
+
+					var action = new DeleteSelectionAction(this);
+					action.mMoveCursor = true;
+					mData.mUndoManager.Add(action);
+					action.mCursorTextPos = (.)startIdx;
+					PhysDeleteSelection(true);
+					break;
+				}
+
+				if (mWidgetWindow.IsKeyDown(.Shift))
+				{
+					CutText();
+					break;
+				}
+
                 if (!CheckReadOnly())
                     DeleteChar();
 				mCursorImplicitlyMoved = true;

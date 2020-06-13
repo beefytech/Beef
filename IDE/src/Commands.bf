@@ -191,9 +191,11 @@ namespace IDE
 			Add("Close All Windows", new () => { gApp.[Friend]TryCloseAllDocuments(); });
 			Add("Close Window", new () => { gApp.[Friend]TryCloseCurrentDocument(); });
 			Add("Close Workspace", new => gApp.[Friend]Cmd_CloseWorkspaceAndSetupNew);
+			Add("Comment Selection", new => gApp.[Friend]CommentSelection);
 			Add("Compile File", new => gApp.Cmd_CompileFile);
 			Add("Debug All Tests", new () => { gApp.[Friend]RunTests(true, true); });
 			Add("Debug Normal Tests", new () => { gApp.[Friend]RunTests(false, true); });
+			Add("Duplicate Line", new () => { gApp.[Friend]DuplicateLine(); });
 			Add("Exit", new => gApp.[Friend]Cmd_Exit);
 			Add("Find All References", new => gApp.Cmd_FindAllReferences);
 			Add("Find Class", new => gApp.Cmd_FindClass);
@@ -276,6 +278,7 @@ namespace IDE
 			Add("Tab Last", new => gApp.[Friend]TabLast);
 			Add("Tab Next", new => gApp.[Friend]TabNext);
 			Add("Tab Prev", new => gApp.[Friend]TabPrev);
+			Add("Uncomment Selection", new => gApp.[Friend]UncommentSelection);
 			Add("View New", new => gApp.Cmd_ViewNew);
 			Add("View Split", new => gApp.[Friend]ViewSplit);
 			Add("View White Space", new => gApp.Cmd_ViewWhiteSpace);

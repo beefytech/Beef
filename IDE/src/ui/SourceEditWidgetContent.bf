@@ -1984,17 +1984,19 @@ namespace IDE.ui
 			return true;
 		}
 
-		public bool ToggleComment()
+		public bool ToggleComment(bool? doComment = null)
 		{
 			if (CheckReadOnly())
 				return false;
 
 		    if ((HasSelection()) && (mSelection.Value.Length > 1))
 		    {
-				var startLineAndCol = CursorLineAndColumn ;
+				var startLineAndCol = CursorLineAndColumn;
 
 				UndoBatchStart undoBatchStart = new UndoBatchStart("embeddedToggleComment");
 				mData.mUndoManager.Add(undoBatchStart);
+
+				mData.mUndoManager.Add(new SetCursorAction(this));
 
 				int minPos = mSelection.GetValueOrDefault().MinPos;
 				int maxPos = mSelection.GetValueOrDefault().MaxPos;
@@ -2014,7 +2016,7 @@ namespace IDE.ui
 				int firstCharPos = minPos + (startLen - afterTrimStart);
 				int lastCharPos = maxPos - (afterTrimStart - afterTrimEnd);
 
-				if (trimmedStr.StartsWith("/*"))
+				if ((doComment != true) && (trimmedStr.StartsWith("/*")))
 				{
 					if (trimmedStr.EndsWith("*/"))
 					{
@@ -2022,26 +2024,55 @@ namespace IDE.ui
 						DeleteChar();
 						mSelection = EditSelection(lastCharPos - 4, lastCharPos - 2);
 						DeleteChar();
+
+						if (doComment != null)
+							mSelection = EditSelection(firstCharPos, lastCharPos - 4);
 					}
 				}
-				else
+				else if (doComment != false)
 				{
 					CursorTextPos = firstCharPos;
 					InsertAtCursor("/*");
 					CursorTextPos = lastCharPos + 2;
 					InsertAtCursor("*/");
+
+					if (doComment != null)
+						mSelection = EditSelection(firstCharPos, lastCharPos + 4);
 				}
-				
+
 				if (undoBatchStart != null)
 					mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 
 				CursorLineAndColumn = startLineAndCol;
 
-		        mSelection = null;
+				if (doComment == null)
+					mSelection = null;
+
 		        return true;
 		    }
 
 			return false;
+		}
+
+		public void DuplicateLine()
+		{
+			UndoBatchStart undoBatchStart = new UndoBatchStart("embeddedToggleComment");
+			mData.mUndoManager.Add(undoBatchStart);
+
+			mData.mUndoManager.Add(new SetCursorAction(this));
+
+			var prevCursorLineAndColumn = CursorLineAndColumn;
+			int lineNum = CursorLineAndColumn.mLine;
+			GetLinePosition(lineNum, var lineStart, var lineEnd);
+			var str = scope String();
+			GetLineText(lineNum, str);
+			mSelection = null;
+			str.Append("\n");
+			CursorLineAndColumn = LineAndColumn(lineNum, 0);
+			InsertAtCursor(str);
+			CursorLineAndColumn = LineAndColumn(prevCursorLineAndColumn.mLine + 1, prevCursorLineAndColumn.mColumn);
+
+			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 		}
 
         public override void ContentChanged()
@@ -2064,24 +2095,7 @@ namespace IDE.ui
 			scope AutoBeefPerf("SEWC.KeyChar");
 
 			var keyChar;
-			if (keyChar == '\x7F') // Ctrl+Backspace
-			{
-				int line;
-				int lineChar;
-				GetCursorLineChar(out line, out lineChar);
-
-				int startIdx = CursorTextPos;
-				SelectLeft(line, lineChar, true, false);
-				mSelection = EditSelection(CursorTextPos, startIdx);
-				
-				var action = new DeleteSelectionAction(this);
-				action.mMoveCursor = true;
-				mData.mUndoManager.Add(action);
-				action.mCursorTextPos = (.)startIdx;
-				PhysDeleteSelection(true);
-
-				return;
-			}
+			
 
 			if (mIgnoreKeyChar)
 			{

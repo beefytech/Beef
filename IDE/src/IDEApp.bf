@@ -2291,6 +2291,30 @@ namespace IDE
 			//FinishShowingNewWorkspace();
 		}
 
+		[IDECommand]
+		void DuplicateLine()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.DuplicateLine();
+		}
+
+		[IDECommand]
+		void CommentSelection()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.ToggleComment(true);
+		}
+
+		[IDECommand]
+		void UncommentSelection()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.ToggleComment(false);
+		}
+
 		public Result<void, StructuredData.Error> StructuredLoad(StructuredData data, StringView filePath)
 		{
 			if (mWorkspace.IsSingleFileWorkspace)

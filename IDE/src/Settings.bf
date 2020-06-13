@@ -448,6 +448,8 @@ namespace IDE
 				Add("Cancel Build", "Ctrl+Break");
 				Add("Close Window", "Ctrl+W");
 				Add("Compile File", "Ctrl+F7");
+				Add("Comment Selection", "Ctrl+K, Ctrl+C");
+				Add("Duplicate Line", "Ctrl+D");
 				Add("Find Class", "Alt+Shift+L");
 				Add("Find in Document", "Ctrl+F");
 				Add("Find in Files", "Ctrl+Shift+F");
@@ -512,6 +514,7 @@ namespace IDE
 				Add("Tab Last", "Ctrl+Alt+End");
 				Add("Tab Next", "Ctrl+Alt+PageDown");
 				Add("Tab Prev", "Ctrl+Alt+PageUp");
+				Add("Uncomment Selection", "Ctrl+K, Ctrl+U");
 				Add("Zoom In", "Ctrl+Equals");
 				Add("Zoom Out", "Ctrl+Minus");
 				Add("Zoom Reset", "Ctrl+0");
