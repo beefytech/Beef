@@ -964,6 +964,8 @@ void BfIRCodeGen::AddNop()
 
 bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
 {
+	return false;
+
 	auto arrayType = llvm::dyn_cast<llvm::ArrayType>(val->getType());
 	if (arrayType == NULL)
 		return false;
@@ -1812,7 +1814,7 @@ void BfIRCodeGen::HandleNextCmd()
 				isConstant,
 				LLVMMapLinkageType(linkageType),
 				initializer,
-				name.c_str());
+				name.c_str(), NULL, isTLS ? llvm::GlobalValue::GeneralDynamicTLSModel : llvm::GlobalValue::NotThreadLocal);
 			SetResult(curId, globalVariable);
 		}
 		break;
