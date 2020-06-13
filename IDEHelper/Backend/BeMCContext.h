@@ -566,6 +566,12 @@ struct BeMCVRegArray
 	int mVRegIndices[1];
 };
 
+struct BeVRegLastUseRecord
+{
+	int mVRegIdx;
+	BeVRegLastUseRecord* mNext;
+};
+
 class BeMCInst
 {
 public:
@@ -577,6 +583,7 @@ public:
 
 	BeVTrackingList* mLiveness;
 	BeVTrackingList* mVRegsInitialized;	
+	BeVRegLastUseRecord* mVRegLastUseRecord;
 	BeDbgLoc* mDbgLoc;
 	
 	bool IsDef()
@@ -688,6 +695,67 @@ public:
 	int FindLabelInstIdx(int labelIdx);
 };
 
+class BeInstEnumerator
+{
+public:
+	BeMCBlock* mBlock;
+	int mReadIdx;
+	int mWriteIdx;
+	bool mRemoveCurrent;
+
+public:
+	BeInstEnumerator(BeMCBlock* block)
+	{
+		mBlock = block;
+		mReadIdx = 0;
+		mWriteIdx = 0;
+		mRemoveCurrent = false;
+	}
+
+	~BeInstEnumerator()
+	{
+		if (mReadIdx >= mBlock->mInstructions.mSize)
+		{
+			mBlock->mInstructions.mSize = mWriteIdx;
+		}
+	}
+
+	void Next()
+	{
+		if (mRemoveCurrent)
+		{
+			mBlock->mInstructions[mReadIdx] = NULL;
+			mRemoveCurrent = false;
+		}
+		else
+		{
+			if (mWriteIdx != mReadIdx)
+			{
+				mBlock->mInstructions[mWriteIdx] = mBlock->mInstructions[mReadIdx];
+				mBlock->mInstructions[mReadIdx] = NULL;
+			}
+			mWriteIdx++;
+		}
+
+		mReadIdx++;
+	}
+
+	bool HasMore()
+	{
+		return mReadIdx < mBlock->mInstructions.mSize;
+	}
+
+	void RemoveCurrent()
+	{
+		mRemoveCurrent = true;
+	}
+
+	BeMCInst* Get()
+	{
+		return mBlock->mInstructions[mReadIdx];
+	}
+};
+
 class BeMCPhiValue
 {
 public:
@@ -757,13 +825,11 @@ public:
 	int mVolatileVRegSave;
 	BeDbgVariable* mDbgVariable;	
 
+	bool mFoundLastUse;
 	bool mMustExist; // Regs we must be able to debug
 	// Must be refreshed with RefreshRefCounts	
 	int mRefCount;
 	int mAssignCount;	
-
-	BeMCBlock* mClosedBlock;
-	int mClosedInstIdx;
 
 public:
 	BeMCVRegInfo()
@@ -800,10 +866,8 @@ public:
 		mAssignCount = -1;
 		mVolatileVRegSave = -1;
 		mMustExist = false;		
-		mIsRetVal = false;		
-
-		mClosedBlock = NULL;
-		mClosedInstIdx = -1;
+		mIsRetVal = false;
+		mFoundLastUse = false;
 	}
 
 	bool CanEliminate()
@@ -961,7 +1025,7 @@ public:
 	BeVTrackingList* Add(BeVTrackingList* list, const SizedArrayImpl<int>& indices, bool perserveChangeList);
 	BeVTrackingList* Add(BeVTrackingList* list, int idx, bool perserveChangeList);
 	BeVTrackingList* ClearFiltered(BeVTrackingList* list, const SizedArrayImpl<int>& indices);
-	BeVTrackingList* Modify(BeVTrackingList* list, const SizedArrayImpl<int>& adds, const SizedArrayImpl<int>& removes, SizedArrayImpl<int>& filteredAdds, SizedArrayImpl<int>& filteredRemoves);
+	BeVTrackingList* Modify(BeVTrackingList* list, const SizedArrayImpl<int>& adds, const SizedArrayImpl<int>& removes, SizedArrayImpl<int>& filteredAdds, SizedArrayImpl<int>& filteredRemoves, bool preserveChanges = false);
 	int FindIndex(BeVTrackingList* entry, int val);
 	bool IsSet(BeVTrackingList* entry, int idx);
 	bool IsSet(BeVTrackingList* entry, int idx, BeTrackKind trackKind);
@@ -1232,7 +1296,7 @@ public:
 	DynMemStream& mOut;	
 	bool mDebugging;
 	bool mFailed;
-	int mDetectLoopIdx;
+	int mDetectLoopIdx;	
 
 	BeVTrackingContext mLivenessContext;
 	BeVTrackingContext mVRegInitializedContext;
@@ -1254,6 +1318,7 @@ public:
 	Array<BeCmpResult> mCmpResults;
 	int mCompositeRetVRegIdx;
 	int mTLSVRegIdx;
+	int mLegalizationIterations;
 	
 	Array<int> mCallArgVRegs[BeMCNativeTypeCode_COUNT];
 
@@ -1327,14 +1392,16 @@ public:
 	bool CouldBeReg(const BeMCOperand& operand);
 	bool CheckForce(BeMCVRegInfo* vregInfo);
 
-	void MarkLive(BeVTrackingList* liveRegs, SizedArrayImpl<int>& newRegs, BeVTrackingList* initRegs, const BeMCOperand& operand);	
+	void MarkLive(BeVTrackingList* liveRegs, SizedArrayImpl<int>& newRegs, BeVTrackingList*& initRegs, const BeMCOperand& operand);
 	BeVTrackingList* MergeLiveRegs(BeVTrackingList* prevDestEntry, BeVTrackingList* mergeFrom);
 	void GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genCtx, bool& modifiedBlockBefore, bool& modifiedBlockAfter);
 	void GenerateLiveness();	
 	void IntroduceVRegs(const BeMCOperand& newVReg, BeMCBlock* block, int startInstIdx, int lastInstIdx);
-	void VRegSetInitialized(BeMCBlock* mcBlock, BeMCInst* inst, const BeMCOperand& operand, SizedArrayImpl<int>& addVec, SizedArrayImpl<int>& removeVec, bool deepSet, bool doSet = true);
+	void VRegSetInitialized(BeMCBlock* mcBlock, BeMCInst* inst, const BeMCOperand& operand, SizedArrayImpl<int>& addVec, SizedArrayImpl<int>& removeVec, bool deepSet, bool doSet);
 	bool CheckVRegEqualityRange(BeMCBlock * mcBlock, int instIdx, const BeMCOperand & vreg0, const BeMCOperand & vreg1, BeMCRemapper& regRemaps, bool onlyCheckFirstLifetime = false);
 	BeMCInst* FindSafePreBranchInst(BeMCBlock* mcBlock);
+	void SimpleInitializedPass();
+	void DoLastUsePassHelper(BeMCInst* inst, const BeMCOperand& operand);
 	void InitializedPassHelper(BeMCBlock* block, BeVTrackingGenContext* genCtx, bool& modifiedBefore, bool& modifiedAfter);
 	void GenerateVRegInitFlags(BeVTrackingGenContext& genCtx);
 	void DoInitInjectionPass();
@@ -1391,7 +1458,9 @@ public:
 
 	void DoTLSSetup();
 	void DoChainedBlockMerge();
+	void DoSplitLargeBlocks();
 	void DetectLoops();
+	void DoLastUsePass();
 	bool DoInitializedPass();		
 	void RefreshRefCounts();	
 	void DoInstCombinePass();

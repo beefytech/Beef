@@ -152,7 +152,7 @@ int BeVTrackingContext::GetBitsBytes()
 }
 
 int BeVTrackingContext::GetIdx(int baseIdx, BeTrackKind liveKind)
-{
+{	
 	return baseIdx + mNumItems*(int)liveKind;
 }
 
@@ -501,12 +501,12 @@ BeVTrackingList* BeVTrackingContext::ClearFiltered(BeVTrackingList* list, const 
 	return NULL;
 }
 
-BeVTrackingList* BeVTrackingContext::Modify(BeVTrackingList* list, const SizedArrayImpl<int>& inAdds, const SizedArrayImpl<int>& inRemoves, SizedArrayImpl<int>& filteredAdds, SizedArrayImpl<int>& filteredRemoves)
+BeVTrackingList* BeVTrackingContext::Modify(BeVTrackingList* list, const SizedArrayImpl<int>& inAdds, const SizedArrayImpl<int>& inRemoves, SizedArrayImpl<int>& filteredAdds, SizedArrayImpl<int>& filteredRemoves, bool preserveChanges)
 {
 	for (int idx : inAdds)
 	{
 		if (!IsSet(list, idx))
-		{
+		{			
 			filteredAdds.push_back(idx);						
 		}
 	}
@@ -523,107 +523,81 @@ BeVTrackingList* BeVTrackingContext::Modify(BeVTrackingList* list, const SizedAr
 		return list;
 	
 	int newSize = list->mSize - filteredRemoves.size() + filteredAdds.size();
-	int changeSize = filteredRemoves.size() + filteredAdds.size();
+	int changeSize;	
+	if (preserveChanges)
+		changeSize = list->mNumChanges;
+	else
+		changeSize = filteredRemoves.size() + filteredAdds.size();
+
 	int allocBytes = sizeof(int) * (2 + newSize + changeSize);
 	auto newList = (BeVTrackingList*)mAlloc.AllocBytes(allocBytes);
 	mStats.mListBytes += allocBytes;
-	/*if (filteredRemoves.size() == 0)
+		
+	if (filteredAdds.size() > 1)
+		std::sort(filteredAdds.begin(), filteredAdds.end());
+	if (filteredRemoves.size() > 1)
+		std::sort(filteredRemoves.begin(), filteredRemoves.end());
+
+	int addIdx = 0;		
+	int nextAdd;
+	if (addIdx < (int)filteredAdds.size())
+		nextAdd = filteredAdds[addIdx++];
+	else
+		nextAdd = 0x7FFFFFFF;
+
+	int removeIdx = 0;
+	int nextRemove;
+	if (removeIdx < (int)filteredRemoves.size())
+		nextRemove = filteredRemoves[removeIdx++];
+	else
+		nextRemove = 0x7FFFFFFF;
+
+	int* outPtr = &newList->mEntries[0];
+	for (auto idx : *list)
 	{
-		memcpy(newList->mEntries, unit.mList->mEntries, sizeof(int) * unit.mList->mSize);
-	}
-	else if (filteredRemoves.size() == 1)
-	{
-		int findIdx0 = filteredRemoves[0];
-		int* outPtr = &newList->mEntries[0];
-		for (auto idx : *unit.mList)
+		if (idx == nextRemove)
 		{
-			if (idx != findIdx0)
-				*(outPtr++) = idx;
+			if (removeIdx < (int)filteredRemoves.size())
+				nextRemove = filteredRemoves[removeIdx++];
+			else
+				nextRemove = 0x7FFFFFFF;
+			continue;
 		}
-		BF_ASSERT(outPtr == &newList->mEntries[0] + unit.mList->mSize - filteredRemoves.size());
-	}
-	else if (filteredRemoves.size() == 2)
-	{
-		int findIdx0 = filteredRemoves[0];
-		int findIdx1 = filteredRemoves[1];
-		int* outPtr = &newList->mEntries[0];
-		for (auto idx : *unit.mList)
+		while (idx > nextAdd)
 		{
-			if ((idx != findIdx0) && (idx != findIdx1))
-				*(outPtr++) = idx;
+			*(outPtr++) = nextAdd;
+			if (addIdx < (int)filteredAdds.size())
+				nextAdd = filteredAdds[addIdx++];
+			else
+				nextAdd = 0x7FFFFFFF;
 		}
-		BF_ASSERT(outPtr == &newList->mEntries[0] + unit.mList->mSize - filteredRemoves.size());
+		*(outPtr++) = idx;
+	}
+	while (nextAdd != 0x7FFFFFFF)
+	{
+		*(outPtr++) = nextAdd;
+		if (addIdx >= (int)filteredAdds.size())
+			break;
+		nextAdd = filteredAdds[addIdx++];
+	}
+	BF_ASSERT(outPtr == &newList->mEntries[0] + newSize);
+	BF_ASSERT((nextAdd = 0x7FFFFFFF) && (nextRemove == 0x7FFFFFFF));	
+
+	if (preserveChanges)
+	{
+		for (int i = 0; i < list->mNumChanges; i++)
+			newList->mEntries[newSize + i] = list->mEntries[list->mSize + i];
 	}
 	else
 	{
-		int* outPtr = &newList->mEntries[0];
-		for (auto idx : *unit.mList)
+		for (int i = 0; i < (int)filteredRemoves.size(); i++)
 		{
-			if (std::find(filteredRemoves.begin(), filteredRemoves.end(), idx) == filteredRemoves.end())
-				*(outPtr++) = idx;
+			newList->mEntries[newSize + i] = -filteredRemoves[i] - 1;
 		}
-		BF_ASSERT(outPtr == &newList->mEntries[0] + unit.mList->mSize - filteredRemoves.size());
-	}*/
-
-	{
-		if (filteredAdds.size() > 1)
-			std::sort(filteredAdds.begin(), filteredAdds.end());
-		if (filteredRemoves.size() > 1)
-			std::sort(filteredRemoves.begin(), filteredRemoves.end());
-
-		int addIdx = 0;		
-		int nextAdd;
-		if (addIdx < (int)filteredAdds.size())
-			nextAdd = filteredAdds[addIdx++];
-		else
-			nextAdd = 0x7FFFFFFF;
-
-		int removeIdx = 0;
-		int nextRemove;
-		if (removeIdx < (int)filteredRemoves.size())
-			nextRemove = filteredRemoves[removeIdx++];
-		else
-			nextRemove = 0x7FFFFFFF;
-
-		int* outPtr = &newList->mEntries[0];
-		for (auto idx : *list)
+		for (int i = 0; i < (int)filteredAdds.size(); i++)
 		{
-			if (idx == nextRemove)
-			{
-				if (removeIdx < (int)filteredRemoves.size())
-					nextRemove = filteredRemoves[removeIdx++];
-				else
-					nextRemove = 0x7FFFFFFF;
-				continue;
-			}
-			while (idx > nextAdd)
-			{
-				*(outPtr++) = nextAdd;
-				if (addIdx < (int)filteredAdds.size())
-					nextAdd = filteredAdds[addIdx++];
-				else
-					nextAdd = 0x7FFFFFFF;
-			}
-			*(outPtr++) = idx;
+			newList->mEntries[newSize + filteredRemoves.size() + i] = filteredAdds[i];
 		}
-		while (nextAdd != 0x7FFFFFFF)
-		{
-			*(outPtr++) = nextAdd;
-			if (addIdx >= (int)filteredAdds.size())
-				break;
-			nextAdd = filteredAdds[addIdx++];
-		}
-		BF_ASSERT(outPtr == &newList->mEntries[0] + newSize);
-		BF_ASSERT((nextAdd = 0x7FFFFFFF) && (nextRemove == 0x7FFFFFFF));
-	}
-
-	for (int i = 0; i < (int)filteredRemoves.size(); i++)
-	{
-		newList->mEntries[newSize + i] = -filteredRemoves[i] - 1;
-	}
-	for (int i = 0; i < (int)filteredAdds.size(); i++)
-	{
-		newList->mEntries[newSize + filteredRemoves.size() + i] = filteredAdds[i];
 	}
 	newList->mSize = newSize;
 	newList->mNumChanges = changeSize;	
@@ -877,7 +851,10 @@ BeVTrackingList * BeVTrackingContext::RemoveChange(BeVTrackingList* prevDestEntr
 		}
 		newList->mEntries[outIdx++] = change;
 	}	
-	BF_ASSERT(found);
+	if (!found)
+		return prevDestEntry;
+
+	//BF_ASSERT(found);
 	newList->mSize = newSize;
 	newList->mNumChanges = prevDestEntry->mNumChanges - 1;	
 
@@ -1920,6 +1897,7 @@ BeMCContext::BeMCContext(BeCOFFObject* coffObject) : mOut(coffObject->mTextSect.
 	mDebugging = false;
 	mFailed = false;
 	mDetectLoopIdx = 0;
+	mLegalizationIterations = 0;
 }
 
 void BeMCContext::NotImpl()
@@ -2626,8 +2604,10 @@ BeMCInst* BeMCContext::AllocInst(int insertIdx)
 		insertIdx = (*mInsertInstIdxRef)++;
 	if (insertIdx == -1)
 		mActiveBlock->mInstructions.push_back(mcInst);
+	else if ((insertIdx < mActiveBlock->mInstructions.mSize) && (mActiveBlock->mInstructions[insertIdx] == NULL))
+		mActiveBlock->mInstructions[insertIdx] = mcInst;
 	else
-		mActiveBlock->mInstructions.Insert(insertIdx, mcInst);
+		mActiveBlock->mInstructions.Insert(insertIdx, mcInst);	
 	return mcInst;
 }
 
@@ -3622,7 +3602,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 4)
+		if (mcOperand.mVRegIdx == 263)
 		{
 			NOP;
 		}		
@@ -3902,7 +3882,7 @@ bool BeMCContext::IsLive(BeVTrackingList* liveRegs, int origVRegIdx, BeMCRemappe
 void BeMCContext::AddRegRemap(int from, int to, BeMCRemapper& regRemaps, bool allowRemapToDbgVar)
 {
 	auto vregInfoFrom = mVRegInfo[from];
-	auto vregInfoTo = mVRegInfo[to];
+	auto vregInfoTo = mVRegInfo[to];	
 
 	BF_ASSERT(vregInfoFrom->mDbgVariable == NULL);
 
@@ -4030,7 +4010,7 @@ bool BeMCContext::CheckForce(BeMCVRegInfo* vregInfo)
 	return false;
 }
 
-void BeMCContext::MarkLive(BeVTrackingList* liveRegs, SizedArrayImpl<int>& newRegs, BeVTrackingList* vregsInitialized, const BeMCOperand& operand)
+void BeMCContext::MarkLive(BeVTrackingList* liveRegs, SizedArrayImpl<int>& newRegs, BeVTrackingList*& vregsInitialized, const BeMCOperand& operand)
 {
 	int vregIdx = operand.mVRegIdx;
 	auto vregInfo = mVRegInfo[vregIdx];
@@ -4059,7 +4039,7 @@ void BeMCContext::MarkLive(BeVTrackingList* liveRegs, SizedArrayImpl<int>& newRe
 
 	if (vregInfo->mHasDynLife)
 	{		
-		if (!mLivenessContext.IsSet(vregsInitialized, vregIdx))
+		if (!mVRegInitializedContext.IsSet(vregsInitialized, vregIdx))
 		{
 			// This indicates that this is a 'def' usage, meaning the value wasn't actually set yet
 			//  so don't propagate this index upward
@@ -4223,7 +4203,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 	bool needsManualVRegInitDiff = true;
 
 	for (int instIdx = (int)block->mInstructions.size() - 1; instIdx >= 0; instIdx--)
-	{
+	{		
 		genLivenessIdx++;
 		auto inst = block->mInstructions[instIdx];		
 		auto prevLiveness = inst->mLiveness;
@@ -4241,9 +4221,10 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 		{
 			auto _VRegUninit = [&] (int vregIdxEx)
 			{
-				int vregIdx = vregIdxEx % mVRegInitializedContext.mNumItems;
-				auto vregInfo = mVRegInfo[vregIdx];
+				int vregIdx = vregIdxEx % mVRegInitializedContext.mNumItems;				
 
+				auto vregInfo = mVRegInfo[vregIdx];
+				
 				if (!vregInfo->mHasDynLife)
 					return;
 
@@ -4266,11 +4247,8 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 				}
 
 				if (doClear)
-				{					
-					if (vregIdx >= mVRegInitializedContext.mNumItems)
-						DedupPushBack(removeVec, vregIdx);
-					else
-						removeVec.push_back(vregIdx);
+				{
+					DedupPushBack(removeVec, vregIdx);
 				}
 			};
 
@@ -4324,7 +4302,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 							break;
 					}
 					while (idx0 < vregsInit0->mSize)
-					{
+					{						
 						_VRegUninit(vregsInit0->mEntries[idx0++]);
 					}
 				}
@@ -4424,13 +4402,13 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 				mcOperand = BeMCOperand::FromEncoded(operand->mVRegPair.mVRegIdx1);
 				if (mcOperand.IsVRegAny())
 					MarkLive(liveRegs, addVec, vregsInitialized, mcOperand);
-			}
+			}			
 
 			if (operand->IsVRegAny())
 			{				
 				MarkLive(liveRegs, addVec, vregsInitialized, *operand);
 			}
-		}
+		}		
 
 		liveRegs = mLivenessContext.Modify(liveRegs, addVec, removeVec, filteredAddVec, filteredRemoveVec);
 
@@ -4440,7 +4418,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 			return;
 		}*/
 
-		inst->mLiveness = liveRegs;
+		inst->mLiveness = liveRegs;		
 	}
 
 	if (block == mBlocks[0])
@@ -6125,9 +6103,9 @@ void BeMCContext::VRegSetInitialized(BeMCBlock* mcBlock, BeMCInst* inst, const B
 	
 	if (doSet)
 	{
-		addVec.push_back(operand.mVRegIdx);
-		removeVec.push_back(mVRegInitializedContext.GetIdx(operand.mVRegIdx, BeTrackKind_Uninitialized));
-		//vregsInitialized = mVRegInitializedContext.SetAndClear(vregsInitialized, operand.mVRegIdx, mVRegInitializedContext.GetIdx(operand.mVRegIdx, BeTrackKind_Uninitialized));
+		if (!removeVec.Contains(operand.mVRegIdx))
+			addVec.push_back(operand.mVRegIdx);
+		removeVec.push_back(mVRegInitializedContext.GetIdx(operand.mVRegIdx, BeTrackKind_Uninitialized));		
 	}
 }
 
@@ -6195,6 +6173,16 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 		SizedArray<int, 16> addVec;
 		SizedArray<int, 16> filteredRemoveVec;
 		SizedArray<int, 16> filteredAddVec;
+		
+		//
+ 		{
+			auto checkLastUseRecord = inst->mVRegLastUseRecord;
+			while (checkLastUseRecord != NULL)
+			{
+				removeVec.Add(checkLastUseRecord->mVRegIdx);
+				checkLastUseRecord = checkLastUseRecord->mNext;
+			}
+		}
 
 		if ((inst->mKind == BeMCInstKind_ValueScopeSoftEnd) || (inst->mKind == BeMCInstKind_ValueScopeHardEnd))
 		{	
@@ -6245,7 +6233,7 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 		if (inst->mKind == BeMCInstKind_DbgDecl)
 		{			
 			if (!mVRegInitializedContext.IsSet(vregsInitialized, inst->mArg0.mVRegIdx))
-			{
+			{				
 				auto vregInfo = mVRegInfo[inst->mArg0.mVRegIdx];
 				if (vregInfo->mIsExpr) // For shadowed inlined params, set as initialized
 					addVec.push_back(inst->mArg0.mVRegIdx);
@@ -6282,10 +6270,10 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 			// In some cases we can have a dbg variable that actually points to a global variable (due to macros/inlining/etc), so this check is for that case:
 			if (inst->mArg0.IsVRegAny())			
 			{
-				removeVec.push_back(inst->mArg0.mVRegIdx);
-				removeVec.push_back(mVRegInitializedContext.GetIdx(inst->mArg0.mVRegIdx, BeTrackKind_Uninitialized));
+				DedupPushBack(removeVec, inst->mArg0.mVRegIdx);
+				DedupPushBack(removeVec, mVRegInitializedContext.GetIdx(inst->mArg0.mVRegIdx, BeTrackKind_Uninitialized));
 			}
-			vregsInitialized= mVRegInitializedContext.Modify(vregsInitialized, addVec, removeVec, filteredAddVec, filteredRemoveVec);
+			vregsInitialized = mVRegInitializedContext.Modify(vregsInitialized, addVec, removeVec, filteredAddVec, filteredRemoveVec);
 			continue;
 		}
 
@@ -6323,7 +6311,7 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 		auto operands = { &inst->mResult, &inst->mArg0, &inst->mArg1 };
 		for (auto op : operands)
 		{
-			VRegSetInitialized(mcBlock, inst, *op, addVec, removeVec, deepSet || (op == destArg));
+			VRegSetInitialized(mcBlock, inst, *op, addVec, removeVec, deepSet || (op == destArg), true);
 		}
 
 		for (int removeIdx = 0; removeIdx < (int)filteredRemoveVec.size(); removeIdx++)
@@ -6523,6 +6511,12 @@ void BeMCContext::ReplaceVRegsInit(BeMCBlock* mcBlock, int startInstIdx, BeVTrac
 	}
 }
 
+// This pass does bottom-up initialization for "simple" vregs (ie: not variables)
+void BeMCContext::SimpleInitializedPass()
+{
+
+}
+
 void BeMCContext::GenerateVRegInitFlags(BeVTrackingGenContext& genCtx)
 {
 	BP_ZONE("BeMCContext::GenerateVRegInitFlags");	
@@ -6540,6 +6534,8 @@ void BeMCContext::GenerateVRegInitFlags(BeVTrackingGenContext& genCtx)
 		auto mcBlock = mBlocks[blockIdx];	
 		mcBlock->mPredVRegsInitialized = emptyList;		
 	}
+
+	SimpleInitializedPass();
 
 	bool modifiedBlockBefore;
 	bool modifiedBlockAfter;
@@ -6571,7 +6567,7 @@ void BeMCContext::GenerateVRegInitFlags(BeVTrackingGenContext& genCtx)
 			break;
 	}
 
-	// Fix up the vregsInit changes to represent changes from the last intruction in one block to the first instruction on the next blockfs
+	// Fix up the vregsInit changes to represent changes from the last instruction in one block to the first instruction on the next block
 	for (int blockIdx = 0; blockIdx < (int)mBlocks.size() - 1; blockIdx++)
 	{
 		auto fromBlock = mBlocks[blockIdx];
@@ -6811,11 +6807,162 @@ void BeMCContext::DoChainedBlockMerge()
 		mBlocks[blockIdx]->mBlockIdx = blockIdx;
 }
 
+void BeMCContext::DoSplitLargeBlocks()
+{	
+	Dictionary<int, int> blockEndRemap;
+
+	int splitSize = 4096;	
+	int maxBlockSize = splitSize + splitSize/4;
+	bool hadSplits = false;
+	
+	for (int blockIdx = 0; blockIdx < mBlocks.size(); blockIdx++)
+	{		
+		int blockBreakIdx = 0;
+
+		auto srcBlock = mBlocks[blockIdx];
+		if (srcBlock->mInstructions.size() < maxBlockSize)
+			continue;
+		hadSplits = true;
+		int extensionCount = srcBlock->mInstructions.size() / splitSize;		
+		// Don't allow the last block to have too few instructions
+		if (srcBlock->mInstructions.size() % splitSize < splitSize / 4)
+			extensionCount--;
+		if (extensionCount == 0) // Shouldn't happen, really
+			continue;
+		for (int extIdx = 0; extIdx < extensionCount; extIdx++)
+		{
+			BeMCBlock* extBlock = mMCBlockAlloc.Alloc();
+			extBlock->mName = srcBlock->mName + StrFormat("__EXT%d", extIdx);
+			mBlocks.Insert(blockIdx + 1 + extIdx, extBlock);
+
+			int startIdx = (extIdx + 1) * splitSize;
+			int endIdx = BF_MIN((extIdx + 2) * splitSize, srcBlock->mInstructions.size());
+			if (extIdx == extensionCount - 1)
+				endIdx = (int)srcBlock->mInstructions.size();
+
+			extBlock->mInstructions.Insert(0, &srcBlock->mInstructions[startIdx], endIdx - startIdx);
+			extBlock->mPreds.Add(mBlocks[blockIdx + extIdx]);
+									
+			if (extIdx > 0)
+			{
+				auto prevBlock = mBlocks[blockIdx + extIdx];
+				mActiveBlock = prevBlock;					
+				AllocInst(BeMCInstKind_Br, BeMCOperand::FromBlock(extBlock));
+				mActiveBlock = NULL;
+
+				mBlocks[blockIdx + extIdx]->mSuccs.Add(extBlock);
+			}			
+			
+			if (extIdx == extensionCount - 1)
+			{
+				blockEndRemap[blockIdx] = blockIdx + extIdx + 1;
+				
+				for (auto succ : srcBlock->mSuccs)
+				{
+					succ->mPreds.Remove(srcBlock);
+					succ->mPreds.Add(extBlock);
+				}
+				extBlock->mSuccs = srcBlock->mSuccs;
+				srcBlock->mSuccs.Clear();
+				srcBlock->mSuccs.Add(mBlocks[blockIdx + 1]);
+			}						
+		}
+
+		mActiveBlock = srcBlock;
+		srcBlock->mInstructions.RemoveRange(splitSize, (int)srcBlock->mInstructions.size() - splitSize);		
+		AllocInst(BeMCInstKind_Br, BeMCOperand::FromBlock(mBlocks[blockIdx + 1]));
+		mActiveBlock = NULL;
+	}
+	
+	if (!hadSplits)
+		return;
+
+// 	for (int blockIdx = 0; blockIdx < mBlocks.size(); blockIdx++)
+// 	{
+// 		auto mcBlock = mBlocks[blockIdx];
+// 		for (auto inst : mcBlock->mInstructions)
+// 		{
+// 			if (inst->mResult.mKind == BeMCOperandKind_Phi)
+// 			{
+// 				inst->mResult.mP
+// 			}
+// 		}
+// 	}
+
+	for (int blockIdx = 0; blockIdx < mBlocks.size(); blockIdx++)
+		mBlocks[blockIdx]->mBlockIdx = blockIdx;
+
+	for (auto phi : mPhiAlloc)
+	{
+		for (auto& phiValue : phi->mValues)
+		{
+			int remappedBlock = -1;
+			if (blockEndRemap.TryGetValue(phiValue.mBlockFrom->mBlockIdx, &remappedBlock))
+			{
+				phiValue.mBlockFrom = mBlocks[remappedBlock];
+			}
+		}
+	}
+
+}
+
 void BeMCContext::DetectLoops()
 {
 	BP_ZONE("BeMCContext::DetectLoops");
 	BeMCLoopDetector loopDetector(this);
 	loopDetector.DetectLoops();
+}
+
+void BeMCContext::DoLastUsePassHelper(BeMCInst* inst, const BeMCOperand& operand)
+{	
+	if (operand.mKind == BeMCOperandKind_VRegPair)
+	{
+		auto mcOperand = BeMCOperand::FromEncoded(operand.mVRegPair.mVRegIdx0);
+		if (mcOperand.IsVRegAny())
+			DoLastUsePassHelper(inst, mcOperand);
+		mcOperand = BeMCOperand::FromEncoded(operand.mVRegPair.mVRegIdx1);
+		if (mcOperand.IsVRegAny())
+			DoLastUsePassHelper(inst, mcOperand);
+		return;
+	}
+
+	if (!operand.IsVRegAny())
+		return;	
+
+	int vregIdx = operand.mVRegIdx;
+	auto vregInfo = mVRegInfo[vregIdx];
+
+	if ((vregInfo->mDbgVariable == NULL) && (!vregInfo->mHasDynLife) && (!vregInfo->mFoundLastUse))
+	{
+		vregInfo->mFoundLastUse = true;
+		auto lastUseRecord = mAlloc.Alloc<BeVRegLastUseRecord>();
+		lastUseRecord->mVRegIdx = vregIdx;
+		lastUseRecord->mNext = inst->mVRegLastUseRecord;
+		inst->mVRegLastUseRecord = lastUseRecord;
+	}
+
+	if (vregInfo->mRelTo)
+		DoLastUsePassHelper(inst, vregInfo->mRelTo);
+	if (vregInfo->mRelOffset)
+		DoLastUsePassHelper(inst, vregInfo->mRelOffset);
+}
+
+void BeMCContext::DoLastUsePass()
+{
+	for (int blockIdx = (int)mBlocks.size() - 1; blockIdx >= 0; blockIdx--)
+	{
+		auto mcBlock = mBlocks[blockIdx];
+
+		for (int instIdx = (int)mcBlock->mInstructions.size() - 1; instIdx >= 0; instIdx--)
+		{
+			auto inst = mcBlock->mInstructions[instIdx];
+			auto operands = { &inst->mResult, &inst->mArg0, &inst->mArg1 };
+			for (auto operand : operands)
+			{
+				DoLastUsePassHelper(inst, *operand);
+			}
+		}
+	}
 }
 
 void BeMCContext::RefreshRefCounts()
@@ -7618,26 +7765,35 @@ void BeMCContext::DoInstCombinePass()
 		else
 			defMap[remapTo] = bestVRegIdx;
 	}
-	// We have a many-to-one relation so we have to use both a 
+	
+	struct _RemapEntry 
+	{
+		int mVRegFrom;
+		int mVRegTo;
+	};
 
+	Array<_RemapEntry> initRemaps;
+
+	// We have a many-to-one relation so we have to use both a 	
 	HashSet<int> keepDefs;
 	for (auto& defPair : defMap)
 		keepDefs.Add(defPair.mValue);
 	HashSet<int> removeDefs;
 	for (auto& remapPair : regRemapMap)
-	{
-		/*if (keepDefs.find(remapPair.first) == keepDefs.end())
-			removeDefs.insert(remapPair.first);*/
-		removeDefs.Add(remapPair.mKey);
-		/*if (keepDefs.find(remapPair.second) == keepDefs.end())
-			removeDefs.insert(remapPair.second);*/
+	{		
+		removeDefs.Add(remapPair.mKey);		
 		keepDefs.Add(remapPair.mValue);
 
 		auto vregInfoFrom = mVRegInfo[remapPair.mKey];
 		auto vregInfoTo = mVRegInfo[remapPair.mValue];
 
 		if (vregInfoFrom->mHasDynLife)
+		{
 			vregInfoTo->mHasDynLife = true;
+			
+ 			_RemapEntry remapEntry = { remapPair.mKey, remapPair.mValue };
+ 			initRemaps.Add(remapEntry); 			
+		}
 	}	
 
 	auto _RemapOperand = [&](BeMCOperand* operand)
@@ -7678,6 +7834,8 @@ void BeMCContext::DoInstCombinePass()
 		}
 	};
 
+	Dictionary<BeVTrackingList*, BeVTrackingList*> initRemapMap;
+
 	if ((!regRemapMap.IsEmpty()) || (!wantUnwrapVRegs.IsEmpty()))
 	{
 		for (auto mcBlock : mBlocks)
@@ -7712,6 +7870,32 @@ void BeMCContext::DoInstCombinePass()
 				for (auto& operand : operands)
 				{
 					_RemapOperand(operand);
+				}
+
+				if ((!initRemaps.IsEmpty()) && (inst->mVRegsInitialized != NULL))
+				{
+					BeVTrackingList** vregsInitializedValuePtr = NULL;
+					if (initRemapMap.TryAdd(inst->mVRegsInitialized, NULL, &vregsInitializedValuePtr))					
+					{
+						SizedArray<int, 16> removeVec;
+						SizedArray<int, 16> addVec;
+						SizedArray<int, 16> filteredRemoveVec;
+						SizedArray<int, 16> filteredAddVec;
+
+						for (auto& entry : initRemaps)
+						{
+							if (mVRegInitializedContext.IsSet(inst->mVRegsInitialized, entry.mVRegFrom))
+							{
+								removeVec.Add(entry.mVRegFrom);
+								if (!mVRegInitializedContext.IsSet(inst->mVRegsInitialized, entry.mVRegTo))
+									addVec.Add(entry.mVRegTo);
+							}
+						}
+
+						BeVTrackingList* vregsInitialized = mVRegInitializedContext.Modify(inst->mVRegsInitialized, addVec, removeVec, filteredAddVec, filteredRemoveVec, true);
+						*vregsInitializedValuePtr = vregsInitialized;
+					}
+					inst->mVRegsInitialized = *vregsInitializedValuePtr;
 				}
 			}
 		}
@@ -10062,6 +10246,7 @@ bool BeMCContext::DoLegalization()
 			OutputDebugStrF(" DoActualizations\n");
 	}
 
+	mLegalizationIterations++;
 	return isFinalRun;
 }
 
@@ -10480,6 +10665,455 @@ bool BeMCContext::DoJumpRemovePass()
 	return didWork;
 }
 
+//void BeMCContext::DoRegFinalization()
+//{
+//	SizedArray<int, 32> savedVolatileVRegs;
+//	
+//	mUsedRegs.Clear();
+//	
+//	SetCurrentInst(NULL);
+//
+//	// Remove the Def instructions, replace vreg
+//	for (auto mcBlock : mBlocks)
+//	{
+//		mActiveBlock = mcBlock;
+//		for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
+//		{
+//			auto inst = mcBlock->mInstructions[instIdx];
+//			SetCurrentInst(inst);
+//			if (inst->IsDef())
+//			{
+//				auto vregInfo = GetVRegInfo(inst->mArg0);
+//				if (vregInfo->mDbgVariable != NULL)
+//					vregInfo->mAwaitingDbgStart = true;
+//				RemoveInst(mcBlock, instIdx);
+//				instIdx--;
+//				continue;
+//			}
+//			
+//			// This is similar to an optimization we have in DoLegalization, but it allows for directRelTo's to match
+//			//  We can't match those in DoLegalization because it would alter the liveness 
+//			if (inst->mKind == BeMCInstKind_Mov)
+//			{
+//				// Useless mov, remove it
+//				if (OperandsEqual(inst->mArg0, inst->mArg1, false))
+//				{
+//					if (inst->mDbgLoc != NULL)
+//					{
+//						inst->mKind = BeMCInstKind_EnsureInstructionAt;
+//						inst->mArg0 = BeMCOperand();
+//						inst->mArg1 = BeMCOperand();
+//					}
+//					else
+//					{
+//						RemoveInst(mcBlock, instIdx);
+//						instIdx--;
+//					}
+//
+//					continue;
+//				}
+//			}
+//
+//			if ((inst->mKind >= BeMCInstKind_Def) && (inst->mKind <= BeMCInstKind_LifetimeEnd))
+//				continue;
+//			
+//			if (inst->mResult == inst->mArg0)
+//			{
+//				// Destination is implicitly arg0
+//				inst->mResult.mKind = BeMCOperandKind_None;
+//			}
+//
+//			// Unfortunate rule:
+//			//  if we end up with:
+//			//    PreserveVolatiles RAX
+//			//    Shl vreg0<RCX>, CL
+//			//    RestoreVolatiles RAXS
+//			//  Then convert that to
+//			//    PreserveVolatiles RAX
+//			//    Shl <SavedLoc>, RAX
+//			//    RestoreVolatiles RAX
+//			/*if ((inst->mKind == BeMCInstKind_Shl) ||
+//				(inst->mKind == BeMCInstKind_Shr) ||
+//				(inst->mKind == BeMCInstKind_Sar))
+//			{
+//				if (inst->mArg1.IsNativeReg())
+//				{
+//					
+//				}
+//			}*/
+//			
+//			auto operands = { &inst->mResult, &inst->mArg0, &inst->mArg1 };
+//			for (auto operand : operands)
+//			{
+//				BeMCOperand checkOperand = *operand;				
+//				while (true)
+//				{
+//					auto vregInfo = GetVRegInfo(checkOperand);
+//					if (vregInfo == NULL)
+//						break;
+//
+//					// We may think that range starts should always occur on a "mov <vreg>, <value>", but
+//					//  we have some cases like un-splatting into a composite, or using an uninitialized local
+//					//  variable where we want to start the range on ANY use, not just a direct assignment
+//					if (vregInfo->mAwaitingDbgStart)
+//					{
+//						//AllocInst(BeMCInstKind_DbgRangeStart, checkOperand, instIdx + 1);
+//						//vregInfo->mAwaitingDbgStart = false;
+//					}
+//					if (!vregInfo->mRelTo)
+//						break;
+//					checkOperand = vregInfo->mRelTo;
+//				}
+//
+//				FixOperand(*operand);
+//				if (operand->mKind == BeMCOperandKind_NativeReg)
+//				{
+//					auto nativeReg = ResizeRegister(operand->mReg, 8);
+//					BF_ASSERT(nativeReg != X64Reg_None);
+//					if (nativeReg != X64Reg_RSP) // This can happen from allocas
+//						mUsedRegs.Add(nativeReg);
+//				}
+//			}
+//
+//			if (inst->IsMov())
+//			{
+//				bool removeInst = false;
+//
+//				if (inst->mArg0 == inst->mArg1)
+//				{
+//					removeInst = true;					
+//				}
+//
+//				if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsNativeReg()))
+//				{
+//					// Removes size-reducing moves such as "mov eax, rax"
+//					if (ResizeRegister(inst->mArg0.mReg, 8) == inst->mArg1.mReg)
+//					{					
+//						removeInst = true;
+//					}
+//				}				
+//
+//				if (removeInst)
+//				{
+//					inst->mKind = BeMCInstKind_EnsureInstructionAt;
+//					inst->mResult = BeMCOperand();
+//					inst->mArg0 = BeMCOperand();
+//					inst->mArg1 = BeMCOperand();
+//				}
+//			}
+//
+//			switch (inst->mKind)
+//			{
+//			case BeMCInstKind_PreserveVolatiles:
+//				{					
+//					int preserveIdx;
+//					BeMCInst* preserveInst;
+//					BeMCInst* restoreInst;
+//					if (inst->mKind == BeMCInstKind_PreserveVolatiles)
+//					{
+//						preserveIdx = instIdx;
+//						preserveInst = inst;
+//						restoreInst = mcBlock->mInstructions[FindRestoreVolatiles(mcBlock, instIdx)];
+//					}
+//					else
+//					{
+//						preserveIdx = FindPreserveVolatiles(mcBlock, instIdx);
+//						preserveInst = mcBlock->mInstructions[preserveIdx];
+//						restoreInst = inst;
+//					}
+//					int insertIdx = instIdx;
+//
+//					if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsNativeReg()))
+//					{	
+//						// If our exception (IE: div target) is set to the desired preserve reg then
+//						if (inst->mArg0.mReg == ResizeRegister(inst->mArg1.mReg, 8))
+//							break;
+//					}
+//
+//					// Save volatile registers
+//					for (int liveVRegIdx : *inst->mLiveness)
+//					{										
+//						if (liveVRegIdx >= mLivenessContext.mNumItems)
+//							continue;
+//
+//						auto checkVRegIdx = GetUnderlyingVReg(liveVRegIdx);
+//						// Already handled the underlying vreg?
+//						if ((checkVRegIdx != liveVRegIdx) && (mLivenessContext.IsSet(preserveInst->mLiveness, checkVRegIdx)))
+//							continue;
+//
+//						auto vregInfo = mVRegInfo[checkVRegIdx];						
+//						if (vregInfo->mReg != X64Reg_None)
+//						{
+//							// Do we specify a particular reg, or just all volatiles?
+//							if ((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg != ResizeRegister(vregInfo->mReg, 8)))
+//								continue;														
+//
+//							if (!mLivenessContext.IsSet(restoreInst->mLiveness, liveVRegIdx))
+//							{
+//								// This vreg doesn't survive until the PreserveRegs -- it's probably used for params or the call addr
+//								continue;
+//							}						
+//
+//							if (IsVolatileReg(vregInfo->mReg))
+//							{
+//								if (vregInfo->mVolatileVRegSave == -1)
+//								{
+//									BF_ASSERT(inst->mKind != BeMCInstKind_RestoreVolatiles); // Should have already been allocated
+//									auto savedVReg = AllocVirtualReg(vregInfo->mType);
+//									auto savedVRegInfo = mVRegInfo[savedVReg.mVRegIdx];
+//									savedVRegInfo->mForceMem = true;									
+//									vregInfo->mVolatileVRegSave = savedVReg.mVRegIdx;
+//								}
+//
+//								savedVolatileVRegs.push_back(checkVRegIdx);
+//								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregInfo->mVolatileVRegSave), GetVReg(checkVRegIdx), insertIdx++);
+//								instIdx++;
+//							}
+//						}
+//					}					
+//
+//					bool savingSpecificReg = false;
+//					if (inst->mArg0)
+//					{
+//						if (inst->mArg0.IsNativeReg())
+//							savingSpecificReg = true;
+//						else
+//							BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_PreserveFlag);
+//					}
+//
+//					// Full PreserveRegs case:
+//					// Check register crossover errors, ie:
+//					//  Mov RCX, reg0<RDX>
+//					//  Mov RDX, reg1<RCX>
+//					if (!savingSpecificReg)
+//					{							
+//						int preserveIdx = instIdx;
+//
+//						bool regsFailed = false;
+//						for (int pass = 0; true; pass++)
+//						{
+//							bool regStomped[X64Reg_COUNT] = { false };
+//							bool regFailed[X64Reg_COUNT] = { false };
+//							regsFailed = false;
+//							
+//							bool isFinalPass = pass == 4;
+//							int instEndIdx = -1;
+//
+//							for (int instIdx = preserveIdx + 1; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
+//							{
+//								auto inst = mcBlock->mInstructions[instIdx];
+//								if ((inst->mKind == BeMCInstKind_RestoreVolatiles) ||
+//									(inst->mKind == BeMCInstKind_Call))
+//								{
+//									instEndIdx = instIdx;
+//									if (inst->mKind == BeMCInstKind_Call)
+//									{
+//										X64CPURegister regA = X64Reg_None;
+//										X64CPURegister regB = X64Reg_None;
+//										int bScale = 1;
+//										int disp = 0;
+//										GetRMParams(inst->mArg0, regA, regB, bScale, disp);
+//										
+//										if (((regA != X64Reg_None) && (regA != X64Reg_RAX) && (regStomped[regA])) ||
+//											((regB != X64Reg_None) && (regStomped[regB])))
+//										{
+//											BF_ASSERT(pass == 0);
+//
+//											// Target is stomped! Mov to RAX and then handle it along with the generalized reg setup
+//											auto callTarget = BeMCOperand::FromReg(X64Reg_RAX);
+//											AllocInst(BeMCInstKind_Mov, callTarget, inst->mArg0, preserveIdx + 1);
+//											inst->mArg0 = callTarget;
+//											regsFailed = true; // So we'll rerun taking into account the new RAX reg
+//											instEndIdx++;
+//										}										
+//									}
+//									
+//									break;
+//								}
+//
+//								if (inst->mKind == BeMCInstKind_Def)
+//								{
+//									// If we have a Def here, it's because of a legalization that introduced a variable in a non-safe position
+//									SoftFail("Illegal def");
+//								}
+//
+//								if (inst->mKind == BeMCInstKind_Mov)
+//								{
+//									X64CPURegister regs[2] = { X64Reg_None, X64Reg_None };									
+//									GetUsedRegs(inst->mArg1, regs[0], regs[1]);
+//									
+//									bool isStomped = false;
+//									for (auto reg : regs)
+//									{
+//										if (reg != X64Reg_None)
+//										{
+//											if (regStomped[reg])
+//											{
+//												regsFailed = true;
+//												isStomped = true;
+//												regFailed[reg] = true;
+//											}
+//										}
+//									}
+//
+//									// Don't swap on the final pass, we need regsFailed to be accurate so this is just a
+//									//  verification pass
+//									if ((isStomped) && (!isFinalPass))
+//									{
+//										// Bubble up, maybe a reordering will fix our issue
+//										BF_SWAP(mcBlock->mInstructions[instIdx - 1], mcBlock->mInstructions[instIdx]);										
+//									}
+//
+//									if (inst->mArg0.IsNativeReg())
+//									{										
+//										auto reg = ResizeRegister(inst->mArg0.mReg, 8);
+//										regStomped[(int)reg] = true;
+//									}
+//								}
+//							}
+//
+//							if (!regsFailed)
+//								break;
+//
+//							if (isFinalPass)
+//							{
+//								// We've failed to reorder								
+//								int deferredIdx = 0;
+//
+//								for (int instIdx = preserveIdx + 1; instIdx < instEndIdx; instIdx++)
+//								{
+//									auto inst = mcBlock->mInstructions[instIdx];
+//									if ((inst->mKind == BeMCInstKind_RestoreVolatiles) ||
+//										(inst->mKind == BeMCInstKind_Call))
+//										break;
+//
+//									if (inst->mKind == BeMCInstKind_Mov)
+//									{										
+//										if (inst->mArg0.IsNativeReg())
+//										{
+//											auto reg = ResizeRegister(inst->mArg0.mReg, 8);											
+//											if (regFailed[(int)reg])
+//											{
+//												// Convert 
+//												//   Mov <reg>, vreg0
+//												// To
+//												//   Push vreg0
+//												//    ...
+//												//   Pop <reg>
+//
+//												auto mcPopReg = inst->mArg0;
+//												auto popType = GetType(mcPopReg);
+//												if (!popType->IsFloat())
+//													mcPopReg.mReg = ResizeRegister(mcPopReg.mReg, 8);
+//												
+//												auto pushType = GetType(inst->mArg1);
+//												auto useTypeCode = pushType->IsFloat() ? pushType->mTypeCode : BeTypeCode_Int64;
+//
+//												BF_ASSERT(deferredIdx < 4);
+//												auto mcDeferred = GetCallArgVReg(deferredIdx++, useTypeCode);
+//												CreateDefineVReg(BeMCOperand::FromVReg(mcDeferred.mVRegIdx), instIdx++);
+//												instEndIdx++;
+//
+//												auto popInst = AllocInst(BeMCInstKind_Mov, mcPopReg, mcDeferred, instEndIdx);
+//
+//												//auto popInst = AllocInst(BeMCInstKind_Pop, mcPopReg, instEndIdx);
+//
+//												auto arg1 = inst->mArg1;
+//												FixOperand(arg1);
+//												if (arg1.IsNativeReg())
+//												{
+//													inst->mKind = BeMCInstKind_Mov;
+//													inst->mArg0 = mcDeferred;
+//													if (!popType->IsFloat())
+//														inst->mArg1 = BeMCOperand::FromReg(ResizeRegister(arg1.mReg, 8));
+//													else
+//														inst->mArg1 = BeMCOperand::FromReg(arg1.mReg);
+//												}
+//												else
+//												{													
+//													// Use R11 or XMM5 as our temporary - they are the least likely volatiles to be 
+//													//  allocated, so we may not need to restore them after using them													
+//													
+//													X64CPURegister scratchReg;
+//													if (pushType->mTypeCode == BeTypeCode_Float)
+//														scratchReg = X64Reg_XMM5_f32;
+//													else if (pushType->mTypeCode == BeTypeCode_Double)
+//														scratchReg = X64Reg_XMM5_f64;
+//													else
+//														scratchReg = X64Reg_R11;
+//
+//													int volatileVRegSave = -1;
+//													for (auto vregIdx : savedVolatileVRegs)
+//													{
+//														auto vregInfo = mVRegInfo[vregIdx];
+//														if (ResizeRegister(vregInfo->mReg, 8) == scratchReg)
+//														{
+//															volatileVRegSave = vregInfo->mVolatileVRegSave;
+//														}
+//													}
+//													
+//													AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(scratchReg), inst->mArg1, instIdx++);
+//													instEndIdx++;
+//
+//													inst->mKind = BeMCInstKind_Mov;
+//													inst->mArg0 = mcDeferred;
+//													inst->mArg1 = BeMCOperand::FromReg(scratchReg);
+//
+//													if (volatileVRegSave != -1)
+//													{
+//														AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(scratchReg), BeMCOperand::FromVReg(volatileVRegSave), ++instIdx);
+//														instEndIdx++;
+//													}
+//												}												
+//											}
+//										}
+//									}
+//								}
+//
+//								break;
+//							}
+//						}
+//					}
+//				}
+//				break;
+//
+//			case BeMCInstKind_RestoreVolatiles:
+//				{
+//					bool doRestore = true;
+//					if ((inst->mArg0.mKind == BeMCOperandKind_PreserveFlag) && ((inst->mArg0.mPreserveFlag & BeMCPreserveFlag_NoRestore) != 0))
+//					{
+//						// Don't bother restore registers for NoReturns
+//						doRestore = false;
+//					}
+//
+//					if (doRestore)
+//					{
+//						for (auto vregIdx : savedVolatileVRegs)
+//						{
+//							auto vregInfo = mVRegInfo[vregIdx];
+//							AllocInst(BeMCInstKind_Mov, GetVReg(vregIdx), BeMCOperand::FromVReg(vregInfo->mVolatileVRegSave), instIdx++);
+//						}
+//					}
+//					savedVolatileVRegs.clear();
+//				}
+//				break;
+//			}			
+//		}
+//	}
+//	SetCurrentInst(NULL);
+//
+//	// Do this at the end so we can properly handle RangeStarts
+//	for (int vregIdx = 0; vregIdx < (int)mVRegInfo.size(); vregIdx++)
+//	{
+//		auto vregInfo = mVRegInfo[vregIdx];
+//		if (vregInfo->mRelTo)
+//		{
+//			FixOperand(vregInfo->mRelTo);
+//			FixOperand(vregInfo->mRelOffset);
+//		}
+//	}
+//}
+
 void BeMCContext::DoRegFinalization()
 {
 	SizedArray<int, 32> savedVolatileVRegs;
@@ -10492,17 +11126,20 @@ void BeMCContext::DoRegFinalization()
 	for (auto mcBlock : mBlocks)
 	{
 		mActiveBlock = mcBlock;
-		for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
+
+		//for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
+		for (auto instEnum = BeInstEnumerator(mcBlock); instEnum.HasMore(); instEnum.Next())
 		{
-			auto inst = mcBlock->mInstructions[instIdx];
+			auto inst = instEnum.Get();
 			SetCurrentInst(inst);
 			if (inst->IsDef())
 			{
 				auto vregInfo = GetVRegInfo(inst->mArg0);
 				if (vregInfo->mDbgVariable != NULL)
 					vregInfo->mAwaitingDbgStart = true;
-				RemoveInst(mcBlock, instIdx);
-				instIdx--;
+				//RemoveInst(mcBlock, instIdx);
+				//instIdx--;
+				instEnum.RemoveCurrent();
 				continue;
 			}
 			
@@ -10521,8 +11158,9 @@ void BeMCContext::DoRegFinalization()
 					}
 					else
 					{
-						RemoveInst(mcBlock, instIdx);
-						instIdx--;
+						//RemoveInst(mcBlock, instIdx);
+						//instIdx--;
+						instEnum.RemoveCurrent();
 					}
 
 					continue;
@@ -10626,17 +11264,17 @@ void BeMCContext::DoRegFinalization()
 					BeMCInst* restoreInst;
 					if (inst->mKind == BeMCInstKind_PreserveVolatiles)
 					{
-						preserveIdx = instIdx;
+						preserveIdx = instEnum.mReadIdx;
 						preserveInst = inst;
-						restoreInst = mcBlock->mInstructions[FindRestoreVolatiles(mcBlock, instIdx)];
+						restoreInst = mcBlock->mInstructions[FindRestoreVolatiles(mcBlock, instEnum.mReadIdx)];
 					}
 					else
 					{
-						preserveIdx = FindPreserveVolatiles(mcBlock, instIdx);
+						preserveIdx = FindPreserveVolatiles(mcBlock, instEnum.mReadIdx);
 						preserveInst = mcBlock->mInstructions[preserveIdx];
 						restoreInst = inst;
 					}
-					int insertIdx = instIdx;
+					int insertIdx = instEnum.mWriteIdx;
 
 					if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsNativeReg()))
 					{	
@@ -10682,7 +11320,10 @@ void BeMCContext::DoRegFinalization()
 
 								savedVolatileVRegs.push_back(checkVRegIdx);
 								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregInfo->mVolatileVRegSave), GetVReg(checkVRegIdx), insertIdx++);
-								instIdx++;
+								if (insertIdx > instEnum.mReadIdx)
+									instEnum.Next();
+								else
+									instEnum.mWriteIdx++;
 							}
 						}
 					}					
@@ -10702,7 +11343,7 @@ void BeMCContext::DoRegFinalization()
 					//  Mov RDX, reg1<RCX>
 					if (!savingSpecificReg)
 					{							
-						int preserveIdx = instIdx;
+						int preserveIdx = instEnum.mReadIdx;
 
 						bool regsFailed = false;
 						for (int pass = 0; true; pass++)
@@ -10905,8 +11546,13 @@ void BeMCContext::DoRegFinalization()
 					{
 						for (auto vregIdx : savedVolatileVRegs)
 						{
-							auto vregInfo = mVRegInfo[vregIdx];
-							AllocInst(BeMCInstKind_Mov, GetVReg(vregIdx), BeMCOperand::FromVReg(vregInfo->mVolatileVRegSave), instIdx++);
+							auto vregInfo = mVRegInfo[vregIdx];							
+							int insertIdx = instEnum.mWriteIdx;
+							AllocInst(BeMCInstKind_Mov, GetVReg(vregIdx), BeMCOperand::FromVReg(vregInfo->mVolatileVRegSave), insertIdx++);
+							if (insertIdx > instEnum.mReadIdx)
+								instEnum.Next();
+							else
+								instEnum.mWriteIdx++;
 						}
 					}
 					savedVolatileVRegs.clear();
@@ -14212,7 +14858,7 @@ void BeMCContext::DoCodeEmission()
 		dbgStr += "\n";
 	}
 
-	if (mDebugging)
+	if ((mDebugging) && (mDbgFunction != NULL))
 	{
 		dbgStr += "\nDebug Variables:\n";
 		for (auto dbgVar : mDbgFunction->mVariables)
@@ -14403,6 +15049,12 @@ void BeMCContext::HandleParams()
 
 void BeMCContext::ToString(BeMCInst* inst, String& str, bool showVRegFlags, bool showVRegDetails)
 {
+	if (inst == NULL)
+	{
+		str += "NULL\n";
+		return;
+	}
+
 	if (inst->mKind == BeMCInstKind_Label)
 	{
 		str += ToString(inst->mArg0);
@@ -14602,6 +15254,19 @@ void BeMCContext::ToString(BeMCInst* inst, String& str, bool showVRegFlags, bool
 		}
 	}
 
+	if (inst->mVRegLastUseRecord != NULL)
+	{
+		str += " lastUse: ";
+		auto checkLastUse = inst->mVRegLastUseRecord;
+		while (checkLastUse != NULL)
+		{
+			if (checkLastUse != inst->mVRegLastUseRecord)
+				str += ", ";
+			str += StrFormat("%d", checkLastUse->mVRegIdx);
+			checkLastUse = checkLastUse->mNext;
+		}
+	}
+
 	str += "\n";
 }
 
@@ -14773,7 +15438,10 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = function->mName == "?Main$oB@Program@GameOfLife@bf@@QEAAXPEAVWindow@Window@SFML@3@UMouseButtonEventData@563@@Z";
+	mDebugging = (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ");
+// 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
+// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
+// 		;
 		//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
 	//"?Main@Program@bf@@CAHPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z";
 
@@ -15364,7 +16032,7 @@ void BeMCContext::Generate(BeFunction* function)
 					
 					// The stack is 16-byte aligned on entry - we have to manually adjust for any alignment greater than that
 					if ((inHeadAlloca) && (align <= 16))
-					{						
+					{
 						result = AllocVirtualReg(allocType);
 						auto vregInfo = mVRegInfo[result.mVRegIdx];
 						vregInfo->mAlign = castedInst->mAlign;
@@ -15392,7 +16060,7 @@ void BeMCContext::Generate(BeFunction* function)
 						}
 					}
 					else
-					{						
+					{
 						bool needsChkStk = !castedInst->mNoChkStk;
 						bool doFastChkStk = false;
 						if (instIdx < (int)beBlock->mInstructions.size() - 1)
@@ -16455,7 +17123,9 @@ void BeMCContext::Generate(BeFunction* function)
 	
 	DoTLSSetup();
 	DoChainedBlockMerge();
+	DoSplitLargeBlocks();
 	DetectLoops();
+	DoLastUsePass();
 	for (int pass = 0; pass < 3; pass++)
 	{
 		// Shouldn't have more than 2 passes
