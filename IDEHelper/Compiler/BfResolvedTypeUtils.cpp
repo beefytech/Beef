@@ -2563,6 +2563,11 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 				if ((resolvedType != NULL) && (resolvedType->IsTypeAlias()))
 				{
 					auto underlyingType = resolvedType->GetUnderlyingType();
+					if (underlyingType == NULL)
+					{
+						ctx->mFailed = true;
+						return 0;
+					}
 					return Hash(underlyingType, ctx, flags);
 				}
 			}
