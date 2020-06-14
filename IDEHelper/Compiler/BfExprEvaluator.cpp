@@ -515,6 +515,24 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 			}
 		}
 	}
+
+	if (wantType->IsTuple())
+	{
+		if (argType->IsTuple())
+		{
+			auto wantTupleType = (BfTupleType*)wantType;
+			auto argTupleType = (BfTupleType*)argType;
+			
+			if (wantTupleType->mFieldInstances.size() == argTupleType->mFieldInstances.size())
+			{
+				for (int fieldIdx = 0; fieldIdx < (int)wantTupleType->mFieldInstances.size(); fieldIdx++)
+				{
+					InferGenericArgument(methodInstance, argTupleType->mFieldInstances[fieldIdx].mResolvedType, 
+						wantTupleType->mFieldInstances[fieldIdx].mResolvedType, BfIRValue());
+				}
+			}
+		}
+	}
 	
 	return true;
 }
