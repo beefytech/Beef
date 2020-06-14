@@ -350,6 +350,7 @@ namespace IDE.ui
 
 			public ~this()
 			{
+				Debug.Assert(mParent == null);
 				if (mEntryList != mFullEntryList)
 					delete mEntryList;
 			}
@@ -791,7 +792,6 @@ namespace IDE.ui
             public this(AutoComplete autoComplete)
                 : base(autoComplete)
             {
-
             }
 
 			public ~this()
@@ -1087,6 +1087,8 @@ namespace IDE.ui
 			//Debug.WriteLine("Autocomplete ~this {}", this);
 
 			Close(false);
+
+			Debug.Assert(mInvokeWidget == null);
 		}
 
 		static ~this()
@@ -1736,7 +1738,20 @@ namespace IDE.ui
                 else
                 {
 					if ((mListWindow == null) || (mListWindow.mRootWidget != mAutoCompleteListWidget))
-                    	delete mAutoCompleteListWidget;
+                    {
+						if (IsInPanel())
+						{
+							gApp.mAutoCompletePanel.Unbind(this);
+							if (mInvokeWidget != null)
+							{
+								if (mInvokeWidget.mParent != null)
+									mInvokeWidget.RemoveSelf();
+								delete mInvokeWidget;
+								mInvokeWidget = null;
+							}
+						}
+						delete mAutoCompleteListWidget;
+					}
                     if (mListWindow != null)
                     {
                         mListWindow.Close();
@@ -2127,7 +2142,9 @@ namespace IDE.ui
 				}
 
 				if (deleteSelf)
+				{
 					BFApp.sApp.DeferDelete(this);
+				}
 				mClosed = true;
 
 				if (mInvokeStack != null)
@@ -2144,6 +2161,8 @@ namespace IDE.ui
 					mAutoCompleteListWidget.Cleanup();
 					if (mListWindow?.mRootWidget == mAutoCompleteListWidget)
 						mListWindow.mRootWidget = null;
+					if (IsInPanel())
+						gApp.mAutoCompletePanel.Unbind(this);
 					delete mAutoCompleteListWidget;
 				}
 				
@@ -2159,6 +2178,7 @@ namespace IDE.ui
 					if (mInvokeWindow?.mRootWidget == mInvokeWidget)
 						mInvokeWindow.mRootWidget = null;
 					delete mInvokeWidget;
+					mInvokeWidget = null;
 				}
 
 				if (mInvokeWindow != null)
@@ -2208,6 +2228,7 @@ namespace IDE.ui
                 delete mInvokeWidget;
                 mInvokeWidget = mInvokeStack[mInvokeStack.Count - 1];
                 mInvokeStack.RemoveAt(mInvokeStack.Count - 1);
+
                 UpdateAsyncInfo();
                 return;
             }
