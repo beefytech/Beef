@@ -2444,9 +2444,9 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 		if (IsAutocompleteNode(identifierNode))
 		{			
 			if (varDecl->mNameNode != NULL)
-				SetDefinitionLocation(varDecl->mNameNode);
+				SetDefinitionLocation(varDecl->mNameNode, true);
 			else if (varDecl->mIsThis)
-				SetDefinitionLocation(mModule->mCurTypeInstance->mTypeDef->GetRefNode());
+				SetDefinitionLocation(mModule->mCurTypeInstance->mTypeDef->GetRefNode(), true);
 		}
 	}
 	else if (mResolveType == BfResolveType_GetSymbolInfo)

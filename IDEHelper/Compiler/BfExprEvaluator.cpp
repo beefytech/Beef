@@ -4093,6 +4093,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						resolvePassData->HandlePropertyReference(targetSrc, baseTypeInst->mTypeDef, basePropDef);
 						if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(targetSrc)))
 						{
+							if (autoComplete->mIsGetDefinition)
+								autoComplete->SetDefinitionLocation(basePropDef->GetRefNode(), true);
 							autoComplete->mDefProp = basePropDef;
 							autoComplete->mDefType = baseTypeInst->mTypeDef;
 						}
@@ -6768,12 +6770,12 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				auto autoComplete = GetAutoComplete();
 				if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(identifierNode)))									
 				{
-					autoComplete->SetDefinitionLocation(methodDef->GetRefNode());				
+					autoComplete->SetDefinitionLocation(methodDef->GetRefNode(), true);				
 					if (autoComplete->mDefType == NULL)
-					{
+					{						
 						autoComplete->mDefMethod = mModule->mCurMethodState->GetRootMethodState()->mMethodInstance->mMethodDef;
 						autoComplete->mDefType = curTypeDef;
-						autoComplete->mReplaceLocalId = ~methodDef->mIdx;
+						autoComplete->mReplaceLocalId = ~methodDef->mIdx;						
 					}
 				}
 
@@ -7498,7 +7500,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			auto autoComplete = GetAutoComplete();
 			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(identifierNode)))
 			{		
-				autoComplete->SetDefinitionLocation(methodDef->GetRefNode());
+				autoComplete->SetDefinitionLocation(methodDef->GetRefNode(), true);
 
 				int virtualIdx = moduleMethodInstance.mMethodInstance->mVirtualTableIdx;
 				if ((autoComplete->mResolveType == BfResolveType_GoToDefinition) && 
@@ -7523,7 +7525,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				if (autoComplete->mDefType == NULL)
 				{
 					autoComplete->mDefMethod = methodDef;
-					autoComplete->mDefType = moduleMethodInstance.mMethodInstance->GetOwner()->mTypeDef;
+					autoComplete->mDefType = moduleMethodInstance.mMethodInstance->GetOwner()->mTypeDef;					
 				}
 
 				if (autoComplete->mResolveType == BfResolveType_GetResultString)
