@@ -3322,9 +3322,14 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 		}
 	}
 
-	if (!thisValue.HasType())	
-		thisValue = BfTypedValue(mModule->mCurTypeInstance);
-	BfTypedValue result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_IsImplicitThis);
+	if (!thisValue.HasType())			
+	{
+		thisValue = BfTypedValue(mModule->mCurTypeInstance);		
+	}
+
+	BfTypedValue result;
+	if (thisValue.HasType())
+		result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_IsImplicitThis);
 	if (mPropDef != NULL)
 	{
 		if (forcedIFaceLookup)
@@ -8173,7 +8178,7 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 		BfType* type = NULL;
 		{
 			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
-			type = mModule->ResolveTypeRef(nameLeft, NULL, BfPopulateType_Data, BfResolveTypeRefFlag_AllowRef);			
+			type = mModule->ResolveTypeRef(nameLeft, NULL, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowRef);			
 		}
 		if (type != NULL)
 		{
@@ -16672,7 +16677,9 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		if (!thisValue)
 		{
 			if (auto targetIdentifier = BfNodeDynCast<BfIdentifierNode>(exprTarget))
-				thisValue = BfTypedValue(mModule->ResolveTypeRef(targetIdentifier, NULL));
+			{
+				thisValue = BfTypedValue(mModule->ResolveTypeRef(targetIdentifier, NULL, BfPopulateType_Declaration));
+			}
 		}
 
 		if (!thisValue.HasType())
