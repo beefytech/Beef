@@ -378,13 +378,19 @@ struct DbgPendingDebugInfoLoad
 	}
 };
 
+struct WinHotThreadState
+{
+	CPURegisters mRegisters;
+	int mThreadId;
+};
+
 class WinDebugger : public Debugger
 {
 public:	
 	SyncEvent mContinueEvent;	
 
 	Array<HotTargetMemory> mHotTargetMemory;
-	Array<CPURegisters> mHotThreadStates;	
+	Array<WinHotThreadState> mHotThreadStates;
 	int mActiveHotIdx;
 
 	volatile bool mShuttingDown;

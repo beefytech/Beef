@@ -1073,7 +1073,8 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		SetAndRestoreValue<WdThreadInfo*> prevActiveThread(mActiveThread, threadInfo);		
 		BfLogDbg("SuspendThread %d\n", threadInfo->mThreadId);
 		::SuspendThread(threadInfo->mHThread);
-		PopulateRegisters(&mHotThreadStates[threadIdx]);		
+		mHotThreadStates[threadIdx].mThreadId = threadInfo->mThreadId;
+		PopulateRegisters(&mHotThreadStates[threadIdx].mRegisters);		
 	}
 
 	for (auto address : mTempBreakpoint)
@@ -1130,9 +1131,13 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		CheckBreakpoint(breakpoint);
 	}	
 
-	for (int threadIdx = 0; threadIdx < (int)mThreadList.size(); threadIdx++)
+	for (int hotThreadIdx = 0; hotThreadIdx < (int)mHotThreadStates.size(); hotThreadIdx++)
 	{
-		WdThreadInfo* threadInfo = mThreadList[threadIdx];
+		auto& hotThreadState = mHotThreadStates[hotThreadIdx];
+		WdThreadInfo* threadInfo = NULL;
+		if (!mThreadMap.TryGetValue((uint32)hotThreadState.mThreadId, &threadInfo))
+			continue;
+		
 		BfLogDbg("ResumeThread %d\n", threadInfo->mThreadId);
 		::ResumeThread(threadInfo->mHThread);
 	}	
@@ -5099,14 +5104,17 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 	}
 	
 	if (oldSubprogram->mHotReplaceKind != DbgSubprogram::HotReplaceKind_Replaced)
-	{
-		for (int threadIdx = 0; threadIdx < (int)mThreadList.size(); threadIdx++)
+	{		
+		for (int hotThreadIdx = 0; hotThreadIdx < (int)mHotThreadStates.size(); hotThreadIdx++)
 		{
-			CPURegisters* cpuRegisters = &mHotThreadStates[threadIdx];
+			auto& hotThreadState = mHotThreadStates[hotThreadIdx];
+			WdThreadInfo* threadInfo = NULL;
+			if (!mThreadMap.TryGetValue((uint32)hotThreadState.mThreadId, &threadInfo))
+				continue;
 
 			int tryStart = GetTickCount();
 
-			while ((cpuRegisters->GetPC() >= jmpInstStart) && (cpuRegisters->GetPC() < jmpInstEnd))
+			while ((hotThreadState.mRegisters.GetPC() >= jmpInstStart) && (hotThreadState.mRegisters.GetPC() < jmpInstEnd))
 			{
 				if (GetTickCount() - tryStart >= 8000)
 				{
@@ -5114,11 +5122,11 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 					return false;
 				}
 				
-				BfLogDbg("SetHotJump skipping through %p\n", cpuRegisters->GetPC());
+				BfLogDbg("SetHotJump skipping through %p\n", hotThreadState.mRegisters.GetPC());
 
 				bool removedBreakpoint = false;
 
-				mActiveThread = mThreadList[threadIdx];				
+				mActiveThread = threadInfo;				
 				if ((mActiveThread->mStoppedAtAddress >= jmpInstStart) && (mActiveThread->mStoppedAtAddress < jmpInstEnd))
 				{
 					for (addr_target addr = jmpInstStart; addr < jmpInstEnd; addr++)
@@ -5184,7 +5192,7 @@ bool WinDebugger::SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget
 					}
 				}
 
-				PopulateRegisters(cpuRegisters);				
+				PopulateRegisters(&hotThreadState.mRegisters);
 			}
 		}
 	}
