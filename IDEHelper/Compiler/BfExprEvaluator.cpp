@@ -3181,7 +3181,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 						if (autoComplete != NULL)
 						 	autoComplete->CheckLocalRef(identifierNode, varDecl);
 						if (((mModule->mCurMethodState->mClosureState == NULL) || (mModule->mCurMethodState->mClosureState->mCapturing)) &&
-						 	(mModule->mCompiler->mResolvePassData != NULL) && (mModule->mCurMethodInstance != NULL))
+						 	(mModule->mCompiler->mResolvePassData != NULL) && (mModule->mCurMethodInstance != NULL) && (!mModule->mCurMethodState->IsTemporary()))
 						 	mModule->mCompiler->mResolvePassData->HandleLocalReference(identifierNode, varDecl->mNameNode, mModule->mCurTypeInstance->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, varDecl->mLocalVarId);
 					}
 						 
@@ -13634,9 +13634,9 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 			localVar->mIsReadOnly = arg->mTypedValue.IsReadOnly();
 		}
-
+		
 		_AddLocalVariable(localVar, exprEvaluator);
-
+		
 		endLocalIdx++;
 		++argExprEvaluatorItr;
 	}
@@ -13682,9 +13682,9 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 		localIdx++;
 	}
-
+	
 	argExprEvaluatorItr = argExprEvaluators.begin();
-	for ( ; localIdx < endLocalIdx; localIdx++)
+	for (; localIdx < endLocalIdx; localIdx++)
 	{
 		auto exprEvaluator = *argExprEvaluatorItr;
 		BfLocalVariable* localVar = curMethodState->mLocals[localIdx];
@@ -13692,14 +13692,14 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		if ((exprEvaluator != NULL) && (exprEvaluator->mResultLocalVar != NULL))
 		{
 			auto inLocalVar = exprEvaluator->mResultLocalVar;
-			if (localVar->mIsAssigned)			
+			if (localVar->mIsAssigned)
 				inLocalVar->mIsAssigned = true;
 			if (localVar->mReadFromId != -1)
 				inLocalVar->mReadFromId = mModule->mCurMethodState->GetRootMethodState()->mCurAccessId++;
 		}
 
 		++argExprEvaluatorItr;
-	}
+	}	
 
 	if (auto blockBody = BfNodeDynCast<BfBlock>(methodDef->mBody))
 		if (blockBody->mCloseBrace != NULL)

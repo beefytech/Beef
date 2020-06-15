@@ -1118,6 +1118,11 @@ public:
 			return mMixinState->mLocalsStartIdx;
 		return 0;
 	}
+
+	bool IsTemporary()
+	{
+		return mTempKind != TempKind_None;
+	}
 };
 
 class BfDeferredMethodCallData;

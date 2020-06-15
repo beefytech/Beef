@@ -3400,6 +3400,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		return true;
 
 	disableYield.Release();
+	prevTypeState.Restore();
 
 	if (canDoMethodProcessing)
 	{
