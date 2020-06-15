@@ -1084,11 +1084,7 @@ namespace IDE.ui
 
 		public ~this()
 		{
-			//Debug.WriteLine("Autocomplete ~this {}", this);
-
 			Close(false);
-
-			Debug.Assert(mInvokeWidget == null);
 		}
 
 		static ~this()
