@@ -1107,9 +1107,7 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 
 	for (auto dwarf : mDebugTarget->mDbgModules)
 		dwarf->RevertWritingEnable();
-
-	mHotThreadStates.Clear();
-	
+		
 	int blockAllocSinceClean = mDebugTarget->mHotHeap->mBlockAllocIdx - mDebugTarget->mLastHotHeapCleanIdx;
 	// Clean up the hot heap every 64MB
 	int blocksBetweenCleans = (64 * 1024 * 1024) / HotHeap::BLOCK_SIZE;
@@ -1141,6 +1139,8 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		BfLogDbg("ResumeThread %d\n", threadInfo->mThreadId);
 		::ResumeThread(threadInfo->mHThread);
 	}	
+
+	mHotThreadStates.Clear();
 
 	if (IsPaused())
 	{
