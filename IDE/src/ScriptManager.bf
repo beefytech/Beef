@@ -1167,6 +1167,7 @@ namespace IDE
 
 					if (entry.IsDirectory)
 					{
+						srcFilePath.AppendF("{}*", Path.DirectorySeparatorChar);
 						Do(srcFilePath, destFilePath);
 						continue;
 					}
