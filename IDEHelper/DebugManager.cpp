@@ -1221,7 +1221,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_EvaluateContinueKeep()
 	debugger->EvaluateContinueKeep();	
 }
 
-BF_EXPORT StringView BF_CALLTYPE Debugger_Evaluate(const char* expr, int callStackIdx, int cursorPos, int32 language, int8 expressionFlags)
+BF_EXPORT StringView BF_CALLTYPE Debugger_Evaluate(const char* expr, int callStackIdx, int cursorPos, int32 language, uint16 expressionFlags)
 {	
 	auto debugger = gDebugger;
 
