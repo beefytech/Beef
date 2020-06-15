@@ -9017,7 +9017,7 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 	{
 		BfLogDbgExpr("Evaluate blocked side effects\n");
 		val = "!sideeffects";
-	}
+	}	
 	else if (!exprResult)
 	{
 		if (exprResult.mType != NULL)

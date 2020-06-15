@@ -300,7 +300,7 @@ public:
 	bool mIsEmptyTarget;
 	DwEvalExpressionFlags mExpressionFlags;
 	bool mHadSideEffects;
-	bool mBlockedSideEffects;
+	bool mBlockedSideEffects;	
 	bool mIgnoreErrors;
 	bool mCreatedPendingCall;
 	bool mValidateOnly;

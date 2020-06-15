@@ -269,6 +269,7 @@ namespace IDE.ui
 			AddPropertiesItem(root, "Symbol File Locations", "mSymbolSearchPath");
 			AddPropertiesItem(root, "Auto Find Paths", "mAutoFindPaths");
 			AddPropertiesItem(root, "Profile Sample Rate", "mProfileSampleRate");
+			AddPropertiesItem(root, "Auto Evaluate Properties", "mAutoEvaluateProperties");
 		}
 
 		protected override void ResetSettings()

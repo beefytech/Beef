@@ -745,9 +745,9 @@ DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModul
 	mCursorPos = cursorPos;
 	mAutoComplete = NULL;
 	mIsEmptyTarget = (dbgModule == NULL) || (dbgModule->mDebugTarget->mIsEmpty);
-	mExpressionFlags = DwEvalExpressionFlag_None;	
+	mExpressionFlags = DwEvalExpressionFlag_None;
 	mHadSideEffects = false;
-	mBlockedSideEffects = false;	
+	mBlockedSideEffects = false;
 	mReferenceId = NULL;
 	mIsComplexExpression = false;
 	mHadMemberReference = false;		
@@ -4084,7 +4084,10 @@ DbgTypedValue DbgExprEvaluator::GetResult()
 // 						Fail("Indexer parameter count mismatch", mPropSrc);
 // 					}
 // 				}
-
+				
+				SetAndRestoreValue<DwEvalExpressionFlags> prevFlags(mExpressionFlags);
+				if ((mExpressionFlags & DwEvalExpressionFlag_AllowPropertyEval) != 0)
+					mExpressionFlags = (DwEvalExpressionFlags)(mExpressionFlags | DwEvalExpressionFlag_AllowCalls);
 				mResult = CreateCall(mPropSrc, mPropTarget, mPropGet, false, mIndexerExprValues, mIndexerValues);
 			}
 		}

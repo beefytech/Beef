@@ -105,10 +105,11 @@ enum DwEvalExpressionFlags : int16
 	DwEvalExpressionFlag_DeselectCallStackIdx = 0x04,
 	DwEvalExpressionFlag_AllowSideEffects = 0x08,
 	DwEvalExpressionFlag_AllowCalls = 0x10,
-	DwEvalExpressionFlag_MemoryAddress = 0x20,
-	DwEvalExpressionFlag_MemoryWatch = 0x40,
-	DwEvalExpressionFlag_Symbol = 0x80,
-	DwEvalExpressionFlag_StepIntoCalls = 0x100,
+	DwEvalExpressionFlag_AllowPropertyEval = 0x20,
+	DwEvalExpressionFlag_MemoryAddress = 0x40,
+	DwEvalExpressionFlag_MemoryWatch = 0x80,
+	DwEvalExpressionFlag_Symbol = 0x100,
+	DwEvalExpressionFlag_StepIntoCalls = 0x200,	
 };
 
 struct DwDisplayInfo

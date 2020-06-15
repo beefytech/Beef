@@ -83,9 +83,10 @@ namespace IDE.Debugger
 			DeselectCallStackIdx = 0x04,
 			AllowSideEffects 	= 0x08,
 			AllowCalls			= 0x10,
-			MemoryAddress		= 0x20,
-			MemoryWatch			= 0x40,
-			Symbol				= 0x80
+			AllowProperties		= 0x20,
+			MemoryAddress		= 0x40,
+			MemoryWatch			= 0x80,
+			Symbol				= 0x100
 		}
 
 		[Reflect]

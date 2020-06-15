@@ -435,7 +435,22 @@ namespace IDE.ui
         public override void Update()
         {
             base.Update();
-            
+
+			for (let item in mListView.GetRoot().mChildItems)
+			{
+				let listViewItem = (HoverListViewItem)item;
+				if (listViewItem.mWatchEntry?.mIsPending == true)
+				{
+					if ((gApp.mDebugger.IsPaused(true)) && (!gApp.mDebugger.HasMessages()))
+					{
+						let listView = (HoverListView)listViewItem.mListView;
+						DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, true);
+						FinishListView(listView, listView.mX, listView.mY, true);
+						gApp.RefreshVisibleViews();
+					}
+				}
+			}
+   
             if (mCloseDelay > 1)
                mCloseDelay--;
 			if (mCloseCountdown > 0)
@@ -591,6 +606,7 @@ namespace IDE.ui
 
 		public void Refresh()
 		{
+			mAllowSideEffects = true;
 			if (mListView != null)
 				RefreshListView(mListView);
 			MarkDirty();
@@ -606,8 +622,15 @@ namespace IDE.ui
             DoListViewItem(hoverListView, (HoverListViewItem)listViewItem, name, evalStr, false);
         }
 
+		void RefreshWatch()
+		{
+			Refresh();
+		}
+
         HoverListViewItem DoListViewItem(HoverListView listView, HoverListViewItem listViewItem, String displayString, String evalString, bool isPending, WatchEntry parentWatchEntry = null)
         {
+			Debug.WriteLine("{} {}", evalString, isPending);
+
 			if ((displayString.StartsWith(":")) && (displayString.Contains('\n')))
 			{
 				HoverListViewItem headListView = null;
@@ -719,6 +742,8 @@ namespace IDE.ui
 						flags |= DebugManager.EvalExpressionFlags.DeselectCallStackIdx;
 					if (mAllowSideEffects)
 						flags |= .AllowSideEffects | .AllowCalls;
+					if (gApp.mSettings.mDebuggerSettings.mAutoEvaluateProperties)
+						flags |= .AllowProperties;
 
 					DebugManager.Language language = mLanguage;
 					if (parentWatchEntry != null)
@@ -731,11 +756,26 @@ namespace IDE.ui
 					valueSubItem.Label = "";
 					return useListViewItem;
 				}
+				watch.mIsPending = false;
 			}
             var vals = scope List<StringView>(val.Split('\n'));
 
             String.NewOrSet!(valueSubItem.mLabel, vals[0]);
-            if (valueSubItem.mLabel.StartsWith("!", StringComparison.Ordinal))
+			if (vals[0] == "!sideeffects")
+			{
+				if (useListViewItem.mWatchRefreshButton == null)
+				{
+					useListViewItem.mWatchRefreshButton = new WatchRefreshButton();
+					useListViewItem.mWatchRefreshButton.Resize(GS!(-22), 0, GS!(20), GS!(20));
+					useListViewItem.mWatchRefreshButton.mOnMouseDown.Add(new (evt) => RefreshWatch());
+					valueSubItem.AddWidget(useListViewItem.mWatchRefreshButton);
+					mListView.mListSizeDirty = true;
+				}
+
+				valueSubItem.mFailed = false;
+				valueSubItem.Label = "";
+			}
+            else if (valueSubItem.mLabel.StartsWith("!", StringComparison.Ordinal))
             {                
                 var errorVals = scope List<StringView>(scope String(valueSubItem.mLabel, 1).Split('\t'));
                 if (errorVals.Count > 1)
@@ -1052,10 +1092,11 @@ namespace IDE.ui
                 //TODO:
                 FontMetrics fontMetrics = .();
                 float nameHeight = font.Draw(null, listViewItem.mLabel, 0, 0, -1, 0, FontOverflowMode.Clip, &fontMetrics);
-                nameWidth = Math.Max(nameWidth, fontMetrics.mMaxWidth);
-                //listViewItem.mSelfHeight += nameHeight - font.GetLineSpacing();
-                //listViewItem.mSelfHeight = nameHeight;
-
+				float thisNameWidth = fontMetrics.mMaxWidth;
+				if (listViewItem.mWatchRefreshButton != null)
+					thisNameWidth += GS!(18);
+                nameWidth = Math.Max(nameWidth, thisNameWidth);
+                
                 float addHeight = nameHeight - listView.mFont.GetLineSpacing();
                 childHeights += addHeight;
                 listViewItem.mSelfHeight += addHeight;

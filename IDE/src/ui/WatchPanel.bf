@@ -1005,12 +1005,13 @@ namespace IDE.ui
 
         public void AddRefreshButton()
         {
-            if ((mWatchRefreshButton == null) && (mColumnIdx == 0) && (mSubItems.Count >= 3))
+			int columnIdx = 2;
+            if ((mWatchRefreshButton == null) && (mColumnIdx == 0) && (columnIdx < mSubItems.Count))
             {
                 mWatchRefreshButton = new WatchRefreshButton();
-                mWatchRefreshButton.Resize(-16, 0, 20, 20);
+                mWatchRefreshButton.Resize(GS!(-16), 0, GS!(20), GS!(20));
                 mWatchRefreshButton.mOnMouseDown.Add(new (evt) => RefreshWatch());
-                var typeSubItem = GetSubItem(2);
+                var typeSubItem = GetSubItem(columnIdx);
                 typeSubItem.AddWidget(mWatchRefreshButton);
                 mListView.mListSizeDirty = true;
             }
@@ -2236,11 +2237,12 @@ namespace IDE.ui
 
              	var errStr = scope String(vals[0]);
 				errStr.Remove(0);
-                bool hadSideEffects = vals[0] == "!sideeffects";				
+                bool hadSideEffects = vals[0] == "!sideeffects";
+				bool hadPropertyEval = vals[0] == "!property";
 
                 if ((!wasNewExpression) && (isTopLevel))
                 {
-                    if (((!valueSubItem.mFailed) && (watch.mHadValue)) || (hadSideEffects))
+                    if (((!valueSubItem.mFailed) && (watch.mHadValue)) || (hadSideEffects) || (hadPropertyEval))
                     {
                         watch.mHasValue = true;
                         listViewItem.SetDisabled(true, hadSideEffects);

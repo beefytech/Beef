@@ -123,6 +123,7 @@ namespace IDE
 			public List<String> mSymbolSearchPath = new .() ~ DeleteContainerAndItems!(_);
 			public List<String> mAutoFindPaths = new .() ~ DeleteContainerAndItems!(_);
 			public int32 mProfileSampleRate = 1000;
+			public bool mAutoEvaluateProperties = false;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -163,6 +164,7 @@ namespace IDE
 					sd.RemoveIfEmpty();
 				}
 				sd.Add("ProfileSampleRate", mProfileSampleRate);
+				sd.Add("AutoEvaluateProperties", mAutoEvaluateProperties);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -201,6 +203,7 @@ namespace IDE
 					}
 				}
 				sd.Get("ProfileSampleRate", ref mProfileSampleRate);
+				sd.Get("AutoEvaluateProperties", ref mAutoEvaluateProperties);
 			}
 
 			public void Apply()
