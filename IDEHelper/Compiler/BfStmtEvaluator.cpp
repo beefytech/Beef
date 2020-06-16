@@ -1546,7 +1546,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			unresolvedType = initValue.mType;
 		resolvedType = unresolvedType;
 
-		if (initValue.IsTempAddr())
+		if ((initValue.IsTempAddr()) && (!localDef->mAddr) && (initValue.mType == resolvedType))
 		{
 			// Take over value
 			localDef->mAddr = initValue.mValue;			
