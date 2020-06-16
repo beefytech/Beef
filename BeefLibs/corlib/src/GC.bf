@@ -126,7 +126,7 @@ namespace System
 		[CallingConvention(.Cdecl)]
 		public extern static void Mark(void* ptr, int size);
 		[CallingConvention(.Cdecl)]
-		public extern static void SetAutoCollectPeriod(int periodMS); // <= -1 to disable, 0 to constantly run. Defaults to -1
+		public extern static void SetAutoCollectPeriod(int periodMS); // <= -1 to disable, 0 to constantly run. Defaults to 2000.
 		[CallingConvention(.Cdecl)]
 		public extern static void SetCollectFreeThreshold(int freeBytes); // -1 to disable, 0 to trigger collection after every single free. Defaults to 64MB
 		[CallingConvention(.Cdecl)]
