@@ -2,12 +2,6 @@ using System.Collections;
 
 namespace System
 {
-	interface IRawAllocator
-	{
-		void* Alloc(int size, int align);
-		void Free(void* ptr);
-	}
-
 	class BumpAllocator : IRawAllocator
 	{
 		struct DtorEntry
