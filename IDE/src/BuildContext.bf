@@ -487,7 +487,8 @@ namespace IDE
 					logStr.AppendF("IDE Process {0}\r\n", Platform.BfpProcess_GetCurrentId());
 					logStr.Append(linkLine);
 					String targetLogPath = scope String(targetPath, ".build.txt");
-					Utils.WriteTextFile(targetLogPath, logStr);
+					if (Utils.WriteTextFile(targetLogPath, logStr) case .Err)
+						gApp.OutputErrorLine("Failed to write {}", targetLogPath);
 
 					project.mLastDidBuild = true;
 			    }
@@ -975,7 +976,8 @@ namespace IDE
 					logStr.AppendF("IDE Process {0}\r\n", Platform.BfpProcess_GetCurrentId());
 					logStr.Append(linkLine);
 					String targetLogPath = scope String(targetPath, ".build.txt");
-					Utils.WriteTextFile(targetLogPath, logStr);
+					if (Utils.WriteTextFile(targetLogPath, logStr) case .Err)
+						gApp.OutputErrorLine("Failed to write {}", targetLogPath);
 
 					project.mLastDidBuild = true;
 			    }
