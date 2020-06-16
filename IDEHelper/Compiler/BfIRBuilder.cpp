@@ -1197,9 +1197,16 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 		{
 			auto val = mBeIRCodeGen->GetBeValue(irValue.mId);
 			String str;
-			BeDumpContext dc;
-			dc.mModule = mBeIRCodeGen->mBeModule;
+			BeDumpContext dc;			
 			dc.ToString(str, val);
+
+			auto type = val->GetType();
+			if (type != NULL)
+			{
+				str += "\n";
+				dc.ToString(str, type);
+			}
+
 			return str;
 		}
 #endif		
@@ -1267,8 +1274,7 @@ String BfIRBuilder::ToString(BfIRType irType)
 		}
 				
 		String str;
-		BeDumpContext dc;
-		dc.mModule = mBeIRCodeGen->mBeModule;
+		BeDumpContext dc;		
 		dc.ToString(str, beType);
 		return str;
 	}
@@ -1302,8 +1308,7 @@ String BfIRBuilder::ToString(BfIRFunction irFunc)
 			return "null";
 
 		String str;
-		BeDumpContext dc;
-		dc.mModule = mBeIRCodeGen->mBeModule;
+		BeDumpContext dc;		
 		dc.ToString(str, val);
 		return str;
 	}
@@ -1349,8 +1354,7 @@ String BfIRBuilder::ToString(BfIRMDNode irMDNode)
 		if (md == NULL)
 			return "null";
 		String str;
-		BeDumpContext dc;
-		dc.mModule = mBeIRCodeGen->mBeModule;		
+		BeDumpContext dc;		
 		dc.ToString(str, md);
 		return str;
 	}
@@ -5059,4 +5063,5 @@ void BfIRBuilder::DbgCreateAnnotation(BfIRMDNode scope, const StringImpl& name, 
 	WriteCmd(BfIRCmd_DbgCreateAnnotation, scope, name, value);
 	NEW_CMD_INSERTED;
 }
+
 

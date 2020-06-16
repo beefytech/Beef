@@ -1260,7 +1260,7 @@ public:
 	void DbgCreateGlobalVariable(BfIRMDNode context, const StringImpl& name, const StringImpl& linkageName, BfIRMDNode file, int lineNumber, 
 		BfIRMDNode type, bool isLocalToUnit, BfIRValue val, BfIRMDNode Decl = BfIRMDNode());
 	BfIRMDNode DbgCreateLexicalBlock(BfIRMDNode scope, BfIRMDNode file, int line, int col);	
-	void DbgCreateAnnotation(BfIRMDNode scope, const StringImpl& name, BfIRValue value);
+	void DbgCreateAnnotation(BfIRMDNode scope, const StringImpl& name, BfIRValue value);	
 };
 
 NS_BF_END

@@ -1291,8 +1291,7 @@ public:
 
 struct BeDumpContext
 {
-public:
-	BeModule* mModule;
+public:	
 	Dictionary<BeValue*, String> mValueNameMap;
 	Dictionary<String, int> mSeenNames;
 
@@ -1309,12 +1308,6 @@ public:
 	static String ToString(int val);
 	static String ToString(BeCmpKind cmpKind);
 	static String ToString(BeBinaryOpKind opKind);
-
-public:
-	BeDumpContext()
-	{
-		mModule = NULL;
-	}
 };
 
 //////////////////////////////////////////////////////////////////////////

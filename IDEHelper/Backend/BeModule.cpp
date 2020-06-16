@@ -28,6 +28,19 @@ void bpt(Beefy::BeType* t)
 	}
 }
 
+void bpv(Beefy::BeValue* val)
+{
+	BeDumpContext dumpCtx;
+	String str;
+	dumpCtx.ToString(str, val);
+	str += "\n";
+	OutputDebugStr(str);
+
+	auto type = val->GetType();
+	if (type != NULL)
+		bpt(type);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 void BeValueVisitor::VisitChild(BeValue* value)
@@ -1229,11 +1242,12 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 
 	if (auto arg = BeValueDynCast<BeArgument>(value))
 	{
-		auto& typeParam = mModule->mActiveFunction->GetFuncType()->mParams[arg->mArgIdx];
-		auto& param = mModule->mActiveFunction->mParams[arg->mArgIdx];
+		auto activeFunction = arg->mModule->mActiveFunction;
+		auto& typeParam = activeFunction->GetFuncType()->mParams[arg->mArgIdx];
+		auto& param = activeFunction->mParams[arg->mArgIdx];
 		if (showType)
 		{
-			mModule->ToString(str, typeParam.mType);
+			BeModule::ToString(str, typeParam.mType);
 			str += " %";
 			str += param.mName;
 		}
@@ -1242,6 +1256,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			str += "%";
 			str += param.mName;
 		}
+		
 		return;
 	}
 	
@@ -1255,7 +1270,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	{		
 		if (showType)
 		{
-			mModule->ToString(str, constant->mType);
+			BeModule::ToString(str, constant->mType);
 			str += " ";
 		}
 
@@ -1323,7 +1338,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 
 	if (auto constant = BeValueDynCast<BeConstant>(value))
 	{
-		mModule->ToString(str, constant->mType);
+		BeModule::ToString(str, constant->mType);
 		str += " ";
 
 		switch (constant->mType->mTypeCode)
@@ -1403,7 +1418,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	{
 		if (resultType != NULL)
 		{
-			mModule->ToString(str, resultType);
+			BeModule::ToString(str, resultType);
 			str += " %";
 		}
 		else
@@ -1437,7 +1452,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 	mValueNameMap[value] = useName;	
 	if ((showType) && (resultType != NULL))
 	{
-		mModule->ToString(str, resultType);
+		BeModule::ToString(str, resultType);
 		str += " %";
 		str += useName;
 		return;
@@ -1460,13 +1475,13 @@ String BeDumpContext::ToString(BeValue* value, bool showType, bool mdDrillDown)
 String BeDumpContext::ToString(BeType* type)
 {
 	String str;
-	mModule->ToString(str, type);
+	BeModule::ToString(str, type);
 	return str;
 }
 
 void BeDumpContext::ToString(StringImpl& str, BeType* type)
 {
-	mModule->ToString(str, type);
+	BeModule::ToString(str, type);
 }
 
 void BeDumpContext::ToString(StringImpl& str, BeDbgFunction* dbgFunction, bool showScope)
@@ -1755,8 +1770,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 	SetAndRestoreValue<BeFunction*> prevActiveFunc(mActiveFunction, NULL);
 
 	BeDumpContext dc;
-	dc.mModule = this;
-
+	
 	if (wantFunc == NULL)
 	{
 		str += "Module: "; str += mModuleName; str += "\n";
@@ -2448,8 +2462,7 @@ void BeModule::Print(BeFunction* func)
 
 void BeModule::PrintValue(BeValue* val)
 {
-	BeDumpContext dumpCtx;
-	dumpCtx.mModule = this;
+	BeDumpContext dumpCtx;	
 	String str;
 	dumpCtx.ToString(str, val);
 	str += "\n";
@@ -2991,7 +3004,7 @@ void BeModule::SetActiveFunction(BeFunction* function)
 	mActiveFunction = function;	
 }
 
-BeArgument * BeModule::GetArgument(int argIdx)
+BeArgument* BeModule::GetArgument(int argIdx)
 {
 	while ((int)argIdx >= mArgs.size())		
 	{
@@ -3371,8 +3384,7 @@ void BeDbgModule::HashContent(BeHashContext & hashCtx)
 	hashCtx.MixinStr(mDirectory);
 	hashCtx.MixinStr(mProducer);
 
-	BeDumpContext dc;
-	dc.mModule = mBeModule;
+	BeDumpContext dc;	
 	String lhsName;
 	String rhsName;
 

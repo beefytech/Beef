@@ -2128,7 +2128,6 @@ String BeMCContext::ToString(const BeMCOperand& operand)
 	if (operand.mKind == BeMCOperandKind_ConstAgg)
 	{
 		BeDumpContext dumpContext;
-		dumpContext.mModule = mBeFunction->mModule;		
 		String str = "const ";
 		str += dumpContext.ToString(operand.mConstant);
 		return str;
