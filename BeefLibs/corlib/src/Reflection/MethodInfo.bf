@@ -381,11 +381,9 @@ namespace System.Reflection
 					mIdx++;
 					if (mIdx == mTypeInstance.[Friend]mMethodDataCount)
 						return false;
-#unwarn
 					var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
-					/*bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (methodData.mFlags.HasFlag(FieldFlags.Static)));
-					matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!methodData.mFlags.HasFlag(FieldFlags.Static)));*/
-					bool matches = true;
+					bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (methodData.mFlags.HasFlag(.Static)));
+					matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!methodData.mFlags.HasFlag(.Static)));
 					if (matches)
 						break;
 				}
