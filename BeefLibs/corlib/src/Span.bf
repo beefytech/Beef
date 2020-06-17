@@ -147,6 +147,22 @@ namespace System
 			mLength = 0;
 		}
 
+		public int IndexOf(T item)
+		{
+			for (int i = 0; i < mLength; i++)
+				if (mPtr[i] == item)
+					return i;
+			return -1;
+		}
+
+		public int IndexOfStrict(T item)
+		{
+			for (int i = 0; i < mLength; i++)
+				if (mPtr[i] === item)
+					return i;
+			return -1;
+		}
+
 		public void RemoveFromStart(int length) mut
 		{
 			Debug.Assert((uint)length <= (uint)mLength);

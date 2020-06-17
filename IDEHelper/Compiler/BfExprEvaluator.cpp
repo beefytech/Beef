@@ -18009,10 +18009,12 @@ bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken,
 		switch (binaryOp)
 		{
 		case BfBinaryOp_Equality:
+		case BfBinaryOp_StrictEquality:
 			if (rightConst->mInt64 < minValue)
 				constResult = 0;			
 			break;
 		case BfBinaryOp_InEquality:
+		case BfBinaryOp_StrictInEquality:
 			if (rightConst->mInt64 < minValue)
 				constResult = 1;			
 			break;
@@ -18033,12 +18035,14 @@ bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken,
 		switch (binaryOp)
 		{
 		case BfBinaryOp_Equality:
+		case BfBinaryOp_StrictEquality:
 			if (rightConst->mInt64 < minValue)
 				constResult = 0;
 			else if (rightConst->mInt64 > maxValue)
 				constResult = 0;
 			break;
 		case BfBinaryOp_InEquality:
+		case BfBinaryOp_StrictInEquality:
 			if (rightConst->mInt64 < minValue)
 				constResult = 1;
 			else if (rightConst->mInt64 > maxValue)
@@ -18332,7 +18336,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	};
 
 	// This case fixes cases like "c == 0" where "0" is technically an int but can be reduced
-	if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
+	if (BfBinOpEqualityCheck(binaryOp))
 	{
 		if ((resultType != otherType) && (resultTypedValue->mValue.IsConst()) && (mModule->CanCast(*resultTypedValue, otherType)))
 		{
@@ -18351,9 +18355,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		return;
 	}
 	
-	if ((otherType->IsNull()) && ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality)))
+	if ((otherType->IsNull()) && (BfBinOpEqualityCheck(binaryOp)))
 	{
-		bool isEquality = (binaryOp == BfBinaryOp_Equality);
+		bool isEquality = (binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality);
 
 		if ((resultType->IsValueType()) && (!resultType->IsFunction()))
 		{
@@ -18408,7 +18412,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	}
 
 	// Check for constant equality checks (mostly for strings)
-	if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
+	if (BfBinOpEqualityCheck(binaryOp))
 	{
 		auto leftConstant = mModule->mBfIRBuilder->GetConstant(leftValue.mValue);
 		auto rightConstant = mModule->mBfIRBuilder->GetConstant(rightValue.mValue);
@@ -18423,7 +18427,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				if (rightStringPoolIdx != -1)
 				{
 					bool isEqual = leftStringPoolIdx == rightStringPoolIdx;
-					if (binaryOp == BfBinaryOp_InEquality)
+					if ((binaryOp == BfBinaryOp_InEquality) || (binaryOp == BfBinaryOp_StrictInEquality))
 						isEqual = !isEqual;
 					mResult = BfTypedValue(mModule->GetConstValue(isEqual ? 1 : 0, boolType), boolType);
 					return;
@@ -18434,7 +18438,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			if (eqResult != -1)
 			{				
 				bool isEqual = eqResult == 1;
-				if (binaryOp == BfBinaryOp_InEquality)
+				if ((binaryOp == BfBinaryOp_InEquality) || (binaryOp == BfBinaryOp_StrictInEquality))
 					isEqual = !isEqual;
 				mResult = BfTypedValue(mModule->GetConstValue(isEqual ? 1 : 0, boolType), boolType);
 				return;
@@ -18447,7 +18451,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	{
 		// As an optimization, we don't call user operator overloads for null checks
 		bool skipOpOverload = false;
-		if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
+		if ((binaryOp == BfBinaryOp_StrictEquality) || (binaryOp == BfBinaryOp_StrictInEquality))
+			skipOpOverload = true;
+		else if (BfBinOpEqualityCheck(binaryOp))
 		{
 			auto leftConstant = mModule->mBfIRBuilder->GetConstant(leftValue.mValue);
 			auto rightConstant = mModule->mBfIRBuilder->GetConstant(rightValue.mValue);
@@ -18456,7 +18462,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				skipOpOverload = true;
 			if ((rightConstant != NULL) && (rightConstant->IsNull()))
 				skipOpOverload = true;
-		}
+		}		
 
 		if (!skipOpOverload)
 		{
@@ -18593,9 +18599,11 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						switch (useBinaryOp)
 						{
 						case BfBinaryOp_Equality:
+						case BfBinaryOp_StrictEquality:
 							mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(mResult.mValue, zeroVal), boolType);
 							break;
 						case BfBinaryOp_InEquality:
+						case BfBinaryOp_StrictInEquality:
 							mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(mResult.mValue, zeroVal), boolType);
 							break;
 						case BfBinaryOp_GreaterThan:
@@ -18665,9 +18673,11 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					break;
 								
 				switch (findBinaryOp)
-				{
+				{				
 				case BfBinaryOp_Equality:
-				case BfBinaryOp_InEquality:			
+				case BfBinaryOp_StrictEquality:
+				case BfBinaryOp_InEquality:
+				case BfBinaryOp_StrictInEquality:
 				case BfBinaryOp_Compare:
 					// Still works
 					break;
@@ -18729,7 +18739,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			mResult = BfTypedValue(diffValue, intPtrType);
 			return;
 		}
-		else if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality) &&
+		else if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_StrictEquality) &&
+			(binaryOp != BfBinaryOp_InEquality) && (binaryOp != BfBinaryOp_StrictInEquality) &&
 			(binaryOp != BfBinaryOp_LessThan) && (binaryOp != BfBinaryOp_LessThanOrEqual) &&
 			(binaryOp != BfBinaryOp_GreaterThan) && (binaryOp != BfBinaryOp_GreaterThanOrEqual))
 		{
@@ -18737,8 +18748,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			return;
 		}				
 		
-		if (((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality)) ||
-			(resultType != otherType))
+		if ((!BfBinOpEqualityCheck(binaryOp)) || (resultType != otherType))
 		{
 			resultType = mModule->GetPrimitiveType(BfTypeCode_UIntPtr);
 			explicitCast = true;
@@ -18748,13 +18758,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	{
 		if (otherType->IsNull())
 		{
-			if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality))
+			if (!BfBinOpEqualityCheck(binaryOp))
 			{
 				mModule->Fail(StrFormat("Invalid operation between '%s' and null", mModule->TypeToString(resultType).c_str()), opToken);
 				return;
 			}
 
-			if (binaryOp == BfBinaryOp_Equality)
+			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIsNull(resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 			else
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIsNotNull(resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
@@ -18796,9 +18806,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		mResult = BfTypedValue(mModule->CreateIndexedValue(underlyingType, resultTypedValue->mValue, addValue), resultType);		
 		return;
 	}	
-	
-	
-
+		
 	if ((resultType->IsFunction()) || (resultType->IsPointer()) || (resultType->IsObject()) || (resultType->IsInterface()) || (resultType->IsGenericParam()))
 	{
 		if ((binaryOp == BfBinaryOp_Add) && 
@@ -18809,7 +18817,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			return;
 		}
 		
-		if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality))
+		if (!BfGetBinaryOpPrecendence(binaryOp))
 		{
 			//mModule->Fail("Invalid operation for objects", opToken);
 			_OpFail();
@@ -18827,14 +18835,14 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		{
 			if (resultType->IsFunction())
 			{
-				if (binaryOp == BfBinaryOp_Equality)
+				if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				else
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 			}
 			else
 			{
-				if (binaryOp == BfBinaryOp_Equality)
+				if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIsNull(resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				else
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIsNotNull(resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
@@ -18845,7 +18853,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			auto convertedValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, BfCastFlags_NoBox);
 			if (!convertedValue)
 				return;
-			if (binaryOp == BfBinaryOp_Equality)
+			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 			else
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
@@ -18909,7 +18917,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		auto typeInst = leftValue.mType->ToTypeInstance();
 		if (typeInst != NULL)
 		{
-			moduleMethodInstance = mModule->GetMethodByName(typeInst, BF_METHODNAME_DEFAULT_EQUALS);
+			if ((binaryOp == BfBinaryOp_StrictEquality) || (binaryOp == BfBinaryOp_StrictInEquality))
+				moduleMethodInstance = mModule->GetMethodByName(typeInst, BF_METHODNAME_DEFAULT_STRICT_EQUALS);
+			else
+				moduleMethodInstance = mModule->GetMethodByName(typeInst, BF_METHODNAME_DEFAULT_EQUALS);
 		}
 		else
 		{
@@ -18933,7 +18944,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			resolvedArg.mTypedValue = rightValue;
 			argValues.push_back(resolvedArg);
 			mResult = CreateCall(opToken, BfTypedValue(), BfTypedValue(), moduleMethodInstance.mMethodInstance->mMethodDef, moduleMethodInstance, false, argValues);
-			if ((mResult) && (binaryOp == BfBinaryOp_InEquality))
+			if ((mResult) && 
+				((binaryOp == BfBinaryOp_InEquality) || (binaryOp == BfBinaryOp_StrictInEquality)))
 				mResult.mValue = mModule->mBfIRBuilder->CreateNot(mResult.mValue);
 			return true;
 		}
@@ -18961,7 +18973,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		
 		if (leftValue.mType == rightValue.mType)
 		{
-			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
+			if (BfBinOpEqualityCheck(binaryOp))
 			{
 				auto intCoercibleType = mModule->GetIntCoercibleType(leftValue.mType);
 				if (intCoercibleType != NULL)
@@ -18970,7 +18982,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					auto intRHS = mModule->GetIntCoercible(rightValue);
 					auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
 
-					if (binaryOp == BfBinaryOp_Equality)
+					if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(intLHS.mValue, intRHS.mValue), boolType);
 					else
 						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(intLHS.mValue, intRHS.mValue), boolType);
@@ -19021,7 +19033,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 	if (resultType->IsMethodRef() && otherType->IsMethodRef())
 	{
-		if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
+		if (BfBinOpEqualityCheck(binaryOp))
 		{
 			auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
 
@@ -19029,7 +19041,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			BfMethodRefType* rhsMethodRefType = (BfMethodRefType*)rightValue.mType;
 			if (lhsMethodRefType->mMethodRef != rhsMethodRefType->mMethodRef)
 			{
-				mResult = BfTypedValue(mModule->GetConstValue((binaryOp == BfBinaryOp_Equality) ? 0 : 1, boolType), boolType);
+				mResult = BfTypedValue(mModule->GetConstValue(((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality)) ? 0 : 1, boolType), boolType);
 				return;
 			}
 
@@ -19056,13 +19068,15 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		if (leftValue.mType != rightValue.mType)
 		{
 			bool isBitwiseExpr =
-				(binaryOp == BfBinaryOp_BitwiseAnd) |
-				(binaryOp == BfBinaryOp_BitwiseOr) |
-				(binaryOp == BfBinaryOp_ExclusiveOr) |
-				(binaryOp == BfBinaryOp_LeftShift) |
-				(binaryOp == BfBinaryOp_RightShift) |
-				(binaryOp == BfBinaryOp_Equality) |
-				(binaryOp == BfBinaryOp_InEquality);
+				(binaryOp == BfBinaryOp_BitwiseAnd) ||
+				(binaryOp == BfBinaryOp_BitwiseOr) ||
+				(binaryOp == BfBinaryOp_ExclusiveOr) ||
+				(binaryOp == BfBinaryOp_LeftShift) ||
+				(binaryOp == BfBinaryOp_RightShift) ||
+				(binaryOp == BfBinaryOp_Equality) ||
+				(binaryOp == BfBinaryOp_InEquality) ||
+				(binaryOp == BfBinaryOp_StrictEquality) ||
+				(binaryOp == BfBinaryOp_StrictInEquality);
 
 			if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 			{				
@@ -19170,10 +19184,12 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 		switch (binaryOp)
 		{
 		case BfBinaryOp_Equality:
+		case BfBinaryOp_StrictEquality:
 			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1),
 				mModule->GetPrimitiveType(BfTypeCode_Boolean));
 			break;
 		case BfBinaryOp_InEquality:
+		case BfBinaryOp_StrictInEquality:
 			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0),
 				mModule->GetPrimitiveType(BfTypeCode_Boolean));
 			break;
@@ -19195,10 +19211,12 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 			switch (binaryOp)
 			{
 			case BfBinaryOp_Equality:
+			case BfBinaryOp_StrictEquality:
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(convLeftValue, convRightValue),
 					mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				break;
 			case BfBinaryOp_InEquality:
+			case BfBinaryOp_StrictInEquality:
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(convLeftValue, convRightValue),
 					mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				break;
@@ -19298,11 +19316,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfType* resultType, BfIRValue convL
 	case BfBinaryOp_Modulus:		
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateRem(convLeftValue, convRightValue, resultType->IsSigned()), resultType);
 		break;
-	case BfBinaryOp_Equality:	
+	case BfBinaryOp_Equality:
+	case BfBinaryOp_StrictEquality:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(convLeftValue, convRightValue),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;
 	case BfBinaryOp_InEquality:	
+	case BfBinaryOp_StrictInEquality:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(convLeftValue, convRightValue),
 			mModule->GetPrimitiveType(BfTypeCode_Boolean));	
 		break;

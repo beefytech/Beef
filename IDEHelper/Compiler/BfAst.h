@@ -146,6 +146,7 @@ enum BfToken : uint8
 	BfToken_Let,
 	BfToken_Mixin,
 	BfToken_Mut,
+	BfToken_NameOf,
 	BfToken_Namespace,
 	BfToken_New,	
 	BfToken_Null,
@@ -187,7 +188,9 @@ enum BfToken : uint8
 	BfToken_Yield,
 	BfToken_AssignEquals,	
 	BfToken_CompareEquals,
+	BfToken_CompareStrictEquals,
 	BfToken_CompareNotEquals,
+	BfToken_CompareStrictNotEquals,
 	BfToken_LessEquals,
 	BfToken_GreaterEquals,
 	BfToken_Spaceship,
@@ -1706,7 +1709,9 @@ enum BfBinaryOp
 	BfBinaryOp_LeftShift,
 	BfBinaryOp_RightShift,
 	BfBinaryOp_Equality,
+	BfBinaryOp_StrictEquality,
 	BfBinaryOp_InEquality,
+	BfBinaryOp_StrictInEquality,
 	BfBinaryOp_GreaterThan,
 	BfBinaryOp_LessThan,
 	BfBinaryOp_GreaterThanOrEqual,
@@ -3199,6 +3204,7 @@ bool BfTokenIsKeyword(BfToken token);
 BfBinaryOp BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp);
 BfBinaryOp BfGetOppositeBinaryOp(BfBinaryOp origOp);
 BfBinaryOp BfGetFlippedBinaryOp(BfBinaryOp origOp);
+bool BfBinOpEqualityCheck(BfBinaryOp binOp);
 int BfGetBinaryOpPrecendence(BfBinaryOp binOp);
 const char* BfGetOpName(BfBinaryOp binOp);
 const char* BfGetOpName(BfUnaryOp unaryOp);

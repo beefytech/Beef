@@ -420,14 +420,6 @@ namespace System.Collections
 			return -1;
 		}
 
-		public int LastIndexOf(T item)
-		{
-			for (int i = mSize - 1; i >= 0; i--)
-				if (mItems[i] == item)
-					return i;
-			return -1;
-		}
-
 		public int IndexOf(T item, int index)
 		{
 			for (int i = index; i < mSize; i++)
@@ -440,6 +432,46 @@ namespace System.Collections
 		{
 			for (int i = index; i < index + count; i++)
 				if (mItems[i] == item)
+					return i;
+			return -1;
+		}
+
+		public int IndexOfStrict(T item)
+		{
+			for (int i = 0; i < mSize; i++)
+				if (mItems[i] === item)
+					return i;
+			return -1;
+		}
+
+		public int IndexOfStrict(T item, int index)
+		{
+			for (int i = index; i < mSize; i++)
+				if (mItems[i] === item)
+					return i;
+			return -1;
+		}
+
+		public int IndexOfStrict(T item, int index, int count)
+		{
+			for (int i = index; i < index + count; i++)
+				if (mItems[i] === item)
+					return i;
+			return -1;
+		}
+
+		public int LastIndexOf(T item)
+		{
+			for (int i = mSize - 1; i >= 0; i--)
+				if (mItems[i] == item)
+					return i;
+			return -1;
+		}
+
+		public int LastIndexOfStrict(T item)
+		{
+			for (int i = mSize - 1; i >= 0; i--)
+				if (mItems[i] === item)
 					return i;
 			return -1;
 		}
@@ -575,6 +607,31 @@ namespace System.Collections
 			}
 
 			return false;
+		}
+
+		public bool RemoveStrict(T item)
+		{
+			int index = IndexOfStrict(item);
+			if (index >= 0)
+			{
+				RemoveAt(index);
+				return true;
+			}
+
+			return false;
+		}
+
+		public Result<T> GetAndRemove(T item)
+		{
+			int index = IndexOf(item);
+			if (index >= 0)
+			{
+				T val = mItems[index];
+				RemoveAt(index);
+				return val;
+			}
+
+			return .Err;
 		}
 
 		/// The method returns the index of the given value in the list. If the

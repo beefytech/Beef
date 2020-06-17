@@ -1745,7 +1745,7 @@ public:
 	void EmitGCMarkMembers();
 	void EmitGCFindTLSMembers();
 	void EmitIteratorBlock(bool& skipBody);
-	void EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRBlock exitBB);
+	void EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRBlock exitBB, bool strictEquals);
 	void CreateFakeCallerMethod(const String& funcName);
 	void CallChainedMethods(BfMethodInstance* methodInstance, bool reverse = false);
 	void AddHotDataReferences(BfHotDataReferenceBuilder* builder);
@@ -1753,7 +1753,7 @@ public:
 	void ProcessMethod_ProcessDeferredLocals(int startIdx = 0);
 	void ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup = false);
 	void CreateDynamicCastMethod();
-	void CreateValueTypeEqualsMethod();	
+	void CreateValueTypeEqualsMethod(bool strictEquals);
 	BfIRFunction GetIntrinsic(BfMethodInstance* methodInstance, bool reportFailure = false);
 	BfIRFunction GetBuiltInFunc(BfBuiltInFuncType funcType);
 	BfIRValue CreateFunctionFrom(BfMethodInstance* methodInstance, bool tryExisting, bool isInlined);	

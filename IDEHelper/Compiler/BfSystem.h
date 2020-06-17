@@ -657,6 +657,7 @@ enum BfCallingConvention : uint8
 #define BF_METHODNAME_INVOKE "Invoke"
 #define BF_METHODNAME_TO_STRING "ToString"
 #define BF_METHODNAME_DEFAULT_EQUALS "__Equals"
+#define BF_METHODNAME_DEFAULT_STRICT_EQUALS "__StrictEquals"
 
 enum BfOptimize : int8
 {

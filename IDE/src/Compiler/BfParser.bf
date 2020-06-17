@@ -328,8 +328,8 @@ namespace IDE.Compiler
 					if (oldIdx <= expectedOldIdx)
 					{
 #if DEBUG
-						Utils.WriteTextFile(@"c:\temp\old.txt", oldText);
-						Utils.WriteTextFile(@"c:\temp\new.txt", newText);
+						Utils.WriteTextFile(@"c:\temp\old.txt", oldText).IgnoreError();
+						Utils.WriteTextFile(@"c:\temp\new.txt", newText).IgnoreError();
 						Debug.FatalError("Reformat failed");
 #endif
 						break; // Error - abort

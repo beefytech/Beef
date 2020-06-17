@@ -2538,7 +2538,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 		return NULL;
 	}
 
-	if (refNode != NULL)
+ 	if (refNode != NULL)
 		refNode = BfNodeToNonTemporary(refNode);
 
 	//BF_ASSERT(refNode != NULL);
@@ -3973,11 +3973,11 @@ void BfModule::CreateDynamicCastMethod()
 	mCurMethodState->mHadReturn = true;	
 }
 
-void BfModule::EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRBlock exitBB)
+void BfModule::EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRBlock exitBB, bool strictEquals)
 {
 	BfExprEvaluator exprEvaluator(this);
 	exprEvaluator.mExpectingType = mCurMethodInstance->mReturnType;
-	exprEvaluator.PerformBinaryOperation((BfAstNode*)NULL, (BfAstNode*)NULL, BfBinaryOp_Equality, NULL, BfBinOpFlag_None, leftValue, rightValue);
+	exprEvaluator.PerformBinaryOperation((BfAstNode*)NULL, (BfAstNode*)NULL, strictEquals ? BfBinaryOp_StrictEquality : BfBinaryOp_Equality, NULL, BfBinOpFlag_None, leftValue, rightValue);
 	BfTypedValue result = exprEvaluator.GetResult();
 	if ((result) && (!result.mType->IsVar()))
 	{
@@ -4036,7 +4036,7 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 	mBfIRBuilder->CreateRetVoid();
 }
 
-void BfModule::CreateValueTypeEqualsMethod()
+void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 {
 	if (mCurMethodInstance->mIsUnspecialized)
 		return;
@@ -4109,7 +4109,7 @@ void BfModule::CreateValueTypeEqualsMethod()
 			mBfIRBuilder->SetInsertPoint(bodyBB);
 			BfTypedValue leftValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, GetDefaultValue(intPtrType), loadedItr), sizedArrayType->mElementType, BfTypedValueKind_Addr);
 			BfTypedValue rightValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[1]->mValue, GetDefaultValue(intPtrType), loadedItr), sizedArrayType->mElementType, BfTypedValueKind_Addr);
-			EmitEquals(leftValue, rightValue, exitBB);
+			EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 			auto incValue = mBfIRBuilder->CreateAdd(loadedItr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1));
 			mBfIRBuilder->CreateStore(incValue, itr);
 			mBfIRBuilder->CreateBr(loopBB);
@@ -4122,7 +4122,7 @@ void BfModule::CreateValueTypeEqualsMethod()
 			{
 				BfTypedValue leftValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, dataIdx), sizedArrayType->mElementType, BfTypedValueKind_Addr);
 				BfTypedValue rightValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[1]->mValue, 0, dataIdx), sizedArrayType->mElementType, BfTypedValueKind_Addr);
-				EmitEquals(leftValue, rightValue, exitBB);
+				EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 			}
 		}
 	}
@@ -4144,7 +4144,7 @@ void BfModule::CreateValueTypeEqualsMethod()
 			BfTypedValue leftValue = exprEvaluator.DoImplicitArgCapture(NULL, methodInstance, methodRefType->GetParamIdxFromDataIdx(dataIdx), failed, BfImplicitParamKind_General, leftTypedVal);
 			BfTypedValue rightValue = exprEvaluator.DoImplicitArgCapture(NULL, methodInstance, methodRefType->GetParamIdxFromDataIdx(dataIdx), failed, BfImplicitParamKind_General, rightTypedVal);
 			BF_ASSERT(!failed);
-			EmitEquals(leftValue, rightValue, exitBB);
+			EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 		}
 	}
 	else if (compareTypeInst->IsEnum())
@@ -4165,7 +4165,7 @@ void BfModule::CreateValueTypeEqualsMethod()
 		BfTypedValue leftPayload = ExtractValue(leftTypedVal, NULL, 1);
 		BfTypedValue rightPayload = ExtractValue(rightTypedVal, NULL, 1);
 
-		EmitEquals(leftValue, rightValue, exitBB);
+		EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 		
 		int enumCount = 0;
 		for (auto& fieldRef : compareTypeInst->mFieldInstances)
@@ -4214,7 +4214,7 @@ void BfModule::CreateValueTypeEqualsMethod()
 							rightTuple = Cast(NULL, rightPayload, fieldInstance->mResolvedType, BfCastFlags_Force);
 						}
 						
-						EmitEquals(leftTuple, rightTuple, exitBB);
+						EmitEquals(leftTuple, rightTuple, exitBB, strictEquals);
 						mBfIRBuilder->CreateBr(matchedBlock);
 
 						mBfIRBuilder->AddSwitchCase(switchVal, mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, enumIdx), caseBlock);
@@ -4238,7 +4238,7 @@ void BfModule::CreateValueTypeEqualsMethod()
 			BfTypedValue rightTypedVal = exprEvaluator.LoadLocal(mCurMethodState->mLocals[1]);
 			BfTypedValue rightUnionTypedVal = ExtractValue(rightTypedVal, NULL, 1);
 
-			EmitEquals(leftUnionTypedVal, rightUnionTypedVal, exitBB);
+			EmitEquals(leftUnionTypedVal, rightUnionTypedVal, exitBB, strictEquals);
 		}
 	}
 	else
@@ -4266,7 +4266,7 @@ void BfModule::CreateValueTypeEqualsMethod()
 				rightValue = LoadValue(rightValue);
 			}
 
-			EmitEquals(leftValue, rightValue, exitBB);
+			EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 		}
 
 		auto baseTypeInst = compareTypeInst->mBaseType;
@@ -4276,7 +4276,7 @@ void BfModule::CreateValueTypeEqualsMethod()
 			BfTypedValue rightOrigValue(mCurMethodState->mLocals[1]->mValue, compareTypeInst, true);
 			BfTypedValue leftValue = Cast(NULL, leftOrigValue, baseTypeInst);
 			BfTypedValue rightValue = Cast(NULL, rightOrigValue, baseTypeInst);
-			EmitEquals(leftValue, rightValue, exitBB);
+			EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 		}
 	}
 
@@ -9927,7 +9927,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		BfConstResolver constResolver(this);
 		if (allowNonConstArgs)
 			constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowNonConst);
-		
+				
 		bool inPropSet = false;
 		SizedArray<BfResolvedArg, 2> argValues;
 		for (BfExpression* arg : attributesDirective->mArguments)
@@ -10109,7 +10109,9 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 					resolvedArg.mTypedValue = constResolver.Resolve(arg);
 
 				if (!inPropSet)
+				{										
 					argValues.push_back(resolvedArg);
+				}
 			}
 
 			if (autoComplete != NULL)
@@ -10128,7 +10130,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		attrTypeDef = attrTypeInst->mTypeDef;
 
 		bool success = true;
-				
+		
 		bool isFailurePass = false;
 		for (int pass = 0; pass < 2; pass++)
 		{
@@ -17655,13 +17657,19 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		}
 		else if (methodDef->mName == BF_METHODNAME_DEFAULT_EQUALS)
 		{
-			CreateValueTypeEqualsMethod();
+			CreateValueTypeEqualsMethod(false);
+			skipBody = true;
+			skipEndChecks = true;
+		}
+		else if (methodDef->mName == BF_METHODNAME_DEFAULT_STRICT_EQUALS)
+		{
+			CreateValueTypeEqualsMethod(true);
 			skipBody = true;
 			skipEndChecks = true;
 		}
 		else if ((methodDef->mName == BF_METHODNAME_EQUALS) && (typeDef == mCompiler->mValueTypeTypeDef))
 		{
-			CreateValueTypeEqualsMethod();
+			CreateValueTypeEqualsMethod(false);
 			skipBody = true;
 			skipEndChecks = true;
 		}

@@ -5646,7 +5646,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 	if ((resultTypedValue->mIsLiteral) && (resultType->IsPointer()))
 	{	
 		// If we're comparing against a string literal like 'str == "Hey!"', handle that
-		if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality))
+		if (BfBinOpEqualityCheck(binaryOp))
 		{
 			DbgType* useType = otherType;
 			useType = useType->RemoveModifiers();
@@ -5689,7 +5689,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 
 					auto boolType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 					mResult.mType = boolType;
-					mResult.mBool = isEq == (binaryOp == BfBinaryOp_Equality);
+					mResult.mBool = isEq == ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality));
 					return;
 				}
 			}
@@ -5708,9 +5708,9 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		return;
 	}*/
 
-	if ((otherType->IsNull()) && ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_InEquality)))
+	if ((otherType->IsNull()) && BfBinOpEqualityCheck(binaryOp))
 	{
-		bool isEquality = (binaryOp == BfBinaryOp_Equality);
+		bool isEquality = (binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality);
 
 		if (resultType->IsValueType())
 		{
@@ -5801,7 +5801,8 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 			mResult.mType = intPtrType;
 			return;
 		}
-		else if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality) &&
+		else if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_StrictEquality) &
+			(binaryOp != BfBinaryOp_InEquality) && (binaryOp != BfBinaryOp_StrictInEquality) &&
 			(binaryOp != BfBinaryOp_LessThan) && (binaryOp != BfBinaryOp_LessThanOrEqual) &&
 			(binaryOp != BfBinaryOp_GreaterThan) && (binaryOp != BfBinaryOp_GreaterThanOrEqual))
 		{
@@ -5817,7 +5818,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 	{
 		if (otherType->IsNull())
 		{
-			if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality))
+			if (!BfBinOpEqualityCheck(binaryOp))
 			{
 				Fail(StrFormat("Invalid operation between '%s' and null", resultType->ToString().c_str()), opToken);
 				return;
@@ -5870,7 +5871,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 
 	if ((resultType->IsPointer()) || (resultType->IsBfObject()) || (resultType->IsInterface()) /*|| (resultType->IsGenericParam())*/)
 	{
-		if ((binaryOp != BfBinaryOp_Equality) && (binaryOp != BfBinaryOp_InEquality))
+		if (!BfBinOpEqualityCheck(binaryOp))
 		{
 			if (resultType->IsPointer())
 				Fail("Invalid operation for pointers", opToken);
@@ -5882,7 +5883,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		if (otherType->IsNull())
 		{
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
-			if (binaryOp == BfBinaryOp_Equality)
+			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 				mResult.mBool = resultTypedValue->mPtr == NULL;
 			else
 				mResult.mBool = resultTypedValue->mPtr != NULL;
@@ -5898,7 +5899,7 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 				return;
 
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
-			if (binaryOp == BfBinaryOp_Equality)
+			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 				mResult.mBool = resultTypedValue->mPtr == convertedValue.mPtr;
 			else
 				mResult.mBool = resultTypedValue->mPtr != convertedValue.mPtr;			
@@ -6035,10 +6036,12 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 		switch (binaryOp)
 		{
 		case BfBinaryOp_Equality:
+		case BfBinaryOp_StrictEquality:
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 			mResult.mBool = true;			
 			break;
 		case BfBinaryOp_InEquality:
+		case BfBinaryOp_StrictInEquality:
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 			mResult.mBool = false;
 			break;
@@ -6063,10 +6066,12 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 			switch (binaryOp)
 			{
-			case BfBinaryOp_Equality:				
+			case BfBinaryOp_Equality:
+			case BfBinaryOp_StrictEquality:
 				mResult.mBool = convLeftValue.mBool == convRightValue.mBool;
 				break;
 			case BfBinaryOp_InEquality:
+			case BfBinaryOp_StrictInEquality:
 				mResult.mBool = convLeftValue.mBool != convRightValue.mBool;
 				break;
 			case BfBinaryOp_ConditionalAnd:
@@ -6182,6 +6187,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 		}
 		break;
 	case BfBinaryOp_Equality:
+	case BfBinaryOp_StrictEquality:
 		mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 		if (resultType->mTypeCode == DbgType_Single)
 			mResult.mBool = convLeftValue.mSingle == convRightValue.mSingle;
@@ -6191,6 +6197,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			mResult.mBool = convLeftValue.GetInt64() == convRightValue.GetInt64();
 		break;
 	case BfBinaryOp_InEquality:
+	case BfBinaryOp_StrictInEquality:
 		mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 		if (resultType->mTypeCode == DbgType_Single)
 			mResult.mBool = convLeftValue.mSingle != convRightValue.mSingle;

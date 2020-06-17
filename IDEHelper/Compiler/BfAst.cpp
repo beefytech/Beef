@@ -1303,6 +1303,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "mixin";
 	case BfToken_Mut:
 		return "mut";
+	case BfToken_NameOf:
+		return "nameof";
 	case BfToken_Namespace:
 		return "namespace";
 	case BfToken_New:
@@ -1385,8 +1387,12 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "=";
 	case BfToken_CompareEquals:
 		return "==";
+	case BfToken_CompareStrictEquals:
+		return "===";
 	case BfToken_CompareNotEquals:
 		return "!=";
+	case BfToken_CompareStrictNotEquals:
+		return "!==";
 	case BfToken_LessEquals:
 		return "<=";
 	case BfToken_GreaterEquals:
@@ -1559,7 +1565,9 @@ int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
 	case BfBinaryOp_LessThanOrEqual:
 		return 5;
 	case BfBinaryOp_Equality:
+	case BfBinaryOp_StrictEquality:
 	case BfBinaryOp_InEquality:
+	case BfBinaryOp_StrictInEquality:
 		return 4;
 	case BfBinaryOp_ConditionalAnd:
 		return 3;	
@@ -1590,7 +1598,9 @@ const char* Beefy::BfGetOpName(BfBinaryOp binOp)
 	case BfBinaryOp_LeftShift: return "<<";
 	case BfBinaryOp_RightShift: return ">>";
 	case BfBinaryOp_Equality: return "==";
+	case BfBinaryOp_StrictEquality: return "===";
 	case BfBinaryOp_InEquality: return "!=";
+	case BfBinaryOp_StrictInEquality: return "!==";
 	case BfBinaryOp_GreaterThan: return ">";
 	case BfBinaryOp_LessThan: return "<";
 	case BfBinaryOp_GreaterThanOrEqual: return ">=";
@@ -1655,8 +1665,12 @@ BfBinaryOp Beefy::BfTokenToBinaryOp(BfToken token)
 		return BfBinaryOp_RightShift;
 	case BfToken_CompareEquals:
 		return BfBinaryOp_Equality;
+	case BfToken_CompareStrictEquals:
+		return BfBinaryOp_StrictEquality;
 	case BfToken_CompareNotEquals:
 		return BfBinaryOp_InEquality;
+	case BfToken_CompareStrictNotEquals:
+		return BfBinaryOp_StrictInEquality;
 	case BfToken_RChevron:
 		return BfBinaryOp_GreaterThan;
 	case BfToken_LChevron:
@@ -1770,8 +1784,12 @@ BfBinaryOp Beefy::BfGetOppositeBinaryOp(BfBinaryOp origOp)
 	{
 	case BfBinaryOp_Equality:
 		return BfBinaryOp_InEquality;
+	case BfBinaryOp_StrictEquality:
+		return BfBinaryOp_StrictInEquality;
 	case BfBinaryOp_InEquality:
 		return BfBinaryOp_Equality;
+	case BfBinaryOp_StrictInEquality:
+		return BfBinaryOp_StrictEquality;
 	case BfBinaryOp_LessThan:
 		return BfBinaryOp_GreaterThanOrEqual;
 	case BfBinaryOp_LessThanOrEqual:
@@ -1806,6 +1824,11 @@ BfBinaryOp Beefy::BfGetFlippedBinaryOp(BfBinaryOp origOp)
 	}
 
 	return BfBinaryOp_None;
+}
+
+bool Beefy::BfBinOpEqualityCheck(BfBinaryOp binOp)
+{
+	return (binOp >= BfBinaryOp_Equality) && (binOp <= BfBinaryOp_StrictInEquality);
 }
 
 bool Beefy::BfIsCommentBlock(BfCommentKind commentKind)

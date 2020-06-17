@@ -3750,7 +3750,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			if (methodDef->mMethodDeclaration == NULL)
 			{
 				// Internal methods don't need decls
-				if (methodDef->mName == BF_METHODNAME_DEFAULT_EQUALS)
+				if ((methodDef->mName == BF_METHODNAME_DEFAULT_EQUALS) ||
+					(methodDef->mName == BF_METHODNAME_DEFAULT_STRICT_EQUALS))
 					declRequired = false;
 			}
 

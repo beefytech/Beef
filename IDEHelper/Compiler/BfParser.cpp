@@ -1377,8 +1377,17 @@ void BfParser::NextToken(int endIdx)
 		case '!':
 			if (mSrc[mSrcIdx] == '=')
 			{
-				mToken = BfToken_CompareNotEquals;
-				mTokenEnd = ++mSrcIdx;
+				if (mSrc[mSrcIdx + 1] == '=')
+				{
+					mToken = BfToken_CompareStrictNotEquals;
+					++mSrcIdx;
+					mTokenEnd = ++mSrcIdx;
+				}
+				else
+				{
+					mToken = BfToken_CompareNotEquals;
+					mTokenEnd = ++mSrcIdx;
+				}
 			}
 			else
 				mToken = BfToken_Bang;
@@ -1387,8 +1396,17 @@ void BfParser::NextToken(int endIdx)
 		case '=':
 			if (mSrc[mSrcIdx] == '=')
 			{
-				mToken = BfToken_CompareEquals;
-				mTokenEnd = ++mSrcIdx;
+				if (mSrc[mSrcIdx + 1] == '=')
+				{
+					mToken = BfToken_CompareStrictEquals;
+					++mSrcIdx;
+					mTokenEnd = ++mSrcIdx;
+				}
+				else
+				{
+					mToken = BfToken_CompareEquals;
+					mTokenEnd = ++mSrcIdx;
+				}
 			}
 			else if (mSrc[mSrcIdx] == '>')
 			{

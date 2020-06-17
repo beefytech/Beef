@@ -2061,6 +2061,19 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		AddParam(methodDef, mSystem->mDirectSelfTypeRef, "rhs");
 	}
 
+	if (needsEqualsMethod)
+	{
+		auto methodDef = new BfMethodDef();
+		mCurTypeDef->mMethods.push_back(methodDef);
+		methodDef->mDeclaringType = mCurTypeDef;
+		methodDef->mName = BF_METHODNAME_DEFAULT_STRICT_EQUALS;
+		methodDef->mReturnTypeRef = mSystem->mDirectBoolTypeRef;
+		methodDef->mProtection = BfProtection_Private;
+		methodDef->mIsStatic = true;
+		AddParam(methodDef, mSystem->mDirectSelfTypeRef, "lhs");
+		AddParam(methodDef, mSystem->mDirectSelfTypeRef, "rhs");
+	}
+
 	HashContext inlineHashCtx;
 
 	if (mCurSource != NULL)
