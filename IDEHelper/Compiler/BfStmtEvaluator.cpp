@@ -3843,7 +3843,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 
 	if ((!checkType->IsPointer()) && (!checkType->IsObject()))
 	{
-		Fail(StrFormat("Cannot delete a value of type '%s'", TypeToString(val.mType).c_str()), deleteStmt->mDeleteToken);
+		Fail(StrFormat("Cannot delete a value of type '%s'", TypeToString(val.mType).c_str()), deleteStmt->mExpression);
 		return;
 	}
 
@@ -3996,7 +3996,12 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		}
 	}
 
-	if ((customAllocator) && (customAllocator.mType != GetPrimitiveType(BfTypeCode_NullPtr)))
+	if (customAllocator.mType == GetPrimitiveType(BfTypeCode_NullPtr))
+	{
+		if (!checkType->IsObjectOrInterface())
+			Warn(0, "Type '%' has no destructor, so delete:null has no effect", deleteStmt->mExpression);
+	}
+	else if (customAllocator)
 	{
 		auto voidPtrType = GetPrimitiveType(BfTypeCode_NullPtr);
 		auto ptrValue = BfTypedValue(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(voidPtrType)), voidPtrType);
@@ -6626,7 +6631,13 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 		if (isGenericParam)
 			return;
 
-		if (customAllocator)
+		bool isDtorOnly = false;
+		if (customAllocator.mType == GetPrimitiveType(BfTypeCode_NullPtr))
+		{
+			if (!checkType->IsObjectOrInterface())
+				Warn(0, "Type '%' has no destructor, so delete:null has no effect", deleteStmt->mExpression);
+		}
+		else if (customAllocator)
 		{
 			BfFunctionBindResult functionBindResult;			
 			functionBindResult.mWantsArgs = true;
@@ -6702,7 +6713,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 				auto moduleMethodInstance = GetMethodByName(internalType->ToTypeInstance(), (deleteStmt->mTargetTypeToken != NULL) ? "Dbg_ObjectPreCustomDelete" : "Dbg_ObjectPreDelete");
 				AddDeferredCall(moduleMethodInstance, llvmArgs, scope, deleteStmt, false, true);
 			}			
-		}
+		}		
 		else
 		{			
 			if ((!customAllocator) && (!isAppendDelete))
