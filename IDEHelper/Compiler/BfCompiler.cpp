@@ -4219,8 +4219,11 @@ void BfCompiler::ProcessAutocompleteTempType()
 	methodInstances.Clear();		
 	
 	module->CleanupFileInstances();	
-	module->ClearConstData();
 
+	prevTypeInstance.Restore();	
+	if (module->mCurTypeInstance == NULL)
+		module->ClearConstData();
+	
 	BfLogSysM("ProcessAutocompleteTempType end\n");
 }
 

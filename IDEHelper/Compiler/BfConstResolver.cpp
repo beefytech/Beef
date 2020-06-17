@@ -389,7 +389,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 			extendedParamIdx++;
 		}
 		else
-		{
+		{			
 			llvmArgs.push_back(argValue.mValue);
 			paramIdx++;
 		}
