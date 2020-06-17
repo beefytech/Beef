@@ -1230,8 +1230,15 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 	auto outerTypeDef = mCurTypeDef;
 	auto actualOuterTypeDef = mCurActualTypeDef;
-	mCurTypeDef = new BfTypeDef();
-	mCurActualTypeDef = mCurTypeDef;
+
+	while ((outerTypeDef != NULL) && (outerTypeDef->IsGlobalsContainer()))
+		outerTypeDef = outerTypeDef->mOuterType;
+	while ((actualOuterTypeDef != NULL) && (actualOuterTypeDef->IsGlobalsContainer()))
+		actualOuterTypeDef = actualOuterTypeDef->mOuterType;
+
+	SetAndRestoreValue<BfTypeDef*> prevTypeDef(mCurTypeDef, new BfTypeDef());
+	SetAndRestoreValue<BfTypeDef*> prevActualTypeDef(mCurActualTypeDef, mCurTypeDef);
+
 	mCurTypeDef->mSystem = mSystem;
 	mCurTypeDef->mProject = mCurSource->mProject;
 	mCurTypeDef->mNamespace = mNamespace;
@@ -1671,10 +1678,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	if ((prevRevisionTypeDef == NULL) && (!isAutoCompleteTempType))
 	{
 		mCurTypeDef->mName->mAtomUpdateIdx = ++mSystem->mAtomUpdateIdx;
-	}
-
-	mCurTypeDef = outerTypeDef;
-	mCurActualTypeDef = actualOuterTypeDef;
+	}	
 }
 
 void BfDefBuilder::FinishTypeDef(bool wantsToString)
