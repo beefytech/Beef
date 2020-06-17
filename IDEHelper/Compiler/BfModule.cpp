@@ -3802,10 +3802,10 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 	if (fieldInstance != NULL)
 		MarkFieldInitialized(fieldInstance);
 
-	if (doStore)
+	if ((doStore) && (result))
 	{
 		result = LoadValue(result);
-		if (!result.mType->IsValuelessType())		
+		if (!result.mType->IsValuelessType())
 			mBfIRBuilder->CreateStore(result.mValue, staticVarRef.mValue);		
 	}
 
