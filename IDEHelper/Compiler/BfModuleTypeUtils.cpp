@@ -880,12 +880,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			}
 			else
 				resolvedTypeRef->mTypeId = mCompiler->mCurTypeId++;
-
-			if (resolvedTypeRef->IsTuple())
-			{
-				NOP;
-			}
-
+			
 			while (resolvedTypeRef->mTypeId >= (int)mContext->mTypes.size())
 				mContext->mTypes.Add(NULL);
 			mContext->mTypes[resolvedTypeRef->mTypeId] = resolvedTypeRef;
@@ -8789,6 +8784,26 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				return typedVal.mValue;
 			}
 
+			if ((fromInner->IsTuple()) && (toInner->IsTuple()))
+			{
+				auto fromTuple = (BfTupleType*)fromInner;
+				auto toTuple = (BfTupleType*)toInner;				
+				if (fromTuple->mFieldInstances.size() == toTuple->mFieldInstances.size())
+				{
+					bool matches = true;
+					for (int fieldIdx = 0; fieldIdx < (int)fromTuple->mFieldInstances.size(); fieldIdx++)
+					{
+						if (fromTuple->mFieldInstances[fieldIdx].mResolvedType != toTuple->mFieldInstances[fieldIdx].mResolvedType)
+						{
+							matches = false;
+							break;
+						}
+					}
+					if (matches)
+						return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
+				}
+			}
+
 			// ref int <-> ref int64/int32 (of same size)
 			if (((fromInner->IsInteger()) && (toInner->IsInteger())) &&
 				(fromInner->mSize == toInner->mSize) &&
@@ -9004,6 +9019,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			bool allowCast = false;
 			if (TypeIsSubTypeOf(fromTypeInstance, toTypeInstance))
 				allowCast = true;
+
 			if (allowCast)
 			{
 				if (toType->IsValuelessType())
