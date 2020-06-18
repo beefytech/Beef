@@ -37,6 +37,23 @@ namespace Tests
 			}
 		}
 
+		struct StructC
+		{
+			public int mA;
+			public int mB;
+
+			public this(int a, int b)
+			{
+				mA = a;
+				mB = b;
+			}
+
+			public static bool operator==(StructC lhs, StructC rhs)
+			{
+				return lhs.mA == rhs.mA;
+			}
+		}
+
 		struct StructOp<T, T2> where T : operator T + T2
 		{
 			public T DoIt(T val, T2 val2)
@@ -208,6 +225,11 @@ namespace Tests
 			Test.Assert(res6 == 140);
 			int32 res7 = sOp2.GetInt();
 			Test.Assert(res7 == 100);
+
+			Result<StructC> rsc = .Ok(.(123, 234));
+			Result<StructC> rsc2 = .Ok(.(123, 345));
+			Test.Assert(rsc == rsc2);
+			Test.Assert(rsc !== rsc2);
 
 			/*let oai = OuterOp<float>.InnerOp<int>.Op(1.0f, 100);
 			Test.Assert(oai == 101.0f);

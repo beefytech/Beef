@@ -210,7 +210,7 @@ bool BfMethodMatcher::IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* de
 		return false;
 
 	// This may not be completely correct - BUT if we don't have this then even Dictionary TKey's operator == won't be considered accessible
-	if (!mModule->IsInSpecializedSection())
+	if ((!mModule->IsInSpecializedSection()) && (mActiveTypeDef->mTypeDeclaration != NULL))
 	{
 		if (!typeInst->IsTypeMemberAccessible(declaringType, mActiveTypeDef))
 			return false;
