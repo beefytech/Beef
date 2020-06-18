@@ -12,54 +12,19 @@ namespace System.Reflection
 		TypeInstance mTypeInstance;
 		TypeInstance.MethodData* mMethodData;
 
-		public bool IsInitialized
-		{
-			get
-			{
-				return mMethodData != null;
-			}
-		}
-
-		public StringView Name
-		{
-			get
-			{
-				return mMethodData.[Friend]mName;
-			}
-		}
-
-		public int ParamCount
-		{
-			get
-			{
-				return mMethodData.[Friend]mParamCount;
-			}
-		}
-
-		public bool IsConstructor
-		{
-			get
-			{
-				// String pooling allows us to do identity comparison
-				return (Object)mMethodData.mName == "__BfCtor" || ((Object)mMethodData.mName == "__BfStaticCtor");
-			}
-		}
-
-		public bool IsDestructor
-		{
-			get
-			{
-				// String pooling allows us to do identity comparison
-				return (Object)mMethodData.mName == "__BfStaticDtor" || (Object)mMethodData.mName == "__BfStaticDtor";
-			}
-		}
-
 		public this(TypeInstance typeInstance, TypeInstance.MethodData* methodData)
 		{
 		    mTypeInstance = typeInstance;
 		    mMethodData = methodData;
 		}
 
+		public bool IsInitialized => mMethodData != null;
+		public StringView Name => mMethodData.[Friend]mName;
+		public int ParamCount => mMethodData.[Friend]mParamCount;
+		public bool IsConstructor => mMethodData.mName === "__BfCtor" || mMethodData.mName === "__BfStaticCtor";
+		public bool IsDestructor => mMethodData.mName === "__BfStaticDtor" || mMethodData.mName === "__BfStaticDtor";
+		public Type ReturnType => GetType(mMethodData.mReturnType);
+		
 		public Type GetParamType(int paramIdx)
 		{
 			Debug.Assert((uint)paramIdx < (uint)mMethodData.mParamCount);
