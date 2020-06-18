@@ -3091,8 +3091,7 @@ void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEval
 	if (mCurMethodState != NULL)
 	{
 		bool isIgnore = mBfIRBuilder->mIgnoreWrites;
-
-		SetAndRestoreValue<bool> prevEmbedded(mCurMethodState->mIsEmbedded, block == NULL);
+		
 		mCurMethodState->mInHeadScope = false;
 
 		BfScopeData scopeData;		
@@ -3122,7 +3121,14 @@ void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEval
 					VisitCodeBlock(block);
 			}
 			else
+			{
+				if (auto varDecl = BfNodeDynCast<BfVariableDeclaration>(stmt))
+				{
+					Fail("Variable declarations must be wrapped in a block statement", varDecl);
+				}
+
 				VisitChild(stmt);
+			}
 		}
 
 		if ((block != NULL) && (closeBrace != NULL))
@@ -3719,9 +3725,6 @@ void BfModule::Visit(BfVariableDeclaration* varDecl)
 	BP_ZONE("BfModule::Visit(BfVariableDeclaration)");
 
 	UpdateSrcPos(varDecl);
-
-	if (mCurMethodState->mIsEmbedded)
-		Fail("Variable declarations must be wrapped in a block statement", varDecl);
 
 	BfTupleExpression* tupleVariableDeclaration = BfNodeDynCast<BfTupleExpression>(varDecl->mNameNode);
 	if (tupleVariableDeclaration != NULL)

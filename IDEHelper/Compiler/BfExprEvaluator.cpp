@@ -8433,6 +8433,111 @@ void BfExprEvaluator::Visit(BfSizedArrayCreateExpression* createExpr)
 	InitializedSizedArray(arrayType, createExpr->mInitializer->mOpenBrace, createExpr->mInitializer->mValues, createExpr->mInitializer->mCommas, createExpr->mInitializer->mCloseBrace);
 }
 
+void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
+{
+	VisitChild(initExpr->mTarget);	 
+	if (!mResult)
+		mResult = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
+
+	BfTypedValue initValue = GetResult(true);	
+	bool isFirstAdd = true;	
+	BfFunctionBindResult addFunctionBindResult;
+	addFunctionBindResult.mWantsArgs = true;
+
+	for (auto elementExpr : initExpr->mValues)
+	{
+		bool wasValidInitKind = false;
+
+		if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(elementExpr))
+		{
+			BfTypedValue fieldResult;
+			if (auto identifierNode = BfNodeDynCast<BfIdentifierNode>(assignExpr->mLeft))
+			{
+				StringT<128> findName;
+				identifierNode->ToString(findName);
+				fieldResult = LookupField(identifierNode, initValue, findName, BfLookupFieldFlag_IsImplicitThis);
+				if (fieldResult.mKind == BfTypedValueKind_TempAddr)
+					fieldResult.mKind = BfTypedValueKind_Addr;
+
+				wasValidInitKind = true;
+
+				if ((fieldResult) || (mPropDef != NULL))
+				{
+					mResult = fieldResult;
+					PerformAssignment(assignExpr, true, BfTypedValue());
+					mResult = BfTypedValue();
+				}
+				else
+				{
+					mModule->Fail(StrFormat("'%s' does not contain a definition for '%s'", mModule->TypeToString(initValue.mType).c_str(),
+						findName.c_str()), identifierNode);
+				}
+			}			
+		}
+		else
+		{
+			auto autoComplete = GetAutoComplete();
+			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(elementExpr)))
+			{
+				if (auto identiferNode = BfNodeDynCast<BfIdentifierNode>(elementExpr))
+				{
+					auto typeInstance = initValue.mType->ToTypeInstance();
+					if (typeInstance != NULL)
+					{
+						String filter;
+						identiferNode->ToString(filter);
+						autoComplete->AddTypeMembers(typeInstance, false, true, filter, typeInstance, false, true);
+					}
+				}
+			}
+			
+			bool wasFirstAdd = isFirstAdd;
+			if (isFirstAdd)
+			{				
+				BfExprEvaluator exprEvaluator(mModule);
+				exprEvaluator.mFunctionBindResult = &addFunctionBindResult;
+				SizedArray<BfExpression*, 2> argExprs;
+				argExprs.push_back(elementExpr);
+				BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
+				BfResolvedArgs argValues(&sizedArgExprs);				
+				exprEvaluator.ResolveArgValues(argValues);
+				exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, NULL);
+
+				if (addFunctionBindResult.mMethodInstance != NULL)
+					CreateCall(addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, addFunctionBindResult.mIRArgs);
+
+				isFirstAdd = false;
+			}
+			else if ((addFunctionBindResult.mMethodInstance == NULL) || (addFunctionBindResult.mMethodInstance->GetParamCount() == 0))
+			{
+				mModule->CreateValueFromExpression(elementExpr);
+			}
+			else
+			{
+				auto argValue = mModule->CreateValueFromExpression(elementExpr, addFunctionBindResult.mMethodInstance->GetParamType(0));
+				if ((argValue) && (!mModule->mBfIRBuilder->mIgnoreWrites))
+				{
+					SizedArray<BfIRValue, 2> irArgs;
+					PushThis(elementExpr, initValue, addFunctionBindResult.mMethodInstance, irArgs);
+					PushArg(argValue, irArgs);
+					for (int argIdx = (int)irArgs.size(); argIdx < (int)addFunctionBindResult.mIRArgs.size(); argIdx++)
+						irArgs.Add(addFunctionBindResult.mIRArgs[argIdx]);
+					CreateCall(addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, irArgs);
+				}
+			}
+
+			wasValidInitKind = true;
+		}
+
+		if (!wasValidInitKind)
+		{
+			mModule->Fail("Invalid initializer member declarator", initExpr);
+		}
+	}
+
+	mResult = initValue;
+}
+
 void BfExprEvaluator::Visit(BfCollectionInitializerExpression* arrayInitExpr)
 {	
 	mModule->Fail("Collection initializer not usable here", arrayInitExpr);
@@ -13369,7 +13474,6 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	}
 	curMethodState->AddScope(&scopeData);	
 	curMethodState->mCurScope->mMixinDepth++;	
-	curMethodState->mIsEmbedded = false;
 	// We can't flush scope state because we extend params in as arbitrary values
 	mModule->NewScopeState(true, false);
 

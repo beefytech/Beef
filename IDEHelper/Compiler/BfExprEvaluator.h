@@ -436,6 +436,7 @@ public:
 	virtual void Visit(BfBaseExpression* baseExpr) override;
 	virtual void Visit(BfMixinExpression* mixinExpr) override;
 	virtual void Visit(BfSizedArrayCreateExpression* createExpr) override;
+	virtual void Visit(BfInitializerExpression* initExpr) override;
 	virtual void Visit(BfCollectionInitializerExpression* initExpr) override;	
 	virtual void Visit(BfTypeOfExpression* typeOfExpr) override;
 	virtual void Visit(BfSizeOfExpression* sizeOfExpr) override;

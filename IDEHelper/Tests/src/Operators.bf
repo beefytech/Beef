@@ -263,12 +263,21 @@ namespace Tests
 			const String cStr1 = "A" + "B";
 			const String cStr2 = cStr1 + "C" + cStrD;
 			Test.Assert(cStr2 == "ABCD");
+			Test.Assert(cStr2 === "ABCD");
 
 			const char8* cStr3 = "A" + "B";
 			const char8* cStr4 = cStr1 + "C" + cStrPD;
 			Test.Assert(StringView(cStr4) == "ABCD");
 
 			TestDefaults();
+
+			String strA = scope String("ABCD");
+			Test.Assert(strA == cStr2);
+			Test.Assert(strA !== cStr1);
+
+			let strTup = (strA, strA);
+			Test.Assert(strTup == (cStr2, cStr2));
+			Test.Assert(strTup !== (cStr2, cStr2));
 		}
 
 		public static TTo Convert<TFrom, TTo>(TFrom val) where TTo : operator explicit TFrom

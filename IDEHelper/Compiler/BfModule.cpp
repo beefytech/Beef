@@ -1097,7 +1097,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "-") 
+                (mModuleName == "-")
 				//|| (mModuleName == "Tests_FuncRefs_Class")
 				//|| (mModuleName == "Tests_FuncRefs")
 				)

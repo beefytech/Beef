@@ -1206,6 +1206,25 @@ void BfPrinter::Visit(BfSizedArrayCreateExpression* createExpr)
 	VisitChildWithPrecedingSpace(createExpr->mInitializer);
 }
 
+void BfPrinter::Visit(BfInitializerExpression* initExpr)
+{
+	Visit(initExpr->ToBase());
+
+	VisitChild(initExpr->mTarget);
+	ExpectSpace();
+	VisitChild(initExpr->mOpenBrace);
+	for (int i = 0; i < (int)initExpr->mValues.size(); i++)
+	{
+		if (i > 0)
+		{
+			VisitChild(initExpr->mCommas[i - 1]);
+			ExpectSpace();
+		}
+		VisitChild(initExpr->mValues[i]);
+	}
+	VisitChild(initExpr->mCloseBrace);
+}
+
 void BfPrinter::Visit(BfCollectionInitializerExpression* initExpr)
 {
 	Visit(initExpr->ToBase());

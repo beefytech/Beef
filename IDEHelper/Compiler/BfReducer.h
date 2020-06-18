@@ -199,6 +199,7 @@ public:
 	BfObjectCreateExpression* CreateObjectCreateExpression(BfAstNode* allocNode);
 	BfScopedInvocationTarget* CreateScopedInvocationTarget(BfAstNode*& targetRef, BfTokenNode* colonToken);
 	BfInvocationExpression* CreateInvocationExpression(BfAstNode* target, CreateExprFlags createExprFlags = CreateExprFlags_None);
+	BfInitializerExpression* TryCreateInitializerExpression(BfExpression* target);
 	BfExpression* CreateIndexerExpression(BfExpression* target);
 	BfMemberReferenceExpression* CreateMemberReferenceExpression(BfAstNode* target);
 	BfTupleExpression* CreateTupleExpression(BfTokenNode* newNode, BfExpression* innerExpr = NULL);

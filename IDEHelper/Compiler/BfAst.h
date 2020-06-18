@@ -354,6 +354,7 @@ class BfStrideOfExpression;
 class BfDefaultExpression;
 class BfUninitializedExpression;
 class BfConditionalExpression;
+class BfInitializerExpression;
 class BfCollectionInitializerExpression;
 class BfSizedArrayCreateExpression;
 class BfEmptyStatement;
@@ -435,6 +436,7 @@ public:
 	virtual void Visit(BfBaseExpression* baseExpr);
 	virtual void Visit(BfMixinExpression* thisExpr);
 	virtual void Visit(BfSizedArrayCreateExpression* createExpr);
+	virtual void Visit(BfInitializerExpression* collectionInitExpr);
 	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);	
 	virtual void Visit(BfTypeReference* typeRef);
 	virtual void Visit(BfNamedTypeReference* typeRef);
@@ -2017,6 +2019,18 @@ public:
 	BfVariant mValue;
 };	BF_AST_DECL(BfLiteralExpression, BfExpression);
 
+class BfInitializerExpression : public BfExpression
+{
+public:
+	BF_AST_TYPE(BfInitializerExpression, BfExpression);
+
+	BfExpression* mTarget;
+	BfTokenNode* mOpenBrace;
+	BfSizedArray<BfExpression*> mValues;
+	BfSizedArray<BfTokenNode*> mCommas;
+	BfTokenNode* mCloseBrace;
+};  BF_AST_DECL(BfInitializerExpression, BfExpression);
+
 class BfCollectionInitializerExpression : public BfExpression
 {
 public:
@@ -2606,7 +2620,7 @@ public:
 	BfTokenNode* mOpenToken;
 	BfTokenNode* mCloseToken;	
 	BfSizedArray<BfExpression*> mArguments;
-	BfSizedArray<BfTokenNode*> mCommas;
+	BfSizedArray<BfTokenNode*> mCommas;	
 };	BF_AST_DECL(BfObjectCreateExpression, BfMethodBoundExpression);
 
 class BfBoxExpression : public BfExpression

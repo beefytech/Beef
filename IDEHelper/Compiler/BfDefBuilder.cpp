@@ -1920,9 +1920,13 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 	if ((needsDefaultCtor) && (!hasDefaultCtor))
 	{
+		BfProtection prot = hasCtor ? BfProtection_Hidden : BfProtection_Public;
+		if (mCurTypeDef->mName == mSystem->mEmptyAtom)
+			prot = BfProtection_Hidden;
+
 		// Create default constructor.  If it's the only constructor then make it public,
 		//  otherwise make it private so we can still internally use it but the user can't		
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, hasCtor ? BfProtection_Hidden : BfProtection_Public, false, "");
+		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, prot, false, "");
 		methodDef->mIsMutating = true;
 	}
 

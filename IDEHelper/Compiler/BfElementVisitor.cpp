@@ -244,6 +244,19 @@ void BfElementVisitor::Visit(BfSizedArrayCreateExpression* createExpr)
 	VisitChild(createExpr->mInitializer);
 }
 
+void BfElementVisitor::Visit(BfInitializerExpression* initExpr)
+{
+	Visit(initExpr->ToBase());
+
+	VisitChild(initExpr->mTarget);
+	VisitChild(initExpr->mOpenBrace);
+	for (auto& val : initExpr->mValues)
+		VisitChild(val);
+	for (auto& val : initExpr->mCommas)
+		VisitChild(val);
+	VisitChild(initExpr->mCloseBrace);
+}
+
 void BfElementVisitor::Visit(BfCollectionInitializerExpression* collectionInitExpr)
 {
 	Visit(collectionInitExpr->ToBase());

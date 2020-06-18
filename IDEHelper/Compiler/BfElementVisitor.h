@@ -43,6 +43,7 @@ public:
 	virtual void Visit(BfBaseExpression* baseExpr);
 	virtual void Visit(BfMixinExpression* thisExpr);
 	virtual void Visit(BfSizedArrayCreateExpression* createExpr);
+	virtual void Visit(BfInitializerExpression* initExpr);
 	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);	
 	virtual void Visit(BfTypeReference* typeRef);
 	virtual void Visit(BfNamedTypeReference* typeRef);

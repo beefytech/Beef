@@ -6,6 +6,12 @@ namespace Tests
 {
 	class Tuples
 	{
+		public static void Add(ref (int32, float) val)
+		{
+			val.0 += 100;
+			val.1 += 200;
+		}
+
 		[Test]
 		public static void TestBasic()
 		{
@@ -21,6 +27,9 @@ namespace Tests
 
 			let v0 = tVal1.0;
 			Test.Assert(v0 == 2);
+
+			Add(ref tVal1);
+			Test.Assert(tVal1 == (a: 102, b: 203));
 		}
 
 		class ValClass

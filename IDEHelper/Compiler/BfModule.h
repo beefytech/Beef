@@ -909,8 +909,7 @@ public:
 	BfIRValue mDynStackRevIdx; // Increments when we restore the stack, which can invalidate dynSize for dynamic looped allocs
 	BfIRBlock mIRExitBlock;
 	BfBreakData* mBreakData;
-	int mBlockNestLevel; // 0 = top level
-	bool mIsEmbedded; // Is an embedded statement (ie: if () stmt) not wrapped in a block
+	int mBlockNestLevel; // 0 = top level	
 	bool mIgnoreObjectAccessCheck;	
 	bool mDisableChecks;
 	BfMixinState* mMixinState;
@@ -969,8 +968,7 @@ public:
 		mBlockNestLevel = 0;
 		mInPostReturn = false;		
 		mCrossingMixin = false;
-		mNoBind = false;
-		mIsEmbedded = false;
+		mNoBind = false;		
 		mIgnoreObjectAccessCheck = false;
 		mDisableChecks = false;
 		mInConditionalBlock = false;		

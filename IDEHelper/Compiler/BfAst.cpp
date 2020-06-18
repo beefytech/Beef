@@ -196,6 +196,11 @@ void BfStructuralVisitor::Visit(BfSizedArrayCreateExpression* createExpr)
 	Visit(createExpr->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfInitializerExpression* initExpr)
+{
+	Visit(initExpr->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfCollectionInitializerExpression* collectionInitExpr)
 {
 	Visit(collectionInitExpr->ToBase());
