@@ -213,7 +213,7 @@ namespace IDE.ui
 		{
 			var fixedPath = scope String(path);
 			IDEUtils.MakeComparableFilePath(fixedPath);
-			if (sTimeCache.TryGetValue(fixedPath, var key, var value))
+			if (sTimeCache.TryGet(fixedPath, var key, var value))
 			{
 				value.mCheckedTime = default;
 			}

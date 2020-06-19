@@ -151,6 +151,11 @@ namespace System.Collections
             return Insert(key, false, out keyPtr, out valuePtr, null);
 		}
 
+		public bool TryAddAlt<TAltKey>(TAltKey key, out TKey* keyPtr, out TValue* valuePtr) where TAltKey : IOpEquals<TKey>, IHashable
+		{
+		    return InsertAlt(key, false, out keyPtr, out valuePtr, null);
+		}
+
 		protected virtual (Entry*, int_cosize*) Alloc(int size)
 		{
 			int byteSize = size * (strideof(Entry) + sizeof(int_cosize));
@@ -246,6 +251,11 @@ namespace System.Collections
 			return FindEntry(key) >= 0;
 		}
 
+		public bool ContainsKeyAlt<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
+		{
+			return FindEntryAlt(key) >= 0;
+		}
+
 		public bool ContainsValue(TValue value)
 		{
 			if (value == null)
@@ -309,8 +319,8 @@ namespace System.Collections
 		{
 			if (mBuckets != null)
 			{
-				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
-				for (int_cosize i = mBuckets[hashCode % mAllocSize]; i >= 0; i = mEntries[i].mNext)
+				int hashCode = key.GetHashCode() & 0x7FFFFFFF;
+				for (int i = mBuckets[hashCode % mAllocSize]; i >= 0; i = mEntries[i].mNext)
 				{
 					if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key)) return i;
 				}
@@ -323,7 +333,7 @@ namespace System.Collections
 			return key == key2;
 		}
 
-		private int FindEntryWith<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
+		private int FindEntryAlt<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
 		{
 			if (mBuckets != null)
 			{
@@ -453,6 +463,61 @@ namespace System.Collections
 			return true;
         }
 
+		private bool InsertAlt<TAltKey>(TAltKey key, bool add, out TKey* keyPtr, out TValue* valuePtr, Entry** outOldData) where TAltKey : IOpEquals<TKey>, IHashable
+		{
+			if (mBuckets == null) Initialize(0);
+			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
+			int_cosize targetBucket = hashCode % (int_cosize)mAllocSize;
+			for (int_cosize i = mBuckets[targetBucket]; i >= 0; i = mEntries[i].mNext)
+			{
+				if (mEntries[i].mHashCode == hashCode && (mEntries[i].mKey == key))
+				{
+					if (add)
+					{
+						Runtime.FatalError("Adding duplicate entry");
+					}
+					keyPtr = &mEntries[i].mKey;
+					valuePtr = &mEntries[i].mValue;
+					if (outOldData != null)
+						*outOldData = null;
+					return false;
+				} 
+		    }
+			int_cosize index;
+			Entry* oldData = null;
+			if (mFreeCount > 0)
+			{
+				index = mFreeList;
+				mFreeList = mEntries[index].mNext;
+				mFreeCount--;
+			}
+			else
+			{
+				if (mCount == mAllocSize)
+				{
+					oldData = Resize(false);
+					targetBucket = hashCode % (int_cosize)mAllocSize;
+				}
+				index = mCount;
+				mCount++;
+			}
+
+			mEntries[index].mHashCode = hashCode;
+			mEntries[index].mNext = mBuckets[targetBucket];
+			mBuckets[targetBucket] = index;
+#if VERSION_DICTIONARY
+			mVersion++;
+#endif
+
+			keyPtr = &mEntries[index].mKey;
+			valuePtr = &mEntries[index].mValue;
+			if (outOldData != null)
+				*outOldData = oldData;
+			else
+				Free(oldData);
+			return true;
+		}
+
 		// Close to prime but faster to compute
 		int_cosize GetPrimeish(int_cosize min)
 		{
@@ -513,18 +578,48 @@ namespace System.Collections
 
 		public bool Remove(TKey key)
 		{
-			if (key == null)
-			{
-				ThrowUnimplemented();
-				//ThrowHelper.ThrowArgumentNullException(ExceptionArgument.key);
-			}
-
 			if (mBuckets != null)
 			{
-				
-				int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
-				int_cosize bucket = hashCode % (int_cosize)mAllocSize;
-				int_cosize last = -1;
+				int hashCode = key.GetHashCode() & 0x7FFFFFFF;
+				int bucket = hashCode % (int_cosize)mAllocSize;
+				int last = -1;
+				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
+				{
+					if ((mEntries[i].mHashCode == hashCode) && (mEntries[i].mKey == key))
+					{
+						if (last < 0)
+						{
+							mBuckets[bucket] = mEntries[i].mNext;
+						}
+						else
+						{
+							mEntries[last].mNext = mEntries[i].mNext;
+						}
+						mEntries[i].mHashCode = -1;
+						mEntries[i].mNext = mFreeList;
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+						mEntries[i].mKey = default;
+						mEntries[i].mValue = default;
+#endif
+						mFreeList = i;
+						mFreeCount++;
+#if VERSION_DICTIONARY
+						mVersion++;
+#endif
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		public bool RemoveAlt<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
+		{
+			if (mBuckets != null)
+			{
+				int hashCode = key.GetHashCode() & 0x7FFFFFFF;
+				int bucket = hashCode % (int_cosize)mAllocSize;
+				int last = -1;
 				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
 				{
 					if ((mEntries[i].mHashCode == hashCode) && (mEntries[i].mKey == key))
@@ -602,6 +697,47 @@ namespace System.Collections
 			return .Err;
 		}
 
+		public Result<(TKey key, TValue value)> GetAndRemoveAlt<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
+		{
+			if (mBuckets != null)
+			{
+				
+				int_cosize hashCode = (int_cosize)key.GetHashCode() & 0x7FFFFFFF;
+				int_cosize bucket = hashCode % (int_cosize)mAllocSize;
+				int_cosize last = -1;
+				for (int_cosize i = mBuckets[bucket]; i >= 0; last = i,i = mEntries[i].mNext)
+				{
+					if ((mEntries[i].mHashCode == hashCode) && (mEntries[i].mKey == key))
+					{
+						if (last < 0)
+						{
+							mBuckets[bucket] = mEntries[i].mNext;
+						}
+						else
+						{
+							mEntries[last].mNext = mEntries[i].mNext;
+						}
+						TKey entryKey = mEntries[i].mKey;
+						TValue result = mEntries[i].mValue;
+
+						mEntries[i].mHashCode = -1;
+						mEntries[i].mNext = mFreeList;
+#if BF_ENABLE_REALTIME_LEAK_CHECK
+						mEntries[i].mKey = default(TKey);
+						mEntries[i].mValue = default(TValue);
+#endif
+						mFreeList = i;
+						mFreeCount++;
+#if VERSION_DICTIONARY
+						mVersion++;
+#endif
+						return .Ok((entryKey, result));
+					}
+				}
+			}
+			return .Err;
+		}
+
 		public bool TryGetValue(TKey key, out TValue value)
 		{
 			int_cosize i = (int_cosize)FindEntry(key);
@@ -614,7 +750,7 @@ namespace System.Collections
 			return false;
 		}
 
-		public bool TryGetValue(TKey key, out TKey matchKey, out TValue value)
+		public bool TryGet(TKey key, out TKey matchKey, out TValue value)
 		{
 			int_cosize i = (int_cosize)FindEntry(key);
 			if (i >= 0)
@@ -628,9 +764,9 @@ namespace System.Collections
 			return false;
 		}
 
-		public bool TryGetWith<TAltKey>(TAltKey key, out TKey matchKey, out TValue value) where TAltKey : IOpEquals<TKey>, IHashable
+		public bool TryGetAlt<TAltKey>(TAltKey key, out TKey matchKey, out TValue value) where TAltKey : IOpEquals<TKey>, IHashable
 		{
-			int_cosize i = (int_cosize)FindEntryWith(key);
+			int_cosize i = (int_cosize)FindEntryAlt(key);
 			if (i >= 0)
 			{
 				matchKey = mEntries[i].mKey;
@@ -650,16 +786,6 @@ namespace System.Collections
 				return mEntries[i].mValue;
 			}
 			return default(TValue);
-		}
-
-		private static bool IsCompatibleKey(Object key)
-		{
-			if (key == null)
-			{
-				ThrowUnimplemented();
-				//ThrowHelper.ThrowArgumentNullException(ExceptionArgument.key);
-			}
-			return (key is TKey);
 		}
 
 		public struct Enumerator : IEnumerator<KeyValuePair>, IRefEnumerator<KeyRefValuePair>

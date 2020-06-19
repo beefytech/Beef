@@ -533,7 +533,7 @@ namespace IDE
             {
                 DepInfo depInfo;
 				String outKey;
-                if (!mWatchedFiles.TryGetValue(fixedFilePath, out outKey, out depInfo))
+                if (!mWatchedFiles.TryGet(fixedFilePath, out outKey, out depInfo))
 					return;
                 depInfo.mDependentObjects.Remove(dependentObject);
 
@@ -545,7 +545,7 @@ namespace IDE
                     Path.GetDirectoryPath(fixedFilePath, directoryName);
                     WatcherEntry watcherEntry = null;
 					String key;
-                    mWatchers.TryGetValue(directoryName, out key, out watcherEntry);
+                    mWatchers.TryGet(directoryName, out key, out watcherEntry);
 
 					DerefWatcherEntry(watcherEntry);
                     

@@ -353,6 +353,11 @@ namespace System.Collections
 			}
 		}
 
+		public bool ContainsAlt<TAlt>(TAlt item) where TAlt : IOpEquals<T>, IHashable
+		{
+			return IndexOfAlt(item) != -1;
+		}
+
 		public void CopyTo(T[] array)
 		{
 			CopyTo(array, 0);
@@ -456,6 +461,14 @@ namespace System.Collections
 		{
 			for (int i = index; i < index + count; i++)
 				if (mItems[i] === item)
+					return i;
+			return -1;
+		}
+
+		public int IndexOfAlt<TAlt>(TAlt item) where TAlt : IOpEquals<T>, IHashable
+		{
+			for (int i = 0; i < mSize; i++)
+				if (mItems[i] == item)
 					return i;
 			return -1;
 		}
@@ -621,9 +634,34 @@ namespace System.Collections
 			return false;
 		}
 
+		public bool RemoveAlt<TAlt>(TAlt item) where TAlt : IOpEquals<T>, IHashable
+		{
+			int index = IndexOfAlt(item);
+			if (index >= 0)
+			{
+				RemoveAt(index);
+				return true;
+			}
+
+			return false;
+		}
+
 		public Result<T> GetAndRemove(T item)
 		{
 			int index = IndexOf(item);
+			if (index >= 0)
+			{
+				T val = mItems[index];
+				RemoveAt(index);
+				return val;
+			}
+
+			return .Err;
+		}
+
+		public Result<T> GetAndRemoveAlt<TAlt>(TAlt item) where TAlt : IOpEquals<T>, IHashable
+		{
+			int index = IndexOfAlt(item);
 			if (index >= 0)
 			{
 				T val = mItems[index];

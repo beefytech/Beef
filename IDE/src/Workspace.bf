@@ -766,7 +766,7 @@ namespace IDE
 				}
 			}
 
-            if (mProjectNameMap.TryGetWith(projectName, var matchKey, var value))
+            if (mProjectNameMap.TryGetAlt(projectName, var matchKey, var value))
 			{
 				return value;
 			}
