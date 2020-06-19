@@ -6428,8 +6428,7 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 				if (argValue)
 				{
 					// argValue can have a value even if tuplePtr does not have a value. This can happen if we are assigning to a (void) tuple,
-					//  but we have a value that needs to be attempted to be casted to void
-										
+					//  but we have a value that needs to be attempted to be casted to void					
 					argValue = mModule->Cast(argValues.mResolvedArgs[tupleFieldIdx].mExpression, argValue, resolvedFieldType);
 					if (tupleFieldPtr)
 					{
@@ -11415,11 +11414,14 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 				break;
 			}
 			capturedValue = capturedTypedVal.mValue;
-
+			
 			if (capturedValue)
 			{
-				auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mResult.mValue, 0, fieldInstance->mDataIdx);
-				mModule->mBfIRBuilder->CreateStore(capturedValue, fieldPtr);
+				if (!capturedTypedVal.mType->IsVar())
+				{
+					auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mResult.mValue, 0, fieldInstance->mDataIdx);
+					mModule->mBfIRBuilder->CreateStore(capturedValue, fieldPtr);
+				}
 			}
 			else
 			{
@@ -14638,9 +14640,17 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 			auto propTypeInst = mPropTarget.mType->ToTypeInstance();
 			auto rawMethodInstance = mModule->GetRawMethodInstance(propTypeInst, methodDef);
 
-			auto useTypeInst = mOrigPropTarget.mType->ToTypeInstance();			
-			auto virtualMethod = (BfMethodInstance*)useTypeInst->mVirtualMethodTable[rawMethodInstance->mVirtualTableIdx].mImplementingMethod;
-			return mModule->ReferenceExternalMethodInstance(virtualMethod);
+			BF_ASSERT(rawMethodInstance->mVirtualTableIdx != -1);
+			if (rawMethodInstance->mVirtualTableIdx == -1)
+			{
+				mModule->Fail(StrFormat("Failed to devirtualize %s", mModule->MethodToString(rawMethodInstance).c_str()));
+			}
+			else
+			{
+				auto useTypeInst = mOrigPropTarget.mType->ToTypeInstance();
+				auto virtualMethod = (BfMethodInstance*)useTypeInst->mVirtualMethodTable[rawMethodInstance->mVirtualTableIdx].mImplementingMethod;
+				return mModule->ReferenceExternalMethodInstance(virtualMethod);
+			}
 		}
 	}
 	

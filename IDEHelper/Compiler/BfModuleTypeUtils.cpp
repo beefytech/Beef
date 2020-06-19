@@ -10224,6 +10224,7 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 							if (!castedElementVal)
 								return BfTypedValue();
 							auto fieldRef = mBfIRBuilder->CreateInBoundsGEP(curTupleValue, 0, toFieldInstance->mDataIdx);
+							castedElementVal = LoadValue(castedElementVal);
 							mBfIRBuilder->CreateStore(castedElementVal.mValue, fieldRef);
 						}
 						else
