@@ -1147,22 +1147,21 @@ BF_EXPORT void BF_CALLTYPE Debugger_Update()
 		gDebugger->Update();
 }
 
-BF_EXPORT void BF_CALLTYPE Debugger_SetDisplayTypes(const char* referenceId, int8 intDisplayType, int8 mmDisplayType)
+BF_EXPORT void BF_CALLTYPE Debugger_SetDisplayTypes(const char* referenceId, int8 intDisplayType, int8 mmDisplayType, int8 floatDisplayType)
 {
 	DwDisplayInfo displayInfo;
 	displayInfo.mIntDisplayType = (DwIntDisplayType)intDisplayType;
 	displayInfo.mMmDisplayType = (DwMmDisplayType)mmDisplayType;
+	displayInfo.mFloatDisplayType = (DwFloatDisplayType)floatDisplayType;
 
 	if (referenceId == NULL)
 	{
 		gDebugManager->mDefaultDisplayInfo = displayInfo;
 	}
 	else if ((displayInfo.mIntDisplayType == DwIntDisplayType_Default) &&
-		(displayInfo.mMmDisplayType == DwMmDisplayType_Default))
+		(displayInfo.mMmDisplayType == DwMmDisplayType_Default) &&
+		(displayInfo.mFloatDisplayType == DwFloatDisplayType_Default))
 	{
-		/*auto itr = gDebugManager->mDisplayInfos.find(referenceId);
-		if (itr != gDebugManager->mDisplayInfos.end())
-			gDebugManager->mDisplayInfos.erase(itr);*/
 		gDebugManager->mDisplayInfos.Remove(referenceId);
 	}
 	else
@@ -1171,7 +1170,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_SetDisplayTypes(const char* referenceId, int
 	}
 }
 
-BF_EXPORT bool BF_CALLTYPE Debugger_GetDisplayTypes(const char* referenceId, int8* intDisplayType, int8* mmDisplayType)
+BF_EXPORT bool BF_CALLTYPE Debugger_GetDisplayTypes(const char* referenceId, int8* intDisplayType, int8* mmDisplayType, int8* floatDisplayType)
 {
 	bool foundSpecific = false;
 	DwDisplayInfo* displayInfo = &gDebugManager->mDefaultDisplayInfo;
@@ -1190,8 +1189,9 @@ BF_EXPORT bool BF_CALLTYPE Debugger_GetDisplayTypes(const char* referenceId, int
 		}
 	}
 
-	*intDisplayType = (int)displayInfo->mIntDisplayType;
-	*mmDisplayType = (int)displayInfo->mMmDisplayType;
+	*intDisplayType = (int8)displayInfo->mIntDisplayType;
+	*mmDisplayType = (int8)displayInfo->mMmDisplayType;
+	*floatDisplayType = (int8)displayInfo->mFloatDisplayType;
 	return foundSpecific;
 }
 

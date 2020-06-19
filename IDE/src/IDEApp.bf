@@ -1770,11 +1770,13 @@ namespace IDE
 			        {
 			            DebugManager.IntDisplayType intDisplayType;
 			            DebugManager.MmDisplayType mmDisplayType;
-			            mDebugger.GetDisplayTypes(referenceId, out intDisplayType, out mmDisplayType);
+						DebugManager.FloatDisplayType floatDisplayType;
+			            mDebugger.GetDisplayTypes(referenceId, out intDisplayType, out mmDisplayType, out floatDisplayType);
 			            using (sd.CreateObject(referenceId))
 			            {
-			                sd.Add("IntDisplayType", intDisplayType);
-			                sd.Add("MmDisplayType", mmDisplayType);
+			                sd.ConditionalAdd("IntDisplayType", intDisplayType);
+			                sd.ConditionalAdd("MmDisplayType", mmDisplayType);
+							sd.ConditionalAdd("FloatDisplayType", floatDisplayType);
 			            }
 			        }
 			    }
@@ -2947,8 +2949,9 @@ namespace IDE
 		            referenceIdStr = null;
 			        
 	            var intDisplayType = data.GetEnum<DebugManager.IntDisplayType>("IntDisplayType");
-	            var mmDisplayType = data.GetEnum<DebugManager.MmDisplayType>("MmDisplayType");                        
-	            mDebugger.SetDisplayTypes(referenceIdStr, intDisplayType, mmDisplayType);
+	            var mmDisplayType = data.GetEnum<DebugManager.MmDisplayType>("MmDisplayType");
+				var floatDisplayType = data.GetEnum<DebugManager.FloatDisplayType>("FloatDisplayType");
+	            mDebugger.SetDisplayTypes(referenceIdStr, intDisplayType, mmDisplayType, floatDisplayType);
 			}
 
 			for (data.Enumerate("StepFilters"))
@@ -5757,7 +5760,7 @@ namespace IDE
 
 				String outKey;
 				FileEditData editData;
-				if (mFileEditData.TryGetValue(oldFixedFilePath, out outKey, out editData))
+				if (mFileEditData.TryGet(oldFixedFilePath, out outKey, out editData))
 				{
 					mFileEditData.Remove(oldFixedFilePath);
 					delete outKey;
@@ -7023,7 +7026,7 @@ namespace IDE
 
 			KeyState matchedKey;
 			IDECommandBase commandBase;
-			if (curKeyMap.mMap.TryGetValue(keyState, out matchedKey, out commandBase))
+			if (curKeyMap.mMap.TryGet(keyState, out matchedKey, out commandBase))
 			{
 				if (var commandMap = commandBase as CommandMap)
 				{

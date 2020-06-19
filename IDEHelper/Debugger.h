@@ -86,6 +86,16 @@ enum DwIntDisplayType : int8
 	DwIntDisplayType_HexadecimalLower,
 };
 
+enum DwFloatDisplayType : int8
+{
+	DwFloatDisplayType_Default,
+	DwFloatDisplayType_Minimal,
+	DwFloatDisplayType_Full,	
+	DwFloatDisplayType_HexUpper,
+
+	DwFloatDisplayType_HexLower,
+};
+
 enum DwMmDisplayType : int8
 {
 	DwMmDisplayType_Default,
@@ -116,11 +126,13 @@ struct DwDisplayInfo
 {
 	DwIntDisplayType mIntDisplayType;
 	DwMmDisplayType mMmDisplayType;
+	DwFloatDisplayType mFloatDisplayType;
 
 	DwDisplayInfo()
 	{
 		mIntDisplayType = DwIntDisplayType_Default;
 		mMmDisplayType = DwMmDisplayType_Default;
+		mFloatDisplayType = DwFloatDisplayType_Default;
 	}
 };
 

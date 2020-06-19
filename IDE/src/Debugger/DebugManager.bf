@@ -37,6 +37,15 @@ namespace IDE.Debugger
 			COUNT
 		}
 
+		public enum FloatDisplayType
+		{
+			Default,
+			Minimal,
+			Full,
+			Hexadecimal,
+			COUNT
+		}
+
 		public enum StringDisplayType
 		{
 			Default,
@@ -190,10 +199,10 @@ namespace IDE.Debugger
 		static extern void* Debugger_CreateStepFilter(char8* filter, bool isGlobal, StepFilterKind stepFilterKind);
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern void Debugger_SetDisplayTypes(char8* referenceId, IntDisplayType intDisplayType, MmDisplayType mmDisplayType);
+		static extern void Debugger_SetDisplayTypes(char8* referenceId, IntDisplayType intDisplayType, MmDisplayType mmDisplayType, FloatDisplayType floatDisplayType);
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern bool Debugger_GetDisplayTypes(char8* referenceId, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType);
+		static extern bool Debugger_GetDisplayTypes(char8* referenceId, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType, out FloatDisplayType floatDisplayType);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetDisplayTypeNames();
@@ -1033,14 +1042,14 @@ namespace IDE.Debugger
 			Debugger_WriteMemory(addr, size, data.CArray());
 		}
 
-		public void SetDisplayTypes(String referenceId, IntDisplayType intDisplayType, MmDisplayType mmDisplayType)
+		public void SetDisplayTypes(String referenceId, IntDisplayType intDisplayType, MmDisplayType mmDisplayType, FloatDisplayType floatDisplayType)
 		{
-			Debugger_SetDisplayTypes(referenceId, intDisplayType, mmDisplayType);
+			Debugger_SetDisplayTypes(referenceId, intDisplayType, mmDisplayType, floatDisplayType);
 		}
 
-		public bool GetDisplayTypes(String referenceId, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType)
+		public bool GetDisplayTypes(String referenceId, out IntDisplayType intDisplayType, out MmDisplayType mmDisplayType, out FloatDisplayType floatDisplayType)
 		{
-			return Debugger_GetDisplayTypes(referenceId, out intDisplayType, out mmDisplayType);
+			return Debugger_GetDisplayTypes(referenceId, out intDisplayType, out mmDisplayType, out floatDisplayType);
 		}
 
 		public void GetDisplayTypeNames(String outDisplayTypeNames)

@@ -6963,13 +6963,35 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 		}
 		break;
 	case DbgType_Single:
-		{						
-			ExactMinimalFloatToStr(typedValue.mSingle, str);
+		{
+			DwFloatDisplayType floatDisplayType = displayInfo->mFloatDisplayType;
+			if (floatDisplayType == DwFloatDisplayType_Default)
+				floatDisplayType = DwFloatDisplayType_Minimal;
+			if (floatDisplayType == DwFloatDisplayType_Minimal)
+				ExactMinimalFloatToStr(typedValue.mSingle, str);
+			else if (floatDisplayType == DwFloatDisplayType_Full)
+				sprintf(str, "%1.9g", (float)typedValue.mDouble);
+			else if (floatDisplayType == DwFloatDisplayType_HexUpper)
+				sprintf(str, "0x%04X", typedValue.mUInt32);
+			else //if (floatDisplayType == DwFloatDisplayType_HexLower)
+				sprintf(str, "0x%04x", typedValue.mUInt32);
 			return StrFormat("%s\n%s", str, WrapWithModifiers("float", origValueType, language).c_str());
 		}
 	case DbgType_Double:				
-		ExactMinimalDoubleToStr(typedValue.mDouble, str);
-		return StrFormat("%s\n%s", str, WrapWithModifiers("double", origValueType, language).c_str());
+		{
+			DwFloatDisplayType floatDisplayType = displayInfo->mFloatDisplayType;
+			if (floatDisplayType == DwFloatDisplayType_Default)
+				floatDisplayType = DwFloatDisplayType_Minimal;
+			if (floatDisplayType == DwFloatDisplayType_Minimal)
+				ExactMinimalDoubleToStr(typedValue.mDouble, str);
+			else if (floatDisplayType == DwFloatDisplayType_Full)
+				sprintf(str, "%1.17g", typedValue.mDouble);
+			else if (floatDisplayType == DwFloatDisplayType_HexUpper)
+				sprintf(str, "0x%08llX", typedValue.mUInt64);
+			else //if (floatDisplayType == DwFloatDisplayType_HexLower)
+				sprintf(str, "0x%08llx", typedValue.mUInt64);
+			return StrFormat("%s\n%s", str, WrapWithModifiers("double", origValueType, language).c_str());
+		}
 	case DbgType_Subroutine:
 		if (typedValue.mCharPtr != NULL)
 			return StrFormat("%s\nfunc", typedValue.mCharPtr);
@@ -9170,6 +9192,8 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 			val += "\n:type\tpointer";
 		else if (checkType->IsInteger())
 			val += "\n:type\tint";
+		else if (checkType->IsFloat())
+			val += "\n:type\tfloat";
 		else if ((exprResult.mRegNum >= X64Reg_M128_XMM0) && (exprResult.mRegNum <= X64Reg_M128_XMM15))
 			val += "\n:type\tmm128";
 		else

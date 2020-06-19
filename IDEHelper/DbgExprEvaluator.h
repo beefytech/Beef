@@ -39,7 +39,7 @@ public:
 		int32 mInt32;
 		uint32 mUInt32;
 		int64 mInt64;
-		int64 mUInt64;
+		uint64 mUInt64;
 		float mSingle;
 		double mDouble;
 		const char* mCharPtr;

@@ -19,13 +19,14 @@ namespace IDE.ui
         None   		= 0,
         Value  		= 1,
         Int 		= 2,
-        MM128 		= 4,
-        Object 		= 8,
-        Pointer 	= 0x10,
-        TypeClass 	= 0x20,
-        TypeValueType = 0x40,
-        Namespace 	= 0x80,
-        Text 		= 0x100
+		Float		= 4,
+        MM128 		= 8,
+        Object 		= 0x10,
+        Pointer 	= 0x20,
+        TypeClass 	= 0x40,
+        TypeValueType = 0x80,
+        Namespace 	= 0x100,
+        Text 		= 0x200
     }
 
     public class WatchEntry
@@ -70,41 +71,44 @@ namespace IDE.ui
         {
             switch (scope String(cmd[0]))
             {
-                case ":type":
-                    switch (scope String(cmd[1]))
-                    {
-                        case "object":
-                            mResultType |= WatchResultType.Object;
-                            return true;
-                        case "pointer":
-                            mResultType |= WatchResultType.Pointer;
-                            return true;
-                        case "class":
-                            mResultType |= WatchResultType.TypeClass;
-                            return true;
-                        case "valuetype":
-                            mResultType |= WatchResultType.TypeValueType;
-                            return true;
-                        case "namespace":
-                            mResultType |= WatchResultType.Namespace;
-                            return true;
-                        case "int":
-                            mResultType |= WatchResultType.Int;
-                            return true;
-                        case "mm128":
-                            mResultType |= WatchResultType.MM128;
-                            return true;
-                    }
-                    break;
-                case ":appendAlloc":
-                    mIsAppendAlloc = true;
+            case ":type":
+                switch (scope String(cmd[1]))
+                {
+                case "object":
+                    mResultType |= WatchResultType.Object;
                     return true;
-                case ":stack":
-                    mIsStackAlloc = true;
-                    return true;                
-                case ":deleted":
-                    mIsDeleted = true;
+                case "pointer":
+                    mResultType |= WatchResultType.Pointer;
                     return true;
+                case "class":
+                    mResultType |= WatchResultType.TypeClass;
+                    return true;
+                case "valuetype":
+                    mResultType |= WatchResultType.TypeValueType;
+                    return true;
+                case "namespace":
+                    mResultType |= WatchResultType.Namespace;
+                    return true;
+                case "int":
+                    mResultType |= WatchResultType.Int;
+                    return true;
+				case "float":
+					mResultType |= WatchResultType.Float;
+					return true;
+                case "mm128":
+                    mResultType |= WatchResultType.MM128;
+                    return true;
+                }
+                break;
+            case ":appendAlloc":
+                mIsAppendAlloc = true;
+                return true;
+            case ":stack":
+                mIsStackAlloc = true;
+                return true;                
+            case ":deleted":
+                mIsDeleted = true;
+                return true;
             }
 
             return false;
@@ -2626,34 +2630,32 @@ namespace IDE.ui
             menuItem.mOnMenuItemSelected.Add(new (imenu) => action()  ~ { delete action; });			
         }
 
-        public static void SetDisplayType(String referenceId, DebugManager.IntDisplayType intDisplayType, DebugManager.MmDisplayType mmDisplayType)
+        public static void SetDisplayType(String referenceId, DebugManager.IntDisplayType intDisplayType, DebugManager.MmDisplayType mmDisplayType, DebugManager.FloatDisplayType floatDisplayType)
         {
-            var debugger = IDEApp.sApp.mDebugger;
-            debugger.SetDisplayTypes(referenceId, intDisplayType, mmDisplayType);
-            IDEApp.sApp.RefreshWatches();
+            gApp.mDebugger.SetDisplayTypes(referenceId, intDisplayType, mmDisplayType, floatDisplayType);
+            gApp.RefreshWatches();
         }
 
         public static bool AddDisplayTypeMenu(String label, Menu menu, WatchResultType watchResultType, String referenceId, bool includeDefault)
         {
             bool hasInt = watchResultType.HasFlag(WatchResultType.Int);
+			bool hasFloat = watchResultType.HasFlag(WatchResultType.Float);
             bool hasMM128 = watchResultType.HasFlag(WatchResultType.MM128);
-            bool canSetFormat = hasInt || hasMM128;
+            bool canSetFormat = hasInt || hasFloat || hasMM128;
 
             var debugger = IDEApp.sApp.mDebugger;
-            DebugManager.IntDisplayType intDisplayType;
-            DebugManager.MmDisplayType mmDisplayType;
-            bool foundSpecific = debugger.GetDisplayTypes(referenceId, out intDisplayType, out mmDisplayType);
+            bool foundSpecific = debugger.GetDisplayTypes(referenceId, var intDisplayType, var mmDisplayType, var floatDisplayType);
             if ((referenceId != null) && (!foundSpecific))
             {
-                intDisplayType = DebugManager.IntDisplayType.Default;
-                mmDisplayType = DebugManager.MmDisplayType.Default;
+                intDisplayType = .Default;
+                mmDisplayType = .Default;
+				floatDisplayType = .Default;
             }
 
             if (!canSetFormat)
                 return false;
             
             Menu parentItem = menu.AddItem(label);                                
-            //anItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
             if (hasInt)
             {
                 for (DebugManager.IntDisplayType i = default; i < DebugManager.IntDisplayType.COUNT; i++)
@@ -2667,9 +2669,26 @@ namespace IDE.ui
 
                     var toType = i;
                     AddSelectableMenuItem(parentItem, ToStackString!(i), intDisplayType == i, 
-                        new () => SetDisplayType(referenceId, toType, mmDisplayType));
+                        new () => SetDisplayType(referenceId, toType, mmDisplayType, floatDisplayType));
                 }
             }
+
+			if (hasFloat)
+			{
+				for (DebugManager.FloatDisplayType i = default; i < DebugManager.FloatDisplayType.COUNT; i++)
+				{
+				    if ((i == 0) && (!includeDefault))
+				    {
+				        if (floatDisplayType == 0)
+				            floatDisplayType = DebugManager.FloatDisplayType.Minimal;
+				        continue;
+				    }
+
+				    var toType = i;
+				    AddSelectableMenuItem(parentItem, ToStackString!(i), floatDisplayType == i, 
+				        new () => SetDisplayType(referenceId, intDisplayType, mmDisplayType, toType));
+				}
+			}
 
             if (hasMM128)
             {
@@ -2677,7 +2696,7 @@ namespace IDE.ui
                 {                    
                     var toType = i;
                     AddSelectableMenuItem(parentItem, ToStackString!(i), mmDisplayType == i,
-                        new () => SetDisplayType(referenceId, intDisplayType, toType));
+                        new () => SetDisplayType(referenceId, intDisplayType, toType, floatDisplayType));
                 }
             }
             return true;
