@@ -6836,6 +6836,52 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			return false;
 		}
 	}
+	
+	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Delete) != 0)
+	{
+		bool canDelete = false;
+		if (checkArgType->IsPointer())		
+			canDelete = true;		
+		else if (checkArgType->IsObjectOrInterface())
+			canDelete = true;
+
+		if (!canDelete)
+		{
+			if (!ignoreErrors)
+				*errorOut = Fail(StrFormat("The type '%s' must be a deletable type in order to use it as parameter '%s' for '%s'",
+					_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+			return false;
+		}
+	}
+
+	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) != 0)
+	{
+		bool canAlloc = false;
+		if (auto checkTypeInst = checkArgType->ToTypeInstance())
+		{
+			if (checkTypeInst->IsObjectOrStruct())
+			{
+				auto ctorClear = GetRawMethodByName(checkTypeInst, "__BfCtor", 0);
+				if (ctorClear->mMethodDef->mProtection == BfProtection_Public)
+					canAlloc = true;
+				else if ((ctorClear->mMethodDef->mProtection == BfProtection_Protected) && (mCurTypeInstance != NULL))
+					canAlloc = TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst, false);
+			}
+		}
+		else
+		{
+			// Any primitive types and stuff can be allocated
+			canAlloc = true;
+		}
+		
+		if (!canAlloc)
+		{
+			if (!ignoreErrors)
+				*errorOut = Fail(StrFormat("The type '%s' must have an accessible default constructor in order to use it as parameter '%s' for '%s'",
+					_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+			return false;
+		}
+	}
 
 	if ((genericParamInst->mInterfaceConstraints.IsEmpty()) && (genericParamInst->mOperatorConstraints.IsEmpty()) && (genericParamInst->mTypeConstraint == NULL))
 		return true;
@@ -12100,6 +12146,12 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(declareModule->mCurMethodInstance, methodInstance);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(declareModule->mCurTypeInstance, typeInst);
 	SetAndRestoreValue<BfFilePosition> prevFilePos(declareModule->mCurFilePosition);
+
+	if ((methodDef->mMethodType == BfMethodType_Mixin) && (methodDef->mGenericParams.size() != 0) && (!isUnspecializedPass))
+	{
+		// For mixins we only process the unspecialized version
+		addToWorkList = false;
+	}
 
 	declareModule->DoMethodDeclaration(methodDef->GetMethodDeclaration(), false, addToWorkList);
 	

@@ -13286,6 +13286,31 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		return;
 	auto methodInstance = moduleMethodInstance.mMethodInstance;
 
+	for (int checkGenericIdx = 0; checkGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size(); checkGenericIdx++)
+	{
+		auto& genericParams = methodInstance->mMethodInfoEx->mGenericParams;
+		auto genericArg = methodMatcher.mBestMethodGenericArguments[checkGenericIdx];
+		if (genericArg->IsVar())
+			continue;
+
+		BfAstNode* paramSrc;
+		if (methodMatcher.mBestMethodGenericArgumentSrcs.size() == 0)		
+			paramSrc = targetSrc;		
+		else
+			paramSrc = methodMatcher.mArguments[methodMatcher.mBestMethodGenericArgumentSrcs[checkGenericIdx]].mExpression;
+
+		// Note: don't pass methodMatcher.mBestMethodGenericArguments into here, this method is already specialized
+		BfError* error = NULL;
+		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, paramSrc, genericParams[checkGenericIdx], NULL, &error))
+		{			
+			if (methodInstance->mMethodDef->mMethodDeclaration != NULL)
+			{
+				if (error != NULL)
+					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
+			}
+		}
+	}
+
 	// Check circular ref based on methodInstance
  	{
  		bool hasCircularRef = false;
