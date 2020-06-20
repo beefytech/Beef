@@ -1782,7 +1782,7 @@ namespace System
 		public static void NumberToString (StringView format, double value, IFormatProvider fp, String outString)
 		{
 			NumberFormatter inst = GetInstance!(fp);
-			inst.Init (format, value, SingleDefPrecision);
+			inst.Init (format, value, DoubleDefPrecision);
 			NumberFormatInfo nfi = inst.GetNumberFormatInstance(fp);
 			if (inst._NaN)
 				outString.Append(nfi.NaNSymbol);
