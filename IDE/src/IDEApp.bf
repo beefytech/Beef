@@ -8921,7 +8921,7 @@ namespace IDE
 								if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
 									(project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
 									(project.mGeneralOptions.mTargetType == .BeefDynLib) ||
-									((options.mBuildOptions.mBuildKind == .Test) && (project == mWorkspace.mStartupProject)))
+									(options.mBuildOptions.mBuildKind == .Test))
 								{
 									let platformType = Workspace.PlatformType.GetFromName(platformName);
 									String rtName = scope String();
