@@ -15098,6 +15098,9 @@ bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
 	if (checkNode == NULL)
 		return false;
 
+	if (!checkNode->Equals("base"))
+		return false;
+
 	auto autoComplete = GetAutoComplete();
 	if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(checkNode)))
 	{
@@ -15105,7 +15108,7 @@ bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
 			autoComplete->SetDefinitionLocation(mModule->mCurTypeInstance->mBaseType->mTypeDef->GetRefNode());
 	}
 
-	return checkNode->Equals("base");
+	return true;
 }
 
 bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut)
