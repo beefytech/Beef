@@ -181,5 +181,8 @@ namespace System
 
 			data.Add(0);
 		}
+
+		[LinkName("exit")]
+		public static extern void Exit(int exitCode);
 	}
 }
