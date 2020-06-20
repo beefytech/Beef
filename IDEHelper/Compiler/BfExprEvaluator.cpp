@@ -14636,14 +14636,19 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 			}
 		}
 		else
-		{
+		{			
 			auto propTypeInst = mPropTarget.mType->ToTypeInstance();
+			mModule->PopulateType(propTypeInst, BfPopulateType_DataAndMethods);
 			auto rawMethodInstance = mModule->GetRawMethodInstance(propTypeInst, methodDef);
-
-			BF_ASSERT(rawMethodInstance->mVirtualTableIdx != -1);
+			
 			if (rawMethodInstance->mVirtualTableIdx == -1)
 			{
-				mModule->Fail(StrFormat("Failed to devirtualize %s", mModule->MethodToString(rawMethodInstance).c_str()));
+				if (!mModule->mCompiler->mIsResolveOnly)
+				{
+					// ResolveOnly does not force methods to slot 
+					BF_ASSERT(rawMethodInstance->mVirtualTableIdx != -1);
+					mModule->Fail(StrFormat("Failed to devirtualize %s", mModule->MethodToString(rawMethodInstance).c_str()));
+				}
 			}
 			else
 			{
