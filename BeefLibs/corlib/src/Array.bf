@@ -92,6 +92,25 @@ namespace System
 			return ~lo;
 		}
 
+		public static int BinarySearchAlt<T, TAlt>(T* arr, int length, TAlt value, delegate int(T lhs, TAlt rhs) comp)
+		{
+			int lo = 0;
+		    int hi = length - 1;
+			
+			while (lo <= hi)
+		    {
+		        int i = (lo + hi) / 2;
+				T midVal = arr[i];
+				int c = comp(midVal, value);
+		        if (c == 0) return i;
+		        if (c < 0)
+		            lo = i + 1;                    
+		        else
+		            hi = i - 1;
+			}
+			return ~lo;
+		}
+
 		public static int BinarySearch<T>(T[] arr, T value, delegate int(T lhs, T rhs) comp)
 		{
 			return BinarySearch(&arr.[Friend]GetRef(0), arr.mLength, value, comp);

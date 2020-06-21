@@ -689,6 +689,11 @@ namespace System.Collections
 			return Array.BinarySearch(mItems, Count, item, comparer);
 		}
 
+		public int BinarySearchAlt<TAlt>(TAlt item, delegate int(T lhs, TAlt rhs) comparer)
+		{
+			return Array.BinarySearchAlt(mItems, Count, item, comparer);
+		}
+
 		public int BinarySearch(int index, int count, T item, delegate int(T lhs, T rhs) comparer)
 		{
 			Debug.Assert((uint)index <= (uint)mSize);
