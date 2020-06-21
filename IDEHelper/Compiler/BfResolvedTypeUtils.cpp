@@ -397,7 +397,8 @@ static int gDelIdx = 0;
 
 BfType::~BfType()
 {	
-	BfLogSys(mContext->mSystem, "~BfType %p\n", this);
+	if (mContext != NULL)
+		BfLogSys(mContext->mSystem, "~BfType %p\n", this);
 
 	/*gDelIdx++;
 	auto typeInst = ToTypeInstance();
