@@ -10,6 +10,7 @@ using IDE.Debugger;
 using Beefy.theme.dark;
 using System.Threading;
 using System.Security.Cryptography;
+using IDE.Compiler;
 
 namespace IDE
 {
@@ -2342,6 +2343,29 @@ namespace IDE
 				mScriptManager.Fail("No active text panel");
 				return;
 			}
+
+			List<BfPassInstance.BfError> errorList = scope .();
+			bool hasErrors = false;
+			BfPassInstance.BfError FindError(int line)
+			{
+				if (!hasErrors)
+				{
+					for (var error in gApp.mErrorsPanel.mResolveErrors)
+					{
+						if (error.mFilePath == textPanel.mFilePath)
+						{
+							errorList.Add(error);
+							errorList.Sort(scope (lhs, rhs) => lhs.mLine - rhs.mLine);
+						}
+					}
+				}
+
+				int idx = errorList.BinarySearchAlt(line, scope (lhs, rhs) => lhs.mLine - line);
+				if (idx >= 0)
+					return errorList[idx];
+				return null;
+			}
+
 			var ewc = textPanel.EditWidget.mEditWidgetContent;
 
 			String lineText = scope String();
@@ -2359,8 +2383,27 @@ namespace IDE
 						hasError = true;
 				}
 
-				bool expectedError = lineText.Contains("//FAIL");
-				if (hasError != expectedError)
+				int failIdx = lineText.IndexOf("//FAIL");
+				bool expectedError = failIdx != -1;
+				if (hasError == expectedError)
+				{
+					if (expectedError)
+					{
+						String wantsError = scope String(lineText, failIdx + "//FAIL".Length);
+						wantsError.Trim();
+						if (!wantsError.IsEmpty)
+						{
+							bool foundErrorText = false;
+							if (var error = FindError(lineIdx))
+								foundErrorText = error.mError.Contains(wantsError);
+							if (!foundErrorText)
+							{
+								mScriptManager.Fail("Error at line {0} in {1} did not contain error text '{}'\n\t", lineIdx + 1, textPanel.mFilePath, wantsError);
+							}
+						}
+					}
+				}
+				else
 				{
 					if (hasError)
 						mScriptManager.Fail("Unexpected error at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
