@@ -1,3 +1,8 @@
+ShowFile("src/Generics.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
+
 ShowFile("src/Cases.bf")
 WaitForResolve()
 SleepTicks(20)
