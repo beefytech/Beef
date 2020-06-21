@@ -1252,6 +1252,7 @@ public:
 		bool isLocalToUnit, bool isDefinition, int scopeLine, int flags, bool isOptimized, BfIRValue fn);
 	BfIRMDNode DbgCreateParameterVariable(BfIRMDNode scope, const StringImpl& name, int argNo, BfIRMDNode file, int lineNum, BfIRMDNode type,
 		bool AlwaysPreserve = false, int flags = 0);
+	BfIRMDNode DbgCreateSubroutineType(BfMethodInstance* methodInstance);
 	BfIRMDNode DbgCreateSubroutineType(const BfSizedArray<BfIRMDNode>& elements);
 	BfIRMDNode DbgCreateAutoVariable(BfIRMDNode scope, const StringImpl& name, BfIRMDNode file, int lineNo, BfIRMDNode type, BfIRInitType initType = BfIRInitType_NotSet);
 	BfIRValue DbgInsertValueIntrinsic(BfIRValue val, BfIRMDNode varInfo);

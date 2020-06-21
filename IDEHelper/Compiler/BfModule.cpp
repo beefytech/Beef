@@ -12618,27 +12618,18 @@ void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 	}
 }
 
-BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
-{		
-	if ((localVarDef->mValue) && (!localVarDef->mAddr) && (IsTargetingBeefBackend()))
-	{
-		if ((!localVarDef->mValue.IsConst()) && (!localVarDef->mValue.IsArg()) && (!localVarDef->mValue.IsFake()))
-		{
-			mBfIRBuilder->CreateValueScopeRetain(localVarDef->mValue);
-			mCurMethodState->mCurScope->mHadScopeValueRetain = true;
-		}
-	}
-
-	if ((addDebugInfo) && (mBfIRBuilder->DbgHasInfo()) &&
-        ((mCurMethodInstance == NULL) || (!mCurMethodInstance->mIsUnspecialized)) &&
-        (mHasFullDebugInfo) && 
+void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
+{
+	if ((mBfIRBuilder->DbgHasInfo()) &&
+		((mCurMethodInstance == NULL) || (!mCurMethodInstance->mIsUnspecialized)) &&
+		(mHasFullDebugInfo) &&
 		((mCurMethodState->mClosureState == NULL) || (!mCurMethodState->mClosureState->mCapturing)))
 	{
 		auto varType = localVarDef->mResolvedType;
 
 		if (localVarDef->mResolvedType->IsValuelessType())
 		{
-			
+
 		}
 		else
 		{
@@ -12651,7 +12642,7 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 				diValue = localVarDef->mAddr;
 				isByAddr = true;
 			}
-			
+
 			auto diType = mBfIRBuilder->DbgGetType(localVarDef->mResolvedType);
 			bool didConstToMem = false;
 
@@ -12662,7 +12653,7 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 			else if (localVarDef->mConstValue)
 			{
 				auto constant = mBfIRBuilder->GetConstant(localVarDef->mConstValue);
-				isConstant = 
+				isConstant =
 					(constant->mConstType < BfConstType_GlobalVar) ||
 					(constant->mConstType == BfConstType_AggZero) ||
 					(constant->mConstType == BfConstType_Array);
@@ -12672,9 +12663,9 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 					{
 						mBfIRBuilder->PopulateType(localVarDef->mResolvedType);
 						auto constMem = mBfIRBuilder->ConstToMemory(localVarDef->mConstValue);
-												
+
 						if (IsTargetingBeefBackend())
-						{	
+						{
 							diValue = mBfIRBuilder->CreateAliasValue(constMem);
 							didConstToMem = true;
 
@@ -12698,14 +12689,14 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 
 							mBfIRBuilder->SetInsertPoint(prevBlock);
 							mBfIRBuilder->RestoreDebugLocation();
-						}						
+						}
 					}
 
 					if (mCompiler->mOptions.IsCodeView())
 						diType = mBfIRBuilder->DbgCreateConstType(diType);
-				}				
+				}
 			}
-						
+
 			if (!mBfIRBuilder->mIgnoreWrites)
 			{
 				auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
@@ -12737,9 +12728,24 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 					}
 				}
 			}
-		}		
+		}
+	}
+}
+
+BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
+{		
+	if ((localVarDef->mValue) && (!localVarDef->mAddr) && (IsTargetingBeefBackend()))
+	{
+		if ((!localVarDef->mValue.IsConst()) && (!localVarDef->mValue.IsArg()) && (!localVarDef->mValue.IsFake()))
+		{
+			mBfIRBuilder->CreateValueScopeRetain(localVarDef->mValue);
+			mCurMethodState->mCurScope->mHadScopeValueRetain = true;
+		}
 	}
 
+	if (addDebugInfo)
+		DoLocalVariableDebugInfo(localVarDef, doAliasValue, declareBefore, initType);
+	
 	localVarDef->mDeclBlock = mBfIRBuilder->GetInsertBlock();
 	DoAddLocalVariable(localVarDef);
 	

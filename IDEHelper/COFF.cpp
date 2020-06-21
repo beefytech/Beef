@@ -4325,6 +4325,27 @@ void COFF::FixupInlinee(DbgSubprogram* dbgSubprogram, uint32 ipiTag)
 			lfMFuncId* funcData = (lfMFuncId*)dataStart;
 			CvParseMethod(NULL, NULL, funcData->type, false, dbgSubprogram);			
 			dbgSubprogram->mName = (const char*)funcData->name;
+
+			if (dbgSubprogram->mName != NULL)
+			{
+				for (const char* cPtr = dbgSubprogram->mName + 1; true; cPtr++)
+				{
+					char c = *cPtr;
+					if (c == 0)
+						break;
+					// For removing the mangled name from the mixins
+					if (c == '?')
+					{
+						int nameLen = cPtr - dbgSubprogram->mName;
+						char* dupStr = (char*)mAlloc.AllocBytes(nameLen + 1);
+						memcpy(dupStr, dbgSubprogram->mName, nameLen);
+						dupStr[nameLen] = 0;
+						dbgSubprogram->mName = dupStr;
+						break;
+					}
+				}
+			}
+
 			FixSubprogramName(dbgSubprogram);
 
 			dbgSubprogram->mParentType = CvGetType(funcData->parentType);

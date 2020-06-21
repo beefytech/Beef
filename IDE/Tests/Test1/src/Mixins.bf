@@ -8,7 +8,17 @@ namespace IDETest
 	{
 		class ClassA
 		{
-			public String mStr;
+			public String mStr ~ delete _;
+
+			public mixin Zorf(int a)
+			{
+				a + mStr.Length
+			}
+
+			public mixin Zorf(int a, int b)
+			{
+				a + b + mStr.Length
+			}
 		}
 
 		public static mixin MixA(int a)
@@ -40,6 +50,10 @@ namespace IDETest
 			DeleteAndNullify!(ca.mStr);
 			int a = 123;
 			MixC!(1);
+
+			ca.mStr = new String("Zorpie");
+			int val = ca.Zorf!(100);
+			val = ca.Zorf!(200, 300);
 		}
 	}
 }

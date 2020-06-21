@@ -2693,38 +2693,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 			if (methodDef->mIsOverride)
 				continue;
 
-			llvm::SmallVector<BfIRMDNode, 8> diParams;
-			diParams.push_back(DbgGetType(methodInstance->mReturnType));
-
-			BfType* thisType = NULL;
-			if (!methodDef->mIsStatic)
-			{
-				BfType* thisType;
-				thisType = typeInstance;
-				if (!thisType->IsValuelessType())
-				{
- 					BfType* thisPtrType = thisType; 					
- 					auto diType = DbgGetType(thisPtrType);
-					if ((thisType->IsComposite()) && (!methodInstance->GetParamIsSplat(-1)))
-					{
-						diType = DbgCreatePointerType(diType);
-						diType = DbgCreateArtificialType(diType);
-					}
- 					diParams.push_back(diType);
-				}
-			}
-
-			for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
-			{
-				bool isParamSkipped = methodInstance->IsParamSkipped(paramIdx);
-				if (!isParamSkipped)
-				{
-					auto resolvedType = methodInstance->GetParamType(paramIdx);
-					diParams.push_back(DbgGetType(resolvedType));
-				}
-			}
-
-			BfIRMDNode diFuncType = DbgCreateSubroutineType(diParams);
+			BfIRMDNode diFuncType = DbgCreateSubroutineType(methodInstance);
 
 			int defLine = 0;
 
@@ -5002,6 +4971,45 @@ BfIRMDNode BfIRBuilder::DbgCreateParameterVariable(BfIRMDNode scope, const Strin
 	BfIRMDNode retVal = WriteCmd(BfIRCmd_DbgCreateParameterVariable, scope, name, argNo, file, lineNum, type, alwaysPreserve, flags);
 	NEW_CMD_INSERTED_IRMD;
 	return retVal;
+}
+
+BfIRMDNode BfIRBuilder::DbgCreateSubroutineType(BfMethodInstance* methodInstance)
+{
+	auto methodDef = methodInstance->mMethodDef;
+	auto typeInstance = methodInstance->GetOwner();
+
+	llvm::SmallVector<BfIRMDNode, 8> diParams;
+	diParams.push_back(DbgGetType(methodInstance->mReturnType));
+
+	BfType* thisType = NULL;
+	if (!methodDef->mIsStatic)
+	{
+		BfType* thisType;
+		thisType = typeInstance;
+		if (!thisType->IsValuelessType())
+		{
+			BfType* thisPtrType = thisType;
+			auto diType = DbgGetType(thisPtrType);
+			if ((thisType->IsComposite()) && (!methodInstance->GetParamIsSplat(-1)))
+			{
+				diType = DbgCreatePointerType(diType);
+				diType = DbgCreateArtificialType(diType);
+			}
+			diParams.push_back(diType);
+		}
+	}
+
+	for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
+	{
+		bool isParamSkipped = methodInstance->IsParamSkipped(paramIdx);
+		if (!isParamSkipped)
+		{
+			auto resolvedType = methodInstance->GetParamType(paramIdx);
+			diParams.push_back(DbgGetType(resolvedType));
+		}
+	}
+
+	return DbgCreateSubroutineType(diParams);
 }
 
 BfIRMDNode BfIRBuilder::DbgCreateSubroutineType(const BfSizedArray<BfIRMDNode>& elements)

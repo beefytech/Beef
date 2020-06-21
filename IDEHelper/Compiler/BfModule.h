@@ -1647,6 +1647,7 @@ public:
 	bool CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs = NULL, BfError** errorOut = NULL);
 	BfIRValue AllocLocalVariable(BfType* type, const StringImpl& name, bool doLifetimeEnd = true);
 	void DoAddLocalVariable(BfLocalVariable* localVar);
+	void DoLocalVariableDebugInfo(BfLocalVariable* localVar, bool doAliasValue = false, BfIRValue declareBefore = BfIRValue(), BfIRInitType initType = BfIRInitType_NotSet);
 	BfLocalVariable* AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo = false, bool doAliasValue = false, BfIRValue declareBefore = BfIRValue(), BfIRInitType initType = BfIRInitType_NotSet);	
 	bool TryLocalVariableInit(BfLocalVariable* localVar);
 	void LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit);

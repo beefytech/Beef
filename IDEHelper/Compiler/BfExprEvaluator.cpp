@@ -13513,7 +13513,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 	if (wantsDIData)
 	{		
-		BfIRMDNode diFuncType = mModule->mBfIRBuilder->DbgCreateSubroutineType(SizedArray<BfIRMDNode, 0>());
+		BfIRMDNode diFuncType = mModule->mBfIRBuilder->DbgCreateSubroutineType(methodInstance);
 
 		//int defLine = mModule->mCurFilePosition.mCurLine;
 		
@@ -13527,7 +13527,10 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		auto diParentType = mModule->mBfIRBuilder->DbgGetTypeInst(methodInstance->GetOwner());
 		if (!mModule->mBfIRBuilder->mIgnoreWrites)
 		{
-			curMethodState->mCurScope->mDIScope = mModule->mBfIRBuilder->DbgCreateFunction(diParentType, methodDef->mName + "!", "", mModule->mCurFilePosition.mFileInstance->mDIFile,
+			String methodName = methodDef->mName;
+			methodName += "!";						
+			BfMangler::Mangle(methodName, mModule->mCompiler->GetMangleKind(), methodInstance);
+			curMethodState->mCurScope->mDIScope = mModule->mBfIRBuilder->DbgCreateFunction(diParentType, methodName, "", mModule->mCurFilePosition.mFileInstance->mDIFile,
 				defLine + 1, diFuncType, false, true, mModule->mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
 			scopeData.mAltDIFile = mModule->mCurFilePosition.mFileInstance->mDIFile;
 		}
@@ -13710,66 +13713,89 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 		newLocalVar->mParamIdx = -3;
 	};
-
+	
 	argExprEvaluatorItr = argExprEvaluators.begin();
-	for (int argIdx = 0; argIdx < (int)explicitParamCount; argIdx++)
+	for (int argIdx = methodDef->mIsStatic ? 0 : -1; argIdx < (int)explicitParamCount; argIdx++)
 	{
 		int paramIdx = argIdx;
 
-		auto exprEvaluator = *argExprEvaluatorItr;
-		auto paramDef = methodDef->mParams[paramIdx];
-		auto arg = &args[argIdx];
+		auto exprEvaluator = *argExprEvaluatorItr;		
 
-		if (!arg->mTypedValue)
-		{
-			auto wantType = methodInstance->GetParamType(paramIdx);
-			if (wantType->IsVar())
-				wantType = mModule->mContext->mBfObjectType;
-			arg->mTypedValue = mModule->GetDefaultTypedValue(wantType);
-		}
+		BfTypedValue argValue;
 
 		BfLocalVariable* localVar = new BfLocalVariable();		
-		localVar->mName = paramDef->mName;		
-		localVar->mResolvedType = arg->mTypedValue.mType;				
-		if (arg->mTypedValue.mType->IsRef())
+
+		if (argIdx == -1)
 		{
-			auto refType = (BfRefType*)localVar->mResolvedType;
-			localVar->mAddr = mModule->LoadValue(arg->mTypedValue).mValue;
-			localVar->mResolvedType = arg->mTypedValue.mType->GetUnderlyingType();			
-			localVar->mIsAssigned = refType->mRefKind != BfRefType::RefKind_Out;
+			argValue = target;
+			localVar->mName = "this";
+			localVar->mIsThis = true;
+			localVar->mIsAssigned = true;
 		}
-		else if (arg->mTypedValue.IsAddr())
-			localVar->mAddr = arg->mTypedValue.mValue;
 		else
 		{
-			if (!arg->mTypedValue.mValue)
+			auto arg = &args[argIdx];
+			auto paramDef = methodDef->mParams[paramIdx];
+
+			localVar->mName = paramDef->mName;
+
+			if (!arg->mTypedValue)
+			{
+				auto wantType = methodInstance->GetParamType(paramIdx);
+				if (wantType->IsVar())
+					wantType = mModule->mContext->mBfObjectType;
+				arg->mTypedValue = mModule->GetDefaultTypedValue(wantType);
+			}
+			argValue = arg->mTypedValue;
+		}
+		
+		localVar->mResolvedType = argValue.mType;				
+		if (argValue.mType->IsRef())
+		{
+			auto refType = (BfRefType*)localVar->mResolvedType;
+			localVar->mAddr = mModule->LoadValue(argValue).mValue;
+			localVar->mResolvedType = argValue.mType->GetUnderlyingType();
+			localVar->mIsAssigned = refType->mRefKind != BfRefType::RefKind_Out;
+		}
+		else if (argValue.IsAddr())
+			localVar->mAddr = argValue.mValue;
+		else
+		{
+			if (!argValue.mValue)
 			{
 				// Untyped value				
 			}
-			else if (arg->mTypedValue.mValue.IsConst())
+			else if (argValue.mValue.IsConst())
 			{
-				localVar->mConstValue = arg->mTypedValue.mValue;
+				localVar->mConstValue = argValue.mValue;
 			}
-			else if (arg->mTypedValue.IsSplat())
+			else if (argValue.IsSplat())
 			{
-				localVar->mValue = arg->mTypedValue.mValue;
+				localVar->mValue = argValue.mValue;
 				localVar->mIsSplat = true;
 			}
 			else
 			{
-				if (arg->mTypedValue.IsAddr())
-					localVar->mAddr = arg->mTypedValue.mValue;
+				if (argValue.IsAddr())
+					localVar->mAddr = argValue.mValue;
 				else
-					localVar->mValue = arg->mTypedValue.mValue;
+					localVar->mValue = argValue.mValue;
 			}
 
-			localVar->mIsReadOnly = arg->mTypedValue.IsReadOnly();
+			localVar->mIsReadOnly = argValue.IsReadOnly();
 		}
 		
-		_AddLocalVariable(localVar, exprEvaluator);
-		
-		endLocalIdx++;
-		++argExprEvaluatorItr;
+		if (argIdx == -1)
+		{
+			_AddLocalVariable(localVar, NULL);
+		}
+		else
+		{
+			_AddLocalVariable(localVar, exprEvaluator);
+
+			endLocalIdx++;
+			++argExprEvaluatorItr;
+		}
 	}
 
 	if (auto blockBody = BfNodeDynCast<BfBlock>(methodDef->mBody))
