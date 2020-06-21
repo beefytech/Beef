@@ -1064,7 +1064,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 				if (mModule->mCurMethodState != NULL)
 					mModule->mCurMethodState->mNoBind = prevNoBind;
 
-				if (argTypedValue)
+				if ((argTypedValue) && (!argTypedValue.mType->IsVar()))
 				{
 					if (checkType != NULL)
 						resolvedArg.mExpectedType = checkType;
@@ -1439,6 +1439,9 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 					if (!argTypedValue)
 						goto NoMatch;
 					//HashSet<BfType*> checkedTypeSet;
+
+					if (type->IsVar())
+						mHasVarArguments = true;
 
 					genericInferContext.mCheckedTypeSet.Clear();
 					if (!genericInferContext.InferGenericArgument(methodInstance, type, wantType, argTypedValue.mValue))
@@ -7372,7 +7375,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		target = mModule->GetThis();
 	}
 	if (!moduleMethodInstance)
+	{
+		FinishDeferredEvals(argValues.mResolvedArgs);
 		return BfTypedValue();
+	}
 
 	bool isSkipCall = moduleMethodInstance.mMethodInstance->IsSkipCall(bypassVirtual);
 	
