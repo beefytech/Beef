@@ -5839,6 +5839,18 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 				actualTupleType->mGenericTypeInfo->mGenericParams.push_back(unspecializedGenericTupleType->mGenericTypeInfo->mGenericParams[genericArgIdx]->AddRef());
 			}
 			CheckUnspecializedGenericType(actualTupleType, BfPopulateType_Identity);
+			if (isUnspecialized)
+			{
+				actualTupleType->mGenericTypeInfo->mIsUnspecialized = true;
+				actualTupleType->mGenericTypeInfo->mIsUnspecializedVariation = true;
+			}
+
+			if (isUnspecialized)
+			{
+				actualTupleType->mGenericTypeInfo->mIsUnspecialized = true;
+				actualTupleType->mGenericTypeInfo->mIsUnspecializedVariation = true;
+			}
+
 			actualTupleType->mIsUnspecializedType = actualTupleType->mGenericTypeInfo->mIsUnspecialized;
 			actualTupleType->mIsUnspecializedTypeVariation = actualTupleType->mGenericTypeInfo->mIsUnspecializedVariation;
 			actualTupleType->Init(baseType->mTypeDef->mProject, baseType);
@@ -5969,6 +5981,12 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 				dlgType->mGenericTypeInfo->mGenericParams.push_back(unspecializedGenericDelegateType->mGenericTypeInfo->mGenericParams[genericArgIdx]->AddRef());
 			}
 			CheckUnspecializedGenericType(dlgType, BfPopulateType_Identity);
+			if (isUnspecialized)
+			{
+				dlgType->mGenericTypeInfo->mIsUnspecialized = true;
+				dlgType->mGenericTypeInfo->mIsUnspecializedVariation = true;
+			}
+
 			dlgType->mIsUnspecializedType = dlgType->mGenericTypeInfo->mIsUnspecialized;
 			dlgType->mIsUnspecializedTypeVariation = dlgType->mGenericTypeInfo->mIsUnspecializedVariation;
 			delegateType = dlgType;
@@ -8161,6 +8179,11 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				actualTupleType->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
 			}
 			CheckUnspecializedGenericType(actualTupleType, populateType);			
+			if (isUnspecialized)
+			{
+				actualTupleType->mGenericTypeInfo->mIsUnspecialized = true;
+				actualTupleType->mGenericTypeInfo->mIsUnspecializedVariation = true;
+			}
 			actualTupleType->mIsUnspecializedType = actualTupleType->mGenericTypeInfo->mIsUnspecialized;
 			actualTupleType->mIsUnspecializedTypeVariation = actualTupleType->mGenericTypeInfo->mIsUnspecializedVariation;
 			tupleType = actualTupleType;
@@ -8314,7 +8337,35 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				auto typeGenericArg = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[i];
 				genericTypeInst->mGenericTypeInfo->mIsUnspecialized |= typeGenericArg->IsGenericParam() || typeGenericArg->IsUnspecializedType();
 			}
-			CheckUnspecializedGenericType(genericTypeInst, populateType);			
+
+			CheckUnspecializedGenericType(genericTypeInst, populateType);
+			
+// 			for (auto paramType : paramTypes)
+// 			{
+// 				if (paramType->IsUnspecializedType())
+// 					genericTypeInst->mGenericTypeInfo->mIsUnspecialized = true;
+// 				if (paramType->IsUnspecializedTypeVariation())
+// 					genericTypeInst->mGenericTypeInfo->mIsUnspecializedVariation = true;
+// 				if (paramType->IsGenericParam())
+// 				{
+// 					BfGenericParamType* genericParamType = new BfGenericParamType();
+// 					if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
+// 					{
+// 						if (genericParamType->mGenericParamIdx >= genericTypeInst->mGenericTypeInfo->mGenericParams.size())
+// 							genericTypeInst->mGenericTypeInfo->mIsUnspecializedVariation = true;
+// 					}
+// 					else
+// 						genericTypeInst->mGenericTypeInfo->mIsUnspecializedVariation = true;
+// 				}
+//			}
+
+			// We don't ever need to do an actual pass over generic delegate methods, so it's safe to set the 'unspecialized variation' flag
+			if (isUnspecialized)
+			{
+				genericTypeInst->mGenericTypeInfo->mIsUnspecialized = true;
+				genericTypeInst->mGenericTypeInfo->mIsUnspecializedVariation = true;
+			}
+
 			genericTypeInst->mIsUnspecializedType = genericTypeInst->mGenericTypeInfo->mIsUnspecialized;
 			genericTypeInst->mIsUnspecializedTypeVariation = genericTypeInst->mGenericTypeInfo->mIsUnspecializedVariation;
 		}
