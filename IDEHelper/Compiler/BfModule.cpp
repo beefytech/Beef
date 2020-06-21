@@ -6794,7 +6794,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a value type in order to use it as parameter '%s' for '%s'",
-				_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 	
@@ -6803,7 +6803,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a pointer type in order to use it as parameter '%s' for '%s'",
-				_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 
@@ -6812,7 +6812,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a reference type in order to use it as parameter '%s' for '%s'",
-				_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 		return false;
 	}
 
@@ -6822,7 +6822,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("The type '%s' must be a const value in order to use it as parameter '%s' for '%s'",
-					_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}		
 	}
@@ -6832,7 +6832,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("The value '%s' cannot be used for generic type parameter '%s' for '%s'",
-					_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
@@ -6849,7 +6849,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("The type '%s' must be a deletable type in order to use it as parameter '%s' for '%s'",
-					_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
@@ -6878,7 +6878,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("The type '%s' must have an accessible default constructor in order to use it as parameter '%s' for '%s'",
-					_TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
@@ -7001,7 +7001,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			{
 				if (!ignoreErrors)
 					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must derive from '%s'", genericParamInst->GetName().c_str(),
-						_TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(convCheckConstraint).c_str(),
+						TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), TypeToString(convCheckConstraint).c_str(),
 						_TypeToString(genericParamInst->mTypeConstraint).c_str()), checkArgTypeRef);
 				return false;
 			}
@@ -7016,7 +7016,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be concrete interface '%s' for '%s', must be a concrete type", genericParamInst->GetName().c_str(),
-					_TypeToString(origCheckArgType).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
@@ -7059,7 +7059,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (!ignoreErrors)
 				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must implement '%s'", genericParamInst->GetName().c_str(), 
-					_TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), _TypeToString(checkConstraint).c_str()), checkArgTypeRef);
+					TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), _TypeToString(checkConstraint).c_str()), checkArgTypeRef);
 			return false;
 		}
 	}
@@ -12095,12 +12095,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			if (genericArg->IsPrimitiveType())
 				genericArg = GetWrappedStructType(genericArg);
-			AddDependency(genericArg, typeInst, BfDependencyMap::DependencyFlag_MethodGenericArg);
-			if (genericArg->IsMethodRef())
-			{
-				auto methodRefType = (BfMethodRefType*)genericArg;
-				//AddDependency(genericArg, typeInst, BfDependencyMap::DependencyFlag_);
-			}
+			if (genericArg != NULL)
+				AddDependency(genericArg, typeInst, BfDependencyMap::DependencyFlag_MethodGenericArg);			
 		}
 	}
 
