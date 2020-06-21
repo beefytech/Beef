@@ -136,7 +136,7 @@ namespace IDE.ui
 			GetStartupOption(scope (options) => options.mDebugOptions.mCommand, str);
 
 			String dir = scope String();
-			Path.GetDirectoryPath(str, dir);
+			Path.GetDirectoryPath(str, dir).IgnoreError();
 			IDEUtils.FixFilePath(dir);
 
 			var fileDialog = scope System.IO.OpenFileDialog();
