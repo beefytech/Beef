@@ -204,6 +204,10 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 		return true;
 	}
 
+	// We don't validate constraints for things like Tuples/Delegates
+	if (genericTypeInst->IsOnDemand())
+		return true;
+
 	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, mIgnoreErrors || ignoreErrors);
 	genericTypeInst->mGenericTypeInfo->mValidatedGenericConstraints = true;
 
@@ -8851,7 +8855,12 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						}
 					}
 					if (matches)
-						return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
+					{
+						typedVal = MakeAddressable(typedVal);
+						if (resultFlags != NULL)
+							*resultFlags = (BfCastResultFlags)(BfCastResultFlags_IsAddr);	
+						return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));						
+					}
 				}
 			}
 
@@ -10251,6 +10260,12 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 					else if (typedVal.IsAddr())
 					{
 						return BfTypedValue(mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapTypeInstPtr(tupleType)), tupleType, BfTypedValueKind_ReadOnlyAddr);
+					}
+					else if (typedVal.IsSplat())
+					{						
+						BfTypedValue retTypedValue = typedVal;
+						retTypedValue.mType = tupleType;
+						return retTypedValue;
 					}
 								
 					BfIRValue curTupleValue = CreateAlloca(tupleType);
