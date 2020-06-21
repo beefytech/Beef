@@ -5323,7 +5323,8 @@ void BfExprEvaluator::AddCallDependencies(BfMethodInstance* methodInstance)
 		{
 			if (genericArg->IsWrappableType())
 				genericArg = mModule->GetWrappedStructType(genericArg);
-			mModule->AddDependency(genericArg, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_LocalUsage);
+			if (genericArg != NULL)
+				mModule->AddDependency(genericArg, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_LocalUsage);
 		}
 	}
 }
