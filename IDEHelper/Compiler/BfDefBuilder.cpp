@@ -587,7 +587,8 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 
 	if ((methodDef->mMethodType == BfMethodType_Normal) ||
 		(methodDef->mMethodType == BfMethodType_Operator) ||
-		(methodDef->mMethodType == BfMethodType_Mixin))
+		(methodDef->mMethodType == BfMethodType_Mixin) ||
+		(methodDef->mMethodType == BfMethodType_Extension))
 	{
 		ParseGenericParams(methodDeclaration->mGenericParams, methodDeclaration->mGenericConstraintsDeclaration, methodDef->mGenericParams, &methodDef->mExternalConstraints, outerGenericSize);
 	}
