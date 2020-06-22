@@ -584,7 +584,20 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	int outerGenericSize = 0;
 	if (outerMethodDef != NULL)
 		outerGenericSize = (int)outerMethodDef->mGenericParams.size();
-	ParseGenericParams(methodDeclaration->mGenericParams, methodDeclaration->mGenericConstraintsDeclaration, methodDef->mGenericParams, &methodDef->mExternalConstraints, outerGenericSize);
+
+	if ((methodDef->mMethodType == BfMethodType_Normal) ||
+		(methodDef->mMethodType == BfMethodType_Operator) ||
+		(methodDef->mMethodType == BfMethodType_Mixin))
+	{
+		ParseGenericParams(methodDeclaration->mGenericParams, methodDeclaration->mGenericConstraintsDeclaration, methodDef->mGenericParams, &methodDef->mExternalConstraints, outerGenericSize);
+	}
+	else
+	{
+		if (methodDeclaration->mGenericParams != NULL)
+			Fail("Generic parameters are only allowed on normal methods", methodDeclaration->mGenericParams);
+		if (methodDeclaration->mGenericConstraintsDeclaration != NULL)
+			Fail("Generic constraints are only allowed on normal methods", methodDeclaration->mGenericConstraintsDeclaration);
+	}
 
 	bool didDefaultsError = false;
 	bool hadParams = false;
