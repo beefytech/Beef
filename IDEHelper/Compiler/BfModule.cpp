@@ -10831,6 +10831,12 @@ BfIRValue BfModule::ExtractSplatValue(BfTypedValue typedValue, int componentIdx,
 			if (val)
 				break;
 
+			if ((checkMethodState->mClosureState != NULL) && (checkMethodState->mClosureState->mCapturing))
+			{
+				BF_ASSERT(mBfIRBuilder->mIgnoreWrites);
+				return mBfIRBuilder->GetFakeVal();
+			}
+
 			checkMethodState = checkMethodState->mPrevMethodState;
 		}
 	}
