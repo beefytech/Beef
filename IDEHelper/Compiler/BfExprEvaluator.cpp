@@ -17855,12 +17855,10 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 		break;
 	case BfUnaryOp_Params:				
 		{	
-			bool allowParams = (mBfEvalExprFlags & BfEvalExprFlags_AllowParamsExpr) != 0;
-			if (mResultLocalVar == NULL)
-				allowParams = false;
+			bool allowParams = (mBfEvalExprFlags & BfEvalExprFlags_AllowParamsExpr) != 0;			
  			if (allowParams)
 			{												
-				if (mResultLocalVar->mCompositeCount >= 0) // Delegate params
+				if ((mResultLocalVar != NULL) && (mResultLocalVar->mCompositeCount >= 0)) // Delegate params
 				{
 					allowParams = true;
 				}
