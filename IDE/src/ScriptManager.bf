@@ -1369,9 +1369,18 @@ namespace IDE
 			{
 				var exeArgs = scope String();
 				exeArgs.Append(cmd, spacePos + 1);
+				IDEApp.RunFlags runFlags = .None;
+				if (!exePath.EndsWith(".exe", .OrdinalIgnoreCase))
+					runFlags = .ShellCommand;
 
-				bool wantsShellCommand = !exePath.EndsWith(".exe", .OrdinalIgnoreCase);
-				gApp.DoRun(exePath, exeArgs, gApp.mInstallDir, .None, null, null, wantsShellCommand ? .ShellCommand : .None);
+				// Hande re-encoded embedded newlines
+				if (exeArgs.Contains('\v'))
+				{
+					exeArgs.Replace('\v', '\n');
+					runFlags = .BatchCommand;
+				}
+
+				gApp.DoRun(exePath, exeArgs, gApp.mInstallDir, .None, null, null, runFlags);
 			}
 		}
 

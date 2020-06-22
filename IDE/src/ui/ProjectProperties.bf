@@ -675,6 +675,7 @@ namespace IDE.ui
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Rebuild Dependencies", "mBuildOptions.mLinkDependencies");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Prebuild Commands", "mBuildOptions.mPreBuildCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Postbuild Commands", "mBuildOptions.mPostBuildCmds");
+			propEntry.mAllowMultiline = true;
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Clean Commands", "mBuildOptions.mCleanCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Compile", "mBuildOptions.mBuildCommandsOnCompile");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Run", "mBuildOptions.mBuildCommandsOnRun");

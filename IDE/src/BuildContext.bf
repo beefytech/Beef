@@ -130,7 +130,7 @@ namespace IDE
 				bool isCommand = false;
 				for (let c in origCustomCmd.RawChars)
 				{
-					if ((c == '\"') || (c == '$'))
+					if ((c == '\"') || (c == '$') || (c == '\n'))
 						break;
 					if (c == '(')
 						isCommand = true;
@@ -146,6 +146,9 @@ namespace IDE
 				{
 					customCmd.Append("%exec ");
 					gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, origCustomCmd, "custom command", customCmd);
+
+					// For multi-line execs
+					customCmd.Replace('\n', '\v');
 				}
 
 				if (customCmd.IsWhiteSpace)

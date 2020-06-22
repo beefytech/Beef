@@ -7480,8 +7480,9 @@ namespace IDE
 		{
 			None,
 			ShellCommand = 1,
-			NoRedirect = 2,
-			NoWait = 4,
+			BatchCommand = 2,
+			NoRedirect = 4,
+			NoWait = 8,
 		}
 
         public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None)
@@ -7506,8 +7507,31 @@ namespace IDE
 	            startInfo.CreateNoWindow = true;
 			}
 
+			
+			var executionInstance = new ExecutionInstance();
+
 #if BF_PLATFORM_WINDOWS
-			if (runFlags.HasFlag(.ShellCommand))
+			if (runFlags.HasFlag(.BatchCommand))
+			{
+				String tempFileName = scope String();
+				Path.GetTempFileName(tempFileName);
+				tempFileName.Append(".bat");
+
+				String shellArgs = scope .();
+				IDEUtils.AppendWithOptionalQuotes(shellArgs, fileName);
+				shellArgs.Append(" ");
+				shellArgs.Append(args);
+
+				var result = File.WriteAllText(tempFileName, shellArgs, Encoding.UTF8);
+				if (result case .Err)
+					OutputLine("Failed to create temporary batch file");
+
+				startInfo.SetFileName(tempFileName);
+				startInfo.SetArguments("");
+
+				executionInstance.mTempFileName = new String(tempFileName);
+			}
+			else if (runFlags.HasFlag(.ShellCommand))
 			{
 				String shellArgs = scope .();
 				shellArgs.Append("/c ");
@@ -7525,8 +7549,6 @@ namespace IDE
 					startInfo.AddEnvironmentVariable(envKV.key, envKV.value);
 			}
 
-            var executionInstance = new ExecutionInstance();
-
             if (useArgsFile != .None)
             {
                 String tempFileName = scope String();
@@ -7542,7 +7564,8 @@ namespace IDE
                 String arguments = scope String();
 				arguments.Concat("@", tempFileName);
 				startInfo.SetArguments(arguments);
-				
+
+				delete executionInstance.mTempFileName;
                 executionInstance.mTempFileName = new String(tempFileName);
             }
 

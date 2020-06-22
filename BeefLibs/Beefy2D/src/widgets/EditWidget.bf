@@ -2159,7 +2159,10 @@ namespace Beefy.widgets
                     Redo();
 				case .Return:
 					if (mIsMultiline)
+					{
 						mEditWidget.Submit();
+						return;
+					}
 				default:
                 }
             }

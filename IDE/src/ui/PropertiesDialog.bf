@@ -188,6 +188,12 @@ namespace IDE.ui
 				BrowseForFolder,
 			}
 
+			public enum MultiEncodeKind
+			{
+				Semicolon,
+				Extended // Uses /v to split
+			}
+
 			public Flags mFlags;
             public DarkListViewItem mListViewItem;
             public Object mTarget;
@@ -203,9 +209,11 @@ namespace IDE.ui
 			public PropertyBag mProperties ~ delete _;
 			public Event<delegate bool()> mOnUpdate ~ _.Dispose();
 			public bool mDisabled;
+			public bool mMultiRootReadOnly;
 			public uint32? mColorOverride;
 			public String mRelPath ~ delete _;
 			public bool mIsTypeWildcard;
+			public bool mAllowMultiline;
 			public Insets mEditInsets ~ delete _;
 
 			public ~this()
@@ -817,6 +825,9 @@ namespace IDE.ui
 				Rect rect = .(xPos, yPos, GetValueEditWidth(editItem), GS!(20));
 				propEntry.mEditInsets?.ApplyTo(ref rect);
 
+				if (mPropEditWidget.mEditWidgetContent.mIsMultiline)
+					rect.mHeight *= 4;
+
 				mPropEditWidget.Resize(rect.Left, rect.Top, rect.Width, rect.mHeight);
 
                 //mPropEditWidget.Resize(mPropEditWidget.mX, mPropEditWidget.mY, GetValueEditWidth(mEditingListViewItem.GetSubItem(1)), mPropEditWidget.mHeight);
@@ -961,7 +972,8 @@ namespace IDE.ui
 					}
                     else if (curVariantType == typeof(List<String>))
                     {
-                        let entryViews = scope List<StringView>(newValue.Split(';'));
+						let entryViews = scope List<StringView>();
+						entryViews.AddRange(newValue.Split(';'));
 						let entries = new List<String>();
 
                         for (int32 i = 0; i < entryViews.Count; i++)
@@ -969,7 +981,9 @@ namespace IDE.ui
 							String entry = scope String(entryViews[i]);
 							entry.Trim();
                             if (entry.Length > 0)
-                                entries.Add(new String(entry));
+                            {
+								entries.Add(new String(entry));
+							}
                         }
                         editingProp.mCurValue = Variant.Create(entries, true);
                     }
@@ -1200,6 +1214,9 @@ namespace IDE.ui
 
 			var propEntry = propEntries[0];
 
+			if ((propEntry.mMultiRootReadOnly) && (subValueIdx == -1))
+				return;
+
             var valueItem = propEntry.mListViewItem.GetSubItem(1);
 			let type = propEntry.mCurValue.VariantType;
 
@@ -1219,6 +1236,12 @@ namespace IDE.ui
 			}
 			else
 				editWidget = new DarkEditWidget();
+
+			let ewc = editWidget.mEditWidgetContent;
+			ewc.mIsMultiline = propEntry.mAllowMultiline;
+			if (ewc.mIsMultiline)
+				editWidget.InitScrollbars(false, true);
+
 			editWidget.mScrollContentInsets.Set(GS!(3), GS!(3), GS!(1), GS!(3));
 			editWidget.Content.mTextInsets.Set(GS!(-3), GS!(2), 0, GS!(2));
 			//editWidget.RehupSize();
@@ -1236,7 +1259,8 @@ namespace IDE.ui
                     moveItemWidget.Resize(6, editWidget.mY - GS!(16), GS!(20), GS!(20));
                     moveItemWidget.mArrowDir = -1;
                     moveItemWidget.mOnMouseDown.Add(new (evt) => { MoveEditingItem(subValueIdx, -1); });
-                    editWidget.mOnKeyDown.Add(new (evt) => { if (evt.mKeyCode == KeyCode.Up) MoveEditingItem(subValueIdx, -1); });
+					if (!ewc.mIsMultiline)
+                    	editWidget.mOnKeyDown.Add(new (evt) => { if (evt.mKeyCode == KeyCode.Up) MoveEditingItem(subValueIdx, -1); });
                 }
 
                 if (subValueIdx < stringList.Count - 1)
@@ -1246,7 +1270,8 @@ namespace IDE.ui
                     moveItemWidget.Resize(6, editWidget.mY + GS!(16), GS!(20), GS!(20));
                     moveItemWidget.mArrowDir = 1;
                     moveItemWidget.mOnMouseDown.Add(new (evt) => { MoveEditingItem(subValueIdx, 1); });
-                    editWidget.mOnKeyDown.Add(new (evt) => { if (evt.mKeyCode == KeyCode.Down) MoveEditingItem(subValueIdx, 1); });
+					if (!ewc.mIsMultiline)
+                    	editWidget.mOnKeyDown.Add(new (evt) => { if (evt.mKeyCode == KeyCode.Down) MoveEditingItem(subValueIdx, 1); });
                 }
             }
             else
@@ -1260,7 +1285,20 @@ namespace IDE.ui
 					if (label == "Not Set")
 						label = "";
 				}*/
-				if (editWidget is KeysEditWidget)
+
+				if (propEntry.mCurValue.VariantType == typeof(List<String>))
+				{
+					List<String> stringList = propEntry.mCurValue.Get<List<String>>();
+					String allValues = scope .();
+					for (int i = 0; i < stringList.Count; i++)
+					{
+					    if (i > 0)
+							allValues.Append(";");
+					    allValues.Append(stringList[i]);
+					}
+					editWidget.SetText(allValues);
+				}
+				else if (editWidget is KeysEditWidget)
 					editWidget.SetText("< Press Key >");
 				else
 					editWidget.SetText(label);
@@ -1276,7 +1314,6 @@ namespace IDE.ui
             editWidget.SetFocus();
 			mWidgetWindow.mOnMouseWheel.Add(new => HandleMouseWheel);
 			mWidgetWindow.mOnWindowMoved.Add(new => HandleWindowMoved);
-
 			editWidget.mEditWidgetContent.ClearUndoData();
 
             mEditingListViewItem = item;
@@ -1350,6 +1387,13 @@ namespace IDE.ui
 				}
 			}
 
+			void FixLabel(ListViewItem lvItem)
+			{
+				if (!lvItem.mLabel.Contains('\n'))
+					return;
+				lvItem.mLabel.Replace('\n', ' ');
+			}
+
 			if (handled)
 			{
 				if (curVariantType == typeof(String))
@@ -1410,9 +1454,11 @@ namespace IDE.ui
 					if (i < strVals.Count)
                     {
                         if (i > 0)
-                            allValues.Append(";");
+							allValues.Append(";");
                         curValue = strVals[i];
                         allValues.Append(curValue);
+						if (curValue.Contains(';')) // Don't allow editing if the parsing will mess up
+							propEntry.mMultiRootReadOnly = true;
                     }
 
                     DarkListViewItem childItem;
@@ -1456,12 +1502,14 @@ namespace IDE.ui
                         childSubItem.mTextColor = 0xFFC0C0C0;
                     }
                     childSubItem.Label = curValue;
+					FixLabel(childSubItem);
                 }
 
                 while (propEntry.mListViewItem.GetChildCount() > strVals.Count + 1)
                     propEntry.mListViewItem.RemoveChildItem(propEntry.mListViewItem.GetChildAtIndex(propEntry.mListViewItem.GetChildCount() - 1));
 
                 valueItem.Label = allValues;
+				FixLabel(valueItem);
             }
             else if (propEntry.mCheckBox != null)
             {

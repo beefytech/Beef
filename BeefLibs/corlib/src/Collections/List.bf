@@ -304,6 +304,12 @@ namespace System.Collections
 #endif
 		}
 
+		public void AddRange(IEnumerator<T> items)
+		{
+			for (let item in items)
+				Add(item);
+		}
+
 		/// Returns a pointer to the start of the added uninitialized section
 		public T* GrowUnitialized(int addSize)
 		{

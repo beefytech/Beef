@@ -282,7 +282,7 @@ namespace IDE.ui
 					let valueItem = propEntry.mListViewItem.GetSubItem(1);
 					if (!valueItem.Label.IsEmpty)
 					{
-						let dialog = ThemeFactory.mDefault.CreateDialog("Remove?", "Are you sure you want to remove the selected custom build options?");
+						let dialog = ThemeFactory.mDefault.CreateDialog("Remove?", "Are you sure you want to remove the selected distinct build options?");
 						dialog.AddYesNoButtons(new (evt) =>
 							{
 								DeleteDistinctBuildOptions(propEntry.mListViewItem);
