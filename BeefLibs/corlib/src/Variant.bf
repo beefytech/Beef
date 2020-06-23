@@ -49,6 +49,26 @@ namespace System
 			}
 		}
 
+		public void* DataPtr
+		{
+			get mut
+			{
+				if (IsObject)
+				{
+					if (mStructType == 2)
+						return null;
+					Object obj = Internal.UnsafeCastToObject((void*)mData);
+					return (uint8*)Internal.UnsafeCastToPtr(obj) + obj.GetType().[Friend]mMemberDataOffset;
+				}
+
+				var type = VariantType;
+				if (type.Size <= sizeof(int))
+					return (void*)&mData;
+				else
+					return (void*)mData;
+			}
+		}
+
 		protected override void GCMarkMembers()
  		{
 			if ((mStructType == 1) || (mStructType == 0))
@@ -222,8 +242,9 @@ namespace System
 			if (IsObject)
 			{
 				if (mStructType == 2)
-					*((Object*)dest) =null;
-				*((Object*)dest) = Internal.UnsafeCastToObject((void*)mData);
+					*((Object*)dest) = null;
+				else
+					*((Object*)dest) = Internal.UnsafeCastToObject((void*)mData);
 				return;
 			}
 			
@@ -282,5 +303,19 @@ namespace System
 		{
 			v1.Get<T>() == v2.Get<T>()
 		}
+
+		public static Result<Variant> CreateFromVariant(Variant varFrom, bool reference = true)
+		{
+			Variant varTo = varFrom;
+			if (varTo.mStructType == 1)
+				varTo.mStructType = 0;
+			return varTo;
+		}
+
+		/*public static Result<Variant> CreateFromObject(Object objectFrom, bool reference = true)
+		{
+			Type objType = objectFrom.[Friend]RawGetType();
+			
+		}*/
 	}
 }

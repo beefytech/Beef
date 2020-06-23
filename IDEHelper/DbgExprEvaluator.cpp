@@ -1226,6 +1226,12 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		_TypeCode mTypeCode;
 		uint8 mAlign;
 	};
+
+	struct _PointerType : _Type
+	{
+		_TypeCode mElementType;
+	};
+
 	struct _String
 	{
 
@@ -1343,6 +1349,14 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 	else
 	{
 		BfTypeCode typeCode = (BfTypeCode)mDebugger->ReadMemory<uint8>(typeAddr + (int)offsetof(_Type, mTypeCode));	
+		if (typeCode == BfTypeCode_Pointer)
+		{
+			_TypeId elementType = mDebugger->ReadMemory<_TypeId>(typeAddr + offsetof(_PointerType, mElementType));
+			BeefTypeToString(GetBeefTypeById(elementType), outStr);
+			outStr += "*";
+			return;
+		}
+
 		switch (typeCode)
 		{
 		case BfTypeCode_None: outStr += "void"; break;

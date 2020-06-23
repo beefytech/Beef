@@ -141,6 +141,10 @@ namespace Tests
 					Test.Assert(result.Get<float>() == 123);
 					result.Dispose();
 
+					result = methodInfo.Invoke(.(), .Create(100), .Create((int32)20), .Create(3.0f)).Get();
+					Test.Assert(result.Get<float>() == 123);
+					result.Dispose();
+
 					let attrC = methodInfo.GetCustomAttribute<AttrCAttribute>().Get();
 					Test.Assert(attrC.mA == 71);
 					Test.Assert(attrC.mB == 72);
@@ -149,12 +153,19 @@ namespace Tests
 					var result = methodInfo.Invoke(ca, 100, (int32)20, 3.0f).Get();
 					Test.Assert(result.Get<float>() == 123);
 					result.Dispose();
+
+					result = methodInfo.Invoke(.Create(ca), .Create(100), .Create((int32)20), .Create(3.0f)).Get();
+					Test.Assert(result.Get<float>() == 123);
+					result.Dispose();
 				case 2:
 					Test.Assert(methodInfo.Name == "GetA");
 					var result = methodInfo.Invoke(ca, 123).Get();
 					Test.Assert(result.Get<int>() == 1123);
 					result.Dispose();
 					result = methodInfo.Invoke(ca2, 123).Get();
+					Test.Assert(result.Get<int>() == 2123);
+					result.Dispose();
+					result = methodInfo.Invoke(.Create(ca2), .Create(123)).Get();
 					Test.Assert(result.Get<int>() == 2123);
 					result.Dispose();
 				case 3:

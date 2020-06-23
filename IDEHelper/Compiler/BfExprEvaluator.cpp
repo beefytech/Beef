@@ -1541,10 +1541,9 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				goto NoMatch;
 			}
 						
-			if (paramsArrayType->IsArray())
-			{
-				auto arrayType = (BfArrayType*)paramsArrayType;
-				paramsElementType = arrayType->mGenericTypeInfo->mTypeGenericArguments[0];
+			if ((paramsArrayType->IsArray()) || (paramsArrayType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
+			{				
+				paramsElementType = paramsArrayType->GetUnderlyingType();
 
 				while (argIdx < (int)mArguments.size())
 				{

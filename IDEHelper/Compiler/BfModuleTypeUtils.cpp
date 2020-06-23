@@ -8930,7 +8930,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// * <-> Var 
 	if ((typedVal.mType->IsVar()) || (toType->IsVar()))
 	{
-		return GetDefaultValue(toType);
+		return mBfIRBuilder->CreateUndefValue(mBfIRBuilder->MapType(toType));
 	}
 
 	// Generic param -> *
