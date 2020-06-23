@@ -9415,12 +9415,13 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 	bool allowResolveGenericParamNames = ((methodNameFlags & BfMethodNameFlag_ResolveGenericParamNames) != 0);
 
 	BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None;
-	if ((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsUnspecializedTypeVariation()))
-		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
-
+	
 	BfType* type = methodInst->mMethodInstanceGroup->mOwner;
 	if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
 		type = ResolveGenericType(type, NULL, methodGenericArgs);
+	if ((type == NULL) || (!type->IsUnspecializedTypeVariation()))
+		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
+
 	String methodName;
 	if ((methodNameFlags & BfMethodNameFlag_OmitTypeName) == 0)
 	{
