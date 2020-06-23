@@ -242,6 +242,8 @@ namespace IDE
 			Add("Save All", new () => { gApp.SaveAll(); });
 			Add("Save As", new () => { gApp.SaveAs(); });
 			Add("Save File", new => gApp.SaveFile);
+			Add("Scope Prev", new => gApp.[Friend]ScopePrev);
+			Add("Scope Next", new => gApp.[Friend]ScopeNext);
 			Add("Select Configuration", new => gApp.SelectConfig);
 			Add("Select Platform", new => gApp.SelectPlatform);
 			Add("Set Next Statement", new => gApp.[Friend]SetNextStatement);
