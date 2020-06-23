@@ -629,8 +629,6 @@ namespace IDE.ui
 
         HoverListViewItem DoListViewItem(HoverListView listView, HoverListViewItem listViewItem, String displayString, String evalString, bool isPending, WatchEntry parentWatchEntry = null)
         {
-			Debug.WriteLine("{} {}", evalString, isPending);
-
 			if ((displayString.StartsWith(":")) && (displayString.Contains('\n')))
 			{
 				HoverListViewItem headListView = null;
