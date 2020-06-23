@@ -6964,6 +6964,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}
 		else
 		{
+			SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags & ~BfEvalExprFlags_AllowEnumId));
 			fieldVal = LookupField(targetSrc, target, methodName);
 		}
 
