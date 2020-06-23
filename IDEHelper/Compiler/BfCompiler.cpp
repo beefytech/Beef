@@ -6559,9 +6559,10 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 		bool didWork = false;
 		UpdateDependencyMap(true, didWork);
-		DoWorkLoop();
 
+		// Deleting types can cause reified types to rebuild, so allow that
 		mCompileState = BfCompiler::CompileState_Normal;
+		DoWorkLoop();
 	}
 	else
 	{
