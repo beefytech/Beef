@@ -519,6 +519,13 @@ namespace Beefy.widgets
 			}
 		}
 
+		public enum DragSelectionKind
+		{
+			None,
+			Dragging,
+			ClickedInside
+		}
+
 		public Data mData ~ _.Deref(this);
 
         public Insets mTextInsets = new Insets() ~ delete _;
@@ -539,7 +546,8 @@ namespace Beefy.widgets
 		public bool mCursorImplicitlyMoved;
         public bool mJustInsertedCharPair; // Pressing backspace will delete last char8, even though cursor is between char8 pairs (ie: for brace pairs 'speculatively' inserted)
         public EditSelection? mSelection;
-		public EditSelection? mDragSelectionUnion; // For double-clicking a word and then "dragging" the selection         
+		public EditSelection? mDragSelectionUnion; // For double-clicking a word and then "dragging" the selection
+		public DragSelectionKind mDragSelectionKind;
         public bool mIsReadOnly = false;
 		public bool mWantsUndo = true;
         public bool mIsMultiline = false;
@@ -730,6 +738,8 @@ namespace Beefy.widgets
 
         public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
         {
+			bool hadSelection = HasSelection();
+
             base.MouseDown(x, y, btn, btnCount);
             mEditWidget.SetFocus();
 
@@ -786,9 +796,13 @@ namespace Beefy.widgets
             }
             else if (!mWidgetWindow.IsKeyDown(KeyCode.Shift))
             {
-				if ((btn != 0) && (mSelection != null) && (CursorTextPos >= mSelection.Value.MinPos) && (CursorTextPos <= mSelection.Value.MaxPos))
+				if ((mSelection != null) && (CursorTextPos >= mSelection.Value.MinPos) && (CursorTextPos <= mSelection.Value.MaxPos))
 				{
-					// Leave selection
+					if (hadSelection)
+					{
+						// Leave selection
+						mDragSelectionKind = .ClickedInside;
+					}
 				}
 				else
 					StartSelection();
@@ -804,6 +818,9 @@ namespace Beefy.widgets
 		    if (mMouseFlags == 0)
 		    {
 		        mDragSelectionUnion = null;
+				if (mDragSelectionKind == .ClickedInside)
+					mSelection = EditSelection();
+				mDragSelectionKind = .None;
 		    }
 		}
 
@@ -815,7 +832,8 @@ namespace Beefy.widgets
             {
                 MoveCursorToCoord(x, y);
 				ClampCursor();
-                SelectToCursor();                
+				if (mDragSelectionKind == .Dragging)
+                	SelectToCursor();                
             }
         }
 
@@ -2866,6 +2884,7 @@ namespace Beefy.widgets
 
         public void StartSelection()
         {
+			mDragSelectionKind = .Dragging;
             mSelection = EditSelection();
             int textPos;
             TryGetCursorTextPos(out textPos);

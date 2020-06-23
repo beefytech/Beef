@@ -4808,6 +4808,20 @@ namespace IDE
 			mHistoryManager.NextHistory();
 		}
 
+		void ScopePrev()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.ScopePrev();
+		}
+
+		void ScopeNext()
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.ScopeNext();
+		}
+
 		void ExitTest()
 		{
 			sExitTest = true;

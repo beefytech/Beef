@@ -70,6 +70,7 @@ namespace Beefy.widgets
         [DesignEditable(SortName="0name")]
         public String Id { get { return mIdStr; } set { mIdStr = value; } }
 
+		public Event<delegate void(Widget)> mOnGotFocus ~ _.Dispose();
         public Event<LostFocusHandler> mOnLostFocus ~ _.Dispose();
         //public event MouseEventHandler mMouseMoveHandler;
         public Event<MouseEventHandler> mOnMouseDown ~ _.Dispose();
@@ -390,6 +391,7 @@ namespace Beefy.widgets
         {
 			Debug.Assert(!mHasFocus);
             mHasFocus = true;
+			mOnGotFocus(this);
         }
 
         public virtual void LostFocus()

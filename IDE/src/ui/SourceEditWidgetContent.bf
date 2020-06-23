@@ -1521,6 +1521,70 @@ namespace IDE.ui
             return;
         }
 
+		public void ScopePrev()
+		{
+			int pos = CursorTextPos - 1;
+			int openCount = 0;
+
+			while (pos >= 0)
+			{
+				let c = mData.mText[pos].mChar;
+				let displayType = (SourceElementType)mData.mText[pos].mDisplayTypeId;
+
+				if (displayType == .Normal)
+				{
+					if (c == '{')
+					{
+						openCount--;
+						if (openCount <= 0)
+						{
+							CursorTextPos = pos;
+							EnsureCursorVisible();
+							break;
+						}
+					}
+					else if (c == '}')
+					{
+						openCount++;
+					}
+				}
+
+				pos--;
+			}
+		}
+
+		public void ScopeNext()
+		{
+			int pos = CursorTextPos;
+			int openCount = 0;
+
+			while (pos < mData.mTextLength)
+			{
+				let c = mData.mText[pos].mChar;
+				let displayType = (SourceElementType)mData.mText[pos].mDisplayTypeId;
+
+				if (displayType == .Normal)
+				{
+					if (c == '}')
+					{
+						openCount--;
+						if (openCount <= 0)
+						{
+							CursorTextPos = pos + 1;
+							EnsureCursorVisible();
+							break;
+						}
+					}
+					else if (c == '{')
+					{
+						openCount++;
+					}
+				}
+
+				pos++;
+			}
+		}
+
 		bool IsTextSpanEmpty(int32 start, int32 length)
 		{
 			for (int32 i = start; i < start + length; i++)

@@ -383,6 +383,13 @@ namespace IDE.ui
             var bfSystem = IDEApp.sApp.mBfResolveSystem;
             var bfCompiler = IDEApp.sApp.mBfResolveCompiler;
 
+			if (mGettingSymbolInfo)
+			{
+				gApp.Fail("Cannot rename symbols here");
+				mGettingSymbolInfo = false;
+				return;
+			}
+
 			Debug.Assert(!mGettingSymbolInfo);
 
 			StopWork();
@@ -855,7 +862,9 @@ namespace IDE.ui
 				if (mSourceViewPanel.[Friend]mWantsFullClassify)
 					hasWorkLeft = true;
 				if (mSourceViewPanel.HasDeferredResolveResults())
+				{
 					hasWorkLeft = true;
+				}
                 if (!hasWorkLeft)
                 {
                     StartWork();

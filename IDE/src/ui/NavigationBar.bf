@@ -52,6 +52,7 @@ namespace IDE.ui
             MakeEditable();
             mEditWidget.mOnContentChanged.Add(new => NavigationBarChanged);
             mEditWidget.mOnKeyDown.Add(new => EditKeyDownHandler);
+			mEditWidget.mOnGotFocus.Add(new (widget) => mEditWidget.mEditWidgetContent.SelectAll());
 			mEditWidget.mEditWidgetContent.mWantsUndo = false;
 			mFocusDropdown = false;
         }
