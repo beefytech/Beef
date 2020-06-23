@@ -246,7 +246,7 @@ namespace System.Reflection
 			void* targetDataAddr = (void*)(int)mFieldData.mConstValue;
 
 			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
-			value.[Friend]mStructType = (int)(void*)fieldType;
+			value.[Friend]mStructType = (int)Internal.UnsafeCastToPtr(fieldType);
 
 			TypeCode typeCode = fieldType.[Friend]mTypeCode;
 			if (typeCode == TypeCode.Enum)

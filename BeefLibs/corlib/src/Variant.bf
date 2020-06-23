@@ -98,12 +98,12 @@ namespace System
 			if (val == null)
 			{
 				variant.mStructType = 2;
-				variant.mData = (int)(void*)typeof(T);
+				variant.mData = (int)Internal.UnsafeCastToPtr(typeof(T));
 			}
 			else
 			{
 				variant.mStructType = (int)(owns ? 1 : 0);
-				variant.mData = (int)(void*)val;
+				variant.mData = (int)Internal.UnsafeCastToPtr(val);
 			}
 			return variant;
 		}
@@ -112,7 +112,7 @@ namespace System
 		{
 			Variant variant;
 			Type type = typeof(T);
-			variant.mStructType = (int)(void*)type;
+			variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 			if (sizeof(T) <= sizeof(int))
 			{
 				variant.mData = 0;
@@ -131,7 +131,7 @@ namespace System
 		{
 			Variant variant;
 			Type type = typeof(T);
-			variant.mStructType = (int)(void*)type;
+			variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 			if (type.Size <= sizeof(int))
 			{
 				variant.mData = 0;
@@ -150,8 +150,7 @@ namespace System
 		{
 			Variant variant;
 			Debug.Assert(!type.IsObject);
-			//Debug.Assert((type.GetUnderlyingType() == typeof(T)) || (type == typeof(T)));
-			variant.mStructType = (int)(void*)type;
+			variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 			if (type.Size <= sizeof(int))
 			{
 				variant.mData = 0;
@@ -176,7 +175,7 @@ namespace System
 			}
 			else
 			{
-				variant.mStructType = (int)(void*)type;
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 				if (type.Size <= sizeof(int))
 				{
 					variant.mData = 0;
@@ -304,18 +303,57 @@ namespace System
 			v1.Get<T>() == v2.Get<T>()
 		}
 
-		public static Result<Variant> CreateFromVariant(Variant varFrom, bool reference = true)
+		public static Result<Variant> CreateFromVariant(Variant varFrom)
 		{
 			Variant varTo = varFrom;
 			if (varTo.mStructType == 1)
 				varTo.mStructType = 0;
+			if (varTo.mStructType > 2)
+			{
+				let type = (Type)Internal.UnsafeCastToObject((void*)varFrom.mStructType);
+				if (type.[Friend]mSize > sizeof(int))
+				{
+					void* data = new uint8[type.[Friend]mSize]*;
+					Internal.MemCpy(data, (void*)varFrom.mData, type.[Friend]mSize);
+					varTo.mData = (int)data;
+				}
+			}
+
 			return varTo;
 		}
 
-		/*public static Result<Variant> CreateFromObject(Object objectFrom, bool reference = true)
+		public static Result<Variant> CreateFromBoxed(Object objectFrom)
 		{
+			if (objectFrom == null)
+				return default;
+
+			Variant variant = ?;
 			Type objType = objectFrom.[Friend]RawGetType();
-			
-		}*/
+			if (objType.IsBoxed)
+			{
+				void* srcDataPtr = (uint8*)Internal.UnsafeCastToPtr(objectFrom) + objType.[Friend]mMemberDataOffset;
+
+				var underlying = objType.UnderlyingType;
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(underlying);
+				if (underlying.Size <= sizeof(int))
+				{
+					variant.mData = 0;
+					*(int*)&variant.mData = *(int*)srcDataPtr;
+				}
+				else
+				{
+					void* data = new uint8[underlying.[Friend]mSize]*;
+					Internal.MemCpy(data, srcDataPtr, underlying.[Friend]mSize);
+					variant.mData = (int)data;
+				}
+			}
+			else
+			{
+				variant.mStructType = 0;
+				variant.mData = (int)Internal.UnsafeCastToPtr(objectFrom);
+			}
+
+			return variant;
+		}
 	}
 }

@@ -89,7 +89,7 @@ namespace System
 
         int IHashable.GetHashCode()
         {
-            return (int)(void*)this;
+            return (int)Internal.UnsafeCastToPtr(this);
         }
         
         public virtual void ToString(String strBuffer)
@@ -97,7 +97,7 @@ namespace System
             //strBuffer.Set(stack string(GetType().mName));
             RawGetType().GetName(strBuffer);
 			strBuffer.Append("@");
-			((int)(void*)this).ToString(strBuffer, "X", null);
+			((int)Internal.UnsafeCastToPtr(this)).ToString(strBuffer, "X", null);
         }
                 
         [SkipCall, NoShow]

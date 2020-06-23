@@ -238,7 +238,7 @@ namespace System.Reflection
 			if (args.Length != mMethodData.mParamCount)
 				return .Err(.ParamCountMismatch);
 
-			var (retVal, variantData) = Variant.Alloc(retType);
+			var variantData = Variant.Alloc(retType, var retVal);
 			void* retData = variantData;
 
 			// Struct return? Manually add it as an arg after 'this'.  Revisit this - this is architecture-dependent.
@@ -500,7 +500,7 @@ namespace System.Reflection
 			if (args.Count != mMethodData.mParamCount)
 				return .Err(.ParamCountMismatch);
 
-			var (retVal, variantData) = Variant.Alloc(retType);
+			var variantData = Variant.Alloc(retType, var retVal);
 			void* retData = variantData;
 
 			// Struct return? Manually add it as an arg after 'this'.  Revisit this - this is architecture-dependent.

@@ -5162,15 +5162,11 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 		return;
 
 	bool wantSplat = false;
-	if (argVal.mType->IsSplattable())
+	if ((argVal.mType->IsSplattable()) && (!disableSplat))
 	{
+		disableLowering = true;
 		auto argTypeInstance = argVal.mType->ToTypeInstance();
-		if ((argTypeInstance != NULL) && (argTypeInstance->mIsCRepr))
-		{
-			// Always splat for crepr splattables
-			wantSplat = true;
-		}
-		else if ((!disableSplat) && (int)irArgs.size() + argVal.mType->GetSplatCount() <= mModule->mCompiler->mOptions.mMaxSplatRegs)
+		if ((!disableSplat) && (int)irArgs.size() + argVal.mType->GetSplatCount() <= mModule->mCompiler->mOptions.mMaxSplatRegs)
 			wantSplat = true;
 	}
 
@@ -5190,21 +5186,6 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 				BfTypeCode loweredTypeCode2 = BfTypeCode_None;				
 				if (argVal.mType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
 				{
-// 					auto primType = mModule->GetPrimitiveType(loweredTypeCode);
-// 					auto ptrType = mModule->CreatePointerType(primType);
-// 					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argVal.mValue, mModule->mBfIRBuilder->MapType(ptrType));
-// 					auto primVal = mModule->mBfIRBuilder->CreateLoad(primPtrVal);
-// 					irArgs.push_back(primVal);
-// 
-// 					if (loweredTypeCode2 != BfTypeCode_None)
-// 					{
-// 						auto primType2 = mModule->GetPrimitiveType(loweredTypeCode2);
-// 						auto ptrType2 = mModule->CreatePointerType(primType2);
-// 						BfIRValue primPtrVal2 = mModule->mBfIRBuilder->CreateBitCast(mModule->mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), mModule->mBfIRBuilder->MapType(ptrType2));
-// 						auto primVal2 = mModule->mBfIRBuilder->CreateLoad(primPtrVal2);
-// 						irArgs.push_back(primVal2);
-// 					}
-
 					auto primType = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
 					auto ptrType = mModule->mBfIRBuilder->GetPointerTo(primType);
 					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argVal.mValue, ptrType);

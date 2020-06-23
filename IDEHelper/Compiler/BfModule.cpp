@@ -15579,13 +15579,12 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 				BfTypeUtils::SplatIterate([&](BfType* checkType) { argIdx++; }, paramVar->mResolvedType);
 			}
 			else
-			{
+			{								
 				argIdx++;
+				if (loweredTypeCode2 != BfTypeCode_None)
+					argIdx++;
 			}
-		}
-
-		if (loweredTypeCode2 != BfTypeCode_None)
-			argIdx++;
+		}		
 	}
 
 	if (argIdx == methodInstance->GetStructRetIdx())
@@ -15630,13 +15629,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			}
 			else if (resolvedType->IsComposite() && resolvedType->IsSplattable())
 			{
-				auto resolvedTypeInst = resolvedType->ToTypeInstance();
-				if ((resolvedTypeInst != NULL) && (resolvedTypeInst->mIsCRepr))
-				{
-					// crepr splat is always splat
-					paramVar->mIsSplat = true;
-				}
-				else if (methodInstance->AllowsSplatting())
+				if (methodInstance->AllowsSplatting())
 				{
 					int splatCount = resolvedType->GetSplatCount();
 					if (argIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
@@ -20083,10 +20076,19 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	PopulateType(methodInstance->mReturnType, BfPopulateType_Data);	
 	if (!methodDef->mIsStatic)
     {
+		auto thisType = methodInstance->GetOwner();
 		if (methodInstance->GetParamIsSplat(-1))
 			argIdx += methodInstance->GetParamType(-1)->GetSplatCount();
-		else if (!methodInstance->GetOwner()->IsValuelessType())
+		else if (!thisType->IsValuelessType())
+		{
+			BfTypeCode loweredTypeCode = BfTypeCode_None;
+			BfTypeCode loweredTypeCode2 = BfTypeCode_None;
+			if (!methodDef->mIsMutating)
+				thisType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2);
 			argIdx++;
+			if (loweredTypeCode2 != BfTypeCode_None)
+				argIdx++;
+		}
 	}
 
 	if (methodInstance->GetStructRetIdx() != -1)

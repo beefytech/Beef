@@ -924,7 +924,7 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic)
 {
 	module->PopulateType(mReturnType);
-	
+
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
 	if (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2))

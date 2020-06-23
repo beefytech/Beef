@@ -8881,12 +8881,6 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 	if (explicitCast)
 	{
-		// Object -> void*
-		if ((typedVal.mType->IsObject()) && (toType->IsVoidPtr()))
-		{
-			return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
-		}
-
 		// Func -> void*
 		if ((typedVal.mType->IsFunction()) && (toType->IsVoidPtr()))
 		{

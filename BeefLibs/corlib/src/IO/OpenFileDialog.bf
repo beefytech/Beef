@@ -421,7 +421,7 @@ namespace System.IO
 	        	ofn.mTitle = mTitle.ToScopedNativeWChar!::();
 	        ofn.mFlags = Options | (Windows.OFN_EXPLORER | Windows.OFN_ENABLEHOOK | Windows.OFN_ENABLESIZING);
 	        ofn.mHook = hookProcPtr;
-			ofn.mCustData = (int)(void*)this;
+			ofn.mCustData = (int)Internal.UnsafeCastToPtr(this);
 	        ofn.mFlagsEx = Windows.OFN_USESHELLITEM;
 	        if (mDefaultExt != null && AddExtension)
 	            ofn.mDefExt = mDefaultExt;

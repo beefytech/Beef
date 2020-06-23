@@ -64,10 +64,10 @@ namespace System.Reflection
 	        }
 
 	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
-	        void* fieldDataAddr = ((uint8*)(void*)obj) + mFieldData.mDataOffset + dataOffsetAdjust;
+	        void* fieldDataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + mFieldData.mDataOffset + dataOffsetAdjust;
 
 			Type rawValueType = value.[Friend]RawGetType();
-			void* valueDataAddr = ((uint8*)(void*)value) + rawValueType.[Friend]mMemberDataOffset;
+			void* valueDataAddr = ((uint8*)Internal.UnsafeCastToPtr(value)) + rawValueType.[Friend]mMemberDataOffset;
 			
 			Type valueType = value.GetType();
 
@@ -126,7 +126,7 @@ namespace System.Reflection
 
 		    Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 		    
-		    void* dataAddr = ((uint8*)(void*)obj) + mFieldData.mDataOffset + dataOffsetAdjust;
+		    void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + mFieldData.mDataOffset + dataOffsetAdjust;
 
 			if (value.VariantType != fieldType)
 				return .Err;//("Invalid type");
@@ -154,7 +154,7 @@ namespace System.Reflection
 
 	        if (type.IsBoxed)
 	            return ((uint8*)(void*)value) + type.[Friend]mMemberDataOffset;
-	        return ((uint8*)(void*)value);
+	        return ((uint8*)Internal.UnsafeCastToPtr(value));
 	    }
 
 	    public Result<void> GetValue<TMember>(Object target, out TMember value)
@@ -237,7 +237,7 @@ namespace System.Reflection
 			void* targetDataAddr = (void*)(int)mFieldData.mConstValue;
 
 			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
-			value.[Friend]mStructType = (int)(void*)fieldType;
+			value.[Friend]mStructType = (int)Internal.UnsafeCastToPtr(fieldType);
 
 			TypeCode typeCode = fieldType.[Friend]mTypeCode;
 			if (typeCode == TypeCode.Enum)

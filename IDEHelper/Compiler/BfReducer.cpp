@@ -2183,7 +2183,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 					if (auto condExpr = BfNodeDynCast<BfConditionalExpression>(unaryOpExpr->mExpression))
 					{
-						exprLeft = condExpr;
+						if (exprLeft == unaryOpExpr)
+							exprLeft = condExpr;
 						ApplyToFirstExpression(unaryOpExpr, condExpr);
 					}
 
@@ -2197,7 +2198,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 							MEMBER_SET(unaryOpExpr, mExpression, assignmentExpr->mLeft);
 							unaryOpExpr->SetSrcEnd(assignmentExpr->mLeft->GetSrcEnd());
 							MEMBER_SET(assignmentExpr, mLeft, unaryOpExpr);
-							exprLeft = assignmentExpr;
+							if (exprLeft == unaryOpExpr)
+								exprLeft = assignmentExpr;
 						}
 					}
 
@@ -2211,7 +2213,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 							MEMBER_SET(unaryOpExpr, mExpression, dynCastExpr->mTarget);
 							unaryOpExpr->SetSrcEnd(dynCastExpr->mTarget->GetSrcEnd());
 							MEMBER_SET(dynCastExpr, mTarget, unaryOpExpr);
-							exprLeft = dynCastExpr;
+							if (exprLeft == unaryOpExpr)
+								exprLeft = dynCastExpr;
 						}
 					}
 
@@ -2225,7 +2228,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 							MEMBER_SET(unaryOpExpr, mExpression, caseExpr->mValueExpression);
 							unaryOpExpr->SetSrcEnd(caseExpr->mValueExpression->GetSrcEnd());
 							MEMBER_SET(caseExpr, mValueExpression, unaryOpExpr);
-							exprLeft = caseExpr;
+							if (exprLeft == unaryOpExpr)
+								exprLeft = caseExpr;
 						}
 					}
 				}
