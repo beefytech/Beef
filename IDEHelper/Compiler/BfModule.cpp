@@ -6865,10 +6865,26 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			if (checkTypeInst->IsObjectOrStruct())
 			{
-				auto ctorClear = GetRawMethodByName(checkTypeInst, "__BfCtor", 0);
-				if (ctorClear->mMethodDef->mProtection == BfProtection_Public)
-					canAlloc = true;
-				else if ((ctorClear->mMethodDef->mProtection == BfProtection_Protected) && (mCurTypeInstance != NULL))
+				checkTypeInst->mTypeDef->PopulateMemberSets();
+				BfMemberSetEntry* entry = NULL;
+				BfMethodDef* checkMethodDef = NULL;
+				checkTypeInst->mTypeDef->mMethodSet.TryGetWith(String("__BfCtor"), &entry);
+				if (entry != NULL)
+					checkMethodDef = (BfMethodDef*)entry->mMemberDef;
+				bool hadProtected = false;
+				while (checkMethodDef != NULL)
+				{
+					if (checkMethodDef->mProtection == BfProtection_Public)
+					{
+						canAlloc = true;
+						break;
+					}
+					if (checkMethodDef->mProtection == BfProtection_Protected)
+						hadProtected = true;
+					checkMethodDef = checkMethodDef->mNextWithSameName;
+				}
+
+				if ((!canAlloc) && (hadProtected) && (mCurTypeInstance != NULL))
 					canAlloc = TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst, false);
 			}
 		}
@@ -9024,8 +9040,9 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 	{
 		if (!mCompiler->mIsResolveOnly)		
 		{
-			BF_ASSERT((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl));
-			methodGroup.mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
+			BF_ASSERT((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) || (typeInstance->mTypeFailed));
+			if ((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl))
+				methodGroup.mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 
 			// Get it from the owning module so we don't create a reference prematurely...
 			auto declModule = typeInstance->mModule;			

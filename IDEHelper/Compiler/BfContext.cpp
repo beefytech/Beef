@@ -766,7 +766,7 @@ BfType * BfContext::FindTypeById(int typeId)
 
 void BfContext::AddTypeToWorkList(BfType* type)
 {
-	BF_ASSERT(!mAssertOnPopulateType);
+	//BF_ASSERT(!mAssertOnPopulateType);
 
 	BF_ASSERT((type->mRebuildFlags & BfTypeRebuildFlag_InTempPool) == 0);
 	if ((type->mRebuildFlags & BfTypeRebuildFlag_AddedToWorkList) == 0)
