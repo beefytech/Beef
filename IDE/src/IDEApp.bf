@@ -7606,7 +7606,8 @@ namespace IDE
 			{
 				OutputLine("Failed to execute \"{0}\"", inFileName);
 				delete process;
-				return executionInstance;
+				delete executionInstance;
+				return null;
 			}
 
 			if (runFlags.HasFlag(.NoWait))
@@ -10015,7 +10016,7 @@ namespace IDE
 				canCompile = false;
 			}
 
-			canCompile = true;
+			canCompile = platform == hostPlatform;
 			switch (platform)
 			{
 			case .iOS:
@@ -10024,8 +10025,10 @@ namespace IDE
 				canCompile = true;
 			case .Unknown:
 				canCompile = true;
+			case .Linux:
+				if (hostPlatform == .Windows)
+					canCompile = true; // Use WSL
 			default:
-				canCompile = platform == hostPlatform;
 			}
 			
 			if (!canCompile)

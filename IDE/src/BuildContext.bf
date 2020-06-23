@@ -262,17 +262,48 @@ namespace IDE
 			return true;
 		}
 
+		void WSLPathFix(String str)
+		{
+			for (int i = 1; i < str.Length - 1; i++)
+			{
+				if (str[i] == ':')
+				{
+					if (str[i - 1].IsLetter)
+					{
+						int j = i;
+						for ( ; j < str.Length; j++)
+						{
+							char8 cj = str[j];
+							if (cj == '\\')
+								str[j] = '/';
+							if ((cj.IsWhiteSpace) || (cj == '"'))
+								break;
+						}
+
+						str.Remove(i);
+						str[i - 1] = str[i - 1].ToLower;
+						str.Insert(i - 1, "/mnt/");
+					}
+				}
+			}
+		}
+
 		bool QueueProjectGNULink(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
 			bool isDebug = gApp.mConfigName.IndexOf("Debug", true) != -1;
+
+			bool isMinGW = false;
+
 			
 
 #if BF_PLATFORM_WINDOWS
+			bool isWSL = mPlatformType == .Linux;
 			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
 			IDEUtils.FixFilePath(llvmDir);
 			llvmDir.Append("llvm/");
 #else
 		    String llvmDir = "";
+			bool isWSL = false;
 #endif
 
 		    //String error = scope String();
@@ -329,37 +360,38 @@ namespace IDE
 			    }
 			    else
 			    {
-#if BF_PLATFORM_WINDOWS
-			        String[] mingwFiles;
-			        String fromDir;
+					if (isMinGW)
+					{
+				        String[] mingwFiles;
+				        String fromDir;
 
-			        if (mPtrSize == 4)
-			        {
-			            fromDir = scope:: String(llvmDir, "i686-w64-mingw32/bin/");
-			            mingwFiles = scope:: String[] { "libgcc_s_dw2-1.dll", "libstdc++-6.dll" };
-			        }
-			        else
-			        {
-			            fromDir = scope:: String(llvmDir, "x86_64-w64-mingw32/bin/");
-			            mingwFiles = scope:: String[] { "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll" };
-			        }
-			        for (var mingwFile in mingwFiles)
-			        {
-			            String fromPath = scope String(fromDir, mingwFile);
-						//string toPath = projectBuildDir + "/" + mingwFile;
-			            String toPath = scope String();
-			            Path.GetDirectoryPath(targetPath, toPath);
-			            toPath.Append("/", mingwFile);
-			            if (!File.Exists(toPath))
-						{
-							if (File.Copy(fromPath, toPath) case .Err)
+				        if (mPtrSize == 4)
+				        {
+				            fromDir = scope:: String(llvmDir, "i686-w64-mingw32/bin/");
+				            mingwFiles = scope:: String[] { "libgcc_s_dw2-1.dll", "libstdc++-6.dll" };
+				        }
+				        else
+				        {
+				            fromDir = scope:: String(llvmDir, "x86_64-w64-mingw32/bin/");
+				            mingwFiles = scope:: String[] { "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll" };
+				        }
+				        for (var mingwFile in mingwFiles)
+				        {
+				            String fromPath = scope String(fromDir, mingwFile);
+							//string toPath = projectBuildDir + "/" + mingwFile;
+				            String toPath = scope String();
+				            Path.GetDirectoryPath(targetPath, toPath);
+				            toPath.Append("/", mingwFile);
+				            if (!File.Exists(toPath))
 							{
-								gApp.OutputLineSmart("ERROR: Failed to copy mingw file {0}", fromPath);
-								return false;
+								if (File.Copy(fromPath, toPath) case .Err)
+								{
+									gApp.OutputLineSmart("ERROR: Failed to copy mingw file {0}", fromPath);
+									return false;
+								}
 							}
-						}
-			        }
-#endif
+				        }
+					}
 			    }
 
 			    List<Project> depProjectList = scope List<Project>();
@@ -399,24 +431,29 @@ namespace IDE
 			        }
 			    }
 
-#if BF_PLATFORM_WINDOWS
-			    String gccExePath = "c:/mingw/bin/g++.exe";
-			    String clangExePath = scope String(llvmDir, "bin/clang++.exe");
-#else
-		        String gccExePath = "/usr/bin/c++";
-		        String clangExePath = scope String("/usr/bin/c++");
+				String gccExePath;
+				String clangExePath;
+				if (isMinGW)
+				{
+				    gccExePath = "c:/mingw/bin/g++.exe";
+				    clangExePath = scope String(llvmDir, "bin/clang++.exe");
+				}
+				else
+				{
+			        gccExePath = "/usr/bin/c++";
+			        clangExePath = scope String("/usr/bin/c++");
 
-		        if (File.Exists("/usr/bin/clang++"))
-		        {
-					gccExePath = "/usr/bin/clang++";
-		        	clangExePath = scope String("/usr/bin/clang++");
-		        }
-		        else
-		        {
-					gccExePath = "/usr/bin/c++";
-		        	clangExePath = scope String("/usr/bin/c++");
-		        }
-#endif
+			        if (File.Exists("/usr/bin/clang++"))
+			        {
+						gccExePath = "/usr/bin/clang++";
+			        	clangExePath = scope String("/usr/bin/clang++");
+			        }
+			        else
+			        {
+						gccExePath = "/usr/bin/c++";
+			        	clangExePath = scope String("/usr/bin/c++");
+			        }
+				}
 
 			    if (project.mNeedsTargetRebuild)
 			    {
@@ -478,6 +515,14 @@ namespace IDE
 					else
 					{
 						workingDir.Append(gApp.mInstallDir);
+					}
+
+					if (isWSL)
+					{
+						linkLine.Insert(0, " ");
+						linkLine.Insert(0, compilerExePath);
+						compilerExePath = "wsl.exe";
+						WSLPathFix(linkLine);
 					}
 
 			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, workingDir, .UTF8);
