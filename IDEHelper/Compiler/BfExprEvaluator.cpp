@@ -13738,6 +13738,9 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			}
 			argValue = arg->mTypedValue;
 		}
+
+		if (!argValue)
+			continue;
 		
 		localVar->mResolvedType = argValue.mType;				
 		if (argValue.mType->IsRef())
