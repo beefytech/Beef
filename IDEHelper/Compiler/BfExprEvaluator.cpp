@@ -1837,6 +1837,9 @@ bool BfMethodMatcher::IsType(BfTypedValue& typedVal, BfType* type)
 	if (typedVal.mType == type)
 		return true;
 
+	if (!typedVal)
+		return false;
+
 	if (!typedVal.mType->IsPrimitiveType())
 		return false;
 	if (!type->IsPrimitiveType())
