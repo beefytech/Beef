@@ -2066,33 +2066,48 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 
 				if (isCastExpr)
-				{
-					auto bfCastExpr = mAlloc->Alloc<BfCastExpression>();
+				{					
+					BfCastExpression* bfCastExpr = NULL;
 					if (isTuple)
 					{
 						// Create typeRef including the parens (tuple type)
 						auto castTypeRef = CreateTypeRef(tokenNode);
-						ReplaceNode(castTypeRef, bfCastExpr);
-						bfCastExpr->mTypeRef = castTypeRef;
+						if (castTypeRef != NULL)
+						{
+							bfCastExpr = mAlloc->Alloc<BfCastExpression>();
+							ReplaceNode(castTypeRef, bfCastExpr);
+							bfCastExpr->mTypeRef = castTypeRef;
+						}
 					}
 					else
 					{
-						ReplaceNode(tokenNode, bfCastExpr);
-						bfCastExpr->mOpenParen = tokenNode;
-						auto castTypeRef = CreateTypeRefAfter(bfCastExpr);
+						auto castTypeRef = CreateTypeRefAfter(tokenNode);
+						if (castTypeRef != NULL)
+						{
+							bfCastExpr = mAlloc->Alloc<BfCastExpression>();
 
-						MEMBER_SET_CHECKED(bfCastExpr, mTypeRef, castTypeRef);
-						tokenNode = ExpectTokenAfter(bfCastExpr, BfToken_RParen);
-						MEMBER_SET_CHECKED(bfCastExpr, mCloseParen, tokenNode);
+							ReplaceNode(tokenNode, bfCastExpr);
+							bfCastExpr->mOpenParen = tokenNode;
+
+							MEMBER_SET_CHECKED(bfCastExpr, mTypeRef, castTypeRef);
+							tokenNode = ExpectTokenAfter(bfCastExpr, BfToken_RParen);
+							MEMBER_SET_CHECKED(bfCastExpr, mCloseParen, tokenNode);
+						}
 					}
 
-					auto expression = CreateExpressionAfter(bfCastExpr);
-					if (expression == NULL)
-						return bfCastExpr;
-					MEMBER_SET(bfCastExpr, mExpression, expression);
-					unaryOpExpr = bfCastExpr;
+					if (bfCastExpr == NULL)
+						isCastExpr = false;
+					else
+					{
+						auto expression = CreateExpressionAfter(bfCastExpr);
+						if (expression == NULL)
+							return bfCastExpr;
+						MEMBER_SET(bfCastExpr, mExpression, expression);
+						unaryOpExpr = bfCastExpr;
+					}
 				}
-				else
+				
+				if (!isCastExpr)
 				{
 					if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 					{
