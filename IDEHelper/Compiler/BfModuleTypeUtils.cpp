@@ -215,7 +215,10 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 	{
 		auto underlyingType = genericTypeInst->GetUnderlyingType();
 		if ((underlyingType != NULL) && (underlyingType->IsGenericTypeInstance()))
+		{
+			PopulateType(underlyingType, BfPopulateType_Declaration);
 			return ValidateGenericConstraints(typeRef, (BfTypeInstance*)underlyingType, ignoreErrors);
+		}
 		return true;
 	}
 
@@ -5278,7 +5281,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 				{
 					bool isFailurePass = pass == 1;
 					bool allowPrivate = (mCurTypeInstance != NULL) &&
-						((mCurTypeInstance == outerTypeInstance) || TypeHasParent(mCurTypeInstance->mTypeDef, outerTypeInstance->mTypeDef));
+						((mCurTypeInstance == outerTypeInstance) || TypeHasParentOrEquals(mCurTypeInstance->mTypeDef, outerTypeInstance->mTypeDef));
 					bool allowProtected = allowPrivate;/*(mCurTypeInstance != NULL) &&
 													   (allowPrivate || (mCurTypeInstance->mSkipTypeProtectionChecks) || TypeIsSubTypeOf(mCurTypeInstance, outerTypeInstance));*/
 
@@ -7771,7 +7774,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 						
 			BfTypeDef* outerType = mSystem->GetCombinedPartial(typeDef->mOuterType);
 			BF_ASSERT(!outerType->mIsPartial);
-			if (TypeHasParent(mCurTypeInstance->mTypeDef, outerType))			
+			if (TypeHasParentOrEquals(mCurTypeInstance->mTypeDef, outerType))
 			{
 				BfType* checkCurType = mCurTypeInstance;
 				if (checkCurType->IsBoxed())
@@ -10482,15 +10485,28 @@ BfTypedValue BfModule::GetIntCoercible(const BfTypedValue& typedValue)
 	return BfTypedValue(val, intType);
 }
 
-bool BfModule::TypeHasParent(BfTypeDef* checkChildTypeDef, BfTypeDef* checkParentTypeDef)
+bool BfModule::TypeHasParentOrEquals(BfTypeDef* checkChildTypeDef, BfTypeDef* checkParentTypeDef)
 {
 	BfTypeDef* checkType = checkChildTypeDef;
-	while (checkType != NULL)
-	{
-		if (checkType == checkParentTypeDef)
-			return true;
+
+	if (checkType->mNestDepth < checkParentTypeDef->mNestDepth)
+		return false;
+
+	while (checkType->mNestDepth > checkParentTypeDef->mNestDepth)
 		checkType = checkType->mOuterType;
+
+	if (checkType == checkParentTypeDef)
+		return true;
+	if (checkType->mNameEx != checkParentTypeDef->mNameEx)
+		return false;
+
+	if (checkType->mIsPartial)
+	{
+		for (auto partial : checkParentTypeDef->mPartials)
+			if (partial == checkType)
+				return true;
 	}
+	
 	return false;
 }
 

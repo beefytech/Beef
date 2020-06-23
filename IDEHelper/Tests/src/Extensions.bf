@@ -1,6 +1,7 @@
 #pragma warning disable 168
 
 using System;
+using System.Collections;
 
 namespace System.Collections
 {
@@ -14,6 +15,26 @@ namespace System.Collections
 				total += val.GetExVal();
 			}
 			return total;
+		}
+	}
+
+	extension Dictionary<K, V>
+	{
+		public static bool operator==(Self lhs, Self rhs) where K : IOpEquals where V : IOpEquals
+		{
+			if (lhs.mCount != rhs.mCount)
+				return false;
+			for (var kv in ref lhs)
+			{
+				if (rhs.TryGetValue(kv.key, var rhsVal))
+				{
+					if (*kv.valueRef != rhsVal)
+						return false;
+				}
+				else
+					return false;
+			}
+			return true;
 		}
 	}
 }
@@ -159,6 +180,16 @@ namespace Tests
 
 			int val = list.GetExVals();
 			Test.Assert(val == 110);
+		}
+
+		[Test]
+		public static void TestDictionary()
+		{
+			Dictionary<String, int> dictLhs = scope .() {("Abc", 123), ("Def", 234) };
+			Dictionary<String, int> dictrhs = scope .() {(scope:: String("Abc"), 123), ("Def", 234) };
+
+			Test.Assert(dictLhs == dictrhs);
+			Test.Assert(!LibA.LibA0.DictEquals(dictLhs, dictrhs));
 		}
 
 		[Test]

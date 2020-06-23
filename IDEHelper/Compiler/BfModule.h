@@ -1704,7 +1704,7 @@ public:
 	BfTypeInstance* GetOuterType(BfType* type);
 	bool IsInnerType(BfType* checkInnerType, BfType* checkOuterType);	
 	bool IsInnerType(BfTypeDef* checkInnerType, BfTypeDef* checkOuterType);
-	bool TypeHasParent(BfTypeDef* checkChildTypeDef, BfTypeDef* checkParentTypeDef);
+	bool TypeHasParentOrEquals(BfTypeDef* checkChildTypeDef, BfTypeDef* checkParentTypeDef);
 	BfTypeDef* FindCommonOuterType(BfTypeDef* type, BfTypeDef* type2);	
 	bool TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType, bool checkAccessibility = true);
 	int GetTypeDistance(BfType* fromType, BfType* toType);

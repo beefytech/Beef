@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+
 namespace LibA
 {
 	interface IVal
@@ -25,6 +27,11 @@ namespace LibA
 		{
 			let t = new T();
 			delete t;
+		}
+
+		public static bool DictEquals(Dictionary<String, int> lhs, Dictionary<String, int> rhs)
+		{
+			return lhs == rhs;
 		}
 	}
 }
