@@ -3089,9 +3089,13 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 				return;
 	}
 
+	auto depFlag = flags;
+	if ((flags & (BfDependencyMap::DependencyFlag_MethodGenericArg | BfDependencyMap::DependencyFlag_TypeGenericArg)) == 0)
+		depFlag = BfDependencyMap::DependencyFlag_GenericArgRef; // Will cause a rebuild but not an outright deletion of the type
+
 	auto underlyingType = usedType->GetUnderlyingType();
-	if (underlyingType != NULL) // Not really a "GenericArg", but... same purpose.
-		AddDependency(underlyingType, userType, BfDependencyMap::DependencyFlag_GenericArgRef);
+	if (underlyingType != NULL) 
+		AddDependency(underlyingType, userType, depFlag);
 
 	BfDependedType* checkDType = usedType->ToDependedType();
 	if (checkDType == NULL)
@@ -3107,7 +3111,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 		auto genericTypeInstance = (BfTypeInstance*) checkDType;
 		for (auto genericArg : genericTypeInstance->mGenericTypeInfo->mTypeGenericArguments)
 		{
-			AddDependency(genericArg, userType, BfDependencyMap::DependencyFlag_GenericArgRef);
+			AddDependency(genericArg, userType, depFlag);
 		}
 	}
 	if (checkDType->IsTuple())
@@ -3115,7 +3119,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 		for (auto& field : checkDType->ToTypeInstance()->mFieldInstances)
 		{
 			if (field.mDataIdx != -1)
-				AddDependency(field.mResolvedType, userType, BfDependencyMap::DependencyFlag_GenericArgRef);
+				AddDependency(field.mResolvedType, userType, depFlag);
 		}
 	}
 }
