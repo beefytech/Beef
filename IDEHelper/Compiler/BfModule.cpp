@@ -4090,7 +4090,11 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 
 	auto exitBB = mBfIRBuilder->CreateBlock("exit");
 
-	if (compareType->IsSizedArray())
+	if (compareType->IsValuelessType())
+	{
+		// Always equal, nothing to do
+	}
+	else if (compareType->IsSizedArray())
 	{
 		auto sizedArrayType = (BfSizedArrayType*)compareType;
 		
