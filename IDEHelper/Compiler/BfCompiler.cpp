@@ -3695,11 +3695,11 @@ void BfCompiler::ProcessAutocompleteTempType()
 	SetAndRestoreValue<BfMethodState*> prevMethodState(module->mCurMethodState, NULL);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(module->mCurTypeInstance, NULL);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(module->mCurMethodInstance, NULL);
+	SetAndRestoreValue<BfTypeState*> prevTypeState(module->mContext->mCurTypeState, NULL);
 
 	// >>> VisitExteriorIdentifiers
 	mResolvePassData->mAutoComplete->SetModule(module);
 	{		
-		SetAndRestoreValue<BfTypeState*> prevTypeState(module->mContext->mCurTypeState, NULL);
 		BP_ZONE("VisitExteriorIdentifiers");		
 		VisitAutocompleteExteriorIdentifiers();
 	}	
@@ -3738,7 +3738,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 	BfTypeState typeState;
 	typeState.mCurTypeDef = tempTypeDef;
-	SetAndRestoreValue<BfTypeState*> prevTypeState(module->mContext->mCurTypeState, &typeState);	
+	module->mContext->mCurTypeState = &typeState;
 
 	BfStaticSearch* staticSearch = NULL;
 	if (mResolvePassData->mStaticSearchMap.TryAdd(tempTypeDef, NULL, &staticSearch))
