@@ -74,6 +74,7 @@ public:
 	Array<int> mConfigConsts;	
 
 public:	
+	void FatalError(const StringImpl& str);
 	void NotImpl();
 	BfTypeCode GetTypeCode(BeType* type, bool isSigned);
 	void SetResult(int id, BeValue* value);
@@ -117,7 +118,7 @@ public:
 			vec.push_back(result);
 		}
 	}
-
+	
 	void Init(const BfSizedArray<uint8>& buffer);
 	void Process();
 

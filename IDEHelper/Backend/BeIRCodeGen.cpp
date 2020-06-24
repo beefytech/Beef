@@ -285,6 +285,28 @@ bool BeIRCodeGen::IsModuleEmpty()
 	return true;
 }
 
+void BeIRCodeGen::FatalError(const StringImpl& err)
+{
+	String failStr = "Fatal Error in Module: ";
+	if (mBeModule != NULL)
+		failStr += mBeModule->mModuleName;
+	failStr += "\n";
+	if (mBeModule != NULL)
+	{
+		BeDumpContext dumpCtx;
+
+		if (mBeModule->mCurDbgLoc != NULL)
+		{
+			failStr += "DbgLoc: ";
+			dumpCtx.ToString(failStr, mBeModule->mCurDbgLoc);
+			failStr += "\n";
+		}
+	}
+
+	failStr += err;
+	BF_FATAL(failStr);
+}
+
 void BeIRCodeGen::NotImpl()
 {
 	BF_FATAL("Not implemented");
@@ -1584,8 +1606,18 @@ void BeIRCodeGen::HandleNextCmd()
 #ifdef _DEBUG
 			auto ptrType = ptr->GetType();
 			auto valType = val->GetType();
-			BF_ASSERT(ptrType->IsPointer());
-			BF_ASSERT(mBeContext->AreTypesEqual(((BePointerType*)ptrType)->mElementType, valType));
+
+			if ((!ptrType->IsPointer()) || (!mBeContext->AreTypesEqual(((BePointerType*)ptrType)->mElementType, valType)))
+			{
+				String errStr;
+				errStr += "BfIRCmd_Store Match Failure:\n";
+				BeDumpContext dumpCtx;
+				errStr += "Val: ";
+				dumpCtx.ToString(errStr, val);
+				errStr += "\nPtr: ";
+				dumpCtx.ToString(errStr, ptr);
+				FatalError(errStr);
+			}
 #endif
 
 			CMD_PARAM(bool, isVolatile);
@@ -1601,9 +1633,18 @@ void BeIRCodeGen::HandleNextCmd()
 
 #ifdef _DEBUG
 			auto ptrType = ptr->GetType();
-			auto valType = val->GetType();
-			BF_ASSERT(ptrType->IsPointer());
-			BF_ASSERT(mBeContext->AreTypesEqual(((BePointerType*)ptrType)->mElementType, valType));
+			auto valType = val->GetType();			
+			if ((!ptrType->IsPointer()) || (!mBeContext->AreTypesEqual(((BePointerType*)ptrType)->mElementType, valType)))
+			{
+				String errStr;
+				errStr += "BfIRCmd_Store Match Failure:\n";
+				BeDumpContext dumpCtx;
+				errStr += "Val: ";
+				dumpCtx.ToString(errStr, val);
+				errStr += "\nPtr: ";
+				dumpCtx.ToString(errStr, ptr);
+				FatalError(errStr);
+			}
 #endif
 
 			SetResult(curId, mBeModule->CreateAlignedStore(val, ptr, alignment, isVolatile));
@@ -2070,14 +2111,41 @@ void BeIRCodeGen::HandleNextCmd()
 				BF_ASSERT(funcPtrType->IsPointer());
 				auto funcType = (BeFunctionType*)((BePointerType*)funcPtrType)->mElementType;
 				BF_ASSERT(funcType->mTypeCode == BeTypeCode_Function);
+
+				bool argsMatched = true;
 				if (!funcType->mIsVarArg)
+				{					
+					if (funcType->mParams.size() != args.size())
+					{
+						argsMatched = false;
+					}
+					else
+					{
+						int argIdx = 0;
+						for (int argIdx = 0; argIdx < (int)args.size(); argIdx++)
+						{
+							if (funcType->mParams[argIdx].mType != args[argIdx]->GetType())
+								argsMatched = false;
+						}
+					}
+				}
+
+				if (!argsMatched)
 				{
-					BF_ASSERT(funcType->mParams.size() == args.size());
-					int argIdx = 0;
+					String errStr;
+					errStr += "BfIRCmd_CreateCall Match Failure:\n";
+					BeDumpContext dumpCtx;
+					dumpCtx.ToString(errStr, func);
+					errStr += "\n";
+					dumpCtx.ToString(errStr, funcType);
+					errStr += "\n";
 					for (int argIdx = 0; argIdx < (int)args.size(); argIdx++)
 					{
-						BF_ASSERT(funcType->mParams[argIdx].mType == args[argIdx]->GetType());
+						errStr += StrFormat("ARG #%d: ", argIdx);
+						dumpCtx.ToString(errStr, args[argIdx]);
+						errStr += "\n";
 					}
+					FatalError(errStr);
 				}
 			}
 			else
