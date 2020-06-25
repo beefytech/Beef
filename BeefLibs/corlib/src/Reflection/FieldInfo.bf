@@ -66,6 +66,19 @@ namespace System.Reflection
 	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 	        void* fieldDataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + mFieldData.mDataOffset + dataOffsetAdjust;
 
+			if (value == null)
+			{
+				if ((fieldType.IsValueType) && (!fieldType.IsPointer))
+				{
+					return .Err(.InvalidValueType);
+				}
+				else
+				{
+					*((int*)fieldDataAddr) = 0;
+					return .Ok;
+				}
+			}
+
 			Type rawValueType = value.[Friend]RawGetType();
 			void* valueDataAddr = ((uint8*)Internal.UnsafeCastToPtr(value)) + rawValueType.[Friend]mMemberDataOffset;
 			
@@ -86,22 +99,6 @@ namespace System.Reflection
 				return .Err(.InvalidValueType);
 			}
 
-	        /*switch (fieldType.mTypeCode)
-	        {
-            case .Boolean:
-				if (!value is bool)
-				return .Err(.InvalidValueType);
-				*(bool*)(uint8*)dataAddr = (.)value;
-				break;        
-	        case .Int32:
-	            if (!value is int32)
-	                return .Err(.InvalidValueType);
-	            *(int32*)(uint8*)dataAddr = (.)value;
-	            break;
-	        default:
-	            return .Err(.InvalidValueType);
-	        }*/
-	                  
 	        return .Ok;
 	    }
 			
