@@ -16097,9 +16097,14 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 			_GetValues = [&](BfSizedArrayType* checkArrayType, BfTokenNode* openToken, const BfSizedArray<BfExpression*>& valueExprs, const BfSizedArray<BfTokenNode*>& commas, BfTokenNode* closeToken, bool ignore)
 		{
 			int64 initCountDiff = (int)valueExprs.size() - checkArrayType->mElementCount;
-			if ((initCountDiff != 0) && (!failedAt.Contains(depth)))
+			if ((initCountDiff != 0) && (!valueExprs.IsEmpty()) && (!failedAt.Contains(depth)))
 			{
-				if (initCountDiff > 0)
+				if (checkArrayType->mElementCount == -1)
+				{
+					mModule->Fail("Initializers not supported for unknown-sized arrays", valueExprs[0]);
+					failedAt.Add(depth);
+				}
+				else if (initCountDiff > 0)
 				{
 					mModule->Fail(StrFormat("Too many initializers, expected %d fewer", initCountDiff), valueExprs[BF_MAX((int)checkArrayType->mElementCount, 0)]);
 					failedAt.Add(depth);
