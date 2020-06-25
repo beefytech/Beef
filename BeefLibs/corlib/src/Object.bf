@@ -99,6 +99,14 @@ namespace System
 			strBuffer.Append("@");
 			((int)Internal.UnsafeCastToPtr(this)).ToString(strBuffer, "X", null);
         }
+
+		private static void ToString(Object obj, String strBuffer)
+		{
+			if (obj == null)
+				strBuffer.Append("null");
+			else
+				obj.ToString(strBuffer);
+		}
                 
         [SkipCall, NoShow]
     	protected virtual void GCMarkMembers()
