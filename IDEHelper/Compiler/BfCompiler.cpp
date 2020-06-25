@@ -4179,11 +4179,13 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 			if (actualReplaceMethodDef == NULL)
 			{
+				autoComplete->mReplaceLocalId = -1;
 				autoComplete->mDefType = NULL;
 				autoComplete->mDefField = NULL;
-				autoComplete->mDefProp = NULL;
-				autoComplete->mReplaceLocalId = -1;
 				autoComplete->mDefMethod = NULL;
+				autoComplete->mDefProp = NULL;
+				autoComplete->mDefMethodGenericParamIdx = -1;
+				autoComplete->mDefTypeGenericParamIdx = -1;
 			}
 			else
 				autoComplete->mDefMethod = actualReplaceMethodDef;
