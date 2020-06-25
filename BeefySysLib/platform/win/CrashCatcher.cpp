@@ -1094,6 +1094,8 @@ void CrashCatcher::Crash(const StringImpl& str)
 		Init();
 	}
 
+	OutputDebugStr(str);
+
 	mBfpCritSect.Unlock();
 
 
