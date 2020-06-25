@@ -9368,6 +9368,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 					else if (constraintToken->GetToken() == BfToken_Const)
 					{
 						constraintTypes.push_back(constraintNode);
+						genericConstraint->mSrcEnd = constraintNode->mSrcEnd;
 
 						auto typeRef = CreateTypeRefAfter(nextNode);
 						if (typeRef == NULL)
