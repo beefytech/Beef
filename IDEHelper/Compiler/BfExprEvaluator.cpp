@@ -4821,12 +4821,6 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	bool doingThis = !methodDef->mIsStatic;
 	int argIdx = 0;
 	
-
-	if (methodInstance->mIdHash == 1140)
-	{
-		NOP;
-	}
-
 	int paramCount = methodInstance->GetParamCount();
 
 	for ( ; argIdx < callIRArgCount ; )
@@ -10129,11 +10123,6 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		fieldIdx = 0;
 		SizedArray<BfIRValue, 8> irArgs;
 
-		if (methodInstance->mIdHash == 775)
-		{
-			NOP;
-		}
-
 		int argIdx = 0;
 		if (bindMethodInstance->GetStructRetIdx() == 0)
 		{
@@ -11208,11 +11197,6 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 {
-// 	if (lambdaBindExpr->ToString() == "new (addr, byteCount, addrType) => { DoCreateMemoryBreakpoint(addr, byteCount, addrType, showOptions); }")
-// 	{
-// 		NOP;
-// 	}
-
 	BfTokenNode* newToken = NULL;
 	BfAllocTarget allocTarget = ResolveAllocTarget(lambdaBindExpr->mNewToken, newToken);
 
@@ -14879,11 +14863,6 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			{
 				mModule->Fail("Property has no getter", mPropSrc);
 				return mResult;
-			}
-
-			if (matchedMethod->mName == "get__CultureName")
-			{
-				NOP;
 			}
 
 			auto methodInstance = GetPropertyMethodInstance(matchedMethod);

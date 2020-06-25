@@ -8859,9 +8859,8 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					}
 					if (matches)
 					{
-						typedVal = MakeAddressable(typedVal);
-						if (resultFlags != NULL)
-							*resultFlags = (BfCastResultFlags)(BfCastResultFlags_IsAddr);	
+						// This is either a ref or a ptr so we don't need to set the "IsAddr" flag
+						typedVal = MakeAddressable(typedVal);						
 						return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));						
 					}
 				}
