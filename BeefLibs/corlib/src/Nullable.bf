@@ -108,7 +108,7 @@ namespace System
         public static bool operator==<TOther>(TOther lhs, Nullable<T> rhs) where bool : operator TOther == T
         {
             if (!rhs.mHasValue) return false;
-            return lhs == rhs;
+            return lhs == rhs.mValue;
         }
 
         public static bool operator==<TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where bool : operator T == TOther where TOther : struct
@@ -128,7 +128,7 @@ namespace System
         public static bool operator!=<TOther>(TOther lhs, Nullable<T> rhs) where bool : operator TOther != T
         {
             if (!rhs.mHasValue) return true;
-            return lhs != rhs;
+            return lhs != rhs.mValue;
         }
 
         public static bool operator!=<TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where bool : operator T != TOther where TOther : struct
@@ -148,7 +148,7 @@ namespace System
         public static bool operator< <TOther>(TOther lhs, Nullable<T> rhs) where bool : operator TOther < T
         {
             if (!rhs.mHasValue) return false;
-            return lhs < rhs;
+            return lhs < rhs.mValue;
         }
 
         public static bool operator< <TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where bool : operator T < TOther where TOther : struct
@@ -168,7 +168,7 @@ namespace System
         public static bool operator<=<TOther>(TOther lhs, Nullable<T> rhs) where bool : operator TOther <= T
         {
             if (!rhs.mHasValue) return false;
-            return lhs <= rhs;
+            return lhs <= rhs.mValue;
         }
 
         public static bool operator<=<TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where bool : operator T <= TOther where TOther : struct
@@ -188,7 +188,7 @@ namespace System
         public static bool operator><TOther>(TOther lhs, Nullable<T> rhs) where bool : operator TOther > T
         {
             if (!rhs.mHasValue) return false;
-            return lhs > rhs;
+            return lhs > rhs.mValue;
         }
 
         public static bool operator><TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where bool : operator T > TOther where TOther : struct
@@ -208,7 +208,7 @@ namespace System
         public static bool operator>=<TOther>(TOther lhs, Nullable<T> rhs) where bool : operator TOther >= T
         {
             if (!rhs.mHasValue) return false;
-            return lhs >= rhs;
+            return lhs >= rhs.mValue;
         }
 
         public static bool operator>=<TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where bool : operator T >= TOther where TOther : struct
@@ -226,7 +226,7 @@ namespace System
 
         public static int operator<=><TOther>(TOther lhs, Nullable<T> rhs) where int : operator TOther <=> T
         {
-            return lhs <=> rhs;
+            return lhs <=> rhs.mValue;
         }
 
         public static int operator<=><TOther>(Nullable<T> lhs, Nullable<TOther> rhs) where int : operator T <=> TOther where TOther : struct
