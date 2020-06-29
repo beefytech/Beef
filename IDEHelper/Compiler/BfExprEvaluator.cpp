@@ -18593,6 +18593,15 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				return;
 			}
 		}
+
+		// Valueless types always compare as 'equal'
+		if ((leftValue.mType == rightValue.mType) && (leftValue.mType->IsValuelessType()))
+		{
+			auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
+			bool isEqual = (binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality);
+			mResult = BfTypedValue(mModule->GetConstValue(isEqual ? 1 : 0, boolType), boolType);
+			return;
+		}
 	}
 
 	if ((leftValue.mType->IsTypeInstance()) || (leftValue.mType->IsGenericParam()) || 
