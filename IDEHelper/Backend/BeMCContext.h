@@ -788,6 +788,7 @@ public:
 	bool mDoConservativeLife; // Keep alive through 'init' as well as 'uninit'
 	bool mIsExpr; // Not an actual value, something like 'mRelTo + mRelOffset'		
 	bool mWantsExprActualize;
+	bool mWantsExprOffsetActualize;
 	bool mChainLifetimeEnd; // Kill relTo's when we are killed
 	bool mForceMem;
 	bool mForceReg;
@@ -827,6 +828,7 @@ public:
 		mType = NULL;		
 		mIsExpr = false;
 		mWantsExprActualize = false;
+		mWantsExprOffsetActualize = false;
 		mChainLifetimeEnd = false;
 		mFrameOffset = INT_MIN;
 		mHasDynLife = false;
@@ -1274,6 +1276,30 @@ public:
 	}
 };
 
+struct BeRMParamsInfo
+{
+	X64CPURegister mRegA;
+	X64CPURegister mRegB;
+	int mBScale;
+	int mDisp;
+	BeMCRMMode mMode;
+	
+	int mErrorVReg;
+	int mVRegWithScaledOffset;
+
+	BeRMParamsInfo()
+	{
+		mRegA = X64Reg_None;
+		mRegB = X64Reg_None;
+		mBScale = 1;		
+		mDisp = 0;		
+		mMode = BeMCRMMode_Invalid;
+
+		mErrorVReg = -1;
+		mVRegWithScaledOffset = -1;
+	}
+};
+
 // This class only processes one function per instantiation
 class BeMCContext
 {
@@ -1409,8 +1435,8 @@ public:
 	
 	uint8 EncodeRegNum(X64CPURegister regNum);
 	int GetRegSize(int regNum);
-	BeMCRMMode ValidateRMResult(const BeMCOperand& operand, X64CPURegister& regA, X64CPURegister& regB, int& bScale, int& disp, int* errorVReg, BeMCRMMode result, bool doValidate = true);
-	BeMCRMMode GetRMParams(const BeMCOperand& operand, X64CPURegister& regA, X64CPURegister& regB, int& bScale, int& disp, int* errorVReg = NULL, bool doValidate = true);
+	void ValidateRMResult(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate = true);
+	void GetRMParams(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate = true);
 	void DisableRegister(const BeMCOperand& operand, X64CPURegister reg);	
 	void MarkInvalidRMRegs(const BeMCOperand& operand);
 	void GetUsedRegs(const BeMCOperand& operand, X64CPURegister& regA, X64CPURegister& regB); // Expands regs

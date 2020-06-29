@@ -3636,7 +3636,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 263)
+		if (mcOperand.mVRegIdx == 97)
 		{
 			NOP;
 		}		
@@ -5180,13 +5180,10 @@ uint8 BeMCContext::GetREX(const BeMCOperand& r, const BeMCOperand& rm, bool is64
 		if (vregInfo->IsDirectRelTo())
 			return GetREX(r, vregInfo->mRelTo, is64Bit);
 		
-		X64CPURegister regA = X64Reg_None;
-		X64CPURegister regB = X64Reg_None;
-		int bScale = 1;
-		int disp = 0;
-		GetRMParams(rm, regA, regB, bScale, disp);
-		is64BitExRM |= ((regA >= X64Reg_R8) && (regA <= X64Reg_R15)) || ((regA >= X64Reg_R8D) && (regA <= X64Reg_R15D));
-		hasSibExRM |= ((regB >= X64Reg_R8) && (regB <= X64Reg_R15)) || ((regB >= X64Reg_R8D) && (regB <= X64Reg_R15D));
+		BeRMParamsInfo rmInfo;
+		GetRMParams(rm, rmInfo);
+		is64BitExRM |= ((rmInfo.mRegA >= X64Reg_R8) && (rmInfo.mRegA <= X64Reg_R15)) || ((rmInfo.mRegA >= X64Reg_R8D) && (rmInfo.mRegA <= X64Reg_R15D));
+		hasSibExRM |= ((rmInfo.mRegB >= X64Reg_R8) && (rmInfo.mRegB <= X64Reg_R15)) || ((rmInfo.mRegB >= X64Reg_R8D) && (rmInfo.mRegB <= X64Reg_R15D));
 	}
 	else if (rm.IsSymbol())
 	{
@@ -5354,10 +5351,10 @@ int BeMCContext::GetRegSize(int regNum)
 	return 8;
 }
 
-BeMCRMMode BeMCContext::ValidateRMResult(const BeMCOperand& operand, X64CPURegister& regA, X64CPURegister& regB, int& bScale, int& disp, int* errorVReg, BeMCRMMode result, bool doValidate)
+void BeMCContext::ValidateRMResult(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate)
 {
 	if (!doValidate)
-		return result;
+		return;
 
 	//TODO: WTF- this previous version just seems to be wrong! Why did think this was true?  the REX.X and REX.B flags fix these
 	// in a SIB, the base can't be R13 (which is RBP+REX), and the scaled index can't be R12 (which is RSP+REX)
@@ -5376,40 +5373,45 @@ BeMCRMMode BeMCContext::ValidateRMResult(const BeMCOperand& operand, X64CPURegis
 	//}
 
 	// In a SIB, the base can't be RBP, and the scaled index can't be RSP
-	if ((regB != X64Reg_None) &&
-		((regA == X64Reg_RBP) || (regB == X64Reg_RSP)))
+	if ((rmInfo.mRegB != X64Reg_None) &&
+		((rmInfo.mRegA == X64Reg_RBP) || (rmInfo.mRegB == X64Reg_RSP)))
 	{
 		// We can't just swap the regs if we have a scale applied
-		if (bScale != 1)
-		{
-			if (errorVReg != NULL)
-				*errorVReg = -2; // Scale error
-			return BeMCRMMode_Invalid;
+		if (rmInfo.mBScale != 1)
+		{			
+			rmInfo.mErrorVReg = -2; // Scale error
+			rmInfo.mMode = BeMCRMMode_Invalid;
+			return;
 		}
 
-		BF_SWAP(regA, regB);
+		BF_SWAP(rmInfo.mRegA, rmInfo.mRegB);
 	}
 
-	return result;
+	return;
 }
 
-BeMCRMMode BeMCContext::GetRMParams(const BeMCOperand& operand, X64CPURegister& regA, X64CPURegister& regB, int& bScale, int& disp, int* errorVReg, bool doValidate)
-{	
+void BeMCContext::GetRMParams(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate)
+{
 	BeMCRMMode rmMode = BeMCRMMode_Invalid;	
 	if (operand.mKind == BeMCOperandKind_NativeReg)
 	{
-		if (regA == X64Reg_None)
-			regA = operand.mReg;		
-		else if (regB == X64Reg_None)
-			regB = operand.mReg;
-		else 
-			return BeMCRMMode_Invalid;
-		return ValidateRMResult(operand, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Direct, doValidate);
+		if (rmInfo.mRegA == X64Reg_None)
+			rmInfo.mRegA = operand.mReg;
+		else if (rmInfo.mRegB == X64Reg_None)
+			rmInfo.mRegB = operand.mReg;
+		else
+		{
+			rmInfo.mMode = BeMCRMMode_Invalid;
+			return;
+		}
+		rmInfo.mMode = BeMCRMMode_Direct;
+		return ValidateRMResult(operand, rmInfo, doValidate);
 	}
 	else if (operand.IsImmediateInt())
 	{
-		disp += (int)operand.mImmediate;
-		return ValidateRMResult(operand, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Direct, doValidate);
+		rmInfo.mDisp += (int)operand.mImmediate;
+		rmInfo.mMode = BeMCRMMode_Direct;
+		return ValidateRMResult(operand, rmInfo, doValidate);
 	}
 	
 	if (operand.mKind == BeMCOperandKind_VReg)
@@ -5420,20 +5422,25 @@ BeMCRMMode BeMCContext::GetRMParams(const BeMCOperand& operand, X64CPURegister& 
 			auto reg = vregInfo->mReg;
 			if (reg != X64Reg_None)
 			{
-				if (regA == X64Reg_None)
-					regA = reg;
-				else if (regB == X64Reg_None)
-					regB = reg;
+				if (rmInfo.mRegA == X64Reg_None)
+					rmInfo.mRegA = reg;
+				else if (rmInfo.mRegB == X64Reg_None)
+					rmInfo.mRegB = reg;
 				else
-					return BeMCRMMode_Invalid;
-				return ValidateRMResult(operand, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Direct, doValidate);
+				{
+					rmInfo.mMode = BeMCRMMode_Invalid;
+					return;
+				}
+				rmInfo.mMode = BeMCRMMode_Direct;
+				return ValidateRMResult(operand, rmInfo, doValidate);
 			}
 
-			auto result = GetRMParams(BeMCOperand::ToAddr(operand), regA, regB, bScale, disp, errorVReg, doValidate);
-			if (result == BeMCRMMode_Invalid)
-				return BeMCRMMode_Invalid;
-			BF_ASSERT(result == BeMCRMMode_Direct);
-			return ValidateRMResult(BeMCOperand::ToAddr(operand), regA, regB, bScale, disp, errorVReg, BeMCRMMode_Deref, doValidate);			
+			GetRMParams(BeMCOperand::ToAddr(operand), rmInfo, doValidate);
+			if (rmInfo.mMode == BeMCRMMode_Invalid)
+				return;
+			BF_ASSERT(rmInfo.mMode == BeMCRMMode_Direct);
+			rmInfo.mMode = BeMCRMMode_Deref;
+			return ValidateRMResult(BeMCOperand::ToAddr(operand), rmInfo, doValidate);			
 		}
 		// Fall through
 	}
@@ -5446,13 +5453,14 @@ BeMCRMMode BeMCContext::GetRMParams(const BeMCOperand& operand, X64CPURegister& 
 			if (vregInfo->IsDirectRelToAny())
 			{
 				if (vregInfo->mRelTo.mKind == BeMCOperandKind_VReg)
-					return GetRMParams(BeMCOperand::FromVRegAddr(vregInfo->mRelTo.mVRegIdx), regA, regB, bScale, disp, errorVReg, doValidate);
+					return GetRMParams(BeMCOperand::FromVRegAddr(vregInfo->mRelTo.mVRegIdx), rmInfo, doValidate);
 				else if (vregInfo->mRelTo.mKind == BeMCOperandKind_VRegLoad)				
-					return GetRMParams(BeMCOperand::FromVReg(vregInfo->mRelTo.mVRegIdx), regA, regB, bScale, disp, errorVReg, doValidate);				
+					return GetRMParams(BeMCOperand::FromVReg(vregInfo->mRelTo.mVRegIdx), rmInfo, doValidate);				
 			}
 
-			*errorVReg = operand.mVRegIdx;
-			return BeMCRMMode_Invalid;
+			rmInfo.mErrorVReg = operand.mVRegIdx;
+			rmInfo.mMode = BeMCRMMode_Invalid;
+			return;
 		}
 
 		BF_ASSERT(!vregInfo->mIsExpr);
@@ -5461,17 +5469,18 @@ BeMCRMMode BeMCContext::GetRMParams(const BeMCOperand& operand, X64CPURegister& 
 		
 		if ((vregInfo->mIsRetVal) && (mCompositeRetVRegIdx != -1) && (mCompositeRetVRegIdx != operand.mVRegIdx))
 		{			
-			return GetRMParams(BeMCOperand::FromVReg(mCompositeRetVRegIdx), regA, regB, bScale, disp, errorVReg, doValidate);
+			return GetRMParams(BeMCOperand::FromVReg(mCompositeRetVRegIdx), rmInfo, doValidate);
 		}
 		
 		reg = mUseBP ? X64Reg_RBP : X64Reg_RSP;
-		disp = mStackSize + vregInfo->mFrameOffset;		
+		rmInfo.mDisp = mStackSize + vregInfo->mFrameOffset;
 
-		if (regA == X64Reg_None)
-			regA = reg;
-		else if (regB == X64Reg_None)
-			regB = reg;
-		return ValidateRMResult(operand, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Direct, doValidate);
+		if (rmInfo.mRegA == X64Reg_None)
+			rmInfo.mRegA = reg;
+		else if (rmInfo.mRegB == X64Reg_None)
+			rmInfo.mRegB = reg;
+		rmInfo.mMode = BeMCRMMode_Direct;
+		return ValidateRMResult(operand, rmInfo, doValidate);
 	}
 	else if (operand.mKind == BeMCOperandKind_VRegLoad)
 	{
@@ -5480,21 +5489,23 @@ BeMCRMMode BeMCContext::GetRMParams(const BeMCOperand& operand, X64CPURegister& 
 		{
 			auto reg = vregInfo->mReg;
 			if (reg == X64Reg_None)
-			{
-				if (errorVReg != NULL)
-					*errorVReg = operand.mVRegIdx;
-				return BeMCRMMode_Invalid;
+			{				
+				rmInfo.mErrorVReg = operand.mVRegIdx;
+				rmInfo.mMode = BeMCRMMode_Invalid;
+				return;
 			}
-			if (regA == X64Reg_None)
-				regA = reg;
-			else if (regB == X64Reg_None)
-				regB = reg;
-			return ValidateRMResult(operand, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Deref, doValidate);
+			if (rmInfo.mRegA == X64Reg_None)
+				rmInfo.mRegA = reg;
+			else if (rmInfo.mRegB == X64Reg_None)
+				rmInfo.mRegB = reg;
+			rmInfo.mMode = BeMCRMMode_Deref;
+			return ValidateRMResult(operand, rmInfo, doValidate);
 		}
 	}
 	else
 	{
-		return BeMCRMMode_Invalid;
+		rmInfo.mMode = BeMCRMMode_Invalid;
+		return;
 	}
 	
 	auto vregInfo = mVRegInfo[operand.mVRegIdx];
@@ -5502,101 +5513,114 @@ BeMCRMMode BeMCContext::GetRMParams(const BeMCOperand& operand, X64CPURegister& 
 
 	if (vregInfo->mRelTo)
 	{
-		auto oldRegA = regA;
-		auto result = GetRMParams(vregInfo->mRelTo, regA, regB, bScale, disp, errorVReg, false);
-		if (result == BeMCRMMode_Invalid)
+		auto oldRegA = rmInfo.mRegA;
+		GetRMParams(vregInfo->mRelTo, rmInfo, false);
+		if (rmInfo.mMode == BeMCRMMode_Invalid)
 		{			
-			if ((errorVReg != NULL) && (*errorVReg == -1))
+			if (rmInfo.mErrorVReg == -1)
 			{				
-				*errorVReg = operand.mVRegIdx;
+				rmInfo.mErrorVReg = operand.mVRegIdx;
 			}
-			return BeMCRMMode_Invalid;
+			return;
 		}
 		
-		if (result == BeMCRMMode_Deref)
+		if (rmInfo.mMode == BeMCRMMode_Deref)
 		{
 			// A deref can only stand alone, and no double-derefs
 			if ((vregInfo->mRelOffset) || (vregInfo->mRelOffsetScale != 1) || (operand.mKind == BeMCOperandKind_VRegLoad))
 			{
-				if (errorVReg != NULL)
-				{
-					BF_ASSERT(vregInfo->mRelTo.IsVRegAny());
-					*errorVReg = vregInfo->mRelTo.mVRegIdx;
-					// For some reason we had changed this to:
-					//*errorVReg = operand.mVRegIdx;
-					//  This doesn't work, it's the deref that we want to isolate, otherwise we just end up creating another invalid expression
-				}
-				return BeMCRMMode_Invalid;
+				
+				BF_ASSERT(vregInfo->mRelTo.IsVRegAny());
+				rmInfo.mErrorVReg = vregInfo->mRelTo.mVRegIdx;
+				// For some reason we had changed this to:
+				//*errorVReg = operand.mVRegIdx;
+				//  This doesn't work, it's the deref that we want to isolate, otherwise we just end up creating another invalid expression				
+				rmInfo.mMode = BeMCRMMode_Invalid;
+				return;
 			}
 			if (operand.mKind == BeMCOperandKind_VRegAddr)
-				return ValidateRMResult(vregInfo->mRelTo, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Direct, doValidate);
+			{
+				rmInfo.mMode = BeMCRMMode_Direct;
+				return ValidateRMResult(vregInfo->mRelTo, rmInfo, doValidate);
+			}
 			else if (operand.mKind == BeMCOperandKind_VReg)
-				return ValidateRMResult(vregInfo->mRelTo, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Deref, doValidate);
+			{
+				rmInfo.mMode = BeMCRMMode_Deref;
+				return ValidateRMResult(vregInfo->mRelTo, rmInfo, doValidate);
+			}
 			else
 				NotImpl();				
 		}
 	}
 
 	if (vregInfo->mRelOffset)
-	{		
-		bool relToComplicated = (regB != X64Reg_None) || (bScale != 1);
-		auto result = GetRMParams(vregInfo->mRelOffset, regA, regB, bScale, disp, errorVReg, false);
-		if (result == BeMCRMMode_Invalid)
-		{
-			if (errorVReg != NULL)
-			{				
-				// Pick the "most complicated" between relOffset and relTo?
-				if (relToComplicated)
-				{
-					BF_ASSERT(vregInfo->mRelTo.IsVRegAny());
-					*errorVReg = vregInfo->mRelTo.mVRegIdx;
-				}
-				else
-				{
-					BF_ASSERT(vregInfo->mRelOffset.IsVRegAny());
-					*errorVReg = vregInfo->mRelOffset.mVRegIdx;
-				}
-			}	
-			return BeMCRMMode_Invalid;
-		}
-		if (result == BeMCRMMode_Deref) // Deref only allowed on relTo
-		{
-			if (errorVReg != NULL)
+	{
+		if (vregInfo->mRelOffsetScale != 1)
+			rmInfo.mVRegWithScaledOffset = operand.mVRegIdx;
+
+		bool relToComplicated = (rmInfo.mRegB != X64Reg_None) || (rmInfo.mBScale != 1);
+		GetRMParams(vregInfo->mRelOffset, rmInfo, false);
+		if (rmInfo.mMode == BeMCRMMode_Invalid)
+		{			
+			// Pick the "most complicated" between relOffset and relTo?
+			if (relToComplicated)
+			{
+				BF_ASSERT(vregInfo->mRelTo.IsVRegAny());
+				rmInfo.mErrorVReg = vregInfo->mRelTo.mVRegIdx;
+			}
+			else
 			{
 				BF_ASSERT(vregInfo->mRelOffset.IsVRegAny());
-				*errorVReg = vregInfo->mRelOffset.mVRegIdx;
-			}
-			return BeMCRMMode_Invalid;
+				rmInfo.mErrorVReg = vregInfo->mRelOffset.mVRegIdx;
+			}			
+			rmInfo.mMode = BeMCRMMode_Invalid;
+			return;
+		}
+		if (rmInfo.mMode == BeMCRMMode_Deref) // Deref only allowed on relTo
+		{			
+			BF_ASSERT(vregInfo->mRelOffset.IsVRegAny());
+			rmInfo.mErrorVReg = vregInfo->mRelOffset.mVRegIdx;
+			rmInfo.mMode = BeMCRMMode_Invalid;
+			return;
 		}
 	}
 	bool success = true;
 	if (vregInfo->mRelOffsetScale != 1)
 	{
-		if (bScale != 1)
+		if (rmInfo.mBScale != 1)
 			success = false;
-		bScale = vregInfo->mRelOffsetScale;
-		if ((bScale != 2) && (bScale != 4) && (bScale != 8))
+		rmInfo.mBScale = vregInfo->mRelOffsetScale;
+		if ((rmInfo.mBScale != 2) && (rmInfo.mBScale != 4) && (rmInfo.mBScale != 8))
 			success = false;
-		if (regB == X64Reg_None)
+		if (rmInfo.mRegB == X64Reg_None)
 		{
-			regB = regA;
-			regA = X64Reg_None;
+			rmInfo.mRegB = rmInfo.mRegA;
+			rmInfo.mRegA = X64Reg_None;
 		}
 	}
 	if (!success)
 	{
-		if ((errorVReg != NULL) && (*errorVReg == -1))
-			*errorVReg = operand.mVRegIdx;
+		if (rmInfo.mErrorVReg == -1)
+			rmInfo.mErrorVReg = operand.mVRegIdx;
 	}
 	if (success)
 	{
 		if (operand.mKind == BeMCOperandKind_VRegLoad)
-			return ValidateRMResult(vregInfo->mRelOffset, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Deref, doValidate);
+		{
+			rmInfo.mMode = BeMCRMMode_Deref;
+			return ValidateRMResult(vregInfo->mRelOffset, rmInfo, doValidate);
+		}
 		else
-			return ValidateRMResult(vregInfo->mRelOffset, regA, regB, bScale, disp, errorVReg, BeMCRMMode_Direct, doValidate);
+		{
+			rmInfo.mMode = BeMCRMMode_Direct;
+			return ValidateRMResult(vregInfo->mRelOffset, rmInfo, doValidate);
+		}
 	}
 	else
-		return BeMCRMMode_Invalid;
+	{
+		rmInfo.mMode = BeMCRMMode_Invalid;
+		return;
+	}
 }
 
 void BeMCContext::DisableRegister(const BeMCOperand& operand, X64CPURegister reg)
@@ -5641,24 +5665,20 @@ void BeMCContext::MarkInvalidRMRegs(const BeMCOperand& operand)
 
 void BeMCContext::GetUsedRegs(const BeMCOperand& operand, X64CPURegister& regA, X64CPURegister& regB)
 {
-	int scale = 1;
-	int offset = 0;
-	GetRMParams(operand, regA, regB, scale, offset, NULL);
-	if (regA != X64Reg_None)
-		regA = ResizeRegister(regA, 8);
-	if (regB != X64Reg_None)
-		regB = ResizeRegister(regB, 8);
+	BeRMParamsInfo rmInfo;
+	GetRMParams(operand, rmInfo);
+	if (rmInfo.mRegA != X64Reg_None)
+		regA = ResizeRegister(rmInfo.mRegA, 8);
+	if (rmInfo.mRegB != X64Reg_None)
+		regB = ResizeRegister(rmInfo.mRegB, 8);
 }
 
 BeMCRMMode BeMCContext::GetRMForm(const BeMCOperand& operand, bool& isMulti)
 {
-	X64CPURegister regA = X64Reg_None;
-	X64CPURegister regB = X64Reg_None;
-	int bScale = 1;
-	int disp = 0;
-	auto result = GetRMParams(operand, regA, regB, bScale, disp);
-	isMulti = (regB != X64Reg_None) || (disp != 0);
-	return result;
+	BeRMParamsInfo rmInfo;
+	GetRMParams(operand, rmInfo);
+	isMulti = (rmInfo.mRegB != X64Reg_None) || (rmInfo.mDisp != 0);
+	return rmInfo.mMode;
 }
 
 void BeMCContext::GetValAddr(const BeMCOperand& operand, X64CPURegister& reg, int& offset)
@@ -5935,14 +5955,11 @@ void BeMCContext::EmitModRM(int rx, BeMCOperand rm, int relocOfs)
 		if ((rm.IsVReg()) && (vregInfo->IsDirectRelToAny()))
 			return EmitModRM(rx, vregInfo->mRelTo, relocOfs);
 
-		X64CPURegister regA = X64Reg_None;
-		X64CPURegister regB = X64Reg_None;
-		int bScale = 1;
-		int disp = 0;
-		auto resultType = GetRMParams(rm, regA, regB, bScale, disp);
+		BeRMParamsInfo rmInfo;
+		GetRMParams(rm, rmInfo);
 		//BF_ASSERT(resultType != BeMCRMMode_Invalid);			
-		BF_ASSERT(resultType == BeMCRMMode_Deref);		
-		EmitModRMRel(rx, regA, regB, bScale, disp);
+		BF_ASSERT(rmInfo.mMode == BeMCRMMode_Deref);
+		EmitModRMRel(rx, rmInfo.mRegA, rmInfo.mRegB, rmInfo.mBScale, rmInfo.mDisp);
 		return;
 	}
 	else
@@ -5998,13 +6015,10 @@ void BeMCContext::EmitModRM_Addr(BeMCOperand r, BeMCOperand rm)
 					auto relVRegInfo = GetVRegInfo(vregInfo->mRelTo);							
 					if (relVRegInfo->mRelTo)
 					{
-						X64CPURegister regA = X64Reg_None;
-						X64CPURegister regB = X64Reg_None;
-						int bScale = 1;
-						int disp = 0;
-						auto resultType = GetRMParams(rm, regA, regB, bScale, disp);
-						BF_ASSERT(resultType != BeMCRMMode_Invalid);						
-						EmitModRMRel(EncodeRegNum(r.mReg), regA, regB, bScale, disp);
+						BeRMParamsInfo rmInfo;
+						GetRMParams(rm, rmInfo);
+						BF_ASSERT(rmInfo.mMode != BeMCRMMode_Invalid);						
+						EmitModRMRel(EncodeRegNum(r.mReg), rmInfo.mRegA, rmInfo.mRegB, rmInfo.mBScale, rmInfo.mDisp);
 						return;
 					}
 					else
@@ -8256,8 +8270,25 @@ void BeMCContext::DoActualization()
 				{
 					int vregIdx = inst->mArg0.mVRegIdx;
 					auto vregInfo = GetVRegInfo(inst->mArg0);
+
+					if (vregInfo->mWantsExprOffsetActualize)
+					{
+						vregInfo->mWantsExprOffsetActualize = false;
+
+						auto offsetType = GetType(vregInfo->mRelOffset);
+						
+						auto scratchReg = AllocVirtualReg(offsetType, 2, false);
+						CreateDefineVReg(scratchReg, instIdx++);
+
+						AllocInst(BeMCInstKind_Mov, scratchReg, vregInfo->mRelOffset, instIdx++);
+						AllocInst(BeMCInstKind_IMul, scratchReg, BeMCOperand::FromImmediate(vregInfo->mRelOffsetScale), instIdx++);
+
+						vregInfo->mRelOffset = scratchReg;
+						vregInfo->mRelOffsetScale = 1;
+					}
+
 					if ((vregInfo->mWantsExprActualize) || (forceMove))
-					{	
+					{
 						if (vregInfo->mDbgVariable != NULL)
 						{
 							// Wait until dbgDecl so we can potentially set to VRegAddr
@@ -8289,7 +8320,7 @@ void BeMCContext::DoActualization()
 							CreateDefineVReg(scratchReg, instIdx++ + 1);
 							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregIdx), scratchReg, instIdx++ + 1);
 						}
-					}
+					}					
 				}
 			}
 		}
@@ -8411,6 +8442,14 @@ bool BeMCContext::DoLegalization()
 				continue;
 			}
 
+			if (mDebugging)
+			{
+				if (inst->mArg1.mVRegIdx == 61)
+				{
+					NOP;
+				}
+			}
+
 			// Check operands
 			if ((!inst->IsPsuedo()) && (arg0Type != NULL) && (!arg0Type->IsComposite()))
 			{								
@@ -8424,17 +8463,13 @@ bool BeMCContext::DoLegalization()
 					{
 						bool isMulti = false;
 						
-						X64CPURegister regA = X64Reg_None;
-						X64CPURegister regB = X64Reg_None;
-						int bScale = 1;
-						int disp = 0;
-						int errorVReg = -1;
-						auto rmForm = GetRMParams(remappedOperand, regA, regB, bScale, disp, &errorVReg);
+						BeRMParamsInfo rmInfo;
+						GetRMParams(remappedOperand, rmInfo);
 
 						bool badOperand = false;
 						bool scratchForceReg = false;						
 
-						if (rmForm == BeMCRMMode_Invalid)
+						if (rmInfo.mMode == BeMCRMMode_Invalid)
 						{
 							badOperand = true;
 							scratchForceReg = true;
@@ -8455,8 +8490,8 @@ bool BeMCContext::DoLegalization()
 						}
 						else
 						{							
-							if ((rmForm == BeMCRMMode_Direct) &&
-								((regB != X64Reg_None) || (bScale != 1) || (disp != 0)))
+							if ((rmInfo.mMode == BeMCRMMode_Direct) &&
+								((rmInfo.mRegB != X64Reg_None) || (rmInfo.mBScale != 1) || (rmInfo.mDisp != 0)))
 							{
 								badOperand = true;
 							}
@@ -8502,8 +8537,13 @@ bool BeMCContext::DoLegalization()
 						
 						if (badOperand)
 						{
-							//if (vregExprChangeSet.find(errorVReg) == vregExprChangeSet.end())
-							if (!vregExprChangeSet.Contains(errorVReg))
+							if ((rmInfo.mErrorVReg == -2) && (rmInfo.mVRegWithScaledOffset != -1))
+							{
+								auto offsetVRegInfo = mVRegInfo[rmInfo.mVRegWithScaledOffset];
+								offsetVRegInfo->mWantsExprOffsetActualize = true;
+								hasPendingActualizations = true;
+							}
+							else if (!vregExprChangeSet.Contains(rmInfo.mErrorVReg))
 							{
 								auto remappedVRegInfo = mVRegInfo[remappedOperand.mVRegIdx];																
 								BeMCOperand savedOperand = BeMCOperand::FromVReg(remappedOperand.mVRegIdx);
@@ -8553,7 +8593,7 @@ bool BeMCContext::DoLegalization()
 								replacedOpr = true;
 								isFinalRun = false;
 								if (debugging)
-									OutputDebugStrF(" BadOperand %d\n", errorVReg);
+									OutputDebugStrF(" BadOperand %d\n", rmInfo.mErrorVReg);
 							}
 						}						
 					}					
@@ -9039,16 +9079,13 @@ bool BeMCContext::DoLegalization()
 								}
 							}
 
-							X64CPURegister regA = X64Reg_None;
-							X64CPURegister regB = X64Reg_None;
-							int bScale = 1;
-							int disp = 0;
-							int errorVRegIdx = -1;
-							bool isValid = GetRMParams(inst->mArg0, regA, regB, bScale, disp, &errorVRegIdx) != BeMCRMMode_Invalid;							
+							BeRMParamsInfo rmInfo;
+							GetRMParams(inst->mArg0, rmInfo);
+							bool isValid = rmInfo.mMode != BeMCRMMode_Invalid;
 
 							if (!isValid)
 							{
-								if (errorVRegIdx == -1)
+								if (rmInfo.mErrorVReg == -1)
 								{
 									BF_ASSERT(!vregInfo->mRelOffset);
 									if (vregInfo->mType->IsPointer())
@@ -9074,7 +9111,7 @@ bool BeMCContext::DoLegalization()
 										continue;
 									}
 								}
-								else if (errorVRegIdx == -2)
+								else if (rmInfo.mErrorVReg == -2)
 								{
 									vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
 									MarkInvalidRMRegs(inst->mArg0);
@@ -9085,7 +9122,7 @@ bool BeMCContext::DoLegalization()
 								}
 
 								//if (vregExprChangeSet.find(errorVRegIdx) != vregExprChangeSet.end())
-								if (vregExprChangeSet.Contains(errorVRegIdx))
+								if (vregExprChangeSet.Contains(rmInfo.mErrorVReg))
 								{
 									// This means we have already modified some dependent vregs, so we may be legalized already. 
 									//  Wait till next iteration to determine that.
@@ -9097,9 +9134,9 @@ bool BeMCContext::DoLegalization()
 							// The only valid form is [<reg>*<1/2/4/8>+<imm>]
 							//  If we violate that then we have to break it up
 							//if ((vregInfo->mRelOffsetScale != 1) && (vregInfo->mRelOffsetScale != 2) && (vregInfo->mRelOffsetScale != 4) && (vregInfo->mRelOffsetScale != 8))
-							if ((!isValid) && (errorVRegIdx == inst->mArg0.mVRegIdx))
+							if ((!isValid) && (rmInfo.mErrorVReg == inst->mArg0.mVRegIdx))
 							{
-								vregExprChangeSet.Add(errorVRegIdx);
+								vregExprChangeSet.Add(rmInfo.mErrorVReg);
 								if ((vregInfo->mRelOffsetScale != 1) && (vregInfo->mRelOffsetScale != 2) && (vregInfo->mRelOffsetScale != 4) && (vregInfo->mRelOffsetScale != 8))
 								{
 									auto relOffsetType = GetType(vregInfo->mRelOffset);
@@ -9123,13 +9160,13 @@ bool BeMCContext::DoLegalization()
 							}
 							else if (!isValid)
 							{
-								auto errorVRegInfo = mVRegInfo[errorVRegIdx];
+								auto errorVRegInfo = mVRegInfo[rmInfo.mErrorVReg];
 
 								if ((errorVRegInfo->mIsExpr) && (!errorVRegInfo->IsDirectRelTo()))
 								{
 									errorVRegInfo->mWantsExprActualize = true;
 									hasPendingActualizations = true;
-									vregExprChangeSet.Add(errorVRegIdx);
+									vregExprChangeSet.Add(rmInfo.mErrorVReg);
 									isFinalRun = false;
 									if (debugging)
 										OutputDebugStrF(" RM not valid, actualize\n");
@@ -9173,7 +9210,7 @@ bool BeMCContext::DoLegalization()
 										// This may be a local variable that failed to be assigned to a reg, create a scratch local with a forced reg
 										auto scratchReg = AllocVirtualReg(errorVRegInfo->mType, 2, false);
 										auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
-										auto errorVReg = BeMCOperand::FromVReg(errorVRegIdx);
+										auto errorVReg = BeMCOperand::FromVReg(rmInfo.mErrorVReg);
 
 										if ((vregInfo->mRelTo == errorVReg) || (vregInfo->mRelOffset == errorVReg))
 										{
@@ -9223,44 +9260,39 @@ bool BeMCContext::DoLegalization()
 					auto vregInfo = mVRegInfo[vregIdx];
 					auto dbgVar = vregInfo->mDbgVariable;
 
-
-					X64CPURegister regA = X64Reg_None;
-					X64CPURegister regB = X64Reg_None;
-					int scale = 1;
-					int disp = 0;
-					BeMCRMMode mode;
+					BeRMParamsInfo rmInfo;
 					
 					if (dbgVar->mIsValue)
-						mode = GetRMParams(inst->mArg0, regA, regB, scale, disp);
+						GetRMParams(inst->mArg0, rmInfo);
 					else
 					{
 						if (inst->mArg0.mKind == BeMCOperandKind_VRegAddr)
-							mode = GetRMParams(BeMCOperand::ToLoad(inst->mArg0), regA, regB, scale, disp);
+							GetRMParams(BeMCOperand::ToLoad(inst->mArg0), rmInfo);
 						else
 						{
-							mode = GetRMParams(inst->mArg0, regA, regB, scale, disp);
-							if ((mode != BeMCRMMode_Direct) && (scale != 1) && (disp != 0))
+							GetRMParams(inst->mArg0, rmInfo);
+							if ((rmInfo.mMode != BeMCRMMode_Direct) && (rmInfo.mBScale != 1) && (rmInfo.mDisp != 0))
 								isInvalid = true;
 						}
 					}
 
-					if (mode == BeMCRMMode_Invalid)
+					if (rmInfo.mMode == BeMCRMMode_Invalid)
 					{
 						if (vregInfo->mType->mSize != 0)
 						{
 							isInvalid = true;
 						}
 					}
-					else if (mode == BeMCRMMode_Direct)
+					else if (rmInfo.mMode == BeMCRMMode_Direct)
 					{
-						if ((regB != X64Reg_None) || (disp != 0) || (scale != 1))
+						if ((rmInfo.mRegB != X64Reg_None) || (rmInfo.mDisp != 0) || (rmInfo.mBScale != 1))
 						{
 							isInvalid = true;
 						}
 					}
-					else if (mode == BeMCRMMode_Deref)
+					else if (rmInfo.mMode == BeMCRMMode_Deref)
 					{
-						if ((regB != X64Reg_None) || (scale != 1))
+						if ((rmInfo.mRegB != X64Reg_None) || (rmInfo.mBScale != 1))
 						{
 							isInvalid = true;
 						}
@@ -9319,12 +9351,9 @@ bool BeMCContext::DoLegalization()
 						{
 							auto mcArg = BeMCOperand::FromEncoded(*argIdxPtr);
 
-							X64CPURegister regA = X64Reg_None;
-							X64CPURegister regB = X64Reg_None;
-							int bScale = 1;
-							int disp = 0;
-							auto form = GetRMParams(mcArg, regA, regB, bScale, disp);
-							if ((form != BeMCRMMode_Direct) || (regB != X64Reg_None) || (regA == X64Reg_R11))
+							BeRMParamsInfo rmInfo;
+							GetRMParams(mcArg, rmInfo);
+							if ((rmInfo.mMode != BeMCRMMode_Direct) || (rmInfo.mRegB != X64Reg_None) || (rmInfo.mRegA == X64Reg_R11))
 							{								
 								BeMCOperand scratchReg = AllocVirtualReg(GetType(mcArg), 2, true);
 								auto vregInfo = GetVRegInfo(scratchReg);
@@ -9346,12 +9375,9 @@ bool BeMCContext::DoLegalization()
 				{
 					if (inst->mArg1)					
 					{						
-						X64CPURegister regA = X64Reg_None;
-						X64CPURegister regB = X64Reg_None;
-						int bScale = 1;
-						int disp = 0;
-						auto form = GetRMParams(inst->mArg1, regA, regB, bScale, disp);
-						if ((form != BeMCRMMode_Direct) || (regB != X64Reg_None) || (regA == X64Reg_R11) || (disp != 0))
+						BeRMParamsInfo rmInfo;
+						GetRMParams(inst->mArg1, rmInfo);
+						if ((rmInfo.mMode != BeMCRMMode_Direct) || (rmInfo.mRegB != X64Reg_None) || (rmInfo.mRegA == X64Reg_R11) || (rmInfo.mDisp != 0))
 						{
 							BeMCOperand scratchReg = AllocVirtualReg(GetType(inst->mArg1), 2, true);
 							auto vregInfo = GetVRegInfo(scratchReg);
@@ -9914,12 +9940,9 @@ bool BeMCContext::DoLegalization()
 								isFinalRun = false;								
 							}
 											
-							X64CPURegister regA = X64Reg_None;
-							X64CPURegister regB = X64Reg_None;
-							int bScale = 1;
-							int disp = 0;
-							auto form = GetRMParams(inst->mArg0, regA, regB, bScale, disp);
-							if (form == BeMCRMMode_Invalid)
+							BeRMParamsInfo rmInfo;
+							GetRMParams(inst->mArg0, rmInfo);
+							if (rmInfo.mMode == BeMCRMMode_Invalid)
 							{
 								if (inst->mArg0.IsSymbol())
 								{
@@ -10081,18 +10104,14 @@ bool BeMCContext::DoLegalization()
 						BeMCOperand& origOperand = (oprIdx == 0) ? inst->mArg0 : inst->mArg1;
 						if (origOperand.IsVRegAny())
 						{
-							X64CPURegister regA = X64Reg_None;
-							X64CPURegister regB = X64Reg_None;
-							int bScale = 1;
-							int disp = 0;
-							int errorVReg = -1;
-							auto rmForm = GetRMParams(origOperand, regA, regB, bScale, disp, &errorVReg);
+							BeRMParamsInfo rmInfo;
+							GetRMParams(origOperand, rmInfo);
 
 							auto vregInfo = GetVRegInfo(origOperand);							
 							bool isValid = true;
 							if (oprIdx == 1)
 							{
-								if (rmForm != BeMCRMMode_Direct)
+								if (rmInfo.mMode != BeMCRMMode_Direct)
 								{
 									auto newVReg = ReplaceWithNewVReg(origOperand, instIdx, true, true);
 									auto newVRegInfo = GetVRegInfo(newVReg);
@@ -10111,16 +10130,12 @@ bool BeMCContext::DoLegalization()
 						BeMCOperand& origOperand = (oprIdx == 0) ? inst->mArg0 : inst->mArg1;						
 						if (origOperand.IsVRegAny())
 						{
-							X64CPURegister regA = X64Reg_None;
-							X64CPURegister regB = X64Reg_None;
-							int bScale = 1;
-							int disp = 0;
-							int errorVReg = -1;
-							auto rmForm = GetRMParams(origOperand, regA, regB, bScale, disp, &errorVReg);
+							BeRMParamsInfo rmInfo;
+							GetRMParams(origOperand, rmInfo);
 							
 							auto vregInfo = GetVRegInfo(origOperand);
 
-							if ((ResizeRegister(regA, 8) == X64Reg_RAX) || (ResizeRegister(regB, 8) == X64Reg_RAX))
+							if ((ResizeRegister(rmInfo.mRegA, 8) == X64Reg_RAX) || (ResizeRegister(rmInfo.mRegB, 8) == X64Reg_RAX))
 							{
 								if (!vregInfo->mIsExpr)
 								{
@@ -10150,7 +10165,7 @@ bool BeMCContext::DoLegalization()
 							bool isValid = true;
 							if (oprIdx == 1)
 							{
-								if (rmForm != BeMCRMMode_Direct)
+								if (rmInfo.mMode != BeMCRMMode_Direct)
 								{
 									int safeIdx = FindSafeInstInsertPos(instIdx, true);
 									auto newVReg = ReplaceWithNewVReg(origOperand, safeIdx, true, true);
@@ -11396,14 +11411,11 @@ void BeMCContext::DoRegFinalization()
 									instEndIdx = instIdx;
 									if (inst->mKind == BeMCInstKind_Call)
 									{
-										X64CPURegister regA = X64Reg_None;
-										X64CPURegister regB = X64Reg_None;
-										int bScale = 1;
-										int disp = 0;
-										GetRMParams(inst->mArg0, regA, regB, bScale, disp);
+										BeRMParamsInfo rmInfo;
+										GetRMParams(inst->mArg0, rmInfo);
 										
-										if (((regA != X64Reg_None) && (regA != X64Reg_RAX) && (regStomped[regA])) ||
-											((regB != X64Reg_None) && (regStomped[regB])))
+										if (((rmInfo.mRegA != X64Reg_None) && (rmInfo.mRegA != X64Reg_RAX) && (regStomped[rmInfo.mRegA])) ||
+											((rmInfo.mRegB != X64Reg_None) && (regStomped[rmInfo.mRegB])))
 										{
 											BF_ASSERT(pass == 0);
 
@@ -12159,11 +12171,8 @@ bool BeMCContext::EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8
 
 void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 {
-	X64CPURegister regA = X64Reg_None;
-	X64CPURegister regB = X64Reg_None;
-	int bScale = 1;
-	int disp = 0;
-	auto form = GetRMParams(dest, regA, regB, bScale, disp);
+	BeRMParamsInfo rmInfo;
+	GetRMParams(dest, rmInfo);
 	
 	BF_ASSERT(src.mKind == BeMCOperandKind_ConstAgg);
 	auto aggConstant = src.mConstant;
@@ -12262,21 +12271,21 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 			if (repSize >= 16)
 			{
 				bool regSaved = false;
-				if ((regA == X64Reg_RAX) ||
-					(regA == X64Reg_RCX) ||
-					(regA == X64Reg_RDI))
+				if ((rmInfo.mRegA == X64Reg_RAX) ||
+					(rmInfo.mRegA == X64Reg_RCX) ||
+					(rmInfo.mRegA == X64Reg_RDI))
 				{
-					BF_ASSERT(regB == X64Reg_None);
+					BF_ASSERT(rmInfo.mRegB == X64Reg_None);
 					// mov R11, regA
 					Emit(0x49); Emit(0x89);					
-					EmitModRM(BeMCOperand::FromReg(regA), BeMCOperand::FromReg(X64Reg_R11));
+					EmitModRM(BeMCOperand::FromReg(rmInfo.mRegA), BeMCOperand::FromReg(X64Reg_R11));
 					regSaved = true;
 				}
 
 				// lea rdi, <dest+curOfs>
 				EmitREX(BeMCOperand::FromReg(X64Reg_RDI), dest, true);
 				Emit(0x8D);
-				EmitModRMRel(EncodeRegNum(X64Reg_RDI), regA, regB, 1, disp + curOfs);
+				EmitModRMRel(EncodeRegNum(X64Reg_RDI), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
 
 				// mov al, <val>
 				Emit(0xB0); Emit(val);
@@ -12292,7 +12301,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 				{
 					// mov regA, R11
 					Emit(0x4C); Emit(0x89);
-					EmitModRM(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(regA));
+					EmitModRM(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(rmInfo.mRegA));
 				}
 
 				curOfs += repSize;
@@ -12306,7 +12315,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11), dest, true);
 		Emit(0x89);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11), regA, regB, 1, disp + curOfs);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
 		curOfs += 8;
 	}
 
@@ -12319,7 +12328,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11d
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11D), dest, false);
 		Emit(0x89);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11D), regA, regB, 1, disp + curOfs);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11D), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
 	}
 
 	for (; curOfs <= memSize - 2; curOfs += 2)
@@ -12331,7 +12340,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11w
 		Emit(0x66); EmitREX(BeMCOperand::FromReg(X64Reg_R11W), dest, false);
 		Emit(0x89);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11W), regA, regB, 1, disp + curOfs);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11W), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
 	}
 
 	for (; curOfs <= memSize - 1; curOfs += 1)
@@ -12343,7 +12352,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11b
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11B), dest, false);
 		Emit(0x89 - 1);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11B), regA, regB, 1, disp + curOfs);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11B), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
 	}
 }
 
@@ -15470,7 +15479,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?FindSourceViewPanel@IDEApp@IDE@bf@@QEAAPEAVSourceViewPanel@ui@23@PEAVString@System@3@@Z");
+	//mDebugging = (function->mName == "?Main@Program@bf@@SAXPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z");
 // 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
 // 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 // 		;
