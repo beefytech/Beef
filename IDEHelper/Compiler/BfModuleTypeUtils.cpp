@@ -9902,18 +9902,15 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						{							
 							auto castedVal = CastToValue(srcNode, typedVal, toType->GetUnderlyingType(), (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
 							return castedVal;
-						}
-
-						// Cannot cast (was error)
-						return BfIRValue();
+						}						
 					}
-
+					
 					// Actually perform conversion
 					BfExprEvaluator exprEvaluator(this);
 					auto castedFromValue = Cast(srcNode, typedVal, bestFromType, castFlags);
 					if (!castedFromValue)
 						return BfIRValue();
-					
+
 					BfTypedValue operatorOut;
 					if (ignoreWrites)
 					{
@@ -9935,7 +9932,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						}
 					}
 
-					return CastToValue(srcNode, operatorOut, toType, castFlags, resultFlags);
+					return CastToValue(srcNode, operatorOut, toType, castFlags, resultFlags);					
 				}				
 			}
 
