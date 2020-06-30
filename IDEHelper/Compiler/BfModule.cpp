@@ -6848,9 +6848,11 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Delete) != 0)
 	{
 		bool canDelete = false;
-		if (checkArgType->IsPointer())		
-			canDelete = true;		
+		if (checkArgType->IsPointer())
+			canDelete = true;
 		else if (checkArgType->IsObjectOrInterface())
+			canDelete = true;
+		else if ((checkGenericParamFlags & BfGenericParamFlag_Delete) != 0)
 			canDelete = true;
 
 		if (!canDelete)
