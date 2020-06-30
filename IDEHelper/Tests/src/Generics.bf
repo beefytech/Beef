@@ -87,6 +87,21 @@ namespace Tests
 		{
 		}
 
+		public static int MethodA<T>(T val) where T : var
+		{
+			return 1;
+		}
+
+		public static int MethodA<T>(T val) where T : ValueType
+		{
+			return 2;
+		}
+
+		public static int MethodA<T>(T val) where T : Enum
+		{
+			return 3;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -100,6 +115,10 @@ namespace Tests
 
 			LibA.LibA0.Alloc<ClassA>();
 			LibA.LibA0.Alloc<ClassB>();
+
+			Test.Assert(MethodA("") == 1);
+			Test.Assert(MethodA(1.2f) == 2);
+			Test.Assert(MethodA(TypeCode.Boolean) == 3);
 		}
 	}
 
