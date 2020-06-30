@@ -5355,6 +5355,8 @@ void BeMCContext::ValidateRMResult(const BeMCOperand& operand, BeRMParamsInfo& r
 {
 	if (!doValidate)
 		return;
+	if (rmInfo.mMode == BeMCRMMode_Invalid)
+		return;
 
 	//TODO: WTF- this previous version just seems to be wrong! Why did think this was true?  the REX.X and REX.B flags fix these
 	// in a SIB, the base can't be R13 (which is RBP+REX), and the scaled index can't be R12 (which is RSP+REX)
