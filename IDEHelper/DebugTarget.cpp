@@ -103,21 +103,22 @@ void DebugTarget::SetupTargetBinary()
 
 		addr_target reservedPtr = NULL;
 		while ((addr_target)checkHotReserveAddr < (addr_target)mTargetBinary->mImageBase + 0x30000000)
-		{
+		{			
 			reservedPtr = (addr_target)VirtualAllocEx(mDebugger->mProcessInfo.hProcess, (void*)(intptr)checkHotReserveAddr, reserveSize, MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 			if (reservedPtr != NULL)
 				break;
 			checkHotReserveAddr += 4 * mb;
 		}
 
-		if (reservedPtr != 0)
+		if (reservedPtr == 0)
+		{
+			mDebugger->Fail("Failed to reserve memory for hot swapping");
+		}
+		else
 		{
 			BF_ASSERT(mHotHeap == NULL);
 			mHotHeap = new HotHeap(reservedPtr, reserveSize);
 		}
-
-		//TODO: Throw actual error if we can't reserve HOT area
-		BF_ASSERT(reservedPtr != NULL);
 	}
 #endif
 }

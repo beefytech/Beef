@@ -6462,7 +6462,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	
 	if (needHotTargetMemory != 0)
 	{
-		BF_ASSERT(needHotTargetMemory == mImageSize);
+		BF_ASSERT(needHotTargetMemory >= mImageSize);
 	}
 
 	//BF_ASSERT(mEndTypeIdx == (int)linkedModule->mTypes.size());

@@ -1061,6 +1061,18 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 {		
 	AutoCrit autoCrit(mDebugManager->mCritSect);	
 
+	if (mDebugTarget->mTargetBinary == NULL)
+	{
+		Fail("Hot swapping failed because the hot target binary has not yet been loaded.");
+		return;
+	}
+
+	if (mDebugTarget->mHotHeap == NULL)
+	{
+		Fail("There is no hot heap space available for hot swapping.");
+		return;
+	}
+
 	BfLogDbg("WinDebugger::HotLoad Start %d\n", hotIdx);	
 
 	SetAndRestoreValue<int> prevHotIdx(mActiveHotIdx, hotIdx);
