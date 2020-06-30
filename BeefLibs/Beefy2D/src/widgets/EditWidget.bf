@@ -3328,14 +3328,8 @@ namespace Beefy.widgets
         }
 
         public void ResetWantX()
-        {            
-            int line;
-            int col;
-            GetLineCharAtIdx(CursorTextPos, out line, out col);
-
-            float x;
-            float y;
-            GetTextCoordAtLineChar(line, col, out x, out y);
+        {
+			GetTextCoordAtCursor(var x, var y);
             mCursorWantX = x;
         }
 
