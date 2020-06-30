@@ -867,7 +867,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		_CompareParamTypes(newMethodInstance->GetParamType(newArgIdx), prevMethodInstance->GetParamType(prevArgIdx));
 	}	
 
-	// Do generic constraint subset test directly to handle cases like "NotDisposed<T>()" vs "NOtDisposed<T>() where T : IDisposable"
+	// Do generic constraint subset test directly to handle cases like "NotDisposed<T>()" vs "NotDisposed<T>() where T : IDisposable"
 	if ((newMethodInstance->GetNumGenericArguments() > 0) && (newMethodInstance->GetNumGenericArguments() == prevMethodInstance->GetNumGenericArguments()))
 	{
 		for (int genericParamIdx = 0; genericParamIdx < (int)newMethodInstance->GetNumGenericArguments(); genericParamIdx++)

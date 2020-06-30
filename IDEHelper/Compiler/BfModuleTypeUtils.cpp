@@ -257,7 +257,7 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 				outerFlags |= BfGenericParamFlag_Class;
 		}
 
-		if ((checkInner->mGenericParamFlags | outerFlags) != outerFlags)
+		if (((checkInner->mGenericParamFlags | outerFlags) & ~BfGenericParamFlag_Var) != (outerFlags & ~BfGenericParamFlag_Var))
 			return false;
 	}
 
@@ -265,7 +265,7 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 	{
 		if (checkOuter->mTypeConstraint == NULL)
 			return false;		
-		if (!TypeIsSubTypeOf(checkInner->mTypeConstraint->ToTypeInstance(), checkOuter->mTypeConstraint->ToTypeInstance()))
+		if (!TypeIsSubTypeOf(checkOuter->mTypeConstraint->ToTypeInstance(), checkInner->mTypeConstraint->ToTypeInstance()))
 			return false;		
 	}
 	
