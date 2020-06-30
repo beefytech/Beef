@@ -3,6 +3,7 @@ echo Starting build.sh
 
 PATH=/usr/local/bin:$PATH:$HOME/bin
 SCRIPTPATH=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+ROOTPATH="$(dirname "$SCRIPTPATH")"
 echo Building from from $SCRIPTPATH
 cd $SCRIPTPATH
 
@@ -50,15 +51,13 @@ else
 	LINKOPTS="-ldl -lpthread -Wl,-rpath -Wl,\$ORIGIN"
 fi
 
-if [ ! -L libBeefRT_d.a ]; then	
-	ln -s ../../jbuild_d/Debug/bin/libBeefRT_d.a libBeefRT_d.a
-	ln -s ../../jbuild_d/Debug/bin/libBeefySysLib_d.$LIBEXT libBeefySysLib_d.$LIBEXT
-	ln -s ../../jbuild_d/Debug/bin/libIDEHelper_d.$LIBEXT libIDEHelper_d.$LIBEXT
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefRT_d.a libBeefRT_d.a
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefySysLib_d.$LIBEXT libBeefySysLib_d.$LIBEXT
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libIDEHelper_d.$LIBEXT libIDEHelper_d.$LIBEXT
 
-	ln -s ../../jbuild/Release/bin/libBeefRT.a libBeefRT.a
-	ln -s ../../jbuild/Release/bin/libBeefySysLib.$LIBEXT libBeefySysLib.$LIBEXT
-	ln -s ../../jbuild/Release/bin/libIDEHelper.$LIBEXT libIDEHelper.$LIBEXT
-fi
+ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefRT.a libBeefRT.a
+ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefySysLib.$LIBEXT libBeefySysLib.$LIBEXT
+ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.$LIBEXT libIDEHelper.$LIBEXT
 
 ### DEBUG ###
 

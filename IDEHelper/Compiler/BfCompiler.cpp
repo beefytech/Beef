@@ -735,7 +735,7 @@ BfIRFunction BfCompiler::CreateLoadSharedLibraries(BfVDataModule* bfModule, Arra
 							bfModule->GetDefaultValue(bfModule->GetPrimitiveType(BfTypeCode_NullPtr)), dllHandleName);
 
 						BfIRValue namePtr = bfModule->GetStringCharPtr(strNum);
-						SmallVector<BfIRValue, 1> args;
+						SmallVector<BfIRValue, 2> args;
 						args.push_back(namePtr);
 						args.push_back(dllHandleVar);
 						BfIRValue dllHandleValue = bfModule->mBfIRBuilder->CreateCall(loadSharedLibraryProc.mFunc, args);
@@ -1624,6 +1624,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	if ((targetType == BfTargetType_BeefWindowsApplication) && (mOptions.mPlatformType != BfPlatformType_Windows))
 		targetType = BfTargetType_BeefConsoleApplication;
 
+	bool isPosixDynLib = (targetType == BfTargetType_BeefDynLib) && (mOptions.mPlatformType != BfPlatformType_Windows);
+	
 	// Generate "main"
 	if (!IsHotCompile())
 	{
@@ -1677,7 +1679,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
 		bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
 		
-#ifndef BF_PLATFORM_WINDOWS
+		if ((mOptions.mPlatformType != BfPlatformType_Windows) && 
+			((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefTest)))
         {
             SmallVector<BfIRType, 2> paramTypes;
             paramTypes.push_back(int32Type);
@@ -1692,7 +1695,6 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
             args.push_back(bfModule->mBfIRBuilder->GetArgument(1));
             bfModule->mBfIRBuilder->CreateCall(setCmdLineFunc, args);
         }
-#endif
 		
 		BfIRBlock initSkipBlock;
 		if (targetType == BfTargetType_BeefDynLib)
@@ -1948,6 +1950,37 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			auto irVal = bfModule->mBfIRBuilder->CreateGlobalVariable(irArrType, false, BfIRLinkageType_External, bfModule->mBfIRBuilder->CreateConstStructZero(irArrType), name, true);
 			BfIRMDNode dbgArrayType = bfModule->mBfIRBuilder->DbgCreateArrayType(dataSize * 8, 8, bfModule->mBfIRBuilder->DbgGetType(int8Type), dataSize);
 			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, name, name, NULL, 0, dbgArrayType, false, irVal);
+		}
+
+		if (isPosixDynLib)
+		{
+			auto voidType = bfModule->mBfIRBuilder->MapType(bfModule->GetPrimitiveType(BfTypeCode_None));
+			SizedArray<BfIRType, 4> paramTypes;
+			BfIRFunctionType funcType = bfModule->mBfIRBuilder->CreateFunctionType(voidType, paramTypes);
+			BfIRFunction func = bfModule->mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_Internal, "BfDynLib__Startup");
+			bfModule->mBfIRBuilder->SetActiveFunction(func);
+			bfModule->mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_Constructor);
+			auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("main", true);
+			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
+
+			SmallVector<BfIRValue, 2> startArgs;
+			startArgs.push_back(bfModule->mBfIRBuilder->CreateConstNull());
+			startArgs.push_back(bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 1));
+			startArgs.push_back(bfModule->mBfIRBuilder->CreateConstNull());
+			bfModule->mBfIRBuilder->CreateCall(mainFunc, startArgs);
+			bfModule->mBfIRBuilder->CreateRetVoid();			
+
+			//////////////////////////////////////////////////////////////////////////
+									
+			func = bfModule->mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_Internal, "BfDynLib__Shutdown");
+			bfModule->mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_Destructor);
+			bfModule->mBfIRBuilder->SetActiveFunction(func);
+			entryBlock = bfModule->mBfIRBuilder->CreateBlock("main", true);
+			bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
+			SmallVector<BfIRValue, 2> stopArgs;			
+			startArgs[1] = bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 0);
+			bfModule->mBfIRBuilder->CreateCall(mainFunc, startArgs);
+			bfModule->mBfIRBuilder->CreateRetVoid();
 		}
 	}
 	

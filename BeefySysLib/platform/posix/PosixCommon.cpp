@@ -304,9 +304,21 @@ void mkdir(const char* path)
 
 typedef void(*CrashInfoFunc)();
 
-static CritSect gSysCritSect;
-static String gCrashInfo;
-static Array<CrashInfoFunc> gCrashInfoFuncs;
+struct BfpGlobalData
+{
+	CritSect mSysCritSect;
+	String mCrashInfo;
+	Array<CrashInfoFunc> mCrashInfoFuncs;
+};
+
+static BfpGlobalData* gBfpGlobal;
+
+static BfpGlobalData* BfpGetGlobalData()
+{
+	if (gBfpGlobal == NULL)
+		gBfpGlobal = new BfpGlobalData();
+	return gBfpGlobal;
+}
 
 #ifdef BFP_HAS_BACKTRACE
 
@@ -437,18 +449,18 @@ static void Crashed()
 {
     //
     {
-        AutoCrit autoCrit(gSysCritSect);
+        AutoCrit autoCrit(BfpGetGlobalData()->mSysCritSect);
 
         String debugDump;
 
         debugDump += "**** FATAL APPLICATION ERROR ****\n";
 
-        for (auto func : gCrashInfoFuncs)
+        for (auto func : BfpGetGlobalData()->mCrashInfoFuncs)
             func();
 
-        if (!gCrashInfo.IsEmpty())
+        if (!BfpGetGlobalData()->mCrashInfo.IsEmpty())
         {
-            debugDump += gCrashInfo;
+            debugDump += BfpGetGlobalData()->mCrashInfo;
             debugDump += "\n";
         }
 
@@ -498,14 +510,16 @@ static void SigHandler(int sig)
     }
 
     if (sigName != NULL)
-        gCrashInfo += StrFormat("Signal: %s\n", sigName);
+		BfpGetGlobalData()->mCrashInfo += StrFormat("Signal: %s\n", sigName);
     else
-        gCrashInfo += StrFormat("Signal: %d\n", sig);
+		BfpGetGlobalData()->mCrashInfo += StrFormat("Signal: %d\n", sig);
     Crashed();
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags)
 {
+	BfpGetGlobalData();
+
     if (version != BFP_VERSION)
     {
         BfpSystem_FatalError(StrFormat("Bfp build version '%d' does not match requested version '%d'", BFP_VERSION, version).c_str(), "BFP FATAL ERROR");
@@ -561,14 +575,14 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashReportKind(BfpCrashReportKind cra
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfoFunc(BfpCrashInfoFunc crashInfoFunc)
 {
-    AutoCrit autoCrit(gSysCritSect);
-    gCrashInfoFuncs.Add(crashInfoFunc);
+    AutoCrit autoCrit(BfpGetGlobalData()->mSysCritSect);
+	BfpGetGlobalData()->mCrashInfoFuncs.Add(crashInfoFunc);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfo(const char* str) // Can do at any time, or during CrashInfoFunc callbacks
 {
-    AutoCrit autoCrit(gSysCritSect);
-    gCrashInfo.Append(str);
+    AutoCrit autoCrit(BfpGetGlobalData()->mSysCritSect);
+	BfpGetGlobalData()->mCrashInfo.Append(str);
 }
 
 void BfpSystem_Shutdown()

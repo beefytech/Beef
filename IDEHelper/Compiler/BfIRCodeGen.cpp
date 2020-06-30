@@ -2737,6 +2737,35 @@ void BfIRCodeGen::HandleNextCmd()
 			{
 				func->addFnAttr("no-frame-pointer-elim", "true");
 			}
+			else if ((attribute == BFIRAttribute_Constructor) || (attribute == BFIRAttribute_Destructor))
+			{
+				CmdParamVec<llvm::Type*> members;
+				members.push_back(llvm::Type::getInt32Ty(*mLLVMContext));
+				members.push_back(func->getType());
+				members.push_back(llvm::Type::getInt8PtrTy(*mLLVMContext));
+				llvm::StructType* structType = llvm::StructType::get(*mLLVMContext, members);
+
+				CmdParamVec<llvm::Constant*> structVals;
+				structVals.push_back(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), 0x7FFFFF00));
+				structVals.push_back(func);
+				structVals.push_back(llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(*mLLVMContext)));				
+				auto constStruct = llvm::ConstantStruct::get(structType, structVals);
+				
+				CmdParamVec<llvm::Constant*> structArrVals;
+				structArrVals.push_back(constStruct);
+
+				auto arrTy = llvm::ArrayType::get(structType, 1);
+				auto constArr = llvm::ConstantArray::get(arrTy, structArrVals);
+
+				auto globalVariable = new llvm::GlobalVariable(
+					*mLLVMModule,
+					arrTy,
+					false,
+					llvm::GlobalValue::AppendingLinkage,
+					constArr,
+					(attribute == BFIRAttribute_Constructor) ? "llvm.global_ctors" : "llvm.global_dtors",
+					NULL, llvm::GlobalValue::NotThreadLocal);								
+			}			
 			else
 				func->addAttribute(argIdx, LLVMMapAttribute(attribute));
 		}

@@ -313,7 +313,9 @@ namespace IDE
 				testProjectInfo = gApp.mTestManager.GetProjectInfo(project);
 
 			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
-			if (isExe)
+			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
+
+			if (isExe || isDynLib)
 			{
 				CopyLibFiles(targetPath, workspaceOptions, options);
 
@@ -334,6 +336,11 @@ namespace IDE
 					GetTargetName(workspaceOptions, linkLine);
 					linkLine.Append(" ");
 			    }*/
+
+				if (isDynLib)
+				{
+					linkLine.Append("-shared ");
+				}
 
 				if ((mPlatformType == .Windows) &&
 			    	((project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication) ||
@@ -1092,10 +1099,8 @@ namespace IDE
 				absOutputDir.Append(projectBuildDir);
 				outputDir = absOutputDir;
 				targetPath.Append(outputDir, "/", project.mProjectName);
-#if BF_PLATFORM_WINDOWS
-				targetPath.Append(".exe");
-#endif
-
+				if (mPlatformType == .Windows)
+					targetPath.Append(".exe");
 				Debug.Assert(testProjectInfo.mTestExePath == null);
 				testProjectInfo.mTestExePath = new String(targetPath);
 			}

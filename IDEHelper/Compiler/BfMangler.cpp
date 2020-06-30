@@ -719,7 +719,12 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	}
 	
 	mangleContext.mPrefixObjectPointer = true;
-	String methodName = methodInst->mMethodDef->mName;
+	StringT<128> methodName = methodInst->mMethodDef->mName;
+	for (int i = 0; i < (int)methodName.length(); i++)
+	{
+		if (methodName[i] == '@')
+			methodName[i] = '$';
+	}
 
 	if (methodInst->mMethodDef->mIsOperator)
 	{

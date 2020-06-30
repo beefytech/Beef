@@ -16,6 +16,8 @@ set(OUTPUT_RELEASE Release/bin)
 
 project(${PROJECT_NAME} CXX C)
 
+add_compile_options(-fPIC)
+
 # Define Release by default.
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")

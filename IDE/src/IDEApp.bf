@@ -8337,6 +8337,8 @@ namespace IDE
 
             bfProject.SetDisabled(false);
 
+			let platform = Workspace.PlatformType.GetFromName(mPlatformName);
+
             var preprocessorMacros = scope DefinesSet();
 			void AddMacros(List<String> macros)
 			{
@@ -8406,10 +8408,18 @@ namespace IDE
 				}
 			}
 
+			var relocType = options.mBeefOptions.mRelocType;
+
+			if (relocType == .NotSet)
+			{
+				if (platform != .Windows)
+					relocType = .PIC;
+			}
+
             bfProject.SetOptions(targetType,
                 project.mBeefGlobalOptions.mStartupObject,
                 preprocessorMacros.mDefines,
-                optimizationLevel, ltoType, options.mBeefOptions.mRelocType, options.mBeefOptions.mPICLevel,
+                optimizationLevel, ltoType, relocType, options.mBeefOptions.mPICLevel,
 				options.mBeefOptions.mMergeFunctions, options.mBeefOptions.mCombineLoads,
                 options.mBeefOptions.mVectorizeLoops, options.mBeefOptions.mVectorizeSLP);
 
@@ -8930,10 +8940,10 @@ namespace IDE
 											else if (project.mGeneralOptions.mTargetType != .CustomBuild)
 											    newString.Append(".exe");
 										case .macOS:
-											if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
+											if (project.mGeneralOptions.mTargetType == .BeefLib)
 												newString.Append(".dylib");
 										default:
-											if (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib)
+											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
 												newString.Append(".so");
 										}
 									}

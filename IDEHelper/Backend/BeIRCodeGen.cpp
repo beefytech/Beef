@@ -2318,6 +2318,12 @@ void BeIRCodeGen::HandleNextCmd()
 				else if (attribute == BFIRAttribute_NoRecurse)
 				{
 				}
+				else if (attribute == BFIRAttribute_Constructor)
+				{
+				}
+				else if (attribute == BFIRAttribute_Destructor)
+				{
+				}
 				else
 					BF_FATAL("Unhandled");
 			}			
