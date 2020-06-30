@@ -932,6 +932,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		auto typeAliasDecl = (BfTypeAliasDeclaration*)typeDef->mTypeDeclaration;
 		BfType* aliasToType = NULL;
 
+		resolvedTypeRef->mDefineState = BfTypeDefineState_ResolvingBaseType;
 		BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
 		typeState.mPopulateType = populateType;
 		typeState.mCurBaseTypeRef = typeAliasDecl->mAliasToType;
