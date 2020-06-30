@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -119,6 +120,31 @@ namespace Tests
 
 			float totals = GetSum(fVals);
 			Test.Assert(totals == 10+20+30+40+50);
+		}
+
+		public static mixin TransformArray<Input, Output, InputSize>(Input[InputSize] array, delegate void(Input, ref Output) predicate) where InputSize : const int where Output : new
+		{
+			Output[2] output = default;
+			for (int i = 0; i < array.Count; i++)
+			{
+				output[i] = scope:mixin Output();
+				predicate(array[i], ref output[i]);
+			}
+			output
+		}
+
+		[Test]
+		public static void TestSizedArrays()
+		{
+			int[2] arr = .(2, 4);
+
+			delegate void(int, ref String) toString = scope (i, str) => { i.ToString(str); };
+
+			List<String[2]> l2 = scope .();
+			l2.Add(TransformArray!(arr, toString));
+
+			Test.Assert(l2.Front[0] == "2");
+			Test.Assert(l2.Front[1] == "4");
 		}
 	}
 }
