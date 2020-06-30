@@ -7004,8 +7004,9 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 			genericCheckTypeInstance = GetUnspecializedTypeInstance(genericCheckTypeInstance);
 			doFakeVal = true;
 		}
-
+		
 		BfGenericParamDef* genericParamDef = NULL;
+		BfGenericParamDef* origGenericParamDef = NULL;
 		BfType* genericParamResult = NULL;
 		BfType* genericTypeConstraint = NULL;
 		bool disallowConstExprValue = false;
@@ -7013,6 +7014,7 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 		{
 			auto genericTypeInst = (BfTypeInstance*)genericCheckTypeInstance;
 			auto* genericParams = &curTypeDef->mGenericParamDefs;
+			auto* origGenericParams = &curTypeDef->mGenericParamDefs;
 			
 			if (genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo != NULL)
 			{
@@ -7028,6 +7030,7 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 				if (genericName == findName)
 				{
 					genericParamDef = checkGenericParamDef;
+					origGenericParamDef = (*origGenericParams)[genericParamIdx];
 					genericParamResult = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[genericParamIdx];
 					genericTypeConstraint = genericTypeInst->mGenericTypeInfo->mGenericParams[genericParamIdx]->mTypeConstraint;
 
@@ -7045,6 +7048,7 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 				if (genericName == findName)
 				{
 					genericParamDef = checkGenericParamDef;
+					origGenericParamDef = checkGenericParamDef;
 					genericParamResult = contextMethodInstance->mMethodInfoEx->mMethodGenericArguments[genericParamIdx];
 					genericTypeConstraint = contextMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx]->mTypeConstraint;
 
@@ -7077,7 +7081,7 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 					return BfTypedValue(mBfIRBuilder->GetFakeVal(), genericTypeConstraint);
 				}
 
-				if ((genericParamDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)									
+				if (((genericParamDef->mGenericParamFlags | origGenericParamDef->mGenericParamFlags) & BfGenericParamFlag_Const) != 0)
 				{
 					BfTypedValue result;
 					result.mType = genericParamResult;
