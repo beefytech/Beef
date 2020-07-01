@@ -5006,9 +5006,7 @@ namespace IDE
             AddMenuItem(subMenu, "&Save File","Save File", new => UpdateMenuItem_HasActiveDocument);
             AddMenuItem(subMenu, "Save &As...", "Save As", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(subMenu, "Save A&ll", "Save All");
-			let prefMenu = subMenu.AddMenuItem("&Preferences");
-			//prefMenu.AddMenuItem("&Keyboard Shortcuts", null, new (evt) => { ShowKeyboardShortcuts(); });
-			AddMenuItem(prefMenu, "&Settings", "Settings");
+			AddMenuItem(subMenu, "S&ettings", "Settings");
 			AddMenuItem(subMenu, "Close Workspace", "Close Workspace", new => UpdateMenuItem_HasWorkspace);
             AddMenuItem(subMenu, "E&xit", "Exit");
 
