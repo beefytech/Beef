@@ -536,6 +536,7 @@ enum BfTypedValueKind
 	BfTypedValueKind_Addr,
 	BfTypedValueKind_ReadOnlyAddr,
 	BfTypedValueKind_TempAddr,
+	BfTypedValueKind_RestrictedTempAddr,
 	BfTypedValueKind_ReadOnlyTempAddr,
 	BfTypedValueKind_ThisAddr,
 	BfTypedValueKind_BaseAddr,
@@ -647,7 +648,7 @@ public:
 
 	bool IsTempAddr() const
 	{
-		return ((mKind == BfTypedValueKind_ReadOnlyTempAddr) || (mKind == BfTypedValueKind_TempAddr)); 
+		return ((mKind == BfTypedValueKind_ReadOnlyTempAddr) || (mKind == BfTypedValueKind_RestrictedTempAddr) || (mKind == BfTypedValueKind_TempAddr));
 	}
 
 	bool IsReadOnly() const
@@ -727,6 +728,7 @@ public:
 			mKind = BfTypedValueKind_ReadOnlyAddr;
 			break;
 		case BfTypedValueKind_TempAddr:
+		case BfTypedValueKind_RestrictedTempAddr:
 			mKind = BfTypedValueKind_ReadOnlyTempAddr;
 			break;
 		default:

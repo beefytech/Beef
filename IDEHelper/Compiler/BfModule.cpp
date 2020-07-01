@@ -11102,7 +11102,7 @@ bool BfModule::CheckModifyValue(BfTypedValue& typedValue, BfAstNode* refNode, co
 		return false;
 	}
 
-	if (typedValue.mKind == BfTypedValueKind_TempAddr)
+	if (typedValue.mKind == BfTypedValueKind_RestrictedTempAddr)
 	{
 		Fail(StrFormat("Cannot %s temporary value", modifyType), refNode);
 		return false;

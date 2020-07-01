@@ -4516,7 +4516,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		{						
 			auto val = mModule->GetDefaultTypedValue(returnType, true, (methodInstance->GetStructRetIdx() != -1) ? BfDefaultValueKind_Addr : BfDefaultValueKind_Value);
 			if (val.mKind == BfTypedValueKind_Addr)
-				val.mKind = BfTypedValueKind_TempAddr;
+				val.mKind = BfTypedValueKind_RestrictedTempAddr;
 			return val;
 		}
 	};
@@ -4543,7 +4543,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 
 		if (sret == NULL)
 		{			
-			sretVal = BfTypedValue(mModule->CreateAlloca(returnType), returnType, BfTypedValueKind_TempAddr);
+			sretVal = BfTypedValue(mModule->CreateAlloca(returnType), returnType, BfTypedValueKind_RestrictedTempAddr);
 			sret = &sretVal;
 		}
 	}
@@ -5008,7 +5008,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 			loweredIRType = mModule->mBfIRBuilder->GetPointerTo(loweredIRType);							
 			auto castedRetVal = mModule->mBfIRBuilder->CreateBitCast(retVal, loweredIRType);
 			mModule->mBfIRBuilder->CreateStore(callInst, castedRetVal);
-			result = BfTypedValue(retVal, methodInstance->mReturnType, BfTypedValueKind_TempAddr);
+			result = BfTypedValue(retVal, methodInstance->mReturnType, BfTypedValueKind_RestrictedTempAddr);
 		}
 		else
 			result = BfTypedValue(callInst, methodInstance->mReturnType);
@@ -8440,7 +8440,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 				StringT<128> findName;
 				identifierNode->ToString(findName);
 				fieldResult = LookupField(identifierNode, initValue, findName, BfLookupFieldFlag_IsImplicitThis);
-				if (fieldResult.mKind == BfTypedValueKind_TempAddr)
+				if ((fieldResult.mKind == BfTypedValueKind_TempAddr) || (fieldResult.mKind == BfTypedValueKind_RestrictedTempAddr))
 					fieldResult.mKind = BfTypedValueKind_Addr;
 
 				wasValidInitKind = true;
