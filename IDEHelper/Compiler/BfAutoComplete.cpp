@@ -2485,7 +2485,7 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 		if (IsAutocompleteNode(identifierNode))
 		{						
 			String constStr;
-			if (varDecl->mConstValue)			
+			if (varDecl->mConstValue.IsConst())
 				constStr = ConstantToString(mModule->mBfIRBuilder, varDecl->mConstValue);							
 			if (!constStr.IsEmpty())
 			{
