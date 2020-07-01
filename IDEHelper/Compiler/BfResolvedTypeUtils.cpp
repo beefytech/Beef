@@ -1698,6 +1698,13 @@ bool BfTypeInstance::IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProje
 	return curProject->ContainsReference(declaringTypeDef->mProject);
 }
 
+bool BfTypeInstance::IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProjectSet* visibleProjectSet)
+{
+	if (visibleProjectSet == NULL)
+		return false;
+	return visibleProjectSet->Contains(declaringTypeDef->mProject);
+}
+
 bool BfTypeInstance::WantsGCMarking()
 {
 	if (IsObjectOrInterface()) 

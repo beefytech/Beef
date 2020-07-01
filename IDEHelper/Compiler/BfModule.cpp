@@ -2204,6 +2204,62 @@ void BfModule::ValueScopeEnd(BfIRValue valueScopeStart)
 		mBfIRBuilder->CreateValueScopeHardEnd(valueScopeStart);
 }
 
+BfProjectSet* BfModule::GetVisibleProjectSet()
+{
+	if (mCurMethodState == NULL)
+		return NULL;
+	
+	if (mCurMethodState->mVisibleProjectSet.IsEmpty())
+	{
+		HashSet<BfType*> seenTypes;
+
+		std::function<void(BfProject* project)> _AddProject = [&](BfProject* project)
+		{
+			if (mCurMethodState->mVisibleProjectSet.Add(project))
+			{
+				for (auto dep : project->mDependencies)
+					_AddProject(dep);
+			}
+		};
+
+		std::function<void(BfType* type)> _AddType = [&](BfType* type)
+		{
+			auto typeInstance = type->ToTypeInstance();
+			if (typeInstance == NULL)
+				return;
+			_AddProject(typeInstance->mTypeDef->mProject);
+			if (typeInstance->mGenericTypeInfo == NULL)
+				return;
+			for (auto type : typeInstance->mGenericTypeInfo->mTypeGenericArguments)
+			{
+				if (seenTypes.Add(type))				
+					_AddType(type);				
+			}
+		};
+
+		if (mCurTypeInstance != NULL)
+			_AddType(mCurTypeInstance);
+		
+		auto methodState = mCurMethodState;
+		while (methodState != NULL)
+		{
+			if (methodState->mMethodInstance != NULL)
+			{
+				_AddProject(methodState->mMethodInstance->mMethodDef->mDeclaringType->mProject);
+				if (methodState->mMethodInstance->mMethodInfoEx != NULL)
+				{
+					for (auto type : methodState->mMethodInstance->mMethodInfoEx->mMethodGenericArguments)
+						_AddType(type);					
+				}
+			}
+
+			methodState = methodState->mPrevMethodState;			
+		}
+	}
+
+	return &mCurMethodState->mVisibleProjectSet;
+}
+
 BfFileInstance* BfModule::GetFileFromNode(BfAstNode* astNode)
 {
 	auto bfParser = astNode->GetSourceData()->ToParserData();

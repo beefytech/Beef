@@ -895,6 +895,7 @@ public:
 	Array<BfLambdaInstance*> mDeferredLambdaInstances;
 	Array<BfIRValue> mSplatDecompAddrs;	
 	BfDeferredLocalAssignData* mDeferredLocalAssignData;
+	BfProjectSet mVisibleProjectSet;
 	int mDeferredLoopListCount;
 	int mDeferredLoopListEntryCount;
 	HashSet<int> mSkipObjectAccessChecks; // Indexed by BfIRValue value id
@@ -1468,6 +1469,7 @@ public:
 	void SaveStackState(BfScopeData* scope);
 	BfIRValue ValueScopeStart();
 	void ValueScopeEnd(BfIRValue valueScopeStart);
+	BfProjectSet* GetVisibleProjectSet();
 
 	void AddBasicBlock(BfIRBlock bb, bool activate = true);	
 	void VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator = NULL, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None);
@@ -1682,7 +1684,7 @@ public:
 	BfType* ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTypeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags);
 	void ShowAmbiguousTypeError(BfAstNode* refNode, BfTypeDef* typeDef, BfTypeDef* otherTypeDef);
 	void ShowGenericArgCountError(BfTypeReference* typeRef, int wantedGenericParams);	
-	BfTypeDef* GetActiveTypeDef(BfTypeInstance* typeInstanceOverride = NULL, bool useMixinDecl = false); // useMixinDecl is useful for type lookup, but we don't want the decl project to limit what methods the user can call
+	BfTypeDef* GetActiveTypeDef(BfTypeInstance* typeInstanceOverride = NULL, bool useMixinDecl = false); // useMixinDecl is useful for type lookup, but we don't want the decl project to limit what methods the user can call	
 	BfTypeDef* FindTypeDefRaw(const BfAtomComposite& findName, int numGenericArgs, BfTypeInstance* typeInstance, BfTypeDef* useTypeDef, BfTypeLookupError* error);
 	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL);
 	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfTypeInstance* typeInstanceOverride = NULL, BfTypeLookupError* error = NULL);

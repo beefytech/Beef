@@ -552,7 +552,8 @@ public:
 	virtual bool HasWrappedRepresentation() { return IsWrappableType(); }
 	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) { return true; } // May be 'false' only for generic extensions with constraints
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) { return true; }
-	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) { return true; }	
+	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) { return true; }
+	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProjectSet* visibleProjectSet) { return true; }
 
 	virtual void ReportMemory(MemReporter* memReporter);
 };
@@ -1836,6 +1837,7 @@ public:
 	virtual bool HasPackingHoles() override { return mHasPackingHoles; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) override;
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) override;	
+	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProjectSet* visibleProjectSet) override;
 	virtual bool WantsGCMarking() override;
 	virtual bool GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCode = NULL, BfTypeCode* outTypeCode2 = NULL) override;
 

@@ -44,6 +44,7 @@ class BfProject;
 
 struct BfTypeDefMapFuncs;
 typedef MultiHashSet<BfTypeDef*, BfTypeDefMapFuncs> BfTypeDefMap;
+typedef HashSet<BfProject*> BfProjectSet;
 
 class BfAtom
 {

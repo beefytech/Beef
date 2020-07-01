@@ -612,11 +612,6 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	bool prevChainSkip = (prevMethodInstance->mChainType == BfMethodChainType_ChainMember) || (prevMethodInstance->mChainType == BfMethodChainType_ChainSkip);
 	RETURN_BETTER_OR_WORSE(!chainSkip, !prevChainSkip);
 
-	// If one of these methods is local to the current extension then choose that one
-	auto activeDef = mModule->GetActiveTypeDef();
-	RETURN_BETTER_OR_WORSE(newMethodDef->mDeclaringType == activeDef, prevMethodDef->mDeclaringType == activeDef);
-	RETURN_BETTER_OR_WORSE(newMethodDef->mDeclaringType->IsExtension(), prevMethodDef->mDeclaringType->IsExtension());
-	
 	if ((!isBetter) && (!isWorse))
 	{
 		bool betterByGenericParam = false;
@@ -947,6 +942,11 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 
 	RETURN_BETTER_OR_WORSE(newMethodDef->mCheckedKind == mCheckedKind, prevMethodDef->mCheckedKind == mCheckedKind);
 	RETURN_BETTER_OR_WORSE(newMethodDef->mCommutableKind != BfCommutableKind_Reverse, prevMethodDef->mCommutableKind != BfCommutableKind_Reverse);
+
+	// If one of these methods is local to the current extension then choose that one
+	auto activeDef = mModule->GetActiveTypeDef();
+	RETURN_BETTER_OR_WORSE(newMethodDef->mDeclaringType == activeDef, prevMethodDef->mDeclaringType == activeDef);
+	RETURN_BETTER_OR_WORSE(newMethodDef->mDeclaringType->IsExtension(), prevMethodDef->mDeclaringType->IsExtension());
 
 	RETURN_RESULTS;
 }
@@ -1877,7 +1877,12 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 	auto curTypeDef = typeInstance->mTypeDef;
 		
 	int checkInterfaceIdx = 0;
-		
+	
+	if (mMethodName == "Handle")
+	{
+		NOP;
+	}
+
 	bool targetIsBase = target.IsBase();
 	bool checkExtensionBase = false;
 	if (targetIsBase)
@@ -1915,6 +1920,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 		{
 			bool allowExplicitInterface = curTypeInst->IsInterface() && mBypassVirtual;
 			auto activeTypeDef = mModule->GetActiveTypeDef();
+			auto visibleProjectSet = mModule->GetVisibleProjectSet();
 			bool isDelegate = typeInstance->IsDelegate();
 
 			auto checkMethod = nextMethodDef;
@@ -1970,7 +1976,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 			if (!isDelegate)
 			{				
 				if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
-					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, activeTypeDef)))
+					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, visibleProjectSet)))
 					continue;
 			}
 
@@ -5353,9 +5359,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			if (!target)
 			{
 				FinishDeferredEvals(argValues);
-				mModule->Fail(StrFormat("An instance reference is required to %s the non-static method '%s'",
+				auto error = mModule->Fail(StrFormat("An instance reference is required to %s the non-static method '%s'",
 					(prevBindResult.mPrevVal != NULL) ? "bind" : "invoke",
 					mModule->MethodToString(methodInstance).c_str()), targetSrc);
+				if ((error != NULL) && (methodInstance->mMethodDef->GetRefNode() != NULL))
+					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 				return mModule->GetDefaultTypedValue(returnType);
 			}
 
@@ -6023,6 +6031,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
 	
 	auto activeTypeDef = mModule->GetActiveTypeDef();
+	auto visibleProjectSet = mModule->GetVisibleProjectSet();
 	bool isFailurePass = false;
 	for (int pass = 0; pass < 2; pass++)
 	{
@@ -6047,7 +6056,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 			if (!mModule->IsInSpecializedSection())
 			{
 				if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
-					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, activeTypeDef)))
+					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, visibleProjectSet)))
 					continue;
 			}
 			
@@ -7233,7 +7242,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		}		
 	}
 
-	// Look in globals. Always check  for extension methods.
+	// Look in globals. Always check for extension methods.
 	if ((methodDef == NULL) || (wantsExtensionCheck))
 	{
 		if (mModule->mContext->mCurTypeState != NULL)
@@ -7251,10 +7260,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				{
 					isFailurePass = false;
 					curTypeInst = methodMatcher.mBestMethodTypeInstance;
-					methodDef = methodMatcher.mBestMethodDef;
-					// Extension check must check all possible extensions, no early bailout
-					if (!wantsExtensionCheck)
-						break;
+					methodDef = methodMatcher.mBestMethodDef;					
 				}
 			}
 		}		
@@ -7273,10 +7279,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				{
 					isFailurePass = false;
 					curTypeInst = methodMatcher.mBestMethodTypeInstance;
-					methodDef = methodMatcher.mBestMethodDef;
-					// Extension check must check all possible extensions, no early bailout
-					if (!wantsExtensionCheck)
-						break;
+					methodDef = methodMatcher.mBestMethodDef;					
 				}
 			}
 		}
@@ -13001,7 +13004,7 @@ void BfExprEvaluator::CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* ty
  	{
 		 ctxClosureInstanceInfo = mModule->mCurMethodState->mClosureState->mClosureInstanceInfo;
 		 ctxMethodState = mModule->mCurMethodState;
-	 }
+	}
 
 	bool atCtxMethodState = false;
 	auto checkMethodState = mModule->mCurMethodState;
@@ -13324,16 +13327,20 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 		if (!target)
 		{
-			mModule->Fail(StrFormat("An instance reference is required to invoke the non-static mixin '%s'",
+			BfError* error = mModule->Fail(StrFormat("An instance reference is required to invoke the non-static mixin '%s'",
 				mModule->MethodToString(methodInstance).c_str()), targetSrc);
+			if ((error != NULL) && (methodInstance->mMethodDef->GetRefNode() != NULL))
+				mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 		}
 	}
 	else
 	{
 		if (target)
 		{
-			mModule->Fail(StrFormat("Mixin '%s' cannot be accessed with an instance reference; qualify it with a type name instead", 
+			BfError* error = mModule->Fail(StrFormat("Mixin '%s' cannot be accessed with an instance reference; qualify it with a type name instead", 
 				mModule->MethodToString(methodInstance).c_str()), targetSrc);
+			if ((error != NULL) && (methodInstance->mMethodDef->GetRefNode() != NULL))
+				mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 		}
 	}
 
@@ -13354,14 +13361,14 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	if ((int)args.size() < explicitParamCount)
 	{		
 		BfError* error = mModule->Fail(StrFormat("Not enough arguments specified, expected %d more.", explicitParamCount - (int)arguments.size()), targetSrc);
-		if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
+		if ((error != NULL) && (methodInstance->mMethodDef->GetRefNode() != NULL))
 			mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 		return;
 	}
 	else if ((int)args.size() > explicitParamCount)
 	{
 		BfError* error = mModule->Fail(StrFormat("Too many arguments specified, expected %d fewer.", (int)arguments.size() - explicitParamCount), targetSrc);
-		if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
+		if ((error != NULL) && (methodInstance->mMethodDef->GetRefNode() != NULL))
 			mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 		return;
 	}
