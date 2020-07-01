@@ -2,6 +2,11 @@ namespace LibC
 {
 	class LibC0
 	{
+		public static int GetOverload0<T>() where T : var
+		{
+			T val = default;
+			return Overload0(val);
+		}
 	}
 }
 
@@ -21,3 +26,10 @@ extension LibClassA
 	}
 }
 
+static
+{
+	public static int Overload0(int32 a)
+	{
+		return 3;
+	}
+}

@@ -1,7 +1,14 @@
+using System;
+
 namespace LibB
 {
 	class LibB0
 	{
+		public static int GetOverload0<T>() where T : var
+		{
+			T val = default;
+			return Overload0(val);
+		}
 	}
 }
 
@@ -24,5 +31,13 @@ extension LibClassA
 	public int32 LibB_GetB()
 	{
 		return mB;
+	}
+}
+
+static
+{
+	public static int Overload0(int16 a)
+	{
+		return 2;
 	}
 }
