@@ -401,42 +401,17 @@ namespace IDE
 					}
 			    }
 
-			    List<Project> depProjectList = scope List<Project>();
-			    gApp.GetDependentProjectList(project, depProjectList);
-			    if (depProjectList.Count > 0)
-			    {
-			        for (var depProject in depProjectList)
-			        {
-	                    /*if (depProject.mNeedsTargetRebuild)
-	                        project.mNeedsTargetRebuild = true;*/
+			    List<String> libPaths = scope .();
+				defer ClearAndDeleteItems(libPaths);
+				List<String> depPaths = scope .();
+				defer ClearAndDeleteItems(depPaths);
+				AddLinkDeps(project, options, workspaceOptions, linkLine, libPaths, depPaths);
 
-	                    var depOptions = gApp.GetCurProjectOptions(depProject);
-
-	                    if (depOptions.mClangObjectFiles != null)
-	                    {
-	                        var argBuilder = scope IDEApp.ArgBuilder(linkLine, true);
-
-	                        for (var fileName in depOptions.mClangObjectFiles)
-	                        {
-	                            //AppendWithOptionalQuotes(linkLine, fileName);
-	                            argBuilder.AddFileName(fileName);
-	                            argBuilder.AddSep();
-	                        }
-	                    }
-
-	                    /*String depLibTargetPath = scope String();
-	                    ResolveConfigString(depProject, depOptions, "$(TargetPath)", error, depLibTargetPath);
-	                    IDEUtils.FixFilePath(depLibTargetPath);
-
-	                    String depDir = scope String();
-	                    Path.GetDirectoryName(depLibTargetPath, depDir);
-	                    String depFileName = scope String();
-	                    Path.GetFileNameWithoutExtension(depLibTargetPath, depFileName);
-
-	                    AppendWithOptionalQuotes(linkLine, depLibTargetPath);
-	                    linkLine.Append(" ");*/
-			        }
-			    }
+				for (var libPath in libPaths)
+				{
+					IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
+					linkLine.Append(" ");
+				}
 
 				String gccExePath;
 				String clangExePath;
@@ -648,6 +623,82 @@ namespace IDE
 			return true;
 		}
 
+		void AddLinkDeps(Project project, Project.Options options, Workspace.Options workspaceOptions, String linkLine, List<String> libPaths, List<String> depPaths)
+		{
+			void AddLibPath(StringView libPathIn, Project project, Project.Options projectOptions)
+			{
+				var libPath = new String();
+				if (gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, projectOptions, libPathIn, "lib paths", libPath))
+				{
+					IDEUtils.FixFilePath(libPath);
+					libPaths.Add(libPath);
+				}
+			}
+
+
+			defer ClearAndDeleteItems(depPaths);
+			void AddDepPath(StringView depPathIn, Project project, Project.Options projectOptions)
+			{
+				var depPath = new String();
+				if (gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, projectOptions, depPathIn, "dep paths", depPath))
+				{
+					IDEUtils.FixFilePath(depPath);
+					depPaths.Add(depPath);
+				}
+			}
+
+			for (let libPath in options.mBuildOptions.mLibPaths)
+				AddLibPath(libPath, project, options);
+			for (let depPath in options.mBuildOptions.mLinkDependencies)
+				AddDepPath(depPath, project, options);
+
+			List<Project> depProjectList = scope List<Project>();
+			gApp.GetDependentProjectList(project, depProjectList);
+			if (depProjectList.Count > 0)
+			{
+			    for (var depProject in depProjectList)
+			    {
+			        var depOptions = gApp.GetCurProjectOptions(depProject);
+					if (depOptions != null)
+					{
+						if (depOptions.mClangObjectFiles != null)
+			            {
+							var argBuilder = scope IDEApp.ArgBuilder(linkLine, true);
+
+							for (var fileName in depOptions.mClangObjectFiles)
+							{
+								argBuilder.AddFileName(fileName);
+								argBuilder.AddSep();
+							}
+						}    
+					}
+
+					if (depProject.mGeneralOptions.mTargetType == .BeefDynLib)
+					{
+						if (mImpLibMap.TryGetValue(depProject, var libPath))
+						{
+							IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
+							linkLine.Append(" ");
+						}
+					}
+
+					if (depProject.mGeneralOptions.mTargetType == .BeefLib)
+					{
+						let depProjectOptions = gApp.GetCurProjectOptions(depProject);
+						var linkFlags = scope String();
+						gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+						if (!linkFlags.IsWhiteSpace)
+							linkLine.Append(linkFlags, " ");
+
+						for (let libPath in depProjectOptions.mBuildOptions.mLibPaths)
+							AddLibPath(libPath, depProject, depProjectOptions);
+						for (let depPath in depProjectOptions.mBuildOptions.mLinkDependencies)
+							AddDepPath(depPath, depProject, depProjectOptions);
+					}
+			    }
+			}
+		}
+
 		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
 			bool is64Bit = mPtrSize == 8;
@@ -693,78 +744,9 @@ namespace IDE
 
 				List<String> libPaths = scope .();
 				defer ClearAndDeleteItems(libPaths);
-				void AddLibPath(StringView libPathIn, Project project, Project.Options projectOptions)
-				{
-					var libPath = new String();
-					if (gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, projectOptions, libPathIn, "lib paths", libPath))
-					{
-						IDEUtils.FixFilePath(libPath);
-						libPaths.Add(libPath);
-					}
-				}
-
 				List<String> depPaths = scope .();
 				defer ClearAndDeleteItems(depPaths);
-				void AddDepPath(StringView depPathIn, Project project, Project.Options projectOptions)
-				{
-					var depPath = new String();
-					if (gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, projectOptions, depPathIn, "dep paths", depPath))
-					{
-						IDEUtils.FixFilePath(depPath);
-						depPaths.Add(depPath);
-					}
-				}
-
-				for (let libPath in options.mBuildOptions.mLibPaths)
-					AddLibPath(libPath, project, options);
-				for (let depPath in options.mBuildOptions.mLinkDependencies)
-					AddDepPath(depPath, project, options);
-
-			    List<Project> depProjectList = scope List<Project>();
-			    gApp.GetDependentProjectList(project, depProjectList);
-			    if (depProjectList.Count > 0)
-			    {
-			        for (var depProject in depProjectList)
-			        {
-		                var depOptions = gApp.GetCurProjectOptions(depProject);
-						if (depOptions != null)
-						{
-							if (depOptions.mClangObjectFiles != null)
-	                        {
-								var argBuilder = scope IDEApp.ArgBuilder(linkLine, true);
-
-								for (var fileName in depOptions.mClangObjectFiles)
-								{
-									argBuilder.AddFileName(fileName);
-									argBuilder.AddSep();
-								}
-							}    
-						}
-
-						if (depProject.mGeneralOptions.mTargetType == .BeefDynLib)
-						{
-							if (mImpLibMap.TryGetValue(depProject, var libPath))
-							{
-								IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
-								linkLine.Append(" ");
-							}
-						}
-
-						if (depProject.mGeneralOptions.mTargetType == .BeefLib)
-						{
-							let depProjectOptions = gApp.GetCurProjectOptions(depProject);
-							var linkFlags = scope String();
-							gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, depProject, depProjectOptions, depProjectOptions.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
-							if (!linkFlags.IsWhiteSpace)
-								linkLine.Append(linkFlags, " ");
-
-							for (let libPath in depProjectOptions.mBuildOptions.mLibPaths)
-								AddLibPath(libPath, depProject, depProjectOptions);
-							for (let depPath in depProjectOptions.mBuildOptions.mLinkDependencies)
-								AddDepPath(depPath, depProject, depProjectOptions);
-						}
-			        }
-			    }
+				AddLinkDeps(project, options, workspaceOptions, linkLine, libPaths, depPaths);
 
 		        /*if (File.Delete(targetPath).Failed(true))
 				{
@@ -871,9 +853,6 @@ namespace IDE
 
 				let winOptions = project.mWindowsOptions;
 
-				String projectBuildDir = scope String();
-				gApp.GetProjectBuildDir(project, projectBuildDir);
-
 				String cacheStr = scope String();
 
 				void AddBuildFileDependency(StringView filePath, bool resolveString = false)
@@ -909,6 +888,8 @@ namespace IDE
 				for (var linkDep in libPaths)
 					AddBuildFileDependency(linkDep, true);
 
+				String projectBuildDir = scope String();
+				gApp.GetProjectBuildDir(project, projectBuildDir);
 				String prevCacheStr = scope .();
 				gApp.mBfBuildCompiler.GetBuildValue(projectBuildDir, "Link", prevCacheStr);
 				if (prevCacheStr != cacheStr)
