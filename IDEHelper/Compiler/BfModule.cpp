@@ -11276,6 +11276,9 @@ void BfModule::AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInsta
 		{	
 			BF_ASSERT(!methodRef.mTypeInstance->IsFunction());
 
+			// This ensures we rebuild - there are some cases where we get a method reference but never call it, so this is required here
+			AddDependency(methodInstance->GetOwner(), mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);
+
 			BfMethodRef methodRef = methodInstance;			
 			BfSpecializedMethodRefInfo* specializedMethodRefInfo = NULL;
 			bool isNew = mCurTypeInstance->mSpecializedMethodReferences.TryAdd(methodRef, NULL, &specializedMethodRefInfo);
@@ -18007,7 +18010,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 				UpdateSrcPos(expressionBody);
 				auto retVal = CreateValueFromExpression(expressionBody, expectingType, exprEvalFlags);
-				if ((retVal) && (expectingType != NULL))
+				if ((retVal) && (!retVal.mType->IsVar()) && (expectingType != NULL))
 				{
 					mCurMethodState->mHadReturn = true;
 					retVal = LoadValue(retVal);
