@@ -541,7 +541,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 
 			FlushIndent();			
 
-			for (int idx = startIdx; idx <= srcIdx; idx++)
+			for (int idx = startIdx; idx <= BF_MIN(srcIdx, endIdx - 1); idx++)
 			{
 				char c = astNodeSrc->mSrc[idx];
 				mOutString.Append(c);
