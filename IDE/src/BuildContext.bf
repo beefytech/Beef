@@ -798,6 +798,13 @@ namespace IDE
 				linkLine.Append("-nologo ");
 				//linkLine.Append("-fixed ");
 
+				if ((workspaceOptions.mAllowHotSwapping) && (is64Bit))
+				{
+					int nameHash = targetPath.GetHashCode();
+					int64 wantAddress = (((nameHash & 0x3FFFF) + 0x10) << 28);
+					linkLine.AppendF("-base:0x{0:X} -dynamicbase:no ", wantAddress);
+				}
+
 				// Incremental just seems to be slower for Beef.  Test on larger projects to verify
 				linkLine.Append("-incremental:no ");
 
