@@ -818,7 +818,7 @@ namespace Beefy.widgets
 		    if (mMouseFlags == 0)
 		    {
 		        mDragSelectionUnion = null;
-				if (mDragSelectionKind == .ClickedInside)
+				if ((mDragSelectionKind == .ClickedInside) && (btn == 0))
 					mSelection = EditSelection();
 				mDragSelectionKind = .None;
 		    }
