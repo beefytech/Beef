@@ -477,6 +477,11 @@ namespace System
 			return .Err;
 		}
 
+		public override void ToString(String strBuffer)
+		{
+			GetFullName(strBuffer);
+		}
+
 		public struct Enumerator : IEnumerator<Type>
 		{
 			int32 mCurId;
@@ -493,7 +498,6 @@ namespace System
 				}
 			}
 		}	
-
     }
 
     enum TypeCode : uint8
