@@ -655,6 +655,33 @@ BfIRValue BfIRConstHolder::CreateConstArray(BfIRType type, const BfSizedArray<Bf
 	return irValue;
 }
 
+BfIRValue BfIRConstHolder::CreateConstArrayZero(BfIRType type, int count)
+{
+	BfConstantArrayZero* constant = mTempAlloc.Alloc<BfConstantArrayZero>();
+	constant->mConstType = BfConstType_ArrayZero;
+	constant->mType = type = type;
+	constant->mCount = count;
+	auto irValue = BfIRValue(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(constant));
+	
+#ifdef CHECK_CONSTHOLDER
+	irValue.mHolder = this;
+#endif
+	return irValue;
+}
+
+BfIRValue BfIRConstHolder::CreateConstArrayZero(int count)
+{
+	BfConstant* constant = mTempAlloc.Alloc<BfConstant>();
+	constant->mConstType = BfConstType_ArrayZero8;
+	constant->mInt64 = count;
+	auto irValue = BfIRValue(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(constant));
+
+#ifdef CHECK_CONSTHOLDER
+	irValue.mHolder = this;
+#endif
+	return irValue;
+}
+
 BfIRValue BfIRConstHolder::CreateTypeOf(BfType* type)
 {
 	BfTypeOf_Const* typeOf = mTempAlloc.Alloc<BfTypeOf_Const>();
@@ -1777,6 +1804,11 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				auto arrayConst = (BfConstantArray*)constant;
 				Write(arrayConst->mType);
 				Write(arrayConst->mValues);
+			}
+			break;
+		case (int)BfConstType_ArrayZero8:
+			{
+				Write(constant->mInt64);
 			}
 			break;
 		default:			
@@ -3026,7 +3058,8 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 
 		BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
 		
-		bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
+		//bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
+		bool needsExplicitAlignment = true;
 		if (!needsExplicitAlignment)
 		{
 			int alignSize = resolvedFieldType->mAlign;
@@ -3075,7 +3108,7 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 	}
 
 	if (!typeInstance->IsTypedPrimitive())
-		StructSetBody(MapTypeInst(typeInstance), irFieldTypes, isPacked || !isCRepr);
+		StructSetBody(MapTypeInst(typeInstance), irFieldTypes, /*isPacked || !isCRepr*/true);
 
 	if (typeInstance->IsNullable())
 	{

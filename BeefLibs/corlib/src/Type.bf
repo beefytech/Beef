@@ -12,7 +12,7 @@ namespace System
         //  including the vtable and interface slots
     }
 
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class Type
     {
 		extern const Type* sTypes;
@@ -558,7 +558,7 @@ namespace System.Reflection
         }        
     }
 
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class TypeInstance : Type
     {
         [CRepr, AlwaysInclude]
@@ -770,7 +770,7 @@ namespace System.Reflection
 		}
     }
 
-	[CRepr, AlwaysInclude(AssumeInstantiated=true)]
+	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
 	class PointerType : Type
 	{
 		TypeId mElementType;
@@ -790,7 +790,43 @@ namespace System.Reflection
 		}
 	}
 
-	[CRepr, AlwaysInclude(AssumeInstantiated=true)]
+	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
+	class RefType : Type
+	{
+		public enum RefKind
+		{
+			Ref,
+			Out,
+			Mut
+		}
+
+		TypeId mElementType;
+		RefKind mRefKind;
+
+		public RefKind RefKind => mRefKind;
+
+		public override Type UnderlyingType
+		{
+			get
+			{
+				return Type.[Friend]GetType(mElementType);
+			}
+		}
+
+		public override void GetFullName(String strBuffer)
+		{
+			switch (mRefKind)
+			{
+			case .Ref: strBuffer.Append("ref ");
+			case .Out: strBuffer.Append("out ");
+			case .Mut: strBuffer.Append("mut ");
+			}
+
+			UnderlyingType.GetFullName(strBuffer);
+		}
+	}
+
+	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
 	class SizedArrayType : Type
 	{
 	    TypeId mElementType;
@@ -821,7 +857,7 @@ namespace System.Reflection
 		}
 	}
 
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class UnspecializedGenericType : TypeInstance
     {
         [CRepr, AlwaysInclude]
@@ -834,7 +870,7 @@ namespace System.Reflection
     }
 
     // Only for resolved types
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class SpecializedGenericType : TypeInstance
     {
         TypeId mUnspecializedType;
@@ -880,7 +916,7 @@ namespace System.Reflection
 		}
     }
 
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class ArrayType : SpecializedGenericType
     {
         int32 mElementSize;

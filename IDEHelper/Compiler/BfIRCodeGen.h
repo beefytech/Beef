@@ -88,6 +88,7 @@ public:
 	Array<llvm::Constant*> mConfigConsts64;	
 
 public:		
+	void FixValues(llvm::StructType* structType, llvm::SmallVector<llvm::Value*, 8>& values);
 	BfTypeCode GetTypeCode(llvm::Type* type, bool isSigned);
 	llvm::Type* GetLLVMType(BfTypeCode typeCode, bool& isSigned);
 	BfIRTypeEntry& GetTypeEntry(int typeId);

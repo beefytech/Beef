@@ -36,7 +36,7 @@ namespace System
 		NFKC = Stable | Compose | Compat,
 	}
 
-	[CRepr]
+	[Ordered]
 	class String : IHashable, IFormattable, IPrintable, IOpComparable
 	{
 		enum CreateFlags

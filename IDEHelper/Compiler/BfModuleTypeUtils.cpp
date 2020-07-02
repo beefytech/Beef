@@ -2916,8 +2916,13 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 
-		for (auto fieldInstance : dataFieldVec)
+		//bool needsExplicitAlignment = !isCRepr || ((typeInstance->mBaseType != NULL) && (!typeInstance->mBaseType->mIsCRepr));
+
+		bool needsExplicitAlignment = true;
+
+		for (int fieldIdx = 0; fieldIdx < (int)dataFieldVec.size(); fieldIdx++)		
 		{
+			auto fieldInstance = dataFieldVec[fieldIdx];
 			auto resolvedFieldType = fieldInstance->GetResolvedType();
 
 			BF_ASSERT(resolvedFieldType->mSize >= 0);
@@ -2925,14 +2930,14 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			int alignSize = resolvedFieldType->mAlign;
 			fieldInstance->mDataSize = dataSize;
 
-			bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
+			//bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
 
 			int nextDataPos = dataPos;
 			if (!isPacked)
 				nextDataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
 			int padding = nextDataPos - dataPos;
 			if ((alignSize > 1) && (needsExplicitAlignment) && (padding > 0))
-			{				
+			{
 				curFieldDataIdx++;							
 			}
 			dataPos = nextDataPos;
@@ -2941,7 +2946,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			if (!isPacked)
 				typeInstance->mInstAlign = std::max(typeInstance->mInstAlign, alignSize);
-			dataPos += dataSize;			
+			dataPos += dataSize;
 		}
 
 		if (unionInnerType != NULL)

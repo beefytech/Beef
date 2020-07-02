@@ -12,7 +12,7 @@ namespace System
         //  including the vtable and interface slots
     }
 
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class Type
     {
 		extern const Type* sTypes;
@@ -32,6 +32,14 @@ namespace System
 			get
 			{
 				return (.)sTypeCount;
+			}
+		}
+
+		public static Enumerator Types
+		{
+			get
+			{
+				return .();
 			}
 		}
 
@@ -461,6 +469,35 @@ namespace System
 		{
 		    return FieldInfo.Enumerator(null, bindingFlags);
 		}
+
+		public Result<T> GetCustomAttribute<T>() where T : Attribute
+		{
+			if (var typeInstance = this as TypeInstance)
+				return typeInstance.[Friend]GetCustomAttribute<T>(typeInstance.[Friend]mCustomAttributesIdx);
+			return .Err;
+		}
+
+		public override void ToString(String strBuffer)
+		{
+			GetFullName(strBuffer);
+		}
+
+		public struct Enumerator : IEnumerator<Type>
+		{
+			int32 mCurId;
+
+			public Result<Type> GetNext() mut
+			{
+				while (true)
+				{
+					if (mCurId >= sTypeCount)
+						return .Err;
+					let type = sTypes[mCurId++];
+					if (type != null)
+						return .Ok(type);
+				}
+			}
+		}	
     }
 
     enum TypeCode : uint8
@@ -521,7 +558,7 @@ namespace System.Reflection
         }        
     }
 
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class TypeInstance : Type
     {
         [CRepr, AlwaysInclude]
@@ -588,14 +625,13 @@ namespace System.Reflection
         uint8 mInterfaceCount;        
         int16 mMethodDataCount;
         int16 mPropertyDataCount;
-        int16 mFieldDataCount;        
+        int16 mFieldDataCount;
 
         void* mInterfaceDataPtr;
         MethodData* mMethodDataPtr;
         void* mPropertyDataPtr;
-        FieldData* mFieldDataPtr;        
+        FieldData* mFieldDataPtr;
         void** mCustomAttrDataPtr;
-
 
         public override int32 InstanceSize
         {
@@ -716,9 +752,25 @@ namespace System.Reflection
 		{
 		    return FieldInfo.Enumerator(this, bindingFlags);
 		}
+
+		Result<T> GetCustomAttribute<T>(int customAttributeIdx) where T : Attribute
+		{
+			if (customAttributeIdx == -1)
+			    return .Err;
+
+			void* data = mCustomAttrDataPtr[customAttributeIdx];
+
+			T attrInst = ?;
+			switch (AttributeInfo.GetCustomAttribute(data, typeof(T), &attrInst))
+			{
+			case .Ok: return .Ok(attrInst);
+			default:
+				return .Err;
+			}
+		}
     }
 
-	[CRepr, AlwaysInclude(AssumeInstantiated=true)]
+	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
 	class PointerType : Type
 	{
 		TypeId mElementType;
@@ -738,7 +790,43 @@ namespace System.Reflection
 		}
 	}
 
-	[CRepr, AlwaysInclude(AssumeInstantiated=true)]
+	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
+	class RefType : Type
+	{
+		public enum RefKind
+		{
+			Ref,
+			Out,
+			Mut
+		}
+
+		TypeId mElementType;
+		RefKind mRefKind;
+
+		public RefKind RefKind => mRefKind;
+
+		public override Type UnderlyingType
+		{
+			get
+			{
+				return Type.[Friend]GetType(mElementType);
+			}
+		}
+
+		public override void GetFullName(String strBuffer)
+		{
+			switch (mRefKind)
+			{
+			case .Ref: strBuffer.Append("ref ");
+			case .Out: strBuffer.Append("out ");
+			case .Mut: strBuffer.Append("mut ");
+			}
+
+			UnderlyingType.GetFullName(strBuffer);
+		}
+	}
+
+	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
 	class SizedArrayType : Type
 	{
 	    TypeId mElementType;
@@ -769,7 +857,7 @@ namespace System.Reflection
 		}
 	}
 
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class UnspecializedGenericType : TypeInstance
     {
         [CRepr, AlwaysInclude]
@@ -782,7 +870,7 @@ namespace System.Reflection
     }
 
     // Only for resolved types
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class SpecializedGenericType : TypeInstance
     {
         TypeId mUnspecializedType;
@@ -828,7 +916,7 @@ namespace System.Reflection
 		}
     }
 
-    [CRepr, AlwaysInclude(AssumeInstantiated=true)]
+    [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class ArrayType : SpecializedGenericType
     {
         int32 mElementSize;
@@ -890,7 +978,7 @@ namespace System.Reflection
 		EnumDiscriminator		= 0x0200
     }
 
-	public enum MethodFlags : int16
+	public enum MethodFlags : uint16
 	{
 		MethodAccessMask    	=  0x0007,
 		PrivateScope        	=  0x0000,     // Member not referenceable.
@@ -923,6 +1011,7 @@ namespace System.Reflection
 		StdCall					=  0x1000,
 		FastCall				=  0x2000,
 		ThisCall				=  0x3000, // Purposely resuing StdCall|FastCall
-		Mutating				=  0x4000
+		Mutating				=  0x4000,
+		Constructor				=  0x8000,
 	}
 }

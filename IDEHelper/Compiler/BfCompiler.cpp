@@ -418,6 +418,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mReflectMethodDataDef = NULL;
 	mReflectParamDataDef = NULL;
 	mReflectPointerType = NULL;
+	mReflectRefType = NULL;
 	mReflectSizedArrayType = NULL;
 	mReflectSpecializedGenericType = NULL;
 	mReflectTypeInstanceTypeDef = NULL;
@@ -6218,6 +6219,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mReflectMethodDataDef = _GetRequiredType("System.Reflection.TypeInstance.MethodData");
 	mReflectParamDataDef = _GetRequiredType("System.Reflection.TypeInstance.ParamData");
 	mReflectPointerType = _GetRequiredType("System.Reflection.PointerType");
+	mReflectRefType = _GetRequiredType("System.Reflection.RefType");
 	mReflectSizedArrayType = _GetRequiredType("System.Reflection.SizedArrayType");
 	mReflectSpecializedGenericType = _GetRequiredType("System.Reflection.SpecializedGenericType");
 	mReflectTypeInstanceTypeDef = _GetRequiredType("System.Reflection.TypeInstance");

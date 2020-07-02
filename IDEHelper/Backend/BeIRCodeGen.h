@@ -53,6 +53,11 @@ public:
 	}
 };
 
+
+template <typename T>
+class CmdParamVec : public SizedArray<T, 8>
+{};
+
 class BeIRCodeGen : public BfIRCodeGenBase
 {
 public:
@@ -83,7 +88,9 @@ public:
 	void SetResult(int id, BeMDNode* md);	
 
 	BeType* GetBeType(BfTypeCode typeCode, bool& isSigned);
-	BeIRTypeEntry& GetTypeEntry(int typeId);
+	BeIRTypeEntry& GetTypeEntry(int typeId);	
+
+	void FixValues(BeStructType* structType, CmdParamVec<BeValue*>& values);
 
 public:
 	BeIRCodeGen();

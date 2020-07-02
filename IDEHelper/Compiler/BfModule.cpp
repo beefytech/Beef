@@ -4335,11 +4335,9 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 
 		auto baseTypeInst = compareTypeInst->mBaseType;
 		if ((baseTypeInst != NULL) && (baseTypeInst->mTypeDef != mCompiler->mValueTypeTypeDef))
-		{
-			BfTypedValue leftOrigValue(mCurMethodState->mLocals[0]->mValue, compareTypeInst, true);
-			BfTypedValue rightOrigValue(mCurMethodState->mLocals[1]->mValue, compareTypeInst, true);
-			BfTypedValue leftValue = Cast(NULL, leftOrigValue, baseTypeInst);
-			BfTypedValue rightValue = Cast(NULL, rightOrigValue, baseTypeInst);
+		{			
+			BfTypedValue leftValue = Cast(NULL, leftTypedVal, baseTypeInst);
+			BfTypedValue rightValue = Cast(NULL, rightTypedVal, baseTypeInst);
 			EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 		}
 	}
@@ -4639,6 +4637,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		}
 		else if (type->IsPointer())
 			typeDataSource = ResolveTypeDef(mCompiler->mReflectPointerType)->ToTypeInstance();
+		else if (type->IsRef())
+			typeDataSource = ResolveTypeDef(mCompiler->mReflectRefType)->ToTypeInstance();
 		else if (type->IsSizedArray())
 			typeDataSource = ResolveTypeDef(mCompiler->mReflectSizedArrayType)->ToTypeInstance();
 		else
@@ -4696,6 +4696,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		typeCode = primType->mTypeDef->mTypeCode;
 	}
 	else if (type->IsPointer())
+	{
+		typeCode = BfTypeCode_Pointer;
+		typeFlags |= BfTypeFlags_Pointer;
+	}
+	else if (type->IsRef())
 	{
 		typeCode = BfTypeCode_Pointer;
 		typeFlags |= BfTypeFlags_Pointer;
@@ -4778,6 +4783,23 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto pointerTypeData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectPointerType, BfIRPopulateType_Full), pointerTypeDataParms);
 				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectPointerType), true,
 					BfIRLinkageType_External, pointerTypeData, typeDataName);				
+				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
+				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
+			}
+			else if (type->IsRef())
+			{
+				auto refType = (BfRefType*)type;
+				SizedArray<BfIRValue, 3> refTypeDataParms =
+				{
+					typeData,					
+					GetConstValue(refType->mElementType->mTypeId, typeIdType),
+					GetConstValue((int8)refType->mRefKind, byteType),
+				};
+
+				auto reflectRefType = ResolveTypeDef(mCompiler->mReflectRefType)->ToTypeInstance();
+				auto refTypeData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectRefType, BfIRPopulateType_Full), refTypeDataParms);
+				typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(reflectRefType), true,
+					BfIRLinkageType_External, refTypeData, typeDataName);
 				mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 				typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 			}
@@ -6190,6 +6212,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	SizedArray<BfIRValue, 32> typeDataVals =
 		{
 			typeData,
+
 			castedClassVData, // mTypeClassVData
 			typeNameConst, // mName
 			namespaceConst, // mNamespace
@@ -12823,9 +12846,10 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 
 BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
 {		
-	if ((localVarDef->mValue) && (!localVarDef->mAddr) && (IsTargetingBeefBackend()))
+	if ((localVarDef->mValue) && (!localVarDef->mAddr) && (IsTargetingBeefBackend()) && (!localVarDef->mResolvedType->IsValuelessType()))
 	{
-		if ((!localVarDef->mValue.IsConst()) && (!localVarDef->mValue.IsArg()) && (!localVarDef->mValue.IsFake()))
+		if ((!localVarDef->mValue.IsConst()) && 
+			(!localVarDef->mValue.IsArg()) && (!localVarDef->mValue.IsFake()))
 		{
 			mBfIRBuilder->CreateValueScopeRetain(localVarDef->mValue);
 			mCurMethodState->mCurScope->mHadScopeValueRetain = true;

@@ -216,10 +216,6 @@ BF_STATIC_ASSERT(BF_ARRAY_COUNT(gIRCmdNames) == BfIRCmd_COUNT);
 
 #define CMD_PARAM(ty, name) ty name; Read(name);
 
-template <typename T>
-class CmdParamVec : public SizedArray<T, 8>
-{};
-
 BeIRCodeGen::BeIRCodeGen()
 {
 	mBfIRBuilder = NULL;
@@ -388,6 +384,33 @@ BeIRTypeEntry& BeIRCodeGen::GetTypeEntry(int typeId)
 	if (typeEntry.mTypeId == -1)
 		typeEntry.mTypeId = typeId;
 	return typeEntry;
+}
+
+void BeIRCodeGen::FixValues(BeStructType* structType, CmdParamVec<BeValue*>& values)
+{
+	if (values.size() >= structType->mMembers.size())
+		return;
+
+	int readIdx = values.size() - 1;
+	values.resize(structType->mMembers.size());
+	for (int i = (int)values.size() - 1; i >= 0; i--)
+	{
+		if (mBeContext->AreTypesEqual(values[readIdx]->GetType(), structType->mMembers[i].mType))
+		{
+			values[i] = values[readIdx];
+			readIdx--;
+		}
+		else if (structType->mMembers[i].mType->IsSizedArray())
+		{
+			auto beConst = mBeModule->mAlloc.Alloc<BeConstant>();
+			beConst->mType = structType->mMembers[i].mType;
+			values[i] = beConst;
+		}
+		else
+		{
+			FatalError("Malformed structure values");
+		}
+	}
 }
 
 void BeIRCodeGen::Init(const BfSizedArray<uint8>& buffer)
@@ -754,6 +777,15 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			BE_MEM_END("ParamType_Const_Array");
 			return;
 		}
+		else if (constType == BfConstType_ArrayZero8)
+		{
+			CMD_PARAM(int, count);
+			auto beType = mBeContext->CreateSizedArrayType(mBeContext->GetPrimitiveType(BeTypeCode_Int8), count);
+			auto beConst = mBeModule->mAlloc.Alloc<BeConstant>();
+			beConst->mType = beType;
+			beValue = beConst;
+			return;
+		}
 
 		bool isSigned = false;
 		BeType* llvmConstType = GetBeType(typeCode, isSigned);
@@ -1054,11 +1086,14 @@ void BeIRCodeGen::HandleNextCmd()
 			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();						
 			constStruct->mType = type;
 			BF_ASSERT(type->IsStruct());			
+
+			FixValues((BeStructType*)type, values);
+
 			BF_ASSERT(((BeStructType*)type)->mMembers.size() == values.size());
 			for (int i = 0; i < (int)values.size(); i++)			
 			{
 				auto val = values[i];
-				BF_ASSERT(((BeStructType*)type)->mMembers[i].mType == val->GetType());
+				BF_ASSERT(mBeContext->AreTypesEqual(((BeStructType*)type)->mMembers[i].mType, val->GetType()));
 				constStruct->mMemberValues.push_back(BeValueDynCast<BeConstant>(val));
 			}
 			SetResult(curId, constStruct);

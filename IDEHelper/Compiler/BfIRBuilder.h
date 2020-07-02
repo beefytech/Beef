@@ -137,6 +137,8 @@ enum BfConstType
 	BfConstType_TypeOf,
 	BfConstType_AggZero,
 	BfConstType_Array,
+	BfConstType_ArrayZero,
+	BfConstType_ArrayZero8,
 	BfConstType_Undef,
 	BfConstType_SizedArrayType
 };
@@ -176,6 +178,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_CreateConstStruct,
 	BfIRCmd_CreateConstStructZero,
 	BfIRCmd_CreateConstArray,
+	BfIRCmd_CreateConstArrayZero,
 	BfIRCmd_CreateConstString,
 	BfIRCmd_ConfigConst,
 
@@ -828,6 +831,13 @@ struct BfConstantArray
 	BfSizedArray<BfIRValue> mValues;
 };
 
+struct BfConstantArrayZero
+{
+	BfConstType mConstType;
+	BfIRType mType;
+	int mCount;
+};
+
 class BfIRConstHolder
 {
 public:
@@ -859,6 +869,8 @@ public:
 	BfIRValue CreateConstNull(BfIRType nullType);
 	BfIRValue CreateConstStructZero(BfIRType aggType);
 	BfIRValue CreateConstArray(BfIRType type, const BfSizedArray<BfIRValue>& values);
+	BfIRValue CreateConstArrayZero(BfIRType type, int count);
+	BfIRValue CreateConstArrayZero(int count);
 	BfIRValue CreateTypeOf(BfType* type);
 	BfIRValue GetUndefConstValue(BfTypeCode typeCode);	
 };

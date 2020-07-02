@@ -377,6 +377,31 @@ void BfIRCodeGen::PrintFunction()
 	os.flush();
 }
 
+void BfIRCodeGen::FixValues(llvm::StructType* structType, llvm::SmallVector<llvm::Value*, 8>& values)
+{
+	if (values.size() >= structType->getNumElements())
+		return;
+
+	int readIdx = (int)values.size() - 1;
+	values.resize(structType->getNumElements());
+	for (int i = (int)values.size() - 1; i >= 0; i--)
+	{
+		if (values[readIdx]->getType() == structType->getElementType(i))
+		{
+			values[i] = values[readIdx];
+			readIdx--;
+		}
+		else if (structType->getElementType(i)->isArrayTy())
+		{						
+			values[i] = llvm::ConstantAggregateZero::get(structType->getElementType(i));
+		}
+		else
+		{
+			BF_FATAL("Malformed structure values");
+		}
+	}
+}
+
 BfTypeCode BfIRCodeGen::GetTypeCode(llvm::Type* type, bool isSigned)
 {
 	if (type->isIntegerTy())
@@ -1267,8 +1292,9 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Type*, type);
 			CMD_PARAM(CmdParamVec<llvm::Value*>, values)
 			llvm::SmallVector<llvm::Constant*, 8> copyValues; 
+			FixValues((llvm::StructType*)type, values);
 			for (auto val : values)
-				copyValues.push_back(llvm::dyn_cast<llvm::Constant>(val));
+				copyValues.push_back(llvm::dyn_cast<llvm::Constant>(val));			
 			SetResult(curId, llvm::ConstantStruct::get((llvm::StructType*)type, copyValues));
 		}
 		break;
