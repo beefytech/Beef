@@ -17245,7 +17245,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		mModule->PopulateType(underlyingType);
 		if (sizedArrayType->IsUnknownSizedArray())
 		{			
-			mResult = mModule->GetDefaultTypedValue(underlyingType);
+			mResult = mModule->GetDefaultTypedValue(underlyingType, false, BfDefaultValueKind_Addr);
 		}
 		else if (sizedArrayType->IsValuelessType())				
 		{
