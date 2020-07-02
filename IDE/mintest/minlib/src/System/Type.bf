@@ -470,13 +470,6 @@ namespace System
 		    return FieldInfo.Enumerator(null, bindingFlags);
 		}
 
-		public Result<T> GetCustomAttribute<T>() where T : Attribute
-		{
-			if (var typeInstance = this as TypeInstance)
-				return typeInstance.[Friend]GetCustomAttribute<T>(typeInstance.[Friend]mCustomAttributesIdx);
-			return .Err;
-		}
-
 		public override void ToString(String strBuffer)
 		{
 			GetFullName(strBuffer);
@@ -751,22 +744,6 @@ namespace System.Reflection
 		public override FieldInfo.Enumerator GetFields(BindingFlags bindingFlags = cDefaultLookup)
 		{
 		    return FieldInfo.Enumerator(this, bindingFlags);
-		}
-
-		Result<T> GetCustomAttribute<T>(int customAttributeIdx) where T : Attribute
-		{
-			if (customAttributeIdx == -1)
-			    return .Err;
-
-			void* data = mCustomAttrDataPtr[customAttributeIdx];
-
-			T attrInst = ?;
-			switch (AttributeInfo.GetCustomAttribute(data, typeof(T), &attrInst))
-			{
-			case .Ok: return .Ok(attrInst);
-			default:
-				return .Err;
-			}
 		}
     }
 
