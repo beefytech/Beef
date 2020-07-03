@@ -1250,7 +1250,7 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 			if ((beConst->mType != NULL) && (!beConst->mType->IsPointer()))
 			{
 				int64 writeVal = beConst->mInt64;
-				if (beConst->mType->mTypeCode == BfTypeCode_Single)
+				if (beConst->mType->mTypeCode == BfTypeCode_Float)
 				{
 					// We need to do this because Singles are stored in mDouble, so we need to reduce here
 					float floatVal = (float)beConst->mDouble;

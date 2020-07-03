@@ -94,7 +94,7 @@ struct BfVariant
 	{
 		if (mTypeCode == BfTypeCode_Double)
 			return mDouble;
-		if (mTypeCode == BfTypeCode_Single)
+		if (mTypeCode == BfTypeCode_Float)
 			return mSingle;
 		return (double)mInt64;
 	}

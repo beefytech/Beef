@@ -67,7 +67,7 @@ USING_NS_BF;
 	case BfTypeCode_Char32: val = OP(constLHS->mUInt32, constRHS->mUInt32); break; \
 	case BfTypeCode_Int64: val = OP(constLHS->mInt64, constRHS->mInt64); break; \
 	case BfTypeCode_UInt64: val = OP(constLHS->mUInt64, constRHS->mUInt64); break; \
-	case BfTypeCode_Single: \
+	case BfTypeCode_Float: \
 	case BfTypeCode_Double: \
 		return CreateConst(constLHS->mTypeCode, OP(constLHS->mDouble, constRHS->mDouble)); break; \
 	default: break; \
@@ -121,7 +121,7 @@ USING_NS_BF;
 	case BfTypeCode_Char32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
 	case BfTypeCode_Int64: val = constLHS->mInt64 OP constRHS->mInt64; break; \
 	case BfTypeCode_UInt64: val = constLHS->mUInt64 OP constRHS->mUInt64; break; \
-	case BfTypeCode_Single: \
+	case BfTypeCode_Float: \
 	case BfTypeCode_Double: \
 		return CreateConst(constLHS->mTypeCode, constLHS->mDouble OP constRHS->mDouble); break; \
 	default: break; \
@@ -167,7 +167,7 @@ USING_NS_BF;
 	case BfTypeCode_Char32: val = OP constVal->mUInt32; break; \
 	case BfTypeCode_Int64: val = OP constVal->mInt64; break; \
 	case BfTypeCode_UInt64: val = OP constVal->mUInt64; break; \
-	case BfTypeCode_Single: \
+	case BfTypeCode_Float: \
 	case BfTypeCode_Double: \
 		return CreateConst(constVal->mTypeCode, OP constVal->mDouble); break; \
 	default: break; \
@@ -198,7 +198,7 @@ USING_NS_BF;
 		case BfTypeCode_UInt32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
 		case BfTypeCode_Int64: val = constLHS->mInt64 OP constRHS->mInt64; break; \
 		case BfTypeCode_UInt64: val = constLHS->mUInt64 OP constRHS->mUInt64; break; \
-		case BfTypeCode_Single: val = constLHS->mDouble OP constRHS->mDouble; break; \
+		case BfTypeCode_Float: val = constLHS->mDouble OP constRHS->mDouble; break; \
 		case BfTypeCode_Double: val = constLHS->mDouble OP constRHS->mDouble; break; \
 		default: break; \
 		} \
@@ -289,6 +289,58 @@ void BfIRConstHolder::FixTypeCode(BfTypeCode& typeCode)
 	}
 }
 
+int BfIRConstHolder::GetSize(BfTypeCode typeCode)
+{
+	switch (typeCode)
+	{
+	case BfTypeCode_None: return 0;
+	case BfTypeCode_CharPtr: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_StringId: return 4;
+	case BfTypeCode_Pointer: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_NullPtr: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_Self: return 0;
+	case BfTypeCode_Dot: return 0;
+	case BfTypeCode_Var: return 0;
+	case BfTypeCode_Let: return 0;
+	case BfTypeCode_Boolean: return 1;
+	case BfTypeCode_Int8: return 1;
+	case BfTypeCode_UInt8: return 1;
+	case BfTypeCode_Int16: return 2;
+	case BfTypeCode_UInt16: return 2;
+	case BfTypeCode_Int24: return 3;
+	case BfTypeCode_UInt24: return 3;
+	case BfTypeCode_Int32: return 4;
+	case BfTypeCode_UInt32: return 4;
+	case BfTypeCode_Int40: return 5;
+	case BfTypeCode_UInt40: return 5;
+	case BfTypeCode_Int48: return 6;
+	case BfTypeCode_UInt48: return 6;
+	case BfTypeCode_Int56: return 7;
+	case BfTypeCode_UInt56: return 7;
+	case BfTypeCode_Int64: return 8;
+	case BfTypeCode_UInt64: return 8;
+	case BfTypeCode_Int128: return 16;
+	case BfTypeCode_UInt128: return 16;
+	case BfTypeCode_IntPtr: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_UIntPtr: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_IntUnknown: return 0;
+	case BfTypeCode_UIntUnknown: return 0;
+	case BfTypeCode_Char8: return 1;
+	case BfTypeCode_Char16: return 2;
+	case BfTypeCode_Char32: return 4;
+	case BfTypeCode_Float: return 4;
+	case BfTypeCode_Double: return 8;
+	case BfTypeCode_Float2: return 8;
+	case BfTypeCode_Object: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_Interface: return mModule->mSystem->mPtrSize;
+	case BfTypeCode_Struct: return 0;
+	case BfTypeCode_Enum: return 0;
+	case BfTypeCode_TypeAlias: return 0;
+	case BfTypeCode_Extension: return 0;
+	default: return 0;
+	}
+}
+
 
 bool BfIRConstHolder::IsInt(BfTypeCode typeCode)
 {
@@ -306,7 +358,7 @@ bool BfIRConstHolder::IsSigned(BfTypeCode typeCode)
 
 bool BfIRConstHolder::IsFloat(BfTypeCode typeCode)
 {
-	return (typeCode == BfTypeCode_Single) ||
+	return (typeCode == BfTypeCode_Float) ||
 		(typeCode == BfTypeCode_Double);
 }
 
@@ -580,7 +632,7 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 	{		
 		return CreateConst(fromConst->mTypeCode, fromConst->mUInt64);		
 	}
-	else if ((fromConst->mTypeCode == BfTypeCode_Single) || (fromConst->mTypeCode == BfTypeCode_Double))
+	else if ((fromConst->mTypeCode == BfTypeCode_Float) || (fromConst->mTypeCode == BfTypeCode_Double))
 	{
 		return CreateConst(fromConst->mTypeCode, fromConst->mDouble);
 	}	
@@ -1152,7 +1204,7 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 		{
 			return constant->mBool ? "true" : "false";
 		}
-		else if (constant->mTypeCode == BfTypeCode_Single)
+		else if (constant->mTypeCode == BfTypeCode_Float)
 		{
 			return StrFormat("Constant %ff", constant->mDouble);			
 		}
@@ -1705,7 +1757,7 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 		
 		switch ((int)constant->mTypeCode)
 		{
-		case (int)BfTypeCode_Single:
+		case (int)BfTypeCode_Float:
 			{
 				float f = (float)constant->mDouble;
 				mStream.Write(&f, sizeof(float));
@@ -2247,7 +2299,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 				case BfTypeCode_Char32:
 					dwarfType = llvm::dwarf::DW_ATE_unsigned_char;
 					break;
-				case BfTypeCode_Single:
+				case BfTypeCode_Float:
 				case BfTypeCode_Double:
 					dwarfType = llvm::dwarf::DW_ATE_float;
 					break;
@@ -2609,7 +2661,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 							if (constant != NULL)
 							{								
 								int64 writeVal = constant->mInt64;
-								if (constant->mTypeCode == BfTypeCode_Single)
+								if (constant->mTypeCode == BfTypeCode_Float)
 								{
 									// We need to do this because Singles are stored in mDouble, so we need to reduce here
 									float floatVal = (float)constant->mDouble;

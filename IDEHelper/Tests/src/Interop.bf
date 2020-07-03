@@ -131,8 +131,133 @@ namespace Tests
 			public extern StructJ MethodJ1(StructJ sa, int32 arg0) mut;
 		}
 
+		[CRepr]
+		public struct StructK
+		{
+			public float mX;
+			public float mY;
+		}
+
+		[CRepr]
+		struct StructL
+		{
+			public float mX;
+			public float mY;
+			public float mZ;
+		}
+
+		[CRepr]
+		struct StructM
+		{
+			public float mX;
+			public float mY;
+			public float mZ;
+			public float mW;
+		}
+
+		[CRepr]
+		struct StructN
+		{
+			public float mX;
+			public float mY;
+			public float mZ;
+			public float mW;
+			public float mU;
+		}
+
+		[CRepr]
+		struct StructO
+		{
+			public float mX;
+			public int32 mY;
+		}
+
+		[CRepr]
+		struct StructP
+		{
+			public float mX;
+			public float mY;
+			public int32 mZ;
+		}
+
+		[CRepr]
+		struct StructQ
+		{
+			public float mX;
+			public float mY;
+			public int32 mZ;
+			public int32 mW;
+		}
+
+		[CRepr]
+		struct StructR
+		{
+			public double mX;
+			public double mY;
+		}
+
+		[CRepr]
+		struct StructS
+		{
+			public float mX;
+			public double mY;
+		}
+
+		[CRepr]
+		struct StructT
+		{
+			public double mX;
+			public double mY;
+			public double mZ;
+		}
+
+		[CRepr]
+		struct StructU
+		{
+			public StructK mK;
+		}
+
+		[CRepr]
+		struct StructV
+		{
+			public int64 mX;
+			public int16 mY;
+		}
+
+		[CRepr]
+		struct StructW
+		{
+			public float mX;
+		}
+
 		[LinkName(.C)]
 		public static extern int32 Func0(int32 a, int32 b);
+		[LinkName(.C)]
+		public static extern int32 Func0K(int32 a, StructK b);
+		[LinkName(.C)]
+		public static extern int32 Func0L(int32 a, StructL b);
+		[LinkName(.C)]
+		public static extern int32 Func0M(int32 a, StructM b);
+		[LinkName(.C)]
+		public static extern int32 Func0N(int32 a, StructN b);
+		[LinkName(.C)]
+		public static extern int32 Func0O(int32 a, StructO b);
+		[LinkName(.C)]
+		public static extern int32 Func0P(int32 a, StructP b);
+		[LinkName(.C)]
+		public static extern int32 Func0Q(int32 a, StructQ b);
+		[LinkName(.C)]
+		public static extern int32 Func0R(int32 a, StructR b);
+		[LinkName(.C)]
+		public static extern int32 Func0S(int32 a, StructS b);
+		[LinkName(.C)]
+		public static extern int32 Func0T(int32 a, StructT b);
+		[LinkName(.C)]
+		public static extern int32 Func0U(int32 a, StructU b);
+		[LinkName(.C)]
+		public static extern int32 Func0V(int32 a, StructV b);
+		[LinkName(.C)]
+		public static extern int32 Func0W(int32 a, StructW b);
 
 		[LinkName(.C)]
 		public static extern int32 Func1A(StructA arg0, StructA arg1, int32 arg2);
@@ -174,6 +299,20 @@ namespace Tests
 
 		[LinkName(.C)]
 		public static extern StructJ Func4J(StructJ arg0, StructJ arg1, StructJ arg2, StructJ arg3);
+
+		static int32 LocalFunc0K(int32 a, StructK b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0L(int32 a, StructL b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0M(int32 a, StructM b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0N(int32 a, StructN b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0O(int32 a, StructO b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0P(int32 a, StructP b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0Q(int32 a, StructQ b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0R(int32 a, StructR b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0S(int32 a, StructS b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0T(int32 a, StructT b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0U(int32 a, StructU b) => a + (int32)b.mK.mX * 100 + (int32)b.mK.mY * 10000;
+		static int32 LocalFunc0V(int32 a, StructV b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
+		static int32 LocalFunc0W(int32 a, StructW b) => a + (int32)b.mX * 100;
 
 		[Test]
 		public static void TestBasics()
@@ -225,8 +364,82 @@ namespace Tests
 			StructI si1 = default;
 			si1.mA = 91;
 
-			Test.Assert(Func0(12, 34) == 3412);
+			StructK sk = .() { mX = 3, mY = 4};
+			StructL sl = .() { mX = 3, mY = 4};
+			StructM sm = .() { mX = 3, mY = 4};
+			StructN sn = .() { mX = 3, mY = 4};
+			StructO so = .() { mX = 3, mY = 4};
+			StructP sp = .() { mX = 3, mY = 4};
+			StructQ sq = .() { mX = 3, mY = 4};
+			StructR sr = .() { mX = 3, mY = 4};
+			StructS ss = .() { mX = 3, mY = 4};
+			StructT st = .() { mX = 3, mY = 4};
+			StructU su = .() { mK = .(){mX = 3, mY = 4}};
+			StructV sv = .() { mX = 3, mY = 4};
+			StructW sw = .() { mX = 3 };
 
+			void StartTest(String str)
+			{
+				//Console.WriteLine(str);
+			}
+
+			StartTest("Func0");
+			Test.Assert(Func0(12, 34) == 3412);
+			StartTest("Func0K");
+			Test.Assert(Func0K(12, sk) == 40312);
+			StartTest("Func0L");
+			Test.Assert(Func0L(12, sl) == 40312);
+			StartTest("Func0M");
+			Test.Assert(Func0M(12, sm) == 40312);
+			StartTest("Func0N");
+			Test.Assert(Func0N(12, sn) == 40312);
+			StartTest("Func0O");
+			Test.Assert(Func0O(12, so) == 40312);
+			StartTest("Func0P");
+			Test.Assert(Func0P(12, sp) == 40312);
+			StartTest("Func0Q");
+			Test.Assert(Func0Q(12, sq) == 40312);
+			StartTest("Func0R");
+			Test.Assert(Func0R(12, sr) == 40312);
+			StartTest("Func0S");
+			Test.Assert(Func0S(12, ss) == 40312);
+			StartTest("Func0T");
+			Test.Assert(Func0T(12, st) == 40312);
+			StartTest("Func0U");
+			Test.Assert(Func0U(12, su) == 40312);
+			StartTest("Func0V");
+			Test.Assert(Func0V(12, sv) == 40312);
+			StartTest("Func0W");
+			Test.Assert(Func0W(12, sw) == 312);
+
+			StartTest("LocalFunc0K");
+			Test.Assert(LocalFunc0K(12, sk) == 40312);
+			StartTest("LocalFunc0L");
+			Test.Assert(LocalFunc0L(12, sl) == 40312);
+			StartTest("LocalFunc0M");
+			Test.Assert(LocalFunc0M(12, sm) == 40312);
+			StartTest("LocalFunc0N");
+			Test.Assert(LocalFunc0N(12, sn) == 40312);
+			StartTest("LocalFunc0O");
+			Test.Assert(LocalFunc0O(12, so) == 40312);
+			StartTest("LocalFunc0P");
+			Test.Assert(LocalFunc0P(12, sp) == 40312);
+			StartTest("LocalFunc0Q");
+			Test.Assert(LocalFunc0Q(12, sq) == 40312);
+			StartTest("LocalFunc0R");
+			Test.Assert(LocalFunc0R(12, sr) == 40312);
+			StartTest("LocalFunc0S");
+			Test.Assert(LocalFunc0S(12, ss) == 40312);
+			StartTest("LocalFunc0T");
+			Test.Assert(LocalFunc0T(12, st) == 40312);
+			StartTest("LocalFunc0U");
+			Test.Assert(LocalFunc0U(12, su) == 40312);
+			StartTest("LocalFunc0V");
+			Test.Assert(LocalFunc0V(12, sv) == 40312);
+			StartTest("LocalFunc0W");
+			Test.Assert(LocalFunc0W(12, sw) == 312);
+
+			StartTest("Func1A");
 			Test.Assert(Func1A(sa0, sa1, 12) == 121110);
 			Test.Assert(sa0.MethodA0(12) == 1012);
 			Test.Assert(sa0.MethodA1(sa1, 12).mA == 33);

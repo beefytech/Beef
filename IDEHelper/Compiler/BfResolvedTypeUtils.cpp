@@ -1470,27 +1470,121 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 			return false;
 	}
 	else
-	{		
+	{
 		// Non-Windows systems allow lowered splitting of composites over two int params
  		if (mModule->mSystem->mPtrSize == 8)
  		{
- 			if (mInstSize == 12)
- 			{
- 				if (outTypeCode != NULL)
- 					*outTypeCode = BfTypeCode_Int64;
- 				if (outTypeCode2 != NULL)
- 					*outTypeCode2 = BfTypeCode_Int32;
- 				return true;
- 			}
- 
- 			if (mInstSize == 16)
- 			{
- 				if (outTypeCode != NULL)
- 					*outTypeCode = BfTypeCode_Int64;
- 				if (outTypeCode2 != NULL)
- 					*outTypeCode2 = BfTypeCode_Int64;
- 				return true;
- 			}
+			if ((mInstSize >= 4) && (mInstSize <= 16))
+			{
+				BfTypeCode types[4] = { BfTypeCode_None };
+				
+				std::function<void(BfType*, int)> _CheckType = [&](BfType* type, int offset)
+				{
+					if (auto typeInst = type->ToTypeInstance())
+					{
+						if (typeInst->IsValueType())
+						{
+							if (typeInst->mBaseType != NULL)
+								_CheckType(typeInst->mBaseType, offset);
+
+							for (auto& fieldInstance : typeInst->mFieldInstances)
+							{
+								if (fieldInstance.mDataOffset >= 0)
+									_CheckType(fieldInstance.mResolvedType, offset + fieldInstance.mDataOffset);
+							}
+						}
+						else
+							types[offset / 4] = BfTypeCode_Object;
+					}
+					else if (type->IsPrimitiveType())
+					{
+						auto primType = (BfPrimitiveType*)type;
+						types[offset / 4] = primType->mTypeDef->mTypeCode;
+					}
+					else if (type->IsSizedArray())
+					{
+						auto sizedArray = (BfSizedArrayType*)type;
+						for (int i = 0; i < sizedArray->mElementCount; i++)
+							_CheckType(sizedArray->mElementType, offset + i * sizedArray->mElementType->GetStride());
+					}
+				};
+
+				_CheckType(this, 0);
+
+				bool handled = false;
+
+				if (mInstSize >= 8)
+				{
+					if (outTypeCode != NULL)
+						*outTypeCode = BfTypeCode_Int64;
+				}
+
+				if (mInstSize == 8)
+				{
+					handled = true;
+				}
+
+				if (mInstSize == 9)
+				{
+					handled = true;
+					if (outTypeCode2 != NULL)
+						*outTypeCode2 = BfTypeCode_Int8;					
+				}
+				if (mInstSize == 10)
+				{
+					handled = true;
+					if (outTypeCode2 != NULL)
+						*outTypeCode2 = BfTypeCode_Int16;
+				}
+				if (mInstSize == 12)
+				{					
+					handled = true;
+					if (outTypeCode2 != NULL)
+						*outTypeCode2 = BfTypeCode_Int32;					
+				}
+				if (mInstSize == 16)
+				{
+					handled = true;
+					if (outTypeCode2 != NULL)
+						*outTypeCode2 = BfTypeCode_Int64;					
+				}
+
+				if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_None))
+				{
+					handled = true;
+					if (outTypeCode != NULL)
+						*outTypeCode = BfTypeCode_Float;
+				}
+				if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_Float))
+				{					
+					if (outTypeCode != NULL)
+						*outTypeCode = BfTypeCode_Float2;
+				}
+				if (types[0] == BfTypeCode_Double)
+				{
+					if (outTypeCode != NULL)
+						*outTypeCode = BfTypeCode_Double;
+				}
+
+				if ((types[2] == BfTypeCode_Float) && (mInstSize == 12))
+				{
+					if (outTypeCode2 != NULL)
+						*outTypeCode2 = BfTypeCode_Float;
+				}
+				if ((types[2] == BfTypeCode_Float) && (types[3] == BfTypeCode_Float))
+				{
+					if (outTypeCode2 != NULL)
+						*outTypeCode2 = BfTypeCode_Float2;
+				}
+				if (types[2] == BfTypeCode_Double)
+				{
+					if (outTypeCode2 != NULL)
+						*outTypeCode2 = BfTypeCode_Double;
+				}
+
+				if (handled)
+					return true;
+			}		
  		}	
 	}
 
@@ -2267,7 +2361,7 @@ BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression*
 			//  when the constraint requirement is int64 (but we don't know that at hash time)
 			if (BfIRConstHolder::IsInt(variant.mTypeCode))
 				variant.mTypeCode = BfTypeCode_Int64;
-			else if (variant.mTypeCode == BfTypeCode_Single)
+			else if (variant.mTypeCode == BfTypeCode_Float)
 			{
 				variant.mTypeCode = BfTypeCode_Double;
 				variant.mDouble = variant.mSingle;

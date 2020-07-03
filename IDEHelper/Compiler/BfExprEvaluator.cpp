@@ -2945,7 +2945,7 @@ void BfExprEvaluator::GetLiteral(BfAstNode* refNode, const BfVariant& variant)
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(variant.mTypeCode, variant.mUInt64), mModule->GetPrimitiveType(variant.mTypeCode));		
 		break;
 
-	case BfTypeCode_Single:
+	case BfTypeCode_Float:
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(variant.mTypeCode, variant.mSingle), mModule->GetPrimitiveType(variant.mTypeCode));
 		break;
 	case BfTypeCode_Double:
@@ -5196,7 +5196,12 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 					{
 						auto primType2 = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode2);
 						auto ptrType2 = mModule->mBfIRBuilder->GetPointerTo(primType2);
-						BfIRValue primPtrVal2 = mModule->mBfIRBuilder->CreateBitCast(mModule->mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), ptrType2);
+						BfIRValue primPtrVal2;
+						if (mModule->mBfIRBuilder->GetSize(loweredTypeCode) < mModule->mBfIRBuilder->GetSize(loweredTypeCode2))						
+							primPtrVal2 = mModule->mBfIRBuilder->CreateInBoundsGEP(mModule->mBfIRBuilder->CreateBitCast(primPtrVal, ptrType2), 1);						
+						else						
+							primPtrVal2 = mModule->mBfIRBuilder->CreateBitCast(mModule->mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), ptrType2);
+						
 						auto primVal2 = mModule->mBfIRBuilder->CreateLoad(primPtrVal2);
 						irArgs.push_back(primVal2);
 					}
@@ -5474,7 +5479,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				{
 					auto typeInst = argValue.mType->ToTypeInstance();
 
-					if (argValue.mType == mModule->GetPrimitiveType(BfTypeCode_Single))
+					if (argValue.mType == mModule->GetPrimitiveType(BfTypeCode_Float))
 						argValue = mModule->Cast(argValues[argIdx].mExpression, argValue, mModule->GetPrimitiveType(BfTypeCode_Double));
 
 					if ((typeInst != NULL) && (typeInst->mTypeDef == mModule->mCompiler->mStringTypeDef))

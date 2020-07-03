@@ -115,8 +115,9 @@ enum BfTypeCode : uint8
 	BfTypeCode_Char8,
 	BfTypeCode_Char16,
 	BfTypeCode_Char32,
-	BfTypeCode_Single,
-	BfTypeCode_Double,			
+	BfTypeCode_Float,
+	BfTypeCode_Double,
+	BfTypeCode_Float2,
 	BfTypeCode_Object,
 	BfTypeCode_Interface,
 	BfTypeCode_Struct,
@@ -846,6 +847,7 @@ public:
 	
 public:
 	void FixTypeCode(BfTypeCode& typeCode);
+	int GetSize(BfTypeCode typeCode);
 	static bool IsInt(BfTypeCode typeCode);	
 	static bool IsSigned(BfTypeCode typeCode);	
 	static bool IsFloat(BfTypeCode typeCode);

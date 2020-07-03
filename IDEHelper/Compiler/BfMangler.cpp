@@ -73,7 +73,7 @@ BfTypeCode BfGNUMangler::GetPrimTypeAt(MangleContext& mangleContext, StringImpl&
 		else if (name[strIdx + 1] == 's')
 			return BfTypeCode_Char16;
 		break;
-	case 'f': return BfTypeCode_Single;		
+	case 'f': return BfTypeCode_Float;		
 	case 'd': return BfTypeCode_Double;
 	}
 	return (BfTypeCode)-1;
@@ -485,7 +485,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			name += "Ds"; return;
 		case BfTypeCode_Char32:
 			name += "Di"; return;
-		case BfTypeCode_Single:
+		case BfTypeCode_Float:
 			name += "f"; return;
 		case BfTypeCode_Double:
 			name += "d"; return;
@@ -1495,7 +1495,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			name += "D"; return;
 		case BfTypeCode_Char16:
 			name += "_S"; return; //char16_t
-		case BfTypeCode_Single:
+		case BfTypeCode_Float:
 			name += "M"; return;
 		case BfTypeCode_Double:
 			name += "N"; return;

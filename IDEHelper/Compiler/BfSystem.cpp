@@ -2048,7 +2048,7 @@ void BfSystem::CreateBasicTypes()
 	SYSTEM_TYPE(mTypeChar8, "char8", BfTypeCode_Char8);
 	SYSTEM_TYPE(mTypeChar16, "char16", BfTypeCode_Char16);
 	SYSTEM_TYPE(mTypeChar32, "char32", BfTypeCode_Char32);
-	SYSTEM_TYPE(mTypeSingle, "float", BfTypeCode_Single);
+	SYSTEM_TYPE(mTypeSingle, "float", BfTypeCode_Float);
 	SYSTEM_TYPE(mTypeDouble, "double", BfTypeCode_Double);	
 }
 

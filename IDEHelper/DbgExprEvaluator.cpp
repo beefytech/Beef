@@ -1381,7 +1381,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		case BfTypeCode_Char8: outStr += "char8"; break;
 		case BfTypeCode_Char16: outStr += "char16"; break;
 		case BfTypeCode_Char32: outStr += "char32"; break;
-		case BfTypeCode_Single: outStr += "float"; break;
+		case BfTypeCode_Float: outStr += "float"; break;
 		case BfTypeCode_Double: outStr += "double"; break;
 		}
 	}	
@@ -5432,7 +5432,7 @@ void DbgExprEvaluator::Visit(BfLiteralExpression* literalExpr)
 			mResult.mUInt32 = literalExpr->mValue.mUInt32;
 		}
 		break;
-	case BfTypeCode_Single:
+	case BfTypeCode_Float:
 		mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Single, GetLanguage());
 		mResult.mSingle = literalExpr->mValue.mSingle;
 		break;

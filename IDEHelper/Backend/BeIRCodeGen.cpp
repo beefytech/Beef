@@ -367,7 +367,7 @@ BeType* BeIRCodeGen::GetBeType(BfTypeCode typeCode, bool& isSigned)
 		return llvm::Type::getInt32Ty(*mLLVMContext);
 		else
 		return llvm::Type::getInt64Ty(*mLLVMContext);*/
-	case BfTypeCode_Single:
+	case BfTypeCode_Float:
 		beTypeCode = BeTypeCode_Float;
 		break;
 	case BfTypeCode_Double:	
@@ -483,7 +483,7 @@ BfTypeCode BeIRCodeGen::GetTypeCode(BeType * type, bool isSigned)
 	case BeTypeCode_Int64:
 		return (isSigned) ? BfTypeCode_Int64 : BfTypeCode_UInt64;
 	case BeTypeCode_Float:
-		return BfTypeCode_Single;
+		return BfTypeCode_Float;
 	case BeTypeCode_Double:
 		return BfTypeCode_Double;
 	default:
@@ -790,7 +790,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		bool isSigned = false;
 		BeType* llvmConstType = GetBeType(typeCode, isSigned);
 
-		if (typeCode == BfTypeCode_Single)
+		if (typeCode == BfTypeCode_Float)
 		{
 			float f;
 			mStream->Read(&f, sizeof(float));

@@ -1181,7 +1181,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		case BfTypeCode_Char32:
 			PRIMITIVE_TYPE("char32", Int32, 4, DW_ATE_unsigned_char);
 			return true;
-		case BfTypeCode_Single:
+		case BfTypeCode_Float:
 			PRIMITIVE_TYPE("float", Float, 4, DW_ATE_float);
 			return true;
 		case BfTypeCode_Double:
@@ -4688,7 +4688,7 @@ BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
 		case BfTypeCode_Char32:
 			primType = (BfPrimitiveType*)ResolveTypeDef(mSystem->mTypeChar32);
 			break;
-		case BfTypeCode_Single:
+		case BfTypeCode_Float:
 			primType = (BfPrimitiveType*)ResolveTypeDef(mSystem->mTypeSingle);
 			break;
 		case BfTypeCode_Double:
@@ -4968,7 +4968,7 @@ BfTypeInstance* BfModule::GetPrimitiveStructType(BfTypeCode typeCode)
 		typeInst = ResolveTypeDef(mSystem->FindTypeDef("System.Char16"), BfPopulateType_Identity)->ToTypeInstance(); break;
 	case BfTypeCode_Char32:
 		typeInst = ResolveTypeDef(mSystem->FindTypeDef("System.Char32"), BfPopulateType_Identity)->ToTypeInstance(); break;
-	case BfTypeCode_Single:
+	case BfTypeCode_Float:
 		typeInst = ResolveTypeDef(mSystem->FindTypeDef("System.Float"), BfPopulateType_Identity)->ToTypeInstance(); break;
 	case BfTypeCode_Double:
 		typeInst = ResolveTypeDef(mSystem->FindTypeDef("System.Double"), BfPopulateType_Identity)->ToTypeInstance(); break;
@@ -9646,7 +9646,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			default: break;
 			}
 			break;
-		case BfTypeCode_Single:
+		case BfTypeCode_Float:
 			switch (fromTypeCode)
 			{
 			case BfTypeCode_Int8:
@@ -9683,7 +9683,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			case BfTypeCode_UIntPtr:
 			case BfTypeCode_UIntUnknown:
 				allowCast = true; break;
-			case BfTypeCode_Single:
+			case BfTypeCode_Float:
 				allowCast = true; break;
 			default: break;
 			}
@@ -10764,7 +10764,7 @@ void BfModule::VariantToString(StringImpl& str, const BfVariant& variant)
 	case BfTypeCode_UInt64:
 		str += StrFormat("%llu", variant.mInt64);
 		break;
-	case BfTypeCode_Single:
+	case BfTypeCode_Float:
 		{
 			char cstr[64];
 			ExactMinimalFloatToStr(variant.mSingle, cstr);

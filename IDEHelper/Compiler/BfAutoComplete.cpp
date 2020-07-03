@@ -3163,7 +3163,7 @@ String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfIRValue 
 	case BfTypeCode_Int64:
 		return StrFormat(":(int64) %lld", constant->mInt64);		
 
-	case BfTypeCode_Single:		
+	case BfTypeCode_Float:		
 		{			
 			ExactMinimalFloatToStr((float)constant->mDouble, str);
 			String result;

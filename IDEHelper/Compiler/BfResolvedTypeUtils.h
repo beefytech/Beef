@@ -588,13 +588,13 @@ public:
 	virtual bool IsSigned() override { return (mTypeDef->mTypeCode == BfTypeCode_Int8) || (mTypeDef->mTypeCode == BfTypeCode_Int16) || 
 		(mTypeDef->mTypeCode == BfTypeCode_Int32) || (mTypeDef->mTypeCode == BfTypeCode_Int64) || (mTypeDef->mTypeCode == BfTypeCode_IntPtr) || 
 		(mTypeDef->mTypeCode == BfTypeCode_IntUnknown) ||
-		(mTypeDef->mTypeCode == BfTypeCode_Single) || (mTypeDef->mTypeCode == BfTypeCode_Double); }
+		(mTypeDef->mTypeCode == BfTypeCode_Float) || (mTypeDef->mTypeCode == BfTypeCode_Double); }
 	virtual bool IsSignedInt() override { return (mTypeDef->mTypeCode == BfTypeCode_Int8) || (mTypeDef->mTypeCode == BfTypeCode_Int16) || 
 		(mTypeDef->mTypeCode == BfTypeCode_Int32) || (mTypeDef->mTypeCode == BfTypeCode_Int64) || (mTypeDef->mTypeCode == BfTypeCode_IntPtr) ||
 		(mTypeDef->mTypeCode == BfTypeCode_IntUnknown); }
 	virtual bool IsIntUnknown() override { return (mTypeDef->mTypeCode == BfTypeCode_IntUnknown) || (mTypeDef->mTypeCode == BfTypeCode_UIntUnknown); }
 	virtual bool IsChar() override { return (mTypeDef->mTypeCode == BfTypeCode_Char8) || (mTypeDef->mTypeCode == BfTypeCode_Char16) || (mTypeDef->mTypeCode == BfTypeCode_Char32); }
-	virtual bool IsFloat() override { return (mTypeDef->mTypeCode == BfTypeCode_Single) || (mTypeDef->mTypeCode == BfTypeCode_Double); }
+	virtual bool IsFloat() override { return (mTypeDef->mTypeCode == BfTypeCode_Float) || (mTypeDef->mTypeCode == BfTypeCode_Double); }
 	virtual bool IsNull() override { return mTypeDef->mTypeCode == BfTypeCode_NullPtr; }
 	virtual bool IsVoid() override { return mTypeDef->mTypeCode == BfTypeCode_None; }	
 	virtual bool CanBeValuelessType() override { return mTypeDef->mTypeCode == BfTypeCode_None; }

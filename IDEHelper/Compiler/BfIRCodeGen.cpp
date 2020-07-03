@@ -420,7 +420,7 @@ BfTypeCode BfIRCodeGen::GetTypeCode(llvm::Type* type, bool isSigned)
 	}
 
 	if (type->isFloatingPointTy())
-		return BfTypeCode_Single;
+		return BfTypeCode_Float;
 	if (type->isDoubleTy())
 		return BfTypeCode_Double;
 
@@ -509,10 +509,12 @@ llvm::Type* BfIRCodeGen::GetLLVMType(BfTypeCode typeCode, bool& isSigned)
 			return llvm::Type::getInt32Ty(*mLLVMContext);
 		else
 			return llvm::Type::getInt64Ty(*mLLVMContext);*/
-	case BfTypeCode_Single:
+	case BfTypeCode_Float:
 		return llvm::Type::getFloatTy(*mLLVMContext);
 	case BfTypeCode_Double:	
 		return llvm::Type::getDoubleTy(*mLLVMContext);
+	case BfTypeCode_Float2:
+		return llvm::VectorType::get(llvm::Type::getFloatTy(*mLLVMContext), 2);
 	default: break;
 	}
 	return NULL;
@@ -826,7 +828,7 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 		bool isSigned;
 		llvm::Type* llvmConstType = GetLLVMType(typeCode, isSigned);
 
-		if (typeCode == BfTypeCode_Single)
+		if (typeCode == BfTypeCode_Float)
 		{
 			float f;
 			mStream->Read(&f, sizeof(float));

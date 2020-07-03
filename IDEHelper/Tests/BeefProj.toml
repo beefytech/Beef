@@ -14,8 +14,8 @@ LibPaths = ["$(ProjectDir)/CLib/Debug/CLib.lib"]
 
 [Configs.Test.Linux64]
 OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/CLib/main.o -Wl,--export-dynamic"
-PreBuildCmds = ["/usr/bin/c++ $(ProjectDir)/CLib/main.cpp -c -o $(ProjectDir)/CLib/main.o"]
+PreBuildCmds = ["/usr/bin/c++ $(ProjectDir)/CLib/main.cpp -g -c -o $(ProjectDir)/CLib/main.o"]
 
 [Configs.Test.macOS]
 OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/CLib/main.o"
-PreBuildCmds = ["/usr/bin/c++ $(ProjectDir)/CLib/main.cpp -c -o $(ProjectDir)/CLib/main.o"]
+PreBuildCmds = ["/usr/bin/c++ $(ProjectDir)/CLib/main.cpp -g -c -o $(ProjectDir)/CLib/main.o"]

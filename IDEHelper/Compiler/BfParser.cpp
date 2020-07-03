@@ -2374,7 +2374,7 @@ void BfParser::NextToken(int endIdx)
 							if ((c == 'f') || (c == 'F'))
 							{
 								mTokenEnd = mSrcIdx;
-								mLiteral.mTypeCode = BfTypeCode_Single;
+								mLiteral.mTypeCode = BfTypeCode_Float;
 								mLiteral.mSingle = (float)ParseLiteralDouble();//(float)dVal;
 								mSyntaxToken = BfSyntaxToken_Literal;
 								return;
@@ -2547,7 +2547,7 @@ void BfParser::NextToken(int endIdx)
 					else if ((c == 'f') || (c == 'F'))
 					{
 						mTokenEnd = mSrcIdx;
-						mLiteral.mTypeCode = BfTypeCode_Single;
+						mLiteral.mTypeCode = BfTypeCode_Float;
 						mLiteral.mSingle = (float)ParseLiteralDouble();//(float)val;
 						mSyntaxToken = BfSyntaxToken_Literal;
 						return;

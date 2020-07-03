@@ -5619,7 +5619,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					{
 						PUSH_INT32(constant->mInt32);
 					}
-					else if (constant->mTypeCode == BfTypeCode_Single)
+					else if (constant->mTypeCode == BfTypeCode_Float)
 					{
 						float val = (float)constant->mDouble;
 						PUSH_INT32(*(int*)&val);
@@ -6696,7 +6696,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				case BfTypeCode_UIntPtr:
 				case BfTypeCode_IntUnknown:
 				case BfTypeCode_UIntUnknown:
-				case BfTypeCode_Single:
+				case BfTypeCode_Float:
 				case BfTypeCode_Double:
 				case BfTypeCode_Char8:
 				case BfTypeCode_Char16:
@@ -9843,7 +9843,7 @@ BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConst
 	case BfTypeCode_Char8:
 	case BfTypeCode_Char16:
 	case BfTypeCode_Char32:
-	case BfTypeCode_Single:
+	case BfTypeCode_Float:
 	case BfTypeCode_Double:
 		{
 			auto constVal = mBfIRBuilder->CreateConst(constant, constHolder);
@@ -10586,7 +10586,7 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 			case BfTypeCode_UIntPtr:
 			case BfTypeCode_IntUnknown:
 			case BfTypeCode_UIntUnknown:
-			case BfTypeCode_Single:
+			case BfTypeCode_Float:
 			case BfTypeCode_Double:
 			case BfTypeCode_Char8:
 			case BfTypeCode_Char16:
@@ -17267,7 +17267,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 								auto primType2 = mBfIRBuilder->GetPrimitiveType(loweredTypeCode2);
 								auto primPtrType2 = mBfIRBuilder->GetPointerTo(primType2);
-								auto primPtrVal2 = mBfIRBuilder->CreateBitCast(mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), primPtrType2);
+								BfIRValue primPtrVal2;
+								if (mBfIRBuilder->GetSize(loweredTypeCode) < mBfIRBuilder->GetSize(loweredTypeCode2))
+									primPtrVal2 = mBfIRBuilder->CreateInBoundsGEP(mBfIRBuilder->CreateBitCast(primPtrVal, primPtrType2), 1);
+								else
+									primPtrVal2 = mBfIRBuilder->CreateBitCast(mBfIRBuilder->CreateInBoundsGEP(primPtrVal, 1), primPtrType2);
 								mBfIRBuilder->CreateStore(mBfIRBuilder->GetArgument(argIdx + 1), primPtrVal2);
 							}
 

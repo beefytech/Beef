@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include <stdio.h>
 
 namespace Tests
 {
@@ -199,14 +200,166 @@ namespace Tests
 				return ret;
 			}
 		};
+
+		struct StructK
+		{
+			float mX;
+			float mY;
+		};
+
+		struct StructL
+		{
+			float mX;
+			float mY;
+			float mZ;
+		};
+
+		struct StructM
+		{
+			float mX;
+			float mY;
+			float mZ;
+			float mW;
+		};
+
+		struct StructN
+		{
+			float mX;
+			float mY;
+			float mZ;
+			float mW;
+			float mU;
+		};
+
+		struct StructO
+		{
+			float mX;
+			int mY;
+		};
+
+		struct StructP
+		{
+			float mX;
+			float mY;
+			int mZ;
+		};
+
+		struct StructQ
+		{
+			float mX;
+			float mY;
+			int mZ;
+			int mW;
+		};
+
+		struct StructR
+		{
+			double mX;
+			double mY;
+		};
+
+		struct StructS
+		{
+			float mX;
+			double mY;
+		};
+
+		struct StructT
+		{
+			double mX;
+			double mY;
+			double mZ;
+		};
+
+		struct StructU
+		{
+			StructK mK;
+		};
+
+		struct StructV
+		{
+			int64_t mX;
+			short mY;
+		};
+
+		struct StructW
+		{
+			float mX;
+		};
 	};
 }
 
 using namespace Tests;
 
 extern "C" int Func0(int a, int b)
-{
+{	
 	return a + b * 100;
+}
+
+extern "C" int Func0K(int a, Interop::StructK b)
+{
+	//printf("Func0K: %d %f %f\n", a, b.mX, b.mY);
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0L(int a, Interop::StructL b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0M(int a, Interop::StructM b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0N(int a, Interop::StructN b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0O(int a, Interop::StructO b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0P(int a, Interop::StructP b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0Q(int a, Interop::StructQ b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0R(int a, Interop::StructR b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0S(int a, Interop::StructS b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0T(int a, Interop::StructT b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0U(int a, Interop::StructU b)
+{
+	return a + (int)b.mK.mX * 100 + (int)b.mK.mY * 10000;
+}
+
+extern "C" int Func0V(int a, Interop::StructV b)
+{
+	return a + (int)b.mX * 100 + (int)b.mY * 10000;
+}
+
+extern "C" int Func0W(int a, Interop::StructW b)
+{
+	return a + (int)b.mX * 100;
 }
 
 //////////////////////////////////////////////////////////////////////////
