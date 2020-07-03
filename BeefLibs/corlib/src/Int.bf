@@ -81,7 +81,7 @@ namespace System
 
 		public static Result<int, ParseError> Parse(StringView val)
 		{
-			if (sizeof(int) == sizeof(int64))
+			if (sizeof(Self) == sizeof(int64))
 			{
 				var result = Int64.Parse(val);
 				return *(Result<int, ParseError>*)&result;

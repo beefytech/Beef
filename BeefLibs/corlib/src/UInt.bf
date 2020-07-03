@@ -81,7 +81,7 @@ namespace System
 			}
 			else
 			{
-				var result = UInt64.Parse(val);
+				var result = UInt32.Parse(val);
 				return *(Result<uint, ParseError>*)&result;
 			}
 		}
