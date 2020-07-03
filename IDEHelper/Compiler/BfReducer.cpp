@@ -1068,6 +1068,7 @@ static String DbgNodeToString(BfAstNode* astNode)
 	else if (auto condExpr = BfNodeDynCast<BfConditionalExpression>(astNode))
 	{
 		String str;
+		str += "( ";
 		str += "(";
 		str += DbgNodeToString(condExpr->mConditionExpression);
 		str += ") ? (";
@@ -1075,6 +1076,7 @@ static String DbgNodeToString(BfAstNode* astNode)
 		str += ") : (";
 		str += DbgNodeToString(condExpr->mFalseExpression);
 		str += ")";
+		str += " )";
 		return str;
 	}
 
@@ -2180,7 +2182,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 					unaryOpExpr->mOp = unaryOp;
 					unaryOpExpr->mOpToken = tokenNode;
 					ReplaceNode(tokenNode, unaryOpExpr);
-					unaryOpExpr->mExpression = CreateExpressionAfter(unaryOpExpr, rhsCreateExprFlags);
+					// Don't attempt binary or unary operations- they will always be lower precedence
+					unaryOpExpr->mExpression = CreateExpressionAfter(unaryOpExpr, (CreateExprFlags)(rhsCreateExprFlags | CreateExprFlags_EarlyExit));
 					if (unaryOpExpr->mExpression == NULL)
 						return NULL;
 					MoveNode(unaryOpExpr->mExpression, unaryOpExpr);
@@ -2269,7 +2272,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 			if (((createExprFlags & CreateExprFlags_BreakOnRChevron) != 0) && (token == BfToken_RChevron))
 				return exprLeft;
-
+			
 			if ((token == BfToken_DblPlus) || (token == BfToken_DblMinus))
 			{
 				// Post-increment, post-decrement
@@ -2284,7 +2287,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			}
 
 			if (token == BfToken_As)
-			{
+			{				
 				auto dynCastExpr = mAlloc->Alloc<BfDynamicCastExpression>();
 				ReplaceNode(exprLeft, dynCastExpr);
 				dynCastExpr->mTarget = exprLeft;
@@ -2298,7 +2301,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			}
 
 			if (token == BfToken_Is)
-			{
+			{				
 				auto checkTypeExpr = mAlloc->Alloc<BfCheckTypeExpression>();
 				ReplaceNode(exprLeft, checkTypeExpr);
 				checkTypeExpr->mTarget = exprLeft;
@@ -2314,6 +2317,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 			if (token == BfToken_Question)
 			{
+				if ((createExprFlags & CreateExprFlags_EarlyExit) != 0)
+					return exprLeft;
 				auto conditionExpr = mAlloc->Alloc<BfConditionalExpression>();
 				ReplaceNode(exprLeft, conditionExpr);
 				conditionExpr->mConditionExpression = exprLeft;
@@ -2340,6 +2345,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 			if ((token == BfToken_Case) && ((createExprFlags & CreateStmtFlags_NoCaseExpr) == 0))
 			{
+				if ((createExprFlags & CreateExprFlags_EarlyExit) != 0)
+					return exprLeft;
 				// If we have a ".Member case <XXX>" expression, that is an invalid construct.  We bail out here
 				//  because it allows the ".Member" to autocomplete because we will treat it as a full expression instead
 				//  of making it the target of an illegal expression
@@ -2581,6 +2588,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			BfBinaryOp binOp = BfTokenToBinaryOp(tokenNode->GetToken());
 			if (binOp != BfBinaryOp_None)
 			{
+				if ((createExprFlags & CreateExprFlags_EarlyExit) != 0)
+					return exprLeft;
 				auto binOpExpression = mAlloc->Alloc<BfBinaryOperatorExpression>();
 				ReplaceNode(exprLeft, binOpExpression);
 				binOpExpression->mLeft = exprLeft;
@@ -2605,6 +2614,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			auto assignmentOp = BfTokenToAssignmentOp(tokenNode->GetToken());
 			if (assignmentOp != BfAssignmentOp_None)
 			{
+				if ((createExprFlags & CreateExprFlags_EarlyExit) != 0)
+					return exprLeft;
 				if ((createExprFlags & CreateExprFlags_NoAssignment) != 0)
 					return exprLeft;
 
