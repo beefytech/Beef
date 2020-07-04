@@ -18512,7 +18512,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 	if ((resultType->IsVar()) || (otherType->IsVar()))
 	{
-		mResult = mModule->GetDefaultTypedValue(resultType);
+		bool isComparison = (binaryOp >= BfBinaryOp_Equality) && (binaryOp <= BfBinaryOp_LessThanOrEqual);
+		if (isComparison)
+			mResult = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Boolean), false, BfDefaultValueKind_Addr);		
+		else if (mExpectingType != NULL)
+			mResult = mModule->GetDefaultTypedValue(mExpectingType, false, BfDefaultValueKind_Addr);
+		else
+			mResult = mModule->GetDefaultTypedValue(resultType, false, BfDefaultValueKind_Addr);
 		return;
 	}
 	
