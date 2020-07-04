@@ -254,6 +254,47 @@ namespace System
 		    }
 		}
 
+		public bool IsBoxedPrimitivePtr
+		{
+			get
+			{
+				if (!mTypeFlags.HasFlag(.Boxed))
+					return false;
+
+				let underyingType = UnderlyingType;
+				if (var genericTypeInstance = underyingType as SpecializedGenericType)
+				{
+					if (genericTypeInstance.UnspecializedType == typeof(Pointer<>))
+						return true;
+				}
+
+				return false;
+			}
+		}
+
+		public Type BoxedPtrType
+		{
+			get
+			{
+				if (!mTypeFlags.HasFlag(.Boxed))
+					return null;
+
+				if (mTypeFlags.HasFlag(.Pointer))
+				{
+					return UnderlyingType;
+				}
+
+				let underyingType = UnderlyingType;
+				if (var genericTypeInstance = underyingType as SpecializedGenericType)
+				{
+					if (genericTypeInstance.UnspecializedType == typeof(Pointer<>))
+						return genericTypeInstance.GetGenericArg(0);
+				}
+
+				return null;
+			}
+		}
+
 		public bool IsEnum
 		{
 		    get
@@ -876,6 +917,14 @@ namespace System.Reflection
     {
         TypeId mUnspecializedType;
         TypeId* mResolvedTypeRefs;
+
+		public Type UnspecializedType
+		{
+			get
+			{
+				return Type.[Friend]GetType(mUnspecializedType);
+			}
+		}
 
 		public override int32 GenericParamCount
 		{

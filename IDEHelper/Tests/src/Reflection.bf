@@ -54,8 +54,11 @@ namespace Tests
 		class ClassA
 		{
 			[AlwaysInclude, AttrC(71, 72)]
-			static float StaticMethodA(int32 a, int32 b, float c)
+			static float StaticMethodA(int32 a, int32 b, float c, ref int32 d, ref StructA sa)
 			{
+				d += a + b;
+				sa.mA += a;
+				sa.mB += b;
 				return a + b + c;
 			}
 
@@ -73,6 +76,24 @@ namespace Tests
 			public virtual int GetB(int32 a)
 			{
 				return a + 3000;
+			}
+		}
+
+		[Reflect, AlwaysInclude(IncludeAllMethods=true)]
+		struct StructA
+		{
+			public int mA;
+			public int mB;
+
+			int GetA(int a)
+			{
+				return a + mA * 100;
+			}
+
+			int GetB(int a) mut
+			{
+				mB += a;
+				return a + mA * 100;
 			}
 		}
 
@@ -136,12 +157,21 @@ namespace Tests
 				switch (methodIdx)
 				{
 				case 0:
+					StructA sa = .() { mA = 1, mB = 2 };
+
 					Test.Assert(methodInfo.Name == "StaticMethodA");
-					var result = methodInfo.Invoke(null, 100, (int32)20, 3.0f).Get();
+					int32 a = 0;
+					var result = methodInfo.Invoke(null, 100, (int32)20, 3.0f, &a, &sa).Get();
+					Test.Assert(a == 120);
+					Test.Assert(sa.mA == 101);
+					Test.Assert(sa.mB == 22);
 					Test.Assert(result.Get<float>() == 123);
 					result.Dispose();
 
-					result = methodInfo.Invoke(.(), .Create(100), .Create((int32)20), .Create(3.0f)).Get();
+					result = methodInfo.Invoke(.(), .Create(100), .Create((int32)20), .Create(3.0f), .Create(&a), .Create(&sa)).Get();
+					Test.Assert(a == 240);
+					Test.Assert(sa.mA == 201);
+					Test.Assert(sa.mB == 42);
 					Test.Assert(result.Get<float>() == 123);
 					result.Dispose();
 
@@ -224,6 +254,76 @@ namespace Tests
 			let attrC = typeof(ClassB).GetCustomAttribute<AttrCAttribute>().Get();
 			Test.Assert(attrC.mA == 1);
 			Test.Assert(attrC.mB == 2);
+		}
+
+		[Test]
+		static void TestD()
+		{
+			StructA sa = .() { mA = 12, mB = 23 };
+			var typeInfo = typeof(StructA);
+
+			int methodIdx = 0;
+			for (let methodInfo in typeInfo.GetMethods())
+			{
+				switch (methodIdx)
+				{
+				case 0:
+					Test.Assert(methodInfo.Name == "GetA");
+
+					var result = methodInfo.Invoke(sa, 34).Get();
+					Test.Assert(result.Get<int32>() == 1234);
+					result.Dispose();
+
+					result = methodInfo.Invoke(&sa, 34).Get();
+					Test.Assert(result.Get<int32>() == 1234);
+					result.Dispose();
+
+					Variant saV = .Create(sa);
+					defer saV.Dispose();
+					result = methodInfo.Invoke(saV, .Create(34));
+					Test.Assert(result.Get<int32>() == 1234);
+					result.Dispose();
+
+					result = methodInfo.Invoke(.Create(&sa), .Create(34));
+					Test.Assert(result.Get<int32>() == 1234);
+					result.Dispose();
+				case 1:
+					Test.Assert(methodInfo.Name == "GetB");
+
+					var result = methodInfo.Invoke(sa, 34).Get();
+					Test.Assert(result.Get<int32>() == 1234);
+					Test.Assert(sa.mB == 23);
+					result.Dispose();
+
+					result = methodInfo.Invoke(&sa, 34).Get();
+					Test.Assert(result.Get<int32>() == 1234);
+					Test.Assert(sa.mB == 57);
+					result.Dispose();
+
+					Variant saV = .Create(sa);
+					defer saV.Dispose();
+					result = methodInfo.Invoke(saV, .Create(34));
+					Test.Assert(result.Get<int32>() == 1234);
+					Test.Assert(sa.mB == 57);
+					result.Dispose();
+
+					result = methodInfo.Invoke(.Create(&sa), .Create(34));
+					Test.Assert(result.Get<int32>() == 1234);
+					Test.Assert(sa.mB == 91);
+					result.Dispose();
+
+				case 2:
+					Test.Assert(methodInfo.Name == "__BfCtor");
+				case 3:
+					Test.Assert(methodInfo.Name == "__Equals");
+				case 4:
+					Test.Assert(methodInfo.Name == "__StrictEquals");
+				default:
+					Test.FatalError(); // Shouldn't have any more
+				}
+
+				methodIdx++;
+			}
 		}
 	}
 }

@@ -122,7 +122,24 @@ namespace System.Reflection
 				bool isPtrToPtr = false;
 				bool isValid = true;
 
-				if (paramType.IsValueType)
+				bool added =  false;
+
+				if (var refParamType = paramType as RefType)
+				{
+					if (argType.IsPointer)
+					{
+						Type elemType = argType.UnderlyingType;
+						if (elemType != refParamType.UnderlyingType)
+							isValid = false;
+
+						ffiParamList.Add(&FFIType.Pointer);
+						ffiArgList.Add(dataPtr);
+						added = true;
+					}
+					else
+						isValid = false;
+				}
+				else if (paramType.IsValueType)
 				{
 					if (argType.IsPointer)
 					{
@@ -162,7 +179,11 @@ namespace System.Reflection
 						return .Err(.InvalidArgument((.)argIdx));
 				}
 
-				if (paramType.IsStruct)
+				if (added)
+				{
+					// Already handled
+				}
+				else if (paramType.IsStruct)
 				{
 					TypeInstance paramTypeInst = (TypeInstance)paramType;
 
@@ -376,7 +397,24 @@ namespace System.Reflection
 				void* dataPtr = (uint8*)Internal.UnsafeCastToPtr(arg) + argType.[Friend]mMemberDataOffset;
 				bool isValid = true;
 
-				if (paramType.IsValueType)
+				bool added = false;
+
+				if (var refParamType = paramType as RefType)
+				{
+					if (argType.IsBoxedStructPtr || argType.IsBoxedPrimitivePtr)
+					{
+						var elemType = argType.BoxedPtrType;
+						if (elemType != refParamType.UnderlyingType)
+							isValid = false;
+
+						ffiParamList.Add(&FFIType.Pointer);
+						ffiArgList.Add(dataPtr);
+						added = true;
+					}
+					else
+						isValid = false;
+				}
+				else if (paramType.IsValueType)
 				{
 					bool handled = true;
 
@@ -387,7 +425,7 @@ namespace System.Reflection
 					if ((paramType.IsPrimitive) && (underlyingType.IsTypedPrimitive)) // Boxed primitive?
 						underlyingType = underlyingType.UnderlyingType;
 
-					if ((argType.IsBoxedStructPtr) || (argIdx == -1))
+					if (argType.IsBoxedStructPtr || argType.IsBoxedPrimitivePtr)
 					{
 						dataPtr = *(void**)dataPtr;
 						handled = true;
@@ -421,7 +459,11 @@ namespace System.Reflection
 						return .Err(.InvalidArgument((.)argIdx));
 				}
 
-				if (paramType.IsStruct)
+				if (added)
+				{
+					// Already handled
+				}
+				else if (paramType.IsStruct)
 				{
 					TypeInstance paramTypeInst = (TypeInstance)paramType;
 
