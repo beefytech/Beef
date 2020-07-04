@@ -8940,7 +8940,7 @@ namespace IDE
 											else if (project.mGeneralOptions.mTargetType != .CustomBuild)
 											    newString.Append(".exe");
 										case .macOS:
-											if (project.mGeneralOptions.mTargetType == .BeefLib)
+											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
 												newString.Append(".dylib");
 										default:
 											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
