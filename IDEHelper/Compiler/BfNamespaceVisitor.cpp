@@ -39,6 +39,9 @@ void BfNamespaceVisitor::Visit(BfUsingStaticDirective* usingDirective)
 		else
 			break;
 	}
+
+	if (useNode == NULL)
+		return;
 	
 	String usingString = useNode->ToString();
 	
