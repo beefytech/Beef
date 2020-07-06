@@ -7382,7 +7382,7 @@ DbgType* DbgModule::FindTypeHelper(const String& typeName, DbgType* checkType)
 	return NULL;
 }
 
-DbgType* DbgModule::FindType(const String& typeName, DbgType* contextType, DbgLanguage language)
+DbgType* DbgModule::FindType(const String& typeName, DbgType* contextType, DbgLanguage language, bool bfObjectPtr)
 {
 	if ((language == DbgLanguage_Unknown) && (contextType != NULL))
 		language = contextType->mLanguage;
@@ -7391,7 +7391,7 @@ DbgType* DbgModule::FindType(const String& typeName, DbgType* contextType, DbgLa
 	{
 		if (typeName[typeName.length() - 1] == '*')
 		{
-			DbgType* dbgType = FindType(typeName.Substring(0, typeName.length() - 1), contextType, language);
+			DbgType* dbgType = FindType(typeName.Substring(0, typeName.length() - 1), contextType, language, bfObjectPtr);
 			if (dbgType == NULL)
 				return NULL;
 			return GetPointerType(dbgType);
@@ -7400,7 +7400,11 @@ DbgType* DbgModule::FindType(const String& typeName, DbgType* contextType, DbgLa
 
 	auto entry = GetLinkedModule()->mTypeMap.Find(typeName.c_str(), language);
 	if (entry != NULL)
+	{
+		if ((bfObjectPtr) && (entry->mValue->IsBfObject()))
+			return GetPointerType(entry->mValue);
 		return entry->mValue;
+	}
 
 	if (contextType != NULL)
 	{		

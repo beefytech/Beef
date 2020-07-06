@@ -4,7 +4,21 @@ namespace System
 {
     struct Variant
 	{
-		int mStructType; // 0 = unowned object, 1 = owned object, 2 = null value (mData is type), otherwise is struct type
+		enum ObjectType
+		{
+			UnownedObject,
+			OwnedObject,
+			NullObject
+		}
+
+		enum StructFlag
+		{
+			InternalValue,
+			OwnedPtr,
+			ExternalPtr
+		}
+
+		int mStructType; // 0 = unowned object, 1 = owned object, 2 = null value (mData is type), otherwise is struct type (|0 is internal, |1 is owned ptr, |2 is external ptr)
 		int mData; // This is either an Object reference, struct data, or a pointer to struct data
 
 		public bool OwnsMemory
@@ -13,7 +27,7 @@ namespace System
 			{
 				if (mStructType <= 2)
 					return mStructType == 1;
-				return VariantType.Size > sizeof(int);
+				return (mStructType & 1) != 0;
 			}
 		}
 
@@ -21,7 +35,11 @@ namespace System
 		{
 			get
 			{
-				return mStructType <= 2;
+				if (mStructType <= 2)
+					return true;
+				if ((mStructType & 3) == (int)StructFlag.ExternalPtr)
+					return VariantType.IsObject;
+				return false;
 			}
 		}
 
@@ -37,7 +55,7 @@ namespace System
 				{
 					return Internal.UnsafeCastToObject((void*)mData).GetType();
 				}
-				return (Type)Internal.UnsafeCastToObject((void*)mStructType);
+				return (Type)Internal.UnsafeCastToObject((void*)(mStructType & ~3));
 			}
 		}
 
@@ -53,7 +71,7 @@ namespace System
 		{
 			get mut
 			{
-				if (IsObject)
+				if (mStructType <= 3)
 				{
 					if (mStructType == 2)
 						return null;
@@ -61,8 +79,7 @@ namespace System
 					return (uint8*)Internal.UnsafeCastToPtr(obj) + obj.GetType().[Friend]mMemberDataOffset;
 				}
 
-				var type = VariantType;
-				if (type.Size <= sizeof(int))
+				if ((mStructType & 3) == (int)StructFlag.InternalValue)
 					return (void*)&mData;
 				else
 					return (void*)mData;
@@ -71,7 +88,7 @@ namespace System
 
 		protected override void GCMarkMembers()
  		{
-			if ((mStructType == 1) || (mStructType == 0))
+			if ((mStructType == (int)ObjectType.UnownedObject) || (mStructType == (int)ObjectType.OwnedObject))
 			{
 				var obj = Internal.UnsafeCastToObject((void*)mData);
 				GC.Mark(obj);
@@ -80,7 +97,7 @@ namespace System
 
 		public void Dispose() mut
 		{
-			if (mStructType == 1)
+			if (mStructType == (int)ObjectType.OwnedObject)
 			{
 				delete Internal.UnsafeCastToObject((void*)mData);
 			}
@@ -97,12 +114,12 @@ namespace System
 			Variant variant;
 			if (val == null)
 			{
-				variant.mStructType = 2;
+				variant.mStructType = (int)ObjectType.NullObject;
 				variant.mData = (int)Internal.UnsafeCastToPtr(typeof(T));
 			}
 			else
 			{
-				variant.mStructType = (int)(owns ? 1 : 0);
+				variant.mStructType = (int)(owns ? (int)ObjectType.OwnedObject : (int)ObjectType.UnownedObject);
 				variant.mData = (int)Internal.UnsafeCastToPtr(val);
 			}
 			return variant;
@@ -112,14 +129,15 @@ namespace System
 		{
 			Variant variant;
 			Type type = typeof(T);
-			variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 			if (sizeof(T) <= sizeof(int))
 			{
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 				variant.mData = 0;
 				*(T*)&variant.mData = val;
 			}
 			else
 			{
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(type) | 1;
 				T* newVal = (T*)new uint8[sizeof(T)]*;
 				*newVal = val;
 				variant.mData = (int)(void*)newVal;
@@ -131,14 +149,15 @@ namespace System
 		{
 			Variant variant;
 			Type type = typeof(T);
-			variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 			if (type.Size <= sizeof(int))
 			{
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 				variant.mData = 0;
 				*(T*)&variant.mData = val;
 			}
 			else
 			{
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(type) | 1;
 				T* newVal = (T*)new uint8[sizeof(T)]*;
 				*newVal = val;
 				variant.mData = (int)(void*)newVal;
@@ -146,22 +165,65 @@ namespace System
 			return variant;
 		}
 
+		public static Variant Create<T>(ref T val) where T : struct
+		{
+			Variant variant;
+			Type type = typeof(T);
+			variant.mStructType = (int)Internal.UnsafeCastToPtr(type) | 2;
+			variant.mData = 0;
+			variant.mData = (int)(void*)&val;
+			return variant;
+		}
+
+		public static Variant CreateOwned<T>(T val) where T : struct
+		{
+			Variant variant;
+			Type type = typeof(T);
+			variant.mStructType = (int)Internal.UnsafeCastToPtr(type) | 1;
+			T* newVal = (T*)new uint8[sizeof(T)]*;
+			*newVal = val;
+			variant.mData = (int)(void*)newVal;
+			return variant;
+		}
+
+		public void EnsureReference() mut
+		{
+			if ((mStructType <= 2) && (mStructType & 3 == (int)StructFlag.InternalValue))
+				return;
+
+			var val = mData;
+
+			mStructType |= (int)StructFlag.OwnedPtr;
+			int* newVal = (int*)new uint8[sizeof(int)]*;
+			*newVal = val;
+			mData = (int)(void*)newVal;
+		}
+
 		public static Variant Create(Type type, void* val)
 		{
 			Variant variant;
 			Debug.Assert(!type.IsObject);
-			variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 			if (type.Size <= sizeof(int))
 			{
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 				variant.mData = 0;
 				Internal.MemCpy(&variant.mData, val, type.[Friend]mSize);
 			}
 			else
 			{
+				variant.mStructType = (int)Internal.UnsafeCastToPtr(type) | 1;
 				void* data = new uint8[type.[Friend]mSize]*;
 				Internal.MemCpy(data, val, type.[Friend]mSize);
 				variant.mData = (int)data;
 			}
+			return variant;
+		}
+
+		public static Variant CreateReference(Type type, void* val)
+		{
+			Variant variant;
+			variant.mStructType = (int)Internal.UnsafeCastToPtr(type) | 2;
+			variant.mData = (int)val;
 			return variant;
 		}
 
@@ -175,14 +237,15 @@ namespace System
 			}
 			else
 			{
-				variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 				if (type.Size <= sizeof(int))
 				{
+					variant.mStructType = (int)Internal.UnsafeCastToPtr(type);
 					variant.mData = 0;
 					return &variant.mData;
 				}
 				else
 				{
+					variant.mStructType = (int)Internal.UnsafeCastToPtr(type) | 1;
 					void* data = new uint8[type.[Friend]mSize]*;
 					variant.mData = (int)data;
 					return data;
@@ -196,7 +259,11 @@ namespace System
 			if (mStructType == 2)
 				return (T)null;
 			Type type = typeof(T);
-			T obj = (T)Internal.UnsafeCastToObject((void*)mData);
+			T obj;
+			if (mStructType >= 3)
+				obj = (T)Internal.UnsafeCastToObject(*(void**)(void*)mData);
+			else
+				obj = (T)Internal.UnsafeCastToObject((void*)mData);
 			Debug.Assert(obj.GetType().IsSubtypeOf(type));
 			return obj;
 		}
@@ -204,9 +271,9 @@ namespace System
 		public T Get<T>() where T : struct
 		{
 			Debug.Assert(!IsObject);
-			var type = VariantType;
+			//var type = VariantType;
 			//Debug.Assert((typeof(T) == type) || (typeof(T) == type.GetUnderlyingType()));
-			if (type.Size <= sizeof(int))
+			if ((mStructType & 3) == (int)StructFlag.InternalValue)
 			{
 				int data = mData;
 				return *(T*)&data;
@@ -218,9 +285,9 @@ namespace System
 		public T Get<T>() where T : struct*
 		{
 			Debug.Assert(!IsObject);
-			var type = VariantType;
+			//var type = VariantType;
 			//Debug.Assert((typeof(T) == type) || (typeof(T) == type.GetUnderlyingType()));
-			if (type.Size <= sizeof(int))
+			if ((mStructType & 3) == (int)StructFlag.InternalValue)
 			{
 				int data = mData;
 				return *(T*)&data;
@@ -248,7 +315,7 @@ namespace System
 			}
 			
 			var type = VariantType;
-			if (type.Size <= sizeof(int))
+			if ((mStructType & 3) == (int)StructFlag.InternalValue)
 			{
 				int data = mData;
 				Internal.MemCpy(dest, &data, type.Size);
@@ -262,8 +329,7 @@ namespace System
 		public void* GetValueData() mut
 		{
 			Debug.Assert(!IsObject);
-			var type = VariantType;
-			if (type.Size <= sizeof(int))
+			if ((mStructType & 3) == (int)StructFlag.InternalValue)
 			{
 				return (void*)&mData;
 			}
@@ -284,18 +350,19 @@ namespace System
 				return v1.mData == v2.mData;
 			}
 
-			if (v1.mStructType != v2.mStructType)
+			if (v1.mStructType & 3 != v2.mStructType & 3)
 				return false;
 
-			let type = v1.VariantType;
-			if (type.[Friend]mSize <= sizeof(int))
+			if ((v1.mStructType & 3 == 0) && (v2.mStructType & 3 == 0))
 				return v1.mData == v2.mData;
-			for (int i < type.[Friend]mSize)
-			{
-				if (((uint8*)(void*)v1.mData)[i] != ((uint8*)(void*)v2.mData)[i])
-					return false;
-			}
-			return true;
+
+			var v1;
+			var v2;
+
+			let type = v1.VariantType;
+			let ptr1 = v1.DataPtr;
+			let ptr2 = v2.DataPtr;
+			return Internal.MemCmp(ptr1, ptr2, type.[Friend]mSize) == 0;
 		}
 
 		public static mixin Equals<T>(var v1, var v2)
@@ -303,20 +370,39 @@ namespace System
 			v1.Get<T>() == v2.Get<T>()
 		}
 
-		public static Result<Variant> CreateFromVariant(Variant varFrom)
+		public static Variant CreateFromVariant(Variant varFrom)
 		{
 			Variant varTo = varFrom;
 			if (varTo.mStructType == 1)
 				varTo.mStructType = 0;
 			if (varTo.mStructType > 2)
 			{
-				let type = (Type)Internal.UnsafeCastToObject((void*)varFrom.mStructType);
+				varTo.mStructType &= ~3;
+
+				let type = (Type)Internal.UnsafeCastToObject((void*)(varFrom.mStructType & ~3));
 				if (type.[Friend]mSize > sizeof(int))
 				{
+					varTo.mStructType |= (int)StructFlag.OwnedPtr;
 					void* data = new uint8[type.[Friend]mSize]*;
 					Internal.MemCpy(data, (void*)varFrom.mData, type.[Friend]mSize);
 					varTo.mData = (int)data;
 				}
+			}
+
+			return varTo;
+		}
+
+		public static Variant CreateFromVariantRef(ref Variant varFrom)
+		{
+			Variant varTo = varFrom;
+			if (varTo.mStructType == 1)
+				varTo.mStructType = 0;
+			if (varTo.mStructType > 2)
+			{
+				varTo.mStructType &= ~3;
+
+				varTo.mStructType |= (int)StructFlag.ExternalPtr;
+				varTo.mData = (int)varFrom.DataPtr;
 			}
 
 			return varTo;
@@ -342,6 +428,7 @@ namespace System
 				}
 				else
 				{
+					variant.mStructType |= (int)StructFlag.OwnedPtr;
 					void* data = new uint8[underlying.[Friend]mSize]*;
 					Internal.MemCpy(data, srcDataPtr, underlying.[Friend]mSize);
 					variant.mData = (int)data;

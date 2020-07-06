@@ -137,7 +137,16 @@ namespace System.Reflection
 						added = true;
 					}
 					else
-						isValid = false;
+					{
+						if ((Type)argType != refParamType.UnderlyingType)
+							isValid = false;
+
+						ffiParamList.Add(&FFIType.Pointer);
+						int* stackDataPtr = scope:mixin int();
+						*stackDataPtr = (int)dataPtr;
+						ffiArgList.Add(stackDataPtr);
+						added = true;
+					}
 				}
 				else if (paramType.IsValueType)
 				{
@@ -412,7 +421,22 @@ namespace System.Reflection
 						added = true;
 					}
 					else
-						isValid = false;
+					{
+						var elemType = argType.UnderlyingType;
+						if (elemType != refParamType.UnderlyingType)
+						{
+							if (elemType.IsTypedPrimitive)
+								elemType = elemType.UnderlyingType;
+							if (elemType != refParamType.UnderlyingType)
+								isValid = false;
+						}
+
+						ffiParamList.Add(&FFIType.Pointer);
+						int* stackDataPtr = scope:mixin int();
+						*stackDataPtr = (int)dataPtr;
+						ffiArgList.Add(stackDataPtr);
+						added = true;
+					}
 				}
 				else if (paramType.IsValueType)
 				{

@@ -53,6 +53,9 @@ namespace Tests
 		[Reflect]
 		class ClassA
 		{
+			int32 mA = 123;
+			String mStr = "A";
+
 			[AlwaysInclude, AttrC(71, 72)]
 			static float StaticMethodA(int32 a, int32 b, float c, ref int32 d, ref StructA sa)
 			{
@@ -60,6 +63,18 @@ namespace Tests
 				sa.mA += a;
 				sa.mB += b;
 				return a + b + c;
+			}
+
+			[AlwaysInclude]
+			static StructA StaticMethodB(ref int32 a, ref String b)
+			{
+				a += 1000;
+				b = "B";
+
+				StructA sa;
+				sa.mA = 12;
+				sa.mB = 34;
+				return sa;
 			}
 
 			[AlwaysInclude]
@@ -168,6 +183,21 @@ namespace Tests
 					Test.Assert(result.Get<float>() == 123);
 					result.Dispose();
 
+					Object aObj = a;
+					Object saObj = sa;
+					Test.Assert(methodInfo.Name == "StaticMethodA");
+					result = methodInfo.Invoke(null, 100, (int32)20, 3.0f, aObj, saObj).Get();
+					Test.Assert(a == 120);
+					Test.Assert(sa.mA == 101);
+					Test.Assert(sa.mB == 22);
+					int32 a2 = (int32)aObj;
+					StructA sa2 = (StructA)saObj;
+					Test.Assert(a2 == 240);
+					Test.Assert(sa2.mA == 201);
+					Test.Assert(sa2.mB == 42);
+					Test.Assert(result.Get<float>() == 123);
+					result.Dispose();
+
 					result = methodInfo.Invoke(.(), .Create(100), .Create((int32)20), .Create(3.0f), .Create(&a), .Create(&sa)).Get();
 					Test.Assert(a == 240);
 					Test.Assert(sa.mA == 201);
@@ -175,10 +205,55 @@ namespace Tests
 					Test.Assert(result.Get<float>() == 123);
 					result.Dispose();
 
+					Variant aV = .CreateOwned(a);
+					Variant saV = .CreateOwned(sa);
+					result = methodInfo.Invoke(.(), .Create(100), .Create((int32)20), .Create(3.0f), aV, saV).Get();
+					Test.Assert(a == 240);
+					Test.Assert(sa.mA == 201);
+					Test.Assert(sa.mB == 42);
+					a2 = aV.Get<int32>();
+					sa2 = saV.Get<StructA>();
+					Test.Assert(a2 == 360);
+					Test.Assert(sa2.mA == 301);
+					Test.Assert(sa2.mB == 62);
+					Test.Assert(result.Get<float>() == 123);
+					aV.Dispose();
+					saV.Dispose();
+					result.Dispose();
+
 					let attrC = methodInfo.GetCustomAttribute<AttrCAttribute>().Get();
 					Test.Assert(attrC.mA == 71);
 					Test.Assert(attrC.mB == 72);
 				case 1:
+					Test.Assert(methodInfo.Name == "StaticMethodB");
+
+					var fieldA = typeInfo.GetField("mA").Value;
+					var fieldStr = typeInfo.GetField("mStr").Value;
+
+					var fieldAV = fieldA.GetValueReference(ca).Value;
+					var fieldStrV = fieldStr.GetValueReference(ca).Value;
+
+					Test.Assert(fieldAV.Get<int32>() == 123);
+					Test.Assert(fieldStrV.Get<String>() == "A");
+
+					var res = methodInfo.Invoke(.(), fieldAV, fieldStrV).Value;
+					var sa = res.Get<StructA>();
+					Test.Assert(sa.mA == 12);
+					Test.Assert(sa.mB == 34);
+					res.Dispose();
+
+					Test.Assert(fieldAV.Get<int32>() == 1123);
+					Test.Assert(fieldStrV.Get<String>() == "B");
+					fieldAV.Dispose();
+					fieldStrV.Dispose();
+
+					fieldAV = fieldA.GetValue(ca).Value;
+					fieldStrV = fieldStr.GetValue(ca).Value;
+					Test.Assert(fieldAV.Get<int32>() == 1123);
+					Test.Assert(fieldStrV.Get<String>() == "B");
+					fieldAV.Dispose();
+					fieldStrV.Dispose();
+				case 2:
 					Test.Assert(methodInfo.Name == "MemberMethodA");
 					var result = methodInfo.Invoke(ca, 100, (int32)20, 3.0f).Get();
 					Test.Assert(result.Get<float>() == 123);
@@ -187,7 +262,7 @@ namespace Tests
 					result = methodInfo.Invoke(.Create(ca), .Create(100), .Create((int32)20), .Create(3.0f)).Get();
 					Test.Assert(result.Get<float>() == 123);
 					result.Dispose();
-				case 2:
+				case 3:
 					Test.Assert(methodInfo.Name == "GetA");
 					var result = methodInfo.Invoke(ca, 123).Get();
 					Test.Assert(result.Get<int>() == 1123);
@@ -198,10 +273,10 @@ namespace Tests
 					result = methodInfo.Invoke(.Create(ca2), .Create(123)).Get();
 					Test.Assert(result.Get<int>() == 2123);
 					result.Dispose();
-				case 3:
+				case 4:
 					Test.Assert(methodInfo.Name == "__BfCtor");
 					Test.Assert(methodInfo.IsConstructor);
-				case 4:
+				case 5:
 					Test.FatalError(); // Shouldn't have any more
 				}
 

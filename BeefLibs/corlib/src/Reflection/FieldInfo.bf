@@ -216,6 +216,30 @@ namespace System.Reflection
 			return value;
 		}
 
+		public Result<Variant> GetValueReference(Object target)
+		{
+			Variant value = Variant();
+
+			Type tTarget;
+			void* targetDataAddr = GetDataPtrAndType(target, out tTarget);
+
+			if (!tTarget.IsSubtypeOf(mTypeInstance))
+			    Runtime.FatalError("Invalid type");   
+
+			targetDataAddr = (uint8*)targetDataAddr + mFieldData.mDataOffset;
+
+			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
+
+			TypeCode typeCode = fieldType.[Friend]mTypeCode;
+			if (typeCode == TypeCode.Enum)
+				typeCode = fieldType.UnderlyingType.[Friend]mTypeCode;
+
+			value = Variant.CreateReference(fieldType, targetDataAddr);
+
+			return value;
+		}
+
+
 		public Result<Variant> GetValue()
 		{
 			Variant value = Variant();

@@ -1266,7 +1266,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	
 	bool needsTypeList = bfModule->IsMethodImplementedAndReified(typeDefType, "GetType");
 	bool needsObjectTypeData = needsTypeList || bfModule->IsMethodImplementedAndReified(vdataContext->mBfObjectType, "RawGetType") || bfModule->IsMethodImplementedAndReified(vdataContext->mBfObjectType, "GetType");	
-	bool needsTypeNames = bfModule->IsMethodImplementedAndReified(typeDefType, "GetName");
+	bool needsTypeNames = bfModule->IsMethodImplementedAndReified(typeDefType, "GetName") || bfModule->IsMethodImplementedAndReified(typeDefType, "GetFullName");
 	bool needsStringLiteralList = (mOptions.mAllowHotSwapping) || (bfModule->IsMethodImplementedAndReified(stringType, "Intern"));
 
 	Dictionary<int, int> usedStringIdMap;

@@ -757,6 +757,12 @@ namespace System.Reflection
 				}
 				strBuffer.Append(')');
 			}
+			else if (mTypeFlags.HasFlag(.Boxed))
+			{
+				strBuffer.Append("boxed ");
+				let ut = UnderlyingType;
+				ut.GetFullName(strBuffer);
+			}
 			else
 			{
 				if (mOuterType != 0)
@@ -769,8 +775,9 @@ namespace System.Reflection
 					if (!String.IsNullOrEmpty(mNamespace))
 		            	strBuffer.Append(mNamespace, ".");
 				}
-				
-				strBuffer.Append(mName);
+
+				if (mName != null)
+					strBuffer.Append(mName);
 			}
         }
 

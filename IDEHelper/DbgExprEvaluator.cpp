@@ -7190,12 +7190,12 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 				}
 			}
 			
-			auto castedType = mDbgModule->FindType(typeName, NULL, GetLanguage());
+			auto castedType = mDbgModule->FindType(typeName, NULL, GetLanguage(), true);
 			if (castedType == NULL)
 			{
 				if (typeName.EndsWith('*'))
 				{
-					auto noPtrTypeEntry = mDbgModule->FindType(typeName.Substring(0, typeName.length() - 1), NULL, DbgLanguage_Beef);
+					auto noPtrTypeEntry = mDbgModule->FindType(typeName.Substring(0, typeName.length() - 1), NULL, DbgLanguage_Beef, true);
 					if (noPtrTypeEntry != NULL)
 						castedType = mDbgModule->GetPointerType(noPtrTypeEntry);
 				}

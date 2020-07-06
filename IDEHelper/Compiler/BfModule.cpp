@@ -6312,6 +6312,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	{
 		typeDataVar = mBfIRBuilder->CreateGlobalVariable(typeInstanceDataType, true,
 			BfIRLinkageType_External, typeInstanceData, typeDataName);
+		mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
 
 		if (mBfIRBuilder->DbgHasInfo())
 		{

@@ -105,10 +105,13 @@ String = "{{ OwnedObj: {(System.Object)mData} }}"
 Condition = "mStructType == 2"
 String = "{{ Null: {__cast((System.Type)mData, null)} }}"
 [[Type.DisplayString]]
-Condition = "((System.Type)mStructType).mSize <= sizeof(int)"
-String = "{{ InlineValue: {__bitcast((System.Type)mStructType, mData)} }}"
+Condition = "mStructType & 3 == 0"
+String = "{{ InlineValue: {__bitcast((System.Type)(mStructType & ~3), mData)} }}"
 [[Type.DisplayString]]
-String = "{{ AllocValue: {*__cast((System.Type)mStructType, \"*\", mData)} }}"
+Condition = "mStructType & 3 == 1"
+String = "{{ AllocValue: {*__cast((System.Type)(mStructType & ~3), \"*\", mData)} }}"
+[[Type.DisplayString]]
+String = "{{ RefValue: {*__cast((System.Type)(mStructType & ~3), \"*\", mData)} }}"
 [[Type.Expand.Item]]
 Condition = "mStructType == 0"
 Name = "[UnownedObj]"
@@ -122,13 +125,13 @@ Condition = "mStructType == 3"
 Name = "[Null]"
 Value = "__cast((System.Type)mData, null)"
 [[Type.Expand.Item]]
-Condition = "(mStructType != 0) && ((System.Type)mStructType).mSize <= sizeof(int)"
+Condition = "(mStructType != 0) && (mStructType & 3 == 0)"
 Name = "[InlineValue]"
-Value = "__bitcast((System.Type)mStructType, mData)"
+Value = "__bitcast((System.Type)(mStructType & ~3), mData)"
 [[Type.Expand.Item]]
-Condition = "(mStructType != 0) && ((System.Type)mStructType).mSize > sizeof(int)"
+Condition = "(mStructType != 0) && (mStructType & 3 != 0)"
 Name = "[AllocValue]"
-Value = "*__cast((System.Type)mStructType, \"*\", mData)"
+Value = "*__cast((System.Type)(mStructType & ~3), \"*\", mData)"
 
 [[Type]]
 Name = "*?"

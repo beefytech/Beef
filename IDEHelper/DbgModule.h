@@ -1298,7 +1298,7 @@ public:
 	//const uint8* CopyOrigImageData(addr_target address, int length);
 	
 	DbgType* FindTypeHelper(const String& typeName, DbgType* checkType);
-	DbgType* FindType(const String& typeName, DbgType* contextType = NULL, DbgLanguage language = DbgLanguage_Unknown);
+	DbgType* FindType(const String& typeName, DbgType* contextType = NULL, DbgLanguage language = DbgLanguage_Unknown, bool bfObjectPtr = false);
 	DbgTypeMap::Entry* FindType(const char* typeName, DbgLanguage language);
 	
 	DbgType* GetPointerType(DbgType* innerType);
