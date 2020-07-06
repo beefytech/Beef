@@ -2920,6 +2920,8 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, flags);
 			CMD_PARAM(BeMDNode*, type);
 
+			BF_ASSERT(type != NULL);
+
 			auto dbgMember = mBeModule->mOwnedValues.Alloc<BeDbgStructMember>();
 			dbgMember->mName = name;
 			dbgMember->mType = (BeDbgType*)type;
@@ -2939,6 +2941,8 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, flags);
 			CMD_PARAM(BeConstant*, val);
 			
+			BF_ASSERT(type != NULL);
+
 			auto dbgMember = mBeModule->mOwnedValues.Alloc<BeDbgStructMember>();
 			dbgMember->mName = name;
 			dbgMember->mType = (BeDbgType*)type;

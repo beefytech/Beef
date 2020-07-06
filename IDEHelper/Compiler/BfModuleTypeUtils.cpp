@@ -452,6 +452,7 @@ bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 			mContext->mSavedTypeData[savedTypeData->mTypeId] = NULL;
 
 			resolvedTypeRef->mTypeId = savedTypeData->mTypeId;
+
 			BfLogSysM("Using mSavedTypeData for %p %s\n", resolvedTypeRef, typeName.c_str());
 			if (typeInst != NULL)
 			{
@@ -5047,11 +5048,12 @@ BfTypeInstance* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const 
 {
 	auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef);
 
-	BfTypeInstance* tupleType = NULL;
+	BfTupleType* tupleType = NULL;
 	
 	auto actualTupleType = mContext->mTupleTypePool.Get();
 	actualTupleType->Init(baseType->mTypeDef->mProject, baseType);
 
+	bool isUnspecialzied = false;
 	for (int fieldIdx = 0; fieldIdx < (int)fieldTypes.size(); fieldIdx++)
 	{
 		String fieldName;
@@ -5060,6 +5062,10 @@ BfTypeInstance* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const 
 		if (fieldName.empty())
 			fieldName = StrFormat("%d", fieldIdx);
 		BfFieldDef* fieldDef = actualTupleType->AddField(fieldName);
+
+		auto fieldType = fieldTypes[fieldIdx];
+		if (fieldType->IsUnspecializedType())
+			isUnspecialzied = true;
 	}
 	tupleType = actualTupleType;
 
@@ -5071,6 +5077,14 @@ BfTypeInstance* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const 
 		fieldInstance->mFieldIdx = fieldIdx;
 		fieldInstance->SetResolvedType(fieldTypes[fieldIdx]);
 		fieldInstance->mOwner = tupleType;		
+	}
+			
+	tupleType->mIsUnspecializedType = false;
+	tupleType->mIsUnspecializedTypeVariation = false;
+	if (isUnspecialzied)
+	{
+		tupleType->mIsUnspecializedType = true;
+		tupleType->mIsUnspecializedTypeVariation = true;
 	}
 
 	auto resolvedTupleType = ResolveType(tupleType);
@@ -5853,12 +5867,6 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 				actualTupleType->mGenericTypeInfo->mGenericParams.push_back(unspecializedGenericTupleType->mGenericTypeInfo->mGenericParams[genericArgIdx]->AddRef());
 			}
 			CheckUnspecializedGenericType(actualTupleType, BfPopulateType_Identity);
-			if (isUnspecialized)
-			{
-				actualTupleType->mGenericTypeInfo->mIsUnspecialized = true;
-				actualTupleType->mGenericTypeInfo->mIsUnspecializedVariation = true;
-			}
-
 			if (isUnspecialized)
 			{
 				actualTupleType->mGenericTypeInfo->mIsUnspecialized = true;

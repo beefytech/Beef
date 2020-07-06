@@ -2068,7 +2068,7 @@ public:
 #endif
 
 void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
-{		
+{	
 	bool wantDIData = DbgHasInfo() && (!type->IsUnspecializedType());
 			
 	// Types that don't have a proper 'defining module' need to be defined in every module they are used	
@@ -2547,7 +2547,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 					{
 						auto payloadType = fieldInstance->mResolvedType;
 						if (payloadType == NULL)
-							payloadType = mModule->CreateTupleType(BfTypeVector(), Array<String>());
+							payloadType = mModule->CreateTupleType(BfTypeVector(), Array<String>());						
 
 						String fieldName = StrFormat("_%d_%s", -fieldInstance->mDataIdx - 1, fieldDef->mName.c_str());
 

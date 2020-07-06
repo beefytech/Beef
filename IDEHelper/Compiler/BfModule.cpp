@@ -5829,7 +5829,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		{
 			auto refVal = ReferenceStaticField(fieldInstance);
 			if (refVal.IsAddr())
-				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_Int64);
+			{
+				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);
+				if (mSystem->mPtrSize != 8)
+					constValue = mBfIRBuilder->CreateNumericCast(constValue, false, BfTypeCode_Int64);
+			}
 		}
 		
 		if (!constValue)
