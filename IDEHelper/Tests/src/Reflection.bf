@@ -53,8 +53,11 @@ namespace Tests
 		[Reflect]
 		class ClassA
 		{
-			int32 mA = 123;
-			String mStr = "A";
+			public int32 mA = 123;
+			public String mStr = "A";
+
+			public static int32 sA = 234;
+			public static String sStr = "AA";
 
 			[AlwaysInclude, AttrC(71, 72)]
 			static float StaticMethodA(int32 a, int32 b, float c, ref int32 d, ref StructA sa)
@@ -237,6 +240,8 @@ namespace Tests
 					Test.Assert(fieldStrV.Get<String>() == "A");
 
 					var res = methodInfo.Invoke(.(), fieldAV, fieldStrV).Value;
+					Test.Assert(ca.mA == 1123);
+					Test.Assert(ca.mB == "B");
 					var sa = res.Get<StructA>();
 					Test.Assert(sa.mA == 12);
 					Test.Assert(sa.mB == 34);
@@ -253,6 +258,22 @@ namespace Tests
 					Test.Assert(fieldStrV.Get<String>() == "B");
 					fieldAV.Dispose();
 					fieldStrV.Dispose();
+
+					var fieldSA = typeInfo.GetField("sA").Value;
+					var fieldSStr = typeInfo.GetField("sStr").Value;
+					var fieldSAV = fieldSA.GetValueReference(null).Value;
+					var fieldSStrV = fieldSStr.GetValueReference(null).Value;
+					Test.Assert(fieldSAV.Get<int32>() == 234);
+					Test.Assert(fieldSStrV.Get<String>() == "AA");
+					res = methodInfo.Invoke(.(), fieldSAV, fieldSStrV).Value;
+					Test.Assert(fieldSAV.Get<int32>() == 1234);
+					Test.Assert(fieldSStrV.Get<String>() == "B");
+					Test.Assert(ClassA.sA == 1234);
+					Test.Assert(ClassA.sStr == "B");
+					res.Dispose();
+					fieldSAV.Dispose();
+					fieldSStrV.Dispose();
+
 				case 2:
 					Test.Assert(methodInfo.Name == "MemberMethodA");
 					var result = methodInfo.Invoke(ca, 100, (int32)20, 3.0f).Get();

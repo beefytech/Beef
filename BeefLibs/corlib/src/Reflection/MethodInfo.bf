@@ -105,12 +105,12 @@ namespace System.Reflection
 
 					if (fieldType.IsStruct)
 					{
-						SplatArg((TypeInstance)fieldType, (uint8*)ptr + fieldData.mDataOffset);
+						SplatArg((TypeInstance)fieldType, (uint8*)ptr + (int)fieldData.mData);
 					}
 					else
 					{
 						ffiParamList.Add(FFIType.Get(fieldType, null, null));
-						ffiArgList.Add((uint8*)ptr + fieldData.mDataOffset);
+						ffiArgList.Add((uint8*)ptr + (int)fieldData.mData);
 					}
 				}
 			}
@@ -387,12 +387,12 @@ namespace System.Reflection
 
 					if (fieldType.IsStruct)
 					{
-						SplatArg((TypeInstance)fieldType, (uint8*)ptr + fieldData.mDataOffset);
+						SplatArg((TypeInstance)fieldType, (uint8*)ptr + (int)fieldData.mData);
 					}
 					else
 					{
 						ffiParamList.Add(FFIType.Get(fieldType, null, null));
-						ffiArgList.Add((uint8*)ptr + fieldData.mDataOffset);
+						ffiArgList.Add((uint8*)ptr + (int)fieldData.mData);
 					}
 				}
 			}

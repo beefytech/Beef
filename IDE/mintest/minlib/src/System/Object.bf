@@ -478,7 +478,7 @@ namespace System
 			for (var field in typeInst.GetFields())
 			{
 				if (str == field.[Friend]mFieldData.mName)
-					return .Ok(*((T*)(&field.[Friend]mFieldData.mConstValue)));
+					return .Ok(*((T*)(&field.[Friend]mFieldData.mData)));
 			}
 
 			return .Err;

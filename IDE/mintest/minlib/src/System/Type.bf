@@ -246,12 +246,27 @@ namespace System
             }
         }
 
-		public bool IsBoxedStructPtr
+		public Type BoxedPtrType
 		{
-		    get
-		    {
-		        return (mTypeFlags & (TypeFlags.Boxed | TypeFlags.Pointer)) == TypeFlags.Boxed | TypeFlags.Pointer;
-		    }
+			get
+			{
+				if (!mTypeFlags.HasFlag(.Boxed))
+					return null;
+
+				if (mTypeFlags.HasFlag(.Pointer))
+				{
+					return UnderlyingType;
+				}
+
+				let underyingType = UnderlyingType;
+				if (var genericTypeInstance = underyingType as SpecializedGenericType)
+				{
+					if (genericTypeInstance.UnspecializedType == typeof(Pointer<>))
+						return genericTypeInstance.GetGenericArg(0);
+				}
+
+				return null;
+			}
 		}
 
 		public bool IsEnum
@@ -469,7 +484,7 @@ namespace System
 		{
 		    return FieldInfo.Enumerator(null, bindingFlags);
 		}
-
+		
 		public override void ToString(String strBuffer)
 		{
 			GetFullName(strBuffer);
@@ -531,7 +546,8 @@ namespace System
 		Char16,
 	    Char32,
 	    Float,
-	    Double,         
+	    Double,
+		Float2,
 	    Object,
 	    Interface,
 	    Struct,
@@ -558,8 +574,7 @@ namespace System.Reflection
         public struct FieldData
         {
             public String mName;
-            public int64 mConstValue;
-            public int32 mDataOffset;
+            public int64 mData;
             public TypeId mFieldTypeId;
             public FieldFlags mFlags;
             public int32 mCustomAttributesIdx;
@@ -708,6 +723,12 @@ namespace System.Reflection
 				}
 				strBuffer.Append(')');
 			}
+			else if (mTypeFlags.HasFlag(.Boxed))
+			{
+				strBuffer.Append("boxed ");
+				let ut = UnderlyingType;
+				ut.GetFullName(strBuffer);
+			}
 			else
 			{
 				if (mOuterType != 0)
@@ -720,8 +741,9 @@ namespace System.Reflection
 					if (!String.IsNullOrEmpty(mNamespace))
 		            	strBuffer.Append(mNamespace, ".");
 				}
-				
-				strBuffer.Append(mName);
+
+				if (mName != null)
+					strBuffer.Append(mName);
 			}
         }
 
@@ -744,7 +766,7 @@ namespace System.Reflection
 		public override FieldInfo.Enumerator GetFields(BindingFlags bindingFlags = cDefaultLookup)
 		{
 		    return FieldInfo.Enumerator(this, bindingFlags);
-		}
+		}		
     }
 
 	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
@@ -852,6 +874,14 @@ namespace System.Reflection
     {
         TypeId mUnspecializedType;
         TypeId* mResolvedTypeRefs;
+
+		public Type UnspecializedType
+		{
+			get
+			{
+				return Type.[Friend]GetType(mUnspecializedType);
+			}
+		}
 
 		public override int32 GenericParamCount
 		{

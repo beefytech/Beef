@@ -24,7 +24,7 @@ namespace System.Reflection
 	    {
 	        get
 	        {
-	            return mFieldData.mDataOffset;
+	            return (int32)mFieldData.mData;
 	        }
 	    }
 
@@ -64,7 +64,7 @@ namespace System.Reflection
 	        }
 
 	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
-	        void* fieldDataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + mFieldData.mDataOffset + dataOffsetAdjust;
+	        void* fieldDataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + (int)mFieldData.mData + dataOffsetAdjust;
 
 			if (value == null)
 			{
@@ -123,7 +123,7 @@ namespace System.Reflection
 
 		    Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 		    
-		    void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + mFieldData.mDataOffset + dataOffsetAdjust;
+		    void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + (int)mFieldData.mData + dataOffsetAdjust;
 
 			if (value.VariantType != fieldType)
 				return .Err;//("Invalid type");
@@ -158,19 +158,37 @@ namespace System.Reflection
 	    {
 	        value = default(TMember);
 
-	        Type tTarget;
-	        void* targetDataAddr = GetDataPtrAndType(target, out tTarget);
+			void* targetDataAddr;
+			if (target == null)
+			{
+				if (mFieldData.mFlags.HasFlag(FieldFlags.Const))
+				{
+					// Unhandled
+					return .Err;
+				}
+
+				if (!mFieldData.mFlags.HasFlag(FieldFlags.Static))
+					return .Err;
+
+				targetDataAddr = null;
+			}
+			else
+			{
+				Type tTarget;
+				targetDataAddr = GetDataPtrAndType(target, out tTarget);
+
+				if (!tTarget.IsSubtypeOf(mTypeInstance))
+				    return .Err; //"Invalid type");
+			}
 			
 	        Type tMember = typeof(TMember);
 
-	        targetDataAddr = (uint8*)targetDataAddr + mFieldData.mDataOffset;
+	        targetDataAddr = (uint8*)targetDataAddr + (int)mFieldData.mData;
 	        
 	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
 			if (tMember.[Friend]mTypeCode == TypeCode.Object)
 			{
-				if (!tTarget.IsSubtypeOf(mTypeInstance))
-					Runtime.FatalError();
 				value = *(TMember*)targetDataAddr;
 			}
 			else if (fieldType.[Friend]mTypeCode == tMember.[Friend]mTypeCode)
@@ -189,13 +207,29 @@ namespace System.Reflection
 		{
 			Variant value = Variant();
 
-			Type tTarget;
-			void* targetDataAddr = GetDataPtrAndType(target, out tTarget);
+			void* targetDataAddr;
+			if (target == null)
+			{
+				if (mFieldData.mFlags.HasFlag(FieldFlags.Const))
+				{
+					return Variant.Create(FieldType, &mFieldData.mData);
+				}
 
-			if (!tTarget.IsSubtypeOf(mTypeInstance))
-			    Runtime.FatalError("Invalid type");   
+				if (!mFieldData.mFlags.HasFlag(FieldFlags.Static))
+					return .Err;
 
-			targetDataAddr = (uint8*)targetDataAddr + mFieldData.mDataOffset;
+				targetDataAddr = null;
+			}
+			else
+			{
+				Type tTarget;
+				targetDataAddr = GetDataPtrAndType(target, out tTarget);
+
+				if (!tTarget.IsSubtypeOf(mTypeInstance))
+				    return .Err; //Invalid type;
+			}
+
+			targetDataAddr = (uint8*)targetDataAddr + (int)mFieldData.mData;
 
 			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
@@ -220,13 +254,29 @@ namespace System.Reflection
 		{
 			Variant value = Variant();
 
-			Type tTarget;
-			void* targetDataAddr = GetDataPtrAndType(target, out tTarget);
+			void* targetDataAddr;
+			if (target == null)
+			{
+				if (mFieldData.mFlags.HasFlag(FieldFlags.Const))
+				{
+					return Variant.Create(FieldType, &mFieldData.mData);
+				}
 
-			if (!tTarget.IsSubtypeOf(mTypeInstance))
-			    Runtime.FatalError("Invalid type");   
+				if (!mFieldData.mFlags.HasFlag(FieldFlags.Static))
+					return .Err;
 
-			targetDataAddr = (uint8*)targetDataAddr + mFieldData.mDataOffset;
+				targetDataAddr = null;
+			}
+			else
+			{
+				Type tTarget;
+				targetDataAddr = GetDataPtrAndType(target, out tTarget);
+
+				if (!tTarget.IsSubtypeOf(mTypeInstance))
+				    return .Err; //Invalid type;
+			}
+
+			targetDataAddr = (uint8*)targetDataAddr + (int)mFieldData.mData;
 
 			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
@@ -235,48 +285,6 @@ namespace System.Reflection
 				typeCode = fieldType.UnderlyingType.[Friend]mTypeCode;
 
 			value = Variant.CreateReference(fieldType, targetDataAddr);
-
-			return value;
-		}
-
-
-		public Result<Variant> GetValue()
-		{
-			Variant value = Variant();
-
-			//TODO: Assert static
-
-			if (mFieldData.mFlags.HasFlag(FieldFlags.Const))
-			{
-				return Variant.Create(FieldType, &mFieldData.mConstValue);
-			}
-
-			ThrowUnimplemented();
-
-			//Type tTarget;
-#unwarn
-			void* targetDataAddr = (void*)(int)mFieldData.mConstValue;
-
-			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
-			value.[Friend]mStructType = (int)Internal.UnsafeCastToPtr(fieldType);
-
-			TypeCode typeCode = fieldType.[Friend]mTypeCode;
-			if (typeCode == TypeCode.Enum)
-				typeCode = fieldType.UnderlyingType.[Friend]mTypeCode;
-			
-		    if (typeCode == TypeCode.Int32)
-		    {
-		        *(int32*)&value.[Friend]mData = *(int32*)targetDataAddr;
-		    }
-			else if (typeCode == TypeCode.Object)
-		    {
-				value.[Friend]mStructType = 0;
-		        value.[Friend]mData = (int)targetDataAddr;
-		    }
-		    else
-		    {
-		        return .Err;
-		    }
 
 			return value;
 		}

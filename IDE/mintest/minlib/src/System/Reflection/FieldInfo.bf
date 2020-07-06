@@ -24,7 +24,7 @@ namespace System.Reflection
 	    {
 	        get
 	        {
-	            return mFieldData.mDataOffset;
+	            return (int32)mFieldData.mData;
 	        }
 	    }
 
@@ -64,7 +64,7 @@ namespace System.Reflection
 	        }
 
 	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
-	        void* fieldDataAddr = ((uint8*)(void*)obj) + mFieldData.mDataOffset + dataOffsetAdjust;
+	        void* fieldDataAddr = ((uint8*)(void*)obj) + mFieldData.mData + dataOffsetAdjust;
 
 			Type rawValueType = value.[Friend]RawGetType();
 			void* valueDataAddr = ((uint8*)(void*)value) + rawValueType.[Friend]mMemberDataOffset;
@@ -123,7 +123,7 @@ namespace System.Reflection
 
 		    Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 		    
-		    void* dataAddr = ((uint8*)(void*)obj) + mFieldData.mDataOffset + dataOffsetAdjust;
+		    void* dataAddr = ((uint8*)(void*)obj) + mFieldData.mData + dataOffsetAdjust;
 
 			if (value.VariantType != fieldType)
 				return .Err;//("Invalid type");
@@ -175,7 +175,7 @@ namespace System.Reflection
 			
 	        Type tMember = typeof(TMember);
 
-	        targetDataAddr = (uint8*)targetDataAddr + mFieldData.mDataOffset;
+	        targetDataAddr = (uint8*)targetDataAddr + mFieldData.mData;
 	        
 	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
@@ -207,7 +207,7 @@ namespace System.Reflection
 			if (!tTarget.IsSubtypeOf(mTypeInstance))
 			    Runtime.FatalError("Invalid type");   
 
-			targetDataAddr = (uint8*)targetDataAddr + mFieldData.mDataOffset;
+			targetDataAddr = (uint8*)targetDataAddr + mFieldData.mData;
 
 			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 
@@ -236,14 +236,14 @@ namespace System.Reflection
 
 			if (mFieldData.mFlags.HasFlag(FieldFlags.Const))
 			{
-				return Variant.Create(FieldType, &mFieldData.mConstValue);
+				return Variant.Create(FieldType, &mFieldData.mData);
 			}
 
 			ThrowUnimplemented();
 
 			//Type tTarget;
 #unwarn
-			void* targetDataAddr = (void*)(int)mFieldData.mConstValue;
+			void* targetDataAddr = (void*)(int)mFieldData.mData;
 
 			Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
 			value.[Friend]mStructType = (int)Internal.UnsafeCastToPtr(fieldType);

@@ -5761,8 +5761,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			{
 				emptyValueType,
 				payloadNameConst, // mName
-				GetConstValue(0, longType), // mConstValue
-				GetConstValue(0, intType), // mDataOffset
+				GetConstValue(0, longType), // mData				
 				GetConstValue(payloadType->mTypeId, typeIdType), // mFieldTypeId			
 				GetConstValue(FieldFlags_SpecialName | FieldFlags_EnumPayload, shortType), // mFlags
 				GetConstValue(-1, intType), // mCustomAttributesIdx
@@ -5776,9 +5775,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		SizedArray<BfIRValue, 8> dscrFieldVals =
 		{
 			emptyValueType,
-			dscrNameConst, // mName
-			GetConstValue(0, longType), // mConstValue
-			GetConstValue(BF_ALIGN(payloadType->mSize, dscrType->mAlign), intType), // mDataOffset
+			dscrNameConst, // mName			
+			GetConstValue(BF_ALIGN(payloadType->mSize, dscrType->mAlign), longType), // mData
 			GetConstValue(dscrType->mTypeId, typeIdType), // mFieldTypeId			
 			GetConstValue(FieldFlags_SpecialName | FieldFlags_EnumDiscriminator, shortType), // mFlags
 			GetConstValue(-1, intType), // mCustomAttributesIdx
@@ -5818,7 +5816,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			fieldFlags = (FieldFlags)(fieldFlags | FieldFlags_Const);
 
 		int customAttrIdx = _HandleCustomAttrs(fieldInstance->mCustomAttributes);
-		BfIRValue constValue = GetConstValue(0, longType);
+		BfIRValue constValue;
 		if (fieldInstance->GetFieldDef()->mIsConst)
 		{			
 			if (fieldInstance->mConstIdx != -1)
@@ -5826,14 +5824,24 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
 				constValue = mBfIRBuilder->CreateConst(BfTypeCode_UInt64, constant->mUInt64);
 			}
-		}		
+		}
+		else if (fieldInstance->GetFieldDef()->mIsStatic)
+		{
+			auto refVal = ReferenceStaticField(fieldInstance);
+			if (refVal.IsAddr())
+				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_Int64);
+		}
+		
+		if (!constValue)
+		{
+			constValue = GetConstValue(fieldInstance->mDataOffset, longType);
+		}
 
 		SizedArray<BfIRValue, 8> fieldVals =
 			{
 				emptyValueType,
 				fieldNameConst, // mName
-				constValue, // mConstValue
-				GetConstValue(fieldInstance->mDataOffset, intType), // mDataOffset
+				constValue, // mConstValue				
 				GetConstValue(typeId, typeIdType), // mFieldTypeId			
 				GetConstValue(fieldFlags, shortType), // mFlags
 				GetConstValue(customAttrIdx, intType), // mCustomAttributesIdx

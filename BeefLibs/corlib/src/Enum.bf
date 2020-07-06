@@ -8,7 +8,7 @@ namespace System
 		{
 			for (var field in type.GetFields())
 			{
-				if (field.[Friend]mFieldData.[Friend]mConstValue == iVal)
+				if (field.[Friend]mFieldData.[Friend]mData == iVal)
 				{
 					strBuffer.Append(field.Name);
 					return;
@@ -24,7 +24,7 @@ namespace System
 			for (var field in typeInst.GetFields())
 			{
 				if (str.Equals(field.[Friend]mFieldData.mName, ignoreCase))
-					return .Ok(*((T*)(&field.[Friend]mFieldData.mConstValue)));
+					return .Ok(*((T*)(&field.[Friend]mFieldData.mData)));
 			}
 
 			return .Err;
