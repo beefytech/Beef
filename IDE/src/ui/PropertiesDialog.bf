@@ -1639,14 +1639,13 @@ namespace IDE.ui
             }
             else
             {
-                //Array enumValues = ;
                 for (var enumValue in ((TypeInstance)valueType).GetFields())
                 {
 					var enumStr = scope String();
 					enumStr.Append(enumValue.Name);
 					GetEnumDisp(enumStr);
                     var menuItem = menu.AddItem(enumStr);
-					Variant newVariant = enumValue.GetValue();
+					Variant newVariant = enumValue.GetValue(null);
                     menuItem.mOnMenuItemSelected.Add(new (evt) => { ChangeProperty(propEntries, newVariant); });
                 }
             }
