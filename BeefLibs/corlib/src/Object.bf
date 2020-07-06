@@ -94,10 +94,20 @@ namespace System
         
         public virtual void ToString(String strBuffer)
         {
-            //strBuffer.Set(stack string(GetType().mName));
-            RawGetType().GetName(strBuffer);
-			strBuffer.Append("@");
-			((int)Internal.UnsafeCastToPtr(this)).ToString(strBuffer, "X", null);
+			let t = RawGetType();
+			if (t.IsBoxedStructPtr)
+			{
+				let ti = (TypeInstance)t;
+				let innerPtr = *(void**)((uint8*)Internal.UnsafeCastToPtr(this) + ti.[Friend]mMemberDataOffset);
+				strBuffer.Append("(");
+				ti.UnderlyingType.GetFullName(strBuffer);
+				strBuffer.AppendF("*)0x{0:A}", (uint)(void*)innerPtr);
+				return;
+			}
+            t.GetFullName(strBuffer);
+			strBuffer.Append("@0x");
+
+			((int)Internal.UnsafeCastToPtr(this)).ToString(strBuffer, "A", null);
         }
 
 		private static void ToString(Object obj, String strBuffer)
