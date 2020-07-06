@@ -13,7 +13,7 @@ Description = "Beef IDE"
 Company = "BeefyTech LLC"
 Product = "Beef IDE"
 Copyright = "Copyright 2019 BeefyTech"
-FileVersion = "0.42.5"
+FileVersion = "0.42.6"
 ProductVersion = "0000000000000000"
 
 [Configs.Debug.Win32]
@@ -24,7 +24,7 @@ OtherLinkFlags = ""
 TargetDirectory = "$(WorkspaceDir)/dist"
 TargetName = "BeefIDE_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib"
-DebugCommandArguments = "-proddir=C:\\Beef\\IDE"
+DebugCommandArguments = "-proddir=C:\\Beef\\IDEHelper\\Tests"
 DebugWorkingDirectory = "c:\\Beef"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 
@@ -36,7 +36,7 @@ OtherLinkFlags = ""
 TargetDirectory = "$(WorkspaceDir)/dist"
 TargetName = "BeefIDE"
 OtherLinkFlags = "Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib Beef042RT64.lib IDEHelper64.lib BeefySysLib64.lib"
-DebugCommandArguments = "-proddir=C:\\Beef\\IDE\\mintest"
+DebugCommandArguments = "-proddir=C:\\Beef\\IDE\\Tests\\Rando"
 DebugWorkingDirectory = "$(ProjectDir)\\dist"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 
@@ -48,7 +48,7 @@ OtherLinkFlags = ""
 TargetDirectory = "$(WorkspaceDir)/dist"
 TargetName = "BeefIDE_d2"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib BeefySysLib64_d.lib wsock32.lib"
-DebugCommandArguments = "-workspace=C:\\Beef\\IDE\\mintest"
+DebugCommandArguments = "-proddir=C:\\Beef\\IDE\\mintest"
 DebugWorkingDirectory = "$(ProjectDir)\\dist"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 

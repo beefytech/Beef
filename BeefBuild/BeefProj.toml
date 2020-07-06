@@ -7,7 +7,7 @@ StartupObject = "BeefBuild.Program"
 
 [Platform.Windows]
 Description = "BeefBuild"
-FileVersion = "0.42.5"
+FileVersion = "0.42.6"
 
 [Configs.Debug.Win32]
 TargetName = ""
@@ -27,9 +27,9 @@ PreprocessorMacros = ["DEBUG", "CLI"]
 [Configs.Debug.macOS]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "$(ProjectName)_d"
-PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs_d.txt\", \"IDEHelperLibs\")"]
 OtherLinkFlags = "./libBeefRT_d.a ./libIDEHelper_d.dylib ./libBeefySysLib_d.dylib $(Var IDEHelperLibs) -Wl,-rpath -Wl,@executable_path"
 CLibType = "Dynamic"
+PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs_d.txt\", \"IDEHelperLibs\")"]
 DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
 DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
 PreprocessorMacros = ["DEBUG", "CLI"]
@@ -37,27 +37,27 @@ PreprocessorMacros = ["DEBUG", "CLI"]
 [Configs.Debug.Linux64]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "$(ProjectName)_d"
-PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs_d.txt\", \"IDEHelperLibs\")"]
 OtherLinkFlags = "$(LinkFlags) ./libIDEHelper_d.so ./libBeefySysLib_d.so $(Var IDEHelperLibs) -Wl,-rpath -Wl,$ORIGIN"
 CLibType = "Dynamic"
+PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs_d.txt\", \"IDEHelperLibs\")"]
 DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
 DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
 PreprocessorMacros = ["DEBUG", "CLI"]
 
 [Configs.Release.macOS]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
-PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs.txt\", \"IDEHelperLibs\")"]
 OtherLinkFlags = "./libBeefRT.a ./libIDEHelper.dylib ./libBeefySysLib.dylib $(Var IDEHelperLibs) -Wl,-rpath -Wl,@executable_path"
 CLibType = "Dynamic"
+PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs.txt\", \"IDEHelperLibs\")"]
 DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
 DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
 PreprocessorMacros = ["CLI"]
 
 [Configs.Release.Linux64]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
-PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs.txt\", \"IDEHelperLibs\")"]
 OtherLinkFlags = "$(LinkFlags) ./libIDEHelper.so ./libBeefySysLib.so $(Var IDEHelperLibs) -Wl,-rpath -Wl,$ORIGIN"
 CLibType = "Dynamic"
+PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs.txt\", \"IDEHelperLibs\")"]
 DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
 DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
 PreprocessorMacros = ["CLI"]
