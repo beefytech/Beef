@@ -5756,6 +5756,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			return NULL;
 		if (elementType->IsVar())
 			return elementType;
+		elementType = FixIntUnknown(elementType);
 		return CreateRefType(elementType, refType->mRefKind);
 	}
 

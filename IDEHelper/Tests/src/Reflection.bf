@@ -241,7 +241,7 @@ namespace Tests
 
 					var res = methodInfo.Invoke(.(), fieldAV, fieldStrV).Value;
 					Test.Assert(ca.mA == 1123);
-					Test.Assert(ca.mB == "B");
+					Test.Assert(ca.mStr == "B");
 					var sa = res.Get<StructA>();
 					Test.Assert(sa.mA == 12);
 					Test.Assert(sa.mB == 34);
@@ -295,9 +295,12 @@ namespace Tests
 					Test.Assert(result.Get<int>() == 2123);
 					result.Dispose();
 				case 4:
-					Test.Assert(methodInfo.Name == "__BfCtor");
+					Test.Assert(methodInfo.Name == "__BfStaticCtor");
 					Test.Assert(methodInfo.IsConstructor);
 				case 5:
+					Test.Assert(methodInfo.Name == "__BfCtor");
+					Test.Assert(methodInfo.IsConstructor);
+				case 6:
 					Test.FatalError(); // Shouldn't have any more
 				}
 
