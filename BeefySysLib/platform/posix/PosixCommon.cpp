@@ -542,13 +542,21 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
-{    
-	char* relPath = argv[0];
-
-	char* cwd = getcwd(NULL, 0);
-	gExePath = GetAbsPath(relPath, cwd);
-	free(cwd);
-
+{	
+    char exePath[PATH_MAX] = { 0 };
+    int nchar = readlink("/proc/self/exe", exePath, PATH_MAX);
+    if (nchar > 0)
+    {
+        gExePath = exePath;
+    }
+    else
+    {
+        char* relPath = argv[0];
+        char* cwd = getcwd(NULL, 0);
+        gExePath = GetAbsPath(relPath, cwd);
+        free(cwd);
+    }    
+	
 	for (int i = 0; i < argc; i++)
 	{
 		if (i != 0)
