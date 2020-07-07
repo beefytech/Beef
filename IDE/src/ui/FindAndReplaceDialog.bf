@@ -244,7 +244,11 @@ namespace IDE.ui
 			var fileTypes = scope String();
 			mFileTypesCombo.GetLabel(fileTypes);
 			for (var fileType in fileTypes.Split(';'))
-				searchOptions.mFileTypes.Add(new String(fileType));
+			{
+				let fileType = new String(fileType);
+				fileType.Trim();
+				searchOptions.mFileTypes.Add(fileType);
+			}
 
 			searchOptions.mRecurseDirectories = mRecurseDirCheckbox.Checked;
 			searchOptions.mMatchCase = mMatchCaseCheckbox.Checked;
