@@ -2590,6 +2590,31 @@ int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, 
 	return Hash(resolvedType, ctx);
 }
 
+BfTypeDef* BfResolvedTypeSet::FindRootCommonOuterType(BfTypeDef* outerType, LookupContext* ctx, BfTypeInstance*& outOuterTypeInstance)
+{
+	BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
+	if ((commonOuterType == NULL) && (outerType != NULL))
+	{
+		auto staticSearch = ctx->mModule->GetStaticSearch();
+		if (staticSearch != NULL)
+		{
+			for (auto staticTypeInst : staticSearch->mStaticTypes)
+			{
+				auto foundOuterType = ctx->mModule->FindCommonOuterType(staticTypeInst->mTypeDef, outerType);
+				if ((foundOuterType != NULL) &&
+					((commonOuterType == NULL) || (foundOuterType->mNestDepth > commonOuterType->mNestDepth)))
+				{
+					commonOuterType = foundOuterType;
+					outOuterTypeInstance = staticTypeInst;
+				}
+			}
+		}
+	}
+	if (outOuterTypeInstance != NULL)
+		ctx->mRootOuterTypeInstance = outOuterTypeInstance;
+	return commonOuterType;
+}
+
 int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags)
 {
 	if ((typeRef == ctx->mRootTypeRef) && (ctx->mRootTypeDef != NULL) &&
@@ -2598,7 +2623,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		BfTypeDef* typeDef = ctx->mRootTypeDef;
 	
 		int hashVal = typeDef->mHash;
-
+		
 		if (typeDef->mGenericParamDefs.size() != 0)
 		{
 			auto checkTypeInstance = ctx->mModule->mCurTypeInstance;
@@ -2606,14 +2631,38 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 				checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
 
 			auto outerType = ctx->mModule->mSystem->GetOuterTypeNonPartial(typeDef);
-			BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
+			
+			BfTypeDef* commonOuterType;
+			if (typeRef == ctx->mRootTypeRef)
+				commonOuterType = FindRootCommonOuterType(outerType, ctx, checkTypeInstance);
+			else
+				commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
+
+			if ((commonOuterType == NULL) && (outerType != NULL))
+			{
+				auto staticSearch = ctx->mModule->GetStaticSearch();
+				if (staticSearch != NULL)
+				{
+					for (auto staticTypeInst : staticSearch->mStaticTypes)
+					{
+						auto foundOuterType = ctx->mModule->FindCommonOuterType(staticTypeInst->mTypeDef, outerType);
+						if ((foundOuterType != NULL) &&
+							((commonOuterType == NULL) || (foundOuterType->mNestDepth > commonOuterType->mNestDepth)))
+						{
+							commonOuterType = foundOuterType;
+							checkTypeInstance = staticTypeInst;
+						}
+					}
+				}
+			}
+
 			if ((commonOuterType == NULL) || (commonOuterType->mGenericParamDefs.size() == 0))
 			{
 				ctx->mModule->Fail("Generic arguments expected", typeRef);
 				ctx->mFailed = true;
 				return 0;
 			}
-
+			
 			BF_ASSERT(checkTypeInstance->IsGenericTypeInstance());
 			auto curGenericTypeInst = (BfTypeInstance*)checkTypeInstance;
 			int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
@@ -2688,12 +2737,18 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		}
 		
 		// Do we need to add generic arguments from an in-context outer class?
-		if ((elementTypeDef->mOuterType != NULL) && (ctx->mModule->mCurTypeInstance != NULL) && (ctx->mModule->mCurTypeInstance->IsGenericTypeInstance()))
+		if ((elementTypeDef->mOuterType != NULL) && (ctx->mModule->mCurTypeInstance != NULL))
 		{
-			BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, elementTypeDef->mOuterType);
-			if (commonOuterType != NULL)
+			BfTypeInstance* checkTypeInstance = ctx->mModule->mCurTypeInstance;
+			BfTypeDef* commonOuterType;
+			if (typeRef == ctx->mRootTypeRef)
+				commonOuterType = FindRootCommonOuterType(elementTypeDef->mOuterType, ctx, checkTypeInstance);
+			else
+				commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, elementTypeDef->mOuterType);
+			
+			if ((commonOuterType != NULL) && (checkTypeInstance->IsGenericTypeInstance()))
 			{
-				auto parentTypeInstance = (BfTypeInstance*)ctx->mModule->mCurTypeInstance;
+				auto parentTypeInstance = checkTypeInstance;
 				int numParentGenericParams = (int)commonOuterType->mGenericParamDefs.size();
 				for (int i = 0; i < numParentGenericParams; i++)			
 					hashVal = ((hashVal ^ (Hash(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i], ctx))) << 5) - hashVal;
@@ -3252,7 +3307,11 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 }
 
 bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx)
-{	
+{
+	BfTypeInstance* rootOuterTypeInstance = ctx->mModule->mCurTypeInstance;
+	if ((rhsTypeDef == ctx->mRootTypeDef) && (ctx->mRootOuterTypeInstance != NULL))
+		rootOuterTypeInstance = ctx->mRootOuterTypeInstance;
+
 	auto rhsGenericTypeInstRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(rhs);
 	if (rhsGenericTypeInstRef == NULL)
 	{
@@ -3268,15 +3327,16 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 			}
 		}
 
-		if ((rhsTypeDef != NULL) && (ctx->mModule->mCurTypeInstance != NULL))
+		if ((rhsTypeDef != NULL) && (rootOuterTypeInstance != NULL))
 		{
 			// See if we're referring to an non-generic inner type where the outer type is generic
 			if (lhsGenericType->mTypeDef != rhsTypeDef)
 				return false;
-			BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, rhsTypeDef->mOuterType);
+
+			BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(rootOuterTypeInstance->mTypeDef, rhsTypeDef->mOuterType);
 			if (commonOuterType != NULL)
 			{
-				BfTypeInstance* checkTypeInstance = ctx->mModule->mCurTypeInstance;
+				BfTypeInstance* checkTypeInstance = rootOuterTypeInstance;
 				if (checkTypeInstance->IsBoxed())
 					checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
 				BF_ASSERT(checkTypeInstance->IsGenericTypeInstance());
@@ -3307,12 +3367,12 @@ bool BfResolvedTypeSet::GenericTypeEquals(BfTypeInstance* lhsGenericType, BfType
 	int genericParamOffset = 0;
 
 	// Do we need to add generic arguments from an in-context outer class?
-	if ((elementTypeDef->mOuterType != NULL) && (ctx->mModule->mCurTypeInstance != NULL) && (ctx->mModule->mCurTypeInstance->IsGenericTypeInstance()))
+	if ((elementTypeDef->mOuterType != NULL) && (rootOuterTypeInstance != NULL) && (rootOuterTypeInstance->IsGenericTypeInstance()))
 	{
-		BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, elementTypeDef->mOuterType);
+		BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(rootOuterTypeInstance->mTypeDef, elementTypeDef->mOuterType);
 		if (commonOuterType != NULL)
 		{
-			auto parentTypeInstance = (BfTypeInstance*)ctx->mModule->mCurTypeInstance;
+			auto parentTypeInstance = rootOuterTypeInstance;
 			genericParamOffset = (int) commonOuterType->mGenericParamDefs.size();
 			for (int i = 0; i < genericParamOffset; i++)
 				for (auto genericArg : parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments)

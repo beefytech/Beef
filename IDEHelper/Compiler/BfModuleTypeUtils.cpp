@@ -5257,7 +5257,7 @@ void BfModule::HandleMethodGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDe
 		mCompiler->mResolvePassData->HandleMethodGenericParam(refNode, typeDef, methodDef, methodGenericParamIdx);
 }
 
-BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, BfPopulateType populateType, bool ignoreErrors)
+BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, BfPopulateType populateType, bool ignoreErrors, int numGenericArgs)
 {
 	BfTypeDef* nestedTypeDef = NULL;
 
@@ -5315,7 +5315,14 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 							if ((!isFailurePass) && (!CheckProtection(latestCheckType->mProtection, allowProtected, allowPrivate)))
 								continue;
 
-							if (checkType->mName->mString == findName)
+							if (checkType->mProject != checkOuterType->mTypeDef->mProject)
+							{
+								auto visibleProjectSet = GetVisibleProjectSet();
+								if ((visibleProjectSet == NULL) || (!visibleProjectSet->Contains(checkType->mProject)))
+									continue;
+							}
+
+							if ((checkType->mName->mString == findName) && (checkType->GetSelfGenericParamCount() == numGenericArgs))
 							{
 								if (isFailurePass)
 								{
@@ -5696,7 +5703,7 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 	if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
 	{		
 		BfAutoParentNodeEntry autoParentNodeEntry(this, genericTypeRef);
-		auto type = ResolveTypeRef(qualifiedTypeRef, BfPopulateType_TypeDef);
+		auto type = ResolveTypeRef(qualifiedTypeRef, BfPopulateType_TypeDef, BfResolveTypeRefFlag_None, numGenericParams);
 		if (type == NULL)
 			return NULL;
 		if (outType != NULL)
@@ -6676,6 +6683,28 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 				mSystem->FindTypeDef(findName, numGenericArgs, useTypeDef->mProject, checkNamespace, allowPrivate, &lookupCtx);
 		}
 	}
+
+	if (!lookupCtx.HasValidMatch())
+	{
+		auto staticSearch = GetStaticSearch();
+		if (staticSearch != NULL)
+		{
+			for (auto staticTypeInstance : staticSearch->mStaticTypes)
+			{
+				if (mSystem->FindTypeDef(findName, numGenericArgs, useTypeDef->mProject, staticTypeInstance->mTypeDef->mFullNameEx, false, &lookupCtx))
+				{
+					if (lookupCtx.HasValidMatch())
+						break;
+					
+					if (lookupCtx.mBestTypeDef->mProtection < BfProtection_Public)
+					{
+						protErrorTypeDef = lookupCtx.mBestTypeDef;
+						protErrorOuterType = staticTypeInstance;
+					}					
+				}
+			}
+		}
+	}
 	
 	if ((error != NULL) && (lookupCtx.mAmbiguousTypeDef != NULL))
 	{
@@ -7110,7 +7139,7 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 	return BfTypedValue();
 }
 
-BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
+BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags, int numGenericArgs)
 {
 	BP_ZONE("BfModule::ResolveTypeRef");
 
@@ -7183,7 +7212,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		auto namedTypeRef = BfNodeDynCastExact<BfNamedTypeReference>(typeRef);
 		auto directStrTypeRef = BfNodeDynCastExact<BfDirectStrTypeReference>(typeRef);
 		if (((namedTypeRef != NULL) && (namedTypeRef->mNameNode != NULL)) || (directStrTypeRef != NULL))
-		{			
+		{
 			StringT<128> findName;
 			if (namedTypeRef != NULL)
 				namedTypeRef->mNameNode->ToString(findName);
@@ -7392,10 +7421,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				}
 			}
 		}
-			
+		
 		if ((typeDef == NULL) && (mCurTypeInstance != NULL))
 		{
-			// Try searching within inner type				
+			// Try searching within inner type
 			auto checkOuterType = mCurTypeInstance;
 			while (checkOuterType != NULL)
 			{
@@ -7414,7 +7443,25 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				checkOuterType = GetOuterType(checkOuterType);
 			}
 		}
-			
+		
+		if (typeDef == NULL)
+		{
+			auto staticSearch = GetStaticSearch();
+			if (staticSearch != NULL)
+			{
+				for (auto staticTypeInst : staticSearch->mStaticTypes)
+				{
+					auto resolvedType = ResolveInnerType(staticTypeInst, typeRef, populateType, true);
+					if (resolvedType != NULL)
+					{
+						if (mCurTypeInstance != NULL)
+							AddDependency(staticTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
+						return ResolveTypeResult(typeRef, resolvedType, populateType, resolveFlags);
+					}
+				}
+			}
+		}
+
 		if (typeDef == NULL)
 		{
 #ifdef BF_AST_HAS_PARENT_MEMBER
@@ -7596,7 +7643,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
 
-		auto resolvedType = ResolveInnerType(leftType, qualifiedTypeRef->mRight, populateType);
+		auto resolvedType = ResolveInnerType(leftType, qualifiedTypeRef->mRight, populateType, false, numGenericArgs);
 		if ((resolvedType != NULL) && (mCurTypeInstance != NULL))
 			AddDependency(leftType, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
 		return ResolveTypeResult(typeRef, resolvedType, populateType, resolveFlags);
@@ -7787,15 +7834,18 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			return ResolveTypeResult(typeRef, primType, populateType, resolveFlags);
 		}
 
-		if ((mCurTypeInstance != NULL) && (typeDef->mGenericParamDefs.size() != 0))
+		BfTypeInstance* outerTypeInstance = lookupCtx.mRootOuterTypeInstance;
+		if (outerTypeInstance == NULL)
+			outerTypeInstance = mCurTypeInstance;
+		if ((outerTypeInstance != NULL) && (typeDef->mGenericParamDefs.size() != 0))
 		{
 			// Try to inherit generic params from current parent
 						
 			BfTypeDef* outerType = mSystem->GetCombinedPartial(typeDef->mOuterType);
 			BF_ASSERT(!outerType->mIsPartial);
-			if (TypeHasParentOrEquals(mCurTypeInstance->mTypeDef, outerType))
+			if (TypeHasParentOrEquals(outerTypeInstance->mTypeDef, outerType))
 			{
-				BfType* checkCurType = mCurTypeInstance;
+				BfType* checkCurType = outerTypeInstance;
 				if (checkCurType->IsBoxed())
 					checkCurType = checkCurType->GetUnderlyingType();
 				if (checkCurType->IsTypeAlias())
@@ -8012,24 +8062,23 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
-
+		
+		BfTypeInstance* outerTypeInstance = mCurTypeInstance;
+		
 		auto outerType = typeDef->mOuterType;
 		BfTypeDef* commonOuterType = NULL;
-		if (mCurTypeInstance != NULL)
+
+		int startDefGenericParamIdx = 0;
+		commonOuterType = BfResolvedTypeSet::FindRootCommonOuterType(outerType, &lookupCtx, outerTypeInstance);
+		if ((commonOuterType) && (outerTypeInstance->IsGenericTypeInstance()))
 		{
-			// Copy generic params for our parent type if the current type instance shares that parent type						
-			auto outerType = typeDef->mOuterType;
-			commonOuterType = FindCommonOuterType(mCurTypeInstance->mTypeDef, outerType);
-			if ((commonOuterType) && (mCurTypeInstance->IsGenericTypeInstance()))
-			{
-				int startDefGenericParamIdx = (int)commonOuterType->mGenericParamDefs.size();
-				auto parentTypeInstance = (BfTypeInstance*)mCurTypeInstance;
-				if (parentTypeInstance->IsTypeAlias())
-					parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
-				for (int i = 0; i < startDefGenericParamIdx; i++)
-					genericArgs.push_back(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
-			}
-		}
+			startDefGenericParamIdx = (int)commonOuterType->mGenericParamDefs.size();
+			auto parentTypeInstance = outerTypeInstance;
+			if (parentTypeInstance->IsTypeAlias())
+				parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
+			for (int i = 0; i < startDefGenericParamIdx; i++)
+				genericArgs.push_back(parentTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
+		}		
 
 		for (auto genericArgRef : genericArguments)
 		{
@@ -8080,13 +8129,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
-
-		int startDefGenericParamIdx = 0;
+		
 		genericTypeInst->mTypeDef = typeDef;
 
-		if ((commonOuterType != NULL) && (mCurTypeInstance->IsGenericTypeInstance()))
+		if ((commonOuterType != NULL) && (outerTypeInstance->IsGenericTypeInstance()))
 		{			
-			auto parentTypeInstance = (BfTypeInstance*)mCurTypeInstance;
+			auto parentTypeInstance = outerTypeInstance;
 			if (parentTypeInstance->IsTypeAlias())
 				parentTypeInstance = (BfTypeInstance*)GetOuterType(parentTypeInstance)->ToTypeInstance();
 			for (int i = 0; i < startDefGenericParamIdx; i++)

@@ -1694,13 +1694,13 @@ public:
 	void CheckIdentifierFixit(BfAstNode* node);
 	void TypeRefNotFound(BfTypeReference* typeRef, const char* appendName = NULL);
 	bool ValidateTypeWildcard(BfTypeReference* typeRef, bool isAttributeRef);
-	BfType* ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
+	BfType* ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0, int numGenericArgs = 0);
 	BfType* ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool resolveGenericParam = true);
 	BfType* ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeReference*>* genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	//BfType* ResolveTypeRef(BfIdentifierNode* identifier, const BfSizedArray<BfTypeReference*>& genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	BfType* ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType = BfPopulateType_Data);
 	BfType* ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& genericArgs, BfPopulateType populateType = BfPopulateType_Data);
-	BfType* ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false);
+	BfType* ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false, int numGenericArgs = 0);
 	BfType* ResolveInnerType(BfType* outerType, BfIdentifierNode* identifier, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false);
 	BfTypeDef* GetCombinedPartialTypeDef(BfTypeDef* type);
 	BfTypeInstance* GetOuterType(BfType* type);

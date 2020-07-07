@@ -2328,6 +2328,7 @@ public:
 		BfModule* mModule;
 		BfTypeReference* mRootTypeRef;
 		BfTypeDef* mRootTypeDef;		
+		BfTypeInstance* mRootOuterTypeInstance;
 		BfType* mResolvedType;		
 		BfResolveTypeRefFlags mResolveFlags;
 		bool mFailed;		
@@ -2336,7 +2337,8 @@ public:
 		LookupContext()
 		{
 			mRootTypeRef = NULL;
-			mRootTypeDef = NULL;			
+			mRootTypeDef = NULL;
+			mRootOuterTypeInstance = NULL;
 			mModule = NULL;
 			mResolvedType = NULL;
 			mFailed = false;
@@ -2348,6 +2350,7 @@ public:
 	};
 
 public:
+	static BfTypeDef* FindRootCommonOuterType(BfTypeDef* outerType, LookupContext* ctx, BfTypeInstance*& outCheckTypeInstance);
 	static BfVariant EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& constGenericParam);
 	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset);
 	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* typeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
