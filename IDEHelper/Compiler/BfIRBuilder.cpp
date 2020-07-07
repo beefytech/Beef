@@ -3544,75 +3544,77 @@ BfIRValue BfIRBuilder::CreateNumericCast(BfIRValue val, bool valIsSigned, BfType
 	FixTypeCode(typeCode);
 	if (val.IsConst())
 	{
-		auto constVal = GetConstantById(val.mId);
-		
-		// ? -> Int
-		if (IsInt(typeCode))
+		auto constVal = GetConstantById(val.mId);	
+		if (constVal->mTypeCode < BfTypeCode_Length)
 		{
-			uint64 val = 0;
-			
-			if ((typeCode == BfTypeCode_IntPtr) || (typeCode == BfTypeCode_UIntPtr))
+			// ? -> Int
+			if (IsInt(typeCode))
 			{
-				if (mModule->mSystem->mPtrSize == 4)
-					typeCode = (typeCode == BfTypeCode_IntPtr) ? BfTypeCode_Int32 :  BfTypeCode_UInt32;
-				else
-					typeCode = (typeCode == BfTypeCode_IntPtr) ? BfTypeCode_Int64 :  BfTypeCode_UInt64;
+				uint64 val = 0;
+
+				if ((typeCode == BfTypeCode_IntPtr) || (typeCode == BfTypeCode_UIntPtr))
+				{
+					if (mModule->mSystem->mPtrSize == 4)
+						typeCode = (typeCode == BfTypeCode_IntPtr) ? BfTypeCode_Int32 : BfTypeCode_UInt32;
+					else
+						typeCode = (typeCode == BfTypeCode_IntPtr) ? BfTypeCode_Int64 : BfTypeCode_UInt64;
+				}
+
+				// Int -> Int
+				if (IsInt(constVal->mTypeCode))
+				{
+					switch (typeCode)
+					{
+					case BfTypeCode_Int8: val = (int8)constVal->mInt64; break;
+					case BfTypeCode_Char8:
+					case BfTypeCode_UInt8: val = (uint8)constVal->mInt64; break;
+					case BfTypeCode_Int16: val = (int16)constVal->mInt64; break;
+					case BfTypeCode_Char16:
+					case BfTypeCode_UInt16: val = (uint16)constVal->mInt64; break;
+					case BfTypeCode_Int32: val = (int32)constVal->mInt64; break;
+					case BfTypeCode_Char32:
+					case BfTypeCode_UInt32: val = (uint32)constVal->mInt64; break;
+					case BfTypeCode_Int64: val = (uint64)(int64)constVal->mInt64; break;
+					case BfTypeCode_UInt64: val = (uint64)constVal->mUInt64; break;
+					default: break;
+					}
+				}
+				else // Float -> Int
+				{
+					switch (typeCode)
+					{
+					case BfTypeCode_Int8: val = (int8)constVal->mDouble; break;
+					case BfTypeCode_Char8:
+					case BfTypeCode_UInt8: val = (uint8)constVal->mDouble; break;
+					case BfTypeCode_Int16: val = (int16)constVal->mDouble; break;
+					case BfTypeCode_Char16:
+					case BfTypeCode_UInt16: val = (uint16)constVal->mDouble; break;
+					case BfTypeCode_Int32: val = (int32)constVal->mDouble; break;
+					case BfTypeCode_Char32:
+					case BfTypeCode_UInt32: val = (uint32)constVal->mDouble; break;
+					case BfTypeCode_Int64: val = (uint64)(int64)constVal->mDouble; break;
+					case BfTypeCode_UInt64: val = (uint64)constVal->mDouble; break;
+					default: break;
+					}
+				}
+
+				return CreateConst(typeCode, val);
 			}
 
-			// Int -> Int
+			// Int -> Float
 			if (IsInt(constVal->mTypeCode))
 			{
-				switch (typeCode)
-				{
-				case BfTypeCode_Int8: val = (int8)constVal->mInt64; break;
-				case BfTypeCode_Char8:
-				case BfTypeCode_UInt8: val = (uint8)constVal->mInt64; break;
-				case BfTypeCode_Int16: val = (int16)constVal->mInt64; break;
-				case BfTypeCode_Char16:
-				case BfTypeCode_UInt16: val = (uint16)constVal->mInt64; break;
-				case BfTypeCode_Int32: val = (int32)constVal->mInt64; break;
-				case BfTypeCode_Char32:
-				case BfTypeCode_UInt32: val = (uint32)constVal->mInt64; break;
-				case BfTypeCode_Int64: val = (uint64)(int64)constVal->mInt64; break;
-				case BfTypeCode_UInt64: val = (uint64)constVal->mUInt64; break;
-				default: break;
-				}
-			}
-			else // Float -> Int
-			{
-				switch (typeCode)
-				{
-				case BfTypeCode_Int8: val = (int8)constVal->mDouble; break;
-				case BfTypeCode_Char8:
-				case BfTypeCode_UInt8: val = (uint8)constVal->mDouble; break;
-				case BfTypeCode_Int16: val = (int16)constVal->mDouble; break;
-				case BfTypeCode_Char16:
-				case BfTypeCode_UInt16: val = (uint16)constVal->mDouble; break;
-				case BfTypeCode_Int32: val = (int32)constVal->mDouble; break;
-				case BfTypeCode_Char32:
-				case BfTypeCode_UInt32: val = (uint32)constVal->mDouble; break;
-				case BfTypeCode_Int64: val = (uint64)(int64)constVal->mDouble; break;
-				case BfTypeCode_UInt64: val = (uint64)constVal->mDouble; break;
-				default: break;
-				}
+				double val = 0;
+				if (IsSigned(constVal->mTypeCode))
+					val = (double)constVal->mInt64;
+				else
+					val = (double)constVal->mUInt64;
+				return CreateConst(typeCode, val);
 			}
 
-			return CreateConst(typeCode, val);
+			// Float -> Float
+			return CreateConst(typeCode, constVal->mDouble);
 		}
-
-		// Int -> Float
-		if (IsInt(constVal->mTypeCode))
-		{
-			double val = 0;
-			if (IsSigned(constVal->mTypeCode))
-				val = (double)constVal->mInt64;
-			else
-				val = (double)constVal->mUInt64;
-			return CreateConst(typeCode, val);
-		}
-		
-		// Float -> Float
-		return CreateConst(typeCode, constVal->mDouble);
 	}	
 	
 	auto retVal = WriteCmd(BfIRCmd_NumericCast, val, valIsSigned, typeCode);

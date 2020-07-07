@@ -1296,7 +1296,11 @@ void BfIRCodeGen::HandleNextCmd()
 			llvm::SmallVector<llvm::Constant*, 8> copyValues; 
 			FixValues((llvm::StructType*)type, values);
 			for (auto val : values)
-				copyValues.push_back(llvm::dyn_cast<llvm::Constant>(val));			
+			{
+				auto constValue = llvm::dyn_cast<llvm::Constant>(val);
+				BF_ASSERT(constValue != NULL);
+				copyValues.push_back(constValue);
+			}
 			SetResult(curId, llvm::ConstantStruct::get((llvm::StructType*)type, copyValues));
 		}
 		break;

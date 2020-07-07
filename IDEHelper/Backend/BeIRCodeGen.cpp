@@ -1158,8 +1158,23 @@ void BeIRCodeGen::HandleNextCmd()
 		{	
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(bool, valIsSigned);
+
 			BfTypeCode typeCode = (BfTypeCode)mStream->Read();
-			BfTypeCode valTypeCode = GetTypeCode(val->GetType(), valIsSigned);		
+			BfTypeCode valTypeCode = GetTypeCode(val->GetType(), valIsSigned);
+
+			if (auto srcCastConstant = BeValueDynCast<BeCastConstant>(val))
+			{												
+				BeType* toType = GetBeType(typeCode, valIsSigned);
+
+				auto castedVal = mBeModule->mAlloc.Alloc<BeCastConstant>();
+				castedVal->mInt64 = srcCastConstant->mInt64;
+				castedVal->mType = toType;
+				castedVal->mTarget = srcCastConstant->mTarget;
+				
+				SetResult(curId, castedVal);
+				break;
+			}
+			
 			bool toSigned = false;
 			auto toBeType = GetBeType(typeCode, toSigned);		
 			BeValue* retVal = mBeModule->CreateNumericCast(val, toBeType, valIsSigned, toSigned);
