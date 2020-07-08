@@ -97,8 +97,18 @@ namespace System.Reflection
 
 			if (!methodInfo.IsInitialized)
 				return .Err;
-			Object obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, mInstSize, mInstAlign, 1);
+			Object obj;
 
+			let objType = typeof(Object) as TypeInstance;
+
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, mInstSize, mInstAlign, 1);
+#else
+			void* mem = new [Align(16)] uint8[mInstSize]* {?};
+			obj = Internal.UnsafeCastToObject(mem);
+			obj.[Friend]mClassVData = (.)(void*)mTypeClassVData;
+#endif
+			Internal.MemSet((uint8*)Internal.UnsafeCastToPtr(obj) + objType.mInstSize, 0, mInstSize - objType.mInstSize);
 			if (methodInfo.Invoke(obj) case .Err)
 			{
 				delete obj;
@@ -129,7 +139,7 @@ namespace System.Reflection
 			if (!methodInfo.IsInitialized)
 				return .Err;
 
-			void* data = new uint8[mInstSize]*;
+			void* data = new [Align(16)] uint8[mInstSize]* {?};
 
 			if (methodInfo.Invoke(data) case .Err)
 			{
