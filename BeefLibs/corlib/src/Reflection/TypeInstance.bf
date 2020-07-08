@@ -86,7 +86,7 @@ namespace System.Reflection
 			for (int methodId < mMethodDataCount)
 			{
 				let methodData = &mMethodDataPtr[methodId];
-				if (!methodData.mFlags.HasFlag(.Constructor))
+				if ((!methodData.mFlags.HasFlag(.Constructor)) || (methodData.mFlags.HasFlag(.Static)))
 					continue;
 				if (methodData.mParamCount != 0)
 					continue;
