@@ -38,8 +38,7 @@ BfSource::~BfSource()
 {
 	int sourceCount = gSourceCount--;	
 
-	if (mSourceData != NULL)
-		delete mSourceData;
+	delete mSourceData;
 
 	if (mSrcAllocSize >= 0)
 		delete mSrc;	

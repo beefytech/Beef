@@ -417,11 +417,10 @@ void DSoundManager::ReleaseSounds()
 void DSoundManager::ReleaseChannels()
 {
 	for (int i = 0; i < MAX_CHANNELS; i++)
-		if (mPlayingSounds[i] != NULL)
-		{
-			delete mPlayingSounds[i];
-			mPlayingSounds[i] = NULL;
-		}
+	{
+		delete mPlayingSounds[i];
+		mPlayingSounds[i] = NULL;
+	}
 }
 
 void DSoundManager::ReleaseFreeChannels()
