@@ -3403,8 +3403,7 @@ BF_EXPORT void BF_CALLTYPE BfParser_SetSource(BfParser* bfParser, const char* da
 
 BF_EXPORT void BF_CALLTYPE BfParser_SetCharIdData(BfParser* bfParser, uint8* data, int length)
 {
-	if (bfParser->mParserData->mCharIdData != NULL)
-		delete bfParser->mParserData->mCharIdData;
+	delete bfParser->mParserData->mCharIdData;
 	bfParser->mParserData->mCharIdData = new uint8[length];
 	memcpy(bfParser->mParserData->mCharIdData, data, length);
 }

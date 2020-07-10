@@ -1583,8 +1583,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 			if (prevRevisionTypeDef->mDefState == BfTypeDef::DefState_AwaitingNewVersion)
 			{
-				if (prevRevisionTypeDef->mNextRevision != NULL)
-					delete prevRevisionTypeDef->mNextRevision;
+				delete prevRevisionTypeDef->mNextRevision;
 				prevRevisionTypeDef->mNextRevision = mCurTypeDef;
 				BF_ASSERT(mCurTypeDef->mSystem != NULL);
 				mCurActualTypeDef = prevRevisionTypeDef;

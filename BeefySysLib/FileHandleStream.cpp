@@ -13,8 +13,7 @@ FileHandleStream::FileHandleStream()
 
 FileHandleStream::~FileHandleStream()
 {
-	if (mCacheBuffer != NULL)
-		delete mCacheBuffer;
+	delete mCacheBuffer;
 	if (mFileHandle != NULL)	
 		::CloseHandle_File(mFileHandle);	
 }

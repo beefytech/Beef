@@ -694,8 +694,7 @@ void BfTypeDef::PopulateMemberSets()
 BfTypeDef::~BfTypeDef()
 {
 	BfLogSysM("BfTypeDef::~BfTypeDef %08X\n", this);
-	if (mNextRevision != NULL)
-		delete mNextRevision;
+	delete mNextRevision;
 	FreeMembers();
 
 	if (mSource != NULL)
@@ -3139,8 +3138,7 @@ void BfSystem::RemoveDeletedParsers()
 		}
 
 		BfLogSys(this, "Removing Queued Parser: %p\n", bfParser);
-		if (bfParser != NULL)
-			delete bfParser;
+		delete bfParser;
 		CheckLockYield();
 	}
 }

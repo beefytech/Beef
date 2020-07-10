@@ -16,8 +16,7 @@ FileStream::FileStream()
 
 FileStream::~FileStream()
 {
-	if (mCacheBuffer != NULL)
-		delete mCacheBuffer;
+	delete mCacheBuffer;
 	if (mFP != NULL)
 		fclose(mFP);
 }
