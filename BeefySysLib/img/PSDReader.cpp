@@ -176,8 +176,7 @@ PSDReader::PSDReader()
 
 PSDReader::~PSDReader()
 {
-	if (mFS != NULL)
-		delete mFS;
+	delete mFS;
 	for (int i = 0; i < (int) mPSDLayerInfoVector.size(); i++)
 		delete mPSDLayerInfoVector[i];
 	PSDPatternMap::iterator itr = mPSDPatternMap.begin();

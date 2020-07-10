@@ -31,11 +31,8 @@ BSpline2D::~BSpline2D()
 
 void BSpline2D::AddPt(float x, float y)
 {
-	if (mUVals != NULL)
-	{
-		delete mUVals;
-		mUVals = NULL;
-	}
+	delete mUVals;
+	mUVals = NULL;
 
 	Point2D pt;
 	pt.mX = x;

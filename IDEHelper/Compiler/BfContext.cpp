@@ -925,11 +925,8 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	}
 	else
 	{
-		if (typeInst->mHotTypeData != NULL)
-		{
-			delete typeInst->mHotTypeData;
-			typeInst->mHotTypeData = NULL;
-		}
+		delete typeInst->mHotTypeData;
+		typeInst->mHotTypeData = NULL;
 	}
 
 	auto typeDef = typeInst->mTypeDef;	
@@ -1009,12 +1006,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mTypeWarned = false;		
 	typeInst->mIsSplattable = false;
 	typeInst->mHasPackingHoles = false;
-	typeInst->mWantsGCMarking = false;	
-	if (typeInst->mTypeInfoEx != NULL)
-	{
-		delete typeInst->mTypeInfoEx;
-		typeInst->mTypeInfoEx = NULL;
-	}
+	typeInst->mWantsGCMarking = false;
+	delete typeInst->mTypeInfoEx;
+	typeInst->mTypeInfoEx = NULL;
 
 	if (typeInst->IsGenericTypeInstance())
 	{

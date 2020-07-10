@@ -6028,8 +6028,8 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			delegateType = dlgType;			
 		}
 
-		if (delegateType->mTypeDef != NULL)
-			delete delegateType->mTypeDef;
+		delete delegateType->mTypeDef;
+		delegateType->mTypeDef = NULL;
 		BfDelegateInfo* delegateInfo = delegateType->GetDelegateInfo();
 		delegateInfo->mParams.Clear();
 		
