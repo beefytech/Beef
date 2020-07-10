@@ -302,18 +302,28 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 	}
 	else if ((typeInst->IsDelegateFromTypeRef()) || (typeInst->IsFunctionFromTypeRef()))
 	{
-		auto invokeMethodInst = mangleContext.mModule->GetDelegateInvokeMethod(typeInst);		
+		BF_ASSERT(typeInst->mTypeDef->mMethods[0]->mName == "Invoke");
+		auto delegateInfo = typeInst->GetDelegateInfo();
+		auto methodDef = typeInst->mTypeDef->mMethods[0];
+
 		if (typeInst->IsDelegate())
 			name += "N8delegateI";
 		else
 			name += "N8functionI";
 		SizedArray<BfType*, 8> typeVec;
-		typeVec.push_back(invokeMethodInst->mReturnType);
-		for (int paramIdx = invokeMethodInst->HasExplicitThis() ? -1 : 0; paramIdx < (int)invokeMethodInst->mParams.size(); paramIdx++)
+		typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);
+		if (delegateInfo->mFunctionThisType != NULL)
 		{
 			name += "_";
-			name += invokeMethodInst->GetParamName(paramIdx);			
-			typeVec.Add(invokeMethodInst->GetParamType(paramIdx));
+			name += "this";
+			typeVec.push_back(delegateInfo->mFunctionThisType);
+		}
+
+		for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
+		{
+			name += "_";
+			name += methodDef->mParams[paramIdx]->mName;
+			typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
 		}
 		for (auto type : typeVec)
 			Mangle(mangleContext, name, type, postfixTypeInstance);
@@ -1156,45 +1166,33 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 		{
 			BF_ASSERT(newNameSub.mTypeInst->mTypeDef->mMethods[0]->mName == "Invoke");
 			
-			// Why did we have this in here? It appears it was to fix some sort of bug...
-			//
-// 			{
-// 				auto methodDef = newNameSub.mTypeInst->mTypeDef->mMethods[0];
-// 				if (newNameSub.mTypeInst->IsDelegate())
-// 				 	name += "?$delegate";
-// 				else
-// 				 	name += "?$function";
-// 				SizedArray<BfType*, 8> typeVec;
-// 				typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);
-// 				for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
-// 				{								
-// 				 	name += "_";
-// 				 	name += methodDef->mParams[paramIdx]->mName;
-// 				 	typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
-// 				}			
-// 				name += '@';
-// 				if (!typeVec.empty())
-// 				 	AddGenericArgs(mangleContext, name, typeVec);
-// 				name += '@';
-// 			}
-
-			auto invokeMethodInst = mangleContext.mModule->GetDelegateInvokeMethod(newNameSub.mTypeInst);			
+			auto delegateInfo = newNameSub.mTypeInst->GetDelegateInfo();
+			
+			auto methodDef = newNameSub.mTypeInst->mTypeDef->mMethods[0];
 			if (newNameSub.mTypeInst->IsDelegate())
 				name += "?$delegate";
 			else
 				name += "?$function";
 			SizedArray<BfType*, 8> typeVec;
-			typeVec.push_back(invokeMethodInst->mReturnType);
-			for (int paramIdx = invokeMethodInst->HasExplicitThis() ? -1 : 0; paramIdx < (int)invokeMethodInst->mParams.size(); paramIdx++)
+			typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);
+
+			if (delegateInfo->mFunctionThisType != NULL)
+			{
+				name += "_";
+				name += "this";
+				typeVec.push_back(delegateInfo->mFunctionThisType);
+			}
+
+			for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
 			{								
 				name += "_";
-				name += invokeMethodInst->GetParamName(paramIdx);
-				typeVec.push_back(invokeMethodInst->GetParamType(paramIdx));
-			}			
+				name += methodDef->mParams[paramIdx]->mName;
+				typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
+			}
 			name += '@';
 			if (!typeVec.empty())
 				AddGenericArgs(mangleContext, name, typeVec);
-			name += '@';
+			name += '@';			
 		}
 		else if (newNameSub.mTypeInst->IsBoxed())
 		{
