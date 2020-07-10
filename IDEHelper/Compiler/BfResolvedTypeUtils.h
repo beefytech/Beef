@@ -30,7 +30,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_FromIndirectSource = 0x80, // Such as a type alias or a generic parameter 
 	BfResolveTypeRefFlag_Attribute = 0x100,
 	BfResolveTypeRefFlag_NoReify = 0x200,
-	BfResolveTypeRefFlag_NoCreate = 0x400
+	BfResolveTypeRefFlag_NoCreate = 0x400,
+	BfResolveTypeRefFlag_NoWarnOnMut = 0x800
 };
 
 enum BfTypeNameFlags : uint16
@@ -413,12 +414,14 @@ class BfDelegateInfo
 public:
 	Array<BfAstNode*> mDirectAllocNodes;
 	BfType* mReturnType;
-	Array<BfType*> mParams;
+	BfType* mFunctionThisType;
+	Array<BfType*> mParams;	
 
 public:
 	BfDelegateInfo()
 	{
 		mReturnType = NULL;
+		mFunctionThisType = NULL;
 	}
 
 	~BfDelegateInfo()
@@ -860,6 +863,7 @@ public:
 	bool IsSpecializedGenericMethodOrType();
 	bool IsSpecializedByAutoCompleteMethod();
 	bool HasThis();	
+	bool HasExplicitThis();
 	bool HasParamsArray();
 	int GetStructRetIdx();
 	bool HasSelf();

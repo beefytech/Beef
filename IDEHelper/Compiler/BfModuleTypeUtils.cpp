@@ -7774,7 +7774,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				if ((resolvedType->IsValueType()) || (resolvedType->IsGenericParam()))
 					needsRefWrap = true;
 
-				if ((InDefinitionSection()) && (!resolvedType->IsGenericParam()))
+				if ((InDefinitionSection()) && (!resolvedType->IsGenericParam()) && ((resolveFlags & BfResolveTypeRefFlag_NoWarnOnMut) == 0))
 				{
 					if (!resolvedType->IsValueType())
 						Warn(0, StrFormat("Specified 'mut' has no effect on '%s' since reference types are always mutable", TypeToString(resolvedType).c_str()), refTypeRef->mRefToken);
@@ -8364,7 +8364,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		return ResolveTypeResult(typeRef, refType, populateType, resolveFlags);
 	}
 	else if (auto delegateTypeRef = BfNodeDynCast<BfDelegateTypeRef>(typeRef))
-	{	
+	{
 		bool wantGeneric = false;
 		bool isUnspecialized = false;
 		auto _CheckType = [&](BfType* type)
@@ -8375,19 +8375,56 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				isUnspecialized = true;			
 		};
 
+		bool failed = false;
+
 		auto returnType = ResolveTypeRef(delegateTypeRef->mReturnType);
 		if (returnType == NULL)
 			returnType = GetPrimitiveType(BfTypeCode_Var);
 		_CheckType(returnType);
 
+		BfType* functionThisType = NULL;
+		bool hasMutSpecifier = false;		
+		bool isFirst = true;
+		bool isDelegate = delegateTypeRef->mTypeToken->GetToken() == BfToken_Delegate;
+
 		Array<BfType*> paramTypes;
 		for (auto param : delegateTypeRef->mParams)
 		{
-			auto paramType = ResolveTypeRef(param->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowRef);
+			BfResolveTypeRefFlags resolveTypeFlags = BfResolveTypeRefFlag_AllowRef;
+			if ((param->mNameNode != NULL) && (param->mNameNode->Equals("this")))
+				resolveTypeFlags = (BfResolveTypeRefFlags)(resolveTypeFlags | BfResolveTypeRefFlag_NoWarnOnMut);
+			auto paramType = ResolveTypeRef(param->mTypeRef, BfPopulateType_Declaration, resolveTypeFlags);
 			if (paramType == NULL)
+			{
+				failed = true;
 				paramType = GetPrimitiveType(BfTypeCode_Var);
-			paramTypes.Add(paramType);
-			_CheckType(paramType);
+			}
+
+			if ((!isDelegate) && (isFirst) && (param->mNameNode != NULL) && (param->mNameNode->Equals("this")))
+			{
+				functionThisType = paramType;
+				if (functionThisType->IsRef())
+				{
+					auto refType = (BfRefType*)functionThisType;
+					if (refType->mRefKind != BfRefType::RefKind_Mut)
+					{
+						if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(param->mTypeRef))
+						{
+							failed = true;
+							Fail("Only 'mut' is allowed here", refTypeRef->mRefToken);
+						}
+					}
+					hasMutSpecifier = true;
+					functionThisType = refType->mElementType;
+				}
+			}
+			else
+			{
+				paramTypes.Add(paramType);
+				_CheckType(paramType);
+			}
+
+			isFirst = false;
 		}
 
 		if ((mCurTypeInstance == NULL) || (!mCurTypeInstance->IsGenericTypeInstance()))
@@ -8414,25 +8451,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 			CheckUnspecializedGenericType(genericTypeInst, populateType);
 			
-// 			for (auto paramType : paramTypes)
-// 			{
-// 				if (paramType->IsUnspecializedType())
-// 					genericTypeInst->mGenericTypeInfo->mIsUnspecialized = true;
-// 				if (paramType->IsUnspecializedTypeVariation())
-// 					genericTypeInst->mGenericTypeInfo->mIsUnspecializedVariation = true;
-// 				if (paramType->IsGenericParam())
-// 				{
-// 					BfGenericParamType* genericParamType = new BfGenericParamType();
-// 					if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
-// 					{
-// 						if (genericParamType->mGenericParamIdx >= genericTypeInst->mGenericTypeInfo->mGenericParams.size())
-// 							genericTypeInst->mGenericTypeInfo->mIsUnspecializedVariation = true;
-// 					}
-// 					else
-// 						genericTypeInst->mGenericTypeInfo->mIsUnspecializedVariation = true;
-// 				}
-//			}
-
 			// We don't ever need to do an actual pass over generic delegate methods, so it's safe to set the 'unspecialized variation' flag
 			if (isUnspecialized)
 			{
@@ -8468,13 +8486,17 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			typeDef->mIsFunction = true;
 			typeDef->mTypeCode = BfTypeCode_Struct;
 		}
-
+		
 		BfMethodDef* methodDef = new BfMethodDef();
 		methodDef->mDeclaringType = typeDef;
 		methodDef->mName = "Invoke";
 		methodDef->mProtection = BfProtection_Public;
 		methodDef->mIdx = 0;
-		methodDef->mIsStatic = !typeDef->mIsDelegate;
+		methodDef->mIsStatic = !typeDef->mIsDelegate && (functionThisType == NULL);
+		methodDef->mIsMutating = true;
+
+		if ((functionThisType != NULL) && (functionThisType->IsValueType()) && (!hasMutSpecifier))
+			methodDef->mIsMutating = false;
 
 		auto directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
 		delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
@@ -8489,12 +8511,14 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		directTypeRef->Init(returnType);
 		methodDef->mReturnTypeRef = directTypeRef;
 		delegateInfo->mReturnType = returnType;
+		delegateInfo->mFunctionThisType = functionThisType;
 		
 		auto hashVal = mContext->mResolvedTypes.Hash(typeRef, &lookupCtx);
 		
+		int paramSrcOfs = (functionThisType != NULL) ? 1 : 0;
 		for (int paramIdx = 0; paramIdx < (int)paramTypes.size(); paramIdx++)
 		{
-			auto param = delegateTypeRef->mParams[paramIdx];
+			auto param = delegateTypeRef->mParams[paramIdx + paramSrcOfs];
 			auto paramType = paramTypes[paramIdx];
 			if (paramType == NULL)
 				paramType = GetPrimitiveType(BfTypeCode_Var);
@@ -8504,8 +8528,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				paramName = param->mNameNode->ToString();
 
 			if (!paramType->IsReified())
-				delegateType->mIsReified = false;
-			
+				delegateType->mIsReified = false;			
 
 			auto directTypeRef = BfAstNode::ZeroedAlloc<BfDirectTypeReference>();
 			delegateInfo->mDirectAllocNodes.push_back(directTypeRef);
@@ -8522,6 +8545,13 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		typeDef->mMethods.push_back(methodDef);
 
+		if (failed)
+		{
+			delete delegateType;
+			mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
+			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+		}
+
 		//	
 		
 		BfDefBuilder::AddMethod(typeDef, BfMethodType_Ctor, BfProtection_Public, false, "");
@@ -8531,20 +8561,21 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		delegateType->mContext = mContext;
 		delegateType->mTypeDef = typeDef;
 		populateModule->InitType(delegateType, populateType);
-		resolvedEntry->mValue = delegateType;
+		resolvedEntry->mValue = delegateType;		
 
 		AddDependency(directTypeRef->mType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		for (auto paramType : paramTypes)
 			AddDependency(paramType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 
-// #ifdef _DEBUG
-// 		if (BfResolvedTypeSet::Hash(delegateType, &lookupCtx) != resolvedEntry->mHash)
-// 		{
-// 			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
-// 			int typeHash = BfResolvedTypeSet::Hash(delegateType, &lookupCtx);
-// 			BF_ASSERT(refHash == typeHash);
-// 		}
-// #endif		
+#ifdef _DEBUG
+		if (BfResolvedTypeSet::Hash(delegateType, &lookupCtx) != resolvedEntry->mHash)
+		{
+			int refHash = BfResolvedTypeSet::Hash(typeRef, &lookupCtx);
+			int typeHash = BfResolvedTypeSet::Hash(delegateType, &lookupCtx);			
+			BF_ASSERT(refHash == typeHash);
+		}
+		BF_ASSERT(BfResolvedTypeSet::Equals(delegateType, typeRef, &lookupCtx));
+#endif
 
 		BF_ASSERT(BfResolvedTypeSet::Hash(delegateType, &lookupCtx) == resolvedEntry->mHash);
 
@@ -8847,7 +8878,56 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, BfMethodInstance* methodI
 		}
 		else if (invokeMethodInstance->IsExactMatch(methodInstance, false, false))
 		{
-			Fail(StrFormat("Non-static method '%s' cannot match '%s', consider adding '%s this' to the function parameters", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(methodInstance->GetParamType(-1)).c_str()), srcNode);
+			bool handled = false;
+
+			auto thisType = methodInstance->GetParamType(-1);			
+			if (thisType != NULL)
+			{
+				if (invokeMethodInstance->HasExplicitThis())
+				{
+					auto invokeThisType = invokeMethodInstance->GetParamType(-1);
+
+					bool thisWasPtr = false;
+					if (thisType->IsPointer())
+					{
+						thisType = thisType->GetUnderlyingType();
+						thisWasPtr = true;
+					}
+
+					bool invokeThisWasPtr = false;
+					if (invokeThisType->IsPointer())
+					{
+						invokeThisType = invokeThisType->GetUnderlyingType();
+						invokeThisWasPtr = true;
+					}
+
+					if (invokeThisType == thisType)
+					{
+						if (invokeThisWasPtr != thisWasPtr)
+						{							
+							if (invokeThisWasPtr)
+								Fail(StrFormat("Non-static method '%s' cannot match '%s', consider removing 'mut' from 'mut %s this' in the function parameters", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(thisType).c_str()), srcNode);
+							else
+								Fail(StrFormat("Non-static method '%s' cannot match '%s', consider adding 'mut' specifier to '%s this' in the function parameters", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(thisType).c_str()), srcNode);
+							handled = true;
+						}
+					}
+				}				
+			}
+			
+			if ((!methodInstance->mMethodDef->mIsStatic) && (!invokeMethodInstance->HasExplicitThis()))
+			{
+				handled = true;
+				Fail(StrFormat("Non-static method '%s' cannot match '%s', consider adding '%s this' to the function parameters", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(thisType).c_str()), srcNode);
+			}
+			
+			if (!handled)
+			{
+				if (invokeMethodInstance->mMethodDef->mIsStatic)
+					Fail(StrFormat("Static method '%s' cannot match '%s'", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str()).c_str(), srcNode);
+				else
+					Fail(StrFormat("Non-static method '%s' cannot match '%s'", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str()).c_str(), srcNode);
+			}
 		}
 	}
 	return BfIRValue();
@@ -10386,34 +10466,41 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 			(fromMethodInst->mReturnType == toMethodInst->mReturnType) &&			
 			(fromMethodInst->GetParamCount() == toMethodInst->GetParamCount()))
 		{	
-			bool matched = true;
+ 			bool matched = true;
 
 			StringT<64> fromParamName;
 			StringT<64> toParamName;
 
-			for (int paramIdx = 0; paramIdx < (int)fromMethodInst->GetParamCount(); paramIdx++)
+			if (fromMethodInst->HasExplicitThis() != toMethodInst->HasExplicitThis())
 			{
-				bool nameMatches = true;
-
-				if (!explicitCast)
+				matched = false;
+			}
+			else
+			{
+				for (int paramIdx = fromMethodInst->HasExplicitThis() ? -1 : 0; paramIdx < (int)fromMethodInst->GetParamCount(); paramIdx++)
 				{
-					fromMethodInst->GetParamName(paramIdx, fromParamName);
-					toMethodInst->GetParamName(paramIdx, toParamName);
-					if ((!fromParamName.IsEmpty()) && (!toParamName.IsEmpty()))
-						nameMatches = fromParamName == toParamName;
+					bool nameMatches = true;
+
+					if (!explicitCast)
+					{
+						fromMethodInst->GetParamName(paramIdx, fromParamName);
+						toMethodInst->GetParamName(paramIdx, toParamName);
+						if ((!fromParamName.IsEmpty()) && (!toParamName.IsEmpty()))
+							nameMatches = fromParamName == toParamName;
+					}
+
+					if ((fromMethodInst->GetParamKind(paramIdx) == toMethodInst->GetParamKind(paramIdx)) &&
+						(fromMethodInst->GetParamType(paramIdx) == toMethodInst->GetParamType(paramIdx)) &&
+						(nameMatches))
+					{
+						// Matched, required for implicit/explicit
+					}
+					else
+					{
+						matched = false;
+						break;
+					}
 				}
-
-				if ((fromMethodInst->GetParamKind(paramIdx) == toMethodInst->GetParamKind(paramIdx)) &&
-					(fromMethodInst->GetParamType(paramIdx) == toMethodInst->GetParamType(paramIdx)) &&
-					(nameMatches))
-				{
-					// Matched, required for implicit/explicit
-				}					
-				else
-				{
-					matched = false;
-					break;
-				}					
 			}
 
 			if (matched)
@@ -10939,9 +11026,20 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			str += "function ";
 		DoTypeToString(str, delegateInfo->mReturnType, typeNameFlags, genericMethodNameOverrides);
 		str += "(";
+
+		bool isFirstParam = true;
+		if (delegateInfo->mFunctionThisType != NULL)
+		{
+			if ((methodDef->mIsMutating) && (delegateInfo->mFunctionThisType->IsValueType()))
+				str += "mut ";
+			DoTypeToString(str, delegateInfo->mFunctionThisType, typeNameFlags, genericMethodNameOverrides);
+			str += " this";
+			isFirstParam = false;
+		}
+
 		for (int paramIdx = 0; paramIdx < methodDef->mParams.size(); paramIdx++)
 		{
-			if (paramIdx > 0)
+			if (!isFirstParam)
 				str += ", ";
 			auto paramDef = methodDef->mParams[paramIdx];
 			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
@@ -10953,6 +11051,8 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 				str += " ";
 				str += paramDef->mName;
 			}
+
+			isFirstParam = false;
 		}
 
 		str += ")";

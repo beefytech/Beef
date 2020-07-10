@@ -714,6 +714,13 @@ bool BfMethodInstance::HasThis()
 	return (!mMethodInstanceGroup->mOwner->IsValuelessType());
 }
 
+bool BfMethodInstance::HasExplicitThis()
+{
+	if (mMethodDef->mIsStatic)
+		return false;
+	return mMethodInstanceGroup->mOwner->IsFunction();	
+}
+
 int BfMethodInstance::GetParamCount()
 {
 	return (int)mParams.size();
@@ -773,9 +780,13 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
 			return mMethodInfoEx->mClosureInstanceInfo->mThisOverride;
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		if ((owner->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (!owner->GetLoweredType(BfTypeUsage_Parameter)))
-			return owner->mModule->CreatePointerType(owner);
-		return owner;
+		auto delegateInfo = owner->GetDelegateInfo();
+		BfType* thisType = owner;
+		if ((delegateInfo != NULL) && (delegateInfo->mFunctionThisType != NULL))
+			thisType = delegateInfo->mFunctionThisType;
+		if ((thisType->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (!thisType->GetLoweredType(BfTypeUsage_Parameter)))
+			return owner->mModule->CreatePointerType(thisType);
+		return thisType;
 	}
 
 	BfMethodParam* methodParam = &mParams[paramIdx];	
@@ -809,6 +820,8 @@ bool BfMethodInstance::GetParamIsSplat(int paramIdx)
 
 BfParamKind BfMethodInstance::GetParamKind(int paramIdx)
 {
+	if (paramIdx == -1)
+		return BfParamKind_Normal;
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mParamDefIdx == -1)
 		return BfParamKind_ImplicitCapture;
@@ -820,12 +833,16 @@ BfParamKind BfMethodInstance::GetParamKind(int paramIdx)
 
 bool BfMethodInstance::WasGenericParam(int paramIdx)
 {
+	if (paramIdx == -1)
+		return false;
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	return methodParam->mWasGenericParam;
 }
 
 bool BfMethodInstance::IsParamSkipped(int paramIdx)
 {
+	if (paramIdx == -1)
+		return false;
 	BfType* paramType = GetParamType(paramIdx);
 	if ((paramType->CanBeValuelessType()) && (paramType->IsDataIncomplete()))
 		GetModule()->PopulateType(paramType, BfPopulateType_Data);
@@ -836,6 +853,8 @@ bool BfMethodInstance::IsParamSkipped(int paramIdx)
 
 bool BfMethodInstance::IsImplicitCapture(int paramIdx)
 {
+	if (paramIdx == -1)
+		return false;
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mParamDefIdx == -1)
 		return true;	
@@ -844,6 +863,8 @@ bool BfMethodInstance::IsImplicitCapture(int paramIdx)
 
 BfExpression* BfMethodInstance::GetParamInitializer(int paramIdx)
 {
+	if (paramIdx == -1)
+		return NULL;
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mParamDefIdx == -1)
 		return NULL;
@@ -855,6 +876,8 @@ BfExpression* BfMethodInstance::GetParamInitializer(int paramIdx)
 
 BfTypeReference* BfMethodInstance::GetParamTypeRef(int paramIdx)
 {
+	if (paramIdx == -1)
+		return NULL;
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mParamDefIdx == -1)
 		return NULL;
@@ -969,13 +992,22 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 				checkType = module->mCurMethodState->mClosureState->mClosureType;
 			}
 			else
-				checkType = GetOwner();
+			{
+				if (HasExplicitThis())
+					checkType = GetParamType(-1);
+				else
+					checkType = GetOwner();				
+			}
 		}
 		else
 		{
 			checkType = GetParamType(paramIdx);
 		}		
 
+		/*if (GetParamName(paramIdx) == "this")
+		{
+			NOP;
+		}*/
 
 		bool checkLowered = false;		
 		bool doSplat = false;
@@ -1098,29 +1130,52 @@ bool BfMethodInstance::IsExactMatch(BfMethodInstance* other, bool ignoreImplicit
 	int implicitParamCountA = ignoreImplicitParams ? GetImplicitParamCount() : 0;
 	int implicitParamCountB = ignoreImplicitParams ? other->GetImplicitParamCount() : 0;
 
+	if (HasExplicitThis())
+	{
+		
+	}
+
+// 	if (other->HasExplicitThis())
+// 	{
+// 		if (!HasExplicitThis())
+// 			return false;
+// 		if (GetParamType(-1) != other->GetParamType(-1))
+// 			return false;
+// 	}
+
 	if (checkThis)
 	{
 		if (other->mMethodDef->mIsStatic != mMethodDef->mIsStatic)
+			return false;
+
+// 		{
+// 			// If we are static and we have to match a non-static method, allow us to do so if we have an explicitly defined 'this' param that matches
+// 
+// 			if (other->mMethodDef->mIsStatic)
+// 				return false;
+// 			
+// 			if ((GetParamCount() > 0) && (GetParamName(0) == "this"))
+// 			{
+// 				auto thisType = GetParamType(0);
+// 				auto otherThisType = other->GetParamType(-1);
+// 				if (thisType != otherThisType)
+// 					return false;
+// 
+// 				implicitParamCountA++;
+// 			}
+// 			else
+// 			{
+// 				// Valueless types don't actually pass a 'this' anyway
+// 				if (!other->GetOwner()->IsValuelessType())
+// 					return false;
+// 			}
+// 		}
+
+		if (!mMethodDef->mIsStatic)
 		{
-			// If we are static and we have to match a non-static method, allow us to do so if we have an explicitly defined 'this' param that matches
-
-			if (other->mMethodDef->mIsStatic)
+			if (GetParamType(-1) != other->GetParamType(-1))
+			{
 				return false;
-			
-			if ((GetParamCount() > 0) && (GetParamName(0) == "this"))
-			{
-				auto thisType = GetParamType(0);
-				auto otherThisType = other->GetParamType(-1);
-				if (thisType != otherThisType)
-					return false;
-
-				implicitParamCountA++;
-			}
-			else
-			{
-				// Valueless types don't actually pass a 'this' anyway
-				if (!other->GetOwner()->IsValuelessType())
-					return false;
 			}
 		}
 	}
@@ -2413,6 +2468,14 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 		BF_ASSERT(methodDef->mName == "Invoke");
 		BF_ASSERT(delegateInfo->mParams.size() == methodDef->mParams.size());
 
+		if (delegateInfo->mFunctionThisType != NULL)
+		{
+			hashVal = ((hashVal ^ (Hash(delegateInfo->mFunctionThisType, ctx))) << 5) - hashVal;
+			String paramName = "this";
+			int nameHash = (int)Hash64(paramName.c_str(), (int)paramName.length());
+			hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
+		}
+
 		for (int paramIdx = 0; paramIdx < delegateInfo->mParams.size(); paramIdx++)
 		{
 			// Parse attributes?			
@@ -2989,12 +3052,26 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		else
 			ctx->mFailed = true;
 		
+
+		bool isFirstParam = true;
+
 		for (auto param : delegateTypeRef->mParams)
 		{
 			// Parse attributes?
 			BfTypeReference* fieldType = param->mTypeRef;
+
+			if (isFirstParam)
+			{
+				if ((param->mNameNode != NULL) && (param->mNameNode->Equals("this")))
+				{
+					if (auto refNode = BfNodeDynCast<BfRefTypeRef>(fieldType))
+						fieldType = refNode->mElementType;
+				}
+			}
+			
 			hashVal = ((hashVal ^ (Hash(fieldType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
 			hashVal = ((hashVal ^ (HashNode(param->mNameNode))) << 5) - hashVal;
+			isFirstParam = true;
 		}
 
 		return hashVal;
@@ -3498,20 +3575,57 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 		BfMethodInstance* lhsInvokeMethodInstance = ctx->mModule->GetRawMethodInstanceAtIdx(lhs->ToTypeInstance(), 0, "Invoke");
 		
-		if ((lhs->IsDelegate()) != (rhsDelegateType->mTypeToken->GetToken() == BfToken_Delegate))
+		bool rhsIsDelegate = rhsDelegateType->mTypeToken->GetToken() == BfToken_Delegate;
+
+		if ((lhs->IsDelegate()) != rhsIsDelegate)
 			return false;
 		if (!Equals(lhsInvokeMethodInstance->mReturnType, rhsDelegateType->mReturnType, ctx))
 			return false;		
-		if (lhsInvokeMethodInstance->GetParamCount() != (int)rhsDelegateType->mParams.size())
+
+		bool isMutating = true;
+
+		int paramRefOfs = 0;
+		if (!rhsDelegateType->mParams.IsEmpty())
+		{
+			auto param0 = rhsDelegateType->mParams[0];
+			if ((param0->mNameNode != NULL) && (param0->mNameNode->Equals("this")))
+			{
+				bool handled = false;
+				auto lhsThisType = lhsInvokeMethodInstance->GetParamType(-1);
+
+				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));
+				if (rhsThisType->IsRef())
+				{
+					if (!lhsThisType->IsPointer())
+						return false;
+					if (lhsThisType->GetUnderlyingType() != rhsThisType->GetUnderlyingType())
+						return false;										
+				}
+				else
+				{
+					if (lhsThisType != rhsThisType)
+						return false;
+				}
+
+				paramRefOfs = 1;
+			}
+		}
+
+		if (!rhsIsDelegate)
+		{
+			if (lhsInvokeMethodInstance->mMethodDef->mIsStatic != (paramRefOfs == 0))
+				return false;
+		}
+
+		if (lhsInvokeMethodInstance->GetParamCount() != (int)rhsDelegateType->mParams.size() - paramRefOfs)
 			return false;
 		for (int paramIdx = 0; paramIdx < lhsInvokeMethodInstance->GetParamCount(); paramIdx++)
 		{
-			if (!Equals(lhsInvokeMethodInstance->GetParamType(paramIdx), rhsDelegateType->mParams[paramIdx]->mTypeRef, ctx))
+			if (!Equals(lhsInvokeMethodInstance->GetParamType(paramIdx), rhsDelegateType->mParams[paramIdx + paramRefOfs]->mTypeRef, ctx))
 				return false;
 			StringView rhsParamName;
-			if (rhsDelegateType->mParams[paramIdx]->mNameNode != NULL)
-				rhsParamName = rhsDelegateType->mParams[paramIdx]->mNameNode->ToStringView();
-
+			if (rhsDelegateType->mParams[paramIdx + paramRefOfs]->mNameNode != NULL)
+				rhsParamName = rhsDelegateType->mParams[paramIdx + paramRefOfs]->mNameNode->ToStringView();
 			if (lhsInvokeMethodInstance->GetParamName(paramIdx) != rhsParamName)
 				return false;
 		}

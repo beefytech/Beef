@@ -238,6 +238,7 @@ public:
 	BfTypedValue mTarget;	
 	BfIRValue mFunc;	
 	BfMethodInstance* mMethodInstance;
+	BfType* mBindType;
 	bool mSkipThis;
 	bool mSkipMutCheck;
 	bool mWantsArgs;
@@ -248,6 +249,7 @@ public:
 	BfFunctionBindResult()
 	{				
 		mMethodInstance = NULL;
+		mBindType = NULL;
 		mSkipMutCheck = false;
 		mWantsArgs = false;
 		mSkipThis = false;

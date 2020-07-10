@@ -5359,8 +5359,16 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	if (!skipThis)
 	{
-		if (!methodDef->mIsStatic)
+		if ((target) && (target.mType->IsFunction()))
 		{
+			CheckResultForReading(target);
+			target = mModule->LoadValue(target);
+			auto funcType = mModule->mBfIRBuilder->MapMethod(moduleMethodInstance.mMethodInstance);
+			auto funcPtrType = mModule->mBfIRBuilder->GetPointerTo(funcType);
+			moduleMethodInstance.mFunc = mModule->mBfIRBuilder->CreateIntToPtr(target.mValue, funcPtrType);
+		}
+		else if (!methodDef->mIsStatic)
+		{			
 			if (!target)
 			{
 				FinishDeferredEvals(argValues);
@@ -5407,15 +5415,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				else
 					PushThis(targetSrc, target, moduleMethodInstance.mMethodInstance, irArgs, skipMutCheck);
 			}
-		}
-		else if ((target) && (target.mType->IsFunction()))
-		{
-			CheckResultForReading(target);
-			target = mModule->LoadValue(target);
-			auto funcType = mModule->mBfIRBuilder->MapMethod(moduleMethodInstance.mMethodInstance);
-			auto funcPtrType = mModule->mBfIRBuilder->GetPointerTo(funcType);
-			moduleMethodInstance.mFunc = mModule->mBfIRBuilder->CreateIntToPtr(target.mValue, funcPtrType);
-		}
+		}		
 		else if (methodDef->mMethodType == BfMethodType_Extension)
 		{
 			// Handled in args
@@ -5462,6 +5462,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	if ((boxScopeData == NULL) && (mModule->mCurMethodState != NULL))
 		boxScopeData = mModule->mCurMethodState->mCurScope;
 
+	if (methodInstance->HasExplicitThis())	
+		paramIdx = -1;	
+
 	bool failed = false;
 	while (true)
 	{
@@ -5500,7 +5503,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				if (errorRef == NULL)
 					errorRef = targetSrc;				
 
-				BfError* error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", (int)argValues.size() - argIdx), errorRef);
+				BfError* error;
+				if ((prevBindResult.mPrevVal != NULL) && (prevBindResult.mPrevVal->mBindType != NULL))
+ 					error = mModule->Fail(StrFormat("Method '%s' has too many parameters to bind to '%s'.", mModule->MethodToString(methodInstance).c_str(), mModule->TypeToString(prevBindResult.mPrevVal->mBindType).c_str()), errorRef);
+				else
+					error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", (int)argValues.size() - argIdx), errorRef);
 				if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
 					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 				failed = true;
@@ -5833,6 +5840,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 		if (argValue)
 		{	
+			if ((paramIdx == -1) && (argValue.mType->IsRef()))
+			{
+				// Convert a 'ref this' to a 'this*'
+				argValue.mType = mModule->CreatePointerType(argValue.mType->GetUnderlyingType());
+			}
+
 			BfAstNode* refNode = arg;
 			if (refNode == NULL)
 				refNode = targetSrc;
@@ -5903,7 +5916,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 			if (argValue)
 			{
-				if (wantsSplat)				
+				if (paramIdx == -1)
+					PushThis(targetSrc, argValue, methodInstance, irArgs);
+				else if (wantsSplat)				
 					SplatArgs(argValue, irArgs);				
 				else
 					PushArg(argValue, irArgs, true, false);
@@ -9719,6 +9734,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 	BfFunctionBindResult bindResult;
 	bindResult.mSkipMutCheck = true; // Allow operating on copies
+	bindResult.mBindType = delegateTypeInstance;
 	//
 	{
 		SetAndRestoreValue<BfType*> prevExpectingType(mExpectingType, methodInstance->mReturnType);
@@ -12322,7 +12338,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		else
 			autoComplete->mIsCapturingMethodMatchInfo = false;
 	}
-	else
+	else if (!resolvedTypeRef->IsFunction())
 	{
 		MatchConstructor(objCreateExpr->mTypeRef, objCreateExpr, emtpyThis, typeInstance, argValues, false, true);	
 	}	

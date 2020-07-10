@@ -7307,7 +7307,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 					int dispParamIdx = 0;
 
 					StringT<64> paramName;
-					for (int paramIdx = 0; paramIdx < (int)methodInstance->GetParamCount(); paramIdx++)
+					for (int paramIdx = methodInstance->HasExplicitThis() ? -1 : 0; paramIdx < (int)methodInstance->GetParamCount(); paramIdx++)
 					{
 						auto paramKind = methodInstance->GetParamKind(paramIdx);
 						if ((paramKind == BfParamKind_ImplicitCapture) || (paramKind == BfParamKind_AppendIdx))
