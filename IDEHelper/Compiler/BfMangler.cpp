@@ -1181,6 +1181,8 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 				name += "_";
 				name += "this";
 				typeVec.push_back(delegateInfo->mFunctionThisType);
+				if ((delegateInfo->mFunctionThisType->IsValueType()) && (methodDef->mIsMutating))
+					name += "_mut";
 			}
 
 			for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
