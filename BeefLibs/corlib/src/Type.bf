@@ -748,11 +748,26 @@ namespace System.Reflection
 			if (mTypeFlags.HasFlag(TypeFlags.Tuple))
 			{
 				strBuffer.Append('(');
-				for (int fieldIdx < mFieldDataCount)
+				if (mFieldDataCount > 0)
 				{
-					if (fieldIdx > 0)
-						strBuffer.Append(", ");
-					GetType(mFieldDataPtr[fieldIdx].[Friend]mFieldTypeId).GetFullName(strBuffer);
+					for (int fieldIdx < mFieldDataCount)
+					{
+						if (fieldIdx > 0)
+							strBuffer.Append(", ");
+						GetType(mFieldDataPtr[fieldIdx].[Friend]mFieldTypeId).GetFullName(strBuffer);
+					}
+				}
+				else if ((mTypeFlags.HasFlag(.Splattable)) && (mFieldDataPtr != null))
+				{
+					let splatData = (FieldSplatData*)mFieldDataPtr;
+					for (int i < 3)
+					{
+						if (splatData.mSplatTypes[i] == 0)
+							break;
+						if (i > 0)
+							strBuffer.Append(", ");
+						GetType(splatData.mSplatTypes[i]).GetFullName(strBuffer);
+					}
 				}
 				strBuffer.Append(')');
 			}
@@ -764,19 +779,34 @@ namespace System.Reflection
 			}
 			else
 			{
-				if (mOuterType != 0)
+				if ((mName != null) && (mName != ""))
 				{
-					GetType(mOuterType).GetFullName(strBuffer);
-					strBuffer.Append(".");
-				}
-				else
-				{
-					if (!String.IsNullOrEmpty(mNamespace))
-		            	strBuffer.Append(mNamespace, ".");
-				}
+					if (mOuterType != 0)
+					{
+						let outerType = GetType(mOuterType);
+						if (outerType != null)
+							outerType.GetFullName(strBuffer);
+						else
+							strBuffer.Append("???");
+						strBuffer.Append(".");
+					}
+					else
+					{
+						if (!String.IsNullOrEmpty(mNamespace))
+					    	strBuffer.Append(mNamespace, ".");
+					}
 
-				if (mName != null)
 					strBuffer.Append(mName);
+				}
+				else if (mTypeFlags.HasFlag(.Delegate))
+					strBuffer.Append("delegate");
+				else if (mTypeFlags.HasFlag(.Function))
+					strBuffer.Append("function");
+				else if (mBaseType != 0)
+				{
+					strBuffer.Append("derivative of ");
+					GetType(mBaseType).GetFullName(strBuffer);
+				}
 			}
         }
 
@@ -1009,7 +1039,8 @@ namespace System.Reflection
 		//
 		WantsMark				= 0x8000,
 		Delegate				= 0x10000,
-		HasDestructor			= 0x20000,
+		Function				= 0x20000,
+		HasDestructor			= 0x40000,
     }
 
     public enum FieldFlags : uint16
