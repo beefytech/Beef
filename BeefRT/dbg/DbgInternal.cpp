@@ -385,26 +385,26 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 		//  through.
 
 		intptr dbgAllocInfo;
-		auto classVDataVal = (intptr)classVData | (intptr)BfObjectFlag_Allocated;
-		result->mClassVData = classVDataVal;
+		auto classVDataVal = (intptr)classVData | (intptr)BfObjectFlag_Allocated;		
 		if (maxStackTraceDepth <= 1)
 			dbgAllocInfo = (intptr)BF_RETURN_ADDRESS;
 		else
 		{
 			if (largeAllocInfo)
 			{
-				result->mClassVData |= (intptr)BfObjectFlag_AllocInfo;
+				classVDataVal |= (intptr)BfObjectFlag_AllocInfo;
 				dbgAllocInfo = size;
 				*(intptr*)((uint8*)result + size) = capturedTraceCount;
 				memcpy((uint8*)result + size + sizeof(intptr), stackTrace, capturedTraceCount * sizeof(intptr));
 			}
 			else
 			{
-				result->mClassVData |= (intptr)BfObjectFlag_AllocInfo_Short;
+				classVDataVal |= (intptr)BfObjectFlag_AllocInfo_Short;
 				dbgAllocInfo = (size << 16) | capturedTraceCount;
 				memcpy((uint8*)result + size, stackTrace, capturedTraceCount * sizeof(intptr));
 			}
 		}		
+		result->mClassVData = classVDataVal;
 		BF_FULL_MEMORY_FENCE(); // Since we depend on mDbAllocInfo to determine if we are allocated, we need to set this last after we're set up
 		result->mDbgAllocInfo = dbgAllocInfo;
 		BF_FULL_MEMORY_FENCE();
