@@ -1909,6 +1909,17 @@ void BfTypeInstance::GenerateProjectsReferenced()
 		BfTypeUtils::GetProjectList(genericArgType, &mGenericTypeInfo->mProjectsReferenced, 0);
 }
 
+bool BfTypeInstance::IsAlwaysInclude()
+{
+	bool alwaysInclude = mTypeDef->mIsAlwaysInclude || mTypeDef->mProject->mAlwaysIncludeAll;
+	if (mTypeOptionsIdx > 0)
+	{
+		auto typeOptions = mModule->mSystem->GetTypeOptions(mTypeOptionsIdx);		
+		typeOptions->Apply(alwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType);
+	}
+	return alwaysInclude;
+}
+
 bool BfTypeInstance::IsSpecializedByAutoCompleteMethod()
 {
 	if (mGenericTypeInfo == NULL)

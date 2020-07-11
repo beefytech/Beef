@@ -145,6 +145,34 @@ namespace IDE.ui
 			typeName.Clear(); typeName.Append(optionsName, "mAllocStackTraceDepth");
 			AddPropertiesItem(category, "Alloc Stack Trace Depth", typeName);
 
+			let (reflectItem, ?) = AddPropertiesItem(category, "Reflect");
+
+			typeName.Clear(); typeName.Append(optionsName, "mReflectAlwaysInclude");
+			AddPropertiesItem(reflectItem, "Always Include", typeName);
+
+			typeName.Clear(); typeName.Append(optionsName, "mReflectStaticFields");
+			AddPropertiesItem(reflectItem, "Static Fields", typeName,
+				scope String[] { "No", "Yes" });
+
+			typeName.Clear(); typeName.Append(optionsName, "mReflectNonStaticFields");
+			AddPropertiesItem(reflectItem, "Non-Static Fields", typeName,
+				scope String[] { "No", "Yes" });
+
+			typeName.Clear(); typeName.Append(optionsName, "mReflectStaticMethods");
+			AddPropertiesItem(reflectItem, "Static Methods", typeName,
+				scope String[] { "No", "Yes" });
+
+			typeName.Clear(); typeName.Append(optionsName, "mReflectNonStaticMethods");
+			AddPropertiesItem(reflectItem, "Non-Static Methods", typeName,
+				scope String[] { "No", "Yes" });
+
+			typeName.Clear(); typeName.Append(optionsName, "mReflectConstructors");
+			AddPropertiesItem(reflectItem, "Constructors", typeName,
+				scope String[] { "No", "Yes" });
+
+			typeName.Clear(); typeName.Append(optionsName, "mReflectMethodFilter");
+			AddPropertiesItem(reflectItem, "Method Filter", typeName);
+
 			category.Open(true, true);
 		}
 

@@ -6412,7 +6412,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		bool boundsCheck = mCompiler->mOptions.mRuntimeChecks;
 		auto typeOptions = GetTypeOptions();
 		if (typeOptions != NULL)
-			boundsCheck = BfTypeOptions::Apply(boundsCheck, typeOptions->mRuntimeChecks);
+			boundsCheck = typeOptions->Apply(boundsCheck, BfOptionFlags_RuntimeChecks);
 		
 		BfMethodMatcher methodMatcher(forEachStmt->mVariableName, this, "get__", argValues.mResolvedArgs, NULL);
 		methodMatcher.mMethodType = BfMethodType_PropertyGetter;

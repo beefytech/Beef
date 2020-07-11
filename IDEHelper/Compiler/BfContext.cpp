@@ -1896,10 +1896,14 @@ void BfContext::UpdateRevisedTypes()
 			workspaceConfigHashCtx.Mixin(typeOptions.mSIMDSetting);
 			workspaceConfigHashCtx.Mixin(typeOptions.mOptimizationLevel);
 			workspaceConfigHashCtx.Mixin(typeOptions.mEmitDebugInfo);
-			workspaceConfigHashCtx.Mixin(typeOptions.mRuntimeChecks);
-			workspaceConfigHashCtx.Mixin(typeOptions.mInitLocalVariables);
-			workspaceConfigHashCtx.Mixin(typeOptions.mEmitDynamicCastCheck);
-			workspaceConfigHashCtx.Mixin(typeOptions.mEmitObjectAccessCheck);
+			workspaceConfigHashCtx.Mixin(typeOptions.mAndFlags);
+			workspaceConfigHashCtx.Mixin(typeOptions.mOrFlags);
+			workspaceConfigHashCtx.Mixin(typeOptions.mReflectMethodFilters.size());
+			for (auto& filter : typeOptions.mReflectMethodFilters)
+				workspaceConfigHashCtx.MixinStr(filter);
+			workspaceConfigHashCtx.Mixin(typeOptions.mReflectMethodAttributeFilters.size());
+			for (auto& filter : typeOptions.mReflectMethodAttributeFilters)
+				workspaceConfigHashCtx.MixinStr(filter);
 			workspaceConfigHashCtx.Mixin(typeOptions.mAllocStackTraceDepth);
 		}
 
@@ -2629,7 +2633,10 @@ void BfContext::TryUnreifyModules()
 		bool isRequired = false;
 		for (auto typeInst : module->mOwnedTypeInstances)
 		{
-			if ((typeInst->mTypeDef->mIsAlwaysInclude) || (typeInst->mTypeDef->IsGlobalsContainer()))
+			if (typeInst->mTypeDef->IsGlobalsContainer())
+				isRequired = true;
+
+			if (typeInst->IsAlwaysInclude())			
 				isRequired = true;
 		}
 

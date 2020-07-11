@@ -3341,7 +3341,7 @@ BfCheckedKind BfModule::GetDefaultCheckedKind()
 	bool runtimeChecks = mCompiler->mOptions.mRuntimeChecks;
 	auto typeOptions = GetTypeOptions();
 	if (typeOptions != NULL)
-		runtimeChecks = BfTypeOptions::Apply(runtimeChecks, typeOptions->mRuntimeChecks);
+		runtimeChecks = typeOptions->Apply(runtimeChecks, BfOptionFlags_RuntimeChecks);
 	return runtimeChecks ? BfCheckedKind_Checked : BfCheckedKind_Unchecked;
 }
 
@@ -4738,6 +4738,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		typeFlags |= BfTypeFlags_Union;
 	if (type->IsDelegate())
 		typeFlags |= BfTypeFlags_Delegate;
+	if (type->IsFunction())
+		typeFlags |= BfTypeFlags_Function;
 	if (type->WantsGCMarking())
 		typeFlags |= BfTypeFlags_WantsMarking;
 
@@ -4839,7 +4841,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	// Reserve position
 	mTypeDataRefs[typeInstance] = BfIRValue();
 	
-	PopulateType(typeInstance, BfPopulateType_DataAndMethods);
+	if (typeInstance->IsReified())
+		PopulateType(typeInstance, BfPopulateType_DataAndMethods);
 	
 	BfTypeDef* typeDef = typeInstance->mTypeDef;
 	StringT<128> mangledName;
@@ -6198,12 +6201,14 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	if ((typeInstance->IsTypedPrimitive()) || (typeInstance->IsBoxed()))
 	{		
 		underlyingType = typeInstance->GetUnderlyingType()->mTypeId;
-	}
+	}	
 
 	int outerTypeId = 0;
 	auto outerType = mContext->mUnreifiedModule->GetOuterType(typeInstance);
 	if (outerType != NULL)
+	{		
 		outerTypeId = outerType->mTypeId;
+	}	
 
 	BfIRValue customAttrDataPtr;
 	if (customAttrs.size() > 0)
@@ -8753,7 +8758,7 @@ void BfModule::EmitObjectAccessCheck(BfTypedValue typedVal)
 	bool emitObjectAccessCheck = mCompiler->mOptions.mEmitObjectAccessCheck;
 	auto typeOptions = GetTypeOptions();
 	if (typeOptions != NULL)
-		emitObjectAccessCheck = BfTypeOptions::Apply(emitObjectAccessCheck, typeOptions->mEmitObjectAccessCheck);
+		emitObjectAccessCheck = typeOptions->Apply(emitObjectAccessCheck, BfOptionFlags_EmitObjectAccessCheck);
 	if (!emitObjectAccessCheck)
 		return;	
 
@@ -8875,7 +8880,7 @@ void BfModule::EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool al
 	bool emitDynamicCastCheck = mCompiler->mOptions.mEmitDynamicCastCheck;
 	auto typeOptions = GetTypeOptions();
 	if (typeOptions != NULL)
-		emitDynamicCastCheck = BfTypeOptions::Apply(emitDynamicCastCheck, typeOptions->mEmitDynamicCastCheck);	
+		emitDynamicCastCheck = typeOptions->Apply(emitDynamicCastCheck, BfOptionFlags_EmitDynamicCastCheck);
 
 	if (emitDynamicCastCheck)
 	{		
@@ -12715,7 +12720,7 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 	bool initLocalVariables = mCompiler->mOptions.mInitLocalVariables;
 	auto typeOptions = GetTypeOptions();
 	if (typeOptions != NULL)
-		initLocalVariables = BfTypeOptions::Apply(initLocalVariables, typeOptions->mInitLocalVariables);	
+		initLocalVariables = typeOptions->Apply(initLocalVariables, BfOptionFlags_InitLocalVariables);
 	// Local variable inits are implicitly handled in the Beef Backend
 	if ((initLocalVariables) && (!IsTargetingBeefBackend()))
 	{				
@@ -18448,6 +18453,7 @@ BfMethodDef* BfModule::GetLocalMethodDef(BfLocalMethod* localMethod)
 	if (methodDeclaration != NULL)
 	{
 		BfDefBuilder defBuilder(mCompiler->mSystem);
+		defBuilder.mCurSource = localMethod->mMethodDeclaration->GetParser();
 		defBuilder.mPassInstance = mCompiler->mPassInstance;
 		defBuilder.mCurTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
 		

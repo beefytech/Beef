@@ -6936,7 +6936,7 @@ BfInvocationExpression* BfReducer::CreateInvocationExpression(BfAstNode* target,
 	return invocationExpr;
 }
 
-BfInitializerExpression * BfReducer::TryCreateInitializerExpression(BfExpression* target)
+BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfExpression* target)
 {
 	auto block = BfNodeDynCast<BfBlock>(mVisitorPos.GetNext());
 	if (block == NULL)

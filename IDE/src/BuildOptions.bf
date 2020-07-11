@@ -64,6 +64,15 @@ namespace IDE
 			Small, 
 			Big
 		}
+
+		public enum AlwaysIncludeKind
+		{
+			NotSet,
+			No,
+			IncludeType,
+			AssumeInstantiated,
+			IncludeAll
+		}
 	}
 
 	public class DistinctBuildOptions
@@ -94,6 +103,20 @@ namespace IDE
 		public bool? mEmitObjectAccessCheck; // Only valid with mObjectHasDebugFlags
 		[Reflect]
 		public int32? mAllocStackTraceDepth;
+		[Reflect]
+		public BuildOptions.AlwaysIncludeKind mReflectAlwaysInclude;
+		[Reflect]
+		public bool? mReflectStaticFields;
+		[Reflect]
+		public bool? mReflectNonStaticFields;
+		[Reflect]
+		public bool? mReflectStaticMethods;
+		[Reflect]
+		public bool? mReflectNonStaticMethods;
+		[Reflect]
+		public bool? mReflectConstructors;
+		[Reflect]
+		public String mReflectMethodFilter = new String() ~ delete _;
 
 		public ~this()
 		{
@@ -111,6 +134,13 @@ namespace IDE
 			newVal.mEmitDynamicCastCheck = mEmitDynamicCastCheck;
 			newVal.mEmitObjectAccessCheck = mEmitObjectAccessCheck;
 			newVal.mAllocStackTraceDepth = mAllocStackTraceDepth;
+			newVal.mReflectAlwaysInclude = mReflectAlwaysInclude;
+			newVal.mReflectStaticFields = mReflectStaticFields;
+			newVal.mReflectNonStaticFields = mReflectNonStaticFields;
+			newVal.mReflectStaticMethods = mReflectStaticMethods;
+			newVal.mReflectNonStaticMethods = mReflectNonStaticMethods;
+			newVal.mReflectConstructors = mReflectConstructors;
+			newVal.mReflectMethodFilter.Set(mReflectMethodFilter);
 			return newVal;
 		}
 
@@ -133,6 +163,20 @@ namespace IDE
 				mEmitObjectAccessCheck = data.GetBool("EmitObjectAccessCheck");
 			if (data.Contains("AllocStackTraceDepth"))
 				mAllocStackTraceDepth = data.GetInt("AllocStackTraceDepth");
+
+			if (data.Contains("ReflectAlwaysInclude"))
+				mReflectAlwaysInclude = data.GetEnum<BuildOptions.AlwaysIncludeKind>("ReflectAlwaysInclude");
+			if (data.Contains("ReflectStaticFields"))
+				mReflectStaticFields = data.GetBool("ReflectStaticFields");
+			if (data.Contains("ReflectNonStaticFields"))
+				mReflectNonStaticFields = data.GetBool("ReflectNonStaticFields");
+			if (data.Contains("ReflectStaticMethods"))
+				mReflectStaticMethods = data.GetBool("ReflectStaticMethods");
+			if (data.Contains("ReflectNonStaticMethods"))
+				mReflectNonStaticMethods = data.GetBool("ReflectNonStaticMethods");
+			if (data.Contains("ReflectConstructors"))
+				mReflectConstructors = data.GetBool("ReflectConstructors");
+			data.GetString("ReflectMethodFilter", mReflectMethodFilter);
 		}
 		
 		public void Serialize(StructuredData data)
@@ -146,6 +190,13 @@ namespace IDE
 			data.ConditionalAdd("EmitDynamicCastCheck", mEmitDynamicCastCheck);
 			data.ConditionalAdd("EmitObjectAccessCheck", mEmitObjectAccessCheck);
 			data.ConditionalAdd("AllocStackTraceDepth", mAllocStackTraceDepth);
+			data.ConditionalAdd("ReflectAlwaysInclude", mReflectAlwaysInclude);
+			data.ConditionalAdd("ReflectStaticFields", mReflectStaticFields);
+			data.ConditionalAdd("ReflectNonStaticFields", mReflectNonStaticFields);
+			data.ConditionalAdd("ReflectStaticMethods", mReflectStaticMethods);
+			data.ConditionalAdd("ReflectNonStaticMethods", mReflectNonStaticMethods);
+			data.ConditionalAdd("ReflectConstructors", mReflectConstructors);
+			data.ConditionalAdd("ReflectMethodFilter", mReflectMethodFilter);
 		}
 	}
 }

@@ -3617,51 +3617,57 @@ BF_EXPORT void BF_CALLTYPE BfSystem_ClearTypeOptions(BfSystem* bfSystem)
 	bfSystem->mTypeOptions.Clear();
 }
 
-BF_EXPORT void BF_CALLTYPE BfSystem_AddTypeOptions(BfSystem* bfSystem, char* filter, int32 simdSetting, int32 optimizationLevel, int32 emitDebugInfo, int32 runtimeChecks,
-	int32 initLocalVariables, int32 emitDynamicCastCheck, int32 emitObjectAccessCheck, int32 allocStackTraceDepth)
+BF_EXPORT void BF_CALLTYPE BfSystem_AddTypeOptions(BfSystem* bfSystem, char* filter, int32 simdSetting, int32 optimizationLevel, int32 emitDebugInfo, int32 andFlags, int32 orFlags, int32 allocStackTraceDepth, char* reflectMethodFilter)
 {
 	AutoCrit autoCrit(bfSystem->mDataLock);
 	BfTypeOptions typeOptions;
 
-	String filterStr = filter;
-	int idx = 0;
-	while (true)
+	auto _ParseFilters = [&](char* filter, Array<String>& filters, Array<String>& attributeFilters)
 	{
-		int semiIdx = (int)filterStr.IndexOf(';', idx);
-		String newFilter;
-		if (semiIdx == -1)
-			newFilter = filterStr.Substring(idx);
-		else
-			newFilter = filterStr.Substring(idx, semiIdx - idx);
-		newFilter.Trim();
-		if (!newFilter.IsEmpty())
+		String filterStr = filter;
+		int idx = 0;
+		while (true)
 		{
-			if (newFilter.StartsWith('['))
-			{
-				newFilter.Remove(0);
-				if (newFilter.EndsWith(']'))
-					newFilter.Remove(newFilter.length() - 1);
-				newFilter.Trim();
-				typeOptions.mAttributeFilters.Add(newFilter);
-			}
+			int semiIdx = (int)filterStr.IndexOf(';', idx);
+			String newFilter;
+			if (semiIdx == -1)
+				newFilter = filterStr.Substring(idx);
 			else
-				typeOptions.mTypeFilters.Add(newFilter);
-		}
+				newFilter = filterStr.Substring(idx, semiIdx - idx);
+			newFilter.Trim();
+			if (!newFilter.IsEmpty())
+			{
+				if (newFilter.StartsWith('['))
+				{
+					newFilter.Remove(0);
+					if (newFilter.EndsWith(']'))
+						newFilter.Remove(newFilter.length() - 1);
+					newFilter.Trim();
+					attributeFilters.Add(newFilter);
+				}
+				else
+					filters.Add(newFilter);
+			}
 
-		if (semiIdx == -1)
-			break;
-		idx = semiIdx + 1;
-	}
+			if (semiIdx == -1)
+				break;
+			idx = semiIdx + 1;
+		}
+	};
+
+	_ParseFilters(filter, typeOptions.mTypeFilters, typeOptions.mAttributeFilters);
+
 	if ((typeOptions.mTypeFilters.IsEmpty()) && (typeOptions.mAttributeFilters.IsEmpty()))
 		return;
 	typeOptions.mSIMDSetting = simdSetting;
 	typeOptions.mOptimizationLevel = optimizationLevel;	
 	typeOptions.mEmitDebugInfo = emitDebugInfo;
-	typeOptions.mRuntimeChecks = (BfOptionalBool)runtimeChecks;
-	typeOptions.mInitLocalVariables = (BfOptionalBool)initLocalVariables;
-	typeOptions.mEmitDynamicCastCheck = (BfOptionalBool)emitDynamicCastCheck;
-	typeOptions.mEmitObjectAccessCheck = (BfOptionalBool)emitObjectAccessCheck;
+	typeOptions.mAndFlags = (BfOptionFlags)andFlags;
+	typeOptions.mOrFlags = (BfOptionFlags)orFlags;
 	typeOptions.mAllocStackTraceDepth = allocStackTraceDepth;	
+
+	_ParseFilters(reflectMethodFilter, typeOptions.mReflectMethodFilters, typeOptions.mReflectMethodAttributeFilters);
+
 	bfSystem->mTypeOptions.push_back(typeOptions);	
 }
 

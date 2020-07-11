@@ -1234,6 +1234,245 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	return result;
 }
 
+BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
+{
+	if (mContext->mSystem->mTypeOptions.size() == 0)
+	{
+		return NULL;
+	}
+
+	Array<int> matchedIndices;
+	
+	if (!mCompiler->mAttributeTypeOptionMap.IsEmpty())
+	{
+		auto customAttributes = typeDef->mTypeDeclaration->mAttributes;
+
+		while (customAttributes != NULL)
+		{
+			if (!mCompiler->mAttributeTypeOptionMap.IsEmpty())
+			{
+				SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
+
+				auto typeRef = customAttributes->mAttributeTypeRef;
+
+				// 			StringT<128> attrName;
+				// 			for (auto& customAttrs : customAttributes->mAttributeTypeRef)
+				// 			{
+				// 				attrName.Clear();
+				// 				customAttrs.mType->mTypeDef->mFullName.ToString(attrName);
+				// 				Array<int>* arrPtr;
+				// 				if (mCompiler->mAttributeTypeOptionMap.TryGetValue(attrName, &arrPtr))
+				// 				{
+				// 					for (auto optionsIdx : *arrPtr)
+				// 					{
+				// 						matchedIndices.Add(optionsIdx);
+				// 					}
+				// 				}
+				// 			}
+			}
+
+			customAttributes = customAttributes->mNextAttribute;
+		}
+	}
+
+	int typeOptionsCount = (int)mContext->mSystem->mTypeOptions.size();
+	
+	auto _CheckTypeName = [&](const StringImpl& typeName)
+	{
+		for (int optionIdx = 0; optionIdx < (int)mContext->mSystem->mTypeOptions.size(); optionIdx++)
+		{
+			auto& typeOptions = mContext->mSystem->mTypeOptions[optionIdx];
+
+			bool matched = false;
+			for (auto& filter : typeOptions.mTypeFilters)
+			{
+				int filterIdx = 0;
+				int typeNameIdx = 0;
+
+				const char* filterPtr = filter.c_str();
+				const char* namePtr = typeName.c_str();
+
+				char prevFilterC = 0;
+				while (true)
+				{
+					char filterC;
+					while (true)
+					{
+						filterC = *(filterPtr++);
+						if (filterC != ' ')
+							break;
+					}
+
+					char nameC;
+					while (true)
+					{
+						nameC = *(namePtr++);
+						if (nameC != ' ')
+							break;
+					}
+
+					if ((filterC == 0) || (nameC == 0))
+					{
+						matched = (filterC == 0) && (nameC == 0);
+						break;
+					}
+
+					bool doWildcard = false;
+
+					if (nameC != filterC)
+					{
+						if (filterC == '*')
+							doWildcard = true;
+						else if (((filterC == ',') || (filterC == '>')) &&
+							((prevFilterC == '<') || (prevFilterC == ',')))
+						{
+							doWildcard = true;
+							filterPtr--;
+						}
+
+						if (!doWildcard)
+						{
+							matched = false;
+							break;
+						}
+					}
+
+					if (doWildcard)
+					{
+						int openDepth = 0;
+
+						const char* startNamePtr = namePtr;
+
+						while (true)
+						{
+							nameC = *(namePtr++);
+							if (nameC == 0)
+							{
+								namePtr--;
+								if (openDepth != 0)
+									matched = false;
+								break;
+							}
+							if ((nameC == '>') && (openDepth == 0))
+							{
+								namePtr--;
+								break;
+							}
+
+							if (nameC == '<')
+								openDepth++;
+							else if (nameC == '>')
+								openDepth--;
+							else if ((nameC == ',') && (openDepth == 0))
+							{
+								namePtr--;
+								break;
+							}
+						}
+
+						if (!matched)
+							break;
+					}
+
+					prevFilterC = filterC;
+				}
+			}
+
+			if (matched)
+				matchedIndices.push_back(optionIdx);
+		}
+	};
+
+// 	if (typeInstance->IsTypedPrimitive())
+// 	{
+// 		auto underlyingType = typeInstance->GetUnderlyingType();
+// 		if (underlyingType != NULL)						
+// 		{
+// 			String typeName = TypeToString(underlyingType);
+// 			_CheckTypeName(typeName);
+// 		}
+// 		else
+// 		{
+// 			// Can this only happen for functions that are being extended?
+// 		}
+// 	}
+// 
+// 	if ((!typeInstance->IsBoxed()) && (typeInstance->mTypeDef == mCompiler->mPointerTTypeDef))
+// 	{
+// 		BF_ASSERT(typeInstance->IsGenericTypeInstance());
+// 		auto innerType = typeInstance->mGenericTypeInfo->mTypeGenericArguments[0];
+// 		auto ptrType = CreatePointerType(innerType);
+// 		String typeName = TypeToString(ptrType);
+// 		_CheckTypeName(typeName);
+// 	}
+
+	String typeName = BfTypeUtils::TypeToString(typeDef);
+	_CheckTypeName(typeName);			
+
+	int matchedIdx = -1;
+	if (matchedIndices.size() == 1)
+	{
+		matchedIdx = matchedIndices[0];
+	}
+	else if (matchedIndices.size() > 1)
+	{
+		// Try to find a merged typeoptions with these indices
+		for (int mergedIdx = 0; mergedIdx < (int)mContext->mSystem->mMergedTypeOptions.size(); mergedIdx++)
+		{
+			auto& typeOptions = mContext->mSystem->mMergedTypeOptions[mergedIdx];
+			if (typeOptions.mMatchedIndices == matchedIndices)
+			{
+				matchedIdx = typeOptionsCount + mergedIdx;
+				break;
+			}
+		}
+
+		// Otherwise make one...
+		if (matchedIdx == -1)
+		{
+			auto& first = mContext->mSystem->mTypeOptions[matchedIndices[0]];
+			BfTypeOptions mergedTypeOptions;
+			mergedTypeOptions.mSIMDSetting = first.mSIMDSetting;
+			mergedTypeOptions.mOptimizationLevel = first.mOptimizationLevel;
+			mergedTypeOptions.mEmitDebugInfo = first.mEmitDebugInfo;
+			mergedTypeOptions.mAndFlags = first.mAndFlags;
+			mergedTypeOptions.mOrFlags = first.mOrFlags;			
+			mergedTypeOptions.mAllocStackTraceDepth = first.mAllocStackTraceDepth;			
+			mergedTypeOptions.mReflectMethodFilters = first.mReflectMethodFilters;
+			mergedTypeOptions.mReflectMethodAttributeFilters = first.mReflectMethodAttributeFilters;
+
+			mergedTypeOptions.mMatchedIndices = matchedIndices;
+			for (int idx = 1; idx < (int)matchedIndices.size(); idx++)
+			{
+				auto& typeOptions = mContext->mSystem->mTypeOptions[matchedIndices[idx]];
+				if (typeOptions.mSIMDSetting != -1)
+					mergedTypeOptions.mSIMDSetting = typeOptions.mSIMDSetting;
+				if (typeOptions.mOptimizationLevel != -1)
+					mergedTypeOptions.mOptimizationLevel = typeOptions.mOptimizationLevel;
+				if (typeOptions.mEmitDebugInfo != -1)
+					mergedTypeOptions.mEmitDebugInfo = typeOptions.mEmitDebugInfo;
+				
+				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags | typeOptions.mOrFlags);
+				mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags | typeOptions.mOrFlags);
+
+				mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags & typeOptions.mAndFlags);
+				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags & typeOptions.mAndFlags);
+				
+				if (typeOptions.mAllocStackTraceDepth != -1)
+					mergedTypeOptions.mAllocStackTraceDepth = typeOptions.mAllocStackTraceDepth;
+				for (auto filter : typeOptions.mReflectMethodFilters)
+					mergedTypeOptions.mReflectMethodFilters.Add(filter);
+				for (auto filter : typeOptions.mReflectMethodAttributeFilters)
+					mergedTypeOptions.mReflectMethodAttributeFilters.Add(filter);
+			}
+			matchedIdx = typeOptionsCount + (int)mContext->mSystem->mMergedTypeOptions.size();
+			mContext->mSystem->mMergedTypeOptions.push_back(mergedTypeOptions);
+		}
+	}
+
+	return mSystem->GetTypeOptions( matchedIdx);
+}
+
 int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeInstance* typeInstance, bool checkTypeName)
 {
 	if (mContext->mSystem->mTypeOptions.size() == 0)
@@ -1379,14 +1618,14 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 				}
 
 				if (matched)
-				 	matchedIndices.push_back(optionIdx);
+					matchedIndices.push_back(optionIdx);
 			}
 		};
 
 		if (typeInstance->IsTypedPrimitive())
 		{
 			auto underlyingType = typeInstance->GetUnderlyingType();
-			if (underlyingType != NULL)						
+			if (underlyingType != NULL)
 			{
 				String typeName = TypeToString(underlyingType);
 				_CheckTypeName(typeName);
@@ -1407,7 +1646,7 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 		}
 
 		String typeName = TypeToString(typeInstance);
-		_CheckTypeName(typeName);		
+		_CheckTypeName(typeName);
 	}
 
 	int matchedIdx = -1;
@@ -1436,11 +1675,11 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 			mergedTypeOptions.mSIMDSetting = first.mSIMDSetting;
 			mergedTypeOptions.mOptimizationLevel = first.mOptimizationLevel;
 			mergedTypeOptions.mEmitDebugInfo = first.mEmitDebugInfo;
-			mergedTypeOptions.mRuntimeChecks = first.mRuntimeChecks;
-			mergedTypeOptions.mInitLocalVariables = first.mInitLocalVariables;
-			mergedTypeOptions.mEmitDynamicCastCheck = first.mEmitDynamicCastCheck;
-			mergedTypeOptions.mEmitObjectAccessCheck = first.mEmitObjectAccessCheck;
-			mergedTypeOptions.mAllocStackTraceDepth = first.mAllocStackTraceDepth;			
+			mergedTypeOptions.mAndFlags = first.mAndFlags;
+			mergedTypeOptions.mOrFlags = first.mOrFlags;
+			mergedTypeOptions.mAllocStackTraceDepth = first.mAllocStackTraceDepth;
+			mergedTypeOptions.mReflectMethodFilters = first.mReflectMethodFilters;
+			mergedTypeOptions.mReflectMethodAttributeFilters = first.mReflectMethodAttributeFilters;
 
 			mergedTypeOptions.mMatchedIndices = matchedIndices;
 			for (int idx = 1; idx < (int)matchedIndices.size(); idx++)
@@ -1452,16 +1691,19 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 					mergedTypeOptions.mOptimizationLevel = typeOptions.mOptimizationLevel;
 				if (typeOptions.mEmitDebugInfo != -1)
 					mergedTypeOptions.mEmitDebugInfo = typeOptions.mEmitDebugInfo;
-				if (typeOptions.mRuntimeChecks != BfOptionalBool_NotSet)
-					mergedTypeOptions.mRuntimeChecks = typeOptions.mRuntimeChecks;
-				if (typeOptions.mInitLocalVariables != BfOptionalBool_NotSet)
-					mergedTypeOptions.mInitLocalVariables = typeOptions.mInitLocalVariables;
-				if (typeOptions.mEmitDynamicCastCheck != BfOptionalBool_NotSet)
-					mergedTypeOptions.mEmitDynamicCastCheck = typeOptions.mEmitDynamicCastCheck;
-				if (typeOptions.mEmitObjectAccessCheck != BfOptionalBool_NotSet)
-					mergedTypeOptions.mEmitObjectAccessCheck = typeOptions.mEmitObjectAccessCheck;
+
+				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags | typeOptions.mOrFlags);
+				mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags | typeOptions.mOrFlags);
+
+				mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags & typeOptions.mAndFlags);
+				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags & typeOptions.mAndFlags);
+
 				if (typeOptions.mAllocStackTraceDepth != -1)
 					mergedTypeOptions.mAllocStackTraceDepth = typeOptions.mAllocStackTraceDepth;
+				for (auto filter : typeOptions.mReflectMethodFilters)
+					mergedTypeOptions.mReflectMethodFilters.Add(filter);
+				for (auto filter : typeOptions.mReflectMethodAttributeFilters)
+					mergedTypeOptions.mReflectMethodAttributeFilters.Add(filter);
 			}
 			matchedIdx = typeOptionsCount + (int)mContext->mSystem->mMergedTypeOptions.size();
 			mContext->mSystem->mMergedTypeOptions.push_back(mergedTypeOptions);
@@ -1880,6 +2122,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		BfTypeReference* mTypeRef;
 		BfTypeInstance* mGenericType;
+		bool mIgnoreErrors;
 	};
 	Array<_DeferredValidate> deferredTypeValidateList;
 
@@ -1930,7 +2173,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					// Specialized type variations don't need to validate their constraints
 					if (!typeInstance->IsUnspecializedTypeVariation())
-						deferredTypeValidateList.Add({ checkTypeRef, genericTypeInst });
+						deferredTypeValidateList.Add({ checkTypeRef, genericTypeInst, false });
 				}
 
 				auto checkTypeInst = checkType->ToTypeInstance();
@@ -2077,8 +2320,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		if ((genericTypeInst->IsSpecializedType()) && (!genericTypeInst->mGenericTypeInfo->mValidatedGenericConstraints) && (!typeInstance->IsBoxed()))
 		{			
-			SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, true);
-			ValidateGenericConstraints(NULL, genericTypeInst, false);				
+			deferredTypeValidateList.Add({ NULL, genericTypeInst, true });
 		}
 	}
 
@@ -2086,15 +2328,14 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{		
 		BfType* outerType = GetOuterType(typeInstance);
 		if (outerType != NULL)
+		{
+			PopulateType(outerType, BfPopulateType_BaseType);
 			AddDependency(outerType, typeInstance, BfDependencyMap::DependencyFlag_OuterType);
+		}
 	}
 
 	if ((baseTypeInst != NULL) && (typeInstance->mBaseType == NULL))
 	{
-		//curFieldDataIdx = 1;
-// 		if (!typeInstance->mTypeFailed)
-// 			PopulateType(baseTypeInst, BfPopulateType_Data);
-
 		if (typeInstance->mTypeFailed)
 		{
 			if (baseTypeInst->IsDataIncomplete())
@@ -2217,6 +2458,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	for (auto& validateEntry : deferredTypeValidateList)
 	{		
+		SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, mIgnoreErrors | validateEntry.mIgnoreErrors);
 		ValidateGenericConstraints(validateEntry.mTypeRef, validateEntry.mGenericType, false);
 	}
 
@@ -8564,6 +8806,8 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		resolvedEntry->mValue = delegateType;		
 
 		AddDependency(directTypeRef->mType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
+		if (delegateInfo->mFunctionThisType != NULL)
+			AddDependency(delegateInfo->mFunctionThisType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		for (auto paramType : paramTypes)
 			AddDependency(paramType, delegateType, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 
