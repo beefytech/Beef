@@ -1878,6 +1878,7 @@ public:
 	bool GetResultInfo(BfType*& valueType, int& okTagId);
 	BfGenericTypeInfo::GenericParamsVector* GetGenericParamsVector(BfTypeDef* declaringTypeDef);
 	void GenerateProjectsReferenced();
+	bool IsAlwaysInclude();
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };

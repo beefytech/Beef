@@ -47,6 +47,20 @@ namespace Tests
 			}
 		}
 
+		class Singleton<T> where T : Singleton<T>
+		{
+		    public static T mInstance;
+
+		    protected this()
+		    {
+		        mInstance = (T)this;
+		    }
+		}
+
+		class ClassC : Singleton<ClassC>
+		{
+		}
+
 		static void DoDispose<T>(mut T val) where T : IDisposable
 		{
 			val.Dispose();
@@ -119,6 +133,9 @@ namespace Tests
 			Test.Assert(MethodA("") == 1);
 			Test.Assert(MethodA(1.2f) == 2);
 			Test.Assert(MethodA(TypeCode.Boolean) == 3);
+
+			ClassC cc = scope .();
+			Test.Assert(ClassC.mInstance == cc);
 		}
 	}
 

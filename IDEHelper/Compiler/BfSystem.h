@@ -180,7 +180,8 @@ enum BfTypeFlags
 	//
 	BfTypeFlags_WantsMarking    = 0x8000,
 	BfTypeFlags_Delegate        = 0x10000,
-	BfTypeFlags_HasDestructor   = 0x20000,
+	BfTypeFlags_Function		= 0x20000,
+	BfTypeFlags_HasDestructor   = 0x40000,
 };
 
 enum BfObjectFlags : uint8
@@ -1267,11 +1268,23 @@ public:
 	void WriteErrorSummary();
 };
 
-enum BfOptionalBool
+enum BfOptionFlags
 {
-	BfOptionalBool_NotSet = -1,
-	BfOptionalBool_False = 0,
-	BfOptionalBool_True = 1
+	BfOptionFlags_None						= 0,
+	BfOptionFlags_RuntimeChecks				= 1,
+	BfOptionFlags_InitLocalVariables		= 2,
+	BfOptionFlags_EmitDynamicCastCheck		= 4,
+	BfOptionFlags_EmitObjectAccessCheck		= 8,
+
+	BfOptionFlags_ReflectAlwaysIncludeType	= 0x10,
+	BfOptionFlags_ReflectAlwaysIncludeAll	= 0x20,
+	BfOptionFlags_ReflectAssumeInstantiated	= 0x40,
+	BfOptionFlags_ReflectStaticFields		= 0x80,
+	BfOptionFlags_ReflectNonStaticFields	= 0x100,
+	BfOptionFlags_ReflectStaticMethods		= 0x200,
+	BfOptionFlags_ReflectNonStaticMethods	= 0x400,
+	BfOptionFlags_ReflectConstructors		= 0x800,
+
 };
 
 class BfTypeOptions
@@ -1283,10 +1296,10 @@ public:
 	int mSIMDSetting;
 	int mOptimizationLevel;
 	int mEmitDebugInfo;	
-	BfOptionalBool mRuntimeChecks;
-	BfOptionalBool mInitLocalVariables;
-	BfOptionalBool mEmitDynamicCastCheck;
-	BfOptionalBool mEmitObjectAccessCheck;
+	BfOptionFlags mAndFlags;
+	BfOptionFlags mOrFlags;
+	Array<String> mReflectMethodFilters;
+	Array<String> mReflectMethodAttributeFilters;
 	int mAllocStackTraceDepth;	
 
 public:
@@ -1295,13 +1308,14 @@ public:
 		if (applyVal != -1)
 			return applyVal;
 		return val;
-	}
+	}	
 
-	static bool Apply(bool val, BfOptionalBool applyVal)
+	bool Apply(bool val, BfOptionFlags flags)
 	{
-		if (applyVal != BfOptionalBool_NotSet)
-			return applyVal == BfOptionalBool_True;
-		return val;
+		if (val)
+			return (mAndFlags & flags) != 0;
+		else
+			return (mOrFlags & flags) != 0;
 	}
 };
 

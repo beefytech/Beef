@@ -1603,6 +1603,7 @@ public:
 	void MarkDerivedDirty(BfTypeInstance* typeInst);
 	void CheckAddFailType();
 	bool PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
+	BfTypeOptions* GetTypeOptions(BfTypeDef* typeDef);
 	int GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeInstance* typeInstance, bool checkTypeName);
 	void SetTypeOptions(BfTypeInstance* typeInstance);
 	BfModuleOptions GetModuleOptions();

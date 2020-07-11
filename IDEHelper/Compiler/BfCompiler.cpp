@@ -5906,7 +5906,12 @@ void BfCompiler::CompileReified()
 		if (typeDef->mIsPartial)
 			continue;
 
+		auto scratchModule = mContext->mScratchModule;
 		bool isAlwaysInclude = (typeDef->mIsAlwaysInclude) || (typeDef->mProject->mAlwaysIncludeAll);
+
+		auto typeOptions = scratchModule->GetTypeOptions(typeDef);
+		if (typeOptions != NULL)
+			typeOptions->Apply(isAlwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType);		
 
 		if (typeDef->mProject->IsTestProject())
 		{
@@ -5922,8 +5927,7 @@ void BfCompiler::CompileReified()
 		//TODO: Just because the type is required doesn't mean we want to reify it. Why did we have that check?
 		if ((mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude) && (!isAlwaysInclude))
 			continue;
-
-		auto scratchModule = mContext->mScratchModule;
+		
 		scratchModule->ResolveTypeDef(typeDef, BfPopulateType_Full);
 	}
 	
@@ -6396,7 +6400,15 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 			for (auto typeDef : mSystem->mTypeDefs)
 			{
-				if ((typeDef->mIsAlwaysInclude) && (!typeDef->mIsPartial))
+				if (typeDef->mIsPartial)
+					continue;
+
+				bool isAlwaysInclude = (typeDef->mIsAlwaysInclude) || (typeDef->mProject->mAlwaysIncludeAll);
+				auto typeOptions = mContext->mScratchModule->GetTypeOptions(typeDef);
+				if (typeOptions != NULL)
+					isAlwaysInclude = typeOptions->Apply(isAlwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType);
+
+				if (isAlwaysInclude)
 				{
 					auto requiredType = mContext->mScratchModule->ResolveTypeDef(typeDef);
 					if (requiredType != NULL)
