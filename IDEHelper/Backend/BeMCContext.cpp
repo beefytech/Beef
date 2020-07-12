@@ -2329,7 +2329,13 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 	//auto itr = mValueToOperand.find(value);
 	if (!allowFail)
 	{
-		BF_ASSERT(operandPtr != NULL);
+		if (operandPtr == NULL)
+		{
+			BeDumpContext dumpCtx;
+			String str;
+			dumpCtx.ToString(str, value);
+			Fail(StrFormat("Unable to find bevalue for operand: %s", str.c_str()));
+		}
 	}
 	if (operandPtr == NULL)
 	{
