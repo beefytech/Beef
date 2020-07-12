@@ -3234,7 +3234,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				// This $alias$ hack is unfortunate, but LLVM gets confused when we attempt to tie multiple debug variables
 				//  to the same memory location, which can happen during mixin injection.  The result is that the mixin gets
 				//  some premature instructions attributed to it from the variable declaration.  This fixes that.
-				if (aliasPos != NULL)
+				if ((aliasPos != NULL) && (aliasPos > localVar->mName))
 				{						
 					String findName = String(aliasPos + 7);
 					localVar->mName = CvDupString(localVar->mName + 1, aliasPos - localVar->mName - 1);
