@@ -8610,7 +8610,7 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 
 	auto _BoolResult = [&](bool val)
 	{
-		mResult = BfTypedValue(mModule->GetConstValue8(val ? 1 : 0), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, val ? 1 : 0), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 	};
 
 	auto _Int32Result = [&](int32 val)
