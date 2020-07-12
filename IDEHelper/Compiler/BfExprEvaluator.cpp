@@ -5359,7 +5359,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	if (!skipThis)
 	{
-		if ((target) && (target.mType->IsFunction()))
+		if ((target) && (target.mType->IsFunction()) && (methodInstance->GetOwner() == target.mType))
 		{
 			CheckResultForReading(target);
 			target = mModule->LoadValue(target);
