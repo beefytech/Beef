@@ -1016,11 +1016,11 @@ namespace SDL2
 		[LinkName("SDL_Vulkan_GetInstanceExtensions")]
 		public static extern Bool Vulkan_GetInstanceExtensions(Window* window, out uint32 pCount, char8** pNames);
 
-		struct VkInstance : int
+		public struct VkInstance : int
 		{
 		}
 
-		struct VkSurfaceKHR : int
+		public struct VkSurfaceKHR : int
 		{
 		}
 
