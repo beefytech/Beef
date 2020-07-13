@@ -104,6 +104,7 @@ public:
 	BfIRCodeGen();
 	~BfIRCodeGen();
 
+	void FatalError(const StringImpl& str);
 	virtual void Fail(const StringImpl& error) override;
 
 	void ProcessBfIRData(const BfSizedArray<uint8>& buffer) override;

@@ -339,6 +339,48 @@ BfIRCodeGen::~BfIRCodeGen()
 	delete mLLVMContext;
 }
 
+void BfIRCodeGen::FatalError(const StringImpl &err)
+{
+	String failStr = "Fatal Error in Module: ";	
+	failStr += mModuleName;
+	failStr += "\n";
+	if (mLLVMModule != NULL)
+	{	
+		if (mActiveFunction != NULL)
+		{
+			failStr += "Function: ";
+			failStr += mActiveFunction->getName().str();
+			failStr += "\n";
+		}
+
+		auto loc = mIRBuilder->getCurrentDebugLocation();		
+		auto dbgLoc = loc.getAsMDNode();
+		if (dbgLoc != NULL)
+		{
+			std::string str;
+			llvm::raw_string_ostream os(str);
+			dbgLoc->print(os);
+			failStr += "DbgLoc: ";
+			failStr += str;
+			failStr += "\n";
+		}		
+
+		llvm::MDNode* scope = loc.getScope();
+		if (scope != NULL)
+		{
+			std::string str;
+			llvm::raw_string_ostream os(str);
+			scope->print(os);
+			failStr += "Scope: ";
+			failStr += str;
+			failStr += "\n";
+		}
+	}
+
+	failStr += err;
+	BF_FATAL(failStr);
+}
+
 void BfIRCodeGen::Fail(const StringImpl& error)
 {
 	if (mFailed)
@@ -885,6 +927,11 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 	else if (paramType == BfIRParamType_Arg)
 	{
 		int argIdx = mStream->Read();
+		if (argIdx >= mActiveFunction->arg_size())
+		{
+			FatalError(StrFormat("ARG out of bounds %d", argIdx));
+		}
+
 		BF_ASSERT(argIdx < mActiveFunction->arg_size());
 		auto argItr = mActiveFunction->arg_begin();
 		for (int i = 0; i < argIdx; i++)
@@ -2624,10 +2671,13 @@ void BfIRCodeGen::HandleNextCmd()
 				break;
 			}
 
-			//mIRBuilder->CreateAtomicCmpXchg();
-
 			if (auto funcPtr = llvm::dyn_cast<llvm::Function>(func))
 			{
+// 				if (funcPtr->getName() == "__FAILCALL")
+// 				{
+// 					FatalError("__FAILCALL");
+// 				}
+
 				int intrinId = -1;
 				if (mIntrinsicReverseMap.TryGetValue(funcPtr, &intrinId))
 				{

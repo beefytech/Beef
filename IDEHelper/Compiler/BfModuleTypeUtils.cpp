@@ -7065,7 +7065,9 @@ BfTypeDef* BfModule::FindTypeDef(const StringImpl& typeName, int numGenericArgs,
 	if (!mSystem->ParseAtomComposite(typeName, findName))
 		return NULL;
 	auto result = FindTypeDef(findName, numGenericArgs, typeInstanceOverride, error);
-	BF_ASSERT((result == NULL) || (result->mTypeCode != BfTypeCode_Extension));
+	// Don't allow just finding extensions here. This can happen in some 'using static' cases but generally shouldn't happen
+	if ((result != NULL) && (result->mTypeCode == BfTypeCode_Extension))
+		return NULL; 	
 	return result;
 }
 
