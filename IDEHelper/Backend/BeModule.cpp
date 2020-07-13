@@ -445,25 +445,25 @@ BeType* BeConstant::GetType()
 	return mType;
 }
 
-void BeConstant::GetData(Array<uint8>& data)
+void BeConstant::GetData(BeConstData& data)
 {
 	auto type = GetType();
-	while ((((int)data.size()) % type->mAlign) != 0)
-		data.push_back(0);
+	while ((((int)data.mData.size()) % type->mAlign) != 0)
+		data.mData.push_back(0);
 
 	if (type->IsComposite())
 	{
 		for (int i = 0; i < type->mSize; i++)
-			data.push_back(0); // Aggregate
+			data.mData.push_back(0); // Aggregate
 	}
 	else if (type->mTypeCode == BeTypeCode_Float)
 	{
 		float f = mDouble;
-		data.Insert(data.mSize, (uint8*)&f, sizeof(float));
+		data.mData.Insert(data.mData.mSize, (uint8*)&f, sizeof(float));
 	}
 	else
 	{		
-		data.Insert(data.mSize, &mUInt8, type->mSize);
+		data.mData.Insert(data.mData.mSize, &mUInt8, type->mSize);
 	}
 }
 
@@ -491,7 +491,7 @@ void BeConstant::HashContent(BeHashContext& hashCtx)
 		BF_FATAL("NotImpl");
 }
 
-void BeStructConstant::GetData(Array<uint8>& data)
+void BeStructConstant::GetData(BeConstData& data)
 {
 	for (auto val : mMemberValues)
 		val->GetData(data);
@@ -516,6 +516,27 @@ BeType* BeGEPConstant::GetType()
 		BeStructType* structType = (BeStructType*)ptrType->mElementType;
 		BF_ASSERT(structType->mTypeCode == BeTypeCode_Struct);
 		return structType->mContext->GetPointerTo(structType->mMembers[mIdx1].mType);
+	}
+}
+
+BeType* BeExtractValueConstant::GetType()
+{
+	BeType* type = mTarget->GetType();	
+	if (type->mTypeCode == BeTypeCode_SizedArray)
+	{
+		BeSizedArrayType* arrayType = (BeSizedArrayType*)type;
+		BF_ASSERT(arrayType->mTypeCode == BeTypeCode_SizedArray);
+		return arrayType->mContext->GetPointerTo(arrayType->mElementType);
+	}
+	/*else if (ptrType->mElementType->IsPointer())
+	{
+		return ptrType->mElementType;
+	}*/
+	else
+	{
+		BeStructType* structType = (BeStructType*)type;
+		BF_ASSERT(structType->mTypeCode == BeTypeCode_Struct);
+		return structType->mContext->GetPointerTo(structType->mMembers[mIdx0].mType);
 	}
 }
 
@@ -1240,6 +1261,14 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		return;
 	}
 
+	if (auto constantExtract = BeValueDynCast<BeExtractValueConstant>(value))
+	{
+		str += "ConstExtract ";
+		ToString(str, constantExtract->mTarget);
+		str += StrFormat(" %d", constantExtract->mIdx0);
+		return;
+	}
+
 	if (auto arg = BeValueDynCast<BeArgument>(value))
 	{
 		auto activeFunction = arg->mModule->mActiveFunction;
@@ -1310,6 +1339,15 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		str += " gep (";
 		ToString(str, constant->mTarget);
 		str += StrFormat(", %d, %d)", constant->mIdx0, constant->mIdx1);
+		return;
+	}
+
+	if (auto constant = BeValueDynCast<BeExtractValueConstant>(value))
+	{
+		ToString(str, constant->GetType());
+		str += " extract (";
+		ToString(str, constant->mTarget);
+		str += StrFormat(", %d)", constant->mIdx0);
 		return;
 	}
 

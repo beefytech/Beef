@@ -17660,9 +17660,30 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				return;
 			}
 
+			if (mResult.mValue.IsConst())
+			{
+				auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
+				bool isNull = constant->mTypeCode == BfTypeCode_NullPtr;
+
+				if (constant->mConstType == BfConstType_ExtractValue)
+				{
+					auto constExtract = (BfConstantExtractValue*)constant;
+					auto targetConst = mModule->mBfIRBuilder->GetConstantById(constExtract->mTarget);
+					if (targetConst->mConstType == BfConstType_AggZero)
+						isNull = true;
+				}
+
+				if (isNull)
+				{
+					mModule->Warn(0, "Cannot dereference a null pointer", unaryOpExpr);
+					mResult = mModule->GetDefaultTypedValue(mResult.mType, false, BfDefaultValueKind_Addr);
+					mResult = mModule->LoadValue(mResult);
+				}
+			}
+
 			auto derefTarget = mModule->LoadValue(mResult);
 
-			BfPointerType* pointerType = (BfPointerType*)derefTarget.mType;				
+			BfPointerType* pointerType = (BfPointerType*)derefTarget.mType;
 			auto resolvedType = mModule->ResolveType(pointerType->mElementType);
 			if (resolvedType == NULL)
 			{

@@ -680,7 +680,8 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				globalVariable->mIsTLS = isTLS;
 				globalVariable->mAlign = varType->mAlign;
 				globalVariable->mUnnamedAddr = false;				
-				BF_ASSERT(varType->mAlign > 0);
+				if (initializer != NULL)
+					BF_ASSERT(varType->mAlign > 0);
 
 				SetResult(streamId, globalVariable);
 				beValue = globalVariable;
@@ -719,6 +720,19 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 
 			beValue = gepConstant;
 			BE_MEM_END("ParamType_Const_GEP32_2");
+			return;
+		}
+		else if (constType == BfConstType_ExtractValue)
+		{
+			CMD_PARAM(BeConstant*, target);
+			CMD_PARAM(int, idx0);			
+			
+			auto gepConstant = mBeModule->mAlloc.Alloc<BeExtractValueConstant>();
+			gepConstant->mTarget = target;
+			gepConstant->mIdx0 = idx0;			
+
+			beValue = gepConstant;
+			BE_MEM_END("ParamType_Const_ExtractValue");
 			return;
 		}
 		else if (constType == BfConstType_PtrToInt)

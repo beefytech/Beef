@@ -1473,6 +1473,11 @@ BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
 	return mSystem->GetTypeOptions( matchedIdx);
 }
 
+bool BfModule::CheckTypeOptionMethodFilters(BfMethodDef* methodDef, BfTypeOptions * typeOptions)
+{
+	return true;
+}
+
 int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeInstance* typeInstance, bool checkTypeName)
 {
 	if (mContext->mSystem->mTypeOptions.size() == 0)
@@ -2512,9 +2517,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	if (typeInstance->mTypeOptionsIdx == -2)
-	{
-		SetTypeOptions(typeInstance);
-	}
+		SetTypeOptions(typeInstance);	
 
 	ProcessCustomAttributeData();
 	bool isPacked = false;
@@ -2529,6 +2532,16 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		typeInstance->mIsUnion = true;
 	typeInstance->mIsPacked = isPacked;
 	typeInstance->mIsCRepr = isCRepr;
+
+	if (typeInstance->mTypeOptionsIdx >= 0)
+	{
+		auto typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
+		if (typeOptions != NULL)
+		{
+			typeInstance->mIncludeAllMethods = typeOptions->Apply(typeInstance->mIncludeAllMethods, BfOptionFlags_ReflectAlwaysIncludeAll);
+			typeInstance->mHasBeenInstantiated = typeOptions->Apply(typeInstance->mHasBeenInstantiated, BfOptionFlags_ReflectAssumeInstantiated);
+		}
+	}
 
 	BfType* unionInnerType = NULL;
 	bool hadDeferredVars = false;
@@ -3681,6 +3694,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 	auto typeDef = typeInstance->mTypeDef;
 
+	BfTypeOptions* typeOptions = NULL;
+	if (typeInstance->mTypeOptionsIdx >= 0)
+		typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
+
 	// Generate all methods. Pass 0
 	for (auto methodDef : typeDef->mMethods)
 	{
@@ -3980,6 +3997,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			}
 			if (typeInstance->mIncludeAllMethods)
 				implRequired = true;
+// 			if ((typeOptions != NULL) && (CheckTypeOptionMethodFilters(typeOptions, methodDef)))
+// 				implRequired = true;
 
 			if (typeInstance->IsInterface())
 				declRequired = true;

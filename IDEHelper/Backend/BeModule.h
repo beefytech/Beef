@@ -271,6 +271,20 @@ class BeDbgLoc;
 class BeMDNode;
 class BeGlobalVariable;
 
+class BeConstant;
+
+struct BeConstData
+{
+	struct ConstantEntry
+	{
+		int mIdx;
+		BeConstant* mConstant;
+	};
+
+	Array<uint8> mData;
+	Array<ConstantEntry> mConsts;
+};
+
 class BeConstant : public BeValue
 {
 public:
@@ -304,7 +318,7 @@ public:
 	}
 
 	virtual BeType* GetType();	
-	virtual void GetData(Array<uint8>& data);
+	virtual void GetData(BeConstData& data);
 	virtual void HashContent(BeHashContext& hashCtx) override;
 };
 
@@ -318,6 +332,11 @@ public:
 		hashCtx.Mixin(TypeId);
 		mType->HashReference(hashCtx);
 		mTarget->HashReference(hashCtx);
+	}
+
+	virtual void GetData(BeConstData& data) override
+	{
+		mTarget->GetData(data);
 	}
 };
 
@@ -339,6 +358,22 @@ public:
 	}
 };
 
+class BeExtractValueConstant : public BeConstant
+{
+public:
+	BE_VALUE_TYPE(BeExtractValueConstant, BeConstant);
+	int mIdx0;	
+
+	virtual BeType* GetType();
+
+	virtual void HashContent(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		mTarget->HashReference(hashCtx);
+		hashCtx.Mixin(mIdx0);		
+	}
+};
+
 class BeStructConstant : public BeConstant
 {
 public:
@@ -346,7 +381,7 @@ public:
 
 	SizedArray<BeConstant*, 4> mMemberValues;
 
-	virtual void GetData(Array<uint8>& data) override;
+	virtual void GetData(BeConstData& data) override;
 
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
@@ -399,6 +434,12 @@ public:
 		hashCtx.Mixin(mAlign);
 		hashCtx.Mixin(mUnnamedAddr);
 	}	
+
+	virtual void GetData(BeConstData& data) override
+	{
+		data.mConsts.Add({ (int)data.mData.size(), this });
+		data.mData.Insert(data.mData.size(), (uint8)0, 8);				
+	}
 };
 
 class BeFunctionParam
@@ -679,7 +720,7 @@ public:
 		hashCtx.Mixin(TypeId);
 		mValue->HashReference(hashCtx);
 		mToType->HashReference(hashCtx);
-	}
+	}	
 };
 
 class BeNegInst : public BeInst

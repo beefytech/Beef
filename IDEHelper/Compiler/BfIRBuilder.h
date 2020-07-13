@@ -134,6 +134,7 @@ enum BfConstType
 	BfConstType_BitCast,
 	BfConstType_BitCastNull,
 	BfConstType_GEP32_2,
+	BfConstType_ExtractValue,
 	BfConstType_PtrToInt,
 	BfConstType_TypeOf,
 	BfConstType_AggZero,
@@ -823,6 +824,13 @@ struct BfConstantGEP32_2
 	int mTarget;
 	int mIdx0;
 	int mIdx1;
+};
+
+struct BfConstantExtractValue
+{
+	BfConstType mConstType;
+	int mTarget;
+	int mIdx0;	
 };
 
 struct BfConstantArray

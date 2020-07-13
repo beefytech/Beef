@@ -2258,9 +2258,9 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 		}
 	case BeGEPConstant::TypeId:
 		{
-			auto gepConstant = (BeGEPConstant*)value;
+		auto gepConstant = (BeGEPConstant*)value;
 
-			auto mcVal = GetOperand(gepConstant->mTarget);			
+		auto mcVal = GetOperand(gepConstant->mTarget);
 
 			BePointerType* ptrType = (BePointerType*)GetType(mcVal);
 			BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
@@ -2295,6 +2295,21 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 			result.mKind = BeMCOperandKind_VReg;
 			
 			return result;
+		}
+		break;
+	case BeExtractValueConstant::TypeId:		
+		{
+			// Note: this only handles zero-aggregates
+			auto extractConstant = (BeExtractValueConstant*)value;
+			auto elementType = extractConstant->GetType();
+
+			auto mcVal = GetOperand(extractConstant->mTarget);
+			auto valType = GetType(mcVal);
+
+			BeConstant beConstant;
+			beConstant.mType = elementType;
+			beConstant.mUInt64 = 0;
+			return GetOperand(&beConstant);	
 		}
 		break;
 	case BeFunction::TypeId:
@@ -9887,7 +9902,7 @@ bool BeMCContext::DoLegalization()
 					}
 					
 					if (arg0Type->IsComposite())
-					{
+					{						
 						if (arg1.mKind == BeMCOperandKind_Immediate_i64)
 						{
 							// This is just a "zero initializer" marker
@@ -12185,8 +12200,10 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 	BF_ASSERT(src.mKind == BeMCOperandKind_ConstAgg);
 	auto aggConstant = src.mConstant;
 
-	Array<uint8> dataVec;
-	aggConstant->GetData(dataVec);
+	BeConstData constData;
+	aggConstant->GetData(constData);
+
+	Array<uint8>& dataVec = constData.mData;
 	
 	int memSize = dataVec.size();
 	int curOfs = 0;
@@ -12254,7 +12271,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		}
 		else
 		{
-			// movabs r11, val32
+			// movabs r11, val64
 			Emit(0x49); Emit(0xBB);
 			mOut.Write((int64)val);
 		}
@@ -12361,6 +12378,30 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11B), dest, false);
 		Emit(0x89 - 1);
 		EmitModRMRel(EncodeRegNum(X64Reg_R11B), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
+	}
+
+	for (auto constVal : constData.mConsts)
+	{
+		BeMCRelocation reloc;
+
+		// movabs r11, val64
+		Emit(0x49); Emit(0xBB);
+		
+		reloc.mKind = BeMCRelocationKind_ADDR64;
+		reloc.mOffset = mOut.GetPos();
+
+		auto operand = GetOperand(constVal.mConstant);
+
+		reloc.mSymTableIdx = operand.mSymbolIdx;
+		mCOFFObject->mTextSect.mRelocs.push_back(reloc);
+		mTextRelocs.push_back((int)mCOFFObject->mTextSect.mRelocs.size() - 1);
+
+		mOut.Write((int64)0);
+
+		// mov <dest+curOfs>, R11
+		EmitREX(BeMCOperand::FromReg(X64Reg_R11), dest, true);
+		Emit(0x89);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + constVal.mIdx);
 	}
 }
 
@@ -13166,6 +13207,11 @@ void BeMCContext::DoCodeEmission()
 				{					
 					if (inst->mArg1.mKind == BeMCOperandKind_ConstAgg)
 					{
+						if (mDebugging)
+						{
+							NOP;
+						}
+
 						EmitAggMov(inst->mArg0, inst->mArg1);
 						break;
 					}
@@ -15487,7 +15533,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Main@Program@bf@@SAXPEAV?$Array1@PEAVString@System@bf@@@System@2@@Z");
+	mDebugging = (function->mName == "?Hey@Blurg@bf@@SAXXZ");
 // 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
 // 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 // 		;
