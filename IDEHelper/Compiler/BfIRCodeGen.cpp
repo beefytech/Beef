@@ -709,7 +709,7 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 			CMD_PARAM(int, streamId);
 			if (streamId == -1)
 			{
-				int streamId = mCmdCount++;
+				int streamId = mCmdCount++;				
 
 				CMD_PARAM(llvm::Type*, varType);
 				CMD_PARAM(bool, isConstant);
@@ -718,13 +718,17 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 				CMD_PARAM(String, name);
 				CMD_PARAM(bool, isTLS);
 
-				auto globalVariable = new llvm::GlobalVariable(
-					*mLLVMModule,
-					varType,
-					isConstant,
-					LLVMMapLinkageType(linkageType),
-					initializer,
-					name.c_str(), NULL, isTLS ? llvm::GlobalValue::GeneralDynamicTLSModel : llvm::GlobalValue::NotThreadLocal);
+				llvm::GlobalVariable* globalVariable = mLLVMModule->getGlobalVariable(name.c_str(), true);
+				if (globalVariable == NULL)
+				{
+					globalVariable = new llvm::GlobalVariable(
+						*mLLVMModule,
+						varType,
+						isConstant,
+						LLVMMapLinkageType(linkageType),
+						initializer,
+						name.c_str(), NULL, isTLS ? llvm::GlobalValue::GeneralDynamicTLSModel : llvm::GlobalValue::NotThreadLocal);
+				}
 				llvmValue = globalVariable;
 
 				SetResult(streamId, globalVariable);
@@ -789,6 +793,15 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 				llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), idx0),
 				llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), idx1)};
 			llvmValue = llvm::ConstantExpr::getInBoundsGetElementPtr(NULL, target, gepArgs);
+			return;
+		}
+		else if (constType == BfConstType_ExtractValue)
+		{
+			CMD_PARAM(llvm::Constant*, target);
+			CMD_PARAM(int, idx0);			
+			unsigned int gepArgs[] = {
+				(unsigned int)idx0 };
+			llvmValue = llvm::ConstantExpr::getExtractValue(target, gepArgs);
 			return;
 		}
 		else if (constType == BfConstType_PtrToInt)

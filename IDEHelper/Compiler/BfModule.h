@@ -1604,6 +1604,7 @@ public:
 	void CheckAddFailType();
 	bool PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
 	BfTypeOptions* GetTypeOptions(BfTypeDef* typeDef);
+	bool CheckTypeOptionMethodFilters(BfMethodDef* methodDef, BfTypeOptions* typeOptions);
 	int GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeInstance* typeInstance, bool checkTypeName);
 	void SetTypeOptions(BfTypeInstance* typeInstance);
 	BfModuleOptions GetModuleOptions();

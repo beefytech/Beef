@@ -578,6 +578,8 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 {	
 	BfConstant* copiedConst = NULL;
 	
+	int chunkId = -1;
+
 	if ((fromConst->mConstType == BfConstType_BitCast) || (fromConst->mConstType == BfConstType_BitCastNull))
 	{	
 		//HMM- This should never happen?  Is that true?  We always just store string refs as ints
@@ -595,6 +597,21 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		ptrToInt->mToType = fromConstBitCast->mToType;
 		copiedConst = (BfConstant*)ptrToInt;
 	}
+	else if (fromConst->mConstType == BfConstType_GlobalVar)
+	{
+		auto fromGlobalVar = (BfGlobalVar*)fromConst;
+		auto constGV = mTempAlloc.Alloc<BfGlobalVar>();
+		chunkId = mTempAlloc.GetChunkedId(constGV);
+		constGV->mStreamId = -1;
+		constGV->mConstType = BfConstType_GlobalVar;
+		constGV->mType = fromGlobalVar->mType;
+		constGV->mIsConst = fromGlobalVar->mIsConst;
+		constGV->mLinkageType = fromGlobalVar->mLinkageType;
+		constGV->mInitializer = fromGlobalVar->mInitializer;
+		constGV->mName = AllocStr(fromGlobalVar->mName);
+		constGV->mIsTLS = fromGlobalVar->mIsTLS;
+		copiedConst = (BfConstant*)constGV;
+	}
 	else if (fromConst->mConstType == BfConstType_GEP32_2)
 	{
 		auto fromConstGEP = (BfConstantGEP32_2*)fromConst;
@@ -603,7 +620,20 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		auto constGEP = mTempAlloc.Alloc<BfConstantGEP32_2>();
 		constGEP->mConstType = BfConstType_GEP32_2;
 		constGEP->mTarget = copiedTarget.mId;
+		constGEP->mIdx0 = fromConstGEP->mIdx0;
+		constGEP->mIdx1 = fromConstGEP->mIdx1;
 		copiedConst = (BfConstant*)constGEP;		
+	}
+	else if (fromConst->mConstType == BfConstType_ExtractValue)
+	{
+		auto fromConstGEP = (BfConstantExtractValue*)fromConst;
+		auto fromTarget = fromHolder->GetConstantById(fromConstGEP->mTarget);
+		auto copiedTarget = CreateConst(fromTarget, fromHolder);
+		auto constGEP = mTempAlloc.Alloc<BfConstantExtractValue>();
+		constGEP->mConstType = BfConstType_ExtractValue;
+		constGEP->mTarget = copiedTarget.mId;
+		constGEP->mIdx0 = fromConstGEP->mIdx0;
+		copiedConst = (BfConstant*)constGEP;
 	}
 	else if (fromConst->mConstType == BfConstType_TypeOf)
 	{
@@ -647,7 +677,10 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 	
 	BfIRValue retVal;
 	retVal.mFlags = BfIRValueFlags_Const;
-	retVal.mId = mTempAlloc.GetChunkedId(copiedConst);	
+	if (chunkId == -1)
+		chunkId = mTempAlloc.GetChunkedId(copiedConst);
+	retVal.mId = chunkId;	
+	BF_ASSERT(retVal.mId >= 0);
 #ifdef CHECK_CONSTHOLDER
 	retVal.mHolder = this;
 #endif
@@ -1243,6 +1276,12 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
 			return ToString(targetConst) + StrFormat(" Gep32 %d,%d", gepConst->mIdx0, gepConst->mIdx1);			
 		}
+		else if (constant->mConstType == BfConstType_ExtractValue)
+		{
+			auto gepConst = (BfConstantExtractValue*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+			return ToString(targetConst) + StrFormat(" ExtractValue %d", gepConst->mIdx0);
+		}
 		else if (constant->mConstType == BfConstType_PtrToInt)
 		{
 			auto ptrToIntConst = (BfConstantPtrToInt*)constant;
@@ -1836,6 +1875,14 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				Write(targetConst);
 				Write(gepConst->mIdx0);
 				Write(gepConst->mIdx1);
+			}
+			break;
+		case (int)BfConstType_ExtractValue:
+			{
+				auto gepConst = (BfConstantExtractValue*)constant;
+				BfIRValue targetConst(BfIRValueFlags_Const, gepConst->mTarget);
+				Write(targetConst);
+				Write(gepConst->mIdx0);				
 			}
 			break;
 		case (int)BfConstType_PtrToInt:
@@ -3964,7 +4011,7 @@ BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, int idx0)
 BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, int idx0, int idx1)
 {
 	if (val.IsConst())
-	{	
+	{
 		auto constGEP = mTempAlloc.Alloc<BfConstantGEP32_2>();
 		constGEP->mConstType = BfConstType_GEP32_2;
 		constGEP->mTarget = val.mId;
@@ -4024,6 +4071,20 @@ BfIRValue BfIRBuilder::CreateExtractValue(BfIRValue val, int idx)
 			auto arrayConstant = (BfConstantArray*)aggConstant;
 			return arrayConstant->mValues[idx];
 		}
+		
+		auto constGEP = mTempAlloc.Alloc<BfConstantExtractValue>();
+		constGEP->mConstType = BfConstType_ExtractValue;
+		constGEP->mTarget = val.mId;
+		constGEP->mIdx0 = idx;
+
+		BfIRValue retVal;
+		retVal.mFlags = BfIRValueFlags_Const;
+		retVal.mId = mTempAlloc.GetChunkedId(constGEP);
+
+#ifdef CHECK_CONSTHOLDER
+		retVal.mHolder = this;
+#endif
+		return retVal;		
 	}
 
 	BfIRValue retVal = WriteCmd(BfIRCmd_ExtractValue, val, idx);
@@ -4213,7 +4274,7 @@ BfIRValue BfIRBuilder::CreateGlobalVariable(BfIRType varType, bool isConstant, B
 	auto constGV = mTempAlloc.Alloc<BfGlobalVar>();
 	int chunkId = mTempAlloc.GetChunkedId(constGV);
 	constGV->mStreamId = -1;
-	constGV->mConstType = BfConstType_GlobalVar;
+ 	constGV->mConstType = BfConstType_GlobalVar;
 	constGV->mType = varType;	
 	constGV->mIsConst = isConstant;
 	constGV->mLinkageType = linkageType;

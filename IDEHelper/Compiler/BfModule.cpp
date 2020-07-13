@@ -5388,6 +5388,10 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		baseTypeId = typeInstance->mBaseType->mTypeId;
 	}	
 	
+	BfTypeOptions* typeOptions = NULL;
+	if (typeInstance->mTypeOptionsIdx >= 0)
+		typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
+
 	SizedArray<BfIRValue, 16> customAttrs;
 
 	BfTypeInstance* attributeType = mContext->mUnreifiedModule->ResolveTypeDef(mCompiler->mAttributeTypeDef)->ToTypeInstance();
@@ -5716,7 +5720,13 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			if ((!fieldDef->mIsStatic) && ((fieldReflectKind & ReflectKind_NonStaticFields) != 0))
 				includeField = true;
 			if ((fieldDef->mIsStatic) && ((fieldReflectKind & ReflectKind_StaticFields) != 0))
-				includeField = true;			
+				includeField = true;
+						
+			if ((!fieldDef->mIsStatic) && (typeOptions != NULL))
+				includeField = typeOptions->Apply(includeField, BfOptionFlags_ReflectNonStaticFields);
+			if ((fieldDef->mIsStatic) && (typeOptions != NULL))
+				includeField = typeOptions->Apply(includeField, BfOptionFlags_ReflectStaticFields);
+
 			includeField |= forceReflectFields;
 
 			if (!includeField)
@@ -6031,7 +6041,20 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			includeMethod = true;
 		if ((methodDef->mIsStatic) && ((methodReflectKind & ReflectKind_StaticMethods) != 0))
 			includeMethod = true;
-				
+		
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+		{
+			if (typeOptions != NULL)
+				includeMethod = typeOptions->Apply(includeMethod, BfOptionFlags_ReflectConstructors);
+		}
+		else
+		{
+			if ((!methodDef->mIsStatic) && (typeOptions != NULL))
+				includeMethod = typeOptions->Apply(includeMethod, BfOptionFlags_ReflectNonStaticMethods);
+			if ((methodDef->mIsStatic) && (typeOptions != NULL))
+				includeMethod = typeOptions->Apply(includeMethod, BfOptionFlags_ReflectStaticMethods);
+		}
+
 		if (!includeMethod)
 			continue;
 
@@ -9818,6 +9841,11 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 
 		irVal = mCurTypeInstance->mConstHolder->CreateConstArray(constArray->mType, newVals);
 		return;
+	}
+
+	if (constant->mConstType == BfConstType_GlobalVar)
+	{
+		NOP;
 	}
 
 	auto origConst = irVal;		

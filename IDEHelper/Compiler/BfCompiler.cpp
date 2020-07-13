@@ -5911,7 +5911,7 @@ void BfCompiler::CompileReified()
 
 		auto typeOptions = scratchModule->GetTypeOptions(typeDef);
 		if (typeOptions != NULL)
-			typeOptions->Apply(isAlwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType);		
+			isAlwaysInclude = typeOptions->Apply(isAlwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType);
 
 		if (typeDef->mProject->IsTestProject())
 		{
