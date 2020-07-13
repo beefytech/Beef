@@ -526,7 +526,7 @@ BeType* BeExtractValueConstant::GetType()
 	{
 		BeSizedArrayType* arrayType = (BeSizedArrayType*)type;
 		BF_ASSERT(arrayType->mTypeCode == BeTypeCode_SizedArray);
-		return arrayType->mContext->GetPointerTo(arrayType->mElementType);
+		return arrayType->mElementType;
 	}
 	/*else if (ptrType->mElementType->IsPointer())
 	{
@@ -536,7 +536,7 @@ BeType* BeExtractValueConstant::GetType()
 	{
 		BeStructType* structType = (BeStructType*)type;
 		BF_ASSERT(structType->mTypeCode == BeTypeCode_Struct);
-		return structType->mContext->GetPointerTo(structType->mMembers[mIdx0].mType);
+		return structType->mMembers[mIdx0].mType;
 	}
 }
 
