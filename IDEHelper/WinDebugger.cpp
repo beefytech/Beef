@@ -7809,8 +7809,9 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			while (summaryType != NULL)
 			{
 				summaryType->PopulateType();
-
-				if (summaryType->IsTypedPrimitive())
+				
+				if ((summaryType->IsTypedPrimitive()) && 
+					((summaryType->mBaseTypes.IsEmpty()) || (!summaryType->mBaseTypes.front()->mBaseType->IsTypedPrimitive())))
 				{
 					if (formatInfo.mTotalSummaryLength + (int)displayString.length() > 255)
 					{
