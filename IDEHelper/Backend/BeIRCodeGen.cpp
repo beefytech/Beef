@@ -291,6 +291,13 @@ void BeIRCodeGen::FatalError(const StringImpl& err)
 	{
 		BeDumpContext dumpCtx;
 
+		if (mActiveFunction != NULL)
+		{
+			failStr += "Function: ";
+			failStr += mActiveFunction->mName;
+			failStr += "\n";
+		}
+
 		if (mBeModule->mCurDbgLoc != NULL)
 		{
 			failStr += "DbgLoc: ";
