@@ -23,7 +23,7 @@ namespace System.Reflection
 		public int ParamCount => mMethodData.[Friend]mParamCount;
 		public bool IsConstructor => mMethodData.mName === "__BfCtor" || mMethodData.mName === "__BfStaticCtor";
 		public bool IsDestructor => mMethodData.mName === "__BfStaticDtor" || mMethodData.mName === "__BfStaticDtor";
-		public Type ReturnType => GetType(mMethodData.mReturnType);
+		public Type ReturnType => Type.[Friend]GetType(mMethodData.mReturnType);
 		
 		public Type GetParamType(int paramIdx)
 		{
@@ -629,6 +629,26 @@ namespace System.Reflection
 				variant.Dispose();
 
 			return retVal;
+		}
+
+		public override void ToString(String strBuffer)
+		{
+			let retType = Type.[Friend]GetType(mMethodData.mReturnType);
+			retType.ToString(strBuffer);
+			strBuffer.Append(' ');
+			strBuffer.Append(mMethodData.mName);
+			strBuffer.Append('(');
+			for (int paramIdx < mMethodData.mParamCount)
+			{
+				if (paramIdx > 0)
+					strBuffer.Append(", ");
+				let paramData = mMethodData.mParamData[paramIdx];
+				let paramType = Type.[Friend]GetType(paramData.mType);
+				paramType.ToString(strBuffer);
+				strBuffer.Append(' ');
+				strBuffer.Append(paramData.mName);
+			}
+			strBuffer.Append(')');
 		}
 
 		public struct Enumerator : IEnumerator<MethodInfo>
