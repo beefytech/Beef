@@ -14035,15 +14035,23 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							BfResolveArgFlags resolveArgsFlags = BfResolveArgFlag_DeferParamEval;
 							ResolveArgValues(argValues, resolveArgsFlags);
 
-							if ((mReceivingValue != NULL) && (mReceivingValue->mType == mExpectingType) && (mReceivingValue->IsAddr()))
+							auto expectingType = mExpectingType;
+							if (expectingType->IsNullable())
+							{
+								auto underlyingType = expectingType->GetUnderlyingType();
+								if (underlyingType->IsTypeInstance())
+									expectingType = underlyingType;
+							}
+
+							if ((mReceivingValue != NULL) && (mReceivingValue->mType == expectingType) && (mReceivingValue->IsAddr()))
 							{
 								mResult = *mReceivingValue;
 								mReceivingValue = NULL;
 							}
 							else
-								mResult = BfTypedValue(mModule->CreateAlloca(mExpectingType), mExpectingType, BfTypedValueKind_TempAddr);
-							MatchConstructor(target, methodBoundExpr, mResult, mExpectingType->ToTypeInstance(), argValues, false, false);
-							mModule->ValidateAllocation(mExpectingType, invocationExpr->mTarget);
+								mResult = BfTypedValue(mModule->CreateAlloca(expectingType), expectingType, BfTypedValueKind_TempAddr);
+							MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, false);
+							mModule->ValidateAllocation(expectingType, invocationExpr->mTarget);
 
 							return;
 						}
