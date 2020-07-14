@@ -521,7 +521,7 @@ namespace IDE.ui
 
 					mDocWidth = docWidth;
 					mDocHeight = docHeight;
-					mRightBoxAdjust = docWidth;
+					mRightBoxAdjust = docWidth + GS!(16);
 					int32 windowWidth = (int32)mMaxWidth;
 					windowWidth += (.)mDocWidth;
 					windowWidth += GS!(32);
@@ -545,6 +545,22 @@ namespace IDE.ui
 					ResizeContent(-1, -1, mVertScrollbar != null);
 				}
 			}
+
+			/*public override void Resize(float x, float y, float width, float height)
+			{
+				if (mWantHeight != 0)
+				{
+					mScrollContentInsets.mBottom = mHeight - mWantHeight;
+					mScrollbarInsets.mBottom = mHeight - mWantHeight + 10;
+				}
+				else
+				{
+					mScrollContentInsets.mBottom = 0;
+					mScrollbarInsets.mBottom = 10;
+				}
+
+				base.Resize(x, y, width, height);
+			}*/
 
             public void UpdateEntry(EntryWidget entry, int showIdx)
             {
@@ -665,11 +681,15 @@ namespace IDE.ui
 						{
 							if (mDocWidth > 0)
 							{
-								float drawX = mWidth - mDocWidth - GS!(6);
+								float drawX = mWidth - mDocWidth - GS!(22);
+
+								//float drawX = mRightBoxAdjust + GS!(42);
 								float drawY = GS!(4);
 								//float drawHeight = GS!(32);
 								float drawHeight = mDocHeight;
+
 								
+
 							    using (g.PushColor(0x80000000))
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.DropShadow), drawX + GS!(2), drawY + GS!(2), mRightBoxAdjust - GS!(2), drawHeight - GS!(2));
 
@@ -718,6 +738,13 @@ namespace IDE.ui
 	                mScrollbarInsets.mTop = GS!(2);
 	                mScrollbarInsets.mBottom = GS!(10);
 	                mScrollbarInsets.mRight = GS!(10) + mRightBoxAdjust;
+					mScrollContentInsets.mBottom = 0;
+
+					if (mWantHeight != 0)
+					{
+						mScrollbarInsets.mBottom += mHeight - mWantHeight;
+					}
+
 				}
 				else
 				{
