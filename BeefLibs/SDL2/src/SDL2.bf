@@ -3379,7 +3379,7 @@ namespace SDL2
 			RIGHT = (int)Scancode.Right | SCANCODE_MASK,
 			LEFT = (int)Scancode.Left | SCANCODE_MASK,
 			DOWN = (int)Scancode.Down | SCANCODE_MASK,
-			UP = (int)Scancode.U | SCANCODE_MASK,
+			UP = (int)Scancode.Up | SCANCODE_MASK,
 
 			NUMLOCKCLEAR = (int)Scancode.NumLockClear | SCANCODE_MASK,
 			KP_DIVIDE = (int)Scancode.KpDivide | SCANCODE_MASK,
