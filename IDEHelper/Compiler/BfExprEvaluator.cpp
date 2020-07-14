@@ -6932,7 +6932,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	// If we call "GetType" on a value type, statically determine the type rather than boxing and then dispatching 
 	if ((methodDef) && (target) && (curTypeInst == mModule->mContext->mBfObjectType) && 
-		(methodDef->mName == "GetType") && (target.mType->IsValueType()))
+		(methodDef->mName == "GetType") && (target.mType->IsValueType()) && (argValues.mArguments->IsEmpty()))
 	{
 		BfType* targetType = target.mType;
 		if (origTarget)

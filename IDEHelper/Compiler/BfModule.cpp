@@ -6042,19 +6042,9 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		if ((methodDef->mIsStatic) && ((methodReflectKind & ReflectKind_StaticMethods) != 0))
 			includeMethod = true;
 		
-		if (methodDef->mMethodType == BfMethodType_Ctor)
-		{
-			if (typeOptions != NULL)
-				includeMethod = typeOptions->Apply(includeMethod, BfOptionFlags_ReflectConstructors);
-		}
-		else
-		{
-			if ((!methodDef->mIsStatic) && (typeOptions != NULL))
-				includeMethod = typeOptions->Apply(includeMethod, BfOptionFlags_ReflectNonStaticMethods);
-			if ((methodDef->mIsStatic) && (typeOptions != NULL))
-				includeMethod = typeOptions->Apply(includeMethod, BfOptionFlags_ReflectStaticMethods);
-		}
-
+		if ((!includeMethod) && (typeOptions != NULL))
+			includeMethod = ApplyTypeOptionMethodFilters(includeMethod, methodDef, typeOptions);
+		
 		if (!includeMethod)
 			continue;
 

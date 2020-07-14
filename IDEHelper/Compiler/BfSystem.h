@@ -1285,10 +1285,21 @@ enum BfOptionFlags
 	BfOptionFlags_ReflectNonStaticMethods	= 0x400,
 	BfOptionFlags_ReflectConstructors		= 0x800,
 
+	BfOptionFlags_Reflect_MethodMask		= BfOptionFlags_ReflectStaticMethods | BfOptionFlags_ReflectNonStaticMethods | BfOptionFlags_ReflectConstructors,
+	BfOptionFlags_Mask = 0xFFF
+
 };
 
 class BfTypeOptions
 {
+public:
+	struct MethodFilter
+	{
+		String mFilter;
+		BfOptionFlags mOrFlags;
+		BfOptionFlags mAndFlags;
+	};
+
 public:
 	Array<String> mTypeFilters;
 	Array<String> mAttributeFilters;
@@ -1298,8 +1309,8 @@ public:
 	int mEmitDebugInfo;	
 	BfOptionFlags mAndFlags;
 	BfOptionFlags mOrFlags;
-	Array<String> mReflectMethodFilters;
-	Array<String> mReflectMethodAttributeFilters;
+	Array<MethodFilter> mReflectMethodFilters;
+	Array<MethodFilter> mReflectMethodAttributeFilters;
 	int mAllocStackTraceDepth;	
 
 public:
@@ -1316,6 +1327,11 @@ public:
 			return (mAndFlags & flags) != 0;
 		else
 			return (mOrFlags & flags) != 0;
+	}
+
+	bool HasReflectMethodFilters()
+	{
+		return !mReflectMethodFilters.IsEmpty() || !mReflectMethodAttributeFilters.IsEmpty();
 	}
 };
 
