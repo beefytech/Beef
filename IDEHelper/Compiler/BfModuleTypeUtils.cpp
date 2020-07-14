@@ -1230,6 +1230,12 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	if (typeInstance == NULL)
 		return true;
 
+	if (typeInstance->mModule == NULL)
+	{
+		BF_ASSERT(typeInstance->mTypeFailed);
+		return false;
+	}
+
 	auto result = typeInstance->mModule->DoPopulateType(typeInstance, populateType);	
 	return result;
 }
