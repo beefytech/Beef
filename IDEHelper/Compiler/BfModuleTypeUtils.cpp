@@ -1452,18 +1452,34 @@ BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
 				if (typeOptions.mEmitDebugInfo != -1)
 					mergedTypeOptions.mEmitDebugInfo = typeOptions.mEmitDebugInfo;
 				
+				if (typeOptions.mReflectMethodFilters.IsEmpty())
+
 				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags | typeOptions.mOrFlags);
 				mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags | typeOptions.mOrFlags);
 
 				mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags & typeOptions.mAndFlags);
 				mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags & typeOptions.mAndFlags);
 				
+				if (mergedTypeOptions.HasReflectMethodFilters())
+				{
+					// If merging filter has non-default method flags but no filter then we need to append it as a filtered modification
+					if ((!typeOptions.HasReflectMethodFilters()) &&
+						(((typeOptions.mAndFlags & BfOptionFlags_Reflect_MethodMask) != BfOptionFlags_Reflect_MethodMask) ||
+						 ((typeOptions.mOrFlags & BfOptionFlags_Reflect_MethodMask) != 0)))
+					{
+						mergedTypeOptions.mReflectMethodFilters.Add({"*", typeOptions.mAndFlags, typeOptions.mOrFlags});
+					}
+
+					mergedTypeOptions.mAndFlags = (BfOptionFlags)(mergedTypeOptions.mAndFlags | BfOptionFlags_Reflect_MethodMask);
+					mergedTypeOptions.mOrFlags = (BfOptionFlags)(mergedTypeOptions.mOrFlags & ~BfOptionFlags_Reflect_MethodMask);					
+				}
+
 				if (typeOptions.mAllocStackTraceDepth != -1)
 					mergedTypeOptions.mAllocStackTraceDepth = typeOptions.mAllocStackTraceDepth;
 				for (auto filter : typeOptions.mReflectMethodFilters)
 					mergedTypeOptions.mReflectMethodFilters.Add(filter);
 				for (auto filter : typeOptions.mReflectMethodAttributeFilters)
-					mergedTypeOptions.mReflectMethodAttributeFilters.Add(filter);
+					mergedTypeOptions.mReflectMethodAttributeFilters.Add(filter);				
 			}
 			matchedIdx = typeOptionsCount + (int)mContext->mSystem->mMergedTypeOptions.size();
 			mContext->mSystem->mMergedTypeOptions.push_back(mergedTypeOptions);
@@ -1473,9 +1489,36 @@ BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
 	return mSystem->GetTypeOptions( matchedIdx);
 }
 
-bool BfModule::CheckTypeOptionMethodFilters(BfMethodDef* methodDef, BfTypeOptions * typeOptions)
+bool BfModule::ApplyTypeOptionMethodFilters(bool includeMethod, BfMethodDef* methodDef, BfTypeOptions* typeOptions)
 {
-	return true;
+	BfOptionFlags findFlag = BfOptionFlags_None;
+	if (methodDef->mMethodType == BfMethodType_Ctor)
+		findFlag = BfOptionFlags_ReflectConstructors;
+	else if (methodDef->mIsStatic)
+		findFlag = BfOptionFlags_ReflectStaticMethods;
+	else
+		findFlag = BfOptionFlags_ReflectNonStaticMethods;
+
+	if ((typeOptions->mAndFlags & findFlag) == 0)
+		includeMethod = false;
+	if ((typeOptions->mOrFlags & findFlag) != 0)
+		includeMethod = true;
+
+	if (!typeOptions->mReflectMethodFilters.IsEmpty())
+	{
+		for (auto& filter : typeOptions->mReflectMethodFilters)
+		{
+			if (BfCheckWildcard(filter.mFilter, methodDef->mName))
+			{
+				if ((filter.mAndFlags & findFlag) == 0)
+					includeMethod = false;
+				if ((filter.mAndFlags | findFlag) != 0)
+					includeMethod = true;
+			}
+		}		
+	}
+
+	return includeMethod;
 }
 
 int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeInstance* typeInstance, bool checkTypeName)
@@ -1533,92 +1576,10 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 					int filterIdx = 0;
 					int typeNameIdx = 0;
 
-					const char* filterPtr = filter.c_str();
-					const char* namePtr = typeName.c_str();
-
-					char prevFilterC = 0;
-					while (true)
+					if (BfCheckWildcard(filter, typeName))
 					{
-						char filterC;
-						while (true)
-						{
-							filterC = *(filterPtr++);
-							if (filterC != ' ')
-								break;
-						}
-
-						char nameC;
-						while (true)
-						{
-							nameC = *(namePtr++);
-							if (nameC != ' ')
-								break;
-						}
-
-						if ((filterC == 0) || (nameC == 0))
-						{
-							matched = (filterC == 0) && (nameC == 0);
-							break;
-						}
-
-						bool doWildcard = false;
-
-						if (nameC != filterC)
-						{
-							if (filterC == '*')
-								doWildcard = true;
-							else if (((filterC == ',') || (filterC == '>')) &&
-								((prevFilterC == '<') || (prevFilterC == ',')))
-							{
-								doWildcard = true;
-								filterPtr--;
-							}
-
-							if (!doWildcard)
-							{
-								matched = false;
-								break;
-							}
-						}
-
-						if (doWildcard)
-						{
-							int openDepth = 0;
-
-							const char* startNamePtr = namePtr;
-
-							while (true)
-							{
-								nameC = *(namePtr++);
-								if (nameC == 0)
-								{
-									namePtr--;
-									if (openDepth != 0)
-										matched = false;
-									break;
-								}
-								if ((nameC == '>') && (openDepth == 0))
-								{
-									namePtr--;
-									break;
-								}
-
-								if (nameC == '<')
-									openDepth++;
-								else if (nameC == '>')
-									openDepth--;
-								else if ((nameC == ',') && (openDepth == 0))
-								{
-									namePtr--;
-									break;
-								}
-							}
-
-							if (!matched)
-								break;
-						}
-
-						prevFilterC = filterC;
+						matched = true;
+						break;
 					}
 				}
 
@@ -1705,9 +1666,9 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 
 				if (typeOptions.mAllocStackTraceDepth != -1)
 					mergedTypeOptions.mAllocStackTraceDepth = typeOptions.mAllocStackTraceDepth;
-				for (auto filter : typeOptions.mReflectMethodFilters)
+				for (auto& filter : typeOptions.mReflectMethodFilters)
 					mergedTypeOptions.mReflectMethodFilters.Add(filter);
-				for (auto filter : typeOptions.mReflectMethodAttributeFilters)
+				for (auto& filter : typeOptions.mReflectMethodAttributeFilters)
 					mergedTypeOptions.mReflectMethodAttributeFilters.Add(filter);
 			}
 			matchedIdx = typeOptionsCount + (int)mContext->mSystem->mMergedTypeOptions.size();
@@ -2537,8 +2498,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		auto typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
 		if (typeOptions != NULL)
-		{
-			typeInstance->mIncludeAllMethods = typeOptions->Apply(typeInstance->mIncludeAllMethods, BfOptionFlags_ReflectAlwaysIncludeAll);
+		{			
 			typeInstance->mHasBeenInstantiated = typeOptions->Apply(typeInstance->mHasBeenInstantiated, BfOptionFlags_ReflectAssumeInstantiated);
 		}
 	}
@@ -3896,6 +3856,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			isFailedType = true;
 	}
 
+	bool typeOptionsIncludeAll = false;
+	if (typeOptions != NULL)
+		typeOptionsIncludeAll = typeOptions->Apply(typeOptionsIncludeAll, BfOptionFlags_ReflectAlwaysIncludeAll);
+
 	// Generate all methods. Pass 1
 	for (auto methodDef : typeDef->mMethods)
 	{			
@@ -3997,6 +3961,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			}
 			if (typeInstance->mIncludeAllMethods)
 				implRequired = true;
+
+			if ((typeOptionsIncludeAll) && (ApplyTypeOptionMethodFilters(true, methodDef, typeOptions)))
+				implRequired = true;
+
 // 			if ((typeOptions != NULL) && (CheckTypeOptionMethodFilters(typeOptions, methodDef)))
 // 				implRequired = true;
 

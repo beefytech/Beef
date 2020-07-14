@@ -60,3 +60,97 @@ uint64 stouln(const char* str, int len)
 	}
 	return val;
 }
+
+bool Beefy::BfCheckWildcard(const StringImpl& wildcard, const StringImpl& checkStr)
+{
+	bool matched = true;
+	const char* filterPtr = wildcard.c_str();
+	const char* namePtr = checkStr.c_str();
+
+	char prevFilterC = 0;
+	while (true)
+	{
+		char filterC;
+		while (true)
+		{
+			filterC = *(filterPtr++);
+			if (filterC != ' ')
+				break;
+		}
+
+		char nameC;
+		while (true)
+		{
+			nameC = *(namePtr++);
+			if (nameC != ' ')
+				break;
+		}
+
+		if ((filterC == 0) || (nameC == 0))
+		{
+			matched = (filterC == 0) && (nameC == 0);
+			break;
+		}
+
+		bool doWildcard = false;
+
+		if (nameC != filterC)
+		{
+			if (filterC == '*')
+				doWildcard = true;
+			else if (((filterC == ',') || (filterC == '>')) &&
+				((prevFilterC == '<') || (prevFilterC == ',')))
+			{
+				doWildcard = true;
+				filterPtr--;
+			}
+
+			if (!doWildcard)
+			{
+				matched = false;
+				break;
+			}
+		}
+
+		if (doWildcard)
+		{
+			int openDepth = 0;
+
+			const char* startNamePtr = namePtr;
+
+			while (true)
+			{
+				nameC = *(namePtr++);
+				if (nameC == 0)
+				{
+					namePtr--;
+					if (openDepth != 0)
+						matched = false;
+					break;
+				}
+				if ((nameC == '>') && (openDepth == 0))
+				{
+					namePtr--;
+					break;
+				}
+
+				if (nameC == '<')
+					openDepth++;
+				else if (nameC == '>')
+					openDepth--;
+				else if ((nameC == ',') && (openDepth == 0))
+				{
+					namePtr--;
+					break;
+				}
+			}
+
+			if (!matched)
+				break;
+		}
+
+		prevFilterC = filterC;		
+	}
+
+	return matched;
+}

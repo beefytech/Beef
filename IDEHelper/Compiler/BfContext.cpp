@@ -1900,10 +1900,18 @@ void BfContext::UpdateRevisedTypes()
 			workspaceConfigHashCtx.Mixin(typeOptions.mOrFlags);
 			workspaceConfigHashCtx.Mixin(typeOptions.mReflectMethodFilters.size());
 			for (auto& filter : typeOptions.mReflectMethodFilters)
-				workspaceConfigHashCtx.MixinStr(filter);
+			{				
+				workspaceConfigHashCtx.MixinStr(filter.mFilter);
+				workspaceConfigHashCtx.Mixin(filter.mAndFlags);
+				workspaceConfigHashCtx.Mixin(filter.mOrFlags);
+			}
 			workspaceConfigHashCtx.Mixin(typeOptions.mReflectMethodAttributeFilters.size());
 			for (auto& filter : typeOptions.mReflectMethodAttributeFilters)
-				workspaceConfigHashCtx.MixinStr(filter);
+			{
+				workspaceConfigHashCtx.MixinStr(filter.mFilter);
+				workspaceConfigHashCtx.Mixin(filter.mAndFlags);
+				workspaceConfigHashCtx.Mixin(filter.mOrFlags);
+			}
 			workspaceConfigHashCtx.Mixin(typeOptions.mAllocStackTraceDepth);
 		}
 

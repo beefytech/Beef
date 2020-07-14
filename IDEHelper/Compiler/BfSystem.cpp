@@ -3666,7 +3666,21 @@ BF_EXPORT void BF_CALLTYPE BfSystem_AddTypeOptions(BfSystem* bfSystem, char* fil
 	typeOptions.mOrFlags = (BfOptionFlags)orFlags;
 	typeOptions.mAllocStackTraceDepth = allocStackTraceDepth;	
 
-	_ParseFilters(reflectMethodFilter, typeOptions.mReflectMethodFilters, typeOptions.mReflectMethodAttributeFilters);
+	Array<String> methodReflectFilters;
+	Array<String> methodReflectAttributeFilters;
+
+	_ParseFilters(reflectMethodFilter, methodReflectFilters, methodReflectAttributeFilters);
+	// When we have method filters we want to apply those to the methods for when we merge options
+	if ((!methodReflectFilters.IsEmpty()) || (!methodReflectAttributeFilters.IsEmpty()))
+	{
+		for (auto& filter : methodReflectFilters)		
+			typeOptions.mReflectMethodFilters.Add({ filter, (BfOptionFlags)andFlags, (BfOptionFlags)orFlags });
+		for (auto& filter : methodReflectAttributeFilters)
+			typeOptions.mReflectMethodAttributeFilters.Add({ filter, (BfOptionFlags)andFlags, (BfOptionFlags)orFlags });
+		
+		typeOptions.mAndFlags = (BfOptionFlags)(typeOptions.mAndFlags | BfOptionFlags_Reflect_MethodMask);
+		typeOptions.mOrFlags = (BfOptionFlags)(typeOptions.mOrFlags & ~BfOptionFlags_Reflect_MethodMask);
+	}
 
 	bfSystem->mTypeOptions.push_back(typeOptions);	
 }

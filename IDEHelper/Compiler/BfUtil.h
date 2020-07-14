@@ -276,6 +276,8 @@ T* ZeroedAlloc()
 	return new (ZeroedAlloc(sizeof(T))) T();
 }*/
 
+bool BfCheckWildcard(const StringImpl& wildcard, const StringImpl& checkStr);
+
 template <typename T>
 T* PlaceNew(void* addr)
 {
