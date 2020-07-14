@@ -353,7 +353,7 @@ void BfIRCodeGen::FatalError(const StringImpl &err)
 			failStr += "\n";
 		}
 
-		auto loc = mIRBuilder->getCurrentDebugLocation();		
+		auto loc = mIRBuilder->getCurrentDebugLocation();				
 		auto dbgLoc = loc.getAsMDNode();
 		if (dbgLoc != NULL)
 		{
@@ -363,18 +363,18 @@ void BfIRCodeGen::FatalError(const StringImpl &err)
 			failStr += "DbgLoc: ";
 			failStr += str;
 			failStr += "\n";
-		}		
 
-		llvm::MDNode* scope = loc.getScope();
-		if (scope != NULL)
-		{
-			std::string str;
-			llvm::raw_string_ostream os(str);
-			scope->print(os);
-			failStr += "Scope: ";
-			failStr += str;
-			failStr += "\n";
-		}
+			llvm::MDNode* scope = loc.getScope();
+			if (scope != NULL)
+			{
+				std::string str;
+				llvm::raw_string_ostream os(str);
+				scope->print(os);
+				failStr += "Scope: ";
+				failStr += str;
+				failStr += "\n";
+			}
+		}				
 	}
 
 	failStr += err;
