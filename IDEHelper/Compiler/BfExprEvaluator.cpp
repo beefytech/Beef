@@ -13824,6 +13824,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		}
 	}
 
+	GetResult();
 	if (!mResult)
 	{
 		// If we didn't have an expression body then just make the result "void"
