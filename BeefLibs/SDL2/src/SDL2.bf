@@ -5128,6 +5128,7 @@ namespace SDL2
 		{
 			public Windows.HWnd window; // Refers to an HWND
 			public Windows.Handle hdc; // Refers to an HDC
+			public Windows.HInstance hinstance; // Refers to an HINSTANCE
 		}
 #endif
 
