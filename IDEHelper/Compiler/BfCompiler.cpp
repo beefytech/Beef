@@ -2841,7 +2841,7 @@ void BfCompiler::UpdateRevisedTypes()
 			if (nextTypeDef->mNextRevision != NULL)
 				nextTypeDef = nextTypeDef->mNextRevision;
 			if ((nextTypeDef->mIsCombinedPartial) || (nextTypeDef->mDefState == BfTypeDef::DefState_Deleted) || (nextTypeDef->mTypeCode == BfTypeCode_Extension) ||
-				(typeDef->mFullName != nextTypeDef->mFullName) || (typeDef->mGenericParamDefs.size() != nextTypeDef->mGenericParamDefs.size()))
+				(typeDef->mFullNameEx != nextTypeDef->mFullNameEx) || (typeDef->mGenericParamDefs.size() != nextTypeDef->mGenericParamDefs.size()))
 			{
 				nextTypeDefItr.MoveToNextHashMatch();
 				continue;
@@ -2935,7 +2935,7 @@ void BfCompiler::UpdateRevisedTypes()
 	Array<BfTypeDef*> prevSoloExtensions;
 
 	mSystem->mTypeDefs.CheckRehash();
-
+	
 	// Process the typedefs one bucket at a time.  When we are combining extensions or partials (globals) into a single definition then
 	//  we will be making multiple passes over the bucket that contains that name
 	for (int bucketIdx = 0; bucketIdx < mSystem->mTypeDefs.mHashSize; bucketIdx++)
@@ -2980,13 +2980,11 @@ void BfCompiler::UpdateRevisedTypes()
 				{
 					auto checkTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];
 					while (checkTypeDefEntry != NULL)
-					{						
-						auto checkTypeDef = checkTypeDefEntry->mValue;
-						if ((checkTypeDefEntry->mHash == outerTypeDefEntry->mHash) &&
-							(checkTypeDef->NameEquals(outerTypeDef)))
-						{
+					{	
+						// This clears the mPartialUsed flag for the whole bucket
+ 						auto checkTypeDef = checkTypeDefEntry->mValue;
+						if ((checkTypeDef->mIsPartial) || (checkTypeDef->mIsCombinedPartial))
 							checkTypeDef->mPartialUsed = false;
-						}
 						checkTypeDefEntry = checkTypeDefEntry->mNext;
 					}
 					hadPartials = true;
@@ -3018,7 +3016,7 @@ void BfCompiler::UpdateRevisedTypes()
 						(checkTypeDef->mTypeCode == BfTypeCode_Object) ||
 						(checkTypeDef->mTypeCode == BfTypeCode_Enum) ||
 						(checkTypeDef->mTypeCode == BfTypeCode_Interface))
-					{
+					{						
 						rootTypeDef = checkTypeDef;
 						rootTypeDefEntry = checkTypeDefEntry;
 					}
@@ -3162,7 +3160,7 @@ void BfCompiler::UpdateRevisedTypes()
 							continue;
 						}
 					}
-
+					
 					if (checkTypeDef->mTypeCode == BfTypeCode_Extension)
 					{
 						// This was an extension that was orphaned but now we're taking it back
@@ -3230,6 +3228,8 @@ void BfCompiler::UpdateRevisedTypes()
 						checkTypeDef->mIsPartial = true;
 						checkTypeDef->mDefState = BfTypeDef::DefState_Defined;
 						mSystem->AddToCompositePartial(mPassInstance, compositeTypeDef, checkTypeDef);
+
+						BfLogSysM("AddToCompositePartial %p added to %p\n", checkTypeDef, compositeTypeDef);
 					}
 					mSystem->FinishCompositePartial(compositeTypeDef);
 

@@ -1448,7 +1448,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		mCurTypeDef->mIsPartial = true;
 		isExtension = true;
 	}
-
+	
 	BfAtomComposite fullName;
 	if (!expandedName.IsEmpty())
 		fullName.Set(mCurTypeDef->mNamespace.mParts, mCurTypeDef->mNamespace.mSize, &expandedName[0], (int)expandedName.size());
@@ -1643,9 +1643,16 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		mCurTypeDef->mNameEx->mRefCount++;
 	}
 	if (!fullName.IsEmpty())
-	{
-		mCurTypeDef->mFullNameEx = fullName;
-		mCurTypeDef->mFullNameEx.mParts[mCurTypeDef->mFullNameEx.mSize - 1] = mCurTypeDef->mNameEx;
+	{		
+		if (mCurTypeDef->IsGlobalsContainer())
+		{
+			mCurTypeDef->mFullNameEx.Set(fullName.mParts, fullName.mSize, &mCurTypeDef->mNameEx, 1);
+		}
+		else
+		{
+			mCurTypeDef->mFullNameEx = fullName;
+			mCurTypeDef->mFullNameEx.mParts[mCurTypeDef->mFullNameEx.mSize - 1] = mCurTypeDef->mNameEx;			
+		}
 	}
 	
 	if (auto defineBlock = BfNodeDynCast<BfBlock>(typeDeclaration->mDefineNode))

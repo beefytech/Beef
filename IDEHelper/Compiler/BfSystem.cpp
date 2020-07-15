@@ -841,6 +841,8 @@ void BfTypeDef::ReportMemory(MemReporter* memReporter)
 
 bool BfTypeDef::NameEquals(BfTypeDef* otherTypeDef)
 {
+ 	if (mName != otherTypeDef->mName)
+ 		return false;
 	// We can't just check mFullnames, because a namespace of "A" with a type named "B.C" would match
 	// a namespace of "A.B" with a type named "C"
 	if (mNamespace.mSize != otherTypeDef->mNamespace.mSize)
@@ -2596,6 +2598,9 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	BF_ASSERT(typeDef->mNameEx == nextTypeDef->mNameEx);
 	//typeDef->mNameEx = nextTypeDef->mNameEx;
 	//typeDef->mFullName = nextTypeDef->mFullName;
+
+	BF_ASSERT(typeDef->mFullNameEx == nextTypeDef->mFullNameEx);
+
 	typeDef->mProtection = nextTypeDef->mProtection;	
 	if ((typeDef->mTypeCode != BfTypeCode_Extension) && (!typeDef->mIsCombinedPartial))
 		BF_ASSERT(nextTypeDef->mTypeCode != BfTypeCode_Extension);
