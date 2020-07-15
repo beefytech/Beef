@@ -5595,7 +5595,7 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 		if (fieldDeclaration->mInitializer != NULL)
 		{
 			MoveNode(fieldDeclaration->mInitializer, fieldDeclaration);
-			auto nextToken = ExpectTokenAfter(fieldDeclaration, BfToken_Semicolon, BfToken_Tilde);
+			auto nextToken = ExpectTokenAfter(fieldDeclaration, BfToken_Semicolon, BfToken_Comma, BfToken_Tilde);
 			if (nextToken != NULL)
 				mVisitorPos.mReadPos--; // Backtrack, someone else eats these
 		}
