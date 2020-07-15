@@ -10148,7 +10148,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 						if (methodInst->GetParamCount() != 1)
 						{
-							BF_ASSERT(mCompiler->mPassInstance->HasFailed());
+							AssertErrorState();							
 							continue;
 						}
 

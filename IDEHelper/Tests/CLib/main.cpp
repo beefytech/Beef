@@ -362,6 +362,11 @@ extern "C" int Func0W(int a, Interop::StructW b)
 	return a + (int)b.mX * 100;
 }
 
+extern "C" int Func0KM(Interop::StructK a, Interop::StructM b, Interop::StructK c)
+{
+	return (int)a.mX + (int)b.mX * 100 + (int)c.mX * 1000;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 extern "C" int Func1A(Interop::StructA arg0, Interop::StructA arg1, int arg2)
