@@ -258,6 +258,8 @@ namespace Tests
 		public static extern int32 Func0V(int32 a, StructV b);
 		[LinkName(.C)]
 		public static extern int32 Func0W(int32 a, StructW b);
+		[LinkName(.C)]
+		public static extern int32 Func0KM(StructK a, StructM b, StructK c);
 
 		[LinkName(.C)]
 		public static extern int32 Func1A(StructA arg0, StructA arg1, int32 arg2);
@@ -313,6 +315,7 @@ namespace Tests
 		static int32 LocalFunc0U(int32 a, StructU b) => a + (int32)b.mK.mX * 100 + (int32)b.mK.mY * 10000;
 		static int32 LocalFunc0V(int32 a, StructV b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
 		static int32 LocalFunc0W(int32 a, StructW b) => a + (int32)b.mX * 100;
+		static int32 LocalFunc0KM(StructK a, StructM b, StructK c) => (int32)a.mX + (int32)b.mX * 100 + (int32)c.mX * 1000;
 
 		[Test]
 		public static void TestBasics()
@@ -365,8 +368,9 @@ namespace Tests
 			si1.mA = 91;
 
 			StructK sk = .() { mX = 3, mY = 4};
+			StructK sk2 = .() { mX = 11, mY = 12 };
 			StructL sl = .() { mX = 3, mY = 4};
-			StructM sm = .() { mX = 3, mY = 4};
+			StructM sm = .() { mX = 5, mY = 6, mZ = 7, mW = 8 };
 			StructN sn = .() { mX = 3, mY = 4};
 			StructO so = .() { mX = 3, mY = 4};
 			StructP sp = .() { mX = 3, mY = 4};
@@ -390,7 +394,7 @@ namespace Tests
 			StartTest("Func0L");
 			Test.Assert(Func0L(12, sl) == 40312);
 			StartTest("Func0M");
-			Test.Assert(Func0M(12, sm) == 40312);
+			Test.Assert(Func0M(12, sm) == 60512);
 			StartTest("Func0N");
 			Test.Assert(Func0N(12, sn) == 40312);
 			StartTest("Func0O");
@@ -411,13 +415,15 @@ namespace Tests
 			Test.Assert(Func0V(12, sv) == 40312);
 			StartTest("Func0W");
 			Test.Assert(Func0W(12, sw) == 312);
+			StartTest("Func0KM");
+			Test.Assert(Func0KM(sk, sm, sk2) == 11503);
 
 			StartTest("LocalFunc0K");
 			Test.Assert(LocalFunc0K(12, sk) == 40312);
 			StartTest("LocalFunc0L");
 			Test.Assert(LocalFunc0L(12, sl) == 40312);
 			StartTest("LocalFunc0M");
-			Test.Assert(LocalFunc0M(12, sm) == 40312);
+			Test.Assert(LocalFunc0M(12, sm) == 60512);
 			StartTest("LocalFunc0N");
 			Test.Assert(LocalFunc0N(12, sn) == 40312);
 			StartTest("LocalFunc0O");
@@ -438,6 +444,8 @@ namespace Tests
 			Test.Assert(LocalFunc0V(12, sv) == 40312);
 			StartTest("LocalFunc0W");
 			Test.Assert(LocalFunc0W(12, sw) == 312);
+			StartTest("Func0KM");
+			Test.Assert(LocalFunc0KM(sk, sm, sk2) == 11503);
 
 			StartTest("Func1A");
 			Test.Assert(Func1A(sa0, sa1, 12) == 121110);

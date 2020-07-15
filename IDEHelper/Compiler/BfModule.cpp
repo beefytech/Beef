@@ -17179,8 +17179,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			UpdateSrcPos(methodDef->mBody);	
 		else if (mCurTypeInstance->mTypeDef->mTypeDeclaration != NULL)
 			UpdateSrcPos(mCurTypeInstance->mTypeDef->mTypeDeclaration);			
-
-		int declArgIdx = 0;
+		
 		localIdx = 0;
 		argIdx = 0;
 		
@@ -17200,6 +17199,9 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			bool isThis = ((curLocalIdx == 0) && (!mCurMethodInstance->mMethodDef->mIsStatic));
 			if ((isThis) && (thisType->IsValuelessType()))
 				isThis = false;
+
+			if (paramVar->mValue.IsArg())
+				BF_ASSERT(paramVar->mValue.mId == argIdx);
 
 			BfIRMDNode diVariable;
 			if (wantsDIData)
@@ -17293,12 +17295,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 							auto primType = mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
 							auto primPtrType = mBfIRBuilder->GetPointerTo(primType);
 							auto primPtrVal = mBfIRBuilder->CreateBitCast(paramVar->mAddr, primPtrType);
-							mBfIRBuilder->CreateStore(paramVar->mValue, primPtrVal);
-
+							mBfIRBuilder->CreateStore(paramVar->mValue, primPtrVal);							
+							
 							if (loweredTypeCode2 != BfTypeCode_None)
 							{
-								declArgIdx++;
-
 								auto primType2 = mBfIRBuilder->GetPrimitiveType(loweredTypeCode2);
 								auto primPtrType2 = mBfIRBuilder->GetPointerTo(primType2);
 								BfIRValue primPtrVal2;
@@ -17324,9 +17324,6 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				}
 			}
 			
-			if (!isThis)		
-				declArgIdx++;						
-
 			if (methodDef->mBody != NULL)
 				UpdateSrcPos(methodDef->mBody);
 			else if (methodDef->mDeclaringType->mTypeDeclaration != NULL)
@@ -17490,7 +17487,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				BfTypeCode loweredTypeCode = BfTypeCode_None;
 				BfTypeCode loweredTypeCode2 = BfTypeCode_None;
 				paramVar->mResolvedType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2);
-				if (loweredTypeCode != BfTypeCode_None)
+				if (loweredTypeCode2 != BfTypeCode_None)
 					argIdx++;
 			}
 			else if (!paramVar->mResolvedType->IsValuelessType())
