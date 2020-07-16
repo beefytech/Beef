@@ -33,3 +33,14 @@ static
 		return 3;
 	}
 }
+
+namespace LibSpace
+{
+	static
+	{
+		public static int MethodA()
+		{
+			return 100;
+		}
+	}
+}

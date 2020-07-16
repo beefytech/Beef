@@ -45,6 +45,9 @@ namespace Tests
 
 			const int* iPtr = cValsInt[2][0];
 			Test.Assert(iPtr == null);
+
+			Test.Assert(LibSpace.MethodA() == 100);
+			Test.Assert(LibSpace.MethodB() == 200);
 		}
 	}
 }

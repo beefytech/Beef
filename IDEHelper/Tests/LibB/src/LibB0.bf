@@ -41,3 +41,14 @@ static
 		return 2;
 	}
 }
+
+namespace LibSpace
+{
+	static
+	{
+		public static int MethodB()
+		{
+			return 200;
+		}
+	}
+}
