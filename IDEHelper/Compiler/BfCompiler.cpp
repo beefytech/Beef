@@ -2964,8 +2964,8 @@ void BfCompiler::UpdateRevisedTypes()
 
 			BfTypeDefMap::Entry* rootTypeDefEntry = NULL;
 			BfTypeDef* rootTypeDef = NULL;
-			BfTypeDef* compositeTypeDef = NULL;			
-			
+			BfTypeDef* compositeTypeDef = NULL;
+						
 			auto latestOuterTypeDef = outerTypeDef->GetLatest();
 			if ((outerTypeDef->mTypeCode == BfTypeCode_Extension) && (!outerTypeDef->mIsPartial))
 			{
@@ -3031,22 +3031,37 @@ void BfCompiler::UpdateRevisedTypes()
 			}
 			else if ((outerTypeDef->mIsExplicitPartial) && (!outerTypeDef->mPartialUsed))
 			{
-				// For explicit partials there is no 'root type' so we just use the first explicit partial
+				// For explicit partials there is no 'root type' so we want to select any partial in the 'innermost' project
 				rootTypeDef = outerTypeDef;
 				rootTypeDefEntry = outerTypeDefEntry;
-
+				
 				// Find composite type, there is no explicit position for this
 				auto checkTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];
 				while (checkTypeDefEntry != NULL)
 				{						
 					auto checkTypeDef = checkTypeDefEntry->mValue;
-					if ((checkTypeDefEntry->mHash != outerTypeDefEntry->mHash) ||
-						(!checkTypeDef->mIsCombinedPartial) ||						
+
+					if ((checkTypeDefEntry->mHash != outerTypeDefEntry->mHash) ||						
 						(checkTypeDef->mPartialUsed) ||
 						(checkTypeDef->mDefState == BfTypeDef::DefState_Deleted) ||
 						(!checkTypeDef->NameEquals(outerTypeDef)) ||
-						(checkTypeDef->mGenericParamDefs.size() != outerTypeDef->mGenericParamDefs.size()) ||
-						(outerTypeDef->mProject != checkTypeDef->mProject))
+						(checkTypeDef->mGenericParamDefs.size() != outerTypeDef->mGenericParamDefs.size()))
+					{
+						checkTypeDefEntry = checkTypeDefEntry->mNext;
+						continue;
+					}
+
+					if (!checkTypeDef->mIsCombinedPartial)
+					{
+						// Select the innermost project for the composite project def
+						if ((rootTypeDef->mProject != checkTypeDef->mProject) && (rootTypeDef->mProject->ContainsReference(checkTypeDef->mProject)))
+							rootTypeDef = checkTypeDef;
+
+						checkTypeDefEntry = checkTypeDefEntry->mNext;
+						continue;
+					}
+
+					if (checkTypeDef->mProject != rootTypeDef->mProject)
 					{
 						checkTypeDefEntry = checkTypeDefEntry->mNext;
 						continue;
@@ -3141,11 +3156,7 @@ void BfCompiler::UpdateRevisedTypes()
 				{
 					auto checkTypeDef = checkTypeDefEntry->mValue;
 
-					bool isValidProject;
-					if (rootTypeDef->mIsExplicitPartial)
-						isValidProject = rootTypeDef->mProject == checkTypeDef->mProject;
-					else
-						isValidProject = checkTypeDef->mProject->ContainsReference(rootTypeDef->mProject);
+					bool isValidProject = checkTypeDef->mProject->ContainsReference(rootTypeDef->mProject);
 
 					if (checkTypeDef != rootTypeDef)
 					{
