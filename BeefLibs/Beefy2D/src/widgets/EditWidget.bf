@@ -19,6 +19,8 @@ namespace Beefy.widgets
 
         public this(int startPos = 0, int endPos = 0)
         {
+			Debug.Assert(startPos >= 0);
+			Debug.Assert(endPos >= 0);
             mStartPos = (int32)startPos;
             mEndPos = (int32)endPos;
         }
@@ -819,7 +821,7 @@ namespace Beefy.widgets
 		    {
 		        mDragSelectionUnion = null;
 				if ((mDragSelectionKind == .ClickedInside) && (btn == 0))
-					mSelection = EditSelection();
+					mSelection = null;
 				mDragSelectionKind = .None;
 		    }
 		}
