@@ -3021,16 +3021,16 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 	else if (auto varType = BfNodeDynCastExact<BfVarTypeReference>(typeRef))
 	{
 		// Don't allow 'var'
-		//*failed = true;
-		auto primType = ctx->mModule->GetPrimitiveType(BfTypeCode_Var);
-		return Hash(primType, ctx);
+		ctx->mModule->Fail("Invalid use of 'var'", typeRef);
+		ctx->mFailed = true;
+		return 0;		
 	}
 	else if (auto letType = BfNodeDynCastExact<BfLetTypeReference>(typeRef))
 	{
 		// Don't allow 'let'
+		ctx->mModule->Fail("Invalid use of 'let'", typeRef);
 		ctx->mFailed = true;
-		auto primType = ctx->mModule->GetPrimitiveType(BfTypeCode_Let);
-		return Hash(primType, ctx);
+		return 0;		
 	}
 	else if (auto retTypeTypeRef = BfNodeDynCastExact<BfModifiedTypeRef>(typeRef))
 	{	
