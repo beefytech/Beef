@@ -2936,6 +2936,19 @@ void BfCompiler::UpdateRevisedTypes()
 
 	mSystem->mTypeDefs.CheckRehash();
 	
+	Array<BfProject*> corlibProjects;
+	//
+	{
+		BfAtomComposite objectName;
+		mSystem->ParseAtomComposite("System.Object", objectName);
+		for (auto itr = mSystem->mTypeDefs.TryGet(objectName); itr != mSystem->mTypeDefs.end(); ++itr)		
+		{
+			BfTypeDef* typeDef = *itr;
+			if ((typeDef->mFullName == objectName) && (typeDef->mTypeCode == BfTypeCode_Object))
+				corlibProjects.Add(typeDef->mProject);			
+		}
+	}
+
 	// Process the typedefs one bucket at a time.  When we are combining extensions or partials (globals) into a single definition then
 	//  we will be making multiple passes over the bucket that contains that name
 	for (int bucketIdx = 0; bucketIdx < mSystem->mTypeDefs.mHashSize; bucketIdx++)
@@ -2965,6 +2978,7 @@ void BfCompiler::UpdateRevisedTypes()
 			BfTypeDefMap::Entry* rootTypeDefEntry = NULL;
 			BfTypeDef* rootTypeDef = NULL;
 			BfTypeDef* compositeTypeDef = NULL;
+			BfProject* compositeProject = NULL;
 						
 			auto latestOuterTypeDef = outerTypeDef->GetLatest();
 			if ((outerTypeDef->mTypeCode == BfTypeCode_Extension) && (!outerTypeDef->mIsPartial))
@@ -3019,6 +3033,7 @@ void BfCompiler::UpdateRevisedTypes()
 					{						
 						rootTypeDef = checkTypeDef;
 						rootTypeDefEntry = checkTypeDefEntry;
+						compositeProject = rootTypeDef->mProject;
 					}
 					
 					checkTypeDefEntry = checkTypeDefEntry->mNext;
@@ -3032,8 +3047,9 @@ void BfCompiler::UpdateRevisedTypes()
 			else if ((outerTypeDef->mIsExplicitPartial) && (!outerTypeDef->mPartialUsed))
 			{
 				// For explicit partials there is no 'root type' so we want to select any partial in the 'innermost' project
-				rootTypeDef = outerTypeDef;
+				rootTypeDef = outerTypeDef;				
 				rootTypeDefEntry = outerTypeDefEntry;
+				compositeProject = rootTypeDef->mProject;
 				
 				// Find composite type, there is no explicit position for this
 				auto checkTypeDefEntry = mSystem->mTypeDefs.mHashHeads[bucketIdx];
@@ -3054,8 +3070,29 @@ void BfCompiler::UpdateRevisedTypes()
 					if (!checkTypeDef->mIsCombinedPartial)
 					{
 						// Select the innermost project for the composite project def
-						if ((rootTypeDef->mProject != checkTypeDef->mProject) && (rootTypeDef->mProject->ContainsReference(checkTypeDef->mProject)))
-							rootTypeDef = checkTypeDef;
+ 						if (compositeProject != checkTypeDef->mProject)
+ 						{
+							if (checkTypeDef->mProject->ContainsReference(compositeProject))
+							{
+								// Fine, already contains it
+							}
+							else if (compositeProject->ContainsReference(checkTypeDef->mProject))
+							{
+								rootTypeDef = checkTypeDef;
+								rootTypeDefEntry = checkTypeDefEntry;
+								compositeProject = rootTypeDef->mProject;
+							}
+							else
+							{ 
+								// Try 'corlib'
+								for (auto corlibProject : corlibProjects)
+								{
+									if ((rootTypeDef->mProject->ContainsReference(corlibProject)) &&
+										(checkTypeDef->mProject->ContainsReference(corlibProject)))
+										compositeProject = corlibProject;
+								}
+							}
+ 						}
 
 						checkTypeDefEntry = checkTypeDefEntry->mNext;
 						continue;
@@ -3102,7 +3139,7 @@ void BfCompiler::UpdateRevisedTypes()
 					{
 						compositeTypeDef = new BfTypeDef();
 						compositeTypeDef->mSystem = rootTypeDef->mSystem;
-						compositeTypeDef->mProject = rootTypeDef->mProject;
+						compositeTypeDef->mProject = compositeProject;
 						compositeTypeDef->mName = rootTypeDef->mName;
 						compositeTypeDef->mName->mRefCount++;
 						mSystem->TrackName(compositeTypeDef);
@@ -3156,7 +3193,7 @@ void BfCompiler::UpdateRevisedTypes()
 				{
 					auto checkTypeDef = checkTypeDefEntry->mValue;
 
-					bool isValidProject = checkTypeDef->mProject->ContainsReference(rootTypeDef->mProject);
+					bool isValidProject = checkTypeDef->mProject->ContainsReference(compositeProject);
 
 					if (checkTypeDef != rootTypeDef)
 					{

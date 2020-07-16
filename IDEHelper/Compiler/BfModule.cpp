@@ -3233,7 +3233,7 @@ void BfModule::PopulateGlobalContainersList(const BfGlobalLookup& globalLookup)
 				if ((typeDef->mFullName == findStr) && (typeDef->mIsCombinedPartial) && (typeDef->IsGlobalsContainer()))
 				{
 					if (typeDef->mProject->ContainsReference(typeDef->mProject))
-					{						
+					{
 						BfGlobalContainerEntry globalEntry;
 						globalEntry.mTypeDef = typeDef;
 						globalEntry.mTypeInst = NULL;
@@ -4574,7 +4574,7 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 	else
 	{
 		typeDataName += "sBfTypeData.";
-		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, this);
+		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, this);		
 	}
 
 	BfLogSysM("Creating TypeData %s\n", typeDataName.c_str());
@@ -4684,7 +4684,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		typeDataName += "sBfTypeData.";
 		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, mContext->mScratchModule);
 	}
-	
+
 	int typeCode = BfTypeCode_None;		
 
 	if (typeInstance != NULL)
@@ -11955,8 +11955,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				{
 					if (methodInstance->mMethodProcessRequest != NULL)
 					{
-						// Disconnect method process request
-						BF_ASSERT(methodInstance->mMethodProcessRequest->mFromModule == mContext->mUnreifiedModule);
+						// Disconnect method process request						
 						methodInstance->mMethodProcessRequest->mMethodInstance = NULL;
 						methodInstance->mMethodProcessRequest = NULL;
 					}
