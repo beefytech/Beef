@@ -7722,7 +7722,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 			if ((resolveFlags & BfResolveTypeRefFlag_IgnoreLookupError) == 0)
 			{
-				TypeRefNotFound(typeRef);
+				TypeRefNotFound(typeRef, ((resolveFlags & Beefy::BfResolveTypeRefFlag_Attribute) != 0) ? "Attribute" : NULL);
 				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 			}
 
