@@ -307,15 +307,16 @@ namespace IDE.ui
                 base.Draw(g);
 
 				float drawHeight = (mWantHeight != 0) ? mWantHeight : mHeight;
-
+				float boxWidth = mWidth - GS!(2) - mRightBoxAdjust;
+				
 				if (mOwnsWindow)
 				{
 	                using (g.PushColor(0x80000000))
-	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), GS!(2), GS!(2), mWidth - GS!(2) - mRightBoxAdjust, drawHeight - GS!(2));
+	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.DropShadow), GS!(2), GS!(2), boxWidth, drawHeight - GS!(2));
 
 	                base.Draw(g);
 	                using (g.PushColor(0xFFFFFFFF))
-	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth - GS!(8) - mRightBoxAdjust, drawHeight - GS!(8));
+	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, boxWidth - GS!(6), drawHeight - GS!(8));
 				}
 
                 g.SetFont(IDEApp.sApp.mCodeFont);
@@ -532,6 +533,8 @@ namespace IDE.ui
 					}
 
 					int windowHeight = (int)(mWantHeight + Math.Max(0, mDocHeight - GS!(32)));
+
+					Debug.WriteLine("Updating {} {}", windowWidth, mRightBoxAdjust);
 
 					mIgnoreMove++;
 					if (mAutoComplete.mInvokeWidget != null)
@@ -1734,7 +1737,9 @@ namespace IDE.ui
 					mAutoCompleteListWidget.mOwnsWindow = !IsInPanel();
 					mAutoCompleteListWidget.mAutoFocus = IsInPanel();
 					int32 windowWidth = (int32)mAutoCompleteListWidget.mMaxWidth;
-					windowWidth += (int32)mAutoCompleteListWidget.mDocWidth;
+					if (mAutoCompleteListWidget.mRightBoxAdjust != 0)
+						windowWidth += (int32)mAutoCompleteListWidget.mRightBoxAdjust; // - GS!(16);
+					//windowWidth += (int32)mAutoCompleteListWidget.mDocWidth;
 					windowWidth += GS!(16);
 
 					int32 contentHeight = (int32)(visibleCount * mAutoCompleteListWidget.mItemSpacing);
