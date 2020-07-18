@@ -19551,6 +19551,13 @@ void BfModule::CheckHotMethod(BfMethodInstance* methodInstance, const StringImpl
 	}
 }
 
+static void StackOverflow()
+{
+	int i = 0;
+	if (i == 0)
+		StackOverflow();
+}
+
 // methodDeclaration is NULL for default constructors
 void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool isTemporaryFunc, bool addToWorkList)
 {
@@ -19588,6 +19595,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	BF_ASSERT(methodDef->mName != "__ASSERTNAME");
 	if (methodDef->mName == "__FATALERRORNAME")
 		BFMODULE_FATAL(this, "__FATALERRORNAME");
+	if (methodDef->mName == "__STACKOVERFLOW")
+		StackOverflow();
 
 	if (typeInstance->IsClosure())
 	{
