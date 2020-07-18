@@ -2691,7 +2691,7 @@ void BeMCContext::MergeInstFlags(BeMCInst* prevInst, BeMCInst* inst, BeMCInst* n
 }
 
 void BeMCContext::RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerged, bool removeFromList)
-{
+{	
 	// If neither the instruction before or after this one shares the vregsInitialized flags, then we need to
 	//  merge down our Changes to the next instruction	
 	auto inst = block->mInstructions[instIdx];
@@ -7867,6 +7867,21 @@ void BeMCContext::DoInstCombinePass()
 		}
 	}	
 
+	auto _RemapVReg = [&](int& vregIdx)
+	{
+		int* regIdxPtr = NULL;
+		if (regRemapMap.TryGetValue(vregIdx, &regIdxPtr))
+		{
+			int regIdx = *regIdxPtr;
+			if (regIdx < 0)
+			{
+				Fail("Invalid reg remap");
+			}
+			else
+				vregIdx = regIdx;
+		}
+	};
+
 	auto _RemapOperand = [&](BeMCOperand* operand)
 	{
 		if (operand->IsVRegAny())
@@ -7888,6 +7903,12 @@ void BeMCContext::DoInstCombinePass()
 					operand->mVRegIdx = regIdx;
 				}
 			}
+		}
+
+		if (operand->mKind == BeMCOperandKind_VRegPair)
+		{
+			_RemapVReg(operand->mVRegPair.mVRegIdx0);
+			_RemapVReg(operand->mVRegPair.mVRegIdx1);
 		}
 
 		if (operand->IsVRegAny())
@@ -7915,10 +7936,7 @@ void BeMCContext::DoInstCombinePass()
 			{
 				auto inst = mcBlock->mInstructions[instIdx];
 				if (inst->IsDef())
-				{
-					//auto itr = removeDefs.find(inst->mArg0.mVRegIdx);
-					//if (itr != removeDefs.end())
-
+				{					
 					if ((removeDefs.Contains(inst->mArg0.mVRegIdx)) || (wantUnwrapVRegs.Contains(inst->mArg0.mVRegIdx)))
 					{
 						RemoveInst(mcBlock, instIdx);
@@ -7927,16 +7945,6 @@ void BeMCContext::DoInstCombinePass()
 					}
 				}
 				
-				/*if (inst->mKind == BeMCInstKind_LifetimeStart)
-				{
-					if (removeLifetimeStarts.find(inst->mArg0.mVRegIdx) != removeLifetimeStarts.end())
-					{
-						RemoveInst(mcBlock, instIdx);
-						instIdx--;
-						continue;
-					}
-				}*/
-
 				auto operands = { &inst->mResult, &inst->mArg0, &inst->mArg1 };
 				for (auto& operand : operands)
 				{
@@ -8464,15 +8472,7 @@ bool BeMCContext::DoLegalization()
 				instIdx--;
 				continue;
 			}
-
-			if (mDebugging)
-			{
-				if (inst->mArg1.mVRegIdx == 61)
-				{
-					NOP;
-				}
-			}
-
+			
 			// Check operands
 			if ((!inst->IsPsuedo()) && (arg0Type != NULL) && (!arg0Type->IsComposite()))
 			{								
@@ -15533,7 +15533,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?Hey@Blurg@bf@@SAXXZ");
+	mDebugging = (function->mName == "?Main@Program@Mintest2@bf@@SAXXZ");
 // 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
 // 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 // 		;
