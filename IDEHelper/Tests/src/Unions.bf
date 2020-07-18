@@ -18,6 +18,17 @@ namespace Tests
 			public float mFloat;
 		}
 
+		[Union]
+		struct UnionC
+		{
+			public int32 mInt32 = 0;
+			public float mFloat;
+
+			public this()
+			{
+			}
+		}
+
 		[Test]
 		static void TestBasics()
 		{
