@@ -2978,7 +2978,7 @@ namespace IDE.ui
 			String fileName = scope String();
 			Path.GetFileName(mFilePath, fileName);
 			String headerStr = scope String();
-			headerStr.AppendF("Unable to load file '{0}'. Requested path is '{1}'", fileName, mFilePath);
+			headerStr.AppendF("Source file '{0}' is unavailable. Requested path is '{1}'", fileName, mFilePath);
 			mPanelHeader.Label = headerStr;
 			if (!sPreviousVersionWarningShown)
 			{
