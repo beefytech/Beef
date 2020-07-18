@@ -12,7 +12,7 @@ namespace Tests
 			public String mC;
 			public String mD;
 
-			public this(int32 a, float b, String c, String d)
+			public this(int32 a, float b, String c, String d = "D")
 			{
 				PrintF("this: %p A: %d B: %f", this, a, (double)b);
 
@@ -49,6 +49,11 @@ namespace Tests
 			}
 		}
 
+		[AttributeUsage(.Class | .Method, ReflectUser=.All)]
+		struct AttrDAttribute : Attribute
+		{
+
+		}
 
 		[Reflect]
 		class ClassA
@@ -131,7 +136,7 @@ namespace Tests
 		[Reflect(.All), AttrC(1, 2)]
 		class ClassB
 		{
-			[AttrA(11, 22, "StrA", "StrB")]
+			[AttrA(11, 22, "StrA")]
 			public int mA = 1;
 			[AttrB(44, 55)]
 			public int mB = 2;
@@ -139,15 +144,35 @@ namespace Tests
 			public String mStr = "ABC";
 		}
 
-		[Reflect(.Type)]
+		[AttrD]
 		class ClassC
 		{
-			[AttrA(11, 22, "StrA", "StrC")]
 			public int mA = 1;
-			[AttrB(44, 55)]
 			public int mB = 2;
-			public int mC = 3;
-			public float mD = 4;
+		}
+
+		class ClassD
+		{
+			public int mA = 1;
+			public int mB = 2;
+
+			[AttrD]
+			public void MethodA()
+			{
+
+			}
+		}
+
+		class ClassE
+		{
+			public int mA = 1;
+			public int mB = 2;
+
+			[AttrD]
+			public void MethodA()
+			{
+
+			}
 		}
 
 		[Test]
@@ -323,12 +348,13 @@ namespace Tests
 					Test.Assert(attrA.mA == 11);
 					Test.Assert(attrA.mB == 22);
 					Test.Assert(attrA.mC == "StrA");
-					Test.Assert(attrA.mD == "StrB");
+					Test.Assert(attrA.mD == "D");
 				}
 
 				fieldIdx++;
 			}
 
+			Test.Assert(fieldIdx == 4);
 			var fieldInfo = cb.GetType().GetField("mC").Value;
 			int cVal = 0;
 			fieldInfo.GetValue(cb, out cVal);
@@ -353,10 +379,22 @@ namespace Tests
 			let attrC = typeof(ClassB).GetCustomAttribute<AttrCAttribute>().Get();
 			Test.Assert(attrC.mA == 1);
 			Test.Assert(attrC.mB == 2);
+
+			ClassC c = scope .();
+			Test.Assert(typeof(ClassC).GetField("mA").Value.Name == "mA");
+			Test.Assert(typeof(ClassC).GetField("mB").Value.Name == "mB");
+
+			ClassD cd = scope .();
+			Test.Assert(typeof(ClassD).GetField("mA") case .Err);
+
+			// Should this reified call cause fields to be reflected?
+			/*ClassE ce = scope .();
+			ce.MethodA();
+			Test.Assert(typeof(ClassE).GetField("mA").Value.Name == "mA");*/
 		}
 
 		[Test]
-		static void TestD()
+		static void TestStructA()
 		{
 			StructA sa = .() { mA = 12, mB = 23 };
 			var typeInfo = typeof(StructA);
