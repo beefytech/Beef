@@ -1292,6 +1292,7 @@ public:
 
 	BfType* GetResolvedType();
 	void SetResolvedType(BfType* type);
+	void GetDataRange(int& dataIdx, int& dataCount);
 };
 
 enum BfMethodRefKind

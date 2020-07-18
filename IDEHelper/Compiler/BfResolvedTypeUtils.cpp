@@ -423,6 +423,46 @@ void BfFieldInstance::SetResolvedType(BfType* type)
 	mResolvedType = type;
 }
 
+void BfFieldInstance::GetDataRange(int& dataIdx, int& dataCount)
+{	
+	int minMergedDataIdx = mMergedDataIdx;
+	int maxMergedDataIdx = minMergedDataIdx + 1;
+	if (mResolvedType->IsStruct())
+		maxMergedDataIdx = minMergedDataIdx + mResolvedType->ToTypeInstance()->mMergedFieldDataCount;
+
+	if (mOwner->mIsUnion)
+	{
+		for (auto& checkFieldInstance : mOwner->mFieldInstances)
+		{
+			if (&checkFieldInstance == this)
+				continue;
+
+			if (checkFieldInstance.mDataIdx == mDataIdx)
+			{
+				int checkMinMergedDataIdx = checkFieldInstance.mMergedDataIdx;
+				int checkMaxMergedDataIdx = checkMinMergedDataIdx + 1;
+				if (checkFieldInstance.GetResolvedType()->IsStruct())
+					checkMaxMergedDataIdx = checkMinMergedDataIdx + checkFieldInstance.mResolvedType->ToTypeInstance()->mMergedFieldDataCount;
+
+				minMergedDataIdx = BF_MIN(minMergedDataIdx, checkMinMergedDataIdx);
+				maxMergedDataIdx = BF_MAX(maxMergedDataIdx, checkMaxMergedDataIdx);
+			}
+		}
+	}
+
+	int fieldIdx = dataIdx - 1;
+	if (fieldIdx == -1)
+	{
+		dataIdx = minMergedDataIdx + 1;
+	}
+	else
+	{
+		fieldIdx += minMergedDataIdx;
+		dataIdx = fieldIdx + 1;
+	}
+	dataCount = maxMergedDataIdx - minMergedDataIdx;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 int64 BfDeferredMethodCallData::GenerateMethodId(BfModule* module, int64 methodId)
