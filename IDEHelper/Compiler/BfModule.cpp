@@ -1098,7 +1098,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
                 (mModuleName == "-")
-				//|| (mModuleName == "Tests_FuncRefs_Class")
+				//|| (mModuleName == "BeefTest2_ClearColorValue")
 				//|| (mModuleName == "Tests_FuncRefs")
 				)
 				mBfIRBuilder->mDbgVerifyCodeGen = true;
@@ -3744,19 +3744,21 @@ void BfModule::MarkFieldInitialized(BfFieldInstance* fieldInstance)
 	auto fieldType = fieldInstance->GetResolvedType();
 	if ((fieldInstance->mMergedDataIdx != -1) && (mCurMethodState != NULL))
 	{
-		int fieldDataCount = 1;
-		if (fieldType->IsStruct())
-		{
-			auto structTypeInst = fieldType->ToTypeInstance();
-			fieldDataCount = structTypeInst->mMergedFieldDataCount;
-		}		
+		int fieldIdx = 0;
+		int fieldCount = 0;
+		fieldInstance->GetDataRange(fieldIdx, fieldCount);
+		fieldIdx--;
 
+		int count = fieldCount;
+		if (fieldIdx == -1)
+			count = 1;
+		
 		//TODO: Under what circumstances could 'thisVariable' be NULL?
 		auto thisVariable = GetThisVariable();
 		if (thisVariable != NULL)
 		{
-			for (int i = 0; i < fieldDataCount; i++)
-				mCurMethodState->LocalDefined(thisVariable, fieldInstance->mMergedDataIdx + i);
+			for (int i = 0; i < count; i++)
+				mCurMethodState->LocalDefined(thisVariable, fieldIdx + i);
 		}
 	}
 }
@@ -14979,7 +14981,14 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					{
 						// Failed
 					}
-					auto assignValue = GetFieldInitializerValue(fieldInst);					
+					auto assignValue = GetFieldInitializerValue(fieldInst);		
+
+					if (mCurTypeInstance->IsUnion())
+					{						
+						auto fieldPtrType = CreatePointerType(fieldInst->mResolvedType);
+						fieldAddr = mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(fieldPtrType));
+					}
+
 					if ((fieldAddr) && (assignValue))
 						mBfIRBuilder->CreateStore(assignValue.mValue, fieldAddr);
 				}

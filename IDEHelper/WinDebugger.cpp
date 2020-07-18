@@ -10201,6 +10201,31 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 	return result;
 }
 
+String WinDebugger::GetProcessInfo()
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	
+	if ((mActiveThread == NULL) && (!mIsRunning))
+		return "";
+
+	FILETIME creationTime = { 0 };
+	FILETIME exitTime = { 0 };
+	FILETIME kernelTime = { 0 };
+	FILETIME userTime = { 0 };
+	GetProcessTimes(mProcessInfo.hProcess, &creationTime, &exitTime, &kernelTime, &userTime);
+
+	String retStr;
+	PROCESS_MEMORY_COUNTERS memInfo = { 0 };	
+	GetProcessMemoryInfo(mProcessInfo.hProcess, &memInfo, sizeof(PROCESS_MEMORY_COUNTERS));
+	
+	retStr += StrFormat("VirtualMemory\t%d\n", memInfo.PagefileUsage);
+	retStr += StrFormat("WorkingMemory\t%d\n", memInfo.WorkingSetSize);
+	retStr += StrFormat("KernelTime\t%lld\n", *(int64*)&kernelTime);
+	retStr += StrFormat("UserTime\t%lld\n", *(int64*)&userTime);
+	
+	return retStr;
+}
+
 String WinDebugger::GetThreadInfo()
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);

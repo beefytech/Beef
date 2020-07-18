@@ -143,6 +143,10 @@ namespace IDE.ui
             {
                 panel = gApp.mMemoryPanel;
             }
+			else if (type == "DiagnosticsPanel")
+			{
+			    panel = gApp.mDiagnosticsPanel;
+			}
 			else if (type == "AutoCompletePanel")
 			{
 			    panel = gApp.mAutoCompletePanel;

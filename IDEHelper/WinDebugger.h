@@ -626,6 +626,7 @@ public:
 	virtual String GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen) override;
 	virtual String GetAutoLocals(int callStackIdx, bool showRegs) override;
 	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) override;
+	virtual String GetProcessInfo() override;
 	virtual String GetThreadInfo() override;
 	virtual void SetActiveThread(int threadId) override;
 	virtual int GetActiveThread() override;

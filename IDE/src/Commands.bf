@@ -254,6 +254,7 @@ namespace IDE
 			Add("Show Call Stack", new => gApp.ShowCallstack);
 			Add("Show Class View", new => gApp.ShowClassViewPanel);
 			Add("Show Current", new => gApp.Cmd_ShowCurrent);
+			Add("Show Diagnostics", new => gApp.ShowDiagnostics);
 			Add("Show Disassembly", new => gApp.[Friend]ShowDisassemblyAtStack);
 			Add("Show Errors", new => gApp.[Friend]ShowErrors);
 			Add("Show Error Next", new => gApp.ShowErrorNext);

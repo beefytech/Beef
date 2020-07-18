@@ -274,6 +274,9 @@ namespace IDE.Debugger
 		static extern char8* CallStack_GetStackMethodOwner(int32 stackFrameIdx, out int32 language);
 
 		[CallingConvention(.Stdcall),CLink]
+		static extern char8* Debugger_GetProcessInfo();
+
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetThreadInfo();
 
 		[CallingConvention(.Stdcall),CLink]
@@ -965,6 +968,14 @@ namespace IDE.Debugger
 			char8* str = CallStack_GetStackMethodOwner(stackFrameIdx, out language);
 			if (str != null)
 				outStr.Append(str);
+		}
+
+		public void GetProcessInfo(String outProcessInfo)
+		{
+			if (!mIsRunning)
+				return;
+			char8* strPtr = Debugger_GetProcessInfo();
+			outProcessInfo.Append(strPtr);
 		}
 
 		public void GetThreadInfo(String outThreadInfo)

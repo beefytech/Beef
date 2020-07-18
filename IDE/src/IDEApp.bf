@@ -199,6 +199,7 @@ namespace IDE
         public CallStackPanel mCallStackPanel;
 		public ErrorsPanel mErrorsPanel;
         public BreakpointPanel mBreakpointPanel;
+		public DiagnosticsPanel mDiagnosticsPanel;
 		public ModulePanel mModulePanel;
         public ThreadPanel mThreadPanel;
 		public ProfilePanel mProfilePanel;
@@ -659,6 +660,7 @@ namespace IDE
 			RemoveAndDelete!(mMemoryPanel);
 			RemoveAndDelete!(mCallStackPanel);
 			RemoveAndDelete!(mBreakpointPanel);
+			RemoveAndDelete!(mDiagnosticsPanel);
 			RemoveAndDelete!(mModulePanel);
 			RemoveAndDelete!(mThreadPanel);
 			RemoveAndDelete!(mProfilePanel);
@@ -746,6 +748,7 @@ namespace IDE
 			dlg(mCallStackPanel);
 			dlg(mErrorsPanel);
 			dlg(mBreakpointPanel);
+			dlg(mDiagnosticsPanel);
 			dlg(mModulePanel);
 			dlg(mThreadPanel);
 			dlg(mProfilePanel);
@@ -4516,6 +4519,12 @@ namespace IDE
         }
 
 		[IDECommand]
+		public void ShowDiagnostics()
+		{
+			ShowPanel(mDiagnosticsPanel, "Diagnostics");
+		}
+
+		[IDECommand]
 		public void ShowModules()
 		{
 		    ShowPanel(mModulePanel, "Modules");
@@ -5093,16 +5102,17 @@ namespace IDE
 			//////////
 
             subMenu = root.AddMenuItem("&View");
-			AddMenuItem(subMenu, "A&utoComplete", "Show Autocomplete Panel");
+			AddMenuItem(subMenu, "AutoComplet&e", "Show Autocomplete Panel");
 			AddMenuItem(subMenu, "&Auto Watches", "Show Auto Watches");
 			AddMenuItem(subMenu, "&Breakpoints", "Show Breakpoints");
 			AddMenuItem(subMenu, "&Call Stack", "Show Call Stack");
 			AddMenuItem(subMenu, "C&lass View", "Show Class View");
+			AddMenuItem(subMenu, "&Diagnostics", "Show Diagnostics");
 			AddMenuItem(subMenu, "E&rrors", "Show Errors");
 			AddMenuItem(subMenu, "&Find Results", "Show Find Results");
 			AddMenuItem(subMenu, "&Immediate Window", "Show Immediate");
 			AddMenuItem(subMenu, "&Memory", "Show Memory");
-			AddMenuItem(subMenu, "Mo&dules", "Show Modules");
+			AddMenuItem(subMenu, "Mod&ules", "Show Modules");
 			AddMenuItem(subMenu, "&Output", "Show Output");
 			AddMenuItem(subMenu, "&Profiler", "Show Profiler");
 			AddMenuItem(subMenu, "&Threads", "Show Threads");
@@ -10771,6 +10781,8 @@ namespace IDE
 			mCallStackPanel.mAutoDelete = false;
             mBreakpointPanel = new BreakpointPanel();
 			mBreakpointPanel.mAutoDelete = false;
+			mDiagnosticsPanel = new DiagnosticsPanel();
+			mDiagnosticsPanel.mAutoDelete = false;
 			mErrorsPanel = new ErrorsPanel();
 			mErrorsPanel.mAutoDelete = false;
 			mModulePanel = new ModulePanel();

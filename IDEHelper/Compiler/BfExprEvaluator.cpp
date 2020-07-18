@@ -3825,64 +3825,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				}
 
 				if ((mResultLocalVar != NULL) && (fieldInstance->mMergedDataIdx != -1))
-				{
-					int minMergedDataIdx = fieldInstance->mMergedDataIdx;
-					int maxMergedDataIdx = minMergedDataIdx + 1;
-					if (resolvedFieldType->IsStruct())
-						maxMergedDataIdx = minMergedDataIdx + resolvedFieldType->ToTypeInstance()->mMergedFieldDataCount;
-
-					if (curCheckType->mIsUnion)
-					{
-						for (auto& checkFieldInstance : curCheckType->mFieldInstances)
-						{
-							if (&checkFieldInstance == fieldInstance)
-								continue;
-
-							if (checkFieldInstance.mDataIdx == fieldInstance->mDataIdx)
-							{
-								int checkMinMergedDataIdx = checkFieldInstance.mMergedDataIdx;
-								int checkMaxMergedDataIdx = checkMinMergedDataIdx + 1;
-								if (checkFieldInstance.GetResolvedType()->IsStruct())
-									checkMaxMergedDataIdx = checkMinMergedDataIdx + checkFieldInstance.mResolvedType->ToTypeInstance()->mMergedFieldDataCount;
-
-								minMergedDataIdx = BF_MIN(minMergedDataIdx, checkMinMergedDataIdx);
-								maxMergedDataIdx = BF_MAX(maxMergedDataIdx, checkMaxMergedDataIdx);
-							}
-						}
-					}
-
-					int fieldIdx = mResultLocalVarField - 1;
-					if (fieldIdx == -1)
-					{							
-						mResultLocalVarField = minMergedDataIdx + 1;
-					}
-					else
-					{
-						fieldIdx += minMergedDataIdx;
-						mResultLocalVarField = fieldIdx + 1;							
-					}
-					mResultLocalVarFieldCount = maxMergedDataIdx - minMergedDataIdx;						
-					mResultLocalVarRefNode = targetSrc;
-
-					/*int fieldIdx = (mResultLocalVarIdx >> 16) - 1;
-					if (fieldIdx == -1)
-					{							
-						mResultLocalVarField = fieldInstance->mMergedDataIdx + 1;
-					}
-					else
-					{
-						fieldIdx += fieldInstance->mMergedDataIdx;
-						mResultLocalVarField = fieldIdx + 1;							
-					}
-					mResultLocalVarFieldCount = 1;
-					if (fieldInstance->mType->IsStruct())
-					{
-						auto fieldTypeInstance = fieldInstance->mType->ToTypeInstance();
-						mResultLocalVarFieldCount = fieldTypeInstance->mMergedFieldDataCount;
-					}
-					mResultLocalVarRefNode = targetSrc;*/
-
-						
+				{					
+					fieldInstance->GetDataRange(mResultLocalVarField, mResultLocalVarFieldCount);
+					mResultLocalVarRefNode = targetSrc;					
 				}
 
 				if ((curCheckType->IsIncomplete()) && (!curCheckType->mNeedsMethodProcessing))
@@ -15135,7 +15080,7 @@ void BfExprEvaluator::MarkResultAssigned()
 			//return;
 
 		auto localVar = mResultLocalVar;
-		int fieldIdx = mResultLocalVarField  - 1;
+		int fieldIdx = mResultLocalVarField - 1;
 		int count = mResultLocalVarFieldCount;
 		if (fieldIdx == -1)
 			count = 1;

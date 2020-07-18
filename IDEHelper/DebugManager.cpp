@@ -1299,16 +1299,23 @@ BF_EXPORT void BF_CALLTYPE Debugger_ForegroundTarget()
 	//BF_ASSERT(worked);
 }
 
+BF_EXPORT const char* BF_CALLTYPE Debugger_GetProcessInfo()
+{
+	String& outString = *gTLStrReturn.Get();
+	outString = gDebugger->GetProcessInfo();
+	return outString.c_str();
+}
+
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetThreadInfo()
 {
-	String& outString = *gTLStrReturn.Get();	
+	String& outString = *gTLStrReturn.Get();
 	outString = gDebugger->GetThreadInfo();
 	return outString.c_str();
 }
 
 BF_EXPORT void BF_CALLTYPE Debugger_SetActiveThread(int threadId)
 {
-	gDebugger->SetActiveThread(threadId);	
+	gDebugger->SetActiveThread(threadId);
 }
 
 BF_EXPORT int BF_CALLTYPE Debugger_GetActiveThread()

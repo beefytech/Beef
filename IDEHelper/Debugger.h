@@ -283,6 +283,7 @@ public:
 	virtual String GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen) = 0;
 	virtual String GetAutoLocals(int callStackIdx, bool showRegs) = 0;
 	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) = 0;
+	virtual String GetProcessInfo() = 0;
 	virtual String GetThreadInfo() = 0;
 	virtual void SetActiveThread(int threadId) = 0;	
 	virtual int GetActiveThread() = 0;
