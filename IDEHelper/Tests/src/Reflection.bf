@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 
 namespace Tests
