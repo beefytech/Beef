@@ -796,10 +796,10 @@ namespace IDE
 				}
 
 				linkLine.Append("-nologo ");
-				//linkLine.Append("-fixed ");
-
-				if ((workspaceOptions.mAllowHotSwapping) && (is64Bit))
+				
+				if ((project.mGeneralOptions.mTargetType == .BeefDynLib) && (workspaceOptions.mAllowHotSwapping) && (is64Bit))
 				{
+					// This helps to ensure that DLLs have enough hot swapping space after them
 					int nameHash = targetPath.GetHashCode();
 					int64 wantAddress = (((nameHash & 0x3FFFF) + 0x10) << 28);
 					linkLine.AppendF("-base:0x{0:X} -dynamicbase:no ", wantAddress);
