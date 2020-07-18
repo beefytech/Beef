@@ -221,6 +221,8 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 
 	int extendedParamIdx = 0;
 
+	SetAndRestoreValue<bool> ignoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+	
 	llvm::SmallVector<BfIRValue, 4> expandedParamsConstValues;
 	BfType* expandedParamsElementType = NULL;
 	
