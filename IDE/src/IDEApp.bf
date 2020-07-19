@@ -11758,7 +11758,7 @@ namespace IDE
                     }
                     else if (cmd == "error")
                     {
-						if ((mRunningTestScript) && (!IsCrashDump) && (!mScriptManager.IsErrorExpected(param)))
+						if ((mRunningTestScript) && (!IsCrashDump) && (!mScriptManager.IsErrorExpected(param, false)))
 							mScriptManager.Fail(param);
 
 						bool isFirstMsg = true;
