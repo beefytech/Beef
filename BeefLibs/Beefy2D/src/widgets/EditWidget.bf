@@ -525,7 +525,8 @@ namespace Beefy.widgets
 		{
 			None,
 			Dragging,
-			ClickedInside
+			ClickedInside,
+			DraggingInside
 		}
 
 		public Data mData ~ _.Deref(this);
@@ -798,7 +799,7 @@ namespace Beefy.widgets
             }
             else if (!mWidgetWindow.IsKeyDown(KeyCode.Shift))
             {
-				if ((mSelection != null) && (CursorTextPos >= mSelection.Value.MinPos) && (CursorTextPos <= mSelection.Value.MaxPos))
+				if ((mSelection != null) && (CursorTextPos > mSelection.Value.MinPos) && (CursorTextPos < mSelection.Value.MaxPos))
 				{
 					if (hadSelection)
 					{
@@ -835,7 +836,9 @@ namespace Beefy.widgets
                 MoveCursorToCoord(x, y);
 				ClampCursor();
 				if (mDragSelectionKind == .Dragging)
-                	SelectToCursor();                
+                	SelectToCursor();
+				else if (mDragSelectionKind == .ClickedInside)
+					mDragSelectionKind = .DraggingInside;
             }
         }
 
@@ -2004,8 +2007,11 @@ namespace Beefy.widgets
 			{
 				String selText = scope String();
 				GetSelectionText(selText);
-		        BFApp.sApp.SetClipboardText(selText);
-		        DeleteSelection();
+				if (!selText.IsEmpty)
+				{
+			        BFApp.sApp.SetClipboardText(selText);
+			        DeleteSelection();
+				}
 			}
 		}
 
@@ -2013,7 +2019,8 @@ namespace Beefy.widgets
 		{
 			String selText = scope String();
 			GetSelectionText(selText);
-			BFApp.sApp.SetClipboardText(selText);
+			if (!selText.IsEmpty)
+				BFApp.sApp.SetClipboardText(selText);
 		}
 
 		public void PasteText()
