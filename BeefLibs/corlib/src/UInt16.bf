@@ -49,6 +49,11 @@ namespace System
 			}
 		}
 
+		public override void ToString(String outString)
+		{
+			((uint32)this).ToString(outString);
+		}
+
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
 			if(format == null || format.IsEmpty)
