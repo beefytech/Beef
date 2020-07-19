@@ -991,11 +991,26 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	{		
 		resolvedTypeRef->mRevision = mRevision;
 
+		bool typeFailed = false;
+
 		BfSizedArrayType* arrayType = (BfSizedArrayType*)resolvedTypeRef;
 		auto elementType = arrayType->mElementType;
 		if (elementType->IsValueType())
-		{			
-			PopulateType(arrayType->mElementType, BfPopulateType_Data);
+		{
+			resolvedTypeRef->mDefineState = BfTypeDefineState_ResolvingBaseType;
+			BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
+			typeState.mPopulateType = populateType;			
+			SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
+			if (!CheckCircularDataError())
+			{
+				PopulateType(arrayType->mElementType, BfPopulateType_Data);
+			}
+			else
+			{
+				typeFailed = true;
+				PopulateType(arrayType->mElementType, BfPopulateType_Identity);
+			}
 			resolvedTypeRef->mDefineState = arrayType->mElementType->mDefineState;
 			AddDependency(elementType, resolvedTypeRef, BfDependencyMap::DependencyFlag_ValueTypeMemberData);							
 		}
@@ -1016,7 +1031,8 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			arrayType->mAlign = 1;
 		}
 
-		arrayType->mWantsGCMarking = elementType->WantsGCMarking();
+		if (!typeFailed)
+			arrayType->mWantsGCMarking = elementType->WantsGCMarking();
 		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
 		resolvedTypeRef->mRebuildFlags = BfTypeRebuildFlag_None;
 
