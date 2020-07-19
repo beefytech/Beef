@@ -3244,7 +3244,6 @@ namespace IDE
 			{
 				if (mScriptManager.IsErrorExpected(text))
 				{
-					DeleteAndNullify!(mScriptManager.mExpectingError);
 					OutputLine("Received expected error: {0}", text);
 					return null;
 				}

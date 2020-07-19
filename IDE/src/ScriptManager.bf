@@ -76,7 +76,7 @@ namespace IDE
 		public QueuedCmd mCurCmd;
 		public Stopwatch mTimeoutStopwatch ~ delete _;
 		public int mTimeoutMS;
-		public String mExpectingError ~ delete _;
+		public List<String> mExpectingErrors ~ DeleteContainerAndItems!(_);
 		public bool mHadExpectingError;
 		public int mDoneTicks;
 		public bool mIsBuildScript;
@@ -192,9 +192,25 @@ namespace IDE
 			//gApp.mRunningTestScript = false;
 		}
 
-		public bool IsErrorExpected(StringView err)
+		public bool IsErrorExpected(StringView err, bool remove = true)
 		{
-			return (mExpectingError != null) && (err.Contains(mExpectingError));
+			if (mExpectingErrors == null)
+				return false;
+			for (let checkErr in mExpectingErrors)
+			{
+				if (err.Contains(checkErr))
+				{
+					if (remove)
+					{
+						delete checkErr;
+						@checkErr.Remove();
+						if (mExpectingErrors.IsEmpty)
+							DeleteAndNullify!(mExpectingErrors);
+					}
+					return true;
+				}
+			}
+			return false;
 		}
 
 		public void Fail(StringView fmt, params Object[] args)
@@ -2321,24 +2337,31 @@ namespace IDE
 		[IDECommand]
 		public void SetExpectError(String error)
 		{
-			DeleteAndNullify!(ScriptManager.sActiveManager.mExpectingError);
-			ScriptManager.sActiveManager.mExpectingError = new String(error);
+		
+			if (ScriptManager.sActiveManager.mExpectingErrors == null)
+				ScriptManager.sActiveManager.mExpectingErrors = new .();
+			ScriptManager.sActiveManager.mExpectingErrors.Add(new String(error));
 			ScriptManager.sActiveManager.mHadExpectingError = true;
 		}
 
 		[IDECommand]
 		public void ClearExpectError()
 		{
-			DeleteAndNullify!(ScriptManager.sActiveManager.mExpectingError);
+			if (ScriptManager.sActiveManager.mExpectingErrors != null)
+			{
+				DeleteContainerAndItems!(ScriptManager.sActiveManager.mExpectingErrors);
+				ScriptManager.sActiveManager.mExpectingErrors = null;
+			}
 			ScriptManager.sActiveManager.mHadExpectingError = false;
 		}
 
 		[IDECommand]
 		public void ExpectError()
 		{
-			if (ScriptManager.sActiveManager.mExpectingError != null)
+			if (ScriptManager.sActiveManager.mExpectingErrors != null)
 			{
-				DeleteAndNullify!(ScriptManager.sActiveManager.mExpectingError);
+				DeleteContainerAndItems!(ScriptManager.sActiveManager.mExpectingErrors);
+				ScriptManager.sActiveManager.mExpectingErrors = null;
 				mScriptManager.Fail("Expected error did not occur");
 			}
 		}

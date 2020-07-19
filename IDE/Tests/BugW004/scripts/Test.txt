@@ -4,6 +4,7 @@
 ShowFile("src/Program.bf")
 
 SetExpectError("Generic argument")
+SetExpectError("Unable to implicitly cast")
 Compile()
 ExpectError()
 
