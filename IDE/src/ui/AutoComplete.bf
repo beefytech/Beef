@@ -809,7 +809,15 @@ namespace IDE.ui
 
 				public bool HasParamsParam()
 				{
-					return mText.Contains("\x01params ");
+					int lastSplit = mText.LastIndexOf('\x01');
+					if (lastSplit == -1)
+						return false;
+					lastSplit = mText.LastIndexOf('\x01', lastSplit - 1);
+					if (lastSplit == -1)
+						return false;
+					
+					StringView sv = .(mText, lastSplit);
+					return sv.StartsWith("\x01params ") || sv.StartsWith("\x01 params ");
 				}
             }
 
