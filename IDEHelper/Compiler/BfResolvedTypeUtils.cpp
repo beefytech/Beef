@@ -3577,6 +3577,11 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		if ((ctx->mRootTypeRef != rhs) || (ctx->mRootTypeDef == NULL))
 		{
 			auto rhsResolvedType = ctx->ResolveTypeRef(rhs);
+			if (rhsResolvedType == NULL)
+			{
+				ctx->mFailed = true;
+				return false;
+			}
 			return Equals(lhs, rhsResolvedType, ctx);
 		}
 	}
