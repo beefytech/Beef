@@ -8732,8 +8732,8 @@ DbgTypedValue WinDebugger::GetRegister(const StringImpl& regName, DbgLanguage la
 		}
 	}
 #endif
-
-	auto dbgModule = mDebugTarget->GetMainDbgModule();
+	
+	auto dbgModule = mEmptyDebugTarget->GetMainDbgModule();
 	
 	if (regNum != -1)
 	{
@@ -10220,6 +10220,7 @@ String WinDebugger::GetProcessInfo()
 	
 	retStr += StrFormat("VirtualMemory\t%d\n", memInfo.PagefileUsage);
 	retStr += StrFormat("WorkingMemory\t%d\n", memInfo.WorkingSetSize);
+	retStr += StrFormat("RunningTime\t%lld\n", *(int64*)&creationTime);
 	retStr += StrFormat("KernelTime\t%lld\n", *(int64*)&kernelTime);
 	retStr += StrFormat("UserTime\t%lld\n", *(int64*)&userTime);
 	
