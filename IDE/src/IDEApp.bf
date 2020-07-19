@@ -8225,7 +8225,8 @@ namespace IDE
 									if (!mWorkspace.mCompileInstanceList.IsEmpty)
 									{
 										let compileInstance = mWorkspace.GetProjectSourceCompileInstance(projectSource, 0);
-										sourceHash = compileInstance.mSourceHash;
+										if (compileInstance != null)
+											sourceHash = compileInstance.mSourceHash;
 									}
 								}
 
