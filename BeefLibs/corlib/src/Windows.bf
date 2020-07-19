@@ -340,7 +340,7 @@ namespace System
 						if (regType == Windows.REG_BINARY)
 						{
 							gotData = true;
-							outData.Add(regData);
+							outData.AddRange(regData);
 						}
 					});
 				if (!gotData)

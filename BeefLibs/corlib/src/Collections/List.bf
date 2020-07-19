@@ -287,7 +287,7 @@ namespace System.Collections
 		}
 
 		/// Adds an item to the back of the list.
-		public void Add(Span<T> addSpan)
+		public void AddRange(Span<T> addSpan)
 		{
 			if (mSize + addSpan.Length > AllocSize)
 			{
