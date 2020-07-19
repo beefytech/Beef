@@ -281,7 +281,7 @@ namespace IDE.ui
                         switch((RepType)i)
                         {
 						case RepType.Address:
-							((uint64)lockRange.mBaseOffset).ToString(s, "P", null);
+							s.AppendF("0x{:A}", (uint64)lockRange.mBaseOffset);
                         case RepType.Int8:
 							hasAltS = true;
 							(*(int8*)lockRange.mData.CArray()).ToString(s, (altIntBase == 10) ? "" : "X2", null);
