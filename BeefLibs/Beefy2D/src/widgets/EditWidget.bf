@@ -2004,11 +2004,8 @@ namespace Beefy.widgets
 			{
 				String selText = scope String();
 				GetSelectionText(selText);
-				if (!selText.IsWhiteSpace)
-				{
-			        BFApp.sApp.SetClipboardText(selText);
-			        DeleteSelection();
-				}
+		        BFApp.sApp.SetClipboardText(selText);
+		        DeleteSelection();
 			}
 		}
 
@@ -2016,8 +2013,7 @@ namespace Beefy.widgets
 		{
 			String selText = scope String();
 			GetSelectionText(selText);
-			if (!selText.IsWhiteSpace)
-				BFApp.sApp.SetClipboardText(selText);
+			BFApp.sApp.SetClipboardText(selText);
 		}
 
 		public void PasteText()
