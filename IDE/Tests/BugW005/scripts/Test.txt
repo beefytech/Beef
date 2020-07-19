@@ -1,0 +1,16 @@
+# This tests that types that fail generic tests don't create types referenced in methods
+# and also that they get deleted immediately when they are dereferenced.
+
+ShowFile("src/Program.bf")
+
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+ToggleCommentAt("CallExtra_Call")
+AddProjectItem("Bug", "", "$(WorkspaceDir)/Extra.bf")
+
+Compile()
+StepInto()
+StepOver()
+AssertEvalEquals("val", "123")

@@ -2558,5 +2558,42 @@ namespace IDE
 				valuePtr.Dispose();
 			*valuePtr = Variant.Create<String>(new String(value), true);
 		}
+
+		[IDECommand]
+		public void AddProjectItem(String projectName, String folderPath, String filePath)
+		{
+			var project = gApp.FindProjectByName(projectName);
+			if (project == null)
+			{
+				mScriptManager.Fail(scope String()..AppendF("Failed to find project '{}'", projectName));
+				return;
+			}
+
+			ProjectFolder foundFolder = null;
+			if (folderPath == "")
+				foundFolder = project.mRootFolder;
+			else
+			{
+				project.WithProjectItems(scope [&] (projectItem) =>
+					{
+						if (var projectFolder = projectItem as ProjectFolder)
+						{
+							var relDir = scope String();
+							projectFolder.GetRelDir(relDir);
+							if (Path.Equals(relDir, folderPath))
+								foundFolder = projectFolder;
+						}
+					});
+			}
+
+			if (foundFolder == null)
+			{
+				mScriptManager.Fail(scope String()..AppendF("Failed to find project folder '{}'", folderPath));
+				return;
+			}
+
+			IDEUtils.FixFilePath(filePath);
+			gApp.mProjectPanel.ImportFiles(foundFolder, scope .(filePath));
+		}
 	}
 }
