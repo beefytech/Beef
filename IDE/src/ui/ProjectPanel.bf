@@ -874,6 +874,61 @@ namespace IDE.ui
 			return false;
 		}
 
+		public void ImportFiles(ProjectFolder folder, String[] fileList)
+		{
+			String fullDir = scope String();
+			folder.GetFullImportPath(fullDir);
+
+			if (mProjectToListViewMap.TryGetValue(folder, var value))
+				value.mOpenButton.Open(true, false);
+
+			/*if (mSelectedParentItem.mOpenButton != null)
+			    mSelectedParentItem.mOpenButton.Open(true, false);*/
+
+			String dir = scope String(fullDir);
+
+			List<String> alreadyHadFileList = scope List<String>();
+			defer ClearAndDeleteItems(alreadyHadFileList);
+
+			for (String fileNameIn in fileList)
+			{
+			    String fileName = scope String(fileNameIn);
+			    String relFilePath = scope String();
+			    folder.mProject.GetProjectRelPath(fileName, relFilePath);
+			    if (AlreadyHasPath(folder.mProject, relFilePath))
+			    {
+			        alreadyHadFileList.Add(new String(fileName));
+			        continue;
+			    }
+			    
+			    ProjectSource projectSource = new ProjectSource();
+			    int32 lastSlashIdx = (int32)fileName.LastIndexOf(IDEUtils.cNativeSlash);
+			    if (lastSlashIdx != -1)
+			    {
+					projectSource.mName.Clear();
+			    	projectSource.mName.Append(fileName, lastSlashIdx + 1);
+					dir.Clear();
+			        dir.Append(fileName, 0, lastSlashIdx);
+			    }
+				else
+					projectSource.mName.Set(fileName);
+				projectSource.mIncludeKind = .Manual;
+			    projectSource.mProject = folder.mProject;
+			    projectSource.mPath = new String(relFilePath);
+			    folder.AddChild(projectSource);
+			    AddProjectItem(projectSource);
+
+				if (projectSource.mIncludeKind != .Auto)
+			    	folder.mProject.SetChanged();
+			}
+			ShowAlreadyHadFileError(alreadyHadFileList, fileList.Count);
+
+			folder.mProject.GetProjectRelPath(scope String(dir), dir);
+			//folder.mLastImportDir.Set(dir);
+			//folder.mProject.mLastImportDir.Set(dir);
+			Sort();          
+		}
+
         public void ImportFile(ProjectFolder folder)
         {
 #if !CLI
@@ -911,51 +966,7 @@ namespace IDE.ui
             gApp.GetActiveWindow().PreModalChild();
             if (fileDialog.ShowDialog(gApp.GetActiveWindow()).GetValueOrDefault() == .OK)
             {
-                if (mSelectedParentItem.mOpenButton != null)
-                    mSelectedParentItem.mOpenButton.Open(true, false);
-
-                String dir = scope String(fileDialog.InitialDirectory);
-
-                List<String> alreadyHadFileList = scope List<String>();
-				defer ClearAndDeleteItems(alreadyHadFileList);
-
-                for (String fileNameIn in fileDialog.FileNames)
-                {
-                    String fileName = scope String(fileNameIn);
-                    String relFilePath = scope String();
-                    folder.mProject.GetProjectRelPath(fileName, relFilePath);
-                    if (AlreadyHasPath(folder.mProject, relFilePath))
-                    {
-                        alreadyHadFileList.Add(new String(fileName));
-                        continue;
-                    }
-                    
-                    ProjectSource projectSource = new ProjectSource();
-                    int32 lastSlashIdx = (int32)fileName.LastIndexOf(IDEUtils.cNativeSlash);
-                    if (lastSlashIdx != -1)
-                    {
-						projectSource.mName.Clear();
-                    	projectSource.mName.Append(fileName, lastSlashIdx + 1);
-						dir.Clear();
-                        dir.Append(fileName, 0, lastSlashIdx);
-                    }
-					else
-						projectSource.mName.Set(fileName);
-					projectSource.mIncludeKind = .Manual;
-                    projectSource.mProject = folder.mProject;
-                    projectSource.mPath = new String(relFilePath);
-                    folder.AddChild(projectSource);
-                    AddProjectItem(projectSource);
-
-					if (projectSource.mIncludeKind != .Auto)
-                    	folder.mProject.SetChanged();
-                }
-                ShowAlreadyHadFileError(alreadyHadFileList, fileDialog.FileNames.Count);
-
-                folder.mProject.GetProjectRelPath(scope String(dir), dir);
-                //folder.mLastImportDir.Set(dir);
-                //folder.mProject.mLastImportDir.Set(dir);
-                Sort();                
+                ImportFiles(folder, fileDialog.FileNames);
             }
 #endif
         }
