@@ -4156,6 +4156,23 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 	{
 		auto sizedArrayType = (BfSizedArrayType*)compareType;
 		
+		auto _SizedIndex = [&](BfIRValue target, BfIRValue index)
+		{
+			if (sizedArrayType->mElementType->IsSizeAligned())
+			{
+				auto ptrType = CreatePointerType(sizedArrayType->mElementType);
+				auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
+				auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
+				return BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+			}
+			else
+			{
+
+				auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
+				return BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+			}
+		};
+
 		if (sizedArrayType->mElementCount > 6)
 		{
 			auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
@@ -4173,8 +4190,9 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 			mBfIRBuilder->CreateCondBr(cmpRes, doneBB, bodyBB);
 
 			mBfIRBuilder->SetInsertPoint(bodyBB);
-			BfTypedValue leftValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, GetDefaultValue(intPtrType), loadedItr), sizedArrayType->mElementType, BfTypedValueKind_Addr);
-			BfTypedValue rightValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[1]->mValue, GetDefaultValue(intPtrType), loadedItr), sizedArrayType->mElementType, BfTypedValueKind_Addr);
+
+			BfTypedValue leftValue = _SizedIndex(mCurMethodState->mLocals[0]->mValue, loadedItr);
+			BfTypedValue rightValue = _SizedIndex(mCurMethodState->mLocals[1]->mValue, loadedItr);
 			EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 			auto incValue = mBfIRBuilder->CreateAdd(loadedItr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1));
 			mBfIRBuilder->CreateStore(incValue, itr);
@@ -4185,9 +4203,9 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 		else
 		{
 			for (int dataIdx = 0; dataIdx < sizedArrayType->mElementCount; dataIdx++)
-			{
-				BfTypedValue leftValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, dataIdx), sizedArrayType->mElementType, BfTypedValueKind_Addr);
-				BfTypedValue rightValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[1]->mValue, 0, dataIdx), sizedArrayType->mElementType, BfTypedValueKind_Addr);
+			{				
+				BfTypedValue leftValue = _SizedIndex(mCurMethodState->mLocals[0]->mValue, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, dataIdx));
+				BfTypedValue rightValue = _SizedIndex(mCurMethodState->mLocals[1]->mValue, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, dataIdx));								
 				EmitEquals(leftValue, rightValue, exitBB, strictEquals);
 			}
 		}

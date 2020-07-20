@@ -4,6 +4,12 @@ namespace Tests
 {
 	class SizedArrays
 	{
+		struct StructA
+		{
+			public int32 mA;
+			public int8 mB;
+		}
+
 		public static int[8] iArr = .(123, 234, 345, );
 		public static int[?] iArr2 = .(12, 23, 34);
 
@@ -50,6 +56,18 @@ namespace Tests
 			Test.Assert(iArr[1] == 2234);
 			Test.Assert(iArr[2] == 3345);
 			Test.Assert(iArr[3] == 4000);
+
+			StructA[2] arr0 = default;
+			StructA[2] arr1 = default;
+			Test.Assert(arr0 == arr1);
+			arr0[1].mA = 1;
+			Test.Assert(arr0 != arr1);
+
+			StructA[20] arr2 = default;
+			StructA[20] arr3 = default;
+			Test.Assert(arr2 == arr3);
+			arr2[1].mA = 1;
+			Test.Assert(arr2 != arr3);
 		}
 	}
 }
