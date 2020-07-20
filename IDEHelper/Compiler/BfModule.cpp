@@ -5617,6 +5617,27 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						continue;
 					}
 
+					if (argType->IsPointer())
+					{
+						if (argType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))
+						{
+							if (constant->mTypeCode == BfTypeCode_StringId)
+							{
+								int stringId = constant->mInt32;
+								int* orderedIdPtr;
+								if (usedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
+								{
+									*orderedIdPtr = (int)usedStringIdMap.size() - 1;
+								}
+
+								GetStringObjectValue(stringId);
+								PUSH_INT8(0xFF); // String
+								PUSH_INT32(*orderedIdPtr);
+								continue;
+							}
+						}
+					}
+
 					PUSH_INT8(constant->mTypeCode);
 					if ((constant->mTypeCode == BfTypeCode_Int64) ||
 						(constant->mTypeCode == BfTypeCode_UInt64) ||
@@ -5644,13 +5665,9 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					{
 						PUSH_INT8(constant->mInt8);
 					}
-					else if (constant->mTypeCode == BfTypeCode_Object)
-					{
-						BFMODULE_FATAL(this, "Unhandled");
-					}
 					else
 					{
-						BFMODULE_FATAL(this, "Unhandled");
+						Fail(StrFormat("Unhandled attribute constant data in '%s'", TypeToString(type).c_str()));
 					}
 				}
 				else if (!handled)
@@ -10382,7 +10399,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 
 		// Move all those to the constHolder
 		for (auto& ctorArg : customAttribute.mCtorArgs)
-		{
+		{			
 			if (ctorArg.IsConst())
 				CurrentAddToConstHolder(ctorArg);			
 		}
@@ -12415,8 +12432,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 {		
 	if (mIsScratchModule)
 	{
-		// Just fake it for the extern and unspecialized modules
-		auto ptrType = CreatePointerType(fieldInstance->GetResolvedType());
+		// Just fake it for the extern and unspecialized modules		
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), fieldInstance->GetResolvedType(), true);
 	}
 	

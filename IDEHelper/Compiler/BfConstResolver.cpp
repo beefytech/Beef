@@ -391,7 +391,15 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 			extendedParamIdx++;
 		}
 		else
-		{			
+		{	
+			if ((argValue.mValue.IsFake()) && (!argValue.mType->IsValuelessType()))
+			{
+				if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Mixin))
+				{
+					mModule->Fail("Expression does not evaluate to a constant value", argExpr);
+				}
+			}
+
 			llvmArgs.push_back(argValue.mValue);
 			paramIdx++;
 		}
