@@ -495,7 +495,7 @@ public:
 	virtual bool IsValuelessType() { BF_ASSERT(mSize != -1); BF_ASSERT(mDefineState >= BfTypeDefineState_Defined); return mSize == 0; }
 	virtual bool IsSelf() { return false; }
 	virtual bool IsDot() { return false; }
-	virtual bool IsVar() { return false; }
+	virtual bool IsVar() { return false; }	
 	virtual bool IsLet() { return false; }
 	virtual bool IsNull(){ return false; }
 	virtual bool IsNullable() { return false; }	
@@ -604,7 +604,7 @@ public:
 	virtual bool IsValuelessType() override { return mTypeDef->mTypeCode == BfTypeCode_None; }
 	virtual bool IsSelf() override { return mTypeDef->mTypeCode == BfTypeCode_Self; }
 	virtual bool IsDot() override { return mTypeDef->mTypeCode == BfTypeCode_Dot; }
-	virtual bool IsVar() override { return mTypeDef->mTypeCode == BfTypeCode_Var; }
+	virtual bool IsVar() override { return mTypeDef->mTypeCode == BfTypeCode_Var; }	
 	virtual bool IsLet() override { return mTypeDef->mTypeCode == BfTypeCode_Let; }
 };
 
@@ -797,8 +797,7 @@ public:
 	bool mAlwaysInline:1;
 	bool mIsIntrinsic:1;
 	bool mHasMethodRefType:1;
-	bool mDisallowCalling:1;	
-	bool mIsGenericMethodInstance:1;	
+	bool mDisallowCalling:1;		
 	BfMethodChainType mChainType;
 	BfCallingConvention mCallingConvention;
 	BfMethodInstanceGroup* mMethodInstanceGroup;
@@ -832,8 +831,7 @@ public:
 		mAlwaysInline = false;
 		mIsIntrinsic = false;
 		mHasMethodRefType = false;
-		mDisallowCalling = false;				
-		mIsGenericMethodInstance = false;		
+		mDisallowCalling = false;
 		mChainType = BfMethodChainType_None;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mMethodInstanceGroup = NULL;
@@ -2059,7 +2057,7 @@ public:
 	void Finish();
 
 	virtual bool IsOnDemand() override { return true; }
-	virtual bool IsTuple() override { return true; }	
+	virtual bool IsTuple() override { return true; }		
 
 	virtual bool IsUnspecializedType() override { return mIsUnspecializedType; }
 	virtual bool IsUnspecializedTypeVariation() override { return mIsUnspecializedTypeVariation; }

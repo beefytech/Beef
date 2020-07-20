@@ -1630,7 +1630,7 @@ public:
 	BfPointerType* CreatePointerType(BfTypeReference* typeRef);
 	BfConstExprValueType* CreateConstExprValueType(const BfTypedValue& typedValue);
 	BfBoxedType* CreateBoxedType(BfType* resolvedTypeRef);	
-	BfTypeInstance* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames);
+	BfTypeInstance* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames, bool allowVar = false);
 	BfTypeInstance* SantizeTupleType(BfTypeInstance* tupleType);
 	BfRefType* CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind = BfRefType::RefKind_Ref);
 	BfModifiedTypeType* CreateModifiedTypeType(BfType* resolvedTypeRef, BfToken modifiedKind);

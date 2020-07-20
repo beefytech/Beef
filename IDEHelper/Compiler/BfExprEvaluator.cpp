@@ -573,6 +573,15 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	BfMethodDef* prevMethodDef = prevMethodInstance->mMethodDef;
 	BfMethodDef* newMethodDef = newMethodInstance->mMethodDef;	
 
+	if (prevMethodDef == mBackupMethodDef)
+	{
+		// This can happen for extension methods and such
+		*outNewIsBetter = true;
+		*outNewIsWorse = false;
+		return;
+	}
+
+
 	if (newMethodDef->mExplicitInterface != prevMethodDef->mExplicitInterface)
 	{
 		if (mModule->CompareMethodSignatures(newMethodInstance, prevMethodInstance))
@@ -688,9 +697,9 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 					{
 						// The resolved argument type may actually match for both considered functions. IE:
 						// Method(int8 val) and Method(int16 val) called with Method(0) will create arguments that match their param types
-						if ((IsType(arg, paramType)) && ((resolvedArg == NULL) || (prevParamType != resolvedArg->mBestBoundType)))
+						if ((!wasGenericParam) && (IsType(arg, paramType)) && ((resolvedArg == NULL) || (prevParamType != resolvedArg->mBestBoundType)))
 							isBetter = true;
-						else if ((IsType(arg, prevParamType)) && (!IsType(arg, paramType)))
+						else if ((!prevWasGenericParam) && (IsType(arg, prevParamType)) && (!IsType(arg, paramType)))
 							isWorse = true;
 						else
 						{
@@ -1438,8 +1447,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 					auto type = argTypedValue.mType;
 					if (!argTypedValue)
 						goto NoMatch;
-					//HashSet<BfType*> checkedTypeSet;
-
+					
 					if (type->IsVar())
 						mHasVarArguments = true;
 
@@ -7328,10 +7336,17 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	bool isSkipCall = moduleMethodInstance.mMethodInstance->IsSkipCall(bypassVirtual);
 	
+	if ((moduleMethodInstance.mMethodInstance->mIsUnspecializedVariation) && (!mModule->mBfIRBuilder->mIgnoreWrites))
+	{
+		// Invalid methods such as types with a HasVar tuple generic arg will be marked as mIsUnspecializedVariation and shouldn't actually be called
+		FinishDeferredEvals(argValues.mResolvedArgs);
+		return mModule->GetDefaultTypedValue(moduleMethodInstance.mMethodInstance->mReturnType, true, BfDefaultValueKind_Addr);
+	}
+
 	if (methodDef->IsEmptyPartial())
 	{
 		// Ignore call
-		return mModule->GetDefaultTypedValue(moduleMethodInstance.mMethodInstance->mReturnType);
+		return mModule->GetDefaultTypedValue(moduleMethodInstance.mMethodInstance->mReturnType, true, BfDefaultValueKind_Addr);
 	}	
 	
 	if ((moduleMethodInstance.mMethodInstance->mMethodDef->mIsStatic) && (moduleMethodInstance.mMethodInstance->GetOwner()->IsInterface()))
@@ -7356,7 +7371,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			else
 				mModule->Fail(StrFormat("Static interface method '%s' can only be dispatched from a concrete type, consider using this interface as a generic constraint", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str()), targetSrc);
 			FinishDeferredEvals(argValues.mResolvedArgs);
-			return mModule->GetDefaultTypedValue(moduleMethodInstance.mMethodInstance->mReturnType);
+			return mModule->GetDefaultTypedValue(moduleMethodInstance.mMethodInstance->mReturnType, true, BfDefaultValueKind_Addr);
 		}
 	}
 
@@ -15560,7 +15575,7 @@ void BfExprEvaluator::PopulateDeferrredTupleAssignData(BfTupleExpression* tupleE
 			fieldNames.push_back(requestedName->mNameNode->ToString());
 	}
 
-	BfTypeInstance* tupleType = mModule->CreateTupleType(fieldTypes, fieldNames);
+	BfTypeInstance* tupleType = mModule->CreateTupleType(fieldTypes, fieldNames, true);
 	deferredTupleAssignData.mTupleType = tupleType;	
 }
 
@@ -16583,7 +16598,11 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 				typedVal = mModule->LoadValue(typedVal);
 			}
 			
-			if (typedVal.IsSplat())
+			if (typedVal.mType->IsVar())
+			{
+				// Do nothing
+			}
+			else if (typedVal.IsSplat())
 				mModule->AggregateSplatIntoAddr(typedVal, memberVal);
 			else
 				mModule->mBfIRBuilder->CreateStore(typedVal.mValue, memberVal);

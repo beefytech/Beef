@@ -5295,7 +5295,7 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 	return (BfBoxedType*)resolvedBoxedType;
 }
 
-BfTypeInstance* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames)
+BfTypeInstance* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames, bool allowVar)
 {
 	auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mValueTypeTypeDef);
 
@@ -5315,7 +5315,7 @@ BfTypeInstance* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const 
 		BfFieldDef* fieldDef = actualTupleType->AddField(fieldName);
 
 		auto fieldType = fieldTypes[fieldIdx];
-		if (fieldType->IsUnspecializedType())
+		if ((fieldType->IsUnspecializedType()) || (fieldType->IsVar()))
 			isUnspecialzied = true;
 	}
 	tupleType = actualTupleType;
@@ -5326,8 +5326,11 @@ BfTypeInstance* BfModule::CreateTupleType(const BfTypeVector& fieldTypes, const 
 	{
 		BfFieldInstance* fieldInstance = (BfFieldInstance*)&tupleType->mFieldInstances[fieldIdx];
 		fieldInstance->mFieldIdx = fieldIdx;
-		fieldInstance->SetResolvedType(fieldTypes[fieldIdx]);
-		fieldInstance->mOwner = tupleType;		
+		BfType* fieldType = fieldTypes[fieldIdx];		
+		if ((fieldType->IsVar()) && (!allowVar))
+			fieldType = mContext->mBfObjectType;
+		fieldInstance->SetResolvedType(fieldType);
+		fieldInstance->mOwner = tupleType;				
 	}
 			
 	tupleType->mIsUnspecializedType = false;
@@ -6079,6 +6082,9 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 				wantGeneric = true;
 			if (newGenericArg->IsUnspecializedType())
 				isUnspecialized = true;
+			if (newGenericArg->IsVar())
+				wantGeneric = mContext->mBfObjectType;
+				//wantGeneric = true;
 
 			if (newGenericArg != origGenericArg)
 				hadChange = true;
@@ -8475,6 +8481,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				wantGeneric = true;
 			if (type->IsUnspecializedType())
 				isUnspecialized = true;
+			BF_ASSERT(!type->IsVar());
+// 			if (type->IsVar())
+// 				isUnspecialized = true;
 
 			String typeName = TypeToString(type);
 			types.push_back(type);
@@ -8536,6 +8545,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
 			fieldInstance->mFieldIdx = fieldIdx;
 			fieldInstance->SetResolvedType(types[fieldIdx]);
+			BF_ASSERT(!types[fieldIdx]->IsVar());
 			fieldInstance->mOwner = tupleType;
 		}
 
@@ -9715,12 +9725,18 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// Nullable<A> -> Nullable<B>
 	if ((typedVal.mType->IsNullable()) && (toType->IsNullable()))
 	{
-		if (ignoreWrites)		
-			return mBfIRBuilder->GetFakeVal();
-
 		auto fromNullableType = (BfTypeInstance*)typedVal.mType;
 		auto toNullableType = (BfTypeInstance*)toType;
 
+		if (ignoreWrites)
+		{
+			auto toVal = CastToValue(srcNode, BfTypedValue(mBfIRBuilder->GetFakeVal(), fromNullableType->mGenericTypeInfo->mTypeGenericArguments[0]),
+				toNullableType->mGenericTypeInfo->mTypeGenericArguments[0], ignoreErrors ? BfCastFlags_SilentFail : BfCastFlags_None);
+			if (!toVal)
+				return BfIRValue();
+			return mBfIRBuilder->GetFakeVal();
+		}
+		
 		BfIRValue srcPtr = typedVal.mValue;
 		if (!typedVal.IsAddr())
 		{
@@ -9757,9 +9773,13 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	{
 		auto fromTupleType = (BfTypeInstance*)typedVal.mType;
 		auto toTupleType = (BfTypeInstance*)toType;
+
+		PopulateType(fromTupleType);
+		PopulateType(toTupleType);
+
 		if (fromTupleType->mFieldInstances.size() == toTupleType->mFieldInstances.size())
 		{
-			typedVal = LoadValue(typedVal);
+			typedVal = LoadValue(typedVal);			
 
 			BfIRValue curTupleValue = mBfIRBuilder->CreateUndefValue(mBfIRBuilder->MapType(toTupleType));
 			for (int valueIdx = 0; valueIdx < (int)fromTupleType->mFieldInstances.size(); valueIdx++)
@@ -10094,6 +10114,13 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		{
 			return mBfIRBuilder->CreateNumericCast(typedVal.mValue, typedVal.mType->IsSigned(), toTypeCode);
 		}
+	}
+
+	if ((typedVal.mValue.IsConst()) && (toType->IsPointer()) && (toType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8)) && (typedVal.mType->IsInstanceOf(mCompiler->mStringTypeDef)))
+	{
+		int stringId = GetStringPoolIdx(typedVal.mValue, mBfIRBuilder);
+		if (stringId >= 0)
+			return GetStringCharPtr(stringId);
 	}
 
 	// Check user-defined operators
