@@ -189,7 +189,10 @@ namespace Tests
 		[Test]
 		static void TestA()
 		{
-			ClassA ca = scope ClassA();
+			ClassA ca = (ClassA)typeof(ClassA).CreateObject().Value;
+			defer delete ca;
+			Test.Assert(ca.mA == 123);
+			Test.Assert(ca.mStr === "A");
 
 			ClassA2 ca2 = scope ClassA2();
 
