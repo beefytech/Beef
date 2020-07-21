@@ -3035,7 +3035,7 @@ bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memb
 	return true;
 }
 
-void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyDependencyFlag flags)
+void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyFlags flags)
 {
 	if (usedType == userType)
 		return;	
@@ -5407,7 +5407,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	{					
 		baseTypeId = typeInstance->mBaseType->mTypeId;
 	}	
-	
+		
 	BfTypeOptions* typeOptions = NULL;
 	if (typeInstance->mTypeOptionsIdx >= 0)
 		typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
@@ -12048,6 +12048,13 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			methodInstance = *methodInstancePtr;
 
+			if ((methodInstance->mRequestedByAutocomplete) && (!mCompiler->IsAutocomplete()))
+			{
+				// We didn't want to process this message yet if it was autocomplete-specific, but now we will
+				AddMethodToWorkList(methodInstance);
+				methodInstance->mRequestedByAutocomplete = false;
+			}
+
 			if ((isReified) && (!methodInstance->mIsReified))
 			{
 				MarkDerivedDirty(typeInst);
@@ -12208,7 +12215,10 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			BF_ASSERT(added);
 			methodInstance = new BfMethodInstance();
 			*methodInstancePtr = methodInstance;
-
+			
+			if (mCompiler->IsAutocomplete())			
+				methodInstance->mRequestedByAutocomplete = true;			
+			
 			BfLogSysM("Created Specialized MethodInst: %p TypeInst: %p\n", methodInstance, typeInst);
 		}
 
@@ -12303,6 +12313,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	if (mCompiler->GetAutoComplete() != NULL)
 	{
 		if (typeInst->IsSpecializedByAutoCompleteMethod())
+			addToWorkList = false;				
+		if (methodInstance->mRequestedByAutocomplete)
 			addToWorkList = false;
 	}
 

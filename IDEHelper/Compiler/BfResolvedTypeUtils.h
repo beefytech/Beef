@@ -75,8 +75,9 @@ enum BfGetMethodInstanceFlags : uint16
 class BfDependencyMap
 {
 public:
-	enum DependencyDependencyFlag
+	enum DependencyFlags
 	{
+		DependencyFlag_None					= 0,
 		DependencyFlag_Calls				= 1,
 		DependencyFlag_InlinedCall			= 2,
 		DependencyFlag_ReadFields			= 4,
@@ -102,14 +103,16 @@ public:
 		DependencyFlag_NameReference		= 0x400000,
 		DependencyFlag_VirtualCall			= 0x800000,
 		DependencyFlag_WeakReference		= 0x1000000, // Keeps alive but won't rebuild
+
+		DependencyFlag_DependentUsageMask = ~(DependencyFlag_UnspecializedType | DependencyFlag_MethodGenericArg | DependencyFlag_GenericArgRef)
 	};
 
 	struct DependencyEntry
 	{
 		int mRevision;
-		DependencyDependencyFlag mFlags;		
+		DependencyFlags mFlags;
 
-		DependencyEntry(int revision, DependencyDependencyFlag flags)
+		DependencyEntry(int revision, DependencyFlags flags)
 		{
 			mRevision = revision;
 			mFlags = flags;			
@@ -117,11 +120,11 @@ public:
 	};
 
 public:
-	typedef Dictionary<BfType*, DependencyEntry> TypeMap;
+	typedef Dictionary<BfType*, DependencyEntry> TypeMap;	
 	TypeMap mTypeSet;
 
 public:
-	bool AddUsedBy(BfType* dependentType, DependencyDependencyFlag flags);	
+	bool AddUsedBy(BfType* dependentType, DependencyFlags flags);	
 	bool IsEmpty();
 	TypeMap::iterator begin();
 	TypeMap::iterator end();
@@ -791,6 +794,7 @@ public:
 	bool mHadGenericDelegateParams:1;
 	bool mIgnoreBody:1;
 	bool mIsAutocompleteMethod:1;
+	bool mRequestedByAutocomplete : 1;
 	bool mIsClosure:1;
 	bool mMayBeConst:1; // Only used for calcAppend currently	
 	bool mIsForeignMethodDef:1;
@@ -825,13 +829,14 @@ public:
 		mHadGenericDelegateParams = false;
 		mIgnoreBody = false;
 		mIsAutocompleteMethod = false;
+		mRequestedByAutocomplete = false;
 		mIsClosure = false;
 		mMayBeConst = true;		
 		mIsForeignMethodDef = false;
 		mAlwaysInline = false;
 		mIsIntrinsic = false;
 		mHasMethodRefType = false;
-		mDisallowCalling = false;
+		mDisallowCalling = false;		
 		mChainType = BfMethodChainType_None;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mMethodInstanceGroup = NULL;

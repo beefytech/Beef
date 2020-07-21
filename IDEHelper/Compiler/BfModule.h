@@ -1592,7 +1592,7 @@ public:
 	bool CheckAccessMemberProtection(BfProtection protection, BfType* memberType);
 	bool CheckDefineMemberProtection(BfProtection protection, BfType* memberType);	
 	void CheckMemberNames(BfTypeInstance* typeInst);	
-	void AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyDependencyFlag flags);
+	void AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyFlags flags);
 	void AddCallDependency(BfMethodInstance* methodInstance, bool devirtualized = false);
 	void AddFieldDependency(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfType* fieldType);		
 	void TypeFailed(BfTypeInstance* typeInstance);

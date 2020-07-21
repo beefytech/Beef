@@ -58,7 +58,7 @@ bool BfTypedValue::IsValuelessType() const
 
 //////////////////////////////////////////////////////////////////////////
 
-bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::DependencyDependencyFlag flags)
+bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::DependencyFlags flags)
 {	
 	BF_ASSERT(dependentType != NULL);
 	BF_ASSERT(dependentType->mRevision != -1);
@@ -85,7 +85,7 @@ bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::Dependen
 		{						
 			if ((dependencyEntry->mFlags & flags) == flags)
 				return false;
-			dependencyEntry->mFlags = (BfDependencyMap::DependencyDependencyFlag)(dependencyEntry->mFlags | flags);
+			dependencyEntry->mFlags = (BfDependencyMap::DependencyFlags)(dependencyEntry->mFlags | flags);
 			return true;
 		}
 	}

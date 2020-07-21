@@ -2125,7 +2125,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 							BF_ASSERT(dependentType->IsDeleting() || dependentType->IsOnDemand() || !dependentType->HasBeenReferenced() || !madeFullPass || dependentType->IsSpecializedByAutoCompleteMethod());
 						}
 					}
-
+					
 					// Not combined with previous loop because PopulateType could modify typeInst->mDependencyMap
 					for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end();)
 					{
@@ -2168,11 +2168,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 							// There needs to be more usage than just being used as part of the method specialization's MethodGenericArg.
 							//  Keep in mind that actually invoking a generic method creates a DependencyFlag_LocalUsage dependency.  The 
 							//  DependencyFlag_MethodGenericArg is just used by the owner during creation of the method specialization
-							bool isDependentUsage =
-								(depData.mFlags & ~(
-									BfDependencyMap::DependencyFlag_UnspecializedType |
-									BfDependencyMap::DependencyFlag_MethodGenericArg |
-									BfDependencyMap::DependencyFlag_GenericArgRef)) != 0;
+							bool isDependentUsage = (depData.mFlags & BfDependencyMap::DependencyFlag_DependentUsageMask) != 0;
 								
 							// We need to consider specialized generic types separately, to remove unused specializations
 							if (typeInst != NULL)
@@ -6091,7 +6087,10 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	// Inc revision for next run through Compile
 	mRevision++;
-	BfLogSysM("Compile Start. Revision: %d\n", mRevision);
+	int revision = mRevision;
+	BfLogSysM("Compile Start. Revision: %d. HasParser:%d AutoComplete:%d\n", revision, 
+		(mResolvePassData != NULL) && (mResolvePassData->mParser != NULL), 
+		(mResolvePassData != NULL) && (mResolvePassData->mAutoComplete != NULL));
 
 	if (mOptions.mCompileOnDemandKind == BfCompileOnDemandKind_AlwaysInclude)
 		mContext->mUnreifiedModule->mIsReified = true;
@@ -6295,6 +6294,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	if (!hasRequiredTypes)
 	{
 		// Force rebuilding
+		BfLogSysM("Compile missing required types\n");
 		mInInvalidState = true;
 		mOptions.mForceRebuildIdx++;
 		return true;
@@ -6902,7 +6902,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		CompileLog("Compile canceled\n");
 	}
 
-	BfLogSysM("TypesPopulated:%d MethodsDeclared:%d MethodsProcessed:%d Canceled? %d\n", mStats.mTypesPopulated, mStats.mMethodDeclarations, mStats.mMethodsProcessed, mCanceling);	
+	BfLogSysM("Compile Done. Revision:%d TypesPopulated:%d MethodsDeclared:%d MethodsProcessed:%d Canceled? %d\n", revision, mStats.mTypesPopulated, mStats.mMethodDeclarations, mStats.mMethodsProcessed, mCanceling);	
 	
 	UpdateCompletion();
 	if ((!mIsResolveOnly) && (!mPassInstance->HasFailed()) && (!mCanceling))

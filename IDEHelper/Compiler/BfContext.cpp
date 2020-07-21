@@ -960,7 +960,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		}
 	}
 
-	if ((!mCompiler->mIsResolveOnly) && (addToWorkList))
+	// At some point we thought we didn't have to do this for resolve-only, but this logic is important for removing
+	//  specialized methods that are causing errors
+	if (addToWorkList)
 	{
 		if (typeDef->mDefState == BfTypeDef::DefState_Signature_Changed)
 		{
@@ -1835,7 +1837,8 @@ void BfContext::UpdateRevisedTypes()
 		if (!typeInst->IsDeleting())
 		{
 			if (!typeInst->mTypeDef->mProject->mDisabled)
-			{	
+			{
+				BfLogSysM("Rebuilding failed type %p\n", typeInst);
 				RebuildType(typeInst);
 			}
 		}
@@ -2358,13 +2361,12 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 	BF_ASSERT(!typeInst->IsDeleting());
 	
 	BP_ZONE("BfContext::QueueMethodSpecializations");
-	BfLogSysM("QueueMethodSpecializations %p\n", typeInst);
 
 	auto module = typeInst->mModule;
 	if (module == NULL)
 		return;
 
-	BfLogSysM("QueueMethodSpecializations methodInst %p module %p\n", typeInst, module);
+	BfLogSysM("QueueMethodSpecializations typeInst %p module %p\n", typeInst, module);
 
 	if (!checkSpecializedMethodRebuildFlag)
 	{
