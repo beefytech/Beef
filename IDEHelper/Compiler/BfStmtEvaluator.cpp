@@ -6462,7 +6462,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 				}
 				nextVal = Cast(forEachStmt->mCollectionExpression, nextVal, varType, BfCastFlags_Explicit);
 				nextVal = LoadValue(nextVal);
-				if (nextVal)
+				if ((nextVal) && (!nextVal.mType->IsValuelessType()))
 					mBfIRBuilder->CreateStore(nextVal.mValue, varInst);
 			}
 		}
