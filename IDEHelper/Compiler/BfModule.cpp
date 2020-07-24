@@ -12145,7 +12145,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				methodInstance->mDeclModule = this;
 
 				// Add this inlined def to ourselves
-				if ((methodInstance->mAlwaysInline) && (HasCompiledOutput()) && (!methodInstance->mIsUnspecialized))
+				if ((methodInstance->mAlwaysInline) && (HasCompiledOutput()) && (!methodInstance->mIsUnspecialized) && ((flags & BfGetMethodInstanceFlag_NoInline) == 0))
 				{
 					mIncompleteMethodCount++;
 					BfInlineMethodRequest* inlineMethodRequest = mContext->mInlineMethodWorkList.Alloc();
