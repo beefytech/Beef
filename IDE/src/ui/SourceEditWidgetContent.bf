@@ -2280,7 +2280,7 @@ namespace IDE.ui
 
 				if ((mAutoComplete.mUncertain) && (keyChar != '\t'))
 					doAutocomplete = false;
-				if (keyChar == '\x7b') /* Ctrl+Backspace */
+				if (keyChar == '\x7F') /* Ctrl+Backspace */
 					doAutocomplete = false;
 
                 if (doAutocomplete)
