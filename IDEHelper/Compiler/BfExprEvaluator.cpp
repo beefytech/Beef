@@ -7390,7 +7390,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			target = BfTypedValue(target.mValue, mModule->CreateRefType(target.mType));
 		}
 	}
-
+	
 	BfTypedValue callTarget;
 	if (isSkipCall)
 	{
@@ -12690,15 +12690,20 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 		{
 			mModule->PopulateType(primStructType);
 			target.mType = primStructType;
-			if ((primStructType->IsSplattable()) && (!primStructType->IsTypedPrimitive()))
+
+			if (primStructType->IsTypedPrimitive())
+			{
+				// Type is already the same
+			}
+			else if (target.IsAddr())
+			{
+				auto ptrType = mModule->CreatePointerType(primStructType);
+				target = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType)), primStructType, true);
+			}
+			else if (primStructType->IsSplattable())
 			{				
-				if (target.IsAddr())
-				{
-					auto ptrType = mModule->CreatePointerType(primStructType);
-					target = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType)), primStructType, true);
-				}
-				else
-					target.mKind = BfTypedValueKind_SplatHead;
+				BF_ASSERT(target.IsSplat());
+				target.mKind = BfTypedValueKind_SplatHead;
 			}
 		}
 

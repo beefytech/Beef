@@ -16171,7 +16171,84 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 	}
 	else if (checkType->IsSizedArray())
 	{
-		callMarkMethod = true;				
+		BfSizedArrayType* sizedArrayType = (BfSizedArrayType*)checkType;
+		if (sizedArrayType->mElementType->WantsGCMarking())
+		{			
+			BfTypedValue arrayValue = thisValue;
+			if (thisValue.mType != checkType)
+			{
+				BfIRValue srcValue = thisValue.mValue;
+
+				if (curOffset != 0)
+				{
+					if (!thisValue.mType->IsPointer())
+					{
+						auto int8Type = GetPrimitiveType(BfTypeCode_UInt8);
+						auto int8PtrType = CreatePointerType(int8Type);
+						srcValue = mBfIRBuilder->CreateBitCast(thisValue.mValue, mBfIRBuilder->MapType(int8PtrType));
+					}
+
+					srcValue = mBfIRBuilder->CreateInBoundsGEP(srcValue, curOffset);
+				}
+
+				arrayValue = BfTypedValue(mBfIRBuilder->CreateBitCast(srcValue, mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapType(checkType))), checkType, BfTypedValueKind_Addr);
+			}
+
+			auto _SizedIndex = [&](BfIRValue target, BfIRValue index)
+			{
+				if (sizedArrayType->mElementType->IsSizeAligned())
+				{
+					auto ptrType = CreatePointerType(sizedArrayType->mElementType);
+					auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
+					auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
+					return BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+				}
+				else
+				{
+
+					auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
+					return BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+				}
+			};
+			
+			if (sizedArrayType->mElementCount > 6)
+			{				
+				auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
+				auto itr = CreateAlloca(intPtrType);
+				mBfIRBuilder->CreateStore(GetDefaultValue(intPtrType), itr);
+
+				auto loopBB = mBfIRBuilder->CreateBlock("loop", true);
+				auto bodyBB = mBfIRBuilder->CreateBlock("body", true);
+				auto doneBB = mBfIRBuilder->CreateBlock("done", true);
+				mBfIRBuilder->CreateBr(loopBB);
+
+				mBfIRBuilder->SetInsertPoint(loopBB);
+				auto loadedItr = mBfIRBuilder->CreateLoad(itr);
+				auto cmpRes = mBfIRBuilder->CreateCmpGTE(loadedItr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)sizedArrayType->mElementCount), true);
+				mBfIRBuilder->CreateCondBr(cmpRes, doneBB, bodyBB);
+
+				mBfIRBuilder->SetInsertPoint(bodyBB);
+
+				BfTypedValue value = _SizedIndex(arrayValue.mValue, loadedItr);
+				EmitGCMarkValue(value, markFromGCThreadMethodInstance);
+				
+				auto incValue = mBfIRBuilder->CreateAdd(loadedItr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1));
+				mBfIRBuilder->CreateStore(incValue, itr);
+				mBfIRBuilder->CreateBr(loopBB);
+				
+				mBfIRBuilder->SetInsertPoint(doneBB);
+			}
+			else
+			{
+				for (int dataIdx = 0; dataIdx < sizedArrayType->mElementCount; dataIdx++)
+				{
+					BfTypedValue value = _SizedIndex(arrayValue.mValue, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, dataIdx));
+
+					HashSet<int> objectOffsets;					
+					EmitGCMarkValue(value, markFromGCThreadMethodInstance);
+				}
+			}
+		}
 	}	
 	else if (typeInstance != NULL)
 	{
