@@ -82,7 +82,7 @@ namespace Tests
 				return -val;
 			}
 
-			public T GetInt() where T : Int
+			public T GetInt() where T : Int32
 			{
 				return mVal;
 			}

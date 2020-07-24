@@ -4989,7 +4989,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 
 BfTypedValue BfExprEvaluator::CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target)
 {
-	auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher->mBestMethodTypeInstance, methodMatcher->mBestMethodDef, methodMatcher->mBestMethodGenericArguments);
+	auto moduleMethodInstance = GetSelectedMethod(methodMatcher->mTargetSrc, methodMatcher->mBestMethodTypeInstance, methodMatcher->mBestMethodDef, *methodMatcher);
 	if (moduleMethodInstance.mMethodInstance == NULL)
 		return BfTypedValue();
 	if ((target) && (target.mType != moduleMethodInstance.mMethodInstance->GetOwner()))
@@ -12933,39 +12933,57 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 
 	if (methodDef->IsEmptyPartial())
 		return methodInstance;
-		
-	for (int checkGenericIdx = 0; checkGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size(); checkGenericIdx++)
+	
+	if (methodInstance.mMethodInstance->mMethodInfoEx != NULL)
 	{
-		auto& genericParams = methodInstance.mMethodInstance->mMethodInfoEx->mGenericParams;
-		auto genericArg = methodMatcher.mBestMethodGenericArguments[checkGenericIdx];
-		if (genericArg->IsVar())
-			continue;
-		
-		BfAstNode* paramSrc;
-		if (methodMatcher.mBestMethodGenericArgumentSrcs.size() == 0)
+		for (int checkGenericIdx = 0; checkGenericIdx < (int)methodInstance.mMethodInstance->mMethodInfoEx->mGenericParams.size(); checkGenericIdx++)
 		{
-			paramSrc = targetSrc;
-		}
-		else
-			paramSrc = methodMatcher.mArguments[methodMatcher.mBestMethodGenericArgumentSrcs[checkGenericIdx]].mExpression;
-
-		// Note: don't pass methodMatcher.mBestMethodGenericArguments into here, this method is already specialized
-		BfError* error = NULL;
-		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams[checkGenericIdx], NULL, 
-			failed ? NULL : &error))
-		{
-			if (methodInstance.mMethodInstance->IsSpecializedGenericMethod())
+			auto genericParams = methodInstance.mMethodInstance->mMethodInfoEx->mGenericParams[checkGenericIdx];
+			BfTypeVector* checkMethodGenericArgs = NULL;
+			BfType* genericArg = NULL;
+			
+			if (checkGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size())
 			{
-				// We mark this as failed to make sure we don't try to process a method that doesn't even follow the constraints
-				methodInstance.mMethodInstance->mFailedConstraints = true;
+				genericArg = methodMatcher.mBestMethodGenericArguments[checkGenericIdx];
 			}
-			if (methodInstance.mMethodInstance->mMethodDef->mMethodDeclaration != NULL)
+			else
 			{
-				if (error != NULL)
-					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance.mMethodInstance->mMethodDef->GetRefNode());
+				checkMethodGenericArgs = &methodMatcher.mBestMethodGenericArguments;
+				genericArg = genericParams->mExternType;
+				genericArg = mModule->ResolveGenericType(genericArg, NULL, checkMethodGenericArgs);
+			}
+				
+			if (genericArg->IsVar())
+				continue;
+
+			BfAstNode* paramSrc;
+			if (checkGenericIdx >= methodMatcher.mBestMethodGenericArgumentSrcs.size())
+			{
+				paramSrc = targetSrc;
+			}
+			else
+				paramSrc = methodMatcher.mArguments[methodMatcher.mBestMethodGenericArgumentSrcs[checkGenericIdx]].mExpression;
+
+			// Note: don't pass methodMatcher.mBestMethodGenericArguments into here, this method is already specialized
+			BfError* error = NULL;
+			if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams, checkMethodGenericArgs,
+				failed ? NULL : &error))
+			{
+				if (methodInstance.mMethodInstance->IsSpecializedGenericMethod())
+				{
+					// We mark this as failed to make sure we don't try to process a method that doesn't even follow the constraints
+					methodInstance.mMethodInstance->mFailedConstraints = true;
+				}
+				if (methodInstance.mMethodInstance->mMethodDef->mMethodDeclaration != NULL)
+				{
+					if (error != NULL)
+						mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance.mMethodInstance->mMethodDef->GetRefNode());
+				}
 			}
 		}
 	}
+	else
+		BF_ASSERT(methodMatcher.mBestMethodGenericArguments.IsEmpty());
 
 	return methodInstance;
 }

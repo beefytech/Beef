@@ -20,7 +20,7 @@ namespace System.Collections
 
 	extension Dictionary<K, V>
 	{
-		public static bool operator==(Self lhs, Self rhs) where K : IOpEquals where V : IOpEquals
+		public static bool operator==(Self lhs, Self rhs)
 		{
 			if (lhs.mCount != rhs.mCount)
 				return false;

@@ -7276,10 +7276,18 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				(!CanCast(exprEvaluator.mResult, origCheckArgType)))
 			{
 				if (!ignoreErrors)
-					*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must result from binary operation '%s %s %s'", genericParamInst->GetName().c_str(),
-						TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(), 
-						TypeToString(leftType).c_str(), BfGetOpName(checkOpConstraint.mBinaryOp), TypeToString(rightType).c_str()
-					), checkArgTypeRef);
+				{
+					if (genericParamInst->mExternType != NULL)
+						*errorOut = Fail(StrFormat("Binary operation for '%s' must result in '%s' from binary operation '%s %s %s'",
+							GenericParamSourceToString(genericParamSource).c_str(), TypeToString(origCheckArgType).c_str(),
+							TypeToString(leftType).c_str(), BfGetOpName(checkOpConstraint.mBinaryOp), TypeToString(rightType).c_str()
+						), checkArgTypeRef);
+					else
+						*errorOut = Fail(StrFormat("Generic argument '%s', declared to be '%s' for '%s', must result from binary operation '%s %s %s'", genericParamInst->GetName().c_str(),
+							TypeToString(origCheckArgType).c_str(), GenericParamSourceToString(genericParamSource).c_str(),
+							TypeToString(leftType).c_str(), BfGetOpName(checkOpConstraint.mBinaryOp), TypeToString(rightType).c_str()
+						), checkArgTypeRef);
+				}
 				return false;
 			}
 			
@@ -12297,10 +12305,14 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 
 	// Generic constraints
-	for (int genericParamIdx = 0; genericParamIdx < (int)methodDef->mGenericParams.size(); genericParamIdx++)
+	if (!methodDef->mGenericParams.IsEmpty())
 	{
-		auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, genericParamIdx);
-		methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);		
+		BF_ASSERT(methodInstance->GetMethodInfoEx()->mGenericParams.IsEmpty());
+		for (int genericParamIdx = 0; genericParamIdx < (int)methodDef->mGenericParams.size(); genericParamIdx++)
+		{
+			auto genericParamInstance = new BfGenericMethodParamInstance(methodDef, genericParamIdx);
+			methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);
+		}		
 	}
 
 	for (int externConstraintIdx = 0; externConstraintIdx < (int)methodDef->mExternalConstraints.size(); externConstraintIdx++)
@@ -14244,8 +14256,8 @@ void BfModule::EmitDtorBody()
 		CallChainedMethods(mCurMethodInstance, true);
 
 	if (auto bodyBlock = BfNodeDynCast<BfBlock>(methodDef->mBody))
-	{
-		VisitCodeBlock(bodyBlock);
+	{		
+		VisitEmbeddedStatement(bodyBlock);
 		if (bodyBlock->mCloseBrace != NULL)
 		{
 			UpdateSrcPos(bodyBlock->mCloseBrace);						
