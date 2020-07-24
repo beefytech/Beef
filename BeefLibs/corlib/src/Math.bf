@@ -348,6 +348,16 @@ namespace System
 		    return val1 + (val2 - val1) * pct;
 		}
 
+		public static T Lerp<T>(T val1, T val2, float pct) where T : operator T + T, operator T - T, operator T * float
+		{
+		    return val1 + (val2 - val1) * pct;
+		}
+
+		public static T Lerp<T>(T val1, T val2, double pct) where T : operator T + T, operator T - T, operator T * double
+		{
+		    return val1 + (val2 - val1) * pct;
+		}
+
         public static T Min<T>(T val1, T val2) where T : IOpComparable, IIsNaN
         {
             if (val1 < val2)
