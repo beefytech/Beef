@@ -124,14 +124,6 @@ namespace System.Net
 		HSocket mHandle = INVALID_SOCKET;
 		bool mIsConnected = true;
 
-		public bool IsOpen
-		{
-			get
-			{
-				return mHandle != INVALID_SOCKET;
-			}
-		}
-
 #if BF_PLATFORM_WINDOWS
 		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSAStartup(uint16 versionRequired, WSAData* wsaData);
@@ -230,13 +222,9 @@ namespace System.Net
 			Debug.Assert(mHandle == INVALID_SOCKET);
 
 			mHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-			int param = 1;
+			
+			SetBlocking();
 
-#if BF_PLATFORM_WINDOWS
-			ioctlsocket(mHandle, FIONBIO, &param);
-#else
-			ioctl(mHandle, FIONBIO, &param);
-#endif
 			if (mHandle == INVALID_SOCKET)
 			{
 #unwarn
@@ -284,13 +272,8 @@ namespace System.Net
 			if (connect(mHandle, &sockAddr, sizeof(SockAddr_in)) == SOCKET_ERROR)
 				return .Err;
 
-			int param = 1;
+			SetBlocking();
 
-#if BF_PLATFORM_WINDOWS
-			ioctlsocket(mHandle, FIONBIO, &param);
-#else
-			ioctl(mHandle, FIONBIO, &param);
-#endif
 			if (mHandle == INVALID_SOCKET)
 			{
 #unwarn
@@ -317,7 +300,7 @@ namespace System.Net
 		public static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, int waitTimeUS)
 		{
 			TimeVal timeVal;
-			timeVal.mSec = (.)(waitTimeUS / (1000*1000));
+			timeVal.mSec = (.)(waitTimeUS / 1000);
 			timeVal.mUSec = (.)(waitTimeUS % (1000*1000));
 			return select(0, readFDS, writeFDS, exceptFDS, &timeVal);
 		}
@@ -387,6 +370,27 @@ namespace System.Net
 			close(mHandle);
 #endif
 			mHandle = INVALID_SOCKET;
+		}
+
+		private bool SetBlocking()
+		{
+			int param = 1;
+			int32 res;
+
+#if BF_PLATFORM_WINDOWS
+			res = ioctlsocket(mHandle, FIONBIO, &param);
+#else
+			res = ioctl(mHandle, FIONBIO, &param);
+#endif
+			return res == 0 ? true : false;
+		}
+
+		public bool IsOpen
+		{
+			get
+			{
+				return mHandle != INVALID_SOCKET;
+			}
 		}
 
 		public bool IsConnected
