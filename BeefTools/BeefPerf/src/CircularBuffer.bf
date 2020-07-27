@@ -52,7 +52,6 @@ namespace BeefPerf
 		{	
 			if (mDataSize + addSize <= mBufSize)
 				return;
-			Debug.WriteLine("GrowReserve");
 			Resize(Math.Max(mDataSize + addSize, mDataSize + mDataSize/2));
 		}
 		

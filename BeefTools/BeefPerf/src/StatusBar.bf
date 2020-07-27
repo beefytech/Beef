@@ -25,7 +25,7 @@ namespace BeefPerf
 			g.DrawString(scope String()..AppendF("{0}", gApp.mUpdateCnt), 0, 0, .Right, mWidth - 8);
 
 			float curY = 64;
-			if (!gApp.mListenSocket.IsConnected)
+			if (!gApp.mListenSocket.IsOpen)
 			{
 				using (g.PushColor(0xFFFF4040))
 					g.DrawString(scope String()..AppendF("Failed to listen on port {0}", gApp.mListenPort), 0, 0, .Right, mWidth - 8);

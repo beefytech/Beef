@@ -703,7 +703,7 @@ namespace BeefPerf
 				}
 				
 #unwarn
-				int selectResult = Socket.Select(&readSet, &writeSet, &exceptSet, 20*1000);
+				int selectResult = Socket.Select(&readSet, &writeSet, &exceptSet, 20);
 
 				int clientIdx = 0;
 				while (true)
