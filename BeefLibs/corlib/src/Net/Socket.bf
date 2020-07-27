@@ -300,7 +300,7 @@ namespace System.Net
 		public static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, int waitTimeUS)
 		{
 			TimeVal timeVal;
-			timeVal.mSec = (.)(waitTimeUS / 1000);
+			timeVal.mSec = (.)(waitTimeUS / (1000*1000));
 			timeVal.mUSec = (.)(waitTimeUS % (1000*1000));
 			return select(0, readFDS, writeFDS, exceptFDS, &timeVal);
 		}
