@@ -160,7 +160,7 @@ namespace System.Net
 			get => mIsBlocking;
 			set
 			{
-				mIsBlocking = true;
+				mIsBlocking = value;
 				if (mHandle != INVALID_SOCKET)
 					SetBlocking(mIsBlocking);
 			}
