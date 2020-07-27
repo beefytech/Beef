@@ -223,7 +223,7 @@ namespace System.Net
 
 			mHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 			
-			SetBlocking();
+			SetNonBlocking(true);
 
 			if (mHandle == INVALID_SOCKET)
 			{
@@ -272,7 +272,7 @@ namespace System.Net
 			if (connect(mHandle, &sockAddr, sizeof(SockAddr_in)) == SOCKET_ERROR)
 				return .Err;
 
-			SetBlocking();
+			SetNonBlocking(true);
 
 			if (mHandle == INVALID_SOCKET)
 			{
@@ -372,9 +372,9 @@ namespace System.Net
 			mHandle = INVALID_SOCKET;
 		}
 
-		private bool SetBlocking()
+		private bool SetNonBlocking(bool yes)
 		{
-			int param = 1;
+			int param = yes == true ? 1 : 0;
 			int32 res;
 
 #if BF_PLATFORM_WINDOWS
