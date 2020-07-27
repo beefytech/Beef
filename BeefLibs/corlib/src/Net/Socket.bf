@@ -9,10 +9,15 @@ namespace System.Net
 		const int32 WSAECONNABORTED = 10053;
 		const int32 WSAECONNRESET   = 10054;
 
+#if BF_PLATFORM_WINDOWS
 		public struct HSocket : uint
 		{
-
 		}
+#else
+		public struct HSocket : uint32
+		{
+		}
+#endif
 
 		[CRepr]
 		public struct TimeVal
@@ -29,11 +34,12 @@ namespace System.Net
 			int32 mCount;
 			HSocket[64] mSockets;
 
-			public void Add(HSocket s) mut
+			public bool Add(HSocket s) mut
 			{
-				Debug.Assert(mCount < cMaxCount);
-				if (mCount < cMaxCount)
-					mSockets[mCount++] = s;
+				if (mCount >= cMaxCount)
+					return false;
+				mSockets[mCount++] = s;
+				return true;
 			}
 
 			public bool IsSet(HSocket s)
@@ -109,7 +115,7 @@ namespace System.Net
 			public char8** h_addr_list; /* list of addresses */
 		}
 
-		const HSocket INVALID_SOCKET = (HSocket)0xffffffff;
+		const HSocket INVALID_SOCKET = (HSocket)-1;
 		const int32 SOCKET_ERROR = -1;
 		const int AF_INET = 2;
 		const int SOCK_STREAM = 1;
@@ -122,13 +128,41 @@ namespace System.Net
 #endif
 
 		HSocket mHandle = INVALID_SOCKET;
-		bool mIsConnected = true;
+		bool mIsConnected;
+		bool mIsBlocking = false;
 
 		public bool IsOpen
 		{
 			get
 			{
 				return mHandle != INVALID_SOCKET;
+			}
+		}
+
+		public bool IsConnected
+		{
+			get
+			{
+				return mIsConnected;
+			}
+		}
+
+		public HSocket NativeSocket
+		{
+			get
+			{
+				return mHandle;
+			}
+		}
+
+		public bool Blocking
+		{
+			get => mIsBlocking;
+			set
+			{
+				mIsBlocking = true;
+				if (mHandle != INVALID_SOCKET)
+					SetBlocking(mIsBlocking);
 			}
 		}
 
@@ -225,24 +259,36 @@ namespace System.Net
 				((val & 0xFF00) >> 8));
 		}
 
-		public Result<void> Listen(int32 port, int32 backlog = 5)
+		void SetBlocking(bool blocking)
 		{
-			Debug.Assert(mHandle == INVALID_SOCKET);
-
-			mHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-			int param = 1;
+			int param = blocking ? 0 : 1;
 
 #if BF_PLATFORM_WINDOWS
 			ioctlsocket(mHandle, FIONBIO, &param);
 #else
 			ioctl(mHandle, FIONBIO, &param);
 #endif
+		}
+
+		void RehupSettings()
+		{
+			SetBlocking(mIsBlocking);
+		}
+
+		public Result<void> Listen(int32 port, int32 backlog = 5)
+		{
+			Debug.Assert(mHandle == INVALID_SOCKET);
+
+			mHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+			
 			if (mHandle == INVALID_SOCKET)
 			{
 #unwarn
 				int32 err = GetLastError();
 				return .Err;
 			}
+
+			RehupSettings();
 
 			SockAddr_in service;
 			service.sin_family = AF_INET;
@@ -284,19 +330,15 @@ namespace System.Net
 			if (connect(mHandle, &sockAddr, sizeof(SockAddr_in)) == SOCKET_ERROR)
 				return .Err;
 
-			int param = 1;
-
-#if BF_PLATFORM_WINDOWS
-			ioctlsocket(mHandle, FIONBIO, &param);
-#else
-			ioctl(mHandle, FIONBIO, &param);
-#endif
 			if (mHandle == INVALID_SOCKET)
 			{
 #unwarn
 				int32 err = GetLastError();
 				return .Err;
 			}
+
+			mIsConnected = true;
+			RehupSettings();
 
 			return .Ok;
 		}
@@ -310,12 +352,25 @@ namespace System.Net
 			{
 #unwarn
 				int lastErr = GetLastError();
+				return .Err;
 			}
-			return (mHandle != INVALID_SOCKET) ? .Ok : .Err;
+
+			RehupSettings();
+			mIsConnected = true;
+			return .Ok;
 		}
 
-		public static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, int waitTimeUS)
+		public static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, int waitTimeMS)
 		{
+			TimeVal timeVal;
+			timeVal.mSec = (.)(waitTimeMS / 1000);
+			timeVal.mUSec = (.)((waitTimeMS % 1000) * 1000);
+			return select(0, readFDS, writeFDS, exceptFDS, &timeVal);
+		}
+
+		public static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, float waitTimeMS)
+		{
+			int waitTimeUS = (int)(waitTimeMS * 1000);
 			TimeVal timeVal;
 			timeVal.mSec = (.)(waitTimeUS / (1000*1000));
 			timeVal.mUSec = (.)(waitTimeUS % (1000*1000));
@@ -387,22 +442,6 @@ namespace System.Net
 			close(mHandle);
 #endif
 			mHandle = INVALID_SOCKET;
-		}
-
-		public bool IsConnected
-		{
-			get
-			{
-				return mIsConnected;
-			}
-		}
-		
-		public HSocket NativeSocket
-		{
-			get
-			{
-				return mHandle;
-			}
 		}
 	}
 }
