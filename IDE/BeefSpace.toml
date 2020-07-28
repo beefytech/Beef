@@ -1,5 +1,5 @@
 FileVersion = 1
-Projects = {IDE = {Path = "."}, Beefy2D = {Path = "../BeefLibs/Beefy2D"}, IDEHelper = {Path = "../IDEHelper"}, Debugger64 = {Path = "../Debugger64"}, BeefySysLib = {Path = "../BeefySysLib"}}
+Projects = {IDE = {Path = "."}, Beefy2D = {Path = "../BeefLibs/Beefy2D"}, IDEHelper = {Path = "../IDEHelper"}, Debugger64 = {Path = "../Debugger64"}, BeefySysLib = {Path = "../BeefySysLib"}, curl = {Path = "../BeefLibs/curl"}}
 Unlocked = ["corlib"]
 
 [Workspace]
