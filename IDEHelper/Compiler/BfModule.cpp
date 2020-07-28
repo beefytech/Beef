@@ -12120,7 +12120,12 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 			if (!methodInstance->mMethodDef->mIsAbstract)
 			{
-				AddMethodToWorkList(methodInstance);				
+				if ((methodInstance->mMethodDef->mMethodType == BfMethodType_Mixin) && (!methodInstance->mDeclModule->mIsModuleMutable))
+				{
+					// Wait until unreified
+				}
+				else 
+					AddMethodToWorkList(methodInstance);				
 			}
 			else
 			{
