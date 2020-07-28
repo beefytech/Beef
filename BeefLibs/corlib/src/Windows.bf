@@ -325,7 +325,7 @@ namespace System
 						default:
 							Runtime.NotImplemented();
 						}
-					});
+					}).IgnoreError();
 				
 				if (!val.HasValue)
 					return .Err;
@@ -342,7 +342,7 @@ namespace System
 							gotData = true;
 							outData.AddRange(regData);
 						}
-					});
+					}).IgnoreError();
 				if (!gotData)
 					return .Err;
 				return .Ok;
@@ -351,7 +351,7 @@ namespace System
 			public Result<void> GetValue(StringView name, String outData)
 			{
 				bool gotData = false;
-				Try!(GetValue(name, scope [&] (regType, regData) =>
+				GetValue(name, scope [&] (regType, regData) =>
 					{
 						if ((regType == Windows.REG_SZ) || (regType == Windows.REG_EXPAND_SZ))
 						{
@@ -361,7 +361,7 @@ namespace System
 								span.RemoveFromEnd(1);
 							outData.Append(span);
 						}
-					}));
+					}).IgnoreError();
 				if (!gotData)
 					return .Err;
 				return .Ok;
@@ -371,14 +371,14 @@ namespace System
 			{
 				bool gotData = false;
 				int sizeofT = sizeof(T);
-				Try!(GetValue(name, scope [&] (regType, regData) =>
+				GetValue(name, scope [&] (regType, regData) =>
 					{
 						if ((regType == Windows.REG_BINARY) && (regData.Length == sizeofT))
 						{
 							Internal.MemCpy(&data, regData.Ptr, sizeofT);
 							gotData = true;
 						}
-					}));
+					}).IgnoreError();
 				if (!gotData)
 					return .Err;
 				return .Ok;
