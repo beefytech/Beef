@@ -1,0 +1,6 @@
+FileVersion = 1
+
+[Project]
+Name = "curl"
+TargetType = "BeefLib"
+StartupObject = "Program"

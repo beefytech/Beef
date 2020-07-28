@@ -1,11 +1,10 @@
-using IDE;
 using System;
 using System.IO;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections;
 
-namespace IDE.Util
+namespace CURL
 {
 	class Transfer
 	{
@@ -105,9 +104,6 @@ namespace IDE.Util
 				return 1;
 
 			transfer.Update(dltotal, dlnow);
-
-			//Debug.WriteLine("{0} of {1}", dlnow, dltotal);
-
 			return 0;
 		}
 
@@ -123,7 +119,7 @@ namespace IDE.Util
 			return count;
 		}
 
-		public void Setup(String url)
+		public void Init(String url)
 		{
 			function int(void *p, int dltotal, int dlnow, int ultotal, int ulnow) callback = => Callback;
 			mCurl.SetOptFunc(.XferInfoFunction, (void*)callback);
@@ -140,8 +136,6 @@ namespace IDE.Util
 
 		public Result<Span<uint8>> Perform()
 		{
-			//mCurl.SetOpt(.Verbose, true);
-			//mCurl.SetOpt(.X)
 			mStatsTimer.Start();
 			var result = mCurl.Perform();
 			mStatsTimer.Stop();
