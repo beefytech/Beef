@@ -1004,6 +1004,13 @@ namespace IDE
 			if (!gApp.[Friend]mExecutionInstances.IsEmpty)
 				return false;
 
+			if (!gApp.[Friend]mExecutionQueue.IsEmpty)
+			{
+				var nextCmd = gApp.mExecutionQueue[0];
+				if (!(nextCmd is IDEApp.TargetCompletedCmd))
+					return false;
+			}
+
 			if (gApp.mDebugger == null)
 				return true;
 
