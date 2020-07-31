@@ -347,6 +347,8 @@ namespace Beefy.widgets
 
         public virtual void CaptureMouse()
         {
+			if (mWidgetWindow == null)
+				return;
 			//Debug.WriteLine("CaptureMouse {0}", this);
             if (mWidgetWindow.mHasFocus)
                 mWidgetWindow.mCaptureWidget = this;            
