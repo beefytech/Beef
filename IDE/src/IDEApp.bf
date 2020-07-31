@@ -12873,7 +12873,7 @@ namespace IDE
             for (var project in mWorkspace.mProjects)
                 project.Update();
             UpdateCompilersAndDebugger();
-			gApp.mDiagnosticsPanel.UpdateStats();
+			mDiagnosticsPanel?.UpdateStats();
 			if (mScriptManager != null)
 				mScriptManager.Update();
 
