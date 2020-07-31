@@ -358,7 +358,13 @@ namespace IDE.Debugger
 		static extern char8* Debugger_GetHotResolveData(uint8* outTypeData, int32* outTypeDataSize);
 
 		[CallingConvention(.Stdcall),CLink]
+		static extern char8* Debugger_GetDbgAllocInfo();
+
+		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_SetAliasPath(char8* origPath, char8* localPath);
+
+		[CallingConvention(.Stdcall),CLink]
+		static extern int Debugger_GetDbgAllocHeapSize();
 
 		public String mRunningPath ~ delete _;
 		public bool mIsRunning;
@@ -1139,6 +1145,12 @@ namespace IDE.Debugger
 			return true;
 		}
 
+		public void GetDbgAllocInfo(String outInfo)
+		{
+			char8* result = Debugger_GetDbgAllocInfo();
+			outInfo.Append(result);
+		}
+
 		public static void GetFailString(StringView result, StringView expr, String outFailStr)
 		{
 			Debug.Assert(result[0] == '!');
@@ -1181,6 +1193,11 @@ namespace IDE.Debugger
 		public void SetAliasPath(String origPath, String localPath)
 		{
 			Debugger_SetAliasPath(origPath, localPath);
+		}
+
+		public int GetDbgAllocHeapSize()
+		{
+			return Debugger_GetDbgAllocHeapSize();
 		}
 	}
 }
