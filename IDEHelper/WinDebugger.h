@@ -384,6 +384,31 @@ struct WinHotThreadState
 	int mThreadId;
 };
 
+class WinDbgHeapData
+{
+public:
+	struct Stats
+	{
+		intptr mHeapSize;
+	};
+
+public:
+	HANDLE mFileMapping;
+	Stats* mStats;	
+
+	WinDbgHeapData()
+	{
+		mFileMapping = 0;
+		mStats = NULL;		
+	}
+
+	~WinDbgHeapData()
+	{
+		if (mFileMapping != 0)
+			::CloseHandle(mFileMapping);
+	}
+};
+
 class WinDebugger : public Debugger
 {
 public:	
@@ -407,6 +432,7 @@ public:
 	CPU* mCPU;
 	PROCESS_INFORMATION mProcessInfo;
 	BfDbgAttachFlags mDbgAttachFlags;
+	WinDbgHeapData* mDbgHeapData;
 	DWORD mDbgProcessId;
 	HANDLE mDbgProcessHandle;
 	HANDLE mDbgThreadHandle;
@@ -593,6 +619,8 @@ public:
 	virtual void Run() override;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;	
 	virtual void InitiateHotResolve(DbgHotResolveFlags flags) override;
+	virtual intptr GetDbgAllocHeapSize() override;
+	virtual String GetDbgAllocInfo() override;
 	virtual void Update() override;
 	virtual void ContinueDebugEvent() override;
 	virtual void ForegroundTarget() override;

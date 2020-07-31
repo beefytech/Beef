@@ -1535,6 +1535,22 @@ BF_EXPORT void BF_CALLTYPE Debugger_InitiateHotResolve(int flags)
 		gDebugger->InitiateHotResolve((DbgHotResolveFlags)flags);
 }
 
+
+BF_EXPORT intptr BF_CALLTYPE Debugger_GetDbgAllocHeapSize()
+{
+	AutoCrit autoCrit(gDebugManager->mCritSect);
+	return gDebugger->GetDbgAllocHeapSize();
+}
+
+BF_EXPORT const char* BF_CALLTYPE Debugger_GetDbgAllocInfo()
+{
+	AutoCrit autoCrit(gDebugManager->mCritSect);
+	
+	String& outString = *gTLStrReturn.Get();
+	outString = gDebugger->GetDbgAllocInfo();
+	return outString.c_str();
+}
+
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetHotResolveData(uint8* outTypeData, int* outTypeDataSize)
 {
 	AutoCrit autoCrit(gDebugManager->mCritSect);
@@ -1554,7 +1570,10 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetHotResolveData(uint8* outTypeData,
 
 	*outTypeDataSize = dataSize;
 	if (dataSize > 0)
-		memcpy(outTypeData, &gDebugger->mHotResolveData->mTypeData[0], dataSize);
+	{
+		for (int i = 0; i < dataSize; i++)
+			outTypeData[i] = (gDebugger->mHotResolveData->mTypeData[i].mCount > 0) ? 1 : 0;
+	}
 
 	String& outString = *gTLStrReturn.Get();
 	outString.Clear();

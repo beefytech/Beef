@@ -663,6 +663,15 @@ BFGC::BFGC()
 	for (int i = 0; i < kNumClasses; i++)
 		gGCDbgData.mSizeClasses[i] = Static::sizemap()->ByteSizeForClass(i);
 
+	mStats = NULL;
+	Beefy::String memName = StrFormat("BFGC_stats_%d", GetCurrentProcessId());
+	auto* fileMapping = ::CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(Stats), memName.c_str());
+	if (fileMapping != NULL)
+	{
+		mStats = (Stats*)MapViewOfFile(fileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(Stats));
+		mStats->mHeapSize = 0;
+	}
+
 	RawInit();
 }
 
@@ -1816,6 +1825,13 @@ void BFGC::FinishCollect()
 	mStage = 4;
 }
 
+void BFGC::UpdateStats()
+{
+	if (mStats == NULL)
+		return;
+	mStats->mHeapSize = TCMalloc_SystemTaken;
+}
+
 void BFGC::Run()
 {
 	BfpThread_SetName(BfpThread_GetCurrent(), "BFGC", NULL);
@@ -1824,6 +1840,8 @@ void BFGC::Run()
 
 	while (!mExiting)
 	{
+		UpdateStats();
+
 		float fullGCPeriod = mFullGCPeriod;		
 		if ((fullGCPeriod != -1) && (mMaxPausePercentage > 0) && (!mCollectReports.IsEmpty()))
 		{
@@ -1835,7 +1853,7 @@ void BFGC::Run()
 			fullGCPeriod = BF_MIN(fullGCPeriod, maxExpandPeriod);
 		}
 
-		int waitPeriod = fullGCPeriod;
+		int waitPeriod = BF_MIN(fullGCPeriod, 100);
 		if (waitPeriod == 0)
 			waitPeriod = -1;
 		mCollectEvent.WaitFor(waitPeriod);

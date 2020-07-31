@@ -215,7 +215,20 @@ public:
 class DbgHotResolveData
 {
 public:
-	Array<uint8> mTypeData;
+	struct TypeData
+	{
+		intptr mCount;
+		intptr mSize;		
+
+		TypeData()
+		{
+			mCount = 0;
+			mSize = 0;
+		}
+	};
+
+public:
+	Array<TypeData> mTypeData;
 	Beefy::HashSet<String> mBeefCallStackEntries;
 };
 
@@ -248,6 +261,8 @@ public:
 	virtual void Run() = 0;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) = 0;
 	virtual void InitiateHotResolve(DbgHotResolveFlags flags) = 0;
+	virtual intptr GetDbgAllocHeapSize() = 0;
+	virtual String GetDbgAllocInfo() = 0;
 	virtual void Update() = 0;
 	virtual void ContinueDebugEvent() = 0;
 	virtual void ForegroundTarget() = 0;

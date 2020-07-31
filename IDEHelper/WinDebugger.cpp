@@ -523,6 +523,7 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 	mDbgProcessHandle = 0;
 	mDbgThreadHandle = 0;
 	mDbgProcessId = 0;
+	mDbgHeapData = NULL;
 	mIsPartialCallStack = true;
 		
 	for (int i = 0; i < 4; i++)
@@ -1174,6 +1175,76 @@ void WinDebugger::InitiateHotResolve(DbgHotResolveFlags flags)
 	delete hotScanner;
 }
 
+intptr WinDebugger::GetDbgAllocHeapSize()
+{
+	if (mDbgHeapData == NULL)
+	{
+		Beefy::String memName = StrFormat("BFGC_stats_%d", mProcessInfo.dwProcessId);
+
+		mDbgHeapData = new WinDbgHeapData();		
+		mDbgHeapData->mFileMapping = ::OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, memName.c_str());
+		if (mDbgHeapData->mFileMapping == 0)
+		{
+			delete mDbgHeapData;
+			mDbgHeapData = NULL;
+			return 0;
+		}
+		
+		mDbgHeapData->mStats = (WinDbgHeapData::Stats*)MapViewOfFile(mDbgHeapData->mFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(WinDbgHeapData::Stats));		
+	}
+
+	if (mDbgHeapData->mStats == NULL)
+		return 0;
+
+	return mDbgHeapData->mStats->mHeapSize;
+}
+
+String WinDebugger::GetDbgAllocInfo()
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	for (auto threadInfo : mThreadList)
+		::SuspendThread(threadInfo->mHThread);
+
+	delete mHotResolveData;
+	mHotResolveData = NULL;
+
+	mHotResolveData = new DbgHotResolveData();
+	DbgHotScanner* hotScanner = new DbgHotScanner(this);
+	hotScanner->Scan(DbgHotResolveFlag_Allocations);	
+	delete hotScanner;				
+
+	String result;
+	
+	if (mHotResolveData != NULL)
+	{
+		DbgExprEvaluator exprEvaluator(this, NULL, NULL, -1, -1);
+		exprEvaluator.mDebugTarget = mDebugTarget;
+
+		String typeName;
+
+		result += ":types\n";
+
+		for (int typeId = 0; typeId < mHotResolveData->mTypeData.size(); typeId++)
+		{
+			auto& typeData = mHotResolveData->mTypeData[typeId];
+			if (typeData.mCount > 0)
+			{
+				auto type = exprEvaluator.GetBeefTypeById(typeId);
+				typeName.Clear();
+				exprEvaluator.BeefTypeToString(type, typeName);
+
+				result += StrFormat("type\t%d\t%s\t%lld\t%lld\n", typeId, typeName.c_str(), typeData.mCount, typeData.mSize);
+			}
+		}
+	}
+
+	for (auto threadInfo : mThreadList)
+		::ResumeThread(threadInfo->mHThread);
+
+	return result;
+}
+
 bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock)
 {
 	BP_ZONE("WinDebugger::DoOpenFile");
@@ -1398,6 +1469,8 @@ void WinDebugger::Detach()
 	
 	mDbgAttachFlags = BfDbgAttachFlag_None;
 	mDbgProcessId = 0;
+	delete mDbgHeapData;
+	mDbgHeapData = NULL;
 	mDbgProcessHandle = 0;	
 	ClearCallStack();	
 	mWantsDebugContinue = false;
@@ -10208,21 +10281,27 @@ String WinDebugger::GetProcessInfo()
 	if ((mActiveThread == NULL) && (!mIsRunning))
 		return "";
 
+	SYSTEM_INFO sysinfo = { 0 };
+	GetSystemInfo(&sysinfo);
+
 	FILETIME creationTime = { 0 };
 	FILETIME exitTime = { 0 };
 	FILETIME kernelTime = { 0 };
 	FILETIME userTime = { 0 };
-	GetProcessTimes(mProcessInfo.hProcess, &creationTime, &exitTime, &kernelTime, &userTime);
+	::GetProcessTimes(mProcessInfo.hProcess, &creationTime, &exitTime, &kernelTime, &userTime);
 
 	String retStr;
 	PROCESS_MEMORY_COUNTERS memInfo = { 0 };	
-	GetProcessMemoryInfo(mProcessInfo.hProcess, &memInfo, sizeof(PROCESS_MEMORY_COUNTERS));
+	::GetProcessMemoryInfo(mProcessInfo.hProcess, &memInfo, sizeof(PROCESS_MEMORY_COUNTERS));
 	
+	FILETIME currentTime = { 0 };
+	::GetSystemTimeAsFileTime(&currentTime);
+
 	retStr += StrFormat("VirtualMemory\t%d\n", memInfo.PagefileUsage);
 	retStr += StrFormat("WorkingMemory\t%d\n", memInfo.WorkingSetSize);
-	retStr += StrFormat("RunningTime\t%lld\n", *(int64*)&creationTime);
-	retStr += StrFormat("KernelTime\t%lld\n", *(int64*)&kernelTime);
-	retStr += StrFormat("UserTime\t%lld\n", *(int64*)&userTime);
+	retStr += StrFormat("RunningTime\t%lld\n", *(int64*)&currentTime - *(int64*)&creationTime);
+	retStr += StrFormat("KernelTime\t%lld\n", *(int64*)&kernelTime / sysinfo.dwNumberOfProcessors);
+	retStr += StrFormat("UserTime\t%lld\n", *(int64*)&userTime / sysinfo.dwNumberOfProcessors);
 	
 	return retStr;
 }

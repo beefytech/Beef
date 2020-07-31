@@ -732,10 +732,19 @@ DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModul
 	mCapturingChildRef = true;
 	mPassInstance = passInstance;
 	mDebugger = winDebugger;
-	mLanguage = DbgLanguage_NotSet;
-	mDebugTarget = dbgModule->mDebugTarget;
+	mLanguage = DbgLanguage_NotSet;	
 	mOrigDbgModule = dbgModule;
-	mDbgModule = dbgModule->GetLinkedModule();
+	if (dbgModule != NULL)
+	{
+		mDebugTarget = dbgModule->mDebugTarget;
+		mDbgModule = dbgModule->GetLinkedModule();
+	}
+	else
+	{
+		mDebugTarget = NULL;
+		mDbgModule = NULL;
+	}
+
 	mDbgCompileUnit = NULL;
 	mExplicitThisExpr = NULL;
 	mExpectingType = NULL;
@@ -1125,12 +1134,14 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 	if (mDebugTarget->mTargetBinary == NULL)
 		return DbgTypedValue();
 
+	mDebugTarget->mTargetBinary->ParseTypeData();
 	auto typeTypeEntry = mDebugTarget->mTargetBinary->FindType("System.Type", DbgLanguage_Beef);
 	if ((typeTypeEntry == NULL) || (typeTypeEntry->mValue == NULL))
 		return DbgTypedValue();
 
 	auto typeType = typeTypeEntry->mValue;
-	mDbgModule->PopulateTypeGlobals(typeType);
+	if (typeType->mNeedsGlobalsPopulated)
+		typeType->mCompileUnit->mDbgModule->PopulateTypeGlobals(typeType);
 	for (auto member : typeType->mMemberList)
 	{
 		if ((member->mIsStatic) && (member->mName != NULL) && (strcmp(member->mName, "sTypes") == 0) && (member->mLocationData != NULL))
@@ -1232,6 +1243,12 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		_TypeCode mElementType;
 	};
 
+	struct _SizedArrayType : _Type
+	{
+		_TypeId mElementType;
+		int32 mElementCount;
+	};
+
 	struct _String
 	{
 
@@ -1267,16 +1284,27 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		uint8 mInterfaceCount;
 		int16 mMethodDataCount;
 		int16 mPropertyDataCount;
-		int16 mFieldDataCount;
-		int16 mConstructorDataCount;
+		int16 mFieldDataCount;		
 
 		void* mInterfaceDataPtr;
 		_MethodData* mMethodDataPtr;
 		void* mPropertyDataPtr;
-		_FieldData* mFieldDataPtr;
-		void* mConstructorDataPtr;
+		_FieldData* mFieldDataPtr;		
 		void** mCustomAttrDataPtr;
 	};
+
+	struct _SpecializedGenericType : _TypeInstance
+	{
+		_TypeId mUnspecializedType;
+		_TypeId* mResolvedTypeRefs;
+	};
+
+	struct _ArrayType : _SpecializedGenericType
+	{
+		int32 mElementSize;
+		uint8 mRank;
+		uint8 mElemensDataOffset;
+	};	
 	
 	int typeIdSize = sizeof(_TypeId);
 	int ptrSize = (int)sizeof(addr_target);
@@ -1284,12 +1312,54 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 	int typeSize = sizeof(_Type);
 
 	int typeInstanceSize = objectSize + sizeof(_TypeInstance);
-
+ 	
 	auto addr = useVal.mSrcAddress;
 	auto typeAddr = addr + objectSize;
 
 	_TypeFlags typeFlags = mDebugger->ReadMemory<_TypeFlags>(typeAddr + offsetof(_Type, mTypeFlags));
-	if (((typeFlags & BfTypeFlags_Struct) != 0) || ((typeFlags & BfTypeFlags_TypedPrimitive) != 0) || ((typeFlags & BfTypeFlags_Object) != 0))
+
+	if ((typeFlags & BfTypeFlags_Array) != 0)
+	{
+		_TypeId unspecializedTypeId = mDebugger->ReadMemory<_TypeId>(typeAddr + offsetof(_SpecializedGenericType, mUnspecializedType));
+		addr_target elementsArrayAddr = mDebugger->ReadMemory<addr_target>(typeAddr + offsetof(_SpecializedGenericType, mResolvedTypeRefs));
+		_TypeId elementTypeId = mDebugger->ReadMemory<_TypeId>(elementsArrayAddr);
+
+		auto elementType = GetBeefTypeById(elementTypeId);
+		BeefTypeToString(elementType, outStr);
+
+		outStr += "[";
+		int rank = mDebugger->ReadMemory<uint8>(typeAddr + offsetof(_ArrayType, mRank));
+		for (int commaIdx = 0; commaIdx < rank - 1; commaIdx++)
+			outStr += ",";
+		outStr += "]";
+	}
+	else if ((typeFlags & BfTypeFlags_Pointer) != 0)
+	{
+		_TypeId elementTypeId = mDebugger->ReadMemory<_TypeId>(typeAddr + offsetof(_PointerType, mElementType));
+		auto elementType = GetBeefTypeById(elementTypeId);
+		BeefTypeToString(elementType, outStr);
+	}
+ 	else if ((typeFlags & BfTypeFlags_Delegate) != 0)
+ 	{
+		outStr += "delegate";
+ 	}
+	else if ((typeFlags & BfTypeFlags_Function) != 0)
+	{
+		outStr += "function";
+	}
+// 	else if ((typeFlags & BfTypeFlags_Tuple) != 0)
+// 	{
+// 		outStr += "function";
+// 	}
+	else if ((typeFlags & BfTypeFlags_SizedArray) != 0)
+	{
+		_TypeId elementTypeId = mDebugger->ReadMemory<_TypeId>(typeAddr + objectSize + offsetof(_SizedArrayType, mElementType));
+		auto elementType = GetBeefTypeById(elementTypeId);
+		BeefTypeToString(elementType, outStr);
+		int elementCount = mDebugger->ReadMemory<int32>(typeAddr + objectSize + offsetof(_SizedArrayType, mElementCount));
+		outStr += StrFormat("[%d]", elementCount);
+	}
+	else if (((typeFlags & BfTypeFlags_Struct) != 0) || ((typeFlags & BfTypeFlags_TypedPrimitive) != 0) || ((typeFlags & BfTypeFlags_Object) != 0))
 	{
 		addr_target namePtr = mDebugger->ReadMemory<addr_target>(typeAddr + offsetof(_TypeInstance, mName));
 		addr_target namespacePtr = mDebugger->ReadMemory<addr_target>(typeAddr + offsetof(_TypeInstance, mNamespace));

@@ -84,9 +84,9 @@ class DbgHotScanner
 public:
 	WinDebugger* mDebugger;
 	DbgGCData mDbgGCData;
-	Beefy::HashSet<addr_target> mFoundClassVDataAddrs;
-	Beefy::HashSet<addr_target> mFoundRawAllocDataAddrs;
-	Beefy::HashSet<addr_target> mFoundTypeAddrs;
+	Beefy::Dictionary<addr_target, int> mFoundClassVDataAddrs;
+	Beefy::Dictionary<addr_target, int> mFoundRawAllocDataAddrs;
+	Beefy::Dictionary<addr_target, int> mFoundTypeAddrs;
 	Beefy::HashSet<addr_target> mFoundFuncPtrs;
 	
 #ifdef BF_DBG_32

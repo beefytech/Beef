@@ -169,11 +169,15 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 		elementSize = spanSize;
 	//BF_LOGASSERT(elementSize >= sizeof(bf::System::Object));
 
-	auto _MarkTypeUsed = [&](int typeId)
+	auto _MarkTypeUsed = [&](int typeId, intptr size)
 	{
+		if (typeId < 0)
+			return;
 		while (mDebugger->mHotResolveData->mTypeData.size() <= typeId)
-			mDebugger->mHotResolveData->mTypeData.Add(0);
-		mDebugger->mHotResolveData->mTypeData[typeId] = 1;
+			mDebugger->mHotResolveData->mTypeData.Add(DbgHotResolveData::TypeData());
+		auto& typeData = mDebugger->mHotResolveData->mTypeData[typeId];
+		typeData.mSize += size;
+		typeData.mCount++;
 	};
 
 	int objectSize = ((mDbgGCData.mDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0) ? sizeof(addr_target)*2 : sizeof(addr_target);
@@ -206,35 +210,67 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 					if ((mDbgGCData.mDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
 						classVDataAddr = classVDataAddr & ~0xFF;
 				}
-				else if (mFoundRawAllocDataAddrs.Add(rawAllocDataAddr))
+				else 
 				{
-					Fake_DbgRawAllocData rawAllocData = mDebugger->ReadMemory<Fake_DbgRawAllocData>(rawAllocDataAddr);
-					if ((rawAllocData.mType != NULL) && (mFoundTypeAddrs.Add(rawAllocData.mType)))
+
+					int* rawTypeIdPtr = NULL;
+					if (mFoundRawAllocDataAddrs.TryAdd(rawAllocDataAddr, NULL, &rawTypeIdPtr))
 					{
-						Fake_Type_Data typeData;
-						if (mDebugger->ReadMemory(rawAllocData.mType + objectSize, sizeof(typeData), &typeData))
-							_MarkTypeUsed(typeData.mTypeId);
+						*rawTypeIdPtr = -1;
+						Fake_DbgRawAllocData rawAllocData = mDebugger->ReadMemory<Fake_DbgRawAllocData>(rawAllocDataAddr);
+						if (rawAllocData.mType != NULL)
+						{
+							int* typeAddrIdPtr = NULL;
+							if (mFoundTypeAddrs.TryAdd(rawAllocData.mType, NULL, &typeAddrIdPtr))
+							{
+								*typeAddrIdPtr = -1;
+								Fake_Type_Data typeData;
+								if (mDebugger->ReadMemory(rawAllocData.mType + objectSize, sizeof(typeData), &typeData))
+								{
+									*typeAddrIdPtr = typeData.mTypeId;
+									*rawTypeIdPtr = typeData.mTypeId;
+									_MarkTypeUsed(typeData.mTypeId, elementSize);
+								}								
+							}							
+							else
+							{
+								_MarkTypeUsed(*typeAddrIdPtr, elementSize);
+							}
+						}
+					}
+					else
+					{
+						_MarkTypeUsed(*rawTypeIdPtr, elementSize);
 					}
 				}
 			}
 		}
 
-		if ((classVDataAddr != 0) && (mFoundClassVDataAddrs.Add(classVDataAddr)))
+		if (classVDataAddr != 0)
 		{
-			addr_target typeAddr = mDebugger->ReadMemory<addr_target>(classVDataAddr);
-			Fake_Type_Data typeData;
-			mDebugger->ReadMemory(typeAddr + objectSize, sizeof(typeData), &typeData);
-
-			_MarkTypeUsed(typeData.mTypeId);
-			if ((typeData.mTypeFlags & BfTypeFlags_Delegate) != 0)
+			int* typeIdPtr = NULL;			
+			if (mFoundClassVDataAddrs.TryAdd(classVDataAddr, NULL, &typeIdPtr))
 			{
-				Fake_Delegate_Data* dlg = (Fake_Delegate_Data*)((uint8*)spanPtr + objectSize);
-				if (mFoundFuncPtrs.Add(dlg->mFuncPtr))
+				addr_target typeAddr = mDebugger->ReadMemory<addr_target>(classVDataAddr);
+				Fake_Type_Data typeData;
+				mDebugger->ReadMemory(typeAddr + objectSize, sizeof(typeData), &typeData);
+
+				*typeIdPtr = typeData.mTypeId;
+				_MarkTypeUsed(typeData.mTypeId, elementSize);
+				if ((typeData.mTypeFlags & BfTypeFlags_Delegate) != 0)
 				{
-					auto subProgram = mDebugger->mDebugTarget->FindSubProgram(dlg->mFuncPtr, DbgOnDemandKind_None);
-					if ((subProgram != NULL) && (subProgram->GetLanguage() == DbgLanguage_Beef))
-						AddSubProgram(subProgram, true, "D ");
+					Fake_Delegate_Data* dlg = (Fake_Delegate_Data*)((uint8*)spanPtr + objectSize);
+					if (mFoundFuncPtrs.Add(dlg->mFuncPtr))
+					{
+						auto subProgram = mDebugger->mDebugTarget->FindSubProgram(dlg->mFuncPtr, DbgOnDemandKind_None);
+						if ((subProgram != NULL) && (subProgram->GetLanguage() == DbgLanguage_Beef))
+							AddSubProgram(subProgram, true, "D ");
+					}
 				}
+			}
+			else
+			{
+				_MarkTypeUsed(*typeIdPtr, elementSize);				
 			}
 		}
 

@@ -164,6 +164,11 @@ namespace tcmalloc_raw
 class BFGC
 {
 public:
+	struct Stats
+	{
+		intptr mHeapSize;
+	};
+
 	struct ThreadInfo
 	{
 		static BF_TLS_DECLSPEC ThreadInfo* sCurThreadInfo;
@@ -276,6 +281,7 @@ public:
 
 	BfpThreadId mThreadId;
 
+	Stats* mStats;
 	volatile bool mExiting;
 	volatile bool mRunning;
 	bool mGracelessShutdown;
@@ -368,6 +374,7 @@ public:
 
 	void DoCollect(bool doingFullGC);
 	void FinishCollect();
+	void UpdateStats();
 	void Run();		
 
 	static void BFP_CALLTYPE RunStub(void* gc);

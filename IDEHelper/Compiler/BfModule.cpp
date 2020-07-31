@@ -9874,13 +9874,8 @@ void BfModule::CurrentAddToConstHolder(BfIRValue& irVal)
 			newVals.push_back(newVal);			
 		}
 
-		irVal = mCurTypeInstance->mConstHolder->CreateConstArray(constArray->mType, newVals);
+		irVal = mCurTypeInstance->GetOrCreateConstHolder()->CreateConstArray(constArray->mType, newVals);
 		return;
-	}
-
-	if (constant->mConstType == BfConstType_GlobalVar)
-	{
-		NOP;
 	}
 
 	auto origConst = irVal;		
