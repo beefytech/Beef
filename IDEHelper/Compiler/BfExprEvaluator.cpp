@@ -16408,7 +16408,13 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 				members.push_back(defaultVal.mValue);				
 			}
 			
-			return mModule->mBfIRBuilder->CreateConstArray(mModule->mBfIRBuilder->MapType(checkArrayType), members);
+			if (checkArrayType->mElementType->IsStruct())
+			{
+				// This fixed cases where we have non-size-aligned initializers. Assume zero-initialized
+				return mModule->mBfIRBuilder->CreateConstStructZero(mModule->mBfIRBuilder->MapType(checkArrayType)); 
+			}
+			else
+				return mModule->mBfIRBuilder->CreateConstArray(mModule->mBfIRBuilder->MapType(checkArrayType), members);
 		};
 
 		_GetValues(arrayType, openToken, valueExprs, commas, closeToken, false);

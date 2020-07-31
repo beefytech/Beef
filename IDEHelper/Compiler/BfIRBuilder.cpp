@@ -1288,6 +1288,25 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			BfIRValue targetConst(BfIRValueFlags_Const, ptrToIntConst->mTarget);
 			return ToString(targetConst) + StrFormat(" PtrToInt TypeCode:%d", ptrToIntConst->mToTypeCode);			
 		}
+		else if (constant->mConstType == BfConstType_Array)
+		{
+			auto constArray = (BfConstantArray*)constant;
+			String str = ToString(constArray->mType);
+			str += "(";
+
+			for (int i = 0; i < (int)constArray->mValues.size(); i++)
+			{
+				if (i > 0)
+					str += ", ";
+				str += ToString(constArray->mValues[i]);
+			}
+			str += ");";
+			return str;
+		}
+		else if (constant->mConstType == BfConstType_AggZero)
+		{
+			return ToString(constant->mIRType) + " zeroinitializer";
+		}
 		else
 		{
 			BF_FATAL("Unhandled");
