@@ -2441,7 +2441,8 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				//variable->mCompileUnit = m;				
 				// Push front so we will find before the original static declaration (that has no memory associated with it)
-				targetType->mMemberList.PushFront(variable);
+				if (targetType != NULL)
+					targetType->mMemberList.PushFront(variable);
 				
 				if ((variable->mIsExtern) && (variable->mLinkName != NULL))
 					mStaticVariables.push_back(variable);				
@@ -5629,7 +5630,7 @@ uint8* COFF::HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, 
 
 	BF_ASSERT(numRecordsRead == entryIdxMax);
 
-	OutputDebugStrF("HandleSymStreamEntries Ticks: %d\n", BFTickCount() - tickStart);
+	//OutputDebugStrF("HandleSymStreamEntries Ticks: %d\n", BFTickCount() - tickStart);
 
 	return dataEnd;
 }

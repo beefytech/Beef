@@ -6985,7 +6985,8 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfExpression*
 
 	mVisitorPos.Trim();
 
-	MEMBER_SET(initializerExpr, mCloseBrace, block->mCloseBrace);
+	if (block->mCloseBrace != NULL)
+		MEMBER_SET(initializerExpr, mCloseBrace, block->mCloseBrace);
 	
 	return initializerExpr;
 }
