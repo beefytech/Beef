@@ -7055,7 +7055,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			if (floatDisplayType == DwFloatDisplayType_Minimal)
 				ExactMinimalFloatToStr(typedValue.mSingle, str);
 			else if (floatDisplayType == DwFloatDisplayType_Full)
-				sprintf(str, "%1.9g", (float)typedValue.mDouble);
+				sprintf(str, "%1.9g", typedValue.mSingle);
 			else if (floatDisplayType == DwFloatDisplayType_HexUpper)
 				sprintf(str, "0x%04X", typedValue.mUInt32);
 			else //if (floatDisplayType == DwFloatDisplayType_HexLower)
