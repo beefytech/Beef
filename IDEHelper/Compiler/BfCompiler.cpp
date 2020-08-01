@@ -3094,7 +3094,7 @@ void BfCompiler::UpdateRevisedTypes()
 						continue;
 					}
 
-					if (checkTypeDef->mProject != rootTypeDef->mProject)
+					if (!rootTypeDef->mProject->ContainsReference(checkTypeDef->mProject))
 					{
 						checkTypeDefEntry = checkTypeDefEntry->mNext;
 						continue;
