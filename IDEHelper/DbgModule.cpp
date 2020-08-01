@@ -7288,6 +7288,7 @@ DbgType* DbgModule::GetPointerType(DbgType* innerType)
 		ptrType->mTypeCode = DbgType_Ptr;
 		ptrType->mTypeParam = innerType;
 		ptrType->mSize = sizeof(addr_target);
+		ptrType->mAlign = (int)ptrType->mSize;
 		ptrType->mTypeIdx = (int32)linkedModule->mTypes.size();
 		linkedModule->mTypes.push_back(ptrType);
 
