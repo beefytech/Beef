@@ -71,6 +71,16 @@ namespace Tests
 		    return MethodB(val);
 		}
 
+		public static int MethodD<T>(ref T[] x)
+		{
+			return 1;
+		}
+
+		public static int MethodD<T>(ref T[][] x)
+		{
+			return 2;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -104,6 +114,9 @@ namespace Tests
 			Test.Assert(MethodB(11) == 2);
 			Test.Assert(MethodB(("A", "B")) == 3);
 			Test.Assert(MethodC(("A", "B")) == 3);
+
+			int[][] arrArr = new int[1][];
+			Test.Assert(MethodD(ref arrArr) == 2);
 		}
 	}
 }

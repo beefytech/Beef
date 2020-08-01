@@ -537,6 +537,58 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 	return true;
 }
 
+int BfMethodMatcher::GetMostSpecificType(BfType* lhs, BfType* rhs)
+{
+	if ((lhs->IsRef()) && (rhs->IsRef()))	
+		return GetMostSpecificType(lhs->GetUnderlyingType(), rhs->GetUnderlyingType());			
+
+	if ((lhs->IsPointer()) && (rhs->IsPointer()))
+		return GetMostSpecificType(lhs->GetUnderlyingType(), rhs->GetUnderlyingType());
+
+	if ((lhs->IsSizedArray()) && (rhs->IsSizedArray()))
+		return GetMostSpecificType(lhs->GetUnderlyingType(), rhs->GetUnderlyingType());
+
+	if (lhs->IsGenericParam())	
+		return rhs->IsGenericParam() ? -1 : 1;				
+	if (rhs->IsGenericParam())
+		return 0;
+
+	if (lhs->IsUnspecializedType())
+	{
+		if (!rhs->IsUnspecializedType())
+			return 1;
+
+		auto lhsTypeInst = lhs->ToTypeInstance();
+		auto rhsTypeInst = rhs->ToTypeInstance();
+
+		if ((rhsTypeInst == NULL) || (lhsTypeInst == NULL) || (lhsTypeInst->mTypeDef != rhsTypeInst->mTypeDef))
+			return -1;
+
+		bool hadLHSMoreSpecific = false;
+		bool hadRHSMoreSpecific = false;
+
+		for (int generigArgIdx = 0; generigArgIdx < (int)lhsTypeInst->mGenericTypeInfo->mTypeGenericArguments.size(); generigArgIdx++)		
+		{
+			int argMoreSpecific = GetMostSpecificType(lhsTypeInst->mGenericTypeInfo->mTypeGenericArguments[generigArgIdx],
+				rhsTypeInst->mGenericTypeInfo->mTypeGenericArguments[generigArgIdx]);
+			if (argMoreSpecific == 0)
+				hadLHSMoreSpecific = true;
+			else if (argMoreSpecific == 1)
+				hadRHSMoreSpecific = true;
+		}
+
+		if ((hadLHSMoreSpecific) && (!hadRHSMoreSpecific))
+			return 0;
+		if ((hadRHSMoreSpecific) && (!hadLHSMoreSpecific))
+			return 1;
+		return -1;
+	}
+	if (rhs->IsUnspecializedType())
+		return 0;
+
+	return -1;
+}
+
 void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 	BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute,
 	bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail)
@@ -644,8 +696,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			int newArgIdx = argIdx + newImplicitParamCount;
 			int prevArgIdx = argIdx + prevImplicitParamCount;
 
-			bool wasGenericParam = (newArgIdx >= 0) && newMethodInstance->WasGenericParam(newArgIdx);
-			bool prevWasGenericParam = (prevArgIdx >= 0) && prevMethodInstance->WasGenericParam(prevArgIdx);
+ 			bool wasGenericParam = (newArgIdx >= 0) && newMethodInstance->WasGenericParam(newArgIdx);
+ 			bool prevWasGenericParam = (prevArgIdx >= 0) && prevMethodInstance->WasGenericParam(prevArgIdx);
 
 			BfType* paramType = newMethodInstance->GetParamType(newArgIdx);
 			BfType* prevParamType = prevMethodInstance->GetParamType(prevArgIdx);
@@ -656,31 +708,28 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			BfType* origParamType = paramType;
 			BfType* origPrevParamType = prevParamType;
 
-			if ((genericArgumentsSubstitute != NULL) && (paramType->IsUnspecializedType()))
-			{
+			bool paramWasUnspecialized = paramType->IsUnspecializedType();
+			if ((genericArgumentsSubstitute != NULL) && (paramWasUnspecialized))
+			{				
 				paramType = mModule->ResolveGenericType(paramType, NULL, genericArgumentsSubstitute, allowSpecializeFail);
 				paramType = mModule->FixIntUnknown(paramType);
 			}
-			if ((prevGenericArgumentsSubstitute != NULL) && (prevParamType->IsUnspecializedType()))
+
+			bool prevParamWasUnspecialized = prevParamType->IsUnspecializedType();
+			if ((prevGenericArgumentsSubstitute != NULL) && (prevParamWasUnspecialized))
 			{
 				prevParamType = mModule->ResolveGenericType(prevParamType, NULL, prevGenericArgumentsSubstitute, allowSpecializeFail);
 				prevParamType = mModule->FixIntUnknown(prevParamType);
 			}
+			
+			bool paramsEquivalent = paramType == prevParamType;
 
-			if ((wasGenericParam) || (prevWasGenericParam))
-			{
-				if ((wasGenericParam) && (!prevWasGenericParam))
-					worseByGenericParam = true;
-				else if ((!wasGenericParam) && (prevWasGenericParam))
-					betterByGenericParam = true;
-			}
-						
 			if ((prevParamType == NULL) || (paramType == NULL))
 			{
 				SET_BETTER_OR_WORSE(paramType != NULL, prevParamType != NULL);
 			}
 			else if (paramType != prevParamType)
-			{					
+			{
 				bool isUnspecializedParam = paramType->IsUnspecializedType();
 				bool isPrevUnspecializedParam = prevParamType->IsUnspecializedType();
 				SET_BETTER_OR_WORSE((!isUnspecializedParam) && (!paramType->IsVar()), 
@@ -706,6 +755,9 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 							bool canCastFromCurToPrev = mModule->CanCast(mModule->GetFakeTypedValue(paramType), prevParamType);
 							bool canCastFromPrevToCur = mModule->CanCast(mModule->GetFakeTypedValue(prevParamType), paramType);
 
+							if ((canCastFromCurToPrev) && (canCastFromPrevToCur))
+								paramsEquivalent = true;
+
 							if ((canCastFromCurToPrev) && (!canCastFromPrevToCur))
 								isBetter = true;
 							else if ((canCastFromPrevToCur) && (!canCastFromCurToPrev))
@@ -727,43 +779,20 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 									else
 										isWorse = true;
 								}
-							}							
-						}
-						
-						/*if ((paramType->IsIntegral()) && (prevParamType->IsIntegral()))
-						{
-							if (paramType == arg.mType)
-								isBetter = true;
-							else if (prevParamType == arg.mType)
-								isWorse = true;
-							else
-							{
-								if (paramType->mSize < prevParamType->mSize)
-									isBetter = true;
-								else if (paramType->mSize > prevParamType->mSize)
-									isWorse = true;
-								else if (paramType->IsSigned())
-									isBetter = true;
-								else
-									isWorse = true;
 							}
-						}
-						else
-						{
-							if (mModule->CanCast(mModule->GetFakeTypedValue(paramType), prevParamType))
-								isBetter = true;
-							if (mModule->CanCast(mModule->GetFakeTypedValue(prevParamType), paramType))
-								isWorse = true;
-						}*/
+						}						
 					}
 				}
 			}
-			else if ((wasGenericParam) || (prevWasGenericParam))
+
+			if (((!isBetter) && (!isWorse)) && (paramsEquivalent) &&
+				((paramWasUnspecialized) || (prevParamWasUnspecialized)))
 			{
-				if (!wasGenericParam)
-					isBetter = true;
-				else if (!prevWasGenericParam)
-					isWorse = true;
+				int origTypeMoreSpecific = GetMostSpecificType(origParamType, origPrevParamType);
+				if (origTypeMoreSpecific == 0)
+					betterByGenericParam = true;
+				else if (origTypeMoreSpecific == 1)
+					worseByGenericParam = true;
 			}
 
 			if ((newArgIdx >= 0) && (newMethodInstance->GetParamKind(newArgIdx) == BfParamKind_Params))
@@ -777,12 +806,17 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 
 		if ((!isBetter) && (!isWorse))
 		{
-			isBetter = betterByGenericParam;
-			isWorse = worseByGenericParam;
+			// Don't allow ambiguity
+			if ((betterByGenericParam && !worseByGenericParam) ||
+				(!betterByGenericParam && worseByGenericParam))
+			{
+				isBetter = betterByGenericParam;
+				isWorse = worseByGenericParam;
+			}
 		}
 
 		if ((isBetter) || (isWorse))
-		{
+		{			
 			RETURN_RESULTS;
 		}
 	}
@@ -790,26 +824,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	// Check for unused extended params as next param - that still counts as using extended form	
 	usedExtendedForm = newMethodInstance->HasParamsArray();	
 	prevUsedExtendedForm = prevMethodInstance->HasParamsArray();	
-
-	// Non-generic is better than generic.
-	//  The only instance where we can disambiguate is when we have the same number of generic arguments, and the
-	//  constraints for one method's generic argument is a superset of another's. More specific is better.	
-
-	//TODO: WE changed this to compare the constraints of the ARGUMENTS
-// 	if (newMethodInstance->GetNumGenericArguments() == prevMethodInstance->GetNumGenericArguments())
-// 	{
-// 		if (newMethodInstance->GetNumGenericArguments() != 0)
-// 		{
-// 			for (int genericIdx = 0; genericIdx < (int)newMethodInstance->mMethodInfoEx->mMethodGenericArguments.size(); genericIdx++)
-// 			{
-// 				auto newMethodGenericParam = newMethodInstance->mMethodInfoEx->mGenericParams[genericIdx];
-// 				auto prevMethodGenericParam = prevMethodInstance->mMethodInfoEx->mGenericParams[genericIdx];
-// 				RETURN_BETTER_OR_WORSE(mModule->AreConstraintsSubset(prevMethodGenericParam, newMethodGenericParam), mModule->AreConstraintsSubset(newMethodGenericParam, prevMethodGenericParam));
-// 			}
-// 		}
-// 	}
-// 	else
-	
+		
 	RETURN_BETTER_OR_WORSE(newMethodInstance->GetNumGenericArguments() == 0, prevMethodInstance->GetNumGenericArguments() == 0);	
 
 	// Not using generic delegate params is better	
@@ -1684,7 +1699,26 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		bool allowSpecializeFail = mModule->mCurTypeInstance->IsUnspecializedType();
 		if (mModule->mCurMethodInstance != NULL)
 			allowSpecializeFail = mModule->mCurMethodInstance->mIsUnspecialized;
+
+// 		if (mModule->mModuleName == "BeefTest_TestProgram")
+// 		{
+// 			OutputDebugStrF("?Prv: %s\n      %s\n?New: %s\n      %s\n\n", 				
+// 				mModule->MethodToString(prevMethodInstance, BfMethodNameFlag_None, &mBestMethodGenericArguments).c_str(),
+// 				mModule->MethodToString(prevMethodInstance, BfMethodNameFlag_None).c_str(),
+// 				mModule->MethodToString(methodInstance, BfMethodNameFlag_None, genericArgumentsSubstitute).c_str(),
+// 				mModule->MethodToString(methodInstance, BfMethodNameFlag_None).c_str());
+// 		}
+
 		CompareMethods(prevMethodInstance, &mBestMethodGenericArguments, methodInstance, genericArgumentsSubstitute, &isBetter, &isWorse, allowSpecializeFail);		
+
+// 		if (mModule->mModuleName == "BeefTest_TestProgram")
+// 		{
+// 			OutputDebugStrF("%sPrv: %s\n      %s\n%sNew: %s\n      %s\n\n", 				
+// 				isWorse ? "*" : " ", mModule->MethodToString(prevMethodInstance, BfMethodNameFlag_None, &mBestMethodGenericArguments).c_str(),
+// 				mModule->MethodToString(prevMethodInstance, BfMethodNameFlag_None).c_str(),
+// 				isBetter ? "*" : " ", mModule->MethodToString(methodInstance, BfMethodNameFlag_None, genericArgumentsSubstitute).c_str(),
+// 				mModule->MethodToString(methodInstance, BfMethodNameFlag_None).c_str());
+// 		}
 
 		// If we had both a 'better' and 'worse', that's ambiguous because the methods are each better in different ways (not allowed)
 		//  And if neither better nor worse then they are equally good, which is not allowed either
@@ -13989,20 +14023,27 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 
 		if ((memberRefExpression->mTarget == NULL) && (memberRefExpression->mMemberName == NULL))
 		{
-			if (mExpectingType != NULL)
+			auto expectingType = mExpectingType;
+			if (expectingType->IsNullable())
+			{
+				auto underlyingType = expectingType->GetUnderlyingType();
+				expectingType = underlyingType;
+			}
+
+			if (expectingType != NULL)
 			{				
-				if (mExpectingType->IsSizedArray())
+				if (expectingType->IsSizedArray())
 				{
 					if (mModule->mParentNodeEntry != NULL)
 					{
 						if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(mModule->mParentNodeEntry->mNode))
 						{
-							InitializedSizedArray((BfSizedArrayType*)mExpectingType, invocationExpr->mOpenParen, invocationExpr->mArguments, invocationExpr->mCommas, invocationExpr->mCloseParen);
+							InitializedSizedArray((BfSizedArrayType*)expectingType, invocationExpr->mOpenParen, invocationExpr->mArguments, invocationExpr->mCommas, invocationExpr->mCloseParen);
 							return;
 						}
 					}
 				}
-				else if (mExpectingType->IsStruct())
+				else if (expectingType->IsStruct())
 				{
 					if ((wasCapturingMethodInfo) && (autoComplete->mMethodMatchInfo != NULL))
 					{
@@ -14019,14 +14060,6 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							BfResolveArgFlags resolveArgsFlags = BfResolveArgFlag_DeferParamEval;
 							ResolveArgValues(argValues, resolveArgsFlags);
 
-							auto expectingType = mExpectingType;
-							if (expectingType->IsNullable())
-							{
-								auto underlyingType = expectingType->GetUnderlyingType();
-								if (underlyingType->IsTypeInstance())
-									expectingType = underlyingType;
-							}
-
 							if ((mReceivingValue != NULL) && (mReceivingValue->mType == expectingType) && (mReceivingValue->IsAddr()))
 							{
 								mResult = *mReceivingValue;
@@ -14041,7 +14074,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 						}
 					}
 				}
-				else if (mExpectingType->IsGenericParam())
+				else if (expectingType->IsGenericParam())
 				{
 					if (mModule->mParentNodeEntry != NULL)
 					{
@@ -14052,8 +14085,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							BfResolveArgFlags resolveArgsFlags = BfResolveArgFlag_None;
 							ResolveArgValues(argValues, resolveArgsFlags);
 
-							CheckGenericCtor((BfGenericParamType*)mExpectingType, argValues, invocationExpr->mTarget);
-							mResult = mModule->GetDefaultTypedValue(mExpectingType);
+							CheckGenericCtor((BfGenericParamType*)expectingType, argValues, invocationExpr->mTarget);
+							mResult = mModule->GetDefaultTypedValue(expectingType);
 							return;
 						}
 					}
@@ -14061,7 +14094,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				else
 				{
 					gaveUnqualifiedDotError = true;
-					mModule->Fail(StrFormat("Cannot use inferred constructor on type '%s'", mModule->TypeToString(mExpectingType).c_str()), memberRefExpression->mDotToken);
+					mModule->Fail(StrFormat("Cannot use inferred constructor on type '%s'", mModule->TypeToString(expectingType).c_str()), memberRefExpression->mDotToken);
 				}
 			}			
 		}

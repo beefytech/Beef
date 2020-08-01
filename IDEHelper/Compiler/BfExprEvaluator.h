@@ -175,6 +175,7 @@ public:
 		bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail);
 	void FlushAmbiguityError();		
 	bool IsType(BfTypedValue& val, BfType* type);
+	int GetMostSpecificType(BfType* lhs, BfType* rhs); // 0, 1, or -1
 
 public:
 	BfMethodMatcher(BfAstNode* targetSrc, BfModule* module, const StringImpl& methodName, SizedArrayImpl<BfResolvedArg>& arguments, BfSizedArray<ASTREF(BfTypeReference*)>* methodGenericArguments);
