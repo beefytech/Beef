@@ -7,7 +7,7 @@ using System.Globalization;
 
 namespace System
 {
-	struct DateTime : IHashable
+	struct DateTime : IHashable, IFormattable
 	{
 		 // Number of 100ns ticks per time unit
 		private const int64 TicksPerMillisecond = 10000;
@@ -820,7 +820,7 @@ namespace System
 			DateTimeFormat.[Friend]Format(this, "t", DateTimeFormatInfo.CurrentInfo, outString);
 		}
 
-		public void ToString(String outString)
+		public override void ToString(String outString)
 		{
 			DateTimeFormat.[Friend]Format(this, .(), DateTimeFormatInfo.CurrentInfo, outString);
 		}
