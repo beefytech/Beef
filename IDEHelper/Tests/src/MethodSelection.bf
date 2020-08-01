@@ -81,6 +81,26 @@ namespace Tests
 			return 2;
 		}
 
+		public static int MethodE<T>(T val, int val2)
+		{
+			return 1;
+		}
+
+		public static int MethodE<T, TVal>(T val, TVal val2) where TVal : const int
+		{
+			return 2;
+		}
+
+		public static int MethodE<T>(List<T> val, int val2)
+		{
+			return 3;
+		}
+
+		public static int MethodE<T, TVal>(List<T> val, TVal val2) where TVal : const int
+		{
+			return 4;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -115,8 +135,14 @@ namespace Tests
 			Test.Assert(MethodB(("A", "B")) == 3);
 			Test.Assert(MethodC(("A", "B")) == 3);
 
-			int[][] arrArr = new int[1][];
+			int[][] arrArr = scope int[1][];
 			Test.Assert(MethodD(ref arrArr) == 2);
+
+			int a = 100;
+			Test.Assert(MethodE(sa, a) == 1);
+			Test.Assert(MethodE(sa, 100) == 2);
+			Test.Assert(MethodE(sal, a) == 3);
+			Test.Assert(MethodE(sal, 200) == 4);
 		}
 	}
 }

@@ -678,6 +678,9 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		bool betterByGenericParam = false;
 		bool worseByGenericParam = false;
 
+		bool betterByConstExprParam = false;
+		bool worseByConstExprParam = false;
+
 		for (argIdx = anyIsExtension ? -1 : 0; argIdx < (int)mArguments.size(); argIdx++)
 		{
 			BfTypedValue arg;
@@ -708,11 +711,19 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			BfType* origParamType = paramType;
 			BfType* origPrevParamType = prevParamType;
 
+			bool paramWasConstExpr = false;
+			bool prevParamWasConstExpr = false;			
+
 			bool paramWasUnspecialized = paramType->IsUnspecializedType();
 			if ((genericArgumentsSubstitute != NULL) && (paramWasUnspecialized))
 			{				
 				paramType = mModule->ResolveGenericType(paramType, NULL, genericArgumentsSubstitute, allowSpecializeFail);
 				paramType = mModule->FixIntUnknown(paramType);
+			}
+			if (paramType->IsConstExprValue())
+			{
+				prevParamWasConstExpr = true;
+				paramType = ((BfConstExprValueType*)paramType)->mType;
 			}
 
 			bool prevParamWasUnspecialized = prevParamType->IsUnspecializedType();
@@ -720,6 +731,11 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			{
 				prevParamType = mModule->ResolveGenericType(prevParamType, NULL, prevGenericArgumentsSubstitute, allowSpecializeFail);
 				prevParamType = mModule->FixIntUnknown(prevParamType);
+			}
+			if (prevParamType->IsConstExprValue())
+			{				
+				prevParamWasConstExpr = true;
+				prevParamType = ((BfConstExprValueType*)prevParamType)->mType;
 			}
 			
 			bool paramsEquivalent = paramType == prevParamType;
@@ -734,10 +750,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				bool isPrevUnspecializedParam = prevParamType->IsUnspecializedType();
 				SET_BETTER_OR_WORSE((!isUnspecializedParam) && (!paramType->IsVar()), 
 					(!isPrevUnspecializedParam) && (!prevParamType->IsVar()));
-
-				if ((!isBetter) && (!isWorse))
-					SET_BETTER_OR_WORSE(paramType->IsConstExprValue(), prevParamType->IsConstExprValue());
-
+				
 				if ((!isBetter) && (!isWorse) && (!isUnspecializedParam) && (!isPrevUnspecializedParam))
 				{
 					SET_BETTER_OR_WORSE((paramType != NULL) && (!paramType->IsUnspecializedType()),
@@ -785,16 +798,22 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				}
 			}
 
-			if (((!isBetter) && (!isWorse)) && (paramsEquivalent) &&
-				((paramWasUnspecialized) || (prevParamWasUnspecialized)))
+			if ((!isBetter) & (!isWorse) && (paramsEquivalent))
 			{
-				int origTypeMoreSpecific = GetMostSpecificType(origParamType, origPrevParamType);
-				if (origTypeMoreSpecific == 0)
-					betterByGenericParam = true;
-				else if (origTypeMoreSpecific == 1)
-					worseByGenericParam = true;
+				if ((origParamType != origPrevParamType) && (paramWasConstExpr) && (!prevParamWasConstExpr))
+					betterByConstExprParam = true;
+				else if ((origParamType != origPrevParamType) && (!paramWasConstExpr) && (prevParamWasConstExpr))
+					worseByConstExprParam = true;
+				else if (((paramWasUnspecialized) || (prevParamWasUnspecialized)))
+				{
+					int origTypeMoreSpecific = GetMostSpecificType(origParamType, origPrevParamType);
+					if (origTypeMoreSpecific == 0)
+						betterByGenericParam = true;
+					else if (origTypeMoreSpecific == 1)
+						worseByGenericParam = true;
+				}
 			}
-
+			
 			if ((newArgIdx >= 0) && (newMethodInstance->GetParamKind(newArgIdx) == BfParamKind_Params))
 				usedExtendedForm = true;
 			if ((prevArgIdx >= 0) && (prevMethodInstance->GetParamKind(prevArgIdx) == BfParamKind_Params))
@@ -812,6 +831,17 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			{
 				isBetter = betterByGenericParam;
 				isWorse = worseByGenericParam;
+			}
+		}
+
+		if ((!isBetter) && (!isWorse))
+		{
+			// Don't allow ambiguity
+			if ((betterByConstExprParam && !worseByConstExprParam) ||
+				(!betterByConstExprParam && worseByConstExprParam))
+			{
+				isBetter = betterByConstExprParam;
+				isWorse = worseByConstExprParam;
 			}
 		}
 
