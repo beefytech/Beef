@@ -3056,22 +3056,23 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 // 		}
 // 	}
 
-	BfType* origUsedType = usedType;
-	bool isDataAccess = ((flags & (BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_Allocates)) != 0);
-	if (isDataAccess)
-	{
-		while (true)
-		{
-			if ((usedType->IsPointer()) || (usedType->IsRef()) || (usedType->IsSizedArray()))
-				usedType = usedType->GetUnderlyingType();
-			else if (usedType->IsArray())
-			{
-				usedType = ((BfTypeInstance*)usedType)->mGenericTypeInfo->mTypeGenericArguments[0];
-			}
-			else
-				break;
-		}
-	}
+	// TODO: It seems this was bogus - it kept the root array from being marked as a dependency (for example)
+// 	BfType* origUsedType = usedType;
+ 	bool isDataAccess = ((flags & (BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_Allocates)) != 0);
+// 	if (isDataAccess)
+// 	{
+// 		while (true)
+// 		{
+// 			if ((usedType->IsPointer()) || (usedType->IsRef()) || (usedType->IsSizedArray()))
+// 				usedType = usedType->GetUnderlyingType();
+// 			else if (usedType->IsArray())
+// 			{
+// 				usedType = ((BfTypeInstance*)usedType)->mGenericTypeInfo->mTypeGenericArguments[0];
+// 			}
+// 			else
+// 				break;
+// 		}
+// 	}
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mHotDataReferenceBuilder != NULL) && (usedType != mCurTypeInstance) && (isDataAccess))
 	{
@@ -3146,7 +3147,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 	}
 
 	auto depFlag = flags;
-	if ((flags & (BfDependencyMap::DependencyFlag_MethodGenericArg | BfDependencyMap::DependencyFlag_TypeGenericArg)) == 0)
+	if ((flags & (BfDependencyMap::DependencyFlag_MethodGenericArg | BfDependencyMap::DependencyFlag_TypeGenericArg)) != 0)
 		depFlag = BfDependencyMap::DependencyFlag_GenericArgRef; // Will cause a rebuild but not an outright deletion of the type
 
 	auto underlyingType = usedType->GetUnderlyingType();
@@ -9773,7 +9774,9 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 			if (paramKind == BfParamKind_Params)
 				methodName += "params ";
 
-			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
+			typeNameFlags = BfTypeNameFlags_None;
+			if (allowResolveGenericParamNames)
+				typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 			BfType* type = methodInst->GetParamType(paramIdx);
 			if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
 				type = ResolveGenericType(type, NULL, methodGenericArgs);
@@ -9799,6 +9802,11 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 		methodName += " " + accessorString;
 	}
 	return methodName;
+}
+
+void BfModule::pv(BfType* type)
+{
+	OutputDebugStrF("%s\n", TypeToString(type).c_str());
 }
 
 static void AddAttributeTargetName(BfAttributeTargets& flagsLeft, BfAttributeTargets checkFlag, String& str, String addString)
@@ -20159,9 +20167,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				BF_ASSERT(boxedType->mElementType->ToTypeInstance()->mModule->mHadBuildError || mContext->mFailTypes.Contains(boxedType->mElementType->ToTypeInstance()));
 			}
 		}
-
+		
 		if (!methodInstance->IsSpecializedGenericMethod())
-			AddDependency(resolvedParamType, typeInstance, BfDependencyMap::DependencyFlag_ParamOrReturnValue);				
+			AddDependency(resolvedParamType, typeInstance, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 		PopulateType(resolvedParamType, BfPopulateType_Declaration);		
 
 		AddDependency(resolvedParamType, mCurTypeInstance, BfDependencyMap::DependencyFlag_LocalUsage);
