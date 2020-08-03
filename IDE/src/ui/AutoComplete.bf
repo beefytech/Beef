@@ -534,8 +534,6 @@ namespace IDE.ui
 
 					int windowHeight = (int)(mWantHeight + Math.Max(0, mDocHeight - GS!(32)));
 
-					Debug.WriteLine("Updating {} {}", windowWidth, mRightBoxAdjust);
-
 					mIgnoreMove++;
 					if (mAutoComplete.mInvokeWidget != null)
 						mAutoComplete.mInvokeWidget.mIgnoreMove++;

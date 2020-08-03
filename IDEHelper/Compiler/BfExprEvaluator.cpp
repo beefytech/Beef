@@ -10424,18 +10424,23 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
  					{
  						String paramName = invokeMethodInstance->GetParamName(paramIdx);
  						autoComplete->mEntriesSet.Clear();
+						if (paramName.IsEmpty())
+							paramName += StrFormat("val%d", paramIdx + 1);
  						autoComplete->AddEntry(AutoCompleteEntry("paramName", paramName));
  						autoComplete->mInsertStartIdx = cursorIdx;
  						autoComplete->mInsertEndIdx = cursorIdx;
 
-						if ((paramIdx == 0) && (lambdaBindExpr->mParams.IsEmpty()))
+						if ((paramIdx == 0) && (lambdaBindExpr->mParams.IsEmpty()))						
 						{
 							String totalNames;
 							for (int checkIdx = 0; checkIdx < (int)invokeMethodInstance->GetParamCount(); checkIdx++)
 							{
 								if (!totalNames.IsEmpty())
 									totalNames += ", "; 
-								totalNames += invokeMethodInstance->GetParamName(checkIdx);
+								String paramName = invokeMethodInstance->GetParamName(checkIdx);
+								if (paramName.IsEmpty())
+									paramName += StrFormat("val%d", checkIdx + 1);
+								totalNames += paramName;
 							}
 							autoComplete->AddEntry(AutoCompleteEntry("paramNames", totalNames));
 						}
@@ -12186,9 +12191,10 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 
 		BfResolvedArgs resolvedArgs;
 
-		if (autoComplete != NULL)
+		auto rawAutoComplete = mModule->mCompiler->GetAutoComplete();
+		if (rawAutoComplete != NULL)
 		{
-			SetAndRestoreValue<bool> prevCapturing(autoComplete->mIsCapturingMethodMatchInfo, false);
+			SetAndRestoreValue<bool> prevCapturing(rawAutoComplete->mIsCapturingMethodMatchInfo, false);
 			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, false);
 		}
 		else
