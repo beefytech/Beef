@@ -20177,6 +20177,14 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		if ((paramDef != NULL) && (paramDef->mParamDeclaration != NULL) && (paramDef->mParamDeclaration->mInitializer != NULL) &&
 			(!paramDef->mParamDeclaration->mInitializer->IsA<BfBlock>()))
 		{
+			if (paramDef->mParamKind == BfParamKind_Params)
+			{
+				BfAstNode* refNode = paramDef->mParamDeclaration->mEqualsNode;
+				if (refNode != NULL)
+					refNode = paramDef->mParamDeclaration->mModToken;
+				Fail("Cannot specify a default value for a 'params' parameter", refNode);
+			}
+
 			BfMethodState methodState;			
 			SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, &methodState);
 			methodState.mTempKind = BfMethodState::TempKind_Static;
