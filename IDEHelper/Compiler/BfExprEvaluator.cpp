@@ -5910,7 +5910,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						argValue = mModule->LoadValue(argValue);
 						auto firstAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, firstElem->mDataIdx);
 						auto indexedAddr = mModule->CreateIndexedValue(argValue.mType, firstAddr, extendedParamIdx);
-						auto storeInst = mModule->mBfIRBuilder->CreateAlignedStore(argValue.mValue, indexedAddr, argValue.mType->mAlign);
+						if (argValue.IsSplat())
+							mModule->AggregateSplatIntoAddr(argValue, indexedAddr);
+						else
+							mModule->mBfIRBuilder->CreateAlignedStore(argValue.mValue, indexedAddr, argValue.mType->mAlign);
 					}
 				}				
 			}
