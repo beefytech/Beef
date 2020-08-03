@@ -47,12 +47,20 @@ namespace Tests
 		class ClassB
 		{
 			public StructA B { get; set; }
+			public int IVal { get => 1; }
+			public virtual int IVal2 { get => 2; }
 
 			int mZ = 9;
 
 			public this()
 			{
 			}
+		}
+
+		class ClassC : ClassB
+		{
+			public new int IVal { get => base.IVal + 100; }
+			public override int IVal2 { get => base.IVal2 + 100; }
 		}
 
 		[Test]
@@ -71,6 +79,13 @@ namespace Tests
 			cb.B = .(333);
 			sa = cb.B;
 			Test.Assert(sa.mA == 333);
+
+			ClassC cc = scope .();
+			Test.Assert(cc.IVal == 101);
+			Test.Assert(cc.IVal2 == 102);
+			ClassB cb2 = cc;
+			Test.Assert(cb2.IVal == 1);
+			Test.Assert(cb2.IVal2 == 102);
 		}
 	}
 }

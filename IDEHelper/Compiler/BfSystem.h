@@ -575,6 +575,7 @@ public:
 		mNextWithSameName = NULL;
 	}	
 
+	bool IsVirtual();
 	bool HasExplicitInterface();	
 	BfAstNode* GetRefNode();
 };

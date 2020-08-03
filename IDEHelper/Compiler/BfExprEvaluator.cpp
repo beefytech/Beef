@@ -7749,10 +7749,8 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 			auto target = mModule->GetThis();
 			target.mType = type;
 			mResult = LookupField(nameNode->mRight, target, fieldName);
-			if (mPropDef != NULL)
-			{
-				mPropDefBypassVirtual = true;
-			}
+			if ((mPropDef != NULL) && (mPropDef->IsVirtual()))
+				mPropDefBypassVirtual = true;			
 			return;
 		}
 	}
@@ -7906,10 +7904,8 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 	if (mPropDef != NULL)
 	{
 		mOrigPropTarget = origResult;
-		if ((CheckIsBase(nameNode->mLeft)) || (wasBaseLookup))
-		{
+		if (((CheckIsBase(nameNode->mLeft)) || (wasBaseLookup))	&& (mPropDef->IsVirtual()))
 			mPropDefBypassVirtual = true;
-		}		
 	}
 	if ((mResult) || (mPropDef != NULL))
 		return;		
@@ -7946,10 +7942,8 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 			auto target = mModule->GetThis();
 			target.mType = type;
 			mResult = LookupField(nameRight, target, fieldName);
-			if (mPropDef != NULL)
-			{
-				mPropDefBypassVirtual = true;
-			}
+			if ((mPropDef != NULL) && (mPropDef->IsVirtual()))
+				mPropDefBypassVirtual = true;			
 			return;
 		}
 	}
@@ -8119,7 +8113,8 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 		mOrigPropTarget = origResult;
 		if ((CheckIsBase(nameLeft)) || (wasBaseLookup))
 		{
-			mPropDefBypassVirtual = true;
+			if (mPropDef->IsVirtual())
+				mPropDefBypassVirtual = true;
 		}
 	}
 	if ((mResult) || (mPropDef != NULL))

@@ -381,6 +381,13 @@ BfSizedAtomComposite::~BfSizedAtomComposite()
 
 //////////////////////////////////////////////////////////////////////////
 
+bool BfPropertyDef::IsVirtual()
+{
+	if (((BfPropertyDeclaration*)mFieldDeclaration)->mVirtualSpecifier)
+		return true;
+	return false;
+}
+
 bool BfPropertyDef::HasExplicitInterface()
 {	
 	for (auto methodDef : mMethods)
