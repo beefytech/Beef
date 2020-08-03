@@ -3803,6 +3803,9 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 		mCallStack.Add(wdStackFrame);
 		DbgTypedValue result = conditional->mDbgEvaluationContext->EvaluateInContext(DbgTypedValue());
 		ClearCallStack();		
+		
+		if ((result.mType != NULL) && (result.mType->mTypeCode == DbgType_Bitfield))
+			result.mType = result.mType->mTypeParam;
 
 		if (conditional->mDbgEvaluationContext->mPassInstance->HasFailed())
 		{
