@@ -14056,7 +14056,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		if ((memberRefExpression->mTarget == NULL) && (memberRefExpression->mMemberName == NULL))
 		{
 			auto expectingType = mExpectingType;
-			if (expectingType->IsNullable())
+			if ((expectingType != NULL) && (expectingType->IsNullable()))
 			{
 				auto underlyingType = expectingType->GetUnderlyingType();
 				expectingType = underlyingType;
@@ -15042,11 +15042,6 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 					BF_ASSERT(!mResult.mType->IsRef());
 				}
 			}
-		}
-
-		if (mResultFieldInstance != NULL)
-		{
-			NOP;
 		}
 
 		mPropDef = NULL;
