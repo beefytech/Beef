@@ -13837,6 +13837,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 			localVar->mIsReadOnly = argValue.IsReadOnly();
 		}
+		if (argValue.IsReadOnly())
+			localVar->mIsReadOnly = true;
 		
 		if (argIdx == -1)
 		{
@@ -15041,6 +15043,12 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				}
 			}
 		}
+
+		if (mResultFieldInstance != NULL)
+		{
+			NOP;
+		}
+
 		mPropDef = NULL;
 		mPropDefBypassVirtual = false;
 		mIndexerValues.clear();
@@ -15354,7 +15362,10 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 			{
 				if (!mModule->mCurMethodInstance->IsMixin())
 				{
-					if ((localVar->mResolvedType->IsGenericParam()) && (onlyNeedsMut))
+					if (mModule->mCurMethodState->mMixinState != NULL)
+						error = mModule->Fail(StrFormat("Cannot %s mixin parameter '%s'", modifyType,
+							localVar->mName.c_str(), mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+					else if ((localVar->mResolvedType->IsGenericParam()) && (onlyNeedsMut))
 						error = mModule->Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'mut' or 'ref' specifier to parameter or copying to a local variable.", modifyType,
 							localVar->mName.c_str(), mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					else
