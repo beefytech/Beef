@@ -18,17 +18,17 @@ public:
 };
 
 struct BeVTrackingBits
-{	
+{
 	// Memory is allocated by BeVTrackingContext
 	bool IsSet(int idx);
 	void Set(int idx);
-	void Clear(int idx);	
+	void Clear(int idx);
 };
 
 struct BeVTrackingValue
 {
 public:
-	BeVTrackingBits* mEntry;	
+	BeVTrackingBits* mEntry;
 	int mNumEntries;
 
 	BeVTrackingValue(int maxSize)
@@ -41,7 +41,7 @@ public:
 	~BeVTrackingValue()
 	{
 		delete[](int32*)mEntry;
-	}	
+	}
 
 	void Clear()
 	{
@@ -60,13 +60,13 @@ public:
 	{
 	public:
 		BeVTrackingList* mList;
-		int mIdx;		
+		int mIdx;
 
 	public:
 		Iterator(BeVTrackingList* list)
-		{			
+		{
 			mList = list;
-			mIdx = 0;			
+			mIdx = 0;
 		}
 
 		Iterator& operator++()
@@ -147,7 +147,7 @@ struct BeMemSetInfo
 {
 public:
 	int32 mSize;
-	int8 mAlign;	
+	int8 mAlign;
 	uint8 mValue;
 };
 
@@ -155,7 +155,7 @@ struct BeMemCpyInfo
 {
 public:
 	int32 mSize;
-	int8 mAlign;	
+	int8 mAlign;
 };
 
 struct BeVRegPair
@@ -166,14 +166,14 @@ struct BeVRegPair
 };
 
 struct BeCmpResult
-{	
+{
 	BeCmpKind mCmpKind;
-	int mResultVRegIdx;	
+	int mResultVRegIdx;
 
 	BeCmpResult()
 	{
 		mCmpKind = BeCmpKind_None;
-		mResultVRegIdx = -1;		
+		mResultVRegIdx = -1;
 	}
 };
 
@@ -182,7 +182,7 @@ struct BeNotResult;
 enum BeMCOperandKind
 {
 	BeMCOperandKind_None,
-	BeMCOperandKind_NativeReg,	
+	BeMCOperandKind_NativeReg,
 	BeMCOperandKind_VReg,
 	BeMCOperandKind_VRegAddr,
 	BeMCOperandKind_VRegLoad,
@@ -199,7 +199,7 @@ enum BeMCOperandKind
 	BeMCOperandKind_Immediate_f64_Packed128,
 	BeMCOperandKind_ConstAgg,
 	BeMCOperandKind_Block,
-	BeMCOperandKind_Label,	
+	BeMCOperandKind_Label,
 	BeMCOperandKind_CmpKind,
 	BeMCOperandKind_CmpResult,
 	BeMCOperandKind_NotResult,
@@ -218,7 +218,7 @@ enum BeMCPreserveFlag
 
 class BeMCOperand
 {
-public:	
+public:
 	enum EncodeFlag
 	{
 		EncodeFlag_Addr = 0x80000000,
@@ -226,7 +226,7 @@ public:
 		EncodeFlag_IdxMask = 0x0FFFFFFF
 	};
 
-	BeMCOperandKind mKind;	
+	BeMCOperandKind mKind;
 	union
 	{
 		X64CPURegister mReg;
@@ -242,25 +242,25 @@ public:
 		BeConstant* mConstant;
 		int mLabelIdx;
 		int mSymbolIdx;
-		BeCmpKind mCmpKind;		
+		BeCmpKind mCmpKind;
 		int mCmpResultIdx;
 		BeMemSetInfo mMemSetInfo;
 		BeMemCpyInfo mMemCpyInfo;
-		BeVRegPair mVRegPair;		
+		BeVRegPair mVRegPair;
 		BeMCPreserveFlag mPreserveFlag;
-	};		
+	};
 
 public:
 	BeMCOperand()
 	{
-		mKind = BeMCOperandKind_None;		
+		mKind = BeMCOperandKind_None;
 	}
 
 	operator bool() const
 	{
 		return mKind != BeMCOperandKind_None;
 	}
-	
+
 	bool IsVReg() const
 	{
 		return (mKind == BeMCOperandKind_VReg);
@@ -270,7 +270,7 @@ public:
 	{
 		return (mKind == BeMCOperandKind_VReg) || (mKind == BeMCOperandKind_VRegAddr) || (mKind == BeMCOperandKind_VRegLoad);
 	}
-	
+
 	bool MayBeMemory()
 	{
 		return (mKind >= BeMCOperandKind_VReg) && (mKind <= BeMCOperandKind_SymbolAddr);
@@ -300,7 +300,7 @@ public:
 	{
 		return (mKind == BeMCOperandKind_Symbol) || (mKind == BeMCOperandKind_SymbolAddr);
 	}
-	
+
 	bool operator==(const BeMCOperand& other) const
 	{
 		if (mKind != other.mKind)
@@ -351,7 +351,7 @@ public:
 			return mImmF64;
 		return 0;
 	}
-	
+
 	static BeMCOperand FromEncoded(int vregIdx)
 	{
 		BeMCOperand operand;
@@ -370,9 +370,9 @@ public:
 			else
 				operand.mKind = BeMCOperandKind_VReg;
 		}
-		
+
 		return operand;
-	}	
+	}
 
 	static BeMCOperand ToLoad(const BeMCOperand& operand)
 	{
@@ -383,20 +383,6 @@ public:
 			loadedOperand.mKind = BeMCOperandKind_VReg;
 		else if (loadedOperand.mKind == BeMCOperandKind_SymbolAddr)
 			loadedOperand.mKind = BeMCOperandKind_Symbol;
-		else
-			BF_FATAL("Bad");
-		return loadedOperand;
-	}
-
-	static BeMCOperand ToAddr(const BeMCOperand& operand)
-	{
-		BeMCOperand loadedOperand = operand;
-		if (loadedOperand.mKind == BeMCOperandKind_VRegLoad)
-			loadedOperand.mKind = BeMCOperandKind_VReg;
-		else if (loadedOperand.mKind == BeMCOperandKind_VReg)
-			loadedOperand.mKind = BeMCOperandKind_VRegAddr;
-		else if (loadedOperand.mKind == BeMCOperandKind_Symbol)
-			loadedOperand.mKind = BeMCOperandKind_SymbolAddr;
 		else
 			BF_FATAL("Bad");
 		return loadedOperand;
@@ -464,7 +450,7 @@ public:
 		operand.mKind = BeMCOperandKind_Symbol;
 		operand.mSymbolIdx = symIdx;
 		return operand;
-	}	
+	}
 
 	static BeMCOperand FromSymbolAddr(int symIdx)
 	{
@@ -472,7 +458,7 @@ public:
 		operand.mKind = BeMCOperandKind_SymbolAddr;
 		operand.mSymbolIdx = symIdx;
 		return operand;
-	}	
+	}
 
 	static BeMCOperand FromPreserveFlag(BeMCPreserveFlag preserveFlag)
 	{
@@ -499,11 +485,11 @@ enum BeMCInstKind
 	BeMCInstKind_DbgRangeStart,
 	BeMCInstKind_DbgRangeEnd, // Extends life of local variables/arguments to their lexical scope end
 	BeMCInstKind_LifetimeExtend,
-	BeMCInstKind_LifetimeStart,	
-	BeMCInstKind_LifetimeEnd,			
+	BeMCInstKind_LifetimeStart,
+	BeMCInstKind_LifetimeEnd,
 	BeMCInstKind_ValueScopeSoftEnd,
 	BeMCInstKind_ValueScopeHardEnd,
-	BeMCInstKind_Label,		
+	BeMCInstKind_Label,
 	BeMCInstKind_CmpToBool,
 	BeMCInstKind_MemSet,
 	BeMCInstKind_MemCpy,
@@ -514,9 +500,9 @@ enum BeMCInstKind
 	BeMCInstKind_Unwind_PushReg,
 	BeMCInstKind_Unwind_SaveXMM,
 	BeMCInstKind_Unwind_Alloc,
-	BeMCInstKind_Unwind_SetBP,	
+	BeMCInstKind_Unwind_SetBP,
 	BeMCInstKind_Rem,
-	BeMCInstKind_IRem,	
+	BeMCInstKind_IRem,
 
 	// Legal instructions
 	BeMCInstKind_Nop,
@@ -524,9 +510,9 @@ enum BeMCInstKind
 	BeMCInstKind_EnsureInstructionAt,
 	BeMCInstKind_DbgBreak,
 	BeMCInstKind_MFence,
-	BeMCInstKind_Mov,	
+	BeMCInstKind_Mov,
 	BeMCInstKind_MovRaw,
-	BeMCInstKind_MovSX,	
+	BeMCInstKind_MovSX,
 	BeMCInstKind_XChg,
 	BeMCInstKind_XAdd,
 	BeMCInstKind_CmpXChg,
@@ -536,13 +522,13 @@ enum BeMCInstKind
 	BeMCInstKind_Pop,
 	BeMCInstKind_Neg,
 	BeMCInstKind_Not,
-	BeMCInstKind_Add,	
+	BeMCInstKind_Add,
 	BeMCInstKind_Sub,
 	BeMCInstKind_Mul,
 	BeMCInstKind_IMul,
 	BeMCInstKind_Div,
 	BeMCInstKind_IDiv,
-	BeMCInstKind_Cmp,	
+	BeMCInstKind_Cmp,
 	BeMCInstKind_And,
 	BeMCInstKind_Or,
 	BeMCInstKind_Xor,
@@ -575,17 +561,17 @@ struct BeVRegLastUseRecord
 class BeMCInst
 {
 public:
-	BeMCInstKind mKind;	
-	
+	BeMCInstKind mKind;
+
 	BeMCOperand mResult;
 	BeMCOperand mArg0;
 	BeMCOperand mArg1;
 
 	BeVTrackingList* mLiveness;
-	BeVTrackingList* mVRegsInitialized;	
+	BeVTrackingList* mVRegsInitialized;
 	BeVRegLastUseRecord* mVRegLastUseRecord;
 	BeDbgLoc* mDbgLoc;
-	
+
 	bool IsDef()
 	{
 		return (mKind == BeMCInstKind_Def) || (mKind == BeMCInstKind_DefLoad);
@@ -624,8 +610,8 @@ public:
 	bool IsPsuedo()
 	{
 		return (mKind <= BeMCInstKind_Unwind_SetBP);
-	}	
-	
+	}
+
 	BeMCOperand* GetDest()
 	{
 		if (mResult)
@@ -650,15 +636,15 @@ public:
 		case BeMCInstKind_IDiv:
 		case BeMCInstKind_And:
 		case BeMCInstKind_Or:
-		case BeMCInstKind_Xor:	
+		case BeMCInstKind_Xor:
 		case BeMCInstKind_Shl:
 		case BeMCInstKind_Shr:
 		case BeMCInstKind_Sar:
 			return &mArg0;
 		}
-		
+
 		return NULL;
-	}	
+	}
 };
 
 class BeMCBlock
@@ -683,15 +669,15 @@ public:
 	BeMCBlock()
 	{
 		mLabelIdx = -1;
-		mIsLooped = false;						
+		mIsLooped = false;
 		mBlockIdx = -1;
 		mMaxDeclBlockId = -1;
 		mSuccLiveness = NULL;
 		mSuccVRegsInitialized = NULL;
 		mPredVRegsInitialized = NULL;
 	}
-		
-	void AddPred(BeMCBlock* pred);		
+
+	void AddPred(BeMCBlock* pred);
 	int FindLabelInstIdx(int labelIdx);
 };
 
@@ -725,7 +711,7 @@ public:
 	}
 
 	void Next();
-	
+
 	bool HasMore()
 	{
 		return mReadIdx < mBlock->mInstructions.mSize;
@@ -746,14 +732,14 @@ class BeMCPhiValue
 {
 public:
 	BeMCBlock* mBlockFrom;
-	BeMCOperand mValue;	
+	BeMCOperand mValue;
 	int mLandingLabel;
 };
 
 class BeMCPhi
 {
 public:
-	BeMCBlock* mBlock;	
+	BeMCBlock* mBlock;
 	Array<BeMCPhiValue> mValues;
 	int mIdx;
 
@@ -765,7 +751,7 @@ enum BeMCRMMode
 {
 	BeMCRMMode_Invalid,
 	BeMCRMMode_Direct,
-	BeMCRMMode_Deref	
+	BeMCRMMode_Deref
 };
 
 enum BeMCValueScopeRetainKind : uint8
@@ -795,7 +781,7 @@ public:
 	bool mSpilled;
 	BeMCValueScopeRetainKind mValueScopeRetainedKind;
 	bool mAwaitingDbgStart;
-	bool mHasAmbiguousInitialization;	
+	bool mHasAmbiguousInitialization;
 	bool mIsRetVal;
 	bool mForceMerge; // Original param, not the 'debug holder'
 	bool mDefOnFirstUse;
@@ -807,25 +793,25 @@ public:
 	bool mDisableEx; // Disable any registers that require a REX 
 	int mVRegAffinity; // Try to match the mReg of this vreg
 	BeMCOperand mRelTo;
-	int mRelOffsetScale;	
-	BeMCOperand mRelOffset;	
+	int mRelOffsetScale;
+	BeMCOperand mRelOffset;
 	int mVolatileVRegSave;
-	BeDbgVariable* mDbgVariable;	
+	BeDbgVariable* mDbgVariable;
 
 	bool mFoundLastUse;
 	bool mMustExist; // Regs we must be able to debug
 	// Must be refreshed with RefreshRefCounts	
 	int mRefCount;
-	int mAssignCount;	
+	int mAssignCount;
 
 public:
 	BeMCVRegInfo()
 	{
 		mAlign = -1;
-		mRegNumPinned = false;		
+		mRegNumPinned = false;
 		mReg = X64Reg_None;
 		mNaturalReg = X64Reg_None;
-		mType = NULL;		
+		mType = NULL;
 		mIsExpr = false;
 		mWantsExprActualize = false;
 		mWantsExprOffsetActualize = false;
@@ -853,7 +839,7 @@ public:
 		mRefCount = -1;
 		mAssignCount = -1;
 		mVolatileVRegSave = -1;
-		mMustExist = false;		
+		mMustExist = false;
 		mIsRetVal = false;
 		mFoundLastUse = false;
 	}
@@ -874,14 +860,14 @@ public:
 	bool IsDirectRelTo()
 	{
 		return ((mRelTo.mKind == BeMCOperandKind_VReg) || (mRelTo.mKind == BeMCOperandKind_NativeReg)) &&
-            (mRelOffset.IsZero()) && (mRelOffsetScale == 1);
+			(mRelOffset.IsZero()) && (mRelOffsetScale == 1);
 	}
 
 	bool IsDirectRelToAny()
 	{
 		return (mRelTo) && (mRelOffset.IsZero()) && (mRelOffsetScale == 1);
 	}
-	
+
 	void SetRetVal()
 	{
 		//BF_ASSERT(!mForceMem);
@@ -896,45 +882,45 @@ enum BeMCInstForm
 	BeMCInstForm_R8_RM8,
 	BeMCInstForm_R16_RM16,
 	BeMCInstForm_R32_RM32,
-	BeMCInstForm_R64_RM64,		
+	BeMCInstForm_R64_RM64,
 	BeMCInstForm_R8_RM64_ADDR,
 	BeMCInstForm_R16_RM64_ADDR,
 	BeMCInstForm_R32_RM64_ADDR,
-	BeMCInstForm_R64_RM64_ADDR,	
+	BeMCInstForm_R64_RM64_ADDR,
 	BeMCInstForm_RM8_R8,
 	BeMCInstForm_RM16_R16,
 	BeMCInstForm_RM32_R32,
-	BeMCInstForm_RM64_R64,			
-	BeMCInstForm_RM64_R8_ADDR,	
-	BeMCInstForm_RM64_R16_ADDR,	
-	BeMCInstForm_RM64_R32_ADDR,	
+	BeMCInstForm_RM64_R64,
+	BeMCInstForm_RM64_R8_ADDR,
+	BeMCInstForm_RM64_R16_ADDR,
+	BeMCInstForm_RM64_R32_ADDR,
 	BeMCInstForm_RM64_R64_ADDR,
-	BeMCInstForm_RM8_IMM8,	
+	BeMCInstForm_RM8_IMM8,
 	BeMCInstForm_RM16_IMM8,
 	BeMCInstForm_RM32_IMM8,
-	BeMCInstForm_RM64_IMM8,	
+	BeMCInstForm_RM64_IMM8,
 	BeMCInstForm_RM16_IMM16,
 	BeMCInstForm_RM32_IMM16,
-	BeMCInstForm_RM64_IMM16,		
+	BeMCInstForm_RM64_IMM16,
 	BeMCInstForm_RM32_IMM32,
-	BeMCInstForm_RM64_IMM32,	
+	BeMCInstForm_RM64_IMM32,
 	BeMCInstForm_RM64_IMM64,
 	BeMCInstForm_RM8,
 	BeMCInstForm_RM16,
 	BeMCInstForm_RM32,
-	BeMCInstForm_RM64,			
+	BeMCInstForm_RM64,
 	BeMCInstForm_IMM32,
 	BeMCInstForm_R8,
 	BeMCInstForm_R16,
 	BeMCInstForm_R32,
-	BeMCInstForm_R64,	
-	
+	BeMCInstForm_R64,
+
 	BeMCInstForm_XMM32_IMM,
 	BeMCInstForm_XMM64_IMM,
 	BeMCInstForm_XMM32_FRM32,
 	BeMCInstForm_XMM64_FRM32,
 	BeMCInstForm_XMM32_FRM64,
-	BeMCInstForm_XMM64_FRM64,	
+	BeMCInstForm_XMM64_FRM64,
 	BeMCInstForm_FRM32_XMM32,
 	BeMCInstForm_FRM64_XMM32,
 	BeMCInstForm_FRM32_XMM64,
@@ -943,7 +929,7 @@ enum BeMCInstForm
 	BeMCInstForm_XMM64_RM32,
 	BeMCInstForm_XMM32_RM64,
 	BeMCInstForm_XMM64_RM64,
-	BeMCInstForm_R32_F32,	
+	BeMCInstForm_R32_F32,
 	BeMCInstForm_R64_F32,
 	BeMCInstForm_R32_F64,
 	BeMCInstForm_R64_F64,
@@ -960,7 +946,7 @@ enum BeTrackKind
 	BetTrackKind_Default = 0,
 
 	// Liveness
-	BeTrackKind_Exists = 0,		
+	BeTrackKind_Exists = 0,
 
 	// Initialized
 	BeTrackKind_Initialized = 0,
@@ -1000,11 +986,11 @@ public:
 
 public:
 	BeVTrackingContext(BeMCContext* mcContext);
-	
+
 	void Init(int numItems);
-	void Clear();	
-	int GetBitsBytes();	
-	int GetIdx(int baseIdx, BeTrackKind trackKind);	
+	void Clear();
+	int GetBitsBytes();
+	int GetIdx(int baseIdx, BeTrackKind trackKind);
 	void Print(BeVTrackingList* list);
 
 	BeVTrackingList* AllocEmptyList();
@@ -1019,8 +1005,8 @@ public:
 	bool IsSet(BeVTrackingList* entry, int idx, BeTrackKind trackKind);
 	BeVTrackingList* Clear(BeVTrackingList* list, const SizedArrayImpl<int>& indices);
 	bool IsEmpty(BeVTrackingList* list);
-	BeVTrackingList* Merge(BeVTrackingList* prevDestEntry, BeVTrackingList* mergeFrom);	
-	BeVTrackingList* MergeChanges(BeVTrackingList* prevDestEntry, BeVTrackingList* mergeFrom);	
+	BeVTrackingList* Merge(BeVTrackingList* prevDestEntry, BeVTrackingList* mergeFrom);
+	BeVTrackingList* MergeChanges(BeVTrackingList* prevDestEntry, BeVTrackingList* mergeFrom);
 	BeVTrackingList* SetChanges(BeVTrackingList* prevDestEntry, BeVTrackingList* mergeFrom);
 	BeVTrackingList* RemoveChange(BeVTrackingList* prevDestEntry, int idx);
 };
@@ -1056,7 +1042,7 @@ public:
 
 class BeMCColorizer
 {
-public:	
+public:
 	struct Node
 	{
 		HashSet<int> mEdges;
@@ -1100,11 +1086,11 @@ public:
 	struct BlockInfo
 	{
 		HashSet<X64CPURegister> mSuccLiveRegs;
-		bool mEntryCount;		
+		bool mEntryCount;
 
 		BlockInfo()
 		{
-			mEntryCount = 0;			
+			mEntryCount = 0;
 		}
 	};
 
@@ -1116,14 +1102,14 @@ public:
 
 	Array<BlockInfo> mBlockInfo;
 	Array<Node> mNodes;
-	BeMCContext* mContext;	
+	BeMCContext* mContext;
 	bool mReserveParamRegs;
 
 public:
 	BeMCColorizer(BeMCContext* mcContext);
-		
+
 	void Prepare();
-	void AddEdge(int vreg0, int vreg1);	
+	void AddEdge(int vreg0, int vreg1);
 	void PropogateMemCost(const BeMCOperand& operand, int memCost);
 	void GenerateRegCosts();
 	void AssignRegs(RegKind regKind); // Returns false if we had spills - we need to rerun
@@ -1189,7 +1175,7 @@ public:
 			toNode->mFrom = from;
 			fromNode->mTo = to;
 			return;
-		}				
+		}
 	}
 
 	int GetHead(int idx)
@@ -1253,7 +1239,7 @@ public:
 		int mGenerateCount;
 
 		Entry()
-		{					
+		{
 			mGenerateQueued = false;
 			mGenerateCount = 0;
 		}
@@ -1271,7 +1257,7 @@ public:
 	{
 		mCalls = 0;
 		mHandledCalls = 0;
-		mInstructions = 0;		
+		mInstructions = 0;
 		mEmptyList = NULL;
 	}
 };
@@ -1283,7 +1269,7 @@ struct BeRMParamsInfo
 	int mBScale;
 	int mDisp;
 	BeMCRMMode mMode;
-	
+
 	int mErrorVReg;
 	int mVRegWithScaledOffset;
 
@@ -1291,8 +1277,8 @@ struct BeRMParamsInfo
 	{
 		mRegA = X64Reg_None;
 		mRegB = X64Reg_None;
-		mBScale = 1;		
-		mDisp = 0;		
+		mBScale = 1;
+		mDisp = 0;
 		mMode = BeMCRMMode_Invalid;
 
 		mErrorVReg = -1;
@@ -1305,10 +1291,10 @@ class BeMCContext
 {
 public:
 	BeCOFFObject* mCOFFObject;
-	DynMemStream& mOut;	
+	DynMemStream& mOut;
 	bool mDebugging;
 	bool mFailed;
-	int mDetectLoopIdx;	
+	int mDetectLoopIdx;
 
 	BeVTrackingContext mLivenessContext;
 	BeVTrackingContext mVRegInitializedContext;
@@ -1322,58 +1308,59 @@ public:
 	BeType* mNativeIntType;
 	BeModule* mModule;
 	BeMCBlock* mActiveBlock;
+	BeMCInst* mActiveInst;
 	int* mInsertInstIdxRef;
 	BeBlock* mActiveBeBlock;
-	BeFunction* mBeFunction;	
+	BeFunction* mBeFunction;
 	BeDbgFunction* mDbgFunction;
 	Array<BeMCVRegInfo*> mVRegInfo;
 	Array<BeCmpResult> mCmpResults;
 	int mCompositeRetVRegIdx;
 	int mTLSVRegIdx;
 	int mLegalizationIterations;
-	
+
 	Array<int> mCallArgVRegs[BeMCNativeTypeCode_COUNT];
 
 	int mStackSize;
 	bool mUseBP;
 	int mCurLabelIdx;
-	int mCurPhiIdx;	
+	int mCurPhiIdx;
 	int mMaxCallParamCount; // -1 if we have no calls
 	Array<X64CPURegister> mParamsUsedRegs;
-	HashSet<X64CPURegister> mUsedRegs;	
+	HashSet<X64CPURegister> mUsedRegs;
 	BeDbgLoc* mCurDbgLoc;
 	BeVTrackingList* mCurVRegsInit;
 	BeVTrackingList* mCurVRegsLive;
 	Array<int> mTextRelocs;
-	Array<BeMCSwitchEntry> mSwitchEntries;	
+	Array<BeMCSwitchEntry> mSwitchEntries;
 
 	Dictionary<int, X64CPURegister> mDbgPreferredRegs;
 
-public:		
+public:
 	void NotImpl();
 	void Fail(const StringImpl& str);
 	void SoftFail(const StringImpl& str, BeDbgLoc* dbgLoc = NULL);
 	void ToString(BeMCInst* inst, String& str, bool showVRegFlags, bool showVRegDetails);
 	String ToString(const BeMCOperand& operand);
 	String ToString(bool showVRegFlags = true, bool showVRegDetails = false);
-	void Print(bool showVRegFlags, bool showVRegDetails);	
-	void Print();	
+	void Print(bool showVRegFlags, bool showVRegDetails);
+	void Print();
 	BeMCOperand GetOperand(BeValue* value, bool allowMetaResult = false, bool allowFail = false); // Meta results are PHIs or CmpResults
 	BeMCOperand CreateNot(const BeMCOperand& operand);
-	BeType* GetType(const BeMCOperand& operand);	
+	BeType* GetType(const BeMCOperand& operand);
 	bool AreTypesEquivalent(BeType* type0, BeType* type1);
 	void AddRelRefs(BeMCOperand& operand, int refCount);
 	int FindSafeInstInsertPos(int instIdx, bool forceSafeCheck = false);
 	BeMCInst* AllocInst(int insertIdx = -1);
 	BeMCInst* AllocInst(BeMCInstKind instKind, int insertIdx = -1);
 	BeMCInst* AllocInst(BeMCInstKind instKind, const BeMCOperand& arg0, int insertIdx = -1);
-	BeMCInst* AllocInst(BeMCInstKind instKind, const BeMCOperand& arg0, const BeMCOperand& arg1, int insertIdx = -1);	
+	BeMCInst* AllocInst(BeMCInstKind instKind, const BeMCOperand& arg0, const BeMCOperand& arg1, int insertIdx = -1);
 	void MergeInstFlags(BeMCInst* prevInst, BeMCInst* inst, BeMCInst* nextInst);
 	void RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerged = true, bool removeFromList = true);
 	BeMCOperand AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand & lhs, const BeMCOperand & rhs, BeMCBinIdentityKind identityKind);
-	BeMCOperand GetCallArgVReg(int argIdx, BeTypeCode typeCode);	
+	BeMCOperand GetCallArgVReg(int argIdx, BeTypeCode typeCode);
 	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, bool isVarArg = false);
-	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeValue*>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, bool isVarArg = false);	
+	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeValue*>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, bool isVarArg = false);
 	BeMCOperand CreateLoad(const BeMCOperand& mcTarget);
 	void CreateStore(BeMCInstKind instKind, const BeMCOperand& val, const BeMCOperand& ptr);
 	void CreateMemSet(const BeMCOperand& addr, uint8 val, int size, int align);
@@ -1381,8 +1368,9 @@ public:
 	void CreateTableSwitchSection(BeSwitchInst* switchInst, int startIdx, int endIdx);
 	void CreateBinarySwitchSection(BeSwitchInst* switchInst, int startIdx, int endIdx);
 	void CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const BeMCOperand& trueBlock, const BeMCOperand& falseBlock);
-	void CreatePhiAssign(BeMCBlock* mcBlock, const BeMCOperand& testVal, const BeMCOperand& result, const BeMCOperand& doneLabel);	
+	void CreatePhiAssign(BeMCBlock* mcBlock, const BeMCOperand& testVal, const BeMCOperand& result, const BeMCOperand& doneLabel);
 	BeMCOperand GetImmediate(int64 val);
+	BeMCOperand OperandToAddr(const BeMCOperand& operand);
 	BeMCOperand GetVReg(int regNum);
 	BeMCOperand AllocVirtualReg(BeType* type, int refCount = -1, bool mustBeReg = false);
 	int GetUnderlyingVReg(int vregIdx);
@@ -1392,23 +1380,23 @@ public:
 	BeMCInst* CreateDefineVReg(const BeMCOperand& vreg, int insertIdx = -1);
 	int CreateLabel(int insertIdx = -1, int labelIdx = -1);
 	bool FindTarget(const BeMCOperand& loc, BeMCBlock*& outBlock, int& outInstIdx);
-	BeMCOperand AllocRelativeVirtualReg(BeType* type, const BeMCOperand& relTo, const BeMCOperand& relOffset, int relScale);	
+	BeMCOperand AllocRelativeVirtualReg(BeType* type, const BeMCOperand& relTo, const BeMCOperand& relOffset, int relScale);
 	BeMCVRegInfo* GetVRegInfo(const BeMCOperand& operand);
 	bool HasSymbolAddr(const BeMCOperand& operand);
 	BeMCOperand ReplaceWithNewVReg(BeMCOperand& operand, int& instIdx, bool isInput, bool mustBeReg = true, bool preserveDeref = false);
-	BeMCOperand RemapOperand(BeMCOperand& operand, BeMCRemapper& regRemaps);	
+	BeMCOperand RemapOperand(BeMCOperand& operand, BeMCRemapper& regRemaps);
 	bool IsLive(BeVTrackingList* liveRegs, int vregIdx, BeMCRemapper& regRemaps);
 	void AddRegRemap(int from, int to, BeMCRemapper& regRemaps, bool allowRemapToDbgVar = false);
 	bool GetEncodedOperand(const BeMCOperand& operand, int& vregAddrIdx);
 	bool HasPointerDeref(const BeMCOperand& operand);
-	bool AreOperandsEquivalent(const BeMCOperand& op1, const BeMCOperand& op2, BeMCRemapper& regRemaps);			
+	bool AreOperandsEquivalent(const BeMCOperand& op1, const BeMCOperand& op2, BeMCRemapper& regRemaps);
 	bool CouldBeReg(const BeMCOperand& operand);
 	bool CheckForce(BeMCVRegInfo* vregInfo);
 
 	void MarkLive(BeVTrackingList* liveRegs, SizedArrayImpl<int>& newRegs, BeVTrackingList*& initRegs, const BeMCOperand& operand);
 	BeVTrackingList* MergeLiveRegs(BeVTrackingList* prevDestEntry, BeVTrackingList* mergeFrom);
 	void GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genCtx, bool& modifiedBlockBefore, bool& modifiedBlockAfter);
-	void GenerateLiveness();	
+	void GenerateLiveness();
 	void IntroduceVRegs(const BeMCOperand& newVReg, BeMCBlock* block, int startInstIdx, int lastInstIdx);
 	void VRegSetInitialized(BeMCBlock* mcBlock, BeMCInst* inst, const BeMCOperand& operand, SizedArrayImpl<int>& addVec, SizedArrayImpl<int>& removeVec, bool deepSet, bool doSet);
 	bool CheckVRegEqualityRange(BeMCBlock * mcBlock, int instIdx, const BeMCOperand & vreg0, const BeMCOperand & vreg1, BeMCRemapper& regRemaps, bool onlyCheckFirstLifetime = false);
@@ -1420,7 +1408,7 @@ public:
 	void DoInitInjectionPass();
 	void ReplaceVRegsInit(BeMCBlock* mcBlock, int instIdx, BeVTrackingList* prevList, BeVTrackingList* newList);
 	void FixVRegInitFlags(BeMCInst* inst, const BeMCOperand& operand);
-	void SetVTrackingValue(BeMCOperand& operand, BeVTrackingValue& vTrackingValue);	
+	void SetVTrackingValue(BeMCOperand& operand, BeVTrackingValue& vTrackingValue);
 
 	bool IsVolatileReg(X64CPURegister reg);
 	bool IsXMMReg(X64CPURegister reg);
@@ -1428,28 +1416,28 @@ public:
 	bool IsAddress(BeMCOperand& operand);
 	bool IsAddressable(BeMCOperand& operand);
 	bool IsVRegExpr(BeMCOperand& operand);
-	void FixOperand(BeMCOperand& operand);	
-	BeMCOperand GetFixedOperand(const BeMCOperand& operand);	
+	void FixOperand(BeMCOperand& operand);
+	BeMCOperand GetFixedOperand(const BeMCOperand& operand);
 	uint8 GetREX(const BeMCOperand& op0, const BeMCOperand& op1, bool is64Bit);
 	void EmitREX(const BeMCOperand& op0, const BeMCOperand& op1, bool is64Bit);
-	
+
 	uint8 EncodeRegNum(X64CPURegister regNum);
 	int GetRegSize(int regNum);
 	void ValidateRMResult(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate = true);
 	void GetRMParams(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate = true);
-	void DisableRegister(const BeMCOperand& operand, X64CPURegister reg);	
+	void DisableRegister(const BeMCOperand& operand, X64CPURegister reg);
 	void MarkInvalidRMRegs(const BeMCOperand& operand);
 	void GetUsedRegs(const BeMCOperand& operand, X64CPURegister& regA, X64CPURegister& regB); // Expands regs
 	BeMCRMMode GetRMForm(const BeMCOperand& operand, bool& isMulti);
-	void GetValAddr(const BeMCOperand& operand, X64CPURegister& reg, int& offset);	
+	void GetValAddr(const BeMCOperand& operand, X64CPURegister& reg, int& offset);
 	int GetHighestVRegRef(const BeMCOperand& operand);
-	BeMCInstForm GetInstForm(BeMCInst* inst);	
+	BeMCInstForm GetInstForm(BeMCInst* inst);
 	BeMCInstForm ToIMM16(BeMCInstForm instForm);
 	BeMCInstForm ToIMM32OrSmaller(BeMCInstForm instForm);
 	void SetCurrentInst(BeMCInst* mcInst);
 	int FindPreserveVolatiles(BeMCBlock* mcBlock, int instIdx);
 	int FindRestoreVolatiles(BeMCBlock* mcBlock, int instIdx);
-	
+
 	uint8 GetJumpOpCode(BeCmpKind cmpKind, bool isLong);
 	void Emit(uint8 val);
 	void EmitModRM(int mod, int reg, int rm);
@@ -1457,16 +1445,16 @@ public:
 	void EmitModRMRel(int rx, X64CPURegister regA, X64CPURegister regB, int bScale, int relOffset);
 	void EmitModRM(int rx, BeMCOperand rm, int relocOfs = 0);
 	void EmitModRM(BeMCOperand r, BeMCOperand rm, int relocOfs = 0);
-	void EmitModRM_Addr(BeMCOperand r, BeMCOperand rm);	
+	void EmitModRM_Addr(BeMCOperand r, BeMCOperand rm);
 	void EmitModRM_XMM_IMM(int rx, BeMCOperand& imm);
 	void EmitInstPrefix(BeMCInstForm instForm, BeMCInst* inst);
-	void EmitInst(BeMCInstForm instForm, uint16 codeBytes, BeMCInst* inst);	
-	void EmitInst(BeMCInstForm instForm, uint16 codeBytes, uint8 rx, BeMCInst* inst);				
+	void EmitInst(BeMCInstForm instForm, uint16 codeBytes, BeMCInst* inst);
+	void EmitInst(BeMCInstForm instForm, uint16 codeBytes, uint8 rx, BeMCInst* inst);
 	void EmitStdInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode_rm_r, uint8 opcode_r_rm, uint8 opcode_rm_imm, uint8 opcode_rm_imm_rx);
-	void EmitStdInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode_rm_r, uint8 opcode_r_rm, uint8 opcode_rm_imm, uint8 opcode_rm_imm_rx, uint8 opcode_rm_imm8, uint8 opcode_rm_imm8_rx);	
+	void EmitStdInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode_rm_r, uint8 opcode_r_rm, uint8 opcode_rm_imm, uint8 opcode_rm_imm_rx, uint8 opcode_rm_imm8, uint8 opcode_rm_imm8_rx);
 	bool EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
 	bool EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode, uint8 opcode_dest_frm);
-	bool EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);	
+	bool EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
 	void EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src);
 
 	void DoTLSSetup();
@@ -1474,8 +1462,8 @@ public:
 	void DoSplitLargeBlocks();
 	void DetectLoops();
 	void DoLastUsePass();
-	bool DoInitializedPass();		
-	void RefreshRefCounts();	
+	bool DoInitializedPass();
+	void RefreshRefCounts();
 	void DoInstCombinePass();
 	void DoRegAssignPass();
 	void DoFrameObjPass();
@@ -1486,9 +1474,9 @@ public:
 	void DoBlockCombine();
 	bool DoJumpRemovePass();
 	void DoRegFinalization();
-	void DoCodeEmission();	
+	void DoCodeEmission();
 
-	void HandleParams();	
+	void HandleParams();
 
 public:
 	BeMCContext(BeCOFFObject* coffObject);
