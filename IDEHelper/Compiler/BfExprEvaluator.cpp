@@ -13252,7 +13252,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			methodMatcher.CheckType(mModule->mCurTypeInstance, BfTypedValue(), false);
 	}
 
-	if ((methodMatcher.mBestMethodDef == NULL) && (mModule->mContext->mCurTypeState != NULL))
+	if ((methodMatcher.mBestMethodDef == NULL) && (target.mType == NULL) && (mModule->mContext->mCurTypeState != NULL))
 	{
 		BF_ASSERT(mModule->mCurTypeInstance == mModule->mContext->mCurTypeState->mTypeInstance);
 		BfGlobalLookup globalLookup;
