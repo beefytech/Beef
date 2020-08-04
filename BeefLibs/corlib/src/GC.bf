@@ -150,49 +150,33 @@ namespace System
 #endif
 		}
 
-        public static void Mark<T>(T val) where T : class
-        {
+		public static mixin Mark<T>(T val) where T : class
+		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK
-            Mark((Object)val);
+		    Mark((Object)val);
 #endif
 		}
 
-        public static void Mark<T>(T val) where T : struct
-        {
+		public static mixin Mark<T>(T val) where T : struct
+		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK
-            val.[Friend]GCMarkMembers();
+		    val.[Friend]GCMarkMembers();
 #endif
 		}
 
-        public static void Mark<T>(T val) where T : struct*
-        {
-            // Memory pointed to by struct*'s will already-scanned stack memory,
-            //  or the memory would already be registered with the GC
+		public static mixin Mark<T>(T val) where T : struct*
+		{
+		    // Memory pointed to by struct*'s will already-scanned stack memory,
+		    //  or the memory would already be registered with the GC
 		}
 
-		public static void Mark<TSizedArray, T, Size>(TSizedArray val) where Size : const int where TSizedArray : SizedArray<T, Size>
+		public static mixin Mark<TSizedArray, T, Size>(TSizedArray val) where Size : const int where TSizedArray : SizedArray<T, Size>
 		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK
 		    for (var element in val)
 			{
 				Mark(element);
 			}
-#endif
-		}
-
-		public static void Mark_Enumerate<T>(T val) where T : var
-		{
-			/*for (var element in val)
-			{
-				Mark(element);
-			}*/
-		}
-
-
-		public static void Mark_Unbound<T>(T val) where T : var
-		{
-#if BF_ENABLE_REALTIME_LEAK_CHECK
-			Mark(val);
 #endif
 		}
 

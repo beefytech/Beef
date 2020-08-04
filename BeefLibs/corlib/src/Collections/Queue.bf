@@ -334,7 +334,7 @@ namespace System.Collections
 			int allocSize = AllocSize;
 		    for (int i < mSize)
 		    {
-		        GC.Mark_Unbound(mItems[(i + mHead) % allocSize]);
+		        GC.Mark!(mItems[(i + mHead) % allocSize]);
 			}
 		}
 

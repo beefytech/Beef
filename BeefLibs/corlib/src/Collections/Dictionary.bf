@@ -177,7 +177,7 @@ namespace System.Collections
 				return;
 		    for (int i < mCount)
 		    {
-		        GC.Mark_Unbound(mEntries[i]); 
+		        mEntries[i].[Friend]GCMarkMembers();
 			}
 		}
 

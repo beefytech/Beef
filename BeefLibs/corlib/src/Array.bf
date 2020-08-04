@@ -319,7 +319,7 @@ namespace System
 				return;
             for (int i = 0; i < mLength; i++)
             {
-				GC.Mark((&mFirstElement)[i]); 
+				GC.Mark!((&mFirstElement)[i]); 
 			}
 		}
 	}
@@ -430,7 +430,7 @@ namespace System
         {
             for (int i = 0; i < mLength; i++)
             {
-                GC.Mark_Unbound((&mFirstElement)[i]); 
+                GC.Mark!((&mFirstElement)[i]); 
 			}
 		}
 	}
@@ -546,7 +546,7 @@ namespace System
 	    {
 	        for (int i = 0; i < mLength; i++)
 	        {
-	            GC.Mark_Unbound((&mFirstElement)[i]); 
+	            GC.Mark!((&mFirstElement)[i]); 
 			}
 		}
 	}
@@ -667,7 +667,7 @@ namespace System
 	    {
 	        for (int i = 0; i < mLength; i++)
 	        {
-	            GC.Mark_Unbound((&mFirstElement)[i]); 
+	            GC.Mark!((&mFirstElement)[i]); 
 			}
 		}
 	}
