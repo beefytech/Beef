@@ -196,6 +196,12 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 		for (BfTypeReference* genericArg : *methodGenericArguments)
 		{
 			auto genericArgType = mModule->ResolveTypeRef(genericArg);
+			if (genericArgType->IsGenericParam())
+			{
+				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)genericArgType);
+				if ((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+					mHasVarArguments = true;
+			}
 			mExplicitMethodGenericArguments.push_back(genericArgType);
 		}
 		mHadExplicitGenericArguments = true;
@@ -13023,7 +13029,12 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			{
 				checkMethodGenericArgs = &methodMatcher.mBestMethodGenericArguments;
 				genericArg = genericParams->mExternType;
-				genericArg = mModule->ResolveGenericType(genericArg, NULL, checkMethodGenericArgs);
+				
+				auto owner = methodInstance.mMethodInstance->GetOwner();
+				BfTypeVector* typeGenericArguments = NULL;
+				if (owner->mGenericTypeInfo != NULL)
+					typeGenericArguments = &owner->mGenericTypeInfo->mTypeGenericArguments;
+				genericArg = mModule->ResolveGenericType(genericArg, typeGenericArguments, checkMethodGenericArgs);
 			}
 				
 			if (genericArg->IsVar())
@@ -13039,8 +13050,8 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 
 			// Note: don't pass methodMatcher.mBestMethodGenericArguments into here, this method is already specialized
 			BfError* error = NULL;
-			if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams, checkMethodGenericArgs,
-				failed ? NULL : &error))
+			if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance.mMethodInstance), genericArg, paramSrc, genericParams, NULL,
+ 				failed ? NULL : &error))
 			{
 				if (methodInstance.mMethodInstance->IsSpecializedGenericMethod())
 				{

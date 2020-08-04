@@ -6878,8 +6878,7 @@ String BfModule::GenericParamSourceToString(const BfGenericParamSource & generic
 {
 	if (genericParamSource.mMethodInstance != NULL)
 	{		
-		auto methodInst = GetUnspecializedMethodInstance(genericParamSource.mMethodInstance);
-		SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mCurMethodInstance, methodInst);
+		auto methodInst = GetUnspecializedMethodInstance(genericParamSource.mMethodInstance);		
 		return MethodToString(methodInst);
 	}
 	else
@@ -9598,6 +9597,8 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 		type = ResolveGenericType(type, NULL, methodGenericArgs);
 	if ((type == NULL) || (!type->IsUnspecializedTypeVariation()))
 		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
+	if (allowResolveGenericParamNames)
+		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 
 	String methodName;
 	if ((methodNameFlags & BfMethodNameFlag_OmitTypeName) == 0)
@@ -11289,13 +11290,15 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 	else if (methodA->mMethodDef->mName != methodB->mMethodDef->mName)
 		return false;			
 	if (methodA->mMethodDef->mCheckedKind != methodB->mMethodDef->mCheckedKind)
-		return false;	
+		return false;
+	if ((methodA->mMethodDef->mMethodType == BfMethodType_Mixin) != (methodB->mMethodDef->mMethodType == BfMethodType_Mixin))
+		return false;
 
 	if (methodA->mMethodDef->mMethodType == BfMethodType_Ctor)
 	{
 		if (methodA->mMethodDef->mIsStatic != methodB->mMethodDef->mIsStatic)
 			return false;
-	}
+	}	
 
 	if (methodA->mMethodDef->mMethodType == BfMethodType_Operator)
 	{
@@ -15501,7 +15504,8 @@ void BfModule::EmitTupleToStringBody()
 
 		if (fieldValue.mType->IsObjectOrInterface())
 		{
-			BF_ASSERT(!fieldValue.IsAddr());
+			fieldValue = LoadValue(fieldValue);
+			BF_ASSERT(!fieldValue.IsAddr());			
 			SizedArray<BfIRValue, 2> args;
 			args.Add(mBfIRBuilder->CreateBitCast(fieldValue.mValue, mBfIRBuilder->MapType(mContext->mBfObjectType)));
 			auto stringDestVal = exprEvaluator.LoadLocal(mCurMethodState->mLocals[1]);
@@ -19838,9 +19842,16 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	BfAutoComplete* bfAutocomplete = NULL;
 	if (mCompiler->mResolvePassData != NULL)
 		bfAutocomplete = mCompiler->mResolvePassData->mAutoComplete;
-		
+
+	if ((methodDeclaration != NULL) && (methodDeclaration->ToString().Contains("//TEST")))
+	{
+		NOP;
+	}
+
 	if (methodInstance->mMethodInfoEx != NULL)
 	{
+		BfTypeInstance* unspecializedTypeInstance = NULL;
+
 		for (int genericParamIdx = 0; genericParamIdx < (int)methodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
 		{
 			auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
@@ -19850,8 +19861,15 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			}
 			else
 			{
+				if (unspecializedTypeInstance == NULL)
+					unspecializedTypeInstance = GetUnspecializedTypeInstance(mCurTypeInstance);
+
 				auto externConstraintDef = genericParam->GetExternConstraintDef();
-				genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
+				// Resolve in the unspecialized type, then resolve the generic later. This fixes ambiguity where the type is specialized by a method generic arg
+				{
+					SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, unspecializedTypeInstance);
+					genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
+				}
 
 				auto autoComplete = mCompiler->GetAutoComplete();
 				if (autoComplete != NULL)
