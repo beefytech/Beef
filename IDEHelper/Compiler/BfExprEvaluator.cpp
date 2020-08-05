@@ -13034,7 +13034,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 				BfTypeVector* typeGenericArguments = NULL;
 				if (owner->mGenericTypeInfo != NULL)
 					typeGenericArguments = &owner->mGenericTypeInfo->mTypeGenericArguments;
-				genericArg = mModule->ResolveGenericType(genericArg, typeGenericArguments, checkMethodGenericArgs);
+				//genericArg = mModule->ResolveGenericType(genericArg, typeGenericArguments, checkMethodGenericArgs);
 			}
 				
 			if (genericArg->IsVar())

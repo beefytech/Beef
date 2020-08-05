@@ -1768,7 +1768,7 @@ public:
 	BfMethodInstance* GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL);	
 	BfMethodInstance* GetRawMethodInstance(BfTypeInstance* typeInstance, BfMethodDef* methodDef);
 	BfMethodInstance* GetRawMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false, bool allowMixin = false);
-	BfMethodInstance* GetUnspecializedMethodInstance(BfMethodInstance* methodInstance); // Unspecialized owner type and unspecialized method type		
+	BfMethodInstance* GetUnspecializedMethodInstance(BfMethodInstance* methodInstance, bool useUnspecializedType = true); // Unspecialized owner type and unspecialized method type		
 	int GetGenericParamAndReturnCount(BfMethodInstance* methodInstance);	
 	BfModule* GetSpecializedMethodModule(const SizedArrayImpl<BfProject*>& projectList);	
 	BfModuleMethodInstance GetMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);

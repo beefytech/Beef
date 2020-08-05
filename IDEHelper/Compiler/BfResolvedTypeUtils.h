@@ -1091,7 +1091,7 @@ public:
 	{
 		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
 			return mTypeDef->mGenericParamDefs[mGenericIdx];
-		return NULL;
+		return &mTypeDef->mExternalConstraints[mGenericIdx - (int)mTypeDef->mGenericParamDefs.size()];
 	}
 
 	virtual BfGenericParamDef* GetGenericParamDef() override
@@ -1105,14 +1105,14 @@ public:
 	{
 		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
 			return NULL;
-		return NULL;
+		return &mTypeDef->mExternalConstraints[mGenericIdx - (int)mTypeDef->mGenericParamDefs.size()];
 	}
 
 	virtual String GetName() override
 	{
 		if (mGenericIdx < (int)mTypeDef->mGenericParamDefs.size())
 			return mTypeDef->mGenericParamDefs[mGenericIdx]->mName;
-		return "???";
+		return mTypeDef->mExternalConstraints[mGenericIdx - (int)mTypeDef->mGenericParamDefs.size()].mTypeRef->ToString();
 	}
 };
 

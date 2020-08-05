@@ -880,6 +880,7 @@ public:
 	Array<BfOperatorDef*> mOperators;
 	BfMethodDef* mDtorDef;
 	Array<BfGenericParamDef*> mGenericParamDefs;	
+	Array<BfExternalConstraintDef> mExternalConstraints;
 	Array<BfTypeReference*> mBaseTypes;	
 	Array<BfTypeDef*> mNestedTypes;		
 	Array<BfDirectStrTypeReference*> mDirectAllocNodes;

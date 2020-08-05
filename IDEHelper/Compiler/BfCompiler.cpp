@@ -4012,6 +4012,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 			module->HandleTypeGenericParamRef(nameNode, tempTypeDef, genericParamIdx);		
 	}
 
+	//TODO: Do extern constraint stuff here
+
 	for (auto fieldDef : tempTypeDef->mFields)
 	{
 		BP_ZONE("ProcessAutocompleteTempType.CheckField");		

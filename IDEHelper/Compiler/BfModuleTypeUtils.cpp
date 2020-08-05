@@ -75,6 +75,12 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 		genericExEntry->mGenericParams.push_back(genericParamInstance);
 	}
 
+	for (int externConstraintIdx = 0; externConstraintIdx < (int)partialTypeDef->mExternalConstraints.size(); externConstraintIdx++)
+	{
+		auto genericParamInstance = new BfGenericTypeParamInstance(partialTypeDef, externConstraintIdx + (int)partialTypeDef->mGenericParamDefs.size());
+		genericExEntry->mGenericParams.push_back(genericParamInstance);
+	}
+
 	for (int paramIdx = startDefGenericParamIdx; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.size(); paramIdx++)
 	{
 		auto genericParamInstance = genericExEntry->mGenericParams[paramIdx];
@@ -124,6 +130,12 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 		genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(genericParamInstance);
 	}	
 
+	for (int externConstraintIdx = 0; externConstraintIdx < (int)typeDef->mExternalConstraints.size(); externConstraintIdx++)
+	{
+		auto genericParamInstance = new BfGenericTypeParamInstance(typeDef, externConstraintIdx + (int)typeDef->mGenericParamDefs.size());
+		genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(genericParamInstance);
+	}
+
 	if (!typeDef->mPartials.empty())
 	{
 		for (auto partialTypeDef : typeDef->mPartials)
@@ -170,8 +182,30 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 	else
 	{
 		for (int paramIdx = startDefGenericParamIdx; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mGenericParams.size(); paramIdx++)
-		{			
+		{
 			auto genericParamInstance = genericTypeInst->mGenericTypeInfo->mGenericParams[paramIdx];
+
+			if (paramIdx < (int)typeDef->mGenericParamDefs.size())
+			{
+				genericParamInstance->mExternType = GetGenericParamType(BfGenericParamKind_Type, paramIdx);
+			}
+			else
+			{
+				auto externConstraintDef = genericParamInstance->GetExternConstraintDef();
+				genericParamInstance->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
+				
+				auto autoComplete = mCompiler->GetAutoComplete();
+				if (autoComplete != NULL)
+					autoComplete->CheckTypeRef(externConstraintDef->mTypeRef, false);
+
+				if (genericParamInstance->mExternType != NULL)
+				{
+					//
+				}
+				else
+					genericParamInstance->mExternType = GetPrimitiveType(BfTypeCode_Var);
+			}
+
 			ResolveGenericParamConstraints(genericParamInstance, genericTypeInst->IsUnspecializedType());
 			auto genericParamDef = genericParamInstance->GetGenericParamDef();
 			if (genericParamDef != NULL)
@@ -223,20 +257,30 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 	}
 
 	auto typeDef = genericTypeInst->mTypeDef;
-	for (int paramIdx = 0; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.size(); paramIdx++)
+	//for (int paramIdx = 0; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.size(); paramIdx++)
+
+	for (int paramIdx = 0; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mGenericParams.size(); paramIdx++)
 	{
 		auto genericParamInstance = genericTypeInst->mGenericTypeInfo->mGenericParams[paramIdx];
-		// Why did we remove this line?  This breaks determining compatibility of one unspecialized type to another unspecialized type, called from ResolveTypeResult
-		//if (!genericTypeInst->mIsUnspecialized)
+		
+		BfType* genericArg;
+		if (paramIdx < (int)genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.size())
 		{
-			BfError* error = NULL;
-			if (!CheckGenericConstraints(BfGenericParamSource(genericTypeInst), genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[paramIdx], typeRef, genericParamInstance, NULL, &error))
-			{
-				genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
-				return false;
-			}
+			genericArg = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[paramIdx];
 		}
-	}
+		else
+		{
+			genericArg = genericParamInstance->mExternType;
+		}
+
+		BfError* error = NULL;
+		if (!CheckGenericConstraints(BfGenericParamSource(genericTypeInst), genericArg, typeRef, genericParamInstance, NULL, &error))
+		{
+			genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
+			return false;
+		}		
+	}	
+
 	return true;
 }
 
@@ -10394,11 +10438,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						((explicitCast) && (opConstraint.mCastToken == BfToken_Explicit)))
 					{
 						// If we can convert OUR fromVal to the constraint's fromVal then we may match
-						if (CanCast(typedVal, opConstraint.mRightType))
+						if (CanCast(typedVal, opConstraint.mRightType, BfCastFlags_NoConversionOperator))
 						{
 							// .. and we can convert the constraint's toType to OUR toType then we're good
 							auto opToVal = genericParam->mExternType;
-							if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType))
+							if (CanCast(BfTypedValue(BfIRValue::sValueless, opToVal), toType, BfCastFlags_NoConversionOperator))
 								return mBfIRBuilder->GetFakeVal();
 						}
 					}

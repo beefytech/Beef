@@ -2662,6 +2662,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mGenericParamDefs.Clear();
 	
 	typeDef->mGenericParamDefs = nextTypeDef->mGenericParamDefs;
+	typeDef->mExternalConstraints = nextTypeDef->mExternalConstraints;
 	nextTypeDef->mGenericParamDefs.Clear();	
 
 	typeDef->mBaseTypes = nextTypeDef->mBaseTypes;		
@@ -2738,7 +2739,8 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 			BfGenericParamDef* newGeneric = new BfGenericParamDef();
 			*newGeneric = *generic;
 			typeDef->mGenericParamDefs.push_back(newGeneric);
-		}		
+		}
+		typeDef->mExternalConstraints = partialTypeDef->mExternalConstraints;
 		
 		typeDef->mBaseTypes = partialTypeDef->mBaseTypes;				
 
@@ -2756,6 +2758,9 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 			typeDef->mTypeCode = partialTypeDef->mTypeCode;
 			typeDef->mTypeDeclaration = partialTypeDef->mTypeDeclaration;		
 		}		
+
+		for (auto& externConstraint : partialTypeDef->mExternalConstraints)
+			typeDef->mExternalConstraints.Add(externConstraint);
 	}	
 
 	// Merge attributes together

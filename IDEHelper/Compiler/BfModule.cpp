@@ -3892,16 +3892,24 @@ void BfModule::FindSubTypes(BfTypeInstance* classType, SizedArrayImpl<int>* outV
 				continue;
 			if (outVals->Contains(ifaceInst.mInterfaceType->mTypeId))
 				continue;
-
+						
 			if (ifaceInst.mDeclaringType->IsExtension())
 			{
 				bool needsExCheck = false;
 				if (ifaceInst.mDeclaringType->mProject != classType->mTypeDef->mProject)
 				{
-					exChecks->push_back(ifaceInst.mInterfaceType);
-					continue;
+					PopulateType(ifaceInst.mInterfaceType, BfPopulateType_DataAndMethods);
+					if (ifaceInst.mInterfaceType->mVirtualMethodTableSize > 0)
+					{
+						exChecks->push_back(ifaceInst.mInterfaceType);
+						continue;
+					}
+					else
+					{
+						// We can only do an 'exCheck' if we're actually going to slot this interface
+					}
 				}
-			}
+			}			
 
 			outVals->push_back(ifaceInst.mInterfaceType->mTypeId);
 		}
@@ -6878,8 +6886,9 @@ String BfModule::GenericParamSourceToString(const BfGenericParamSource & generic
 {
 	if (genericParamSource.mMethodInstance != NULL)
 	{		
-		auto methodInst = GetUnspecializedMethodInstance(genericParamSource.mMethodInstance);		
-		return MethodToString(methodInst);
+		auto methodInst = GetUnspecializedMethodInstance(genericParamSource.mMethodInstance, false);
+		SetAndRestoreValue<BfMethodInstance*> prevMethodInst(methodInst, NULL);
+		return MethodToString(genericParamSource.mMethodInstance);
 	}
 	else
 	{
@@ -9264,12 +9273,16 @@ BfMethodInstance* BfModule::GetRawMethodByName(BfTypeInstance* typeInstance, con
 	return NULL;
 }
 
-BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* methodInstance)
+BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* methodInstance, bool useUnspecializedType)
 {
 	if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mMethodGenericArguments.size() != 0))
 		methodInstance = methodInstance->mMethodInstanceGroup->mDefault;
 	
 	auto owner = methodInstance->mMethodInstanceGroup->mOwner;
+
+	if (!useUnspecializedType)	
+		return GetRawMethodInstanceAtIdx(owner, methodInstance->mMethodDef->mIdx);	
+
 	if (!owner->IsGenericTypeInstance())
 		return methodInstance;
 
@@ -19861,15 +19874,18 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			}
 			else
 			{
-				if (unspecializedTypeInstance == NULL)
-					unspecializedTypeInstance = GetUnspecializedTypeInstance(mCurTypeInstance);
-
 				auto externConstraintDef = genericParam->GetExternConstraintDef();
-				// Resolve in the unspecialized type, then resolve the generic later. This fixes ambiguity where the type is specialized by a method generic arg
-				{
-					SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, unspecializedTypeInstance);
-					genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
-				}
+
+// 				if (unspecializedTypeInstance == NULL)
+// 					unspecializedTypeInstance = GetUnspecializedTypeInstance(mCurTypeInstance);
+// 				
+// 				// Resolve in the unspecialized type, then resolve the generic later. This fixes ambiguity where the type is specialized by a method generic arg
+// 				{
+// 					SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, unspecializedTypeInstance);
+// 					genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
+// 				}
+
+				genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
 
 				auto autoComplete = mCompiler->GetAutoComplete();
 				if (autoComplete != NULL)

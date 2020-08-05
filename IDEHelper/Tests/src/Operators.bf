@@ -176,15 +176,26 @@ namespace Tests
 			return val + val2;
 		}
 
-		public static T Complex<T, T2>(T val, T2 val2)
-			where T : operator T + T2
+		public static T Complex<T, T2, T3>(T val, T2 val2, T3 val3)
 			where T : operator -T
 			where T : operator implicit T2
+			where T : operator T + T2
+			where int32 : operator T + T3
 		{
 			T conv = val2;
 			T result = val + val2;
 			result = -result;
+			int32 iRes = val + val3;
 			return result;
+		}
+
+		struct StructOp3<T, T2> where float : operator T + T2
+		{
+			public float Use(T lhs, T2 rhs)
+			{
+				float f = lhs + rhs;
+				return f;
+			}
 		}
 
 		[Test]
@@ -212,7 +223,7 @@ namespace Tests
 			float val = Op((int32)100, (int16)23);
 			Test.Assert(val == 123);
 
-			int32 i32res = Complex((int32)100, (int16)23);
+			int32 i32res = Complex((int32)100, (int16)23, (int8)4);
 			Test.Assert(i32res == -123);
 
 			StructOp<StructA, StructB> sOp;
@@ -230,6 +241,10 @@ namespace Tests
 			Result<StructC> rsc2 = .Ok(.(123, 345));
 			Test.Assert(rsc == rsc2);
 			Test.Assert(rsc !== rsc2);
+
+			StructOp3<int16, int32> so3 = .();
+			float f = so3.Use(1, 2);
+			Test.Assert(f == 3);
 
 			/*let oai = OuterOp<float>.InnerOp<int>.Op(1.0f, 100);
 			Test.Assert(oai == 101.0f);
