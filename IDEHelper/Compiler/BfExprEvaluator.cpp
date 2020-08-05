@@ -1956,11 +1956,6 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 		
 	int checkInterfaceIdx = 0;
 	
-	if (mMethodName == "Handle")
-	{
-		NOP;
-	}
-
 	bool targetIsBase = target.IsBase();
 	bool checkExtensionBase = false;
 	if (targetIsBase)
