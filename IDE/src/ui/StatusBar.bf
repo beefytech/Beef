@@ -244,10 +244,13 @@ namespace IDE.ui
                 int32 column;
                 sourceViewPanel.GetCursorPosition(out line, out column);
 
-				if (gApp.mSettings.mEnableDevMode)
-					g.DrawString(StackStringFormat!("Idx {0}", sourceViewPanel.mEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
-                g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(150), 0);
-                g.DrawString(StackStringFormat!("Col {0}", column + 1), mWidth - GS!(78), 0);
+				using (g.PushColor(DarkTheme.COLOR_TEXT))
+				{
+					if (gApp.mSettings.mEnableDevMode)
+						g.DrawString(StackStringFormat!("Idx {0}", sourceViewPanel.mEditWidget.Content.CursorTextPos), mWidth - GS!(240), 0);
+	                g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(150), 0);
+	                g.DrawString(StackStringFormat!("Col {0}", column + 1), mWidth - GS!(78), 0);
+				}
             }
 
             using (g.PushColor(0xFF101010))
@@ -330,7 +333,8 @@ namespace IDE.ui
 				if (mCancelSymSrvButton != null)
 					mCancelSymSrvButton.mX = completionRect.Right - GS!(16);
 
-				g.DrawString(str, x, statusLabelPos, FontAlign.Centered, len);
+				using (g.PushColor(DarkTheme.COLOR_TEXT))
+					g.DrawString(str, x, statusLabelPos, FontAlign.Centered, len);
 			}
 
 			if (gApp.mKeyChordState != null)
@@ -373,7 +377,8 @@ namespace IDE.ui
 
 			if (gApp.mSettings.mEnableDevMode)
 			{
-	            g.DrawString(StackStringFormat!("FPS: {0}", gApp.mLastFPS), GS!(32), 0);
+				using (g.PushColor(DarkTheme.COLOR_TEXT))
+	            	g.DrawString(StackStringFormat!("FPS: {0}", gApp.mLastFPS), GS!(32), 0);
 
 	            String resolveStr = scope String();
 				let bfResolveCompiler = gApp.mBfResolveCompiler;

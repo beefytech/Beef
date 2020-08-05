@@ -40,9 +40,12 @@ namespace Beefy.theme.dark
 						leftStr.RemoveToEnd(barIdx);
 					}
 
-					g.DrawString(leftStr, GS!(36), 0);
-					if (!rightStr.IsEmpty)
-						g.DrawString(rightStr, mWidth - GS!(8), 0, .Right);
+					using (g.PushColor(DarkTheme.COLOR_TEXT))
+					{
+						g.DrawString(leftStr, GS!(36), 0);
+						if (!rightStr.IsEmpty)
+							g.DrawString(rightStr, mWidth - GS!(8), 0, .Right);
+					}
 				}
 
                 if (mMenuItem.mIconImage != null)

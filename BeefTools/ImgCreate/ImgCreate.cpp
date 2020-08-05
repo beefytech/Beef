@@ -91,66 +91,102 @@ int main()
 	int baseWidth = 0;
 	int baseHeight = 0;
 
-	PSDReader readers[3];
-	ImageData* imageDatas[3];
-	for (int size = 0; size < 3; size++)
-	{
-		auto& reader = readers[size];
-		auto& imageData = imageDatas[size];
+	bool isThemeDir = false;
 
-		String fileName;		
-		if (size == 0)
-			fileName = "DarkUI.psd";
-		else if (size == 1)
-			fileName = "DarkUI_2.psd" ;
-		else
-			fileName = "DarkUI_4.psd";
-					
-		if (!reader.Init(fileName))
+	PSDReader readers[2][3];	
+	ImageData* imageDatas[2][3] = { NULL };	
+
+	for (int pass = 0; pass < 2; pass++)
+	{
+		for (int size = 0; size < 3; size++)
 		{
-			if (size == 0)
+			auto& reader = readers[pass][size];
+			auto& imageData = imageDatas[pass][size];
+
+			String fileName;
+
+			if (pass == 0)
 			{
-				printf("Failed to open %s - incorrect working directory?", fileName.c_str());
-				return 1;
+				if (size == 0)
+					fileName = "DarkUI.psd";
+				else if (size == 1)
+					fileName = "DarkUI_2.psd";
+				else
+					fileName = "DarkUI_4.psd";
+
+				if (!FileExists(fileName))
+				{
+					isThemeDir = true;
+					fileName = "../../images/" + fileName;
+				}
+			}
+			else
+			{
+				if (size == 0)
+					fileName = "UI.psd";
+				else if (size == 1)
+					fileName = "UI_2.psd";
+				else
+					fileName = "UI_4.psd";
+
+				if (!FileExists(fileName))
+					continue;
+			}			
+
+			if (!reader.Init(fileName))
+			{
+				if (size == 0)
+				{
+					printf("Failed to open %s - incorrect working directory?", fileName.c_str());
+					return 1;
+				}
+
+				imageData = NULL;
+				continue;
 			}
 
-			imageData = NULL;
-			continue;
-		}
+			if ((size == 0) && (pass == 0))
+			{
+				baseWidth = reader.mWidth;
+				baseHeight = reader.mHeight;
+			}
 
-		if (size == 0)
-		{
-			baseWidth = reader.mWidth;
-			baseHeight = reader.mHeight;
+			std::vector<int> layerIndices;
+			for (int layerIdx = 0; layerIdx < (int)reader.mPSDLayerInfoVector.size(); layerIdx++)
+			{
+				auto layer = reader.mPSDLayerInfoVector[layerIdx];
+				if (layer->mVisible)
+					layerIndices.insert(layerIndices.begin(), layerIdx);
+			}
+			
+			imageData = reader.MergeLayers(NULL, layerIndices, NULL);
 		}
-
-		std::vector<int> layerIndices;
-		for (int layerIdx = 0; layerIdx < (int)reader.mPSDLayerInfoVector.size(); layerIdx++)
-		{
-			auto layer = reader.mPSDLayerInfoVector[layerIdx];
-			if (layer->mVisible)
-				layerIndices.insert(layerIndices.begin(), layerIdx);
-		}
-
-		imageData = reader.MergeLayers(NULL, layerIndices, NULL);
 	}
 
 	int numCols = baseWidth / 20;
 	int numRows = baseHeight / 20;
 
-	auto _HasImage = [&](int col, int row, int size)
+	auto _HasImage = [&](int col, int row, int pass, int size)
 	{
 		int scale = 1 << size;
-		auto srcImage = imageDatas[size];
+		auto srcImage = imageDatas[pass][size];
 		if (srcImage == NULL)
 			return false;
-				
+		
+		int xStart = (col * 20 * scale);
+		int yStart = (row * 20 * scale);
+
+		if ((xStart < srcImage->mX) || (xStart + 20 * scale > srcImage->mX + srcImage->mWidth))
+			return false;
+		if ((yStart < srcImage->mY) || (yStart + 20 * scale > srcImage->mY + srcImage->mHeight))
+			return false;
+
 		for (int yOfs = 0; yOfs < 20 * scale; yOfs++)
 		{
 			for (int xOfs = 0; xOfs < 20 * scale; xOfs++)
 			{
-				int srcX = (col * 20 * scale) + xOfs;
-				int srcY = (row * 20 * scale) + yOfs;
+				int srcX = xStart + xOfs;
+				int srcY = yStart + yOfs;
 				auto color = srcImage->mBits[(srcX - srcImage->mX) + (srcY - srcImage->mY)*srcImage->mWidth];
 				if (color != 0)
 					return true;
@@ -158,6 +194,40 @@ int main()
 		}			
 		return false;
 	};		
+
+	auto _HasUniqueThemeImage = [&](int col, int row, int size)
+	{
+		int scale = 1 << size;
+		auto srcImage0 = imageDatas[0][size];
+		if (srcImage0 == NULL)
+			return false;
+
+		auto srcImage1 = imageDatas[1][size];
+		if (srcImage1 == NULL)
+			return false;
+
+		int xStart = (col * 20 * scale);
+		int yStart = (row * 20 * scale);
+
+		if ((xStart < srcImage1->mX) || (xStart + 20 * scale > srcImage1->mX + srcImage1->mWidth))
+			return false;
+		if ((yStart < srcImage1->mY) || (yStart + 20 * scale > srcImage1->mY + srcImage1->mHeight))
+			return false;
+
+		for (int yOfs = 0; yOfs < 20 * scale; yOfs++)
+		{
+			for (int xOfs = 0; xOfs < 20 * scale; xOfs++)
+			{
+				int srcX = xStart + xOfs;
+				int srcY = yStart + yOfs;
+				auto color0 = srcImage0->mBits[(srcX - srcImage0->mX) + (srcY - srcImage0->mY)*srcImage0->mWidth];
+				auto color1 = srcImage1->mBits[(srcX - srcImage1->mX) + (srcY - srcImage1->mY)*srcImage1->mWidth];
+				if (color0 != color1)
+					return true;
+			}
+		}
+		return false;
+	};
 
 	for (int size = 0; size < 3; size++)
 	{
@@ -168,40 +238,80 @@ int main()
 		PNGData pngData;
 		pngData.CreateNew(outWidth, outHeight);	
 	
-		if (size < 2)
+		if ((size < 2) && (!isThemeDir))
 		{
 			ConvImage("IconError", size);
 			ConvImage("IconWarning", size);
 		}
 
 		String fileName;
-		if (size == 0)
-			fileName = "DarkUI.png";
-		else if (size == 1)
-			fileName = "DarkUI_2.png";
-		else
-			fileName = "DarkUI_4.png";
-
-		for (int col = 0; col < numCols; col++)
+		if (isThemeDir)			
 		{
-			for (int row = 0; row < numRows; row++)
+			if (size == 0)
+				fileName = "UI.png";
+			else if (size == 1)
+				fileName = "UI_2.png";
+			else
+				fileName = "UI_4.png";
+		}
+		else
+		{
+			if (size == 0)
+				fileName = "DarkUI.png";
+			else if (size == 1)
+				fileName = "DarkUI_2.png";
+			else
+				fileName = "DarkUI_4.png";
+		}
+
+		for (int row = 0; row < numRows; row++)		
+		{
+			for (int col = 0; col < numCols; col++)
 			{
-				if ((size == 2) && (col == 11) && (row == 7))
-				{
-					NOP;
-				}
-
+				int srcPass = 0;
 				int srcSize = size;
-				if (!_HasImage(col, row, size))
-				{
-					if (_HasImage(col, row, 2))
-					{
-						srcSize = 2;
-					}
-					else
-						srcSize = 0;
-				}
 
+				if (_HasImage(col, row, 1, size)) // Theme has image of appropriate size
+				{
+					srcPass = 1;
+					srcSize = size;
+				}
+				else if (_HasUniqueThemeImage(col, row, 2)) // Use resized theme image
+				{
+					srcPass = 1;
+					srcSize = 2;
+				}
+				else if (_HasUniqueThemeImage(col, row, 1)) // Use resized theme image
+				{					
+					srcPass = 1;
+					srcSize = 2;
+				}
+				else if (_HasUniqueThemeImage(col, row, 0)) // Use resized theme image instead
+				{					
+					srcPass = 1;
+					srcSize = 0;
+				}
+				else if (_HasImage(col, row, 0, size)) // Use original image
+				{					
+					srcPass = 0;
+					srcSize = size;
+				}				
+				else if (_HasImage(col, row, 0, 2)) // Use resized original image
+				{
+					srcPass = 0;
+					srcSize = 2;
+				}
+				else if (_HasImage(col, row, 0, 1)) // Use resized original image
+				{
+					srcPass = 0;
+					srcSize = 1;
+				}
+				else // Use resized original image
+				{
+					srcPass = 0;
+					srcSize = 0;
+				}
+				
 				int srcScale = 1 << srcSize;
 				for (int yOfs = 0; yOfs < 20 * scale; yOfs++)
 				{
@@ -213,7 +323,7 @@ int main()
 						int srcX = (col * 20 * srcScale) + xOfs * srcScale / scale;
 						int srcY = (row * 20 * srcScale) + yOfs * srcScale / scale;
 						
-						auto srcImage = imageDatas[srcSize];
+						auto srcImage = imageDatas[srcPass][srcSize];
 						if ((srcX >= srcImage->mX) && (srcY >= srcImage->mY) &&
 							(srcX < srcImage->mX + srcImage->mWidth) &&
 							(srcY < srcImage->mY + srcImage->mHeight))

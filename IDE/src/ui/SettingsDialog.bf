@@ -11,6 +11,7 @@ namespace IDE.ui
 	{
 		enum CategoryType
 		{
+			UI,
 		    Editor,
 			Keys,
 			Compiler,
@@ -52,8 +53,9 @@ namespace IDE.ui
 		    mTitle = new String("Settings Properties");
 
 		    var root = (DarkListViewItem)mCategorySelector.GetRoot();
-		    var item = AddCategoryItem(root, "Editor");
+		    var item = AddCategoryItem(root, "UI");
 		    item.Focused = true;
+			AddCategoryItem(root, "Editor");
 			AddCategoryItem(root, "Keys");
 			AddCategoryItem(root, "Compiler");
 		    AddCategoryItem(root, "Debugger");
@@ -65,6 +67,21 @@ namespace IDE.ui
 				mHideVSHelper = true;
 		}
 
+		void PopulateUIOptions()
+		{
+			mCurPropertiesTarget = gApp.mSettings.mUISettings;
+
+			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
+			var (category, propEntry) = AddPropertiesItem(root, "General");
+			category.mIsBold = true;
+			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+
+			AddPropertiesItem(category, "Scale", "mScale");
+			AddPropertiesItem(category, "Theme", "mTheme");
+
+			category.Open(true, true);
+		}
+
 		void PopulateEditorOptions()
 		{
 			mCurPropertiesTarget = gApp.mSettings.mEditorSettings;
@@ -72,10 +89,9 @@ namespace IDE.ui
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 			var (category, propEntry) = AddPropertiesItem(root, "General");
 			category.mIsBold = true;
-			category.mTextColor = cHeaderColor;
+			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Font", "mFonts");
 			AddPropertiesItem(category, "Font Size", "mFontSize");
-			AddPropertiesItem(category, "UI Scale", "mUIScale");
 			AddPropertiesItem(category, "Autocomplete", "mAutoCompleteShowKind");
 			AddPropertiesItem(category, "Autocomplete Require Control", "mAutoCompleteRequireControl");
 			AddPropertiesItem(category, "Autocomplete Require Tab", "mAutoCompleteRequireTab");
@@ -108,15 +124,6 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Free Cursor Movement", "mFreeCursorMovement");
 
 			category.Open(true, true);
-
-			(category, propEntry) = AddPropertiesItem(root, "Colors");
-			category.mIsBold = true;
-			category.mTextColor = cHeaderColor;
-			AddPropertiesItem(category, "UI Red", "mColors.mUIColorR");
-			AddPropertiesItem(category, "UI Green", "mColors.mUIColorG");
-			AddPropertiesItem(category, "UI Blue", "mColors.mUIColorB");
-			AddPropertiesItem(category, "Text", "mColors.mText");
-			category.Open(true, true);
 		}
 
 		void PopulateCompilerOptions()
@@ -126,7 +133,7 @@ namespace IDE.ui
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 			var (category, propEntry) = AddPropertiesItem(root, "General");
 			category.mIsBold = true;
-			category.mTextColor = cHeaderColor;
+			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Worker Threads", "mWorkerThreads");
 			category.Open(true, true);
 		}
@@ -194,7 +201,7 @@ namespace IDE.ui
 				let keyEntry = (KeyEntry)propEntry.mTarget;
 
 				let listViewItem = (DarkListViewItem)propEntry.mListViewItem.GetSubItem(1);
-				listViewItem.mTextColor = keyEntry.mHasConflict ? 0xFFFF8080 : 0xFFFFFFFF;
+				listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, keyEntry.mHasConflict ? 0xFFFF8080 : 0xFFFFFFFF);
 			}
 		}
 
@@ -279,11 +286,15 @@ namespace IDE.ui
 			var targetDict = scope Dictionary<Object, Object>();
 			switch ((CategoryType)mPropPage.mCategoryType)
 			{
+			case .UI:
+				Settings.UISettings uiSettings = scope .();
+				uiSettings.SetDefaults();
+				targetDict[gApp.mSettings.mUISettings] = uiSettings;
+				UpdateFromTarget(targetDict);
 			case .Editor:
 				Settings.EditorSettings editorSettings = scope .();
 				editorSettings.SetDefaults();
 				targetDict[gApp.mSettings.mEditorSettings] = editorSettings;
-				targetDict[gApp.mSettings.mEditorSettings.mColors] = editorSettings.mColors;
 				UpdateFromTarget(targetDict);
 			case .Keys:
 				Settings.KeySettings keySettings = scope .();
@@ -346,6 +357,8 @@ namespace IDE.ui
 
 				switch ((CategoryType)categoryTypeInt)
 				{
+				case .UI:
+					PopulateUIOptions();
 				case .Editor:
 					PopulateEditorOptions();
 				case .Keys:

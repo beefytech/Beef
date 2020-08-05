@@ -850,7 +850,7 @@ namespace IDE.ui
         {
             var item = (CategoryListViewItem)parent.CreateChildItem();
             item.Label = name;
-            item.mFocusColor = 0xFFA0A0A0;
+            item.mFocusColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFA0A0A0);
             item.mOnMouseDown.Add(new => CategoryValueClicked);
 			item.mCategoryIdx = (int32)mCategoryListViewItems.Count;
 			mCategoryListViewItems.Add(item);
@@ -1494,12 +1494,12 @@ namespace IDE.ui
                     if (i < strVals.Count)
                     {
                         childItem.Label = StackStringFormat!("#{0}", i + 1);
-                        childSubItem.mTextColor = Color.White;
+                        childSubItem.mTextColor = DarkTheme.COLOR_TEXT;
                     }
                     else
                     {
                         childItem.Label = "";
-                        childSubItem.mTextColor = 0xFFC0C0C0;
+                        childSubItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFC0C0C0);
                     }
                     childSubItem.Label = curValue;
 					FixLabel(childSubItem);
@@ -1563,14 +1563,14 @@ namespace IDE.ui
 			if (areDifferent)
 			{
 				valueItem.Label = "<Multiple Values>";
-				valueItem.mTextColor = 0xFFC0C0C0;
+				valueItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFC0C0C0);
 			}
 			else if (propEntry.mColorOverride.HasValue)
 				valueItem.mTextColor = propEntry.mColorOverride.Value;
 			else if (isNotSet)
-				valueItem.mTextColor = 0xFFC0C0C0;
+				valueItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFC0C0C0);
 			else
-				valueItem.mTextColor = 0xFFFFFFFF;
+				valueItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFFFFFFF);
         }
 
         void GetEnumDisp(String enumDisp)
@@ -2000,7 +2000,7 @@ namespace IDE.ui
         {
             var item = (DarkListViewItem)parent.CreateChildItem();
             item.Label = name;
-            item.mFocusColor = 0xFFA0A0A0;
+            item.mFocusColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFA0A0A0);
 			item.mOnMouseDown.Add(new => PropValueClicked);
             let propEntry = SetupPropertiesItem(item, name, propName, optionValues, flags);
             return (item, propEntry);

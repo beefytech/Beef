@@ -78,7 +78,8 @@ namespace Beefy.theme.dark
             {
                 using (g.PushColor(mDisabled ? 0x80FFFFFF : Color.White))
                 {
-					DarkTheme.DrawUnderlined(g, mLabel, GS!(2), (mHeight - GS!(20)) / 2 + mLabelYOfs, .Centered, mWidth - GS!(4), .Truncate);
+					using (g.PushColor(DarkTheme.COLOR_TEXT))
+						DarkTheme.DrawUnderlined(g, mLabel, GS!(2), (mHeight - GS!(20)) / 2 + mLabelYOfs, .Centered, mWidth - GS!(4), .Truncate);
                 }
             }
         }

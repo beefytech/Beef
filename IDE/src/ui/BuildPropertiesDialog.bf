@@ -3,6 +3,7 @@ using System.Collections;
 using Beefy.widgets;
 using Beefy.theme.dark;
 using Beefy.theme;
+using Beefy.gfx;
 
 namespace IDE.ui
 {
@@ -187,7 +188,7 @@ namespace IDE.ui
 
 			var (category, propEntry) = AddPropertiesItem(root, "Distinct Build Options");
 			var subItem = (DarkListViewItem)category.CreateSubItem(1);
-			subItem.mTextColor = 0xFFC0C0C0;
+			subItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFC0C0C0);
 			subItem.Label = "<Add New>...";
 			subItem.mOnMouseDown.Add(new (evt) =>
 		        {

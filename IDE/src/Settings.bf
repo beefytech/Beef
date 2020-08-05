@@ -6,6 +6,10 @@ using Beefy.widgets;
 using System.Threading;
 using Beefy.utils;
 using IDE.util;
+using Beefy.theme.dark;
+using System.IO;
+using IDE.ui;
+using System.Diagnostics;
 
 namespace IDE
 {
@@ -47,8 +51,8 @@ namespace IDE
 					for (var str in paths)
 						prevPaths.Add(str);
 					paths.Clear();
-					
-					for (sd.Enumerate(pathName))
+
+					for ( sd.Enumerate(pathName))
 					{
 						var str = new String();
 						sd.GetCurString(str);
@@ -142,25 +146,25 @@ namespace IDE
 
 				using (sd.CreateArray("StepFilters"))
 				{
-				    for (var stepFilter in gApp.mDebugger.mStepFilterList.Values)
-				    {
+					for (var stepFilter in gApp.mDebugger.mStepFilterList.Values)
+					{
 						if (!stepFilter.mIsGlobal)
 							continue;
 						if (stepFilter.mKind == .Filtered)
 							sd.Add(stepFilter.mFilter);
-				    }
+					}
 					sd.RemoveIfEmpty();
 				}
 
 				using (sd.CreateArray("StepNotFilters"))
 				{
-				    for (var stepFilter in gApp.mDebugger.mStepFilterList.Values)
-				    {
+					for (var stepFilter in gApp.mDebugger.mStepFilterList.Values)
+					{
 						if (!stepFilter.mIsGlobal)
 							continue;
 						if (stepFilter.mKind == .NotFiltered)
 							sd.Add(stepFilter.mFilter);
-				    }
+					}
 					sd.RemoveIfEmpty();
 				}
 				sd.Add("ProfileSampleRate", mProfileSampleRate);
@@ -172,14 +176,14 @@ namespace IDE
 				sd.Get("UseSymbolServers", ref mUseSymbolServers);
 				sd.Get("SymCachePath", mSymCachePath);
 				ClearAndDeleteItems(mSymbolSearchPath);
-				for (sd.Enumerate("SymbolSearchPath"))
+				for ( sd.Enumerate("SymbolSearchPath"))
 				{
 					var str = new String();
 					sd.GetCurString(str);
 					mSymbolSearchPath.Add(str);
 				}
 				ClearAndDeleteItems(mAutoFindPaths);
-				for (sd.Enumerate("AutoFindPaths"))
+				for ( sd.Enumerate("AutoFindPaths"))
 				{
 					var str = new String();
 					sd.GetCurString(str);
@@ -188,14 +192,14 @@ namespace IDE
 
 				if (gApp.mDebugger != null)
 				{
-					for (sd.Enumerate("StepFilters"))
+					for ( sd.Enumerate("StepFilters"))
 					{
 						String filter = scope String();
 						sd.GetCurString(filter);
 						gApp.mDebugger.CreateStepFilter(filter, true, .Filtered);
 					}
 
-					for (sd.Enumerate("StepNotFilters"))
+					for ( sd.Enumerate("StepNotFilters"))
 					{
 						String filter = scope String();
 						sd.GetCurString(filter);
@@ -228,7 +232,8 @@ namespace IDE
 				/*String appDataPath = scope String();
 				Platform.GetStrHelper(appDataPath, scope (outPtr, outSize, outResult) =>
 					{
-						Platform.BfpDirectory_GetSysDirectory(.AppData_Local, outPtr, outSize, (Platform.BfpFileResult*)outResult);
+						Platform.BfpDirectory_GetSysDirectory(.AppData_Local, outPtr, outSize,
+				(Platform.BfpFileResult*)outResult);
 					});*/
 
 				mSymbolSearchPath.Add(new String("https://msdl.microsoft.com/download/symbols"));
@@ -258,6 +263,240 @@ namespace IDE
 			}
 		}
 
+		public class Colors
+		{
+			public Color mText = 0xFFFFFFFF;
+			public Color mWindow = 0xFF595959;
+			public Color mBackground = 0xFF262626;
+			public Color mSelectedOutline = 0xFFE6A800;
+			public Color mMenuFocused = 0xFFFFA000;
+			public Color mMenuSelected = 0xFFD0A070;
+
+			public Color mCode = 0xFFFFFFFF;
+			public Color mKeyword = 0xFFE1AE9A;
+			public Color mLiteral = 0XFFC8A0FF;
+			public Color mIdentifier = 0xFFFFFFFF;
+			public Color mType = 0XFF66D9EF;
+			public Color mComment = 0XFF75715E;
+			public Color mMethod = 0XFFA6E22A;
+			public Color mTypeRef = 0XFF66D9EF;
+			public Color mNamespace = 0xFF7BEEB7;
+			public Color mDisassemblyText = 0xFFB0B0B0;
+			public Color mDisassemblyFileName = 0XFFFF0000;
+			public Color mError = 0xFFFF0000;
+			public Color mBuildError = 0xFFFF8080;
+			public Color mBuildWarning = 0xFFFFFF80;
+			public Color mVisibleWhiteSpace = 0xFF9090C0;
+
+			public void Deserialize(StructuredData sd)
+			{
+				void GetColor(String name, ref Color color)
+				{
+					sd.Get(name, ref *(int32*)&color);
+				}
+
+				GetColor("Text", ref mText);
+				GetColor("Code", ref mCode);
+				GetColor("Keyword", ref mKeyword);
+				GetColor("Literal", ref mLiteral);
+				GetColor("Identifier", ref mIdentifier);
+				GetColor("Type", ref mType);
+				GetColor("Comment", ref mComment);
+				GetColor("Method", ref mMethod);
+				GetColor("TypeRef", ref mTypeRef);
+				GetColor("Namespace", ref mNamespace);
+				GetColor("DisassemblyText", ref mDisassemblyText);
+				GetColor("DisassemblyFileName", ref mDisassemblyFileName);
+				GetColor("Error", ref mError);
+				GetColor("BuildError", ref mBuildError);
+				GetColor("BuildWarning", ref mBuildWarning);
+				GetColor("VisibleWhiteSpace", ref mVisibleWhiteSpace);
+			}
+
+			public void Apply()
+			{
+				SourceEditWidgetContent.sTextColors[0] = mCode;
+				SourceEditWidgetContent.sTextColors[1] = mKeyword;
+				SourceEditWidgetContent.sTextColors[2] = mLiteral;
+				SourceEditWidgetContent.sTextColors[3] = mIdentifier;
+				SourceEditWidgetContent.sTextColors[4] = mType;
+				SourceEditWidgetContent.sTextColors[5] = mComment;
+				SourceEditWidgetContent.sTextColors[6] = mMethod;
+				SourceEditWidgetContent.sTextColors[7] = mTypeRef;
+				SourceEditWidgetContent.sTextColors[8] = mNamespace;
+				SourceEditWidgetContent.sTextColors[9] = mDisassemblyText;
+				SourceEditWidgetContent.sTextColors[10] = mDisassemblyFileName;
+				SourceEditWidgetContent.sTextColors[11] = mError;
+				SourceEditWidgetContent.sTextColors[12] = mBuildError;
+				SourceEditWidgetContent.sTextColors[13] = mBuildWarning;
+				SourceEditWidgetContent.sTextColors[14] = mVisibleWhiteSpace;
+
+				DarkTheme.COLOR_TEXT = mText;
+				DarkTheme.COLOR_BKG = mBackground;
+				DarkTheme.COLOR_SELECTED_OUTLINE = mSelectedOutline;
+				DarkTheme.COLOR_MENU_FOCUSED = mMenuFocused;
+				DarkTheme.COLOR_MENU_SELECTED = mMenuSelected;
+			}
+		}
+
+		public class UISettings
+		{
+			public Colors mColors = new .() ~ delete _;
+			public float mScale = 100;
+			public List<String> mTheme = new .() ~ DeleteContainerAndItems!(_);
+
+			public void SetDefaults()
+			{
+				DeleteAndNullify!(mColors);
+				mColors = new .();
+				mScale = 100;
+				ClearAndDeleteItems(mTheme);
+			}
+
+			public void Apply()
+			{
+				DeleteAndNullify!(mColors);
+				mColors = new .();
+
+				if (DarkTheme.sDarkTheme == null)
+					return;
+
+				for (int scale < 3)
+					DarkTheme.sDarkTheme.mUIFileNames[scale].Clear();
+
+				void LoadTheme(StringView themeFilePath)
+				{
+					if (!File.Exists(themeFilePath))
+						return;
+
+					StructuredData sd = scope .();
+					if (sd.Load(themeFilePath) case .Err)
+						return;
+
+					using (sd.Open("Colors"))
+						mColors.Deserialize(sd);
+				}
+
+				for (let theme in mTheme)
+				{
+					String relPath = scope .()..Append(gApp.mInstallDir, "themes/");
+					String absPath = scope .();
+					Path.GetAbsolutePath(theme, relPath, absPath);
+
+					if (absPath.EndsWith(".TOML", .OrdinalIgnoreCase))
+					{
+						LoadTheme(absPath);
+						continue;
+					}
+
+					absPath.Append("/");
+
+					bool needsRebuild = false;
+					let origImageTime = File.GetLastWriteTime(scope String(absPath, "../../images/DarkUI.png")).GetValueOrDefault();
+
+					if (origImageTime != default)
+					{
+						DateTime maxSrcImgTime = default;
+						DateTime minDestImgTime = default;
+
+						for (int scale < 3)
+						{
+							String srcImgPath = scope .(absPath);
+							String destImgPath = scope .(absPath);
+							switch (scale)
+							{
+							case 0:
+								srcImgPath.Append("UI.psd");
+								destImgPath.Append("UI.png");
+							case 1:
+								srcImgPath.Append("UI_2.psd");
+								destImgPath.Append("UI_2.png");
+							case 2:
+								srcImgPath.Append("UI_4.psd");
+								destImgPath.Append("UI_2.png");
+							}
+							maxSrcImgTime = Math.Max(maxSrcImgTime, File.GetLastWriteTime(srcImgPath).GetValueOrDefault());
+							let destImageTime = File.GetLastWriteTime(destImgPath).GetValueOrDefault();
+							if (scale == 0)
+								minDestImgTime = destImageTime;
+							else
+								minDestImgTime = Math.Min(minDestImgTime, destImageTime);
+						}
+
+						if (maxSrcImgTime > minDestImgTime)
+							needsRebuild = true;
+						if (origImageTime > minDestImgTime)
+							needsRebuild = true;
+					}
+
+					if (needsRebuild)
+					{
+						String imgCreatePath = scope String(absPath, "../../images/ImgCreate.exe");
+
+						ProcessStartInfo procInfo = scope ProcessStartInfo();
+						procInfo.UseShellExecute = false;
+						procInfo.RedirectStandardError = true;
+						procInfo.RedirectStandardOutput = true;
+						procInfo.SetFileName(imgCreatePath);
+						procInfo.SetWorkingDirectory(absPath);
+						procInfo.CreateNoWindow = true;
+
+						SpawnedProcess process = scope SpawnedProcess();
+						if (process.Start(procInfo) case .Ok)
+						{
+							//Windows.MessageBoxA(default, "Rebuilding theme images...", "Rebuilding Theme", Windows.MB_OK);
+							process.WaitFor();
+						}
+					}
+
+					for (int scale < 3)
+					{
+						String imgPath = scope .(absPath);
+						switch (scale)
+						{
+						case 0: imgPath.Append("UI.png");
+						case 1: imgPath.Append("UI_2.png");
+						case 2: imgPath.Append("UI_4.png");
+						}
+
+						if (File.Exists(imgPath))
+						{
+							DarkTheme.sDarkTheme.mUIFileNames[scale].Set(imgPath);
+						}
+					}
+
+					String themeFilePath = scope .()..Append(absPath, "theme.toml");
+					LoadTheme(themeFilePath);
+					String userFilePath = scope .()..Append(absPath, "user.toml");
+					LoadTheme(userFilePath);
+				}
+
+				mColors.Apply();
+			}
+
+			public void Serialize(StructuredData sd)
+			{
+				sd.Add("Scale", mScale);
+				using (sd.CreateArray("Theme"))
+				{
+					for (let str in mTheme)
+						sd.Add(str);
+				}
+			}
+
+			public void Deserialize(StructuredData sd)
+			{
+				sd.Get("Scale", ref mScale);
+				ClearAndDeleteItems(mTheme);
+				for (sd.Enumerate("Theme"))
+				{
+					var str = new String();
+					sd.GetCurString(str);
+					mTheme.Add(str);
+				}
+			}
+		}
+
 		public class EditorSettings
 		{
 			public enum LockWhileDebuggingKind
@@ -275,42 +514,8 @@ namespace IDE
 				None
 			}
 
-			public class Colors
-			{
-				public Color mUIColorR = Color.Get(255, 0, 0);
-				public Color mUIColorG = Color.Get(0, 255, 0);
-				public Color mUIColorB = Color.Get(0, 0, 255);
-				public Color mText = 0xFFFFFFFF;
-				public Color mKeyword = 0xFFE1AE9A;
-				public Color mLiteral = 0XFFC8A0FF;
-				public Color mIdentifier = 0xFFFFFFFF;
-				public Color mType = 0XFF66D9EF;
-				public Color mComment = 0XFF75715E;
-				public Color mMethod = 0XFFA6E22A;
-				public Color mTypeRef = 0XFF66D9EF;
-				public Color mNamespace = 0xFF7BEEB7;
-				public Color mDisassemblyText = 0xFFB0B0B0;
-				public Color mDisassemblyFileName = 0XFFFF0000;
-				public Color mError = 0xFFFF0000;
-				public Color mBuildError = 0xFFFF8080;
-				public Color mBuildWarning = 0xFFFFFF80;
-				public Color mVisibleWhiteSpace = 0xFF9090C0;
-
-				public void Serialize(StructuredData sd)
-				{
-					
-				}
-
-				public void Deserialize(StructuredData sd)
-				{
-					
-				}
-			}
-
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
-			public float mUIScale = 100;
-			public Colors mColors = new .() ~ delete _;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
 			public bool mAutoCompleteRequireControl = true;
 			public bool mAutoCompleteRequireTab = false;
@@ -319,11 +524,12 @@ namespace IDE
 			public bool mShowLocatorAnim = true;
 			public bool mHiliteCursorReferences = true;
 			public bool mLockEditing;
-			public LockWhileDebuggingKind mLockEditingWhenDebugging = .WhenNotHotSwappable; // Only applicable for non-Beef sources
+			public LockWhileDebuggingKind mLockEditingWhenDebugging = .WhenNotHotSwappable;// Only applicable for
+			// non-Beef sources
 			public bool mPerforceAutoCheckout = true;
 			public bool mSpellCheckEnabled = true;
 			public bool mShowLineNumbers = true;
-			public bool mFreeCursorMovement; 
+			public bool mFreeCursorMovement;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -333,7 +539,6 @@ namespace IDE
 						sd.Add(str);
 				}
 				sd.Add("FontSize", mFontSize);
-				sd.Add("UIScale", mUIScale);
 				sd.Add("AutoCompleteShowKind", mAutoCompleteShowKind);
 				sd.Add("AutoCompleteRequireControl", mAutoCompleteRequireControl);
 				sd.Add("AutoCompleteRequireTab", mAutoCompleteRequireTab);
@@ -347,9 +552,6 @@ namespace IDE
 				sd.Add("SpellCheckEnabled", mSpellCheckEnabled);
 				sd.Add("ShowLineNumbers", mShowLineNumbers);
 				sd.Add("FreeCursorMovement", mFreeCursorMovement);
-
-				using (sd.CreateObject("Colors"))
-					mColors.Serialize(sd);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -361,8 +563,8 @@ namespace IDE
 					sd.GetCurString(str);
 					mFonts.Add(str);
 				}
+				sd.Get("UIScale", ref gApp.mSettings.mUISettings.mScale); // Legacy
 				sd.Get("FontSize", ref mFontSize);
-				sd.Get("UIScale", ref mUIScale);
 				sd.Get("AutoCompleteShowKind", ref mAutoCompleteShowKind);
 				sd.Get("AutoCompleteRequireControl", ref mAutoCompleteRequireControl);
 				sd.Get("AutoCompleteRequireTab", ref mAutoCompleteRequireTab);
@@ -376,9 +578,6 @@ namespace IDE
 				sd.Get("SpellCheckEnabled", ref mSpellCheckEnabled);
 				sd.Get("ShowLineNumbers", ref mShowLineNumbers);
 				sd.Get("FreeCursorMovement", ref mFreeCursorMovement);
-
-				using (sd.Open("Colors"))
-					mColors.Deserialize(sd);
 			}
 
 			public void SetDefaults()
@@ -402,6 +601,8 @@ namespace IDE
 					if (gApp.mSpellChecker != null)
 						DeleteAndNullify!(gApp.mSpellChecker);
 				}
+
+				
 			}
 		}
 
@@ -549,7 +750,7 @@ namespace IDE
 							if (!gApp.mCommands.mCommandMap.TryGetValue(entry.mCommand, out ideCommand))
 							{
 								gApp.OutputLineSmart("ERROR: Unable to locate IDE command {0}", entry.mCommand);
-								break; // Boo
+								break;// Boo
 							}
 							ideCommand.mParent = curCmdMap;
 							ideCommand.mBoundKeyState = keyState;
@@ -657,7 +858,7 @@ namespace IDE
 						allocatedStrs.Add(str);
 						continue;
 					}
-					
+
 					let entry = new Entry();
 					entry.mCommand = new String(cmdStr);
 
@@ -693,8 +894,9 @@ namespace IDE
 
 		public bool mLoadedSettings;
 
-		public CompilerSettings mCompilerSettings = new .() ~ delete _;
+		public UISettings mUISettings = new .() ~ delete _;
 		public EditorSettings mEditorSettings = new .() ~ delete _;
+		public CompilerSettings mCompilerSettings = new .() ~ delete _;
 		public VSSettings mVSSettings = new .() ~ delete _;
 		public DebuggerSettings mDebuggerSettings = new .() ~ delete _;
 		public KeySettings mKeySettings = new .() ~ delete _;
@@ -702,6 +904,7 @@ namespace IDE
 		public String mWakaTimeKey = new .() ~ delete _;
 		public bool mEnableDevMode;
 		public TutorialsFinished mTutorialsFinished = .();
+
 
 		public this()
 		{
@@ -711,6 +914,7 @@ namespace IDE
 		public void SetDefaults()
 		{
 			mVSSettings.SetDefaults();
+			mUISettings.SetDefaults();
 			mEditorSettings.SetDefaults();
 			mCompilerSettings.SetDefaults();
 			mDebuggerSettings.SetDefaults();
@@ -730,6 +934,8 @@ namespace IDE
 			let sd = scope StructuredData();
 			sd.CreateNew();
 			sd.Add("FileVersion", 1);
+			using (sd.CreateObject("UI"))
+				mUISettings.Serialize(sd);
 			using (sd.CreateObject("Editor"))
 				mEditorSettings.Serialize(sd);
 			using (sd.CreateObject("Keys"))
@@ -749,8 +955,8 @@ namespace IDE
 					recentKind.ToString(name);
 					using (sd.CreateArray(name))
 					{
-					    for (var recentFile in mRecentFiles.GetRecentList(recentKind))
-					        sd.Add(recentFile);
+						for (var recentFile in mRecentFiles.GetRecentList(recentKind))
+							sd.Add(recentFile);
 					}
 				}
 			}
@@ -782,6 +988,8 @@ namespace IDE
 				return;
 
 			mLoadedSettings = true;
+			using (sd.Open("UI"))
+				mUISettings.Deserialize(sd);
 			using (sd.Open("Editor"))
 				mEditorSettings.Deserialize(sd);
 			using (sd.Open("Keys"))
@@ -801,12 +1009,12 @@ namespace IDE
 
 					String name = scope .();
 					recentKind.ToString(name);
-					for (sd.Enumerate(name))
+					for ( sd.Enumerate(name))
 					{
 						String fileStr = new String();
 						sd.GetCurString(fileStr);
 						IDEUtils.FixFilePath(fileStr);
-					    recentList.Add(fileStr);
+						recentList.Add(fileStr);
 					}
 				}
 			}
@@ -826,11 +1034,13 @@ namespace IDE
 
 		public void Apply()
 		{
-			gApp.mSettings.mEditorSettings.mUIScale = Math.Clamp(gApp.mSettings.mEditorSettings.mUIScale, 50, 400);
+			gApp.mSettings.mUISettings.mScale = Math.Clamp(gApp.mSettings.mUISettings.mScale, 50, 400);
 			gApp.mSettings.mEditorSettings.mFontSize = Math.Clamp(gApp.mSettings.mEditorSettings.mFontSize, 6.0f, 72.0f);
 
+			mUISettings.Apply();
+
 			Font.ClearFontNameCache();
-			gApp.PhysSetScale(gApp.mSettings.mEditorSettings.mUIScale / 100.0f, true);
+			gApp.PhysSetScale(gApp.mSettings.mUISettings.mScale / 100.0f, true);
 
 			DeleteAndNullify!(gApp.mKeyChordState);
 

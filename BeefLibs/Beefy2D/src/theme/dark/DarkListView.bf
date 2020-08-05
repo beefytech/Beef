@@ -93,7 +93,7 @@ namespace Beefy.theme.dark
     {        
         public float mChildIndent;
         public DarkTreeOpenButton mOpenButton;
-        public uint32 mTextColor = Color.White;
+        public uint32? mTextColor;
         public uint32 mFocusColor = DarkTheme.COLOR_MENU_FOCUSED;
         public uint32 mSelectColor = DarkTheme.COLOR_MENU_SELECTED;
         public float mTextAreaLengthOffset;        
@@ -205,6 +205,9 @@ namespace Beefy.theme.dark
 				for (var child in mChildItems)
 					child.RehupScale(oldScale, newScale);
 			}
+
+			mFocusColor = DarkTheme.COLOR_MENU_FOCUSED;
+			mSelectColor = DarkTheme.COLOR_MENU_SELECTED;
 		}
 
         protected virtual float GetLabelOffset()
@@ -320,7 +323,7 @@ namespace Beefy.theme.dark
 						wantWidth -= listView.mInsets.mRight;
 				}							 
 
-                using (g.PushColor(mTextColor))
+                using (g.PushColor(mTextColor ?? DarkTheme.COLOR_TEXT))
                     g.DrawString(mLabel, labelX, 0, .Left, wantWidth, ((nextContentColumn != -1) || (listView.mEndInEllipsis)) ? .Ellipsis : .Overflow);
             }
         }
@@ -924,7 +927,8 @@ namespace Beefy.theme.dark
 			var column = mColumns[columnIdx];
 			float drawXOfs = GS!(6);
 			float drawWidth = column.mWidth - drawXOfs - GS!(6);
-			g.DrawString(column.mLabel, drawXOfs, mHeaderLabelYOfs + GS!(2), FontAlign.Left, drawWidth, (columnIdx < mColumns.Count - 1) ? FontOverflowMode.Ellipsis : FontOverflowMode.Overflow);
+			using (g.PushColor(DarkTheme.COLOR_TEXT))
+				g.DrawString(column.mLabel, drawXOfs, mHeaderLabelYOfs + GS!(2), FontAlign.Left, drawWidth, (columnIdx < mColumns.Count - 1) ? FontOverflowMode.Ellipsis : FontOverflowMode.Overflow);
 			
 			if (columnIdx != 0)
 			{

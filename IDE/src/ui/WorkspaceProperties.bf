@@ -469,7 +469,7 @@ namespace IDE.ui
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
             var (category, propEntry) = AddPropertiesItem(root, "General");
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Toolset", "mToolsetType");
 			AddPropertiesItem(category, "Build Type", "mBuildKind");
 
@@ -722,7 +722,7 @@ namespace IDE.ui
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();            
             var (category, propEntry) = AddPropertiesItem(root, "General");            
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Preprocessor Macros", "mPreprocessorMacros");
 			AddPropertiesItem(category, "Incremental Build", "mIncrementalBuild");
             AddPropertiesItem(category, "Intermediate Type", "mIntermediateType");
@@ -738,10 +738,10 @@ namespace IDE.ui
 					if (allocType == .Custom)
 					{
 						mallocSubItem.Label = mallocPropEntry.mCurValue.Get<String>();
-						mallocSubItem.mTextColor = 0xFFFFFFFF;
+						mallocSubItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFFFFFFF);
 						mallocPropEntry.mDisabled = false;
 						freeSubItem.Label = freePropEntry.mCurValue.Get<String>();
-						freeSubItem.mTextColor = 0xFFFFFFFF;
+						freeSubItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFFFFFFF);
 						freePropEntry.mDisabled = false;
 					}
 					else
@@ -767,9 +767,9 @@ namespace IDE.ui
 							freeSubItem.Label = "tcfree";
 						}
 
-						mallocSubItem.mTextColor = 0xFFC0C0C0;
+						mallocSubItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFC0C0C0);
 						mallocPropEntry.mDisabled = true;
-						freeSubItem.mTextColor = 0xFFC0C0C0;
+						freeSubItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFC0C0C0);
 						freePropEntry.mDisabled = true;
 					}
 					return false;
@@ -786,7 +786,7 @@ namespace IDE.ui
 
             (category, propEntry) = AddPropertiesItem(root, "Debug");
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
             AddPropertiesItem(category, "Debug Info", "mEmitDebugInfo");
             AddPropertiesItem(category, "Runtime Checks", "mRuntimeChecks",
                 scope String[] { "No", "Yes" });
@@ -818,7 +818,7 @@ namespace IDE.ui
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
             var (category, propEntry) = AddPropertiesItem(root, "General");
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
             AddPropertiesItem(category, "SIMD Instructions", "mCSIMDSetting");
             AddPropertiesItem(category, "Optimization Level", "mCOptimizationLevel");
             category.Open(true, true);

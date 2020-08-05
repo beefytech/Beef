@@ -49,7 +49,7 @@ namespace IDE.ui
 
         public override void Draw(Graphics g)
         {
-			uint32 color = Color.White;
+			uint32 color = DarkTheme.COLOR_TEXT;
 			let projectPanel = ((ProjectListView)mListView).mProjectPanel;
 
 			ProjectItem projectItem;
@@ -57,14 +57,14 @@ namespace IDE.ui
 			if ((projectItem != null) && (projectItem.mParentFolder != null))
 			{
 				if (projectItem.mIncludeKind == .Manual)
-					color = 0xFFE0E0FF;
+					color = Color.Mult(color, 0xFFE0E0FF);
 				else if (projectItem.mIncludeKind == .Ignore)
-					color = 0xFF909090;
+					color = Color.Mult(color, 0xFF909090);
 
 				if (let projectSource = projectItem as ProjectSource)
 				{
 					if (projectSource.mLoadFailed)
-						color = 0xFFFF0000;
+						color = Color.Mult(color, 0xFFFF0000);
 				}
 
 				mTextColor = color;
@@ -1931,9 +1931,9 @@ namespace IDE.ui
                 listViewItem.mIsBold = checkProject == IDEApp.sApp.mWorkspace.mStartupProject;
 
                 var projectOptions = IDEApp.sApp.GetCurProjectOptions(checkProject);
-                listViewItem.mTextColor = (projectOptions != null) ? Color.White : 0xFFA0A0A0;
+                listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, (projectOptions != null) ? Color.White : 0xFFA0A0A0);
 				if (checkProject.mFailed)
-					listViewItem.mTextColor = 0xFFE04040;
+					listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE04040);
             }
         }
 

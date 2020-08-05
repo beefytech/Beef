@@ -6997,7 +6997,7 @@ namespace IDE
 		public void SetScale(float scale, bool force = false)
 		{
 			PhysSetScale(scale, force);
-			gApp.mSettings.mEditorSettings.mUIScale = DarkTheme.sScale * 100.0f;
+			gApp.mSettings.mUISettings.mScale = DarkTheme.sScale * 100.0f;
 		}
 
         void SysKeyDown(KeyDownEvent evt)
@@ -10736,6 +10736,7 @@ namespace IDE
 			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
 
             DarkTheme aTheme = new DarkTheme();
+			mSettings.mUISettings.Apply(); // Apply again to set actual theme
             aTheme.Init();
             ThemeFactory.mDefault = aTheme;
 
@@ -10879,7 +10880,7 @@ namespace IDE
 				int dpi = mMainWindow.GetDPI();
 				if (dpi >= 120)
 				{
-					mSettings.mEditorSettings.mUIScale = 100 * Math.Min(dpi / 96.0f, 4.0f);
+					mSettings.mUISettings.mScale = 100 * Math.Min(dpi / 96.0f, 4.0f);
 					mSettings.Apply();
 				}	
 			}

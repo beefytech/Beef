@@ -59,7 +59,7 @@ namespace Beefy.theme.dark
             public bool mIsEndTab;
             public bool mIsRightTab;
             public float mObscuredDir; // <0 = left, >0 = right
-            public uint32 mTextColor = Color.White;
+            public uint32? mTextColor;
 			public float mTabWidthOffset = 30;
 
             public this(bool isEnd = false)
@@ -130,8 +130,8 @@ namespace Beefy.theme.dark
                 if ((mLabel != null) && (drawWidth > GS!(16)))
                 {
                     //using (g.PushColor(((DarkTabbedView)mParent).mTextColor))
-                    using (g.PushColor(mTextColor))
-                    {
+                    using (g.PushColor(mTextColor ?? DarkTheme.COLOR_TEXT))
+					{
 						float textWidth = g.mFont.GetWidth(mLabel);
 						float useWidth = mWidth - GS!(12)*2;
 

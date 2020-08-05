@@ -132,7 +132,8 @@ namespace Beefy.theme.dark
 						float fontHeight = g.mFont.GetHeight();
 
                         //g.DrawString(label, mLabelX, (mHeight - GS!(24)) / 2, mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
-						g.DrawString(label, mLabelX, (mHeight - fontHeight) / 2 - (int)GS!(3.5f), mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
+						using (g.PushColor(DarkTheme.COLOR_TEXT))
+							g.DrawString(label, mLabelX, (mHeight - fontHeight) / 2 - (int)GS!(3.5f), mLabelAlign, mWidth - mLabelX - GS!(24), FontOverflowMode.Ellipsis);
                     }
                 }
 

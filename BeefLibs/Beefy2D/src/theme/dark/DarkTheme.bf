@@ -186,6 +186,7 @@ namespace Beefy.theme.dark
             COUNT
         };
 
+		public static uint32 COLOR_TEXT                = 0xFFFFFFFF;
         public static uint32 COLOR_WINDOW              = 0xFF595959;
         public static uint32 COLOR_BKG                 = 0xFF262626;
         public static uint32 COLOR_SELECTED_OUTLINE    = 0xFFE6A800;
@@ -208,6 +209,17 @@ namespace Beefy.theme.dark
 		public Image mWindowTopImage ~ delete _;
         public Image mIconWarning ~ delete _;
         public Image mIconError ~ delete _;
+
+		public String[3] mUIFileNames = .(new String(), new String(), new String()) ~
+		{
+			for (var val in _)
+				delete val;
+		};
+
+		public this()
+		{
+			sDarkTheme = this;
+		}
 
         public static DesignToolboxEntry[] GetDesignToolboxEntries()
         {
@@ -320,22 +332,35 @@ namespace Beefy.theme.dark
 			COLOR_MENU_FOCUSED = Color.FromNative(bits[3]);
 			COLOR_MENU_SELECTED = Color.FromNative(bits[4]);
 
+			int scaleIdx = 0;
+
 			String uiFileName = null;
 			switch (sSrcImgScale)
 			{
 			case 1:
+				scaleIdx = 0;
 				uiFileName = "DarkUI.png";
 			case 2:
+				scaleIdx = 1;
 				uiFileName = "DarkUI_2.png";
 			case 4:
+				scaleIdx = 2;
 				uiFileName = "DarkUI_4.png";
 			default:
 				Runtime.FatalError("Invalid scale");
 			}
 
+			String fileName = scope String()..Append(tempStr, BFApp.sApp.mInstallDir, "images/", uiFileName);
+			if (!mUIFileNames[scaleIdx].IsEmpty)
+				fileName.Set(mUIFileNames[scaleIdx]);
+
 			mIconError = LoadSizedImage("IconError");
 			mIconWarning = LoadSizedImage("IconWarning");
-			mThemeImage = Image.LoadFromFile(scope String()..Append(tempStr, BFApp.sApp.mInstallDir, "images/", uiFileName));
+			mThemeImage = Image.LoadFromFile(fileName);
+			if (mThemeImage == null)
+			{
+				// Fail (just crashes now)
+			}
 
 			for (int32 i = 0; i < (int32)ImageIdx.COUNT; i++)
 			{

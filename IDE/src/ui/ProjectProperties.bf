@@ -633,7 +633,7 @@ namespace IDE.ui
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 			var (category, ?) = AddPropertiesItem(root, "Resources");
 			category.mIsBold = true;
-			category.mTextColor = 0xFFE8E8E8;
+			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
 			var (listViewItem, propEntry) = AddPropertiesItem(category, "Icon File", "mIconFile");
 			(listViewItem, propEntry) = AddPropertiesItem(category, "Manifest File", "mManifestFile");
 			category.Open(true, true);
@@ -655,7 +655,7 @@ namespace IDE.ui
 		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 		    var (category, ?) = AddPropertiesItem(root, "General");
 		    category.mIsBold = true;
-		    category.mTextColor = 0xFFE8E8E8;
+		    category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
 			AddPropertiesItem(category, "Options", "mOptions");
 		    //parent.MakeParent();
 		    category.Open(true, true);
@@ -713,7 +713,7 @@ namespace IDE.ui
                 
                 var (listViewItem, propItem) = AddPropertiesItem(category, projectName);
                 if (IDEApp.sApp.mWorkspace.FindProject(projectName) == null)
-                    listViewItem.mTextColor = 0xFFFF6060;
+                    listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFFF6060);
 
                 var subItem = listViewItem.CreateSubItem(1);
 
@@ -794,7 +794,7 @@ namespace IDE.ui
 		    var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 		    var (category, ?) = AddPropertiesItem(root, "General");
 		    category.mIsBold = true;
-		    category.mTextColor = 0xFFE8E8E8;
+		    category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
 			
 			AddPropertiesItem(category, "Startup Object", "mStartupObject");
 			AddPropertiesItem(category, "Default Namespace", "mDefaultNamespace");
@@ -812,13 +812,13 @@ namespace IDE.ui
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
             var (category, propEntry) = AddPropertiesItem(root, "General");
             category.mIsBold = true;
-            category.mTextColor = 0xFFE8E8E8;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
             AddPropertiesItem(category, "Preprocessor Macros", "mBeefOptions.mPreprocessorMacros");
             category.Open(true, true);
 
             (category, propEntry) = AddPropertiesItem(root, "Code Generation");
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Reloc Model", "mBeefOptions.mRelocType");
 			AddPropertiesItem(category, "PIC Level", "mBeefOptions.mPICLevel");
             AddPropertiesItem(category, "Optimization Level", "mBeefOptions.mOptimizationLevel",
@@ -843,7 +843,7 @@ namespace IDE.ui
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
             var (category, propEntry) = AddPropertiesItem(root, "General");
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
             AddPropertiesItem(category, "Compiler", "mCOptions.mCompilerType");            
             AddPropertiesItem(category, "Other C Flags", "mCOptions.mOtherCFlags");
             AddPropertiesItem(category, "Other C++ Flags", "mCOptions.mOtherCPPFlags");
@@ -856,7 +856,7 @@ namespace IDE.ui
 
             (category, propEntry) = AddPropertiesItem(root, "Code Generation", "");
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
             AddPropertiesItem(category, "Disable C++ Exceptions", "mCOptions.mDisableExceptions",
                 scope String[] { "No", "Yes (-fno-exceptions)" }); // -fno-exceptions
             AddPropertiesItem(category, "SIMD Instructions", "mCOptions.mSIMD"); // -msse, -msse2, -msse4.1, -mno-sse
@@ -880,7 +880,7 @@ namespace IDE.ui
 
             (category, propEntry) = AddPropertiesItem(root, "Warnings", "");
             category.mIsBold = true;
-            category.mTextColor = cHeaderColor;
+            category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
             AddPropertiesItem(category, "All warnings", "mCOptions.mAllWarnings",
                 scope String[] { "No", "Yes (-Wall)" }); // -Wall
             AddPropertiesItem(category, "Effective C++ Violations", "mCOptions.mEffectiveCPPViolations",
