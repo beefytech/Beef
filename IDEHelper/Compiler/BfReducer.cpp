@@ -6608,6 +6608,12 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 		int blockAfterIdx = mVisitorPos.mReadPos + 1;
 		BfAstNode* blockAfterPos = nameIdentifier;
 		BfPropertyDeclaration* propertyDeclaration = NULL;
+
+		if ((indexerThisToken != NULL) && (mVisitorPos.GetNext() != indexerThisToken))
+		{
+			indexerThisToken = NULL;
+		}
+
 		if (indexerThisToken != NULL)
 		{
 			auto indexerDeclaration = mAlloc->Alloc<BfIndexerDeclaration>();
