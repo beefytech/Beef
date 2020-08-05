@@ -19856,11 +19856,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	if (mCompiler->mResolvePassData != NULL)
 		bfAutocomplete = mCompiler->mResolvePassData->mAutoComplete;
 
-	if ((methodDeclaration != NULL) && (methodDeclaration->ToString().Contains("//TEST")))
-	{
-		NOP;
-	}
-
 	if (methodInstance->mMethodInfoEx != NULL)
 	{
 		BfTypeInstance* unspecializedTypeInstance = NULL;
