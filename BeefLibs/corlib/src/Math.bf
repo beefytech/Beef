@@ -358,7 +358,7 @@ namespace System
 		    return val1 + (val2 - val1) * pct;
 		}
 
-        public static T Min<T>(T val1, T val2) where T : IOpComparable, IIsNaN
+        public static T Min<T>(T val1, T val2) where bool : operator T < T where T : IIsNaN
         {
             if (val1 < val2)
                 return val1;
@@ -369,12 +369,27 @@ namespace System
             return val2;
         }
 
-		public static T Max<T>(T val1, T val2) where T : IOpComparable, IIsNaN
+		public static T Min<T>(T val1, T val2) where bool : operator T < T
+		{
+		    if (val1 < val2)
+		        return val1;
+		    return val2;
+		}
+
+		public static T Max<T>(T val1, T val2) where bool : operator T > T where T : IIsNaN
 		{
 		    if (val1 > val2)
 			    return val1;
 
 			if (val1.IsNaN)
+			    return val1;
+
+			return val2;
+		}
+
+		public static T Max<T>(T val1, T val2) where bool : operator T > T
+		{
+		    if (val1 > val2)
 			    return val1;
 
 			return val2;
