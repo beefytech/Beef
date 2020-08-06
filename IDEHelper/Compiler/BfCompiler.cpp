@@ -1374,7 +1374,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		CheckModuleStringRefs(module, bfModule, lastModuleRevision, foundStringIds, dllNameSet, dllMethods, stringValueEntries);
 
 		if ((module->mHasForceLinkMarker) &&
-			((!isHotCompile) || (module->mHadHotObjectWrites)))
+			((!isHotCompile) || (module->mHadHotObjectWrites)) &&
+			(mOptions.mPlatformType != BfPlatformType_Wasm))
 			forceLinkValues.Add(bfModule->CreateForceLinkMarker(module, NULL));
 	}
 
@@ -1593,7 +1594,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	{
 		SmallVector<BfIRType, 2> paramTypes;
 		auto dtorFuncType = bfModule->mBfIRBuilder->CreateFunctionType(voidType, paramTypes, false);
-		dtorFunc = bfModule->mBfIRBuilder->CreateFunction(dtorFuncType, BfIRLinkageType_External, "BfCallAllStaticDtors");
+		String dtorName = (mOptions.mPlatformType == BfPlatformType_Wasm) ? "BeefDone" : "BfCallAllStaticDtors";
+		dtorFunc = bfModule->mBfIRBuilder->CreateFunction(dtorFuncType, BfIRLinkageType_External, dtorName);
 		bfModule->SetupIRMethod(NULL, dtorFunc, false);
 		bfModule->mBfIRBuilder->SetActiveFunction(dtorFunc);
 		auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
@@ -1669,8 +1671,11 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		else
 		{
 			SmallVector<BfIRType, 2> paramTypes;
-			paramTypes.push_back(int32Type);
-			paramTypes.push_back(nullPtrType);
+			if (mOptions.mPlatformType != BfPlatformType_Wasm)
+			{
+				paramTypes.push_back(int32Type);
+				paramTypes.push_back(nullPtrType);
+			}
 			mainFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
 			mainFunc = bfModule->mBfIRBuilder->CreateFunction(mainFuncType, BfIRLinkageType_External, "BeefMain");
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
@@ -1686,7 +1691,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
             SmallVector<BfIRType, 2> paramTypes;
             paramTypes.push_back(int32Type);
             paramTypes.push_back(nullPtrType);
-            auto setCmdLineFuncType = bfModule->mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, false);
+            auto setCmdLineFuncType = bfModule->mBfIRBuilder->CreateFunctionType(voidType, paramTypes, false);
 
             auto setCmdLineFunc = bfModule->mBfIRBuilder->CreateFunction(setCmdLineFuncType, BfIRLinkageType_External, "BfpSystem_SetCommandLine");
 			bfModule->SetupIRMethod(NULL, setCmdLineFunc, false);
@@ -1922,12 +1927,15 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bfModule->mBfIRBuilder->SetInsertPoint(deinitBlock);
 		}
 
-		bfModule->mBfIRBuilder->CreateCall(dtorFunc, SizedArray<BfIRValue, 0>());
-		
-		BfModuleMethodInstance shutdownMethod = bfModule->GetInternalMethod("Shutdown");
-		if (shutdownMethod)
+		if (mOptions.mPlatformType != BfPlatformType_Wasm)
 		{
-			bfModule->mBfIRBuilder->CreateCall(shutdownMethod.mFunc, SizedArray<BfIRValue, 0>());
+			bfModule->mBfIRBuilder->CreateCall(dtorFunc, SizedArray<BfIRValue, 0>());
+
+			BfModuleMethodInstance shutdownMethod = bfModule->GetInternalMethod("Shutdown");
+			if (shutdownMethod)
+			{
+				bfModule->mBfIRBuilder->CreateCall(shutdownMethod.mFunc, SizedArray<BfIRValue, 0>());
+			}
 		}
 
 		if (deinitSkipBlock)
@@ -8726,7 +8734,7 @@ static BfPlatformType GetPlatform(StringView str)
 	}
 
 	bool hasLinux = false;
-
+	
 	for (auto elem : str.Split('-'))
 	{
 		if (elem == "linux")
@@ -8739,6 +8747,8 @@ static BfPlatformType GetPlatform(StringView str)
 			return BfPlatformType_iOS;
 		else if ((elem == "android") || (elem == "androideabi"))
 			return BfPlatformType_Android;
+		else if ((elem == "wasm32") || (elem == "wasm64"))
+			return BfPlatformType_Wasm;
 	}
 
 	if (hasLinux)
@@ -8769,6 +8779,10 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 		options->mMachineType = BfMachineType_AArch64;
 	else if (options->mTargetTriple.StartsWith("armv"))
 		options->mMachineType = BfMachineType_ARM;
+	else if (options->mTargetTriple.StartsWith("wasm32"))
+		options->mMachineType = BfMachineType_Wasm32;
+	else if (options->mTargetTriple.StartsWith("wasm64"))
+		options->mMachineType = BfMachineType_Wasm64;
 	else
 		options->mMachineType = BfMachineType_x64; // Default
 
@@ -8869,5 +8883,4 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_ForceRebuild(BfCompiler* bfCompiler)
 {
 	bfCompiler->mOptions.mForceRebuildIdx++;
 }
-
 

@@ -8422,7 +8422,7 @@ namespace IDE
 
 			if (relocType == .NotSet)
 			{
-				if (platform != .Windows)
+				if ((platform != .Windows) && (platform != .Wasm))
 					relocType = .PIC;
 			}
 
@@ -8931,6 +8931,9 @@ namespace IDE
 												newString.Append(".dylib");
 											else
 												newString.Append(".a");
+										case .Wasm:
+											if (!newString.Contains('.'))
+												newString.Append(".html");
 										default:
 											if (options.mBuildOptions.mBuildKind == .DynamicLib)
 												newString.Append(".so");
@@ -8952,6 +8955,9 @@ namespace IDE
 										case .macOS:
 											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
 												newString.Append(".dylib");
+										case .Wasm:
+											if (!newString.Contains('.'))
+												newString.Append(".html");
 										default:
 											if (project.mGeneralOptions.mTargetType == .BeefDynLib)
 												newString.Append(".so");
@@ -9005,6 +9011,11 @@ namespace IDE
 									case .iOS:
 									case .Linux:
 										newString.AppendF("./{} -lpthread -ldl -Wl,-rpath -Wl,$ORIGIN", rtName);
+									case .Wasm:
+										newString.Append(mInstallDir);
+										newString.Append("Beef", IDEApp.sRTVersionStr, "RT");
+										newString.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
+										newString.Append("_wasm.lib");
 									default:
 									}	
 
@@ -10062,6 +10073,8 @@ namespace IDE
 			case .Linux:
 				if (hostPlatform == .Windows)
 					canCompile = true; // Use WSL
+			case .Wasm:
+				canCompile = true;
 			default:
 			}
 			

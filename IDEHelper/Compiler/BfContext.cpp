@@ -1688,7 +1688,8 @@ void BfContext::UpdateRevisedTypes()
 
 	int wantPtrSize;
 	if ((mCompiler->mOptions.mMachineType == BfMachineType_x86) |
-		(mCompiler->mOptions.mMachineType == BfMachineType_ARM))
+		(mCompiler->mOptions.mMachineType == BfMachineType_ARM) ||
+		(mCompiler->mOptions.mMachineType == BfMachineType_Wasm32))
 		wantPtrSize = 4;
 	else
 		wantPtrSize = 8;

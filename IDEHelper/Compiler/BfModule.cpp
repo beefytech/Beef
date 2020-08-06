@@ -6567,6 +6567,7 @@ BfIRFunction BfModule::GetBuiltInFunc(BfBuiltInFuncType funcTypeId)
 		switch (funcTypeId)
 		{
 		case BfBuiltInFuncType_PrintF:
+			paramTypes.Add(nullPtrType);
 			funcType = mBfIRBuilder->CreateFunctionType(int32Type, paramTypes, true);
 			func = mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, "PrintF");
 			break;

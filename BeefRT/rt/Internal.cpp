@@ -39,7 +39,9 @@
 //#include "gc.h"
 #include "StompAlloc.h"
 #include "BeefySysLib/platform/PlatformHelper.h"
+#ifndef BF_DISABLE_FFI
 #include "ffi.h"
+#endif
 #include "Thread.h"
 
 #ifdef BF_PLATFORM_WINDOWS
@@ -816,17 +818,27 @@ bool IO::Directory::Exists(char* fileName)
 
 void* bf::System::FFI::FFILIB::ClosureAlloc(intptr size, void** outFunc)
 {
+#ifndef BF_DISABLE_FFI
 	return ffi_closure_alloc(size, outFunc);
+#else
+	return NULL;
+#endif
 }
 
 bf::System::FFI::FFIResult bf::System::FFI::FFILIB::PrepCif(bf::System::FFI::FFILIB::FFICIF* cif, bf::System::FFI::FFIABI abi, int32 nargs, bf::System::FFI::FFIType* rtype, bf::System::FFI::FFIType** argTypes)
 {
+#ifndef BF_DISABLE_FFI
 	return (bf::System::FFI::FFIResult)ffi_prep_cif((ffi_cif*)cif, (ffi_abi)abi, nargs, (ffi_type*)rtype, (ffi_type**)argTypes);
+#else
+	return (bf::System::FFI::FFIResult)0;
+#endif
 }
 
 void bf::System::FFI::FFILIB::Call(bf::System::FFI::FFILIB::FFICIF* cif, void* funcPtr, void* rvalue, void** args)
 {
+#ifndef BF_DISABLE_FFI
 	ffi_call((ffi_cif*)cif, (void(*)())funcPtr, rvalue, args);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////

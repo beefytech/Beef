@@ -527,6 +527,114 @@ namespace IDE
 			return true;
 		}
 
+		bool QueueProjectWasmLink(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
+		{
+			//bool isDebug = gApp.mConfigName.IndexOf("Debug", true) != -1;
+
+			//bool isMinGW = false;
+
+		    //String error = scope String();
+
+		    TestManager.ProjectInfo testProjectInfo = null;
+			if (gApp.mTestManager != null)
+				testProjectInfo = gApp.mTestManager.GetProjectInfo(project);
+
+			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
+			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
+
+			if (isExe || isDynLib)
+			{
+			    String linkLine = scope String();
+			    linkLine.Append("-o ");
+			    IDEUtils.AppendWithOptionalQuotes(linkLine, targetPath);
+			    linkLine.Append(" ");
+
+			    linkLine.Append(objectsArg);
+
+			    List<String> libPaths = scope .();
+				defer ClearAndDeleteItems(libPaths);
+				List<String> depPaths = scope .();
+				defer ClearAndDeleteItems(depPaths);
+				AddLinkDeps(project, options, workspaceOptions, linkLine, libPaths, depPaths);
+
+				for (var libPath in libPaths)
+				{
+					IDEUtils.AppendWithOptionalQuotes(linkLine, libPath);
+					linkLine.Append(" ");
+				}
+				
+			    if (project.mNeedsTargetRebuild)
+			    {
+			        if (File.Delete(targetPath) case .Err)
+					{
+					    gApp.OutputLine("Failed to delete {0}", targetPath);
+					    return false;
+					}
+
+					if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
+					{
+						var linkFlags = scope String();
+						gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+						linkLine.Append(linkFlags, " ");
+					}
+
+					
+#if BF_PLATFORM_WINDOWS
+					String compilerExePath = scope String();
+					String llvmDir = scope String(IDEApp.sApp.mInstallDir);
+					IDEUtils.FixFilePath(llvmDir);
+					llvmDir.Append("llvm/");
+					compilerExePath.Append(llvmDir, "bin/wasm-ld.exe");
+#else
+					String llvmDir = "";
+					bool isWSL = false;
+					String compilerExePath = "wasm-ld";
+#endif
+
+
+					//compilerExePath.Set(@"C:\temp\emsdk\upstream\emscripten\emcc.bat");
+					if (!gApp.mSettings.mEmscriptenPath.IsEmpty)
+					{
+						compilerExePath.Append(gApp.mSettings.mEmscriptenPath);
+						if ((!compilerExePath.EndsWith('\\')) && (!compilerExePath.EndsWith('/')))
+							compilerExePath.Append("/");
+					}
+					compilerExePath.Append(@"emcc.bat");
+					//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
+					linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1");
+
+					String workingDir = scope String();
+					if (!llvmDir.IsEmpty)
+					{
+						workingDir.Append(llvmDir, "bin");
+					}
+					else
+					{
+						workingDir.Append(gApp.mInstallDir);
+					}
+
+					//linkLine.Append(" --no-entry --export-all");
+
+			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, workingDir, .UTF8);
+			        runCmd.mOnlyIfNotFailed = true;
+			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
+			        tagetCompletedCmd.mOnlyIfNotFailed = true;
+			        gApp.mExecutionQueue.Add(tagetCompletedCmd);
+
+					String logStr = scope String();
+					logStr.AppendF("IDE Process {0}\r\n", Platform.BfpProcess_GetCurrentId());
+					logStr.Append(linkLine);
+					String targetLogPath = scope String(targetPath, ".build.txt");
+					if (Utils.WriteTextFile(targetLogPath, logStr) case .Err)
+						gApp.OutputErrorLine("Failed to write {}", targetLogPath);
+
+					project.mLastDidBuild = true;
+			    }
+			}
+
+			return true;
+		}
+
 		public static void GetPdbPath(String targetPath, Workspace.Options workspaceOptions, Project.Options options, String outPdbPath)
 		{
 			int lastDotPos = targetPath.LastIndexOf('.');
@@ -1281,7 +1389,12 @@ namespace IDE
 		        objectsArg.Append(" ");
 		    }
 
-			if (workspaceOptions.mToolsetType == .GNU)
+			if (mPlatformType == .Wasm)
+			{
+				if (!QueueProjectWasmLink(project, targetPath, workspaceOptions, options, objectsArg))
+					return false;
+			}
+			else if (workspaceOptions.mToolsetType == .GNU)
 			{
 				if ((options.mBuildOptions.mBuildKind == .StaticLib) || (options.mBuildOptions.mBuildKind == .DynamicLib))
 				{

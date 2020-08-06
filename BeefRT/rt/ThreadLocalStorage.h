@@ -88,7 +88,7 @@ public:
 	}
 };
 
-template <class T, class TClear = BFMemClear<T> >
+/*template <class T, class TClear = BFMemClear<T> >
 class BfTLSStatic : public BfTLSStaticBase
 {
 public:
@@ -147,4 +147,4 @@ public:
 		return &mValueMap;
 	}
 };
-
+*/

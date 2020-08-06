@@ -31,6 +31,7 @@ namespace IDE
 			case macOS;
 			case iOS;
 			case Android;
+			case Wasm;
 
 			public static PlatformType GetFromName(String name)
 			{
@@ -40,6 +41,7 @@ namespace IDE
 				case "Linux32", "Linux64": return .Linux;
 				case "macOS": return .macOS;
 				case "iOS": return .iOS;
+				case "wasm32", "wasm64": return .Wasm;
 				default:
 					return TargetTriple.GetPlatformType(name);
 				}
@@ -90,6 +92,10 @@ namespace IDE
 					outTriple.Append("x86_64-apple-macosx10.8.0");
 				case "iOS":
 					outTriple.Append("arm64-apple-ios");
+				case "wasm32":
+					outTriple.Append("wasm32-unknown-emscripten");
+				case "wasm64":
+					outTriple.Append("wasm64-unknown-emscripten");
 				default:
 					return false;
 				}
@@ -824,7 +830,14 @@ namespace IDE
 	            options.mEnableSideStack = false;
 				options.mAllowHotSwapping = false;
 			}
-			
+
+			if (platformType == .Wasm)
+			{
+				options.mAllocType = .CRT;
+				options.mEnableObjectDebugFlags = false;
+				options.mEmitObjectAccessCheck = false;
+			}
+
 			options.mIncrementalBuild = !isRelease;
 
             options.mAllocStackTraceDepth = 1;
@@ -1100,10 +1113,10 @@ namespace IDE
 						configSelection.mConfig = new String(findConfig);
 						configSelection.mPlatform = new String(findPlatform);
 						options.mConfigSelections[project] = configSelection;
+						configSelection.mEnabled = true;
 					}
 
 					project.CreateConfig(findConfig, findPlatform);
-					configSelection.mEnabled = true;
                 }
             }
         }

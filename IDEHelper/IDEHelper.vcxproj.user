@@ -6,20 +6,20 @@
     <LocalDebuggerCommand>..\IDE\dist\IDE.exe</LocalDebuggerCommand>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-launch="C:\Beef\IDE\mintest\build\Debug_Win64\mintest\mintest.exe" -- These are the args</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-proddir=c:\beef\ide\mintest</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommand>$(SolutionDir)\dist\BeefIDE_d.exe</LocalDebuggerCommand>
-    <LocalDebuggerWorkingDirectory>$(SolutionDir)\dist</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommand>$(SolutionDir)IDE\dist\BeefIDE_d.exe</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)IDE\dist</LocalDebuggerWorkingDirectory>
     <LocalDebuggerEnvironment>_NO_DEBUG_HEAP=1</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommand>$(SolutionDir)\dist\IDE_bf.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommand>$(SolutionDir)IDE\dist\BeefIDE.exe</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>-proddir=c:\beef\IDE\Tests\Rando 2&gt;StdErr.txt </LocalDebuggerCommandArguments>
-    <LocalDebuggerWorkingDirectory>$(SolutionDir)\dist</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArguments>-proddir=c:\beef\IDE\mintest</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)IDE\dist</LocalDebuggerWorkingDirectory>
     <LocalDebuggerEnvironment>_NO_DEBUG_HEAP=1</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup>
-    <ShowAllFiles>true</ShowAllFiles>
+    <ShowAllFiles>false</ShowAllFiles>
   </PropertyGroup>
 </Project>

@@ -19,9 +19,9 @@
 #include <dlfcn.h>
 #include "../PlatformInterface.h"
 #include "../PlatformHelper.h"
-#include "../util/CritSect.h"
-#include "../util/Dictionary.h"
-#include "../util/Hash.h"
+#include "../../util/CritSect.h"
+#include "../../util/Dictionary.h"
+#include "../../util/Hash.h"
 #ifdef BFP_HAS_EXECINFO
 #include <execinfo.h>
 #endif
@@ -36,7 +36,7 @@
 #endif
 
 #endif
-#include "../third_party/stb/stb_sprintf.h"
+#include "../../third_party/stb/stb_sprintf.h"
 #include <cxxabi.h>
 #include <random>
 

@@ -8,12 +8,12 @@
 
 #ifndef BF_SMALL
 #define STB_SPRINTF_IMPLEMENTATION
-#include "../third_party/stb/stb_sprintf.h"
+#include "third_party/stb/stb_sprintf.h"
 #endif
 
 extern "C"
 {
-#include "../third_party/utf8proc/utf8proc.h"
+#include "third_party/utf8proc/utf8proc.h"
 }
 
 

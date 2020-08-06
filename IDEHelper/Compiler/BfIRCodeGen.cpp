@@ -4608,4 +4608,11 @@ void BfIRCodeGen::StaticInit()
 	LLVMInitializeAArch64AsmPrinter();
 	//LLVMInitializeAArch64Parser();
 	//LLVMInitializeX86Disassembler();
+
+	LLVMInitializeWebAssemblyTargetInfo();
+	LLVMInitializeWebAssemblyTarget();
+	LLVMInitializeWebAssemblyTargetMC();
+	LLVMInitializeWebAssemblyAsmPrinter();
+	LLVMInitializeWebAssemblyAsmParser();
+	LLVMInitializeWebAssemblyDisassembler();
 }

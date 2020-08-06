@@ -252,6 +252,13 @@ list(APPEND LLVM_LIBS
   ${LLVM_LIB}/libLLVMAArch64AsmParser.a
   ${LLVM_LIB}/libLLVMAArch64Disassembler.a
 
+  ${LLVM_LIB}/libLLVMWebAssemblyInfo.a  
+  ${LLVM_LIB}/libLLVMWebAssemblyAsmPrinter.a
+  ${LLVM_LIB}/libLLVMWebAssemblyDesc.a
+  ${LLVM_LIB}/libLLVMWebAssemblyCodeGen.a
+  ${LLVM_LIB}/libLLVMWebAssemblyAsmParser.a
+  ${LLVM_LIB}/libLLVMWebAssemblyDisassembler.a
+
   ${LLVM_LIB}/libLLVMSupport.a
   ${LLVM_LIB}/libLLVMDemangle.a)
 

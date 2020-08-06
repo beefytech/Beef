@@ -215,6 +215,7 @@ enum BfPlatformType
 	BfPlatformType_macOS,
 	BfPlatformType_iOS,
 	BfPlatformType_Android,
+	BfPlatformType_Wasm
 };
 
 enum BfMachineType
@@ -223,7 +224,9 @@ enum BfMachineType
 	BfMachineType_x86,
 	BfMachineType_x64,
 	BfMachineType_ARM,
-	BfMachineType_AArch64
+	BfMachineType_AArch64,
+	BfMachineType_Wasm32,
+	BfMachineType_Wasm64,
 };
 
 enum BfToolsetType
