@@ -1189,6 +1189,12 @@ void BFGC::ProcessSweepInfo()
 		gBfRtDbgCallbacks.SetErrorString(gDbgErrorString.c_str());
 		gBfRtDbgCallbacks.DebugMessageData_SetupError(errorStr.c_str(), 1);
 		BF_DEBUG_BREAK();		
+
+		for (auto obj : mSweepInfo.mLeakObjects)
+		{
+			// Allow continuing
+			obj->mObjectFlags = (BfObjectFlags)((obj->mObjectFlags & ~BF_OBJECTFLAG_MARK_ID_MASK) | mCurMarkId);
+		}
 	}
 
 	mSweepInfo.Clear();
