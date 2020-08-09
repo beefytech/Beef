@@ -4349,7 +4349,10 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 
 			if (fieldInstance->mResolvedType->IsValuelessType())
 				continue;
-						
+			
+			if (fieldInstance->mResolvedType->IsVar())
+				continue;
+
 			BfTypedValue leftValue = ExtractValue(leftTypedVal, fieldInstance, fieldInstance->mDataIdx);			
 			BfTypedValue rightValue = ExtractValue(rightTypedVal, fieldInstance, fieldInstance->mDataIdx);
 
@@ -18353,7 +18356,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 	for (auto localVar : mCurMethodState->mLocals)
 	{
-		if ((skipEndChecks) || (bodyBlock == NULL))
+		if ((skipEndChecks) || (methodDef->mBody == NULL))
 			break;
 
 		LocalVariableDone(localVar, true);
