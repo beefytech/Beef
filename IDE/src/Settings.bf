@@ -293,6 +293,9 @@ namespace IDE
 				void GetColor(String name, ref Color color)
 				{
 					sd.Get(name, ref *(int32*)&color);
+
+					if ((color & 0xFF000000) == 0)
+						color |= 0xFF000000;
 				}
 
 				GetColor("Text", ref mText);
