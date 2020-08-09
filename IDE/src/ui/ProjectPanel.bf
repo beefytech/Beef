@@ -615,10 +615,11 @@ namespace IDE.ui
 			}
             projectFolder.mProject = folder.mProject;
 			projectFolder.mPath = new String();
+			String dirSepStr = scope String()..Append(Path.DirectorySeparatorChar);
 			if (folder.mParentFolder == null)
-            	projectFolder.mPath.Append("src/", projectFolder.mName);
+            	projectFolder.mPath.Append("src", dirSepStr, projectFolder.mName);
 			else
-				projectFolder.mPath.Append(folder.mPath, "/", projectFolder.mName);
+				projectFolder.mPath.Append(folder.mPath, dirSepStr, projectFolder.mName);
 			projectFolder.mIncludeKind = folder.mIncludeKind;
 			projectFolder.mAutoInclude = folder.IsAutoInclude();
             folder.AddChild(projectFolder);
@@ -678,7 +679,7 @@ namespace IDE.ui
 			String fileText = scope String();
 			fileText.Append("namespace ");
 			String namespaceName = scope String();
-            folder.GetRelDir(namespaceName); namespaceName.Replace('/', '.'); namespaceName.Replace('\\', '.');
+            folder.GetRelDir(namespaceName); namespaceName.Replace('/', '.'); namespaceName.Replace('\\', '.'); namespaceName.Replace(" ", "");
 			if (namespaceName.StartsWith("src."))
 			{
                 namespaceName.Remove(0, 4);
