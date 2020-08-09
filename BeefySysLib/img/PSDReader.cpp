@@ -172,6 +172,7 @@ PSDReader::PSDReader()
 	mFS = NULL;
 	mGlobalAltitude = 0;
 	mGlobalAngle = 30;
+	mImageDataSectStart = -1;
 }
 
 PSDReader::~PSDReader()
@@ -1398,7 +1399,98 @@ bool PSDReader::Init(const StringImpl& fileName)
 	mFS->SetPos(startPos + layerAndMaskLen);
 	pos = mFS->GetPos();
 
+	mImageDataSectStart = mFS->GetPos();	
+	
 	return true;
+}
+
+ImageData* PSDReader::ReadImageData()
+{
+	mFS->SetPos(mImageDataSectStart);
+
+	int compression = mFS->ReadInt16();
+	if ((compression != 0) && (compression != 1))
+		return NULL;	
+
+	ImageData* imageData = new ImageData();
+	imageData->CreateNew(mWidth, mHeight);
+	if (mChannels < 4)
+		imageData->Fill(0xFF000000);
+
+	int16** rowLengths = NULL;
+	int horz = mWidth;
+	int vert = mHeight;
+	int aSize = horz*vert;
+
+	if (compression == 1)
+	{
+		rowLengths = new int16*[mChannels];		
+		for (int channel = 0; channel < mChannels; channel++)
+		{
+			rowLengths[channel] = new int16[vert];
+			for (int aY = 0; aY < vert; aY++)
+				rowLengths[channel][aY] = mFS->ReadInt16();
+		}
+	}
+
+	for (int channel = 0; channel < mChannels; channel++)
+	{
+		int shift = channel * 8;
+		// 		if (channel == mC + 1)
+		// 			shift = 24;
+
+		if (channel == 4)
+			break;
+
+		if (compression == 0)
+		{
+			for (int pos = 0; pos < aSize; pos++)
+				imageData->mBits[pos] |= ((uint32)(uint8)mFS->ReadInt8()) << shift;
+		}
+		else
+		{						
+			for (int aY = 0; aY < vert; aY++)
+			{
+				int pos = aY * horz;
+				int readSize = rowLengths[channel][aY];
+
+				while (readSize > 0)
+				{
+					int chunkSize = mFS->ReadInt8();
+					readSize--;
+					if (chunkSize >= 0)
+					{
+						// String of literal data
+						chunkSize++;
+						readSize -= chunkSize;
+						while (chunkSize > 0)
+						{
+							imageData->mBits[pos++] |= ((uint32)(uint8)mFS->ReadInt8()) << shift;
+							chunkSize--;
+						}
+					}
+					else if (chunkSize > -128)
+					{
+						// One byte repeated
+						chunkSize = 1 - chunkSize;
+						uint32 aData = ((uint32)(uint8)mFS->ReadInt8()) << shift;
+						readSize--;
+						while (chunkSize > 0)
+						{
+							imageData->mBits[pos++] |= aData;
+							chunkSize--;
+						}
+					}
+				}
+			}
+		}
+	}
+	if (rowLengths != NULL)
+	{
+		for (int i = 0; i < mChannels; i++)
+			delete rowLengths[i];
+	}
+	return imageData;
 }
 
 Texture* PSDReader::LoadLayerTexture(int layerIdx, int* ofsX, int* ofsY) // -1 = composited image

@@ -159,13 +159,39 @@ int main()
 					layerIndices.insert(layerIndices.begin(), layerIdx);
 			}
 			
-			imageData = reader.MergeLayers(NULL, layerIndices, NULL);
+			imageData = reader.ReadImageData();
+			if (imageData == NULL)
+			{
+				ImageData* rawImageData = reader.MergeLayers(NULL, layerIndices, NULL);;
+				if ((rawImageData->mX == 0) && (rawImageData->mY == 0) &&
+					(rawImageData->mWidth == reader.mWidth) &&
+					(rawImageData->mHeight == reader.mHeight))
+				{
+					imageData = rawImageData;
+				}
+				else
+				{
+					imageData = new ImageData();
+					imageData->CreateNew(reader.mWidth, reader.mHeight);
+					imageData->CopyFrom(rawImageData, 0, 0);
+					delete rawImageData;
+				}
+			}
+// 			else
+// 			{
+// 				PNGData pngData;
+// 				pngData.mWidth = imageData->mWidth;
+// 				pngData.mHeight = imageData->mHeight;
+// 				pngData.mBits = imageData->mBits;
+// 				pngData.WriteToFile("c:\\temp\\test.png");
+// 				pngData.mBits = NULL;
+// 			}
 		}
 	}
 
 	int numCols = baseWidth / 20;
 	int numRows = baseHeight / 20;
-
+	
 	auto _HasImage = [&](int col, int row, int pass, int size)
 	{
 		int scale = 1 << size;
@@ -267,7 +293,7 @@ int main()
 		for (int row = 0; row < numRows; row++)		
 		{
 			for (int col = 0; col < numCols; col++)
-			{
+			{				
 				int srcPass = 0;
 				int srcSize = size;
 

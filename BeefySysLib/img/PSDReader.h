@@ -191,12 +191,13 @@ public:
 	int						mGlobalAltitude;
 
 	int						mChannels;	
+	int						mImageDataSectStart;
 
 	PSDLayerInfoVector		mPSDLayerInfoVector;
 	PSDPatternMap			mPSDPatternMap;
 
 public:
-	String				ReadIdString();
+	String					ReadIdString();
 	void					ReadPSDValue(PSDValue* value);
 	void					ReadPSDDescriptor(PSDDescriptor* descriptor);
 	void					ReadEffectColor(PSDDescriptor* colorDesc, uint32* color);
@@ -215,6 +216,7 @@ public:
 
 	bool					Init(const StringImpl& fileName);
 
+	ImageData*				ReadImageData();
 	Texture*				LoadLayerTexture(int layerIdx, int* ofsX, int* ofsY); // -1 = composited image
 	ImageData*				MergeLayers(PSDLayerInfo* group, const std::vector<int>& layerIndices, ImageData* bottomImage);	
 	Texture*				LoadMergedLayerTexture(const std::vector<int>& layerIndices, int* ofsX, int* ofsY);

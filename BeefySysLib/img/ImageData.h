@@ -39,9 +39,10 @@ public:
 	void					SwapRAndB();
 	void					CreateNew(int x, int y, int width, int height, bool clear = true);
 	void					CreateNew(int width, int height, bool clear = true);
+	void					CopyFrom(ImageData* img, int x, int y);
 	void					Fill(uint32 color);
 	virtual ImageData*		Duplicate();
-	void					SetSrcData(uint8* data, int dataLen);
+	void					SetSrcData(uint8* data, int dataLen);	
 	virtual bool			LoadFromFile(const StringImpl& path);
 	virtual	bool			ReadData() { return false; }
 	virtual void			PremultiplyAlpha();

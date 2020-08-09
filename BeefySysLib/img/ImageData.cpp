@@ -61,6 +61,26 @@ void ImageData::CreateNew(int width, int height, bool clear)
 		memset(mBits, 0, mWidth*mHeight*sizeof(uint32));
 }
 
+void ImageData::CopyFrom(ImageData* img, int x, int y)
+{
+	int destStartX = BF_MAX(x + img->mX - mX, 0);
+	int destStartY = BF_MAX(y + img->mY - mY, 0);
+
+	int destEndX = BF_MIN(x + img->mX - mX + img->mWidth, mWidth);
+	int destEndY = BF_MIN(y + img->mY - mY + img->mHeight, mHeight);
+
+	int srcXOfs = -x - img->mX;
+	int srcYOfs = -y - img->mY;
+
+	for (int y = destStartY; y < destEndY; y++)
+	{
+		for (int x = destStartX; x < destEndX; x++)
+		{
+			mBits[x + y * mWidth] = img->mBits[(x + srcXOfs) + (y + srcYOfs)*img->mWidth];
+		}
+	}
+}
+
 void ImageData::Fill(uint32 color)
 {
 	int size = mWidth*mHeight;
