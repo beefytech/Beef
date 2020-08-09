@@ -3975,6 +3975,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				}
 				else if ((target.mType->IsStruct()) && (!target.IsAddr()))
 				{
+					mModule->mBfIRBuilder->PopulateType(targetValue.mType);
 					retVal = BfTypedValue(mModule->mBfIRBuilder->CreateExtractValue(targetValue.mValue, fieldInstance->mDataIdx/*, field->mName*/),
 						resolvedFieldType);
 				}
