@@ -266,11 +266,11 @@ namespace IDE
 		public class Colors
 		{
 			public Color mText = 0xFFFFFFFF;
-			public Color mWindow = 0xFF595959;
-			public Color mBackground = 0xFF262626;
-			public Color mSelectedOutline = 0xFFE6A800;
-			public Color mMenuFocused = 0xFFFFA000;
-			public Color mMenuSelected = 0xFFD0A070;
+			public Color mWindow = 0xFF595962;
+			public Color mBackground = 0xFF26262A;
+			public Color mSelectedOutline = 0xFFCFAE11;
+			public Color mMenuFocused = 0xFFE5A910;
+			public Color mMenuSelected = 0xFFCB9B80;
 
 			public Color mCode = 0xFFFFFFFF;
 			public Color mKeyword = 0xFFE1AE9A;
