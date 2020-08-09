@@ -135,20 +135,18 @@ USING_NS_BF;
 	uint64 val = 0; \
 	switch (constLHS->mTypeCode) \
 	{ \
-	case BfTypeCode_Int8: val = constLHS->mInt8 OP constRHS->mInt8; break; \
-	case BfTypeCode_Char8: val = constLHS->mUInt8 OP constRHS->mUInt8; break; \
-	case BfTypeCode_UInt8: val = constLHS->mUInt8 OP constRHS->mUInt8; break; \
-	case BfTypeCode_Int16: val = constLHS->mInt16 OP constRHS->mInt16; break; \
-	case BfTypeCode_UInt16: val = constLHS->mUInt16 OP constRHS->mUInt16; break; \
-	case BfTypeCode_Char16: val = constLHS->mUInt16 OP constRHS->mUInt16; break; \
-	case BfTypeCode_Int32: val = constLHS->mInt32 OP constRHS->mInt32; break; \
-	case BfTypeCode_UInt32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
-	case BfTypeCode_Char32: val = constLHS->mUInt32 OP constRHS->mUInt32; break; \
-	case BfTypeCode_Int64: val = constLHS->mInt64 OP constRHS->mInt64; break; \
-	case BfTypeCode_UInt64: val = constLHS->mUInt64 OP constRHS->mUInt64; break; \
-	default: break; \
-	} \
-	return CreateConst(constLHS->mTypeCode, val);
+	case BfTypeCode_Int8: return CreateConst(constLHS->mTypeCode, constLHS->mInt8 OP constRHS->mInt8); \
+	case BfTypeCode_Char8: return CreateConst(constLHS->mTypeCode, constLHS->mUInt8 OP constRHS->mUInt8); \
+	case BfTypeCode_UInt8: return CreateConst(constLHS->mTypeCode, constLHS->mUInt8 OP constRHS->mUInt8); \
+	case BfTypeCode_Int16: return CreateConst(constLHS->mTypeCode, constLHS->mInt16 OP constRHS->mInt16); \
+	case BfTypeCode_UInt16: return CreateConst(constLHS->mTypeCode, constLHS->mUInt16 OP constRHS->mUInt16); \
+	case BfTypeCode_Char16: return CreateConst(constLHS->mTypeCode, constLHS->mUInt16 OP constRHS->mUInt16); \
+	case BfTypeCode_Int32: return CreateConst(constLHS->mTypeCode, constLHS->mInt32 OP constRHS->mInt32); \
+	case BfTypeCode_UInt32: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mUInt32 OP constRHS->mUInt32)); \
+	case BfTypeCode_Char32: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mUInt32 OP constRHS->mUInt32)); \
+	case BfTypeCode_Int64: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mInt64 OP constRHS->mInt64)); \
+	case BfTypeCode_UInt64: return CreateConst(constLHS->mTypeCode, constLHS->mUInt64 OP constRHS->mUInt64); \
+	}
 
 #define UNARYOP_APPLY(val, OP) \
 	auto constVal = GetConstantById(val.mId); \
