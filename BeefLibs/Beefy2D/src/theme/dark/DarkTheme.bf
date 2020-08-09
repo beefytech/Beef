@@ -187,11 +187,11 @@ namespace Beefy.theme.dark
         };
 
 		public static uint32 COLOR_TEXT                = 0xFFFFFFFF;
-        public static uint32 COLOR_WINDOW              = 0xFF595959;
-        public static uint32 COLOR_BKG                 = 0xFF262626;
-        public static uint32 COLOR_SELECTED_OUTLINE    = 0xFFE6A800;
-        public static uint32 COLOR_MENU_FOCUSED        = 0xFFFFA000;
-        public static uint32 COLOR_MENU_SELECTED       = 0xFFD0A070;
+        public static uint32 COLOR_WINDOW              = 0xFF595962;
+        public static uint32 COLOR_BKG                 = 0xFF26262A;
+        public static uint32 COLOR_SELECTED_OUTLINE    = 0xFFCFAE11;
+        public static uint32 COLOR_MENU_FOCUSED        = 0xFFE5A910;
+        public static uint32 COLOR_MENU_SELECTED       = 0xFFCB9B80;
 
 		public static float sScale = 1.0f;
 		public static int32 sSrcImgScale = 1;
@@ -321,16 +321,6 @@ namespace Beefy.theme.dark
 				delete mTreeArrow;
 				delete mWindowTopImage;
 			}
-
-			Image themeImg = Image.LoadFromFile(scope String()..Append(tempStr, BFApp.sApp.mInstallDir, "images/DarkTheme.png"), .AllowRead);
-			defer delete themeImg;
-			uint32[5] bits = ?;
-			themeImg.GetBits(0, 0, bits.Count, 1, bits.Count, &bits);
-			COLOR_WINDOW = Color.FromNative(bits[0]);
-			COLOR_BKG = Color.FromNative(bits[1]);
-			COLOR_SELECTED_OUTLINE = Color.FromNative(bits[2]);
-			COLOR_MENU_FOCUSED = Color.FromNative(bits[3]);
-			COLOR_MENU_SELECTED = Color.FromNative(bits[4]);
 
 			int scaleIdx = 0;
 

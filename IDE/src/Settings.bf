@@ -296,6 +296,12 @@ namespace IDE
 				}
 
 				GetColor("Text", ref mText);
+				GetColor("Window", ref mWindow);
+				GetColor("Background", ref mBackground);
+				GetColor("SelectedOutline", ref mSelectedOutline);
+				GetColor("MenuFocused", ref mMenuFocused);
+				GetColor("MenuSelected", ref mMenuSelected);
+
 				GetColor("Code", ref mCode);
 				GetColor("Keyword", ref mKeyword);
 				GetColor("Literal", ref mLiteral);
@@ -332,6 +338,7 @@ namespace IDE
 				SourceEditWidgetContent.sTextColors[14] = mVisibleWhiteSpace;
 
 				DarkTheme.COLOR_TEXT = mText;
+				DarkTheme.COLOR_WINDOW = mWindow;
 				DarkTheme.COLOR_BKG = mBackground;
 				DarkTheme.COLOR_SELECTED_OUTLINE = mSelectedOutline;
 				DarkTheme.COLOR_MENU_FOCUSED = mMenuFocused;
