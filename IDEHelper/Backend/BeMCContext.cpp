@@ -14453,6 +14453,7 @@ void BeMCContext::DoCodeEmission()
 				if (modInst.mArg1.IsImmediateFloat())
 				{ //ANDPS
 					bool is64Bit = (modInst.mArg1.mKind == BeMCOperandKind_Immediate_f64_Packed128);
+					EmitREX(inst->mArg0, inst->mArg1, is64Bit);
 					Emit(0x0F); Emit(0x54);
 					EmitModRM(inst->mArg0, inst->mArg1);
 					break;
@@ -15560,7 +15561,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?Main@Program@Mintest2@bf@@SAXXZ");
+	//mDebugging = (function->mName == "?FromHSL@TestProgram@BeefTest@bf@@SAXMMM@Z");
 	// 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
@@ -15994,6 +15995,8 @@ void BeMCContext::Generate(BeFunction* function)
 					}
 				}
 
+				auto type = GetType(mcLHS);				
+
 				switch (castedInst->mOpKind)
 				{
 				case BeBinaryOpKind_Add: result = AllocBinaryOp(BeMCInstKind_Add, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
@@ -16001,8 +16004,8 @@ void BeMCContext::Generate(BeFunction* function)
 				case BeBinaryOpKind_Multiply: result = AllocBinaryOp(BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsOne); break;
 				case BeBinaryOpKind_SDivide: result = AllocBinaryOp(BeMCInstKind_IDiv, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne); break;
 				case BeBinaryOpKind_UDivide: result = AllocBinaryOp(BeMCInstKind_Div, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne); break;
-				case BeBinaryOpKind_SModulus: result = AllocBinaryOp(BeMCInstKind_IRem, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;
-				case BeBinaryOpKind_UModulus: result = AllocBinaryOp(BeMCInstKind_Rem, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;
+				case BeBinaryOpKind_SModulus: result = AllocBinaryOp(BeMCInstKind_IRem, mcLHS, mcRHS, type->IsFloat() ? BeMCBinIdentityKind_None : BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;
+				case BeBinaryOpKind_UModulus: result = AllocBinaryOp(BeMCInstKind_Rem, mcLHS, mcRHS, type->IsFloat() ? BeMCBinIdentityKind_None : BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;
 				case BeBinaryOpKind_BitwiseAnd: result = AllocBinaryOp(BeMCInstKind_And, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
 				case BeBinaryOpKind_BitwiseOr: result = AllocBinaryOp(BeMCInstKind_Or, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
 				case BeBinaryOpKind_ExclusiveOr: result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
