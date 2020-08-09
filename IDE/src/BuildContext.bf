@@ -578,30 +578,26 @@ namespace IDE
 						linkLine.Append(linkFlags, " ");
 					}
 
-					
-#if BF_PLATFORM_WINDOWS
+
 					String compilerExePath = scope String();
+#if BF_PLATFORM_WINDOWS
 					String llvmDir = scope String(IDEApp.sApp.mInstallDir);
 					IDEUtils.FixFilePath(llvmDir);
 					llvmDir.Append("llvm/");
-					compilerExePath.Append(llvmDir, "bin/wasm-ld.exe");
 #else
 					String llvmDir = "";
 					bool isWSL = false;
-					String compilerExePath = "wasm-ld";
 #endif
-
-
-					//compilerExePath.Set(@"C:\temp\emsdk\upstream\emscripten\emcc.bat");
 					if (!gApp.mSettings.mEmscriptenPath.IsEmpty)
 					{
 						compilerExePath.Append(gApp.mSettings.mEmscriptenPath);
 						if ((!compilerExePath.EndsWith('\\')) && (!compilerExePath.EndsWith('/')))
 							compilerExePath.Append("/");
 					}
-					compilerExePath.Append(@"emcc.bat");
+					compilerExePath.Append(@"/upstream/emscripten/emcc.bat");
 					//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
-					linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1");
+					linkLine.Append(" ", gApp.mInstallDir);
+					linkLine.Append("..\\..\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1");
 
 					String workingDir = scope String();
 					if (!llvmDir.IsEmpty)
