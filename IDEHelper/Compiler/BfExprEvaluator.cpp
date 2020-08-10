@@ -18006,7 +18006,11 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 
 	if (numericFail)
 	{
-		if (mResult.mType->IsInterface())
+		if (opToken == NULL)
+		{
+			BF_ASSERT(mModule->mBfIRBuilder->mIgnoreWrites);
+		}
+		else if (mResult.mType->IsInterface())
 		{
 			mModule->Fail(
 				StrFormat("Operator '%s' cannot be used on interface '%s'. Consider rewriting using generics and use this interface as a generic constraint.",
