@@ -18774,6 +18774,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			BfBinaryOp findBinaryOp = binaryOp;
 
 			bool isComparison = (binaryOp >= BfBinaryOp_Equality) && (binaryOp <= BfBinaryOp_LessThanOrEqual);
+			BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);
 
 			for (int pass = 0; pass < 2; pass++)
 			{
@@ -18800,9 +18801,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
 				BfBaseClassWalker baseClassWalker(leftValue.mType, rightValue.mType, mModule);
 
-				bool invertResult = false;				
-				
-				BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);				
+				bool invertResult = false;												
 
 				while (true)
 				{
@@ -18930,47 +18929,78 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					return;
 				}
 
+				auto _CheckBinaryOp = [&](BfGenericParamInstance* genericParam)
+				{					
+					for (auto& opConstraint : genericParam->mOperatorConstraints)
+					{					
+						BfType* returnType = genericParam->mExternType;
+						bool works = false;
+						if (opConstraint.mBinaryOp == findBinaryOp)
+						{
+							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
+								(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
+							{
+								works = true;								
+							}
+						}
+						else if (opConstraint.mBinaryOp == oppositeBinaryOp)
+						{
+							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)) &&
+								(mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)))
+							{
+								works = true;
+							}
+						}
+						else if ((isComparison) && (opConstraint.mBinaryOp == BfBinaryOp_Compare))
+						{
+							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
+								(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
+							{
+								works = true;
+							}
+							else if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)) &&
+								(mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)))
+							{
+								works = true;
+							}
+
+							if (works)
+							{
+								returnType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
+							}
+						}
+
+						if (works)
+						{
+							BF_ASSERT(genericParam->mExternType != NULL);
+							mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), returnType);
+							return true;
+						}
+					}					
+
+					return false;
+				};
+
 				// Check method generic constraints
 				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
 				{
 					for (int genericParamIdx = 0; genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
 					{
 						auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
-						for (auto& opConstraint : genericParam->mOperatorConstraints)
-						{
-							if (opConstraint.mBinaryOp == findBinaryOp)
-							{
-								if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
-									(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
-								{									
-									BF_ASSERT(genericParam->mExternType != NULL);
-									mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);									
-									return;
-								}
-							}
-						}
+						if (_CheckBinaryOp(genericParam))
+							return;						
 					}
 				}
 				
 				// Check type generic constraints
 				if ((mModule->mCurTypeInstance->IsGenericTypeInstance()) && (mModule->mCurTypeInstance->IsUnspecializedType()))
 				{
-					auto genericTypeInst = (BfTypeInstance*)mModule->mCurTypeInstance;
-					for (int genericParamIdx = 0; genericParamIdx < genericTypeInst->mGenericTypeInfo->mGenericParams.size(); genericParamIdx++)
-					{
-						auto genericParam = mModule->GetGenericTypeParamInstance(genericParamIdx);
-						for (auto& opConstraint : genericParam->mOperatorConstraints)
-						{
-							if (opConstraint.mBinaryOp == findBinaryOp)
-							{
-								if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
-									(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
-								{
-									mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);
-									return;
-								}
-							}
-						}
+					SizedArray<BfGenericParamInstance*, 4> genericParams;
+					mModule->GetActiveTypeGenericParamInstances(genericParams);
+					for (auto genericParam : genericParams)
+					{						
+						if (_CheckBinaryOp(genericParam))
+							return;						
 					}
 				}
 
@@ -19129,42 +19159,45 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			return;
 		}		
 
-		if (resultType->IsInterface())
+		if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality) || (binaryOp == BfBinaryOp_InEquality) || (binaryOp == BfBinaryOp_StrictInEquality))
 		{
-			// Compare as objects instead
-			resultType = mModule->mContext->mBfObjectType;
-			*resultTypedValue = mModule->Cast(resultTypeSrc, *resultTypedValue, resultType);
-		}
-
-		if (otherType->IsNull())
-		{
-			if (resultType->IsFunction())
+			if (resultType->IsInterface())
 			{
-				if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+				// Compare as objects instead
+				resultType = mModule->mContext->mBfObjectType;
+					*resultTypedValue = mModule->Cast(resultTypeSrc, *resultTypedValue, resultType);
+			}
+
+			if (otherType->IsNull())
+			{
+				if (resultType->IsFunction())
+				{
+					if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+					else
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+				}
 				else
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0), resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+				{
+					if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIsNull(resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+					else
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIsNotNull(resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+				}
 			}
 			else
 			{
+				auto convertedValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, BfCastFlags_NoBox);
+				if (!convertedValue)
+					return;
 				if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIsNull(resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				else
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateIsNotNull(resultTypedValue->mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 			}
-		}
-		else
-		{
-			auto convertedValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, BfCastFlags_NoBox);
-			if (!convertedValue)
-				return;
-			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
-				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
-			else
-				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
-		}
 
-		return;
+			return;
+		}
 	}	
 	
 	if (resultType->IsTypedPrimitive())

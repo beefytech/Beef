@@ -1681,6 +1681,7 @@ public:
 	bool IsUnboundGeneric(BfType* type);
 	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type);	
+	void GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInstance*, 4>& genericParamInstance);
 	BfTypeInstance* GetBaseType(BfTypeInstance* typeInst);
 	void HandleTypeGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, int typeGenericParamIdx);
 	void HandleMethodGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, BfMethodDef* methodDef, int typeGenericParamIdx);

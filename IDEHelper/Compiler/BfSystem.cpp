@@ -2759,8 +2759,8 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 			typeDef->mTypeDeclaration = partialTypeDef->mTypeDeclaration;		
 		}		
 
-		for (auto& externConstraint : partialTypeDef->mExternalConstraints)
-			typeDef->mExternalConstraints.Add(externConstraint);
+// 		for (auto& externConstraint : partialTypeDef->mExternalConstraints)
+// 			typeDef->mExternalConstraints.Add(externConstraint);
 	}	
 
 	// Merge attributes together

@@ -569,6 +569,11 @@ struct BfIRTypeData
 
 	TypeKind mKind;
 	int mId;
+
+	operator bool()
+	{
+		return (mId != -1);
+	}
 };
 
 struct BfIRType : public BfIRTypeData
@@ -586,12 +591,7 @@ public:
 		mId = typeData.mId;
 	}
 
-	BfIRType(const BfIRValue& val) { mKind = TypeKind_Stream; mId = val.mId; }	
-	
-	operator bool()
-	{
-		return (mId != -1);
-	}
+	BfIRType(const BfIRValue& val) { mKind = TypeKind_Stream; mId = val.mId; }		
 };
 
 struct BfIRBlock : public BfIRValue

@@ -2023,10 +2023,21 @@ bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeT
 
 		for (int genericIdx = 0; genericIdx < (int)declConstraints->size(); genericIdx++)
 		{
-			auto genericType = mGenericTypeInfo->mTypeGenericArguments[genericIdx];
-
 			auto declGenericParam = (*declConstraints)[genericIdx];
-			if (!module->CheckGenericConstraints(BfGenericParamSource(), genericType, NULL, declGenericParam))
+
+			BfType* genericArg;
+			if (genericIdx < (int)mGenericTypeInfo->mTypeGenericArguments.size())
+			{
+				genericArg = mGenericTypeInfo->mTypeGenericArguments[genericIdx];
+			}
+			else
+			{
+				genericArg = declGenericParam->mExternType;
+			}
+
+			//auto genericType = mGenericTypeInfo->mTypeGenericArguments[genericIdx];
+			
+			if ((genericArg == NULL) || (!module->CheckGenericConstraints(BfGenericParamSource(), genericArg, NULL, declGenericParam)))
 				return false;
 
 			//if (!mModule->AreConstraintsSubset((*declConstraints)[genericIdx], (*activeConstraints)[genericIdx]))

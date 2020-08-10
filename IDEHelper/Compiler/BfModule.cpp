@@ -12773,7 +12773,7 @@ BfLocalVariable* BfModule::GetThisVariable()
 
 bool BfModule::IsInGeneric()
 {	
-	return (mCurMethodInstance->GetNumGenericArguments() != 0) || (mCurTypeInstance->IsGenericTypeInstance());
+	return ((mCurMethodInstance != NULL) && (mCurMethodInstance->GetNumGenericArguments() != 0)) || (mCurTypeInstance->IsGenericTypeInstance());
 }
 
 bool BfModule::InDefinitionSection()
