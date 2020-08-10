@@ -21,7 +21,7 @@ namespace Beefy.widgets
     {
         public delegate T Interpolator(T from, T to, float pct);
 
-        public struct Entry : IOpComparable
+        public struct Entry
         {
             public float mFrame;
             public T mValue;
@@ -99,7 +99,7 @@ namespace Beefy.widgets
 
         public T GetValue(float frame)
         {
-            if ((mEntries == null) || (mEntries.Count == 0))
+            /*if ((mEntries == null) || (mEntries.Count == 0))
                 return mConstantValue;
             
             Entry find;
@@ -118,7 +118,8 @@ namespace Beefy.widgets
             Entry entry2 = mEntries[index + 1];
 
             float aPct = (frame - entry1.mFrame) / (entry2.mFrame - entry1.mFrame);
-            return mInterpolator(entry1.mValue, entry2.mValue, aPct);
+            return mInterpolator(entry1.mValue, entry2.mValue, aPct);*/
+			return default;
         }
     }
 

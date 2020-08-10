@@ -151,7 +151,7 @@ namespace System.Collections
             return Insert(key, false, out keyPtr, out valuePtr, null);
 		}
 
-		public bool TryAddAlt<TAltKey>(TAltKey key, out TKey* keyPtr, out TValue* valuePtr) where TAltKey : IOpEquals<TKey>, IHashable
+		public bool TryAddAlt<TAltKey>(TAltKey key, out TKey* keyPtr, out TValue* valuePtr) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 		    return InsertAlt(key, false, out keyPtr, out valuePtr, null);
 		}
@@ -251,7 +251,7 @@ namespace System.Collections
 			return FindEntry(key) >= 0;
 		}
 
-		public bool ContainsKeyAlt<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
+		public bool ContainsKeyAlt<TAltKey>(TAltKey key) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			return FindEntryAlt(key) >= 0;
 		}
@@ -333,7 +333,7 @@ namespace System.Collections
 			return key == key2;
 		}
 
-		private int FindEntryAlt<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
+		private int FindEntryAlt<TAltKey>(TAltKey key) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			if (mBuckets != null)
 			{
@@ -463,7 +463,7 @@ namespace System.Collections
 			return true;
         }
 
-		private bool InsertAlt<TAltKey>(TAltKey key, bool add, out TKey* keyPtr, out TValue* valuePtr, Entry** outOldData) where TAltKey : IOpEquals<TKey>, IHashable
+		private bool InsertAlt<TAltKey>(TAltKey key, bool add, out TKey* keyPtr, out TValue* valuePtr, Entry** outOldData) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			if (mBuckets == null) Initialize(0);
 			int32 hashCode = (int32)key.GetHashCode() & 0x7FFFFFFF;
@@ -613,7 +613,7 @@ namespace System.Collections
 			return false;
 		}
 
-		public bool RemoveAlt<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
+		public bool RemoveAlt<TAltKey>(TAltKey key) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			if (mBuckets != null)
 			{
@@ -697,7 +697,7 @@ namespace System.Collections
 			return .Err;
 		}
 
-		public Result<(TKey key, TValue value)> GetAndRemoveAlt<TAltKey>(TAltKey key) where TAltKey : IOpEquals<TKey>, IHashable
+		public Result<(TKey key, TValue value)> GetAndRemoveAlt<TAltKey>(TAltKey key) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			if (mBuckets != null)
 			{
@@ -764,7 +764,7 @@ namespace System.Collections
 			return false;
 		}
 
-		public bool TryGetAlt<TAltKey>(TAltKey key, out TKey matchKey, out TValue value) where TAltKey : IOpEquals<TKey>, IHashable
+		public bool TryGetAlt<TAltKey>(TAltKey key, out TKey matchKey, out TValue value) where TAltKey : IHashable where bool : operator TKey == TAltKey
 		{
 			int_cosize i = (int_cosize)FindEntryAlt(key);
 			if (i >= 0)

@@ -1,5 +1,6 @@
 namespace System
 {
+#unwarn
 	struct Char8 : char8, IHashable, IOpComparable, IIsNaN
 	{
 		public static int operator<=>(Char8 a, Char8 b)

@@ -42,7 +42,7 @@ namespace System
 			}
 		}
 
-		public static int BinarySearch<T>(T* arr, int length, T value) where T : IOpComparable
+		public static int BinarySearch<T>(T* arr, int length, T value) where int : operator T <=> T
 		{
 			int lo = 0;
             int hi = length - 1;
@@ -61,12 +61,12 @@ namespace System
 			return ~lo;
 		}
 
-		public static int BinarySearch<T>(T[] arr, T value) where T : IOpComparable
+		public static int BinarySearch<T>(T[] arr, T value) where int : operator T <=> T
 		{
 			return BinarySearch(&arr.[Friend]GetRef(0), arr.mLength, value);
 		}
 
-		public static int BinarySearch<T>(T[] arr, int idx, int length, T value) where T : IOpComparable
+		public static int BinarySearch<T>(T[] arr, int idx, int length, T value) where int : operator T <=> T
 		{
 			Debug.Assert((uint)idx <= (uint)arr.mLength);
 			Debug.Assert(idx + length <= arr.mLength);

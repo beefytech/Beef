@@ -295,7 +295,7 @@ namespace System
 		[Intrinsic("abs")]
 		public static extern double Abs(double value);
 		[Inline]
-		public static T Abs<T>(T value) where T : IOpComparable, IOpNegatable
+		public static T Abs<T>(T value) where bool : operator T < T where T : operator -T
         {
             if (value < default)
                 return -value;
@@ -324,7 +324,7 @@ namespace System
 		// it runs the else case, which returns +value instead of negating it. 
 		// return (value < 0) ? -value : value;
 		
-		public static T Clamp<T>(T val, T min, T max) where T : IOpComparable
+		public static T Clamp<T>(T val, T min, T max) where int : operator T<=>T
 		{
 		    if (val < min)
 		        return min;
@@ -433,7 +433,7 @@ namespace System
             return (Log(a) / Log(newBase));
         }
 		  
-		public static int Sign<T>(T value) where T : IOpComparable
+		public static int Sign<T>(T value) where int : operator T <=> T
 		{
 		    if (value < default)
 		        return -1;
@@ -443,7 +443,7 @@ namespace System
 		        return 0;
 		}
 
-		public static int Sign<T>(T value) where T : IOpComparable, ICanBeNaN
+		/*public static int Sign<T>(T value) where int : operator T <=> T, ICanBeNaN
 		{
 		    if (value < default)
 		        return -1;
@@ -453,7 +453,7 @@ namespace System
 		        return 0;
 
 			Runtime.FatalError("Cannot be used on NaN");
-		}
+		}*/
 		
 		public static int32 DivRem(int32 a, int32 b, out int32 result)
         {

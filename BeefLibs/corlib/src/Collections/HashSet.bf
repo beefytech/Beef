@@ -196,7 +196,7 @@ namespace System.Collections
 			return false;
 		}
 
-		public bool ContainsWith<TAltKey>(TAltKey item) where TAltKey : IOpEquals<T>, IHashable
+		public bool ContainsWith<TAltKey>(TAltKey item) where TAltKey : IHashable where bool : operator T == TAltKey
 		{
 			if (mBuckets != null)
 			{

@@ -18943,7 +18943,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 								works = true;								
 							}
 						}
-						else if (opConstraint.mBinaryOp == oppositeBinaryOp)
+						else if ((oppositeBinaryOp != BfBinaryOp_None) && (opConstraint.mBinaryOp == oppositeBinaryOp))
 						{
 							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)) &&
 								(mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)))

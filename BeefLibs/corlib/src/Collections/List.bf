@@ -359,7 +359,7 @@ namespace System.Collections
 			}
 		}
 
-		public bool ContainsAlt<TAlt>(TAlt item) where TAlt : IOpEquals<T>, IHashable
+		public bool ContainsAlt<TAlt>(TAlt item) where TAlt : IHashable where bool : operator T == TAlt
 		{
 			return IndexOfAlt(item) != -1;
 		}
@@ -471,7 +471,7 @@ namespace System.Collections
 			return -1;
 		}
 
-		public int IndexOfAlt<TAlt>(TAlt item) where TAlt : IOpEquals<T>, IHashable
+		public int IndexOfAlt<TAlt>(TAlt item) where TAlt : IHashable where bool : operator T == TAlt
 		{
 			for (int i = 0; i < mSize; i++)
 				if (mItems[i] == item)
@@ -640,7 +640,7 @@ namespace System.Collections
 			return false;
 		}
 
-		public bool RemoveAlt<TAlt>(TAlt item) where TAlt : IOpEquals<T>, IHashable
+		public bool RemoveAlt<TAlt>(TAlt item) where TAlt : IHashable where bool : operator T == TAlt
 		{
 			int index = IndexOfAlt(item);
 			if (index >= 0)
@@ -665,7 +665,7 @@ namespace System.Collections
 			return .Err;
 		}
 
-		public Result<T> GetAndRemoveAlt<TAlt>(TAlt item) where TAlt : IOpEquals<T>, IHashable
+		public Result<T> GetAndRemoveAlt<TAlt>(TAlt item) where TAlt : IHashable where bool : operator T == TAlt
 		{
 			int index = IndexOfAlt(item);
 			if (index >= 0)
@@ -860,7 +860,7 @@ namespace System.Collections
 	    }
 	}
 
-	extension List<T> where T : IOpComparable
+	extension List<T> where int : operator T <=> T
 	{
 		public int BinarySearch(T item)
 		{
