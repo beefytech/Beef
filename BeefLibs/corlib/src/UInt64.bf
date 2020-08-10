@@ -2,6 +2,7 @@ using System.Globalization;
 
 namespace System
 {
+#unwarn
 	struct UInt64 : uint64, IInteger, IUnsigned, IHashable, IOpComparable, IIsNaN, IFormattable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
 	{
 		public const uint64 MaxValue = 0xFFFFFFFFFFFFFFFFUL;

@@ -1,5 +1,6 @@
 namespace System
 {
+#unwarn
 	struct UInt16 : uint16, IInteger, IUnsigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
 	{
 		public const uint16 MaxValue = (uint16)0xFFFF;

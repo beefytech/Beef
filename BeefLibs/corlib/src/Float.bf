@@ -2,6 +2,7 @@ using System.Globalization;
 
 namespace System
 {
+#unwarn
 	struct Float : float, IFloating, ISigned, IFormattable, IHashable, IEquatable<float>, IOpComparable, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable, ICanBeNaN
     {
 		public const float MinValue = (float)-3.40282346638528859e+38;

@@ -8,7 +8,8 @@ namespace System
     using System.Globalization;
     using System.Diagnostics.Contracts;
 	using System.Diagnostics;
-    
+
+#unwarn
     public struct Double : double, IFloating, ISigned, IFormattable, IHashable, IOpComparable, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable, ICanBeNaN
     {
         public const double MinValue = -1.7976931348623157E+308;

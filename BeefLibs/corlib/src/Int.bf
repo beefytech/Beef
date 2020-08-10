@@ -2,6 +2,7 @@ using System;
 
 namespace System
 {
+#unwarn
 	struct Int : int, IInteger, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
     {
 		public enum ParseError

@@ -375,7 +375,7 @@ namespace System
 	{
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Interface)]
 	public struct ObsoleteAttribute : Attribute
 	{
 		public this(bool isError)

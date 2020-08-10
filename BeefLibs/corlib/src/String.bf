@@ -37,7 +37,7 @@ namespace System
 	}
 
 	[Ordered]
-	class String : IHashable, IFormattable, IPrintable, IOpComparable
+	class String : IHashable, IFormattable, IPrintable
 	{
 		enum CreateFlags
 		{
@@ -2705,7 +2705,7 @@ namespace System
 		}
 	}
 
-	public struct StringView : Span<char8>, IFormattable, IPrintable, IOpEquals<String>, IHashable
+	public struct StringView : Span<char8>, IFormattable, IPrintable, IHashable
 	{
 		public this()
 		{

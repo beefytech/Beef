@@ -2,6 +2,7 @@ using System.Globalization;
 
 namespace System
 {
+#unwarn
 	struct Int32 : int32, IInteger, ISigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
 	{
 		public enum ParseError

@@ -1,5 +1,6 @@
 namespace System
 {
+#unwarn
 	struct UInt : uint, IInteger, IUnsigned, IHashable, IOpComparable, IFormattable, IIsNaN, IOpAddable, IOpSubtractable
 	{
 		public enum ParseError
