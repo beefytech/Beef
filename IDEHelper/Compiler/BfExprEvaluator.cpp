@@ -3751,9 +3751,6 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					fieldInstance->mResolvedType = mModule->ResolveVarFieldType(curCheckType, fieldInstance, field);
 					if (fieldInstance->mResolvedType == NULL)
 						return BfTypedValue();
-
-					if ((fieldInstance->mResolvedType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))
-						mModule->Fail("Field type reference failed to resolve", targetSrc);
 				}
 					
 				auto resolvedFieldType = fieldInstance->mResolvedType;
@@ -17291,9 +17288,17 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 			auto indexConst = mModule->mBfIRBuilder->GetConstant(indexArgument.mValue);
 			if (indexConst->mUInt64 >= (uint64)sizedArrayType->mElementCount)
 			{
-				mModule->Fail(StrFormat("Index '%d' is out of bounds for type '%s'", indexConst->mInt32, mModule->TypeToString(target.mType).c_str()), indexerExpr->mArguments[0]);
-				mResult = _GetDefaultResult();
-				return;
+				if (!mModule->IsInSpecializedSection())
+				{
+					mModule->Fail(StrFormat("Index '%d' is out of bounds for type '%s'", indexConst->mInt32, mModule->TypeToString(target.mType).c_str()), indexerExpr->mArguments[0]);
+					mResult = _GetDefaultResult();
+					return;
+				}
+				else
+				{
+					// Is this any good?
+					mModule->mBfIRBuilder->CreateUnreachable();
+				}
 			}
 		}
 		else if ((mModule->HasCompiledOutput()) && (wantsChecks))
@@ -18220,6 +18225,11 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 
 void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExpression* rightExpression, BfBinaryOp binaryOp, BfTokenNode* opToken, BfBinOpFlags flags)
 {	
+	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mName == "Angle"))
+	{
+		NOP;
+	}
+
 	BfTypedValue leftValue;
 	if (leftExpression != NULL)
 	{
@@ -18863,7 +18873,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					if ((mResult.mType != NULL) && (methodMatcher.mSelfType != NULL) && (mResult.mType->IsSelf()))
 					{
 						BF_ASSERT(mModule->IsInGeneric());
-						mResult = mModule->GetDefaultTypedValue(methodMatcher.mSelfType);
+						mResult = mModule->GetDefaultTypedValue(methodMatcher.mSelfType, false, BfDefaultValueKind_Value);
 					}
 					if ((invertResult) && (mResult.mType == mModule->GetPrimitiveType(BfTypeCode_Boolean)))
 						mResult.mValue = mModule->mBfIRBuilder->CreateNot(mResult.mValue);
