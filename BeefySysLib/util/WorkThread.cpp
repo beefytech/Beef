@@ -5,6 +5,7 @@ USING_NS_BF;
 WorkThread::WorkThread()
 {
 	mThread = NULL;
+	mStackSize = 1024 * 1024;
 }
 
 WorkThread::~WorkThread()
@@ -23,7 +24,7 @@ static void BFP_CALLTYPE WorkThreadStub(void* param)
 
 void WorkThread::Start()
 {
-	mThread = BfpThread_Create(WorkThreadStub, (void*)this, 256 * 1024, BfpThreadCreateFlag_StackSizeReserve);
+	mThread = BfpThread_Create(WorkThreadStub, (void*)this, mStackSize, BfpThreadCreateFlag_StackSizeReserve);
 }
 
 void WorkThread::Stop()

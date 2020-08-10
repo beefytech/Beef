@@ -8,6 +8,7 @@ class WorkThread
 {
 public:
 	BfpThread* mThread;
+	int mStackSize;
 
 public:
 	WorkThread();
@@ -25,7 +26,7 @@ class WorkThreadFunc : public WorkThread
 {
 public:
 	void (*mFunc)(void*);
-	void* mParam;
+	void* mParam;		
 
 public:
 	// Note: this startProc signature does not match BfpThreadStartProc -- here we abstract out the calling convention to be default 
