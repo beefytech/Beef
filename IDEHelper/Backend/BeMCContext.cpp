@@ -11724,8 +11724,9 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 				{
 				case BeTypeCode_Float: return BeMCInstForm_XMM64_FRM32;
 				case BeTypeCode_Double: return BeMCInstForm_XMM64_FRM64;
-				case BeTypeCode_Int32: return BeMCInstForm_XMM64_RM32;
+				case BeTypeCode_Int32: return BeMCInstForm_XMM64_RM32;					
 				case BeTypeCode_Int64: return BeMCInstForm_XMM64_RM64;
+				case BeTypeCode_Pointer: return BeMCInstForm_XMM64_RM64;
 				default: NotImpl();
 				}
 			}
@@ -11739,6 +11740,7 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 				case BeTypeCode_Double: return BeMCInstForm_XMM32_FRM64;
 				case BeTypeCode_Int32: return BeMCInstForm_XMM32_RM32;
 				case BeTypeCode_Int64: return BeMCInstForm_XMM32_RM64;
+				case BeTypeCode_Pointer: return BeMCInstForm_XMM32_RM64;
 				default: NotImpl();
 				}
 			}
@@ -13453,7 +13455,10 @@ void BeMCContext::DoCodeEmission()
 					case BeMCInstForm_XMM32_RM64:
 					{
 						// uint64->xmm Not implemented
-						NotImpl();
+						// We do a signed transform instead
+
+						// CVTSI2SS / CVTSI2SD
+						EmitStdXMMInst(instForm, inst, 0x2A);
 					}
 					break;
 					case BeMCInstForm_XMM64_FRM32:
@@ -15561,7 +15566,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?FromHSL@TestProgram@BeefTest@bf@@SAXMMM@Z");
+	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SAXPEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
 	// 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
