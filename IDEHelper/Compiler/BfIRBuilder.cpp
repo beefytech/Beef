@@ -2655,6 +2655,10 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 							DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
 								constDIType, false, staticValue, memberType);
 						}
+						else if (resolvedFieldType->IsValuelessType())
+						{
+							// Do nothing
+						}
 						else if ((resolvedFieldType->IsObjectOrInterface()) || (resolvedFieldType->IsPointer()) || (resolvedFieldType->IsSizedArray()))
 						{
 							bool useIntConstant = false;
