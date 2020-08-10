@@ -666,7 +666,10 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 	}	
 	else if (fromConst->mTypeCode == BfTypeCode_NullPtr)
 	{
-		return CreateConstNull();
+		if (fromConst->mIRType)
+			return CreateConstNull(fromConst->mIRType);
+		else
+			return CreateConstNull();
 	}
 	else
 	{
@@ -1217,19 +1220,13 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 		}
 		else if (constant->mTypeCode == BfTypeCode_NullPtr)
 		{
-			if (constant->mInt32 == -1)
-				return "null";
-			else if (mBfIRCodeGen != NULL)
+			String ret = "null";
+			if (constant->mIRType)
 			{
-				auto llvmType = mBfIRCodeGen->GetLLVMType(constant->mInt32);
-				std::string outStr;
-				llvm::raw_string_ostream strStream(outStr);
-				llvmType->print(strStream);
-				strStream.flush();				
-				return StrFormat("null(%s)", outStr.c_str());
+				ret += "\n";
+				ret += ToString(constant->mIRType);
 			}
-			else
-				return "???";
+			return ret;
 		}
 		else if (constant->mTypeCode == BfTypeCode_Boolean)
 		{
@@ -1414,12 +1411,14 @@ String BfIRBuilder::ToString(BfIRType irType)
 		return str;
 	}
 #endif	
+	else if (irType.mKind == BfIRTypeData::TypeKind_TypeId)
+	{
+		return StrFormat("Type Id %d", irType.mId);
+	}
 	else
 	{
-		return "???";
-	}
-
-	
+		return "Type ???";
+	}	
 }
 
 String BfIRBuilder::ToString(BfIRFunction irFunc)
