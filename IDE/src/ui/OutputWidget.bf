@@ -175,6 +175,8 @@ namespace IDE.ui
 
 			if ((errLine != -1) && (errLineChar != -1) && (filePath != null))
 			{
+				if ((!filePath.Contains('\\')) && (!filePath.Contains('/')) && (!filePath.Contains('.')))
+					return false;
 				IDEApp.sApp.CheckProjectRelativePath(filePath);
 
 				IDEUtils.FixFilePath(filePath);
