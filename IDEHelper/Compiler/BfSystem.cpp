@@ -3223,7 +3223,7 @@ void BfSystem::RemoveOldData()
 					typeDef->mProject->mDeleteStage = BfProject::DeleteStage_Queued;
 
 			for (auto parser : mParsers)
-				if (parser->mProject->mDeleteStage == BfProject::DeleteStage_AwaitingRefs)
+				if ((parser->mProject != NULL) && (parser->mProject->mDeleteStage == BfProject::DeleteStage_AwaitingRefs))
 					parser->mProject->mDeleteStage = BfProject::DeleteStage_Queued;
 
 			for (int projectIdx = 0; projectIdx < (int)mProjectDeleteQueue.size(); projectIdx++)
