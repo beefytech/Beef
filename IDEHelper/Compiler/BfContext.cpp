@@ -2188,12 +2188,13 @@ void BfContext::GenerateModuleName_TypeInst(BfTypeInstance* typeInst, String& na
 		return;
 	}
 
-	for (int genericIdx = startGenericIdx; genericIdx < (int)typeInst->mTypeDef->mGenericParamDefs.size(); genericIdx++)
+	if (typeInst->mGenericTypeInfo != NULL)
 	{
-		auto genericType = (BfTypeInstance*)typeInst;
-		
-		auto type = genericType->mGenericTypeInfo->mTypeGenericArguments[genericIdx];
-		GenerateModuleName_Type(type, name);
+		for (int genericIdx = startGenericIdx; genericIdx < (int)typeInst->mGenericTypeInfo->mTypeGenericArguments.size(); genericIdx++)
+		{
+			auto type = typeInst->mGenericTypeInfo->mTypeGenericArguments[genericIdx];
+			GenerateModuleName_Type(type, name);
+		}
 	}
 }
 
@@ -2363,6 +2364,11 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 	
 	BP_ZONE("BfContext::QueueMethodSpecializations");
 
+	if (typeInst->mTypeId == 578)
+	{
+		NOP;
+	}
+
 	auto module = typeInst->mModule;
 	if (module == NULL)
 		return;
@@ -2407,6 +2413,11 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 		BF_ASSERT((newSignatureHash == methodRef.mSignatureHash) || (allowMismatch));
 
 		auto methodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
+
+		if (methodDef->mName == "set__Capacity")
+		{
+			NOP;
+		}
 
 		auto targetContext = methodRef.mTypeInstance->mContext;
 		BfMethodSpecializationRequest* specializationRequest = targetContext->mMethodSpecializationWorkList.Alloc();

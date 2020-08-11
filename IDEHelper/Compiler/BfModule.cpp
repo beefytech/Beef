@@ -11448,8 +11448,9 @@ bool BfModule::IsCompatibleInterfaceMethod(BfMethodInstance* iMethodInst, BfMeth
 }
 
 void BfModule::AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInstanceFlags flags)
-{	
+{		
 	BfMethodInstance* methodInstance = methodRef;
+
 	if ((mCurTypeInstance != NULL) && (!mCompiler->IsAutocomplete()))
 	{
 		auto methodInstanceGroup = methodInstance->mMethodInstanceGroup;
@@ -11665,7 +11666,7 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 }
 
 BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags, BfTypeInstance* foreignType)
-{	
+{
 	if (((flags & BfGetMethodInstanceFlag_ForceInline) != 0) && (mCompiler->mIsResolveOnly))
 	{
 		// Don't bother inlining for resolve-only
@@ -12300,6 +12301,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 
 	BfModule* declareModule = GetOrCreateMethodModule(methodInstance);
+	if ((doingRedeclare) && (methodInstance->mDeclModule != mContext->mUnreifiedModule))
+		declareModule = methodInstance->mDeclModule;
 		
 	BF_ASSERT(typeInst == methodInstance->GetOwner());
 

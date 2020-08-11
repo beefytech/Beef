@@ -6231,10 +6231,10 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		return typeDef;
 	};
 
-	mArray1TypeDef = _GetRequiredType("System.Array1");	
-	mArray2TypeDef = _GetRequiredType("System.Array2");	
-	mArray3TypeDef = _GetRequiredType("System.Array3");
-	mArray4TypeDef = _GetRequiredType("System.Array4");
+	mArray1TypeDef = _GetRequiredType("System.Array1", 1);	
+	mArray2TypeDef = _GetRequiredType("System.Array2", 1);	
+	mArray3TypeDef = _GetRequiredType("System.Array3", 1);
+	mArray4TypeDef = _GetRequiredType("System.Array4", 1);
 	mSpanTypeDef = _GetRequiredType("System.Span", 1);
 	mAttributeTypeDef = _GetRequiredType("System.Attribute");
 	mAttributeUsageAttributeTypeDef = _GetRequiredType("System.AttributeUsageAttribute");
@@ -6270,7 +6270,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mLinkNameAttributeTypeDef = _GetRequiredType("System.LinkNameAttribute");
 	mCallingConventionAttributeTypeDef = _GetRequiredType("System.CallingConventionAttribute");
 	mMethodRefTypeDef = _GetRequiredType("System.MethodReference", 1);
-	mNullableTypeDef = _GetRequiredType("System.Nullable");
+	mNullableTypeDef = _GetRequiredType("System.Nullable", 1);
 	mOrderedAttributeTypeDef = _GetRequiredType("System.OrderedAttribute");
 	mPointerTTypeDef = _GetRequiredType("System.Pointer", 1);
 	mPointerTypeDef = _GetRequiredType("System.Pointer", 0);
