@@ -12788,7 +12788,7 @@ bool BfModule::InDefinitionSection()
 
 bool BfModule::IsInSpecializedGeneric()
 {	
-	if (mCurTypeInstance->IsSpecializedType())
+	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsSpecializedType()))
 		return true;
 	if ((mCurMethodInstance == NULL) || (mCurMethodInstance->mIsUnspecialized))
 		return false;
