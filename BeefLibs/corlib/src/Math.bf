@@ -443,7 +443,7 @@ namespace System
 		        return 0;
 		}
 
-		/*public static int Sign<T>(T value) where int : operator T <=> T, ICanBeNaN
+		public static int Sign<T>(T value) where int : operator T <=> T where T : ICanBeNaN
 		{
 		    if (value < default)
 		        return -1;
@@ -453,7 +453,7 @@ namespace System
 		        return 0;
 
 			Runtime.FatalError("Cannot be used on NaN");
-		}*/
+		}
 		
 		public static int32 DivRem(int32 a, int32 b, out int32 result)
         {

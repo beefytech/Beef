@@ -645,6 +645,11 @@ bool BfMethodInstance::IsSpecializedByAutoCompleteMethod()
 	return false;
 }
 
+bool BfMethodInstance::HasExternConstraints()
+{
+	return (mMethodInfoEx != NULL) && (mMethodInfoEx->mGenericParams.size() > mMethodInfoEx->mMethodGenericArguments.size());
+}
+
 bool BfMethodInstance::HasParamsArray()
 {
 	if (mParams.size() == 0)

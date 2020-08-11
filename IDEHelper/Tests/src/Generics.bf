@@ -116,9 +116,20 @@ namespace Tests
 			return 3;
 		}
 
+		public struct Entry
+		{
+			public static int operator<=>(Entry lhs, Entry rhs)
+			{
+				return 0;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
+			List<Entry> list = scope .();
+			list.Sort();
+
 			ClassA ca = scope .();
 			ClassB cb = scope .();
 			Test.Assert(LibA.LibA0.GetVal(ca) == 123);

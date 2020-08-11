@@ -47,7 +47,7 @@ namespace Tests
 
 	static
 	{
-		public static T Total<T>(this List<T> list) where T : IOpAddable
+		public static T Total<T>(this List<T> list) where T : operator T + T
 		{
 			T total = default;
 			for (let val in list)

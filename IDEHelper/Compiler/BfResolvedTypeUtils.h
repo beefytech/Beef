@@ -865,6 +865,7 @@ public:
 	bool IsSpecializedGenericMethod();
 	bool IsSpecializedGenericMethodOrType();
 	bool IsSpecializedByAutoCompleteMethod();
+	bool HasExternConstraints();
 	bool HasThis();	
 	bool HasExplicitThis();
 	bool HasParamsArray();

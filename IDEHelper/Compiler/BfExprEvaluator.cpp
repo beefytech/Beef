@@ -209,15 +209,15 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 }
 
 bool BfMethodMatcher::IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* declaringType)
-{
+{	
 	if (mActiveTypeDef == NULL)
 		mActiveTypeDef = mModule->GetActiveTypeDef();
-	if (!typeInst->IsTypeMemberIncluded(declaringType, mActiveTypeDef, mModule))
-		return false;
 
 	// This may not be completely correct - BUT if we don't have this then even Dictionary TKey's operator == won't be considered accessible
 	if ((!mModule->IsInSpecializedSection()) && (mActiveTypeDef->mTypeDeclaration != NULL))
-	{
+	{		
+		if (!typeInst->IsTypeMemberIncluded(declaringType, mActiveTypeDef, mModule))
+			return false;
 		if (!typeInst->IsTypeMemberAccessible(declaringType, mActiveTypeDef))
 			return false;
 	}
@@ -931,8 +931,13 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			auto prevMethodGenericParam = prevMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
 			SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(prevMethodGenericParam, newMethodGenericParam), mModule->AreConstraintsSubset(newMethodGenericParam, prevMethodGenericParam));
 		}
-	}
-	
+
+		if ((!isBetter) && (!isWorse))
+		{
+			SET_BETTER_OR_WORSE(newMethodInstance->HasExternConstraints(), prevMethodInstance->HasExternConstraints());
+		}
+	}		
+
 	if ((isBetter) || (isWorse))
 	{
 		RETURN_RESULTS;

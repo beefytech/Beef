@@ -12788,9 +12788,11 @@ bool BfModule::InDefinitionSection()
 
 bool BfModule::IsInSpecializedGeneric()
 {	
+	if (mCurTypeInstance->IsSpecializedType())
+		return true;
 	if ((mCurMethodInstance == NULL) || (mCurMethodInstance->mIsUnspecialized))
 		return false;
-	return (mCurMethodInstance->GetNumGenericArguments() != 0) || (mCurTypeInstance->IsGenericTypeInstance());
+	return (mCurMethodInstance->GetNumGenericArguments() != 0);
 }
 
 bool BfModule::IsInSpecializedSection()
