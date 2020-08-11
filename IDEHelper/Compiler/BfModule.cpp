@@ -15887,6 +15887,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			paramVar->mIsSplat = true; // Treat skipped (valueless) as a splat
 			paramVar->mValue = mBfIRBuilder->GetFakeVal();
 		}
+
 		paramVar->mIsLowered = resolvedType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2) != BfTypeCode_None;
 		paramVar->mIsStruct = resolvedType->IsComposite() && !resolvedType->IsTypedPrimitive();
 		paramVar->mParamIdx = paramIdx;

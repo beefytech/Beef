@@ -3074,6 +3074,11 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 			localResult = BfTypedValue(varDecl->mAddr, varDecl->mResolvedType, BfTypedValueKind_SplatHead);
 		else if (!varDecl->mResolvedType->IsValuelessType())
 			localResult = BfTypedValue(varDecl->mValue, varDecl->mResolvedType, BfTypedValueKind_SplatHead);
+		else if ((varDecl->mResolvedType->IsRef()) && (!allowRef))
+		{
+			BF_ASSERT(varDecl->mResolvedType->IsValuelessType());
+			localResult = BfTypedValue(varDecl->mValue, varDecl->mResolvedType->GetUnderlyingType());
+		}
 		else
 			localResult = BfTypedValue(varDecl->mValue, varDecl->mResolvedType);
 		//BF_ASSERT(varDecl->mValue.IsArg());
