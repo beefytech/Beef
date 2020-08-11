@@ -8885,7 +8885,7 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 	if (autoComplete != NULL)		
 		autoComplete->CheckTypeRef(checkTypeExpr->mTypeRef, false, true);	
 
-	auto targetType = mModule->ResolveTypeRefAllowUnboundGenerics(checkTypeExpr->mTypeRef);
+	auto targetType = mModule->ResolveTypeRef(checkTypeExpr->mTypeRef);
 	if (!targetType)
 	{
 		mModule->AssertErrorState();
