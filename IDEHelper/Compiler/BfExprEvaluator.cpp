@@ -3052,7 +3052,7 @@ void BfExprEvaluator::Visit(BfLiteralExpression* literalExpr)
 
 BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 {		
-	if (!mModule->mIsInsideAutoComplete)
+ 	if (!mModule->mIsInsideAutoComplete)
 		varDecl->mReadFromId = mModule->mCurMethodState->GetRootMethodState()->mCurAccessId++;	
 
 	// The Beef backend prefers readonly addrs since that reduces register pressure, whereas 
@@ -3139,7 +3139,7 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 		else if (varDecl->mHasLocalStructBacking)
 		{
 			// varDecl->mAddr is a "struct**"
-			localResult = BfTypedValue(mModule->mBfIRBuilder->CreateAlignedLoad(varDecl->mAddr, varDecl->mResolvedType->mAlign), varDecl->mResolvedType, true);
+			localResult = BfTypedValue(mModule->mBfIRBuilder->CreateAlignedLoad(varDecl->mAddr, varDecl->mResolvedType->mAlign), varDecl->mResolvedType, varDecl->mIsReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
 		}
 		else
 			localResult = BfTypedValue(varDecl->mAddr, varDecl->mResolvedType, varDecl->mIsReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
@@ -15241,6 +15241,11 @@ bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
 
 bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut)
 {
+	if (mModule->mCurMethodInstance->mIdHash == 0x1C000003A3)
+	{
+		NOP;
+	}
+
 	BfLocalVariable* localVar = NULL;
 	bool isCapturedLocal = false;
 	if (mResultLocalVar != NULL)
