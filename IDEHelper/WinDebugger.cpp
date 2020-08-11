@@ -18,6 +18,7 @@
 #include "BeefySysLib/util/UTF8.h"
 #include "BeefySysLib/FileStream.h"
 #include "BeefySysLib/FileHandleStream.h"
+#include "BeefySysLib/util/FileEnumerator.h"
 #include <inttypes.h>
 #include <windows.h>
 #include "DbgExprEvaluator.h"
@@ -9387,6 +9388,42 @@ void WinDebugger::EvaluateContinueKeep()
 		mDebugPendingExpr->mIdleTicks = 0;
 }
 
+static void PdbTestFile(WinDebugger* debugger, const StringImpl& path)
+{	
+	if (!path.EndsWith(".PDB", StringImpl::CompareKind_OrdinalIgnoreCase))
+		return;
+	
+	OutputDebugStrF("Testing %s\n", path.c_str());
+	COFF coffFile(debugger->mDebugTarget);
+	uint8 wantGuid[16] = { 0 };
+	if (!coffFile.TryLoadPDB(path, wantGuid, -1))
+		return;	
+	if (!coffFile.mIs64Bit)
+		return;	
+	coffFile.ParseTypeData();
+	coffFile.ParseSymbolData();
+	coffFile.ParseGlobalsData();	
+}
+
+static void PdbTest(WinDebugger* debugger, const StringImpl& path)
+{		
+	for (auto& fileEntry : FileEnumerator(path, FileEnumerator::Flags_Files))
+	{
+		String filePath = fileEntry.GetFilePath();
+
+		PdbTestFile(debugger, filePath);
+	}
+
+	for (auto& fileEntry : FileEnumerator(path, FileEnumerator::Flags_Directories))
+	{
+		String childPath = fileEntry.GetFilePath();
+		String dirName;
+		dirName = GetFileName(childPath);
+			
+		PdbTest(debugger, childPath);
+	}	
+}
+
 String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags)
 {
 	BP_ZONE_F("WinDebugger::Evaluate %s", BP_DYN_STR(expr.c_str()));
@@ -9470,6 +9507,10 @@ String WinDebugger::Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, in
 			{
 				mDbgBreak = true;
 				return "";
+			}
+			else if (cmd == "!pdbtest")
+			{
+				PdbTest(this, "c:\\");
 			}
 		}
 	}

@@ -234,6 +234,7 @@ COFF::COFF(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mCvIPIMaxTag = -1;
 	mMasterCompileUnit = NULL;
 	mTempBufIdx = 0;
+	mIs64Bit = false;
 
 	mCvPageSize = 0;
 	mCvPageBits = 31;
@@ -4891,6 +4892,9 @@ bool COFF::CvParseDBI(int wantAge)
 	BP_ZONE("CvParseDBI");
 		
 	uint8* data = CvReadStream(3);	
+	if (data == NULL)
+		return false;
+
 	uint8* sectionData = data;
 	defer
 	(
@@ -4934,6 +4938,13 @@ bool COFF::CvParseDBI(int wantAge)
 	GET_INTO(uint16, flags); //resvd3
 	GET_INTO(uint16, machine);
 	GET_INTO(uint32, reserved); //resvd4
+
+	if (machine == 0x8664)
+		mIs64Bit = true;
+	else if (machine == 0x014C)
+		mIs64Bit = false;
+	else // Unknown machine
+		return false; 
 
 	uint8* headerEnd = data;
 
@@ -5023,6 +5034,10 @@ bool COFF::CvParseDBI(int wantAge)
 				BP_ALLOC_T(DbgCompileUnitContrib);
 				auto contribEntry = mAlloc.Alloc<DbgCompileUnitContrib>();
 				contribEntry->mAddress = GetSectionAddr(contrib.mSection, contrib.mOffset) + contribOffset;
+
+				if ((contribEntry->mAddress & 0xFFFF0000'00000000) != 0)
+					continue;
+
 				contribEntry->mLength = curSize;
 				contribEntry->mDbgModule = this;
 				contribEntry->mCompileUnitId = contrib.mModule;
@@ -5560,10 +5575,13 @@ uint8* COFF::HandleSymStreamEntries(CvSymStreamType symStreamType, uint8* data, 
 #endif
 
 	if (mIsFastLink)
-		return dataEnd; // FOrmat changed
+		return dataEnd; // Format changed
+
+	if (sizeBuckets == 0)
+		return dataEnd; // No hash
 
 	std::multimap<addr_target, int> checkAddrMap;
-	
+		
 	int bitCount = 0;
 	for (int blockIdx = 0; blockIdx < 0x81; blockIdx++)
 	{

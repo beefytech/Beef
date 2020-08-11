@@ -222,6 +222,7 @@ public:
 	int mDebugAge;	
 	ParseKind mParseKind;
 	bool mPDBLoaded;
+	bool mIs64Bit;
 
 	int mCvPageSize;
 	int mCvPageBits;
