@@ -15240,12 +15240,7 @@ bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
 }
 
 bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut)
-{
-	if (mModule->mCurMethodInstance->mIdHash == 0x1C000003A3)
-	{
-		NOP;
-	}
-
+{	
 	BfLocalVariable* localVar = NULL;
 	bool isCapturedLocal = false;
 	if (mResultLocalVar != NULL)
