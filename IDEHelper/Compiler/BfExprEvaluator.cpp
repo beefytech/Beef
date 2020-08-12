@@ -7997,8 +7997,8 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	if (!mResult)
 		return;
 
-	//if (mResult.mType->IsVar())
-	//ResolveGenericType();	
+	if (mResult.mType->IsAllocType())
+		mResult.mType = mResult.mType->GetUnderlyingType();
 
 	auto origResult = mResult;
 	auto lookupType = BindGenericType(nameNode, mResult.mType);
@@ -8040,7 +8040,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	{
 		mResult = BfTypedValue(mModule->GetDefaultValue(mResult.mType), mResult.mType, true);
 		return;
-	}
+	}	
 
 	if (!mResult.mType->IsTypeInstance())
 	{		
@@ -12272,7 +12272,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		if (resolvedTypeRef->IsVar())
 		{
 			// Leave as a var
-		}
+		}		
 		else if ((!resolvedTypeRef->IsObjectOrInterface()) && (!resolvedTypeRef->IsGenericParam()))
 		{
 			resultType = mModule->CreatePointerType(resolvedTypeRef);
@@ -12289,26 +12289,33 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	bool isGenericParam = unresolvedTypeRef->IsGenericParam();
 	if (resolvedTypeRef->IsGenericParam())
 	{
-		auto genericConstraint = mModule->GetGenericParamInstance((BfGenericParamType*)resolvedTypeRef);
-		if (genericConstraint->mTypeConstraint == NULL)
+		auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)resolvedTypeRef);
+		if (genericParam->mTypeConstraint == NULL)
 		{
-			if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_New) == 0)
+			if ((genericParam->mGenericParamFlags & BfGenericParamFlag_New) == 0)
 			{
-				mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericConstraint->GetGenericParamDef()->mName.c_str()), objCreateExpr->mTypeRef);
+				mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericParam->GetName().c_str()), objCreateExpr->mTypeRef);
 			}
 			if (objCreateExpr->mArguments.size() != 0)
 			{
-				mModule->Fail(StrFormat("Only default parameterless constructors can be called on generic argument '%s'", genericConstraint->GetGenericParamDef()->mName.c_str()), objCreateExpr->mTypeRef);
+				mModule->Fail(StrFormat("Only default parameterless constructors can be called on generic argument '%s'", genericParam->GetName().c_str()), objCreateExpr->mTypeRef);
 			}
 		}
 		
-		resultType = resolvedTypeRef;		
-		bool isValueType = ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_Struct) != 0);
-		if (genericConstraint->mTypeConstraint != NULL)
-			isValueType = genericConstraint->mTypeConstraint->IsValueType();
-
-		if (isValueType)		
-			resultType = mModule->CreatePointerType(resultType);		
+		if (((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsValueType())) ||
+			((genericParam->mGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr)) != 0))
+		{
+			resultType = mModule->CreatePointerType(resolvedTypeRef);
+		}
+		else if (((genericParam->mTypeConstraint != NULL) && (!genericParam->mTypeConstraint->IsValueType())) ||
+			((genericParam->mGenericParamFlags & (BfGenericParamFlag_Class)) != 0))
+		{
+			// Leave as 'T'
+			resultType = resolvedTypeRef;
+		}
+		else
+			resultType = mModule->CreateModifiedTypeType(resolvedTypeRef, BfToken_AllocType);
+				
 		mResult.mType = resultType;
 
 		if (typeInstance == NULL)
@@ -14549,6 +14556,9 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	bool mayBeSkipCall = false;
 	if (thisValue.mType != NULL)
 	{
+		if (thisValue.mType->IsAllocType())
+			thisValue.mType = thisValue.mType->GetUnderlyingType();
+
 		auto checkTypeInst = thisValue.mType->ToTypeInstance();
 		while (checkTypeInst != NULL)
 		{

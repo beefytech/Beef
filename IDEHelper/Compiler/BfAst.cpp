@@ -1228,6 +1228,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "abstract";
 	case BfToken_AlignOf:
 		return "alignof";
+	case BfToken_AllocType:
+		return "alloctype";
 	case BfToken_Append:
 		return "append";
 	case BfToken_As:

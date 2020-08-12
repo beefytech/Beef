@@ -315,13 +315,24 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 {
 	SetAndRestoreValue<bool> prevIgnoreClassifying(mModule->mIsInsideAutoComplete, true);
 
+	auto _FixType = [](const BfTypedValue& typedValue)
+	{
+		if ((typedValue.mType != NULL) && (typedValue.mType->IsAllocType()))
+		{
+			BfTypedValue ret = typedValue;
+			ret.mType = ret.mType->GetUnderlyingType();
+			return ret;
+		}
+		return typedValue;
+	};
+
 	if (auto typeRef = BfNodeDynCast<BfTypeReference>(node))
 	{
 		auto type = mModule->ResolveTypeRef(typeRef);
 		if (type != NULL)
 		{
 			*isStatic = true;
-			return BfTypedValue(type);
+			return _FixType(BfTypedValue(type));
 		}
 
 		if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef))
@@ -330,7 +341,7 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 			auto identifierResult = exprEvaluator.LookupIdentifier(namedTypeRef->mNameNode);
 			if (identifierResult)
 				return identifierResult;
-			return exprEvaluator.GetResult(); // We need 'GetResult' to read property values
+			return _FixType(exprEvaluator.GetResult()); // We need 'GetResult' to read property values
 		}
 		else if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
 		{
@@ -356,7 +367,7 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 					if (!fieldResult) // Was property?
 						fieldResult = exprEvaluator.GetResult();
 					*isStatic = false;						
-					return fieldResult;
+					return _FixType(fieldResult);
 				}
 			}
 		}
@@ -368,7 +379,7 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 		if (!identifierResult)
 			identifierResult = exprEvaluator.GetResult();
 		if (identifierResult)
-			return identifierResult;
+			return _FixType(identifierResult);
 		
 		if (auto qualifiedIdentifier = BfNodeDynCast<BfQualifiedNameNode>(node))
 		{
@@ -388,7 +399,7 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 					return fieldResult;
 				auto result = exprEvaluator.GetResult();
 				if (result)
-					return result;
+					return _FixType(result);
 			}
 		}
 
@@ -396,22 +407,22 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 		if (type != NULL)
 		{
 			*isStatic = true;
-			return BfTypedValue(type);
+			return _FixType(BfTypedValue(type));
 		}
 	}
 	else if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(node))
 	{		
-		return mModule->CreateValueFromExpression(memberRefExpr, expectingType, evalExprFlags);
+		return _FixType(mModule->CreateValueFromExpression(memberRefExpr, expectingType, evalExprFlags));
 	}
 	else if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(node))
 	{
 		// Don't pass BfEvalExprFlags_IgnoreNullConditional, since parenExprs end nullable chains and we actually 
 		//  DO want the nullable at this point
-		return mModule->CreateValueFromExpression(parenExpr);
+		return _FixType(mModule->CreateValueFromExpression(parenExpr));
 	}
 	else if (auto targetExpr = BfNodeDynCast<BfExpression>(node))
 	{
-		return mModule->CreateValueFromExpression(targetExpr, NULL, evalExprFlags);
+		return _FixType(mModule->CreateValueFromExpression(targetExpr, NULL, evalExprFlags));
 	}
 
 	return BfTypedValue();
@@ -1550,8 +1561,8 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 
 			// Statics, inner types
 			
-			auto checkType = targetValue.mType;
-			
+			auto checkType = targetValue.mType;			
+
 			if (checkType->IsGenericParam())
 			{
 				auto genericParamType = (BfGenericParamType*)checkType;

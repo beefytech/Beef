@@ -372,7 +372,7 @@ public:
 
 	HashSet<BfTypeInstance*> mQueuedSpecializedMethodRebuildTypes;	
 
-	BfAllocPool<BfPointerType> mPointerTypePool;
+	BfAllocPool<BfPointerType> mPointerTypePool;	
 	BfAllocPool<BfArrayType> mArrayTypePool;
 	BfAllocPool<BfSizedArrayType> mSizedArrayTypePool;
 	BfAllocPool<BfUnknownSizedArrayType> mUnknownSizedArrayTypePool;
@@ -380,7 +380,7 @@ public:
 	BfAllocPool<BfTupleType> mTupleTypePool;
 	BfAllocPool<BfTypeAliasType> mAliasTypePool;
 	BfAllocPool<BfRefType> mRefTypePool;
-	BfAllocPool<BfModifiedTypeType> mRetTypeTypePool;
+	BfAllocPool<BfModifiedTypeType> mModifiedTypeTypePool;
 	BfAllocPool<BfTypeInstance> mGenericTypeInstancePool;	
 	BfAllocPool<BfArrayType> mArrayTypeInstancePool;
 	BfAllocPool<BfGenericParamType> mGenericParamTypePool;

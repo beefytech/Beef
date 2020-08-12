@@ -538,6 +538,7 @@ public:
 	virtual bool IsChar() { return false; }
 	virtual bool IsFloat() { return false; }		
 	virtual bool IsPointer() { return false; }
+	virtual bool IsAllocType() { return false; }
 	virtual bool IsIntPtrable() { return false;  }	
 	virtual bool IsRef() { return false; }	
 	virtual bool IsGenericParam() { return false; }
@@ -999,8 +1000,10 @@ public:
 	virtual bool IsValuelessType() override { return true; }
 
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
+	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedType(); }
 	virtual bool IsReified() override { return mElementType->IsReified(); }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }	
+	virtual bool IsAllocType() { return mModifiedKind == BfToken_AllocType; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
 };
 

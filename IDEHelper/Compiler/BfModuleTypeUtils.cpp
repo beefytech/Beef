@@ -5488,13 +5488,13 @@ BfRefType* BfModule::CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind r
 
 BfModifiedTypeType* BfModule::CreateModifiedTypeType(BfType* resolvedTypeRef, BfToken modifiedKind)
 {
-	auto retTypeType = mContext->mRetTypeTypePool.Get();
+	auto retTypeType = mContext->mModifiedTypeTypePool.Get();
 	retTypeType->mContext = mContext;
 	retTypeType->mModifiedKind = modifiedKind;
 	retTypeType->mElementType = resolvedTypeRef;
 	auto resolvedRetTypeType = ResolveType(retTypeType);
 	if (resolvedRetTypeType != retTypeType)
-		mContext->mRetTypeTypePool.GiveBack(retTypeType);
+		mContext->mModifiedTypeTypePool.GiveBack(retTypeType);
 	return (BfModifiedTypeType*)resolvedRetTypeType;
 }
 
@@ -8120,6 +8120,23 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				Fail("'rettype' can only be used on delegate or function types", retTypeTypeRef->mRetTypeToken);
 				return ResolveTypeResult(typeRef, resolvedType, populateType, resolveFlags);
 			}
+		}
+		else if (retTypeTypeRef->mRetTypeToken->mToken == BfToken_AllocType)
+		{
+			BfType* resolvedType = NULL;
+			if (retTypeTypeRef->mElementType != NULL)
+			{
+				resolvedType = ResolveTypeRef(retTypeTypeRef->mElementType, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericParamConstValue);
+				if (resolvedType != NULL)
+				{
+					if (resolvedType->IsGenericParam())
+						resolvedType = CreateModifiedTypeType(resolvedType, BfToken_AllocType);
+					else if (resolvedType->IsValueType())					
+						resolvedType = CreatePointerType(resolvedType);
+				}
+			}
+
+			return ResolveTypeResult(typeRef, resolvedType, populateType, resolveFlags);
 		}
 		else if (retTypeTypeRef->mRetTypeToken->mToken == BfToken_Nullable)
 		{

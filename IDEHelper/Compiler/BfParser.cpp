@@ -2628,6 +2628,10 @@ void BfParser::NextToken(int endIdx)
 						if ((!mCompatMode) && (SrcPtrHasToken("abstract")))
 							mToken = BfToken_Abstract;
 						break;
+					case TOKEN_HASH('a', 'l', 'l', 'o'):
+						if (SrcPtrHasToken("alloctype"))
+							mToken = BfToken_AllocType;
+						break;
 					case TOKEN_HASH('a', 'l', 'i', 'g'):
 						if (SrcPtrHasToken("alignof"))
 							mToken = BfToken_AlignOf;

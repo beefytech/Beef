@@ -2452,7 +2452,7 @@ BfResolvedTypeSet::~BfResolvedTypeSet()
 #define HASH_VAL_REF 3
 #define HASH_VAL_OUT 4
 #define HASH_VAL_MUT 5
-#define HASH_RETTYPE 6
+#define HASH_MODTYPE 6
 #define HASH_CONCRETE_INTERFACE 7
 #define HASH_SIZED_ARRAY 8
 #define HASH_CONSTTYPE 9
@@ -2613,7 +2613,7 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 		BfPointerType* pointerType = (BfPointerType*) type;
 		int elemHash = Hash(pointerType->mElementType, ctx) ^ HASH_VAL_PTR;
 		return (elemHash << 5) - elemHash;
-	}	
+	}
 	else if (type->IsGenericParam())
 	{
 		auto genericParam = (BfGenericParamType*)type;
@@ -2627,8 +2627,8 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 	}	
 	else if (type->IsModifiedTypeType())
 	{
-		auto retTypeType = (BfModifiedTypeType*)type;
-		int elemHash = Hash(retTypeType->mElementType, ctx) ^ HASH_RETTYPE;
+		auto modifiedTypeType = (BfModifiedTypeType*)type;
+		int elemHash = Hash(modifiedTypeType->mElementType, ctx) ^ HASH_MODTYPE + (int)modifiedTypeType->mModifiedKind;
 		return (elemHash << 5) - elemHash;
 	}
 	else if (type->IsConcreteInterfaceType())
@@ -3095,7 +3095,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 			return Hash(type, ctx, flags);
 		}
 
-		int elemHash = Hash(retTypeTypeRef->mElementType, ctx) ^ HASH_RETTYPE;
+		int elemHash = Hash(retTypeTypeRef->mElementType, ctx) ^ HASH_MODTYPE + retTypeTypeRef->mRetTypeToken->mToken;
 		return (elemHash << 5) - elemHash;
 	}
 	else if (auto resolvedTypeRef = BfNodeDynCastExact<BfResolvedTypeReference>(typeRef))

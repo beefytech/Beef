@@ -105,6 +105,7 @@ enum BfToken : uint8
 	BfToken_None,
 	BfToken_Abstract,
 	BfToken_AlignOf,
+	BfToken_AllocType,
 	BfToken_Append,
 	BfToken_As,
 	BfToken_Asm,

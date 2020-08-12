@@ -555,6 +555,8 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		BfModifiedTypeType* retTypeType = (BfModifiedTypeType*)type;
 		if (retTypeType->mModifiedKind == BfToken_RetType)
 			name += "U7rettype";
+		else if (retTypeType->mModifiedKind == BfToken_AllocType)
+			name += "U5alloc";
 		else if (retTypeType->mModifiedKind == BfToken_Nullable)
 			name += "U8nullable";
 		else
@@ -1621,6 +1623,8 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 		auto retType = (BfModifiedTypeType*)type;
 		if (retType->mModifiedKind == BfToken_RetType)
 			name += "rettype$";
+		else if (retType->mModifiedKind == BfToken_AllocType)
+			name += "alloc$";
 		else if (retType->mModifiedKind == BfToken_Nullable)
 			name += "nullable$";
 		else

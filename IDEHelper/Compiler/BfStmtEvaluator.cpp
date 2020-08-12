@@ -3807,6 +3807,8 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 	if (!val)
 		return;
 
+	if (val.mType->IsAllocType())
+		val.mType = val.mType->GetUnderlyingType();
 	
 	BfGenericParamType* genericType = NULL;
 	if (val.mType->IsGenericParam())
