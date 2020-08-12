@@ -9,11 +9,6 @@ interface IItem
 
 class Mintesto
 {
-	public static T Alloc<T>() where T : new
-	{
-		return new T();
-	}
-
 	public static void Dispose<T>(mut T val) where T : IDisposable
 	{
 		val.Dispose();
