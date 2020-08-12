@@ -5615,6 +5615,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 				if (!isDirectPass)
 				{
+					int numElements = (int)argValues.size() - argIdx;
+					if (methodDef->mMethodType == BfMethodType_Extension)
+						numElements++;
+
 					if (wantType->IsArray())
 					{
 						BfArrayType* arrayType = (BfArrayType*)wantType;
@@ -5623,7 +5627,6 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 						int arrayClassSize = arrayType->mInstSize - expandedParamsElementType->mSize;
 
-						int numElements = (int)argValues.size() - argIdx;
 						expandedParamsArray = BfTypedValue(mModule->AllocFromType(arrayType->GetUnderlyingType(), boxScopeData, BfIRValue(), mModule->GetConstValue(numElements), 1, BfAllocFlags_None),
 							arrayType, false);
 
@@ -5649,7 +5652,6 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					}
 					else
 					{
-						int numElements = (int)argValues.size() - argIdx;
 						auto genericTypeInst = wantType->ToGenericTypeInstance();
 						expandedParamsElementType = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0];
 
