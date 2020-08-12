@@ -1050,9 +1050,7 @@ void BfIRCodeGen::AddNop()
 }
 
 bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
-{	
-	return false;
-
+{		
 	auto arrayType = llvm::dyn_cast<llvm::ArrayType>(val->getType());
 	if (arrayType == NULL)
 		return false;
@@ -1062,8 +1060,11 @@ bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
 		return false;
 
 	auto int8Ty = llvm::Type::getInt8Ty(*mLLVMContext);
+	auto int32Ty = llvm::Type::getInt32Ty(*mLLVMContext);
 	auto int8PtrTy = int8Ty->getPointerTo();
-	int arrayBytes = arrayType->getScalarSizeInBits() / 8;
+
+	auto dataLayout = llvm::DataLayout(mLLVMModule);
+	int arrayBytes = (int)dataLayout.getTypeSizeInBits(arrayType) / 8;
 
 	if (auto loadInst = llvm::dyn_cast<llvm::LoadInst>(val))
 	{		
@@ -1072,13 +1073,13 @@ bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
 			1,
 			mIRBuilder->CreateBitCast(loadInst->getPointerOperand(), int8PtrTy),
 			1,
-			llvm::ConstantInt::get(int8Ty, arrayBytes));
+			llvm::ConstantInt::get(int32Ty, arrayBytes));
 		return true;		
 	}
 
 	auto constVal = llvm::dyn_cast<llvm::Constant>(val);
 	if (constVal == NULL)
-		return false;					
+		return false;						
 
 	auto globalVariable = new llvm::GlobalVariable(
 		*mLLVMModule,
@@ -1095,7 +1096,7 @@ bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
 		1,
 		mIRBuilder->CreateBitCast(globalVariable, int8PtrTy),
 		1,
-		llvm::ConstantInt::get(int8Ty, arrayBytes));
+		llvm::ConstantInt::get(int32Ty, arrayBytes));
 
 	return true;
 }
