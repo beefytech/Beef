@@ -463,7 +463,7 @@ void BfModule::CheckInjectNewRevision(BfTypeInstance* typeInstance)
 	}
 }
 
-bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
+void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 {
 	BP_ZONE("BfModule::InitType");
 
@@ -567,7 +567,7 @@ bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 
 		// Do it here so the location we attempted to specialize this type will throw the failure if there is one
 		if (!BuildGenericParams(resolvedTypeRef))
-			return false;
+			return;
 	}
 
 	BfLogSysM("%p InitType: %s Type: %p TypeDef: %p Revision:%d\n", mContext, TypeToString(resolvedTypeRef).c_str(), resolvedTypeRef, (typeInst != NULL) ? typeInst->mTypeDef : NULL, mCompiler->mRevision);
@@ -582,7 +582,7 @@ bool BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 		mCompiler->mStats.mTypesQueued++;
 		mCompiler->UpdateCompletion();
 	}
-	return PopulateType(resolvedTypeRef, populateType);
+	PopulateType(resolvedTypeRef, populateType);	
 }
 
 void BfModule::AddFieldDependency(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfType* fieldType)
@@ -878,10 +878,10 @@ bool BfModule::CheckCircularDataError()
 	}
 }
 
-bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
-{		
+void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
+{
 	if ((populateType == BfPopulateType_Declaration) && (resolvedTypeRef->mDefineState >= BfTypeDefineState_Declared))
-		return true;
+		return;
 	
 	// Are we "demanding" to reify a type that is currently resolve-only?
 	if ((mIsReified) && (populateType >= BfPopulateType_Declaration))
@@ -935,7 +935,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	}
 
 	if (!resolvedTypeRef->IsIncomplete())
-		return true;
+		return;
 
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
 	CheckInjectNewRevision(typeInstance);	
@@ -1002,7 +1002,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
 		}
 		refType->mSize = refType->mAlign = mSystem->mPtrSize;
-		return true;
+		return;
 	}
 
 	if (resolvedTypeRef->IsTypeAlias())
@@ -1126,7 +1126,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		resolvedTypeRef->mRebuildFlags = BfTypeRebuildFlag_None;
 
 		bool isValueless = arrayType->IsValuelessType();
-		return true;
+		return;
 	}	
 	
 	if (isNew)
@@ -1135,12 +1135,12 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		if (typeInstance != NULL)
 		{
 			if ((populateType == BfPopulateType_Data) && (typeInstance->mNeedsMethodProcessing))
-				return true;
+				return;
 			typeDef = typeInstance->mTypeDef;
 		}
 
 		if (resolvedTypeRef->IsMethodRef())
-			return true;
+			return;
 
 		if (resolvedTypeRef->IsPointer())
 		{
@@ -1149,7 +1149,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 				PopulateType(pointerType->mElementType, BfPopulateType_Declaration);
 			pointerType->mSize = pointerType->mAlign = mSystem->mPtrSize;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
-			return true;
+			return;
 		}
 
 		if (resolvedTypeRef->IsGenericParam())
@@ -1159,7 +1159,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			genericParamType->mSize = mContext->mBfObjectType->mSize;
 			genericParamType->mAlign = mContext->mBfObjectType->mAlign;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
-			return true;
+			return;
 		}
 
 		if (resolvedTypeRef->IsModifiedTypeType())
@@ -1169,7 +1169,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			resolvedTypeRef->mSize = mContext->mBfObjectType->mSize;
 			resolvedTypeRef->mAlign = mContext->mBfObjectType->mAlign;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
-			return true;
+			return;
 		}
 
 		if (resolvedTypeRef->IsConcreteInterfaceType())
@@ -1179,7 +1179,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			resolvedTypeRef->mSize = concreteInterfaceType->mInterface->mSize;
 			resolvedTypeRef->mAlign = concreteInterfaceType->mInterface->mAlign;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
-			return true;
+			return;
 		}
 
 		if (resolvedTypeRef->IsConstExprValue())
@@ -1187,13 +1187,13 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			resolvedTypeRef->mSize = 0;
 			resolvedTypeRef->mAlign = 0;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
-			return true;
+			return;
 		}
 		
 		// The autocomplete pass doesn't need to do the method processing, allow type to be (partially) incomplete
 		if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) &&
 			(typeInstance != NULL) && (typeInstance->mNeedsMethodProcessing) && (!typeInstance->IsDelegate()))
-			return true;
+			return;
 
 		BfPrimitiveType* primitiveType = NULL;
 		if (typeInstance == NULL)
@@ -1212,7 +1212,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		case BfTypeCode_None:
 			primitiveType->mSize = primitiveType->mAlign = 0;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
-			return true;
+			return;
 		case BfTypeCode_Self:
 		case BfTypeCode_Dot:
 		case BfTypeCode_Var:
@@ -1223,38 +1223,38 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			primitiveType->mAlign = objType->mAlign;
 			resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
 		}
-		return true;
+		return;
 		case BfTypeCode_NullPtr:
 			primitiveType->mSize = primitiveType->mAlign = mSystem->mPtrSize;
 			primitiveType->mDefineState = BfTypeDefineState_Defined;
-			return true;
+			return;
 		case BfTypeCode_Boolean:
 			PRIMITIVE_TYPE("bool", Int1, 1, DW_ATE_boolean);
-			return true;
+			return;
 		case BfTypeCode_Int8:
 			PRIMITIVE_TYPE("sbyte", Int8, 1, DW_ATE_signed);
-			return true;
+			return;
 		case BfTypeCode_UInt8:
 			PRIMITIVE_TYPE("byte", Int8, 1, DW_ATE_unsigned);
-			return true;
+			return;
 		case BfTypeCode_Int16:
 			PRIMITIVE_TYPE("short", Int16, 2, DW_ATE_signed);
-			return true;
+			return;
 		case BfTypeCode_UInt16:
 			PRIMITIVE_TYPE("ushort", Int16, 2, DW_ATE_unsigned);
-			return true;
+			return;
 		case BfTypeCode_Int32:
 			PRIMITIVE_TYPE("int", Int32, 4, DW_ATE_signed);
-			return true;
+			return;
 		case BfTypeCode_UInt32:
 			PRIMITIVE_TYPE("uint", Int32, 4, DW_ATE_unsigned);
-			return true;
+			return;
 		case BfTypeCode_Int64:
 			PRIMITIVE_TYPE("long", Int64, 8, DW_ATE_signed);
-			return true;
+			return;
 		case BfTypeCode_UInt64:
 			PRIMITIVE_TYPE("ulong", Int64, 8, DW_ATE_unsigned);
-			return true;
+			return;
 		case BfTypeCode_IntPtr:
 			if (mSystem->mPtrSize == 4)
 			{
@@ -1264,7 +1264,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			{
 				PRIMITIVE_TYPE("intptr", Int64, 8, DW_ATE_signed);
 			}
-			return true;
+			return;
 		case BfTypeCode_UIntPtr:
 			if (mSystem->mPtrSize == 4)
 			{
@@ -1274,25 +1274,25 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			{
 				PRIMITIVE_TYPE("uintptr", Int64, 8, DW_ATE_unsigned);
 			}
-			return true;
+			return;
 		case BfTypeCode_IntUnknown:			
 		case BfTypeCode_UIntUnknown:
-			return true;
+			return;
 		case BfTypeCode_Char8:
 			PRIMITIVE_TYPE("char8", Int8, 1, DW_ATE_unsigned_char);
-			return true;
+			return;
 		case BfTypeCode_Char16:
 			PRIMITIVE_TYPE("char16", Int16, 2, DW_ATE_unsigned_char);
-			return true;
+			return;
 		case BfTypeCode_Char32:
 			PRIMITIVE_TYPE("char32", Int32, 4, DW_ATE_unsigned_char);
-			return true;
+			return;
 		case BfTypeCode_Float:
 			PRIMITIVE_TYPE("float", Float, 4, DW_ATE_float);
-			return true;
+			return;
 		case BfTypeCode_Double:
 			PRIMITIVE_TYPE("double", Double, 8, DW_ATE_float);
-			return true;
+			return;
 		case BfTypeCode_Object:
 		case BfTypeCode_Struct:
 		case BfTypeCode_Interface:
@@ -1306,7 +1306,7 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		default:
 			//NotImpl(resolvedTypeRef->mTypeRef);
 			BFMODULE_FATAL(this, "Invalid type");
-			return false;
+			return;
 		}
 		//////////////////////////////////////////////////////////////////////////				
 
@@ -1333,16 +1333,15 @@ bool BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	}
 
 	if (typeInstance == NULL)
-		return true;
+		return;
 
 	if (typeInstance->mModule == NULL)
 	{
 		BF_ASSERT(typeInstance->mTypeFailed);
-		return false;
+		return;
 	}
 
-	auto result = typeInstance->mModule->DoPopulateType(typeInstance, populateType);	
-	return result;
+	typeInstance->mModule->DoPopulateType(typeInstance, populateType);		
 }
 
 BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
@@ -1795,8 +1794,8 @@ void BfModule::SetTypeOptions(BfTypeInstance* typeInstance)
 	typeInstance->mTypeOptionsIdx = GenerateTypeOptions(typeInstance->mCustomAttributes, typeInstance, true);
 }
 
-bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
-{	
+void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
+{
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
 	auto typeDef = typeInstance->mTypeDef;	
 
@@ -1810,7 +1809,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if (!typeInstance->mBaseType->IsIncomplete())
 			typeInstance->mBaseTypeMayBeIncomplete = false;
 		if (!typeInstance->mTypeIncomplete)
-			return true;
+			return;
 	}
 	typeInstance->mBaseTypeMayBeIncomplete = false;	
 
@@ -1826,7 +1825,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		canDoMethodProcessing = true;
 
 	if (typeInstance->mResolvingConstField)
-		return !typeInstance->mTypeFailed;
+		return;
 
 	auto _CheckTypeDone = [&]()
 	{
@@ -1841,11 +1840,11 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	};
 
 	if (_CheckTypeDone())
-		return true;	
+		return;	
 
 	// Partial population break out point
 	if ((populateType >= BfPopulateType_Identity) && (populateType <= BfPopulateType_IdentityNoRemapAlias))
-		return true;
+		return;
 
 	if (!resolvedTypeRef->IsValueType())
 	{
@@ -1882,11 +1881,11 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		typeInstance->mTypeIncomplete = false;
 		resolvedTypeRef->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
-		return true;
+		return;
 	}
 
 	if (_CheckTypeDone())
-		return true;
+		return;
 
 	// Don't do TypeToString until down here.	Otherwise we can infinitely loop on BuildGenericParams
 
@@ -1903,7 +1902,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if (typeInstance->mIsFinishingType)
 	{
 		// This type already failed
-		return true;
+		return;
 	}
 
 	CheckCircularDataError();
@@ -2115,7 +2114,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 	if (populateType == BfPopulateType_Declaration)
 	{
-		return true;
+		return;
 	}
 
 	if ((!mCompiler->mIsResolveOnly) && (!typeInstance->mHasBeenInstantiated))
@@ -2241,7 +2240,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if (typeInstance->mDefineState >= BfTypeDefineState_Defined)
 			{
 				prevDefineState.CancelRestore();
-				return true;
+				return;
 			}
 
 			if (checkType != NULL)
@@ -2447,7 +2446,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if (!typeInstance->IsIncomplete())
 		{
 			// Re-entry may cause this type to be completed already
-			return true;
+			return;
 		}
 
 		//BfLogSysM("Adding DerivedFrom dependency. Used:%p Using:%p\n", baseType, typeInstance);
@@ -2478,7 +2477,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	if (populateType <= BfPopulateType_BaseType)
-		return true;
+		return;
 
 	if ((typeInstance->mBaseType != NULL) && (!typeInstance->IsTypedPrimitive()))
 	{
@@ -2540,7 +2539,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	if (populateType <= BfPopulateType_Interfaces)
-		return true;
+		return;
 
 	prevSkipTypeProtectionChecks.Restore();
 	typeInstance->mInstSize = std::max(0, typeInstance->mInstSize);
@@ -2781,7 +2780,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if (!resolvedTypeRef->IsIncomplete())
 		{
 			// We finished resolving ourselves through a re-entry, so we're actually done here
-			return true;
+			return;
 		}
 
 		for (auto& resolveEntry : deferredVarResolves)
@@ -2800,7 +2799,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 
 		if (typeInstance->mResolvingConstField)
-			return !typeInstance->mTypeFailed;
+			return;
 
 		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 		{
@@ -2852,11 +2851,9 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
-	if ((!typeInstance->IsIncomplete()) || (typeInstance->mNeedsMethodProcessing))
-	{
-		return !typeInstance->mTypeFailed;
-	}
-
+	if (_CheckTypeDone())
+		return;
+	
 	BF_ASSERT(mContext->mCurTypeState == &typeState);
 
 	//BF_ASSERT(!typeInstance->mIsFinishingType);
@@ -3404,6 +3401,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	CheckAddFailType();
 	
+	BfLogSysM("Setting mNeedsMethodProcessing on %p\n", typeInstance);
 	typeInstance->mNeedsMethodProcessing = true;
 	typeInstance->mIsFinishingType = false;
 
@@ -3732,7 +3730,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		typeInstance->mHasBeenInstantiated = true;
 
 	if (populateType == BfPopulateType_Data)
-		return true;
+		return;
 
 	disableYield.Release();
 	prevTypeState.Restore();
@@ -3741,9 +3739,7 @@ bool BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		if (typeInstance->mNeedsMethodProcessing) // May have been handled by GetRawMethodInstanceAtIdx above
 			DoTypeInstanceMethodProcessing(typeInstance);
-	}
-
-	return true;
+	}	
 }
 
 void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
@@ -3879,6 +3875,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 	auto isBoxed = typeInstance->IsBoxed();
 
+	BfLogSysM("Setting mTypeIncomplete = false on %p\n", typeInstance);
 	typeInstance->mNeedsMethodProcessing = false;
 	typeInstance->mTypeIncomplete = false;
 
@@ -6525,8 +6522,7 @@ BfType* BfModule::ResolveType(BfType* lookupType, BfPopulateType populateType)
 	}
 
 	resolvedEntry->mValue = lookupType;
-	if (!InitType(lookupType, populateType))
-		return NULL;
+	InitType(lookupType, populateType);		
 	return lookupType;
 }
 
@@ -6872,9 +6868,8 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	auto populateModule = this;
 	if ((resolveFlags & BfResolveTypeRefFlag_NoReify) != 0)
 		populateModule = mContext->mUnreifiedModule;
-
-	bool hadError = false;
-	hadError = !populateModule->PopulateType(resolvedTypeRef, populateType);
+	
+	populateModule->PopulateType(resolvedTypeRef, populateType);
 	
 	if ((genericTypeInstance != NULL) && (genericTypeInstance != mCurTypeInstance) && (populateType > BfPopulateType_Identity))
 	{	

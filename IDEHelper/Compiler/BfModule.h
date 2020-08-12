@@ -1588,7 +1588,7 @@ public:
 	bool CheckConstraintState(BfAstNode* refNode);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
 	void CheckInjectNewRevision(BfTypeInstance* typeInstance);
-	bool InitType(BfType* resolvedTypeRef, BfPopulateType populateType);
+	void InitType(BfType* resolvedTypeRef, BfPopulateType populateType);
 	BfProtection FixProtection(BfProtection protection, BfProject* defProject);
 	bool CheckAccessMemberProtection(BfProtection protection, BfType* memberType);
 	bool CheckDefineMemberProtection(BfProtection protection, BfType* memberType);	
@@ -1603,14 +1603,14 @@ public:
 	void AddFailType(BfTypeInstance* typeInstance);
 	void MarkDerivedDirty(BfTypeInstance* typeInst);
 	void CheckAddFailType();
-	bool PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
+	void PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
 	BfTypeOptions* GetTypeOptions(BfTypeDef* typeDef);
 	bool ApplyTypeOptionMethodFilters(bool includeMethod, BfMethodDef* methodDef, BfTypeOptions* typeOptions);
 	int GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeInstance* typeInstance, bool checkTypeName);
 	void SetTypeOptions(BfTypeInstance* typeInstance);
 	BfModuleOptions GetModuleOptions();
 	BfCheckedKind GetDefaultCheckedKind();
-	bool DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
+	void DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
 	static BfModule* GetModuleFor(BfType* type);
 	void DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance);
 	void RebuildMethods(BfTypeInstance* typeInstance);
