@@ -77,7 +77,7 @@ public:
 	llvm::DebugLoc mDebugLoc;
 	bool mHasDebugLoc;	
 	bool mIsCodeView;
-	int mConstArrayIdx;
+	int mConstValIdx;
 
 	int mCmdCount;
 	Dictionary<int, BfIRCodeGenEntry> mResults;

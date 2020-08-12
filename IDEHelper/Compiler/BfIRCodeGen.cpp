@@ -312,7 +312,7 @@ BfIRCodeGen::BfIRCodeGen()
 	mLLVMContext = new llvm::LLVMContext();
 	mLLVMModule = NULL;
 	mIsCodeView = false;
-	mConstArrayIdx = 0;
+	mConstValIdx = 0;
 	mCmdCount = 0;
 	
 #ifdef BF_PLATFORM_WINDOWS
@@ -1050,21 +1050,20 @@ void BfIRCodeGen::AddNop()
 }
 
 bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
-{		
-	auto arrayType = llvm::dyn_cast<llvm::ArrayType>(val->getType());
-	if (arrayType == NULL)
-		return false;
-	// LLVM has perf issues with large arrays - it treats each element as a unique value,
+{
+	auto valType = val->getType();
+
+	auto dataLayout = llvm::DataLayout(mLLVMModule);
+	int arrayBytes = (int)dataLayout.getTypeSizeInBits(valType) / 8;
+
+	// LLVM has perf issues with large aggregates - it treats each element as a unique value,
 	//  which is great for optimizing small data but is a perf killer for large data.
-	if (arrayType->getNumElements() <= 64)
+	if (arrayBytes < 256)
 		return false;
 
 	auto int8Ty = llvm::Type::getInt8Ty(*mLLVMContext);
 	auto int32Ty = llvm::Type::getInt32Ty(*mLLVMContext);
-	auto int8PtrTy = int8Ty->getPointerTo();
-
-	auto dataLayout = llvm::DataLayout(mLLVMModule);
-	int arrayBytes = (int)dataLayout.getTypeSizeInBits(arrayType) / 8;
+	auto int8PtrTy = int8Ty->getPointerTo();	
 
 	if (auto loadInst = llvm::dyn_cast<llvm::LoadInst>(val))
 	{		
@@ -1079,15 +1078,25 @@ bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
 
 	auto constVal = llvm::dyn_cast<llvm::Constant>(val);
 	if (constVal == NULL)
-		return false;						
+		return false;
+
+	if (llvm::isa<llvm::ConstantAggregateZero>(constVal))
+	{
+		mIRBuilder->CreateMemSet(
+			mIRBuilder->CreateBitCast(ptr, int8PtrTy),
+			llvm::ConstantInt::get(int8Ty, 0),
+			llvm::ConstantInt::get(int32Ty, arrayBytes),			
+			1);
+		return true;
+	}
 
 	auto globalVariable = new llvm::GlobalVariable(
 		*mLLVMModule,
-		arrayType,
+		valType,
 		true,
 		llvm::GlobalValue::InternalLinkage,
 		constVal,
-		StrFormat("__ConstArray__%d", mConstArrayIdx++).c_str(), 
+		StrFormat("__ConstVal__%d", mConstValIdx++).c_str(), 
 		NULL, 
 		llvm::GlobalValue::NotThreadLocal);
 	
