@@ -1051,6 +1051,8 @@ void BfIRCodeGen::AddNop()
 
 bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
 {	
+	return false;
+
 	auto arrayType = llvm::dyn_cast<llvm::ArrayType>(val->getType());
 	if (arrayType == NULL)
 		return false;
