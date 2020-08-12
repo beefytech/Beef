@@ -229,12 +229,14 @@ namespace IDE
 			Add("Profile", new => gApp.[Friend]DoProfile);
 			Add("Quick Info", new => gApp.Cmd_QuickInfo);
 			Add("Reformat Document", new => gApp.Cmd_ReformatDocument);
+			Add("Reload Settings", new => gApp.ReloadSettings);
 			Add("Remove All Breakpoints", new => gApp.[Friend]RemoveAllBreakpoints);
 			Add("Rename Item", new => gApp.Cmd_RenameItem);
 			Add("Rename Symbol", new => gApp.Cmd_RenameSymbol);
 			Add("Replace in Document", new => gApp.Cmd_Document__Replace);
 			Add("Replace in Files", new => gApp.Cmd_Replace);
 			Add("Report Memory", new => gApp.[Friend]ReportMemory);
+			Add("Reset UI", new => gApp.ResetUI);
 			Add("Run All Tests", new () => { gApp.[Friend]RunTests(true, false); });
 			Add("Run Normal Tests", new () => { gApp.[Friend]RunTests(false, false); });
 			Add("Run To Cursor", new => gApp.[Friend]RunToCursor);

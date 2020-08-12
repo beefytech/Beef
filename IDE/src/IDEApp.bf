@@ -4596,6 +4596,45 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void ReloadSettings()
+		{
+			delete mSettings;
+			mSettings = new .();
+
+			DeleteAndNullify!(mKeyChordState);
+
+		    mSettings.Load();
+			mSettings.Apply();
+		}
+
+		[IDECommand]
+		public void ResetUI()
+		{
+			while (mWindows.Count > 1)
+				mWindows.Back.Close(true);
+
+			void ResetPanel(Widget widget)
+			{
+				if (widget.mParent != null)
+					widget.RemoveSelf();
+			}
+
+			if (!mRunningTestScript)
+			{
+				mActiveDocumentsTabbedView = null;
+				WithStandardPanels(scope (panel) =>
+					{
+						ResetPanel(panel);
+					});
+				mMainFrame.Reset();
+			}
+
+			mDockingFrame = mMainFrame.mDockingFrame;
+
+			CreateDefaultLayout(false);
+		}
+
+		[IDECommand]
 		public void ShowKeyboardShortcuts()
 		{
 		    /*var workspaceProperties = new SettingsDialog();
@@ -5015,8 +5054,9 @@ namespace IDE
             AddMenuItem(subMenu, "Save &As...", "Save As", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(subMenu, "Save A&ll", "Save All");
 			let prefMenu = subMenu.AddMenuItem("&Preferences");
-			//prefMenu.AddMenuItem("&Keyboard Shortcuts", null, new (evt) => { ShowKeyboardShortcuts(); });
 			AddMenuItem(prefMenu, "&Settings", "Settings");
+			AddMenuItem(prefMenu, "Reload Settings", "Reload Settings");
+			AddMenuItem(prefMenu, "Reset UI", "Reset UI");
 			AddMenuItem(subMenu, "Close Workspace", "Close Workspace", new => UpdateMenuItem_HasWorkspace);
             AddMenuItem(subMenu, "E&xit", "Exit");
 
@@ -10538,12 +10578,12 @@ namespace IDE
 			}
 		}
 
-        public void CreateDefaultLayout()
+        public void CreateDefaultLayout(bool allowSavedLayout = true)
         {
 			//TODO:
 			//mConfigName.Set("Dbg");
 
-			if ((!mRunningTestScript) && (!mIsFirstRun) && (LoadDefaultLayoutData()))
+			if ((allowSavedLayout) && (!mRunningTestScript) && (!mIsFirstRun) && (LoadDefaultLayoutData()))
 			{
 				return;
 			}
