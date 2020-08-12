@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 using System.Collections;
 
@@ -124,6 +126,29 @@ namespace Tests
 			}
 		}
 
+		public static void Alloc0<T>() where T : new, delete, IDisposable
+		{
+			alloctype(T) val = new T();
+			val.Dispose();
+			delete val;
+		}
+
+		public static void Alloc1<T>() where T : new, delete, IDisposable, Object
+		{
+			alloctype(T) val = new T();
+			T val2 = val;
+			val.Dispose();
+			delete val;
+		}
+
+		public static void Alloc2<T>() where T : new, delete, IDisposable, struct
+		{
+			alloctype(T) val = new T();
+			T* val2 = val;
+			val2.Dispose();
+			delete val;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -169,7 +194,7 @@ namespace Tests
 			Test.Assert(totals == 10+20+30+40+50);
 		}
 
-		public static mixin TransformArray<Input, Output, InputSize>(Input[InputSize] array, delegate void(Input, ref Output) predicate) where InputSize : const int where Output : new
+		public static mixin TransformArray<Input, Output, InputSize>(Input[InputSize] array, delegate void(Input, ref Output) predicate) where InputSize : const int where Output : new, class
 		{
 			Output[2] output = default;
 			for (int i = 0; i < array.Count; i++)

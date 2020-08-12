@@ -6551,6 +6551,18 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	if (target)
 	{
+		// Turn T* into a T, if we can
+		if ((target.mType->IsPointer()) && (target.mType->GetUnderlyingType()->IsGenericParam()))
+		{
+			auto underlyingType = target.mType->GetUnderlyingType();
+			auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)underlyingType);
+			if (((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsValueType())) ||
+				((genericParam->mGenericParamFlags & (BfGenericParamFlag_Struct)) != 0))
+			{
+				target.mType = underlyingType;
+			}
+		}
+
 		if ((!target.mType->IsGenericParam()) && (!target.IsSplat()) && (!target.mType->IsVar()))
 			target = MakeCallableTarget(targetSrc, target);
 	}
@@ -6682,6 +6694,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	BfTypeDef* curTypeDef = NULL;
 	BfTypeInstance* targetTypeInst = NULL;
 	bool checkNonStatic = true;
+	
 	if (target)
 	{
 		if (targetType->IsVar())		
@@ -12740,14 +12753,26 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 }
 
 BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedValue target)
-{		
-	if (((target.mType->IsRef()) || (target.mType->IsPointer())) &&
-		(target.mType->GetUnderlyingType()->IsStruct()))
-	{		
-		auto pointerType = (BfPointerType*) target.mType;
-		target = mModule->LoadValue(target);
-		target.mType = pointerType->mElementType;
-		target.mKind = BfTypedValueKind_Addr;
+{
+	if ((target.mType->IsRef()) || (target.mType->IsPointer()))
+	{
+		auto underlying = target.mType->GetUnderlyingType();
+		bool underlyingIsStruct = underlying->IsStruct();
+// 		if (underlying->IsGenericParam())
+// 		{
+// 			auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)underlying);
+// 			if (((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsValueType())) ||
+// 				((genericParam->mGenericParamFlags & (BfGenericParamFlag_Struct)) != 0))
+// 				underlyingIsStruct = true;
+// 		}
+
+		if (underlyingIsStruct)
+		{
+			auto pointerType = (BfPointerType*)target.mType;
+			target = mModule->LoadValue(target);
+			target.mType = pointerType->mElementType;
+			target.mKind = BfTypedValueKind_Addr;
+		}
 	}
 
 	if ((target.mType->IsStruct()) && (!target.IsAddr()))

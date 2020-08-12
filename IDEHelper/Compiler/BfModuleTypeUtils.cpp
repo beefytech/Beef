@@ -8130,7 +8130,21 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 				if (resolvedType != NULL)
 				{
 					if (resolvedType->IsGenericParam())
-						resolvedType = CreateModifiedTypeType(resolvedType, BfToken_AllocType);
+					{
+						auto genericParam = GetGenericParamInstance((BfGenericParamType*)resolvedType);
+						if (((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsValueType())) ||
+							((genericParam->mGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr)) != 0))
+						{
+							resolvedType = CreatePointerType(resolvedType);
+						}
+						else if (((genericParam->mTypeConstraint != NULL) && (!genericParam->mTypeConstraint->IsValueType())) ||
+							((genericParam->mGenericParamFlags & (BfGenericParamFlag_Class)) != 0))
+						{
+							// Leave as 'T'							
+						}
+						else
+							resolvedType = CreateModifiedTypeType(resolvedType, BfToken_AllocType);
+					}
 					else if (resolvedType->IsValueType())					
 						resolvedType = CreatePointerType(resolvedType);
 				}
