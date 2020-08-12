@@ -18957,7 +18957,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 								works = true;								
 							}
 						}
-						else if ((oppositeBinaryOp != BfBinaryOp_None) && (opConstraint.mBinaryOp == oppositeBinaryOp))
+						
+						if (((oppositeBinaryOp != BfBinaryOp_None) && (opConstraint.mBinaryOp == oppositeBinaryOp)) ||
+							(opConstraint.mBinaryOp == BfBinaryOp_Compare))
 						{
 							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)) &&
 								(mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)))
@@ -18965,7 +18967,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 								works = true;
 							}
 						}
-						else if ((isComparison) && (opConstraint.mBinaryOp == BfBinaryOp_Compare))
+						
+						if ((isComparison) && (opConstraint.mBinaryOp == BfBinaryOp_Compare))
 						{
 							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
 								(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
