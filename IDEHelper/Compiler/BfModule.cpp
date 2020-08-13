@@ -5644,6 +5644,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						GetStringObjectValue(stringId);
 						PUSH_INT8(0xFF); // String
 						PUSH_INT32(*orderedIdPtr);
+						argIdx++;
 						continue;
 					}
 
@@ -5663,6 +5664,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 								GetStringObjectValue(stringId);
 								PUSH_INT8(0xFF); // String
 								PUSH_INT32(*orderedIdPtr);
+								argIdx++;
 								continue;
 							}
 						}
