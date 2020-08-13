@@ -240,11 +240,11 @@ namespace IDE.ui
 						continue;
 					}
 
-					mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, "ERROR".Length, 12));
+					mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, "ERROR".Length, (.)SourceElementType.BuildError));
 				}
 				if ((line.StartsWith("WARNING:")) || (line.StartsWith("WARNING(")))
 				{
-					mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, "WARNING".Length, 13));
+					mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, "WARNING".Length, (.)SourceElementType.BuildWarning));
 				}
 				Write(line);
 			}
