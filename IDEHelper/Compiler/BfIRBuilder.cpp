@@ -4307,7 +4307,7 @@ BfIRValue BfIRBuilder::CreateGlobalVariable(BfIRType varType, bool isConstant, B
 		if (initializer)
 			mHasGlobalDefs = true;
 
-		BfIRValue retVal = WriteCmd(BfIRCmd_GlobalVariable, varType, isConstant, (uint8)linkageType, initializer, name, isTLS);	
+		BfIRValue retVal = WriteCmd(BfIRCmd_GlobalVariable, varType, isConstant, (uint8)linkageType, name, isTLS, initializer);
 		constGV->mStreamId = retVal.mId;
 		retVal.mFlags = BfIRValueFlags_Const;
 #ifdef CHECK_CONSTHOLDER

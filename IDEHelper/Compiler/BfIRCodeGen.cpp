@@ -1905,10 +1905,10 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(llvm::Type*, varType);
 			CMD_PARAM(bool, isConstant);
-			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();
-			CMD_PARAM(llvm::Constant*, initializer);
+			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();			
 			CMD_PARAM(String, name);
 			CMD_PARAM(bool, isTLS);
+			CMD_PARAM(llvm::Constant*, initializer);
 
 			auto globalVariable = new llvm::GlobalVariable(
 				*mLLVMModule,

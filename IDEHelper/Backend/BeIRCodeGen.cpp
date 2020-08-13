@@ -1754,10 +1754,10 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeType*, varType);
 			CMD_PARAM(bool, isConstant);
-			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();
-			CMD_PARAM(BeConstant*, initializer);
+			BfIRLinkageType linkageType = (BfIRLinkageType)mStream->Read();			
 			CMD_PARAM(String, name);
 			CMD_PARAM(bool, isTLS);
+			CMD_PARAM(BeConstant*, initializer);
 						
 			auto globalVariable = mBeModule->mGlobalVariables.Alloc();
 			globalVariable->mModule = mBeModule;
