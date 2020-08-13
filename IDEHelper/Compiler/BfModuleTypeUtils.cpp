@@ -6712,8 +6712,8 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			
 			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
 			{
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (resolvedTypeRef->IsObject()))
-					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, BfSourceElementType_RefType);
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (resolvedTypeRef->IsObjectOrInterface()))
+					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, resolvedTypeRef->IsInterface() ? BfSourceElementType_Interface : BfSourceElementType_RefType);
 
 				StringView leftString = qualifiedTypeRef->mLeft->ToStringView();
 				BfSizedAtomComposite leftComposite;
@@ -6745,16 +6745,16 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				auto checkNameNode = namedTypeRef->mNameNode;
 				bool setType = false;
 
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (resolvedTypeRef->IsObject()))
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (resolvedTypeRef->IsObjectOrInterface()))
 				{					
 					if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNameNode))
 					{
-						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, BfSourceElementType_RefType);
+						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, resolvedTypeRef->IsInterface() ? BfSourceElementType_Interface : BfSourceElementType_RefType);
 					}
 					else
 					{
 						setType = true;
-						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, BfSourceElementType_RefType);
+						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, resolvedTypeRef->IsInterface() ? BfSourceElementType_Interface : BfSourceElementType_RefType);
 					}
 				}
 

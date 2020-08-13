@@ -203,6 +203,7 @@ namespace IDE.ui
                 0xFFA6E22A, // Method
 				0xFF66D9EF, // Type
                 0xFF66D9EF, // RefType
+				0xFF66D9EF, // Interface
                 0xFF7BEEB7, // Namespace
 
                 0xFFB0B0B0, // Disassembly_Text

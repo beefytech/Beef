@@ -31,6 +31,7 @@ namespace IDE.ui
         Method,
 		Type,
         RefType,
+		Interface,
         Namespace,
 
         Disassembly_Text,

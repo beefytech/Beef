@@ -17,6 +17,7 @@ enum BfSourceElementType
 	BfSourceElementType_Method,
 	BfSourceElementType_Type,
 	BfSourceElementType_RefType,
+	BfSourceElementType_Interface,
 	BfSourceElementType_Namespace
 };
 

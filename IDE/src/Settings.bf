@@ -280,6 +280,7 @@ namespace IDE
 			public Color mMethod = 0XFFA6E22A;
 			public Color mType = 0XFF66D9EF;
 			public Color mRefType = 0XFF66D9EF;
+			public Color mInterface = 0XFF66D9EF;
 			public Color mNamespace = 0xFF7BEEB7;
 			public Color mDisassemblyText = 0xFFB0B0B0;
 			public Color mDisassemblyFileName = 0XFFFF0000;
@@ -316,8 +317,11 @@ namespace IDE
 					GetColor("Type", ref mType);
 					if (!sd.Contains("RefType"))
 						mRefType = mType;
+					if (!sd.Contains("Interface"))
+						mInterface = mType;
 				}
 				GetColor("RefType", ref mRefType);
+				GetColor("Interface", ref mInterface);
 				GetColor("Namespace", ref mNamespace);
 				GetColor("DisassemblyText", ref mDisassemblyText);
 				GetColor("DisassemblyFileName", ref mDisassemblyFileName);
@@ -337,6 +341,7 @@ namespace IDE
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Method] = mMethod;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Type] = mType;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.RefType] = mRefType;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Interface] = mInterface;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Namespace] = mNamespace;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_Text] = mDisassemblyText;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_FileName] = mDisassemblyFileName;
