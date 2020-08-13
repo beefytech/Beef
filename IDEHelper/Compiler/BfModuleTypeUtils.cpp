@@ -6712,11 +6712,14 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			
 			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
 			{
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (resolvedTypeRef->IsObject()))
+					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, BfSourceElementType_RefType);
+
 				StringView leftString = qualifiedTypeRef->mLeft->ToStringView();
 				BfSizedAtomComposite leftComposite;
 				bool isValid = mSystem->ParseAtomComposite(leftString, leftComposite);
 				if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
-					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
+					mCompiler->mResolvePassData->mSourceClassifier->SetHighestElementType(qualifiedTypeRef->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
 				if (resolvedTypeInstance == NULL)
 				{
 					if ((isValid) && (mCompiler->mSystem->ContainsNamespace(leftComposite, mCurTypeInstance->mTypeDef->mProject)))
@@ -6740,6 +6743,20 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			if (auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(checkTypeRef))
 			{
 				auto checkNameNode = namedTypeRef->mNameNode;
+				bool setType = false;
+
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (resolvedTypeRef->IsObject()))
+				{					
+					if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNameNode))
+					{
+						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, BfSourceElementType_RefType);
+					}
+					else
+					{
+						setType = true;
+						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, BfSourceElementType_RefType);
+					}
+				}
 
 				while (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNameNode))
 				{
@@ -6747,7 +6764,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 					BfSizedAtomComposite leftComposite;
 					bool isValid = mSystem->ParseAtomComposite(leftString, leftComposite);
 					if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
-						mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedNameNode->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
+						mCompiler->mResolvePassData->mSourceClassifier->SetHighestElementType(qualifiedNameNode->mRight, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
 					if (resolvedTypeInstance == NULL)
 					{
 						if ((isValid) && (mCompiler->mSystem->ContainsNamespace(leftComposite, mCurTypeInstance->mTypeDef->mProject)))
@@ -6757,8 +6774,9 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 						isNamespace = true;
 					checkNameNode = qualifiedNameNode->mLeft;
 				}
-				if (mCompiler->mResolvePassData->mSourceClassifier != NULL)
-					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(checkNameNode, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_TypeRef);
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && 
+					((!setType) || (checkNameNode != namedTypeRef->mNameNode)))
+					mCompiler->mResolvePassData->mSourceClassifier->SetHighestElementType(checkNameNode, isNamespace ? BfSourceElementType_Namespace : BfSourceElementType_Type);
 			}
 		}
 
@@ -7505,7 +7523,7 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 		{			
 			auto typeRefSource = identifierNode->GetSourceData();
 			if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mSourceClassifier != NULL) && (typeRefSource != NULL) && (typeRefSource == mCompiler->mResolvePassData->mParser->mSourceData))
-				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(identifierNode, BfSourceElementType_TypeRef);
+				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(identifierNode, BfSourceElementType_Type);
 
 			if (genericParamResult->IsConstExprValue())
 			{

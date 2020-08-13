@@ -47,16 +47,38 @@ void BfSourceClassifier::SetElementType(BfAstNode* node, BfSourceElementType ele
 	}
 }
 
-void BfSourceClassifier::SetElementType(int startPos, int endPos, BfSourceElementType elementType)
+void BfSourceClassifier::SetHighestElementType(int startPos, int endPos, BfSourceElementType elementType)
 {	
 	if (!mEnabled)
 		return;
 
 	endPos = BF_MIN(endPos, mParser->mOrigSrcLength);
 	for (int i = startPos; i < endPos; i++)
-	{		
+	{	
+		auto& charData = mCharData[i];
+		charData.mDisplayPassId = mClassifierPassId;
+		charData.mDisplayTypeId = BF_MAX(charData.mDisplayTypeId, (uint8)elementType);
+	}
+}
+
+void BfSourceClassifier::SetHighestElementType(BfAstNode* node, BfSourceElementType elementType)
+{
+	if (node != NULL)
+	{
+		SetHighestElementType(node->GetSrcStart(), node->GetSrcEnd(), elementType);
+	}
+}
+
+void BfSourceClassifier::SetElementType(int startPos, int endPos, BfSourceElementType elementType)
+{
+	if (!mEnabled)
+		return;
+
+	endPos = BF_MIN(endPos, mParser->mOrigSrcLength);
+	for (int i = startPos; i < endPos; i++)
+	{
 		mCharData[i].mDisplayPassId = mClassifierPassId;
-		mCharData[i].mDisplayTypeId = (uint8)elementType;	
+		mCharData[i].mDisplayTypeId = (uint8)elementType;
 	}
 }
 
@@ -283,11 +305,11 @@ void BfSourceClassifier::Visit(BfNamedTypeReference* typeRef)
 		BfIdentifierNode* checkName = typeRef->mNameNode;
 		while (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkName))
 		{
-			SetElementType(qualifiedNameNode->mRight, BfSourceElementType_TypeRef);
+			SetElementType(qualifiedNameNode->mRight, BfSourceElementType_Type);
 			checkName = qualifiedNameNode->mLeft;
 		}
 		if (checkName != NULL)
-			SetElementType(checkName, BfSourceElementType_TypeRef);
+			SetElementType(checkName, BfSourceElementType_Type);
 	}
 }
 
@@ -305,7 +327,7 @@ void BfSourceClassifier::Visit(BfRefTypeRef* typeRef)
 	Visit((BfAstNode*)typeRef);
 
 	VisitChild(typeRef->mRefToken);
-	SetElementType(typeRef->mRefToken, BfSourceElementType_TypeRef);
+	SetElementType(typeRef->mRefToken, BfSourceElementType_Type);
 	VisitChild(typeRef->mElementType);
 }
 
@@ -488,7 +510,7 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 		for (auto& genericParam : methodDeclaration->mGenericParams->mGenericParams)
 		{
 			BfIdentifierNode* typeRef = genericParam;
-			SetElementType(typeRef, BfSourceElementType_TypeRef);
+			SetElementType(typeRef, BfSourceElementType_Type);
 		}
 	}
 
@@ -500,7 +522,7 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 			{
 				BfTypeReference* typeRef = genericConstraint->mTypeRef;
 				if (typeRef != NULL)
-					SetElementType(typeRef, BfSourceElementType_TypeRef);
+					SetElementType(typeRef, BfSourceElementType_Type);
 			}
 		}
 	}
@@ -569,7 +591,7 @@ void BfSourceClassifier::Handle(BfTypeDeclaration* typeDeclaration)
 		for (auto& genericParam : typeDeclaration->mGenericParams->mGenericParams)
 		{
 			BfIdentifierNode* typeRef = genericParam;
-			SetElementType(typeRef, BfSourceElementType_TypeRef);
+			SetElementType(typeRef, BfSourceElementType_Type);
 		}
 	}
 
@@ -581,13 +603,13 @@ void BfSourceClassifier::Handle(BfTypeDeclaration* typeDeclaration)
 
 			BfTypeReference* typeRef = genericConstraint->mTypeRef;
 			if (typeRef != NULL)
-				SetElementType(typeRef, BfSourceElementType_TypeRef);
+				SetElementType(typeRef, BfSourceElementType_Type);
 		}
 	}
 
 	auto typeRef = typeDeclaration->mNameNode;
 	if (typeRef != NULL)
-		SetElementType(typeRef, BfSourceElementType_TypeRef);
+		SetElementType(typeRef, BfSourceElementType_Type);
 }
 
 void BfSourceClassifier::MarkSkipped(int startPos, int endPos)

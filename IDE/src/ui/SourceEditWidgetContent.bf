@@ -199,10 +199,10 @@ namespace IDE.ui
                 0xFFE1AE9A, // Keyword
                 0XFFC8A0FF, // Literal
                 0xFFFFFFFF, // Identifier
-                0XFF66D9EF, // Type
-                0XFF75715E, // Comment
-                0XFFA6E22A, // Method
-                0XFF66D9EF, // TypeRef
+                0xFF75715E, // Comment
+                0xFFA6E22A, // Method
+				0xFF66D9EF, // Type
+                0xFF66D9EF, // RefType
                 0xFF7BEEB7, // Namespace
 
                 0xFFB0B0B0, // Disassembly_Text
@@ -966,7 +966,7 @@ namespace IDE.ui
 					if (!prevC.IsWhiteSpace)
 					{
                         var prevElementType = (SourceElementType)mData.mText[checkIdx - 1].mDisplayTypeId;
-						startedWithType = prevElementType == SourceElementType.TypeRef;
+						startedWithType = (prevElementType == SourceElementType.Type) || (prevElementType == SourceElementType.RefType);
 						checkedStartedWithType = true;
 					}
 				}
@@ -974,7 +974,7 @@ namespace IDE.ui
 				if ((elementType == SourceElementType.Comment) || (isWhitespace))
 					continue;
 
-				if ((!checkedStartedWithType) && (elementType != SourceElementType.Namespace) && (elementType != SourceElementType.TypeRef))
+				if ((!checkedStartedWithType) && (elementType != SourceElementType.Namespace) && (elementType != SourceElementType.Type) && (elementType != SourceElementType.RefType))
 				{
 					checkedStartedWithType = true;
 				}

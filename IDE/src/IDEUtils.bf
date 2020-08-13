@@ -432,7 +432,7 @@ namespace IDE
 							inSubtype ? (int32)SourceElementType.TypeRef : (int32)SourceElementType.Namespace
 							];*/
 
-						uint32 color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.TypeRef];
+						uint32 color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Type];
 
 						/*if ((c == '+') || (c == '('))
 						{

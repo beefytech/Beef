@@ -27,10 +27,10 @@ namespace IDE.ui
         Keyword,
         Literal,
         Identifier,
-        Type,
         Comment,
         Method,
-        TypeRef,
+		Type,
+        RefType,
         Namespace,
 
         Disassembly_Text,
@@ -4273,7 +4273,7 @@ namespace IDE.ui
                     // Autocomplete beat us to it
                     destText[destIdx].mDisplayPassId = (uint8)SourceDisplayId.Cleared;
                 }
-				else if (charData[srcIdx].mDisplayTypeId == (uint8)SourceDisplayId.SkipResult)
+				else if (charData[srcIdx].mDisplayPassId == (uint8)SourceDisplayId.SkipResult)
 				{
 					//
 				}

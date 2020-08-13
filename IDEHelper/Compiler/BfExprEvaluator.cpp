@@ -7251,7 +7251,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			}
 			
 			if (auto identifier = BfNodeDynCastExact<BfIdentifierNode>(targetSrc))
-				mModule->SetElementType(identifier, BfSourceElementType_TypeRef);
+				mModule->SetElementType(identifier, BfSourceElementType_Type);
 			if (mModule->mCompiler->mResolvePassData != NULL)
 				mModule->mCompiler->mResolvePassData->HandleTypeReference(targetSrc, resolvedTypeInstance->mTypeDef);
 
@@ -15051,9 +15051,11 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				for (int paramIdx = 0; paramIdx < (int)mIndexerValues.size(); paramIdx++)
 				{
 					auto refNode = mIndexerValues[paramIdx].mExpression;
+					auto wantType = methodInstance.mMethodInstance->GetParamType(paramIdx);
+					auto argValue = ResolveArgValue(mIndexerValues[paramIdx], wantType);
 					if (refNode == NULL)
 						refNode = mPropSrc;
-					auto val = mModule->Cast(refNode, mIndexerValues[paramIdx].mTypedValue, methodInstance.mMethodInstance->GetParamType(paramIdx));
+					auto val = mModule->Cast(refNode, argValue, wantType);
 					if (!val)
 						failed = true;
 					else
@@ -15947,9 +15949,11 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			for (int paramIdx = 0; paramIdx < (int)mIndexerValues.size(); paramIdx++)
 			{
 				auto refNode = mIndexerValues[paramIdx].mExpression;
+				auto wantType = methodInstance.mMethodInstance->GetParamType(paramIdx);
+				auto argValue = ResolveArgValue(mIndexerValues[paramIdx], wantType);
 				if (refNode == NULL)
 					refNode = mPropSrc;
-				auto val = mModule->Cast(refNode, mIndexerValues[paramIdx].mTypedValue, methodInstance.mMethodInstance->GetParamType(paramIdx));
+				auto val = mModule->Cast(refNode, argValue, wantType);
 				if (!val)
 				{
 					mPropDef = NULL;
@@ -17120,21 +17124,32 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 	if (target.mType->IsTypeInstance())
 	{
 		mIndexerValues.clear();
-		for (BfExpression* expr : indexerExpr->mArguments)
-		{
-			if (expr == NULL)
-				return;
-			auto argVal = mModule->CreateValueFromExpression(expr);
-			if (!argVal)
-			{
-				mModule->AssertErrorState();
-				argVal = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
-			}
-			BfResolvedArg resolvedArg;
-			resolvedArg.mExpression = expr;
-			resolvedArg.mTypedValue = argVal;
-			mIndexerValues.push_back(resolvedArg);
-		}
+// 		for (BfExpression* expr : indexerExpr->mArguments)
+// 		{
+// 			if (expr == NULL)
+// 				return;
+// 			auto argVal = mModule->CreateValueFromExpression(expr);
+// 			if (!argVal)
+// 			{
+// 				mModule->AssertErrorState();
+// 				argVal = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
+// 			}
+// 			BfResolvedArg resolvedArg;
+// 			resolvedArg.mExpression = expr;
+// 			resolvedArg.mTypedValue = argVal;
+// 			mIndexerValues.push_back(resolvedArg);
+// 		}
+
+		SizedArray<BfExpression*, 2> argExprs;		
+		BfSizedArray<BfExpression*> sizedArgExprs(indexerExpr->mArguments);
+		BfResolvedArgs argValues(&sizedArgExprs);
+		ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval);
+		//exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, NULL);
+
+		mIndexerValues = argValues.mResolvedArgs;
+		for (auto& val : mIndexerValues)
+			if (!val.mTypedValue)
+				val.mTypedValue = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
 
 		BfMethodMatcher methodMatcher(indexerExpr->mTarget, mModule, "[]", mIndexerValues, NULL);
 		methodMatcher.mCheckedKind = checkedKind;
@@ -17247,7 +17262,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 						mOrigPropTarget = mPropTarget;
 						if (isInlined)
 							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
-						mPropCheckedKind = checkedKind;
+						mPropCheckedKind = checkedKind;						
 					}
 					return;
 				}

@@ -77,7 +77,7 @@ struct int128
 };
 
 #define BF_MIN(x, y) (((x) < (y)) ? (x) : (y))
-#define BF_MAX(x, y) (((x) > (y)) ? (x ): (y))
+#define BF_MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define BF_CLAMP(val, minVal, maxVal) (((val) < (minVal)) ? (minVal) : ((val) > (maxVal)) ? (maxVal) : (val))
 #define BF_SWAP(a, b) { auto _a = (a); (a) = (b); (b) = (_a); }
 

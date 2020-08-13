@@ -12,11 +12,11 @@ enum BfSourceElementType
 	BfSourceElementType_Normal,
 	BfSourceElementType_Keyword,
 	BfSourceElementType_Literal,
-	BfSourceElementType_Identifier,
-	BfSourceElementType_Type,
+	BfSourceElementType_Identifier,	
 	BfSourceElementType_Comment,
 	BfSourceElementType_Method,
-	BfSourceElementType_TypeRef,
+	BfSourceElementType_Type,
+	BfSourceElementType_RefType,
 	BfSourceElementType_Namespace
 };
 
@@ -73,6 +73,8 @@ public:
 	void ModifyFlags(int startPos, int endPos, uint8 andFlags, uint8 orFlags);
 	void SetElementType(BfAstNode* node, BfSourceElementType elementType);
 	void SetElementType(int startPos, int endPos, BfSourceElementType elementType);
+	void SetHighestElementType(BfAstNode* node, BfSourceElementType elementType);
+	void SetHighestElementType(int startPos, int endPos, BfSourceElementType elementType);
 	bool IsInterestedInMember(BfAstNode* node, bool forceSkip = false);
 	bool WantsSkipParentMethod(BfAstNode* node);
 	void Handle(BfTypeDeclaration* typeDeclaration);

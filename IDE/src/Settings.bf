@@ -276,10 +276,10 @@ namespace IDE
 			public Color mKeyword = 0xFFE1AE9A;
 			public Color mLiteral = 0XFFC8A0FF;
 			public Color mIdentifier = 0xFFFFFFFF;
-			public Color mType = 0XFF66D9EF;
 			public Color mComment = 0XFF75715E;
 			public Color mMethod = 0XFFA6E22A;
-			public Color mTypeRef = 0XFF66D9EF;
+			public Color mType = 0XFF66D9EF;
+			public Color mRefType = 0XFF66D9EF;
 			public Color mNamespace = 0xFF7BEEB7;
 			public Color mDisassemblyText = 0xFFB0B0B0;
 			public Color mDisassemblyFileName = 0XFFFF0000;
@@ -309,10 +309,15 @@ namespace IDE
 				GetColor("Keyword", ref mKeyword);
 				GetColor("Literal", ref mLiteral);
 				GetColor("Identifier", ref mIdentifier);
-				GetColor("Type", ref mType);
 				GetColor("Comment", ref mComment);
 				GetColor("Method", ref mMethod);
-				GetColor("TypeRef", ref mTypeRef);
+				if (sd.Contains("Type"))
+				{
+					GetColor("Type", ref mType);
+					if (!sd.Contains("RefType"))
+						mRefType = mType;
+				}
+				GetColor("RefType", ref mRefType);
 				GetColor("Namespace", ref mNamespace);
 				GetColor("DisassemblyText", ref mDisassemblyText);
 				GetColor("DisassemblyFileName", ref mDisassemblyFileName);
@@ -324,21 +329,21 @@ namespace IDE
 
 			public void Apply()
 			{
-				SourceEditWidgetContent.sTextColors[0] = mCode;
-				SourceEditWidgetContent.sTextColors[1] = mKeyword;
-				SourceEditWidgetContent.sTextColors[2] = mLiteral;
-				SourceEditWidgetContent.sTextColors[3] = mIdentifier;
-				SourceEditWidgetContent.sTextColors[4] = mType;
-				SourceEditWidgetContent.sTextColors[5] = mComment;
-				SourceEditWidgetContent.sTextColors[6] = mMethod;
-				SourceEditWidgetContent.sTextColors[7] = mTypeRef;
-				SourceEditWidgetContent.sTextColors[8] = mNamespace;
-				SourceEditWidgetContent.sTextColors[9] = mDisassemblyText;
-				SourceEditWidgetContent.sTextColors[10] = mDisassemblyFileName;
-				SourceEditWidgetContent.sTextColors[11] = mError;
-				SourceEditWidgetContent.sTextColors[12] = mBuildError;
-				SourceEditWidgetContent.sTextColors[13] = mBuildWarning;
-				SourceEditWidgetContent.sTextColors[14] = mVisibleWhiteSpace;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Normal] = mCode;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Keyword] = mKeyword;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Literal] = mLiteral;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Identifier] = mIdentifier;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Comment] = mComment;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Method] = mMethod;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Type] = mType;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.RefType] = mRefType;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Namespace] = mNamespace;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_Text] = mDisassemblyText;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_FileName] = mDisassemblyFileName;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Error] = mError;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildError] = mBuildError;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildWarning] = mBuildWarning;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.VisibleWhiteSpace] = mVisibleWhiteSpace;
 
 				DarkTheme.COLOR_TEXT = mText;
 				DarkTheme.COLOR_WINDOW = mWindow;
