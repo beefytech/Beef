@@ -1799,6 +1799,18 @@ namespace IDE.ui
         void EditListViewItem(ListViewItem listViewItem)
         {
 			mListView.EditListViewItem(listViewItem);
+
+			if (mListView.mEditWidget != null)
+			{
+				String str = scope .();
+				mListView.mEditWidget.GetText(str);
+				int lastDot = str.LastIndexOf('.');
+				if (lastDot != -1)
+				{
+					mListView.mEditWidget.mEditWidgetContent.mSelection = .(0, lastDot);
+					mListView.mEditWidget.mEditWidgetContent.CursorTextPos = lastDot;
+				}
+			}
         }
 
         void RenameItem(ProjectItem projectItem)
