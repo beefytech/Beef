@@ -3188,6 +3188,18 @@ void BfCompiler::UpdateRevisedTypes()
 						}
 					}
 				}
+				else
+				{
+					// These may not get caught below if the composite project changes
+					for (auto checkTypeDef : compositeTypeDef->mPartials)
+					{
+						if (checkTypeDef->mDefState == BfTypeDef::DefState_Deleted)
+						{
+							partialsHadChanges = true;
+							hadSignatureChange = true;
+						}
+					}
+				}
 								
 				// Collect the partials
 				BfSizedVector<BfTypeDef*, 8> typeParts;
