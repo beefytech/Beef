@@ -213,11 +213,13 @@ bool BfMethodMatcher::IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* de
 	if (mActiveTypeDef == NULL)
 		mActiveTypeDef = mModule->GetActiveTypeDef();
 
+	// This needs to be outside the `IsInSpecializedSection`. Note that mActiveTypeDef does not pose a constraint here
+	if (!typeInst->IsTypeMemberIncluded(declaringType, mActiveTypeDef, mModule))
+		return false;
+
 	// This may not be completely correct - BUT if we don't have this then even Dictionary TKey's operator == won't be considered accessible
 	if ((!mModule->IsInSpecializedSection()) && (mActiveTypeDef->mTypeDeclaration != NULL))
-	{		
-		if (!typeInst->IsTypeMemberIncluded(declaringType, mActiveTypeDef, mModule))
-			return false;
+	{				
 		if (!typeInst->IsTypeMemberAccessible(declaringType, mActiveTypeDef))
 			return false;
 	}
