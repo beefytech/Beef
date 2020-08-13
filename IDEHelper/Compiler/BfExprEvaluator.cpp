@@ -195,8 +195,8 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	{
 		for (BfTypeReference* genericArg : *methodGenericArguments)
 		{
-			auto genericArgType = mModule->ResolveTypeRef(genericArg);
-			if (genericArgType->IsGenericParam())
+			auto genericArgType = mModule->ResolveTypeRef(genericArg);			
+			if ((genericArgType != NULL) && (genericArgType->IsGenericParam()))
 			{
 				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)genericArgType);
 				if ((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
