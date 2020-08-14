@@ -14788,7 +14788,7 @@ BfMethodDef* BfExprEvaluator::GetPropertyMethodDef(BfPropertyDef* propDef, BfMet
 }
 
 BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* methodDef)
-{	
+{
 	if (mPropDefBypassVirtual)
 	{
 		if (mPropTarget.mType->IsInterface())

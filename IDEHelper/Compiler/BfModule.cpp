@@ -12402,7 +12402,10 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 	if (mCompiler->IsSkippingExtraResolveChecks())	
 		return BfModuleMethodInstance(methodInstance, BfIRFunction());
-	
+
+	if (methodInstance->mDeclModule != this)
+		return ReferenceExternalMethodInstance(methodInstance, flags);
+
 	return BfModuleMethodInstance(methodInstance);
 }
 
