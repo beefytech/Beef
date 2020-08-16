@@ -192,6 +192,7 @@ public:
 	BfFieldDtorDeclaration* CreateFieldDtorDeclaration(BfAstNode* srcNode);
 	BfFieldDeclaration* CreateFieldDeclaration(BfTokenNode* tokenNode, BfTypeReference* typeRef, BfIdentifierNode* nameIdentifier, BfFieldDeclaration* prevFieldDeclaration);
 	BfAttributeDirective* CreateAttributeDirective(BfTokenNode* startToken);	
+	BfStatement* CreateAttributedStatement(BfTokenNode* tokenNode);
 	BfExpression* CreateAttributedExpression(BfTokenNode* tokenNode, bool onlyAllowIdentifier);
 	BfDelegateBindExpression* CreateDelegateBindExpression(BfAstNode* allocNode);
 	BfLambdaBindExpression* CreateLambdaBindExpression(BfAstNode* allocNode, BfTokenNode* parenToken = NULL);

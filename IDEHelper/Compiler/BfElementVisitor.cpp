@@ -114,6 +114,14 @@ void BfElementVisitor::Visit(BfStatement* stmt)
 	VisitChild(stmt->mTrailingSemicolon);
 }
 
+void BfElementVisitor::Visit(BfAttributedStatement* attribStmt)
+{
+	Visit(attribStmt->ToBase());
+
+	VisitChild(attribStmt->mAttributes);
+	VisitChild(attribStmt->mStatement);
+}
+
 void BfElementVisitor::Visit(BfLabelableStatement* labelableStmt)
 {
 	Visit(labelableStmt->ToBase());

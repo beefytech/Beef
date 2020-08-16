@@ -401,6 +401,7 @@ public:
 	BfTypeDef* mObsoleteAttributeTypeDef;
 	BfTypeDef* mErrorAttributeTypeDef;
 	BfTypeDef* mWarnAttributeTypeDef;
+	BfTypeDef* mIgnoreErrorsAttributeTypeDef;
 	
 
 	int mCurTypeId;	

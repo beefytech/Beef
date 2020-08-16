@@ -3394,9 +3394,19 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 					{
 						if (mCurMethodState->mCurScope->mExprEvaluator != NULL)
 						{
-							// Evaluate last child as an expression
-							mCurMethodState->mCurScope->mExprEvaluator->VisitChild(expr);
-							mCurMethodState->mCurScope->mExprEvaluator->FinishExpressionResult();
+							if ((mAttributeState != NULL) &&
+								((mAttributeState->mFlags & (BfAttributeState::Flag_StopOnError | BfAttributeState::Flag_HadError)) == (BfAttributeState::Flag_StopOnError | BfAttributeState::Flag_HadError)))
+							{
+								// Resolve as just 'false'
+								mCurMethodState->mCurScope->mExprEvaluator->mResult = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_Boolean));
+							}
+							else
+							{
+								// Evaluate last child as an expression
+								mCurMethodState->mCurScope->mExprEvaluator->VisitChild(expr);
+								mCurMethodState->mCurScope->mExprEvaluator->FinishExpressionResult();
+							}
+
 							break;
 						}
 						else if (mCurMethodState->InMainMixinScope())
@@ -3416,10 +3426,17 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 				}
 			}			
 		}
-
+		
 		UpdateSrcPos(child);		
 		BfAutoParentNodeEntry autoParentNode(this, child);
-		child->Accept(this);
+
+		if ((mAttributeState != NULL) &&
+			((mAttributeState->mFlags & (BfAttributeState::Flag_StopOnError | BfAttributeState::Flag_HadError)) == (BfAttributeState::Flag_StopOnError | BfAttributeState::Flag_HadError)))
+		{
+			// Ignore child
+		}
+		else
+			child->Accept(this);
 		
 		mSystem->CheckLockYield();
 
@@ -3738,6 +3755,41 @@ void BfModule::Visit(BfVariableDeclaration* varDecl)
 void BfModule::Visit(BfLocalMethodDeclaration* methodDecl)
 {
 	Fail("Local method declarations must be wrapped in a block statement", methodDecl->mMethodDeclaration->mNameNode);	
+}
+
+void BfModule::Visit(BfAttributedStatement* attribStmt)
+{
+	BfAttributeState attributeState;
+
+	attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_Invocation | BfAttributeTargets_MemberAccess);
+	if (auto block = BfNodeDynCast<BfBlock>(attribStmt->mStatement))
+		attributeState.mTarget = BfAttributeTargets_Block;
+
+	attributeState.mCustomAttributes = GetCustomAttributes(attribStmt->mAttributes, attributeState.mTarget);
+
+	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mAttributeState, &attributeState);
+
+	if (auto ignoreErrorsAttrib = attributeState.mCustomAttributes->Get(mCompiler->mIgnoreErrorsAttributeTypeDef))
+	{
+		SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, true);
+		if (!ignoreErrorsAttrib->mCtorArgs.IsEmpty())
+		{
+			auto constant = mCurTypeInstance->mConstHolder->GetConstant(ignoreErrorsAttrib->mCtorArgs[0]);
+			if (constant->mBool)
+				attributeState.mFlags = BfAttributeState::Flag_StopOnError;
+		}
+		VisitChild(attribStmt->mStatement);
+		attributeState.mUsed = true;
+	}
+	else
+	{
+		VisitChild(attribStmt->mStatement);
+	}
+
+	if (!attributeState.mUsed)
+	{
+		Fail("Unused attributes", attribStmt->mAttributes);
+	}
 }
 
 void BfModule::Visit(BfExpression* expression)

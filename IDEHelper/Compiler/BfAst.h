@@ -255,6 +255,7 @@ class BfLabelableStatement;
 class BfExpression;
 class BfExpressionStatement;
 class BfAttributedExpression;
+class BfAttributedStatement;
 class BfLiteralExpression;
 class BfBlock;
 class BfBlockExtension;
@@ -410,8 +411,9 @@ public:
 	virtual void Visit(BfLabeledBlock* labeledBlock);
 	virtual void Visit(BfExpression* expr);
 	virtual void Visit(BfExpressionStatement* exprStmt);
-	virtual void Visit(BfAttributedExpression* attribExpr);
+	virtual void Visit(BfAttributedExpression* attribExpr);	
 	virtual void Visit(BfStatement* stmt);
+	virtual void Visit(BfAttributedStatement* attribStmt);
 	virtual void Visit(BfLabelableStatement* labelableStmt);
 	virtual void Visit(BfTypedValueExpression* typedValueExpr);
 
@@ -2611,6 +2613,15 @@ public:
 	BfAttributeDirective* mAttributes;
 	BfExpression* mExpression;
 };	BF_AST_DECL(BfAttributedExpression, BfExpression);
+
+class BfAttributedStatement : public BfStatement
+{
+public:
+	BF_AST_TYPE(BfAttributedStatement, BfStatement);
+
+	BfAttributeDirective* mAttributes;
+	BfAstNode* mStatement;
+};	BF_AST_DECL(BfAttributedStatement, BfStatement);
 
 class BfObjectCreateExpression : public BfMethodBoundExpression
 {

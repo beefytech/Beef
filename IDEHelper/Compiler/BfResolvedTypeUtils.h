@@ -1492,7 +1492,8 @@ enum BfAttributeTargets : int32
 	BfAttributeTargets_Alloc        = 0x40000,
 	BfAttributeTargets_Delete       = 0x80000,
 	BfAttributeTargets_Alias        = 0x100000,
-	BfAttributeTargets_All          = 0x1FFFFF
+	BfAttributeTargets_Block		= 0x200000,
+	BfAttributeTargets_All          = 0x3FFFFF
 };
 
 class BfAttributeData

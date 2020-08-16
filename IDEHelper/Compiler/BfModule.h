@@ -660,13 +660,25 @@ public:
 
 class BfAttributeState
 {	
+public:
+	enum Flags
+	{
+		Flag_None,
+		Flag_StopOnError = 1,
+		Flag_HadError = 2
+	};
+
 public:	
+	Flags mFlags;
+	BfAstNode* mSrc;
 	BfAttributeTargets mTarget;
-	BfCustomAttributes* mCustomAttributes;		
+	BfCustomAttributes* mCustomAttributes;			
 	bool mUsed;	
 
 	BfAttributeState()
 	{
+		mSrc = NULL;
+		mFlags = Flag_None;
 		mTarget = BfAttributeTargets_None;
 		mCustomAttributes = NULL;		
 		mUsed = false;
@@ -1553,6 +1565,7 @@ public:
 	virtual void Visit(BfExpressionStatement* expressionStmt) override;
 	virtual void Visit(BfVariableDeclaration* varDecl) override;
 	virtual void Visit(BfLocalMethodDeclaration* methodDecl) override;
+	virtual void Visit(BfAttributedStatement* attribStmt) override;
 	virtual void Visit(BfThrowStatement* throwStmt) override;
 	virtual void Visit(BfDeleteStatement* deleteStmt) override;	
 	virtual void Visit(BfSwitchStatement* switchStmt) override;

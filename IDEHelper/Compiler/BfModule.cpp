@@ -2226,15 +2226,27 @@ BfProjectSet* BfModule::GetVisibleProjectSet()
 		{
 			auto typeInstance = type->ToTypeInstance();
 			if (typeInstance == NULL)
+			{
+				if (type->IsSizedArray())
+					_AddType(type->GetUnderlyingType());
 				return;
+			}
+			if (typeInstance->IsTuple())
+			{
+				for (auto& fieldInst : typeInstance->mFieldInstances)
+				{
+					if (fieldInst.mDataIdx != -1)
+						_AddType(fieldInst.mResolvedType);
+				}
+			}
 			_AddProject(typeInstance->mTypeDef->mProject);
 			if (typeInstance->mGenericTypeInfo == NULL)
 				return;
 			for (auto type : typeInstance->mGenericTypeInfo->mTypeGenericArguments)
 			{
 				if (seenTypes.Add(type))				
-					_AddType(type);				
-			}
+					_AddType(type);
+			}			
 		};
 
 		if (mCurTypeInstance != NULL)
@@ -2460,7 +2472,10 @@ bool BfModule::CheckProtection(BfProtection protection, bool allowProtected, boo
 		((protection == BfProtection_Private) && (allowPrivate)))
 		return true;
 	if ((mAttributeState != NULL) && (mAttributeState->mCustomAttributes != NULL) && (mAttributeState->mCustomAttributes->Contains(mCompiler->mFriendAttributeTypeDef)))
-		return true;
+	{
+		mAttributeState->mUsed = true;
+		return true;		
+	}
 	return false;
 }
 
@@ -2564,7 +2579,10 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 	}
 
 	if ((mAttributeState != NULL) && (mAttributeState->mCustomAttributes != NULL) && (mAttributeState->mCustomAttributes->Contains(mCompiler->mFriendAttributeTypeDef)))
+	{
+		mAttributeState->mUsed = true;
 		return true;
+	}
 
 	return false;
 }
@@ -2584,7 +2602,9 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	BP_ZONE("BfModule::Fail");
 
 	if (mIgnoreErrors)
-	{		
+	{
+		if (mAttributeState != NULL)
+			mAttributeState->mFlags = (BfAttributeState::Flags)(mAttributeState->mFlags | BfAttributeState::Flag_HadError);
 	 	return NULL;
 	}
 
@@ -4167,19 +4187,25 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 		
 		auto _SizedIndex = [&](BfIRValue target, BfIRValue index)
 		{
+			BfTypedValue result;
 			if (sizedArrayType->mElementType->IsSizeAligned())
 			{
 				auto ptrType = CreatePointerType(sizedArrayType->mElementType);
 				auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
 				auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
-				return BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+				result = BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
 			}
 			else
 			{
 
 				auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
-				return BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+				result = BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
 			}
+
+			if (!result.mType->IsValueType())
+				result = LoadValue(result);
+
+			return result;
 		};
 
 		if (sizedArrayType->mElementCount > 6)
@@ -9874,6 +9900,7 @@ static String GetAttributesTargetListString(BfAttributeTargets attrTarget)
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_MemberAccess, resultStr, "member access");
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_Alloc, resultStr, "allocations");
 	AddAttributeTargetName(flagsLeft, BfAttributeTargets_Alias, resultStr, "aliases");
+	AddAttributeTargetName(flagsLeft, BfAttributeTargets_Block, resultStr, "blocks");
 	if (resultStr.IsEmpty())
 		return "<nothing>";
 	return resultStr;

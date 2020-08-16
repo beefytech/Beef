@@ -3866,6 +3866,10 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 
 			return localMethodDecl;
 		}
+		else if (token == BfToken_LBracket)
+		{
+			return CreateAttributedStatement(tokenNode);
+		}
 	}
 
 	if (auto identifier = BfNodeDynCast<BfIdentifierNode>(node))
@@ -5311,7 +5315,10 @@ BfAttributeDirective* BfReducer::CreateAttributeDirective(BfTokenNode* startToke
 			auto nextNode = mVisitorPos.GetNext();
 			tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 			if ((tokenNode != NULL) && (tokenNode->GetToken() == BfToken_RBracket))
+			{
+				mVisitorPos.MoveNext();
 				goto Do_RBracket;
+			}
 			return attributeDirective;
 		}
 		MEMBER_SET(attributeDirective, mCtorCloseParen, tokenNode);
@@ -5340,6 +5347,44 @@ Do_RBracket:
 	return attributeDirective;
 }
 
+BfStatement* BfReducer::CreateAttributedStatement(BfTokenNode* tokenNode)
+{
+	auto attrib = CreateAttributeDirective(tokenNode);
+	if (attrib == NULL)
+		return NULL;
+	
+	BfAstNode* stmt = CreateStatementAfter(attrib);
+	if (stmt != NULL)
+	{		
+		bool isValid = true;
+
+		auto checkNode = stmt;
+		if (auto exprStatement = BfNodeDynCast<BfExpressionStatement>(checkNode))
+			checkNode = exprStatement->mExpression;
+
+ 		if ((checkNode->IsA<BfObjectCreateExpression>()) ||
+ 			(checkNode->IsA<BfInvocationExpression>()) ||
+ 			(checkNode->IsA<BfVariableDeclaration>()) ||
+ 			(checkNode->IsA<BfBlock>()))
+		{
+			BfAttributedStatement* attribStmt = mAlloc->Alloc<BfAttributedStatement>();
+			ReplaceNode(attrib, attribStmt);
+			attribStmt->mAttributes = attrib;
+			MEMBER_SET(attribStmt, mStatement, stmt);
+			return attribStmt;
+		}
+	}
+
+	Fail("Prefixed attributes can only be used on allocations, invocations, blocks, or variable declarations", attrib);
+
+	BfAttributedStatement* attribStmt = mAlloc->Alloc<BfAttributedStatement>();
+	ReplaceNode(attrib, attribStmt);
+	attribStmt->mAttributes = attrib;
+	if (stmt != NULL)
+		MEMBER_SET(attribStmt, mStatement, stmt);
+	return attribStmt;
+}
+
 BfExpression* BfReducer::CreateAttributedExpression(BfTokenNode* tokenNode, bool onlyAllowIdentifier)
 {
 	auto attrib = CreateAttributeDirective(tokenNode);
@@ -5347,8 +5392,8 @@ BfExpression* BfReducer::CreateAttributedExpression(BfTokenNode* tokenNode, bool
 		return NULL;
 
 	if (!onlyAllowIdentifier)
-	{
-		auto expr = CreateExpressionAfter(attrib);
+	{		
+		BfExpression* expr = CreateExpressionAfter(attrib);
 		if (expr != NULL)
 		{
 			if (auto identifier = BfNodeDynCast<BfIdentifierNode>(expr))
@@ -5362,7 +5407,8 @@ BfExpression* BfReducer::CreateAttributedExpression(BfTokenNode* tokenNode, bool
 
 			if ((expr->IsA<BfObjectCreateExpression>()) ||
 				(expr->IsA<BfInvocationExpression>()) ||
-				(expr->IsA<BfVariableDeclaration>()))
+				(expr->IsA<BfVariableDeclaration>()) ||
+				(expr->IsA<BfBlock>()))
 			{
 				BfAttributedExpression* attribExpr = mAlloc->Alloc<BfAttributedExpression>();
 				ReplaceNode(attrib, attribExpr);
@@ -5370,9 +5416,9 @@ BfExpression* BfReducer::CreateAttributedExpression(BfTokenNode* tokenNode, bool
 				MEMBER_SET(attribExpr, mExpression, expr);
 				return attribExpr;
 			}
-		}
+		}		
 
-		Fail("Prefixed attributes can only be used on constructor calls, invocations, or variable declarations", attrib);
+		Fail("Prefixed attributes can only be used on allocations, invocations, blocks, or variable declarations", attrib);
 
 		BfAttributedExpression* attribExpr = mAlloc->Alloc<BfAttributedExpression>();
 		ReplaceNode(attrib, attribExpr);

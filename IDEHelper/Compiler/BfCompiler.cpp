@@ -435,6 +435,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mObsoleteAttributeTypeDef = NULL;
 	mErrorAttributeTypeDef = NULL;
 	mWarnAttributeTypeDef = NULL;
+	mIgnoreErrorsAttributeTypeDef = NULL;
 
 	mLastAutocompleteModule = NULL;
 }
@@ -6309,6 +6310,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mObsoleteAttributeTypeDef = _GetRequiredType("System.ObsoleteAttribute");
 	mErrorAttributeTypeDef = _GetRequiredType("System.ErrorAttribute");
 	mWarnAttributeTypeDef = _GetRequiredType("System.WarnAttribute");
+	mIgnoreErrorsAttributeTypeDef = _GetRequiredType("System.IgnoreErrorsAttribute");
 
 	for (int i = 0; i < BfTypeCode_Length; i++)
 		mContext->mPrimitiveStructTypes[i] = NULL;

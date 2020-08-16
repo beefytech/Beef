@@ -28,11 +28,12 @@ namespace System
 		Alloc        = 0x40000,
 		Delete       = 0x80000,
 		Alias        = 0x100000,
+		Block        = 0x200000,
 
 	    All = Assembly | Module | Class | Struct | Enum | Constructor |
 	        Method | Property | Field | StaticField | Interface | Parameter |
 	    	Delegate | Function | ReturnValue | GenericParameter | Invocation | MemberAccess |
-			Alloc | Delete | Alias,
+			Alloc | Delete | Alias | Block,
 	}
 
 	public enum ReflectKind
@@ -135,6 +136,14 @@ namespace System
 	public struct FriendAttribute : Attribute
 	{
 	    
+	}
+
+	[AttributeUsage(.Block)]
+	public struct IgnoreErrorsAttribute : Attribute
+	{
+		public this(bool stopOnErrors = false)
+		{
+		}
 	}
 
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]

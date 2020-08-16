@@ -213,16 +213,16 @@ bool BfMethodMatcher::IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* de
 	if (mActiveTypeDef == NULL)
 		mActiveTypeDef = mModule->GetActiveTypeDef();
 
-	// This needs to be outside the `IsInSpecializedSection`. Note that mActiveTypeDef does not pose a constraint here
+	// Note that mActiveTypeDef does not pose a constraint here
 	if (!typeInst->IsTypeMemberIncluded(declaringType, mActiveTypeDef, mModule))
 		return false;
 
-	// This may not be completely correct - BUT if we don't have this then even Dictionary TKey's operator == won't be considered accessible
-	if ((!mModule->IsInSpecializedSection()) && (mActiveTypeDef->mTypeDeclaration != NULL))
-	{				
-		if (!typeInst->IsTypeMemberAccessible(declaringType, mActiveTypeDef))
-			return false;
+	auto visibleProjectSet = mModule->GetVisibleProjectSet();
+	if ((visibleProjectSet != NULL) && (!typeInst->IsTypeMemberAccessible(declaringType, visibleProjectSet)))
+	{		
+		return false;
 	}
+
 	return true;
 }
 
@@ -2582,15 +2582,34 @@ void BfExprEvaluator::Visit(BfTypeReference* typeRef)
 void BfExprEvaluator::Visit(BfAttributedExpression* attribExpr)
 {
 	BfAttributeState attributeState;
-	attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_Invocation | BfAttributeTargets_MemberAccess);
-	attributeState.mCustomAttributes = mModule->GetCustomAttributes(attribExpr->mAttributes, attributeState.mTarget);
-	
+	attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_Invocation | BfAttributeTargets_MemberAccess);	
+	if (auto block = BfNodeDynCast<BfBlock>(attribExpr->mExpression))	
+		attributeState.mTarget = BfAttributeTargets_Block;	
+
+	attributeState.mCustomAttributes = mModule->GetCustomAttributes(attribExpr->mAttributes, attributeState.mTarget);	
 	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, &attributeState);
-	VisitChild(attribExpr->mExpression);
+
+	if (auto ignoreErrorsAttrib = attributeState.mCustomAttributes->Get(mModule->mCompiler->mIgnoreErrorsAttributeTypeDef))
+	{
+		SetAndRestoreValue<bool> ignoreErrors(mModule->mIgnoreErrors, true);
+		if (!ignoreErrorsAttrib->mCtorArgs.IsEmpty())
+		{
+			auto constant = mModule->mCurTypeInstance->mConstHolder->GetConstant(ignoreErrorsAttrib->mCtorArgs[0]);
+			if (constant->mBool)
+				attributeState.mFlags = BfAttributeState::Flag_StopOnError;
+		}
+		VisitChild(attribExpr->mExpression);
+		attributeState.mUsed = true;
+	}
+	else
+	{
+		VisitChild(attribExpr->mExpression);
+	}
+
 	if (!attributeState.mUsed)
 	{
 		mModule->Fail("Unused attributes", attribExpr->mAttributes);
-	}	
+	}
 }
 
 void BfExprEvaluator::Visit(BfBlock* blockExpr)
@@ -4106,9 +4125,15 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL))
 					{
 						if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef))
+						{
 							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_Friend);
+							mModule->mAttributeState->mUsed = true;
+						}
 						if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mDisableObjectAccessChecksAttributeTypeDef))
+						{
 							mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_DisableObjectAccessChecks);
+							mModule->mAttributeState->mUsed = true;
+						}
 					}
 
 					if (mPropDef->mIsStatic)
@@ -12740,8 +12765,8 @@ BfAllocTarget BfExprEvaluator::ResolveAllocTarget(BfAstNode* allocNode, BfTokenN
 						}
 					}
 				}
-				else if (attrib.mType->mTypeDef == mModule->mCompiler->mFriendAttributeTypeDef)
-					allocTarget.mIsFriend = true;
+				else if (attrib.mType->mTypeDef == mModule->mCompiler->mFriendAttributeTypeDef)				
+					allocTarget.mIsFriend = true;				
 			}
 
 			if (outCustomAttributes != NULL)
@@ -14059,7 +14084,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 
 	bool allowImplicitThis = false;
 	BfAstNode* methodNodeSrc = target;
-
+	
 	BfAttributeState attributeState;
 	attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_Invocation | BfAttributeTargets_MemberAccess);
 
@@ -14194,7 +14219,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		{
 			if (attrIdentifier->mIdentifier != NULL)
 				methodNodeSrc = attrIdentifier->mIdentifier;
-			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);
+			attributeState.mSrc = attrIdentifier->mAttributes;
+			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);			
 			if (attrIdentifier->mIdentifier != NULL)
 				targetFunctionName = attrIdentifier->mIdentifier->ToString();
 		}
@@ -14370,7 +14396,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		{
 			if (attrIdentifier->mIdentifier != NULL)
 				methodNodeSrc = attrIdentifier->mIdentifier;
-			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);
+			attributeState.mSrc = attrIdentifier->mAttributes;
+			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);			
 			targetFunctionName = attrIdentifier->mIdentifier->ToString();
 		}
 		else
@@ -14476,7 +14503,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		{
 			if (attrIdentifier->mIdentifier != NULL)
 				methodNodeSrc = attrIdentifier->mIdentifier;
-			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);
+			attributeState.mSrc = attrIdentifier->mAttributes;
+			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);			
 		}
 
 		allowImplicitThis = true;
@@ -14635,18 +14663,29 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	}
 	
 	BfCheckedKind checkedKind = BfCheckedKind_NotSet;
-	if (attributeState.mCustomAttributes != NULL)
+	if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL))
 	{
-		if (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mCheckedAttributeTypeDef))
+		if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mCheckedAttributeTypeDef))
+		{
 			checkedKind = BfCheckedKind_Checked;
-		if (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mUncheckedAttributeTypeDef))
+			mModule->mAttributeState->mUsed = true;
+		}
+		if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mUncheckedAttributeTypeDef))
+		{
 			checkedKind = BfCheckedKind_Unchecked;
+			mModule->mAttributeState->mUsed = true;
+		}
 	}
 
 	SetAndRestoreValue<bool> prevUsedAsStatement(mUsedAsStatement, mUsedAsStatement || isCascade);
 	ResolveArgValues(argValues, resolveArgsFlags);
 	mResult = MatchMethod(methodNodeSrc, methodBoundExpr, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, argValues, methodGenericArguments, checkedKind);		
 	argValues.HandleFixits(mModule);
+
+	if ((mModule->mAttributeState == &attributeState) && (!attributeState.mUsed))
+	{
+		mModule->Fail("Unused attributes", attributeState.mSrc);
+	}
 
 	if (isCascade)
 	{
@@ -16910,7 +16949,7 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 
 	BfAutoComplete* autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)
-	{
+	{		
 		SetAndRestoreValue<bool> prevFriendSet(autoComplete->mHasFriendSet, (attributeState.mCustomAttributes != NULL) && (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef)));
 
 		if (memberRefExpr->mTarget == NULL)
@@ -19260,7 +19299,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			{
 				auto convertedValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, BfCastFlags_NoBox);
 				if (!convertedValue)
-					return;
+					return;				
 				if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
 					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				else

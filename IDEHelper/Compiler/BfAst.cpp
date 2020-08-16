@@ -121,6 +121,11 @@ void BfStructuralVisitor::Visit(BfStatement* stmt)
 	Visit(stmt->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfAttributedStatement* attribStmt)
+{
+	Visit(attribStmt->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfLabelableStatement* labelableStmt)
 {
 	Visit(labelableStmt->ToBase());
@@ -753,8 +758,11 @@ bool BfAstNode::IsMissingSemicolon()
 		else
 			return false;
 	}
+	if (auto attribExpr = BfNodeDynCastExact<BfAttributedStatement>(this))
+		return (attribExpr->mStatement == NULL) || (attribExpr->mStatement->IsMissingSemicolon());
+
 	if (auto stmt = BfNodeDynCast<BfStatement>(this))
-		return stmt->mTrailingSemicolon == NULL;
+		return stmt->mTrailingSemicolon == NULL;	
 
 	return false;
 }
@@ -769,6 +777,7 @@ bool BfAstNode::IsExpression()
 			return false;
 		return block->mChildArr.GetLast()->IsExpression();
 	}
+
 	return IsA<BfExpression>();
 }
 

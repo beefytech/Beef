@@ -1499,7 +1499,11 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 			BfAttributeState attributeState;
 			attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_MemberAccess);
 			attributeState.mCustomAttributes = mModule->GetCustomAttributes(attrIdentifier->mAttributes, attributeState.mTarget);
-			isFriend = (attributeState.mCustomAttributes != NULL) && (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef));
+			if ((attributeState.mCustomAttributes != NULL) && (attributeState.mCustomAttributes->Contains(mModule->mCompiler->mFriendAttributeTypeDef)))
+			{
+				isFriend = true;
+				attributeState.mUsed = true;
+			}
 
 			mInsertStartIdx = attrIdentifier->mAttributes->GetSrcEnd();
 		}

@@ -18,6 +18,7 @@ public:
 	virtual void Visit(BfExpressionStatement* exprStmt);
 	virtual void Visit(BfAttributedExpression* attribExpr);
 	virtual void Visit(BfStatement* stmt);
+	virtual void Visit(BfAttributedStatement* attribStmt);
 	virtual void Visit(BfLabelableStatement* labelableStmt);
 	virtual void Visit(BfTypedValueExpression* typedValueExpr);
 

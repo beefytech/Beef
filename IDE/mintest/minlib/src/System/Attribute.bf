@@ -5,7 +5,7 @@ namespace System
     }
 
     public enum AttributeTargets
-    {
+	{
 	    Assembly     = 0x0001,
 	    Module       = 0x0002,
 	    Class        = 0x0004,
@@ -28,11 +28,12 @@ namespace System
 		Alloc        = 0x40000,
 		Delete       = 0x80000,
 		Alias        = 0x100000,
+		Block        = 0x200000,
 
 	    All = Assembly | Module | Class | Struct | Enum | Constructor |
 	        Method | Property | Field | StaticField | Interface | Parameter |
 	    	Delegate | Function | ReturnValue | GenericParameter | Invocation | MemberAccess |
-			Alloc | Delete | Alias,
+			Alloc | Delete | Alias | Block,
 	}
 
 	public enum ReflectKind
@@ -120,29 +121,39 @@ namespace System
 	[AttributeUsage(.Class | .Struct | .Interface | .Method | .Constructor)]
 	public struct AlwaysIncludeAttribute : Attribute
 	{
-		bool mAssumeInstantiated;
-
 	    public bool AssumeInstantiated
 		{
-			get { return mAssumeInstantiated; }
-			set mut { mAssumeInstantiated = value; }
+			set { }
+		}
+
+		public bool IncludeAllMethods
+		{
+			set { }
 		}
 	}
 
-	[AttributeUsage(.MemberAccess | .Alloc | .Delete)]
+	[AttributeUsage(.MemberAccess | .Alloc)]
 	public struct FriendAttribute : Attribute
+	{
+	    
+	}
+
+	[AttributeUsage(.Block)]
+	public struct IgnoreErrorsAttribute : Attribute
+	{
+		public this(bool stopOnErrors = false)
+		{
+		}
+	}
+
+	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
+	public struct OptimizeAttribute : Attribute
 	{
 	    
 	}
 
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
 	public struct UseLLVMAttribute : Attribute
-	{
-	    
-	}
-
-	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
-	public struct OptimizeAttribute : Attribute
 	{
 	    
 	}
@@ -165,7 +176,6 @@ namespace System
 
 		public this(String linkName)
 		{
-			
 		}
 
 		public this(MangleKind mangleKind)
@@ -190,7 +200,7 @@ namespace System
 		}
 	}
 
-
+	[Obsolete("Use [CallingConvention(.Stdcall)]", false)]
 	[AttributeUsage(.Method | .Delegate | .Function)]
 	public struct StdCallAttribute : Attribute
 	{
@@ -219,21 +229,6 @@ namespace System
 	public struct IntrinsicAttribute : Attribute
 	{
 		public this(String intrinName)
-		{
-
-		}
-
-		public this(String intrinName, Type t0)
-		{
-
-		}
-
-		public this(String intrinName, Type t0, Type t1)
-		{
-
-		}
-
-		public this(String intrinName, Type t0, Type t1, Type t2)
 		{
 
 		}
@@ -268,6 +263,7 @@ namespace System
 
 	}
 
+	/// This attribute is required on constructors that include 'append' allocations.
 	[AttributeUsage(.Constructor)]
 	public struct AllowAppendAttribute : Attribute
 	{
@@ -348,7 +344,7 @@ namespace System
 
 	public struct ExportAttribute : Attribute
 	{
-
+	    
 	}
 
 	[AttributeUsage(.StaticField | .Field, .NotInherited)]
@@ -359,28 +355,36 @@ namespace System
 		}
 	}
 
+	/// The [Checked] attribute is used to mark a method or a method invocation as being "checked", meaning
+	/// that the method applies extra runtime checks such as bounds checking or other parameter or state validation.
 	[AttributeUsage(.Invocation | .Method | .Property)]
 	public struct CheckedAttribute : Attribute
 	{
 
 	}
 
+	/// The [Unchecked] attribute is used to mark a method or a method invocation as being "unchecked", meaning
+	/// that the method omits runtime checks such as bounds checking or other parameter or state validation.
 	[AttributeUsage(.Invocation | .Method | .Property)]
 	public struct UncheckedAttribute : Attribute
 	{
 	}
 
+	/// Generally used as a per-method optimization, [DisableChecks] will cause calls within this method to
+	/// call the unchecked version of methods. By default, only debug builds perform checked calls.
 	[AttributeUsage(.Method | .Constructor)]
 	public struct DisableChecksAttribute : Attribute
 	{
 	}
 
+	/// Generally used as a per-method optimization, [DisableObjectAccessChecks] will avoid the runtime per-object-access
+	/// checks which by default are only applied in debug builds anyway.
 	[AttributeUsage(.Method | .MemberAccess)]
 	public struct DisableObjectAccessChecksAttribute : Attribute
 	{
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Interface)]
 	public struct ObsoleteAttribute : Attribute
 	{
 		public this(bool isError)
@@ -418,17 +422,17 @@ namespace System
 		}
 	}
 
+	/// If [NoDiscard] is used on a method, the the compiler will show a warning if the result is discarded.
+	/// If used on a type, the compiler will show an warning if any method returns that type and the caller discards the result.
 	[AttributeUsage(.Method | .Class | .Struct)]
 	public struct NoDiscardAttribute : Attribute
 	{
 		public this()
 		{
-
 		}
 
 		public this(String message)
 		{
-
 		}
 	}
 }
