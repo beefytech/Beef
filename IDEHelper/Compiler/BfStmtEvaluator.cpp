@@ -3760,7 +3760,7 @@ void BfModule::Visit(BfLocalMethodDeclaration* methodDecl)
 void BfModule::Visit(BfAttributedStatement* attribStmt)
 {
 	BfAttributeState attributeState;
-
+	attributeState.mSrc = attribStmt->mAttributes;
 	attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_Invocation | BfAttributeTargets_MemberAccess);
 	if (auto block = BfNodeDynCast<BfBlock>(attribStmt->mStatement))
 		attributeState.mTarget = BfAttributeTargets_Block;
@@ -3786,10 +3786,7 @@ void BfModule::Visit(BfAttributedStatement* attribStmt)
 		VisitChild(attribStmt->mStatement);
 	}
 
-	if (!attributeState.mUsed)
-	{
-		Fail("Unused attributes", attribStmt->mAttributes);
-	}
+	FinishAttributeState(&attributeState);	
 }
 
 void BfModule::Visit(BfExpression* expression)

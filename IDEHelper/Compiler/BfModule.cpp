@@ -10544,6 +10544,12 @@ BfCustomAttributes* BfModule::GetCustomAttributes(BfAttributeDirective* attribut
 	return customAttributes;
 }
 
+void BfModule::FinishAttributeState(BfAttributeState* attributeState)
+{
+	if ((!attributeState->mUsed) && (attributeState->mSrc != NULL))
+		Warn(0, "Unused attributes", attributeState->mSrc);
+}
+
 void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered)
 {
 	if (mCurTypeInstance->mCustomAttributes != NULL)

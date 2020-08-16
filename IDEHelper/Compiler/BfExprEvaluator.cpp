@@ -2582,6 +2582,7 @@ void BfExprEvaluator::Visit(BfTypeReference* typeRef)
 void BfExprEvaluator::Visit(BfAttributedExpression* attribExpr)
 {
 	BfAttributeState attributeState;
+	attributeState.mSrc = attribExpr->mAttributes;
 	attributeState.mTarget = (BfAttributeTargets)(BfAttributeTargets_Invocation | BfAttributeTargets_MemberAccess);	
 	if (auto block = BfNodeDynCast<BfBlock>(attribExpr->mExpression))	
 		attributeState.mTarget = BfAttributeTargets_Block;	
@@ -2606,10 +2607,7 @@ void BfExprEvaluator::Visit(BfAttributedExpression* attribExpr)
 		VisitChild(attribExpr->mExpression);
 	}
 
-	if (!attributeState.mUsed)
-	{
-		mModule->Fail("Unused attributes", attribExpr->mAttributes);
-	}
+	mModule->FinishAttributeState(&attributeState);	
 }
 
 void BfExprEvaluator::Visit(BfBlock* blockExpr)
@@ -13769,6 +13767,10 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 				{
 					//TODO: Implement
 				}
+				else if (newLocalVar->mResolvedType->IsValuelessType())
+				{
+					// Do nothing
+				}
 				else
 				{
 					BfIRValue value = newLocalVar->mValue;
@@ -14682,10 +14684,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	mResult = MatchMethod(methodNodeSrc, methodBoundExpr, thisValue, allowImplicitThis, bypassVirtual, targetFunctionName, argValues, methodGenericArguments, checkedKind);		
 	argValues.HandleFixits(mModule);
 
-	if ((mModule->mAttributeState == &attributeState) && (!attributeState.mUsed))
-	{
-		mModule->Fail("Unused attributes", attributeState.mSrc);
-	}
+	if (mModule->mAttributeState == &attributeState)
+		mModule->FinishAttributeState(&attributeState);		
 
 	if (isCascade)
 	{
