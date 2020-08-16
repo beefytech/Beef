@@ -6,6 +6,14 @@ namespace Tests
 {
 	class Tuples
 	{
+		class ClassA
+		{
+			public static int operator<=>(Self lhs, Self rhs)
+			{
+				return 0;
+			}
+		}
+
 		public static void Add(ref (int32, float) val)
 		{
 			val.0 += 100;
@@ -30,6 +38,10 @@ namespace Tests
 
 			Add(ref tVal1);
 			Test.Assert(tVal1 == (a: 102, b: 203));
+
+			ClassA ca0 = scope .();
+			ClassA ca1 = scope .();
+			Test.Assert((ca0, ca0) == (ca1, ca1));
 		}
 
 		class ValClass

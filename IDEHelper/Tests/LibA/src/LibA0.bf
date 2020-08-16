@@ -58,6 +58,34 @@ namespace LibA
 			return Handle(val);
 		}
 	}
+
+	class LibA1
+	{
+
+	}
+
+	class LibA2
+	{
+		public static void DoDispose<T>(mut T val) where T : IDisposable
+		{
+			val.Dispose();
+		}
+
+		public static bool DoDispose2<T>(mut T val) where T : var
+		{
+			return
+				[IgnoreErrors(true)]
+				{
+					val.Dispose();
+					true
+				};
+		}
+
+		public static bool CheckEq<T>(T lhs, T rhs)
+		{
+			return lhs == rhs;
+		}
+	}
 }
 
 class LibClassA

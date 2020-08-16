@@ -10,6 +10,14 @@ namespace Tests
 			public int8 mB;
 		}
 
+		class ClassA
+		{
+			public static int operator<=>(Self lhs, Self rhs)
+			{
+				return 0;
+			}
+		}
+
 		public static int[8] iArr = .(123, 234, 345, );
 		public static int[?] iArr2 = .(12, 23, 34);
 
@@ -37,6 +45,13 @@ namespace Tests
 
 			var val4 = int[?](11, 12);
 			Test.Assert(val4[0] == 11);
+
+			ClassA ca0 = scope .();
+			ClassA ca1 = scope .();
+			Test.Assert(ClassA[2](ca0, ca0) == ClassA[2](ca1, ca1));
+			ClassA[2] caArr0 = .(ca0, ca0);
+			ClassA[2] caArr1 = .(ca1, ca1);
+			Test.Assert(caArr0 == caArr1);
 		}
 
 		[Test]

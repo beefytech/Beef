@@ -3,6 +3,22 @@
 using System;
 using System.Collections;
 
+namespace LibA
+{
+	extension LibA1 : IDisposable
+	{
+		public void Dispose()
+		{
+
+		}
+
+		public static int operator<=>(Self lhs, Self rhs)
+		{
+			return 0;
+		}
+	}
+}
+
 namespace Tests
 {
 	class Generics
@@ -63,6 +79,14 @@ namespace Tests
 		{
 		}
 
+		class ClassD
+		{
+			public static int operator<=>(Self lhs, Self rhs)
+			{
+				return 0;
+			}
+		}
+		
 		static void DoDispose<T>(mut T val) where T : IDisposable
 		{
 			val.Dispose();
@@ -172,6 +196,17 @@ namespace Tests
 
 			ClassC cc = scope .();
 			Test.Assert(ClassC.mInstance == cc);
+
+			LibA.LibA1 la1 = scope .();
+			LibA.LibA1 la1b = scope .();
+			LibA.LibA2.DoDispose(la1);
+			Test.Assert(!LibA.LibA2.DoDispose2(la1));
+			Test.Assert(la1 == la1b);
+			Test.Assert(!LibA.LibA2.CheckEq(la1, la1b));
+
+			ClassD cd = scope .();
+			ClassD cd2 = scope .();
+			Test.Assert(LibA.LibA2.CheckEq(cd, cd2));
 		}
 	}
 
