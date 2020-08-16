@@ -9568,7 +9568,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if ((constraintTypeInst != NULL) && (constraintTypeInst->mTypeDef == mCompiler->mEnumTypeDef))
 				{
 					// Enum->int
-					if (toType->IsInteger())
+					if ((explicitCast) && (toType->IsInteger()))
 						return GetDefaultValue(toType);
 				}
 
@@ -9657,7 +9657,14 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 
 		if (genericParamInst->mTypeConstraint != NULL)
-		{			
+		{	
+			if (genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mEnumTypeDef))
+			{
+				// int->Enum
+				if ((explicitCast) && (typedVal.mType->IsInteger()))
+					return mBfIRBuilder->GetFakeVal();
+			}
+
 			auto castedVal = CastToValue(srcNode, typedVal, genericParamInst->mTypeConstraint, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
 			if (castedVal)
 				return castedVal;
