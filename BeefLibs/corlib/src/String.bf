@@ -2897,7 +2897,7 @@ namespace System
 				char8 firstC = subStr[0];
 				for (int ofs = startIdx; ofs <= mLength - subStr.mLength; ofs++)
 				{
-					if ((mPtr[ofs] == firstC) && (String.[Friend]Compare(mPtr + ofs + 1, subStr.mLength - 1, subStr.mPtr + 1, subStr.mLength - 1, ignoreCase) == 0))
+					if ((mPtr[ofs] == firstC) && (String.Compare(mPtr + ofs + 1, subStr.mLength - 1, subStr.mPtr + 1, subStr.mLength - 1, ignoreCase) == 0))
 						return ofs;
 				}
 
@@ -2913,7 +2913,7 @@ namespace System
 				for (int ofs = startIdx; ofs <= mLength - subStr.mLength; ofs++)
 				{
 					if (((mPtr[ofs] == firstC) || (mPtr[ofs] == firstC2)) &&
-						(String.[Friend]Compare(mPtr + ofs + 1, subStr.mLength - 1, subStr.mPtr + 1, subStr.mLength - 1, ignoreCase) == 0))
+						(String.Compare(mPtr + ofs + 1, subStr.mLength - 1, subStr.mPtr + 1, subStr.mLength - 1, ignoreCase) == 0))
 						return ofs;
 				}
 			}

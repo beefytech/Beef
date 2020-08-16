@@ -166,7 +166,7 @@ namespace System
 			static Object Object_DynamicCastToTypeId(Object obj, int32 typeId)
 			{
 #if BF_DYNAMIC_CAST_CHECK
-				return obj.[Friend]DynamicCastToTypeId(typeId);
+				return obj.DynamicCastToTypeId(typeId);
 #else
 				return null;
 #endif

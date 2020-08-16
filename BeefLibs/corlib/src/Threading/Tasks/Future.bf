@@ -88,7 +88,7 @@ namespace System.Threading.Tasks
 		protected TResult GetResultCore(bool waitCompletionNotification)
 		{
 		    // If the result has not been calculated yet, wait for it.
-		    if (!IsCompleted) this.[Friend]InternalWait(Timeout.Infinite, default(CancellationToken)); // won't throw if task faulted or canceled; that's handled below
+		    if (!IsCompleted) InternalWait(Timeout.Infinite, default(CancellationToken)); // won't throw if task faulted or canceled; that's handled below
 
 		    // Notify the debugger of the wait completion if it's requested such a notification
 		    //TODO: Implement

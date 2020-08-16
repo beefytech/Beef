@@ -26,7 +26,7 @@ namespace System.Threading
         {
             static Object Thread_Alloc()
             {
-                return Thread.[Friend]CreateEmptyThread();
+                return Thread.CreateEmptyThread();
             }
 
             static Object Thread_GetMainThread()
