@@ -152,6 +152,19 @@ namespace System.Collections
 			{
 				return mSize;
 			}
+
+			set
+			{
+				if (value <= mSize)
+				{
+					mSize = (.)value;
+				}
+				else
+				{
+					int addSize = value - mSize;
+					Internal.MemSet(GrowUnitialized(addSize), 0, addSize * strideof(T));
+				}
+			}
 		}
 
 		public bool IsEmpty
