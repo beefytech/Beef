@@ -466,6 +466,8 @@ BfTypeCode BfIRCodeGen::GetTypeCode(llvm::Type* type, bool isSigned)
 	{
 		switch (type->getIntegerBitWidth())
 		{
+		case 1:
+			return BfTypeCode_Boolean;
 		case 8:
 			return isSigned ? BfTypeCode_Int8 : BfTypeCode_UInt8;			
 		case 16:
@@ -1510,7 +1512,7 @@ void BfIRCodeGen::HandleNextCmd()
 			if (BfIRBuilder::IsInt(typeCode))
 			{			
 				// Int -> Int
-				if (BfIRBuilder::IsInt(valTypeCode))
+				if ((BfIRBuilder::IsInt(valTypeCode)) || (valTypeCode == BfTypeCode_Boolean))
 				{
 					retVal = mIRBuilder->CreateIntCast(val, toLLVMType, toSigned && valIsSigned);
 				}
@@ -1525,7 +1527,7 @@ void BfIRCodeGen::HandleNextCmd()
 			else
 			{
 				// Int -> Float
-				if (BfIRBuilder::IsInt(valTypeCode))
+				if ((BfIRBuilder::IsInt(valTypeCode)) || (valTypeCode == BfTypeCode_Boolean))
 				{				
 					if (BfIRBuilder::IsSigned(valTypeCode))
 						retVal = mIRBuilder->CreateSIToFP(val, toLLVMType);

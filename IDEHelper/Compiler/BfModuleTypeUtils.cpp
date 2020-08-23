@@ -10343,7 +10343,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 		if (explicitCast)
 		{
-			if (((fromPrimType->IsIntegral()) || (fromPrimType->IsFloat())) &&
+			if (((fromPrimType->IsIntegral()) || (fromPrimType->IsFloat()) || (fromPrimType->IsBoolean())) &&
 				((toType->IsIntegral()) || (toType->IsFloat())))
 				allowCast = true;
 		}

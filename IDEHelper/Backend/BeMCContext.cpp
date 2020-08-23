@@ -3734,7 +3734,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 29)
+		if (mcOperand.mVRegIdx == 9)
 		{
 			NOP;
 		}
@@ -10267,7 +10267,7 @@ bool BeMCContext::DoLegalization()
 
 					}
 
-					if ((arg0Type->IsFloat()) && (arg1Type->IsInt()))
+					if ((arg0Type->IsFloat()) && (arg1Type->IsIntable()))
 					{
 						if ((arg1Type->mTypeCode == BeTypeCode_Int64) && (!isSignedExt))
 						{
@@ -15792,7 +15792,7 @@ void BeMCContext::Generate(BeFunction* function)
 						auto toType = castedInst->mToType;
 						auto toValue = AllocVirtualReg(castedInst->mToType);
 						CreateDefineVReg(toValue);
-						if ((toType->IsInt()) && (fromType->IsInt()) && (toType->mSize < fromType->mSize))
+						if ((toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize < fromType->mSize))
 						{
 							// For truncating values, no actual instructions are needed, so we can just do a vreg relto ref
 							auto vregInfo = mVRegInfo[toValue.mVRegIdx];
@@ -15801,8 +15801,8 @@ void BeMCContext::Generate(BeFunction* function)
 						}
 						else
 						{
-							bool doSignExtension = (toType->IsInt()) && (fromType->IsInt()) && (toType->mSize > fromType->mSize) && (castedInst->mToSigned) && (castedInst->mValSigned);
-							if ((toType->IsFloat()) && (fromType->IsInt()) && (castedInst->mValSigned))
+							bool doSignExtension = (toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize > fromType->mSize) && (castedInst->mToSigned) && (castedInst->mValSigned);
+							if ((toType->IsFloat()) && (fromType->IsIntable()) && (castedInst->mValSigned))
 								doSignExtension = true;
 							if (doSignExtension)
 							{
