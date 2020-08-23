@@ -8366,8 +8366,20 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 
 	if (!mResult.mType->IsTypeInstance())
 	{
-		mModule->Fail(StrFormat("Type '%s' has no fields", mModule->TypeToString(mResult.mType).c_str()), nameLeft);
-		return;
+		if (mResult.mType->IsSizedArray())
+		{
+			mResult.mType = mModule->GetWrappedStructType(mResult.mType);
+			mResult.mValue = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapTypeInstPtr(mResult.mType->ToTypeInstance()));
+		}
+		else if (mResult.mType->IsWrappableType())
+		{
+			mResult.mType = mModule->GetWrappedStructType(mResult.mType);
+		}
+		else
+		{
+			mModule->Fail(StrFormat("Type '%s' has no fields", mModule->TypeToString(mResult.mType).c_str()), nameLeft);
+			return;
+		}
 	}
 
 	mResult = LookupField(nameRight, mResult, fieldName);
