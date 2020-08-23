@@ -5723,7 +5723,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						PUSH_INT64(constant->mInt64);
 					}
 					else if ((constant->mTypeCode == BfTypeCode_Int32) ||
-						(constant->mTypeCode == BfTypeCode_UInt32))
+						(constant->mTypeCode == BfTypeCode_UInt32) ||
+						(constant->mTypeCode == BfTypeCode_Char32))
 					{
 						PUSH_INT32(constant->mInt32);
 					}
@@ -5733,12 +5734,15 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						PUSH_INT32(*(int*)&val);
 					}
 					else if ((constant->mTypeCode == BfTypeCode_Int16) ||
-						(constant->mTypeCode == BfTypeCode_UInt16))
+						(constant->mTypeCode == BfTypeCode_UInt16) ||
+						(constant->mTypeCode == BfTypeCode_Char16))
 					{
 						PUSH_INT16(constant->mInt16);
 					}
 					else if ((constant->mTypeCode == BfTypeCode_Int8) ||
-						(constant->mTypeCode == BfTypeCode_UInt8))
+						(constant->mTypeCode == BfTypeCode_UInt8) ||
+						(constant->mTypeCode == BfTypeCode_Boolean) ||
+						(constant->mTypeCode == BfTypeCode_Char8))
 					{
 						PUSH_INT8(constant->mInt8);
 					}

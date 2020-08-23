@@ -46,7 +46,8 @@ namespace System.Reflection
 					{
 					case .Int8,
 						 .UInt8,
-						 .Char8:
+						 .Char8,
+						 .Boolean:
 						let attrData = Decode!<int8>(data);
 						args[argIdx] = scope:AttrBlock box attrData;
 					case .Int16,

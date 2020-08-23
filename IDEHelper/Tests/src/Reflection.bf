@@ -13,15 +13,17 @@ namespace Tests
 			public float mB;
 			public String mC;
 			public String mD;
+			public bool mE;
 
-			public this(int32 a, float b, String c, String d = "D")
+			public this(int32 a, float b, String c, String d = "D", bool e = true)
 			{
-				PrintF("this: %p A: %d B: %f", this, a, (double)b);
+				//PrintF("this: %p A: %d B: %f", this, a, (double)b);
 
 				mA = a;
 				mB = b;
 				mC = c;
 				mD = d;
+				mE = e;
 			}
 		}
 
@@ -354,6 +356,7 @@ namespace Tests
 					Test.Assert(attrA.mB == 22);
 					Test.Assert(attrA.mC == "StrA");
 					Test.Assert(attrA.mD == "D");
+					Test.Assert(attrA.mE == true);
 				}
 
 				fieldIdx++;
