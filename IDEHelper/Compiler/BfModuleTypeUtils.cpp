@@ -3739,6 +3739,27 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if (typeInstance == mContext->mBfObjectType)
 		typeInstance->mHasBeenInstantiated = true;
 
+	auto _HandleTypeDeclaration = [&](BfTypeDeclaration* typeDeclaration)
+	{
+		if ((typeDeclaration != NULL) && (typeDeclaration->mNameNode != NULL))
+		{
+			auto typeRefSource = typeDeclaration->mNameNode->GetParserData();
+			if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mSourceClassifier != NULL) && (typeRefSource != NULL) && (typeRefSource == mCompiler->mResolvePassData->mParser->mSourceData))
+			{
+				BfSourceElementType elemType = BfSourceElementType_Type;
+				if (typeInstance->IsInterface())
+					elemType = BfSourceElementType_Interface;
+				else if (typeInstance->IsObject())
+					elemType = BfSourceElementType_RefType;
+				mCompiler->mResolvePassData->mSourceClassifier->SetElementType(typeDeclaration->mNameNode, elemType);
+			}
+		}
+	};
+
+	_HandleTypeDeclaration(typeDef->mTypeDeclaration);
+	for (auto partial : typeDef->mPartials)
+		_HandleTypeDeclaration(partial->mTypeDeclaration);
+
 	if (populateType == BfPopulateType_Data)
 		return;
 

@@ -3946,7 +3946,14 @@ void BfCompiler::ProcessAutocompleteTempType()
 	if ((typeInst->mModule != NULL) && (!typeInst->mModule->mIsScratchModule))
 		mLastAutocompleteModule = typeInst->mModule;
 #endif
-
+			
+	BfSourceElementType elemType = BfSourceElementType_Type;
+	if (typeInst->IsInterface())
+		elemType = BfSourceElementType_Interface;
+	else if (typeInst->IsObject())
+		elemType = BfSourceElementType_RefType;
+	mResolvePassData->mSourceClassifier->SetElementType(tempTypeDef->mTypeDeclaration->mNameNode, elemType);	
+	
 	SetAndRestoreValue<BfTypeInstance*> prevType(module->mCurTypeInstance, typeInst);
 	typeState.mTypeInstance = typeInst;
 	
