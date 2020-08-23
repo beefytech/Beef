@@ -382,6 +382,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mCLinkAttributeTypeDef = NULL;
 	mImportAttributeTypeDef = NULL;
 	mCReprAttributeTypeDef = NULL;
+	mUnderlyingArrayAttributeTypeDef = NULL;
 	mAlignAttributeTypeDef = NULL;
 	mAllowDuplicatesAttributeTypeDef = NULL;
 	mNoDiscardAttributeTypeDef = NULL;
@@ -2691,7 +2692,7 @@ bool BfCompiler::SlowGenerateSlotNums()
 	if (!failed)
 	{
 		bool success = VerifySlotNums();
-		if (!success)
+		if ((!success) && (!isHotCompile))
 		{
 			BF_DBG_FATAL("Failed!");
 		}
@@ -2736,7 +2737,7 @@ void BfCompiler::GenerateSlotNums()
 	}
 
 	if (VerifySlotNums())	
-		return;	
+		return;
 	
 	if (!QuickGenerateSlotNums())
 		SlowGenerateSlotNums();		
@@ -6256,6 +6257,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mCLinkAttributeTypeDef = _GetRequiredType("System.CLinkAttribute");
 	mImportAttributeTypeDef = _GetRequiredType("System.ImportAttribute");
 	mCReprAttributeTypeDef = _GetRequiredType("System.CReprAttribute");
+	mUnderlyingArrayAttributeTypeDef = _GetRequiredType("System.UnderlyingArrayAttribute");
 	mAlignAttributeTypeDef = _GetRequiredType("System.AlignAttribute");
 	mAllowDuplicatesAttributeTypeDef = _GetRequiredType("System.AllowDuplicatesAttribute");
 	mNoDiscardAttributeTypeDef = _GetRequiredType("System.NoDiscardAttribute");

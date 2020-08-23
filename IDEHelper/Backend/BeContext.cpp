@@ -56,6 +56,15 @@ BeType* BeContext::GetPrimitiveType(BeTypeCode typeCode)
 	case BeTypeCode_Double:
 		primType->mSize = primType->mAlign = 8;
 		break;
+	case BeTypeCode_M128:
+		primType->mSize = primType->mAlign = 16;
+		break;
+	case BeTypeCode_M256:
+		primType->mSize = primType->mAlign = 32;
+		break;
+	case BeTypeCode_M512:
+		primType->mSize = primType->mAlign = 64;
+		break;
 	}
 	mPrimitiveTypes[(int)typeCode] = primType;
 	return primType;
@@ -152,6 +161,18 @@ BeSizedArrayType* BeContext::CreateSizedArrayType(BeType* type, int length)
 	return arrayType;
 }
 
+BeVectorType* BeContext::CreateVectorType(BeType* type, int length)
+{
+	auto arrayType = mTypes.Alloc<BeVectorType>();
+	arrayType->mContext = this;
+	arrayType->mTypeCode = BeTypeCode_Vector;
+	arrayType->mElementType = type;
+	arrayType->mLength = length;
+	arrayType->mSize = type->mSize * length;
+	arrayType->mAlign = type->mAlign;
+	return arrayType;
+}
+
 BeFunctionType* BeContext::CreateFunctionType(BeType* returnType, const SizedArrayImpl<BeType*>& paramTypes, bool isVarArg)
 {
 	auto funcType = mTypes.Alloc<BeFunctionType>();
@@ -193,6 +214,14 @@ bool BeContext::AreTypesEqual(BeType* lhs, BeType* rhs)
 		{
 			auto lhsSizedArray = (BeSizedArrayType*)lhs;
 			auto rhsSizedArray = (BeSizedArrayType*)rhs;
+			if (lhsSizedArray->mLength != rhsSizedArray->mLength)
+				return false;
+			return AreTypesEqual(lhsSizedArray->mElementType, rhsSizedArray->mElementType);
+		}	
+	case BeTypeCode_Vector:
+		{
+			auto lhsSizedArray = (BeVectorType*)lhs;
+			auto rhsSizedArray = (BeVectorType*)rhs;
 			if (lhsSizedArray->mLength != rhsSizedArray->mLength)
 				return false;
 			return AreTypesEqual(lhsSizedArray->mElementType, rhsSizedArray->mElementType);

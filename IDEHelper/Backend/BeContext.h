@@ -20,10 +20,14 @@ enum BeTypeCode
 	BeTypeCode_Int64,
 	BeTypeCode_Float,
 	BeTypeCode_Double,
+	BeTypeCode_M128,
+	BeTypeCode_M256,
+	BeTypeCode_M512,
 	BeTypeCode_Struct,
 	BeTypeCode_Function,
 	BeTypeCode_Pointer,
 	BeTypeCode_SizedArray,
+	BeTypeCode_Vector,
 	BeTypeCode_CmpResult, // Psuedo
 
 	BeTypeCode_COUNT
@@ -122,7 +126,22 @@ public:
 		return (mTypeCode == BeTypeCode_SizedArray);
 	}
 
+	bool IsVector()
+	{
+		return (mTypeCode == BeTypeCode_Vector) || (mTypeCode == BeTypeCode_M128) || (mTypeCode == BeTypeCode_M256) || (mTypeCode == BeTypeCode_M512);
+	}
+
+	bool IsExplicitVectorType()
+	{
+		return (mTypeCode == BeTypeCode_Vector);
+	}
+
 	bool IsComposite()
+	{
+		return (mTypeCode == BeTypeCode_Struct) || (mTypeCode == BeTypeCode_SizedArray) || (mTypeCode == BeTypeCode_Vector) || (mTypeCode == BeTypeCode_M128) || (mTypeCode == BeTypeCode_M256) || (mTypeCode == BeTypeCode_M512);
+	}
+
+	bool IsNonVectorComposite()
 	{
 		return (mTypeCode == BeTypeCode_Struct) || (mTypeCode == BeTypeCode_SizedArray);
 	}
@@ -191,6 +210,21 @@ public:
 	}
 };
 
+class BeVectorType : public BeType
+{
+public:
+	BeContext* mContext;
+	BeType* mElementType;
+	int mLength;
+
+	virtual void HashContent(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(BeTypeCode_Vector);
+		hashCtx.Mixin(mLength);
+		mElementType->HashReference(hashCtx);
+	}
+};
+
 class BeFunctionTypeParam
 {
 public:
@@ -239,6 +273,7 @@ public:
 	BePointerType* GetPointerTo(BeType* beType);
 	void SetStructBody(BeStructType* structType, const SizedArrayImpl<BeType*>& types, bool packed);
 	BeSizedArrayType* CreateSizedArrayType(BeType* type, int length);
+	BeVectorType* CreateVectorType(BeType* type, int length);
 	BeFunctionType* CreateFunctionType(BeType* returnType, const SizedArrayImpl<BeType*>& paramTypes, bool isVarArg);
 
 	bool AreTypesEqual(BeType* lhs, BeType* rhs);

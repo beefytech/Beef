@@ -2167,7 +2167,14 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	BfIRType irType;
 	BfIRMDNode diType;
 	bool trackDIType = false;
-		
+	
+	BfTypeInstance* typeInstance = type->ToTypeInstance();	
+	BfType* underlyingArrayType = NULL;
+	int underlyingArraySize = -1;
+	bool underlyingArrayIsVector = false;
+	if (typeInstance != NULL)
+		typeInstance->GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingArrayIsVector);
+
 	if (type->IsPointer())
 	{
 		BfPointerType* pointerType = (BfPointerType*)type;				
@@ -2281,6 +2288,19 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		irType = CreateStructType(name);
 		StructSetBody(irType, members, false);
 	}
+	else if (underlyingArraySize != -1)
+	{
+		if (underlyingArrayIsVector)
+		{
+			if (underlyingArrayType == mModule->GetPrimitiveType(BfTypeCode_Boolean))
+				underlyingArrayType = mModule->GetPrimitiveType(BfTypeCode_UInt8);
+			irType = GetVectorType(MapType(underlyingArrayType), underlyingArraySize);
+		}
+		else
+			irType = GetSizedArrayType(MapType(underlyingArrayType), underlyingArraySize);
+		if (wantDIData)
+			diType = DbgCreateArrayType((int64)type->mSize * 8, type->mAlign * 8, DbgGetType(underlyingArrayType), underlyingArraySize);
+	}
 	else if (type->IsSizedArray())
 	{
 		BfSizedArrayType* arrayType = (BfSizedArrayType*)type;
@@ -2375,8 +2395,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		}
 	}	
 	else if (type->IsTypeInstance())
-	{
-		BfTypeInstance* typeInstance = type->ToTypeInstance();
+	{		
 		auto typeDef = typeInstance->mTypeDef;
 	
 		BfIRMDNode diForwardDecl;
@@ -2524,14 +2543,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 #ifdef BFIR_RENTRY_CHECK
 	ReEntryCheck reEntryCheck(&mDefReentrySet, type);
 #endif
-
-	String typeName = GetDebugTypeName(typeInstance, false);
-
-	bool isGlobalContainer = typeDef->IsGlobalsContainer();
 	
-	bool isDefiningModule = ((type->GetModule() == mModule) || (type->IsFunction()));
-	auto diForwardDecl = DbgGetTypeInst(typeInstance);
-
 	//BF_ASSERT(WantsDbgDefinition(type));
 	
 	llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;
@@ -2539,6 +2551,9 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 	bool isPacked = false;
 	bool isUnion = false;
 	bool isCRepr = false;
+	BfType* underlyingArrayType = NULL;
+	int underlyingArraySize = -1;
+	bool underlyingArrayIsVector = false;
 	
 	if (typeInstance->IsBoxed())
 	{
@@ -2549,7 +2564,17 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		isCRepr = typeInstance->mIsCRepr;
 		isPacked = typeInstance->mIsPacked;
 		isUnion = typeInstance->mIsUnion;
+		typeInstance->GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingArrayIsVector);
+		if (underlyingArrayType != NULL)
+			return; // Done
 	}
+
+	String typeName = GetDebugTypeName(typeInstance, false);
+
+	bool isGlobalContainer = typeDef->IsGlobalsContainer();
+
+	bool isDefiningModule = ((type->GetModule() == mModule) || (type->IsFunction()));
+	auto diForwardDecl = DbgGetTypeInst(typeInstance);
 
 	BfSizedVector<BfFieldInstance*, 8> orderedFields;
 
@@ -3058,6 +3083,13 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 	if (typeInstance == NULL)
 		return;		
 
+	BfType* underlyingArrayType = NULL;
+	int underlyingArraySize = -1;	
+	bool underlyingIsVector = false;
+	typeInstance->GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingIsVector);
+	if (underlyingArraySize > 0)
+		return;
+
 	auto typeDef = typeInstance->mTypeDef;	
 		
 #ifdef BFIR_RENTRY_CHECK
@@ -3529,6 +3561,13 @@ BfIRType BfIRBuilder::GetSizedArrayType(BfIRType elementType, int length)
 		NEW_CMD_INSERTED_IRTYPE;
 		return retType;
 	}
+}
+
+BfIRType BfIRBuilder::GetVectorType(BfIRType elementType, int length)
+{	
+	BfIRType retType = WriteCmd(BfIRCmd_GetVectorType, elementType, length);
+	NEW_CMD_INSERTED_IRTYPE;
+	return retType;	
 }
 
 BfIRValue BfIRBuilder::CreateConstStruct(BfIRType type, const BfSizedArray<BfIRValue>& values)
@@ -4516,9 +4555,9 @@ void BfIRBuilder::AddPhiIncoming(BfIRValue phi, BfIRValue value, BfIRBlock comin
 	NEW_CMD_INSERTED;
 }
 
-BfIRFunction BfIRBuilder::GetIntrinsic(int intrinId, BfIRType returnType, const BfSizedArray<BfIRType>& paramTypes)
+BfIRFunction BfIRBuilder::GetIntrinsic(String intrinName, int intrinId, BfIRType returnType, const BfSizedArray<BfIRType>& paramTypes)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_GetIntrinsic, intrinId, returnType, paramTypes);
+	BfIRValue retVal = WriteCmd(BfIRCmd_GetIntrinsic, intrinName, intrinId, returnType, paramTypes);
 	NEW_CMD_INSERTED;
 	return retVal;
 }

@@ -91,9 +91,9 @@ namespace IDE.ui
 							label.AppendF(" ({0})", platformNames[0]);
 					}
 
-					let (category, propEntry) = mDialog.[Friend]AddPropertiesItem(root, label, "mFilter");
-					mDialog.[Friend]SetupDistinctBuildOptions(propEntry);
-					mDialog.[Friend]AddDistinctBuildOptions(category, -1, true);
+					let (category, propEntry) = mDialog.AddPropertiesItem(root, label, "mFilter");
+					mDialog.SetupDistinctBuildOptions(propEntry);
+					mDialog.AddDistinctBuildOptions(category, -1, true);
 
 					delete typeOptionsEntry;
 				}

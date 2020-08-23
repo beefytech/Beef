@@ -507,6 +507,12 @@ BeType* BeGEPConstant::GetType()
 		BF_ASSERT(arrayType->mTypeCode == BeTypeCode_SizedArray);
 		return arrayType->mContext->GetPointerTo(arrayType->mElementType);
 	}
+	else if (ptrType->mElementType->mTypeCode == BeTypeCode_Vector)
+	{
+		BeVectorType* arrayType = (BeVectorType*)ptrType->mElementType;
+		BF_ASSERT(arrayType->mTypeCode == BeTypeCode_Vector);
+		return arrayType->mContext->GetPointerTo(arrayType->mElementType);
+	}
 	/*else if (ptrType->mElementType->IsPointer())
 	{
 		return ptrType->mElementType;
@@ -526,6 +532,12 @@ BeType* BeExtractValueConstant::GetType()
 	{
 		BeSizedArrayType* arrayType = (BeSizedArrayType*)type;
 		BF_ASSERT(arrayType->mTypeCode == BeTypeCode_SizedArray);
+		return arrayType->mElementType;
+	}
+	else if (type->mTypeCode == BeTypeCode_Vector)
+	{
+		BeVectorType* arrayType = (BeVectorType*)type;
+		BF_ASSERT(arrayType->mTypeCode == BeTypeCode_Vector);
 		return arrayType->mElementType;
 	}
 	/*else if (ptrType->mElementType->IsPointer())
@@ -655,6 +667,11 @@ BeType* BeExtractValueInst::GetType()
 		BeSizedArrayType* arrayType = (BeSizedArrayType*)aggType;
 		return arrayType->mElementType;
 	}
+	if (aggType->mTypeCode == BeTypeCode_Vector)
+	{
+		BeVectorType* arrayType = (BeVectorType*)aggType;
+		return arrayType->mElementType;
+	}
 	BF_ASSERT(aggType->mTypeCode == BeTypeCode_Struct);
 	BeStructType* structType = (BeStructType*)aggType;
 	return structType->mMembers[mIdx].mType;	
@@ -701,6 +718,11 @@ BeType* BeGEPInst::GetType()
 	else if (elementType->IsSizedArray())
 	{
 		BeSizedArrayType* arrayType = (BeSizedArrayType*)ptrType->mElementType;
+		return GetContext()->GetPointerTo(arrayType->mElementType);
+	}
+	else if (elementType->IsVector())
+	{
+		BeVectorType* arrayType = (BeVectorType*)ptrType->mElementType;
 		return GetContext()->GetPointerTo(arrayType->mElementType);
 	}
 	else
@@ -1308,7 +1330,8 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		switch (constant->mType->mTypeCode)
 		{
 		case BeTypeCode_Struct:			
-		case BeTypeCode_SizedArray:			
+		case BeTypeCode_SizedArray:
+		case BeTypeCode_Vector:
 			for (int valIdx = 0; valIdx < (int)constant->mMemberValues.size(); valIdx++)
 			{
 				if (valIdx > 0)
@@ -1412,7 +1435,8 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 				return;
 			}
 		case BeTypeCode_Struct:
-		case BeTypeCode_SizedArray:		
+		case BeTypeCode_SizedArray:
+		case BeTypeCode_Vector:
 			str += "zeroinitializer";		
 			return;
 		case BeTypeCode_Function:
@@ -3031,6 +3055,15 @@ void BeModule::ToString(StringImpl& str, BeType* type)
 			str += "[";
 			str += StrFormat("%d", arrayType->mLength);
 			str += "]";
+			return;
+		}
+	case BeTypeCode_Vector:
+		{
+			auto arrayType = (BeSizedArrayType*)type;
+			ToString(str, arrayType->mElementType);
+			str += "<";
+			str += StrFormat("%d", arrayType->mLength);
+			str += ">";
 			return;
 		}
 	}

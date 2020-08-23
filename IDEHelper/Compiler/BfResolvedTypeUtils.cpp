@@ -658,9 +658,13 @@ bool BfMethodInstance::HasParamsArray()
 }
 
 int BfMethodInstance::GetStructRetIdx()
-{
-	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType()))
+{		
+	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType()) && (!mIsIntrinsic))
 	{
+		auto returnTypeInst = mReturnType->ToTypeInstance();
+		if ((returnTypeInst != NULL) && (returnTypeInst->mHasUnderlyingArray))
+			return -1;
+
 		auto owner = mMethodInstanceGroup->mOwner;
 		if (owner->mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
 			return 0;
@@ -688,7 +692,7 @@ bool BfMethodInstance::HasSelf()
 }
 
 bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeCode* loweredTypeCode2)
-{	
+{		
 	return mReturnType->GetLoweredType(mMethodDef->mIsStatic ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
 }
 
@@ -1005,7 +1009,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
 	}
-	else if (mReturnType->IsComposite())
+	else if (GetStructRetIdx() != -1)
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
@@ -1558,9 +1562,34 @@ BfPrimitiveType* BfTypeInstance::GetDiscriminatorType(int* outDataIdx)
 	return (BfPrimitiveType*)fieldInstance.mResolvedType;
 }
 
+void BfTypeInstance::GetUnderlyingArray(BfType*& type, int& size, bool& isVector)
+{
+	if (mCustomAttributes == NULL)
+		return;
+	auto attributes = mCustomAttributes->Get(mModule->mCompiler->mUnderlyingArrayAttributeTypeDef);
+	if (attributes == NULL)
+		return;
+	if (attributes->mCtorArgs.size() != 3)
+		return;
+
+	auto typeConstant = mConstHolder->GetConstant(attributes->mCtorArgs[0]);	
+	auto sizeConstant = mConstHolder->GetConstant(attributes->mCtorArgs[1]);
+	auto isVectorConstant = mConstHolder->GetConstant(attributes->mCtorArgs[2]);
+	if ((typeConstant == NULL) || (sizeConstant == NULL) || (isVectorConstant == NULL))
+		return;
+	if (typeConstant->mConstType != BfConstType_TypeOf)
+		return;
+
+	type = (BfType*)(intptr)typeConstant->mInt64;
+	size = sizeConstant->mInt32;
+	isVector = isVectorConstant->mBool;
+}
+
 bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCode, BfTypeCode* outTypeCode2)
-{	 	
+{
 	if ((mTypeDef->mTypeCode != BfTypeCode_Struct) || (IsBoxed()) || (mIsSplattable))
+		return false;
+	if (mHasUnderlyingArray)
 		return false;
 
 	if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows)

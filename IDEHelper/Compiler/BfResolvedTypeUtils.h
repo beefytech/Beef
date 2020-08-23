@@ -1744,6 +1744,7 @@ public:
 	bool mIsUnion;	
 	bool mIsPacked;
 	bool mIsSplattable;
+	bool mHasUnderlyingArray;
 	bool mTypeIncomplete;
 	bool mTypeFailed;
 	bool mTypeWarned;
@@ -1770,6 +1771,7 @@ public:
 		mRevision = -1;
 		mIsReified = true;
 		mIsSplattable = false;
+		mHasUnderlyingArray = false;
 		mIsPacked = false;
 		mBaseType = NULL;
 		mCustomAttributes = NULL;
@@ -1879,6 +1881,7 @@ public:
 	int GetIFaceVMethodSize();
 	BfType* GetUnionInnerType(bool* wantSplat = NULL);
 	BfPrimitiveType* GetDiscriminatorType(int* outDataIdx = NULL);		
+	void GetUnderlyingArray(BfType*& type, int& size, bool& isVector);
 	bool HasEquivalentLayout(BfTypeInstance* compareTo);
 	BfIRConstHolder* GetOrCreateConstHolder();
 	BfIRValue CreateConst(BfConstant* fromConst, BfIRConstHolder* fromHolder);	

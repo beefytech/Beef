@@ -19,6 +19,7 @@ enum BfIRCodeGenEntryKind
 class BfIRIntrinsicData
 {
 public:
+	String mName;
 	BfIRIntrinsic mIntrinsic;
 	llvm::Type* mReturnType;
 };
@@ -98,7 +99,9 @@ public:
 	void SetResult(int id, llvm::MDNode* value);	
 	void CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value* size, int alignment, bool isVolatile = false);
 	void AddNop();
+	llvm::Value* TryToVector(llvm::Value* value);
 	bool TryMemCpy(llvm::Value* ptr, llvm::Value* val);	
+	bool TryVectorCpy(llvm::Value* ptr, llvm::Value* val);
 
 public:
 	BfIRCodeGen();
@@ -147,7 +150,7 @@ public:
 	llvm::BasicBlock* GetLLVMBlock(int streamId);
 	llvm::MDNode* GetLLVMMetadata(int streamId);
 
-	llvm::Type* GetLLVMTypeById(int id);
+	llvm::Type* GetLLVMTypeById(int id);	
 
 	///
 

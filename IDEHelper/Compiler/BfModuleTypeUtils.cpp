@@ -1908,7 +1908,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	CheckCircularDataError();
 
 	bool underlyingTypeDeferred = false;
-	BfType* underlyingType = NULL;
+	BfType* underlyingType = NULL;	
 	if (typeInstance->mBaseType != NULL)
 	{		
 		if (typeInstance->IsTypedPrimitive())
@@ -2390,7 +2390,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		BF_ASSERT(typeInstance->mBaseType == baseTypeInst);
 	}
-
 		
 	if (auto genericTypeInst = typeInstance->ToGenericTypeInstance())
 	{
@@ -2595,7 +2594,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	bool isUnion = false;
 	bool isCRepr = false;
 	bool isOrdered = false;
-	ProcessTypeInstCustomAttributes(isPacked, isUnion, isCRepr, isOrdered);
+	BfType* underlyingArrayType = NULL;
+	int underlyingArraySize = -1;
+	ProcessTypeInstCustomAttributes(isPacked, isUnion, isCRepr, isOrdered, underlyingArrayType, underlyingArraySize);
+	if (underlyingArraySize > 0)
+	{
+		typeInstance->mHasUnderlyingArray = true;
+		curFieldDataIdx = 0;		
+	}
 	if (isPacked) // Packed infers ordered
 		isOrdered = true;
 	typeInstance->mIsUnion = isUnion;
@@ -3150,7 +3156,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					{
 						if (isUnion)
 						{
-							fieldInstance->mDataIdx = curFieldDataIdx;							
+							fieldInstance->mDataIdx = curFieldDataIdx;
 						}						
 					}
 				}
@@ -3408,7 +3414,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	///
 
 	// 'Splattable' means that we can be passed via 3 or fewer primitive/pointer values
-	if (typeInstance->IsStruct())
+	if (typeInstance->mHasUnderlyingArray)
+	{
+		// Never splat
+	}
+	else if (typeInstance->IsStruct())
 	{
 		bool hadNonSplattable = false;
 
@@ -3426,7 +3436,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 				if (checkType->IsMethodRef())
 				{
-					// For simplicitly, any methodRef inside a struct makes the struct non-splattable.  This reduces cases of needing to 
+					// For simplicity, any methodRef inside a struct makes the struct non-splattable.  This reduces cases of needing to 
 					//  handle embedded methodRefs
 					hadNonSplattable = true;
 				}

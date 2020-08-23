@@ -309,6 +309,15 @@ namespace System
 
 	}
 
+	[AttributeUsage(.Struct)]
+	public struct UnderlyingArrayAttribute : Attribute
+	{
+		public this(Type t, int size, bool isVector)
+		{
+
+		}
+	}
+
 	[AttributeUsage(.Field | .Method /*2*/)]
 	public struct NoShowAttribute : Attribute
 	{

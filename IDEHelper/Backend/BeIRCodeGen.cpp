@@ -1015,7 +1015,10 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(int, typeId);
 			CMD_PARAM(BeType*, type);						
-			GetTypeEntry(typeId).mBeType = type;
+			auto& typeEntry = GetTypeEntry(typeId);
+			typeEntry.mBeType = type;
+			if (typeEntry.mInstBeType == NULL)
+				typeEntry.mInstBeType = type;
 		}
 		break;
 	case BfIRCmd_SetInstType:
@@ -1098,6 +1101,13 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeType*, elementType);
 			CMD_PARAM(int, length);
 			SetResult(curId, mBeContext->CreateSizedArrayType(elementType, length));
+		}
+		break;	
+	case BfIRCmd_GetVectorType:
+		{
+			CMD_PARAM(BeType*, elementType);
+			CMD_PARAM(int, length);
+			SetResult(curId, mBeContext->CreateVectorType(elementType, length));
 		}
 		break;	
 	case BfIRCmd_CreateConstStruct:
@@ -2050,49 +2060,14 @@ void BeIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_GetIntrinsic:
 		{			
+			CMD_PARAM(String, intrinName);
 			CMD_PARAM(int, intrinId);
 			CMD_PARAM(BeType*, returnType);
 			CMD_PARAM(CmdParamVec<BeType*>, paramTypes);
 
 			auto intrin = mBeModule->mAlloc.Alloc<BeIntrinsic>();
 			intrin->mKind = (BfIRIntrinsic)intrinId;
-
-			switch (intrin->mKind)
-			{			
-			case BfIRIntrinsic_Abs:
-				intrin->mReturnType = paramTypes[0];
-				break;
-			case BfIRIntrinsic_AtomicAdd:
-			case BfIRIntrinsic_AtomicAnd:
-			case BfIRIntrinsic_AtomicCmpXChg:
-			case BfIRIntrinsic_AtomicLoad:
-			case BfIRIntrinsic_AtomicMax:
-			case BfIRIntrinsic_AtomicMin:
-			case BfIRIntrinsic_AtomicNAnd:
-			case BfIRIntrinsic_AtomicOr:			
-			case BfIRIntrinsic_AtomicSub:
-			case BfIRIntrinsic_AtomicUMax:
-			case BfIRIntrinsic_AtomicUMin:
-			case BfIRIntrinsic_AtomicXChg:			
-			case BfIRIntrinsic_AtomicXor:
-				if (!paramTypes.IsEmpty())
-				{
-					BF_ASSERT(paramTypes[0]->IsPointer());
-					if (paramTypes[0]->IsPointer())
-						intrin->mReturnType = ((BePointerType*)paramTypes[0])->mElementType;
-				}
-				else
-					intrin->mReturnType = mBeContext->GetPrimitiveType(BeTypeCode_None);
-				break;
-			case BfIRIntrinsic_AtomicCmpStore:
-			case BfIRIntrinsic_AtomicCmpStore_Weak:			
-				intrin->mReturnType = mBeContext->GetPrimitiveType(BeTypeCode_Boolean);
-				break;			
-			case BfIRIntrinsic_Cast:
-				intrin->mReturnType = returnType;
-				break;
-			}
-
+			intrin->mReturnType = returnType;
 			SetResult(curId, intrin);
 		}
 		break;
@@ -2585,7 +2560,10 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(int, typeId);
 			CMD_PARAM(BeMDNode*, type);
-			GetTypeEntry(typeId).mDIType = (BeDbgType*)type;			
+			auto& typeEntry = GetTypeEntry(typeId);
+			typeEntry.mDIType = (BeDbgType*)type;
+			if (typeEntry.mInstDIType == NULL)
+				typeEntry.mInstDIType = (BeDbgType*)type;
 		}
 		break;
 	case BfIRCmd_DbgSetInstType:

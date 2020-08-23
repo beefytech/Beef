@@ -175,7 +175,8 @@ enum BfIRCmd : uint8
 	BfIRCmd_GetType,
 	BfIRCmd_GetPointerToFuncType,
 	BfIRCmd_GetPointerToType,
-	BfIRCmd_GetSizedArrayType,		
+	BfIRCmd_GetSizedArrayType,
+	BfIRCmd_GetVectorType,
 
 	BfIRCmd_CreateConstStruct,
 	BfIRCmd_CreateConstStructZero,
@@ -274,7 +275,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_CreatePhi,
 	BfIRCmd_AddPhiIncoming,
 
-	BfIRCmd_GetIntrinsic,
+	BfIRCmd_GetIntrinsic,	
 	BfIRCmd_CreateFunctionType,	
 	BfIRCmd_CreateFunction,	
 	BfIRCmd_EnsureFunctionPatchable,
@@ -406,6 +407,8 @@ enum BfIRConfigConst : uint8
 enum BfIRIntrinsic : uint8
 {
 	BfIRIntrinsic_Abs,
+	BfIRIntrinsic_Add,
+	BfIRIntrinsic_And,
 	BfIRIntrinsic_AtomicAdd,
 	BfIRIntrinsic_AtomicAnd,
 	BfIRIntrinsic_AtomicCmpStore,
@@ -425,21 +428,35 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_AtomicXor,
 	BfIRIntrinsic_BSwap,
 	BfIRIntrinsic_Cast,
-	BfIRIntrinsic_Cos,
+	BfIRIntrinsic_Cos,	
+	BfIRIntrinsic_Div,
+	BfIRIntrinsic_Eq,
 	BfIRIntrinsic_Floor,
 	BfIRIntrinsic_Free,	
+	BfIRIntrinsic_Gt,
+	BfIRIntrinsic_GtE,	
 	BfIRIntrinsic_Log,
 	BfIRIntrinsic_Log10,
 	BfIRIntrinsic_Log2,
+	BfIRIntrinsic_Lt,
+	BfIRIntrinsic_LtE,
 	BfIRIntrinsic_Malloc,
 	BfIRIntrinsic_MemCpy,
 	BfIRIntrinsic_MemMove,
 	BfIRIntrinsic_MemSet,
+	BfIRIntrinsic_Mod,
+	BfIRIntrinsic_Mul,
+	BfIRIntrinsic_Not,
+	BfIRIntrinsic_Neq,
+	BfIRIntrinsic_Or,
 	BfIRIntrinsic_Pow,
 	BfIRIntrinsic_PowI,
 	BfIRIntrinsic_Round,
+	BfIRIntrinsic_Shuffle,
 	BfIRIntrinsic_Sin,
 	BfIRIntrinsic_Sqrt,	
+	BfIRIntrinsic_Sub,
+	BfIRIntrinsic_Xor,
 
 	BfIRIntrinsic_COUNT,
 	BfIRIntrinsic_Atomic_FIRST = BfIRIntrinsic_AtomicAdd,
@@ -1094,6 +1111,7 @@ public:
 	BfIRType GetPointerTo(BfIRFunctionType funcType);
 	BfIRType GetPointerTo(BfIRType type);
 	BfIRType GetSizedArrayType(BfIRType elementType, int length);
+	BfIRType GetVectorType(BfIRType elementType, int length);
 
 	BfIRValue CreateConstStruct(BfIRType type, const BfSizedArray<BfIRValue>& values);	
 	BfIRValue CreateConstString(const StringImpl& string);
@@ -1190,7 +1208,7 @@ public:
 	BfIRValue CreatePhi(BfIRType type, int incomingCount);
 	void AddPhiIncoming(BfIRValue phi, BfIRValue value, BfIRBlock comingFrom);
 	
-	BfIRFunction GetIntrinsic(int intrinId, BfIRType returnType, const BfSizedArray<BfIRType>& paramTypes);
+	BfIRFunction GetIntrinsic(String intrinName, int intrinId, BfIRType returnType, const BfSizedArray<BfIRType>& paramTypes);	
 	BfIRFunctionType MapMethod(BfMethodInstance* methodInstance);
 	BfIRFunctionType CreateFunctionType(BfIRType resultType, const BfSizedArray<BfIRType>& paramTypes, bool isVarArg = false);
 	BfIRFunction CreateFunction(BfIRFunctionType funcType, BfIRLinkageType linkageType, const StringImpl& name);	

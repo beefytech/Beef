@@ -293,7 +293,8 @@ enum BfBinOpFlags
 {
 	BfBinOpFlag_None = 0,
 	BfBinOpFlag_NoClassify = 1,
-	BfBinOpFlag_ForceLeftType = 2
+	BfBinOpFlag_ForceLeftType = 2,
+	BfBinOpFlag_IgnoreOperatorWithWrongResult = 4,
 };
 
 class BfExprEvaluator : public BfStructuralVisitor

@@ -3,7 +3,7 @@ namespace System
 	[AlwaysInclude]
 	struct SizedArray<T, CSize> where CSize : const int
 	{
-		T[CSize] mVal;
+		protected T[CSize] mVal;
 
 		public int Count
 		{

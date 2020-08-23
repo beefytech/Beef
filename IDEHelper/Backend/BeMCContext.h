@@ -192,11 +192,13 @@ enum BeMCOperandKind
 	BeMCOperandKind_Immediate_i16,
 	BeMCOperandKind_Immediate_i32,
 	BeMCOperandKind_Immediate_i64,
+	BeMCOperandKind_Immediate_HomeSize,
 	BeMCOperandKind_Immediate_Null,
 	BeMCOperandKind_Immediate_f32,
 	BeMCOperandKind_Immediate_f64,
 	BeMCOperandKind_Immediate_f32_Packed128,
 	BeMCOperandKind_Immediate_f64_Packed128,
+	BeMCOperandKind_Immediate_int32x4,	
 	BeMCOperandKind_ConstAgg,
 	BeMCOperandKind_Block,
 	BeMCOperandKind_Label,
@@ -283,12 +285,12 @@ public:
 
 	bool IsImmediateInt() const
 	{
-		return ((mKind >= BeMCOperandKind_Immediate_i8) && (mKind <= BeMCOperandKind_Immediate_i64));
+		return ((mKind >= BeMCOperandKind_Immediate_i8) && (mKind <= BeMCOperandKind_Immediate_HomeSize));
 	}
 
 	bool IsImmediateFloat() const
 	{
-		return ((mKind >= BeMCOperandKind_Immediate_f32) && (mKind <= BeMCOperandKind_Immediate_f64_Packed128));
+		return ((mKind >= BeMCOperandKind_Immediate_f32) && (mKind <= BeMCOperandKind_Immediate_int32x4));
 	}
 
 	bool IsNativeReg() const
@@ -925,10 +927,12 @@ enum BeMCInstForm
 	BeMCInstForm_FRM64_XMM32,
 	BeMCInstForm_FRM32_XMM64,
 	BeMCInstForm_FRM64_XMM64,
+	BeMCInstForm_FRM128_XMM128,
 	BeMCInstForm_XMM32_RM32,
 	BeMCInstForm_XMM64_RM32,
 	BeMCInstForm_XMM32_RM64,
 	BeMCInstForm_XMM64_RM64,
+	BeMCInstForm_XMM128_RM128,
 	BeMCInstForm_R32_F32,
 	BeMCInstForm_R64_F32,
 	BeMCInstForm_R32_F64,
@@ -1209,6 +1213,9 @@ enum BeMCNativeTypeCode
 	BeMCNativeTypeCode_Int64,
 	BeMCNativeTypeCode_Float,
 	BeMCNativeTypeCode_Double,
+	BeMCNativeTypeCode_M128,
+	BeMCNativeTypeCode_M256,
+	BeMCNativeTypeCode_M512,
 
 	BeMCNativeTypeCode_COUNT
 };
@@ -1347,6 +1354,7 @@ public:
 	void Print();
 	BeMCOperand GetOperand(BeValue* value, bool allowMetaResult = false, bool allowFail = false); // Meta results are PHIs or CmpResults
 	BeMCOperand CreateNot(const BeMCOperand& operand);
+	BeMCOperand TryToVector(BeValue* value);
 	BeType* GetType(const BeMCOperand& operand);
 	bool AreTypesEquivalent(BeType* type0, BeType* type1);
 	void AddRelRefs(BeMCOperand& operand, int refCount);
@@ -1413,10 +1421,12 @@ public:
 	bool IsVolatileReg(X64CPURegister reg);
 	bool IsXMMReg(X64CPURegister reg);
 	X64CPURegister ResizeRegister(X64CPURegister reg, int numBits);
+	X64CPURegister ResizeRegister(X64CPURegister reg, BeType* type);
+	X64CPURegister GetFullRegister(X64CPURegister reg);
 	bool IsAddress(BeMCOperand& operand);
 	bool IsAddressable(BeMCOperand& operand);
 	bool IsVRegExpr(BeMCOperand& operand);
-	void FixOperand(BeMCOperand& operand);
+	void FixOperand(BeMCOperand& operand, int depth = 0);
 	BeMCOperand GetFixedOperand(const BeMCOperand& operand);
 	uint8 GetREX(const BeMCOperand& op0, const BeMCOperand& op1, bool is64Bit);
 	void EmitREX(const BeMCOperand& op0, const BeMCOperand& op1, bool is64Bit);

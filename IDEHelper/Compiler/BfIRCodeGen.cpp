@@ -134,6 +134,8 @@ struct BuiltinEntry
 static const BuiltinEntry gIntrinEntries[] =
 {
 	{"abs"},
+	{"add"},
+	{"and"},
 	{"atomic_add"},
 	{"atomic_and"},
 	{"atomic_cmpstore"},
@@ -153,21 +155,35 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"atomic_xor"},
 	{"bswap"},
 	{"cast"},
-	{"cos"},
+	{"cos"},	
+	{"div"},
+	{"eq"},
 	{"floor"},
 	{"free"},
+	{"gt"},
+	{"gte"},	
 	{"log"},
 	{"log10"},
 	{"log2"},
+	{"lt"},
+	{"lte"},
 	{"malloc"},
 	{"memcpy"},
 	{"memmove"},
 	{"memset"},
+	{"mod"},
+	{"mul"},
+	{"neq"},
+	{"not"},
+	{"or"},
 	{"pow"},
 	{"powi"},
 	{"round"},
+	{"shuffle"},
 	{"sin"},
 	{"sqrt"},
+	{"sub"},
+	{"xor"},
 };
 
 #define CMD_PARAM(ty, name) ty name; Read(name);
@@ -1049,6 +1065,33 @@ void BfIRCodeGen::AddNop()
 	callInst->addAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::NoUnwind);
 }
 
+llvm::Value* BfIRCodeGen::TryToVector(llvm::Value* value)
+{
+	auto valueType = value->getType();
+	if (llvm::isa<llvm::VectorType>(valueType))
+		return value;
+
+	if (auto ptrType = llvm::dyn_cast<llvm::PointerType>(valueType))
+	{
+		auto ptrElemType = ptrType->getElementType();
+		if (auto arrType = llvm::dyn_cast<llvm::ArrayType>(ptrElemType))
+		{
+			auto vecType = llvm::VectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
+			auto vecPtrType = vecType->getPointerTo();
+
+			auto ptrVal0 = mIRBuilder->CreateBitCast(value, vecPtrType);
+			return mIRBuilder->CreateAlignedLoad(ptrVal0, 1);
+		}
+
+		if (auto vecType = llvm::dyn_cast<llvm::VectorType>(ptrElemType))
+		{
+			return mIRBuilder->CreateAlignedLoad(value, 1);
+		}
+	}
+
+	return NULL;
+}
+
 bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
 {
 	auto valType = val->getType();
@@ -1106,6 +1149,31 @@ bool BfIRCodeGen::TryMemCpy(llvm::Value* ptr, llvm::Value* val)
 		mIRBuilder->CreateBitCast(globalVariable, int8PtrTy),
 		1,
 		llvm::ConstantInt::get(int32Ty, arrayBytes));
+
+	return true;
+}
+
+bool BfIRCodeGen::TryVectorCpy(llvm::Value* ptr, llvm::Value* val)
+{
+	if (ptr->getType()->getPointerElementType() == val->getType())
+		return false;
+
+	auto valType = val->getType();
+	auto vecType = llvm::dyn_cast<llvm::VectorType>(valType);
+	if (vecType == NULL)
+		return false;
+
+	for (int i = 0; i < (int)vecType->getVectorNumElements(); i++)
+	{		
+		auto extract = mIRBuilder->CreateExtractElement(val, i);
+
+		llvm::Value* gepArgs[] = {
+			llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), 0),
+			llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), i) };
+		auto gep = mIRBuilder->CreateInBoundsGEP(ptr, llvm::makeArrayRef(gepArgs));
+
+		mIRBuilder->CreateStore(extract, gep);
+	}
 
 	return true;
 }
@@ -1273,7 +1341,10 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(int, typeId);
 			CMD_PARAM(llvm::Type*, type);						
-			GetTypeEntry(typeId).mLLVMType = type;
+			auto& typeEntry = GetTypeEntry(typeId);
+			typeEntry.mLLVMType = type;
+			if (typeEntry.mInstLLVMType == NULL)
+				typeEntry.mInstLLVMType = type;
 		}
 		break;
 	case BfIRCmd_SetInstType:
@@ -1357,6 +1428,13 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Type*, elementType);
 			CMD_PARAM(int, length);
 			SetResult(curId, llvm::ArrayType::get(elementType, length));
+		}
+		break;	
+	case BfIRCmd_GetVectorType:
+		{
+			CMD_PARAM(llvm::Type*, elementType);
+			CMD_PARAM(int, length);
+			SetResult(curId, llvm::VectorType::get(elementType, length));
 		}
 		break;	
 	case BfIRCmd_CreateConstStruct:
@@ -1854,8 +1932,9 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(llvm::Value*, ptr);
 			CMD_PARAM(bool, isVolatile);
-
-			if (!TryMemCpy(ptr, val))
+		
+			if ((!TryMemCpy(ptr, val)) &&
+				(!TryVectorCpy(ptr, val)))
 				SetResult(curId, mIRBuilder->CreateStore(val, ptr, isVolatile));
 		}
 		break;
@@ -1865,7 +1944,8 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, ptr);
 			CMD_PARAM(int, alignment);
 			CMD_PARAM(bool, isVolatile);
-			if (!TryMemCpy(ptr, val))
+			if ((!TryMemCpy(ptr, val)) &&
+				(!TryVectorCpy(ptr, val)))
 				SetResult(curId, mIRBuilder->CreateAlignedStore(val, ptr, alignment, isVolatile));
 		}
 		break;
@@ -2116,29 +2196,11 @@ void BfIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_GetIntrinsic:
 		{
+			CMD_PARAM(String, intrinName);
 			CMD_PARAM(int, intrinId);
 			CMD_PARAM(llvm::Type*, returnType);
 			CMD_PARAM(CmdParamVec<llvm::Type*>, paramTypes);
-			
-			bool isFakeIntrinsic = false;
-			if (((intrinId >= BfIRIntrinsic_Atomic_FIRST) && (intrinId <= BfIRIntrinsic_Atomic_LAST)) ||
-				(intrinId == BfIRIntrinsic_Cast))
-			{
-				isFakeIntrinsic = true;
-			}
-			if (isFakeIntrinsic)
-			{	
-				auto intrinsicData = mAlloc.Alloc<BfIRIntrinsicData>();
-				intrinsicData->mIntrinsic = (BfIRIntrinsic)intrinId;
-				intrinsicData->mReturnType = returnType;
-
-				BfIRCodeGenEntry entry;
-				entry.mKind = BfIRCodeGenEntryKind_IntrinsicData;
-				entry.mIntrinsicData = intrinsicData;
-				mResults.TryAdd(curId, entry);
-				break;
-			}
-			
+								
 			llvm::Function* func = NULL;
 			
 			struct _Intrinsics
@@ -2152,42 +2214,73 @@ void BfIRCodeGen::HandleNextCmd()
 			static _Intrinsics intrinsics[] =
 			{
 				{ llvm::Intrinsic::fabs, 0, -1},
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicAdd,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicAnd,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpStore,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpStore_Weak,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicCmpXChg,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicFence,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicLoad,					
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicMax,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicMin,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicNAnd,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicOr,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicStore,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicSub,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicUMax,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicUMin,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicXChg,
-				{ (llvm::Intrinsic::ID)-1, -1}, // AtomicXor,
+				{ (llvm::Intrinsic::ID)-2, -1}, // add,
+				{ (llvm::Intrinsic::ID)-2, -1}, // and,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicAdd,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicAnd,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicCmpStore,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicCmpStore_Weak,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicCmpXChg,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicFence,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicLoad,					
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicMax,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicMin,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicNAnd,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicOr,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicStore,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicSub,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicUMax,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicUMin,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicXChg,
+				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicXor,
 				{ llvm::Intrinsic::bswap, -1},
-				{ (llvm::Intrinsic::ID)-1, -1}, // cast,
-				{ llvm::Intrinsic::cos, 0, -1},
+				{ (llvm::Intrinsic::ID)-2, -1}, // cast,
+				{ llvm::Intrinsic::cos, 0, -1},							
+				{ (llvm::Intrinsic::ID)-2, -1}, // div
+				{ (llvm::Intrinsic::ID)-2, -1}, // eq
 				{ llvm::Intrinsic::floor, 0, -1},
-				{ (llvm::Intrinsic::ID)-1, -1}, // free					
+				{ (llvm::Intrinsic::ID)-2, -1}, // free					
+				{ (llvm::Intrinsic::ID)-2, -1}, // gt
+				{ (llvm::Intrinsic::ID)-2, -1}, // gte				
 				{ llvm::Intrinsic::log, 0, -1},
 				{ llvm::Intrinsic::log10, 0, -1},
 				{ llvm::Intrinsic::log2, 0, -1},
-				{ (llvm::Intrinsic::ID)-1}, // memset
+				{ (llvm::Intrinsic::ID)-2, -1}, // lt
+				{ (llvm::Intrinsic::ID)-2, -1}, // lte
+				{ (llvm::Intrinsic::ID)-2}, // memset
 				{ llvm::Intrinsic::memcpy, 0, 1, 2},
 				{ llvm::Intrinsic::memmove, 0, 2},
 				{ llvm::Intrinsic::memset, 0, 2},
+				{ (llvm::Intrinsic::ID)-2, -1}, // mod
+				{ (llvm::Intrinsic::ID)-2, -1}, // mul
+				{ (llvm::Intrinsic::ID)-2, -1}, // neq
+				{ (llvm::Intrinsic::ID)-2, -1}, // not
+				{ (llvm::Intrinsic::ID)-2, -1}, // or
 				{ llvm::Intrinsic::pow, 0, -1},
 				{ llvm::Intrinsic::powi, 0, -1},
 				{ llvm::Intrinsic::round, 0, -1},
-				{ llvm::Intrinsic::sin, 0, -1},
-				{ llvm::Intrinsic::sqrt, 0, -1},					
+				{ (llvm::Intrinsic::ID)-2, -1}, // shuffle
+				{ llvm::Intrinsic::sin, 0, -1},				
+				{ llvm::Intrinsic::sqrt, 0, -1},
+				{ (llvm::Intrinsic::ID)-2, -1}, // sub,	
+				{ (llvm::Intrinsic::ID)-2, -1}, // xor
 			};
 			BF_STATIC_ASSERT(BF_ARRAY_COUNT(intrinsics) == BfIRIntrinsic_COUNT);
+
+			bool isFakeIntrinsic = (int)intrinsics[intrinId].mID == -2;			
+			if (isFakeIntrinsic)
+			{
+				auto intrinsicData = mAlloc.Alloc<BfIRIntrinsicData>();
+				intrinsicData->mName = intrinName;
+				intrinsicData->mIntrinsic = (BfIRIntrinsic)intrinId;
+				intrinsicData->mReturnType = returnType;
+
+				BfIRCodeGenEntry entry;
+				entry.mKind = BfIRCodeGenEntryKind_IntrinsicData;
+				entry.mIntrinsicData = intrinsicData;
+				mResults.TryAdd(curId, entry);
+				break;
+			}
 
 			CmdParamVec<llvm::Type*> useParams;
 			if (intrinsics[intrinId].mArg0 != -1)
@@ -2319,6 +2412,236 @@ void BfIRCodeGen::HandleNextCmd()
 
 				switch (intrinsicData->mIntrinsic)
 				{
+				case BfIRIntrinsic_Add:
+				case BfIRIntrinsic_And:
+				case BfIRIntrinsic_Div:
+				case BfIRIntrinsic_Eq:
+				case BfIRIntrinsic_Gt:
+				case BfIRIntrinsic_GtE:				
+				case BfIRIntrinsic_Lt:
+				case BfIRIntrinsic_LtE:
+				case BfIRIntrinsic_Mod:
+				case BfIRIntrinsic_Mul:				
+				case BfIRIntrinsic_Neq:
+				case BfIRIntrinsic_Or:
+				case BfIRIntrinsic_Sub:
+				case BfIRIntrinsic_Xor:
+					{
+						auto val0 = TryToVector(args[0]);
+						if (val0 != NULL)
+						{							
+							auto vecType = val0->getType();
+							auto elemType = vecType->getVectorElementType();
+							bool isFP = elemType->isFloatTy();
+							
+							llvm::Value* val1;
+							if (args.size() < 2)
+							{									
+								llvm::Value* val;
+								if (isFP)
+									val = llvm::ConstantFP::get(elemType, 1);
+								else
+									val = llvm::ConstantInt::get(elemType, 1);
+								val1 = mIRBuilder->CreateInsertElement(llvm::UndefValue::get(vecType), val, (uint64)0);
+								val1 = mIRBuilder->CreateInsertElement(val1, val, (uint64)1);
+								val1 = mIRBuilder->CreateInsertElement(val1, val, (uint64)2);
+								val1 = mIRBuilder->CreateInsertElement(val1, val, (uint64)3);
+							}
+							else if (args[1]->getType()->isPointerTy())
+							{
+								auto ptrVal1 = mIRBuilder->CreateBitCast(args[1], vecType->getPointerTo());
+								val1 = mIRBuilder->CreateAlignedLoad(ptrVal1, 1);									
+							}								
+							else
+							{
+								val1 = mIRBuilder->CreateInsertElement(llvm::UndefValue::get(vecType), args[1], (uint64)0);
+								val1 = mIRBuilder->CreateInsertElement(val1, args[1], (uint64)1);
+								val1 = mIRBuilder->CreateInsertElement(val1, args[1], (uint64)2);
+								val1 = mIRBuilder->CreateInsertElement(val1, args[1], (uint64)3);
+							}
+
+							if (isFP)
+							{
+								llvm::Value* result = NULL;
+								switch (intrinsicData->mIntrinsic)
+								{
+								case BfIRIntrinsic_Add:
+									result = mIRBuilder->CreateFAdd(val0, val1);
+									break;
+								case BfIRIntrinsic_Div:
+									result = mIRBuilder->CreateFDiv(val0, val1);
+									break;
+								case BfIRIntrinsic_Eq:
+									result = mIRBuilder->CreateFCmpOEQ(val0, val1);
+									break;
+								case BfIRIntrinsic_Gt:
+									result = mIRBuilder->CreateFCmpOGT(val0, val1);
+									break;
+								case BfIRIntrinsic_GtE:
+									result = mIRBuilder->CreateFCmpOGE(val0, val1);
+									break;
+								case BfIRIntrinsic_Lt:
+									result = mIRBuilder->CreateFCmpOLT(val0, val1);
+									break;
+								case BfIRIntrinsic_LtE:
+									result = mIRBuilder->CreateFCmpOLE(val0, val1);
+									break;
+								case BfIRIntrinsic_Mod:
+									result = mIRBuilder->CreateFRem(val0, val1);
+									break;
+								case BfIRIntrinsic_Mul:
+									result = mIRBuilder->CreateFMul(val0, val1);
+									break;
+								case BfIRIntrinsic_Neq:
+									result = mIRBuilder->CreateFCmpONE(val0, val1);
+									break;
+								case BfIRIntrinsic_Sub:
+									result = mIRBuilder->CreateFSub(val0, val1);
+									break;
+								default:
+									FatalError("Intrinsic argument error");
+								}
+
+								if (result != NULL)
+								{
+									if (auto vecType = llvm::dyn_cast<llvm::VectorType>(result->getType()))
+									{
+										if (auto intType = llvm::dyn_cast<llvm::IntegerType>(vecType->getVectorElementType()))
+										{
+											if (intType->getBitWidth() == 1)
+											{
+												auto toType = llvm::VectorType::get(llvm::IntegerType::get(*mLLVMContext, 8), vecType->getVectorNumElements());
+												result = mIRBuilder->CreateZExt(result, toType);
+											}
+										}
+									}
+
+									SetResult(curId, result);
+								}
+							}							
+							else
+							{
+								llvm::Value* result = NULL;
+								switch (intrinsicData->mIntrinsic)
+								{
+								case BfIRIntrinsic_And:
+									result = mIRBuilder->CreateAnd(val0, val1);
+									break;
+								case BfIRIntrinsic_Add:
+									result = mIRBuilder->CreateAdd(val0, val1);
+									break;
+								case BfIRIntrinsic_Div:
+									result = mIRBuilder->CreateSDiv(val0, val1);
+									break;
+								case BfIRIntrinsic_Eq:
+									result = mIRBuilder->CreateICmpEQ(val0, val1);
+									break;
+								case BfIRIntrinsic_Gt:
+									result = mIRBuilder->CreateICmpSGT(val0, val1);
+									break;
+								case BfIRIntrinsic_GtE:
+									result = mIRBuilder->CreateICmpSGE(val0, val1);
+									break;
+								case BfIRIntrinsic_Lt:
+									result = mIRBuilder->CreateICmpSLT(val0, val1);
+									break;
+								case BfIRIntrinsic_LtE:
+									result = mIRBuilder->CreateICmpSLE(val0, val1);
+									break;
+								case BfIRIntrinsic_Mod:
+									result = mIRBuilder->CreateSRem(val0, val1);
+									break;
+								case BfIRIntrinsic_Mul:
+									result = mIRBuilder->CreateMul(val0, val1);
+									break;
+								case BfIRIntrinsic_Neq:
+									result = mIRBuilder->CreateICmpNE(val0, val1);
+									break;
+								case BfIRIntrinsic_Or:
+									result = mIRBuilder->CreateOr(val0, val1);
+									break;
+								case BfIRIntrinsic_Sub:
+									result = mIRBuilder->CreateSub(val0, val1);
+									break;
+								case BfIRIntrinsic_Xor:
+									result = mIRBuilder->CreateXor(val0, val1);
+									break;
+								default:
+									FatalError("Intrinsic argument error");
+								}
+
+								if (result != NULL)
+								{
+									if (auto vecType = llvm::dyn_cast<llvm::VectorType>(result->getType()))
+									{
+										if (auto intType = llvm::dyn_cast<llvm::IntegerType>(vecType->getVectorElementType()))
+										{
+											if (intType->getBitWidth() == 1)
+											{
+												auto toType = llvm::VectorType::get(llvm::IntegerType::get(*mLLVMContext, 8), vecType->getVectorNumElements());
+												result = mIRBuilder->CreateZExt(result, toType);
+											}
+										}
+									}
+
+									SetResult(curId, result);
+								}
+							}
+						}
+						else if (auto ptrType = llvm::dyn_cast<llvm::PointerType>(args[1]->getType()))
+						{
+							auto ptrElemType = ptrType->getElementType();
+							if (auto arrType = llvm::dyn_cast<llvm::ArrayType>(ptrElemType))
+							{
+								auto vecType = llvm::VectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
+								auto vecPtrType = vecType->getPointerTo();
+								
+								llvm::Value* val0;								
+								val0 = mIRBuilder->CreateInsertElement(llvm::UndefValue::get(vecType), args[0], (uint64)0);
+								val0 = mIRBuilder->CreateInsertElement(val0, args[0], (uint64)1);
+								val0 = mIRBuilder->CreateInsertElement(val0, args[0], (uint64)2);
+								val0 = mIRBuilder->CreateInsertElement(val0, args[0], (uint64)3);								
+
+								auto ptrVal1 = mIRBuilder->CreateBitCast(args[1], vecPtrType);
+								auto val1 = mIRBuilder->CreateAlignedLoad(ptrVal1, 1);
+
+								switch (intrinsicData->mIntrinsic)
+								{								
+								case BfIRIntrinsic_Div:
+									SetResult(curId, mIRBuilder->CreateFDiv(val0, val1));
+									break;								
+								case BfIRIntrinsic_Mod:
+									SetResult(curId, mIRBuilder->CreateFRem(val0, val1));
+									break;
+								default:
+									FatalError("Intrinsic argument error");
+								}
+							}
+						}
+						else
+						{
+							FatalError("Intrinsic argument error");
+						}
+					}
+					break;
+				case BfIRIntrinsic_Shuffle:					
+					{
+						llvm::SmallVector<uint, 8> intMask;
+						for (int i = 7; i < (int)intrinsicData->mName.length(); i++)
+							intMask.push_back((uint)(intrinsicData->mName[i] - '0'));
+
+						auto val0 = TryToVector(args[0]);
+
+						if (val0 != NULL)
+						{															
+							SetResult(curId, mIRBuilder->CreateShuffleVector(val0, val0, intMask));							
+						}
+						else
+						{
+							FatalError("Intrinsic argument error");
+						}
+					}
+					break;
 				case BfIRIntrinsic_AtomicCmpStore:
 				case BfIRIntrinsic_AtomicCmpStore_Weak:
 				case BfIRIntrinsic_AtomicCmpXChg:
@@ -2326,7 +2649,7 @@ void BfIRCodeGen::HandleNextCmd()
 						auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[3]);
 						if (memoryKindConst == NULL)
 						{
-							Fail("Non-constant success ordering on Atomic_CmpXChg");
+							FatalError("Non-constant success ordering on Atomic_CmpXChg");
 							break;
 						}
 						auto memoryKind = (BfIRAtomicOrdering)memoryKindConst->getSExtValue();
@@ -2365,7 +2688,7 @@ void BfIRCodeGen::HandleNextCmd()
 							auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[4]);
 							if (memoryKindConst == NULL)
 							{
-								Fail("Non-constant fail ordering on Atomic_CmpXChg");
+								FatalError("Non-constant fail ordering on Atomic_CmpXChg");
 								break;
 							}
 							auto memoryKind = (BfIRAtomicOrdering)memoryKindConst->getSExtValue();
@@ -2381,7 +2704,7 @@ void BfIRCodeGen::HandleNextCmd()
 								failOrdering = llvm::AtomicOrdering::SequentiallyConsistent;
 								break;
 							default:
-								Fail("Invalid fail ordering on Atomic_CmpXChg");
+								FatalError("Invalid fail ordering on Atomic_CmpXChg");
 								break;
 							}
 						}
@@ -2427,7 +2750,7 @@ void BfIRCodeGen::HandleNextCmd()
 						auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[0]);
 						if (memoryKindConst == NULL)
 						{
-							Fail("Non-constant success ordering on AtomicFence");
+							FatalError("Non-constant success ordering on AtomicFence");
 							break;
 						}
 
@@ -2460,7 +2783,7 @@ void BfIRCodeGen::HandleNextCmd()
 						auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[1]);
 						if (memoryKindConst == NULL)
 						{
-							Fail("Non-constant success ordering on AtomicLoad");
+							FatalError("Non-constant success ordering on AtomicLoad");
 							break;
 						}						
 						auto memoryKind = (BfIRAtomicOrdering)memoryKindConst->getSExtValue();
@@ -2490,7 +2813,7 @@ void BfIRCodeGen::HandleNextCmd()
 						auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[1]);
 						if (memoryKindConst == NULL)
 						{
-							Fail("Non-constant success ordering on AtomicLoad");
+							FatalError("Non-constant success ordering on AtomicLoad");
 							break;
 						}
 						auto memoryKind = (BfIRAtomicOrdering)memoryKindConst->getSExtValue();
@@ -2569,7 +2892,7 @@ void BfIRCodeGen::HandleNextCmd()
 						auto memoryKindConst = llvm::dyn_cast<llvm::ConstantInt>(args[2]);
 						if (memoryKindConst == NULL)
 						{
-							Fail("Non-constant ordering on atomic operation");
+							FatalError("Non-constant ordering on atomic operation");
 							break;
 						}
 
@@ -2676,7 +2999,7 @@ void BfIRCodeGen::HandleNextCmd()
 					}
 					break;
 				default:
-					Fail("Unhandled intrinsic");
+					FatalError("Unhandled intrinsic");
 				}
 				break;
 			}
@@ -3115,7 +3438,10 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(int, typeId);
 			CMD_PARAM(llvm::MDNode*, type);
-			GetTypeEntry(typeId).mDIType = (llvm::DIType*)type;
+			auto& typeEntry = GetTypeEntry(typeId);
+			typeEntry.mDIType = (llvm::DIType*)type;
+			if (typeEntry.mInstDIType == NULL)
+				typeEntry.mInstDIType = (llvm::DIType*)type;
 		}
 		break;
 	case BfIRCmd_DbgSetInstType:
@@ -4537,17 +4863,16 @@ bool BfIRCodeGen::WriteIR(const StringImpl& outFileName, StringImpl& error)
 }
 
 int BfIRCodeGen::GetIntrinsicId(const StringImpl& name)
-{
-// 	llvm::Intrinsic::ID intrin = llvm::Intrinsic::getIntrinsicForGCCBuiltin("x86", name.c_str());
-// 	if (intrin != llvm::Intrinsic::not_intrinsic)
-// 		return (int)intrin;
-	
+{	
 	auto itr = std::lower_bound(std::begin(gIntrinEntries), std::end(gIntrinEntries), name);
 	if (itr != std::end(gIntrinEntries) && strcmp(itr->mName, name.c_str()) == 0)
 	{
 		int id = (int)(itr - gIntrinEntries);
 		return id;
-	}
+	}	
+
+	if (name.StartsWith("shuffle"))
+		return BfIRIntrinsic_Shuffle;
 
 	return -1;
 }

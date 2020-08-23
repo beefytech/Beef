@@ -214,7 +214,7 @@ namespace IDE
 			Add("Match Brace", new => gApp.Cmd_MatchBrace);
 			Add("Navigate Backwards", new => gApp.[Friend]NavigateBackwards);
 			Add("Navigate Forwards", new => gApp.[Friend]NavigateForwards);
-			Add("New Debug Session", new => gApp.[Friend]Cmd_NewDebugSession);
+			Add("New Debug Session", new => gApp.Cmd_NewDebugSession);
 			Add("New File", new => gApp.Cmd_NewFile);
 			Add("New Project", new => gApp.Cmd_NewProject);
 			Add("New Workspace", new => gApp.Cmd_NewWorkspace);
@@ -257,8 +257,8 @@ namespace IDE
 			Add("Show Class View", new => gApp.ShowClassViewPanel);
 			Add("Show Current", new => gApp.Cmd_ShowCurrent);
 			Add("Show Diagnostics", new => gApp.ShowDiagnostics);
-			Add("Show Disassembly", new => gApp.[Friend]ShowDisassemblyAtStack);
-			Add("Show Errors", new => gApp.[Friend]ShowErrors);
+			Add("Show Disassembly", new => gApp.ShowDisassemblyAtStack);
+			Add("Show Errors", new => gApp.ShowErrors);
 			Add("Show Error Next", new => gApp.ShowErrorNext);
 			Add("Show File Externally", new => gApp.Cmd_ShowFileExternally);
 			Add("Show Find Results", new => gApp.ShowFindResults);
@@ -272,7 +272,7 @@ namespace IDE
 			Add("Show Threads", new => gApp.ShowThreads);
 			Add("Show Watches", new => gApp.ShowWatches);
 			Add("Show Workspace Explorer", new => gApp.ShowWorkspacePanel);
-			Add("Start Debugging", new => gApp.[Friend]RunWithCompiling);
+			Add("Start Debugging", new => gApp.RunWithCompiling);
 			Add("Start Without Debugging", new => gApp.[Friend]RunWithoutDebugging);
 			Add("Start Without Compiling", new => gApp.[Friend]RunWithoutCompiling);
 			Add("Step Into", new => gApp.[Friend]StepInto);

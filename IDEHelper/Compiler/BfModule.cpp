@@ -1229,12 +1229,25 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 				}
 				else
 				{
+					auto _HandleMethod = [&](BfMethodInstance* methodInstance)
+					{
+						if ((methodInstance != NULL) && (methodInstance->mDeclModule != NULL))
+							methodInstance->mDeclModule = this;
+					};
+
 					for (auto& methodGroup : typeInst->mMethodInstanceGroups)
+					{
 						if ((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) ||
 							(methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference))
 						{
 							oldOnDemandCount++;
 						}
+
+						_HandleMethod(methodGroup.mDefault);
+						if (methodGroup.mMethodSpecializationMap != NULL)
+							for (auto& kv : *methodGroup.mMethodSpecializationMap)
+								_HandleMethod(kv.mValue);
+					}
 				}
 				if (typeInst->IsDeleting())
 					typeIdx--;
@@ -4068,8 +4081,14 @@ void BfModule::EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRB
 {
 	BfExprEvaluator exprEvaluator(this);
 	exprEvaluator.mExpectingType = mCurMethodInstance->mReturnType;
-	exprEvaluator.PerformBinaryOperation((BfAstNode*)NULL, (BfAstNode*)NULL, strictEquals ? BfBinaryOp_StrictEquality : BfBinaryOp_Equality, NULL, BfBinOpFlag_None, leftValue, rightValue);
+
+	auto typeInst = rightValue.mType->ToTypeInstance();		
+	exprEvaluator.PerformBinaryOperation((BfAstNode*)NULL, (BfAstNode*)NULL, strictEquals ? BfBinaryOp_StrictEquality : BfBinaryOp_Equality, NULL, BfBinOpFlag_IgnoreOperatorWithWrongResult, leftValue, rightValue);
 	BfTypedValue result = exprEvaluator.GetResult();
+	if (result.mType != GetPrimitiveType(BfTypeCode_Boolean))
+	{
+		// Fail?
+	}
 	if ((result) && (!result.mType->IsVar()))
 	{
 		auto nextBB = mBfIRBuilder->CreateBlock("next");
@@ -6520,9 +6539,8 @@ BfIRFunction BfModule::GetIntrinsic(BfMethodInstance* methodInstance, bool repor
 	auto methodOwner = methodInstance->GetOwner();
 	auto methodDef = methodInstance->mMethodDef;
 	auto methodDeclaration = methodDef->GetMethodDeclaration();
-
-	bool hasExternSpecifier = (methodDeclaration != NULL) && (methodDeclaration->mExternSpecifier != NULL);
-	if (!hasExternSpecifier)
+	
+	if (!methodDef->mIsExtern)
 		return BfIRFunction();
 	
 	if (methodInstance->GetCustomAttributes() == NULL)
@@ -6542,33 +6560,44 @@ BfIRFunction BfModule::GetIntrinsic(BfMethodInstance* methodInstance, bool repor
 			{
 				int stringId = constant->mInt32;
 				auto entry = mContext->mStringObjectIdMap[stringId];
-				int intrinId = BfIRCodeGen::GetIntrinsicId(entry.mString);				
-				if (intrinId != -1)
+				String intrinName = entry.mString;
+				
+// 				if (intrinName.StartsWith(":"))
+// 				{
+// 					SizedArray<BfIRType, 2> paramTypes;
+// 					for (auto& param : methodInstance->mParams)
+// 						paramTypes.push_back(mBfIRBuilder->MapType(param.mResolvedType));
+// 					return mBfIRBuilder->GetIntrinsic(intrinName.Substring(1), mBfIRBuilder->MapType(methodInstance->mReturnType), paramTypes);
+// 				}
+// 				else
 				{
-					if (intrinId == BfIRIntrinsic_Malloc)
+					int intrinId = BfIRCodeGen::GetIntrinsicId(intrinName);
+					if (intrinId != -1)
 					{
-						return GetBuiltInFunc(BfBuiltInFuncType_Malloc);
-					}
-					else if (intrinId == BfIRIntrinsic_Free)
-					{
-						return GetBuiltInFunc(BfBuiltInFuncType_Free);
-					}
+						if (intrinId == BfIRIntrinsic_Malloc)
+						{
+							return GetBuiltInFunc(BfBuiltInFuncType_Malloc);
+						}
+						else if (intrinId == BfIRIntrinsic_Free)
+						{
+							return GetBuiltInFunc(BfBuiltInFuncType_Free);
+						}
 
-					SizedArray<BfIRType, 2> paramTypes;
-					for (auto& param : methodInstance->mParams)
-						paramTypes.push_back(mBfIRBuilder->MapType(param.mResolvedType));
-					return mBfIRBuilder->GetIntrinsic(intrinId, mBfIRBuilder->MapType(methodInstance->mReturnType), paramTypes);
+						SizedArray<BfIRType, 2> paramTypes;
+						for (auto& param : methodInstance->mParams)
+							paramTypes.push_back(mBfIRBuilder->MapType(param.mResolvedType));
+						return mBfIRBuilder->GetIntrinsic(intrinName, intrinId, mBfIRBuilder->MapType(methodInstance->mReturnType), paramTypes);
+					}
+					else if (reportFailure)
+						error = StrFormat("Unable to find intrinsic '%s'", entry.mString.c_str());
 				}
-				else if (reportFailure)
-					error = StrFormat("Unable to find intrinsic '%s'", entry.mString.c_str());
 			}
 			else if (reportFailure)
 				error = "Intrinsic name must be a constant string";
 
 			if (reportFailure)
-			{
-				BfAstNode* ref = methodDeclaration->mAttributes;
-				Fail(error, ref);
+			{				
+				Fail(error, customAttribute.mRef);
 			}			
 		}	
 	}
@@ -9415,20 +9444,9 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 			return func;
 	}
 
-	if (auto methodDeclaration = methodDef->GetMethodDeclaration())
-	{
-		if (methodDeclaration->mExternSpecifier != NULL)
-		{	
-			auto intrinsic = GetIntrinsic(methodInstance);
-			if (intrinsic)
-				return intrinsic;
-
-			// If we have multiple entries with the same name, they could have different arguments and will generate other errors...
-			/*auto func = mBfIRBuilder->GetFunction(methodName);
-			if (func)
-				return func;*/			
-		}
-	}
+	auto intrinsic = GetIntrinsic(methodInstance);
+	if (intrinsic)
+		return intrinsic;
 	
 	if (methodInstance->GetImportCallKind() != BfImportCallKind_None)
 	{
@@ -10550,7 +10568,7 @@ void BfModule::FinishAttributeState(BfAttributeState* attributeState)
 		Warn(0, "Unused attributes", attributeState->mSrc);
 }
 
-void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered)
+void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered, BfType*& underlyingArrayType, int& underlyingArraySize)
 {
 	if (mCurTypeInstance->mCustomAttributes != NULL)
 	{
@@ -10590,6 +10608,19 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 						auto constant = mCurTypeInstance->mConstHolder->GetConstant(setProp.mParam.mValue);
 						if ((constant != NULL) && (constant->mBool))
 							mCurTypeInstance->mIncludeAllMethods = true;
+					}
+				}
+			}
+			else if (typeName == "System.UnderlyingArrayAttribute")
+			{
+				if (customAttribute.mCtorArgs.size() >= 2)
+				{
+					auto typeConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
+					auto sizeConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[1]);
+					if ((typeConstant != NULL) && (sizeConstant != NULL) && (typeConstant->mConstType == BfConstType_TypeOf))
+					{
+						underlyingArrayType = (BfType*)(intptr)typeConstant->mInt64;
+						underlyingArraySize = sizeConstant->mInt32;
 					}
 				}
 			}
@@ -13569,19 +13600,23 @@ void BfModule::CreateReturn(BfIRValue val)
 		BF_ASSERT(val);
 		mBfIRBuilder->CreateStore(val, mBfIRBuilder->GetArgument(mCurMethodInstance->GetStructRetIdx()));
 		mBfIRBuilder->CreateRetVoid();
+		return;
 	}
-	else
+		
+	if (mCurMethodInstance->mReturnType->IsValuelessType())
 	{
-		if (mCurMethodInstance->mReturnType->IsValuelessType())
-		{
-			mBfIRBuilder->CreateRetVoid();
-		}
-		else if (mCurMethodInstance->mReturnType->IsStruct())
-		{
-			BfTypeCode loweredReturnType = BfTypeCode_None;
-			BfTypeCode loweredReturnType2 = BfTypeCode_None;
-			mCurMethodInstance->GetLoweredReturnType(&loweredReturnType, &loweredReturnType2);
+		mBfIRBuilder->CreateRetVoid();
+		return;
+	}
+		
+	if (mCurMethodInstance->mReturnType->IsStruct())
+	{
+		BfTypeCode loweredReturnType = BfTypeCode_None;
+		BfTypeCode loweredReturnType2 = BfTypeCode_None;
+		mCurMethodInstance->GetLoweredReturnType(&loweredReturnType, &loweredReturnType2);
 
+		if (loweredReturnType != BfTypeCode_None)
+		{
 			auto retVal = CreateAlloca(mCurMethodInstance->mReturnType);
 			mBfIRBuilder->CreateStore(val, retVal);
 
@@ -13590,13 +13625,12 @@ void BfModule::CreateReturn(BfIRValue val)
 			auto ptrReturnValue = mBfIRBuilder->CreateBitCast(retVal, irRetType);
 			auto loadedReturnValue = mBfIRBuilder->CreateLoad(ptrReturnValue);
 			mBfIRBuilder->CreateRet(loadedReturnValue);
-		}
-		else
-		{
-			BF_ASSERT(val);
-			mBfIRBuilder->CreateRet(val);
-		}
+			return;
+		}			
 	}
+		
+	BF_ASSERT(val);
+	mBfIRBuilder->CreateRet(val);			
 }
 
 void BfModule::EmitReturn(BfIRValue val)

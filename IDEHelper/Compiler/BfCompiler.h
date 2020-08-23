@@ -385,6 +385,7 @@ public:
 	BfTypeDef* mCLinkAttributeTypeDef;
 	BfTypeDef* mImportAttributeTypeDef;
 	BfTypeDef* mCReprAttributeTypeDef;
+	BfTypeDef* mUnderlyingArrayAttributeTypeDef;
 	BfTypeDef* mAlignAttributeTypeDef;
 	BfTypeDef* mAllowDuplicatesAttributeTypeDef;
 	BfTypeDef* mNoDiscardAttributeTypeDef;

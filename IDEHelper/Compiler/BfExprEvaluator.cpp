@@ -4864,13 +4864,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	else
 	{
 		callInst = mModule->mBfIRBuilder->CreateCall(funcCallInst, irArgs);
-		if (hasResult)
+		if ((hasResult) && (!methodDef->mName.IsEmpty()) && (!methodInstance->mIsIntrinsic))
 			mModule->mBfIRBuilder->SetName(callInst, methodDef->mName);
 	}
-	if (expectCallingConvention != BfIRCallingConv_CDecl)
+	if ((expectCallingConvention != BfIRCallingConv_CDecl) && (!methodInstance->mIsIntrinsic))
 		mModule->mBfIRBuilder->SetCallCallingConv(callInst, expectCallingConvention);
 	
-	if (methodDef->mNoReturn)
+	if ((methodDef->mNoReturn) && (!methodInstance->mIsIntrinsic))
 		mModule->mBfIRBuilder->Call_AddAttribute(callInst, -1, BfIRAttribute_NoReturn);
 
 	bool hadAttrs = false;	
@@ -4881,7 +4881,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	int paramCount = methodInstance->GetParamCount();
 
 	for ( ; argIdx < callIRArgCount ; )
-	{	
+	{
+		if (methodInstance->mIsIntrinsic)
+			break;
+
 		if (argIdx == methodInstance->GetStructRetIdx())
 		{
 			mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_StructRet);
@@ -5087,7 +5090,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 
 BfTypedValue BfExprEvaluator::CreateCall(BfMethodMatcher* methodMatcher, BfTypedValue target)
 {
-	auto moduleMethodInstance = GetSelectedMethod(methodMatcher->mTargetSrc, methodMatcher->mBestMethodTypeInstance, methodMatcher->mBestMethodDef, *methodMatcher);
+	auto& moduleMethodInstance = methodMatcher->mBestMethodInstance;
+	if (!moduleMethodInstance)
+		moduleMethodInstance = GetSelectedMethod(methodMatcher->mTargetSrc, methodMatcher->mBestMethodTypeInstance, methodMatcher->mBestMethodDef, *methodMatcher);
 	if (moduleMethodInstance.mMethodInstance == NULL)
 		return BfTypedValue();
 	if ((target) && (target.mType != moduleMethodInstance.mMethodInstance->GetOwner()))
@@ -5095,7 +5100,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodMatcher* methodMatcher, BfTyped
 		auto castedTarget = mModule->Cast(methodMatcher->mTargetSrc, target, moduleMethodInstance.mMethodInstance->GetOwner());
 		BF_ASSERT(castedTarget);
 		target = castedTarget;
-	}
+	}	
 	return CreateCall(methodMatcher->mTargetSrc, target, BfTypedValue(), methodMatcher->mBestMethodDef, moduleMethodInstance, false, methodMatcher->mArguments);
 }
 
@@ -17673,16 +17678,32 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 
 	SizedArray<BfExpression*, 2> argSrcs;
 	argSrcs.push_back(unaryOpExpr);
-	auto result = CreateCall(&methodMatcher, BfTypedValue());
+
+	BfTypedValue postOpVal;
+	if (isPostOp)	
+		postOpVal = mModule->LoadValue(args[0].mTypedValue);	
+
+	auto result = CreateCall(&methodMatcher, BfTypedValue());	
 
 	if ((result.mType != NULL) && (methodMatcher.mSelfType != NULL) && (result.mType->IsSelf()))
 	{
 		BF_ASSERT(mModule->IsInGeneric());
 		result = mModule->GetDefaultTypedValue(methodMatcher.mSelfType);
 	}
-
-	if (isPostOp)
-		result = args[0].mTypedValue;
+	
+	if ((methodMatcher.mBestMethodInstance) && (methodMatcher.mBestMethodInstance.mMethodInstance->mIsIntrinsic) &&
+		((findOp == BfUnaryOp_Increment) || (findOp == BfUnaryOp_Decrement)))
+	{
+		if (args[0].mTypedValue.IsAddr())
+			mModule->mBfIRBuilder->CreateStore(result.mValue, args[0].mTypedValue.mValue);
+		else
+		{
+			mModule->AssertErrorState();
+		}
+	}
+	
+	if (postOpVal)
+		result = postOpVal;
 	return result;
 }
 
@@ -18954,7 +18975,27 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						}
 					}
 				}
-				if (methodMatcher.mBestMethodDef != NULL)
+				
+				bool hadMatch = methodMatcher.mBestMethodDef != NULL;
+
+				if ((methodMatcher.mBestMethodDef != NULL) && ((flags & BfBinOpFlag_IgnoreOperatorWithWrongResult) != 0))
+				{
+					auto matchedOp = ((BfOperatorDeclaration*)methodMatcher.mBestMethodDef->mMethodDeclaration)->mBinOp;
+					methodMatcher.mBestMethodInstance = GetSelectedMethod(methodMatcher.mTargetSrc, methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher);
+					if ((methodMatcher.mBestMethodInstance.mMethodInstance->mReturnType != mExpectingType) &&
+						((matchedOp == binaryOp) || (matchedOp == oppositeBinaryOp)))
+					{
+						if (binaryOp == BfBinaryOp_Equality)
+							binaryOp = BfBinaryOp_StrictEquality;
+						if (binaryOp == BfBinaryOp_InEquality)
+							binaryOp = BfBinaryOp_StrictEquality;
+
+						hadMatch = false;
+						break;
+					}
+				}
+
+				if (hadMatch)
 				{
 					methodMatcher.FlushAmbiguityError();
 

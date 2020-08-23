@@ -323,9 +323,8 @@ namespace System
     struct Int64 : int64
     {
         public const int64 MaxValue = 0x7FFFFFFFFFFFFFFFL;
-        //public const long MinValue = -0x8000000000000000L;
-        public const int64 MinValue = -0x7FFFFFFFFFFFFFFFL; //TODO: Should be one lower!
-
+        public const int64 MinValue = -0x8000000000000000L;
+        
 		public override void ToString(String strBuffer)
 		{
 		    // Dumb, make better.
