@@ -9876,12 +9876,7 @@ bool BeMCContext::DoLegalization()
 				break;
 			case BeMCInstKind_Mul:
 			case BeMCInstKind_IMul:
-				{	
-					if (mDebugging)
-					{
-						NOP;
-					}
-
+				{					
 					if (arg0Type->mSize == 1)
 					{
 						if ((!arg0.IsNativeReg()) || (arg0.mReg != X64Reg_AL) || (inst->mResult))
@@ -14019,16 +14014,7 @@ void BeMCContext::DoCodeEmission()
 				break;
 			case BeMCInstKind_Mul:
 			case BeMCInstKind_IMul:
-				{
-					if (arg0Type->IsExplicitVectorType())
-					{
-						auto vectorType = (BeVectorType*)arg0Type;
-						if (vectorType->mElementType->mTypeCode == BeTypeCode_Float)
-						{
-
-						}
-					}
-
+				{					
 					if (EmitStdXMMInst(instForm, inst, 0x59))
 						break;
 
@@ -14133,6 +14119,7 @@ void BeMCContext::DoCodeEmission()
 						{
 						case BeMCInstForm_R8_RM8:
 							BF_ASSERT(inst->mArg0.mReg == X64Reg_AL);
+							EmitREX(BeMCOperand(), inst->mArg1, false);
 							Emit(0xF6);
 							EmitModRM(0x5, inst->mArg1);
 							break;
@@ -15483,7 +15470,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?MethodA@Zorps@bf@@SA?AUfloat4@2@UStructA@2@32@@Z");
+	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
 	// 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
