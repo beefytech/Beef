@@ -1,6 +1,7 @@
 #pragma warning disable 168
 
 using System;
+using System.Reflection;
 
 namespace Tests
 {
@@ -122,6 +123,13 @@ namespace Tests
 				mB += a;
 				return a + mA * 100;
 			}
+		}
+
+		[Reflect, AlwaysInclude(AssumeInstantiated=true, IncludeAllMethods=true)]
+		struct StructB
+		{
+		    public int mA;
+		    public String mB;
 		}
 
 		class ClassA2 : ClassA
@@ -468,6 +476,32 @@ namespace Tests
 				}
 
 				methodIdx++;
+			}
+		}
+
+		[Test]
+		static void TestStructB()
+		{
+			StructB sb;
+			sb.mA = 25;
+			sb.mB = "Struct B";
+
+			let type = sb.GetType() as TypeInstance;
+			let fields = type.GetFields();
+			int fieldIdx = 0;
+			for (let field in fields)
+			{
+			    let refP = field.GetValue(sb);
+				switch (fieldIdx)
+				{
+				case 0:
+					Test.Assert(refP.Value.Get<int>() == 25);
+				case 1:
+					Test.Assert(refP.Value.Get<String>() === "Struct B");
+				case 2:
+					Test.FatalError();
+				}
+				fieldIdx++;
 			}
 		}
 	}

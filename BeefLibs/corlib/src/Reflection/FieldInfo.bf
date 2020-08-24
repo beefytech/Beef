@@ -150,7 +150,7 @@ namespace System.Reflection
 	            return &value;*/
 
 	        if (type.IsBoxed)
-	            return ((uint8*)(void*)value) + type.[Friend]mMemberDataOffset;
+	            return ((uint8*)Internal.UnsafeCastToPtr(value)) + type.[Friend]mMemberDataOffset;
 	        return ((uint8*)Internal.UnsafeCastToPtr(value));
 	    }
 
