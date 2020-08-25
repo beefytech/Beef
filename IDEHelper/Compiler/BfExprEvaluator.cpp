@@ -15068,6 +15068,9 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 
 		if (!handled)
 		{
+			SetAndRestoreValue<BfFunctionBindResult*> prevFunctionBindResult(mFunctionBindResult, NULL); 
+			SetAndRestoreValue<BfAstNode*> prevDeferCallRef(mDeferCallRef, NULL);			
+
 			BfMethodDef* matchedMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind);
 			if (matchedMethod == NULL)
 			{
