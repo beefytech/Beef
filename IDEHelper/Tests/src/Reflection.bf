@@ -125,11 +125,18 @@ namespace Tests
 			}
 		}
 
+		struct StructC
+		{
+			public float mA;
+			public float mB;
+		}
+
 		[Reflect, AlwaysInclude(AssumeInstantiated=true, IncludeAllMethods=true)]
 		struct StructB
 		{
 		    public int mA;
 		    public String mB;
+			public StructC mC;
 		}
 
 		class ClassA2 : ClassA
@@ -485,20 +492,64 @@ namespace Tests
 			StructB sb;
 			sb.mA = 25;
 			sb.mB = "Struct B";
+			sb.mC = .() { mA = 1.2f, mB = 2.3f };
 
 			let type = sb.GetType() as TypeInstance;
 			let fields = type.GetFields();
 			int fieldIdx = 0;
 			for (let field in fields)
 			{
-			    let refP = field.GetValue(sb);
+			    let fieldVal = field.GetValue(sb);
+				let fieldVal2 = field.GetValue(&sb);
 				switch (fieldIdx)
 				{
 				case 0:
-					Test.Assert(refP.Value.Get<int>() == 25);
+					Test.Assert(fieldVal.Value.Get<int>() == 25);
+					Variant newVal = Variant.Create<int>(32);
+					field.SetValue(sb, newVal);
+					Test.Assert(sb.mA == 25);
+
+					Test.Assert(fieldVal2.Value.Get<int>() == 25);
+					field.SetValue(&sb, newVal);
+					Test.Assert(sb.mA == 32);
 				case 1:
-					Test.Assert(refP.Value.Get<String>() === "Struct B");
+					Test.Assert(fieldVal.Value.Get<String>() === "Struct B");
+					field.SetValue(&sb, "Struct C");
+					Test.Assert(sb.mB == "Struct C");
 				case 2:
+					StructC sc = .() { mA = 1.2f, mB = 2.3f };
+					Test.Assert(fieldVal.Value.Get<StructC>() == sc);
+					Test.Assert(fieldVal2.Value.Get<StructC>() == sc);
+					sc.mA += 100;
+					sc.mB += 100;
+					field.SetValue(&sb, sc);
+					Test.Assert(sb.mC.mA == 101.2f);
+					Test.Assert(sb.mC.mB == 102.3f);
+					sc.mA += 100;
+					sc.mB += 100;
+					field.SetValue(&sb, &sc);
+					Test.Assert(sb.mC.mA == 201.2f);
+					Test.Assert(sb.mC.mB == 202.3f);
+					sc.mA += 100;
+					sc.mB += 100;
+					Variant newVariant = Variant.Create(sc);
+					field.SetValue(&sb, newVariant);
+					Test.Assert(sb.mC.mA == 301.2f);
+					Test.Assert(sb.mC.mB == 302.3f);
+					sc.mA += 100;
+					sc.mB += 100;
+					newVariant.Dispose();
+					newVariant = Variant.Create(&sc);
+					field.SetValue(&sb, newVariant);
+					Test.Assert(sb.mC.mA == 401.2f);
+					Test.Assert(sb.mC.mB == 402.3f);
+					sc.mA += 100;
+					sc.mB += 100;
+					newVariant = Variant.CreateReference(typeof(StructC), &sc);
+					field.SetValue(&sb, newVariant);
+					Test.Assert(sb.mC.mA == 501.2f);
+					Test.Assert(sb.mC.mB == 502.3f);
+				case 3:
 					Test.FatalError();
 				}
 				fieldIdx++;

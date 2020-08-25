@@ -46,25 +46,27 @@ namespace System.Reflection
 
 	    public Result<void, Error> SetValue(Object obj, Object value)
 	    {    
-	        int32 dataOffsetAdjust = 0;
+	        void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj));
 	        if (mTypeInstance.IsStruct)
 	        {
 	            Type boxedType = obj.[Friend]RawGetType();
 	            bool typeMatched = false;
 	            if (boxedType.IsBoxed)
-	            {
-	                if (mTypeInstance == boxedType.UnderlyingType)
-	                {
-	                    dataOffsetAdjust = boxedType.[Friend]mMemberDataOffset;
-	                    typeMatched = true;
-	                }
-	            }
+				{
+				    if (mTypeInstance == boxedType.UnderlyingType)
+				    {
+						dataAddr = (void*)((int)dataAddr + boxedType.[Friend]mMemberDataOffset);
+						if (boxedType.IsBoxedStructPtr)
+							dataAddr = *(void**)dataAddr;
+				        typeMatched = true;
+				    }
+				}
 	            if (!typeMatched)
 	                return .Err(.InvalidTargetType); // "Invalid target type");
 	        }
+			dataAddr = (void*)((int)dataAddr + mFieldData.mData);
 
 	        Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
-	        void* fieldDataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + (int)mFieldData.mData + dataOffsetAdjust;
 
 			if (value == null)
 			{
@@ -74,13 +76,15 @@ namespace System.Reflection
 				}
 				else
 				{
-					*((int*)fieldDataAddr) = 0;
+					*((int*)dataAddr) = 0;
 					return .Ok;
 				}
 			}
 
 			Type rawValueType = value.[Friend]RawGetType();
 			void* valueDataAddr = ((uint8*)Internal.UnsafeCastToPtr(value)) + rawValueType.[Friend]mMemberDataOffset;
+			if (rawValueType.IsBoxedStructPtr)
+				valueDataAddr = *(void**)valueDataAddr;
 			
 			Type valueType = value.GetType();
 
@@ -90,9 +94,9 @@ namespace System.Reflection
 			if (valueType == fieldType)
 			{
 				if (valueType.IsObject)
-					*((void**)fieldDataAddr) = Internal.UnsafeCastToPtr(value);
+					*((void**)dataAddr) = Internal.UnsafeCastToPtr(value);
 				else
-					Internal.MemCpy(fieldDataAddr, valueDataAddr, fieldType.[Friend]mSize);
+					Internal.MemCpy(dataAddr, valueDataAddr, fieldType.[Friend]mSize);
 			}
 			else
 			{
@@ -104,7 +108,7 @@ namespace System.Reflection
 			
 		public Result<void> SetValue(Object obj, Variant value)
 		{    
-		    int32 dataOffsetAdjust = 0;
+			void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj));
 		    if (mTypeInstance.IsStruct)
 		    {
 		        Type boxedType = obj.[Friend]RawGetType();
@@ -113,20 +117,31 @@ namespace System.Reflection
 		        {
 		            if (mTypeInstance == boxedType.UnderlyingType)
 		            {
-		                dataOffsetAdjust = boxedType.[Friend]mMemberDataOffset;
+						dataAddr = (void*)((int)dataAddr + boxedType.[Friend]mMemberDataOffset);
+						if (boxedType.IsBoxedStructPtr)
+							dataAddr = *(void**)dataAddr;
 		                typeMatched = true;
 		            }
 		        }
 		        if (!typeMatched)
 		            return .Err;//("Invalid target type");
 		    }
+			dataAddr =  (void*)((int)dataAddr + mFieldData.mData);
 
 		    Type fieldType = Type.[Friend]GetType(mFieldData.mFieldTypeId);
-		    
-		    void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj)) + (int)mFieldData.mData + dataOffsetAdjust;
 
-			if (value.VariantType != fieldType)
-				return .Err;//("Invalid type");
+			let variantType = value.VariantType;
+			if (variantType != fieldType)
+			{
+				if ((variantType.IsPointer) && (variantType.UnderlyingType == fieldType))
+				{
+					void* srcPtr = value.Get<void*>();
+					Internal.MemCpy(dataAddr, srcPtr, fieldType.Size);
+					return .Ok;
+				}
+				else
+					return .Err;//("Invalid type");
+			}
 
 			value.CopyValueData(dataAddr);
 
@@ -149,6 +164,8 @@ namespace System.Reflection
 	        /*if (type.IsStruct)
 	            return &value;*/
 
+			if (type.IsBoxedStructPtr)
+				return *(void**)(((uint8*)Internal.UnsafeCastToPtr(value)) + type.[Friend]mMemberDataOffset);
 	        if (type.IsBoxed)
 	            return ((uint8*)Internal.UnsafeCastToPtr(value)) + type.[Friend]mMemberDataOffset;
 	        return ((uint8*)Internal.UnsafeCastToPtr(value));
