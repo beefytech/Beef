@@ -8480,61 +8480,6 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 	return outString.c_str();
 }
 
-BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetOutputFileNames(BfCompiler* bfCompiler, BfProject* bfProject, bool* hadOutputChanges)
-{	
-	BF_FATAL("not used ?");
-
-	*hadOutputChanges = false;
-	String& outString = *gTLStrReturn.Get();
-	outString.clear();	
-	for (auto mainModule : bfCompiler->mContext->mModules)
-	{	
-		if (!mainModule->mIsReified)
-			continue;
-		if (mainModule->mProject != bfProject)
-			continue;			
-		if (bfCompiler->mOptions.mHotProject != NULL)
-			continue; // Only add new objs from mCodeGen.mCodeGenFiles during hot reload
-			
-		for (auto&& moduleFileName : mainModule->mOutFileNames)
-		{
-			if (!moduleFileName.mModuleWritten)
-				continue;
-			if (!outString.empty())
-				outString += "\n";
-			outString += moduleFileName.mFileName;
-		}
-	}	
-	
-	if (bfCompiler->mHotState != NULL)
-	{
-		Array<String> outPaths;
-
-		for (int i = 0; i < (int)bfCompiler->mHotState->mQueuedOutFiles.size(); i++)
-		{
-			auto& fileEntry = bfCompiler->mHotState->mQueuedOutFiles[i];
-			if (fileEntry.mProject != bfProject)
-				continue;			
-			outPaths.Add(fileEntry.mFileName);
-			bfCompiler->mHotState->mQueuedOutFiles.RemoveAtFast(i);
-			i--;
-		}
-
-		//outPaths.Sort();
-		std::sort(outPaths.begin(), outPaths.end(), [](const String& lhs, const String& rhs) { return lhs < rhs; });
-
-		for (auto& path : outPaths)
-		{
-			if (!outString.empty())
-				outString += "\n";
-			outString += path;
-			outString += BF_OBJ_EXT;
-		}
-	}
-
-	return outString.c_str();
-}
-
 BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* bfCompiler, BfProject* bfProject, bool flushQueuedHotFiles, bool* hadOutputChanges)
 {	
 	BP_ZONE("BfCompiler_GetUsedOutputFileNames");
@@ -8579,7 +8524,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 	usedFileNames.Reserve(moduleList.size());
 
 	for (auto mainModule : moduleList)
-	{	
+	{
 		for (auto fileNameIdx : mainModule->mImportFileNames)
 		{
 			auto fileName = bfCompiler->mContext->mStringObjectIdMap[fileNameIdx].mString;
@@ -8619,10 +8564,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 				continue;
 			if (!outString.empty())
 				outString += "\n";
-			outString += fileName;
-
-			if (mainModule->mWroteToLib)
-				break;
+			outString += fileName;			
 		}
 	}
 
