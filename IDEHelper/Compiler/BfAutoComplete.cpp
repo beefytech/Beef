@@ -1845,6 +1845,16 @@ void BfAutoComplete::CheckTypeRef(BfTypeReference* typeRef, bool mayBeIdentifier
 			CheckIdentifier(namedTypeRef->mNameNode, isInExpression);
 			return;
 		}
+		else if (auto varTypeRef = BfNodeDynCast<BfVarTypeReference>(typeRef))
+		{
+			CheckIdentifier(varTypeRef->mVarToken, isInExpression);
+			return;
+		}
+		else if (auto varTypeRef = BfNodeDynCast<BfLetTypeReference>(typeRef))
+		{
+			CheckIdentifier(varTypeRef->mLetToken, isInExpression);
+			return;
+		}
 	}
 
 	if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
