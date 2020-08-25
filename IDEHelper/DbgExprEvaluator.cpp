@@ -1134,30 +1134,46 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 	if (mDebugTarget->mTargetBinary == NULL)
 		return DbgTypedValue();
 
-	mDebugTarget->mTargetBinary->ParseTypeData();
-	auto typeTypeEntry = mDebugTarget->mTargetBinary->FindType("System.Type", DbgLanguage_Beef);
-	if ((typeTypeEntry == NULL) || (typeTypeEntry->mValue == NULL))
-		return DbgTypedValue();
-
-	auto typeType = typeTypeEntry->mValue;
-	if (typeType->mNeedsGlobalsPopulated)
-		typeType->mCompileUnit->mDbgModule->PopulateTypeGlobals(typeType);
-	for (auto member : typeType->mMemberList)
+	if (mDebugTarget->mTargetBinary->mBfTypesInfoAddr == 0)
 	{
-		if ((member->mIsStatic) && (member->mName != NULL) && (strcmp(member->mName, "sTypes") == 0) && (member->mLocationData != NULL))
+		mDebugTarget->mTargetBinary->mBfTypesInfoAddr = -1;
+
+		mDebugTarget->mTargetBinary->ParseTypeData();
+		auto typeTypeEntry = mDebugTarget->mTargetBinary->FindType("System.Type", DbgLanguage_Beef);
+		if ((typeTypeEntry != NULL) && (typeTypeEntry->mValue != NULL))			
 		{
-			auto stackFrame = GetStackFrame();
-			DbgAddrType addrType;
-			intptr valAddr = member->mCompileUnit->mDbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, stackFrame, &addrType);
-			if (valAddr != 0)
+			auto typeType = typeTypeEntry->mValue;
+			mDebugTarget->mTargetBinary->mBfTypeType = typeType;
+			if (typeType->mNeedsGlobalsPopulated)
+				typeType->mCompileUnit->mDbgModule->PopulateTypeGlobals(typeType);
+
+			for (auto member : typeType->mMemberList)
 			{
-				DbgTypedValue typedVal;
-				typedVal.mType = typeType;
-				addr_target addr = valAddr + typeId * sizeof(addr_target);
-				typedVal.mSrcAddress = mDebugger->ReadMemory<addr_target>(addr);
-				return typedVal;
+				if ((member->mIsStatic) && (member->mName != NULL) && (strcmp(member->mName, "sTypes") == 0) && (member->mLocationData != NULL))
+				{
+					auto stackFrame = GetStackFrame();
+					DbgAddrType addrType;
+					mDebugTarget->mTargetBinary->mBfTypesInfoAddr = member->mCompileUnit->mDbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, stackFrame, &addrType);					
+				}
+			}
+			
+			if (mDebugTarget->mTargetBinary->mBfTypesInfoAddr <= 0)
+			{
+				mDebugTarget->mTargetBinary->ParseSymbolData();				
+				auto entry = mDebugTarget->mTargetBinary->mSymbolNameMap.Find("?sTypes@Type@System@bf@@2PEAPEAV123@A");
+				if (entry)
+					mDebugTarget->mTargetBinary->mBfTypesInfoAddr = entry->mValue->mAddress;
 			}
 		}
+	}
+
+	if (mDebugTarget->mTargetBinary->mBfTypesInfoAddr > 0)
+	{
+		DbgTypedValue typedVal;
+		typedVal.mType = mDebugTarget->mTargetBinary->mBfTypeType;
+		addr_target addr = mDebugTarget->mTargetBinary->mBfTypesInfoAddr + typeId * sizeof(addr_target);
+		typedVal.mSrcAddress = mDebugger->ReadMemory<addr_target>(addr);
+		return typedVal;
 	}
 
 	return DbgTypedValue();

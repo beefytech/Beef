@@ -2196,6 +2196,8 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mMayBeOld = false;	
 	mTimeStamp = 0;
 	mExpectedFileSize = 0;
+	mBfTypeType = NULL;
+	mBfTypesInfoAddr = 0;
 	
 	mImageBase = 0;
 	mPreferredImageBase = 0;

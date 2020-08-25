@@ -1141,7 +1141,7 @@ public:
 	bool mParsedSymbolData;
 	bool mParsedTypeData;
 	bool mPopulatedStaticVariables;	
-	bool mParsedFrameDescriptors;
+	bool mParsedFrameDescriptors;	
 
 	bool mMayBeOld; // If we had to load debug info from the SymCache or a SymServer then it may be old	
 	bool mDeleting;
@@ -1154,13 +1154,16 @@ public:
 	int mStartSubprogramIdx;
 	int mEndSubprogramIdx;
 	int mStartTypeIdx;
-	int mEndTypeIdx;
+	int mEndTypeIdx;	
 	uintptr mPreferredImageBase;
 	uintptr mImageBase;
 	uint32 mImageSize;	
 	uintptr mEntryPoint;
 	String mVersion;	
 	String* mFailMsgPtr;
+
+	DbgType* mBfTypeType;
+	intptr mBfTypesInfoAddr;
 
 	DbgModuleMemoryCache* mOrigImageData;
 	DbgCompileUnit* mMasterCompileUnit;	

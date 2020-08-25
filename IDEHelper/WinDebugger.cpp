@@ -1234,7 +1234,8 @@ String WinDebugger::GetDbgAllocInfo()
 				auto type = exprEvaluator.GetBeefTypeById(typeId);
 				typeName.Clear();
 				exprEvaluator.BeefTypeToString(type, typeName);
-
+				if (typeName.IsEmpty())
+					typeName = StrFormat("Type #%d", typeId);
 				result += StrFormat("type\t%d\t%s\t%lld\t%lld\n", typeId, typeName.c_str(), typeData.mCount, typeData.mSize);
 			}
 		}
