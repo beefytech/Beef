@@ -1764,7 +1764,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 		return true;
 	}
 	
-	if (mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
+	if ((mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows) && (mModule->mSystem->mPtrSize == 8))
 	{
 		if (typeCode != BfTypeCode_None)
 		{
