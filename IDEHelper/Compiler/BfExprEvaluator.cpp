@@ -4943,7 +4943,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 							mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_NoCapture);
 							addDeref = paramType->mSize;
 						}
-						else if (methodInstance->WantsIRStructsByVal())
+						else if (methodInstance->WantsStructsAttribByVal())
 						{
 							mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_ByVal, mModule->mSystem->mPtrSize);
 						}
@@ -5210,7 +5210,7 @@ void BfExprEvaluator::SplatArgs(BfTypedValue value, SizedArrayImpl<BfIRValue>& i
 	checkTypeLambda(value);
 }
 
-void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& irArgs, bool disableSplat, bool disableLowering)
+void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& irArgs, bool disableSplat, bool disableLowering, bool isIntrinsic)
 {
 	MakeBaseConcrete(argVal);
 	
@@ -5231,12 +5231,17 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 		SplatArgs(argVal, irArgs);
 	}
 	else
-	{
+	{		
 		if (argVal.mType->IsComposite())
 		{
-			argVal = mModule->MakeAddressable(argVal);
+			if (isIntrinsic)
+			{
+				// We can handle composites either by value or not
+			}
+			else
+				argVal = mModule->MakeAddressable(argVal);
 			
-			if (!disableLowering)
+			if ((!disableLowering) && (!isIntrinsic))
 			{
 				BfTypeCode loweredTypeCode = BfTypeCode_None;
 				BfTypeCode loweredTypeCode2 = BfTypeCode_None;				
@@ -5922,10 +5927,17 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			}
 			else if ((wantType->IsComposite()) && (!expandedParamsArray))
 			{
-				// We need to make a temp and get the addr of that
-				if ((!wantsSplat) && (!argValue.IsValuelessType()) && (!argValue.IsAddr()))
-				{					
-					argValue = mModule->MakeAddressable(argValue);
+				if (methodInstance->mIsIntrinsic)
+				{
+					// Intrinsics can handle structs either by value or address
+				}
+				else
+				{
+					// We need to make a temp and get the addr of that
+					if ((!wantsSplat) && (!argValue.IsValuelessType()) && (!argValue.IsAddr()))
+					{
+						argValue = mModule->MakeAddressable(argValue);
+					}
 				}
 			}
 			else if (!wantType->IsRef())
@@ -5982,7 +5994,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				else if (wantsSplat)				
 					SplatArgs(argValue, irArgs);				
 				else
-					PushArg(argValue, irArgs, true, false);
+					PushArg(argValue, irArgs, true, false, methodInstance->mIsIntrinsic);
 			}
 			paramIdx++;
 		}

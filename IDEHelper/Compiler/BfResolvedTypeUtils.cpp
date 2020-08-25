@@ -696,7 +696,7 @@ bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeC
 	return mReturnType->GetLoweredType(mMethodDef->mIsStatic ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
 }
 
-bool BfMethodInstance::WantsIRStructsByVal()
+bool BfMethodInstance::WantsStructsAttribByVal()
 {
 	auto owner = GetOwner();
 	if ((owner->mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) &&

@@ -8,11 +8,13 @@ namespace System.Numerics
 		public float z;
 		public float w;
 
+		[Inline]
 		public this()
 		{
 			this = default;
 		}
 
+		[Inline]
 		public this(float x, float y, float z, float w)
 		{
 			this.x = x;
@@ -20,6 +22,8 @@ namespace System.Numerics
 			this.z = z;
 			this.w = w;
 		}
+
+		public extern float this[int idx] { [Intrinsic("index")] get; [Intrinsic("index")] set; }
 
 		public extern float4 wzyx { [Intrinsic("shuffle3210")] get; [Intrinsic("shuffle3210")] set; }
 

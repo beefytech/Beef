@@ -872,8 +872,8 @@ public:
 	bool HasParamsArray();
 	int GetStructRetIdx();
 	bool HasSelf();
-	bool GetLoweredReturnType(BfTypeCode* loweredTypeCode = NULL, BfTypeCode* loweredTypeCode2 = NULL);
-	bool WantsIRStructsByVal();
+	bool GetLoweredReturnType(BfTypeCode* loweredTypeCode = NULL, BfTypeCode* loweredTypeCode2 = NULL);	
+	bool WantsStructsAttribByVal();
 	bool IsAutocompleteMethod() { /*return mIdHash == -1;*/ return mIsAutocompleteMethod; }
 	bool IsSkipCall(bool bypassVirtual = false);	
 	bool IsVarArgs();
@@ -1003,7 +1003,7 @@ public:
 	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedType(); }
 	virtual bool IsReified() override { return mElementType->IsReified(); }
 	virtual bool IsDependentOnUnderlyingType() override { return true; }	
-	virtual bool IsAllocType() { return mModifiedKind == BfToken_AllocType; }
+	virtual bool IsAllocType() override { return mModifiedKind == BfToken_AllocType; }
 	virtual BfType* GetUnderlyingType() override { return mElementType; }
 };
 

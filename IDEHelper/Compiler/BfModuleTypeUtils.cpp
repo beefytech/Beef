@@ -2594,9 +2594,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	bool isUnion = false;
 	bool isCRepr = false;
 	bool isOrdered = false;
+	int alignOverride = 0;
 	BfType* underlyingArrayType = NULL;
 	int underlyingArraySize = -1;
-	ProcessTypeInstCustomAttributes(isPacked, isUnion, isCRepr, isOrdered, underlyingArrayType, underlyingArraySize);
+	ProcessTypeInstCustomAttributes(isPacked, isUnion, isCRepr, isOrdered, alignOverride, underlyingArrayType, underlyingArraySize);
 	if (underlyingArraySize > 0)
 	{
 		typeInstance->mHasUnderlyingArray = true;
@@ -3289,7 +3290,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		CheckMemberNames(typeInstance);
 
-		if (isPacked)
+		if (alignOverride > 0)
+			typeInstance->mInstAlign = alignOverride;
+		else if (isPacked)
 			typeInstance->mInstAlign = 1;
 		else
 			typeInstance->mInstAlign = std::max(1, typeInstance->mInstAlign);

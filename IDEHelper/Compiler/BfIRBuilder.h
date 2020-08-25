@@ -406,6 +406,7 @@ enum BfIRConfigConst : uint8
 
 enum BfIRIntrinsic : uint8
 {
+	BfIRIntrinsic__PLATFORM,
 	BfIRIntrinsic_Abs,
 	BfIRIntrinsic_Add,
 	BfIRIntrinsic_And,
@@ -435,6 +436,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_Free,	
 	BfIRIntrinsic_Gt,
 	BfIRIntrinsic_GtE,	
+	BfIRIntrinsic_Index,
 	BfIRIntrinsic_Log,
 	BfIRIntrinsic_Log10,
 	BfIRIntrinsic_Log2,

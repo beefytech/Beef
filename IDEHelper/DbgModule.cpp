@@ -1182,7 +1182,7 @@ DbgExtType DbgType::CalcExtType()
 		{
 			for (auto member : mMemberList)
 			{
-				if (strcmp(member->mName, "__bfunion") == 0)
+				if (strcmp(member->mName, "$bfunion") == 0)
 					return DbgExtType_BfUnion;
 			}
 		}

@@ -10572,7 +10572,7 @@ void BfModule::FinishAttributeState(BfAttributeState* attributeState)
 		Warn(0, "Unused attributes", attributeState->mSrc);
 }
 
-void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered, BfType*& underlyingArrayType, int& underlyingArraySize)
+void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bool& isCRepr, bool& isOrdered, int& alignOverride, BfType*& underlyingArrayType, int& underlyingArraySize)
 {
 	if (mCurTypeInstance->mCustomAttributes != NULL)
 	{
@@ -10613,6 +10613,14 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 						if ((constant != NULL) && (constant->mBool))
 							mCurTypeInstance->mIncludeAllMethods = true;
 					}
+				}
+			}
+			else if (typeName == "System.AlignAttribute")
+			{
+				if (customAttribute.mCtorArgs.size() >= 1)
+				{
+					auto alignConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
+					alignOverride = alignConstant->mInt32;
 				}
 			}
 			else if (typeName == "System.UnderlyingArrayAttribute")
@@ -14856,7 +14864,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 					PopulateType(resolvedTypeRef, BfPopulateType_Data);
 					addDeref = resolvedTypeRef->mSize;
 				}
-				else if (methodInstance->WantsIRStructsByVal())
+				else if (methodInstance->WantsStructsAttribByVal())
 				{
 					mBfIRBuilder->PopulateType(resolvedTypeRef);
 					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal, mSystem->mPtrSize);

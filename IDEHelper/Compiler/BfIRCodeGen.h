@@ -21,7 +21,7 @@ class BfIRIntrinsicData
 public:
 	String mName;
 	BfIRIntrinsic mIntrinsic;
-	llvm::Type* mReturnType;
+	llvm::Type* mReturnType;	
 };
 
 struct BfIRCodeGenEntry
@@ -100,6 +100,8 @@ public:
 	void CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value* size, int alignment, bool isVolatile = false);
 	void AddNop();
 	llvm::Value* TryToVector(llvm::Value* value);
+	llvm::Value* TryToVector(llvm::Value* value, llvm::Type* elemType);
+	llvm::Type* GetElemType(llvm::Value* value);
 	bool TryMemCpy(llvm::Value* ptr, llvm::Value* val);	
 	bool TryVectorCpy(llvm::Value* ptr, llvm::Value* val);
 

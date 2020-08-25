@@ -5394,6 +5394,7 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 				if (member->mName != NULL)
 				{
 					if ((member->mName[0] == '?') ||
+						(member->mName[0] == '$') ||
 						(strncmp(member->mName, "_vptr$", 6) == 0))
 						ignoreMember = true;
 				}
@@ -7980,7 +7981,10 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 						}
 
 						if (member->mName != NULL)
-						{	
+						{
+							if (member->mName[0] == '$')
+								continue;
+
 							if (!isdigit(*member->mName))
 							{
 								if (memberIdx != 0)

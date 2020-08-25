@@ -2288,19 +2288,6 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		irType = CreateStructType(name);
 		StructSetBody(irType, members, false);
 	}
-	else if (underlyingArraySize != -1)
-	{
-		if (underlyingArrayIsVector)
-		{
-			if (underlyingArrayType == mModule->GetPrimitiveType(BfTypeCode_Boolean))
-				underlyingArrayType = mModule->GetPrimitiveType(BfTypeCode_UInt8);
-			irType = GetVectorType(MapType(underlyingArrayType), underlyingArraySize);
-		}
-		else
-			irType = GetSizedArrayType(MapType(underlyingArrayType), underlyingArraySize);
-		if (wantDIData)
-			diType = DbgCreateArrayType((int64)type->mSize * 8, type->mAlign * 8, DbgGetType(underlyingArrayType), underlyingArraySize);
-	}
 	else if (type->IsSizedArray())
 	{
 		BfSizedArrayType* arrayType = (BfSizedArrayType*)type;
@@ -2400,7 +2387,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	
 		BfIRMDNode diForwardDecl;
 		if (wantDIData)
-		{	
+		{
 			BfFileInstance* bfFileInstance;
 
 			// Why did we bother setting the actual type declaration location?
@@ -2475,7 +2462,19 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 			DbgSetType(type, diType);            
 		}
 
-		if (type->IsTypedPrimitive())
+		if (underlyingArraySize != -1)
+		{
+			if (underlyingArrayIsVector)
+			{
+				if (underlyingArrayType == mModule->GetPrimitiveType(BfTypeCode_Boolean))
+					underlyingArrayType = mModule->GetPrimitiveType(BfTypeCode_UInt8);
+				irType = GetVectorType(MapType(underlyingArrayType), underlyingArraySize);
+			}
+			else
+				irType = GetSizedArrayType(MapType(underlyingArrayType), underlyingArraySize);			
+			SetType(type, irType);
+		}
+		else if (type->IsTypedPrimitive())
 		{
 			mModule->PopulateType(type);
 			auto underlyingType = type->GetUnderlyingType();			
@@ -2565,8 +2564,8 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		isPacked = typeInstance->mIsPacked;
 		isUnion = typeInstance->mIsUnion;
 		typeInstance->GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingArrayIsVector);
-		if (underlyingArrayType != NULL)
-			return; // Done
+// 		if (underlyingArrayType != NULL)
+// 			return; // Done
 	}
 
 	String typeName = GetDebugTypeName(typeInstance, false);
@@ -2584,7 +2583,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		int flags = llvm::DINode::FlagPublic;
 		auto fieldType = typeInstance->GetUnionInnerType();
 		auto resolvedFieldDIType = DbgGetType(fieldType);
-		String fieldName = "__bfunion";
+		String fieldName = "$bfunion";
 		auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, lineNum,
 			fieldType->mSize * 8, fieldType->mAlign * 8, 0,
 			flags, resolvedFieldDIType);
