@@ -820,7 +820,24 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	}
 
 	type->mDirty = true;
-		
+	
+	bool wantDeleteType = (type->IsOnDemand()) && (deleteOnDemandTypes);
+	if (type->IsConstExprValue())
+	{
+		auto constExprType = (BfConstExprValueType*)type;
+		if (constExprType->mType->mSize != mScratchModule->GetPrimitiveType(constExprType->mValue.mTypeCode)->mSize)
+			wantDeleteType = true;
+	}
+	if (wantDeleteType)
+	{
+		BfLogSysM("On-demand type %p attempted rebuild - deleting\n", type);
+		DeleteType(type);
+		auto depType = type->ToDependedType();
+		if (depType != NULL)
+			RebuildDependentTypes(depType);
+		return;
+	}
+
 	if (typeInst == NULL)
 	{	
 		type->mDefineState = BfTypeDefineState_Undefined;
@@ -858,15 +875,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	{
 		// The type definition failed, so we need to rebuild everyone that was depending on us
 		RebuildDependentTypes(typeInst);
-	}
-
-	if ((typeInst->IsOnDemand()) && (deleteOnDemandTypes))
-	{
-		BfLogSysM("On-demand type %p attempted rebuild - deleting\n", typeInst);
-		DeleteType(type);
-		RebuildDependentTypes(typeInst);		
-		return;
-	}
+	}	
 	
 	if (typeInst->mTypeDef->mDefState == BfTypeDef::DefState_Deleted)
 		return;	
@@ -1701,9 +1710,15 @@ void BfContext::UpdateRevisedTypes()
 		auto intPtrType = mScratchModule->GetPrimitiveType(BfTypeCode_IntPtr);
 		auto uintPtrType = mScratchModule->GetPrimitiveType(BfTypeCode_UIntPtr);
 		if (intPtrType != NULL)
-			RebuildType(intPtrType);		
+		{
+			RebuildType(intPtrType);						
+			mScratchModule->PopulateType(intPtrType);
+		}
 		if (uintPtrType != NULL)
+		{
 			RebuildType(uintPtrType);
+			mScratchModule->PopulateType(uintPtrType);
+		}
 
 		// Rebuild all types
 		for (auto type : mResolvedTypes)
