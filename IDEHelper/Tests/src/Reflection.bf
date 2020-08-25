@@ -499,27 +499,29 @@ namespace Tests
 			int fieldIdx = 0;
 			for (let field in fields)
 			{
-			    let fieldVal = field.GetValue(sb);
-				let fieldVal2 = field.GetValue(&sb);
+			    var fieldVal = field.GetValue(sb).Value;
+				defer fieldVal.Dispose();
+				var fieldVal2 = field.GetValue(&sb).Value;
+				defer fieldVal2.Dispose();
 				switch (fieldIdx)
 				{
 				case 0:
-					Test.Assert(fieldVal.Value.Get<int>() == 25);
+					Test.Assert(fieldVal.Get<int>() == 25);
 					Variant newVal = Variant.Create<int>(32);
 					field.SetValue(sb, newVal);
 					Test.Assert(sb.mA == 25);
 
-					Test.Assert(fieldVal2.Value.Get<int>() == 25);
+					Test.Assert(fieldVal2.Get<int>() == 25);
 					field.SetValue(&sb, newVal);
 					Test.Assert(sb.mA == 32);
 				case 1:
-					Test.Assert(fieldVal.Value.Get<String>() === "Struct B");
+					Test.Assert(fieldVal.Get<String>() === "Struct B");
 					field.SetValue(&sb, "Struct C");
 					Test.Assert(sb.mB == "Struct C");
 				case 2:
 					StructC sc = .() { mA = 1.2f, mB = 2.3f };
-					Test.Assert(fieldVal.Value.Get<StructC>() == sc);
-					Test.Assert(fieldVal2.Value.Get<StructC>() == sc);
+					Test.Assert(fieldVal.Get<StructC>() == sc);
+					Test.Assert(fieldVal2.Get<StructC>() == sc);
 					sc.mA += 100;
 					sc.mB += 100;
 					field.SetValue(&sb, sc);
@@ -534,6 +536,7 @@ namespace Tests
 					sc.mB += 100;
 					Variant newVariant = Variant.Create(sc);
 					field.SetValue(&sb, newVariant);
+					newVariant.Dispose();
 					Test.Assert(sb.mC.mA == 301.2f);
 					Test.Assert(sb.mC.mB == 302.3f);
 					sc.mA += 100;
@@ -541,12 +544,14 @@ namespace Tests
 					newVariant.Dispose();
 					newVariant = Variant.Create(&sc);
 					field.SetValue(&sb, newVariant);
+					newVariant.Dispose();
 					Test.Assert(sb.mC.mA == 401.2f);
 					Test.Assert(sb.mC.mB == 402.3f);
 					sc.mA += 100;
 					sc.mB += 100;
 					newVariant = Variant.CreateReference(typeof(StructC), &sc);
 					field.SetValue(&sb, newVariant);
+					newVariant.Dispose();
 					Test.Assert(sb.mC.mA == 501.2f);
 					Test.Assert(sb.mC.mB == 502.3f);
 				case 3:
