@@ -2,9 +2,10 @@ namespace System
 {
 	enum Result<T> : IDisposable
 	{
-		case Ok(T _val);
-		case Err(void _err);
+		case Ok(T val);
+		case Err(void err);
 
+		[Inline]
 		T Unwrap()
 		{
 			switch (this)
@@ -14,6 +15,14 @@ namespace System
 				{
 					Internal.FatalError("Unhandled error in result", 2);
 				}
+			}
+		}
+
+		public T Value
+		{
+			get
+			{
+				return Unwrap();
 			}
 		}
 
@@ -66,19 +75,19 @@ namespace System
 		}
 
 		[SkipCall]
-		public static void NoDispose<TVal>()
+		static void NoDispose<TVal>()
 		{
 
 		}
 
-		public static void NoDispose<TVal>() where TVal : IDisposable
+		static void NoDispose<TVal>() where TVal : IDisposable
 		{
 			Internal.FatalError("Result must be disposed", 1);
 		}
 
 		public void ReturnValueDiscarded()
 		{
-		    if (this case .Err)
+		    if (this case .Err(let err))
 				Internal.FatalError("Unhandled error in result", 1);
 			NoDispose<T>();
 		}
@@ -93,18 +102,6 @@ namespace System
 		}
 	}
 
-	/*extension Result<T> where T : class
-	{
-		public static T operator?(Self val)
-		{
-			switch (val)
-			{
-			case .Ok(let inner): return inner;
-			case .Err: return default;
-			}
-		}
-	}*/
-
 	enum Result<T, TErr> : IDisposable
 	{
 		case Ok(T val);
@@ -117,12 +114,16 @@ namespace System
 			case .Ok(var val): return val;
 			case .Err(var err):
 				{
-					String errStr = scope String();
-					err.ToString(errStr);
-					String showErr = scope String();
-					showErr.ConcatInto("Unhandled error in result:\n ", errStr);
-					Internal.FatalError(showErr, 2);
+					Internal.FatalError("Unhandled error in result");
 				}
+			}
+		}
+
+		public T Value
+		{
+			get
+			{
+				return Unwrap();
 			}
 		}
 
@@ -175,12 +176,12 @@ namespace System
 		}
 
 		[SkipCall]
-		public static void NoDispose<TVal>()
+		static void NoDispose<TVal>()
 		{
 
 		}
 
-		public static void NoDispose<TVal>() where TVal : IDisposable
+		static void NoDispose<TVal>() where TVal : IDisposable
 		{
 			Internal.FatalError("Result must be disposed", 1);
 		}
@@ -189,13 +190,10 @@ namespace System
 		{
 		    if (this case .Err(var err))
 			{
-				String errStr = scope String();
-				err.ToString(errStr);
-				String showErr = scope String();
-				showErr.ConcatInto("Unhandled error in result:\n ", errStr);
-				Internal.FatalError(showErr, 1);
+				Internal.FatalError("Unhandled error in result");
 			}
 			NoDispose<T>();
+			NoDispose<TErr>();
 		}
 	}
 
