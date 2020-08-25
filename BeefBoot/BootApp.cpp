@@ -31,7 +31,6 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(void* bfCompiler, void* hotProj
 BF_IMPORT void BF_CALLTYPE BfCompiler_ClearBuildCache(void* bfCompiler);
 BF_IMPORT bool BF_CALLTYPE BfCompiler_Compile(void* bfCompiler, void* bfPassInstance, const char* outputPath);
 BF_IMPORT float BF_CALLTYPE BfCompiler_GetCompletionPercentage(void* bfCompiler);
-BF_IMPORT const char* BF_CALLTYPE BfCompiler_GetOutputFileNames(void* bfCompiler, void* bfProject, bool* hadOutputChanges);
 BF_IMPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(void* bfCompiler, void* bfProject, bool flushQueuedHotFiles, bool* hadOutputChanges);
 
 BF_IMPORT void* BF_CALLTYPE BfSystem_CreateParser(void* bfSystem, void* bfProject);

@@ -84,9 +84,6 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_WriteBuildCache(void* bfCompiler, char8* cacheDir);
 
-        [CallingConvention(.Stdcall), CLink]
-        static extern char8* BfCompiler_GetOutputFileNames(void* bfCompiler, void* bfProject, out bool hadOutputChanges);
-
 		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetUsedOutputFileNames(void* bfCompiler, void* bfProject, bool flushQueuedHotFiles, out bool hadOutputChanges);
 
