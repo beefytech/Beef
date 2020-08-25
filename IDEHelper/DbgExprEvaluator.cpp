@@ -1228,6 +1228,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 	typedef uint32 _TypeFlags;
 	typedef int8 _TypeCode;
 
+#pragma pack(push, 1)
 	struct _Type
 	{
 		int32 mSize;
@@ -1240,11 +1241,13 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 
 	struct _PointerType : _Type
 	{
+		int16 mPadding0;
 		_TypeCode mElementType;
 	};
 
 	struct _SizedArrayType : _Type
 	{
+		int16 mPadding0;
 		_TypeId mElementType;
 		int32 mElementCount;
 	};
@@ -1268,9 +1271,16 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 
 	struct _TypeInstance : public _Type
 	{
-		_ClassVData* mTypeClassVData;
-		_String* mName;
-		_String* mNamespace;
+#ifdef BF_DBG_32
+		int16 mPadding0;
+#else
+		int16 mPadding0;
+		int32 mPadding1;
+#endif
+		
+		addr_target mTypeClassVData;
+		addr_target mName;
+		addr_target mNamespace;
 		int32 mInstSize;
 		int32 mInstAlign;
 		int32 mCustomAttributesIdx;
@@ -1286,17 +1296,20 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		int16 mPropertyDataCount;
 		int16 mFieldDataCount;		
 
-		void* mInterfaceDataPtr;
-		_MethodData* mMethodDataPtr;
-		void* mPropertyDataPtr;
-		_FieldData* mFieldDataPtr;		
-		void** mCustomAttrDataPtr;
+		addr_target mInterfaceDataPtr;
+		addr_target mMethodDataPtr;
+		addr_target mPropertyDataPtr;
+		addr_target mFieldDataPtr;
+		addr_target mCustomAttrDataPtr;
 	};
 
 	struct _SpecializedGenericType : _TypeInstance
 	{
 		_TypeId mUnspecializedType;
-		_TypeId* mResolvedTypeRefs;
+#ifdef BF_DBG_64
+		int32 mPadding0;
+#endif
+		addr_target mResolvedTypeRefs;
 	};
 
 	struct _ArrayType : _SpecializedGenericType
@@ -1305,6 +1318,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		uint8 mRank;
 		uint8 mElemensDataOffset;
 	};	
+#pragma pack(pop)
 	
 	int typeIdSize = sizeof(_TypeId);
 	int ptrSize = (int)sizeof(addr_target);
@@ -1338,6 +1352,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		_TypeId elementTypeId = mDebugger->ReadMemory<_TypeId>(typeAddr + offsetof(_PointerType, mElementType));
 		auto elementType = GetBeefTypeById(elementTypeId);
 		BeefTypeToString(elementType, outStr);
+		outStr += "*";
 	}
  	else if ((typeFlags & BfTypeFlags_Delegate) != 0)
  	{
@@ -1361,6 +1376,12 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 	}
 	else if (((typeFlags & BfTypeFlags_Struct) != 0) || ((typeFlags & BfTypeFlags_TypedPrimitive) != 0) || ((typeFlags & BfTypeFlags_Object) != 0))
 	{
+		addr_target addr0 = typeAddr;
+		addr_target addr1 = typeAddr + offsetof(_Type, mTypeFlags);
+		addr_target addr2 = typeAddr + offsetof(_Type, mAlign);
+		addr_target addr3 = typeAddr + offsetof(_TypeInstance, mPadding0);
+		addr_target addr4 = typeAddr + offsetof(_TypeInstance, mTypeClassVData);
+
 		addr_target namePtr = mDebugger->ReadMemory<addr_target>(typeAddr + offsetof(_TypeInstance, mName));
 		addr_target namespacePtr = mDebugger->ReadMemory<addr_target>(typeAddr + offsetof(_TypeInstance, mNamespace));
 		int outerTypeId = mDebugger->ReadMemory<_TypeId>(typeAddr + offsetof(_TypeInstance, mOuterType));
