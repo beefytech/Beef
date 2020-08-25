@@ -1599,7 +1599,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 			return false;
 	}
 	else
-	{
+	{		
 		// Non-Windows systems allow lowered splitting of composites over two int params
  		if (mModule->mSystem->mPtrSize == 8)
  		{
@@ -1714,7 +1714,13 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 				if (handled)
 					return true;
 			}		
- 		}	
+ 		}
+		else
+		{
+			// Always do sret on non-Windows 32-bit
+			if ((typeUsage == BfTypeUsage_Return_NonStatic) || (typeUsage == BfTypeUsage_Return_Static))
+				return false;
+		}
 	}
 
 	BfTypeCode typeCode = BfTypeCode_None;
