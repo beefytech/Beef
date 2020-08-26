@@ -1717,9 +1717,12 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
  		}
 		else
 		{
-			// Always do sret on non-Windows 32-bit
-			if ((typeUsage == BfTypeUsage_Return_NonStatic) || (typeUsage == BfTypeUsage_Return_Static))
-				return false;
+			// We know this is correct for Linux x86 and Android armv7
+			if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Linux)
+			{				
+				if ((typeUsage == BfTypeUsage_Return_NonStatic) || (typeUsage == BfTypeUsage_Return_Static))
+					return false;
+			}
 		}
 	}
 
