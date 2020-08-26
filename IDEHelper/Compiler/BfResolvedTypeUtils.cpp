@@ -1758,7 +1758,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 			pow2TypeCode = BfTypeCode_Int64;
 			break;
 		}
-		if (typeUsage == BfTypeUsage_Return_Static)
+		if ((typeUsage == BfTypeUsage_Return_Static) && (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows))
 		{
 			pow2TypeCode = BfTypeCode_Int64;
 			break;
