@@ -1,0 +1,3 @@
+RunTests(true, false)
+SelectPlatform("Win64")
+RunTests(true, false)

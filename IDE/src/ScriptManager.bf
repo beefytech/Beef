@@ -1015,7 +1015,7 @@ namespace IDE
 				return true;
 
 			if ((!ScriptManager.sActiveManager.mIsBuildScript) && (gApp.AreTestsRunning()))
-				return true;
+				return false;
 
 			if (gApp.mDebugger.HasPendingDebugLoads())
 				return false;

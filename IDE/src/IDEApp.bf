@@ -4577,9 +4577,21 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void SelectConfig(String config)
+		{
+			mMainFrame.mStatusBar.SelectConfig(config);
+		}
+
+		[IDECommand]
 		public void SelectConfig()
 		{
 			mMainFrame.mStatusBar.mConfigComboBox.ShowDropdown();
+		}
+
+		[IDECommand]
+		public void SelectPlatform(String platform)
+		{
+			mMainFrame.mStatusBar.SelectPlatform(platform);
 		}
 
 		[IDECommand]
@@ -4887,6 +4899,7 @@ namespace IDE
 			return (mTestManager != null);
 		}
 
+		[IDECommand]
 		protected void RunTests(bool includeIgnored, bool debug)
 		{
 			if (mOutputPanel != null)

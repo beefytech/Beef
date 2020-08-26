@@ -395,6 +395,24 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 		return true;
 	}
 
+	if (wantType->IsTuple())
+	{
+		if (argType->IsTuple())
+		{
+			auto wantTupleType = (BfTupleType*)wantType;
+			auto argTupleType = (BfTupleType*)argType;
+
+			if (wantTupleType->mFieldInstances.size() == argTupleType->mFieldInstances.size())
+			{
+				for (int fieldIdx = 0; fieldIdx < (int)wantTupleType->mFieldInstances.size(); fieldIdx++)
+				{
+					InferGenericArgument(methodInstance, argTupleType->mFieldInstances[fieldIdx].mResolvedType,
+						wantTupleType->mFieldInstances[fieldIdx].mResolvedType, BfIRValue());
+				}
+			}
+		}
+	}
+
 	if ((wantType->IsGenericTypeInstance()) && (wantType->IsUnspecializedTypeVariation()))
 	{
 		auto wantGenericType = (BfTypeInstance*)wantType;
@@ -522,25 +540,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 					InferGenericArgument(methodInstance, argInvokeMethod->GetParamType(argIdx), wantInvokeMethod->GetParamType(argIdx), BfIRValue());
 			}
 		}
-	}
-
-	if (wantType->IsTuple())
-	{
-		if (argType->IsTuple())
-		{
-			auto wantTupleType = (BfTupleType*)wantType;
-			auto argTupleType = (BfTupleType*)argType;
-			
-			if (wantTupleType->mFieldInstances.size() == argTupleType->mFieldInstances.size())
-			{
-				for (int fieldIdx = 0; fieldIdx < (int)wantTupleType->mFieldInstances.size(); fieldIdx++)
-				{
-					InferGenericArgument(methodInstance, argTupleType->mFieldInstances[fieldIdx].mResolvedType, 
-						wantTupleType->mFieldInstances[fieldIdx].mResolvedType, BfIRValue());
-				}
-			}
-		}
-	}
+	}	
 	
 	return true;
 }
@@ -18380,11 +18380,6 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 
 void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExpression* rightExpression, BfBinaryOp binaryOp, BfTokenNode* opToken, BfBinOpFlags flags)
 {	
-	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mName == "Angle"))
-	{
-		NOP;
-	}
-
 	BfTypedValue leftValue;
 	if (leftExpression != NULL)
 	{

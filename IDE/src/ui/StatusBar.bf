@@ -65,7 +65,7 @@ namespace IDE.ui
 			MarkDirty();
         }
 
-        void SelectPlatform(String platformName)
+        public void SelectPlatform(String platformName)
         {
             mPlatformComboBox.Label = platformName;
             gApp.mPlatformName.Set(platformName);

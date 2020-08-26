@@ -11,6 +11,10 @@ SETLOCAL EnableDelayedExpansion
 
 PUSHD %~dp0..\
 
+@ECHO Testing IDEHelper\Tests\Test.txt in BeefIDE_d
+%~dp0\RunAndWait %~dp0..\IDE\dist\BeefIDE_d.exe -platform=Win32 -proddir=%~dp0..\IDEHelper\Tests%TESTPATH% -test=scripts\Test.txt
+@IF !ERRORLEVEL! NEQ 0 GOTO:EOF
+
 @SET TESTPATH=IDE\Tests\CompileFail001
 @CALL :TEST
 @IF !ERRORLEVEL! NEQ 0 GOTO HADERROR
