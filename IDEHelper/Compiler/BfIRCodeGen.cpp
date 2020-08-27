@@ -3152,8 +3152,15 @@ void BfIRCodeGen::HandleNextCmd()
 						auto arg0Type = args[0]->getType();
 						if (arg0Type->isPointerTy())
 						{
-							auto castedRes = mIRBuilder->CreateBitCast(args[0], intrinsicData->mReturnType->getPointerTo());
-							SetResult(curId, mIRBuilder->CreateAlignedLoad(castedRes, 1));
+							if (intrinsicData->mReturnType->isPointerTy())
+							{
+								SetResult(curId, mIRBuilder->CreateBitCast(args[0], intrinsicData->mReturnType));
+							}
+							else
+							{
+								auto castedRes = mIRBuilder->CreateBitCast(args[0], intrinsicData->mReturnType->getPointerTo());
+								SetResult(curId, mIRBuilder->CreateAlignedLoad(castedRes, 1));
+							}
 						}
 						else
 						{
