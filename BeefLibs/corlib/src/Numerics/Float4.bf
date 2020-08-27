@@ -89,5 +89,10 @@ namespace System.Numerics
 		public static extern bool4 operator>=(float4 lhs, float4 rhs);
 		[Intrinsic("gte")]
 		public static extern bool4 operator>=(float4 lhs, float rhs);
+
+		[Intrinsic("cast")]
+		public static extern explicit operator v128(float4 lhs);
+		[Intrinsic("cast")]
+		public static extern explicit operator float4(v128 lhs);
 	}
 }

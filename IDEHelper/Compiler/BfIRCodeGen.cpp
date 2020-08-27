@@ -181,6 +181,9 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"pow"},
 	{"powi"},
 	{"round"},
+	{"sar"},
+	{"shl"},
+	{"shr"},
 	{"shuffle"},
 	{"sin"},
 	{"sqrt"},
@@ -2313,7 +2316,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ (llvm::Intrinsic::ID)-2, -1}, // AtomicXor,
 				{ llvm::Intrinsic::bswap, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // cast,
-				{ llvm::Intrinsic::cos, 0, -1},							
+				{ llvm::Intrinsic::cos, 0, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // div
 				{ (llvm::Intrinsic::ID)-2, -1}, // eq
 				{ llvm::Intrinsic::floor, 0, -1},
@@ -2338,8 +2341,11 @@ void BfIRCodeGen::HandleNextCmd()
 				{ llvm::Intrinsic::pow, 0, -1},
 				{ llvm::Intrinsic::powi, 0, -1},
 				{ llvm::Intrinsic::round, 0, -1},
+				{ (llvm::Intrinsic::ID)-2, -1}, // sar
+				{ (llvm::Intrinsic::ID)-2, -1}, // shl
+				{ (llvm::Intrinsic::ID)-2, -1}, // shr
 				{ (llvm::Intrinsic::ID)-2, -1}, // shuffle
-				{ llvm::Intrinsic::sin, 0, -1},				
+				{ llvm::Intrinsic::sin, 0, -1},
 				{ llvm::Intrinsic::sqrt, 0, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // sub,	
 				{ (llvm::Intrinsic::ID)-2, -1}, // xor
@@ -2753,6 +2759,12 @@ void BfIRCodeGen::HandleNextCmd()
 						}
 					}
 					break;
+				case BfIRIntrinsic_Not:
+					{
+						auto val0 = TryToVector(args[0]);
+						SetResult(curId, mIRBuilder->CreateNot(val0));
+					}
+					break;
 				case BfIRIntrinsic_Shuffle:					
 					{
 						llvm::SmallVector<uint, 8> intMask;
@@ -3137,7 +3149,16 @@ void BfIRCodeGen::HandleNextCmd()
 					break;
 				case BfIRIntrinsic_Cast:
 					{
-						SetResult(curId, mIRBuilder->CreateBitCast(args[0], intrinsicData->mReturnType));
+						auto arg0Type = args[0]->getType();
+						if (arg0Type->isPointerTy())
+						{
+							auto castedRes = mIRBuilder->CreateBitCast(args[0], intrinsicData->mReturnType->getPointerTo());
+							SetResult(curId, mIRBuilder->CreateAlignedLoad(castedRes, 1));
+						}
+						else
+						{
+							FatalError("Expected address");
+						}
 					}
 					break;
 				default:

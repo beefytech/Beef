@@ -1449,6 +1449,7 @@ public:
 	int FindRestoreVolatiles(BeMCBlock* mcBlock, int instIdx);
 
 	uint8 GetJumpOpCode(BeCmpKind cmpKind, bool isLong);
+	BeMCOperand IntXMMGetPacked(BeMCOperand arg, BeVectorType* vecType);
 	void Emit(uint8 val);
 	void EmitModRM(int mod, int reg, int rm);
 	void EmitModRMRelStack(int rx, int regOffset, int scale);
@@ -1464,7 +1465,9 @@ public:
 	void EmitStdInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode_rm_r, uint8 opcode_r_rm, uint8 opcode_rm_imm, uint8 opcode_rm_imm_rx, uint8 opcode_rm_imm8, uint8 opcode_rm_imm8_rx);
 	bool EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
 	bool EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode, uint8 opcode_dest_frm);
-	bool EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
+	bool EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);	
+	bool EmitIntXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
+	bool EmitIntBitwiseXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode);
 	void EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src);
 
 	void DoTLSSetup();

@@ -471,6 +471,7 @@ class BeIntrinsic : public BeValue
 public:
 	BE_VALUE_TYPE(BeIntrinsic, BeValue);
 	
+	String mName;
 	BfIRIntrinsic mKind;
 	BeType* mReturnType;
 

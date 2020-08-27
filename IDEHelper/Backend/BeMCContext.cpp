@@ -5,6 +5,7 @@
 #include "BeMCContext.h"
 #include "BeCOFFObject.h"
 #include "BeIRCodeGen.h"
+#include "../Compiler/BfIRCodeGen.h"
 #include "BeefySysLib/util/BeefPerf.h"
 
 #include "BeefySysLib/util/AllocDebug.h"
@@ -2258,6 +2259,7 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 			break;
 		case BeTypeCode_Struct:
 		case BeTypeCode_SizedArray:
+		case BeTypeCode_Vector:
 			mcOperand.mImmediate = constant->mInt64;
 			mcOperand.mKind = BeMCOperandKind_Immediate_i64;
 			break;
@@ -8982,7 +8984,7 @@ bool BeMCContext::DoLegalization()
 
 						//TODO: For what instructions was this true?  CMP, MOV, ADD, etc... seems to have it
 
-						if ((arg1Type != NULL) && (arg1Type->IsFloat()))
+						if ((arg1Type != NULL) && (arg1Type->IsFloatOrVector()))
 						{
 							// MOV is allowed on '<r/m>, <imm>'
 							if ((inst->mKind != BeMCInstKind_Mov) && (arg0.MayBeMemory()) && (arg1.IsImmediate()))
@@ -9033,7 +9035,7 @@ bool BeMCContext::DoLegalization()
 						{
 							inst->mResult = BeMCOperand();
 						}
-						else if ((arg0Type->IsFloat()) && (!CouldBeReg(inst->mResult)))
+						else if ((arg0Type->IsFloatOrVector()) && (!CouldBeReg(inst->mResult)))
 						{
 							// We need a REG on the dest for sure, so just create a scratch here, otherwise we end up
 							//  requiring additional scratch vregs later
@@ -9129,7 +9131,7 @@ bool BeMCContext::DoLegalization()
 					(inst->mKind != BeMCInstKind_CmpToBool) &&
 					(inst->mKind != BeMCInstKind_Mov))
 				{
-					if ((arg0Type != NULL) && (arg0Type->IsFloat()))
+					if ((arg0Type != NULL) && (arg0Type->IsFloatOrVector()))
 					{
 						// <r/m>, <xmm> is not valid, <xmm>, <r/m>
 						if (!arg0.IsNativeReg())
@@ -9174,7 +9176,7 @@ bool BeMCContext::DoLegalization()
 					}
 				}
 
-				if ((!inst->IsMov()) && (arg0.IsVReg()) && (arg0Type->IsFloat()))
+				if ((!inst->IsMov()) && (arg0.IsVReg()) && (arg0Type->IsFloatOrVector()))
 				{
 					BF_ASSERT(!inst->mResult);
 					// XMM instructions (besides MOVs) require native register destinations
@@ -11356,11 +11358,11 @@ void BeMCContext::DoRegFinalization()
 
 											auto mcPopReg = inst->mArg0;
 											auto popType = GetType(mcPopReg);
-											if (!popType->IsFloat())
+											if (!popType->IsFloatOrVector())
 												mcPopReg.mReg = GetFullRegister(mcPopReg.mReg);
 
 											auto pushType = GetType(inst->mArg1);
-											auto useTypeCode = pushType->IsFloat() ? pushType->mTypeCode : BeTypeCode_Int64;
+											auto useTypeCode = pushType->IsFloatOrVector() ? pushType->mTypeCode : BeTypeCode_Int64;
 
 											BF_ASSERT(deferredIdx < 4);
 											auto mcDeferred = GetCallArgVReg(deferredIdx++, useTypeCode);
@@ -11377,7 +11379,7 @@ void BeMCContext::DoRegFinalization()
 											{
 												inst->mKind = BeMCInstKind_Mov;
 												inst->mArg0 = mcDeferred;
-												if (!popType->IsFloat())
+												if (!popType->IsFloatOrVector())
 													inst->mArg1 = BeMCOperand::FromReg(GetFullRegister(arg1.mReg));
 												else
 													inst->mArg1 = BeMCOperand::FromReg(arg1.mReg);
@@ -11518,6 +11520,18 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 	auto arg1Type = GetType(arg1);
 
 	if ((arg0Type != NULL) && (arg1Type != NULL) &&
+		((arg0Type->IsVector()) || (arg1Type->IsVector())))
+	{
+		if (arg0.IsNativeReg())
+		{
+			return BeMCInstForm_XMM128_RM128;
+		}
+		else
+		{
+			return BeMCInstForm_FRM128_XMM128;
+		}
+	}
+	else if ((arg0Type != NULL) && (arg1Type != NULL) &&
 		((arg0Type->IsFloat()) || (arg1Type->IsFloat())))
 	{
 		if (arg0.IsNativeReg())
@@ -11593,19 +11607,7 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 			else
 				NotImpl();
 		}
-	}
-	else if ((arg0Type != NULL) && (arg1Type != NULL) &&
-		((arg0Type->IsVector()) || (arg1Type->IsVector())))
-	{
-		if (arg0.IsNativeReg())
-		{
-			return BeMCInstForm_XMM128_RM128;
-		}
-		else
-		{
-			return BeMCInstForm_FRM128_XMM128;
-		}
-	}
+	}	
 
 	if ((arg1.IsImmediate()) && (arg0Type != NULL)) // MOV r/m64, imm32
 	{
@@ -11977,16 +11979,29 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 		return true;
 	case BeMCInstForm_XMM128_RM128:
 		{
-			BfTypeCode elemType = BfTypeCode_Float;
+			BeTypeCode elemType = BeTypeCode_Float;
 			auto arg0 = GetFixedOperand(inst->mArg0);
 			auto arg1 = GetFixedOperand(inst->mArg1);
 
 			auto arg0Type = GetType(inst->mArg0);
+			auto arg1Type = GetType(inst->mArg1);
 			if (arg0Type->IsExplicitVectorType())
 			{
-
+				auto vecType = (BeVectorType*)arg0Type;
+				elemType = vecType->mElementType->mTypeCode;
 			}
-			if (elemType == BfTypeCode_Double)
+
+			if (arg1Type->IsFloat())
+			{				
+				if (elemType == BeTypeCode_Double)
+					Emit(0x66);
+				EmitREX(arg1, arg1, false);
+				Emit(0x0F); Emit(0xC6); // SHUFPS / SHUFPD
+				EmitModRM(arg1, arg1);
+				Emit(0);
+			}
+			
+			if (elemType == BeTypeCode_Double)
 				Emit(0x66);
 			EmitREX(arg0, arg1, is64Bit);
 			Emit(0x0F); Emit(opcode);
@@ -11994,13 +12009,15 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 			return true;
 		}
 		break;
-// 	case BeMCInstForm_FRM128_XMM128:
+ 	case BeMCInstForm_FRM128_XMM128:
 // 		{
 // 			Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, is64Bit);
 // 			Emit(0x0F); Emit(opcode);
 // 			EmitModRM(inst->mArg0, inst->mArg1);
 // 		}
-// 		break;	
+		NOP;
+
+ 		break;	
 	}
 
 	return false;
@@ -12062,6 +12079,131 @@ bool BeMCContext::EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8
 		return true;
 	}
 
+	return false;
+}
+
+BeMCOperand BeMCContext::IntXMMGetPacked(BeMCOperand arg, BeVectorType* vecType)
+{
+	auto argType = GetType(arg);
+	if (!argType->IsVector())
+	{
+		BeMCOperand xmm15;
+		xmm15.mReg = X64Reg_M128_XMM15;
+		xmm15.mKind = BeMCOperandKind_NativeReg;
+
+		if (arg.IsImmediate())
+		{
+			BeMCOperand immOperand;
+			immOperand.mKind = BeMCOperandKind_Immediate_int32x4;
+			immOperand.mImmediate = arg.mImmediate;
+
+			Emit(0xF3);
+			EmitREX(xmm15, immOperand, false);
+			Emit(0x0F); Emit(0x6F); // MOVDQU
+			EmitModRM(xmm15, immOperand);
+		}
+		else
+		{
+			Emit(0x66);
+			EmitREX(xmm15, arg, false);
+			Emit(0x0F); Emit(0x6E); // MOVD
+			EmitModRM(xmm15, arg);
+
+			if (vecType->mElementType->mTypeCode == BeTypeCode_Int16)
+				Emit(0xF2);
+			else
+				Emit(0x66);
+			EmitREX(xmm15, xmm15, false);
+			Emit(0x0F);
+			switch (vecType->mElementType->mTypeCode)
+			{
+			case BeTypeCode_Int8:
+				Emit(0x38); Emit(0x00); // PSHUFB
+				break;
+			case BeTypeCode_Int16:
+				Emit(0x70); // PSHUFW
+				break;
+			case BeTypeCode_Int32:
+				Emit(0x70); // PSHUFD
+				break;
+			}
+			EmitModRM(xmm15, xmm15);
+			Emit(0);
+		}
+
+		arg = xmm15;
+	}
+	return arg;
+}
+
+bool BeMCContext::EmitIntXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode)
+{
+	if (instForm != BeMCInstForm_XMM128_RM128)
+		return false;
+
+	auto arg0 = GetFixedOperand(inst->mArg0);
+	auto arg1 = GetFixedOperand(inst->mArg1);
+	auto arg0Type = GetType(inst->mArg0);
+	auto arg1Type = GetType(inst->mArg1);
+
+	if (arg0Type->IsExplicitVectorType())
+	{
+		auto vecType = (BeVectorType*)arg0Type;
+		if ((vecType->mElementType->mTypeCode == BeTypeCode_Int8) ||
+			(vecType->mElementType->mTypeCode == BeTypeCode_Int16) ||
+			(vecType->mElementType->mTypeCode == BeTypeCode_Int32))
+		{
+			arg1 = IntXMMGetPacked(arg1, vecType);
+
+			Emit(0x66);
+			EmitREX(arg0, arg1, false);
+			Emit(0x0F);
+			switch (vecType->mElementType->mTypeCode)
+			{
+			case BeTypeCode_Int8:
+				Emit(opcode);
+				break;
+			case BeTypeCode_Int16:
+				Emit(opcode + 1);
+				break;
+			case BeTypeCode_Int32:
+				Emit(opcode + 2);
+				break;
+			}
+
+			EmitModRM(arg0, arg1);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool BeMCContext::EmitIntBitwiseXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode)
+{
+	if (instForm != BeMCInstForm_XMM128_RM128)
+		return false;
+
+	auto arg0 = GetFixedOperand(inst->mArg0);
+	auto arg1 = GetFixedOperand(inst->mArg1);
+	auto arg0Type = GetType(inst->mArg0);	
+
+	if (arg0Type->IsExplicitVectorType())
+	{
+		auto vecType = (BeVectorType*)arg0Type;
+		if ((vecType->mElementType->mTypeCode == BeTypeCode_Int8) ||
+			(vecType->mElementType->mTypeCode == BeTypeCode_Int16) ||
+			(vecType->mElementType->mTypeCode == BeTypeCode_Int32))
+		{			
+			arg1 = IntXMMGetPacked(arg1, vecType);
+
+			Emit(0x66);
+			EmitREX(arg0, arg1, false);
+			Emit(0x0F);
+			Emit(opcode); // PXOR
+			EmitModRM(arg0, arg1);
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -12381,6 +12523,8 @@ void BeMCContext::DoCodeEmission()
 	{
 		for (auto inst : mcBlock->mInstructions)
 		{
+			mActiveInst = inst;
+
 			if (mDebugging)
 			{
 				ToString(inst, dbgStr, true, true);
@@ -13330,6 +13474,10 @@ void BeMCContext::DoCodeEmission()
 								// MOVUPS
 								EmitREX(arg0, arg1, true);
 								Emit(0x0F); Emit(0x10);
+
+								if (arg1.IsImmediateInt())								
+									arg1.mKind = BeMCOperandKind_Immediate_int32x4;								
+
 								EmitModRM(arg0, arg1);
 							}
 							break;
@@ -13967,6 +14115,8 @@ void BeMCContext::DoCodeEmission()
 							break;
 						}
 
+						if (EmitIntXMMInst(instForm, inst, 0xFC)) // PADD?
+							break;
 						if (EmitStdXMMInst(instForm, inst, 0x58))
 							break;
 						EmitStdInst(instForm, inst, 0x01, 0x03, 0x81, 0x0, 0x83, 0x0);
@@ -14006,6 +14156,9 @@ void BeMCContext::DoCodeEmission()
 							mOut.Write((int32)inst->mArg1.mImmediate);
 							break;
 						}
+
+						if (EmitIntXMMInst(instForm, inst, 0xF8)) // PSUB?
+							break;
 						if (EmitStdXMMInst(instForm, inst, 0x5C))
 							break;
 						EmitStdInst(instForm, inst, 0x29, 0x2B, 0x81, 0x5, 0x83, 0x5);
@@ -14014,7 +14167,29 @@ void BeMCContext::DoCodeEmission()
 				break;
 			case BeMCInstKind_Mul:
 			case BeMCInstKind_IMul:
-				{					
+				{	
+					if (instForm == BeMCInstForm_XMM128_RM128)
+					{
+						if (arg0Type->IsExplicitVectorType())
+						{
+							auto vecType = (BeVectorType*)arg0Type;
+							if (vecType->mElementType->mTypeCode == BeTypeCode_Int32)
+							{
+								Emit(0x66);
+								EmitREX(arg0, arg1, false);
+								Emit(0x0F);
+								if (inst->mKind == BeMCInstKind_IMul)
+									Emit(0xD5); // PMULLW
+								else
+								{
+									Emit(0x38); Emit(0x40); // PMULLD
+								}									
+								EmitModRM(arg0, arg1);
+								break;
+							}
+						}
+					}
+
 					if (EmitStdXMMInst(instForm, inst, 0x59))
 						break;
 
@@ -14283,7 +14458,10 @@ void BeMCContext::DoCodeEmission()
 				}
 				break;
 			case BeMCInstKind_And:
-				{
+				{					
+					if (EmitIntBitwiseXMMInst(instForm, inst, 0xDB)) //PAND
+						break;
+
 					BeMCInst modInst = *inst;
 
 					bool isZeroing = false;
@@ -14372,12 +14550,16 @@ void BeMCContext::DoCodeEmission()
 				}
 				break;
 			case BeMCInstKind_Or:
-				{
+				{					
+					if (EmitIntBitwiseXMMInst(instForm, inst, 0xEB)) //POR
+						break;
 					EmitStdInst(instForm, inst, 0x09, 0x0B, 0x81, 0x1, 0x83, 0x1);
 				}
 				break;
 			case BeMCInstKind_Xor:
-				{
+				{					
+					if (EmitIntBitwiseXMMInst(instForm, inst, 0xEF)) //PXOR
+						break;
 					if (EmitPackedXMMInst(instForm, inst, 0x57))
 						break;
 					EmitStdInst(instForm, inst, 0x31, 0x33, 0x81, 0x6, 0x83, 0x6);
@@ -14387,6 +14569,53 @@ void BeMCContext::DoCodeEmission()
 			case BeMCInstKind_Shr:
 			case BeMCInstKind_Sar:
 				{
+					if (instForm == Beefy::BeMCInstForm_XMM128_RM128)
+					{
+						if (arg1.IsImmediate())
+						{
+							Emit(0x66);
+							EmitREX(arg1, arg0, false);
+							Emit(0x0F);
+							int rx = 0;
+							switch (inst->mKind)
+							{
+							case BeMCInstKind_Shl:
+								rx = 6;
+								break;
+							case BeMCInstKind_Shr:
+								rx = 2;
+								break;
+							case BeMCInstKind_Sar:
+								rx = 4;
+								break;
+							}
+							Emit(0x71); // PSLLW / PSRAW / PSRLW
+							EmitModRM(rx, arg0);
+							Emit((uint8)arg1.mImmediate);
+						}
+						else
+						{
+							Emit(0x66);
+							EmitREX(arg0, arg1, false);
+							Emit(0x0F);
+							switch (inst->mKind)
+							{
+							case BeMCInstKind_Shl:
+								Emit(0xF1); // PSLLW
+								break;
+							case BeMCInstKind_Shr:								
+								Emit(0xD1); // PSRLW
+								break;
+							case BeMCInstKind_Sar:					
+								Emit(0xE1); // PSRAW
+								break;
+							}
+
+							EmitModRM(arg0, arg1);
+						}						
+						break;
+					}
+
 					int rx = 0;
 					switch (inst->mKind)
 					{
@@ -14399,7 +14628,7 @@ void BeMCContext::DoCodeEmission()
 					case BeMCInstKind_Sar:
 						rx = 7;
 						break;
-					}
+					}					
 
 					bool handled = false;
 					switch (instForm)
@@ -14568,6 +14797,7 @@ void BeMCContext::DoCodeEmission()
 			}
 		}
 	}
+	mActiveInst = NULL;
 
 	if (mDebugging)
 	{
@@ -16689,20 +16919,71 @@ void BeMCContext::Generate(BeFunction* function)
 						case BfIRIntrinsic_Mul:
 						case BfIRIntrinsic_Neq:
 						case BfIRIntrinsic_Or:
+						case BfIRIntrinsic_SAR:
+						case BfIRIntrinsic_SHL:
+						case BfIRIntrinsic_SHR:
 						case BfIRIntrinsic_Sub:
 						case BfIRIntrinsic_Xor:
 							{
 								auto mcLHS = TryToVector(castedInst->mArgs[0].mValue);
-								auto mcRHS = TryToVector(castedInst->mArgs[1].mValue);
+								BeMCOperand mcRHS;
+								
+								if ((intrin->mKind == BfIRIntrinsic_SAR) ||
+									(intrin->mKind == BfIRIntrinsic_SHL) ||
+									(intrin->mKind == BfIRIntrinsic_SHR))
+								{
+									mcRHS = GetOperand(castedInst->mArgs[1].mValue);
+									if (!mcRHS.IsImmediateInt())
+										mcRHS = BeMCOperand();
+								}
+
+								if (!mcRHS)
+									mcRHS = TryToVector(castedInst->mArgs[1].mValue);
 
 								switch (intrin->mKind)
 								{
+								case BfIRIntrinsic_Add:
+									result = AllocBinaryOp(BeMCInstKind_Add, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+									break;
+								case BfIRIntrinsic_And:
+									result = AllocBinaryOp(BeMCInstKind_And, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+									break;
 								case BfIRIntrinsic_Mul:
 									result = AllocBinaryOp(BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+									break;
+								case BfIRIntrinsic_Or:
+									result = AllocBinaryOp(BeMCInstKind_Or, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+									break;
+								case BfIRIntrinsic_SAR:
+									result = AllocBinaryOp(BeMCInstKind_Sar, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+									break;
+								case BfIRIntrinsic_SHL:
+									result = AllocBinaryOp(BeMCInstKind_Shl, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+									break;
+								case BfIRIntrinsic_SHR:
+									result = AllocBinaryOp(BeMCInstKind_Shr, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+									break;
+								case BfIRIntrinsic_Sub:
+									result = AllocBinaryOp(BeMCInstKind_Sub, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+									break;
+								case BfIRIntrinsic_Xor:
+									result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
 									break;
 								default:
 									SoftFail("Unhandled intrinsic");
 								}
+							}
+							break;
+// 						case BfIRIntrinsic_Cast:
+// 							{
+// 
+// 							}
+// 							break;
+						case BfIRIntrinsic_Not:
+							{
+								auto mcLHS = TryToVector(castedInst->mArgs[0].mValue);								
+								BeMCOperand mcRHS = BeMCOperand::FromImmediate(-1);
+								result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
 							}
 							break;
 
@@ -17096,7 +17377,7 @@ void BeMCContext::Generate(BeFunction* function)
 							}
 							break;
 						default:
-							SoftFail("Intrinsic not handled", castedInst->mDbgLoc);
+							SoftFail(StrFormat("Intrinsic not handled: '%s'", intrin->mName.c_str()), castedInst->mDbgLoc);
 							break;
 						}
 					}

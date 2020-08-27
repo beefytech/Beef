@@ -12,8 +12,12 @@ namespace System.Numerics.X86
 			res.float[0] += b.float[0];
 			return res;
 		}
-		
-		public static extern v128 andnot_ps(v128 a, v128 b);
+
+		[Inline]
+		public static v128 andnot_ps(v128 a, v128 b)
+		{
+			return ~a & b;
+		}	
 		
 		public static extern v128 and_ps(v128 a, v128 b);
 		

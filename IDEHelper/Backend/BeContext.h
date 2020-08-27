@@ -115,6 +115,7 @@ public:
 	{
 		return (mTypeCode == BeTypeCode_Float) || (mTypeCode == BeTypeCode_Double);
 	}
+	
 
 	bool IsStruct()
 	{
@@ -134,6 +135,12 @@ public:
 	bool IsExplicitVectorType()
 	{
 		return (mTypeCode == BeTypeCode_Vector);
+	}
+
+	bool IsFloatOrVector()
+	{
+		return (mTypeCode == BeTypeCode_Float) || (mTypeCode == BeTypeCode_Double) ||
+			(mTypeCode == BeTypeCode_Vector) || (mTypeCode == BeTypeCode_M128) || (mTypeCode == BeTypeCode_M256) || (mTypeCode == BeTypeCode_M512);
 	}
 
 	bool IsComposite()

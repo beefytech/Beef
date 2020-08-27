@@ -2066,6 +2066,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(CmdParamVec<BeType*>, paramTypes);
 
 			auto intrin = mBeModule->mAlloc.Alloc<BeIntrinsic>();
+			intrin->mName = intrinName;
 			intrin->mKind = (BfIRIntrinsic)intrinId;
 			intrin->mReturnType = returnType;
 			SetResult(curId, intrin);

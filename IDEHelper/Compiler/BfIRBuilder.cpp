@@ -146,6 +146,7 @@ USING_NS_BF;
 	case BfTypeCode_Char32: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mUInt32 OP constRHS->mUInt32)); \
 	case BfTypeCode_Int64: return CreateConst(constLHS->mTypeCode, (uint64)(constLHS->mInt64 OP constRHS->mInt64)); \
 	case BfTypeCode_UInt64: return CreateConst(constLHS->mTypeCode, constLHS->mUInt64 OP constRHS->mUInt64); \
+	default: break; \
 	}
 
 #define UNARYOP_APPLY(val, OP) \
