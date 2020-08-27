@@ -2087,8 +2087,8 @@ namespace IDE
 			{
 				mRootFolder.Populate("src");
 				mRootFolder.StartWatching();
-			}	
-			mBeefGlobalOptions.mDefaultNamespace.Set(mProjectName);
+			}
+			SetupDefault(mBeefGlobalOptions);
 		}
 
         public void Save()
@@ -2317,8 +2317,8 @@ namespace IDE
 
 		public void SetupDefault(BeefGlobalOptions generalOptions)
 		{
-			generalOptions.mStartupObject.Set("Program");
 			generalOptions.mDefaultNamespace.Set(mProjectName);
+			generalOptions.mStartupObject.Set(scope String()..AppendF("{}.Program", generalOptions.mDefaultNamespace));
 		}
 
 		public Options CreateConfig(String configName, String platformName)
