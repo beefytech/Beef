@@ -318,13 +318,13 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.Field | .Method /*2*/)]
+	[AttributeUsage(.Field | .Method | .Property /*2*/)]
 	public struct NoShowAttribute : Attribute
 	{
 
 	}
 
-	[AttributeUsage(.Field | .Method /*2*/)]
+	[AttributeUsage(.Field | .Method | .Property /*2*/)]
 	public struct HideAttribute : Attribute
 	{
 

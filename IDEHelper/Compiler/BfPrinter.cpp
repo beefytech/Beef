@@ -1613,7 +1613,15 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 		ExpectSpace();
 	}
 
-	VisitChild(newExpr->mOpenToken);
+	auto _WriteToken = [&](BfAstNode* node, BfToken token)
+	{
+		if (node == NULL)
+			return;
+		Visit(node);
+		Write(BfTokenToString(token));
+	};
+
+	_WriteToken(newExpr->mOpenToken, BfToken_LParen);
 	for (int i = 0; i < (int)newExpr->mArguments.size(); i++)
 	{
 		if (i > 0)
@@ -1623,7 +1631,7 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 		}
 		VisitChild(newExpr->mArguments[i]);		
 	}
-	VisitChild(newExpr->mCloseToken);			
+	_WriteToken(newExpr->mCloseToken, BfToken_RParen);	
 }
 
 void BfPrinter::Visit(BfBoxExpression* boxExpr)

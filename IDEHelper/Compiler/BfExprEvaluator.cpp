@@ -18,6 +18,7 @@
 #include "BfUtil.h"
 #include "BfDeferEvalChecker.h"
 #include "BfVarDeclChecker.h"
+#include "BfFixits.h"
 
 #pragma warning(pop)
 
@@ -7420,7 +7421,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 					paramTypes.Add(resolvedArg.mTypedValue.mType);
 				}
 
-				autoComplete->FixitAddMethod(typeInst, methodName, mExpectingType, paramTypes, wantStatic);				
+				autoComplete->FixitAddMethod(typeInst, methodName, mExpectingType, paramTypes, wantStatic);
 			}			
 		}
 
@@ -11683,8 +11684,20 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		autoComplete->CheckTypeRef(objCreateExpr->mTypeRef, false, true);
 	}
 
-	//if (objCreateExpr->mArraySizeSpecifier == NULL)
-		CheckObjectCreateTypeRef(mExpectingType, objCreateExpr->mNewNode);			
+	if ((autoComplete != NULL) && (objCreateExpr->mOpenToken != NULL) && (objCreateExpr->mCloseToken != NULL) &&
+		(objCreateExpr->mOpenToken->mToken == BfToken_LBrace) && (autoComplete->CheckFixit(objCreateExpr->mOpenToken)))
+	{		
+		auto refNode = objCreateExpr->mOpenToken;
+		BfParserData* parser = refNode->GetSourceData()->ToParserData();
+		if (parser != NULL)
+		{			
+			autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Change initializer braces to parentheses\treformat|%s|%d-1|(\x01|%s|%d-1|)", 
+				parser->mFileName.c_str(), refNode->mSrcStart,
+				parser->mFileName.c_str(), objCreateExpr->mCloseToken->mSrcStart).c_str()));
+		}
+	}
+
+	CheckObjectCreateTypeRef(mExpectingType, objCreateExpr->mNewNode);			
 
 	BfAttributeState attributeState;	
 	attributeState.mTarget = BfAttributeTargets_Alloc;

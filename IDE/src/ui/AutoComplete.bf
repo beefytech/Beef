@@ -2277,6 +2277,16 @@ namespace IDE.ui
 
 		void ApplyFixit(String data)
 		{
+			int splitIdx = data.IndexOf('\x01');
+			if (splitIdx != -1)
+			{
+				String lhs = scope String(data, 0, splitIdx);
+				String rhs = scope String(data, splitIdx + 1);
+				ApplyFixit(lhs);
+				ApplyFixit(rhs);
+				return;
+			}
+
 			UndoBatchStart undoBatchStart = null;
 
 			var parts = String.StackSplit!(data, '|');
