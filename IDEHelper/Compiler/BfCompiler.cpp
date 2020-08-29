@@ -4149,7 +4149,10 @@ void BfCompiler::ProcessAutocompleteTempType()
 	{		
 		if ((propDef->mFieldDeclaration != NULL) && (propDef->mFieldDeclaration->mAttributes != NULL))
 		{
-			auto customAttrs = module->GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Property);
+			BfAttributeTargets target = BfAttributeTargets_Property;
+			if (propDef->IsExpressionBodied())
+				target = (BfAttributeTargets)(target | BfAttributeTargets_Method);
+			auto customAttrs = module->GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, target);
 			delete customAttrs;
 		}
 		

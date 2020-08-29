@@ -2884,7 +2884,7 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 			if (parser != NULL)
 			{
 				int fileLoc = BfFixitFinder::FindLineStartBefore(refNode);
-				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("#unwarn\tunwarn|%s|%d|#unwarn|", parser->mFileName.c_str(), fileLoc).c_str()));				
+				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("#unwarn\tunwarn|%s|%d|#unwarn|", parser->mFileName.c_str(), fileLoc).c_str()));
 
 				if (warningNum != 0)
 				{
@@ -19512,20 +19512,27 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
 
-	if ((methodDeclaration != NULL) && (methodDeclaration->mAttributes != NULL))
+	BfAttributeTargets attrTarget = ((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_CtorCalcAppend)) ? BfAttributeTargets_Constructor : BfAttributeTargets_Method;
+	BfAttributeDirective* attributeDirective = NULL;
+	if (methodDeclaration != NULL)
+		attributeDirective = methodDeclaration->mAttributes;
+	else if (propertyMethodDeclaration != NULL)
+	{
+		attributeDirective = propertyMethodDeclaration->mAttributes;
+		if (auto exprBody = BfNodeDynCast<BfPropertyBodyExpression>(propertyMethodDeclaration->mPropertyDeclaration->mDefinitionBlock))
+		{
+			attributeDirective = propertyMethodDeclaration->mPropertyDeclaration->mAttributes;
+			attrTarget = (BfAttributeTargets)(BfAttributeTargets_Property | BfAttributeTargets_Method);
+		}
+	}
+
+	if (attributeDirective != NULL)
 	{
 		if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes == NULL)
 			methodInstance->mMethodInfoEx->mMethodCustomAttributes = new BfMethodCustomAttributes();
-		methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(methodDeclaration->mAttributes, 
-			((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_CtorCalcAppend)) ? BfAttributeTargets_Constructor : BfAttributeTargets_Method);
+		methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(attributeDirective, attrTarget);
 	}
-	else if ((propertyMethodDeclaration != NULL) && (propertyMethodDeclaration->mAttributes != NULL))
-	{		
-		if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes == NULL)
-			methodInstance->mMethodInfoEx->mMethodCustomAttributes = new BfMethodCustomAttributes();
-		methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = GetCustomAttributes(propertyMethodDeclaration->mAttributes, BfAttributeTargets_Method);
-	}
-
+	
 	customAttributes = methodInstance->GetCustomAttributes();
 	if (customAttributes == NULL)
 	{

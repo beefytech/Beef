@@ -580,6 +580,7 @@ public:
 
 	bool IsVirtual();
 	bool HasExplicitInterface();	
+	bool IsExpressionBodied();
 	BfAstNode* GetRefNode();
 };
 

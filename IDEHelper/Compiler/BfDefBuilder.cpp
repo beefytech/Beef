@@ -949,7 +949,10 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 		String methodName;		
 		if (auto propExprBody = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
+		{
 			methodName = "get";
+			ParseAttributes(propertyDeclaration->mAttributes, methodDef);
+		}
 		else if ((methodDeclaration != NULL) && (methodDeclaration->mNameNode != NULL))
 			methodName = methodDeclaration->mNameNode->ToString();
 		
@@ -985,7 +988,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 		}
 		else
 		{
-			// Parse had an error, leave this block as an unnamed method			
+			// Parse had an error, leave this block as an unnamed method
 		}
 
 		methodDef->mBody = methodDeclaration->mBody;

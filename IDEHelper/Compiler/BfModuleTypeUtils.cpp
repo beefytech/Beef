@@ -2887,15 +2887,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				typeState.mTypeInstance = typeInstance;
 				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
-				if (propDef->mFieldDeclaration->mAttributes != NULL)
-				{
-					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Property);
-					delete customAttrs;
-				}
+				BfAttributeTargets target = BfAttributeTargets_Property;
+				if (propDef->IsExpressionBodied())
+					target = (BfAttributeTargets)(target | BfAttributeTargets_Method);
 
 				if (propDef->mFieldDeclaration->mAttributes != NULL)
 				{
-					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Property);
+					auto customAttrs = GetCustomAttributes(propDef->mFieldDeclaration->mAttributes, target);
 					delete customAttrs;
 				}
 

@@ -398,6 +398,14 @@ bool BfPropertyDef::HasExplicitInterface()
 	return false;
 }
 
+bool BfPropertyDef::IsExpressionBodied()
+{
+	auto propertyDeclaration = (BfPropertyDeclaration*)mFieldDeclaration;
+	if (auto expr = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
+		return true;
+	return false;
+}
+
 BfAstNode * BfPropertyDef::GetRefNode()
 {
 	BfPropertyDeclaration* propDecl = (BfPropertyDeclaration*)mFieldDeclaration;
