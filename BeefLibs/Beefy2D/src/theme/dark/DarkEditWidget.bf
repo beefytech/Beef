@@ -23,7 +23,7 @@ namespace Beefy.theme.dark
 		public uint32 mViewWhiteSpaceColor;
 		public bool mScrollToStartOnLostFocus;
 
-		protected static uint32[] sDefaultColors = new uint32[] { Color.White } ~ delete _;
+		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;
 
         public this(EditWidgetContent refContent = null) : base(refContent)
         {

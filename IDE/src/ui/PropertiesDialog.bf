@@ -1919,7 +1919,7 @@ namespace IDE.ui
 
 			    if ((fieldType == typeof(bool)) && (useOptionValues == null))
 			    {
-			        propEntry.mOptionValues = new String[] { new String("No"), new String("Yes") };
+			        propEntry.mOptionValues = new String[] ( new String("No"), new String("Yes") );
 			    }
 
 				if (fieldType.IsNullable)

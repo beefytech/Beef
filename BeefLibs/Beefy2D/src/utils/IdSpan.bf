@@ -31,7 +31,7 @@ namespace Beefy.utils
 			case Remove;
 		}
 
-        static uint8[] sEmptyData = new uint8[] { 0 } ~ delete _;
+        static uint8[] sEmptyData = new uint8[] ( 0 ) ~ delete _;
 
         public uint8[] mData;
         public int32 mLength;

@@ -777,7 +777,7 @@ namespace IDE.ui
 			allocPropEntry.mOnUpdate();
             AddPropertiesItem(category, "SIMD Instructions", "mBfSIMDSetting");
             AddPropertiesItem(category, "Optimization Level", "mBfOptimizationLevel",
-                scope String[] { "O0", "O1", "O2", "O3", "Og", "Og+"});
+                scope String[] ( "O0", "O1", "O2", "O3", "Og", "Og+"));
 			AddPropertiesItem(category, "LTO Type", "mLTOType");
             AddPropertiesItem(category, "No Omit Frame Pointers", "mNoOmitFramePointers");
 			AddPropertiesItem(category, "Large Strings", "mLargeStrings");
@@ -789,17 +789,17 @@ namespace IDE.ui
             category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
             AddPropertiesItem(category, "Debug Info", "mEmitDebugInfo");
             AddPropertiesItem(category, "Runtime Checks", "mRuntimeChecks",
-                scope String[] { "No", "Yes" });
+                scope String[] ( "No", "Yes" ));
             AddPropertiesItem(category, "Dynamic Cast Check", "mEmitDynamicCastCheck",
-                scope String[] { "No", "Yes" });
+                scope String[] ( "No", "Yes" ));
             AddPropertiesItem(category, "Object Debug Flags", "mEnableObjectDebugFlags",
-                scope String[] { "No", "Yes" });
+                scope String[] ( "No", "Yes" ));
             AddPropertiesItem(category, "Object Access Check", "mEmitObjectAccessCheck",
-                scope String[] { "No", "Yes" });
+                scope String[] ( "No", "Yes" ));
             AddPropertiesItem(category, "Realtime Leak Check", "mEnableRealtimeLeakCheck",
-                scope String[] { "No", "Yes" });
+                scope String[] ( "No", "Yes" ));
 			AddPropertiesItem(category, "Enable Hot Compilation", "mAllowHotSwapping",
-				scope String[] { "No", "Yes" });
+				scope String[] ( "No", "Yes" ));
 			AddPropertiesItem(category, "Alloc Stack Trace Depth", "mAllocStackTraceDepth");
             category.Open(true, true);
 

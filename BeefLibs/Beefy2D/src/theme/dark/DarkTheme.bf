@@ -226,7 +226,7 @@ namespace Beefy.theme.dark
             Get();
 
             DesignToolboxEntry [] entries = new DesignToolboxEntry [] 
-            {
+            (
                 new DesignToolboxEntry("ButtonWidget", typeof(DarkButton), sDarkTheme.mImages[(int32)ImageIdx.UIButton]),
                 new DesignToolboxEntry("LabelWidget", null, sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.UILabel]),                
                 new DesignToolboxEntry("EditWidget", typeof(DarkEditWidget), sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.UIEdit]),
@@ -235,7 +235,7 @@ namespace Beefy.theme.dark
                 new DesignToolboxEntry("RadioButton", null, sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.UIRadioButton]),
                 new DesignToolboxEntry("ListView", typeof(DarkListView), sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.UIListView]),
                 new DesignToolboxEntry("TabView", typeof(DarkTabbedView), sDarkTheme.mImages[(int32)DarkTheme.ImageIdx.UITabView])
-            };
+            );
 
             for (DesignToolboxEntry entry in entries)
                 entry.mGroupName = "DarkTheme";

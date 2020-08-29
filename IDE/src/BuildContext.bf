@@ -375,12 +375,12 @@ namespace IDE
 				        if (mPtrSize == 4)
 				        {
 				            fromDir = scope:: String(llvmDir, "i686-w64-mingw32/bin/");
-				            mingwFiles = scope:: String[] { "libgcc_s_dw2-1.dll", "libstdc++-6.dll" };
+				            mingwFiles = scope:: String[] ( "libgcc_s_dw2-1.dll", "libstdc++-6.dll" );
 				        }
 				        else
 				        {
 				            fromDir = scope:: String(llvmDir, "x86_64-w64-mingw32/bin/");
-				            mingwFiles = scope:: String[] { "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll" };
+				            mingwFiles = scope:: String[] ( "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll" );
 				        }
 				        for (var mingwFile in mingwFiles)
 				        {

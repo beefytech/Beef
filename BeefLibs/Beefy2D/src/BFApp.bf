@@ -70,7 +70,7 @@ namespace Beefy
         public uint32 mLastFPSUpdateCnt;
 
 		public Matrix4? mColorMatrix;
-		public ConstantDataDefinition mColorMatrixDataDef = new ConstantDataDefinition(16, new ConstantDataDefinition.DataType[] { ConstantDataDefinition.DataType.Matrix | ConstantDataDefinition.DataType.PixelShaderUsage }) ~ delete _;
+		public ConstantDataDefinition mColorMatrixDataDef = new ConstantDataDefinition(16, new ConstantDataDefinition.DataType[] ( ConstantDataDefinition.DataType.Matrix | ConstantDataDefinition.DataType.PixelShaderUsage )) ~ delete _;
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void Lib_Startup(int32 argc, char8** argv, void* startupCallback);

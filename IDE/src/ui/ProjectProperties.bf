@@ -618,13 +618,13 @@ namespace IDE.ui
         {
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
 			AddPropertiesItem(root, "Target Type", "mTargetType", scope String[]
-				{
+				(
 					"Console Application",
 					"GUI Application",
 					"Library",
 					"Dynamic Library",
 					"Custom Build"
-				});
+				));
 			AddPropertiesItem(root, "Project Name Aliases", "mAliases");
         }
 
@@ -822,7 +822,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Reloc Model", "mBeefOptions.mRelocType");
 			AddPropertiesItem(category, "PIC Level", "mBeefOptions.mPICLevel");
             AddPropertiesItem(category, "Optimization Level", "mBeefOptions.mOptimizationLevel",
-                scope String[] { "O0", "O1", "O2", "O3", "Og", "Og+" }); // -O0 .. -O3,  -Os, -Ofast, -Og
+                scope String[] ( "O0", "O1", "O2", "O3", "Og", "Og+" )); // -O0 .. -O3,  -Os, -Ofast, -Og
 			AddPropertiesItem(category, "LTO", "mBeefOptions.mLTOType");
             AddPropertiesItem(category, "Vectorize Loops", "mBeefOptions.mVectorizeLoops");
             AddPropertiesItem(category, "Vectorize SLP", "mBeefOptions.mVectorizeSLP");
@@ -848,7 +848,7 @@ namespace IDE.ui
             AddPropertiesItem(category, "Other C Flags", "mCOptions.mOtherCFlags");
             AddPropertiesItem(category, "Other C++ Flags", "mCOptions.mOtherCPPFlags");
             AddPropertiesItem(category, "Enable Beef Interop", "mCOptions.mEnableBeefInterop",
-                scope String[] { "No", "Yes" });
+                scope String[] ( "No", "Yes" ));
             var parent = AddPropertiesItem(category, "Include Paths", "mCOptions.mIncludePaths");
             parent = AddPropertiesItem(category, "Preprocessor Macros", "mCOptions.mPreprocessorMacros");
             //parent.MakeParent();
@@ -858,23 +858,23 @@ namespace IDE.ui
             category.mIsBold = true;
             category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
             AddPropertiesItem(category, "Disable C++ Exceptions", "mCOptions.mDisableExceptions",
-                scope String[] { "No", "Yes (-fno-exceptions)" }); // -fno-exceptions
+                scope String[] ( "No", "Yes (-fno-exceptions)" )); // -fno-exceptions
             AddPropertiesItem(category, "SIMD Instructions", "mCOptions.mSIMD"); // -msse, -msse2, -msse4.1, -mno-sse
             AddPropertiesItem(category, "Generate LLVM IR", "mCOptions.mGenerateLLVMAsm",
-                scope String[] { "No", "Yes (-emit-llvm)" });
+                scope String[] ( "No", "Yes (-emit-llvm)" ));
             AddPropertiesItem(category, "No Omit Frame Pointers", "mCOptions.mNoOmitFramePointers",
-                scope String[] { "No", "Yes (-fno-omit-frame-pointer)" }); //-fno-omit-frame-pointer
+                scope String[] ( "No", "Yes (-fno-omit-frame-pointer)" )); //-fno-omit-frame-pointer
             AddPropertiesItem(category, "Disable Inlining", "mCOptions.mDisableInlining",
-                scope String[] { "No", "Yes (-fno-inline)" }); // -fno-inline
+                scope String[] ( "No", "Yes (-fno-inline)" )); // -fno-inline
             AddPropertiesItem(category, "Strict Aliasing", "mCOptions.mStrictAliasing",
-                scope String[] { "No", "Yes (-fstrict-aliasing)" }); // -fstrict-aliasing
+                scope String[] ( "No", "Yes (-fstrict-aliasing)" )); // -fstrict-aliasing
             AddPropertiesItem(category, "Fast Math", "mCOptions.mFastMath",
-                scope String[] { "No", "Yes (-ffast-math)" }); // -ffast-math
+                scope String[] ( "No", "Yes (-ffast-math)" )); // -ffast-math
             AddPropertiesItem(category, "Disable RTTI", "mCOptions.mDisableRTTI",
-                scope String[] { "No", "Yes (-fno-rtti)" }); // -fno-rtti
+                scope String[] ( "No", "Yes (-fno-rtti)" )); // -fno-rtti
             AddPropertiesItem(category, "Optimization Level", "mCOptions.mOptimizationLevel"); // -O0 .. -O3,  -Os, -Ofast, -Og
             AddPropertiesItem(category, "Debug Info", "mCOptions.mEmitDebugInfo",
-                scope String[] { "None", "DWARF (-g)" });
+                scope String[] ( "None", "DWARF (-g)" ));
             AddPropertiesItem(category, "Address Sanitizer", "");
             category.Open(true, true);
 
@@ -882,17 +882,17 @@ namespace IDE.ui
             category.mIsBold = true;
             category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
             AddPropertiesItem(category, "All warnings", "mCOptions.mAllWarnings",
-                scope String[] { "No", "Yes (-Wall)" }); // -Wall
+                scope String[] ( "No", "Yes (-Wall)" )); // -Wall
             AddPropertiesItem(category, "Effective C++ Violations", "mCOptions.mEffectiveCPPViolations",
-                scope String[] { "No", "Yes (-Weffc++)" }); //-Weffc++
+                scope String[] ( "No", "Yes (-Weffc++)" )); //-Weffc++
             AddPropertiesItem(category, "Pedantic", "mCOptions.mPedantic",
-                scope String[] { "No", "Yes (-pedantic)" }); //-pedantic
+                scope String[] ( "No", "Yes (-pedantic)" )); //-pedantic
             AddPropertiesItem(category, "Warnings as errors", "mCOptions.mWarningsAsErrors",
-                scope String[] { "No", "Yes (-Werror)" });  //-Werror
+                scope String[] ( "No", "Yes (-Werror)" ));  //-Werror
             AddPropertiesItem(category, "Specific Warnings As Errors", "",
-                scope String[] { "No", "Yes (-Werror=)" }); // -Werror=
+                scope String[] ( "No", "Yes (-Werror=)" )); // -Werror=
             AddPropertiesItem(category, "Disable Specific Warnings", "",
-                scope String[] { "No", "Yes (-Wno-)" }); //-Wno-
+                scope String[] ( "No", "Yes (-Wno-)" )); //-Wno-
             category.Open(true, true);
         }
 

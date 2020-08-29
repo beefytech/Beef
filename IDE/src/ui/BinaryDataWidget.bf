@@ -691,7 +691,7 @@ namespace IDE.ui
 					RehupSize();
 				});
 
-            for (int32 c in scope int32[] { 4, 8, 16, 32, 64 })
+            for (int32 c in scope int32[] ( 4, 8, 16, 32, 64 ))
             {
                 columnChoice = menuItem.AddItem(StackStringFormat!("{0} bytes", c));
                 if ((mAutoResizeType == .Manual) && (c == (int32)mBytesPerDisplayLine))

@@ -477,14 +477,14 @@ namespace Beefy.gfx
 
 		static MarkPosition[] sMarkPositionsLow = new MarkPosition[0x70]
 		//       0        1        2        3            4        5        6        7             8        9        A        B             C        D        E        F
-       /*0*/{.AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC,
+       /*0*/(.AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC,
 	   /*1*/ .AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveE, .AboveC, .AboveC, /**/ .BelowC, .BelowC, .AboveE, .TopR,   /**/ .BelowC, .BelowC, .BelowC, .BelowC,
 	   /*2*/ .BelowC, .BelowC, .BelowC, .BelowC, /**/ .BelowC, .BelowC, .BelowC, .BelowC, /**/ .BelowC, .BelowC, .BelowC, .BelowC, /**/ .BelowC, .BelowC, .BelowC, .BelowC,
        /*3*/ .BelowC, .BelowC, .BelowC, .BelowC, /**/ .OverC , .OverC , .OverC , .OverC , /**/ .OverC , .BelowC, .BelowC, .BelowC, /**/ .AboveC, .AboveC, .AboveC, .AboveC,
        /*4*/ .AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .BelowC, .AboveC, .BelowC, /**/ .BelowC, .BelowC, .AboveC, .AboveC, /**/ .AboveC, .BelowC, .BelowC, .OverC,
        /*5*/ .AboveC, .AboveC, .AboveC, .BelowC, /**/ .BelowC, .BelowC, .BelowC, .AboveC, /**/ .AboveE, .BelowC, .AboveC, .AboveC, /**/ .BelowR, .AboveR, .AboveR, .BelowR,
        /*6*/ .AboveR, .AboveR, .BelowR, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC, /**/ .AboveC, .AboveC, .AboveC, .AboveC,
-			} ~ delete _;
+			) ~ delete _;
 
 		MarkPosition GetMarkPosition(char32 checkChar)
 		{

@@ -194,7 +194,7 @@ namespace IDE.ui
 		public bool mIgnoreKeyChar; // This fixes cases where a KeyDown changes focus to us but then we get a KeyChar that doesn't belong to us
 		public bool mIgnoreSetHistory;
         public static uint32[] sTextColors = new uint32[]
-            {
+            (
                 0xFFFFFFFF, // Normal
                 0xFFE1AE9A, // Keyword
                 0XFFC8A0FF, // Literal
@@ -215,7 +215,7 @@ namespace IDE.ui
 				0xFFFFFF80, // BuildWarning
 
 				0xFF9090C0, // VisibleWhiteSpace
-            } ~ delete _;
+            ) ~ delete _;
 		bool mHasCustomColors;
 		FastCursorState mFastCursorState ~ delete _;
 

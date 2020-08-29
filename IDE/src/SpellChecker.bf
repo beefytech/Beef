@@ -27,9 +27,9 @@ namespace IDE
 
         void* mNativeSpellChecker;
 
-        String[] mLangWordList = new String[] {
+        String[] mLangWordList = new String[] (
             "int", "uint", "struct", "bool", "enum", "int", "proj", "newbox", "params", "typeof",  "var"
-        } ~ delete _;
+        ) ~ delete _;
 
 		public String mLangPath ~ delete _;
         public HashSet<String> mIgnoreWordList = new HashSet<String>() ~ DeleteContainerAndItems!(_);
