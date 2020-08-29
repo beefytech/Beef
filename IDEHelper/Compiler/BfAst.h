@@ -738,6 +738,8 @@ public:
 			break;
 		}
 	}
+
+	bool CanModify() const;
 };
 
 #define BF_AST_TYPE(name, TBase) \

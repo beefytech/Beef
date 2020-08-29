@@ -1015,6 +1015,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	auto activeDef = mModule->GetActiveTypeDef();
 	RETURN_BETTER_OR_WORSE(newMethodDef->mDeclaringType == activeDef, prevMethodDef->mDeclaringType == activeDef);
 	RETURN_BETTER_OR_WORSE(newMethodDef->mDeclaringType->IsExtension(), prevMethodDef->mDeclaringType->IsExtension());
+	RETURN_BETTER_OR_WORSE(newMethodDef->mIsMutating, prevMethodDef->mIsMutating);
 
 	RETURN_RESULTS;
 }
@@ -1437,6 +1438,13 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	else if (needInferGenericParams)
 		genericArgumentsSubstitute = &mCheckMethodGenericArguments;
 	
+	if ((checkMethod->mIsMutating) && (targetTypeInstance != NULL) && (targetTypeInstance->IsValueType()) &&
+		((mTarget.IsReadOnly()) || (!mTarget.IsAddr())) &&
+		(!targetTypeInstance->IsValuelessType()))
+	{
+		goto NoMatch;
+	}
+
 	if (mSkipImplicitParams)
 	{
 		//paramOfs = methodInstance->GetImplicitParamCount();
@@ -4199,8 +4207,8 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mPropDef->mFieldDeclaration))
 						{
 							if (curCheckType->mTypeDef->HasAutoProperty(propertyDeclaration))
-							{
-								bool hasSetter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet) != NULL;
+							{								
+								bool hasSetter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget) != NULL;
 								auto autoFieldName = curCheckType->mTypeDef->GetAutoPropertyName(propertyDeclaration);
 								auto result = LookupField(targetSrc, target, autoFieldName, BfLookupFieldFlag_IgnoreProtection);
 								if (result)
@@ -14845,14 +14853,54 @@ void BfExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
 		mResult = cascadeValue;
 }
 
-BfMethodDef* BfExprEvaluator::GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind)
+BfMethodDef* BfExprEvaluator::GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind, BfTypedValue propTarget)
 {
+	bool allowMut = (propTarget) && (!propTarget.mType->IsValueType() || propTarget.CanModify());
+
+	int bestPri = -1000;
 	BfMethodDef* matchedMethod = NULL;
+
+	for (auto methodDef : propDef->mMethods)
+	{
+		if (methodDef->mMethodType != methodType)
+			continue;
+
+		int curPri = 0;		
+
+		if (methodDef->mCheckedKind == checkedKind)
+		{
+			curPri = 5;
+		}
+		else if ((checkedKind == BfCheckedKind_NotSet) && (methodDef->mCheckedKind == mModule->GetDefaultCheckedKind()))
+			curPri = 3;
+		else
+			curPri = 1;
+
+		if (methodDef->mIsMutating)
+		{
+			if (allowMut)
+				curPri++;
+			else
+				curPri -= 10;
+		}
+
+		if (curPri > bestPri)
+		{
+			bestPri = curPri;
+			matchedMethod = methodDef;
+		}
+	}
+
+	return matchedMethod;
+
+	/*BfMethodDef* matchedMethod = NULL;
 	BfMethodDef* backupMethod = NULL;
 	for (auto methodDef : propDef->mMethods)
 	{
 		if (methodDef->mMethodType != methodType)
 			continue;
+				
+
 		if (methodDef->mCheckedKind == checkedKind)
 		{
 			matchedMethod = methodDef;
@@ -14865,7 +14913,7 @@ BfMethodDef* BfExprEvaluator::GetPropertyMethodDef(BfPropertyDef* propDef, BfMet
 	}
 	if (matchedMethod == NULL)
 		matchedMethod = backupMethod;
-	return matchedMethod;
+	return matchedMethod;*/
 }
 
 BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* methodDef)
@@ -15084,7 +15132,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			SetAndRestoreValue<BfFunctionBindResult*> prevFunctionBindResult(mFunctionBindResult, NULL); 
 			SetAndRestoreValue<BfAstNode*> prevDeferCallRef(mDeferCallRef, NULL);			
 
-			BfMethodDef* matchedMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind);
+			BfMethodDef* matchedMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind, mPropTarget);
 			if (matchedMethod == NULL)
 			{
 				mModule->Fail("Property has no getter", mPropSrc);
@@ -15404,8 +15452,7 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 		return true;
 	}
 
-	bool canModify = (((typedVal.IsAddr()) || (typedVal.mType->IsValuelessType())) &&
-		(!typedVal.IsReadOnly()));
+	bool canModify = typedVal.CanModify();
 
 	if (localVar != NULL)
 	{
@@ -15776,8 +15823,8 @@ void BfExprEvaluator::PopulateDeferrredTupleAssignData(BfTupleExpression* tupleE
 					BfPointerType* pointerType = (BfPointerType*)exprEvaluator->mPropTarget.mType;
 					propTypeInst = pointerType->mElementType->ToTypeInstance();
 				}
-
-				auto setMethod = GetPropertyMethodDef(exprEvaluator->mPropDef, BfMethodType_PropertySetter, mPropCheckedKind);
+				
+				auto setMethod = GetPropertyMethodDef(exprEvaluator->mPropDef, BfMethodType_PropertySetter, mPropCheckedKind, mPropTarget);
 				if (setMethod != NULL)
 				{
 					auto methodInstance = mModule->GetMethodInstance(propTypeInst, setMethod, BfTypeVector());
@@ -15785,7 +15832,7 @@ void BfExprEvaluator::PopulateDeferrredTupleAssignData(BfTupleExpression* tupleE
 				}
 				else 
 				{
-					auto getMethod = GetPropertyMethodDef(exprEvaluator->mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind);
+					auto getMethod = GetPropertyMethodDef(exprEvaluator->mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind, mPropTarget);
 					if (getMethod != NULL)
 					{
 						auto methodInstance = mModule->GetMethodInstance(propTypeInst, getMethod, BfTypeVector());
@@ -15948,7 +15995,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 		auto propDef = mPropDef;
 		auto propTarget = mPropTarget;
 
-		auto setMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, mPropCheckedKind);
+		auto setMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, mPropCheckedKind, mPropTarget);
 		if (setMethod == NULL)
 		{
 			// Allow for a ref return on the getter to be used if a setter is not available
@@ -17306,6 +17353,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 							continue;
 
 						methodMatcher.mCheckedKind = checkedKind;
+						methodMatcher.mTarget = target;
 						methodMatcher.CheckMethod(startCheckTypeInst, curCheckType, checkMethod, false);						
 
 						if ((methodMatcher.mBestMethodDef == checkMethod) ||
@@ -18191,7 +18239,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 
 	if (writeToProp)
 	{
-		auto setMethod = GetPropertyMethodDef(propDef, BfMethodType_PropertySetter, mPropCheckedKind);
+		auto setMethod = GetPropertyMethodDef(propDef, BfMethodType_PropertySetter, mPropCheckedKind, mPropTarget);
 		if (setMethod == NULL)
 		{
 			mModule->Fail("Property has no setter", propSrc);

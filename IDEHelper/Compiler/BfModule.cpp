@@ -11385,7 +11385,7 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 	else if (methodA->mMethodDef->mName != methodB->mMethodDef->mName)
 		return false;			
 	if (methodA->mMethodDef->mCheckedKind != methodB->mMethodDef->mCheckedKind)
-		return false;
+		return false;	
 	if ((methodA->mMethodDef->mMethodType == BfMethodType_Mixin) != (methodB->mMethodDef->mMethodType == BfMethodType_Mixin))
 		return false;
 
@@ -20846,6 +20846,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 					if (((checkMethodInstance->mChainType == BfMethodChainType_None) || (checkMethodInstance->mChainType == BfMethodChainType_ChainHead)) &&						
 						(checkMethodInstance->GetExplicitInterface() == methodInstance->GetExplicitInterface()) &&
+						(checkMethod->mIsMutating == methodDef->mIsMutating) &&
 						(CompareMethodSignatures(checkMethodInstance, mCurMethodInstance)))
 					{							
 						bool canChain = false;

@@ -56,6 +56,11 @@ bool BfTypedValue::IsValuelessType() const
 	return mType->IsValuelessType();
 }
 
+bool BfTypedValue::CanModify() const
+{	
+	return (((IsAddr()) || (mType->IsValuelessType())) && (!IsReadOnly()));	
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::DependencyFlags flags)

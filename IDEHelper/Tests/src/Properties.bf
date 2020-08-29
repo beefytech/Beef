@@ -36,7 +36,34 @@ namespace Tests
 		{
 			public StructA B { get; }
 
+			public int C => 123;
+			[SkipCall]
+			public int D => 123;
+
+			public int E
+			{
+				get
+				{
+					return 1;
+				}
+
+				get mut
+				{
+					return 2;
+				}
+			}
+
 			int mZ = 9;
+
+			public int GetVal()
+			{
+				return 3;
+			}
+
+			public int GetVal() mut
+			{
+				return 4;
+			}
 
 			public this()
 			{
@@ -72,6 +99,15 @@ namespace Tests
 			sb.B = .(222);
 			sa = sb.B;
 			Test.Assert(sa.mA == 222);
+
+			StructC sc = default;
+			Test.Assert(sc.C == 123);
+			Test.Assert(sc.D == 0);
+			let sc2 = sc;
+			Test.Assert(sc.E == 2);
+			Test.Assert(sc.GetVal() == 4);
+			Test.Assert(sc2.E == 1);
+			Test.Assert(sc2.GetVal() == 3);
 
 			ClassB cb = scope .();
 			sa = cb.B;

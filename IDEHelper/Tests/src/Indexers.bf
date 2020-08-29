@@ -31,6 +31,24 @@ namespace Tests
 
 		}
 
+		struct StructA
+		{
+			int mA;
+
+			public int this[int index]
+			{
+				get
+				{
+					return 1;
+				}
+
+				get mut
+				{
+					return 2;
+				}
+			}
+		}
+
 		[Test]
 		public static void Hey()
 		{
@@ -43,6 +61,11 @@ namespace Tests
 			Test.Assert(value == 234);
 			value = ca[0];
 			Test.Assert(value == 234);
+
+			StructA sa = default;
+			let sa2 = sa;
+			Test.Assert(sa[0] == 2);
+			Test.Assert(sa2[0] == 1);
 		}
 	}
 }

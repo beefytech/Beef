@@ -348,7 +348,7 @@ public:
 	void ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveArgFlags flags = BfResolveArgFlag_None);
 	BfAllocTarget ResolveAllocTarget(BfAstNode* newNode, BfTokenNode*& newToken, BfCustomAttributes** outCustomAttributes = NULL);
 	BfTypedValue ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue = NULL, BfParamKind paramKind = BfParamKind_Normal);
-	BfMethodDef* GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind);
+	BfMethodDef* GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind, BfTypedValue propTarget);
 	BfModuleMethodInstance GetPropertyMethodInstance(BfMethodDef* methodDef);
 	void CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance* methodInstance, bool checkProt);
 	bool HasResult();
