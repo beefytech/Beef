@@ -14855,7 +14855,20 @@ void BfExprEvaluator::Visit(BfInvocationExpression* invocationExpr)
 
 BfMethodDef* BfExprEvaluator::GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind, BfTypedValue propTarget)
 {
-	bool allowMut = (propTarget) && (!propTarget.mType->IsValueType() || propTarget.CanModify());
+	bool allowMut = true;
+	if ((propTarget) && (propTarget.mType->IsValueType()))
+	{		
+		if (propTarget.IsReadOnly())
+		{
+			allowMut = false;
+		}
+		else if (!propTarget.IsAddr())
+		{
+			mModule->PopulateType(propTarget.mType);
+			if (!propTarget.IsValuelessType())
+				allowMut = false;
+		}		
+	}
 
 	int bestPri = -1000;
 	BfMethodDef* matchedMethod = NULL;
