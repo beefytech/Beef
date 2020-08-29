@@ -2174,10 +2174,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				BfUnaryOp unaryOp = BfTokenToUnaryOp(tokenNode->GetToken());
 
 				if (unaryOp != BfUnaryOp_None)
-				{
-					if (unaryOp == BfUnaryOp_Positive)
-						Fail("Unary operator '+' not allowed", tokenNode);
-
+				{					
 					unaryOpExpr = mAlloc->Alloc<BfUnaryOperatorExpression>();
 					unaryOpExpr->mOp = unaryOp;
 					unaryOpExpr->mOpToken = tokenNode;
@@ -6625,12 +6622,19 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 			}
 
 			ParseMethod(operatorDecl, &params, &commas);
-
-			// This was the one ambiguous case
-			if ((operatorDecl->mBinOp == BfBinaryOp_Subtract) && (params.size() == 1))
+			
+			if (params.size() == 1)
 			{
-				operatorDecl->mBinOp = BfBinaryOp_None;
-				operatorDecl->mUnaryOp = BfUnaryOp_Negate;
+				if (operatorDecl->mBinOp == BfBinaryOp_Add)
+				{
+					operatorDecl->mBinOp = BfBinaryOp_None;
+					operatorDecl->mUnaryOp = BfUnaryOp_Positive;
+				}
+				else if (operatorDecl->mBinOp == BfBinaryOp_Subtract)
+				{
+					operatorDecl->mBinOp = BfBinaryOp_None;
+					operatorDecl->mUnaryOp = BfUnaryOp_Negate;
+				}				
 			}
 
 			return operatorDecl;
