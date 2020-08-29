@@ -1,7 +1,7 @@
 namespace System
 {
 #unwarn
-	struct UInt8 : uint8, IInteger, IUnsigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
+	struct UInt8 : uint8, IInteger, IUnsigned, IHashable, IFormattable, IIsNaN
 	{
 	    public const uint8 MaxValue = (uint8)0xFF;        
 	    public const uint8 MinValue = 0;

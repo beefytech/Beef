@@ -1,6 +1,6 @@
 namespace System
 {
-	struct Char16 : char16, IHashable
+	struct Char16 : char16, IHashable, IIsNaN
 	{
 		const int UNICODE_PLANE00_END = 0x00ffff;
 		// The starting codepoint for Unicode plane 1.  Plane 1 contains 0x010000 ~ 0x01ffff.
@@ -13,6 +13,15 @@ namespace System
 		const char16 LOW_SURROGATE_END    = (char16)0xdfff;
 		const char16 HIGH_SURROGATE_END   = (char16)0xdbff;
 		const char16 LOW_SURROGATE_START  = (char16)0xdc00;
+
+		bool IIsNaN.IsNaN
+		{
+			[SkipCall]
+			get
+			{
+				return false;
+			}
+		}
 
 		public int GetHashCode()
 		{

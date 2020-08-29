@@ -1,13 +1,8 @@
 namespace System
 {
 #unwarn
-	struct Char8 : char8, IHashable, IOpComparable, IIsNaN
+	struct Char8 : char8, IHashable, IIsNaN
 	{
-		public static int operator<=>(Char8 a, Char8 b)
-		{
-			return (char8)a <=> (char8)b;
-		}
-
 		bool IIsNaN.IsNaN
 		{
 			[SkipCall]

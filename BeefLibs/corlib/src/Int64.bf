@@ -3,7 +3,7 @@ using System.Globalization;
 namespace System
 {
 #unwarn
-	struct Int64 : int64, IInteger, ISigned, IFormattable, IHashable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
+	struct Int64 : int64, IInteger, ISigned, IFormattable, IHashable, IIsNaN
 	{
 		public enum ParseError
 		{

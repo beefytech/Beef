@@ -10,7 +10,7 @@ namespace System
 	using System.Diagnostics;
 
 #unwarn
-    public struct Double : double, IFloating, ISigned, IFormattable, IHashable, IOpComparable, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable, ICanBeNaN
+    public struct Double : double, IFloating, ISigned, IFormattable, IHashable, ICanBeNaN
     {
         public const double MinValue = -1.7976931348623157E+308;
         public const double MaxValue = 1.7976931348623157E+308;
@@ -65,7 +65,25 @@ namespace System
 			return *((int*)&d) ^ ((int32*)&d)[1];
 			
 		}
-        
+
+		public bool IsNegative
+		{
+			get
+			{
+				double val = (double)this;
+		        return (*(uint64*)(&val) & 0x8000000000000000UL) == 0x8000000000000000UL;
+			}
+		}
+
+		public bool IsFinite
+		{
+			get
+			{
+				double val = (double)this;
+		        return (*(int64*)(&val) & 0x7FFFFFFFFFFFFFFFL) < 0x7FF0000000000000L;
+			}
+		}
+
         public bool IsInfinity
         {
 			get
@@ -91,15 +109,7 @@ namespace System
 			}
         }
                 
-        public bool IsNegative
-        {
-			get
-			{
-				double val = (double)this;
-	            return (*(uint64*)(&val) & 0x8000000000000000UL) == 0x8000000000000000UL;
-			}
-        }
-                
+        
         public bool IsNaN
         {
 			get
@@ -108,6 +118,17 @@ namespace System
 	            return (*(uint64*)(&val) & 0x7FFFFFFFFFFFFFFFUL) > 0x7FF0000000000000UL;
 			}
         }
+
+		public bool IsSubnormal
+		{
+			get
+			{
+				double val = (double)this;
+			    var bits = *(int64*)(&val);
+			    bits &= 0x7FFFFFFFFFFFFFFFUL;
+			    return (bits < 0x7F80000000000000UL) && (bits != 0) && ((bits & 0x7F80000000000000UL) == 0);
+			}
+		}
 
         // Compares this object to another object, returning an instance of System.Relation.
         // Null is considered less than any instance.

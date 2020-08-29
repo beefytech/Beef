@@ -1,10 +1,19 @@
 namespace System
 {
-	struct Char32 : char32, IHashable
+	struct Char32 : char32, IHashable, IIsNaN
 	{
 	    public int GetHashCode()
 		{
 			return (int)this;
+		}
+
+		bool IIsNaN.IsNaN
+		{
+			[SkipCall]
+			get
+			{
+				return false;
+			}
 		}
 
 		public extern char32 ToLower

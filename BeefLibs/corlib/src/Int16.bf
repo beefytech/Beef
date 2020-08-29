@@ -1,7 +1,7 @@
 namespace System
 {
 #unwarn
-	struct Int16 : int16, IInteger, ISigned, IHashable, IFormattable, IOpComparable, IIsNaN, IOpNegatable, IOpAddable, IOpSubtractable, IOpMultiplicable, IOpDividable
+	struct Int16 : int16, IInteger, ISigned, IHashable, IFormattable, IIsNaN
 	{
 		public const int32 MaxValue = 0x7FFF;
 		public const int32 MinValue = -0x8000;
