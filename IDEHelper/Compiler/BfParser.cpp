@@ -2440,8 +2440,15 @@ void BfParser::NextToken(int endIdx)
 							mLiteral.mInt64 = val;
 							mLiteral.mTypeCode = BfTypeCode_IntUnknown;
 
-							if ((hadOverflow) || (val < -0x80000000LL) || (val > 0xFFFFFFFFLL))
-								mPassInstance->FailAt("Value doesn't fit into int32", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
+							if (hadOverflow)
+							{
+								mPassInstance->FailAt("Value doesn't fit into int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
+								mLiteral.mTypeCode = BfTypeCode_Int64;
+							}
+							else if ((val < -0x80000000LL) || (val > 0xFFFFFFFFLL))
+							{								
+								mLiteral.mTypeCode = BfTypeCode_Int64;
+							}
 							else
 							{
 								if ((numberBase == 0x10) && (hexDigits == 7))
