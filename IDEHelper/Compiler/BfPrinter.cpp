@@ -2146,6 +2146,7 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 
 	QueueVisitChild(ctorDeclaration->mAttributes);
 	ExpectNewLine();
+	ExpectSpace();
 	QueueVisitChild(ctorDeclaration->mProtectionSpecifier);	
 	ExpectSpace();
 	QueueVisitChild(ctorDeclaration->mNewSpecifier);
@@ -2192,6 +2193,7 @@ void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 
 	QueueVisitChild(dtorDeclaration->mAttributes);
 	ExpectNewLine();
+	ExpectSpace();
 	QueueVisitChild(dtorDeclaration->mProtectionSpecifier);	
 	ExpectSpace();
 	QueueVisitChild(dtorDeclaration->mNewSpecifier);
@@ -2469,6 +2471,7 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 		QueueVisitChild(fieldDeclaration->mAttributes);
 		ExpectNewLine();
 	}	
+	ExpectSpace();
 	QueueVisitChild(fieldDeclaration->mProtectionSpecifier);
 	ExpectSpace();
 	QueueVisitChild(fieldDeclaration->mConstSpecifier);
