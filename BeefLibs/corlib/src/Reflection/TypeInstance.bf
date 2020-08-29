@@ -104,7 +104,7 @@ namespace System.Reflection
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, mInstSize, mInstAlign, 1);
 #else
-			void* mem = new [Align(16)] uint8[mInstSize]* {?};
+			void* mem = new [Align(16)] uint8[mInstSize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);
 			obj.[Friend]mClassVData = (.)(void*)mTypeClassVData;
 #endif
