@@ -7512,6 +7512,8 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 
 	if (auto block = BfNodeDynCast<BfBlock>(mVisitorPos.GetNext()))
 	{
+		mPassInstance->Warn(0, "Expected '('", block->mOpenBrace);
+
 		mVisitorPos.MoveNext();
 		MEMBER_SET(objectCreateExpr, mOpenToken, block->mOpenBrace);
 		//

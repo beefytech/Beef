@@ -59,10 +59,10 @@ namespace System
 		private const int32 DatePartMonth = 2;
 		private const int32 DatePartDay = 3;
 
-		private static readonly int32[] DaysToMonth365 = new int32[]{
-			0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365} ~ delete _;
-		private static readonly int32[] DaysToMonth366 = new int32[]{
-			0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366} ~ delete _;
+		private static readonly int32[] DaysToMonth365 = new int32[](
+			0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365) ~ delete _;
+		private static readonly int32[] DaysToMonth366 = new int32[](
+			0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366) ~ delete _;
 
 		public static readonly DateTime MinValue = DateTime(MinTicks, DateTimeKind.Unspecified);
 		public static readonly DateTime MaxValue = DateTime(MaxTicks, DateTimeKind.Unspecified);

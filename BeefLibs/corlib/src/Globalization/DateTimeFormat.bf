@@ -126,18 +126,18 @@ namespace System {
         static readonly TimeSpan NullOffset = TimeSpan.MinValue;
         
         static char8[] allStandardFormats = new char8[]
-        {
+        (
             'd', 'D', 'f', 'F', 'g', 'G', 
             'm', 'M', 'o', 'O', 'r', 'R', 
             's', 't', 'T', 'u', 'U', 'y', 'Y',
-        } ~ delete _;
+        ) ~ delete _;
         
         const String RoundtripFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss.fffffffK";
         const String RoundtripDateTimeUnfixed = "yyyy'-'MM'-'ddTHH':'mm':'ss zzz";
     
         private const int DEFAULT_ALL_DATETIMES_SIZE = 132; 
         
-        static String[] fixedNumberFormats = new String[] {
+        static String[] fixedNumberFormats = new String[] (
             "0",
             "00",
             "000",
@@ -145,7 +145,7 @@ namespace System {
             "00000",
             "000000",
             "0000000",
-        } ~ delete _;
+        ) ~ delete _;
 
         ////////////////////////////////////////////////////////////////////////////
         // 

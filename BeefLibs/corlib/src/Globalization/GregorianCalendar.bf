@@ -54,14 +54,14 @@ namespace System.Globalization {
         GregorianCalendarTypes m_type;
 
         static readonly int[] DaysToMonth365 = new int[]
-        {
+        (
             0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365
-        } ~ delete _;
+        ) ~ delete _;
 
         static readonly int[] DaysToMonth366 = new int[]
-        {
+        (
             0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366
-        } ~ delete _;
+        ) ~ delete _;
 
         private static volatile Calendar s_defaultInstance;
 
@@ -426,7 +426,7 @@ namespace System.Globalization {
 		{
             get
 			{
-                return (new int[] {ADEra} );
+                return (new int[] (ADEra) );
             }
         }
 

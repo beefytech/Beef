@@ -90,9 +90,9 @@ namespace System.Globalization {
         // DO NOT UPDATE THIS WITHOUT UPDATING THAT STRUCTURE. IF YOU ADD BOOL, ADD THEM AT THE END.
         // ALSO MAKE SURE TO UPDATE mscorlib.h in the VM directory to check field offsets.
         // READTHIS READTHIS READTHIS
-        protected int32[] numberGroupSizes = new int32[] {3} ~ delete _;
-        protected int32[] currencyGroupSizes = new int32[] {3} ~ delete _;
-        protected int32[] percentGroupSizes = new int32[] {3} ~ delete _;
+        protected int32[] numberGroupSizes = new int32[] (3) ~ delete _;
+        protected int32[] currencyGroupSizes = new int32[] (3) ~ delete _;
+        protected int32[] percentGroupSizes = new int32[] (3) ~ delete _;
         protected OwnedString positiveSign = .("+") ~ _.Dispose();
         protected OwnedString negativeSign = .("-") ~ _.Dispose();
         protected OwnedString numberDecimalSeparator = .(".") ~ _.Dispose();
@@ -112,7 +112,7 @@ namespace System.Globalization {
         protected OwnedString percentSymbol = .("%") ~ _.Dispose();
         protected OwnedString perMilleSymbol = .("\u{2030}") ~ _.Dispose();
 
-        protected String[] nativeDigits = new .[] {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"} ~ DeleteNativeDigits();
+        protected String[] nativeDigits = new .[] ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9") ~ DeleteNativeDigits();
 
         protected int32 numberDecimalDigits = 2;
         protected int32 currencyDecimalDigits = 2;

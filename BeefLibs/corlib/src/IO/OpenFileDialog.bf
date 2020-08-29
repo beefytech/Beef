@@ -375,7 +375,7 @@ namespace System.IO
 			}
 			else
 			{
-				buf = new char16[123]* { ? };
+				buf = new char16[123]* ( ? );
 				defer:mixin delete buf;
 			}
 			buf

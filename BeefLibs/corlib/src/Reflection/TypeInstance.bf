@@ -139,7 +139,7 @@ namespace System.Reflection
 			if (!methodInfo.IsInitialized)
 				return .Err;
 
-			void* data = new [Align(16)] uint8[mInstSize]* {?};
+			void* data = new [Align(16)] uint8[mInstSize]* (?);
 
 			if (methodInfo.Invoke(data) case .Err)
 			{

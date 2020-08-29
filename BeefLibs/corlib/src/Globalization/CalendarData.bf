@@ -210,7 +210,7 @@ namespace System.Globalization
             else
             {
                 // For all others just use the an empty string (doesn't matter we'll never ask for it for other calendars)
-                this.saAbbrevEnglishEraNames = new String[] { "" };
+                this.saAbbrevEnglishEraNames = new String[] ( "" );
             }
 
             // Japanese is the only thing with > 1 era.  Its current era # is how many ever 

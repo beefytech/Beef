@@ -321,7 +321,7 @@ namespace System
 
 		protected virtual void* Alloc(int size, int align)
 		{
-			return new char8[size]* {?};
+			return new char8[size]* (?);
 		}
 
 		protected virtual void Free(void* ptr)
@@ -2196,11 +2196,11 @@ namespace System
 			char16* buf;
 			if (encodedLen < 128)
 			{
-				buf = scope:mixin char16[encodedLen]* { ? };
+				buf = scope:mixin char16[encodedLen]* ( ? );
 			}
 			else
 			{
-				buf = new char16[encodedLen]* { ? };
+				buf = new char16[encodedLen]* ( ? );
 				defer:mixin delete buf;
 			}
 
@@ -3212,11 +3212,11 @@ namespace System
 			char16* buf;
 			if (encodedLen < 128)
 			{
-				buf = scope:mixin char16[encodedLen]* { ? };
+				buf = scope:mixin char16[encodedLen]* ( ? );
 			}
 			else
 			{
-				buf = new char16[encodedLen]* { ? };
+				buf = new char16[encodedLen]* ( ? );
 				defer:mixin delete buf;
 			}
 

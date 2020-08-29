@@ -83,7 +83,7 @@ namespace System
 
 		protected virtual void* AllocLarge(int size, int align)
 		{
-			return new uint8[size]* {?};
+			return new uint8[size]* (?);
 		}
 
 		protected virtual void FreeLarge(void* ptr)
@@ -95,7 +95,7 @@ namespace System
 		{
 			int poolSize = (mPools != null) ? mPools.Count : 0;
 			int allocSize = Math.Clamp((int)Math.Pow(poolSize, 1.5) * 4*1024, 4*1024, 64*1024);
-			return Span<uint8>(new uint8[allocSize]* {?}, allocSize);
+			return Span<uint8>(new uint8[allocSize]* (?), allocSize);
 		}
 
 		protected virtual void FreePool(Span<uint8> span)
