@@ -587,11 +587,11 @@ static
 		void* data;
 		if (size <= 128)
 		{
-			data = scope:mixin uint8[size]* { ? };
+			data = scope:mixin uint8[size]* ( ? );
 		}
 		else
 		{
-			data = new uint8[size]* { ? };
+			data = new uint8[size]* ( ? );
 			defer:mixin delete data;
 		}
 		data
