@@ -3059,10 +3059,10 @@ void BfExprEvaluator::Visit(BfLiteralExpression* literalExpr)
 	switch (literalExpr->mValue.mWarnType)
 	{
 	case BfWarning_BF4201_Only7Hex:
-		mModule->Warn(BfWarning_BF4201_Only7Hex, "Only 7 hex digits specified.  Add a leading zero to clarify intention.", literalExpr);
+		mModule->Warn(BfWarning_BF4201_Only7Hex, "Only 7 hex digits specified. Add a leading zero to clarify intention.", literalExpr);
 		break;
 	case BfWarning_BF4202_TooManyHexForInt:
-		mModule->Warn(BfWarning_BF4202_TooManyHexForInt, "Too many hex digits for an int, but too few for a long.  Use 'L' suffix if a long was intended.", literalExpr);
+		mModule->Warn(BfWarning_BF4202_TooManyHexForInt, "Nine hex digits specified. If an 8-digit hex literal was not intended then add a leading zero to clarify.", literalExpr);
 		break;
 	}
 

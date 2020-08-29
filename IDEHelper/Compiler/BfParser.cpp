@@ -2440,6 +2440,12 @@ void BfParser::NextToken(int endIdx)
 							mLiteral.mInt64 = val;
 							mLiteral.mTypeCode = BfTypeCode_IntUnknown;
 
+
+							if ((numberBase == 0x10) && (hexDigits == 7))
+								mLiteral.mWarnType = BfWarning_BF4201_Only7Hex;							
+							if ((numberBase == 0x10) && (hexDigits == 9))
+								mLiteral.mWarnType = BfWarning_BF4202_TooManyHexForInt;
+
 							if (hadOverflow)
 							{
 								mPassInstance->FailAt("Value doesn't fit into int64", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
@@ -2448,18 +2454,7 @@ void BfParser::NextToken(int endIdx)
 							else if ((val < -0x80000000LL) || (val > 0xFFFFFFFFLL))
 							{								
 								mLiteral.mTypeCode = BfTypeCode_Int64;
-							}
-							else
-							{
-								if ((numberBase == 0x10) && (hexDigits == 7))
-									mLiteral.mWarnType = BfWarning_BF4201_Only7Hex;
-								//mPassInstance->WarnAt(0, "Only 7 hex digits specified.  Add a leading zero to clarify intention.", this, mTokenStart, mSrcIdx - mTokenStart);
-								if ((numberBase == 0x10) && (hexDigits > 8))
-									mLiteral.mWarnType = BfWarning_BF4202_TooManyHexForInt;
-								//mPassInstance->FailAt("Too many hex digits for an int, but too few for a long.  Use 'L' suffix if a long was intended.", this, mTokenStart, mSrcIdx - mTokenStart);
-								/*if (val > 0x7FFFFFFF)
-								mLiteral.mTypeCode = BfTypeCode_UIntUnknown;*/
-							}
+							}							
 						}
 
 						mSyntaxToken = BfSyntaxToken_Literal;
