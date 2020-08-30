@@ -1155,19 +1155,14 @@ void BfParser::HandlePreprocessor()
 		}
 		else if (pragma == "error")
 		{
-			if (!mQuickCompatMode)
-			{
-				//TODO: Remove
-				//OutputDebugStrF("####################ERROR %s\n", pragmaParam.c_str());
-			}
-
-			mPassInstance->FailAt(pragmaParam, mSourceData, startIdx);
+			wantsSingleParam = false;			
+			mPassInstance->FailAt(pragmaParam, mSourceData, startIdx, mSrcIdx - startIdx);
 			wantedParam = true;
 		}
 		else if (pragma == "warning")
 		{
 			wantsSingleParam = false;
-			mPassInstance->WarnAt(BfWarning_CS1030_PragmaWarning, pragmaParam, mSourceData, startIdx);
+			mPassInstance->WarnAt(BfWarning_CS1030_PragmaWarning, pragmaParam, mSourceData, startIdx, mSrcIdx - startIdx);
 			wantedParam = true;
 		}
 		else if (pragma == "region")
