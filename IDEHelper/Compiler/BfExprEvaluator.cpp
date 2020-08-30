@@ -1345,7 +1345,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		{
 			BfVirtualMethodEntry& vEntry = targetTypeInstance->mVirtualMethodTable[methodInstance->mVirtualTableIdx];
 			auto implMethod = (BfMethodInstance*)vEntry.mImplementingMethod;
-			if (implMethod != methodInstance)
+			if ((implMethod != methodInstance) && (implMethod != NULL))
 			{
 				SetAndRestoreValue<bool> prevBypassVirtual(mBypassVirtual, true);
 				return CheckMethod(targetTypeInstance, implMethod->GetOwner(), implMethod->mMethodDef, isFailurePass);
