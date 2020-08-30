@@ -1510,12 +1510,11 @@ namespace System
 
 		static NumberFormatInfo sDefaultNFI = new NumberFormatInfo() ~ delete _;
 
-		private NumberFormatInfo GetNumberFormatInstance (IFormatProvider fp)
+		private NumberFormatInfo GetNumberFormatInstance(IFormatProvider fp)
 		{
-			/*if (_nfi != null && fp == null)
+			if (_nfi != null && fp == null)
 				return _nfi;
-			return NumberFormatInfo.GetInstance (fp);*/
-			return sDefaultNFI;
+			return NumberFormatInfo.GetInstance(fp);
 		}
 
 		CultureInfo CurrentCulture

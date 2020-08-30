@@ -256,13 +256,14 @@ namespace System.Globalization {
         }*/
 
 
-        /*public static NumberFormatInfo GetInstance(IFormatProvider formatProvider)
+        public static NumberFormatInfo GetInstance(IFormatProvider formatProvider)
 		{
             // Fast case for a regular CultureInfo
-            /*NumberFormatInfo info;
+            NumberFormatInfo info;
             CultureInfo cultureProvider = formatProvider as CultureInfo;
-            if (cultureProvider != null && !cultureProvider.m_isInherited) {
-                info = cultureProvider.numInfo;
+            if (cultureProvider != null && !cultureProvider.[Friend]m_isInherited)
+			{
+                info = cultureProvider.mNumInfo;
                 if (info != null) {
                     return info;
                 }
@@ -281,10 +282,8 @@ namespace System.Globalization {
                     return info;
                 }
             }
-            return CurrentInfo;*/
-        }*/
-
-
+            return CurrentInfo;
+        }
 
         /*public Object Clone()
 		{
