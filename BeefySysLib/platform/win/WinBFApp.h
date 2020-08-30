@@ -88,7 +88,6 @@ class WinBFApp : public BFApp
 {
 public:
 	bool					mInMsgProc;
-	PtrToHGlobalMap			mLockedHGlobalMap;
 	StringToUIntMap			mClipboardFormatMap;
 	DSoundManager*			mDSoundManager;
 	

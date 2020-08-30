@@ -2001,35 +2001,93 @@ namespace Beefy.widgets
 		    InsertAtCursor(text);
 		}
 
-		public void CutText()
+		void CopyText(bool cut)
 		{
 			if (!CheckReadOnly())
 			{
+				bool selectedLine = false;
+				String extra = scope .();
+				if (!HasSelection())
+				{
+					selectedLine = true;
+					GetLinePosition(CursorLineAndColumn.mLine, var lineStart, var lineEnd);
+					mSelection = .(lineStart, lineEnd);
+					extra.Append("line");
+				}
+				
 				String selText = scope String();
 				GetSelectionText(selText);
-				if (!selText.IsEmpty)
-				{
-			        BFApp.sApp.SetClipboardText(selText);
-			        DeleteSelection();
+		        BFApp.sApp.SetClipboardText(selText, extra);
+				if (cut)
+		        {
+					if (selectedLine)
+					{
+						// Remove \n
+						if (mSelection.Value.mEndPos < mData.mTextLength)
+							mSelection.ValueRef.mEndPos++;
+					}
+					DeleteSelection();
 				}
+
+				if (selectedLine)
+					mSelection = null;
 			}
+		}
+
+		public void CutText()
+		{
+			CopyText(true);
 		}
 
 		public void CopyText()
 		{
-			String selText = scope String();
-			GetSelectionText(selText);
-			if (!selText.IsEmpty)
-				BFApp.sApp.SetClipboardText(selText);
+			CopyText(false);
+		}
+
+		public void PasteText(String text, String extra)
+		{
+			if (extra == "line")
+			{
+				UndoBatchStart undoBatchStart = new UndoBatchStart("paste");
+				mData.mUndoManager.Add(undoBatchStart);
+				var origPosition = CursorLineAndColumn;
+				CursorLineAndColumn = .(origPosition.mLine, 0);
+				var lineStartPosition = CursorLineAndColumn;
+				InsertAtCursor("\n");
+				CursorLineAndColumn = lineStartPosition;
+				CursorToLineStart(false);
+
+				// Adjust to requested column
+				if (CursorLineAndColumn.mColumn != 0)
+				{
+					for (let c in text.RawChars)
+					{
+						if (!c.IsWhiteSpace)
+						{
+							text.Remove(0, @c.Index);
+							break;
+						}
+					}
+				}
+
+				PasteText(text);
+				CursorLineAndColumn = origPosition;
+				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+			}
+			else
+				PasteText(text);
 		}
 
 		public void PasteText()
 		{
 			String aText = scope String();
-			BFApp.sApp.GetClipboardText(aText);
+			String extra = scope .();
+			BFApp.sApp.GetClipboardText(aText, extra);
 			aText.Replace("\r", "");
 			if ((aText != null) && (!CheckReadOnly()))
-			    PasteText(aText);
+			{
+				PasteText(aText, extra);
+			}
 		}
 
 		protected void SelectLeft(int lineIdx, int lineChar, bool isChunkMove, bool isWordMove)
@@ -3593,7 +3651,7 @@ namespace Beefy.widgets
 
         public void FinishScroll()
         {
-            mVertPos.mPct = 1.0f;
+			mVertPos.mPct = 1.0f;
             UpdateContentPosition();
         }
     }

@@ -1528,49 +1528,38 @@ uint32 WinBFApp::GetClipboardFormat(const StringImpl& format)
 	else if (format == "atext")
 		return CF_TEXT;
 
-// 	StringToUIntMap::iterator itr = mClipboardFormatMap.find(format);
-// 	if (itr != mClipboardFormatMap.end())
-// 		return itr->second;
-
 	uint32 aFormat;
 	if (mClipboardFormatMap.TryGetValue(format, &aFormat))
 		return aFormat;
-
-	String sysFormatName = "BF_" + format;
-	aFormat = ::RegisterClipboardFormatA(sysFormatName.c_str());
-	mClipboardFormatMap[sysFormatName] = aFormat;
+	
+	aFormat = ::RegisterClipboardFormatA(format.c_str());
+	mClipboardFormatMap[format] = aFormat;
 	return aFormat;
 }
+
+static String gClipboardData;
 
 void* WinBFApp::GetClipboardData(const StringImpl& format, int* size)
 {
 	HWND aWindow = NULL;
 	if (!mWindowList.empty())
-		aWindow = ((WinBFWindow*) mWindowList.front())->mHWnd;
+		aWindow = ((WinBFWindow*)mWindowList.front())->mHWnd;
 
 	uint32 aFormat = GetClipboardFormat(format);
 
 	if (aFormat != 0)
 	{
 		if (OpenClipboard(aWindow))
-		{	
+		{
 			HGLOBAL globalHandle = ::GetClipboardData(aFormat);
+
 			if (globalHandle == NULL)
 			{
-				if (format == "text")
+				if (aFormat == CF_UNICODETEXT)
 				{
-					int aSize = 0;
-					char* charPtr = (char*) GetClipboardData("atext", &aSize);
-					if (charPtr == NULL)
-						return NULL;
-			
-					*size = (int)::GlobalSize(globalHandle);
-					void* aPtr = ::GlobalLock(globalHandle);
-								
-					mLockedHGlobalMap[aPtr] = globalHandle;
-					
 					CloseClipboard();
-					return aPtr;
+					// Return ascii text					
+					return (char*)GetClipboardData("atext", size);
 				}
 
 				CloseClipboard();
@@ -1580,26 +1569,31 @@ void* WinBFApp::GetClipboardData(const StringImpl& format, int* size)
 
 			*size = (int)::GlobalSize(globalHandle);
 			void* aPtr = ::GlobalLock(globalHandle);
-
-			static String utf8String;
-			utf8String = UTF8Encode((WCHAR*)aPtr);
-			::GlobalUnlock(globalHandle);			
+			
+			if (aFormat == CF_UNICODETEXT)
+			{
+				gClipboardData = UTF8Encode((WCHAR*)aPtr);
+				*size = (int)gClipboardData.length() + 1;
+			}
+			else
+			{
+				gClipboardData.Clear();
+				gClipboardData.Insert(0, (char*)aPtr, *size);
+			}
+			
+			::GlobalUnlock(globalHandle);
 			CloseClipboard();
-			return (void*)utf8String.c_str();
+			return (void*)gClipboardData.c_str();
 		}
 	}
-	
+
 	*size = 0;
 	return NULL;
 }
 
 void WinBFApp::ReleaseClipboardData(void* ptr)
 {
-	HGLOBAL globalHandle;	
-	if (mLockedHGlobalMap.Remove(ptr, &globalHandle))
-	{		
-		::GlobalUnlock(globalHandle);		
-	}
+	
 }
 
 void WinBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
@@ -1638,25 +1632,18 @@ void WinBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int s
 				GlobalUnlock(globalHandle);
 				::SetClipboardData(CF_UNICODETEXT, globalHandle);
 			}
-			else if (format == "atext")
+			else
 			{
 				HGLOBAL globalHandle = GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE, size);
 				char* data = (char*)GlobalLock(globalHandle);
 				memcpy(data, ptr, size);
 				GlobalUnlock(globalHandle);
-				::SetClipboardData(CF_TEXT, globalHandle);
+				::SetClipboardData(aFormat, globalHandle);
 			}
 		
 			CloseClipboard();
 		}
 	}
-
-	/*if (format == "text")
-	{
-		//String aString = ToString((const WCHAR*) ptr);
-		String aString = (const char*)ptr;
-		SetClipboardData("atext", aString.c_str(), (int)aString.length() + 1, false);
-	}*/
 }
 
 BFMenu* WinBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* sysBitmap, bool enabled, int checkState, bool radioCheck)

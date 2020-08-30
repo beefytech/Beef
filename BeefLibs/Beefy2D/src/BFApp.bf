@@ -777,25 +777,41 @@ namespace Beefy
 
         public virtual bool GetClipboardText(String outStr)
         {
-			int32 aSize;
-            void* clipboardData = GetClipboardData("text", out aSize);
-            if (clipboardData == null)
-                return false;
+			return GetClipboardTextData("text", outStr);
+        }
 
-            outStr.Append((char8*)clipboardData);
+		public virtual bool GetClipboardText(String outStr, String extra)
+		{
+			GetClipboardTextData("bf_text", extra);
+			return GetClipboardTextData("text", outStr);
+		}
+
+		public bool GetClipboardTextData(String format, String outStr)
+		{
+			int32 aSize;
+			void* clipboardData = GetClipboardData(format, out aSize);
+			if (clipboardData == null)
+			    return false;
+
+			outStr.Append((char8*)clipboardData);
 			ReleaseClipboardData(clipboardData);
 			return true;
-        }
+		}
 
         public virtual void SetClipboardData(String format, void* ptr, int32 size, bool resetClipboard)
         {
             BFApp_SetClipboardData(format, ptr, size, resetClipboard ? 1 : 0);
         }
 
+		public void SetClipboardText(String text, String extra)
+		{
+			SetClipboardData("text", text.CStr(), (int32)text.Length + 1, true);
+			SetClipboardData("bf_text", extra.CStr(), (int32)extra.Length + 1, false);
+		}
+
         public virtual void SetClipboardText(String text)
         {
-            //IntPtr aPtr = Marshal.StringToCoTaskMemUni(text);
-            SetClipboardData("text", text.CStr(), (int32)text.Length + 1, true);
+            SetClipboardText(text, "");
         }
 
 #if STUDIO_CLIENT

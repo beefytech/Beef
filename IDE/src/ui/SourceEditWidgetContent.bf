@@ -2132,9 +2132,8 @@ namespace IDE.ui
 			var str = scope String();
 			GetLineText(lineNum, str);
 			mSelection = null;
-			str.Append("\n");
 			CursorLineAndColumn = LineAndColumn(lineNum, 0);
-			InsertAtCursor(str);
+			PasteText(str, "line");
 			CursorLineAndColumn = LineAndColumn(prevCursorLineAndColumn.mLine + 1, prevCursorLineAndColumn.mColumn);
 
 			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
