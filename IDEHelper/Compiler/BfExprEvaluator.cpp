@@ -3469,7 +3469,15 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 
 	BfTypedValue result;
 	if (thisValue.HasType())
+	{
 		result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_IsImplicitThis);
+		if (mResultFieldInstance == NULL)
+		{
+			mResultLocalVar = NULL;
+			mResultLocalVarRefNode = NULL;
+		}
+	}	
+
 	if (mPropDef != NULL)
 	{
 		if (forcedIFaceLookup)
