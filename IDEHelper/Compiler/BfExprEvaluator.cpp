@@ -15703,6 +15703,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 		auto checkTrueValue = mModule->Cast(condExpr->mTrueExpression, trueValue, mExpectingType, BfCastFlags_SilentFail);
 		if (checkTrueValue)
 			trueValue = checkTrueValue;		
+		mModule->FixIntUnknown(trueValue);
 	}
 	auto trueBlockPos = mModule->mBfIRBuilder->GetInsertBlock();
 
@@ -15714,6 +15715,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
  		auto checkFalseValue = mModule->Cast(condExpr->mFalseExpression, falseValue, mExpectingType, BfCastFlags_SilentFail);
  		if (checkFalseValue)
  			falseValue = checkFalseValue; 		
+		mModule->FixIntUnknown(falseValue);
  	}
 
 	bool isValid = trueValue && falseValue;
