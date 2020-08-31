@@ -192,9 +192,14 @@ void Thread::StartInternal()
 
 	BfInternalThread* internalThread = SetupInternalThread();
 	internalThread->mThread = this;
+#ifdef _WIN32
 	internalThread->mThreadHandle = BfpThread_Create(CStartProc, (void*)this, GetMaxStackSize(), (BfpThreadCreateFlags)(BfpThreadCreateFlag_StackSizeReserve | BfpThreadCreateFlag_Suspended), &internalThread->mThreadId);
 	SetInternalThread(internalThread);				
 	BfpThread_Resume(internalThread->mThreadHandle, NULL);
+#else
+	internalThread->mThreadHandle = BfpThread_Create(CStartProc, (void*)this, GetMaxStackSize(), (BfpThreadCreateFlags)(BfpThreadCreateFlag_StackSizeReserve), &internalThread->mThreadId);
+	SetInternalThread(internalThread);	
+#endif
 }
 
 int Thread::GetThreadId()

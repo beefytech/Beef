@@ -186,6 +186,7 @@ namespace IDE
 					AddFromLibraryPath(absPath);
 					absPath.Append(Path.DirectorySeparatorChar);
 
+#if !CLI
 					FileSystemWatcher watcher = new FileSystemWatcher(absPath);
 					watcher.OnChanged.Add(new (fileName) => LibsChanged());
 					watcher.OnCreated.Add(new (fileName) => LibsChanged());
@@ -194,6 +195,7 @@ namespace IDE
 					watcher.OnError.Add(new () => LibsChanged());
 					watcher.StartRaisingEvents();
 					mWatchers.Add(watcher);
+#endif
 				}
 			}
 
