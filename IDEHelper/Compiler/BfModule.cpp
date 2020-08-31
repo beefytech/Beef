@@ -7647,7 +7647,7 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 		}
 	}
 
-	if (!typedVal.mType->IsComposite()) // Load non-structs by default
+	if ((!typedVal.mType->IsComposite()) && (!typedVal.mType->IsGenericParam())) // Load non-structs by default
 	{
 		if ((!mBfIRBuilder->mIgnoreWrites) && (!typedVal.mType->IsValuelessType()) && (!typedVal.mType->IsVar()))
 		{
