@@ -143,7 +143,7 @@ namespace System
 		public static void SetAutoCollectPeriod(int periodMS) {}
 		public static void SetCollectFreeThreshold(int freeBytes) {}
 		public static void SetMaxPausePercentage(int maxPausePercentage) {}
-		extern static void AddPendingThread(void* internalThreadInfo) {}
+		static void AddPendingThread(void* internalThreadInfo) {}
 #endif
 
 		static void MarkDerefedObject(Object* obj)
