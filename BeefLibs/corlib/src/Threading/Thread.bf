@@ -41,6 +41,8 @@ namespace System.Threading
 
             static void Thread_SetInternalThread(Object thread, void* internalThread)
             {
+				if (internalThread != null)
+					GC.[Friend]AddPendingThread(internalThread);
                 ((Thread)thread).[Friend]mInternalThread = (int)internalThread;
             }
 

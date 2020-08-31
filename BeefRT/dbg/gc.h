@@ -199,7 +199,7 @@ public:
 		bool WantsSuspend();
 		void CalcStackStart();
 	};
-
+	
 	struct RawLeakInfo
 	{
 		bf::System::DbgRawAllocData* mRawAllocData;
@@ -324,6 +324,7 @@ public:
 	int mCurPendingGCSize;
 	int mMaxPendingGCSize;
 	Beefy::Array<ThreadInfo*> mThreadList;
+	Beefy::Dictionary<BfpThreadId, BfInternalThread*> mPendingThreads;
 	int mCurMutatorMarkCount;
 	int mCurGCMarkCount;
 	int mCurGCObjectQueuedCount;
@@ -390,6 +391,7 @@ public:
 	void StopCollecting();
 	void AddStackMarkableObject(bf::System::Object* obj);
 	void RemoveStackMarkableObject(bf::System::Object* obj);
+	void AddPendingThread(BfInternalThread* internalThread);
 	void Shutdown();	
 	void InitDebugDump();
 	void EndDebugDump();	
@@ -463,6 +465,7 @@ namespace bf
 			BFRT_EXPORT static void StopCollecting();
 			BFRT_EXPORT static void AddStackMarkableObject(Object* obj);
 			BFRT_EXPORT static void RemoveStackMarkableObject(Object* obj);
+			BFRT_EXPORT static void AddPendingThread(void* internalThreadInfo);
 			
 		public:
 			BFRT_EXPORT static void Shutdown();			
@@ -483,7 +486,7 @@ namespace bf
 			BFRT_EXPORT static void SetAutoCollectPeriod(intptr periodMS);
 			BFRT_EXPORT static void SetCollectFreeThreshold(intptr freeBytes);
 			BFRT_EXPORT static void SetMaxPausePercentage(intptr maxPausePercentage);
-			BFRT_EXPORT static void SetMaxRawDeferredObjectFreePercentage(intptr maxPercentage);
+			BFRT_EXPORT static void SetMaxRawDeferredObjectFreePercentage(intptr maxPercentage);			
 		};
 	}
 }

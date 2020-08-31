@@ -131,6 +131,8 @@ namespace System
 		public extern static void SetCollectFreeThreshold(int freeBytes); // -1 to disable, 0 to trigger collection after every single free. Defaults to 64MB
 		[CallingConvention(.Cdecl)]
 		public extern static void SetMaxPausePercentage(int maxPausePercentage); // 0 = disabled. Defaults to 20.
+		[CallingConvention(.Cdecl)]
+		extern static void AddPendingThread(void* internalThread);
 #else
 		public static void Collect(bool async = true) {}
 		private static void MarkAllStaticMembers() {}
@@ -141,6 +143,7 @@ namespace System
 		public static void SetAutoCollectPeriod(int periodMS) {}
 		public static void SetCollectFreeThreshold(int freeBytes) {}
 		public static void SetMaxPausePercentage(int maxPausePercentage) {}
+		extern static void AddPendingThread(void* internalThreadInfo) {}
 #endif
 
 		static void MarkDerefedObject(Object* obj)

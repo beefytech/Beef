@@ -1389,7 +1389,17 @@ bool BFGC::ScanThreads()
 	while (true)
 	{
 		ThreadInfo* thread = NULL;
+		
+		///
+		{
+			AutoCrit autoCrit(mCritSect);
+			for (auto& kv : mPendingThreads)
+			{
+				MarkFromGCThread(kv.mValue->mThread);
+			}
+		}
 
+		///
 		{
 			AutoCrit autoCrit(mCritSect);
 			if (threadIdx >= mThreadList.size())
@@ -1927,7 +1937,7 @@ void BFGC::ThreadStopped(BfDbgInternalThread* thread)
 void BFGC::ThreadStarted()
 {
 	Beefy::AutoCrit autoCrit(mCritSect);
-
+	
 	ThreadInfo* thread = new ThreadInfo();
 	thread->mRunning = true;
 	thread->mThreadHandle = BfpThread_GetCurrent();
@@ -1938,6 +1948,7 @@ void BFGC::ThreadStarted()
 	thread->CalcStackStart();
 
 	mThreadList.Add(thread);
+	mPendingThreads.Remove(thread->mThreadId);
 
 	ThreadInfo::sCurThreadInfo = thread;
 }
@@ -2026,6 +2037,14 @@ void BFGC::RemoveStackMarkableObject(bf::System::Object* obj)
 	BF_ASSERT(stackIdx != -1);
 	if (stackIdx != -1)
 		threadInfo->mStackMarkableObjects.RemoveAtFast(stackIdx);
+}
+
+void BFGC::AddPendingThread(BfInternalThread* internalThread)
+{
+	if (internalThread->mThread == 0)
+		return;
+	Beefy::AutoCrit autoCrit(mCritSect);
+	mPendingThreads.TryAdd(internalThread->mThreadId, internalThread);
 }
 
 void BFGC::Shutdown()
@@ -2708,6 +2727,11 @@ void GC::StopCollecting()
 void GC::AddStackMarkableObject(Object* obj)
 {
 	gBFGC.AddStackMarkableObject(obj);
+}
+
+void GC::AddPendingThread(void* internalThreadInfo)
+{
+	gBFGC.AddPendingThread((BfInternalThread*)internalThreadInfo);
 }
 
 void GC::RemoveStackMarkableObject(Object* obj)

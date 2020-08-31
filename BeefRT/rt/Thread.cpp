@@ -191,10 +191,10 @@ void Thread::StartInternal()
 	BfpSystem_InterlockedExchangeAdd32((uint32*)&gLiveThreadCount, 1);
 
 	BfInternalThread* internalThread = SetupInternalThread();
-	SetInternalThread(internalThread);
-			
-	internalThread->mThread = this;	
-	internalThread->mThreadHandle = BfpThread_Create(CStartProc, (void*)this, GetMaxStackSize(), BfpThreadCreateFlag_StackSizeReserve, &internalThread->mThreadId);
+	internalThread->mThread = this;
+	internalThread->mThreadHandle = BfpThread_Create(CStartProc, (void*)this, GetMaxStackSize(), (BfpThreadCreateFlags)(BfpThreadCreateFlag_StackSizeReserve | BfpThreadCreateFlag_Suspended), &internalThread->mThreadId);
+	SetInternalThread(internalThread);				
+	BfpThread_Resume(internalThread->mThreadHandle, NULL);
 }
 
 int Thread::GetThreadId()
