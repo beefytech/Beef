@@ -12934,9 +12934,7 @@ int BfExprEvaluator::GetMixinVariable()
 BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, BfTypeInstance* curTypeInst, BfMethodDef* methodDef, BfMethodMatcher& methodMatcher)
 {
 	bool failed = false;
-
-	auto resolvedCurTypeInst = curTypeInst;//mModule->ResolveGenericType(curTypeInst)->ToTypeInstance();
-	bool hasDifferentResolvedTypes = resolvedCurTypeInst != curTypeInst;
+	
 	BfTypeVector resolvedGenericArguments;
 	BfMethodState* rootMethodState = NULL;
 	if (mModule->mCurMethodState != NULL)
@@ -13075,9 +13073,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			if (genericArg->IsIntUnknown())
 				genericArg = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
 
-			auto resolvedGenericArg = genericArg;//mModule->ResolveGenericType(genericArg);
-			if (resolvedGenericArg != genericArg)
-				hasDifferentResolvedTypes = true;
+			auto resolvedGenericArg = genericArg;
 			resolvedGenericArguments.push_back(resolvedGenericArg);
 		}
 	}
@@ -13121,7 +13117,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 	}
 	else
 	{		
-		methodInstance = mModule->GetMethodInstance(resolvedCurTypeInst, methodDef, resolvedGenericArguments, flags, foreignType);	
+		methodInstance = mModule->GetMethodInstance(curTypeInst, methodDef, resolvedGenericArguments, flags, foreignType);
 	}
 	if (mModule->mCompiler->IsSkippingExtraResolveChecks())
 	{
