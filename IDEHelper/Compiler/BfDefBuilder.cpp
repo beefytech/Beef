@@ -521,10 +521,13 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		{
 			if (!methodDef->mIsStatic)
 			{
-				if (!declError.empty())
-					declError += " and ";
-				declError += "'static'";
-				methodDef->mIsStatic = true; // Fix it
+				if ((operatorDecl->mUnaryOp != BfUnaryOp_Increment) && (operatorDecl->mUnaryOp != BfUnaryOp_Decrement))
+				{
+					if (!declError.empty())
+						declError += " and ";
+					declError += "'static'";
+					methodDef->mIsStatic = true; // Fix it
+				}
 			}
 		}
 		if (!declError.empty())

@@ -17721,8 +17721,16 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 			{
 				if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
 					continue;
+
+				int prevArgSize = (int)args.mSize;
+				if (!operatorDef->mIsStatic)
+				{
+					// Try without arg
+					args.mSize = 0;
+				}
 				if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
 					methodMatcher.mSelfType = entry.mSrcType;
+				args.mSize = prevArgSize;
 			}
 		}
 	}
@@ -17786,13 +17794,26 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 	SizedArray<BfExpression*, 2> argSrcs;
 	argSrcs.push_back(unaryOpExpr);
 
+	BfTypedValue targetVal = args[0].mTypedValue;
 	BfTypedValue postOpVal;
-	if (isPostOp)	
-		postOpVal = mModule->LoadValue(args[0].mTypedValue);	
+	if (isPostOp)
+		postOpVal = mModule->LoadValue(targetVal);	
+	
+	BfTypedValue callTarget;
+	if (!methodMatcher.mBestMethodDef->mIsStatic)
+	{
+		callTarget = targetVal;
+		args.Clear();
+	}
 
-	auto result = CreateCall(&methodMatcher, BfTypedValue());	
+	auto result = CreateCall(&methodMatcher, callTarget);
 
-	if ((result.mType != NULL) && (methodMatcher.mSelfType != NULL) && (result.mType->IsSelf()))
+	if (!methodMatcher.mBestMethodDef->mIsStatic)
+	{
+		if (!isPostOp)
+			result = mModule->LoadValue(targetVal);
+	}
+	else if ((result.mType != NULL) && (methodMatcher.mSelfType != NULL) && (result.mType->IsSelf()))
 	{
 		BF_ASSERT(mModule->IsInGeneric());
 		result = mModule->GetDefaultTypedValue(methodMatcher.mSelfType);

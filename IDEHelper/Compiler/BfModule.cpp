@@ -17002,20 +17002,35 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		}
 		else if (operatorDef->mOperatorDeclaration->mUnaryOp != BfUnaryOp_None)
 		{
-			if (methodDef->mParams.size() != 1)
+			if (methodDef->mIsStatic)
 			{
-				Fail("Unary operators must declare one parameter", paramErrorRefNode);
-			}
-			else if ((mCurMethodInstance->GetParamType(0) != mCurTypeInstance) && (!mCurMethodInstance->GetParamType(0)->IsSelf()))
-			{				
-				Fail("The parameter of a unary operator must be the containing type", paramErrorRefNode);
-			}
+				if (methodDef->mParams.size() != 1)
+				{
+					Fail("Unary operators must declare one parameter", paramErrorRefNode);
+				}
+				else if ((mCurMethodInstance->GetParamType(0) != mCurTypeInstance) && (!mCurMethodInstance->GetParamType(0)->IsSelf()))
+				{
+					Fail("The parameter of a unary operator must be the containing type", paramErrorRefNode);
+				}
 
-			if (((operatorDef->mOperatorDeclaration->mUnaryOp == BfUnaryOp_Increment) ||
-				(operatorDef->mOperatorDeclaration->mUnaryOp == BfUnaryOp_Decrement)) &&
-				(!TypeIsSubTypeOf(mCurMethodInstance->mReturnType->ToTypeInstance(), mCurTypeInstance)))
+				if (((operatorDef->mOperatorDeclaration->mUnaryOp == BfUnaryOp_Increment) ||
+					(operatorDef->mOperatorDeclaration->mUnaryOp == BfUnaryOp_Decrement)) &&
+					(!TypeIsSubTypeOf(mCurMethodInstance->mReturnType->ToTypeInstance(), mCurTypeInstance)))
+				{
+					Fail("The return type for the '++' or '--' operator must match the parameter type or be derived from the parameter type", operatorDef->mOperatorDeclaration->mReturnType);
+				}
+			}
+			else
 			{
-				Fail("The return type for the '++' or '--' operator must match the parameter type or be derived from the parameter type", operatorDef->mOperatorDeclaration->mReturnType);
+				if (methodDef->mParams.size() != 0)
+				{
+					Fail("Non-static unary operators not declare any parameters", paramErrorRefNode);
+				}
+
+				if (!mCurMethodInstance->mReturnType->IsVoid())
+				{
+					Fail("The return type for non-static operator must be 'void'", operatorDef->mOperatorDeclaration->mReturnType);
+				}
 			}
 		}
 		else if (operatorDef->mOperatorDeclaration->mAssignOp != BfAssignmentOp_None)
