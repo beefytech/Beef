@@ -1863,6 +1863,8 @@ namespace IDE.ui
 			    return null;
 			}
 
+			gApp.CheckLoadConfig();
+
 			//TODO: Protect against importing an existing project
 			Project proj = new Project();
 			String projFilePath = scope String(filePath);

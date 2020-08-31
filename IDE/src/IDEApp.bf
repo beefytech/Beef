@@ -2616,18 +2616,30 @@ namespace IDE
 
 			if (let project = mWorkspace.FindProject(projectName))
 				return project;
-			
+
 			if (useVerSpecRecord.mVerSpec case .SemVer)
 			{
-				for (int regEntryIdx = mBeefConfig.mRegistry.Count - 1; regEntryIdx >= 0; regEntryIdx--)
+				// First pass we just try to use the 'expected' project name
+				FindLoop: for (int pass < 2)
 				{
-					var regEntry = mBeefConfig.mRegistry[regEntryIdx];
-
-					if (regEntry.mProjName == projectName)
+					using (mBeefConfig.mRegistry.mMonitor.Enter())
 					{
-						useVerSpecRecord = regEntry.mLocation;
-						verConfigDir = regEntry.mConfigFile.mConfigDir;
+						for (int regEntryIdx = mBeefConfig.mRegistry.mEntries.Count - 1; regEntryIdx >= 0; regEntryIdx--)
+						{
+							var regEntry = mBeefConfig.mRegistry.mEntries[regEntryIdx];
+
+							if ((regEntry.mProjName == projectName) && (!regEntry.mParsedConfig))
+								mBeefConfig.mRegistry.ParseConfig(regEntry);
+
+							if (regEntry.mProjName == projectName)
+							{
+								useVerSpecRecord = regEntry.mLocation;
+								verConfigDir = regEntry.mConfigFile.mConfigDir;
+								break FindLoop;
+							}
+						}
 					}
+					mBeefConfig.mRegistry.WaitFor();
 				}
 			}
 
@@ -11070,6 +11082,12 @@ namespace IDE
 			TabbedView tabbedView = GetDefaultDocumentTabbedView();
 			let tabButton = SetupTab(tabbedView, "Welcome", 0, welcomePanel, true);
 			tabButton.Activate();
+		}
+
+		public void CheckLoadConfig()
+		{
+			if (mBeefConfig.mLibsChanged)
+				LoadConfig();
 		}
 
 		void LoadConfig()

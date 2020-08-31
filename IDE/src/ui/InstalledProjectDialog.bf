@@ -63,7 +63,9 @@ namespace IDE.ui
 
 		void FindProjects()
 		{
-			for (let registryEntry in gApp.mBeefConfig.mRegistry)
+			gApp.CheckLoadConfig();
+			gApp.mBeefConfig.mRegistry.WaitFor();
+			for (let registryEntry in gApp.mBeefConfig.mRegistry.mEntries)
 			{
 				InstalledProject installedProject = new .();
 				installedProject.mName = new String(registryEntry.mProjName);

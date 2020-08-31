@@ -71,17 +71,11 @@ namespace IDE.ui
 				Path.GetAbsolutePath(origDirectory, gApp.mWorkspace.mDir, projDirectory);
 			}
 
-            bool isNameValid = projName.Length > 0;
-			for (int32 i = 0; i < projName.Length; i++)
-            {
-				char8 c = projName[i];
-                if ((!c.IsLetterOrDigit) && (c != '-') && (c != ' ') && (c != '_'))
-                    isNameValid = false;
-            }
+            bool isNameValid = projName.Length > 0;			
             if (!isNameValid)
             {
                 mNameEdit.SetFocus();
-                app.Fail("Invalid project name. The project name can only consist of alphanumeric characters, spaces, dashes, and underscores.");
+                app.Fail("Invalid project name");
                 return false;
             }
 

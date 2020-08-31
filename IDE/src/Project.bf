@@ -1318,6 +1318,19 @@ namespace IDE
 			options.mBuildOptions.mOtherLinkFlags.Set("$(LinkFlags)");
 		}
 
+		public static void GetSanitizedName(String projectName, String outName, bool allowDot = false)
+		{
+			for (let c in projectName.RawChars)
+			{
+				if ((c.IsLetterOrDigit) || (c == '_'))
+					outName.Append(c);
+				else if (c == '-')
+					outName.Append('_');
+				else if ((c == '.') && (allowDot))
+					outName.Append(c);
+			}
+		}
+
         public this()
         {
             mRootFolder = new ProjectFolder();
@@ -1492,7 +1505,9 @@ namespace IDE
 					data.Add("Name", mProjectName);
 				data.ConditionalAdd("TargetType", mGeneralOptions.mTargetType, GetDefaultTargetType());
 				data.ConditionalAdd("StartupObject", mBeefGlobalOptions.mStartupObject, IsSingleFile ? "Program" : "");
-				data.ConditionalAdd("DefaultNamespace", mBeefGlobalOptions.mDefaultNamespace, mProjectName);
+				var defaultNamespace = scope String();
+				GetSanitizedName(mProjectName, defaultNamespace, true);
+				data.ConditionalAdd("DefaultNamespace", mBeefGlobalOptions.mDefaultNamespace, defaultNamespace);
 				WriteStrings("Aliases", mGeneralOptions.mAliases);
 				WriteStrings("ProcessorMacros", mBeefGlobalOptions.mPreprocessorMacros);
 				WriteDistinctOptions(mBeefGlobalOptions.mDistinctBuildOptions);
@@ -1807,7 +1822,9 @@ namespace IDE
 					data.GetString("Name", mProjectName);
 				ReadStrings("Aliases", mGeneralOptions.mAliases);
 				data.GetString("StartupObject", mBeefGlobalOptions.mStartupObject, IsSingleFile ? "Program" : "");
-				data.GetString("DefaultNamespace", mBeefGlobalOptions.mDefaultNamespace, mProjectName);
+				var defaultNamespace = scope String();
+				GetSanitizedName(mProjectName, defaultNamespace, true);
+				data.GetString("DefaultNamespace", mBeefGlobalOptions.mDefaultNamespace, defaultNamespace);
 				ReadStrings("ProcessorMacros", mBeefGlobalOptions.mPreprocessorMacros);
 				for (data.Enumerate("DistinctOptions"))
 				{
@@ -2317,7 +2334,8 @@ namespace IDE
 
 		public void SetupDefault(BeefGlobalOptions generalOptions)
 		{
-			generalOptions.mDefaultNamespace.Set(mProjectName);
+			generalOptions.mDefaultNamespace.Clear();
+			GetSanitizedName(mProjectName, generalOptions.mDefaultNamespace, true);
 			generalOptions.mStartupObject.Set(scope String()..AppendF("{}.Program", generalOptions.mDefaultNamespace));
 		}
 
