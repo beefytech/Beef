@@ -73,6 +73,7 @@ public:
 	void ModifyFlags(BfAstNode* node, uint8 andFlags, uint8 orFlags);
 	void ModifyFlags(int startPos, int endPos, uint8 andFlags, uint8 orFlags);
 	void SetElementType(BfAstNode* node, BfSourceElementType elementType);
+	void SetElementType(BfAstNode* node, BfTypeCode typeCode);
 	void SetElementType(int startPos, int endPos, BfSourceElementType elementType);
 	void SetHighestElementType(BfAstNode* node, BfSourceElementType elementType);
 	void SetHighestElementType(int startPos, int endPos, BfSourceElementType elementType);

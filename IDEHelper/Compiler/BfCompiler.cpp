@@ -3894,7 +3894,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 	};
 
 	if (tempTypeDef->mTypeCode == BfTypeCode_Extension)
-	{
+	{		
 		BfTypeInstance* outerTypeInstance = NULL;
 
 		if (tempTypeDef->mOuterType != NULL)
@@ -3928,6 +3928,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 		return;
 	}
 	
+	if (tempTypeDef->mTypeCode == BfTypeCode_Extension)	
+		mResolvePassData->mSourceClassifier->SetElementType(tempTypeDef->mTypeDeclaration->mNameNode, actualTypeDef->mTypeCode);
+
 	if (tempTypeDef->mTypeDeclaration->mAttributes != NULL)
 	{
 		mResolvePassData->mSourceClassifier->VisitChild(tempTypeDef->mTypeDeclaration->mAttributes);

@@ -47,6 +47,16 @@ void BfSourceClassifier::SetElementType(BfAstNode* node, BfSourceElementType ele
 	}
 }
 
+void BfSourceClassifier::SetElementType(BfAstNode * node, BfTypeCode typeCode)
+{
+	BfSourceElementType elemType = BfSourceElementType_Type;
+	if (typeCode == BfTypeCode_Interface)
+		elemType = BfSourceElementType_Interface;
+	else if (typeCode == BfTypeCode_Object)
+		elemType = BfSourceElementType_RefType;
+	SetElementType(node, elemType);
+}
+
 void BfSourceClassifier::SetHighestElementType(int startPos, int endPos, BfSourceElementType elementType)
 {	
 	if (!mEnabled)
