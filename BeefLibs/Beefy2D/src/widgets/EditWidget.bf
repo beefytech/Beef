@@ -2003,35 +2003,32 @@ namespace Beefy.widgets
 
 		void CopyText(bool cut)
 		{
-			if (!CheckReadOnly())
+			bool selectedLine = false;
+			String extra = scope .();
+			if (!HasSelection())
 			{
-				bool selectedLine = false;
-				String extra = scope .();
-				if (!HasSelection())
-				{
-					selectedLine = true;
-					GetLinePosition(CursorLineAndColumn.mLine, var lineStart, var lineEnd);
-					mSelection = .(lineStart, lineEnd);
-					extra.Append("line");
-				}
-				
-				String selText = scope String();
-				GetSelectionText(selText);
-		        BFApp.sApp.SetClipboardText(selText, extra);
-				if (cut)
-		        {
-					if (selectedLine)
-					{
-						// Remove \n
-						if (mSelection.Value.mEndPos < mData.mTextLength)
-							mSelection.ValueRef.mEndPos++;
-					}
-					DeleteSelection();
-				}
-
-				if (selectedLine)
-					mSelection = null;
+				selectedLine = true;
+				GetLinePosition(CursorLineAndColumn.mLine, var lineStart, var lineEnd);
+				mSelection = .(lineStart, lineEnd);
+				extra.Append("line");
 			}
+			
+			String selText = scope String();
+			GetSelectionText(selText);
+	        BFApp.sApp.SetClipboardText(selText, extra);
+			if ((cut) && (!CheckReadOnly()))
+	        {
+				if (selectedLine)
+				{
+					// Remove \n
+					if (mSelection.Value.mEndPos < mData.mTextLength)
+						mSelection.ValueRef.mEndPos++;
+				}
+				DeleteSelection();
+			}
+
+			if (selectedLine)
+				mSelection = null;
 		}
 
 		public void CutText()
