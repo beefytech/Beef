@@ -49,14 +49,14 @@ namespace System.Diagnostics
 
 		public static void Write(String fmt, params Object[] args)
 		{
-			String str = scope String(256);
+			String str = scope String(4096);
 			str.AppendF(fmt, params args);
 			Write(str);
 		}
 
 		public static void Write(Object obj)
 		{
-			String str = scope String(256);
+			String str = scope String(4096);
 			obj.ToString(str);
 			Write(str);
 		}
@@ -68,13 +68,15 @@ namespace System.Diagnostics
 
 		public static void WriteLine(StringView line)
 		{
-			Write(line.Ptr, line.Length);
-			Write("\n", 1);
+			String lineStr = scope String(Math.Min(line.Length, 4096));
+			lineStr.Append(line);
+			lineStr.Append('\n');
+			Write(lineStr.Ptr, lineStr.Length);
 		}
 
 		public static void WriteLine(StringView strFormat, params Object[] args)
 		{
-			String paramStr = scope String();
+			String paramStr = scope String(4096);
 			paramStr.AppendF(strFormat, params args);
 			paramStr.Append('\n');
 			Write(paramStr.Ptr, paramStr.Length);
