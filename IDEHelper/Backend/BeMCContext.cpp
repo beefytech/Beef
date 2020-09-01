@@ -1,5 +1,8 @@
-//TODO: Temporary, to add asserts
-#define BF_DEBUG_ASSERTS
+#if defined _DEBUG || true
+#define BEMC_ASSERT(_Expression) (void)( (!!(_Expression)) || (AssertFail(#_Expression, __LINE__), 0) )
+#else
+#define BEMC_ASSERT(_Expression) (void)(0)
+#endif
 
 #include <deque>
 #include "BeMCContext.h"
@@ -1958,6 +1961,11 @@ void BeMCContext::Fail(const StringImpl& str)
 	BfpSystem_FatalError(errStr.c_str(), "FATAL ERROR");
 }
 
+void BeMCContext::AssertFail(const StringImpl& str, int line)
+{
+	Fail(StrFormat("Assert '%s' failed on line %d", str.c_str(), line));
+}
+
 void BeMCContext::SoftFail(const StringImpl& str, BeDbgLoc* dbgLoc)
 {
 	if (mFailed)
@@ -2287,7 +2295,7 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 		auto mcVal = GetOperand(gepConstant->mTarget);
 
 		BePointerType* ptrType = (BePointerType*)GetType(mcVal);
-		BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
+		BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
 
 		auto result = mcVal;
 
@@ -2305,7 +2313,7 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 		}
 		else
 		{
-			BF_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray);
+			BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray);
 			auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
 			elementType = arrayType->mElementType;
 			byteOffset = gepConstant->mIdx1 * elementType->mSize;
@@ -2339,7 +2347,7 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 	case BeFunction::TypeId:
 	{
 		auto sym = mCOFFObject->GetSymbol(value);
-		BF_ASSERT(sym != NULL);
+		BEMC_ASSERT(sym != NULL);
 		if (sym != NULL)
 		{
 			BeMCOperand mcOperand;
@@ -2399,7 +2407,7 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 			auto inst = mcBlock->mInstructions[instIdx];
 			if (inst->mKind == BeMCInstKind_DefPhi)
 			{
-				BF_ASSERT(inst->mArg0.mPhi == phi);
+				BEMC_ASSERT(inst->mArg0.mPhi == phi);
 				phiInstIdx = instIdx;
 				RemoveInst(mcBlock, phiInstIdx);
 				break;
@@ -2580,7 +2588,7 @@ BeType* BeMCContext::GetType(const BeMCOperand& operand)
 	if (operand.mKind == BeMCOperandKind_VRegLoad)
 	{
 		auto type = mVRegInfo[operand.mVRegIdx]->mType;
-		BF_ASSERT(type->IsPointer());
+		BEMC_ASSERT(type->IsPointer());
 		return ((BePointerType*)type)->mElementType;
 	}
 
@@ -2884,7 +2892,7 @@ void BeMCContext::CreateStore(BeMCInstKind instKind, const BeMCOperand& val, con
 				int offset = 0;
 
 				auto arrayType = arrayConst->GetType();
-				BF_ASSERT(arrayType->IsSizedArray());
+				BEMC_ASSERT(arrayType->IsSizedArray());
 				auto sizedArrayType = (BeSizedArrayType*)arrayType;
 
 				for (auto& val : arrayConst->mMemberValues)
@@ -3113,7 +3121,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 
 			if (argType->IsNonVectorComposite())
 			{
-				BF_ASSERT(mcValue.mKind == BeMCOperandKind_VReg);
+				BEMC_ASSERT(mcValue.mKind == BeMCOperandKind_VReg);
 				AllocInst(BeMCInstKind_Mov, callArgVReg, BeMCOperand::FromVRegAddr(mcValue.mVRegIdx));
 			}
 			else
@@ -3152,7 +3160,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 		}
 		else
 		{
-			BF_ASSERT(retType->IsIntable());
+			BEMC_ASSERT(retType->IsIntable());
 			resultReg = ResizeRegister(X64Reg_RAX, retType->mSize);
 		}
 
@@ -3484,8 +3492,8 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 		if (phiBlock != mcBlock)
 		{
 			// Special case if our using block directly leads into us
-			BF_ASSERT(mcBlock->mPreds.size() == 1);
-			BF_ASSERT(mcBlock->mPreds[0] == phiBlock);
+			BEMC_ASSERT(mcBlock->mPreds.size() == 1);
+			BEMC_ASSERT(mcBlock->mPreds[0] == phiBlock);
 		}
 
 		for (auto instIdx = 0; instIdx < phiBlock->mInstructions.size(); instIdx++)
@@ -3493,7 +3501,7 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 			auto inst = phiBlock->mInstructions[instIdx];
 			if (inst->mKind == BeMCInstKind_DefPhi)
 			{
-				BF_ASSERT(inst->mArg0.mPhi == phi);
+				BEMC_ASSERT(inst->mArg0.mPhi == phi);
 				RemoveInst(phiBlock, instIdx);
 				break;
 			}
@@ -3545,12 +3553,12 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 
 				_CheckBlock(phiVal.mBlockFrom);
 
-				BF_ASSERT(found);
+				BEMC_ASSERT(found);
 			}
 
 			if (isFalseCmpResult)
 			{
-				BF_ASSERT(phiVal.mValue.mKind == BeMCOperandKind_CmpResult);
+				BEMC_ASSERT(phiVal.mValue.mKind == BeMCOperandKind_CmpResult);
 				AllocInst(BeMCInstKind_Br, falseBlock);
 			}
 			else if ((phiVal.mValue.IsImmediate()) ||
@@ -3615,7 +3623,7 @@ void BeMCContext::CreatePhiAssign(BeMCBlock* mcBlock, const BeMCOperand& testVal
 					auto inst = phiBlock->mInstructions[instIdx];
 					if (inst->mKind == BeMCInstKind_DefPhi)
 					{
-						BF_ASSERT(inst->mArg0.mPhi == phi);
+						BEMC_ASSERT(inst->mArg0.mPhi == phi);
 						RemoveInst(phiBlock, instIdx);
 						break;
 					}
@@ -3663,7 +3671,7 @@ void BeMCContext::CreatePhiAssign(BeMCBlock* mcBlock, const BeMCOperand& testVal
 
 				_CheckBlock(phiVal.mBlockFrom);
 
-				BF_ASSERT(found);
+				BEMC_ASSERT(found);
 			}
 
 			if (landinglabel)
@@ -3714,12 +3722,12 @@ BeMCOperand BeMCContext::GetVReg(int regNum)
 
 BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBeReg)
 {
-	BF_ASSERT(type->mTypeCode != BeTypeCode_Function); // We can only have pointers to these
+	BEMC_ASSERT(type->mTypeCode != BeTypeCode_Function); // We can only have pointers to these
 
 	if (mustBeReg)
 	{
-		BF_ASSERT(!type->IsNonVectorComposite());
-		BF_ASSERT(type->mSize != 0);
+		BEMC_ASSERT(!type->IsNonVectorComposite());
+		BEMC_ASSERT(type->mSize != 0);
 	}
 
 	int vregIdx = (int)mVRegInfo.size();
@@ -3890,7 +3898,7 @@ BeMCOperand BeMCContext::AllocRelativeVirtualReg(BeType* type, const BeMCOperand
 		return AllocRelativeVirtualReg(type, tempRelTo, relOffset, relScale);
 	}
 
-	BF_ASSERT(relTo.IsVRegAny());
+	BEMC_ASSERT(relTo.IsVRegAny());
 	auto relToVRegInfo = GetVRegInfo(relTo);
 
 	if ((relToVRegInfo->mRelTo) && (relToVRegInfo->mRelOffsetScale == 1) && (relToVRegInfo->mRelOffset.IsImmediate()) &&
@@ -4018,7 +4026,7 @@ void BeMCContext::AddRegRemap(int from, int to, BeMCRemapper& regRemaps, bool al
 	auto vregInfoFrom = mVRegInfo[from];
 	auto vregInfoTo = mVRegInfo[to];
 
-	BF_ASSERT(vregInfoFrom->mDbgVariable == NULL);
+	BEMC_ASSERT(vregInfoFrom->mDbgVariable == NULL);
 
 	if (vregInfoTo->mDbgVariable != NULL)
 	{
@@ -4388,7 +4396,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 
 			if (needsManualVRegInitDiff)
 			{
-				BF_ASSERT(vregsInitialized == block->mSuccVRegsInitialized);
+				BEMC_ASSERT(vregsInitialized == block->mSuccVRegsInitialized);
 				// Manually compare
 				auto vregsInit0 = vregsInitialized;
 				auto vregsInit1 = inst->mVRegsInitialized;
@@ -4482,7 +4490,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 		//  function.  This will emit as a load of a dbgVar, so we need to drill down into the relTo values		
 		if (inst->mKind == BeMCInstKind_LifetimeStart)
 		{
-			BF_ASSERT(inst->mArg0.IsVRegAny());
+			BEMC_ASSERT(inst->mArg0.IsVRegAny());
 			int vregIdx = inst->mArg0.mVRegIdx;
 			while (true)
 			{
@@ -4490,7 +4498,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 				auto vregInfo = mVRegInfo[vregIdx];
 				if (!vregInfo->IsDirectRelTo())
 					break;
-				BF_ASSERT(vregInfo->mRelTo.IsVReg());
+				BEMC_ASSERT(vregInfo->mRelTo.IsVReg());
 				vregIdx = vregInfo->mRelTo.mVRegIdx;
 			}
 			liveRegs = mLivenessContext.Modify(liveRegs, addVec, removeVec, filteredAddVec, filteredRemoveVec);
@@ -4557,7 +4565,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 
 	if (block == mBlocks[0])
 	{
-		BF_ASSERT(block->mBlockIdx == 0);
+		BEMC_ASSERT(block->mBlockIdx == 0);
 		if (!mLivenessContext.IsEmpty(liveRegs))
 		{
 			for (int vregIdx = 0; vregIdx < mLivenessContext.mNumEntries; vregIdx++)
@@ -4571,7 +4579,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 						if (!mVRegInitializedContext.IsSet(vregsInitialized, vregIdx))
 						{
 							if (vregInfo->mDoConservativeLife)
-								BF_ASSERT(mVRegInitializedContext.IsSet(vregsInitialized, vregIdx, BeTrackKind_Uninitialized));
+								BEMC_ASSERT(mVRegInitializedContext.IsSet(vregsInitialized, vregIdx, BeTrackKind_Uninitialized));
 							else
 								SoftFail("VReg lifetime error");
 						}
@@ -4588,7 +4596,7 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 	for (auto pred : block->mPreds)
 	{
 		auto& entry = genCtx->mBlocks[pred->mBlockIdx];
-		BF_ASSERT(pred == mBlocks[pred->mBlockIdx]);
+		BEMC_ASSERT(pred == mBlocks[pred->mBlockIdx]);
 
 		auto newSuccLiveness = MergeLiveRegs(pred->mSuccLiveness, liveRegs);
 		if (newSuccLiveness == pred->mSuccLiveness)
@@ -17481,9 +17489,9 @@ void BeMCContext::Generate(BeFunction* function)
 		isFirstBlock = false;
 	}
 	mCurDbgLoc = NULL;
-	BF_ASSERT(valueScopeStack.size() == 0);
-
-	BF_ASSERT(retCount == 1);
+	
+	BEMC_ASSERT(valueScopeStack.size() == 0);		
+	BEMC_ASSERT(retCount == 1);	
 
 	bool wantDebug = mDebugging;
 	//wantDebug |= function->mName == "?get__Yo@PoopBase@@UEAAUPloogB@@XZ";

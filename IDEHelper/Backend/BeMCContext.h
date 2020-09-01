@@ -1346,6 +1346,7 @@ public:
 public:
 	void NotImpl();
 	void Fail(const StringImpl& str);
+	void AssertFail(const StringImpl& str, int line);
 	void SoftFail(const StringImpl& str, BeDbgLoc* dbgLoc = NULL);
 	void ToString(BeMCInst* inst, String& str, bool showVRegFlags, bool showVRegDetails);
 	String ToString(const BeMCOperand& operand);
