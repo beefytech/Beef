@@ -552,6 +552,9 @@ void BfSourceClassifier::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	BfElementVisitor::Visit(propertyDeclaration);
 
+	if (auto expr = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
+		return;
+
 	for (auto methodDeclaration : propertyDeclaration->mMethods)
 	{
 		if ((methodDeclaration != NULL) && (methodDeclaration->mNameNode != NULL))

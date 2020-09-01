@@ -1,9 +1,16 @@
 using System;
+using System.Collections;
 
 namespace Tests
 {
 	class Lambdas
 	{
+		static void TestIt(List<float>.Enumerator e, int idx, float val)
+		{
+			Test.Assert(e.Index == idx);
+			Test.Assert(e.Current == val);
+		}
+
 		[Test]
 		static void TestBasics()
 		{
@@ -20,6 +27,18 @@ namespace Tests
 			act();
 
 			Test.Assert(a == 101);
+
+			List<float> iList = scope List<float>() { 10, 20, 30 };
+			int idx = 0;
+			for (var val in iList)
+			{
+				delegate void() dlg = scope () =>
+				{
+					TestIt(@val, idx, val);
+				};
+				dlg();
+				++idx;
+			}
 		}
 
 		static int Add3<T>(T func) where T : delegate int()

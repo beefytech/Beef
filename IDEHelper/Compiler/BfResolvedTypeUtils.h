@@ -712,12 +712,14 @@ struct BfClosureCapturedEntry
 	String mName;
 	BfIdentifierNode* mNameNode;
 	bool mExplicitlyByReference;
+	int mShadowIdx; // Only relative to matching nameNodes
 
 	BfClosureCapturedEntry()
 	{
 		mNameNode = NULL;
 		mType = NULL;
 		mExplicitlyByReference = false;
+		mShadowIdx = 0;
 	}
 
 	bool operator<(const BfClosureCapturedEntry& other) const
@@ -870,7 +872,7 @@ public:
 	bool HasThis();	
 	bool HasExplicitThis();
 	bool HasParamsArray();
-	int GetStructRetIdx();
+	int GetStructRetIdx(bool forceStatic = false);
 	bool HasSelf();
 	bool GetLoweredReturnType(BfTypeCode* loweredTypeCode = NULL, BfTypeCode* loweredTypeCode2 = NULL);	
 	bool WantsStructsAttribByVal();

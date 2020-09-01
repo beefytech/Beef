@@ -3323,15 +3323,6 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				int varSkipCount = 0;
 				StringT<128> wantName;
 				wantName.Reference(findName);
-				if (findName.StartsWith('@'))
-				{
-					wantName = findName;
-					while (wantName.StartsWith("@"))
-					{
-						varSkipCount++;
-						wantName.Remove(0);
-					}
-				}
 
 				closureTypeInst->mTypeDef->PopulateMemberSets();
 				BfMemberSetEntry* memberSetEntry = NULL;
@@ -9457,7 +9448,7 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 	return IsExactMethodMatch(methodInstance, bindResult.mMethodInstance, true);
 }
 
-BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentifierNode* identifierNode)
+BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentifierNode* identifierNode, int shadowIdx)
 {
 	String findName = identifierNode->ToString();
 	
@@ -9467,6 +9458,8 @@ BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentif
 
 		auto checkMethodState = mModule->mCurMethodState;
 		bool isMixinOuterVariablePass = false;
+
+		int shadowSkip = shadowIdx;
 
 		while (checkMethodState != NULL)
 		{
@@ -9487,29 +9480,23 @@ BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentif
 
 				while (varDecl != NULL)
 				{
-// 						if ((closureTypeInst != NULL) && (wantName == "this"))
-// 							break;
-
 					if (varDecl->mNameNode == identifierNode)
 					{
-						BfTypedValue localResult = LoadLocal(varDecl);
-//							auto autoComplete = GetAutoComplete();
-// 							if (identifierNode != NULL)
-// 							{
-// 								if (autoComplete != NULL)
-// 									autoComplete->CheckLocalRef(identifierNode, varDecl);
-// 								if (((mModule->mCurMethodState->mClosureState == NULL) || (mModule->mCurMethodState->mClosureState->mCapturing)) &&
-// 									(mModule->mCompiler->mResolvePassData != NULL) && (mModule->mCurMethodInstance != NULL))
-// 									mModule->mCompiler->mResolvePassData->HandleLocalReference(identifierNode, varDecl->mNameNode, mModule->mCurTypeInstance->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, varDecl->mLocalVarId);
-// 							}
-// 
+						if (shadowSkip > 0)
+						{
+							shadowSkip--;
+						}
+						else
+						{
+							BfTypedValue localResult = LoadLocal(varDecl);
 							if (!isMixinOuterVariablePass)
 							{
 								mResultLocalVar = varDecl;
 								mResultFieldInstance = NULL;
 								mResultLocalVarRefNode = identifierNode;
 							}
-						return localResult;
+							return localResult;
+						}
 					}
 
 					varDecl = varDecl->mShadowedLocal;
@@ -9688,7 +9675,7 @@ BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfMethodI
 
 		if (identifierNode != NULL)
 		{
-			lookupVal = DoImplicitArgCapture(refNode, identifierNode);
+			lookupVal = DoImplicitArgCapture(refNode, identifierNode, 0);
 		}
 		else
 		{			
@@ -10940,11 +10927,45 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 					if (captureType == BfCaptureType_Reference)
 						capturedEntry.mExplicitlyByReference = true;
 					capturedEntry.mType = capturedType;
+					capturedEntry.mNameNode = outerLocal->mNameNode;
 					if (outerLocal->mName == "this")
 						capturedEntry.mName = "__this";
 					else
+					{
 						capturedEntry.mName = outerLocal->mName;
-					capturedEntry.mNameNode = outerLocal->mNameNode;					
+						
+						BfLocalVarEntry* entry = NULL;
+						if (varMethodState->mLocalVarSet.TryGetWith<StringImpl&>(capturedEntry.mName, &entry))
+						{
+							auto startCheckVar = entry->mLocalVar;
+
+							int shadowIdx = 0;
+							auto checkVar = startCheckVar;
+							while (checkVar != NULL)
+							{
+								if (checkVar == outerLocal)
+								{	
+									// We only use mShadowIdx when we have duplicate name nodes (ie: in the case of for looks with iterator vs value)
+									auto shadowCheckVar = startCheckVar;
+									while (shadowCheckVar != checkVar)
+									{
+										if (shadowCheckVar->mNameNode == checkVar->mNameNode)
+											capturedEntry.mShadowIdx++;
+
+										shadowCheckVar = shadowCheckVar->mShadowedLocal;
+									}
+
+									for (int i = 0; i < shadowIdx; i++)
+										capturedEntry.mName.Insert(0, '@');
+
+									break;
+								}
+
+								shadowIdx++;
+								checkVar = checkVar->mShadowedLocal;
+							}
+						}
+					}					
 					capturedEntries.Add(capturedEntry);
 				}
 			}
@@ -11107,10 +11128,12 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	SizedArray<BfIRType, 8> origParamTypes;
 	BfIRType origReturnType;
 	
+	bool forceStatic = false;
 	if (invokeMethodInstance != NULL)
 	{
+		forceStatic = methodDef->mIsStatic;
 		auto invokeFunctionType = mModule->mBfIRBuilder->MapMethod(invokeMethodInstance);
-		invokeMethodInstance->GetIRFunctionInfo(mModule, origReturnType, origParamTypes, methodDef->mIsStatic);
+		invokeMethodInstance->GetIRFunctionInfo(mModule, origReturnType, origParamTypes, forceStatic);
 	}
 	else
 	{
@@ -11119,15 +11142,15 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 	SizedArray<BfIRType, 3> newTypes;	
 
-	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx() == 0))
+	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx(forceStatic) == 0))
 		newTypes.push_back(origParamTypes[0]);
 	if (!methodDef->mIsStatic)
 		newTypes.push_back(mModule->mBfIRBuilder->MapType(useTypeInstance));
-	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx() == 1))
+	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx(forceStatic) == 1))
 		newTypes.push_back(origParamTypes[1]);
 
 	int paramStartIdx = 0;
-	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx() != -1))
+	if ((invokeMethodInstance != NULL) && (invokeMethodInstance->GetStructRetIdx(forceStatic) != -1))
 		paramStartIdx++;
 	if (!methodDef->mIsStatic)
 		paramStartIdx++;
@@ -11325,9 +11348,6 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			lambdaCapture.mName = "this";
 		else
 			lambdaCapture.mName = capturedEntry.mName;
-// 		if (capturedEntry.mLocalVarDef != NULL)
-// 			lambdaCapture.mLocalIdx = capturedEntry.mLocalVarDef->mLocalVarId;
-// 		lambdaCapture.mCopyField = capturedEntry.mCopyField;
 
 		lambdaInstance->mCaptures.Add(lambdaCapture);
 		closureInstanceInfo->mCaptureEntries.Add(capturedEntry);
@@ -11424,107 +11444,18 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 			}
 		}
 
-// 		for (auto& capturedEntry : capturedEntries)
-// 		{
-// 			BfIRValue capturedValue;
-// 			if (capturedEntry.mLocalVarDef != NULL)
-// 			{
-// 				BfTypedValue localResult = LoadLocal(capturedEntry.mLocalVarDef, true);
-// 
-// 				if (!capturedEntry.mType->IsRef())
-// 				{					
-// 					if (localResult.IsSplat())
-// 					{
-// 						auto aggResult = mModule->AggregateSplat(localResult);
-// 						capturedValue = aggResult.mValue;
-// 					}
-// 					else
-// 					{						
-// 						localResult = mModule->LoadValue(localResult);
-// 						capturedValue = localResult.mValue;
-// 						if ((capturedEntry.mLocalVarDef->mResolvedType->IsRef()) && (!capturedEntry.mType->IsRef()))
-// 							capturedValue = mModule->mBfIRBuilder->CreateLoad(capturedValue);
-// 					}
-// 				}
-// 				else
-// 				{
-// 					if (capturedEntry.mLocalVarDef->mResolvedType->IsRef())
-// 						localResult = mModule->LoadValue(localResult);
-// 					capturedValue = localResult.mValue;
-// 				}
-// 			}
-// 			else
-// 			{
-// 				// Read captured field from outer lambda ('this')
-// 				auto localVar = mModule->mCurMethodState->mLocals[0];
-// 				capturedValue = mModule->mBfIRBuilder->CreateInBoundsGEP(localVar->mValue, 0, capturedEntry.mCopyField->mDataIdx);
-// 				if ((capturedEntry.mCopyField->mResolvedType->IsRef()) || (!capturedEntry.mType->IsRef()))
-// 				{
-// 					capturedValue = mModule->mBfIRBuilder->CreateLoad(capturedValue);
-// 					if ((capturedEntry.mCopyField->mResolvedType->IsRef()) && (!capturedEntry.mType->IsRef()))
-// 						capturedValue = mModule->mBfIRBuilder->CreateLoad(capturedValue);
-// 				}
-// 			}
-// 			if (capturedValue)
-// 			{
-// 				auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mResult.mValue, 0, closureTypeInst->mFieldInstances[fieldIdx].mDataIdx);
-// 				mModule->mBfIRBuilder->CreateStore(capturedValue, fieldPtr);
-// 			}
-// 			fieldIdx++;
-// 		}
-
-		int captureIdx = 0;
-		//for (auto& capturedEntry : lambdaInstance->mCaptures)
+		int captureIdx = 0;		
 		for (int captureIdx = 0; captureIdx < (int)lambdaInstance->mCaptures.size(); captureIdx++)
 		{
 			auto& capturedEntry = lambdaInstance->mCaptures[captureIdx];
-			BfIdentifierNode* identifierNode = lambdaInstance->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[captureIdx].mNameNode;
-			//if (captureIdx < lambdaInstance->mMethodInstance->mClosureInstanceInfo->mCaptureNodes.size)
+			auto& closureCaptureEntry = lambdaInstance->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[captureIdx];
+			BfIdentifierNode* identifierNode = closureCaptureEntry.mNameNode;
 
 			BfIRValue capturedValue;
-// 			if (capturedEntry.mLocalVarDef != NULL)
-// 			{
-// 				BfTypedValue localResult = LoadLocal(capturedEntry.mLocalVarDef, true);
-// 
-// 				if (!capturedEntry.mType->IsRef())
-// 				{
-// 					if (localResult.IsSplat())
-// 					{
-// 						auto aggResult = mModule->AggregateSplat(localResult);
-// 						capturedValue = aggResult.mValue;
-// 					}
-// 					else
-// 					{
-// 						localResult = mModule->LoadValue(localResult);
-// 						capturedValue = localResult.mValue;
-// 						if ((capturedEntry.mLocalVarDef->mResolvedType->IsRef()) && (!capturedEntry.mType->IsRef()))
-// 							capturedValue = mModule->mBfIRBuilder->CreateLoad(capturedValue);
-// 					}
-// 				}
-// 				else
-// 				{
-// 					if (capturedEntry.mLocalVarDef->mResolvedType->IsRef())
-// 						localResult = mModule->LoadValue(localResult);
-// 					capturedValue = localResult.mValue;
-// 				}
-// 			}
-// 			else
-// 			{
-// 				// Read captured field from outer lambda ('this')
-// 				auto localVar = mModule->mCurMethodState->mLocals[0];
-// 				capturedValue = mModule->mBfIRBuilder->CreateInBoundsGEP(localVar->mValue, 0, capturedEntry.mCopyField->mDataIdx);
-// 				if ((capturedEntry.mCopyField->mResolvedType->IsRef()) || (!capturedEntry.mType->IsRef()))
-// 				{
-// 					capturedValue = mModule->mBfIRBuilder->CreateLoad(capturedValue);
-// 					if ((capturedEntry.mCopyField->mResolvedType->IsRef()) && (!capturedEntry.mType->IsRef()))
-// 						capturedValue = mModule->mBfIRBuilder->CreateLoad(capturedValue);
-// 				}
-// 			}
-
 			auto fieldInstance = &closureTypeInst->mFieldInstances[fieldIdx];
 			BfTypedValue capturedTypedVal;
 			if (identifierNode != NULL)
-				capturedTypedVal = DoImplicitArgCapture(NULL, identifierNode);
+				capturedTypedVal = DoImplicitArgCapture(NULL, identifierNode, closureCaptureEntry.mShadowIdx);
 			else
 				capturedTypedVal = LookupIdentifier(NULL, capturedEntry.mName);
 			if (!fieldInstance->mResolvedType->IsRef())

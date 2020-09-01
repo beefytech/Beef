@@ -662,7 +662,7 @@ bool BfMethodInstance::HasParamsArray()
 	return GetParamKind((int)mParams.size() - 1) == BfParamKind_Params;
 }
 
-int BfMethodInstance::GetStructRetIdx()
+int BfMethodInstance::GetStructRetIdx(bool forceStatic)
 {		
 	if ((mReturnType->IsComposite()) && (!mReturnType->IsValuelessType()) && (!GetLoweredReturnType()) && (!mIsIntrinsic))
 	{
@@ -674,7 +674,7 @@ int BfMethodInstance::GetStructRetIdx()
 		if (owner->mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
 			return 0;
 
-		if (!HasThis())
+		if ((!HasThis()) || (forceStatic))
 			return 0;		
 		if (!owner->IsValueType())
 			return 1;		
@@ -1014,7 +1014,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
 	}
-	else if (GetStructRetIdx() != -1)
+	else if (GetStructRetIdx(forceStatic) != -1)
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
@@ -1161,7 +1161,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			_AddType(checkType2);
 	}
 
-	if ((GetStructRetIdx() == 1) && (!forceStatic))
+	if (GetStructRetIdx(forceStatic) == 1)
 	{		
 		BF_SWAP(paramTypes[0], paramTypes[1]);
 	}
