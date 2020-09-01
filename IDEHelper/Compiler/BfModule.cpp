@@ -4150,12 +4150,19 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 {
 	if (mCurMethodInstance->mIsUnspecialized)
 		return;
-
-	if (mCurTypeInstance->IsTypedPrimitive())
-		return;
-
+	
 	if (mBfIRBuilder->mIgnoreWrites)
 		return;
+
+	if (mCurTypeInstance->IsTypedPrimitive())
+	{
+		BfExprEvaluator exprEvaluator(this);
+		BfTypedValue leftTypedVal = LoadValue(exprEvaluator.LoadLocal(mCurMethodState->mLocals[0]));
+		BfTypedValue rightTypedVal = LoadValue(exprEvaluator.LoadLocal(mCurMethodState->mLocals[1]));
+		auto cmpResult = mBfIRBuilder->CreateCmpEQ(leftTypedVal.mValue, rightTypedVal.mValue);
+		mBfIRBuilder->CreateRet(cmpResult);
+		return;
+	}
 
 	BF_ASSERT(!mCurTypeInstance->IsBoxed());
 
@@ -9754,18 +9761,32 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 	else if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 	{
 		auto propertyDecl = methodDef->GetPropertyDeclaration();
-		if ((propertyDecl != NULL) && (propertyDecl->mNameNode != NULL))
-			propertyDecl->mNameNode->ToString(methodName);		
-		methodName += " get accessor";
-		return methodName;
+		if (auto indexerProperty = BfNodeDynCast<BfIndexerDeclaration>(propertyDecl))
+		{
+			methodName += "get indexer";
+		}
+		else
+		{
+			if ((propertyDecl != NULL) && (propertyDecl->mNameNode != NULL))
+				propertyDecl->mNameNode->ToString(methodName);
+			methodName += " get accessor";
+			return methodName;
+		}
 	}
 	else if (methodDef->mMethodType == BfMethodType_PropertySetter)
 	{
 		auto propertyDecl = methodDef->GetPropertyDeclaration();
-		if ((propertyDecl != NULL) && (propertyDecl->mNameNode != NULL))
-			propertyDecl->mNameNode->ToString(methodName);
-		methodName += " set accessor";
-		return methodName;
+		if (auto indexerProperty = BfNodeDynCast<BfIndexerDeclaration>(propertyDecl))
+		{
+			methodName += "set indexer";
+		}
+		else
+		{
+			if ((propertyDecl != NULL) && (propertyDecl->mNameNode != NULL))
+				propertyDecl->mNameNode->ToString(methodName);
+			methodName += " set accessor";
+			return methodName;
+		}
 	}
 	else
 		methodName += methodDefName;	
