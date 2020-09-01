@@ -16,6 +16,11 @@ namespace Tests
 			{
 				FuncA(a + 100);
 			}
+
+			void FuncC(int a) mut
+			{
+				FuncB(a + 1000);
+			}
 		}
 
 		concrete interface IFaceC

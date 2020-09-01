@@ -275,6 +275,11 @@ namespace Tests
 				sVal.mA = val;
 				return sVal;
 			}
+
+			public void operator++() mut
+			{
+				mA++;
+			}
 		}
 
 		[Test]
@@ -283,6 +288,14 @@ namespace Tests
 			IntStruct iVal = .();
 			Test.Assert(iVal == 123);
 			Test.Assert(iVal == 123.0f);
+
+			var iVal2 = iVal++;
+			var iVal3 = ++iVal;
+			++iVal;
+
+			Test.Assert(iVal == 126);
+			Test.Assert(iVal2 == 123);
+			Test.Assert(iVal3 == 125);
 		}
 
 		const String cStrD = "D";
