@@ -118,6 +118,11 @@ namespace System
 		{
 			sModuleHandle = handle;
 		}
+		[AlwaysInclude]
+		static void AddRtFlags(int32 flags)
+		{
+			Runtime.[Friend]sExtraFlags |= (.)flags;
+		}
 
 		public static T* AllocRawArrayUnmarked<T>(int size)
 		{

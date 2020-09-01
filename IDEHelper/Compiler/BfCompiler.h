@@ -336,7 +336,7 @@ public:
 	BfTypeDef* mSpanTypeDef;
 	
 	BfTypeDef* mBfObjectTypeDef;
-	BfTypeDef* mClassVDataTypeDef;		
+	BfTypeDef* mClassVDataTypeDef;	
 	
 	BfTypeDef* mDbgRawAllocDataTypeDef;
 	BfTypeDef* mDeferredCallTypeDef;		

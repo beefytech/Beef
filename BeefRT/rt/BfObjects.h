@@ -35,7 +35,8 @@ enum BfRtFlags
 	BfRtFlags_ObjectHasDebugFlags = 1,
 	BfRtFlags_LeakCheck = 2,
 	BfRtFlags_SilentCrash = 4,
-	BfRtFlags_DebugAlloc = 8
+	BfRtFlags_DebugAlloc = 8,
+	BfRtFlags_NoThreadExitWait = 0x10,	
 };
 
 namespace bf

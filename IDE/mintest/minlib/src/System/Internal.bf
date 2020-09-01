@@ -107,6 +107,11 @@ namespace System
 		{
 			sModuleHandle = handle;
 		}
+		[AlwaysInclude]
+		static void AddRtFlags(int32 flags)
+		{
+			Runtime.[Friend]sExtraFlags |= (.)flags;
+		}
 
 		public static Object ObjectAlloc(TypeInstance typeInst, int size)
 		{

@@ -279,14 +279,17 @@ namespace System
 			ObjectHasDebugFlags = 1,
 			LeakCheck = 2,
 			SilentCrash = 4,
-			DebugAlloc = 8
+			DebugAlloc = 8,
+			NoThreadExitWait = 0x10
 		}
+
+		static RtFlags sExtraFlags;
 
 		public static this()
 		{
 			BfRtCallbacks.sCallbacks.Init();
 
-			RtFlags flags = default;
+			RtFlags flags = sExtraFlags;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			flags |= .ObjectHasDebugFlags;
 #endif

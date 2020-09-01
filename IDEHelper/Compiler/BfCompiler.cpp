@@ -1634,6 +1634,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	// Generate "main"
 	if (!IsHotCompile())
 	{
+		int rtFlags = 0;
+
 		BfIRFunctionType mainFuncType;
 		BfIRFunction mainFunc;
 		if ((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefTest))
@@ -1656,6 +1658,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			if (mOptions.mMachineType == BfMachineType_x86)
 				bfModule->mBfIRBuilder->SetFuncCallingConv(mainFunc, BfIRCallingConv_StdCall);
 			bfModule->SetupIRMethod(NULL, mainFunc, false);
+			rtFlags = 0x10; // BfRtFlags_NoThreadExitWait
 		}
 		else if (targetType == BfTargetType_BeefWindowsApplication)
 		{				
@@ -1687,6 +1690,17 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		auto entryBlock = bfModule->mBfIRBuilder->CreateBlock("entry", true);
 		bfModule->mBfIRBuilder->SetInsertPoint(entryBlock);
 		
+		if (rtFlags != 0)
+		{
+			auto addRtFlagMethod = bfModule->GetInternalMethod("AddRtFlags", 1);
+			if (addRtFlagMethod)
+			{
+				SmallVector<BfIRValue, 1> args;
+				args.push_back(bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, rtFlags));
+				bfModule->mBfIRBuilder->CreateCall(addRtFlagMethod.mFunc, args);
+			}
+		}
+
 		if ((mOptions.mPlatformType != BfPlatformType_Windows) && 
 			((targetType == BfTargetType_BeefConsoleApplication) || (targetType == BfTargetType_BeefTest)))
         {

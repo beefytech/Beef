@@ -158,7 +158,10 @@ static void BF_CALLTYPE CStartProc(void* threadParam)
 }
 
 void BfInternalThread::WaitForAllDone()
-{
+{	
+	if ((gBfRtFlags & BfRtFlags_NoThreadExitWait) != 0)
+		return;
+
 	while (gLiveThreadCount != 0)
 	{
 		// Clear out any old done events
