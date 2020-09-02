@@ -282,11 +282,13 @@ namespace System
 			DebugAlloc = 8
 		}
 
+		static RtFlags sExtraFlags;
+
 		public static this()
 		{
 			BfRtCallbacks.sCallbacks.Init();
 
-			RtFlags flags = default;
+			RtFlags flags = sExtraFlags;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			flags |= .ObjectHasDebugFlags;
 #endif
