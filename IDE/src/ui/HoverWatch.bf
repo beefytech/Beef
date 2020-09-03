@@ -720,8 +720,18 @@ namespace IDE.ui
             String val = scope String();
             if (evalString.StartsWith(":", StringComparison.Ordinal))
             {
-                useListViewItem.Label = scope String(evalString, 1);
+				var showString = scope String(evalString, 1);
+				int crPos = showString.IndexOf('\n');
+				if (crPos != -1)
+				{
+					val.Append("\n\n");
+					val.Append(showString, crPos + 1);
+					showString.RemoveToEnd(crPos);
+				}
+
+                useListViewItem.Label = showString;
                 isStringLiteral = true;
+
 
                 /*int lineCount = 0;
                 for (int i = 0; i < evalString.Length; i++)
@@ -758,7 +768,8 @@ namespace IDE.ui
 			}
             var vals = scope List<StringView>(val.Split('\n'));
 
-            String.NewOrSet!(valueSubItem.mLabel, vals[0]);
+			//if (!vals[0].IsEmpty)
+            	String.NewOrSet!(valueSubItem.mLabel, vals[0]);
 			if (vals[0] == "!sideeffects")
 			{
 				if (useListViewItem.mWatchRefreshButton == null)
@@ -787,7 +798,7 @@ namespace IDE.ui
             else
                 valueSubItem.mFailed = false;
 
-            if (vals.Count > 1)            
+            if ((vals.Count > 1) && (!vals[1].IsEmpty))
                 String.NewOrSet!(watch.mResultTypeStr, vals[1]);
             else            
                 DeleteAndNullify!(watch.mResultTypeStr);
@@ -804,6 +815,7 @@ namespace IDE.ui
             watch.mCanEdit = false;
 			watch.mLanguage = .NotSet;
 			watch.mMemoryBreakpointAddr = 0;
+
 			DeleteAndNullify!(watch.mEditInitialize);
 			DeleteAndNullify!(watch.mAction);
             for (int32 memberIdx = 0; memberIdx < cmdStringCount; memberIdx++)
@@ -1073,9 +1085,11 @@ namespace IDE.ui
 
             bool hadMembers = false;
 
+			bool hasLeftIcon = false;
+			bool hasRightValues = false;
+
             listView.mLabelX = GS!(40);
             float childHeights = 0;
-            bool hadLeftIcon = false;
             for (WatchListViewItem listViewItem in listView.GetRoot().mChildItems)
             {
                 childHeights += listViewItem.mSelfHeight + listViewItem.mChildAreaHeight + listViewItem.mBottomPadding;
@@ -1110,15 +1124,20 @@ namespace IDE.ui
 					checkValueWidth += GS!(16);
                 valueWidth = Math.Max(valueWidth, checkValueWidth);
 
+				if (!listViewItem.mSubItems[1].mLabel.IsEmpty)
+					hasRightValues = true;
                 if (listViewItem.mWatchEntry.mResultType != WatchResultType.None)
-                    hadLeftIcon = true;                
+                    hasLeftIcon = true;
             }
             
             if (!hadMembers)
                 listView.mLabelX -= GS!(14);
-            if (!hadLeftIcon)
+            if (!hasRightValues)
             {
-                listView.mLabelX -= GS!(4);
+				if (hasLeftIcon)
+                	listView.mLabelX += GS!(4);
+				else
+					listView.mLabelX -= GS!(4);
                 listView.mShowColumnGrid = false;
             }
 

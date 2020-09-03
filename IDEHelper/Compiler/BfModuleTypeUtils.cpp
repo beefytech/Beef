@@ -6871,8 +6871,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 
 								if ((autoComplete->mResolveType == BfResolveType_GetResultString) && (resolvedTypeRef != NULL))
 								{
-									autoComplete->mResultString = ":";
-									autoComplete->mResultString += TypeToString(resolvedTypeRef);
+									autoComplete->SetResultStringType(resolvedTypeRef);									
 								}
 							}
 						}

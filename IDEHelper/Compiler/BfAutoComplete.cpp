@@ -2518,8 +2518,7 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 			}
 			else
 			{
-				mResultString = ":";
-				mResultString += mModule->TypeToString(varDecl->mResolvedType);
+				SetResultStringType(varDecl->mResolvedType);				
 			}
 		}
 	}	
@@ -3296,4 +3295,18 @@ void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfTypeReferen
 	{	
 		FixitAddNamespace(typeRef, namespaceString);
 	}
+}
+
+void BfAutoComplete::SetResultStringType(BfType * type)
+{
+	mResultString = ":";
+	mResultString += mModule->TypeToString(type);
+	if (type->IsObject())
+		mResultString += "\n:type\tclass";
+	else if (type->IsInterface())
+		mResultString += "\n:type\tinterface";
+	else if (type->IsPointer())
+		mResultString += "\n:type\tpointer";
+	else
+		mResultString += "\n:type\tvaluetype";
 }

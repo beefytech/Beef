@@ -22,11 +22,12 @@ namespace IDE.ui
 		Float		= 4,
         MM128 		= 8,
         Object 		= 0x10,
-        Pointer 	= 0x20,
-        TypeClass 	= 0x40,
-        TypeValueType = 0x80,
-        Namespace 	= 0x100,
-        Text 		= 0x200
+		Interface 	= 0x20,
+        Pointer 	= 0x40,
+        TypeClass 	= 0x80,
+        TypeValueType = 0x100,
+        Namespace 	= 0x200,
+        Text 		= 0x400
     }
 
     public class WatchEntry
@@ -92,6 +93,9 @@ namespace IDE.ui
                 case "int":
                     mResultType |= WatchResultType.Int;
                     return true;
+				case "interface":
+					mResultType |= WatchResultType.Interface;
+					return true;
 				case "float":
 					mResultType |= WatchResultType.Float;
 					return true;
@@ -1193,6 +1197,10 @@ namespace IDE.ui
                 {
                     imageIdx = .Type_Class;
                 }
+				else if (mWatchEntry.mResultType.HasFlag(WatchResultType.Interface))
+				{
+				    imageIdx = .Interface;
+				}
                 else if (mWatchEntry.mResultType.HasFlag(WatchResultType.TypeValueType))
                 {
                     imageIdx = .Type_ValueType;
