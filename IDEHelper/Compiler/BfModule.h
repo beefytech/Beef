@@ -1659,7 +1659,7 @@ public:
 	void FixIntUnknown(BfTypedValue& typedVal, BfType* matchType = NULL);	
 	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);
 	bool TypeEquals(BfTypedValue& val, BfType* type);
-	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL);
+	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data);	
 	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized);
 	String GenericParamSourceToString(const BfGenericParamSource& genericParamSource);

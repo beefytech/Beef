@@ -173,6 +173,16 @@ namespace Tests
 			delete val;
 		}
 
+		public class ClassE
+		{
+		    public static Self Instance = new ClassE() ~ delete _;
+
+		    public int CreateSystem<T>()
+		    {
+		        return 999;
+		    }
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -207,6 +217,8 @@ namespace Tests
 			ClassD cd = scope .();
 			ClassD cd2 = scope .();
 			Test.Assert(LibA.LibA2.CheckEq(cd, cd2));
+
+			Test.Assert(ClassE.Instance.CreateSystem<int>() == 999);
 		}
 	}
 

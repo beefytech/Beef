@@ -14478,7 +14478,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			mModule->Fail("Identifier not found", qualifiedName->mLeft);
 			mModule->CheckTypeRefFixit(qualifiedName->mLeft);
 			mModule->CheckIdentifierFixit(qualifiedName->mLeft);
-			thisValue = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
+			thisValue = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
 		}
 		if (mResult)
 			CheckResultForReading(mResult);

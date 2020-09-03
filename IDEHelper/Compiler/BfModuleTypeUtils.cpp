@@ -5983,7 +5983,7 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& generic
 
 int checkIdx = 0;
 
-BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType)
+BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType, BfResolveTypeRefFlags resolveFlags)
 {
 	if (outType != NULL)
 		*outType = NULL;
@@ -6061,13 +6061,14 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 				}
 			}
 
-			if (wasGenericParam)
+			if ((wasGenericParam) && ((resolveFlags & BfResolveTypeRefFlag_IgnoreLookupError) == 0))
 				Fail("Cannot use generic param as generic instance type", typeRef);
 		}
 		
 		if (typeDef == NULL)
 		{
-			TypeRefNotFound(typeRef);
+			if ((resolveFlags & BfResolveTypeRefFlag_IgnoreLookupError) == 0)
+				TypeRefNotFound(typeRef);
 			return NULL;
 		}
 	}
@@ -6085,7 +6086,8 @@ BfTypeDef* BfModule::ResolveGenericInstanceDef(BfGenericInstanceTypeRef* generic
 			return typeInst->mTypeDef;
 	}
 
-	Fail("Invalid generic type", typeRef);
+	if ((resolveFlags & BfResolveTypeRefFlag_IgnoreLookupError) == 0)
+		Fail("Invalid generic type", typeRef);
 	return NULL;
 }
 
@@ -8273,7 +8275,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
-	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & BfResolveTypeRefFlag_NoCreate);
+	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError));
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
