@@ -202,8 +202,8 @@ namespace IDE.ui
                 0xFF75715E, // Comment
                 0xFFA6E22A, // Method
 				0xFF66D9EF, // Type
-                0xFF66D9EF, // RefType
-				0xFF66D9EF, // Interface
+                0xFF66A0EF, // RefType
+				0xFF9A9EEB, // Interface
                 0xFF7BEEB7, // Namespace
 
                 0xFFB0B0B0, // Disassembly_Text
