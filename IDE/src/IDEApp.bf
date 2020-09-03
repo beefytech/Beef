@@ -5308,6 +5308,7 @@ namespace IDE
         public void SetupNewWindow(WidgetWindow window, bool isMainWindow)
         {
             window.mOnWindowKeyDown.Add(new => SysKeyDown);
+			window.mOnMouseUp.Add(new => MouseUp);
 			if (isMainWindow)
             	window.mOnWindowCloseQuery.Add(new => SecondaryAllowClose);
         }        
@@ -7085,6 +7086,14 @@ namespace IDE
 		{
 			PhysSetScale(scale, force);
 			gApp.mSettings.mUISettings.mScale = DarkTheme.sScale * 100.0f;
+		}
+
+		void MouseUp(MouseEvent evt)
+		{
+			if (evt.mBtn == 3)
+				NavigateBackwards();
+			else if (evt.mBtn == 4)
+				NavigateForwards();
 		}
 
         void SysKeyDown(KeyDownEvent evt)
@@ -10996,6 +11005,7 @@ namespace IDE
 			UpdateTitle();
             mMainWindow.SetMinimumSize(GS!(480), GS!(360));
             mMainWindow.mIsMainWindow = true;
+			mMainWindow.mOnMouseUp.Add(new => MouseUp);
             mMainWindow.mOnWindowKeyDown.Add(new => SysKeyDown);
             mMainWindow.mOnWindowCloseQuery.Add(new => AllowClose);
             CreateMenu();

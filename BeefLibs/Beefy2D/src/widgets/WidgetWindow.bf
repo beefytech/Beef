@@ -23,6 +23,7 @@ namespace Beefy.widgets
         public Event<MouseLeftWindowHandler> mOnMouseLeftWindow ~ _.Dispose();
         public Event<WindowLostFocusHandler> mOnWindowLostFocus ~ _.Dispose();
         public Event<MouseEventHandler> mOnMouseDown ~ _.Dispose();
+		public Event<MouseEventHandler> mOnMouseUp ~ _.Dispose();
         public Event<WindowCloseQueryHandler> mOnWindowCloseQuery ~ _.Dispose();
         public Event<WindowClosedHandler> mOnWindowClosed ~ _.Dispose();
         public Event<WindowMovedHandler> mOnWindowMoved ~ _.Dispose();
@@ -653,12 +654,17 @@ namespace Beefy.widgets
                 anEvent.mSender = this;
                 anEvent.mX = x;
                 anEvent.mY = y;
+				anEvent.mBtn = btn;
+				anEvent.mBtnCount = btnCount;
                 mOnMouseDown(anEvent);
                 sOnMouseDown(anEvent);
                 if (anEvent.mHandled)
                     return;
             }
-            
+
+			if (btn >= 3) // X button - don't pass on to widgets
+				return;
+
             Widget aWidget = mCaptureWidget ?? mOverWidget;
             if (aWidget != null)
             {
@@ -679,6 +685,26 @@ namespace Beefy.widgets
 
 			MouseMove(inX, inY);
             mMouseFlags &= (MouseFlag)(~(1 << btn));
+
+			float x;
+			float y;
+			TranslateMouseCoords(inX, inY, out x, out y);
+
+			if (mOnMouseUp.HasListeners)
+			{
+			    MouseEvent anEvent = scope MouseEvent();
+			    anEvent.mSender = this;
+			    anEvent.mX = x;
+			    anEvent.mY = y;
+				anEvent.mBtn = btn;
+			    mOnMouseUp(anEvent);
+			    if (anEvent.mHandled)
+			        return;
+			}
+
+			if (btn >= 3) // X button - don't pass on to widgets
+				return;
+
             Widget aWidget = mCaptureWidget ?? mOverWidget;
             if (aWidget != null)
             {

@@ -531,13 +531,15 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		case WM_LBUTTONDOWN:		
 		case WM_RBUTTONDOWN:
 		case WM_MBUTTONDOWN:
+		case WM_XBUTTONDOWN:
 		case WM_LBUTTONDBLCLK:
 		case WM_RBUTTONDBLCLK:
 		case WM_LBUTTONUP:		
 		case WM_RBUTTONUP:		
 		case WM_MBUTTONUP:
+		case WM_XBUTTONUP:
 		case WM_MOUSEWHEEL:
-		case WM_MOUSEMOVE:	
+		case WM_MOUSEMOVE:
 			{				
 				int x = (short)LOWORD(lParam);
 				int y = (short)HIWORD(lParam);
@@ -602,7 +604,10 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					break;
 				case WM_MBUTTONDOWN:
 					_BtnDown(2);
-					break;				
+					break;			
+				case WM_XBUTTONDOWN:
+					_BtnDown((int)(wParam >> 16) + 2);
+					break;
 				case WM_LBUTTONUP:
 					_BtnUp(0);					
 					break;
@@ -611,7 +616,10 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					break;
 				case WM_MBUTTONUP:							
 					_BtnUp(2);
-					break;			
+					break;							
+				case WM_XBUTTONUP:
+					_BtnUp((int)(wParam >> 16) + 2);
+					break;
 				case WM_MOUSEWHEEL:
 					{
 						WinBFWindow* cursorWindow = this;
