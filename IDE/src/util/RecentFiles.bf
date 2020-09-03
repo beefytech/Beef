@@ -49,8 +49,10 @@ namespace IDE.util
 
 			int offset = showSplit ? 1 : 0;
 
+			int itemCount = Math.Min(items.Count, 10);
+
 			int32 i;
-			for (i = 0; i < items.Count; i++)
+			for (i = 0; i < itemCount; i++)
 			{
 			    String title = scope String();
 			    if (i + 1 == 10)

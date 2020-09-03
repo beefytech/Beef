@@ -95,6 +95,14 @@ namespace Beefy.widgets
 
     public class MenuWidget : Widget
     {
+		enum ShowFlags
+		{
+			None,
+			AllowScrollable = 1,
+			CenterHorz = 2,
+			CenterVert = 4,
+		}
+
         public MenuItemWidget mParentMenuItemWidget;
         public Menu mMenu;        
         //public BFWindowBase.Flags mWindowFlags = BFWindowBase.Flags.ClientSized | BFWindowBase.Flags.NoActivate | BFWindowBase.Flags.NoMouseActivate;
@@ -227,8 +235,9 @@ namespace Beefy.widgets
 			return 10;
 		}
 
-        public virtual void Init(Widget relativeWidget, float x, float y, bool allowScrollable = false, WidgetWindow widgetWindow = null)
+        public virtual void Init(Widget relativeWidget, float x, float y, ShowFlags showFlags = 0, WidgetWindow widgetWindow = null)
         {
+			bool allowScrollable = showFlags.HasFlag(.AllowScrollable);
 			mWasInitialized = true;
 
 			float curY = y;
@@ -288,6 +297,11 @@ namespace Beefy.widgets
                 relativeWidget.SelfToRootTranslate(x, curY, out screenX, out screenY);
             screenX += relativeWidget.mWidgetWindow.mClientX;
             screenY += relativeWidget.mWidgetWindow.mClientY;
+
+			if (showFlags.HasFlag(.CenterHorz))
+				screenX -= mWidth / 2;
+			if (showFlags.HasFlag(.CenterVert))
+				screenY -= mHeight / 2;
 
             MenuContainer menuContainer;
 

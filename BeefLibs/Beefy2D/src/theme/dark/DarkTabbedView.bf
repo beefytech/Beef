@@ -301,7 +301,7 @@ namespace Beefy.theme.dark
                 {
                     MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
 
-                    menuWidget.Init(this, x, y, true);
+                    menuWidget.Init(this, x, y, .AllowScrollable);
                     menuWidget.mWidgetWindow.mOnWindowClosed.Add(new => MenuClosed);
                 }
 				else

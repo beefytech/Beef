@@ -641,7 +641,7 @@ namespace IDE.ui
 						});
 
 					MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
-					menuWidget.Init(this, x, y, true);
+					menuWidget.Init(this, x, y, .AllowScrollable);
 
 					menu.mOnMenuClosed.Add(new (menu, itemSelected) =>
 						{

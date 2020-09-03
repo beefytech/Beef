@@ -6551,7 +6551,7 @@ namespace IDE.ui
 				AddLockType("When not Hot Swappable", .WhenNotHotSwappable);
 
 				MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
-				menuWidget.Init(this, x, y, true);
+				menuWidget.Init(this, x, y, .AllowScrollable);
 			}
 		}
 

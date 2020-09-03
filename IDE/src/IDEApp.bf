@@ -180,7 +180,8 @@ namespace IDE
         public GlobalUndoManager mGlobalUndoManager = new GlobalUndoManager() ~ delete _;
 		public SourceControl mSourceControl = new SourceControl() ~ delete _;
 
-        public WidgetWindow mPopupWindow;        
+        public WidgetWindow mPopupWindow;
+ 		public RecentFileSelector mRecentFileSelector;
         
         public IDETabbedView mActiveDocumentsTabbedView;
         public static new IDEApp sApp;
@@ -6158,9 +6159,30 @@ namespace IDE
 
 		public void AddToRecentDisplayedFilesList(String path)
 		{
-			//int idx = mRecentFilesList.IndexOf(path);
-			RecentFiles.Add(mRecentlyDisplayedFiles, path);
+			RecentFiles.Add(mRecentlyDisplayedFiles, path, 20);
 			UpdateRecentDisplayedFilesMenuItems();
+		}
+
+		public void ShowRecentFileNext()
+		{
+			if (mRecentFileSelector == null)
+			{
+				mRecentFileSelector = new RecentFileSelector();
+				mRecentFileSelector.Show();
+			}
+			else
+				mRecentFileSelector.Next();
+		}
+
+		public void ShowRecentFilePrev()
+		{
+			if (mRecentFileSelector == null)
+			{
+				mRecentFileSelector = new RecentFileSelector();
+				mRecentFileSelector.Show();
+			}
+			else
+				mRecentFileSelector.Prev();
 		}
 
         void ShowRecentFile(int idx, bool setFocus = true)
@@ -7079,6 +7101,11 @@ namespace IDE
 
 			IDECommand.ContextFlags useFlags = .None;
 			var activeWindow = GetActiveWindow();
+			while (activeWindow.mParent != null)
+				activeWindow = activeWindow.mParent as WidgetWindow;
+			if (activeWindow == null)
+				return;
+
 			bool isMainWindow = activeWindow.mRootWidget is MainFrame;
 			bool isWorkWindow = isMainWindow || (activeWindow.mRootWidget is DarkDockingFrame);
 

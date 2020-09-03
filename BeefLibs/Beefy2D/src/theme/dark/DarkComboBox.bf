@@ -227,7 +227,7 @@ namespace Beefy.theme.dark
 
 			float popupY = mHeight + popupYOfs;
 			//TODO: Autocomplete didn't work on this: BFApp.sApp.GetW...
-            menuWidget.Init(this, popupXOfs, popupY, true, menuWindow);
+            menuWidget.Init(this, popupXOfs, popupY, .AllowScrollable, menuWindow);
 			// Why were we capturing?
 			mWidgetWindow.TransferMouse(menuWidget.mWidgetWindow);
             if (menuWindow == null)

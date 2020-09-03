@@ -1138,7 +1138,7 @@ namespace IDE.ui
 				if (mProject.mLocked)
 					menuItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
 				MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
-				menuWidget.Init(this, x, y, true);
+				menuWidget.Init(this, x, y, .AllowScrollable);
 			}
 		}
     }

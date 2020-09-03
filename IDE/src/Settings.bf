@@ -276,11 +276,11 @@ namespace IDE
 			public Color mKeyword = 0xFFE1AE9A;
 			public Color mLiteral = 0XFFC8A0FF;
 			public Color mIdentifier = 0xFFFFFFFF;
-			public Color mComment = 0XFF75715E;
-			public Color mMethod = 0XFFA6E22A;
-			public Color mType = 0XFF66D9EF;
-			public Color mRefType = 0XFF66D9EF;
-			public Color mInterface = 0XFF66D9EF;
+			public Color mComment = 0xFF75715E;
+			public Color mMethod = 0xFFA6E22A;
+			public Color mType = 0xFF66D9EF;
+			public Color mRefType = 0xFF66A0EF;
+			public Color mInterface = 0xFF9A9EEB;
 			public Color mNamespace = 0xFF7BEEB7;
 			public Color mDisassemblyText = 0xFFB0B0B0;
 			public Color mDisassemblyFileName = 0XFFFF0000;
@@ -695,6 +695,8 @@ namespace IDE
 				Add("Open File", "Ctrl+O");
 				Add("Open Workspace", "Ctrl+Shift+O");
 				Add("Quick Info", "Ctrl+K, Ctrl+I");
+				Add("Recent File Next", "Ctrl+Tab");
+				Add("Recent File Prev", "Shift+Ctrl+Tab");
 				Add("Reformat Document", "Ctrl+K, Ctrl+D");
 				Add("Remove All Breakpoints", "Ctrl+Shift+F9");
 				Add("Rename Symbol", "Ctrl+R");
