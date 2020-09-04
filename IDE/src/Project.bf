@@ -2257,7 +2257,7 @@ namespace IDE
             }
         }
 
-        public bool HasDependency(String projectName)
+        public bool HasDependency(String projectName, bool checkRecursively = true)
         {
 			HashSet<Project> checkedProject = scope .();
 
@@ -2271,7 +2271,7 @@ namespace IDE
 				    if (dependency.mProjectName == projectName)
 				        return true;
 					let depProject = gApp.mWorkspace.FindProject(dependency.mProjectName);
-					if ((depProject != null) && (CheckDependency(depProject)))
+					if ((depProject != null) && (checkRecursively) && (CheckDependency(depProject)))
 						return true;
 				}
 				return false;

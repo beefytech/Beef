@@ -708,7 +708,7 @@ namespace IDE.ui
             for (var projectName in projectNames)
             {                
                 var dependencyContainer = new ValueContainer<bool>();
-                dependencyContainer.mValue = mProject.HasDependency(projectName);
+                dependencyContainer.mValue = mProject.HasDependency(projectName, false);
                 mDependencyValuesMap[new String(projectName)] = dependencyContainer;
                 
                 var (listViewItem, propItem) = AddPropertiesItem(category, projectName);
