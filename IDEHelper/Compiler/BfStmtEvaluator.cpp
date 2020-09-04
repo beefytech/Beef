@@ -4078,16 +4078,16 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 }
 
 void BfModule::Visit(BfSwitchStatement* switchStmt)
-{	
-	BfScopeData newScope;
-	newScope.mInnerIsConditional = false;
-	newScope.mCloseNode = switchStmt;
+{
+	BfScopeData outerScope;
+	outerScope.mInnerIsConditional = false;
+	outerScope.mCloseNode = switchStmt;
 	if (switchStmt->mCloseBrace != NULL)
-		newScope.mCloseNode = switchStmt->mCloseBrace;
+		outerScope.mCloseNode = switchStmt->mCloseBrace;
 	if (switchStmt->mLabelNode != NULL)
-		newScope.mLabelNode = switchStmt->mLabelNode->mLabel;		
-	mCurMethodState->AddScope(&newScope);	
-	NewScopeState();	
+		outerScope.mLabelNode = switchStmt->mLabelNode->mLabel;
+	mCurMethodState->AddScope(&outerScope);
+	NewScopeState();
 
 	auto valueScopeStartOuter = ValueScopeStart();
 
@@ -4124,7 +4124,15 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	}
 
 	// We make the switch value conditional, but all other uses of this scope is conditional since it's conditional on cases
+	BfScopeData newScope;
 	newScope.mInnerIsConditional = true;
+	newScope.mCloseNode = switchStmt;
+	if (switchStmt->mCloseBrace != NULL)
+		newScope.mCloseNode = switchStmt->mCloseBrace;
+	if (switchStmt->mLabelNode != NULL)
+		newScope.mLabelNode = switchStmt->mLabelNode->mLabel;
+	mCurMethodState->AddScope(&newScope);
+	NewScopeState();	
 	
 	BfTypedValue switchValueAddr = switchValue;
 	
@@ -4869,7 +4877,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			lifetimeExtendVal = localDef->mValue;					
 	}
 	
-	RestoreScopeState();
+	RestoreScopeState(); // newScope
+	RestoreScopeState(); // outerScope
 
 	if (lifetimeExtendVal)
 		mBfIRBuilder->CreateLifetimeExtend(lifetimeExtendVal);
