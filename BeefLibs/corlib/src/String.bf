@@ -300,18 +300,8 @@ namespace System
 
 		public ~this()
 		{
-			//TODO: Remove this!
-			//char8* checkPtr = (char8*)(void*)this + ((System.Reflection.TypeInstance)typeof(String)).mInstSize;
-
 			if (IsDynAlloc)
 			    delete:this mPtr;
-			/*else if ((mPtr == checkPtr) && (*(int*)(void*)this & 8 == 0))
-			{
-				if (mPtr[mAllocSizeAndFlags] != 0xBF)
-				{
-					throw new Exception();
-				}
-			}*/
 		}
 
 		void FakeMethod ()
