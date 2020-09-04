@@ -4465,8 +4465,26 @@ namespace IDE
 			ShowTab(panel, label, false, setFocus);
 			if (setFocus)
 				panel.FocusForKeyboard();
+
 			if ((!panel.mWidgetWindow.mHasFocus) && (!mRunningTestScript))
-				panel.mWidgetWindow.SetForeground();
+			{
+				bool hasFocus = false;
+				BFWindow activeWindow = GetActiveWindow(true);
+				BFWindow checkWindow = activeWindow;
+				while (checkWindow != null)
+				{
+					if (checkWindow == panel.mWidgetWindow)
+					{
+						activeWindow.SetForeground();
+						hasFocus = true;
+						break;
+					}
+					checkWindow = checkWindow.mParent;
+				}
+				
+				if (!hasFocus)
+					panel.mWidgetWindow.SetForeground();
+			}
 #endif
 		}
 
@@ -5480,13 +5498,13 @@ namespace IDE
 			return null;
 		}
 
-		public WidgetWindow GetActiveWindow()
+		public WidgetWindow GetActiveWindow(bool allowModal = false)
 		{
 			for (let window in mWindows)
 				if (window.mHasFocus)
 				{
 					var result = window;
-					while ((result.mWindowFlags.HasFlag(.Modal)) && (result.mParent != null))
+					while ((result.mWindowFlags.HasFlag(.Modal)) && (result.mParent != null) && (!allowModal))
 						result = result.mParent;
 					return result as WidgetWindow;
 				}
