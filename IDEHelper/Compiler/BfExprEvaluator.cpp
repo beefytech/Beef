@@ -21,6 +21,7 @@
 #include "BfFixits.h"
 
 #pragma warning(pop)
+#pragma warning(disable:4996)
 
 #include "BeefySysLib/util/AllocDebug.h"
 
@@ -5838,6 +5839,88 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				if (wantType->IsNullable())
 				{
 					argValue = mModule->GetDefaultTypedValue(wantType, false, BfDefaultValueKind_Addr);
+				}
+			}
+			else if (foreignConst->mConstType == BfConstType_GlobalVar)
+			{
+				auto globalVar = (BfGlobalVar*)foreignConst;
+				if (globalVar->mName[0] == '#')
+				{
+					if (strcmp(globalVar->mName, "#CallerLineNum") == 0)
+					{
+						argValue = BfTypedValue(mModule->GetConstValue(mModule->mCurFilePosition.mCurLine + 1), mModule->GetPrimitiveType(BfTypeCode_Int32));
+					}
+					else if (strcmp(globalVar->mName, "#CallerFilePath") == 0)
+					{
+						String filePath = "";
+						if (mModule->mCurFilePosition.mFileInstance != NULL)
+							filePath = mModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+						argValue = BfTypedValue(mModule->GetStringObjectValue(filePath),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
+					else if (strcmp(globalVar->mName, "#CallerFileName") == 0)
+					{
+						String filePath = "";
+						if (mModule->mCurFilePosition.mFileInstance != NULL)
+							filePath = mModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+						argValue = BfTypedValue(mModule->GetStringObjectValue(GetFileName(filePath)),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
+					else if (strcmp(globalVar->mName, "#CallerFileDir") == 0)
+					{
+						String filePath = "";
+						if (mModule->mCurFilePosition.mFileInstance != NULL)
+							filePath = mModule->mCurFilePosition.mFileInstance->mParser->mFileName;
+						argValue = BfTypedValue(mModule->GetStringObjectValue(GetFileDir(filePath)),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
+					else if (strcmp(globalVar->mName, "#CallerMemberName") == 0)
+					{
+						String memberName = "";
+						if (mModule->mCurMethodInstance != NULL)
+							memberName = mModule->MethodToString(mModule->mCurMethodInstance);
+						argValue = BfTypedValue(mModule->GetStringObjectValue(memberName),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
+					else if (strcmp(globalVar->mName, "#CallerProject") == 0)
+					{
+						String projectName = "";
+						if (mModule->mCurMethodInstance != NULL)
+							projectName = mModule->mCurMethodInstance->mMethodDef->mDeclaringType->mProject->mName;
+						argValue = BfTypedValue(mModule->GetStringObjectValue(projectName),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
+					else
+					{
+						argValue = mModule->GetCompilerFieldValue(globalVar->mName);
+					}					
+				}
+			}
+			else if (foreignConst->mConstType == BfConstType_GEP32_2)
+			{
+				auto constGep32_2 = (BfConstantGEP32_2*)foreignConst;
+				auto gepTarget = methodInstance->GetOwner()->mConstHolder->GetConstantById(constGep32_2->mTarget);
+				if (gepTarget->mConstType == BfConstType_GlobalVar)
+				{
+					auto globalVar = (BfGlobalVar*)gepTarget;
+					if (globalVar->mName[0] == '#')
+					{
+						if (strcmp(globalVar->mName, "#CallerExpression") == 0)
+						{
+							int exprIdx = constGep32_2->mIdx1;
+							if ((exprIdx >= 0) && (exprIdx <= (int)argValues.size()))
+							{
+								argValue = BfTypedValue(mModule->GetStringObjectValue(argValues[exprIdx].mExpression->ToString()),
+									mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+							}
+							else
+							{
+								mModule->Fail("CallerExpression index out of bounds", targetSrc);
+								argValue = BfTypedValue(mModule->GetStringObjectValue(""),
+									mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+							}
+						}
+					}
 				}
 			}
 
@@ -17516,9 +17599,12 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		{			
 			if (target.mType->IsSizeAligned())
 			{
-				auto ptrType = mModule->CreatePointerType(underlyingType);
-				auto ptrValue = mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType));
-				auto gepResult = mModule->mBfIRBuilder->CreateInBoundsGEP(ptrValue, indexArgument.mValue);
+// 				auto ptrType = mModule->CreatePointerType(underlyingType);
+// 				auto ptrValue = mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType));
+// 				auto gepResult = mModule->mBfIRBuilder->CreateInBoundsGEP(ptrValue, indexArgument.mValue);
+// 				mResult = BfTypedValue(gepResult, underlyingType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+
+				auto gepResult = mModule->mBfIRBuilder->CreateInBoundsGEP(target.mValue, mModule->GetConstValue(0), indexArgument.mValue);
 				mResult = BfTypedValue(gepResult, underlyingType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
 			}
 			else
@@ -18942,13 +19028,19 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			skipOpOverload = true;
 		else if (BfBinOpEqualityCheck(binaryOp))
 		{
-			auto leftConstant = mModule->mBfIRBuilder->GetConstant(leftValue.mValue);
-			auto rightConstant = mModule->mBfIRBuilder->GetConstant(rightValue.mValue);
+			if (!leftValue.IsAddr())
+			{
+				auto leftConstant = mModule->mBfIRBuilder->GetConstant(leftValue.mValue);
+					if ((leftConstant != NULL) && (leftConstant->IsNull()))
+						skipOpOverload = true;
+			}
 			
-			if ((leftConstant != NULL) && (leftConstant->IsNull()))
-				skipOpOverload = true;
-			if ((rightConstant != NULL) && (rightConstant->IsNull()))
-				skipOpOverload = true;
+			if (!rightValue.IsAddr())
+			{
+				auto rightConstant = mModule->mBfIRBuilder->GetConstant(rightValue.mValue);
+				if ((rightConstant != NULL) && (rightConstant->IsNull()))
+					skipOpOverload = true;
+			}
 		}		
 
 		if (!skipOpOverload)

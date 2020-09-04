@@ -5,27 +5,22 @@ namespace System.Diagnostics
 #if !DEBUG
 		[SkipCall]
 #endif
-        public static void Assert(bool condition) 
-        {
-			if (!condition)
-				Internal.FatalError("Assert failed", 1);
-        }
-
-#if !DEBUG
-		[SkipCall]
-#endif
-		public static void Assert(bool condition, String error) 
+		public static void Assert(bool condition, String error = Compiler.CallerExpression[0], String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum) 
 		{
 			if (!condition)
-				Internal.FatalError(error, 1);
+			{
+				String failStr = scope .()..AppendF("Assert failed: {} at line {} in {}", error, line, filePath);
+				Internal.FatalError(failStr, 1);
+			}
 		}
 
 #if !DEBUG
 		[SkipCall]
 #endif
-		public static void FatalError(String msg = "Fatal error encountered")
+		public static void FatalError(String msg = "Fatal error encountered", String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum)
 		{
-			Internal.FatalError(msg, 1);
+			String failStr = scope .()..AppendF("{} at line {} in {}", msg, line, filePath);
+			Internal.FatalError(failStr, 1);
 		}
 
 #if !DEBUG

@@ -1548,6 +1548,7 @@ public:
 	bool CheckModifyValue(BfTypedValue& typedValue, BfAstNode* refNode, const char* modifyType = NULL);
 	BfIRValue GetInterfaceSlotNum(BfTypeInstance* ifaceType);
 	void HadSlotCountDependency();
+	BfTypedValue GetCompilerFieldValue(const StringImpl& str);
 	BfTypedValue ReferenceStaticField(BfFieldInstance* fieldInstance);
 	BfTypedValue GetThis();
 	BfLocalVariable* GetThisVariable();

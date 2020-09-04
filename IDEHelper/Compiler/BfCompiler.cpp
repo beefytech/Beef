@@ -4129,7 +4129,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 		if ((fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mAttributes != NULL))
 		{
-			auto customAttrs = module->GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, BfAttributeTargets_Field);
+			auto customAttrs = module->GetCustomAttributes(fieldDef->mFieldDeclaration->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
 			delete customAttrs;
 		}
 

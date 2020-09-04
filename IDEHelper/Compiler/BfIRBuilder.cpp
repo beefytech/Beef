@@ -2675,9 +2675,12 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 
 							StringT<128> staticVarName;
 							BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
-							String fieldName = DbgGetStaticFieldName(fieldInstance);
-							DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
-								constDIType, false, staticValue, memberType);
+							if (!staticVarName.StartsWith("#"))
+							{
+								String fieldName = DbgGetStaticFieldName(fieldInstance);
+								DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
+									constDIType, false, staticValue, memberType);
+							}
 						}
 						else if (resolvedFieldType->IsValuelessType())
 						{
@@ -2788,14 +2791,17 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 						resolvedFieldDIType, flags, BfIRValue());
 					diFieldTypes.push_back(memberType);
 
-					auto staticValue = mModule->ReferenceStaticField(fieldInstance);
-					if (staticValue.mValue)
+					StringT<128> staticVarName;
+					BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
+					if (!staticVarName.StartsWith('#'))
 					{
-						StringT<128> staticVarName;
-						BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
-						String fieldName = DbgGetStaticFieldName(fieldInstance);
-						DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
-							resolvedFieldDIType, false, staticValue.mValue, memberType);
+						auto staticValue = mModule->ReferenceStaticField(fieldInstance);
+						if (staticValue.mValue)
+						{
+							String fieldName = DbgGetStaticFieldName(fieldInstance);
+							DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
+								resolvedFieldDIType, false, staticValue.mValue, memberType);
+						}
 					}
 				}
 			}
@@ -4101,6 +4107,15 @@ BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, BfIRValue idx0)
 
 BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, BfIRValue idx0, BfIRValue idx1)
 {
+	if ((val.IsConst()) && (idx0.IsConst()) && (idx1.IsConst()))
+	{
+		auto idx0Constant = GetConstant(idx0);
+		auto idx1Constant = GetConstant(idx1);
+
+		if ((IsInt(idx0Constant->mTypeCode)) && (IsInt(idx1Constant->mTypeCode)))
+			return CreateInBoundsGEP(val, idx0Constant->mInt32, idx1Constant->mInt32);
+	}
+
 	BfIRValue retVal = WriteCmd(BfIRCmd_InBoundsGEP2, val, idx0, idx1);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;

@@ -89,9 +89,8 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	if (wantType != NULL)
 		mExpectingType = wantType;
 	VisitChildNoRef(expr);
+	
 	mResult = GetResult();
-	if (mResult)
-		mResult = mModule->LoadValue(mResult);
 	if ((mResult) && (wantType != NULL))
 	{
 		auto typeInst = mResult.mType->ToTypeInstance();
@@ -113,17 +112,18 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 				}
 				else
 				{
-					int stringId = mModule->GetStringPoolIdx(mResult.mValue);
-					BF_ASSERT(stringId >= 0);
-
-					if ((flags & BfConstResolveFlag_RemapFromStringId) != 0)
+					int stringId = mModule->GetStringPoolIdx(mResult.mValue);					
+					if (stringId != -1)
 					{
-						ignoreWrites.Restore();
-						mModule->mBfIRBuilder->PopulateType(mResult.mType);
-						return BfTypedValue(mModule->GetStringObjectValue(stringId), mResult.mType);
-					}
+						if ((flags & BfConstResolveFlag_RemapFromStringId) != 0)
+						{
+							ignoreWrites.Restore();
+							mModule->mBfIRBuilder->PopulateType(mResult.mType);
+							return BfTypedValue(mModule->GetStringObjectValue(stringId), mResult.mType);
+						}
 
-					return BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_StringId, stringId), toType);
+						return BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_StringId, stringId), toType);
+					}
 				}
 			}
 		}
@@ -180,10 +180,10 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		if (isConst)
 		{
 			auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
-			if (constant->mConstType == BfConstType_GlobalVar)
+			if ((constant->mConstType == BfConstType_GlobalVar) && ((mBfEvalExprFlags & BfConstResolveFlag_AllowGlobalVariable) != 0))
 				isConst = false;
 		}
-
+		
 		if ((!isConst) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowNonConst) == 0))
 		{			
 			mModule->Fail("Expression does not evaluate to a constant value", expr);

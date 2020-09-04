@@ -2243,7 +2243,36 @@ void BfMangler::Mangle(StringImpl& outStr, MangleKind mangleKind, BfMethodInstan
 }
 
 void BfMangler::Mangle(StringImpl& outStr, MangleKind mangleKind, BfFieldInstance* fieldInstance)
-{
+{	
+	if (fieldInstance->mCustomAttributes != NULL)
+	{
+		auto module = fieldInstance->mOwner->mModule;
+		auto linkNameAttr = fieldInstance->mCustomAttributes->Get(module->mCompiler->mLinkNameAttributeTypeDef);
+		if (linkNameAttr != NULL)
+		{
+			if (linkNameAttr->mCtorArgs.size() == 1)
+			{
+				if (module->TryGetConstString(fieldInstance->mOwner->mConstHolder, linkNameAttr->mCtorArgs[0], outStr))
+					if (!outStr.IsWhitespace())
+						return;
+
+				auto constant = fieldInstance->mOwner->mConstHolder->GetConstant(linkNameAttr->mCtorArgs[0]);
+				if (constant != NULL)
+				{
+					if (constant->mInt32 == 1) // C
+					{
+						outStr += fieldInstance->GetFieldDef()->mName;
+						return;
+					}
+					else if (constant->mInt32 == 2) // CPP
+					{
+						//mangleContext.mCPPMangle = true;
+					}
+				}
+			}
+		}
+	}
+
 	if (mangleKind == BfMangler::MangleKind_GNU)
 		outStr += BfGNUMangler::MangleStaticFieldName(fieldInstance->mOwner, fieldInstance->GetFieldDef()->mName);
 	else

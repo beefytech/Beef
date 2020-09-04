@@ -2,8 +2,8 @@
 
 #include "BeefySysLib/util/AllocDebug.h"
 
-#pragma warning(push) // 6
 #pragma warning(disable:4996)
+#pragma warning(push) // 6
 
 #include "BfCompiler.h"
 #include "BfSystem.h"
@@ -1097,7 +1097,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "-")
+                (mModuleName == "BeefTest_TestProgram")
 				//|| (mModuleName == "BeefTest2_ClearColorValue")
 				//|| (mModuleName == "Tests_FuncRefs")
 				)
@@ -3381,6 +3381,7 @@ BfCheckedKind BfModule::GetDefaultCheckedKind()
 
 void BfModule::AddFailType(BfTypeInstance* typeInstance)
 {
+	BF_ASSERT(typeInstance != NULL);
 	mContext->mFailTypes.Add(typeInstance);
 }
 
@@ -3454,7 +3455,7 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 		BfLogSysM("Creating static field Module:%p Type:%p\n", this, fieldType);
 		StringT<128> staticVarName;
 		BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), fieldInstance);
-		if (!fieldType->IsValuelessType())
+		if ((!fieldType->IsValuelessType()) && (!staticVarName.StartsWith("#")))
 		{
 			BfIRValue globalVar = mBfIRBuilder->CreateGlobalVariable(					
 				mBfIRBuilder->MapType(fieldType, BfIRPopulateType_Eventually_Full),
@@ -3538,11 +3539,13 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 	{	
 		if (!fieldDef->mTypeRef->IsA<BfPointerTypeRef>())
 		{
+			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 			Fail("Extern consts must be pointer types", fieldDef->mFieldDeclaration->mTypeRef);
 		}
 
 		if (fieldDef->mInitializer != NULL)
 		{
+			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 			Fail("Extern consts cannot have initializers", fieldDef->mFieldDeclaration->mNameNode);
 		}
 	}
@@ -9995,7 +9998,7 @@ void BfModule::ClearConstData()
 }
 
 BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType)
-{				
+{		
 	switch (constant->mTypeCode)
 	{
 	case BfTypeCode_StringId:
@@ -10057,12 +10060,20 @@ BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConst
 		}
 		break;
 	default: break;
-	}
-	
+	}		
 	BfIRValue irValue = ConstantToCurrent(constant, constHolder, wantType);
 	BF_ASSERT(irValue);
 	if (!irValue)
 		return BfTypedValue();
+
+	if (constant->mConstType == BfConstType_GlobalVar)
+	{
+		auto result = BfTypedValue(irValue, wantType, true);
+		if (!wantType->IsComposite())
+			result = LoadValue(result);
+		return result;
+	}
+
 	return BfTypedValue(irValue, wantType, false);
 }
 
@@ -10838,6 +10849,25 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 	PopulateType(typedValue.mType);
 	if ((typedValue.mType->IsValuelessType()) || (typedValue.mType->IsVar()))
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), typedValue.mType, false);
+
+	if (typedValue.mValue.IsConst())
+	{
+		auto constantValue = mBfIRBuilder->GetConstant(typedValue.mValue);
+		if (constantValue != NULL)
+		{
+			if (constantValue->mConstType == BfConstType_GlobalVar)
+			{
+				auto globalVar = (BfGlobalVar*)constantValue;
+				if (globalVar->mName[0] == '#')
+				{
+					BfTypedValue result = GetCompilerFieldValue(globalVar->mName);
+					if (result)
+						return result;
+					return GetDefaultTypedValue(typedValue.mType);
+				}
+			}
+		}
+	}
 
 	BfIRValue loadedVal = typedValue.mValue;
 	if (loadedVal)
@@ -12603,14 +12633,28 @@ void BfModule::HadSlotCountDependency()
 	mUsedSlotCount = BF_MAX(mCompiler->mMaxInterfaceSlots, 0);	
 }
 
+BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
+{
+	if (str == "#TimeLocal")
+	{
+		time_t rawtime;
+		time(&rawtime);
+		tm* timeinfo = localtime(&rawtime);
+		char result[32];
+		sprintf(result, "%d/%.2d/%.2d %.2d:%.2d:%.2d",
+			1900 + timeinfo->tm_year,
+			timeinfo->tm_mon,
+			timeinfo->tm_mday,
+			timeinfo->tm_hour,
+			timeinfo->tm_min,
+			timeinfo->tm_sec);
+		return BfTypedValue(GetStringObjectValue(result), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	return BfTypedValue();
+}
+
 BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 {		
-	if (mIsScratchModule)
-	{
-		// Just fake it for the extern and unspecialized modules		
-		return BfTypedValue(mBfIRBuilder->GetFakeVal(), fieldInstance->GetResolvedType(), true);
-	}
-	
 	BfIRValue globalValue;
 	
 	auto fieldDef = fieldInstance->GetFieldDef();
@@ -12626,7 +12670,13 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 		{
 			return GetDefaultTypedValue(fieldInstance->GetResolvedType());
 		}
-	}		
+	}	
+
+	if (mIsScratchModule)
+	{
+		// Just fake it for the extern and unspecialized modules		
+		return BfTypedValue(mBfIRBuilder->CreateConstNull(), fieldInstance->GetResolvedType(), true);
+	}
 	
 	BfIRValue* globalValuePtr = NULL;
 	if (mStaticFieldRefs.TryGetValue(fieldInstance, &globalValuePtr))
@@ -12648,8 +12698,12 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 		PopulateType(typeType);
 		if ((typeType != NULL) && (!typeType->IsValuelessType()))
 		{
+			BfIRType irType = mBfIRBuilder->MapType(typeType);
+
+			SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mBfIRBuilder->mIgnoreWrites || staticVarName.StartsWith('#'));
+
 			globalValue = mBfIRBuilder->CreateGlobalVariable(
-				mBfIRBuilder->MapType(typeType),
+				irType,
 				false,
 				BfIRLinkageType_External,
 				BfIRValue(),
@@ -16601,6 +16655,10 @@ void BfModule::EmitGCMarkMembers()
 
 							if ((fieldDef->mIsStatic) && (!fieldDef->mIsConst))
 							{
+								StringT<128> staticVarName;
+								BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), &fieldInst);
+								if (staticVarName.StartsWith('#'))
+									continue;
 								markVal = ReferenceStaticField(&fieldInst);
 							}
 							else if (!fieldDef->mIsStatic)
@@ -20368,7 +20426,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			else
 			{
 				BfConstResolver constResolver(this);
-				defaultValue = constResolver.Resolve(paramDef->mParamDeclaration->mInitializer, resolvedParamType, BfConstResolveFlag_NoCast);
+				defaultValue = constResolver.Resolve(paramDef->mParamDeclaration->mInitializer, resolvedParamType, (BfConstResolveFlags)(BfConstResolveFlag_NoCast | BfConstResolveFlag_AllowGlobalVariable));
 				if ((defaultValue) && (defaultValue.mType != resolvedParamType))
 				{
 					SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites, true);
