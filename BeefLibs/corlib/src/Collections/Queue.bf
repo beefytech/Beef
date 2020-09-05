@@ -459,9 +459,3 @@ namespace System.Collections
 		}
 	}
 }
-
-namespace System.Collections.Generic
-{
-	[Obsolete("The System.Collections.Generic types have been moved into System.Collections", false)]
-	typealias Queue<T> = System.Collections.Queue<T>;
-}
