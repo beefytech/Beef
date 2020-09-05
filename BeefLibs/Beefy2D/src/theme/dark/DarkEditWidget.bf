@@ -759,7 +759,7 @@ namespace Beefy.theme.dark
             return val;
         }
 
-		public void CheckRecordScrollTop()
+		public void CheckRecordScrollTop(bool force = false)
 		{
 			if (mWantsCheckScrollPosition)
 			{
@@ -784,7 +784,7 @@ namespace Beefy.theme.dark
 				mWantsCheckScrollPosition = false;
 			}
 
-			if (mEditWidget.mHasFocus)
+			if ((mEditWidget.mHasFocus) && (!force))
 			{
 				mTopCharId = -1;
 			}

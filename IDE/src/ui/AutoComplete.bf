@@ -2287,22 +2287,32 @@ namespace IDE.ui
 				return;
 			}
 
+			var targetSourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
+			var sourceEditWidgetContent = targetSourceEditWidgetContent;
+			var prevCursorPosition = sourceEditWidgetContent.CursorTextPos;
+			var prevScrollPos = mTargetEditWidget.mVertPos.mDest;
+
 			UndoBatchStart undoBatchStart = null;
 
 			var parts = String.StackSplit!(data, '|');
+			String fixitKind = parts[0];
 			String fixitFileName = parts[1];
 			SourceViewPanel sourceViewPanel = IDEApp.sApp.ShowSourceFile(fixitFileName);
+			bool focusChange = !fixitKind.StartsWith(".");
 
-			var targetSourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
 			var historyEntry = targetSourceEditWidgetContent.RecordHistoryLocation();
 			historyEntry.mNoMerge = true;
 
-			var sourceEditWidgetContent = targetSourceEditWidgetContent;
 			if (sourceEditWidgetContent.mSourceViewPanel != sourceViewPanel)
 			{
 				sourceEditWidgetContent = (SourceEditWidgetContent)sourceViewPanel.GetActivePanel().EditWidget.mEditWidgetContent;
 				undoBatchStart = new UndoBatchStart("autocomplete");
 				sourceEditWidgetContent.mData.mUndoManager.Add(undoBatchStart);
+			}
+
+			if (!focusChange)
+			{
+				sourceEditWidgetContent.CheckRecordScrollTop(true);
 			}
 
 			int32 fixitIdx = 0;
@@ -2324,6 +2334,8 @@ namespace IDE.ui
 			}
 			else
 				fixitIdx = int32.Parse(fixitLocStr).GetValueOrDefault();
+
+			int prevTextLength = sourceEditWidgetContent.mData.mTextLength;
 
 			int insertCount = 0;
 			int dataIdx = 3;
@@ -2358,7 +2370,8 @@ namespace IDE.ui
 					}
 	
 					sourceEditWidgetContent.CursorTextPos = fixitIdx;
-					sourceEditWidgetContent.EnsureCursorVisible(true, true);
+					if (focusChange)
+						sourceEditWidgetContent.EnsureCursorVisible(true, true);
 
 					if (fixitLen > 0)
 					{
@@ -2375,6 +2388,14 @@ namespace IDE.ui
 					fixitIdx = (.)sourceEditWidgetContent.CursorTextPos;
 					insertCount++;
 				}
+			}
+
+			if (!focusChange)
+			{
+				mTargetEditWidget.VertScrollTo(prevScrollPos, true);
+				sourceEditWidgetContent.CursorTextPos = prevCursorPosition;
+				int addedSize = sourceEditWidgetContent.mData.mTextLength - prevTextLength;
+				sourceEditWidgetContent.[Friend]AdjustCursorsAfterExternalEdit(fixitIdx, addedSize);
 			}
 
 			if (historyEntry != null)

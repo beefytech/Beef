@@ -941,8 +941,8 @@ namespace Beefy.widgets
 		{
 #unwarn
 			int cursorPos = CursorTextPos;
-			if (mCursorTextPos >= index)
-				mCursorTextPos = Math.Clamp(mCursorTextPos + (int32)ofs, 0, mData.mTextLength + 1);
+			if (cursorPos >= index)
+				CursorTextPos = Math.Clamp(mCursorTextPos + (int32)ofs, 0, mData.mTextLength + 1);
 			if (HasSelection())
 			{				
 				if (((ofs > 0) && (mSelection.Value.mStartPos >= index)) ||

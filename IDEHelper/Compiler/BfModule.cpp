@@ -2888,7 +2888,7 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 
 				if (warningNum != 0)
 				{
-					mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("#pragma warning disable %d\tusing|%s|%d||#pragma warning disable %d", 
+					mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("#pragma warning disable %d\t.pragma|%s|%d||#pragma warning disable %d", 
 						warningNum, parser->mFileName.c_str(), 0, warningNum).c_str()));
 				}
 			}			

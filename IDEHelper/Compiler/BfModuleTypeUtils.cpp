@@ -7356,7 +7356,7 @@ void BfModule::CheckTypeRefFixit(BfAstNode* typeRef, const char* appendName)
 		{
 			BfParserData* parser = typeRef->GetSourceData()->ToParserData();
 			if (parser != NULL)
-				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("using %s;\tusing|%s|%d||using %s;", namespaceStr.c_str(), parser->mFileName.c_str(), usingFinder.mLastIdx, namespaceStr.c_str()).c_str()));
+				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("using %s;\t.using|%s|%d||using %s;", namespaceStr.c_str(), parser->mFileName.c_str(), usingFinder.mLastIdx, namespaceStr.c_str()).c_str()));
 		}
 	}
 }

@@ -3267,7 +3267,7 @@ void BfAutoComplete::FixitAddNamespace(BfAstNode* refNode, const StringImpl& nam
 
 	BfUsingFinder usingFinder;
 	usingFinder.VisitMembers(refNode->GetSourceData()->mRootNode);
-	AddEntry(AutoCompleteEntry("fixit", StrFormat("using %s;\tusing|%s|%d||using %s;", namespaceStr.c_str(), parserData->mFileName.c_str(),
+	AddEntry(AutoCompleteEntry("fixit", StrFormat("using %s;\t.using|%s|%d||using %s;", namespaceStr.c_str(), parserData->mFileName.c_str(),
 		usingFinder.mLastIdx, namespaceStr.c_str()).c_str()));
 }
 
