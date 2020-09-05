@@ -494,6 +494,9 @@ namespace Tests
 			sb.mB = "Struct B";
 			sb.mC = .() { mA = 1.2f, mB = 2.3f };
 
+			Variant sbVariant = .Create(sb);
+			defer sbVariant.Dispose();
+
 			let type = sb.GetType() as TypeInstance;
 			let fields = type.GetFields();
 			int fieldIdx = 0;
@@ -501,8 +504,13 @@ namespace Tests
 			{
 			    var fieldVal = field.GetValue(sb).Value;
 				defer fieldVal.Dispose();
+
 				var fieldVal2 = field.GetValue(&sb).Value;
 				defer fieldVal2.Dispose();
+
+				var fieldVal3 = field.GetValue(sbVariant).Value;
+				defer fieldVal3.Dispose();
+
 				switch (fieldIdx)
 				{
 				case 0:
@@ -514,6 +522,26 @@ namespace Tests
 					Test.Assert(fieldVal2.Get<int>() == 25);
 					field.SetValue(&sb, newVal);
 					Test.Assert(sb.mA == 32);
+
+					Test.Assert(fieldVal3.Get<int>() == 25);
+					field.SetValue(&sb, newVal);
+					Test.Assert(sb.mA == 32);
+
+					field.SetValue(sbVariant, 34);
+					fieldVal3.Dispose();
+					fieldVal3 = field.GetValue(sbVariant).Value;
+					Test.Assert(fieldVal3.Get<int>() == 34);
+
+					Variant varInt = .Create(45);
+					field.SetValue(sbVariant, varInt);
+					fieldVal3.Dispose();
+					fieldVal3 = field.GetValue(sbVariant).Value;
+					Test.Assert(fieldVal3.Get<int>() == 45);
+
+					field.SetValue(&sb, varInt);
+					fieldVal2.Dispose();
+					fieldVal2 = field.GetValue(&sb).Value;
+					Test.Assert(fieldVal2.Get<int>() == 45);
 				case 1:
 					Test.Assert(fieldVal.Get<String>() === "Struct B");
 					field.SetValue(&sb, "Struct C");
