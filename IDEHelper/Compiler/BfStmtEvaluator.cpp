@@ -4083,9 +4083,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	outerScope.mInnerIsConditional = false;
 	outerScope.mCloseNode = switchStmt;
 	if (switchStmt->mCloseBrace != NULL)
-		outerScope.mCloseNode = switchStmt->mCloseBrace;
-	if (switchStmt->mLabelNode != NULL)
-		outerScope.mLabelNode = switchStmt->mLabelNode->mLabel;
+		outerScope.mCloseNode = switchStmt->mCloseBrace;	
 	mCurMethodState->AddScope(&outerScope);
 	NewScopeState();
 
@@ -4128,7 +4126,9 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	newScope.mInnerIsConditional = true;
 	newScope.mCloseNode = switchStmt;
 	if (switchStmt->mCloseBrace != NULL)
-		newScope.mCloseNode = switchStmt->mCloseBrace;	
+		newScope.mCloseNode = switchStmt->mCloseBrace;
+	if (switchStmt->mLabelNode != NULL)
+		newScope.mLabelNode = switchStmt->mLabelNode->mLabel;
 	mCurMethodState->AddScope(&newScope);
 	NewScopeState();	
 	
