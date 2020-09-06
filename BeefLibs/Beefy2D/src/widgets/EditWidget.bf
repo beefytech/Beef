@@ -255,8 +255,8 @@ namespace Beefy.widgets
         public class IndentTextAction : TextAction
         {
             // InsertCharList is for block indent, RemoveCharList is for unindent (shift-tab)
-            public List<Tuple<int32, char8>> mRemoveCharList = new List<Tuple<int32, char8>>() ~ delete _;
-            public List<Tuple<int32, char8>> mInsertCharList = new List<Tuple<int32, char8>>() ~ delete _;
+            public List<(int32, char8)> mRemoveCharList = new .() ~ delete _;
+            public List<(int32, char8)> mInsertCharList = new .() ~ delete _;
             public EditSelection mNewSelection;
 
             public this(EditWidgetContent editWidget)
@@ -272,13 +272,13 @@ namespace Beefy.widgets
                 {
                     var idxChar = mRemoveCharList[idx];
 					
-                    editWidgetContent.InsertText(idxChar.Item1, ToStackString!(idxChar.Item2));
+                    editWidgetContent.InsertText(idxChar.0, ToStackString!(idxChar.1));
                 }
                 
                 for (int idx = mInsertCharList.Count - 1; idx >= 0; idx--)                
                 {
                     var idxChar = mInsertCharList[idx];
-                    editWidgetContent.RemoveText(idxChar.Item1, 1);
+                    editWidgetContent.RemoveText(idxChar.0, 1);
                 }
                 editWidgetContent.ContentChanged();
                 SetPreviousState(false);                
@@ -290,12 +290,12 @@ namespace Beefy.widgets
 				var editWidgetContent = EditWidgetContent;
                 SetPreviousState(true);
                 for (var idxChar in mRemoveCharList)
-                    editWidgetContent.RemoveText(idxChar.Item1, 1);
+                    editWidgetContent.RemoveText(idxChar.0, 1);
 				var charStr = scope String(' ', 1);
                 for (var idxChar in mInsertCharList)
 				{
-					charStr[0] = idxChar.Item2;
-                    editWidgetContent.InsertText(idxChar.Item1, charStr);
+					charStr[0] = idxChar.1;
+                    editWidgetContent.InsertText(idxChar.0, charStr);
 				}
                 editWidgetContent.ContentChanged();
                 editWidgetContent.mSelection = mNewSelection;
@@ -3158,7 +3158,7 @@ namespace Beefy.widgets
                             char8 c = (char8)mData.mText[lineStart + i].mChar;
                             if (((c == '\t') && (i == 0)) || (c == ' '))
                             {
-                                indentTextAction.mRemoveCharList.Add(Tuple<int32, char8>((int32)lineStart + i + endAdjust, c));
+                                indentTextAction.mRemoveCharList.Add(((int32)lineStart + i + endAdjust, c));
                                 //RemoveText(lineStart, 1);
                                 endAdjust--;
                             }
@@ -3181,7 +3181,7 @@ namespace Beefy.widgets
                         GetLinePosition(lineIdx, out lineStart, out lineEnd);
                         lineStart += endAdjust;
                         //InsertText(lineStart, "\t");
-                        indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)lineStart, '\t'));
+                        indentTextAction.mInsertCharList.Add(((int32)lineStart, '\t'));
                         endAdjust++;
                     }
 

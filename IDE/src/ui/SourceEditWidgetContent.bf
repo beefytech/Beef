@@ -1763,7 +1763,7 @@ namespace IDE.ui
                         for (i = 0; i < indentCount; i++)
                         {
                             InsertText(lineStart + i, "\t");
-                            indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i), '\t'));
+                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '\t'));
                             endAdjust++;
                         }
 
@@ -1772,16 +1772,16 @@ namespace IDE.ui
                         if (wantsContentTab)
                         {
                             InsertText(lineStart + i, "{\n\t");
-                            indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i), '{'));
-                            indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i + 1), '\n'));
-                            indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i + 2), '\t'));
+                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '{'));
+                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i + 1), '\n'));
+                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i + 2), '\t'));
                             endAdjust += 3;
                         }
                         else
                         {
                             InsertText(lineStart + i, "{\n");
-                            indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i), '{'));
-                            indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i + 1), '\n'));
+                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '{'));
+                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i + 1), '\n'));
                             startAdjust -= 1;
                             endAdjust += 2;
                         }
@@ -1803,19 +1803,19 @@ namespace IDE.ui
                         for (i = 0; i < indentCount; i++)
                         {
                             InsertText(lineStart + i, "\t");
-                            indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i), '\t'));
+                            indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '\t'));
                         }
 
 						if (isEmbeddedEnd)
 						{
 							InsertText(lineStart + i, "}");
-							indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i), '}'));
+							indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '}'));
 						}
 						else
 						{
 	                        InsertText(lineStart + i, "}\n");
-	                        indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i), '}'));
-	                        indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart + i + 1), '\n'));
+	                        indentTextAction.mInsertCharList.Add(((int32)(lineStart + i), '}'));
+	                        indentTextAction.mInsertCharList.Add(((int32)(lineStart + i + 1), '\n'));
 						}
 
 						newSel.mEndPos = (int32)(lineStart + i + 1);
@@ -1828,7 +1828,7 @@ namespace IDE.ui
 							if (c != '#')
 							{
 		                        InsertText(lineStart, "\t");
-		                        indentTextAction.mInsertCharList.Add(Tuple<int32, char8>((int32)(lineStart), '\t'));
+		                        indentTextAction.mInsertCharList.Add(((int32)(lineStart), '\t'));
 		                        endAdjust++;
 							}
 						}
@@ -2121,7 +2121,7 @@ namespace IDE.ui
 
 		public void DuplicateLine()
 		{
-			UndoBatchStart undoBatchStart = new UndoBatchStart("embeddedToggleComment");
+			UndoBatchStart undoBatchStart = new UndoBatchStart("duplicateLine");
 			mData.mUndoManager.Add(undoBatchStart);
 
 			mData.mUndoManager.Add(new SetCursorAction(this));
@@ -2135,6 +2135,268 @@ namespace IDE.ui
 			CursorLineAndColumn = LineAndColumn(lineNum, 0);
 			PasteText(str, "line");
 			CursorLineAndColumn = LineAndColumn(prevCursorLineAndColumn.mLine + 1, prevCursorLineAndColumn.mColumn);
+
+			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+		}
+
+		bool GetStatementRange(int checkIdx, out int startIdx, out int endIdx, out char8 endChar)
+		{
+			startIdx = -1;
+			endIdx = -1;
+			endChar = 0;
+
+			GetLineCharAtIdx(checkIdx, var line, var lineChar);
+			GetBlockStart(line, var foundBlockStartIdx, var blockOpenSpaceCount);
+
+			bool expectingStatement = true;
+			int stmtStart = -1;
+
+			int lastNonWS = -1;
+			int parenCount = 0;
+			int lastCrPos = -1;
+
+			for (int checkPos = foundBlockStartIdx; true; checkPos++)
+			{
+				if (checkPos >= mData.mTextLength)
+					break;
+
+				char8 checkC = mData.mText[checkPos].mChar;
+				if (checkC == '\n')
+					lastCrPos = checkPos;
+
+				if (checkC.IsWhiteSpace)
+					continue;
+
+				let displayType = (SourceElementType)mData.mText[checkPos].mDisplayTypeId;
+				if (displayType == .Comment)
+					continue;
+
+				if (displayType == .Normal)
+				{
+					if (checkC == '(')
+						parenCount++;
+					else if (checkC == ')')
+						parenCount--;
+				}
+
+				if (parenCount != 0)
+					continue;
+
+				if ((displayType == .Normal) &&
+					((checkC == '{') || (checkC == '}') || (checkC == ';')))
+				{
+					if ((checkPos >= checkIdx) && (!expectingStatement))
+					{
+						endChar = checkC;
+						if (lastNonWS < checkIdx)
+							return false;
+
+						startIdx = stmtStart;
+						endIdx = lastNonWS + 1;
+						return true;
+					}
+
+					expectingStatement = true;
+				}
+				else if (expectingStatement)
+				{
+					if (lastCrPos >= checkIdx)
+					{
+						return false;
+					}
+
+					expectingStatement = false;
+					stmtStart = checkPos;
+				}
+
+				lastNonWS = checkPos;
+			}
+
+			return false;
+		}
+
+		void MoveSelection(int toLinePos)
+		{
+			/*if (GetStatementRange(CursorTextPos, var startIdx, var endIdx))
+			{
+				mSelection = .(startIdx, endIdx);
+			}
+
+			return;*/
+
+			UndoBatchStart undoBatchStart = new UndoBatchStart("moveSelection");
+			mData.mUndoManager.Add(undoBatchStart);
+
+			mData.mUndoManager.Add(new SetCursorAction(this));
+
+			var prevCursorLineAndColumn = CursorLineAndColumn;
+			var str = scope String();
+			ExtractString(mSelection.Value.MinPos, mSelection.Value.Length, str);
+			DeleteSelection();
+
+			if (str.EndsWith('\n'))
+				str.RemoveFromEnd(1);
+
+			int offsetLinePos = toLinePos;
+			bool movingDown = offsetLinePos > prevCursorLineAndColumn.mLine;
+			if (movingDown)
+				offsetLinePos -= str.Count('\n');
+
+			GetLinePosition(Math.Max(offsetLinePos, 0), var offsetLineStart, var offsetLineEnd);
+			String offsetText = scope .();
+			ExtractString(offsetLineStart, offsetLineEnd - offsetLineStart, offsetText);
+
+			if (movingDown)
+			{
+				GetLinePosition(Math.Max(offsetLinePos - 1, 0), var toLineStart, var toLineEnd);
+				String txt = scope .();
+				ExtractString(toLineStart, toLineEnd - toLineStart, txt);
+				if (GetStatementRange(toLineStart, var stmtStartIdx, var stmtEndIdx, var stmtEndChar))
+				{
+					String stmt = scope .();
+					ExtractString(stmtStartIdx, stmtEndIdx - stmtStartIdx, stmt);
+					GetLineCharAtIdx(stmtEndIdx - 1, var stmtLine, var stmtLineChar);
+					offsetLinePos = stmtLine + 1;
+					GetLinePosition(Math.Max(offsetLinePos, 0), out offsetLineStart, out offsetLineEnd);
+
+					if (stmtEndChar == '{')
+						offsetLinePos++;
+				}
+			}
+			else
+			{
+				/*for (int checkPos = offsetLineStart; checkPos < offsetLineEnd; checkPos++)
+				{
+					if (mData.mText[checkPos].mDisplayTypeId != 0)
+						continue;
+					char8 checkC = mData.mText[checkPos].mChar;
+					if (checkC.IsWhiteSpace)
+						continue;
+					if (checkC == '{')
+					{
+						if (offsetLinePos > prevCursorLineAndColumn.mLine)
+							offsetLinePos--;
+					}
+					break;
+				}*/
+
+				GetLinePosition(Math.Max(offsetLinePos, 0), var toLineStart, var toLineEnd);
+				String txt = scope .();
+				ExtractString(toLineStart, toLineEnd - toLineStart, txt);
+
+				if (!GetStatementRange(toLineStart, var stmtStartIdx, var stmtEndIdx, var stmtEndChar))
+				{
+					if (stmtEndChar == '{')
+						GetLinePosition(Math.Max(offsetLinePos - 1, 0), out toLineStart, out toLineEnd);
+				}
+
+				if (GetStatementRange(toLineStart, var stmtStartIdx, var stmtEndIdx, var stmtEndChar))
+				{
+					String stmt = scope .();
+					ExtractString(stmtStartIdx, stmtEndIdx - stmtStartIdx, stmt);
+					GetLineCharAtIdx(stmtStartIdx, var stmtLine, var stmtLineChar);
+					offsetLinePos = stmtLine;
+					GetLinePosition(Math.Max(offsetLinePos, 0), out offsetLineStart, out offsetLineEnd);
+				}
+			}
+
+
+			let wantCursorPos = LineAndColumn(Math.Max(offsetLinePos, 0), 0);
+			if (wantCursorPos.mLine >= GetLineCount())
+			{
+				CursorTextPos = mData.mTextLength;
+				InsertAtCursor("\n");
+			}
+
+			CursorLineAndColumn = wantCursorPos;
+			PasteText(str, "line");
+			CursorLineAndColumn = LineAndColumn(wantCursorPos.mLine, prevCursorLineAndColumn.mColumn);
+
+			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+		}
+
+		public void MoveLine(VertDir dir)
+		{
+			int lineNum = CursorLineAndColumn.mLine;
+			GetLinePosition(lineNum, var lineStart, var lineEnd);
+			mSelection = .(lineStart, Math.Min(lineEnd + 1, mData.mTextLength));
+			MoveSelection(lineNum + (int)dir);
+		}
+
+		public void MoveStatement(VertDir dir)
+		{
+			int lineNum = CursorLineAndColumn.mLine;
+			GetLinePosition(lineNum, var lineStart, var lineEnd);
+
+			int selStart = -1;
+			int selEnd = -1;
+			int parenDepth = 0;
+
+			int checkPos = lineStart;
+			for ( ; checkPos < mData.mTextLength - 1; checkPos++)
+			{
+				char8 checkC = mData.mText[checkPos].mChar;
+
+				if (selStart == -1)
+				{
+					if (checkC == '\n')
+						break; // Don't support moving empty lines
+				   	if (!checkC.IsWhiteSpace)
+					{
+						selStart = checkPos;
+					}
+				}
+
+				if (mData.mText[checkPos].mDisplayTypeId != 0)
+					continue;
+
+				if ((checkC == ';') && (parenDepth == 0))
+				{
+					selEnd = checkPos + 1;
+					break;
+				}
+
+				if (checkC == '{')
+				{
+					parenDepth++;
+				}
+
+				if (checkC == '}')
+				{
+					parenDepth--;
+					if (parenDepth <= 0)
+					{
+						selEnd = checkPos + 1;
+						break;
+					}
+				}
+			}
+
+			if (selEnd == -1)
+				return;
+
+			for ( ; checkPos < mData.mTextLength - 1; checkPos++)
+			{
+				char8 checkC = mData.mText[checkPos].mChar;
+				selEnd = checkPos + 1;
+				if (checkC == '\n')
+					break;
+			}
+
+			UndoBatchStart undoBatchStart = new UndoBatchStart("moveLine");
+			mData.mUndoManager.Add(undoBatchStart);
+
+			mData.mUndoManager.Add(new SetCursorAction(this));
+
+			mSelection = .(lineStart, selEnd);
+
+			int toLine = lineNum + (int)dir;
+			if (dir == .Down)
+			{
+				GetLineCharAtIdx(selEnd, var line, var lineChar);
+				toLine = line;
+			}
+			MoveSelection(toLine);
 
 			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 		}

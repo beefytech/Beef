@@ -278,10 +278,27 @@ namespace IDE.ui
         protected DarkComboBox mConfigComboBox;
         protected DarkComboBox mPlatformComboBox;
 
+		public struct ConfigPlatformPair : IHashable
+		{
+			public String mConfig;
+			public String mPlatform;
+			
+			public this(String config, String platform)
+			{
+				mConfig = config;
+				mPlatform = platform;
+			}
+
+			public int GetHashCode()
+			{
+				return mConfig.GetHashCode() ^ mPlatform.GetHashCode();
+			}
+		}
+
 		protected class ConfigDataGroup
 		{
 			public bool mIsMultiTargeted;
-		    public Tuple<String, String> mTarget;
+		    public ConfigPlatformPair mTarget;
 		    public PropPage[] mPropPages ~ delete _;
 
 			public this(int categoryCount)
@@ -296,7 +313,7 @@ namespace IDE.ui
 			}
 		}
 
-		protected Dictionary<Tuple<String, String>, ConfigDataGroup> mTargetedConfigDatas = new Dictionary<Tuple<String, String>, ConfigDataGroup>() ~ delete _;
+		protected Dictionary<ConfigPlatformPair, ConfigDataGroup> mTargetedConfigDatas = new .() ~ delete _;
 		protected ConfigDataGroup mMultiTargetConfigData;
 		protected List<ConfigDataGroup> mConfigDatas = new List<ConfigDataGroup>() ~ DeleteContainerAndItems!(_);
 
@@ -328,8 +345,8 @@ namespace IDE.ui
 		{
 			for (var kv in mTargetedConfigDatas)
 			{
-				delete kv.key.Item1;
-				delete kv.key.Item2;
+				delete kv.key.mConfig;
+				delete kv.key.mPlatform;
 				delete kv.value;
 				mConfigDatas.Remove(kv.value);
 			}
@@ -659,8 +676,8 @@ namespace IDE.ui
 
 				if (mTargetedConfigDatas.GetAndRemove(.(configName, platformName)) case .Ok((var key, var configDataGroup)))
 				{
-					delete key.Item1;
-					delete key.Item2;
+					delete key.mConfig;
+					delete key.mPlatform;
 					if (configDataGroup.mPropPages[categoryType] == mPropPage)
 						RemovePropPage();
 					mConfigDatas.Remove(configDataGroup);
@@ -779,8 +796,8 @@ namespace IDE.ui
 		    {
 		        var targetedConfigName = targetedConfigData.mTarget;
 
-		        bool isCurrent = (targetedConfigName.Item1 == null) ||
-		            ((mConfigNames.Contains(targetedConfigName.Item1)) && (mPlatformNames.Contains(targetedConfigName.Item2)));
+		        bool isCurrent = (targetedConfigName.mConfig == null) ||
+		            ((mConfigNames.Contains(targetedConfigName.mConfig)) && (mPlatformNames.Contains(targetedConfigName.mPlatform)));
 
 		        for (int32 pageIdx = 0; pageIdx < targetedConfigData.mPropPages.Count; pageIdx++)
 		        {

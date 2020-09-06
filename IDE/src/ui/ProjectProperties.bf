@@ -539,12 +539,12 @@ namespace IDE.ui
             if ((GetCategoryTargetedKind(categoryTypeInt) == .Config) &&
 				((mConfigNames.Count == 1) && (mPlatformNames.Count == 1)))
             {
-                var key = Tuple<String, String>(configName, platformName);
+                var key = ConfigPlatformPair(configName, platformName);
                 var targetedConfigDataResult = mTargetedConfigDatas.GetValue(key);
                 if (!(targetedConfigDataResult case .Ok(out targetedConfigData)))
                 {
-					key.Item1 = new String(key.Item1);
-					key.Item2 = new String(key.Item2);
+					key.mConfig = new String(key.mConfig);
+					key.mPlatform = new String(key.mPlatform);
                     targetedConfigData = new ConfigDataGroup((int32)CategoryType.COUNT);
                     targetedConfigData.mTarget = key;
                     mTargetedConfigDatas[key] = targetedConfigData;
@@ -1021,7 +1021,7 @@ namespace IDE.ui
 														projectProperties.HadExternalChanges(configName, platformName);
 											}
 											else
-												projectProperties.HadExternalChanges(targetedConfigData.mTarget.Item1, targetedConfigData.mTarget.Item2);
+												projectProperties.HadExternalChanges(targetedConfigData.mTarget.mConfig, targetedConfigData.mTarget.mPlatform);
 										}
 										else
 											projectProperties.HadExternalChanges(null, null);
