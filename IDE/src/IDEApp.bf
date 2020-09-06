@@ -2065,6 +2065,17 @@ namespace IDE
             	mBfResolveSystem.AddProject(project);
 #endif
 			mWorkspace.ClearProjectNameCache();
+
+			if (!mWorkspace.mLoading)
+			{
+				for (var checkProject in mWorkspace.mProjects)
+				{
+					int idx = checkProject.mDependencies.FindIndex(scope (dep) => dep.mProjectName == project.mProjectName);
+				    if (idx != -1)
+				        ProjectOptionsChanged(checkProject);
+				}
+				ProjectOptionsChanged(project, false);
+			}
         }
 
         public void AddNewProjectToWorkspace(Project project, VerSpecRecord verSpec = null)
@@ -2102,14 +2113,6 @@ namespace IDE
 			dep.mVerSpec = new .();
 			dep.mVerSpec.SetSemVer("*");
 			project.mDependencies.Add(dep);
-
-            for (var checkProject in mWorkspace.mProjects)
-            {
-				int idx = checkProject.mDependencies.FindIndex(scope (dep) => dep.mProjectName == project.mProjectName);
-                if (idx != -1)
-                    ProjectOptionsChanged(checkProject);
-            }
-            ProjectOptionsChanged(project, false);
         }
 
         public Project CreateProject(String projName, String projDir, Project.TargetType targetType)
@@ -2348,7 +2351,7 @@ namespace IDE
 				return .Err;
 		}
 
-		void FlushDeferredLoadProjects()
+		void FlushDeferredLoadProjects(bool addToUI = false)
 		{
 			while (true)
 			{
@@ -2369,6 +2372,8 @@ namespace IDE
 						}
 
 						AddProjectToWorkspace(project, false);
+						if (addToUI)
+							mProjectPanel.InitProject(project);
 					}
 				}
 				if (!hadLoad)
@@ -2401,7 +2406,13 @@ namespace IDE
 
 			bool isNew = false;
 			bool wantSave = false;
-            
+
+			mWorkspace.mLoading = true;
+			defer
+			{
+				mWorkspace.mLoading = false;
+			}
+
             if (StructuredLoad(data, workspaceFileName) case .Err(let err))
             {
 				mBeefConfig.Refresh();
@@ -3666,6 +3677,22 @@ namespace IDE
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
 				sourceViewPanel.MatchBrace();
+		}
+
+		[IDECommand]
+		public void Cmd_MoveLine(VertDir dir)
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.MoveLine(dir);
+		}
+
+		[IDECommand]
+		public void Cmd_MoveStatement(VertDir dir)
+		{
+			var sewc = GetActiveSourceEditWidgetContent();
+			if (sewc != null)
+				sewc.MoveStatement(dir);
 		}
 
 		[IDECommand]
@@ -5169,6 +5196,12 @@ namespace IDE
 			AddMenuItem(bookmarkMenu, "&Clear Bookmarks", "Bookmark Clear");
 
 			var advancedEditMenu = subMenu.AddMenuItem("Advanced");
+			AddMenuItem(advancedEditMenu, "Duplicate Line", "Duplicate Line");
+			AddMenuItem(advancedEditMenu, "Move Line Up", "Move Line Up");
+			AddMenuItem(advancedEditMenu, "Move Line Down", "Move Line Down");
+			AddMenuItem(advancedEditMenu, "Move Statement Up", "Move Statement Up");
+			AddMenuItem(advancedEditMenu, "Move Statement Down", "Move Statement Down");
+			advancedEditMenu.AddMenuItem(null);
 			AddMenuItem(advancedEditMenu, "Make Uppercase", "Make Uppercase");
 			AddMenuItem(advancedEditMenu, "Make Lowercase", "Make Lowercase");
 			mViewWhiteSpace.mMenu = AddMenuItem(advancedEditMenu, "View White Space", "View White Space", null, null, true, mViewWhiteSpace.Bool ? 1 : 0);
@@ -8692,6 +8725,7 @@ namespace IDE
         {
 			RemoveProjectItems(project);
 
+			project.mDeleted = true;
             mWorkspace.SetChanged();
             mWorkspace.mProjects.Remove(project);
 #if IDE_C_SUPPORT

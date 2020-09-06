@@ -2139,21 +2139,51 @@ namespace IDE.ui
 			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 		}
 
-		bool GetStatementRange(int checkIdx, out int startIdx, out int endIdx, out char8 endChar)
+		enum StatementRangeFlags
 		{
+			None,
+			IncludeBlock,
+			AllowInnerMethodSelect
+		}
+
+		enum StatementKind
+		{
+			None,
+			Normal,
+			Method
+		}
+
+		StatementKind GetStatementRange(int startCheckPos, StatementRangeFlags flags, out int startIdx, out int endIdx, out char8 endChar)
+		{
+			StatementKind statementKind = .Normal;
 			startIdx = -1;
 			endIdx = -1;
 			endChar = 0;
 
-			GetLineCharAtIdx(checkIdx, var line, var lineChar);
+			GetLineCharAtIdx(startCheckPos, var line, var lineChar);
 			GetBlockStart(line, var foundBlockStartIdx, var blockOpenSpaceCount);
 
+			if (foundBlockStartIdx < 0)
+				return .None;
+
 			bool expectingStatement = true;
+			int stmtCommentStart = -1;
 			int stmtStart = -1;
 
+			int prevLineEnd = -1;
 			int lastNonWS = -1;
 			int parenCount = 0;
 			int lastCrPos = -1;
+			int braceCount = 0;
+			int innerBraceCount = 0;
+			bool hadOuterMethodColoring = false;
+			int lastOpenBrace = -1;
+			int lastCloseBrace = -1;
+
+			int commentLineStart = -1;
+			int commentStart = -1;
+			bool lineIsComment = false;
+			bool lineHasNonComment = false;
 
 			for (int checkPos = foundBlockStartIdx; true; checkPos++)
 			{
@@ -2162,19 +2192,62 @@ namespace IDE.ui
 
 				char8 checkC = mData.mText[checkPos].mChar;
 				if (checkC == '\n')
+				{
+					prevLineEnd = checkPos;
 					lastCrPos = checkPos;
+					if (!lineIsComment)
+					{
+						commentStart = -1;
+						commentLineStart = -1;
+					}
+					lineIsComment = false;
+					lineHasNonComment = false;
+				}
 
 				if (checkC.IsWhiteSpace)
 					continue;
 
 				let displayType = (SourceElementType)mData.mText[checkPos].mDisplayTypeId;
 				if (displayType == .Comment)
+				{
+					if (!lineHasNonComment)
+					{
+						if (commentStart == -1)
+							commentStart = checkPos;
+						if (commentLineStart == -1)
+							commentLineStart = prevLineEnd + 1;
+						lineIsComment = true;
+					}
 					continue;
+				}
+
+				lineHasNonComment = true;
+				lineIsComment = false;
+
+				if (innerBraceCount > 0)
+				{
+					if (checkC == '{')
+					{
+						innerBraceCount++;
+						braceCount++;
+					}
+					if (checkC == '}')
+					{
+						lastNonWS = checkPos;
+						innerBraceCount--;
+						braceCount--;
+					}
+
+					if (innerBraceCount > 0)
+						continue;
+				}
 
 				if (displayType == .Normal)
 				{
 					if (checkC == '(')
+					{
 						parenCount++;
+					}
 					else if (checkC == ')')
 						parenCount--;
 				}
@@ -2182,40 +2255,116 @@ namespace IDE.ui
 				if (parenCount != 0)
 					continue;
 
+				if (displayType == .Method)
+					hadOuterMethodColoring = true;
+
 				if ((displayType == .Normal) &&
 					((checkC == '{') || (checkC == '}') || (checkC == ';')))
 				{
-					if ((checkPos >= checkIdx) && (!expectingStatement))
+					if (checkC == '{')
 					{
+						lastOpenBrace = checkPos;
+						braceCount++;
+					}
+					if (checkC == '}')
+					{
+						lastCloseBrace = checkPos;
+						braceCount--;
+					}
+
+					if ((checkPos >= startCheckPos) && (!expectingStatement))
+					{
+						if (checkC == '{')
+						{
+							if (hadOuterMethodColoring)
+								statementKind = .Method;
+
+							if ((flags.HasFlag(.IncludeBlock)) || (statementKind == .Method))
+							{
+								innerBraceCount++;
+								continue;
+							}
+						}
+
 						endChar = checkC;
-						if (lastNonWS < checkIdx)
-							return false;
+						if (lastNonWS < startCheckPos)
+							return .None;
 
 						startIdx = stmtStart;
-						endIdx = lastNonWS + 1;
-						return true;
+						if ((stmtCommentStart != -1) && (stmtCommentStart < startIdx))
+							startIdx = stmtCommentStart;
+
+						if (checkC == '{')
+							endIdx = lastNonWS + 1;
+						else
+							endIdx = checkPos + 1;
+						return statementKind;
 					}
 
 					expectingStatement = true;
+					hadOuterMethodColoring = false;
 				}
 				else if (expectingStatement)
 				{
-					if (lastCrPos >= checkIdx)
+					if (lastCrPos >= startCheckPos)
 					{
-						return false;
+						if ((commentLineStart == -1) || (commentLineStart > startCheckPos))
+							break;
 					}
 
 					expectingStatement = false;
 					stmtStart = checkPos;
+					stmtCommentStart = commentStart;
 				}
 
 				lastNonWS = checkPos;
+				commentStart = -1;
 			}
 
-			return false;
+			if (!flags.HasFlag(.AllowInnerMethodSelect))
+				return .None;
+			
+			// If out starting pos is within a method then select the whole thing
+			if ((startCheckPos >= lastOpenBrace) && (startCheckPos <= lastCloseBrace) && (braceCount != 0))
+			{
+				let checkStmtKind = GetStatementRange(Math.Max(lastOpenBrace - 1, 0), .None, var checkStartIdx, var checkEndIdx, var checkEndChar);
+				//if ((checkStmtKind == .Method) && (startCheckPos >= checkStartIdx) && (startCheckPos <= checkEndIdx))
+				if (checkStmtKind == .Method)
+				{
+					startIdx = checkStartIdx;
+					endIdx = checkEndIdx;
+					endChar = checkEndChar;
+					return checkStmtKind;
+				}
+			}
+			return .None;
 		}
 
-		void MoveSelection(int toLinePos)
+		bool LineIsComment(int lineNum)
+		{
+			if (lineNum >= GetLineCount())
+				return false;
+
+			GetLinePosition(lineNum, var lineStart, var lineEnd);
+
+			bool lineIsComment = false;
+			for (int checkPos = lineStart; checkPos < lineEnd; checkPos++)
+			{
+				char8 checkC = mData.mText[checkPos].mChar;
+				if (checkC.IsWhiteSpace)
+					continue;
+
+				let displayType = (SourceElementType)mData.mText[checkPos].mDisplayTypeId;
+				if (displayType != .Comment)
+					return false;
+				
+				lineIsComment = true;
+			}
+
+			return lineIsComment;
+		}
+
+		void MoveSelection(int toLinePos, bool isStatementAware)
 		{
 			/*if (GetStatementRange(CursorTextPos, var startIdx, var endIdx))
 			{
@@ -2246,62 +2395,58 @@ namespace IDE.ui
 			String offsetText = scope .();
 			ExtractString(offsetLineStart, offsetLineEnd - offsetLineStart, offsetText);
 
-			if (movingDown)
+			if (isStatementAware)
 			{
-				GetLinePosition(Math.Max(offsetLinePos - 1, 0), var toLineStart, var toLineEnd);
-				String txt = scope .();
-				ExtractString(toLineStart, toLineEnd - toLineStart, txt);
-				if (GetStatementRange(toLineStart, var stmtStartIdx, var stmtEndIdx, var stmtEndChar))
+				if (movingDown)
 				{
-					String stmt = scope .();
-					ExtractString(stmtStartIdx, stmtEndIdx - stmtStartIdx, stmt);
-					GetLineCharAtIdx(stmtEndIdx - 1, var stmtLine, var stmtLineChar);
-					offsetLinePos = stmtLine + 1;
-					GetLinePosition(Math.Max(offsetLinePos, 0), out offsetLineStart, out offsetLineEnd);
-
-					if (stmtEndChar == '{')
-						offsetLinePos++;
-				}
-			}
-			else
-			{
-				/*for (int checkPos = offsetLineStart; checkPos < offsetLineEnd; checkPos++)
-				{
-					if (mData.mText[checkPos].mDisplayTypeId != 0)
-						continue;
-					char8 checkC = mData.mText[checkPos].mChar;
-					if (checkC.IsWhiteSpace)
-						continue;
-					if (checkC == '{')
+					GetLinePosition(Math.Max(offsetLinePos - 1, 0), var toLineStart, var toLineEnd);
+					String txt = scope .();
+					ExtractString(toLineStart, toLineEnd - toLineStart, txt);
+					if (GetStatementRange(toLineStart, .None, var stmtStartIdx, var stmtEndIdx, var stmtEndChar) != .None)
 					{
-						if (offsetLinePos > prevCursorLineAndColumn.mLine)
-							offsetLinePos--;
+						String stmt = scope .();
+						ExtractString(stmtStartIdx, stmtEndIdx - stmtStartIdx, stmt);
+						GetLineCharAtIdx(stmtEndIdx - 1, var stmtLine, var stmtLineChar);
+						offsetLinePos = stmtLine + 1;
+						GetLinePosition(Math.Max(offsetLinePos, 0), out offsetLineStart, out offsetLineEnd);
+
+						if (stmtEndChar == '{')
+							offsetLinePos++;
 					}
-					break;
-				}*/
-
-				GetLinePosition(Math.Max(offsetLinePos, 0), var toLineStart, var toLineEnd);
-				String txt = scope .();
-				ExtractString(toLineStart, toLineEnd - toLineStart, txt);
-
-				if (!GetStatementRange(toLineStart, var stmtStartIdx, var stmtEndIdx, var stmtEndChar))
-				{
-					if (stmtEndChar == '{')
-						GetLinePosition(Math.Max(offsetLinePos - 1, 0), out toLineStart, out toLineEnd);
+					else if (GetStatementRange(toLineStart, .AllowInnerMethodSelect, var stmtStartIdx, var stmtEndIdx, var stmtEndChar) == .Method)
+					{
+						if (stmtStartIdx <= toLineStart)
+						{
+							GetLineCharAtIdx(stmtEndIdx, var endLine, var endChar);
+							//if (offsetLinePos)
+							offsetLinePos = endLine + 1;
+						}
+					}
 				}
-
-				if (GetStatementRange(toLineStart, var stmtStartIdx, var stmtEndIdx, var stmtEndChar))
+				else
 				{
-					String stmt = scope .();
-					ExtractString(stmtStartIdx, stmtEndIdx - stmtStartIdx, stmt);
-					GetLineCharAtIdx(stmtStartIdx, var stmtLine, var stmtLineChar);
-					offsetLinePos = stmtLine;
-					GetLinePosition(Math.Max(offsetLinePos, 0), out offsetLineStart, out offsetLineEnd);
+					GetLinePosition(Math.Max(offsetLinePos, 0), var toLineStart, var toLineEnd);
+					String txt = scope .();
+					ExtractString(toLineStart, toLineEnd - toLineStart, txt);
+
+					if (GetStatementRange(toLineStart, .None, var stmtStartIdx, var stmtEndIdx, var stmtEndChar) == .None)
+					{
+						if (stmtEndChar == '{')
+							GetLinePosition(Math.Max(offsetLinePos - 1, 0), out toLineStart, out toLineEnd);
+					}
+
+					if (GetStatementRange(toLineStart, .AllowInnerMethodSelect, var stmtStartIdx, var stmtEndIdx, var stmtEndChar) != .None)
+					{
+						String stmt = scope .();
+						ExtractString(stmtStartIdx, stmtEndIdx - stmtStartIdx, stmt);
+						GetLineCharAtIdx(stmtStartIdx, var stmtLine, var stmtLineChar);
+						offsetLinePos = stmtLine;
+						GetLinePosition(Math.Max(offsetLinePos, 0), out offsetLineStart, out offsetLineEnd);
+					}
 				}
 			}
 
-
-			let wantCursorPos = LineAndColumn(Math.Max(offsetLinePos, 0), 0);
+			var wantCursorPos = LineAndColumn(Math.Max(offsetLinePos, 0), 0);
 			if (wantCursorPos.mLine >= GetLineCount())
 			{
 				CursorTextPos = mData.mTextLength;
@@ -2309,6 +2454,19 @@ namespace IDE.ui
 			}
 
 			CursorLineAndColumn = wantCursorPos;
+
+			String txt = scope .();
+			ExtractLine(offsetLinePos, txt);
+
+			if ((isStatementAware) && (LineIsComment(offsetLinePos - 1)))
+			{
+				if (movingDown)
+				{
+					InsertAtCursor("\n");
+					wantCursorPos.mLine++;
+				}
+			}
+
 			PasteText(str, "line");
 			CursorLineAndColumn = LineAndColumn(wantCursorPos.mLine, prevCursorLineAndColumn.mColumn);
 
@@ -2320,60 +2478,25 @@ namespace IDE.ui
 			int lineNum = CursorLineAndColumn.mLine;
 			GetLinePosition(lineNum, var lineStart, var lineEnd);
 			mSelection = .(lineStart, Math.Min(lineEnd + 1, mData.mTextLength));
-			MoveSelection(lineNum + (int)dir);
+			MoveSelection(lineNum + (int)dir, false);
 		}
 
 		public void MoveStatement(VertDir dir)
 		{
 			int lineNum = CursorLineAndColumn.mLine;
+			int origLineNum = lineNum;
 			GetLinePosition(lineNum, var lineStart, var lineEnd);
 
-			int selStart = -1;
-			int selEnd = -1;
-			int parenDepth = 0;
-
-			int checkPos = lineStart;
-			for ( ; checkPos < mData.mTextLength - 1; checkPos++)
-			{
-				char8 checkC = mData.mText[checkPos].mChar;
-
-				if (selStart == -1)
-				{
-					if (checkC == '\n')
-						break; // Don't support moving empty lines
-				   	if (!checkC.IsWhiteSpace)
-					{
-						selStart = checkPos;
-					}
-				}
-
-				if (mData.mText[checkPos].mDisplayTypeId != 0)
-					continue;
-
-				if ((checkC == ';') && (parenDepth == 0))
-				{
-					selEnd = checkPos + 1;
-					break;
-				}
-
-				if (checkC == '{')
-				{
-					parenDepth++;
-				}
-
-				if (checkC == '}')
-				{
-					parenDepth--;
-					if (parenDepth <= 0)
-					{
-						selEnd = checkPos + 1;
-						break;
-					}
-				}
-			}
-
-			if (selEnd == -1)
+			var stmtKind = GetStatementRange(lineStart, .IncludeBlock, var stmtStart, var stmtEnd, var endChar);
+			if (stmtKind == .None)
 				return;
+
+			GetLineCharAtIdx(stmtStart, var startLineNum, var startLineChar);
+			GetLinePosition(startLineNum, out lineStart, out lineEnd);
+			lineNum = startLineNum;
+
+			int checkPos = stmtEnd;
+			int selEnd = stmtEnd;
 
 			for ( ; checkPos < mData.mTextLength - 1; checkPos++)
 			{
@@ -2396,7 +2519,9 @@ namespace IDE.ui
 				GetLineCharAtIdx(selEnd, var line, var lineChar);
 				toLine = line;
 			}
-			MoveSelection(toLine);
+			MoveSelection(toLine, true);
+
+			CursorLineAndColumn = .(Math.Min(CursorLineAndColumn.mLine + (origLineNum - startLineNum), Math.Max(GetLineCount() - 1, 0)), CursorLineAndColumn.mColumn);
 
 			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 		}

@@ -687,6 +687,10 @@ namespace IDE
 				Add("Make Uppercase", "Ctrl+Shift+U");
 				Add("Match Brace Select", "Ctrl+Shift+RBracket");
 				Add("Match Brace", "Ctrl+RBracket");
+				Add("Move Line Down", "Alt+Shift+Down");
+				Add("Move Line Up", "Alt+Shift+Up");
+				Add("Move Statement Down", "Ctrl+Shift+Down");
+				Add("Move Statement Up", "Ctrl+Shift+Up");
 				Add("Navigate Backwards", "Alt+Left");
 				Add("Navigate Forwards", "Alt+Right");
 				Add("Next Document Panel", "Ctrl+Comma");

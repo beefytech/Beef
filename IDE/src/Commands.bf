@@ -212,6 +212,10 @@ namespace IDE
 			Add("Make Uppercase", new () => { gApp.[Friend]ChangeCase(true); });
 			Add("Match Brace Select", new => gApp.Cmd_MatchBrace);
 			Add("Match Brace", new => gApp.Cmd_MatchBrace);
+			Add("Move Line Down", new () => gApp.Cmd_MoveLine(.Down));
+			Add("Move Line Up", new () => gApp.Cmd_MoveLine(.Up));
+			Add("Move Statement Down", new () => gApp.Cmd_MoveStatement(.Down));
+			Add("Move Statement Up", new () => gApp.Cmd_MoveStatement(.Up));
 			Add("Navigate Backwards", new => gApp.[Friend]NavigateBackwards);
 			Add("Navigate Forwards", new => gApp.[Friend]NavigateForwards);
 			Add("New Debug Session", new => gApp.Cmd_NewDebugSession);
