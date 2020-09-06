@@ -119,6 +119,13 @@ public:
 		val = mVals[idx];
 	}
 
+	T GetSafe(intptr idx)
+	{
+		if ((idx < 0) || (idx >= mSize))
+			return T();
+		return mVals[idx];
+	}
+
 	Iterator begin() const
 	{
 		return mVals;
