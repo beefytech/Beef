@@ -366,7 +366,9 @@ namespace IDE.Compiler
 
                 if (command is SetupProjectSettingsCommand)
                 {
-                    var setupProjectSettingsCommand = (SetupProjectSettingsCommand)command;                    
+                    var setupProjectSettingsCommand = (SetupProjectSettingsCommand)command;
+					if (setupProjectSettingsCommand.mProject.mDeleted)
+						continue;
                     gApp.SetupBeefProjectSettings(mBfSystem, this, setupProjectSettingsCommand.mProject);
                 }
 
@@ -381,6 +383,8 @@ namespace IDE.Compiler
 				ProjectSourceCommandBlock:
                 {
                     var projectSourceCommand = (ProjectSourceCommand)command;
+					if (projectSourceCommand.mProjectSource.mProject.mDeleted)
+						continue;
                     bool worked = true;
                     String sourceFilePath = scope String();
                     var projectSource = projectSourceCommand.mProjectSource;

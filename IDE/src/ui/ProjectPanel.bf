@@ -1854,7 +1854,7 @@ namespace IDE.ui
 				return null;
 			}
 
-			bool failed = false;                    
+			bool failed = false;
 			String projName = scope String();
 			Path.GetFileNameWithoutExtension(filePath, projName);
 			if (gApp.mWorkspace.FindProject(projName) != null)
@@ -1871,8 +1871,9 @@ namespace IDE.ui
 			IDEUtils.FixFilePath(projFilePath);
 			proj.mProjectPath.Set(projFilePath);
 			proj.Load(projFilePath);
-			IDEApp.sApp.AddNewProjectToWorkspace(proj, verSpec);
-			IDEApp.sApp.mWorkspace.FixOptions();
+			gApp.AddNewProjectToWorkspace(proj, verSpec);
+			gApp.mWorkspace.FixOptions();
+			gApp.[Friend]FlushDeferredLoadProjects(true);
 			InitProject(proj);
 			if (failed)
 			{

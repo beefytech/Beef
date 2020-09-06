@@ -386,6 +386,7 @@ namespace IDE
 		public List<ProjectSpec> mProjectSpecs = new .() ~ DeleteContainerAndItems!(_);
 		public Dictionary<String, Project> mProjectNameMap = new .() ~ DeleteDictionaryAndKeys!(_);
         public Project mStartupProject;
+		public bool mLoading;
 		public bool mNeedsCreate;
         public bool mHasChanged;
 		public bool mHadHotCompileSinceLastFullCompile;

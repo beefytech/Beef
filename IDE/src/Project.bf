@@ -1257,6 +1257,7 @@ namespace IDE
 		public bool mEnabled = true;
 		public bool mLocked;
 		public bool mLockedDefault;
+		public bool mDeleted;
 
         public int32 [] mColorDialogCustomColors;
 
