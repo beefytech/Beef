@@ -400,6 +400,13 @@ public:
 		nodeRef->Accept(this);
 		mCurChildRef = NULL;
 	}	
+	template <typename T>
+	void VisitChildNoRef(const T& nodeRef)
+	{
+		if ((BfAstNode*)nodeRef == NULL)
+			return;
+		nodeRef->Accept(this);
+	};
 
 public:
 	BfStructuralVisitor();

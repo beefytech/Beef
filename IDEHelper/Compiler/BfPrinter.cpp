@@ -868,7 +868,7 @@ void BfPrinter::Visit(BfAttributedExpression* attribExpr)
 		{
 			if (i > 0)
 			{
-				VisitChild(indexerExpr->mCommas[i - 1]);
+				VisitChildNoRef(indexerExpr->mCommas.GetSafe(i - 1));
 				ExpectSpace();
 			}
 			VisitChild(indexerExpr->mArguments[i]);
@@ -972,7 +972,7 @@ void BfPrinter::Visit(BfAttributeDirective* attributeDirective)
 	{
 		if (i > 0)
 		{
-			VisitChild(attributeDirective->mCommas[i - 1]);
+			VisitChildNoRef(attributeDirective->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(attributeDirective->mArguments[i]);		
@@ -992,7 +992,7 @@ void BfPrinter::Visit(BfGenericParamsDeclaration* genericParams)
 	{
 		if (i > 0)
 		{
-			VisitChild(genericParams->mCommas[i - 1]);
+			VisitChildNoRef(genericParams->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(genericParams->mGenericParams[i]);		
@@ -1033,7 +1033,7 @@ void BfPrinter::Visit(BfGenericConstraintsDeclaration* genericConstraints)
 			if (i > 0)
 			{
 				if (!genericConstraint->mCommas.IsEmpty())
-					VisitChild(genericConstraint->mCommas[i - 1]);
+					VisitChildNoRef(genericConstraint->mCommas.GetSafe(i - 1));
 				ExpectSpace();
 			}
 			VisitChild(genericConstraint->mConstraintTypes[i]);			
@@ -1050,7 +1050,7 @@ void BfPrinter::Visit(BfGenericArgumentsNode* genericArgumentsNode)
 	{
 		if (i > 0)
 		{
-			VisitChild(genericArgumentsNode->mCommas[i - 1]);
+			VisitChildNoRef(genericArgumentsNode->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(genericArgumentsNode->mGenericArgs[i]);		
@@ -1216,8 +1216,8 @@ void BfPrinter::Visit(BfInitializerExpression* initExpr)
 	for (int i = 0; i < (int)initExpr->mValues.size(); i++)
 	{
 		if (i > 0)
-		{
-			VisitChild(initExpr->mCommas[i - 1]);
+		{			
+			VisitChildNoRef(initExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(initExpr->mValues[i]);
@@ -1234,7 +1234,7 @@ void BfPrinter::Visit(BfCollectionInitializerExpression* initExpr)
 	{
 		if (i > 0)
 		{
-			VisitChild(initExpr->mCommas[i - 1]);
+			VisitChildNoRef(initExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(initExpr->mValues[i]);
@@ -1368,7 +1368,7 @@ void BfPrinter::Visit(BfGenericInstanceTypeRef* genericInstTypeRef)
 		{
 			if (i > 0)
 			{
-				VisitChild(genericInstTypeRef->mCommas[i - 1]);
+				VisitChildNoRef(genericInstTypeRef->mCommas.GetSafe(i - 1));
 				ExpectSpace();
 			}
 			VisitChild(genericInstTypeRef->mGenericArguments[i]);
@@ -1391,7 +1391,7 @@ void BfPrinter::Visit(BfTupleTypeRef* typeRef)
 	{		
 		if (i > 0)
 		{
-			VisitChild(typeRef->mCommas[i - 1]);
+			VisitChildNoRef(typeRef->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(typeRef->mFieldTypes[i]);
@@ -1421,7 +1421,7 @@ void BfPrinter::Visit(BfDelegateTypeRef* typeRef)
 	{
 		if (i > 0)
 		{
-			VisitChild(typeRef->mCommas[i - 1]);
+			VisitChildNoRef(typeRef->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(typeRef->mParams[i]);	
@@ -1573,7 +1573,7 @@ void BfPrinter::Visit(BfLambdaBindExpression* lambdaBindExpr)
 	{
 		if (i > 0)
 		{
-			VisitChild(lambdaBindExpr->mCommas[i - 1]);
+			VisitChildNoRef(lambdaBindExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(lambdaBindExpr->mParams[i]);		
@@ -1626,7 +1626,7 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 	{
 		if (i > 0)
 		{
-			VisitChild(newExpr->mCommas[i - 1]);
+			VisitChildNoRef(newExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(newExpr->mArguments[i]);		
@@ -1678,7 +1678,7 @@ void BfPrinter::Visit(BfInvocationExpression* invocationExpr)
 	{
 		if (i > 0)
 		{
-			VisitChild(invocationExpr->mCommas[i - 1]);
+			VisitChildNoRef(invocationExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(invocationExpr->mArguments[i]);
@@ -1703,7 +1703,7 @@ void BfPrinter::Visit(BfDeferStatement* deferStmt)
 		{
 			if (i > 0)
 			{
-				VisitChild(bind->mCommas[i - 1]);
+				VisitChildNoRef(bind->mCommas.GetSafe(i - 1));
 				ExpectSpace();
 			}
 			VisitChild(bind->mParams[i]);
@@ -1763,7 +1763,7 @@ void BfPrinter::Visit(BfSwitchCase* switchCase)
 		if ((caseIdx == 0) || (caseIdx > (int)switchCase->mCaseCommas.size()))
 			ExpectSpace();
 		else
-			VisitChild(switchCase->mCaseCommas[caseIdx - 1]);
+			VisitChildNoRef(switchCase->mCaseCommas.GetSafe(caseIdx - 1));
 		VisitChild(switchCase->mCaseExpressions[caseIdx]);
 	}
 	VisitChild(switchCase->mColonToken);
@@ -1987,7 +1987,7 @@ void BfPrinter::Visit(BfForStatement* forStmt)
 	for (int i = 0; i < (int) forStmt->mInitializers.size(); i++)
 	{
 		if (i > 0)
-			VisitChild(forStmt->mInitializerCommas[i - 1]);
+			VisitChildNoRef(forStmt->mInitializerCommas.GetSafe(i - 1));
 		VisitChild(forStmt->mInitializers[i]);
 	}
 	VisitChild(forStmt->mInitializerSemicolon);
@@ -1998,7 +1998,7 @@ void BfPrinter::Visit(BfForStatement* forStmt)
 	for (int i = 0; i < (int) forStmt->mIterators.size(); i++)
 	{
 		if (i > 0)
-			VisitChild(forStmt->mIteratorCommas[i - 1]);
+			VisitChildNoRef(forStmt->mIteratorCommas.GetSafe(i - 1));
 		VisitChild(forStmt->mIterators[i]);
 	}
 	VisitChild(forStmt->mCloseParen);
@@ -2086,7 +2086,7 @@ void BfPrinter::Visit(BfTupleExpression* tupleExpr)
 
 		if (i > 0)
 		{
-			VisitChild(tupleExpr->mCommas[i - 1]);
+			VisitChildNoRef(tupleExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(tupleExpr->mValues[i]);
@@ -2114,7 +2114,7 @@ void BfPrinter::Visit(BfIndexerExpression* indexerExpr)
 	{
 		if (i > 0)
 		{
-			VisitChild(indexerExpr->mCommas[i - 1]);
+			VisitChildNoRef(indexerExpr->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(indexerExpr->mArguments[i]);		
@@ -2178,7 +2178,7 @@ void BfPrinter::Visit(BfConstructorDeclaration* ctorDeclaration)
 	{
 		if (i > 0)
 		{
-			QueueVisitChild(ctorDeclaration->mCommas[i - 1]);
+			QueueVisitChild(ctorDeclaration->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		QueueVisitChild(ctorDeclaration->mParams[i]);
@@ -2225,7 +2225,7 @@ void BfPrinter::Visit(BfDestructorDeclaration* dtorDeclaration)
 	{
 		if (i > 0)
 		{
-			QueueVisitChild(dtorDeclaration->mCommas[i - 1]);
+			QueueVisitChild(dtorDeclaration->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		QueueVisitChild(dtorDeclaration->mParams[i]);
@@ -2324,7 +2324,7 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 	{
 		if (i > 0)
 		{
-			QueueVisitChild(methodDeclaration->mCommas[i - 1]);
+			QueueVisitChild(methodDeclaration->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}		
 		QueueVisitChild(methodDeclaration->mParams[i]);
@@ -2414,7 +2414,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 		{
 			if (i > 0)
 			{
-				QueueVisitChild(indexerDeclaration->mCommas[i - 1]);
+				QueueVisitChild(indexerDeclaration->mCommas.GetSafe(i - 1));
 				ExpectSpace();
 			}
 			QueueVisitChild(indexerDeclaration->mParams[i]);
@@ -2552,7 +2552,7 @@ void BfPrinter::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
 	{
 		if (i > 0)
 		{
-			VisitChild(enumCaseDeclaration->mCommas[i - 1]);
+			VisitChildNoRef(enumCaseDeclaration->mCommas.GetSafe(i - 1));
 			ExpectSpace();
 		}
 		VisitChild(enumCaseDeclaration->mEntries[i]);
@@ -2643,7 +2643,7 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 			QueueVisitChild(typeDeclaration->mBaseClasses[i]);
 			if (i > 0)
 			{
-				QueueVisitChild(typeDeclaration->mBaseClassCommas[i - 1]);
+				QueueVisitChild(typeDeclaration->mBaseClassCommas.GetSafe(i - 1));
 			}
 		}
 		ExpectSpace();		
