@@ -11,8 +11,9 @@ Description = "Mintest"
 
 [Configs.Debug.Win64]
 CLibType = "Static"
+BeefLibType = "DynamicDebug"
 StackSize = 4194304
-DebugCommandArguments = "hey=\"yo man\" zag= zoogles boof   stoopers   \"\"\"abc efg\"\"\""
+DebugCommandArguments = "abc"
 DebugWorkingDirectory = ".\\"
 
 [Configs.Debug.Win32]
@@ -30,6 +31,9 @@ BuildKind = "StaticLib"
 [Configs.Debug.aarch64-none-linux-android21]
 BuildKind = "StaticLib"
 RelocType = "PIC"
+
+[Configs.Debug.wasm32]
+PostBuildCmds = ["copy $(BuildDir)\\*.js $(ProjectDir)", "copy $(BuildDir)\\*.wasm $(ProjectDir)", "copy $(BuildDir)\\*.html $(ProjectDir)"]
 
 [Configs.Release.Win64]
 OtherLinkFlags = "$(LinkFlags) C:\\Beef\\BeefTools\\TestDLL\\x64\\Debug\\TestDLL.lib"
@@ -87,19 +91,24 @@ BuildKind = "StaticLib"
 BuildKind = "StaticLib"
 RelocType = "PIC"
 
-[[ProjectFolder.Items]]
-Type = "Folder"
-Name = "snorg"
+[Configs.NewDebug.Win64]
+CLibType = "Static"
+BeefLibType = "Static"
+DebugCommandArguments = "abc"
+DebugWorkingDirectory = ".\\"
 
-[[ProjectFolder.Items]]
-Type = "Source"
-Path = "../../../temp/test.txt"
+[Configs.NewDebug.Win32]
+CLibType = "DynamicDebug"
+BeefLibType = "Static"
 
-[[ProjectFolder.Items]]
-Type = "Folder"
-Path = "../../../temp/borf"
-AutoInclude = true
+[Configs.NewDebug.WinFart]
+OtherLinkFlags = ""
+CLibType = "Static"
+BeefLibType = "Static"
 
-[[ProjectFolder.Items]]
-Type = "Source"
-Path = "../../../temp/test.bf"
+[Configs.NewDebug.iOS]
+BeefLibType = "Static"
+
+[Configs.NewDebug.aarch64-none-linux-android21]
+BeefLibType = "Static"
+RelocType = "PIC"

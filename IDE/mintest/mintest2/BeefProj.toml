@@ -3,8 +3,7 @@ Dependencies = {minlib = "*"}
 
 [Project]
 Name = "mintest2"
-TargetType = "BeefLib"
-StartupObject = "Mintest2"
+StartupObject = "Mintest2.Program"
 DefaultNamespace = ""
 
 [Configs.Debug.Win32]

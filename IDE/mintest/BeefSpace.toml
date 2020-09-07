@@ -7,6 +7,7 @@ StartupProject = "mintest"
 PreprocessorMacros = ["z5"]
 
 [Configs.Debug.Win32]
+BfOptimizationLevel = "OgPlus"
 InitLocalVariables = true
 IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {mintest2 = {Enabled = false}}
@@ -21,6 +22,10 @@ COptimizationLevel = "Og"
 [[Configs.Debug.Win64.DistinctOptions]]
 Filter = "System.String"
 
+[[Configs.Debug.Win64.DistinctOptions]]
+Filter = "uint8"
+AllocStackTraceDepth = 1
+
 [Configs.Debug.WinFart]
 EmitDebugInfo = "No"
 EmitDynamicCastCheck = false
@@ -30,6 +35,17 @@ AllocStackTraceDepth = 0
 
 [Configs.Debug.iOS]
 IntermediateType = "Bitcode"
+
+[Configs.Debug.wasm32]
+AllocType = "CRT"
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+IntermediateType = "ObjectAndIRCode"
+ConfigSelections = {mintest2 = {Enabled = false}}
+
+[Configs.Debug.armv7-none-linux-android21]
+IntermediateType = "ObjectAndIRCode"
 
 [Configs.Release.Win32]
 Toolset = "GNU"

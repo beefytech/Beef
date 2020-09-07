@@ -239,8 +239,6 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
-			//Test2(1, 2, 3, 4);
-			
 			Blurg.Hey();
 			return 1;
 		}

@@ -1,59 +1,26 @@
 #pragma warning disable 168
+//#pragma warning disable 168
 
 using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Collections;
 
-namespace SDL
-{
-	struct SDL_Cursor
-	{
-		int mA;
-	}
-}
-
-struct ImGui
-{
-	public enum MouseCursor
-	{
-		A,
-		B,
-		C,
-		D,
-		COUNT
-	}
-}
-
 struct Blurg
 {
-	//private static SDL.SDL_Cursor*[(.)ImGui.MouseCursor.COUNT] g_MouseCursors = .(null,);
+	public static int MethodB<T>(T foo) where T : struct
+	{
+	    return 2;
+	}
 
-	private static SDL.SDL_Cursor*[(.)ImGui.MouseCursor.COUNT] g_MouseCursors = .(null,);
+	public static int MethodB<K, V>((K key, V value) foo) where K : var where V : var
+	{
+	    return 3;
+	}
 
 	public static void Hey()
 	{
-		let cur = new SDL.SDL_Cursor();
-
-		g_MouseCursors[0] = cur;
-		g_MouseCursors[1] = cur;
-		g_MouseCursors[2] = cur;
-	}
-
-}
-
-
-class TestClass
-{
-	public void GetIt(ref TestClass tc)
-	{
-
-	}
-
-	public this()
-	{
-		/*let a = &this;
-
-		GetIt(ref this);*/
+		Debug.Assert(MethodB(11) == 2);
+		Debug.Assert(MethodB(("A", "B")) == 3);
 	}
 }
