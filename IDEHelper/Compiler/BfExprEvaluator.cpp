@@ -2581,7 +2581,11 @@ void BfExprEvaluator::Visit(BfErrorNode* errorNode)
 
 	auto autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)
+	{
+		if (auto tokenNode = BfNodeDynCast<BfTokenNode>(errorNode->mRefNode))
+			return;
 		autoComplete->CheckIdentifier(errorNode->mRefNode, true);
+	}
 }
 
 void BfExprEvaluator::Visit(BfTypeReference* typeRef)
