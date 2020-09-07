@@ -2337,11 +2337,10 @@ namespace IDE.ui
 				return .None;
 			
 			// If out starting pos is within a method then select the whole thing
-			if ((startCheckPos >= lastOpenBrace) && (startCheckPos <= lastCloseBrace) /*&& (braceCount != 0)*/)
+			if ((startCheckPos >= lastOpenBrace) && (startCheckPos <= lastCloseBrace))
 			{
 				let checkStmtKind = GetStatementRange(Math.Max(lastOpenBrace - 1, 0), .None, var checkStartIdx, var checkEndIdx, var checkEndChar);
-				if ((checkStmtKind == .Declaration) && (startCheckPos >= checkStartIdx) && (startCheckPos <= checkEndIdx) /*&& (checkStartIdx > foundBlockStartIdx)*/)
-				//if (checkStmtKind == .Method)
+				if ((checkStmtKind == .Declaration) && (startCheckPos >= checkStartIdx) && (startCheckPos <= checkEndIdx))
 				{
 					startIdx = checkStartIdx;
 					endIdx = checkEndIdx;
