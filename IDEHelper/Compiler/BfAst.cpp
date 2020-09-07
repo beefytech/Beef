@@ -1435,6 +1435,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "|=";
 	case BfToken_XorEquals:
 		return "^=";
+	case BfToken_NullCoalsceEquals:
+		return "??=";
 	case BfToken_LBrace:
 		return "{";
 	case BfToken_RBrace:
@@ -1546,6 +1548,8 @@ BfBinaryOp Beefy::BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp)
 		return BfBinaryOp_BitwiseOr;
 	case BfAssignmentOp_ExclusiveOr:
 		return BfBinaryOp_ExclusiveOr;
+	case BfAssignmentOp_NullCoalesce:
+		return BfBinaryOp_NullCoalesce;
 	default:
 		break;
 	}
@@ -1789,6 +1793,8 @@ BfAssignmentOp Beefy::BfTokenToAssignmentOp(BfToken token)
 		return BfAssignmentOp_BitwiseOr;
 	case BfToken_XorEquals:
 		return BfAssignmentOp_ExclusiveOr;
+	case BfToken_NullCoalsceEquals:
+		return BfAssignmentOp_NullCoalesce;
 	default:
 		return BfAssignmentOp_None;
 	}

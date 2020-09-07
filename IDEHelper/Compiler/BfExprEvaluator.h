@@ -17,7 +17,8 @@ enum BfArgFlags
 	BfArgFlag_DeferredEval = 0x40,
 	BfArgFlag_ExpectedTypeCast = 0x80,
 	BfArgFlag_VariableDeclaration = 0x100,
-	BfArgFlag_ParamsExpr = 0x200
+	BfArgFlag_ParamsExpr = 0x200,
+	BfArgFlag_UninitializedExpr = 0x400
 };
 
 enum BfResolveArgFlags
@@ -347,7 +348,7 @@ public:
 	void ResolveGenericType();	
 	void ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveArgFlags flags = BfResolveArgFlag_None);
 	BfAllocTarget ResolveAllocTarget(BfAstNode* newNode, BfTokenNode*& newToken, BfCustomAttributes** outCustomAttributes = NULL);
-	BfTypedValue ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue = NULL, BfParamKind paramKind = BfParamKind_Normal);
+	BfTypedValue ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue = NULL, BfParamKind paramKind = BfParamKind_Normal, BfIdentifierNode* paramNameNode = NULL);
 	BfMethodDef* GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind, BfTypedValue propTarget);
 	BfModuleMethodInstance GetPropertyMethodInstance(BfMethodDef* methodDef);
 	void CheckPropFail(BfMethodDef* propMethodDef, BfMethodInstance* methodInstance, bool checkProt);

@@ -198,6 +198,7 @@ enum BfToken : uint8
 	BfToken_PlusEquals,
 	BfToken_MinusEquals,
 	BfToken_MultiplyEquals,
+
 	BfToken_DivideEquals,
 	BfToken_ModulusEquals,
 	BfToken_ShiftLeftEquals,
@@ -205,6 +206,7 @@ enum BfToken : uint8
 	BfToken_AndEquals,
 	BfToken_OrEquals,
 	BfToken_XorEquals,
+	BfToken_NullCoalsceEquals,
 	BfToken_LBrace,
 	BfToken_RBrace,
 	BfToken_LParen,
@@ -1753,7 +1755,8 @@ enum BfAssignmentOp
 	BfAssignmentOp_ShiftRight,
 	BfAssignmentOp_BitwiseAnd,
 	BfAssignmentOp_BitwiseOr,
-	BfAssignmentOp_ExclusiveOr
+	BfAssignmentOp_ExclusiveOr,
+	BfAssignmentOp_NullCoalesce
 };
 
 enum BfUnaryOp

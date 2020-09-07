@@ -4382,6 +4382,11 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 				resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_ParamsExpr);				
 			}
 		}
+		else if (auto uninitExpr = BfNodeDynCast<BfUninitializedExpression>(argExpr))
+		{			
+			resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_UninitializedExpr);
+			handled = true;
+		}
 
 		/*else if (auto castExpr = BfNodeDynCast<BfCastExpression>(argExpr))
 		{
@@ -5983,11 +5988,15 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			else if (argExprIdx >= 0)
 			{	
 				BfParamKind paramKind = BfParamKind_Normal;
+				BfIdentifierNode* paramNameNode = NULL;
 				if (paramIdx < methodInstance->GetParamCount())
+				{
 					paramKind = methodInstance->GetParamKind(paramIdx);
+					paramNameNode = methodInstance->GetParamNameNode(paramIdx);
+				}
 
 				argValues[argExprIdx].mExpectedType = wantType;
-				argValue = ResolveArgValue(argValues[argExprIdx], wantType, NULL, paramKind);
+				argValue = ResolveArgValue(argValues[argExprIdx], wantType, NULL, paramKind, paramNameNode);
 			}
 		}
 		
@@ -6103,7 +6112,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		{
 			mModule->AssertErrorState();
 			auto argValue = argValues[argIdx].mTypedValue;		
-			if ((argValues[argIdx].mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt | BfArgFlag_DeferredEval | BfArgFlag_VariableDeclaration)) != 0)
+			if ((argValues[argIdx].mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt | BfArgFlag_DeferredEval | BfArgFlag_VariableDeclaration | BfArgFlag_UninitializedExpr)) != 0)
 			{
 				if (!argValue)
 				{
@@ -6364,8 +6373,8 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 
 static int sInvocationIdx = 0;
 
-BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue, BfParamKind paramKind)
-{	
+BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue, BfParamKind paramKind, BfIdentifierNode* paramNameNode)
+{
 	BfTypedValue argValue = resolvedArg.mTypedValue;
 	if ((resolvedArg.mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt | BfArgFlag_DeferredEval)) != 0)
 	{
@@ -6410,14 +6419,14 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 	{
 		argValue = mModule->GetDefaultTypedValue(wantType);
 	}
-	else if ((resolvedArg.mArgFlags & (BfArgFlag_VariableDeclaration)) != 0)
+	else if ((resolvedArg.mArgFlags & (BfArgFlag_VariableDeclaration | BfArgFlag_UninitializedExpr)) != 0)
 	{
 		auto variableDeclaration = BfNodeDynCast<BfVariableDeclaration>(resolvedArg.mExpression);
 
 		auto variableType = wantType;
 
-		bool isLet = variableDeclaration->mTypeRef->IsExact<BfLetTypeReference>();
-		bool isVar = variableDeclaration->mTypeRef->IsExact<BfVarTypeReference>();
+		bool isLet = (variableDeclaration != NULL) && (variableDeclaration->mTypeRef->IsExact<BfLetTypeReference>());
+		bool isVar = (variableDeclaration == NULL) || (variableDeclaration->mTypeRef->IsExact<BfVarTypeReference>());
 
 		if (mModule->mCurMethodState->mPendingNullConditional != NULL)
 		{
@@ -6439,18 +6448,31 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 			variableType = refType->mElementType;
 		}
 
-		if (variableDeclaration->mInitializer != NULL)
+		if ((variableDeclaration != NULL) && (variableDeclaration->mInitializer != NULL))
 		{
 			mModule->Fail("Initializers cannot be used when declaring variables for 'out' parameters", variableDeclaration->mEqualsNode);
 			mModule->CreateValueFromExpression(variableDeclaration->mInitializer, variableType, BfEvalExprFlags_NoCast);
 		}
-
-		if (variableDeclaration->mNameNode == NULL)
-			return argValue;
-
+		
 		BfLocalVariable* localVar = new BfLocalVariable();
-		localVar->mName = variableDeclaration->mNameNode->ToString();
-		localVar->mNameNode = BfNodeDynCast<BfIdentifierNode>(variableDeclaration->mNameNode);
+		if ((variableDeclaration != NULL) && (variableDeclaration->mNameNode != NULL))
+		{
+			localVar->mName = variableDeclaration->mNameNode->ToString();
+			localVar->mNameNode = BfNodeDynCast<BfIdentifierNode>(variableDeclaration->mNameNode);
+		}
+		else
+		{			
+			if (paramNameNode != NULL)
+			{
+				localVar->mName = "__";
+				paramNameNode->ToString(localVar->mName);
+				localVar->mName += "_";
+				localVar->mName += StrFormat("%d", mModule->mCurMethodState->GetRootMethodState()->mCurLocalVarId);
+			}
+			else
+				localVar->mName = "__" + StrFormat("%d", mModule->mCurMethodState->GetRootMethodState()->mCurLocalVarId);
+		}
+		
 		localVar->mResolvedType = variableType;
 		if (!variableType->IsValuelessType())
 			localVar->mAddr = mModule->CreateAlloca(variableType);
@@ -16195,6 +16217,13 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 					auto paramType = methodInst->GetParamType(0);
 					if (!mModule->CanCast(rightValue, paramType))
 						continue;
+
+					mModule->SetElementType(assignExpr->mOpToken, BfSourceElementType_Method);					
+					if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(assignExpr->mOpToken)))
+					{						
+						if (operatorDef->mOperatorDeclaration != NULL)
+							autoComplete->SetDefinitionLocation(operatorDef->mOperatorDeclaration->mOpTypeToken);
+					}
 
 					auto moduleMethodInstance = mModule->GetMethodInstance(checkTypeInst, operatorDef, BfTypeVector());
 

@@ -1494,8 +1494,14 @@ void BfParser::NextToken(int endIdx)
 		case '?':
 			if (mSrc[mSrcIdx] == '?')
 			{
-				mToken = BfToken_DblQuestion;
 				mTokenEnd = ++mSrcIdx;
+				if (mSrc[mSrcIdx] == '=')
+				{
+					mToken = BfToken_NullCoalsceEquals;
+					mTokenEnd = ++mSrcIdx;
+				}
+				else
+					mToken = BfToken_DblQuestion;
 			}
 			else if (mSrc[mSrcIdx] == '.')
 			{
