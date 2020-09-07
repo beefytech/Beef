@@ -2077,7 +2077,7 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 			//bool deferFullAnalysis = true;
 			bool deferUsageWarning = deferFullAnalysis && mCompiler->IsAutocomplete();
 
-			if (!localVar->mIsAssigned)
+			if ((!localVar->mIsAssigned) && (!localVar->mIsImplicitParam))
 			{
 				if (deferUsageWarning)
 				{
@@ -19250,7 +19250,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 		SetAndRestoreValue<bool> ignoreError(mIgnoreErrors, true);
 		*/		
 		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
-
+		
 		//SetAndRestoreValue<bool> wantsIgnoreWrites(mWantsISIgnoreWrites, true);
 		mBfIRBuilder->SaveDebugLocation();
 		closureState.mCaptureVisitingBody = true;
@@ -19271,10 +19271,15 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 				localDef->mAddr = CreateAlloca(localDef->mResolvedType);
 			}
 		}
+
+		// Keep outs for being marked as assigned
+		auto rootMethodState = mCurMethodState->GetRootMethodState();
+		BfDeferredLocalAssignData deferredLocalAssignData(rootMethodState->mCurScope);				
+		deferredLocalAssignData.mVarIdBarrier = rootMethodState->mCurLocalVarId;
+		SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(rootMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
+
 		_VisitLambdaBody();
 		RestoreScopeState();
-
-		//ProcessMethod(methodInstance);
 
 		closureState.mCaptureVisitingBody = false;
 		mBfIRBuilder->RestoreDebugLocation();
@@ -19287,8 +19292,6 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 		if (closureState.mCaptureStartAccessId < prevClosureState->mCaptureStartAccessId)
 			prevClosureState->mCaptureStartAccessId = closureState.mCaptureStartAccessId;
 	}
-
-	//RestoreScopeState();
 
 	// Actually get the referenced local methods.  It's important we wait until after visiting the body, because then our own capture information
 	//  can be used by these methods (which will be necessary if any of these methods call us directly or indirectly)
