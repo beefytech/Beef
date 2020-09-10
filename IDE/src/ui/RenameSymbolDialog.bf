@@ -558,6 +558,8 @@ namespace IDE.ui
         {
             if (mUpdatingProjectSources == null)
                 return;
+			if (mClosed)
+				return;
 
             mIgnoreTextChanges = true;
             
