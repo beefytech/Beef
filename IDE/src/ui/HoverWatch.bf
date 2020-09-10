@@ -364,7 +364,10 @@ namespace IDE.ui
 					listView.RemoveSelf();
 				}
 				else
-					Widget.RemoveAndDelete(listView);
+				{
+					listView.RemoveSelf();
+					gApp.DeferDelete(listView);
+				}
 			}
             mListViews.Clear();
         }
