@@ -2848,7 +2848,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 	{
 		return DirectHash(typeRef, ctx, flags);
 	}
-	else if (auto genericInstTypeRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(typeRef))
+	if (auto genericInstTypeRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(typeRef))
 	{
 		//BfType* type = NULL;
 		BfTypeDef* elementTypeDef = ctx->mModule->ResolveGenericInstanceDef(genericInstTypeRef, NULL, ctx->mResolveFlags);
@@ -2926,9 +2926,6 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 
 		HashGenericArguments(genericInstTypeRef, ctx, hashVal);
 
-		/*for (auto genericArg : genericInstTypeRef->mGenericArguments)
-			hashVal = ((hashVal ^ (Hash(genericArg, ctx))) << 5) - hashVal;*/
-		
 		return hashVal;
 	}
 	else if (auto tupleTypeRef = BfNodeDynCastExact<BfTupleTypeRef>(typeRef))

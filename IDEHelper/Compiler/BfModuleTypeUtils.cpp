@@ -8864,7 +8864,10 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		auto returnType = ResolveTypeRef(delegateTypeRef->mReturnType, NULL, BfPopulateType_Declaration);
 		if (returnType == NULL)
+		{
+			failed = true;
 			returnType = GetPrimitiveType(BfTypeCode_Var);
+		}
 		_CheckType(returnType);
 
 		BfType* functionThisType = NULL;
