@@ -6902,15 +6902,13 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		}
 	}
 	else if (resolvedTypeRef->IsDelegateFromTypeRef() || resolvedTypeRef->IsFunctionFromTypeRef())
-	{
+	{		
 		auto delegateInfo = resolvedTypeRef->GetDelegateInfo();
-		auto invokeMethod = GetDelegateInvokeMethod(resolvedTypeRef->ToTypeInstance());
-		
-		AddDependency(invokeMethod->mReturnType, mCurTypeInstance, BfDependencyMap::DependencyFlag_TypeReference);
-		for (auto& param : invokeMethod->mParams)
-		{
-			AddDependency(param.mResolvedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_TypeReference);
-		}
+		if (delegateInfo->mFunctionThisType != NULL)
+			AddDependency(delegateInfo->mFunctionThisType, mCurTypeInstance, BfDependencyMap::DependencyFlag_TypeReference);
+		AddDependency(delegateInfo->mReturnType, mCurTypeInstance, BfDependencyMap::DependencyFlag_TypeReference);
+		for (auto& param : delegateInfo->mParams)
+			AddDependency(param, mCurTypeInstance, BfDependencyMap::DependencyFlag_TypeReference);		
 	}
 
 	BfTypeInstance* typeInstance = resolvedTypeRef->ToTypeInstance();
@@ -8864,7 +8862,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 
 		bool failed = false;
 
-		auto returnType = ResolveTypeRef(delegateTypeRef->mReturnType);
+		auto returnType = ResolveTypeRef(delegateTypeRef->mReturnType, NULL, BfPopulateType_Declaration);
 		if (returnType == NULL)
 			returnType = GetPrimitiveType(BfTypeCode_Var);
 		_CheckType(returnType);

@@ -418,7 +418,7 @@ public:
 	Array<BfAstNode*> mDirectAllocNodes;
 	BfType* mReturnType;
 	BfType* mFunctionThisType;
-	Array<BfType*> mParams;	
+	Array<BfType*> mParams;
 
 public:
 	BfDelegateInfo()

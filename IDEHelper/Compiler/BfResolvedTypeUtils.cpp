@@ -3681,16 +3681,19 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 	{
 		auto rhsDelegateType = BfNodeDynCastExact<BfDelegateTypeRef>(rhs);
 		if (rhsDelegateType == NULL)
-			return false;		
-		BfDelegateInfo* lhsDelegateType = lhs->GetDelegateInfo();		
-
-		BfMethodInstance* lhsInvokeMethodInstance = ctx->mModule->GetRawMethodInstanceAtIdx(lhs->ToTypeInstance(), 0, "Invoke");
+			return false;
+		
+		BfDelegateInfo* lhsDelegateInfo = lhs->GetDelegateInfo();		
+				
+		auto lhsTypeInstance = lhs->ToTypeInstance();
+		BfMethodDef* invokeMethodDef = lhsTypeInstance->mTypeDef->mMethods[0];
+		BF_ASSERT(invokeMethodDef->mName == "Invoke");
 		
 		bool rhsIsDelegate = rhsDelegateType->mTypeToken->GetToken() == BfToken_Delegate;
 
 		if ((lhs->IsDelegate()) != rhsIsDelegate)
 			return false;
-		if (!Equals(lhsInvokeMethodInstance->mReturnType, rhsDelegateType->mReturnType, ctx))
+		if (!Equals(lhsDelegateInfo->mReturnType, rhsDelegateType->mReturnType, ctx))
 			return false;		
 
 		bool isMutating = true;
@@ -3702,19 +3705,21 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			if ((param0->mNameNode != NULL) && (param0->mNameNode->Equals("this")))
 			{
 				bool handled = false;
-				auto lhsThisType = lhsInvokeMethodInstance->GetParamType(-1);
+				auto lhsThisType = lhsDelegateInfo->mFunctionThisType;
 
 				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));
 				if (rhsThisType->IsRef())
-				{
-					if (!lhsThisType->IsPointer())
+				{					
+					if (lhsThisType != rhsThisType->GetUnderlyingType())
 						return false;
-					if (lhsThisType->GetUnderlyingType() != rhsThisType->GetUnderlyingType())
-						return false;										
+					if (!invokeMethodDef->mIsMutating)
+						return false;
 				}
 				else
 				{
 					if (lhsThisType != rhsThisType)
+						return false;
+					if ((invokeMethodDef->mIsMutating) && (lhsThisType->IsValueType()))
 						return false;
 				}
 
@@ -3723,21 +3728,21 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		}
 
 		if (!rhsIsDelegate)
-		{
-			if (lhsInvokeMethodInstance->mMethodDef->mIsStatic != (paramRefOfs == 0))
+		{			
+			if ((lhsDelegateInfo->mFunctionThisType == NULL) != (paramRefOfs == 0))
 				return false;
 		}
 
-		if (lhsInvokeMethodInstance->GetParamCount() != (int)rhsDelegateType->mParams.size() - paramRefOfs)
+		if (lhsDelegateInfo->mParams.size() != (int)rhsDelegateType->mParams.size() - paramRefOfs)
 			return false;
-		for (int paramIdx = 0; paramIdx < lhsInvokeMethodInstance->GetParamCount(); paramIdx++)
+		for (int paramIdx = 0; paramIdx < lhsDelegateInfo->mParams.size(); paramIdx++)
 		{
-			if (!Equals(lhsInvokeMethodInstance->GetParamType(paramIdx), rhsDelegateType->mParams[paramIdx + paramRefOfs]->mTypeRef, ctx))
+			if (!Equals(lhsDelegateInfo->mParams[paramIdx], rhsDelegateType->mParams[paramIdx + paramRefOfs]->mTypeRef, ctx))
 				return false;
 			StringView rhsParamName;
 			if (rhsDelegateType->mParams[paramIdx + paramRefOfs]->mNameNode != NULL)
 				rhsParamName = rhsDelegateType->mParams[paramIdx + paramRefOfs]->mNameNode->ToStringView();
-			if (lhsInvokeMethodInstance->GetParamName(paramIdx) != rhsParamName)
+			if (invokeMethodDef->mParams[paramIdx]->mName != rhsParamName)
 				return false;
 		}
 		return true;
