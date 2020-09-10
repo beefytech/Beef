@@ -80,7 +80,7 @@ public:
 class BFSysBitmap;
 
 #define KEYCODE_MAX 0x100
-#define MOUSEBUTTON_MAX 3
+#define MOUSEBUTTON_MAX 5
 
 class BFWindow;
 

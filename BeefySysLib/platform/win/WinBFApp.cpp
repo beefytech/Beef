@@ -571,6 +571,9 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				auto _BtnDown = [&](int btn)
 				{
+					BF_ASSERT(btn < MOUSEBUTTON_MAX);
+					if (btn >= MOUSEBUTTON_MAX)
+						return;
 					DWORD tickNow = BFTickCount();
 
 					SetCapture(hWnd);
@@ -587,6 +590,9 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				auto _BtnUp = [&](int btn)
 				{
+					BF_ASSERT(btn < MOUSEBUTTON_MAX);
+					if (btn >= MOUSEBUTTON_MAX)
+						return;
 					releaseCapture = true;
 					mIsMouseDown[btn] = false;
 					mMouseUpFunc(this, x, y, btn);
