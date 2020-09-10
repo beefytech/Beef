@@ -5447,9 +5447,23 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			moduleMethodInstance.mFunc = mModule->mBfIRBuilder->CreateIntToPtr(target.mValue, funcPtrType);
 		}
 		else if (!methodDef->mIsStatic)
-		{			
-			if (!target)
+		{	
+			if ((!target) && (prevBindResult.mPrevVal != NULL))
 			{
+				auto bindResult = prevBindResult.mPrevVal;
+				if (bindResult->mBindType != NULL)
+				{
+					auto delegateInfo = bindResult->mBindType->GetDelegateInfo();
+					if ((delegateInfo != NULL) && (delegateInfo->mFunctionThisType != NULL))
+					{
+						// Allow binding a function to a 'this' type even if no target is specified
+						target = mModule->GetDefaultTypedValue(delegateInfo->mFunctionThisType, false, BfDefaultValueKind_Addr);
+					}
+				}
+			}
+
+			if (!target)
+			{				
 				FinishDeferredEvals(argValues);
 				auto error = mModule->Fail(StrFormat("An instance reference is required to %s the non-static method '%s'",
 					(prevBindResult.mPrevVal != NULL) ? "bind" : "invoke",
