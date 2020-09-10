@@ -7529,15 +7529,17 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			if (targetType != NULL)
 			{
 				auto typeInst = targetType->ToTypeInstance();
-
-				BfTypeVector paramTypes;
-				for (int argIdx = 0; argIdx < (int)argValues.mResolvedArgs.size(); argIdx++)
+				if ((targetType != NULL) && (!methodName.IsEmpty()))
 				{
-					auto& resolvedArg = argValues.mResolvedArgs[argIdx];
-					paramTypes.Add(resolvedArg.mTypedValue.mType);
-				}
+					BfTypeVector paramTypes;
+					for (int argIdx = 0; argIdx < (int)argValues.mResolvedArgs.size(); argIdx++)
+					{
+						auto& resolvedArg = argValues.mResolvedArgs[argIdx];
+						paramTypes.Add(resolvedArg.mTypedValue.mType);
+					}
 
-				autoComplete->FixitAddMethod(typeInst, methodName, mExpectingType, paramTypes, wantStatic);
+					autoComplete->FixitAddMethod(typeInst, methodName, mExpectingType, paramTypes, wantStatic);
+				}
 			}			
 		}
 
