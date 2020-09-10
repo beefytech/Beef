@@ -7023,6 +7023,8 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfExpression*
 		isDone = !mVisitorPos.MoveNext();
 		if (expr != NULL)
 			values.Add(expr);
+		else
+			AddErrorNode(node);
 		
 		if (!isDone)
 		{
