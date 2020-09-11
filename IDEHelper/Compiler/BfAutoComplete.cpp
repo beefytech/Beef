@@ -3275,7 +3275,7 @@ void BfAutoComplete::FixitAddNamespace(BfAstNode* refNode, const StringImpl& nam
 		usingFinder.mLastIdx, namespaceStr.c_str()).c_str()));
 }
 
-void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfTypeReference* typeRef, BfTokenNode* nextDotToken)
+void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfAstNode* typeRef, BfTokenNode* nextDotToken)
 {
 	if (nextDotToken == NULL)
 		return;

@@ -6759,7 +6759,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			
 			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
 			{
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (resolvedTypeRef->IsObjectOrInterface()))
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == typeRef) && (resolvedTypeRef->IsObjectOrInterface()))
 					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, resolvedTypeRef->IsInterface() ? BfSourceElementType_Interface : BfSourceElementType_RefType);
 
 				StringView leftString = qualifiedTypeRef->mLeft->ToStringView();
@@ -6792,7 +6792,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				auto checkNameNode = namedTypeRef->mNameNode;
 				bool setType = false;
 
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (resolvedTypeRef->IsObjectOrInterface()))
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == typeRef) && (resolvedTypeRef->IsObjectOrInterface()))
 				{					
 					if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNameNode))
 					{
@@ -6818,7 +6818,17 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 							isNamespace = true;
 					}
 					else if ((isValid) && (resolvedTypeInstance->mTypeDef->mNamespace.EndsWith(leftComposite)))
+					{
+						if (autoComplete != NULL)
+						{
+							if (autoComplete->CheckFixit(typeRef))
+								autoComplete->FixitCheckNamespace(GetActiveTypeDef(), qualifiedNameNode->mLeft, qualifiedNameNode->mDot);
+							autoComplete->CheckNamespace(qualifiedNameNode->mLeft, resolvedTypeInstance->mTypeDef->mNamespace);
+						}
+						mCompiler->mResolvePassData->HandleNamespaceReference(qualifiedNameNode->mLeft, resolvedTypeInstance->mTypeDef->mNamespace);
+
 						isNamespace = true;
+					}
 					checkNameNode = qualifiedNameNode->mLeft;
 				}
 				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && 

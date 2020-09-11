@@ -257,7 +257,7 @@ public:
 	void FixitAddCase(BfTypeInstance * typeInst, const StringImpl & caseName, const BfTypeVector & fieldTypes);
 	void FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic);
 	void FixitAddNamespace(BfAstNode* refNode, const StringImpl& namespacStr);
-	void FixitCheckNamespace(BfTypeDef* activeTypeDef, BfTypeReference* typeRef, BfTokenNode* nextDotToken);
+	void FixitCheckNamespace(BfTypeDef* activeTypeDef, BfAstNode* typeRef, BfTokenNode* nextDotToken);
 
 	void SetResultStringType(BfType* type);
 };
