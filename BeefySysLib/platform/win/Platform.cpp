@@ -3414,6 +3414,11 @@ BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFindFileData_GetFileAttributes(BfpF
 	return FileAttributes_WinToBFP(findData->mFindData.dwFileAttributes);
 }
 
+BFP_EXPORT int64 BFP_CALLTYPE BfpFindFileData_GetFileSize(BfpFindFileData* findData)
+{
+	return ((int64)findData->mFindData.nFileSizeHigh << 32) | (int64)findData->mFindData.nFileSizeLow;
+}
+
 BFP_EXPORT void BFP_CALLTYPE BfpFindFileData_Release(BfpFindFileData* findData)
 {
 	::FindClose(findData->mHandle);

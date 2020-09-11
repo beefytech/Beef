@@ -2412,6 +2412,11 @@ BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFindFileData_GetFileAttributes(BfpF
     return flags;
 }
 
+BFP_EXPORT int64 BFP_CALLTYPE BfpFindFileData_GetFileSize(BfpFindFileData* findData)
+{
+    return (int64)findData->mStat.st_size;
+}
+
 BFP_EXPORT void BFP_CALLTYPE BfpFindFileData_Release(BfpFindFileData* findData)
 {
     delete findData;

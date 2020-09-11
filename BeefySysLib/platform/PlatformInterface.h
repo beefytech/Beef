@@ -465,6 +465,7 @@ BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_LastWrite(BfpFindFi
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_Created(BfpFindFileData* findData);
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_Access(BfpFindFileData* findData);
 BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFindFileData_GetFileAttributes(BfpFindFileData* findData);
+BFP_EXPORT int64 BFP_CALLTYPE BfpFindFileData_GetFileSize(BfpFindFileData* findData);
 BFP_EXPORT void BFP_CALLTYPE BfpFindFileData_Release(BfpFindFileData* findData);
 
 BFP_EXPORT int BFP_CALLTYPE BfpStack_CaptureBackTrace(int framesToSkip, intptr* outFrames, int wantFrameCount);

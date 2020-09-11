@@ -229,6 +229,11 @@ namespace System.IO
 			return DateTime.FromFileTimeUtc((int64)Platform.BfpFindFileData_GetTime_Access(mFindFileData));
 		}
 
+		public int64 GetFileSize()
+		{
+			return Platform.BfpFindFileData_GetFileSize(mFindFileData);
+		}
+
 		public Platform.BfpFileAttributes GetFileAttributes()
 		{
 			return Platform.BfpFindFileData_GetFileAttributes(mFindFileData);

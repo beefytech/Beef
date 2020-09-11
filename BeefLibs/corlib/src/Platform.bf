@@ -393,6 +393,8 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		public static extern BfpFileAttributes BfpFindFileData_GetFileAttributes(BfpFindFileData* findData);
 		[CallingConvention(.Stdcall), CLink]
+		public static extern int64 BfpFindFileData_GetFileSize(BfpFindFileData* findData);
+		[CallingConvention(.Stdcall), CLink]
 		public static extern void BfpFindFileData_Release(BfpFindFileData* findData);
 
 		public enum BfpSysDirectoryKind : int32
