@@ -179,6 +179,7 @@ public:
 	bool mIgnoreFixits;
 	bool mHasFriendSet;
 	bool mUncertain; // May be an unknown identifier, do not aggressively autocomplete
+	bool mForceAllowNonStatic;
 	int mCursorLineStart;
 	int mCursorLineEnd;
 	

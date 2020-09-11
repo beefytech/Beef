@@ -541,7 +541,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		methodDef->mMethodType = BfMethodType_Normal;
 		methodDef->mProtection = BfProtection_Public;
 		methodDef->mIsStatic = mCurTypeDef->mIsFunction;
-
+		
 		auto attributes = mCurTypeDef->mTypeDeclaration->mAttributes;
 		while (attributes != NULL)
 		{
@@ -621,6 +621,12 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		else //
 			paramDef->mParamKind = BfParamKind_Params;
 
+		if ((mCurTypeDef->mIsFunction) && (paramIdx == 0) && (paramDef->mName == "this"))
+		{
+			paramDef->mParamKind = BfParamKind_ExplicitThis;
+			methodDef->mIsStatic = false;
+		}
+
 		if (auto dotTypeRef = BfNodeDynCast<BfDotTypeReference>(paramDef->mTypeRef))
 		{
 			if (dotTypeRef->mDotToken->mToken == BfToken_DotDotDot)
@@ -657,6 +663,22 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 
 		methodDef->mParams.push_back(paramDef);
 	}	
+
+	if ((mCurTypeDef->mIsFunction) && (!methodDef->mParams.IsEmpty()) && (methodDef->mParams[0]->mName == "this"))
+	{
+		methodDef->mIsStatic = false;
+		methodDef->mHasExplicitThis = true;
+		methodDef->mParams[0]->mParamKind = BfParamKind_ExplicitThis;
+
+		if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(methodDef->mParams[0]->mTypeRef))
+		{
+			if (refTypeRef->mRefToken->mToken != BfToken_Mut)
+			{
+				Fail("Only 'mut' is allowed here", refTypeRef->mRefToken);				
+			}
+			methodDef->mIsMutating = true;
+		}
+	}
 
 	ParseAttributes(methodDeclaration->mAttributes, methodDef);	
 	return methodDef;
@@ -1911,6 +1933,16 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		}
 	}
 	
+	bool needsDynamicCastMethod = !hasDynamicCastMethod;
+
+	if (mCurTypeDef->mIsFunction)
+	{
+		wantsToString = false;
+		needsEqualsMethod = false;
+		needsDefaultCtor = false;		
+		needsDynamicCastMethod = false;
+	}
+
 	if ((mCurTypeDef->mTypeCode == BfTypeCode_Object) && (!mCurTypeDef->mIsStatic))
 	{				
 		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "");
@@ -1934,12 +1966,6 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	}
 		
 	bool makeCtorPrivate = hasCtor;
-// 	if ((!mCurTypeDef->IsExtension()) && (mCurTypeDef->mMethods.empty()))
-// 	{
-// 		// This is a bit of a hack to ensure we actually generate debug info in the module
-// 		needsDefaultCtor = true;
-// 		makeCtorPrivate = true;
-// 	}
 
 	if (mCurTypeDef->mTypeCode == BfTypeCode_TypeAlias)
 		needsDefaultCtor = false;
@@ -1962,7 +1988,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		isAutocomplete = true;
 		
 	//TODO: Don't do this for the autocomplete pass	
-	if ((!hasDynamicCastMethod) && (mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (mCurTypeDef->mTypeCode != BfTypeCode_Extension) &&
+	if ((needsDynamicCastMethod) && (mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (mCurTypeDef->mTypeCode != BfTypeCode_Extension) &&
 		(!mCurTypeDef->mIsStatic) && (!isAutocomplete) && (!isAlias))
 	{		
 		AddDynamicCastMethods(mCurTypeDef);
@@ -2011,12 +2037,6 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	
 	if (hasToStringMethod)
 		wantsToString = false;
-
-	if (mCurTypeDef->mIsFunction)
-	{
-		wantsToString = false;
-		needsEqualsMethod = false;
-	}
 	
 	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (!isPayloadEnum))
 	{		

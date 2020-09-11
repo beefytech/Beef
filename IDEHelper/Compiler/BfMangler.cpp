@@ -311,14 +311,9 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 		else
 			name += "N8functionI";
 		SizedArray<BfType*, 8> typeVec;
-		typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);
-		if (delegateInfo->mFunctionThisType != NULL)
-		{
-			name += "_";
-			name += "this";
-			typeVec.push_back(delegateInfo->mFunctionThisType);
-		}
-
+		typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);		
+		if (methodDef->mIsMutating)
+			name += "_mut_";
 		for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
 		{
 			name += "_";
@@ -1175,18 +1170,11 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 				name += "?$delegate";
 			else
 				name += "?$function";
+			if (methodDef->mIsMutating)
+				name += "_mut_";
 			SizedArray<BfType*, 8> typeVec;
 			typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mReturnTypeRef)->mType);
-
-			if (delegateInfo->mFunctionThisType != NULL)
-			{
-				name += "_";
-				name += "this";
-				typeVec.push_back(delegateInfo->mFunctionThisType);
-				if ((delegateInfo->mFunctionThisType->IsValueType()) && (methodDef->mIsMutating))
-					name += "_mut";
-			}
-
+			
 			for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size(); paramIdx++)
 			{								
 				name += "_";

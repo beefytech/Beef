@@ -458,7 +458,8 @@ struct BfCodeGenOptions
 
 enum BfParamKind : uint8
 {
-	BfParamKind_Normal,	
+	BfParamKind_Normal,
+	BfParamKind_ExplicitThis,
 	BfParamKind_Params,
 	BfParamKind_DelegateParam,
 	BfParamKind_ImplicitCapture,
@@ -725,6 +726,7 @@ public:
 	bool mIsOperator;
 	bool mIsExtern;	
 	bool mIsNoDiscard;
+	bool mHasExplicitThis;
 	BfCommutableKind mCommutableKind;
 	BfCheckedKind mCheckedKind;
 	BfImportKind mImportKind;	
@@ -751,6 +753,7 @@ public:
 		mIsOperator = false;
 		mIsExtern = false;
 		mIsNoDiscard = false;
+		mHasExplicitThis = false;
 		mBody = NULL;
 		mExplicitInterface = NULL;
 		mReturnTypeRef = NULL;		

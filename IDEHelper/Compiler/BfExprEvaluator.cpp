@@ -542,6 +542,27 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 					InferGenericArgument(methodInstance, argInvokeMethod->GetParamType(argIdx), wantInvokeMethod->GetParamType(argIdx), BfIRValue());
 			}
 		}
+		else if (argType->IsMethodRef())
+		{
+ 			auto methodTypeRef = (BfMethodRefType*)argType;
+			if (!_AddToCheckedSet(argType, mCheckedTypeSet, alreadyChecked))
+				return true;
+
+			auto argInvokeMethod = methodTypeRef->mMethodRef;
+			auto delegateInfo = wantType->GetDelegateInfo();
+			auto wantInvokeMethod = mModule->GetRawMethodByName(wantType->ToTypeInstance(), "Invoke");			
+
+			if ((delegateInfo->mHasExplicitThis) && (argInvokeMethod->HasThis()))
+				InferGenericArgument(methodInstance, argInvokeMethod->GetParamType(-1), delegateInfo->mParams[0], BfIRValue());
+
+			int wantInvokeOffset = delegateInfo->mHasExplicitThis ? 1 : 0;
+			if ((argInvokeMethod != NULL) && (wantInvokeMethod != NULL) && (argInvokeMethod->GetParamCount() == wantInvokeMethod->GetParamCount() - wantInvokeOffset))
+			{
+				InferGenericArgument(methodInstance, argInvokeMethod->mReturnType, wantInvokeMethod->mReturnType, BfIRValue());
+				for (int argIdx = 0; argIdx < (int)argInvokeMethod->GetParamCount(); argIdx++)
+					InferGenericArgument(methodInstance, argInvokeMethod->GetParamType(argIdx), wantInvokeMethod->GetParamType(argIdx + wantInvokeOffset), BfIRValue());
+			}
+		}
 	}	
 	
 	return true;
@@ -1021,7 +1042,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	RETURN_RESULTS;
 }
 
-BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute)
+BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute, BfType *origCheckType)
 {	
 	BfTypedValue argTypedValue = resolvedArg.mTypedValue;
 	if ((resolvedArg.mArgFlags & BfArgFlag_DelegateBindAttempt) != 0)
@@ -1032,13 +1053,13 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 		BF_ASSERT(resolvedArg.mExpression->IsA<BfDelegateBindExpression>());
 		auto delegateBindExpr = BfNodeDynCast<BfDelegateBindExpression>(resolvedArg.mExpression);
 		BfMethodInstance* boundMethodInstance = NULL;
-		if (exprEvaluator.CanBindDelegate(delegateBindExpr, &boundMethodInstance))
+		if (exprEvaluator.CanBindDelegate(delegateBindExpr, &boundMethodInstance, origCheckType, genericArgumentsSubstitute))
 		{
 			if (delegateBindExpr->mNewToken == NULL)
 			{
 				resolvedArg.mExpectedType = checkType;
 				auto methodRefType = mModule->CreateMethodRefType(boundMethodInstance);
-				mModule->AddDependency(methodRefType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);
+				mModule->AddDependency(methodRefType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);				
 				mModule->AddCallDependency(boundMethodInstance);
 				argTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), methodRefType);
 			}
@@ -1509,7 +1530,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				if (argIdx == -1)
 					argTypedValue = mTarget;
 				else
-					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], checkType, genericArgumentsSubstitute);
+					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], checkType, genericArgumentsSubstitute, origCheckType);
 				if (!argTypedValue.IsUntypedValue())
 				{
 					auto type = argTypedValue.mType;
@@ -2615,6 +2636,16 @@ void BfExprEvaluator::Visit(BfAttributedExpression* attribExpr)
 		}
 		VisitChild(attribExpr->mExpression);
 		attributeState.mUsed = true;
+		
+		if ((!mResult) ||
+			((mResult) && (mResult.mType->IsVar())))
+		{
+			if (!mResult)
+				mModule->Fail("Expression did not result in a value", attribExpr->mExpression);
+
+			// Make empty or 'var' resolve as 'false' because var is only valid if we threw errors
+			mResult = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Boolean));
+		}
 	}
 	else
 	{
@@ -4894,7 +4925,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	bool hadAttrs = false;	
 	int paramIdx = 0;
 	bool doingThis = !methodDef->mIsStatic;
-	int argIdx = 0;
+	int argIdx = 0;	
+
+	if (methodDef->mHasExplicitThis)
+		paramIdx++;
 	
 	int paramCount = methodInstance->GetParamCount();
 
@@ -4986,13 +5020,14 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		BfType* paramType = NULL;
 		if (doingThis)
 		{			
-			paramType = methodInstance->GetOwner();
+			int thisIdx = methodInstance->GetThisIdx();
+			paramType = methodInstance->GetThisType();
 			if (paramType->IsValuelessType())
 			{
 				doingThis = false;
 				continue;
 			}
-			bool isSplatted = methodInstance->GetParamIsSplat(-1); // (resolvedTypeRef->IsSplattable()) && (!methodDef->mIsMutating);
+			bool isSplatted = methodInstance->GetParamIsSplat(thisIdx); // (resolvedTypeRef->IsSplattable()) && (!methodDef->mIsMutating);
 			if (isSplatted)
 			{
 				BfTypeUtils::SplatIterate(_HandleParamType, paramType);
@@ -5357,7 +5392,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 		return;
 	}
 
-	auto thisType = methodInstance->GetParamType(-1);
+	auto thisType = methodInstance->GetThisType();
 	PushArg(argVal, irArgs, !methodInstance->AllowsThisSplatting(), thisType->IsPointer());
 }
 
@@ -5453,11 +5488,22 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				auto bindResult = prevBindResult.mPrevVal;
 				if (bindResult->mBindType != NULL)
 				{
+					// Allow binding a function to a 'this' type even if no target is specified
 					auto delegateInfo = bindResult->mBindType->GetDelegateInfo();
-					if ((delegateInfo != NULL) && (delegateInfo->mFunctionThisType != NULL))
+					if (delegateInfo != NULL)
 					{
-						// Allow binding a function to a 'this' type even if no target is specified
-						target = mModule->GetDefaultTypedValue(delegateInfo->mFunctionThisType, false, BfDefaultValueKind_Addr);
+						if (delegateInfo->mHasExplicitThis)
+						{							
+							target = mModule->GetDefaultTypedValue(delegateInfo->mParams[0], false, BfDefaultValueKind_Addr);
+						}
+					}
+					else if (bindResult->mBindType->IsFunction())
+					{
+						BfMethodInstance* invokeMethodInstance = mModule->GetRawMethodInstanceAtIdx(bindResult->mBindType->ToTypeInstance(), 0, "Invoke");
+						if (!invokeMethodInstance->mMethodDef->mIsStatic)
+						{							
+							target = mModule->GetDefaultTypedValue(invokeMethodInstance->GetThisType(), false, BfDefaultValueKind_Addr);
+						}
 					}
 				}
 			}
@@ -5555,12 +5601,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	if ((boxScopeData == NULL) && (mModule->mCurMethodState != NULL))
 		boxScopeData = mModule->mCurMethodState->mCurScope;
 
-	if (methodInstance->HasExplicitThis())	
-		paramIdx = -1;	
-
 	bool failed = false;
 	while (true)
 	{
+		bool isThis = (paramIdx == -1) || ((methodDef->mHasExplicitThis) && (paramIdx == 0));
 		bool isDirectPass = false;
 
 		if (paramIdx >= (int)methodInstance->GetParamCount())
@@ -6021,7 +6065,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 		if (argValue)
 		{	
-			if ((paramIdx == -1) && (argValue.mType->IsRef()))
+			if ((isThis) && (argValue.mType->IsRef()))
 			{
 				// Convert a 'ref this' to a 'this*'
 				argValue.mType = mModule->CreatePointerType(argValue.mType->GetUnderlyingType());
@@ -6107,7 +6151,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 			if (argValue)
 			{
-				if (paramIdx == -1)
+				if (isThis)
 					PushThis(targetSrc, argValue, methodInstance, irArgs);
 				else if (wantsSplat)				
 					SplatArgs(argValue, irArgs);				
@@ -9485,7 +9529,11 @@ bool BfExprEvaluator::IsExactMethodMatch(BfMethodInstance* methodA, BfMethodInst
 		return false;
 
 	int implicitParamCountA = methodA->GetImplicitParamCount();
+	if (methodA->HasExplicitThis())
+		implicitParamCountA++;
 	int implicitParamCountB = methodB->GetImplicitParamCount();
+	if (methodB->HasExplicitThis())
+		implicitParamCountB++;
 
 	if (methodA->GetParamCount() - implicitParamCountA != methodB->GetParamCount() - implicitParamCountB)
 		return false;
@@ -9517,15 +9565,21 @@ BfTypeInstance* BfExprEvaluator::VerifyBaseDelegateType(BfTypeInstance* baseDele
 	return baseDelegateType;
 }
 
-bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr, BfMethodInstance** boundMethod)
+bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr, BfMethodInstance** boundMethod, BfType* origMethodExpectingType, BfTypeVector* methodGenericArgumentsSubstitute)
 {
-	if (mExpectingType == NULL)
+	if ((mExpectingType == NULL) && (origMethodExpectingType == NULL))
 	{
 		return false;
 	}
 	
-	auto typeInstance = mExpectingType->ToTypeInstance();
-	if ((typeInstance == NULL) || (!typeInstance->mTypeDef->mIsDelegate))
+	bool isGenericMatch = mExpectingType == NULL;
+	auto expectingType = mExpectingType;
+	if (expectingType == NULL)
+		expectingType = origMethodExpectingType;
+
+	auto typeInstance = expectingType->ToTypeInstance();
+	if ((typeInstance == NULL) || 
+		((!typeInstance->mTypeDef->mIsDelegate) && (!typeInstance->mTypeDef->mIsFunction)))
 		return false;
 	
 	mModule->PopulateType(typeInstance, BfPopulateType_DataAndMethods);
@@ -9547,11 +9601,28 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 	SizedArray<BfExpression*, 4> args;
 	args.resize(methodInstance->GetParamCount());
 
+	auto _FixType = [&](BfType* type)
+	{
+		if (!isGenericMatch)
+			return type;		
+		auto fixedType = mModule->ResolveGenericType(type, NULL, methodGenericArgumentsSubstitute);
+		if (fixedType != NULL)
+			return fixedType;
+		return (BfType*)mModule->GetPrimitiveType(BfTypeCode_Var);		
+	};
+
+	auto _TypeMatches = [&](BfType* lhs, BfType* rhs)
+	{
+		if (lhs == rhs)
+			return true;
+		return lhs->IsVar();	
+	};
+
 	for (int i = 0; i < (int) methodInstance->GetParamCount(); i++)
 	{
 		auto typedValueExpr = &typedValueExprs[i];
-		typedValueExpr->mTypedValue.mValue = BfIRValue(BfIRValueFlags_Value, -1);
-		typedValueExpr->mTypedValue.mType = methodInstance->GetParamType(i);
+		typedValueExpr->mTypedValue.mValue = BfIRValue(BfIRValueFlags_Value, -1);		
+		typedValueExpr->mTypedValue.mType = _FixType(methodInstance->GetParamType(i));
 		typedValueExpr->mRefNode = NULL;
 		args[i] = typedValueExpr;
 	}
@@ -9562,6 +9633,7 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 	
 	BfFunctionBindResult bindResult;
 	bindResult.mSkipMutCheck = true; // Allow operating on copies
+	bindResult.mBindType = expectingType;
 	mFunctionBindResult = &bindResult;
 	SetAndRestoreValue<bool> ignoreError(mModule->mIgnoreErrors, true);
 	DoInvocation(delegateBindExpr->mTarget, delegateBindExpr, args, methodGenericArguments);
@@ -9570,7 +9642,25 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 		return false;	
 	if (boundMethod != NULL)
 		*boundMethod = bindResult.mMethodInstance;
-	return IsExactMethodMatch(methodInstance, bindResult.mMethodInstance, true);
+
+	auto matchedMethod = bindResult.mMethodInstance;
+
+	if (!_TypeMatches(_FixType(methodInstance->mReturnType), matchedMethod->mReturnType))
+		return false;
+
+	int implicitParamCountA = methodInstance->GetImplicitParamCount();
+	int implicitParamCountB = matchedMethod->GetImplicitParamCount();
+
+	if (methodInstance->GetParamCount() - implicitParamCountA != matchedMethod->GetParamCount() - implicitParamCountB)
+		return false;
+	for (int i = 0; i < (int)methodInstance->GetParamCount() - implicitParamCountA; i++)
+	{
+		auto paramA = _FixType(methodInstance->GetParamType(i + implicitParamCountA));
+		auto paramB = _FixType(matchedMethod->GetParamType(i + implicitParamCountB));
+		if (!_TypeMatches(paramA, paramB))
+			return false;
+	}
+	return true;
 }
 
 BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentifierNode* identifierNode, int shadowIdx)
@@ -9928,14 +10018,15 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		}
 	}
 	
-	typedValueExprs.resize(methodInstance->GetParamCount());
-	args.resize(methodInstance->GetParamCount());
-
-	for (int i = 0; i < (int)methodInstance->GetParamCount(); i++)
+	int paramOffset = methodInstance->HasExplicitThis() ? 1 : 0;
+	typedValueExprs.resize(methodInstance->GetParamCount() - paramOffset);	
+	args.resize(methodInstance->GetParamCount() - paramOffset);
+	
+	for (int i = 0; i < (int)methodInstance->GetParamCount() - paramOffset; i++)
 	{
 		auto typedValueExpr = &typedValueExprs[i];
 		typedValueExpr->mTypedValue.mValue = BfIRValue(BfIRValueFlags_Value, -1);
-		typedValueExpr->mTypedValue.mType = methodInstance->GetParamType(i);
+		typedValueExpr->mTypedValue.mType = methodInstance->GetParamType(i + paramOffset);
 		typedValueExpr->mRefNode = NULL;
 		args[i] = typedValueExpr;
 	}
@@ -9950,8 +10041,12 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		return;
 	}
 
-	if (GetAutoComplete() != NULL)
+	auto autoComplete = GetAutoComplete();
+	if (autoComplete != NULL)
+	{
+		SetAndRestoreValue<bool> prevForceAllowNonStatic(autoComplete->mForceAllowNonStatic, methodInstance->mMethodDef->mHasExplicitThis);
 		GetAutoComplete()->CheckNode(delegateBindExpr->mTarget);
+	}
 
 	if ((!delegateBindExpr->mTarget->IsA<BfIdentifierNode>()) &&
 		(!delegateBindExpr->mTarget->IsA<BfMemberReferenceExpression>()))
@@ -19533,13 +19628,14 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			}
 			else
 			{
-				auto convertedValue = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, BfCastFlags_NoBox);
+				auto convertedValue = mModule->Cast(otherTypeSrc, *otherTypedValue, resultType, BfCastFlags_NoBox);
 				if (!convertedValue)
 					return;				
+				convertedValue = mModule->LoadValue(convertedValue);
 				if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpEQ(resultTypedValue->mValue, convertedValue.mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 				else
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(resultTypedValue->mValue, convertedValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateCmpNE(resultTypedValue->mValue, convertedValue.mValue), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 			}
 
 			return;

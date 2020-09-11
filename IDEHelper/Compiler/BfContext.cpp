@@ -849,7 +849,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		
 		return;
 	}
-
+	
 	// We need to verify lookups before we rebuild the type, because a type lookup change needs to count as a TypeDataChanged
 	VerifyTypeLookups(typeInst);
 

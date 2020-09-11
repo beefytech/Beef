@@ -2610,6 +2610,15 @@ void BfModule::SetElementType(BfAstNode* astNode, BfSourceElementType elementTyp
 	}
 }
 
+void BfModule::SetFail()
+{
+	if (mIgnoreErrors)
+	{
+		if (mAttributeState != NULL)
+			mAttributeState->mFlags = (BfAttributeState::Flags)(mAttributeState->mFlags | BfAttributeState::Flag_HadError);		
+	}	
+}
+
 BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPersistent)
 {	
 	BP_ZONE("BfModule::Fail");
@@ -3074,10 +3083,17 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 		return;	
 
 	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsAutocompleteMethod))
-		return;
+	{
+		if (userType->IsMethodRef())
+		{
+			// We cannot short-circuit dependencies because of method group ref counting			
+		}
+		else
+			return;
+	}
 
 	if (usedType->IsSpecializedByAutoCompleteMethod())
-		return;
+		return;	
 
 // 	if (usedType->IsBoxed())
 // 	{
@@ -14790,7 +14806,7 @@ BfIRCallingConv BfModule::GetIRCallingConvention(BfMethodInstance* methodInstanc
 	auto methodDef = methodInstance->mMethodDef;
 	BfTypeInstance* owner = NULL;
 	if (!methodDef->mIsStatic)
-		owner = methodInstance->GetParamType(-1)->ToTypeInstance();
+		owner = methodInstance->GetThisType()->ToTypeInstance();
 	if (owner == NULL)
 		owner = methodInstance->GetOwner();
 
@@ -14842,13 +14858,11 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 	int argIdx = 0;
 	int paramIdx = 0;
 
-	if (methodInstance->HasThis())
-	{
-		paramIdx = -1;			
-	}
+	if ((methodInstance->HasThis()) && (!methodDef->mHasExplicitThis))	
+		paramIdx = -1;	
 
 	int argCount = methodInstance->GetIRFunctionParamCount(this);
-	
+
 	while (argIdx < argCount)
 	{
 		if (argIdx == methodInstance->GetStructRetIdx())
@@ -14859,22 +14873,22 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 			continue;
 		}
 
-		while ((paramIdx != -1) && (methodInstance->IsParamSkipped(paramIdx)))
+		bool isThis = (paramIdx == -1) || ((methodDef->mHasExplicitThis) && (paramIdx == 0));
+		while ((!isThis) && (methodInstance->IsParamSkipped(paramIdx)))
 			paramIdx++;
 
 		BfType* resolvedTypeRef = NULL;
 		BfType* resolvedTypeRef2 = NULL;
 		String paramName;
 		bool isSplattable = false;
-		bool tryLowering = true;
-		bool isThis = paramIdx == -1;
+		bool tryLowering = true;		
 		if (isThis)
 		{
 			paramName = "this";
 			if (methodInstance->mIsClosure)
 				resolvedTypeRef = mCurMethodState->mClosureState->mClosureType;
 			else
-				resolvedTypeRef = methodInstance->GetOwner();
+				resolvedTypeRef = methodInstance->GetThisType();
 			isSplattable = (resolvedTypeRef->IsSplattable()) && (methodInstance->AllowsThisSplatting());
 			tryLowering = methodInstance->AllowsThisSplatting();
         }
@@ -14933,7 +14947,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 			}
 			if ((resolvedTypeRef->IsComposite()) && (!resolvedTypeRef->IsTypedPrimitive()))
 			{
-				if (paramIdx == -1)
+				if (isThis)
 				{
 					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_NoCapture);
 					PopulateType(resolvedTypeRef, BfPopulateType_Data);
@@ -16964,6 +16978,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		SetupIRFunction(methodInstance, mangledName, false, &isIntrinsic);		
 	}
 	if (methodInstance->mIsIntrinsic)
+		return;
+	if (mCurTypeInstance->IsFunction())
 		return;
 			
 	auto prevActiveFunction = mBfIRBuilder->GetActiveFunction();
@@ -20318,7 +20334,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		implicitParamCount = (int)methodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries.size();
 
 	methodInstance->mMethodDef->mParams.Reserve((int)methodDef->mParams.size());
-	
+				
+
 	bool hadDelegateParams = false;
 	bool hadParams = false;	
 	for (int paramIdx = 0; paramIdx < (int)methodDef->mParams.size() + implicitParamCount; paramIdx++)
@@ -20379,9 +20396,13 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		BfType* unresolvedParamType = resolvedParamType;
 		bool wasGenericParam = false;
 		if (resolvedParamType == NULL)
-		{			
-			resolvedParamType = ResolveTypeRef(paramDef->mTypeRef, BfPopulateType_Declaration, 
-				(BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowRef | BfResolveTypeRefFlag_AllowRefGeneric | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
+		{
+			BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowRef | BfResolveTypeRefFlag_AllowRefGeneric | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue);
+			if (paramDef->mParamKind == BfParamKind_ExplicitThis)
+				resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_NoWarnOnMut);
+			resolvedParamType = ResolveTypeRef(paramDef->mTypeRef, BfPopulateType_Declaration, resolveFlags);
+			if ((paramDef->mParamKind == BfParamKind_ExplicitThis) && (resolvedParamType != NULL) && (resolvedParamType->IsRef()))
+				resolvedParamType = resolvedParamType->GetUnderlyingType();
 		}
 		if (resolvedParamType == NULL)
 		{
@@ -20578,7 +20599,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			methodParam.mResolvedType = resolvedParamType;
 			methodParam.mParamDefIdx = paramDefIdx;			
 			mCurMethodInstance->mParams.Add(methodParam);
-		}		
+		}
 	}
 
 	if (hadDelegateParams)
@@ -20616,11 +20637,12 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	int argIdx = 0;
 	PopulateType(methodInstance->mReturnType, BfPopulateType_Data);	
-	if (!methodDef->mIsStatic)
+	if ((!methodDef->mIsStatic) && (!methodDef->mHasExplicitThis))
     {
+		int thisIdx = methodDef->mHasExplicitThis ? 0 : -1;		
 		auto thisType = methodInstance->GetOwner();
-		if (methodInstance->GetParamIsSplat(-1))
-			argIdx += methodInstance->GetParamType(-1)->GetSplatCount();
+		if (methodInstance->GetParamIsSplat(thisIdx))
+			argIdx += methodInstance->GetParamType(thisIdx)->GetSplatCount();
 		else if (!thisType->IsValuelessType())
 		{
 			BfTypeCode loweredTypeCode = BfTypeCode_None;
@@ -20636,24 +20658,43 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	if (methodInstance->GetStructRetIdx() != -1)
 		argIdx++;
 
-	for (auto& methodParam : mCurMethodInstance->mParams)
+	for (int paramIdx = 0; paramIdx < mCurMethodInstance->mParams.size(); paramIdx++)
 	{
-		if (methodParam.mResolvedType->IsMethodRef())
+		auto& methodParam = mCurMethodInstance->mParams[paramIdx];
+
+		BfType* checkType = methodParam.mResolvedType;
+		int checkArgIdx = argIdx;
+		if ((paramIdx == 0) && (methodDef->mHasExplicitThis))
+		{
+			checkArgIdx = 0;
+			checkType = methodInstance->GetThisType();
+		}
+
+		if (checkType->IsMethodRef())
 		{
 			methodParam.mIsSplat = true;
 		}
-		else if ((methodParam.mResolvedType->IsComposite()) && (methodInstance->AllowsSplatting()))
+		else if ((checkType->IsComposite()) && (methodInstance->AllowsSplatting()))
 		{
-			PopulateType(methodParam.mResolvedType, BfPopulateType_Data);
-			if (methodParam.mResolvedType->IsSplattable())
+			PopulateType(checkType, BfPopulateType_Data);
+			if (checkType->IsSplattable())
 			{
-				int splatCount = methodParam.mResolvedType->GetSplatCount();
-				if (argIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
+				int splatCount = checkType->GetSplatCount();
+				if (checkArgIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
 				{
 					methodParam.mIsSplat = true;
 					argIdx += splatCount;
 					continue;
 				}
+			}
+			else if (!checkType->IsValuelessType())
+			{
+				BfTypeCode loweredTypeCode = BfTypeCode_None;
+				BfTypeCode loweredTypeCode2 = BfTypeCode_None;				
+				checkType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2);
+				argIdx++;
+				if (loweredTypeCode2 != BfTypeCode_None)
+					argIdx++;
 			}
 		}		
 		

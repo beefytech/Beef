@@ -138,6 +138,7 @@ BfAutoComplete::BfAutoComplete(BfResolveType resolveType)
 	mIgnoreFixits = false;
 	mHasFriendSet = false;
 	mUncertain = false;
+	mForceAllowNonStatic = false;
 	mMethodMatchInfo = NULL;	
 	mIsGetDefinition = 
 		(resolveType == BfResolveType_GetSymbolInfo) ||
@@ -588,6 +589,9 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 {
 	bool isInterface = false;
 	
+	if (mForceAllowNonStatic)
+		addNonStatic = true;
+
 	auto activeTypeDef = mModule->GetActiveTypeDef();
 
 	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()))

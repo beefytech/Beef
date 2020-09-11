@@ -768,6 +768,29 @@ bool BfMethodInstance::HasThis()
 	return (!mMethodInstanceGroup->mOwner->IsValuelessType());
 }
 
+BfType* BfMethodInstance::GetThisType()
+{
+	BF_ASSERT(!mMethodDef->mIsStatic);
+	if (mMethodDef->mHasExplicitThis)
+	{
+		auto thisType = mParams[0].mResolvedType;
+		auto owner = GetOwner();
+		if ((thisType->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (!thisType->GetLoweredType(BfTypeUsage_Parameter)))
+			return owner->mModule->CreatePointerType(thisType);
+		return thisType;
+	}
+	return GetParamType(-1);
+}
+
+int BfMethodInstance::GetThisIdx()
+{
+	if (mMethodDef->mIsStatic)
+		return -2;
+	if (mMethodDef->mHasExplicitThis)
+		return 0;
+	return -1;
+}
+
 bool BfMethodInstance::HasExplicitThis()
 {
 	if (mMethodDef->mIsStatic)
@@ -827,17 +850,18 @@ String BfMethodInstance::GetParamName(int paramIdx)
 }
 
 BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
-{
+{	
 	if (paramIdx == -1)
 	{
 		if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodInfoEx->mClosureInstanceInfo->mThisOverride != NULL))
 			return mMethodInfoEx->mClosureInstanceInfo->mThisOverride;
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		auto delegateInfo = owner->GetDelegateInfo();
 		BfType* thisType = owner;
-		if ((delegateInfo != NULL) && (delegateInfo->mFunctionThisType != NULL))
-			thisType = delegateInfo->mFunctionThisType;
+		if (owner->IsFunction())
+		{
+			BF_FATAL("Wrong 'this' index");
+		}
 		if ((thisType->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (!thisType->GetLoweredType(BfTypeUsage_Parameter)))
 			return owner->mModule->CreatePointerType(thisType);
 		return thisType;
@@ -1034,8 +1058,10 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		returnType = module->mBfIRBuilder->MapType(mReturnType);
 	}	
 
+	
+
 	for (int paramIdx = -1; paramIdx < GetParamCount(); paramIdx++)
-	{
+	{			
 		BfType* checkType = NULL;
 		if (paramIdx == -1)
 		{
@@ -1048,7 +1074,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			else
 			{
 				if (HasExplicitThis())
-					checkType = GetParamType(-1);
+					checkType = GetParamType(0);
 				else
 					checkType = GetOwner();				
 			}
@@ -1102,14 +1128,14 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			}							
 		}
 
-		if ((paramIdx == 0) && (GetParamName(0) == "this") && (checkType->IsPointer()))
-		{
-			// We don't actually pass a this pointer for mut methods in valueless structs
-			auto underlyingType = checkType->GetUnderlyingType();
-			module->PopulateType(underlyingType, BfPopulateType_Data);
-			if (underlyingType->IsValuelessType())
-				continue;
-		}
+// 		if ((paramIdx == 0) && (GetParamName(0) == "this") && (checkType->IsPointer()))
+// 		{
+// 			// We don't actually pass a this pointer for mut methods in valueless structs
+// 			auto underlyingType = checkType->GetUnderlyingType();
+// 			module->PopulateType(underlyingType, BfPopulateType_Data);
+// 			if (underlyingType->IsValuelessType())
+// 				continue;
+// 		}
 
 		if (checkType->CanBeValuelessType())
 			module->PopulateType(checkType, BfPopulateType_Data);
@@ -1159,6 +1185,9 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 		if (checkType2 != NULL)
 			_AddType(checkType2);
+
+		if ((paramIdx == -1) && (mMethodDef->mHasExplicitThis))
+			paramIdx++; // Skip over the explicit 'this'
 	}
 
 	if (GetStructRetIdx(forceStatic) == 1)
@@ -1200,7 +1229,7 @@ bool BfMethodInstance::IsExactMatch(BfMethodInstance* other, bool ignoreImplicit
 	if (checkThis)
 	{
 		if (other->mMethodDef->mIsStatic != mMethodDef->mIsStatic)
-			return false;
+			return false;		
 
 // 		{
 // 			// If we are static and we have to match a non-static method, allow us to do so if we have an explicitly defined 'this' param that matches
@@ -1227,12 +1256,17 @@ bool BfMethodInstance::IsExactMatch(BfMethodInstance* other, bool ignoreImplicit
 
 		if (!mMethodDef->mIsStatic)
 		{
-			if (GetParamType(-1) != other->GetParamType(-1))
+			if (GetThisType() != other->GetThisType())
 			{
 				return false;
 			}
 		}
 	}
+
+	if (mMethodDef->mHasExplicitThis)
+		implicitParamCountA++;
+	if (other->mMethodDef->mHasExplicitThis)
+		implicitParamCountB++;
 
 	if (GetParamCount() - implicitParamCountA != other->GetParamCount() - implicitParamCountB)
 		return false;
@@ -2577,14 +2611,6 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 		BF_ASSERT(methodDef->mName == "Invoke");
 		BF_ASSERT(delegateInfo->mParams.size() == methodDef->mParams.size());
 
-		if (delegateInfo->mFunctionThisType != NULL)
-		{
-			hashVal = ((hashVal ^ (Hash(delegateInfo->mFunctionThisType, ctx))) << 5) - hashVal;
-			String paramName = "this";
-			int nameHash = (int)Hash64(paramName.c_str(), (int)paramName.length());
-			hashVal = ((hashVal ^ (nameHash)) << 5) - hashVal;
-		}
-
 		for (int paramIdx = 0; paramIdx < delegateInfo->mParams.size(); paramIdx++)
 		{
 			// Parse attributes?			
@@ -3300,6 +3326,10 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			auto lhsMethodDef = lhsInst->mTypeDef->mMethods[0];
 			auto rhsMethodDef = rhsInst->mTypeDef->mMethods[0];
 
+			if (lhsMethodDef->mCallingConvention != rhsMethodDef->mCallingConvention)
+				return false;
+			if (lhsMethodDef->mIsMutating != rhsMethodDef->mIsMutating)
+				return false;
 			if (lhsDelegateInfo->mReturnType != rhsDelegateInfo->mReturnType)
 				return false;
 			if (lhsDelegateInfo->mParams.size() != rhsDelegateInfo->mParams.size())
@@ -3701,44 +3731,42 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			auto param0 = rhsDelegateType->mParams[0];
 			if ((param0->mNameNode != NULL) && (param0->mNameNode->Equals("this")))
 			{
+				if (!lhsDelegateInfo->mHasExplicitThis)
+					return false;
+
 				bool handled = false;
-				auto lhsThisType = lhsDelegateInfo->mFunctionThisType;
+				auto lhsThisType = lhsDelegateInfo->mParams[0];
 
 				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));
+				bool wantsMutating = false;
+
 				if (rhsThisType->IsRef())
 				{					
 					if (lhsThisType != rhsThisType->GetUnderlyingType())
 						return false;
-					if (!invokeMethodDef->mIsMutating)
-						return false;
+					wantsMutating = (lhsThisType->IsValueType()) || (lhsThisType->IsGenericParam());					
 				}
 				else
 				{
 					if (lhsThisType != rhsThisType)
-						return false;
-					if ((invokeMethodDef->mIsMutating) && (lhsThisType->IsValueType()))
-						return false;
+						return false;					
 				}
+				if (invokeMethodDef->mIsMutating != wantsMutating)
+					return false;
 
 				paramRefOfs = 1;
 			}
 		}
 
-		if (!rhsIsDelegate)
-		{			
-			if ((lhsDelegateInfo->mFunctionThisType == NULL) != (paramRefOfs == 0))
-				return false;
-		}
-
-		if (lhsDelegateInfo->mParams.size() != (int)rhsDelegateType->mParams.size() - paramRefOfs)
+		if (lhsDelegateInfo->mParams.size() != (int)rhsDelegateType->mParams.size())
 			return false;
-		for (int paramIdx = 0; paramIdx < lhsDelegateInfo->mParams.size(); paramIdx++)
+		for (int paramIdx = paramRefOfs; paramIdx < lhsDelegateInfo->mParams.size(); paramIdx++)
 		{
-			if (!Equals(lhsDelegateInfo->mParams[paramIdx], rhsDelegateType->mParams[paramIdx + paramRefOfs]->mTypeRef, ctx))
+			if (!Equals(lhsDelegateInfo->mParams[paramIdx], rhsDelegateType->mParams[paramIdx]->mTypeRef, ctx))
 				return false;
 			StringView rhsParamName;
-			if (rhsDelegateType->mParams[paramIdx + paramRefOfs]->mNameNode != NULL)
-				rhsParamName = rhsDelegateType->mParams[paramIdx + paramRefOfs]->mNameNode->ToStringView();
+			if (rhsDelegateType->mParams[paramIdx]->mNameNode != NULL)
+				rhsParamName = rhsDelegateType->mParams[paramIdx]->mNameNode->ToStringView();
 			if (invokeMethodDef->mParams[paramIdx]->mName != rhsParamName)
 				return false;
 		}

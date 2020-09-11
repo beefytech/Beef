@@ -169,7 +169,7 @@ public:
 	Array<BfAmbiguousEntry> mAmbiguousEntries;	
 
 public:
-	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute);	
+	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute, BfType *origCheckType = NULL);	
 	bool InferFromGenericConstraints(BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs);
 	void CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute, 
@@ -401,7 +401,7 @@ public:
 	void SetMethodElementType(BfAstNode* target);
 	BfTypedValue DoImplicitArgCapture(BfAstNode* refNode, BfIdentifierNode* identifierNode, int shadowIdx);
 	BfTypedValue DoImplicitArgCapture(BfAstNode* refNode, BfMethodInstance* methodInstance, int paramIdx, bool& failed, BfImplicitParamKind paramKind = BfImplicitParamKind_General, const BfTypedValue& methodRefTarget = BfTypedValue());
-	bool CanBindDelegate(BfDelegateBindExpression* delegateBindExpr, BfMethodInstance** boundMethod = NULL);
+	bool CanBindDelegate(BfDelegateBindExpression* delegateBindExpr, BfMethodInstance** boundMethod = NULL, BfType* origMethodExpectingType = NULL, BfTypeVector* methodGenericArgumentsSubstitute = NULL);
 	bool IsExactMethodMatch(BfMethodInstance* methodA, BfMethodInstance* methodB, bool ignoreImplicitParams = false);		
 	BfTypeInstance* VerifyBaseDelegateType(BfTypeInstance* delegateType);	
 	void ConstResolve(BfExpression* expr);

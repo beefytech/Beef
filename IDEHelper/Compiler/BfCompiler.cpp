@@ -2135,7 +2135,7 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 			{				
 				auto depType = type->ToDependedType();					
 				auto typeInst = type->ToTypeInstance();
-			
+							
 				if (depType != NULL)
 				{
 					extern BfModule* gLastCreatedModule;
@@ -4272,11 +4272,16 @@ void BfCompiler::ProcessAutocompleteTempType()
 			methodInstance->GetMethodInfoEx()->mGenericParams.push_back(genericParamInstance);
 		}
 
+		bool wantsProcess = !actualTypeDef->mIsFunction;
+
 		SetAndRestoreValue<BfFilePosition> prevFilePos(module->mCurFilePosition);
 		SetAndRestoreValue<BfMethodInstance*> prevMethodInst(module->mCurMethodInstance, methodInstance);		
- 		module->DoMethodDeclaration(methodDeclaration, true);
-		module->mIncompleteMethodCount++;		
-		module->ProcessMethod(methodInstance);		
+ 		module->DoMethodDeclaration(methodDeclaration, true, wantsProcess);
+		if (wantsProcess)
+		{
+			module->mIncompleteMethodCount++;
+			module->ProcessMethod(methodInstance);
+		}
 		
 		if (methodInstance->mIRFunction)
 		{
@@ -4830,7 +4835,7 @@ void BfCompiler::GetSymbolReferences()
 						CheckSymbolReferenceTypeRef(module, externConstraintDef.mTypeRef);
 						rebuildModule->ResolveGenericParamConstraints(&genericParamInstance, rebuildMethodInstance->mIsUnspecialized);
 					}
-
+					
 					rebuildModule->ProcessMethod(rebuildMethodInstance);
 				}
 			}
@@ -7420,7 +7425,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 					int dispParamIdx = 0;
 
 					StringT<64> paramName;
-					for (int paramIdx = methodInstance->HasExplicitThis() ? -1 : 0; paramIdx < (int)methodInstance->GetParamCount(); paramIdx++)
+					for (int paramIdx = 0; paramIdx < (int)methodInstance->GetParamCount(); paramIdx++)
 					{
 						auto paramKind = methodInstance->GetParamKind(paramIdx);
 						if ((paramKind == BfParamKind_ImplicitCapture) || (paramKind == BfParamKind_AppendIdx))

@@ -416,15 +416,15 @@ class BfDelegateInfo
 {
 public:
 	Array<BfAstNode*> mDirectAllocNodes;
-	BfType* mReturnType;
-	BfType* mFunctionThisType;
+	BfType* mReturnType;	
 	Array<BfType*> mParams;
+	bool mHasExplicitThis;
 
 public:
 	BfDelegateInfo()
 	{
 		mReturnType = NULL;
-		mFunctionThisType = NULL;
+		mHasExplicitThis = false;
 	}
 
 	~BfDelegateInfo()
@@ -870,6 +870,8 @@ public:
 	bool IsSpecializedByAutoCompleteMethod();
 	bool HasExternConstraints();
 	bool HasThis();	
+	BfType* GetThisType();
+	int GetThisIdx();
 	bool HasExplicitThis();
 	bool HasParamsArray();
 	int GetStructRetIdx(bool forceStatic = false);
