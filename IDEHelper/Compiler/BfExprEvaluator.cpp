@@ -17393,10 +17393,31 @@ void BfExprEvaluator::Visit(BfMemberReferenceExpression* memberRefExpr)
 
 void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 {
-	VisitChild(indexerExpr->mTarget);
-	ResolveGenericType();
-	auto target = GetResult(true);
-	if (!target)
+	BfTypedValue target;
+	bool wantStatic = false;
+	// Try first as a non-static indexer, then as a static indexer
+	for (int pass = 0; pass < 2; pass++)
+	{
+		SetAndRestoreValue<bool> ignoreErrors(mModule->mIgnoreErrors, (mModule->mIgnoreErrors) || (pass == 0));
+		VisitChild(indexerExpr->mTarget);
+		ResolveGenericType();
+		target = GetResult(true);
+		if (target)
+			break;
+		
+		if (pass == 0)
+		{
+			auto staticType = mModule->ResolveTypeRef(indexerExpr->mTarget, {});
+			if (staticType != NULL)
+			{
+				wantStatic = true;
+				target.mType = staticType;
+				break;
+			}
+		}
+	}
+
+	if (!target.HasType())
 		return;
 	
 	BfCheckedKind checkedKind = BfCheckedKind_NotSet;
@@ -17434,21 +17455,6 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 	if (target.mType->IsTypeInstance())
 	{
 		mIndexerValues.clear();
-// 		for (BfExpression* expr : indexerExpr->mArguments)
-// 		{
-// 			if (expr == NULL)
-// 				return;
-// 			auto argVal = mModule->CreateValueFromExpression(expr);
-// 			if (!argVal)
-// 			{
-// 				mModule->AssertErrorState();
-// 				argVal = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
-// 			}
-// 			BfResolvedArg resolvedArg;
-// 			resolvedArg.mExpression = expr;
-// 			resolvedArg.mTypedValue = argVal;
-// 			mIndexerValues.push_back(resolvedArg);
-// 		}
 
 		SizedArray<BfExpression*, 2> argExprs;		
 		BfSizedArray<BfExpression*> sizedArgExprs(indexerExpr->mArguments);
@@ -17505,6 +17511,9 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 						// For generic params - check interface constraints for an indexer, call that method
 						BF_ASSERT(!target.mType->IsGenericParam());
 
+						if (checkMethod->mIsStatic != wantStatic)
+							continue;
+
 						if (checkMethod->mExplicitInterface != NULL)
 							continue;
 
@@ -17528,7 +17537,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 
 						if (!methodMatcher.IsMemberAccessible(curCheckType, checkMethod->mDeclaringType))
 							continue;
-
+						
 						methodMatcher.mCheckedKind = checkedKind;
 						methodMatcher.mTarget = target;
 						methodMatcher.CheckMethod(startCheckTypeInst, curCheckType, checkMethod, false);						
