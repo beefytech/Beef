@@ -1984,8 +1984,11 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 								isLambda = true;
 								if (auto innerToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 								{
-									// Specifically we're looking for a (function ...) cast, but any token here means it's not a lambda
-									isLambda = false;
+									if (innerToken->mToken != BfToken_RParen)
+									{
+										// Specifically we're looking for a (function ...) cast, but any token besides a close here means it's not a lambda
+										isLambda = false;
+									}
 								}
 							}
 							if (isLambda)
