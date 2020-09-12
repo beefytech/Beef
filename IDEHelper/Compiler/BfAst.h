@@ -951,20 +951,48 @@ static void BfSizedArrayInitIndirect(BfSizedArray<T>& sizedArray, const SizedArr
 template <typename T>
 class BfDeferredAstSizedArray : public SizedArray<T, 8>
 {
-public:
+public:	
 	BfSizedArray<ASTREF(T)>* mSizedArray;
 	BfAstAllocator* mAlloc;
 
 public:
 	BfDeferredAstSizedArray(BfSizedArray<ASTREF(T)>& arr, BfAstAllocator* alloc)
-	{
+	{		
 		mSizedArray = &arr;
-		mAlloc = alloc;
+		mAlloc = alloc;		
 	}
 
 	~BfDeferredAstSizedArray()
 	{		
+		BfSizedArrayInitIndirect(*mSizedArray, *this, mAlloc);		
+	}
+};
+
+template <typename T>
+class BfDeferredAstNodeSizedArray : public SizedArray<T, 8>
+{
+public:
+	BfAstNode* mParentNode;
+	BfSizedArray<ASTREF(T)>* mSizedArray;
+	BfAstAllocator* mAlloc;
+
+public:
+	BfDeferredAstNodeSizedArray(BfAstNode* parentNode, BfSizedArray<ASTREF(T)>& arr, BfAstAllocator* alloc)
+	{
+		mParentNode = parentNode;
+		mSizedArray = &arr;
+		mAlloc = alloc;
+	}
+
+	~BfDeferredAstNodeSizedArray()
+	{
 		BfSizedArrayInitIndirect(*mSizedArray, *this, mAlloc);
+		if (!mSizedArray->IsEmpty())
+		{
+			int endPos = mSizedArray->back()->mSrcEnd;
+			if (endPos > mParentNode->mSrcEnd)
+				mParentNode->mSrcEnd = endPos;
+		}
 	}
 };
 
