@@ -255,6 +255,9 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 			}
 			else
 			{
+				if (genericParams.IsEmpty())
+					Fail("Constraints cannot be specified for non-generic types", genericConstraint);
+
 				externConstraintDefs->Add(BfExternalConstraintDef());
 				BfExternalConstraintDef* externConstraintDef = &externConstraintDefs->back();
 				externConstraintDef->mTypeRef = genericConstraint->mTypeRef;
