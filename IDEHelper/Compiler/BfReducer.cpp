@@ -7021,22 +7021,23 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfExpression*
 	SetAndRestoreValue<BfVisitorPos> prevVisitorPos(mVisitorPos, BfVisitorPos(block));
 
 	bool isDone = !mVisitorPos.MoveNext();
-
-	BfDeferredAstSizedArray<BfExpression*> values(initializerExpr->mValues, mAlloc);
-	BfDeferredAstSizedArray<BfTokenNode*> commas(initializerExpr->mCommas, mAlloc);
+		
+	BfDeferredAstNodeSizedArray<BfExpression*> values(initializerExpr, initializerExpr->mValues, mAlloc);
+	BfDeferredAstNodeSizedArray<BfTokenNode*> commas(initializerExpr, initializerExpr->mCommas, mAlloc);
 
 	BfAstNode* nextNode = NULL;
 	while (!isDone)
 	{
 		BfAstNode* node = mVisitorPos.GetCurrent();
-		
-		auto expr = CreateExpression(node);				
+		initializerExpr->mSrcEnd = node->mSrcEnd;
+
+		auto expr = CreateExpression(node);
 		isDone = !mVisitorPos.MoveNext();
 		if (expr != NULL)
 			values.Add(expr);
 		else
 			AddErrorNode(node);
-		
+
 		if (!isDone)
 		{
 			bool foundComma = false;
@@ -7048,17 +7049,17 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfExpression*
 				{
 					foundComma = true;
 					commas.Add(tokenNode);
-					mVisitorPos.MoveNext();
+					isDone = !mVisitorPos.MoveNext();
 				}
 			}
 		}
-	}
+	}	
 
 	mVisitorPos.Trim();
-
-	if (block->mCloseBrace != NULL)
-		MEMBER_SET(initializerExpr, mCloseBrace, block->mCloseBrace);
 	
+	if (block->mCloseBrace != NULL)
+		MEMBER_SET(initializerExpr, mCloseBrace, block->mCloseBrace);		
+
 	return initializerExpr;
 }
 
