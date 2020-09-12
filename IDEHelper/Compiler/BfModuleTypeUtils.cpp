@@ -9560,14 +9560,14 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
 	}
 
-	if (explicitCast)
+	// Func -> void*
+	if ((typedVal.mType->IsFunction()) && (toType->IsVoidPtr()))
 	{
-		// Func -> void*
-		if ((typedVal.mType->IsFunction()) && (toType->IsVoidPtr()))
-		{
-			return mBfIRBuilder->CreateIntToPtr(typedVal.mValue, mBfIRBuilder->MapType(toType));
-		}
+		return mBfIRBuilder->CreateIntToPtr(typedVal.mValue, mBfIRBuilder->MapType(toType));
+	}
 
+	if (explicitCast)
+	{		
 		// void* -> Func
 		if ((typedVal.mType->IsVoidPtr()) && (toType->IsFunction()))
 		{
