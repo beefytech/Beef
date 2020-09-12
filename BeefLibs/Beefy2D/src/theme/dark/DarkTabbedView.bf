@@ -257,16 +257,17 @@ namespace Beefy.theme.dark
 						mTabbedView.mAutoClose = !mTabbedView.mAutoClose;
 					});
 
-				menuItem = menu.AddItem("Close");
-				menuItem.mOnMenuItemSelected.Add(new (evt) =>
-					{
-						let prevAutoClose = mTabbedView.mAutoClose;
-						mTabbedView.mAutoClose = true;
-						var tabs = scope List<TabButton>();
-						for (var tab in mTabbedView.mTabs)
-							tabs.Add(tab);
+				void CloseTabs(bool autoClose, bool closeCurrent)
+				{
+					let prevAutoClose = mTabbedView.mAutoClose;
+					mTabbedView.mAutoClose = autoClose;
+					var tabs = scope List<TabButton>();
+					for (var tab in mTabbedView.mTabs)
+						tabs.Add(tab);
 
-						if (tabs.IsEmpty)
+					if (tabs.IsEmpty)
+					{
+						if (autoClose)
 						{
 							if (var dockingFrame = mTabbedView.mParent as DockingFrame)
 							{
@@ -274,12 +275,35 @@ namespace Beefy.theme.dark
 								BFApp.sApp.DeferDelete(mTabbedView);
 							}
 						}
-						else
+					}
+					else
+					{
+						for (var tab in tabs)
 						{
-							for (var tab in tabs)
-								tab.mCloseClickedEvent();
+							if ((!closeCurrent) && (tab.mIsActive))
+								continue;
+							tab.mCloseClickedEvent();
 						}
-						mTabbedView.mAutoClose = prevAutoClose;
+					}
+					mTabbedView.mAutoClose = prevAutoClose;
+				}
+
+				menuItem = menu.AddItem("Close");
+				menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						CloseTabs(true, true);
+					});
+
+				menuItem = menu.AddItem("Close Tabs");
+				menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						CloseTabs(false, true);
+					});
+
+				menuItem = menu.AddItem("Close Tabs Except Current");
+				menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						CloseTabs(false, false);
 					});
 
 				menu.AddItem();

@@ -188,8 +188,9 @@ namespace IDE
 			Add("Cancel Build", new => gApp.[Friend]CancelBuild);
 			Add("Clean Beef", new => gApp.Cmd_CleanBeef);
 			Add("Clean", new => gApp.Cmd_Clean);
-			Add("Close All Windows", new () => { gApp.[Friend]TryCloseAllDocuments(); });
-			Add("Close Window", new () => { gApp.[Friend]TryCloseCurrentDocument(); });
+			Add("Close All Panels", new () => { gApp.[Friend]TryCloseAllDocuments(true); });
+			Add("Close All Panels Except", new () => { gApp.[Friend]TryCloseAllDocuments(false); });
+			Add("Close Panel", new () => { gApp.[Friend]TryCloseCurrentDocument(); });
 			Add("Close Workspace", new => gApp.[Friend]Cmd_CloseWorkspaceAndSetupNew);
 			Add("Comment Selection", new => gApp.[Friend]CommentSelection);
 			Add("Compile File", new => gApp.Cmd_CompileFile);

@@ -5342,8 +5342,9 @@ namespace IDE
 			//////////
 
             mWindowMenu = root.AddMenuItem("&Window");
-            AddMenuItem(mWindowMenu, "&Close", "Close Window", new => UpdateMenuItem_HasActivePanel);
-			AddMenuItem(mWindowMenu, "&Close All", "Close All Windows");
+            AddMenuItem(mWindowMenu, "&Close", "Close Panel", new => UpdateMenuItem_HasActivePanel);
+			AddMenuItem(mWindowMenu, "&Close All", "Close All Panels");
+			AddMenuItem(mWindowMenu, "Close All Except Current", "Close All Panels Except");
 			AddMenuItem(mWindowMenu, "&New View into File", "View New", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(mWindowMenu, "&Split View", "View Split", new => UpdateMenuItem_HasActiveDocument);
 
@@ -6484,15 +6485,20 @@ namespace IDE
 				CloseDocument(activePanel);
         }
 
-		void TryCloseAllDocuments()
+		void TryCloseAllDocuments(bool closeCurrent)
 		{
 			var docPanels = scope List<Widget>();
+
+			Widget skipDocumentPanel = null;
+			if (!closeCurrent)
+				skipDocumentPanel = GetActiveDocumentPanel();
 
 			WithTabs(scope [&] (tab) =>
 			{
 				if ((tab.mContent is SourceViewPanel) || (tab.mTabbedView.mIsFillWidget))
-				{	
-					docPanels.Add(tab.mContent);
+				{
+					if (tab.mContent != skipDocumentPanel)
+						docPanels.Add(tab.mContent);
 				}				
 			});	
 	    

@@ -670,7 +670,7 @@ namespace IDE
 				Add("Breakpoint Toggle Thread", "Shift+F9");
 				Add("Build Solution", "F7");
 				Add("Cancel Build", "Ctrl+Break");
-				Add("Close Window", "Ctrl+W");
+				Add("Close Panel", "Ctrl+W");
 				Add("Compile File", "Ctrl+F7");
 				Add("Comment Selection", "Ctrl+K, Ctrl+C");
 				Add("Duplicate Line", "Ctrl+D");
