@@ -1661,7 +1661,8 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	int outerGenericSize = 0;
 	if (mCurTypeDef->mOuterType != NULL)
 		outerGenericSize = (int)mCurTypeDef->mOuterType->mGenericParamDefs.size();
-	ParseGenericParams(typeDeclaration->mGenericParams, typeDeclaration->mGenericConstraintsDeclaration, mCurTypeDef->mGenericParamDefs, &mCurTypeDef->mExternalConstraints, outerGenericSize, !mCurTypeDef->mGenericParamDefs.IsEmpty());
+	bool isGeneric = (outerGenericSize != NULL) || (typeDeclaration->mGenericParams != NULL);
+	ParseGenericParams(typeDeclaration->mGenericParams, typeDeclaration->mGenericConstraintsDeclaration, mCurTypeDef->mGenericParamDefs, &mCurTypeDef->mExternalConstraints, outerGenericSize, isGeneric);
 	
 	BF_ASSERT(mCurTypeDef->mNameEx == NULL);
 	
