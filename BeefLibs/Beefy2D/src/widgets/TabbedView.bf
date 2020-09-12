@@ -390,6 +390,37 @@ namespace Beefy.widgets
 			return ThemeFactory.mDefault.CreateTabbedView(sharedData);
 		}
 
+		public void CloseTabs(bool autoClose, bool closeCurrent)
+		{
+			let prevAutoClose = mAutoClose;
+			mAutoClose = autoClose;
+			var tabs = scope List<TabButton>();
+			for (var tab in mTabs)
+				tabs.Add(tab);
+
+			if (tabs.IsEmpty)
+			{
+				if (autoClose)
+				{
+					if (var dockingFrame = mParent as DockingFrame)
+					{
+						dockingFrame.RemoveDockedWidget(this);
+						BFApp.sApp.DeferDelete(this);
+					}
+				}
+			}
+			else
+			{
+				for (var tab in tabs)
+				{
+					if ((!closeCurrent) && (tab.mIsActive))
+						continue;
+					tab.mCloseClickedEvent();
+				}
+			}
+			mAutoClose = prevAutoClose;
+		}
+
 		public void Closed()
 		{
 			mSharedData.mTabbedViewClosed(this);

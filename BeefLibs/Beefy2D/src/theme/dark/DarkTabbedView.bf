@@ -257,53 +257,22 @@ namespace Beefy.theme.dark
 						mTabbedView.mAutoClose = !mTabbedView.mAutoClose;
 					});
 
-				void CloseTabs(bool autoClose, bool closeCurrent)
-				{
-					let prevAutoClose = mTabbedView.mAutoClose;
-					mTabbedView.mAutoClose = autoClose;
-					var tabs = scope List<TabButton>();
-					for (var tab in mTabbedView.mTabs)
-						tabs.Add(tab);
-
-					if (tabs.IsEmpty)
-					{
-						if (autoClose)
-						{
-							if (var dockingFrame = mTabbedView.mParent as DockingFrame)
-							{
-								dockingFrame.RemoveDockedWidget(mTabbedView);
-								BFApp.sApp.DeferDelete(mTabbedView);
-							}
-						}
-					}
-					else
-					{
-						for (var tab in tabs)
-						{
-							if ((!closeCurrent) && (tab.mIsActive))
-								continue;
-							tab.mCloseClickedEvent();
-						}
-					}
-					mTabbedView.mAutoClose = prevAutoClose;
-				}
-
 				menuItem = menu.AddItem("Close");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
-						CloseTabs(true, true);
+						mTabbedView.CloseTabs(true, true);
 					});
 
 				menuItem = menu.AddItem("Close Tabs");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
-						CloseTabs(false, true);
+						mTabbedView.CloseTabs(false, true);
 					});
 
 				menuItem = menu.AddItem("Close Tabs Except Current");
 				menuItem.mOnMenuItemSelected.Add(new (evt) =>
 					{
-						CloseTabs(false, false);
+						mTabbedView.CloseTabs(false, false);
 					});
 
 				menu.AddItem();

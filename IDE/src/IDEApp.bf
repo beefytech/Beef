@@ -5728,6 +5728,16 @@ namespace IDE
 								let process = scope SpawnedProcess();
 								process.Start(procInfo).IgnoreError();
 							});
+						item = menu.AddItem("Close");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								mCloseClickedEvent();
+							});
+						item = menu.AddItem("Close All Except This");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								mTabbedView.CloseTabs(false, false);
+							});
 					}
 
 					if (menu.mItems.Count > 0)
