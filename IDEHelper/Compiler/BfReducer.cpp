@@ -1978,10 +1978,18 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 						endNode = mVisitorPos.Get(endNodeIdx);
 						if (auto endToken = BfNodeDynCast<BfTokenNode>(endNode))
 						{
+							bool isLambda = false;
 							if (endToken->GetToken() == BfToken_FatArrow)
 							{
-								return CreateLambdaBindExpression(NULL, tokenNode);
+								isLambda = true;
+								if (auto innerToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+								{
+									// Specifically we're looking for a (function ...) cast, but any token here means it's not a lambda
+									isLambda = false;
+								}
 							}
+							if (isLambda)
+								return CreateLambdaBindExpression(NULL, tokenNode);
 						}
 					}
 				}
