@@ -26,7 +26,7 @@ public:
 	HashContext* mSignatureHashCtx;
 
 public:
-	void ParseGenericParams(BfGenericParamsDeclaration* genericParamsDecl, BfGenericConstraintsDeclaration* genericConstraints, Array<BfGenericParamDef*>& genericParams, Array<BfExternalConstraintDef>* externConstraintDefs, int outerGenericSize);
+	void ParseGenericParams(BfGenericParamsDeclaration* genericParamsDecl, BfGenericConstraintsDeclaration* genericConstraints, Array<BfGenericParamDef*>& genericParams, Array<BfExternalConstraintDef>* externConstraintDefs, int outerGenericSize, bool isInGeneric);
 	BfProtection GetProtection(BfTokenNode* protectionToken);
 	bool WantsNode(BfAstNode* wholeNode, BfAstNode* startNode = NULL, int addLen = 0);		
 	//static BfNamedTypeReference* AllocTypeReference(BfSource* bfSource, const StringImpl& typeName);

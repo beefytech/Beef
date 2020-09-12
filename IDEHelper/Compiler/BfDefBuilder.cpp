@@ -171,7 +171,7 @@ bool BfDefBuilder::WantsNode(BfAstNode* wholeNode, BfAstNode* startNode, int add
 
 static int sGenericParamIdx = 0;
 
-void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsDecl, BfGenericConstraintsDeclaration* genericConstraints, Array<BfGenericParamDef*>& genericParams, Array<BfExternalConstraintDef>* externConstraintDefs, int outerGenericSize)
+void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsDecl, BfGenericConstraintsDeclaration* genericConstraints, Array<BfGenericParamDef*>& genericParams, Array<BfExternalConstraintDef>* externConstraintDefs, int outerGenericSize, bool isInGeneric)
 {		
 	if (genericParamsDecl != NULL)
 	{
@@ -255,8 +255,8 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 			}
 			else
 			{
-				if (genericParams.IsEmpty())
-					Fail("Constraints cannot be specified for non-generic types", genericConstraint);
+				if (!isInGeneric)
+					Fail("Constraints cannot be specified for non-generics", genericConstraint);
 
 				externConstraintDefs->Add(BfExternalConstraintDef());
 				BfExternalConstraintDef* externConstraintDef = &externConstraintDefs->back();
@@ -596,7 +596,8 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		(methodDef->mMethodType == BfMethodType_Mixin) ||
 		(methodDef->mMethodType == BfMethodType_Extension))
 	{
-		ParseGenericParams(methodDeclaration->mGenericParams, methodDeclaration->mGenericConstraintsDeclaration, methodDef->mGenericParams, &methodDef->mExternalConstraints, outerGenericSize);
+		bool isGeneric = (methodDeclaration->mGenericParams != NULL) || (!mCurTypeDef->mGenericParamDefs.IsEmpty());
+		ParseGenericParams(methodDeclaration->mGenericParams, methodDeclaration->mGenericConstraintsDeclaration, methodDef->mGenericParams, &methodDef->mExternalConstraints, outerGenericSize, isGeneric);
 	}
 	else
 	{
@@ -1660,7 +1661,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	int outerGenericSize = 0;
 	if (mCurTypeDef->mOuterType != NULL)
 		outerGenericSize = (int)mCurTypeDef->mOuterType->mGenericParamDefs.size();
-	ParseGenericParams(typeDeclaration->mGenericParams, typeDeclaration->mGenericConstraintsDeclaration, mCurTypeDef->mGenericParamDefs, &mCurTypeDef->mExternalConstraints, outerGenericSize);
+	ParseGenericParams(typeDeclaration->mGenericParams, typeDeclaration->mGenericConstraintsDeclaration, mCurTypeDef->mGenericParamDefs, &mCurTypeDef->mExternalConstraints, outerGenericSize, !mCurTypeDef->mGenericParamDefs.IsEmpty());
 	
 	BF_ASSERT(mCurTypeDef->mNameEx == NULL);
 	
