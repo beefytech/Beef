@@ -1292,7 +1292,6 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		int16 mPadding0;
 #else
 		int16 mPadding0;
-		int32 mPadding1;
 #endif
 		
 		addr_target mTypeClassVData;
