@@ -111,6 +111,9 @@ bool BfReducer::IsNodeRelevant(BfAstNode* astNode)
 
 bool BfReducer::IsNodeRelevant(BfAstNode* startNode, BfAstNode* endNode)
 {
+	if (startNode == NULL)
+		return IsNodeRelevant(endNode);
+
 	BfParser* bfParser = startNode->GetSourceData()->ToParser();
 	if (bfParser == NULL)
 		return true;
@@ -5685,7 +5688,7 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 	return fieldDeclaration;
 }
 
-BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
+BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNode* deferredHeadNode)
 {
 	BfToken token = tokenNode->GetToken();
 
@@ -5706,7 +5709,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
 		}
 
 		mVisitorPos.MoveNext();
-		auto memberNode = ReadTypeMember(nextNode);
+		auto memberNode = ReadTypeMember(nextNode, 0, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
 		if (memberNode == NULL)
 			return NULL;
 		auto member = BfNodeDynCast<BfMemberDeclaration>(memberNode);
@@ -5905,7 +5908,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth)
 		BfAstNode* startNode = mVisitorPos.GetCurrent();
 		auto startToken = BfNodeDynCast<BfTokenNode>(startNode);
 
-		auto topLevelObject = CreateTopLevelObject(startToken, NULL);
+		auto topLevelObject = CreateTopLevelObject(startToken, NULL, deferredHeadNode);
 		auto typeDecl = BfNodeDynCast<BfTypeDeclaration>(topLevelObject);
 		if (typeDecl == NULL)
 		{
@@ -6392,7 +6395,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 	}
 }
 
-BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
+BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* deferredHeadNode)
 {
 	SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node, false);
 	if (depth == 0)
@@ -6437,7 +6440,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth)
 			// Read type member
 		}
 		else
-			return ReadTypeMember(tokenNode, depth);
+			return ReadTypeMember(tokenNode, depth, deferredHeadNode);
 	}
 	else if (auto block = BfNodeDynCast<BfBlock>(node))
 	{
@@ -7796,7 +7799,7 @@ BfAstNode* BfReducer::HandleTopLevel(BfBlock* node)
 	return node;
 }
 
-BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes)
+BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode)
 {
 	AssertCurrentNode(tokenNode);
 
@@ -8024,7 +8027,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			MEMBER_SET(typeDeclaration, mDefineNode, block);
 			mVisitorPos.MoveNext();
 
-			HandleTypeDeclaration(typeDeclaration, attributes);
+			HandleTypeDeclaration(typeDeclaration, attributes, deferredHeadNode);
 
 			return typeDeclaration;
 		}
@@ -8204,7 +8207,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			}
 		}
 
-		if (!IsNodeRelevant(typeDeclaration))
+		if (!IsNodeRelevant(deferredHeadNode, typeDeclaration))
 			typeDeclaration->mIgnoreDeclaration = true;
 
 		return typeDeclaration;
@@ -8319,7 +8322,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		{
 			typeDeclaration->mDefineNode = blockNode;
 			MoveNode(blockNode, typeDeclaration);
-			HandleTypeDeclaration(typeDeclaration, attributes);
+			HandleTypeDeclaration(typeDeclaration, attributes, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
 		}
 
 		return typeDeclaration;
@@ -9526,7 +9529,7 @@ void BfReducer::HandleBlock(BfBlock* block, bool allowEndingExpression)
 	mVisitorPos.Trim();
 }
 
-void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes)
+void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode)
 {
 	SetAndRestoreValue<BfTypeDeclaration*> prevTypeDecl(mCurTypeDecl, typeDecl);
 	SetAndRestoreValue<BfVisitorPos> prevVisitorPos(mVisitorPos, BfVisitorPos(BfNodeDynCast<BfBlock>(typeDecl->mDefineNode)));
@@ -9536,7 +9539,7 @@ void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDi
 		MEMBER_SET(typeDecl, mAttributes, attributes);
 	}
 
-	if (!IsNodeRelevant(typeDecl))
+	if (!IsNodeRelevant(deferredHeadNode, typeDecl))
 	{
 		typeDecl->mIgnoreDeclaration = true;
 		return;

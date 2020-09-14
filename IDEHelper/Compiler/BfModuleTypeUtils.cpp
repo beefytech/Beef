@@ -3757,9 +3757,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	};
 
-	_HandleTypeDeclaration(typeDef->mTypeDeclaration);
-	for (auto partial : typeDef->mPartials)
-		_HandleTypeDeclaration(partial->mTypeDeclaration);
+	if (!typeInstance->IsBoxed())
+	{
+		_HandleTypeDeclaration(typeDef->mTypeDeclaration);
+		for (auto partial : typeDef->mPartials)
+			_HandleTypeDeclaration(partial->mTypeDeclaration);
+	}
 
 	if (populateType == BfPopulateType_Data)
 		return;

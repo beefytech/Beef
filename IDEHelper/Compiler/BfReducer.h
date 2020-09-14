@@ -184,8 +184,8 @@ public:
 	BfTokenNode* ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfParameterDeclaration*>* params, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken, bool requireNames);
 	BfTokenNode* ReadArguments(BfAstNode* parentNode, BfAstNode* afterNode, SizedArrayImpl<BfExpression*>* arguments, SizedArrayImpl<BfTokenNode*>* commas, BfToken endToken, bool allowSkippedArgs = false, CreateExprFlags createExprFlags = CreateExprFlags_None);
 	void ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, BfBlock* block);
-	BfAstNode* ReadTypeMember(BfTokenNode* node, int depth = 0);
-	BfAstNode* ReadTypeMember(BfAstNode* node, int depth = 0);
+	BfAstNode* ReadTypeMember(BfTokenNode* node, int depth = 0, BfAstNode* deferredHeadNode = NULL);
+	BfAstNode* ReadTypeMember(BfAstNode* node, int depth = 0, BfAstNode* deferredHeadNode = NULL);
 	BfIdentifierNode* CompactQualifiedName(BfAstNode* leftNode);
 	void TryIdentifierConvert(int readPos);
 	void CreateQualifiedNames(BfAstNode* node);
@@ -231,12 +231,12 @@ public:
 	BfWhileStatement* CreateWhileStatement(BfAstNode* node);
 	BfDoStatement* CreateDoStatement(BfAstNode* node);
 	BfRepeatStatement* CreateRepeatStatement(BfAstNode* node);
-	BfAstNode* CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes);
+	BfAstNode* CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode = NULL);
 	BfAstNode* HandleTopLevel(BfBlock* node);
 	BfInlineAsmStatement* CreateInlineAsmStatement(BfAstNode* asmNode);
 
 	void HandleBlock(BfBlock* block, bool allowEndingExpression = false);
-	void HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes);
+	void HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode = NULL);
 
 public:
 	BfReducer();
