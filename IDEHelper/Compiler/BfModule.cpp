@@ -20788,6 +20788,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				argIdx++;
 				if (loweredTypeCode2 != BfTypeCode_None)
 					argIdx++;
+				continue;
 			}
 		}		
 		
