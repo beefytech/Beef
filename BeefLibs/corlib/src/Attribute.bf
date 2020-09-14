@@ -48,7 +48,7 @@ namespace System
 		Methods = 0x40,
 		DynamicBoxing = 0x80,
 		//User = 0x100, // Internal Use
-		All = 0xFF,
+		All = 0x7F, // Doesn't include dynamic boxing
 
 		ApplyToInnerTypes = 0x200,
 	}
