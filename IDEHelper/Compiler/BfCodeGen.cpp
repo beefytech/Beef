@@ -469,6 +469,7 @@ void BfCodeGenThread::RunLoop()
 				BP_ZONE_F("BfCodeGen::RunLoop.LLVM %s", request->mOutFileName.c_str());
 
 				BfIRCodeGen* llvmIRCodeGen = new BfIRCodeGen();
+				llvmIRCodeGen->SetCodeGenOptions(request->mOptions);
 				llvmIRCodeGen->SetConfigConst(BfIRConfigConst_VirtualMethodOfs, request->mOptions.mVirtualMethodOfs);
 				llvmIRCodeGen->SetConfigConst(BfIRConfigConst_DynSlotOfs, request->mOptions.mDynSlotOfs);				
 				llvmIRCodeGen->ProcessBfIRData(request->mData);
@@ -501,7 +502,7 @@ void BfCodeGenThread::RunLoop()
 							outFileName = request->mOutFileName + ".s";
 						else
 							outFileName = request->mOutFileName + BF_OBJ_EXT;
-						if (!llvmIRCodeGen->WriteObjectFile(outFileName, request->mOptions))
+						if (!llvmIRCodeGen->WriteObjectFile(outFileName))
 						{
 							result.mType = BfCodeGenResult_Failed;
 							dirCache->FileFailed();

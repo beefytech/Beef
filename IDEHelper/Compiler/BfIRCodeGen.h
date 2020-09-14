@@ -4,6 +4,25 @@
 #include "BfSystem.h"
 #include "BfTargetTriple.h"
 
+namespace llvm
+{
+	class Constant;
+	class Value;
+	class Type;
+	class BasicBlock;
+	class Function;
+	class FunctionType;
+	class MDNode;
+	class InlineAsm;
+	class DIType;
+	class DIBuilder;
+	class DICompileUnit;
+	class AttributeList;
+	class Module;
+	class LLVMContext;
+	class TargetMachine;
+};
+
 NS_BF_BEGIN
 
 enum BfIRCodeGenEntryKind
@@ -72,10 +91,12 @@ public:
 	llvm::AttributeList* mAttrSet;
 	llvm::DIBuilder* mDIBuilder;
 	llvm::DICompileUnit* mDICompileUnit;
+	llvm::TargetMachine* mLLVMTargetMachine;
 	Array<llvm::DebugLoc> mSavedDebugLocs;
 	llvm::InlineAsm* mNopInlineAsm;
 	llvm::InlineAsm* mAsmObjectCheckAsm;	
 	llvm::DebugLoc mDebugLoc;
+	BfCodeGenOptions mCodeGenOptions;
 	bool mHasDebugLoc;	
 	bool mIsCodeView;
 	int mConstValIdx;
@@ -89,6 +110,7 @@ public:
 	Array<llvm::Constant*> mConfigConsts64;	
 
 public:		
+	void InitTarget();
 	void FixValues(llvm::StructType* structType, llvm::SmallVector<llvm::Value*, 8>& values);
 	BfTypeCode GetTypeCode(llvm::Type* type, bool isSigned);
 	llvm::Type* GetLLVMType(BfTypeCode typeCode, bool& isSigned);
@@ -145,6 +167,7 @@ public:
 	}
 
 	void HandleNextCmd() override;
+	void SetCodeGenOptions(BfCodeGenOptions codeGenOptions);
 	void SetConfigConst(int idx, int value) override;
 
 	llvm::Value* GetLLVMValue(int streamId);
@@ -156,7 +179,7 @@ public:
 
 	///
 
-	bool WriteObjectFile(const StringImpl& outFileName, const BfCodeGenOptions& codeGenOptions);
+	bool WriteObjectFile(const StringImpl& outFileName);
 	bool WriteIR(const StringImpl& outFileName, StringImpl& error);
 
 	static int GetIntrinsicId(const StringImpl& name);	

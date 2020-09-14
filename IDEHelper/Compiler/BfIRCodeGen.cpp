@@ -320,6 +320,7 @@ BfIRCodeGen::BfIRCodeGen()
 {
 	mStream = NULL;
 	mBfIRBuilder = NULL;
+	mLLVMTargetMachine = NULL;
 
 	mNopInlineAsm = NULL;
 	mAsmObjectCheckAsm = NULL;
@@ -356,6 +357,7 @@ BfIRCodeGen::~BfIRCodeGen()
 	delete mStream;
 	delete mIRBuilder;
 	delete mDIBuilder;
+	delete mLLVMTargetMachine;
 	delete mLLVMModule;
 	delete mLLVMContext;
 }
@@ -1359,6 +1361,100 @@ void BfIRCodeGen::CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value*
 	mIRBuilder->CreateMemSet(addr, val, size, alignment, isVolatile);
 }
 
+void BfIRCodeGen::InitTarget()
+{
+	llvm::SMDiagnostic Err;
+	llvm::Triple theTriple = llvm::Triple(mLLVMModule->getTargetTriple());
+	llvm::CodeGenOpt::Level optLvl = llvm::CodeGenOpt::None;	
+
+	String cpuName = "";
+	String arch = "";
+
+	// Get the target specific parser.
+	std::string Error;
+	const llvm::Target *theTarget = llvm::TargetRegistry::lookupTarget(arch.c_str(), theTriple, Error);
+	if (!theTarget)
+	{
+		Fail(StrFormat("Failed to create LLVM Target: %s", Error.c_str()));
+		return;
+	}
+
+	llvm::TargetOptions Options = llvm::TargetOptions(); // InitTargetOptionsFromCodeGenFlags();
+
+	String featuresStr;
+
+	if (mCodeGenOptions.mOptLevel == BfOptLevel_O1)
+	{
+		//optLvl = CodeGenOpt::Less;
+	}
+	else if (mCodeGenOptions.mOptLevel == BfOptLevel_O2)
+		optLvl = llvm::CodeGenOpt::Default;
+	else if (mCodeGenOptions.mOptLevel == BfOptLevel_O3)
+		optLvl = llvm::CodeGenOpt::Aggressive;
+
+	if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE)
+		featuresStr = "+sse";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE2)
+		featuresStr = "+sse2";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE3)
+		featuresStr = "+sse3";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE4)
+		featuresStr = "+sse4";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE41)
+		featuresStr = "+sse4.1";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX)
+		featuresStr = "+avx";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX2)
+		featuresStr = "+avx2";
+
+	llvm::Optional<llvm::Reloc::Model> relocModel;
+	llvm::CodeModel::Model cmModel = llvm::CodeModel::Small;
+
+	switch (mCodeGenOptions.mRelocType)
+	{
+	case BfRelocType_Static:
+		relocModel = llvm::Reloc::Model::DynamicNoPIC;
+		break;
+	case BfRelocType_PIC:
+		relocModel = llvm::Reloc::Model::PIC_;
+		break;
+	case BfRelocType_DynamicNoPIC:
+		relocModel = llvm::Reloc::Model::DynamicNoPIC;
+		break;
+	case BfRelocType_ROPI:
+		relocModel = llvm::Reloc::Model::ROPI;
+		break;
+	case BfRelocType_RWPI:
+		relocModel = llvm::Reloc::Model::RWPI;
+		break;
+	case BfRelocType_ROPI_RWPI:
+		relocModel = llvm::Reloc::Model::ROPI_RWPI;
+		break;
+	default: break;
+	}
+
+	switch (mCodeGenOptions.mPICLevel)
+	{
+	case BfPICLevel_Not:
+		mLLVMModule->setPICLevel(llvm::PICLevel::Level::NotPIC);
+		break;
+	case BfPICLevel_Small:
+		mLLVMModule->setPICLevel(llvm::PICLevel::Level::SmallPIC);
+		break;
+	case BfPICLevel_Big:
+		mLLVMModule->setPICLevel(llvm::PICLevel::Level::BigPIC);
+		break;
+	default: break;
+	}
+
+	mLLVMTargetMachine =
+		theTarget->createTargetMachine(theTriple.getTriple(), cpuName.c_str(), featuresStr.c_str(),
+			Options, relocModel, cmModel, optLvl);
+
+	mLLVMModule->setDataLayout(mLLVMTargetMachine->createDataLayout());
+
+}
+
 void BfIRCodeGen::HandleNextCmd()
 {	
 	int curId = mCmdCount;
@@ -1392,6 +1488,8 @@ void BfIRCodeGen::HandleNextCmd()
                 mLLVMModule->setTargetTriple(llvm::sys::getDefaultTargetTriple());
             else
                 mLLVMModule->setTargetTriple(targetTriple.c_str());
+
+			InitTarget();
 		}
 		break;
 	case BfIRCmd_Module_AddModuleFlag:
@@ -4219,6 +4317,11 @@ void BfIRCodeGen::HandleNextCmd()
 	}
 }
 
+void BfIRCodeGen::SetCodeGenOptions(BfCodeGenOptions codeGenOptions)
+{
+	mCodeGenOptions = codeGenOptions;
+}
+
 void BfIRCodeGen::SetConfigConst(int idx, int value)
 {
 	auto constVal = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), value);
@@ -4819,7 +4922,7 @@ llvm::Expected<llvm::BitcodeModule> FindThinLTOModule(llvm::MemoryBufferRef MBRe
 		llvm::inconvertibleErrorCode());
 }
 
-bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGenOptions& codeGenOptions)
+bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 {
 	// 	{
 	// 		PassManagerBuilderWrapper pmBuilder;
@@ -4829,7 +4932,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	
 	mHasDebugLoc = false; // So fails don't show a line number
 
-	bool enableLTO = codeGenOptions.mLTOType != BfLTOType_None;	
+	bool enableLTO = mCodeGenOptions.mLTOType != BfLTOType_None;	
 
 	if (enableLTO)
 	{
@@ -4839,98 +4942,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 			enableLTO = false;
 		}
 	}
-
-	llvm::CodeGenOpt::Level optLvl = llvm::CodeGenOpt::None;
-
-	llvm::SMDiagnostic Err;
-	llvm::Triple theTriple;
-
-	theTriple = llvm::Triple(mLLVMModule->getTargetTriple());
-
-	String cpuName = "";
-	String arch = "";
-
-	// Get the target specific parser.
-	std::string Error;
-	const llvm::Target *theTarget = llvm::TargetRegistry::lookupTarget(arch.c_str(), theTriple, Error);
-	if (!theTarget)
-	{
-		Fail(StrFormat("Failed to create LLVM Target: %s", Error.c_str()));
-		return false;
-	}
-
-	llvm::TargetOptions Options = llvm::TargetOptions(); // InitTargetOptionsFromCodeGenFlags();
-
-	String featuresStr;
-
-	if (codeGenOptions.mOptLevel == BfOptLevel_O1)
-	{
-		//optLvl = CodeGenOpt::Less;
-	}
-	else if (codeGenOptions.mOptLevel == BfOptLevel_O2)
-		optLvl = llvm::CodeGenOpt::Default;
-	else if (codeGenOptions.mOptLevel == BfOptLevel_O3)
-		optLvl = llvm::CodeGenOpt::Aggressive;
-
-	if (codeGenOptions.mSIMDSetting == BfSIMDSetting_SSE)
-		featuresStr = "+sse";
-	else if (codeGenOptions.mSIMDSetting == BfSIMDSetting_SSE2)
-		featuresStr = "+sse2";
-	else if (codeGenOptions.mSIMDSetting == BfSIMDSetting_SSE3)
-		featuresStr = "+sse3";
-	else if (codeGenOptions.mSIMDSetting == BfSIMDSetting_SSE4)
-		featuresStr = "+sse4";
-	else if (codeGenOptions.mSIMDSetting == BfSIMDSetting_SSE41)
-		featuresStr = "+sse4.1";
-	else if (codeGenOptions.mSIMDSetting == BfSIMDSetting_AVX)
-		featuresStr = "+avx";
-	else if (codeGenOptions.mSIMDSetting == BfSIMDSetting_AVX2)
-		featuresStr = "+avx2";
-
-	llvm::Optional<llvm::Reloc::Model> relocModel;
-	llvm::CodeModel::Model cmModel = llvm::CodeModel::Small;
-
-	switch (codeGenOptions.mRelocType)
-	{
-	case BfRelocType_Static:
-		relocModel = llvm::Reloc::Model::DynamicNoPIC;
-		break;
-	case BfRelocType_PIC:
-		relocModel = llvm::Reloc::Model::PIC_;
-		break;
-	case BfRelocType_DynamicNoPIC:
-		relocModel = llvm::Reloc::Model::DynamicNoPIC;
-		break;
-	case BfRelocType_ROPI:
-		relocModel = llvm::Reloc::Model::ROPI;
-		break;
-	case BfRelocType_RWPI:
-		relocModel = llvm::Reloc::Model::RWPI;
-		break;
-	case BfRelocType_ROPI_RWPI:
-		relocModel = llvm::Reloc::Model::ROPI_RWPI;
-		break;
-	default: break;
-	}
-
-	switch (codeGenOptions.mPICLevel)
-	{
-	case BfPICLevel_Not:
-		mLLVMModule->setPICLevel(llvm::PICLevel::Level::NotPIC);
-		break;
-	case BfPICLevel_Small:
-		mLLVMModule->setPICLevel(llvm::PICLevel::Level::SmallPIC);
-		break;
-	case BfPICLevel_Big:
-		mLLVMModule->setPICLevel(llvm::PICLevel::Level::BigPIC);
-		break;
-	default: break;
-	}
-
-	std::unique_ptr<llvm::TargetMachine> target(
-		theTarget->createTargetMachine(theTriple.getTriple(), cpuName.c_str(), featuresStr.c_str(),
-			Options, relocModel, cmModel, optLvl));	
-
+		
 	std::error_code EC;
 	llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_None;
 
@@ -4941,20 +4953,20 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 	// Build up all of the passes that we want to do to the module.
 	llvm::legacy::PassManager PM;
 
+	llvm::Triple theTriple = llvm::Triple(mLLVMModule->getTargetTriple());
 	// Add an appropriate TargetLibraryInfo pass for the module's triple.	
 	llvm::TargetLibraryInfoImpl TLII(theTriple);
 
 	PM.add(new llvm::TargetLibraryInfoWrapperPass(TLII));
 
-	// Add the target data from the target machine, if it exists, or the module.
-	mLLVMModule->setDataLayout(target->createDataLayout());
+	// Add the target data from the target machine, if it exists, or the module.	
 	//PM.add(new DataLayoutPass());
-	PopulateModulePassManager(PM, codeGenOptions);
+	PopulateModulePassManager(PM, mCodeGenOptions);
 
 	llvm::raw_fd_ostream* outStream = NULL;
 	defer ( delete outStream; );
 	
-	if ((enableLTO) || (codeGenOptions.mWriteBitcode))
+	if ((enableLTO) || (mCodeGenOptions.mWriteBitcode))
 	{
 		std::error_code ec;
 		outStream = new llvm::raw_fd_ostream(outFileName.c_str(), ec, llvm::sys::fs::F_None);
@@ -4990,11 +5002,11 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 		//WriteBitcode		
 		bool noVerify = false; // Option
 
-		if ((!enableLTO) && (!codeGenOptions.mWriteBitcode))
+		if ((!enableLTO) && (!mCodeGenOptions.mWriteBitcode))
 		{
 			// Ask the target to add backend passes as necessary.
-			if (target->addPassesToEmitFile(PM, out, NULL,
-				(codeGenOptions.mAsmKind != BfAsmKind_None) ? llvm::TargetMachine::CGFT_AssemblyFile : llvm::TargetMachine::CGFT_ObjectFile,
+			if (mLLVMTargetMachine->addPassesToEmitFile(PM, out, NULL,
+				(mCodeGenOptions.mAsmKind != BfAsmKind_None) ? llvm::TargetMachine::CGFT_AssemblyFile : llvm::TargetMachine::CGFT_ObjectFile,
 				//TargetMachine::CGFT_AssemblyFile,
 				noVerify /*, StartAfterID, StopAfterID*/))
 			{
@@ -5007,7 +5019,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName, const BfCodeGen
 
 		bool success = PM.run(*mLLVMModule);
 
-		if ((codeGenOptions.mOptLevel > BfOptLevel_O0) && (codeGenOptions.mWriteLLVMIR))
+		if ((mCodeGenOptions.mOptLevel > BfOptLevel_O0) && (mCodeGenOptions.mWriteLLVMIR))
 		{
 			BP_ZONE("BfCodeGen::RunLoop.LLVM.IR");
 			String fileName = outFileName;

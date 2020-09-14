@@ -26,24 +26,6 @@
 
 #pragma warning(pop)
 
-namespace llvm
-{
-	class Constant;
-	class Value;
-	class Type;
-	class BasicBlock;
-	class Function;
-	class FunctionType;
-	class MDNode;
-	class InlineAsm;
-	class DIType;
-	class DIBuilder;
-	class DICompileUnit;
-	class AttributeList;
-	class Module;
-	class LLVMContext;
-};
-
 NS_BF_BEGIN
 
 class BfModule;
@@ -707,12 +689,7 @@ public:
 	{		
 		mId = val.mId;
 	}
-
-	BfIRMDNode(llvm::MDNode* mdNode)
-	{	
-		mId = -1;
-	}
-
+	
 	operator bool() const
 	{		
 		return mId != -1;

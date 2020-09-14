@@ -11,6 +11,7 @@ namespace llvm
 {
 	class Module;
 	class LLVMContext;
+	class TargetMachine;
 }
 
 NS_BF_BEGIN
