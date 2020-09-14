@@ -275,6 +275,11 @@ namespace System.Reflection
 					else
 					{
 						TypeInstance.InterfaceData* interfaceData = null;
+						var variantType = target.VariantType;
+						if (variantType.IsPointer)
+							thisType = variantType.UnderlyingType as TypeInstance;
+						else
+							thisType = variantType as TypeInstance;
 						var checkType = thisType;
 						CheckLoop: while (checkType != null)
 						{
@@ -293,7 +298,7 @@ namespace System.Reflection
 						if (interfaceData == null)
 							return .Err(.InvalidTarget);
 
-						//funcPtr = *(thisType.[Friend]mInterfaceMethodTable + mMethodData.mVirtualIdx);
+						funcPtr = *(thisType.[Friend]mInterfaceMethodTable + interfaceData.mStartInterfaceTableIdx + mMethodData.mMethodIdx);
 					}
 
 					ifaceOffset = mTypeInstance.[Friend]mMemberDataOffset;
