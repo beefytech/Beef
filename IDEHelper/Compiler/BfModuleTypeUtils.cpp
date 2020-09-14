@@ -5349,19 +5349,18 @@ BfTypeInstance* BfModule::GetPrimitiveStructType(BfTypeCode typeCode)
 	return typeInst;
 }
 
-BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
-{	
+BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef, bool allowCreate)
+{
 	bool isStructPtr = false;
+	BfPopulateType populateType = allowCreate ? BfPopulateType_Data : BfPopulateType_Identity;
+	BfResolveTypeRefFlags resolveFlags = allowCreate ? BfResolveTypeRefFlag_None : BfResolveTypeRefFlag_NoCreate;
 
 	if (resolvedTypeRef->IsPrimitiveType())
 	{
 		auto primType = (BfPrimitiveType*)resolvedTypeRef;
 		resolvedTypeRef = GetPrimitiveStructType(primType->mTypeDef->mTypeCode);
-		if (resolvedTypeRef == NULL)
-		{
-			BFMODULE_FATAL(this, "Unable to find primitive type");
+		if (resolvedTypeRef == NULL)		
 			return NULL;
-		}
 	}
 	else if (resolvedTypeRef->IsPointer())
 	{
@@ -5375,7 +5374,9 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 		{
 			BfTypeVector typeVector;
 			typeVector.Add(pointerType->mElementType);
-			resolvedTypeRef = ResolveTypeDef(mCompiler->mPointerTTypeDef, typeVector, BfPopulateType_Data)->ToTypeInstance();
+			resolvedTypeRef = ResolveTypeDef(mCompiler->mPointerTTypeDef, typeVector, populateType, resolveFlags);
+			if (resolvedTypeRef == NULL)
+				return NULL;
 		}
 	}
 	else if (resolvedTypeRef->IsMethodRef())
@@ -5383,7 +5384,9 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 		BfMethodRefType* methodRefType = (BfMethodRefType*)resolvedTypeRef;
 		BfTypeVector typeVector;
 		typeVector.Add(methodRefType);
-		resolvedTypeRef = ResolveTypeDef(mCompiler->mMethodRefTypeDef, typeVector, BfPopulateType_Data)->ToTypeInstance();
+		resolvedTypeRef = ResolveTypeDef(mCompiler->mMethodRefTypeDef, typeVector, populateType, resolveFlags);
+		if (resolvedTypeRef == NULL)
+			return NULL;
 	}
 	else if (resolvedTypeRef->IsSizedArray())
 	{
@@ -5392,7 +5395,9 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 	 	typeVector.Add(sizedArrayType->mElementType);
 	 	auto sizeValue = BfTypedValue(GetConstValue(sizedArrayType->mElementCount), GetPrimitiveType(BfTypeCode_IntPtr));
 	 	typeVector.Add(CreateConstExprValueType(sizeValue));
-		resolvedTypeRef = ResolveTypeDef(mCompiler->mSizedArrayTypeDef, typeVector, BfPopulateType_Data)->ToTypeInstance();
+		resolvedTypeRef = ResolveTypeDef(mCompiler->mSizedArrayTypeDef, typeVector, populateType, resolveFlags);
+		if (resolvedTypeRef == NULL)
+			return NULL;
 	}	
 
 	BfTypeInstance* typeInst = resolvedTypeRef->ToTypeInstance();
@@ -5407,7 +5412,7 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef)
 	else
 		boxedType->mTypeDef = mCompiler->mValueTypeTypeDef;
 	boxedType->mBoxedFlags = isStructPtr ? BfBoxedType::BoxedFlags_StructPtr : BfBoxedType::BoxedFlags_None;
-	auto resolvedBoxedType = ResolveType(boxedType);
+	auto resolvedBoxedType = ResolveType(boxedType, populateType, resolveFlags);
 	if (resolvedBoxedType != boxedType)
 		mContext->mBoxedTypePool.GiveBack(boxedType);
 	return (BfBoxedType*)resolvedBoxedType;
@@ -5549,7 +5554,7 @@ BfPointerType* BfModule::CreatePointerType(BfTypeReference* typeRef)
 	return CreatePointerType(resolvedTypeRef);
 }
 
-BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType)
+BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
 	//BF_ASSERT(typeDef->mTypeCode != BfTypeCode_Extension);
 	BF_ASSERT(!typeDef->mIsPartial || typeDef->mIsCombinedPartial);
@@ -5558,7 +5563,7 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType
 	BF_ASSERT((typeDef->mOuterType == NULL) || (typeDef->mOuterType->mDefState != BfTypeDef::DefState_Deleted));
 
 	if (typeDef->mGenericParamDefs.size() != 0)
-		return ResolveTypeDef(typeDef, BfTypeVector(), populateType);
+		return ResolveTypeDef(typeDef, BfTypeVector(), populateType, resolveFlags);
 
 	auto typeDefTypeRef = mContext->mTypeDefTypeRefPool.Get();	
 	typeDefTypeRef->mTypeDef = typeDef;
@@ -5856,10 +5861,10 @@ bool BfModule::IsInnerType(BfTypeDef* checkInnerType, BfTypeDef* checkOuterType)
 	}	
 }
 
-BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& genericArgs, BfPopulateType populateType)
+BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
 	if (typeDef->mGenericParamDefs.size() == 0)
-		return ResolveTypeDef(typeDef, populateType);
+		return ResolveTypeDef(typeDef, populateType, resolveFlags);
 
 	if ((typeDef == mCompiler->mArray1TypeDef) || (typeDef == mCompiler->mArray2TypeDef))
 	{
@@ -5892,7 +5897,7 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& generic
 			}
 		}
 
-		auto resolvedType = ResolveType(arrayInstType, populateType);
+		auto resolvedType = ResolveType(arrayInstType, populateType, resolveFlags);
 		if (resolvedType != arrayInstType)
 		{
 			delete arrayInstType->mGenericTypeInfo;
@@ -5960,7 +5965,7 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& generic
 // 	}
 // 	else
 	{
-		resolvedType = ResolveType(genericInstType, populateType);
+		resolvedType = ResolveType(genericInstType, populateType, resolveFlags);
 	}
 	
 	
@@ -6546,19 +6551,24 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	return unspecializedType;
 }
 
-BfType* BfModule::ResolveType(BfType* lookupType, BfPopulateType populateType)
+BfType* BfModule::ResolveType(BfType* lookupType, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
 	BfResolvedTypeSet::LookupContext lookupCtx;
-	lookupCtx.mModule = this;
+	lookupCtx.mModule = this;	
+	lookupCtx.mResolveFlags = resolveFlags;
 	BfResolvedTypeSet::Entry* resolvedEntry = NULL;
 	bool inserted = mContext->mResolvedTypes.Insert(lookupType, &lookupCtx, &resolvedEntry);	
+
+	if (resolvedEntry == NULL)
+		return NULL;
+
 	if (!inserted)
 	{
 		auto resolvedTypeRef = resolvedEntry->mValue;
 		PopulateType(resolvedTypeRef, populateType);
 		return resolvedTypeRef;
 	}
-
+	
 	if (lookupType->IsGenericTypeInstance())
 		CheckUnspecializedGenericType((BfTypeInstance*)lookupType, populateType);
 

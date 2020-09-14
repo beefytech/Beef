@@ -630,8 +630,7 @@ public:
 
 public:
 	BfDeferredMethodCallData()
-	{
-		mDeferDIType = NULL;
+	{		
 		mAlign = 0;
 		mSize = 0;
 		mMethodId = 0;
@@ -2351,7 +2350,7 @@ public:
 		BfTypeDef* mRootTypeDef;		
 		BfTypeInstance* mRootOuterTypeInstance;
 		BfType* mResolvedType;		
-		BfResolveTypeRefFlags mResolveFlags;
+		BfResolveTypeRefFlags mResolveFlags;		
 		bool mFailed;		
 
 	public:
@@ -2426,6 +2425,9 @@ public:
 			BF_ASSERT(tryCount < 10);
 		}
 		
+		if ((ctx->mResolveFlags & BfResolveTypeRefFlag_NoCreate) != 0)
+			return false;
+
 		mCount++;
 		Entry* entry = (Entry*)BfResolvedTypeSetFuncs::Allocate(sizeof(Entry), alignof(Entry));
 		entry->mValue = NULL;

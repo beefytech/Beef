@@ -457,7 +457,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 		}
 		else
 		{
-			BfIRMDNode diForwardDecl = NULL;
+			BfIRMDNode diForwardDecl;
 			SizedArray<BfIRMDNode, 8> diFieldTypes;
 			if ((mBfIRBuilder->DbgHasInfo()) && (mHasFullDebugInfo))
 			{

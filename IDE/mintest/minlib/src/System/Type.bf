@@ -22,6 +22,7 @@ namespace System
 
         protected int32 mSize;
         protected TypeId mTypeId;
+        protected TypeId mBoxedType;
         protected TypeFlags mTypeFlags;
         protected int32 mMemberDataOffset;
         protected TypeCode mTypeCode;
@@ -462,7 +463,6 @@ namespace System
         
         public virtual Type GetBaseType()
         {
-            //return mBaseType;
             return null;
         }
 
@@ -474,6 +474,11 @@ namespace System
         {
             return type == this;
         }
+
+		public virtual bool CheckInterface(Type interfaceType)
+		{
+		    return false;
+		}
 
 		public virtual Result<FieldInfo> GetField(String fieldName)
 		{
@@ -598,6 +603,7 @@ namespace System.Reflection
 			public int16 mParamCount;
 			public MethodFlags mFlags;
 			public int32 mVirtualIdx;
+			public int32 mMethodIdx;
 			public int32 mCustomAttributesIdx;
         }
 
@@ -617,6 +623,13 @@ namespace System.Reflection
 			public int32 mDefaultIdx;
 		}
 
+		public struct InterfaceData
+		{
+			public TypeId mInterfaceType;
+			public int32 mStartInterfaceTableIdx;
+			public int32 mStartVirtualIdx;
+		}
+
         ClassVData* mTypeClassVData;
         String mName;
         String mNamespace;
@@ -625,7 +638,7 @@ namespace System.Reflection
 		int32 mCustomAttributesIdx;
         TypeId mBaseType;
         TypeId mUnderlyingType;
-		TypeId mOuterType;
+		TypeId mOuterType;		
 		int32 mInheritanceId;
 		int32 mInheritanceCount;
 
@@ -635,7 +648,8 @@ namespace System.Reflection
         int16 mPropertyDataCount;
         int16 mFieldDataCount;
 
-        void* mInterfaceDataPtr;
+        InterfaceData* mInterfaceDataPtr;
+		void** mInterfaceMethodTable;
         MethodData* mMethodDataPtr;
         void* mPropertyDataPtr;
         FieldData* mFieldDataPtr;
@@ -697,6 +711,11 @@ namespace System.Reflection
 			}
 		}
 
+		public override Type GetBaseType()
+		{
+			return Type.[Friend]GetType(mBaseType);
+		}
+
         public override bool IsSubtypeOf(Type checkBaseType)
 		{
 		    TypeInstance curType = this;
@@ -708,6 +727,17 @@ namespace System.Reflection
 		            return false;
 		        curType = (TypeInstance)Type.[Friend]GetType(curType.mBaseType);
 		    }
+		}
+
+		public override bool CheckInterface(Type interfaceType)
+		{
+			for (int i < mInterfaceCount)
+				if (mInterfaceDataPtr[i].mInterfaceType == interfaceType.TypeId)
+					return true;
+			let baseType = GetBaseType();
+			if (baseType != null)
+				return baseType.CheckInterface(interfaceType);
+		    return false;
 		}
 
         public override void GetFullName(String strBuffer)

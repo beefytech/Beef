@@ -251,6 +251,8 @@ namespace System.Reflection
 				}
 			}
 
+			void* funcPtr = null;
+			int ifaceOffset = -1;
 			if (mMethodData.mFlags.HasFlag(.Static))
 			{
 				if (target.HasValue)
@@ -260,9 +262,45 @@ namespace System.Reflection
 			{
 				if (!target.HasValue)
 					return .Err(.TargetExpected);
+				var thisType = mTypeInstance;
+				if (mTypeInstance.IsInterface)
+				{
+					if (target.IsObject)
+					{
+						var targetObject = target.Get<Object>();
+						thisType = targetObject.GetType() as TypeInstance;
+						if (thisType == null)
+							return .Err(.InvalidTarget);
+					}
+					else
+					{
+						TypeInstance.InterfaceData* interfaceData = null;
+						var checkType = thisType;
+						CheckLoop: while (checkType != null)
+						{
+							for (int ifaceIdx < checkType.[Friend]mInterfaceCount)
+							{
+								if (checkType.[Friend]mInterfaceDataPtr[ifaceIdx].mInterfaceType == mTypeInstance.TypeId)
+								{
+									interfaceData = &checkType.[Friend]mInterfaceDataPtr[ifaceIdx];
+									break CheckLoop;
+								}
+							}
 
-				bool splatThis = mTypeInstance.IsSplattable && !mMethodData.mFlags.HasFlag(.Mutating);
-				AddArg!::(-1, ref target, &target, mTypeInstance, splatThis);
+							checkType = checkType.BaseType;
+						}
+
+						if (interfaceData == null)
+							return .Err(.InvalidTarget);
+
+						//funcPtr = *(thisType.[Friend]mInterfaceMethodTable + mMethodData.mVirtualIdx);
+					}
+
+					ifaceOffset = mTypeInstance.[Friend]mMemberDataOffset;
+				}
+
+				bool splatThis = thisType.IsSplattable && !mMethodData.mFlags.HasFlag(.Mutating);
+				AddArg!::(-1, ref target, &target.[Friend]mData, thisType, splatThis);
 			}
 
 			if (args.Length != mMethodData.mParamCount)
@@ -288,7 +326,7 @@ namespace System.Reflection
 			{
 				let paramData = ref mMethodData.mParamData[@arg.Index];
 				let argType = Type.[Friend]GetType(paramData.mType);
-				AddArg!::(@arg.Index, ref arg, &arg, argType, paramData.mParamFlags.HasFlag(.Splat));
+				AddArg!::(@arg.Index, ref arg, &arg.[Friend]mData, argType, paramData.mParamFlags.HasFlag(.Splat));
 			}
 
 			FFICaller caller = .();
@@ -303,24 +341,32 @@ namespace System.Reflection
 					return .Err(.FFIError);
 			}
 
-			void* funcPtr = mMethodData.mFuncPtr;
-			if (mMethodData.mFlags.HasFlag(.Virtual))
+			if (funcPtr == null)
 			{
-				Object objTarget = target.Get<Object>();
-
+				funcPtr = mMethodData.mFuncPtr;
+				if (mMethodData.mFlags.HasFlag(.Virtual))
+				{
+					Object objTarget = target.Get<Object>();
+	
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-				void* classVData = (void*)(objTarget.[Friend]mClassVData & ~0xFF);
+					void* classVData = (void*)(objTarget.[Friend]mClassVData & ~0xFF);
 #else
-				void* classVData = objTarget.[Friend]mClassVData;
+					void* classVData = objTarget.[Friend]mClassVData;
 #endif
-				if (mMethodData.mVirtualIdx >= 0x100000)
-				{
-					void* extAddr = (void*)*((int*)classVData + (mMethodData.mVirtualIdx>>20 - 1));
-					funcPtr = (void*)*((int*)extAddr + (mMethodData.mVirtualIdx & 0xFFFFF));
-				}
-				else
-				{
-					funcPtr = (void*)*(int*)((uint8*)classVData + mMethodData.mVirtualIdx);
+					if (ifaceOffset >= 0)
+					{
+						void* ifaceVirtualTable = *(void**)((uint8*)classVData + ifaceOffset);
+						funcPtr = (void*)*(int*)((uint8*)ifaceVirtualTable + mMethodData.mVirtualIdx);
+					}
+					else if (mMethodData.mVirtualIdx >= 0x100000)
+					{
+						void* extAddr = (void*)*((int*)classVData + (mMethodData.mVirtualIdx>>20 - 1));
+						funcPtr = (void*)*((int*)extAddr + (mMethodData.mVirtualIdx & 0xFFFFF));
+					}
+					else
+					{
+						funcPtr = (void*)*(int*)((uint8*)classVData + mMethodData.mVirtualIdx);
+					}
 				}
 			}
 
@@ -549,6 +595,9 @@ namespace System.Reflection
 				}
 			}
 
+			void* funcPtr = mMethodData.mFuncPtr;
+			int virtualOffset = 0;
+			int ifaceOffset = -1;
 			if (mMethodData.mFlags.HasFlag(.Static))
 			{
 				if (target != null)
@@ -559,8 +608,38 @@ namespace System.Reflection
 				if (target == null)
 					return .Err(.TargetExpected);
 
-				bool splatThis = mTypeInstance.IsSplattable && !mMethodData.mFlags.HasFlag(.Mutating);
-				AddArg!::(-1, target, &target, mTypeInstance, splatThis);
+				var thisType = mTypeInstance;
+				if (mTypeInstance.IsInterface)
+				{
+					thisType = target.[Friend]RawGetType() as TypeInstance;
+					if (thisType == null)
+						return .Err(.InvalidTarget);
+
+					ifaceOffset = mTypeInstance.[Friend]mMemberDataOffset;
+
+					/*TypeInstance.InterfaceData* interfaceData = null;
+					var checkType = thisType;
+					CheckLoop: while (checkType != null)
+					{
+						for (int ifaceIdx < checkType.[Friend]mInterfaceCount)
+						{
+							if (checkType.[Friend]mInterfaceDataPtr[ifaceIdx].mInterfaceType == mTypeInstance.TypeId)
+							{
+								interfaceData = &checkType.[Friend]mInterfaceDataPtr[ifaceIdx];
+								break CheckLoop;
+							}
+						}
+
+						checkType = checkType.BaseType;
+					}
+
+					if (interfaceData == null)
+						return .Err(.InvalidTarget);
+					virtualOffset = interfaceData.mStartVirtualIdx * sizeof(int);*/
+				}
+
+				bool splatThis = thisType.IsSplattable && !mMethodData.mFlags.HasFlag(.Mutating);
+				AddArg!::(-1, target, &target, thisType, splatThis);
 			}
 
 			if (args.Count != mMethodData.mParamCount)
@@ -601,7 +680,6 @@ namespace System.Reflection
 					return .Err(.FFIError);
 			}
 
-			void* funcPtr = mMethodData.mFuncPtr;
 			if (mMethodData.mFlags.HasFlag(.Virtual))
 			{
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
@@ -609,14 +687,19 @@ namespace System.Reflection
 #else
 				void* classVData = target.[Friend]mClassVData;
 #endif
-				if (mMethodData.mVirtualIdx >= 0x100000)
+				if (ifaceOffset >= 0)
+				{
+					void* ifaceVirtualTable = *(void**)((uint8*)classVData + ifaceOffset);
+					funcPtr = (void*)*(int*)((uint8*)ifaceVirtualTable + mMethodData.mVirtualIdx + virtualOffset);
+				}
+				else if (mMethodData.mVirtualIdx >= 0x100000)
 				{
 					void* extAddr = (void*)*((int*)classVData + (mMethodData.mVirtualIdx>>20 - 1));
-					funcPtr = (void*)*((int*)extAddr + (mMethodData.mVirtualIdx & 0xFFFFF));
+					funcPtr = (void*)*((int*)extAddr + (mMethodData.mVirtualIdx & 0xFFFFF) + virtualOffset);
 				}
 				else
 				{
-					funcPtr = (void*)*(int*)((uint8*)classVData + mMethodData.mVirtualIdx);
+					funcPtr = (void*)*(int*)((uint8*)classVData + mMethodData.mVirtualIdx + virtualOffset);
 				}
 			}
 

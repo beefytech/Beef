@@ -22,6 +22,7 @@ namespace System
 
         protected int32 mSize;
         protected TypeId mTypeId;
+        protected TypeId mBoxedType;
         protected TypeFlags mTypeFlags;
         protected int32 mMemberDataOffset;
         protected TypeCode mTypeCode;
@@ -195,6 +196,14 @@ namespace System
 		    get
 		    {
 		        return (mTypeFlags & TypeFlags.Object) != 0;
+		    }
+		}
+
+		public bool IsInterface
+		{
+		    get
+		    {
+		        return (mTypeFlags & TypeFlags.Interface) != 0;
 		    }
 		}
 
@@ -630,6 +639,7 @@ namespace System.Reflection
 			public TypeId mReturnType;
 			public int16 mParamCount;
 			public MethodFlags mFlags;
+			public int32 mMethodIdx;
 			public int32 mVirtualIdx;
 			public int32 mCustomAttributesIdx;
         }
@@ -650,6 +660,13 @@ namespace System.Reflection
 			public int32 mDefaultIdx;
 		}
 
+		public struct InterfaceData
+		{
+			public TypeId mInterfaceType;
+			public int32 mStartInterfaceTableIdx;
+			public int32 mStartVirtualIdx;
+		}
+
         ClassVData* mTypeClassVData;
         String mName;
         String mNamespace;
@@ -658,7 +675,7 @@ namespace System.Reflection
 		int32 mCustomAttributesIdx;
         TypeId mBaseType;
         TypeId mUnderlyingType;
-		TypeId mOuterType;
+		TypeId mOuterType;		
 		int32 mInheritanceId;
 		int32 mInheritanceCount;
 
@@ -668,11 +685,12 @@ namespace System.Reflection
         int16 mPropertyDataCount;
         int16 mFieldDataCount;
 
-        void* mInterfaceDataPtr;
-        MethodData* mMethodDataPtr;
-        void* mPropertyDataPtr;
-        FieldData* mFieldDataPtr;
-        void** mCustomAttrDataPtr;
+        InterfaceData* mInterfaceDataPtr;
+		void** mInterfaceMethodTable;
+		MethodData* mMethodDataPtr;
+		void* mPropertyDataPtr;
+		FieldData* mFieldDataPtr;
+		void** mCustomAttrDataPtr;
 
         public override int32 InstanceSize
         {
@@ -1035,13 +1053,14 @@ namespace System.Reflection
         Boxed                   = 0x0010,
         Pointer                 = 0x0020,
         Struct                  = 0x0040,
-        Primitive               = 0x0080,
-		TypedPrimitive          = 0x0100,
-		Tuple					= 0x0200,
-		Nullable				= 0x0400,
-		SizedArray				= 0x0800,
-		Splattable				= 0x1000,
-		Union					= 0x2000,
+		Interface               = 0x0080,
+        Primitive               = 0x0100,
+		TypedPrimitive          = 0x0200,
+		Tuple					= 0x0400,
+		Nullable				= 0x0800,
+		SizedArray				= 0x1000,
+		Splattable				= 0x2000,
+		Union					= 0x4000,
 		//
 		WantsMark				= 0x8000,
 		Delegate				= 0x10000,

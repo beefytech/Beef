@@ -418,6 +418,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mReflectFieldSplatDataDef = NULL;
 	mReflectMethodDataDef = NULL;
 	mReflectParamDataDef = NULL;
+	mReflectInterfaceDataDef = NULL;
 	mReflectPointerType = NULL;
 	mReflectRefType = NULL;
 	mReflectSizedArrayType = NULL;
@@ -1422,7 +1423,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		if (bfModule->mBfIRBuilder->DbgHasInfo())
 		{
 			auto dbgArrayType = bfModule->mBfIRBuilder->DbgCreateArrayType(stringList.size() * mSystem->mPtrSize * 8, mSystem->mPtrSize * 8, bfModule->mBfIRBuilder->DbgGetType(stringPtrType), (int)stringList.size());
-			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, stringsVariableName, stringsVariableName, NULL, 0, dbgArrayType, false, stringArrayVar);
+			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, stringsVariableName, stringsVariableName, BfIRMDNode(), 0, dbgArrayType, false, stringArrayVar);
 		}
 	}
 
@@ -1450,7 +1451,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		if (bfModule->mBfIRBuilder->DbgHasInfo())
 		{
 			auto dbgArrayType = bfModule->mBfIRBuilder->DbgCreateArrayType(stringList.size() * mSystem->mPtrSize * 8, mSystem->mPtrSize * 8, bfModule->mBfIRBuilder->DbgGetType(stringPtrType), (int)stringList.size());
-			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, stringsVariableName, stringsVariableName, NULL, 0, dbgArrayType, false, stringArrayVar);
+			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, stringsVariableName, stringsVariableName, BfIRMDNode(), 0, dbgArrayType, false, stringArrayVar);
 		}
 	}
 
@@ -1974,7 +1975,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			String name = "__BFTLS_EXTRA";
 			auto irVal = bfModule->mBfIRBuilder->CreateGlobalVariable(irArrType, false, BfIRLinkageType_External, bfModule->mBfIRBuilder->CreateConstStructZero(irArrType), name, true);
 			BfIRMDNode dbgArrayType = bfModule->mBfIRBuilder->DbgCreateArrayType(dataSize * 8, 8, bfModule->mBfIRBuilder->DbgGetType(int8Type), dataSize);
-			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, name, name, NULL, 0, dbgArrayType, false, irVal);
+			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, name, name, BfIRMDNode(), 0, dbgArrayType, false, irVal);
 		}
 
 		if (isPosixDynLib)
@@ -2740,7 +2741,8 @@ void BfCompiler::GenerateSlotNums()
 		auto typeInstance = type->ToTypeInstance();
 		if ((typeInstance->mSlotNum <= 0) || (!isHotCompile))
 		{
-			if (mContext->mReferencedIFaceSlots.Contains(typeInstance))
+			if ((mContext->mReferencedIFaceSlots.Contains(typeInstance)) || 
+				(typeInstance->mHasBeenInstantiated) || (typeInstance->mIncludeAllMethods))
 			{
 				if (typeInstance->mSlotNum == -2)
 					typeInstance->mSlotNum = -1;
@@ -6326,6 +6328,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mReflectFieldSplatDataDef = _GetRequiredType("System.Reflection.TypeInstance.FieldSplatData");
 	mReflectMethodDataDef = _GetRequiredType("System.Reflection.TypeInstance.MethodData");
 	mReflectParamDataDef = _GetRequiredType("System.Reflection.TypeInstance.ParamData");
+	mReflectInterfaceDataDef = _GetRequiredType("System.Reflection.TypeInstance.InterfaceData");
 	mReflectPointerType = _GetRequiredType("System.Reflection.PointerType");
 	mReflectRefType = _GetRequiredType("System.Reflection.RefType");
 	mReflectSizedArrayType = _GetRequiredType("System.Reflection.SizedArrayType");

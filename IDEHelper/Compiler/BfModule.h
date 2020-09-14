@@ -1646,7 +1646,7 @@ public:
 	BfPointerType* CreatePointerType(BfType* resolvedType);
 	BfPointerType* CreatePointerType(BfTypeReference* typeRef);
 	BfConstExprValueType* CreateConstExprValueType(const BfTypedValue& typedValue);
-	BfBoxedType* CreateBoxedType(BfType* resolvedTypeRef);	
+	BfBoxedType* CreateBoxedType(BfType* resolvedTypeRef, bool allowCreate = true);
 	BfTypeInstance* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames, bool allowVar = false);
 	BfTypeInstance* SantizeTupleType(BfTypeInstance* tupleType);
 	BfRefType* CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind = BfRefType::RefKind_Ref);
@@ -1662,7 +1662,7 @@ public:
 	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);
 	bool TypeEquals(BfTypedValue& val, BfType* type);
 	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
-	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data);	
+	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized);
 	String GenericParamSourceToString(const BfGenericParamSource& genericParamSource);
 	bool CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs = NULL, BfError** errorOut = NULL);
@@ -1718,8 +1718,8 @@ public:
 	BfType* ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool resolveGenericParam = true);
 	BfType* ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeReference*>* genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	//BfType* ResolveTypeRef(BfIdentifierNode* identifier, const BfSizedArray<BfTypeReference*>& genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
-	BfType* ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType = BfPopulateType_Data);
-	BfType* ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& genericArgs, BfPopulateType populateType = BfPopulateType_Data);
+	BfType* ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
+	BfType* ResolveTypeDef(BfTypeDef* typeDef, const BfTypeVector& genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	BfType* ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false, int numGenericArgs = 0);
 	BfType* ResolveInnerType(BfType* outerType, BfIdentifierNode* identifier, BfPopulateType populateType = BfPopulateType_Data, bool ignoreErrors = false);
 	BfTypeDef* GetCombinedPartialTypeDef(BfTypeDef* type);

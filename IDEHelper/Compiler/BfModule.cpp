@@ -1097,7 +1097,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "BeefTest_TestProgram")
+                (mModuleName == "-")
 				//|| (mModuleName == "BeefTest2_ClearColorValue")
 				//|| (mModuleName == "Tests_FuncRefs")
 				)
@@ -4819,6 +4819,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	}
 	if (type->IsStruct())	
 		typeFlags |= BfTypeFlags_Struct;
+	if (type->IsInterface())
+		typeFlags |= BfTypeFlags_Interface;
 	if (type->IsBoxed())
 	{
 		typeFlags |= BfTypeFlags_Boxed;
@@ -4846,8 +4848,13 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	if (type->WantsGCMarking())
 		typeFlags |= BfTypeFlags_WantsMarking;
 
+	int virtSlotIdx = -1;
+	if ((typeInstance != NULL) && (typeInstance->mSlotNum >= 0))
+		virtSlotIdx = typeInstance->mSlotNum + 1 + mCompiler->GetDynCastVDataCount();
 	int memberDataOffset = 0;
-	if (typeInstance != NULL)
+	if (type->IsInterface())
+		memberDataOffset = virtSlotIdx * mSystem->mPtrSize;
+	else if (typeInstance != NULL)
 	{
 		for (auto& fieldInstance : typeInstance->mFieldInstances)
 		{
@@ -4858,11 +4865,21 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			}
 		}
 	}
+
+	int boxedTypeId = 0;
+	if (type->IsValueType())
+	{
+		auto boxedType = CreateBoxedType(type, false);
+		if ((boxedType != NULL) && (boxedType->mIsReified))
+			boxedTypeId = boxedType->mTypeId;
+	}
+
 	SizedArray<BfIRValue, 8> typeDataParams =
 	{
 		objectData,
 		GetConstValue(type->mSize, intType), // mSize
 		GetConstValue(type->mTypeId, typeIdType), // mTypeId
+		GetConstValue(boxedTypeId, typeIdType), // mBoxedType
 		GetConstValue(typeFlags, intType), // mTypeFlags
 		GetConstValue(memberDataOffset, intType), // mMemberDataOffset		
 		GetConstValue(typeCode, byteType), // mTypeCode
@@ -4975,20 +4992,18 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			}
 		}		
 	}
-
+	
 	SizedArray<BfIRValue, 32> vData;
 	BfIRValue classVDataVar;
 	String classVDataName;
 	if (typeInstance->mSlotNum >= 0)
 	{
-		// For interfaces we ONLY emit the slot num		
-		int virtSlotIdx = typeInstance->mSlotNum + 1 + mCompiler->GetDynCastVDataCount();
-
+		// For interfaces we ONLY emit the slot num				
 		StringT<128> slotVarName;
 		BfMangler::MangleStaticFieldName(slotVarName, mCompiler->GetMangleKind(), typeInstance, "sBfSlotOfs");
 		auto intType = GetPrimitiveType(BfTypeCode_Int32);
 		auto slotNumVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(intType), true, BfIRLinkageType_External,
-			GetConstValue32(virtSlotIdx), slotVarName);		
+			GetConstValue32(virtSlotIdx), slotVarName);
 	}
 	else if ((typeInstance->IsObject()) && (!typeInstance->IsUnspecializedType()) && (needsVData))
 	{		
@@ -6212,7 +6227,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Public);
 		if (methodDef->mIsStatic)
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Static);
-		if (methodDef->mIsVirtual)
+		if ((methodDef->mIsVirtual) || (moduleMethodInstance.mMethodInstance->mVirtualTableIdx != -1))
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Virtual);
 		if (methodDef->mCallingConvention == BfCallingConvention_Fastcall)
 			methodFlags = (MethodFlags)(methodFlags | MethodFlags_FastCall);
@@ -6279,27 +6294,35 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		if (defaultMethod->mVirtualTableIdx != -1)
 		{
 			int vDataIdx = -1;
-			vDataIdx = 1 + mCompiler->GetDynCastVDataCount() + mCompiler->mMaxInterfaceSlots;
-			if ((mCompiler->mOptions.mHasVDataExtender) && (mCompiler->IsHotCompile()))
-			{
-				auto typeInst = defaultMethod->mMethodInstanceGroup->mOwner;
 
-				int extMethodIdx = (defaultMethod->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) - typeInst->GetOrigSelfVTableSize();
-				if (extMethodIdx >= 0)
-				{
-					// Extension?
-					int vExtOfs = typeInst->GetOrigImplBaseVTableSize();
-					vDataVal = ((vDataIdx + vExtOfs + 1) << 20) | (extMethodIdx);
-				}
-				else
-				{
-					// Map this new virtual index back to the original index
-					vDataIdx += (defaultMethod->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) + typeInst->GetOrigImplBaseVTableSize();
-				}
+			if (type->IsInterface())
+			{
+				vDataIdx = defaultMethod->mVirtualTableIdx;
 			}
 			else
 			{
-				vDataIdx += defaultMethod->mVirtualTableIdx;
+				vDataIdx = 1 + mCompiler->GetDynCastVDataCount() + mCompiler->mMaxInterfaceSlots;
+				if ((mCompiler->mOptions.mHasVDataExtender) && (mCompiler->IsHotCompile()))
+				{
+					auto typeInst = defaultMethod->mMethodInstanceGroup->mOwner;
+
+					int extMethodIdx = (defaultMethod->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) - typeInst->GetOrigSelfVTableSize();
+					if (extMethodIdx >= 0)
+					{
+						// Extension?
+						int vExtOfs = typeInst->GetOrigImplBaseVTableSize();
+						vDataVal = ((vDataIdx + vExtOfs + 1) << 20) | (extMethodIdx);
+					}
+					else
+					{
+						// Map this new virtual index back to the original index
+						vDataIdx += (defaultMethod->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) + typeInst->GetOrigImplBaseVTableSize();
+					}
+				}
+				else
+				{
+					vDataIdx += defaultMethod->mVirtualTableIdx;
+				}
 			}
 			if (vDataVal == -1)
 				vDataVal = vDataIdx * mSystem->mPtrSize;
@@ -6314,6 +6337,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				GetConstValue(defaultMethod->mReturnType->mTypeId, typeIdType),
 				GetConstValue((int)paramVals.size(), shortType),
 				GetConstValue(methodFlags, shortType),
+				GetConstValue(methodIdx, intType),
 				GetConstValue(vDataVal, intType),
 				GetConstValue(customAttrIdx, intType),
 			};
@@ -6336,6 +6360,72 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	
 	/////
 
+	int interfaceCount = 0;
+	BfIRValue interfaceDataPtr;
+	BfType* reflectInterfaceDataType = ResolveTypeDef(mCompiler->mReflectInterfaceDataDef);
+	BfIRType interfaceDataPtrType = mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapType(reflectInterfaceDataType));
+	if (typeInstance->mInterfaces.IsEmpty())
+		interfaceDataPtr = mBfIRBuilder->CreateConstNull(interfaceDataPtrType);
+	else
+	{
+		SizedArray<BfIRValue, 16> interfaces;
+		for (auto& interface : typeInstance->mInterfaces)
+		{
+			SizedArray<BfIRValue, 8> interfaceDataVals =
+			{
+				emptyValueType,
+				GetConstValue(interface.mInterfaceType->mTypeId, typeIdType),
+				GetConstValue(interface.mStartInterfaceTableIdx, intType),
+				GetConstValue(interface.mStartVirtualIdx, intType),
+			};
+
+			auto interfaceData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectInterfaceDataType->ToTypeInstance(), BfIRPopulateType_Full), interfaceDataVals);
+			interfaces.push_back(interfaceData);
+		}
+
+		BfIRType interfaceDataArrayType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->MapType(reflectInterfaceDataType, BfIRPopulateType_Full), (int)interfaces.size());
+		BfIRValue interfaceDataConst = mBfIRBuilder->CreateConstArray(interfaceDataArrayType, interfaces);
+		BfIRValue interfaceDataArray = mBfIRBuilder->CreateGlobalVariable(interfaceDataArrayType, true, BfIRLinkageType_Internal,
+			interfaceDataConst, "interfaces." + typeDataName);
+		interfaceDataPtr = mBfIRBuilder->CreateBitCast(interfaceDataArray, interfaceDataPtrType);
+		interfaceCount = (int)interfaces.size();
+	}
+	
+	BfIRValue interfaceMethodTable;
+	if ((!typeInstance->IsInterface()) && (typeInstance->mIsReified) && (!typeInstance->IsUnspecializedType()) 
+		&& (!typeInstance->mInterfaceMethodTable.IsEmpty()))			
+	{
+		SizedArray<BfIRValue, 16> methods;
+		for (auto& methodEntry : typeInstance->mInterfaceMethodTable)
+		{
+			BfIRValue funcVal = voidPtrNull;
+			if (!methodEntry.mMethodRef.IsNull())			
+			{
+				BfMethodInstance* methodInstance = methodEntry.mMethodRef;
+				if ((methodInstance->mIsReified) && (methodInstance->mMethodInstanceGroup->IsImplemented()) && (!methodInstance->mIsUnspecialized))
+				{
+					auto moduleMethodInstance = ReferenceExternalMethodInstance(methodInstance);					
+					if (moduleMethodInstance.mFunc)
+						funcVal = mBfIRBuilder->CreateBitCast(moduleMethodInstance.mFunc, voidPtrIRType);
+				}
+			}
+			methods.Add(funcVal);
+		}
+
+		while ((!methods.IsEmpty()) && (methods.back() == voidPtrNull))
+			methods.pop_back();
+
+		BfIRType methodDataArrayType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->MapType(voidPtrType, BfIRPopulateType_Full), (int)methods.size());
+		BfIRValue methodDataConst = mBfIRBuilder->CreateConstArray(methodDataArrayType, methods);
+		BfIRValue methodDataArray = mBfIRBuilder->CreateGlobalVariable(methodDataArrayType, true, BfIRLinkageType_Internal,
+			methodDataConst, "imethods." + typeDataName);
+		interfaceMethodTable = mBfIRBuilder->CreateBitCast(methodDataArray, voidPtrPtrIRType);		
+	}
+	else
+		interfaceMethodTable = mBfIRBuilder->CreateConstNull(voidPtrPtrIRType);
+
+	/////
+
 	int underlyingType = 0;	
 	if ((typeInstance->IsTypedPrimitive()) || (typeInstance->IsBoxed()))
 	{		
@@ -6348,6 +6438,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	{		
 		outerTypeId = outerType->mTypeId;
 	}	
+	
+	//
 
 	BfIRValue customAttrDataPtr;
 	if (customAttrs.size() > 0)
@@ -6375,17 +6467,18 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			GetConstValue(typeCustomAttrIdx, intType), // mCustomAttributes
 			GetConstValue(baseTypeId, typeIdType), // mBaseType
 			GetConstValue(underlyingType, typeIdType), // mUnderlyingType			
-			GetConstValue(outerTypeId, typeIdType), // mOuterType
+			GetConstValue(outerTypeId, typeIdType), // mOuterType			
 			GetConstValue(typeInstance->mInheritanceId, intType), // mInheritanceId
 			GetConstValue(typeInstance->mInheritanceCount, intType), // mInheritanceCount
 
 			GetConstValue(typeInstance->mSlotNum, byteType), // mInterfaceSlot
-			GetConstValue(0, byteType), // mInterfaceCount
+			GetConstValue(interfaceCount, byteType), // mInterfaceCount
 			GetConstValue((int)methodTypes.size(), shortType), // mMethodDataCount
 			GetConstValue(0, shortType), // mPropertyDataCount
 			GetConstValue((int)fieldTypes.size(), shortType), // mFieldDataCount			
 
-			voidPtrNull, // mInterfaceDataPtr
+			interfaceDataPtr, // mInterfaceDataPtr
+			interfaceMethodTable, // mInterfaceMethodTable
 			methodDataPtr, // mMethodDataPtr
 			voidPtrNull, // mPropertyDataPtr
 			fieldDataPtr, // mFieldDataPtr			
@@ -6470,7 +6563,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 		if (mBfIRBuilder->DbgHasInfo())
 		{
-			mBfIRBuilder->DbgCreateGlobalVariable(mDICompileUnit, typeDataName, typeDataName, NULL, 0, mBfIRBuilder->DbgGetTypeInst(typeInstanceType->ToTypeInstance()), false, typeDataVar);
+			mBfIRBuilder->DbgCreateGlobalVariable(mDICompileUnit, typeDataName, typeDataName, BfIRMDNode(), 0, mBfIRBuilder->DbgGetTypeInst(typeInstanceType->ToTypeInstance()), false, typeDataVar);
 		}
 	}
 	else
@@ -6502,7 +6595,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			
 			BfType* classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);
 			BfIRMDNode arrayType = mBfIRBuilder->DbgCreateArrayType(vData.size() * mSystem->mPtrSize * 8, mSystem->mPtrSize * 8, mBfIRBuilder->DbgGetType(voidPtrType), vData.size());
-			mBfIRBuilder->DbgCreateGlobalVariable(mDICompileUnit, classVDataName, classVDataName, NULL, 0, arrayType, false, classVDataVar);
+			mBfIRBuilder->DbgCreateGlobalVariable(mDICompileUnit, classVDataName, classVDataName, BfIRMDNode(), 0, arrayType, false, classVDataVar);
 		}
     }
 		
@@ -17337,7 +17430,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
  				defLine + 1, diFuncType, false, true, 
  				llvm::dwarf::DW_VIRTUALITY_none,
  				0,
- 				nullptr, flags, IsOptimized(), llvmFunction, genericArgs, genericConstValueArgs);
+				BfIRMDNode(), flags, IsOptimized(), llvmFunction, genericArgs, genericConstValueArgs);
 
 		}
 	}
