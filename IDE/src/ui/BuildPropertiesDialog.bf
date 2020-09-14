@@ -151,6 +151,10 @@ namespace IDE.ui
 			typeName.Clear(); typeName.Append(optionsName, "mReflectAlwaysInclude");
 			AddPropertiesItem(reflectItem, "Always Include", typeName);
 
+			typeName.Clear(); typeName.Append(optionsName, "mReflectBoxing");
+			AddPropertiesItem(reflectItem, "Dynamic Boxing", typeName,
+				scope String[] ( "No", "Yes" ));
+
 			typeName.Clear(); typeName.Append(optionsName, "mReflectStaticFields");
 			AddPropertiesItem(reflectItem, "Static Fields", typeName,
 				scope String[] ( "No", "Yes" ));

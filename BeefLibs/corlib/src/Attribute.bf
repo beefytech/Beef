@@ -46,9 +46,11 @@ namespace System
 		Constructors = 0x10,
 		StaticMethods = 0x20,
 		Methods = 0x40,
-		All = 0x7F,
+		DynamicBoxing = 0x80,
+		//User = 0x100, // Internal Use
+		All = 0xFF,
 
-		ApplyToInnerTypes = 0x80,
+		ApplyToInnerTypes = 0x200,
 	}
 
 	public enum AttributeFlags

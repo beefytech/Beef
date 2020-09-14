@@ -304,6 +304,14 @@ namespace System
 			}
 		}
 
+		public TypeInstance BoxedType
+		{
+			get
+			{
+				return (TypeInstance)GetType(mBoxedType);
+			}
+		}
+
 		public bool IsEnum
 		{
 		    get

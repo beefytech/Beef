@@ -5530,120 +5530,24 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		reflectIncludeAllMethods = true;
 	}
 
-	enum ReflectKind
-	{
-		ReflectKind_None = 0,
-		ReflectKind_Type = 1,
-		ReflectKind_NonStaticFields = 2,
-		ReflectKind_StaticFields = 4,
-		ReflectKind_DefaultConstructor = 8,
-		ReflectKind_Constructors = 0x10,
-		ReflectKind_StaticMethods = 0x20,
-		ReflectKind_Methods = 0x40,
-		ReflectKind_User = 0x80,
-		ReflectKind_All = 0x7F,
-
-		ReflectKind_ApplyToInnerTypes = 0x80
-	};
-
-	ReflectKind reflectKind = ReflectKind_Type;
-
-	auto _GetReflectUser = [&](BfTypeInstance* attrType)
-	{
-		ReflectKind reflectKind = ReflectKind_None;
-
-		if (attrType->mCustomAttributes != NULL)
-		{
-			for (auto& customAttr : attrType->mCustomAttributes->mAttributes)
-			{
-				if (customAttr.mType->mTypeDef->mName->ToString() == "AttributeUsageAttribute")
-				{
-					for (auto& prop : customAttr.mSetProperties)
-					{
-						auto propDef = prop.mPropertyRef.mTypeInstance->mTypeDef->mProperties[prop.mPropertyRef.mPropIdx];
-						if (propDef->mName == "ReflectUser")
-						{
-							if (prop.mParam.mValue.IsConst())
-							{
-								auto constant = attrType->mConstHolder->GetConstant(prop.mParam.mValue);
-								reflectKind = (ReflectKind)(reflectKind | (ReflectKind)constant->mInt32);
-							}
-						}
-					}
-
-					// Check for Flags arg
-					if (customAttr.mCtorArgs.size() < 2)
-						continue;
-					auto constant = attrType->mConstHolder->GetConstant(customAttr.mCtorArgs[1]);
-					if (constant == NULL)
-						continue;
-					if (constant->mTypeCode == BfTypeCode_Boolean)
-						continue;
-					if ((constant->mInt8 & BfCustomAttributeFlags_ReflectAttribute) != 0)
-						reflectKind = (ReflectKind)(reflectKind | ReflectKind_User);
-				}
-			}
-		}
-
-		return reflectKind;
-	};
+	BfReflectKind reflectKind = BfReflectKind_Type;
 
 	auto _GetReflectUserFromDirective = [&](BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget)
 	{
-		ReflectKind reflectKind = ReflectKind_None;
+		BfReflectKind reflectKind = BfReflectKind_None;
 		auto customAttrs = GetCustomAttributes(attributesDirective, attrTarget);
 		if (customAttrs != NULL)
 		{
 			for (auto& attr : customAttrs->mAttributes)
 			{
-				reflectKind = (ReflectKind)(reflectKind | _GetReflectUser(attr.mType));
+				reflectKind = (BfReflectKind)(reflectKind | GetUserReflectKind(attr.mType));
 			}
 		}
 		return reflectKind;
 	};
 
-	//
-	{
-
-		auto checkTypeInstance = typeInstance;
-		while (checkTypeInstance != NULL)
-		{
-			if (checkTypeInstance->mCustomAttributes != NULL)
-			{
-				auto checkReflectKind = ReflectKind_None;
-
-				for (auto& customAttr : checkTypeInstance->mCustomAttributes->mAttributes)
-				{					
-					if (customAttr.mType->mTypeDef->mName->ToString() == "ReflectAttribute")
-					{
-						if (customAttr.mCtorArgs.size() > 0)
-						{
-							auto constant = checkTypeInstance->mConstHolder->GetConstant(customAttr.mCtorArgs[0]);
-							checkReflectKind = (ReflectKind)((int)checkReflectKind | constant->mInt32);
-						}
-						else
-						{
-							checkReflectKind = ReflectKind_All;
-						}
-					}
-					else
-					{
-						auto userReflectKind = _GetReflectUser(customAttr.mType);
-						checkReflectKind = (ReflectKind)(checkReflectKind | userReflectKind);
-					}
-				}
-
-				if ((checkTypeInstance == typeInstance) ||
-					((checkReflectKind & ReflectKind_ApplyToInnerTypes) != 0))
-				{
-					reflectKind = (ReflectKind)(reflectKind | checkReflectKind);
-				}
-			}
-
-			checkTypeInstance = mContext->mUnreifiedModule->GetOuterType(checkTypeInstance);
-		}
-	}
-
+	reflectKind = GetReflectKind(reflectKind, typeInstance);
+	
 	// Fields
 	BfType* reflectFieldDataType = ResolveTypeDef(mCompiler->mReflectFieldDataDef);
 	BfIRValue emptyValueType = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectFieldDataType->ToTypeInstance()->mBaseType), SizedArray<BfIRValue, 1>());
@@ -5836,7 +5740,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			if (fieldDef == NULL)
 				continue;
 
-			auto fieldReflectKind = (ReflectKind)(reflectKind & ~ReflectKind_User);
+			auto fieldReflectKind = (BfReflectKind)(reflectKind & ~BfReflectKind_User);
 
 			bool includeField = reflectIncludeAllFields;
 
@@ -5850,17 +5754,17 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					}
 					else
 					{
-						auto userReflectKind = _GetReflectUser(customAttr.mType);
-						fieldReflectKind = (ReflectKind)(fieldReflectKind | userReflectKind);
+						auto userReflectKind = GetUserReflectKind(customAttr.mType);
+						fieldReflectKind = (BfReflectKind)(fieldReflectKind | userReflectKind);
 					}
 				}
 			}
 
-			if ((fieldReflectKind & ReflectKind_User) != 0)
+			if ((fieldReflectKind & BfReflectKind_User) != 0)
 				includeField = true;
-			if ((!fieldDef->mIsStatic) && ((fieldReflectKind & ReflectKind_NonStaticFields) != 0))
+			if ((!fieldDef->mIsStatic) && ((fieldReflectKind & BfReflectKind_NonStaticFields) != 0))
 				includeField = true;
-			if ((fieldDef->mIsStatic) && ((fieldReflectKind & ReflectKind_StaticFields) != 0))
+			if ((fieldDef->mIsStatic) && ((fieldReflectKind & BfReflectKind_StaticFields) != 0))
 				includeField = true;
 						
 			if ((!fieldDef->mIsStatic) && (typeOptions != NULL))
@@ -6142,7 +6046,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		if (defaultMethod->mMethodDef->mMethodType == BfMethodType_CtorNoBody)
 			continue;		
 		
-		auto methodReflectKind = (ReflectKind)(reflectKind & ~ReflectKind_User);
+		auto methodReflectKind = (BfReflectKind)(reflectKind & ~BfReflectKind_User);
 
 		bool includeMethod = reflectIncludeAllMethods;
 
@@ -6158,8 +6062,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				}
 				else
 				{
-					auto userReflectKind = _GetReflectUser(customAttr.mType);
-					methodReflectKind = (ReflectKind)(methodReflectKind | userReflectKind);
+					auto userReflectKind = GetUserReflectKind(customAttr.mType);
+					methodReflectKind = (BfReflectKind)(methodReflectKind | userReflectKind);
 				}
 			}
 		}
@@ -6172,15 +6076,15 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			for (BfParameterDeclaration* paramDecl : methodDeclaration->mParams)
 			{								
 				if (paramDecl->mAttributes != NULL)				
-					methodReflectKind = (ReflectKind)(methodReflectKind | _GetReflectUserFromDirective(paramDecl->mAttributes, BfAttributeTargets_Parameter));
+					methodReflectKind = (BfReflectKind)(methodReflectKind | _GetReflectUserFromDirective(paramDecl->mAttributes, BfAttributeTargets_Parameter));
 			}
 			if (methodDeclaration->mReturnAttributes != NULL)
-				methodReflectKind = (ReflectKind)(methodReflectKind | _GetReflectUserFromDirective(methodDeclaration->mReturnAttributes, BfAttributeTargets_ReturnValue));
+				methodReflectKind = (BfReflectKind)(methodReflectKind | _GetReflectUserFromDirective(methodDeclaration->mReturnAttributes, BfAttributeTargets_ReturnValue));
 		}
 
-		if ((methodReflectKind & (ReflectKind_Methods | ReflectKind_User)) != 0)
+		if ((methodReflectKind & (BfReflectKind_Methods | BfReflectKind_User)) != 0)
 			includeMethod = true;
-		if ((methodDef->mIsStatic) && ((methodReflectKind & ReflectKind_StaticMethods) != 0))
+		if ((methodDef->mIsStatic) && ((methodReflectKind & BfReflectKind_StaticMethods) != 0))
 			includeMethod = true;
 		
 		if ((!includeMethod) && (typeOptions != NULL))
@@ -6395,6 +6299,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	if ((!typeInstance->IsInterface()) && (typeInstance->mIsReified) && (!typeInstance->IsUnspecializedType()) 
 		&& (!typeInstance->mInterfaceMethodTable.IsEmpty()))			
 	{
+		if (typeDef->mName->ToString() == "StructA")
+		{
+			NOP;
+		}
+
 		SizedArray<BfIRValue, 16> methods;
 		for (auto& methodEntry : typeInstance->mInterfaceMethodTable)
 		{
@@ -6412,8 +6321,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			methods.Add(funcVal);
 		}
 
-		while ((!methods.IsEmpty()) && (methods.back() == voidPtrNull))
-			methods.pop_back();
+// 		while ((!methods.IsEmpty()) && (methods.back() == voidPtrNull))
+// 			methods.pop_back();
 
 		BfIRType methodDataArrayType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->MapType(voidPtrType, BfIRPopulateType_Full), (int)methods.size());
 		BfIRValue methodDataConst = mBfIRBuilder->CreateConstArray(methodDataArrayType, methods);
@@ -13459,6 +13368,89 @@ BfTypeOptions* BfModule::GetTypeOptions()
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMethodTypeOptions != NULL))
 		return mCurMethodState->mMethodTypeOptions;
 	return mSystem->GetTypeOptions(mCurTypeInstance->mTypeOptionsIdx);
+}
+
+BfReflectKind BfModule::GetUserReflectKind(BfTypeInstance* attrType)
+{
+	BfReflectKind reflectKind = BfReflectKind_None;
+
+	if (attrType->mCustomAttributes != NULL)
+	{
+		for (auto& customAttr : attrType->mCustomAttributes->mAttributes)
+		{
+			if (customAttr.mType->mTypeDef->mName->ToString() == "AttributeUsageAttribute")
+			{
+				for (auto& prop : customAttr.mSetProperties)
+				{
+					auto propDef = prop.mPropertyRef.mTypeInstance->mTypeDef->mProperties[prop.mPropertyRef.mPropIdx];
+					if (propDef->mName == "ReflectUser")
+					{
+						if (prop.mParam.mValue.IsConst())
+						{
+							auto constant = attrType->mConstHolder->GetConstant(prop.mParam.mValue);
+							reflectKind = (BfReflectKind)(reflectKind | (BfReflectKind)constant->mInt32);
+						}
+					}
+				}
+
+				// Check for Flags arg
+				if (customAttr.mCtorArgs.size() < 2)
+					continue;
+				auto constant = attrType->mConstHolder->GetConstant(customAttr.mCtorArgs[1]);
+				if (constant == NULL)
+					continue;
+				if (constant->mTypeCode == BfTypeCode_Boolean)
+					continue;
+				if ((constant->mInt8 & BfCustomAttributeFlags_ReflectAttribute) != 0)
+					reflectKind = (BfReflectKind)(reflectKind | BfReflectKind_User);
+			}
+		}
+	}
+
+	return reflectKind;
+}
+
+BfReflectKind BfModule::GetReflectKind(BfReflectKind reflectKind, BfTypeInstance* typeInstance)
+{
+	auto checkTypeInstance = typeInstance;
+	while (checkTypeInstance != NULL)
+	{
+		if (checkTypeInstance->mCustomAttributes != NULL)
+		{
+			auto checkReflectKind = BfReflectKind_None;
+
+			for (auto& customAttr : checkTypeInstance->mCustomAttributes->mAttributes)
+			{
+				if (customAttr.mType->mTypeDef->mName->ToString() == "ReflectAttribute")
+				{
+					if (customAttr.mCtorArgs.size() > 0)
+					{
+						auto constant = checkTypeInstance->mConstHolder->GetConstant(customAttr.mCtorArgs[0]);
+						checkReflectKind = (BfReflectKind)((int)checkReflectKind | constant->mInt32);
+					}
+					else
+					{
+						checkReflectKind = BfReflectKind_All;
+					}
+				}
+				else
+				{
+					auto userReflectKind = GetUserReflectKind(customAttr.mType);
+					checkReflectKind = (BfReflectKind)(checkReflectKind | userReflectKind);
+				}
+			}
+
+			if ((checkTypeInstance == typeInstance) ||
+				((checkReflectKind & BfReflectKind_ApplyToInnerTypes) != 0))
+			{
+				reflectKind = (BfReflectKind)(reflectKind | checkReflectKind);
+			}
+		}
+
+		checkTypeInstance = mContext->mUnreifiedModule->GetOuterType(checkTypeInstance);
+	}
+
+	return reflectKind;
 }
 
 bool BfModule::HasDeferredScopeCalls(BfScopeData* scope)

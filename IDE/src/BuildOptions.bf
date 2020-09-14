@@ -106,6 +106,8 @@ namespace IDE
 		[Reflect]
 		public BuildOptions.AlwaysIncludeKind mReflectAlwaysInclude;
 		[Reflect]
+		public bool? mReflectBoxing;
+		[Reflect]
 		public bool? mReflectStaticFields;
 		[Reflect]
 		public bool? mReflectNonStaticFields;
@@ -135,6 +137,7 @@ namespace IDE
 			newVal.mEmitObjectAccessCheck = mEmitObjectAccessCheck;
 			newVal.mAllocStackTraceDepth = mAllocStackTraceDepth;
 			newVal.mReflectAlwaysInclude = mReflectAlwaysInclude;
+			newVal.mReflectBoxing = mReflectBoxing;
 			newVal.mReflectStaticFields = mReflectStaticFields;
 			newVal.mReflectNonStaticFields = mReflectNonStaticFields;
 			newVal.mReflectStaticMethods = mReflectStaticMethods;
@@ -166,6 +169,8 @@ namespace IDE
 
 			if (data.Contains("ReflectAlwaysInclude"))
 				mReflectAlwaysInclude = data.GetEnum<BuildOptions.AlwaysIncludeKind>("ReflectAlwaysInclude");
+			if (data.Contains("ReflectBoxing"))
+				mReflectStaticFields = data.GetBool("ReflectBoxing");
 			if (data.Contains("ReflectStaticFields"))
 				mReflectStaticFields = data.GetBool("ReflectStaticFields");
 			if (data.Contains("ReflectNonStaticFields"))
@@ -191,6 +196,7 @@ namespace IDE
 			data.ConditionalAdd("EmitObjectAccessCheck", mEmitObjectAccessCheck);
 			data.ConditionalAdd("AllocStackTraceDepth", mAllocStackTraceDepth);
 			data.ConditionalAdd("ReflectAlwaysInclude", mReflectAlwaysInclude);
+			data.ConditionalAdd("ReflectBoxing", mReflectBoxing);
 			data.ConditionalAdd("ReflectStaticFields", mReflectStaticFields);
 			data.ConditionalAdd("ReflectNonStaticFields", mReflectNonStaticFields);
 			data.ConditionalAdd("ReflectStaticMethods", mReflectStaticMethods);

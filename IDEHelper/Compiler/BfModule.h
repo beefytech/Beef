@@ -1512,6 +1512,8 @@ public:
 	BfTypedValue GetIntCoercible(const BfTypedValue& typedValue);
 	bool WantsDebugInfo();
 	BfTypeOptions* GetTypeOptions();
+	BfReflectKind GetUserReflectKind(BfTypeInstance* attrType);
+	BfReflectKind GetReflectKind(BfReflectKind reflectKind, BfTypeInstance* typeInstance);
 	void CleanupFileInstances();
 	void AssertErrorState();
 	void AssertParseErrorState();

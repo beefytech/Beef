@@ -438,6 +438,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mErrorAttributeTypeDef = NULL;
 	mWarnAttributeTypeDef = NULL;
 	mIgnoreErrorsAttributeTypeDef = NULL;
+	mReflectAttributeTypeDef = NULL;
 
 	mLastAutocompleteModule = NULL;
 }
@@ -4247,7 +4248,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 		BP_ZONE("ProcessAutocompleteTempType.CheckMethod");		
 		BfMethodInstanceGroup methodInstanceGroup;
-		methodInstanceGroup.mOwner = typeInst;		
+		methodInstanceGroup.mOwner = typeInst;
 		methodInstanceGroup.mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
 
 		BfMethodInstance* methodInstance = new BfMethodInstance();
@@ -5111,9 +5112,37 @@ void BfCompiler::PopulateReified()
 				if (!unspecializedType->mIsReified)
 					unspecializedType->mIsReified = true;
 			}
+
+			if ((typeInst != NULL) && (typeInst->mTypeDef->mName->ToString() == "StructA"))
+			{
+				NOP;
+			}
+
+			if ((type->IsValueType()) && (!type->IsUnspecializedType()))
+			{
+				bool dynamicBoxing = false;
+				if ((typeInst != NULL) && (typeInst->mTypeOptionsIdx != -2))
+				{
+					auto typeOptions = mSystem->GetTypeOptions(typeInst->mTypeOptionsIdx);
+					if (typeOptions != NULL)
+					{
+						if (typeOptions->Apply(false, BfOptionFlags_ReflectBoxing))
+							dynamicBoxing = true;
+					}
+				}
+				auto reflectKind = module->GetReflectKind(BfReflectKind_None, typeInst);
+				if ((reflectKind & BfReflectKind_DynamicBoxing) != 0)
+					dynamicBoxing = true;
+				if (dynamicBoxing)
+				{
+					auto boxedType = module->CreateBoxedType(typeInst);
+					module->AddDependency(boxedType, typeInst, BfDependencyMap::DependencyFlag_Allocates);
+					boxedType->mHasBeenInstantiated = true;
+				}
+			}
 			
 			// Check reifications forced by virtuals or interfaces
-			if ((!mIsResolveOnly) && (typeInst != NULL) && (typeInst->mIsReified) && (typeInst->IsObject()) && (!typeInst->IsUnspecializedType())
+			if ((!mIsResolveOnly) && (typeInst != NULL) && (typeInst->mIsReified) && (!typeInst->IsUnspecializedType())
 				&& (typeInst->mHasBeenInstantiated) && (!typeInst->IsIncomplete()))
 			{
 				// If we have chained methods, make sure we implement the chain members if the chain head is implemented and reified
@@ -5228,7 +5257,20 @@ void BfCompiler::PopulateReified()
 
 						for (int iMethodIdx = 0; iMethodIdx < iMethodCount; iMethodIdx++)
 						{
-							auto ifaceMethodInst = ifaceInst->mMethodInstanceGroups[iMethodIdx].mDefault;
+							auto& ifaceMethodInstGroup = ifaceInst->mMethodInstanceGroups[iMethodIdx];
+							auto ifaceMethodInst = ifaceMethodInstGroup.mDefault;
+							
+							if (typeInst->IsObject())
+							{
+								// If the implementor is an object then this can be dynamically dispatched								
+							}
+							else							
+							{
+								// If this method is explicitly reflected then a struct's implementation may be invoked with reflection
+								if (!ifaceMethodInstGroup.mExplicitlyReflected)
+									continue;
+							}
+							
 							if ((ifaceMethodInst == NULL) || (!ifaceMethodInst->IsReifiedAndImplemented()))
 								continue;
 
@@ -6348,6 +6390,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mErrorAttributeTypeDef = _GetRequiredType("System.ErrorAttribute");
 	mWarnAttributeTypeDef = _GetRequiredType("System.WarnAttribute");
 	mIgnoreErrorsAttributeTypeDef = _GetRequiredType("System.IgnoreErrorsAttribute");
+	mReflectAttributeTypeDef = _GetRequiredType("System.ReflectAttribute");
 
 	for (int i = 0; i < BfTypeCode_Length; i++)
 		mContext->mPrimitiveStructTypes[i] = NULL;

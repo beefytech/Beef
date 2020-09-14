@@ -1289,15 +1289,33 @@ enum BfOptionFlags
 	BfOptionFlags_ReflectAlwaysIncludeType	= 0x10,
 	BfOptionFlags_ReflectAlwaysIncludeAll	= 0x20,
 	BfOptionFlags_ReflectAssumeInstantiated	= 0x40,
-	BfOptionFlags_ReflectStaticFields		= 0x80,
-	BfOptionFlags_ReflectNonStaticFields	= 0x100,
-	BfOptionFlags_ReflectStaticMethods		= 0x200,
-	BfOptionFlags_ReflectNonStaticMethods	= 0x400,
-	BfOptionFlags_ReflectConstructors		= 0x800,
+	BfOptionFlags_ReflectBoxing				= 0x80,
+	BfOptionFlags_ReflectStaticFields		= 0x100,
+	BfOptionFlags_ReflectNonStaticFields	= 0x200,
+	BfOptionFlags_ReflectStaticMethods		= 0x400,
+	BfOptionFlags_ReflectNonStaticMethods	= 0x800,
+	BfOptionFlags_ReflectConstructors		= 0x1000,
 
 	BfOptionFlags_Reflect_MethodMask		= BfOptionFlags_ReflectStaticMethods | BfOptionFlags_ReflectNonStaticMethods | BfOptionFlags_ReflectConstructors,
 	BfOptionFlags_Mask = 0xFFF
 
+};
+
+enum BfReflectKind
+{
+	BfReflectKind_None = 0,
+	BfReflectKind_Type = 1,
+	BfReflectKind_NonStaticFields = 2,
+	BfReflectKind_StaticFields = 4,
+	BfReflectKind_DefaultConstructor = 8,
+	BfReflectKind_Constructors = 0x10,
+	BfReflectKind_StaticMethods = 0x20,
+	BfReflectKind_Methods = 0x40,	
+	BfReflectKind_DynamicBoxing = 0x80,
+	BfReflectKind_User = 0x100,
+	BfReflectKind_All = 0x1FF,
+
+	BfReflectKind_ApplyToInnerTypes = 0x200
 };
 
 class BfTypeOptions

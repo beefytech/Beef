@@ -83,20 +83,23 @@ namespace System.Reflection
 				return .Err;
 
 			MethodInfo methodInfo = default;
-			for (int methodId < mMethodDataCount)
+			if (!IsBoxed)
 			{
-				let methodData = &mMethodDataPtr[methodId];
-				if ((!methodData.mFlags.HasFlag(.Constructor)) || (methodData.mFlags.HasFlag(.Static)))
-					continue;
-				if (methodData.mParamCount != 0)
-					continue;
-				
-				methodInfo = .(this, methodData);
-				break;
-			}
+				for (int methodId < mMethodDataCount)
+				{
+					let methodData = &mMethodDataPtr[methodId];
+					if ((!methodData.mFlags.HasFlag(.Constructor)) || (methodData.mFlags.HasFlag(.Static)))
+						continue;
+					if (methodData.mParamCount != 0)
+						continue;
+					
+					methodInfo = .(this, methodData);
+					break;
+				}
 
-			if (!methodInfo.IsInitialized)
-				return .Err;
+				if (!methodInfo.IsInitialized)
+					return .Err;
+			}
 			Object obj;
 
 			let objType = typeof(Object) as TypeInstance;
@@ -109,10 +112,13 @@ namespace System.Reflection
 			obj.[Friend]mClassVData = (.)(void*)mTypeClassVData;
 #endif
 			Internal.MemSet((uint8*)Internal.UnsafeCastToPtr(obj) + objType.mInstSize, 0, mInstSize - objType.mInstSize);
-			if (methodInfo.Invoke(obj) case .Err)
+			if (methodInfo.IsInitialized)
 			{
-				delete obj;
-				return .Err;
+				if (methodInfo.Invoke(obj) case .Err)
+				{
+					delete obj;
+					return .Err;
+				}
 			}
 
 			return obj;

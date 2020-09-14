@@ -1196,6 +1196,7 @@ public:
 	int mMethodIdx;
 	int mRefCount; // External references from BfMethodRefType
 	BfMethodOnDemandKind mOnDemandKind;
+	bool mExplicitlyReflected;
 
 public:
 	BfMethodInstanceGroup()
@@ -1206,6 +1207,7 @@ public:
 		mMethodIdx = -1;
 		mOnDemandKind = BfMethodOnDemandKind_NotSet;
 		mRefCount = 0;
+		mExplicitlyReflected = false;
 	}
 
 	~BfMethodInstanceGroup();	

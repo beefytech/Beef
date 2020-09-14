@@ -404,6 +404,7 @@ public:
 	BfTypeDef* mErrorAttributeTypeDef;
 	BfTypeDef* mWarnAttributeTypeDef;
 	BfTypeDef* mIgnoreErrorsAttributeTypeDef;
+	BfTypeDef* mReflectAttributeTypeDef;
 	
 
 	int mCurTypeId;	

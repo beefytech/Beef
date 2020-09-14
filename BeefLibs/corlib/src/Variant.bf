@@ -296,6 +296,22 @@ namespace System
 				return *(T*)(void*)mData;
 		}
 
+		public Result<Object> GetBoxed()
+		{
+			if (IsObject)
+				return .Err;
+
+			var type = VariantType;
+			var boxedType = type.BoxedType;
+			if (boxedType == null)
+				return .Err;
+
+			var self = this;
+			var object = Try!(boxedType.CreateObject());
+			Internal.MemCpy((uint8*)Internal.UnsafeCastToPtr(object) + boxedType.[Friend]mMemberDataOffset, self.DataPtr, type.Size);
+			return object;
+		}
+
 		/*public void Get<T>(ref T val)
 		{
 			if (VariantType != typeof(T))

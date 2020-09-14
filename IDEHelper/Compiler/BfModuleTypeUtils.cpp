@@ -3996,14 +3996,27 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			isFailedType = true;
 	}
 
-	bool typeOptionsIncludeAll = false;
-	if (typeOptions != NULL)
-		typeOptionsIncludeAll = typeOptions->Apply(typeOptionsIncludeAll, BfOptionFlags_ReflectAlwaysIncludeAll);
+	bool typeOptionsIncludeAll = false;	
+	if (typeOptions != NULL)	
+		typeOptionsIncludeAll = typeOptions->Apply(typeOptionsIncludeAll, BfOptionFlags_ReflectAlwaysIncludeAll);			
 
 	// Generate all methods. Pass 1
 	for (auto methodDef : typeDef->mMethods)
 	{			
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
+
+		if (typeOptions != NULL)
+		{
+			BfOptionFlags optionFlags = BfOptionFlags_ReflectNonStaticMethods;
+			if (methodDef->mMethodType == BfMethodType_Ctor)
+				optionFlags = BfOptionFlags_ReflectConstructors;
+			else if (methodDef->mIsStatic)
+				optionFlags = BfOptionFlags_ReflectStaticMethods;			
+			methodInstanceGroup->mExplicitlyReflected = typeOptions->Apply(false, optionFlags);
+			methodInstanceGroup->mExplicitlyReflected = ApplyTypeOptionMethodFilters(methodInstanceGroup->mExplicitlyReflected, methodDef, typeOptions);
+		}
+		if ((typeInstance->mCustomAttributes != NULL) && (typeInstance->mCustomAttributes->Contains(mCompiler->mReflectAttributeTypeDef)))
+			methodInstanceGroup->mExplicitlyReflected = true;
 
 		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
 			continue;

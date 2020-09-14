@@ -18,14 +18,15 @@ namespace IDE.Compiler
 
 			ReflectAlwaysIncludeType	= 0x10,
 			ReflectAlwaysIncludeAll		= 0x20,
-			ReflectAssumeInstantiated	= 0x40,	
-			ReflectStaticFields			= 0x80,
-			ReflectNonStaticFields		= 0x100,
-			ReflectStaticMethods		= 0x200,
-			ReflectNonStaticMethods		= 0x400,
-			ReflectConstructors			= 0x800,
+			ReflectAssumeInstantiated	= 0x40,
+			ReflectBoxing				= 0x80,
+			ReflectStaticFields			= 0x100,
+			ReflectNonStaticFields		= 0x200,
+			ReflectStaticMethods		= 0x400,
+			ReflectNonStaticMethods		= 0x800,
+			ReflectConstructors			= 0x1000,
 
-			All							= 0xFFF
+			All							= 0x1FFF
 		};
 
 		[CallingConvention(.Stdcall), CLink]
@@ -401,6 +402,7 @@ namespace IDE.Compiler
 				orFlags |= .ReflectAlwaysIncludeType | .ReflectAlwaysIncludeAll | .ReflectAssumeInstantiated;
 			}
 
+			SetFlag(typeOption.mReflectBoxing, .ReflectBoxing);
 			SetFlag(typeOption.mReflectStaticFields, .ReflectStaticFields);
 			SetFlag(typeOption.mReflectNonStaticFields, .ReflectNonStaticFields);
 			SetFlag(typeOption.mReflectStaticMethods, .ReflectStaticMethods);
