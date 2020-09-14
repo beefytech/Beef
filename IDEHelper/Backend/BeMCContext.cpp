@@ -14330,8 +14330,8 @@ void BeMCContext::DoCodeEmission()
 						break;
 					case BeTypeCode_Int16:
 						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AX));
-						// XOR eax, eax
-						Emit(0x31); Emit(0xC0);
+						// XOR dx, dx
+						Emit(0x66); Emit(0x31); Emit(0xD2);						
 						// IDIV rm
 						Emit(0x66);
 						EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
@@ -15708,7 +15708,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
+	mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SAXXZ");
 	// 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
