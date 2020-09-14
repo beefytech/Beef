@@ -115,7 +115,7 @@ namespace IDE.ui
 								{
 									if (mParamInfo == null)
 										mParamInfo = new .();
-									curDocStr = new String(pragma, splitEnum.MatchPos + 1);
+									curDocStr = new String(pragma, Math.Min(splitEnum.MatchPos + 1, pragma.Length));
 									mParamInfo[new String(paramName)] = curDocStr;
 									lineHadContent = true;
 								}
@@ -1010,14 +1010,17 @@ namespace IDE.ui
 						maxDocWidth = Math.Min(maxDocWidth, workspaceWidth - drawScreenX - GS!(8));
 						maxDocWidth = Math.Max(maxDocWidth, GS!(80));
 
-						curY += font.GetLineSpacing() + GS!(4);
-						if (g != null)
+						if (!docString.IsWhiteSpace)
 						{
-							using (g.PushColor(0xFFC0C0C0))
-								docHeight = g.DrawString(docString, curX, curY, .Left, maxDocWidth, .Wrap);
+							curY += font.GetLineSpacing() + GS!(4);
+							if (g != null)
+							{
+								using (g.PushColor(0xFFC0C0C0))
+									docHeight = g.DrawString(docString, curX, curY, .Left, maxDocWidth, .Wrap);
+							}
+							else
+								docHeight = font.GetWrapHeight(docString, maxDocWidth);
 						}
-						else
-							docHeight = font.GetWrapHeight(docString, maxDocWidth);
 
 						extWidth = Math.Max(extWidth, Math.Min(font.GetWidth(docString), maxDocWidth) + GS!(48));
 					}
