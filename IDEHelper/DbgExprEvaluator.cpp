@@ -1249,6 +1249,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 	{
 		int32 mSize;
 		_TypeId mTypeId;
+		_TypeId mBoxedType;
 		_TypeFlags mTypeFlags;
 		int32 mMemberDataOffset;		
 		_TypeCode mTypeCode;
@@ -1313,6 +1314,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		int16 mFieldDataCount;		
 
 		addr_target mInterfaceDataPtr;
+		addr_target mInterfaceMethodTable;
 		addr_target mMethodDataPtr;
 		addr_target mPropertyDataPtr;
 		addr_target mFieldDataPtr;

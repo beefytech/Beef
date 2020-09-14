@@ -64,6 +64,7 @@ struct Fake_Type_Data
 {
 	int32 mSize;
 	int32 mTypeId;
+	int32 mBoxedType;
 	int32 mTypeFlags;
 };
 
