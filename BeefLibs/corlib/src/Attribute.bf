@@ -48,7 +48,8 @@ namespace System
 		Methods = 0x40,
 		DynamicBoxing = 0x80,
 		//User = 0x100, // Internal Use
-		All = 0x7F, // Doesn't include dynamic boxing
+		AllMembers = 0x7F,
+		All = 0xFF, // Doesn't include dynamic boxing
 
 		ApplyToInnerTypes = 0x200,
 	}
@@ -103,7 +104,7 @@ namespace System
 	[AttributeUsage(.All)]
 	public struct ReflectAttribute : Attribute
 	{
-	    public this(ReflectKind reflectKind = .All)
+	    public this(ReflectKind reflectKind = .AllMembers)
 		{
 		}
 	}
