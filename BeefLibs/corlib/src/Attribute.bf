@@ -158,13 +158,13 @@ namespace System
 	    
 	}
 
-    [AttributeUsage(.Method /*2*/ | .StaticField)]
+    [AttributeUsage(.Method /*2*/ | .Constructor | .StaticField)]
     public struct CLinkAttribute : Attribute
     {
 
 	}
 
-	[AttributeUsage(.Method /*2*/ | .StaticField)]
+	[AttributeUsage(.Method /*2*/ | .Constructor | .StaticField)]
 	public struct LinkNameAttribute : Attribute
 	{
 		public enum MangleKind
@@ -183,7 +183,7 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.Method | .Delegate | .Function)]
+	[AttributeUsage(.Method | .Constructor | .Delegate | .Function)]
 	public struct CallingConventionAttribute : Attribute
 	{
 		public enum Kind
@@ -201,7 +201,7 @@ namespace System
 	}
 
 	[Obsolete("Use [CallingConvention(.Stdcall)]", false)]
-	[AttributeUsage(.Method | .Delegate | .Function)]
+	[AttributeUsage(.Method | .Constructor | .Delegate | .Function)]
 	public struct StdCallAttribute : Attribute
 	{
 
