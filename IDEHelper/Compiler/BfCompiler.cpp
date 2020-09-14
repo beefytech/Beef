@@ -5113,11 +5113,6 @@ void BfCompiler::PopulateReified()
 					unspecializedType->mIsReified = true;
 			}
 
-			if ((typeInst != NULL) && (typeInst->mTypeDef->mName->ToString() == "StructA"))
-			{
-				NOP;
-			}
-
 			if ((type->IsValueType()) && (!type->IsUnspecializedType()))
 			{
 				bool dynamicBoxing = false;
