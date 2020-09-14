@@ -2387,6 +2387,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	ExpectNewLine();
 	QueueVisitChild(propertyDeclaration->mAttributes);
 	ExpectNewLine();	
+	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mProtectionSpecifier);
 	ExpectSpace();
 	QueueVisitChild(propertyDeclaration->mConstSpecifier);
@@ -2441,6 +2442,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	}
 	else
 	{
+		ExpectSpace();
 		QueueVisitChild(propertyDeclaration->mDefinitionBlock);
 		ExpectSpace();
 		for (auto method : propertyDeclaration->mMethods)
