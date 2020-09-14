@@ -5977,8 +5977,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							int exprIdx = constGep32_2->mIdx1;
 							if ((exprIdx >= 0) && (exprIdx <= (int)argValues.size()))
 							{
-								argValue = BfTypedValue(mModule->GetStringObjectValue(argValues[exprIdx].mExpression->ToString()),
-									mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+								auto expr = argValues[exprIdx].mExpression;
+								if (expr != NULL)
+								{
+									argValue = BfTypedValue(mModule->GetStringObjectValue(expr->ToString()),
+										mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+								}
 							}
 							else
 							{
