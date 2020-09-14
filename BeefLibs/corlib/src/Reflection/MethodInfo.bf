@@ -305,6 +305,10 @@ namespace System.Reflection
 				}
 
 				bool splatThis = thisType.IsSplattable && !mMethodData.mFlags.HasFlag(.Mutating);
+#if BF_PLATFORM_WINDOWS && BF_32_BIT
+				if ((mTypeInstance.IsInterface) && (splatThis))
+					abi = .MS_CDecl;
+#endif
 				AddArg!::(-1, ref target, &target.[Friend]mData, thisType, splatThis);
 			}
 
