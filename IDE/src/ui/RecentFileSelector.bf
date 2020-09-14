@@ -79,7 +79,7 @@ namespace IDE.ui
 			if (!hadActiveDocument)
 				mMenuWidget.SetSelection(0);
 			else
-				mMenuWidget.SetSelection(1);
+				mMenuWidget.SetSelection(Math.Min(1, menu.mItems.Count - 1));
 		}
 
 		public void Next()
