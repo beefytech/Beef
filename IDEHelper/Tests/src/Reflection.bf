@@ -108,7 +108,14 @@ namespace Tests
 		}
 
 		[Reflect, AlwaysInclude(IncludeAllMethods=true)]
-		struct StructA
+		interface IFaceA
+		{
+			void MethodA0();
+			int MethodA1(int a, float b);
+		}
+
+		[Reflect, AlwaysInclude(IncludeAllMethods=true)]
+		struct StructA : IFaceA
 		{
 			public int mA;
 			public int mB;
@@ -122,6 +129,16 @@ namespace Tests
 			{
 				mB += a;
 				return a + mA * 100;
+			}
+
+			public void MethodA0()
+			{
+			 
+			}
+
+			public int MethodA1(int a, float b)
+			{
+				return mA + a + (int)b;
 			}
 		}
 
@@ -473,10 +490,14 @@ namespace Tests
 					result.Dispose();
 
 				case 2:
-					Test.Assert(methodInfo.Name == "__BfCtor");
+					Test.Assert(methodInfo.Name == "MethodA0");
 				case 3:
-					Test.Assert(methodInfo.Name == "__Equals");
+					Test.Assert(methodInfo.Name == "MethodA1");
 				case 4:
+					Test.Assert(methodInfo.Name == "__BfCtor");
+				case 5:
+					Test.Assert(methodInfo.Name == "__Equals");
+				case 6:
 					Test.Assert(methodInfo.Name == "__StrictEquals");
 				default:
 					Test.FatalError(); // Shouldn't have any more
@@ -484,6 +505,15 @@ namespace Tests
 
 				methodIdx++;
 			}
+
+			let ifaceType = typeof(IFaceA);
+			let methodA1 = ifaceType.GetMethod("MethodA1").Value;
+			var saVariant = Variant.Create(sa);
+			defer saVariant.Dispose();
+			var result = methodA1.Invoke(saVariant, .Create(1000), .Create(2000.f)).Value;
+			Test.Assert(result.Get<int>() == 3012);
+			result = methodA1.Invoke(.Create(&sa), .Create(1000), .Create(2000.f)).Value;
+			Test.Assert(result.Get<int>() == 3012);
 		}
 
 		[Test]

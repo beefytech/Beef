@@ -22,6 +22,7 @@ namespace Tests
 			}
 		}
 
+		[Reflect(.DynamicBoxing)]
 		struct StructB : StructA, IHashable
 		{
 			public int mB = 200;
@@ -60,12 +61,31 @@ namespace Tests
 			Test.Assert(GetFromIFace(iface1) == 2100);
 			Test.Assert(valB.mA == 1100); // This should copy values
 
+			StructC valC = .();
+
 			var boxedVal = scope box valA;
 			iface0 = boxedVal;
 
 #unwarn
 			var boxedStr = scope box "Test";
 			IHashable ihash = boxedStr;
+
+			Variant saVariant = .Create(valA);
+			var saObj = saVariant.GetBoxed().Value;
+			delete saObj;
+			saVariant.Dispose();
+
+			Variant sbVariant = .Create(valB);
+			var scObj = sbVariant.GetBoxed().Value;
+			IHashable ih = scObj;
+			Test.Assert(ih.GetHashCode() == 200);
+			delete scObj;
+			sbVariant.Dispose();
+
+			Variant scVariant = .Create(valC);
+			var scObjResult = scVariant.GetBoxed();
+			Test.Assert(scObjResult case .Err);
+			scVariant.Dispose();
 		}
 
 		[Test]
