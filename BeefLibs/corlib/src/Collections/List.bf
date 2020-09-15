@@ -323,6 +323,19 @@ namespace System.Collections
 				Add(item);
 		}
 
+		public Span<T> GetRange(int offset)
+		{
+			Debug.Assert((uint)offset <= (uint)mSize);
+			return .(mItems + offset, mSize - offset);
+		}
+
+		public Span<T> GetRange(int offset, int count)
+		{
+			Debug.Assert((uint)offset <= (uint)mSize);
+			Debug.Assert((uint)offset + (uint)count <= (uint)mSize);
+			return .(mItems + offset, count);
+		}
+
 		/// Returns a pointer to the start of the added uninitialized section
 		public T* GrowUnitialized(int addSize)
 		{
