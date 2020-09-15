@@ -4939,8 +4939,11 @@ BfPointerType* BfModule::CreatePointerType(BfType* resolvedType)
 	return resolvedPointerType;
 }
 
-BfConstExprValueType* BfModule::CreateConstExprValueType(const BfTypedValue& typedValue)
+BfConstExprValueType* BfModule::CreateConstExprValueType(const BfTypedValue& typedValue, bool allowCreate)
 {
+	BfPopulateType populateType = allowCreate ? BfPopulateType_Data : BfPopulateType_Identity;
+	BfResolveTypeRefFlags resolveFlags = allowCreate ? BfResolveTypeRefFlag_None : BfResolveTypeRefFlag_NoCreate;
+
 	auto variant = TypedValueToVariant(NULL, typedValue);
 	if (variant.mTypeCode == BfTypeCode_None)
 		return NULL;
@@ -4950,11 +4953,12 @@ BfConstExprValueType* BfModule::CreateConstExprValueType(const BfTypedValue& typ
 	constExprValueType->mType = typedValue.mType;
 	constExprValueType->mValue = variant;	
 
-	auto resolvedConstExprValueType = (BfConstExprValueType*)ResolveType(constExprValueType);
-	if (resolvedConstExprValueType != constExprValueType)
-		mContext->mConstExprValueTypePool.GiveBack(constExprValueType);
+	auto resolvedConstExprValueType = (BfConstExprValueType*)ResolveType(constExprValueType, populateType, resolveFlags);
+ 	if (resolvedConstExprValueType != constExprValueType)
+ 		mContext->mConstExprValueTypePool.GiveBack(constExprValueType);
 
-	BF_ASSERT(resolvedConstExprValueType->mValue.mInt64 == constExprValueType->mValue.mInt64);
+	if (resolvedConstExprValueType != NULL)
+		BF_ASSERT(resolvedConstExprValueType->mValue.mInt64 == constExprValueType->mValue.mInt64);
 
 	return resolvedConstExprValueType;
 }
@@ -5410,7 +5414,10 @@ BfBoxedType* BfModule::CreateBoxedType(BfType* resolvedTypeRef, bool allowCreate
 	 	BfTypeVector typeVector;
 	 	typeVector.Add(sizedArrayType->mElementType);
 	 	auto sizeValue = BfTypedValue(GetConstValue(sizedArrayType->mElementCount), GetPrimitiveType(BfTypeCode_IntPtr));
-	 	typeVector.Add(CreateConstExprValueType(sizeValue));
+		auto sizeValueType = CreateConstExprValueType(sizeValue, allowCreate);
+		if (sizeValueType == NULL)
+			return NULL;
+	 	typeVector.Add(sizeValueType);
 		resolvedTypeRef = ResolveTypeDef(mCompiler->mSizedArrayTypeDef, typeVector, populateType, resolveFlags);
 		if (resolvedTypeRef == NULL)
 			return NULL;

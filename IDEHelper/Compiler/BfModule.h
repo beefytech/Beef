@@ -1647,7 +1647,7 @@ public:
 	BfUnknownSizedArrayType* CreateUnknownSizedArrayType(BfType* resolvedType, BfType* sizeParam);
 	BfPointerType* CreatePointerType(BfType* resolvedType);
 	BfPointerType* CreatePointerType(BfTypeReference* typeRef);
-	BfConstExprValueType* CreateConstExprValueType(const BfTypedValue& typedValue);
+	BfConstExprValueType* CreateConstExprValueType(const BfTypedValue& typedValue, bool allowCreate = true);
 	BfBoxedType* CreateBoxedType(BfType* resolvedTypeRef, bool allowCreate = true);
 	BfTypeInstance* CreateTupleType(const BfTypeVector& fieldTypes, const Array<String>& fieldNames, bool allowVar = false);
 	BfTypeInstance* SantizeTupleType(BfTypeInstance* tupleType);
