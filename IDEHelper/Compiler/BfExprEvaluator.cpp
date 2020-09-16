@@ -3981,8 +3981,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				bool isTemporary = target.IsTempAddr();
 				bool wantsLoadValue = false;
+				bool wantsReadOnly = false;
 				if ((field->mIsReadOnly) && ((mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Ctor) || (!target.IsThis())))
-					wantsLoadValue = true;					
+					wantsReadOnly = true;
 										
 				bool isComposite = target.mType->IsComposite();
 				if ((isComposite) && (!target.mType->IsTypedPrimitive()) && (!target.IsAddr()))
@@ -4071,8 +4072,12 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 				if (wantsLoadValue)
 					retVal = mModule->LoadValue(retVal, NULL, mIsVolatileReference);
-				else
+				else 
+				{
+					if ((wantsReadOnly) && (retVal.IsAddr())&& (!retVal.IsReadOnly()))
+						retVal.mKind = BfTypedValueKind_ReadOnlyAddr;
 					mIsHeapReference = true;
+				}
 
 				if (isTemporary)
 				{
@@ -15768,7 +15773,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 {
 	static int sCallCount = 0;
 	sCallCount++;
-	
+
 	auto condResult = mModule->CreateValueFromExpression(condExpr->mConditionExpression, mModule->GetPrimitiveType(BfTypeCode_Boolean));
 	if (!condResult)
 		return;
