@@ -5171,8 +5171,8 @@ void BfCompiler::PopulateReified()
 			}
 			
 			// Check reifications forced by virtuals or interfaces
-			if ((!mIsResolveOnly) && (typeInst != NULL) && (typeInst->mIsReified) && (!typeInst->IsUnspecializedType())
-				&& (typeInst->mHasBeenInstantiated) && (!typeInst->IsIncomplete()))
+			if ((!mIsResolveOnly) && (typeInst != NULL) && (typeInst->mIsReified) && (!typeInst->IsUnspecializedType()) && (!typeInst->IsInterface()) &&
+				(typeInst->mHasBeenInstantiated) && (!typeInst->IsIncomplete()))
 			{
 				// If we have chained methods, make sure we implement the chain members if the chain head is implemented and reified
 				if (typeInst->mTypeDef->mIsCombinedPartial)
