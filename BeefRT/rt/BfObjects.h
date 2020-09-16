@@ -189,6 +189,7 @@ namespace bf
 		public:
 			int32 mSize;
 			TypeId mTypeId;
+			TypeId mBoxedId;
 			uint16 mTypeFlags;
 			int32 mMemberDataOffset;			
 			uint8 mTypeCode;
@@ -203,6 +204,7 @@ namespace bf
 			intptr mClassVData;
 			int32 mSize;
 			TypeId mTypeId;
+			TypeId mBoxedId;
 			uint16 mTypeFlags;
 			int32 mMemberDataOffset;
 			uint8 mTypeCode;
@@ -217,45 +219,11 @@ namespace bf
 			class TypeInstance : public Type
 			{
 			public:
-				struct FieldData
-				{
-					String* mName;
-					int64 mConstValue;
-					int32 mDataOffset;
-					TypeId mFieldTypeId;
-					FieldFlags mFlags;
-					int16 mCustomAttributesIdx;
-				};
-
-				struct MethodData
-				{
-					String* mName; // mName
-					void* mPtr;
-				};
-
 				ClassVData* mTypeClassVData;
 				String* mName;
 				String* mNamespace;
 				int32 mInstSize;
-				int32 mInstAlign;
-
-				TypeId mBaseType;
-				TypeId mUnderlyingType;
-				TypeId mOuterType;
-
-				uint8 mInterfaceSlot;
-				uint8 mInterfaceCount;
-				int16 mMethodDataCount;
-				int16 mPropertyDataCount;
-				int16 mFieldDataCount;
-				int16 mConstructorDataCount;
-
-				void* mInterfaceDataPtr;
-				MethodData* mMethodDataPtr;
-				void* mPropertyDataPtr;
-				FieldData* mFieldDataPtr;
-				void* mConstructorDataPtr;
-				void** mCustomAttrDataPtr;
+				int32 mInstAlign;				
 			};
 		}
 
