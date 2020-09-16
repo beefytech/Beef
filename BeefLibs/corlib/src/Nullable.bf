@@ -62,9 +62,9 @@ namespace System
             return true;
         }
         
-        public T GetValueOrDefault(T defaultmValue)
+        public T GetValueOrDefault(T defaultValue)
         {
-            return mHasValue ? mValue : defaultmValue;
+            return mHasValue ? mValue : defaultValue;
         }
         
         public override void ToString(String str)
