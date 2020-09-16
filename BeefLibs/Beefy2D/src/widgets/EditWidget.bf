@@ -2043,7 +2043,7 @@ namespace Beefy.widgets
 
 		public void PasteText(String text, String extra)
 		{
-			if (extra == "line")
+			if ((extra == "line") && (mAllowVirtualCursor))
 			{
 				UndoBatchStart undoBatchStart = new UndoBatchStart("paste");
 				mData.mUndoManager.Add(undoBatchStart);
