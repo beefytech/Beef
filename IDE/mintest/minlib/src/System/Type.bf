@@ -643,7 +643,8 @@ namespace System.Reflection
 		int32 mInheritanceCount;
 
 		uint8 mInterfaceSlot;
-        uint8 mInterfaceCount;        
+        uint8 mInterfaceCount;
+        int16 mInterfaceMethodCount;
         int16 mMethodDataCount;
         int16 mPropertyDataCount;
         int16 mFieldDataCount;

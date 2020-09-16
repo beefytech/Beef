@@ -6308,14 +6308,10 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	}
 	
 	BfIRValue interfaceMethodTable;
+	int ifaceMethodTableSize = 0;
 	if ((!typeInstance->IsInterface()) && (typeInstance->mIsReified) && (!typeInstance->IsUnspecializedType()) 
 		&& (!typeInstance->mInterfaceMethodTable.IsEmpty()))			
-	{
-		if (typeDef->mName->ToString() == "StructA")
-		{
-			NOP;
-		}
-
+	{		
 		SizedArray<BfIRValue, 16> methods;
 		for (auto& methodEntry : typeInstance->mInterfaceMethodTable)
 		{
@@ -6333,16 +6329,20 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			methods.Add(funcVal);
 		}
 
-// 		while ((!methods.IsEmpty()) && (methods.back() == voidPtrNull))
-// 			methods.pop_back();
+ 		while ((!methods.IsEmpty()) && (methods.back() == voidPtrNull))
+ 			methods.pop_back();
 
-		BfIRType methodDataArrayType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->MapType(voidPtrType, BfIRPopulateType_Full), (int)methods.size());
-		BfIRValue methodDataConst = mBfIRBuilder->CreateConstArray(methodDataArrayType, methods);
-		BfIRValue methodDataArray = mBfIRBuilder->CreateGlobalVariable(methodDataArrayType, true, BfIRLinkageType_Internal,
-			methodDataConst, "imethods." + typeDataName);
-		interfaceMethodTable = mBfIRBuilder->CreateBitCast(methodDataArray, voidPtrPtrIRType);		
-	}
-	else
+		if (!methods.IsEmpty())
+		{
+			BfIRType methodDataArrayType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->MapType(voidPtrType, BfIRPopulateType_Full), (int)methods.size());
+			BfIRValue methodDataConst = mBfIRBuilder->CreateConstArray(methodDataArrayType, methods);
+			BfIRValue methodDataArray = mBfIRBuilder->CreateGlobalVariable(methodDataArrayType, true, BfIRLinkageType_Internal,
+				methodDataConst, "imethods." + typeDataName);
+			interfaceMethodTable = mBfIRBuilder->CreateBitCast(methodDataArray, voidPtrPtrIRType);
+			ifaceMethodTableSize = (int)methods.size();
+		}
+	}	
+	if (!interfaceMethodTable)
 		interfaceMethodTable = mBfIRBuilder->CreateConstNull(voidPtrPtrIRType);
 
 	/////
@@ -6394,6 +6394,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 			GetConstValue(typeInstance->mSlotNum, byteType), // mInterfaceSlot
 			GetConstValue(interfaceCount, byteType), // mInterfaceCount
+			GetConstValue(ifaceMethodTableSize, shortType), // mInterfaceMethodCount
 			GetConstValue((int)methodTypes.size(), shortType), // mMethodDataCount
 			GetConstValue(0, shortType), // mPropertyDataCount
 			GetConstValue((int)fieldTypes.size(), shortType), // mFieldDataCount			

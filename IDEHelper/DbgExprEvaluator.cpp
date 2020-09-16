@@ -1306,7 +1306,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		int32 mInheritanceId;
 		int32 mInheritanceCount;		
 
-		uint8 mInterfaceSlot;
+		/*uint8 mInterfaceSlot;
 		uint8 mInterfaceCount;
 		int16 mMethodDataCount;
 		int16 mPropertyDataCount;
@@ -1317,7 +1317,7 @@ void DbgExprEvaluator::BeefTypeToString(const DbgTypedValue& val, String& outStr
 		addr_target mMethodDataPtr;
 		addr_target mPropertyDataPtr;
 		addr_target mFieldDataPtr;
-		addr_target mCustomAttrDataPtr;
+		addr_target mCustomAttrDataPtr;*/
 	};
 
 	struct _SpecializedGenericType : _TypeInstance

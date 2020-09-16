@@ -298,7 +298,10 @@ namespace System.Reflection
 						if (interfaceData == null)
 							return .Err(.InvalidTarget);
 
-						funcPtr = *(thisType.[Friend]mInterfaceMethodTable + interfaceData.mStartInterfaceTableIdx + mMethodData.mMethodIdx);
+						int ifaceMethodIdx = interfaceData.mStartInterfaceTableIdx + mMethodData.mMethodIdx;
+						if (ifaceMethodIdx >= thisType.[Friend]mInterfaceMethodCount)
+							return .Err(.InvalidTarget);
+						funcPtr = *(thisType.[Friend]mInterfaceMethodTable + ifaceMethodIdx);
 					}
 
 					ifaceOffset = mTypeInstance.[Friend]mMemberDataOffset;
