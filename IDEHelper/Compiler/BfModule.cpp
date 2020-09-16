@@ -3004,8 +3004,20 @@ void BfModule::CheckRangeError(BfType* type, BfAstNode* refNode)
 		Fail(StrFormat("Result out of range for type '%s'", TypeToString(type).c_str()), refNode);
 }
 
+
+
 void BfModule::FatalError(const StringImpl& error, const char* file, int line)
 {
+	static bool sHadFatalError = false;
+	static bool sHadReentrancy = false;
+
+	if (sHadFatalError)
+	{
+		return;
+		sHadReentrancy = true;
+	}
+	sHadFatalError = true;
+
 	String fullError = error;
 
 	if (file != NULL)
@@ -3021,6 +3033,9 @@ void BfModule::FatalError(const StringImpl& error, const char* file, int line)
 	if ((mCurFilePosition.mFileInstance != NULL) && (mCurFilePosition.mFileInstance->mParser != NULL))	
 		fullError += StrFormat("\nSource Location: %s:%d", mCurFilePosition.mFileInstance->mParser->mFileName.c_str(), mCurFilePosition.mCurLine + 1);	
 	
+	if (sHadReentrancy)
+		fullError += "\nError had reentrancy";
+
 	BfpSystem_FatalError(fullError.c_str(), "FATAL MODULE ERROR");
 }
 
@@ -4173,6 +4188,13 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 	if (mBfIRBuilder->mIgnoreWrites)
 		return;
 
+	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
+	if (mCurTypeInstance->IsValuelessType())
+	{
+		mBfIRBuilder->CreateRet(GetDefaultValue(boolType));
+		return;
+	}
+
 	if (mCurTypeInstance->IsTypedPrimitive())
 	{
 		BfExprEvaluator exprEvaluator(this);
@@ -4200,8 +4222,7 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 		}
 		mBfIRBuilder->PopulateType(compareTypeInst);
 	}
-
-	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
+	
 	if (!isValid)
 	{
 		ClearLifetimeEnds();
@@ -7584,7 +7605,7 @@ BF_NOINLINE void BfModule::EvaluateWithNewScope(BfExprEvaluator& exprEvaluator, 
 	mCurMethodState->AddScope(&newScope);
 	NewScopeState();
 	exprEvaluator.mBfEvalExprFlags = flags;
-	exprEvaluator.Evaluate(expr, (flags & BfEvalExprFlags_PropogateNullConditional) != 0, (flags & BfEvalExprFlags_IgnoreNullConditional) != 0, true);
+	exprEvaluator.Evaluate(expr, (flags & BfEvalExprFlags_PropogateNullConditional) != 0, (flags & BfEvalExprFlags_IgnoreNullConditional) != 0, (flags & BfEvalExprFlags_AllowSplat) != 0);
 	RestoreScopeState();
 }
 
@@ -9314,7 +9335,7 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 	{
 		if (!mCompiler->mIsResolveOnly)		
 		{
-			BF_ASSERT((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) || (typeInstance->mTypeFailed));
+			BF_ASSERT((methodGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) || (typeInstance->mTypeFailed));
 			if ((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl))
 				methodGroup.mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 
@@ -16893,6 +16914,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		BfLogSysM("Method instance marked as 'failed' at start of ProcessMethod %p\n", methodInstance);
 		methodInstance->mHasBeenProcessed = true;
 		return;
+	}
+
+	if (HasCompiledOutput())
+	{
+		BF_ASSERT(mIsModuleMutable);
 	}
 
 	BfMethodInstance* defaultMethodInstance = methodInstance->mMethodInstanceGroup->mDefault;
