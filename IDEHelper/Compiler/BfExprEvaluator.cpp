@@ -8551,7 +8551,7 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 	{
 		BfPointerType* structPtrType = (BfPointerType*)mResult.mType;
 		mResult = mModule->LoadValue(mResult);
-		mResult.mType = structPtrType->mElementType;
+		mResult = BfTypedValue(mResult.mValue, structPtrType->mElementType, true);
 	}
 
 	if (!mResult)
