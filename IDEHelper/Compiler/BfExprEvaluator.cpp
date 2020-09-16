@@ -17572,7 +17572,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 					}
 					else if (indexDiff < 0)
 					{
-						mModule->Fail(StrFormat("Expected %d fewer indices", indexDiff), indexerExpr->mTarget);
+						mModule->Fail(StrFormat("Expected %d fewer indices", -indexDiff), indexerExpr->mTarget);
 					}
 					else
 					{
