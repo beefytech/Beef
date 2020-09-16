@@ -1673,9 +1673,10 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 
 	int typeOptionsCount = (int)mContext->mSystem->mTypeOptions.size();
 	if (checkTypeName)
-	{
-		auto _CheckTypeName = [&](const StringImpl& typeName)
-		{
+	{			
+		auto _CheckType = [&](BfType* type)
+		{			
+			StringImpl typeName = TypeToString(type);
 			for (int optionIdx = 0; optionIdx < (int)mContext->mSystem->mTypeOptions.size(); optionIdx++)
 			{
 				auto& typeOptions = mContext->mSystem->mTypeOptions[optionIdx];
@@ -1686,7 +1687,35 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 					int filterIdx = 0;
 					int typeNameIdx = 0;
 
-					if (BfCheckWildcard(filter, typeName))
+					if (filter.StartsWith(':'))
+					{
+						BfTypeInstance* typeInst = type->ToTypeInstance();
+						if (typeInst != NULL)
+						{
+							int startPos = 1;
+							for (; startPos < (int)filter.length(); startPos++)
+								if (filter[startPos] != ' ')
+									break;
+							String checkFilter;
+							checkFilter.Reference(filter.c_str() + startPos, filter.mLength - startPos);
+
+							BfTypeInstance* checkTypeInst = typeInst;
+							while (checkTypeInst != NULL)
+							{
+								for (auto& iface : checkTypeInst->mInterfaces)
+								{
+									StringT<128> ifaceName = TypeToString(iface.mInterfaceType);
+									if (BfCheckWildcard(checkFilter, ifaceName))
+										matched = true;
+									break;
+								}
+								checkTypeInst = checkTypeInst->mBaseType;
+							}
+							if (matched)
+								break;
+						}												
+					}
+					else if (BfCheckWildcard(filter, typeName))
 					{
 						matched = true;
 						break;
@@ -1702,9 +1731,8 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 		{
 			auto underlyingType = typeInstance->GetUnderlyingType();
 			if (underlyingType != NULL)
-			{
-				String typeName = TypeToString(underlyingType);
-				_CheckTypeName(typeName);
+			{				
+				_CheckType(underlyingType);
 			}
 			else
 			{
@@ -1716,13 +1744,11 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 		{
 			BF_ASSERT(typeInstance->IsGenericTypeInstance());
 			auto innerType = typeInstance->mGenericTypeInfo->mTypeGenericArguments[0];
-			auto ptrType = CreatePointerType(innerType);
-			String typeName = TypeToString(ptrType);
-			_CheckTypeName(typeName);
+			auto ptrType = CreatePointerType(innerType);			
+			_CheckType(ptrType);
 		}
-
-		String typeName = TypeToString(typeInstance);
-		_CheckTypeName(typeName);
+		
+		_CheckType(typeInstance);
 	}
 
 	int matchedIdx = -1;

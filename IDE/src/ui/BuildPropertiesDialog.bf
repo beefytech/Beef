@@ -267,10 +267,20 @@ namespace IDE.ui
 			else
 			{
 				bool isValid = true;
-				for (let typeName in typeNames.Split(';'))
+				for (var typeName in typeNames.Split(';'))
 				{
-					if ((!typeNames.StartsWith("@")) && (!gApp.mBfResolveCompiler.VerifyTypeName(scope String(typeName), -1)))
-						isValid = false;
+					if (!typeNames.StartsWith("@"))
+					{
+						while (!typeName.IsEmpty)
+						{
+							if ((typeName[0] != ':') && (!typeName[0].IsWhiteSpace))
+								break;
+							typeName.RemoveFromStart(1);
+						}
+
+						if (!gApp.mBfResolveCompiler.VerifyTypeName(scope String(typeName), -1))
+							isValid = false;
+					}
 				}
 				subItem.mTextColor = isValid ? 0xFFFFFFFF : 0xFFFF8080;
 				propEntry.mColorOverride = subItem.mTextColor;

@@ -34,6 +34,14 @@ namespace IDE.ui
 					editOffset = semiPos + 1;
 			}
 
+			while (editOffset < editText.Length)
+			{
+				char8 c = editText[editOffset];
+				if ((c != ':') && (!c.IsWhiteSpace))
+					break;
+				editOffset++;
+			}
+
 			editText.Remove(0, editOffset);
 			cursorPos -= editOffset;
 			//
@@ -47,7 +55,9 @@ namespace IDE.ui
 			if (editText.StartsWith("@"))
 				isValid = true;
 			else
+			{
 				isValid = gApp.mBfResolveCompiler.VerifyTypeName(editText, cursorPos);
+			}
 
 			for (int ofs < editText.Length)
 			{
@@ -82,14 +92,23 @@ namespace IDE.ui
 				text[i].mDisplayTypeId = 0;
 			}
 
-			for (let typeName in editText.Split(';'))
+			for (var typeName in editText.Split(';'))
 			{
+				int startOfs = 0;
+				while (!typeName.IsEmpty)
+				{
+					if ((typeName[0] != ':') && (!typeName[0].IsWhiteSpace))
+						break;
+					typeName.RemoveFromStart(1);
+					startOfs++;
+				}
+
 				bool isValid = gApp.mBfResolveCompiler.VerifyTypeName(scope String(typeName), -1);
 				if (!isValid)
 				{
 					for (int ofs < typeName.Length)
 					{
-						text[@typeName.Pos + ofs].mDisplayTypeId = 1;
+						text[@typeName.Pos + startOfs + ofs].mDisplayTypeId = 1;
 					}
 				}	
 			}

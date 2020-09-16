@@ -13051,8 +13051,14 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 			}
 			else if (primStructType->IsSplattable())
 			{				
-				BF_ASSERT(target.IsSplat());
-				target.mKind = BfTypedValueKind_SplatHead;
+				BF_ASSERT(target.IsSplat() || target.mValue.IsFake());
+				if (target.IsSplat())
+					target.mKind = BfTypedValueKind_SplatHead;
+				else
+				{
+					if (!target.mValue.IsFake())
+						mModule->FailInternal("MakeCallableTarget splat fail", targetSrc);
+				}
 			}
 		}
 

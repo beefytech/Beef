@@ -1978,10 +1978,11 @@ bool BfTypeInstance::IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProje
 
 bool BfTypeInstance::WantsGCMarking()
 {
+	BF_ASSERT(mTypeDef->mTypeCode != BfTypeCode_Extension);
 	if (IsObjectOrInterface()) 
 		return true; 
 	if ((IsEnum()) && (!IsPayloadEnum()))
-		return false;
+		return false;	
 	BF_ASSERT(mDefineState >= BfTypeDefineState_Defined);
 	return mWantsGCMarking;
 }
@@ -2198,13 +2199,14 @@ BfType* BfTypeInstance::GetUnderlyingType()
 
 bool BfTypeInstance::IsValuelessType()
 {
+	BF_ASSERT(mTypeDef->mTypeCode != BfTypeCode_Extension);
 	if ((mTypeDef->mTypeCode == BfTypeCode_Object) || (mTypeDef->mTypeCode == BfTypeCode_Interface))
 	{
 		return false;
 	}
 	if (mTypeDef->mIsOpaque)
-		return false;
-
+		return false;	
+	
 	BF_ASSERT(mDefineState >= BfTypeDefineState_Defined);
 	BF_ASSERT(mInstSize >= 0);
 	if (mInstSize == 0)

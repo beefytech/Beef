@@ -2617,12 +2617,11 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	BF_ASSERT(typeDef->mFullNameEx == nextTypeDef->mFullNameEx);
 
 	typeDef->mProtection = nextTypeDef->mProtection;	
-	if ((typeDef->mTypeCode != BfTypeCode_Extension) && (!typeDef->mIsCombinedPartial))
-		BF_ASSERT(nextTypeDef->mTypeCode != BfTypeCode_Extension);
 
 	BF_ASSERT(typeDef->mTypeCode == nextTypeDef->mTypeCode);
 
 	typeDef->mTypeCode = nextTypeDef->mTypeCode;
+
 	typeDef->mIsAlwaysInclude = nextTypeDef->mIsAlwaysInclude;
 	typeDef->mIsNoDiscard = nextTypeDef->mIsNoDiscard;
 	typeDef->mIsPartial = nextTypeDef->mIsPartial;
