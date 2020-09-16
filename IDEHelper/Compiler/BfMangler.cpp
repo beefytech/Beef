@@ -1794,6 +1794,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 					else if (constant->mInt32 == 2) // CPP
 					{
 						mangleContext.mCPPMangle = true;
+						mangleContext.mCCompat = true;
 					}
 				}
 			}
@@ -2046,7 +2047,12 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	if (methodInst->GetExplicitInterface() != NULL)
 		Mangle(mangleContext, name, methodInst->GetExplicitInterface(), true);
 	
-	Mangle(mangleContext, name, methodInst->GetOwner(), true);
+	///
+	{
+		// Only use CCompat for params, not for the owning type name - unless we're doing an explicit CPP mangle
+		SetAndRestoreValue<bool> prevCCompat(mangleContext.mCCompat, (mangleContext.mCCompat && mangleContext.mCPPMangle) ? true : false);
+		Mangle(mangleContext, name, methodInst->GetOwner(), true);
+	}
 
 	/*bool isCppDecl = false;
 	if (!isCppDecl)
