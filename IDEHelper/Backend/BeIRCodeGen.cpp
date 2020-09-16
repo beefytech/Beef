@@ -6,6 +6,10 @@
 #include "BeefySysLib/util/AllocDebug.h"
 #include "BeefySysLib/util/Hash.h"
 
+#ifdef _DEBUG
+#define BE_EXTRA_CHECKS
+#endif
+
 USING_NS_BF;
 
 //#define CODEGEN_TRACK
@@ -2051,6 +2055,8 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeValue*, value);
 			CMD_PARAM(BeBlock*, comingFrom);
 
+			BF_ASSERT(phiValue->GetType() == value->GetType());
+
 			auto phiIncoming = mBeModule->mAlloc.Alloc<BePhiIncoming>();
 			phiIncoming->mBlock = comingFrom;
 			phiIncoming->mValue = value;
@@ -2151,7 +2157,7 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeValue*, func);
 			CMD_PARAM(CmdParamVec<BeValue*>, args);
 			
-#ifdef _DEBUG			
+#ifdef BE_EXTRA_CHECKS
 			auto funcPtrType = func->GetType();
 			if (funcPtrType != NULL)
 			{
@@ -2161,7 +2167,7 @@ void BeIRCodeGen::HandleNextCmd()
 
 				bool argsMatched = true;
 				if (!funcType->mIsVarArg)
-				{					
+				{
 					if (funcType->mParams.size() != args.size())
 					{
 						argsMatched = false;
@@ -2171,7 +2177,9 @@ void BeIRCodeGen::HandleNextCmd()
 						int argIdx = 0;
 						for (int argIdx = 0; argIdx < (int)args.size(); argIdx++)
 						{
-							if (funcType->mParams[argIdx].mType != args[argIdx]->GetType())
+							if (args[argIdx] == NULL)
+								argsMatched = false;
+							else if (funcType->mParams[argIdx].mType != args[argIdx]->GetType())
 								argsMatched = false;
 						}
 					}
@@ -2237,7 +2245,7 @@ void BeIRCodeGen::HandleNextCmd()
 	case BfIRCmd_CreateRet:
 		{
 			CMD_PARAM(BeValue*, val);
-#ifdef _DEBUG
+#ifdef BE_EXTRA_CHECKS
 			auto retType = val->GetType();
 			auto funcType = mActiveFunction->GetFuncType();
 			BF_ASSERT(retType == funcType->mReturnType);
@@ -3296,7 +3304,7 @@ BeValue* BeIRCodeGen::GetBeValue(int id)
 {
 	auto& result = mResults[id];
 	BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Value);
-#ifdef _DEBUG
+#ifdef BE_EXTRA_CHECKS
 	BF_ASSERT(!result.mBeValue->mLifetimeEnded);
 	BF_ASSERT(!result.mBeValue->mWasRemoved);
 #endif
