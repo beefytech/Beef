@@ -3861,7 +3861,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		return;
 	}
 
-	if ((!checkType->IsPointer()) && (!checkType->IsObject()))
+	if ((!checkType->IsPointer()) && (!checkType->IsObjectOrInterface()))
 	{
 		Fail(StrFormat("Cannot delete a value of type '%s'", TypeToString(val.mType).c_str()), deleteStmt->mExpression);
 		return;
