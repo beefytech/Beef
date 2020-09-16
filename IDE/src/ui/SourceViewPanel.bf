@@ -3579,7 +3579,8 @@ namespace IDE.ui
 
             if (mOldVersionPanel != null)
             {
-                mEditWidget.mVisible = true;
+				if (mEditWidget != null)
+                	mEditWidget.mVisible = true;
                 if (mOldVersionPanel.mParent != null)
                     mOldVersionPanel.RemoveSelf();
                 mOldVersionPanel.Dispose();
@@ -3587,8 +3588,10 @@ namespace IDE.ui
 				//delete mOldVersionPanel;
                 mOldVersionPanel = null;
 				if (mWidgetWindow != null)
+				{
 					FocusEdit();
-				ResizeComponents();
+					ResizeComponents();
+				}
             }
         }        
 
