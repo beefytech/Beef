@@ -3028,6 +3028,8 @@ void BfCompiler::UpdateRevisedTypes()
 				}
 			}
 
+			bool isExplicitPartial = outerTypeDef->mIsExplicitPartial;
+			bool failedToFindRootType = false;
 			if ((outerTypeDef->mTypeCode == BfTypeCode_Extension) && (!outerTypeDef->mPartialUsed))
 			{								
 				// Find root type, and we assume the composite type follows this
@@ -3066,8 +3068,15 @@ void BfCompiler::UpdateRevisedTypes()
 						BF_ASSERT(rootTypeDef->mFullNameEx == compositeTypeDef->mFullNameEx);
 					}
 				}
+
+				if (rootTypeDef == NULL)
+				{
+					failedToFindRootType = true;					
+					isExplicitPartial = true;
+				}
 			}
-			else if ((outerTypeDef->mIsExplicitPartial) && (!outerTypeDef->mPartialUsed))
+			
+			if ((isExplicitPartial) && (!outerTypeDef->mPartialUsed))
 			{
 				// For explicit partials there is no 'root type' so we want to select any partial in the 'innermost' project
 				rootTypeDef = outerTypeDef;				
@@ -3170,7 +3179,10 @@ void BfCompiler::UpdateRevisedTypes()
 						compositeTypeDef->mNameEx->Ref();
 						compositeTypeDef->mProtection = rootTypeDef->mProtection;
 						compositeTypeDef->mNamespace = rootTypeDef->mNamespace;
-						compositeTypeDef->mTypeCode = rootTypeDef->mTypeCode;
+						if (rootTypeDef->mTypeCode == BfTypeCode_Extension)						
+							compositeTypeDef->mTypeCode = BfTypeCode_Struct;						
+						else
+							compositeTypeDef->mTypeCode = rootTypeDef->mTypeCode;						
 						compositeTypeDef->mFullName = rootTypeDef->mFullName;
 						compositeTypeDef->mFullNameEx = rootTypeDef->mFullNameEx;
 						compositeTypeDef->mIsFunction = rootTypeDef->mIsFunction;
@@ -3344,13 +3356,22 @@ void BfCompiler::UpdateRevisedTypes()
 					if (compositeIsNew)
 					{
 						compositeTypeDef->mDefState = BfTypeDef::DefState_New;
-						compositeTypeDef->mTypeCode = compositeTypeDef->mNextRevision->mTypeCode;
+						if (compositeTypeDef->mNextRevision->mTypeCode != BfTypeCode_Extension)
+							compositeTypeDef->mTypeCode = compositeTypeDef->mNextRevision->mTypeCode;
+						else
+							compositeTypeDef->mNextRevision->mTypeCode = compositeTypeDef->mTypeCode;
 						mSystem->InjectNewRevision(compositeTypeDef);
 						// Reset 'New' state
 						compositeTypeDef->mDefState = BfTypeDef::DefState_New;
 					}
-					else if (hadSignatureChange)
-						compositeTypeDef->mDefState = BfTypeDef::DefState_Signature_Changed;
+					else
+					{
+						if (compositeTypeDef->mNextRevision->mTypeCode == BfTypeCode_Extension)
+							compositeTypeDef->mNextRevision->mTypeCode = compositeTypeDef->mTypeCode;
+
+						if (hadSignatureChange)
+							compositeTypeDef->mDefState = BfTypeDef::DefState_Signature_Changed;
+					}
 
 					if (compositeTypeDef->mDefState == BfTypeDef::DefState_Defined)
 					{
@@ -3368,11 +3389,23 @@ void BfCompiler::UpdateRevisedTypes()
 					if (latestCompositeTypeDef->mTypeCode == BfTypeCode_Extension)
 					{
 						BF_ASSERT(rootTypeDef == NULL);
-						latestCompositeTypeDef->mTypeCode = BfTypeCode_Object;
+						latestCompositeTypeDef->mTypeCode = BfTypeCode_Struct;
 					}
-					
+									
 					BfLogSysM("Partial combined type typedef %p updated from parser %p\n", compositeTypeDef, latestCompositeTypeDef->mTypeDeclaration->GetSourceData());
-				}				
+				}
+
+				if (failedToFindRootType)
+				{
+					for (auto partialTypeDecl : compositeTypeDef->GetLatest()->mPartials)
+					{
+						// Couldn't find a root type def, treat ourselves as an explicit partial
+						auto error = mPassInstance->Fail(StrFormat("Unable to find root type definition for extension '%s'", partialTypeDecl->GetLatest()->mFullName.ToString().c_str()),
+							partialTypeDecl->GetLatest()->mTypeDeclaration->mNameNode);
+						if (error != NULL)
+							error->mIsPersistent = true;
+					}
+				}
 			}			
 
 			outerTypeDefEntry = outerTypeDefEntry->mNext;
@@ -3426,6 +3459,7 @@ void BfCompiler::UpdateRevisedTypes()
 						if (outerTypeDef->mIsPartial)
 						{
 							// Allow this typeDef be a full solo type by itself
+							//outerTypeDef->mTypeCode = BfTypeCode_Struct;
 							outerTypeDef->mIsPartial = false;
 							if (outerTypeDef->mNextRevision != NULL)
 								outerTypeDef->mNextRevision->mIsPartial = false;
