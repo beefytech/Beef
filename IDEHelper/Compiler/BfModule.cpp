@@ -5881,12 +5881,24 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			if (fieldInstance->mConstIdx != -1)
 			{
 				auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-				constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, constant->mUInt64);				
+				constValue = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, constant->mUInt64);
 			}
 		}
 		else if (fieldInstance->GetFieldDef()->mIsStatic)
 		{
 			auto refVal = ReferenceStaticField(fieldInstance);
+
+			if (refVal.mValue.IsConst())
+			{
+				auto constant = mBfIRBuilder->GetConstant(refVal.mValue);
+				if (constant->mConstType == BfConstType_GlobalVar)
+				{
+					auto globalVar = (BfGlobalVar*)constant;
+					if (globalVar->mName[0] == '#')
+						refVal = BfTypedValue();
+				}
+			}
+
 			if (refVal.IsAddr())
 			{
 				constValue = mBfIRBuilder->CreatePtrToInt(refVal.mValue, BfTypeCode_IntPtr);				
