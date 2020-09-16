@@ -3192,9 +3192,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 
 	BfIRBlock prevInsertBlock;
 	bool hadReturn = false;
-	
-	BfIRBlock postExitBlock;
-
+		
 	int startLocalMethod = 0; // was -1
 	auto rootMethodState = mCurMethodState->GetRootMethodState();
 
@@ -3298,6 +3296,9 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 		}
 	}*/
 
+	SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites);
+	bool hadUnreachableCode = false;
+
 	// Handle statements
 	auto itr = block->begin();
 	while (itr != block->end())
@@ -3334,58 +3335,26 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 			continue;
 		}
 
+		
 		if ((mCurMethodState != NULL) && (mCurMethodState->mLeftBlockUncond)) // mLeftBlock is cleared after conditional block is completed
 		{
 			if (mCurMethodState->mHadReturn)
 				hadReturn = true;
 			
-			if ((!postExitBlock) && (!mCurMethodState->mInPostReturn))
+			if ((!hadUnreachableCode) && (!mCurMethodState->mInPostReturn))
 			{
 				Warn(BfWarning_CS0162_UnreachableCode, "Unreachable code", child);
 
+				hadUnreachableCode = true;
 				prevInsertBlock = mBfIRBuilder->GetInsertBlock();
 
 				mCurMethodState->mInPostReturn = true;				
-				postExitBlock = mBfIRBuilder->CreateBlock("tempPostExit", true);
-				mBfIRBuilder->SetInsertPoint(postExitBlock);
+				mBfIRBuilder->mIgnoreWrites = true;
 			}			
 		}
 
 		if (itr.IsLast())
 		{
-// 			if (auto exprStmt = BfNodeDynCast<BfExpressionStatement>(child))
-// 			{
-// 				BF_FATAL("Happens?");
-// 
-// 				auto expr = exprStmt->mExpression;
-// 				if (exprStmt->IsMissingSemicolon())
-// 				{
-// 					if (mCurMethodState != NULL)
-// 					{
-// 						if (mCurMethodState->mCurScope->mExprEvaluator != NULL)
-// 						{
-// 							// Evaluate last child as an expression
-// 							mCurMethodState->mCurScope->mExprEvaluator->VisitChild(expr);
-// 							mCurMethodState->mCurScope->mExprEvaluator->FinishExpressionResult();
-// 							break;
-// 						}
-// 						else if (mCurMethodState->InMainMixinScope())
-// 						{
-// 							mCurMethodState->mMixinState->mResultExpr = expr;
-// 							break;
-// 						}
-// 						else if ((mCurMethodInstance->IsMixin()) && (mCurMethodState->mCurScope == &mCurMethodState->mHeadScope))
-// 						{
-// 							// Silently allow...
-// 						}
-// 						else
-// 						{
-// 							FailAfter("Expression block cannot be used here. Consider adding semicolon if a statement was intended.", expr);
-// 						}
-// 					}
-// 				}
-// 			}
-// 			else 
 			if (auto expr = BfNodeDynCast<BfExpression>(child))
 			{					
 				if (expr->IsExpression())
@@ -3477,15 +3446,13 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 			mCurMethodState->mLocalMethods.pop_back();		
 		}
 
-		if (postExitBlock)
+		if (hadUnreachableCode)
 		{
 			if (hadReturn)
 				mCurMethodState->SetHadReturn(true);
 			mCurMethodState->mLeftBlockUncond = true;
 			mCurMethodState->mInPostReturn = false;
-
-			mBfIRBuilder->DropBlocks(postExitBlock);
-
+			
 			if (prevInsertBlock)
 				mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 		}
@@ -3608,8 +3575,7 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 	}
 
 	if (!isConstBranch)
-	{
-		//trueBB = mBfIRBuilder->CreateBlock(StrFormat("if.then_%d", mBfIRBuilder->mStream.GetSize()), true);
+	{		
 		trueBB = mBfIRBuilder->CreateBlock("if.then", true);
 		falseBB = (ifStmt->mFalseStatement == NULL) ? BfIRBlock() : mBfIRBuilder->CreateBlock("if.else");
 	}
