@@ -4187,26 +4187,26 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 	
 	if (mBfIRBuilder->mIgnoreWrites)
 		return;
+	
+	BF_ASSERT(!mCurTypeInstance->IsBoxed());
 
-	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);	
-	if (mCurTypeInstance->IsTypedPrimitive())
+	auto compareType = mCurMethodInstance->mParams[0].mResolvedType;	
+	bool isValid = true;
+
+	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
+	if (compareType->IsValuelessType())
+	{
+		mBfIRBuilder->CreateRet(GetDefaultValue(boolType));
+		return;
+	}
+	
+	if (compareType->IsTypedPrimitive())
 	{
 		BfExprEvaluator exprEvaluator(this);
 		BfTypedValue leftTypedVal = LoadValue(exprEvaluator.LoadLocal(mCurMethodState->mLocals[0]));
 		BfTypedValue rightTypedVal = LoadValue(exprEvaluator.LoadLocal(mCurMethodState->mLocals[1]));
 		auto cmpResult = mBfIRBuilder->CreateCmpEQ(leftTypedVal.mValue, rightTypedVal.mValue);
 		mBfIRBuilder->CreateRet(cmpResult);
-		return;
-	}
-
-	BF_ASSERT(!mCurTypeInstance->IsBoxed());
-
-	auto compareType = mCurMethodInstance->mParams[0].mResolvedType;	
-	bool isValid = true;
-
-	if (compareType->IsValuelessType())
-	{
-		mBfIRBuilder->CreateRet(GetDefaultValue(boolType));
 		return;
 	}
 
