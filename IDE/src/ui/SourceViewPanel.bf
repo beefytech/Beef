@@ -678,9 +678,15 @@ namespace IDE.ui
 				return;
 
             data.Add("Type", "SourceViewPanel");
-            data.Add("FilePath", mFilePath);
+			String relPath = scope String();
+			gApp.mWorkspace.GetWorkspaceRelativePath(mFilePath, relPath);
+            data.Add("FilePath", relPath);
 			if (mAliasFilePath != null)
-				data.Add("AliasFilePath", mAliasFilePath);
+			{
+				String relAliasPath = scope .();
+				gApp.mWorkspace.GetWorkspaceRelativePath(mAliasFilePath, relAliasPath);
+				data.Add("AliasFilePath", relAliasPath);
+			}
             data.ConditionalAdd("CursorPos", mEditWidget.Content.CursorTextPos, 0);
             data.ConditionalAdd("VertPos", mEditWidget.mVertScrollbar.mContentPos, 0);
             if (mProjectSource != null)
@@ -691,15 +697,21 @@ namespace IDE.ui
         {
             base.Deserialize(data);
 
-            String filePath = scope String();
-            data.GetString("FilePath", filePath);
+            String relFilePath = scope String();
+            data.GetString("FilePath", relFilePath);
+			String absFilePath = scope String();
+			gApp.mWorkspace.GetWorkspaceAbsPath(relFilePath, absFilePath);
+
             String projectName = scope String();
             data.GetString("ProjectName", projectName);
 
-			var aliasFilePath = scope String();
-			data.GetString("AliasFilePath", aliasFilePath);
-			if (!aliasFilePath.IsEmpty)
-				mAliasFilePath = new String(aliasFilePath);
+			var relAliasFilePath = scope String();
+			data.GetString("AliasFilePath", relAliasFilePath);
+			if (!relAliasFilePath.IsEmpty)
+			{
+				mAliasFilePath = new String();
+				gApp.mWorkspace.GetWorkspaceAbsPath(relAliasFilePath, mAliasFilePath);
+			}
             
             bool foundProjectSource = false;
             if (projectName != null)
@@ -708,7 +720,7 @@ namespace IDE.ui
                 if (project != null)
                 {
                     String relPath = scope String();
-                    project.GetProjectRelPath(filePath, relPath);
+                    project.GetProjectRelPath(absFilePath, relPath);
                     var projectItem = IDEApp.sApp.FindProjectItem(project.mRootFolder, relPath);
                     if (projectItem != null)
                     {
@@ -721,7 +733,7 @@ namespace IDE.ui
 
             if (!foundProjectSource)
             {
-                if (!Show(filePath, true))
+                if (!Show(absFilePath, true))
                     return false;
             }
             int32 cursorPos = data.GetInt("CursorPos");

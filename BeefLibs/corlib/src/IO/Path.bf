@@ -54,6 +54,11 @@ namespace System.IO
 
 		}
 
+		public static bool IsDirectorySeparatorChar(char8 c)
+		{
+			return (c == DirectorySeparatorChar) || (c == AltDirectorySeparatorChar);
+		}
+
 		public static void ChangeExtension(StringView path, StringView ext, String outPath)
 		{
 			if (path.IsNull)

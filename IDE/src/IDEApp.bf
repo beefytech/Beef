@@ -1708,7 +1708,11 @@ namespace IDE
 			using (sd.CreateArray("RecentFilesList"))
 			{
 			    for (var recentFile in mRecentlyDisplayedFiles)
-			        sd.Add(recentFile);
+			    {
+					String relPath = scope .();
+					mWorkspace.GetWorkspaceRelativePath(recentFile, relPath);
+					sd.Add(relPath);
+				}
 			}
 
 			using (sd.CreateArray("Breakpoints"))
@@ -1721,7 +1725,9 @@ namespace IDE
 			            {                    
 			                if (breakpoint.mFileName != null)
 			                {
-			                    sd.Add("File", breakpoint.mFileName);
+								String relPath = scope .();
+								mWorkspace.GetWorkspaceRelativePath(breakpoint.mFileName, relPath);
+			                    sd.Add("File", relPath);
 			                    sd.Add("Line", breakpoint.mLineNum);
 			                    sd.Add("Column", breakpoint.mColumn);
 								if (breakpoint.mInstrOffset != -1)
@@ -1755,7 +1761,9 @@ namespace IDE
 			        {
 			            using (sd.CreateObject())
 			            {
-			                sd.Add("File", bookmark.mFileName);
+							String relPath = scope .();
+							mWorkspace.GetWorkspaceRelativePath(bookmark.mFileName, relPath);
+			                sd.Add("File", relPath);
 			                sd.Add("Line", bookmark.mLineNum);
 			                sd.Add("Column", bookmark.mColumn);
 			            }
@@ -2907,17 +2915,21 @@ namespace IDE
 			DeleteAndClearItems!(mRecentlyDisplayedFiles);
 			for (data.Enumerate("RecentFilesList"))
 			{
-				String fileStr = new String();
-				data.GetCurString(fileStr);
-				IDEUtils.FixFilePath(fileStr);
-		        mRecentlyDisplayedFiles.Add(fileStr);
+				String relPath = scope String();
+				data.GetCurString(relPath);
+				IDEUtils.FixFilePath(relPath);
+				String absPath = new String();
+				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
+		        mRecentlyDisplayedFiles.Add(absPath);
 			}
 
 			for (var _breakpoint in data.Enumerate("Breakpoints"))
 		    {
-	            String fileName = scope String();
-	            data.GetString("File", fileName);
-				IDEUtils.FixFilePath(fileName);
+	            String relPath = scope String();
+	            data.GetString("File", relPath);
+				IDEUtils.FixFilePath(relPath);
+				String absPath = scope String();
+				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
 	            int32 lineNum = data.GetInt("Line");
 	            int32 column = data.GetInt("Column");
 	            int32 instrOffset = data.GetInt("InstrOffset", -1);
@@ -2926,8 +2938,8 @@ namespace IDE
 				Breakpoint breakpoint = null;
 	            if (memoryWatchExpression.Length > 0)
 	                breakpoint = mDebugger.CreateMemoryBreakpoint(memoryWatchExpression, (int)0, 0, null);
-	            else if (fileName.Length > 0)
-	                breakpoint = mDebugger.CreateBreakpoint(fileName, lineNum, column, instrOffset);
+	            else if (absPath.Length > 0)
+	                breakpoint = mDebugger.CreateBreakpoint(absPath, lineNum, column, instrOffset);
 				else
 				{
 					String symbol = scope .();
@@ -2961,12 +2973,14 @@ namespace IDE
 			
 			for (var _bookmark in data.Enumerate("Bookmarks"))
 			{
-	            String fileName = scope String();
-	            data.GetString("File", fileName);
-				IDEUtils.FixFilePath(fileName);
+	            String relPath = scope String();
+	            data.GetString("File", relPath);
+				IDEUtils.FixFilePath(relPath);
+				String absPath = scope String();
+				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
 	            int32 lineNum = data.GetInt("Line");
 	            int32 column = data.GetInt("Column");
-	            mBookmarkManager.CreateBookmark(fileName, lineNum, column);
+	            mBookmarkManager.CreateBookmark(absPath, lineNum, column);
 			}
 
 			for (var referenceId in data.Enumerate("DebuggerDisplayTypes"))

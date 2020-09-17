@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Threading;
 using IDE.Util;
 using IDE.util;
+using System.IO;
 
 namespace IDE
 {
@@ -493,6 +494,25 @@ namespace IDE
             config.mPlatforms.TryGetValue(platformName, out options);
             return options;
         }
+
+		public void GetWorkspaceRelativePath(StringView inAbsPath, String outRelPath)
+		{
+			if ((inAbsPath.Length > mDir.Length) &&
+				(Path.Equals(.(inAbsPath, 0, mDir.Length), mDir)) &&
+				(Path.IsDirectorySeparatorChar(inAbsPath[mDir.Length])))
+			{
+				outRelPath.Append(StringView(inAbsPath, mDir.Length + 1));
+			}
+			else
+				outRelPath.Append(inAbsPath);
+		}
+
+		public void GetWorkspaceAbsPath(StringView inRelPath, String outAbsPath)
+		{
+			if (inRelPath.IsEmpty)
+				return;
+			Path.GetAbsolutePath(inRelPath, mDir, outAbsPath);
+		}
 
         public void Serialize(StructuredData data)
         {
