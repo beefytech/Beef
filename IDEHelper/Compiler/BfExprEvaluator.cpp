@@ -13042,28 +13042,29 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 		auto primStructType = mModule->GetWrappedStructType(target.mType);
 		if (primStructType != NULL)
 		{
-			mModule->PopulateType(primStructType);
-			target.mType = primStructType;
+			mModule->PopulateType(primStructType);			
 
 			if (primStructType->IsTypedPrimitive())
 			{
 				// Type is already the same
+				target.mType = primStructType;
 			}
 			else if (target.IsAddr())
 			{
 				auto ptrType = mModule->CreatePointerType(primStructType);
 				target = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType)), primStructType, true);
 			}
-			else if (primStructType->IsSplattable())
-			{				
-				BF_ASSERT(target.IsSplat() || target.mValue.IsFake());
-				if (target.IsSplat())
-					target.mKind = BfTypedValueKind_SplatHead;
-				else
-				{
-					if (!target.mValue.IsFake())
-						mModule->FailInternal("MakeCallableTarget splat fail", targetSrc);
-				}
+			else if ((primStructType->IsSplattable()) && (target.IsSplat()))
+			{
+				target.mType = primStructType;
+				target.mKind = BfTypedValueKind_SplatHead;								
+			}
+			else
+			{
+				auto allocPtr = mModule->CreateAlloca(primStructType);
+				auto srcPtrType = mModule->mBfIRBuilder->CreateBitCast(allocPtr, mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(target.mType)));
+				mModule->mBfIRBuilder->CreateStore(target.mValue, srcPtrType);
+				target = BfTypedValue(allocPtr, primStructType, true);
 			}
 		}
 
