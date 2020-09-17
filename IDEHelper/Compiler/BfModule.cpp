@@ -4181,20 +4181,14 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 }
 
 void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
-{
+{	
 	if (mCurMethodInstance->mIsUnspecialized)
 		return;
 	
 	if (mBfIRBuilder->mIgnoreWrites)
 		return;
 
-	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
-	if (mCurTypeInstance->IsValuelessType())
-	{
-		mBfIRBuilder->CreateRet(GetDefaultValue(boolType));
-		return;
-	}
-
+	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);	
 	if (mCurTypeInstance->IsTypedPrimitive())
 	{
 		BfExprEvaluator exprEvaluator(this);
@@ -4209,6 +4203,12 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 
 	auto compareType = mCurMethodInstance->mParams[0].mResolvedType;	
 	bool isValid = true;
+
+	if (compareType->IsValuelessType())
+	{
+		mBfIRBuilder->CreateRet(GetDefaultValue(boolType));
+		return;
+	}
 
 	auto compareDType = compareType->ToDependedType();
 	BfTypeInstance* compareTypeInst = compareType->ToTypeInstance();
