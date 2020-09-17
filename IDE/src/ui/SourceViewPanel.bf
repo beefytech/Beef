@@ -120,8 +120,15 @@ namespace IDE.ui
 
 		protected override bool WantsUnfocus()
 		{
-			if ((mWidgetWindow != null) && (mWidgetWindow.mOverWidget is PanelSplitter))
-				return false;
+			if (mWidgetWindow != null)
+			{
+				if (mWidgetWindow.mOverWidget is PanelSplitter)
+					return false;
+				if (mWidgetWindow.mOverWidget is TabbedView.TabButton)
+					return false;
+				if (mWidgetWindow.mOverWidget is DarkTabbedView.DarkTabButtonClose)
+					return false;
+			}
 
 			return base.WantsUnfocus();
 		}
