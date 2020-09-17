@@ -6022,36 +6022,9 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 			entry.mSize = sectHdr.mSizeOfRawData;
 			mExceptionDirectory.Add(entry);
 		}
-		/*else if (strcmp(name, ".rdata") == 0)
-		{ 
-			if (mExceptionData == NULL)
-			{
-				mExceptionData = data;
-				mExceptionDataRVA = sectHdr.mVirtualAddress;
-			}
-			else
-			{
-				usedData = false;
-			}
-		}
-		else if (strcmp(name, ".xdata") == 0)
-		{
-			if (mExceptionData != NULL)			
-			{
-				if (IsObjectFile())
-				{
-					mOwnedSectionData.push_back(mExceptionData);
-				}
-				else
-				{
-					// xdata section overrides rdata exception data
-					delete[] mExceptionData;					
-				}
-			}
-
-			mExceptionData = data;
-			mExceptionDataRVA = sectHdr.mVirtualAddress;
-		}*/
+		
+		// Old, unsupported DWARF debug info
+		/*
 		else if (strcmp(name, ".debug_info") == 0)
 		{
 			mDebugInfoData = data;
@@ -6088,6 +6061,8 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		{
 			mDebugRangesData = data;
 		}
+		*/
+
 // 		else if (strcmp(name, ".rsrc") == 0)
 // 		{
 // 			//IMAGE_DIRECTORY_ENTRY_RESOURCE
