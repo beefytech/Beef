@@ -15744,8 +15744,32 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 			}
 			else
 			{
-				error = mModule->Fail(StrFormat("Cannot %s read-only local variable '%s'.", modifyType,
-					localVar->mName.c_str()), refNode);
+				if ((mResultLocalVarField != 0) && (!localVar->mIsReadOnly))
+				{
+					auto typeInst = localVar->mResolvedType->ToTypeInstance();
+					int dataIdx = mResultLocalVarField - 1;
+					if (typeInst != NULL)
+					{
+						for (auto& field : typeInst->mFieldInstances)
+						{
+							if (field.mDataIdx == dataIdx)
+							{
+								error = mModule->Fail(StrFormat("Cannot %s readonly field '%s.%s'.", modifyType,
+									mModule->TypeToString(typeInst).c_str(),
+									field.GetFieldDef()->mName.c_str()), refNode);
+								break;
+							}
+						}
+
+						
+					}					
+				}
+				
+				if (error == NULL)
+				{
+					error = mModule->Fail(StrFormat("Cannot %s read-only local variable '%s'.", modifyType,
+						localVar->mName.c_str()), refNode);
+				}
 				return false;
 			}			
 		}
@@ -18908,8 +18932,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 		mResult = BfTypedValue(phi, leftValue.mType);
 		
 		return;
-	}	
-	
+	}
+
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 	{
 		forceLeftType = true;		
