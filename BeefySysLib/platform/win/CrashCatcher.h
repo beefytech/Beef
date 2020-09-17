@@ -18,7 +18,9 @@ public:
 	EXCEPTION_POINTERS* mExceptionPointers;
 	LPTOP_LEVEL_EXCEPTION_FILTER mPreviousFilter;
 	bool mDebugError;
+	bool mCloseRequested;
 	BfpCrashReportKind mCrashReportKind;	
+	String mRelaunchCmd;
 
 public:
 	CrashCatcher();
@@ -30,6 +32,7 @@ public:
 	virtual void Test();
 	virtual void Crash(const StringImpl& str);
 	virtual void SetCrashReportKind(BfpCrashReportKind crashReportKind);
+	virtual void SetRelaunchCmd(const StringImpl& relaunchCmd);
 
 	static CrashCatcher* Get();
 };

@@ -2,6 +2,7 @@
 #include "../util/Dictionary.h"
 #include <commdlg.h>
 #include <time.h>
+#include <shellapi.h>
 
 USING_NS_BF;
 
@@ -192,6 +193,45 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		}
 		else if (hwndCtl == gNoButtonWindow)
 		{
+			if (!CrashCatcher::Get()->mRelaunchCmd.IsEmpty())
+			{
+				SHELLEXECUTEINFOW shellExecuteInfo = { 0 };
+				shellExecuteInfo.cbSize = sizeof(SHELLEXECUTEINFOW);				
+				shellExecuteInfo.nShow = SW_SHOWNORMAL;	
+
+				String cmd = CrashCatcher::Get()->mRelaunchCmd;
+				String file;				
+
+				bool nameQuoted = cmd[0] == '\"';
+				
+				int i;
+				for (i = (nameQuoted ? 1 : 0); cmd[i] != 0; i++)
+				{
+					wchar_t c = cmd[i];
+
+					if (((nameQuoted) && (c == '"')) ||
+						((!nameQuoted) && (c == ' ')))
+					{
+						i++;
+						break;
+					}
+					file += cmd[i];
+				}
+
+				const char* useParamsPtr = cmd.c_str();
+				useParamsPtr += i;
+				while (*useParamsPtr == L' ')
+					useParamsPtr++;
+
+				auto fileW = UTF8Decode(file);
+				shellExecuteInfo.lpFile = fileW.c_str();				
+				auto paramsW = UTF8Decode(useParamsPtr);
+				shellExecuteInfo.lpParameters = paramsW.c_str();
+				
+				BOOL success = ::ShellExecuteExW(&shellExecuteInfo);					
+			}
+
+			CrashCatcher::Get()->mCloseRequested = true;
 			gExiting = true;
 		}
 		else if (hwndCtl == gDebugButtonWindow)
@@ -202,6 +242,7 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 	}
 	break;
 	case WM_CLOSE:
+		CrashCatcher::Get()->mCloseRequested = true;
 		gExiting = true;
 		return 0;
 	}
@@ -209,7 +250,7 @@ static LRESULT CALLBACK SEHWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
-static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& errorText)
+static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& errorText, const StringImpl& relaunchCmd)
 {
 	bool gUseDefaultFonts;
 
@@ -362,8 +403,8 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 
 		aCurX += aButtonWidth + 8;
 	}
-
-	gNoButtonWindow = CreateWindowA("BUTTON", "Close Now",
+	
+	gNoButtonWindow = CreateWindowA("BUTTON", relaunchCmd.IsEmpty() ? "Close Now" : "Relaunch",
 		WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | BS_PUSHBUTTON,
 		aCurX, aRect.bottom - 24 - 8,
 		aButtonWidth,
@@ -803,9 +844,10 @@ static String GetVersion(const StringImpl& fileName)
 
 static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 {
-	if (CrashCatcher::Get()->mCrashed)
+	auto crashCatcher = CrashCatcher::Get();
+	if (crashCatcher->mCrashed)
 		return;
-	CrashCatcher::Get()->mCrashed = true;
+	crashCatcher->mCrashed = true;
 
 	HMODULE hMod = GetModuleHandleA(NULL);
 		
@@ -983,7 +1025,7 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 		::WriteFile(::GetStdHandle(STD_ERROR_HANDLE), aDebugDump.c_str(), (DWORD)aDebugDump.length(), &bytesWritten, NULL);
 	}
 	else
-		ShowErrorDialog(anErrorTitle, aDebugDump);
+		ShowErrorDialog(anErrorTitle, aDebugDump, crashCatcher->mRelaunchCmd);
 }
 
 CrashCatcher::CrashCatcher()
@@ -994,6 +1036,7 @@ CrashCatcher::CrashCatcher()
 	mPreviousFilter = NULL;
 	mDebugError = false;
 	mCrashReportKind = BfpCrashReportKind_Default;
+	mCloseRequested = false;
 }
 
 static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
@@ -1025,7 +1068,8 @@ static long __stdcall SEHFilter(LPEXCEPTION_POINTERS lpExceptPtr)
 		::TerminateProcess(GetCurrentProcess(), lpExceptPtr->ExceptionRecord->ExceptionCode);
 	}
 
-	return EXCEPTION_CONTINUE_SEARCH;
+	//return EXCEPTION_CONTINUE_SEARCH;
+	return (CrashCatcher::Get()->mCloseRequested) ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH;	
 }
 
 //PVECTORED_EXCEPTION_HANDLER(
@@ -1119,6 +1163,11 @@ void CrashCatcher::Crash(const StringImpl& str)
 void CrashCatcher::SetCrashReportKind(BfpCrashReportKind crashReportKind)
 {
 	mCrashReportKind = crashReportKind;
+}
+
+void CrashCatcher::SetRelaunchCmd(const StringImpl& relaunchCmd)
+{
+	mRelaunchCmd = relaunchCmd;
 }
 
 struct CrashCatchMemory

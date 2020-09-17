@@ -593,6 +593,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfo(const char* str) // Can do a
 	BfpGetGlobalData()->mCrashInfo.Append(str);
 }
 
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashRelaunchCmd(const char* str)
+{    
+}
+
 void BfpSystem_Shutdown()
 {
 

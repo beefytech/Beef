@@ -970,6 +970,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfo(const char* str)
 	CrashCatcher::Get()->AddInfo(str);
 }
 
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashRelaunchCmd(const char* str)
+{
+	CrashCatcher::Get()->SetRelaunchCmd(str);
+}
+
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Shutdown()
 {
 	while (gManagerTail != NULL)

@@ -53,6 +53,8 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		public static extern uint32 BfpSystem_TickCount();
 		[CallingConvention(.Stdcall), CLink]
+		public static extern uint32 BfpSystem_SetCrashRelaunchCmd(char8* cmd);
+		[CallingConvention(.Stdcall), CLink]
 		public static extern BfpTimeStamp BfpSystem_GetTimeStamp();
 		[CallingConvention(.Stdcall), CLink]
 		public static extern uint8 BfpSystem_InterlockedExchange8(uint8* ptr, uint8 val); /// Returns the initial value in 'ptr'

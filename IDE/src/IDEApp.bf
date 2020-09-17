@@ -2596,6 +2596,14 @@ namespace IDE
             	mBfResolveCompiler.QueueSetWorkspaceOptions(null, 0);
 #endif
 
+			String relaunchCmd = scope .();
+			relaunchCmd.Append("\"");
+			Environment.GetExecutableFilePath(relaunchCmd);
+			relaunchCmd.Append("\" -workspace=\"");
+			relaunchCmd.Append(mWorkspace.mDir);
+			relaunchCmd.Append("\"");
+			Platform.BfpSystem_SetCrashRelaunchCmd(relaunchCmd);
+
 			MarkDirty();
         }
 
