@@ -515,6 +515,12 @@ namespace IDE.ui
 					mSourceViewPanel.mLockFlashPct = 0.00001f;
 					return true;
 				}
+
+				if (mSourceViewPanel != null)
+				{
+					mSourceViewPanel.CheckSavedContents();
+				}
+
                 return false;
 			}
             if (mSourceViewPanel != null)

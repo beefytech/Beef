@@ -12,6 +12,7 @@
 **/Release */*
 **/Release_*/*
 **/build/*
+**/recovery/*
 **/.vs/*
 BeefSpace_User.toml
 lld-link.exe

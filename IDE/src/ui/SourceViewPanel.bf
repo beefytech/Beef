@@ -300,6 +300,7 @@ namespace IDE.ui
         public SourceEditWidget mEditWidget;        
         public ProjectSource mProjectSource;
 		public FileEditData mEditData;
+		public FileRecovery.Entry mFileRecoveryEntry ~ delete _;
         public List<TrackedTextElementView> mTrackedTextElementViewList ~ DeleteContainerAndItems!(_);
         public List<BfPassInstance.BfError> mErrorList = new List<BfPassInstance.BfError>() ~ DeleteContainerAndItems!(_);
 		public List<ResolveParams> mDeferredResolveResults = new .() ~ DeleteContainerAndItems!(_);
@@ -314,6 +315,7 @@ namespace IDE.ui
         public int32 mLastTextVersionId;
         public int32 mAutocompleteTextVersionId;
         public int32 mClassifiedTextVersionId;
+		public int32 mLastRecoveryTextVersionId;
 		public bool mLoadFailed;
 		String mOldVerLoadCmd ~ delete _;
 		HTTPRequest mOldVerHTTPRequest ~ delete _;
@@ -857,7 +859,20 @@ namespace IDE.ui
 
             return !char8IdData.IsRangeEqual(mEditWidget.mEditWidgetContent.mData.mTextIdData.GetPrepared(), char8IdStart, char8IdEnd);
         }
-        
+
+		public void CheckSavedContents()
+		{
+			if (mEditData.mLastFileTextVersion == mEditWidget.Content.mData.mCurTextVersionId)
+			{
+				if ((mEditData != null) && (mEditData.mRecoveryHash.IsZero))
+				{
+					String text = scope .();
+					mEditWidget.GetText(text);
+					mEditData.mRecoveryHash = MD5.Hash(.((uint8*)text.Ptr, text.Length));
+				}
+			}
+		}
+
         public void FileSaved()
         {
 			ClearLoadFailed();
@@ -880,6 +895,9 @@ namespace IDE.ui
             }
 
 			gApp.FileChanged(mFilePath);
+			DeleteAndNullify!(mFileRecoveryEntry);
+			mLastRecoveryTextVersionId = mEditWidget.Content.mData.mCurTextVersionId;
+			mEditData.mRecoveryHash = default;
         }
 
         void ClassifyThreadDone()
@@ -2936,6 +2954,7 @@ namespace IDE.ui
 
 			if ((mEditData != null) && (mFilePath != null))
 				Debug.Assert(Path.Equals(mFilePath, mEditData.mFilePath));
+			mLastRecoveryTextVersionId = mEditWidget.Content.mData.mCurTextVersionId;
 
             return true;
         }
@@ -6128,6 +6147,21 @@ namespace IDE.ui
 					mWantsFullClassify = true;
 	            if (IDEApp.sApp.mIsUpdateBatchStart)
 	                mTicksSinceTextChanged++;
+			}
+
+			if ((mLastRecoveryTextVersionId != mEditWidget.Content.mData.mCurTextVersionId) && (mTicksSinceTextChanged >= 16))
+			{
+#if !CLI
+				DeleteAndNullify!(mFileRecoveryEntry);
+				if ((mFilePath != null) && (mEditData != null) && (!mEditData.mRecoveryHash.IsZero))
+				{
+					String contents = scope .();
+					mEditWidget.GetText(contents);
+					mFileRecoveryEntry = new .(gApp.mFileRecovery, mFilePath, mEditData.mRecoveryHash, contents, mEditWidget.mEditWidgetContent.CursorTextPos);
+				}
+#endif
+
+				mLastRecoveryTextVersionId = mEditWidget.Content.mData.mCurTextVersionId;
 			}
 
             //TODO: This is just a test!

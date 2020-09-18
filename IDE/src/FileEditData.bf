@@ -41,6 +41,7 @@ namespace IDE
 		public bool mHadRefusedFileChange;
 		public bool mFileDeleted;
 
+		public MD5Hash mRecoveryHash;
 		public MD5Hash mMD5Hash;
 		public SHA256Hash mSHA256Hash;
 

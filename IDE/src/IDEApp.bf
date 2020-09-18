@@ -217,6 +217,9 @@ namespace IDE
 		public Settings mSettings = new Settings() ~ delete _;
         public Workspace mWorkspace = new Workspace() ~ delete _;
         public FileWatcher mFileWatcher = new FileWatcher() ~ delete _;
+#if !CLI
+		public FileRecovery mFileRecovery = new FileRecovery() ~ delete _;
+#endif
 		public int mLastFileChangeId;
         public bool mHaveSourcesChangedInternallySinceLastCompile;
         public bool mHaveSourcesChangedExternallySinceLastCompile;
@@ -630,6 +633,7 @@ namespace IDE
 				mSettings.Save();
 				SaveDefaultLayoutData();
 			}
+			mFileRecovery.WorkspaceClosed();
 #endif
 
 			/*WithTabs(scope (tabButton) =>
@@ -2245,6 +2249,10 @@ namespace IDE
 			mDockingFrame = mMainFrame.mDockingFrame;
 			//mMainFrame.AddedToParent;
 
+#if !CLI
+			mFileRecovery.WorkspaceClosed();
+#endif
+
 			delete mWorkspace;
 			mWorkspace = new Workspace();
 
@@ -2594,6 +2602,9 @@ namespace IDE
 #if !CLI
 			if (mBfResolveCompiler != null)
             	mBfResolveCompiler.QueueSetWorkspaceOptions(null, 0);
+
+			if (mMainWindow != null)
+				mFileRecovery.CheckWorkspace();
 #endif
 
 			String relaunchCmd = scope .();
@@ -6184,7 +6195,7 @@ namespace IDE
                 tabbedView.AddTab(newTabButton);
             newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(sourceViewPanel));
             newTabButton.Activate(setFocus);
-            if (setFocus)
+            if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
                 sourceViewPanel.FocusEdit();  
 
             return sourceViewPanel;            
@@ -11198,6 +11209,9 @@ namespace IDE
 			ShowPanel(mOutputPanel, false);
 			UpdateRecentFileMenuItems();
 			ShowStartupFile();
+#if !CLI
+			mFileRecovery.CheckWorkspace();
+#endif
 
 			if ((mIsFirstRun) && (!mWorkspace.IsInitialized))
 				ShowWelcome();
@@ -12587,6 +12601,9 @@ namespace IDE
 		void UpdateWorkspace()
 		{
 			mFileWatcher.Update();
+#if !CLI
+			mFileRecovery.Update();
+#endif
 
 			bool appHasFocus = false;
 			for (var window in mWindows)
