@@ -254,7 +254,7 @@ namespace System.IO
 			return (char8[]) InvalidFileNameChars.Clone();
 		} */
 
-		public static void GetFileNameWithoutExtension(String inPath, String outFileName)
+		public static void GetFileNameWithoutExtension(StringView inPath, String outFileName)
 		{
 			int lastSlash = Math.Max(inPath.LastIndexOf('\\'), inPath.LastIndexOf('/'));
 

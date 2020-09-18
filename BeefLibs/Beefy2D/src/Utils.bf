@@ -157,15 +157,14 @@ namespace Beefy
 			return .Ok;
         }
 
-        public static Result<void, FileError> LoadTextFile(String fileName, String outBuffer, bool autoRetry = true, delegate void() onPreFilter = null)
+        public static Result<void, FileError> LoadTextFile(StringView filePath, String outBuffer, bool autoRetry = true, delegate void() onPreFilter = null)
         {
 			FileStream sr = scope .();
 			
-
 			// Retry for a while if the other side is still writing out the file
 			for (int i = 0; i < 100; i++)
 			{
-				if (sr.Open(fileName, .Read, .Read) case .Err(let fileOpenErr))
+				if (sr.Open(filePath, .Read, .Read) case .Err(let fileOpenErr))
 				{
 					bool retry = false;
 					if (autoRetry)
