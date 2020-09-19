@@ -6861,8 +6861,11 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			if (resolvedTypeRef != NULL)
 				resolvedTypeInstance = resolvedTypeRef->ToTypeInstance();
 
-			bool isNamespace = false;
+			bool isNamespace = false;			
 			auto checkTypeRef = typeRef;
+			if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(checkTypeRef))
+				checkTypeRef = genericTypeRef->mElementType;
+			auto headTypeRef = checkTypeRef;
 			if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(checkTypeRef))
 				checkTypeRef = elementedTypeRef->mElementType;
 
@@ -6881,7 +6884,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			
 			while (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(checkTypeRef))
 			{
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == typeRef) && (resolvedTypeRef->IsObjectOrInterface()))
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (resolvedTypeRef->IsObjectOrInterface()))
 					mCompiler->mResolvePassData->mSourceClassifier->SetElementType(qualifiedTypeRef->mRight, resolvedTypeRef->IsInterface() ? BfSourceElementType_Interface : BfSourceElementType_RefType);
 
 				StringView leftString = qualifiedTypeRef->mLeft->ToStringView();
@@ -6914,7 +6917,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				auto checkNameNode = namedTypeRef->mNameNode;
 				bool setType = false;
 
-				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == typeRef) && (resolvedTypeRef->IsObjectOrInterface()))
+				if ((mCompiler->mResolvePassData->mSourceClassifier != NULL) && (checkTypeRef == headTypeRef) && (resolvedTypeRef->IsObjectOrInterface()))
 				{					
 					if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(checkNameNode))
 					{
