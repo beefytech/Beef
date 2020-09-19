@@ -10557,6 +10557,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		BfIRValue conversionResult;
 		BfMethodInstance* opMethodInstance = NULL;
 		BfType* opMethodSrcType = NULL;
+		BfOperatorInfo* constraintOperatorInfo = NULL;
 
 		// Normal, lifted, execute
 		for (int pass = 0; pass < 3; pass++)
@@ -10580,6 +10581,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					break;
 			}
 
+			bool isConstraintCheck = ((castFlags & BfCastFlags_IsConstraintCheck) != 0);
 			BfBaseClassWalker baseClassWalker(fromType, toType, this);
 			
 			while (true)
@@ -10597,16 +10599,29 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							(operatorDef->mOperatorDeclaration->mExplicitToken->GetToken() == BfToken_Explicit))
 							continue;
 
-						auto methodInst = GetRawMethodInstanceAtIdx(checkInstance, operatorDef->mIdx);
+						BfType* methodFromType = NULL;
+						BfType* methodToType = NULL;						
 
-						if (methodInst->GetParamCount() != 1)
+						if (isConstraintCheck)
 						{
-							AssertErrorState();							
-							continue;
+							auto operatorInfo = GetOperatorInfo(checkInstance, operatorDef);
+							methodFromType = operatorInfo->mLHSType;
+							methodToType = operatorInfo->mReturnType;
+							if ((methodFromType == NULL) || (methodToType == NULL))
+								continue;
 						}
+						else
+						{
+							auto methodInst = GetRawMethodInstanceAtIdx(checkInstance, operatorDef->mIdx);
+							if (methodInst->GetParamCount() != 1)
+							{
+								AssertErrorState();
+								continue;
+							}
 
-						auto methodFromType = methodInst->GetParamType(0);
-						auto methodToType = methodInst->mReturnType;
+							methodFromType = methodInst->GetParamType(0);
+							methodToType = methodInst->mReturnType;
+						}
 
 						if (methodFromType->IsSelf())
 							methodFromType = entry.mSrcType;
@@ -10672,7 +10687,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 								if ((toDist >= 0) && (toDist < bestNegToDist))
 								{
 									bestNegToDist = toDist;
-									bestNegToType = methodInst->mReturnType;
+									bestNegToType = methodToType;
 								}
 							}
 						}
@@ -10680,35 +10695,42 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						{
 							if ((methodFromType == bestFromType) && (methodToType == bestToType))
 							{
-								// Get in native module so our module doesn't get a reference to it - we may not end up calling it at all!
-								//BfModuleMethodInstance methodInstance = checkInstance->mModule->GetMethodInstanceAtIdx(checkInstance, operatorDef->mIdx);
-								BfMethodInstance* methodInstance = GetRawMethodInstanceAtIdx(checkInstance, operatorDef->mIdx);
-
-								if (opMethodInstance != NULL)
+								if (isConstraintCheck)
 								{
-									int prevGenericCount = GetGenericParamAndReturnCount(opMethodInstance);
-									int newGenericCount = GetGenericParamAndReturnCount(methodInstance);
-									if (newGenericCount > prevGenericCount)
+									auto operatorInfo = GetOperatorInfo(checkInstance, operatorDef);
+									constraintOperatorInfo = operatorInfo;
+								}
+								else
+								{
+									// Get in native module so our module doesn't get a reference to it - we may not end up calling it at all!								
+									BfMethodInstance* methodInstance = GetRawMethodInstanceAtIdx(checkInstance, operatorDef->mIdx);
+
+									if (opMethodInstance != NULL)
 									{
-										// Prefer generic match
-										opMethodInstance = methodInstance;
-										opMethodSrcType = entry.mSrcType;
-									}
-									else if (newGenericCount < prevGenericCount)
-									{
-										// Previous was a generic match
-										continue;
+										int prevGenericCount = GetGenericParamAndReturnCount(opMethodInstance);
+										int newGenericCount = GetGenericParamAndReturnCount(methodInstance);
+										if (newGenericCount > prevGenericCount)
+										{
+											// Prefer generic match
+											opMethodInstance = methodInstance;
+											opMethodSrcType = entry.mSrcType;
+										}
+										else if (newGenericCount < prevGenericCount)
+										{
+											// Previous was a generic match
+											continue;
+										}
+										else
+										{
+											isAmbiguousCast = true;
+											break;
+										}
 									}
 									else
 									{
-										isAmbiguousCast = true;
-										break;
+										opMethodInstance = methodInstance;
+										opMethodSrcType = entry.mSrcType;
 									}
-								}
-								else
-								{								
-									opMethodInstance = methodInstance;
-									opMethodSrcType = entry.mSrcType;
 								}
 							}
 						}
@@ -10718,7 +10740,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if (isAmbiguousCast)
 					break;
 
-				if (opMethodInstance != NULL)
+				if ((opMethodInstance != NULL) || (constraintOperatorInfo != NULL))
 				{
 					if (mayBeBox)
 					{
@@ -10731,22 +10753,30 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 							SetFail();
 					}
 
-					BfMethodInstance* methodInstance = GetRawMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef);
-					
-					auto methodDeclaration = methodInstance->mMethodDef->GetMethodDeclaration();
-					if (methodDeclaration->mBody == NULL)
-					{						
-						// Handle the typedPrim<->underlying part implicitly
-						if (fromType->IsTypedPrimitive())
+					BfType* returnType;
+					if (isConstraintCheck)
+					{
+						returnType = constraintOperatorInfo->mReturnType;
+					}
+					else
+					{
+						returnType = opMethodInstance->mReturnType;
+						BfMethodInstance* methodInstance = GetRawMethodInstance(opMethodInstance->GetOwner(), opMethodInstance->mMethodDef);
+						auto methodDeclaration = methodInstance->mMethodDef->GetMethodDeclaration();
+						if (methodDeclaration->mBody == NULL)
 						{
-							auto convTypedValue = BfTypedValue(typedVal.mValue, fromType->GetUnderlyingType());
-							return CastToValue(srcNode, convTypedValue, toType, (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
+							// Handle the typedPrim<->underlying part implicitly
+							if (fromType->IsTypedPrimitive())
+							{
+								auto convTypedValue = BfTypedValue(typedVal.mValue, fromType->GetUnderlyingType());
+								return CastToValue(srcNode, convTypedValue, toType, (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
+							}
+							else if (toType->IsTypedPrimitive())
+							{
+								auto castedVal = CastToValue(srcNode, typedVal, toType->GetUnderlyingType(), (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
+								return castedVal;
+							}
 						}
-						else if (toType->IsTypedPrimitive())
-						{							
-							auto castedVal = CastToValue(srcNode, typedVal, toType->GetUnderlyingType(), (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
-							return castedVal;
-						}						
 					}
 					
 					// Actually perform conversion
@@ -10757,10 +10787,10 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 					BfTypedValue operatorOut;
 					if (ignoreWrites)
-					{
-						if (opMethodInstance->mReturnType == toType)
+					{						
+						if (returnType == toType)
 							return mBfIRBuilder->GetFakeVal();
-						operatorOut = GetDefaultTypedValue(opMethodInstance->mReturnType);
+						operatorOut = GetDefaultTypedValue(returnType);
 					}
 					else
 					{

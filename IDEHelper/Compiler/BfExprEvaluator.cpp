@@ -17943,9 +17943,12 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 				}
 				if (isConstraintCheck)
 				{
-					operatorConstraintReturnType = mModule->CheckOperator(checkType, operatorDef, inValue, BfTypedValue());
-					if (operatorConstraintReturnType != NULL)
+					auto returnType = mModule->CheckOperator(checkType, operatorDef, inValue, BfTypedValue());
+					if (returnType != NULL)
+					{
+						operatorConstraintReturnType = returnType;
 						methodMatcher.mBestMethodDef = operatorDef;
+					}
 				}
 				else
 				{
@@ -17969,7 +17972,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 				{
 					if (opConstraint.mUnaryOp == findOp)
 					{
-						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType, isConstraintCheck ? BfCastFlags_NoConversionOperator : BfCastFlags_None))
+						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType, isConstraintCheck ? BfCastFlags_IsConstraintCheck : BfCastFlags_None))
 						{
 							return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);							
 						}
@@ -17989,7 +17992,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 				{
 					if (opConstraint.mUnaryOp == findOp)
 					{
-						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType, isConstraintCheck ? BfCastFlags_NoConversionOperator : BfCastFlags_None))
+						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType, isConstraintCheck ? BfCastFlags_IsConstraintCheck : BfCastFlags_None))
 						{
 							return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);							
 						}
@@ -19329,9 +19332,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 							{
 								// We can't do CheckMethod because circular referencing means we may have to evaluate this before our type is complete,
 								//  which means before method processing has occurred
-								operatorConstraintReturnType = mModule->CheckOperator(checkType, operatorDef, leftValue, rightValue);
-								if (operatorConstraintReturnType != NULL)
+								auto returnType = mModule->CheckOperator(checkType, operatorDef, args[0].mTypedValue, args[1].mTypedValue);
+								if (returnType != NULL)
 								{
+									operatorConstraintReturnType = returnType;
 									methodMatcher.mBestMethodDef = operatorDef;
 									foundExactMatch = true;
 								}
@@ -19357,9 +19361,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						{
 							if ((flags & BfBinOpFlag_IsConstraintCheck) != 0)
 							{
-								operatorConstraintReturnType = mModule->CheckOperator(checkType, oppositeOperatorDef, leftValue, rightValue);
-								if (operatorConstraintReturnType != NULL)
+								auto returnType = mModule->CheckOperator(checkType, oppositeOperatorDef, args[0].mTypedValue, args[1].mTypedValue);
+								if (returnType != NULL)
 								{
+									operatorConstraintReturnType = returnType;
 									methodMatcher.mBestMethodDef = oppositeOperatorDef;
 									methodMatcher.mSelfType = entry.mSrcType;
 								}

@@ -9685,17 +9685,15 @@ BfType* BfModule::CheckOperator(BfTypeInstance* typeInstance, BfOperatorDef* ope
 	if (lhs)
 	{
 		if (operatorInfo->mLHSType == NULL)
-			return NULL;
-		// TODO: Make this be a special flag to do CheckOperator conversion checks?
-		if (!CanCast(lhs, operatorInfo->mLHSType, BfCastFlags_NoConversionOperator))
+			return NULL;		
+		if (!CanCast(lhs, operatorInfo->mLHSType, BfCastFlags_IsConstraintCheck))
 			return NULL;
 	}
 	if (rhs)
 	{
 		if (operatorInfo->mRHSType == NULL)
-			return NULL;
-		// TODO: Make this be a special flag to do CheckOperator conversion checks?
-		if (!CanCast(rhs, operatorInfo->mRHSType, BfCastFlags_NoConversionOperator))
+			return NULL;		
+		if (!CanCast(rhs, operatorInfo->mRHSType, BfCastFlags_IsConstraintCheck))
 			return NULL;
 	}
 	return operatorInfo->mReturnType;
