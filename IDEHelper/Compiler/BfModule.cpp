@@ -9335,12 +9335,19 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 	{
 		if (!mCompiler->mIsResolveOnly)		
 		{
+			// Get it from the owning module so we don't create a reference prematurely...
+			auto declModule = typeInstance->mModule;
+
+			if ((typeInstance->mGenericTypeInfo != NULL) && (typeInstance->mGenericTypeInfo->mFinishedGenericParams) && (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NotSet))
+			{
+				methodGroup.mOnDemandKind = BfMethodOnDemandKind_NoDecl_AwaitingReference;
+				declModule->mOnDemandMethodCount++;
+			}
+
 			BF_ASSERT((methodGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) || (typeInstance->mTypeFailed));
 			if ((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl))
 				methodGroup.mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
-
-			// Get it from the owning module so we don't create a reference prematurely...
-			auto declModule = typeInstance->mModule;			
+			
 			return declModule->GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector(), (BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_Unreified)).mMethodInstance;
 		}
 		else

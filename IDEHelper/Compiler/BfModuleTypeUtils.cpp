@@ -316,6 +316,8 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 
 	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, mIgnoreErrors || ignoreErrors);
 	genericTypeInst->mGenericTypeInfo->mValidatedGenericConstraints = true;
+	if (!genericTypeInst->mGenericTypeInfo->mFinishedGenericParams)
+		PopulateType(genericTypeInst, BfPopulateType_Interfaces);
 
 	if (genericTypeInst->IsTypeAlias())
 	{
