@@ -2376,6 +2376,7 @@ namespace IDE.ui
 					if (focusChange)
 						sourceEditWidgetContent.EnsureCursorVisible(true, true);
 
+					sourceEditWidgetContent.mSelection = null;
 					if (fixitLen > 0)
 					{
 						sourceEditWidgetContent.mSelection = EditSelection(fixitIdx, fixitIdx + fixitLen);
