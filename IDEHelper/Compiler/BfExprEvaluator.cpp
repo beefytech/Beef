@@ -5888,6 +5888,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					{
 						error = mModule->Fail(StrFormat("No parameterless constructor is available for base class. Consider calling base constructor '%s'.",
 							mModule->MethodToString(methodInstance).c_str()), refNode);
+						
+						auto srcNode = mModule->mCurMethodInstance->mMethodDef->GetRefNode();
+						if ((autoComplete != NULL) && (autoComplete->CheckFixit(srcNode)))
+							autoComplete->FixitAddConstructor(mModule->mCurTypeInstance);
 					}					
 				}
 

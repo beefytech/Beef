@@ -3301,6 +3301,82 @@ void BfAutoComplete::FixitCheckNamespace(BfTypeDef* activeTypeDef, BfAstNode* ty
 	}
 }
 
+void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
+{
+	auto baseType = typeInstance->mBaseType;
+	auto parser = typeInstance->mTypeDef->mSource->ToParser();
+	if (parser != NULL)
+	{
+		for (auto methodDef : baseType->mTypeDef->mMethods)
+		{
+			if (methodDef->mMethodType != BfMethodType_Ctor)
+				continue;
+			if (methodDef->mIsStatic)
+				continue;
+			if (methodDef->mProtection <= BfProtection_Private)
+				continue;
+
+			auto methodInstance = mModule->GetRawMethodInstanceAtIdx(baseType, methodDef->mIdx);
+
+			String ctorShowName;
+			
+			int insertPos = FixitGetMemberInsertPos(mModule->mCurTypeInstance->mTypeDef);
+			String methodStr = "\f\a";
+			methodStr += "public this(";
+			for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
+			{
+				if (paramIdx > 0)
+					methodStr += ", ";
+
+				switch (methodInstance->GetParamKind(paramIdx))
+				{
+				case BfParamKind_Params:
+					methodStr += "params ";
+				}
+				methodStr += mModule->TypeToString(methodInstance->GetParamType(paramIdx), BfTypeNameFlag_ReduceName);
+				methodStr += " ";
+				methodStr += methodInstance->GetParamName(paramIdx);
+			}
+			methodStr += ") : base(";
+
+			ctorShowName += "this(";
+			for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
+			{
+				if (paramIdx > 0)
+				{
+					ctorShowName += ", ";
+					methodStr += ", ";
+				}
+
+				switch (methodInstance->GetParamKind(paramIdx))
+				{
+				case BfParamKind_Params:
+					methodStr += "params ";
+				}
+
+				auto paramType = methodInstance->GetParamType(paramIdx);
+				if (paramType->IsRef())
+				{
+					switch (((BfRefType*)paramType)->mRefKind)
+					{
+					case BfRefType::RefKind_Ref: methodStr += "ref "; break;
+					case BfRefType::RefKind_Out: methodStr += "out "; break;
+					case BfRefType::RefKind_Mut: methodStr += "mut "; break;
+					}
+				}
+
+				methodStr += methodInstance->GetParamName(paramIdx);
+				ctorShowName += methodInstance->GetParamName(paramIdx);
+			}
+			ctorShowName += ")";
+
+			methodStr += ")\t";
+			AddEntry(AutoCompleteEntry("fixit", StrFormat("Create constructor '%s'\taddMethod|%s|%s", ctorShowName.c_str(),
+				FixitGetLocation(parser->mParserData, insertPos).c_str(), methodStr.c_str()).c_str()));
+		}
+	}
+}
+
 void BfAutoComplete::SetResultStringType(BfType * type)
 {
 	mResultString = ":";
