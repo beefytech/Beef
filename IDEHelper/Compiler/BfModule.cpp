@@ -9781,6 +9781,9 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 	String methodName;
 	if ((methodNameFlags & BfMethodNameFlag_OmitTypeName) == 0)
 	{
+		// Don't use the 'mCurMethodInstance' owner for the type instance if there's one already set
+		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+
 		methodName = TypeToString(type, typeNameFlags);
 		if (methodName == "$")
 			methodName = "";
