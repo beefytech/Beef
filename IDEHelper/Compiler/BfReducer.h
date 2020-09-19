@@ -46,7 +46,8 @@ public:
 		CreateTypeRefFlags_None,
 		CreateTypeRefFlags_NoParseArrayBrackets = 1,
 		CreateTypeRefFlags_SafeGenericParse = 2,
-		CreateTypeRefFlags_AllowSingleMemberTuple = 4
+		CreateTypeRefFlags_AllowSingleMemberTuple = 4,
+		CreateTypeRefFlags_EarlyExit = 8
 	};
 
 	struct BfVisitorPos

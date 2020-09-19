@@ -2182,6 +2182,14 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 					}
 				}
 			}
+			else if (tokenNode->GetToken() == BfToken_Decltype)
+			{
+				auto typeRef = CreateTypeRef(tokenNode, CreateTypeRefFlags_EarlyExit);
+				if (typeRef != NULL)
+				{
+					exprLeft = CreateMemberReferenceExpression(typeRef);
+				}
+			}
 
 			if (exprLeft == NULL)
 			{
@@ -4685,6 +4693,9 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					
 					isHandled = true;
 					firstNode = delegateTypeRef;
+
+					if ((createTypeRefFlags & CreateTypeRefFlags_EarlyExit) != 0)
+						return delegateTypeRef;
 				}
 				else if (token == BfToken_Decltype)
 				{
@@ -4701,7 +4712,8 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					isHandled = true;
 					firstNode = declTypeRef;
 
-					//return declTypeRef;
+					if ((createTypeRefFlags & CreateTypeRefFlags_EarlyExit) != 0)
+						return declTypeRef;					
 				}
 				else if (token == BfToken_LParen)
 				{
@@ -4770,7 +4782,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 			{
 				Fail("Expected type", firstNode);
 				return NULL;
-			}
+			}			
 		}
 	}
 
