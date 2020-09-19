@@ -2482,6 +2482,8 @@ void BfSystem::FindFixitNamespaces(const StringImpl& typeName, int numGenericArg
 			String outerName;
 			if (typeDef->mOuterType != NULL)
 			{
+				if (!typeDef->mGenericParamDefs.IsEmpty())
+					continue;
 				outerName += "static ";
 				outerName += typeDef->mOuterType->mFullName.ToString();
 			}
