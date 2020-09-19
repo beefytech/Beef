@@ -2437,7 +2437,7 @@ namespace IDE
 								foundErrorText = error.mError.Contains(wantsError);
 							if (!foundErrorText)
 							{
-								mScriptManager.Fail("Error at line {0} in {1} did not contain error text '{}'\n\t", lineIdx + 1, textPanel.mFilePath, wantsError);
+								mScriptManager.Fail("Error at line {0} in {1} did not contain error text '{2}'\n\t", lineIdx + 1, textPanel.mFilePath, wantsError);
 							}
 						}
 					}
