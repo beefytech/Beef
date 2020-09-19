@@ -940,6 +940,23 @@ public:
 	void ReportMemory(MemReporter* memReporter);
 };
 
+class BfOperatorInfo
+{
+public:
+	BfMethodDef* mMethodDef;
+	BfType* mReturnType;
+	BfType* mLHSType;
+	BfType* mRHSType;
+
+	BfOperatorInfo()
+	{
+		mMethodDef = NULL;
+		mReturnType = NULL;
+		mLHSType = NULL;
+		mRHSType = NULL;
+	}
+};
+
 class BfDllImportEntry
 {
 public:
@@ -1681,6 +1698,8 @@ public:
 	bool mIsUnspecializedVariation;
 	bool mValidatedGenericConstraints;
 	bool mHadValidateErrors;
+	bool mInitializedGenericParams;
+	bool mFinishedGenericParams;
 	Array<BfProject*> mProjectsReferenced; // Generic methods that only refer to these projects don't need a specialized extension
 
 public:
@@ -1691,6 +1710,8 @@ public:
 		mIsUnspecialized = false;
 		mIsUnspecializedVariation = false;
 		mValidatedGenericConstraints = false;
+		mInitializedGenericParams = false;
+		mFinishedGenericParams = false;
 	}
 
 	~BfGenericTypeInfo();
@@ -1719,6 +1740,7 @@ public:
 	Array<BfTypeInterfaceEntry> mInterfaces;	
 	Array<BfTypeInterfaceMethodEntry> mInterfaceMethodTable;
 	Array<BfMethodInstanceGroup> mMethodInstanceGroups;
+	Array<BfOperatorInfo*> mOperatorInfo;
 	Array<BfVirtualMethodEntry> mVirtualMethodTable;	
 	BfHotTypeData* mHotTypeData;	
 	int mVirtualMethodTableSize; // With hot reloading, mVirtualMethodTableSize can be larger than mInterfaceMethodTable (live vtable versioning)	

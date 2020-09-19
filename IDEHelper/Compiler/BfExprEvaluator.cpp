@@ -1313,7 +1313,7 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* generi
 				{
 					BfExprEvaluator exprEvaluator(mModule);
 					exprEvaluator.mResult = rightValue;
-					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL);
+					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL, BfUnaryOpFlag_IsConstraintCheck);
 					
 					if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Equals_Op) != 0)
 						checkArgType = exprEvaluator.mResult.mType;					
@@ -17128,7 +17128,7 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 		return thisValue;
 	}
 	
-	auto opResult = PerformUnaryOperation_TryOperator(thisValue, NULL, BfUnaryOp_NullConditional, dotToken);
+	auto opResult = PerformUnaryOperation_TryOperator(thisValue, NULL, BfUnaryOp_NullConditional, dotToken, BfUnaryOpFlag_None);
 	if (opResult)
 		thisValue = opResult;
 
@@ -17858,10 +17858,10 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 void BfExprEvaluator::Visit(BfUnaryOperatorExpression* unaryOpExpr)
 {		
 	BfAutoParentNodeEntry autoParentNodeEntry(mModule, unaryOpExpr);
-	PerformUnaryOperation(unaryOpExpr->mExpression, unaryOpExpr->mOp, unaryOpExpr->mOpToken);
+	PerformUnaryOperation(unaryOpExpr->mExpression, unaryOpExpr->mOp, unaryOpExpr->mOpToken, BfUnaryOpFlag_None);
 }
 
-void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken)
+void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags)
 {
 	{
 		// If this is a cast, we don't want the value to be coerced before the unary operator is applied.
@@ -17888,10 +17888,10 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 	}
 		
 	
-	BfExprEvaluator::PerformUnaryOperation_OnResult(unaryOpExpr, unaryOp, opToken);
+	BfExprEvaluator::PerformUnaryOperation_OnResult(unaryOpExpr, unaryOp, opToken, opFlags);
 }
 
-BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedValue& inValue, BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken)
+BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedValue& inValue, BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags)
 {
 	if ((!inValue.mType->IsTypeInstance()) && (!inValue.mType->IsGenericParam()))
 		return BfTypedValue();
@@ -17918,6 +17918,9 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 		isPostOp = true;
 	}
 
+	bool isConstraintCheck = ((opFlags & BfUnaryOpFlag_IsConstraintCheck) != 0);
+
+	BfType* operatorConstraintReturnType = NULL;
 	BfType* bestSelfType = NULL;
 	while (true)
 	{
@@ -17938,8 +17941,17 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 					// Try without arg
 					args.mSize = 0;
 				}
-				if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
-					methodMatcher.mSelfType = entry.mSrcType;
+				if (isConstraintCheck)
+				{
+					operatorConstraintReturnType = mModule->CheckOperator(checkType, operatorDef, inValue, BfTypedValue());
+					if (operatorConstraintReturnType != NULL)
+						methodMatcher.mBestMethodDef = operatorDef;
+				}
+				else
+				{
+					if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
+						methodMatcher.mSelfType = entry.mSrcType;
+				}
 				args.mSize = prevArgSize;
 			}
 		}
@@ -17957,7 +17969,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 				{
 					if (opConstraint.mUnaryOp == findOp)
 					{
-						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))
+						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType, isConstraintCheck ? BfCastFlags_NoConversionOperator : BfCastFlags_None))
 						{
 							return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);							
 						}
@@ -17977,7 +17989,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 				{
 					if (opConstraint.mUnaryOp == findOp)
 					{
-						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))
+						if (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType, isConstraintCheck ? BfCastFlags_NoConversionOperator : BfCastFlags_None))
 						{
 							return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), genericParam->mExternType);							
 						}
@@ -17989,7 +18001,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 		return BfTypedValue();
 	}
 	
-	if (!baseClassWalker.mMayBeFromInterface)
+	if ((!baseClassWalker.mMayBeFromInterface) && (opToken != NULL))
 		mModule->SetElementType(opToken, BfSourceElementType_Method);
 
 	auto methodDef = methodMatcher.mBestMethodDef;
@@ -18015,8 +18027,14 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 		callTarget = targetVal;
 		args.Clear();
 	}
-
-	auto result = CreateCall(&methodMatcher, callTarget);
+	
+	BfTypedValue result;
+	if (isConstraintCheck)
+	{
+		result = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), operatorConstraintReturnType);
+	}
+	else
+		result = CreateCall(&methodMatcher, callTarget);
 
 	if (!methodMatcher.mBestMethodDef->mIsStatic)
 	{
@@ -18045,7 +18063,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 	return result;
 }
 
-void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken)
+void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags)
 {
 	BfAstNode* propSrc = mPropSrc;
 	BfTypedValue propTarget = mPropTarget;
@@ -18068,7 +18086,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 
 	if (BfCanOverloadOperator(unaryOp))
 	{
-		auto opResult = PerformUnaryOperation_TryOperator(mResult, unaryOpExpr, unaryOp, opToken);
+		auto opResult = PerformUnaryOperation_TryOperator(mResult, unaryOpExpr, unaryOp, opToken, opFlags);
 		if (opResult)
 		{
 			mResult = opResult;
@@ -18086,7 +18104,10 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			auto value = mModule->LoadValue(mResult);
 			value = mModule->Cast(unaryOpExpr, value, boolType);			
 			if (!value)
+			{
+				mResult = BfTypedValue();
 				return;
+			}
 			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateNot(value.mValue), boolType);
 		}
 		break;
@@ -18097,7 +18118,10 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			CheckResultForReading(mResult);
 			auto value = mModule->LoadValue(mResult);
 			if (!value)
+			{
+				mResult = BfTypedValue();
 				return;
+			}
 
 			BfType* origType = value.mType;
 			if (value.mType->IsTypedPrimitive())
@@ -18151,7 +18175,10 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				{
 					value = mModule->Cast(unaryOpExpr, value, wantType, BfCastFlags_Explicit);
 					if (!value)
+					{
+						mResult = BfTypedValue();
 						return;
+					}
 				}
 
 				if (origType->mSize == wantType->mSize) // Allow negative of primitive typed but not if we had to upsize
@@ -18176,6 +18203,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				isInteger = value.mType->GetUnderlyingType()->IsIntegral();
 			if (!isInteger)
 			{
+				mResult = BfTypedValue();
 				mModule->Fail("Operator can only be used on integer types", opToken);
 				return;
 			}
@@ -18276,6 +18304,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				constValue = mModule->GetConstValue(1, ptr.mType);
 				if (!constValue)
 				{
+					mResult = BfTypedValue();
 					numericFail = true;
 					break;
 				}				
@@ -18285,6 +18314,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				}				
 				else
 				{
+					mResult = BfTypedValue();
 					numericFail = true;
 					break;
 				}				
@@ -18384,6 +18414,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			
 			if ((mBfEvalExprFlags & BfEvalExprFlags_AllowRefExpr) == 0)
 			{
+				mResult = BfTypedValue();
 				mModule->Fail(StrFormat("Invalid usage of '%s' expression", BfGetOpName(unaryOp)), opToken);
 				return;
 			}
@@ -19269,6 +19300,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				BfBaseClassWalker baseClassWalker(leftValue.mType, rightValue.mType, mModule);
 
 				bool invertResult = false;												
+				BfType* operatorConstraintReturnType = NULL;
 
 				while (true)
 				{
@@ -19278,7 +19310,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						break;
 
 					bool foundExactMatch = false;					
-					Array<BfMethodDef*> oppositeOperatorDefs;
+					Array<BfOperatorDef*> oppositeOperatorDefs;					
 
 					for (auto operatorDef : checkType->mTypeDef->mOperators)
 					{
@@ -19293,29 +19325,55 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 							if (!methodMatcher.IsMemberAccessible(checkType, operatorDef->mDeclaringType))
 								continue;
 
-							if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
+							if ((flags & BfBinOpFlag_IsConstraintCheck) != 0)
 							{
-								methodMatcher.mSelfType = entry.mSrcType;
-								if (operatorDef->mOperatorDeclaration->mBinOp == findBinaryOp)
+								// We can't do CheckMethod because circular referencing means we may have to evaluate this before our type is complete,
+								//  which means before method processing has occurred
+								operatorConstraintReturnType = mModule->CheckOperator(checkType, operatorDef, leftValue, rightValue);
+								if (operatorConstraintReturnType != NULL)
+								{
+									methodMatcher.mBestMethodDef = operatorDef;
 									foundExactMatch = true;
+								}
+							}
+							else
+							{
+								if (methodMatcher.CheckMethod(NULL, checkType, operatorDef, false))
+								{
+									methodMatcher.mSelfType = entry.mSrcType;
+									if (operatorDef->mOperatorDeclaration->mBinOp == findBinaryOp)
+										foundExactMatch = true;
+								}
 							}
 						}
 						else if (operatorDef->mOperatorDeclaration->mBinOp == oppositeBinaryOp)
 							oppositeOperatorDefs.Add(operatorDef);							
 					}
 
-					if (((methodMatcher.mBestMethodDef == NULL) || (!foundExactMatch)) && (!oppositeOperatorDefs.IsEmpty()))
+					if ((((methodMatcher.mBestMethodDef == NULL) && (operatorConstraintReturnType == NULL)) || (!foundExactMatch)) && (!oppositeOperatorDefs.IsEmpty()))
 					{
 						foundOp = true;
 						for (auto oppositeOperatorDef : oppositeOperatorDefs)
 						{
-							if (methodMatcher.CheckMethod(NULL, checkType, oppositeOperatorDef, false))
-								methodMatcher.mSelfType = entry.mSrcType;
+							if ((flags & BfBinOpFlag_IsConstraintCheck) != 0)
+							{
+								operatorConstraintReturnType = mModule->CheckOperator(checkType, oppositeOperatorDef, leftValue, rightValue);
+								if (operatorConstraintReturnType != NULL)
+								{
+									methodMatcher.mBestMethodDef = oppositeOperatorDef;
+									methodMatcher.mSelfType = entry.mSrcType;
+								}
+							}
+							else
+							{
+								if (methodMatcher.CheckMethod(NULL, checkType, oppositeOperatorDef, false))
+									methodMatcher.mSelfType = entry.mSrcType;
+							}
 						}
 					}
 				}
 				
-				bool hadMatch = methodMatcher.mBestMethodDef != NULL;
+				bool hadMatch = (methodMatcher.mBestMethodDef != NULL);
 
 				if ((methodMatcher.mBestMethodDef != NULL) && ((flags & BfBinOpFlag_IgnoreOperatorWithWrongResult) != 0))
 				{
@@ -19355,7 +19413,14 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						if ((opToken->IsA<BfTokenNode>()) && (!noClassify) && (!baseClassWalker.mMayBeFromInterface))
 							mModule->SetElementType(opToken, BfSourceElementType_Method);
 					}
-					mResult = CreateCall(&methodMatcher, BfTypedValue());
+					if ((flags & BfBinOpFlag_IsConstraintCheck) != 0)
+					{
+						mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), operatorConstraintReturnType);
+					}
+					else
+					{
+						mResult = CreateCall(&methodMatcher, BfTypedValue());
+					}
 					if ((mResult.mType != NULL) && (methodMatcher.mSelfType != NULL) && (mResult.mType->IsSelf()))
 					{
 						BF_ASSERT(mModule->IsInGeneric());
@@ -20276,7 +20341,7 @@ void BfExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 						}
 					}
 
-					PerformUnaryOperation(binOpExpr->mRight, unaryOp, binOpExpr->mOpToken);
+					PerformUnaryOperation(binOpExpr->mRight, unaryOp, binOpExpr->mOpToken, BfUnaryOpFlag_None);
 					if (mResult)
 					{
 						mResult = mModule->LoadValue(mResult);

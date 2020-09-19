@@ -1028,6 +1028,8 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		genericTypeInstance->mGenericTypeInfo->mTypeGenericArgumentRefs.Clear();
 		for (auto genericParam : genericTypeInstance->mGenericTypeInfo->mGenericParams)
 			genericParam->Release();
+		genericTypeInstance->mGenericTypeInfo->mInitializedGenericParams = false;
+		genericTypeInstance->mGenericTypeInfo->mFinishedGenericParams = false;
 		genericTypeInstance->mGenericTypeInfo->mGenericParams.Clear();
 		genericTypeInstance->mGenericTypeInfo->mValidatedGenericConstraints = false;
 		genericTypeInstance->mGenericTypeInfo->mHadValidateErrors = false;

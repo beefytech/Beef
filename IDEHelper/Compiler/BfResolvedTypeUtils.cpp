@@ -1382,6 +1382,8 @@ BfTypeInstance::~BfTypeInstance()
 	delete mAttributeData;
 	for (auto methodInst : mInternalMethods)
 		delete methodInst;
+	for (auto operatorInfo : mOperatorInfo)
+		delete operatorInfo;
 	delete mHotTypeData;
 	delete mConstHolder;
 }

@@ -83,7 +83,8 @@ enum BfCastFlags
 	BfCastFlags_Force = 0x100,
 	BfCastFlags_PreferAddr = 0x200,
 	BfCastFlags_WarnOnBox = 0x400,
-	BfCastFlags_IsCastCheck = 0x800
+	BfCastFlags_IsCastCheck = 0x800,
+	BfCastFlags_IsConstraintCheck = 0x1000
 };
 
 enum BfCastResultFlags
@@ -1600,7 +1601,8 @@ public:
 
 	// Type helpers	
 	BfGenericExtensionEntry* BuildGenericExtensionInfo(BfTypeInstance* genericTypeInst, BfTypeDef* partialTypeDef);
-	bool BuildGenericParams(BfType* resolvedTypeRef);
+	bool InitGenericParams(BfType* resolvedTypeRef);
+	bool FinishGenericParams(BfType* resolvedTypeRef);
 	bool ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstance* genericTypeInstance, bool ignoreErrors);
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
 	bool CheckConstraintState(BfAstNode* refNode);
@@ -1794,6 +1796,8 @@ public:
 	BfModuleMethodInstance GetMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false);
 	BfModuleMethodInstance GetMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, const Array<BfType*>& paramTypes, bool checkBase = false);
 	BfModuleMethodInstance GetInternalMethod(const StringImpl& methodName, int paramCount = -1);
+	BfOperatorInfo* GetOperatorInfo(BfTypeInstance* typeInstance, BfOperatorDef* operatorDef);
+	BfType* CheckOperator(BfTypeInstance* typeInstance, BfOperatorDef* operatorDef, const BfTypedValue& lhs, const BfTypedValue& rhs);
 	bool IsMethodImplementedAndReified(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false);
 	bool HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount, bool checkBase = false);
 	bool CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstance* methodB); // Doesn't compare return types nor static

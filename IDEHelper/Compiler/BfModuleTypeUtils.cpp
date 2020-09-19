@@ -80,7 +80,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 		auto& genericConstraint = partialTypeDef->mExternalConstraints[externConstraintIdx];
 
 		auto genericParamInstance = new BfGenericTypeParamInstance(partialTypeDef, externConstraintIdx + (int)partialTypeDef->mGenericParamDefs.size());
-		genericParamInstance->mExternType = ResolveTypeRef(genericConstraint.mTypeRef);
+		genericParamInstance->mExternType = ResolveTypeRef(genericConstraint.mTypeRef, BfPopulateType_Identity);
 
 		auto autoComplete = mCompiler->GetAutoComplete();
 		if (autoComplete != NULL)
@@ -116,17 +116,18 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 	return genericExEntry;
 }
 
-bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
+bool BfModule::InitGenericParams(BfType* resolvedTypeRef)
 {
 	BfTypeState typeState;
 	typeState.mPrevState = mContext->mCurTypeState;
 	typeState.mResolveKind = BfTypeState::ResolveKind_BuildingGenericParams;
 	typeState.mTypeInstance = resolvedTypeRef->ToTypeInstance();
-	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);	
 
 	BF_ASSERT(mCurMethodInstance == NULL);
 
 	auto genericTypeInst = resolvedTypeRef->ToGenericTypeInstance();
+	genericTypeInst->mGenericTypeInfo->mInitializedGenericParams = true;
 
 	if (genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0]->IsGenericParam())
 	{
@@ -147,6 +148,38 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 		auto genericParamInstance = new BfGenericTypeParamInstance(typeDef, externConstraintIdx + (int)typeDef->mGenericParamDefs.size());
 		genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(genericParamInstance);
 	}
+	
+	return true;
+}
+
+bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
+{	
+	BfTypeState typeState;
+	typeState.mPrevState = mContext->mCurTypeState;
+	typeState.mResolveKind = BfTypeState::ResolveKind_BuildingGenericParams;
+	typeState.mTypeInstance = resolvedTypeRef->ToTypeInstance();
+	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+	
+	BF_ASSERT(mCurMethodInstance == NULL);
+
+	auto genericTypeInst = resolvedTypeRef->ToGenericTypeInstance();
+	genericTypeInst->mGenericTypeInfo->mFinishedGenericParams = true;
+
+	if (genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0]->IsGenericParam())
+	{
+		BF_ASSERT(genericTypeInst->mGenericTypeInfo->mIsUnspecialized);
+	}
+
+	auto typeDef = genericTypeInst->mTypeDef;
+	int startDefGenericParamIdx = (int)genericTypeInst->mGenericTypeInfo->mGenericParams.size();
+
+	if ((!resolvedTypeRef->IsTuple()) && (!resolvedTypeRef->IsDelegateFromTypeRef()) && (!resolvedTypeRef->IsFunctionFromTypeRef()))
+	{
+		startDefGenericParamIdx = startDefGenericParamIdx -
+			(int)genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.size() -
+			(int)typeDef->mExternalConstraints.size();
+	}
+	BF_ASSERT(startDefGenericParamIdx >= 0);
 
 	if (!typeDef->mPartials.empty())
 	{
@@ -156,7 +189,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 			{
 				typeState.mCurTypeDef = partialTypeDef;
 				for (int paramIdx = startDefGenericParamIdx; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mGenericParams.size(); paramIdx++)
-				{					
+				{
 					auto genericParamInstance = genericTypeInst->mGenericTypeInfo->mGenericParams[paramIdx];
 					auto genericParamDef = genericParamInstance->GetGenericParamDef();
 
@@ -168,7 +201,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 					{
 						auto externConstraintDef = genericParamInstance->GetExternConstraintDef();
 						genericParamInstance->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
-						if (genericParamInstance->mExternType == NULL)						
+						if (genericParamInstance->mExternType == NULL)
 							genericParamInstance->mExternType = GetPrimitiveType(BfTypeCode_Var);
 					}
 
@@ -232,7 +265,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 			{
 				auto externConstraintDef = genericParamInstance->GetExternConstraintDef();
 				genericParamInstance->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
-				
+
 				auto autoComplete = mCompiler->GetAutoComplete();
 				if (autoComplete != NULL)
 					autoComplete->CheckTypeRef(externConstraintDef->mTypeRef, false);
@@ -264,7 +297,7 @@ bool BfModule::BuildGenericParams(BfType* resolvedTypeRef)
 		if (genericParam->mTypeConstraint != NULL)
 			AddDependency(genericParam->mTypeConstraint, mCurTypeInstance, BfDependencyMap::DependencyFlag_Constraint);
 	}
-	
+
 	return true;
 }
 
@@ -566,8 +599,8 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 #endif
 
 		// Do it here so the location we attempted to specialize this type will throw the failure if there is one
-		if (!BuildGenericParams(resolvedTypeRef))
-			return;
+ 		if (!InitGenericParams(resolvedTypeRef))
+  			return;
 	}
 
 	BfLogSysM("%p InitType: %s Type: %p TypeDef: %p Revision:%d\n", mContext, TypeToString(resolvedTypeRef).c_str(), resolvedTypeRef, (typeInst != NULL) ? typeInst->mTypeDef : NULL, mCompiler->mRevision);
@@ -1895,12 +1928,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	BfTypeState typeState(mCurTypeInstance, mContext->mCurTypeState);
 	typeState.mPopulateType = populateType;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-
+	
 	if (typeInstance->IsGenericTypeInstance())
 	{
 		auto genericTypeInst = (BfTypeInstance*)typeInstance;
-		if (genericTypeInst->mGenericTypeInfo->mGenericParams.size() == 0)
-			BuildGenericParams(resolvedTypeRef);
+		if (!genericTypeInst->mGenericTypeInfo->mInitializedGenericParams)
+			InitGenericParams(resolvedTypeRef);		
 	}
 
 	if (resolvedTypeRef->IsTypeAlias())
@@ -2142,7 +2175,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		return;
 	}
-
+	
 	if ((!mCompiler->mIsResolveOnly) && (!typeInstance->mHasBeenInstantiated))
 	{
 		for (auto& dep : typeInstance->mDependencyMap)
@@ -2228,6 +2261,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	};
 	Array<_DeferredValidate> deferredTypeValidateList;
 
+	bool wantPopulateInterfaces = false;
+
 	BfTypeReference* baseTypeRef = NULL;
 	if ((typeDef->mIsDelegate) && (!typeInstance->IsClosure()))
 	{
@@ -2250,7 +2285,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			baseType = ResolveTypeDef(mCompiler->mFunctionTypeDef)->ToTypeInstance();
 	}
 	else
-	{		
+	{
 		for (auto checkTypeRef : typeDef->mBaseTypes)
 		{
 			auto declTypeDef = typeDef;
@@ -2356,36 +2391,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}			
 		}
 
-		for (auto partialTypeDef : typeDef->mPartials)
-		{
-			if (!typeInstance->IsTypeMemberIncluded(partialTypeDef))
-				continue;
-			if (partialTypeDef->mTypeDeclaration == typeInstance->mTypeDef->mTypeDeclaration)
-				continue;
-
-			for (auto checkTypeRef : partialTypeDef->mBaseTypes)
-			{
-				SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, checkTypeRef);
-				SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, partialTypeDef);
-				bool populateBase = !typeInstance->mTypeFailed;
-				auto checkType = ResolveTypeRef(checkTypeRef, BfPopulateType_Declaration);
-				if (checkType != NULL)
-				{
-					if (checkType->IsInterface())
-					{
-						BfInterfaceDecl ifaceDecl;
-						ifaceDecl.mIFaceTypeInst = checkType->ToTypeInstance();
-						ifaceDecl.mTypeRef = checkTypeRef;
-						ifaceDecl.mDeclaringType = partialTypeDef;
-						interfaces.push_back(ifaceDecl);
-					}
-					else
-					{
-						Fail(StrFormat("Extensions can only specify new interfaces, type '%s' is not a valid ", TypeToString(checkType).c_str()), checkTypeRef);
-					}
-				}
-			}
-		}
+		wantPopulateInterfaces = true;		
 	}
 
 	if (resolvedTypeRef->IsBoxed())
@@ -2503,6 +2509,49 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	if (populateType <= BfPopulateType_BaseType)
 		return;
+
+	if (typeInstance->IsGenericTypeInstance())
+	{
+		auto genericTypeInst = (BfTypeInstance*)typeInstance;
+// 		if (!genericTypeInst->mGenericTypeInfo->mInitializedGenericParams)
+// 			InitGenericParams(resolvedTypeRef);
+		if (!genericTypeInst->mGenericTypeInfo->mFinishedGenericParams)
+ 			FinishGenericParams(resolvedTypeRef);
+	}
+
+	if (wantPopulateInterfaces)
+	{
+		for (auto partialTypeDef : typeDef->mPartials)
+		{
+			if (!typeInstance->IsTypeMemberIncluded(partialTypeDef))
+				continue;
+			if (partialTypeDef->mTypeDeclaration == typeInstance->mTypeDef->mTypeDeclaration)
+				continue;
+
+			for (auto checkTypeRef : partialTypeDef->mBaseTypes)
+			{
+				SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, checkTypeRef);
+				SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, partialTypeDef);
+				bool populateBase = !typeInstance->mTypeFailed;
+				auto checkType = ResolveTypeRef(checkTypeRef, BfPopulateType_Declaration);
+				if (checkType != NULL)
+				{
+					if (checkType->IsInterface())
+					{
+						BfInterfaceDecl ifaceDecl;
+						ifaceDecl.mIFaceTypeInst = checkType->ToTypeInstance();
+						ifaceDecl.mTypeRef = checkTypeRef;
+						ifaceDecl.mDeclaringType = partialTypeDef;
+						interfaces.push_back(ifaceDecl);
+					}
+					else
+					{
+						Fail(StrFormat("Extensions can only specify new interfaces, type '%s' is not a valid ", TypeToString(checkType).c_str()), checkTypeRef);
+					}
+				}
+			}
+		}
+	}
 
 	if ((typeInstance->mBaseType != NULL) && (!typeInstance->IsTypedPrimitive()))
 	{
@@ -2863,7 +2912,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				bool populateChildType = !typeInstance->mTypeFailed;
 				//bool populateChildType = true;
 				PopulateType(resolvedFieldType, populateChildType ? BfPopulateType_Data : BfPopulateType_Declaration);
-				
+				BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
+
 				if (populateChildType)
 				{
 					BF_ASSERT(!resolvedFieldType->IsDataIncomplete());
@@ -3788,6 +3838,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		_HandleTypeDeclaration(typeDef->mTypeDeclaration);
 		for (auto partial : typeDef->mPartials)
 			_HandleTypeDeclaration(partial->mTypeDeclaration);
+	}
+
+	if (typeInstance->IsGenericTypeInstance())
+	{
+		auto genericTypeInst = (BfTypeInstance*)typeInstance;
+		if (!genericTypeInst->mGenericTypeInfo->mFinishedGenericParams)
+			FinishGenericParams(resolvedTypeRef);
 	}
 
 	if (populateType == BfPopulateType_Data)
@@ -6293,7 +6350,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 
 			auto actualTupleType = mContext->mTupleTypePool.Get();
 			delete actualTupleType->mGenericTypeInfo;
-			actualTupleType->mGenericTypeInfo = new	BfGenericTypeInfo();
+			actualTupleType->mGenericTypeInfo = new BfGenericTypeInfo();
 			actualTupleType->mGenericTypeInfo->mIsUnspecialized = false;
 			actualTupleType->mGenericTypeInfo->mIsUnspecializedVariation = false;
 			actualTupleType->mGenericTypeInfo->mTypeGenericArguments = genericArgs;
@@ -6432,6 +6489,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			auto dlgType = mContext->mDelegateTypePool.Get();
 			delete dlgType->mGenericTypeInfo;
 			dlgType->mGenericTypeInfo = new BfGenericTypeInfo();
+			dlgType->mGenericTypeInfo->mFinishedGenericParams = true;
 			dlgType->mGenericTypeInfo->mIsUnspecialized = false;
 			dlgType->mGenericTypeInfo->mIsUnspecializedVariation = false;
 			dlgType->mGenericTypeInfo->mTypeGenericArguments = genericArgs;
@@ -8803,6 +8861,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			BfTupleType* actualTupleType = new BfTupleType();
 			actualTupleType->mGenericTypeInfo = new BfGenericTypeInfo();
+			actualTupleType->mGenericTypeInfo->mFinishedGenericParams = true;
 			actualTupleType->Init(baseType->mTypeDef->mProject, baseType);
 			for (int fieldIdx = 0; fieldIdx < (int)types.size(); fieldIdx++)
 			{
@@ -8852,10 +8911,15 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			BF_ASSERT(!types[fieldIdx]->IsVar());
 			fieldInstance->mOwner = tupleType;
 		}
-
+				
 		resolvedEntry->mValue = tupleType;
 		BF_ASSERT(BfResolvedTypeSet::Hash(tupleType, &lookupCtx) == resolvedEntry->mHash);
 		populateModule->InitType(tupleType, populateType);
+
+#ifdef _DEBUG
+		BF_ASSERT(ResolveType(tupleType, BfPopulateType_Identity) == tupleType);
+#endif
+
 		return ResolveTypeResult(typeRef, tupleType, populateType, resolveFlags);
 	}
 	else if (auto nullableTypeRef = BfNodeDynCast<BfNullableTypeRef>(typeRef))
@@ -9010,6 +9074,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			BfDelegateType* genericTypeInst = new BfDelegateType();
 			genericTypeInst->mGenericTypeInfo = new BfGenericTypeInfo();
+			genericTypeInst->mGenericTypeInfo->mFinishedGenericParams = true;
 			delegateType = genericTypeInst;
 			delegateInfo = delegateType->GetDelegateInfo();									
 			auto parentTypeInstance = (BfTypeInstance*)mCurTypeInstance;

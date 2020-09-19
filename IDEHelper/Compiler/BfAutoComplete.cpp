@@ -1551,7 +1551,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 						// We need this for Result<T>
 						SetAndRestoreValue<bool> prevIgnore(mModule->mBfIRBuilder->mIgnoreWrites, true);
 						BfExprEvaluator exprEvaluator(mModule);
-						auto opResult = exprEvaluator.PerformUnaryOperation_TryOperator(targetValue, NULL, BfUnaryOp_NullConditional, dotTokenNode);
+						auto opResult = exprEvaluator.PerformUnaryOperation_TryOperator(targetValue, NULL, BfUnaryOp_NullConditional, dotTokenNode, BfUnaryOpFlag_None);
 						if (opResult)
 							targetValue = opResult;
 					}

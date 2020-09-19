@@ -6799,7 +6799,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			{
 				if (bfAutocomplete != NULL)
 					bfAutocomplete->CheckTypeRef(opConstraint->mLeftType, false);
-				opConstraintInstance.mLeftType = ResolveTypeRef(opConstraint->mLeftType);
+				opConstraintInstance.mLeftType = ResolveTypeRef(opConstraint->mLeftType, BfPopulateType_Interfaces);
 				if (opConstraintInstance.mLeftType == NULL)
 					continue;
 			}
@@ -6814,7 +6814,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			{
 				if (bfAutocomplete != NULL)
 					bfAutocomplete->CheckTypeRef(opConstraint->mRightType, false);
-				opConstraintInstance.mRightType = ResolveTypeRef(opConstraint->mRightType);
+				opConstraintInstance.mRightType = ResolveTypeRef(opConstraint->mRightType, BfPopulateType_Interfaces);
 				if (opConstraintInstance.mRightType == NULL)
 					continue;
 			}
@@ -7405,11 +7405,11 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 			{
 				SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
 				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
-				exprEvaluator.PerformBinaryOperation(NULL, NULL, checkOpConstraint.mBinaryOp, NULL, BfBinOpFlag_NoClassify, leftValue, rightValue);
+				exprEvaluator.PerformBinaryOperation(NULL, NULL, checkOpConstraint.mBinaryOp, NULL, (BfBinOpFlags)(BfBinOpFlag_NoClassify | BfBinOpFlag_IsConstraintCheck), leftValue, rightValue);
 			}
 
 			if ((!exprEvaluator.mResult) || 
-				(!CanCast(exprEvaluator.mResult, origCheckArgType)))
+				(!CanCast(exprEvaluator.mResult, origCheckArgType, BfCastFlags_NoConversionOperator)))
 			{
 				if (!ignoreErrors)
 				{
@@ -7436,7 +7436,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 			if (checkOpConstraint.mCastToken == BfToken_Implicit)
 			{
-				if (!CanCast(rightValue, origCheckArgType, BfCastFlags_SilentFail))
+				if (!CanCast(rightValue, origCheckArgType, (BfCastFlags)(BfCastFlags_SilentFail | BfCastFlags_IsConstraintCheck)))
 					failedOpName = "implicit conversion from '";
 			}
 			else
@@ -7446,14 +7446,14 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 				if (checkOpConstraint.mCastToken == BfToken_Explicit)
 				{
-					if (!CastToValue(NULL, rightValue, origCheckArgType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail)))
+					if (!CastToValue(NULL, rightValue, origCheckArgType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail | BfCastFlags_IsConstraintCheck)))
 						failedOpName = "explicit conversion from '";					
 				}
 				else
 				{
 					BfExprEvaluator exprEvaluator(this);
 					exprEvaluator.mResult = rightValue;
-					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL);
+					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL, BfUnaryOpFlag_IsConstraintCheck);
 
 					if ((!exprEvaluator.mResult) ||
 						(!CanCast(exprEvaluator.mResult, origCheckArgType)))
@@ -9650,6 +9650,55 @@ BfModuleMethodInstance BfModule::GetInternalMethod(const StringImpl& methodName,
 		Fail(StrFormat("Failed to find System.Internal method '%s'", methodName.c_str()));
 	}
 	return moduleMethodInstance;
+}
+
+BfOperatorInfo* BfModule::GetOperatorInfo(BfTypeInstance* typeInstance, BfOperatorDef* operatorDef)
+{
+	while (operatorDef->mIdx >= typeInstance->mOperatorInfo.size())
+		typeInstance->mOperatorInfo.Add(NULL);
+		
+	if (typeInstance->mOperatorInfo[operatorDef->mIdx] == NULL)
+	{
+		SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, true);
+		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
+		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+		BfOperatorInfo* operatorInfo = new BfOperatorInfo();
+		if (operatorDef->mReturnTypeRef != NULL)
+			operatorInfo->mReturnType = ResolveTypeRef(operatorDef->mReturnTypeRef, BfPopulateType_Identity);
+		if (operatorDef->mParams.size() >= 1)
+			operatorInfo->mLHSType = ResolveTypeRef(operatorDef->mParams[0]->mTypeRef, BfPopulateType_Identity);
+		if (operatorDef->mParams.size() >= 2)
+			operatorInfo->mRHSType = ResolveTypeRef(operatorDef->mParams[1]->mTypeRef, BfPopulateType_Identity);
+		typeInstance->mOperatorInfo[operatorDef->mIdx] = operatorInfo;
+	}
+
+	return typeInstance->mOperatorInfo[operatorDef->mIdx];
+}
+
+BfType* BfModule::CheckOperator(BfTypeInstance* typeInstance, BfOperatorDef* operatorDef, const BfTypedValue& lhs, const BfTypedValue& rhs)
+{
+	auto operatorInfo = GetOperatorInfo(typeInstance, operatorDef);
+	if (operatorInfo == NULL)
+		return NULL;
+	if (operatorInfo->mReturnType == NULL)
+		return NULL;
+	if (lhs)
+	{
+		if (operatorInfo->mLHSType == NULL)
+			return NULL;
+		// TODO: Make this be a special flag to do CheckOperator conversion checks?
+		if (!CanCast(lhs, operatorInfo->mLHSType, BfCastFlags_NoConversionOperator))
+			return NULL;
+	}
+	if (rhs)
+	{
+		if (operatorInfo->mRHSType == NULL)
+			return NULL;
+		// TODO: Make this be a special flag to do CheckOperator conversion checks?
+		if (!CanCast(rhs, operatorInfo->mRHSType, BfCastFlags_NoConversionOperator))
+			return NULL;
+	}
+	return operatorInfo->mReturnType;
 }
 
 bool BfModule::IsMethodImplementedAndReified(BfTypeInstance*  typeInstance, const StringImpl& methodName, int paramCount, bool checkBase)

@@ -290,12 +290,19 @@ enum BfLookupFieldFlags
 	BfLookupFieldFlag_IgnoreProtection = 4
 };
 
+enum BfUnaryOpFlags
+{
+	BfUnaryOpFlag_None = 0,
+	BfUnaryOpFlag_IsConstraintCheck = 1
+};
+
 enum BfBinOpFlags
 {
 	BfBinOpFlag_None = 0,
 	BfBinOpFlag_NoClassify = 1,
 	BfBinOpFlag_ForceLeftType = 2,
 	BfBinOpFlag_IgnoreOperatorWithWrongResult = 4,
+	BfBinOpFlag_IsConstraintCheck = 8
 };
 
 class BfExprEvaluator : public BfStructuralVisitor
@@ -409,9 +416,9 @@ public:
 	BfLambdaInstance* GetLambdaInstance(BfLambdaBindExpression* lambdaBindExpr, BfAllocTarget& allocTarget);
 	void VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration* fieldDtor);	
 	void FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType, const StringImpl& fieldName, bool isStatic);	
-	void PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);
-	BfTypedValue PerformUnaryOperation_TryOperator(const BfTypedValue& inValue, BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);
-	void PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken);
+	void PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags);
+	BfTypedValue PerformUnaryOperation_TryOperator(const BfTypedValue& inValue, BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags);
+	void PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, BfUnaryOp unaryOp, BfTokenNode* opToken, BfUnaryOpFlags opFlags);
 	void PerformAssignment(BfAssignmentExpression* assignExpr, bool evaluatedLeft, BfTypedValue rightValue, BfTypedValue* outCascadeValue = NULL);	
 	void PopulateDeferrredTupleAssignData(BfTupleExpression* tupleExr, DeferredTupleAssignData& deferredTupleAssignData);
 	void AssignDeferrredTupleAssignData(BfAssignmentExpression* assignExpr, DeferredTupleAssignData& deferredTupleAssignData, BfTypedValue rightValue);
