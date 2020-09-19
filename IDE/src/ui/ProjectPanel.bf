@@ -1344,7 +1344,15 @@ namespace IDE.ui
 				//var projectItem = mListViewToProjectMap[selectedItem];
 				if (!deleteFiles)
 				{
-					DoDeleteItem(selectedItem, null);
+					mListViewToProjectMap.TryGetValue(selectedItem, var projectItem);
+					if ((projectItem != null) && (projectItem.mIncludeKind == .Auto))
+					{
+						DoDeleteItem(selectedItem, null, .Ignore);
+					    projectItem.mIncludeKind = .Ignore;
+						projectItem.mProject.SetChanged();
+					}
+					else
+						DoDeleteItem(selectedItem, null);
 				}
 				else
 				{
