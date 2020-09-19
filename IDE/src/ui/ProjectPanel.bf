@@ -626,8 +626,12 @@ namespace IDE.ui
             let projectItem = AddProjectItem(projectFolder);
 			if (projectItem != null)
 			{
+				projectItem.Open(true);
+				Sort();
+				mListView.UpdateAll();
 				mListView.GetRoot().SelectItemExclusively(projectItem);
 				mListView.EnsureItemVisible(projectItem, false);
+				RenameItem(projectFolder);
 			}
 			if (projectFolder.mIncludeKind != .Auto)
 				projectFolder.mProject.SetChanged();
