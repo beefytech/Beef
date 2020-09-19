@@ -867,6 +867,7 @@ public:
 	bool IsSpecializedGenericMethod();
 	bool IsSpecializedGenericMethodOrType();
 	bool IsSpecializedByAutoCompleteMethod();
+	bool IsOrInUnspecializedVariation();
 	bool HasExternConstraints();
 	bool HasThis();	
 	BfType* GetThisType();

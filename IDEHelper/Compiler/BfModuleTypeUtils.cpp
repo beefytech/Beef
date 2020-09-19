@@ -4841,17 +4841,19 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 
 	if (methodInstance->IsSpecializedByAutoCompleteMethod())
 		return;
-
+	
 	BF_ASSERT(mCompiler->mCompileState != BfCompiler::CompileState_VData);
 	if ((methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized))
 	{
 		BF_ASSERT(mCompiler->mCompileState != BfCompiler::CompileState_Unreified);
 	}
 
-	if (methodInstance->mIsUnspecializedVariation)
+	if (methodInstance->IsOrInUnspecializedVariation())
 	{
 		return;
 	}
+
+	BF_ASSERT(!methodInstance->GetOwner()->IsUnspecializedTypeVariation());
 
 	BF_ASSERT(methodInstance->mMethodProcessRequest == NULL);
 
@@ -6705,8 +6707,9 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 {
 	// When we're evaluating a method, make sure the params refer back to that method context
 	auto curTypeInstance = mCurTypeInstance;
-	if (mCurMethodInstance != NULL)
-		curTypeInstance = mCurMethodInstance->mMethodInstanceGroup->mOwner;
+	//TODO: This caused MethodToString issues with interface "implementation method not found" errors
+// 	if (mCurMethodInstance != NULL)
+// 		curTypeInstance = mCurMethodInstance->mMethodInstanceGroup->mOwner;
 
 	BfTypeInstance* genericTypeInst = curTypeInstance->ToGenericTypeInstance();
 	if ((genericTypeInst->IsIncomplete()) && (genericTypeInst->mGenericTypeInfo->mGenericParams.size() == 0))
@@ -7065,7 +7068,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		bool doValidate = (genericTypeInstance->mGenericTypeInfo->mHadValidateErrors) || 
 			(!genericTypeInstance->mGenericTypeInfo->mValidatedGenericConstraints) || 
 			(genericTypeInstance->mGenericTypeInfo->mIsUnspecializedVariation);
-		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecializedVariation))
+		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->IsOrInUnspecializedVariation()))
 			doValidate = false;
 		if (mCurTypeInstance != NULL)
 		{

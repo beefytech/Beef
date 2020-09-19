@@ -4769,7 +4769,7 @@ void BfCompiler::GetSymbolReferences()
 // 					++methodItr;
 				}
 				
-				if ((rebuildMethodInstance->mIsUnspecializedVariation) || (rebuildMethodInstance->IsSpecializedGenericMethod()))
+				if ((rebuildMethodInstance->IsOrInUnspecializedVariation()) || (rebuildMethodInstance->IsSpecializedGenericMethod()))
 					continue;				
 									
 				SetAndRestoreValue<BfMethodInstance*> prevTypeInstance(rebuildModule->mCurMethodInstance, rebuildMethodInstance);

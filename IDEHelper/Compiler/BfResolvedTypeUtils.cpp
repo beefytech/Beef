@@ -650,6 +650,11 @@ bool BfMethodInstance::IsSpecializedByAutoCompleteMethod()
 	return false;
 }
 
+bool BfMethodInstance::IsOrInUnspecializedVariation()
+{
+	return (mIsUnspecializedVariation) || (GetOwner()->IsUnspecializedTypeVariation());
+}
+
 bool BfMethodInstance::HasExternConstraints()
 {
 	return (mMethodInfoEx != NULL) && (mMethodInfoEx->mGenericParams.size() > mMethodInfoEx->mMethodGenericArguments.size());

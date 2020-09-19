@@ -7655,7 +7655,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	bool isSkipCall = moduleMethodInstance.mMethodInstance->IsSkipCall(bypassVirtual);
 	
-	if ((moduleMethodInstance.mMethodInstance->mIsUnspecializedVariation) && (!mModule->mBfIRBuilder->mIgnoreWrites))
+	if ((moduleMethodInstance.mMethodInstance->IsOrInUnspecializedVariation()) && (!mModule->mBfIRBuilder->mIgnoreWrites))
 	{
 		// Invalid methods such as types with a HasVar tuple generic arg will be marked as mIsUnspecializedVariation and shouldn't actually be called
 		FinishDeferredEvals(argValues.mResolvedArgs);

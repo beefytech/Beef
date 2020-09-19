@@ -2647,7 +2647,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsUnspecializedTypeVariation()))
 		return NULL;
 
- 	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecializedVariation))
+ 	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->IsOrInUnspecializedVariation()))
 		return NULL; // Ignore errors on unspecialized variations, they are always dups
 	if (!mHadBuildError)
 		mHadBuildError = true;
@@ -9781,9 +9781,6 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 	String methodName;
 	if ((methodNameFlags & BfMethodNameFlag_OmitTypeName) == 0)
 	{
-		// Don't use the 'mCurMethodInstance' owner for the type instance if there's one already set
-		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
-
 		methodName = TypeToString(type, typeNameFlags);
 		if (methodName == "$")
 			methodName = "";
@@ -13977,7 +13974,7 @@ void BfModule::AssertErrorState()
 
 	if (mCurMethodInstance != NULL)
 	{
-		if (mCurMethodInstance->mIsUnspecializedVariation)
+		if (mCurMethodInstance->IsOrInUnspecializedVariation())
 			return;
 		if (mCurMethodInstance->mHasFailed)
 			return;
@@ -16925,6 +16922,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	if (!methodInstance->mIsReified)
 		BF_ASSERT(!mIsReified);
 	
+	BF_ASSERT(!methodInstance->GetOwner()->IsUnspecializedTypeVariation());
+
 	if (methodInstance->mMethodInfoEx != NULL)
 	{
 		for (auto methodGenericArg : methodInstance->mMethodInfoEx->mMethodGenericArguments)
@@ -19423,7 +19422,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	bool wantsVisitBody = true;
 	if ((methodDef->mMethodType == BfMethodType_Mixin) && (!methodGenericArguments.IsEmpty()))
 		wantsVisitBody = false;
-	if (methodInstance->mIsUnspecializedVariation)
+	if (methodInstance->IsOrInUnspecializedVariation())
 		wantsVisitBody = false;
 
 	if (wantsVisitBody)
@@ -19681,7 +19680,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	auto deferMethodState = rootMethodState;
 
 	// Since we handle errors & warnings in the capture phase, we don't need to process any local methods for resolve-only (unless we're doing a mDbgVerifyCodeGen)
-	if ((!localMethod->mDeclOnly) && (!methodInstance->mIsUnspecializedVariation) && 
+	if ((!localMethod->mDeclOnly) && (!methodInstance->IsOrInUnspecializedVariation()) &&
 		(!mWantsIRIgnoreWrites) && (methodDef->mMethodType != BfMethodType_Mixin))
 	{
 		BP_ZONE("BfDeferredLocalMethod:create");
@@ -20215,7 +20214,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		methodInstance->mIsUnspecialized = true;
 	}
 	
-	methodInstance->mIsUnspecializedVariation |= typeInstance->IsUnspecializedTypeVariation();
+	//methodInstance->mIsUnspecializedVariation |= typeInstance->IsUnspecializedTypeVariation();
 
 	for (auto genericParamDef : methodDef->mGenericParams)
 	{
