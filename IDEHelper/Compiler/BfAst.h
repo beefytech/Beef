@@ -987,11 +987,11 @@ public:
 	~BfDeferredAstNodeSizedArray()
 	{
 		BfSizedArrayInitIndirect(*mSizedArray, *this, mAlloc);
-		if (!mSizedArray->IsEmpty())
+		if (!this->mSizedArray->IsEmpty())
 		{
-			int endPos = mSizedArray->back()->mSrcEnd;
-			if (endPos > mParentNode->mSrcEnd)
-				mParentNode->mSrcEnd = endPos;
+			int endPos = this->mSizedArray->back()->mSrcEnd;
+			if (endPos > this->mParentNode->mSrcEnd)
+				this->mParentNode->mSrcEnd = endPos;
 		}
 	}
 };
