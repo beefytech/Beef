@@ -5186,7 +5186,9 @@ BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
 		case BfTypeCode_StringId:
 			BFMODULE_FATAL(this, "Invalid use of StringId");
 			break;
-		default: break;
+		default: 
+			BF_DBG_FATAL("Invalid type");
+			break;
 		}
 		mContext->mPrimitiveTypes[typeCode] = primType;
 	}	

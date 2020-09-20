@@ -576,7 +576,7 @@ public:
 	
 public:
 	virtual bool IsPrimitiveType() override { return true; }
-	virtual bool IsWrappableType() override { return true; }
+	virtual bool IsWrappableType() override { return (mTypeDef->mTypeCode >= BfTypeCode_Boolean) && (mTypeDef->mTypeCode <= BfTypeCode_Double); }
 	virtual BfPrimitiveType* ToPrimitiveType() override { return this; }
 	//virtual bool IsValueType() override { return mTypeDef->mTypeCode != BfTypeCode_None; }
 	//virtual bool IsValueTypeOrValueTypePtr() override { return mTypeDef->mTypeCode != BfTypeCode_None; }
