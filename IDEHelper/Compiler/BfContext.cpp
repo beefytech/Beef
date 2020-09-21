@@ -1041,6 +1041,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mStaticSearchMap.Clear();
 	typeInst->mInterfaces.Clear();
 	typeInst->mInterfaceMethodTable.Clear();
+	for (auto operatorInfo : typeInst->mOperatorInfo)
+		delete operatorInfo;
+	typeInst->mOperatorInfo.Clear();
 	typeInst->mMethodInstanceGroups.Clear();
 	typeInst->mFieldInstances.Clear();
 	for (auto methodInst : typeInst->mInternalMethods)
