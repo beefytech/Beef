@@ -212,6 +212,9 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 
 bool BfMethodMatcher::IsMemberAccessible(BfTypeInstance* typeInst, BfTypeDef* declaringType)
 {	
+	if (!declaringType->mIsPartial)
+		return true;
+
 	if (mActiveTypeDef == NULL)
 		mActiveTypeDef = mModule->GetActiveTypeDef();
 

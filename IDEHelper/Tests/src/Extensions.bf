@@ -74,6 +74,26 @@ namespace Tests
 			public int32 mB;
 		}
 
+		class ClassB : IHashable
+		{
+			public int32 mA;
+
+			public this(int32 a)
+			{
+				mA = a;
+			}
+
+			public static bool operator==(ClassB lhs, ClassB rhs)
+			{
+				return lhs.mA == rhs.mA;
+			}
+
+			public int GetHashCode()
+			{
+				return mA;
+			}
+		}
+
 		class TClassA<T> where T : IDisposable
 		{
 			public int32 mA = 10;
@@ -185,11 +205,23 @@ namespace Tests
 		[Test]
 		public static void TestDictionary()
 		{
-			Dictionary<String, int> dictLhs = scope .() {("Abc", 123), ("Def", 234) };
-			Dictionary<String, int> dictrhs = scope .() {(scope:: String("Abc"), 123), ("Def", 234) };
+			Dictionary<String, int> dictLhs = scope .() { ("Abc", 123), ("Def", 234) };
+			Dictionary<String, int> dictRhs = scope .() { (scope:: String("Abc"), 123), ("Def", 234) };
 
-			Test.Assert(dictLhs == dictrhs);
-			Test.Assert(!LibA.LibA0.DictEquals(dictLhs, dictrhs));
+			Test.Assert(dictLhs == dictRhs);
+			Test.Assert(!LibA.LibA0.DictEquals(dictLhs, dictRhs));
+
+			Dictionary<String, int>[2] dictArrLhs = .(dictLhs, dictLhs);
+			Dictionary<String, int>[2] dictArrRhs = .(dictRhs, dictRhs);
+			Test.Assert(dictArrLhs != dictArrRhs);
+
+			Dictionary<ClassB, int> dictLhs2 = scope .() { (scope:: ClassB(111), 123) };
+			Dictionary<ClassB, int> dictRhs2 = scope .() { (scope:: ClassB(111), 123) };
+			Test.Assert(dictLhs2 == dictRhs2);
+
+			Dictionary<ClassB, int>[2] dictArrLhs2 = .(dictLhs2, dictLhs2);
+			Dictionary<ClassB, int>[2] dictArrRhs2 = .(dictRhs2, dictRhs2);
+			Test.Assert(dictArrLhs2 == dictArrRhs2);
 		}
 
 		[Test]

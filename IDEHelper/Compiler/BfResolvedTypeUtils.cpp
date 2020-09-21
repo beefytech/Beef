@@ -2093,9 +2093,7 @@ bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeT
 		return true;
 	if ((typeDef == NULL) || (typeDef == activeTypeDef))
 		return true;
-	if (typeDef->mTypeDeclaration == mTypeDef->mTypeDeclaration)
-		return true;
-		
+
 	// The combined type declaration is the root type declaration, it's implicitly included
 	if (typeDef->mTypeDeclaration == mTypeDef->mTypeDeclaration)
 		return true;
@@ -2125,43 +2123,13 @@ bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeT
 				genericArg = declGenericParam->mExternType;
 			}
 
-			//auto genericType = mGenericTypeInfo->mTypeGenericArguments[genericIdx];
-			
 			if ((genericArg == NULL) || (!module->CheckGenericConstraints(BfGenericParamSource(), genericArg, NULL, declGenericParam)))
 				return false;
-
-			//if (!mModule->AreConstraintsSubset((*declConstraints)[genericIdx], (*activeConstraints)[genericIdx]))
-				//isSubset = false;
 		}
 
 		return true;
 	}
-	/*else if ((mIsUnspecialized) && (activeTypeDef != NULL))
-	{
-		auto subsetItr = genericExEntry->mConstraintSubsetMap.find(activeTypeDef);
-		if (subsetItr != genericExEntry->mConstraintSubsetMap.end())
-		{
-			return subsetItr->second;
-		}
-
-		auto declConstraints = &genericExEntry->mGenericParams;
-		auto activeConstraints = GetGenericParamsVector(activeTypeDef);
-
-		bool isSubset = true;
-		for (int genericIdx = 0; genericIdx < (int)declConstraints->size(); genericIdx++)
-		{
-			if (!mModule->AreConstraintsSubset((*declConstraints)[genericIdx], (*activeConstraints)[genericIdx]))
-				isSubset = false;
-		}
-
-		// We can't cache this because the meaning of the params may change, IE:  TypeName<@M0> needs to consider the
-        //  constraints of @M0 for each method it is checked against
-		if (!IsUnspecializedTypeVariation())
-			genericExEntry->mConstraintSubsetMap[activeTypeDef] = isSubset;
-
-		return isSubset;
-	}*/
-
+	
 	return genericExEntry->mConstraintsPassed;
 }
 

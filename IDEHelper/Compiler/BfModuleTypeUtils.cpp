@@ -2913,8 +2913,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
 				bool populateChildType = !typeInstance->mTypeFailed;
 				//bool populateChildType = true;
-				PopulateType(resolvedFieldType, populateChildType ? BfPopulateType_Data : BfPopulateType_Declaration);
-				BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
+				PopulateType(resolvedFieldType, populateChildType ? BfPopulateType_Data : BfPopulateType_Declaration);				
 
 				if (populateChildType)
 				{
