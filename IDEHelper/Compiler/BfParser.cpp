@@ -885,8 +885,8 @@ void BfParser::HandleIncludeNext(BfAstNode* paramNode)
 
 }
 
-void BfParser::HandlePreprocessor()
-{
+bool BfParser::HandlePreprocessor()
+{	
 	int triviaStart = mTriviaStart;
 
 	int checkIdx = 0;
@@ -896,6 +896,8 @@ void BfParser::HandlePreprocessor()
 		{
 			if (mPreprocessorIgnoreDepth == 0)
 			{
+				if (mSrc[mSrcIdx - 1] != '#')
+					return false;
 				mPassInstance->FailAt("Preprocessor directives must appear as the first non-whitespace character on a line", mSourceData, checkIdx);
 				break;
 			}
@@ -907,6 +909,25 @@ void BfParser::HandlePreprocessor()
 	String pragma;
 	String pragmaParam;
 
+	switch (mSrc[mSrcIdx - 1])
+	{	
+	case '<':
+		if (mPreprocessorIgnoreDepth > 0)
+			return false;
+		pragma = "<<<";
+		break;
+	case '=':
+		if (mPreprocessorIgnoreDepth > 0)
+			return false;
+		pragma = "===";	
+		break;	
+	case '>':
+		if (mPreprocessorIgnoreDepth > 1)
+			return false;		
+		pragma = ">>>";
+		break;
+	}
+	
 	bool atEnd = false;
 
 	int startIdx = mSrcIdx - 1;
@@ -945,8 +966,16 @@ void BfParser::HandlePreprocessor()
 
 		if (charIdx == -1)
 		{
-			if (!IsWhitespaceOrPunctuation(c))
-				charIdx = mSrcIdx - 1;
+			if (!pragma.IsEmpty())
+			{
+				if (!IsWhitespace(c))
+					charIdx = mSrcIdx - 1;
+			}
+			else
+			{
+				if (!IsWhitespaceOrPunctuation(c))
+					charIdx = mSrcIdx - 1;
+			}
 		}
 		else if ((IsWhitespaceOrPunctuation(c)) && (spaceIdx == -1))
 			spaceIdx = mSrcIdx - 1;
@@ -955,7 +984,7 @@ void BfParser::HandlePreprocessor()
 	if (charIdx == -1)
 	{
 		mPassInstance->FailAt("Preprocessor directive expected", mSourceData, startIdx);
-		return;
+		return true;
 	}
 
 	int endIdx = mSrcIdx - 1;
@@ -967,25 +996,32 @@ void BfParser::HandlePreprocessor()
 	}
 
 	BfBlock* paramNode = NULL;
-	if (spaceIdx != -1)
-	{
-		pragma = String(mSrc + charIdx, mSrc + spaceIdx);
-		int breakIdx = spaceIdx;
-		while (spaceIdx <= endIdx)
+	if (pragma.IsEmpty())
+	{		
+		if (spaceIdx != -1)
 		{
-			if (!isspace((uint8)mSrc[spaceIdx]))
-				break;
-			spaceIdx++;
-		}
-		if (spaceIdx <= endIdx)
-			pragmaParam = String(mSrc + spaceIdx, mSrc + endIdx + 1);
+			pragma = String(mSrc + charIdx, mSrc + spaceIdx);
+			int breakIdx = spaceIdx;
+			while (spaceIdx <= endIdx)
+			{
+				if (!isspace((uint8)mSrc[spaceIdx]))
+					break;
+				spaceIdx++;
+			}
+			if (spaceIdx <= endIdx)
+				pragmaParam = String(mSrc + spaceIdx, mSrc + endIdx + 1);
 
-		paramNode = ParseInlineBlock(breakIdx, endIdx);
+			paramNode = ParseInlineBlock(breakIdx, endIdx);
+		}
+		else
+		{
+			pragma = String(mSrc + charIdx, mSrc + endIdx + 1);
+			mSrcIdx = endIdx + 1;
+		}
 	}
 	else
 	{
-		pragma = String(mSrc + charIdx, mSrc + endIdx + 1);
-		mSrcIdx = endIdx + 1;
+		mSrcIdx--;
 	}
 
 	bool wantsSingleParam = true;
@@ -997,11 +1033,11 @@ void BfParser::HandlePreprocessor()
 		BF_ASSERT(!mPreprocessorNodeStack.empty());
 
 		int ignoreEnd = std::max(mPreprocessorIgnoredSectionNode->GetSrcStart(), mLineStart - 1);
-		if (pragma == "endif")
+		if ((pragma == "endif") || (pragma == ">>>"))
 		{
 			mPreprocessorIgnoreDepth--;
 			if (mPreprocessorIgnoreDepth > 0)
-				return;
+				return true;
 			mPreprocessorNodeStack.pop_back();
 			mPreprocessorIgnoredSectionNode->SetSrcEnd(ignoreEnd);
 			mPreprocessorIgnoredSectionNode = NULL;
@@ -1037,7 +1073,7 @@ void BfParser::HandlePreprocessor()
 						{
 							mPreprocessorIgnoredSectionStarts.insert(mSrcIdx);
 						}
-						return;
+						return true;
 					}
 				}
 			}
@@ -1077,18 +1113,24 @@ void BfParser::HandlePreprocessor()
 		}
 
 		if (mPreprocessorIgnoreDepth > 0)
-			return;
+			return true;
 	}
 	else
 	{
-		if ((pragma == "if") ||
+		if ((pragma == "if") || (pragma == "<<<") ||
 			((mCompatMode) && (pragma == "ifdef")) ||
 			((mCompatMode) && (pragma == "ifndef")))
 		{
 			wantsSingleParam = false;
 			wantedParam = true;
 			bool found = false;
-			if (!mQuickCompatMode)
+			if (pragma == "<<<")
+			{
+				mPassInstance->FailAt("Conflict marker found", mSourceData, startIdx, endIdx - startIdx + 1);
+				wantedParam = false;
+				found = true;
+			}
+			else if (!mQuickCompatMode)
 			{
 				if (pragma == "if")
 					found = HandleProcessorCondition(paramNode) != MaybeBool_False;
@@ -1108,7 +1150,7 @@ void BfParser::HandlePreprocessor()
 				mPreprocessorIgnoreDepth = 1;
 			}
 		}
-		else if (pragma == "else")
+		else if ((pragma == "else") || (pragma == "==="))
 		{
 			if (!mQuickCompatMode && !mCompleteParse)
 			{
@@ -1251,6 +1293,8 @@ void BfParser::HandlePreprocessor()
 		mSidechannelRootNode->Add(mPreprocessorIgnoredSectionNode);
 		mPendingSideNodes.push_back(mPreprocessorIgnoredSectionNode);
 	}
+
+	return true;
 }
 
 static int ValSign(int64 val)
@@ -1350,7 +1394,11 @@ void BfParser::NextToken(int endIdx)
 				break;
 			}
 
-			if ((c != '#') || (!isLineStart))
+			if ((c == '>') && (mSrc[mSrcIdx] == '>') && (mSrc[mSrcIdx + 1] == '>'))
+			{
+				// Allow through
+			}
+			else if ((c != '#') || (!isLineStart))
 			{
 				if (c == '\n')
 				{
@@ -1393,9 +1441,26 @@ void BfParser::NextToken(int endIdx)
 			{
 				if (mSrc[mSrcIdx + 1] == '=')
 				{
-					mToken = BfToken_CompareStrictEquals;
-					++mSrcIdx;
-					mTokenEnd = ++mSrcIdx;
+					if (mSrc[mSrcIdx + 2] == '=')
+					{						
+						if (HandlePreprocessor())
+						{
+							// Conflict split
+							break;
+						}
+						else
+						{
+							mToken = BfToken_CompareStrictEquals;
+							++mSrcIdx;
+							mTokenEnd = ++mSrcIdx;
+						}
+					}
+					else
+					{
+						mToken = BfToken_CompareStrictEquals;
+						++mSrcIdx;
+						mTokenEnd = ++mSrcIdx;
+					}
 				}
 				else
 				{
@@ -1526,6 +1591,20 @@ void BfParser::NextToken(int endIdx)
 					mToken = BfToken_ShiftLeftEquals;
 					mTokenEnd = ++mSrcIdx;
 				}
+				else if (mSrc[mSrcIdx] == '<')
+				{
+					mSrcIdx--;
+					if (HandlePreprocessor())
+					{
+						// Conflict end
+						break;
+					}
+					else
+					{
+						mSrcIdx++;
+						mToken = BfToken_LDblChevron;
+					}
+				}
 				else
 					mToken = BfToken_LDblChevron;
 			}
@@ -1555,6 +1634,20 @@ void BfParser::NextToken(int endIdx)
 				{
 					mToken = BfToken_ShiftRightEquals;
 					mTokenEnd = ++mSrcIdx;
+				}
+				else if (mSrc[mSrcIdx] == '>')
+				{
+					mSrcIdx--;
+					if (HandlePreprocessor())
+					{
+						// Conflict start
+						break;
+					}
+					else
+					{
+						mSrcIdx++;
+						mToken = BfToken_RDblChevron;
+					}
 				}
 				else
 					mToken = BfToken_RDblChevron;

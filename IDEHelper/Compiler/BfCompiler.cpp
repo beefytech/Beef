@@ -3856,6 +3856,67 @@ void BfCompiler::ProcessAutocompleteTempType()
 	}	
 	VisitSourceExteriorNodes();
 
+
+	if (autoComplete->mResolveType == BfResolveType_GetFixits)
+	{
+		BfAstNode* conflictStart = NULL;
+		BfAstNode* conflictSplit = NULL;		
+
+		auto src = mResolvePassData->mParser->mSrc;
+
+		for (int checkIdx = 0; checkIdx < (int)mResolvePassData->mParser->mSidechannelRootNode->mChildArr.mSize; checkIdx++)
+		{
+			auto sideNode = mResolvePassData->mParser->mSidechannelRootNode->mChildArr.mVals[checkIdx];
+			if (autoComplete->CheckFixit(sideNode))
+			{
+				if (src[sideNode->mSrcStart] == '<')
+				{
+					conflictStart = sideNode;
+					conflictSplit = NULL;
+				}				
+			}
+			else
+			{
+				if (src[sideNode->mSrcStart] == '<')
+				{
+					conflictStart = NULL;
+					conflictSplit = NULL;
+				}
+				else if (src[sideNode->mSrcStart] == '=')
+				{
+					if (conflictStart != NULL)
+						conflictSplit = sideNode;
+				}
+				else if (src[sideNode->mSrcStart] == '>')
+				{
+					if (conflictSplit != NULL)
+					{
+						autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept First\tdelete|%s-%d|\x01""delete|%s-%d|",
+							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictSplit->mSrcStart).c_str(), sideNode->mSrcEnd - conflictSplit->mSrcStart + 1,
+							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictStart->mSrcStart).c_str(), conflictStart->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
+
+						autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept Second\tdelete|%s-%d|\x01""delete|%s-%d|",
+							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, sideNode->mSrcStart).c_str(), sideNode->mSrcEnd - sideNode->mSrcStart + 1,
+							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictStart->mSrcStart).c_str(), conflictSplit->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
+
+						autoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Accept Both\tdelete|%s-%d|\x01""delete|%s-%d|\x01""delete|%s-%d|",
+							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, sideNode->mSrcStart).c_str(), sideNode->mSrcEnd - sideNode->mSrcStart + 1,
+							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictSplit->mSrcStart).c_str(), conflictSplit->mSrcEnd - conflictSplit->mSrcStart + 1,
+							autoComplete->FixitGetLocation(mResolvePassData->mParser->mParserData, conflictStart->mSrcStart).c_str(), conflictStart->mSrcEnd - conflictStart->mSrcStart + 1).c_str()));
+
+						conflictStart = NULL;
+						conflictSplit = NULL;
+					}
+				}
+			}
+		}
+
+		for (auto sideNode : mResolvePassData->mParser->mSidechannelRootNode->mChildArr)
+		{
+			
+		}
+	}
+
 	if (autoComplete->mResolveType == BfResolveType_GetSymbolInfo)
 	{
 		BfNamespaceVisitor namespaceVisitor;

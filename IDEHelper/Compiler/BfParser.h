@@ -198,7 +198,7 @@ public:
 	BfExpression* CreateInlineExpressionFromNode(BfBlock* block);
 	bool EvaluatePreprocessor(BfExpression* expr);
 	BfBlock* ParseInlineBlock(int spaceIdx, int endIdx);
-	void HandlePreprocessor();	
+	bool HandlePreprocessor();	
 	bool IsUnwarnedAt(BfAstNode* node);
 	bool SrcPtrHasToken(const char* name);
 	uint32 GetTokenHash();
