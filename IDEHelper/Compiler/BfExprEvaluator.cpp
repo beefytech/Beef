@@ -6744,21 +6744,27 @@ bool BfExprEvaluator::CheckGenericCtor(BfGenericParamType* genericParamType, BfR
 	auto genericConstraint = mModule->GetGenericParamInstance(genericParamType);
 	bool success = true;
 	
-	if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_New) == 0)
-	{
-		mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
-		success = false;
-	}
-	if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_Struct) == 0)
-	{
-		mModule->Fail(StrFormat("Must add 'where %s : struct' constraint to generic parameter to instantiate type without allocator", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
-		success = false;
-	}
 	if ((argValues.mArguments != NULL) && (argValues.mArguments->size() != 0))
 	{
 		mModule->Fail(StrFormat("Only default parameterless constructors can be called on generic argument '%s'", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
 		success = false;
 	}
+	else if ((genericConstraint->mGenericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Struct)) == 0)
+	{
+		mModule->Fail(StrFormat("Must add 'where %s : new, struct' constraint to generic parameter to instantiate type", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		success = false;
+	}
+	else if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_New) == 0)
+	{
+		mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		success = false;
+	}
+	else if ((genericConstraint->mGenericParamFlags & BfGenericParamFlag_Struct) == 0)
+	{
+		mModule->Fail(StrFormat("Must add 'where %s : struct' constraint to generic parameter to instantiate type without allocator", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
+		success = false;
+	}
+	
 
 	return success;
 }
