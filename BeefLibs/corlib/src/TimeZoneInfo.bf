@@ -3103,6 +3103,7 @@ namespace System {
                 AdjustmentRule [] adjustmentRules,
                 out bool adjustmentRulesSupportDst) {
 
+			adjustmentRulesSupportDst = false;
             if (id.IsNull) {
                 //throw new ArgumentNullException("id");
 				return .Err;
@@ -3124,8 +3125,6 @@ namespace System {
 				return .Err;
             }
             Contract.EndContractBlock();
-
-            adjustmentRulesSupportDst = false;
 
             //
             // "adjustmentRules" can either be null or a valid array of AdjustmentRule objects.

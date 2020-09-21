@@ -6,6 +6,45 @@ namespace IDETest
 {
 	class LocalVars
 	{
+		public void If1()
+		{
+			int a;
+			int b = 123;
+			if (b == 234)
+			{
+				a = 234;
+				return;
+			}
+			b = a; //FAIL
+		}
+
+		public void If2(out int a) //FAIL
+		{
+			int b = 123;
+			if (b == 234)
+				return;
+			a = 234;
+			b = a;
+		}
+
+		public void For1(out int a) //FAIL
+		{
+			for (int b < 2)
+				a = 9;
+		}
+
+		public void Do1(out int a) //FAIL
+		{
+			int b = 123;
+			do
+			{
+				if (b == 234)
+					break;
+				a = 9;
+			}
+			b = a;
+		}
+
 		public void Switch1()
 		{
 			int val;
@@ -89,6 +128,20 @@ namespace IDETest
 			}
 
 			int c = b;
+		}
+
+		public void Switch6()
+		{
+			int val;
+
+			Result<int> iResult = .Ok(123);
+			switch (iResult)
+			{
+			case .Ok(out val):
+			case .Err: break;
+			}
+
+			int a = val; //FAIL
 		}
 
 		public void While1()

@@ -6553,7 +6553,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 		localVar->mIsReadOnly = isLet;
 		localVar->mReadFromId = 0;
 		localVar->mWrittenToId = 0;
-		localVar->mIsAssigned = true;		
+		localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 		mModule->CheckVariableDef(localVar);
 		localVar->Init();
 		mModule->AddLocalVariableDef(localVar, true);	
@@ -10940,7 +10940,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			methodDef->mParams.push_back(paramDef);
 
 			localVar->mResolvedType = invokeMethodInstance->GetParamType(paramIdx);
-			localVar->mIsAssigned = true;
+			localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 			localVar->mReadFromId = 0;
 
 			auto rootMethodState = methodState.GetRootMethodState();
@@ -13920,17 +13920,17 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			mModule->AddLocalVariableDef(newLocalVar, hasConstValue);
 			auto inLocalVar = exprEvaluator->mResultLocalVar;
 
-			newLocalVar->mIsAssigned = inLocalVar->mIsAssigned;
+			newLocalVar->mAssignedKind = inLocalVar->mAssignedKind;
 			newLocalVar->mUnassignedFieldFlags = inLocalVar->mUnassignedFieldFlags;
 			newLocalVar->mReadFromId = inLocalVar->mReadFromId;
 			newLocalVar->mIsReadOnly = inLocalVar->mIsReadOnly;
 
-			if ((!newLocalVar->mIsAssigned) && (mModule->mCurMethodState->mDeferredLocalAssignData != NULL))
+			if ((newLocalVar->mAssignedKind == BfLocalVarAssignKind_None) && (mModule->mCurMethodState->mDeferredLocalAssignData != NULL))
 			{
 				for (auto deferredAssign : mModule->mCurMethodState->mDeferredLocalAssignData->mAssignedLocals)
 				{
 					if (deferredAssign.mLocalVar == inLocalVar)
-						newLocalVar->mIsAssigned = true;
+						newLocalVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 				}
 			}
 		}
@@ -14095,7 +14095,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			argValue = target;
 			localVar->mName = "this";
 			localVar->mIsThis = true;
-			localVar->mIsAssigned = true;
+			localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 		}
 		else
 		{
@@ -14123,7 +14123,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			auto refType = (BfRefType*)localVar->mResolvedType;
 			localVar->mAddr = mModule->LoadValue(argValue).mValue;
 			localVar->mResolvedType = argValue.mType->GetUnderlyingType();
-			localVar->mIsAssigned = refType->mRefKind != BfRefType::RefKind_Out;
+			localVar->mAssignedKind = (refType->mRefKind != BfRefType::RefKind_Out) ? BfLocalVarAssignKind_Unconditional : BfLocalVarAssignKind_None;
 		}
 		else if (argValue.IsAddr())
 			localVar->mAddr = argValue.mValue;
@@ -14202,8 +14202,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		if (mResultLocalVar != NULL)
 		{
 			auto inLocalVar = mResultLocalVar;
-			if (localVar->mIsAssigned)						
-				inLocalVar->mIsAssigned = true;
+			if (localVar->mAssignedKind != BfLocalVarAssignKind_None)
+				inLocalVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 			if (localVar->mReadFromId != -1)
 				inLocalVar->mReadFromId = mModule->mCurMethodState->GetRootMethodState()->mCurAccessId++;
 		}
@@ -14220,8 +14220,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		if ((exprEvaluator != NULL) && (exprEvaluator->mResultLocalVar != NULL))
 		{
 			auto inLocalVar = exprEvaluator->mResultLocalVar;
-			if (localVar->mIsAssigned)
-				inLocalVar->mIsAssigned = true;
+			if (localVar->mAssignedKind != BfLocalVarAssignKind_None)
+				inLocalVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 			if (localVar->mReadFromId != -1)
 				inLocalVar->mReadFromId = mModule->mCurMethodState->GetRootMethodState()->mCurAccessId++;
 		}
@@ -15478,12 +15478,12 @@ void BfExprEvaluator::CheckResultForReading(BfTypedValue& typedValue)
 				return;
 			}
 
-			if (!localVar->mIsAssigned)
+			if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
 			{
 				mModule->TryLocalVariableInit(localVar);
 			}
 
-			if (!localVar->mIsAssigned)
+			if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
 			{
 				auto methodStateForLocal = mModule->mCurMethodState->GetMethodStateForLocal(localVar);
 
@@ -15500,7 +15500,7 @@ void BfExprEvaluator::CheckResultForReading(BfTypedValue& typedValue)
 						auto assignedLocal = assignedVar.mLocalVar;
 						if (assignedLocal == localVar)
 						{
-							int assignedFieldIdx = (assignedVar.mLocalVarField) - 1;
+							int assignedFieldIdx = assignedVar.mLocalVarField;
 							if (assignedFieldIdx >= 0)
 								undefinedFieldFlags &= ~((int64)1 << assignedFieldIdx);
 							else

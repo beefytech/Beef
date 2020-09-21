@@ -811,7 +811,7 @@ void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool mov
 		{
 			BfLocalVariable* localVar = new BfLocalVariable();
 			localVar->mIsReadOnly = true;
-			localVar->mIsAssigned = true;
+			localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 			localVar->mReadFromId = 0;
 			localVar->mName = capture.mName;
 			localVar->mValue = capture.mValue.mValue;
@@ -1470,7 +1470,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 						resolvedType = initValue.mType;
 						unresolvedType = resolvedType;
 						localDef->mLocalVarId = prevLocal->mLocalVarId;
-						localDef->mIsAssigned = true;
+						localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 						localDef->mIsShadow = true;
 
 						exprEvaluator.mResultLocalVarRefNode = varDecl->mNameNode;
@@ -1707,7 +1707,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			}
 		}
 
-		localDef->mIsAssigned = true;
+		localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 	}
 	else
 	{
@@ -1927,7 +1927,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		varDecl->mNameNode->ToString(localDef->mName);
 	localDef->mNameNode = BfNodeDynCast<BfIdentifierNode>(varDecl->mNameNode);
 	localDef->mResolvedType = type;
-	localDef->mIsAssigned = true;	
+	localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;	
 	localDef->mValue = val.mValue;
 	if (isLet)
 	{
@@ -2104,7 +2104,7 @@ void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, Bf
 				}
 			}
 
-			localDef->mIsAssigned = true;		
+			localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;		
 		}
 		else if ((varDecl != NULL) && (varDecl->mInitializer == NULL))
 		{
@@ -3624,7 +3624,8 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 	bool falseHadReturn = false;
 	if (ifStmt->mFalseStatement != NULL)
 	{
-		BfDeferredLocalAssignData falseDeferredLocalAssignData(mCurMethodState->mCurScope);
+		BfDeferredLocalAssignData falseDeferredLocalAssignData(&newScope);
+		falseDeferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
 		if (falseBB)
 		{
 			mBfIRBuilder->AddBlock(falseBB);
@@ -4104,7 +4105,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	localDef->mName = "_";	
 	localDef->mResolvedType = switchValueAddr.mType;
 	localDef->mIsReadOnly = true;
-	localDef->mIsAssigned = true;
+	localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 	if (switchValue.IsAddr())
 	{
 		localDef->mAddr = switchValue.mValue;
@@ -4884,7 +4885,15 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 			return;
 		}
 		checkScope = checkScope->mPrevScope;
-	}	
+	}
+
+	auto checkLocalAssignData = mCurMethodState->mDeferredLocalAssignData;
+	while (checkLocalAssignData != NULL)
+	{
+		if (checkLocalAssignData->mScopeData != NULL)
+			checkLocalAssignData->mLeftBlock = true;
+		checkLocalAssignData = checkLocalAssignData->mChainedAssignData;
+	}
 
 	if (retType == NULL)
 	{
@@ -5039,6 +5048,14 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 			}
 			checkScope = checkScope->mPrevScope;
 		}
+	}
+
+	auto checkLocalAssignData = mCurMethodState->mDeferredLocalAssignData;
+	while (checkLocalAssignData != NULL)
+	{
+		if ((checkLocalAssignData->mScopeData != NULL) && (checkLocalAssignData->mScopeData->mScopeDepth >= breakData->mScope->mScopeDepth))
+			checkLocalAssignData->mLeftBlock = true;
+		checkLocalAssignData = checkLocalAssignData->mChainedAssignData;
 	}
 
 	if (HasDeferredScopeCalls(breakData->mScope))
@@ -5297,14 +5314,22 @@ void BfModule::Visit(BfDoStatement* doStmt)
 	breakData.mPrevBreakData = mCurMethodState->mBreakData;	
 	SetAndRestoreValue<BfBreakData*> prevBreakData(mCurMethodState->mBreakData, &breakData);
 
+	BfDeferredLocalAssignData deferredLocalAssignData(mCurMethodState->mCurScope);
+	deferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData, false);
+	deferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
+	SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);	
+
 	// We may have a call in the loop body
 	mCurMethodState->mMayNeedThisAccessCheck = true;
 
 	mBfIRBuilder->CreateBr(bodyBB);
 	mBfIRBuilder->SetInsertPoint(bodyBB);	
 	VisitEmbeddedStatement(doStmt->mEmbeddedStatement);	
+	
+	prevDLA.Restore();
+	mCurMethodState->ApplyDeferredLocalAssignData(deferredLocalAssignData);
 
-	RestoreScopeState();
+	RestoreScopeState();		
 
 	if (!mCurMethodState->mLeftBlockUncond)
 		mBfIRBuilder->CreateBr(endBB);
@@ -5635,6 +5660,12 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 	auto isLet = BfNodeDynCast<BfLetTypeReference>(forEachStmt->mVariableTypeRef) != 0;
 	auto isVar = BfNodeDynCast<BfVarTypeReference>(forEachStmt->mVariableTypeRef) != 0;
 
+	BfDeferredLocalAssignData deferredLocalAssignData(mCurMethodState->mCurScope);
+	deferredLocalAssignData.mIsIfCondition = true;
+	deferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData, true);
+	deferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
+	SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
+
 	BfTypedValue target;		
 	BfType* varType = NULL;	
 	bool didInference = false;
@@ -5661,6 +5692,12 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 	if (varType == NULL)
 		varType = GetPrimitiveType(BfTypeCode_IntPtr);
 
+	deferredLocalAssignData.mIsIfCondition = false;
+
+	// The "extend chain" is only valid for the conditional -- since that expression may contain unconditionally executed and 
+	//  conditionally executed code (in the case of "(GetVal(out a) && GetVal(out b))" for example
+	mCurMethodState->mDeferredLocalAssignData->BreakExtendChain();
+
 	BfType* checkType = varType;
 	if (checkType->IsTypedPrimitive())
 		checkType = checkType->GetUnderlyingType();
@@ -5683,7 +5720,7 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 		varInst = CreateAlloca(varType);		
 	}
 	localDef->mAddr = varInst;
-	localDef->mIsAssigned = true;
+	localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 	localDef->mReadFromId = 0;
 	localDef->mIsReadOnly = isLet || (forEachStmt->mReadOnlyToken != NULL);
 
@@ -6146,7 +6183,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		localDef->mName = variableName;		
 		localDef->mResolvedType = itr.mType;
 		localDef->mAddr = itr.mValue;
-		localDef->mIsAssigned = true;
+		localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 		localDef->mReadFromId = 0;		
 		localDef->Init();		
 		UpdateSrcPos(forEachStmt);
@@ -6184,7 +6221,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 				if (!needsValCopy)
 					localDef->mResolvedType = CreateRefType(localDef->mResolvedType);
 				localDef->mAddr = CreateAlloca(localDef->mResolvedType);
-				localDef->mIsAssigned = true;
+				localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 				localDef->mReadFromId = 0;
 				if ((isLet) || (forEachStmt->mReadOnlyToken != NULL))
 					localDef->mIsReadOnly = true;
@@ -6233,7 +6270,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			localDef->mResolvedType = varType;
 			varInst = CreateAlloca(varType);
 			localDef->mAddr = varInst;
-			localDef->mIsAssigned = true;
+			localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 			localDef->mReadFromId = 0;
 			if ((isLet) || (forEachStmt->mReadOnlyToken != NULL))
 				localDef->mIsReadOnly = true;
@@ -6935,7 +6972,7 @@ void BfModule::Visit(BfInlineAsmStatement* asmStmt)
 										{
 											// if you access a variable in asm, we suppress any warnings related to used or assigned, regardless of usage
 											checkLocal.mIsReadFrom = true;
-											checkLocal.mIsAssigned = true;
+											checkLocal.mAssignedKind = BfLocalVarAssignKind_Unconditional;
 
 											found = true;
 											break;
@@ -7122,7 +7159,7 @@ void BfModule::Visit(BfInlineAsmStatement* asmStmt)
 
 										// if you access a variable in asm, we suppress any warnings related to used or assigned, regardless of usage
 										checkLocal.mIsReadFrom = true;
-										checkLocal.mIsAssigned = true;
+										checkLocal.mAssignedKind = BfLocalVarAssignKind_Unconditional;
 
 										found = true;
 										break;

@@ -40,11 +40,11 @@ void BfLocalVariable::Init()
 {	
 	if (mResolvedType->IsValuelessType())
 	{
-		mIsAssigned = true;
+		mAssignedKind = BfLocalVarAssignKind_Unconditional;
 		return;
 	}
 
-	if (mIsAssigned)
+	if (mAssignedKind != BfLocalVarAssignKind_None)
 		return;
 
 	bool isStruct = mResolvedType->IsStruct();
@@ -64,7 +64,7 @@ void BfLocalVariable::Init()
 			mUnassignedFieldFlags &= ~(((int64)1 << typeInstance->mBaseType->mMergedFieldDataCount) - 1);
 		}
 		if (mUnassignedFieldFlags == 0)
-			mIsAssigned = true;
+			mAssignedKind = BfLocalVarAssignKind_Unconditional;
 	}
 	else
 	{
@@ -117,20 +117,39 @@ void BfDeferredLocalAssignData::SetIntersection(const BfDeferredLocalAssignData&
 {	
 	BreakExtendChain();
 
-	//TODO: We got rid of this case because we now set the proper assigned data when we do a return
-	// If one of these had a return then treat that case as if it did have an assign -- because it doesn't
-	//  cause an UNASSIGNED value to be used
-// 	if (mHadReturn || otherLocalAssignData.mHadReturn)
-// 	{
-// 		SetUnion(otherLocalAssignData);
-// 		mHadFallthrough = mHadFallthrough && otherLocalAssignData.mHadFallthrough;
-// 		return;
-// 	}
-
 	for (int i = 0; i < (int)mAssignedLocals.size(); )
 	{
 		auto& local = mAssignedLocals[i];
-		if (!otherLocalAssignData.mAssignedLocals.Contains(local))
+
+		bool wantRemove = true;
+		bool foundOtherFields = false;
+		for (auto& otherLocalAssignData : otherLocalAssignData.mAssignedLocals)
+		{
+			if (otherLocalAssignData.mLocalVar == local.mLocalVar)
+			{
+				if ((otherLocalAssignData.mLocalVarField == local.mLocalVarField) || (otherLocalAssignData.mLocalVarField == -1))
+				{
+					if (otherLocalAssignData.mAssignKind == BfLocalVarAssignKind_Conditional)
+						local.mAssignKind = BfLocalVarAssignKind_Conditional;
+					wantRemove = false;
+				}
+				else
+					foundOtherFields = true;
+			}
+		}
+
+		if ((wantRemove) && (foundOtherFields))
+		{
+			for (auto& otherLocalAssignData : otherLocalAssignData.mAssignedLocals)
+			{
+				if (otherLocalAssignData.mLocalVar == local.mLocalVar)
+				{
+					mAssignedLocals.Add(otherLocalAssignData);
+				}
+			}
+		}
+
+		if (wantRemove)
 		{
 			mAssignedLocals.RemoveAt(i);
 		}
@@ -175,7 +194,7 @@ BfMethodState::~BfMethodState()
 		BF_ASSERT(mCurAccessId == 1);
 		BF_ASSERT(mCurLocalVarId <= 0);
 	}
-
+	
 	for (auto local : mLocals)
 		delete local;
 
@@ -198,7 +217,7 @@ BfMethodState* BfMethodState::GetMethodStateForLocal(BfLocalVariable* localVar)
 	return NULL;
 }
 
-void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx)
+void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLocalVarAssignKind assignKind, bool isFromDeferredAssignData)
 {	
 	auto localVarMethodState = GetMethodStateForLocal(localVar);
 	if (localVarMethodState != this)
@@ -207,7 +226,13 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx)
 	}
 	//BF_ASSERT(localVarMethodState == this);
 
-	if (!localVar->mIsAssigned)
+//  	if (assignKind == BfLocalVarAssignKind_None)
+//  		assignKind = ((localVarMethodState->mLeftBlockCond) && ((mDeferredLocalAssignData != NULL) || isFromDeferredAssignData))  ? BfLocalVarAssignKind_Conditional : BfLocalVarAssignKind_Unconditional;
+// 	
+// 	//assignKind = BfLocalVarAssignKind_Unconditional;
+
+	
+	if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
 	{
 		BfDeferredLocalAssignData* ifDeferredLocalAssignData = NULL;
 
@@ -226,7 +251,14 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx)
 			((deferredLocalAssignData->mIsChained) || (deferredLocalAssignData->mIsUnconditional)))
 			deferredLocalAssignData = deferredLocalAssignData->mChainedAssignData;
 
-		if ((deferredLocalAssignData == NULL) || (localVar->mLocalVarId >= deferredLocalAssignData->mVarIdBarrier))
+		if (assignKind == BfLocalVarAssignKind_None)
+			assignKind = ((deferredLocalAssignData != NULL) && (deferredLocalAssignData->mLeftBlock)) ? BfLocalVarAssignKind_Conditional : BfLocalVarAssignKind_Unconditional;		
+
+		if (localVar->mAssignedKind == assignKind)
+		{
+			// Leave it alone
+		}
+		else if ((deferredLocalAssignData == NULL) || (localVar->mLocalVarId >= deferredLocalAssignData->mVarIdBarrier))
 		{
 			if (fieldIdx >= 0)
 			{
@@ -236,18 +268,21 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx)
 					
 				}*/
 				if (localVar->mUnassignedFieldFlags == 0)
-					localVar->mIsAssigned = true;
+				{
+					if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
+						localVar->mAssignedKind = assignKind;					
+				}
 			}
 			else
-			{
-				localVar->mIsAssigned = true;
+			{				
+				localVar->mAssignedKind = assignKind;								
 			}
 		}
 		else
 		{				
 			BF_ASSERT(deferredLocalAssignData->mVarIdBarrier != -1);
 
-			BfAssignedLocal defineVal = {localVar, fieldIdx + 1};			
+			BfAssignedLocal defineVal = {localVar, fieldIdx, assignKind};
 			auto& assignedLocals = deferredLocalAssignData->mAssignedLocals;			
 			if (!assignedLocals.Contains(defineVal))			
 				assignedLocals.push_back(defineVal);			
@@ -269,7 +304,7 @@ void BfMethodState::ApplyDeferredLocalAssignData(const BfDeferredLocalAssignData
 
 	for (auto& assignedLocal : deferredLocalAssignData.mAssignedLocals)
 	{
-		LocalDefined(assignedLocal.mLocalVar);
+		LocalDefined(assignedLocal.mLocalVar, assignedLocal.mLocalVarField, assignedLocal.mAssignKind, true);
 	}
 }
 
@@ -2029,14 +2064,14 @@ bool BfModule::TryLocalVariableInit(BfLocalVariable* localVar)
 
 					localVar->mUnassignedFieldFlags &= ~checkMask;
 					if (localVar->mUnassignedFieldFlags == 0)
-						localVar->mIsAssigned = true;
+						localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 				}
 			}
 		}
 		checkTypeInstance = checkTypeInstance->mBaseType;
 	}
 
-	return localVar->mIsAssigned;
+	return localVar->mAssignedKind != BfLocalVarAssignKind_None;
 }
 
 void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
@@ -2069,7 +2104,7 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 
 		if ((localVar->mReadFromId == -1) || (isOut) || ((localVar->mIsThis) && (mCurTypeInstance->IsStruct())))
 		{
-			if ((!localVar->mIsAssigned) & (localVar->IsParam()))
+			if ((localVar->mAssignedKind != BfLocalVarAssignKind_Unconditional) & (localVar->IsParam()))
 				TryLocalVariableInit(localVar);
 
 			// We may skip processing of local methods, so we won't know if it bind to any of our local variables or not
@@ -2077,7 +2112,8 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 			//bool deferFullAnalysis = true;
 			bool deferUsageWarning = deferFullAnalysis && mCompiler->IsAutocomplete();
 
-			if ((!localVar->mIsAssigned) && (!localVar->mIsImplicitParam))
+			if (((localVar->mAssignedKind != BfLocalVarAssignKind_Unconditional) || (localVar->mHadExitBeforeAssign)) && 
+				(!localVar->mIsImplicitParam))
 			{
 				if (deferUsageWarning)
 				{
@@ -4022,7 +4058,7 @@ void BfModule::CreateDynamicCastMethod()
 	auto trueBB = mBfIRBuilder->CreateBlock("check.true");
 	//auto falseBB = mBfIRBuilder->CreateBlock("check.false");
 	auto exitBB = mBfIRBuilder->CreateBlock("exit");
-		
+	
 	SizedArray<int, 8> typeMatches;
 	SizedArray<BfTypeInstance*, 8> exChecks;
 	FindSubTypes(mCurTypeInstance, &typeMatches, &exChecks, isInterfacePass);
@@ -4036,7 +4072,7 @@ void BfModule::CreateDynamicCastMethod()
 			genericArgs.push_back(GetGenericParamType(BfGenericParamKind_Type, i));
 		auto unboundType = ResolveTypeDef(mCurTypeInstance->mTypeDef, genericArgs, BfPopulateType_Declaration);
 		typeMatches.push_back(unboundType->mTypeId);
-	}	
+	}
 
 	if (mCurTypeInstance->IsBoxed())
 	{
@@ -13266,7 +13302,7 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 		if ((!isClosureProcessing) && (mCompiler->mResolvePassData != NULL) && (localVarDef->mNameNode != NULL))
 			mCompiler->mResolvePassData->HandleLocalReference(localVarDef->mNameNode, rootMethodState->mMethodInstance->GetOwner()->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, localVarDef->mLocalVarId);
 	}
-
+	
 	return localVarDef;
 }
 
@@ -13851,20 +13887,27 @@ void BfModule::MarkScopeLeft(BfScopeData* scopeData)
 				deferredLocalAssignData->mIsUnconditional = false;
 			deferredLocalAssignData = deferredLocalAssignData->mChainedAssignData;
 		}
+
+		
 	}
-
-	//for (int localIdx = scopeData->mLocalVarStart; localIdx < (int)mCurMethodState->mLocals.size(); localIdx++)
-
-	// We mark all unassigned variables as assigned now, for avoiding "may be unassigned" usage cases like:
-	//  int b;
-	//  if (cond) return; 
-	//  else b = 1;
-	//  Use(b);
-	for (int localIdx = 0; localIdx < (int)mCurMethodState->mLocals.size(); localIdx++)
+	
+	// When we leave a scope, mark those as assigned for deferred assignment purposes
+	for (int localIdx = scopeData->mLocalVarStart; localIdx < (int)mCurMethodState->mLocals.size(); localIdx++)
 	{
-		auto localDef = mCurMethodState->mLocals[localIdx];
-		if ((!localDef->mIsAssigned) && (!localDef->IsParam()))
+		auto localDef = mCurMethodState->mLocals[localIdx];		
+		if (localDef->mAssignedKind == BfLocalVarAssignKind_None)
+		{
+			bool hadAssignment = false;
+			if (mCurMethodState->mDeferredLocalAssignData != NULL)
+			{
+				for (auto& entry : mCurMethodState->mDeferredLocalAssignData->mAssignedLocals)
+					if (entry.mLocalVar == localDef)
+						hadAssignment = true;						
+			}
+			if (!hadAssignment)
+				localDef->mHadExitBeforeAssign = true;
 			mCurMethodState->LocalDefined(localDef);
+		}
 	}
 }
 
@@ -14843,7 +14886,7 @@ void BfModule::EmitDtorBody()
 							localDef->mName = "_";
 							localDef->mResolvedType = fieldType;	
 							localDef->mAddr = mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(fieldType));
-							localDef->mIsAssigned = true;
+							localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 							AddLocalVariableDef(localDef);
 						}
 
@@ -15591,7 +15634,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				if (thisVariable != NULL)
 				{
 					thisVariable->mUnassignedFieldFlags = 0;
-					thisVariable->mIsAssigned = true;
+					thisVariable->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 				}
 			}
 
@@ -16142,11 +16185,11 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		paramVar->mParamIdx = -1;
 		if ((methodDef->mMethodType == BfMethodType_Ctor) && (mCurTypeInstance->IsStruct()))
 		{
-			paramVar->mIsAssigned = false;
+			paramVar->mAssignedKind = BfLocalVarAssignKind_None;
 		}
 		else
 		{
-			paramVar->mIsAssigned = true;
+			paramVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 		}
 
 		paramVar->mReadFromId = -1;
@@ -16242,11 +16285,11 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		if (resolvedType->IsRef())
 		{
 			auto refType = (BfRefType*)resolvedType;
-			paramVar->mIsAssigned = refType->mRefKind != BfRefType::RefKind_Out;
+			paramVar->mAssignedKind = (refType->mRefKind != BfRefType::RefKind_Out) ? BfLocalVarAssignKind_Unconditional : BfLocalVarAssignKind_None;
 		}
 		else
 		{
-			paramVar->mIsAssigned = true;
+			paramVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 			if (methodDef->mMethodType != BfMethodType_Mixin)
 				paramVar->mIsReadOnly = true;
 		}

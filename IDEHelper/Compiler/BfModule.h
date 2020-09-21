@@ -119,6 +119,13 @@ enum BfEmbeddedStatementFlags
 	BfEmbeddedStatementFlags_IsDeferredBlock = 2
 };
 
+enum BfLocalVarAssignKind
+{
+	BfLocalVarAssignKind_None = 0,
+	BfLocalVarAssignKind_Conditional = 1,
+	BfLocalVarAssignKind_Unconditional = 2	
+};
+
 class BfLocalVariable
 {
 public:
@@ -143,7 +150,8 @@ public:
 	bool mIsStruct;	
 	bool mIsImplicitParam;
 	bool mParamFailed;
-	bool mIsAssigned;		
+	BfLocalVarAssignKind mAssignedKind;
+	bool mHadExitBeforeAssign;
 	bool mIsReadOnly;
 	bool mIsSplat;
 	bool mIsLowered;
@@ -155,20 +163,21 @@ public:
 
 public:
 	BfLocalVariable()
-	{		
+	{
 		mUnassignedFieldFlags = 0;
 		mResolvedType = NULL;
-		mNameNode = NULL;		
+		mNameNode = NULL;
 		mLocalVarIdx = -1;
 		mLocalVarId = -1;
 		mCompositeCount = -1;
 		mParamIdx = -2;
 		mIsThis = false;
 		mHasLocalStructBacking = false;
-		mIsStruct = false;		
+		mIsStruct = false;
 		mIsImplicitParam = false;
 		mParamFailed = false;
-		mIsAssigned = false;		
+		mAssignedKind = BfLocalVarAssignKind_None;
+		mHadExitBeforeAssign = false;
 		mWrittenToId = -1;
 		mReadFromId = -1;
 		mIsReadOnly = false;
@@ -295,6 +304,59 @@ struct BfDeferredHandler
 	BfIRBlock mDoneBlock;
 };
 
+class BfScopeData;
+
+struct BfAssignedLocal
+{
+	BfLocalVariable* mLocalVar;
+	int mLocalVarField;
+	BfLocalVarAssignKind mAssignKind;
+
+	bool operator==(const BfAssignedLocal& second) const
+	{
+		return (mLocalVar == second.mLocalVar) && (mLocalVarField == second.mLocalVarField) && (mAssignKind == second.mAssignKind);
+	}
+};
+
+// We use this structure in the case where we have multiple execution paths, then we merge the assigned variables together
+//  So when we have "if (check) { a = 1; } else {a = 2; }" we can know that a IS definitely assigned afterwards
+class BfDeferredLocalAssignData
+{
+public:
+	BfScopeData* mScopeData;
+	int mVarIdBarrier;
+	SizedArray<BfAssignedLocal, 4> mAssignedLocals;
+	bool mIsChained;
+	BfDeferredLocalAssignData* mChainedAssignData;
+	bool mHadFallthrough;
+	bool mHadReturn;
+	bool mIsUnconditional;
+	bool mIsIfCondition;
+	bool mIfMayBeSkipped;
+	bool mLeftBlock;
+
+public:
+	BfDeferredLocalAssignData(BfScopeData* scopeData = NULL)
+	{
+		mScopeData = scopeData;
+		mVarIdBarrier = -1;
+		mHadFallthrough = false;
+		mHadReturn = false;
+		mChainedAssignData = NULL;
+		mIsChained = false;
+		mIsUnconditional = false;
+		mIsIfCondition = false;
+		mIfMayBeSkipped = false;
+		mLeftBlock = false;
+	}
+	
+	void ExtendFrom(BfDeferredLocalAssignData* outerLocalAssignData, bool doChain = false);
+	void BreakExtendChain();
+	void SetIntersection(const BfDeferredLocalAssignData& otherLocalAssignData);
+	void Validate() const;
+	void SetUnion(const BfDeferredLocalAssignData& otherLocalAssignData);
+};
+
 // "Looped" means this scope will execute zero to many times, "Conditional" means zero or one.
 // Looped and Conditional are mutually exclusive.  "Dyn" means Looped OR Conditional.
 class BfScopeData
@@ -330,6 +392,7 @@ public:
 	Array<BfDeferredHandler> mDeferredHandlers; // These get cleared when us our a parent gets new entries added into mDeferredCallEntries
 	Array<BfIRBlock> mAtEndBlocks; // Move these to the end after we close scope
 	Array<BfIRValue> mDeferredLifetimeEnds;
+	BfDeferredLocalAssignData* mExitLocalAssignData;
 	BfIRMDNode mAltDIFile;
 	BfIRMDNode mAltDIScope;	
 
@@ -355,11 +418,13 @@ public:
 		mMixinDepth = 0;
 		mScopeDepth = 0;
 		mScopeLocalId = -1;
+		mExitLocalAssignData = NULL;
 	}	
 
 	~BfScopeData()
 	{
 		mDeferredCallEntries.DeleteAll();
+		delete mExitLocalAssignData;
 	}
 
 	BfScopeData* GetHead()
@@ -533,54 +598,6 @@ public:
 		mScope = NULL;
 		mHadBreak = false;
 	}
-};
-
-struct BfAssignedLocal
-{
-	BfLocalVariable* mLocalVar;
-	int mLocalVarField;
-
-	bool operator==(const BfAssignedLocal& second) const
-	{
-		return (mLocalVar == second.mLocalVar) && (mLocalVarField == second.mLocalVarField);
-	}
-};
-
-// We use this structure in the case where we have multiple execution paths, then we merge the assigned variables together
-//  So when we have "if (check) { a = 1; } else {a = 2; }" we can know that a IS definitely assigned afterwards
-class BfDeferredLocalAssignData
-{
-public:
-	BfScopeData* mScopeData;
-	int mVarIdBarrier;
-	SizedArray<BfAssignedLocal, 4> mAssignedLocals;
-	bool mIsChained;
-	BfDeferredLocalAssignData* mChainedAssignData;
-	bool mHadFallthrough;
-	bool mHadReturn;	
-	bool mIsUnconditional;
-	bool mIsIfCondition;
-	bool mIfMayBeSkipped;
-
-public:
-	BfDeferredLocalAssignData(BfScopeData* scopeData = NULL)
-	{
-		mScopeData = scopeData;
-		mVarIdBarrier = -1;
-		mHadFallthrough = false;
-		mHadReturn = false;
-		mChainedAssignData = NULL;
-		mIsChained = false;
-		mIsUnconditional = false;
-		mIsIfCondition = false;
-		mIfMayBeSkipped = false;
-	}
-
-	void ExtendFrom(BfDeferredLocalAssignData* outerLocalAssignData, bool doChain = false);
-	void BreakExtendChain();
-	void SetIntersection(const BfDeferredLocalAssignData& otherLocalAssignData);
-	void Validate() const;
-	void SetUnion(const BfDeferredLocalAssignData& otherLocalAssignData);	
 };
 
 class BfMixinRecord
@@ -910,7 +927,7 @@ public:
 	BfDeferredLocalAssignData* mDeferredLocalAssignData;
 	BfProjectSet mVisibleProjectSet;
 	int mDeferredLoopListCount;
-	int mDeferredLoopListEntryCount;
+	int mDeferredLoopListEntryCount;	
 	HashSet<int> mSkipObjectAccessChecks; // Indexed by BfIRValue value id
 	
 	Dictionary<int64, BfType*>* mGenericTypeBindings;
@@ -995,7 +1012,7 @@ public:
 		mCurAccessId = 1;
 		mCurAppendAlign = 0;
 		mDeferredLoopListCount = 0;
-		mDeferredLoopListEntryCount = 0;
+		mDeferredLoopListEntryCount = 0;		
 		mClosureState = NULL;		
 		mDeferredCallEmitState = NULL;
 		mIteratorClassState = NULL;				
@@ -1120,7 +1137,7 @@ public:
 		return false;
 	}
 
-	void LocalDefined(BfLocalVariable* localVar, int fieldIdx = -1);
+	void LocalDefined(BfLocalVariable* localVar, int fieldIdx = -1, BfLocalVarAssignKind assignKind = BfLocalVarAssignKind_None, bool isFromDeferredAssignData = false);
 	void ApplyDeferredLocalAssignData(const BfDeferredLocalAssignData& deferredLocalAssignData);	
 	void Reset();
 
