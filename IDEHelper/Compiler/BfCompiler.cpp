@@ -1792,7 +1792,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bool hadRet = false;
 
 			String entryClassName = project->mStartupObject;
-			typeDef = mSystem->FindTypeDef(entryClassName, 0, bfModule->mProject);
+			typeDef = mSystem->FindTypeDef(entryClassName, 0, bfModule->mProject, {}, NULL, BfFindTypeDefFlag_AllowGlobal);
+
 			if (typeDef != NULL)
 			{
 				auto type = bfModule->ResolveTypeDef(typeDef);
@@ -1911,7 +1912,10 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 					}
 					else
 					{
-						mPassInstance->Fail(StrFormat("Unable to find Main method in class '%s'", entryClassName.c_str()));
+						if (entryClassName.IsEmpty())
+							mPassInstance->Fail("Unable to find Main method in global namespace. Consider specifying a Startup Object in the project properties.");
+						else
+							mPassInstance->Fail(StrFormat("Unable to find Main method in specified Startup Object '%s'", entryClassName.c_str()));
 					}
 				}
 			}
@@ -6171,7 +6175,7 @@ void BfCompiler::CompileReified()
 		for (auto project : mSystem->mProjects)
 		{
 			String entryClassName = project->mStartupObject;
-			auto typeDef = mSystem->FindTypeDef(entryClassName, 0, project);
+			auto typeDef = mSystem->FindTypeDef(entryClassName, 0, project, {}, NULL, BfFindTypeDefFlag_AllowGlobal);
 			if (typeDef != NULL)
 			{
 				typeDef->mIsAlwaysInclude = true;

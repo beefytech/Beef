@@ -2222,7 +2222,7 @@ bool BfSystem::CheckTypeDefReference(BfTypeDef* typeDef, BfProject* project)
 	return project->ContainsReference(typeDef->mProject);
 }
 
-BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, BfProject* project, const Array<BfAtomComposite>& namespaceSearch, BfTypeDef** ambiguousTypeDef)
+BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, BfProject* project, const Array<BfAtomComposite>& namespaceSearch, BfTypeDef** ambiguousTypeDef, BfFindTypeDefFlags flags)
 {	
 	if (findName.GetPartsCount() == 1)
 	{		
@@ -2254,7 +2254,8 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 		{
 			BfTypeDef* typeDef = *itr;
 
-			if ((typeDef->mIsPartial) || (typeDef->IsGlobalsContainer()))
+			if ((typeDef->mIsPartial) || 
+				((typeDef->IsGlobalsContainer()) && ((flags & BfFindTypeDefFlag_AllowGlobal) == 0)))
 			{
 				itr.MoveToNextHashMatch();
 				continue;
@@ -2368,7 +2369,7 @@ bool BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, 
 	return hadMatch;
 }
 
-BfTypeDef* BfSystem::FindTypeDef(const StringImpl& typeName, int numGenericArgs, BfProject* project, const Array<BfAtomComposite>& namespaceSearch, BfTypeDef** ambiguousTypeDef)
+BfTypeDef* BfSystem::FindTypeDef(const StringImpl& typeName, int numGenericArgs, BfProject* project, const Array<BfAtomComposite>& namespaceSearch, BfTypeDef** ambiguousTypeDef, BfFindTypeDefFlags flags)
 {
 	BfAtomComposite qualifiedFindName;
 	BfAtom* tempData[16];
@@ -2377,7 +2378,7 @@ BfTypeDef* BfSystem::FindTypeDef(const StringImpl& typeName, int numGenericArgs,
 	
 	BfTypeDef* result = NULL;
 	if (ParseAtomComposite(typeName, qualifiedFindName))
-		result = FindTypeDef(qualifiedFindName, numGenericArgs, project, namespaceSearch, ambiguousTypeDef);
+		result = FindTypeDef(qualifiedFindName, numGenericArgs, project, namespaceSearch, ambiguousTypeDef, flags);
 	if (qualifiedFindName.mParts == tempData)
 		qualifiedFindName.mParts = NULL;
 	return result;

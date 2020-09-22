@@ -1363,6 +1363,12 @@ public:
 	}
 };
 
+enum BfFindTypeDefFlags
+{
+	BfFindTypeDefFlag_None,
+	BfFindTypeDefFlag_AllowGlobal
+};
+
 class BfSystem
 {
 public:			
@@ -1473,9 +1479,9 @@ public:
 	BfTypeReference* GetTypeRefElement(BfTypeReference* typeRef);	
 	BfTypeDef* FilterDeletedTypeDef(BfTypeDef* typeDef);
 	bool CheckTypeDefReference(BfTypeDef* typeDef, BfProject* project);	
-	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfProject* project = NULL, const Array<BfAtomComposite>& namespaceSearch = Array<BfAtomComposite>(), BfTypeDef** ambiguousTypeDef = NULL);
+	BfTypeDef* FindTypeDef(const BfAtomComposite& findName, int numGenericArgs = 0, BfProject* project = NULL, const Array<BfAtomComposite>& namespaceSearch = Array<BfAtomComposite>(), BfTypeDef** ambiguousTypeDef = NULL, BfFindTypeDefFlags flags = BfFindTypeDefFlag_None);
 	bool FindTypeDef(const BfAtomComposite& findName, int numGenericArgs, BfProject* project, const BfAtomComposite& checkNamespace, bool allowPrivate, BfTypeDefLookupContext* ctx);
-	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfProject* project = NULL, const Array<BfAtomComposite>& namespaceSearch = Array<BfAtomComposite>(), BfTypeDef** ambiguousTypeDef = NULL);
+	BfTypeDef* FindTypeDef(const StringImpl& typeName, int numGenericArgs = 0, BfProject* project = NULL, const Array<BfAtomComposite>& namespaceSearch = Array<BfAtomComposite>(), BfTypeDef** ambiguousTypeDef = NULL, BfFindTypeDefFlags flags = BfFindTypeDefFlag_None);
 	BfTypeDef* FindTypeDef(const StringImpl& typeName, BfProject* project);
 	BfTypeDef* FindTypeDefEx(const StringImpl& typeName);
 	void FindFixitNamespaces(const StringImpl& typeName, int numGenericArgs, BfProject* project, std::set<String>& fixitNamespaces);	
