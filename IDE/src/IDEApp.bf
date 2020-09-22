@@ -2281,6 +2281,11 @@ namespace IDE
 			mMainFrame.RehupSize();
 
 			ShowStartupFile();
+
+#if !CLI
+			if (mMainWindow != null)
+				mFileRecovery.CheckWorkspace();
+#endif
 		}
 
 		void CloseWorkspaceAndSetupNew()
@@ -2602,9 +2607,6 @@ namespace IDE
 #if !CLI
 			if (mBfResolveCompiler != null)
             	mBfResolveCompiler.QueueSetWorkspaceOptions(null, 0);
-
-			if (mMainWindow != null)
-				mFileRecovery.CheckWorkspace();
 #endif
 
 			String relaunchCmd = scope .();

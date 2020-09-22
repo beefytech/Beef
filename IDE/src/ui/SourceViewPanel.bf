@@ -6466,6 +6466,10 @@ namespace IDE.ui
 				mNavigationBar.mVisible = false;
 			}
 
+			// Always leave enough to read the first 3 lines
+			if (mHeight < GS!(88))
+				mHeight = GS!(88);
+
 			float splitterHeight = GS!(3);
 
 			float splitTopHeight = 0;
