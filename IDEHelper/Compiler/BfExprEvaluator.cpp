@@ -260,6 +260,8 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 				// Disallow illegal types
 				if (argType->IsRef())
 					return;
+				if (argType->IsNull())
+					return;
 			}
 
 			if ((*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] != argType)
