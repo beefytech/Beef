@@ -254,7 +254,7 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLoca
 		if (assignKind == BfLocalVarAssignKind_None)
 			assignKind = ((deferredLocalAssignData != NULL) && (deferredLocalAssignData->mLeftBlock)) ? BfLocalVarAssignKind_Conditional : BfLocalVarAssignKind_Unconditional;		
 
-		if (localVar->mAssignedKind == assignKind)
+		if (localVar->mAssignedKind >= assignKind)
 		{
 			// Leave it alone
 		}
@@ -262,11 +262,7 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLoca
 		{
 			if (fieldIdx >= 0)
 			{
-				localVar->mUnassignedFieldFlags &= ~((int64)1 << fieldIdx);
-				/*if ((localVar->mResolvedTypeRef != NULL) && (localVar->mResolvedTypeRef->IsUnion()))
-				{
-					
-				}*/
+				localVar->mUnassignedFieldFlags &= ~((int64)1 << fieldIdx);				
 				if (localVar->mUnassignedFieldFlags == 0)
 				{
 					if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
@@ -274,7 +270,7 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLoca
 				}
 			}
 			else
-			{				
+			{
 				localVar->mAssignedKind = assignKind;								
 			}
 		}
@@ -282,16 +278,14 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLoca
 		{				
 			BF_ASSERT(deferredLocalAssignData->mVarIdBarrier != -1);
 
-			BfAssignedLocal defineVal = {localVar, fieldIdx, assignKind};
-			auto& assignedLocals = deferredLocalAssignData->mAssignedLocals;			
-			if (!assignedLocals.Contains(defineVal))			
-				assignedLocals.push_back(defineVal);			
+			BfAssignedLocal defineVal = {localVar, fieldIdx, assignKind};			
+			if (!deferredLocalAssignData->Contains(defineVal))
+				deferredLocalAssignData->mAssignedLocals.push_back(defineVal);
 
 			if (ifDeferredLocalAssignData != NULL)
 			{
-				auto& assignedLocals = ifDeferredLocalAssignData->mAssignedLocals;
-				if (!assignedLocals.Contains(defineVal))
-					assignedLocals.push_back(defineVal);
+				if (!ifDeferredLocalAssignData->Contains(defineVal))
+					ifDeferredLocalAssignData->mAssignedLocals.push_back(defineVal);
 			}
 		}
 	}
@@ -13894,9 +13888,7 @@ void BfModule::MarkScopeLeft(BfScopeData* scopeData)
 			if ((deferredLocalAssignData->mScopeData != NULL) && (deferredLocalAssignData->mScopeData->mScopeDepth == scopeData->mScopeDepth))
 				deferredLocalAssignData->mIsUnconditional = false;
 			deferredLocalAssignData = deferredLocalAssignData->mChainedAssignData;
-		}
-
-		
+		}		
 	}
 	
 	// When we leave a scope, mark those as assigned for deferred assignment purposes
@@ -13913,8 +13905,10 @@ void BfModule::MarkScopeLeft(BfScopeData* scopeData)
 						hadAssignment = true;						
 			}
 			if (!hadAssignment)
+			{
 				localDef->mHadExitBeforeAssign = true;
-			mCurMethodState->LocalDefined(localDef);
+				mCurMethodState->LocalDefined(localDef);
+			}
 		}
 	}
 }

@@ -9363,7 +9363,7 @@ namespace IDE
 						{
 							if (mBuildContext != null)
 							{
-								if (mBuildContext.mScriptContext.mVars.TryGetValue(varName, var value))
+								if (mBuildContext.mScriptContext.mVars.TryGetValue(varName, out value))
 								{
 									if (value.VariantType == typeof(String))
 									{

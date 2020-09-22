@@ -2447,7 +2447,7 @@ namespace IDE
 					if (hasError)
 						mScriptManager.Fail("Unexpected error at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
 					else
-						mScriptManager.Fail("Expected error at line {0} in {1} but didn't encounter one\n\t", lineIdx + 1, textPanel.mFilePath);
+						mScriptManager.Fail("Expected error but didn't encounter one at line {0} in {1}\n\t", lineIdx + 1, textPanel.mFilePath);
 					return;
 				}
 			}

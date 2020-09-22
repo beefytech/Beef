@@ -26,7 +26,6 @@ namespace Beefy.widgets
             public DragHelper mDragHelper ~ delete _;
             public Event<Action> mCloseClickedEvent ~ _.Dispose();
 
-			delegate void Hey();	
             public float mWantWidth;
 			public WidgetWindow mMouseDownWindow;
             

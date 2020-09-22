@@ -475,6 +475,8 @@ namespace IDE.ui
 		{
 			if (val.StartsWith("!", StringComparison.Ordinal))
 			{
+				addr = 0;
+				byteCount = 0;
 				String errorString = scope String();
 				DebugManager.GetFailString(val, evalStr, errorString);
 				IDEApp.sApp.Fail(errorString);

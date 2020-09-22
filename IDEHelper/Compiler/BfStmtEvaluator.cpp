@@ -5662,13 +5662,7 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 
 	auto isLet = BfNodeDynCast<BfLetTypeReference>(forEachStmt->mVariableTypeRef) != 0;
 	auto isVar = BfNodeDynCast<BfVarTypeReference>(forEachStmt->mVariableTypeRef) != 0;
-
-	BfDeferredLocalAssignData deferredLocalAssignData(mCurMethodState->mCurScope);
-	deferredLocalAssignData.mIsIfCondition = true;
-	deferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData, true);
-	deferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
-	SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
-
+	
 	BfTypedValue target;		
 	BfType* varType = NULL;	
 	bool didInference = false;
@@ -5694,6 +5688,13 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 	}
 	if (varType == NULL)
 		varType = GetPrimitiveType(BfTypeCode_IntPtr);
+
+
+	BfDeferredLocalAssignData deferredLocalAssignData(mCurMethodState->mCurScope);
+	deferredLocalAssignData.mIsIfCondition = true;
+	deferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData, true);
+	deferredLocalAssignData.mVarIdBarrier = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
+	SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
 
 	deferredLocalAssignData.mIsIfCondition = false;
 
@@ -5813,6 +5814,18 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 	mCurMethodState->SetHadReturn(false);
 	mCurMethodState->mLeftBlockUncond = false;
 	mCurMethodState->mLeftBlockCond = false;
+	
+	bool definitelyExecuted = false;
+	if (target.mValue.IsConst())
+	{
+		auto constant = mBfIRBuilder->GetConstant(target.mValue);
+		if (constant->mInt32 > 0)
+			definitelyExecuted = true;
+	}
+
+	prevDLA.Restore();
+	if (definitelyExecuted)
+		mCurMethodState->ApplyDeferredLocalAssignData(deferredLocalAssignData);
 
 	RestoreScopeState();
 }

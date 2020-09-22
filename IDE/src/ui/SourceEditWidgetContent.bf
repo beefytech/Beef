@@ -2447,7 +2447,7 @@ namespace IDE.ui
 						if (stmtEndChar == '{')
 							offsetLinePos++;
 					}
-					else if (GetStatementRange(toLineStart, .AllowInnerMethodSelect, var stmtStartIdx, var stmtEndIdx, var stmtEndChar) == .Declaration)
+					else if (GetStatementRange(toLineStart, .AllowInnerMethodSelect, out stmtStartIdx, out stmtEndIdx, out stmtEndChar) == .Declaration)
 					{
 						if (stmtEndIdx <= toLineEnd)
 						{

@@ -27,9 +27,16 @@ namespace IDETest
 			b = a;
 		}
 
-		public void For1(out int a) //FAIL
+		public void For1(out int a)
 		{
 			for (int b < 2)
+				a = 9;
+		}
+
+		public void For2(out int a) //FAIL
+		{
+			int b = 123;
+			for (int c < b)
 				a = 9;
 		}
 

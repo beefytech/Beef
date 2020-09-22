@@ -350,6 +350,17 @@ public:
 		mLeftBlock = false;
 	}
 	
+	bool Contains(const BfAssignedLocal& val)
+	{
+		for (int i = 0; i < (int)mAssignedLocals.mSize; i++)
+		{
+			auto& check = mAssignedLocals[i];
+			if ((check.mLocalVar == val.mLocalVar) && (check.mLocalVarField == val.mLocalVarField) && (check.mAssignKind >= val.mAssignKind))
+				return true;
+		}
+		return false;
+	}
+
 	void ExtendFrom(BfDeferredLocalAssignData* outerLocalAssignData, bool doChain = false);
 	void BreakExtendChain();
 	void SetIntersection(const BfDeferredLocalAssignData& otherLocalAssignData);
