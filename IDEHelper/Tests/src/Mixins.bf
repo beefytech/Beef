@@ -37,6 +37,16 @@ namespace Tests
 			}
 		}
 
+		static mixin GetVal(var a)
+		{
+			a = 123;
+		}
+
+		static mixin GetVal2(out int a)
+		{
+			a = 234;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -47,6 +57,11 @@ namespace Tests
 			Test.Assert(mc.mA == 120);
 			Test.Assert(MixClass.MixC!(30) == 230);
 			Test.Assert(cVal == 0x305);
+
+			GetVal!(int val1);
+			Test.Assert(val1 == 123);
+			GetVal2!(var val2);
+			Test.Assert(val2 == 234);
 		}
 
 		[Test]

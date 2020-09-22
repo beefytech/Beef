@@ -6498,8 +6498,8 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 	else if ((resolvedArg.mArgFlags & (BfArgFlag_VariableDeclaration | BfArgFlag_UninitializedExpr)) != 0)
 	{
 		auto variableDeclaration = BfNodeDynCast<BfVariableDeclaration>(resolvedArg.mExpression);
-
-		auto variableType = wantType;
+		
+		auto variableType = wantType;			
 
 		bool isLet = (variableDeclaration != NULL) && (variableDeclaration->mTypeRef->IsExact<BfLetTypeReference>());
 		bool isVar = (variableDeclaration == NULL) || (variableDeclaration->mTypeRef->IsExact<BfVarTypeReference>());
@@ -6511,12 +6511,29 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 
 		if ((!isLet) && (!isVar))
 		{
-			mModule->Fail("Only 'ref' or 'var' variables can be declared in method arguments", variableDeclaration);
+			if (variableType->IsVar())
+			{
+				auto resolvedType = mModule->ResolveTypeRef(variableDeclaration->mTypeRef);
+				if (resolvedType != NULL)
+					variableType = resolvedType;
+			}
+			else
+			{
+				mModule->Fail("Only 'ref' or 'var' variables can be declared in method arguments", variableDeclaration);
 
-			auto autoComplete = GetAutoComplete();
-			if (autoComplete != NULL)
-				autoComplete->CheckTypeRef(variableDeclaration->mTypeRef, true, true);
+				auto autoComplete = GetAutoComplete();
+				if (autoComplete != NULL)
+					autoComplete->CheckTypeRef(variableDeclaration->mTypeRef, true, true);
+			}
 		}
+		else
+		{
+			if (variableType->IsVar())
+			{
+				mModule->Fail("Variable type required for 'var' parameter types", variableDeclaration);
+			}
+		}
+		
 
 		if (wantType->IsRef())
 		{
@@ -13529,7 +13546,19 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		BfExprEvaluator* exprEvaluator = argExprEvaluators.back();
 		exprEvaluator->mResolveGenericParam = false;		
 		exprEvaluator->mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator->mBfEvalExprFlags | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr);
-		if (argExpr != NULL)
+
+		bool deferExpr = false;
+		if (auto variableDecl = BfNodeDynCast<BfVariableDeclaration>(argExpr))
+		{
+			deferExpr = true;
+			resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_VariableDeclaration);
+		}
+
+		if (deferExpr)
+		{
+			// 
+		}
+		else if (argExpr != NULL)
 			exprEvaluator->Evaluate(argExpr, false, false, true);
 		auto argValue = exprEvaluator->mResult;
 		mModule->FixIntUnknown(argValue);
@@ -13779,7 +13808,12 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		BfType* wantType = methodInstance->mParams[paramIdx].mResolvedType;
 
 		auto& arg = args[argIdx];
-						
+		
+		if ((arg.mArgFlags & BfArgFlag_VariableDeclaration) != 0)
+		{
+			arg.mTypedValue = ResolveArgValue(arg, wantType);
+		}
+
 		if (wantType->IsGenericParam())
 		{
 			// 
