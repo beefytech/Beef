@@ -2180,8 +2180,8 @@ void BfMSMangler::MangleMethodName(StringImpl& name, bool is64Bit, BfTypeInstanc
 	mangleContext.mModule = type->GetModule();	
 	name += '?';
 	AddStr(mangleContext, name, methodName);	
-	Mangle(mangleContext, name, type);	
-	name += "@@";	
+	Mangle(mangleContext, name, type, true);	
+	name += "SAXXZ";	
 }
 
 void BfMSMangler::MangleStaticFieldName(StringImpl& name, bool is64Bit, BfTypeInstance* owner, const StringImpl& fieldName, BfType* fieldType)

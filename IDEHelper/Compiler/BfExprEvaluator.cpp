@@ -10150,16 +10150,21 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 	auto _GetInvokeMethodName = [&]()
 	{
-		String methodName = "Invoke@";
+		String methodName = "Invoke$";
 		methodName += mModule->mCurMethodInstance->mMethodDef->mName;
+		
 		int prevSepPos = (int)methodName.LastIndexOf('$');
-		if (prevSepPos != -1)
+		if (prevSepPos > 6)
 		{
 			methodName.RemoveToEnd(prevSepPos);
 		}
 
 		auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();
 		HashContext hashCtx;
+
+		if (mModule->mCurMethodInstance->mMethodDef->mDeclaringType->mPartialIdx != -1)		
+			hashCtx.Mixin(mModule->mCurMethodInstance->mMethodDef->mDeclaringType->mPartialIdx);
+
 		if (delegateBindExpr->mFatArrowToken != NULL)
 		{
 			hashCtx.Mixin(delegateBindExpr->mFatArrowToken->GetStartCharId());
@@ -10178,7 +10183,10 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 		methodName += '$';
 		methodName += BfTypeUtils::HashEncode64(hashVal.mLow);
-		return methodName;
+
+		String mangledName;
+		BfMangler::MangleMethodName(mangledName, mModule->mCompiler->GetMangleKind(), mModule->mCurTypeInstance, methodName);
+		return mangledName;
 	};
 
 	if ((delegateBindExpr->mNewToken == NULL) || (delegateTypeInstance->IsFunction()))
