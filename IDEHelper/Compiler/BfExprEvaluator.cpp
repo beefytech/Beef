@@ -6561,6 +6561,13 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 		CheckVariableDeclaration(resolvedArg.mExpression, false, false, false);
 		
 		argValue = BfTypedValue(localVar->mAddr, mModule->CreateRefType(variableType, BfRefType::RefKind_Out));
+
+		auto curScope = mModule->mCurMethodState->mCurScope;
+		if (curScope->mScopeKind == BfScopeKind_StatementTarget)
+		{
+			// Move this variable into the parent scope
+			curScope->mLocalVarStart = (int)mModule->mCurMethodState->mLocals.size();
+		}
 	}
 	return argValue;
 }
@@ -18589,6 +18596,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	{
  		if (mModule->mCurMethodState->mDeferredLocalAssignData != NULL)
  			mModule->mCurMethodState->mDeferredLocalAssignData->BreakExtendChain();
+		if (mModule->mCurMethodState->mCurScope->mScopeKind == BfScopeKind_StatementTarget)
+			mModule->mCurMethodState->mCurScope->mScopeKind = BfScopeKind_StatementTarget_Conditional;
 
 		bool isAnd = binaryOp == BfBinaryOp_ConditionalAnd;
 

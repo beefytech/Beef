@@ -357,12 +357,20 @@ public:
 	void SetUnion(const BfDeferredLocalAssignData& otherLocalAssignData);
 };
 
+enum BfScopeKind
+{
+	BfScopeKind_Normal,
+	BfScopeKind_StatementTarget,
+	BfScopeKind_StatementTarget_Conditional,
+};
+
 // "Looped" means this scope will execute zero to many times, "Conditional" means zero or one.
 // Looped and Conditional are mutually exclusive.  "Dyn" means Looped OR Conditional.
 class BfScopeData
 {
 public:
 	BfScopeData* mPrevScope;	
+	BfScopeKind mScopeKind;
 	BfIRMDNode mDIScope;
 	BfIRMDNode mDIInlinedAt;	
 	String mLabel;
@@ -399,6 +407,7 @@ public:
 public:	
 	BfScopeData()
 	{
+		mScopeKind = BfScopeKind_Normal;
 		mPrevScope = NULL;
 		mLocalVarStart = 0;
 		mLabelNode = NULL;

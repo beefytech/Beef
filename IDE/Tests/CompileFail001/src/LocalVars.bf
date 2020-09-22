@@ -228,5 +228,63 @@ namespace IDETest
 				int c = b; //FAIL
 			}
 		}
+
+		public bool GetVal(out int a)
+		{
+			a = 1;
+			return true;
+		}
+
+		public void Local1()
+		{
+			if ((GetVal(var a)) && (GetVal(var b)))
+			{
+				int c = a;
+				int d = b;
+			}
+
+			int e = a;
+			int f = b; //FAIL
+		}
+
+		public void Local2()
+		{
+			int a;
+			int b;
+			if ((GetVal(out a)) && (GetVal(out b)))
+			{
+				int c = a;
+				int d = b;
+			}
+
+			int e = a;
+			int f = b; //FAIL
+		}
+
+		public void Local3()
+		{
+			if ((GetVal(var a)) || (GetVal(var b))) //FAIL
+			{
+				int c = a;
+				int d = b;
+			}
+
+			int e = a;
+			int f = b; //FAIL
+		}
+
+		public void Local4()
+		{
+			int a;
+			int b;
+			if ((GetVal(out a)) || (GetVal(out b)))
+			{
+				int c = a;
+				int d = b; //FAIL
+			}
+
+			int e = a;
+			int f = b; //FAIL
+		}
 	}
 }

@@ -3527,6 +3527,7 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 
 	BfScopeData newScope;
 	newScope.mOuterIsConditional = true;	
+	newScope.mScopeKind = BfScopeKind_StatementTarget;
 	if (ifStmt->mLabelNode != NULL)
 		newScope.mLabelNode = ifStmt->mLabelNode->mLabel;
 	mCurMethodState->AddScope(&newScope);	
@@ -3547,6 +3548,8 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 
 	BfAutoParentNodeEntry autoParentNodeEntry(this, ifStmt);
 	BfTypedValue condValue = CreateValueFromExpression(ifStmt->mCondition, boolType);	
+
+	newScope.mScopeKind = BfScopeKind_Normal;
 
 	deferredLocalAssignData.mIsIfCondition = false;
 
