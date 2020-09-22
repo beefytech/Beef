@@ -27,6 +27,20 @@ namespace IDETest
 			b = a;
 		}
 
+		public static void If3(out int a)
+		{
+			int b = 123;
+		    if (b == 234)
+			{
+		        a = 1;
+			}
+		    else
+		    {
+		        a = 2;
+		        return;
+			}
+		}
+
 		public void For1(out int a)
 		{
 			for (int b < 2)
