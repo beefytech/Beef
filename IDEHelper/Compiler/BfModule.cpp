@@ -3508,7 +3508,13 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 			fieldType = fieldType->GetUnderlyingType();			
 	}
 
-	if (!field->mIsExtern)
+	BfIRStorageKind storageKind = BfIRStorageKind_Normal;
+	if ((fieldInstance->mCustomAttributes != NULL) && (fieldInstance->mCustomAttributes->Get(mCompiler->mExportAttributeTypeDef)))
+		storageKind = BfIRStorageKind_Export;
+	else if ((fieldInstance->mCustomAttributes != NULL) && (fieldInstance->mCustomAttributes->Get(mCompiler->mImportAttributeTypeDef)))
+		storageKind = BfIRStorageKind_Import;
+
+	if ((!field->mIsExtern) && (storageKind != BfIRStorageKind_Import))
 		initValue = GetDefaultValue(fieldType);
 		
 	if (fieldInstance->mOwner->IsUnspecializedType())
@@ -3531,8 +3537,10 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 				initValue,
 				staticVarName,					
 				isThreadLocal);
-			mBfIRBuilder->GlobalVar_SetAlignment(globalVar, fieldType->mAlign);
-			
+			mBfIRBuilder->GlobalVar_SetAlignment(globalVar, fieldType->mAlign);						
+			if (storageKind != BfIRStorageKind_Normal)
+				mBfIRBuilder->GlobalVar_SetStorageKind(globalVar, storageKind);
+
 			BF_ASSERT(globalVar);
 			mStaticFieldRefs[fieldInstance] = globalVar;
 		}

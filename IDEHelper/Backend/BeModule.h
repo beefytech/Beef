@@ -415,6 +415,7 @@ public:
 	String mName;
 	BeConstant* mInitializer;
 	BfIRLinkageType mLinkageType;
+	BfIRStorageKind mStorageKind;
 	bool mIsConstant;
 	bool mIsTLS;
 	int mAlign;
@@ -429,6 +430,7 @@ public:
 		if (mInitializer != NULL)
 			mInitializer->HashReference(hashCtx);
 		hashCtx.Mixin(mLinkageType);
+		hashCtx.Mixin(mStorageKind);
 		hashCtx.Mixin(mIsConstant);
 		hashCtx.Mixin(mIsTLS);
 		hashCtx.Mixin(mAlign);

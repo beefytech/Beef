@@ -2057,8 +2057,15 @@ void BeCOFFObject::Generate(BeModule* module)
 				mBSSSect.mSizeOverride = (mBSSSect.mSizeOverride + globalVar->mAlign - 1) & ~(globalVar->mAlign - 1);
 				mBSSSect.mAlign = BF_MAX(mBSSSect.mAlign, globalVar->mAlign);
 				sym->mValue = mBSSSect.mSizeOverride;
-				mBSSSect.mSizeOverride += globalVar->mType->mSize;
-			}
+				mBSSSect.mSizeOverride += globalVar->mType->mSize;				
+			}			
+		}
+
+		if (globalVar->mStorageKind == BfIRStorageKind_Export)
+		{
+			mDirectives += " ";
+			mDirectives.Append("/EXPORT:");
+			mDirectives.Append(globalVar->mName);
 		}
 	}
 

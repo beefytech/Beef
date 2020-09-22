@@ -2199,6 +2199,13 @@ void BfIRCodeGen::HandleNextCmd()
 			((llvm::GlobalVariable*)val)->setAlignment(alignment);
 		}
 		break;
+	case BfIRCmd_GlobalVar_SetStorageKind:
+		{
+			CMD_PARAM(llvm::Value*, val);
+			CMD_PARAM(int, storageKind);
+			((llvm::GlobalVariable*)val)->setDLLStorageClass((llvm::GlobalValue::DLLStorageClassTypes)storageKind);
+		}
+		break;
 	case BfIRCmd_GlobalStringPtr:
 		{
 			CMD_PARAM(String, str);

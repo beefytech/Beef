@@ -233,6 +233,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_GlobalVar_SetUnnamedAddr,
 	BfIRCmd_GlobalVar_SetInitializer,
 	BfIRCmd_GlobalVar_SetAlignment,
+	BfIRCmd_GlobalVar_SetStorageKind,
 	BfIRCmd_GlobalStringPtr,
 
 	BfIRCmd_CreateBlock,
@@ -462,6 +463,13 @@ enum BfIRAtomicOrdering : uint8
 
 	BfIRAtomicOrdering_Volatile = 8,
 	BfIRAtomicOrdering_ReturnModified = 0x10 // Generally atomic instructions return original value, this overrides that
+};
+
+enum BfIRStorageKind : uint8
+{
+	BfIRStorageKind_Normal,
+	BfIRStorageKind_Import,
+	BfIRStorageKind_Export
 };
 
 //#define CHECK_CONSTHOLDER
@@ -1164,6 +1172,7 @@ public:
 	void GlobalVar_SetUnnamedAddr(BfIRValue val, bool unnamedAddr);
 	void GlobalVar_SetInitializer(BfIRValue globalVar, BfIRValue initVal);
 	void GlobalVar_SetAlignment(BfIRValue globalVar, int alignment);
+	void GlobalVar_SetStorageKind(BfIRValue globalVar, BfIRStorageKind storageKind);
 	BfIRValue CreateGlobalStringPtr(const StringImpl& str);
 
 	BfIRBlock CreateBlock(const StringImpl& name, bool addNow = false);

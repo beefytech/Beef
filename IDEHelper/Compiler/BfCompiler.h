@@ -385,6 +385,7 @@ public:
 	BfTypeDef* mInlineAttributeTypeDef;	
 	BfTypeDef* mCLinkAttributeTypeDef;
 	BfTypeDef* mImportAttributeTypeDef;
+	BfTypeDef* mExportAttributeTypeDef;
 	BfTypeDef* mCReprAttributeTypeDef;
 	BfTypeDef* mUnderlyingArrayAttributeTypeDef;
 	BfTypeDef* mAlignAttributeTypeDef;
@@ -404,8 +405,7 @@ public:
 	BfTypeDef* mErrorAttributeTypeDef;
 	BfTypeDef* mWarnAttributeTypeDef;
 	BfTypeDef* mIgnoreErrorsAttributeTypeDef;
-	BfTypeDef* mReflectAttributeTypeDef;
-	
+	BfTypeDef* mReflectAttributeTypeDef;		
 
 	int mCurTypeId;	
 	int mTypeInitCount;

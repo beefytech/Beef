@@ -691,6 +691,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				globalVariable->mIsTLS = isTLS;
 				globalVariable->mAlign = varType->mAlign;
 				globalVariable->mUnnamedAddr = false;				
+				globalVariable->mStorageKind = BfIRStorageKind_Normal;
 				if (initializer != NULL)
 					BF_ASSERT(varType->mAlign > 0);
 
@@ -1782,6 +1783,7 @@ void BeIRCodeGen::HandleNextCmd()
 			globalVariable->mName = name;			
 			globalVariable->mIsTLS = isTLS;
 			globalVariable->mUnnamedAddr = false;
+			globalVariable->mStorageKind = BfIRStorageKind_Normal;
 			if (initializer != NULL)
 			{
 				globalVariable->mAlign = varType->mAlign;
@@ -1836,6 +1838,17 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				BF_ASSERT(globalVariable->mAlign != -1);
 			}
+		}
+		break;
+	case BfIRCmd_GlobalVar_SetStorageKind:
+		{
+			CMD_PARAM(BeValue*, val);
+			CMD_PARAM(int, storageKind);
+
+			BF_ASSERT(BeValueDynCast<BeGlobalVariable>(val) != NULL);
+
+			auto globalVariable = (BeGlobalVariable*)val;
+			globalVariable->mStorageKind = (BfIRStorageKind)storageKind;			
 		}
 		break;
 	case BfIRCmd_GlobalStringPtr:

@@ -4395,6 +4395,12 @@ void BfIRBuilder::GlobalVar_SetAlignment(BfIRValue globalVar, int alignment)
 	NEW_CMD_INSERTED;
 }
 
+void BfIRBuilder::GlobalVar_SetStorageKind(BfIRValue globalVar, BfIRStorageKind storageKind)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_GlobalVar_SetStorageKind, globalVar, (int)storageKind);
+	NEW_CMD_INSERTED;
+}
+
 BfIRValue BfIRBuilder::CreateGlobalStringPtr(const StringImpl& str)
 {
 	BfIRValue retVal = WriteCmd(BfIRCmd_GlobalStringPtr, str);

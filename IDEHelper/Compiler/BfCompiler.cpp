@@ -381,6 +381,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mClassVDataTypeDef = NULL;
 	mCLinkAttributeTypeDef = NULL;
 	mImportAttributeTypeDef = NULL;
+	mExportAttributeTypeDef = NULL;
 	mCReprAttributeTypeDef = NULL;
 	mUnderlyingArrayAttributeTypeDef = NULL;
 	mAlignAttributeTypeDef = NULL;
@@ -6422,6 +6423,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mClassVDataTypeDef = _GetRequiredType("System.ClassVData");
 	mCLinkAttributeTypeDef = _GetRequiredType("System.CLinkAttribute");
 	mImportAttributeTypeDef = _GetRequiredType("System.ImportAttribute");
+	mExportAttributeTypeDef = _GetRequiredType("System.ExportAttribute");
 	mCReprAttributeTypeDef = _GetRequiredType("System.CReprAttribute");
 	mUnderlyingArrayAttributeTypeDef = _GetRequiredType("System.UnderlyingArrayAttribute");
 	mAlignAttributeTypeDef = _GetRequiredType("System.AlignAttribute");
