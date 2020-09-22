@@ -3659,8 +3659,8 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 			Fail("Const requires initializer", fieldDef->mFieldDeclaration->mNameNode);			
 		}
 	}
-	else
-	{		
+	else if (mBfIRBuilder != NULL)
+	{			
 		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 
 		SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites, true);
@@ -3690,6 +3690,12 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		{
 			auto uncastedInitValue = GetFieldInitializerValue(fieldInstance, fieldDef->mInitializer, fieldDef, fieldType);
 			constValue = uncastedInitValue.mValue;
+		}
+
+		if ((mCurTypeInstance->IsPayloadEnum()) && (fieldDef->IsEnumCaseEntry()))
+		{
+			// Illegal
+			constValue = BfIRValue();
 		}
 
 		mBfIRBuilder->SetInsertPoint(prevInsertBlock);
