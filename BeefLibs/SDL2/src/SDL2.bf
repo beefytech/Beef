@@ -96,7 +96,7 @@ namespace SDL2
 		[LinkName("SDL_QuitSubSystem")]
 		public static extern void QuitSubSystem(InitFlag flags);
 		[LinkName("SDL_WasInit")]
-		public static extern uint WasInit(InitFlag flags);
+		public static extern uint32 WasInit(InitFlag flags);
 
 		[LinkName("SDL_GetPlatform")]
 		public static extern char8* GetPlatform();
@@ -834,7 +834,7 @@ namespace SDL2
 		public static extern void GL_ResetAttributes();
 
 		[LinkName("SDL_GL_GetAttribute")]
-		public static extern int GL_GetAttribute(SDL_GLAttr attr, out int value);
+		public static extern int GL_GetAttribute(SDL_GLAttr attr, out int32 value);
 
 		[LinkName("SDL_GL_GetSwapInterval")]
 		public static extern int GL_GetSwapInterval();
@@ -856,7 +856,11 @@ namespace SDL2
 		public static extern void GL_GetDrawableSize(Window* window, out int32 w, out int32 h);
 
 		[LinkName("SDL_GL_SetAttribute")]
-		public static extern int32 GL_SetAttribute(SDL_GLAttr attr, SDL_GLProfile profile);
+		public static extern int32 GL_SetAttribute(SDL_GLAttr attr, int32 value);
+		public static int32 GL_SetAttribute(SDL_GLAttr attr, SDL_GLProfile profile)
+		{
+			return GL_SetAttribute(attr, (int32)profile);
+		}
 
 		[LinkName("SDL_GL_SetSwapInterval")]
 		public static extern int32 GL_SetSwapInterval(int32 interval);
@@ -896,7 +900,7 @@ namespace SDL2
 		public static extern int32 SetWindowDisplayMode(Window* window, ref SDL_DisplayMode mode);
 		
 		[LinkName("SDL_SetWindowFullscreen")]
-		public static extern int32 SetWindowFullscreen(Window* window, uint flags);
+		public static extern int32 SetWindowFullscreen(Window* window, uint32 flags);
 		
 		[LinkName("SDL_SetWindowGammaRamp")]
 		public static extern int32 SetWindowGammaRamp(Window* window, uint16* red, uint16* green, uint16* blue);
@@ -1269,7 +1273,7 @@ namespace SDL2
 		public static extern int RenderReadPixels(
 			Renderer* renderer,
 			Rect* rect,
-			uint format,
+			uint32 format,
 			void* pixels,
 			int32 pitch
 		);
@@ -1407,7 +1411,7 @@ namespace SDL2
 		[LinkName("SDL_RenderIsClipEnabled")]
 		public static extern Bool RenderIsClipEnabled(Renderer* renderer);
 
-		public static uint DEFINE_PIXELFOURCC(uint8 A, uint8 B, uint8 C, uint8 D)
+		public static uint32 DEFINE_PIXELFOURCC(uint8 A, uint8 B, uint8 C, uint8 D)
 		{
 			return FOURCC(A, B, C, D);
 		}
@@ -1561,234 +1565,234 @@ namespace SDL2
 			Layout1010102
 		}
 
-		public static readonly uint PIXELFORMAT_UNKNOWN = 0;
-		public static readonly uint PIXELFORMAT_INDEX1LSB =
+		public static readonly uint32 PIXELFORMAT_UNKNOWN = 0;
+		public static readonly uint32 PIXELFORMAT_INDEX1LSB =
 			DEFINE_PIXELFORMAT(
 				.Index1,
 				.BitmapOrder4321,
 				.LayoutNONE,
 				1, 0
 			);
-		public static readonly uint PIXELFORMAT_INDEX1MSB =
+		public static readonly uint32 PIXELFORMAT_INDEX1MSB =
 			DEFINE_PIXELFORMAT(
 				.Index1,
 				.BitmapOrder1234,
 				.LayoutNONE,
 				1, 0
 			);
-		public static readonly uint PIXELFORMAT_INDEX4LSB =
+		public static readonly uint32 PIXELFORMAT_INDEX4LSB =
 			DEFINE_PIXELFORMAT(
 				.Index4,
 				.BitmapOrder4321,
 				.LayoutNONE,
 				4, 0
 			);
-		public static readonly uint PIXELFORMAT_INDEX4MSB =
+		public static readonly uint32 PIXELFORMAT_INDEX4MSB =
 			DEFINE_PIXELFORMAT(
 				.Index4,
 				.BitmapOrder1234,
 				.LayoutNONE,
 				4, 0
 			);
-		public static readonly uint PIXELFORMAT_INDEX8 =
+		public static readonly uint32 PIXELFORMAT_INDEX8 =
 			DEFINE_PIXELFORMAT(
 				.Index8,
 				.ArrayOrderNONE,
 				.LayoutNONE,
 				8, 1
 			);
-		public static readonly uint PIXELFORMAT_RGB332 =
+		public static readonly uint32 PIXELFORMAT_RGB332 =
 			DEFINE_PIXELFORMAT(
 				.Packed8,
 				.PackedOrderXRGB,
 				.Layout332,
 				8, 1
 			);
-		public static readonly uint PIXELFORMAT_RGB444 =
+		public static readonly uint32 PIXELFORMAT_RGB444 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderXRGB,
 				.Layout4444,
 				12, 2
 			);
-		public static readonly uint PIXELFORMAT_RGB555 =
+		public static readonly uint32 PIXELFORMAT_RGB555 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderXRGB,
 				.Layout1555,
 				15, 2
 			);
-		public static readonly uint PIXELFORMAT_BGR555 =
+		public static readonly uint32 PIXELFORMAT_BGR555 =
 			DEFINE_PIXELFORMAT(
 				.Index1,
 				.BitmapOrder4321,
 				.Layout1555,
 				15, 2
 			);
-		public static readonly uint PIXELFORMAT_ARGB4444 =
+		public static readonly uint32 PIXELFORMAT_ARGB4444 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderARGB,
 				.Layout4444,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_RGBA4444 =
+		public static readonly uint32 PIXELFORMAT_RGBA4444 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderRGBA,
 				.Layout4444,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_ABGR4444 =
+		public static readonly uint32 PIXELFORMAT_ABGR4444 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderABGR,
 				.Layout4444,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_BGRA4444 =
+		public static readonly uint32 PIXELFORMAT_BGRA4444 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderBGRA,
 				.Layout4444,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_ARGB1555 =
+		public static readonly uint32 PIXELFORMAT_ARGB1555 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderARGB,
 				.Layout1555,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_RGBA5551 =
+		public static readonly uint32 PIXELFORMAT_RGBA5551 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderRGBA,
 				.Layout5551,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_ABGR1555 =
+		public static readonly uint32 PIXELFORMAT_ABGR1555 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderABGR,
 				.Layout1555,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_BGRA5551 =
+		public static readonly uint32 PIXELFORMAT_BGRA5551 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderBGRA,
 				.Layout5551,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_RGB565 =
+		public static readonly uint32 PIXELFORMAT_RGB565 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderXRGB,
 				.Layout565,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_BGR565 =
+		public static readonly uint32 PIXELFORMAT_BGR565 =
 			DEFINE_PIXELFORMAT(
 				.Packed16,
 				.PackedOrderXBGR,
 				.Layout565,
 				16, 2
 			);
-		public static readonly uint PIXELFORMAT_RGB24 =
+		public static readonly uint32 PIXELFORMAT_RGB24 =
 			DEFINE_PIXELFORMAT(
 				.ArrayU8,
 				.ArrayOrderRGB,
 				.LayoutNONE,
 				24, 3
 			);
-		public static readonly uint PIXELFORMAT_BGR24 =
+		public static readonly uint32 PIXELFORMAT_BGR24 =
 			DEFINE_PIXELFORMAT(
 				.ArrayU8,
 				.ArrayOrderBGR,
 				.LayoutNONE,
 				24, 3
 			);
-		public static readonly uint PIXELFORMAT_RGB888 =
+		public static readonly uint32 PIXELFORMAT_RGB888 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderXRGB,
 				.Layout8888,
 				24, 4
 			);
-		public static readonly uint PIXELFORMAT_RGBX8888 =
+		public static readonly uint32 PIXELFORMAT_RGBX8888 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderRGBX,
 				.Layout8888,
 				24, 4
 			);
-		public static readonly uint PIXELFORMAT_BGR888 =
+		public static readonly uint32 PIXELFORMAT_BGR888 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderXBGR,
 				.Layout8888,
 				24, 4
 			);
-		public static readonly uint PIXELFORMAT_BGRX8888 =
+		public static readonly uint32 PIXELFORMAT_BGRX8888 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderBGRX,
 				.Layout8888,
 				24, 4
 			);
-		public static readonly uint PIXELFORMAT_ARGB8888 =
+		public static readonly uint32 PIXELFORMAT_ARGB8888 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderARGB,
 				.Layout8888,
 				32, 4
 			);
-		public static readonly uint PIXELFORMAT_RGBA8888 =
+		public static readonly uint32 PIXELFORMAT_RGBA8888 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderRGBA,
 				.Layout8888,
 				32, 4
 			);
-		public static readonly uint PIXELFORMAT_ABGR8888 =
+		public static readonly uint32 PIXELFORMAT_ABGR8888 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderABGR,
 				.Layout8888,
 				32, 4
 			);
-		public static readonly uint PIXELFORMAT_BGRA8888 =
+		public static readonly uint32 PIXELFORMAT_BGRA8888 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderBGRA,
 				.Layout8888,
 				32, 4
 			);
-		public static readonly uint PIXELFORMAT_ARGB2101010 =
+		public static readonly uint32 PIXELFORMAT_ARGB2101010 =
 			DEFINE_PIXELFORMAT(
 				.Packed32,
 				.PackedOrderARGB,
 				.Layout2101010,
 				32, 4
 			);
-		public static readonly uint PIXELFORMAT_YV12 =
+		public static readonly uint32 PIXELFORMAT_YV12 =
 			DEFINE_PIXELFOURCC(
 				(uint8) 'Y', (uint8) 'V', (uint8) '1', (uint8) '2'
 			);
-		public static readonly uint PIXELFORMAT_IYUV =
+		public static readonly uint32 PIXELFORMAT_IYUV =
 			DEFINE_PIXELFOURCC(
 				(uint8) 'I', (uint8) 'Y', (uint8) 'U', (uint8) 'V'
 			);
-		public static readonly uint PIXELFORMAT_YUY2 =
+		public static readonly uint32 PIXELFORMAT_YUY2 =
 			DEFINE_PIXELFOURCC(
 				(uint8) 'Y', (uint8) 'U', (uint8) 'Y', (uint8) '2'
 			);
-		public static readonly uint PIXELFORMAT_UYVY =
+		public static readonly uint32 PIXELFORMAT_UYVY =
 			DEFINE_PIXELFOURCC(
 				(uint8) 'U', (uint8) 'Y', (uint8) 'V', (uint8) 'Y'
 			);
-		public static readonly uint PIXELFORMAT_YVYU =
+		public static readonly uint32 PIXELFORMAT_YVYU =
 			DEFINE_PIXELFOURCC(
 				(uint8) 'Y', (uint8) 'V', (uint8) 'Y', (uint8) 'U'
 			);
@@ -1849,7 +1853,7 @@ namespace SDL2
 
 		/* IntPtr refers to an SDL_PixelFormat* */
 		[LinkName("SDL_AllocFormat")]
-		public static extern PixelFormat* AllocFormat(uint pixel_format);
+		public static extern PixelFormat* AllocFormat(uint32 pixel_format);
 
 		/* IntPtr refers to an SDL_Palette* */
 		[LinkName("SDL_AllocPalette")]
@@ -1895,7 +1899,7 @@ namespace SDL2
 
 		/* format refers to an SDL_PixelFormat* */
 		[LinkName("SDL_MapRGB")]
-		public static extern uint MapRGB(
+		public static extern uint32 MapRGB(
 			PixelFormat* format,
 			uint8 r,
 			uint8 g,
@@ -1904,7 +1908,7 @@ namespace SDL2
 
 		/* format refers to an SDL_PixelFormat* */
 		[LinkName("SDL_MapRGBA")]
-		public static extern uint MapRGBA(
+		public static extern uint32 MapRGBA(
 			PixelFormat* format,
 			uint8 r,
 			uint8 g,
@@ -1913,7 +1917,7 @@ namespace SDL2
 		);
 
 		[LinkName("SDL_MasksToPixelFormatEnum")]
-		public static extern uint MasksToPixelFormatEnum(
+		public static extern uint32 MasksToPixelFormatEnum(
 			int32 bpp,
 			uint32 Rmask,
 			uint32 Gmask,
@@ -2060,10 +2064,10 @@ namespace SDL2
 			out Rect result
 		);
 
-		public const uint SDL_SWSURFACE =	0x00000000;
-		public const uint SDL_PREALLOC =	0x00000001;
-		public const uint SDL_RLEACCEL =	0x00000002;
-		public const uint SDL_DONTFREE =	0x00000004;
+		public const uint32 SDL_SWSURFACE =	0x00000000;
+		public const uint32 SDL_PREALLOC =	0x00000001;
+		public const uint32 SDL_RLEACCEL =	0x00000002;
+		public const uint32 SDL_DONTFREE =	0x00000004;
 
 		public struct SDL_BlitMap;
 
@@ -2196,16 +2200,6 @@ namespace SDL2
 		);
 
 		/* dst refers to an SDL_Surface* */
-		[LinkName("SDL_FillRect")]
-		public static extern int FillRect(
-			Surface* dst,
-			Rect* rect,
-			uint color
-		);
-
-		/* dst refers to an SDL_Surface*.
-		 * This overload allows passing NULL to rect.
-		 */
 		[LinkName("SDL_FillRect")]
 		public static extern int FillRect(
 			Surface* dst,
@@ -3747,17 +3741,17 @@ namespace SDL2
 		[LinkName("SDL_ShowCursor")]
 		public static extern int32 ShowCursor(int32 toggle);
 
-		public static uint32 BUTTON(uint X)
+		public static uint32 BUTTON(uint32 X)
 		{
 			// If only there were a better way of doing this in C#
 			return (uint32) (1 << ((int32) X - 1));
 		}
 
-		public const uint SDL_BUTTON_LEFT =	1;
-		public const uint SDL_BUTTON_MIDDLE =	2;
-		public const uint SDL_BUTTON_RIGHT =	3;
-		public const uint SDL_BUTTON_X1 =	4;
-		public const uint SDL_BUTTON_X2 =	5;
+		public const uint32 SDL_BUTTON_LEFT = 1;
+		public const uint32 SDL_BUTTON_MIDDLE =	2;
+		public const uint32 SDL_BUTTON_RIGHT = 3;
+		public const uint32 SDL_BUTTON_X1 =	4;
+		public const uint32 SDL_BUTTON_X2 =	5;
 		public static readonly uint32 BUTTON_LMASK =	BUTTON(SDL_BUTTON_LEFT);
 		public static readonly uint32 BUTTON_MMASK =	BUTTON(SDL_BUTTON_MIDDLE);
 		public static readonly uint32 BUTTON_RMASK =	BUTTON(SDL_BUTTON_RIGHT);
@@ -4287,7 +4281,7 @@ namespace SDL2
 		public const uint8 SDL_HAPTIC_SPHERICAL =	2;
 
 		/* SDL_HapticRunEffect */
-		public const uint SDL_HAPTIC_INFINITY = 4294967295U;
+		public const uint32 SDL_HAPTIC_INFINITY = 4294967295U;
 
 		[CRepr]
 		public struct SDL_HapticDirection
@@ -4348,7 +4342,7 @@ namespace SDL2
 			public uint16 type;
 			public SDL_HapticDirection direction;
 			// Replay
-			public uint length;
+			public uint32 length;
 			public uint16 delay;
 			// Trigger
 			public uint16 button;
@@ -4369,7 +4363,7 @@ namespace SDL2
 			public uint16 type;
 			public SDL_HapticDirection direction;
 			// Replay
-			public uint length;
+			public uint32 length;
 			public uint16 delay;
 			// Trigger
 			public uint16 button;
@@ -4390,7 +4384,7 @@ namespace SDL2
 			// Header
 			public uint16 type;
 			// Replay
-			public uint length;
+			public uint32 length;
 			// Rumble
 			public uint16 large_magnitude;
 			public uint16 small_magnitude;
@@ -4403,7 +4397,7 @@ namespace SDL2
 			public uint16 type;
 			public SDL_HapticDirection direction;
 			// Replay
-			public uint length;
+			public uint32 length;
 			public uint16 delay;
 			// Trigger
 			public uint16 button;
@@ -4840,7 +4834,7 @@ namespace SDL2
 
 		/* dev refers to an SDL_AudioDeviceID */
 		[LinkName("SDL_LockAudioDevice")]
-		public static extern void LockAudioDevice(uint dev);
+		public static extern void LockAudioDevice(uint32 dev);
 
 		[LinkName("SDL_MixAudio")]
 		public static extern void MixAudio(
@@ -4866,7 +4860,7 @@ namespace SDL2
 			SDL_AudioSpec* obtained
 		);
 
-		/* uint refers to an SDL_AudioDeviceID */
+		/* uint32 refers to an SDL_AudioDeviceID */
 		[LinkName("SDL_OpenAudioDevice")]
 		private static extern AudioDeviceID OpenAudioDevice(
 			char8* device,
@@ -4910,7 +4904,7 @@ namespace SDL2
 		/* dev refers to an SDL_AudioDeviceID, data to a void* */
 		/* Only available in 2.0.5 */
 		[LinkName("SDL_DequeueAudio")]
-		public static extern uint DequeueAudio(
+		public static extern uint32 DequeueAudio(
 			AudioDeviceID dev,
 			void* data,
 			uint32 len
@@ -5163,9 +5157,9 @@ namespace SDL2
 		public struct INTERNAL_uikit_wminfo
 		{
 			public void* window; // Refers to a UIWindow*
-			public uint framebuffer;
-			public uint colorbuffer;
-			public uint resolveFramebuffer;
+			public uint32 framebuffer;
+			public uint32 colorbuffer;
+			public uint32 resolveFramebuffer;
 		}
 
 		[CRepr]
