@@ -6345,6 +6345,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	BfIRValue interfaceDataPtr;
 	BfType* reflectInterfaceDataType = ResolveTypeDef(mCompiler->mReflectInterfaceDataDef);
 	BfIRType interfaceDataPtrType = mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapType(reflectInterfaceDataType));
+	Array<bool> wantsIfaceMethod;
+	bool wantsIfaceMethods = false;
 	if (typeInstance->mInterfaces.IsEmpty())
 		interfaceDataPtr = mBfIRBuilder->CreateConstNull(interfaceDataPtrType);
 	else
@@ -6362,6 +6364,19 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 			auto interfaceData = mBfIRBuilder->CreateConstStruct(mBfIRBuilder->MapTypeInst(reflectInterfaceDataType->ToTypeInstance(), BfIRPopulateType_Full), interfaceDataVals);
 			interfaces.push_back(interfaceData);
+
+			for (int methodIdx = 0; methodIdx < (int)interface.mInterfaceType->mMethodInstanceGroups.size(); methodIdx++)
+			{
+				auto ifaceMethodGroup = &interface.mInterfaceType->mMethodInstanceGroups[methodIdx];
+				if (ifaceMethodGroup->mExplicitlyReflected)
+				{
+					wantsIfaceMethods = true;
+					int tableIdx = interface.mStartInterfaceTableIdx + methodIdx;
+					while (tableIdx >= wantsIfaceMethod.size())
+						wantsIfaceMethod.Add(false);
+					wantsIfaceMethod[tableIdx] = true;
+				}
+			}
 		}
 
 		BfIRType interfaceDataArrayType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->MapType(reflectInterfaceDataType, BfIRPopulateType_Full), (int)interfaces.size());
@@ -6374,21 +6389,26 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	
 	BfIRValue interfaceMethodTable;
 	int ifaceMethodTableSize = 0;
-	if ((!typeInstance->IsInterface()) && (typeInstance->mIsReified) && (!typeInstance->IsUnspecializedType()) 
+	if ((wantsIfaceMethods) && (!typeInstance->IsInterface()) && (typeInstance->mIsReified) && (!typeInstance->IsUnspecializedType()) 
 		&& (!typeInstance->mInterfaceMethodTable.IsEmpty()))			
 	{		
 		SizedArray<BfIRValue, 16> methods;
-		for (auto& methodEntry : typeInstance->mInterfaceMethodTable)
+		for (int tableIdx = 0; tableIdx < (int)typeInstance->mInterfaceMethodTable.size(); tableIdx++)		
 		{
 			BfIRValue funcVal = voidPtrNull;
-			if (!methodEntry.mMethodRef.IsNull())			
+			if ((tableIdx < (int)wantsIfaceMethod.size()) && (wantsIfaceMethod[tableIdx]))										
 			{
-				BfMethodInstance* methodInstance = methodEntry.mMethodRef;
-				if ((methodInstance->mIsReified) && (methodInstance->mMethodInstanceGroup->IsImplemented()) && (!methodInstance->mIsUnspecialized))
+				auto methodEntry = typeInstance->mInterfaceMethodTable[tableIdx];
+				if (!methodEntry.mMethodRef.IsNull())
 				{
-					auto moduleMethodInstance = ReferenceExternalMethodInstance(methodInstance);					
-					if (moduleMethodInstance.mFunc)
-						funcVal = mBfIRBuilder->CreateBitCast(moduleMethodInstance.mFunc, voidPtrIRType);
+					BfMethodInstance* methodInstance = methodEntry.mMethodRef;
+					if ((methodInstance->mIsReified) && (methodInstance->mMethodInstanceGroup->IsImplemented()) && (!methodInstance->mIsUnspecialized) &&
+						(!methodInstance->mMethodDef->mIsAbstract))
+					{
+						auto moduleMethodInstance = ReferenceExternalMethodInstance(methodInstance);
+						if (moduleMethodInstance.mFunc)
+							funcVal = mBfIRBuilder->CreateBitCast(moduleMethodInstance.mFunc, voidPtrIRType);
+					}
 				}
 			}
 			methods.Add(funcVal);
