@@ -2317,9 +2317,13 @@ void BfPrinter::QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration)
 		ExpectSpace();
 		QueueVisitChild(methodDeclaration->mReturnType);		
 	}
-
+	
 	QueueVisitChild(methodDeclaration->mOpenParen);
-	QueueVisitChild(methodDeclaration->mThisToken);	
+	if (methodDeclaration->mThisToken != NULL)
+	{
+		QueueVisitChild(methodDeclaration->mThisToken);
+		ExpectSpace();
+	}
 	for (int i = 0; i < (int) methodDeclaration->mParams.size(); i++)
 	{
 		if (i > 0)
