@@ -1553,6 +1553,34 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	else
 		BF_FATAL("Unknown type token");
 
+	if (mCurTypeDef->mIsStatic)
+	{
+		if ((mCurTypeDef->mTypeCode != BfTypeCode_Object) &&
+			(mCurTypeDef->mTypeCode != BfTypeCode_Struct))
+		{
+			mPassInstance->Warn(0, StrFormat("Types declared as '%s' cannot be 'static'", BfTokenToString(typeToken)).c_str(), typeDeclaration->mStaticSpecifier);
+			mCurTypeDef->mIsStatic = false;
+		}
+	}
+
+	if (mCurTypeDef->mIsAbstract)
+	{
+		if (mCurTypeDef->mTypeCode != BfTypeCode_Object)
+		{
+			mPassInstance->Warn(0, StrFormat("Types declared as '%s' cannot be 'abstract'", BfTokenToString(typeToken)).c_str(), typeDeclaration->mStaticSpecifier);
+			mCurTypeDef->mIsAbstract = false;
+		}
+	}
+
+	if (mCurTypeDef->mIsConcrete)
+	{
+		if (mCurTypeDef->mTypeCode != BfTypeCode_Interface)
+		{
+			mPassInstance->Warn(0, StrFormat("Types declared as '%s' cannot be 'concrete'", BfTokenToString(typeToken)).c_str(), typeDeclaration->mStaticSpecifier);
+			mCurTypeDef->mIsConcrete = false;
+		}
+	}
+
 	if (!isAutoCompleteTempType)
 	{
 		BfTypeDef* prevDef = NULL;
