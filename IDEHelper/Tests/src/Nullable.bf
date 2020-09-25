@@ -4,6 +4,33 @@ namespace Tests
 {
 	class Nullable
 	{
+		class ClassA
+		{
+			public int mA = 100;
+
+			public int Prop
+			{
+				set
+				{
+					mA = value;
+				}
+			}
+
+			public int GetVal()
+			{
+				return 123;
+			}
+		}
+
+		[Test]
+		public static void TestBasics()
+		{
+			ClassA ca = scope .();
+			ca?.Prop = ca.GetVal();
+			Test.Assert(ca.mA == 123);
+			ca = null;
+			ca?.Prop = ca.GetVal();
+		}
 
 		[Test]
 		public static void TestPrimitives()
