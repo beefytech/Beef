@@ -2227,6 +2227,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	SizedArray<BfInterfaceDecl, 8> interfaces;
 	HashSet<BfTypeInstance*> ifaceSet;
 
+	typeInstance->mRebuildFlags = (BfTypeRebuildFlags)(typeInstance->mRebuildFlags | BfTypeRebuildFlag_ResolvingBase);
+
 	if (resolvedTypeRef == mContext->mBfObjectType)
 	{
 		baseType = NULL;
@@ -2326,7 +2328,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					if (checkType->IsPrimitiveType())
 						Fail(StrFormat("Enum '%s' cannot be specified as '%s' because it has a payload",
 							TypeToString(typeInstance).c_str(), TypeToString(checkType).c_str()),
-							checkTypeRef);
+							checkTypeRef, true);
 					else
 						Fail("Enums cannot derive from other types", checkTypeRef);
 					continue;
@@ -2376,11 +2378,25 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						baseTypeRef = checkTypeRef;
 						if (checkTypeInst != NULL)
 						{
-							baseType = checkTypeInst;
-							/*if ((resolvedTypeRef->IsBoxed()) && (baseType->IsValueType()))
+							auto checkOuter = checkTypeInst;
+							while (checkOuter != NULL)
 							{
-								baseType = CreateBoxedType(baseType);
-							}*/
+								if (checkOuter == typeInstance)
+								{
+									Fail(StrFormat("Type '%s' cannot be declare inner type '%s' as a base type",
+										TypeToString(typeInstance).c_str(),
+										TypeToString(checkTypeInst).c_str()), checkTypeRef, true);
+									checkTypeInst = NULL; 
+									break;
+								}
+								checkOuter = GetOuterType(checkOuter);
+							}
+						}
+
+
+						if (checkTypeInst != NULL)
+						{
+							baseType = checkTypeInst;
 						}
 					}
 				}
@@ -2434,11 +2450,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	if (!typeInstance->IsBoxed())
-	{		
+	{
 		BfType* outerType = GetOuterType(typeInstance);
 		if (outerType != NULL)
 		{
-			PopulateType(outerType, BfPopulateType_BaseType);
+			PopulateType(outerType, BfPopulateType_Identity);
 			AddDependency(outerType, typeInstance, BfDependencyMap::DependencyFlag_OuterType);
 		}
 	}
@@ -2508,6 +2524,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				typeInstance->mIsTypedPrimitive = true;
 		}
 	}
+
+	typeInstance->mRebuildFlags = (BfTypeRebuildFlags)(typeInstance->mRebuildFlags & ~BfTypeRebuildFlag_ResolvingBase);
 
 	if (populateType <= BfPopulateType_BaseType)
 		return;

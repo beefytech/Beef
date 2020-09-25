@@ -397,7 +397,8 @@ enum BfTypeRebuildFlags
 	BfTypeRebuildFlag_SpecializedByAutocompleteMethod = 0x200,
 	BfTypeRebuildFlag_UnderlyingTypeDeferred = 0x400,
 	BfTypeRebuildFlag_TypeDataSaved = 0x800,
-	BfTypeRebuildFlag_InTempPool = 0x1000
+	BfTypeRebuildFlag_InTempPool = 0x1000,
+	BfTypeRebuildFlag_ResolvingBase = 0x2000
 };
 
 class BfTypeDIReplaceCallback;
