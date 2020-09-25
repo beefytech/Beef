@@ -307,5 +307,22 @@ namespace IDETest
 			int e = a;
 			int f = b; //FAIL
 		}
+
+		public void Local5()
+		{
+			if (!((GetVal(var a)) && (GetVal(var b)))) //FAIL
+			{
+
+			}
+		}
+
+		public void Local6()
+		{
+			int b;
+			if (!((GetVal(var a)) && (GetVal(out b))))
+			{
+
+			}
+		}
 	}
 }

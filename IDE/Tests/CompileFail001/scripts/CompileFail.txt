@@ -8,6 +8,11 @@ WaitForResolve()
 SleepTicks(20)
 AssertFileErrors()
 
+ShowFile("src/Declarations.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
+
 ShowFile("src/Defer.bf")
 WaitForResolve()
 SleepTicks(20)
