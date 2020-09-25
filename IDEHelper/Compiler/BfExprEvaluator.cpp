@@ -18385,17 +18385,15 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				constValue = mModule->GetConstValue(1, ptr.mType);
 				if (!constValue)
 				{
-					mResult = BfTypedValue();
 					numericFail = true;
 					break;
 				}				
 				if ((ptr.mType->IsIntegral()) || (ptr.mType->IsEnum()) || (ptr.mType->IsFloat()))
 				{
 					resultValue = mModule->mBfIRBuilder->CreateAdd(origVal, constValue/*, "inc"*/);
-				}				
+				}
 				else
 				{
-					mResult = BfTypedValue();
 					numericFail = true;
 					break;
 				}				
@@ -18412,7 +18410,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 		break;
 	case BfUnaryOp_PostDecrement:
 	case BfUnaryOp_Decrement:
-		{			
+		{
 			CheckResultForReading(mResult);
 			auto ptr = mResult;
 			//if ((propDef == NULL) && (!mModule->CheckModifyValue(ptr, opToken)))							
@@ -18442,7 +18440,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				{
 					numericFail = true;
 					break;
-				}				
+				}
 				if ((ptr.mType->IsIntegral()) || (ptr.mType->IsEnum()))
 				{
 					resultValue = mModule->mBfIRBuilder->CreateSub(origVal, constValue);
@@ -18576,7 +18574,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 	default:
 		mModule->Fail("INTERNAL ERROR: Unhandled unary operator", unaryOpExpr);
 		break;
-	}		
+	}
 
 	if (numericFail)
 	{
@@ -18584,7 +18582,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 		{
 			BF_ASSERT(mModule->mBfIRBuilder->mIgnoreWrites);
 		}
-		else if (mResult.mType->IsInterface())
+		else if ((mResult.mType != NULL) && (mResult.mType->IsInterface()))
 		{
 			mModule->Fail(
 				StrFormat("Operator '%s' cannot be used on interface '%s'. Consider rewriting using generics and use this interface as a generic constraint.",
