@@ -6283,7 +6283,7 @@ namespace IDE
 				mRecentFileSelector.Prev();
 		}
 
-        void ShowRecentFile(int idx, bool setFocus = true)
+        void ShowRecentFile(int idx, bool setFocus = true, bool checkIfExists = false)
         {
 			if (idx >= mRecentlyDisplayedFiles.Count)
 				return;
@@ -6294,6 +6294,8 @@ namespace IDE
                 ShowDisassemblyPanel();
                 return;
             }
+			if ((checkIfExists) && (!File.Exists(sourceFile)))
+				return;
             ShowSourceFile(sourceFile, null, SourceShowType.ShowExisting, setFocus);
         }
 
