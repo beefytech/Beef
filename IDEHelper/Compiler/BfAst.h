@@ -1409,6 +1409,11 @@ public:
 	{
 		return (srcPos >= mSrcStart + startAdd) && (srcPos < mSrcEnd + lenAdd);
 	}
+
+	bool Contains(BfAstNode* node)
+	{
+		return (node->mSrcStart >= mSrcStart) && (node->mSrcEnd <= mSrcEnd);
+	}
 #endif
 
 

@@ -2702,6 +2702,7 @@ void BfExprEvaluator::Visit(BfBlock* blockExpr)
 bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail)
 {
 	BfAstNode* checkChild = checkNode;
+	bool childWasAndRHS = false;
 	bool foundIf = false;
 
 	auto parentNodeEntry = mModule->mParentNodeEntry;
@@ -2712,7 +2713,20 @@ bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requir
 			checkChild = parentNodeEntry->mNode;
 			parentNodeEntry = parentNodeEntry->mPrev;
 		}
-	}
+	}	
+
+	auto _Fail = [&](const StringImpl& errorStr, BfAstNode* node)
+	{
+		if (!silentFail)
+		{
+			auto error = mModule->Fail(errorStr, node);
+			if ((error != NULL) && (node != checkNode))
+			{
+				mModule->mCompiler->mPassInstance->MoreInfo("See variable declaration", checkNode);
+			}
+		}
+		return false;
+	};
 
 	while (parentNodeEntry != NULL)
 	{		
@@ -2723,41 +2737,20 @@ bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requir
 			if (binOpExpr->mOp == BfBinaryOp_ConditionalAnd)
 			{
 				// This is always okay
+				childWasAndRHS = (binOpExpr->mRight != NULL) && (binOpExpr->mRight->Contains(checkChild));
 			}
 			else if ((binOpExpr->mOp == BfBinaryOp_ConditionalOr) && (!exprMustBeTrue))
 			{
-				bool matches = false;
-				auto checkRight = binOpExpr->mRight;
-				while (checkRight != NULL)
+				if ((binOpExpr->mRight != NULL) & (binOpExpr->mRight->Contains(checkChild)))				
 				{
-					if (checkRight == checkChild)
-					{
-						matches = true;
-						break;
-					}
-
-					if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(checkRight))
-						checkRight = parenExpr->mExpression;
-					else
-					{
-						break;
-					}
-				}
-
-				if (matches)
-				{
-					if (!silentFail)
-						mModule->Fail("Conditional short-circuiting may skip variable initialization", binOpExpr->mOpToken);
-					return false;
+					return _Fail("Conditional short-circuiting may skip variable initialization", binOpExpr->mOpToken);					
 				}
 			}
 			else
 			{
 				if (exprMustBeTrue)
 				{
-					if (!silentFail)
-						mModule->Fail("Operator cannot be used with variable initialization", binOpExpr->mOpToken);
-					return false;
+					return _Fail("Operator cannot be used with variable initialization", binOpExpr->mOpToken);					
 				}
 			}
 		}
@@ -2769,9 +2762,13 @@ bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requir
 		{			
 			if (exprMustBeTrue)
 			{
-				if (!silentFail)
-					mModule->Fail("Operator cannot be used with variable initialization", unaryOp->mOpToken);
+				return _Fail("Operator cannot be used with variable initialization", unaryOp->mOpToken);
 				return false;
+			}
+
+			if (childWasAndRHS)
+			{		
+				return _Fail("Operator may allow conditional short-circuiting to skip variable initialization", unaryOp->mOpToken);				
 			}
 		}
 		else if (auto ifStmt = BfNodeDynCast<BfIfStatement>(checkParent))
@@ -2784,9 +2781,7 @@ bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requir
 		{
 			if (requireSimpleIfExpr)
 			{
-				if (!silentFail)
-					mModule->Fail("Variable declaration expression can only be contained in simple 'if' expressions", checkNode);
-				return false;
+				return _Fail("Variable declaration expression can only be contained in simple 'if' expressions", checkNode);				
 			}
 			break;
 		}
