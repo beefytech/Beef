@@ -149,6 +149,7 @@ public:
 	bool mAllowNonStatic;	
 	bool mSkipImplicitParams;	
 	bool mAutoFlushAmbiguityErrors;
+	BfEvalExprFlags mBfEvalExprFlags;
 	int mMethodCheckCount;	
 	BfType* mExplicitInterfaceCheck;	
 	MatchFailKind mMatchFailKind;

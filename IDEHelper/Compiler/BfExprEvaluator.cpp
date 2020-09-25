@@ -177,6 +177,7 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	mMethodCheckCount = 0;	
 	mCheckedKind = BfCheckedKind_NotSet;
 	mMatchFailKind = MatchFailKind_None;
+	mBfEvalExprFlags = BfEvalExprFlags_None;
 
 	for (auto& arg : mArguments)
 	{
@@ -1394,7 +1395,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 	HashSet<int> allowEmptyGenericSet;
 	BfAutoComplete* autoComplete = NULL;
-	if ((mModule->mCompiler->mResolvePassData != NULL) && (!isFailurePass))
+	if ((mModule->mCompiler->mResolvePassData != NULL) && (!isFailurePass) && ((mBfEvalExprFlags & BfEvalExprFlags_NoAutoComplete) == 0))
 		autoComplete = mModule->mCompiler->mResolvePassData->mAutoComplete;
 
 	if (checkMethod->mMethodType != BfMethodType_Extension)
@@ -6290,6 +6291,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	sCtorCount++;			
 	
 	BfMethodMatcher methodMatcher(targetSrc, mModule, "", argValues.mResolvedArgs, NULL);
+	methodMatcher.mBfEvalExprFlags = mBfEvalExprFlags;
 		
 	BfTypeVector typeGenericArguments;
 
@@ -14439,7 +14441,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				else if (expectingType->IsStruct())
 				{
 					if ((wasCapturingMethodInfo) && (autoComplete->mMethodMatchInfo != NULL))
-					{
+					{						
 						autoComplete->mIsCapturingMethodMatchInfo = true;
 						BF_ASSERT(autoComplete->mMethodMatchInfo != NULL);
 					}
@@ -14460,7 +14462,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							}
 							else
 								mResult = BfTypedValue(mModule->CreateAlloca(expectingType), expectingType, BfTypedValueKind_TempAddr);
-							MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, false);
+							
+							MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, false);																					
 							mModule->ValidateAllocation(expectingType, invocationExpr->mTarget);
 
 							return;
