@@ -17492,7 +17492,7 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 			mModule->Fail("Unable to find member", nameRefNode);
 	}
 
-	if (isNullCondLookup)
+	if ((isNullCondLookup) && (mPropDef == NULL))
 		mResult = GetResult();
 
 	if (isCascade)
