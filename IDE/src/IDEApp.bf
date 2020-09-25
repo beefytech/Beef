@@ -6464,7 +6464,7 @@ namespace IDE
 			if (tabButton.mIsActive)
 			{
 				// If this succeeds then tabbUtton.mIsActive will be false, otherwise we do the 'nextTab' logic below
-				ShowRecentFile(0, hasFocus);
+				ShowRecentFile(0, hasFocus, true);
 			}
 
 			TabbedView.TabButton nextTab = null;
