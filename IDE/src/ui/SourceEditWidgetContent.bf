@@ -2624,9 +2624,11 @@ namespace IDE.ui
                 return;
             }
 
+			bool autoCompleteOnEnter = (gApp.mSettings.mEditorSettings.mAutoCompleteOnEnter) || (!mIsMultiline);
+
 			bool isCompletionChar =
 				((keyChar == '\t') ||
-				 ((keyChar == '\r') && (gApp.mSettings.mEditorSettings.mAutoCompleteOnEnter))) &&
+				 ((keyChar == '\r') && (autoCompleteOnEnter))) &&
 				(!mWidgetWindow.IsKeyDown(.Shift));
 
             if ((gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.IsRenaming))
@@ -2729,7 +2731,7 @@ namespace IDE.ui
 					doAutocomplete = false;
 				}
 
-				if ((mAutoComplete.mUncertain) && (keyChar != '\t'))
+				if ((mAutoComplete.mUncertain) && (keyChar != '\t') && (keyChar != '\r'))
 					doAutocomplete = false;
 				if (keyChar == '\x7F') /* Ctrl+Backspace */
 					doAutocomplete = false;
@@ -3285,10 +3287,12 @@ namespace IDE.ui
         {
 			mIgnoreKeyChar = false;
 
+			bool autoCompleteRequireControl = (gApp.mSettings.mEditorSettings.mAutoCompleteRequireControl) && (mIsMultiline);
+
 			if (((keyCode == .Up) || (keyCode == .Down)) &&
 				(mAutoComplete != null) && (mAutoComplete.IsShowing()) && (mAutoComplete.mListWindow != null) &&
 				(!mAutoComplete.IsInPanel()) &&
-				(gApp.mSettings.mEditorSettings.mAutoCompleteRequireControl) &&
+				(autoCompleteRequireControl) &&
 				(!gApp.mSettings.mTutorialsFinished.mCtrlCursor))
 			{
 				if (mWidgetWindow.IsKeyDown(.Control))
@@ -3346,7 +3350,7 @@ namespace IDE.ui
 
             if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
             {
-				if ((!gApp.mSettings.mEditorSettings.mAutoCompleteRequireControl) || (mWidgetWindow.IsKeyDown(KeyCode.Control)))
+				if ((!autoCompleteRequireControl) || (mWidgetWindow.IsKeyDown(KeyCode.Control)))
 				{
 	                if (mAutoComplete != null)
 	                {

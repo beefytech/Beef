@@ -1156,6 +1156,12 @@ namespace IDE.ui
 
         protected void HandleSubmit(EditEvent theEvent)
         {
+			if ((mPropEditWidget != null) && (var sewc = mPropEditWidget.mEditWidgetContent as SourceEditWidgetContent))
+			{
+				if (sewc.mAutoComplete != null)
+					return;
+			}
+
             HandleEditLostFocus((EditWidget)theEvent.mSender);
         }
 
