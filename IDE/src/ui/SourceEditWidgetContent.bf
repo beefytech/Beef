@@ -2710,7 +2710,7 @@ namespace IDE.ui
 				if ((mAutoComplete.mInsertEndIdx != -1) && (mAutoComplete.mInsertEndIdx != mCursorTextPos) && (keyChar != '\t') && (keyChar != '\r') && (keyChar != '\n'))
 					doAutocomplete = false;
 				
-                if ((mAutoComplete.IsInsertEmpty()) && (!mAutoComplete.mIsFixit) && (keyChar != '.') && (keyChar != '\t'))
+                if ((mAutoComplete.IsInsertEmpty()) && (!mAutoComplete.mIsFixit) && (keyChar != '.') && (keyChar != '\t') && (keyChar != '\r'))
                 {
                     // Require a '.' or tab to insert autocomplete when we don't have any insert section (ie: after an 'enumVal = ')
                     doAutocomplete = false;
