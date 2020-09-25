@@ -1838,7 +1838,8 @@ namespace IDE.ui
             {
                 ProjectItem projectItem;
                 mListViewToProjectMap.TryGetValue(selectedListViewItem, out projectItem);
-                RenameItem(projectItem);
+				if (projectItem != null)
+                	RenameItem(projectItem);
             }
         }
 
