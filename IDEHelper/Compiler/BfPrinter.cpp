@@ -2385,7 +2385,7 @@ void BfPrinter::Visit(BfPropertyMethodDeclaration* propertyMethodDeclaration)
 }
 
 void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
-{	
+{
 	auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propertyDeclaration);
 
 	ExpectNewLine();
@@ -2436,13 +2436,14 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 	if (auto block = BfNodeDynCast<BfBlock>(propertyDeclaration->mDefinitionBlock))
 	{
 		bool doInlineBlock = false;		
-		DoBlockOpen(block, true, &doInlineBlock);
+		int indentStart = 0;
+		DoBlockOpen(block, true, &doInlineBlock, &indentStart);		
 		for (auto method : propertyDeclaration->mMethods)
 		{
 			Visit(method);
 		}
 		FlushVisitChild();
-		DoBlockClose(block, true, doInlineBlock);
+		DoBlockClose(block, true, doInlineBlock, indentStart);
 	}
 	else
 	{
@@ -2459,6 +2460,11 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	// ??? QueueVisitErrorNodes(propertyDeclaration);
 	FlushVisitChild();
+}
+
+void BfPrinter::Visit(BfIndexerDeclaration* indexerDeclaration)
+{
+	Visit((BfPropertyDeclaration*)indexerDeclaration);
 }
 
 void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
@@ -2749,8 +2755,10 @@ void BfPrinter::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 	VisitChild(namespaceDeclaration->mBlock);	
 }
 
-void BfPrinter::DoBlockOpen(BfBlock* block, bool queue, bool* outDoInlineBlock)
-{
+void BfPrinter::DoBlockOpen(BfBlock* block, bool queue, bool* outDoInlineBlock, int* outIdentStart)
+{	
+	*outIdentStart = mNextStateModify.mWantVirtualIndent;
+
 	bool doInlineBlock = true;
 	if (block->mCloseBrace != NULL)
 	{
@@ -2781,11 +2789,12 @@ void BfPrinter::DoBlockOpen(BfBlock* block, bool queue, bool* outDoInlineBlock)
 	*outDoInlineBlock = doInlineBlock;
 }
 
-void BfPrinter::DoBlockClose(BfBlock* block, bool queue, bool doInlineBlock)
+void BfPrinter::DoBlockClose(BfBlock* block, bool queue, bool doInlineBlock, int indentStart)
 {
 	if (!doInlineBlock)
 	{
 		ExpectUnindent();
+		mNextStateModify.mWantVirtualIndent = indentStart;
 		mNextStateModify.mDoingBlockClose = true;
 	}
 	else
@@ -2799,7 +2808,8 @@ void BfPrinter::DoBlockClose(BfBlock* block, bool queue, bool doInlineBlock)
 void BfPrinter::Visit(BfBlock* block)
 {	
 	bool doInlineBlock;
-	DoBlockOpen(block, false, &doInlineBlock);
+	int indentStart = 0;
+	DoBlockOpen(block, false, &doInlineBlock, &indentStart);
 	for (auto& childNodeRef : *block)
 	{
 		BfAstNode* child = childNodeRef;
@@ -2811,7 +2821,7 @@ void BfPrinter::Visit(BfBlock* block)
 		SetAndRestoreValue<BfAstNode*> prevBlockMember(mCurBlockMember, child);
 		child->Accept(this);
 	}
-	DoBlockClose(block, false, doInlineBlock);
+	DoBlockClose(block, false, doInlineBlock, indentStart);
 
 	ExpectNewLine();
 }

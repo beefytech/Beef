@@ -95,11 +95,11 @@ public:
 	void ExpectIndent();
 	void ExpectUnindent();
 	void VisitChildNextLine(BfAstNode* node);
-	void DoBlockOpen(BfBlock* block, bool queue, bool* outDoInlineBlock);
-	void DoBlockClose(BfBlock* block, bool queue, bool doInlineBlock);
+	void DoBlockOpen(BfBlock* block, bool queue, bool* outDoInlineBlock, int* outIdentStart);
+	void DoBlockClose(BfBlock* block, bool queue, bool doInlineBlock, int identStart);
 	void QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration);	
 	int CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx);
-	void WriteIgnoredNode(BfAstNode* node);
+	void WriteIgnoredNode(BfAstNode* node);	
 
 	virtual void Visit(BfAstNode* bfAstNode) override;
 	virtual void Visit(BfErrorNode* bfErrorNode) override;
@@ -197,6 +197,7 @@ public:
 	virtual void Visit(BfOperatorDeclaration* opreratorDeclaration) override;
 	virtual void Visit(BfPropertyMethodDeclaration* propertyDeclaration) override;
 	virtual void Visit(BfPropertyDeclaration* propertyDeclaration) override;
+	virtual void Visit(BfIndexerDeclaration* indexerDeclaration) override;
 	virtual void Visit(BfFieldDeclaration* fieldDeclaration) override;
 	virtual void Visit(BfEnumCaseDeclaration* enumCaseDeclaration) override;
 	virtual void Visit(BfTypeAliasDeclaration* typeDeclaration) override;
