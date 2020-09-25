@@ -4852,6 +4852,24 @@ namespace IDE.ui
 						origDebugExpr.Set(debugExpr);
 
 						debugExpr.Set(resolveParams.mResultString);
+
+						if (debugExpr.StartsWith(':'))
+						{
+							int docsPos = debugExpr.IndexOf('\x03');
+							if (docsPos != -1)
+							{
+								String docs = scope String()..Append(debugExpr, docsPos + 1);
+								debugExpr.RemoveToEnd(docsPos);
+
+								DocumentationParser docParser = scope .(docs);
+								var showString = docParser.ShowDocString;
+								if (!String.IsNullOrEmpty(showString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(showString);
+								}
+							}
+						}
 					}
 
 					if (!triedShow)

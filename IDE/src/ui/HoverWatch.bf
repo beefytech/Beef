@@ -724,23 +724,20 @@ namespace IDE.ui
             if (evalString.StartsWith(":", StringComparison.Ordinal))
             {
 				var showString = scope String(evalString, 1);
-				int crPos = showString.IndexOf('\n');
-				if (crPos != -1)
+				bool isShowingDoc = showString.Contains('\x01');
+				if (!isShowingDoc)
 				{
-					val.Append("\n\n");
-					val.Append(showString, crPos + 1);
-					showString.RemoveToEnd(crPos);
+					int crPos = showString.IndexOf('\n');
+					if (crPos != -1)
+					{
+						val.Append("\n\n");
+						val.Append(showString, crPos + 1);
+						showString.RemoveToEnd(crPos);
+					}
 				}
 
                 useListViewItem.Label = showString;
                 isStringLiteral = true;
-
-
-                /*int lineCount = 0;
-                for (int i = 0; i < evalString.Length; i++)
-                    if (evalString[i] == '\n')
-                        lineCount++;
-                listViewItem.mBottomPadding = listView.mFont.GetLineSpacing() * lineCount; */
             }
             else
 			{

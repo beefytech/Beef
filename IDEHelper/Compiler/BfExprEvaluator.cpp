@@ -3850,7 +3850,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						autoComplete->mResultString += field->mName;
 
 						if (fieldInstance->mConstIdx != -1)
-						{ 
+						{
 							String constStr = autoComplete->ConstantToString(curCheckType->mConstHolder, BfIRValue(BfIRValueFlags_Const, fieldInstance->mConstIdx));
 							if (!constStr.IsEmpty())
 							{
@@ -3860,6 +3860,15 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 								else
 									autoComplete->mResultString += constStr;
 							}
+						}
+
+						auto fieldDecl = fieldInstance->GetFieldDef()->mFieldDeclaration;
+						if ((fieldDecl != NULL) && (fieldDecl->mDocumentation != NULL))						
+						{
+							String docString;
+							fieldDecl->mDocumentation->GetDocString(docString);
+							autoComplete->mResultString += "\x03";
+							autoComplete->mResultString += docString;
 						}
 					}
 				}
@@ -7872,6 +7881,13 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				{
 					autoComplete->mResultString = ":";
 					autoComplete->mResultString += mModule->MethodToString(moduleMethodInstance.mMethodInstance);
+
+					auto methodDecl = moduleMethodInstance.mMethodInstance->mMethodDef->GetMethodDeclaration();					
+					if ((methodDecl != NULL) && (methodDecl->mDocumentation != NULL))
+					{
+						autoComplete->mResultString += "\x03";
+						methodDecl->mDocumentation->GetDocString(autoComplete->mResultString);
+					}
 				}
 			}
 		}

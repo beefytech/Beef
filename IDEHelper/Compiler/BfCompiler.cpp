@@ -7287,19 +7287,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 	
  	String& autoCompleteResultString = *gTLStrReturn.Get();
 	autoCompleteResultString.Clear();
-
-	auto _GetDocString = [&](BfCommentNode* commentNode, StringImpl& docString)
-	{
-		commentNode->ToString(docString);
-		for (int i = 0; i < (int)docString.length(); i++)
-		{
-			char c = docString[i];
-			if (c == '\n')
-				docString[i] = '\x3';
-		}
-	};
-
-
+	
 	auto bfModule = mResolvePassData->mAutoComplete->mModule;
  	if (bfModule != NULL)
 	{
@@ -7653,7 +7641,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 					if ((methodDeclaration != NULL) && (methodDeclaration->mDocumentation != NULL))
 					{
 						String docString;
-						_GetDocString(methodDeclaration->mDocumentation, docString);
+						methodDeclaration->mDocumentation->GetDocString(docString);
 						methodText += "\x03";
 						methodText += docString;
 					}
@@ -7689,7 +7677,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 			if ((entry->mDocumentation != NULL) && (wantsDocEntry != NULL) && (strcmp(wantsDocEntry, entry->mDisplay) == 0))
 			{
 				docString.Clear();
-				_GetDocString(entry->mDocumentation, docString);
+				entry->mDocumentation->GetDocString(docString);
 				autoCompleteResultString += '\x03';
 				autoCompleteResultString += docString;
 			}

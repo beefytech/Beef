@@ -1855,6 +1855,17 @@ class BfCommentNode : public BfAstNode
 public:
 	BF_AST_TYPE(BfCommentNode, BfAstNode);
 	BfCommentKind mCommentKind;
+
+	void GetDocString(StringImpl& docString)
+	{
+		ToString(docString);
+		for (int i = 0; i < (int)docString.length(); i++)
+		{
+			char c = docString[i];
+			if (c == '\n')
+				docString[i] = '\x3';
+		}
+	}
 };	BF_AST_DECL(BfCommentNode, BfAstNode);
 
 class BfPreprocesorIgnoredSectionNode : public BfAstNode
