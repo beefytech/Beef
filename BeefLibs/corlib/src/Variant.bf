@@ -43,6 +43,18 @@ namespace System
 			}
 		}
 
+		public bool IsValueType
+		{
+			get
+			{
+				if (mStructType <= 2)
+					return false;
+				if ((mStructType & 3) == (int)StructFlag.ExternalPtr)
+					return VariantType.IsValueType;
+				return mStructType != 0;
+			}
+		}
+
 		public Type VariantType
 		{
 			get
