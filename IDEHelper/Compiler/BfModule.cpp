@@ -4934,7 +4934,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	}
 
 	int boxedTypeId = 0;
-	if (type->IsValueType())
+	if ((type->IsValueType()) || (type->IsWrappableType()))
 	{
 		auto boxedType = CreateBoxedType(type, false);
 		if ((boxedType != NULL) && (boxedType->mIsReified))

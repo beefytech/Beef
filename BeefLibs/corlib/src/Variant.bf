@@ -313,24 +313,14 @@ namespace System
 			if (IsObject)
 				return .Err;
 
-			var self = this;
 			var type = VariantType;
-			void* dataPtr = self.DataPtr;
-			if (type.IsPointer)
-			{
-				type = type.UnderlyingType;
-				var boxedType = type.BoxedType;
-				if (boxedType == null)
-					return .Err;
-				dataPtr = (void*)mData;
-			}
-
 			var boxedType = type.BoxedType;
 			if (boxedType == null)
 				return .Err;
 
+			var self = this;
 			var object = Try!(boxedType.CreateObject());
-			Internal.MemCpy((uint8*)Internal.UnsafeCastToPtr(object) + boxedType.[Friend]mMemberDataOffset, dataPtr, type.Size);
+			Internal.MemCpy((uint8*)Internal.UnsafeCastToPtr(object) + boxedType.[Friend]mMemberDataOffset, self.DataPtr, type.Size);
 			return object;
 		}
 
