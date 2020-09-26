@@ -170,7 +170,7 @@ namespace IDE
 			if (data.Contains("ReflectAlwaysInclude"))
 				mReflectAlwaysInclude = data.GetEnum<BuildOptions.AlwaysIncludeKind>("ReflectAlwaysInclude");
 			if (data.Contains("ReflectBoxing"))
-				mReflectStaticFields = data.GetBool("ReflectBoxing");
+				mReflectBoxing = data.GetBool("ReflectBoxing");
 			if (data.Contains("ReflectStaticFields"))
 				mReflectStaticFields = data.GetBool("ReflectStaticFields");
 			if (data.Contains("ReflectNonStaticFields"))
