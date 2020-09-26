@@ -11551,7 +11551,7 @@ namespace IDE
 			{
 				if (mHotResolveTryIdx == 0)
 				{
-					OutputErrorLine("ERROR: Hot type data changes cannot be applied because of the following types");
+					OutputErrorLine("Hot type data changes cannot be applied because of the following types");
 					for (var line in hotResult.Split('\n'))
 					{
 						OutputLineSmart("   {0}", line);
