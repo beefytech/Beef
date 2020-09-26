@@ -13565,7 +13565,7 @@ BfReflectKind BfModule::GetUserReflectKind(BfTypeInstance* attrType)
 }
 
 BfReflectKind BfModule::GetReflectKind(BfReflectKind reflectKind, BfTypeInstance* typeInstance)
-{
+{	
 	auto checkTypeInstance = typeInstance;
 	while (checkTypeInstance != NULL)
 	{
@@ -13598,6 +13598,30 @@ BfReflectKind BfModule::GetReflectKind(BfReflectKind reflectKind, BfTypeInstance
 				((checkReflectKind & BfReflectKind_ApplyToInnerTypes) != 0))
 			{
 				reflectKind = (BfReflectKind)(reflectKind | checkReflectKind);
+			}
+		}
+
+		for (auto ifaceEntry : typeInstance->mInterfaces)
+		{
+			if (ifaceEntry.mInterfaceType->mCustomAttributes != NULL)
+			{
+				auto iface = ifaceEntry.mInterfaceType;
+				auto customAttr = iface->mCustomAttributes->Get(mCompiler->mReflectAttributeTypeDef);
+				if (customAttr != NULL)
+				{					
+					for (auto& prop : customAttr->mSetProperties)
+					{
+						auto propDef = prop.mPropertyRef.mTypeInstance->mTypeDef->mProperties[prop.mPropertyRef.mPropIdx];
+						if (propDef->mName == "ReflectImplementer")
+						{
+							if (prop.mParam.mValue.IsConst())
+							{
+								auto constant = iface->mConstHolder->GetConstant(prop.mParam.mValue);
+								reflectKind = (BfReflectKind)(reflectKind | (BfReflectKind)constant->mInt32);
+							}
+						}
+					}
+				}
 			}
 		}
 

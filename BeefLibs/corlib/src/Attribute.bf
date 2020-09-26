@@ -30,6 +30,9 @@ namespace System
 		Alias        = 0x100000,
 		Block        = 0x200000,
 
+		Types		 = .Struct | .Enum | .Function | .Class | .Interface,
+		ValueTypes	 = .Struct | .Enum | .Function,
+
 	    All = Assembly | Module | Class | Struct | Enum | Constructor |
 	        Method | Property | Field | StaticField | Interface | Parameter |
 	    	Delegate | Function | ReturnValue | GenericParameter | Invocation | MemberAccess |
@@ -51,7 +54,7 @@ namespace System
 		AllMembers = 0x7F,
 		All = 0xFF, // Doesn't include dynamic boxing
 
-		ApplyToInnerTypes = 0x200,
+		ApplyToInnerTypes = 0x200
 	}
 
 	public enum AttributeFlags
@@ -106,6 +109,11 @@ namespace System
 	{
 	    public this(ReflectKind reflectKind = .AllMembers)
 		{
+		}
+
+		public ReflectKind ReflectImplementer
+		{
+			set mut { }
 		}
 	}
 

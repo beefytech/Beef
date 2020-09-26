@@ -1741,8 +1741,10 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 								{
 									StringT<128> ifaceName = TypeToString(iface.mInterfaceType);
 									if (BfCheckWildcard(checkFilter, ifaceName))
+									{
 										matched = true;
-									break;
+										break;
+									}
 								}
 								checkTypeInst = checkTypeInst->mBaseType;
 							}
