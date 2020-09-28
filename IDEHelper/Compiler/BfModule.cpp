@@ -9474,14 +9474,14 @@ BfMethodInstance* BfModule::GetRawMethodByName(BfTypeInstance* typeInstance, con
 }
 
 BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* methodInstance, bool useUnspecializedType)
-{
+{	
 	if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mMethodGenericArguments.size() != 0))
 		methodInstance = methodInstance->mMethodInstanceGroup->mDefault;
 	
 	auto owner = methodInstance->mMethodInstanceGroup->mOwner;
 
 	if (!useUnspecializedType)	
-		return GetRawMethodInstanceAtIdx(owner, methodInstance->mMethodDef->mIdx);	
+		return methodInstance;	
 
 	if (!owner->IsGenericTypeInstance())
 		return methodInstance;
@@ -17320,9 +17320,9 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		methodState.mGenericTypeBindings = &methodInstance->GetMethodInfoEx()->mGenericTypeBindings;
 	}
 	else if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) || 
-		((mCurTypeInstance->IsGenericTypeInstance()) && (!isGenericVariation))))
+		((mCurTypeInstance->IsGenericTypeInstance()) && (!isGenericVariation) && (!methodInstance->mMethodDef->mIsLocalMethod))))
 	{		
-		unspecializedMethodInstance = GetUnspecializedMethodInstance(methodInstance);
+		unspecializedMethodInstance = GetUnspecializedMethodInstance(methodInstance, !methodInstance->mMethodDef->mIsLocalMethod);
 		
 		BF_ASSERT(unspecializedMethodInstance != methodInstance);
 		if (!unspecializedMethodInstance->mHasBeenProcessed)

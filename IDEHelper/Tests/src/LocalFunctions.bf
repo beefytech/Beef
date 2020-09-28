@@ -6,6 +6,25 @@ namespace Tests
 {
 	class LocalFunctions
 	{
+		class ClassA<T>
+		{
+			public int Get<T2>()
+			{
+				int LocalA()
+				{
+				   return 123;
+				}
+
+				int LocalB<T3>(T3 val) where T3 : IHashable
+				{
+					val.GetHashCode();
+					return 234;
+				}
+
+				return LocalA() + LocalB(1.2f);
+			}
+		}
+
 		[Test]
 		static void TestA()
 		{
@@ -23,6 +42,9 @@ namespace Tests
 
 			FuncA();
 			Test.Assert(a == 101);
+
+			ClassA<int> ca = scope .();
+			Test.Assert(ca.Get<int16>() == 357);
 		}
 
 		[Test]
