@@ -670,7 +670,7 @@ namespace IDE
 				Add("Breakpoint Toggle Thread", "Shift+F9");
 				Add("Build Solution", "F7");
 				Add("Cancel Build", "Ctrl+Break");
-				Add("Close Panel", "Ctrl+W");
+				Add("Close Document", "Ctrl+W");
 				Add("Compile File", "Ctrl+F7");
 				Add("Comment Selection", "Ctrl+K, Ctrl+C");
 				Add("Duplicate Line", "Ctrl+D");
@@ -889,6 +889,10 @@ namespace IDE
 
 					let entry = new Entry();
 					entry.mCommand = new String(cmdStr);
+
+					// Fix for command rename
+					if ((cmdStr == "Close Panel") && (!sd.Contains("Close Document")))
+						entry.mCommand.Set("Close Document");
 
 					let keyList = scope List<KeyState>();
 					KeyState.Parse(keyStr, keyList);

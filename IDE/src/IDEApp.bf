@@ -5065,6 +5065,11 @@ namespace IDE
 			menu.SetDisabled(GetActiveDocumentPanel() == null);
 		}
 
+		public void UpdateMenuItem_HasLastActiveDocument(IMenu menu)
+		{
+			menu.SetDisabled(GetLastActiveDocumentPanel() == null);
+		}
+
 		public void UpdateMenuItem_HasWorkspace(IMenu menu)
 		{
 			menu.SetDisabled(!gApp.mWorkspace.IsInitialized);
@@ -5377,7 +5382,8 @@ namespace IDE
 			//////////
 
             mWindowMenu = root.AddMenuItem("&Window");
-            AddMenuItem(mWindowMenu, "&Close", "Close Panel", new => UpdateMenuItem_HasActivePanel);
+            AddMenuItem(mWindowMenu, "&Close Document", "Close Document", new => UpdateMenuItem_HasLastActiveDocument);
+			AddMenuItem(mWindowMenu, "Close &Panel", "Close Panel", new => UpdateMenuItem_HasActivePanel);
 			AddMenuItem(mWindowMenu, "&Close All", "Close All Panels");
 			AddMenuItem(mWindowMenu, "Close All Except Current", "Close All Panels Except");
 			AddMenuItem(mWindowMenu, "&New View into File", "View New", new => UpdateMenuItem_HasActiveDocument);
@@ -5585,6 +5591,24 @@ namespace IDE
 		    var activePanel = GetActivePanel();
 			if ((activePanel is SourceViewPanel) || (activePanel is DisassemblyPanel))
 				return activePanel;
+		    return null;
+		}
+
+		public Widget GetLastActiveDocumentPanel()
+		{
+		    var activePanel = GetActiveDocumentPanel();
+			if (activePanel != null)
+				return activePanel;
+			if (mActiveDocumentsTabbedView != null)
+			{
+				let activeTab = mActiveDocumentsTabbedView.GetActiveTab();
+				if (activeTab != null)
+				{
+					var lastActivePanel = activeTab.mContent;
+					if ((lastActivePanel is SourceViewPanel) || (lastActivePanel is DisassemblyPanel))
+						return lastActivePanel;
+				}	
+			}
 		    return null;
 		}
         
@@ -6514,7 +6538,7 @@ namespace IDE
 
         void TryCloseCurrentDocument()
         {
-            var activeDocumentPanel = GetActiveDocumentPanel();
+            var activeDocumentPanel = GetLastActiveDocumentPanel();
             if (activeDocumentPanel != null)
             {
                 if (activeDocumentPanel is SourceViewPanel)
@@ -6524,13 +6548,28 @@ namespace IDE
                     return;
                 }
                 CloseDocument(activeDocumentPanel);
-				return;
             }
+        }
+
+		void TryCloseCurrentPanel()
+		{
+		    var activeDocumentPanel = GetActiveDocumentPanel();
+		    if (activeDocumentPanel != null)
+		    {
+		        if (activeDocumentPanel is SourceViewPanel)
+		        {
+		            var sourceViewPanel = (SourceViewPanel)activeDocumentPanel;
+		            DocumentCloseClicked(sourceViewPanel);
+		            return;
+		        }
+		        CloseDocument(activeDocumentPanel);
+				return;
+		    }
 
 			var activePanel = GetActivePanel();
 			if (activePanel != null)
 				CloseDocument(activePanel);
-        }
+		}
 
 		void TryCloseAllDocuments(bool closeCurrent)
 		{
