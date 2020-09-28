@@ -17979,6 +17979,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 	resolvedArg.mTypedValue = inValue;
 	args.push_back(resolvedArg);
 	BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
+	methodMatcher.mBfEvalExprFlags = BfEvalExprFlags_NoAutoComplete;
 	BfBaseClassWalker baseClassWalker(inValue.mType, NULL, mModule);
 
 	BfUnaryOp findOp = unaryOp;
@@ -18115,7 +18116,10 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 		result = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), operatorConstraintReturnType);
 	}
 	else
+	{
+		SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete));
 		result = CreateCall(&methodMatcher, callTarget);
+	}
 
 	if (!methodMatcher.mBestMethodDef->mIsStatic)
 	{
@@ -19382,6 +19386,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					args.push_back(leftArg);					
 				}
 				BfMethodMatcher methodMatcher(opToken, mModule, "", args, NULL);
+				methodMatcher.mBfEvalExprFlags = BfEvalExprFlags_NoAutoComplete;
 				BfBaseClassWalker baseClassWalker(leftValue.mType, rightValue.mType, mModule);
 
 				bool invertResult = false;												
@@ -19482,12 +19487,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				if (hadMatch)
 				{
 					methodMatcher.FlushAmbiguityError();
-
+					
 					auto matchedOp = ((BfOperatorDeclaration*)methodMatcher.mBestMethodDef->mMethodDeclaration)->mBinOp;
 					bool invertResult = matchedOp == oppositeBinaryOp;
 
 					auto methodDef = methodMatcher.mBestMethodDef;
 					auto autoComplete = GetAutoComplete();
+					bool wasCapturingMethodInfo = false;					
 					if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(opToken)))
 					{
 						auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDef->mMethodDeclaration);
@@ -19506,6 +19512,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					}
 					else
 					{
+						SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete));
 						mResult = CreateCall(&methodMatcher, BfTypedValue());
 					}
 					if ((mResult.mType != NULL) && (methodMatcher.mSelfType != NULL) && (mResult.mType->IsSelf()))
