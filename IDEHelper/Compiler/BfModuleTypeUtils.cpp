@@ -9303,6 +9303,9 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		}
 
 		constExprType->mType = GetPrimitiveType(result.mTypeCode);
+		BF_ASSERT(constExprType->mType != NULL);
+		if (constExprType->mType == NULL)
+			constExprType->mType = GetPrimitiveType(BfTypeCode_IntPtr);
 		constExprType->mValue = result;
 
 		resolvedEntry->mValue = constExprType;

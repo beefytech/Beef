@@ -2519,10 +2519,9 @@ BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression*
 {
 	BfConstResolver constResolver(ctx->mModule);
 	BfVariant variant = { BfTypeCode_None };	
-	constResolver.Evaluate(expr);
-	if (constResolver.mResult)	
+	auto result = constResolver.Resolve(expr);
+	if (result)
 	{
-		auto result = constResolver.mResult;
 		if (result.mKind == BfTypedValueKind_GenericConstValue)
 		{				
 			constGenericParam = result.mType;
