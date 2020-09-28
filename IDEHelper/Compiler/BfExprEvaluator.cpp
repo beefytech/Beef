@@ -2850,7 +2850,7 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 	if (caseValAddr.mType != NULL)
 		mModule->mBfIRBuilder->PopulateType(caseValAddr.mType);
 	
-	if (mModule->mCurMethodState->mDeferredLocalAssignData != NULL)
+	if ((mModule->mCurMethodState != NULL) && (mModule->mCurMethodState->mDeferredLocalAssignData != NULL))
 		mModule->mCurMethodState->mDeferredLocalAssignData->BreakExtendChain();
 
 	if (auto bindExpr = BfNodeDynCast<BfEnumCaseBindExpression>(caseExpr->mCaseExpression))
