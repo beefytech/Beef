@@ -69,7 +69,8 @@ enum BfGetMethodInstanceFlags : uint16
 	BfGetMethodInstanceFlag_ForceInline = 0x80,
 	BfGetMethodInstanceFlag_Friend = 0x100,
 	BfGetMethodInstanceFlag_DisableObjectAccessChecks = 0x200,
-	BfGetMethodInstanceFlag_NoInline = 0x400
+	BfGetMethodInstanceFlag_NoInline = 0x400,
+	BfGetMethodInstanceFlag_DepthExceeded = 0x800
 };
 
 class BfDependencyMap
@@ -109,12 +110,12 @@ public:
 
 	struct DependencyEntry
 	{
-		int mRevision;
+		int mRevision;		
 		DependencyFlags mFlags;
 
 		DependencyEntry(int revision, DependencyFlags flags)
 		{
-			mRevision = revision;
+			mRevision = revision;			
 			mFlags = flags;			
 		}
 	};
@@ -122,8 +123,14 @@ public:
 public:
 	typedef Dictionary<BfType*, DependencyEntry> TypeMap;	
 	TypeMap mTypeSet;
+	int mMinDependDepth;
 
 public:
+	BfDependencyMap()
+	{
+		mMinDependDepth = 0;
+	}
+
 	bool AddUsedBy(BfType* dependentType, DependencyFlags flags);	
 	bool IsEmpty();
 	TypeMap::iterator begin();
@@ -761,6 +768,7 @@ public:
 	BfTypeVector mMethodGenericArguments;
 	Dictionary<int64, BfType*> mGenericTypeBindings;
 	BfMethodCustomAttributes* mMethodCustomAttributes;
+	int mMinDependDepth;
 
 	BfMethodInfoEx()
 	{
@@ -768,6 +776,7 @@ public:
 		mForeignType = NULL;
 		mClosureInstanceInfo = NULL;
 		mMethodCustomAttributes = NULL;
+		mMinDependDepth = -1;
 	}
 
 	~BfMethodInfoEx();
@@ -1701,7 +1710,7 @@ public:
 	bool mValidatedGenericConstraints;
 	bool mHadValidateErrors;
 	bool mInitializedGenericParams;
-	bool mFinishedGenericParams;
+	bool mFinishedGenericParams;	
 	Array<BfProject*> mProjectsReferenced; // Generic methods that only refer to these projects don't need a specialized extension
 
 public:
@@ -2300,6 +2309,8 @@ public:
 	BfVariant mValue;
 
 public:	
+	~BfConstExprValueType();
+
 	virtual bool IsConstExprValue() override { return true; }
 	virtual BfType* GetUnderlyingType() override { return mType; }
 };
@@ -2397,7 +2408,7 @@ public:
 
 public:
 	static BfTypeDef* FindRootCommonOuterType(BfTypeDef* outerType, LookupContext* ctx, BfTypeInstance*& outCheckTypeInstance);
-	static BfVariant EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& constGenericParam);
+	static BfVariant EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& outType);
 	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* lhsTypeGenericArguments, BfTypeReference* rhs, LookupContext* ctx, int& genericParamOffset);
 	static bool GenericTypeEquals(BfTypeInstance* lhsGenericType, BfTypeVector* typeGenericArguments, BfTypeReference* rhs, BfTypeDef* rhsTypeDef, LookupContext* ctx);
 	static void HashGenericArguments(BfTypeReference* typeRef, LookupContext* ctx, int& hash);

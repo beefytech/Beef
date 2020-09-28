@@ -67,7 +67,7 @@ public:
 		int mMethodDeclarations;
 		int mTypesPopulated;
 		int mMethodsProcessed;
-		int mUnreifiedMethodsProcessed;
+		int mUnreifiedMethodsProcessed;		
 
 		int mQueuedTypesProcessed;
 		int mTypesQueued;
@@ -82,7 +82,7 @@ public:
 
 		int mReifiedModuleCount;
 		int mIRBytes;
-		int mConstBytes;
+		int mConstBytes;		
 	};
 	Stats mStats;
 
@@ -122,7 +122,7 @@ public:
 		bool mDebugAlloc;
 		bool mOmitDebugHelpers;
 
-		bool mUseDebugBackingParams;		
+		bool mUseDebugBackingParams;
 
 		bool mWriteIR;
 		bool mGenerateObj;

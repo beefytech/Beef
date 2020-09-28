@@ -423,13 +423,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 				name += "v";
 			else
 				name += "U4void";
-			return;
-		case BfTypeCode_Var:
-			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
-				name += "v";
-			else
-				name += "U3var";
-			return;
+			return;		
 		case BfTypeCode_Self:
 			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
 				name += "U8concrete";
@@ -494,6 +488,19 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			name += "f"; return;
 		case BfTypeCode_Double:
 			name += "d"; return;
+
+		case BfTypeCode_Var:
+			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
+				name += "v";
+			else
+				name += "U3var";
+			return;
+		case BfTypeCode_Let:
+			name += "U3let"; return;
+		case BfTypeCode_IntUnknown:
+			name += "U4iunk"; return;
+		case BfTypeCode_UIntUnknown:
+			name += "U4uunk"; return;
 		default: break;
 		}
 
@@ -1455,21 +1462,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			}
 			return;
 		case BfTypeCode_None:
-			name += "X"; return;
-		case BfTypeCode_Dot:
-			name += "Tdot@@"; return;
-		case BfTypeCode_Var:
-			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
-				name += "X";
-			else
-				name += "Tvar@@";
-			return;
-		case BfTypeCode_Self:
-			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
-				name += "X";
-			else
-				name += "Tself@@";
-			return;
+			name += "X"; return;		
 		case BfTypeCode_Int8:
 			name += "C"; return;
 		case BfTypeCode_UInt8:
@@ -1512,6 +1505,28 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			}
 			isLongPrim = true;
 			break;
+
+		case BfTypeCode_Dot:
+			name += "Tdot@@"; return;
+		case BfTypeCode_Var:
+			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
+				name += "X";
+			else
+				name += "Tvar@@";
+			return;
+		case BfTypeCode_Self:
+			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
+				name += "X";
+			else
+				name += "Tself@@";
+			return;
+		case BfTypeCode_Let:
+			name += "Tlet@@"; return;
+		case BfTypeCode_IntUnknown:
+			name += "Tiunk@@"; return;
+		case BfTypeCode_UIntUnknown:
+			name += "Tuunk@@"; return;
+
 		default:
 			name += "?"; return;
 		}		

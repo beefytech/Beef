@@ -74,6 +74,16 @@ bool BfDependencyMap::AddUsedBy(BfType* dependentType, BfDependencyMap::Dependen
 	DependencyEntry* dependencyEntry = NULL;
 	if (mTypeSet.TryAddRaw(dependentType, NULL, &dependencyEntry))
 	{
+		if ((flags & ~DependencyFlag_UnspecializedType) != 0)
+		{
+			if (auto dependentDepType = dependentType->ToDependedType())
+			{
+				int tryDepth = dependentDepType->mDependencyMap.mMinDependDepth + 1;
+				if (tryDepth < mMinDependDepth)
+					mMinDependDepth = tryDepth;
+			}
+		}
+		
 		dependencyEntry->mRevision = dependentType->mRevision;
 		dependencyEntry->mFlags = flags;
 		return true;
@@ -1344,7 +1354,10 @@ void BfCustomAttributes::ReportMemory(MemReporter* memReporter)
 BfModuleMethodInstance::BfModuleMethodInstance(BfMethodInstance* methodInstance)
 {
 	mMethodInstance = methodInstance;
-	mFunc = mMethodInstance->mIRFunction;	
+	if (methodInstance != NULL)
+		mFunc = mMethodInstance->mIRFunction;
+	else
+		mFunc = BfIRValue();
 // 	if (methodInstance->GetImportCallKind() == BfImportCallKind_Thunk)
 // 	{
 // 		auto declModule = methodInstance->mDeclModule;		
@@ -2515,18 +2528,19 @@ BfResolvedTypeSet::~BfResolvedTypeSet()
 #define HASH_CONSTEXPR 12
 #define HASH_GLOBAL 13
 
-BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& constGenericParam)
+BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& outType)
 {
 	BfConstResolver constResolver(ctx->mModule);
 	BfVariant variant = { BfTypeCode_None };	
+	constResolver.mAllowGenericConstValue = true;
 	auto result = constResolver.Resolve(expr);
-	if (result)
-	{
+	outType = result.mType;
+	if (result)	
+	{		
 		if (result.mKind == BfTypedValueKind_GenericConstValue)
-		{				
-			constGenericParam = result.mType;
+		{							
 			return variant;
-		}
+		}		
 		else
 		{
 			variant = ctx->mModule->TypedValueToVariant(expr, result, true);
@@ -2709,7 +2723,9 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 	else if (type->IsConstExprValue())
 	{
 		BfConstExprValueType* constExprValueType = (BfConstExprValueType*)type;
-		return ((int)constExprValueType->mValue.mTypeCode << 17) ^ (constExprValueType->mValue.mInt32 << 3) ^ HASH_CONSTTYPE;
+		int hashVal = ((int)constExprValueType->mValue.mTypeCode << 17) ^ (constExprValueType->mValue.mInt32 << 3) ^ HASH_CONSTTYPE;
+		hashVal = ((hashVal ^ (Hash(constExprValueType->mType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
+		return hashVal;
 	}
 	else
 	{
@@ -3216,21 +3232,23 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 	else if (auto constExprTypeRef = BfNodeDynCastExact<BfConstExprTypeRef>(typeRef))
 	{
 		BfVariant result;					
+		BfType* resultType = NULL;
 		if (constExprTypeRef->mConstExpr != NULL)
 		{
-			BfType* constGenericParam = NULL;
-			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, constGenericParam);
-			if (constGenericParam != NULL)
-				return Hash(constGenericParam, ctx);
+			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);			
+			if ((resultType != NULL) && (resultType->IsGenericParam()))
+				return Hash(resultType, ctx);
 		}
 
-		if (result.mTypeCode == BfTypeCode_None)
+		if (resultType == NULL)
 		{
 			ctx->mFailed = true;
 			return 0;
 		}
 
-		return ((int)result.mTypeCode << 17) ^ (result.mInt32 << 3) ^ HASH_CONSTTYPE;
+		auto hashVal = ((int)result.mTypeCode << 17) ^ (result.mInt32 << 3) ^ HASH_CONSTTYPE;		
+		hashVal = ((hashVal ^ (Hash(resultType, ctx, BfHashFlag_AllowRef))) << 5) - hashVal;
+		return hashVal;
 	}
 	else if (auto dotTypeRef = BfNodeDynCastExact<BfDotTypeReference>(typeRef))
 	{
@@ -3884,9 +3902,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				if (constExprTypeRef->mConstExpr == NULL)
 					return false;
 
-				BfType* constGenericParam = NULL;
-				result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, constGenericParam);
-				return constGenericParam == lhs;
+				BfType* resultType = NULL;
+				result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);				
+				return resultType == lhs;
 			}
 
 			return false;
@@ -3999,9 +4017,9 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		BfVariant result;
 		if (constExprTypeRef->mConstExpr != NULL)
 		{
-			BfType* constGenericParam = NULL;
-			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, constGenericParam);
-			if (constGenericParam != NULL)
+			BfType* resultType = NULL;
+			result = EvaluateToVariant(ctx, constExprTypeRef->mConstExpr, resultType);			
+			if (resultType != lhsConstExprType->mType)
 				return false;
 		}
 
@@ -4455,4 +4473,8 @@ int BfTypeUtils::GetSplatCount(BfType* type)
 	return splatCount;
 }
 
-
+BfConstExprValueType::~BfConstExprValueType()
+{
+// 	mContext->mTypeConstExprCount--;
+// 	BF_ASSERT(mContext->mTypeConstExprCount == 0);
+}

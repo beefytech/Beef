@@ -4766,7 +4766,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		return *irValuePtr;
 	}
 	
-	BfTypeInstance* typeInstance = type->ToTypeInstance();		
+	BfTypeInstance* typeInstance = type->ToTypeInstance();
 
 	BfType* typeInstanceType = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef);
 	mBfIRBuilder->PopulateType(typeInstanceType, BfIRPopulateType_Full_ForceDefinition);
@@ -4853,6 +4853,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	{
 		typeDataName += "sBfTypeData.";
 		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, mContext->mScratchModule);
+	}
+
+	if (typeDataName == "sBfTypeData.?")
+	{
+		NOP;
 	}
 
 	int typeCode = BfTypeCode_None;		
@@ -12042,13 +12047,20 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		BF_ASSERT(instModule == mParentModule);
 	}
 	else if (instModule != this)
-	{		
+	{	
+		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodInfoEx != NULL) && (mCurMethodInstance->mMethodInfoEx->mMinDependDepth >= 32))
+			flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_DepthExceeded);
+
 		if ((!mIsReified) && (instModule->mIsReified))
 		{
 			BF_ASSERT(!mCompiler->mIsResolveOnly);
 			// A resolve-only module is specializing a method from a type in a reified module, 
 			//  we need to take care that this doesn't cause anything new to become reified
-			return mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodDef, methodGenericArguments, (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass), foreignType);			
+			BfModuleMethodInstance moduleMethodInstance = mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodDef, methodGenericArguments, (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass), foreignType);
+			if (!moduleMethodInstance)
+				return moduleMethodInstance;
+			SetMethodDependency(moduleMethodInstance.mMethodInstance);
+			return moduleMethodInstance;
 		}
 		else
 		{
@@ -12081,6 +12093,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			// Not extern
 			// Create the instance in the proper module and then create a reference in this one
 			moduleMethodInst = instModule->GetMethodInstance(typeInst, methodDef, methodGenericArguments, defFlags, foreignType);
+			if (!moduleMethodInst)
+				return moduleMethodInst;
 			tryModuleMethodLookup = true;
 
 			if ((mIsReified) && (!moduleMethodInst.mMethodInstance->mIsReified))
@@ -12091,7 +12105,10 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}		
 
 	if (tryModuleMethodLookup)
+	{
+		SetMethodDependency(moduleMethodInst.mMethodInstance);
 		return ReferenceExternalMethodInstance(moduleMethodInst.mMethodInstance, flags);
+	}
 
 	if (((flags & BfGetMethodInstanceFlag_ForceInline) != 0) && (!methodDef->mAlwaysInline))
 	{
@@ -12422,6 +12439,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	
 	if ((methodInstance != NULL) && (!doingRedeclare))
 	{					
+		SetMethodDependency(methodInstance);
+
 		if (methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference)
 		{
 			/*if ((!mCompiler->mIsResolveOnly) && (!isReified))
@@ -12535,7 +12554,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			GetMethodInstance(typeInst, methodDef, BfTypeVector(), BfGetMethodInstanceFlag_UnspecializedPass);
 		}
 	}
-	
+		
 	if (methodInstance == NULL)
 	{
 		if (lookupMethodGenericArguments.size() == 0)
@@ -12547,7 +12566,18 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			BfLogSysM("Created Default MethodInst: %p TypeInst: %p Group: %p\n", methodInstance, typeInst, methodInstGroup);
 		}
 		else
-		{			
+		{	
+			bool depthExceeded = ((flags & BfGetMethodInstanceFlag_DepthExceeded) != 0);
+
+			if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodInfoEx != NULL) && (mCurMethodInstance->mMethodInfoEx->mMinDependDepth >= 32))
+				depthExceeded = true;
+
+			if (depthExceeded)
+			{
+				Fail("Generic method dependency depth exceeded", methodDef->GetRefNode());
+				return BfModuleMethodInstance();
+			}
+
 			BfMethodInstance** methodInstancePtr = NULL;
 			bool added = methodInstGroup->mMethodSpecializationMap->TryAdd(lookupMethodGenericArguments, NULL, &methodInstancePtr);
 			BF_ASSERT(added);
@@ -12561,7 +12591,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		}
 
 		if ((prevIRFunc) && (!prevIRFunc.IsFake()))
-			methodInstance->mIRFunction = prevIRFunc; // Take it over
+			methodInstance->mIRFunction = prevIRFunc; // Take it over		
 	}
 		
 	/*// 24 bits for typeid, 20 for method id, 20 for specialization index
@@ -12679,7 +12709,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	{
 		BF_ASSERT(!methodInstance->mIsReified);
 		declareModule = mContext->mUnreifiedModule;
-	}
+	}	
+
+	SetMethodDependency(methodInstance);
 
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(declareModule->mCurMethodInstance, methodInstance);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(declareModule->mCurTypeInstance, typeInst);
@@ -20214,9 +20246,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 {
 	BP_ZONE("BfModule::BfMethodDeclaration");	
 
-	// If we are doing this then we may end up creating methods when var types are unknown still, failing on splat/zero-sized info
-	BF_ASSERT((!mContext->mResolvingVarField) || (mBfIRBuilder->mIgnoreWrites));
-
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized);
@@ -20227,6 +20256,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	
 	if (mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
 		mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingReference;
+
+
+	// If we are doing this then we may end up creating methods when var types are unknown still, failing on splat/zero-sized info
+	BF_ASSERT((!mCurTypeInstance->mResolvingVarField) || (mBfIRBuilder->mIgnoreWrites));
 
 	bool ignoreWrites = mBfIRBuilder->mIgnoreWrites;
 	
@@ -22254,6 +22287,27 @@ bool BfModule::SlotInterfaceMethod(BfMethodInstance* methodInstance)
 	UniqueSlotVirtualMethod(methodInstance);
 
 	return true;
+}
+
+void BfModule::SetMethodDependency(BfMethodInstance* methodInstance)
+{
+	if (methodInstance->mMethodInfoEx == NULL)
+		return;
+
+	int wantMinDepth = -1;
+
+	if (mCurTypeInstance != NULL)
+		wantMinDepth = mCurTypeInstance->mDependencyMap.mMinDependDepth + 1;
+
+	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodInfoEx != NULL) && (mCurMethodInstance->mMethodInfoEx->mMinDependDepth != -1))
+	{		
+		int wantTypeMinDepth = mCurMethodInstance->mMethodInfoEx->mMinDependDepth + 1;
+		if ((wantMinDepth == -1) || (wantTypeMinDepth < wantMinDepth))
+			wantMinDepth = wantTypeMinDepth;
+	}	
+
+	if ((methodInstance->mMethodInfoEx->mMinDependDepth == -1) || (wantMinDepth < methodInstance->mMethodInfoEx->mMinDependDepth))
+		methodInstance->mMethodInfoEx->mMinDependDepth = wantMinDepth;
 }
 
 void BfModule::DbgFinish()

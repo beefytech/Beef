@@ -1844,6 +1844,7 @@ public:
 	void CompareDeclTypes(BfTypeDef* newDeclType, BfTypeDef* prevDeclType, bool& isBetter, bool& isWorse);
 	bool SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityContext* ambiguityContext = NULL);	
 	bool SlotInterfaceMethod(BfMethodInstance* methodInstance);	
+	void SetMethodDependency(BfMethodInstance* methodInstance);
 	BfModuleMethodInstance ReferenceExternalMethodInstance(BfMethodInstance* methodInstance, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
 	BfModule* GetOrCreateMethodModule(BfMethodInstance* methodInstance);
 	BfModuleMethodInstance GetMethodInstance(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None, BfTypeInstance* foreignType = NULL);	
