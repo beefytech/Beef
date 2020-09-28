@@ -263,14 +263,6 @@ namespace IDE
 #endif
 				}
 			}
-
-			public bool IsTestProject(Project project)
-			{
-				return ((mBuildKind == .Test) &&
-					((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
-					 (project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
-					 (project.mGeneralOptions.mTargetType == .BeefConsoleApplication)));
-			}
 			
 			public void CopyFrom(Workspace.Options prev)
 			{
@@ -686,16 +678,33 @@ namespace IDE
                                     for (var configPair in options.mConfigSelections)
                                     {
 										let projectName = configPair.key.mProjectName;
-                                        using (data.CreateObject(projectName))
-                                        {
-											String expectConfig = configName;
-											if (isTest)
-											{
-												if (projectName != mProjects[0].mProjectName)
-													expectConfig = "Debug";
-											}
+                                        
+										var configSelection = configPair.value;
+										bool wantEntry = configSelection.mEnabled != true;
+										wantEntry |= configSelection.mPlatform != platformName;
 
-                                            var configSelection = configPair.value;
+										String expectConfig = configName;
+										if (isTest)
+										{
+											if (projectName != mProjects[0].mProjectName)
+												expectConfig = "Debug";
+
+											if (!wantEntry)
+											{
+												// If we are leaving this entry blank and we have the 'Test' type set for an explicitly-test project
+												// then just skip the whole entry
+												var project = FindProject(projectName);
+												if ((project != null) && (project.mGeneralOptions.mTargetType == .BeefTest) && (configName == "Test"))
+													continue;
+											}
+										}
+										wantEntry |= configSelection.mConfig != expectConfig;
+
+										if (!wantEntry)
+											continue;
+
+										using (data.CreateObject(projectName))
+										{
                                             data.ConditionalAdd("Enabled", configSelection.mEnabled, true);
                                             data.ConditionalAdd("Config", configSelection.mConfig, expectConfig);
                                             data.ConditionalAdd("Platform", configSelection.mPlatform, platformName);
@@ -1110,7 +1119,8 @@ namespace IDE
 
 				if (isTest)
 				{
-					if (project != mProjects[0])
+					if ((project != mProjects[0]) &&
+						(project.mGeneralOptions.mTargetType != .BeefTest))
 					{
 						findConfig = "Debug";
 					}

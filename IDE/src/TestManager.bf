@@ -362,7 +362,11 @@ namespace IDE
 			}
 			else if (testInstance.mTestEntries.IsEmpty)
 			{
-				QueueOutputLine("WARNING: No test methods defined. Consider adding a [Test] attribute to a static method in a project whose build type is set to 'Test'.");
+				QueueOutputLine(
+					"""
+					WARNING: No test methods defined. Consider adding a [Test] attribute to a static method in a project whose build type is set to 'Test'.
+					If you do have test methods defined, make sure the Workspace properties has that project's 'Test' configuration selected.
+					""");
 			}
 		}
 

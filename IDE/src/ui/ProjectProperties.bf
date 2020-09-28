@@ -623,7 +623,8 @@ namespace IDE.ui
 					"GUI Application",
 					"Library",
 					"Dynamic Library",
-					"Custom Build"
+					"Custom Build",
+					"Test"
 				));
 			AddPropertiesItem(root, "Project Name Aliases", "mAliases");
         }

@@ -1028,9 +1028,9 @@ enum BfTargetType
 	BfTargetType_BeefLib,
 	BfTargetType_BeefDynLib,
 	BfTargetType_CustomBuild,
-	BfTargetType_C_ConsoleApplication,
-	BfTargetType_C_WindowsApplication,
 	BfTargetType_BeefTest,
+	BfTargetType_C_ConsoleApplication,
+	BfTargetType_C_WindowsApplication,	
 	BfTargetType_BeefApplication_StaticLib,
 	BfTargetType_BeefApplication_DynamicLib
 };

@@ -191,11 +191,8 @@ namespace IDE
 
 		    //String error = scope String();
 
-		    TestManager.ProjectInfo testProjectInfo = null;
-			if (gApp.mTestManager != null)
-				testProjectInfo = gApp.mTestManager.GetProjectInfo(project);
-
-			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
+		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
+			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			if (!isExe)
 				return true;
 			
@@ -308,11 +305,8 @@ namespace IDE
 
 		    //String error = scope String();
 
-		    TestManager.ProjectInfo testProjectInfo = null;
-			if (gApp.mTestManager != null)
-				testProjectInfo = gApp.mTestManager.GetProjectInfo(project);
-
-			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
+		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
+			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
 
 			if (isExe || isDynLib)
@@ -535,11 +529,8 @@ namespace IDE
 
 		    //String error = scope String();
 
-		    TestManager.ProjectInfo testProjectInfo = null;
-			if (gApp.mTestManager != null)
-				testProjectInfo = gApp.mTestManager.GetProjectInfo(project);
-
-			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
+		    bool isTest = options.mBuildOptions.mBuildKind == .Test;
+			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			bool isDynLib = project.mGeneralOptions.mTargetType == Project.TargetType.BeefDynLib;
 
 			if (isExe || isDynLib)
@@ -811,11 +802,8 @@ namespace IDE
 			IDEUtils.FixFilePath(llvmDir);
 			llvmDir.Append("llvm/");
 
-			TestManager.ProjectInfo testProjectInfo = null;
-			if (gApp.mTestManager != null)
-				testProjectInfo = gApp.mTestManager.GetProjectInfo(project);
-
-			bool isExe = (project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) || (testProjectInfo != null);
+			bool isTest = options.mBuildOptions.mBuildKind == .Test;
+			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			if (isExe)
 			{
 				String linkLine = scope String();
@@ -824,7 +812,7 @@ namespace IDE
 			    IDEUtils.AppendWithOptionalQuotes(linkLine, targetPath);
 			    linkLine.Append(" ");
 
-				if (testProjectInfo != null)
+				if (isTest)
 					linkLine.Append("-subsystem:console ");
 			    else if (project.mGeneralOptions.mTargetType == .BeefGUIApplication)
 					linkLine.Append("-subsystem:windows ");

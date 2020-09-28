@@ -10249,6 +10249,12 @@ namespace IDE
 				}
 			}
 
+			if ((mWorkspace.mStartupProject != null) && (mWorkspace.mStartupProject.mGeneralOptions.mTargetType == .BeefTest))
+			{
+				OutputErrorLine("Test project '{}' has been selected as the Startup Project. Use the 'Test' menu to run or debug tests.", mWorkspace.mStartupProject.mProjectName);
+				return false;
+			}
+
 			let platform = Workspace.PlatformType.GetFromName(mPlatformName);
 			let hostPlatform = Workspace.PlatformType.GetHostPlatform();
 			if (platform == .Unknown)
@@ -10382,7 +10388,7 @@ namespace IDE
 			{
 				if (workspaceOptions.mBuildKind == .Test)
 				{
-					OutputErrorLine("Cannot directly run Test workspace configurations.  Use the 'Test' menu to run or debug tests.");
+					OutputErrorLine("Cannot directly run Test workspace configurations. Use the 'Test' menu to run or debug tests.");
 					return false;
 				}
 			}

@@ -892,9 +892,9 @@ namespace IDE
 				 BeefLib,
 				 BeefDynLib,
 				 CustomBuild,
+				 BeefTest,
 				 C_ConsoleApplication,
 				 C_GUIApplication,
-				 BeefTest,
 				 BeefApplication_StaticLib,
 				 BeefApplication_DynamicLib;
 
