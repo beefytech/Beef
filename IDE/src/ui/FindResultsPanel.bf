@@ -399,12 +399,17 @@ namespace IDE.ui
             Clear();
             QueueLine("Searching...");
 
+			bool isReplace = searchOptions.mReplaceString != null;
+
 			mSearchPaths = new List<String>();
 			mFoundPathSet = new HashSet<String>();
 			if (searchOptions.mSearchLocation == sEntireSolution)
 			{
 				for (var project in IDEApp.sApp.mWorkspace.mProjects)
 				{
+					if ((isReplace) && (project.mLocked))
+						continue;
+
 				    AddFromFilesFolder(project.mRootFolder, searchOptions);
 				}
 			}
@@ -413,7 +418,8 @@ namespace IDE.ui
 				var sourceViewPanel = gApp.GetActiveSourceViewPanel(true);
 				if (sourceViewPanel != null)
 				{
-					mSearchPaths.Add(new String(sourceViewPanel.mFilePath));
+					if (!sourceViewPanel.mEditWidget.mEditWidgetContent.CheckReadOnly())
+						mSearchPaths.Add(new String(sourceViewPanel.mFilePath));
 				}
 			}
 			else if (searchOptions.mSearchLocation == sCurrentProject)
@@ -422,7 +428,15 @@ namespace IDE.ui
 				if (sourceViewPanel != null)
 				{
 					if (sourceViewPanel.mProjectSource != null)
-						AddFromFilesFolder(sourceViewPanel.mProjectSource.mProject.mRootFolder, searchOptions);
+					{
+						var project = sourceViewPanel.mProjectSource.mProject;
+						if ((isReplace) && (project.mLocked))
+						{
+							QueueLine(scope String()..AppendF("ERROR: Project '{}' not processed for Find and Replace because it's locked", project.mProjectName));
+						}
+						else
+							AddFromFilesFolder(project.mRootFolder, searchOptions);
+					}
 				}
 			}
 			else
@@ -606,7 +620,7 @@ namespace IDE.ui
                         delete pendingLine;
                     }
 
-                    Write(sb);
+                    WriteSmart(sb);
                 }
             }
 
