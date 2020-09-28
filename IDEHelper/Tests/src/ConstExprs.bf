@@ -21,8 +21,8 @@ namespace Tests
 
 		class ClassB<T, TSize> where TSize : const int
 		{
-			ClassA<T, TSize> mVal = new ClassA<T, const TSize>();
-			var mVal2 = new ClassA<T, const TSize + 100>();
+			ClassA<T, TSize> mVal = new ClassA<T, const TSize>() ~ delete _;
+			var mVal2 = new ClassA<T, const TSize + 100>() ~ delete _;
 
 			public int GetVal()
 			{
