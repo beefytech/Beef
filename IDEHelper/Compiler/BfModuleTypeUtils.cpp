@@ -3615,10 +3615,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
-	///
+	// Check enum cases for duplicates
+	if (mCurTypeInstance->IsEnum())
 	{
 		Dictionary<int64, BfFieldDef*> valueMap;
-
 		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 		{
 			auto fieldInstance = &fieldInstanceRef;
