@@ -5337,8 +5337,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					BfMethodInstance* declaringMethodInstance = (BfMethodInstance*)entry.mDeclaringMethod;
 					if ((declaringMethodInstance != NULL) && (declaringMethodInstance->mMethodInstanceGroup->IsImplemented()) && (declaringMethodInstance->mIsReified))						
 					{
-						BF_ASSERT(entry.mImplementingMethod.mTypeInstance->mMethodInstanceGroups[entry.mImplementingMethod.mMethodNum].IsImplemented());
-						BF_ASSERT(entry.mImplementingMethod.mTypeInstance->mMethodInstanceGroups[entry.mImplementingMethod.mMethodNum].mDefault->mIsReified);
+ 						BF_ASSERT(entry.mImplementingMethod.mTypeInstance->mMethodInstanceGroups[entry.mImplementingMethod.mMethodNum].IsImplemented());
+ 						BF_ASSERT(entry.mImplementingMethod.mTypeInstance->mMethodInstanceGroups[entry.mImplementingMethod.mMethodNum].mDefault->mIsReified);
 						BfMethodInstance* methodInstance = (BfMethodInstance*)entry.mImplementingMethod;
 						if ((methodInstance != NULL) && (!methodInstance->mMethodDef->mIsAbstract))
 						{
@@ -21974,7 +21974,10 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 			bool storeIFaceMethod = false;
 						
 			if ((mCompiler->mPassInstance->HasFailed()) && (iMethodIdx >= (int)ifaceInst->mMethodInstanceGroups.size()))
+			{
+				checkMethodDef = checkMethodDef->mNextWithSameName;
 				continue;
+			}
 
 			auto& iMethodGroup = ifaceInst->mMethodInstanceGroups[iMethodIdx];
 			auto iMethodInst = iMethodGroup.mDefault;
@@ -21982,6 +21985,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 			{
 				if ((!ifaceInst->IsGenericTypeInstance()) || (!ifaceInst->mTypeDef->mIsCombinedPartial))
 					AssertErrorState();
+				checkMethodDef = checkMethodDef->mNextWithSameName;
 				continue;
 			}
 			if (iMethodInst->mMethodDef->mName == methodInstance->mMethodDef->mName)
