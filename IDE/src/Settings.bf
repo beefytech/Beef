@@ -760,6 +760,8 @@ namespace IDE
 #endif
 
 #unwarn
+				for (var cmd in gApp.mCommands.mCommandMap.Values)
+					cmd.mNext = null;
 				gApp.mCommands.mKeyMap.Clear();
 
 				for (let entry in mEntries)
