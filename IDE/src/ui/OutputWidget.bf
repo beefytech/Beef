@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Beefy.widgets;
 using Beefy.theme.dark;
 using Beefy.gfx;
+using System.IO;
 
 namespace IDE.ui
 {
@@ -168,6 +169,19 @@ namespace IDE.ui
 							{
 								filePath = scope:: String(selectionText, nameStartPos);
 							}
+						}
+					}
+				}
+
+				if (selectionText.StartsWith(" "))
+				{
+					int colonPos = selectionText.IndexOf(": ");
+					if (colonPos > 0)
+					{
+						String testPath = scope String(selectionText, 1, colonPos - 1);
+						if (File.Exists(testPath))
+						{
+							filePath = scope:: String(testPath);
 						}
 					}
 				}
