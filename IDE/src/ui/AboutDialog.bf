@@ -1,6 +1,8 @@
 using Beefy.theme.dark;
 using Beefy.gfx;
 using System;
+using Beefy.events;
+using Beefy.widgets;
 
 namespace IDE.ui
 {
@@ -173,6 +175,19 @@ namespace IDE.ui
 				mRandIdx = 0;
 
 			DoFire();
+		}
+
+		public override void KeyDown(KeyCode keyCode, bool isRepeat)
+		{
+			base.KeyDown(keyCode, isRepeat);
+
+			if ((keyCode == (.)'C') && (mWidgetWindow.GetKeyFlags() == .Ctrl))
+			{
+				String versionInfo = scope String();
+				versionInfo.AppendF("Beef IDE Version {}", gApp.mVersionInfo.FileVersion);
+				versionInfo.AppendF(" Build {}", gApp.mVersionInfo.ProductVersion);
+				gApp.SetClipboardText(versionInfo);
+			}
 		}
 	}
 }
