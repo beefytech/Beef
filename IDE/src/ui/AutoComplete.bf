@@ -2315,7 +2315,8 @@ namespace IDE.ui
 
 			if (!focusChange)
 			{
-				sourceEditWidgetContent.CheckRecordScrollTop(true);
+				if (prevScrollPos != 0)
+					sourceEditWidgetContent.CheckRecordScrollTop(true);
 			}
 
 			int32 fixitIdx = 0;
