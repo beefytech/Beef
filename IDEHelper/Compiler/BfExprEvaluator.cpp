@@ -2742,7 +2742,7 @@ bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requir
 			}
 			else if ((binOpExpr->mOp == BfBinaryOp_ConditionalOr) && (!exprMustBeTrue))
 			{
-				if ((binOpExpr->mRight != NULL) & (binOpExpr->mRight->Contains(checkChild)))				
+				if ((binOpExpr->mRight != NULL) && (binOpExpr->mRight->Contains(checkChild)))				
 				{
 					return _Fail("Conditional short-circuiting may skip variable initialization", binOpExpr->mOpToken);					
 				}
