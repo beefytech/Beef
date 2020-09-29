@@ -20247,7 +20247,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped
-	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized);
+	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized || mCurTypeInstance->mResolvingVarField);
 	SetAndRestoreValue<bool> prevIsCapturingMethodMatchInfo;
 	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
 	if (mCompiler->IsAutocomplete())	
