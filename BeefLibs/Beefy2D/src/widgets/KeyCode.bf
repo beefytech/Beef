@@ -119,6 +119,12 @@ namespace Beefy.widgets
 					return (KeyCode)(c.ToUpper);
 			}
 
+			if (str.StartsWith("0x"))
+			{
+				if (int code = int.Parse(str))
+					return .Ok((.)code);
+			}
+
 			return Enum.Parse<KeyCode>(str, true);
 		}
 
@@ -131,7 +137,13 @@ namespace Beefy.widgets
 				return;
 			}
 
+			int buffStart = strBuffer.Length;
 			base.ToString(strBuffer);
+			if ((strBuffer.Length > buffStart) && (strBuffer[buffStart].IsDigit))
+			{
+				strBuffer.RemoveToEnd(buffStart);
+				strBuffer.AppendF("0x{:X}", (int32)this);
+			}
 		}
 	}
 }
