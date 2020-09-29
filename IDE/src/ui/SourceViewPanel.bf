@@ -6159,7 +6159,7 @@ namespace IDE.ui
             }
 			else
 			{
-				// If we do a non-autocomple change that modifies a type signature, that will generate a Classify which detects
+				// If we do a non-autocomplete change that modifies a type signature, that will generate a Classify which detects
 				//  the signature change afterward, and then we need to do a full classify after that
 				if (mWantsFullRefresh)
 					mWantsFullClassify = true;

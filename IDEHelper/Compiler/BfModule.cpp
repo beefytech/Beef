@@ -10954,6 +10954,7 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 		{
 			if ((allowUndef) && (constant->mConstType == BfConstType_Undef))
 			{
+				variant.mUInt64 = 0;
 				variant.mTypeCode = BfTypeCode_Let;
 				return variant;
 			}

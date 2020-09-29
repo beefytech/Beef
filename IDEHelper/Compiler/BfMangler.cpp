@@ -639,7 +639,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		}
 		if ((val >= 1) && (val < 10))
 		{
-			val += (char)('0' + val - 1);
+			name += (char)('0' + val - 1);
 		}
 		else
 		{
@@ -649,7 +649,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 
 			while (val > 0)
 			{
-				*(strP--) = (char)((val % 0x10) + 'A');
+				*(--strP) = (char)((val % 0x10) + 'A');
 				val /= 0x10;				
 			}
 

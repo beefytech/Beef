@@ -3332,6 +3332,9 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 				{
 				case BfParamKind_Params:
 					methodStr += "params ";
+					break;
+				default: 
+					break;
 				}
 				methodStr += mModule->TypeToString(methodInstance->GetParamType(paramIdx), BfTypeNameFlag_ReduceName);
 				methodStr += " ";
@@ -3352,6 +3355,9 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 				{
 				case BfParamKind_Params:
 					methodStr += "params ";
+					break;
+				default:
+					break;
 				}
 
 				auto paramType = methodInstance->GetParamType(paramIdx);

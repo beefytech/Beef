@@ -968,34 +968,6 @@ public:
 	}
 };
 
-template <typename T>
-class BfDeferredAstNodeSizedArray : public SizedArray<T, 8>
-{
-public:
-	BfAstNode* mParentNode;
-	BfSizedArray<ASTREF(T)>* mSizedArray;
-	BfAstAllocator* mAlloc;
-
-public:
-	BfDeferredAstNodeSizedArray(BfAstNode* parentNode, BfSizedArray<ASTREF(T)>& arr, BfAstAllocator* alloc)
-	{
-		mParentNode = parentNode;
-		mSizedArray = &arr;
-		mAlloc = alloc;
-	}
-
-	~BfDeferredAstNodeSizedArray()
-	{
-		BfSizedArrayInitIndirect(*mSizedArray, *this, mAlloc);
-		if (!this->mSizedArray->IsEmpty())
-		{
-			int endPos = this->mSizedArray->back()->mSrcEnd;
-			if (endPos > this->mParentNode->mSrcEnd)
-				this->mParentNode->mSrcEnd = endPos;
-		}
-	}
-};
-
 typedef void(*BfAstAcceptFunc)(BfAstNode* node, BfStructuralVisitor* visitor);
 
 class BfAstTypeInfo
@@ -1514,6 +1486,34 @@ T* BfNodeDynCastExact(BfAstNode* node)
 
 BfIdentifierNode* BfIdentifierCast(BfAstNode* node);
 BfAstNode* BfNodeToNonTemporary(BfAstNode* node);
+
+template <typename T>
+class BfDeferredAstNodeSizedArray : public SizedArray<T, 8>
+{
+public:
+	BfAstNode* mParentNode;
+	BfSizedArray<ASTREF(T)>* mSizedArray;
+	BfAstAllocator* mAlloc;
+
+public:
+	BfDeferredAstNodeSizedArray(BfAstNode* parentNode, BfSizedArray<ASTREF(T)>& arr, BfAstAllocator* alloc)
+	{
+		mParentNode = parentNode;
+		mSizedArray = &arr;
+		mAlloc = alloc;
+	}
+
+	~BfDeferredAstNodeSizedArray()
+	{
+		BfSizedArrayInitIndirect(*mSizedArray, *this, mAlloc);
+		if (!this->mSizedArray->IsEmpty())
+		{
+			int endPos = this->mSizedArray->back()->mSrcEnd;
+			if (endPos > this->mParentNode->mSrcEnd)
+				this->mParentNode->mSrcEnd = endPos;
+		}
+	}
+};
 
 class BfStatement : public BfAstNode
 {

@@ -1436,7 +1436,7 @@ const char* Beefy::BfTokenToString(BfToken token)
 	case BfToken_XorEquals:
 		return "^=";
 	case BfToken_NullCoalsceEquals:
-		return "??=";
+		return "\?\?=";
 	case BfToken_LBrace:
 		return "{";
 	case BfToken_RBrace:
