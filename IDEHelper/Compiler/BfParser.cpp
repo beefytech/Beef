@@ -2399,6 +2399,8 @@ void BfParser::NextToken(int endIdx)
 						}
 					}
 
+					bool endNumber = false;
+
 					// The 'prevIsDot' helps tuple lookups like "tuple.0.0", interpreting those as two integers rather than a float
 					if (((c == '.') && (!prevIsDot)) || (hasExp))
 					{
@@ -2510,8 +2512,13 @@ void BfParser::NextToken(int endIdx)
 						}
 						return;
 					}
+					else if (c == '.')
+						endNumber = true;
 
 					if (IsWhitespaceOrPunctuation(c))
+						endNumber = true;
+
+					if (endNumber)
 					{
 						mTokenEnd = mSrcIdx - 1;
 						mSrcIdx--;
