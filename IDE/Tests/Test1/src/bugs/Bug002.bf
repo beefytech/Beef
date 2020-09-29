@@ -16,7 +16,7 @@ class Bug002
 
 	public static void Test()
 	{
-		var strs = scope String[] {"aaa", "bbb", "ccc"};
+		var strs = scope String[] ("aaa", "bbb", "ccc");
 		//Bug002_DoTest
 		Parse(strs);
 	};

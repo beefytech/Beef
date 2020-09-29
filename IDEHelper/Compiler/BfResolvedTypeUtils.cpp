@@ -690,10 +690,10 @@ int BfMethodInstance::GetStructRetIdx(bool forceStatic)
 			return 0;
 
 		if ((!HasThis()) || (forceStatic))
-			return 0;		
+			return 0;
 		if (!owner->IsValueType())
-			return 1;		
-		if ((mMethodDef->mIsMutating) || ((!AllowsSplatting()) && (!owner->GetLoweredType(BfTypeUsage_Parameter))))
+			return 1;
+		if ((mMethodDef->mIsMutating) || (!owner->IsSplattable()) || ((!AllowsThisSplatting()) && (!owner->GetLoweredType(BfTypeUsage_Parameter))))
 			return 1;
 		return 0;		
 	}

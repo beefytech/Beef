@@ -26,6 +26,7 @@ namespace IDETest
 			Multithread.Test();
 			Multithread02.Test();
 			MemoryBreakpointTester.Test();
+			Properties.Test();
 			SplatTester.Test();
 			Stepping_Scope.Test();
 			TypedPrimitives.Test();

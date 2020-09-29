@@ -16291,6 +16291,9 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 				auto diType = mBfIRBuilder->DbgGetType(thisPtrType);
 				if (!thisType->IsValueType())
 					diType = mBfIRBuilder->DbgCreateArtificialType(diType);
+				else if (!paramVar->mIsSplat)
+					diType = mBfIRBuilder->DbgCreatePointerType(diType);
+					
 				diParams->push_back(diType);
 			}
 

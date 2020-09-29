@@ -2766,7 +2766,7 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 	for (int pass = 0; pass < 2; pass++)
 	{		
 		for (auto method : curCheckType->mMethodList)
-		{			
+		{
 			if (method->mName != NULL)
 			{
 				if (((method->mName[0] == 'g') || (method->mName[0] == 's')) &&
@@ -2788,15 +2788,17 @@ DbgTypedValue DbgExprEvaluator::DoLookupField(BfAstNode* targetSrc, DbgTypedValu
 								continue;
 						}
 
-						if (((!method->mHasThis) && (wantsStatic)) ||
+						DbgSubprogram*& subprogramRef = isGetter ? mPropGet : mPropSet;						
+
+						if ((subprogramRef == NULL) ||
+							((!method->mHasThis) && (wantsStatic)) ||
 							((method->mHasThis) && (!wantsStatic || allowImplicitThis)))
 						{
 							if ((method->mHasThis) && (allowImplicitThis) && (!target))
 							{
 								target = GetThis();
 							}
-
-							DbgSubprogram*& subprogramRef = isGetter ? mPropGet : mPropSet;
+							
 							if (subprogramRef == NULL)
 								subprogramRef = method;
 							else if ((method->mVTableLoc != -1) || (subprogramRef->mVTableLoc == -1))
@@ -6918,19 +6920,27 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 		argPushQueue.push_back(methodArg);
 	};
 
+	bool thisByValue = false;
 	int methodParamCount = method->mParams.Size();
+	if (methodParamCount > 0)
+	{
+		method->mParams;
+	}
+
 	if (method->mHasThis)
 	{
 		auto param = method->mParams[paramIdx];		
+		if ((param->mType != NULL) && (param->mType->IsValueType()))
+			thisByValue = true;
 
 		if (!target)
 		{
 			Fail(StrFormat("An object reference is required to invoke the non-static method '%s'", method->ToString().c_str()), targetSrc);
 			return DbgTypedValue();
 		}
-			
-		_PushArg(target, param);		
-		methodParamCount--;
+				
+		_PushArg(target, param);
+		methodParamCount--;		
 	}
 	else
 	{		
@@ -7143,7 +7153,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 			paramIdx++;
 		}		
 		argIdx++;
-	}	
+	}
 
 	return CreateCall(method, argPushQueue, bypassVirtual);
 }
@@ -7172,6 +7182,14 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 	int paramIdx = argPushQueue.size() - 1;
 	if (method->mHasThis)
 		paramIdx--;
+
+	bool thisByValue = false;
+	if ((method->mHasThis) && (!method->mParams.IsEmpty()))
+	{
+		auto param = method->mParams[0];
+		if ((param->mType != NULL) && (param->mType->IsValueType()))
+			thisByValue = true;
+	}
 
 	DbgTypedValue compositeRetVal;
 	if (mDebugger->CheckNeedsSRetArgument(method->mReturnType))
@@ -7211,7 +7229,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 
 	if (compositeRetVal.mSrcAddress != 0)
 	{		
-		mDebugger->AddParamValue(0, method->mHasThis, &registers, compositeRetVal);
+		mDebugger->AddParamValue(0, method->mHasThis && !thisByValue, &registers, compositeRetVal);
 		paramIdx++;
 	}		
 

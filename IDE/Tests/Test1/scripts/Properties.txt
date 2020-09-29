@@ -1,0 +1,13 @@
+ShowFile("src/Properties.bf")
+GotoText("//Test_Break")
+ToggleBreakpoint()
+RunWithCompiling()
+
+AssertEvalEquals("sb_a0", "{ mA=1100 mB=2101 }")
+AssertEvalEquals("sb_a1", "{ mA=2100 mB=3101 }")
+AssertEvalEquals("sc_a0", "{ mA=4200 mB=5201 }")
+AssertEvalEquals("sc_a1", "{ mA=6200 mB=7201 }")
+AssertEvalEquals("sc_b0", "{ mA=4200 mB=5201 mC=6202 }")
+AssertEvalEquals("sc_b1", "{ mA=7200 mB=8201 mC=9202 }")
+AssertEvalEquals("sc_c0", "{ mA=10200 mB=11201 mC=12202 mD=13203 }")
+AssertEvalEquals("sc_c1", "{ mA=14200 mB=15201 mC=16202 mD=17203 }")
