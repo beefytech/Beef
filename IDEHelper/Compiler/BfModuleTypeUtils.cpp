@@ -3615,8 +3615,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
-	// Check enum cases for duplicates
-	if (mCurTypeInstance->IsEnum())
+	// Const handling
 	{
 		Dictionary<int64, BfFieldDef*> valueMap;
 		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
@@ -3632,22 +3631,26 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
 				typeInstance->mModule->ResolveConstField(typeInstance, fieldInstance, fieldDef);
 
-				auto underlyingType = fieldInstance->mResolvedType->GetUnderlyingType();
-				if ((fieldDef->IsEnumCaseEntry()) && (fieldInstance->mConstIdx != -1) && (underlyingType->IsIntegral()))
+				// Check enum cases for duplicates
+				if (mCurTypeInstance->IsEnum())
 				{
-					auto foreignConst = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-					BfFieldDef** fieldDefPtr;
-					if (valueMap.TryAdd(foreignConst->mInt64, NULL, &fieldDefPtr))
+					auto underlyingType = fieldInstance->mResolvedType->GetUnderlyingType();
+					if ((fieldDef->IsEnumCaseEntry()) && (fieldInstance->mConstIdx != -1) && (underlyingType->IsIntegral()))
 					{
-						*fieldDefPtr = fieldDef;
+						auto foreignConst = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+						BfFieldDef** fieldDefPtr;
+						if (valueMap.TryAdd(foreignConst->mInt64, NULL, &fieldDefPtr))
+						{
+							*fieldDefPtr = fieldDef;
+						}
+						else if ((typeInstance->mCustomAttributes == NULL) || (typeInstance->mCustomAttributes->Get(mCompiler->mAllowDuplicatesAttributeTypeDef) == NULL))
+						{
+							auto error = Warn(0, StrFormat("Enum value '%lld' for field '%s' is not unique. Considering adding [AllowDuplicates] to the type declaration.", foreignConst->mInt64, fieldDef->mName.c_str()), fieldDef->GetRefNode(), true);
+							if (error != NULL)
+								mCompiler->mPassInstance->MoreInfo(StrFormat("This value was previously used for field '%s'", (*fieldDefPtr)->mName.c_str()), (*fieldDefPtr)->GetRefNode());
+						}
 					}
-					else if ((typeInstance->mCustomAttributes == NULL) || (typeInstance->mCustomAttributes->Get(mCompiler->mAllowDuplicatesAttributeTypeDef) == NULL))
-					{
-						auto error = Warn(0, StrFormat("Enum value '%lld' for field '%s' is not unique. Considering adding [AllowDuplicates] to the type declaration.", foreignConst->mInt64, fieldDef->mName.c_str()), fieldDef->GetRefNode(), true);
-						if (error != NULL)
-							mCompiler->mPassInstance->MoreInfo(StrFormat("This value was previously used for field '%s'", (*fieldDefPtr)->mName.c_str()), (*fieldDefPtr)->GetRefNode());
-					}
-				}				
+				}
 			}
 		}
 	}
