@@ -13521,6 +13521,11 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	if (mModule->mCurMethodState == NULL)
 		return;
 
+	if (mDeferCallRef != NULL)
+	{
+		mModule->Fail("Mixins cannot be directly deferred. Consider wrapping in a block.", targetSrc);
+	}
+
 	BfAstNode* origTargetSrc = targetSrc;
 	BfScopedInvocationTarget* scopedInvocationTarget = NULL;
 
@@ -14230,7 +14235,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 			endLocalIdx++;
 			++argExprEvaluatorItr;
 		}
-	}
+	}	
 
 	if (auto blockBody = BfNodeDynCast<BfBlock>(methodDef->mBody))
 		mModule->VisitCodeBlock(blockBody);
@@ -14239,7 +14244,6 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	{
 		if (auto exprNode = BfNodeDynCast<BfExpression>(mixinState->mResultExpr))
 		{
-			//if ((exprNode->mTrailingSemicolon == NULL) && (!exprNode->IsA<BfBlock>()))
 			if (!exprNode->IsA<BfBlock>())
 			{
 				// Mixin expression result
@@ -14252,7 +14256,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		}
 	}
 
-	GetResult();
+	GetResult();	
+
 	if (!mResult)
 	{
 		// If we didn't have an expression body then just make the result "void"
