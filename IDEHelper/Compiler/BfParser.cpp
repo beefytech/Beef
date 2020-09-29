@@ -357,7 +357,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mLineStart = 0;
 	//mCurToken = (BfSyntaxToken)0;
 	mToken = BfToken_None;
-	mSyntaxToken = BfSyntaxToken_Token;
+	mSyntaxToken = BfSyntaxToken_None;
 	mTokenStart = 0;
 	mTokenEnd = 0;
 	mLineNum = 0;	
@@ -1360,6 +1360,8 @@ double BfParser::ParseLiteralDouble()
 
 void BfParser::NextToken(int endIdx)
 {
+	auto prevToken = mToken;
+
 	mToken = BfToken_None;
 	if (mSyntaxToken == BfSyntaxToken_EOF)
 		Fail("Unexpected end of file");
@@ -2281,7 +2283,7 @@ void BfParser::NextToken(int endIdx)
 		default:
 			if (((c >= '0') && (c <= '9')) || (c == '-'))
 			{				
-				bool prevIsDot = (mSrcIdx > 1) && (mSrc[mSrcIdx - 2] == '.');
+				bool prevIsDot = prevToken == BfToken_Dot;
 
 				if (c == '-')
 				{
@@ -3174,7 +3176,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth)
 
 	bool isAsmBlock = false;
 
-	SizedArray<BfAstNode*, 32> childArr;
+	SizedArray<BfAstNode*, 32> childArr;	
 
 	while (true)
 	{

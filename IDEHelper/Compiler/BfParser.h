@@ -17,6 +17,7 @@ class BfProject;
 
 enum BfSyntaxToken
 {
+	BfSyntaxToken_None,
 	BfSyntaxToken_Token,
 	BfSyntaxToken_Identifier,	
 	BfSyntaxToken_CharQuote,
