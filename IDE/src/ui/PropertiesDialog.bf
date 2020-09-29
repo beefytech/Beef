@@ -685,8 +685,6 @@ namespace IDE.ui
 
 		protected void ApplyChanges(PropPage propPage, ref bool hadChanges)
 		{
-			hadChanges = false;
-
 			for (var propEntries in propPage.mPropEntries.Values)
 			{
 				for (var propEntry in propEntries)
