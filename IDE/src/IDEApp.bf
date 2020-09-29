@@ -12496,6 +12496,16 @@ namespace IDE
 			String newFileName = scope String();
 			Path.GetFileName(newPath, newFileName);
 
+			for (var entry in mRecentlyDisplayedFiles)
+			{
+				if (Path.Equals(entry, oldPath))
+				{
+					entry.Set(newPath);
+					UpdateRecentFileMenuItems();
+					break;
+				}
+			}
+
 			RenameEditData(oldPath, newPath);
 
 			WithTabs(scope (tab) =>
