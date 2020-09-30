@@ -1871,6 +1871,7 @@ namespace IDE.ui
                 GetLineText(lineIdx, lineText);
                 if (String.IsNullOrWhiteSpace(lineText)) // Is on new line?
                 {
+					lineText.Clear();
                     GetLineText(lineIdx - 1, lineText);
                     for (int32 i = 0; i < lineText.Length; i++)
                     {
@@ -1886,6 +1887,30 @@ namespace IDE.ui
                     if (mAllowVirtualCursor)
                     {
                         int column = GetLineEndColumn(lineIdx, true, false, true);
+
+						// If we're aligned with the previous line then do the 'block indent' logic, otherwise are are already indented
+						if (indentCount == column / 4)
+						{
+							char8 prevC = 0;
+							int checkIdx = CursorTextPos - 1;
+							while (checkIdx >= 0)
+							{
+								let displayType = (SourceElementType)mData.mText[checkIdx].mDisplayTypeId;
+								if (displayType == .Comment)
+									continue;
+								prevC = mData.mText[checkIdx].mChar;
+								if (!prevC.IsWhiteSpace)
+									break;
+								checkIdx--;
+							}
+
+							if ((prevC == '>') || (prevC == ')'))
+							{
+								// Lambda opening or initializer expression
+								column += 4;
+							}
+						}
+
                         CursorLineAndColumn = LineAndColumn(lineIdx, column);
                         indentCount = column / 4;
                     }

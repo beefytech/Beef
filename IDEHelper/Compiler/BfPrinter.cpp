@@ -758,10 +758,13 @@ void BfPrinter::Visit(BfAstNode* bfAstNode)
 					if (!isspace((uint8)c))
 					{
 						Write("\n");
-						mQueuedSpaceCount = mCurIndentLevel * 4;					
-						int origLineSpacing = CalcOrigLineSpacing(bfAstNode, NULL);
-						if (origLineSpacing != -1)
-							mLastSpaceOffset = mQueuedSpaceCount - origLineSpacing;
+						mQueuedSpaceCount = mCurIndentLevel * 4;
+						if (!mNextStateModify.mDoingBlockClose)
+						{
+							int origLineSpacing = CalcOrigLineSpacing(bfAstNode, NULL);
+							if (origLineSpacing != -1)
+								mLastSpaceOffset = mQueuedSpaceCount - origLineSpacing;
+						}
 						break;
 					}
 					idx--;
@@ -1211,18 +1214,40 @@ void BfPrinter::Visit(BfInitializerExpression* initExpr)
 	Visit(initExpr->ToBase());
 
 	VisitChild(initExpr->mTarget);
-	ExpectSpace();
-	VisitChild(initExpr->mOpenBrace);
+	BlockState blockState;
+	DoBlockOpen(initExpr->mTarget, initExpr->mOpenBrace, initExpr->mCloseBrace, false, blockState);	
 	for (int i = 0; i < (int)initExpr->mValues.size(); i++)
 	{
 		if (i > 0)
-		{			
+		{
 			VisitChildNoRef(initExpr->mCommas.GetSafe(i - 1));
-			ExpectSpace();
+			if (blockState.mDoInlineBlock)
+				ExpectSpace();
+			else
+				ExpectNewLine();
 		}
+		
 		VisitChild(initExpr->mValues[i]);
 	}
-	VisitChild(initExpr->mCloseBrace);
+	DoBlockClose(initExpr->mTarget, initExpr->mOpenBrace, initExpr->mCloseBrace, false, blockState);
+
+// 	Visit(initExpr->ToBase());
+// 
+// 	VisitChild(initExpr->mTarget);
+// 	ExpectSpace();
+// 	VisitChild(initExpr->mOpenBrace);
+// 	ExpectIndent();
+// 	for (int i = 0; i < (int)initExpr->mValues.size(); i++)
+// 	{
+// 		if (i > 0)
+// 		{
+// 			VisitChildNoRef(initExpr->mCommas.GetSafe(i - 1));
+// 			ExpectSpace();
+// 		}
+// 		VisitChild(initExpr->mValues[i]);
+// 	}
+// 	ExpectUnindent();
+// 	VisitChild(initExpr->mCloseBrace);
 }
 
 void BfPrinter::Visit(BfCollectionInitializerExpression* initExpr)
@@ -1230,7 +1255,7 @@ void BfPrinter::Visit(BfCollectionInitializerExpression* initExpr)
 	Visit(initExpr->ToBase());
 
 	VisitChild(initExpr->mOpenBrace);
-	for (int i = 0; i < (int) initExpr->mValues.size(); i++)
+	for (int i = 0; i < (int)initExpr->mValues.size(); i++)
 	{
 		if (i > 0)
 		{
@@ -2435,15 +2460,14 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	if (auto block = BfNodeDynCast<BfBlock>(propertyDeclaration->mDefinitionBlock))
 	{
-		bool doInlineBlock = false;		
-		int indentStart = 0;
-		DoBlockOpen(block, true, &doInlineBlock, &indentStart);		
+		BlockState blockState;
+		DoBlockOpen(NULL, block->mOpenBrace, block->mCloseBrace, true, blockState);
 		for (auto method : propertyDeclaration->mMethods)
 		{
 			Visit(method);
 		}
 		FlushVisitChild();
-		DoBlockClose(block, true, doInlineBlock, indentStart);
+		DoBlockClose(NULL, block->mOpenBrace, block->mCloseBrace, true, blockState);
 	}
 	else
 	{
@@ -2755,16 +2779,22 @@ void BfPrinter::Visit(BfNamespaceDeclaration* namespaceDeclaration)
 	VisitChild(namespaceDeclaration->mBlock);	
 }
 
-void BfPrinter::DoBlockOpen(BfBlock* block, bool queue, bool* outDoInlineBlock, int* outIdentStart)
-{	
-	*outIdentStart = mNextStateModify.mWantVirtualIndent;
+void BfPrinter::DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState)
+{		
+	blockState.mLastSpaceOffset = mLastSpaceOffset;
+	blockState.mIndentStart = mNextStateModify.mWantVirtualIndent;
 
 	bool doInlineBlock = true;
-	if (block->mCloseBrace != NULL)
+	if (blockClose != NULL)
 	{
-		auto blockSrc = block->GetSourceData();
-		int srcEnd = block->mCloseBrace->GetSrcEnd();
-		for (int i = block->mOpenBrace->GetSrcStart(); i < srcEnd; i++)
+		auto blockSrc = blockOpen->GetSourceData();
+		int srcEnd = blockClose->GetSrcEnd();
+
+		int srcStart = blockOpen->GetSrcStart();
+		if (prevNode != NULL)
+			srcStart = prevNode->GetSrcEnd();
+
+		for (int i = srcStart; i < srcEnd; i++)
 		{
 			if (blockSrc->mSrc[i] == '\n')
 				doInlineBlock = false;
@@ -2775,41 +2805,47 @@ void BfPrinter::DoBlockOpen(BfBlock* block, bool queue, bool* outDoInlineBlock, 
 	{
 		ExpectNewLine();
 		mNextStateModify.mDoingBlockOpen = true;
+		if (prevNode != NULL)
+			ExpectIndent();
 	}
 	else
 		ExpectSpace();
 	if (queue)
-		QueueVisitChild(block->mOpenBrace);
+		QueueVisitChild(blockOpen);
 	else
-		VisitChild(block->mOpenBrace);
+		VisitChild(blockOpen);
 	if (!doInlineBlock)
 		ExpectIndent();
 	else
 		ExpectSpace();
-	*outDoInlineBlock = doInlineBlock;
+	blockState.mDoInlineBlock = doInlineBlock;
 }
 
-void BfPrinter::DoBlockClose(BfBlock* block, bool queue, bool doInlineBlock, int indentStart)
+void BfPrinter::DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState)
 {
-	if (!doInlineBlock)
+	if (!blockState.mDoInlineBlock)
 	{
-		ExpectUnindent();
-		mNextStateModify.mWantVirtualIndent = indentStart;
+		ExpectUnindent();		
 		mNextStateModify.mDoingBlockClose = true;
 	}
 	else
 		ExpectSpace();
 	if (queue)
-		QueueVisitChild(block->mCloseBrace);
+		QueueVisitChild(blockClose);
 	else
-		VisitChild(block->mCloseBrace);
+		VisitChild(blockClose);
+	
+	if (!blockState.mDoInlineBlock)
+	{
+		mNextStateModify.mWantVirtualIndent = blockState.mIndentStart;
+		mLastSpaceOffset = blockState.mLastSpaceOffset;
+	}
 }
 
 void BfPrinter::Visit(BfBlock* block)
 {	
-	bool doInlineBlock;
-	int indentStart = 0;
-	DoBlockOpen(block, false, &doInlineBlock, &indentStart);
+	BlockState blockState;
+	DoBlockOpen(NULL, block->mOpenBrace, block->mCloseBrace, false, blockState);
 	for (auto& childNodeRef : *block)
 	{
 		BfAstNode* child = childNodeRef;
@@ -2821,7 +2857,7 @@ void BfPrinter::Visit(BfBlock* block)
 		SetAndRestoreValue<BfAstNode*> prevBlockMember(mCurBlockMember, child);
 		child->Accept(this);
 	}
-	DoBlockClose(block, false, doInlineBlock, indentStart);
+	DoBlockClose(NULL, block->mOpenBrace, block->mCloseBrace, false, blockState);
 
 	ExpectNewLine();
 }

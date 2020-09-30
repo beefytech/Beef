@@ -9,6 +9,20 @@ NS_BF_BEGIN
 class BfPrinter : public BfElementVisitor
 {
 public:
+	struct BlockState
+	{
+		int mLastSpaceOffset;
+		bool mDoInlineBlock;
+		int mIndentStart;
+
+		BlockState()
+		{
+			mLastSpaceOffset = 0;
+			mDoInlineBlock = false;
+			mIndentStart = 0;
+		}
+	};
+
 	struct StateModify
 	{
 	public:
@@ -53,7 +67,7 @@ public:
 	int mFormatStart;
 	int mFormatEnd;	
 	StateModify mNextStateModify;
-
+	
 	String mOutString;
 	bool mReformatting;		
 	bool mIgnoreTrivia;
@@ -95,8 +109,8 @@ public:
 	void ExpectIndent();
 	void ExpectUnindent();
 	void VisitChildNextLine(BfAstNode* node);
-	void DoBlockOpen(BfBlock* block, bool queue, bool* outDoInlineBlock, int* outIdentStart);
-	void DoBlockClose(BfBlock* block, bool queue, bool doInlineBlock, int identStart);
+	void DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
+	void DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
 	void QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration);	
 	int CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx);
 	void WriteIgnoredNode(BfAstNode* node);	
