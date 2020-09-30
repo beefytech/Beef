@@ -1891,20 +1891,54 @@ namespace IDE.ui
 						// If we're aligned with the previous line then do the 'block indent' logic, otherwise are are already indented
 						if (indentCount == column / 4)
 						{
+							bool isLambdaOpen = false;
+							bool isExpr = false;
+
 							char8 prevC = 0;
 							int checkIdx = CursorTextPos - 1;
+							int parenOpenCount = 0;
+
 							while (checkIdx >= 0)
 							{
 								let displayType = (SourceElementType)mData.mText[checkIdx].mDisplayTypeId;
 								if (displayType == .Comment)
 									continue;
 								prevC = mData.mText[checkIdx].mChar;
-								if (!prevC.IsWhiteSpace)
+								if (prevC == '>')
+								{
+									isLambdaOpen = true;
 									break;
+								}
+								if (prevC == ')')
+								{
+									parenOpenCount++;
+								}
+								if (prevC == '(')
+								{
+									parenOpenCount--;
+									if (parenOpenCount < 0)
+									{
+										isExpr = true;
+										break;
+									}
+								}
+								if (prevC == '{')
+									break;
+								if (parenOpenCount == 0)
+								{
+									if (prevC == ';')
+										break;
+									if (prevC == '=')
+									{
+										isLambdaOpen = true;
+										break;
+									}
+								}
+								
 								checkIdx--;
 							}
 
-							if ((prevC == '>') || (prevC == ')'))
+							if ((isLambdaOpen) || (isExpr))
 							{
 								// Lambda opening or initializer expression
 								column += 4;
