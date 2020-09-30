@@ -757,31 +757,17 @@ namespace IDE
 
 		public void ClearProjectNameCache()
 		{
-			for (var key in mProjectNameMap.Keys)
-				delete key;
-			mProjectNameMap.Clear();
+			using (mMonitor.Enter())
+			{
+				for (var key in mProjectNameMap.Keys)
+					delete key;
+				mProjectNameMap.Clear();
+			}
 		}
 
 		public void AddProjectToCache(Project project)
 		{
-			void Add(String name, Project project)
-			{
-				bool added = mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr);
-				if (!added)
-					return;
-				*keyPtr = new String(name);
-				*valuePtr = project;
-			}
-
-			Add(project.mProjectName, project);
-
-			for (var alias in project.mGeneralOptions.mAliases)
-				Add(alias, project);
-		}
-
-        public Project FindProject(StringView projectName)
-        {
-			if (mProjectNameMap.IsEmpty)
+			using (mMonitor.Enter())
 			{
 				void Add(String name, Project project)
 				{
@@ -791,20 +777,43 @@ namespace IDE
 					*keyPtr = new String(name);
 					*valuePtr = project;
 				}
-
-				for (var project in mProjects)
-					Add(project.mProjectName, project);
-				
-				for (var project in mProjects)
-				{
-					for (var alias in project.mGeneralOptions.mAliases)
-						Add(alias, project);
-				}
+	
+				Add(project.mProjectName, project);
+	
+				for (var alias in project.mGeneralOptions.mAliases)
+					Add(alias, project);
 			}
+		}
 
-            if (mProjectNameMap.TryGetAlt(projectName, var matchKey, var value))
+        public Project FindProject(StringView projectName)
+        {
+			using (mMonitor.Enter())
 			{
-				return value;
+				if (mProjectNameMap.IsEmpty)
+				{
+					void Add(String name, Project project)
+					{
+						bool added = mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr);
+						if (!added)
+							return;
+						*keyPtr = new String(name);
+						*valuePtr = project;
+					}
+
+					for (var project in mProjects)
+						Add(project.mProjectName, project);
+					
+					for (var project in mProjects)
+					{
+						for (var alias in project.mGeneralOptions.mAliases)
+							Add(alias, project);
+					}
+				}
+
+	            if (mProjectNameMap.TryGetAlt(projectName, var matchKey, var value))
+				{
+					return value;
+				}
 			}
 			return null;
         }
