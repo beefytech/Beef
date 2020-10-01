@@ -525,7 +525,9 @@ namespace IDE.ui
 			}
             if (mSourceViewPanel != null)
             {
-                if ((!sReadOnlyErrorShown) && (mSourceViewPanel.[Friend]mCurrentVersionPanel != null))
+				if (mSourceViewPanel.mIsBinary)
+					IDEApp.sApp.Fail("Cannot edit binary file.");
+                else if ((!sReadOnlyErrorShown) && (mSourceViewPanel.[Friend]mCurrentVersionPanel != null))
                     IDEApp.sApp.Fail("Switch to the current version of this file to edit it.");
                 else
                     IDEApp.Beep(IDEApp.MessageBeepType.Error);
