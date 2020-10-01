@@ -862,14 +862,11 @@ namespace IDE.ui
 
 		public void CheckSavedContents()
 		{
-			if (mEditData.mLastFileTextVersion == mEditWidget.Content.mData.mCurTextVersionId)
+			if (((mEditData != null)) && (mEditData.mLastFileTextVersion == mEditWidget.Content.mData.mCurTextVersionId) && (mEditData.mRecoveryHash.IsZero))
 			{
-				if ((mEditData != null) && (mEditData.mRecoveryHash.IsZero))
-				{
-					String text = scope .();
-					mEditWidget.GetText(text);
-					mEditData.mRecoveryHash = MD5.Hash(.((uint8*)text.Ptr, text.Length));
-				}
+				String text = scope .();
+				mEditWidget.GetText(text);
+				mEditData.mRecoveryHash = MD5.Hash(.((uint8*)text.Ptr, text.Length));
 			}
 		}
 
@@ -2782,7 +2779,9 @@ namespace IDE.ui
 			}
 
 			if (mIsBinary)
+			{
 				mEditWidget.mEditWidgetContent.mIsReadOnly = true;
+			}
 		}
 
         public bool Show(String filePath, bool silentFail = false, FileEditData fileEditData = null)
@@ -3327,7 +3326,7 @@ namespace IDE.ui
 			bool needsFreshLoad = mLoadFailed;
 			if ((mEditData != null) && (!Path.Equals(mFilePath, mEditData.mFilePath)))
 			{
-				// This can happen if we do an Auto Find for source, which finds an incorrect file but then we Brose
+				// This can happen if we do an Auto Find for source, which finds an incorrect file but then we Browse
 				// to the correct version
 				CloseEdit();
 				needsFreshLoad = true;
