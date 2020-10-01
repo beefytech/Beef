@@ -18783,10 +18783,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 // 					Warn(0, "Using a 'void' return with an expression-bodied method isn't needed. Consider removing '=>' token", methodDeclaration->mFatArrowToken);
 // 				}
 								
-				BfEvalExprFlags exprEvalFlags = BfEvalExprFlags_None;
+				BfEvalExprFlags exprEvalFlags = BfEvalExprFlags_AllowRefExpr;
 				if (expectingType->IsVoid())
 				{
-					exprEvalFlags = BfEvalExprFlags_NoCast;
+					exprEvalFlags = (BfEvalExprFlags)(exprEvalFlags | BfEvalExprFlags_NoCast);
 
 					bool wasReturnGenericParam = false;
 					if ((mCurMethodState->mClosureState != NULL) && (mCurMethodState->mClosureState->mReturnType != NULL))
