@@ -1893,7 +1893,6 @@ namespace IDE.ui
 						// If we're aligned with the previous line then do the 'block indent' logic, otherwise are are already indented
 						if (indentCount == column / 4)
 						{
-							bool isLambdaOpen = false;
 							bool isExpr = false;
 
 							char8 prevC = 0;
@@ -1904,13 +1903,12 @@ namespace IDE.ui
 							{
 								let displayType = (SourceElementType)mData.mText[checkIdx].mDisplayTypeId;
 								if (displayType == .Comment)
-									continue;
-								prevC = mData.mText[checkIdx].mChar;
-								if (prevC == '>')
 								{
-									isLambdaOpen = true;
-									break;
+									checkIdx--;
+									continue;
 								}
+								prevC = mData.mText[checkIdx].mChar;
+								
 								if (prevC == ')')
 								{
 									parenOpenCount++;
@@ -1932,7 +1930,7 @@ namespace IDE.ui
 										break;
 									if (prevC == '=')
 									{
-										isLambdaOpen = true;
+										isExpr = true;
 										break;
 									}
 								}
@@ -1940,7 +1938,7 @@ namespace IDE.ui
 								checkIdx--;
 							}
 
-							if ((isLambdaOpen) || (isExpr))
+							if (isExpr)
 							{
 								// Lambda opening or initializer expression
 								column += 4;
