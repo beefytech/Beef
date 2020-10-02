@@ -10682,6 +10682,8 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						else
 						{
 							auto methodInst = GetRawMethodInstanceAtIdx(checkInstance, operatorDef->mIdx);
+							if (methodInst == NULL)
+								continue;
 							if (methodInst->GetParamCount() != 1)
 							{
 								AssertErrorState();
