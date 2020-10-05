@@ -16042,9 +16042,16 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 	BfIRValue phi;
 	if (!trueValue.mType->IsValuelessType())
 	{
-		phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(trueValue.mType), 2);
-		mModule->mBfIRBuilder->AddPhiIncoming(phi, trueValue.mValue, trueBlockPos);
-		mModule->mBfIRBuilder->AddPhiIncoming(phi, falseValue.mValue, falseBlockPos);		
+		if (trueValue.mType->IsVar())
+		{
+			phi = mModule->mBfIRBuilder->GetFakeVal();
+		}
+		else
+		{
+			phi = mModule->mBfIRBuilder->CreatePhi(mModule->mBfIRBuilder->MapType(trueValue.mType), 2);
+			mModule->mBfIRBuilder->AddPhiIncoming(phi, trueValue.mValue, trueBlockPos);
+			mModule->mBfIRBuilder->AddPhiIncoming(phi, falseValue.mValue, falseBlockPos);
+		}
 	}
 	mModule->mBfIRBuilder->CreateBr(contBB);
 	mModule->AddBasicBlock(contBB);
