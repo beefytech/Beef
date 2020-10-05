@@ -147,3 +147,28 @@ void ImageData::PremultiplyAlpha()
 		}
 	}
 }
+
+void ImageData::UnPremultiplyAlpha()
+{
+	if (mBits == NULL)
+		return;
+
+	if (mAlphaPremultiplied)
+	{
+		mAlphaPremultiplied = false;
+		int size = mWidth * mHeight;
+		for (int i = 0; i < size; i++)
+		{
+			PackedColor* packedColor = (PackedColor*)(mBits + i);
+			if (packedColor->a != 0)
+			{
+				packedColor->r = BF_MIN((packedColor->r * 255) / packedColor->a, 255);
+				packedColor->g = BF_MIN((packedColor->g * 255) / packedColor->a, 255);
+				packedColor->b = BF_MIN((packedColor->b * 255) / packedColor->a, 255);
+			}
+
+			if (mIsAdditive)
+				packedColor->a = 0;
+		}
+	}
+}

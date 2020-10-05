@@ -31,6 +31,7 @@ namespace Beefy.theme.dark
             CheckboxOver,
             CheckboxDown,
             Check,
+
             Close,
             CloseOver,
             DownArrow,
@@ -51,6 +52,7 @@ namespace Beefy.theme.dark
             VertScrollbarThumbOver,
             VertScrollbarThumb,
             VertScrollbarArrow,
+
             VertShortButton,
             VertShortButtonDown,
             Grabber,
@@ -60,7 +62,6 @@ namespace Beefy.theme.dark
             MenuSepHorz,
             MenuSelect,
             TreeArrow,
-
             UIPointer,
             UIImage,
             UIComposition,
@@ -78,10 +79,8 @@ namespace Beefy.theme.dark
             EditPathNode,
             EditPathNodeSelected,
             EditAnchor,
-            
             UIBone,
             UIBoneJoint,
-
             VisibleIcon,
             LockIcon,
             LeftArrow,
@@ -94,20 +93,18 @@ namespace Beefy.theme.dark
             TimelineBracket,
             KeyframeOff,
             KeyframeOn,
-
             LinkedIcon,
+
             CheckboxLarge,
             ComboBox,
             ComboEnd,
             ComboSelectedIcon,
-
             LinePointer,
             RedDot,
             Document,
             ReturnPointer,
             RefreshArrows,
             MoveDownArrow,
-
             IconObject,
             IconObjectDeleted,
             IconObjectAppend,
@@ -117,8 +114,8 @@ namespace Beefy.theme.dark
             IconType,
             IconError,
             IconBookmark,
-
             ProjectFolder,
+
             Project,
             ArrowMoveDown,
             Workspace,
@@ -142,7 +139,6 @@ namespace Beefy.theme.dark
 
             RedDotUnbound,
             MoreInfo,
-
             Interface,
             Property,
             Field,
@@ -182,6 +178,7 @@ namespace Beefy.theme.dark
 			CodeError,
 			CodeWarning,
 			ComboBoxFrameless,
+			PanelHeader,
 
             COUNT
         };

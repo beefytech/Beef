@@ -40,9 +40,7 @@ namespace IDE.ui
 
         public override void Draw(Graphics g)
         {
-            using (g.PushColor(0xFFF0BFA4))
-                g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.VertScrollbarThumb), 0, 0, mWidth, mHeight);
-
+            g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.PanelHeader), 0, 0, mWidth, mHeight);
             g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
 			float y = GS!(6);
             using (g.PushColor(0xFFFFFFFF))

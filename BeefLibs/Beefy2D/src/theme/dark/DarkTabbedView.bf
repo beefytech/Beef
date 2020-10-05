@@ -346,7 +346,7 @@ namespace Beefy.theme.dark
             {
                 base.Resize(x, y, width, height);
                 if (mMenuButton != null)
-                    mMenuButton.Resize(mWidth - GS!(30), GS!(3), GS!(14), GS!(12));
+                    mMenuButton.Resize(mWidth - GS!(20), GS!(3), GS!(14), GS!(12));
             }
 
             public override bool IsTotalWindowContent()

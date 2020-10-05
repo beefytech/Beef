@@ -57,14 +57,14 @@ namespace IDE.ui
 			if ((projectItem != null) && (projectItem.mParentFolder != null))
 			{
 				if (projectItem.mIncludeKind == .Manual)
-					color = Color.Mult(color, 0xFFE0E0FF);
+					color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceManualIncludeText);
 				else if (projectItem.mIncludeKind == .Ignore)
-					color = Color.Mult(color, 0xFF909090);
+					color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceIgnoredText);
 
 				if (let projectSource = projectItem as ProjectSource)
 				{
 					if (projectSource.mLoadFailed)
-						color = Color.Mult(color, 0xFFFF0000);
+						color = Color.Mult(color, gApp.mSettings.mUISettings.mColors.mWorkspaceFailedText);
 				}
 
 				mTextColor = color;
@@ -342,8 +342,8 @@ namespace IDE.ui
 			item.mOnMouseClick.Add(new => ListViewItemClicked);
             UpdateColors();
             DarkListViewItem listViewItem = (DarkListViewItem)item;
-            listViewItem.mFocusColor = 0xFFA0A0A0;
-            listViewItem.mSelectColor = 0xFFA0A0A0;
+            listViewItem.mFocusColor = gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText;
+            listViewItem.mSelectColor = gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText;
         }
 
         void UpdateColors()
@@ -1960,9 +1960,9 @@ namespace IDE.ui
                 listViewItem.mIsBold = checkProject == IDEApp.sApp.mWorkspace.mStartupProject;
 
                 var projectOptions = IDEApp.sApp.GetCurProjectOptions(checkProject);
-                listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, (projectOptions != null) ? Color.White : 0xFFA0A0A0);
+                listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, (projectOptions != null) ? gApp.mSettings.mUISettings.mColors.mText : gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText);
 				if (checkProject.mFailed)
-					listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE04040);
+					listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, gApp.mSettings.mUISettings.mColors.mWorkspaceFailedText);
             }
         }
 

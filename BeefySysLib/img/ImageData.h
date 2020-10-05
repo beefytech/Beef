@@ -46,6 +46,7 @@ public:
 	virtual bool			LoadFromFile(const StringImpl& path);
 	virtual	bool			ReadData() { return false; }
 	virtual void			PremultiplyAlpha();
+	virtual void			UnPremultiplyAlpha();
 };
 
 NS_BF_END;

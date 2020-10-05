@@ -266,11 +266,18 @@ namespace IDE
 		public class Colors
 		{
 			public Color mText = 0xFFFFFFFF;
-			public Color mWindow = 0xFF595962;
-			public Color mBackground = 0xFF26262A;
+			public Color mWindow = 0xFF44444D;
+			public Color mBackground = 0xFF1C1C24;
 			public Color mSelectedOutline = 0xFFCFAE11;
 			public Color mMenuFocused = 0xFFE5A910;
 			public Color mMenuSelected = 0xFFCB9B80;
+			public Color mAutoCompleteSubText = 0xFFB0B0B0;
+			public Color mAutoCompleteDocText = 0xFFC0C0C0;
+			public Color mAutoCompleteActiveText = 0xFFB0B0FF;
+			public Color mWorkspaceDisabledText = 0xFFA0A0A0;
+			public Color mWorkspaceFailedText = 0xFFE04040;
+			public Color mWorkspaceManualIncludeText = 0xFFE0E0FF;
+			public Color mWorkspaceIgnoredText = 0xFF909090;
 
 			public Color mCode = 0xFFFFFFFF;
 			public Color mKeyword = 0xFFE1AE9A;
@@ -305,6 +312,9 @@ namespace IDE
 				GetColor("SelectedOutline", ref mSelectedOutline);
 				GetColor("MenuFocused", ref mMenuFocused);
 				GetColor("MenuSelected", ref mMenuSelected);
+				GetColor("AutoCompleteSubText", ref mAutoCompleteSubText);
+				GetColor("AutoCompleteDocText", ref mAutoCompleteDocText);
+				GetColor("AutoCompleteActiveText", ref mAutoCompleteActiveText);
 
 				GetColor("Code", ref mCode);
 				GetColor("Keyword", ref mKeyword);

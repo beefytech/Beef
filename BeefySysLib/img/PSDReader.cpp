@@ -1485,6 +1485,19 @@ ImageData* PSDReader::ReadImageData()
 			}
 		}
 	}
+
+	for (int i = 0; i < aSize; i++)
+	{
+		PackedColor& packedColor = *(PackedColor*)(&imageData->mBits[i]);
+
+		if (packedColor.a != 0)
+		{
+			packedColor.r = BF_CLAMP((packedColor.r - (0xFF - packedColor.a)) * 0xFF / packedColor.a, 0, 0xFF);
+			packedColor.g = BF_CLAMP((packedColor.g - (0xFF - packedColor.a)) * 0xFF / packedColor.a, 0, 0xFF);
+			packedColor.b = BF_CLAMP((packedColor.b - (0xFF - packedColor.a)) * 0xFF / packedColor.a, 0, 0xFF);
+		}
+	}
+
 	if (rowLengths != NULL)
 	{
 		for (int i = 0; i < mChannels; i++)

@@ -114,7 +114,7 @@ int main()
 				else
 					fileName = "DarkUI_4.psd";
 
-				if (!FileExists(fileName))
+				if ((!FileExists(fileName)) && (size == 0))
 				{
 					isThemeDir = true;
 					fileName = "../../images/" + fileName;
@@ -213,8 +213,8 @@ int main()
 			{
 				int srcX = xStart + xOfs;
 				int srcY = yStart + yOfs;
-				auto color = srcImage->mBits[(srcX - srcImage->mX) + (srcY - srcImage->mY)*srcImage->mWidth];
-				if (color != 0)
+				auto color = srcImage->mBits[(srcX - srcImage->mX) + (srcY - srcImage->mY)*srcImage->mWidth];				
+				if ((color & 0xFF000000) != 0)
 					return true;
 			}
 		}			
@@ -248,6 +248,12 @@ int main()
 				int srcY = yStart + yOfs;
 				auto color0 = srcImage0->mBits[(srcX - srcImage0->mX) + (srcY - srcImage0->mY)*srcImage0->mWidth];
 				auto color1 = srcImage1->mBits[(srcX - srcImage1->mX) + (srcY - srcImage1->mY)*srcImage1->mWidth];
+
+				if ((color0 & 0xFF000000) == 0)
+					color0 = 0;
+				if ((color1 & 0xFF000000) == 0)
+					color1 = 0;
+
 				if (color0 != color1)
 					return true;
 			}
