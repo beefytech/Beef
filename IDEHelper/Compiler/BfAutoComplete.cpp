@@ -467,7 +467,11 @@ void BfAutoComplete::AddMethod(BfMethodDeclaration* methodDecl, const StringImpl
 		}
 		entry.mDocumentation = methodDecl->mDocumentation;
 	}
-	AddEntry(entry, filter);
+	if (AddEntry(entry, filter) != NULL)
+	{
+		if ((mResolveType == BfResolveType_GoToDefinition) && (mGetDefinitionNode == NULL) && (methodDecl->mNameNode != NULL))
+			SetDefinitionLocation(methodDecl->mNameNode);
+	}
 }
 
 void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bool onlyAttribute)
