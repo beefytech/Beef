@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -46,6 +47,16 @@ namespace Tests
 			return total;
 		}
 
+		static T DoOnListA<T, TDlg>(List<T> val, TDlg dlg) where TDlg : delegate T(T a)
+		{
+			return dlg(val[0]);
+		}
+
+		static T DoOnListB<T, TDlg>(TDlg dlg, List<T> val) where TDlg : delegate T(T a)
+		{
+			return dlg(val[0]);
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -63,6 +74,10 @@ namespace Tests
 
 			float val4 = Do10f(=> FuncA, 0.34f);
 			Test.Assert(val4 == -34);
+
+			List<float> fList = scope .() { 1.2f, 2.3f };
+			Test.Assert(DoOnListA(fList, (val) => val + 100) == 101.2f);
+			Test.Assert(DoOnListB((val) => val + 200, fList) == 201.2f);
 		}
 
 		struct MethodRefHolder<T> where T : delegate int(int num)

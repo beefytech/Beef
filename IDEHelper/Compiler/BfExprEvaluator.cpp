@@ -311,10 +311,10 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 							checkArgType = checkTypeInst->mBaseType;
 						}
 					}
-				}
-								
-				(*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] = argType;
+				}												
 			}
+			if ((*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] == NULL)
+				mInferredCount++;
 			(*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] = argType;
 			mPrevArgValues[wantGenericParam->mGenericParamIdx] = argValue;			
 		};
@@ -590,9 +590,9 @@ int BfMethodMatcher::GetMostSpecificType(BfType* lhs, BfType* rhs)
 	if (rhs->IsGenericParam())
 		return 0;
 
-	if (lhs->IsUnspecializedType())
+	if ((lhs->IsUnspecializedType()) && (lhs->IsGenericTypeInstance()))
 	{
-		if (!rhs->IsUnspecializedType())
+		if ((!rhs->IsUnspecializedType()) || (!rhs->IsGenericTypeInstance()))
 			return 1;
 
 		auto lhsTypeInst = lhs->ToTypeInstance();
@@ -603,7 +603,7 @@ int BfMethodMatcher::GetMostSpecificType(BfType* lhs, BfType* rhs)
 
 		bool hadLHSMoreSpecific = false;
 		bool hadRHSMoreSpecific = false;
-
+		
 		for (int generigArgIdx = 0; generigArgIdx < (int)lhsTypeInst->mGenericTypeInfo->mTypeGenericArguments.size(); generigArgIdx++)		
 		{
 			int argMoreSpecific = GetMostSpecificType(lhsTypeInst->mGenericTypeInfo->mTypeGenericArguments[generigArgIdx],
@@ -1485,25 +1485,35 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 		int paramOfs = methodInstance->GetImplicitParamCount();
 		int paramCount = methodInstance->GetParamCount();
-
+		SizedArray<int, 8> deferredArgs;
+				
 		int argIdx = 0;
 		int paramIdx = 0;
 
 		if (checkMethod->mHasAppend)
 			paramIdx++;
-		
+
 		if (checkMethod->mMethodType == BfMethodType_Extension)
 		{
-			argIdx--;			
+			argIdx--;
 		}
 		paramIdx += paramOfs;
 
-		for ( ; argIdx < (int)mArguments.size(); argIdx++)
+		bool hadInferFailure = false;
+		int inferParamOffset = paramOfs - argIdx;
+
+		enum ResultKind
 		{
-			if (paramIdx >= paramCount)
-				break; // Possible for delegate 'params' type methods
+			ResultKind_Ok,
+			ResultKind_Failed,
+			ResultKind_Deferred,
+		};
+
+		auto _CheckArg = [&](int argIdx)
+		{
+			paramIdx = argIdx + inferParamOffset;
 			auto wantType = methodInstance->GetParamType(paramIdx);
-			
+
 			auto checkType = wantType;
 			auto origCheckType = checkType;
 
@@ -1514,19 +1524,24 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				checkType = NULL;
 
 				if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
-				{	
+				{
 					if ((genericArgumentsSubstitute != NULL) && (genericParamType->mGenericParamIdx < (int)genericArgumentsSubstitute->size()))
-						checkType = (*genericArgumentsSubstitute)[genericParamType->mGenericParamIdx];						
+						checkType = (*genericArgumentsSubstitute)[genericParamType->mGenericParamIdx];
 					genericParamInstance = methodInstance->mMethodInfoEx->mGenericParams[genericParamType->mGenericParamIdx];
 				}
 				else
 					genericParamInstance = mModule->GetGenericParamInstance(genericParamType);
 				if (checkType == NULL)
+				{
 					checkType = genericParamInstance->mTypeConstraint;
+					origCheckType = checkType; // We can do "ResolveGenericType" on this type
+				}
 			}
 
+			bool attemptedGenericResolve = false;
 			if ((checkType != NULL) && (genericArgumentsSubstitute != NULL) && (checkType->IsUnspecializedType()))
 			{
+				attemptedGenericResolve = true;
 				checkType = mModule->ResolveGenericType(origCheckType, NULL, genericArgumentsSubstitute);				
 			}
 
@@ -1541,18 +1556,53 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				{
 					auto type = argTypedValue.mType;
 					if (!argTypedValue)
-						goto NoMatch;
-					
+					{
+						if ((checkType == NULL) && (attemptedGenericResolve) && (genericInferContext.GetUnresolvedCount() >= 2))
+						{
+							deferredArgs.Add(argIdx);
+							return ResultKind_Deferred;
+						}
+
+						return ResultKind_Failed;
+					}
+
 					if (type->IsVar())
 						mHasVarArguments = true;
 
 					genericInferContext.mCheckedTypeSet.Clear();
 					if (!genericInferContext.InferGenericArgument(methodInstance, type, wantType, argTypedValue.mValue))
-						goto NoMatch;
+						return ResultKind_Failed;
 				}
 			}
+			return ResultKind_Ok;
+		};
 
-			paramIdx++;
+		for (; argIdx < (int)mArguments.size(); argIdx++)
+		{
+			paramIdx = argIdx + inferParamOffset;
+			if (paramIdx >= paramCount)
+				break; // Possible for delegate 'params' type methods
+
+			auto resultKind = _CheckArg(argIdx);
+			if (resultKind == ResultKind_Failed)
+				goto NoMatch;
+		}
+
+		while (!deferredArgs.IsEmpty())
+		{						
+			int prevDeferredSize = (int)deferredArgs.size();
+			for (int i = 0; i < prevDeferredSize; i++)
+			{
+				auto resultKind = _CheckArg(deferredArgs[i]);
+				if (resultKind == ResultKind_Failed)
+					goto NoMatch;
+			}
+			deferredArgs.RemoveRange(0, prevDeferredSize);
+			if (prevDeferredSize == deferredArgs.size())
+			{
+				// No progress
+				goto NoMatch;
+			}
 		}
 				
 		//
@@ -5619,6 +5669,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	bool failed = false;
 	while (true)
 	{
+		int argExprIdx = argIdx;
+		if (methodDef->mMethodType == BfMethodType_Extension)		
+			argExprIdx--;
+
 		bool isThis = (paramIdx == -1) || ((methodDef->mHasExplicitThis) && (paramIdx == 0));
 		bool isDirectPass = false;
 
@@ -5626,22 +5680,22 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		{
 			if (methodInstance->IsVarArgs())
 			{
-				if (argIdx >= (int)argValues.size())
+				if (argExprIdx >= (int)argValues.size())
 					break;
 
-				BfTypedValue argValue = ResolveArgValue(argValues[argIdx], NULL);				
+				BfTypedValue argValue = ResolveArgValue(argValues[argExprIdx], NULL);				
 				if (argValue)					
 				{
 					auto typeInst = argValue.mType->ToTypeInstance();
 
 					if (argValue.mType == mModule->GetPrimitiveType(BfTypeCode_Float))
-						argValue = mModule->Cast(argValues[argIdx].mExpression, argValue, mModule->GetPrimitiveType(BfTypeCode_Double));
+						argValue = mModule->Cast(argValues[argExprIdx].mExpression, argValue, mModule->GetPrimitiveType(BfTypeCode_Double));
 
 					if ((typeInst != NULL) && (typeInst->mTypeDef == mModule->mCompiler->mStringTypeDef))
 					{
 						BfType* charType = mModule->GetPrimitiveType(BfTypeCode_Char8);
 						BfType* charPtrType = mModule->CreatePointerType(charType);
-						argValue = mModule->Cast(argValues[argIdx].mExpression, argValue, charPtrType);
+						argValue = mModule->Cast(argValues[argExprIdx].mExpression, argValue, charPtrType);
 					}
 					PushArg(argValue, irArgs, true, false);
 				}				
@@ -5649,9 +5703,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				continue;
 			}			
 
-			if (argIdx < (int)argValues.size())
+			if (argExprIdx < (int)argValues.size())
 			{				
-				BfAstNode* errorRef = argValues[argIdx].mExpression;				
+				BfAstNode* errorRef = argValues[argExprIdx].mExpression;
 				if (errorRef == NULL)
 					errorRef = targetSrc;				
 
@@ -5659,7 +5713,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				if ((prevBindResult.mPrevVal != NULL) && (prevBindResult.mPrevVal->mBindType != NULL))
  					error = mModule->Fail(StrFormat("Method '%s' has too many parameters to bind to '%s'.", mModule->MethodToString(methodInstance).c_str(), mModule->TypeToString(prevBindResult.mPrevVal->mBindType).c_str()), errorRef);
 				else
-					error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", (int)argValues.size() - argIdx), errorRef);
+					error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", (int)argValues.size() - argExprIdx), errorRef);
 				if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
 					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 				failed = true;
@@ -5795,15 +5849,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		}
 		
 		BfAstNode* arg = NULL;
-		bool hadMissingArg = false;
-
-		int argExprIdx = argIdx;
-		if (methodDef->mMethodType == BfMethodType_Extension)
-		{
-			argExprIdx--;
-			if (argExprIdx == -1)
-				arg = targetSrc;			
-		}
+		bool hadMissingArg = false;		
+		if (argExprIdx == -1)
+			arg = targetSrc;					
 		if (argExprIdx >= 0)
 		{
 			if (argExprIdx < (int)argValues.size())
@@ -6038,7 +6086,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 			if (wantType->IsMethodRef())
 			{
-				auto expr = argValues[argIdx].mExpression;
+				auto expr = argValues[argExprIdx].mExpression;
 				if (expr != NULL)
 					SetMethodElementType(expr);
 
@@ -13249,7 +13297,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			if ((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsDelegate()))
 			{
 				// The only other option was to bind to a MethodRef
-				genericArg = genericParam->mTypeConstraint;
+				genericArg = mModule->ResolveGenericType(genericParam->mTypeConstraint, NULL, &methodMatcher.mBestMethodGenericArguments);
 			}
 			else
 			{
@@ -13275,18 +13323,19 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 							}
 						}
 					}
-				}
-
-				if (genericArg == NULL)
-				{
-					failed = true;
-					mModule->Fail(StrFormat("Unable to determine generic argument '%s'", methodDef->mGenericParams[checkGenericIdx]->mName.c_str()).c_str(), targetSrc);
-					if ((genericParam->mTypeConstraint != NULL) && (!genericParam->mTypeConstraint->IsUnspecializedType()))
-						genericArg = genericParam->mTypeConstraint;
-					else
-						genericArg = mModule->mContext->mBfObjectType;
-				}
+				}				
 			}
+
+			if (genericArg == NULL)
+			{
+				failed = true;
+				mModule->Fail(StrFormat("Unable to determine generic argument '%s'", methodDef->mGenericParams[checkGenericIdx]->mName.c_str()).c_str(), targetSrc);
+				if ((genericParam->mTypeConstraint != NULL) && (!genericParam->mTypeConstraint->IsUnspecializedType()))
+					genericArg = genericParam->mTypeConstraint;
+				else
+					genericArg = mModule->mContext->mBfObjectType;
+			}
+
 			resolvedGenericArguments.push_back(genericArg);
 		}
 		else
