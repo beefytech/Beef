@@ -1137,7 +1137,7 @@ void BFGC::ProcessSweepInfo()
 		//::MessageBoxA(NULL, "Leak", "Leak", MB_OK);
 
 //#if 0
-		Beefy::String errorStr = StrFormat("%d object memory leak%s detected, details in Output panel.", 
+		Beefy::StringT<1024> errorStr = StrFormat("%d object memory leak%s detected, details in Output panel.", 
 			mSweepInfo.mLeakCount, (mSweepInfo.mLeakCount != 1) ? "s" : "");
 		gDbgErrorString = errorStr;
 		gDbgErrorString += "\n";
@@ -1188,7 +1188,10 @@ void BFGC::ProcessSweepInfo()
 
 		gBfRtDbgCallbacks.SetErrorString(gDbgErrorString.c_str());
 		gBfRtDbgCallbacks.DebugMessageData_SetupError(errorStr.c_str(), 1);
-		BF_DEBUG_BREAK();		
+		
+		mCritSect.Unlock();
+		BF_DEBUG_BREAK();	
+		mCritSect.Lock();
 
 		for (auto obj : mSweepInfo.mLeakObjects)
 		{
