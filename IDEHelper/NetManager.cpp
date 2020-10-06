@@ -43,7 +43,7 @@ static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, voi
 	if (!netRequest->mOutFile.IsOpen())
 	{
 		RecursiveCreateDirectory(GetFileDir(netRequest->mOutPath));
-		if (!netRequest->mOutFile.Open(netRequest->mOutTempPath, "wb"))
+		if (!netRequest->mOutFile.Open(netRequest->mOutTempPath, BfpFileCreateKind_CreateAlways, BfpFileCreateFlag_Write))
 		{
 			netRequest->Fail(StrFormat("Failed to create file '%s'", netRequest->mOutTempPath.c_str()));
 			return 0;

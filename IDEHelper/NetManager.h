@@ -29,7 +29,7 @@ public:
 	String mURL;
 	String mOutPath;
 	String mOutTempPath;
-	FileStream mOutFile;
+	SysFileStream mOutFile;
 #ifdef BF_CURL
 	CURL* mCURL;
 	CURLM* mCURLMulti;
