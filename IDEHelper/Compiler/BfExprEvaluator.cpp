@@ -12394,7 +12394,11 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 						continue;
 					}
 
-					auto elemAddr = mModule->CreateIndexedValue(resultType, addr, writeIdx);
+					BfIRValue elemAddr;
+					if (!resultType->IsValuelessType())
+						elemAddr = mModule->CreateIndexedValue(resultType, addr, writeIdx);
+					else
+						elemAddr = mModule->mBfIRBuilder->GetFakeVal();
 					writeIdx++;
 					dimWriteIdx++;
 
@@ -20503,6 +20507,20 @@ void BfExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 						mResult = mModule->Cast(binOpExpr, mResult, resolvedType, BfCastFlags_Explicit);
 					}
 					return;
+				}
+			}
+		}
+	}
+
+	if ((binOpExpr->mOp == BfBinaryOp_LeftShift) || (binOpExpr->mOp == BfBinaryOp_RightShift))
+	{
+		for (int side = 0; side < 2; side++)
+		{
+			if (auto innerBinOpExpr = BfNodeDynCast<BfBinaryOperatorExpression>((side == 0) ? binOpExpr->mLeft : binOpExpr->mRight))
+			{
+				if ((innerBinOpExpr->mOp == BfBinaryOp_Add) || (innerBinOpExpr->mOp == BfBinaryOp_Subtract))
+				{
+					mModule->Warn(BfWarning_C4554_PossiblePrecedenceError, "Check operator precedence for possible error. Consider using parentheses to clarify precedence", innerBinOpExpr);
 				}
 			}
 		}

@@ -1559,20 +1559,23 @@ BfBinaryOp Beefy::BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp)
 int Beefy::BfGetBinaryOpPrecendence(BfBinaryOp binOp)
 {	
 	switch (binOp)
-	{		
-	case BfBinaryOp_LeftShift:
-	case BfBinaryOp_RightShift:
-		return 10;
+	{			
 	case BfBinaryOp_Multiply:
 	case BfBinaryOp_Divide:
-	case BfBinaryOp_Modulus:
-	case BfBinaryOp_BitwiseAnd:
-		return 9;
+	case BfBinaryOp_Modulus:	
+		return 13;
 	case BfBinaryOp_Add:
-	case BfBinaryOp_Subtract:			
+	case BfBinaryOp_Subtract:				
+		return 12;	
+	case BfBinaryOp_LeftShift:
+	case BfBinaryOp_RightShift:
+		return 11;
+	case BfBinaryOp_BitwiseAnd:
+		return 10;
 	case BfBinaryOp_ExclusiveOr:
+		return 9;
 	case BfBinaryOp_BitwiseOr:
-		return 8;	
+		return 8;
 	// "Range" inserted here if we were copying swift	
 	case BfBinaryOp_Is:
 	case BfBinaryOp_As:

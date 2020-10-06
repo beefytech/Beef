@@ -1102,7 +1102,8 @@ enum BfWarning
 	BfWarning_CS1030_PragmaWarning						= 1030,	
 	BfWarning_BF4201_Only7Hex							= 4201,
 	BfWarning_BF4202_TooManyHexForInt					= 4202,
-	BfWarning_BF4203_UnnecessaryDynamicCast				= 4203
+	BfWarning_BF4203_UnnecessaryDynamicCast				= 4203,
+	BfWarning_C4554_PossiblePrecedenceError				= 4554
 };
 
 class BfErrorBase
