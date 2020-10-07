@@ -315,6 +315,10 @@ namespace IDE
 				GetColor("AutoCompleteSubText", ref mAutoCompleteSubText);
 				GetColor("AutoCompleteDocText", ref mAutoCompleteDocText);
 				GetColor("AutoCompleteActiveText", ref mAutoCompleteActiveText);
+				GetColor("WorkspaceDisabledText", ref mWorkspaceDisabledText);
+				GetColor("WorkspaceFailedText", ref mWorkspaceFailedText);
+				GetColor("WorkspaceManualIncludeText", ref mWorkspaceManualIncludeText);
+				GetColor("WorkspaceIgnoredText", ref mWorkspaceIgnoredText);
 
 				GetColor("Code", ref mCode);
 				GetColor("Keyword", ref mKeyword);
