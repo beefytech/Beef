@@ -897,7 +897,7 @@ namespace Beefy.gfx
 				{
 					// This strange-looking construct is so that odd-length lines and even-length lines do not 'jitter'
 					// relative to each other as we're resizing a window
-                    useX += ((int)(width)&~1 - (int)aWidth) / 2;
+                    useX += (((int)(width)&~1) - (int)aWidth) / 2;
 				}
                 else if (justification == 1)
                     useX += width - aWidth;

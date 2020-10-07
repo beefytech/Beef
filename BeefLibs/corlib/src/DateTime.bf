@@ -284,7 +284,10 @@ namespace System
 			int32[] days = leapYear ? DaysToMonth366 : DaysToMonth365;
 			// All months have less than 32 days, so n >> 5 is a good conservative
 			// estimate for the month
-			int32 m = n >> 5 + 1;
+
+			//BCF- Note, the original read `int32 m = n >> 5 + 1;`, which may have been a bug. Preserving original precedence.
+			int32 m = n >> (5 + 1);
+
 			// m = 1-based month number
 			while (n >= days[m]) m++;
 			// If month was requested, return it

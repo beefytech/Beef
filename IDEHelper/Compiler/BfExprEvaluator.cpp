@@ -20512,7 +20512,9 @@ void BfExprEvaluator::Visit(BfBinaryOperatorExpression* binOpExpr)
 		}
 	}
 
-	if ((binOpExpr->mOp == BfBinaryOp_LeftShift) || (binOpExpr->mOp == BfBinaryOp_RightShift))
+	if ((binOpExpr->mOp == BfBinaryOp_LeftShift) || (binOpExpr->mOp == BfBinaryOp_RightShift) || 
+		(binOpExpr->mOp == BfBinaryOp_BitwiseAnd) || (binOpExpr->mOp == BfBinaryOp_BitwiseOr) ||
+		(binOpExpr->mOp == BfBinaryOp_ExclusiveOr))
 	{
 		for (int side = 0; side < 2; side++)
 		{

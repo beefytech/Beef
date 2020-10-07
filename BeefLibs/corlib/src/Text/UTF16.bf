@@ -29,7 +29,7 @@ namespace System.Text
 				else if ((c >= '\u{DC00}') && (c < '\u{E000}'))
 				{
 					char16 utf16lo = c;
-					c32 = (char32)(0x10000 + ((uint32)(utf16hi - 0xD800) << 10) | (uint32)(utf16lo - 0xDC00));
+					c32 = (char32)(0x10000 | ((uint32)(utf16hi - 0xD800) << 10) | (uint32)(utf16lo - 0xDC00));
 				}
 
 				outStr.Append(c32);
@@ -56,7 +56,7 @@ namespace System.Text
 				else if ((c >= '\u{DC00}') && (c < '\u{E000}'))
 				{
 					char16 utf16lo = c;
-					c32 = (char32)(0x10000 + ((uint32)(utf16hi - 0xD800) << 10) | (uint32)(utf16lo - 0xDC00));
+					c32 = (char32)(0x10000 | ((uint32)(utf16hi - 0xD800) << 10) | (uint32)(utf16lo - 0xDC00));
 				}
 
 				outStr.Append(c32);
@@ -83,7 +83,7 @@ namespace System.Text
 #endif
                     return ((char32)c, 1);
 				}
-				char32 c32 = (char32)(0x10000 + ((uint32)(c - 0xD800) << 10) | (uint32)(utf16lo - 0xDC00));
+				char32 c32 = (char32)(0x10000 | ((uint32)(c - 0xD800) << 10) | (uint32)(utf16lo - 0xDC00));
 				return (c32, 2);
 			}
 #if BF_UTF_PEDANTIC

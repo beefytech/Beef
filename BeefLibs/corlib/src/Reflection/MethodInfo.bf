@@ -372,7 +372,7 @@ namespace System.Reflection
 					}
 					else if (mMethodData.mVirtualIdx >= 0x100000)
 					{
-						void* extAddr = (void*)*((int*)classVData + (mMethodData.mVirtualIdx>>20 - 1));
+						void* extAddr = (void*)*((int*)classVData + ((mMethodData.mVirtualIdx>>20) - 1));
 						funcPtr = (void*)*((int*)extAddr + (mMethodData.mVirtualIdx & 0xFFFFF));
 					}
 					else
@@ -706,7 +706,7 @@ namespace System.Reflection
 				}
 				else if (mMethodData.mVirtualIdx >= 0x100000)
 				{
-					void* extAddr = (void*)*((int*)classVData + (mMethodData.mVirtualIdx>>20 - 1));
+					void* extAddr = (void*)*((int*)classVData + ((mMethodData.mVirtualIdx>>20) - 1));
 					funcPtr = (void*)*((int*)extAddr + (mMethodData.mVirtualIdx & 0xFFFFF) + virtualOffset);
 				}
 				else

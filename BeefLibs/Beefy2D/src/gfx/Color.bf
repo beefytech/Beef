@@ -77,7 +77,7 @@ namespace Beefy.gfx
                 (((((color1 & 0x000000FF) * oma) + ((color2 & 0x000000FF) * a)) >> 8) & 0x000000FF) |
                 (((((color1 & 0x0000FF00) * oma) + ((color2 & 0x0000FF00) * a)) >> 8) & 0x0000FF00) |
                 (((((color1 & 0x00FF0000) * oma) + ((color2 & 0x00FF0000) * a)) >> 8) & 0x00FF0000) |
-                (((((color1 >> 24) & 0xFF) * oma) + (((color2 >> 24) & 0xFF) * a) & 0x0000FF00) << 16);
+                ((((((color1 >> 24) & 0xFF) * oma) + (((color2 >> 24) & 0xFF) * a)) & 0x0000FF00) << 16);
 
             return aColor;
         }
