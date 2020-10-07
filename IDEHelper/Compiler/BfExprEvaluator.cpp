@@ -15509,7 +15509,9 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 					auto argValue = ResolveArgValue(mIndexerValues[paramIdx], wantType);
 					if (refNode == NULL)
 						refNode = mPropSrc;
-					auto val = mModule->Cast(refNode, argValue, wantType);
+					BfTypedValue val;
+					if (argValue)
+						val = mModule->Cast(refNode, argValue, wantType);
 					if (!val)
 						failed = true;
 					else
