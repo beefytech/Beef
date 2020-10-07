@@ -650,12 +650,16 @@ namespace IDE.ui
 
             public void SelectDirection(int32 dir)
             {
+				if (mEntryList.IsEmpty)
+					return;
                 int32 newSelection = mSelectIdx + dir;
-                if ((newSelection >= 0) && (newSelection < mEntryList.Count))
-                {
-                    if (mEntryList[newSelection].mShowIdx != -1)
-                        Select(newSelection);
-                }
+				if (newSelection < 0)
+					newSelection = (.)mEntryList.Count - 1;
+				else if (newSelection >= mEntryList.Count)
+					newSelection = 0;
+                
+                if (mEntryList[newSelection].mShowIdx != -1)
+                    Select(newSelection);
             }
 
             public override void ScrollPositionChanged()

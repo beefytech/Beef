@@ -528,6 +528,8 @@ namespace Beefy.widgets
                         SetSelection(0);
                         break;
                     }
+					else if ((mSelectIdx == 0) && (!mItemWidgets.IsEmpty))
+						SetSelection(mItemWidgets.Count - 1);
                     else if (mSelectIdx > 0)
                         SetSelection(mSelectIdx - 1);
                     break;
@@ -539,6 +541,8 @@ namespace Beefy.widgets
                     }
                     else if (mSelectIdx < mItemWidgets.Count - 1)
                         SetSelection(mSelectIdx + 1);
+					else
+						SetSelection(0);
                     break;
 				case .Return:
 					SubmitSelection();
