@@ -4638,7 +4638,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 			mModule->mCurMethodState->mCancelledDeferredCall = true;
 	}
 
-	if (methodDef->mNoReturn)
+	if (methodDef->mIsNoReturn)
 	{
 		mModule->mCurMethodState->SetHadReturn(true);
 		mModule->mCurMethodState->mLeftBlockUncond = true;
@@ -4984,7 +4984,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	if ((expectCallingConvention != BfIRCallingConv_CDecl) && (!methodInstance->mIsIntrinsic))
 		mModule->mBfIRBuilder->SetCallCallingConv(callInst, expectCallingConvention);
 	
-	if ((methodDef->mNoReturn) && (!methodInstance->mIsIntrinsic))
+	if ((methodDef->mIsNoReturn) && (!methodInstance->mIsIntrinsic))
 		mModule->mBfIRBuilder->Call_AddAttribute(callInst, -1, BfIRAttribute_NoReturn);
 
 	bool hadAttrs = false;	
@@ -5146,7 +5146,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	if (isTailCall)
 		mModule->mBfIRBuilder->SetTailCall(callInst);		
 
-	if (methodDef->mNoReturn)
+	if (methodDef->mIsNoReturn)
 	{
 		mModule->mBfIRBuilder->CreateUnreachable();
 		// For debuggability when looking back at stack trace
@@ -15737,7 +15737,7 @@ bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
 	return true;
 }
 
-bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut)
+bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut, bool emitWarning)
 {	
 	BfLocalVariable* localVar = NULL;
 	bool isCapturedLocal = false;
@@ -15774,10 +15774,18 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 
 	bool canModify = typedVal.CanModify();
 
+	auto _Fail = [&](const StringImpl& error, BfAstNode* refNode)
+	{
+		if (emitWarning)
+			return mModule->Warn(BfWarning_BF4204_AddressOfReadOnly, error, refNode);
+		else
+			return mModule->Fail(error, refNode);
+	};
+
 	if (localVar != NULL)
 	{
 		if (!canModify)
-		{
+		{			
 			BfError* error = NULL;
 			if (localVar->mIsThis)
 			{
@@ -15807,18 +15815,18 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 					if (isClosure)
 					{
 						if (!mModule->mCurMethodState->mClosureState->mDeclaringMethodIsMutating)
-							error = mModule->Fail(StrFormat("Cannot %s 'this' within struct lambda. Consider adding 'mut' specifier to this method.", modifyType), refNode);
+							error = _Fail(StrFormat("Cannot %s 'this' within struct lambda. Consider adding 'mut' specifier to this method.", modifyType), refNode);
 						else
-							error = mModule->Fail(StrFormat("Cannot %s 'this' within struct lambda. Consider adding by-reference capture specifier [&] to lambda.", modifyType), refNode);
+							error = _Fail(StrFormat("Cannot %s 'this' within struct lambda. Consider adding by-reference capture specifier [&] to lambda.", modifyType), refNode);
 					}
 					else if (localVar->mResolvedType->IsValueType())
 					{
-						error = mModule->Fail(StrFormat("Cannot %s 'this' within struct method '%s'. Consider adding 'mut' specifier to this method.", modifyType,
+						error = _Fail(StrFormat("Cannot %s 'this' within struct method '%s'. Consider adding 'mut' specifier to this method.", modifyType,
 			                mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					}
 					else
 					{						
-						error = mModule->Fail(StrFormat("Cannot %s 'this' because '%s' is a reference type.", modifyType,
+						error = _Fail(StrFormat("Cannot %s 'this' because '%s' is a reference type.", modifyType,
 							mModule->TypeToString(localVar->mResolvedType).c_str()), refNode);
 					}
 					return false;
@@ -15827,21 +15835,21 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 				{															
 					if (isCapturedLocal)
 					{
-						error = mModule->Fail(StrFormat("Cannot %s read-only captured local variable '%s'. Consider adding by-reference capture specifier [&] to lambda and ensuring that captured value is not read-only.", modifyType,
+						error = _Fail(StrFormat("Cannot %s read-only captured local variable '%s'. Consider adding by-reference capture specifier [&] to lambda and ensuring that captured value is not read-only.", modifyType,
 							mResultFieldInstance->GetFieldDef()->mName.c_str()), refNode);
 					}
 					else if (isClosure)
 					{
 						if (!mModule->mCurMethodState->mClosureState->mDeclaringMethodIsMutating)
-							error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct lambda. Consider adding 'mut' specifier to this method.", modifyType,
+							error = _Fail(StrFormat("Cannot %s field '%s.%s' within struct lambda. Consider adding 'mut' specifier to this method.", modifyType,
 								mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str()), refNode);
 						else
-							error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct lambda. Consider adding by-reference capture specifier [&] to lambda.", modifyType,
+							error = _Fail(StrFormat("Cannot %s field '%s.%s' within struct lambda. Consider adding by-reference capture specifier [&] to lambda.", modifyType,
 							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str()), refNode);
 					}
 					else if (mResultFieldInstance->GetFieldDef()->mIsReadOnly)
 					{
-						error = mModule->Fail(StrFormat("Cannot %s readonly field '%s.%s' within method '%s'", modifyType,
+						error = _Fail(StrFormat("Cannot %s readonly field '%s.%s' within method '%s'", modifyType,
 							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
 							mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					}
@@ -15851,12 +15859,12 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 						if (propertyDeclaration->mNameNode != NULL)
 							propertyDeclaration->mNameNode->ToString(propNam);
 
-						error = mModule->Fail(StrFormat("Cannot %s auto-implemented property '%s.%s' without set accessor", modifyType,
+						error = _Fail(StrFormat("Cannot %s auto-implemented property '%s.%s' without set accessor", modifyType,
 							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), propNam.c_str()), refNode);
 					}
 					else
 					{
-						error = mModule->Fail(StrFormat("Cannot %s field '%s.%s' within struct method '%s'. Consider adding 'mut' specifier to this method.", modifyType,
+						error = _Fail(StrFormat("Cannot %s field '%s.%s' within struct method '%s'. Consider adding 'mut' specifier to this method.", modifyType,
 							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
 							mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					}								
@@ -15868,13 +15876,13 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 				if (!mModule->mCurMethodInstance->IsMixin())
 				{
 					if (mModule->mCurMethodState->mMixinState != NULL)
-						error = mModule->Fail(StrFormat("Cannot %s mixin parameter '%s'", modifyType,
+						error = _Fail(StrFormat("Cannot %s mixin parameter '%s'", modifyType,
 							localVar->mName.c_str(), mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					else if ((localVar->mResolvedType->IsGenericParam()) && (onlyNeedsMut))
-						error = mModule->Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'mut' or 'ref' specifier to parameter or copying to a local variable.", modifyType,
+						error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'mut' or 'ref' specifier to parameter or copying to a local variable.", modifyType,
 							localVar->mName.c_str(), mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					else
-						error = mModule->Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'ref' specifier to parameter or copying to a local variable.", modifyType,
+						error = _Fail(StrFormat("Cannot %s parameter '%s'. Consider adding 'ref' specifier to parameter or copying to a local variable.", modifyType,
 							localVar->mName.c_str(), mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					return false;
 				}
@@ -15891,7 +15899,7 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 						{
 							if (field.mDataIdx == dataIdx)
 							{
-								error = mModule->Fail(StrFormat("Cannot %s readonly field '%s.%s'.", modifyType,
+								error = _Fail(StrFormat("Cannot %s readonly field '%s.%s'.", modifyType,
 									mModule->TypeToString(typeInst).c_str(),
 									field.GetFieldDef()->mName.c_str()), refNode);
 								break;
@@ -15904,7 +15912,7 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 				
 				if (error == NULL)
 				{
-					error = mModule->Fail(StrFormat("Cannot %s read-only local variable '%s'.", modifyType,
+					error = _Fail(StrFormat("Cannot %s read-only local variable '%s'.", modifyType,
 						localVar->mName.c_str()), refNode);
 				}
 				return false;
@@ -15919,14 +15927,13 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue typedVal, BfAstNode* refNod
 
 	if ((mResultFieldInstance != NULL) && (mResultFieldInstance->GetFieldDef()->mIsReadOnly) && (!canModify))
 	{
-		auto error = mModule->Fail(StrFormat("Cannot %s static readonly field '%s.%s' within method '%s'", modifyType,
+		auto error = _Fail(StrFormat("Cannot %s static readonly field '%s.%s' within method '%s'", modifyType,
 			mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
 			mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 
 		return false;
 	}
 	
-
 	return mModule->CheckModifyValue(typedVal, refNode, modifyType);
 }
 
@@ -18367,11 +18374,17 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			mModule->FixIntUnknown(mResult);
 			mModule->PopulateType(mResult.mType);
 			auto ptrType = mModule->CreatePointerType(mResult.mType);
-			if ((!CheckModifyResult(mResult, unaryOpExpr, "take address of")) || (mResult.mType->IsValuelessType()))
+			if (mResult.mType->IsValuelessType())
 			{
 				// Sentinel value
 				auto val = mModule->mBfIRBuilder->CreateIntToPtr(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1), mModule->mBfIRBuilder->MapType(ptrType));
 				mResult = BfTypedValue(val, ptrType);
+			}
+			else if (!CheckModifyResult(mResult, unaryOpExpr, "take address of", false, true))
+			{
+				if (!mResult.IsAddr())
+					mResult = mModule->MakeAddressable(mResult);
+				mResult = BfTypedValue(mResult.mValue, ptrType, false);
 			}
 			else
 				mResult = BfTypedValue(mResult.mValue, ptrType, false);

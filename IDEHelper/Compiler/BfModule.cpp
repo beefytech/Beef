@@ -6113,7 +6113,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		if (!methodInstanceGroup->IsImplemented())
 			continue;		
 		auto methodDef = typeDef->mMethods[methodIdx];
-		if (methodDef->mNoReflect)
+		if (methodDef->mIsNoReflect)
 			continue;
 
 		auto defaultMethod = methodInstanceGroup->mDefault;
@@ -15146,7 +15146,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 
 	if (methodDef->mImportKind == BfImportKind_Export)
 		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllExport);
-	if (methodDef->mNoReturn)
+	if (methodDef->mIsNoReturn)
 		mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_NoReturn);
 	auto callingConv = GetIRCallingConvention(methodInstance);
 	if (callingConv != BfIRCallingConv_CDecl)

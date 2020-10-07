@@ -720,9 +720,10 @@ public:
 	bool mCLink;
 	bool mHasAppend;
 	bool mAlwaysInline;	
-	bool mNoReturn;
-	bool mIsMutating;	
-	bool mNoReflect;
+	bool mIsNoReturn;
+	bool mIsMutating;
+	bool mIsNoSplat;
+	bool mIsNoReflect;
 	bool mIsSkipCall;
 	bool mIsOperator;
 	bool mIsExtern;	
@@ -747,9 +748,10 @@ public:
 		mIsNew = false;
 		mIsPartial = false;
 		mCLink = false;		
-		mNoReturn = false;
-		mIsMutating = false;		
-		mNoReflect = false;
+		mIsNoReturn = false;
+		mIsMutating = false;
+		mIsNoSplat = false;
+		mIsNoReflect = false;
 		mIsSkipCall = false;
 		mIsOperator = false;
 		mIsExtern = false;
@@ -774,7 +776,7 @@ public:
 	virtual ~BfMethodDef();
 
 	static BfImportKind GetImportKindFromPath(const StringImpl& filePath);
-	bool HasNoThisSplat() { return mIsMutating; }
+	bool HasNoThisSplat() { return mIsMutating || mIsNoSplat; }
 	void Reset();
 	void FreeMembers();
 	BfMethodDeclaration* GetMethodDeclaration();	
@@ -1103,6 +1105,7 @@ enum BfWarning
 	BfWarning_BF4201_Only7Hex							= 4201,
 	BfWarning_BF4202_TooManyHexForInt					= 4202,
 	BfWarning_BF4203_UnnecessaryDynamicCast				= 4203,
+	BfWarning_BF4204_AddressOfReadOnly					= 4204,
 	BfWarning_C4554_PossiblePrecedenceError				= 4554
 };
 

@@ -231,6 +231,12 @@ namespace System
 	}
 
 	[AttributeUsage(.Method /*2*/)]
+	public struct NoSplatAttribute : Attribute
+	{
+
+	}
+
+	[AttributeUsage(.Method /*2*/)]
 	public struct SkipCallAttribute : Attribute
 	{
 

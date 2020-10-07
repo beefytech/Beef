@@ -795,13 +795,15 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				}
 			}
 			else if (typeRefName == "NoReturn")
-				methodDef->mNoReturn = true;
+				methodDef->mIsNoReturn = true;
 			else if (typeRefName == "SkipCall")
 				methodDef->mIsSkipCall = true;
 			else if (typeRefName == "NoShow")
 				methodDef->mIsNoShow = true;
 			else if (typeRefName == "NoDiscard")
 				methodDef->mIsNoDiscard = true;
+			else if (typeRefName == "NoSplat")
+				methodDef->mIsNoSplat = true;
 			else if (typeRefName == "Commutable")
 			{
 				if (methodDef->mParams.size() != 2)
@@ -1122,12 +1124,12 @@ BfMethodDef* BfDefBuilder::AddMethod(BfTypeDef* typeDef, BfMethodType methodType
 		else if (methodType == BfMethodType_CtorNoBody)
 		{
 			methodDef->mName = "__BfCtorNoBody";
-			methodDef->mNoReflect = true;
+			methodDef->mIsNoReflect = true;
 		}
 		else if (methodType == BfMethodType_CtorClear)
 		{
 			methodDef->mName = "__BfCtorClear";
-			methodDef->mNoReflect = true;
+			methodDef->mIsNoReflect = true;
 		}
 		else if (methodType == BfMethodType_Dtor)
 		{
@@ -1191,7 +1193,7 @@ void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef)
 		paramDef->mTypeRef = typeDef->mSystem->mDirectInt32TypeRef;
 		methodDef->mParams.push_back(paramDef);
 		methodDef->mReturnTypeRef = typeDef->mSystem->mDirectObjectTypeRef;
-		methodDef->mNoReflect = true;
+		methodDef->mIsNoReflect = true;
 	}
 
 	// 
@@ -1212,7 +1214,7 @@ void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef)
 		paramDef->mTypeRef = typeDef->mSystem->mDirectInt32TypeRef;
 		methodDef->mParams.push_back(paramDef);
 		methodDef->mReturnTypeRef = typeDef->mSystem->mDirectObjectTypeRef;
-		methodDef->mNoReflect = true;
+		methodDef->mIsNoReflect = true;
 	}
 }
 
@@ -2048,13 +2050,13 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		if ((hasStaticField) && (!hasStaticMarkMethod))
 		{						
 			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, true, BF_METHODNAME_MARKMEMBERS_STATIC);
-			methodDef->mNoReflect = true;			
+			methodDef->mIsNoReflect = true;
 		}
 
 		if (hasThreadStatics)
 		{
 			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, true, BF_METHODNAME_FIND_TLS_MEMBERS);
-			methodDef->mNoReflect = true;
+			methodDef->mIsNoReflect = true;
 		}
 
 		if ((hasNonStaticField) && (!hasMarkMethod))
@@ -2062,7 +2064,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, false, BF_METHODNAME_MARKMEMBERS);
 			methodDef->mIsVirtual = true;
 			methodDef->mIsOverride = true;
-			methodDef->mNoReflect = true;			
+			methodDef->mIsNoReflect = true;
 			methodDef->mCallingConvention = BfCallingConvention_Cdecl;
 			mCurTypeDef->mHasOverrideMethods = true;
 		}

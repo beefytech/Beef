@@ -764,12 +764,16 @@ bool BfMethodInstance::AllowsSplatting()
 {
 	if (mCallingConvention != BfCallingConvention_Unspecified)
 		return false;
+	if (mMethodDef->mIsNoSplat)
+		return false;
 	return true;
 }
 
 bool BfMethodInstance::AllowsThisSplatting()
 {
 	if (mCallingConvention != BfCallingConvention_Unspecified)
+		return false;
+	if (mMethodDef->mIsNoSplat)
 		return false;
 	return !mMethodDef->HasNoThisSplat();
 }
