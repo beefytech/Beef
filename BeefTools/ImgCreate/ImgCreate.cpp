@@ -114,10 +114,14 @@ int main()
 				else
 					fileName = "DarkUI_4.psd";
 
-				if ((!FileExists(fileName)) && (size == 0))
-				{
-					isThemeDir = true;
-					fileName = "../../images/" + fileName;
+				if (!FileExists(fileName))
+				{					
+					String checkFileName = "../../images/" + fileName;
+					if (FileExists(checkFileName))
+					{
+						isThemeDir = true;
+						fileName = checkFileName;
+					}
 				}
 			}
 			else
