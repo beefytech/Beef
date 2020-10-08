@@ -2289,7 +2289,8 @@ void BfClosureType::Init(BfProject* bfProject)
 	mTypeDef->mProject = bfProject;
 	mTypeDef->mTypeCode = srcTypeDef->mTypeCode;	
 	mTypeDef->mName = system->GetAtom(srcTypeDef->mName->mString + mNameAdd);	
-	mTypeDef->mOuterType = srcTypeDef->mOuterType;
+	// Purposely leave out 'mOuterType' - this fails if the outer type is generic
+	//mTypeDef->mOuterType = srcTypeDef->mOuterType;
 	mTypeDef->mNamespace = srcTypeDef->mNamespace;
 	system->AddNamespaceUsage(mTypeDef->mNamespace, mTypeDef->mProject);
 	mTypeDef->mHash = srcTypeDef->mHash;

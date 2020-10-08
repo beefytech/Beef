@@ -10455,10 +10455,9 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 		Val128 hash128 = hashCtx.Finish128();
 		BfClosureType* checkClosureType = new BfClosureType(delegateTypeInstance, hash128);
-		checkClosureType->mContext = mModule->mContext;
-
+		checkClosureType->mContext = mModule->mContext;		
 		checkClosureType->mBaseType = delegateTypeInstance;
-		BfType* resolvedClosureType = mModule->ResolveType(checkClosureType, BfPopulateType_Identity);
+		BfType* resolvedClosureType = mModule->ResolveType(checkClosureType, BfPopulateType_TypeDef);
 		closureTypeInst = (BfClosureType*)resolvedClosureType;
 		if (checkClosureType == resolvedClosureType)
 		{			
@@ -11413,7 +11412,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		BfClosureType* checkClosureType = new BfClosureType(delegateTypeInstance, hash128);
 		checkClosureType->mContext = mModule->mContext;
 		checkClosureType->mBaseType = delegateTypeInstance;
-		BfType* resolvedClosureType = mModule->ResolveType(checkClosureType, BfPopulateType_Identity);
+		BfType* resolvedClosureType = mModule->ResolveType(checkClosureType, BfPopulateType_TypeDef);
 		closureTypeInst = (BfClosureType*)resolvedClosureType;
 		if (checkClosureType == resolvedClosureType)
 		{

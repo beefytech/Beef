@@ -982,6 +982,9 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	if (!resolvedTypeRef->IsIncomplete())
 		return;
 
+ 	if (populateType <= BfPopulateType_TypeDef)
+ 		return;
+
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
 	CheckInjectNewRevision(typeInstance);	
 

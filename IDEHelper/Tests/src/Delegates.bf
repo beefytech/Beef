@@ -98,6 +98,11 @@ namespace Tests
 			}
 		}
 
+		class ClassB<T>
+		{
+			public delegate int DelegateB(T val);
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -138,6 +143,9 @@ namespace Tests
 			val1.TestLambda();
 			ClassA ca = scope .();
 			ca.TestLambda();
+
+			ClassB<int8>.DelegateB dlg2 = scope (val) => val + 123;
+			Test.Assert(dlg2(3) == 126);
 		}
 
 		public static void Modify(ref int a, ref Splattable b)
