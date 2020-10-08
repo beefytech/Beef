@@ -5196,9 +5196,26 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				_InterfaceMatchEntry* matchEntry = NULL;
 				if (interfaceMap.TryGetValue(interfaceEntry.mInterfaceType, &matchEntry))
 				{
+					BfTypeInstance* compareCheckTypeInst = checkTypeInst;
+					if (compareCheckTypeInst->IsBoxed())
+						compareCheckTypeInst = compareCheckTypeInst->GetUnderlyingType()->ToTypeInstance();
+					BfTypeInstance* compareEntrySource = matchEntry->mEntrySource;
+					if (compareEntrySource->IsBoxed())
+						compareEntrySource = compareEntrySource->GetUnderlyingType()->ToTypeInstance();
+
 					auto prevEntry = matchEntry->mEntry;
-					bool isBetter = TypeIsSubTypeOf(checkTypeInst, matchEntry->mEntrySource);
-					bool isWorse = TypeIsSubTypeOf(matchEntry->mEntrySource, checkTypeInst);
+					bool isBetter = TypeIsSubTypeOf(compareCheckTypeInst, compareEntrySource);
+					bool isWorse = TypeIsSubTypeOf(compareEntrySource, compareCheckTypeInst);
+
+					if ((!isBetter) && (!isWorse))
+					{
+						// Unboxed comparison to Object fix
+						if (compareCheckTypeInst == mContext->mBfObjectType)
+							isWorse = true;
+						else if (compareEntrySource == mContext->mBfObjectType)
+							isBetter = true;
+					}
+
 					if (forceInterfaceSet)
 					{
 						isBetter = true;
