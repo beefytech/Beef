@@ -862,7 +862,8 @@ namespace IDE.ui
 
 		public void CheckSavedContents()
 		{
-			if (((mEditData != null)) && (mEditData.mLastFileTextVersion == mEditWidget.Content.mData.mCurTextVersionId) && (mEditData.mRecoveryHash.IsZero))
+			if (((mEditData != null)) && (mEditData.mLastFileTextVersion == mEditWidget.Content.mData.mCurTextVersionId) && (mEditData.mRecoveryHash.IsZero) &&
+				(gApp.mSettings.mEditorSettings.mEnableFileRecovery != .No))
 			{
 				String text = scope .();
 				mEditWidget.GetText(text);
@@ -6170,7 +6171,7 @@ namespace IDE.ui
 			{
 #if !CLI
 				DeleteAndNullify!(mFileRecoveryEntry);
-				if ((mFilePath != null) && (mEditData != null) && (!mEditData.mRecoveryHash.IsZero))
+				if ((mFilePath != null) && (mEditData != null) && (!mEditData.mRecoveryHash.IsZero) && (gApp.mSettings.mEditorSettings.mEnableFileRecovery != .No))
 				{
 					String contents = scope .();
 					mEditWidget.GetText(contents);

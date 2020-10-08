@@ -548,6 +548,13 @@ namespace IDE
 				None
 			}
 
+			public enum FileRecoveryKind
+			{
+				No,
+				Yes,
+				BackupOnly
+			}	
+
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
@@ -564,6 +571,7 @@ namespace IDE
 			public bool mSpellCheckEnabled = true;
 			public bool mShowLineNumbers = true;
 			public bool mFreeCursorMovement;
+			public FileRecoveryKind mEnableFileRecovery = .Yes;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -586,6 +594,7 @@ namespace IDE
 				sd.Add("SpellCheckEnabled", mSpellCheckEnabled);
 				sd.Add("ShowLineNumbers", mShowLineNumbers);
 				sd.Add("FreeCursorMovement", mFreeCursorMovement);
+				sd.Add("EnableFileRecovery", mEnableFileRecovery);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -612,6 +621,7 @@ namespace IDE
 				sd.Get("SpellCheckEnabled", ref mSpellCheckEnabled);
 				sd.Get("ShowLineNumbers", ref mShowLineNumbers);
 				sd.Get("FreeCursorMovement", ref mFreeCursorMovement);
+				sd.GetEnum<FileRecoveryKind>("EnableFileRecovery", ref mEnableFileRecovery);
 			}
 
 			public void SetDefaults()

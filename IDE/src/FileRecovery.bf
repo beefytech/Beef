@@ -175,6 +175,9 @@ namespace IDE
 
 		public void CheckWorkspace()
 		{
+			if (gApp.mSettings.mEditorSettings.mEnableFileRecovery != .Yes)
+				return;
+
 			mWantWorkspaceCleanup = true;
 
 			String recoverPath = scope String();
