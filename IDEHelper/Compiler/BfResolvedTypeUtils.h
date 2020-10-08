@@ -902,7 +902,7 @@ public:
 	int GetImplicitParamCount();	
 	void GetParamName(int paramIdx, StringImpl& name);
 	String GetParamName(int paramIdx);	
-	BfType* GetParamType(int paramIdx, bool useResolvedType = true);	
+	BfType* GetParamType(int paramIdx, bool returnUnderlyingParamsType = false);
 	bool GetParamIsSplat(int paramIdx);
 	BfParamKind GetParamKind(int paramIdx);
 	bool WasGenericParam(int paramIdx);

@@ -718,18 +718,22 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		bool betterByConstExprParam = false;
 		bool worseByConstExprParam = false;
 
+		bool someArgWasBetter = false;
+		bool someArgWasWorse = false;
 		for (argIdx = anyIsExtension ? -1 : 0; argIdx < (int)mArguments.size(); argIdx++)
 		{
 			BfTypedValue arg;
-			BfResolvedArg* resolvedArg = NULL;
+			BfResolvedArg* resolvedArg = NULL;		
+			bool wasArgDeferred = false;
 			
 			if (argIdx == -1)
 			{
 				arg = mTarget;
 			}
 			else
-			{
+			{								
 				resolvedArg = &mArguments[argIdx];
+				wasArgDeferred = resolvedArg->mArgFlags != 0;
 				arg = resolvedArg->mTypedValue;
 			}
 			
@@ -739,8 +743,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
  			bool wasGenericParam = (newArgIdx >= 0) && newMethodInstance->WasGenericParam(newArgIdx);
  			bool prevWasGenericParam = (prevArgIdx >= 0) && prevMethodInstance->WasGenericParam(prevArgIdx);
 
-			BfType* paramType = newMethodInstance->GetParamType(newArgIdx);
-			BfType* prevParamType = prevMethodInstance->GetParamType(prevArgIdx);
+			BfType* paramType = newMethodInstance->GetParamType(newArgIdx, true);
+			BfType* prevParamType = prevMethodInstance->GetParamType(prevArgIdx, true);
 
 			numUsedParams++;
 			prevNumUsedParams++;
@@ -796,9 +800,10 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 					{
 						// The resolved argument type may actually match for both considered functions. IE:
 						// Method(int8 val) and Method(int16 val) called with Method(0) will create arguments that match their param types
-						if ((!wasGenericParam) && (IsType(arg, paramType)) && ((resolvedArg == NULL) || (prevParamType != resolvedArg->mBestBoundType)))
+						if ((!wasArgDeferred) && (!wasGenericParam) && (IsType(arg, paramType)) && ((resolvedArg == NULL) || (prevParamType != resolvedArg->mBestBoundType)))
 							isBetter = true;
-						else if ((!prevWasGenericParam) && (IsType(arg, prevParamType)) && (!IsType(arg, paramType)))
+						//else if ((!prevWasGenericParam) && (IsType(arg, prevParamType)) && (!IsType(arg, paramType)))
+						else if ((!wasArgDeferred) && (!prevWasGenericParam) && (IsType(arg, prevParamType)) && ((resolvedArg == NULL) || (paramType != resolvedArg->mBestBoundType)))
 							isWorse = true;
 						else
 						{
@@ -830,6 +835,10 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 										isWorse = true;
 								}
 							}
+							else if ((wasArgDeferred) && ((paramType->IsIntegral()) || (prevParamType->IsIntegral())))
+							{
+								SET_BETTER_OR_WORSE(paramType->IsIntegral(), prevParamType->IsIntegral());
+							}
 						}						
 					}
 				}
@@ -858,7 +867,14 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 
 			if ((usedExtendedForm) || (prevUsedExtendedForm))
 				break;
+
+			someArgWasBetter |= isBetter;
+			someArgWasWorse |= isWorse;
+			isBetter = false;
+			isWorse = false;			
 		}
+		isBetter |= someArgWasBetter;
+		isWorse |= someArgWasWorse;
 
 		if ((!isBetter) && (!isWorse))
 		{
@@ -1869,7 +1885,8 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				{
 					BF_ASSERT(!ambiguousEntry.mBestMethodGenericArguments.empty());
 				}
-				mAmbiguousEntries.push_back(ambiguousEntry);				
+				mAmbiguousEntries.push_back(ambiguousEntry);
+				goto Done;
 			}
 		}
 		

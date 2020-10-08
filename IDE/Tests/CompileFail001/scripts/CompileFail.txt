@@ -23,6 +23,11 @@ WaitForResolve()
 SleepTicks(20)
 AssertFileErrors()
 
+ShowFile("src/Methods.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
+
 ShowFile("src/Properties.bf")
 WaitForResolve()
 SleepTicks(20)

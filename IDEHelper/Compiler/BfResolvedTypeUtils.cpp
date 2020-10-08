@@ -868,7 +868,7 @@ String BfMethodInstance::GetParamName(int paramIdx)
 	return paramName;
 }
 
-BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
+BfType* BfMethodInstance::GetParamType(int paramIdx, bool returnUnderlyingParamsType)
 {	
 	if (paramIdx == -1)
 	{
@@ -892,6 +892,19 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool useResolvedType)
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
 		return invokeMethodInstance->GetParamType(methodParam->mDelegateParamIdx, true);
 	}
+
+	if (returnUnderlyingParamsType)
+	{
+		BfParameterDef* paramDef = mMethodDef->mParams[methodParam->mParamDefIdx];
+		if (paramDef->mParamKind == BfParamKind_Params)
+		{
+			auto underlyingType = methodParam->mResolvedType->GetUnderlyingType();
+			if (underlyingType != NULL)
+				return underlyingType;
+			return methodParam->mResolvedType;
+		}
+	}
+
 	return methodParam->mResolvedType;
 }
 

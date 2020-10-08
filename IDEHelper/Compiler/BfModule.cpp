@@ -16338,15 +16338,13 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		BfTypeCode loweredTypeCode2 = BfTypeCode_None;
 
 		bool isParamSkipped = methodInstance->IsParamSkipped(paramIdx);
-
-		BfType* unresolvedType = methodInstance->GetParamType(paramIdx, false);
-		if (unresolvedType == NULL)
+		
+		auto resolvedType = methodInstance->GetParamType(paramIdx);
+		if (resolvedType == NULL)
 		{
 			AssertErrorState();
-			unresolvedType = mContext->mBfObjectType;
 			paramVar->mParamFailed = true;
 		}
-		auto resolvedType = methodInstance->GetParamType(paramIdx, true);
 		prevIgnoreErrors.Restore();
 		PopulateType(resolvedType, BfPopulateType_Declaration);
 		paramVar->mResolvedType = resolvedType;
