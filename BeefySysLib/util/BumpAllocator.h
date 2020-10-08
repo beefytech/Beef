@@ -241,6 +241,13 @@ public:
 
 		return retVal;
 	}
+	
+	char* AllocString(const StringImpl& str)
+	{
+		char* ptr = (char*)AllocBytes(str.length() + 1);
+		memcpy(ptr, str.c_str(), str.length() + 1);
+		return ptr;
+	}
 };
 
 class BumpAllocator : public BumpAllocatorT<0x2000>

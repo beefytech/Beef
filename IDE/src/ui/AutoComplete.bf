@@ -82,6 +82,16 @@ namespace IDE.ui
 					continue;
 				}
 
+				if (c == '\x04')
+				{
+					queuedSpace = false;
+					atLineStart = true;
+					lineHadStar = false;
+					lineHadContent = false;
+					mDocString.Append('\n');
+					continue;
+				}
+
 				if (atLineStart)
 				{
 					if ((c == '*') && (blockDepth > 0) && (!lineHadStar))
@@ -498,14 +508,21 @@ namespace IDE.ui
 					{
 						DocumentationParser docParser = scope DocumentationParser(selectedEntry.mDocumentation);
 						var showDocString = docParser.ShowDocString;
-						docWidth = font.GetWidth(showDocString) + GS!(24);
+
+						int lineCount = 0;
+						docWidth = 0;
+						for (var line in showDocString.Split('\n'))
+						{
+							docWidth = Math.Max(docWidth, font.GetWidth(line) + GS!(24));
+							lineCount++;
+						}
 
 						int drawScreenX = (.)(mWidgetWindow.mX + mWidth - mDocWidth);
 						gApp.GetWorkspaceRectFrom(drawScreenX, mWidgetWindow.mY, 0, 0, var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
 						float maxWidth = workspaceWidth - drawScreenX - GS!(8);
 						float newDocWidth = Math.Min(docWidth, workspaceWidth - drawScreenX - GS!(8));
 						newDocWidth = Math.Max(newDocWidth, GS!(80));
-						if (docWidth > maxWidth)
+						if ((docWidth > maxWidth) || (lineCount > 1))
 						{
 							docWidth = newDocWidth;
 							docHeight = font.GetWrapHeight(showDocString, docWidth - GS!(20)) + GS!(17);
@@ -692,8 +709,6 @@ namespace IDE.ui
 								float drawY = GS!(4);
 								//float drawHeight = GS!(32);
 								float drawHeight = mDocHeight;
-
-								
 
 							    using (g.PushColor(0x80000000))
 							        g.DrawBox(DarkTheme.sDarkTheme.GetImage(.DropShadow), drawX + GS!(2), drawY + GS!(2), mRightBoxAdjust - GS!(2), drawHeight - GS!(2));

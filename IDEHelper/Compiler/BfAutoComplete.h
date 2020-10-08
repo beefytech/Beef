@@ -14,7 +14,7 @@ class AutoCompleteEntry
 public:
 	const char* mEntryType;
 	const char* mDisplay;
-	BfCommentNode* mDocumentation;
+	const char* mDocumentation;
 
 public:
 	AutoCompleteEntry()
@@ -28,27 +28,13 @@ public:
 		mDocumentation = NULL;
 	}
 
-	AutoCompleteEntry(const char* entryType, const char* display, BfCommentNode* documentation)
-	{
-		mEntryType = entryType;
-		mDisplay = display;
-		mDocumentation = documentation;
-	}
-
 	AutoCompleteEntry(const char* entryType, const StringImpl& display)
 	{
 		mEntryType = entryType;
 		mDisplay = display.c_str();
 		mDocumentation = NULL;
 	}
-
-	AutoCompleteEntry(const char* entryType, const StringImpl& display, BfCommentNode* documentation)
-	{
-		mEntryType = entryType;
-		mDisplay = display.c_str();
-		mDocumentation = documentation;
-	}
-
+	
 	bool operator==(const AutoCompleteEntry& other) const
 	{
 		return strcmp(mDisplay, other.mDisplay) == 0;
@@ -203,7 +189,9 @@ public:
 	BfTypedValue LookupTypeRefOrIdentifier(BfAstNode* node, bool* isStatic, BfEvalExprFlags evalExprFlags = BfEvalExprFlags_None, BfType* expectingType = NULL);	
 	void SetDefinitionLocation(BfAstNode* astNode, bool force = false);
 	bool IsAttribute(BfTypeInstance* typeInst);	
-	void AddMethod(BfMethodDeclaration* methodDecl, const StringImpl& methodName, const StringImpl& filter);
+	void AddMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef, BfMethodInstance* methodInstance, BfMethodDeclaration* methodDecl, const StringImpl& methodName, const StringImpl& filter);
+	void AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, BfFieldInstance* fieldInstance, const StringImpl& filter);
+	void AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, const StringImpl& filter);
 	void AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bool onlyAttribute = false);
 	void AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate);
 	void AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl& filter, bool allowProtected, bool allowPrivate, bool onlyAttribute);
@@ -217,12 +205,12 @@ public:
 	void AddOverrides(const StringImpl& filter);
 	void UpdateReplaceData();	
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);
-	void CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation);	
+	bool CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation);
 	bool GetMethodInfo(BfMethodInstance* methodInst, StringImpl* methodName, StringImpl* insertString, bool isImplementing, bool isExplicitInterface);
 	void FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr);
 	int FixitGetMemberInsertPos(BfTypeDef* typeDef);
 	String FixitGetLocation(BfParserData* parserData, int insertPos);
-	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);
+	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);	
 
 public:
 	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete);

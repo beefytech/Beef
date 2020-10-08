@@ -47,13 +47,15 @@ enum BfTypeNameFlags : uint16
 	BfTypeNameFlag_AddGlobalContainerName = 0x80,
 	BfTypeNameFlag_InternalName = 0x100, // Use special delimiters to remove ambiguities (ie: '+' for inner types)	
 	BfTypeNameFlag_HideGlobalName = 0x200,
+	BfTypeNameFlag_ExtendedInfo = 0x400
 };
 
 enum BfMethodNameFlags : uint8
 {
 	BfMethodNameFlag_None = 0,
 	BfMethodNameFlag_ResolveGenericParamNames = 1,
-	BfMethodNameFlag_OmitTypeName = 2
+	BfMethodNameFlag_OmitTypeName = 2,
+	BfMethodNameFlag_IncludeReturnType = 4
 };
 
 enum BfGetMethodInstanceFlags : uint16

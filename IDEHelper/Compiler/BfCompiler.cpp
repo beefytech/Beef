@@ -7674,12 +7674,10 @@ void BfCompiler::GenerateAutocompleteInfo()
 			autoCompleteResultString += "\t";
 			autoCompleteResultString += String(entry->mDisplay);
 
-			if ((entry->mDocumentation != NULL) && (wantsDocEntry != NULL) && (strcmp(wantsDocEntry, entry->mDisplay) == 0))
-			{
-				docString.Clear();
-				entry->mDocumentation->GetDocString(docString);
+			if (entry->mDocumentation != NULL)
+			{				
 				autoCompleteResultString += '\x03';
-				autoCompleteResultString += docString;
+				autoCompleteResultString += entry->mDocumentation;
 			}
 
 			autoCompleteResultString += "\n";

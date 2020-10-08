@@ -11788,7 +11788,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 
 			BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
 			BfFieldDef* fieldDef = fieldInstance->GetFieldDef();
-			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
+			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType | BfTypeNameFlag_ExtendedInfo));
 			DoTypeToString(str, fieldInstance->GetResolvedType(), innerFlags, genericMethodNameOverrides);
 
 			char c = fieldDef->mName[0];
@@ -11842,7 +11842,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			if (!isFirstParam)
 				str += ", ";
 			auto paramDef = methodDef->mParams[paramIdx];
-			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType));
+			BfTypeNameFlags innerFlags = (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType | BfTypeNameFlag_ExtendedInfo));
 			
 			auto paramType = delegateInfo->mParams[paramIdx];
 			if ((paramIdx == 0) && (delegateInfo->mHasExplicitThis))
@@ -11886,7 +11886,23 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 	else if (resolvedType->IsTypeInstance())
 	{
 		BfTypeInstance* typeInstance = (BfTypeInstance*)resolvedType;
-							
+		
+		if ((typeNameFlags & BfTypeNameFlag_ExtendedInfo) != 0)
+		{
+			if (typeInstance->mTypeDef->mIsDelegate)
+				str += "delegate ";
+			else if (typeInstance->mTypeDef->mIsFunction)
+				str += "function ";
+			else if (typeInstance->mTypeDef->mTypeCode == BfTypeCode_Object)
+				str += "class ";
+			else if (typeInstance->mTypeDef->mTypeCode == BfTypeCode_Enum)
+				str += "enum ";
+			else if (typeInstance->mTypeDef->mTypeCode == BfTypeCode_Struct)
+				str += "struct ";
+			else if (typeInstance->mTypeDef->mTypeCode == BfTypeCode_TypeAlias)
+				str += "typealias ";
+		}
+
 		bool omitNamespace = (typeNameFlags & BfTypeNameFlag_OmitNamespace) != 0;
 		if ((typeNameFlags & BfTypeNameFlag_ReduceName) != 0)
 		{
@@ -12039,7 +12055,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 
 						if (i > prevGenericParamCount)
 							str += ", ";
-						DoTypeToString(str, typeGenericArg, (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType)), genericMethodNameOverrides);
+						DoTypeToString(str, typeGenericArg, (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType | BfTypeNameFlag_ExtendedInfo)), genericMethodNameOverrides);
 					}
 					str += '>';
 				}
@@ -12048,6 +12064,19 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			if (depth > 0)
 				str += '.';
 		};
+
+		if (typeInstance->IsTypeAlias())
+		{
+			if ((typeNameFlags & BfTypeNameFlag_ExtendedInfo) != 0)
+			{
+				auto underlyingType = typeInstance->GetUnderlyingType();
+				if (underlyingType != NULL)
+				{
+					str += " = ";
+					DoTypeToString(str, underlyingType, (BfTypeNameFlags)(typeNameFlags & ~(BfTypeNameFlag_OmitNamespace | BfTypeNameFlag_OmitOuterType | BfTypeNameFlag_ExtendedInfo)));
+				}
+			}
+		}
 
 		return;
 	}

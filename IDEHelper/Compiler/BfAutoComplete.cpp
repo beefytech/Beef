@@ -4,6 +4,7 @@
 #include "BfSourceClassifier.h"
 #include "BfResolvePass.h"
 #include "BfFixits.h"
+#include "BfResolvedTypeUtils.h"
 
 #pragma warning(disable:4996)
 
@@ -452,7 +453,7 @@ bool BfAutoComplete::IsAttribute(BfTypeInstance* typeInst)
 	return false;
 }
 
-void BfAutoComplete::AddMethod(BfMethodDeclaration* methodDecl, const StringImpl& methodName, const StringImpl& filter)
+void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef, BfMethodInstance* methodInstance, BfMethodDeclaration* methodDecl, const StringImpl& methodName, const StringImpl& filter)
 {	
 	String replaceName;
 	AutoCompleteEntry entry("method", methodName);
@@ -464,11 +465,31 @@ void BfAutoComplete::AddMethod(BfMethodDeclaration* methodDecl, const StringImpl
 			replaceName += "!";
 			entry.mDisplay = replaceName.c_str();
 			entry.mEntryType = "mixin";
-		}
-		entry.mDocumentation = methodDecl->mDocumentation;
-	}
-	if (AddEntry(entry, filter) != NULL)
+		}		
+	}	
+	if (auto entryAdded = AddEntry(entry, filter))
 	{
+		if (methodDecl != NULL)
+		{
+			if (CheckDocumentation(entryAdded, NULL))
+			{
+				String str;
+				if ((methodInstance == NULL) && (methodDef != NULL))
+					methodInstance = mModule->GetRawMethodInstance(typeInstance, methodDef);
+				if (methodInstance != NULL)
+					str = mModule->MethodToString(methodInstance, BfMethodNameFlag_IncludeReturnType);
+
+				if (methodDecl->mDocumentation != NULL)
+				{
+					if (!str.IsEmpty())
+						str += "\x04";
+					methodDecl->mDocumentation->GetDocString(str);					
+				}
+				if (!str.IsEmpty())
+					entryAdded->mDocumentation = mAlloc.AllocString(str);
+			}
+		}
+
 		if ((mResolveType == BfResolveType_GoToDefinition) && (mGetDefinitionNode == NULL) && (methodDecl->mNameNode != NULL))
 			SetDefinitionLocation(methodDecl->mNameNode);
 	}
@@ -516,15 +537,28 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 
 	AutoCompleteEntry* entryAdded = NULL;
 	if (typeDef->mTypeCode == BfTypeCode_Object)
-		entryAdded = AddEntry(AutoCompleteEntry("class", name, typeDef->mTypeDeclaration->mDocumentation), filter);
+		entryAdded = AddEntry(AutoCompleteEntry("class", name), filter);
 	else if (typeDef->mTypeCode == BfTypeCode_Interface)
-		entryAdded = AddEntry(AutoCompleteEntry("interface", name, typeDef->mTypeDeclaration->mDocumentation), filter);
+		entryAdded = AddEntry(AutoCompleteEntry("interface", name), filter);
 	else
-		entryAdded = AddEntry(AutoCompleteEntry("valuetype", name, typeDef->mTypeDeclaration->mDocumentation), filter);
+		entryAdded = AddEntry(AutoCompleteEntry("valuetype", name), filter);
 
-	if ((entryAdded != NULL) && (mIsGetDefinition))
+	if (entryAdded != NULL)
 	{
-		
+		if (CheckDocumentation(entryAdded, NULL))
+		{
+			auto typeInst = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
+			String str;
+			if (typeInst != NULL)
+				str = mModule->TypeToString(typeInst, BfTypeNameFlag_ExtendedInfo);
+			if (typeDef->mTypeDeclaration->mDocumentation != NULL)
+			{
+				if (!str.IsEmpty())
+					str += "\x04";
+				typeDef->mTypeDeclaration->mDocumentation->GetDocString(str);				
+			}
+			entryAdded->mDocumentation = mAlloc.AllocString(str);
+		}
 	}
 }
 
@@ -589,6 +623,94 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 		AddCurrentTypes(baseType, filter, allowProtected, allowPrivate, onlyAttribute);
 }
 
+void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, BfFieldInstance* fieldInstance, const StringImpl& filter)
+{	
+	AutoCompleteEntry entry(GetTypeName(fieldInstance->mResolvedType), fieldDef->mName);
+	if (auto entryAdded = AddEntry(entry, filter))
+	{
+		auto documentation = (fieldDef->mFieldDeclaration != NULL) ? fieldDef->mFieldDeclaration->mDocumentation : NULL;
+		if (CheckDocumentation(entryAdded, documentation))
+		{
+			mModule->PopulateType(typeInst);
+			
+			String str;			
+			str += mModule->TypeToString(fieldInstance->mResolvedType);
+			str += " ";			
+			str += mModule->TypeToString(typeInst);
+			str += ".";
+			str += fieldDef->mName;
+			if (documentation != NULL)
+			{
+				str += "\x04";
+				documentation->GetDocString(str);
+			}
+			entryAdded->mDocumentation = mAlloc.AllocString(str);
+		}
+
+		if ((mIsGetDefinition) && (mDefType == NULL))
+		{
+			mDefType = typeInst->mTypeDef;
+			mDefField = fieldDef;
+			if (fieldDef->mFieldDeclaration != NULL)
+				SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
+		}
+	}
+}
+
+void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, const StringImpl& filter)
+{
+	BfCommentNode* documentation = NULL;
+	if (propDef->mFieldDeclaration != NULL)
+		documentation = propDef->mFieldDeclaration->mDocumentation;
+	AutoCompleteEntry entry("property", propDef->mName);
+	if (auto entryAdded = AddEntry(entry, filter))
+	{
+		if (CheckDocumentation(entryAdded, documentation))
+		{
+			BfType* propType = NULL;
+
+			for (auto methodDef : propDef->mMethods)
+			{
+				auto methodInstance = mModule->GetRawMethodInstance(typeInst, methodDef);
+				if (methodInstance == NULL)
+					continue;
+				if (methodDef->mMethodType == BfMethodType_PropertyGetter)
+				{
+					propType = methodInstance->mReturnType;
+					break;
+				}
+				if (methodDef->mMethodType == BfMethodType_PropertySetter)
+				{
+					if (methodInstance->GetParamCount() > 0)
+					{
+						propType = methodInstance->GetParamType(0);
+						break;
+					}
+				}
+			}
+
+			String str;
+			if (propType != NULL)
+			{
+				str += mModule->TypeToString(propType);
+				str += " ";
+			}
+
+			str += mModule->TypeToString(typeInst);
+			str += ".";
+			str += propDef->mName;
+			if (documentation != NULL)
+			{
+				str += "\x04";
+				documentation->GetDocString(str);
+			}
+			entryAdded->mDocumentation = mAlloc.AllocString(str);
+		}
+		if ((mIsGetDefinition) && (propDef->mFieldDeclaration != NULL))
+			SetDefinitionLocation(propDef->mFieldDeclaration->mNameNode);
+	}
+}
+
 void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bool addNonStatic, const StringImpl& filter, BfTypeInstance* startType, bool allowInterfaces, bool allowImplicitThis)
 {
 	bool isInterface = false;
@@ -624,17 +746,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 				(!typeInst->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
 				continue;
 			
-			AutoCompleteEntry entry(GetTypeName(fieldInst.mResolvedType), fieldDef->mName, (fieldDef->mFieldDeclaration != NULL) ? fieldDef->mFieldDeclaration->mDocumentation : NULL);
-			if ((AddEntry(entry, filter)) && (mIsGetDefinition))
-			{
-				if (mDefType == NULL)
-				{
-					mDefType = typeInst->mTypeDef;
-					mDefField = fieldDef;
-					if (fieldDef->mFieldDeclaration != NULL)
-						SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
-				}
-			}
+			AddField(typeInst, fieldDef, &fieldInst, filter);
 		}
 	}	
 
@@ -667,7 +779,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		}
 		if (canUseMethod)
 		{
-			AddMethod(methodDef->GetMethodDeclaration(), methodDef->mName, filter);			
+			AddMethod(typeInst, methodDef, NULL, methodDef->GetMethodDeclaration(), methodDef->mName, filter);			
 		}
 	}
 
@@ -687,15 +799,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 			if (propDef->mName == "[]")
 				continue;
 
-			BfCommentNode* documentation = NULL;
-			if (propDef->mFieldDeclaration != NULL)
-				documentation = propDef->mFieldDeclaration->mDocumentation;
-			AutoCompleteEntry entry("property", propDef->mName, documentation);						
-			if (AddEntry(entry, filter)) 
-			{
-				if ((mIsGetDefinition) && (propDef->mFieldDeclaration != NULL))
-					SetDefinitionLocation(propDef->mFieldDeclaration->mNameNode);				
-			}
+			AddProp(typeInst, propDef, filter);
 		}
 	}
 	
@@ -750,17 +854,7 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 				(!typeInst->IsTypeMemberAccessible(fieldDef->mDeclaringType, activeTypeDef)))
 				continue;
 
-			AutoCompleteEntry entry(GetTypeName(fieldInst.mResolvedType), fieldDef->mName, fieldDef->mFieldDeclaration->mDocumentation);
-			if ((AddEntry(entry, filter)) && (mIsGetDefinition))
-			{
-				if (mDefType == NULL)
-				{
-					mDefType = typeInst->mTypeDef;
-					mDefField = fieldDef;
-					if (fieldDef->mFieldDeclaration != NULL)
-						SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
-				}
-			}
+			AddField(typeInst, fieldDef, &fieldInst, filter);			
 		}
 	}
 
@@ -798,15 +892,10 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 			continue;
 
 		if (canUseMethod)
-		{			
+		{
 			if (auto methodDeclaration = methodDef->GetMethodDeclaration())
 			{
-				String replaceName;
-				AutoCompleteEntry entry("method", methodDef->mName, methodDeclaration->mDocumentation);
-				if ((AddEntry(entry, filter)) && (mIsGetDefinition))
-				{
-
-				}
+				AddMethod(typeInst, methodDef, NULL, methodDeclaration, methodDef->mName, filter);
 			}
 		}
 	}
@@ -848,9 +937,8 @@ void BfAutoComplete::AddSelfResultTypeMembers(BfTypeInstance* typeInst, BfTypeIn
 				continue;
 			if (propDef->mName == "[]")
 				continue;
-			AutoCompleteEntry entry("property", propDef->mName, propDef->mFieldDeclaration->mDocumentation);
-			if ((AddEntry(entry, filter)) && (mIsGetDefinition))
-				SetDefinitionLocation(propDef->mFieldDeclaration->mNameNode);
+
+			AddProp(typeInst, propDef, filter);
 		}
 	}
 	
@@ -917,13 +1005,20 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 					hasPayload = true;
 			}
 
-			AutoCompleteEntry entry(hasPayload ? "payloadEnum" : "value", fieldDef->mName, fieldDef->mFieldDeclaration->mDocumentation);
-			if ((AddEntry(entry, filter)) && (mIsGetDefinition))
+			AutoCompleteEntry entry(hasPayload ? "payloadEnum" : "value", fieldDef->mName);
+			if (auto entryAdded = AddEntry(entry, filter))
 			{
-				mDefType = typeInst->mTypeDef;
-				mDefField = fieldDef;
-				if (fieldDef->mFieldDeclaration != NULL)
-					SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
+				if (CheckDocumentation(entryAdded, fieldDef->mFieldDeclaration->mDocumentation))
+				{
+				}
+
+				if (mIsGetDefinition)
+				{
+					mDefType = typeInst->mTypeDef;
+					mDefField = fieldDef;
+					if (fieldDef->mFieldDeclaration != NULL)
+						SetDefinitionLocation(fieldDef->mFieldDeclaration->mNameNode);
+				}
 			}
 		}
 	}	
@@ -1018,11 +1113,7 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 		{
 			if (auto methodDeclaration = methodDef->GetMethodDeclaration())
 			{
-				String replaceName;
-				AutoCompleteEntry entry("method", methodDef->mName, methodDeclaration->mDocumentation);
-				if ((AddEntry(entry)) && (mIsGetDefinition))
-				{
-				}
+				AddMethod(extensionContainer, methodDef, NULL, methodDeclaration, methodDef->mName, filter);
 			}
 		}
 	}
@@ -1261,17 +1352,27 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		auto showAttrTypeDef = mShowAttributeProperties->mTypeDef;
 		for (auto prop : showAttrTypeDef->mProperties)
 		{
-			if ((AddEntry(AutoCompleteEntry("property", prop->mName + "=", prop->mFieldDeclaration->mDocumentation), filter)) && (mIsGetDefinition))
-			{				
-				SetDefinitionLocation(prop->mFieldDeclaration->mNameNode);
+			if (auto entryAdded = AddEntry(AutoCompleteEntry("property", prop->mName + "="), filter))
+			{	
+				if (CheckDocumentation(entryAdded, prop->mFieldDeclaration->mDocumentation))
+				{
+
+				}
+				if (mIsGetDefinition)
+					SetDefinitionLocation(prop->mFieldDeclaration->mNameNode);
 			}
 		}
 
 		for (auto field : showAttrTypeDef->mFields)
 		{			
-			if ((AddEntry(AutoCompleteEntry("field", field->mName + "=", field->mFieldDeclaration->mDocumentation), filter)) && (mIsGetDefinition))
-			{				
-				SetDefinitionLocation(field->mFieldDeclaration->mNameNode);
+			if (auto entryAdded = AddEntry(AutoCompleteEntry("field", field->mName + "="), filter))
+			{	
+				if (CheckDocumentation(entryAdded, field->mFieldDeclaration->mDocumentation))
+				{
+
+				}
+				if (mIsGetDefinition)
+					SetDefinitionLocation(field->mFieldDeclaration->mNameNode);
 			}
 		}
 	}
@@ -1402,9 +1503,8 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	while (checkMethodState != NULL)
 	{ 
 		for (auto localMethod : checkMethodState->mLocalMethods)
-		{
-			//AddEntry(AutoCompleteEntry("method", localMethod->mMethodName, localMethod->mMethodDeclaration->mDocumentation), filter);
-			AddMethod(localMethod->mMethodDeclaration, localMethod->mMethodName, filter);
+		{			
+			AddMethod(mModule->mCurTypeInstance, localMethod->mMethodDef, localMethod->mMethodInstanceGroup->mDefault, localMethod->mMethodDeclaration, localMethod->mMethodName, filter);
 		}
 		checkMethodState = checkMethodState->mPrevMethodState;
 	}
@@ -1788,7 +1888,7 @@ bool BfAutoComplete::CheckExplicitInterface(BfTypeInstance* interfaceType, BfAst
 		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal);	
 		if (canUseMethod)
 		{
-			AddMethod(methodDef->GetMethodDeclaration(), methodDef->mName, filter);
+			AddMethod(interfaceType, methodDef, NULL, methodDef->GetMethodDeclaration(), methodDef->mName, filter);
 		}
 	}
 
@@ -2281,7 +2381,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			GetMethodInfo(methodInst, &insertString, &insertString, true, false);
 			if (insertString.IsEmpty())
 				continue;
-			AddEntry(AutoCompleteEntry("override", insertString, NULL), filter);
+			AddEntry(AutoCompleteEntry("override", insertString), filter);
 		}
 
 		if (curType->IsStruct())
@@ -2687,9 +2787,22 @@ void BfAutoComplete::AddTypeInstanceEntry(BfTypeInstance* typeInst)
 	mDefaultSelection = bestTypeName;
 }
 
-void BfAutoComplete::CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation)
+bool BfAutoComplete::CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation)
 {
+	if (mDocumentationEntryName.IsEmpty())
+		return false;
 	
+	if (mDocumentationEntryName != entry->mDisplay)
+		return false;
+
+	if (documentation != NULL)
+	{
+		StringT<128> str;
+		documentation->GetDocString(str);		
+		entry->mDocumentation = mAlloc.AllocString(str);
+	}	
+
+	return true;
 }
 
 void BfAutoComplete::CheckEmptyStart(BfAstNode* prevNode, BfType* type)

@@ -9838,7 +9838,7 @@ bool BfModule::HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodNa
 	return BfModuleMethodInstance();
 }
 
-String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* methodGenericArgs)
+StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* methodGenericArgs)
 {
 	auto methodDef = methodInst->mMethodDef;	
 	bool allowResolveGenericParamNames = ((methodNameFlags & BfMethodNameFlag_ResolveGenericParamNames) != 0);
@@ -9852,8 +9852,15 @@ String BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags 
 		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 	if (allowResolveGenericParamNames)
 		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
+	
+	StringT<128> methodName;
 
-	String methodName;
+	if ((methodNameFlags & BfMethodNameFlag_IncludeReturnType) != 0)
+	{
+		methodName += TypeToString(methodInst->mReturnType);
+		methodName += " ";
+	}
+
 	if ((methodNameFlags & BfMethodNameFlag_OmitTypeName) == 0)
 	{
 		methodName = TypeToString(type, typeNameFlags);
