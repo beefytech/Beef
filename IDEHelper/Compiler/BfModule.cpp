@@ -9863,7 +9863,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 
 	if ((methodNameFlags & BfMethodNameFlag_OmitTypeName) == 0)
 	{
-		methodName = TypeToString(type, typeNameFlags);
+		methodName += TypeToString(type, typeNameFlags);
 		if (methodName == "$")
 			methodName = "";
 		else if (!methodName.IsEmpty())

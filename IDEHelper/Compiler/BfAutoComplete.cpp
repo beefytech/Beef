@@ -1523,7 +1523,8 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	{ 
 		for (auto localMethod : checkMethodState->mLocalMethods)
 		{			
-			AddMethod(mModule->mCurTypeInstance, localMethod->mMethodDef, localMethod->mMethodInstanceGroup->mDefault, localMethod->mMethodDeclaration, localMethod->mMethodName, filter);
+			if (localMethod->mMethodInstanceGroup != NULL)
+				AddMethod(mModule->mCurTypeInstance, localMethod->mMethodDef, localMethod->mMethodInstanceGroup->mDefault, localMethod->mMethodDeclaration, localMethod->mMethodName, filter);
 		}
 		checkMethodState = checkMethodState->mPrevMethodState;
 	}
