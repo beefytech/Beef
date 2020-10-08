@@ -471,6 +471,12 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 	{
 		if (methodDecl != NULL)
 		{
+			if ((methodInstance != NULL) && (methodInstance->mMethodDef->mIsLocalMethod) && (GetCursorIdx(methodDecl) == methodDecl->mReturnType->mSrcEnd))
+			{
+				// This isn't really a local method decl, it just looks like one
+				return;
+			}
+
 			if (CheckDocumentation(entryAdded, NULL))
 			{
 				String str;
@@ -479,7 +485,12 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 				if (methodInstance != NULL)
 					str = mModule->MethodToString(methodInstance, BfMethodNameFlag_IncludeReturnType);
 
-				if (methodDecl->mDocumentation != NULL)
+				if (entryAdded->mDocumentation != NULL)
+				{
+					str += "\x04";
+					str.Append(entryAdded->mDocumentation);
+				}
+				else if (methodDecl->mDocumentation != NULL)
 				{
 					if (!str.IsEmpty())
 						str += "\x04";
@@ -668,6 +679,8 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 		if (CheckDocumentation(entryAdded, documentation))
 		{
 			BfType* propType = NULL;
+			bool hasGetter = false;
+			bool hasSetter = false;
 
 			for (auto methodDef : propDef->mMethods)
 			{
@@ -676,16 +689,14 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 					continue;
 				if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 				{
-					propType = methodInstance->mReturnType;
-					break;
+					hasGetter = true;
+					propType = methodInstance->mReturnType;					
 				}
 				if (methodDef->mMethodType == BfMethodType_PropertySetter)
 				{
-					if (methodInstance->GetParamCount() > 0)
-					{
-						propType = methodInstance->GetParamType(0);
-						break;
-					}
+					hasSetter = true;
+					if (methodInstance->GetParamCount() > 0)					
+						propType = methodInstance->GetParamType(0);					
 				}
 			}
 
@@ -699,6 +710,14 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 			str += mModule->TypeToString(typeInst);
 			str += ".";
 			str += propDef->mName;
+
+			str += " { ";
+			if (hasGetter)
+				str += "get; ";
+			if (hasSetter)
+				str += "set; ";
+			str += "}";
+
 			if (documentation != NULL)
 			{
 				str += "\x04";

@@ -9977,6 +9977,9 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 	else
 		methodName += methodDefName;	
 
+	if (methodDef->mMethodType == BfMethodType_Mixin)
+		methodName += "!";
+
 	BfTypeVector newMethodGenericArgs;
 	if ((methodInst->mMethodInfoEx != NULL) && (methodInst->mMethodInfoEx->mMethodGenericArguments.size() != 0))
 	{			
