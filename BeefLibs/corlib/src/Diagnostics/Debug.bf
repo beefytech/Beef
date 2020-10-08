@@ -58,7 +58,7 @@ namespace System.Diagnostics
 
 		public static void WriteLine()
 		{
-			Write("\n", 1);
+			Write((char8*)"\n", 1);
 		}
 
 		public static void WriteLine(StringView line)
