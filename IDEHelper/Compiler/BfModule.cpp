@@ -8415,10 +8415,10 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					if (!isDynAlloc)
 						mBfIRBuilder->ClearDebugLocation(allocaInst);
 					mBfIRBuilder->SetAllocaAlignment(allocaInst, allocAlign);
-					auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);
-					mBfIRBuilder->ClearDebugLocation_Last();
 					if (!isDynAlloc)
 						mBfIRBuilder->SetInsertPoint(prevBlock);
+					auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);
+					mBfIRBuilder->ClearDebugLocation_Last();
 					if (!noDtorCall)
 						AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
 					InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
