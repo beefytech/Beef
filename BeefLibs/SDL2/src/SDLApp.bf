@@ -178,11 +178,12 @@ namespace SDL2
 			SDL.RenderCopy(mRenderer, image.mTexture, &srcRect, &destRect);
 		}
 
-		public void Draw(Image image, float x, float y, float rot)
+		public void Draw(Image image, float x, float y, float rot, float centerX, float centerY)
 		{
 			SDL.Rect srcRect = .(0, 0, image.mSurface.w, image.mSurface.h);
 			SDL.Rect destRect = .((int32)x, (int32)y, image.mSurface.w, image.mSurface.h);
-			SDL.RenderCopyEx(mRenderer, image.mTexture, &srcRect, &destRect, 0, null, .None);
+			SDL.Point centerPoint = .((.)centerX, (.)centerY);
+			SDL.RenderCopyEx(mRenderer, image.mTexture, &srcRect, &destRect, rot, &centerPoint, .None);
 		}
 
 		public void PlaySound(Sound sound, float volume = 1.0f, float pan = 0.5f)
