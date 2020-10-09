@@ -22,7 +22,7 @@ namespace System
 		List<void*> mLargeRawAllocs;
 		List<Object> mLargeDtorAllocs;
 		int mPoolsSize;
-		int mLageAllocs;
+		int mLargeAllocs;
 		public DestructorHandlingKind DestructorHandling = .Allow;
 
 		uint8* mCurAlloc;
@@ -123,7 +123,7 @@ namespace System
 			{
 				if ((size > (mCurEnd - mCurAlloc) / 2) && (mCurAlloc != null))
 				{
-					mLageAllocs += size;
+					mLargeAllocs += size;
 					void* largeAlloc = AllocLarge(size, align);
 					if (mLargeRawAllocs == null)
 						mLargeRawAllocs = new List<void*>();
@@ -147,7 +147,7 @@ namespace System
 			{
 				if ((size > (mCurEnd - mCurAlloc) / 2) && (mCurAlloc != null))
 				{
-					mLageAllocs += size;
+					mLargeAllocs += size;
 					void* largeAlloc = AllocLarge(size, align);
 					if (mLargeDtorAllocs == null)
 						mLargeDtorAllocs = new List<Object>();
