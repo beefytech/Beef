@@ -10,6 +10,7 @@ using Beefy.events;
 using Beefy.utils;
 using IDE.ui;
 using System.Diagnostics;
+using Beefy.gfx;
 
 namespace IDE.ui
 {
@@ -670,19 +671,19 @@ namespace IDE.ui
 
             if ((!mFindEditWidget.mHasFocus) && (findText.Length == 0))
             {
-                using (g.PushColor(0xFF606060))
+                using (g.PushColor(Color.Mult(gApp.mSettings.mUISettings.mColors.mText, 0x60FFFFFF)))
                     g.DrawString("Find...", mFindEditWidget.mX + GS!(4), mFindEditWidget.mY);
             }
 
             if ((mReplaceEditWidget != null) && (!mReplaceEditWidget.mHasFocus) && (replaceText.Length == 0))
             {
-                using (g.PushColor(0xFF606060))
+                using (g.PushColor(Color.Mult(gApp.mSettings.mUISettings.mColors.mText, 0x60FFFFFF)))
                     g.DrawString("Replace...", mReplaceEditWidget.mX + 4, mReplaceEditWidget.mY);
             }
 
-            using (g.PushColor(0xFF000000))
+            using (g.PushColor(gApp.mSettings.mUISettings.mColors.mAutoCompleteSubText))
             {
-                g.DrawString((mSelectionStart != null) ? "Selection" : "Current Document", GS!(6), mHeight - GS!(30));
+                g.DrawString((mSelectionStart != null) ? "Selection" : "Current Document", GS!(6), mHeight - GS!(29));
             }
         }
 

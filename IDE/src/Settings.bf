@@ -784,9 +784,6 @@ namespace IDE
 #endif
 
 #unwarn
-				/*if (gApp.mOutputPanel != null)
-					gApp.OutputLine("Applying key bindings");*/
-
 				for (var cmd in gApp.mCommands.mCommandMap.Values)
 					cmd.mNext = null;
 				gApp.mCommands.mKeyMap.Clear();
