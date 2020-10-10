@@ -1203,7 +1203,7 @@ namespace IDE.ui
 				}
                 else if (mWatchEntry.mResultType.HasFlag(WatchResultType.TypeValueType))
                 {
-                    imageIdx = .Type_ValueType;
+                    imageIdx = .IconValue;
                 }
                 else if (mWatchEntry.mResultType.HasFlag(WatchResultType.Namespace))
                 {
