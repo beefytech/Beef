@@ -12099,13 +12099,14 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 					unresolvedTypeRef = mModule->mContext->mBfObjectType;
 
 				int dimensions = 1;
-
+				
 				if (arrayTypeRef->mParams.size() != 0)
 				{
 					auto intType = mModule->ResolveTypeDef(mModule->mSystem->mTypeIntPtr);
-
-					for (auto arg : arrayTypeRef->mParams)
+					
+					for (int argIdx = 0; argIdx < (int)arrayTypeRef->mParams.size(); argIdx++)
 					{
+						auto arg = arrayTypeRef->mParams[argIdx];
 						if (auto tokenNode = BfNodeDynCastExact<BfTokenNode>(arg))
 						{
 							if (tokenNode->GetToken() == BfToken_Comma)
@@ -12113,18 +12114,11 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 								if (isRawArrayAlloc)
 								{
 									mModule->Fail("Sized arrays cannot be multidimensional.", tokenNode);
-									continue;
-								}								
-								dimensions++;
-
-								if (dimensions == 5)
-								{
-									mModule->Fail("Too many array dimensions, consider using a jagged array.", tokenNode);
 								}
-
 								continue;
 							}
 						}
+						
 						auto expr = BfNodeDynCast<BfExpression>(arg);
 						if ((isRawArrayAlloc) && (!dimLengthVals.IsEmpty()))
 						{
@@ -12132,6 +12126,14 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 							continue;
 						}
 
+						if (argIdx != 0)
+						{
+							dimensions++;
+							if (dimensions == 5)
+							{
+								mModule->Fail("Too many array dimensions, consider using a jagged array.", arg);
+							}
+						}
 
 						dimLengthRefs.Add(expr);
 
