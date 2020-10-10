@@ -153,10 +153,11 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"atomic_umax"},
 	{"atomic_umin"},
 	{"atomic_xchg"},
-	{"atomic_xor"},
+	{"atomic_xor"},	
 	{"bswap"},
 	{"cast"},
 	{"cos"},	
+	{"debugtrap"},
 	{"div"},
 	{"eq"},
 	{"floor"},
@@ -2422,6 +2423,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ llvm::Intrinsic::bswap, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // cast,
 				{ llvm::Intrinsic::cos, 0, -1},
+				{ llvm::Intrinsic::debugtrap, -1}, // debugtrap,
 				{ (llvm::Intrinsic::ID)-2, -1}, // div
 				{ (llvm::Intrinsic::ID)-2, -1}, // eq
 				{ llvm::Intrinsic::floor, 0, -1},

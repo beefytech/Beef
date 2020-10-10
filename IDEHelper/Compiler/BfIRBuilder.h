@@ -413,6 +413,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_BSwap,
 	BfIRIntrinsic_Cast,
 	BfIRIntrinsic_Cos,	
+	BfIRIntrinsic_DebugTrap,
 	BfIRIntrinsic_Div,
 	BfIRIntrinsic_Eq,
 	BfIRIntrinsic_Floor,

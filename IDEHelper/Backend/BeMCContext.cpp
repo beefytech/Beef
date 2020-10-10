@@ -17337,6 +17337,11 @@ void BeMCContext::Generate(BeFunction* function)
 								vregInfo->mIsExpr = true;
 							}
 							break;
+						case BfIRIntrinsic_DebugTrap:
+							{
+								AllocInst(BeMCInstKind_DbgBreak);
+							}
+							break;
 						case BfIRIntrinsic_MemSet:
 							{
 								if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mArgs[1].mValue))

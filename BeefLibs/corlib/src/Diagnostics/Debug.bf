@@ -76,5 +76,28 @@ namespace System.Diagnostics
 			paramStr.Append('\n');
 			Write(paramStr.Ptr, paramStr.Length);
 		}
+
+		static bool gIsDebuggerPresent = IsDebuggerPresent;
+		[LinkName("IsDebuggerPresent"), CallingConvention(.Stdcall)]
+		static extern int32 Internal_IsDebuggerPresent();
+
+		public static bool IsDebuggerPresent
+		{
+#if BF_PLATFORM_WINDOWS
+			get => gIsDebuggerPresent = Internal_IsDebuggerPresent() != 0;
+#else
+			get => false;
+#endif
+		}
+
+		[Intrinsic("debugtrap")]
+		public static extern void Break();
+
+		[NoDebug]
+		public static void SafeBreak()
+		{
+			if (gIsDebuggerPresent)
+				Break();
+		}
 	}
 }

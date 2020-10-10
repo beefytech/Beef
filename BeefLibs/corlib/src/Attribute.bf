@@ -164,6 +164,12 @@ namespace System
 	}
 
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
+	public struct NoDebugAttribute : Attribute
+	{
+	    
+	}
+
+	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
 	public struct UseLLVMAttribute : Attribute
 	{
 	    

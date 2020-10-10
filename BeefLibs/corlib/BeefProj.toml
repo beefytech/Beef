@@ -27,6 +27,11 @@ EmitObjectAccessCheck = false
 Filter = "[System.UseLLVM]"
 BfOptimizationLevel = "O0"
 
+[[Configs.Debug.Win64.DistinctOptions]]
+Filter = "[System.NoDebug]"
+BfOptimizationLevel = "O0"
+EmitDebugInfo = "No"
+
 [[Configs.Debug.Win32.DistinctOptions]]
 Filter = "[System.Optimize]"
 BfOptimizationLevel = "O2"
