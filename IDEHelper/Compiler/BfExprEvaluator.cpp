@@ -17448,7 +17448,7 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 		}
 		else
 		{
-			autoComplete->CheckMemberReference(memberRefExpr->mTarget, memberRefExpr->mDotToken, memberRefExpr->mMemberName);
+			autoComplete->CheckMemberReference(memberRefExpr->mTarget, memberRefExpr->mDotToken, memberRefExpr->mMemberName, false, mExpectingType);
 
 			if (auto objCreateExpr = BfNodeDynCast<BfObjectCreateExpression>(memberRefExpr->mTarget))
 			{

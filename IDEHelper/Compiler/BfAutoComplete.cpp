@@ -424,7 +424,7 @@ BfTypedValue BfAutoComplete::LookupTypeRefOrIdentifier(BfAstNode* node, bool* is
 	}
 	else if (auto targetExpr = BfNodeDynCast<BfExpression>(node))
 	{
-		return _FixType(mModule->CreateValueFromExpression(targetExpr, NULL, evalExprFlags));
+		return _FixType(mModule->CreateValueFromExpression(targetExpr, expectingType, evalExprFlags));
 	}
 
 	return BfTypedValue();
