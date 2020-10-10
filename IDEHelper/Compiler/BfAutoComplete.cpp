@@ -483,7 +483,11 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 				if ((methodInstance == NULL) && (methodDef != NULL))
 					methodInstance = mModule->GetRawMethodInstance(typeInstance, methodDef);
 				if (methodInstance != NULL)
-					str = mModule->MethodToString(methodInstance, BfMethodNameFlag_IncludeReturnType);
+				{
+					SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mModule->mCurTypeInstance, typeInstance);
+					SetAndRestoreValue<BfMethodInstance*> prevCurMethodInstance(mModule->mCurMethodInstance, methodInstance);
+					str = mModule->MethodToString(methodInstance, (BfMethodNameFlags)(BfMethodNameFlag_IncludeReturnType | BfMethodNameFlag_ResolveGenericParamNames));
+				}
 
 				if (entryAdded->mDocumentation != NULL)
 				{

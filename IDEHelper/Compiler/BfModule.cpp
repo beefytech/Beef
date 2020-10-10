@@ -9857,11 +9857,11 @@ bool BfModule::HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodNa
 
 StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* methodGenericArgs)
 {
-	auto methodDef = methodInst->mMethodDef;	
+	auto methodDef = methodInst->mMethodDef;
 	bool allowResolveGenericParamNames = ((methodNameFlags & BfMethodNameFlag_ResolveGenericParamNames) != 0);
 
 	BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None;
-	
+
 	BfType* type = methodInst->mMethodInstanceGroup->mOwner;
 	if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
 		type = ResolveGenericType(type, NULL, methodGenericArgs);
@@ -9869,12 +9869,22 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 	if (allowResolveGenericParamNames)
 		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
-	
+
 	StringT<128> methodName;
+
+	auto _AddTypeName = [&](BfType* type)
+	{
+		auto typeNameFlags = BfTypeNameFlags_None;
+		if (allowResolveGenericParamNames)
+			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
+		if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
+			type = ResolveGenericType(type, NULL, methodGenericArgs);
+		methodName += TypeToString(type, typeNameFlags);
+	};
 
 	if ((methodNameFlags & BfMethodNameFlag_IncludeReturnType) != 0)
 	{
-		methodName += TypeToString(methodInst->mReturnType);
+		_AddTypeName(methodInst->mReturnType);
 		methodName += " ";
 	}
 
@@ -9911,24 +9921,24 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 	}
 
 	if ((methodInst->mMethodInfoEx != NULL) && (methodInst->mMethodInfoEx->mForeignType != NULL))
-	{		
+	{
 		BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None;
 		if (!methodInst->mIsUnspecializedVariation && allowResolveGenericParamNames)
-			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;		
+			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 		methodName += TypeToString(methodInst->mMethodInfoEx->mForeignType, typeNameFlags);
 		methodName += ".";
 	}
 
 	if ((methodInst->mMethodInfoEx != NULL) && (methodInst->mMethodInfoEx->mExplicitInterface != NULL))
-	{		
+	{
 		BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None;
 		if (!methodInst->mIsUnspecializedVariation && allowResolveGenericParamNames)
-			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;		
+			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 		methodName += "[";
 		methodName += TypeToString(methodInst->mMethodInfoEx->mExplicitInterface, typeNameFlags);
 		methodName += "].";
 	}
-	
+
 	if (methodDef->mMethodType == BfMethodType_Operator)
 	{
 		BfOperatorDef* operatorDef = (BfOperatorDef*)methodDef;
@@ -9960,7 +9970,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 		else
 			methodName += "this";
 		accessorString = "";
-	}	
+	}
 	else if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 	{
 		auto propertyDecl = methodDef->GetPropertyDeclaration();
@@ -9992,16 +10002,16 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 		}
 	}
 	else
-		methodName += methodDefName;	
+		methodName += methodDefName;
 
 	if (methodDef->mMethodType == BfMethodType_Mixin)
 		methodName += "!";
 
 	BfTypeVector newMethodGenericArgs;
 	if ((methodInst->mMethodInfoEx != NULL) && (methodInst->mMethodInfoEx->mMethodGenericArguments.size() != 0))
-	{			
+	{
 		methodName += "<";
-		for (int i = 0; i < (int) methodInst->mMethodInfoEx->mMethodGenericArguments.size(); i++)
+		for (int i = 0; i < (int)methodInst->mMethodInfoEx->mMethodGenericArguments.size(); i++)
 		{
 			if (i > 0)
 				methodName += ", ";
@@ -10020,7 +10030,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 						hasEmpty = true;
 				}
 				if (hasEmpty)
-				{					
+				{
 					for (int genericIdx = 0; genericIdx < (int)methodGenericArgs->size(); genericIdx++)
 					{
 						auto arg = (*methodGenericArgs)[genericIdx];
@@ -10035,7 +10045,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 								newMethodGenericArgs.push_back(mContext->mBfObjectType); // Default
 						}
 					}
-					methodGenericArgs = &newMethodGenericArgs;					
+					methodGenericArgs = &newMethodGenericArgs;
 				}
 
 				if (type->IsUnspecializedType())
@@ -10051,31 +10061,26 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 			else
 				methodName += TypeToString(type, typeNameFlags);
 		}
-		methodName += ">";		
+		methodName += ">";
 	}
 	if (accessorString.length() == 0)
 	{
 		int dispParamIdx = 0;
 		methodName += "(";
-		for (int paramIdx = 0; paramIdx < (int) methodInst->GetParamCount(); paramIdx++)
-		{	
+		for (int paramIdx = 0; paramIdx < (int)methodInst->GetParamCount(); paramIdx++)
+		{
 			int paramKind = methodInst->GetParamKind(paramIdx);
 			if (paramKind == BfParamKind_ImplicitCapture)
 				continue;
 
 			if (dispParamIdx > 0)
 				methodName += ", ";
-						
+
 			if (paramKind == BfParamKind_Params)
 				methodName += "params ";
 
-			typeNameFlags = BfTypeNameFlags_None;
-			if (allowResolveGenericParamNames)
-				typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 			BfType* type = methodInst->GetParamType(paramIdx);
-			if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
-				type = ResolveGenericType(type, NULL, methodGenericArgs);
-			methodName += TypeToString(type, typeNameFlags);
+			_AddTypeName(type);
 
 			methodName += " ";
 			methodName += methodInst->GetParamName(paramIdx);
@@ -10091,7 +10096,7 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 		}
 		methodName += ")";
 	}
-	
+
 	if (accessorString.length() != 0)
 	{
 		methodName += " " + accessorString;
