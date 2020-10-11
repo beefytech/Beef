@@ -1642,7 +1642,8 @@ void BfPrinter::Visit(BfObjectCreateExpression* newExpr)
 	{
 		if (node == NULL)
 			return;
-		Visit(node);
+		Visit((BfAstNode*)node);
+		Write(node, node->GetSrcStart(), 0);
 		Write(BfTokenToString(token));
 	};
 
