@@ -12,6 +12,7 @@ namespace IDE.ui
     public class OutputWidgetContent : SourceEditWidgetContent
     {
 		public bool mRemapToHighestCompileIdx;
+		public List<Widget> mActionWidgets = new .() ~ delete _;
 
         public this()
         {
@@ -259,6 +260,18 @@ namespace IDE.ui
 				GetTextCoordAtCursor(var x, var y);
 				MouseClicked(x, y, x, y, 1);
 			}
+		}
+
+		public override void TextChanged()
+		{
+			base.TextChanged();
+
+			for (var widget in mActionWidgets)
+			{
+				widget.RemoveSelf();
+				delete widget;
+			}
+			mActionWidgets.Clear();
 		}
     }
 

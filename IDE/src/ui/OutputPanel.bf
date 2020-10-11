@@ -45,6 +45,40 @@ namespace IDE.ui
 			public int32 mLineChar;
 		}
 
+		public class OutputActionButton : DarkButton
+		{
+			public OutputPanel mPanel;
+			public int mLine;
+
+			public void Close()
+			{
+				RemoveSelf();
+				gApp.DeferDelete(this);
+			}
+
+			public override void RemovedFromParent(Widget previousParent, WidgetWindow window)
+			{
+				base.RemovedFromParent(previousParent, window);
+				var ewc = (OutputWidgetContent)mPanel.EditWidget.mEditWidgetContent;
+				ewc.mActionWidgets.Remove(this);
+			}
+
+			public override void Update()
+			{
+				base.Update();
+				var ewc = (OutputWidgetContent)mPanel.EditWidget.mEditWidgetContent;
+				if (mLine >= ewc.GetLineCount())
+				{
+					Close();
+					return;
+				}
+
+				var font = DarkTheme.sDarkTheme.mSmallFont;
+				ewc.GetTextCoordAtLineChar(mLine, 0, var x, var y);
+				Resize(GS!(4), y, font.GetWidth(mLabel) + GS!(32), GS!(24));
+			}
+		}
+
         public OutputWidget mOutputWidget;
 		String mQueuedText = new String() ~ delete _;
 		List<QueuedDisplayChange> mQueuedDisplayChanges = new List<QueuedDisplayChange>() ~ delete _;

@@ -44,7 +44,7 @@ namespace IDE.ui
 
             mLocationCombo = new PathComboBox();
 			mLocationCombo.MakeEditable(new PathEditWidget());
-            mLocationCombo.Label = FindResultsPanel.sEntireSolution;
+            mLocationCombo.Label = isReplace ? FindResultsPanel.sCurrentDocument : FindResultsPanel.sEntireSolution;
             mLocationCombo.mPopulateMenuAction.Add(new => PopulateLocationMenu);
 			mLocationCombo.mEditWidget.mOnContentChanged.Add(new (evt) => { UpdateUI(); });
 			AddWidget(mLocationCombo);

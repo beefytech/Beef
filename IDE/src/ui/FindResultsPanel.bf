@@ -730,11 +730,57 @@ namespace IDE.ui
 						line.AppendF(" {0}: Replaced {1} instance{2}\n", filePath, replaceInFileCount, (replaceInFileCount == 1) ? "" : "s");
 						Write(line);
 					}
+
+					if (replaceCount > 0)
+					{
+						Write("\n");
+						base.Update();
+						var ewc = (OutputWidgetContent)EditWidget.mEditWidgetContent;
+
+						var actionButton = new UndoRenameActionButton();
+						actionButton.mPanel = this;
+						actionButton.mLine = ewc.GetLineCount() - 1;
+						actionButton.Label = "Undo Replace";
+						actionButton.mGlobalUndoData = globalUndoData;
+						ewc.AddWidget(actionButton);
+						ewc.mActionWidgets.Add(actionButton);
+					}
 				}
 
 				StopSearch();
 			}
         }
+
+		class UndoRenameActionButton : OutputActionButton
+		{
+			public GlobalUndoData mGlobalUndoData;
+
+			bool IsValid => ((!gApp.mGlobalUndoManager.mGlobalUndoDataList.IsEmpty) &&
+				(gApp.mGlobalUndoManager.mGlobalUndoDataList.Back == mGlobalUndoData) &&
+				(mGlobalUndoData.mUndoCount == 0));
+
+			public override void Update()
+			{
+				base.Update();
+
+				if (!IsValid)
+					Close();
+			}
+
+			public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
+			{
+				base.MouseClicked(x, y, origX, origY, btn);
+				if (!IsValid)
+				{
+					Close();
+					return;
+				}
+
+				GlobalUndoAction undoAction = scope .(null, mGlobalUndoData);
+				undoAction.Undo();
+			}
+		}
+
 
 		public override void Clear()
 		{
