@@ -3304,9 +3304,11 @@ BfSwitchStatement* BfReducer::CreateSwitchStatement(BfTokenNode* tokenNode)
 			token = tokenNode->GetToken();
 		if ((tokenNode == NULL) ||
 			((token != BfToken_Case) && (token != BfToken_When) && (token != BfToken_Default)))
-		{
+		{			
 			Fail("Expected 'case'", child);
-			return switchStatement;
+			AddErrorNode(child);
+			isDone = !mVisitorPos.MoveNext();
+			continue;
 		}
 
 		//TODO: This error was getting annoying... Put back?
