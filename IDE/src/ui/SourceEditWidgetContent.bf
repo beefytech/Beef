@@ -3419,10 +3419,10 @@ namespace IDE.ui
 	                        int32 moveDir = 0;
 	                        switch (keyCode)
 	                        {
-	                        case KeyCode.Up: moveDir = -1; break;
-	                        case KeyCode.Down: moveDir = 1; break;
-	                        case KeyCode.PageUp: moveDir = -pageSize; break;
-	                        case KeyCode.PageDown: moveDir = pageSize; break;
+	                        case KeyCode.Up: moveDir = -1;
+	                        case KeyCode.Down: moveDir = 1;
+	                        case KeyCode.PageUp: moveDir = -pageSize;
+	                        case KeyCode.PageDown: moveDir = pageSize;
 							default:
 	                        }
 	                        mAutoComplete.mAutoCompleteListWidget.SelectDirection(moveDir);

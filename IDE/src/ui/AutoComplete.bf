@@ -671,9 +671,19 @@ namespace IDE.ui
 					return;
                 int32 newSelection = mSelectIdx + dir;
 				if (newSelection < 0)
-					newSelection = (.)mEntryList.Count - 1;
+				{
+					if (dir == -1)
+						newSelection = (.)mEntryList.Count - 1;
+					else
+						newSelection = 0;
+				}
 				else if (newSelection >= mEntryList.Count)
-					newSelection = 0;
+				{
+					if (dir == 1)
+						newSelection = 0;
+					else
+						newSelection = (.)mEntryList.Count - 1;
+				}
                 
                 if (mEntryList[newSelection].mShowIdx != -1)
                     Select(newSelection);
