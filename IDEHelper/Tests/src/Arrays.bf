@@ -3,6 +3,8 @@ namespace Tests
 {
 	class Arrays
 	{
+		public static float[,] GetArray() => new .[,] ( ( 0, 1, 2, 3), ( 10, 11, 12, 13 ), ( 20, 21, 22, 23 ) );
+
 		struct StructA
 		{
 			public int16 mA = 11;
