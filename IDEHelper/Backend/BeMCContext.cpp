@@ -3744,7 +3744,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 9)
+		if (mcOperand.mVRegIdx == 16)
 		{
 			NOP;
 		}
@@ -9018,6 +9018,27 @@ bool BeMCContext::DoLegalization()
 						//     mov scratch, b
 						//     <op> a, scratch
 						auto targetType = GetType(inst->mArg0);
+						
+						if ((targetType->IsFloat()) && (arg0.IsVReg()) && (arg1.IsImmediateFloat()))
+						{
+							auto vregInfo0 = GetVRegInfo(arg0);
+							if (!vregInfo0->mIsExpr)
+							{
+								// Convert from "<op> %reg0, %reg1"
+								// To
+								//   Mov %vreg2<reg>, %vreg0
+								//   <op> %vreg2<reg>, %vreg1
+								//   Mov %vreg0, %vreg2<reg>
+								auto prevDest = inst->mArg0;
+								ReplaceWithNewVReg(inst->mArg0, instIdx, true);
+								AllocInst(BeMCInstKind_Mov, prevDest, inst->mArg0, instIdx + 1);
+								IntroduceVRegs(inst->mArg0, mcBlock, instIdx, instIdx + 2);
+								instIdx++;
+								isFinalRun = false;
+								continue;
+							}
+						}
+						
 						if (!targetType->IsNonVectorComposite())
 						{
 							auto scratchType = GetType(inst->mArg1);
@@ -14466,7 +14487,7 @@ void BeMCContext::DoCodeEmission()
 				}
 				break;
 			case BeMCInstKind_And:
-				{					
+				{
 					if (EmitIntBitwiseXMMInst(instForm, inst, 0xDB)) //PAND
 						break;
 
@@ -15708,8 +15729,8 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SAXXZ");
-	// 		|| (function->mName == "?__BfStaticCtor@roboto_font@Drawing@ClassicUO_assistant@bf@@SAXXZ")
+	//mDebugging = (function->mName == "?MouseMove@PerfView@BeefPerf@bf@@UEAAXMM@Z");
+	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
 			//"?ColorizeCodeString@IDEUtils@IDE@bf@@SAXPEAVString@System@3@W4CodeKind@123@@Z";
