@@ -5822,7 +5822,7 @@ namespace IDE
                 if (DarkTooltipManager.CheckMouseover(this, 25, out point))
                 {
                     var sourceViewPanel = mContent as SourceViewPanel;
-                    if (sourceViewPanel != null)
+                    if ((sourceViewPanel != null) && (sourceViewPanel.mFilePath != null))
                         DarkTooltipManager.ShowTooltip(sourceViewPanel.mFilePath, this, point.x, 14);
                 }
             }
