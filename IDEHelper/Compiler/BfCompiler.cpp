@@ -4181,7 +4181,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 		BfFieldDef* actualFieldDef = NULL;		
 		BfMemberSetEntry* memberSetEntry = NULL;
-		if (actualTypeDef->mFieldSet.TryGetWith(fieldDef->mName, &memberSetEntry))
+		if (actualTypeDef->mFieldSet.TryGetWith((StringImpl&)fieldDef->mName, &memberSetEntry))
 		{
 			auto checkFieldDef = (BfFieldDef*)memberSetEntry->mMemberDef;		
 			if ((checkFieldDef->mIsConst == fieldDef->mIsConst) &&

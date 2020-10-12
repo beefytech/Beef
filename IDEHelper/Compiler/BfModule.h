@@ -1366,7 +1366,11 @@ public:
 public:
 	Val128 mDataHash;
 
+#ifdef _DEBUG
+	StringT<128> mModuleName;
+#else
 	String mModuleName;
+#endif
 	Array<BfModuleFileName> mOutFileNames;
 	// SpecializedModules contain method specializations with types that come from other projects	
 	Dictionary<Array<BfProject*>, BfModule*> mSpecializedMethodModules;	

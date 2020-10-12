@@ -21657,7 +21657,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				lookupType->mTypeDef->PopulateMemberSets();
 				BfMethodDef* nextMethodDef = NULL;
 				BfMemberSetEntry* entry;
-				if (lookupType->mTypeDef->mMethodSet.TryGetWith(methodInstance->mMethodDef->mName, &entry))
+				if (lookupType->mTypeDef->mMethodSet.TryGetWith((StringImpl&)methodInstance->mMethodDef->mName, &entry))
 					nextMethodDef = (BfMethodDef*)entry->mMemberDef;
 
 				while (nextMethodDef != NULL)
@@ -22027,7 +22027,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 		ifaceInst->mTypeDef->PopulateMemberSets();
 		BfMethodDef* checkMethodDef = NULL;
 		BfMemberSetEntry* entry;
-		if (ifaceInst->mTypeDef->mMethodSet.TryGetWith(methodInstance->mMethodDef->mName, &entry))
+		if (ifaceInst->mTypeDef->mMethodSet.TryGetWith((StringImpl&)methodInstance->mMethodDef->mName, &entry))
 			checkMethodDef = (BfMethodDef*)entry->mMemberDef;
 
 		while (checkMethodDef != NULL)

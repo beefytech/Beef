@@ -490,7 +490,11 @@ public:
 class BfMemberDef
 {
 public:
+#ifdef _DEBUG
+	StringT<48> mName;
+#else
 	String mName;
+#endif
 	BfTypeDef* mDeclaringType;
 	BfProtection mProtection;
 	bool mIsStatic;
