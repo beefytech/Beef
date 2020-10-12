@@ -282,18 +282,18 @@
   <ItemGroup>
     <CustomBuild Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\src\x86\win64.asm">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Executing MASM</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Executing MASM</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">Executing MASM</Message>
@@ -354,12 +354,12 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">Executing MASM</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">Executing MASM</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>

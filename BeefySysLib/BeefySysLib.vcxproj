@@ -208,9 +208,9 @@
       </Message>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+      <Command>copy /y "$(OutDir)$(TargetName).dll" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -240,9 +240,9 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       </Message>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+      <Command>copy /y "$(OutDir)$(TargetName).dll" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">
@@ -267,9 +267,9 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       </Message>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+      <Command>copy /y "$(OutDir)$(TargetName).dll" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">
@@ -295,9 +295,9 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       </Message>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+      <Command>copy /y "$(OutDir)$(TargetName).dll" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -331,9 +331,9 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       </Message>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+      <Command>copy /y "$(OutDir)$(TargetName).dll" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -366,9 +366,9 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       </Message>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+      <Command>copy /y "$(OutDir)$(TargetName).dll" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">
@@ -397,9 +397,9 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       </Message>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+      <Command>copy /y "$(OutDir)$(TargetName).dll" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">
@@ -428,9 +428,9 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       </Message>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>copy /y $(OutDir)$(TargetName).dll $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).pdb $(SolutionDir)\BeefLibs\Beefy2D\dist\
-copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Command>
+      <Command>copy /y "$(OutDir)$(TargetName).dll" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"
+copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -2183,22 +2183,22 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Executing MASM</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)%(Filename).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">$(IntDir)%(Filename).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(Filename).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">$(IntDir)%(Filename).obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Executing MASM</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Executing MASM</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).obj</Outputs>
     </CustomBuild>
@@ -2212,11 +2212,11 @@ copy /y $(OutDir)$(TargetName).lib $(SolutionDir)\BeefLibs\Beefy2D\dist\</Comman
 </Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Executing MASM - %(Filename)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(Filename).obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">Executing MASM - %(Filename)</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta %(FullPath)</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(IntDir)%(Filename).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Executing MASM</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">$(IntDir)%(Filename).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)%(Filename).obj</Outputs>
