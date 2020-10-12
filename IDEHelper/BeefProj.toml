@@ -17,7 +17,7 @@ TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 TargetName = "IDEHelper64_d.dll"
 BuildCommandsOnCompile = "IfFilesChanged"
 BuildCommandsOnRun = "IfFilesChanged"
-PostBuildCmds = ["\"$(WorkspaceDir)\\..\\bin\\msbuild.bat\" \"$(WorkspaceDir)\\..\\IDEHelper\\IDEHelper.vcxproj\" /p:Configuration=Debug /p:Platform=X64 /p:SolutionDir=$(Slash \"$(WorkspaceDir)\\\\..\\\\\") /v:m"]
+PostBuildCmds = ["\"$(WorkspaceDir)\\..\\bin\\msbuild.bat\" $(Slash \"$(WorkspaceDir)\\\\..\\\\IDEHelper\\\\IDEHelper.vcxproj\") /p:Configuration=Debug /p:Platform=X64 /p:SolutionDir=$(Slash \"$(WorkspaceDir)\\\\..\\\\\") /v:m"]
 
 [Configs.Release.Win32]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
