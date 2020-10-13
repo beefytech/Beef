@@ -3440,6 +3440,41 @@ namespace IDE.ui
 					return;
             }
 
+			if (mSourceViewPanel?.mRenameSymbolDialog?.mKind == .Rename)
+			{
+				int wantCursorPos = -1;
+
+				if (keyCode == .Home)
+				{
+					int checkPos = CursorTextPos - 1;
+					while (checkPos >= 0)
+					{
+						if (mData.mText[checkPos].mDisplayFlags & (uint8)SourceElementFlags.SymbolReference == 0)
+							break;
+						wantCursorPos = checkPos;
+						checkPos--;
+					}
+				}
+				else if (keyCode == .End)
+				{
+					int checkPos = CursorTextPos;
+					while (checkPos < mData.mTextLength)
+					{
+						if (mData.mText[checkPos].mDisplayFlags & (uint8)SourceElementFlags.SymbolReference == 0)
+							break;
+						checkPos++;
+						wantCursorPos = checkPos;
+					}
+				}
+
+				if (wantCursorPos != -1)
+				{
+					mSelection = null;
+					CursorTextPos = wantCursorPos;
+					return;
+				}
+			}
+
             //var lineAndColumn = CursorLineAndColumn;
 
             int prevCursorPos;
