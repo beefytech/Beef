@@ -1174,7 +1174,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
 			continue;
 		
-		if (doSplat)
+		if ((doSplat) && (!checkType->IsMethodRef()))
 		{
 			int splatCount = checkType->GetSplatCount();			
 			if ((int)paramTypes.size() + splatCount > module->mCompiler->mOptions.mMaxSplatRegs)
