@@ -495,7 +495,11 @@ public:
 	BE_VALUE_TYPE(BeFunction, BeConstant);
 
 	BeModule* mModule;	
+#ifdef _DEBUG
+	StringT<256> mName;
+#else
 	String mName;
+#endif
 	BfIRLinkageType mLinkageType;	
 	bool mAlwaysInline;		
 	bool mNoUnwind;

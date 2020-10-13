@@ -304,7 +304,7 @@ void BfCodeGenThread::RunLoop()
 		auto cacheDir = GetFileDir(request->mOutFileName);
 		auto cacheFileName = GetFileName(request->mOutFileName);
 
-		String objFileName = request->mOutFileName + BF_OBJ_EXT;
+		StringT<256> objFileName = request->mOutFileName + BF_OBJ_EXT;
 
 		bool hasCacheMatch = false;
 		BfCodeGenDirectoryData* dirCache = NULL;
