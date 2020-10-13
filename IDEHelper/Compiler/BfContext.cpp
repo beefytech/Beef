@@ -1017,8 +1017,9 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mTypeWarned = false;		
 	typeInst->mIsSplattable = false;
 	typeInst->mHasUnderlyingArray = false;
-	typeInst->mHasPackingHoles = false;
+	typeInst->mHasPackingHoles = false;	
 	typeInst->mWantsGCMarking = false;
+	typeInst->mHasDeclError = false;
 	delete typeInst->mTypeInfoEx;
 	typeInst->mTypeInfoEx = NULL;
 

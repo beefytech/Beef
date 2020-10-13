@@ -703,7 +703,7 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 			if (!typeInst->IsTypeMemberIncluded(prop->mDeclaringType))
 				continue;
 
-			MemberRef memberRef;
+			MemberRef memberRef = { 0 };
 			memberRef.mMemberDef = prop;
 			memberRef.mTypeInst = checkType;
 			memberRef.mProtection = prop->mProtection;
@@ -724,7 +724,7 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 			if (!typeInst->IsTypeMemberIncluded(field->mDeclaringType))
 				continue;
 
-			MemberRef memberRef;
+			MemberRef memberRef = { 0 };
 			memberRef.mMemberDef = field;
 			memberRef.mTypeInst = checkType;
 			memberRef.mProtection = field->mProtection;
@@ -805,6 +805,7 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 					if (secondMemberRef->mNameNode != NULL)
 						error = Fail(StrFormat("A %s named '%s' has already been declared.", secondMemberRef->mKindName.c_str(), memberRef.mName.c_str()), secondMemberRef->mNameNode, true);
 					showPrevious = true;
+					typeInst->mHasDeclError = true;
 				}
 				if ((secondMemberRef->mNameNode != NULL) && (error != NULL))
 					mCompiler->mPassInstance->MoreInfo("Previous declaration", firstMemberRef->mNameNode);
@@ -7156,6 +7157,30 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	{
 		if ((typeInstance->mCustomAttributes != NULL) && (!typeRef->IsTemporary()))
 			CheckErrorAttributes(typeInstance, NULL, typeInstance->mCustomAttributes, typeRef);
+
+		if (typeInstance->IsTuple())
+		{
+			if (typeInstance->mDefineState < BfTypeDefineState_Defined)
+				PopulateType(typeInstance);
+			if (typeInstance->mHasDeclError)
+			{
+				if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))
+				{
+					HashSet<String> names;
+					for (auto nameIdentifier : tupleTypeRef->mFieldNames)
+					{
+						if (nameIdentifier == NULL)
+							continue;
+						StringT<64> fieldName;
+						nameIdentifier->ToString(fieldName);
+						if (!names.Add(fieldName))
+						{
+							Fail(StrFormat("A field named '%s' has already been declared", fieldName.c_str()), nameIdentifier);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return resolvedTypeRef;

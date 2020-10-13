@@ -1797,6 +1797,7 @@ public:
 	bool mIsFinishingType;	
 	bool mHasPackingHoles;		
 	bool mWantsGCMarking;
+	bool mHasDeclError;
 
 public:
 	BfTypeInstance()
@@ -1847,6 +1848,7 @@ public:
 		mIncludeAllMethods = false;
 		mWantsGCMarking = false;
 		mHasParameterizedBase = false;
+		mHasDeclError = false;
 		mMergedFieldDataCount = 0;
 		mConstHolder = NULL;
 	}
