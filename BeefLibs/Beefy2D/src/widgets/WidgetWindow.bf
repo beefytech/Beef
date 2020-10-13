@@ -45,6 +45,7 @@ namespace Beefy.widgets
         public bool mIsMainWindow;
 
         public MouseFlag mMouseFlags;
+		public KeyFlags mMouseDownKeyFlags;
         public Widget mRootWidget;
         public Widget mCaptureWidget;
         public Widget mOverWidget;
@@ -628,6 +629,9 @@ namespace Beefy.widgets
         {
 			let oldFlags = mMouseFlags;
 
+			if (mMouseFlags == 0)
+				mMouseDownKeyFlags = GetKeyFlags();
+
             mMouseFlags |= (MouseFlag)(1 << btn);
             if ((!mHasFocus) && (mParent == null))
             {
@@ -723,6 +727,8 @@ namespace Beefy.widgets
 				}
             }
 
+			if (mMouseFlags == 0)
+				mMouseDownKeyFlags = 0;
         }
 
 		public void ReleaseMouseCaptures()
@@ -813,6 +819,7 @@ namespace Beefy.widgets
 				return;
 
 			newMouseWindow.mMouseFlags = mMouseFlags;
+			newMouseWindow.mMouseDownKeyFlags = mMouseDownKeyFlags;
 			newMouseWindow.CaptureMouse();
 			mMouseFlags = default;
 		}

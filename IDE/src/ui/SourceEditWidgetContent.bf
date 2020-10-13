@@ -3592,7 +3592,7 @@ namespace IDE.ui
 			var useX = x;
 			var useY = y;
 
-			if ((btn == 0) && (mWidgetWindow.IsKeyDown(.Control)) && (x == origX) && (y == origY))
+			if ((btn == 0) && (mWidgetWindow.mMouseDownKeyFlags.HasFlag(.Ctrl)) && (x == origX) && (y == origY))
 			{
 				gApp.GoToDefinition(false);
 				return;
