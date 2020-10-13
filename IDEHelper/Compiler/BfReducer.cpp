@@ -6724,9 +6724,6 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* defe
 			mVisitorPos.MoveNext();
 
 			blockAfterIdx = mVisitorPos.mReadPos + 1;
-			auto block = ExpectBlockAfter(blockAfterPos);
-			if (block == NULL)
-				return indexerDeclaration;
 		}
 		else
 		{
@@ -6742,9 +6739,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* defe
 		//  If we don't have a token afterwards then still treat it as a property for autocomplete purposes
 		if ((typeRef != NULL) &&
 			((block != NULL) || (tokenNode == NULL) || (isExprBodyProp)))
-		{
-			//mVisitorPos.mReadPos = blockAfterIdx;
-
+		{			
 			if (propertyDeclaration == NULL)
 			{
 				if ((block == NULL) && (!isExprBodyProp))
@@ -6818,6 +6813,13 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* defe
 				MEMBER_SET(propertyDeclaration, mDefinitionBlock, propertyBodyExpr);
 			}
 
+			return propertyDeclaration;
+		}
+		else if (propertyDeclaration != NULL)
+		{
+			// Failure case
+			block = ExpectBlockAfter(blockAfterPos);
+			BF_ASSERT(block == NULL);
 			return propertyDeclaration;
 		}
 
