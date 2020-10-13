@@ -454,7 +454,7 @@ bool BfAutoComplete::IsAttribute(BfTypeInstance* typeInst)
 }
 
 void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef, BfMethodInstance* methodInstance, BfMethodDeclaration* methodDecl, const StringImpl& methodName, const StringImpl& filter)
-{	
+{
 	String replaceName;
 	AutoCompleteEntry entry("method", methodName);
 	if (methodDecl != NULL)
@@ -505,7 +505,7 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 			}
 		}
 
-		if ((mResolveType == BfResolveType_GoToDefinition) && (mGetDefinitionNode == NULL) && (methodDecl->mNameNode != NULL))
+		if ((mResolveType == BfResolveType_GoToDefinition) && (mGetDefinitionNode == NULL) && (methodDecl != NULL) && (methodDecl->mNameNode != NULL))
 			SetDefinitionLocation(methodDecl->mNameNode);
 	}
 }
