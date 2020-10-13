@@ -874,7 +874,10 @@ namespace Beefy.widgets
             if (endIdx != startIdx)
                 ContentChanged();
 			if (moveCursor)
-            	EnsureCursorVisible();
+			{
+	            EnsureCursorVisible();
+				ResetWantX();
+			}
         }
 
         public virtual void DeleteSelection(bool moveCursor = true)
@@ -2542,7 +2545,9 @@ namespace Beefy.widgets
 				}
 
                 if (!CheckReadOnly())
+				{
                     DeleteChar();
+				}
 				mCursorImplicitlyMoved = true;
                 break;                
 			default:
@@ -2859,7 +2864,7 @@ namespace Beefy.widgets
         }
 
 		// We used to have a split between PhysCursorMoved and CursorMoved.  CursorMoved has a "ResetWantX" and was non-virtual... uh-
-		//  so what was taht for?
+		//  so what was that for?
         public virtual void PhysCursorMoved()
         {
             mJustInsertedCharPair = false;
