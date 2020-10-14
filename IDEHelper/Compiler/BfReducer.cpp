@@ -8327,8 +8327,14 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 				{
 					MEMBER_SET(typeDeclaration, mGenericConstraintsDeclaration, constraints);
 				}
-			}
 
+				nextNode = mVisitorPos.GetNext();
+				tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
+			}
+		}
+
+		if (tokenNode != NULL)
+		{
 			if (tokenNode->GetToken() == BfToken_Semicolon)
 			{
 				typeDeclaration->mDefineNode = tokenNode;
@@ -9375,7 +9381,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 					break;
 				if ((token == BfToken_LBrace) || (token == BfToken_Semicolon))
 				{
-					//return constraintsDeclaration;
+					mVisitorPos.mReadPos--;
 					isDone = true;
 					break;
 				}
