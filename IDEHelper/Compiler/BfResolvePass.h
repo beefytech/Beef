@@ -48,6 +48,7 @@ public:
 	BfAutoComplete* mAutoComplete;
 	Array<BfTypeDef*> mAutoCompleteTempTypes; // Contains multiple values when we have nested types
 	Dictionary<BfTypeDef*, BfStaticSearch> mStaticSearchMap;
+	Dictionary<BfTypeDef*, BfInternalAccessSet> mInternalAccessMap;
 	BfSourceClassifier* mSourceClassifier;
 	Array<BfAstNode*> mExteriorAutocompleteCheckNodes;
 

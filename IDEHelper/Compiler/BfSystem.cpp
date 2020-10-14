@@ -657,6 +657,7 @@ void BfTypeDef::FreeMembers()
 	mNamespaceSearch.Clear();
 	
 	mStaticSearch.Clear();
+	mInternalAccessSet.Clear();
 
 	for (auto allocNode : mDirectAllocNodes)
 		delete allocNode;
@@ -832,6 +833,7 @@ void BfTypeDef::ReportMemory(MemReporter* memReporter)
 	memReporter->Add(sizeof(BfTypeDef));
 	memReporter->AddVec(mNamespaceSearch, false);
 	memReporter->AddVec(mStaticSearch, false);
+	memReporter->AddVec(mInternalAccessSet, false);
 	memReporter->AddVecPtr("Fields", mFields, false);
 	memReporter->AddVecPtr("Properties", mProperties, false);
 
@@ -2656,6 +2658,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 		RefAtomComposite(name);
 	
 	typeDef->mStaticSearch = nextTypeDef->mStaticSearch;
+	typeDef->mInternalAccessSet = nextTypeDef->mInternalAccessSet;
 
 	for (auto prevField : typeDef->mFields)
 	{

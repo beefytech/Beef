@@ -1411,6 +1411,7 @@ BfMethodInstanceGroup::~BfMethodInstanceGroup()
 
 BfTypeInstance::~BfTypeInstance()
 {
+	ReleaseData();
 	delete mTypeInfoEx;
 	delete mGenericTypeInfo;
 	delete mCustomAttributes;
@@ -1421,6 +1422,17 @@ BfTypeInstance::~BfTypeInstance()
 		delete operatorInfo;
 	delete mHotTypeData;
 	delete mConstHolder;
+}
+
+void BfTypeInstance::ReleaseData()
+{
+	for (auto& kv : mInternalAccessMap)
+	{
+		auto& internalAcessSet = kv.mValue;
+		for (auto& namespaceComposite : internalAcessSet.mNamespaces)
+			mModule->mSystem->ReleaseAtomComposite(namespaceComposite);
+	}
+	mInternalAccessMap.Clear();
 }
 
 int BfTypeInstance::GetSplatCount()
@@ -2797,6 +2809,8 @@ int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, 
 
 BfTypeDef* BfResolvedTypeSet::FindRootCommonOuterType(BfTypeDef* outerType, LookupContext* ctx, BfTypeInstance*& outOuterTypeInstance)
 {
+	if (ctx->mModule->mCurTypeInstance == NULL)
+		return NULL;
 	BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
 	if ((commonOuterType == NULL) && (outerType != NULL))
 	{

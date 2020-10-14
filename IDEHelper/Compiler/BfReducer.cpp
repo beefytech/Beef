@@ -5957,6 +5957,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 	case BfToken_Public:
 	case BfToken_Protected:
 	case BfToken_Private:
+	case BfToken_Internal:
 	case BfToken_Virtual:
 	case BfToken_Override:
 	case BfToken_Abstract:
@@ -6024,7 +6025,8 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 
 	if ((token == BfToken_Public) ||
 		(token == BfToken_Protected) ||
-		(token == BfToken_Private))
+		(token == BfToken_Private) ||
+		(token == BfToken_Internal))
 	{
 		if (memberDecl->mProtectionSpecifier != NULL)
 		{
@@ -6246,7 +6248,8 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 			token = tokenNode->GetToken();
 			if ((token == BfToken_Private) ||
 				(token == BfToken_Protected) ||
-				(token == BfToken_Public))
+				(token == BfToken_Public) ||
+				(token == BfToken_Internal))
 			{
 				if (protectionSpecifier != NULL)
 				{
@@ -7905,13 +7908,13 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 	{
 		if (auto nextTokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 		{
-			if (nextTokenNode->mToken == BfToken_Static)
+			if ((nextTokenNode->mToken == BfToken_Static) || (nextTokenNode->mToken == BfToken_Internal))
 			{
-				auto usingDirective = mAlloc->Alloc<BfUsingStaticDirective>();
+				auto usingDirective = mAlloc->Alloc<BfUsingModDirective>();
 				ReplaceNode(tokenNode, usingDirective);
 				usingDirective->mUsingToken = tokenNode;
 
-				MEMBER_SET(usingDirective, mStaticToken, nextTokenNode);
+				MEMBER_SET(usingDirective, mModToken, nextTokenNode);
 				mVisitorPos.MoveNext();
 
 				auto typeRef = CreateTypeRefAfter(usingDirective);
@@ -8029,6 +8032,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 	case BfToken_Public:
 	case BfToken_Private:
 	case BfToken_Protected:
+	case BfToken_Internal:
 	case BfToken_Static:
 	{
 		auto nextNode = mVisitorPos.GetNext();
@@ -8078,7 +8082,8 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		BfToken token = tokenNode->GetToken();
 		if ((token == BfToken_Public) ||
 			(token == BfToken_Protected) ||
-			(token == BfToken_Private))
+			(token == BfToken_Private) ||
+			(token == BfToken_Internal))
 		{
 			if (typeDeclaration->mProtectionSpecifier != NULL)
 			{

@@ -3923,7 +3923,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 			auto checkTypeDef = checkTypeInst->mTypeDef;
 			if (checkTypeDef->mDtorDef != NULL)
 			{
-				if (!CheckProtection(checkTypeDef->mDtorDef->mProtection, allowProtected, allowPrivate))
+				if (!CheckProtection(checkTypeDef->mDtorDef->mProtection, checkTypeInst->mTypeDef, allowProtected, allowPrivate))
 				{
 					auto error = Fail(StrFormat("'%s.~this()' is inaccessible due to its protection level", TypeToString(checkTypeInst).c_str()), deleteStmt->mExpression); // CS0122																																												
 				}

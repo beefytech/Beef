@@ -1004,6 +1004,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		}
 	}
 
+	typeInst->ReleaseData();
 	type->mDefineState = BfTypeDefineState_Undefined;	
 	typeInst->mSpecializedMethodReferences.Clear();
 	typeInst->mLookupResults.Clear();
@@ -1040,6 +1041,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	}	
 
 	typeInst->mStaticSearchMap.Clear();
+	typeInst->mInternalAccessMap.Clear();
 	typeInst->mInterfaces.Clear();
 	typeInst->mInterfaceMethodTable.Clear();
 	for (auto operatorInfo : typeInst->mOperatorInfo)

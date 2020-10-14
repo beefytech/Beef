@@ -23,7 +23,7 @@ void BfNamespaceVisitor::Visit(BfUsingDirective* usingDirective)
 	mResolvePassData->HandleNamespaceReference(usingDirective->mNamespace, usingComposite);
 }
 
-void BfNamespaceVisitor::Visit(BfUsingStaticDirective* usingDirective)
+void BfNamespaceVisitor::Visit(BfUsingModDirective* usingDirective)
 {	
 	BfAstNode* useNode = usingDirective->mTypeRef;
 	BfAstNode* checkNode = usingDirective->mTypeRef;

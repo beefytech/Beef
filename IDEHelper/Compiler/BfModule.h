@@ -1458,7 +1458,7 @@ public:
 	void FatalError(const StringImpl& error, const char* file = NULL, int line = -1);
 	void NotImpl(BfAstNode* astNode);	
 	void AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
-	bool CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate);
+	bool CheckProtection(BfProtection protection, BfTypeDef* checkType, bool allowProtected, bool allowPrivate);
 	void GetAccessAllowed(BfTypeInstance* checkType, bool& allowProtected, bool& allowPrivate);
 	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType);
 	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);	
@@ -1651,7 +1651,7 @@ public:
 	void CheckInjectNewRevision(BfTypeInstance* typeInstance);
 	void InitType(BfType* resolvedTypeRef, BfPopulateType populateType);
 	BfProtection FixProtection(BfProtection protection, BfProject* defProject);
-	bool CheckAccessMemberProtection(BfProtection protection, BfType* memberType);
+	bool CheckAccessMemberProtection(BfProtection protection, BfTypeInstance* memberType);
 	bool CheckDefineMemberProtection(BfProtection protection, BfType* memberType);	
 	void CheckMemberNames(BfTypeInstance* typeInst);	
 	void AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyFlags flags);
@@ -1661,6 +1661,8 @@ public:
 	bool IsAttribute(BfTypeInstance* typeInst);
 	void PopulateGlobalContainersList(const BfGlobalLookup& globalLookup);
 	BfStaticSearch* GetStaticSearch();
+	BfInternalAccessSet* GetInternalAccessSet();
+	bool CheckInternalProtection(BfTypeDef* usingTypeDef);
 	void AddFailType(BfTypeInstance* typeInstance);
 	void MarkDerivedDirty(BfTypeInstance* typeInst);
 	void CheckAddFailType();

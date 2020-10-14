@@ -885,6 +885,7 @@ public:
 	BfProtection mProtection;
 	Array<BfAtomComposite> mNamespaceSearch;
 	Array<BfTypeReference*> mStaticSearch;
+	Array<BfTypeReference*> mInternalAccessSet;
 	Array<BfFieldDef*> mFields;	
 	Array<BfPropertyDef*> mProperties;
 	Array<BfMethodDef*> mMethods;

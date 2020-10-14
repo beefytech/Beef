@@ -664,7 +664,7 @@ void BfSourceClassifier::Visit(BfUsingDirective* usingDirective)
 	}
 }
 
-void BfSourceClassifier::Visit(BfUsingStaticDirective* usingDirective)
+void BfSourceClassifier::Visit(BfUsingModDirective* usingDirective)
 {
 	BfElementVisitor::Visit(usingDirective);	
 }

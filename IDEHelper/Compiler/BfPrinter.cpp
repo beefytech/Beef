@@ -2755,12 +2755,12 @@ void BfPrinter::Visit(BfUsingDirective* usingDirective)
 	ExpectNewLine();
 }
 
-void BfPrinter::Visit(BfUsingStaticDirective * usingDirective)
+void BfPrinter::Visit(BfUsingModDirective* usingDirective)
 {
 	ExpectNewLine();
 	VisitChild(usingDirective->mUsingToken);
 	ExpectSpace();
-	VisitChild(usingDirective->mStaticToken);
+	VisitChild(usingDirective->mModToken);
 	ExpectSpace();
 	VisitChild(usingDirective->mTypeRef);
 

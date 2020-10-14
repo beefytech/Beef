@@ -1654,6 +1654,13 @@ public:
 	Array<BfTypeInstance*> mStaticTypes;
 };
 
+class BfInternalAccessSet
+{
+public:
+	Array<BfTypeInstance*> mTypes;
+	Array<BfAtomComposite> mNamespaces;
+};
+
 class BfTypeInfoEx
 {
 public:
@@ -1760,6 +1767,7 @@ public:
 	Array<BfFieldInstance> mFieldInstances;
 	Array<BfMethodInstance*> mInternalMethods;			
 	Dictionary<BfTypeDef*, BfStaticSearch> mStaticSearchMap;
+	Dictionary<BfTypeDef*, BfInternalAccessSet> mInternalAccessMap;
 	bool mHasStaticInitMethod;
 	bool mHasStaticDtorMethod;
 	bool mHasStaticMarkMethod;	
@@ -1854,6 +1862,8 @@ public:
 	}
 	
 	~BfTypeInstance();	
+	
+	void ReleaseData();
 
 	virtual bool IsInstanceOf(BfTypeDef* typeDef) override { return typeDef == mTypeDef; }
 	virtual BfModule* GetModule() override { return mModule; }

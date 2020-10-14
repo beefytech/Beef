@@ -22,6 +22,7 @@ public:
 	BfAtomComposite mNamespace;
 	Array<BfAtomComposite> mNamespaceSearch;
 	Array<BfTypeReference*> mStaticSearch;
+	Array<BfTypeReference*> mInternalAccessSet;
 	HashContext* mFullHashCtx;
 	HashContext* mSignatureHashCtx;
 
@@ -57,7 +58,7 @@ public:
 	virtual void Visit(BfEnumCaseDeclaration* enumCaseDeclaration) override;
 	virtual void Visit(BfTypeDeclaration* typeDeclaration) override;
 	virtual void Visit(BfUsingDirective* usingDirective) override;
-	virtual void Visit(BfUsingStaticDirective* usingDirective) override;
+	virtual void Visit(BfUsingModDirective* usingDirective) override;
 	virtual void Visit(BfNamespaceDeclaration* namespaceDeclaration) override;	
 	virtual void Visit(BfBlock* block) override;
 	virtual void Visit(BfRootNode* rootNode) override;

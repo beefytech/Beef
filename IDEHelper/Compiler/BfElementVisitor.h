@@ -126,7 +126,7 @@ public:
 	virtual void Visit(BfTypeDeclaration* typeDeclaration);
 	virtual void Visit(BfTypeAliasDeclaration* typeDeclaration);
 	virtual void Visit(BfUsingDirective* usingDirective);
-	virtual void Visit(BfUsingStaticDirective* usingDirective);
+	virtual void Visit(BfUsingModDirective* usingDirective);
 	virtual void Visit(BfNamespaceDeclaration* namespaceDeclaration);
 	virtual void Visit(BfBlock* block);
 	virtual void Visit(BfRootNode* rootNode);

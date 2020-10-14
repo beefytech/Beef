@@ -3536,13 +3536,14 @@ void BfCompiler::VisitAutocompleteExteriorIdentifiers()
 		{
 			checkIdentifier = usingDirective->mNamespace;
 		}
-		else if (auto usingDirective = BfNodeDynCast<BfUsingStaticDirective>(checkNode))
+		else if (auto usingDirective = BfNodeDynCast<BfUsingModDirective>(checkNode))
 		{
 			if (usingDirective->mTypeRef != NULL)
 			{
 				BF_ASSERT(mContext->mScratchModule->mCurTypeInstance == NULL);
 
 				SetAndRestoreValue<BfTypeInstance*> prevCurTypeInstance(mContext->mScratchModule->mCurTypeInstance, NULL);
+				SetAndRestoreValue<bool> prevIgnoreErrors(mContext->mScratchModule->mIgnoreErrors, true);				
 				mContext->mScratchModule->ResolveTypeRef(usingDirective->mTypeRef, NULL);
 				if (mResolvePassData->mAutoComplete != NULL)
 					mResolvePassData->mAutoComplete->CheckTypeRef(usingDirective->mTypeRef, false, isUsingDirective);
@@ -3577,26 +3578,37 @@ void BfCompiler::VisitAutocompleteExteriorIdentifiers()
 }
 
 void BfCompiler::VisitSourceExteriorNodes()
-{	
+{
 	BP_ZONE("BfCompiler::VisitSourceExteriorNodes");
 
 	String str;
 	Array<BfAtom*> namespaceParts;
 	Array<BfAstNode*> srcNodes;
-	std::function<bool(BfAstNode*)> _AddName = [&](BfAstNode* node)
+	std::function<bool(BfAstNode*, bool)> _AddName = [&](BfAstNode* node, bool wantErrors)
 	{
+		if (node == NULL)
+			return false;
 		if (auto qualifiedName = BfNodeDynCast<BfQualifiedNameNode>(node))
 		{
-			if (!_AddName(qualifiedName->mLeft))
+			if (!_AddName(qualifiedName->mLeft, wantErrors))
 				return false;
-			if (!_AddName(qualifiedName->mRight))
+			if (!_AddName(qualifiedName->mRight, wantErrors))
 				return false;
+			return true;
 		}
-		else if (auto identifier = BfNodeDynCast<BfIdentifierNode>(node))
+		else if (auto qualifedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(node))
 		{
-			srcNodes.Add(identifier);
+			if (!_AddName(qualifedTypeRef->mLeft, wantErrors))
+				return false;
+			if (!_AddName(qualifedTypeRef->mRight, wantErrors))
+				return false;
+			return true;
+		}		
+		else if ((node->IsA<BfIdentifierNode>()) || (node->IsA<BfNamedTypeReference>()))
+		{
+			srcNodes.Add(node);
 			str.Clear();
-			identifier->ToString(str);
+			node->ToString(str);
 			auto atom = mSystem->FindAtom(str);
 			if (atom == NULL)
 			{
@@ -3607,14 +3619,44 @@ void BfCompiler::VisitSourceExteriorNodes()
 						prevNamespace += ".";
 					prevNamespace += part->mString;
 				}
-
-				if (prevNamespace.IsEmpty())
-					mPassInstance->Fail(StrFormat("The namespace '%s' does not exist", str.c_str()), identifier);
-				else
-					mPassInstance->Fail(StrFormat("The namespace '%s' does not exist in the namespace '%s'", str.c_str(), prevNamespace.c_str()), identifier);
+				if (wantErrors)
+				{
+					if (prevNamespace.IsEmpty())
+						mPassInstance->Fail(StrFormat("The namespace '%s' does not exist", str.c_str()), node);
+					else
+						mPassInstance->Fail(StrFormat("The namespace '%s' does not exist in the namespace '%s'", str.c_str(), prevNamespace.c_str()), node);
+				}
 				return false;
 			}
 			namespaceParts.Add(atom);
+			return true;
+		}
+		return false;
+	};
+
+	auto _CheckNamespace = [&](BfParser* parser, bool wantErrors, bool& failed)
+	{
+		for (int i = 0; i < (int)namespaceParts.size(); i++)
+		{
+			BfAtomComposite checkNamespace;
+			checkNamespace.mParts = &namespaceParts[0];
+			checkNamespace.mSize = i + 1;
+
+			if (!mSystem->ContainsNamespace(checkNamespace, parser->mProject))
+			{
+				failed = true;
+				BfAtomComposite prevNamespace;
+				prevNamespace.mParts = &namespaceParts[0];
+				prevNamespace.mSize = i;
+				if (wantErrors)
+				{					
+					if (i == 0)
+						mPassInstance->Fail(StrFormat("The namespace '%s' does not exist", namespaceParts[i]->mString.ToString().c_str()), srcNodes[i]);
+					else
+						mPassInstance->Fail(StrFormat("The namespace '%s' does not exist in the namespace '%s'", namespaceParts[i]->mString.ToString().c_str(), prevNamespace.ToString().c_str()), srcNodes[i]);
+				}
+				return false;
+			}
 		}
 		return true;
 	};
@@ -3633,44 +3675,44 @@ void BfCompiler::VisitSourceExteriorNodes()
 
 		bool failed = false;
 		for (auto node : parser->mParserData->mExteriorNodes)
-		{
+		{			
 			if (auto usingDirective = BfNodeDynCast<BfUsingDirective>(node))
 			{
 				srcNodes.Clear();
 				namespaceParts.Clear();
-				bool success = _AddName(usingDirective->mNamespace);
-				
-				for (int i = 0; i < (int)namespaceParts.size(); i++)
-				{
-					BfAtomComposite checkNamespace;
-					checkNamespace.mParts = &namespaceParts[0];
-					checkNamespace.mSize = i + 1;
-
-					if (!mSystem->ContainsNamespace(checkNamespace, parser->mProject))
-					{
-						failed = true;
-						BfAtomComposite prevNamespace;
-						prevNamespace.mParts = &namespaceParts[0];
-						prevNamespace.mSize = i;
-						if (i == 0)
-							mPassInstance->Fail(StrFormat("The namespace '%s' does not exist", namespaceParts[i]->mString.ToString().c_str()), srcNodes[i]);
-						else
-							mPassInstance->Fail(StrFormat("The namespace '%s' does not exist in the namespace '%s'", namespaceParts[i]->mString.ToString().c_str(), prevNamespace.ToString().c_str()), srcNodes[i]);
-						break;
-					}
-				}				
+				bool success = _AddName(usingDirective->mNamespace, true);				
+				_CheckNamespace(parser, true, failed);
 			}
-			else if (auto usingDirective = BfNodeDynCast<BfUsingStaticDirective>(node))
+			else if (auto usingDirective = BfNodeDynCast<BfUsingModDirective>(node))
 			{
 				if (usingDirective->mTypeRef != NULL)
 				{
 					BF_ASSERT(mContext->mScratchModule->mCurTypeInstance == NULL);
 
-					SetAndRestoreValue<BfTypeInstance*> prevCurTypeInstance(mContext->mScratchModule->mCurTypeInstance, NULL);
-					mContext->mScratchModule->ResolveTypeRef(usingDirective->mTypeRef, BfPopulateType_Identity);
-					if ((mResolvePassData != NULL) && (mResolvePassData->mAutoComplete != NULL))
-						mResolvePassData->mAutoComplete->CheckTypeRef(usingDirective->mTypeRef, false, false);
-					return;
+					bool wasNamespace = false;
+					if (usingDirective->mModToken->mToken == BfToken_Internal)
+					{
+						srcNodes.Clear();
+						namespaceParts.Clear();
+						if (_AddName(usingDirective->mTypeRef, false))
+						{
+							wasNamespace = _CheckNamespace(parser, false, failed);
+						}
+					}
+					if (!wasNamespace)
+					{
+						SetAndRestoreValue<BfTypeInstance*> prevCurTypeInstance(mContext->mScratchModule->mCurTypeInstance, NULL);
+
+						if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(usingDirective->mTypeRef))
+						{
+							mContext->mScratchModule->ResolveTypeRefAllowUnboundGenerics(usingDirective->mTypeRef, BfPopulateType_Identity);
+						}
+						else
+							mContext->mScratchModule->ResolveTypeRef(usingDirective->mTypeRef, BfPopulateType_Identity);
+
+						if ((mResolvePassData != NULL) && (mResolvePassData->mAutoComplete != NULL))
+							mResolvePassData->mAutoComplete->CheckTypeRef(usingDirective->mTypeRef, false, false);
+					}
 				}
 			}
 		}
@@ -3861,7 +3903,6 @@ void BfCompiler::ProcessAutocompleteTempType()
 	}	
 	VisitSourceExteriorNodes();
 
-
 	if (autoComplete->mResolveType == BfResolveType_GetFixits)
 	{
 		BfAstNode* conflictStart = NULL;
@@ -3975,6 +4016,40 @@ void BfCompiler::ProcessAutocompleteTempType()
 				auto typeInst = type->ToTypeInstance();
 				if (typeInst != NULL)
 					staticSearch->mStaticTypes.Add(typeInst);
+			}
+		}
+	}
+	BfInternalAccessSet* internalAccessSet = NULL;
+	if (mResolvePassData->mInternalAccessMap.TryAdd(tempTypeDef, NULL, &internalAccessSet))
+	{
+		for (auto typeRef : tempTypeDef->mInternalAccessSet)
+		{
+			if ((typeRef->IsA<BfNamedTypeReference>()) ||
+				(typeRef->IsA<BfQualifiedTypeReference>()))
+			{
+				String checkNamespaceStr;
+				typeRef->ToString(checkNamespaceStr);
+				BfAtomComposite checkNamespace;
+				if (mSystem->ParseAtomComposite(checkNamespaceStr, checkNamespace))
+				{
+					if (mSystem->ContainsNamespace(checkNamespace, tempTypeDef->mProject))
+					{					
+						internalAccessSet->mNamespaces.Add(checkNamespace);
+						continue;
+					}
+				}
+			}
+
+			BfType* type;
+			if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
+				type = mContext->mScratchModule->ResolveTypeRefAllowUnboundGenerics(typeRef, BfPopulateType_Identity);
+			else
+				type = module->ResolveTypeRef(typeRef, NULL, BfPopulateType_Identity);
+			if (type != NULL)
+			{
+				auto typeInst = type->ToTypeInstance();
+				if (typeInst != NULL)
+					internalAccessSet->mTypes.Add(typeInst);
 			}
 		}
 	}

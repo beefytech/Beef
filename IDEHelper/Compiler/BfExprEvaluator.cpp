@@ -2460,7 +2460,7 @@ void BfMethodMatcher::CheckOuterTypeStaticMethods(BfTypeInstance* typeInstance, 
 			if (checkMethod->mName != mMethodName)
 				continue;			
 
-			if ((!isFailurePass) && (!mModule->CheckProtection(checkMethod->mProtection, allowProtected, allowPrivate)))
+			if ((!isFailurePass) && (!mModule->CheckProtection(checkMethod->mProtection, NULL, allowProtected, allowPrivate)))
 				continue;
 
 			CheckMethod(typeInstance, curTypeInst, checkMethod, isFailurePass);				
@@ -4059,7 +4059,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				bool isTemporary = target.IsTempAddr();
 				bool wantsLoadValue = false;
 				bool wantsReadOnly = false;
-				if ((field->mIsReadOnly) && ((mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Ctor) || (!target.IsThis())))
+				if ((field->mIsReadOnly) && (mModule->mCurMethodInstance != NULL) && ((mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Ctor) || (!target.IsThis())))
 					wantsReadOnly = true;
 										
 				bool isComposite = target.mType->IsComposite();

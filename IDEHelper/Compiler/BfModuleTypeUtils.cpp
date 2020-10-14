@@ -2155,26 +2155,72 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 
 		auto _AddStaticSearch = [&](BfTypeDef* typeDef)
-		{
-			if (typeDef->mStaticSearch.IsEmpty())
-				return;
-			BfStaticSearch* staticSearch;
-			if (typeInstance->mStaticSearchMap.TryAdd(typeDef, NULL, &staticSearch))
+		{			
+			if (!typeDef->mStaticSearch.IsEmpty())
 			{
-				for (auto typeRef : typeDef->mStaticSearch)
+				BfStaticSearch* staticSearch;
+				if (typeInstance->mStaticSearchMap.TryAdd(typeDef, NULL, &staticSearch))
 				{
-					auto staticType = ResolveTypeRef(typeRef, NULL, BfPopulateType_Declaration);
-					if (staticType != NULL)
+					for (auto typeRef : typeDef->mStaticSearch)
 					{
-						auto staticTypeInst = staticType->ToTypeInstance();
-						if (staticTypeInst == NULL)
+						auto staticType = ResolveTypeRef(typeRef, NULL, BfPopulateType_Identity);
+						if (staticType != NULL)
 						{
-							Fail(StrFormat("Type '%s' cannot be used in a 'using static' declaration", TypeToString(staticType).c_str()), typeRef);
+							auto staticTypeInst = staticType->ToTypeInstance();
+							if (staticTypeInst == NULL)
+							{
+								Fail(StrFormat("Type '%s' cannot be used in a 'using static' declaration", TypeToString(staticType).c_str()), typeRef);
+							}
+							else
+							{
+								staticSearch->mStaticTypes.Add(staticTypeInst);
+								AddDependency(staticTypeInst, typeInstance, BfDependencyMap::DependencyFlag_StaticValue);
+							}
 						}
-						else
+					}
+				}
+			}
+			if (!typeDef->mInternalAccessSet.IsEmpty())
+			{
+				BfInternalAccessSet* internalAccessSet;
+				if (typeInstance->mInternalAccessMap.TryAdd(typeDef, NULL, &internalAccessSet))
+				{
+					for (auto typeRef : typeDef->mInternalAccessSet)
+					{
+						if ((typeRef->IsA<BfNamedTypeReference>()) ||
+							(typeRef->IsA<BfQualifiedTypeReference>()))
 						{
-							staticSearch->mStaticTypes.Add(staticTypeInst);
-							AddDependency(staticTypeInst, typeInstance, BfDependencyMap::DependencyFlag_StaticValue);
+							String checkNamespaceStr;
+							typeRef->ToString(checkNamespaceStr);
+							BfAtomComposite checkNamespace;
+							if (mSystem->ParseAtomComposite(checkNamespaceStr, checkNamespace))
+							{
+								if (mSystem->ContainsNamespace(checkNamespace, typeDef->mProject))
+								{
+									mSystem->RefAtomComposite(checkNamespace);
+									internalAccessSet->mNamespaces.Add(checkNamespace);
+									continue;
+								}
+							}
+						}
+
+						BfType* internalType = NULL;
+						if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))						
+							internalType = mContext->mScratchModule->ResolveTypeRefAllowUnboundGenerics(typeRef, BfPopulateType_Identity);
+						else
+							internalType = ResolveTypeRef(typeRef, NULL, BfPopulateType_Identity);
+						if (internalType != NULL)
+						{
+							auto internalTypeInst = internalType->ToTypeInstance();
+							if (internalTypeInst == NULL)
+							{
+								Fail(StrFormat("Type '%s' cannot be used in a 'using internal' declaration", TypeToString(internalType).c_str()), typeRef);
+							}
+							else
+							{
+								internalAccessSet->mTypes.Add(internalTypeInst);
+								AddDependency(internalTypeInst, typeInstance, BfDependencyMap::DependencyFlag_StaticValue);
+							}
 						}
 					}
 				}
@@ -5837,7 +5883,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 						{							
 							auto latestCheckType = checkType->GetLatest();
 
-							if ((!isFailurePass) && (!CheckProtection(latestCheckType->mProtection, allowProtected, allowPrivate)))
+							if ((!isFailurePass) && (!CheckProtection(latestCheckType->mProtection, latestCheckType, allowProtected, allowPrivate)))
 								continue;
 
 							if (checkType->mProject != checkOuterType->mTypeDef->mProject)
@@ -9413,7 +9459,7 @@ BfType* BfModule::ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, B
 			BfTypeVector typeVector;
 			for (int i = 0; i < (int)genericTypeDef->mGenericParamDefs.size(); i++)
 				typeVector.push_back(GetGenericParamType(BfGenericParamKind_Type, i));
-			return ResolveTypeDef(genericTypeDef, typeVector);
+			return ResolveTypeDef(genericTypeDef, typeVector, populateType);
 		}
 	}
 

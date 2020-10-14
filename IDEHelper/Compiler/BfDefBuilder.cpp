@@ -375,6 +375,8 @@ BfProtection BfDefBuilder::GetProtection(BfTokenNode* protectionToken)
 		return BfProtection_Public;	
 	if (protectionToken->GetToken() == BfToken_Protected)
 		return BfProtection_Protected;
+	if (protectionToken->GetToken() == BfToken_Internal)
+		return BfProtection_Internal;
 	return BfProtection_Private;
 }
 
@@ -1437,6 +1439,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		mCurTypeDef->mNestDepth = outerTypeDef->mNestDepth + 1;
 		mCurTypeDef->mNamespaceSearch = outerTypeDef->mNamespaceSearch;
 		mCurTypeDef->mStaticSearch = outerTypeDef->mStaticSearch;
+		mCurTypeDef->mInternalAccessSet = outerTypeDef->mInternalAccessSet;
 
 		for (auto outerGenericParamDef : outerTypeDef->mGenericParamDefs)
 		{
@@ -1457,6 +1460,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		BF_ASSERT(mCurTypeDef->mNamespaceSearch.size() == 0);
 		mCurTypeDef->mNamespaceSearch = mNamespaceSearch;
 		mCurTypeDef->mStaticSearch = mStaticSearch;
+		mCurTypeDef->mInternalAccessSet = mInternalAccessSet;
 	}
 	
 	// We need to mix the namespace search into the signature hash because it can change how type references are resolved
@@ -1465,10 +1469,10 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		mSystem->RefAtomComposite(usingName);
 		mSignatureHashCtx->MixinStr(usingName.ToString());
 	}
-	for (auto& usingName : mCurTypeDef->mStaticSearch)
-	{		
+	for (auto& usingName : mCurTypeDef->mStaticSearch)			
 		HashNode(*mSignatureHashCtx, usingName);
-	}
+	for (auto& usingName : mCurTypeDef->mInternalAccessSet)
+		HashNode(*mSignatureHashCtx, usingName);
 	
 	if ((typeDeclaration->mPartialSpecifier != NULL) && (!isAutoCompleteTempType))
 	{
@@ -2227,12 +2231,17 @@ void BfDefBuilder::Visit(BfUsingDirective* usingDirective)
 		mSystem->ReleaseAtomComposite(usingComposite);	
 }
 
-void BfDefBuilder::Visit(BfUsingStaticDirective* usingDirective)
+void BfDefBuilder::Visit(BfUsingModDirective* usingDirective)
 {
 	if (mResolvePassData != NULL)
 		mResolvePassData->mExteriorAutocompleteCheckNodes.push_back(usingDirective);
 	
-	if (usingDirective->mTypeRef != NULL)
+	if (usingDirective->mModToken->mToken == BfToken_Internal)
+	{
+		if (usingDirective->mTypeRef != NULL)
+			mInternalAccessSet.Add(usingDirective->mTypeRef);
+	}
+	else if (usingDirective->mTypeRef != NULL)
 		mStaticSearch.Add(usingDirective->mTypeRef);
 }
 

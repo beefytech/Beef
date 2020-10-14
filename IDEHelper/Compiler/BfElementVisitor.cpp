@@ -1172,12 +1172,12 @@ void BfElementVisitor::Visit(BfUsingDirective* usingDirective)
 	VisitChild(usingDirective->mNamespace);
 }
 
-void BfElementVisitor::Visit(BfUsingStaticDirective * usingDirective)
+void BfElementVisitor::Visit(BfUsingModDirective* usingDirective)
 {
 	Visit(usingDirective->ToBase());
 
 	VisitChild(usingDirective->mUsingToken);
-	VisitChild(usingDirective->mStaticToken);
+	VisitChild(usingDirective->mModToken);
 	VisitChild(usingDirective->mTypeRef);
 }
 

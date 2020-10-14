@@ -2508,7 +2508,7 @@ void BfModule::SetIllegalExprSrcPos(BfSrcPosFlags flags)
 	//SetIllegalSrcPos((BfSrcPosFlags)(flags | BfSrcPosFlag_Expression));
 }
 
-bool BfModule::CheckProtection(BfProtection protection, bool allowProtected, bool allowPrivate)
+bool BfModule::CheckProtection(BfProtection protection, BfTypeDef* checkType, bool allowProtected, bool allowPrivate)
 {
 	if ((protection == BfProtection_Public) ||
 		((protection == BfProtection_Protected) && (allowProtected)) ||
@@ -2518,6 +2518,11 @@ bool BfModule::CheckProtection(BfProtection protection, bool allowProtected, boo
 	{
 		mAttributeState->mUsed = true;
 		return true;		
+	}
+	if ((protection == BfProtection_Internal) && (checkType != NULL))
+	{
+		if (CheckInternalProtection(checkType))
+			return true;
 	}
 	return false;
 }
@@ -2625,6 +2630,12 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 	{
 		mAttributeState->mUsed = true;
 		return true;
+	}
+
+	if ((memberProtection == BfProtection_Internal) && (memberOwner != NULL))
+	{
+		if (CheckInternalProtection(memberOwner->mTypeDef))
+			return true;		
 	}
 
 	return false;
@@ -3074,7 +3085,7 @@ void BfModule::NotImpl(BfAstNode* astNode)
 	Fail("INTERNAL ERROR: Not implemented", astNode);
 }
 
-bool BfModule::CheckAccessMemberProtection(BfProtection protection, BfType* memberType)
+bool BfModule::CheckAccessMemberProtection(BfProtection protection, BfTypeInstance* memberType)
 {
 	bool allowPrivate = (memberType == mCurTypeInstance) || (IsInnerType(mCurTypeInstance, memberType));
 	if (!allowPrivate)
@@ -3083,7 +3094,7 @@ bool BfModule::CheckAccessMemberProtection(BfProtection protection, BfType* memb
 	//TODO: We had this commented out, but this makes accessing protected properties fail
 	if (mCurTypeInstance != NULL)
 		allowProtected |= TypeIsSubTypeOf(mCurTypeInstance, memberType->ToTypeInstance());
-	if (!CheckProtection(protection, allowProtected, allowPrivate))
+	if (!CheckProtection(protection, memberType->mTypeDef, allowProtected, allowPrivate))
 	{
 		return false;
 	}
@@ -3391,6 +3402,42 @@ BfStaticSearch* BfModule::GetStaticSearch()
 	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mStaticSearchMap.TryGetValue(activeTypeDef, &staticSearch)))
 		return staticSearch;
 	return NULL;
+}
+
+BfInternalAccessSet* BfModule::GetInternalAccessSet()
+{
+	auto activeTypeDef = GetActiveTypeDef();
+	BfInternalAccessSet* internalAccessSet = NULL;
+	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->mInternalAccessMap.TryGetValue(activeTypeDef, &internalAccessSet)))
+		return internalAccessSet;
+	if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mInternalAccessMap.TryGetValue(activeTypeDef, &internalAccessSet)))
+		return internalAccessSet;
+	return NULL;
+}
+
+bool BfModule::CheckInternalProtection(BfTypeDef* usingTypeDef)
+{
+	auto internalAccessSet = GetInternalAccessSet();
+	if (internalAccessSet == NULL)
+		return false;
+	
+	for (auto& nameComposite : internalAccessSet->mNamespaces)
+	{
+		if (usingTypeDef->mNamespace.StartsWith(nameComposite))
+			return true;
+	}
+
+	for (auto internalType : internalAccessSet->mTypes)
+	{
+		auto checkTypeDef = usingTypeDef;
+		while (checkTypeDef != NULL)
+		{
+			if (checkTypeDef == internalType->mTypeDef)
+				return true;
+			checkTypeDef = checkTypeDef->mOuterType;
+		}
+	}
+	return false;
 }
 
 void PrintUsers(llvm::MDNode* md);
@@ -10688,7 +10735,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 				if ((checkMethod->mIsStatic) || (checkMethod->mMethodType != BfMethodType_Ctor))
 					continue;
 
-				if ((!isFailurePass) && (!CheckProtection(checkMethod->mProtection, false, false)))
+				if ((!isFailurePass) && (!CheckProtection(checkMethod->mProtection, attrTypeInst->mTypeDef, false, false)))
 					continue;
 
 				methodMatcher.CheckMethod(NULL, attrTypeInst, checkMethod, isFailurePass);

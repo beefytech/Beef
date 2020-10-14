@@ -631,7 +631,7 @@ void BfStructuralVisitor::Visit(BfUsingDirective* usingDirective)
 	Visit(usingDirective->ToBase());
 }
 
-void BfStructuralVisitor::Visit(BfUsingStaticDirective * usingDirective)
+void BfStructuralVisitor::Visit(BfUsingModDirective * usingDirective)
 {
 	Visit(usingDirective->ToBase());
 }

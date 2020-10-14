@@ -52,6 +52,7 @@ enum BfProtection : uint8
 {
 	BfProtection_Hidden,
 	BfProtection_Private,	
+	BfProtection_Internal,
 	BfProtection_Protected,
 	BfProtection_Public
 };
@@ -335,7 +336,7 @@ class BfConstructorDeclaration;
 class BfDestructorDeclaration;
 class BfQualifiedTypeReference;
 class BfUsingDirective;
-class BfUsingStaticDirective;
+class BfUsingModDirective;
 class BfPropertyMethodDeclaration;
 class BfPropertyBodyExpression;
 class BfPropertyDeclaration;
@@ -534,7 +535,7 @@ public:
 	virtual void Visit(BfTypeDeclaration* typeDeclaration);
 	virtual void Visit(BfTypeAliasDeclaration* typeDeclaration);
 	virtual void Visit(BfUsingDirective* usingDirective);
-	virtual void Visit(BfUsingStaticDirective* usingDirective);
+	virtual void Visit(BfUsingModDirective* usingDirective);
 	virtual void Visit(BfNamespaceDeclaration* namespaceDeclaration);
 	virtual void Visit(BfBlock* block);
 	virtual void Visit(BfBlockExtension* block);
@@ -1932,15 +1933,15 @@ public:
 	BfIdentifierNode* mNamespace;	
 };	BF_AST_DECL(BfUsingDirective, BfStatement);
 
-class BfUsingStaticDirective : public BfStatement
+class BfUsingModDirective : public BfStatement
 {
 public:
-	BF_AST_TYPE(BfUsingStaticDirective, BfStatement);
+	BF_AST_TYPE(BfUsingModDirective, BfStatement);
 
 	BfTokenNode* mUsingToken;
-	BfTokenNode* mStaticToken;
+	BfTokenNode* mModToken;
 	BfTypeReference* mTypeRef;
-};	BF_AST_DECL(BfUsingStaticDirective, BfStatement);
+};	BF_AST_DECL(BfUsingModDirective, BfStatement);
 
 class BfAttributeTargetSpecifier : public BfAstNode
 {
