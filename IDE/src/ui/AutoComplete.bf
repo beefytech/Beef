@@ -1131,7 +1131,9 @@ namespace IDE.ui
 		public String mInfoFilter ~ delete _;
         public List<int32> mInvokeSrcPositions ~ delete _;
         public static int32 sAutoCompleteIdx = 1;
-        public static Dictionary<String, int32> sAutoCompleteMRU = new Dictionary<String, int32>() ~ delete _;
+        public static Dictionary<String, int32> sAutoCompleteMRU = new Dictionary<String, int32>() {
+			(new String("return"), (int32)1)
+			} ~ delete _;
         public bool mIsAsync = true;
         public bool mIsMember;        
 		public bool mIsFixit;
