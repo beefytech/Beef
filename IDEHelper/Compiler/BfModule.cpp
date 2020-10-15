@@ -1877,39 +1877,40 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 		while (checkBaseType != NULL)
 		{
 			if ((checkBaseType->mTypeDef->mDtorDef != NULL) /*&& (checkBaseType != mContext->mBfObjectType)*/)
-			{
-				bool isDynAlloc = (scopeData != NULL) && (mCurMethodState->mCurScope->IsDyn(scopeData));
-
+			{				
 				auto dtorMethodInstance = GetMethodInstance(checkBaseType, checkBaseType->mTypeDef->mDtorDef, BfTypeVector());
-				
-				BfIRValue useVal = val.mValue;
-				useVal = mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapTypeInstPtr(checkBaseType));				
-
-				if (isDynAlloc)
+				if (dtorMethodInstance)				
 				{
-					//
-				}
-				else if (condAlloca)
-				{
-					BF_ASSERT(!IsTargetingBeefBackend());
-					BF_ASSERT(!isDynAlloc);
-					auto valPtr = CreateAlloca(checkBaseType);
-					mBfIRBuilder->CreateStore(useVal, valPtr);
-					useVal = valPtr;
-				}
+					bool isDynAlloc = (scopeData != NULL) && (mCurMethodState->mCurScope->IsDyn(scopeData));
+					BfIRValue useVal = val.mValue;
+					useVal = mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapTypeInstPtr(checkBaseType));
 
-				SizedArray<BfIRValue, 1> llvmArgs;
-				llvmArgs.push_back(useVal);
-				auto deferredCall = AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
-				if (deferredCall != NULL)
-				{
-					deferredCall->mCastThis = (val.mType != checkBaseType) && (!isDynAlloc);
-					if (condAlloca)
-						deferredCall->mArgsNeedLoad = true;
-				}
-				hadDtorCall = true;
+					if (isDynAlloc)
+					{
+						//
+					}
+					else if (condAlloca)
+					{
+						BF_ASSERT(!IsTargetingBeefBackend());
+						BF_ASSERT(!isDynAlloc);
+						auto valPtr = CreateAlloca(checkBaseType);
+						mBfIRBuilder->CreateStore(useVal, valPtr);
+						useVal = valPtr;
+					}
 
-				break;
+					SizedArray<BfIRValue, 1> llvmArgs;
+					llvmArgs.push_back(useVal);
+					auto deferredCall = AddDeferredCall(dtorMethodInstance, llvmArgs, scopeData, refNode, true);
+					if (deferredCall != NULL)
+					{
+						deferredCall->mCastThis = (val.mType != checkBaseType) && (!isDynAlloc);
+						if (condAlloca)
+							deferredCall->mArgsNeedLoad = true;
+					}
+					hadDtorCall = true;
+
+					break;
+				}
 			}
 
 			checkBaseType = checkBaseType->mBaseType;
@@ -14872,6 +14873,12 @@ void BfModule::EmitDtorBody()
 			auto fieldDef = fieldInst->GetFieldDef();
 			if ((fieldDef != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->mFieldDtor != NULL))
 			{
+				if (fieldDef->mDeclaringType != mCurMethodInstance->mMethodDef->mDeclaringType)
+				{
+					BF_ASSERT(mCurTypeInstance->mTypeDef->mIsCombinedPartial);
+					continue;
+				}
+
 				if ((!methodDef->mIsStatic) && (mCurTypeInstance->IsValueType()))
 				{
 					Fail("Structs cannot have field destructors", fieldDef->mFieldDeclaration->mFieldDtor->mTildeToken, true);
@@ -14967,7 +14974,7 @@ void BfModule::EmitDtorBody()
 			}
 		}
 
-		if (!methodDef->mIsStatic)
+		if ((!methodDef->mIsStatic) && (mCurMethodInstance->mChainType != BfMethodChainType_ChainMember))
 		{
 			auto checkBaseType = mCurTypeInstance->mBaseType;
 			while (checkBaseType != NULL)
