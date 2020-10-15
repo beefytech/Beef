@@ -125,7 +125,7 @@ namespace Beefy
         delegate void NativeMouseProxyMoveDelegate(void* window, int32 x, int32 y);
         delegate void NativeMouseDownDelegate(void* window, int32 x, int32 y, int32 btn, int32 btnCount);
         delegate void NativeMouseUpDelegate(void* window, int32 x, int32 y, int32 btn);
-        delegate void NativeMouseWheelDelegate(void* window, int32 x, int32 y, float delta);
+        delegate void NativeMouseWheelDelegate(void* window, int32 x, int32 y, float deltaX, float deltaY);
         delegate void NativeMouseLeaveDelegate(void* window);
         delegate void NativeMenuItemSelectedDelegate(void* window, void* menu);        
 
@@ -296,7 +296,7 @@ namespace Beefy
 		static void Static_NativeMouseProxyMoveDelegate(void* window, int32 mouseX, int32 mouseY) { GetBFWindow(window).MouseProxyMove(mouseX, mouseY); }
 		static void Static_NativeMouseDownDelegate(void* window, int32 mouseX, int32 mouseY, int32 btnNum, int32 btnCount) { GetBFWindow(window).MouseDown(mouseX, mouseY, btnNum, btnCount); }
 		static void Static_NativeMouseUpDelegate(void* window, int32 mouseX, int32 mouseY, int32 btnNum) { GetBFWindow(window).MouseUp(mouseX, mouseY, btnNum); }
-		static void Static_NativeMouseWheelDelegate(void* window, int32 mouseX, int32 mouseY, float delta) { GetBFWindow(window).MouseWheel(mouseX, mouseY, delta); }
+		static void Static_NativeMouseWheelDelegate(void* window, int32 mouseX, int32 mouseY, float deltaX, float deltaY) { GetBFWindow(window).MouseWheel(mouseX, mouseY, deltaX, deltaY); }
 		static void Static_NativeMouseLeaveDelegate(void* window) { GetBFWindow(window).MouseLeave(); }
 		static void Static_NativeMenuItemSelectedDelegate(void* window, void* item) { GetBFWindow(window).NativeMenuItemSelected(item); }
 		#endif
@@ -640,7 +640,7 @@ namespace Beefy
         {
         }
 
-        public virtual void MouseWheel(int32 x, int32 y, float delta)
+        public virtual void MouseWheel(int32 x, int32 y, float deltaX, float deltaY)
         {
         }
 

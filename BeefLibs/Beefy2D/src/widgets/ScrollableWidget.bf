@@ -250,13 +250,21 @@ namespace Beefy.widgets
             }
         }
 
-        public override void MouseWheel(float x, float y, float delta)
+        public override void MouseWheel(float x, float y, float deltaX, float deltaY)
         {
-            base.MouseWheel(x, y, delta);
-            if (mVertScrollbar != null)
-                mVertScrollbar.MouseWheel(x, y, delta);
-            else if (mHorzScrollbar != null)
-                mHorzScrollbar.MouseWheel(x, y, delta);
+            base.MouseWheel(x, y, deltaX, deltaY);
+			if (deltaY != 0)
+			{
+	            if (mVertScrollbar != null)
+	                mVertScrollbar.MouseWheel(x, y, 0, deltaY);
+	            else if (mHorzScrollbar != null)
+	                mHorzScrollbar.MouseWheel(x, y, deltaY, 0);
+			}
+			if (deltaX != 0)
+			{
+				if (mHorzScrollbar != null)
+					mHorzScrollbar.MouseWheel(x, y, deltaX, 0);
+			}
         }
 
 		public override void RehupScale(float oldScale, float newScale)

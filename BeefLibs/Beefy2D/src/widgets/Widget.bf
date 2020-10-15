@@ -712,7 +712,7 @@ namespace Beefy.widgets
             }
         }
 
-        public virtual void MouseWheel(float x, float y, float delta)
+        public virtual void MouseWheel(float x, float y, float deltaX, float deltaY)
         {
 			MarkDirty();
 
@@ -722,7 +722,7 @@ namespace Beefy.widgets
                 float aX;
                 float aY;
                 SelfToParentTranslate(x, y, out aX, out aY);
-                mParent.MouseWheel(aX, aY, delta);
+                mParent.MouseWheel(aX, aY, deltaX, deltaY);
             }
         }
 

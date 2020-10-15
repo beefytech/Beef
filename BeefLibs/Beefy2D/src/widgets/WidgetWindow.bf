@@ -740,7 +740,7 @@ namespace Beefy.widgets
 			mCaptureWidget = null;
 		}
 
-        public override void MouseWheel(int32 inX, int32 inY, float delta)
+        public override void MouseWheel(int32 inX, int32 inY, float deltaX, float deltaY)
         {
             float x;
             float y;
@@ -753,7 +753,8 @@ namespace Beefy.widgets
                 MouseEvent anEvent = scope MouseEvent();
                 anEvent.mX = x;
                 anEvent.mY = y;
-                anEvent.mWheelDelta = delta;
+				anEvent.mWheelDeltaX = deltaX;
+                anEvent.mWheelDeltaY = deltaY;
                 anEvent.mSender = this;
                 sOnMouseWheel(anEvent);
 
@@ -766,7 +767,8 @@ namespace Beefy.widgets
                 MouseEvent anEvent = scope MouseEvent();
                 anEvent.mX = x;
                 anEvent.mY = y;
-                anEvent.mWheelDelta = delta;
+                anEvent.mWheelDeltaX = deltaX;
+				anEvent.mWheelDeltaY = deltaY;
                 anEvent.mSender = this;
                 mOnMouseWheel(anEvent);
 
@@ -780,7 +782,7 @@ namespace Beefy.widgets
                 float childX;
                 float childY;
                 aWidget.RootToSelfTranslate(mMouseX, mMouseY, out childX, out childY);
-                aWidget.MouseWheel(childX, childY, delta);
+                aWidget.MouseWheel(childX, childY, deltaX, deltaY);
             }            
         }
 

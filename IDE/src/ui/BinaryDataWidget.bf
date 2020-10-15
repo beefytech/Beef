@@ -2135,11 +2135,11 @@ namespace IDE.ui
         }
         */
 
-        public override void MouseWheel(float x, float y, float delta)
+        public override void MouseWheel(float x, float y, float deltaX, float deltaY)
         {
-            base.MouseWheel(x, y, delta);
+            base.MouseWheel(x, y, deltaX, deltaY);
             if (mInfiniteScrollbar != null)
-                mInfiniteScrollbar.MouseWheel(x, y, delta);
+                mInfiniteScrollbar.MouseWheel(x, y, deltaX, deltaY);
         }
 
         public void ResetPosition(int position)

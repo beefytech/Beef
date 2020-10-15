@@ -539,6 +539,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		case WM_MBUTTONUP:
 		case WM_XBUTTONUP:
 		case WM_MOUSEWHEEL:
+		case WM_MOUSEHWHEEL:
 		case WM_MOUSEMOVE:
 			{				
 				int x = (short)LOWORD(lParam);
@@ -547,7 +548,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				bool releaseCapture = false;
 
 				POINT point = {x, y};
-				if (uMsg != WM_MOUSEWHEEL)
+				if ((uMsg != WM_MOUSEWHEEL) && (uMsg != WM_MOUSEHWHEEL))
 					::ClientToScreen(hWnd, &point);
 
 				if ((uMsg == WM_MOUSEMOVE) && (point.x == gLastScreenMouseCoords.x) && (point.y == gLastScreenMouseCoords.y))
@@ -627,6 +628,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					_BtnUp((int)(wParam >> 16) + 2);
 					break;
 				case WM_MOUSEWHEEL:
+				case WM_MOUSEHWHEEL:
 					{
 						WinBFWindow* cursorWindow = this;
 
@@ -666,9 +668,17 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 						POINT pt = {x, y};
 						ScreenToClient(cursorWindow->mHWnd, &pt);
-
-						float delta = ((int16)HIWORD(wParam)) / 120.0f * (float)ucNumLines;
-						mMouseWheelFunc(cursorWindow, pt.x, pt.y, delta);						
+						
+						if (uMsg == WM_MOUSEWHEEL)
+						{
+							float delta = ((int16)HIWORD(wParam)) / 120.0f * (float)ucNumLines;
+							mMouseWheelFunc(cursorWindow, pt.x, pt.y, 0, delta);
+						}
+						else
+						{
+							float delta = ((int16)HIWORD(wParam)) / 120.0f;
+							mMouseWheelFunc(cursorWindow, pt.x, pt.y, delta, 0);
+						}
 					}
 					break;
 				case WM_MOUSEMOVE:

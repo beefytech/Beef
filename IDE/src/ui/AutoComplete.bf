@@ -273,7 +273,7 @@ namespace IDE.ui
                     let windowRect = Rect(mWidgetWindow.mX, mWidgetWindow.mY, mWidgetWindow.mWindowWidth, mWidgetWindow.mWindowHeight);
                     if (windowRect.Contains(mouseScreenX, mouseScreenY))
                     {
-                        MouseWheel(evt.mX - mWidgetWindow.mX, evt.mY - mWidgetWindow.mY, evt.mWheelDelta);
+                        MouseWheel(evt.mX - mWidgetWindow.mX, evt.mY - mWidgetWindow.mY, evt.mWheelDeltaX, evt.mWheelDeltaY);
                         evt.mHandled = true;
                     }
                     else
