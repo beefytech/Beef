@@ -17949,7 +17949,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 			mModule->MakeAddressable(target);
 
 		mModule->PopulateType(underlyingType);
-		if (sizedArrayType->IsUnknownSizedArray())
+		if ((sizedArrayType->IsUnknownSizedArray()) || (isUndefIndex))
 		{			
 			mResult = mModule->GetDefaultTypedValue(underlyingType, false, BfDefaultValueKind_Addr);
 		}
@@ -17968,11 +17968,6 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		{			
 			if (target.mType->IsSizeAligned())
 			{
-// 				auto ptrType = mModule->CreatePointerType(underlyingType);
-// 				auto ptrValue = mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType));
-// 				auto gepResult = mModule->mBfIRBuilder->CreateInBoundsGEP(ptrValue, indexArgument.mValue);
-// 				mResult = BfTypedValue(gepResult, underlyingType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
-
 				auto gepResult = mModule->mBfIRBuilder->CreateInBoundsGEP(target.mValue, mModule->GetConstValue(0), indexArgument.mValue);
 				mResult = BfTypedValue(gepResult, underlyingType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
 			}
