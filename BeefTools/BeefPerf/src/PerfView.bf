@@ -2025,18 +2025,18 @@ namespace BeefPerf
 			gApp.SetCursor(wantCursor);
 		}
 
-		public override void MouseWheel(float x, float y, float delta)
+		public override void MouseWheel(float x, float y, float deltaX, float deltaY)
 		{
-			base.MouseWheel(x, y, delta);
+			base.MouseWheel(x, y, deltaX, deltaY);
 
 			double ticksPerPixel = 1.0 / mTickScale;
 			double mouseTick = (x * ticksPerPixel) + mTickOffset;
 
 			float scaleFactor = (mWidgetWindow.IsKeyDown(.Control)) ? 1.02f : 1.2f;
 
-			if (delta > 0)
+			if (deltaY > 0)
 				mTickScale *= scaleFactor;
-			else if (delta < 0)
+			else if (deltaY < 0)
 				mTickScale /= scaleFactor;
 
 			ClampView(); // Clamp scale first
