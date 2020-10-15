@@ -21986,8 +21986,8 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				{
 					auto prevProtection = methodOverriden->mMethodDef->mProtection;
 					if ((methodDef->mProtection != prevProtection) && (methodDef->mMethodType != BfMethodType_Dtor))
-					{
-						const char* protectionNames[] = {"hidden", "private", "protected", "public"};
+					{						
+						const char* protectionNames[] = {"hidden", "private", "internal", "protected", "public"};
 						BfAstNode* protectionRefNode = NULL;
 						if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
 						{							
