@@ -355,7 +355,8 @@ namespace IDE.ui
 			}
 
 			let compiler = gApp.mBfResolveCompiler;
-			if ((!compiler.IsPerformingBackgroundOperation()) && (compiler.mResolveAllWait == 0))
+			if ((compiler == null) ||
+				((!compiler.IsPerformingBackgroundOperation()) && (compiler.mResolveAllWait == 0)))
 				mDirtyTicks = 0;
 			else
 				mDirtyTicks++;

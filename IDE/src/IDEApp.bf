@@ -149,6 +149,8 @@ namespace IDE
 		public DateTime mDbgHighestTime;
 		public bool mForceFirstRun;
 		public bool mIsFirstRun;
+		public bool mSafeMode;
+		public String mDeferredRelaunchCmd ~ delete _;
 		public int? mTargetExitCode;
 		public FileVersionInfo mVersionInfo ~ delete _;
 
@@ -730,6 +732,16 @@ namespace IDE
 
 			// Clear these out, for delete ordering purposes
 			ProcessDeferredDeletes();
+
+			if (mDeferredRelaunchCmd != null)
+			{
+				ProcessStartInfo psi = scope ProcessStartInfo();
+				psi.SetFileNameAndArguments(mDeferredRelaunchCmd);
+				psi.UseShellExecute = false;
+
+				SpawnedProcess process = scope SpawnedProcess();
+				process.Start(psi).IgnoreError();
+			}
         }
 
 		public bool IsCrashDump
@@ -2610,15 +2622,22 @@ namespace IDE
 #endif
 
 			String relaunchCmd = scope .();
-			relaunchCmd.Append("\"");
-			Environment.GetExecutableFilePath(relaunchCmd);
-			relaunchCmd.Append("\" -workspace=\"");
-			relaunchCmd.Append(mWorkspace.mDir);
-			relaunchCmd.Append("\"");
+			GetRelaunchCmd(true, relaunchCmd);
 			Platform.BfpSystem_SetCrashRelaunchCmd(relaunchCmd);
 
 			MarkDirty();
         }
+
+		public void GetRelaunchCmd(bool safeMode, String outRelaunchCmd)
+		{
+			outRelaunchCmd.Append("\"");
+			Environment.GetExecutableFilePath(outRelaunchCmd);
+			outRelaunchCmd.Append("\" -workspace=\"");
+			outRelaunchCmd.Append(mWorkspace.mDir);
+			outRelaunchCmd.Append("\"");
+			if (safeMode)
+				outRelaunchCmd.Append(" -safe");
+		}
 
 		public void RetryProjectLoad(Project project)
 		{
@@ -6897,6 +6916,16 @@ namespace IDE
 						mLaunchData.mPaused = true;
 					else																												   
 						Fail("'-launchPaused' can only be used after '-launch'");
+				case "-safe":
+#if !CLI && BF_PLATFORM_WINDOWS
+					if (Windows.MessageBoxA(default, "Start the IDE in safe mode? This will disable code intelligence features.", "SAFE MODE?",
+						Windows.MB_ICONQUESTION | Windows.MB_YESNO) != Windows.IDYES)
+					{
+						break;
+					}
+#endif
+					mSafeMode = true;
+					mNoResolve = true;
 				default:
 					return false;
 				}

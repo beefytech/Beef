@@ -39,6 +39,30 @@ namespace System.Diagnostics
 				outFileName.Append(mFileName);
 		}
 
+		public void SetFileNameAndArguments(StringView string)
+		{
+			if (string.StartsWith('"'))
+			{
+				int endPos = string.IndexOf('"', 1);
+				if (endPos != -1)
+				{
+					SetFileName(.(string, 1, endPos - 1));
+					SetArguments(.(string, endPos + 2));
+					return;
+				}
+			}
+
+			int spacePos = string.IndexOf(' ');
+			if (spacePos != -1)
+			{
+				SetFileName(.(string, 0, spacePos));
+				SetArguments(.(string, spacePos + 1));
+				return;
+			}
+
+			SetFileName(string);
+		}
+
 		public void SetFileName(StringView fileName)
 		{
 			mFileName.Set(fileName);

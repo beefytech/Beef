@@ -19,6 +19,7 @@ namespace IDE.ui
         public int32 mClangCommandQueueSize;
         public DarkComboBox mConfigComboBox;
         public DarkComboBox mPlatformComboBox;
+		public DarkButton mSafeModeButton;
 		public bool mWasCompiling;
 		public int mEvalCount;
 		public ImageWidget mCancelSymSrvButton;
@@ -36,6 +37,20 @@ namespace IDE.ui
 			mPlatformComboBox.mFrameKind = .Frameless;
             mPlatformComboBox.mPopulateMenuAction.Add(new => PopulatePlatformMenu);
             AddWidget(mPlatformComboBox);
+
+			if (gApp.mSafeMode)
+			{
+				mSafeModeButton = new DarkButton();
+				mSafeModeButton.Label = "Disable Safe Mode";
+				mSafeModeButton.mOnMouseClick.Add(new (mouseArgs) =>
+					{
+						delete gApp.mDeferredRelaunchCmd;
+						gApp.mDeferredRelaunchCmd = new String();
+						gApp.GetRelaunchCmd(false, gApp.mDeferredRelaunchCmd);
+						gApp.Stop();
+					});
+				AddWidget(mSafeModeButton);
+			}
         }
 
         void PopulateConfigMenu(Menu menu)
@@ -101,6 +116,11 @@ namespace IDE.ui
 
 			if (mCancelSymSrvButton != null)
 				mCancelSymSrvButton.Resize(GS!(546), 0, GS!(20), GS!(20));
+
+			if (mSafeModeButton != null)
+			{
+				mSafeModeButton.Resize(mPlatformComboBox.mX - GS!(200), GS!(-2), GS!(180), GS!(24));
+			}
         }
 
         public override void Resize(float x, float y, float width, float height)
