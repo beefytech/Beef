@@ -3744,7 +3744,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 16)
+		if (mcOperand.mVRegIdx == 14)
 		{
 			NOP;
 		}
@@ -9019,7 +9019,7 @@ bool BeMCContext::DoLegalization()
 						//     <op> a, scratch
 						auto targetType = GetType(inst->mArg0);
 						
-						if ((targetType->IsFloat()) && (arg0.IsVReg()) && (arg1.IsImmediateFloat()))
+						if ((targetType->IsFloat()) && (!inst->mResult) && (arg0.IsVReg()) && (arg1.IsImmediateFloat()))
 						{
 							auto vregInfo0 = GetVRegInfo(arg0);
 							if (!vregInfo0->mIsExpr)
@@ -15729,7 +15729,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?MouseMove@PerfView@BeefPerf@bf@@UEAAXMM@Z");
+	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@CATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
