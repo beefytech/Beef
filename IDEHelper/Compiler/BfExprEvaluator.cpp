@@ -6084,6 +6084,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, foreignDefaultVal.mType);
 				if (!argValue)
 					mModule->Fail("Default parameter value failed", targetSrc);
+				mModule->mBfIRBuilder->PopulateType(foreignDefaultVal.mType);
 			}			
 		}
 		else
