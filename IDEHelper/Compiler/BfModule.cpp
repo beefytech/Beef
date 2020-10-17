@@ -11879,7 +11879,7 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 	if (!isGenFunction)
 		AddMethodReference(methodInstance, flags);
 
-	if (mBfIRBuilder->mIgnoreWrites)
+	if ((mBfIRBuilder->mIgnoreWrites) || ((flags & BfGetMethodInstanceFlag_Unreified) != 0))
 		return BfModuleMethodInstance(methodInstance, mBfIRBuilder->GetFakeVal());
 
 	if (mCompiler->IsSkippingExtraResolveChecks())
