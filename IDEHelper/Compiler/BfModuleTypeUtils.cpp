@@ -2361,8 +2361,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, checkTypeRef);
 			SetAndRestoreValue<BfTypeDefineState> prevDefineState(typeInstance->mDefineState, BfTypeDefineState_ResolvingBaseType);						
 
-			bool populateBase = !typeInstance->mTypeFailed;
-			auto checkType = ResolveTypeRef(checkTypeRef, populateBase ? BfPopulateType_Data : BfPopulateType_Declaration);
+			bool populateBase = !typeInstance->mTypeFailed;			
+			auto checkType = ResolveTypeRef(checkTypeRef, BfPopulateType_Declaration);
+			if ((checkType != NULL) && (!checkType->IsInterface()) && (populateBase))
+				PopulateType(checkType, BfPopulateType_Data);
 
 			if (typeInstance->mDefineState >= BfTypeDefineState_Defined)
 			{
@@ -7206,8 +7208,9 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 
 		if (typeInstance->IsTuple())
 		{
-			if (typeInstance->mDefineState < BfTypeDefineState_Defined)
-				PopulateType(typeInstance);
+			//TODO: This can cause circular reference issues. Is there a case this is needed?
+			//if (typeInstance->mDefineState < BfTypeDefineState_Defined)
+			//	PopulateType(typeInstance);
 			if (typeInstance->mHasDeclError)
 			{
 				if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))

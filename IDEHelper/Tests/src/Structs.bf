@@ -1,6 +1,7 @@
 #pragma warning disable 168
 
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -116,6 +117,11 @@ namespace Tests
 		{
 			int8 mA;
 			int32 mB;
+		}
+
+		struct StructK
+		{
+			Dictionary<int, StructK> dict;
 		}
 
 		[Test]

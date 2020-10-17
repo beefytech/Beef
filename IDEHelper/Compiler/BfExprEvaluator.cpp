@@ -17203,6 +17203,7 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 	{
 		BfTypeVector fieldTypes;
 		Array<String> fieldNames;
+		HashSet<String> fieldNameSet;
 		for (auto typedVal : typedValues)
 		{
 			auto type = typedVal.mType;
@@ -17216,7 +17217,14 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 			if (requestedName == NULL)
 				fieldNames.push_back("");
 			else
-				fieldNames.push_back(requestedName->mNameNode->ToString());
+			{
+				auto fieldName = requestedName->mNameNode->ToString();
+				if (!fieldNameSet.TryAdd(fieldName, NULL))
+				{
+					mModule->Fail(StrFormat("A field named '%s' has already been declared", fieldName.c_str()), requestedName->mNameNode);
+				}
+				fieldNames.push_back(fieldName);
+			}
 		}
 		tupleType = mModule->CreateTupleType(fieldTypes, fieldNames);
 	}
