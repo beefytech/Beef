@@ -7857,7 +7857,7 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 		}
 		else
 			VisitChild(memberRefExpression->mTarget);
-		//GetResult();
+		GetResult();
 		if (mResult.mType == NULL)
 			return;
 		thisValue = mResult;
@@ -7883,6 +7883,8 @@ void DbgExprEvaluator::DoInvocation(BfAstNode* target, BfSizedArray<ASTREF(BfExp
 
 		bool hadError = false;
 		thisValue = LookupIdentifier(qualifiedName->mLeft, true, &hadError);
+		if (!thisValue)
+			thisValue = GetResult();
 		if (hadError)
 			return;
 		if (!thisValue)
