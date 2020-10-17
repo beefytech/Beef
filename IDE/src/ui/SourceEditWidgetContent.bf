@@ -1230,30 +1230,7 @@ namespace IDE.ui
 
 			var lineAndColumn = CursorLineAndColumn;
 			var lineText = scope String();
-			if (HasSelection())
-			{
-				int startPos;
-				int endPos;
-				mSelection.Value.GetAsForwardSelect(out startPos, out endPos);
-				int line;
-				int lineChar;
-				GetLineCharAtIdx(startPos, out line, out lineChar);
-				lineAndColumn.mLine = (int32)line;
-				int column;
-				GetColumnAtLineChar(line, lineChar, out column);
-				lineAndColumn.mColumn = (int32)column;
 
-				int lineStart;
-				int lineEnd;
-				GetLinePosition(line, out lineStart, out lineEnd);
-
-				ExtractString(lineStart, startPos - lineStart, lineText);
-			}
-			else
-			{
-				GetLineText(lineAndColumn.mLine, lineText);
-			}
-			
 			bool startsWithNewline = (forceMatchIndent) && (str.StartsWith("\n"));
 			bool isMultiline = str.Contains("\n");
 
@@ -1262,6 +1239,39 @@ namespace IDE.ui
 				var undoBatchStart = new UndoBatchStart("pasteText");
 				mData.mUndoManager.Add(undoBatchStart);
 				defer(stack) mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+			}
+
+			if (HasSelection())
+			{
+				if (isMultiline)
+				{
+					DeleteSelection();
+					lineAndColumn = CursorLineAndColumn;
+				}
+				else
+				{
+					int startPos;
+					int endPos;
+					mSelection.Value.GetAsForwardSelect(out startPos, out endPos);
+					int line;
+					int lineChar;
+					GetLineCharAtIdx(startPos, out line, out lineChar);
+					lineAndColumn.mLine = (int32)line;
+					int column;
+					GetColumnAtLineChar(line, lineChar, out column);
+					lineAndColumn.mColumn = (int32)column;
+
+					int lineStart;
+					int lineEnd;
+					GetLinePosition(line, out lineStart, out lineEnd);
+
+					ExtractString(lineStart, startPos - lineStart, lineText);
+				}
+			}
+
+			if (lineText.IsEmpty)
+			{
+				GetLineText(lineAndColumn.mLine, lineText);
 			}
 
 			if (startsWithNewline)

@@ -2054,6 +2054,8 @@ namespace Beefy.widgets
 				CursorLineAndColumn = .(origPosition.mLine, 0);
 				var lineStartPosition = CursorLineAndColumn;
 				InsertAtCursor("\n");
+				if (var insertTextAction = mData.mUndoManager.GetLastUndoAction() as InsertTextAction)
+					insertTextAction.mVirtualCursorPos = origPosition;
 				CursorLineAndColumn = lineStartPosition;
 				CursorToLineStart(false);
 
@@ -2071,7 +2073,7 @@ namespace Beefy.widgets
 				}
 
 				PasteText(text);
-				CursorLineAndColumn = origPosition;
+				CursorLineAndColumn = .(origPosition.mLine + 1, origPosition.mColumn);
 				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 			}
 			else
