@@ -2987,7 +2987,11 @@ namespace IDE.ui
 						}
                     }
                     else
-                        CursorToLineEnd();
+                    {
+						// Assume this means we're at the end of a statement, or at least we're not pulling along any other closing parens
+						mCurParenPairIdSet.Clear();
+						CursorToLineEnd();
+					}
                 }
                 
                 if ((mAutoComplete != null) && (mAutoComplete.mInvokeWidget != null))
