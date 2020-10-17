@@ -218,7 +218,7 @@ namespace IDE.ui
             ) ~ delete _;
 		bool mHasCustomColors;
 		FastCursorState mFastCursorState ~ delete _;
-
+		public HashSet<int32> mCurParenPairIdSet = new .() ~ delete _;
 		
 		public List<PersistentTextPosition> PersistentTextPositions
 		{
@@ -1439,7 +1439,7 @@ namespace IDE.ui
 			InsertAtCursor(useString);			
 
 			// If we paste in "if (a)\n\tDoThing();", we want "DoThing();" to be indented, so we need to fix this.
-			//  This isn't a problem if we had "if (a)\n\tDoThing()\nDoOtherThing();" because minColumn would match
+			//  This isn't a problem if we had "if (a)\n\tDoThing()\nDoOtherThing(1);" because minColumn would match
 			//  DoOtherThing so DoThing would indent properly (for example)
 			if ((didFormattedPaste) && (lineAndColumn.mLine < GetLineCount() - 1))
 			{
@@ -2674,6 +2674,28 @@ namespace IDE.ui
                 mAutoComplete.CloseListWindow();*/
         }
 
+		bool IsCurrentPairClosing(int cursorIdx)
+		{
+			int32 closeId = mData.mTextIdData.GetIdAtIndex(cursorIdx);
+			if (closeId != -1)
+			{
+				int32 openId = closeId - 1;
+				if (mCurParenPairIdSet.Contains(openId))
+				{
+					int openCursorIdx = mData.mTextIdData.GetIndexFromId(openId);
+					if (openCursorIdx != -1)
+						return true;
+				}
+			}
+			return false;
+		}
+
+		void InsertCharPair(String charPair)
+		{
+			mCurParenPairIdSet.Add(mData.mNextCharId);
+			base.InsertCharPair(charPair);
+		}
+
         public override void KeyChar(char32 keyChar)
         {
 			scope AutoBeefPerf("SEWC.KeyChar");
@@ -3037,7 +3059,11 @@ namespace IDE.ui
                 if (cursorTextPos < mData.mTextLength)
                 {
                     char8UnderCursor = (char8)mData.mText[cursorTextPos].mChar;
-					cursorInOpenSpace = ((char8UnderCursor == ')') || (char8UnderCursor == ']') || (char8UnderCursor == (char8)0) || (char8UnderCursor.IsWhiteSpace));
+					cursorInOpenSpace = ((char8UnderCursor == ')') || (char8UnderCursor == ']') || (char8UnderCursor == ';') || (char8UnderCursor == (char8)0) || (char8UnderCursor.IsWhiteSpace));
+
+					if (((keyChar == '(') && (char8UnderCursor == ')')) ||
+						((keyChar == '[') && (char8UnderCursor == ']')))
+						cursorInOpenSpace = IsCurrentPairClosing(cursorTextPos);
 
                     if ((char8UnderCursor == keyChar) && (!HasSelection()))
                     {
@@ -3059,7 +3085,8 @@ namespace IDE.ui
 						if (!ignore)
 						{
 	                        if ((mData.mText[checkPos].mDisplayTypeId == (int32)wantElementType) &&
-	                            ((keyChar == '"') || (keyChar == '\'') || (keyChar == ')') || (keyChar == ']') || (keyChar == '>') || (keyChar == '}')))
+	                            ((keyChar == '"') || (keyChar == '\'') || (keyChar == ')') || (keyChar == ']') || (keyChar == '>') || (keyChar == '}')) &&
+								(IsCurrentPairClosing(checkPos)))
 	                        {
 	                            mJustInsertedCharPair = false;
 	                            CursorTextPos++;
@@ -3176,7 +3203,9 @@ namespace IDE.ui
                     base.KeyChar(keyChar);
                 }
                 else if ((keyChar == '(') && (cursorInOpenSpace))
-                    InsertCharPair("()");
+                {
+					InsertCharPair("()");
+				}
 				else if ((keyChar == '{') && (cursorInOpenSpace))
 				{
 					/*int lineStart;
@@ -4104,11 +4133,16 @@ namespace IDE.ui
 			mVirtualCursorPos.ValueRef.mColumn = (.)Math.Min(mVirtualCursorPos.Value.mColumn, Math.Max(virtualEnd, lineEnd));
 		}
 
-        public override void PhysCursorMoved()
+        public override void PhysCursorMoved(CursorMoveKind moveKind)
         {			
-			//Debug.WriteLine("Cursor moved {0} {1}", CursorLineAndColumn.mLine, CursorLineAndColumn.mColumn);
+			//Debug.WriteLine("Cursor moved {0} {1} {2}", CursorLineAndColumn.mLine, CursorLineAndColumn.mColumn, moveKind);
 
-            base.PhysCursorMoved();
+			if (moveKind != .FromTyping)
+			{
+				mCurParenPairIdSet.Clear();
+			}
+
+            base.PhysCursorMoved(moveKind);
             mCursorStillTicks = 0;
 
 			if ((mSourceViewPanel != null) && (mSourceViewPanel.mHoverWatch != null))

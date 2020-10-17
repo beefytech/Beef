@@ -1116,7 +1116,7 @@ namespace Beefy.widgets
 		    if (moveCursor)
 		    {
 		        textPos += insertStr.Length;
-		        MoveCursorToIdx((int32)textPos);
+		        MoveCursorToIdx((int32)textPos, false, .FromTyping);
 		        if (mEnsureCursorVisibleOnModify)
 		            EnsureCursorVisible();
 		    }
@@ -1519,7 +1519,7 @@ namespace Beefy.widgets
             ContentChanged();
             if (offset != 0)
             {
-                MoveCursorToIdx(textPos);
+                MoveCursorToIdx(textPos, false, .FromTyping);
                 EnsureCursorVisible();
             }
         }
@@ -1675,12 +1675,12 @@ namespace Beefy.widgets
             return true;
         }
         
-        public void InsertCharPair(String char8Pair)
+        public void InsertCharPair(String charPair)
         {
 			if (CheckReadOnly())
 				return;
-            InsertAtCursor(char8Pair);
-            MoveCursorToIdx(CursorTextPos - 1);            
+            InsertAtCursor(charPair);
+            MoveCursorToIdx(CursorTextPos - 1, false, .FromTyping);
             mJustInsertedCharPair = true;
         }
 
@@ -2865,9 +2865,15 @@ namespace Beefy.widgets
             y = 0;
         }
 
+		public enum CursorMoveKind
+		{
+			FromTyping,
+			Unknown
+		}
+
 		// We used to have a split between PhysCursorMoved and CursorMoved.  CursorMoved has a "ResetWantX" and was non-virtual... uh-
 		//  so what was that for?
-        public virtual void PhysCursorMoved()
+        public virtual void PhysCursorMoved(CursorMoveKind moveKind)
         {
             mJustInsertedCharPair = false;
             mShowCursorAtLineEnd = false;
@@ -2880,7 +2886,7 @@ namespace Beefy.widgets
 
         public void CursorMoved()
         {
-			PhysCursorMoved();
+			PhysCursorMoved(.Unknown);
 
             /*mJustInsertedCharPair = false;
             mShowCursorAtLineEnd = false;
@@ -3350,7 +3356,7 @@ namespace Beefy.widgets
 
         //public void MoveCursorTo
 
-        public void MoveCursorTo(int line, int char8Idx, bool centerCursor = false, int movingDir = 0)
+        public void MoveCursorTo(int line, int char8Idx, bool centerCursor = false, int movingDir = 0, CursorMoveKind cursorMoveKind = .Unknown)
         {
 			int useCharIdx = char8Idx;
 
@@ -3391,7 +3397,7 @@ namespace Beefy.widgets
             mCursorBlinkTicks = 0;
             if (mEnsureCursorVisibleOnModify)
                 EnsureCursorVisible(true, centerCursor);
-            PhysCursorMoved();
+            PhysCursorMoved(cursorMoveKind);
         }
 
         public void ResetWantX()
@@ -3400,12 +3406,12 @@ namespace Beefy.widgets
             mCursorWantX = x;
         }
 
-        public void MoveCursorToIdx(int index, bool centerCursor = false)
+        public void MoveCursorToIdx(int index, bool centerCursor = false, CursorMoveKind cursorMoveKind = .Unknown)
         {
             int aLine;
             int aCharIdx;
             GetLineCharAtIdx(index, out aLine, out aCharIdx);
-            MoveCursorTo(aLine, aCharIdx, centerCursor);
+            MoveCursorTo(aLine, aCharIdx, centerCursor, 0, cursorMoveKind);
         }
         
         public void MoveCursorToCoord(float x, float y)
@@ -3423,7 +3429,7 @@ namespace Beefy.widgets
 			    GetLineAndColumnAtCoord(x, y, out line, out column);
 			    CursorLineAndColumn = LineAndColumn(line, column);
 			    mCursorBlinkTicks = 0;
-				PhysCursorMoved();
+				PhysCursorMoved(.Unknown);
 				mShowCursorAtLineEnd = false;
 			}
 			else
