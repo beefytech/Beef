@@ -765,6 +765,7 @@ DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModul
 	mReceivingValue = NULL;
 	mCallResults = NULL;
 	mCallResultIdx = 0;
+	mCallStackPreservePos = 0;
 	mPropGet = NULL;
 	mPropSet = NULL;
 	mPropSrc = NULL;	
@@ -6684,7 +6685,7 @@ bool DbgExprEvaluator::ResolveArgValues(const BfSizedArray<ASTREF(BfExpression*)
 	return true;
 }
 
-DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue thisVal, bool bypassVirtual, CPURegisters* registers)
+DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue thisVal, DbgTypedValue structRetVal, bool bypassVirtual, CPURegisters* registers)
 {
 	// Why did we have the Not Runing thing for Exception?  It means that when we crash we can't execute functions anymore.
 	//  That doesn't seem good
@@ -6694,9 +6695,32 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 		return DbgTypedValue();
 	}*/
 	
+#ifdef BF_WANTS_LOG_DBGEXPR
+	auto _GetResultString = [&](DbgTypedValue val)
+	{
+		String result;
+		if (val.mSrcAddress != 0)
+		{
+			result += StrFormat("0x%p ", val.mSrcAddress);
+			
+			int64 vals[4] = { 0 };
+			mDebugger->ReadMemory(val.mSrcAddress, 4 * 8, vals);
+
+			result += StrFormat("%lld %lld %lld %lld", vals[0], vals[1], vals[2], vals[3]);
+		}
+		else
+		{
+			result += StrFormat("%lld", val.mInt64);
+		}
+		return result;
+	};
+#endif	
+	
 	int curCallResultIdx = mCallResultIdx++;
 	if (((mExpressionFlags & DwEvalExpressionFlag_AllowCalls) == 0) || (mCreatedPendingCall))
 	{
+		BfLogDbgExpr(" BlockedSideEffects\n");
+
 		mBlockedSideEffects = true;				
 		return GetDefaultTypedValue(method->mReturnType);
 	}
@@ -6706,17 +6730,33 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 	//  entire expression using the actual returned results for each of those calls until we can finally evaluate it as a whole
 	if (curCallResultIdx < (int)mCallResults->size() - 1)
 	{
-		return (*mCallResults)[curCallResultIdx].mResult;
+		auto callResult = (*mCallResults)[curCallResultIdx];
+		auto result = callResult.mResult;
+
+		if (!callResult.mSRetData.IsEmpty())
+		{
+			result = structRetVal;
+			mDebugger->WriteMemory(result.mSrcAddress, &callResult.mSRetData[0], (int)callResult.mSRetData.size());
+		}
+
+		BfLogDbgExpr(" using cached results %s\n", _GetResultString(result).c_str());
+
+		return result;
 	}
 	else if (curCallResultIdx == (int)mCallResults->size() - 1)
 	{
+		auto& callResult = (*mCallResults)[curCallResultIdx];
+
 		CPURegisters newPhysRegisters;
 		mDebugger->PopulateRegisters(&newPhysRegisters);
 
 		DbgTypedValue returnVal;
 		if (method->mReturnType != 0)
-		{			
-			returnVal = mDebugger->ReadReturnValue(&newPhysRegisters, method->mReturnType);
+		{
+			if (callResult.mStructRetVal)
+				returnVal = callResult.mStructRetVal;
+			else
+				returnVal = mDebugger->ReadReturnValue(&newPhysRegisters, method->mReturnType);
 			bool hadRef = false;
 			auto returnType = method->mReturnType->RemoveModifiers(&hadRef);
 			if (hadRef) 
@@ -6730,9 +6770,22 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 			returnVal.mType = mDbgModule->GetPrimitiveType(DbgType_Void, GetLanguage());
 		}
 		
+		BfLogDbgExpr(" using new results %s\n", _GetResultString(returnVal).c_str());
+
 		mDebugger->RestoreAllRegisters();
-		(*mCallResults)[curCallResultIdx].mResult = returnVal;
+		
+		if ((method->mReturnType->IsCompositeType()) && (mDebugger->CheckNeedsSRetArgument(method->mReturnType)))
+		{
+			callResult.mSRetData.Resize(method->mReturnType->GetByteCount());
+			mDebugger->ReadMemory(returnVal.mSrcAddress, method->mReturnType->GetByteCount(), &callResult.mSRetData[0]);
+		}
+		callResult.mResult = returnVal;		
+
 		return returnVal;
+	}
+	else
+	{
+		BfLogDbgExpr(" new call\n");
 	}
 
 	// It's a new call
@@ -6831,6 +6884,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 			
 	DbgCallResult callResult;
 	callResult.mSubProgram = method;
+	callResult.mStructRetVal = structRetVal;
 	mCallResults->push_back(callResult);
 
 	mCreatedPendingCall = true;
@@ -7160,6 +7214,8 @@ DbgTypedValue DbgExprEvaluator::CreateCall(BfAstNode* targetSrc, DbgTypedValue t
 	
 DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl<DbgMethodArgument>& argPushQueue, bool bypassVirtual)
 {
+	BfLogDbgExpr("CreateCall #%d %s", mCallResultIdx, method->mName);	
+
 	if (mDebugger->IsMiniDumpDebugger())
 	{
 		Fail("Cannot call functions in a minidump", NULL);
@@ -7171,13 +7227,18 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 		mBlockedSideEffects = true;
 		return GetDefaultTypedValue(method->mReturnType);
 	}
-	mHadSideEffects = true;
+	mHadSideEffects = true;	
 
 	// We need current physical registers to make sure we push params in correct stack frame
 	CPURegisters registers;
 	bool canSetRegisters = mDebugger->PopulateRegisters(&registers);
 
 	auto* regSP = registers.GetSPRegisterRef();
+	if (mCallStackPreservePos != 0)
+	{
+		if (mCallStackPreservePos <= *regSP)
+			*regSP = mCallStackPreservePos;
+	}
 
 	int paramIdx = argPushQueue.size() - 1;
 	if (method->mHasThis)
@@ -7190,15 +7251,18 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 		if ((param->mType != NULL) && (param->mType->IsValueType()))
 			thisByValue = true;
 	}
-
-	DbgTypedValue compositeRetVal;
+	
+	DbgTypedValue structRetVal;
 	if (mDebugger->CheckNeedsSRetArgument(method->mReturnType))
 	{
 		int retSize = BF_ALIGN(method->mReturnType->GetByteCount(), 16);
 		*regSP -= retSize;		
-		compositeRetVal.mType = method->mReturnType;
-		compositeRetVal.mSrcAddress = *regSP;		
-	}
+		structRetVal.mType = method->mReturnType;
+		structRetVal.mSrcAddress = *regSP;
+
+		// For chained calls we need to leave the sret form the previous calls intact
+		mCallStackPreservePos = *regSP;
+	}	
 
 	for (int i = (int)argPushQueue.size() - 1; i >= 0; i--)
 	{
@@ -7227,9 +7291,10 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 		}
 	}
 
-	if (compositeRetVal.mSrcAddress != 0)
+	if (structRetVal.mSrcAddress != 0)
 	{		
-		mDebugger->AddParamValue(0, method->mHasThis && !thisByValue, &registers, compositeRetVal);
+		BfLogDbgExpr(" SRet:0x%p", structRetVal.mSrcAddress);
+		mDebugger->AddParamValue(0, method->mHasThis && !thisByValue, &registers, structRetVal);
 		paramIdx++;
 	}		
 
@@ -7253,6 +7318,9 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 				else
 					thisAddr = thisVal.mPtr;
 				mDebugger->SetThisRegister(&registers, thisAddr);
+
+				if (padCount == 0)
+					BfLogDbgExpr(" This:0x%p", thisAddr);
 			}
 			else
 			{
@@ -7275,7 +7343,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, SizedArrayImpl
 		BF_ASSERT(padCount < 3);
 	}
 
-	return CreateCall(method, thisVal, bypassVirtual, &registers);
+	return CreateCall(method, thisVal, structRetVal, bypassVirtual, &registers);
 }
 
 DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& methodName, 
@@ -8106,7 +8174,11 @@ void DbgExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 
 DbgTypedValue DbgExprEvaluator::Resolve(BfExpression* expr, DbgType* wantType)
 {	
+	//BfLogDbgExpr("Dbg Evaluate %s\n", expr->ToString().c_str());
+
 	BF_ASSERT(!HasPropResult());
+
+	mCallStackPreservePos = 0;
 
 	SetAndRestoreValue<DbgType*> prevType(mExpectingType, wantType);
 	SetAndRestoreValue<DbgTypedValue> prevResult(mResult, DbgTypedValue());
