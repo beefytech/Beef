@@ -18896,7 +18896,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				if ((retVal) && (!retVal.mType->IsVar()) && (expectingType != NULL))
 				{
 					mCurMethodState->mHadReturn = true;
-					retVal = LoadValue(retVal);
+					retVal = LoadOrAggregateValue(retVal);
 					EmitReturn(retVal.mValue);
 				}
 			}
