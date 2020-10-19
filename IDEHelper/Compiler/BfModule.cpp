@@ -2683,7 +2683,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 	//BF_ASSERT(refNode != NULL);
 
-	if (mCurMethodInstance != NULL)
+ 	if (mCurMethodInstance != NULL)
 		mCurMethodInstance->mHasFailed = true;
 
 	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsUnspecializedTypeVariation()))
@@ -7397,13 +7397,23 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs);
 			if (convCheckConstraint == NULL)
 				return false;
-			if ((checkArgType->IsMethodRef()) && (convCheckConstraint->IsDelegate()))
+			if (((checkArgType->IsMethodRef()) || (checkArgType->IsFunction())) && (convCheckConstraint->IsDelegate()))
 			{
-				auto methodRefType = (BfMethodRefType*)checkArgType;
+				BfMethodInstance* checkMethodInstance;
+				if (checkArgType->IsMethodRef())
+				{
+					auto methodRefType = (BfMethodRefType*)checkArgType;
+					checkMethodInstance = methodRefType->mMethodRef;
+				}
+				else
+				{
+					checkMethodInstance = GetRawMethodInstanceAtIdx(checkArgType->ToTypeInstance(), 0, "Invoke");
+				}
+				
 				auto invokeMethod = GetRawMethodInstanceAtIdx(convCheckConstraint->ToTypeInstance(), 0, "Invoke");
 
 				BfExprEvaluator exprEvaluator(this);
-				if (exprEvaluator.IsExactMethodMatch(methodRefType->mMethodRef, invokeMethod))
+				if (exprEvaluator.IsExactMethodMatch(checkMethodInstance, invokeMethod))
 					constraintMatched = true;
 
 			}

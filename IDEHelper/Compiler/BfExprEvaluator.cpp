@@ -1079,14 +1079,21 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 		{
 			if (delegateBindExpr->mNewToken == NULL)
 			{
-				resolvedArg.mExpectedType = checkType;
-				auto methodRefType = mModule->CreateMethodRefType(boundMethodInstance);
-				mModule->AddDependency(methodRefType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);				
-				mModule->AddCallDependency(boundMethodInstance);
-				argTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), methodRefType);
+				if (boundMethodInstance->GetOwner()->IsFunction())
+				{
+					return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), boundMethodInstance->GetOwner());
+				}
+				else
+				{
+					resolvedArg.mExpectedType = checkType;
+					auto methodRefType = mModule->CreateMethodRefType(boundMethodInstance);
+					mModule->AddDependency(methodRefType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);
+					mModule->AddCallDependency(boundMethodInstance);
+					argTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), methodRefType);
+				}
 			}
 			else
-				argTypedValue = BfTypedValue(BfTypedValueKind_UntypedValue);				
+				argTypedValue = BfTypedValue(BfTypedValueKind_UntypedValue);
 		}
 	}
 	else if ((resolvedArg.mArgFlags & BfArgFlag_LambdaBindAttempt) != 0)
@@ -5728,7 +5735,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 				BfError* error;
 				if ((prevBindResult.mPrevVal != NULL) && (prevBindResult.mPrevVal->mBindType != NULL))
- 					error = mModule->Fail(StrFormat("Method '%s' has too many parameters to bind to '%s'.", mModule->MethodToString(methodInstance).c_str(), mModule->TypeToString(prevBindResult.mPrevVal->mBindType).c_str()), errorRef);
+ 					error = mModule->Fail(StrFormat("Method '%s' has too few parameters to bind to '%s'.", mModule->MethodToString(methodInstance).c_str(), mModule->TypeToString(prevBindResult.mPrevVal->mBindType).c_str()), errorRef);
 				else
 					error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", (int)argValues.size() - argExprIdx), errorRef);
 				if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
@@ -10295,7 +10302,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 		if (isDirectFunction)
 		{
-			if (delegateTypeInstance->IsFunction())
+			//if ((delegateTypeInstance != NULL) && (delegateTypeInstance->IsFunction()))
+			if (mExpectingType->IsFunction())
 			{
 				auto intPtrVal = mModule->mBfIRBuilder->CreatePtrToInt(bindResult.mFunc, BfTypeCode_IntPtr);
 				mResult = BfTypedValue(intPtrVal, mExpectingType);
@@ -10311,7 +10319,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 				//
 				{
 					SetAndRestoreValue<bool> prevIgnore(mModule->mBfIRBuilder->mIgnoreWrites, true);
-					result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mMethodInstance, mExpectingType);
+					result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType);
 				}
 
 				if (result)
@@ -10363,7 +10371,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 			}
 			else
 			{
-				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mMethodInstance, mExpectingType);
+				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType);
 			}			
 			if (result)
 				mResult = BfTypedValue(result, mExpectingType);

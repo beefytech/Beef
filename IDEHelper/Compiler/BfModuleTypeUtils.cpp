@@ -9650,12 +9650,18 @@ bool BfModule::AreSplatsCompatible(BfType* fromType, BfType* toType, bool* outNe
 	return true;
 }
 
-BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags)
+BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targetValue, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags)
 {	
 	auto invokeMethodInstance = GetDelegateInvokeMethod(toType->ToTypeInstance());
 
 	if (invokeMethodInstance->IsExactMatch(methodInstance, false, true))
 	{
+		if (methodInstance->GetOwner()->IsFunction())
+		{
+			BF_ASSERT(targetValue);
+			return targetValue.mValue;
+		}
+
 		BfModuleMethodInstance methodRefMethod;
 		if (methodInstance->mDeclModule == this)
 			methodRefMethod = methodInstance;
@@ -10087,7 +10093,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	if ((typedVal.mType->IsMethodRef()) && (toType->IsFunction()))
 	{
 		BfMethodInstance* methodInstance = ((BfMethodRefType*)typedVal.mType)->mMethodRef;
-		auto result = CastToFunction(srcNode, methodInstance, toType, castFlags);
+		auto result = CastToFunction(srcNode, BfTypedValue(), methodInstance, toType, castFlags);
 		if (result)
 			return result;
 	}

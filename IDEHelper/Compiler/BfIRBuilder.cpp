@@ -2239,8 +2239,15 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		name += BfTypeUtils::HashEncode64(methodInstance->mIdHash).c_str();
 
 		if (wantDIData)
-		{												
-			auto bfFileInstance = mModule->GetFileFromNode(methodInstance->GetOwner()->mTypeDef->mTypeDeclaration);
+		{	
+			auto typeDeclaration = methodInstance->GetOwner()->mTypeDef->mTypeDeclaration;			
+
+			BfFileInstance* bfFileInstance;
+			if (typeDeclaration != NULL)
+				bfFileInstance = mModule->GetFileFromNode(typeDeclaration);
+			else
+				bfFileInstance = mModule->GetFileFromNode(mModule->mContext->mBfObjectType->mTypeDef->mTypeDeclaration);
+
 			auto namespaceScope = DbgCreateNameSpace(bfFileInstance->mDIFile, "_bf", bfFileInstance->mDIFile, 0);				
 	
 			StringT<128> mangledName;

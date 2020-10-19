@@ -279,6 +279,11 @@ namespace Tests
 				bind.Dispose();
 			}
 
+			public static int StaticMethod(int a)
+			{
+				return a+1000;
+			}
+
 			public void TestDlg() mut
 			{
 				int a = 0;
@@ -306,6 +311,13 @@ namespace Tests
 				Test.Assert(mA == 100+300+300 + 300);
 
 				bind.Dispose();
+
+				Test.Assert(Use(scope => dlg, 10) == 400);
+
+				function int(int num) func = => StaticMethod;
+				Test.Assert(Use(=> StaticMethod, 123) == 1123);
+				Test.Assert(Use(func, 123) == 1123);
+				Test.Assert(Use(=> func, 123) == 1123);
 			}
 		}
 
