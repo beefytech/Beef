@@ -4902,11 +4902,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, mContext->mScratchModule);
 	}
 
-	if (typeDataName == "sBfTypeData.?")
-	{
-		NOP;
-	}
-
 	int typeCode = BfTypeCode_None;		
 
 	if (typeInstance != NULL)
@@ -21626,6 +21621,11 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 	if (mCurTypeInstance->IsUnspecializedTypeVariation())
 		return false;
 
+	if ((mCurTypeInstance->mTypeDef->mName->ToString() == "Zornk") && (methodInstance->mMethodDef->mName == "GCMarkMembers"))
+	{
+		NOP;
+	}
+
 	auto _AddVirtualDecl = [&](BfMethodInstance* declMethodInstance)
 	{
 		if (!mCompiler->mOptions.mAllowHotSwapping)
@@ -21983,6 +21983,16 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 								if ((isBetter) && (ambiguityContext != NULL))
 								{
 									ambiguityContext->Remove(virtualMethodMatchIdx);
+								}
+
+								if ((isBetter) && (methodInstance->GetOwner() == methodOverriden->GetOwner()))
+								{
+									if (methodDef->mName == BF_METHODNAME_MARKMEMBERS)
+									{
+										// Leave the master GCMarkMember
+										isBetter = false;
+										isWorse = true;
+									}
 								}
 
 								doOverride = isBetter;
