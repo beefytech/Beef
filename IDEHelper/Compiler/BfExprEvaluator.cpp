@@ -10931,6 +10931,12 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 		if (invokeMethodInstance != NULL)
 		{
+			if (mModule->mBfIRBuilder->mIgnoreWrites)
+			{
+				mResult = mModule->GetDefaultTypedValue(mExpectingType, false, BfDefaultValueKind_Addr);
+				return NULL;
+			}
+			
 			BfLocalMethod* localMethod = new BfLocalMethod();
 			localMethod->mMethodName = "anon";
 			localMethod->mSystem = mModule->mSystem;

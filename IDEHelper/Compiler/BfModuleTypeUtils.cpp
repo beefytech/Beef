@@ -5293,6 +5293,10 @@ BfIRType BfModule::GetIRLoweredType(BfTypeCode loweredTypeCode, BfTypeCode lower
 
 BfMethodRefType* BfModule::CreateMethodRefType(BfMethodInstance* methodInstance, bool mustAlreadyExist)
 {
+	// Make sure we don't have a partially-formed local method or lambda coming in, because those may be replaced 
+	//  after the capture phase
+	BF_ASSERT(!methodInstance->mDisallowCalling);
+
 	auto methodRefType = new BfMethodRefType();
 	methodRefType->mContext = mContext;
 	//methodRefType->mCaptureType = NULL;
