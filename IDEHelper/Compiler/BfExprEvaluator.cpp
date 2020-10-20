@@ -11549,12 +11549,15 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		methodDef->mName.RemoveToEnd(prevSepPos);
 	}
 
-// 	if (closureTypeInst != NULL)
-// 	{
-// 		StringT<128> typeInstName;
-// 		BfMangler::Mangle(typeInstName,mModule->mCompiler->GetMangleKind(), closureTypeInst);
-// 		closureHashCtx.MixinStr(typeInstName);
-// 	}
+	// Mix in this because this can be emitted multiple times when there's multiple ctors and field initializers with lambdas
+	if (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)
+	{
+		if (auto ctorDecl = BfNodeDynCast<BfConstructorDeclaration>(mModule->mCurMethodInstance->mMethodDef->mMethodDeclaration))
+		{
+			if (ctorDecl->mThisToken != NULL)
+				closureHashCtx.Mixin(ctorDecl->mThisToken->GetStartCharId());
+		}
+	}
 
 	auto checkMethodState = mModule->mCurMethodState;
 	while (checkMethodState != NULL)
