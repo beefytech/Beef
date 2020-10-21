@@ -5722,12 +5722,8 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 			return NULL;
 		}
 
-		SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, attributes, false);
-		if (depth == 0)
-			prevTypeMemberNodeStart.Set();
-
 		mVisitorPos.MoveNext();
-		auto memberNode = ReadTypeMember(nextNode, depth + 1, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
+		auto memberNode = ReadTypeMember(nextNode, 0, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
 		if (memberNode == NULL)
 			return NULL;
 		auto member = BfNodeDynCast<BfMemberDeclaration>(memberNode);
@@ -6418,16 +6414,16 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 
 BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* deferredHeadNode)
 {
-	SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node, false);
-	if (depth == 0)
-		prevTypeMemberNodeStart.Set();
+// 	SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node, false);
+// 	if (depth == 0)
+// 		prevTypeMemberNodeStart.Set();
 
 	AssertCurrentNode(node);
 
 	BfTokenNode* refToken = NULL;
 
 	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(node))
-	{
+	{		
 		BfToken token = tokenNode->GetToken();
 		bool isTypeRef = false;
 		if ((token == BfToken_Delegate) || (token == BfToken_Function))
@@ -6461,7 +6457,12 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* defe
 			// Read type member
 		}
 		else
+		{
+			SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, tokenNode, false);
+			if (depth == 0)
+				prevTypeMemberNodeStart.Set();
 			return ReadTypeMember(tokenNode, depth, deferredHeadNode);
+		}
 	}
 	else if (auto block = BfNodeDynCast<BfBlock>(node))
 	{
@@ -9591,7 +9592,10 @@ void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDi
 		prevNode = node;
 		BfAstNode* typeMember = BfNodeDynCast<BfMemberDeclaration>(node);
 		if (typeMember == NULL)
+		{
+			SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node);
 			typeMember = ReadTypeMember(node);
+		}
 
 		//methodDeclaration->mDocumentation = FindDocumentation(methodDeclaration);
 

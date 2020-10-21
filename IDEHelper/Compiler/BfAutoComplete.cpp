@@ -560,18 +560,13 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 
 	if (entryAdded != NULL)
 	{
-		if (CheckDocumentation(entryAdded, NULL))
+		if ((CheckDocumentation(entryAdded, NULL)) && (entryAdded->mDocumentation == NULL))
 		{
 			auto typeInst = mModule->ResolveTypeDef(typeDef, BfPopulateType_IdentityNoRemapAlias);			
-			String str;
+			StringT<1024> str;
 			if (typeInst != NULL)
 				str = mModule->TypeToString(typeInst, BfTypeNameFlag_ExtendedInfo);
-			if (entryAdded->mDocumentation != NULL)
-			{
-				str += "\x04";
-				str.Append(entryAdded->mDocumentation);
-			}
-			else if (typeDef->mTypeDeclaration->mDocumentation != NULL)
+			if (typeDef->mTypeDeclaration->mDocumentation != NULL)
 			{
 				if (!str.IsEmpty())
 					str += "\x05";
@@ -1263,7 +1258,7 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 	if (activeTypeDef != NULL)
 	{
 		BfProject* curProject = activeTypeDef->mProject;
-
+		
 		if (mModule->mCurTypeInstance != NULL)
 		{
 			for (auto innerTypeDef : mModule->mCurTypeInstance->mTypeDef->mNestedTypes)
