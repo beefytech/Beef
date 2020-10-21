@@ -2676,6 +2676,7 @@ namespace IDE.ui
 
 		bool IsCurrentPairClosing(int cursorIdx)
 		{
+			mData.mTextIdData.Prepare();
 			int32 closeId = mData.mTextIdData.GetIdAtIndex(cursorIdx);
 			if (closeId != -1)
 			{
