@@ -82,13 +82,15 @@ namespace IDE.ui
 					continue;
 				}
 
-				if (c == '\x04')
+				if ((c == '\x04') || (c == '\x05'))
 				{
 					queuedSpace = false;
 					atLineStart = true;
 					lineHadStar = false;
 					lineHadContent = false;
 					mDocString.Append('\n');
+					if (c == '\x05')
+						mDocString.Append("  ");
 					continue;
 				}
 

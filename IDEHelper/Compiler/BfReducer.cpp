@@ -5722,8 +5722,12 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 			return NULL;
 		}
 
+		SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, attributes, false);
+		if (depth == 0)
+			prevTypeMemberNodeStart.Set();
+
 		mVisitorPos.MoveNext();
-		auto memberNode = ReadTypeMember(nextNode, 0, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
+		auto memberNode = ReadTypeMember(nextNode, depth + 1, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
 		if (memberNode == NULL)
 			return NULL;
 		auto member = BfNodeDynCast<BfMemberDeclaration>(memberNode);

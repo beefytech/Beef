@@ -497,7 +497,7 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 				else if (methodDecl->mDocumentation != NULL)
 				{
 					if (!str.IsEmpty())
-						str += "\x04";
+						str += "\x05";
 					methodDecl->mDocumentation->GetDocString(str);					
 				}
 				if (!str.IsEmpty())
@@ -566,10 +566,15 @@ void BfAutoComplete::AddTypeDef(BfTypeDef* typeDef, const StringImpl& filter, bo
 			String str;
 			if (typeInst != NULL)
 				str = mModule->TypeToString(typeInst, BfTypeNameFlag_ExtendedInfo);
-			if (typeDef->mTypeDeclaration->mDocumentation != NULL)
+			if (entryAdded->mDocumentation != NULL)
+			{
+				str += "\x04";
+				str.Append(entryAdded->mDocumentation);
+			}
+			else if (typeDef->mTypeDeclaration->mDocumentation != NULL)
 			{
 				if (!str.IsEmpty())
-					str += "\x04";
+					str += "\x05";
 				typeDef->mTypeDeclaration->mDocumentation->GetDocString(str);				
 			}
 			entryAdded->mDocumentation = mAlloc.AllocString(str);
@@ -654,9 +659,14 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 			str += mModule->TypeToString(typeInst);
 			str += ".";
 			str += fieldDef->mName;
-			if (documentation != NULL)
+			if (entryAdded->mDocumentation != NULL)
 			{
 				str += "\x04";
+				str.Append(entryAdded->mDocumentation);
+			}
+			else if (documentation != NULL)
+			{
+				str += "\x05";
 				documentation->GetDocString(str);
 			}
 			entryAdded->mDocumentation = mAlloc.AllocString(str);
@@ -722,9 +732,14 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 				str += "set; ";
 			str += "}";
 
-			if (documentation != NULL)
+			if (entryAdded->mDocumentation != NULL)
 			{
 				str += "\x04";
+				str.Append(entryAdded->mDocumentation);
+			}
+			else if (documentation != NULL)
+			{
+				str += "\x05";
 				documentation->GetDocString(str);
 			}
 			entryAdded->mDocumentation = mAlloc.AllocString(str);
