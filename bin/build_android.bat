@@ -1,7 +1,7 @@
 PUSHD %~dp0..\
 
-SET NDK=C:\Users\Brian\AppData\Local\Android\Sdk\ndk\20.0.5594570
-SET NINJA=C:\Users\Brian\AppData\Local\Android\Sdk\cmake\3.10.2.4988404\bin\ninja.exe
+SET NDK=%UserProfile%\AppData\Local\Android\Sdk\ndk\20.0.5594570
+SET NINJA=%UserProfile%\AppData\Local\Android\Sdk\cmake\3.10.2.4988404\bin\ninja.exe
 @REM SET NDK=C:\NVPACK\android-ndk-r14b
 
 @REM i686-none-linux-android16
