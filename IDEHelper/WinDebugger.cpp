@@ -4137,6 +4137,9 @@ bool WinDebugger::CheckNeedsSRetArgument(DbgType* retType)
 	if (!retType->IsCompositeType())
 		return false;
 
+	if (retType->GetByteCount() == 0)
+		return false;
+
 	//TODO: Change when we change the calling convention
 	if (retType->GetLanguage() == DbgLanguage_Beef)
 		return true;
