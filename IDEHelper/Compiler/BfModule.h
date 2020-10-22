@@ -220,6 +220,7 @@ public:
 	BfMixinState* mDeclMixinState;		
 	OwnedVector<BfDirectTypeReference> mDirectTypeRefs;
 	bool mDeclOnly;
+	bool mDidBodyErrorPass;
 	BfLocalMethod* mNextWithSameName;
 
 public:
@@ -237,6 +238,7 @@ public:
 		mDeclMethodState = NULL;
 		mDeclMixinState = NULL;		
 		mDeclOnly = false;
+		mDidBodyErrorPass = false;
 		mNextWithSameName = NULL;
 	}
 	~BfLocalMethod();

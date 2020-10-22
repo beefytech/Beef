@@ -17141,7 +17141,7 @@ void BfModule::EmitGCFindTLSMembers()
 void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 {
 	BP_ZONE_F("BfModule::ProcessMethod %s", BP_DYN_STR(methodInstance->mMethodDef->mName.c_str()));
-	
+
 	if (mAwaitingInitFinish)
 		FinishInit();
 
@@ -19694,6 +19694,8 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 		BfDeferredLocalAssignData deferredLocalAssignData(rootMethodState->mCurScope);				
 		deferredLocalAssignData.mVarIdBarrier = rootMethodState->mCurLocalVarId;
 		SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(rootMethodState->mDeferredLocalAssignData, &deferredLocalAssignData);
+		if (!mIgnoreErrors)
+			localMethod->mDidBodyErrorPass = true;
 
 		_VisitLambdaBody();
 		RestoreScopeState();
@@ -19907,7 +19909,8 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 
 	// Since we handle errors & warnings in the capture phase, we don't need to process any local methods for resolve-only (unless we're doing a mDbgVerifyCodeGen)
 	if ((!localMethod->mDeclOnly) && (!methodInstance->IsOrInUnspecializedVariation()) &&
-		(!mWantsIRIgnoreWrites) && (methodDef->mMethodType != BfMethodType_Mixin))
+		(methodDef->mMethodType != BfMethodType_Mixin) &&
+		((!mWantsIRIgnoreWrites) || (!localMethod->mDidBodyErrorPass)))
 	{
 		BP_ZONE("BfDeferredLocalMethod:create");
 

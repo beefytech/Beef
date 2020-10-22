@@ -1069,7 +1069,6 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 	BfTypedValue argTypedValue = resolvedArg.mTypedValue;
 	if ((resolvedArg.mArgFlags & BfArgFlag_DelegateBindAttempt) != 0)
 	{
-		//TODO: See if we can bind it to a delegate type		
 		BfExprEvaluator exprEvaluator(mModule);		
 		exprEvaluator.mExpectingType = checkType;
 		BF_ASSERT(resolvedArg.mExpression->IsA<BfDelegateBindExpression>());
@@ -1078,10 +1077,14 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 		if (exprEvaluator.CanBindDelegate(delegateBindExpr, &boundMethodInstance, origCheckType, genericArgumentsSubstitute))
 		{
 			if (delegateBindExpr->mNewToken == NULL)
-			{
+			{				
 				if (boundMethodInstance->GetOwner()->IsFunction())
 				{
 					return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), boundMethodInstance->GetOwner());
+				}
+				else if (boundMethodInstance->mDisallowCalling)
+				{
+					argTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), checkType);
 				}
 				else
 				{
@@ -10378,6 +10381,13 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 			return;
 		}
 
+		if (bindResult.mMethodInstance->mDisallowCalling)
+		{
+			BF_ASSERT(mModule->mBfIRBuilder->mIgnoreWrites);
+			mResult = mModule->GetDefaultTypedValue(mExpectingType, false, BfDefaultValueKind_Addr);
+			return;
+		}
+
 		auto methodRefType = mModule->CreateMethodRefType(bindResult.mMethodInstance);
 		mModule->AddDependency(methodRefType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);
 		mModule->AddCallDependency(bindResult.mMethodInstance);
@@ -10931,12 +10941,6 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 		if (invokeMethodInstance != NULL)
 		{
-			if (mModule->mBfIRBuilder->mIgnoreWrites)
-			{
-				mResult = mModule->GetDefaultTypedValue(mExpectingType, false, BfDefaultValueKind_Addr);
-				return NULL;
-			}
-			
 			BfLocalMethod* localMethod = new BfLocalMethod();
 			localMethod->mMethodName = "anon";
 			localMethod->mSystem = mModule->mSystem;
@@ -10950,6 +10954,12 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			mModule->mContext->mLocalMethodGraveyard.push_back(localMethod);
 
 			auto moduleMethodInstance = mModule->GetLocalMethodInstance(localMethod, BfTypeVector());
+
+			if (moduleMethodInstance.mMethodInstance->mDisallowCalling)
+			{
+				mResult = mModule->GetDefaultTypedValue(mExpectingType, false, BfDefaultValueKind_Addr);
+				return NULL;
+			}
 
 			auto methodRefType = mModule->CreateMethodRefType(moduleMethodInstance.mMethodInstance);
 			mModule->AddDependency(methodRefType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_Calls);			
