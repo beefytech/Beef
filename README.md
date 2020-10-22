@@ -1,3 +1,8 @@
+[![GitHub release](https://img.shields.io/github/release/beefytech/Beef)](https://github.com/beefytech/Beef/releases)
+[![](https://img.shields.io/badge/docs-online-blue.svg)](https://www.beeflang.org/docs)
+[![](https://img.shields.io/badge/docs-license-green.svg)](https://www.beeflang.org/docs/license)
+[![MIT licensed](https://img.shields.io/badge/license-MIT-red.svg)](https://raw.githubusercontent.com/beefytech/Beef/master/LICENSE.TXT)
+
 # Beef Programming Language
 
 Beef is an open source performance-oriented compiled programming language which has been built hand-in-hand with its IDE environment. The syntax and many semantics are most directly derived from C#, while attempting to retain the C ideals of bare-metal explicitness and lack of runtime surprises, with some "modern" niceties inspired by languages such as Rust, Swift, and Go. See the [Language Guide](https://www.beeflang.org/docs/language-guide/) for more details.
