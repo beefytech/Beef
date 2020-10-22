@@ -1,5 +1,12 @@
 # Beef Programming Language
 
+<p align="center">
+  <img width="360" src="https://www.beeflang.org/img/Beef256.png">
+
+|[![](https://img.shields.io/badge/docs-online-blue.svg)](https://www.beeflang.org/docs) [![](https://img.shields.io/badge/docs-license-green.svg)](https://www.beeflang.org/docs/license)|[![GitHub release](https://img.shields.io/github/release/beefytech/Beef)](https://github.com/beefytech/Beef/releases)|[![MIT licensed](https://img.shields.io/badge/license-MIT-red.svg)](https://raw.githubusercontent.com/beefytech/Beef/master/LICENSE.TXT)|
+|--|--|--|
+</p>
+
 Beef is an open source performance-oriented compiled programming language which has been built hand-in-hand with its IDE environment. The syntax and many semantics are most directly derived from C#, while attempting to retain the C ideals of bare-metal explicitness and lack of runtime surprises, with some "modern" niceties inspired by languages such as Rust, Swift, and Go. See the [Language Guide](https://www.beeflang.org/docs/language-guide/) for more details.
 
 Beef's primary [design goal](https://www.beeflang.org/docs/foreward/) is to provide a fluid and pleasurable development experience for high-performance real-time applications such as video games, with low-level features that make it suitable for engine development, combined with high-level ergonomics suitable for game code development.
@@ -12,11 +19,11 @@ The Beef IDE supports productivity features such as autocomplete, fixits, reform
 
 # Binaries and Documentation
 
-[Official website (beeflang.org)](https://www.beeflang.org)<br>
-[Documentation](https://www.beeflang.org/docs/)<br>
-[Stable Releases](https://github.com/beefytech/Beef/releases)<br>
-[Nightly Windows Release](http://nightly.beeflang.org/BeefSetup.exe)<br>
+- [Official website (beeflang.org)](https://www.beeflang.org)
+- [Documentation](https://www.beeflang.org/docs/)
+- [Stable Releases](https://github.com/beefytech/Beef/releases)
+- [Nightly Windows Release](http://nightly.beeflang.org/BeefSetup.exe)
 
 # IDE Screenshots
 
-![Screenshot](IDE/screenshot0.gif)
+![Screenshot](IDE/etc/screenshot0.gif)
