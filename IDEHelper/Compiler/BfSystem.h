@@ -919,6 +919,7 @@ public:
 	bool mIsConcrete;
 	bool mIsStatic;	
 	bool mHasAppendCtor;
+	bool mHasCtorNoBody;
 	bool mHasExtensionMethods;
 	bool mHasOverrideMethods;	
 	bool mIsOpaque;
@@ -956,6 +957,7 @@ public:
 		mIsClosure = false;
 		mIsStatic = false;
 		mHasAppendCtor = false;
+		mHasCtorNoBody = false;
 		mHasExtensionMethods = false;
 		mHasOverrideMethods = false;
 		mIsOpaque = false;

@@ -2949,7 +2949,7 @@ public:
 	BfTokenNode* mThisToken;
 	
 	BfTokenNode* mInitializerColonToken;
-	BfInvocationExpression* mInitializer;
+	BfExpression* mInitializer;
 	
 };	BF_AST_DECL(BfConstructorDeclaration, BfMethodDeclaration);
 

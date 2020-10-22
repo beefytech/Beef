@@ -2640,6 +2640,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mIsConcrete = nextTypeDef->mIsConcrete;
 	typeDef->mIsStatic = nextTypeDef->mIsStatic;
 	typeDef->mHasAppendCtor = nextTypeDef->mHasAppendCtor;
+	typeDef->mHasCtorNoBody = nextTypeDef->mHasCtorNoBody;
 	typeDef->mHasOverrideMethods = nextTypeDef->mHasOverrideMethods;
 	typeDef->mHasExtensionMethods = nextTypeDef->mHasExtensionMethods;
 	typeDef->mIsOpaque = nextTypeDef->mIsOpaque;
@@ -2744,6 +2745,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mIsConcrete = partialTypeDef->mIsConcrete;
 		typeDef->mIsStatic = partialTypeDef->mIsStatic;
 		typeDef->mHasAppendCtor = partialTypeDef->mHasAppendCtor;		
+		typeDef->mHasCtorNoBody = partialTypeDef->mHasCtorNoBody;
 		typeDef->mHasExtensionMethods = partialTypeDef->mHasExtensionMethods;
 		typeDef->mHasOverrideMethods = partialTypeDef->mHasOverrideMethods;
 
@@ -2780,7 +2782,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 	typeDef->mIsAbstract |= partialTypeDef->mIsAbstract;
 	typeDef->mIsConcrete |= partialTypeDef->mIsConcrete;
 	typeDef->mIsStatic |= partialTypeDef->mIsStatic;
-	typeDef->mHasAppendCtor |= partialTypeDef->mHasAppendCtor;
+	typeDef->mHasAppendCtor |= partialTypeDef->mHasAppendCtor;	
 	typeDef->mHasExtensionMethods |= partialTypeDef->mHasExtensionMethods;
 	typeDef->mHasOverrideMethods |= partialTypeDef->mHasOverrideMethods;
 	typeDef->mProtection = BF_MIN(typeDef->mProtection, partialTypeDef->mProtection);	
@@ -2956,6 +2958,7 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 			anyHasFieldInitializers = true;			
 			if (!isExtension)
 				primaryHasFieldInitializers = true;				
+			nextRevision->mHasCtorNoBody = true;
 			auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_CtorNoBody, BfProtection_Protected, false, "");
 			methodDef->mDeclaringType = partialTypeDef;
 			methodDef->mIsMutating = true;
@@ -2964,6 +2967,7 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 
 	if ((anyHasFieldInitializers) && (!primaryHasFieldInitializers))
 	{
+		nextRevision->mHasCtorNoBody = true;
 		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_CtorNoBody, BfProtection_Protected, false, "");
 		methodDef->mDeclaringType = primaryDef;
 		methodDef->mIsMutating = true;
@@ -2991,6 +2995,7 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 
 	if ((allHasMethods[0][0].mDtor == 0) && (allHasMethods[1][0].mDtor > 1))
 	{
+		nextRevision->mDtorDef = NULL;
 		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Dtor, BfProtection_Public, false, "");
 		methodDef->mDeclaringType = primaryDef;
 	}

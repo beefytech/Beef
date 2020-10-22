@@ -14,15 +14,25 @@ namespace LibB
 
 extension LibClassA
 {
-	public int32 mB = GetVal(8, "LibB.LibClassA.mB");
+	public int32 mB = GetVal(8, 100, "LibB.LibClassA.mB");
 
-	public this()
+	public static this()
+	{
+		sMagic += 100;
+	}
+
+	public ~this()
+	{
+		sMagic += 200;
+	}
+
+	public new this() : [NoExtension]this()
 	{
 		PrintF("LibB.LibClassA()\n");
 		mB += 100;
 	}
 
-	public this(int32 a)
+	public new this(int32 a)
 	{
 		PrintF("LibB.LibClassA(int32)\n");
 		mB += 1000;

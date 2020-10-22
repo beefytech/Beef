@@ -227,21 +227,32 @@ namespace Tests
 		[Test]
 		public static void TestSharedData()
 		{
+			Test.Assert(LibClassA.sMagic == 1111);
+
 			LibClassA ca = scope LibClassA();
-			Test.Assert(ca.mA == 7);
+			Test.Assert(LibClassA.sMagic == 2221);
+			Test.Assert(ca.mA == 107);
 			Test.Assert(ca.LibB_GetB() == 108);
 			Test.Assert(ca.LibC_GetB() == 13);
 			Test.Assert(ca.GetVal2() == 9);
 
 			ca = scope LibClassA(12345);
+			Test.Assert(LibClassA.sMagic == 3331);
 			Test.Assert(ca.mA == 7);
 			Test.Assert(ca.LibB_GetB() == 1008);
 			Test.Assert(ca.LibC_GetB() == 13);
 
 			ca = scope LibClassA((int8)2);
+			Test.Assert(LibClassA.sMagic == 4441);
 			Test.Assert(ca.mA == 7);
 			Test.Assert(ca.LibB_GetB() == 8);
 			Test.Assert(ca.LibC_GetB() == 30013);
+
+			ca = LibClassA.Create();
+			Test.Assert(LibClassA.sMagic == 5551);
+			Test.Assert(ca.mA == 107);
+			delete ca;
+			Test.Assert(LibClassA.sMagic == 7771);
 		}
 
 		[Test]

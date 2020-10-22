@@ -149,6 +149,12 @@ namespace System
 	    
 	}
 
+	[AttributeUsage(.MemberAccess)]
+	public struct NoExtensionAttribute : Attribute
+	{
+	    
+	}
+
 	[AttributeUsage(.Block)]
 	public struct IgnoreErrorsAttribute : Attribute
 	{

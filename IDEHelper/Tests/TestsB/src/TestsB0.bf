@@ -2,15 +2,15 @@ using System;
 
 extension LibClassA
 {
-	public int32 mC = GetVal(9, "TestsB.LibClassA.mC");
+	public int32 mC = GetVal(9, 10000, "TestsB.LibClassA.mC");
 
-	public this()
+	public new this()
 	{
 		PrintF("TestB.LibClassA()\n");
 		mB += 10000;
 	}
 
-	public int GetVal2()
+	public new int GetVal2()
 	{
 		return 11;
 	}

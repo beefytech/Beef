@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 
 namespace LibA
 {
@@ -90,11 +91,18 @@ namespace LibA
 
 class LibClassA
 {
-	public int32 mA = GetVal(7, "LibA.LibClassA.mA");
+	public int32 mA = GetVal(7, 10, "LibA.LibClassA.mA");
+
+	public static int32 sMagic = 1;
+
+	public static this()
+	{
+		sMagic += 10;
+	}
 
 	public this()
 	{
-		PrintF("LibA.LibClassA()\n");
+		Debug.WriteLine("LibA.LibClassA()\n");
 		mA += 100;
 	}
 
@@ -103,9 +111,15 @@ class LibClassA
 		mA += a;
 	}
 
-	public static int32 GetVal(int32 val, String str)
+	public ~this()
 	{
-		PrintF("GetVal: %s\n", str.CStr());
+		sMagic += 20;
+	}
+
+	public static int32 GetVal(int32 val, int32 magic, String str)
+	{
+		Debug.WriteLine("GetVal: {}", str);
+		sMagic += magic;
 		return val;
 	}
 
@@ -117,6 +131,11 @@ class LibClassA
 	public static int GetVal3(Object obj)
 	{
 		return 30;
+	}
+
+	public static LibClassA Create()
+	{
+		return new LibClassA();
 	}
 }
 

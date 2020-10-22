@@ -2008,8 +2008,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 	if (mCurTypeDef->mTypeCode == BfTypeCode_TypeAlias)
 		needsDefaultCtor = false;
+	if (mCurTypeDef->mTypeCode == BfTypeCode_Extension)
+		needsDefaultCtor = false;
 
-	if ((needsDefaultCtor) && (!hasDefaultCtor))
+	if ((needsDefaultCtor) && ((!hasDefaultCtor)))
 	{
 		BfProtection prot = hasCtor ? BfProtection_Hidden : BfProtection_Public;
 		if (mCurTypeDef->mName == mSystem->mEmptyAtom)

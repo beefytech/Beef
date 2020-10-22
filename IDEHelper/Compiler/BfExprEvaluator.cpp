@@ -2167,6 +2167,13 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 // 			if (checkMethod->mName != mMethodName)
 // 				continue;			
 
+			if ((checkMethod->mDeclaringType->IsExtension()) && (mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) &&
+				(mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mNoExtensionAttributeTypeDef)))
+			{
+				mModule->mAttributeState->mUsed = true;
+				continue;
+			}
+
 			if (!isDelegate)
 			{				
 				if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
@@ -6408,8 +6415,15 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 			if (checkMethod->mIsStatic)
 				continue;
 
-			if (!mModule->IsInSpecializedSection())
+			if ((checkMethod->mDeclaringType->IsExtension()) && (mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) &&
+				(mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mNoExtensionAttributeTypeDef)))
 			{
+				mModule->mAttributeState->mUsed = true;
+				continue;
+			}
+
+			if (!mModule->IsInSpecializedSection())
+			{				
 				if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
 					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, visibleProjectSet)))
 					continue;

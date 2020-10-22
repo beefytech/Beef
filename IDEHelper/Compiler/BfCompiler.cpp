@@ -395,6 +395,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mActionTypeDef = NULL;
 	mEnumTypeDef = NULL;
 	mFriendAttributeTypeDef = NULL;
+	mNoExtensionAttributeTypeDef = NULL;
 	mCheckedAttributeTypeDef = NULL;
 	mUncheckedAttributeTypeDef = NULL;
 	mFunctionTypeDef = NULL;
@@ -6491,14 +6492,14 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		return typeDef;
 	};
 
-	mArray1TypeDef = _GetRequiredType("System.Array1", 1);	
-	mArray2TypeDef = _GetRequiredType("System.Array2", 1);	
+	mArray1TypeDef = _GetRequiredType("System.Array1", 1);
+	mArray2TypeDef = _GetRequiredType("System.Array2", 1);
 	mArray3TypeDef = _GetRequiredType("System.Array3", 1);
 	mArray4TypeDef = _GetRequiredType("System.Array4", 1);
 	mSpanTypeDef = _GetRequiredType("System.Span", 1);
 	mAttributeTypeDef = _GetRequiredType("System.Attribute");
 	mAttributeUsageAttributeTypeDef = _GetRequiredType("System.AttributeUsageAttribute");
-	mBfObjectTypeDef = _GetRequiredType("System.Object");	
+	mBfObjectTypeDef = _GetRequiredType("System.Object");
 	mClassVDataTypeDef = _GetRequiredType("System.ClassVData");
 	mCLinkAttributeTypeDef = _GetRequiredType("System.CLinkAttribute");
 	mImportAttributeTypeDef = _GetRequiredType("System.ImportAttribute");
@@ -6516,6 +6517,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mActionTypeDef = _GetRequiredType("System.Action");
 	mEnumTypeDef = _GetRequiredType("System.Enum");
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
+	mNoExtensionAttributeTypeDef = _GetRequiredType("System.NoExtensionAttribute");
 	mCheckedAttributeTypeDef = _GetRequiredType("System.CheckedAttribute");
 	mUncheckedAttributeTypeDef = _GetRequiredType("System.UncheckedAttribute");
 	mResultTypeDef = _GetRequiredType("System.Result", 1);

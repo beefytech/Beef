@@ -12,7 +12,17 @@ namespace LibC
 
 extension LibClassA
 {
-	public int32 mB = GetVal(13, "LibC.LibClassA.mB");
+	public int32 mB = GetVal(13, 1000, "LibC.LibClassA.mB");
+
+	public static this()
+	{
+		sMagic += 1000;
+	}
+
+	public ~this()
+	{
+		sMagic += 2000;
+	}
 
 	public this(int8 i8)
 	{

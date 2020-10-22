@@ -9147,8 +9147,23 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 			MEMBER_SET(ctorDecl, mInitializerColonToken, endToken);
 			mVisitorPos.MoveNext();
 
+			BfAstNode* invokeAfter = ctorDecl;
 			auto nextNode = mVisitorPos.GetNext();
-			endToken = ExpectTokenAfter(ctorDecl, BfToken_This, BfToken_Base);
+
+			BfAttributeDirective* attributeDirective = NULL;
+			if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
+			{
+				if (nextToken->mToken == BfToken_LBracket)
+				{
+					mVisitorPos.MoveNext();
+					attributeDirective = CreateAttributeDirective(nextToken);
+					nextNode = mVisitorPos.GetNext();
+					if (attributeDirective != NULL)
+						invokeAfter = attributeDirective;
+				}
+			}
+
+			endToken = ExpectTokenAfter(invokeAfter, BfToken_This, BfToken_Base);
 			if (endToken != NULL)
 			{
 				auto invocationExpr = CreateInvocationExpression(endToken);
@@ -9161,6 +9176,18 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 			{
 				// In process of typing - just eat identifier so we don't error out on whole method
 				MoveNode(identifierAfter, ctorDecl);
+			}
+
+			if (attributeDirective != NULL)
+			{
+				BfAttributedExpression* attribExpr = mAlloc->Alloc<BfAttributedExpression>();
+				ReplaceNode(attributeDirective, attribExpr);
+				attribExpr->mAttributes = attributeDirective;
+				if (ctorDecl->mInitializer != NULL)
+				{
+					MEMBER_SET(attribExpr, mExpression, ctorDecl->mInitializer);
+				}				
+				MEMBER_SET(ctorDecl, mInitializer, attribExpr);
 			}
 		}
 

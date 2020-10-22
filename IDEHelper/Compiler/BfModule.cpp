@@ -14592,14 +14592,28 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 {
 	// Any errors should only be shown in the actual CTOR call
 	SetAndRestoreValue<bool> prevIgnoreWrites(mIgnoreErrors, true);
-
+	
 	auto methodDef = mCurMethodInstance->mMethodDef;
 	BF_ASSERT((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_CtorCalcAppend));
 	auto ctorDeclaration = (BfConstructorDeclaration*)methodDef->mMethodDeclaration;	
-	BfTypeInstance* targetType = NULL;
-	if (ctorDeclaration->mInitializer != NULL)
+
+	BfCustomAttributes* customAttributes = NULL;
+	defer(delete customAttributes);
+	BfInvocationExpression* ctorInvocation = NULL;
+	if (ctorDeclaration != NULL)
 	{
-		auto targetToken = BfNodeDynCast<BfTokenNode>(ctorDeclaration->mInitializer->mTarget);
+		ctorInvocation = BfNodeDynCast<BfInvocationExpression>(ctorDeclaration->mInitializer);
+		if (auto attributedExpr = BfNodeDynCast<BfAttributedExpression>(ctorDeclaration->mInitializer))
+		{
+			ctorInvocation = BfNodeDynCast<BfInvocationExpression>(attributedExpr->mExpression);
+			customAttributes = GetCustomAttributes(attributedExpr->mAttributes, BfAttributeTargets_MemberAccess);
+		}
+	}
+
+	BfTypeInstance* targetType = NULL;
+	if (ctorInvocation != NULL)
+	{
+		auto targetToken = BfNodeDynCast<BfTokenNode>(ctorInvocation->mTarget);
 		targetType = (targetToken->GetToken() == BfToken_This) ? mCurTypeInstance : mCurTypeInstance->mBaseType;
 	}
 	else
@@ -14614,9 +14628,9 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 		
 	BfExprEvaluator exprEvaluator(this);
 	BfResolvedArgs argValues;
-	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL))
+	if ((ctorDeclaration != NULL) && (ctorInvocation != NULL))
 	{
-		argValues.Init(&ctorDeclaration->mInitializer->mArguments);
+		argValues.Init(&ctorInvocation->mArguments);
 	}
 	
 	//
@@ -14670,7 +14684,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 	{
 		// Do it again, but without mIgnoreWrites set
 		BfResolvedArgs argValues;
-		argValues.Init(&ctorDeclaration->mInitializer->mArguments);
+		argValues.Init(&ctorInvocation->mArguments);
 		exprEvaluator.ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval);
 
 		BfFunctionBindResult bindResult;
@@ -15445,13 +15459,31 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	auto ctorDeclaration = (BfConstructorDeclaration*)methodDef->mMethodDeclaration;
 	auto typeDef = mCurTypeInstance->mTypeDef;
 
+	BfCustomAttributes* customAttributes = NULL;
+	defer(delete customAttributes);
+	BfInvocationExpression* ctorInvocation = NULL;
+
+	BfAttributeState attributeState;
+	attributeState.mTarget = BfAttributeTargets_MemberAccess;
+	if (ctorDeclaration != NULL)
+	{
+		ctorInvocation = BfNodeDynCast<BfInvocationExpression>(ctorDeclaration->mInitializer);
+		if (auto attributedExpr = BfNodeDynCast<BfAttributedExpression>(ctorDeclaration->mInitializer))
+		{
+			ctorInvocation = BfNodeDynCast<BfInvocationExpression>(attributedExpr->mExpression);
+			attributeState.mCustomAttributes = GetCustomAttributes(attributedExpr->mAttributes, attributeState.mTarget);
+		}
+	}
+
+	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mAttributeState, &attributeState);
+
 	// Prologue
 	mBfIRBuilder->ClearDebugLocation();
 
 	bool hadThisInitializer = false;	
-	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL))
+	if ((ctorDeclaration != NULL) && (ctorInvocation != NULL))
 	{
-		auto targetToken = BfNodeDynCast<BfTokenNode>(ctorDeclaration->mInitializer->mTarget);
+		auto targetToken = BfNodeDynCast<BfTokenNode>(ctorInvocation->mTarget);
 		auto targetType = (targetToken->GetToken() == BfToken_This) ? mCurTypeInstance : mCurTypeInstance->mBaseType;
 		if (targetToken->GetToken() == BfToken_This)
 		{
@@ -15480,8 +15512,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	}
 
 	BfAstNode* baseCtorNode = NULL;
-	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL) && (ctorDeclaration->mInitializer->mTarget != NULL))
-		baseCtorNode = ctorDeclaration->mInitializer->mTarget;
+	if ((ctorDeclaration != NULL) && (ctorInvocation != NULL) && (ctorInvocation->mTarget != NULL))
+		baseCtorNode = ctorInvocation->mTarget;
 	else if (methodDef->mBody != NULL)
 		baseCtorNode = methodDef->mBody;
 	else if (ctorDeclaration != NULL)
@@ -15493,10 +15525,12 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	else
 		baseCtorNode = mContext->mBfObjectType->mTypeDef->mTypeDeclaration;
 
-	if ((!mCurTypeInstance->IsBoxed()) && (methodDef->mMethodType == BfMethodType_Ctor))
+	bool calledCtorNoBody = false;
+	
+	if ((!mCurTypeInstance->IsBoxed()) && (methodDef->mMethodType == BfMethodType_Ctor) && (!hadThisInitializer))
 	{		
-		// Call the root type's default ctor (with no body) to initialize its fields and call the chained ctors
-		if (methodDef->mDeclaringType->mTypeCode == BfTypeCode_Extension)
+		// Call the root type's default ctor (with no body) to initialize its fields and call the chained ctors		
+		if (mCurTypeInstance->mTypeDef->mHasCtorNoBody)
 		{
 			BfMethodDef* defaultCtor = NULL;
 
@@ -15520,6 +15554,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				SizedArray<BfIRValue, 1> irArgs;
 				exprEvaluator.PushThis(NULL, GetThis(), moduleMethodInstance.mMethodInstance, irArgs);
 				exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
+
+				calledCtorNoBody = true;
 			}
 		}		
 	}
@@ -15533,7 +15569,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	{
 		// Field initializers occur in CtorNoBody methods for extensions
 	}
-	else if (!hadThisInitializer)
+	else if ((!hadThisInitializer) && (!calledCtorNoBody))
 	{
 		// If we had a 'this' initializer, that other ctor will have initialized our fields
 
@@ -15711,9 +15747,9 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		if (methodDef->mBody == NULL)
 			SetIllegalSrcPos();
 	}
-	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL))
+	if ((ctorDeclaration != NULL) && (ctorInvocation != NULL))
 	{
-		auto targetToken = BfNodeDynCast<BfTokenNode>(ctorDeclaration->mInitializer->mTarget);
+		auto targetToken = BfNodeDynCast<BfTokenNode>(ctorInvocation->mTarget);
 		targetType = (targetToken->GetToken() == BfToken_This) ? mCurTypeInstance : mCurTypeInstance->mBaseType;
 	}
 	else if ((mCurTypeInstance->mBaseType != NULL) && (!mCurTypeInstance->IsUnspecializedType()))
@@ -15801,9 +15837,9 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		mCurMethodState->mCurAppendAlign = methodInstance->mAppendAllocAlign;
 	}
 
-	if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL) && (ctorDeclaration->mInitializer->mArguments.size() == 1) && (targetType != NULL))
+	if ((ctorDeclaration != NULL) && (ctorInvocation != NULL) && (ctorInvocation->mArguments.size() == 1) && (targetType != NULL))
 	{
-		if (auto tokenNode = BfNodeDynCast<BfUninitializedExpression>(ctorDeclaration->mInitializer->mArguments[0]))
+		if (auto tokenNode = BfNodeDynCast<BfUninitializedExpression>(ctorInvocation->mArguments[0]))
 		{
 			if (targetType == mCurTypeInstance)
 			{
@@ -15829,9 +15865,9 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 		auto autoComplete = mCompiler->GetAutoComplete();
 		auto wasCapturingMethodInfo = (autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo);
-		if ((autoComplete != NULL) && (ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL))
+		if ((autoComplete != NULL) && (ctorDeclaration != NULL) && (ctorInvocation != NULL))
 		{
-			auto invocationExpr = ctorDeclaration->mInitializer;
+			auto invocationExpr = ctorInvocation;
 			autoComplete->CheckInvocation(invocationExpr, invocationExpr->mOpenParen, invocationExpr->mCloseParen, invocationExpr->mCommas);
 		}
 
@@ -15839,9 +15875,9 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		auto target = Cast(targetRefNode, GetThis(), targetThisType);
 		BfExprEvaluator exprEvaluator(this);
 		BfResolvedArgs argValues;
-		if ((ctorDeclaration != NULL) && (ctorDeclaration->mInitializer != NULL))
+		if ((ctorDeclaration != NULL) && (ctorInvocation != NULL))
 		{			
-			argValues.Init(&ctorDeclaration->mInitializer->mArguments);
+			argValues.Init(&ctorInvocation->mArguments);
 			if (gDebugStuff)
 			{
 				OutputDebugStrF("Expr: %@  %d\n", argValues.mArguments->mVals, argValues.mArguments->mSize);
@@ -21367,6 +21403,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		Fail("Interfaces cannot contain constructors", methodDeclaration);
 	}
 
+	bool foundHiddenMethod = false;
+
 	// Don't compare specialized generic methods against normal methods
 	if ((((mCurMethodInstance->mIsUnspecialized) || (mCurMethodInstance->mMethodDef->mGenericParams.size() == 0))) &&
 		(!methodDef->mIsLocalMethod))
@@ -21436,7 +21474,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 							if (!typeInstance->IsTypeMemberAccessible(checkMethod->mDeclaringType, methodDef->mDeclaringType))
 								continue;
 														
-							bool silentlyAllow = false;							
+							bool silentlyAllow = false;
+							bool extensionWarn = false;
 							if (checkMethod->mDeclaringType != methodDef->mDeclaringType)
 							{								
 								if (typeInstance->IsInterface())
@@ -21445,7 +21484,21 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 										silentlyAllow = true;
 								}
 								else
-									silentlyAllow = true;
+								{
+									if ((methodDef->mDeclaringType->mProject != checkMethod->mDeclaringType->mProject) &&
+										(!checkMethod->mDeclaringType->IsExtension()))
+									{
+										foundHiddenMethod = true;
+										if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
+											silentlyAllow = true;
+										else if (methodDef->mIsNew)
+											silentlyAllow = true;
+										else
+											extensionWarn = true;
+									}
+									else
+										silentlyAllow = true;
+								}
 							}
 
 							if ((checkMethod->mCommutableKind == BfCommutableKind_Reverse) || (methodDef->mCommutableKind == BfCommutableKind_Reverse))
@@ -21456,7 +21509,13 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 								if ((!methodDef->mName.IsEmpty()) || (checkMethodInstance->mMethodDef->mIsOperator))
 								{
 									auto refNode = methodDef->GetRefNode();
-									auto bfError = Fail("Method already declared with the same parameter types", refNode, true);
+									BfError* bfError;
+									if (extensionWarn)
+										bfError = Warn(BfWarning_CS0114_MethodHidesInherited, 
+											StrFormat("This method hides a method in the root type definition. Use the 'new' keyword if the hiding was intentional. Note that this method is not callable from project '%s'.", 
+												checkMethod->mDeclaringType->mProject->mName.c_str()), refNode);
+									else
+										bfError = Fail("Method already declared with the same parameter types", refNode, true);
 									if (bfError != NULL)
 										mCompiler->mPassInstance->MoreInfo("First declaration", checkMethod->GetRefNode());
 								}
@@ -21472,8 +21531,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			(!methodDef->mIsLocalMethod) &&
 			(!methodInstance->mIsForeignMethodDef) && (typeInstance->mBaseType != NULL) && 
 			(methodDef->mMethodType == BfMethodType_Normal) && (methodDef->mMethodDeclaration != NULL))
-		{
-			bool foundHiddenMethod = false;
+		{			
 			auto baseType = typeInstance->mBaseType;
 			while (baseType != NULL)
 			{					
@@ -21623,12 +21681,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 
 	if (mCurTypeInstance->IsUnspecializedTypeVariation())
 		return false;
-
-	if ((mCurTypeInstance->mTypeDef->mName->ToString() == "Zornk") && (methodInstance->mMethodDef->mName == "GCMarkMembers"))
-	{
-		NOP;
-	}
-
+	
 	auto _AddVirtualDecl = [&](BfMethodInstance* declMethodInstance)
 	{
 		if (!mCompiler->mOptions.mAllowHotSwapping)
@@ -21956,13 +22009,17 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				{
 					methodInstance->mVirtualTableIdx = virtualMethodMatchIdx;
 
+					bool preferRootDefinition = (methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mMethodType == BfMethodType_Dtor);
+
+					BfMethodInstance* setMethodInstance = methodInstance;
+					bool doOverride = false;
+
 					auto& overridenRef = typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mImplementingMethod;
 					if (overridenRef.mKind != BfMethodRefKind_AmbiguousRef)
 					{
 						methodOverriden = overridenRef;
 
-						BfMethodInstance* setMethodInstance = methodInstance;
-						bool doOverride = true;
+						doOverride = true;
 						if (methodOverriden->GetOwner() == methodInstance->GetOwner())
 						{
 							bool isBetter = false;
@@ -21990,7 +22047,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 
 								if ((isBetter) && (methodInstance->GetOwner() == methodOverriden->GetOwner()))
 								{
-									if (methodDef->mName == BF_METHODNAME_MARKMEMBERS)
+									if (preferRootDefinition)
 									{
 										// Leave the master GCMarkMember
 										isBetter = false;
@@ -22001,14 +22058,19 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 								doOverride = isBetter;
 							}
 						}
+					}
+					else if ((preferRootDefinition) && (!methodDef->mDeclaringType->IsExtension()))
+					{
+						methodOverriden = overridenRef;
+						doOverride = true;
+					}
 
-						if (doOverride)
-						{							
-							auto declMethodInstance = (BfMethodInstance*)typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mDeclaringMethod;
-							_AddVirtualDecl(declMethodInstance);
-							setMethodInstance->mVirtualTableIdx = virtualMethodMatchIdx;
-							typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mImplementingMethod = setMethodInstance;							
-						}
+					if (doOverride)
+					{
+						auto declMethodInstance = (BfMethodInstance*)typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mDeclaringMethod;
+						_AddVirtualDecl(declMethodInstance);
+						setMethodInstance->mVirtualTableIdx = virtualMethodMatchIdx;
+						typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mImplementingMethod = setMethodInstance;
 					}
 				}
 
