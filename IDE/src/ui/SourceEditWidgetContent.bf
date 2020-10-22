@@ -1904,6 +1904,7 @@ namespace IDE.ui
 						if (indentCount == column / 4)
 						{
 							bool isExpr = false;
+							bool mayBeExpr = false;
 
 							char8 prevC = 0;
 							int checkIdx = CursorTextPos - 1;
@@ -1918,7 +1919,29 @@ namespace IDE.ui
 									continue;
 								}
 								prevC = mData.mText[checkIdx].mChar;
-								
+
+								if (mayBeExpr)
+								{
+									if (prevC.IsWhiteSpace)
+										continue;
+									if ((prevC == '(') || (prevC == ')') || (prevC == '{') || (prevC == '}'))
+									{
+										mayBeExpr = false;
+									}
+									else if (prevC.IsLetterOrDigit)
+									{
+										if ((prevC == 'r') && (displayType == .Keyword))
+										{
+											// operator overload
+											mayBeExpr = false;
+											continue;
+										}
+
+										isExpr = true;
+										break;
+									}
+								}
+
 								if (prevC == ')')
 								{
 									parenOpenCount++;
@@ -1940,8 +1963,8 @@ namespace IDE.ui
 										break;
 									if (prevC == '=')
 									{
-										isExpr = true;
-										break;
+										// Is expression if this isn't following the word 'operator'
+										mayBeExpr = true;
 									}
 								}
 								
