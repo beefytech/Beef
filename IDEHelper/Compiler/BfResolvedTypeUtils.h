@@ -816,6 +816,7 @@ public:
 	bool mIsIntrinsic:1;
 	bool mHasMethodRefType:1;
 	bool mDisallowCalling:1;		
+	bool mIsInnerOverride:1;
 	BfMethodChainType mChainType;
 	BfCallingConvention mCallingConvention;
 	BfMethodInstanceGroup* mMethodInstanceGroup;
@@ -850,7 +851,8 @@ public:
 		mAlwaysInline = false;
 		mIsIntrinsic = false;
 		mHasMethodRefType = false;
-		mDisallowCalling = false;		
+		mDisallowCalling = false;
+		mIsInnerOverride = false;
 		mChainType = BfMethodChainType_None;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mMethodInstanceGroup = NULL;
@@ -882,6 +884,7 @@ public:
 	bool IsOrInUnspecializedVariation();
 	bool HasExternConstraints();
 	bool HasThis();	
+	bool IsVirtual();
 	BfType* GetThisType();
 	int GetThisIdx();
 	bool HasExplicitThis();

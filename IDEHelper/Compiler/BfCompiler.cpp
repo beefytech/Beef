@@ -5319,6 +5319,8 @@ void BfCompiler::PopulateReified()
 				// If we have chained methods, make sure we implement the chain members if the chain head is implemented and reified
 				if (typeInst->mTypeDef->mIsCombinedPartial)
 				{
+					typeInst->mTypeDef->PopulateMemberSets();
+
 					bool hasUnimpChainMembers = false;
 
 					impChainHeadMethods.Clear();
@@ -5341,6 +5343,35 @@ void BfCompiler::PopulateReified()
 						{
 							if (!methodInstance->IsReifiedAndImplemented())
 								hasUnimpChainMembers = true;
+						}
+						else if (methodInstance->mIsInnerOverride)
+						{
+							if (!methodInstance->IsReifiedAndImplemented())
+							{
+								bool forceMethod = false;
+
+								BfMemberSetEntry* memberSetEntry;
+								if (typeInst->mTypeDef->mMethodSet.TryGetWith((StringImpl&)methodInstance->mMethodDef->mName, &memberSetEntry))
+								{
+									BfMethodDef* checkMethodDef = (BfMethodDef*)memberSetEntry->mMemberDef;
+									while (checkMethodDef != NULL)
+									{
+										auto& checkMethodInstanceGroup = typeInst->mMethodInstanceGroups[checkMethodDef->mIdx];
+										auto checkMethodInstance = checkMethodInstanceGroup.mDefault;
+										if (checkMethodInstance == NULL)
+											continue;
+										if ((checkMethodDef->mIsExtern) && (checkMethodInstance->IsReifiedAndImplemented()))
+											forceMethod = true;
+										checkMethodDef = checkMethodDef->mNextWithSameName;
+									}
+								}
+
+								if (forceMethod)
+								{
+									typeInst->mModule->GetMethodInstance(methodInstance->GetOwner(), methodInstance->mMethodDef, BfTypeVector(),
+										(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass));
+								}
+							}
 						}
 					}
 

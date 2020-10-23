@@ -2018,9 +2018,10 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 		else
 			AddStr(mangleContext, name, methodDef->mName);		
 	}
-		
+	
 	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) && 
-		(!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern))
+		(!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern) && 
+		((!methodInst->mMethodDef->mIsOverride) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mMethodType == BfMethodType_Dtor)))
 	{
 		auto declType = methodInst->mMethodDef->mDeclaringType;
 		BF_ASSERT(methodInst->GetOwner()->mTypeDef->mIsCombinedPartial);
@@ -2098,7 +2099,10 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 
 	if ((methodDef->mIsStatic) || (doExplicitThis))
 		attrib += 2;
-	attrib += (methodDef->mIsVirtual ? 4 : 0);
+
+	if ((methodDef->mIsVirtual) && (!methodDef->mIsOverride))
+		attrib += 4;
+	
 	name += attrib;
 
 	auto bfSystem = methodInst->GetOwner()->mModule->mSystem;

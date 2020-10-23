@@ -42,6 +42,11 @@ extension LibClassA
 	{
 		return mB;
 	}
+
+	public override int GetVal4()
+	{
+		return 29;
+	}
 }
 
 static

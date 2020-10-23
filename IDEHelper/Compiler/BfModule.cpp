@@ -21517,12 +21517,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 								methodInstance->mChainType = BfMethodChainType_ChainMember;
 							}
 						}
-						else if ((checkMethod->mBody == NULL) && (methodDef->mBody != NULL) && 
-							(checkMethod->mDeclaringType != methodDef->mDeclaringType))
-						{
-							// We're allowed to override an empty-bodied method
-							checkMethodInstance->mChainType = BfMethodChainType_ChainSkip;
-						}
 						else
 						{
 							if (!typeInstance->IsTypeMemberAccessible(checkMethod->mDeclaringType, methodDef->mDeclaringType))
@@ -21539,7 +21533,13 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 								}
 								else
 								{
-									if ((methodDef->mDeclaringType->mProject != checkMethod->mDeclaringType->mProject) &&
+									if ((methodDef->mIsOverride) && (checkMethod->mIsExtern))
+									{
+										silentlyAllow = true;
+										methodInstance->mIsInnerOverride = true;
+										CheckOverridenMethod(methodInstance, checkMethodInstance);
+									}
+									else if ((methodDef->mDeclaringType->mProject != checkMethod->mDeclaringType->mProject) &&
 										(!checkMethod->mDeclaringType->IsExtension()))
 									{
 										foundHiddenMethod = true;
@@ -21764,10 +21764,13 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 	auto propertyDeclaration = methodDef->GetPropertyDeclaration();
 	auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration();
 
+	if (methodInstance->mIsInnerOverride)
+		return false;
+
 	BfAstNode* declaringNode = methodDeclaration;
 	if (propertyMethodDeclaration != NULL)
 		declaringNode = propertyMethodDeclaration->mNameNode;
-		
+	
 	BfMethodInstance* methodOverriden = NULL;
 	bool usedMethod = false;
 
@@ -22128,30 +22131,11 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 					}
 				}
 
+
+
 				if (methodOverriden != NULL)
 				{
-					auto prevProtection = methodOverriden->mMethodDef->mProtection;
-					if ((methodDef->mProtection != prevProtection) && (methodDef->mMethodType != BfMethodType_Dtor))
-					{						
-						const char* protectionNames[] = {"hidden", "private", "internal", "protected", "public"};
-						BfAstNode* protectionRefNode = NULL;
-						if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
-						{							
-							protectionRefNode = propertyMethodDeclaration->mProtectionSpecifier;
-							if (protectionRefNode == NULL)
-								protectionRefNode = propertyMethodDeclaration->mPropertyDeclaration->mProtectionSpecifier;
-							if (protectionRefNode == NULL)
-								protectionRefNode = propertyMethodDeclaration->mPropertyDeclaration->mNameNode;
-						}
-						else if (auto methodDeclaration = methodDef->GetMethodDeclaration())
-						{
-							protectionRefNode = methodDeclaration->mProtectionSpecifier;
-							if (protectionRefNode == NULL)
-								protectionRefNode = methodDeclaration->mNameNode;
-						}						
-						if (protectionRefNode != NULL)
-							Fail(StrFormat("Cannot change access modifiers when overriding '%s' inherited member", protectionNames[(int)prevProtection]), protectionRefNode, true);
-					}
+					CheckOverridenMethod(methodInstance, methodOverriden);					
 				}
 			}			
 		}
@@ -22367,6 +22351,33 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 	}
 
 	return usedMethod;
+}
+
+void BfModule::CheckOverridenMethod(BfMethodInstance* methodInstance, BfMethodInstance* methodOverriden)
+{
+	auto methodDef = methodInstance->mMethodDef;
+	auto prevProtection = methodOverriden->mMethodDef->mProtection;
+	if ((methodDef->mProtection != prevProtection) && (methodDef->mMethodType != BfMethodType_Dtor))
+	{
+		const char* protectionNames[] = { "hidden", "private", "internal", "protected", "public" };
+		BfAstNode* protectionRefNode = NULL;
+		if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
+		{
+			protectionRefNode = propertyMethodDeclaration->mProtectionSpecifier;
+			if (protectionRefNode == NULL)
+				protectionRefNode = propertyMethodDeclaration->mPropertyDeclaration->mProtectionSpecifier;
+			if (protectionRefNode == NULL)
+				protectionRefNode = propertyMethodDeclaration->mPropertyDeclaration->mNameNode;
+		}
+		else if (auto methodDeclaration = methodDef->GetMethodDeclaration())
+		{
+			protectionRefNode = methodDeclaration->mProtectionSpecifier;
+			if (protectionRefNode == NULL)
+				protectionRefNode = methodDeclaration->mNameNode;
+		}
+		if (protectionRefNode != NULL)
+			Fail(StrFormat("Cannot change access modifiers when overriding '%s' inherited member", protectionNames[(int)prevProtection]), protectionRefNode, true);
+	}
 }
 
 bool BfModule::SlotInterfaceMethod(BfMethodInstance* methodInstance)

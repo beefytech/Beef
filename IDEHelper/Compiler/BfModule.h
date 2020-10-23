@@ -1851,6 +1851,7 @@ public:
 	void UniqueSlotVirtualMethod(BfMethodInstance* methodInstance);	
 	void CompareDeclTypes(BfTypeDef* newDeclType, BfTypeDef* prevDeclType, bool& isBetter, bool& isWorse);
 	bool SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityContext* ambiguityContext = NULL);	
+	void CheckOverridenMethod(BfMethodInstance* methodInstance, BfMethodInstance* methodOverriden);
 	bool SlotInterfaceMethod(BfMethodInstance* methodInstance);	
 	void SetMethodDependency(BfMethodInstance* methodInstance);
 	BfModuleMethodInstance ReferenceExternalMethodInstance(BfMethodInstance* methodInstance, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);

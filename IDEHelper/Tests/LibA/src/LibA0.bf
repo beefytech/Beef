@@ -133,9 +133,13 @@ class LibClassA
 		return 30;
 	}
 
+	public extern int GetVal4();
+
 	public static LibClassA Create()
 	{
-		return new LibClassA();
+		LibClassA ca = new LibClassA();
+		Test.Assert(ca.GetVal4() == 29);
+		return ca;
 	}
 }
 

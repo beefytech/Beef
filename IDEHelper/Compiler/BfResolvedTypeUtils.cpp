@@ -787,6 +787,11 @@ bool BfMethodInstance::HasThis()
 	return (!mMethodInstanceGroup->mOwner->IsValuelessType());
 }
 
+bool BfMethodInstance::IsVirtual()
+{
+	return mMethodDef->mIsVirtual && !mIsInnerOverride;
+}
+
 BfType* BfMethodInstance::GetThisType()
 {
 	BF_ASSERT(!mMethodDef->mIsStatic);
