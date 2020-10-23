@@ -2104,6 +2104,11 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 
 			// We may skip processing of local methods, so we won't know if it bind to any of our local variables or not
 			bool deferFullAnalysis = mCurMethodState->GetRootMethodState()->mLocalMethodCache.size() != 0;
+
+			// We may have init blocks that we aren't processing here...
+			if ((mCurMethodInstance->mIsAutocompleteMethod) && (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor))
+				deferFullAnalysis = true;
+
 			//bool deferFullAnalysis = true;
 			bool deferUsageWarning = deferFullAnalysis && mCompiler->IsAutocomplete();
 
