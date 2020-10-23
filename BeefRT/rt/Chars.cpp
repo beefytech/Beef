@@ -14,60 +14,60 @@ namespace bf
 		struct Char32
 		{
 		private:
-			BFRT_EXPORT static bool get__IsWhiteSpace_EX(char32_t c);
+			BFRT_EXPORT static bool get__IsWhiteSpace_EX__im(char32_t c);
 
 		public:
-			BFRT_EXPORT static char32_t get__ToLower(char32_t c);
-			BFRT_EXPORT static char32_t get__ToUpper(char32_t c);
-			BFRT_EXPORT static bool get__IsLower(char32_t c);
-			BFRT_EXPORT static bool get__IsUpper(char32_t c);			
-			BFRT_EXPORT static bool get__IsLetterOrDigit(char32_t c);
-			BFRT_EXPORT static bool get__IsLetter(char32_t c);
-			BFRT_EXPORT static bool get__IsNumber(char32_t c);
+			BFRT_EXPORT static char32_t get__ToLower__im(char32_t c);
+			BFRT_EXPORT static char32_t get__ToUpper__im(char32_t c);
+			BFRT_EXPORT static bool get__IsLower__im(char32_t c);
+			BFRT_EXPORT static bool get__IsUpper__im(char32_t c);
+			BFRT_EXPORT static bool get__IsLetterOrDigit__im(char32_t c);
+			BFRT_EXPORT static bool get__IsLetter__im(char32_t c);
+			BFRT_EXPORT static bool get__IsNumber__im(char32_t c);
 		};
 
 		struct Char16
 		{
 		public:
-			BFRT_EXPORT static char16_t get__ToLower(char16_t c);
-			BFRT_EXPORT static char16_t get__ToUpper(char16_t c);
-			BFRT_EXPORT static bool get__IsLower(char16_t c);
-			BFRT_EXPORT static bool get__IsUpper(char16_t c);
-			BFRT_EXPORT static bool get__IsWhiteSpace(char16_t c);
-			BFRT_EXPORT static bool get__IsLetterOrDigit(char16_t c);
-			BFRT_EXPORT static bool get__IsLetter(char16_t c);
-			BFRT_EXPORT static bool get__IsNumber(char16_t c);
+			BFRT_EXPORT static char16_t get__ToLower__im(char16_t c);
+			BFRT_EXPORT static char16_t get__ToUpper__im(char16_t c);
+			BFRT_EXPORT static bool get__IsLower__im(char16_t c);
+			BFRT_EXPORT static bool get__IsUpper__im(char16_t c);
+			BFRT_EXPORT static bool get__IsWhiteSpace__im(char16_t c);
+			BFRT_EXPORT static bool get__IsLetterOrDigit__im(char16_t c);
+			BFRT_EXPORT static bool get__IsLetter__im(char16_t c);
+			BFRT_EXPORT static bool get__IsNumber__im(char16_t c);
 		};
 	}
 }
 
-char32_t bf::System::Char32::get__ToLower(char32_t c)
+char32_t bf::System::Char32::get__ToLower__im(char32_t c)
 {
 	return utf8proc_tolower(c);
 }
 
-char32_t bf::System::Char32::get__ToUpper(char32_t c)
+char32_t bf::System::Char32::get__ToUpper__im(char32_t c)
 {
 	return utf8proc_toupper(c);
 }
 
-bool bf::System::Char32::get__IsLower(char32_t c)
+bool bf::System::Char32::get__IsLower__im(char32_t c)
 {
 	return utf8proc_category(c) == UTF8PROC_CATEGORY_LL;
 }
 
-bool bf::System::Char32::get__IsUpper(char32_t c)
+bool bf::System::Char32::get__IsUpper__im(char32_t c)
 {
 	return utf8proc_category(c) == UTF8PROC_CATEGORY_LU;
 }
 
-bool bf::System::Char32::get__IsWhiteSpace_EX(char32_t c)
+bool bf::System::Char32::get__IsWhiteSpace_EX__im(char32_t c)
 {
 	auto cat = utf8proc_category(c);
 	return (cat == UTF8PROC_CATEGORY_ZS) || (cat == UTF8PROC_CATEGORY_ZL) || (cat == UTF8PROC_CATEGORY_ZP);
 }
 
-bool bf::System::Char32::get__IsLetterOrDigit(char32_t c)
+bool bf::System::Char32::get__IsLetterOrDigit__im(char32_t c)
 {
 	auto cat = utf8proc_category(c);
 	switch (cat)
@@ -85,7 +85,7 @@ bool bf::System::Char32::get__IsLetterOrDigit(char32_t c)
 	return false;
 }
 
-bool bf::System::Char32::get__IsLetter(char32_t c)
+bool bf::System::Char32::get__IsLetter__im(char32_t c)
 {
 	auto cat = utf8proc_category(c);
 	switch (cat)
@@ -100,7 +100,7 @@ bool bf::System::Char32::get__IsLetter(char32_t c)
 	return false;
 }
 
-bool bf::System::Char32::get__IsNumber(char32_t c)
+bool bf::System::Char32::get__IsNumber__im(char32_t c)
 {
 	auto cat = utf8proc_category(c);
 	switch (cat)
@@ -115,32 +115,32 @@ bool bf::System::Char32::get__IsNumber(char32_t c)
 
 //////////////////////////////////////////////////////////////////////////
 
-char16_t bf::System::Char16::get__ToLower(char16_t c)
+char16_t bf::System::Char16::get__ToLower__im(char16_t c)
 {
 	return utf8proc_tolower(c);
 }
 
-char16_t bf::System::Char16::get__ToUpper(char16_t c)
+char16_t bf::System::Char16::get__ToUpper__im(char16_t c)
 {
 	return utf8proc_toupper(c);
 }
 
-bool bf::System::Char16::get__IsLower(char16_t c)
+bool bf::System::Char16::get__IsLower__im(char16_t c)
 {
 	return utf8proc_category(c) == UTF8PROC_CATEGORY_LL;
 }
 
-bool bf::System::Char16::get__IsUpper(char16_t c)
+bool bf::System::Char16::get__IsUpper__im(char16_t c)
 {
 	return utf8proc_category(c) == UTF8PROC_CATEGORY_LU;
 }
 
-bool bf::System::Char16::get__IsWhiteSpace(char16_t c)
+bool bf::System::Char16::get__IsWhiteSpace__im(char16_t c)
 {
 	return utf8proc_category(c) == UTF8PROC_CATEGORY_ZS;
 }
 
-bool bf::System::Char16::get__IsLetterOrDigit(char16_t c)
+bool bf::System::Char16::get__IsLetterOrDigit__im(char16_t c)
 {
 	auto cat = utf8proc_category(c);
 	switch (cat)
@@ -158,7 +158,7 @@ bool bf::System::Char16::get__IsLetterOrDigit(char16_t c)
 	return false;
 }
 
-bool bf::System::Char16::get__IsLetter(char16_t c)
+bool bf::System::Char16::get__IsLetter__im(char16_t c)
 {
 	auto cat = utf8proc_category(c);
 	switch (cat)
@@ -173,7 +173,7 @@ bool bf::System::Char16::get__IsLetter(char16_t c)
 	return false;
 }
 
-bool bf::System::Char16::get__IsNumber(char16_t c)
+bool bf::System::Char16::get__IsNumber__im(char16_t c)
 {
 	auto cat = utf8proc_category(c);
 	switch (cat)
