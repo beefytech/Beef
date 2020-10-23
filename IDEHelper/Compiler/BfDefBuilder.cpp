@@ -479,11 +479,19 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	if (auto ctorDeclaration = BfNodeDynCast<BfConstructorDeclaration>(methodDeclaration))
 	{
 		methodDef->mIsMutating = true;
-		methodDef->mMethodType = BfMethodType_Ctor;
-		if (methodDef->mIsStatic)
-			methodDef->mName = "__BfStaticCtor";
+		if (methodDeclaration->mOpenParen != NULL)
+		{
+			methodDef->mMethodType = BfMethodType_Ctor;
+			if (methodDef->mIsStatic)
+				methodDef->mName = "__BfStaticCtor";
+			else
+				methodDef->mName = "__BfCtor";
+		}
 		else
-			methodDef->mName = "__BfCtor";
+		{
+			methodDef->mMethodType = BfMethodType_Init;
+			methodDef->mName = "__BfInit";
+		}
 	}
 	else if (methodDeclaration->IsA<BfDestructorDeclaration>())
 	{		
@@ -1132,6 +1140,10 @@ BfMethodDef* BfDefBuilder::AddMethod(BfTypeDef* typeDef, BfMethodType methodType
 		{
 			methodDef->mName = "__BfCtorClear";
 			methodDef->mIsNoReflect = true;
+		}
+		else if (methodType == BfMethodType_Init)
+		{
+			methodDef->mName = "__BfInit";
 		}
 		else if (methodType == BfMethodType_Dtor)
 		{

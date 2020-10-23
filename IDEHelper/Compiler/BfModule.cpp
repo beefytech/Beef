@@ -12058,6 +12058,9 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 
 BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags, BfTypeInstance* foreignType)
 {
+	if (methodDef->mMethodType == BfMethodType_Init)
+		return BfModuleMethodInstance();
+
 	if (((flags & BfGetMethodInstanceFlag_ForceInline) != 0) && (mCompiler->mIsResolveOnly))
 	{
 		// Don't bother inlining for resolve-only
@@ -12679,11 +12682,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		if ((prevIRFunc) && (!prevIRFunc.IsFake()))
 			methodInstance->mIRFunction = prevIRFunc; // Take it over		
 	}
-		
-	/*// 24 bits for typeid, 20 for method id, 20 for specialization index
-	methodInstance->mMethodId = ((int64)typeInst->mTypeId) + ((int64)methodInstGroup->mMethodIdx << 24);
-	if (methodInstGroup->mMethodSpecializationMap != NULL)
-		methodInstance->mMethodId += ((int64)methodInstGroup->mMethodSpecializationMap->size() << 44);*/
+
 	methodInstance->mMethodDef = methodDef;
 	methodInstance->mAlwaysInline = methodDef->mAlwaysInline;
 	methodInstance->mMethodInstanceGroup = methodInstGroup;
@@ -12711,10 +12710,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		}
 	}
 
-	if (methodDef->mDeclaringType->mTypeDeclaration != typeInst->mTypeDef->mTypeDeclaration)
+	if (methodDef->mMethodType == BfMethodType_Init)
 	{
-		// With extensions we can have multiple definitions of the same method
-		//methodInstance->mMangleWithIdx = true;
+		methodInstance->mMangleWithIdx = true;
 	}
 
 	BfModule* declareModule = GetOrCreateMethodModule(methodInstance);
@@ -15574,6 +15572,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	{
 		// If we had a 'this' initializer, that other ctor will have initialized our fields
 
+		//auto 
+				
 		if ((!mCompiler->mIsResolveOnly) || 
 			(mCompiler->mResolvePassData->mAutoComplete == NULL) ||
 			(mCompiler->mResolvePassData->mAutoComplete->mResolveType == BfResolveType_ShowFileSymbolReferences))
@@ -15581,6 +15581,61 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			bool hadInlineInitBlock = false;
 			BfScopeData scopeData;
 			
+			auto _CheckInitBlock = [&](BfAstNode* node)
+			{
+				if (!hadInlineInitBlock)
+				{
+					if ((mBfIRBuilder->DbgHasInfo()) && (!mCurTypeInstance->IsUnspecializedType()) && (mHasFullDebugInfo))
+					{
+						UpdateSrcPos(baseCtorNode);
+
+						if (methodDef->mBody == NULL)
+							SetIllegalSrcPos();
+
+						// NOP so we step onto the open paren of the method so we can choose to set into the field initializers or step over them
+						EmitEnsureInstructionAt();
+
+						BfType* thisType = mCurTypeInstance;
+						if (thisType->IsValueType())
+							thisType = CreateRefType(thisType);
+
+						SizedArray<BfIRMDNode, 1> diParamTypes;
+						BfIRMDNode diFuncType = mBfIRBuilder->DbgCreateSubroutineType(diParamTypes);
+
+						mCurMethodState->AddScope(&scopeData);
+						NewScopeState();
+
+						int flags = 0;
+						mCurMethodState->mCurScope->mDIInlinedAt = mBfIRBuilder->DbgGetCurrentLocation();
+						BF_ASSERT(mCurMethodState->mCurScope->mDIInlinedAt);
+						// mCurMethodState->mCurScope->mDIInlinedAt may still be null ifwe don't have an explicit ctor
+						mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance), "this$initFields", "", mCurFilePosition.mFileInstance->mDIFile,
+							mCurFilePosition.mCurLine + 1, diFuncType, false, true, mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
+
+						UpdateSrcPos(node);
+
+						auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
+							"this", mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, mBfIRBuilder->DbgGetType(thisType));
+
+						//
+						{
+							auto loadedThis = GetThis();
+
+							// LLVM can't handle two variables pointing to the same value
+							BfIRValue copiedThisPtr;
+							copiedThisPtr = CreateAlloca(thisType);
+							auto storeInst = mBfIRBuilder->CreateStore(loadedThis.mValue, copiedThisPtr);
+							mBfIRBuilder->ClearDebugLocation(storeInst);
+							mBfIRBuilder->DbgInsertDeclare(copiedThisPtr, diVariable);
+						}
+
+						hadInlineInitBlock = true;
+					}
+				}
+
+				UpdateSrcPos(node);
+			};
+
 			for (auto fieldDef : typeDef->mFields)
 			{
 				// For extensions, only handle these fields in the appropriate extension
@@ -15613,57 +15668,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 					if (fieldDef->mInitializer != NULL)
 					{
-						if (!hadInlineInitBlock)
-						{
-							if ((mBfIRBuilder->DbgHasInfo()) && (!mCurTypeInstance->IsUnspecializedType()) && (mHasFullDebugInfo))
-							{
-								UpdateSrcPos(baseCtorNode);
-
-								if (methodDef->mBody == NULL)
-									SetIllegalSrcPos();
-
-								// NOP so we step onto the open paren of the method so we can choose to set into the field initializers or step over them
-								EmitEnsureInstructionAt();
-
-								BfType* thisType = mCurTypeInstance;
-								if (thisType->IsValueType())
-									thisType = CreateRefType(thisType);
-
-								SizedArray<BfIRMDNode, 1> diParamTypes;
-								BfIRMDNode diFuncType = mBfIRBuilder->DbgCreateSubroutineType(diParamTypes);
-
-								mCurMethodState->AddScope(&scopeData);
-								NewScopeState();
-
-								int flags = 0;
-								mCurMethodState->mCurScope->mDIInlinedAt = mBfIRBuilder->DbgGetCurrentLocation();
-								BF_ASSERT(mCurMethodState->mCurScope->mDIInlinedAt);
-								// mCurMethodState->mCurScope->mDIInlinedAt may still be null ifwe don't have an explicit ctor
-								mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance), "this$initFields", "", mCurFilePosition.mFileInstance->mDIFile,
-									mCurFilePosition.mCurLine + 1, diFuncType, false, true, mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
-
-								UpdateSrcPos(fieldDef->mInitializer);
-
-								auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
-									"this", mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, mBfIRBuilder->DbgGetType(thisType));
-
-								//
-								{
-									auto loadedThis = GetThis();
-
-									// LLVM can't handle two variables pointing to the same value
-									BfIRValue copiedThisPtr;
-									copiedThisPtr = CreateAlloca(thisType);
-									auto storeInst = mBfIRBuilder->CreateStore(loadedThis.mValue, copiedThisPtr);
-									mBfIRBuilder->ClearDebugLocation(storeInst);
-									mBfIRBuilder->DbgInsertDeclare(copiedThisPtr, diVariable);
-								}
-
-								hadInlineInitBlock = true;
-							}
-						}
-
-						UpdateSrcPos(fieldDef->mInitializer);
+						_CheckInitBlock(fieldDef->mInitializer);
 					}
 
 					BfIRValue fieldAddr;
@@ -15686,6 +15691,30 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					if ((fieldAddr) && (assignValue))
 						mBfIRBuilder->CreateStore(assignValue.mValue, fieldAddr);
 				}
+			}
+
+			mCurTypeInstance->mTypeDef->PopulateMemberSets();
+			BfMemberSetEntry* entry = NULL;
+			BfMethodDef* initMethodDef = NULL;
+			mCurTypeInstance->mTypeDef->mMethodSet.TryGetWith(String("__BfInit"), &entry);
+			if (entry != NULL)
+				initMethodDef = (BfMethodDef*)entry->mMemberDef;
+
+			SizedArray<BfAstNode*, 8> initBodies;
+
+			for (; initMethodDef != NULL; initMethodDef = initMethodDef->mNextWithSameName)
+			{
+				if (initMethodDef->mDeclaringType != methodDef->mDeclaringType)
+					continue;
+				if (initMethodDef->mMethodType != BfMethodType_Init)
+					continue;
+				initBodies.Insert(0, initMethodDef->mBody);
+			}
+
+			for (auto body : initBodies)
+			{
+				_CheckInitBlock(body);
+				VisitEmbeddedStatement(body);
 			}
 
 			if (hadInlineInitBlock)
@@ -15718,6 +15747,22 @@ void BfModule::EmitCtorBody(bool& skipBody)
 							CreateValueFromExpression(fieldDef->mInitializer, wantType, BfEvalExprFlags_FieldInitializer);
 						}
 					}
+
+					tempTypeDef->PopulateMemberSets();
+					BfMemberSetEntry* entry = NULL;
+					BfMethodDef* initMethodDef = NULL;
+					tempTypeDef->mMethodSet.TryGetWith(String("__BfInit"), &entry);
+					if (entry != NULL)
+						initMethodDef = (BfMethodDef*)entry->mMemberDef;
+					SizedArray<BfAstNode*, 8> initBodies;
+					for (; initMethodDef != NULL; initMethodDef = initMethodDef->mNextWithSameName)
+					{
+						if (initMethodDef->mMethodType != BfMethodType_Init)
+							continue;
+						initBodies.Insert(0, initMethodDef->mBody);						
+					}
+					for (auto body : initBodies)					
+						VisitEmbeddedStatement(body);					
 				}
 			}
 
@@ -15731,7 +15776,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						MarkFieldInitialized(fieldInst);
 				}
 			}
-		}
+		}		
 	}
 
 	// Call base ctor (if applicable)
@@ -18996,7 +19041,6 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	{
 		if ((skipEndChecks) || (methodDef->mBody == NULL))
 			break;
-
 		LocalVariableDone(localVar, true);
 	}
 
@@ -21410,7 +21454,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	if ((((mCurMethodInstance->mIsUnspecialized) || (mCurMethodInstance->mMethodDef->mGenericParams.size() == 0))) &&
 		(!methodDef->mIsLocalMethod))
 	{
-		if (!methodInstance->mIsForeignMethodDef)
+		if ((!methodInstance->mIsForeignMethodDef) && (methodDef->mMethodType != BfMethodType_Init))
 		{
 			typeDef->PopulateMemberSets();
 			BfMethodDef* nextMethod = NULL;

@@ -635,13 +635,14 @@ public:
 enum BfMethodType : uint8
 {
 	BfMethodType_Ignore,
-	BfMethodType_Normal,	
+	BfMethodType_Normal,
 	BfMethodType_PropertyGetter,
 	BfMethodType_PropertySetter,
 	BfMethodType_CtorCalcAppend,
 	BfMethodType_Ctor,
 	BfMethodType_CtorNoBody,
 	BfMethodType_CtorClear,
+	BfMethodType_Init,
 	BfMethodType_Dtor,
 	BfMethodType_Operator,
 	BfMethodType_Mixin,

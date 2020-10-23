@@ -5774,8 +5774,19 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 		ctorDecl->mReturnType = NULL;
 		ReplaceNode(tokenNode, ctorDecl);
 		MEMBER_SET(ctorDecl, mThisToken, tokenNode);
+		if (auto block = BfNodeDynCast<BfBlock>(mVisitorPos.GetNext()))
+		{			
+			mVisitorPos.MoveNext();
+			MEMBER_SET(ctorDecl, mBody, block);
 
-		ParseMethod(ctorDecl, &params, &commas);
+			if (IsNodeRelevant(ctorDecl))
+			{
+				SetAndRestoreValue<BfMethodDeclaration*> prevMethodDeclaration(mCurMethodDecl, ctorDecl);
+				HandleBlock(block);
+			}
+		}
+		else
+			ParseMethod(ctorDecl, &params, &commas);
 		return ctorDecl;
 	}
 

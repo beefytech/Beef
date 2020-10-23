@@ -4318,6 +4318,12 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 					declRequired = false;
 			}
 
+			if (methodDef->mMethodType == BfMethodType_Init)
+			{
+				declRequired = false;
+				implRequired = false;
+			}
+
 			if (!implRequired)
 			{
 				if (!mIsScratchModule)
@@ -4349,6 +4355,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			BfLogSysM("Skipping GetMethodInstance on MethodDef: %p OnDemandKind: %d\n", methodDef, methodInstanceGroup->mOnDemandKind);
 			continue;
 		}
+
+		if (methodDef->mMethodType == BfMethodType_Init)
+			continue;
 
 		int prevWorklistSize = (int)mContext->mMethodWorkList.size();
 		auto moduleMethodInstance = GetMethodInstance(typeInstance, methodDef, BfTypeVector(), ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None);

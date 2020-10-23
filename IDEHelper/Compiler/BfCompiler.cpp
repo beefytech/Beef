@@ -6910,16 +6910,22 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 					{
 						if ((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) ||
 							(methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference))
-						{
-							queuedMoreMethods = true;
+						{							
 							if ((methodInstGroup.mDefault != NULL) && (methodInstGroup.mDefault->mIsForeignMethodDef))
 							{
 								mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodInstGroup.mDefault->mMethodDef, BfTypeVector(),
 									(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_ForeignMethodDef | BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
+								queuedMoreMethods = true;
 							}
 							else
-								mContext->mUnreifiedModule->GetMethodInstance(typeInst, typeInst->mTypeDef->mMethods[methodInstGroup.mMethodIdx], BfTypeVector(),
+							{
+								auto methodDef = typeInst->mTypeDef->mMethods[methodInstGroup.mMethodIdx];
+								if (methodDef->mMethodType == BfMethodType_Init)
+									continue;
+								mContext->mUnreifiedModule->GetMethodInstance(typeInst, methodDef, BfTypeVector(),
 									(BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_ExplicitResolveOnlyPass));
+								queuedMoreMethods = true;
+							}
 						}
 					}
 				}
