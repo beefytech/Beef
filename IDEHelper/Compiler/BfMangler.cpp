@@ -739,6 +739,8 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 		if (methodName[i] == '@')
 			methodName[i] = '$';
 	}
+	if ((!mangleContext.mCPPMangle) && (!methodDef->mIsMutating) && (!methodDef->mIsStatic) && (methodInst->GetOwner()->IsValueType()))
+		methodName += "__im";
 
 	if (methodInst->mMethodDef->mIsOperator)
 	{
