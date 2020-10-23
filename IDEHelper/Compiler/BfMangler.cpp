@@ -901,7 +901,9 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
 		name += "`UCHK";
 
-	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (!methodInst->mIsForeignMethodDef))
+	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) &&
+		(!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern) &&
+		((!methodInst->mMethodDef->mIsOverride) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mMethodType == BfMethodType_Dtor)))
 	{
 		auto declType = methodInst->mMethodDef->mDeclaringType;
 		BF_ASSERT(methodInst->GetOwner()->mTypeDef->mIsCombinedPartial);
