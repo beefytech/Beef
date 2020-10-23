@@ -47,12 +47,14 @@ public:
 	BfMethodDef* mMethodDef;
 	BfTypeVector mMethodGenericArguments;
 	BfGetMethodInstanceFlags mFlags;
+	BfTypeInstance* mForeignType;
 
 public:
 	BfMethodSpecializationRequest()
 	{		
 		mMethodDef = NULL;
 		mFlags = BfGetMethodInstanceFlag_None;
+		mForeignType = NULL;
 	}
 };
 

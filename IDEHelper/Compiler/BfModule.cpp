@@ -1180,7 +1180,7 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 	mExtensionCount = 0;
 	mRevision = mCompiler->mRevision;	
 	mRebuildIdx++;
-	ClearModuleData();	
+	ClearModuleData(!force);	
 
 	// Clear this here, not in ClearModuleData, so we preserve those references even after writing out module
 	if (rebuildKind != BfModule::RebuildKind_None) // Leave string pool refs for when we need to use things like [LinkName("")] methods bofore re-reification
@@ -12170,6 +12170,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					specializationRequest->mMethodGenericArguments = methodGenericArguments;
 					specializationRequest->mType = typeInst;
 					specializationRequest->mFlags = flags;
+					specializationRequest->mForeignType = foreignType;
 				}
 			}
 
@@ -22770,7 +22771,7 @@ void BfModule::ReportMemory(MemReporter* memReporter)
 
 // ClearModuleData is called immediately after the module is compiled, so don't clear out any data that needs to
 //  be transient through the next compile
-void BfModule::ClearModuleData()
+void BfModule::ClearModuleData(bool clearTransientData)
 {
 	BfLogSysM("ClearModuleData %p\n", this);
 
@@ -22782,7 +22783,8 @@ void BfModule::ClearModuleData()
 
 	mDICompileUnit = BfIRMDNode();
 	mIsModuleMutable = false;	
-	mIncompleteMethodCount = 0;	
+	if (clearTransientData)
+		mIncompleteMethodCount = 0;	
 	mHasGenericMethods = false;
 
 	// We don't want to clear these because we want it to persist through module extensions-

@@ -50,7 +50,7 @@ namespace Tests
 		}
 
 		[Test]
-		public static void Hey()
+		public static void TestBasics()
 		{
 			ClassB cc = scope ClassC();
 			ClassB cb = cc;
@@ -64,6 +64,7 @@ namespace Tests
 
 			StructA sa = default;
 			let sa2 = sa;
+
 			Test.Assert(sa[0] == 2);
 			Test.Assert(sa2[0] == 1);
 		}

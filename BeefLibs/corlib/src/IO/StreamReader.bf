@@ -210,8 +210,6 @@ namespace System.IO
 
 			public this(StreamReader streamReader)
 			{
-				Debug.WriteLine("ReadLineTask this {0}", this);
-
 				mStreamReader = streamReader;
 				ThreadPool.QueueUserWorkItem(new => Proc);
 			}

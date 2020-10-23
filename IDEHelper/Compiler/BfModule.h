@@ -1883,7 +1883,7 @@ public:
 	void EnsureIRBuilder(bool dbgVerifyCodeGen = false);
 	void DbgFinish();
 	BfIRValue CreateForceLinkMarker(BfModule* module, String* outName);
-	void ClearModuleData();	
+	void ClearModuleData(bool clearTransientData = true);
 	void DisownMethods();
 	void ClearModule();	
 	void StartExtension(); // For new method specializations

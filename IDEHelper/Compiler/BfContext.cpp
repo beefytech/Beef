@@ -447,7 +447,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 				auto typeInst = methodSpecializationRequest.mType->ToTypeInstance();
 				module->GetMethodInstance(methodSpecializationRequest.mType->ToTypeInstance(), methodSpecializationRequest.mMethodDef, methodSpecializationRequest.mMethodGenericArguments, 
-					(BfGetMethodInstanceFlags)(methodSpecializationRequest.mFlags | BfGetMethodInstanceFlag_ResultNotUsed));
+					(BfGetMethodInstanceFlags)(methodSpecializationRequest.mFlags | BfGetMethodInstanceFlag_ResultNotUsed), methodSpecializationRequest.mForeignType);
 				didWork = true;
 			}
 		}
@@ -505,7 +505,11 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 					module->PopulateType(owner, BfPopulateType_Full);
 
 				if (methodInstance->mDeclModule != NULL)
+				{
+					if (!mCompiler->mIsResolveOnly)
+						BF_ASSERT(!methodInstance->mIsReified || methodInstance->mDeclModule->mIsModuleMutable);
 					ProcessMethod(methodInstance);
+				}
 			}
 			
 			workIdx = mMethodWorkList.RemoveAt(workIdx);
@@ -2452,7 +2456,7 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 		specializationRequest->mFromModuleRevision = typeInst->mModule->mRevision;
 		specializationRequest->mMethodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
 		specializationRequest->mMethodGenericArguments = methodRef.mMethodGenericArguments;
-		specializationRequest->mType = methodRef.mTypeInstance;		
+		specializationRequest->mType = methodRef.mTypeInstance;				
 
 		BfLogSysM("QueueMethodSpecializations typeInst %p specializationRequest %p methodDef %p fromModule %p\n", typeInst, specializationRequest, methodDef, specializationRequest->mFromModule);
 	}

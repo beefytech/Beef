@@ -102,7 +102,7 @@ class LibClassA
 
 	public this()
 	{
-		Debug.WriteLine("LibA.LibClassA()\n");
+		//Debug.WriteLine("LibA.LibClassA()\n");
 		mA += 100;
 	}
 
@@ -118,7 +118,7 @@ class LibClassA
 
 	public static int32 GetVal(int32 val, int32 magic, String str)
 	{
-		Debug.WriteLine("GetVal: {}", str);
+		//Debug.WriteLine("GetVal: {}", str);
 		sMagic += magic;
 		return val;
 	}

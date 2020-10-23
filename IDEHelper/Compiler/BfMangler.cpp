@@ -2011,7 +2011,10 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	}
 	else
 	{
-		AddStr(mangleContext, name, methodDef->mName);
+		if ((!mangleContext.mCPPMangle) && (!methodDef->mIsMutating) && (!methodDef->mIsStatic) && (methodInst->GetOwner()->IsValueType()))
+			AddStr(mangleContext, name, methodDef->mName + "__im");
+		else
+			AddStr(mangleContext, name, methodDef->mName);		
 	}
 		
 	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) && 
@@ -2044,12 +2047,15 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 			name += StrFormat("%d$", declType->mPartialIdx);
 	}
 
-	if (methodInst->mMangleWithIdx)	
-		name += StrFormat("i%d$", methodInst->mMethodDef->mIdx);	
-	if (methodDef->mCheckedKind == BfCheckedKind_Checked)
-		name += "CHK$";
-	else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
-		name += "UCHK$";
+	if (!mangleContext.mCPPMangle)
+	{
+		if (methodInst->mMangleWithIdx)
+			name += StrFormat("i%d$", methodInst->mMethodDef->mIdx);
+		if (methodDef->mCheckedKind == BfCheckedKind_Checked)
+			name += "CHK$";
+		else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
+			name += "UCHK$";		
+	}
 
 	/*if ((methodInst->mMethodInstanceGroup->mOwner->mTypeDef->IsGlobalsContainer()) && (methodInst->mMethodDef->mMethodDeclaration == NULL))
 	{
