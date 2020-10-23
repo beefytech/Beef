@@ -15556,7 +15556,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 				calledCtorNoBody = true;
 			}
-		}		
+		}
 	}
 
 	// Initialize fields (if applicable)
@@ -15568,7 +15568,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	{
 		// Field initializers occur in CtorNoBody methods for extensions
 	}
-	else if ((!hadThisInitializer) && (!calledCtorNoBody))
+	else if (!hadThisInitializer)
 	{
 		// If we had a 'this' initializer, that other ctor will have initialized our fields
 
@@ -15578,6 +15578,10 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			(mCompiler->mResolvePassData->mAutoComplete == NULL) ||
 			(mCompiler->mResolvePassData->mAutoComplete->mResolveType == BfResolveType_ShowFileSymbolReferences))
 		{
+			// If we calledCtorNoBody then we did the field initializer code, but we still need to run though it here
+			//  to properly set the assigned flags
+			SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mBfIRBuilder->mIgnoreWrites || calledCtorNoBody);
+
 			bool hadInlineInitBlock = false;
 			BfScopeData scopeData;
 			
