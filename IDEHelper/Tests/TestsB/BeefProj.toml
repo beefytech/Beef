@@ -1,5 +1,6 @@
+FileVersion = 1
 Dependencies = {corlib = "*", LibA = "*", LibB = "*"}
 
 [Project]
 Name = "TestsB"
-StartupObject = "Program"
+StartupObject = "TestsB.Program"
