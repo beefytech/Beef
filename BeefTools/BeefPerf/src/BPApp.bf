@@ -994,5 +994,5 @@ namespace BeefPerf
 
 static
 {
-	static BeefPerf.BPApp gApp;
+	public static BeefPerf.BPApp gApp;
 }
