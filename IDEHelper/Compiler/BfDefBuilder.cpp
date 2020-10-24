@@ -1058,9 +1058,7 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 	if (fieldDeclaration->mNameNode != NULL)
 		fieldDef->mName = fieldDeclaration->mNameNode->ToString();
 	fieldDef->mProtection = GetProtection(fieldDeclaration->mProtectionSpecifier);	
-	if (mCurTypeDef->mIsPartial)
-		fieldDef->mProtection = BfProtection_Public;
-	else if (isEnumEntryDecl)
+	if (isEnumEntryDecl)
 		fieldDef->mProtection = BfProtection_Public;	
 	fieldDef->mIsReadOnly = fieldDeclaration->mReadOnlySpecifier != NULL;	
 	fieldDef->mIsInline = (fieldDeclaration->mReadOnlySpecifier != NULL) && (fieldDeclaration->mReadOnlySpecifier->GetToken() == BfToken_Inline);
