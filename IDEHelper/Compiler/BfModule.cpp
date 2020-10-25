@@ -4255,7 +4255,7 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 	SizedArray<BfIRValue, 8> args;
 	BfExprEvaluator exprEvaluator(this);
 
-	if (mCurMethodInstance->GetStructRetIdx() != -1)
+	if (mCurMethodInstance->GetStructRetIdx() == 0)
 	{
 		auto retPtrType = CreatePointerType(mCurMethodInstance->mReturnType);		
 		exprEvaluator.PushArg(GetDefaultTypedValue(retPtrType, true, BfDefaultValueKind_Const), args);
@@ -4265,6 +4265,12 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 	{
 		auto thisValue = GetDefaultTypedValue(mCurMethodInstance->GetOwner(), true, mCurTypeInstance->IsComposite() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Const);
 		exprEvaluator.PushThis(NULL, thisValue, mCurMethodInstance, args);
+	}
+
+	if (mCurMethodInstance->GetStructRetIdx() == 1)
+	{
+		auto retPtrType = CreatePointerType(mCurMethodInstance->mReturnType);
+		exprEvaluator.PushArg(GetDefaultTypedValue(retPtrType, true, BfDefaultValueKind_Const), args);
 	}
 
 	for (int paramIdx = 0; paramIdx < mCurMethodInstance->GetParamCount(); paramIdx++)
