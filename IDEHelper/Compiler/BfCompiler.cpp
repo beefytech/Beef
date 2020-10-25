@@ -5311,10 +5311,10 @@ void BfCompiler::PopulateReified()
 					boxedType->mHasBeenInstantiated = true;
 				}
 			}
-			
+
 			// Check reifications forced by virtuals or interfaces
 			if ((!mIsResolveOnly) && (typeInst != NULL) && (typeInst->mIsReified) && (!typeInst->IsUnspecializedType()) && (!typeInst->IsInterface()) &&
-				(typeInst->mHasBeenInstantiated) && (!typeInst->IsIncomplete()))
+				(!typeInst->IsIncomplete()))
 			{
 				// If we have chained methods, make sure we implement the chain members if the chain head is implemented and reified
 				if (typeInst->mTypeDef->mIsCombinedPartial)
@@ -5412,86 +5412,90 @@ void BfCompiler::PopulateReified()
 					}
 				}
 
-				// If we have any virtual methods overrides that are unreified but the declaring virtual method is reified then we also need to reify
-				for (auto&& vEntry : typeInst->mVirtualMethodTable)
+				// Only check virtual stuff if we have been instantiated
+				if (typeInst->mHasBeenInstantiated)
 				{
-					if ((vEntry.mDeclaringMethod.mTypeInstance == NULL) ||
-						(vEntry.mDeclaringMethod.mTypeInstance->IsIncomplete()) ||
-						(vEntry.mImplementingMethod.mTypeInstance == NULL) ||
-						(vEntry.mImplementingMethod.mTypeInstance->IsIncomplete()))
-						continue;
-
-					BfMethodInstance* declaringMethod = vEntry.mDeclaringMethod;
-					if (declaringMethod == NULL)
-						continue;
-
-					if ((declaringMethod->mIsReified) && (declaringMethod->mMethodInstanceGroup->IsImplemented()))
+					// If we have any virtual methods overrides that are unreified but the declaring virtual method is reified then we also need to reify
+					for (auto&& vEntry : typeInst->mVirtualMethodTable)
 					{
-						BfMethodInstance* implMethod = vEntry.mImplementingMethod;
-						if ((implMethod != NULL) && ((!implMethod->mMethodInstanceGroup->IsImplemented()) || (!implMethod->mIsReified)))
+						if ((vEntry.mDeclaringMethod.mTypeInstance == NULL) ||
+							(vEntry.mDeclaringMethod.mTypeInstance->IsIncomplete()) ||
+							(vEntry.mImplementingMethod.mTypeInstance == NULL) ||
+							(vEntry.mImplementingMethod.mTypeInstance->IsIncomplete()))
+							continue;
+
+						BfMethodInstance* declaringMethod = vEntry.mDeclaringMethod;
+						if (declaringMethod == NULL)
+							continue;
+
+						if ((declaringMethod->mIsReified) && (declaringMethod->mMethodInstanceGroup->IsImplemented()))
 						{
-							didWork = true;
-							if (!typeInst->mModule->mIsModuleMutable)
-								typeInst->mModule->StartExtension();
-							typeInst->mModule->GetMethodInstance(implMethod);
-						}
-					}
-				}
-
-				auto checkType = typeInst;
-				while (checkType != NULL)
-				{
-					if ((checkType != typeInst) && (checkType->mHasBeenInstantiated))
-					{
-						// We will already check this type here in its own loop
-						break;
-					}
-
-					if (checkType->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
-						break;
-
-					for (auto& ifaceTypeInst : checkType->mInterfaces)
-					{
-						auto ifaceInst = ifaceTypeInst.mInterfaceType;
-						int startIdx = ifaceTypeInst.mStartInterfaceTableIdx;
-						int iMethodCount = (int)ifaceInst->mMethodInstanceGroups.size();
-						auto declTypeDef = ifaceTypeInst.mDeclaringType;
-
-						for (int iMethodIdx = 0; iMethodIdx < iMethodCount; iMethodIdx++)
-						{
-							auto& ifaceMethodInstGroup = ifaceInst->mMethodInstanceGroups[iMethodIdx];
-							auto ifaceMethodInst = ifaceMethodInstGroup.mDefault;
-							
-							if (typeInst->IsObject())
-							{
-								// If the implementor is an object then this can be dynamically dispatched								
-							}
-							else							
-							{
-								// If this method is explicitly reflected then a struct's implementation may be invoked with reflection
-								if (!ifaceMethodInstGroup.mExplicitlyReflected)
-									continue;
-							}
-							
-							if ((ifaceMethodInst == NULL) || (!ifaceMethodInst->IsReifiedAndImplemented()))
-								continue;
-
-							auto implMethodRef = &checkType->mInterfaceMethodTable[iMethodIdx + startIdx].mMethodRef;
-							BfMethodInstance* implMethod = *implMethodRef;
-							if (implMethod == NULL)
-								continue;
-
-							// Reify any interface methods that could be called dynamically
-							if ((!implMethod->IsReifiedAndImplemented()) && (implMethod->GetNumGenericParams() == 0) && (!implMethod->mMethodDef->mIsStatic) &&
-								(!implMethod->mReturnType->IsConcreteInterfaceType()))
+							BfMethodInstance* implMethod = vEntry.mImplementingMethod;
+							if ((implMethod != NULL) && ((!implMethod->mMethodInstanceGroup->IsImplemented()) || (!implMethod->mIsReified)))
 							{
 								didWork = true;
-								checkType->mModule->GetMethodInstance(implMethod);
+								if (!typeInst->mModule->mIsModuleMutable)
+									typeInst->mModule->StartExtension();
+								typeInst->mModule->GetMethodInstance(implMethod);
 							}
 						}
 					}
 
-					checkType = checkType->mBaseType;
+					auto checkType = typeInst;
+					while (checkType != NULL)
+					{
+						if ((checkType != typeInst) && (checkType->mHasBeenInstantiated))
+						{
+							// We will already check this type here in its own loop
+							break;
+						}
+
+						if (checkType->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
+							break;
+
+						for (auto& ifaceTypeInst : checkType->mInterfaces)
+						{
+							auto ifaceInst = ifaceTypeInst.mInterfaceType;
+							int startIdx = ifaceTypeInst.mStartInterfaceTableIdx;
+							int iMethodCount = (int)ifaceInst->mMethodInstanceGroups.size();
+							auto declTypeDef = ifaceTypeInst.mDeclaringType;
+
+							for (int iMethodIdx = 0; iMethodIdx < iMethodCount; iMethodIdx++)
+							{
+								auto& ifaceMethodInstGroup = ifaceInst->mMethodInstanceGroups[iMethodIdx];
+								auto ifaceMethodInst = ifaceMethodInstGroup.mDefault;
+
+								if (typeInst->IsObject())
+								{
+									// If the implementor is an object then this can be dynamically dispatched								
+								}
+								else
+								{
+									// If this method is explicitly reflected then a struct's implementation may be invoked with reflection
+									if (!ifaceMethodInstGroup.mExplicitlyReflected)
+										continue;
+								}
+
+								if ((ifaceMethodInst == NULL) || (!ifaceMethodInst->IsReifiedAndImplemented()))
+									continue;
+
+								auto implMethodRef = &checkType->mInterfaceMethodTable[iMethodIdx + startIdx].mMethodRef;
+								BfMethodInstance* implMethod = *implMethodRef;
+								if (implMethod == NULL)
+									continue;
+
+								// Reify any interface methods that could be called dynamically
+								if ((!implMethod->IsReifiedAndImplemented()) && (implMethod->GetNumGenericParams() == 0) && (!implMethod->mMethodDef->mIsStatic) &&
+									(!implMethod->mReturnType->IsConcreteInterfaceType()))
+								{
+									didWork = true;
+									checkType->mModule->GetMethodInstance(implMethod);
+								}
+							}
+						}
+
+						checkType = checkType->mBaseType;
+					}
 				}
 			}
 		}
