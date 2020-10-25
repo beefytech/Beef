@@ -2376,6 +2376,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			if (methodDef->mIsNoShow)
 				continue;
 
+			bool allowInternalOverride = false;
 			if (curType == mModule->mCurTypeInstance)
 			{
 				// The "normal" case, and only case for types without extensions
@@ -2387,6 +2388,9 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 
 				if (!curType->IsTypeMemberAccessible(methodDef->mDeclaringType, activeTypeDef))
 					continue;
+
+				if (methodDef->mIsExtern)
+					allowInternalOverride = true;
 			}
 			
 			auto& methodGroup = curType->mMethodInstanceGroups[methodDef->mIdx];
@@ -2396,7 +2400,11 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			}
 			auto methodInst = methodGroup.mDefault;
 
-			if ((!methodDef->mIsVirtual) || (methodDef->mIsOverride))
+			if (allowInternalOverride)
+			{
+				//
+			}
+			else if ((!methodDef->mIsVirtual) || (methodDef->mIsOverride))
 				continue;
 			
 			if ((methodDef->mMethodType != BfMethodType_Normal) &&
