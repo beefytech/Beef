@@ -19,10 +19,13 @@ namespace IDE
 
 		public static void AppendWithOptionalQuotes(String targetStr, String srcFileName)
 		{
-		    if (!srcFileName.Contains(' '))
-			    targetStr.Append(srcFileName);
-			else
+			bool hasSpace = srcFileName.Contains(' ');
+			bool alreadyQuoted = (srcFileName.Length > 0 && srcFileName[0] == '"' && srcFileName[srcFileName.Length - 1] == '"');
+
+			if (hasSpace && !alreadyQuoted)
 				targetStr.Append("\"", srcFileName, "\"");
+			else
+			    targetStr.Append(srcFileName);
 		}
 
         public static bool FixFilePath(String filePath, char8 wantSlash, char8 otherSlash)
