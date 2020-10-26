@@ -4466,7 +4466,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 		{
 			BfLogSysM("Autocomplete removing IRFunction %d\n", methodInstance->mIRFunction.mId);
 			module->mBfIRBuilder->Func_DeleteBody(methodInstance->mIRFunction);
-			module->mBfIRBuilder->Func_EraseFromParent(methodInstance->mIRFunction);			
+			module->mBfIRBuilder->Func_SafeRename(methodInstance->mIRFunction);
 		}
 	}
 		

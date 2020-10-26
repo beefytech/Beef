@@ -3520,6 +3520,12 @@ void BfIRCodeGen::HandleNextCmd()
 			((llvm::Function*)func)->deleteBody();
 		}
 		break;
+	case BfIRCmd_Func_SafeRename:
+		{
+			CMD_PARAM(llvm::Function*, func);
+			func->setName((Beefy::String(func->getName()) + StrFormat("__RENAME%d", curId)).c_str());
+		}
+		break;
 	case BfIRCmd_Func_SetLinkage:
 		{
 			CMD_PARAM(llvm::Function*, func);

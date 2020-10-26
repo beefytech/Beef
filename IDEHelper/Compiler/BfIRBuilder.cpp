@@ -4773,19 +4773,18 @@ void BfIRBuilder::Func_DeleteBody(BfIRFunction func)
 	NEW_CMD_INSERTED;
 }
 
-void BfIRBuilder::Func_EraseFromParent(BfIRFunction func)
-{
-	// Refuse to erase from parent
-	/*WriteCmd(BfIRCmd_Func_EraseFromParent, func);
+void BfIRBuilder::Func_SafeRename(BfIRFunction func)
+{	
+	WriteCmd(BfIRCmd_Func_SafeRename, func);
 
 	// We don't actually remove it from the named map.  It doesn't matter for us.
 
-	{
-		auto llvmFunc = llvm::dyn_cast<llvm::Function>(func.mLLVMValue);
-		llvmFunc->eraseFromParent();
-	}
+// 	{
+// 		auto llvmFunc = llvm::dyn_cast<llvm::Function>(func.mLLVMValue);
+// 		llvmFunc->eraseFromParent();
+// 	}
 
-	NEW_CMD_INSERTED;*/
+	NEW_CMD_INSERTED;
 }
 
 void BfIRBuilder::Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage)

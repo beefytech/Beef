@@ -278,7 +278,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_Func_AddAttribute1,
 	BfIRCmd_Func_SetParamName,	
 	BfIRCmd_Func_DeleteBody,
-	BfIRCmd_Func_EraseFromParent,
+	BfIRCmd_Func_SafeRename,
 	BfIRCmd_Func_SetLinkage,
 
 	BfIRCmd_SaveDebugLocation,
@@ -1223,7 +1223,7 @@ public:
 	void Func_AddAttribute(BfIRFunction func, int argIdx, BfIRAttribute attr, int arg);
 	void Func_SetParamName(BfIRFunction func, int argIdx, const StringImpl& name);	
 	void Func_DeleteBody(BfIRFunction func);
-	void Func_EraseFromParent(BfIRFunction func);
+	void Func_SafeRename(BfIRFunction func);
 	void Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage);
 	
 	void SaveDebugLocation();

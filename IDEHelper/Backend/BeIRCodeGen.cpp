@@ -2433,6 +2433,12 @@ void BeIRCodeGen::HandleNextCmd()
 			func->mBlocks.Clear();
 		}
 		break;
+	case BfIRCmd_Func_SafeRename:
+		{
+			CMD_PARAM(BeFunction*, func);
+			func->mName += StrFormat("__RENAME%d", curId);
+		}
+		break;
 	case BfIRCmd_Func_SetLinkage:
 		{
 			CMD_PARAM(BeFunction*, func);
