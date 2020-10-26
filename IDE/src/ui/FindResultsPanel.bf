@@ -17,8 +17,9 @@ namespace IDE.ui
     {
         public static String sCurrentDocument = "Current Document";
 		public static String sCurrentProject = "Current Project";
+		public static String sUnlockedProjects = "Unlocked Projects";
         public static String sEntireSolution = "Entire Solution";
-		public static String[] sLocationStrings = new .(sCurrentDocument, sCurrentProject, sEntireSolution) ~ delete _;
+		public static String[] sLocationStrings = new .(sCurrentDocument, sCurrentProject, sUnlockedProjects, sEntireSolution) ~ delete _;
         
         List<String> mPendingLines = new List<String>() ~ DeleteContainerAndItems!(_);
 
@@ -408,6 +409,16 @@ namespace IDE.ui
 				for (var project in IDEApp.sApp.mWorkspace.mProjects)
 				{
 					if ((isReplace) && (project.mLocked))
+						continue;
+
+				    AddFromFilesFolder(project.mRootFolder, searchOptions);
+				}
+			}
+			else if (searchOptions.mSearchLocation == sUnlockedProjects)
+			{
+				for (var project in IDEApp.sApp.mWorkspace.mProjects)
+				{
+					if (project.mLocked)
 						continue;
 
 				    AddFromFilesFolder(project.mRootFolder, searchOptions);
