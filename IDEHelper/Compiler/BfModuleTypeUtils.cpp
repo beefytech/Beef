@@ -756,10 +756,10 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 			if (memberMap.TryGetValue(memberRef.mName, &prevMemberRef))
 			{
 				//auto& prevMemberRef = itr->second;
-
+				
 				MemberRef* firstMemberRef = &memberRef;
 				MemberRef* secondMemberRef = prevMemberRef;
-				bool showPrevious = false;
+				bool showPrevious = false;				
 
 				BfError* error = NULL;
 				if (prevMemberRef->mTypeInst != typeInst)
@@ -800,6 +800,20 @@ void BfModule::CheckMemberNames(BfTypeInstance* typeInst)
 					if (wantsSwap)
 					{
 						std::swap(firstMemberRef, secondMemberRef);
+					}
+					
+					if (typeInst->mTypeDef->mIsCombinedPartial)
+					{
+						if ((firstMemberRef->mKindName == "property") && (secondMemberRef->mKindName == "property"))
+						{
+							auto firstPropertyDef = (BfPropertyDef*)firstMemberRef->mMemberDef;
+							auto secondPropertyDef = (BfPropertyDef*)secondMemberRef->mMemberDef;
+							if (auto secondPropertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(secondPropertyDef->mFieldDeclaration))
+							{
+								if ((secondPropertyDeclaration->mVirtualSpecifier != NULL) && (secondPropertyDeclaration->mVirtualSpecifier->mToken == BfToken_Override))
+									continue;
+							}
+						}
 					}
 
 					if (secondMemberRef->mNameNode != NULL)
