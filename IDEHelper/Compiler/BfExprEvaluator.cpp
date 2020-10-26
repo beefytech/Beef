@@ -16046,7 +16046,7 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 	}
 
 	if (isConstBranch)
-	{		
+	{
 		BfExpression* actualExpr = (constResult) ? condExpr->mTrueExpression : condExpr->mFalseExpression;
 		BfExpression* ignoredExpr = (constResult) ? condExpr->mFalseExpression : condExpr->mTrueExpression;
 
@@ -16090,6 +16090,8 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
 	
 	mModule->mBfIRBuilder->CreateCondBr(condResult.mValue, trueBB, falseBB);
 
+	SetAndRestoreValue<bool> prevInCondBlock(mModule->mCurMethodState->mCurScope->mInnerIsConditional, true);
+
 	mModule->AddBasicBlock(trueBB);	
 	auto trueValue = mModule->CreateValueFromExpression(condExpr->mTrueExpression, mExpectingType, (BfEvalExprFlags)(BfEvalExprFlags_NoCast | BfEvalExprFlags_CreateConditionalScope));
 	if ((mExpectingType != NULL) && (trueValue) && (trueValue.mType != mExpectingType))
@@ -16115,6 +16117,8 @@ void BfExprEvaluator::Visit(BfConditionalExpression* condExpr)
  			falseValue = checkFalseValue; 		
 		mModule->FixIntUnknown(falseValue);
  	}
+
+	prevInCondBlock.Restore();
 
 	bool isValid = trueValue && falseValue;
 
