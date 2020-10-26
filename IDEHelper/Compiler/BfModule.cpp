@@ -20222,7 +20222,12 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 		prevFunc = mBfIRBuilder->GetFunction(mangledName);
 		if (prevFunc)
 		{
-			if (methodDef->mIsExtern)
+			if ((methodDef->mIsOverride) && (mCurTypeInstance->mTypeDef->mIsCombinedPartial))
+			{
+				BfLogSysM("Function collision from inner override erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
+				mBfIRBuilder->Func_EraseFromParent(prevFunc);
+			}
+			else if (methodDef->mIsExtern)
 			{
 				// Allow this
 				BfLogSysM("Function collision allowed multiple extern functions for %p: %d\n", methodInstance, prevFunc.mId);
@@ -20242,7 +20247,6 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 			else
 			{
 				BfLogSysM("Function collision erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
-
 				mBfIRBuilder->Func_EraseFromParent(prevFunc);
 			}
 		}
