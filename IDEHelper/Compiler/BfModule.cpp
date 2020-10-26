@@ -21462,9 +21462,20 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		}		
 	}
 	
-	if ((typeInstance->IsInterface()) && (methodDef->mMethodType == BfMethodType_Ctor))
+	if (typeInstance->IsInterface())
 	{
-		Fail("Interfaces cannot contain constructors", methodDeclaration);
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+			Fail("Interfaces cannot contain constructors", methodDeclaration);
+		if (methodDeclaration != NULL)
+		{
+			if (methodDef->mBody == NULL)
+			{
+				if (methodDef->mProtection != BfProtection_Public) //TODO: MAKE AN ERROR
+					Warn(0, "Protection specifiers can only be used with interface methods containing a default implementation body", methodDeclaration->mProtectionSpecifier);
+				if ((methodDeclaration->mVirtualSpecifier != NULL) && (methodDeclaration->mVirtualSpecifier->mToken != BfToken_Abstract)) //TODO: MAKE AN ERROR
+					Warn(0, "Virtual specifiers can only be used with interface methods containing a default implementation body", methodDeclaration->mVirtualSpecifier);
+			}
+		}
 	}
 
 	bool foundHiddenMethod = false;
