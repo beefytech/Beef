@@ -2153,7 +2153,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 		StringT<128> methodName;
 		StringT<256> impString;				
 
-		bool isAbstract = methodDef->mIsAbstract || isInterface;// (methodDef->mIsAbstract) && (!isInterface);
+		bool isAbstract = (methodDef->mIsAbstract) || (isInterface) || (!methodDef->mIsVirtual);
 
 		if (isAbstract)
 		{
