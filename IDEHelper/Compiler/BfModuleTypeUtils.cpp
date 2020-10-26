@@ -6996,7 +6996,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 					if ((isValid) && (mCompiler->mSystem->ContainsNamespace(leftComposite, mCurTypeInstance->mTypeDef->mProject)))
 						isNamespace = true;
 				}
-				else if ((isValid) && (resolvedTypeInstance->mTypeDef->mNamespace.EndsWith(leftComposite)))
+				else if ((isValid) && (resolvedTypeInstance->mTypeDef->mNamespace.EndsWith(leftComposite)) && (resolvedTypeInstance->mTypeDef->mOuterType == NULL))
 				{
 					if (autoComplete != NULL)
 					{
