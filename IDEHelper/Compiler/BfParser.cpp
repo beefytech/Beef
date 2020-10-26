@@ -1186,13 +1186,15 @@ bool BfParser::HandlePreprocessor()
 				mPreprocessorNodeStack.pop_back();
 		}
 		else if (pragma == "define")
-		{
-			HandleDefine(pragmaParam, paramNode);
+		{			
+			if ((paramNode != NULL) && (!paramNode->mChildArr.IsEmpty()))
+				HandleDefine(paramNode->mChildArr[0]->ToString(), paramNode);
 			wantedParam = true;
 		}
 		else if (pragma == "undef")
 		{
-			HandleUndefine(pragmaParam);
+			if ((paramNode != NULL) && (!paramNode->mChildArr.IsEmpty()))
+				HandleUndefine(paramNode->mChildArr[0]->ToString());
 			wantedParam = true;
 		}
 		else if (pragma == "error")
