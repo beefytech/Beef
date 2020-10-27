@@ -64,26 +64,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -116,11 +116,11 @@
     <IncludePath>$(VSInstallDir)\DIA SDK\include;;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-	<OutDir>$(SolutionDir)\ide\dist\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\$(Platform)\$(Configuration)\</OutDir>
     <IncludePath>$(VSInstallDir)\DIA SDK\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-	<OutDir>$(SolutionDir)\ide\dist\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)\ide\dist\$(Platform)\$(Configuration)\</OutDir>
     <IncludePath>$(VSInstallDir)\DIA SDK\include;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -145,7 +145,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>BF_DBG_64;WIN32;_DEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_1\llvm\include;..\extern\llvm_win64_8_0_1\include;..\extern\llvm-project_8_0_1\llvm\lib\Target;..\extern\llvm_win64_8_0_1\lib\Target\X86;..\extern\llvm-project_8_0_1\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_11_0_0\llvm\include;..\extern\llvm_win64_11_0_0\include;..\extern\llvm-project_11_0_0\llvm\lib\Target;..\extern\llvm_win64_11_0_0\lib\Target\X86;..\extern\llvm-project_11_0_0\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <AdditionalOptions>-D_SCL_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -183,7 +183,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>BF_DBG_64;WIN32;NDEBUG;_WINDOWS;_USRDLL;IDEHELPER_EXPORTS;BFSYSLIB_DYNAMIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_1\llvm\include;..\extern\llvm_win64_8_0_1\include;..\extern\llvm-project_8_0_1\llvm\lib\Target;..\extern\llvm_win64_8_0_1\lib\Target\X86;..\extern\llvm-project_8_0_1\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_11_0_0\llvm\include;..\extern\llvm_win64_11_0_0\include;..\extern\llvm-project_11_0_0\llvm\lib\Target;..\extern\llvm_win64_11_0_0\lib\Target\X86;..\extern\llvm-project_11_0_0\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>

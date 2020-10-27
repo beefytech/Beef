@@ -3186,6 +3186,8 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			break;
 		case 0x1176:			
 			break;
+		case 0x1179:
+			break;
 		default:
 			BF_DBG_FATAL("Unhandled");
 			break;

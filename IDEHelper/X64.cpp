@@ -32,6 +32,7 @@
 #include "X86/MCTargetDesc/X86BaseInfo.h"
 #include "X86InstrInfo.h"
 #include "BeefySysLib/util/HashSet.h"
+#include "../../llvm/lib/Target/X86/TargetInfo/X86TargetInfo.h"
 
 #pragma warning(pop)
 
@@ -827,8 +828,9 @@ X64CPU::X64CPU() :
 	if (!mRegisterInfo)
 		return;
 
+	MCTargetOptions options;
 	// Get the assembler info needed to setup the MCContext.
-	mAsmInfo = TheX86_64Target.createMCAsmInfo(*mRegisterInfo, triple);
+	mAsmInfo = TheX86_64Target.createMCAsmInfo(*mRegisterInfo, triple, options);
 	if (!mAsmInfo)
 		return;
 
@@ -876,8 +878,9 @@ bool X64CPU::Decode(uint64 address, DbgModuleMemoryCache* memoryCache, X64Instr*
 	uint8 data[15];
 	memoryCache->Read(address, data, 15);
 
+	mDisAsm->CommentStream = &inst->mAnnotationStream;
 	ArrayRef<uint8_t> dataArrayRef(data, data + 15);
-	MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(inst->mMCInst, size, dataArrayRef, address, nulls(), inst->mAnnotationStream);
+	MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(inst->mMCInst, size, dataArrayRef, address, nulls());
 	inst->mSize = (int)size;
 
 	return S == MCDisassembler::Success;
@@ -898,8 +901,9 @@ bool X64CPU::Decode(uint64 baseAddress, const uint8* dataBase, int dataLength, c
 	//TODO: LLVM3.8
 	//MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(inst->mMCInst, size, region, address, nulls(), inst->mAnnotationStream);
 
+	mDisAsm->CommentStream = &inst->mAnnotationStream;
 	ArrayRef<uint8_t> dataArrayRef(dataPtr, dataLength - (dataPtr - dataBase));
-	MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(inst->mMCInst, size, dataArrayRef, address, nulls(), inst->mAnnotationStream);
+	MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(inst->mMCInst, size, dataArrayRef, address, nulls());
 	inst->mSize = (int)size;
 
 	return S == MCDisassembler::Success;
@@ -927,8 +931,9 @@ void X64CPU::GetNextPC(uint64 baseAddress, const uint8* dataBase, int dataLength
 	uint64 size = 0;
 	MCInst mcInst;
 	//MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(mcInst, size, region, address, nulls(), nulls());
+	mDisAsm->CommentStream = &nulls();
 	ArrayRef<uint8_t> dataArrayRef(dataPtr, dataLength - (dataPtr - dataBase));
-	MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(mcInst, size, dataArrayRef, address, nulls(), nulls());
+	MCDisassembler::DecodeStatus S = mDisAsm->getInstruction(mcInst, size, dataArrayRef, address, nulls());
 
 }
 
@@ -945,7 +950,7 @@ String X64CPU::InstructionToString(X64Instr* inst, uint64 addr)
 	SmallVector<char, 256> insnStr;
 	raw_svector_ostream OS(insnStr);
 	//mInstPrinter->CurPCRelImmOffset = addr + inst->GetLength();
-	mInstPrinter->printInst(&inst->mMCInst, OS, annotationsStr, *mSubtargetInfo);
+	mInstPrinter->printInst(&inst->mMCInst, addr, annotationsStr, *mSubtargetInfo, OS);
 	//OS.flush();
 	//llvm::StringRef str = OS.str();	
 

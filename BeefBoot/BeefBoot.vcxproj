@@ -28,26 +28,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -106,7 +106,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_1\llvm\include;..\extern\llvm_win64_8_0_1\include;..\extern\llvm-project_8_0_1\llvm\lib\Target;..\extern\llvm_win64_8_0_1\lib\Target\X86;..\extern\llvm-project_8_0_1\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_11_0_0\llvm\include;..\extern\llvm_win64_11_0_0\include;..\extern\llvm-project_11_0_0\llvm\lib\Target;..\extern\llvm_win64_11_0_0\lib\Target\X86;..\extern\llvm-project_11_0_0\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode>false</SupportJustMyCode>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -146,7 +146,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
-      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_8_0_1\llvm\include;..\extern\llvm_win64_8_0_1\include;..\extern\llvm-project_8_0_1\llvm\lib\Target;..\extern\llvm_win64_8_0_1\lib\Target\X86;..\extern\llvm\tools\clang\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../;../IDEHelper;../BeefySysLib/platform/win;../BeefySysLib/third_party;..\extern\llvm-project_11_0_0\llvm\include;..\extern\llvm_win64_11_0_0\include;..\extern\llvm-project_11_0_0\llvm\lib\Target;..\extern\llvm_win64_11_0_0\lib\Target\X86;..\extern\llvm\tools\clang\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
