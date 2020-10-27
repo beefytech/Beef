@@ -1583,7 +1583,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	{
 		if (mCurTypeDef->mTypeCode != BfTypeCode_Object)
 		{
-			mPassInstance->Warn(0, StrFormat("Types declared as '%s' cannot be 'abstract'", BfTokenToString(typeToken)).c_str(), typeDeclaration->mStaticSpecifier);
+			mPassInstance->Warn(0, StrFormat("Types declared as '%s' cannot be 'abstract'", BfTokenToString(typeToken)).c_str(), typeDeclaration->mAbstractSpecifier);
 			mCurTypeDef->mIsAbstract = false;
 		}
 	}
@@ -1592,7 +1592,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	{
 		if (mCurTypeDef->mTypeCode != BfTypeCode_Interface)
 		{
-			mPassInstance->Warn(0, StrFormat("Types declared as '%s' cannot be 'concrete'", BfTokenToString(typeToken)).c_str(), typeDeclaration->mStaticSpecifier);
+			mPassInstance->Warn(0, StrFormat("Types declared as '%s' cannot be 'concrete'", BfTokenToString(typeToken)).c_str(), typeDeclaration->mAbstractSpecifier);
 			mCurTypeDef->mIsConcrete = false;
 		}
 	}
