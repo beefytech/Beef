@@ -11,7 +11,6 @@
 #include "BfCodeGen.h"
 #include "BfExprEvaluator.h"
 #include "../Backend/BeLibManger.h"
-#include <fcntl.h>
 #include "BfConstResolver.h"
 #include "BfMangler.h"
 #include "BeefySysLib/util/PerfTimer.h"
@@ -25,6 +24,8 @@
 #include "BfIRCodeGen.h"
 #include "BfDefBuilder.h"
 #include "BfDeferEvalChecker.h"
+#include <fcntl.h>
+#include <time.h>
 
 #pragma warning(pop)
 
@@ -21472,7 +21473,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				if (methodDef->mProtection != BfProtection_Public) //TODO: MAKE AN ERROR
 					Warn(0, "Protection specifiers can only be used with interface methods containing a default implementation body", methodDeclaration->mProtectionSpecifier);
-				if ((methodDeclaration->mVirtualSpecifier != NULL) && (methodDeclaration->mVirtualSpecifier->mToken != BfToken_Abstract)) //TODO: MAKE AN ERROR
+				if ((methodDeclaration->mVirtualSpecifier != NULL) && 
+					(methodDeclaration->mVirtualSpecifier->mToken != BfToken_Abstract) &&
+					(methodDeclaration->mVirtualSpecifier->mToken != BfToken_Concrete)) //TODO: MAKE AN ERROR
 					Warn(0, "Virtual specifiers can only be used with interface methods containing a default implementation body", methodDeclaration->mVirtualSpecifier);
 			}
 		}
