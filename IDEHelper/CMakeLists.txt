@@ -33,7 +33,7 @@ add_definitions(
    -DBFSYSLIB_DYNAMIC
 )
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
 #add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 INCLUDE(CheckIncludeFiles)
@@ -49,8 +49,8 @@ if (${APPLE})
     ../BeefySysLib/    
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_8_0_0/llvm/include  
-    ../extern/llvm-project_8_0_0/llvm/lib/Target
+    ../extern/llvm-project_11_0_0/llvm/include  
+    ../extern/llvm-project_11_0_0/llvm/lib/Target
 
     ../BeefySysLib/platform/osx
   )
@@ -61,8 +61,8 @@ else()
     ../BeefySysLib/    
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_8_0_0/llvm/include  
-    ../extern/llvm-project_8_0_0/llvm/lib/Target
+    ../extern/llvm-project_11_0_0/llvm/include  
+    ../extern/llvm-project_11_0_0/llvm/lib/Target
 
     ../BeefySysLib/platform/linux    
   )
@@ -77,24 +77,24 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     -D_DEBUG
   )
   include_directories(
-    ../extern/llvm_linux_8_0_0/include
-    ../extern/llvm_linux_8_0_0/lib/Target/X86
-    ../extern/llvm_linux_8_0_0/lib/Target/AArch64
+    ../extern/llvm_linux_11_0_0/include
+    ../extern/llvm_linux_11_0_0/lib/Target/X86
+    ../extern/llvm_linux_11_0_0/lib/Target/AArch64
   )
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
   set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_8_0_0/lib")
+  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_11_0_0/lib")
 else()
   include_directories(
-    ../extern/llvm_linux_rel_8_0_0/include
-    ../extern/llvm_linux_rel_8_0_0/lib/Target/X86
-    ../extern/llvm_linux_rel_8_0_0/lib/Target/AArch64
+    ../extern/llvm_linux_rel_11_0_0/include
+    ../extern/llvm_linux_rel_11_0_0/lib/Target/X86
+    ../extern/llvm_linux_rel_11_0_0/lib/Target/AArch64
   )
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
   set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_8_0_0/lib")
+  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_11_0_0/lib")
 endif()
 
 ################### Dependencies ##################
@@ -187,7 +187,7 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 execute_process(
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_8_0_0/bin/llvm-config --system-libs --link-static
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_11_0_0/bin/llvm-config --system-libs --link-static
   OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
@@ -200,9 +200,9 @@ endif()
 
 list(APPEND LLVM_LIBS
   ${LLVM_LIB}/libLLVMCore.a
+  ${LLVM_LIB}/libLLVMCodeGen.a
   ${LLVM_LIB}/libLLVMMC.a
-  ${LLVM_LIB}/libLLVMMCParser.a
-  ${LLVM_LIB}/libLLVMCodeGen.a    
+  ${LLVM_LIB}/libLLVMMCParser.a  
   ${LLVM_LIB}/libLLVMMCDisassembler.a    
   ${LLVM_LIB}/libLLVMObject.a
   ${LLVM_LIB}/libLLVMBitReader.a
@@ -228,33 +228,33 @@ list(APPEND LLVM_LIBS
   ${LLVM_LIB}/libLLVMLinker.a    
   ${LLVM_LIB}/libLLVMAggressiveInstCombine.a
 
-  ${LLVM_LIB}/libLLVMX86Info.a
-  ${LLVM_LIB}/libLLVMX86Utils.a
-  ${LLVM_LIB}/libLLVMX86AsmPrinter.a
+  ${LLVM_LIB}/libLLVMBitstreamReader.a  
+  ${LLVM_LIB}/libLLVMCFGuard.a
+  ${LLVM_LIB}/libLLVMTextAPI.a
+  ${LLVM_LIB}/libLLVMRemarks.a
+
+  ${LLVM_LIB}/libLLVMX86Info.a    
   ${LLVM_LIB}/libLLVMX86Desc.a    
   ${LLVM_LIB}/libLLVMX86CodeGen.a
   ${LLVM_LIB}/libLLVMX86AsmParser.a
   ${LLVM_LIB}/libLLVMX86Disassembler.a
 
-  ${LLVM_LIB}/libLLVMARMInfo.a
-  ${LLVM_LIB}/libLLVMARMUtils.a
-  ${LLVM_LIB}/libLLVMARMAsmPrinter.a
   ${LLVM_LIB}/libLLVMARMDesc.a
+  ${LLVM_LIB}/libLLVMARMUtils.a
+  ${LLVM_LIB}/libLLVMARMInfo.a
   ${LLVM_LIB}/libLLVMARMCodeGen.a
   ${LLVM_LIB}/libLLVMARMAsmParser.a
   ${LLVM_LIB}/libLLVMARMDisassembler.a
 
-  ${LLVM_LIB}/libLLVMAArch64Info.a
-  ${LLVM_LIB}/libLLVMAArch64Utils.a
-  ${LLVM_LIB}/libLLVMAArch64AsmPrinter.a
   ${LLVM_LIB}/libLLVMAArch64Desc.a
+  ${LLVM_LIB}/libLLVMAArch64Utils.a
+  ${LLVM_LIB}/libLLVMAArch64Info.a
   ${LLVM_LIB}/libLLVMAArch64CodeGen.a
   ${LLVM_LIB}/libLLVMAArch64AsmParser.a
   ${LLVM_LIB}/libLLVMAArch64Disassembler.a
 
-  ${LLVM_LIB}/libLLVMWebAssemblyInfo.a  
-  ${LLVM_LIB}/libLLVMWebAssemblyAsmPrinter.a
   ${LLVM_LIB}/libLLVMWebAssemblyDesc.a
+  ${LLVM_LIB}/libLLVMWebAssemblyInfo.a
   ${LLVM_LIB}/libLLVMWebAssemblyCodeGen.a
   ${LLVM_LIB}/libLLVMWebAssemblyAsmParser.a
   ${LLVM_LIB}/libLLVMWebAssemblyDisassembler.a
@@ -274,7 +274,7 @@ endif()
 
 # Link with other dependencies.
 if(MSVC)
-  target_link_libraries(${PROJECT_NAME} BeefySysLib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib LLVMX86Disassembler.lib LLVMMCDisassembler.lib LLVMSupport.lib LLVMX86Info.lib LLVMX86Utils.lib LLVMX86AsmPrinter.lib LLVMX86Desc.lib %(AdditionalDependencies) LLVMMC.lib LLVMObject.lib LLVMCore.lib LLVMBitReader.lib LLVMAsmParser.lib LLVMMCParser.lib LLVMCodeGen.lib LLVMTarget.lib LLVMX86CodeGen.lib LLVMScalarOpts.lib LLVMInstCombine.lib LLVMSelectionDAG.lib LLVMProfileData.lib LLVMTransformUtils.lib LLVMAnalysis.lib LLVMX86AsmParser.lib LLVMAsmPrinter.lib LLVMBitWriter.lib LLVMVectorize.lib LLVMipo.lib LLVMInstrumentation.lib LLVMDebugInfoDWARF.lib LLVMDebugInfoPDB.lib LLVMDebugInfoCodeView.lib LLVMGlobalISel.lib LLVMBinaryFormat.lib LLVMAggressiveInstCombine.lib libcurl_a.lib)
+  target_link_libraries(${PROJECT_NAME} BeefySysLib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib LLVMX86Disassembler.lib LLVMMCDisassembler.lib LLVMSupport.lib LLVMX86Info.lib LLVMX86Desc.lib %(AdditionalDependencies) LLVMMC.lib LLVMObject.lib LLVMCore.lib LLVMBitReader.lib LLVMAsmParser.lib LLVMMCParser.lib LLVMCodeGen.lib LLVMTarget.lib LLVMX86CodeGen.lib LLVMScalarOpts.lib LLVMInstCombine.lib LLVMSelectionDAG.lib LLVMProfileData.lib LLVMTransformUtils.lib LLVMAnalysis.lib LLVMX86AsmParser.lib LLVMAsmPrinter.lib LLVMBitWriter.lib LLVMVectorize.lib LLVMipo.lib LLVMInstrumentation.lib LLVMDebugInfoDWARF.lib LLVMDebugInfoPDB.lib LLVMDebugInfoCodeView.lib LLVMGlobalISel.lib LLVMBinaryFormat.lib LLVMAggressiveInstCombine.lib libcurl_a.lib)
 else()
   target_link_libraries(${PROJECT_NAME} BeefySysLib hunspell pthread dl ${TARGET_LIBS_OS}    
         
