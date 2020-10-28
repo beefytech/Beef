@@ -504,6 +504,10 @@ extern "C" char* strdup(const char* str)
 	return _strdup(str);
 }
 
+extern "C" void __CxxFrameHandler4()
+{
+}
+
 // if (TSS > _Init_thread_epoch) {
 //   _Init_thread_header(&TSS);
 // Test our bit from the guard variable.	     
