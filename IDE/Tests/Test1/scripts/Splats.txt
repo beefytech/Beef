@@ -1,3 +1,6 @@
+# Temporarily broken in LLVM
+if (platform != "Win64") Stop()
+
 ShowFile("src/Splats.bf")
 GotoText("//SplatTester_SplatC_Call")
 ToggleBreakpoint()
