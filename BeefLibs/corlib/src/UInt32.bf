@@ -54,56 +54,40 @@ namespace System
 
 		public override void ToString(String strBuffer)
 		{
-		    // Dumb, make better.
-		    char8[] strChars = scope:: char8[16];
-		    int32 char8Idx = 14;
-		    int32 valLeft = (int32)this;
-			bool isNeg = false;
-			if (valLeft < 0)
+			// Dumb, make better.
+			char8[] strChars = scope:: char8[16];
+			int32 char8Idx = 14;
+			uint32 valLeft = (uint32)this;
+			while (valLeft > 0)
 			{
-				valLeft = -valLeft;
-				isNeg = true;
+				strChars[char8Idx] = (char8)('0' + (valLeft % 10));
+				valLeft /= 10;
+				char8Idx--;
 			}
-		    while (valLeft > 0)
-		    {
-		        strChars[char8Idx] = (char8)('0' + (valLeft % 10));
-		        valLeft /= 10;
-		        char8Idx--;
-			}			
-		    if (char8Idx == 14)
-		        strChars[char8Idx--] = '0';
-			if (isNeg)
-				strChars[char8Idx--] = '-';
-		    char8* char8Ptr = &strChars[char8Idx + 1];
-		    strBuffer.Append(char8Ptr);
+			if (char8Idx == 14)
+				strChars[char8Idx--] = '0';
+			char8* char8Ptr = &strChars[char8Idx + 1];
+			strBuffer.Append(char8Ptr);
 		}
 
 		void ToString(String strBuffer, int minNumerals)
 		{
-		    // Dumb, make better.
-		    char8[] strChars = scope:: char8[16];
-		    int32 char8Idx = 14;
-		    int32 valLeft = (int32)this;
-			bool isNeg = false;
+			// Dumb, make better.
+			char8[] strChars = scope:: char8[16];
+			int32 char8Idx = 14;
+			uint32 valLeft = (uint32)this;
 			int minNumeralsLeft = minNumerals;
-			if (valLeft < 0)
+			while ((valLeft > 0) || (minNumeralsLeft > 0))
 			{
-				valLeft = -valLeft;
-				isNeg = true;
-			}
-		    while ((valLeft > 0) || (minNumeralsLeft > 0))
-		    {
-		        strChars[char8Idx] = (char8)('0' + (valLeft % 10));
-		        valLeft /= 10;
-		        char8Idx--;
+				strChars[char8Idx] = (char8)('0' + (valLeft % 10));
+				valLeft /= 10;
+				char8Idx--;
 				minNumeralsLeft--;
-			}			
-		    if (char8Idx == 14)
-		        strChars[char8Idx--] = '0';
-			if (isNeg)
-				strChars[char8Idx--] = '-';
-		    char8* char8Ptr = &strChars[char8Idx + 1];
-		    strBuffer.Append(char8Ptr);
+			}
+			if (char8Idx == 14)
+				strChars[char8Idx--] = '0';
+			char8* char8Ptr = &strChars[char8Idx + 1];
+			strBuffer.Append(char8Ptr);
 		}
 
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
