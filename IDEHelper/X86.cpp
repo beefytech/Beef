@@ -384,7 +384,7 @@ uint32 X86Instr::GetTarget(Debugger* debugger, X86CPURegisters* registers)
 
 	int opIdx = 0;
 	auto operand = mMCInst.getOperand(0);
-	if ((instDesc.OpInfo[0].OperandType == MCOI::OPERAND_REGISTER) && (instDesc.OpInfo[4].OperandType == MCOI::OPERAND_MEMORY))
+	if ((mMCInst.getNumOperands() >= 5) && (instDesc.OpInfo[0].OperandType == MCOI::OPERAND_REGISTER) && (instDesc.OpInfo[4].OperandType == MCOI::OPERAND_MEMORY))
 	{
 		opIdx = 4;
 		operand = mMCInst.getOperand(opIdx);
