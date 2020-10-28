@@ -15,7 +15,7 @@ set(OUTPUT_RELEASE Release/bin)
 
 project(${PROJECT_NAME} CXX C)
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 #set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -44,8 +44,8 @@ if (${APPLE})
     ../BeefySysLib/    
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_8_0_0/llvm/include  
-    ../extern/llvm-project_8_0_0/llvm/lib/Target
+    ../extern/llvm-project_11_0_0/llvm/include  
+    ../extern/llvm-project_11_0_0/llvm/lib/Target
     ../IDEHelper
 
     ../BeefySysLib/platform/osx
@@ -57,8 +57,8 @@ else()
     ../BeefySysLib/    
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include    
-    ../extern/llvm-project_8_0_0/llvm/include  
-    ../extern/llvm-project_8_0_0/llvm/lib/Target
+    ../extern/llvm-project_11_0_0/llvm/include  
+    ../extern/llvm-project_11_0_0/llvm/lib/Target
     ../IDEHelper
 
     ../BeefySysLib/platform/linux    
@@ -74,18 +74,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     -D_DEBUG
   )
   include_directories(
-    ../extern/llvm_linux_8_0_0/include
-    ../extern/llvm_linux_8_0_0/lib/Target/X86
+    ../extern/llvm_linux_11_0_0/include
+    ../extern/llvm_linux_11_0_0/lib/Target/X86
   )
   set(EXECUTABLE_OUTPUT_PATH  "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_8_0_0/lib")
+  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_11_0_0/lib")
 else()
   include_directories(
-    ../extern/llvm_linux_rel_8_0_0/include
-    ../extern/llvm_linux_rel_8_0_0/lib/Target/X86
+    ../extern/llvm_linux_rel_11_0_0/include
+    ../extern/llvm_linux_rel_11_0_0/lib/Target/X86
   )
   set(EXECUTABLE_OUTPUT_PATH  "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
-  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_8_0_0/lib")    
+  set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_11_0_0/lib")    
 endif()
 
 ################### Dependencies ##################
@@ -134,7 +134,7 @@ add_executable(${PROJECT_NAME}
 )
 
 execute_process(
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_8_0_0/bin/llvm-config --system-libs --link-static
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_11_0_0/bin/llvm-config --system-libs --link-static
   OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )

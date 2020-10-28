@@ -582,7 +582,7 @@ llvm::Type* BfIRCodeGen::GetLLVMType(BfTypeCode typeCode, bool& isSigned)
 	case BfTypeCode_Double:	
 		return llvm::Type::getDoubleTy(*mLLVMContext);
 	case BfTypeCode_Float2:
-		return llvm::VectorType::get(llvm::Type::getFloatTy(*mLLVMContext), 2);
+		return llvm::FixedVectorType::get(llvm::Type::getFloatTy(*mLLVMContext), 2);
 	default: break;
 	}
 	return NULL;
@@ -1086,16 +1086,16 @@ llvm::Value* BfIRCodeGen::TryToVector(llvm::Value* value)
 		auto ptrElemType = ptrType->getElementType();
 		if (auto arrType = llvm::dyn_cast<llvm::ArrayType>(ptrElemType))
 		{
-			auto vecType = llvm::VectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
+			auto vecType = llvm::FixedVectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
 			auto vecPtrType = vecType->getPointerTo();
 
 			auto ptrVal0 = mIRBuilder->CreateBitCast(value, vecPtrType);
-			return mIRBuilder->CreateAlignedLoad(ptrVal0, 1);
+			return mIRBuilder->CreateAlignedLoad(ptrVal0, llvm::MaybeAlign(1));
 		}
 
 		if (auto vecType = llvm::dyn_cast<llvm::VectorType>(ptrElemType))
 		{
-			return mIRBuilder->CreateAlignedLoad(value, 1);
+			return mIRBuilder->CreateAlignedLoad(value, llvm::MaybeAlign(1));
 		}
 	}
 
@@ -1121,26 +1121,26 @@ llvm::Value* BfIRCodeGen::TryToVector(llvm::Value* value, llvm::Type* elemType)
 		auto ptrElemType = ptrType->getElementType();
 		if (auto arrType = llvm::dyn_cast<llvm::ArrayType>(ptrElemType))
 		{			
-			auto vecType = llvm::VectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
+			auto vecType = llvm::FixedVectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
 			auto vecPtrType = vecType->getPointerTo();
 
 			auto ptrVal0 = mIRBuilder->CreateBitCast(value, vecPtrType);
-			return mIRBuilder->CreateAlignedLoad(ptrVal0, 1);
+			return mIRBuilder->CreateAlignedLoad(ptrVal0, llvm::MaybeAlign(1));
 		}
 
 		if (auto vecType = llvm::dyn_cast<llvm::VectorType>(ptrElemType))
 		{
 			if (vecType->getElementType() == elemType)
-				return mIRBuilder->CreateAlignedLoad(value, 1);
+				return mIRBuilder->CreateAlignedLoad(value, llvm::MaybeAlign(1));
 
 			auto dataLayout = llvm::DataLayout(mLLVMModule);
 			int wantNumElements = (int)vecType->getNumElements() * (int)dataLayout.getTypeSizeInBits(vecType->getElementType()) / (int)dataLayout.getTypeSizeInBits(elemType);
 
-			auto newVecType = llvm::VectorType::get(elemType, wantNumElements);
+			auto newVecType = llvm::FixedVectorType::get(elemType, wantNumElements);
 			auto vecPtrType = newVecType->getPointerTo();
 
 			auto ptrVal0 = mIRBuilder->CreateBitCast(value, vecPtrType);
-			return mIRBuilder->CreateAlignedLoad(ptrVal0, 1);
+			return mIRBuilder->CreateAlignedLoad(ptrVal0, llvm::MaybeAlign(1));
 		}
 	}
 
@@ -1239,7 +1239,7 @@ bool BfIRCodeGen::TryVectorCpy(llvm::Value* ptr, llvm::Value* val)
 	}
 
 	auto usePtr = mIRBuilder->CreateBitCast(ptr, val->getType()->getPointerTo());
-	mIRBuilder->CreateAlignedStore(val, usePtr, 1);
+	mIRBuilder->CreateAlignedStore(val, usePtr, llvm::MaybeAlign(1));
 
 // 	auto valType = val->getType();
 // 	auto vecType = llvm::dyn_cast<llvm::VectorType>(valType);
@@ -1613,7 +1613,7 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(llvm::Type*, elementType);
 			CMD_PARAM(int, length);
-			SetResult(curId, llvm::VectorType::get(elementType, length));
+			SetResult(curId, llvm::FixedVectorType::get(elementType, length));
 		}
 		break;	
 	case BfIRCmd_CreateConstStruct:
@@ -2103,7 +2103,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(int, alignment);
 			CMD_PARAM(bool, isVolatile);
-			SetResult(curId, mIRBuilder->CreateAlignedLoad(val, alignment, isVolatile));
+			SetResult(curId, mIRBuilder->CreateAlignedLoad(val, llvm::MaybeAlign(alignment), isVolatile));
 		}
 		break;
 	case BfIRCmd_Store:
@@ -2125,7 +2125,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(bool, isVolatile);
 			if ((!TryMemCpy(ptr, val)) &&
 				(!TryVectorCpy(ptr, val)))
-				SetResult(curId, mIRBuilder->CreateAlignedStore(val, ptr, alignment, isVolatile));
+				SetResult(curId, mIRBuilder->CreateAlignedStore(val, ptr, llvm::MaybeAlign(alignment), isVolatile));
 		}
 		break;
 	case BfIRCmd_MemSet:
@@ -2688,7 +2688,7 @@ void BfIRCodeGen::HandleNextCmd()
 							else if (args[1]->getType()->isPointerTy())
 							{
 								auto ptrVal1 = mIRBuilder->CreateBitCast(args[1], vecType->getPointerTo());
-								val1 = mIRBuilder->CreateAlignedLoad(ptrVal1, 1);									
+								val1 = mIRBuilder->CreateAlignedLoad(ptrVal1, llvm::MaybeAlign(1));
 							}	
 							else if (args[1]->getType()->isVectorTy())
 							{								
@@ -2752,7 +2752,7 @@ void BfIRCodeGen::HandleNextCmd()
 										{
 											if (intType->getBitWidth() == 1)
 											{
-												auto toType = llvm::VectorType::get(llvm::IntegerType::get(*mLLVMContext, 8), vecType->getNumElements());
+												auto toType = llvm::FixedVectorType::get(llvm::IntegerType::get(*mLLVMContext, 8), vecType->getNumElements());
 												result = mIRBuilder->CreateZExt(result, toType);
 											}
 										}
@@ -2820,7 +2820,7 @@ void BfIRCodeGen::HandleNextCmd()
 										{
 											if (intType->getBitWidth() == 1)
 											{
-												auto toType = llvm::VectorType::get(llvm::IntegerType::get(*mLLVMContext, 8), vecType->getNumElements());
+												auto toType = llvm::FixedVectorType::get(llvm::IntegerType::get(*mLLVMContext, 8), vecType->getNumElements());
 												result = mIRBuilder->CreateZExt(result, toType);
 											}
 										}
@@ -2835,7 +2835,7 @@ void BfIRCodeGen::HandleNextCmd()
 							auto ptrElemType = ptrType->getElementType();
 							if (auto arrType = llvm::dyn_cast<llvm::ArrayType>(ptrElemType))
 							{
-								auto vecType = llvm::VectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
+								auto vecType = llvm::FixedVectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
 								auto vecPtrType = vecType->getPointerTo();
 								
 								llvm::Value* val0;								
@@ -2845,7 +2845,7 @@ void BfIRCodeGen::HandleNextCmd()
 								val0 = mIRBuilder->CreateInsertElement(val0, args[0], (uint64)3);								
 
 								auto ptrVal1 = mIRBuilder->CreateBitCast(args[1], vecPtrType);
-								auto val1 = mIRBuilder->CreateAlignedLoad(ptrVal1, 1);
+								auto val1 = mIRBuilder->CreateAlignedLoad(ptrVal1, llvm::MaybeAlign(1));
 
 								switch (intrinsicData->mIntrinsic)
 								{								
@@ -2874,15 +2874,15 @@ void BfIRCodeGen::HandleNextCmd()
 					break;
 				case BfIRIntrinsic_Shuffle:					
 					{
-						llvm::SmallVector<uint, 8> intMask;
+						llvm::SmallVector<int, 8> intMask;
 						for (int i = 7; i < (int)intrinsicData->mName.length(); i++)
-							intMask.push_back((uint)(intrinsicData->mName[i] - '0'));
+							intMask.push_back((int)(intrinsicData->mName[i] - '0'));
 
 						auto val0 = TryToVector(args[0]);
 
 						if (val0 != NULL)
 						{															
-							SetResult(curId, mIRBuilder->CreateShuffleVector(val0, val0, intMask));							
+							SetResult(curId, mIRBuilder->CreateShuffleVector(val0, val0, intMask));
 						}
 						else
 						{
@@ -3049,7 +3049,7 @@ void BfIRCodeGen::HandleNextCmd()
 						}						
 						auto memoryKind = (BfIRAtomicOrdering)memoryKindConst->getSExtValue();
 						auto ptrType = llvm::dyn_cast<llvm::PointerType>(args[0]->getType());						
-						auto loadInst = mIRBuilder->CreateAlignedLoad(args[0], (uint)ptrType->getElementType()->getPrimitiveSizeInBits() / 8);
+						auto loadInst = mIRBuilder->CreateAlignedLoad(args[0], llvm::MaybeAlign((uint)ptrType->getElementType()->getPrimitiveSizeInBits() / 8));
 						switch (memoryKind & BfIRAtomicOrdering_ORDERMASK)
 						{
 						case BfIRAtomicOrdering_Acquire:
@@ -3079,7 +3079,7 @@ void BfIRCodeGen::HandleNextCmd()
 						}
 						auto memoryKind = (BfIRAtomicOrdering)memoryKindConst->getSExtValue();
 
-						auto storeInst = mIRBuilder->CreateAlignedStore(args[1], args[0], (uint)args[1]->getType()->getPrimitiveSizeInBits() / 8);
+						auto storeInst = mIRBuilder->CreateAlignedStore(args[1], args[0], llvm::MaybeAlign((uint)args[1]->getType()->getPrimitiveSizeInBits() / 8));
 						switch (memoryKind & BfIRAtomicOrdering_ORDERMASK)
 						{
 						case BfIRAtomicOrdering_Relaxed:
@@ -3266,7 +3266,7 @@ void BfIRCodeGen::HandleNextCmd()
 							else
 							{
 								auto castedRes = mIRBuilder->CreateBitCast(args[0], intrinsicData->mReturnType->getPointerTo());
-								SetResult(curId, mIRBuilder->CreateAlignedLoad(castedRes, 1));
+								SetResult(curId, mIRBuilder->CreateAlignedLoad(castedRes, llvm::MaybeAlign(1)));
 							}
 						}
 						else
@@ -4093,7 +4093,7 @@ void BfIRCodeGen::HandleNextCmd()
 					if (constant != NULL)					
 						templateParams.push_back(mDIBuilder->createTemplateValueParameter(mDICompileUnit, name.c_str(), genericArg, false, constant));					
 					else
-						templateParams.push_back(mDIBuilder->createTemplateTypeParameter(mDICompileUnit, name.c_str(), false, genericArg));
+						templateParams.push_back(mDIBuilder->createTemplateTypeParameter(mDICompileUnit, name.c_str(), genericArg, false));
 				}
 				templateParamNodes = mDIBuilder->getOrCreateArray(templateParams);
 				templateParamArr = templateParamNodes.get();
