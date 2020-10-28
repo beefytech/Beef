@@ -1735,14 +1735,14 @@ namespace System
 		public static void NumberToString (StringView format, uint32 value, IFormatProvider fp, String outString)
 		{
 			NumberFormatter inst = GetInstance!(fp);
-			inst.Init (format, value, Int32DefPrecision);
+			inst.Init (format, value, UInt32DefPrecision);
 			inst.IntegerToString(format, fp, outString);
 		}
 
 		public static void NumberToString (StringView format, int32 value, IFormatProvider fp, String outString)
 		{
 			NumberFormatter inst = GetInstance!(fp);
-			inst.Init (format, value, UInt32DefPrecision);
+			inst.Init (format, value, Int32DefPrecision);
 			inst.IntegerToString (format, fp, outString);
 		}
 
