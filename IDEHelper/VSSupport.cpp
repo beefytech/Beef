@@ -58,6 +58,7 @@ struct Find_Result {
 
 	wchar_t *windows_sdk_root = NULL;	
 
+	wchar_t* vs_version = NULL;
 	wchar_t *vs_exe32_path = NULL;
 	wchar_t *vs_exe64_path = NULL;
 	wchar_t *vs_library32_path = NULL;
@@ -68,6 +69,7 @@ Find_Result find_visual_studio_and_windows_sdk();
 
 void free_resources(Find_Result *result) {
 	free(result->windows_sdk_root);	
+	free(result->vs_version);
 	free(result->vs_exe32_path);
 	free(result->vs_exe64_path);
 	free(result->vs_library32_path);
@@ -447,8 +449,7 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *res
 		if (!success) continue;
 
 		auto version_bytes = (tools_file_size.QuadPart + 1) * 2;  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
-		wchar_t *version = (wchar_t *)malloc(version_bytes);
-		defer{ free(version); };
+		wchar_t *version = (wchar_t *)malloc(version_bytes);		
 
 		auto read_result = fgetws(version, (int)version_bytes, f);
 		if (!read_result) continue;
@@ -459,17 +460,41 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *res
 		auto library32_path = concat(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\lib\\x86");
 		auto library64_path = concat(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\lib\\x64");
 		auto library_file = concat(library32_path, L"\\vcruntime.lib");  // @Speed: Could have library_path point to this string, with a smaller count, to save on memory flailing!
+		auto vs_exe64_path = concat(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\bin\\Hostx64\\x64");
+		auto vs_exe64_link_path = concat(vs_exe64_path, L"\\link.exe");
 
-		if (os_file_exists(library_file)) {			
-			result->vs_exe32_path = concat(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\bin\\Hostx86\\x86");
-			result->vs_exe64_path = concat(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\bin\\Hostx64\\x64");
-			result->vs_library32_path = library32_path;
-			result->vs_library64_path = library64_path;
-			return;
+		bool use = false;
+		if ((os_file_exists(library_file)) && (os_file_exists(vs_exe64_link_path)))
+		{			
+			if (result->vs_version == NULL)
+			{
+				use = true;
+			}			
+			else if (wcscmp(version, result->vs_version) > 0)
+			{
+				use = true;
+			}			
 		}
 
-		free(library32_path);
-		free(library64_path);
+		if (use)
+		{
+			result->vs_version = version;
+			result->vs_exe64_path = vs_exe64_path;
+			result->vs_exe32_path = concat(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\bin\\Hostx86\\x86");
+
+			result->vs_library32_path = library32_path;
+			result->vs_library64_path = library64_path;
+		}
+		else
+		{
+			free(version);
+			free(vs_exe64_path);
+			free(library32_path);
+			free(library64_path);
+		}
+		
+		free(library_file);
+		free(vs_exe64_link_path);
 
 		/*
 		   Ryan Saunderson said:
@@ -479,6 +504,9 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *res
 		   So... @Incomplete: Should probably pick the newest version...
 		*/
 	}
+
+	if (result->vs_exe64_path != NULL)
+		return;
 
 	// If we get here, we didn't find Visual Studio 2017. Try earlier versions.
 

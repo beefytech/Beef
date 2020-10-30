@@ -395,7 +395,18 @@ namespace IDE.ui
             {
                 if (propPage == null)
                     continue;
-                ApplyChanges(propPage, ref hadChanges);
+				bool pageHadChanges = false;
+                ApplyChanges(propPage, ref pageHadChanges);
+				if (pageHadChanges)
+				{
+					hadChanges = true;
+					if ((CategoryType)@propPage == .VisualStudio)
+					{
+						Settings.VSSettings defaultSettings = scope .();
+						defaultSettings.SetDefaults();
+						gApp.mSettings.mVSSettings.mManuallySet = !defaultSettings.Equals(gApp.mSettings.mVSSettings);
+					}
+				}
             }
 
 			if (hadChanges)

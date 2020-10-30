@@ -22,9 +22,11 @@ namespace IDE
 			public String mBin64Path = new .() ~ delete _;
 			public List<String> mLib32Paths = new .() ~ DeleteContainerAndItems!(_);
 			public List<String> mLib64Paths = new .() ~ DeleteContainerAndItems!(_);
+			public bool mManuallySet;
 
 			public void Serialize(StructuredData sd)
 			{
+				sd.Add("ManuallySet", mManuallySet);
 				sd.Add("Bin32Path", mBin32Path);
 				sd.Add("Bin64Path", mBin64Path);
 				using (sd.CreateArray("Lib32Paths"))
@@ -41,6 +43,10 @@ namespace IDE
 
 			public void Deserialize(StructuredData sd)
 			{
+				mManuallySet = sd.GetBool("ManuallySet");
+				if ((!mManuallySet) && (!mBin64Path.IsEmpty))
+					return;
+				
 				sd.GetString("Bin32Path", mBin32Path);
 				sd.GetString("Bin64Path", mBin64Path);
 
@@ -85,6 +91,7 @@ namespace IDE
 
 			public void SetDefaults()
 			{
+				mManuallySet = false;
 #if BF_PLATFORM_WINDOWS
 				StringView vsInfo = .(VSSupport_Find());
 
@@ -110,6 +117,25 @@ namespace IDE
 					}
 				}
 #endif
+			}
+
+			bool Equals(List<String> lhs, List<String> rhs)
+			{
+				if (lhs.Count != rhs.Count)
+					return false;
+				for (int idx < lhs.Count)
+					if (lhs[idx] != rhs[idx])
+						return false;
+				return true;
+			}
+
+			public bool Equals(VSSettings vsSettings)
+			{
+				return
+					(Equals(mLib32Paths, vsSettings.mLib32Paths)) &&
+					(Equals(mLib64Paths, vsSettings.mLib64Paths)) &&
+					(mBin32Path == vsSettings.mBin32Path) &&
+					(mBin64Path == vsSettings.mBin64Path);
 			}
 		}
 
