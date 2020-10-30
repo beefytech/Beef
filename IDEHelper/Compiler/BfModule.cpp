@@ -22416,7 +22416,13 @@ bool BfModule::SlotInterfaceMethod(BfMethodInstance* methodInstance)
 
 	if ((methodDef->mBody == NULL) && (methodDef->mProtection == BfProtection_Private))
 	{
-		Fail("Private interface methods must provide a body", methodDef->GetMethodDeclaration()->mProtectionSpecifier);
+		auto methodDeclaration = methodDef->GetMethodDeclaration();
+		BfAstNode* refNode = NULL;
+		if (auto propertyDeclaration = methodDef->GetPropertyDeclaration())
+			refNode = propertyDeclaration->mProtectionSpecifier;
+		else if (methodDeclaration != NULL)
+			refNode = methodDeclaration->mProtectionSpecifier;
+		Fail("Private interface methods must provide a body", refNode);
 	}
 
 	if ((methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mExplicitInterface != NULL) && (!methodDef->mIsOverride))
