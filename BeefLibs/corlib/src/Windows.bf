@@ -1473,7 +1473,7 @@ namespace System
 
 		public static int GetWindowLong(HWnd hWnd, int32 nIndex)
 		{
-#if BF32			
+#if BF_32_BIT			
 			//if (sizeof(int) == 4)
 			return (int)GetWindowLongA((int)hWnd, nIndex);
 #else
@@ -1483,7 +1483,7 @@ namespace System
 #endif
 		}
 
-#if BF32
+#if BF_32_BIT
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern int GetWindowLongA(int hWnd, int nIndex);
 #else
@@ -1493,14 +1493,14 @@ namespace System
 
 		public static int SetWindowLong(HWnd hWnd, int32 nIndex, int value)
 		{
-#if BF32
+#if BF_32_BIT
 				return (int)SetWindowLongA((int)hWnd, nIndex, value);
 #else
 				return SetWindowLongPtrW((int)hWnd, nIndex, value);
 #endif
 		}
 
-#if BF32
+#if BF_32_BIT
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern int SetWindowLongA(int hWnd, int nIndex, int value);
 #else
