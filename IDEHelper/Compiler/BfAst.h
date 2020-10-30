@@ -781,7 +781,7 @@ public:
 		for (int i = 0; i < mList.mSize; i++)
 			if (mList[i] != rhs.mList[i])
 				return false;
-		return false;
+		return true;
 	}
 };
 
