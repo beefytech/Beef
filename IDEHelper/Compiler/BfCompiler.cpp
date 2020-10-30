@@ -4121,13 +4121,10 @@ void BfCompiler::ProcessAutocompleteTempType()
 		return;
 	}
 	
-	if (tempTypeDef->mTypeCode == BfTypeCode_Extension)	
+	if (tempTypeDef->mTypeCode == BfTypeCode_Extension)
 		mResolvePassData->mSourceClassifier->SetElementType(tempTypeDef->mTypeDeclaration->mNameNode, actualTypeDef->mTypeCode);
-
 	if (tempTypeDef->mTypeDeclaration->mAttributes != NULL)
-	{
 		mResolvePassData->mSourceClassifier->VisitChild(tempTypeDef->mTypeDeclaration->mAttributes);
-	}
 
 	BfTypeInstance* typeInst;
 	{
@@ -8457,14 +8454,14 @@ BF_EXPORT bool BF_CALLTYPE BfCompiler_ClassifySource(BfCompiler* bfCompiler, BfP
 	
 	bfSourceClassifier.mSkipMethodInternals = true;	
 	bfSourceClassifier.mSkipTypeDeclarations = true;	
-	if ((charData != NULL) && (doClassifyPass))
-		bfSourceClassifier.Visit(bfParser->mRootNode);
+	if (charData != NULL)
+	{
+		resolvePassData->mSourceClassifier = &bfSourceClassifier;
+		if (doClassifyPass)
+			bfSourceClassifier.Visit(bfParser->mRootNode);
+	}
 	bfSourceClassifier.mSkipTypeDeclarations = false;
 	bfSourceClassifier.mSkipMethodInternals = false;		
-	
-	
-	if (charData != NULL)
-		resolvePassData->mSourceClassifier = &bfSourceClassifier;	
 
 	bfPassInstance->mFilterErrorsTo = bfParser;
 	bfPassInstance->mTrimMessagesToCursor = true;
