@@ -1093,6 +1093,9 @@ namespace IDE
 							ltoPath.Append("/ltocache");
 							IDEUtils.AppendWithOptionalQuotes(linkLine, ltoPath);
 						}
+
+						if ((mPlatformType == .Windows) && (!is64Bit))
+							linkLine.Append(" /safeseh:no");
 					}
 
 					if (options.mBuildOptions.mBeefLibType != .DynamicDebug)
@@ -1300,7 +1303,7 @@ namespace IDE
 
 					if (filePath.Contains("test2.cpp"))
 					{
-						NOP!();
+\						NOP!();
 					}	
 
 		            bool needsRebuild = true;
