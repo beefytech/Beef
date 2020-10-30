@@ -3,6 +3,7 @@
 #include "BeefySysLib/Common.h"
 #include "BeefySysLib/util/DLIList.h"
 #include "BeefySysLib/util/BumpAllocator.h"
+#include "BeefySysLib/util/SizedArray.h"
 #include "BfAstAllocator.h"
 #include "BfIRBuilder.h"
 
@@ -766,6 +767,23 @@ public:
 #endif
 
 class BfAstNode;
+
+class BfAstNodeList
+{
+public:
+	SizedArray<BfAstNode*, 4> mList;
+
+public:
+	bool operator==(const BfAstNodeList& rhs)
+	{
+		if (mList.mSize != rhs.mList.mSize)
+			return false;
+		for (int i = 0; i < mList.mSize; i++)
+			if (mList[i] != rhs.mList[i])
+				return false;
+		return false;
+	}
+};
 
 template <typename T>
 class BfChunkedArray
@@ -3300,3 +3318,19 @@ BfAssignmentOp BfTokenToAssignmentOp(BfToken token);
 bool BfIsCommentBlock(BfCommentKind commentKind);
 
 NS_BF_END
+
+namespace std
+{
+	template<>
+	struct hash<Beefy::BfAstNodeList>
+	{
+		size_t operator()(const Beefy::BfAstNodeList& val) const
+		{
+			if (val.mList.mSize == 0)
+				return 0;
+			if (val.mList.mSize == 0)
+				return (size_t)val.mList.mVals[0];
+			return HashBytes((uint8*)val.mList.mVals, sizeof(Beefy::BfAstNode*) * val.mList.mSize);
+		}
+	};
+}

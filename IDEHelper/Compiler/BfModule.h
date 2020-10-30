@@ -943,7 +943,7 @@ public:
 	Dictionary<String, BfLocalMethod*> mLocalMethodCache; // So any lambda 'capturing' and 'processing' stages use the same local method			
 	Array<BfDeferredLocalMethod*> mDeferredLocalMethods;
 	OwnedVector<BfMixinState> mMixinStates;
-	Dictionary<BfAstNode*, BfLambdaInstance*> mLambdaCache;
+	Dictionary<BfAstNodeList, BfLambdaInstance*> mLambdaCache;
 	Array<BfLambdaInstance*> mDeferredLambdaInstances;
 	Array<BfIRValue> mSplatDecompAddrs;	
 	BfDeferredLocalAssignData* mDeferredLocalAssignData;
@@ -1955,5 +1955,5 @@ namespace std
 		{
 			return std::hash<Beefy::String>()(val.mLocalVar->mName);
 		}
-	};
+	};	
 }

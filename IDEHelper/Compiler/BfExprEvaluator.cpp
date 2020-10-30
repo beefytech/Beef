@@ -2598,17 +2598,19 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 		return bindType;
 	int64 nodeId = ((int64)parser->mDataId << 32) + node->GetSrcStart();
 
+	auto genericTypeBindings = mModule->mCurMethodState->GetRootMethodState()->mGenericTypeBindings;
+
 	if (mModule->mCurMethodInstance->mIsUnspecialized)
 	{
 		if (!bindType->IsGenericParam())
 			return bindType;
 
-		(*mModule->mCurMethodState->mGenericTypeBindings)[nodeId] = bindType;
+		(*genericTypeBindings)[nodeId] = bindType;
 		return bindType;
 	}
 	else
 	{
-		if (mModule->mCurMethodState->mGenericTypeBindings == NULL)
+		if (genericTypeBindings == NULL)
 			return bindType;
 		
 		/*auto itr = mModule->mCurMethodState->mGenericTypeBindings->find(nodeId);
@@ -2616,7 +2618,7 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 			return itr->second;*/
 
 		BfType** typePtr = NULL;
-		if (mModule->mCurMethodState->mGenericTypeBindings->TryGetValue(nodeId, &typePtr))
+		if (genericTypeBindings->TryGetValue(nodeId, &typePtr))
 			return *typePtr;
 		
 		return bindType;
@@ -10780,10 +10782,24 @@ void BfExprEvaluator::VisitLambdaBodies(BfAstNode* body, BfFieldDtorDeclaration*
 }
 
 BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lambdaBindExpr, BfAllocTarget& allocTarget)
-{
-	auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();
+{	
+	auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();	
+	BfAstNodeList cacheNodeList;
+	cacheNodeList.mList.Add(lambdaBindExpr);
+	
+	///
+	{
+		auto checkMethodState = mModule->mCurMethodState;
+		while (checkMethodState != NULL)
+		{
+			if (checkMethodState->mMixinState != NULL)
+				cacheNodeList.mList.Add(checkMethodState->mMixinState->mSource);
+			checkMethodState = checkMethodState->mPrevMethodState;
+		}
+	}
+
 	BfLambdaInstance* lambdaInstance = NULL;
-	if (rootMethodState->mLambdaCache.TryGetValue(lambdaBindExpr, &lambdaInstance))	
+	if (rootMethodState->mLambdaCache.TryGetValue(cacheNodeList, &lambdaInstance))
 		return lambdaInstance;	
 	
 	static int sBindCount = 0;
@@ -11628,7 +11644,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	methodState.Reset();
 	
 	lambdaInstance = new BfLambdaInstance();
-	rootMethodState->mLambdaCache[lambdaBindExpr] = lambdaInstance;
+	rootMethodState->mLambdaCache[cacheNodeList] = lambdaInstance;
 	lambdaInstance->mDelegateTypeInstance = delegateTypeInstance;
 	lambdaInstance->mUseTypeInstance = useTypeInstance;
 	lambdaInstance->mClosureTypeInstance = closureTypeInst;
