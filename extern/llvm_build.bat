@@ -14,7 +14,7 @@ popd
 @IF EXIST llvm_win64_11_0_0 GOTO HAS_CONFIG
 mkdir llvm_win64_11_0_0
 cd llvm_win64_11_0_0
-cmake ../llvm-project_11_0_0/llvm -G"Visual Studio 15 2017 Win64" -Thost=x64 -DLLVM_USE_CRT_DEBUG:STRING="MTd" -DLLVM_USE_CRT_RELEASE:STRING="MT"
+cmake ../llvm-project_11_0_0/llvm -G"Visual Studio 16 2019" -Ax64 -Thost=x64 -DLLVM_USE_CRT_DEBUG:STRING="MTd" -DLLVM_USE_CRT_RELEASE:STRING="MT"
 @GOTO DOBUILD
 
 :HAS_CONFIG
