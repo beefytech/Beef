@@ -7857,8 +7857,15 @@ String BfCompiler::GetTypeDefList()
 struct TypeDefMatchHelper
 {
 public:
+	struct SearchEntry
+	{
+		String mStr;
+		int mGenericCount;
+	};
+
+public:
 	StringImpl& mResult;
-	Array<String> mSearch;
+	Array<SearchEntry> mSearch;
 	uint32 mFoundFlags;
 	int32 mFoundCount;
 	bool mHasDotSearch;
@@ -8013,11 +8020,28 @@ public:
 		uint32 matchFlags = 0;
 		for (int i = 0; i < mSearch.mSize; i++)
 		{
-			if (((mFoundFlags & (1 << i)) == 0) && (str.IndexOf(mSearch[i], true) != -1))
+			auto& search = mSearch[i];
+			if (((mFoundFlags & (1 << i)) == 0) && (str.IndexOf(search.mStr, true) != -1))
 			{
-				mFoundCount++;
-				matchFlags |= (1 << i);
-				mFoundFlags |= (1 << i);				
+				bool genericMatches = true;
+				if (search.mGenericCount > 0)
+				{
+					genericMatches = false;
+					int countIdx = (int)str.LastIndexOf('`');
+					if (countIdx > 0)
+					{
+						int genericCount = atoi(str.mPtr + countIdx + 1);
+						genericMatches = ((genericCount == search.mGenericCount) || (search.mGenericCount == 1)) && 
+							(countIdx == (int)search.mStr.length());
+					}
+				}
+
+				if (genericMatches)
+				{
+					mFoundCount++;
+					matchFlags |= (1 << i);
+					mFoundFlags |= (1 << i);
+				}
 			}
 		}
 		return matchFlags;
@@ -8077,10 +8101,30 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 			if (spacePos == -1)			
 				str = searchStr.Substring(searchIdx);			
 			else			
-				str = searchStr.Substring(searchIdx, spacePos - searchIdx);			
+				str = searchStr.Substring(searchIdx, (int)(spacePos - searchIdx));
 			str.Trim();
-			if (!str.IsEmpty())
-				matchHelper.mSearch.Add(str);
+			
+			TypeDefMatchHelper::SearchEntry searchEntry;
+			
+			for (int i = 0; i < (int)str.length(); i++)
+			{
+				char c = str[i];
+				if (c == '<')
+				{
+					searchEntry.mGenericCount = 1;
+					searchEntry.mStr = str.Substring(0, i);
+				}
+				else if (searchEntry.mGenericCount > 0)
+				{
+					if (c == ',')
+						searchEntry.mGenericCount++;
+				}				
+			}
+			if (searchEntry.mStr.IsEmpty())
+				searchEntry.mStr = str;
+
+			if (!searchEntry.mStr.IsEmpty())
+				matchHelper.mSearch.Add(searchEntry);
 			if (str.Contains('.'))
 				matchHelper.mHasDotSearch = true;
 			if (spacePos == -1)
@@ -8126,7 +8170,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 		if (matchHelper.mHasDotSearch)
 		{
 			matchHelper.mCurTypeName.Clear();
-			typeDef->mFullName.ToString(matchHelper.mCurTypeName);
+			typeDef->mFullNameEx.ToString(matchHelper.mCurTypeName);
 			
 			matchHelper.ClearResults();
 			matchHelper.CheckMatch(matchHelper.mCurTypeName);
@@ -8134,8 +8178,7 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 		}
 
 		int matchIdx = -1;
-		//BfAtomComposite foundComposite;
-
+		
 		if (!fullyMatchesName)
 		{
 			for (auto fieldDef : typeDef->mFields)
@@ -8190,9 +8233,9 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 			}
 			
 			uint32 matchFlags = 0;
-			for (int atomIdx = typeDef->mFullName.mSize - 1; atomIdx >= 0; atomIdx--)
+			for (int atomIdx = typeDef->mFullNameEx.mSize - 1; atomIdx >= 0; atomIdx--)
 			{
-				auto atom = typeDef->mFullName.mParts[atomIdx];
+				auto atom = typeDef->mFullNameEx.mParts[atomIdx];
 				int* matchesPtr = NULL;
 				if (atomMatchMap.TryAdd(atom, NULL, &matchesPtr))
 				{
