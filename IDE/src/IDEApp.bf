@@ -5263,8 +5263,10 @@ namespace IDE
 			advancedEditMenu.AddMenuItem(null);
 			AddMenuItem(advancedEditMenu, "Make Uppercase", "Make Uppercase");
 			AddMenuItem(advancedEditMenu, "Make Lowercase", "Make Lowercase");
-			mViewWhiteSpace.mMenu = AddMenuItem(advancedEditMenu, "View White Space", "View White Space", null, null, true, mViewWhiteSpace.Bool ? 1 : 0);
+			AddMenuItem(advancedEditMenu, "Comment Selection", "Comment Selection");
+			AddMenuItem(advancedEditMenu, "Uncomment Selection", "Uncomment Selection");
 			AddMenuItem(advancedEditMenu, "Reformat Document", "Reformat Document");
+			mViewWhiteSpace.mMenu = AddMenuItem(advancedEditMenu, "View White Space", "View White Space", null, null, true, mViewWhiteSpace.Bool ? 1 : 0);
 
 			if (mSettings.mEnableDevMode)
 			{
@@ -5301,7 +5303,7 @@ namespace IDE
 			//////////
 
             subMenu = root.AddMenuItem("&Build");
-			AddMenuItem(subMenu, "&Build Solution", "Build Solution", new => UpdateMenuItem_HasWorkspace);
+			AddMenuItem(subMenu, "&Build Workspace", "Build Workspace", new => UpdateMenuItem_HasWorkspace);
             AddMenuItem(subMenu, "&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
             AddMenuItem(subMenu, "Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });
@@ -13089,6 +13091,23 @@ namespace IDE
 			}
 		}
 
+		void VerifyModifiedBuffers()
+		{
+			mWorkspace.WithProjectItems(scope (projectItem) =>
+				{
+					var projectSource = projectItem as ProjectSource;
+					if (projectSource != null)
+					{
+						if ((projectSource.mEditData != null) && (projectSource.mEditData.HasTextChanged()))
+						{
+							var sourceViewPanel = projectSource.mEditData?.mEditWidget.mPanel as SourceViewPanel;
+							Debug.Assert(sourceViewPanel != null);
+						}
+					}
+				
+				});
+		}
+
         public override void Update(bool batchStart)
         {
 			scope AutoBeefPerf("IDEApp.Update");
@@ -13097,6 +13116,11 @@ namespace IDE
 			{
 
 			}*/
+
+#if DEBUG
+			if (mUpdateCnt % 120 == 0)
+				VerifyModifiedBuffers();
+#endif
 
 			if (mWantShowOutput)
 			{

@@ -184,7 +184,7 @@ namespace IDE
 			Add("Breakpoint Symbol", new () => { gApp.mBreakpointPanel.AddSymbolBreakpoint(gApp.[Friend]GetCurrentWindow()); });
 			Add("Breakpoint Toggle Thread", new => gApp.[Friend]ToggleThreadBreakpoint, .Editor);
 			Add("Breakpoint Toggle", new => gApp.[Friend]ToggleBreakpoint, .Editor);
-			Add("Build Solution", new => gApp.[Friend]Compile);
+			Add("Build Workspace", new => gApp.[Friend]Compile);
 			Add("Cancel Build", new => gApp.[Friend]CancelBuild);
 			Add("Clean Beef", new => gApp.Cmd_CleanBeef);
 			Add("Clean", new => gApp.Cmd_Clean);

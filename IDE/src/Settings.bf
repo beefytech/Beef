@@ -718,7 +718,7 @@ namespace IDE
 				Add("Breakpoint Disable", "Ctrl+F9");
 				Add("Breakpoint Toggle", "F9");
 				Add("Breakpoint Toggle Thread", "Shift+F9");
-				Add("Build Solution", "F7");
+				Add("Build Workspace", "F7");
 				Add("Cancel Build", "Ctrl+Break");
 				Add("Close Document", "Ctrl+W");
 				Add("Compile File", "Ctrl+F7");
