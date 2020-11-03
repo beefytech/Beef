@@ -7861,6 +7861,11 @@ public:
 	{
 		String mStr;
 		int mGenericCount;
+
+		SearchEntry()
+		{
+			mGenericCount = 0;
+		}
 	};
 
 public:
