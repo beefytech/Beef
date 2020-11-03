@@ -475,8 +475,7 @@ namespace System {
                         tokenLen = ParseRepeatPattern(format, i, ch);
                         FormatDigits(result, dateTime.Second, tokenLen);
                         break;
-                    case 'f':
-                    case 'F':
+                    case 'f', 'F':
                         tokenLen = ParseRepeatPattern(format, i, ch);
                         if (tokenLen <= MaxSecondsFractionDigits) {
                             int64 fraction = (dateTime.Ticks % Calendar.[Friend]TicksPerSecond);
@@ -637,8 +636,7 @@ namespace System {
                         result.Append(dtfi.DateSeparator);
                         tokenLen = 1;
                         break;
-                    case '\'':
-                    case '\"':
+                    case '\'', '\"':
                         //StringBuilder enquotedString = new StringBuilder();
                         tokenLen = ParseQuoteString(format, i, result); 
                         //result.Append(enquotedString);
