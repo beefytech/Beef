@@ -1923,7 +1923,10 @@ namespace IDE.ui
 								if (mayBeExpr)
 								{
 									if (prevC.IsWhiteSpace)
+									{
+										checkIdx--;
 										continue;
+									}
 									if ((prevC == '(') || (prevC == ')') || (prevC == '{') || (prevC == '}'))
 									{
 										mayBeExpr = false;
@@ -1933,6 +1936,7 @@ namespace IDE.ui
 										if ((prevC == 'r') && (displayType == .Keyword))
 										{
 											// operator overload
+											checkIdx--;
 											mayBeExpr = false;
 											continue;
 										}
@@ -1955,7 +1959,7 @@ namespace IDE.ui
 										break;
 									}
 								}
-								if (prevC == '{')
+								if ((prevC == '{') || (prevC == '}'))
 									break;
 								if (parenOpenCount == 0)
 								{
