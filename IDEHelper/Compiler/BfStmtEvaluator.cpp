@@ -4311,6 +4311,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	
 	auto startingLocalVarId = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
 
+	bool prevHadFallthrough = false;
+
 	Dictionary<int64, _CaseState> handledCases;
 	for (BfSwitchCase* switchCase : switchStmt->mSwitchCases)
 	{
@@ -4596,7 +4598,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 		auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
 		
-		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, !mayHaveMatch);
+		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, !mayHaveMatch && !prevHadFallthrough);
 		
 		mBfIRBuilder->AddBlock(caseBlock);
 		mBfIRBuilder->SetInsertPoint(caseBlock);
@@ -4677,6 +4679,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		prevIgnoreWrites.Restore();
 
 		mBfIRBuilder->SetInsertPoint(prevInsertBlock);
+		
+		prevHadFallthrough = mCurMethodState->mDeferredLocalAssignData->mHadFallthrough;
 
 		blockIdx++;
 	}

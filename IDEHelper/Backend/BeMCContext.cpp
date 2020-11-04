@@ -3744,7 +3744,7 @@ BeMCOperand BeMCContext::AllocVirtualReg(BeType* type, int refCount, bool mustBe
 
 	if (mDebugging)
 	{
-		if (mcOperand.mVRegIdx == 14)
+		if (mcOperand.mVRegIdx == 6)
 		{
 			NOP;
 		}
@@ -8611,23 +8611,35 @@ void BeMCContext::DoActualization()
 
 						if (vregInfo->mIsExpr)
 						{
-							// Create a new reg with the expression, and then load the value into the old non-expressionized reg
-							//  This has the advantage of fixing any other references to this expr, too
-							auto scratchReg = AllocVirtualReg(vregInfo->mType, 2, false);
-							auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
+							if (vregInfo->IsDirectRelToAny())
+							{
+								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregIdx), vregInfo->mRelTo, instIdx++ + 1);
 
-							scratchVRegInfo->mIsExpr = true;
-							scratchVRegInfo->mRelTo = vregInfo->mRelTo;
-							scratchVRegInfo->mRelOffset = vregInfo->mRelOffset;
-							scratchVRegInfo->mRelOffsetScale = vregInfo->mRelOffsetScale;
+								vregInfo->mIsExpr = false;
+								vregInfo->mRelTo = BeMCOperand();
+								vregInfo->mRelOffset = BeMCOperand();
+								vregInfo->mRelOffsetScale = 1;
+							}
+							else
+							{
+								// Create a new reg with the expression, and then load the value into the old non-expressionized reg
+								//  This has the advantage of fixing any other references to this expr, too
+								auto scratchReg = AllocVirtualReg(vregInfo->mType, 2, false);
+								auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
 
-							vregInfo->mIsExpr = false;
-							vregInfo->mRelTo = BeMCOperand();
-							vregInfo->mRelOffset = BeMCOperand();
-							vregInfo->mRelOffsetScale = 1;
+								scratchVRegInfo->mIsExpr = true;
+								scratchVRegInfo->mRelTo = vregInfo->mRelTo;
+								scratchVRegInfo->mRelOffset = vregInfo->mRelOffset;
+								scratchVRegInfo->mRelOffsetScale = vregInfo->mRelOffsetScale;
 
-							CreateDefineVReg(scratchReg, instIdx++ + 1);
-							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregIdx), scratchReg, instIdx++ + 1);
+								vregInfo->mIsExpr = false;
+								vregInfo->mRelTo = BeMCOperand();
+								vregInfo->mRelOffset = BeMCOperand();
+								vregInfo->mRelOffsetScale = 1;
+
+								CreateDefineVReg(scratchReg, instIdx++ + 1);
+								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregIdx), scratchReg, instIdx++ + 1);
+							}
 						}
 					}
 				}
