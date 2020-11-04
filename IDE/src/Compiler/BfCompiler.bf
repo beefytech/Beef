@@ -10,6 +10,7 @@ using Beefy.utils;
 using IDE.Util;
 using IDE.ui;
 using IDE.util;
+using System.IO;
 
 namespace IDE.Compiler
 {
@@ -419,6 +420,7 @@ namespace IDE.Compiler
 								var editData = gApp.GetEditData(projectSource, false);
 								using (gApp.mMonitor.Enter())
 								{
+									editData.mFileTime = File.GetLastWriteTime(sourceFilePath).GetValueOrDefault();
 									editData.SetSavedData(data, char8IdData);
 									if (hash case .MD5(let md5Hash))
 										editData.mMD5Hash = md5Hash;

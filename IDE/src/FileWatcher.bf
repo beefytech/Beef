@@ -89,7 +89,7 @@ namespace IDE
 			var newPath;
 			if (isDirectory)
 			{
-				if (newPath.EndsWith(Path.DirectorySeparatorChar))
+				if ((newPath != null) && (newPath.EndsWith(Path.DirectorySeparatorChar)))
 				{
 					newPath = scope:: String();
 					newPath.Append(@newPath, 0, @newPath.Length - 1);
@@ -259,9 +259,9 @@ namespace IDE
 			{
 				String fullPath = scope String();
 				fullPath.Append(fileSystemWatcher.Directory);
+				fullPath.Append(Path.DirectorySeparatorChar);
 				if (fileName != null)
 				{
-					fullPath.Append(Path.DirectorySeparatorChar);
 					fullPath.Append(fileName);
 				}
 

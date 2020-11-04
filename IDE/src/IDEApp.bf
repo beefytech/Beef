@@ -1462,6 +1462,8 @@ namespace IDE
 					return false;
 				}
 
+				editData.mFileTime = File.GetLastWriteTime(path).GetValueOrDefault();
+
 				editData.mLastFileTextVersion = editData.mEditWidget.Content.mData.mCurTextVersionId;
 				mFileWatcher.OmitFileChange(path, text);
 				if (forcePath == null)
@@ -5935,6 +5937,7 @@ namespace IDE
 					editData.BuildHash(text);
 				} ) case .Err)
 				return false;
+			editData.mFileTime = File.GetLastWriteTime(editData.mFilePath).GetValueOrDefault();
 
 			mFileWatcher.FileIsValid(editData.mFilePath);
 
@@ -8383,6 +8386,7 @@ namespace IDE
 						if (*sourceHash case .MD5(let md5Hash))
 							editData.mMD5Hash = md5Hash;
 					}
+					editData.mFileTime = File.GetLastWriteTime(fullPath).GetValueOrDefault();
 				}
 				return isValid;
             }
@@ -12688,6 +12692,46 @@ namespace IDE
 					if (let projectFolder = projectItem as ProjectFolder)
 						mProjectPanel.QueueRehupFolder(projectFolder);
 				}
+
+				// Manually scan project files for changes
+				mWorkspace.WithProjectItems(scope (projectItem) =>
+					{
+						var projectSource = projectItem as ProjectSource;
+						if (projectSource != null)
+						{
+							bool changed = false;
+							var editData = projectSource.mEditData;
+							if (editData != null)
+							{
+								if (File.GetLastWriteTime(editData.mFilePath) case .Ok(let fileTime))
+								{
+									if (fileTime != projectSource.mEditData.mFileTime)
+									{ 
+										if (!projectSource.mEditData.mMD5Hash.IsZero)
+										{
+											var text = scope String();
+											if (File.ReadAllText(editData.mFilePath, text, true) case .Ok)
+											{
+												var hash = MD5.Hash(.((.)text.Ptr, text.Length));
+												if (hash != projectSource.mEditData.mMD5Hash)
+												{
+													changed = true;
+												}
+											}
+
+										}
+										else
+											changed = true;
+									}
+
+									if (changed)
+										mFileWatcher.FileChanged(editData.mFilePath);
+									projectSource.mEditData.mFileTime = fileTime;
+								}
+							}
+						}
+
+					});
 			}
 		}
 
@@ -12797,6 +12841,7 @@ namespace IDE
 					}
 					editData.mFileDeleted = true;
 				}
+				editData.mFileTime = File.GetLastWriteTime(fileName);
 
 				using (mMonitor.Enter())
 				{
@@ -13101,7 +13146,7 @@ namespace IDE
 						if ((projectSource.mEditData != null) && (projectSource.mEditData.HasTextChanged()))
 						{
 							var sourceViewPanel = projectSource.mEditData?.mEditWidget.mPanel as SourceViewPanel;
-							Debug.Assert(sourceViewPanel != null);
+							Runtime.Assert(sourceViewPanel != null, "Source marked as modified with no SourceViewPanel");
 						}
 					}
 				
@@ -13117,10 +13162,8 @@ namespace IDE
 
 			}*/
 
-#if DEBUG
 			if (mUpdateCnt % 120 == 0)
 				VerifyModifiedBuffers();
-#endif
 
 			if (mWantShowOutput)
 			{

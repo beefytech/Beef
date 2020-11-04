@@ -44,6 +44,7 @@ namespace IDE
 		public MD5Hash mRecoveryHash;
 		public MD5Hash mMD5Hash;
 		public SHA256Hash mSHA256Hash;
+		public DateTime mFileTime;
 
 		public this()
 		{
