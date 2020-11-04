@@ -1180,8 +1180,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 				}
 				
 				exprEvaluator.mExpectingType = expectType;
-
-				exprEvaluator.Evaluate(resolvedArg.mExpression);				
+				exprEvaluator.Evaluate(resolvedArg.mExpression);
 				argTypedValue = exprEvaluator.GetResult();
 				
 				if (mModule->mCurMethodState != NULL)
@@ -6560,7 +6559,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 			{
 				BfExprEvaluator exprEvaluator(mModule);
 				exprEvaluator.mReceivingValue = receivingValue;
-				BfEvalExprFlags flags = (BfEvalExprFlags)(BfEvalExprFlags_NoCast);
+				BfEvalExprFlags flags = (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_NoAutoComplete) | BfEvalExprFlags_NoCast);
 				if ((paramKind == BfParamKind_Params) || (paramKind == BfParamKind_DelegateParam))
 					flags = (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowParamsExpr);
 
@@ -9673,7 +9672,8 @@ void BfExprEvaluator::Visit(BfCastExpression* castExpr)
 		return;
 	}
 
-	mResult = mModule->CreateValueFromExpression(castExpr->mExpression, resolvedType, (BfEvalExprFlags)(BfEvalExprFlags_ExplicitCast));
+	auto exprFlags = (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_NoAutoComplete) | BfEvalExprFlags_ExplicitCast);
+	mResult = mModule->CreateValueFromExpression(castExpr->mExpression, resolvedType, exprFlags);
 }
 
 bool BfExprEvaluator::IsExactMethodMatch(BfMethodInstance* methodA, BfMethodInstance* methodB, bool ignoreImplicitParams)
