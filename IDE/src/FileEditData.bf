@@ -160,5 +160,13 @@ namespace IDE
 			default: return false;
 			}
 		}
+
+		public void GetFileTime()
+		{
+#if !CLI
+			if (mFilePath != null)
+				mFileTime = File.GetLastWriteTime(mFilePath).GetValueOrDefault();
+#endif
+		}
 	}
 }

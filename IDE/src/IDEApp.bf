@@ -1462,7 +1462,7 @@ namespace IDE
 					return false;
 				}
 
-				editData.mFileTime = File.GetLastWriteTime(path).GetValueOrDefault();
+				editData.GetFileTime();
 
 				editData.mLastFileTextVersion = editData.mEditWidget.Content.mData.mCurTextVersionId;
 				mFileWatcher.OmitFileChange(path, text);
@@ -5937,7 +5937,7 @@ namespace IDE
 					editData.BuildHash(text);
 				} ) case .Err)
 				return false;
-			editData.mFileTime = File.GetLastWriteTime(editData.mFilePath).GetValueOrDefault();
+			editData..GetFileTime();
 
 			mFileWatcher.FileIsValid(editData.mFilePath);
 
@@ -8386,7 +8386,7 @@ namespace IDE
 						if (*sourceHash case .MD5(let md5Hash))
 							editData.mMD5Hash = md5Hash;
 					}
-					editData.mFileTime = File.GetLastWriteTime(fullPath).GetValueOrDefault();
+					editData.GetFileTime();
 				}
 				return isValid;
             }
@@ -12841,7 +12841,7 @@ namespace IDE
 					}
 					editData.mFileDeleted = true;
 				}
-				editData.mFileTime = File.GetLastWriteTime(fileName);
+				editData.GetFileTime();
 
 				using (mMonitor.Enter())
 				{
