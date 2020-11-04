@@ -94,6 +94,8 @@ namespace IDE
 					if (entry.mContents != null)
 					{
 						entry.mContentHash = MD5.Hash(.((.)entry.mContents.Ptr, entry.mContents.Length));
+						if (entry.mContentHash == entry.mLastSavedHash)
+							continue;
 					}
 
 					if (entry.mRecoveryFileName != null)
