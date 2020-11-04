@@ -400,6 +400,14 @@ namespace System
 		    }
 		}
 
+		public virtual TypeInstance.InterfaceEnumerator Interfaces
+		{
+		    get
+		    {
+		        return .(null);
+		    }
+		}
+
 		public virtual TypeInstance OuterType
 		{
 		    get
@@ -675,6 +683,27 @@ namespace System.Reflection
 			public int32 mStartVirtualIdx;
 		}
 
+		public struct InterfaceEnumerator : IEnumerator<TypeInstance>
+		{
+			public TypeInstance mTypeInstance;
+			public int mIdx = -1;
+
+			public this(TypeInstance typeInstance)
+			{
+				mTypeInstance = typeInstance;
+			}
+
+			public Result<TypeInstance> GetNext() mut
+			{
+				if (mTypeInstance == null)
+					return .Err;
+				mIdx++;
+				if (mIdx >= mTypeInstance.mInterfaceCount)
+					return .Err;
+				return Type.[Friend]GetType(mTypeInstance.mInterfaceDataPtr[mIdx].mInterfaceType) as TypeInstance;
+			}
+		}
+
         ClassVData* mTypeClassVData;
         String mName;
         String mNamespace;
@@ -732,6 +761,14 @@ namespace System.Reflection
                 return (TypeInstance)Type.[Friend]GetType(mBaseType);
             }
         }
+
+		public override InterfaceEnumerator Interfaces
+		{
+		    get
+		    {
+		        return .(this);
+		    }
+		}
 
 		public override TypeInstance OuterType
 		{
