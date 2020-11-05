@@ -511,12 +511,6 @@ namespace System
 			GetFullName(strBuffer);
         }*/
         
-        public virtual Type GetBaseType()
-        {
-            //return mBaseType;
-            return null;
-        }
-
         protected this()
         {
         }
