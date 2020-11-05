@@ -23,6 +23,13 @@ namespace Tests
 				res.mA = lhs.mA - rhs.mA;
 				return res;
 			}
+
+			public static StructA operator++(StructA val)
+			{
+				StructA newVal;
+				newVal.mA = val.mA + 1;
+				return newVal;
+			}
 		}
 
 		struct StructB
@@ -34,6 +41,11 @@ namespace Tests
 				StructA result;
 				result.mA = sa.mA + sb.mB + 1000;
 				return result;
+			}
+
+			public void operator++() mut
+			{
+				mB++;
 			}
 		}
 
@@ -219,6 +231,20 @@ namespace Tests
 
 			StructA sa4 = Op(sa0, sb0);
 			Test.Assert(sa4.mA == 1012);
+
+			StructA sa6 = sa0++;
+			Test.Assert(sa0.mA == 2);
+			Test.Assert(sa6.mA == 1);
+			sa6 = ++sa0;
+			Test.Assert(sa0.mA == 3);
+			Test.Assert(sa6.mA == 3);
+
+			StructB sb6 = sb0++;
+			Test.Assert(sb0.mB == 12);
+			Test.Assert(sb6.mB == 11);
+			sb6 = ++sb0;
+			Test.Assert(sb0.mB == 13);
+			Test.Assert(sb6.mB == 13);
 
 			float val = Op((int32)100, (int16)23);
 			Test.Assert(val == 123);

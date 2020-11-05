@@ -18295,14 +18295,28 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 		result = mModule->GetDefaultTypedValue(methodMatcher.mSelfType);
 	}
 	
-	if ((methodMatcher.mBestMethodInstance) && (methodMatcher.mBestMethodInstance.mMethodInstance->mIsIntrinsic) &&
+	if ((methodMatcher.mBestMethodInstance) && 
 		((findOp == BfUnaryOp_Increment) || (findOp == BfUnaryOp_Decrement)))
 	{
-		if (args[0].mTypedValue.IsAddr())
-			mModule->mBfIRBuilder->CreateStore(result.mValue, args[0].mTypedValue.mValue);
-		else
+		if (methodMatcher.mBestMethodInstance.mMethodInstance->mIsIntrinsic)
 		{
-			mModule->AssertErrorState();
+			if (args[0].mTypedValue.IsAddr())
+				mModule->mBfIRBuilder->CreateStore(result.mValue, args[0].mTypedValue.mValue);
+			else
+			{
+				mModule->AssertErrorState();
+			}
+		}
+		else
+		{			
+			if (!result.mType->IsValuelessType())
+			{
+				if (targetVal.IsAddr())
+				{
+					result = mModule->LoadValue(result);
+					mModule->mBfIRBuilder->CreateStore(result.mValue, targetVal.mValue);
+				}				
+			}
 		}
 	}
 	
