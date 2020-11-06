@@ -3118,7 +3118,7 @@ namespace IDE.ui
 						{
 	                        if ((mData.mText[checkPos].mDisplayTypeId == (int32)wantElementType) &&
 	                            ((keyChar == '"') || (keyChar == '\'') || (keyChar == ')') || (keyChar == ']') || (keyChar == '>') || (keyChar == '}')) &&
-								(IsCurrentPairClosing(checkPos)))
+								(IsCurrentPairClosing(cursorTextPos)))
 	                        {
 	                            mJustInsertedCharPair = false;
 	                            CursorTextPos++;
