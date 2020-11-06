@@ -62,6 +62,17 @@ namespace Tests
 			Test.Assert(val1 == 123);
 			GetVal2!(var val2);
 			Test.Assert(val2 == 234);
+
+			void CheckStr(char8* cStr)
+			{
+				Test.Assert(StringView(cStr) == "Test");
+			}
+
+			function void(StringView sv) func = (sv) =>
+				{
+					CheckStr(sv.ToScopeCStr!());
+				};
+			func("Test");
 		}
 
 		[Test]

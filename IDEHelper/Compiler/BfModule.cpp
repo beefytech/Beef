@@ -13032,7 +13032,8 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 BfTypedValue BfModule::GetThis()
 {
 	auto useMethodState = mCurMethodState;
-	while ((useMethodState != NULL) && (useMethodState->mClosureState != NULL) && (useMethodState->mClosureState->mCapturing))
+	while ((useMethodState != NULL) && (useMethodState->mClosureState != NULL) && (useMethodState->mClosureState->mCapturing) &&
+		(useMethodState->mMixinState == NULL))
 	{
 		useMethodState = useMethodState->mPrevMethodState;
 	}		
