@@ -13032,8 +13032,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 BfTypedValue BfModule::GetThis()
 {
 	auto useMethodState = mCurMethodState;
-	while ((useMethodState != NULL) && (useMethodState->mClosureState != NULL) && (useMethodState->mClosureState->mCapturing) &&
-		(useMethodState->mMixinState == NULL))
+	while ((useMethodState != NULL) && (useMethodState->mClosureState != NULL) && (useMethodState->mClosureState->mCapturing))		
 	{
 		useMethodState = useMethodState->mPrevMethodState;
 	}		
@@ -13089,7 +13088,7 @@ BfTypedValue BfModule::GetThis()
 
 	// Check mixin state for 'this'
 	{
-		auto checkMethodState = useMethodState;
+		auto checkMethodState = mCurMethodState;
 		while (checkMethodState != NULL)
 		{
 			if (checkMethodState->mMixinState != NULL)
