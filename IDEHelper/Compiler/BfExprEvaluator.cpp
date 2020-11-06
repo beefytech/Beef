@@ -17165,7 +17165,8 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 				auto arrayValue = mModule->CreateAlloca(arrayType);
 				mResult = BfTypedValue(arrayValue, arrayType, BfTypedValueKind_TempAddr);				
 			}
-			_CreateMemArray(mResult, openToken, valueExprs, commas, closeToken);
+			if (!arrayType->IsValuelessType())
+				_CreateMemArray(mResult, openToken, valueExprs, commas, closeToken);
 		}
 	}
 }
