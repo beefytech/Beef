@@ -667,7 +667,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 
 			if (paramDef->mParamDeclaration->mInitializer != NULL)
 				hasDefault = true;
-			else if (hasDefault)
+			else if ((hasDefault) && (paramDef->mParamKind != BfParamKind_Params))
 			{
 				if (!didDefaultsError)
 					Fail("Optional parameters must appear after all required parameters", methodDef->mParams[paramIdx - 1]->mParamDeclaration);

@@ -5830,7 +5830,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 				if (!isDirectPass)
 				{
-					int numElements = (int)argValues.size() - argIdx;
+					int numElements = BF_MAX((int)argValues.size() - argIdx, 0);
 					if (methodDef->mMethodType == BfMethodType_Extension)
 						numElements++;
 
