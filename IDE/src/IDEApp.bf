@@ -12762,6 +12762,9 @@ namespace IDE
 				mLastFileChangeId = mFileWatcher.mChangeId;
 			}
 
+			if (mSymbolReferenceHelper?.mKind == .Rename)
+				return;
+
 			var app = gApp;
 			Debug.Assert(app != null);
 
@@ -13138,6 +13141,9 @@ namespace IDE
 
 		void VerifyModifiedBuffers()
 		{
+			if (mSymbolReferenceHelper?.mKind == .Rename)
+				return;
+
 			mWorkspace.WithProjectItems(scope (projectItem) =>
 				{
 					var projectSource = projectItem as ProjectSource;

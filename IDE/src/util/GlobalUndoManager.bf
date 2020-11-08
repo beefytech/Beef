@@ -60,7 +60,7 @@ namespace IDE.Util
 
             mUndoData.mUndoCount++;
             if (mUndoData.mPerforming)
-                return true;            
+                return true;
 
             mUndoData.mPerforming = true;
             for (var editData in mUndoData.mFileEditDatas)
@@ -77,6 +77,11 @@ namespace IDE.Util
                     if (mUndoData.mUndoCount != prevUndoCount)
                         break;
                 }
+
+				if (!editData.HasEditPanel())
+				{
+					gApp.SaveFile(editData);
+				}
 
 				if (IDEApp.IsBeefFile(editData.mFilePath))
 				{
@@ -121,6 +126,11 @@ namespace IDE.Util
                     if (mUndoData.mRedoCount != prevRedoCount)
                         break;
                 }
+
+				if (!editData.HasEditPanel())
+				{
+					gApp.SaveFile(editData);
+				}
 
 				if (IDEApp.IsBeefFile(editData.mFilePath))
 				{

@@ -73,7 +73,12 @@ namespace IDE
 				return false;
 	        return mLastFileTextVersion != mEditWidget.Content.mData.mCurTextVersionId;
 	    }
-	
+
+		public bool HasEditPanel()
+		{
+			return mEditWidget.mPanel != null;
+		}
+
 		public bool Reload()
 		{
 			mHadRefusedFileChange = false;

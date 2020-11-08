@@ -720,6 +720,8 @@ namespace IDE.ui
 
         void Dispose()
         {
+			bool hadChange = (mKind == Kind.Rename) && (mNewReplaceStr != mOrigReplaceStr);
+
 			mSourceViewPanel.CancelResolve(.GetSymbolInfo);
             if (mPassInstance != null)
             {
@@ -756,15 +758,24 @@ namespace IDE.ui
 	                        editWidgetContent.mData.mText[i].mDisplayFlags &= 0xFF ^ (uint8)(SourceElementFlags.SymbolReference);
 	                    }
 
-						using (gApp.mMonitor.Enter())
-							editData.SetSavedData(null, IdSpan());
-						var app = IDEApp.sApp;
-						if ((mKind == Kind.Rename) && (IDEApp.IsBeefFile(editData.mFilePath)))
+						if (hadChange)
 						{
-							for (var projectSource in editData.mProjectSources)
-								app.mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
-							app.mBfResolveCompiler.QueueDeferredResolveAll();
+							using (gApp.mMonitor.Enter())
+								editData.SetSavedData(null, IdSpan());
+
+							if (!editData.HasEditPanel())
+							{
+								gApp.SaveFile(editData);
+							}
+
+							if (IDEApp.IsBeefFile(editData.mFilePath))
+							{
+								for (var projectSource in editData.mProjectSources)
+									gApp.mBfResolveCompiler.QueueProjectSource(projectSource, .None, false);
+								gApp.mBfResolveCompiler.QueueDeferredResolveAll();
+							}
 						}
+
 	                }
 				}
             }
