@@ -18,6 +18,19 @@ namespace System
 			((int32)iVal).ToString(strBuffer);
 		}
 
+		public static void EnumToString<T>(String strBuffer, T val) where T : Enum
+		{
+			let type = typeof(T);
+			for (var field in type.GetFields())
+			{
+				if (field.[Friend]mFieldData.[Friend]mData == (.)val)
+				{
+					strBuffer.Append(field.Name);
+					return;
+				}
+			}
+		}
+
 		public static Result<T> Parse<T>(StringView str, bool ignoreCase = false) where T : Enum
 		{
 			var typeInst = (TypeInstance)typeof(T);
