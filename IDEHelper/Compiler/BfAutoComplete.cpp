@@ -2543,6 +2543,7 @@ void BfAutoComplete::CheckProperty(BfPropertyDeclaration* propertyDeclaration)
 				mInsertEndIdx = propertyDeclaration->mVirtualSpecifier->GetSrcEnd();
 			}
 			AddOverrides(filter);
+			mInsertStartIdx = propertyDeclaration->mSrcStart;
 		}
 	}
 	else
