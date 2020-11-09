@@ -1087,8 +1087,11 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 }
 
 void BfDefBuilder::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
-{
-	if (!WantsNode(enumCaseDeclaration, enumCaseDeclaration->mCaseToken, 0))
+{	
+	// Using `enumCaseDeclaration->mCaseToken` breaks attribute autocompletion
+	//if (!WantsNode(enumCaseDeclaration, enumCaseDeclaration->mCaseToken, 0))
+
+	if (!WantsNode(enumCaseDeclaration))
 	{
 		return;
 	}

@@ -347,18 +347,11 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.Field | .Method | .Property /*2*/)]
+	[AttributeUsage(.Field | .StaticField | .Method | .Property /*2*/)]
 	public struct NoShowAttribute : Attribute
 	{
 
 	}
-
-	[AttributeUsage(.Field | .Method | .Property /*2*/)]
-	public struct HideAttribute : Attribute
-	{
-
-	}
-
 
 	[AttributeUsage(.Parameter)]
 	public struct HideNameAttribute : Attribute

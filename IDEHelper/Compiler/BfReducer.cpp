@@ -5726,6 +5726,18 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 		auto memberNode = ReadTypeMember(nextNode, 0, (deferredHeadNode != NULL) ? deferredHeadNode : attributes);
 		if (memberNode == NULL)
 			return NULL;
+
+		if (auto enumCaseDecl = BfNodeDynCast<BfEnumCaseDeclaration>(memberNode))
+		{
+			if (!enumCaseDecl->mEntries.IsEmpty())
+			{
+				enumCaseDecl->mSrcStart = attributes->mSrcStart;
+				enumCaseDecl->mEntries[0]->mAttributes = attributes;
+				enumCaseDecl->mEntries[0]->mSrcStart = attributes->mSrcStart;
+				return enumCaseDecl;
+			}
+		}
+
 		auto member = BfNodeDynCast<BfMemberDeclaration>(memberNode);
 		if (member == NULL)
 		{
@@ -7855,6 +7867,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 				bool hadIllegal = false;
 				bool inAssignment = false;
+				int bracketDepth = 0;
 
 				int checkIdx = 0;
 				while (true)
@@ -7878,6 +7891,18 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 						{
 							inAssignment = true;
 						}
+						else if (tokenNode->mToken == BfToken_LBracket)
+						{
+							bracketDepth++;
+						}
+						else if (tokenNode->mToken == BfToken_RBracket)
+						{
+							bracketDepth--;
+						}
+						else if (bracketDepth != 0)
+						{
+							// Allow
+						}
 						else if (tokenNode->mToken == BfToken_Semicolon)
 						{
 							hadIllegal = true;
@@ -7891,6 +7916,10 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 								break;
 							}
 						}
+					}
+					else if (bracketDepth != 0)
+					{
+						// Allow
 					}
 					else
 					{
@@ -8438,9 +8467,30 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 				if (child == NULL)
 					break;
 				auto fieldDecl = mAlloc->Alloc<BfEnumEntryDeclaration>();
+												
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(child))
+				{
+					if (tokenNode->mToken == BfToken_LBracket)
+					{
+						BfAttributeDirective* attribute = CreateAttributeDirective(tokenNode);
+						if (attribute != NULL)
+						{
+							mVisitorPos.MoveNext();
+							child = mVisitorPos.GetCurrent();
+							fieldDecl->mAttributes = attribute;
+
+							if (child == NULL)
+								break;
+						}
+					}
+				}				
+
 				mVisitorPos.MoveNext();
 				mVisitorPos.Write(fieldDecl);
 				ReplaceNode(child, fieldDecl);
+
+				if (fieldDecl->mAttributes != NULL)
+					fieldDecl->mSrcStart = fieldDecl->mAttributes->mSrcStart;
 
 				auto valueName = BfNodeDynCast<BfIdentifierNode>(child);
 				if (valueName == NULL)
