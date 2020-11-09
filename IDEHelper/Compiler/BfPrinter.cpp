@@ -2493,49 +2493,53 @@ void BfPrinter::Visit(BfIndexerDeclaration* indexerDeclaration)
 }
 
 void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
-{	
-	if (fieldDeclaration->mPrecedingComma != NULL)
-	{
-		VisitChild(fieldDeclaration->mPrecedingComma);
-		ExpectSpace();
-		VisitChild(fieldDeclaration->mNameNode);
-		return;
-	}
-
+{		
 	bool isEnumDecl = false;
 
 	if (auto enumEntry = BfNodeDynCast<BfEnumEntryDeclaration>(fieldDeclaration))
 	{		
 		isEnumDecl = true;
 	}
-
-	if (!isEnumDecl)
-		ExpectNewLine();
-	if (fieldDeclaration->mAttributes != NULL)
+		
+	if (fieldDeclaration->mPrecedingComma != NULL)
 	{
-		QueueVisitChild(fieldDeclaration->mAttributes);
-		ExpectNewLine();
-	}	
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mProtectionSpecifier);
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mConstSpecifier);
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mReadOnlySpecifier);
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mVolatileSpecifier);
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mNewSpecifier);
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mStaticSpecifier);
-	ExpectSpace();
-	QueueVisitChild(fieldDeclaration->mPrecedingComma);
-	ExpectSpace();
-	if (isEnumDecl)
-		mNextStateModify.mExpectingSpace = false;
-	QueueVisitChild(fieldDeclaration->mTypeRef);
-	ExpectSpace();	
-	QueueVisitChild(fieldDeclaration->mNameNode);
+		mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
+
+		QueueVisitChild(fieldDeclaration->mPrecedingComma);
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mNameNode);
+	}
+	else
+	{
+		if (!isEnumDecl)
+			ExpectNewLine();
+		if (fieldDeclaration->mAttributes != NULL)
+		{
+			QueueVisitChild(fieldDeclaration->mAttributes);
+			ExpectNewLine();
+		}
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mProtectionSpecifier);
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mConstSpecifier);
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mReadOnlySpecifier);
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mVolatileSpecifier);
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mNewSpecifier);
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mStaticSpecifier);
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mPrecedingComma);
+		ExpectSpace();
+		if (isEnumDecl)
+			mNextStateModify.mExpectingSpace = false;
+		QueueVisitChild(fieldDeclaration->mTypeRef);
+		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mNameNode);
+	}
+
 	if (fieldDeclaration->mEqualsNode != NULL)
 	{
 		ExpectSpace();
@@ -2556,7 +2560,7 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 		QueueVisitChild(fieldDtor->mBody);
 		fieldDtor = fieldDtor->mNextFieldDtor;
 	}
-	
+
 	mNextStateModify.mExpectingSpace = false;
 	FlushVisitChild();
 }
