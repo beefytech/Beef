@@ -132,14 +132,21 @@ namespace Tests
 			return 1;
 		}
 
-		public static int MethodA<T>(T val) where T : ValueType
+		public static int MethodA<T>(T val) where T : struct
 		{
 			return 2;
 		}
 
-		public static int MethodA<T>(T val) where T : Enum
+		public static int MethodA<T>(T val) where T : enum
 		{
+			int val2 = (int)val;
+			T val3 = 0;
 			return 3;
+		}
+
+		public static int MethodA<T>(T val) where T : interface
+		{
+			return 4;
 		}
 
 		public struct Entry
@@ -200,9 +207,12 @@ namespace Tests
 			LibA.LibA0.Alloc<ClassA>();
 			LibA.LibA0.Alloc<ClassB>();
 
+			IDisposable iDisp = null;
+
 			Test.Assert(MethodA("") == 1);
 			Test.Assert(MethodA(1.2f) == 2);
 			Test.Assert(MethodA(TypeCode.Boolean) == 3);
+			Test.Assert(MethodA(iDisp) == 4);
 
 			ClassC cc = scope .();
 			Test.Assert(ClassC.mInstance == cc);

@@ -18,7 +18,7 @@ namespace System
 			((int32)iVal).ToString(strBuffer);
 		}
 
-		public static Result<T> Parse<T>(StringView str, bool ignoreCase = false) where T : Enum
+		public static Result<T> Parse<T>(StringView str, bool ignoreCase = false) where T : enum
 		{
 			var typeInst = (TypeInstance)typeof(T);
 			for (var field in typeInst.GetFields())

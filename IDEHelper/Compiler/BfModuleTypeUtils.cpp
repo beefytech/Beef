@@ -363,6 +363,9 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 	{
 		// If the outer had a type flag and the inner has a specific type constraint, then see if those are compatible
 		auto outerFlags = checkOuter->mGenericParamFlags;
+		if ((outerFlags & BfGenericParamFlag_Enum) != 0)
+			outerFlags |= BfGenericParamFlag_Struct;
+
 		if (checkOuter->mTypeConstraint != NULL)
 		{
 			if (checkOuter->mTypeConstraint->IsStruct())
@@ -371,9 +374,17 @@ bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGeneri
 				outerFlags |= BfGenericParamFlag_StructPtr;
 			else if (checkOuter->mTypeConstraint->IsObject())
 				outerFlags |= BfGenericParamFlag_Class;
+			else if (checkOuter->mTypeConstraint->IsEnum())
+				outerFlags |= BfGenericParamFlag_Enum | BfGenericParamFlag_Struct;
+			else if (checkOuter->mTypeConstraint->IsInterface())
+				outerFlags |= BfGenericParamFlag_Interface;
 		}
 
-		if (((checkInner->mGenericParamFlags | outerFlags) & ~BfGenericParamFlag_Var) != (outerFlags & ~BfGenericParamFlag_Var))
+		auto innerFlags = checkInner->mGenericParamFlags;
+		if ((innerFlags & BfGenericParamFlag_Enum) != 0)
+			innerFlags |= BfGenericParamFlag_Struct;
+
+		if (((innerFlags | outerFlags) & ~BfGenericParamFlag_Var) != (outerFlags & ~BfGenericParamFlag_Var))
 			return false;
 	}
 
@@ -8481,7 +8492,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					{
 						auto genericParam = GetGenericParamInstance((BfGenericParamType*)resolvedType);
 						if (((genericParam->mTypeConstraint != NULL) && (genericParam->mTypeConstraint->IsValueType())) ||
-							((genericParam->mGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr)) != 0))
+							((genericParam->mGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Enum)) != 0))
 						{
 							resolvedType = CreatePointerType(resolvedType);
 						}
@@ -9970,13 +9981,21 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			// Generic constrained with class or pointer type -> void*
 			if (toType->IsVoidPtr())
 			{
-				if ((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr)) ||
+				if (((genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Interface)) != 0) ||
 					((genericParamInst->mTypeConstraint != NULL) &&
 					((genericParamInst->mTypeConstraint->IsPointer()) || 
 						(genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || 
 						(genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
 				{
 					return GetDefaultValue(toType);
+				}
+			}
+
+			if (toType->IsInteger())
+			{
+				if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Enum) != 0)
+				{
+					return mBfIRBuilder->GetFakeVal();
 				}
 			}
 
@@ -10029,7 +10048,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		
 		if (typedVal.mType->IsNull())
 		{
-			bool allowCast = (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Class) || (genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr);
+			bool allowCast = (genericParamInst->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Interface)) != 0;
 			if ((!allowCast) && (genericParamInst->mTypeConstraint != NULL))
 				allowCast = genericParamInst->mTypeConstraint->IsObject() || genericParamInst->mTypeConstraint->IsPointer();
 			if (allowCast)
@@ -10052,13 +10071,31 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		
 		if (explicitCast)
 		{
-			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr) ||
+			if (((genericParamInst->mGenericParamFlags & BfGenericParamFlag_StructPtr) != 0) ||
 				((genericParamInst->mTypeConstraint != NULL) && genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))
 			{
 				auto voidPtrType = CreatePointerType(GetPrimitiveType(BfTypeCode_None));
 				auto castedVal = CastToValue(srcNode, typedVal, voidPtrType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
 				if (castedVal)
 					return castedVal;
+			}
+		}
+
+		if ((typedVal.mType->IsIntegral()) && ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Enum) != 0))
+		{
+			bool allowCast = explicitCast;			
+			if ((!allowCast) && (typedVal.mType->IsIntegral()))
+			{
+				// Allow implicit cast of zero
+				auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
+				if ((constant != NULL) && (mBfIRBuilder->IsInt(constant->mTypeCode)))
+				{
+					allowCast = constant->mInt64 == 0;
+				}
+			}
+			if (allowCast)
+			{
+				return mBfIRBuilder->GetFakeVal();
 			}
 		}
 	}

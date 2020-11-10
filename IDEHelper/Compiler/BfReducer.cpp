@@ -9496,6 +9496,8 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 				case BfToken_Var:
 				case BfToken_New:
 				case BfToken_Delete:
+				case BfToken_Enum:
+				case BfToken_Interface:
 					addToConstraint = true;
 					break;
 				case BfToken_Operator:

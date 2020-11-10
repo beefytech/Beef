@@ -423,7 +423,7 @@ namespace Beefy.utils
 			}
 		}
 
-		public void Get<T>(StringView name, ref T val) where T : Enum
+		public void Get<T>(StringView name, ref T val) where T : enum
 		{
 			Object obj = Get(name);
 			if (obj == null)
@@ -547,7 +547,7 @@ namespace Beefy.utils
             return (bool)aVal;
         }
 
-        public T GetEnum<T>(String name, T defaultVal = default(T)) where T : Enum
+        public T GetEnum<T>(String name, T defaultVal = default(T)) where T : enum
         {
             Object obj = Get(name);
 			if (obj == null)
@@ -566,7 +566,7 @@ namespace Beefy.utils
 			return defaultVal;
         }
 
-		public bool GetEnum<T>(String name, ref T val) where T : Enum
+		public bool GetEnum<T>(String name, ref T val) where T : enum
 		{
 			Object obj = Get(name);
 			if (obj == null)
@@ -614,7 +614,7 @@ namespace Beefy.utils
 			return;
         }
 
-		public T GetCurEnum<T>(T theDefault = default) where T : Enum
+		public T GetCurEnum<T>(T theDefault = default) where T : enum
 		{
 			Object obj = GetCurrent();
 			

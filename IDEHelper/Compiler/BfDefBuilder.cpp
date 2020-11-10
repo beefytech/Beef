@@ -285,9 +285,10 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 
 			if (!name.empty())
 			{
-				if ((name == "class") || (name == "struct") || (name == "struct*") || (name == "const") || (name == "var"))
+				if ((name == "class") || (name == "struct") || (name == "struct*") || (name == "const") || (name == "var") || (name == "interface") || (name == "enum"))
 				{
-					int prevFlags = constraintDef->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr);
+					int prevFlags = constraintDef->mGenericParamFlags & 
+						(BfGenericParamFlag_Class | BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Interface | BfGenericParamFlag_Enum);
 					if (prevFlags != 0)					
 					{
 						String prevFlagName;
@@ -295,8 +296,12 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 							prevFlagName = "class";
 						else if (prevFlags & BfGenericParamFlag_Struct)
 							prevFlagName = "struct";
-						else //
+						else if (prevFlags & BfGenericParamFlag_StructPtr)
 							prevFlagName = "struct*";
+						else if (prevFlags & BfGenericParamFlag_Enum)
+							prevFlagName = "enum";
+						else // interface
+							prevFlagName = "interface";
 
 						if (prevFlagName == name)
 							Fail(StrFormat("Cannot specify '%s' twice", prevFlagName.c_str()), constraintNode);
@@ -313,6 +318,10 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_StructPtr);
 					else if (name == "const")
 						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Const);
+					else if (name == "interface")
+						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Interface);
+					else if (name == "enum")
+						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Enum);
 					else //if (name == "var")
 						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Var);
 										

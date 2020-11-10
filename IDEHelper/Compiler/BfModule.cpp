@@ -7247,6 +7247,29 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		return false;
 	}
 
+	if (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Enum)
+	{
+		bool isEnum = checkArgType->IsEnum();
+		if ((origCheckArgType->IsGenericParam()) && (checkArgType->IsInstanceOf(mCompiler->mEnumTypeDef)))
+			isEnum = true;
+		if (((checkGenericParamFlags & (BfGenericParamFlag_Enum | BfGenericParamFlag_Var)) == 0) && (!isEnum))
+		{
+			if (!ignoreErrors)
+				*errorOut = Fail(StrFormat("The type '%s' must be an enum type in order to use it as parameter '%s' for '%s'",
+					TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+			return false;
+		}
+	}
+
+	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Interface) &&
+		((checkGenericParamFlags & (BfGenericParamFlag_Interface | BfGenericParamFlag_Var)) == 0) && (!checkArgType->IsInterface()))
+	{
+		if (!ignoreErrors)
+			*errorOut = Fail(StrFormat("The type '%s' must be an interface type in order to use it as parameter '%s' for '%s'",
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+		return false;
+	}
+
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
 	{
 		if (((checkGenericParamFlags & BfGenericParamFlag_Const) == 0) && (!checkArgType->IsConstExprValue()))
