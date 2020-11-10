@@ -598,6 +598,7 @@ namespace IDE
 			public bool mShowLineNumbers = true;
 			public bool mFreeCursorMovement;
 			public FileRecoveryKind mEnableFileRecovery = .Yes;
+			public bool mFormatOnSave = false;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -621,6 +622,7 @@ namespace IDE
 				sd.Add("ShowLineNumbers", mShowLineNumbers);
 				sd.Add("FreeCursorMovement", mFreeCursorMovement);
 				sd.Add("EnableFileRecovery", mEnableFileRecovery);
+				sd.Add("FormatOnSave", mFormatOnSave);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -648,6 +650,7 @@ namespace IDE
 				sd.Get("ShowLineNumbers", ref mShowLineNumbers);
 				sd.Get("FreeCursorMovement", ref mFreeCursorMovement);
 				sd.GetEnum<FileRecoveryKind>("EnableFileRecovery", ref mEnableFileRecovery);
+				sd.Get("FormatOnSave", ref mFormatOnSave);
 			}
 
 			public void SetDefaults()

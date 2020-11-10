@@ -123,6 +123,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Show Line Numbers", "mShowLineNumbers");
 			AddPropertiesItem(category, "Free Cursor Movement", "mFreeCursorMovement");
 			AddPropertiesItem(category, "Enable File Recovery", "mEnableFileRecovery");
+			AddPropertiesItem(category, "Format on Save", "mFormatOnSave");
 
 			category.Open(true, true);
 		}

@@ -4389,7 +4389,7 @@ namespace IDE.ui
             base.FindNext(dir);
         }
 
-        public void ReformatDocument()
+        public void ReformatDocument(bool ignoreSelection = false)
         {
 			if (!mIsBeefSource)
 				return;
@@ -4442,7 +4442,7 @@ namespace IDE.ui
                 }
             }
 
-            if (mEditWidget.Content.HasSelection())
+            if ((mEditWidget.Content.HasSelection()) && (!ignoreSelection))
                 parser.ReformatInto(mEditWidget, mEditWidget.Content.mSelection.Value.MinPos, mEditWidget.Content.mSelection.Value.MaxPos);
             else
                 parser.ReformatInto(mEditWidget, 0, text.Length);

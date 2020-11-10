@@ -1324,7 +1324,7 @@ namespace IDE
 #endif
 				    
 			        if (mWakaTime != null)			        
-			            mWakaTime.QueueFile(path, projectSource.mProject.mProjectName, true);				    
+			            mWakaTime.QueueFile(path, projectSource.mProject.mProjectName, true);
 				}
 			}
 			return true;
@@ -1489,6 +1489,11 @@ namespace IDE
         {
             if ((sourceViewPanel.HasUnsavedChanges()) || (forcePath != null))
             {
+				if (gApp.mSettings.mEditorSettings.mFormatOnSave)
+				{
+					sourceViewPanel.ReformatDocument(true);
+				}
+
 				if ((forcePath == null) && (sourceViewPanel.mFilePath == null))
 				{
 					return SaveFileAs(sourceViewPanel);

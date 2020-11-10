@@ -21,6 +21,7 @@ namespace IDE.ui
 
         UndoBatchStart mUndoBatchStart;
         PersistentTextPosition mTrackedCursorPosition;
+		EditWidgetContent.LineAndColumn? mVirtualCursorPos;
         PersistentTextPosition mSelStartPostion;
         PersistentTextPosition mSelEndPostion;
 
@@ -35,6 +36,7 @@ namespace IDE.ui
                 editWidgetContent.mData.mUndoManager.Add(firstUndoAction);
             editWidgetContent.mData.mUndoManager.Add(new EditWidgetContent.SetCursorAction(editWidgetContent));
 
+			mVirtualCursorPos = editWidgetContent.mVirtualCursorPos;
             mTrackedCursorPosition = new PersistentTextPosition((int32)editWidgetContent.CursorTextPos);
             editWidgetContent.PersistentTextPositions.Add(mTrackedCursorPosition);
             
@@ -54,6 +56,10 @@ namespace IDE.ui
             var editWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
             editWidgetContent.CursorTextPos = mTrackedCursorPosition.mIndex;
             editWidgetContent.PersistentTextPositions.Remove(mTrackedCursorPosition);
+
+			if ((mVirtualCursorPos != null) && (editWidgetContent.CursorLineAndColumn.mColumn == 0))
+				editWidgetContent.CursorLineAndColumn = .(editWidgetContent.CursorLineAndColumn.mLine, mVirtualCursorPos.Value.mColumn);
+
 			delete mTrackedCursorPosition;
 
             if (mSelStartPostion != null)
