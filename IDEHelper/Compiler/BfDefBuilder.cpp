@@ -1399,6 +1399,12 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	int hashPos[2] = { curLine, curColumn };
 	mFullHashCtx->Mixin(hashPos);
 
+	if (mSystem->mIsResolveOnly)
+	{
+		// We need to have the correct source index for renames and such
+		fullHashCtx.Mixin(typeDeclaration->GetSrcStart());
+	}
+
 	if (auto typeAliasDeclaration = BfNodeDynCast<BfTypeAliasDeclaration>(typeDeclaration))
 	{
 		HashNode(*mSignatureHashCtx, typeAliasDeclaration->mAliasToType);
