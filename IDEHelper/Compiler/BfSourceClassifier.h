@@ -109,6 +109,7 @@ public:
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef) override;
 	virtual void Visit(BfLocalMethodDeclaration * methodDecl) override;
 	virtual void Visit(BfLiteralExpression* literalExpr) override;
+	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression) override;
 	virtual void Visit(BfTokenNode* tokenNode) override;
 	virtual void Visit(BfInvocationExpression* invocationExpr) override;	
 	virtual void Visit(BfIndexerExpression* indexerExpr) override;

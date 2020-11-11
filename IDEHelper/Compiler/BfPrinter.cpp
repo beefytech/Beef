@@ -1163,6 +1163,14 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 	WriteSourceString(literalExpr);	
 }
 
+void BfPrinter::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
+{
+	Visit(stringInterpolationExpression->ToBase());
+	String str;
+	stringInterpolationExpression->ToString(str);
+	Write(str);
+}
+
 void BfPrinter::Visit(BfIdentifierNode* identifierNode)
 {
 	Visit(identifierNode->ToBase());	

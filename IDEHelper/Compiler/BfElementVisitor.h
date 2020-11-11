@@ -37,6 +37,7 @@ public:
 	virtual void Visit(BfTokenNode* tokenNode);
 	virtual void Visit(BfTokenPairNode* tokenPairNode);
 	virtual void Visit(BfLiteralExpression* literalExpr);
+	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression);
 	virtual void Visit(BfIdentifierNode* identifierNode);
 	virtual void Visit(BfAttributedIdentifierNode* attrIdentifierNode);
 	virtual void Visit(BfQualifiedNameNode* nameNode);

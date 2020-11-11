@@ -43,7 +43,7 @@ enum BfPopulateType
 	BfPopulateType_Interfaces,
 	BfPopulateType_Data,
 	BfPopulateType_DataAndMethods,
-	BfPopulateType_Full = BfPopulateType_DataAndMethods	,
+	BfPopulateType_Full = BfPopulateType_DataAndMethods,
 	BfPopulateType_Full_Force
 };
 
@@ -66,7 +66,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_FieldInitializer = 0x2000,
 	BfEvalExprFlags_VariableDeclaration = 0x4000,
 	BfEvalExprFlags_NoAutoComplete = 0x8000,
-	BfEvalExprFlags_AllowNonConst = 0x10000	
+	BfEvalExprFlags_AllowNonConst = 0x10000,
+	BfEvalExprFlags_StringInterpolateFormat = 0x20000
 };
 
 enum BfCastFlags

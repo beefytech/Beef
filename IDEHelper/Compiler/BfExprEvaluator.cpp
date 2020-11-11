@@ -3200,6 +3200,47 @@ void BfExprEvaluator::Visit(BfLiteralExpression* literalExpr)
 	GetLiteral(literalExpr, literalExpr->mValue);
 }
 
+void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
+{
+	if ((mBfEvalExprFlags & BfEvalExprFlags_StringInterpolateFormat) != 0)
+	{
+		BfVariant variant;
+		variant.mTypeCode = BfTypeCode_CharPtr;
+		variant.mString = stringInterpolationExpression->mString;
+		GetLiteral(stringInterpolationExpression, variant);
+		return;
+	}
+
+	if (stringInterpolationExpression->mAllocNode != NULL)
+	{
+		auto stringType = mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef)->ToTypeInstance();
+
+		BfTokenNode* newToken = NULL;
+		BfAllocTarget allocTarget = ResolveAllocTarget(stringInterpolationExpression->mAllocNode, newToken);
+		
+		CreateObject(NULL, stringInterpolationExpression->mAllocNode, stringType);
+		BfTypedValue newString = mResult;
+		BF_ASSERT(newString);
+
+		SizedArray<BfExpression*, 2> argExprs;
+		argExprs.Add(stringInterpolationExpression);
+		BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
+		BfResolvedArgs argValues(&sizedArgExprs);
+		ResolveArgValues(argValues, BfResolveArgFlag_InsideStringInterpolationAlloc);
+		MatchMethod(stringInterpolationExpression, NULL, newString, false, false, "AppendF", argValues, NULL);
+		mResult = newString;
+
+		return;
+	}	
+
+	mModule->Fail("Invalid use of string interpolation expression. Consider adding an allocation specifier such as 'scope'.", stringInterpolationExpression);
+
+	for (auto block : stringInterpolationExpression->mExpressions)
+	{
+		VisitChild(block);
+	}
+}
+
 BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 {		
  	if (!mModule->mIsInsideAutoComplete)
@@ -4413,23 +4454,44 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			autoComplete->mIgnoreFixits = true;
 	}
 
-	for (int argIdx = 0; argIdx < argCount ; argIdx++)
+	int deferredArgIdx = 0;
+	SizedArray<BfExpression*, 8> deferredArgs;
+
+	int argIdx = 0;
+	//for (int argIdx = 0; argIdx < argCount ; argIdx++)
+
+	while (true)
 	{
 		//printf("Args: %p %p %d\n", resolvedArgs.mArguments, resolvedArgs.mArguments->mVals, resolvedArgs.mArguments->mSize);
 
 		BfExpression* argExpr = NULL;
-		if (argIdx < resolvedArgs.mArguments->size())
-			argExpr = (*resolvedArgs.mArguments)[argIdx];		
+
+		int curArgIdx = -1;
+
+		if (deferredArgIdx < deferredArgs.size())
+		{
+			argExpr = deferredArgs[deferredArgIdx++];
+		}
+		else if (argIdx >= argCount)
+		{
+			break;
+		}
+		else
+		{
+			curArgIdx = argIdx++;
+			if (curArgIdx < resolvedArgs.mArguments->size())
+				argExpr = (*resolvedArgs.mArguments)[curArgIdx];
+		}
 
 		if (argExpr == NULL)
 		{
-			if (argIdx == 0)
+			if (curArgIdx == 0)
 			{
 				if (resolvedArgs.mOpenToken != NULL)
 					mModule->FailAfter("Expression expected", resolvedArgs.mOpenToken);
 			}
 			else if (resolvedArgs.mCommas != NULL)
-				mModule->FailAfter("Expression expected", (*resolvedArgs.mCommas)[argIdx - 1]);
+				mModule->FailAfter("Expression expected", (*resolvedArgs.mCommas)[curArgIdx - 1]);
 		}
 
 		if (auto typedValueExpr = BfNodeDynCast<BfTypedValueExpression>(argExpr))
@@ -4440,13 +4502,23 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			resolvedArgs.mResolvedArgs.push_back(resolvedArg);			
 			continue;
 		}
-
+		
 		BfResolvedArg resolvedArg;
 		BfExprEvaluator exprEvaluator(mModule);
 		exprEvaluator.mResolveGenericParam = (flags & BfResolveArgFlag_AllowUnresolvedTypes) == 0;
 		exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr);
 		bool handled = false;
 		bool evaluated = false;
+
+		if (auto interpolateExpr = BfNodeDynCastExact<BfStringInterpolationExpression>(argExpr))
+		{
+			if ((interpolateExpr->mAllocNode == NULL) || ((flags & BfResolveArgFlag_InsideStringInterpolationAlloc) != 0))
+			{
+				resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_StringInterpolateFormat);
+				for (auto innerExpr : interpolateExpr->mExpressions)
+					deferredArgs.Add(innerExpr);
+			}
+		}
 
 		bool deferParamEval = false;
 		if ((flags & BfResolveArgFlag_DeferParamEval) != 0)
@@ -4542,6 +4614,10 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			if (!evaluated)
 			{
 				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowParamsExpr);
+
+				if ((resolvedArg.mArgFlags & BfArgFlag_StringInterpolateFormat) != 0)
+					exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_StringInterpolateFormat);
+
 				exprEvaluator.Evaluate(argExpr, false, false, true);
 			}
 		
@@ -4595,7 +4671,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		}
 		resolvedArg.mExpression = argExpr;
 		resolvedArgs.mResolvedArgs.push_back(resolvedArg);
-	}	
+	}
 
 	if (autoComplete != NULL)
 		autoComplete->mIgnoreFixits = hadIgnoredFixits;
@@ -12036,13 +12112,18 @@ void BfExprEvaluator::CheckObjectCreateTypeRef(BfType* expectingType, BfAstNode*
 
 void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 {
+	CreateObject(objCreateExpr, objCreateExpr->mNewNode, NULL);
+}
+
+void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAstNode* allocNode, BfType* wantAllocType)
+{
 	auto autoComplete = GetAutoComplete();	
-	if ((autoComplete != NULL) && (objCreateExpr->mTypeRef != NULL))
+	if ((autoComplete != NULL) && (objCreateExpr != NULL) && (objCreateExpr->mTypeRef != NULL))
 	{
 		autoComplete->CheckTypeRef(objCreateExpr->mTypeRef, false, true);
 	}
 
-	if ((autoComplete != NULL) && (objCreateExpr->mOpenToken != NULL) && (objCreateExpr->mCloseToken != NULL) &&
+	if ((autoComplete != NULL) && (objCreateExpr != NULL) && (objCreateExpr->mOpenToken != NULL) && (objCreateExpr->mCloseToken != NULL) &&
 		(objCreateExpr->mOpenToken->mToken == BfToken_LBrace) && (autoComplete->CheckFixit(objCreateExpr->mOpenToken)))
 	{		
 		auto refNode = objCreateExpr->mOpenToken;
@@ -12055,28 +12136,28 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		}
 	}
 
-	CheckObjectCreateTypeRef(mExpectingType, objCreateExpr->mNewNode);			
+	CheckObjectCreateTypeRef(mExpectingType, allocNode);			
 
 	BfAttributeState attributeState;	
 	attributeState.mTarget = BfAttributeTargets_Alloc;
 	SetAndRestoreValue<BfAttributeState*> prevAttributeState(mModule->mAttributeState, &attributeState);	
 	BfTokenNode* newToken = NULL;
-	BfAllocTarget allocTarget = ResolveAllocTarget(objCreateExpr->mNewNode, newToken, &attributeState.mCustomAttributes);	
+	BfAllocTarget allocTarget = ResolveAllocTarget(allocNode, newToken, &attributeState.mCustomAttributes);
 	
 	bool isScopeAlloc = newToken->GetToken() == BfToken_Scope;
 	bool isAppendAlloc = newToken->GetToken() == BfToken_Append;
 	bool isStackAlloc = (newToken->GetToken() == BfToken_Stack) || (isScopeAlloc);
 	bool isArrayAlloc = false;// (objCreateExpr->mArraySizeSpecifier != NULL);
-	bool isRawArrayAlloc = (objCreateExpr->mStarToken != NULL);
+	bool isRawArrayAlloc = (objCreateExpr != NULL) && (objCreateExpr->mStarToken != NULL);
 
 	if (isScopeAlloc)
 	{
 		if ((mBfEvalExprFlags & BfEvalExprFlags_FieldInitializer) != 0)
 		{
-			mModule->Warn(0, "This allocation will only be in scope during the constructor. Consider using a longer-term allocation such as 'new'", objCreateExpr->mNewNode);
+			mModule->Warn(0, "This allocation will only be in scope during the constructor. Consider using a longer-term allocation such as 'new'", allocNode);
 		}
 		
-		if (objCreateExpr->mNewNode == newToken) // Scope, no target specified
+		if (allocNode == newToken) // Scope, no target specified
 		{
 			if (mModule->mParentNodeEntry != NULL)
 			{
@@ -12086,7 +12167,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 					{
 						// If we are assigning this to a property then it's possible the property setter can actually deal with a temporary allocation so no warning in that case
 						if ((mBfEvalExprFlags & BfEvalExprFlags_PendingPropSet) == 0)
-							mModule->Warn(0, "This allocation will immediately go out of scope. Consider specifying a wider scope target such as 'scope::'", objCreateExpr->mNewNode);
+							mModule->Warn(0, "This allocation will immediately go out of scope. Consider specifying a wider scope target such as 'scope::'", allocNode);
 					}
 				}
 			}
@@ -12102,7 +12183,12 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 
 	BfType* unresolvedTypeRef = NULL;
  	BfType* resolvedTypeRef = NULL;
-	if (objCreateExpr->mTypeRef == NULL)
+	if (wantAllocType != NULL)
+	{
+		unresolvedTypeRef = wantAllocType;
+		resolvedTypeRef = wantAllocType;
+	}
+	else if (objCreateExpr->mTypeRef == NULL)
 	{
 		if ((!mExpectingType) || (!mExpectingType->IsArray()))
 		{
@@ -12118,7 +12204,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 		}
 	}
 	else 	
-	{	
+	{
 		if ((objCreateExpr->mTypeRef->IsExact<BfDotTypeReference>()) && (mExpectingType != NULL))
 		{
 			//mModule->SetElementType(objCreateExpr->mTypeRef, BfSourceElementType_TypeRef);
@@ -12287,12 +12373,12 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	{		
 		if (!mModule->mCurTypeInstance->IsObject())
 		{
-			mModule->Fail("Append allocations are only allowed in classes", objCreateExpr->mNewNode);
+			mModule->Fail("Append allocations are only allowed in classes", allocNode);
 			isAppendAlloc = false;
 		}
 		else if ((mBfEvalExprFlags & BfEvalExprFlags_VariableDeclaration) == 0)
 		{
-			mModule->Fail("Append allocations are only allowed as local variable initializers in constructor body", objCreateExpr->mNewNode);
+			mModule->Fail("Append allocations are only allowed as local variable initializers in constructor body", allocNode);
 			isAppendAlloc = false;
 		}
 		else
@@ -12300,22 +12386,22 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 			auto methodDef = mModule->mCurMethodInstance->mMethodDef;
 			if (methodDef->mMethodType == BfMethodType_CtorCalcAppend)
 			{
-				mModule->Fail("Append allocations are only allowed as local variable declarations in the main method body", objCreateExpr->mNewNode);
+				mModule->Fail("Append allocations are only allowed as local variable declarations in the main method body", allocNode);
 				isAppendAlloc = false;
 			}
 			else if (!methodDef->mHasAppend)
 			{
-				mModule->Fail("Append allocations can only be used on constructors with [AllowAppend] specified", objCreateExpr->mNewNode);
+				mModule->Fail("Append allocations can only be used on constructors with [AllowAppend] specified", allocNode);
 				isAppendAlloc = false;
 			}
 			else if (methodDef->mMethodType != BfMethodType_Ctor)
 			{
-				mModule->Fail("Append allocations are only allowed in constructors", objCreateExpr->mNewNode);
+				mModule->Fail("Append allocations are only allowed in constructors", allocNode);
 				isAppendAlloc = false;
 			}
 			else if (methodDef->mIsStatic)
 			{
-				mModule->Fail("Append allocations are only allowed in non-static constructors", objCreateExpr->mNewNode);
+				mModule->Fail("Append allocations are only allowed in non-static constructors", allocNode);
 				isAppendAlloc = false;
 			}		
 		}
@@ -12731,7 +12817,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	
 	if ((isStackAlloc) && (mModule->mCurMethodState == NULL))
 	{
-		mModule->Fail("Cannot use 'stack' here", objCreateExpr->mNewNode);
+		mModule->Fail("Cannot use 'stack' here", allocNode);
 		isStackAlloc = false;
 		isScopeAlloc = false;
 	}
@@ -12810,8 +12896,12 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	BfIRValue appendSizeValue;	
 	BfTypedValue emtpyThis(mModule->mBfIRBuilder->GetFakeVal(), resolvedTypeRef, resolvedTypeRef->IsStruct());
 	
-	BfResolvedArgs argValues(objCreateExpr->mOpenToken, &objCreateExpr->mArguments, &objCreateExpr->mCommas, objCreateExpr->mCloseToken);	
-	ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval); ////
+	BfResolvedArgs argValues;
+	if (objCreateExpr != NULL)
+	{
+		argValues.Init(objCreateExpr->mOpenToken, &objCreateExpr->mArguments, &objCreateExpr->mCommas, objCreateExpr->mCloseToken);
+		ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval); ////
+	}
 	
 	if (typeInstance == NULL)
 	{						
@@ -12821,7 +12911,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 			mModule->Fail(StrFormat("Only default parameterless constructors can be called on primitive type '%s'", mModule->TypeToString(resolvedTypeRef).c_str()), objCreateExpr->mTypeRef);
 		}
 	}
-	else if ((autoComplete != NULL) && (objCreateExpr->mOpenToken != NULL))
+	else if ((autoComplete != NULL) && (objCreateExpr != NULL) && (objCreateExpr->mOpenToken != NULL))
 	{
 		auto wasCapturingMethodInfo = autoComplete->mIsCapturingMethodMatchInfo;
 		autoComplete->CheckInvocation(objCreateExpr, objCreateExpr->mOpenToken, objCreateExpr->mCloseToken, objCreateExpr->mCommas);		
@@ -12836,9 +12926,13 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 	}
 	else if (!resolvedTypeRef->IsFunction())
 	{
-		MatchConstructor(objCreateExpr->mTypeRef, objCreateExpr, emtpyThis, typeInstance, argValues, false, true);	
+		auto refNode = allocNode;
+		if (objCreateExpr != NULL)
+			refNode = objCreateExpr->mTypeRef;
+		MatchConstructor(refNode, objCreateExpr, emtpyThis, typeInstance, argValues, false, true);	
 	}	
-	mModule->ValidateAllocation(typeInstance, objCreateExpr->mTypeRef);
+	if (objCreateExpr != NULL)
+		mModule->ValidateAllocation(typeInstance, objCreateExpr->mTypeRef);
 
 	prevBindResult.Restore();
 
@@ -12998,7 +13092,7 @@ void BfExprEvaluator::Visit(BfObjectCreateExpression* objCreateExpr)
 									BF_ASSERT(removeStackObjMethod);
 									if (removeStackObjMethod)
 									{
-										mModule->AddDeferredCall(removeStackObjMethod, irArgs, allocTarget.mScopeData, objCreateExpr);
+										mModule->AddDeferredCall(removeStackObjMethod, irArgs, allocTarget.mScopeData, allocNode);
 									}
 								}
 							}
@@ -15079,7 +15173,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		copiedArgs.push_back(arg);
 	BfSizedArray<BfExpression*> sizedCopiedArgs(copiedArgs);
 	BfResolvedArgs argValues(&sizedCopiedArgs);	
-
+	
 	if (mModule->mParentNodeEntry != NULL)
 	{
 		if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(mModule->mParentNodeEntry->mNode))
@@ -15088,7 +15182,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			argValues.mCommas = &invocationExpr->mCommas;
 			argValues.mCloseToken = invocationExpr->mCloseParen;
 		}
-	}
+	}	
 
 	BfResolveArgFlags resolveArgsFlags = (BfResolveArgFlags)(BfResolveArgFlag_DeferFixits | BfResolveArgFlag_AllowUnresolvedTypes);	
 	resolveArgsFlags = (BfResolveArgFlags)(resolveArgsFlags | BfResolveArgFlag_DeferParamEval);

@@ -357,7 +357,8 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mLineStart = 0;
 	//mCurToken = (BfSyntaxToken)0;
 	mToken = BfToken_None;
-	mSyntaxToken = BfSyntaxToken_None;
+	mSyntaxToken = BfSyntaxToken_None;	
+
 	mTokenStart = 0;
 	mTokenEnd = 0;
 	mLineNum = 0;	
@@ -1360,7 +1361,7 @@ double BfParser::ParseLiteralDouble()
 	return strtod(buf, NULL);
 }
 
-void BfParser::NextToken(int endIdx)
+void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 {
 	auto prevToken = mToken;
 
@@ -1372,11 +1373,13 @@ void BfParser::NextToken(int endIdx)
 
 	bool isLineStart = true;
 	bool isVerbatim = false;
-	int verbatimStart = -1;
+	bool isInterpolate = false;
+	int stringStart = -1;
 
 	while (true)
 	{
 		bool setVerbatim = false;
+		bool setInterpolate = false;
 		uint32 checkTokenHash = 0;
 
 		if ((endIdx != -1) && (mSrcIdx >= endIdx))
@@ -1388,6 +1391,15 @@ void BfParser::NextToken(int endIdx)
 		mTokenStart = mSrcIdx;
 		mTokenEnd = mSrcIdx + 1;
 		char c = mSrc[mSrcIdx++];
+
+		if (outerIsInterpolate)
+		{
+			if (c == '"')
+			{
+				mSyntaxToken = BfSyntaxToken_StringQuote;
+				return;
+			}
+		}
 
 		if ((mPreprocessorIgnoreDepth > 0) && (endIdx == -1))
 		{
@@ -1668,7 +1680,7 @@ void BfParser::NextToken(int endIdx)
 		case '@':
 			setVerbatim = true;
 			c = mSrc[mSrcIdx];
-			if (c == '\"')
+			if ((c == '\"') || (c == '$'))
 			{
 				setVerbatim = true;
 			}
@@ -1679,19 +1691,29 @@ void BfParser::NextToken(int endIdx)
 			else
 			{
 				mSyntaxToken = BfSyntaxToken_Identifier;
-				//mToken = BfToken_At;
-				//mSyntaxToken = BfSyntaxToken_Token;
-				//Fail("Keyword, identifier, or string expected after verbatim specifier: @"); // CS1646
 				return;
 			}
+			break;
+		case '$':
+			setInterpolate = true;
+			c = mSrc[mSrcIdx];
+			if ((c == '\"') || (c == '@'))
+			{
+				setInterpolate = true;
+			}
+			else
+				Fail("Expected to precede string");
 			break;
 		case '"':
 		case '\'':
 		{
+			SizedArray<BfBlock*, 4> interpolateExpressions;
+			
 			String lineHeader;
 			String strLiteral;
 			char startChar = c;
 			bool isMultiline = false;
+			int triviaStart = mTriviaStart;
 
 			if ((mSrc[mSrcIdx] == '"') && (mSrc[mSrcIdx + 1] == '"'))
 			{
@@ -1982,16 +2004,64 @@ void BfParser::NextToken(int endIdx)
 						Fail("Unrecognized escape sequence");
 						strLiteral += c;
 					}
-				}
+				}				
 				else
+				{
 					strLiteral += c;
+
+					if (isInterpolate)
+					{
+						if (c == '{')
+						{
+							BfBlock* newBlock = mAlloc->Alloc<BfBlock>();
+							mTokenStart = mSrcIdx - 1;
+							mTriviaStart = mTokenStart;
+							mTokenEnd = mTokenStart + 1;
+							mToken = BfToken_LBrace;
+							newBlock->mOpenBrace = (BfTokenNode*)CreateNode();
+							newBlock->Init(this);
+							ParseBlock(newBlock, 1, true);
+							if (mToken == BfToken_RBrace)
+							{
+								newBlock->mCloseBrace = (BfTokenNode*)CreateNode();
+								newBlock->SetSrcEnd(mSrcIdx);
+								strLiteral += "}";
+							}
+							else if ((mSyntaxToken == BfSyntaxToken_EOF) || (mSyntaxToken == BfSyntaxToken_StringQuote))
+							{
+								mSrcIdx--;
+								mPassInstance->FailAfterAt("Expected '}'", mSourceData, newBlock->GetSrcEnd() - 1);
+							}							
+							mInAsmBlock = false;
+							interpolateExpressions.Add(newBlock);
+						}
+						else if (c == '}')
+						{
+							if (!interpolateExpressions.IsEmpty())
+							{
+								auto block = interpolateExpressions.back();
+								if (block->mCloseBrace == NULL)
+								{
+									mTokenStart = mSrcIdx - 1;
+									mTriviaStart = mTokenStart;
+									mTokenEnd = mTokenStart + 1;
+									mToken = BfToken_RBrace;
+									block->mCloseBrace = (BfTokenNode*)CreateNode();
+									block->SetSrcEnd(mSrcIdx);
+								}
+							}
+						}
+					}
+				}
 			}
 
-			if (isVerbatim)
+			if (stringStart != -1)
 			{
-				mTokenStart--;
-			}
+				mTokenStart = stringStart;
+				stringStart = -1;
+			}			
 
+			mTriviaStart = triviaStart;
 			mTokenEnd = mSrcIdx;
 			mSyntaxToken = BfSyntaxToken_Literal;
 			if (startChar == '\'')
@@ -2046,6 +2116,20 @@ void BfParser::NextToken(int endIdx)
 				mLiteral.mTypeCode = BfTypeCode_CharPtr;
 				mLiteral.mString = strLiteralPtr;
 			}
+
+			if (isInterpolate)
+			{
+				auto interpolateExpr = mAlloc->Alloc<BfStringInterpolationExpression>();
+				interpolateExpr->mString = mLiteral.mString;
+				interpolateExpr->mTriviaStart = mTriviaStart;
+				interpolateExpr->mSrcStart = mTokenStart;
+				interpolateExpr->mSrcEnd = mSrcIdx;
+				BfSizedArrayInitIndirect(interpolateExpr->mExpressions, interpolateExpressions, mAlloc);				
+				mGeneratedNode = interpolateExpr;
+				mSyntaxToken = BfSyntaxToken_GeneratedNode;
+				mToken = BfToken_None;
+			}
+
 			return;
 		}
 		break;
@@ -3098,8 +3182,11 @@ void BfParser::NextToken(int endIdx)
 					((c >= 'a') && (c <= 'z')) ||
 					(c == '_'))
 				{
-					if (isVerbatim)
-						mTokenStart = verbatimStart;
+					if (stringStart != -1)
+					{
+						mTokenStart = stringStart;
+						stringStart = -1;
+					}
 
 					while (true)
 					{
@@ -3163,7 +3250,12 @@ void BfParser::NextToken(int endIdx)
 		if ((setVerbatim) && (!isVerbatim))
 		{
 			isVerbatim = true;
-			verbatimStart = mTokenStart;
+			stringStart = mTokenStart;
+		}
+		if ((setInterpolate) && (!isInterpolate))
+		{
+			isInterpolate = true;
+			stringStart = mTokenStart;
 		}
 	}
 }
@@ -3171,7 +3263,7 @@ void BfParser::NextToken(int endIdx)
 static int gParseBlockIdx = 0;
 static int gParseMemberIdx = 0;
 
-void BfParser::ParseBlock(BfBlock* astNode, int depth)
+void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 {
 	gParseBlockIdx++;
 	int startParseBlockIdx = gParseBlockIdx;
@@ -3179,6 +3271,8 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth)
 	bool isAsmBlock = false;
 
 	SizedArray<BfAstNode*, 32> childArr;	
+
+	int parenDepth = 0;
 
 	while (true)
 	{
@@ -3190,7 +3284,8 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth)
 				isAsmBlock = true;
 		}
 
-		NextToken();
+		NextToken(-1, isInterpolate);
+		
 		if (mPreprocessorIgnoredSectionNode != NULL)
 		{
 			if (mSyntaxToken != BfSyntaxToken_EOF)
@@ -3256,7 +3351,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth)
 			mInAsmBlock = false;
 			astNode->Add(newBlock);
 			childArr.push_back(newBlock);			
-		}
+		}		
 		else if (mToken == BfToken_RBrace)
 		{
 			if (depth == 0)
@@ -3265,6 +3360,20 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth)
 		}
 		else
 		{
+			if (mToken == BfToken_LParen)
+				parenDepth++;
+			else if (mToken == BfToken_RParen)
+				parenDepth--;
+
+			if ((isInterpolate) && (parenDepth == 0))
+			{
+				if ((mToken == BfToken_Colon) || (mToken == BfToken_Comma))
+				{
+					mSrcIdx = mTokenStart;
+					break;
+				}
+			}
+
 			astNode->Add(childNode);			
 			childArr.push_back(childNode);
 
@@ -3310,6 +3419,8 @@ BfAstNode* BfParser::CreateNode()
 			mLiteral.mWarnType = 0;
 			return bfLiteralExpression;
 		}
+	case BfSyntaxToken_GeneratedNode:
+		return mGeneratedNode;
 	default: break;
 	}
 

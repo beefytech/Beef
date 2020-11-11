@@ -18,7 +18,8 @@ enum BfArgFlags
 	BfArgFlag_ExpectedTypeCast = 0x80,
 	BfArgFlag_VariableDeclaration = 0x100,
 	BfArgFlag_ParamsExpr = 0x200,
-	BfArgFlag_UninitializedExpr = 0x400
+	BfArgFlag_UninitializedExpr = 0x400,
+	BfArgFlag_StringInterpolateFormat = 0x800
 };
 
 enum BfResolveArgFlags
@@ -28,6 +29,7 @@ enum BfResolveArgFlags
 	BfResolveArgFlag_DeferParamValues = 2, // We still evaluate but don't generate code until the method is selected (for SkipCall support)
 	BfResolveArgFlag_DeferParamEval = 4,
 	BfResolveArgFlag_AllowUnresolvedTypes = 8,
+	BfResolveArgFlag_InsideStringInterpolationAlloc = 0x10
 };
 
 class BfResolvedArg
@@ -91,6 +93,14 @@ public:
 		mCloseToken = closeToken;
 	}
 
+	void Init(BfTokenNode* openToken, BfSizedArray<BfExpression*>* args, BfSizedArray<BfTokenNode*>* commas, BfTokenNode* closeToken)
+	{
+		mOpenToken = openToken;
+		mArguments = args;
+		mCommas = commas;
+		mCloseToken = closeToken;
+	}
+
 	void Init(const BfSizedArray<BfExpression*>* args)
 	{
 		mOpenToken = NULL;
@@ -99,7 +109,8 @@ public:
 		mCloseToken = NULL;
 	}
 
-	void HandleFixits(BfModule* module);
+	void HandleFixits(BfModule* module);	
+	
 };
 
 class BfGenericInferContext
@@ -441,6 +452,7 @@ public:
 	void InitializedSizedArray(BfSizedArrayType* sizedArrayType, BfTokenNode* openToken, const BfSizedArray<BfExpression*>& values, const BfSizedArray<BfTokenNode*>& commas, BfTokenNode* closeToken, BfTypedValue* receivingValue = NULL);
 	void CheckDotToken(BfTokenNode* tokenNode);
 	void DoMemberReference(BfMemberReferenceExpression* memberRefExpr, BfTypedValue* outCascadeValue);
+	void CreateObject(BfObjectCreateExpression* objCreateExpr, BfAstNode* allocNode, BfType* allocType);
 
 	//////////////////////////////////////////////////////////////////////////
 	
@@ -452,6 +464,7 @@ public:
 	virtual void Visit(BfCaseExpression* caseExpr) override;
 	virtual void Visit(BfTypedValueExpression* typedValueExpr) override;
 	virtual void Visit(BfLiteralExpression* literalExpr) override;	
+	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression) override;
 	virtual void Visit(BfIdentifierNode* identifierNode) override;
 	virtual void Visit(BfAttributedIdentifierNode* attrIdentifierNode) override;
 	virtual void Visit(BfQualifiedNameNode* nameNode) override;

@@ -261,6 +261,7 @@ class BfExpressionStatement;
 class BfAttributedExpression;
 class BfAttributedStatement;
 class BfLiteralExpression;
+class BfStringInterpolationExpression;
 class BfBlock;
 class BfBlockExtension;
 class BfRootNode;
@@ -441,8 +442,9 @@ public:
 
 	virtual void Visit(BfEmptyStatement* emptyStmt);	
 	virtual void Visit(BfTokenNode* tokenNode);	
-	virtual void Visit(BfTokenPairNode* tokenPairNode);	
+	virtual void Visit(BfTokenPairNode* tokenPairNode);		
 	virtual void Visit(BfLiteralExpression* literalExpr);
+	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression);
 	virtual void Visit(BfIdentifierNode* identifierNode);
 	virtual void Visit(BfAttributedIdentifierNode* attrIdentifierNode);
 	virtual void Visit(BfQualifiedNameNode* nameNode);	
@@ -2098,6 +2100,16 @@ public:
 
 	BfVariant mValue;
 };	BF_AST_DECL(BfLiteralExpression, BfExpression);
+
+class BfStringInterpolationExpression : public BfExpression
+{
+public:
+	BF_AST_TYPE(BfStringInterpolationExpression, BfExpression);
+
+	BfAstNode* mAllocNode;
+	String* mString;
+	BfSizedArray<ASTREF(BfBlock*)> mExpressions;
+};  BF_AST_DECL(BfStringInterpolationExpression, BfExpression);
 
 class BfInitializerExpression : public BfExpression
 {

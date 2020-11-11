@@ -1427,6 +1427,15 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 	AssertCurrentNode(node);
 
+	if (auto interpolateExpr = BfNodeDynCastExact<BfStringInterpolationExpression>(node))
+	{
+		for (auto block : interpolateExpr->mExpressions)
+		{
+			HandleBlock(block, true);
+		}
+		return interpolateExpr;
+	}
+
 	if ((createExprFlags & (CreateExprFlags_AllowVariableDecl | CreateExprFlags_PermissiveVariableDecl)) != 0)
 	{
 		bool isLocalVariable = false;
@@ -1712,6 +1721,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				bool isDelegateBind = false;
 				bool isLambdaBind = false;
 				bool isBoxing = false;
+
+
 				auto nextNode = mVisitorPos.GetNext();
 				if (auto nextTokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
 				{
@@ -1735,8 +1746,20 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 						mVisitorPos.mReadPos--;
 					}
 				}
+				
+				if (auto interpExpr = BfNodeDynCastExact<BfStringInterpolationExpression>(nextNode))
+				{
+					mVisitorPos.MoveNext();
+					auto nextInterpExpr = CreateExpression(nextNode);
+					BF_ASSERT(nextInterpExpr == interpExpr);
 
-				if (isBoxing)
+					interpExpr->mAllocNode = allocNode;
+					interpExpr->mTriviaStart = allocNode->mTriviaStart;
+					interpExpr->mSrcStart = allocNode->mSrcStart;					
+					
+					exprLeft = interpExpr;
+				}
+				else if (isBoxing)
 				{
 					auto boxExpr = mAlloc->Alloc<BfBoxExpression>();
 					ReplaceNode(allocNode, boxExpr);

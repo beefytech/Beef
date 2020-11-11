@@ -166,6 +166,11 @@ void BfStructuralVisitor::Visit(BfLiteralExpression* literalExpr)
 	Visit(literalExpr->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
+{
+	Visit(stringInterpolationExpression->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfIdentifierNode* identifierNode)
 {
 	Visit(identifierNode->ToBase());

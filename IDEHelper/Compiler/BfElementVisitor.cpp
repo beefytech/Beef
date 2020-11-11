@@ -208,6 +208,16 @@ void BfElementVisitor::Visit(BfLiteralExpression* literalExpr)
 	Visit(literalExpr->ToBase());
 }
 
+void BfElementVisitor::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
+{
+	Visit(stringInterpolationExpression->ToBase());
+	VisitChild(stringInterpolationExpression->mAllocNode);
+	for (auto block : stringInterpolationExpression->mExpressions)
+	{
+		VisitChild(block);
+	}
+}
+
 void BfElementVisitor::Visit(BfIdentifierNode* identifierNode)
 {
 	Visit(identifierNode->ToBase());

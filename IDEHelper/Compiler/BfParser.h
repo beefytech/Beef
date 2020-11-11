@@ -26,6 +26,7 @@ enum BfSyntaxToken
 	BfSyntaxToken_Literal,	
 	BfSyntaxToken_CommentLine,
 	BfSyntaxToken_CommentBlock,
+	BfSyntaxToken_GeneratedNode,	
 	BfSyntaxToken_FAILED,	
 	BfSyntaxToken_HIT_END_IDX,
 	BfSyntaxToken_EOF
@@ -105,7 +106,7 @@ class BfParserCache
 public:
 	struct LookupEntry
 	{
-		uint64 mHash;		
+		uint64 mHash;
 		String mFileName;
 		const char* mSrc;
 		int mSrcLength;
@@ -173,7 +174,8 @@ public:
 	BfSyntaxToken mSyntaxToken;
 	int mTriviaStart; // mTriviaStart < mTokenStart when there's leading whitespace
 	int mTokenStart;
-	int mTokenEnd;
+	int mTokenEnd;	
+	BfAstNode* mGeneratedNode;
 	BfVariant mLiteral;	
 	BfToken mToken;
 	BfPreprocesorIgnoredSectionNode* mPreprocessorIgnoredSectionNode;
@@ -203,7 +205,7 @@ public:
 	bool IsUnwarnedAt(BfAstNode* node);
 	bool SrcPtrHasToken(const char* name);
 	uint32 GetTokenHash();
-	void ParseBlock(BfBlock* astNode, int depth);
+	void ParseBlock(BfBlock* astNode, int depth, bool isInterpolate = false);
 	double ParseLiteralDouble();	
 	void AddErrorNode(int startIdx, int endIdx);
 	BfCommentKind GetCommentKind(int startIdx);	
@@ -223,7 +225,7 @@ public:
 	void SetSource(const char* data, int length);	
 	void MoveSource(const char* data, int length); // Takes ownership of data ptr
 	void RefSource(const char* data, int length);
-	void NextToken(int endIdx = -1);
+	void NextToken(int endIdx = -1, bool outerIsInterpolate = false);
 	BfAstNode* CreateNode();	
 		
 	void Parse(BfPassInstance* passInstance);		

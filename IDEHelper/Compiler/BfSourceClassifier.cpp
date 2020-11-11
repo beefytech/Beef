@@ -393,6 +393,20 @@ void BfSourceClassifier::Visit(BfLiteralExpression* literalExpr)
 	SetElementType(literalExpr, BfSourceElementType_Literal);
 }
 
+void BfSourceClassifier::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
+{
+	HandleLeafNode(stringInterpolationExpression);
+	
+	Visit(stringInterpolationExpression->ToBase());
+	SetElementType(stringInterpolationExpression, BfSourceElementType_Literal);
+
+	VisitChild(stringInterpolationExpression->mAllocNode);	
+	for (auto& expr : stringInterpolationExpression->mExpressions)
+	{
+		VisitChild(expr);
+	}
+}
+
 void BfSourceClassifier::Visit(BfTokenNode* tokenNode)
 {
 	HandleLeafNode(tokenNode);
