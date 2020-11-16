@@ -10,6 +10,9 @@ namespace Tests
 			public int32 mA;
 
 			[LinkName(.CPP)]
+			public static extern int32 sVal;
+
+			[LinkName(.CPP)]
 			public extern int32 MethodA0(int32 arg0) mut;
 			[LinkName(.CPP)]
 			public extern StructA MethodA1(StructA sa, int32 arg0) mut;
@@ -386,6 +389,8 @@ namespace Tests
 			{
 				//Console.WriteLine(str);
 			}
+
+			Test.Assert(StructA.sVal == 1234);
 
 			StartTest("Func0");
 			Test.Assert(Func0(12, 34) == 3412);

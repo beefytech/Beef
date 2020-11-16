@@ -8,6 +8,7 @@ NS_BF_BEGIN
 
 class BfType;
 class BfFieldInstance;
+class BfCustomAttributes;
 
 class BfMangler
 {
@@ -83,6 +84,7 @@ public:
 	static void Mangle(StringImpl& outStr, MangleKind mangleKind, BfFieldInstance* fieldInstance);
 	static void MangleMethodName(StringImpl& outStr, MangleKind mangleKind, BfTypeInstance* type, const StringImpl& methodName);
 	static void MangleStaticFieldName(StringImpl& outStr, MangleKind mangleKind, BfTypeInstance* owner, const StringImpl& fieldName, BfType* fieldType = NULL);
+	static void HandleCustomAttributes(BfCustomAttributes* customAttributes, BfIRConstHolder* constHolder, BfModule* module, StringImpl& name, bool& isCMangle, bool& isCPPMangle);
 };
 
 class BfGNUMangler : public BfMangler
@@ -123,8 +125,9 @@ public:
 
 	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, BfType* postfixType = NULL);
 	static String Mangle(BfType* type, BfModule* module = NULL);
-	static String Mangle(BfMethodInstance* methodRef);
+	static String Mangle(BfMethodInstance* methodRef);	
 	static String MangleMethodName(BfTypeInstance* type, const StringImpl& methodName);
+	static String Mangle(BfFieldInstance* methodRef);
 	static String MangleStaticFieldName(BfTypeInstance* type, const StringImpl& fieldName);
 };
 

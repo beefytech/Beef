@@ -689,35 +689,13 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	MangleContext mangleContext;	
 	mangleContext.mModule = methodInst->GetOwner()->mModule;
 	if (methodInst->mCallingConvention != BfCallingConvention_Unspecified)
-		mangleContext.mCCompat = true;	
-	auto customAttributes = methodInst->GetCustomAttributes();
-	if (customAttributes != NULL)
-	{
-		auto linkNameAttr = customAttributes->Get(typeInst->mModule->mCompiler->mLinkNameAttributeTypeDef);
-		if (linkNameAttr != NULL)
-		{
-			if (linkNameAttr->mCtorArgs.size() == 1)
-			{
-				if (typeInst->mModule->TryGetConstString(typeInst->mConstHolder, linkNameAttr->mCtorArgs[0], name))
-					if (!name.IsWhitespace())
-						return name;
-
-				auto constant = typeInst->mConstHolder->GetConstant(linkNameAttr->mCtorArgs[0]);
-				if (constant != NULL)
-				{
-					if (constant->mInt32 == 1) // C
-					{
-						name += methodInst->mMethodDef->mName;
-						return name;
-					}
-					else if (constant->mInt32 == 2) // CPP
-					{
-						mangleContext.mCPPMangle = true;
-					}
-				}
-			}
-		}
-	}
+		mangleContext.mCCompat = true;		
+	bool isCMangle = false;	
+	HandleCustomAttributes(methodInst->GetCustomAttributes(), typeInst->mConstHolder, mangleContext.mModule, name, isCMangle, mangleContext.mCPPMangle);
+	if (isCMangle)	
+		name += methodInst->mMethodDef->mName;
+	if (!name.IsEmpty())
+		return name;
 
 	bool mangledMethodIdx = false;
 	bool prefixLen = false;
@@ -1024,17 +1002,45 @@ String BfGNUMangler::MangleMethodName(BfTypeInstance* type, const StringImpl& me
 
 String BfGNUMangler::MangleStaticFieldName(BfTypeInstance* type, const StringImpl& fieldName)
 {
+	MangleContext mangleContext;
+	mangleContext.mModule = type->mModule;
+
 	auto typeInst = type->ToTypeInstance();
 	auto typeDef = typeInst->mTypeDef;
 	if ((typeDef->IsGlobalsContainer()) && (typeDef->mNamespace.IsEmpty()))
 		return fieldName;
-
-	MangleContext mangleContext;
-	mangleContext.mModule = type->mModule;
+	
 	StringT<256> name = "_Z";	
 	bool isNameOpen;
 	MangleTypeInst(mangleContext, name, typeInst, NULL, &isNameOpen);
 	AddSizedString(name, fieldName);	
+	if (isNameOpen)
+		name += "E";
+	return name;
+}
+
+String BfGNUMangler::Mangle(BfFieldInstance* fieldInstance)
+{
+	StringT<256> name;
+	MangleContext mangleContext;
+	mangleContext.mModule = fieldInstance->mOwner->mModule;
+	
+	bool isCMangle = false;
+	HandleCustomAttributes(fieldInstance->mCustomAttributes, fieldInstance->mOwner->mConstHolder, mangleContext.mModule, name, isCMangle, mangleContext.mCPPMangle);
+	if (isCMangle)
+		name += fieldInstance->GetFieldDef()->mName;
+	if (!name.IsEmpty())
+		return name;
+
+	auto typeInst = fieldInstance->mOwner->ToTypeInstance();
+	auto typeDef = typeInst->mTypeDef;
+	if ((typeDef->IsGlobalsContainer()) && (typeDef->mNamespace.IsEmpty()))
+		return fieldInstance->GetFieldDef()->mName;
+
+	name += "_Z";
+	bool isNameOpen;
+	MangleTypeInst(mangleContext, name, typeInst, NULL, &isNameOpen);
+	AddSizedString(name, fieldInstance->GetFieldDef()->mName);
 	if (isNameOpen)
 		name += "E";
 	return name;
@@ -1790,36 +1796,13 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	mangleContext.mModule = methodInst->GetOwner()->mModule;	
 	if (methodInst->mCallingConvention != BfCallingConvention_Unspecified)
 		mangleContext.mCCompat = true;
-	auto customAttributes = methodInst->GetCustomAttributes();
-	if (customAttributes != NULL)
-	{
-		auto linkNameAttr = customAttributes->Get(typeInst->mModule->mCompiler->mLinkNameAttributeTypeDef);
-		if (linkNameAttr != NULL)
-		{
-			if (linkNameAttr->mCtorArgs.size() == 1)
-			{				
-				if (typeInst->mModule->TryGetConstString(typeInst->mConstHolder, linkNameAttr->mCtorArgs[0], name))
-					if (!name.IsWhitespace())
-						return;
-
-				auto constant = typeInst->mConstHolder->GetConstant(linkNameAttr->mCtorArgs[0]);
-				if (constant != NULL)
-				{
-					if (constant->mInt32 == 1) // C
-					{
-						name += methodInst->mMethodDef->mName;
-						return;
-					}
-					else if (constant->mInt32 == 2) // CPP
-					{
-						mangleContext.mCPPMangle = true;
-						mangleContext.mCCompat = true;
-					}
-				}
-			}
-		}
-	}
-
+	bool isCMangle = false;	
+	HandleCustomAttributes(methodInst->GetCustomAttributes(), typeInst->mConstHolder, mangleContext.mModule, name, isCMangle, mangleContext.mCPPMangle);
+	if (isCMangle)
+		name += methodInst->mMethodDef->mName;
+	if (!name.IsEmpty())
+		return;
+	
 	name += '?';
 
 	if (methodInst->GetNumGenericArguments() != 0)
@@ -2193,6 +2176,13 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfFieldInstance* fieldI
 	MangleContext mangleContext;
 	mangleContext.mIs64Bit = is64Bit;
 	mangleContext.mModule = fieldInstance->mOwner->mModule;	
+
+	bool isCMangle = false;	
+	HandleCustomAttributes(fieldInstance->mCustomAttributes, fieldInstance->mOwner->mConstHolder, mangleContext.mModule, name, isCMangle, mangleContext.mCPPMangle);
+	if (isCMangle)
+		name += fieldInstance->GetFieldDef()->mName;
+	if (!name.IsEmpty())
+		return;
 	
 	name += '?';
 	AddStr(mangleContext, name, fieldDef->mName);	
@@ -2266,38 +2256,11 @@ void BfMangler::Mangle(StringImpl& outStr, MangleKind mangleKind, BfMethodInstan
 }
 
 void BfMangler::Mangle(StringImpl& outStr, MangleKind mangleKind, BfFieldInstance* fieldInstance)
-{	
-	if (fieldInstance->mCustomAttributes != NULL)
-	{
-		auto module = fieldInstance->mOwner->mModule;
-		auto linkNameAttr = fieldInstance->mCustomAttributes->Get(module->mCompiler->mLinkNameAttributeTypeDef);
-		if (linkNameAttr != NULL)
-		{
-			if (linkNameAttr->mCtorArgs.size() == 1)
-			{
-				if (module->TryGetConstString(fieldInstance->mOwner->mConstHolder, linkNameAttr->mCtorArgs[0], outStr))
-					if (!outStr.IsWhitespace())
-						return;
-
-				auto constant = fieldInstance->mOwner->mConstHolder->GetConstant(linkNameAttr->mCtorArgs[0]);
-				if (constant != NULL)
-				{
-					if (constant->mInt32 == 1) // C
-					{
-						outStr += fieldInstance->GetFieldDef()->mName;
-						return;
-					}
-					else if (constant->mInt32 == 2) // CPP
-					{
-						//mangleContext.mCPPMangle = true;
-					}
-				}
-			}
-		}
-	}
-
+{		
 	if (mangleKind == BfMangler::MangleKind_GNU)
-		outStr += BfGNUMangler::MangleStaticFieldName(fieldInstance->mOwner, fieldInstance->GetFieldDef()->mName);
+	{		
+		outStr += BfGNUMangler::Mangle(fieldInstance);
+	}
 	else
 		BfMSMangler::Mangle(outStr, mangleKind == BfMangler::MangleKind_Microsoft_64, fieldInstance);
 }
@@ -2316,5 +2279,35 @@ void BfMangler::MangleStaticFieldName(StringImpl& outStr, MangleKind mangleKind,
 		outStr += BfGNUMangler::MangleStaticFieldName(type, fieldName);
 	else
 		BfMSMangler::MangleStaticFieldName(outStr, mangleKind == BfMangler::MangleKind_Microsoft_64, type, fieldName, fieldType);
+}
+
+void BfMangler::HandleCustomAttributes(BfCustomAttributes* customAttributes, BfIRConstHolder* constHolder, BfModule* module, StringImpl& name, bool& isCMangle, bool& isCPPMangle)
+{
+	if (customAttributes == NULL)
+		return;
+	
+	auto linkNameAttr = customAttributes->Get(module->mCompiler->mLinkNameAttributeTypeDef);
+	if (linkNameAttr != NULL)
+	{
+		if (linkNameAttr->mCtorArgs.size() == 1)
+		{
+			if (module->TryGetConstString(constHolder, linkNameAttr->mCtorArgs[0], name))
+				if (!name.IsWhitespace())
+					return;
+
+			auto constant = constHolder->GetConstant(linkNameAttr->mCtorArgs[0]);
+			if (constant != NULL)
+			{
+				if (constant->mInt32 == 1) // C
+				{					
+					isCMangle = true;
+				}
+				else if (constant->mInt32 == 2) // CPP
+				{
+					isCPPMangle = true;
+				}
+			}
+		}
+	}	
 }
 

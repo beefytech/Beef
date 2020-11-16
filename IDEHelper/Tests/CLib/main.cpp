@@ -2,12 +2,13 @@
 #include <stdio.h>
 
 namespace Tests
-{
+{	
 	struct Interop
 	{
 		struct StructA
 		{
 			int mA;
+			static int sVal;
 
 			int MethodA0(int arg0)
 			{
@@ -287,6 +288,8 @@ namespace Tests
 			float mX;
 		};
 	};
+
+	int Interop::StructA::sVal = 1234;
 }
 
 using namespace Tests;
