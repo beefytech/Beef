@@ -617,7 +617,7 @@ public:
 					{
 						curAlign = resultType->mAlign;
 						EmitAppendAlign(resultType->mAlign);
-						sizeValue = mModule->mBfIRBuilder->CreateMul(mModule->GetConstValue(resultType->mSize), allocCount);
+						sizeValue = mModule->mBfIRBuilder->CreateMul(mModule->GetConstValue(resultType->GetStride()), allocCount);
 					}
 					else
 					{
@@ -633,7 +633,7 @@ public:
 						int arrayClassSize = arrayType->mInstSize - firstElementField->mDataSize;
 
 						sizeValue = mModule->GetConstValue(arrayClassSize);
-						BfIRValue elementDataSize = mModule->mBfIRBuilder->CreateMul(mModule->GetConstValue(resultType->mSize), allocCount);
+						BfIRValue elementDataSize = mModule->mBfIRBuilder->CreateMul(mModule->GetConstValue(resultType->GetStride()), allocCount);
 						sizeValue = mModule->mBfIRBuilder->CreateAdd(sizeValue, elementDataSize);
 					}
 				}
