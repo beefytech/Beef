@@ -968,6 +968,7 @@ namespace IDE
 			StopDebugging();
 			String.NewOrSet!(mCrashDumpPath, path);
 
+			CheckDebugVisualizers();
 			if (mDebugger.OpenMiniDump(mCrashDumpPath))
 			{
 				mDebugger.mIsRunning = true;
