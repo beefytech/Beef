@@ -6226,15 +6226,18 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		if (!typeInstance->IsTypeMemberAccessible(methodDef->mDeclaringType, mProject))
 			continue;
 
-		if (auto methodDeclaration = methodDef->GetMethodDeclaration())
-		{			
-			for (BfParameterDeclaration* paramDecl : methodDeclaration->mParams)
-			{								
-				if (paramDecl->mAttributes != NULL)				
-					methodReflectKind = (BfReflectKind)(methodReflectKind | _GetReflectUserFromDirective(paramDecl->mAttributes, BfAttributeTargets_Parameter));
+		
+		//
+		{
+			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
+			if (auto methodDeclaration = methodDef->GetMethodDeclaration())
+			{
+				for (BfParameterDeclaration* paramDecl : methodDeclaration->mParams)
+				{
+					if (paramDecl->mAttributes != NULL)
+						methodReflectKind = (BfReflectKind)(methodReflectKind | _GetReflectUserFromDirective(paramDecl->mAttributes, BfAttributeTargets_Parameter));
+				}
 			}
-			if (methodDeclaration->mReturnAttributes != NULL)
-				methodReflectKind = (BfReflectKind)(methodReflectKind | _GetReflectUserFromDirective(methodDeclaration->mReturnAttributes, BfAttributeTargets_ReturnValue));
 		}
 
 		if ((methodReflectKind & (BfReflectKind_Methods | BfReflectKind_User)) != 0)

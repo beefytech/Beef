@@ -85,6 +85,7 @@ public:
 	static void MangleMethodName(StringImpl& outStr, MangleKind mangleKind, BfTypeInstance* type, const StringImpl& methodName);
 	static void MangleStaticFieldName(StringImpl& outStr, MangleKind mangleKind, BfTypeInstance* owner, const StringImpl& fieldName, BfType* fieldType = NULL);
 	static void HandleCustomAttributes(BfCustomAttributes* customAttributes, BfIRConstHolder* constHolder, BfModule* module, StringImpl& name, bool& isCMangle, bool& isCPPMangle);
+	static void HandleParamCustomAttributes(BfAttributeDirective* attributes, bool isReturn, bool& isConst);
 };
 
 class BfGNUMangler : public BfMangler
@@ -169,7 +170,7 @@ public:
 	static void AddGenericArgs(MangleContext& mangleContext, StringImpl& name, const SizedArrayImpl<BfType*>& genericArgs, int numOuterGenericParams = 0);
 	
 	static void AddStr(MangleContext& mangleContext, StringImpl& name, const StringImpl& str);
-	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, bool useTypeList = false);	
+	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, bool useTypeList = false, bool isConst = false);
 	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfTypeInstance* typeInst, bool isAlreadyStarted, bool isOuterType = false);
 	static void MangleConst(MangleContext& mangleContext, StringImpl& name, int64 val);
 

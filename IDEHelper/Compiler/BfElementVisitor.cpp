@@ -999,8 +999,7 @@ void BfElementVisitor::Visit(BfMethodDeclaration* methodDeclaration)
 	VisitChild(methodDeclaration->mProtectionSpecifier);
 	VisitChild(methodDeclaration->mReadOnlySpecifier);
 	VisitChild(methodDeclaration->mStaticSpecifier);
-
-	VisitChild(methodDeclaration->mReturnAttributes);
+	
 	VisitChild(methodDeclaration->mExternSpecifier);
 	VisitChild(methodDeclaration->mVirtualSpecifier); // either 'virtual', 'override', or 'abstract'
 	VisitChild(methodDeclaration->mNewSpecifier);

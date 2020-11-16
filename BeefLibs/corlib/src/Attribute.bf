@@ -206,6 +206,12 @@ namespace System
 		}
 	}
 
+	[AttributeUsage(.Parameter | .ReturnValue)]
+	public struct MangleConstAttribute : Attribute
+	{
+
+	}
+
 	[AttributeUsage(.Method | .Constructor | .Delegate | .Function)]
 	public struct CallingConventionAttribute : Attribute
 	{

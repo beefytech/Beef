@@ -1452,7 +1452,7 @@ void BfMSMangler::AddPrefix(MangleContext& mangleContext, StringImpl& name, int 
 	name.Insert(startIdx, prefix);
 }
 
-void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, bool useTypeList)
+void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, bool useTypeList, bool isConst)
 {	
 	bool isLongPrim = false;
 
@@ -1612,11 +1612,16 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 		auto pointerType = (BfPointerType*)type;
 
 		const char* strAdd = mangleContext.mIs64Bit ? "PEA" : "PA";
-		//if (!FindOrCreateNameSub(mangleContext, name, NameSubstitute(BfMangler::NameSubstitute::Kind_Prefix, strAdd, pointerType->mTypeId)))
-		{
-			name += strAdd;
-			Mangle(mangleContext, name, pointerType->mElementType);
-		}		
+
+		if (mangleContext.mIs64Bit)
+			name += "PE";
+		else
+			name += "P";		
+		if (isConst)
+			name += "B";
+		else
+			name += "A";
+		Mangle(mangleContext, name, pointerType->mElementType);		
 	}
 	else if (type->IsRef())
 	{
@@ -1624,7 +1629,10 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 		name += "A";
 		if (mangleContext.mIs64Bit)
 			name += "E";
-		name += "A";
+		if (isConst)
+			name += "B";
+		else
+			name += "A";
 		if (refType->mRefKind == BfRefType::RefKind_Mut)
 			name += "mut$";
 		else if (refType->mRefKind == BfRefType::RefKind_Out)
@@ -1788,6 +1796,7 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	}
 
 	auto methodDef = methodInst->mMethodDef;
+	auto methodDeclaration = BfNodeDynCastExact<BfMethodDeclaration>(methodDef->mMethodDeclaration);
 	auto typeInst = methodInst->GetOwner();
 	auto typeDef = typeInst->mTypeDef;	
 	
@@ -2119,8 +2128,12 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 	//
 	if (!isSpecialFunc)
 	{
+		bool isConst = false;
+		if (methodDeclaration != NULL)
+			HandleParamCustomAttributes(methodDeclaration->mAttributes, true, isConst);
+
 		mangleContext.mInRet = true;
-		Mangle(mangleContext, name, methodInst->mReturnType);
+		Mangle(mangleContext, name, methodInst->mReturnType, false, isConst);
 		mangleContext.mInRet = false;
 	}
 	if ((methodInst->mParams.size() == 0) && (!doExplicitThis))
@@ -2139,7 +2152,16 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 			Mangle(mangleContext, name, typeInst->GetUnderlyingType(), true);
 		}
 		for (auto& param : methodInst->mParams)
-			Mangle(mangleContext, name, param.mResolvedType, true);
+		{
+			bool isConst = false;
+			if ((param.mParamDefIdx >= 0) && (methodDeclaration != NULL) && (param.mParamDefIdx < methodDeclaration->mParams.mSize))
+			{
+				auto paramDecl = methodDeclaration->mParams[param.mParamDefIdx];						
+				HandleParamCustomAttributes(paramDecl->mAttributes, false, isConst);
+			}
+
+			Mangle(mangleContext, name, param.mResolvedType, true, isConst);
+		}
 		name += '@';
 	}
 
@@ -2311,3 +2333,17 @@ void BfMangler::HandleCustomAttributes(BfCustomAttributes* customAttributes, BfI
 	}	
 }
 
+void BfMangler::HandleParamCustomAttributes(BfAttributeDirective* attributes, bool isReturn, bool& isConst)
+{
+	while (attributes != NULL)
+	{
+		if (attributes->mAttributeTypeRef != NULL)
+		{
+			auto typeRefName = attributes->mAttributeTypeRef->ToString();
+			if (typeRefName == "MangleConst")
+				isConst = true;
+		}
+
+		attributes = attributes->mNextAttribute;
+	}
+}

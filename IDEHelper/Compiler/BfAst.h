@@ -2929,8 +2929,7 @@ class BfMethodDeclaration : public BfMemberDeclaration
 public:
 	BF_AST_TYPE(BfMethodDeclaration, BfMemberDeclaration);
 	
-	BfCommentNode* mDocumentation;
-	BfAttributeDirective* mReturnAttributes;
+	BfCommentNode* mDocumentation;	
 	BfTokenNode* mExternSpecifier;
 	BfTokenNode* mVirtualSpecifier; // either 'virtual', 'override', or 'abstract'
 	BfTokenNode* mNewSpecifier;
