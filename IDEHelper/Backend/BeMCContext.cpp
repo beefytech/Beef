@@ -12708,14 +12708,15 @@ void BeMCContext::DoCodeEmission()
 
 								if (dbgVar->mDeclLifetimeExtend)
 								{
-									range.mOffset++;
-									dbgVar->mDeclEnd = range.mOffset;
-									dbgVar->mDeclLifetimeExtend = false;
-
 									if (mDebugging)
 									{
-										dbgStr += StrFormat("#### Dbg Applied LifetimeExtend %s\n", dbgVar->mName.c_str());
+										dbgStr += StrFormat("#### %d Dbg Applied LifetimeExtend %s from %d to %d\n", funcCodePos, dbgVar->mName.c_str(), dbgVar->mDeclEnd, range.mOffset);
 									}
+
+									range.mOffset++;
+									if (range.mOffset > dbgVar->mDeclEnd)
+										dbgVar->mDeclEnd = range.mOffset;
+									dbgVar->mDeclLifetimeExtend = false;
 								}
 
 								// We have to check for this because it's possible we get multiple adds
@@ -12726,7 +12727,7 @@ void BeMCContext::DoCodeEmission()
 
 								if (mDebugging)
 								{
-									dbgStr += StrFormat("#### Dbg End Gap %s\n", dbgVar->mName.c_str());
+									dbgStr += StrFormat("#### %d Dbg End Gap %s\n", funcCodePos, dbgVar->mName.c_str());
 								}
 							}
 
@@ -12748,7 +12749,7 @@ void BeMCContext::DoCodeEmission()
 							{
 								if (mDebugging)
 								{
-									dbgStr += StrFormat("#### Dbg Start Gap %s\n", dbgVar->mName.c_str());
+									dbgStr += StrFormat("#### %d Dbg Start Gap %s\n", funcCodePos, dbgVar->mName.c_str());
 								}
 
 								// Starting a new gap
@@ -12801,13 +12802,13 @@ void BeMCContext::DoCodeEmission()
 
 								if (mDebugging)
 								{
-									dbgStr += StrFormat("#### Dbg Setting DeclEnd %s\n", dbgVar->mName.c_str());
+									dbgStr += StrFormat("#### %d Dbg Setting DeclEnd %s\n", funcCodePos, dbgVar->mName.c_str());
 								}
 							}
 
 							if ((mDebugging) && (dbgExtendLifetime))
 							{
-								dbgStr += StrFormat("#### Dbg Setting LifetimeExtend %s\n", dbgVar->mName.c_str());
+								dbgStr += StrFormat("#### %d Dbg Setting LifetimeExtend %s\n", funcCodePos, dbgVar->mName.c_str());
 							}
 							dbgVar->mDeclLifetimeExtend = dbgExtendLifetime;
 							//if (dbgExtendLifetime)															
@@ -15741,7 +15742,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@CATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
+	//mDebugging = (function->mName == "?__BfCtor@SpriteBatchRenderer@Repo@bf@@QEAAXTint@@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
@@ -17532,7 +17533,7 @@ void BeMCContext::Generate(BeFunction* function)
 	BEMC_ASSERT(retCount == 1);	
 
 	bool wantDebug = mDebugging;
-	//wantDebug |= function->mName == "?get__Yo@PoopBase@@UEAAUPloogB@@XZ";
+	//wantDebug |= function->mName == "?__BfCtor@SpriteBatchRenderer@Repo@bf@@QEAAXTint@@@Z";
 	//wantDebug |= function->mName == "?Testos@Fartso@@SAHPEA1@HH@Z";
 	//wantDebug |= function->mName == "?GetYoopA@Fartso@@QEAAUYoop@@XZ";
 		//"?TestVals@Fartso@@QEAATint@@XZ";
