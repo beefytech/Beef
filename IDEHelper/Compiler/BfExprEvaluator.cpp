@@ -3781,6 +3781,43 @@ void BfExprEvaluator::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType
 
 BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags)
 {
+	if ((target.mType != NULL && (target.mType->IsGenericParam())))
+	{
+		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)target.mType);
+		if (mModule->mCurMethodInstance->mIsUnspecialized)
+		{
+			if (genericParamInst->mTypeConstraint != NULL)
+				target.mType = genericParamInst->mTypeConstraint;
+			else
+				target.mType = mModule->mContext->mBfObjectType;
+
+			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+			{
+				target.mType = mModule->GetPrimitiveType(BfTypeCode_Var);
+			}
+		}
+		else
+		{
+			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+			{
+				//target.mType = mModule->ResolveGenericType(mResult.mType);
+			}
+			else if (genericParamInst->mTypeConstraint != NULL)
+			{
+				target = mModule->Cast(targetSrc, target, genericParamInst->mTypeConstraint);
+				BF_ASSERT(target);
+			}
+			else
+			{
+				// This shouldn't occur - this would infer that we are accessing a member of Object or something...
+				//target.mType = mModule->ResolveGenericType(mResult.mType);
+			}
+		}
+	}
+
+	if ((target.mType != NULL) && (target.mType->IsVar()))
+		return BfTypedValue(mModule->GetDefaultValue(target.mType), target.mType, true);
+
 	BfTypeInstance* startCheckType = mModule->mCurTypeInstance;
 	mPropDef = NULL;		
 	mPropDefBypassVirtual = false;
