@@ -20260,6 +20260,8 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 
 					if (checkMethod == methodDef)
 						continue;
+					if (!checkMethod->mIsExtern)
+						continue;
 					auto checkMethodInstance = mCurTypeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
 					if (checkMethodInstance == NULL)
 						continue;
