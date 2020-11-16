@@ -94,6 +94,17 @@ namespace Tests
 			}
 		}
 
+		class ClassC
+		{
+			public extern void MethodA();
+			public void MethodB() => MethodA();
+		}
+
+		extension ClassC
+		{
+			public override void MethodA() { }
+		}
+
 		class TClassA<T> where T : IDisposable
 		{
 			public int32 mA = 10;
@@ -167,6 +178,9 @@ namespace Tests
 			ClassA ca = scope ClassA();
 			ca.mA = 123;
 			ca.mB = 234;
+
+			ClassC cc = scope .();
+			cc.MethodB();
 		}
 
 		[Test]

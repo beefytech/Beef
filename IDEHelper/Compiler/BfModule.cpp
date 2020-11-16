@@ -20248,8 +20248,32 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 		{
 			if ((methodDef->mIsOverride) && (mCurTypeInstance->mTypeDef->mIsCombinedPartial))
 			{
-				BfLogSysM("Function collision from inner override erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
-				mBfIRBuilder->Func_SafeRename(prevFunc);
+				mCurTypeInstance->mTypeDef->PopulateMemberSets();
+				BfMethodDef* nextMethod = NULL;
+				BfMemberSetEntry* entry = NULL;
+				if (mCurTypeInstance->mTypeDef->mMethodSet.TryGet(BfMemberSetEntry(methodDef), &entry))
+					nextMethod = (BfMethodDef*)entry->mMemberDef;
+				while (nextMethod != NULL)
+				{
+					auto checkMethod = nextMethod;
+					nextMethod = nextMethod->mNextWithSameName;
+
+					if (checkMethod == methodDef)
+						continue;
+					auto checkMethodInstance = mCurTypeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
+					if (checkMethodInstance == NULL)
+						continue;
+					if (!CompareMethodSignatures(checkMethodInstance, mCurMethodInstance))
+						continue;
+					// Take over function
+					mCurMethodInstance->mIRFunction = prevFunc;
+				}
+				
+				if (!mCurMethodInstance->mIRFunction)
+				{
+					BfLogSysM("Function collision from inner override erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
+					mBfIRBuilder->Func_SafeRename(prevFunc);
+				}
 			}
 			else if (methodDef->mIsExtern)
 			{

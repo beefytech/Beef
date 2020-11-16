@@ -56,22 +56,6 @@ namespace System.Reflection
 {
 	extension TypeInstance
 	{
-		public override Result<FieldInfo> GetField(String fieldName)
-		{
-		    for (int32 i = 0; i < mFieldDataCount; i++)
-		    {
-		        FieldData* fieldData = &mFieldDataPtr[i];
-		        if (fieldData.[Friend]mName == fieldName)
-		            return FieldInfo(this, fieldData);
-		    }
-		    return .Err;
-		}
-
-		public override FieldInfo.Enumerator GetFields(BindingFlags bindingFlags = cDefaultLookup)
-		{
-		    return FieldInfo.Enumerator(this, bindingFlags);
-		}
-
 		public override MethodInfo.Enumerator GetMethods(BindingFlags bindingFlags = cDefaultLookup)
 		{
 		    return MethodInfo.Enumerator(this, bindingFlags);
