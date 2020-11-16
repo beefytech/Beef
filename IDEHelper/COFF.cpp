@@ -503,6 +503,14 @@ DbgType* COFF::CvGetType(int typeId)
 	return type;
 }
 
+DbgType* COFF::CvGetTypeSafe(int typeId)
+{
+	DbgType* type = CvGetType(typeId);
+	if (type != NULL)
+		return type;
+	return CvGetType(T_VOID);
+}
+
 DbgType* COFF::CvGetType(int typeId, CvCompileUnit* compileUnit)
 {
 	if ((typeId & 0x80000000) != 0)
@@ -535,6 +543,10 @@ int COFF::CvGetTagSize(int tagIdx, bool ipi)
 uint8* COFF::CvGetTagData(int tagIdx, bool ipi, int* outDataSize)
 {
 	if (tagIdx == 0)
+		return NULL;
+	if ((ipi) && (tagIdx < mCvIPIMinTag))
+		return NULL;
+	if ((!ipi) && (tagIdx < mCvMinTag))
 		return NULL;
 
 	auto& reader = ipi ? mCvIPIReader : mCvTypeSectionReader;
@@ -647,14 +659,11 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 	BP_ZONE("COFF::CvParseMethod");
 
 	uint8* data = CvGetTagData(tagIdx, ipi);
+	if (data == NULL)
+		return NULL;
 	CvAutoReleaseTempData releaseTempData(this, data);
 
 	bool fromTypeSection = methodName != NULL;
-
-	if ((methodName != NULL) && (strcmp(methodName, "GetLength") == 0))
-	{
-		NOP;
-	}
 
 	uint8* dataStart = data;
 	int16 trLeafType = GET(int16);
@@ -671,11 +680,6 @@ DbgSubprogram* COFF::CvParseMethod(DbgType* parentType, const char* methodName, 
 		lfMFuncId* funcData = (lfMFuncId*)dataStart;
 		auto parentType = CvGetType(funcData->parentType);				
 		//subprogram = CvParseMethod(parentType, (const char*)funcData->name, funcData->type, false, subprogram);
-
-		if ((funcData->name != NULL) && (strcmp((const char*)funcData->name, "CalcNewSize") == 0))
-		{
-			NOP;
-		}
 
 		// We shouldn't pass parentType in there, because that would be the declType and not the actual primary type (ie: definition type)
 		subprogram = CvParseMethod(NULL, (const char*)funcData->name, funcData->type, false, subprogram);
@@ -1630,7 +1634,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			lfPointer* pointerInfo = (lfPointer*)dataStart;
 
 			dbgType = CvCreateType();				
-			dbgType->mTypeParam = CvGetType(pointerInfo->utype);
+			dbgType->mTypeParam = CvGetTypeSafe(pointerInfo->utype);
 			if (pointerInfo->attr.ptrmode == CV_PTR_MODE_RVREF)
 				dbgType->mTypeCode = DbgType_RValueReference;
 			else if (pointerInfo->attr.ptrmode == CV_PTR_MODE_LVREF)
@@ -2183,7 +2187,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 		if (strcmp(name, "this") == 0)
 		{
 			MakeThis(curSubprogram, localVar);
-			BF_ASSERT(varType->mTypeCode == DbgType_Ptr);
+			//BF_ASSERT(varType->mTypeCode == DbgType_Ptr);
 			curSubprogram->mParentType = varType->mTypeParam;
 			curSubprogram->mHasThis = true;
 		}
@@ -2530,13 +2534,8 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				auto addr = GetSectionAddr(procSym->seg, procSym->off);
 				
-				DbgSubprogram* subprogram;
-				if (procSym->typind == 0)
-				{
-					BP_ALLOC_T(DbgSubprogram);
-					subprogram = mAlloc.Alloc<DbgSubprogram>();
-				}
-				else
+				DbgSubprogram* subprogram = NULL;
+				if (procSym->typind != 0)				
 				{					
 					bool ipi = false;
 					if ((!IsObjectFile()) && 
@@ -2546,8 +2545,15 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 							CvParseIPI();
 						ipi = true;
 					}					
-					subprogram = CvParseMethod(parentType, NULL, procSym->typind, ipi);
+					subprogram = CvParseMethod(parentType, NULL, procSym->typind, ipi);				
 				}
+
+				if (subprogram == NULL)
+				{
+					BP_ALLOC_T(DbgSubprogram);
+					subprogram = mAlloc.Alloc<DbgSubprogram>();
+				}
+
 				subprogram->mTagIdx = (int)(dataEnd - sectionData); // Position for method data
 				subprogram->mIsOptimized = isOptimized;
 				subprogram->mCompileUnit = compileUnit;				

@@ -357,6 +357,7 @@ public:
 	int64 CvParseConstant(uint16 constVal, uint8*& data);
 	int64 CvParseConstant(uint8*& data);	
 	DbgType* CvGetType(int typeId);	
+	DbgType* CvGetTypeSafe(int typeId);
 	DbgType* CvGetType(int typeId, CvCompileUnit* compileUnit);
 	int CvGetTagStart(int tagIdx, bool ipi);	
 	int CvGetTagSize(int tagIdx, bool ipi);
