@@ -124,7 +124,7 @@ public:
 public:
 	static void MangleTypeInst(MangleContext& mangleContext, StringImpl& name, BfTypeInstance* typeInst, BfTypeInstance* postfixTypeInst = NULL, bool* isEndOpen = NULL);
 
-	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, BfType* postfixType = NULL);
+	static void Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, BfType* postfixType = NULL, bool isConst = false);
 	static String Mangle(BfType* type, BfModule* module = NULL);
 	static String Mangle(BfMethodInstance* methodRef);	
 	static String MangleMethodName(BfTypeInstance* type, const StringImpl& methodName);

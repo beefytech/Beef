@@ -396,7 +396,7 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 	}
 }
 
-void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, BfType* postfixType)
+void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType* type, BfType* postfixType, bool isConst)
 {	
 	static int sCallCount = 0;
 	sCallCount++;
@@ -549,7 +549,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		}
 		int startIdx = (int)name.length();		
 		Mangle(mangleContext, name, refType->mElementType);	
-		AddPrefix(mangleContext, name, startIdx, "R");
+		AddPrefix(mangleContext, name, startIdx, isConst ? "RK" : "R");
 		return;
 	}
 	else if (type->IsModifiedTypeType())
@@ -683,6 +683,7 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	}
 
 	auto methodDef = methodInst->mMethodDef;
+	auto methodDeclaration = BfNodeDynCastExact<BfMethodDeclaration>(methodDef->mMethodDeclaration);
 	auto typeInst = methodInst->GetOwner();
 	auto typeDef = typeInst->mTypeDef;
 
@@ -969,12 +970,19 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	{		
 		BfType* paramType = methodInst->GetParamType(paramIdx);
 
+		bool isConst = false;
+		if ((methodDeclaration != NULL) && (paramIdx < methodDeclaration->mParams.mSize))
+		{
+			auto paramDecl = methodDeclaration->mParams[paramIdx];
+			HandleParamCustomAttributes(paramDecl->mAttributes, false, isConst);
+		}
+
 		auto paramKind = methodInst->GetParamKind(paramIdx);
 		if (paramKind == BfParamKind_Params)
 			name += "U6params";
 		else if (paramKind == BfParamKind_DelegateParam)
 			name += "U5param";
-		Mangle(mangleContext, name, paramType);
+		Mangle(mangleContext, name, paramType, NULL, isConst);
 	}
 	if ((methodInst->GetParamCount() == 0) && (!doExplicitThis))
 		name += 'v';
