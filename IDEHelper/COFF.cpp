@@ -1410,7 +1410,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			dbgType->mTypeName = name;
 			//SplitName(dbgType->mName, dbgType->mTypeName, dbgType->mTemplateParams);			
 			dbgType->mTypeCode = DbgType_Enum;
-			dbgType->mTypeParam = CvGetType(underlyingType);			
+			dbgType->mTypeParam = CvGetTypeSafe(underlyingType);			
 			dbgType->mIsIncomplete = true;
 
 			if (dbgType->mTypeParam->GetByteCount() == 0)
@@ -1448,7 +1448,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 
 			DbgBitfieldType* bitfieldType = mAlloc.Alloc<DbgBitfieldType>();
 			dbgType = bitfieldType;
-			dbgType->mTypeParam = CvGetType(bitfield.type);
+			dbgType->mTypeParam = CvGetTypeSafe(bitfield.type);
 			dbgType->mTypeCode = DbgType_Bitfield;
 			//bitfieldType->mPosition = (dbgType->mTypeParam->mSize * 8) - bitfield.position - bitfield.length;
 			bitfieldType->mPosition = bitfield.position;
@@ -1531,7 +1531,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			DbgType* baseType = NULL;
 			if (classInfo.derived != 0)
 			{
-				baseType = CvGetType(classInfo.derived);
+				baseType = CvGetTypeSafe(classInfo.derived);
 				BP_ALLOC_T(DbgBaseTypeEntry);
 				DbgBaseTypeEntry* baseTypeEntry = mAlloc.Alloc<DbgBaseTypeEntry>();
 				baseTypeEntry->mBaseType = baseType;				
@@ -1560,7 +1560,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			
 			if (classInfo.vshape != 0)			
 			{
-				CvGetType(classInfo.vshape);
+				CvGetTypeSafe(classInfo.vshape);
 				dbgType->mHasVTable = true;			
 			}
 
@@ -1598,7 +1598,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 	case LF_MODIFIER:
 		{				
 			lfModifier& modifier = *(lfModifier*)dataStart;
-			DbgType* outerType = CvGetType(modifier.type);
+			DbgType* outerType = CvGetTypeSafe(modifier.type);
 			dbgType = outerType;
 
 			if (modifier.attr.MOD_const)
@@ -1672,10 +1672,10 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 		{
 			lfArray* array = (lfArray*)dataStart;
 
-			DbgType* indexType = CvGetType(array->idxtype);
+			DbgType* indexType = CvGetTypeSafe(array->idxtype);
 
 			dbgType = CvCreateType();
-			dbgType->mTypeParam = CvGetType(array->elemtype);
+			dbgType->mTypeParam = CvGetTypeSafe(array->elemtype);
 			dbgType->mTypeCode = DbgType_SizedArray;			
 			dbgType->mLanguage = dbgType->mTypeParam->mLanguage;
 			data = (uint8*)&array->data;
@@ -1698,7 +1698,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			lfProc* proc = (lfProc*)dataStart;
 
 			dbgType->mTypeCode = DbgType_Subroutine;
-			dbgType->mTypeParam = CvGetType(proc->rvtype);
+			dbgType->mTypeParam = CvGetTypeSafe(proc->rvtype);
 			BP_ALLOC_T(DbgBlock);
 			dbgType->mBlockParam = mAlloc.Alloc<DbgBlock>();
 
@@ -1714,7 +1714,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				BP_ALLOC_T(DbgVariable);
 				DbgVariable* arg = mAlloc.Alloc<DbgVariable>();		
 				arg->mIsParam = true;
-				arg->mType = CvGetType(argTypes[paramIdx]);
+				arg->mType = CvGetTypeSafe(argTypes[paramIdx]);
 				arg->mName = "$arg";
 				dbgType->mBlockParam->mVariables.PushBack(arg);
 			}
@@ -1729,7 +1729,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			lfMFunc* proc = (lfMFunc*)dataStart;
 
 			dbgType->mTypeCode = DbgType_Subroutine;
-			dbgType->mTypeParam = CvGetType(proc->rvtype);
+			dbgType->mTypeParam = CvGetTypeSafe(proc->rvtype);
 			BP_ALLOC_T(DbgBlock);
 			dbgType->mBlockParam = mAlloc.Alloc<DbgBlock>();
 
@@ -1745,7 +1745,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				BP_ALLOC_T(DbgVariable);
 				DbgVariable* arg = mAlloc.Alloc<DbgVariable>();		
 				arg->mIsParam = true;
-				arg->mType = CvGetType(argTypes[paramIdx]);
+				arg->mType = CvGetTypeSafe(argTypes[paramIdx]);
 				arg->mName = "$arg";
 				dbgType->mBlockParam->mVariables.PushBack(arg);
 			}
@@ -2328,7 +2328,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 
 				DbgType* typeDefType = CvCreateType();
 				typeDefType->mTypeCode = DbgType_TypeDef;
-				typeDefType->mTypeParam = CvGetType(udtSym.typind);				
+				typeDefType->mTypeParam = CvGetTypeSafe(udtSym.typind);
 				typeDefType->mName = DbgDupString((const char*)udtSym.name, "DbgDupString.S_UDT");				
 				if (strncmp(typeDefType->mName, "_bf::", 5) == 0)
 				{
@@ -2355,7 +2355,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				BP_ALLOC_T(DbgVariable);
 				DbgVariable* constVar = mAlloc.Alloc<DbgVariable>();
 				constVar->mName = DbgDupString((const char*)constSym.name, "DbgDupString.S_CONSTANT");
-				constVar->mType = CvGetType(constSym.typind);
+				constVar->mType = CvGetTypeSafe(constSym.typind);
 				constVar->mIsConst = true;
 				constVar->mIsStatic = true;
 				constVar->mConstValue = constSym.value;
@@ -2414,7 +2414,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					}
 				}
 								
-				DbgType* dbgType = CvGetType(dataSym.typind);
+				DbgType* dbgType = CvGetTypeSafe(dataSym.typind);
 
 				BP_ALLOC_T(DbgVariable);
 				DbgVariable* variable = mAlloc.Alloc<DbgVariable>();
@@ -2482,7 +2482,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 						}
 					}
 
-					DbgType* dbgType = CvGetType(dataSym.typind);
+					DbgType* dbgType = CvGetTypeSafe(dataSym.typind);
 
 					BP_ALLOC_T(DbgVariable);
 					DbgVariable* variable = mAlloc.Alloc<DbgVariable>();
@@ -2697,7 +2697,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 				BPRELSYM32* bpRel32 = (BPRELSYM32*)dataStart;
 
 				const char* name = DbgDupString((const char*)bpRel32->name, "DbgDupString.S_BPREL32");
-				DbgType* varType = CvGetType(bpRel32->typind);
+				DbgType* varType = CvGetTypeSafe(bpRel32->typind);
 
 				_NextUnrangedLocalVar(name, varType);
 
@@ -2715,7 +2715,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					break;
 				REGSYM* regSym = (REGSYM*)dataStart;				
 				const char* name = DbgDupString((const char*)regSym->name);
-				DbgType* varType = CvGetType(regSym->typind);
+				DbgType* varType = CvGetTypeSafe(regSym->typind);
 
 				_NextUnrangedLocalVar(name, varType);
 
@@ -2733,7 +2733,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 					break;
 				REGREL32* regRel32 = (REGREL32*)dataStart;
 				const char* name = DbgDupString((const char*)regRel32->name);
-				DbgType* varType = CvGetType(regRel32->typind);				
+				DbgType* varType = CvGetTypeSafe(regRel32->typind);				
 
 				_NextUnrangedLocalVar(name, varType);
 
@@ -4046,7 +4046,7 @@ CvCompileUnit* COFF::ParseCompileUnit(int compileUnitId)
 }
 
 DbgType* COFF::CvGetTypeOrNamespace(char* name, DbgLanguage language)
-{	
+{
 	if (language == DbgLanguage_Unknown)
 	{
 		if (strncmp(name, "_bf::", 5) == 0)
@@ -7066,12 +7066,14 @@ NS_BF_DBG_BEGIN
 // 	delete debugTarget;
 // }
 
-void TestPDB(const String& fileName)
+void TestPDB(const StringImpl& fileName, WinDebugger* debugger)
 {
 	DebugTarget* debugTarget = new DebugTarget(NULL);
-	COFF coff(debugTarget);	
+	COFF coff(debugTarget);		
+	coff.mDebugger = debugger;
 	uint8 wantGuid[16];
 	coff.LoadPDB(fileName, wantGuid, -1);
+	coff.ParseTypeData();
 	coff.CvParseIPI();
 	coff.ParseGlobalsData();
 	coff.ParseSymbolData();

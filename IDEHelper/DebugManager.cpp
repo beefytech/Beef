@@ -621,6 +621,12 @@ void SleepTest()
 
 void WdAllocTest();
 
+namespace BeefyDbg64
+{
+	class WinDebugger;
+	void TestPDB(const StringImpl& fileName, WinDebugger* debugger);
+}
+
 #ifdef BF_PLATFORM_WINDOWS
 static _CrtMemState gStartMemCheckpoint;
 #endif
@@ -653,6 +659,8 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 #ifdef BF_PLATFORM_WINDOWS
 	::AllowSetForegroundWindow(ASFW_ANY);
 #endif
+
+	//BeefyDbg64::TestPDB("c:\\temp\\dedkeni.pdb", (BeefyDbg64::WinDebugger*)gDebugManager->mDebugger64);
 }
 
 BF_EXPORT void BF_CALLTYPE Debugger_SetCallbacks(void* callback)
