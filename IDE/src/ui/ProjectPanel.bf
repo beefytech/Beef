@@ -2054,6 +2054,7 @@ namespace IDE.ui
             }
 
 			bool isProject = false;
+			bool isFailedLoad = false;
 			if ((projectItem != null) && (!handled))
 			{
 			    if (projectItem is ProjectFolder)
@@ -2072,7 +2073,9 @@ namespace IDE.ui
 									if (projectItem != null)
 							        	gApp.RetryProjectLoad(projectItem.mProject);
 							    });
-							handled = true;
+							menu.AddItem();
+							//handled = true;
+							isFailedLoad = true;
 						}
 					}
 			    }
@@ -2084,26 +2087,29 @@ namespace IDE.ui
 
 				if (isProject)
 				{
-					item = menu.AddItem("Set as Startup Project");
-					item.mOnMenuItemSelected.Add(new (item) =>
-					    {
-							var projectItem = GetSelectedProjectItem();
-							if (projectItem != null)
-								SetAsStartupProject(projectItem.mProject);
-					    });
+					if (!isFailedLoad)
+					{
+						item = menu.AddItem("Set as Startup Project");
+						item.mOnMenuItemSelected.Add(new (item) =>
+						    {
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+									SetAsStartupProject(projectItem.mProject);
+						    });
 
-					item = menu.AddItem("Lock Project");
-					if (projectItem.mProject.mLocked)
-						item.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
-					item.mOnMenuItemSelected.Add(new (item) =>
-					    {
-							var projectItem = GetSelectedProjectItem();
-							if (projectItem != null)
-							{
-					        	projectItem.mProject.mLocked = !projectItem.mProject.mLocked;
-								gApp.mWorkspace.SetChanged();
-							}
-					    });
+						item = menu.AddItem("Lock Project");
+						if (projectItem.mProject.mLocked)
+							item.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+						item.mOnMenuItemSelected.Add(new (item) =>
+						    {
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+								{
+						        	projectItem.mProject.mLocked = !projectItem.mProject.mLocked;
+									gApp.mWorkspace.SetChanged();
+								}
+						    });
+					}
 
 					item = menu.AddItem("Remove...");
 					item.mOnMenuItemSelected.Add(new (item) =>
@@ -2119,31 +2125,36 @@ namespace IDE.ui
 								RenameItem(projectItem);
 						});
 
-					item = menu.AddItem("Refresh");
-					item.mOnMenuItemSelected.Add(new (item) =>
-					    {
-							var projectItem = GetSelectedProjectItem();
-							if (projectItem != null)
-							{
-								let project = projectItem.mProject;
-								if (project.mNeedsCreate)
+					if (!isFailedLoad)
+					{
+						item = menu.AddItem("Refresh");
+						item.mOnMenuItemSelected.Add(new (item) =>
+						    {
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
 								{
-									project.FinishCreate(false);
-									RebuildUI();
+									let project = projectItem.mProject;
+									if (project.mNeedsCreate)
+									{
+										project.FinishCreate(false);
+										RebuildUI();
+									}
+									else
+									{
+										if (project.mRootFolder.mIsWatching)
+											project.mRootFolder.StopWatching();
+										project.mRootFolder.StartWatching();
+										RehupFolder(project.mRootFolder, .FullTraversal);
+									}
 								}
-								else
-								{
-									if (project.mRootFolder.mIsWatching)
-										project.mRootFolder.StopWatching();
-									project.mRootFolder.StartWatching();
-									RehupFolder(project.mRootFolder, .FullTraversal);
-								}
-							}
-					    });
+						    });
+					}
 
-					AddOpenContainingFolder();
-
-					menu.AddItem();
+					if (!isFailedLoad)
+					{
+						AddOpenContainingFolder();
+						menu.AddItem();
+					}
 				}
 
                 if ((projectItem != null) && (!isProject))
@@ -2289,44 +2300,47 @@ namespace IDE.ui
                 }
 
 				//menu.AddItem();
-				item = menu.AddItem("New Folder");
-				item.mOnMenuItemSelected.Add(new (item) =>
-				    {
-						var projectFolder = GetSelectedProjectFolder();
-						if (projectFolder != null)
-				        {
-							if (CheckProjectModify(projectFolder.mProject))
-								NewFolder(projectFolder);
-						}
-				    });
-
-				item = menu.AddItem("New Class...");
-				item.mOnMenuItemSelected.Add(new (item) =>
-				    {
-						var projectFolder = GetSelectedProjectFolder();
-						if (projectFolder != null)
-				        {
-							if (CheckProjectModify(projectFolder.mProject))
-								NewClass(projectFolder);
-						}
-				    });
-
-				item = menu.AddItem("Import File...");
-				item.mOnMenuItemSelected.Add(new (item) => { mImportFileDeferred = true; /* ImportFile();*/ });
-
-				item = menu.AddItem("Import Folder...");
-				item.mOnMenuItemSelected.Add(new (item) => { mImportFolderDeferred = true; /* ImportFile();*/ });
-
-				if (isProject)
+				if (!isFailedLoad)
 				{
-					menu.AddItem();
-					item = menu.AddItem("Properties...");
+					item = menu.AddItem("New Folder");
 					item.mOnMenuItemSelected.Add(new (item) =>
 					    {
-							var projectItem = GetSelectedProjectItem();
-							if (projectItem != null)
-					        	ShowProjectProperties(projectItem.mProject);
+							var projectFolder = GetSelectedProjectFolder();
+							if (projectFolder != null)
+					        {
+								if (CheckProjectModify(projectFolder.mProject))
+									NewFolder(projectFolder);
+							}
 					    });
+	
+					item = menu.AddItem("New Class...");
+					item.mOnMenuItemSelected.Add(new (item) =>
+					    {
+							var projectFolder = GetSelectedProjectFolder();
+							if (projectFolder != null)
+					        {
+								if (CheckProjectModify(projectFolder.mProject))
+									NewClass(projectFolder);
+							}
+					    });
+	
+					item = menu.AddItem("Import File...");
+					item.mOnMenuItemSelected.Add(new (item) => { mImportFileDeferred = true; /* ImportFile();*/ });
+	
+					item = menu.AddItem("Import Folder...");
+					item.mOnMenuItemSelected.Add(new (item) => { mImportFolderDeferred = true; /* ImportFile();*/ });
+
+					if (isProject)
+					{
+						menu.AddItem();
+						item = menu.AddItem("Properties...");
+						item.mOnMenuItemSelected.Add(new (item) =>
+						    {
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+						        	ShowProjectProperties(projectItem.mProject);
+						    });
+					}
 				}
             }
             /*else if (!handled)
