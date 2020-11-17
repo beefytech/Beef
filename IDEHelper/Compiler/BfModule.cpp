@@ -21535,6 +21535,23 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	bool foundHiddenMethod = false;
 
+	BfTokenNode* virtualToken = NULL;
+	auto propertyDeclaration = methodDef->GetPropertyDeclaration();
+	if (propertyDeclaration != NULL)
+		virtualToken = propertyDeclaration->mVirtualSpecifier;
+	else if (methodDeclaration != NULL)
+		virtualToken = methodDeclaration->mVirtualSpecifier;
+
+	if ((methodDef->mIsVirtual) && (methodDef->mIsStatic))
+	{
+		Fail("Static members cannot be marked as override, virtual, or abstract", virtualToken, true);
+	}
+	else if (methodDef->mIsVirtual)
+	{
+		if ((methodDef->mProtection == BfProtection_Private) && (virtualToken != NULL))
+			Fail("Virtual or abstract members cannot be private", virtualToken, true);
+	}
+
 	// Don't compare specialized generic methods against normal methods
 	if ((((mCurMethodInstance->mIsUnspecialized) || (mCurMethodInstance->mMethodDef->mGenericParams.size() == 0))) &&
 		(!methodDef->mIsLocalMethod))
@@ -21858,15 +21875,12 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 
 	if ((methodDef->mIsVirtual) && (methodDef->mIsStatic))
 	{
-		Fail("Static members cannot be marked as override, virtual, or abstract", virtualToken, true);
+		 //Fail: Static members cannot be marked as override, virtual, or abstract
 	}
 	else if (methodDef->mIsVirtual)
 	{
 		if (mCompiler->IsHotCompile())
 			mContext->EnsureHotMangledVirtualMethodName(methodInstance);
-
-		if ((methodDef->mProtection == BfProtection_Private) && (virtualToken != NULL))
-			Fail("Virtual or abstract members cannot be private", virtualToken, true);
 
 		BfTypeInstance* checkBase = typeInstance;
 		// If we are in an extension, look in ourselves first
