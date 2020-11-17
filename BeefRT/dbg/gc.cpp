@@ -1137,7 +1137,7 @@ void BFGC::ProcessSweepInfo()
 		//::MessageBoxA(NULL, "Leak", "Leak", MB_OK);
 
 //#if 0
-		Beefy::StringT<1024> errorStr = StrFormat("%d object memory leak%s detected, details in Output panel.", 
+		Beefy::StringT<1024> errorStr = StrFormat("%d object memory leak%s detected.\nMouse over an 'i' icon in the Output panel to view a leaked object and its allocation stack trace.", 
 			mSweepInfo.mLeakCount, (mSweepInfo.mLeakCount != 1) ? "s" : "");
 		gDbgErrorString = errorStr;
 		gDbgErrorString += "\n";

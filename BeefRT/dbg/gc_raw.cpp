@@ -416,7 +416,7 @@ void BFGC::RawShutdown()
 
 	if (mSweepInfo.mLeakCount > 0)
 	{
-		Beefy::String errorStr = StrFormat("%d raw memory leak%s detected, details in Output panel.",
+		Beefy::String errorStr = StrFormat("%d raw memory leak%s detected.\nMouse over an 'i' icon in the Output panel to view the leaked memory or the associated allocation stack trace.",
 			mSweepInfo.mLeakCount, (mSweepInfo.mLeakCount != 1) ? "s" : "");
 		gDbgErrorString = errorStr;
 		gDbgErrorString += "\n";
