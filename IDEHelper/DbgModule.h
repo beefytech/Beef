@@ -1215,6 +1215,7 @@ public:
 	virtual void ParseSymbolData();
 	virtual void ParseTypeData();
 	virtual DbgCompileUnit* ParseCompileUnit(int compileUnitId);
+	virtual void ParseCompileUnits() {}
 	virtual void MapCompileUnitMethods(DbgCompileUnit* compileUnit);
 	virtual void MapCompileUnitMethods(int compileUnitId);
 	virtual void PopulateType(DbgType* dbgType);		

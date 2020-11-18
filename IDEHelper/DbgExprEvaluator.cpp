@@ -7656,7 +7656,13 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 			return result;
 		}
 	}
-
+	else if (methodName == "__parseCompileUnits")
+	{
+		for (auto dbgModule : mDebugTarget->mDbgModules)
+		{						
+			dbgModule->ParseCompileUnits();
+		}
+	}
 
 	DbgType* curTypeDef;
 	DbgType* targetTypeInst = NULL;

@@ -4087,6 +4087,12 @@ CvCompileUnit* COFF::ParseCompileUnit(int compileUnitId)
 	return moduleInfo->mCompileUnit;
 }
 
+void COFF::ParseCompileUnits()
+{
+	for (int i = 0; i < (int)mCvModuleInfo.size(); i++)
+		ParseCompileUnit(i);
+}
+
 DbgType* COFF::CvGetTypeOrNamespace(char* name, DbgLanguage language)
 {
 	if (language == DbgLanguage_Unknown)

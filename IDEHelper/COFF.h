@@ -301,6 +301,7 @@ public:
 	void ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionData, uint8* data, uint8* dataEnd, CvInlineInfoVec& inlineDataVec, bool deferInternals, DbgSubprogram* useSubprogram);
 	CvCompileUnit* ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* compileUnit, uint8* sectionData, int sectionSize);
 	virtual CvCompileUnit* ParseCompileUnit(int compileUnitId) override;
+	virtual void ParseCompileUnits() override;
 	virtual void MapCompileUnitMethods(DbgCompileUnit* compileUnit) override;
 	virtual void MapCompileUnitMethods(int compileUnitId) override;
 	virtual void PopulateType(DbgType* dbgType) override;
