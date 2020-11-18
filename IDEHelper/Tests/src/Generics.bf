@@ -190,6 +190,11 @@ namespace Tests
 		    }
 		}
 
+		public void TestCast<T, TI>(T val) where T : class where TI : interface
+		{
+			TI iface = val as TI;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{

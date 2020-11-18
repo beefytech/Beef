@@ -9510,6 +9510,8 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		autoComplete->CheckTypeRef(dynCastExpr->mTypeRef, false, true);				
 	}
 
+	auto origTargetType = targetType;
+
 	if (!targetValue)
 		return;
 	if (!targetType)
@@ -9547,24 +9549,23 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		auto genericParamType = (BfGenericParamType*) targetType;
 		auto genericParam = mModule->GetGenericParamInstance(genericParamType);
 		auto typeConstraint = genericParam->mTypeConstraint;
-		if ((typeConstraint == NULL) && (genericParam->mGenericParamFlags & BfGenericParamFlag_Class))
+		if ((typeConstraint == NULL) && (genericParam->mGenericParamFlags & (BfGenericParamFlag_Class | BfGenericParamFlag_Interface)))
 			typeConstraint = mModule->mContext->mBfObjectType;
 
 		if ((typeConstraint == NULL) || (!typeConstraint->IsObject()))
 		{
-			mModule->Fail(StrFormat("The type parameter '%s' cannot be used with the 'as' operator because it does not have a class type constraint nor a 'class' constraint",
+			mModule->Fail(StrFormat("The type parameter '%s' cannot be used with the 'as' operator because it does not have a class type constraint nor a 'class' or 'interface' constraint",
 				genericParam->GetGenericParamDef()->mName.c_str()), dynCastExpr->mTypeRef);
 			return;
 		}
 
-		targetType = typeConstraint;
-		targetValue = mModule->GetDefaultTypedValue(targetType);
+		targetType = typeConstraint;		
 	}
 
 	if ((!targetType->IsObjectOrInterface()) && (!targetType->IsNullable()))
 	{
 		mModule->Fail(StrFormat("The as operator must be used with a reference type or nullable type ('%s' is a non-nullable value type)",
-			mModule->TypeToString(targetType).c_str()), dynCastExpr->mTypeRef);
+			mModule->TypeToString(origTargetType).c_str()), dynCastExpr->mTypeRef);
 		return;
 	}
 
@@ -9582,12 +9583,17 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 			mResult = mModule->GetDefaultTypedValue(targetType);
 			return;
 		}
-
-		//targetType = typeConstraint;
+		
 		targetValue = mModule->GetDefaultTypedValue(typeConstraint);
 	}
 
 	auto boolType = mModule->GetPrimitiveType(BfTypeCode_Boolean);
+
+	auto _CheckResult = [&]()
+	{
+		if ((mResult) && (origTargetType->IsGenericParam()))
+			mResult = mModule->GetDefaultTypedValue(origTargetType);		
+	};
 
 	if ((targetValue.mType->IsNullable()) && (targetType->IsInterface()))
 	{		
@@ -9595,10 +9601,11 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		if (!mResult)
 		{
 			mModule->Warn(0, StrFormat("Conversion from '%s' to '%s' will always be null", 
-				mModule->TypeToString(targetValue.mType).c_str(), mModule->TypeToString(targetType).c_str()), dynCastExpr->mAsToken);
-			mResult = BfTypedValue(mModule->GetDefaultValue(targetType), targetType);
-		}
-		return;
+				mModule->TypeToString(targetValue.mType).c_str(), mModule->TypeToString(origTargetType).c_str()), dynCastExpr->mAsToken);
+			mResult = BfTypedValue(mModule->GetDefaultValue(origTargetType), origTargetType);
+		}		
+		_CheckResult();
+		return;		
 	}
 
 	if (targetValue.mType->IsValueTypeOrValueTypePtr())
@@ -9624,6 +9631,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 				hasValueAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(allocaInst, 0, 0); // value
 				mModule->mBfIRBuilder->CreateStore(targetValue.mValue, hasValueAddr);
 				mResult = BfTypedValue(allocaInst, targetType, true);
+				_CheckResult();
 				return;
 			}
 		}
@@ -9643,6 +9651,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		}
 		else
 			mResult = BfTypedValue(mModule->GetDefaultValue(targetType), targetType);
+		_CheckResult();
 		return;
 	}
 
@@ -9689,7 +9698,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 		
 		mModule->AddBasicBlock(endBB);
 		mResult = BfTypedValue(allocaInst, targetType, true);
-
+		_CheckResult();
 		return;
 	}
 
@@ -9721,6 +9730,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 
 		auto castedValue = mModule->mBfIRBuilder->CreateBitCast(targetValue.mValue, mModule->mBfIRBuilder->MapType(targetTypeInstance));
 		mResult = BfTypedValue(castedValue, targetTypeInstance);
+		_CheckResult();
 		return;
 	}
 	else if ((!targetType->IsInterface()) && (!mModule->TypeIsSubTypeOf(targetTypeInstance, srcTypeInstance)))
@@ -9732,6 +9742,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 	if (autoComplete != NULL)	
 	{
 		mResult = mModule->GetDefaultTypedValue(targetType);
+		_CheckResult();
 		return;
 	}
 
@@ -9755,6 +9766,7 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 
 	mModule->AddBasicBlock(endBB);	
 	mResult = BfTypedValue(irb->CreateLoad(targetVal), targetType);
+	_CheckResult();
 }
 
 void BfExprEvaluator::Visit(BfCastExpression* castExpr)
