@@ -2233,8 +2233,12 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 		if (baseType == NULL)
 		{
 			//TODO: Why were we doing the interface checking?
-
-			if ((curTypeInst != mModule->mContext->mBfObjectType) && (!curTypeInst->IsInterface()))
+			if ((curTypeInst->IsInterface()) && (curTypeInst == target.mType))
+			{
+				// When we are directly calling on interfaces rather than indirectly matching through binding
+				baseType = mModule->mContext->mBfObjectType;
+			}
+			else if ((curTypeInst != mModule->mContext->mBfObjectType) && (!curTypeInst->IsInterface()))
 			{
 				// This can happen for structs
 				baseType = mModule->mContext->mBfObjectType;

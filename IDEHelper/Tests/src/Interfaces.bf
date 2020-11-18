@@ -127,6 +127,9 @@ namespace Tests
 			Test.Assert(UseIA2((IFaceA)cba) == 60);
 			Test.Assert(UseIA2(cc) == 70);
 			Test.Assert(UseIA2(cca) == 70);
+
+			IFaceA ifa = cba;
+			Test.Assert(ifa.GetType() == typeof(ClassB));
 		}
 
 		////
