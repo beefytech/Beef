@@ -159,10 +159,21 @@ void NetRequest::DoTransfer()
 // 		mFailed = true;
 // 		return;
 // 	}
-
+		
 	long response_code = 0;
 	curl_easy_getinfo(mCURL, CURLINFO_RESPONSE_CODE, &response_code);
 	mNetManager->mDebugManager->OutputRawMessage(StrFormat("msgLo Result for '%s': %d\n", mURL.c_str(), response_code));
+
+	if (response_code == 200)
+	{
+		curl_off_t downloadSize = 0;
+		curl_easy_getinfo(mCURL, CURLINFO_SIZE_DOWNLOAD_T, &downloadSize);
+		curl_off_t length = 0;
+		curl_easy_getinfo(mCURL, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &length);
+		if ((downloadSize != 0) && (length != 0) && (downloadSize != length))
+			response_code = -1; // Partial download
+	}
+
 	if (response_code != 200)
 	{		
 		mOutFile.Close();
@@ -170,7 +181,7 @@ void NetRequest::DoTransfer()
 		mFailed = true;
 		return;
 	}
-
+	
 	BfLogDbg("NetManager successfully completed %s\n", mURL.c_str());
 
 	if (mCancelOnSuccess != NULL)
