@@ -68,7 +68,7 @@
 #include <sys/types.h>       /* for _off_t */
 #include <assert.h>
 #include <stdlib.h>          /* for rand, srand, _strtoxxx */
-
+#include <time.h>
 
 //#ifdef HAVE_PTHREAD
 //#include <pthread.h>

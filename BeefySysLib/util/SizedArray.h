@@ -99,12 +99,12 @@ public:
 			return itr;
 		}
 
-		T& operator*()
+		T& operator*() const
 		{
 			return *mPtr;
 		}
 
-		T* operator->()
+		T* operator->() const
 		{
 			return mPtr;
 		}

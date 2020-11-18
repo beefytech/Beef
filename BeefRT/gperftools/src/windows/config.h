@@ -37,10 +37,10 @@
 /* Define to 1 if you have the <cygwin/signal.h> header file. */
 #undef HAVE_CYGWIN_SIGNAL_H
 
-//#define _TIMESPEC_DEFINED
+#define _TIMESPEC_DEFINED
 
 #ifndef __MINGW32__ 
-#define _CRT_NO_TIME_T
+//#define _CRT_NO_TIME_T
 #endif
 
 /* Define to 1 if you have the declaration of `cfree', and to 0 if you don't.
