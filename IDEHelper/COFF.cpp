@@ -17,6 +17,10 @@
 
 #include "BeefySysLib/util/AllocDebug.h"
 
+
+#define LF_CLASS_EX 0x1608
+#define LF_STRUCTURE_EX 0x1609
+
 USING_NS_BF_DBG;
 
 #define MSF_SIGNATURE_700 "Microsoft C/C++ MSF 7.00\r\n\032DS\0\0"
@@ -1395,7 +1399,7 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 	DbgType* dbgType = NULL;
 
 	switch (trLeafType)
-	{	
+	{
 	case LF_ENUM:
 		{
 			int elemCount = (int)GET(uint16);
@@ -1459,16 +1463,47 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			dbgType->mPriority = DbgTypePriority_Unique;
 		}
 		break;
-	case LF_STRUCTURE:
-	case LF_CLASS:		
-		{
-			lfClass& classInfo = *(lfClass*)dataStart;
-			data = (uint8*)&classInfo.data;
-			int dataSize = (int)CvParseConstant(data);
-						
-			const char* name = _ParseString();
-						
+	
+	case LF_CLASS:
+	case LF_STRUCTURE:	
+	case LF_CLASS_EX:
+	case LF_STRUCTURE_EX:
+		{		
+			unsigned short  count;          // count of number of elements in class
+			CV_prop_t       property;       // property attribute field (prop_t)
+			CV_typ_t        field;          // type index of LF_FIELD descriptor list
+			CV_typ_t        derived;        // type index of derived from list if not zero
+			CV_typ_t        vshape;         // type index of vshape table for this class
+			int dataSize;
 
+			int16 extra = 0;
+			if ((trLeafType == 0x1608) || (trLeafType == 0x1609))
+			{				
+				property = GET(CV_prop_t);
+				extra = GET(int16);
+				field = GET(CV_typ_t);
+				derived = GET(CV_typ_t);
+				vshape = GET(CV_typ_t);
+				count = GET(unsigned short);
+				dataSize = (int)CvParseConstant(data);				
+			}
+			else
+			{
+				count = GET(unsigned short);
+				property = GET(CV_prop_t);
+				field = GET(CV_typ_t);
+				derived = GET(CV_typ_t);
+				vshape = GET(CV_typ_t);
+				dataSize = (int)CvParseConstant(data);
+			}
+
+			const char* name = _ParseString();
+
+// 			if (strstr(name, "TestStruct") != NULL)
+// 			{
+// 				NOP;
+// 			}
+			
 // 			if ((strstr(name, "`") != NULL) || (strstr(name, "::__l") != NULL))
 // 			{
 // 				OutputDebugStrF("Local type: %s\n", name);
@@ -1515,13 +1550,13 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 
 			dbgType = CvCreateType();
 			dbgType->mCompileUnit = mMasterCompileUnit;
-			dbgType->mIsDeclaration = classInfo.property.fwdref;
+			dbgType->mIsDeclaration = property.fwdref;
 			if (isPartialDef)
 				dbgType->mIsDeclaration = true;
 			dbgType->mName = name;
 			dbgType->mTypeName = name;
 			//SplitName(dbgType->mName, dbgType->mTypeName, dbgType->mTemplateParams);
-			if (trLeafType == LF_CLASS)
+			if ((trLeafType == LF_CLASS) || (trLeafType == LF_CLASS_EX))
 				dbgType->mTypeCode = DbgType_Class;
 			else
 				dbgType->mTypeCode = DbgType_Struct;
@@ -1529,16 +1564,16 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			
 
 			DbgType* baseType = NULL;
-			if (classInfo.derived != 0)
+			if (derived != 0)
 			{
-				baseType = CvGetTypeSafe(classInfo.derived);
+				baseType = CvGetTypeSafe(derived);
 				BP_ALLOC_T(DbgBaseTypeEntry);
 				DbgBaseTypeEntry* baseTypeEntry = mAlloc.Alloc<DbgBaseTypeEntry>();
 				baseTypeEntry->mBaseType = baseType;				
 				dbgType->mBaseTypes.PushBack(baseTypeEntry);
 			}
 
-			if (classInfo.property.packed)
+			if (property.packed)
 			{
 				dbgType->mAlign = 1;
 				dbgType->mIsPacked = true;
@@ -1558,9 +1593,9 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 				}				
 			}
 			
-			if (classInfo.vshape != 0)			
+			if (vshape != 0)			
 			{
-				CvGetTypeSafe(classInfo.vshape);
+				CvGetTypeSafe(vshape);
 				dbgType->mHasVTable = true;			
 			}
 
@@ -1751,6 +1786,12 @@ DbgType* COFF::CvParseType(int tagIdx, bool ipi)
 			}
 		}
 		break;
+// 	case 0x1609:
+// 		NOP;
+// 		break;
+	default:
+		NOP;
+		break;
 	}
 
 	if (dbgType != NULL)
@@ -1817,7 +1858,8 @@ void COFF::ParseTypeData(CvStreamReader& reader, int dataOffset)
 		if (trLeafType == 0)
 			continue;
 
-		if ((trLeafType == LF_ENUM) || (trLeafType == LF_CLASS) || (trLeafType == LF_STRUCTURE) || (trLeafType == LF_UNION))
+		if ((trLeafType == LF_ENUM) || (trLeafType == LF_CLASS) || (trLeafType == LF_STRUCTURE) || (trLeafType == LF_UNION) ||
+			(trLeafType == LF_CLASS_EX) || (trLeafType == LF_STRUCTURE_EX))
 		{
 			CvParseType(tagIdx);
 		}
@@ -4198,13 +4240,24 @@ void COFF::PopulateType(DbgType* dbgType)
 			CvParseMembers(dbgType, enumInfo.field, false);
 		}
 		break;
-	case LF_STRUCTURE:
 	case LF_CLASS:
+	case LF_STRUCTURE:	
 		{
 			lfClass& classInfo = *(lfClass*)dataStart;
 			CvParseMembers(dbgType, classInfo.field, false);
 		}
 		break;
+
+	case LF_CLASS_EX:
+	case LF_STRUCTURE_EX:
+		{
+			auto property = GET(CV_prop_t);
+			auto extra = GET(int16);
+			auto field = GET(CV_typ_t);
+			CvParseMembers(dbgType, field, false);
+		}
+		break;
+		
 	case LF_UNION:
 		{
 			lfUnion& classInfo = *(lfUnion*)dataStart;	
