@@ -8242,24 +8242,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 
 	if ((!hasCustomAllocator) && (mBfIRBuilder->mIgnoreWrites))
 	{
-		if (arraySize)
-		{
-			if (isRawArrayAlloc)
-			{
-				BfPointerType* ptrType = CreatePointerType(type);
-				return GetDefaultValue(ptrType);
-			}
-			BfArrayType* arrayType = CreateArrayType(type, arrayDim);
-			return GetDefaultValue(arrayType);
-		}
-
-		if (type->IsValueType())
-		{
-			BfPointerType* ptrType = CreatePointerType(type);			
-			return GetDefaultValue(ptrType);
-		}
-
-		return mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(type));
+		return mBfIRBuilder->GetFakeVal();
 	}
 
 	AddDependency(type, mCurTypeInstance, BfDependencyMap::DependencyFlag_Allocates);
