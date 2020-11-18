@@ -9127,6 +9127,13 @@ void BfModule::EmitObjectAccessCheck(BfTypedValue typedVal)
 	if (!mCompiler->mOptions.mObjectHasDebugFlags)
 		return;
 
+	if (typedVal.mValue.IsConst())
+	{
+		auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
+		if (constant->mTypeCode == BfTypeCode_NullPtr)
+			return;
+	}
+
 	bool emitObjectAccessCheck = mCompiler->mOptions.mEmitObjectAccessCheck;
 	auto typeOptions = GetTypeOptions();
 	if (typeOptions != NULL)
