@@ -18079,8 +18079,9 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		}
 		else
 		{
-			mModule->Fail("Expected integer index", indexerExpr->mArguments[0]);
-			indexArgument = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+			indexArgument = mModule->Cast(indexerExpr->mArguments[0], indexArgument, mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+			if (!indexArgument)			
+				indexArgument = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 		}
 	}
 
