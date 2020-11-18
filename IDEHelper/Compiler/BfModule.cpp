@@ -21542,16 +21542,6 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	else if (methodDeclaration != NULL)
 		virtualToken = methodDeclaration->mVirtualSpecifier;
 
-	if ((methodDef->mIsVirtual) && (methodDef->mIsStatic))
-	{
-		Fail("Static members cannot be marked as override, virtual, or abstract", virtualToken, true);
-	}
-	else if (methodDef->mIsVirtual)
-	{
-		if ((methodDef->mProtection == BfProtection_Private) && (virtualToken != NULL))
-			Fail("Virtual or abstract members cannot be private", virtualToken, true);
-	}
-
 	// Don't compare specialized generic methods against normal methods
 	if ((((mCurMethodInstance->mIsUnspecialized) || (mCurMethodInstance->mMethodDef->mGenericParams.size() == 0))) &&
 		(!methodDef->mIsLocalMethod))
@@ -21746,6 +21736,19 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				Fail("Method does not hide an inherited member. The 'new' keyword is not required", tokenNode, true);				
 			}
 		}
+	}
+
+	if ((methodDef->mIsVirtual) && (methodDef->mIsStatic) && (!methodInstance->mIsInnerOverride))
+	{
+		if ((virtualToken != NULL) && (virtualToken->mToken == BfToken_Override) && (methodDef->mDeclaringType->mTypeCode == BfTypeCode_Extension))
+			Fail("No suitable method found to override", virtualToken, true);
+		else
+			Fail("Static members cannot be marked as override, virtual, or abstract", virtualToken, true);
+	}
+	else if (methodDef->mIsVirtual)
+	{
+		if ((methodDef->mProtection == BfProtection_Private) && (virtualToken != NULL))
+			Fail("Virtual or abstract members cannot be private", virtualToken, true);
 	}
 
 	mCompiler->mStats.mMethodDeclarations++;
