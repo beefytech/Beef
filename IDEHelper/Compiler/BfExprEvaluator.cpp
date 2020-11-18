@@ -15270,8 +15270,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		mModule->FinishAttributeState(&attributeState);		
 
 	if (isCascade)
-	{
-		if (outCascadeValue != NULL)
+	{		
+		if ((outCascadeValue != NULL) && (thisValue.mValue))
 		{
 			*outCascadeValue = thisValue;
 		}
