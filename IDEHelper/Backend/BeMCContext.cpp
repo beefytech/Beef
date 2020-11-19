@@ -15742,7 +15742,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?__BfCtor@SpriteBatchRenderer@Repo@bf@@QEAAXTint@@@Z");
+	//mDebugging = (function->mName == "DoCallback");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
@@ -16903,7 +16903,7 @@ void BeMCContext::Generate(BeFunction* function)
 							BF_ASSERT(retVal.IsVReg());
 							auto vregInfo = GetVRegInfo(retVal);
 
-							vregInfo->SetRetVal();
+							vregInfo->SetRetVal();							
 						}
 						else if (retType->IsVector())
 						{
@@ -16927,6 +16927,19 @@ void BeMCContext::Generate(BeFunction* function)
 							else if (retType->mTypeCode == BeTypeCode_Double)
 								reg = X64Reg_XMM0_f64;
 							auto movInst = AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(reg), retVal);
+						}
+					}
+
+					if (mBeFunction->HasStructRet())
+					{
+						for (int vregIdx = 0; vregIdx < (int)mVRegInfo.size(); vregIdx++)
+						{
+							auto vregInfo = mVRegInfo[vregIdx];
+							if (vregInfo->mIsRetVal)
+							{
+								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromVReg(vregIdx));
+								break;
+							}
 						}
 					}
 
