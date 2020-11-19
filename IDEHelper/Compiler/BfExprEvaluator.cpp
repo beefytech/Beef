@@ -2594,6 +2594,9 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 	if ((mModule->mCurMethodState == NULL) || (mModule->mCurMethodInstance == NULL) || (bindType == NULL))
 		return bindType;
 
+	if ((mModule->mCurMethodState->mClosureState != NULL) && (mModule->mCurMethodState->mClosureState->mCapturing))
+		return bindType;
+
 	BF_ASSERT(!mModule->mCurMethodInstance->mIsUnspecializedVariation);
 
 	auto parser = node->GetSourceData()->ToParserData();
@@ -2615,10 +2618,6 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 	{
 		if (genericTypeBindings == NULL)
 			return bindType;
-		
-		/*auto itr = mModule->mCurMethodState->mGenericTypeBindings->find(nodeId);
-		if (itr != mModule->mCurMethodState->mGenericTypeBindings->end())
-			return itr->second;*/
 
 		BfType** typePtr = NULL;
 		if (genericTypeBindings->TryGetValue(nodeId, &typePtr))
@@ -3640,7 +3639,11 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	{
 		if (forcedIFaceLookup)
 		{
-
+			if (mPropTarget == thisValue)
+			{
+				mPropDefBypassVirtual = true;
+				mOrigPropTarget = mModule->GetThis();
+			}
 		}
 	}
 	if ((!result) && (mPropDef == NULL))
@@ -3788,6 +3791,20 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 	if ((target.mType != NULL && (target.mType->IsGenericParam())))
 	{
 		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)target.mType);
+
+		if (target.mValue)
+		{
+			for (auto iface : genericParamInst->mInterfaceConstraints)
+			{
+				auto result = LookupField(targetSrc, BfTypedValue(target.mValue, iface), fieldName, flags);
+				if ((result) || (mPropDef != NULL))
+				{
+					//BindGenericType(targetSrc, iface);
+					return result;
+				}
+			}
+		}
+
 		if (mModule->mCurMethodInstance->mIsUnspecialized)
 		{
 			if (genericParamInst->mTypeConstraint != NULL)
@@ -6414,7 +6431,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	if (!methodDef->mIsStatic)
 	{
-		if ((methodInstance->GetOwner()->IsInterface()) && (!target.mType->IsGenericParam()) && (!target.mType->IsConcreteInterfaceType()))
+		bool ignoreVirtualError = (mModule->mBfIRBuilder->mIgnoreWrites) && (mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsForeignMethodDef);
+
+		if ((methodInstance->GetOwner()->IsInterface()) && (!target.mType->IsGenericParam()) && (!target.mType->IsConcreteInterfaceType()) &&
+			(!mModule->mCurTypeInstance->IsInterface()) && (!ignoreVirtualError))
 		{
 			if (methodInstance->mVirtualTableIdx == -1)
 			{
@@ -8301,44 +8321,8 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 	if (!mResult)
 		return;
 
-	//if (mResult.mType->IsVar())
-		//ResolveGenericType();	
-
 	auto origResult = mResult;
 	auto lookupType = BindGenericType(nameNode, mResult.mType);	
-	if (mResult.mType->IsGenericParam())
-	{
-		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)mResult.mType);
-		if (mModule->mCurMethodInstance->mIsUnspecialized)
-		{			
-			if (genericParamInst->mTypeConstraint != NULL)
-				mResult.mType = genericParamInst->mTypeConstraint;
-			else				
-				mResult.mType = mModule->mContext->mBfObjectType;
-
-			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
-			{
-				mResult.mType = mModule->GetPrimitiveType(BfTypeCode_Var);
-			}
-		}
-		else
-		{
-			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
-			{
-				//mResult.mType = mModule->ResolveGenericType(mResult.mType);
-			}
-			else if (genericParamInst->mTypeConstraint != NULL)
-			{
-				mResult = mModule->Cast(nameNode, mResult, genericParamInst->mTypeConstraint);
-				BF_ASSERT(mResult);
-			}
-			else
-			{
-				// This shouldn't occur - this would infer that we are accessing a member of Object or something...
-				//mResult.mType = mModule->ResolveGenericType(mResult.mType);
-			}
-		}
-	}
 
 	if (mResult.mType->IsVar())
 	{
@@ -8346,7 +8330,7 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 		return;
 	}
 
-	if (!mResult.mType->IsTypeInstance())
+	if ((!mResult.mType->IsTypeInstance()) && (!mResult.mType->IsGenericParam()))
 	{
 		if (hadError != NULL)
 			*hadError = true;
@@ -8362,16 +8346,14 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)lookupType);
 		SizedArray<BfTypeInstance*, 8> searchConstraints;
 		for (auto ifaceConstraint : genericParamInst->mInterfaceConstraints)
-		{
-			//if (std::find(searchConstraints.begin(), searchConstraints.end(), ifaceConstraint) == searchConstraints.end())
+		{			
 			if (!searchConstraints.Contains(ifaceConstraint))
 			{
 				searchConstraints.push_back(ifaceConstraint);
 
 				for (auto& innerIFaceEntry : ifaceConstraint->mInterfaces)
 				{
-					auto innerIFace = innerIFaceEntry.mInterfaceType;
-					//if (std::find(searchConstraints.begin(), searchConstraints.end(), innerIFace) == searchConstraints.end())
+					auto innerIFace = innerIFaceEntry.mInterfaceType;		
 					if (!searchConstraints.Contains(innerIFace))
 					{
 						searchConstraints.push_back(innerIFace);
@@ -8383,8 +8365,7 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 		BfTypedValue prevTarget;
 		BfPropertyDef* prevDef = NULL;
 		for (auto ifaceConstraint : searchConstraints)
-		{
-			//auto lookupVal = mModule->GetDefaultTypedValue(ifaceConstraint, origResult.IsAddr());
+		{			
 			BfTypedValue lookupVal = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), ifaceConstraint);
 						
 			mResult = LookupField(nameNode->mRight, lookupVal, fieldName);
@@ -8501,49 +8482,14 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	if (mResult.mType->IsAllocType())
 		mResult.mType = mResult.mType->GetUnderlyingType();
 
-	auto origResult = mResult;
-	auto lookupType = BindGenericType(nameNode, mResult.mType);
-	if (mResult.mType->IsGenericParam())
-	{
-		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)mResult.mType);
-		if (mModule->mCurMethodInstance->mIsUnspecialized)
-		{
-			if (genericParamInst->mTypeConstraint != NULL)
-				mResult.mType = genericParamInst->mTypeConstraint;
-			else
-				mResult.mType = mModule->mContext->mBfObjectType;
-
-			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
-			{
-				mResult.mType = mModule->GetPrimitiveType(BfTypeCode_Var);
-			}
-		}
-		else
-		{
-			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
-			{
-				//mResult.mType = mModule->ResolveGenericType(mResult.mType);
-			}
-			else if (genericParamInst->mTypeConstraint != NULL)
-			{
-				mResult = mModule->Cast(nameNode, mResult, genericParamInst->mTypeConstraint);
-				BF_ASSERT(mResult);
-			}
-			else
-			{
-				// This shouldn't occur - this would infer that we are accessing a member of Object or something...
-				//mResult.mType = mModule->ResolveGenericType(mResult.mType);
-			}
-		}
-	}
-
+	auto origResult = mResult;	
 	if (mResult.mType->IsVar())
 	{
 		mResult = BfTypedValue(mModule->GetDefaultValue(mResult.mType), mResult.mType, true);
 		return;
 	}	
 
-	if (!mResult.mType->IsTypeInstance())
+	if ((!mResult.mType->IsTypeInstance()) && (!mResult.mType->IsGenericParam()))
 	{		
 		if (mResult.mType->IsSizedArray())
 		{
@@ -8565,7 +8511,21 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	}
 
 	BfTypedValue lookupVal = mResult;
-	mResult = LookupField(nameRight, lookupVal, fieldName);
+	auto lookupType = BindGenericType(nameNode, mResult.mType);	
+	if ((lookupType->IsGenericParam()) && (!mResult.mType->IsGenericParam()))
+	{
+		// Try to lookup from generic binding
+		mResult = LookupField(nameRight, BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), lookupType), fieldName);
+		if (mPropDef != NULL)
+		{
+			mOrigPropTarget = lookupVal;
+			return;
+		}
+	}
+
+	if (mPropDef == NULL)
+		mResult = LookupField(nameRight, lookupVal, fieldName);
+
 	if ((!mResult) && (mPropDef == NULL) && (lookupType->IsGenericParam()))
 	{
 		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)lookupType);
@@ -15473,10 +15433,13 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 		{
 			auto curTypeInst = mPropTarget.mType->ToTypeInstance();
 			if (mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, curTypeInst))
-			{
-				// This is an explicit call to a default static interface method.  We pull the methodDef into our own concrete type.			
-				mPropTarget = mModule->GetThis();
-				return mModule->GetMethodInstance(mModule->mCurTypeInstance, methodDef, BfTypeVector(), BfGetMethodInstanceFlag_ForeignMethodDef, curTypeInst);
+			{								
+				if (methodDef->mBody != NULL)
+				{
+					// This is an explicit call to a default static interface method.  We pull the methodDef into our own concrete type.								
+					mPropTarget = mModule->GetThis();
+					return mModule->GetMethodInstance(mModule->mCurTypeInstance, methodDef, BfTypeVector(), BfGetMethodInstanceFlag_ForeignMethodDef, curTypeInst);
+				}				
 			}
 			else
 			{
@@ -15688,9 +15651,15 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				return mResult;
 			}
 
+			if (matchedMethod->mName == "get__Hitbox")
+			{
+				NOP;
+			}
+
 			auto methodInstance = GetPropertyMethodInstance(matchedMethod);
 			if (methodInstance.mMethodInstance == NULL)
 				return mResult;
+			BF_ASSERT(methodInstance.mMethodInstance->mMethodDef->mName == matchedMethod->mName);
 			if (!mModule->mBfIRBuilder->mIgnoreWrites)
 			{
 				BF_ASSERT(!methodInstance.mFunc.IsFake());
@@ -15721,9 +15690,15 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			{
 				SizedArray<BfIRValue, 4> args;
 				if (!matchedMethod->mIsStatic)
-				{
-					if ((mPropDefBypassVirtual) && (mPropTarget.mType != methodInstance.mMethodInstance->GetOwner()))
-						mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, methodInstance.mMethodInstance->GetOwner());
+				{					
+					auto owner = methodInstance.mMethodInstance->GetOwner();
+					if (mPropTarget.mType != owner)
+					{
+						/*if (owner->IsInterface())
+							mPropTarget = mModule->Cast(mPropSrc, mPropTarget, owner);
+						else */ if (mPropDefBypassVirtual)
+							mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, owner);
+					}
 
 					if ((mPropGetMethodFlags & BfGetMethodInstanceFlag_DisableObjectAccessChecks) == 0)
 						mModule->EmitObjectAccessCheck(mPropTarget);
@@ -16616,7 +16591,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			auto methodInstance = GetPropertyMethodInstance(setMethod);
 			if (methodInstance.mMethodInstance == NULL)
 				return;
-			BF_ASSERT(methodInstance.mMethodInstance->mMethodDef == setMethod);
+			//BF_ASSERT(methodInstance.mMethodInstance->mMethodDef == setMethod);
 			CheckPropFail(setMethod, methodInstance.mMethodInstance, (mPropGetMethodFlags & BfGetMethodInstanceFlag_Friend) == 0);	
 
 			auto autoComplete = GetAutoComplete();
@@ -16670,6 +16645,13 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			SizedArray<BfIRValue, 4> args;
 			if (!setMethod->mIsStatic)
 			{
+				auto owner = methodInstance.mMethodInstance->GetOwner();
+				if (mPropTarget.mType != owner)
+				{
+					if (mPropDefBypassVirtual)
+						mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, owner);
+				}
+
 				mModule->EmitObjectAccessCheck(mPropTarget);
 				PushThis(mPropSrc, mPropTarget, methodInstance.mMethodInstance, args);				
 			}

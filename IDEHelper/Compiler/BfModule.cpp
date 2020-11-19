@@ -9728,6 +9728,15 @@ BfModuleMethodInstance BfModule::GetMethodInstanceAtIdx(BfTypeInstance* typeInst
 
 	auto methodInstance = typeInstance->mMethodInstanceGroups[methodIdx].mDefault;
 
+	BfMethodDef* methodDef = NULL;
+	BfTypeInstance* foreignType = NULL;
+	if (methodInstance != NULL)
+	{
+		methodDef = methodInstance->mMethodDef;
+		if (methodInstance->mMethodInfoEx != NULL)
+			foreignType = methodInstance->mMethodInfoEx->mForeignType;
+	}
+
 	if ((methodInstance != NULL) && (mIsReified) && (!methodInstance->mIsReified))
 	{
 		// Can't use it, not reified
@@ -9740,7 +9749,9 @@ BfModuleMethodInstance BfModule::GetMethodInstanceAtIdx(BfTypeInstance* typeInst
 		BfIRFunction func(mBfIRBuilder->GetFakeVal());
 		return BfModuleMethodInstance(methodInstance, func);
 	}
-
+	
+	if (foreignType != NULL)
+		return GetMethodInstance(typeInstance, methodDef, BfTypeVector(), (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_ForeignMethodDef), foreignType);
 	return GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector(), flags);	
 }
 

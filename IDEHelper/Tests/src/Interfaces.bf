@@ -101,6 +101,58 @@ namespace Tests
 			}
 		}
 
+		public struct Rect
+		{
+			public float x, y, width, height;
+		}
+
+		public class Component
+		{
+
+		}
+
+		public class Hitbox : Component
+		{
+		    public Rect mArea = .() { x=1, y=2, width=3, height=4, };
+		}
+
+		public interface IEntity
+		{
+		    public T GetComponent<T>() where T : Component;
+		}
+
+		public interface IHitbox : IEntity
+		{
+			public Hitbox HitboxValue { get; set; }
+
+		    public Hitbox Hitbox
+			{
+		        get
+				{
+		            if (HitboxValue == null)
+					{
+		                HitboxValue = GetComponent<Hitbox>();
+		            }
+
+		            return HitboxValue;
+		        }
+		    }
+		}
+
+		class GameItem : IEntity, IHitbox
+		{
+			public T GetComponent<T>() where T : Component
+			{
+				return new T();
+			}
+			public Hitbox HitboxValue { get; set; }
+		}
+
+		static Hitbox GetHitbox<T>(T val) where T : IHitbox
+		{
+			return val.Hitbox;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -130,6 +182,11 @@ namespace Tests
 
 			IFaceA ifa = cba;
 			Test.Assert(ifa.GetType() == typeof(ClassB));
+
+			GameItem gameItem = scope .();
+			var hitbox = GetHitbox(gameItem);
+			Test.Assert(hitbox.mArea == .() { x=1, y=2, width=3, height=4 });
+			delete hitbox;
 		}
 
 		////
