@@ -4440,7 +4440,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					{
 						if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mPropDef->mFieldDeclaration))
 						{
-							if (curCheckType->mTypeDef->HasAutoProperty(propertyDeclaration))
+							if ((curCheckType->mTypeDef->HasAutoProperty(propertyDeclaration)) && (propertyDeclaration->mVirtualSpecifier == NULL))
 							{								
 								bool hasSetter = GetPropertyMethodDef(mPropDef, BfMethodType_PropertySetter, BfCheckedKind_NotSet, mPropTarget) != NULL;
 								auto autoFieldName = curCheckType->mTypeDef->GetAutoPropertyName(propertyDeclaration);
@@ -15649,11 +15649,6 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 			{
 				mModule->Fail("Property has no getter", mPropSrc);
 				return mResult;
-			}
-
-			if (matchedMethod->mName == "get__Hitbox")
-			{
-				NOP;
 			}
 
 			auto methodInstance = GetPropertyMethodInstance(matchedMethod);
