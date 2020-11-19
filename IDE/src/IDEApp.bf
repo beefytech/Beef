@@ -5398,11 +5398,11 @@ namespace IDE
 			//////////
 
 			var testMenu = root.AddMenuItem("&Test");
-			var testRunMenu = testMenu.AddMenuItem("&Run", null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			var testRunMenu = testMenu.AddMenuItem("&Run", null, null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(testRunMenu, "&Normal Tests", "Run Normal Tests");
 			AddMenuItem(testRunMenu, "&All Tests", "Run All Tests");
 
-			var testDebugMenu = testMenu.AddMenuItem("&Debug", null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			var testDebugMenu = testMenu.AddMenuItem("&Debug", null, null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(testDebugMenu, "&Normal Tests", "Debug Normal Tests");
 			AddMenuItem(testDebugMenu, "&All Tests", "Debug All Tests");
 
