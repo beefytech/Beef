@@ -5805,6 +5805,7 @@ void COFF::ParseSymbolData()
 		return;
 	if (mParsedSymbolData)
 		return;
+	ParseGlobalsData();
 	mParsedSymbolData = true;
 	ParseSymbolStream(CvSymStreamType_Symbols);
 }
