@@ -128,6 +128,7 @@ void NetRequest::DoTransfer()
 	curl_easy_setopt(mCURL, CURLOPT_XFERINFOFUNCTION, TransferInfoCallback);
 	curl_easy_setopt(mCURL, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(mCURL, CURLOPT_NOPROGRESS, 0L);
+	curl_easy_setopt(mCURL, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); // Connects go slow without this
 	//auto result = curl_easy_perform(mCURL);
 
 	CURLMcode mcode = curl_multi_add_handle(mCURLMulti, mCURL);
