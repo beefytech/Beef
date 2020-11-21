@@ -4358,12 +4358,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					gPropIdx++;
 
 					mModule->SetElementType(targetSrc, BfSourceElementType_Method);
-
-					if ((prop->mName == "Track") && (mModule->mCurMethodInstance->mMethodDef->mName == "Add"))
-					{
-						NOP;
-					}
-
+					
 					mPropSrc = targetSrc;
 					mPropDef = prop;
 					mPropCheckedKind = checkedKind;
