@@ -3798,8 +3798,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			{
 				auto result = LookupField(targetSrc, BfTypedValue(target.mValue, iface), fieldName, flags);
 				if ((result) || (mPropDef != NULL))
-				{
-					//BindGenericType(targetSrc, iface);
+				{					
 					return result;
 				}
 			}
@@ -3899,7 +3898,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		
 		bool isBaseLookup = false;
 		while (curCheckType != NULL)
-		{			
+		{
 			curCheckType->mTypeDef->PopulateMemberSets();
 			BfFieldDef* nextField = NULL;
 			BfMemberSetEntry* entry;
@@ -3915,6 +3914,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			BfFieldDef* matchedField = NULL;
 			while (nextField != NULL)
 			{
+				if ((flags & BfLookupFieldFlag_BindOnly) != 0)
+					break;
+
 				auto field = nextField;
 				nextField = nextField->mNextWithSameName;
 								
@@ -4356,6 +4358,11 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					gPropIdx++;
 
 					mModule->SetElementType(targetSrc, BfSourceElementType_Method);
+
+					if ((prop->mName == "Track") && (mModule->mCurMethodInstance->mMethodDef->mName == "Add"))
+					{
+						NOP;
+					}
 
 					mPropSrc = targetSrc;
 					mPropDef = prop;
@@ -8515,7 +8522,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	if ((lookupType->IsGenericParam()) && (!mResult.mType->IsGenericParam()))
 	{
 		// Try to lookup from generic binding
-		mResult = LookupField(nameRight, BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), lookupType), fieldName);
+		mResult = LookupField(nameRight, BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), lookupType), fieldName, BfLookupFieldFlag_BindOnly);
 		if (mPropDef != NULL)
 		{
 			mOrigPropTarget = lookupVal;
@@ -8531,16 +8538,14 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 		auto genericParamInst = mModule->GetGenericParamInstance((BfGenericParamType*)lookupType);
 		SizedArray<BfTypeInstance*, 8> searchConstraints;
 		for (auto ifaceConstraint : genericParamInst->mInterfaceConstraints)
-		{
-			//if (std::find(searchConstraints.begin(), searchConstraints.end(), ifaceConstraint) == searchConstraints.end())
+		{			
 			if (!searchConstraints.Contains(ifaceConstraint))
 			{
 				searchConstraints.push_back(ifaceConstraint);
 
 				for (auto& innerIFaceEntry : ifaceConstraint->mInterfaces)
 				{
-					auto innerIFace = innerIFaceEntry.mInterfaceType;
-					//if (std::find(searchConstraints.begin(), searchConstraints.end(), innerIFace) == searchConstraints.end())
+					auto innerIFace = innerIFaceEntry.mInterfaceType;					
 					if (!searchConstraints.Contains(innerIFace))
 					{
 						searchConstraints.push_back(innerIFace);
@@ -8552,8 +8557,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 		BfTypedValue prevTarget;
 		BfPropertyDef* prevDef = NULL;
 		for (auto ifaceConstraint : searchConstraints)
-		{
-			//auto lookupVal = mModule->GetDefaultTypedValue(ifaceConstraint, origResult.IsAddr());
+		{			
 			BfTypedValue lookupVal = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), ifaceConstraint);
 
 			mResult = LookupField(nameRight, lookupVal, fieldName);
@@ -15687,12 +15691,9 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				if (!matchedMethod->mIsStatic)
 				{					
 					auto owner = methodInstance.mMethodInstance->GetOwner();
-					if (mPropTarget.mType != owner)
+					if ((mPropTarget.mValue.IsFake()) && (!mOrigPropTarget.mValue.IsFake()))
 					{
-						/*if (owner->IsInterface())
-							mPropTarget = mModule->Cast(mPropSrc, mPropTarget, owner);
-						else */ if (mPropDefBypassVirtual)
-							mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, owner);
+						mPropTarget = mModule->Cast(mPropSrc, mOrigPropTarget, owner);
 					}
 
 					if ((mPropGetMethodFlags & BfGetMethodInstanceFlag_DisableObjectAccessChecks) == 0)
@@ -17976,7 +17977,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 						mModule->Fail(StrFormat("Expected %d fewer indices", -indexDiff), indexerExpr->mTarget);
 					}
 					else
-					{
+					{						
 						mPropSrc = indexerExpr->mOpenBracket;
 						mPropDef = foundProp;
 						if (foundProp->mIsStatic)

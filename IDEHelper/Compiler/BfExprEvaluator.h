@@ -309,7 +309,8 @@ enum BfLookupFieldFlags
 	BfLookupFieldFlag_None = 0,
 	BfLookupFieldFlag_IsImplicitThis = 1,
 	BfLookupFieldFlag_CheckingOuter = 2,
-	BfLookupFieldFlag_IgnoreProtection = 4
+	BfLookupFieldFlag_IgnoreProtection = 4,
+	BfLookupFieldFlag_BindOnly = 8
 };
 
 enum BfUnaryOpFlags

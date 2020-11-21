@@ -3762,6 +3762,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		fieldType = fieldInstance->GetResolvedType();
 		if ((fieldType == NULL) || (fieldType->IsVar()))
 		{
+			SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites, true);
 			AssertErrorState();
 			// Default const type is 'int'
 			BfTypedValue initValue = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_IntPtr));

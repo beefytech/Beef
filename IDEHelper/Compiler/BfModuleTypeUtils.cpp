@@ -9950,7 +9950,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 				for (auto iface : genericParamInst->mInterfaceConstraints)
 					if (TypeIsSubTypeOf(iface, toType->ToTypeInstance()))
-						return GetDefaultValue(toType);
+						return mBfIRBuilder->GetFakeVal();
 			}
 
 			if (genericParamInst->mTypeConstraint != NULL)
@@ -9960,12 +9960,16 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				{
 					// Enum->int
 					if ((explicitCast) && (toType->IsInteger()))
-						return GetDefaultValue(toType);
+						return typedVal.mValue;
 				}
 
-				auto defaultFromValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint);
-				auto result = CastToValue(srcNode, defaultFromValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
+				BfTypedValue fromTypedValue;
+ 				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
+ 					fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint);
+ 				else
+					fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
 
+				auto result = CastToValue(srcNode, fromTypedValue, toType, (BfCastFlags)(castFlags | BfCastFlags_SilentFail));
 				if (result)
 				{
 					if ((genericParamInst->mTypeConstraint->IsDelegate()) && (toType->IsDelegate()))
@@ -9987,7 +9991,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						(genericParamInst->mTypeConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || 
 						(genericParamInst->mTypeConstraint->IsObjectOrInterface()))))
 				{
-					return GetDefaultValue(toType);
+					return typedVal.mValue;
 				}
 			}
 
@@ -9995,7 +9999,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 				if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Enum) != 0)
 				{
-					return mBfIRBuilder->GetFakeVal();
+					return typedVal.mValue;
 				}
 			}
 
