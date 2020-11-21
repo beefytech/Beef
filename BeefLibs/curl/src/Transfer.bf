@@ -132,6 +132,7 @@ namespace CURL
 			mCurl.SetOpt(.FollowLocation, true);
 			mCurl.SetOpt(.URL, url);
 			mCurl.SetOpt(.NoProgress, false);
+			mCurl.SetOpt(.IPResolve, (int)CURL.Easy.IPResolve.V4);
 		}
 
 		public Result<Span<uint8>> Perform()

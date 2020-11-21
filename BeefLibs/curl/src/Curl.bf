@@ -667,6 +667,12 @@ namespace CURL
 			SuppressConnectHeaders = cOptionLong + 265,
 		}
 
+		public enum IPResolve
+		{
+			V4 = 1,
+			V6 = 2
+		}
+
 		const int32 cInfoString   = 0x100000;
 		const int32 cInfoLong     = 0x200000;
 		const int32 cInfoDouble   = 0x300000;
