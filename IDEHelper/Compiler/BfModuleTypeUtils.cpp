@@ -9955,6 +9955,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 			if (genericParamInst->mTypeConstraint != NULL)
 			{
+				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 				auto constraintTypeInst = genericParamInst->mTypeConstraint->ToTypeInstance();
 				if ((constraintTypeInst != NULL) && (constraintTypeInst->mTypeDef == mCompiler->mEnumTypeDef))
 				{
