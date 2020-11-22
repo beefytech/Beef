@@ -206,9 +206,19 @@ namespace System
 		public const int32 IDYES 				= 6;
 
 		public const int32 LOAD_LIBRARY_AS_DATAFILE = 0x00000002;
-		public const int LOAD_STRING_MAX_LENGTH = 500;
+		public const int32 LOAD_STRING_MAX_LENGTH = 500;
 
-		public const int MUI_PREFERRED_UI_LANGUAGES = 0x10;
+		public const int32 MUI_PREFERRED_UI_LANGUAGES = 0x10;
+
+		public const int32 SECTION_QUERY		= 0x0001;
+		public const int32 SECTION_MAP_WRITE 	= 0x0002;
+		public const int32 SECTION_MAP_READ		= 0x0004;
+		public const int32 SECTION_MAP_EXECUTE	= 0x0008;
+		public const int32 SECTION_EXTEND_SIZE	= 0x0010;
+
+		public const int32 FILE_MAP_WRITE		= SECTION_MAP_WRITE;
+		public const int32 FILE_MAP_READ		= SECTION_MAP_READ;
+		//public const int32 FILE_MAP_ALL_ACCESS	= SECTION_ALL_ACCESS;
 
 		public enum FOS : uint32
 		{
@@ -1349,6 +1359,9 @@ namespace System
 		public static extern EventHandle CreateEventA(SecurityAttributes* eventAttribuetes, IntBool manualReset, IntBool initialState, char8* name);
 
 		[CLink, CallingConvention(.Stdcall)]
+		public static extern EventHandle OpenEventA(uint32 dwDesiredAccess, IntBool bInheritHandle, char8* lpName);
+
+		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool SetEvent(EventHandle eventHandle);
 
 		[CLink, CallingConvention(.Stdcall)]
@@ -1434,6 +1447,12 @@ namespace System
 
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 WriteFile(Handle handle, uint8* bytes, int32 numBytesToWrite, out int32 numBytesWritten, Overlapped* overlapped);
+
+		[CLink, CallingConvention(.Stdcall)]
+		public static extern Handle OpenFileMappingA(uint32 dwDesiredAccess, IntBool bInheritHandle, char8* lpName);
+
+		[CLink, CallingConvention(.Stdcall)]
+		public static extern void* MapViewOfFile(Handle hFileMappingObject, uint32 dwDesiredAccess, uint32 dwFileOffsetHigh, uint32 dwFileOffsetLow, int dwNumberOfBytesToMap);
 
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern FindHandle FindFirstFileW(char16* fileName, ref NativeFindData findFileData);
