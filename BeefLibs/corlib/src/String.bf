@@ -2841,6 +2841,11 @@ namespace System
 			return String.[Friend]EqualsHelper(ptr1, ptr2, val1.mLength);
 		}
 
+		public static int operator<=>(StringView val1, StringView val2)
+		{
+			return String.[Friend]CompareOrdinalHelper(val1.mPtr, val1.mLength, val2.mPtr, val2.mLength);
+		}
+
 		public static int Compare(StringView val1, StringView val2, bool ignoreCase = false)
 		{
 			if (ignoreCase)
