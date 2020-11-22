@@ -288,6 +288,7 @@ public:
 	bool mPaused;
 	bool mShutdown;
 	bool mWaitingForGC; // GC.Collect sets this		
+	bool mCollectFailed;
 	int mAllocSinceLastGC; // Added to on alloc and subtracted from on nursery cleanup
 	int mFreeSinceLastGC;
 

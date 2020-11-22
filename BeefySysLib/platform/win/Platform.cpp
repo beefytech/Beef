@@ -2190,7 +2190,6 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_GetIntRegisters(BfpThread* thread, intptr
 	if (!success)
 	{
 		int error = GetLastError();
-		BF_DBG_FATAL("Failed BfpThread_GetIntRegisters");
 		OUTRESULT(BfpThreadResult_UnknownError);
 		return;
 	}

@@ -602,6 +602,7 @@ BFGC::BFGC()
 	mPaused = false;
 	mShutdown = false;
 	mForceDecommit = false;
+	mCollectFailed = false;
 	mLastCollectFrame = 0;
 	mSkipMark = false;	
 	mGracelessShutdown = false;
@@ -979,6 +980,11 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 				mCurSweepFoundPermanentCount++;
             
 			int markId = objectFlags & BF_OBJECTFLAG_MARK_ID_MASK;
+			if ((mCollectFailed) && (markId != mCurMarkId))
+			{
+				obj->mObjectFlags = (BfObjectFlags)((obj->mObjectFlags & ~BF_OBJECTFLAG_MARK_ID_MASK) | mCurMarkId);
+				markId = mCurMarkId;
+			}
 
 			BF_ASSERT(markId != invalidMarkId);
 
@@ -1471,6 +1477,12 @@ bool BFGC::ScanThreads()
 			BP_ZONE("BfpThread_GetIntRegisters");
 			BfpThread_GetIntRegisters(thread->mThreadHandle, &stackPtr, regVals, &regValCount, &threadResult);
 		}
+		if (threadResult != BfpThreadResult_Ok)
+		{
+			mCollectFailed = true;
+			return false;
+		}
+
 		BF_ASSERT(threadResult == BfpThreadResult_Ok);
 		
 		void** threadLoadAddressMap = (void**)((_TEB*)thread->mTEB)->ThreadLocalStorage;
@@ -2388,6 +2400,7 @@ void BFGC::PerformCollection()
 #else
 	Beefy::AutoCrit autoCrit(mCritSect);
 	mAllocSinceLastGC = 0;
+	mCollectFailed = false;
 
 	// This was old "emergency" debugging code to make sure we weren't doing a malloc in the GC code,
 	//  but it's a multi-threaded race condition
