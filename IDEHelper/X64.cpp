@@ -32,7 +32,7 @@
 #include "X86/MCTargetDesc/X86BaseInfo.h"
 #include "X86InstrInfo.h"
 #include "BeefySysLib/util/HashSet.h"
-#include "../../llvm/lib/Target/X86/TargetInfo/X86TargetInfo.h"
+#include "llvm/lib/Target/X86/TargetInfo/X86TargetInfo.h"
 
 #pragma warning(pop)
 
