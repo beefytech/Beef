@@ -531,6 +531,7 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 	{		
 		mFreeMemoryBreakIndices.push_back(i);
 	}
+	mMemoryBreakpointVersion = 0;
 
 	SYSTEM_INFO systemInfo;
 	GetSystemInfo(&systemInfo);
@@ -621,6 +622,9 @@ void WinDebugger::ThreadRestoreUnpause()
 
 void WinDebugger::UpdateThreadDebugRegisters(WdThreadInfo* threadInfo)
 {	
+	if (threadInfo->mMemoryBreakpointVersion == mMemoryBreakpointVersion)
+		return;
+
 	auto threadId = threadInfo->mHThread;	
 
 	BF_CONTEXT lcContext;
@@ -655,6 +659,7 @@ void WinDebugger::UpdateThreadDebugRegisters(WdThreadInfo* threadInfo)
 	}
 	bool worked = BF_SetThreadContext(threadId, &lcContext) != 0;
 	BF_ASSERT(worked || (mRunState == RunState_Terminating) || (mRunState == RunState_Terminated));
+	threadInfo->mMemoryBreakpointVersion = mMemoryBreakpointVersion;
 }
 
 void WinDebugger::UpdateThreadDebugRegisters()
@@ -3338,6 +3343,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint)
 			mMemoryBreakpoints[memoryBreakIdx].mByteCount = wantBytes[i];
 			mMemoryBreakpoints[memoryBreakIdx].mOfs = curOfs;
 			curOfs += wantBytes[i];
+			mMemoryBreakpointVersion++;
 
 			wdBreakpoint->mMemoryBreakpointInfo->mMemoryWatchSlotBitmap |= 1<<memoryBreakIdx;
 		}
@@ -3572,6 +3578,7 @@ void WinDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 			{
 				mFreeMemoryBreakIndices.push_back(memoryWatchSlot);
 				mMemoryBreakpoints[memoryWatchSlot] = WdMemoryBreakpointBind();
+				mMemoryBreakpointVersion++;
 				UpdateThreadDebugRegisters();
 			}
 		}
@@ -3638,6 +3645,7 @@ void WinDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 			{				
 				mFreeMemoryBreakIndices.push_back(memoryWatchSlot);
 				mMemoryBreakpoints[memoryWatchSlot] = WdMemoryBreakpointBind();
+				mMemoryBreakpointVersion++;
 				UpdateThreadDebugRegisters();
 			}
 		}

@@ -251,6 +251,7 @@ public:
 	addr_target mStoppedAtAddress;
 	addr_target mIsAtBreakpointAddress;
 	addr_target mBreakpointAddressContinuing;
+	int mMemoryBreakpointVersion;
 
 public:
 	WdThreadInfo()
@@ -267,6 +268,7 @@ public:
 		mIsAtBreakpointAddress = 0;
 		mStoppedAtAddress = 0;
 		mBreakpointAddressContinuing = 0;
+		mMemoryBreakpointVersion = 0;
 	}
 };
 
@@ -454,6 +456,7 @@ public:
 	DWORD mDebuggerThreadId;
 	
 	WdMemoryBreakpointBind mMemoryBreakpoints[4];
+	int mMemoryBreakpointVersion;
 	Dictionary<addr_target, int> mPhysBreakpointAddrMap; // To make sure we don't create multiple physical breakpoints at the same addr	
 	Array<WdBreakpoint*> mBreakpoints;	
 	Dictionary<addr_target, WdBreakpoint*> mBreakpointAddrMap;
