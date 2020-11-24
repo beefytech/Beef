@@ -1,15 +1,13 @@
 #!/bin/bash
 set -e
 
+# LLVM source code, zip file 25MB : https://releases.llvm.org/download.html#11.0.0
+#https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz 
+
 if [ ! -d llvm-project_11_0_0 ]; then
-	git clone https://github.com/llvm/llvm-project.git llvm-project_11_0_0
-
-	if [ -d llvm-project_11_0_0 ]; then
-		cd llvm-project_11_0_0
- 		git checkout llvmorg-11.0.0
-		cd ..
-	fi 
-
+	tar -xf llvm-11.0.0.src.tar.xz
+	mkdir llvm-project_11_0_0
+	mv llvm-11.0.0.src llvm-project_11_0_0/llvm
 fi
 
 if [ ! -d llvm_linux_11_0_0 ]; then
