@@ -19103,6 +19103,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	BfType* wantType = leftValue.mType;
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 		wantType = NULL; // Don't presume
+	wantType = mModule->FixIntUnknown(wantType);
 	rightValue = mModule->CreateValueFromExpression(rightExpression, wantType, BfEvalExprFlags_NoCast);
 	if ((!leftValue) || (!rightValue))
 		return;
