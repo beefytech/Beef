@@ -234,6 +234,7 @@ namespace IDE
 			Add("Open Workspace", new => gApp.OpenWorkspace);
 			Add("Profile", new => gApp.[Friend]DoProfile);
 			Add("Quick Info", new => gApp.Cmd_QuickInfo);
+			Add("Rebuild Workspace", new => gApp.[Friend]CleanAndCompile);
 			Add("Recent File Next", new => gApp.ShowRecentFileNext);
 			Add("Recent File Prev", new => gApp.ShowRecentFilePrev);
 			Add("Reformat Document", new => gApp.Cmd_ReformatDocument);

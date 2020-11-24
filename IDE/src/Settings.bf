@@ -752,6 +752,7 @@ namespace IDE
 				Add("Open File", "Ctrl+O");
 				Add("Open Workspace", "Ctrl+Shift+O");
 				Add("Quick Info", "Ctrl+K, Ctrl+I");
+				Add("Rebuild Workspace", "F8");
 				Add("Recent File Next", "Ctrl+Tab");
 				Add("Recent File Prev", "Shift+Ctrl+Tab");
 				Add("Reformat Document", "Ctrl+K, Ctrl+D");

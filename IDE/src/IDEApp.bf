@@ -4097,6 +4097,79 @@ namespace IDE
 			    Compile(.Normal, runningProject);
 			}
 		}
+		
+		[IDECommand]
+		void CleanAndCompile()
+		{
+			CompilerLog("IDEApp.CleanAndCompile");
+			
+			for (let project in gApp.mWorkspace.mProjects)
+			{
+				if (project.mFailed)
+				{
+					OutputErrorLine("Project '{}' is not loaded. Retry loading by right clicking on the project in the Workspace panel and selecting 'Retry Load'", project.mProjectName);
+					return;
+				}
+			}
+			if (mWorkspace.mProjects.IsEmpty)
+			{
+				Fail("No projects exist to rebuild. Create or load a project.");
+				return;
+			}
+			if (AreTestsRunning())
+			{
+				Fail("Cannot rebuild while tests are running");
+				return;
+			}
+			if (mHotResolveState != .None)
+			{
+				Fail("Cannot rebuild while hot resolve is pending");
+				return;
+			}
+			if (IsCompiling)
+			{
+				Fail("Cannot rebuild while compiling");
+				return; // Ignore
+			}
+			if (mDebugger.mIsRunning || mDebugger.mIsRunningCompiled || mDebugger.mIsRunningWithHotSwap)
+			{
+				Fail("Cannot rebuild while running");
+				return; // Ignore
+			}
+
+			mWantsClean = true;
+
+			if (mWorkspace.IsDebugSession)
+			{
+				bool hadCommands = false;
+				for (let project in mWorkspace.mProjects)
+				{
+					if (project.mGeneralOptions.mTargetType == .CustomBuild)
+					{
+						let options = GetCurProjectOptions(project);
+						if (options == null)
+							continue;
+						if ((!options.mBuildOptions.mPreBuildCmds.IsEmpty) || (!options.mBuildOptions.mPostBuildCmds.IsEmpty))
+							hadCommands = true;
+					}
+					else
+						hadCommands = true;
+				}
+
+				if (!hadCommands)
+				{
+					Fail("No build commands have been defined");
+					return;
+				}
+			}
+                   
+			if (mExecutionQueue.Count == 0)
+		    {
+		        mOutputPanel.Clear();
+		        OutputLine("Compiling...");
+		        Compile(.Normal, null);
+		    }
+		}
 
 		[IDECommand]
 		void RunWithStep()
@@ -5312,6 +5385,7 @@ namespace IDE
 
             subMenu = root.AddMenuItem("&Build");
 			AddMenuItem(subMenu, "&Build Workspace", "Build Workspace", new => UpdateMenuItem_HasWorkspace);
+			AddMenuItem(subMenu, "&Rebuild Workspace", "Rebuild Workspace", new => UpdateMenuItem_DebugStopped_HasWorkspace);
             AddMenuItem(subMenu, "&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
             AddMenuItem(subMenu, "Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });
@@ -10519,10 +10593,10 @@ namespace IDE
 			if (mProfileCompile)
 				mProfileCompileProfileId = Profiler.StartSampling("Compile");
 
-			if (mWantsBeefClean)
+			if (mWantsBeefClean || mWantsClean)
 			{
 				// We must finish cleaning before we can compile
-				while (mWantsBeefClean)
+				while (mWantsBeefClean || mWantsClean)
 				{
 					UpdateCompilersAndDebugger();
 				}
