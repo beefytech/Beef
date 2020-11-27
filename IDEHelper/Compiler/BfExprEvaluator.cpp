@@ -5503,8 +5503,13 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 {
 	MakeBaseConcrete(argVal);
 	
+	if (argVal.mType->IsVar())
+	{
+		argVal = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
+	}
+
 	if (argVal.mType->IsValuelessType())
-		return;
+		return;	
 
 	bool wantSplat = false;
 	if ((argVal.mType->IsSplattable()) && (!disableSplat))
@@ -7895,12 +7900,13 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			mModule->Fail(StrFormat("Method '%s' does not exist", methodName.c_str()), targetSrc);				
 		return BfTypedValue();
 	}		
-				
+	
+
 	if ((prevBindResult.mPrevVal != NULL) && (methodMatcher.mMethodCheckCount > 1))
 		prevBindResult.mPrevVal->mCheckedMultipleMethods = true;
 
 	BfModuleMethodInstance moduleMethodInstance = GetSelectedMethod(targetSrc, curTypeInst, methodDef, methodMatcher);
-
+	
 	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
 	{
 		if (methodMatcher.mHasVarArguments)
