@@ -10,6 +10,7 @@ NS_BF_BEGIN;
 
 class RenderDevice;
 class DSoundManager;
+class DInputManager;
 
 typedef Dictionary<void*, HGLOBAL> PtrToHGlobalMap;
 typedef Dictionary<String, uint32> StringToUIntMap;
@@ -90,6 +91,7 @@ public:
 	bool					mInMsgProc;
 	StringToUIntMap			mClipboardFormatMap;
 	DSoundManager*			mDSoundManager;
+	DInputManager*			mDInputManager;
 	
 protected:
 	virtual void			Draw() override;	
@@ -114,6 +116,9 @@ public:
 	virtual void			ReleaseClipboardData(void* ptr) override;
 	virtual void			SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard) override;
 	virtual void			RehupMouse() override;
+
+	virtual String			EnumerateInputDevices() override;
+	virtual BFInputDevice*	CreateInputDevice(const StringImpl& guid) override;
 
 	virtual BFSysBitmap*	LoadSysBitmap(const WCHAR* fileName) override;
 

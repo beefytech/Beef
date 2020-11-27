@@ -9,6 +9,7 @@
 #include "img/BFIData.h"
 #include "util/Vector.h"
 #include "util/PerfTimer.h"
+#include "util/TLSingleton.h"
 
 #include "util/AllocDebug.h"
 
@@ -22,7 +23,7 @@ USING_NS_BF;
 
 #pragma warning(disable:4996)
 
-
+static String gTempString;
 static UTF16String gTempUTF16String;
 int gPixelsDrawn = 0;
 
@@ -258,6 +259,17 @@ BF_EXPORT void BF_CALLTYPE BFApp_CheckMemory()
 BF_EXPORT void BF_CALLTYPE BFApp_RehupMouse()
 {
 
+}
+
+BF_EXPORT const char* BF_CALLTYPE BFApp_EnumerateInputDevices()
+{	
+	gTempString = gBFApp->EnumerateInputDevices();
+	return gTempString.c_str();
+}
+
+BF_EXPORT BFInputDevice* BFApp_CreateInputDevice(const char* guid)
+{
+	return gBFApp->CreateInputDevice(guid);
 }
 
 BF_EXPORT BFSoundManager* BF_CALLTYPE BFApp_GetSoundManager()
@@ -723,6 +735,17 @@ BF_EXPORT void BF_CALLTYPE Gfx_Shader_Delete(Shader* shader)
 BF_EXPORT ShaderParam* BF_CALLTYPE Gfx_GetShaderParam(Shader* shader, const char* shaderName)
 {
 	return shader->GetShaderParam(shaderName);
+}
+
+BF_EXPORT void BF_CALLTYPE BFInput_Destroy(BFInputDevice* inputDevice)
+{
+	delete inputDevice;
+}
+
+BF_EXPORT const char* BF_CALLTYPE BFInput_GetState(BFInputDevice* inputDevice)
+{
+	gTempString = inputDevice->GetState();
+	return gTempString.c_str();
 }
 
 BF_EXPORT int BF_CALLTYPE BF_TickCount()

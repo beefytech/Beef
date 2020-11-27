@@ -489,6 +489,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="platform\win\CrashCatcher.cpp" />
+    <ClCompile Include="platform\win\DInputManager.cpp" />
     <ClCompile Include="platform\win\DSoundInstance.cpp" />
     <ClCompile Include="platform\win\DSoundManager.cpp" />
     <ClCompile Include="platform\win\WinBFApp.cpp">
@@ -1996,6 +1997,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="platform\win\CrashCatcher.h" />
+    <ClInclude Include="platform\win\DInputManager.h" />
     <ClInclude Include="platform\win\DSoundInstance.h" />
     <ClInclude Include="platform\win\DSoundManager.h" />
     <ClInclude Include="platform\win\PlatformApp.h" />

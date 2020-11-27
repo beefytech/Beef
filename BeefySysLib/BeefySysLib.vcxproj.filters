@@ -701,6 +701,9 @@
     <ClCompile Include="HeadlessApp.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="platform\win\DInputManager.cpp">
+      <Filter>src\platform\win</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -1062,6 +1065,9 @@
     </ClInclude>
     <ClInclude Include="util\BinaryHeap.h">
       <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\win\DInputManager.h">
+      <Filter>src\platform\win</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

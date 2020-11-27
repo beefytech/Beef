@@ -4,6 +4,7 @@
 #include <signal.h>
 #include "../../util/BeefPerf.h"
 #include "DSoundManager.h"
+#include "DInputManager.h"
 
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
@@ -1137,12 +1138,14 @@ WinBFApp::WinBFApp()
 	mDataDir = mInstallDir;
 	mInMsgProc = false;
 	mDSoundManager = NULL;
+	mDInputManager = NULL;
 }
 
 WinBFApp::~WinBFApp()
 {	
 	delete mRenderDevice;
 	delete mDSoundManager;
+	delete mDInputManager;
 }
 
 void WinBFApp::Init()
@@ -1267,6 +1270,20 @@ void WinBFApp::RehupMouse()
 		auto winWindow = (WinBFWindow*)window;
 		winWindow->RehupMouseOver(winWindow->mHWnd == windowAtPoint);
 	}
+}
+
+String WinBFApp::EnumerateInputDevices()
+{
+	if (mDInputManager == NULL)
+		mDInputManager = new DInputManager();
+	return mDInputManager->EnumerateDevices();
+}
+
+BFInputDevice* WinBFApp::CreateInputDevice(const StringImpl& guid)
+{
+	if (mDInputManager == NULL)
+		mDInputManager = new DInputManager();
+	return mDInputManager->CreateInputDevice(guid);
 }
 
 void WinBFWindow::SetMinimumSize(int minWidth, int minHeight, bool clientSized)

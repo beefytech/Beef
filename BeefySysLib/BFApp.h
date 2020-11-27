@@ -40,6 +40,13 @@ class BFSysBitmap
 public:
 };
 
+class BFInputDevice
+{
+public:
+	virtual ~BFInputDevice() {}
+	virtual String GetState() = 0;
+};
+
 class BFApp
 {
 public:
@@ -98,6 +105,9 @@ public:
 	virtual void			ReleaseClipboardData(void* ptr) = 0;
 	virtual void			SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard) = 0;
 	virtual void			RehupMouse() {}
+
+	virtual String			EnumerateInputDevices() { return ""; }
+	virtual BFInputDevice*	CreateInputDevice(const StringImpl& guid) { return NULL; }
 
 	virtual BFSysBitmap*	LoadSysBitmap(const wchar_t* fileName) = 0;
 
