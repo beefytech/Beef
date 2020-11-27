@@ -20,7 +20,7 @@ if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
 	cd $SCRIPTPATH
 fi
 
-if [ ! -d ../extern/llvm_linux_8_0_0/bin ]; then
+if [ ! -d ../extern/llvm_linux_11_0_0/bin ]; then
 	echo Building LLVM...
 	cd ../extern
 	./llvm_build.sh
