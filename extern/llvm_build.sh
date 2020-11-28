@@ -6,14 +6,8 @@ if [ ! -d llvm-project_11_0_0 ]; then
 	tar -xf llvm-11.0.0.src.tar.xz
 	mkdir llvm-project_11_0_0
 	mv llvm-11.0.0.src llvm-project_11_0_0/llvm
-  else # git clone llvm repo if llvm-11.0.0.src.tar.xz does not exists 
-	git clone https://github.com/llvm/llvm-project.git llvm-project_11_0_0
-
-	if [ -d llvm-project_11_0_0 ]; then
-		cd llvm-project_11_0_0
- 		git checkout llvmorg-11.0.0
-		cd ..
-	fi 
+  else # shallow git clone llvm repo if llvm-11.0.0.src.tar.xz does not exists 
+	git clone --depth 1 --branch llvmorg-11.0.0 https://github.com/llvm/llvm-project.git llvm-project_11_0_0
   fi
 fi #end if llvm-project_11_0_0 exists
 
