@@ -3800,12 +3800,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
 				{
 					auto fieldInstance = &fieldInstanceRef;
-					if (fieldInstance->mConstIdx != -1)
-					{
-						auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-						BfIRValue newConstant = typeInstance->mConstHolder->CreateConst(typeCode, constant->mUInt64);
-						fieldInstance->mConstIdx = newConstant.mId;
-					}
+					if (fieldInstance->mConstIdx == -1)
+						continue;
+					if (!fieldInstance->GetFieldDef()->IsEnumCaseEntry())
+						continue;
+					auto constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+					BfIRValue newConstant = typeInstance->mConstHolder->CreateConst(typeCode, constant->mUInt64);
+					fieldInstance->mConstIdx = newConstant.mId;					
 				}
 			}
 
