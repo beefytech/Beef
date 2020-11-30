@@ -778,7 +778,9 @@ namespace IDE.ui
             if (IDEApp.sApp.mSymbolReferenceHelper != null)
             {
                 IDEApp.sApp.mSymbolReferenceHelper.Cancel();
-                return true;
+				// If we press F3 and find a symbol, we want esc to close both the symbol reference and the quickfind
+				if (mQuickFind == null)
+                	return true;
             }
 
             if (base.EscapeHandler())
