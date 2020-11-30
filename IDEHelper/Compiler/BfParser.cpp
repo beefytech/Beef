@@ -3284,7 +3284,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 				isAsmBlock = true;
 		}
 
-		NextToken(-1, isInterpolate);
+		NextToken(-1, isInterpolate && (parenDepth == 0));
 		
 		if (mPreprocessorIgnoredSectionNode != NULL)
 		{
