@@ -4507,6 +4507,9 @@ namespace IDE.ui
 
         public void RenameSymbol()
         {
+			if (mQuickFind != null)
+				mQuickFind.Close();
+
 			var sourceEditWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
 			if (!sourceEditWidgetContent.CheckReadOnly())
             	ShowSymbolReferenceHelper(SymbolReferenceHelper.Kind.Rename);
