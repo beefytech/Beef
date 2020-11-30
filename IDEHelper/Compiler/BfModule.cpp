@@ -3774,7 +3774,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 		}
 
 		if ((constValue) && (fieldInstance->mConstIdx == -1))
-		{			
+		{
 			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 			CurrentAddToConstHolder(constValue);
 			fieldInstance->mConstIdx = constValue.mId;
@@ -20518,8 +20518,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		BF_ASSERT(mContext->mResolvingVarField);
 		isTemporaryFunc = true;
  	}
-
-	if (mAwaitingInitFinish)
+	
+	if ((mAwaitingInitFinish) && (!mBfIRBuilder->mIgnoreWrites))
 		FinishInit();
 
 	auto typeInstance = mCurTypeInstance;
