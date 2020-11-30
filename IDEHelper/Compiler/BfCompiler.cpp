@@ -3971,14 +3971,52 @@ void BfCompiler::ProcessAutocompleteTempType()
 		namespaceVisitor.mSystem = mSystem;
 		namespaceVisitor.Visit(mResolvePassData->mParser->mRootNode);
 	}
+	
+	auto _FindAcutalTypeDef = [&](BfTypeDef* tempTypeDef)
+	{
+		auto typeName = tempTypeDef->mFullName;
+		int wantNumGenericParams = (int)tempTypeDef->mGenericParamDefs.size();
+		auto actualTypeDefItr = mSystem->mTypeDefs.TryGet(typeName);
+		while (actualTypeDefItr)
+		{
+			auto checkTypeDef = *actualTypeDefItr;
+			if ((!checkTypeDef->mIsPartial) /*&& (checkTypeDef->mTypeCode != BfTypeCode_Extension)*/ &&
+				((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension)))
+			{
+				if ((checkTypeDef->NameEquals(tempTypeDef)) && (checkTypeDef->mIsCombinedPartial) &&
+					(checkTypeDef->mGenericParamDefs.size() == tempTypeDef->mGenericParamDefs.size()) &&
+					(tempTypeDef->mProject->ContainsReference(checkTypeDef->mProject)))
+				{
+					return mSystem->FilterDeletedTypeDef(checkTypeDef);
+				}
+
+				if ((checkTypeDef->mGenericParamDefs.size() == wantNumGenericParams) &&
+					(FileNameEquals(tempTypeDef->mSource->mSourceData->ToParserData()->mFileName, checkTypeDef->mSource->mSourceData->ToParserData()->mFileName)) &&
+					(tempTypeDef->mProject == checkTypeDef->mProject))
+				{
+					return mSystem->FilterDeletedTypeDef(checkTypeDef);
+				}
+			}
+
+			actualTypeDefItr.MoveToNextHashMatch();
+		}
+		return (BfTypeDef*)NULL;
+	};
 
 	BfTypeDef* tempTypeDef = NULL;
+	BfTypeDef* actualTypeDef = NULL;
 	for (auto checkTempType : mResolvePassData->mAutoCompleteTempTypes)
 	{
 		if (mResolvePassData->mAutoComplete->IsAutocompleteNode(checkTempType->mTypeDeclaration))
 		{
-			tempTypeDef = checkTempType;
-			mContext->HandleChangedTypeDef(tempTypeDef, true);
+			BfTypeDef* checkActualTypeDef = _FindAcutalTypeDef(checkTempType);
+			if ((actualTypeDef == NULL) || (checkActualTypeDef != NULL))
+			{
+				actualTypeDef = checkActualTypeDef;
+				tempTypeDef = checkTempType;
+			}
+
+			mContext->HandleChangedTypeDef(checkTempType, true);
 		}
 
 		BfSourceElementType elemType = BfSourceElementType_Type;
@@ -4053,38 +4091,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 					internalAccessSet->mTypes.Add(typeInst);
 			}
 		}
-	}
-
-	auto _FindAcutalTypeDef = [&](BfTypeDef* tempTypeDef)
-	{		
-		auto typeName = tempTypeDef->mFullName;
-		int wantNumGenericParams = (int)tempTypeDef->mGenericParamDefs.size();
-		auto actualTypeDefItr = mSystem->mTypeDefs.TryGet(typeName);
-		while (actualTypeDefItr)
-		{
-			auto checkTypeDef = *actualTypeDefItr;
-			if ((!checkTypeDef->mIsPartial) /*&& (checkTypeDef->mTypeCode != BfTypeCode_Extension)*/ &&
-				((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension)))
-			{
-				if ((checkTypeDef->NameEquals(tempTypeDef)) && (checkTypeDef->mIsCombinedPartial) &&
-					(checkTypeDef->mGenericParamDefs.size() == tempTypeDef->mGenericParamDefs.size()) &&
-					(tempTypeDef->mProject->ContainsReference(checkTypeDef->mProject)))
-				{
-					return mSystem->FilterDeletedTypeDef(checkTypeDef);					
-				}
-
-				if ((checkTypeDef->mGenericParamDefs.size() == wantNumGenericParams) &&
-					(FileNameEquals(tempTypeDef->mSource->mSourceData->ToParserData()->mFileName, checkTypeDef->mSource->mSourceData->ToParserData()->mFileName)) &&
-					(tempTypeDef->mProject == checkTypeDef->mProject))
-				{
-					return mSystem->FilterDeletedTypeDef(checkTypeDef);					
-				}
-			}
-
-			actualTypeDefItr.MoveToNextHashMatch();
-		}
-		return (BfTypeDef*)NULL;
-	};
+	}	
 
 	if (tempTypeDef->mTypeCode == BfTypeCode_Extension)
 	{		
@@ -4113,8 +4120,12 @@ void BfCompiler::ProcessAutocompleteTempType()
 			autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();			
 		}
 	}
+	
+// 	while (actualTypeDef == NULL)
+// 	{
+// 		checkT
+// 	}
 
-	BfTypeDef* actualTypeDef = _FindAcutalTypeDef(tempTypeDef);
 	if ((actualTypeDef == NULL) || (actualTypeDef->mTypeDeclaration == NULL))
 	{				
 		GenerateAutocompleteInfo();
