@@ -6331,6 +6331,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			// Allow for "Dispose" not to exist
 			SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true); 
 			BfResolvedArgs resolvedArgs;
+			exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete);
 			exprEvaluator.MatchMethod(forEachStmt->mCollectionExpression, NULL, itr, false, false, "Dispose", resolvedArgs, NULL);
 			if (functionBindResult.mMethodInstance != NULL)
 			{
