@@ -2707,7 +2707,7 @@ namespace IDE.ui
                 mAutoComplete.CloseListWindow();*/
         }
 
-		bool IsCurrentPairClosing(int cursorIdx)
+		bool IsCurrentPairClosing(int cursorIdx, bool removeOnFind = false)
 		{
 			mData.mTextIdData.Prepare();
 			int32 closeId = mData.mTextIdData.GetIdAtIndex(cursorIdx);
@@ -2718,7 +2718,11 @@ namespace IDE.ui
 				{
 					int openCursorIdx = mData.mTextIdData.GetIndexFromId(openId);
 					if (openCursorIdx != -1)
+					{
+						if (removeOnFind)
+							mCurParenPairIdSet.Remove(openId);
 						return true;
+					}
 				}
 			}
 			return false;
@@ -3124,7 +3128,7 @@ namespace IDE.ui
 						{
 	                        if ((mData.mText[checkPos].mDisplayTypeId == (int32)wantElementType) &&
 	                            ((keyChar == '"') || (keyChar == '\'') || (keyChar == ')') || (keyChar == ']') || (keyChar == '>') || (keyChar == '}')) &&
-								(IsCurrentPairClosing(cursorTextPos)))
+								(IsCurrentPairClosing(cursorTextPos, true)))
 	                        {
 	                            mJustInsertedCharPair = false;
 	                            CursorTextPos++;
@@ -4177,7 +4181,26 @@ namespace IDE.ui
 
 			if (moveKind != .FromTyping)
 			{
-				mCurParenPairIdSet.Clear();
+				int cursorIdx = CursorTextPos;
+				mData.mTextIdData.Prepare();
+
+				List<int32> removeList = scope .();
+
+				for (var openId in mCurParenPairIdSet)
+				{
+					int openIdx = mData.mTextIdData.GetIndexFromId(openId);
+					int closeIdx = mData.mTextIdData.GetIndexFromId(openId + 1);
+
+					bool wantRemove = false;
+					if ((openIdx == -1) || (closeIdx == -1))
+						wantRemove = true;
+					if ((cursorIdx <= openIdx) || (cursorIdx > closeIdx))
+						wantRemove = true;
+					if (wantRemove)
+						removeList.Add(openId);
+				}
+				for (var openId in removeList)
+					mCurParenPairIdSet.Remove(openId);
 			}
 
             base.PhysCursorMoved(moveKind);
