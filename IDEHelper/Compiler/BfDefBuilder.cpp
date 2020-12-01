@@ -425,7 +425,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	methodDef->mIsExtern = methodDeclaration->mExternSpecifier != NULL;
 	methodDef->mBody = methodDeclaration->mBody;
 
-	if (methodDeclaration->mThisToken != NULL)
+	if ((methodDeclaration->mThisToken != NULL) && (!methodDeclaration->mParams.IsEmpty()))
 		methodDef->mMethodType = BfMethodType_Extension;
 
 	HashContext signatureHashCtx;
@@ -589,7 +589,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 			methodDef->mName = methodDeclaration->mNameNode->ToString();		
 		methodDef->mMethodType = BfMethodType_Normal;
 
-		if (methodDeclaration->mThisToken != NULL)
+		if ((methodDeclaration->mThisToken != NULL) && (!methodDeclaration->mParams.IsEmpty()))
 		{
 			methodDef->mMethodType = BfMethodType_Extension;
 			mCurTypeDef->mHasExtensionMethods = true;
