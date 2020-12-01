@@ -104,6 +104,6 @@ namespace LogViewer
 
 	static
 	{
-		static LVApp gApp;
+		public static LVApp gApp;
 	}
 }
