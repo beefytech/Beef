@@ -11955,7 +11955,10 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 	BfIRValue func = CreateFunctionFrom(methodInstance, isGenFunction, isInlined);
 
 	if (!isGenFunction)
+	{
+		BF_ASSERT(func || methodInstance->mMethodInstanceGroup->mOwner->IsInterface());
 		mFuncReferences[methodRef] = func;
+	}
 	BfLogSysM("Adding func reference. Module:%p MethodInst:%p NewLLVMFunc:%d OldLLVMFunc:%d\n", this, methodInstance, func.mId, methodInstance->mIRFunction.mId);
 
 	if ((isInlined) && (!mIsScratchModule) && ((flags & BfGetMethodInstanceFlag_NoInline) == 0))
@@ -12653,7 +12656,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				{
 					BfLogSysM("DllImportGlobalVar creating %p\n", methodInstance);
 					methodInstance->mIRFunction = mBfIRBuilder->GetFakeVal();
-					mFuncReferences[methodInstance] = CreateDllImportGlobalVar(methodInstance, true);;
+					auto func = CreateDllImportGlobalVar(methodInstance, true);
+					BF_ASSERT(func);
+					mFuncReferences[methodInstance] = func;
 				}				
 			}
 
@@ -17484,6 +17489,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		{
 			BfIRValue dllImportGlobalVar = CreateDllImportGlobalVar(methodInstance, true);
 			methodInstance->mIRFunction = mBfIRBuilder->GetFakeVal();
+			BF_ASSERT(dllImportGlobalVar);
 			mFuncReferences[mCurMethodInstance] = dllImportGlobalVar;
 		}
 			
@@ -21449,7 +21455,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		// If this is in an extension then we did create the global variable already in the original obj
 		bool doDefine = mExtensionCount == 0;
 		BfIRValue dllImportGlobalVar = CreateDllImportGlobalVar(methodInstance, doDefine);
-		methodInstance->mIRFunction = mBfIRBuilder->GetFakeVal();
+		func = mBfIRBuilder->GetFakeVal();
+		methodInstance->mIRFunction = func;
+		BF_ASSERT(dllImportGlobalVar);
 		mFuncReferences[mCurMethodInstance] = dllImportGlobalVar;		
 	}
 
@@ -21468,7 +21476,10 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		// For extension modules we need to keep track of our own methods so we can know which methods
 		//  we have defined ourselves and which are from the parent module or other extensions
 		if (!func.IsFake())
-			mFuncReferences[methodInstance] = func;	
+		{
+			BF_ASSERT(func);
+			mFuncReferences[methodInstance] = func;
+		}
 	}
 		
 	if (addToWorkList)
