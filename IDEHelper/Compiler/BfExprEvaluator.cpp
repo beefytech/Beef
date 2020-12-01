@@ -1574,7 +1574,12 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			{
 				BfTypedValue argTypedValue;
 				if (argIdx == -1)
-					argTypedValue = mTarget;
+				{
+					if (mOrigTarget)
+						argTypedValue = mOrigTarget;
+					else
+						argTypedValue = mTarget;
+				}
 				else
 					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], checkType, genericArgumentsSubstitute, origCheckType);
 				if (!argTypedValue.IsUntypedValue())
@@ -7292,6 +7297,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	BfTypeInstance* curTypeInst = targetTypeInst;
 
 	BfMethodMatcher methodMatcher(targetSrc, mModule, methodName, argValues.mResolvedArgs, methodGenericArguments);
+	methodMatcher.mOrigTarget = origTarget;
 	methodMatcher.mTarget = target;
 	methodMatcher.mCheckedKind = checkedKind;
 	methodMatcher.mAllowImplicitThis = allowImplicitThis;
@@ -19674,6 +19680,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 			bool isComparison = (binaryOp >= BfBinaryOp_Equality) && (binaryOp <= BfBinaryOp_LessThanOrEqual);
 			BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);
+			BfBinaryOp flippedBinaryOp = BfGetFlippedBinaryOp(findBinaryOp);
+			BfBinaryOp flippedOppositeBinaryOp = BfGetFlippedBinaryOp(oppositeBinaryOp);
 
 			for (int pass = 0; pass < 2; pass++)
 			{
@@ -19898,7 +19906,15 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
 								(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
 							{
-								works = true;								
+								works = true;
+							}
+						}
+						if ((flippedBinaryOp != BfBinaryOp_None) && (opConstraint.mBinaryOp == flippedBinaryOp))
+						{
+							if ((mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)) &&
+								(mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)))
+							{
+								works = true;
 							}
 						}
 						
@@ -19907,6 +19923,14 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						{
 							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)) &&
 								(mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)))
+							{
+								works = true;
+							}
+						}
+						if ((flippedOppositeBinaryOp != BfBinaryOp_None) && (opConstraint.mBinaryOp == flippedOppositeBinaryOp))
+						{
+							if ((mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)) &&
+								(mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)))
 							{
 								works = true;
 							}

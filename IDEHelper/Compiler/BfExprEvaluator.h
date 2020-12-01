@@ -154,6 +154,7 @@ public:
 public:
 	BfAstNode* mTargetSrc;
 	BfTypedValue mTarget;
+	BfTypedValue mOrigTarget;
 	BfModule* mModule;
 	BfTypeDef* mActiveTypeDef;
 	String mMethodName;	
