@@ -2667,7 +2667,7 @@ namespace System
 
 				if (foundMatch)
 				{
-					if ((mMatchPos > mPos + 1) || (!mSplitOptions.HasFlag(StringSplitOptions.RemoveEmptyEntries)))
+					if ((mMatchPos >= mPos + 1) || (!mSplitOptions.HasFlag(StringSplitOptions.RemoveEmptyEntries)))
 						return true;
 					mPos = mMatchPos + 1;
 					if (mPos >= mStrLen)
