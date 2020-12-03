@@ -10,7 +10,18 @@ static BOOL DIEnumDevicesCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
 {
 	DInputManager* _this = (DInputManager*)pvRef;
 
-	_this->mEnumData += StrFormat("%s\t%s", UTF8Encode(lpddi->tszInstanceName).c_str(), UTF8Encode(lpddi->tszProductName).c_str());
+	auto AddStr = [&](const StringImpl& str)
+	{
+		for (auto c : str)
+		{
+			if ((c >= 32) && (c < 128))
+				_this->mEnumData += c;
+		}
+	};
+
+	AddStr(UTF8Encode(lpddi->tszInstanceName));
+	_this->mEnumData += "\t";
+	AddStr(UTF8Encode(lpddi->tszProductName));
 
 	auto guid = lpddi->guidInstance;
 	_this->mEnumData += StrFormat("\t%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
