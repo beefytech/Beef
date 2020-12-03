@@ -52,7 +52,8 @@ namespace Tests
 	static
 	{
 		public static int CompareIt<T>(this T self, T other)
-			where bool: operator T < T
+			where bool : operator T < T
+			where bool : operator T > T
 		{
 			if(self < other)
 				return -1;

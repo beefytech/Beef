@@ -45,6 +45,9 @@ BfBaseClassWalker::BfBaseClassWalker(BfType* typeA, BfType* typeB, BfModule* mod
 {
 	mMayBeFromInterface = false;
 
+	if (typeB == typeA)
+		typeB = NULL;
+
 	if ((typeA != NULL) && (!typeA->IsInterface()))
 		mTypes[0] = typeA->ToTypeInstance();
 	else
@@ -19731,13 +19734,12 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			BfBinaryOp findBinaryOp = binaryOp;
 
 			bool isComparison = (binaryOp >= BfBinaryOp_Equality) && (binaryOp <= BfBinaryOp_LessThanOrEqual);
-			BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);
-			BfBinaryOp flippedBinaryOp = BfGetFlippedBinaryOp(findBinaryOp);
-			BfBinaryOp flippedOppositeBinaryOp = BfGetFlippedBinaryOp(oppositeBinaryOp);
-
+						
 			for (int pass = 0; pass < 2; pass++)
 			{
+				BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);
 				bool foundOp = false;				
+				bool foundCommutableOps = false;
 
 				SizedArray<BfResolvedArg, 2> args;
 				BfResolvedArg leftArg;
@@ -19776,6 +19778,16 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 					for (auto operatorDef : checkType->mTypeDef->mOperators)
 					{
+						if (operatorDef->mCommutableKind == BfCommutableKind_Operator)
+						{							
+							foundCommutableOps = true;
+						}
+						else
+						{
+							if (pass == 1)
+								continue;
+						}
+
 						bool allowOp = operatorDef->mOperatorDeclaration->mBinOp == findBinaryOp;
 						if ((isComparison) && (operatorDef->mOperatorDeclaration->mBinOp == BfBinaryOp_Compare))
 							allowOp = true;
@@ -19809,7 +19821,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 								}
 							}
 						}
-						else if (operatorDef->mOperatorDeclaration->mBinOp == oppositeBinaryOp)
+						else if ((operatorDef->mOperatorDeclaration->mBinOp == oppositeBinaryOp) && (operatorDef->mCommutableKind == BfCommutableKind_Operator))
 							oppositeOperatorDefs.Add(operatorDef);							
 					}
 
@@ -19861,8 +19873,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					methodMatcher.FlushAmbiguityError();
 					
 					auto matchedOp = ((BfOperatorDeclaration*)methodMatcher.mBestMethodDef->mMethodDeclaration)->mBinOp;
-					bool invertResult = matchedOp == oppositeBinaryOp;
-
+					bool invertResult = matchedOp == oppositeBinaryOp;					
+					
 					auto methodDef = methodMatcher.mBestMethodDef;
 					auto autoComplete = GetAutoComplete();
 					bool wasCapturingMethodInfo = false;					
@@ -19961,33 +19973,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 								works = true;
 							}
 						}
-						if ((flippedBinaryOp != BfBinaryOp_None) && (opConstraint.mBinaryOp == flippedBinaryOp))
-						{
-							if ((mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)) &&
-								(mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)))
-							{
-								works = true;
-							}
-						}
-						
-						if (((oppositeBinaryOp != BfBinaryOp_None) && (opConstraint.mBinaryOp == oppositeBinaryOp)) ||
-							(opConstraint.mBinaryOp == BfBinaryOp_Compare))
-						{
-							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)) &&
-								(mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)))
-							{
-								works = true;
-							}
-						}
-						if ((flippedOppositeBinaryOp != BfBinaryOp_None) && (opConstraint.mBinaryOp == flippedOppositeBinaryOp))
-						{
-							if ((mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)) &&
-								(mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)))
-							{
-								works = true;
-							}
-						}
-						
+												
 						if ((isComparison) && (opConstraint.mBinaryOp == BfBinaryOp_Compare))
 						{
 							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
@@ -20041,38 +20027,16 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					}
 				}
 
-				if ((!foundOp) || (pass == 1))
+				if (!foundCommutableOps)
 					break;
-								
-				switch (findBinaryOp)
-				{				
-				case BfBinaryOp_Equality:
-				case BfBinaryOp_StrictEquality:
-				case BfBinaryOp_InEquality:
-				case BfBinaryOp_StrictInEquality:
-				case BfBinaryOp_Compare:
-					// Still works
-					break;
-				case BfBinaryOp_LessThan:
-					findBinaryOp = BfBinaryOp_GreaterThanOrEqual;
-					break;
-				case BfBinaryOp_LessThanOrEqual:
-					findBinaryOp = BfBinaryOp_GreaterThan;
-					break;
-				case BfBinaryOp_GreaterThan:
-					findBinaryOp = BfBinaryOp_LessThanOrEqual;
-					break;
-				case BfBinaryOp_GreaterThanOrEqual:
-					findBinaryOp = BfBinaryOp_LessThan;
-					break;
-				default:
-					findBinaryOp = BfBinaryOp_None;
-					break;
-				}
 
+				if (pass == 1)
+					break;			
+				
+				findBinaryOp = BfGetFlippedBinaryOp(findBinaryOp);
 				if (findBinaryOp == BfBinaryOp_None)
 					break;
-			}			
+			}
 		}
 	}
 

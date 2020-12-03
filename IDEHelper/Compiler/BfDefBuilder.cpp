@@ -831,7 +831,10 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				}
 				else
 				{
-					methodDef->mCommutableKind = BfCommutableKind_Forward;
+					if (methodDef->mIsOperator)
+						methodDef->mCommutableKind = BfCommutableKind_Operator;
+					else
+						methodDef->mCommutableKind = BfCommutableKind_Forward;
 				}
 			}			
 		}

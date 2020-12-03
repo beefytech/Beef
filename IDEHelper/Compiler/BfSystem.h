@@ -694,6 +694,7 @@ enum BfImportKind : int8
 enum BfCommutableKind : int8
 {
 	BfCommutableKind_None,
+	BfCommutableKind_Operator,
 	BfCommutableKind_Forward,
 	BfCommutableKind_Reverse,
 };

@@ -30,6 +30,12 @@ namespace Tests
 				newVal.mA = val.mA + 1;
 				return newVal;
 			}
+
+			[Commutable]
+			public static bool operator<(StructA lhs, StructB rhs)
+			{
+				return lhs.mA < rhs.mB;
+			}
 		}
 
 		struct StructB
@@ -225,6 +231,12 @@ namespace Tests
 			sb0.mB = 11;
 			StructB sb1;
 			sb1.mB = 12;
+
+			Test.Assert(sa1 < sb0);
+			Test.Assert(!(sa1 >= sb0));
+
+			Test.Assert(sb0 > sa1);
+			Test.Assert(!(sb0 <= sa1));
 
 			StructA sa3 = sa0 + sb0;
 			Test.Assert(sa3.mA == 1012);
