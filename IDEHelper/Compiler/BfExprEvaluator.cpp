@@ -1954,6 +1954,13 @@ NoMatch:
 		
 		if (mBackupMethodDef != NULL)
 		{
+			int prevParamDiff = (int)mBackupMethodDef->GetExplicitParamCount() - (int)mArguments.size();
+			int paramDiff = (int)checkMethod->GetExplicitParamCount() - (int)mArguments.size();
+			if ((prevParamDiff < 0) && (prevParamDiff > paramDiff))
+				return false;
+			if ((prevParamDiff >= 0) && (paramDiff < 0))
+				return false;
+
 			if (argMatchCount < mBackupArgMatchCount)
 				return false;
 			else if (argMatchCount == mBackupArgMatchCount)
