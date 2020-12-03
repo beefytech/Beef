@@ -4984,6 +4984,11 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		BF_ASSERT(defaultMethod != NULL);
 		if (methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference)
 		{
+			if ((defaultMethod->mIsReified) && (!defaultMethod->mDeclModule->mIsModuleMutable))
+			{
+				defaultMethod->mDeclModule->PrepareForIRWriting(methodInstance->GetOwner());
+			}
+
 			AddMethodToWorkList(defaultMethod);
 		}
 	}

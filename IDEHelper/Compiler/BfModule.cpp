@@ -12836,8 +12836,14 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 	else if ((!declareModule->mIsModuleMutable) && (!mCompiler->mIsResolveOnly))
 	{
-		BF_ASSERT(!methodInstance->mIsReified);
-		declareModule = mContext->mUnreifiedModule;
+		if (!methodInstance->mIsReified)
+		{
+			declareModule = mContext->mUnreifiedModule;
+		}
+		else
+		{
+			declareModule->PrepareForIRWriting(methodInstance->GetOwner());
+		}
 	}	
 
 	SetMethodDependency(methodInstance);
@@ -21477,8 +21483,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		//  we have defined ourselves and which are from the parent module or other extensions
 		if (!func.IsFake())
 		{
-			BF_ASSERT(func);
-			mFuncReferences[methodInstance] = func;
+			if (func)
+				mFuncReferences[methodInstance] = func;
 		}
 	}
 		
