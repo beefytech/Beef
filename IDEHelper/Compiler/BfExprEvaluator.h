@@ -19,7 +19,8 @@ enum BfArgFlags
 	BfArgFlag_VariableDeclaration = 0x100,
 	BfArgFlag_ParamsExpr = 0x200,
 	BfArgFlag_UninitializedExpr = 0x400,
-	BfArgFlag_StringInterpolateFormat = 0x800
+	BfArgFlag_StringInterpolateFormat = 0x800,
+	BfArgFlag_StringInterpolateArg = 0x1000
 };
 
 enum BfResolveArgFlags

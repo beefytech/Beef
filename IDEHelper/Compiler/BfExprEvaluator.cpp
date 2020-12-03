@@ -4530,12 +4530,14 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		//printf("Args: %p %p %d\n", resolvedArgs.mArguments, resolvedArgs.mArguments->mVals, resolvedArgs.mArguments->mSize);
 
 		BfExpression* argExpr = NULL;
+		bool isDeferredArg = false;
 
 		int curArgIdx = -1;
 
 		if (deferredArgIdx < deferredArgs.size())
 		{
 			argExpr = deferredArgs[deferredArgIdx++];
+			isDeferredArg = true;
 		}
 		else if (argIdx >= argCount)
 		{
@@ -4569,6 +4571,9 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		}
 		
 		BfResolvedArg resolvedArg;
+		if (isDeferredArg)
+			resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_StringInterpolateArg);
+
 		BfExprEvaluator exprEvaluator(mModule);
 		exprEvaluator.mResolveGenericParam = (flags & BfResolveArgFlag_AllowUnresolvedTypes) == 0;
 		exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr);
@@ -5891,7 +5896,21 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					errorRef = targetSrc;				
 
 				BfError* error;
-				if ((prevBindResult.mPrevVal != NULL) && (prevBindResult.mPrevVal->mBindType != NULL))
+				if ((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0)
+				{					
+					int checkIdx = argExprIdx - 1;
+					while (checkIdx >= 0)
+					{
+						if ((argValues[checkIdx].mArgFlags & BfArgFlag_StringInterpolateFormat) != 0)
+						{
+							errorRef = argValues[checkIdx].mExpression;
+							break;
+						}
+						checkIdx--;
+					}
+					error = mModule->Fail("Expanded string interpolation generates too many arguments. If string allocation was intended then consider adding a specifier such as 'scope'.", errorRef);
+				}
+				else if ((prevBindResult.mPrevVal != NULL) && (prevBindResult.mPrevVal->mBindType != NULL))
  					error = mModule->Fail(StrFormat("Method '%s' has too few parameters to bind to '%s'.", mModule->MethodToString(methodInstance).c_str(), mModule->TypeToString(prevBindResult.mPrevVal->mBindType).c_str()), errorRef);
 				else
 					error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", (int)argValues.size() - argExprIdx), errorRef);
@@ -5939,20 +5958,20 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					{						
 						if (wantsSplat)
 						{
-							SplatArgs(lookupVal, irArgs);
+SplatArgs(lookupVal, irArgs);
 						}
 						else if (paramType->IsRef())
-						{														
-							irArgs.push_back(lookupVal.mValue);
+						{
+						irArgs.push_back(lookupVal.mValue);
 						}
 						else
-							PushArg(lookupVal, irArgs, true);
+						PushArg(lookupVal, irArgs, true);
 					}
 				}
 				paramIdx++;
 				continue;
 			}
-			
+
 			wantType = methodInstance->GetParamType(paramIdx);
 			if (wantType->IsSelf())
 				wantType = methodInstance->GetOwner();
@@ -5968,7 +5987,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				//TODO: Check to see if it's a direct array pass
 
 				if (argIdx < (int)argValues.size())
-				{		
+				{
 					auto argValue = argValues[argIdx].mTypedValue;
 					if ((argValue.IsParams()) /*&& (mModule->CanCast(argValue, wantType))*/)
 						isDirectPass = true;
@@ -6002,7 +6021,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							mModule->Fail("INTERNAL ERROR: Unable to find array 'length' field", targetSrc);
 							return BfTypedValue();
 						}
-						
+
 						auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayBits, 0, 1);
 						if (arrayLengthBitCount == 64)
 							mModule->mBfIRBuilder->CreateAlignedStore(mModule->GetConstValue64(numElements), addr, 8);
@@ -6016,10 +6035,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						auto genericTypeInst = wantType->ToGenericTypeInstance();
 						expandedParamsElementType = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0];
 
-						expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);						
+						expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);
 						expandedParamAlloca = mModule->CreateAlloca(genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0], true, NULL, mModule->GetConstValue(numElements));
 						mModule->mBfIRBuilder->CreateStore(expandedParamAlloca, mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 1));
-						mModule->mBfIRBuilder->CreateStore(mModule->GetConstValue(numElements), mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 2));						
+						mModule->mBfIRBuilder->CreateStore(mModule->GetConstValue(numElements), mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 2));
 
 						PushArg(expandedParamsArray, irArgs);
 					}
@@ -6028,16 +6047,32 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				}
 			}
 		}
-		
+
 		BfAstNode* arg = NULL;
-		bool hadMissingArg = false;		
+		bool hadMissingArg = false;
 		if (argExprIdx == -1)
-			arg = targetSrc;					
+			arg = targetSrc;
 		if (argExprIdx >= 0)
 		{
 			if (argExprIdx < (int)argValues.size())
 			{
 				arg = argValues[argExprIdx].mExpression;
+				if (((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0) && (!expandedParamsArray))
+				{
+					BfAstNode* errorRef = arg;
+					int checkIdx = argExprIdx - 1;
+					while (checkIdx >= 0)
+					{
+						if ((argValues[checkIdx].mArgFlags & BfArgFlag_StringInterpolateFormat) != 0)
+						{
+							errorRef = argValues[checkIdx].mExpression;
+							break;
+						}
+						checkIdx--;
+					}
+					mModule->Warn(BfWarning_BF4204_StringInterpolationParam, "Expanded string interpolation argument not used as 'params'. If string allocation was intended then consider adding a specifier such as 'scope'.", errorRef);
+				}
+
 				if ((arg == NULL) && (argValues[argExprIdx].mExpression != NULL))
 					hadMissingArg = true;
 			}
@@ -6338,6 +6373,23 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 			if (!argValue)
 			{
+				if ((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0)
+				{					
+					BfAstNode* errorRef = NULL;
+					int checkIdx = argExprIdx - 1;
+					while (checkIdx >= 0)
+					{
+						if ((argValues[checkIdx].mArgFlags & BfArgFlag_StringInterpolateFormat) != 0)
+						{
+							errorRef = argValues[checkIdx].mExpression;
+							break;
+						}
+						checkIdx--;
+					}
+					if (errorRef != NULL)
+						mModule->Warn(0, "If string allocation was intended then consider adding a specifier such as 'scope'.", errorRef);
+				}
+
 				failed = true;				
 			}
 			else if ((wantType->IsComposite()) && (!expandedParamsArray))

@@ -1116,6 +1116,7 @@ enum BfWarning
 	BfWarning_BF4202_TooManyHexForInt					= 4202,
 	BfWarning_BF4203_UnnecessaryDynamicCast				= 4203,
 	BfWarning_BF4204_AddressOfReadOnly					= 4204,
+	BfWarning_BF4204_StringInterpolationParam			= 4205,
 	BfWarning_C4554_PossiblePrecedenceError				= 4554
 };
 
