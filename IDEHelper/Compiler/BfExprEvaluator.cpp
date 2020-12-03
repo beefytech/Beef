@@ -161,6 +161,7 @@ void BfMethodMatcher::Init(/*SizedArrayImpl<BfResolvedArg>& arguments, */BfSized
 	mActiveTypeDef = NULL;
 	mBestMethodDef = NULL;	
 	mBackupMethodDef = NULL;
+	mBackupMatchKind = BackupMatchKind_None;
 	mBestRawMethodInstance = NULL;
 	mBestMethodTypeInstance = NULL;
 	mExplicitInterfaceCheck = NULL;
@@ -1369,13 +1370,14 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 {
 	BP_ZONE("BfMethodMatcher::CheckMethod");
 
+	BackupMatchKind curMatchKind = BackupMatchKind_None;
 	bool hadMatch = false;
 
 	// Never consider overrides - they only get found at original method declaration
 	//  mBypassVirtual gets set when we are doing an explicit "base" call, or when we are a struct -- 
 	//  because on structs we know the exact type
 	if ((checkMethod->mIsOverride) && (!mBypassVirtual) && (!typeInstance->IsValueType()))
-		return false;		
+		return false;
 		
 	mMethodCheckCount++;
 
@@ -1790,6 +1792,19 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		{
 			if (!argTypedValue.HasType())
 			{
+				// Check to see if this is the last argument and that it's a potential enum match
+				if ((wantType->IsEnum()) && (argIdx == mArguments.size() - 1))
+				{
+					if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(mArguments[argIdx].mExpression))
+					{
+						if (memberRefExpr->mTarget == NULL)
+						{
+							// Is dot expression
+							curMatchKind = BackupMatchKind_PartialLastArgMatch;
+						}
+					}
+				}
+
 				goto NoMatch;
 			}
 			else if (!mModule->CanCast(argTypedValue, wantType))
@@ -1937,29 +1952,19 @@ NoMatch:
 		if (mBestMethodDef != NULL)
 			return false;
 		
-		/*if ((mHadExplicitGenericArguments) && (mBestMethodGenericArguments.size() != checkMethod->mGenericParams.size()))
-			return false;*/
-
 		if (mBackupMethodDef != NULL)
 		{
-			int prevParamDiff = (int)mBackupMethodDef->GetExplicitParamCount() - (int)mArguments.size();
-			int paramDiff = (int)checkMethod->GetExplicitParamCount() - (int)mArguments.size();
-			if ((prevParamDiff < 0) && (prevParamDiff > paramDiff))
+			if (argMatchCount < mBackupArgMatchCount)
 				return false;
-			if ((prevParamDiff >= 0) && ((paramDiff < 0) || (prevParamDiff < paramDiff)))
-				return false;
-			
-			if (paramDiff == prevParamDiff)
+			else if (argMatchCount == mBackupArgMatchCount)
 			{
-				if (argMatchCount < mBackupArgMatchCount)
+				if (curMatchKind < mBackupMatchKind)
 					return false;
-				else if (argMatchCount == mBackupArgMatchCount)
-				{
-					// We search from the most specific type, so don't prefer a less specific type
-					if (mBestMethodTypeInstance != typeInstance)
-						return false;
-				}
-			}			
+
+				// We search from the most specific type, so don't prefer a less specific type
+				if (mBestMethodTypeInstance != typeInstance)
+					return false;
+			}						
 		}
 
 		if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo))
@@ -1971,6 +1976,7 @@ NoMatch:
 			}
 		}
 
+		mBackupMatchKind = curMatchKind;
 		mBackupMethodDef = checkMethod;
 		mBackupArgMatchCount = argMatchCount;
 		// Lie temporarily to store at least one candidate (but mBestMethodDef is still NULL)
@@ -2271,7 +2277,7 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 	if (mBestMethodDef == NULL)
 	{		
 		// FAILED, but select the first method which will fire an actual error on param type matching
-		mBestMethodDef = mBackupMethodDef;		
+		mBestMethodDef = mBackupMethodDef;
 	}	
 
 	if (((mBestMethodDef == NULL) && (!target) && (mAllowImplicitThis)) || 

@@ -152,6 +152,14 @@ public:
 		MatchFailKind_CheckedMismatch
 	};
 
+	enum BackupMatchKind
+	{
+		BackupMatchKind_None,
+		BackupMatchKind_TooManyArgs,
+		BackupMatchKind_EarlyMismatch,		
+		BackupMatchKind_PartialLastArgMatch
+	};
+
 public:
 	BfAstNode* mTargetSrc;
 	BfTypedValue mTarget;
@@ -181,6 +189,7 @@ public:
 
 	BfType* mSelfType; // Only when matching interfaces when 'Self' needs to refer back to the implementing type
 	BfMethodDef* mBackupMethodDef;
+	BackupMatchKind mBackupMatchKind;	
 	int mBackupArgMatchCount;
 	BfMethodDef* mBestMethodDef;
 	BfTypeInstance* mBestMethodTypeInstance;		
