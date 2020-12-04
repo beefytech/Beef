@@ -41,6 +41,7 @@ namespace System
 			return (int)mA ^ (int)mK;
 		}
 
+		[Commutable]
 		public static bool operator==(Guid val1, Guid val2)
 		{
 			return 

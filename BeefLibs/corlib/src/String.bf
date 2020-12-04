@@ -551,6 +551,7 @@ namespace System
 			return str.Ptr;
 		}
 
+		[Commutable]
 		public static bool operator==(String s1, String s2)
 		{
 			return Equals(s1, s2);
@@ -2815,6 +2816,7 @@ namespace System
 			String.QuoteString(mPtr, mLength, outString);
 		}
 
+		[Commutable]
 		public static bool operator==(StringView val1, StringView val2)
 		{
 			if (val1.mLength != val2.mLength)
@@ -2828,6 +2830,7 @@ namespace System
 			return String.[Friend]EqualsHelper(ptr1, ptr2, val1.mLength);
 		}
 
+		[Commutable]
 		public static bool operator==(StringView val1, String val2)
 		{
 			if (val1.mLength != val2.Length)

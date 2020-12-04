@@ -90,7 +90,7 @@ namespace System
             return value.mValue;
         }
 
-        [Inline]
+        [Inline, Commutable]
         public static bool operator==(Nullable<T> lhs, T rhs)
         {
             if (!lhs.mHasValue) return false;

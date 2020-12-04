@@ -367,6 +367,7 @@ namespace System
 			}
 		}
 
+		[Commutable]
 		public static bool operator==(Variant v1, Variant v2)
 		{
 			if (v1.IsObject)
