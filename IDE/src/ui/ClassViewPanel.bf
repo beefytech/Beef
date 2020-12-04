@@ -62,7 +62,8 @@ namespace IDE.ui
 					case .Field,
 						 .Property:
 						IDEUtils.ColorizeCodeString(mLabel, .Field);
-					case .Method:
+					case .Method,
+						 .MethodOverride:
 						IDEUtils.ColorizeCodeString(mLabel, .Method);
 					default:
 					}
@@ -109,7 +110,8 @@ namespace IDE.ui
 					icon = DarkTheme.sDarkTheme.GetImage(.Field);
 				case .Property:
 					icon = DarkTheme.sDarkTheme.GetImage(.Property);
-				case .Method:
+				case .Method,
+					 .MethodOverride:
 					icon = DarkTheme.sDarkTheme.GetImage(.Method);
 				default:
 				}
@@ -319,7 +321,8 @@ namespace IDE.ui
 
 			Field,
 			Property,
-			Method
+			Method,
+			MethodOverride,
 		}
 
 		class PendingInfo
@@ -764,6 +767,7 @@ namespace IDE.ui
 					case 'F': kind = .Field;
 					case 'P': kind = .Property;
 					case 'M': kind = .Method;
+					case 'o': kind = .MethodOverride;
 					}
 					var itr = param.Split('\t');
 					let entry = mPendingInfo.mPendingRoot.AddChild(kind, scope String()..Reference(itr.GetNext().Get()));

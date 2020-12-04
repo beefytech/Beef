@@ -8237,11 +8237,14 @@ String BfCompiler::GetTypeDefMatches(const StringImpl& searchStr)
 
 				if (methodDef->mMethodDeclaration == NULL)
 					continue;
-
+				
 				matchHelper.ClearResults();
 				if (matchHelper.CheckMemberMatch(typeDef, methodDef->mName))
 				{
-					result += "M";
+					if (methodDef->mIsOverride)
+						result += "o";
+					else
+						result += "M";
 					if (BfTypeUtils::TypeToString(result, typeDef, (BfTypeNameFlags)(BfTypeNameFlag_HideGlobalName | BfTypeNameFlag_InternalName)))
 						result += ".";
 					matchHelper.AddMethodDef(methodDef);

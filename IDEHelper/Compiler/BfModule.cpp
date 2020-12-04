@@ -20669,15 +20669,15 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
 
 				auto autoComplete = mCompiler->GetAutoComplete();
-				if (autoComplete != NULL)
-					autoComplete->CheckTypeRef(externConstraintDef->mTypeRef, false);
+if (autoComplete != NULL)
+autoComplete->CheckTypeRef(externConstraintDef->mTypeRef, false);
 
-				if (genericParam->mExternType != NULL)
-				{
-					//
-				}
-				else
-					genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
+if (genericParam->mExternType != NULL)
+{
+	//
+}
+else
+genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 			}
 
 			ResolveGenericParamConstraints(genericParam, methodInstance->mIsUnspecialized);
@@ -20724,6 +20724,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 			if (methodDef->mIsOverride)
 			{
+				bool found = false;
+
 				for (int virtIdx = 0; virtIdx < (int)typeInstance->mVirtualMethodTable.size(); virtIdx++)
 				{
 					auto& ventry = typeInstance->mVirtualMethodTable[virtIdx];
@@ -20742,6 +20744,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 								auto baseType = typeInstance->mBaseType;
 								if (baseType != NULL)
 								{
+									found = true;
 									while ((baseType->mBaseType != NULL) && (virtIdx < baseType->mBaseType->mVirtualMethodTableSize))
 										baseType = baseType->mBaseType;
 									BfMethodInstance* baseVirtMethod = baseType->mVirtualMethodTable[virtIdx].mImplementingMethod;
@@ -20755,7 +20758,25 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 						}
 					}
 				}
-			}						
+
+				if ((!found) && (autoComplete->mIsGetDefinition) && (methodDef->mDeclaringType->IsExtension()))
+				{
+					for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
+					{
+						auto defaultMethod = methodGroup.mDefault;
+						if (defaultMethod == NULL)
+							continue;
+						if (!defaultMethod->mMethodDef->mIsExtern)
+							continue;
+						if (!CompareMethodSignatures(defaultMethod, methodInstance))
+							continue;
+						
+						autoComplete->SetDefinitionLocation(defaultMethod->mMethodDef->GetRefNode(), true);
+						autoComplete->mDefType = typeInstance->mTypeDef;
+						autoComplete->mDefMethod = defaultMethod->mMethodDef;						
+					}
+				}
+			}
 		}
 	}
 				
