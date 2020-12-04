@@ -403,6 +403,7 @@ public:
 	bool mHadScopeValueRetain;	
 	bool mIsDeferredBlock;
 	bool mAllowVariableDeclarations;
+	bool mInInitBlock;
 	BfBlock* mAstBlock;
 	BfAstNode* mCloseNode;
 	BfExprEvaluator* mExprEvaluator;
@@ -438,6 +439,7 @@ public:
 		mIsDeferredBlock = false;
 		mAllowTargeting = true;		
 		mAllowVariableDeclarations = true;
+		mInInitBlock = false;
 		mMixinDepth = 0;
 		mScopeDepth = 0;
 		mScopeLocalId = -1;

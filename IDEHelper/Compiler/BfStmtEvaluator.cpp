@@ -4891,7 +4891,11 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 			}
 			return;
 		}
-		checkScope = checkScope->mPrevScope;
+		if (checkScope->mInInitBlock)
+		{
+			Fail("Initialization blocks cannot contain 'return' statements", returnStmt);
+		}
+		checkScope = checkScope->mPrevScope;		
 	}
 
 	auto checkLocalAssignData = mCurMethodState->mDeferredLocalAssignData;

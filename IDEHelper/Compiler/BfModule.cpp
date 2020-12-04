@@ -15635,6 +15635,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 			bool hadInlineInitBlock = false;
 			BfScopeData scopeData;
+			scopeData.mInInitBlock = true;
 			
 			auto _CheckInitBlock = [&](BfAstNode* node)
 			{
@@ -15684,6 +15685,13 @@ void BfModule::EmitCtorBody(bool& skipBody)
 							mBfIRBuilder->DbgInsertDeclare(copiedThisPtr, diVariable);
 						}
 
+						hadInlineInitBlock = true;
+					}
+					else
+					{
+						// Just do a simple one
+						mCurMethodState->AddScope(&scopeData);
+						NewScopeState();
 						hadInlineInitBlock = true;
 					}
 				}
@@ -15769,7 +15777,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			for (auto body : initBodies)
 			{
 				_CheckInitBlock(body);
-				VisitEmbeddedStatement(body);
+				VisitEmbeddedStatement(body);				
 			}
 
 			if (hadInlineInitBlock)
@@ -15777,10 +15785,19 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				RestoreScopeState();
 				// This gets set to false because of AddScope but we actually are still in the head block
 				mCurMethodState->mInHeadScope = true;
+
+				// Make sure we emit a return even if we had a NoReturn call or return inside ourselves
+				mCurMethodState->mHadReturn = false;
+				mCurMethodState->mLeftBlockUncond = false;
 			}
 		}
 		else // Autocomplete case
 		{
+			BfScopeData scopeData;
+			scopeData.mInInitBlock = true;
+			mCurMethodState->AddScope(&scopeData);
+			NewScopeState();
+
 			// The reason we can't just do the 'normal' path for this is that the BfTypeInstance here is NOT the 
 			//  autocomplete type instance, so FieldInstance initializer values contain expressions from the full 
 			//  resolve pass, NOT the autocomplete expression
@@ -15831,6 +15848,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						MarkFieldInitialized(fieldInst);
 				}
 			}
+
+			RestoreScopeState();
 		}		
 	}
 
@@ -16009,7 +16028,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			else
 				autoComplete->mIsCapturingMethodMatchInfo = false;
 		}
-	}
+	}	
 }
 
 void BfModule::EmitEnumToStringBody()
@@ -18462,6 +18481,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 	if ((methodDef != NULL) && (propertyDeclaration != NULL) && (propertyDeclaration->mExternSpecifier != NULL))
 		hasExternSpecifier = true;
+
+	if ((methodDef->mMethodType == BfMethodType_CtorNoBody) && (mModuleName == "Atma_Framework_Window"))
+	{
+		NOP;
+	}
 
 	// Allocate, clear, set classVData	
 
