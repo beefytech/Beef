@@ -5089,6 +5089,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 BfArrayType* BfModule::CreateArrayType(BfType* resolvedType, int dimensions)
 {
 	BF_ASSERT(!resolvedType->IsVar());
+	BF_ASSERT(!resolvedType->IsIntUnknown());
 
 	auto arrayType = mContext->mArrayTypePool.Get();
 	delete arrayType->mGenericTypeInfo;
@@ -6385,6 +6386,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			return NULL;
 		if (elementType->IsVar())
 			return elementType;
+		elementType = FixIntUnknown(elementType);
 		return CreateSizedArrayType(elementType, (int)arrayType->mElementCount);
 	}
 
@@ -6408,6 +6410,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			return NULL;
 		if (elementType->IsVar())
 			return elementType;
+		elementType = FixIntUnknown(elementType);
 		return CreatePointerType(elementType);
 	}
 
@@ -6419,6 +6422,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 			return NULL;
 		if (elementType->IsVar())
 			return elementType;
+		elementType = FixIntUnknown(elementType);
 		return CreateArrayType(elementType, arrayType->mDimensions);
 	}
 
