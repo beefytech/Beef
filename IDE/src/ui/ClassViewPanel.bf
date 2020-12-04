@@ -231,6 +231,7 @@ namespace IDE.ui
 				return this == other;
 			}
 
+			[Commutable]
 			public static bool operator==(PendingEntry val1, PendingEntry val2)
 			{
 				if (((Object)val1 == null) || ((Object)val2 == null))

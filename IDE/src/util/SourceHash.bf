@@ -72,6 +72,7 @@ namespace IDE.util
 			}
 		}
 
+		[Commutable]
 		public static bool operator==(SourceHash lhs, SourceHash rhs)
 		{
 			switch (lhs)

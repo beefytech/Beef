@@ -15,6 +15,7 @@ namespace IDE
 			return (int)mKeyCode | (int)mKeyFlags << 16;
 		}
 
+		[Commutable]
 		public static bool operator==(KeyState val1, KeyState val2)
 		{
 			return (val1.mKeyCode == val2.mKeyCode) &&
