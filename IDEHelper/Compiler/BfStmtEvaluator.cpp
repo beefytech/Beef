@@ -1818,7 +1818,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		{
 			exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateIsNotNull(initValue.mValue), boolType);
 		}		
-		else
+		else if (!resolvedType->IsGenericParam())
 		{
 			// Always true
 			if (!IsInSpecializedSection())
