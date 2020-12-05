@@ -1818,10 +1818,10 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		{
 			exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateIsNotNull(initValue.mValue), boolType);
 		}		
-		else if (!resolvedType->IsGenericParam())
+		else
 		{
 			// Always true
-			if (!IsInSpecializedSection())
+			if ((!IsInSpecializedSection()) && (!resolvedType->IsGenericParam()))
 				Warn(BfWarning_CS0472_ValueTypeNullCompare, StrFormat("Variable declaration is always 'true' since a value of type '%s' can never be null", 
 					TypeToString(initValue.mType).c_str()), varDecl);
 			exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1), boolType);
