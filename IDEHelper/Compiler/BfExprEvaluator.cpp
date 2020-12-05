@@ -3768,7 +3768,8 @@ void BfExprEvaluator::Visit(BfIdentifierNode* identifierNode)
 			}
 		}
 
-		mModule->Fail("Identifier not found", identifierNode);
+		if ((mBfEvalExprFlags & BfEvalExprFlags_NoLookupError) == 0)
+			mModule->Fail("Identifier not found", identifierNode);
 	}
 }
 
@@ -4173,7 +4174,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					return retVal;
 				}
 				else if (!target)
-				{											
+				{						
 					if ((flags & BfLookupFieldFlag_CheckingOuter) != 0)
 						mModule->Fail(StrFormat("An instance reference is required to reference non-static outer field '%s.%s'", mModule->TypeToString(curCheckType).c_str(), field->mName.c_str()),
 							targetSrc);
@@ -8722,7 +8723,8 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfQualifiedNameNode* nameNode, 
 				}
 			}
 
-			mModule->Fail("Field not found", nameNode->mRight);
+			if ((mBfEvalExprFlags & BfEvalExprFlags_NoLookupError) == 0)
+				mModule->Fail("Field not found", nameNode->mRight);
 			return;
 		}
 	}
@@ -8825,7 +8827,8 @@ void BfExprEvaluator::LookupQualifiedStaticField(BfAstNode* nameNode, BfIdentifi
 				}
 			}
 
-			mModule->Fail("Field not found", nameRight);
+			if ((mBfEvalExprFlags & BfEvalExprFlags_NoLookupError) == 0)
+				mModule->Fail("Field not found", nameRight);
 			return;
 		}
 	}
@@ -17885,8 +17888,14 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 	// Try first as a non-static indexer, then as a static indexer
 	for (int pass = 0; pass < 2; pass++)
 	{
-		SetAndRestoreValue<bool> ignoreErrors(mModule->mIgnoreErrors, (mModule->mIgnoreErrors) || (pass == 0));
-		VisitChild(indexerExpr->mTarget);
+// 		SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, (mModule->mIgnoreErrors) || (pass == 0));
+// 		SetAndRestoreValue<bool> prevHadIgnoredError(mModule->mHadIgnoredError, false);
+
+
+		{
+			SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoLookupError));
+			VisitChild(indexerExpr->mTarget);
+		}
 		ResolveGenericType();
 		target = GetResult(true);
 		if (target)
@@ -17894,6 +17903,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		
 		if (pass == 0)
 		{
+			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, (mModule->mIgnoreErrors) || (pass == 0));
 			auto staticType = mModule->ResolveTypeRef(indexerExpr->mTarget, {});
 			if (staticType != NULL)
 			{

@@ -833,6 +833,7 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mHadBuildError = false;
 	mHadBuildWarning = false;
 	mIgnoreErrors = false;
+	mHadIgnoredError = false;
 	mIgnoreWarnings = false;	
 	mReportErrors = true;
 	mIsInsideAutoComplete = false;
@@ -2672,7 +2673,8 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	BP_ZONE("BfModule::Fail");
 
 	if (mIgnoreErrors)
-	{
+	{		
+		mHadIgnoredError = true;		
 		if (mAttributeState != NULL)
 			mAttributeState->mFlags = (BfAttributeState::Flags)(mAttributeState->mFlags | BfAttributeState::Flag_HadError);
 	 	return NULL;

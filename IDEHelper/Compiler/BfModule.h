@@ -67,7 +67,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_VariableDeclaration = 0x4000,
 	BfEvalExprFlags_NoAutoComplete = 0x8000,
 	BfEvalExprFlags_AllowNonConst = 0x10000,
-	BfEvalExprFlags_StringInterpolateFormat = 0x20000
+	BfEvalExprFlags_StringInterpolateFormat = 0x20000,
+	BfEvalExprFlags_NoLookupError = 0x40000,
 };
 
 enum BfCastFlags
@@ -994,6 +995,7 @@ public:
 	bool mAllowUinitReads;
 	bool mCancelledDeferredCall;	
 	bool mNoObjectAccessChecks;
+	bool mHadIgnoredError;
 	int mCurLocalVarId; // Can also refer to a label
 	int mCurAccessId; // For checking to see if a block reads from or writes to a local
 
@@ -1031,7 +1033,7 @@ public:
 		mAllowUinitReads = false;
 		mCancelledDeferredCall = false;
 		mNoObjectAccessChecks = false;
-		mInDeferredBlock = false;
+		mInDeferredBlock = false;		
 		mDeferredLocalAssignData = NULL;
 		mCurLocalVarId = 0;
 		mCurAccessId = 1;
@@ -1445,7 +1447,8 @@ public:
 	bool mWroteToLib;
 	bool mHadBuildError;
 	bool mHadBuildWarning;	
-	bool mIgnoreErrors;
+	bool mIgnoreErrors;	
+	bool mHadIgnoredError;
 	bool mIgnoreWarnings;	
 	bool mSetIllegalSrcPosition;	
 	bool mReportErrors; // Still puts system in error state when set to false

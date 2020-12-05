@@ -9566,8 +9566,8 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfIdentifierNode* identifi
 {
 	BfDirectStrTypeReference typeRef;
 	typeRef.Init(identifier->ToString());	
-
-	auto type = ResolveInnerType(outerType, &typeRef, populateType, ignoreErrors);
+	// There is no ref node so we ignore errors
+	auto type = ResolveInnerType(outerType, &typeRef, populateType, /*ignoreErrors*/true);
 	return type;
 }
 
