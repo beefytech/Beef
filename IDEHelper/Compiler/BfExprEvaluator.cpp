@@ -6087,7 +6087,7 @@ SplatArgs(lookupVal, irArgs);
 						}
 						checkIdx--;
 					}
-					mModule->Warn(BfWarning_BF4204_StringInterpolationParam, "Expanded string interpolation argument not used as 'params'. If string allocation was intended then consider adding a specifier such as 'scope'.", errorRef);
+					mModule->Warn(BfWarning_BF4205_StringInterpolationParam, "Expanded string interpolation argument not used as 'params'. If string allocation was intended then consider adding a specifier such as 'scope'.", errorRef);
 				}
 
 				if ((arg == NULL) && (argValues[argExprIdx].mExpression != NULL))
@@ -19761,8 +19761,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			for (int pass = 0; pass < 2; pass++)
 			{
 				BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);
-				bool foundOp = false;				
-				bool foundCommutableOps = false;
+				bool foundOp = false;								
 
 				SizedArray<BfResolvedArg, 2> args;
 				BfResolvedArg leftArg;
@@ -19789,6 +19788,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				bool invertResult = false;												
 				BfType* operatorConstraintReturnType = NULL;
 
+				bool wasTransformedUsage = pass == 1;
+
 				while (true)
 				{
 					auto entry = baseClassWalker.Next();
@@ -19801,16 +19802,6 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 					for (auto operatorDef : checkType->mTypeDef->mOperators)
 					{
-						if (operatorDef->mCommutableKind == BfCommutableKind_Operator)
-						{							
-							foundCommutableOps = true;
-						}
-						else
-						{
-							if (pass == 1)
-								continue;
-						}
-
 						bool allowOp = operatorDef->mOperatorDeclaration->mBinOp == findBinaryOp;
 						if ((isComparison) && (operatorDef->mOperatorDeclaration->mBinOp == BfBinaryOp_Compare))
 							allowOp = true;
@@ -19844,7 +19835,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 								}
 							}
 						}
-						else if ((operatorDef->mOperatorDeclaration->mBinOp == oppositeBinaryOp) && (operatorDef->mCommutableKind == BfCommutableKind_Operator))
+						else if (operatorDef->mOperatorDeclaration->mBinOp == oppositeBinaryOp)
 							oppositeOperatorDefs.Add(operatorDef);							
 					}
 
@@ -19861,12 +19852,16 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 									operatorConstraintReturnType = returnType;
 									methodMatcher.mBestMethodDef = oppositeOperatorDef;
 									methodMatcher.mSelfType = entry.mSrcType;
+									wasTransformedUsage = true;
 								}
 							}
 							else
 							{
 								if (methodMatcher.CheckMethod(NULL, checkType, oppositeOperatorDef, false))
+								{									
 									methodMatcher.mSelfType = entry.mSrcType;
+									wasTransformedUsage = true;
+								}
 							}
 						}
 					}
@@ -19897,7 +19892,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					
 					auto matchedOp = ((BfOperatorDeclaration*)methodMatcher.mBestMethodDef->mMethodDeclaration)->mBinOp;
 					bool invertResult = matchedOp == oppositeBinaryOp;					
-					
+										
 					auto methodDef = methodMatcher.mBestMethodDef;
 					auto autoComplete = GetAutoComplete();
 					bool wasCapturingMethodInfo = false;					
@@ -19906,6 +19901,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						auto operatorDecl = BfNodeDynCast<BfOperatorDeclaration>(methodDef->mMethodDeclaration);
 						if ((operatorDecl != NULL) && (operatorDecl->mOpTypeToken != NULL))
 							autoComplete->SetDefinitionLocation(operatorDecl->mOpTypeToken);
+					}
+
+					if ((wasTransformedUsage) && (methodDef->mCommutableKind != BfCommutableKind_Operator))
+					{
+						auto error = mModule->Warn(BfWarning_BF4206_OperatorCommutableUsage, "Transformed operator usage requires 'Commutable' attribute to be added to the operator declaration", opToken);						
+						if ((error != NULL) && (methodDef->GetRefNode() != NULL))
+							mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See operator declaration"), methodDef->GetRefNode());
 					}
 
 					if (opToken != NULL)
@@ -20049,10 +20051,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 							return;						
 					}
 				}
-
-				if (!foundCommutableOps)
-					break;
-
+				
 				if (pass == 1)
 					break;			
 				
