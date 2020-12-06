@@ -9869,6 +9869,12 @@ BfOperatorInfo* BfModule::GetOperatorInfo(BfTypeInstance* typeInstance, BfOperat
 		SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, true);
 		SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
 		SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+
+		BfTypeState typeState;		
+		typeState.mTypeInstance = typeInstance;
+		typeState.mCurTypeDef = operatorDef->mDeclaringType;
+		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
 		BfOperatorInfo* operatorInfo = new BfOperatorInfo();
 		if (operatorDef->mReturnTypeRef != NULL)
 			operatorInfo->mReturnType = ResolveTypeRef(operatorDef->mReturnTypeRef, BfPopulateType_Identity);
