@@ -5490,7 +5490,7 @@ void BfModule::Visit(BfWhileStatement* whileStmt)
 	// For BeefBackend we continue to do CondBr because it helps our flow analysis and we optimize it anyway
 	if ((isInfiniteLoop) && (!IsTargetingBeefBackend()))
 		mBfIRBuilder->CreateBr(bodyBB);
-	else if ((isFalseLoop) && (!IsTargetingBeefBackend()))
+	else if (isFalseLoop)
 		mBfIRBuilder->CreateBr(endBB);
 	else	
 		mBfIRBuilder->CreateCondBr(checkVal.mValue, bodyBB, endBB);
