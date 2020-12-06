@@ -112,6 +112,7 @@ enum BfProtectionCheckFlags
 	BfProtectionCheckFlag_CheckedPrivate = 2,
 	BfProtectionCheckFlag_AllowProtected = 4,
 	BfProtectionCheckFlag_AllowPrivate = 8,
+	BfProtectionCheckFlag_InstanceLookup = 0x10
 };
 
 enum BfEmbeddedStatementFlags

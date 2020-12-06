@@ -2129,7 +2129,20 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 			if (curTypeDef->mMethodSet.TryGetWith(mMethodName, &entry))
 				nextMethodDef = (BfMethodDef*)entry->mMemberDef;
 		}
+
 		BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
+		if (target)
+		{
+			if (mBypassVirtual)
+			{
+				// Not an "instance lookup"
+			}
+			else
+			{
+				protectionCheckFlags = (BfProtectionCheckFlags)(protectionCheckFlags | BfProtectionCheckFlag_InstanceLookup);
+			}
+		}
+
 		while (nextMethodDef != NULL)
 		{
 			bool allowExplicitInterface = curTypeInst->IsInterface() && mBypassVirtual;
@@ -2199,9 +2212,9 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 				if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
 					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, visibleProjectSet)))
 					continue;
-			}
+			}			
 
-			MatchFailKind matchFailKind = MatchFailKind_None;			
+			MatchFailKind matchFailKind = MatchFailKind_None;
 			if (!mModule->CheckProtection(protectionCheckFlags, curTypeInst, checkMethod->mDeclaringType->mProject, checkMethod->mProtection, typeInstance))
 			{
 				if ((mBypassVirtual) && (checkMethod->mProtection == BfProtection_Protected) && (mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, typeInstance)))
@@ -3933,6 +3946,18 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			}
 
 			BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
+			if (target)
+			{
+				if ((flags & (BfLookupFieldFlag_IsImplicitThis | BfLookupFieldFlag_BaseLookup)) != 0)
+				{
+					// Not an "instance lookup"
+				}
+				else
+				{
+					protectionCheckFlags = (BfProtectionCheckFlags)(protectionCheckFlags | BfProtectionCheckFlag_InstanceLookup);
+				}
+			}
+
 			BfFieldDef* matchedField = NULL;
 			while (nextField != NULL)
 			{
@@ -8607,7 +8632,7 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 	}
 
 	if (mPropDef == NULL)
-		mResult = LookupField(nameRight, lookupVal, fieldName);
+		mResult = LookupField(nameRight, lookupVal, fieldName, CheckIsBase(nameLeft) ? BfLookupFieldFlag_BaseLookup : BfLookupFieldFlag_None);
 
 	if ((!mResult) && (mPropDef == NULL) && (lookupType->IsGenericParam()))
 	{
@@ -17888,12 +17913,9 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 	// Try first as a non-static indexer, then as a static indexer
 	for (int pass = 0; pass < 2; pass++)
 	{
-// 		SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, (mModule->mIgnoreErrors) || (pass == 0));
-// 		SetAndRestoreValue<bool> prevHadIgnoredError(mModule->mHadIgnoredError, false);
-
-
+		///
 		{
-			SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoLookupError));
+			SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoLookupError), pass == 0);
 			VisitChild(indexerExpr->mTarget);
 		}
 		ResolveGenericType();

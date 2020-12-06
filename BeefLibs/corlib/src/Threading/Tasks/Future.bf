@@ -33,7 +33,7 @@ namespace System.Threading.Tasks
 		}
 
 		public this(delegate TResult(Object) func, Object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
-		    : this(func, state, Task.[Friend]InternalCurrentIfAttached(creationOptions), cancellationToken,
+		    : this(func, state, Task.InternalCurrentIfAttached(creationOptions), cancellationToken,
 		            creationOptions, InternalTaskOptions.None, null)
 		{
 		    //StackCrawlMark stackMark = StackCrawlMark.LookForMyCaller;

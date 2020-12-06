@@ -49,6 +49,16 @@ namespace Tests
 			{
 				mAPriv
 			}
+
+			private static void PrivA2()
+			{
+
+			}
+
+			protected static void ProtA2()
+			{
+
+			}
 		}
 
 		class ClassB : ClassA
@@ -70,7 +80,11 @@ namespace Tests
 			{
 			    var ca = new ClassA(); //FAIL
 			    base.PrivA(); //FAIL
+				base.ProtA();
 				ca.GetPriv!();
+
+				ClassA.PrivA2(); //FAIL
+				ClassA.ProtA2();
 			}
 
 			protected void ProtB()
@@ -103,6 +117,8 @@ namespace Tests
 				ca.mAProt = 1; //FAIL
                 mAPriv = 1; //FAIL
 				mAProt = 1;
+				base.mAPriv = 1; //FAIL
+				base.mAProt = 1;
 			}
 		}
 

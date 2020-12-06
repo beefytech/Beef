@@ -2584,19 +2584,37 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 				curCheckType = mixinOwner;
 			}
 
-			auto lookupCheckType = lookupStartType;
-			while (lookupCheckType->mInheritDepth >= curCheckType->mInheritDepth)
+			if ((flags & BfProtectionCheckFlag_InstanceLookup) != 0)
 			{
-				if (lookupCheckType == curCheckType)
+				auto lookupCheckType = lookupStartType;
+				while (lookupCheckType->mInheritDepth >= curCheckType->mInheritDepth)
 				{
-					allowProtected = true;
-					break;
+					if (lookupCheckType == curCheckType)
+					{
+						allowProtected = true;
+						break;
+					}
+					if (lookupCheckType == memberOwner)
+						break;
+					lookupCheckType = lookupCheckType->mBaseType;
+					if (lookupCheckType == NULL)
+						break;
 				}
-				if (lookupCheckType == memberOwner)
-					break;
-				lookupCheckType = lookupCheckType->mBaseType;
-				if (lookupCheckType == NULL)
-					break;
+			}
+			else
+			{
+				auto lookupCheckType = curCheckType;
+				while (lookupCheckType->mInheritDepth >= memberOwner->mInheritDepth)
+				{
+					if (lookupCheckType == memberOwner)
+					{
+						allowProtected = true;
+						break;
+					}
+					lookupCheckType = lookupCheckType->mBaseType;
+					if (lookupCheckType == NULL)
+						break;
+				}
 			}
 
 			if (!allowProtected)

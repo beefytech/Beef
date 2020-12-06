@@ -752,7 +752,7 @@ namespace System.Reflection
         {
             get
             {
-                return (TypeInstance)Type.[Friend]GetType(mBaseType);
+                return (TypeInstance)Type.GetType(mBaseType);
             }
         }
 
@@ -768,7 +768,7 @@ namespace System.Reflection
 		{
 		    get
 		    {
-		        return (TypeInstance)Type.[Friend]GetType(mOuterType);
+		        return (TypeInstance)Type.GetType(mOuterType);
 		    }
 		}
 
@@ -776,7 +776,7 @@ namespace System.Reflection
 		{
 		    get
 		    {
-		        return Type.[Friend]GetType(mUnderlyingType);
+		        return Type.GetType(mUnderlyingType);
 		    }
 		}
 
@@ -803,7 +803,7 @@ namespace System.Reflection
 		            return true;
 		        if (curType.mBaseType == 0)
 		            return false;
-		        curType = (TypeInstance)Type.[Friend]GetType(curType.mBaseType);
+		        curType = (TypeInstance)Type.GetType(curType.mBaseType);
 		    }
 		}
 
@@ -921,7 +921,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				return Type.[Friend]GetType(mElementType);
+				return Type.GetType(mElementType);
 			}
 		}
 
@@ -951,7 +951,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				return Type.[Friend]GetType(mElementType);
+				return Type.GetType(mElementType);
 			}
 		}
 
@@ -978,7 +978,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				return Type.[Friend]GetType(mElementType);
+				return Type.GetType(mElementType);
 			}
 		}
 
@@ -1015,14 +1015,14 @@ namespace System.Reflection
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class SpecializedGenericType : TypeInstance
     {
-        TypeId mUnspecializedType;
-        TypeId* mResolvedTypeRefs;
+        protected TypeId mUnspecializedType;
+        protected TypeId* mResolvedTypeRefs;
 
 		public Type UnspecializedType
 		{
 			get
 			{
-				return Type.[Friend]GetType(mUnspecializedType);
+				return Type.GetType(mUnspecializedType);
 			}
 		}
 
@@ -1030,7 +1030,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				var unspecializedTypeG = Type.[Friend]GetType(mUnspecializedType);
+				var unspecializedTypeG = Type.GetType(mUnspecializedType);
 				var unspecializedType = (UnspecializedGenericType)unspecializedTypeG;
 				return unspecializedType.[Friend]mGenericParamCount;
 			}
@@ -1043,7 +1043,7 @@ namespace System.Reflection
 
 		public override void GetFullName(String strBuffer)
 		{
-			var unspecializedTypeG = Type.[Friend]GetType(mUnspecializedType);
+			var unspecializedTypeG = Type.GetType(mUnspecializedType);
 			var unspecializedType = (UnspecializedGenericType)unspecializedTypeG;
 			base.GetFullName(strBuffer);
 
@@ -1059,7 +1059,7 @@ namespace System.Reflection
 				{
 					if (i > 0)
 						strBuffer.Append(", ");
-					Type.[Friend]GetType(mResolvedTypeRefs[i]).GetFullName(strBuffer);
+					Type.GetType(mResolvedTypeRefs[i]).GetFullName(strBuffer);
 				}
 				strBuffer.Append('>');
 			}
@@ -1075,7 +1075,7 @@ namespace System.Reflection
 
 		public override void GetFullName(String strBuffer)
 		{
-			Type.[Friend]GetType(mResolvedTypeRefs[0]).GetFullName(strBuffer);
+			Type.GetType(mResolvedTypeRefs[0]).GetFullName(strBuffer);
 			strBuffer.Append('[');
 			for (int commaNum < mRank - 1)
 				strBuffer.Append(',');
