@@ -4162,7 +4162,7 @@ DbgType* COFF::CvGetTypeOrNamespace(char* name, DbgLanguage language)
 		dbgType->mTypeName = DbgDupString(name, "DbgDupString.TypeOrNamespace2");
 		dbgType->mName = dbgType->mTypeName;		
 	}	
-	
+		
 	parentType->mSubTypeList.PushBack(dbgType);
 	dbgType->mTypeCode = DbgType_Namespace;
 	dbgType->mLanguage = language;
@@ -4665,7 +4665,7 @@ void COFF::FixTypes(int startingIdx)
 	for (int typeIdx = startingIdx; typeIdx < (int)linkedModule->mTypes.size(); typeIdx++)
 	{
 		DbgType* dbgType = linkedModule->mTypes[typeIdx];
-		
+				
 		DbgType* prevNamespaceType = NULL;
 		if (dbgType->mName == NULL)
 		{
@@ -5562,7 +5562,8 @@ const char* COFF::CvParseSymbol(int offset, CvSymStreamType symStreamType, addr_
 			}
 
 			StringT<256> tempName;
-			tempName = String(scanName, lastDblColon - scanName);
+			tempName = String(scanName, lastDblColon - scanName);			
+
 			DbgType* dbgType = CvGetTypeOrNamespace((char*)tempName.c_str());
 
 // 			*lastDblColon = '\0';				
@@ -5785,7 +5786,8 @@ void COFF::ParseGlobalsData()
 		return;
 	if (mParsedGlobalsData)
 		return;
-	mParsedGlobalsData = true;
+	ParseTypeData();
+	mParsedGlobalsData = true;	
 
 	//gDbgPerfManager->StartRecording();
 
