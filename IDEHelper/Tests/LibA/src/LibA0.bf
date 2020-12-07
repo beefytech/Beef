@@ -87,6 +87,22 @@ namespace LibA
 			return lhs == rhs;
 		}
 	}
+
+	class LibA3
+	{
+		public int mA = 3;
+		public static LibA3 sLibA3 = new LibA3() ~ delete _;
+
+		public this()
+		{
+			mA++;
+		}
+	}
+
+	class LibA4
+	{
+		public int mA;
+	}
 }
 
 class LibClassA

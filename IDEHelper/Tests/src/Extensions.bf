@@ -55,6 +55,17 @@ extension LibClassA
 	}
 }
 
+namespace LibA
+{
+	extension LibA3
+	{
+		this
+		{
+			mA += 100;
+		}
+	}
+}
+
 namespace Tests
 {
 	class Extensions
@@ -267,6 +278,12 @@ namespace Tests
 			Test.Assert(ca.mA == 107);
 			delete ca;
 			Test.Assert(LibClassA.sMagic == 7771);
+
+			LibA.LibA3 la3 = scope .();
+			Test.Assert(la3.mA == 114);
+			Test.Assert(la3.mB == 7);
+			LibA.LibA4 la4 = scope .();
+			Test.Assert(la4.mA == 10);
 		}
 
 		[Test]

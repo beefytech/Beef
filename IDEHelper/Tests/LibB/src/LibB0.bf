@@ -49,6 +49,27 @@ extension LibClassA
 	}
 }
 
+namespace LibA
+{
+	extension LibA3
+	{
+		public int mB = 7;
+
+		this
+		{
+			mA += 10;
+		}
+	}
+
+	extension LibA4
+	{
+		this
+		{
+			mA += 10;
+		}
+	}
+}
+
 static
 {
 	public static int Overload0(int16 a)

@@ -14952,6 +14952,8 @@ void BfModule::EmitDtorBody()
 	{
 		if (methodDeclaration != NULL)
 			UpdateSrcPos(methodDeclaration);
+		else if ((methodDef->mDeclaringType != NULL) && (methodDef->mDeclaringType->GetRefNode() != NULL))
+			UpdateSrcPos(methodDef->mDeclaringType->GetRefNode());
 		else if (typeDef->mTypeDeclaration != NULL)
 			UpdateSrcPos(typeDef->mTypeDeclaration);
 		if ((methodDeclaration != NULL) && (methodDeclaration->mFatArrowToken != NULL))
@@ -15594,6 +15596,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		baseCtorNode = methodDef->mBody;
 	else if (ctorDeclaration != NULL)
 		baseCtorNode = ctorDeclaration;
+	else if ((methodDef->mDeclaringType != NULL) && (methodDef->mDeclaringType->GetRefNode() != NULL))
+		baseCtorNode = methodDef->mDeclaringType->GetRefNode();
 	else if (mCurTypeInstance->mTypeDef->mTypeDeclaration != NULL)
 		baseCtorNode = mCurTypeInstance->mTypeDef->mTypeDeclaration->mNameNode;
 	else if ((mCurTypeInstance->mBaseType != NULL) && (mCurTypeInstance->mBaseType->mTypeDef->mTypeDeclaration != NULL))
@@ -15604,7 +15608,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	bool calledCtorNoBody = false;
 	
 	if ((!mCurTypeInstance->IsBoxed()) && (methodDef->mMethodType == BfMethodType_Ctor) && (!hadThisInitializer))
-	{		
+	{
 		// Call the root type's default ctor (with no body) to initialize its fields and call the chained ctors		
 		if (mCurTypeInstance->mTypeDef->mHasCtorNoBody)
 		{
@@ -17572,7 +17576,9 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	if (methodDef->mBody != NULL)
 		UpdateSrcPos(methodDef->mBody, BfSrcPosFlag_NoSetDebugLoc);
 	else if (methodDeclaration != NULL)		
-		UpdateSrcPos(methodDeclaration, BfSrcPosFlag_NoSetDebugLoc);	
+		UpdateSrcPos(methodDeclaration, BfSrcPosFlag_NoSetDebugLoc);
+	else if ((methodDef->mDeclaringType != NULL) && (methodDef->mDeclaringType->GetRefNode() != NULL))
+		UpdateSrcPos(methodDef->mDeclaringType->GetRefNode(), BfSrcPosFlag_NoSetDebugLoc);
 	else if (mCurTypeInstance->mTypeDef->mTypeDeclaration != NULL)
 		UpdateSrcPos(mCurTypeInstance->mTypeDef->mTypeDeclaration, BfSrcPosFlag_NoSetDebugLoc);		
 		
@@ -17799,6 +17805,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			UpdateSrcPos(methodDeclaration, BfSrcPosFlag_NoSetDebugLoc);
 		else if (methodDef->mBody != NULL)
 			UpdateSrcPos(methodDef->mBody, BfSrcPosFlag_NoSetDebugLoc);
+		else if ((methodDef->mDeclaringType != NULL) && (methodDef->mDeclaringType->GetRefNode() != NULL))
+			UpdateSrcPos(methodDef->mDeclaringType->GetRefNode(), BfSrcPosFlag_NoSetDebugLoc);
 		else if (mCurTypeInstance->mTypeDef->mTypeDeclaration != NULL)
 			UpdateSrcPos(mCurTypeInstance->mTypeDef->mTypeDeclaration, BfSrcPosFlag_NoSetDebugLoc);		
 	}
@@ -17956,7 +17964,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		// We want to be able to step into delegate invokes -- we actually step over them
 		if (methodDef->mName != "Invoke")
 		{
-			UpdateSrcPos(typeDef->mTypeDeclaration);
+			UpdateSrcPos(methodDef->mDeclaringType->GetRefNode());
 			mBfIRBuilder->DbgCreateAnnotation(diFunction, "StepOver", GetConstValue32(1));
 		}
 	}
@@ -18133,8 +18141,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					
 		if (methodDef->mBody != NULL)	
 			UpdateSrcPos(methodDef->mBody);	
+		else if ((methodDef->mDeclaringType != NULL) && (methodDef->mDeclaringType->GetRefNode() != NULL))
+			UpdateSrcPos(methodDef->mDeclaringType->GetRefNode());
 		else if (mCurTypeInstance->mTypeDef->mTypeDeclaration != NULL)
-			UpdateSrcPos(mCurTypeInstance->mTypeDef->mTypeDeclaration);			
+			UpdateSrcPos(mCurTypeInstance->mTypeDef->mTypeDeclaration);
 		
 		localIdx = 0;
 		argIdx = 0;

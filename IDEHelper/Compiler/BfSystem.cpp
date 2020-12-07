@@ -2916,15 +2916,18 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 	bool hasCtorNoBody = false;
 	
 	bool primaryHasFieldInitializers = false;
-	bool anyHasFieldInitializers = false;
+	bool anyHasInitializers = false;
 
 	// For methods that require chaining, make sure the primary def has a definition
 	for (auto partialTypeDef : nextRevision->mPartials)
 	{	
 		bool isExtension = partialTypeDef->mTypeDeclaration != nextRevision->mTypeDeclaration;
 
+		bool hasInitializers = false;
 		for (auto methodDef : partialTypeDef->mMethods)
-		{			
+		{
+			if (methodDef->mMethodType == BfMethodType_Init)
+				hasInitializers = true;
 			auto& hasMethods = allHasMethods[isExtension ? 1 : 0][methodDef->mIsStatic ? 1 : 0];
 			if (methodDef->mMethodType == BfMethodType_Ctor)
 			{
@@ -2946,16 +2949,15 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 			}
 		}
 
-		bool hasFieldInitializers = false;
 		for (auto fieldDef : partialTypeDef->mFields)
 		{
 			if ((!fieldDef->mIsStatic) && (fieldDef->mFieldDeclaration->mInitializer != NULL))
-				hasFieldInitializers = true;
+				hasInitializers = true;
 		}
 
-		if (hasFieldInitializers)
+		if (hasInitializers)
 		{
-			anyHasFieldInitializers = true;			
+			anyHasInitializers = true;			
 			if (!isExtension)
 				primaryHasFieldInitializers = true;				
 			nextRevision->mHasCtorNoBody = true;
@@ -2965,7 +2967,7 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 		}
 	}
 
-	if ((anyHasFieldInitializers) && (!primaryHasFieldInitializers))
+	if ((anyHasInitializers) && (!primaryHasFieldInitializers))
 	{
 		nextRevision->mHasCtorNoBody = true;
 		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_CtorNoBody, BfProtection_Protected, false, "");
