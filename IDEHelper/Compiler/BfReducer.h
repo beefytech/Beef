@@ -176,6 +176,7 @@ public:
 	void MoveNode(BfAstNode* srcNode, BfAstNode* newOwner);
 	void ReplaceNode(BfAstNode* prevNode, BfAstNode* newNode);	
 	
+	bool SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeRef, BfTokenNode* tokenNode);
 	BfAstNode* CreateAllocNode(BfTokenNode* newNode);
 	BfAstNode* ReplaceTokenStarter(BfAstNode* astNode, int idx = -1);
 	BfEnumCaseBindExpression* CreateEnumCaseBindExpression(BfTokenNode* bindToken);

@@ -2519,7 +2519,7 @@ void BfModule::SetIllegalExprSrcPos(BfSrcPosFlags flags)
 bool BfModule::CheckProtection(BfProtection protection, BfTypeDef* checkType, bool allowProtected, bool allowPrivate)
 {
 	if ((protection == BfProtection_Public) ||
-		((protection == BfProtection_Protected) && (allowProtected)) ||
+		(((protection == BfProtection_Protected) || (protection == BfProtection_ProtectedInternal)) && (allowProtected)) ||
 		((protection == BfProtection_Private) && (allowPrivate)))
 		return true;
 	if ((mAttributeState != NULL) && (mAttributeState->mCustomAttributes != NULL) && (mAttributeState->mCustomAttributes->Contains(mCompiler->mFriendAttributeTypeDef)))
@@ -2527,7 +2527,7 @@ bool BfModule::CheckProtection(BfProtection protection, BfTypeDef* checkType, bo
 		mAttributeState->mUsed = true;
 		return true;		
 	}
-	if ((protection == BfProtection_Internal) && (checkType != NULL))
+	if (((protection == BfProtection_Internal) || (protection == BfProtection_ProtectedInternal)) && (checkType != NULL))
 	{
 		if (CheckInternalProtection(checkType))
 			return true;
@@ -2571,7 +2571,7 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 	}
 	if ((flags & BfProtectionCheckFlag_AllowPrivate) != 0)
 		return true;
-	if (memberProtection == BfProtection_Protected)		
+	if ((memberProtection == BfProtection_Protected) || (memberProtection == BfProtection_ProtectedInternal))
 	{
 		if ((flags & BfProtectionCheckFlag_CheckedProtected) == 0)
 		{
@@ -2658,7 +2658,7 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 		return true;
 	}
 
-	if ((memberProtection == BfProtection_Internal) && (memberOwner != NULL))
+	if (((memberProtection == BfProtection_Internal) || (memberProtection == BfProtection_ProtectedInternal)) && (memberOwner != NULL))
 	{
 		if (CheckInternalProtection(memberOwner->mTypeDef))
 			return true;		
@@ -7355,7 +7355,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 						canAlloc = true;
 						break;
 					}
-					if (checkMethodDef->mProtection == BfProtection_Protected)
+					if ((checkMethodDef->mProtection == BfProtection_Protected) || (checkMethodDef->mProtection == BfProtection_ProtectedInternal))
 						hadProtected = true;
 					checkMethodDef = checkMethodDef->mNextWithSameName;
 				}
@@ -21838,7 +21838,9 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 	else if (methodDef->mIsVirtual)
 	{
 		if ((methodDef->mProtection == BfProtection_Private) && (virtualToken != NULL))
-			Fail("Virtual or abstract members cannot be private", virtualToken, true);
+			Fail("Virtual or abstract members cannot be 'private'", virtualToken, true);
+		if ((methodDef->mProtection == BfProtection_Internal) && (virtualToken != NULL))
+			Fail("Virtual or abstract members cannot be 'internal'. Consider using the 'protected internal' access specifier.", virtualToken, true);
 	}
 
 	mCompiler->mStats.mMethodDeclarations++;

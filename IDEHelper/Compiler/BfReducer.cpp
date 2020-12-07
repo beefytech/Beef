@@ -6074,12 +6074,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, int depth, BfAstNod
 		(token == BfToken_Private) ||
 		(token == BfToken_Internal))
 	{
-		if (memberDecl->mProtectionSpecifier != NULL)
-		{
-			AddErrorNode(memberDecl->mProtectionSpecifier);
-			Fail("Protection already specified", memberDecl->mProtectionSpecifier);
-		}
-		MEMBER_SET(memberDecl, mProtectionSpecifier, tokenNode);
+		SetProtection(memberDecl, memberDecl->mProtectionSpecifier, tokenNode);		
 		return memberDecl;
 	}
 
@@ -6266,7 +6261,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 
 	while (true)
 	{
-		BfTokenNode* protectionSpecifier = NULL;
+		BfAstNode* protectionSpecifier = NULL;
 		BfAttributeDirective* attributes = NULL;
 		auto child = mVisitorPos.GetNext();
 		if (child == NULL)
@@ -6297,11 +6292,7 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 				(token == BfToken_Public) ||
 				(token == BfToken_Internal))
 			{
-				if (protectionSpecifier != NULL)
-				{
-					Fail("Protection already specified", protectionSpecifier);
-				}
-				protectionSpecifier = tokenNode;
+				SetProtection(NULL, protectionSpecifier, tokenNode);
 				mVisitorPos.MoveNext();
 				child = mVisitorPos.GetCurrent();
 			}
@@ -7382,6 +7373,43 @@ BfScopedInvocationTarget* BfReducer::CreateScopedInvocationTarget(BfAstNode*& ta
 	return scopedInvocationTarget;
 }
 
+bool BfReducer::SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeRef, BfTokenNode* tokenNode)
+{
+	bool failed = false;
+
+	if (protectionNodeRef != NULL)
+	{
+		if (auto prevToken = BfNodeDynCast<BfTokenNode>(protectionNodeRef))
+		{
+			if (((prevToken->mToken == BfToken_Protected) && (tokenNode->mToken == BfToken_Internal)) ||
+				((prevToken->mToken == BfToken_Internal) && (tokenNode->mToken == BfToken_Protected)))
+			{
+				auto tokenPair = mAlloc->Alloc<BfTokenPairNode>();
+				ReplaceNode(protectionNodeRef, tokenPair);
+				MEMBER_SET(tokenPair, mLeft, prevToken);
+				MEMBER_SET(tokenPair, mRight, tokenNode);
+
+				if (tokenPair->mLeft->mSrcStart > tokenPair->mRight->mSrcStart)
+				{
+					BF_SWAP(tokenPair->mLeft, tokenPair->mRight);
+				}
+
+				protectionNodeRef = tokenPair;
+				if (parentNode != NULL)
+					MoveNode(tokenPair, parentNode);
+				return true;
+			}
+		}
+		
+		Fail("Protection already specified", protectionNodeRef);
+	}
+	protectionNodeRef = tokenNode;
+	if (parentNode != NULL)
+		MoveNode(tokenNode, parentNode);
+
+	return !failed;
+}
+
 BfAstNode* BfReducer::CreateAllocNode(BfTokenNode* allocToken)
 {
 	if (allocToken->GetToken() == BfToken_Scope)
@@ -8153,11 +8181,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			(token == BfToken_Private) ||
 			(token == BfToken_Internal))
 		{
-			if (typeDeclaration->mProtectionSpecifier != NULL)
-			{
-				Fail("Protection already specified", tokenNode);
-			}
-			MEMBER_SET(typeDeclaration, mProtectionSpecifier, tokenNode);
+			SetProtection(typeDeclaration, typeDeclaration->mProtectionSpecifier, tokenNode);			
 		}
 
 		if (token == BfToken_Static)

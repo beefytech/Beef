@@ -1090,6 +1090,16 @@ void BfPrinter::Visit(BfTokenNode* tokenNode)
 	}
 }
 
+void BfPrinter::Visit(BfTokenPairNode* tokenPairNode)
+{
+	Visit(tokenPairNode->ToBase());
+
+	VisitChild(tokenPairNode->mLeft);
+	if ((tokenPairNode->mRight != NULL) && (tokenPairNode->mRight->mToken != BfToken_Star))
+		ExpectSpace();
+	VisitChild(tokenPairNode->mRight);
+}
+
 void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 {
 	Visit(literalExpr->ToBase());

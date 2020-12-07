@@ -137,6 +137,7 @@ public:
 
 	virtual void Visit(BfEmptyStatement* emptyStmt) override;	
 	virtual void Visit(BfTokenNode* tokenNode) override;
+	virtual void Visit(BfTokenPairNode* tokenPairNode) override;
 	virtual void Visit(BfLiteralExpression* literalExpr) override;
 	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression) override;
 	virtual void Visit(BfIdentifierNode* identifierNode) override;

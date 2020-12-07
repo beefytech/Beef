@@ -370,23 +370,27 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 	}
 }
 
-BfProtection BfDefBuilder::GetProtection(BfTokenNode* protectionToken)
-{		
-	if (protectionToken == NULL)
+BfProtection BfDefBuilder::GetProtection(BfAstNode* protectionNode)
+{	
+	if (auto tokenPair = BfNodeDynCast<BfTokenPairNode>(protectionNode))
 	{
-		if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
-			return BfProtection_Public;
-		else
-			return BfProtection_Private;
+		return BfProtection_ProtectedInternal;
 	}
-
-	if (protectionToken->GetToken() == BfToken_Public)
-		return BfProtection_Public;	
-	if (protectionToken->GetToken() == BfToken_Protected)
-		return BfProtection_Protected;
-	if (protectionToken->GetToken() == BfToken_Internal)
-		return BfProtection_Internal;
-	return BfProtection_Private;
+	else if (auto protectionToken = BfNodeDynCast<BfTokenNode>(protectionNode))
+	{		
+		if (protectionToken->GetToken() == BfToken_Public)
+			return BfProtection_Public;
+		if (protectionToken->GetToken() == BfToken_Protected)
+			return BfProtection_Protected;
+		if (protectionToken->GetToken() == BfToken_Internal)
+			return BfProtection_Internal;
+		return BfProtection_Private;
+	}
+	
+	if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
+		return BfProtection_Public;
+	else
+		return BfProtection_Private;	
 }
 
 void BfDefBuilder::Visit(BfConstructorDeclaration* ctorDeclaration)

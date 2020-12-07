@@ -55,6 +55,7 @@ enum BfProtection : uint8
 	BfProtection_Private,	
 	BfProtection_Internal,
 	BfProtection_Protected,
+	BfProtection_ProtectedInternal,
 	BfProtection_Public
 };
 
@@ -2271,7 +2272,7 @@ public:
 	BfAttributeDirective* mAttributes;
 	BfTokenNode* mAbstractSpecifier;	
 	BfTokenNode* mSealedSpecifier;	
-	BfTokenNode* mProtectionSpecifier;
+	BfAstNode* mProtectionSpecifier;
 	BfTokenNode* mStaticSpecifier;
 	BfTokenNode* mPartialSpecifier;
 	BfTokenNode* mTypeNode;
@@ -2829,7 +2830,7 @@ public:
 	BF_AST_TYPE(BfMemberDeclaration, BfAstNode);
 
 	BfAttributeDirective* mAttributes;	
-	BfTokenNode* mProtectionSpecifier;
+	BfAstNode* mProtectionSpecifier;
 	BfTokenNode* mStaticSpecifier;	
 	BfTokenNode* mReadOnlySpecifier; // Also stores 'inline'
 };	BF_AST_DECL(BfMemberDeclaration, BfAstNode);
@@ -3035,7 +3036,7 @@ public:
 	BF_AST_TYPE(BfPropertyMethodDeclaration, BfAstNode);
 	BfPropertyDeclaration* mPropertyDeclaration;
 	BfAttributeDirective* mAttributes;
-	BfTokenNode* mProtectionSpecifier;
+	BfAstNode* mProtectionSpecifier;
 	BfTokenNode* mMutSpecifier;	
 	BfIdentifierNode* mNameNode;
 	BfTokenNode* mFatArrowToken;

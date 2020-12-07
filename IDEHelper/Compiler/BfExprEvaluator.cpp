@@ -1228,7 +1228,9 @@ bool BfMethodMatcher::WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInst
 	MatchFailKind matchFailKind = MatchFailKind_None;	
 	if (!mModule->CheckProtection(flags, checkTypeInstance, checkMethod->mDeclaringType->mProject, checkMethod->mProtection, startTypeInstance))
 	{
-		if ((mBypassVirtual) && (checkMethod->mProtection == BfProtection_Protected) && (mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, startTypeInstance)))
+		if ((mBypassVirtual) && 
+			((checkMethod->mProtection == BfProtection_Protected) || (checkMethod->mProtection == BfProtection_ProtectedInternal)) &&
+			(mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, startTypeInstance)))
 		{
 			// Allow explicit 'base' call
 		}
@@ -2217,7 +2219,9 @@ bool BfMethodMatcher::CheckType(BfTypeInstance* typeInstance, BfTypedValue targe
 			MatchFailKind matchFailKind = MatchFailKind_None;
 			if (!mModule->CheckProtection(protectionCheckFlags, curTypeInst, checkMethod->mDeclaringType->mProject, checkMethod->mProtection, typeInstance))
 			{
-				if ((mBypassVirtual) && (checkMethod->mProtection == BfProtection_Protected) && (mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, typeInstance)))
+				if ((mBypassVirtual) && 
+					((checkMethod->mProtection == BfProtection_Protected) || (checkMethod->mProtection == BfProtection_ProtectedInternal)) &&
+					(mModule->TypeIsSubTypeOf(mModule->mCurTypeInstance, typeInstance)))
 				{
 					// Allow explicit 'base' call
 				} 						
@@ -6688,7 +6692,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 				}
 				else
 				{
-					if (checkProt == BfProtection_Protected) // Treat protected constructors as private
+					if ((checkProt == BfProtection_Protected) || (checkProt == BfProtection_ProtectedInternal)) // Treat protected constructors as private
 						checkProt = BfProtection_Private;					
 					if (!mModule->CheckProtection(protectionCheckFlags, curTypeInst, checkMethod->mDeclaringType->mProject, checkProt, curTypeInst))
 						continue;
