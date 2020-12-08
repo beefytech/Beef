@@ -13576,7 +13576,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 			{				
 				// If the root method is generic and we need that param then use that...
 				auto rootMethodInstance = rootMethodState->mMethodInstance;
-				if (checkGenericIdx < rootMethodInstance->mMethodInfoEx->mMethodGenericArguments.size())
+				if ((rootMethodInstance->mMethodInfoEx != NULL) && (checkGenericIdx < rootMethodInstance->mMethodInfoEx->mMethodGenericArguments.size()))
 				{
 					genericArg = rootMethodInstance->mMethodInfoEx->mMethodGenericArguments[checkGenericIdx];
 				}
