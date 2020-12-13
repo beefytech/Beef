@@ -69,6 +69,7 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_AllowNonConst = 0x10000,
 	BfEvalExprFlags_StringInterpolateFormat = 0x20000,
 	BfEvalExprFlags_NoLookupError = 0x40000,
+	BfEvalExprFlags_ConstExpr = 0x80000,
 };
 
 enum BfCastFlags
@@ -1383,7 +1384,7 @@ public:
 	// SpecializedModules contain method specializations with types that come from other projects	
 	Dictionary<Array<BfProject*>, BfModule*> mSpecializedMethodModules;	
 	BfModule* mParentModule;
-	BfModule* mNextAltModule; // Linked
+	BfModule* mNextAltModule; // Linked	
 	BfModuleOptions* mModuleOptions; // Only in altModules		
 	
 	BfSystem* mSystem;
@@ -1442,6 +1443,7 @@ public:
 	bool mWantsIRIgnoreWrites;
 	bool mHasGenericMethods;
 	bool mIsSpecialModule; // vdata, unspecialized, external
+	bool mIsConstModule;
 	bool mIsScratchModule;
 	bool mIsSpecializedMethodModuleRoot;
 	bool mIsModuleMutable; // Set to false after writing module to disk, can be set back to true after doing extension module	
@@ -1472,6 +1474,7 @@ public:
 	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType);
 	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);	
 	void SetFail();
+	bool IsSkippingExtraResolveChecks();
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false);
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
 	BfError* FailAfter(const StringImpl& error, BfAstNode* refNode);	

@@ -828,6 +828,7 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mIsReified = true;
 	mReifyQueued = false;
 	mIsSpecialModule = false;
+	mIsConstModule = false;
 	mIsScratchModule = false;	
 	mIsSpecializedMethodModuleRoot = false; // There may be mNextAltModules extending from this	
 	mHadBuildError = false;
@@ -995,8 +996,12 @@ void BfModule::FinishInit()
 	}
 
 	mHasFullDebugInfo = moduleOptions.mEmitDebugInfo == 1;
+
+	if (mIsConstModule)
+		mHasFullDebugInfo = false;
 	
-	if ((!mCompiler->mIsResolveOnly) && (!mIsScratchModule) && (moduleOptions.mEmitDebugInfo != 0) && (mIsReified))
+	if (((!mCompiler->mIsResolveOnly) && (!mIsScratchModule) && (moduleOptions.mEmitDebugInfo != 0) && (mIsReified)) ||
+		(mIsConstModule))
 	{
 		mBfIRBuilder->DbgInit();
 	}
@@ -2357,7 +2362,7 @@ BfFileInstance* BfModule::GetFileFromNode(BfAstNode* astNode)
 
 		BfLogSysM("GetFileFromNode new file. Mod: %p FileInstance: %p Parser: %p\n", this, bfFileInstance, bfParser);
 
-		if ((mBfIRBuilder != NULL) && (mBfIRBuilder->DbgHasInfo()))
+		if ((mBfIRBuilder != NULL) && (mBfIRBuilder->DbgHasLineInfo()))
 		{
 			String fileName = bfParser->mFileName;
 
@@ -2435,7 +2440,7 @@ void BfModule::UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags, int debugLo
 	}
 
 	//TODO: if we bail on the "mCurMethodState == NULL" case then we don't get it set during type declarations
-	if (((flags & BfSrcPosFlag_NoSetDebugLoc) == 0) && (mBfIRBuilder->DbgHasInfo()) && (mCurMethodState != NULL))
+	if (((flags & BfSrcPosFlag_NoSetDebugLoc) == 0) && (mBfIRBuilder->DbgHasLineInfo()) && (mCurMethodState != NULL))
 	{			
 		int column = mCurFilePosition.mCurColumn + 1;
 		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend))
@@ -2472,6 +2477,9 @@ void BfModule::UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags, int debugLo
 		auto inlineAt = mCurMethodState->mCurScope->mDIInlinedAt;
 		if (mCurMethodState->mCrossingMixin)
 			inlineAt = BfIRMDNode();
+
+		if (!useDIScope)
+			useDIScope = wantDIFile;
 		mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, column, useDIScope, inlineAt);
 		if ((flags & BfSrcPosFlag_Expression) == 0)
 			mBfIRBuilder->CreateStatementStart();
@@ -2684,6 +2692,13 @@ void BfModule::SetFail()
 		if (mAttributeState != NULL)
 			mAttributeState->mFlags = (BfAttributeState::Flags)(mAttributeState->mFlags | BfAttributeState::Flag_HadError);		
 	}	
+}
+
+bool BfModule::IsSkippingExtraResolveChecks()
+{
+	if (mIsConstModule)
+		return false;
+	return mCompiler->IsSkippingExtraResolveChecks();
 }
 
 BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPersistent)
@@ -3488,7 +3503,7 @@ BfModuleOptions BfModule::GetModuleOptions()
 	while (headModule->mParentModule != NULL)
 		headModule = headModule->mParentModule;
 
-	BF_ASSERT((headModule->mOwnedTypeInstances.size() > 0) || (mModuleName == "vdata"));
+	BF_ASSERT((headModule->mOwnedTypeInstances.size() > 0) || (mModuleName == "vdata") || mIsSpecialModule);
 
 	if (headModule->mOwnedTypeInstances.size() > 0)
 	{
@@ -9092,7 +9107,7 @@ bool BfModule::IsOptimized()
 bool BfModule::IsTargetingBeefBackend()
 {
 	if (mProject == NULL)
-		return false;
+		return true;
 	return GetModuleOptions().mOptLevel == BfOptLevel_OgPlus;
 }
 
@@ -9679,7 +9694,7 @@ BfModule* BfModule::GetSpecializedMethodModule(const SizedArrayImpl<BfProject*>&
 
 BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tryExisting, bool isInlined)
 {	
-	if (mCompiler->IsSkippingExtraResolveChecks())
+	if (IsSkippingExtraResolveChecks())
 		return BfIRValue();
 
 	if (methodInstance->mMethodInstanceGroup->mOwner->IsInterface())
@@ -11953,7 +11968,7 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 	if ((mBfIRBuilder->mIgnoreWrites) || ((flags & BfGetMethodInstanceFlag_Unreified) != 0))
 		return BfModuleMethodInstance(methodInstance, mBfIRBuilder->GetFakeVal());
 
-	if (mCompiler->IsSkippingExtraResolveChecks())
+	if (IsSkippingExtraResolveChecks())
 		return BfModuleMethodInstance(methodInstance, BfIRFunction());
 
 	if (methodInstance->mMethodDef->mMethodType == BfMethodType_Mixin)
@@ -12668,7 +12683,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			}
 		}
 
-		if (mCompiler->IsSkippingExtraResolveChecks())
+		if (IsSkippingExtraResolveChecks())
 			return BfModuleMethodInstance(methodInstance, BfIRFunction());
 		else
 		{
@@ -12892,7 +12907,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		ProcessMethod(methodInstance);
 	}
 
-	if (mCompiler->IsSkippingExtraResolveChecks())	
+	if (IsSkippingExtraResolveChecks())	
 		return BfModuleMethodInstance(methodInstance, BfIRFunction());
 
 	if (methodInstance->mDeclModule != this)
@@ -15089,13 +15104,13 @@ void BfModule::EmitDtorBody()
 				if (checkBaseType->mTypeDef->mDtorDef != NULL)
 				{
 					auto dtorMethodInstance = GetMethodInstance(checkBaseType, checkBaseType->mTypeDef->mDtorDef, BfTypeVector());
-					if (mCompiler->IsSkippingExtraResolveChecks())
+					if (IsSkippingExtraResolveChecks())
 					{
 						// Nothing
 					}
 					else if (dtorMethodInstance.mMethodInstance->GetParamCount() == 0)
 					{
-						if ((!mCompiler->IsSkippingExtraResolveChecks()) && (!checkBaseType->IsUnspecializedType()))
+						if ((!IsSkippingExtraResolveChecks()) && (!checkBaseType->IsUnspecializedType()))
 						{
 							auto basePtr = mBfIRBuilder->CreateBitCast(mCurMethodState->mLocals[0]->mValue, mBfIRBuilder->MapTypeInstPtr(checkBaseType));
 							SizedArray<BfIRValue, 1> vals = { basePtr };
@@ -17932,6 +17947,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				BfIRMDNode(), flags, IsOptimized(), llvmFunction, genericArgs, genericConstValueArgs);
 
 		}
+		else
+		{
+			methodState.mDIFile = mCurFilePosition.mFileInstance->mDIFile;
+		}
 	}
 	
 	//////////////////////////////////////////////////////////////////////////
@@ -20351,7 +20370,8 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 				if (!mCurMethodInstance->mIRFunction)
 				{
 					BfLogSysM("Function collision from inner override erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
-					mBfIRBuilder->Func_SafeRename(prevFunc);
+					if (!mIsConstModule)
+						mBfIRBuilder->Func_SafeRename(prevFunc);
 				}
 			}
 			else if (methodDef->mIsExtern)
@@ -20374,7 +20394,8 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 			else
 			{
 				BfLogSysM("Function collision erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
-				mBfIRBuilder->Func_SafeRename(prevFunc);
+				if (!mIsConstModule)
+					mBfIRBuilder->Func_SafeRename(prevFunc);
 			}
 		}
 	}

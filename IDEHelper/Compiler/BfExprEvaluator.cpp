@@ -19,6 +19,7 @@
 #include "BfDeferEvalChecker.h"
 #include "BfVarDeclChecker.h"
 #include "BfFixits.h"
+#include "CeMachine.h"
 
 #pragma warning(pop)
 #pragma warning(disable:4996)
@@ -4981,6 +4982,20 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		return result;
 	}
 
+	if (mModule->mCompiler->mCEMachine != NULL)
+	{
+		if (mModule->mIsConstModule)
+		{
+			mModule->mCompiler->mCEMachine->QueueMethod(methodInstance);
+		}
+		else if ((mBfEvalExprFlags & BfEvalExprFlags_ConstExpr) != 0)
+		{
+			auto constRet = mModule->mCompiler->mCEMachine->Call(mModule, methodInstance, irArgs, CeEvalFlags_None);
+			if (constRet)
+				return constRet;
+		}
+	}
+
 	if (((!func) && (methodInstance->mIsUnspecialized)) || (mModule->mBfIRBuilder->mIgnoreWrites))
 	{
 		// We don't actually submit method calls for unspecialized methods
@@ -5182,7 +5197,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	
 	if (returnType->IsComposite())
 		mModule->mBfIRBuilder->PopulateType(returnType);
-	
+		
 	BfIRValue callInst;
 	int callIRArgCount = (int)irArgs.size();
 	if (sret != NULL)
@@ -5205,6 +5220,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 	else
 	{
 		callInst = mModule->mBfIRBuilder->CreateCall(funcCallInst, irArgs);
+		
 		if ((hasResult) && (!methodDef->mName.IsEmpty()) && (!methodInstance->mIsIntrinsic))
 			mModule->mBfIRBuilder->SetName(callInst, methodDef->mName);
 	}
@@ -11896,7 +11912,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			mModule->mCompiler->mResolvePassData->mGetSymbolReferenceKind = prevSymbolRefKind;
 	}
 	mModule->mBfIRBuilder->RestoreDebugLocation();
-	if (mModule->mCompiler->IsSkippingExtraResolveChecks())
+	if (mModule->IsSkippingExtraResolveChecks())
 		closureFunc = BfIRFunction();
 
 	BfIRFunction dtorFunc;
@@ -11937,7 +11953,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 // 			mModule->ProcessMethod(dtorMethodInstance);
 		}
 		mModule->mBfIRBuilder->RestoreDebugLocation();
-		if (mModule->mCompiler->IsSkippingExtraResolveChecks())
+		if (mModule->IsSkippingExtraResolveChecks())
 			dtorFunc = BfIRFunction();
 		
 		if (dtorMethodInstance->mIsReified)
@@ -13699,7 +13715,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 	{		
 		methodInstance = mModule->GetMethodInstance(curTypeInst, methodDef, resolvedGenericArguments, flags, foreignType);
 	}
-	if (mModule->mCompiler->IsSkippingExtraResolveChecks())
+	if (mModule->IsSkippingExtraResolveChecks())
 	{
 		//BF_ASSERT(methodInstance.mFunc == NULL);
 	}

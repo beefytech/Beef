@@ -208,6 +208,9 @@
     <ClCompile Include="Compiler\BfNamespaceVisitor.cpp">
       <Filter>Debugger</Filter>
     </ClCompile>
+    <ClCompile Include="Compiler\CeMachine.cpp">
+      <Filter>Compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Compiler\BfAst.h">
@@ -393,5 +396,8 @@
       <Filter>Compiler</Filter>
     </ClInclude>
     <ClInclude Include="Compiler\BfNamespaceVisitor.h" />
+    <ClInclude Include="Compiler\CeMachine.h">
+      <Filter>Compiler</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

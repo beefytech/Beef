@@ -3950,7 +3950,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 			if (!mCompiler->IsAutocomplete())
 				AssertErrorState();
 		}
-		else if (!mCompiler->IsSkippingExtraResolveChecks())
+		else if (!IsSkippingExtraResolveChecks())
 		{
 			BfMethodInstance* methodInstance = objectType->mVirtualMethodTable[mCompiler->GetVTableMethodOffset() + 0].mImplementingMethod;
 			BF_ASSERT(methodInstance->mMethodDef->mName == "~this");
@@ -5998,7 +5998,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 				SizedArray<BfIRValue, 1> args;
 				auto castedTarget = Cast(forEachStmt->mCollectionExpression, target, getEnumeratorMethod.mMethodInstance->GetOwner());
 				exprEvaluator.PushThis(forEachStmt->mCollectionExpression, castedTarget, getEnumeratorMethod.mMethodInstance, args);
-				itr = exprEvaluator.CreateCall(getEnumeratorMethod.mMethodInstance, mCompiler->IsSkippingExtraResolveChecks() ? BfIRValue() : getEnumeratorMethod.mFunc, false, args);
+				itr = exprEvaluator.CreateCall(getEnumeratorMethod.mMethodInstance, IsSkippingExtraResolveChecks() ? BfIRValue() : getEnumeratorMethod.mFunc, false, args);
 			}
 		}
 

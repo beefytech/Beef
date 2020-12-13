@@ -29,6 +29,7 @@
 #include "BeefySysLib/util/BeefPerf.h"
 #include "../LLVMUtils.h"
 #include "BfNamespaceVisitor.h"
+#include "CeMachine.h"
 
 #pragma warning(pop)
 
@@ -357,7 +358,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	//mMaxInterfaceSlots = 16;
 	mMaxInterfaceSlots = -1;
 	mInterfaceSlotCountChanged = false;
-
+	
 	mHSPreserveIdx = 0;
 	mCompileLogFP = NULL;
 	mWantsDeferMethodDecls = false;	
@@ -443,6 +444,10 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mReflectAttributeTypeDef = NULL;
 
 	mLastAutocompleteModule = NULL;
+
+	//if (isResolveOnly)
+	//mCEMachine = NULL;
+	mCEMachine = new CeMachine(this);
 }
 
 BfCompiler::~BfCompiler()
@@ -451,6 +456,7 @@ BfCompiler::~BfCompiler()
 	delete mHotData;
 	delete mHotState;	
 	delete mHotResolveData;
+	delete mCEMachine;
 }
 
 bool BfCompiler::IsTypeAccessible(BfType* checkType, BfProject* curProject)
@@ -6410,6 +6416,9 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		mContext->mUnreifiedModule->mIsReified = true;
 	else
 		mContext->mUnreifiedModule->mIsReified = false;
+
+	if (mCEMachine != NULL)
+		mCEMachine->CompileStarted();
 
 	if (mOptions.mAllowHotSwapping)
 	{

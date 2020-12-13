@@ -11031,7 +11031,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 						SizedArray<BfIRValue, 1> args;
 						exprEvaluator.PushArg(castedFromValue, args);
-						operatorOut = exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, mCompiler->IsSkippingExtraResolveChecks() ? BfIRValue() : moduleMethodInstance.mFunc, false, args);
+						operatorOut = exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, IsSkippingExtraResolveChecks() ? BfIRValue() : moduleMethodInstance.mFunc, false, args);
 						if ((operatorOut.mType != NULL) && (operatorOut.mType->IsSelf()))
 						{
 							BF_ASSERT(IsInGeneric());

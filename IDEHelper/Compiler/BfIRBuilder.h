@@ -920,6 +920,7 @@ public:
 	BfIRBlock mInsertBlock;
 	bool mHasDebugLoc;
 	bool mHasDebugInfo;
+	bool mHasDebugLineInfo;
 	Dictionary<BfMethodInstance*, BfIRFunctionType> mMethodTypeMap;
 	Dictionary<String, BfIRFunction> mFunctionMap;
 	Dictionary<BfType*, BfIRPopulateType> mTypeMap;
@@ -1243,6 +1244,7 @@ public:
 	void DbgInit();
 	void DbgFinalize();	
 	bool DbgHasInfo();
+	bool DbgHasLineInfo();
 	String DbgGetStaticFieldName(BfFieldInstance* fieldInstance);
 	void DbgAddPrefix(String& name);
 	BfIRMDNode DbgCreateCompileUnit(int lang, const StringImpl& filename, const StringImpl& directory, const StringImpl& producer, bool isOptimized, 

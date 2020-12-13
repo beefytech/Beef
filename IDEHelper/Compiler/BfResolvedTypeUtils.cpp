@@ -6,6 +6,7 @@
 #include "BfMangler.h"
 #include "BfConstResolver.h"
 #include "BfModule.h"
+#include "CeMachine.h"
 #include "BeefySysLib/util/BeefPerf.h"
 
 #pragma warning(disable:4996)
@@ -533,9 +534,9 @@ BfMethodInfoEx::~BfMethodInfoEx()
 }
 
 BfMethodInstance::~BfMethodInstance()
-{	
+{		
 	if (mHasMethodRefType)
-	{		
+	{				
 		auto module = GetOwner()->mModule;
 		if (!module->mContext->mDeleting)
 		{
@@ -554,9 +555,15 @@ BfMethodInstance::~BfMethodInstance()
 	{		
 		mHotMethod->mFlags = (BfHotDepDataFlags)(mHotMethod->mFlags & ~BfHotDepDataFlag_IsBound);
 		mHotMethod->Deref();
-	}
+	}	
 
 	delete mMethodInfoEx;
+
+	if (mInCEMachine)
+	{
+		auto module = GetOwner()->mModule;
+		module->mCompiler->mCEMachine->RemoveMethod(this);
+	}
 }
 
 BfImportKind BfMethodInstance::GetImportKind()

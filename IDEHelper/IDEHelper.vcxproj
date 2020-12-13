@@ -331,6 +331,7 @@
     <ClCompile Include="Compiler\BfTargetTriple.cpp" />
     <ClCompile Include="Compiler\BfUtil.cpp" />
     <ClCompile Include="Compiler\BfVarDeclChecker.cpp" />
+    <ClCompile Include="Compiler\CeMachine.cpp" />
     <ClCompile Include="Compiler\MemReporter.cpp" />
     <ClCompile Include="DbgMiniDump.cpp" />
     <ClCompile Include="Debugger.cpp" />
@@ -398,6 +399,7 @@
     <ClInclude Include="Compiler\BfCompiler.h" />
     <ClInclude Include="Compiler\BfUtil.h" />
     <ClInclude Include="Compiler\BfVarDeclChecker.h" />
+    <ClInclude Include="Compiler\CeMachine.h" />
     <ClInclude Include="Compiler\MemReporter.h" />
     <ClInclude Include="DbgMiniDump.h" />
     <ClInclude Include="Debugger.h" />

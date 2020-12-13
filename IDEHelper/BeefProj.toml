@@ -49,8 +49,6 @@ BuildCommandsOnRun = "IfFilesChanged"
 BuildCommandsOnCompile = "IfFilesChanged"
 BuildCommandsOnRun = "IfFilesChanged"
 
-[ProjectFolder]
-
 [[ProjectFolder.Items]]
 Type = "Folder"
 Name = "Backend"
@@ -350,6 +348,14 @@ Path = "Compiler/BfUtil.cpp"
 [[ProjectFolder.Items.Items]]
 Type = "Source"
 Path = "Compiler/BfUtil.h"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/CeMachine.cpp"
+
+[[ProjectFolder.Items.Items]]
+Type = "Source"
+Path = "Compiler/CeMachine.h"
 
 [[ProjectFolder.Items]]
 Type = "Folder"

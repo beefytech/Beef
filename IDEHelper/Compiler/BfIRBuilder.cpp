@@ -1175,6 +1175,7 @@ BfIRBuilder::BfIRBuilder(BfModule* module) : BfIRConstHolder(module)
 	mModule = module;
 	mHasDebugLoc = false;
 	mHasDebugInfo = false;
+	mHasDebugLineInfo = false;
 	mIRCodeGen = NULL;
 #ifdef BF_PLATFORM_WINDOWS	
 	mBeIRCodeGen = NULL;
@@ -4895,6 +4896,7 @@ void BfIRBuilder::CreateObjectAccessCheck(BfIRValue value, bool useAsm)
 void BfIRBuilder::DbgInit()
 {
 	mHasDebugInfo = true;
+	mHasDebugLineInfo = true;
 	WriteCmd(BfIRCmd_DbgInit);	
 	NEW_CMD_INSERTED;
 }
@@ -4918,6 +4920,11 @@ void BfIRBuilder::DbgFinalize()
 bool BfIRBuilder::DbgHasInfo()
 {
 	return mHasDebugInfo;	
+}
+
+bool BfIRBuilder::DbgHasLineInfo()
+{
+	return mHasDebugLineInfo;
 }
 
 String BfIRBuilder::DbgGetStaticFieldName(BfFieldInstance* fieldInstance)

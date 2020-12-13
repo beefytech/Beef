@@ -817,6 +817,7 @@ public:
 	bool mHasMethodRefType:1;
 	bool mDisallowCalling:1;		
 	bool mIsInnerOverride:1;
+	bool mInCEMachine:1;
 	BfMethodChainType mChainType;
 	BfCallingConvention mCallingConvention;
 	BfMethodInstanceGroup* mMethodInstanceGroup;
@@ -853,6 +854,7 @@ public:
 		mHasMethodRefType = false;
 		mDisallowCalling = false;
 		mIsInnerOverride = false;
+		mInCEMachine = false;
 		mChainType = BfMethodChainType_None;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mMethodInstanceGroup = NULL;

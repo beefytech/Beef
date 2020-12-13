@@ -41,6 +41,7 @@ class BfAutoComplete;
 class BfMethodInstance;
 class BfSourceClassifier;
 class BfResolvePassData;
+class CeMachine;
 
 enum BfCompileOnDemandKind
 {
@@ -171,9 +172,9 @@ public:
 			mUseDebugBackingParams = true;
 			mAllocStackCount = 1;
 
-			mExtraResolveChecks = false;			
+			mExtraResolveChecks = false;
 #ifdef _DEBUG
-			//mExtraResolveChecks = true;
+			mExtraResolveChecks = false;
 #endif
 			mMaxSplatRegs = 4;
 		}
@@ -310,6 +311,7 @@ public:
 	BfPassInstance* mPassInstance;	
 	FILE* mCompileLogFP;
 
+	CeMachine* mCEMachine;
 	BfSystem* mSystem;	
 	bool mIsResolveOnly;
 	BfResolvePassData* mResolvePassData;
