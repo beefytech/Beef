@@ -459,7 +459,7 @@ protected:
 	void EnsureFree(intptr freeCount)
 	{
 		if (this->mSize + freeCount > this->mAllocSize)
-			SetBufferSize(std::max(this->mAllocSize + this->mAllocSize / 2 + 1, this->mSize + freeCount));
+			SetBufferSize(BF_MAX(this->mAllocSize + this->mAllocSize / 2 + 1, this->mSize + freeCount));
 	}
 
 public:
@@ -770,7 +770,7 @@ protected:
 	void EnsureFree(intptr freeCount)
 	{
 		if (this->mSize + freeCount > this->mAllocSize)
-			SetBufferSize(std::max(this->mAllocSize + this->mAllocSize / 2 + 1, this->mSize + freeCount));
+			SetBufferSize(BF_MAX(this->mAllocSize + this->mAllocSize / 2 + 1, this->mSize + freeCount));
 	}
 
 public:
@@ -1054,6 +1054,16 @@ public:
 			SetBufferSize(this->mAllocSize + this->mAllocSize / 2 + 1);
 		this->mVals[this->mSize++] = val;
 	}		
+
+	T* GrowUninitialized(int addSize)
+	{
+		if (this->mSize + addSize > this->mAllocSize)
+			EnsureFree(addSize);
+		this->mSize += (int_cosize)addSize;
+		if (addSize == 0)
+			return NULL;
+		return &this->mVals[this->mSize - addSize];
+	}
 };
 
 template <typename T, typename TAlloc = AllocatorCLib<T> >
