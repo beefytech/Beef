@@ -4801,7 +4801,7 @@ void BfExprEvaluator::PerformCallChecks(BfMethodInstance* methodInstance, BfAstN
 		mModule->CheckErrorAttributes(methodInstance->GetOwner(), methodInstance, customAttributes, targetSrc);	
 }
 
-BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret, bool isTailCall)
+BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance* methodInstance, BfIRValue func, bool bypassVirtual, SizedArrayImpl<BfIRValue>& irArgs, BfTypedValue* sret, bool isTailCall)
 {
 // 	static int sCallIdx = 0;
 // 	if (!mModule->mCompiler->mIsResolveOnly)
@@ -4990,7 +4990,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodInstance* methodInstance, BfIRV
 		}
 		else if ((mBfEvalExprFlags & BfEvalExprFlags_ConstExpr) != 0)
 		{
-			auto constRet = mModule->mCompiler->mCEMachine->Call(mModule, methodInstance, irArgs, CeEvalFlags_None);
+			auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, CeEvalFlags_None);
 			if (constRet)
 				return constRet;
 		}
@@ -6632,7 +6632,7 @@ SplatArgs(lookupVal, irArgs);
 	}
 
 	auto func = moduleMethodInstance.mFunc;	
-	BfTypedValue result = CreateCall(methodInstance, func, bypassVirtual, irArgs);	
+	BfTypedValue result = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs);	
 	if ((result.mType != NULL) && (result.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))		
 		mModule->Fail("Method return type reference failed to resolve", targetSrc);
 	return result;
@@ -9144,7 +9144,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 				exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, NULL);
 
 				if (addFunctionBindResult.mMethodInstance != NULL)
-					CreateCall(addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, addFunctionBindResult.mIRArgs);
+					CreateCall(initExpr, addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, addFunctionBindResult.mIRArgs);
 
 				isFirstAdd = false;
 			}
@@ -9162,7 +9162,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 					PushArg(argValue, irArgs);
 					for (int argIdx = (int)irArgs.size(); argIdx < (int)addFunctionBindResult.mIRArgs.size(); argIdx++)
 						irArgs.Add(addFunctionBindResult.mIRArgs[argIdx]);
-					CreateCall(addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, irArgs);
+					CreateCall(initExpr, addFunctionBindResult.mMethodInstance, addFunctionBindResult.mFunc, true, irArgs);
 				}
 			}
 
@@ -13100,7 +13100,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			{
 				BF_ASSERT(calcAppendMethodModule.mFunc);
 								
-				appendSizeTypedValue = CreateCall(calcAppendMethodModule.mMethodInstance, calcAppendMethodModule.mFunc, false, irArgs);
+				appendSizeTypedValue = CreateCall(objCreateExpr, calcAppendMethodModule.mMethodInstance, calcAppendMethodModule.mFunc, false, irArgs);
 				BF_ASSERT(appendSizeTypedValue.mType == mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 			}
 			appendSizeValue = appendSizeTypedValue.mValue;
@@ -13187,7 +13187,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 					{
 						SizedArray<BfIRValue, 1> irArgs;
 						irArgs.push_back(mResult.mValue);
-						CreateCall(ctorClear.mMethodInstance, ctorClear.mFunc, false, irArgs);
+						CreateCall(objCreateExpr, ctorClear.mMethodInstance, ctorClear.mFunc, false, irArgs);
 					}
 				}
 
@@ -13255,7 +13255,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			}
 			if (!typeInstance->IsValuelessType())
 				bindResult.mIRArgs.Insert(0, mResult.mValue);
-			CreateCall(bindResult.mMethodInstance, bindResult.mFunc, false, bindResult.mIRArgs);
+			CreateCall(objCreateExpr, bindResult.mMethodInstance, bindResult.mFunc, false, bindResult.mIRArgs);
 		}
 	}
 }
@@ -15870,7 +15870,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 					}
 				}
 				else
-					mResult = CreateCall(methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
+					mResult = CreateCall(mPropSrc, methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
 				if (mResult.mType != NULL)
 				{
 					if ((mResult.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))
@@ -16794,7 +16794,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			PushArg(convVal, args);
 
 			if (methodInstance)
-				CreateCall(methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
+				CreateCall(assignExpr, methodInstance.mMethodInstance, methodInstance.mFunc, mPropDefBypassVirtual, args);
 	
 			mPropDef = NULL;
 			mResult = convVal;
@@ -16868,7 +16868,7 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 					SizedArray<BfIRValue, 1> args;
 					exprEvaluator.PushThis(assignExpr->mLeft, leftValue, moduleMethodInstance.mMethodInstance, args);
 					exprEvaluator.PushArg(rightValue, args);
-					exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, args);
+					exprEvaluator.CreateCall(assignExpr, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, args);
 					convVal = leftValue;
 					handled = true;
 					break;
@@ -19068,7 +19068,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 		}
 
 		PushArg(writeToProp, args);
-		CreateCall(methodInstance.mMethodInstance, methodInstance.mFunc, false, args);
+		CreateCall(opToken, methodInstance.mMethodInstance, methodInstance.mFunc, false, args);
 	}
 }
 

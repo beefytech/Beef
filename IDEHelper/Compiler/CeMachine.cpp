@@ -16,6 +16,13 @@ struct CeOpInfo
 	CeOperandInfoKind mOperandC;
 };
 
+#define CEOPINFO_SIZED_1(OPNAME, OPINFOA) \
+	{OPNAME##"_8", OPINFOA}, \
+	{OPNAME##"_16", OPINFOA}, \
+	{OPNAME##"_32", OPINFOA}, \
+	{OPNAME##"_64", OPINFOA}, \
+	{OPNAME##"_X", OPINFOA, CEOI_IMM32}
+
 #define CEOPINFO_SIZED_2(OPNAME, OPINFOA, OPINFOB) \
 	{OPNAME##"_8", OPINFOA, OPINFOB}, \
 	{OPNAME##"_16", OPINFOA, OPINFOB}, \
@@ -43,6 +50,11 @@ struct CeOpInfo
 	{OPNAME##"_I64", OPINFOA, OPINFOB}, \
 	{OPNAME##"_F32", OPINFOA, OPINFOB}, \
 	{OPNAME##"_F64", OPINFOA, OPINFOB}
+#define CEOPINFO_SIZED_NUMERIC_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
+	{OPNAME##"_I8", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME##"_I16", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME##"_I32", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME##"_I64", OPINFOA, OPINFOB, OPINFOC}
 #define CEOPINFO_SIZED_NUMERIC_PLUSF_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
 	{OPNAME##"_I8", OPINFOA, OPINFOB, OPINFOC}, \
 	{OPNAME##"_I16", OPINFOA, OPINFOB, OPINFOC}, \
@@ -60,6 +72,7 @@ static CeOpInfo gOpInfo[] =
 	{"JmpIfNot", CEOI_None, CEOI_JMPREL, CEOI_FrameRef},
 	{"FrameAddr32", CEOI_FrameRef, CEOI_FrameRef},
 	{"FrameAddr64", CEOI_FrameRef, CEOI_FrameRef},
+	{"Zero",  CEOI_FrameRef, CEOI_IMM32},
 		
 	{"Const_8", CEOI_FrameRef, CEOI_IMM8},
 	{"Const_16", CEOI_FrameRef, CEOI_IMM16},
@@ -71,15 +84,33 @@ static CeOpInfo gOpInfo[] =
 	CEOPINFO_SIZED_3("Store", CEOI_None, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_3("Move", CEOI_None, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_2("Push", CEOI_None, CEOI_FrameRef),
+	CEOPINFO_SIZED_1("Pop", CEOI_FrameRef),
 
 	{"AdjustSP", CEOI_None, CEOI_FrameRef},
 	{"Call", CEOI_None, CEOI_IMM32},
 
 	{"Conv_I32_I64", CEOI_FrameRef, CEOI_FrameRef},
 
+	{"AddConst_I8", CEOI_FrameRef, CEOI_IMM8},
+	{"AddConst_I16", CEOI_FrameRef, CEOI_IMM16},
+	{"AddConst_I32", CEOI_FrameRef, CEOI_IMM32},
+	{"AddConst_I64", CEOI_FrameRef, CEOI_IMM64},
+	{"AddConst_F32", CEOI_FrameRef, CEOI_IMMF32},
+	{"AddConst_F64", CEOI_FrameRef, CEOI_IMMF64},
+
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Add", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Sub", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Mul", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3("SDiv", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_3("UDiv", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3("SMod", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_3("UMod", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_EQ", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_SLT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_3("Cmp_ULT", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Cmp_SLE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
+	CEOPINFO_SIZED_NUMERIC_3("Cmp_ULE", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	//{"Cmp_SLT_I32", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef},
 
 	CEOPINFO_SIZED_NUMERIC_PLUSF_2("Neg", CEOI_FrameRef, CEOI_FrameRef),
@@ -441,18 +472,18 @@ void CeBuilder::EmitSizedOp(CeOp baseOp, const CeOperand& operand, CeOperand* ou
 	
 	Emit(op);
 
-	if (outResult != NULL)
-	{
-		*outResult = FrameAlloc(operand.mType);
-		EmitFrameOffset(*outResult);
-	}
-
 	if (!isStdSize)
 	{
 		if (!allowNonStdSize)
 			Fail("Invalid operand size");
 		Emit((int32)operand.mType->mSize);
 	}
+
+	if (outResult != NULL)
+	{
+		*outResult = FrameAlloc(operand.mType);
+		EmitFrameOffset(*outResult);
+	}	
 
 	EmitFrameOffset(operand);		
 }
@@ -468,7 +499,7 @@ CeOperand CeBuilder::FrameAlloc(BeType* type)
 	return result;
 }
 
-CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca)
+CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImmediate)
 {
 	if (value == NULL)
 		return CeOperand();
@@ -530,11 +561,20 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca)
 			CeOperand mcOperand;
 			switch (constant->mType->mTypeCode)
 			{
-			case BeTypeCode_Boolean:
 			case BeTypeCode_Int8:
 			case BeTypeCode_Int16:
 			case BeTypeCode_Int32:
-			case BeTypeCode_Int64:			
+			case BeTypeCode_Int64:
+				if (allowImmediate)
+				{
+					CeOperand result;
+					result.mKind = CeOperandKind_Immediate;
+					result.mImmediate = constant->mInt32;
+					result.mType = constant->mType;
+					return result;
+				}
+
+			case BeTypeCode_Boolean:			
 			case BeTypeCode_Double:
 				dataPtr = &constant->mUInt64;
 				dataSize = constant->mType->mSize;
@@ -572,17 +612,25 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca)
 				}
 			}
 			break;
-// 			case BeTypeCode_Struct:
-// 			case BeTypeCode_SizedArray:
-// 			case BeTypeCode_Vector:
-// 				mcOperand.mImmediate = constant->mInt64;
-// 				mcOperand.mKind = CeOperandKind_Immediate_i64;
-// 				break;
+ 			case BeTypeCode_Struct:
+ 			case BeTypeCode_SizedArray:
+ 			case BeTypeCode_Vector:
+				{
+					auto beType = constant->mType;
+					auto result = FrameAlloc(beType);
+					Emit(CeOp_Zero);
+					EmitFrameOffset(result);
+					Emit((int32)beType->mSize);
+					return result;
+				}
+ 				//mcOperand.mImmediate = constant->mInt64;
+ 				//mcOperand.mKind = CeOperandKind_Immediate_i64;
+ 				break;
 // 			default:
 // 				Fail("Unhandled constant type");
 			}
 
-			if (dataPtr != NULL)
+			if (dataSize != 0)
 			{
 				auto beType = constant->mType;
 				auto result = FrameAlloc(beType);
@@ -592,7 +640,13 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca)
 				EmitFrameOffset(result);
 				if (sizeClass == CeSizeClass_X)						
 					Emit((int32)dataSize);
-				Emit(dataPtr, dataSize);				
+				if (dataPtr != 0)
+					Emit(dataPtr, dataSize);				
+				else
+				{
+					for (int i = 0; i < dataSize; i++)
+						Emit((uint8)0);
+				}
 
 				return result;
 			}						
@@ -952,6 +1006,7 @@ void CeBuilder::Build()
 	dupMethodInstance.mMethodProcessRequest = NULL;
 	dupMethodInstance.mIsReified = true;
 	dupMethodInstance.mHotMethod = NULL;
+	dupMethodInstance.mInCEMachine = false; // Only have the original one
 
 	mCeMachine->mCeModule->ProcessMethod(&dupMethodInstance, true);
 
@@ -1147,6 +1202,24 @@ void CeBuilder::Build()
 					case BeBinaryOpKind_Add:
 						EmitBinaryOp(CeOp_Add_I8, CeOp_Add_F32, ceLHS, ceRHS, result);
 						break;
+					case BeBinaryOpKind_Subtract:
+						EmitBinaryOp(CeOp_Sub_I8, CeOp_Sub_F32, ceLHS, ceRHS, result);
+						break;
+					case BeBinaryOpKind_Multiply:
+						EmitBinaryOp(CeOp_Mul_I8, CeOp_Mul_F32, ceLHS, ceRHS, result);
+						break;
+					case BeBinaryOpKind_SDivide:
+						EmitBinaryOp(CeOp_SDiv_I8, CeOp_SDiv_F32, ceLHS, ceRHS, result);
+						break;
+					case BeBinaryOpKind_UDivide:
+						EmitBinaryOp(CeOp_UDiv_I8, CeOp_InvalidOp, ceLHS, ceRHS, result);
+						break;
+					case BeBinaryOpKind_SModulus:
+						EmitBinaryOp(CeOp_SMod_I8, CeOp_SMod_F32, ceLHS, ceRHS, result);
+						break;
+					case BeBinaryOpKind_UModulus:
+						EmitBinaryOp(CeOp_UMod_I8, CeOp_InvalidOp, ceLHS, ceRHS, result);
+						break;
 					default:
 						Fail("Invalid binary op");
 					}
@@ -1274,6 +1347,16 @@ void CeBuilder::Build()
 						iOp = CeOp_Cmp_SLT_I8;
 						fOp = CeOp_Cmp_SLT_F32;
 						break;
+					case BeCmpKind_ULT:
+						iOp = CeOp_Cmp_ULT_I8;
+						break;
+					case BeCmpKind_SLE:
+						iOp = CeOp_Cmp_SLE_I8;
+						fOp = CeOp_Cmp_SLE_F32;
+						break;
+					case BeCmpKind_ULE:
+						iOp = CeOp_Cmp_ULE_I8;
+						break;
 					}
 
 					if (iOp == CeOp_InvalidOp)
@@ -1297,6 +1380,128 @@ void CeBuilder::Build()
 // 					result.mCmpResultIdx = cmpResultIdx;
 // 
 // 					mcInst->mResult = result;
+				}
+				break;
+			case BeGEPInst::TypeId:
+				{
+					auto castedInst = (BeGEPInst*)inst;
+
+					auto mcVal = GetOperand(castedInst->mPtr);
+					auto mcIdx0 = GetOperand(castedInst->mIdx0, false, true);
+
+					BePointerType* ptrType = (BePointerType*)mcVal.mType;
+					BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
+
+					result = mcVal;
+					if (castedInst->mIdx1 != NULL)
+					{
+						// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
+						BF_ASSERT(castedInst->mIdx0);
+
+						auto mcIdx1 = GetOperand(castedInst->mIdx1);
+						if (!mcIdx1.IsImmediate())
+						{
+							// This path is used when we have a const array that gets indexed by a non-const index value
+// 							if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
+// 							{
+// 								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
+// 
+// 								auto elementPtrType = mModule->mContext->GetPointerTo(arrayType->mElementType);
+// 
+// 								auto ptrValue = AllocVirtualReg(elementPtrType);
+// 								auto ptrInfo = GetVRegInfo(ptrValue);
+// 								ptrInfo->mIsExpr = true;
+// 								ptrInfo->mRelTo = result;
+// 								CreateDefineVReg(ptrValue);
+// 								result = ptrValue;
+// 
+// 								BeMCOperand mcRelOffset;
+// 								int relScale = 1;
+// 								if (mcIdx1.IsImmediate())
+// 								{
+// 									mcRelOffset = BeMCOperand::FromImmediate(mcIdx1.mImmediate * arrayType->mElementType->mSize);
+// 								}
+// 								else
+// 								{
+// 									mcRelOffset = mcIdx1;
+// 									relScale = arrayType->mElementType->mSize;
+// 								}
+// 
+// 								result = AllocRelativeVirtualReg(elementPtrType, result, mcRelOffset, relScale);
+// 								// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+// 								CreateDefineVReg(result);
+// 								//TODO: Always correct?
+// 								result.mKind = BeMCOperandKind_VReg;
+// 
+// 							}
+// 							else
+// 								SoftFail("Invalid GEP", inst->mDbgLoc);
+							Fail("Invalid GEP");
+						}
+						else
+						{
+							BF_ASSERT(mcIdx1.IsImmediate());
+							int byteOffset = 0;
+							BeType* elementType = NULL;
+							if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
+							{
+								BeStructType* structType = (BeStructType*)ptrType->mElementType;
+								auto& structMember = structType->mMembers[mcIdx1.mImmediate];
+								elementType = structMember.mType;
+								byteOffset = structMember.mByteOffset;
+							}
+							else if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
+							{
+								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
+								elementType = arrayType->mElementType;
+								byteOffset = mcIdx1.mImmediate * elementType->mSize;
+							}
+							else if (ptrType->mElementType->mTypeCode == BeTypeCode_Vector)
+							{
+								auto arrayType = (BeVectorType*)ptrType->mElementType;
+								elementType = arrayType->mElementType;
+								byteOffset = mcIdx1.mImmediate * elementType->mSize;
+							}
+							else
+							{
+								Fail("Invalid gep target");
+							}
+							
+							auto elementPtrType = beModule->mContext->GetPointerTo(elementType);
+							
+							
+
+							//result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
+							// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+							//CreateDefineVReg(result);
+							//result.mKind = BeMCOperandKind_VReg;
+						}
+					}
+					else
+					{
+						// It's temping to do a (IsNonZero) precondition, but if we make a reference to a VReg that is NOT in Addr form,
+						//  then this will encode that so we will know we need to do a Load on that value at the Def during legalization
+
+						Fail("Unhandled gep");
+
+// 						BeMCOperand mcRelOffset;
+// 						int relScale = 1;
+// 						if (mcIdx0.IsImmediate())
+// 						{
+// 							mcRelOffset = BeMCOperand::FromImmediate(mcIdx0.mImmediate * ptrType->mElementType->mSize);
+// 						}
+// 						else
+// 						{
+// 							mcRelOffset = mcIdx0;
+// 							relScale = ptrType->mElementType->mSize;
+// 						}
+// 
+// 						result = AllocRelativeVirtualReg(ptrType, result, mcRelOffset, relScale);
+// 						// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+// 						CreateDefineVReg(result);
+// 						//TODO: Always correct?
+// 						result.mKind = BeMCOperandKind_VReg;
+					}
 				}
 				break;
 			case BeBrInst::TypeId:
@@ -1373,7 +1578,7 @@ void CeBuilder::Build()
 					bool isVarArg = false;
 
 					bool useAltArgs = false;
-					SizedArray<BeValue*, 6> args;
+					//SizedArray<BeValue*, 6> args;
 
 					int callIdx = -1;
 
@@ -1394,6 +1599,13 @@ void CeBuilder::Build()
 
 						callIdx = *callIdxPtr;
 
+						for (int argIdx = (int)castedInst->mArgs.size() - 1; argIdx >= 0; argIdx--)
+						{
+							auto& arg = castedInst->mArgs[argIdx];
+							auto ceArg = GetOperand(arg.mValue);
+							EmitSizedOp(CeOp_Push_8, ceArg, NULL, true);
+						}
+
 						int stackAdjust = 0;
 
 						auto beFuncType = beFunction->GetFuncType();
@@ -1406,6 +1618,12 @@ void CeBuilder::Build()
 						
 						Emit(CeOp_Call);
 						Emit((int32)callIdx);
+
+						if (beFuncType->mReturnType->mSize > 0)
+						{
+							result = FrameAlloc(beFuncType->mReturnType);
+							EmitSizedOp(CeOp_Pop_8, result, NULL, true);
+						}
 
 						if (stackAdjust > 0)
 						{
@@ -1497,11 +1715,18 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCeModule = NULL;	
 	mStackMin = NULL;
 	mRevision = 0;
+	mCurTargetSrc = NULL;
+	mCurModule = NULL;
 }
 
 CeMachine::~CeMachine()
 {
 	delete mCeModule;
+}
+
+void CeMachine::Fail(const CeFrame& curFrame, const StringImpl& str)
+{
+	mCurModule->Fail(str, mCurTargetSrc);
 }
 
 void CeMachine::Init()
@@ -1535,8 +1760,12 @@ void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 {
 	auto itr = mFunctions.Find(methodInstance);
 	auto ceFunction = itr->mValue;
-	mNamedFunctionMap.Remove(ceFunction->mName);
-	mFunctions.Remove(itr);
+	BF_ASSERT(itr != mFunctions.end());
+	if (itr != mFunctions.end())
+	{
+		mNamedFunctionMap.Remove(ceFunction->mName);
+		mFunctions.Remove(itr);
+	}
 }
 
 int CeMachine::GetConstantSize(BfConstant* constant)
@@ -1607,6 +1836,12 @@ void CeMachine::WriteConstant(uint8* ptr, BfConstant* constant)
 		return;
 	}
 }
+#define CE_CHECKSTACK() \
+	if (stackPtr < mStackMin) \
+	{ \
+		_Fail("Stack overflow"); \
+		return false; \
+	}
 
 #define CE_GETINST(T) *((T*)(instPtr += sizeof(T)) - 1)
 #define CE_GETFRAME(T) *(T*)(framePtr + *((int32*)(instPtr += sizeof(int32)) - 1))
@@ -1636,27 +1871,50 @@ void CeMachine::WriteConstant(uint8* ptr, BfConstant* constant)
 		auto val = CE_GETFRAME(TFROM); \
 		result = (TTO)val; \
 	}
-#define CE_MOVE(T) \
+#define CEOP_MOVE(T) \
 	{ \
 		auto val = CE_GETFRAME(T); \
 		auto& ptr = CE_GETFRAME(T); \
 		ptr = val; \
 	}
-
-bool CeMachine::Execute()
-{	
-	uint8* memStart = &mMemory[0];
-	uint8* framePtr;
-	uint8* instPtr;
-	uint8* stackPtr;
-	// 
-	{
-		auto& ceFrame = mCallStack.back();
-		instPtr = ceFrame.mInstPtr;
-		stackPtr = ceFrame.mStackPtr;
-		framePtr = ceFrame.mFramePtr;
-		framePtr = mCallStack.back().mFramePtr;
+#define CEOP_PUSH(T) \
+	{ \
+		stackPtr -= sizeof(T); \
+		auto val = CE_GETFRAME(T); \
+		*((T*)stackPtr) = val; \
+		CE_CHECKSTACK(); \
 	}
+#define CEOP_POP(T) \
+	{ \
+		auto& result = CE_GETFRAME(T); \
+		result = *((T*)stackPtr); \
+		stackPtr += sizeof(T); \
+	}
+
+bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr)
+{	
+	CeFunction* ceFunction = startFunction;
+	uint8* memStart = &mMemory[0];	
+	uint8* instPtr = &ceFunction->mCode[0];
+	uint8* stackPtr = startStackPtr;
+	uint8* framePtr = startFramePtr;
+	
+	auto _GetCurFrame = [&]()
+	{
+		CeFrame ceFrame;
+		ceFrame.mFunction = ceFunction;
+		ceFrame.mFramePtr = framePtr;
+		ceFrame.mStackPtr = stackPtr;
+		ceFrame.mInstPtr = instPtr;
+		return ceFrame;
+	};
+
+	auto _Fail = [&](const StringImpl& error)
+	{
+		Fail(_GetCurFrame(), error);
+	};
+	
+	int callCount = 0;
 
 	while (true)
 	{
@@ -1665,15 +1923,16 @@ bool CeMachine::Execute()
 		{
 		case CeOp_Ret:
 			{
+				if (mCallStack.mSize == 0)
+					return true;
+
 				auto& ceFrame = mCallStack.back();
+				ceFunction = ceFrame.mFunction;
 				instPtr = ceFrame.mInstPtr;
 				stackPtr = ceFrame.mStackPtr;
 				framePtr = ceFrame.mFramePtr;
 
-				mCallStack.pop_back();
-
-				if (mCallStack.mSize == 0)
-					return true;
+				mCallStack.pop_back();				
 			}
 			break;
 		case CeOp_Jmp:
@@ -1703,6 +1962,13 @@ bool CeMachine::Execute()
 				auto& result = CE_GETFRAME(int64);
 				auto addr = &CE_GETFRAME(uint8);
 				result = addr - memStart;
+			}
+			break;
+		case CeOp_Zero:
+			{
+				auto resultPtr = &CE_GETFRAME(uint8);
+				int32 constSize = CE_GETINST(int32);
+				memset(resultPtr, 0, constSize);
 			}
 			break;
 		case CeOp_Const_8:
@@ -1749,18 +2015,93 @@ bool CeMachine::Execute()
 				}
 				result = *(uint32*)(memStart + ceAddr);
 			}
-			break;		
+			break;
 		case CeOp_Move_8:
-			CE_MOVE(int8);
+			CEOP_MOVE(int8);
 			break;
 		case CeOp_Move_16:
-			CE_MOVE(int16);
+			CEOP_MOVE(int16);
 			break;
 		case CeOp_Move_32:
-			CE_MOVE(int32);
+			CEOP_MOVE(int32);
 			break;
 		case CeOp_Move_64:
-			CE_MOVE(int64);	
+			CEOP_MOVE(int64);	
+			break;
+		case CeOp_Move_X:
+			{
+				int32 size = CE_GETINST(int32);
+				auto valPtr = &CE_GETFRAME(uint8);
+				auto destPtr = &CE_GETFRAME(uint8);
+				memcpy(destPtr, valPtr, size);
+			}
+			break;
+		case CeOp_Push_8:
+			CEOP_PUSH(int8);
+			break;
+		case CeOp_Push_16:
+			CEOP_PUSH(int16);
+			break;
+		case CeOp_Push_32:
+			CEOP_PUSH(int32);
+			break;
+		case CeOp_Push_64:
+			CEOP_PUSH(int64);
+			break;
+		case CeOp_Pop_8:
+			CEOP_POP(int8);
+			break;
+		case CeOp_Pop_16:
+			CEOP_POP(int16);
+			break;
+		case CeOp_Pop_32:
+			CEOP_POP(int32);
+			break;
+		case CeOp_Pop_64:
+			CEOP_POP(int64);
+			break;
+		case CeOp_AdjustSP:
+			{
+				int32 adjust = CE_GETINST(int32);
+				stackPtr += adjust;
+			}
+			break;
+		case CeOp_Call:
+			{
+				callCount++;
+
+				int32 callIdx = CE_GETINST(int32);
+				auto& callEntry = ceFunction->mCallTable[callIdx];
+				if (callEntry.mBindRevision != mRevision)
+				{
+					callEntry.mFunction = NULL;
+					mNamedFunctionMap.TryGetValue(callEntry.mFunctionName, &callEntry.mFunction);
+					callEntry.mBindRevision = mRevision;
+				}
+
+				if (callEntry.mFunction == NULL)
+				{
+					_Fail("Unable to locate function entry");
+					break;
+				}
+
+// 				if (callEntry.mFunction->mName.Contains("__static_dump"))
+// 				{
+// 					int32 val = *(int32*)(stackPtr);
+// 					OutputDebugStrF("__static_dump: %d\n", val);
+// 				}
+
+				if (callEntry.mFunction != NULL)
+				{
+					mCallStack.Add(_GetCurFrame());
+
+					ceFunction = callEntry.mFunction;
+					framePtr = stackPtr;
+					stackPtr -= ceFunction->mFrameSize;
+					instPtr = &ceFunction->mCode[0];
+					CE_CHECKSTACK();
+				}
+			}
 			break;
 		case CeOp_Conv_I32_I64:
 			CE_CAST(int32, int64);
@@ -1771,11 +2112,35 @@ bool CeMachine::Execute()
 		case CeOp_Add_I64:
 			CEOP_BIN(+, int64);
 			break;
+		case CeOp_Sub_I32:
+			CEOP_BIN(-, int32);
+			break;
+		case CeOp_Sub_I64:
+			CEOP_BIN(-, int64);
+			break;
+		case CeOp_Mul_I32:
+			CEOP_BIN(*, int32);
+			break;
+		case CeOp_Mul_I64:
+			CEOP_BIN(*, int64);
+			break;
 		case CeOp_Cmp_EQ_I32:
 			CEOP_CMP(==, int32);
 			break;
 		case CeOp_Cmp_SLT_I32:
 			CEOP_CMP(<, int32);
+			break;
+		case CeOp_Cmp_ULT_I32:
+			CEOP_CMP(<, uint32);
+			break;
+		case CeOp_Cmp_SLE_I32:
+			CEOP_CMP(<=, int32);
+			break;
+		case CeOp_Cmp_SLE_I64:
+			CEOP_CMP(<= , int64);
+			break;
+		case CeOp_Cmp_ULE_I32:
+			CEOP_CMP(<=, uint32);
 			break;
 		case CeOp_Neg_I32:
 			CEOP_UNARY(-, int32);
@@ -1784,7 +2149,7 @@ bool CeMachine::Execute()
 			CEOP_UNARY(-, int64);
 			break;
 		default:
-			BF_FATAL("CeMachine op failure");
+			_Fail("Unhandled op");
 			return false;
 		}
 	}
@@ -1829,12 +2194,13 @@ void CeMachine::ProcessWorkQueue()
 	}
 }
 
-CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance)
+CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, bool& added)
 {		
 	CeFunction** functionValuePtr = NULL;
 	CeFunction* ceFunction = NULL;
 	if (mFunctions.TryAdd(methodInstance, NULL, &functionValuePtr))
 	{
+		added = true;
 		auto module = methodInstance->GetOwner()->mModule;
 		
 		BF_ASSERT(!methodInstance->mInCEMachine);
@@ -1852,12 +2218,13 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance)
 
 void CeMachine::QueueMethod(BfMethodInstance* methodInstance)
 {
-	auto ceFunction = GetFunction(methodInstance);
-	if (!ceFunction->mInitialized)
+	bool added = false;
+	auto ceFunction = GetFunction(methodInstance, added);
+	if (added)
 		mWorkQueue.Add(ceFunction);
 }
 
-BfTypedValue CeMachine::Call(BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags)
+BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags)
 {	
 // 	for (int argIdx = 0; argIdx < (int)args.size(); argIdx++)
 // 	{
@@ -1869,6 +2236,9 @@ BfTypedValue CeMachine::Call(BfModule* module, BfMethodInstance* methodInstance,
 	// DISABLED
 	return BfTypedValue();
 
+	SetAndRestoreValue<BfAstNode*> prevTargetSrc(mCurTargetSrc, targetSrc);
+	SetAndRestoreValue<BfModule*> prevModule(mCurModule, module);
+
 	BF_ASSERT(mCallStack.IsEmpty());
 	
 	auto methodDef = methodInstance->mMethodDef;
@@ -1878,7 +2248,8 @@ BfTypedValue CeMachine::Call(BfModule* module, BfMethodInstance* methodInstance,
 			return BfTypedValue();
 	}
 
-	CeFunction* ceFunction = GetFunction(methodInstance);
+	bool added = false;
+	CeFunction* ceFunction = GetFunction(methodInstance, added);
 	if (!ceFunction->mInitialized)
 	{
 		PrepareFunction(ceFunction);
@@ -1914,14 +2285,7 @@ BfTypedValue CeMachine::Call(BfModule* module, BfMethodInstance* methodInstance,
 		retPtr = stackPtr;
 	}
 
-	CeFrame ceFrame;
-	ceFrame.mFunction = ceFunction;
-	ceFrame.mFramePtr = stackPtr;
-	ceFrame.mStackPtr = stackPtr - ceFunction->mFrameSize;
-	ceFrame.mInstPtr = &ceFunction->mCode[0];
-	mCallStack.Add(ceFrame);	
-	
-	bool success = Execute();
+	bool success = Execute(ceFunction, stackPtr - ceFunction->mFrameSize, stackPtr);
 
 	mCallStack.Clear();
 	

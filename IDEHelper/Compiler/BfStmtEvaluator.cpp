@@ -760,7 +760,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 	}	
 
 	BfExprEvaluator expressionEvaluator(this);
-	expressionEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, ((flags & BfDeferredBlockFlag_BypassVirtual) != 0), llvmArgs);
+	expressionEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, ((flags & BfDeferredBlockFlag_BypassVirtual) != 0), llvmArgs);
 
 	if ((flags & BfDeferredBlockFlag_DoNullChecks) != 0)
 	{
@@ -3956,7 +3956,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 			BF_ASSERT(methodInstance->mMethodDef->mName == "~this");
 			SizedArray<BfIRValue, 4> llvmArgs;
 			llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(objectType)));
-			expressionEvaluator.CreateCall(methodInstance, methodInstance->mIRFunction, false, llvmArgs);
+			expressionEvaluator.CreateCall(deleteStmt->mDeleteToken, methodInstance, methodInstance->mIRFunction, false, llvmArgs);
 		}
 
 		if ((deleteStmt->mTargetTypeToken != NULL) && (!isAppendDelete))
@@ -5998,7 +5998,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 				SizedArray<BfIRValue, 1> args;
 				auto castedTarget = Cast(forEachStmt->mCollectionExpression, target, getEnumeratorMethod.mMethodInstance->GetOwner());
 				exprEvaluator.PushThis(forEachStmt->mCollectionExpression, castedTarget, getEnumeratorMethod.mMethodInstance, args);
-				itr = exprEvaluator.CreateCall(getEnumeratorMethod.mMethodInstance, IsSkippingExtraResolveChecks() ? BfIRValue() : getEnumeratorMethod.mFunc, false, args);
+				itr = exprEvaluator.CreateCall(forEachStmt->mCollectionExpression, getEnumeratorMethod.mMethodInstance, IsSkippingExtraResolveChecks() ? BfIRValue() : getEnumeratorMethod.mFunc, false, args);
 			}
 		}
 

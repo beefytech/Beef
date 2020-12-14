@@ -694,7 +694,7 @@ public:
 							{
 								BF_ASSERT(calcAppendMethodModule.mFunc);
 
-								subDependSize = exprEvaluator.CreateCall(calcAppendMethodModule.mMethodInstance, calcAppendMethodModule.mFunc, false, calcAppendArgs);
+								subDependSize = exprEvaluator.CreateCall(objCreateExpr, calcAppendMethodModule.mMethodInstance, calcAppendMethodModule.mFunc, false, calcAppendArgs);
 								BF_ASSERT(subDependSize.mType == mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 							}
 							if (subDependSize)
@@ -9211,7 +9211,7 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 		SizedArray<BfIRValue, 4> irArgs;
 		irArgs.push_back(objectParam);
 		irArgs.push_back(GetConstValue32(targetType->mTypeId));
-		auto callResult = exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
+		auto callResult = exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
 		auto resultType = ResolveTypeDef(mSystem->mTypeBool);
 		auto cmpResult = mBfIRBuilder->CreateCmpNE(callResult.mValue, GetDefaultValue(callResult.mType));
 		irb->CreateCondBr(cmpResult, trueBlock, falseBlock);
@@ -14788,7 +14788,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 		calcAppendArgs = bindResult.mIRArgs;
 	}	
 	BF_ASSERT(calcAppendMethodModule.mFunc);
-	appendSizeTypedValue = exprEvaluator.CreateCall(calcAppendMethodModule.mMethodInstance, calcAppendMethodModule.mFunc, false, calcAppendArgs);
+	appendSizeTypedValue = exprEvaluator.CreateCall(NULL, calcAppendMethodModule.mMethodInstance, calcAppendMethodModule.mFunc, false, calcAppendArgs);
 
 	
 	BF_ASSERT(appendSizeTypedValue.mType == GetPrimitiveType(BfTypeCode_IntPtr));
@@ -15648,7 +15648,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 				SizedArray<BfIRValue, 1> irArgs;
 				exprEvaluator.PushThis(NULL, GetThis(), moduleMethodInstance.mMethodInstance, irArgs);
-				exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
+				exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
 
 				calledCtorNoBody = true;
 			}
@@ -16131,7 +16131,7 @@ void BfModule::EmitEnumToStringBody()
 			SizedArray<BfIRValue, 2> args;
 			args.Add(stringDestVal.mValue);
 			args.Add(caseStr);
-			exprEvaluator.CreateCall(appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
+			exprEvaluator.CreateCall(NULL, appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
 						
 			auto payloadType = fieldInstance.mResolvedType->ToTypeInstance();
 			BF_ASSERT(payloadType->IsTuple());
@@ -16150,7 +16150,7 @@ void BfModule::EmitEnumToStringBody()
 				exprEvaluator.PushThis(NULL, payload, toStringMethod.mMethodInstance, irArgs);
 				stringDestVal = LoadValue(stringDestAddr);
 				irArgs.Add(stringDestVal.mValue);
-				exprEvaluator.CreateCall(toStringMethod.mMethodInstance, toStringMethod.mFunc, true, irArgs);
+				exprEvaluator.CreateCall(NULL, toStringMethod.mMethodInstance, toStringMethod.mFunc, true, irArgs);
 			}
 
 			mBfIRBuilder->CreateBr(endBlock);
@@ -16186,7 +16186,7 @@ void BfModule::EmitEnumToStringBody()
 	auto stringDestVal = LoadValue(stringDestAddr);
 	args.Add(stringDestVal.mValue);
 	args.Add(mBfIRBuilder->CreateLoad(strVal));
-	exprEvaluator.CreateCall(appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
+	exprEvaluator.CreateCall(NULL, appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
 	mBfIRBuilder->CreateBr(endBlock);
 
 	mBfIRBuilder->AddBlock(noMatchBlock);
@@ -16197,7 +16197,7 @@ void BfModule::EmitEnumToStringBody()
 	args.Add(int64Val);
 	stringDestVal = LoadValue(stringDestAddr);
 	args.Add(stringDestVal.mValue);
-	exprEvaluator.CreateCall(toStringModuleMethodInstance.mMethodInstance, toStringModuleMethodInstance.mFunc, false, args);
+	exprEvaluator.CreateCall(NULL, toStringModuleMethodInstance.mMethodInstance, toStringModuleMethodInstance.mFunc, false, args);
 	mBfIRBuilder->CreateBr(endBlock);
 
 	mBfIRBuilder->AddBlock(endBlock);
@@ -16226,7 +16226,7 @@ void BfModule::EmitTupleToStringBody()
 		auto stringDestVal = LoadValue(stringDestRef);
 		args.Add(stringDestVal.mValue);
 		args.Add(mBfIRBuilder->CreateConst(BfTypeCode_Char8, (int)c));
-		exprEvaluator.CreateCall(appendCharModuleMethodInstance.mMethodInstance, appendCharModuleMethodInstance.mFunc, false, args);
+		exprEvaluator.CreateCall(NULL, appendCharModuleMethodInstance.mMethodInstance, appendCharModuleMethodInstance.mFunc, false, args);
 	};
 
 	int fieldIdx = 0;
@@ -16254,7 +16254,7 @@ void BfModule::EmitTupleToStringBody()
 			auto stringDestVal = LoadValue(stringDestRef);
 			args.Add(stringDestVal.mValue);
 			args.Add(commaStr);
-			exprEvaluator.CreateCall(appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
+			exprEvaluator.CreateCall(NULL, appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
 		}
 		fieldIdx++;
 
@@ -16300,7 +16300,7 @@ void BfModule::EmitTupleToStringBody()
 			auto stringDestVal = exprEvaluator.LoadLocal(mCurMethodState->mLocals[1]);
 			stringDestVal = LoadValue(stringDestVal);
 			args.Add(stringDestVal.mValue);			
-			exprEvaluator.CreateCall(toStringSafeModuleMethodInstance.mMethodInstance, toStringSafeModuleMethodInstance.mFunc, false, args);
+			exprEvaluator.CreateCall(NULL, toStringSafeModuleMethodInstance.mMethodInstance, toStringSafeModuleMethodInstance.mFunc, false, args);
 			continue;
 		}
 
@@ -16324,7 +16324,7 @@ void BfModule::EmitTupleToStringBody()
 			auto stringDestVal = LoadValue(stringDestRef);
 			args.Add(stringDestVal.mValue);
 			args.Add(strVal);
-			exprEvaluator.CreateCall(appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
+			exprEvaluator.CreateCall(NULL, appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
 			continue;
 		}
 
@@ -16389,7 +16389,7 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 		val = mBfIRBuilder->CreateBitCast(val, mBfIRBuilder->MapType(mContext->mBfObjectType));
 		SizedArray<BfIRValue, 1> args;
 		args.push_back(val);
-		exprEvaluator.CreateCall(markFromGCThreadMethodInstance.mMethodInstance, markFromGCThreadMethodInstance.mFunc, false, args);
+		exprEvaluator.CreateCall(NULL, markFromGCThreadMethodInstance.mMethodInstance, markFromGCThreadMethodInstance.mFunc, false, args);
 	}
 	else if ((fieldTypeInst->IsComposite()) && (!fieldTypeInst->IsTypedPrimitive()))
 	{
@@ -16403,7 +16403,7 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 				markVal = Cast(NULL, markVal, methodOwner);
 
 			exprEvaluator.PushThis(NULL, markVal, markMemberMethodInstance.mMethodInstance, args);
-			exprEvaluator.CreateCall(markMemberMethodInstance.mMethodInstance, markMemberMethodInstance.mFunc, false, args);
+			exprEvaluator.CreateCall(NULL, markMemberMethodInstance.mMethodInstance, markMemberMethodInstance.mFunc, false, args);
 		}
 	}
 }
@@ -16452,7 +16452,7 @@ void BfModule::CallChainedMethods(BfMethodInstance* methodInstance, bool reverse
 		BfExprEvaluator exprEvaluator(this);
 		SizedArray<BfIRValue, 1> args;
 		exprEvaluator.PushThis(chainedMethodInst->mMethodDef->GetRefNode(), GetThis(), chainedMethodInst, args);
-		exprEvaluator.CreateCall(moduleMethodInst.mMethodInstance, moduleMethodInst.mFunc, true, args);
+		exprEvaluator.CreateCall(NULL, moduleMethodInst.mMethodInstance, moduleMethodInst.mFunc, true, args);
 	}
 }
 
@@ -18617,14 +18617,14 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					mBfIRBuilder->PopulateType(methodInstance->mReturnType);
 					auto returnType = BfTypedValue(mBfIRBuilder->GetArgument(methodInstance->GetStructRetIdx()), methodInstance->mReturnType, true);
 					exprEvaluator.mReceivingValue = &returnType;
-					auto retVal = exprEvaluator.CreateCall(innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, true);					
+					auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, true);
 					BF_ASSERT(exprEvaluator.mReceivingValue == NULL); // Ensure it was actually used
 					mBfIRBuilder->CreateRetVoid();
 				}
 				else
 				{
 					mBfIRBuilder->PopulateType(methodInstance->mReturnType);
-					auto retVal = exprEvaluator.CreateCall(innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, true);
+					auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, true);
 					if (mCurMethodInstance->mReturnType->IsValueType())
 						retVal = LoadValue(retVal);
 					CreateReturn(retVal.mValue);
@@ -21680,107 +21680,109 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 				auto checkMethod = nextMethod;
 				nextMethod = nextMethod->mNextWithSameName;
 
-				if ((checkMethod != methodDef) && (typeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault != NULL))
-				{					
-					auto checkMethodInstance = typeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
+				if (checkMethod == methodDef)
+					continue;
 
-					if (((checkMethodInstance->mChainType == BfMethodChainType_None) || (checkMethodInstance->mChainType == BfMethodChainType_ChainHead)) &&						
-						(checkMethodInstance->GetExplicitInterface() == methodInstance->GetExplicitInterface()) &&
-						(checkMethod->mIsMutating == methodDef->mIsMutating) &&
-						(CompareMethodSignatures(checkMethodInstance, mCurMethodInstance)))
-					{							
-						bool canChain = false;
+				auto checkMethodInstance = typeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;				
+				if (checkMethodInstance == NULL)
+					continue;
 
-						if ((methodDef->mParams.empty()) &&
-							(checkMethodInstance->mMethodDef->mIsStatic == methodInstance->mMethodDef->mIsStatic))
+				if (((checkMethodInstance->mChainType == BfMethodChainType_None) || (checkMethodInstance->mChainType == BfMethodChainType_ChainHead)) &&
+					(checkMethodInstance->GetExplicitInterface() == methodInstance->GetExplicitInterface()) &&
+					(checkMethod->mIsMutating == methodDef->mIsMutating) &&
+					(CompareMethodSignatures(checkMethodInstance, mCurMethodInstance)))
+				{
+					bool canChain = false;
+
+					if ((methodDef->mParams.empty()) &&
+						(checkMethodInstance->mMethodDef->mIsStatic == methodInstance->mMethodDef->mIsStatic))
+					{
+						if ((methodDef->mMethodType == BfMethodType_CtorNoBody) || (methodDef->mMethodType == BfMethodType_Dtor))
+							canChain = true;
+						else if (methodDef->mMethodType == BfMethodType_Normal)
 						{
-							if ((methodDef->mMethodType == BfMethodType_CtorNoBody) || (methodDef->mMethodType == BfMethodType_Dtor))
+							if ((methodDef->mName == BF_METHODNAME_MARKMEMBERS) ||
+								(methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC) ||
+								(methodDef->mName == BF_METHODNAME_FIND_TLS_MEMBERS))
 								canChain = true;
-							else if (methodDef->mMethodType == BfMethodType_Normal)
-							{
-								if ((methodDef->mName == BF_METHODNAME_MARKMEMBERS) ||
-									(methodDef->mName == BF_METHODNAME_MARKMEMBERS_STATIC) ||
-									(methodDef->mName == BF_METHODNAME_FIND_TLS_MEMBERS))
-									canChain = true;
-							}
 						}
-						
-						if (canChain)
+					}
+
+					if (canChain)
+					{
+						bool isBetter;
+						bool isWorse;
+						CompareDeclTypes(checkMethodInstance->mMethodDef->mDeclaringType, methodInstance->mMethodDef->mDeclaringType, isBetter, isWorse);
+						if (isBetter && !isWorse)
 						{
-							bool isBetter;
-							bool isWorse;
-							CompareDeclTypes(checkMethodInstance->mMethodDef->mDeclaringType, methodInstance->mMethodDef->mDeclaringType, isBetter, isWorse);
-							if (isBetter && !isWorse)
-							{
-								methodInstance->mChainType = BfMethodChainType_ChainHead;
-								checkMethodInstance->mChainType = BfMethodChainType_ChainMember;								
-							}
-							else
-							{
-								checkMethodInstance->mChainType = BfMethodChainType_ChainHead;
-								methodInstance->mChainType = BfMethodChainType_ChainMember;
-							}
+							methodInstance->mChainType = BfMethodChainType_ChainHead;
+							checkMethodInstance->mChainType = BfMethodChainType_ChainMember;
 						}
 						else
 						{
-							if (!typeInstance->IsTypeMemberAccessible(checkMethod->mDeclaringType, methodDef->mDeclaringType))
-								continue;
-														
-							bool silentlyAllow = false;
-							bool extensionWarn = false;
-							if (checkMethod->mDeclaringType != methodDef->mDeclaringType)
-							{								
-								if (typeInstance->IsInterface())
-								{									
-									if (methodDef->mIsOverride)
+							checkMethodInstance->mChainType = BfMethodChainType_ChainHead;
+							methodInstance->mChainType = BfMethodChainType_ChainMember;
+						}
+					}
+					else
+					{
+						if (!typeInstance->IsTypeMemberAccessible(checkMethod->mDeclaringType, methodDef->mDeclaringType))
+							continue;
+
+						bool silentlyAllow = false;
+						bool extensionWarn = false;
+						if (checkMethod->mDeclaringType != methodDef->mDeclaringType)
+						{
+							if (typeInstance->IsInterface())
+							{
+								if (methodDef->mIsOverride)
+									silentlyAllow = true;
+							}
+							else
+							{
+								if ((methodDef->mIsOverride) && (checkMethod->mIsExtern))
+								{
+									silentlyAllow = true;
+									methodInstance->mIsInnerOverride = true;
+									CheckOverridenMethod(methodInstance, checkMethodInstance);
+								}
+								else if ((methodDef->mDeclaringType->mProject != checkMethod->mDeclaringType->mProject) &&
+									(!checkMethod->mDeclaringType->IsExtension()))
+								{
+									foundHiddenMethod = true;
+									if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
 										silentlyAllow = true;
+									else if (methodDef->mIsNew)
+										silentlyAllow = true;
+									else
+										extensionWarn = true;
 								}
 								else
-								{
-									if ((methodDef->mIsOverride) && (checkMethod->mIsExtern))
-									{
-										silentlyAllow = true;
-										methodInstance->mIsInnerOverride = true;
-										CheckOverridenMethod(methodInstance, checkMethodInstance);
-									}
-									else if ((methodDef->mDeclaringType->mProject != checkMethod->mDeclaringType->mProject) &&
-										(!checkMethod->mDeclaringType->IsExtension()))
-									{
-										foundHiddenMethod = true;
-										if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
-											silentlyAllow = true;
-										else if (methodDef->mIsNew)
-											silentlyAllow = true;
-										else
-											extensionWarn = true;
-									}
-									else
-										silentlyAllow = true;
-								}
+									silentlyAllow = true;
 							}
+						}
 
-							if ((checkMethod->mCommutableKind == BfCommutableKind_Reverse) || (methodDef->mCommutableKind == BfCommutableKind_Reverse))
-								silentlyAllow = true;
-							
-							if (!silentlyAllow)
+						if ((checkMethod->mCommutableKind == BfCommutableKind_Reverse) || (methodDef->mCommutableKind == BfCommutableKind_Reverse))
+							silentlyAllow = true;
+
+						if (!silentlyAllow)
+						{
+							if ((!methodDef->mName.IsEmpty()) || (checkMethodInstance->mMethodDef->mIsOperator))
 							{
-								if ((!methodDef->mName.IsEmpty()) || (checkMethodInstance->mMethodDef->mIsOperator))
-								{
-									auto refNode = methodDef->GetRefNode();
-									BfError* bfError;
-									if (extensionWarn)
-										bfError = Warn(BfWarning_CS0114_MethodHidesInherited, 
-											StrFormat("This method hides a method in the root type definition. Use the 'new' keyword if the hiding was intentional. Note that this method is not callable from project '%s'.", 
-												checkMethod->mDeclaringType->mProject->mName.c_str()), refNode);
-									else
-										bfError = Fail("Method already declared with the same parameter types", refNode, true);
-									if (bfError != NULL)
-										mCompiler->mPassInstance->MoreInfo("First declaration", checkMethod->GetRefNode());
-								}
+								auto refNode = methodDef->GetRefNode();
+								BfError* bfError;
+								if (extensionWarn)
+									bfError = Warn(BfWarning_CS0114_MethodHidesInherited,
+										StrFormat("This method hides a method in the root type definition. Use the 'new' keyword if the hiding was intentional. Note that this method is not callable from project '%s'.",
+											checkMethod->mDeclaringType->mProject->mName.c_str()), refNode);
+								else
+									bfError = Fail("Method already declared with the same parameter types", refNode, true);
+								if (bfError != NULL)
+									mCompiler->mPassInstance->MoreInfo("First declaration", checkMethod->GetRefNode());
 							}
 						}
 					}
-				}
+				}				
 			}
 		}
 

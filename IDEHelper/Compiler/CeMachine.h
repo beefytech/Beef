@@ -49,20 +49,32 @@ enum CeOp : int16
 	CeOp_FrameAddr32,
 	CeOp_FrameAddr64,
 
+	CeOp_Zero,
 	CEOP_SIZED(Const),
 	CEOP_SIZED(Load),
-	CEOP_SIZED(Store),	
+	CEOP_SIZED(Store),
 	CEOP_SIZED(Move),
 	CEOP_SIZED(Push),
-	
+	CEOP_SIZED(Pop),
+
 	CeOp_AdjustSP,
 	CeOp_Call,
 
 	CeOp_Conv_I32_I64,
 
-	CEOP_SIZED_NUMERIC_PLUSF(Add),	
+	CEOP_SIZED_NUMERIC_PLUSF(AddConst),
+	CEOP_SIZED_NUMERIC_PLUSF(Add),
+	CEOP_SIZED_NUMERIC_PLUSF(Sub),
+	CEOP_SIZED_NUMERIC_PLUSF(Mul),	
+	CEOP_SIZED_NUMERIC_PLUSF(SDiv),
+	CEOP_SIZED_NUMERIC(UDiv),
+	CEOP_SIZED_NUMERIC_PLUSF(SMod),
+	CEOP_SIZED_NUMERIC(UMod),
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_EQ),
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_SLT),
+	CEOP_SIZED_NUMERIC(Cmp_ULT),
+	CEOP_SIZED_NUMERIC_PLUSF(Cmp_SLE),
+	CEOP_SIZED_NUMERIC(Cmp_ULE),
 
 	CEOP_SIZED_NUMERIC_PLUSF(Neg),
 
@@ -127,6 +139,7 @@ enum CeOperandKind
 	CeOperandKind_FrameOfs,
 	CeOperandKind_AllocaAddr,
 	CeOperandKind_Block,
+	CeOperandKind_Immediate
 };
 
 class CeOperand
@@ -137,6 +150,7 @@ public:
 	{
 		int mFrameOfs;
 		int mBlockIdx;
+		int mImmediate;
 	};
 	BeType* mType;
 
@@ -152,6 +166,11 @@ public:
 	{
 		return mKind != CeOperandKind_None;
 	}
+
+	bool IsImmediate()
+	{
+		return mKind == CeOperandKind_Immediate;
+	}
 };
 
 #define BF_CE_STACK_SIZE 1024*1024
@@ -164,6 +183,8 @@ enum CeOperandInfoKind
 	CEOI_IMM16,
 	CEOI_IMM32,
 	CEOI_IMM64,
+	CEOI_IMMF32,
+	CEOI_IMMF64,
 	CEOI_IMM_VAR,
 	CEOI_JMPREL
 };
@@ -254,7 +275,7 @@ public:
 	void Fail(const StringImpl& error);
 
 	CeOperand FrameAlloc(BeType* type);
-	CeOperand GetOperand(BeValue* value, bool allowAlloca = false);
+	CeOperand GetOperand(BeValue* value, bool allowAlloca = false, bool allowImmediate = false);
 	CeSizeClass GetSizeClass(int size);
 	int GetCodePos();
 
@@ -309,25 +330,30 @@ public:
 	uint8* mStackMin;
 	Array<CeFunction*> mWorkQueue;
 
+	BfAstNode* mCurTargetSrc;
+	BfModule* mCurModule;
+
 public:
 	CeMachine(BfCompiler* compiler);
 	~CeMachine();
 	
+	void Fail(const CeFrame& curFrame, const StringImpl& error);
+
 	void Init();	
 	void RemoveMethod(BfMethodInstance* methodInstance);
 	int GetConstantSize(BfConstant* constant);
 	void WriteConstant(uint8* ptr, BfConstant* constant);
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);		
-	bool Execute();
+	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr);
 
 	void PrepareFunction(CeFunction* methodInstance);
-	void ProcessWorkQueue();
-	CeFunction* GetFunction(BfMethodInstance* methodInstance);
+	void ProcessWorkQueue();	
+	CeFunction* GetFunction(BfMethodInstance* methodInstance, bool& added);
 
 public:
 	void CompileStarted();
 	void QueueMethod(BfMethodInstance* methodInstance);
-	BfTypedValue Call(BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags);
+	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags);
 };
 
 NS_BF_END

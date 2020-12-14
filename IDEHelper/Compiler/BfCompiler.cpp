@@ -1009,7 +1009,7 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 		}
 
 		BfExprEvaluator exprEvaluator(bfModule);
-		exprEvaluator.CreateCall(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
+		exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
 
 		bfModule->mBfIRBuilder->CreateBr(testHeadBlock);
 	}

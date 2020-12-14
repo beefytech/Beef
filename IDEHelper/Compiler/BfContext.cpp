@@ -645,6 +645,7 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 			dupMethodInstance.mMethodProcessRequest = NULL;
 			dupMethodInstance.mIsReified = true;			
 			dupMethodInstance.mHotMethod = NULL;
+			dupMethodInstance.mInCEMachine = false; // Only have the original one
 			BF_ASSERT(module->mIsReified); // We should only bother inlining in reified modules
 
 			{
