@@ -2478,7 +2478,7 @@ void BfModule::UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags, int debugLo
 		if (mCurMethodState->mCrossingMixin)
 			inlineAt = BfIRMDNode();
 
-		if (!useDIScope)
+		if ((!useDIScope) && (mIsConstModule))
 			useDIScope = wantDIFile;
 		mBfIRBuilder->SetCurrentDebugLocation(mCurFilePosition.mCurLine + 1, column, useDIScope, inlineAt);
 		if ((flags & BfSrcPosFlag_Expression) == 0)
