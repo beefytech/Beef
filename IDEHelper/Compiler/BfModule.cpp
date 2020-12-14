@@ -7818,7 +7818,7 @@ BF_NOINLINE void BfModule::EvaluateWithNewScope(BfExprEvaluator& exprEvaluator, 
 	newScope.mAllowTargeting = false;
 	mCurMethodState->AddScope(&newScope);
 	NewScopeState();
-	exprEvaluator.mBfEvalExprFlags = flags;
+	exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | flags);
 	exprEvaluator.Evaluate(expr, (flags & BfEvalExprFlags_PropogateNullConditional) != 0, (flags & BfEvalExprFlags_IgnoreNullConditional) != 0, (flags & BfEvalExprFlags_AllowSplat) != 0);
 	RestoreScopeState();
 }
@@ -7850,7 +7850,7 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 		*outOrigType = NULL;
 	
 	exprEvaluator.mExpectingType = wantTypeRef;
-	exprEvaluator.mBfEvalExprFlags = flags;
+	exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | flags);
 	exprEvaluator.mExplicitCast = (flags & BfEvalExprFlags_ExplicitCast) != 0;
 
 	if ((flags & BfEvalExprFlags_CreateConditionalScope) != 0)
@@ -22577,7 +22577,8 @@ void BfModule::CheckOverridenMethod(BfMethodInstance* methodInstance, BfMethodIn
 	auto prevProtection = methodOverriden->mMethodDef->mProtection;
 	if ((methodDef->mProtection != prevProtection) && (methodDef->mMethodType != BfMethodType_Dtor))
 	{
-		const char* protectionNames[] = { "hidden", "private", "internal", "protected", "public" };
+		const char* protectionNames[] = { "hidden", "private", "internal", "protected", "protected internal", "public" };
+		BF_STATIC_ASSERT(BF_ARRAY_COUNT(protectionNames) == BfProtection_COUNT);
 		BfAstNode* protectionRefNode = NULL;
 		if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
 		{

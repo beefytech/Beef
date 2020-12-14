@@ -56,7 +56,9 @@ enum BfProtection : uint8
 	BfProtection_Internal,
 	BfProtection_Protected,
 	BfProtection_ProtectedInternal,
-	BfProtection_Public
+	BfProtection_Public,
+
+	BfProtection_COUNT
 };
 
 enum BfCheckedKind : int8
