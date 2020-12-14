@@ -2559,6 +2559,21 @@ public:
 					projectList->Add(bfProject);
 				}
 			}
+
+			if (checkType->IsTuple())
+			{
+				auto tupleType = (BfTupleType*)checkType;
+				for (auto& fieldInstance : tupleType->mFieldInstances)
+					GetProjectList(fieldInstance.mResolvedType, projectList, immutableLength);
+			}
+
+			auto delegateInfo = checkType->GetDelegateInfo();
+			if (delegateInfo != NULL)
+			{
+				GetProjectList(delegateInfo->mReturnType, projectList, immutableLength);
+				for (auto param : delegateInfo->mParams)
+					GetProjectList(param, projectList, immutableLength);
+			}
 		}
 		else if (checkType->IsPointer())
 			GetProjectList(((BfPointerType*)checkType)->mElementType, projectList, immutableLength);
@@ -2567,7 +2582,7 @@ public:
 		else if (checkType->IsSizedArray())
 			GetProjectList(((BfSizedArrayType*)checkType)->mElementType, projectList, immutableLength);
 		else if (checkType->IsMethodRef())
-			GetProjectList(((BfMethodRefType*)checkType)->mOwner, projectList, immutableLength);
+			GetProjectList(((BfMethodRefType*)checkType)->mOwner, projectList, immutableLength);				
 	}
 
 	static BfPrimitiveType* GetPrimitiveType(BfModule* module, BfTypeCode typeCode);
