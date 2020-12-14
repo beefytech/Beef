@@ -9095,10 +9095,10 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 						isFunction = true;
 					else
 						isDelegate = true;
-				}
-				else if (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Function)
+				}				
+				else if ((mCurTypeDecl->mTypeNode != NULL) && (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Function))
 					isFunction = true;
-				else if (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Delegate)
+				else if ((mCurTypeDecl->mTypeNode != NULL) && (mCurTypeDecl->mTypeNode->GetToken() == BfToken_Delegate))
 					isDelegate = true;
 
 				if (isFunction || isDelegate)
