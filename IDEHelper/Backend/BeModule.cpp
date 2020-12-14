@@ -2101,74 +2101,74 @@ String BeModule::ToString(BeFunction* wantFunc)
 		str += " {\n";
 
 #define DISPLAY_INST0(typeName, name) \
-			case typeName##::TypeId: { \
+			case typeName::TypeId: { \
 			auto castedInst = (typeName*)inst; \
 			str += name; \
 		} \
 		break;
 
 #define DISPLAY_INST1(typeName, name, member1) \
-			case typeName##::TypeId: { \
+			case typeName::TypeId: { \
 			auto castedInst = (typeName*)inst; \
 			str += name; \
 			str += " "; \
-			dc.ToString(str, castedInst->##member1); \
+			dc.ToString(str, castedInst->member1); \
 		} \
 		break;
 
 #define DISPLAY_INST2(typeName, name, member1, member2) \
-			case typeName##::TypeId: { \
+			case typeName::TypeId: { \
 			auto castedInst = (typeName*)inst;\
 			str += name; \
 			str += " "; \
-			dc.ToString(str, castedInst->##member1); \
+			dc.ToString(str, castedInst->member1); \
 			str += ", "; \
-			dc.ToString(str, castedInst->##member2); \
+			dc.ToString(str, castedInst->member2); \
 		} \
 		break;
 
 #define DISPLAY_INST2_OPEN(typeName, name, member1, member2) \
-			case typeName##::TypeId: { \
+			case typeName::TypeId: { \
 			auto castedInst = (typeName*)inst;\
 			str += name; \
 			str += " "; \
-			dc.ToString(str, castedInst->##member1); \
+			dc.ToString(str, castedInst->member1); \
 			str += ", "; \
-			dc.ToString(str, castedInst->##member2); \
+			dc.ToString(str, castedInst->member2); \
 			}
 
 #define DISPLAY_INST3(typeName, name, member1, member2, member3) \
-		case typeName##::TypeId: { \
+		case typeName::TypeId: { \
 			auto castedInst = (typeName*)inst;\
 			str += name; \
 			str += " "; \
-			dc.ToString(str, castedInst->##member1); \
+			dc.ToString(str, castedInst->member1); \
 			str += ", "; \
-			dc.ToString(str, castedInst->##member2); \
-			if (castedInst->##member3 != NULL) \
+			dc.ToString(str, castedInst->member2); \
+			if ((std::is_pointer<decltype(castedInst->member3)>::value) && (castedInst->member3 != NULL)) \
 			{ \
 				str += ", "; \
-				str += dc.ToString(castedInst->##member3); \
+				str += dc.ToString(castedInst->member3); \
 			} \
 		} \
 		break;
 
 #define DISPLAY_INST4(typeName, name, member1, member2, member3, member4) \
-		case typeName##::TypeId: { \
+		case typeName::TypeId: { \
 			auto castedInst = (typeName*)inst;\
 			str += name; \
 			str += " "; \
-			dc.ToString(str, castedInst->##member1); \
+			dc.ToString(str, castedInst->member1); \
 			str += ", "; \
-			dc.ToString(str, castedInst->##member2); \
-			if (castedInst->##member3 != NULL) \
+			dc.ToString(str, castedInst->member2); \
+			if ((std::is_pointer<decltype(castedInst->member3)>::value) && (castedInst->member3 != NULL)) \
 			{ \
 				str += ", "; \
-				dc.ToString(str, castedInst->##member3); \
-				if (castedInst->##member4 != NULL) \
+				dc.ToString(str, castedInst->member3); \
+				if ((std::is_pointer<decltype(castedInst->member4)>::value) && (castedInst->member4 != NULL)) \
 				{ \
 					str += ", "; \
-					dc.ToString(str, castedInst->##member4); \
+					dc.ToString(str, castedInst->member4); \
 				} \
 			} \
 		} \
@@ -2880,7 +2880,8 @@ void BeModule::DoInlining(BeFunction* func)
 	if (func->mDbgFunction != NULL)
 		prevDbgVars = (int)func->mDbgFunction->mVariables.size();*/
 
-	_DoInlining(blockIdx, NULL, std::unordered_set<BeFunction*>());
+	std::unordered_set<BeFunction*> newFuncSet;
+	_DoInlining(blockIdx, NULL, newFuncSet);
 
 	/*if ((func->mDbgFunction != NULL) && (prevDbgVars != (int)func->mDbgFunction->mVariables.size()))
 	{

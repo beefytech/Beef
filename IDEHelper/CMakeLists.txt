@@ -180,6 +180,10 @@ file(GLOB SRC_FILES
     Compiler/BfTargetTriple.cpp
     Compiler/CeMachine.cpp
     Compiler/MemReporter.cpp    
+    
+    Backend/BeContext.cpp
+    Backend/BeIRCodeGen.cpp
+    Backend/BeModule.cpp
 )
 
 # Add library to build.

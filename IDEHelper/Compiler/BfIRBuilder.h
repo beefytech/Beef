@@ -933,10 +933,7 @@ public:
 		
 	BfIRCodeGenBase* mIRCodeGen;
 	BfIRCodeGen* mBfIRCodeGen;
-
-#ifdef BF_PLATFORM_WINDOWS	
 	BeIRCodeGen* mBeIRCodeGen;
-#endif
 
 #ifdef BFIR_RENTRY_CHECK
 	std::set<BfType*> mDeclReentrySet;

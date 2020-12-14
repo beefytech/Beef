@@ -10,10 +10,7 @@
 #include "BfMangler.h"
 #include "BfCompiler.h"
 #include "BfSystem.h"
-
-#ifdef BF_PLATFORM_WINDOWS
 #include "../Backend/BeIRCodeGen.h"
-#endif
 
 #pragma warning(push)
 #pragma warning(disable:4141)
@@ -1177,9 +1174,7 @@ BfIRBuilder::BfIRBuilder(BfModule* module) : BfIRConstHolder(module)
 	mHasDebugInfo = false;
 	mHasDebugLineInfo = false;
 	mIRCodeGen = NULL;
-#ifdef BF_PLATFORM_WINDOWS	
 	mBeIRCodeGen = NULL;
-#endif
 	mBfIRCodeGen = NULL;
 	mDbgVerifyCodeGen = false;
 	
@@ -1326,7 +1321,6 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			strStream.flush();
 			return outStr;
 		}
-#ifdef BF_PLATFORM_WINDOWS			
 		else if (mBeIRCodeGen != NULL)
 		{
 			auto val = mBeIRCodeGen->GetBeValue(irValue.mId);
@@ -1342,8 +1336,7 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			}
 
 			return str;
-		}
-#endif		
+		}	
 		else
 			return "???";
 	}
@@ -1388,7 +1381,6 @@ String BfIRBuilder::ToString(BfIRType irType)
 		strStream.flush();
 		return outStr;
 	}
-#ifdef BF_PLATFORM_WINDOWS		
 	else if (mBeIRCodeGen != NULL)
 	{
 		BeType* beType;
@@ -1412,7 +1404,6 @@ String BfIRBuilder::ToString(BfIRType irType)
 		dc.ToString(str, beType);
 		return str;
 	}
-#endif	
 	else if (irType.mKind == BfIRTypeData::TypeKind_TypeId)
 	{
 		return StrFormat("Type Id %d", irType.mId);
@@ -1436,7 +1427,6 @@ String BfIRBuilder::ToString(BfIRFunction irFunc)
 		strStream.flush();
 		return outStr;
 	}
-#ifdef BF_PLATFORM_WINDOWS		
 	else if (mBeIRCodeGen != NULL)
 	{
 		auto val = mBeIRCodeGen->GetBeValue(irFunc.mId);
@@ -1448,7 +1438,6 @@ String BfIRBuilder::ToString(BfIRFunction irFunc)
 		dc.ToString(str, val);
 		return str;
 	}
-#endif
 	else
 		return "???";
 }
@@ -1483,7 +1472,6 @@ String BfIRBuilder::ToString(BfIRMDNode irMDNode)
 		strStream.flush();
 		return outStr;
 	}
-#ifdef BF_PLATFORM_WINDOWS		
 	else if (mBeIRCodeGen != NULL)
 	{
 		auto md = mBeIRCodeGen->GetBeMetadata(irMDNode.mId);
@@ -1494,7 +1482,6 @@ String BfIRBuilder::ToString(BfIRMDNode irMDNode)
 		dc.ToString(str, md);
 		return str;
 	}
-#endif
 	else
 		return "???";
 }
@@ -1603,7 +1590,6 @@ void BfIRBuilder::SetBackend(bool isBeefBackend)
 	BF_ASSERT(mIRCodeGen == NULL);
 	if (mDbgVerifyCodeGen)
 	{
-#ifdef BF_PLATFORM_WINDOWS		
 		if (isBeefBackend)
 		{			
 			mBeIRCodeGen = new BeIRCodeGen();
@@ -1612,7 +1598,6 @@ void BfIRBuilder::SetBackend(bool isBeefBackend)
 			mIRCodeGen = mBeIRCodeGen;
 		}
 		else
-#endif			
 		{
 			mBfIRCodeGen = new BfIRCodeGen();
 			mBfIRCodeGen->mStream = &mStream;

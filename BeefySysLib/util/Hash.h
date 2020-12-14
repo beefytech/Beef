@@ -129,7 +129,11 @@ public:
 	~HashContext();
 	
 	void Reset();
-	void Mixin(const void* data, int size);
+	void Mixin(const void* data, int size);	
+	void Mixin(int val)
+	{
+		Mixin((void*)&val, (int)sizeof(val));
+	}
 	template <typename T>
 	void Mixin(const T& val)
 	{
