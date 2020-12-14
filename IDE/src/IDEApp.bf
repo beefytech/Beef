@@ -2122,6 +2122,8 @@ namespace IDE
 			int lastSlash = relPath.LastIndexOf('/');
 			if (lastSlash != -1)
 				relPath.RemoveToEnd(lastSlash);
+			else
+				relPath.Set(".");
 
 			/*var endStr = "/BeefProj.toml";
 			if (relPath.EndsWith(endStr))
