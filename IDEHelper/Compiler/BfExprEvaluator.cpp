@@ -4986,7 +4986,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	{
 		if (mModule->mIsConstModule)
 		{
-			mModule->mCompiler->mCEMachine->QueueMethod(methodInstance);
+			mModule->mCompiler->mCEMachine->QueueMethod(methodInstance, func);
 		}
 		else if ((mBfEvalExprFlags & BfEvalExprFlags_ConstExpr) != 0)
 		{

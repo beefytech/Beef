@@ -2,7 +2,7 @@
 #include "BfModule.h"
 #include "BfCompiler.h"
 #include "BfIRBuilder.h"
-#include "..\Backend\BeIRCodeGen.h"
+#include "../Backend/BeIRCodeGen.h"
 
 USING_NS_BF;
 
@@ -17,51 +17,51 @@ struct CeOpInfo
 };
 
 #define CEOPINFO_SIZED_1(OPNAME, OPINFOA) \
-	{OPNAME##"_8", OPINFOA}, \
-	{OPNAME##"_16", OPINFOA}, \
-	{OPNAME##"_32", OPINFOA}, \
-	{OPNAME##"_64", OPINFOA}, \
-	{OPNAME##"_X", OPINFOA, CEOI_IMM32}
+	{OPNAME "_8", OPINFOA}, \
+	{OPNAME "_16", OPINFOA}, \
+	{OPNAME "_32", OPINFOA}, \
+	{OPNAME "_64", OPINFOA}, \
+	{OPNAME "_X", OPINFOA, CEOI_IMM32}
 
 #define CEOPINFO_SIZED_2(OPNAME, OPINFOA, OPINFOB) \
-	{OPNAME##"_8", OPINFOA, OPINFOB}, \
-	{OPNAME##"_16", OPINFOA, OPINFOB}, \
-	{OPNAME##"_32", OPINFOA, OPINFOB}, \
-	{OPNAME##"_64", OPINFOA, OPINFOB}, \
-	{OPNAME##"_X", OPINFOA, CEOI_IMM32, OPINFOB}
+	{OPNAME "_8", OPINFOA, OPINFOB}, \
+	{OPNAME "_16", OPINFOA, OPINFOB}, \
+	{OPNAME "_32", OPINFOA, OPINFOB}, \
+	{OPNAME "_64", OPINFOA, OPINFOB}, \
+	{OPNAME "_X", OPINFOA, CEOI_IMM32, OPINFOB}
 
 #define CEOPINFO_SIZED_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
-	{OPNAME##"_8", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_16", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_32", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_64", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_X", OPINFOA, CEOI_IMM32, OPINFOB, OPINFOC}
+	{OPNAME "_8", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_16", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_32", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_64", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_X", OPINFOA, CEOI_IMM32, OPINFOB, OPINFOC}
 
 #define CEOPINFO_SIZED_NUMERIC(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
-	{OPNAME##"_I8", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I16", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I32", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I64", OPINFOA, OPINFOB, OPINFOC}
+	{OPNAME "_I8", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I16", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I32", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I64", OPINFOA, OPINFOB, OPINFOC}
 
 #define CEOPINFO_SIZED_NUMERIC_PLUSF_2(OPNAME, OPINFOA, OPINFOB) \
-	{OPNAME##"_I8", OPINFOA, OPINFOB}, \
-	{OPNAME##"_I16", OPINFOA, OPINFOB}, \
-	{OPNAME##"_I32", OPINFOA, OPINFOB}, \
-	{OPNAME##"_I64", OPINFOA, OPINFOB}, \
-	{OPNAME##"_F32", OPINFOA, OPINFOB}, \
-	{OPNAME##"_F64", OPINFOA, OPINFOB}
+	{OPNAME "_I8", OPINFOA, OPINFOB}, \
+	{OPNAME "_I16", OPINFOA, OPINFOB}, \
+	{OPNAME "_I32", OPINFOA, OPINFOB}, \
+	{OPNAME "_I64", OPINFOA, OPINFOB}, \
+	{OPNAME "_F32", OPINFOA, OPINFOB}, \
+	{OPNAME "_F64", OPINFOA, OPINFOB}
 #define CEOPINFO_SIZED_NUMERIC_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
-	{OPNAME##"_I8", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I16", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I32", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I64", OPINFOA, OPINFOB, OPINFOC}
+	{OPNAME "_I8", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I16", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I32", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I64", OPINFOA, OPINFOB, OPINFOC}
 #define CEOPINFO_SIZED_NUMERIC_PLUSF_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
-	{OPNAME##"_I8", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I16", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I32", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_I64", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_F32", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME##"_F64", OPINFOA, OPINFOB, OPINFOC}
+	{OPNAME "_I8", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I16", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I32", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_I64", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_F32", OPINFOA, OPINFOB, OPINFOC}, \
+	{OPNAME "_F64", OPINFOA, OPINFOB, OPINFOC}
 
 static CeOpInfo gOpInfo[] =
 {
@@ -70,8 +70,8 @@ static CeOpInfo gOpInfo[] =
 	{"Jmp", CEOI_None, CEOI_JMPREL},
 	{"JmpIf", CEOI_None, CEOI_JMPREL, CEOI_FrameRef},
 	{"JmpIfNot", CEOI_None, CEOI_JMPREL, CEOI_FrameRef},
-	{"FrameAddr32", CEOI_FrameRef, CEOI_FrameRef},
-	{"FrameAddr64", CEOI_FrameRef, CEOI_FrameRef},
+	{"FrameAddr_32", CEOI_FrameRef, CEOI_FrameRef},
+	{"FrameAddr_64", CEOI_FrameRef, CEOI_FrameRef},
 	{"Zero",  CEOI_FrameRef, CEOI_IMM32},
 		
 	{"Const_8", CEOI_FrameRef, CEOI_IMM8},
@@ -91,12 +91,12 @@ static CeOpInfo gOpInfo[] =
 
 	{"Conv_I32_I64", CEOI_FrameRef, CEOI_FrameRef},
 
-	{"AddConst_I8", CEOI_FrameRef, CEOI_IMM8},
-	{"AddConst_I16", CEOI_FrameRef, CEOI_IMM16},
-	{"AddConst_I32", CEOI_FrameRef, CEOI_IMM32},
-	{"AddConst_I64", CEOI_FrameRef, CEOI_IMM64},
-	{"AddConst_F32", CEOI_FrameRef, CEOI_IMMF32},
-	{"AddConst_F64", CEOI_FrameRef, CEOI_IMMF64},
+	{"AddConst_I8", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM8},
+	{"AddConst_I16", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM16},
+	{"AddConst_I32", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM32},
+	{"AddConst_I64", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM64},
+	{"AddConst_F32", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMMF32},
+	{"AddConst_F64", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMMF64},
 
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Add", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_NUMERIC_PLUSF_3("Sub", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
@@ -266,13 +266,8 @@ void CeBuilder::Fail(const StringImpl& str)
 		return;
 
 	String errStr = StrFormat("Failure during const code generation of %s: %s", mBeFunction->mName.c_str(), str.c_str());
-
 	if (mCurDbgLoc != NULL)
-	{
-		BeDumpContext dumpCtx;
-		errStr += "\n DbgLoc : ";
-		dumpCtx.ToString(errStr, mCurDbgLoc);
-	}
+		errStr += StrFormat(" at line %d:%d in %s", mCurDbgLoc->mLine + 1, mCurDbgLoc->mColumn + 1, mCurDbgLoc->GetDbgFile()->mFileName.c_str());
 
 	mCeFunction->mGenError = errStr;
 }
@@ -290,6 +285,11 @@ void CeBuilder::Emit(CeOp val)
 void CeBuilder::Emit(int32 val)
 {
 	*(int32*)mCeFunction->mCode.GrowUninitialized(4) = val;
+}
+
+void CeBuilder::Emit(int64 val)
+{
+	*(int64*)mCeFunction->mCode.GrowUninitialized(8) = val;
 }
 
 void CeBuilder::Emit(bool val)
@@ -530,24 +530,25 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 		break;
 	case BeCastConstant::TypeId:
 		{
-// 			auto constant = (BeCastConstant*)value;
-// 
-// 			CeOperand mcOperand;
-// 			auto relTo = GetOperand(constant->mTarget);
-// 			if (relTo.mKind == CeOperandKind_Immediate_Null)
-// 			{
-// 				mcOperand.mKind = CeOperandKind_Immediate_Null;
-// 				mcOperand.mType = constant->mType;
-// 				return mcOperand;
-// 			}
-// 
-// 			mcOperand = AllocVirtualReg(constant->mType);
-// 			auto vregInfo = GetVRegInfo(mcOperand);
-// 			vregInfo->mDefOnFirstUse = true;
-// 			vregInfo->mRelTo = relTo;
-// 			vregInfo->mIsExpr = true;
-// 
-// 			return mcOperand;
+ 			auto constant = (BeCastConstant*)value;
+ 
+ 			CeOperand mcOperand;
+ 			auto relTo = GetOperand(constant->mTarget);
+ 			if (relTo.mKind == CeOperandKind_Immediate)
+ 			{
+ 				mcOperand.mKind = CeOperandKind_Immediate;
+ 				mcOperand.mType = constant->mType;
+ 				return mcOperand;
+ 			}
+
+			//Fail("Invalid operand");
+//  			mcOperand = AllocVirtualReg(constant->mType);
+//  			auto vregInfo = GetVRegInfo(mcOperand);
+//  			vregInfo->mDefOnFirstUse = true;
+//  			vregInfo->mRelTo = relTo;
+//  			vregInfo->mIsExpr = true;
+ 
+ 			//return mcOperand;
 		}
 		break;
 	case BeConstant::TypeId:
@@ -763,8 +764,10 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 	if ((operand.mKind == CeOperandKind_AllocaAddr) && (!allowAlloca))
 	{
 		auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
-		auto result = FrameAlloc(mIntPtrType);
-		Emit((mPtrSize == 4) ? CeOp_FrameAddr32 : CeOp_FrameAddr64);
+		
+		auto ptrType = mCeMachine->GetBeContext()->GetPointerTo(operand.mType);
+		auto result = FrameAlloc(ptrType);
+		Emit((mPtrSize == 4) ? CeOp_FrameAddr_32 : CeOp_FrameAddr_64);
 		EmitFrameOffset(result);
 		Emit((int32)operand.mFrameOfs);
 		return result;
@@ -985,7 +988,7 @@ void CeBuilder::HandleParams()
 }
 
 void CeBuilder::Build()
-{	
+{
 	mCeFunction->mFailed = true;
 
 	auto methodInstance = mCeFunction->mMethodInstance;
@@ -1386,28 +1389,53 @@ void CeBuilder::Build()
 				{
 					auto castedInst = (BeGEPInst*)inst;
 
-					auto mcVal = GetOperand(castedInst->mPtr);
-					auto mcIdx0 = GetOperand(castedInst->mIdx0, false, true);
+					auto ceVal = GetOperand(castedInst->mPtr);
+					auto ceIdx0 = GetOperand(castedInst->mIdx0, false, true);
 
-					BePointerType* ptrType = (BePointerType*)mcVal.mType;
+					BePointerType* ptrType = (BePointerType*)ceVal.mType;
 					BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
 
-					result = mcVal;
+					result = ceVal;
 					if (castedInst->mIdx1 != NULL)
 					{
 						// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
 						BF_ASSERT(castedInst->mIdx0);
 
-						auto mcIdx1 = GetOperand(castedInst->mIdx1);
-						if (!mcIdx1.IsImmediate())
+						auto ceIdx1 = GetOperand(castedInst->mIdx1, false, true);
+						if (!ceIdx1.IsImmediate())
 						{
 							// This path is used when we have a const array that gets indexed by a non-const index value
-// 							if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
-// 							{
-// 								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
-// 
-// 								auto elementPtrType = mModule->mContext->GetPointerTo(arrayType->mElementType);
-// 
+							if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
+							{
+								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
+
+								auto elementPtrType = beModule->mContext->GetPointerTo(arrayType->mElementType);
+								
+								if (ceIdx1.IsImmediate())
+								{
+									if (ceIdx1.mImmediate == 0)
+									{
+										result = ceVal;
+										result.mType = elementPtrType;
+									}
+									else
+									{
+										auto ptrValue = FrameAlloc(elementPtrType);
+										result = ptrValue;
+
+										result = FrameAlloc(elementPtrType);
+										Emit((CeOp)(CeOp_AddConst_I32));
+										EmitFrameOffset(result);
+										EmitFrameOffset(ceVal);
+										Emit((int32)(ceIdx1.mImmediate * arrayType->mElementType->mSize));
+									}
+								}
+								else
+								{
+									auto ptrValue = FrameAlloc(elementPtrType);
+									result = ptrValue;
+								}
+
 // 								auto ptrValue = AllocVirtualReg(elementPtrType);
 // 								auto ptrInfo = GetVRegInfo(ptrValue);
 // 								ptrInfo->mIsExpr = true;
@@ -1432,21 +1460,19 @@ void CeBuilder::Build()
 // 								CreateDefineVReg(result);
 // 								//TODO: Always correct?
 // 								result.mKind = BeMCOperandKind_VReg;
-// 
-// 							}
-// 							else
-// 								SoftFail("Invalid GEP", inst->mDbgLoc);
-							Fail("Invalid GEP");
+ 							}
+ 							else
+ 								Fail("Invalid GEP");							
 						}
 						else
 						{
-							BF_ASSERT(mcIdx1.IsImmediate());
+							BF_ASSERT(ceIdx1.IsImmediate());
 							int byteOffset = 0;
 							BeType* elementType = NULL;
 							if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
 							{
 								BeStructType* structType = (BeStructType*)ptrType->mElementType;
-								auto& structMember = structType->mMembers[mcIdx1.mImmediate];
+								auto& structMember = structType->mMembers[ceIdx1.mImmediate];
 								elementType = structMember.mType;
 								byteOffset = structMember.mByteOffset;
 							}
@@ -1454,27 +1480,33 @@ void CeBuilder::Build()
 							{
 								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
 								elementType = arrayType->mElementType;
-								byteOffset = mcIdx1.mImmediate * elementType->mSize;
+								byteOffset = ceIdx1.mImmediate * elementType->mSize;
 							}
 							else if (ptrType->mElementType->mTypeCode == BeTypeCode_Vector)
 							{
 								auto arrayType = (BeVectorType*)ptrType->mElementType;
 								elementType = arrayType->mElementType;
-								byteOffset = mcIdx1.mImmediate * elementType->mSize;
+								byteOffset = ceIdx1.mImmediate * elementType->mSize;
 							}
 							else
 							{
 								Fail("Invalid gep target");
 							}
 							
-							auto elementPtrType = beModule->mContext->GetPointerTo(elementType);
-							
-							
+							auto elementPtrType = beModule->mContext->GetPointerTo(elementType);							
 
-							//result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
-							// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
-							//CreateDefineVReg(result);
-							//result.mKind = BeMCOperandKind_VReg;
+							if (byteOffset != 0)
+							{
+								result = FrameAlloc(elementPtrType);
+								Emit((CeOp)(CeOp_AddConst_I32));
+								EmitFrameOffset(result);
+								EmitFrameOffset(ceVal);
+								Emit((int32)byteOffset);
+							}
+							else
+							{
+								result.mType = elementPtrType;
+							}
 						}
 					}
 					else
@@ -1701,10 +1733,15 @@ void CeBuilder::Build()
 		*((int32*)(&mCeFunction->mCode[0] + jumpEntry.mEmitPos)) = ceBlock.mEmitOfs - jumpEntry.mEmitPos - 4;
 	}
 
-	mCeFunction->mFailed = false;
-	mCeFunction->mFrameSize = mFrameSize;
+	if (mCeFunction->mCode.size() == 0)
+	{
+		Fail("No method definition available");
+		return;
+	}
 
-	
+	if (mCeFunction->mGenError.IsEmpty())
+		mCeFunction->mFailed = false;
+	mCeFunction->mFrameSize = mFrameSize;	
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1724,9 +1761,9 @@ CeMachine::~CeMachine()
 	delete mCeModule;
 }
 
-void CeMachine::Fail(const CeFrame& curFrame, const StringImpl& str)
+BfError* CeMachine::Fail(const CeFrame& curFrame, const StringImpl& str)
 {
-	mCurModule->Fail(str, mCurTargetSrc);
+	return mCurModule->Fail(str, mCurTargetSrc);
 }
 
 void CeMachine::Init()
@@ -1744,6 +1781,20 @@ void CeMachine::Init()
 	mCeModule->mBfIRBuilder->mHasDebugInfo = false; // Only line info
 	mCeModule->mBfIRBuilder->mIgnoreWrites = false;
 	mCeModule->mWantsIRIgnoreWrites = false;
+}
+
+BeContext* CeMachine::GetBeContext()
+{
+	if (mCeModule == NULL)
+		return NULL;
+	return mCeModule->mBfIRBuilder->mBeIRCodeGen->mBeContext;
+}
+
+BeModule* CeMachine::GetBeModule()
+{
+	if (mCeModule == NULL)
+		return NULL;
+	return mCeModule->mBfIRBuilder->mBeIRCodeGen->mBeModule;
 }
 
 void CeMachine::CompileStarted()
@@ -1843,6 +1894,14 @@ void CeMachine::WriteConstant(uint8* ptr, BfConstant* constant)
 		return false; \
 	}
 
+// This check will fail for addresses < 64K (null pointer), or out-of-bounds
+#define CE_CHECKADDR(ADDR, SIZE) \
+	if (((ADDR) - 0x10000) + sizeof(uint32) > (BF_CE_STACK_SIZE - 0x10000)) \
+	{ \
+		_Fail("Access violation"); \
+		return false; \
+	}
+
 #define CE_GETINST(T) *((T*)(instPtr += sizeof(T)) - 1)
 #define CE_GETFRAME(T) *(T*)(framePtr + *((int32*)(instPtr += sizeof(int32)) - 1))
 #define CEOP_BIN(OP, T) \
@@ -1850,6 +1909,13 @@ void CeMachine::WriteConstant(uint8* ptr, BfConstant* constant)
 		auto& result = CE_GETFRAME(T); \
 		auto lhs = CE_GETFRAME(T); \
 		auto rhs = CE_GETFRAME(T); \
+		result = lhs OP rhs; \
+	}
+#define CEOP_BIN_CONST(OP, T) \
+	{ \
+		auto& result = CE_GETFRAME(T); \
+		auto lhs = CE_GETFRAME(T); \
+		auto rhs = CE_GETINST(T); \
 		result = lhs OP rhs; \
 	}
 #define CEOP_UNARY(OP, T) \
@@ -1870,6 +1936,20 @@ void CeMachine::WriteConstant(uint8* ptr, BfConstant* constant)
 		auto& result = CE_GETFRAME(TTO); \
 		auto val = CE_GETFRAME(TFROM); \
 		result = (TTO)val; \
+	}
+#define CE_LOAD(T) \
+	{ \
+		auto& result = CE_GETFRAME(T); \
+		auto ceAddr = CE_GETFRAME(uint32); \
+		CE_CHECKADDR(ceAddr, sizeof(T)); \
+		result = *(T*)(memStart + ceAddr); \
+	}
+#define CE_STORE(T) \
+	{ \
+		auto val = CE_GETFRAME(T); \
+		auto ceAddr = CE_GETFRAME(uint32); \
+		CE_CHECKADDR(ceAddr, sizeof(T)); \
+		*(T*)(memStart + ceAddr) = val; \
 	}
 #define CEOP_MOVE(T) \
 	{ \
@@ -1895,10 +1975,10 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 {	
 	CeFunction* ceFunction = startFunction;
 	uint8* memStart = &mMemory[0];	
-	uint8* instPtr = &ceFunction->mCode[0];
+	uint8* instPtr = (ceFunction->mCode.IsEmpty()) ? NULL : &ceFunction->mCode[0];
 	uint8* stackPtr = startStackPtr;
 	uint8* framePtr = startFramePtr;
-	
+		
 	auto _GetCurFrame = [&]()
 	{
 		CeFrame ceFrame;
@@ -1913,7 +1993,20 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 	{
 		Fail(_GetCurFrame(), error);
 	};
-	
+
+	auto _CheckFunction = [&](CeFunction* checkFunction)
+	{
+		if (!checkFunction->mFailed)
+			return true;
+		auto error = Fail(_GetCurFrame(), "Method call failed");
+		if ((error != NULL) && (!checkFunction->mGenError.IsEmpty()))
+			mCeModule->mCompiler->mPassInstance->MoreInfo("Const Method Generation Error: " + checkFunction->mGenError);
+		return false;
+	};
+
+	if (!_CheckFunction(ceFunction))
+		return false;
+
 	int callCount = 0;
 
 	while (true)
@@ -1957,7 +2050,7 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					instPtr += relOfs - 4;
 			}
 			break;
-		case CeOp_FrameAddr64:
+		case CeOp_FrameAddr_64:
 			{
 				auto& result = CE_GETFRAME(int64);
 				auto addr = &CE_GETFRAME(uint8);
@@ -2004,17 +2097,16 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			break;
 		case CeOp_Load_32:
-			{
-				auto& result = CE_GETFRAME(uint32);
-				auto ceAddr = CE_GETFRAME(uint32);
-				// This check will fail for addresses < 256 (null pointer), or out-of-bounds the other direction
-				if ((ceAddr - 256) + sizeof(uint32) > (BF_CE_STACK_SIZE - 256))
-				{
-					//TODO: Throw error
-					return false;
-				}
-				result = *(uint32*)(memStart + ceAddr);
-			}
+			CE_LOAD(uint32);			
+			break;
+		case CeOp_Load_64:
+			CE_LOAD(uint64);
+			break;
+		case CeOp_Store_32:
+			CE_STORE(uint32);
+			break;
+		case CeOp_Store_64:
+			CE_STORE(uint64);
 			break;
 		case CeOp_Move_8:
 			CEOP_MOVE(int8);
@@ -2076,6 +2168,15 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				{
 					callEntry.mFunction = NULL;
 					mNamedFunctionMap.TryGetValue(callEntry.mFunctionName, &callEntry.mFunction);
+					
+					if ((callEntry.mFunction != NULL) && (!callEntry.mFunction->mInitialized))
+					{
+						PrepareFunction(callEntry.mFunction);
+					}
+
+					if (!_CheckFunction(callEntry.mFunction))
+						return false;					
+
 					callEntry.mBindRevision = mRevision;
 				}
 
@@ -2105,6 +2206,12 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			break;
 		case CeOp_Conv_I32_I64:
 			CE_CAST(int32, int64);
+			break;
+		case CeOp_AddConst_I32:
+			CEOP_BIN_CONST(+, int32);
+			break;
+		case CeOp_AddConst_I64:
+			CEOP_BIN_CONST(+, int64);
 			break;
 		case CeOp_Add_I32:
 			CEOP_BIN(+, int32);
@@ -2184,17 +2291,7 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction)
 	}
 }
 
-void CeMachine::ProcessWorkQueue()
-{
-	while (!mWorkQueue.IsEmpty())
-	{
-		auto ceFunction = mWorkQueue.back();
-		mWorkQueue.pop_back();
-		PrepareFunction(ceFunction);
-	}
-}
-
-CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, bool& added)
+CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added)
 {		
 	CeFunction** functionValuePtr = NULL;
 	CeFunction* ceFunction = NULL;
@@ -2209,6 +2306,14 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, bool& added
 		ceFunction = new CeFunction();
 		ceFunction->mMethodInstance = methodInstance;		
 
+		if ((func) && (!func.IsConst()) && (!func.IsFake()))
+		{
+			if (auto function = BeValueDynCast<BeFunction>(mCeModule->mBfIRBuilder->mBeIRCodeGen->GetBeValue(func.mId)))
+			{
+				mNamedFunctionMap[function->mName] = ceFunction;
+			}			
+		}
+
 		*functionValuePtr = ceFunction;
 	}
 	else
@@ -2216,12 +2321,10 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, bool& added
 	return ceFunction;
 }
 
-void CeMachine::QueueMethod(BfMethodInstance* methodInstance)
+void CeMachine::QueueMethod(BfMethodInstance* methodInstance, BfIRValue func)
 {
 	bool added = false;
-	auto ceFunction = GetFunction(methodInstance, added);
-	if (added)
-		mWorkQueue.Add(ceFunction);
+	auto ceFunction = GetFunction(methodInstance, func, added);
 }
 
 BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags)
@@ -2249,13 +2352,9 @@ BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	}
 
 	bool added = false;
-	CeFunction* ceFunction = GetFunction(methodInstance, added);
-	if (!ceFunction->mInitialized)
-	{
+	CeFunction* ceFunction = GetFunction(methodInstance, BfIRValue(), added);
+	if (!ceFunction->mInitialized)	
 		PrepareFunction(ceFunction);
-		ProcessWorkQueue();
-	}
-	BF_ASSERT(mWorkQueue.IsEmpty());
 
 	mMemory.Resize(BF_CE_STACK_SIZE);
 	auto stackPtr = &mMemory[0] + mMemory.mSize;

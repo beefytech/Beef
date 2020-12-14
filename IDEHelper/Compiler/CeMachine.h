@@ -6,6 +6,8 @@
 NS_BF_BEGIN
 
 class BfMethodInstance;
+class BeModule;
+class BeContext;
 class BeDbgLoc;
 class BeType;
 class BeValue;
@@ -46,8 +48,8 @@ enum CeOp : int16
 	CeOp_JmpIf,
 	CeOp_JmpIfNot,
 
-	CeOp_FrameAddr32,
-	CeOp_FrameAddr64,
+	CeOp_FrameAddr_32,
+	CeOp_FrameAddr_64,
 
 	CeOp_Zero,
 	CEOP_SIZED(Const),
@@ -284,6 +286,7 @@ public:
 	void Emit(uint8 val);	
 	void Emit(CeOp val);
 	void Emit(int32 val);
+	void Emit(int64 val);
 	void Emit(bool val);
 	void Emit(void* ptr, int size);
 	void EmitJump(CeOp op, const CeOperand& block);
@@ -327,8 +330,7 @@ public:
 	
 	Array<CeFrame> mCallStack;
 	Array<uint8> mMemory;	
-	uint8* mStackMin;
-	Array<CeFunction*> mWorkQueue;
+	uint8* mStackMin;	
 
 	BfAstNode* mCurTargetSrc;
 	BfModule* mCurModule;
@@ -336,23 +338,24 @@ public:
 public:
 	CeMachine(BfCompiler* compiler);
 	~CeMachine();
-	
-	void Fail(const CeFrame& curFrame, const StringImpl& error);
+		
+	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
 
 	void Init();	
+	BeContext* GetBeContext();
+	BeModule* GetBeModule();
 	void RemoveMethod(BfMethodInstance* methodInstance);
 	int GetConstantSize(BfConstant* constant);
 	void WriteConstant(uint8* ptr, BfConstant* constant);
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);		
 	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr);
 
-	void PrepareFunction(CeFunction* methodInstance);
-	void ProcessWorkQueue();	
-	CeFunction* GetFunction(BfMethodInstance* methodInstance, bool& added);
+	void PrepareFunction(CeFunction* methodInstance);	
+	CeFunction* GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added);
 
 public:
 	void CompileStarted();
-	void QueueMethod(BfMethodInstance* methodInstance);
+	void QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
 	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags);
 };
 
