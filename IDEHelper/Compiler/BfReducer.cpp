@@ -7385,13 +7385,18 @@ bool BfReducer::SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeR
 				((prevToken->mToken == BfToken_Internal) && (tokenNode->mToken == BfToken_Protected)))
 			{
 				auto tokenPair = mAlloc->Alloc<BfTokenPairNode>();
-				ReplaceNode(protectionNodeRef, tokenPair);
-				MEMBER_SET(tokenPair, mLeft, prevToken);
-				MEMBER_SET(tokenPair, mRight, tokenNode);
-
-				if (tokenPair->mLeft->mSrcStart > tokenPair->mRight->mSrcStart)
+				
+				if (prevToken->mSrcStart < tokenNode->mSrcStart)
 				{
-					BF_SWAP(tokenPair->mLeft, tokenPair->mRight);
+					ReplaceNode(prevToken, tokenPair);
+					MEMBER_SET(tokenPair, mLeft, prevToken);
+					MEMBER_SET(tokenPair, mRight, tokenNode);
+				}
+				else
+				{
+					ReplaceNode(tokenNode, tokenPair);
+					MEMBER_SET(tokenPair, mLeft, tokenNode);
+					MEMBER_SET(tokenPair, mRight, prevToken);
 				}
 
 				protectionNodeRef = tokenPair;
