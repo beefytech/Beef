@@ -1054,15 +1054,17 @@ namespace IDE
 				if (var sourceViewPanel = GetActiveSourceViewPanel(true))
 					sourceViewPanel.RecordHistoryLocation();
 
-				int32 char8Idx = int32.Parse(cmds[2]).GetValueOrDefault();
+				int32 charIdx = int32.Parse(cmds[2]).GetValueOrDefault();
+				if (charIdx < 0)
+					return;
 				var sourceViewPanel = ShowSourceFile(cmds[1], null, SourceShowType.Temp);
 				if (sourceViewPanel == null)
 				    return;
 				var editWidgetContent = sourceViewPanel.mEditWidget.mEditWidgetContent;
 				int line;
 				int lineChar;
-				editWidgetContent.GetLineCharAtIdx(char8Idx, out line, out lineChar);
-				sourceViewPanel.ShowFileLocation(char8Idx, .Always);
+				editWidgetContent.GetLineCharAtIdx(charIdx, out line, out lineChar);
+				sourceViewPanel.ShowFileLocation(charIdx, .Always);
 			case "ShowCodeAddr":
 				var sourceViewPanel = GetActiveSourceViewPanel(true);
 				if (sourceViewPanel != null)
