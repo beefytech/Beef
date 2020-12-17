@@ -205,14 +205,19 @@ public:
 class BeValue : public BeHashble
 {
 public:
+	int mRefCount;
 #ifdef _DEBUG
 	bool mLifetimeEnded;
-	bool mWasRemoved;
-	int mRefCount;
+	bool mWasRemoved;	
 	BeValue()
 	{
 		mLifetimeEnded = false;
 		mWasRemoved = false;
+		mRefCount = 0;
+	}
+#else
+	BeValue()
+	{
 		mRefCount = 0;
 	}
 #endif
