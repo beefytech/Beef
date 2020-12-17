@@ -282,6 +282,7 @@ file(GLOB SRC_FILES
     util/CubicSpline.cpp
     util/FileEnumerator.cpp
     util/Hash.cpp
+    util/Heap.cpp
     util/Json.cpp
     util/MappedFile.cpp
     util/Matrix4.cpp
