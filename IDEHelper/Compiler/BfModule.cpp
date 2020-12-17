@@ -9167,6 +9167,8 @@ void BfModule::EmitObjectAccessCheck(BfTypedValue typedVal)
 		auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
 		if (constant->mTypeCode == BfTypeCode_NullPtr)
 			return;
+		if (constant->mConstType == BfConstType_BitCastNull)
+			return;
 	}
 
 	bool emitObjectAccessCheck = mCompiler->mOptions.mEmitObjectAccessCheck;
@@ -11226,7 +11228,7 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 			{
 				auto globalVar = (BfGlobalVar*)constantValue;
 				if (globalVar->mName[0] == '#')
-				{
+				{					
 					BfTypedValue result = GetCompilerFieldValue(globalVar->mName);
 					if (result)
 						return result;
@@ -13039,6 +13041,19 @@ void BfModule::HadSlotCountDependency()
 
 BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 {
+	if (str == "#IsConstEval")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, mIsConstModule ? 1 : 0), GetPrimitiveType(BfTypeCode_Boolean));
+	}
+	if (str == "#ModuleName")
+	{
+		return BfTypedValue(GetStringObjectValue(mModuleName), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#ProjectName")
+	{
+		if (mProject != NULL)
+			return BfTypedValue(GetStringObjectValue(mProject->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
 	if (str == "#TimeLocal")
 	{
 		time_t rawtime;
@@ -17631,7 +17646,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		
 	if (mCurMethodState == NULL) // Only do initial classify for the 'outer' method state, not any local methods or lambdas
 	{
-		if ((mCompiler->mIsResolveOnly) && (methodDef->mBody != NULL) && (!mCurTypeInstance->IsBoxed()) &&
+		if ((mCompiler->mIsResolveOnly) && (!mIsConstModule) && (methodDef->mBody != NULL) && (!mCurTypeInstance->IsBoxed()) &&
 			(methodDef->mBody->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
 		{
 			mCompiler->mResolvePassData->mSourceClassifier->VisitChildNoRef(methodDef->mBody);
@@ -18569,11 +18584,6 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	if ((methodDef != NULL) && (propertyDeclaration != NULL) && (propertyDeclaration->mExternSpecifier != NULL))
 		hasExternSpecifier = true;
 
-	if ((methodDef->mMethodType == BfMethodType_CtorNoBody) && (mModuleName == "Atma_Framework_Window"))
-	{
-		NOP;
-	}
-
 	// Allocate, clear, set classVData	
 
 	if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
@@ -18585,7 +18595,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		skipBody = true;
 		skipEndChecks = true;
 		
-		if (HasCompiledOutput())
+		if ((HasCompiledOutput()) || (mIsConstModule))
 		{
 			// Clear out DebugLoc - to mark the ".addr" code as part of prologue
 			mBfIRBuilder->ClearDebugLocation();
@@ -18853,7 +18863,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		else if ((mCurTypeInstance->IsEnum()) && (!mCurTypeInstance->IsBoxed()) && (methodDef->mName == BF_METHODNAME_TO_STRING))
 		{
 			auto enumType = ResolveTypeDef(mCompiler->mEnumTypeDef);
-			if (HasCompiledOutput())
+			if ((HasCompiledOutput()) || (mIsConstModule))
 			{
 				EmitEnumToStringBody();
 			}
@@ -18866,7 +18876,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		else if ((mCurTypeInstance->IsTuple()) && (!mCurTypeInstance->IsBoxed()) && (methodDef->mName == BF_METHODNAME_TO_STRING))
 		{
 			auto enumType = ResolveTypeDef(mCompiler->mEnumTypeDef);
-			if (HasCompiledOutput())
+			if ((HasCompiledOutput()) || (mIsConstModule))
 			{
 				EmitTupleToStringBody();
 			}
@@ -18908,7 +18918,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				{
 					mBfIRBuilder->CreateRetVoid();
 				}
-				else if (HasCompiledOutput())
+				else if ((HasCompiledOutput()) || (mIsConstModule))
 				{
 					String autoPropName = typeDef->GetAutoPropertyName(propertyDeclaration);
 					BfFieldInstance* fieldInstance = GetFieldByName(mCurTypeInstance, autoPropName);
@@ -22517,7 +22527,7 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 				if ((iMethodPtr->mKind != BfMethodRefKind_AmbiguousRef) && (iMethodPtr->mTypeInstance != NULL))
 				{						
 					auto prevMethod = (BfMethodInstance*)*iMethodPtr;
-					if ((mCompiler->mIsResolveOnly) && (prevMethod == methodInstance))
+					if ((mCompiler->mIsResolveOnly) && (prevMethod == methodInstance) && (!mIsConstModule))
 					{
 						// When autocompletion regenerates a single method body but not the whole type then 
 						//  we will see ourselves in the vtable already
