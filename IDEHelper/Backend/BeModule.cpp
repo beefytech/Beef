@@ -1723,6 +1723,13 @@ void BeDbgFile::ToString(String& str)
 			str = '\\';
 }
 
+void BeDbgFile::GetFilePath(String& outStr)
+{
+	outStr.Append(mDirectory);
+	outStr.Append(DIR_SEP_CHAR);
+	outStr.Append(mFileName);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BeModule::BeModule(const StringImpl& moduleName, BeContext* context)
@@ -2442,6 +2449,10 @@ String BeModule::ToString(BeFunction* wantFunc)
 						}
 					}
 					break;
+				DISPLAY_INST1(BeConstEvalGetType, "ConstEvalGetType", mTypeId);
+				DISPLAY_INST2(BeConstEvalDynamicCastCheck, "ConstEvalDynamicCastCheck", mValue, mTypeId);
+				DISPLAY_INST2(BeConstEvalGetVirtualFunc, "ConstEvalGetVirtualFunc", mValue, mVirtualTableIdx);
+				DISPLAY_INST3(BeConstEvalGetInterfaceFunc, "ConstEvalGetInterfaceFunc", mValue, mIFaceTypeId, mVirtualTableIdx);
 				default:
 					BF_FATAL("Notimpl");
 					str += "<UNKNOWN INST>";

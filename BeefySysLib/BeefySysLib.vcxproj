@@ -1932,6 +1932,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClCompile Include="util\CubicFuncSpline.cpp" />
     <ClCompile Include="util\CubicSpline.cpp" />
     <ClCompile Include="util\Hash.cpp" />
+    <ClCompile Include="util\Heap.cpp" />
     <ClCompile Include="util\MappedFile.cpp" />
     <ClCompile Include="util\Matrix4.cpp" />
     <ClCompile Include="util\PerfTimer.cpp" />
@@ -2159,6 +2160,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="util\DLIList.h" />
     <ClInclude Include="util\Hash.h" />
     <ClInclude Include="util\HashSet.h" />
+    <ClInclude Include="util\Heap.h" />
     <ClInclude Include="util\MappedFile.h" />
     <ClInclude Include="util\Matrix4.h" />
     <ClInclude Include="util\MultiHashSet.h" />

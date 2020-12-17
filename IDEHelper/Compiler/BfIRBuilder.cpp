@@ -3117,6 +3117,7 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 
 		auto& fieldInst = boxedType->mFieldInstances.back();
 		auto elementType = fieldInst.mResolvedType;
+		populateModule->PopulateType(elementType, BfPopulateType_Data);
 
 		if (!elementType->IsValuelessType())
 		{
@@ -3872,8 +3873,20 @@ BfIRValue BfIRBuilder::CreateMul(BfIRValue lhs, BfIRValue rhs)
 BfIRValue BfIRBuilder::CreateDiv(BfIRValue lhs, BfIRValue rhs, bool isSigned)
 {
 	if ((lhs.IsConst()) && (rhs.IsConst()))
-	{		
-		BINOP_APPLY(lhs, rhs, /);
+	{
+		auto constLHS = GetConstantById(lhs.mId);
+		auto constRHS = GetConstantById(rhs.mId);
+
+		if ((constLHS->mTypeCode == BfTypeCode_Float) || (constLHS->mTypeCode == BfTypeCode_Double))
+		{
+			double fVal = constLHS->mDouble / constRHS->mDouble;
+			return CreateConst(constLHS->mTypeCode, fVal);
+		}
+
+		if (constRHS->mInt64 != 0)
+		{
+			INT_BINOP_APPLY(constLHS, constRHS, /);			
+		}
 	}
 
 	auto retVal = WriteCmd(isSigned ? BfIRCmd_SDiv : BfIRCmd_UDiv, lhs, rhs);
@@ -3887,10 +3900,17 @@ BfIRValue BfIRBuilder::CreateRem(BfIRValue lhs, BfIRValue rhs, bool isSigned)
 	{	
 		auto constLHS = GetConstantById(lhs.mId);
 		auto constRHS = GetConstantById(rhs.mId);
-		INT_BINOP_APPLY(constLHS, constRHS, %);
 
-		double fVal = fmod(constLHS->mDouble, constRHS->mDouble);
-		return CreateConst(constLHS->mTypeCode, fVal);
+		if ((constLHS->mTypeCode == BfTypeCode_Float) || (constLHS->mTypeCode == BfTypeCode_Double))
+		{
+			double fVal = fmod(constLHS->mDouble, constRHS->mDouble);
+			return CreateConst(constLHS->mTypeCode, fVal);
+		}
+
+		if (constRHS->mInt64 != 0)
+		{
+			INT_BINOP_APPLY(constLHS, constRHS, %);			
+		}
 	}
 
 	auto retVal = WriteCmd(isSigned ? BfIRCmd_SRem : BfIRCmd_URem, lhs, rhs);
@@ -4777,6 +4797,34 @@ void BfIRBuilder::Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage)
 {
 	WriteCmd(BfIRCmd_Func_SetLinkage, func, (uint8)linkage);
 	NEW_CMD_INSERTED;
+}
+
+BfIRValue BfIRBuilder::ConstEval_GetBfType(int typeId, BfIRType resultType)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetBfType, typeId, resultType);
+	NEW_CMD_INSERTED;
+	return retVal;
+}
+
+BfIRValue BfIRBuilder::ConstEval_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_DynamicCastCheck, value, typeId, resultType);
+	NEW_CMD_INSERTED;
+	return retVal;
+}
+
+BfIRValue BfIRBuilder::ConstEval_GetVirtualFunc(BfIRValue value, int virtualTableId, BfIRType resultType)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetVirtualFunc, value, virtualTableId, resultType);
+	NEW_CMD_INSERTED;
+	return retVal;
+}
+
+BfIRValue BfIRBuilder::ConstEval_GetInterfaceFunc(BfIRValue value, int typeId, int virtualTableId, BfIRType resultType)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetInterfaceFunc, value, typeId, virtualTableId, resultType);
+	NEW_CMD_INSERTED;
+	return retVal;
 }
 
 void BfIRBuilder::SaveDebugLocation()

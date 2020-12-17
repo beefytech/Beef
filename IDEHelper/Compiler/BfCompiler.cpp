@@ -406,6 +406,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mGenericIRefEnumeratorTypeDef = NULL;
 	mInlineAttributeTypeDef = NULL;
 	mInternalTypeDef = NULL;
+	mDiagnosticsDebugTypeDef = NULL;
 	mIDisposableTypeDef = NULL;
 	mIPrintableTypeDef = NULL;
 	mIHashableTypeDef = NULL;
@@ -452,11 +453,12 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 
 BfCompiler::~BfCompiler()
 {		
+	delete mCEMachine;
+	mCEMachine = NULL;
 	delete mContext;
 	delete mHotData;
 	delete mHotState;	
-	delete mHotResolveData;
-	delete mCEMachine;
+	delete mHotResolveData;	
 }
 
 bool BfCompiler::IsTypeAccessible(BfType* checkType, BfProject* curProject)
@@ -6580,6 +6582,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.IRefEnumerator", 1);	
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
+	mDiagnosticsDebugTypeDef = _GetRequiredType("System.Diagnostics.Debug");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
 	mIPrintableTypeDef = _GetRequiredType("System.IPrintable");
 	mIHashableTypeDef = _GetRequiredType("System.IHashable");

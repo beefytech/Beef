@@ -2,6 +2,8 @@
 
 #include "BfSystem.h"
 #include "BfModule.h"
+#include "BeefySysLib/util/Heap.h"
+#include "BeefySysLib/util/AllocDebug.h"
 
 NS_BF_BEGIN
 
@@ -19,6 +21,8 @@ class BeSwitchInst;
 class CeMachine;
 class CeFunction;
 
+typedef int addr_ce;
+
 #define CEOP_SIZED(OPNAME) \
 	CeOp_##OPNAME##_8, \
 	CeOp_##OPNAME##_16, \
@@ -32,6 +36,12 @@ class CeFunction;
 	CeOp_##OPNAME##_I32, \
 	CeOp_##OPNAME##_I64
 
+#define CEOP_SIZED_UNUMERIC(OPNAME) \
+	CeOp_##OPNAME##_U8, \
+	CeOp_##OPNAME##_U16, \
+	CeOp_##OPNAME##_U32, \
+	CeOp_##OPNAME##_U64
+
 #define CEOP_SIZED_NUMERIC_PLUSF(OPNAME) \
 	CeOp_##OPNAME##_I8, \
 	CeOp_##OPNAME##_I16, \
@@ -39,6 +49,14 @@ class CeFunction;
 	CeOp_##OPNAME##_I64, \
 	CeOp_##OPNAME##_F32, \
 	CeOp_##OPNAME##_F64
+
+enum CeErrorKind
+{
+	CeErrorKind_None,
+	CeErrorKind_GlobalVariable,
+	CeErrorKind_FunctionPointer,
+	CeErrorKind_Intrinsic
+};
 
 enum CeOp : int16
 {
@@ -48,6 +66,16 @@ enum CeOp : int16
 	CeOp_JmpIf,
 	CeOp_JmpIfNot,
 
+	CeOp_Error,	
+	CeOp_DynamicCastCheck,
+	CeOp_GetString,
+	CeOp_Malloc,
+	CeOp_Free,
+	
+	CeOp_MemSet,
+	CeOp_MemSet_Const,
+	CeOp_MemCpy,
+	
 	CeOp_FrameAddr_32,
 	CeOp_FrameAddr_64,
 
@@ -60,25 +88,82 @@ enum CeOp : int16
 	CEOP_SIZED(Pop),
 
 	CeOp_AdjustSP,
+	CeOp_AdjustSPNeg,
+	CeOp_AdjustSPConst,
+	CeOp_GetSP,
+	CeOp_SetSP,
 	CeOp_Call,
-
+	CeOp_Call_Virt,
+	CeOp_Call_IFace,
+	
+	CeOp_Conv_I8_I16,
+	CeOp_Conv_I8_I32,
+	CeOp_Conv_I8_I64,
+	CeOp_Conv_I8_F32,
+	CeOp_Conv_I8_F64,
+	CeOp_Conv_I16_I32,
+	CeOp_Conv_I16_I64,
+	CeOp_Conv_I16_F32,
+	CeOp_Conv_I16_F64,
 	CeOp_Conv_I32_I64,
+	CeOp_Conv_I32_F32,
+	CeOp_Conv_I32_F64,	
+	CeOp_Conv_I64_F32,
+	CeOp_Conv_I64_F64,
+	CeOp_Conv_U8_U16,
+	CeOp_Conv_U8_U32,
+	CeOp_Conv_U8_U64,
+	CeOp_Conv_U8_F32,
+	CeOp_Conv_U8_F64,
+	CeOp_Conv_U16_U32,
+	CeOp_Conv_U16_U64,
+	CeOp_Conv_U16_F32,
+	CeOp_Conv_U16_F64,
+	CeOp_Conv_U32_U64,
+	CeOp_Conv_U32_F32,
+	CeOp_Conv_U32_F64,
+	CeOp_Conv_U64_F32,
+	CeOp_Conv_U64_F64,
+	CeOp_Conv_F32_I8,
+	CeOp_Conv_F32_I16,
+	CeOp_Conv_F32_I32,
+	CeOp_Conv_F32_I64,
+	CeOp_Conv_F32_F64,
+	CeOp_Conv_F64_I8,
+	CeOp_Conv_F64_I16,
+	CeOp_Conv_F64_I32,
+	CeOp_Conv_F64_I64,
+	CeOp_Conv_F64_F32,
 
 	CEOP_SIZED_NUMERIC_PLUSF(AddConst),
 	CEOP_SIZED_NUMERIC_PLUSF(Add),
 	CEOP_SIZED_NUMERIC_PLUSF(Sub),
 	CEOP_SIZED_NUMERIC_PLUSF(Mul),	
-	CEOP_SIZED_NUMERIC_PLUSF(SDiv),
-	CEOP_SIZED_NUMERIC(UDiv),
-	CEOP_SIZED_NUMERIC_PLUSF(SMod),
-	CEOP_SIZED_NUMERIC(UMod),
+	CEOP_SIZED_NUMERIC_PLUSF(Div),
+	CEOP_SIZED_UNUMERIC(Div),
+	CEOP_SIZED_NUMERIC_PLUSF(Mod),
+	CEOP_SIZED_UNUMERIC(Mod),
+	CEOP_SIZED_NUMERIC(And),
+	CEOP_SIZED_NUMERIC(Or),
+	CEOP_SIZED_NUMERIC(Xor),
+	CEOP_SIZED_NUMERIC(Shl),
+	CEOP_SIZED_NUMERIC(Shr),
+	CEOP_SIZED_UNUMERIC(Shr),
+
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_EQ),
+	CEOP_SIZED_NUMERIC_PLUSF(Cmp_NE),
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_SLT),
 	CEOP_SIZED_NUMERIC(Cmp_ULT),
 	CEOP_SIZED_NUMERIC_PLUSF(Cmp_SLE),
 	CEOP_SIZED_NUMERIC(Cmp_ULE),
+	CEOP_SIZED_NUMERIC_PLUSF(Cmp_SGT),
+	CEOP_SIZED_NUMERIC(Cmp_UGT),
+	CEOP_SIZED_NUMERIC_PLUSF(Cmp_SGE),
+	CEOP_SIZED_NUMERIC(Cmp_UGE),
 
 	CEOP_SIZED_NUMERIC_PLUSF(Neg),
+	CeOp_Not_I1,
+	CEOP_SIZED_NUMERIC(Not),
 
 	CeOp_COUNT
 };
@@ -91,43 +176,95 @@ struct CeEmitEntry
 	int mColumn;
 };
 
+class CeFunctionInfo
+{
+public:
+	String mName;
+	BfMethodInstance* mMethodInstance;
+	BfMethodRef mMethodRef;
+	CeFunction* mCeFunction;
+	int mRefCount;
+
+public:
+	CeFunctionInfo()
+	{
+		mMethodInstance = NULL;
+		mCeFunction = NULL;
+		mRefCount = 0;
+	}
+};
+
 class CeCallEntry
 {
 public:
-	String mFunctionName;
+	CeFunctionInfo* mFunctionInfo;
 	int mBindRevision;
 	CeFunction* mFunction;
 
 public:
 	CeCallEntry()
 	{
+		mFunctionInfo = NULL;
 		mBindRevision = -1;
 		mFunction = NULL;
 	}
 };
 
+class CeStringEntry
+{
+public:
+	int mStringId;
+	int mBindExecuteId;
+	addr_ce mStringAddr;
+
+public:
+	CeStringEntry()
+	{
+		mStringId = -1;
+		mBindExecuteId = -1;
+		mStringAddr = 0;
+	}
+};
+
+enum CeFunctionKind
+{
+	CeFunctionKind_Normal,
+	CeFunctionKind_Extern,
+	CeFunctionKind_OOB,
+	CeFunctionKind_FatalError,
+	CeFunctionKind_DebugWrite,
+	CeFunctionKind_DebugWrite_Int,
+};
+
 class CeFunction
 {
 public:
+	CeFunctionInfo* mCeFunctionInfo;
 	BfMethodInstance* mMethodInstance;
-	String mName;
+	CeFunctionKind mFunctionKind;
 	bool mInitialized;
 	bool mFailed;		
 	Array<uint8> mCode;	
 	Array<String> mFiles;
 	Array<CeEmitEntry> mEmitTable;
 	Array<CeCallEntry> mCallTable;
+	Array<CeStringEntry> mStringTable;
+	Array<BfType*> mTypeTable;
 	String mGenError;
-	int mFrameSize;
+	int mFrameSize;	
 
 public:
 	CeFunction()
 	{
+		mCeFunctionInfo = NULL;
+		mFunctionKind = CeFunctionKind_Normal;
 		mInitialized = false;
 		mMethodInstance = NULL;
 		mFailed = false;
 		mFrameSize = 0;
 	}	
+
+	~CeFunction();
 };
 
 enum CeEvalFlags
@@ -176,6 +313,7 @@ public:
 };
 
 #define BF_CE_STACK_SIZE 1024*1024
+#define BF_CE_MAX_MEMORY 128*1024*1024
 
 enum CeOperandInfoKind
 {
@@ -247,7 +385,7 @@ public:
 class CeBuilder
 {
 public:	
-	CeMachine* mCeMachine;
+	CeMachine* mCeMachine;	
 	CeFunction* mCeFunction;
 	BeFunction* mBeFunction;	
 	CeOperand mReturnVal;	
@@ -262,6 +400,7 @@ public:
 	int mFrameSize;
 	Dictionary<BeDbgFile*, int> mDbgFileMap;
 	Dictionary<BeFunction*, int> mFunctionMap;
+	Dictionary<int, int> mStringMap;
 	
 public:
 	CeBuilder()
@@ -277,14 +416,16 @@ public:
 	void Fail(const StringImpl& error);
 
 	CeOperand FrameAlloc(BeType* type);
+	CeOperand EmitConst(int64 val, int size);
 	CeOperand GetOperand(BeValue* value, bool allowAlloca = false, bool allowImmediate = false);
 	CeSizeClass GetSizeClass(int size);
 	int GetCodePos();
 
 	void HandleParams();
-
-	void Emit(uint8 val);	
+	
+	void Emit(uint8 val);
 	void Emit(CeOp val);
+	void EmitSizedOp(CeOp val, int size);
 	void Emit(int32 val);
 	void Emit(int64 val);
 	void Emit(bool val);
@@ -305,35 +446,42 @@ class CeFrame
 {
 public:
 	CeFunction* mFunction;
-	uint8* mStackPtr;	
-	uint8* mFramePtr;
+	addr_ce mStackAddr;
+	addr_ce mFrameAddr;
 	uint8* mInstPtr;
 
 public:
 	CeFrame()
 	{
 		mFunction = NULL;
-		mStackPtr = NULL;
-		mFramePtr = NULL;
+		mStackAddr = NULL;
+		mFrameAddr = NULL;
 		mInstPtr = NULL;
 	}
+};
+
+class CeFunctionRef
+{
+	//CeFunction* ;
 };
 
 class CeMachine
 {
 public:
-	Dictionary<BfMethodInstance*, CeFunction*> mFunctions;
-	Dictionary<String, CeFunction*> mNamedFunctionMap;
+	Dictionary<BfMethodInstance*, CeFunctionInfo*> mFunctions;
+	Dictionary<String, CeFunctionInfo*> mNamedFunctionMap;
 	BfCompiler* mCompiler;
 	BfModule* mCeModule;
 	int mRevision;
-	
-	Array<CeFrame> mCallStack;
-	Array<uint8> mMemory;	
-	uint8* mStackMin;	
+	int mExecuteId;
 
+	ContiguousHeap* mHeap;
+	Array<CeFrame> mCallStack;
+	Array<uint8> mMemory;
+	Dictionary<int, addr_ce> mStringMap;
+	
 	BfAstNode* mCurTargetSrc;
-	BfModule* mCurModule;
+	BfModule* mCurModule;	
 
 public:
 	CeMachine(BfCompiler* compiler);
@@ -342,8 +490,12 @@ public:
 	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
 
 	void Init();	
+	uint8* CeMalloc(int size);
+	bool CeFree(addr_ce addr);
+
 	BeContext* GetBeContext();
 	BeModule* GetBeModule();
+	void DerefMethodInfo(CeFunctionInfo* ceFunctionInfo);
 	void RemoveMethod(BfMethodInstance* methodInstance);
 	int GetConstantSize(BfConstant* constant);
 	void WriteConstant(uint8* ptr, BfConstant* constant);
@@ -352,10 +504,12 @@ public:
 
 	void PrepareFunction(CeFunction* methodInstance);	
 	CeFunction* GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added);
+	CeFunction* GetPreparedFunction(BfMethodInstance* methodInstance);
 
 public:
 	void CompileStarted();
 	void QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
+	void QueueMethod(BfModuleMethodInstance moduleMethodInstance);
 	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags);
 };
 

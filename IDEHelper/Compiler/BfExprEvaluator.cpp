@@ -5025,18 +5025,29 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 			if (methodInstance->mMethodInstanceGroup->mOwner->IsInterface())
 			{
-				// IFace dispatch
-				auto ifaceTypeInst = methodInstance->mMethodInstanceGroup->mOwner;
-				BfIRValue slotOfs = mModule->GetInterfaceSlotNum(methodInstance->mMethodInstanceGroup->mOwner);
+				if (mModule->mIsConstModule)
+				{
+					funcCallInst = mModule->mBfIRBuilder->ConstEval_GetInterfaceFunc(irArgs[0], methodInstance->mMethodInstanceGroup->mOwner->mTypeId, methodInstance->mVirtualTableIdx, funcPtrType1);
+				}
+				else
+				{
+					// IFace dispatch
+					auto ifaceTypeInst = methodInstance->mMethodInstanceGroup->mOwner;
+					BfIRValue slotOfs = mModule->GetInterfaceSlotNum(methodInstance->mMethodInstanceGroup->mOwner);
 
-				auto vDataPtrPtr = mModule->mBfIRBuilder->CreateBitCast(irArgs[0], funcPtrType4);
-				auto vDataPtr = mModule->FixClassVData(mModule->mBfIRBuilder->CreateLoad(vDataPtrPtr/*, "vtable"*/));
+					auto vDataPtrPtr = mModule->mBfIRBuilder->CreateBitCast(irArgs[0], funcPtrType4);
+					auto vDataPtr = mModule->FixClassVData(mModule->mBfIRBuilder->CreateLoad(vDataPtrPtr/*, "vtable"*/));
 
-				auto ifacePtrPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(vDataPtr, slotOfs/*, "iface"*/);
-				auto ifacePtr = mModule->mBfIRBuilder->CreateLoad(ifacePtrPtr);
+					auto ifacePtrPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(vDataPtr, slotOfs/*, "iface"*/);
+					auto ifacePtr = mModule->mBfIRBuilder->CreateLoad(ifacePtrPtr);
 
-				auto funcPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(ifacePtr, methodInstance->mVirtualTableIdx/*, "vfn"*/);
-				funcCallInst = mModule->mBfIRBuilder->CreateLoad(funcPtr);
+					auto funcPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(ifacePtr, methodInstance->mVirtualTableIdx/*, "vfn"*/);
+					funcCallInst = mModule->mBfIRBuilder->CreateLoad(funcPtr);
+				}
+			}
+			else if (mModule->mIsConstModule)
+			{
+				funcCallInst = mModule->mBfIRBuilder->ConstEval_GetVirtualFunc(irArgs[0], methodInstance->mVirtualTableIdx, funcPtrType1);
 			}
 			else
 			{
@@ -6435,7 +6446,7 @@ SplatArgs(lookupVal, irArgs);
 
 			if (!argValue)
 			{
-				if ((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0)
+				if ((argExprIdx < (int)argValues.size()) && ((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0))
 				{					
 					BfAstNode* errorRef = NULL;
 					int checkIdx = argExprIdx - 1;
@@ -12761,7 +12772,8 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 				}
 
 				// Actually leave it alone?
-				if ((isUninit) && (mModule->IsOptimized()))
+				if ((isUninit) && 
+					((mModule->IsOptimized()) || (mModule->mIsConstModule) || (mModule->mBfIRBuilder->mIgnoreWrites)))
 					return;
 
 				bool doClear = true;
@@ -18223,7 +18235,8 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				}
 			}
 		}
-		else if ((mModule->HasCompiledOutput()) && (wantsChecks))
+		else if (((mModule->HasCompiledOutput()) || (mModule->mIsConstModule)) && 
+			(wantsChecks))
 		{
 			if (checkedKind == BfCheckedKind_NotSet)
 				checkedKind = mModule->GetDefaultCheckedKind();
@@ -18253,6 +18266,9 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 					{
 						OutputDebugStrF("-OOB %d %d\n", oobFunc.mFunc.mId, oobFunc.mFunc.mFlags);
 					}*/
+
+					if (mModule->mIsConstModule)
+						mModule->mCompiler->mCEMachine->QueueMethod(oobFunc.mMethodInstance, oobFunc.mFunc);
 
 					SizedArray<BfIRValue, 1> args;
 					args.push_back(mModule->GetConstValue(0));

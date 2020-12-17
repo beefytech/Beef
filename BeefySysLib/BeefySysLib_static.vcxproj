@@ -868,6 +868,7 @@
     <ClCompile Include="util\CubicSpline.cpp" />
     <ClCompile Include="util\FileEnumerator.cpp" />
     <ClCompile Include="util\Hash.cpp" />
+    <ClCompile Include="util\Heap.cpp" />
     <ClCompile Include="util\Json.cpp" />
     <ClCompile Include="util\MappedFile.cpp" />
     <ClCompile Include="util\Matrix4.cpp" />
@@ -1029,6 +1030,7 @@
     <ClInclude Include="util\CubicSpline.h" />
     <ClInclude Include="util\FileEnumerator.h" />
     <ClInclude Include="util\Hash.h" />
+    <ClInclude Include="util\Heap.h" />
     <ClInclude Include="util\Json.h" />
     <ClInclude Include="util\MappedFile.h" />
     <ClInclude Include="util\Matrix4.h" />

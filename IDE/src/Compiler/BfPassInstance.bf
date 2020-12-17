@@ -141,7 +141,7 @@ namespace IDE.Compiler
 		{
 			char8* fileName = null;
 			char8* errorStr = BfPassInstance_Error_GetMoreInfoData(mNativeBfPassInstance, errorIdx, moreInfoIdx, out fileName, out bfError.mSrcStart, out bfError.mSrcEnd,
-				getLine ? &bfError.mLine : null, getLine ? &bfError.mColumn : null);
+				&bfError.mLine, &bfError.mColumn);
 			Debug.Assert(bfError.mFilePath == null);
 			if (fileName != null)
 				bfError.mFilePath = new String(fileName);

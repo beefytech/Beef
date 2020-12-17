@@ -569,6 +569,9 @@
       <Filter>src\util</Filter>
     </ClCompile>
     <ClCompile Include="util\ThreadPool.cpp" />
+    <ClCompile Include="util\Heap.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -869,6 +872,9 @@
       <Filter>src\util</Filter>
     </ClInclude>
     <ClInclude Include="util\ThreadPool.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Heap.h">
       <Filter>src\util</Filter>
     </ClInclude>
   </ItemGroup>

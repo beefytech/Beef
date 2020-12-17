@@ -24,6 +24,7 @@
 #include "BfIRCodeGen.h"
 #include "BfDefBuilder.h"
 #include "BfDeferEvalChecker.h"
+#include "CeMachine.h"
 #include <fcntl.h>
 #include <time.h>
 
@@ -1532,7 +1533,7 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 		auto lenByteCount = stringTypeInst->mFieldInstances[0].mResolvedType->mSize;
 
 		typeValueParams.clear();
-		typeValueParams.push_back(objData);				
+		typeValueParams.push_back(objData);
 		if (lenByteCount == 4)
 		{
 			typeValueParams.push_back(GetConstValue32((int)str.length())); // mLength
@@ -1928,8 +1929,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 	//TODO: In the future we could be smarter about statically determining that our value hasn't escaped and eliding this		
 	if (mayEscape)
 	{
-
-		if ((!IsOptimized()) && (!val.mType->IsValuelessType()) && (!mBfIRBuilder->mIgnoreWrites) && (!mCompiler->mIsResolveOnly))
+		if ((!IsOptimized()) && (!mIsConstModule) && (!val.mType->IsValuelessType()) && (!mBfIRBuilder->mIgnoreWrites) && (!mCompiler->mIsResolveOnly))
 		{			
 			auto nullPtrType = GetPrimitiveType(BfTypeCode_NullPtr);
 			bool isDyn = mCurMethodState->mCurScope->IsDyn(scopeData);
@@ -1945,7 +1945,10 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 				else
 				{
 					SizedArray<BfIRValue, 1> llvmArgs;
-					llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
+					if (IsTargetingBeefBackend())
+						llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(nullPtrType)));
+					else
+						llvmArgs.push_back(val.mValue);
 					llvmArgs.push_back(GetConstValue(val.mType->mSize));
 					llvmArgs.push_back(GetConstValue32(val.mType->mAlign));
 					if (arraySize)
@@ -2029,7 +2032,7 @@ bool BfModule::TryLocalVariableInit(BfLocalVariable* localVar)
 					if (!fieldDef->mDeclaringType->IsExtension())
 						return false; 
 					
-					if ((fieldInstance.mDataIdx != -1) && (!mBfIRBuilder->mIgnoreWrites) && (!mCompiler->mIsResolveOnly))
+					if ((fieldInstance.mDataIdx != -1) && (!mBfIRBuilder->mIgnoreWrites) && (!mCompiler->mIsResolveOnly) && (!mIsConstModule))
 					{												
 						auto curInsertBlock = mBfIRBuilder->GetInsertBlock();						
 						
@@ -2723,6 +2726,12 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 		refNode = BfNodeToNonTemporary(refNode);
 
 	//BF_ASSERT(refNode != NULL);
+
+	if (mIsConstModule)
+	{
+		mHadBuildError = true;
+		return NULL;
+	}
 
  	if (mCurMethodInstance != NULL)
 		mCurMethodInstance->mHasFailed = true;
@@ -4706,6 +4715,8 @@ BfIRValue BfModule::CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* ou
 BfIRValue BfModule::GetClassVDataPtr(BfTypeInstance* typeInstance)
 {
 	auto classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);
+	if (mIsConstModule)
+		return mBfIRBuilder->ConstEval_GetBfType(typeInstance->mTypeId, mBfIRBuilder->MapType(CreatePointerType(classVDataType)));
 	return mBfIRBuilder->CreateBitCast(CreateClassVDataGlobal(typeInstance), mBfIRBuilder->MapType(CreatePointerType(classVDataType)));
 }
 
@@ -6728,7 +6739,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 BfIRValue BfModule::FixClassVData(BfIRValue value)
 {
-	if (!mCompiler->mOptions.mObjectHasDebugFlags)
+	if ((!mCompiler->mOptions.mObjectHasDebugFlags) || (mIsConstModule))
 		return value;	
 	auto intptrValue = mBfIRBuilder->CreatePtrToInt(value, BfTypeCode_IntPtr);
 	auto maskedValue = mBfIRBuilder->CreateAnd(intptrValue, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, (uint64)~0xFFULL));
@@ -8025,7 +8036,7 @@ void BfModule::InitTypeInst(BfTypedValue typedValue, BfScopeData* scopeData, boo
 	auto destAddr = mBfIRBuilder->CreateBitCast(vObjectAddr, mBfIRBuilder->MapType(ptrPtrType));
 	if (!isAutocomplete)
 	{			
-		if (mCompiler->mOptions.mObjectHasDebugFlags)
+		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
 		{
 			auto objectPtr = mBfIRBuilder->CreateBitCast(destAddr, mBfIRBuilder->MapType(mContext->mBfObjectType));
 
@@ -8414,8 +8425,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					BfIRValue allocaInst;
 					BfIRValue result;
 					if ((typeInstance == NULL) || (typeInstance->mIsCRepr))
-					{
-						sizeValue = mBfIRBuilder->CreateMul(GetConstValue(typeSize), arraySize);
+					{						
 						allocaInst = mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(type), arraySize);						
 						result = allocaInst;
 					}
@@ -8450,28 +8460,32 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 						bool isConstSize = arraySize.IsConst();
 						BfIRBlock clearBlock;
 						BfIRBlock contBlock;
+						
+						bool wantsDeinit = ((!IsOptimized()) && (!mIsConstModule) && (!mBfIRBuilder->mIgnoreWrites) && (!mCompiler->mIsResolveOnly));
 
-						if (!isConstSize)
+						if (wantsDeinit)
 						{
-							clearBlock = mBfIRBuilder->CreateBlock("clear");
-							contBlock = mBfIRBuilder->CreateBlock("clearCont");
-							mBfIRBuilder->CreateCondBr(mBfIRBuilder->CreateCmpNE(arraySize, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0)), clearBlock, contBlock);
+							if (!isConstSize)
+							{
+								clearBlock = mBfIRBuilder->CreateBlock("clear");
+								contBlock = mBfIRBuilder->CreateBlock("clearCont");
+								mBfIRBuilder->CreateCondBr(mBfIRBuilder->CreateCmpNE(arraySize, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0)), clearBlock, contBlock);
 
-							mBfIRBuilder->AddBlock(clearBlock);
-							mBfIRBuilder->SetInsertPoint(clearBlock);
+								mBfIRBuilder->AddBlock(clearBlock);
+								mBfIRBuilder->SetInsertPoint(clearBlock);
+							}
+
+							AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
+
+							if (!isConstSize)
+							{
+								mBfIRBuilder->CreateBr(contBlock);
+
+								mBfIRBuilder->AddBlock(contBlock);
+								mBfIRBuilder->SetInsertPoint(contBlock);
+							}
 						}
-
-						AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
-
-						if (!isConstSize)
-						{
-							mBfIRBuilder->CreateBr(contBlock);
-
-							mBfIRBuilder->AddBlock(contBlock);
-							mBfIRBuilder->SetInsertPoint(contBlock);
-						}
-					}
-					//InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
+					}					
 
 					return result;
 				}
@@ -8707,6 +8721,8 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 			auto typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
 			stackCount = BfTypeOptions::Apply(stackCount, typeOptions->mAllocStackTraceDepth);
 		}
+		if (mIsConstModule)
+			stackCount = 0;
 
 		if (!sizeValue)
 			sizeValue = GetConstValue(typeInstance->mInstSize);
@@ -8777,7 +8793,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 		{			
 			if (hasCustomAllocator)
 				result = AllocBytes(allocTarget.mRefNode, allocTarget, typeInstance, sizeValue, GetConstValue(typeInstance->mInstAlign), (BfAllocFlags)(BfAllocFlags_ZeroMemory | BfAllocFlags_NoDefaultToMalloc));				
-			else if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mCompiler->mOptions.mDebugAlloc))
+			else if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mCompiler->mOptions.mDebugAlloc) && (!mIsConstModule))
 			{
 				SizedArray<BfIRValue, 4> llvmArgs;
 				llvmArgs.push_back(sizeValue);
@@ -8790,7 +8806,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 
 		if (result)
 		{	
-			if (mCompiler->mOptions.mObjectHasDebugFlags)
+			if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
 			{
 				auto objectPtr = mBfIRBuilder->CreateBitCast(result, mBfIRBuilder->MapTypeInstPtr(mContext->mBfObjectType));
 				SizedArray<BfIRValue, 4> llvmArgs;
@@ -8828,7 +8844,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 			auto classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);			
 			auto vData = mBfIRBuilder->CreateBitCast(vDataRef, mBfIRBuilder->MapTypeInstPtr(classVDataType->ToTypeInstance()));			
 
-			if (mCompiler->mOptions.mObjectHasDebugFlags)
+			if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
 			{
 				SizedArray<BfIRValue, 4> llvmArgs;
 				llvmArgs.push_back(vData);
@@ -8844,7 +8860,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				SizedArray<BfIRValue, 4> llvmArgs;
 				llvmArgs.push_back(sizeValue);
 				BfIRFunction irFunc;
-				if (mCompiler->mOptions.mDebugAlloc)
+				if ((mCompiler->mOptions.mDebugAlloc) && (!mIsConstModule))
 				{
 					auto moduleMethodInstance = GetInternalMethod("Dbg_RawObjectAlloc", 1);
 					irFunc = moduleMethodInstance.mFunc;
@@ -9062,7 +9078,7 @@ BfIRValue BfModule::AppendAllocFromType(BfType* type, BfIRValue appendSizeValue,
 		auto curThis = GetThis();
 
 		BfIRValue newFlags;
-		if (mCompiler->mOptions.mObjectHasDebugFlags)
+		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
 		{
 			auto thisFlagsPtr = mBfIRBuilder->CreateBitCast(curThis.mValue, ptrType);
 			auto thisFlags = mBfIRBuilder->CreateLoad(thisFlagsPtr);
@@ -9078,7 +9094,7 @@ BfIRValue BfModule::AppendAllocFromType(BfType* type, BfIRValue appendSizeValue,
 		auto srcVal = mBfIRBuilder->CreateBitCast(vDataRef, ptrType);
 		mBfIRBuilder->CreateStore(srcVal, destAddr);
 
-		if (mCompiler->mOptions.mObjectHasDebugFlags)
+		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
 		{
 			auto flagsPtr = mBfIRBuilder->CreateBitCast(destAddr, ptrType);
 			mBfIRBuilder->CreateStore(newFlags, flagsPtr);
@@ -9129,7 +9145,7 @@ void BfModule::SkipObjectAccessCheck(BfTypedValue typedVal)
 	if ((mBfIRBuilder->mIgnoreWrites) || (!typedVal.mType->IsObjectOrInterface()) || (mCurMethodState == NULL) || (mCurMethodState->mIgnoreObjectAccessCheck))
 		return;
 
-	if (!mCompiler->mOptions.mObjectHasDebugFlags)
+	if ((!mCompiler->mOptions.mObjectHasDebugFlags) || (mIsConstModule))
 		return;
 	
 	if ((typedVal.mValue.mFlags & BfIRValueFlags_Value) == 0)
@@ -9143,7 +9159,7 @@ void BfModule::EmitObjectAccessCheck(BfTypedValue typedVal)
 	if ((mBfIRBuilder->mIgnoreWrites) || (!typedVal.mType->IsObjectOrInterface()) || (mCurMethodState == NULL) || (mCurMethodState->mIgnoreObjectAccessCheck))
 		return;
 
-	if (!mCompiler->mOptions.mObjectHasDebugFlags)
+	if ((!mCompiler->mOptions.mObjectHasDebugFlags) || (mIsConstModule))
 		return;
 
 	if (typedVal.mValue.IsConst())
@@ -9187,8 +9203,17 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 {	
 	if (mBfIRBuilder->mIgnoreWrites)
 		return; // Nothing needed here
-
+	
 	auto irb = mBfIRBuilder;
+
+	if (mIsConstModule)
+	{
+		auto callResult = mBfIRBuilder->ConstEval_DynamicCastCheck(targetValue.mValue, targetType->mTypeId, mBfIRBuilder->MapType(mContext->mBfObjectType));
+		auto cmpResult = mBfIRBuilder->CreateCmpNE(callResult, GetDefaultValue(mContext->mBfObjectType));
+		irb->CreateCondBr(cmpResult, trueBlock, falseBlock);
+		return;
+	}
+
 	auto checkBB = irb->CreateBlock("as.check");
 	auto isNull = irb->CreateIsNull(targetValue.mValue);
 	mBfIRBuilder->CreateCondBr(isNull, nullSucceeds ? trueBlock : falseBlock, checkBB);
@@ -9212,7 +9237,6 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 		irArgs.push_back(objectParam);
 		irArgs.push_back(GetConstValue32(targetType->mTypeId));
 		auto callResult = exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
-		auto resultType = ResolveTypeDef(mSystem->mTypeBool);
 		auto cmpResult = mBfIRBuilder->CreateCmpNE(callResult.mValue, GetDefaultValue(callResult.mType));
 		irb->CreateCondBr(cmpResult, trueBlock, falseBlock);
 	}
@@ -9221,7 +9245,7 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 		AddBasicBlock(checkBB);
 		BfIRValue vDataPtr = irb->CreateBitCast(targetValue.mValue, irb->MapType(intPtrType));
 		vDataPtr = irb->CreateLoad(vDataPtr);
-		if (mCompiler->mOptions.mObjectHasDebugFlags)
+		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
 			vDataPtr = irb->CreateAnd(vDataPtr, irb->CreateConst(BfTypeCode_IntPtr, (uint64)~0xFFULL));
 	
 		if (targetType->IsInterface())
@@ -13531,13 +13555,13 @@ BfLocalVariable* BfModule::AddLocalVariableDef(BfLocalVariable* localVarDef, boo
 		BF_ASSERT(rootMethodState->mCurLocalVarId >= 0);
 		localVarDef->mLocalVarId = rootMethodState->mCurLocalVarId++;
 	}
-	if ((localVarDef->mNameNode != NULL) && (mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+	if ((localVarDef->mNameNode != NULL) && (mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL) && (!mIsConstModule))
 		mCompiler->mResolvePassData->mAutoComplete->CheckLocalDef(localVarDef->mNameNode, localVarDef);
 
 	if ((localVarDef->mNameNode != NULL) && (mCurMethodInstance != NULL))
 	{		
 		bool isClosureProcessing = (mCurMethodState->mClosureState != NULL) && (!mCurMethodState->mClosureState->mCapturing);		
-		if ((!isClosureProcessing) && (mCompiler->mResolvePassData != NULL) && (localVarDef->mNameNode != NULL))
+		if ((!isClosureProcessing) && (mCompiler->mResolvePassData != NULL) && (localVarDef->mNameNode != NULL) && (!mIsConstModule))
 			mCompiler->mResolvePassData->HandleLocalReference(localVarDef->mNameNode, rootMethodState->mMethodInstance->GetOwner()->mTypeDef, rootMethodState->mMethodInstance->mMethodDef, localVarDef->mLocalVarId);
 	}
 	
@@ -14513,7 +14537,7 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 {
 	BP_ZONE("BfModule::TryConstCalcAppend");
 
-	if (mCompiler->mIsResolveOnly)
+	if ((mCompiler->mIsResolveOnly) && (!mIsConstModule))
 		return BfTypedValue();
 
 	// We want to regenerate all ctor calls when the method internals change
@@ -14798,7 +14822,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 // This method never throws errors - it relies on the proper ctor actually throwing the errors
 void BfModule::EmitCtorCalcAppend()
 {
-	if (mCompiler->mIsResolveOnly)
+	if ((mCompiler->mIsResolveOnly) && (!mIsConstModule))
 		return;
 
 	auto methodDef = mCurMethodInstance->mMethodDef;
@@ -14939,6 +14963,8 @@ void BfModule::EmitDtorBody()
 		// Fall through to Object::~this call
 		
 		auto dtorFunc = GetMethodByName(mContext->mBfObjectType, "~this");
+		if (mIsConstModule)
+			mCompiler->mCEMachine->QueueMethod(dtorFunc.mMethodInstance, dtorFunc.mFunc);
 		auto basePtr = mBfIRBuilder->CreateBitCast(thisVal.mValue, mBfIRBuilder->MapTypeInstPtr(mContext->mBfObjectType));
 		SizedArray<BfIRValue, 1> vals = { basePtr };
 		result = mBfIRBuilder->CreateCall(dtorFunc.mFunc, vals);
@@ -15115,6 +15141,8 @@ void BfModule::EmitDtorBody()
 							auto basePtr = mBfIRBuilder->CreateBitCast(mCurMethodState->mLocals[0]->mValue, mBfIRBuilder->MapTypeInstPtr(checkBaseType));
 							SizedArray<BfIRValue, 1> vals = { basePtr };
 							auto callInst = mBfIRBuilder->CreateCall(dtorMethodInstance.mFunc, vals);
+							if (mIsConstModule)
+								mCompiler->mCEMachine->QueueMethod(dtorMethodInstance.mMethodInstance, dtorMethodInstance.mFunc);
 							mBfIRBuilder->SetCallCallingConv(callInst, GetIRCallingConvention(dtorMethodInstance.mMethodInstance));
 						}
 					}
@@ -15649,6 +15677,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				SizedArray<BfIRValue, 1> irArgs;
 				exprEvaluator.PushThis(NULL, GetThis(), moduleMethodInstance.mMethodInstance, irArgs);
 				exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
+				if (mIsConstModule)
+					mCompiler->mCEMachine->QueueMethod(moduleMethodInstance);
 
 				calledCtorNoBody = true;
 			}
@@ -15984,6 +16014,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				auto callingConv = GetIRCallingConvention(ctorBodyMethodInstance.mMethodInstance);
 				if (callingConv != BfIRCallingConv_CDecl)
 					mBfIRBuilder->SetCallCallingConv(callInst, callingConv);				
+				if (mIsConstModule)
+					mCompiler->mCEMachine->QueueMethod(ctorBodyMethodInstance);
 			}
 
 			if (matchedMethod == NULL)
@@ -20384,7 +20416,8 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 				// We can have a collision of names when we have generic methods that differ only in
 				//  their constraints, but they should only collide in their unspecialized form
 				//  since only one will be chosen for a given concrete type		
-				mCurMethodInstance->mMangleWithIdx = true;
+				if (!mIsConstModule)
+					mCurMethodInstance->mMangleWithIdx = true;
 				mangledName.Clear();
 				BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), mCurMethodInstance);
 				prevFunc = mBfIRBuilder->GetFunction(mangledName);

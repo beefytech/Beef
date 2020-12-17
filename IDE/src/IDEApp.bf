@@ -1054,13 +1054,25 @@ namespace IDE
 				if (var sourceViewPanel = GetActiveSourceViewPanel(true))
 					sourceViewPanel.RecordHistoryLocation();
 
-				int32 charIdx = int32.Parse(cmds[2]).GetValueOrDefault();
+				StringView loc = cmds[2];
+				int32 charIdx = int32.Parse(loc).GetValueOrDefault();
 				if (charIdx < 0)
 					return;
 				var sourceViewPanel = ShowSourceFile(cmds[1], null, SourceShowType.Temp);
 				if (sourceViewPanel == null)
 				    return;
 				var editWidgetContent = sourceViewPanel.mEditWidget.mEditWidgetContent;
+
+				int colonIdx = loc.IndexOf(':');
+				if (colonIdx != -1)
+				{
+					int line = int.Parse(loc.Substring(0, colonIdx)).GetValueOrDefault();
+					int column = int.Parse(loc.Substring(colonIdx + 1)).GetValueOrDefault();
+					charIdx = (.)editWidgetContent.GetTextIdx(line, column);
+				}
+				if (charIdx < 0)
+					return;
+
 				int line;
 				int lineChar;
 				editWidgetContent.GetLineCharAtIdx(charIdx, out line, out lineChar);

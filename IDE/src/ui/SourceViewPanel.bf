@@ -4966,7 +4966,12 @@ namespace IDE.ui
 							{
 								for (var moreInfo in bestError.mMoreInfo)
 								{
-									showMouseoverString.AppendF("\n@{0}\t{1}\t{2}", moreInfo.mFilePath, moreInfo.mSrcStart, moreInfo.mError);
+									if ((moreInfo.mSrcStart == -1) && (moreInfo.mSrcStart == -1) && (moreInfo.mLine != -1))
+									{
+										showMouseoverString.AppendF("\n@{}\t{}:{}\t{}", moreInfo.mFilePath, moreInfo.mLine, moreInfo.mColumn, moreInfo.mError);
+									}
+									else
+										showMouseoverString.AppendF("\n@{0}\t{1}\t{2}", moreInfo.mFilePath, moreInfo.mSrcStart, moreInfo.mError);
 								}
 							}
 	                    }

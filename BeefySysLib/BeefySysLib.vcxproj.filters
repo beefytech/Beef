@@ -704,6 +704,9 @@
     <ClCompile Include="platform\win\DInputManager.cpp">
       <Filter>src\platform\win</Filter>
     </ClCompile>
+    <ClCompile Include="util\Heap.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -1068,6 +1071,9 @@
     </ClInclude>
     <ClInclude Include="platform\win\DInputManager.h">
       <Filter>src\platform\win</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Heap.h">
+      <Filter>src\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

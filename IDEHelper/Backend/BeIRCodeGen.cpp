@@ -889,6 +889,9 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		beValue = result.mBeValue;
 		BE_MEM_END("ParamType_StreamId");
 	}	
+
+	if (beValue != NULL)
+		beValue->mRefCount++;
 }
 
 void BeIRCodeGen::Read(BeConstant*& llvmConstant)
@@ -922,6 +925,8 @@ void BeIRCodeGen::Read(BeFunction*& beFunc)
 	BF_ASSERT(BeValueDynCast<BeFunction>(result.mBeValue));
 	beFunc = (BeFunction*)result.mBeValue;
 	BE_MEM_END("BeFunction");
+
+	beFunc->mRefCount++;
 }
 
 void BeIRCodeGen::Read(BeBlock*& beBlock)
@@ -932,6 +937,8 @@ void BeIRCodeGen::Read(BeBlock*& beBlock)
 	BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Block);
 	beBlock = (BeBlock*)result.mBeType;
 	BE_MEM_END("BeBlock");
+
+	beBlock->mRefCount++;
 }
 
 void BeIRCodeGen::Read(BeMDNode*& llvmMD)
@@ -947,6 +954,8 @@ void BeIRCodeGen::Read(BeMDNode*& llvmMD)
 	BF_ASSERT(result.mKind == BeIRCodeGenEntryKind_Metadata);
 	llvmMD = result.mBeMetadata;
 	BE_MEM_END("BeMDNode");
+
+	llvmMD->mRefCount++;
 }
 
 void BeIRCodeGen::HandleNextCmd()
@@ -2522,9 +2531,62 @@ void BeIRCodeGen::HandleNextCmd()
 			auto inst = mBeModule->AllocInst<BeObjectAccessCheckInst>();
 			inst->mValue = val;
 
-			SetResult(curId, mBeModule->GetInsertBlock());			
+			SetResult(curId, mBeModule->GetInsertBlock());
 		}
 		break;
+	case BfIRCmd_ConstEval_GetBfType:
+		{
+			CMD_PARAM(int32, typeId);
+			CMD_PARAM(BeType*, resultType);
+
+			auto inst = mBeModule->AllocInst<BeConstEvalGetType>();
+			inst->mTypeId = typeId;
+			inst->mResultType = resultType;
+			SetResult(curId, inst);
+		}
+		break;
+	case BfIRCmd_ConstEval_DynamicCastCheck:
+		{
+			CMD_PARAM(BeValue*, value);
+			CMD_PARAM(int32, typeId);
+			CMD_PARAM(BeType*, resultType);
+
+			auto inst = mBeModule->AllocInst<BeConstEvalDynamicCastCheck>();
+			inst->mValue = value;
+			inst->mTypeId = typeId;
+			inst->mResultType = resultType;
+			SetResult(curId, inst);
+		}
+		break;
+	case BfIRCmd_ConstEval_GetVirtualFunc:
+		{
+			CMD_PARAM(BeValue*, value);
+			CMD_PARAM(int32, virtualTableIdx);
+			CMD_PARAM(BeType*, resultType);
+
+			auto inst = mBeModule->AllocInst<BeConstEvalGetVirtualFunc>();
+			inst->mValue = value;
+			inst->mVirtualTableIdx = virtualTableIdx;
+			inst->mResultType = resultType;
+			SetResult(curId, inst);
+		}
+		break;
+	case BfIRCmd_ConstEval_GetInterfaceFunc:
+		{
+			CMD_PARAM(BeValue*, value);
+			CMD_PARAM(int32, ifaceTypeId);
+			CMD_PARAM(int32, virtualTableIdx);
+			CMD_PARAM(BeType*, resultType);
+
+			auto inst = mBeModule->AllocInst<BeConstEvalGetInterfaceFunc>();
+			inst->mValue = value;
+			inst->mIFaceTypeId = ifaceTypeId;
+			inst->mVirtualTableIdx = virtualTableIdx;
+			inst->mResultType = resultType;
+			SetResult(curId, inst);
+		}
+		break;
+
 	case BfIRCmd_DbgInit:
 		{
 			/*mDIBuilder = new BeDIBuilder(*mBeModule);			*/

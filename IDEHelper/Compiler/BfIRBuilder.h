@@ -281,6 +281,11 @@ enum BfIRCmd : uint8
 	BfIRCmd_Func_SafeRename,
 	BfIRCmd_Func_SetLinkage,
 
+	BfIRCmd_ConstEval_GetBfType,
+	BfIRCmd_ConstEval_DynamicCastCheck,
+	BfIRCmd_ConstEval_GetVirtualFunc,
+	BfIRCmd_ConstEval_GetInterfaceFunc,
+
 	BfIRCmd_SaveDebugLocation,
 	BfIRCmd_RestoreDebugLocation,
 	BfIRCmd_DupDebugLocation,
@@ -1224,6 +1229,11 @@ public:
 	void Func_SafeRename(BfIRFunction func);
 	void Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage);
 	
+	BfIRValue ConstEval_GetBfType(int typeId, BfIRType resultType);
+	BfIRValue ConstEval_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType);
+	BfIRValue ConstEval_GetVirtualFunc(BfIRValue value, int virtualTableId, BfIRType resultType);
+	BfIRValue ConstEval_GetInterfaceFunc(BfIRValue value, int typeId, int virtualTableId, BfIRType resultType);
+
 	void SaveDebugLocation();
 	void RestoreDebugLocation();
 	void DupDebugLocation();

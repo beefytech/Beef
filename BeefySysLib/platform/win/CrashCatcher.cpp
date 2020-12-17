@@ -1156,6 +1156,9 @@ void CrashCatcher::Crash(const StringImpl& str)
 	{
 
 	}*/
+		
+	for (auto func : CrashCatcher::Get()->mCrashInfoFuncs)
+		func();	
 
 	exit(1);
 }

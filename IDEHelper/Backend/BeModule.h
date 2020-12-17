@@ -208,10 +208,12 @@ public:
 #ifdef _DEBUG
 	bool mLifetimeEnded;
 	bool mWasRemoved;
+	int mRefCount;
 	BeValue()
 	{
 		mLifetimeEnded = false;
 		mWasRemoved = false;
+		mRefCount = 0;
 	}
 #endif
 
@@ -262,6 +264,16 @@ T* BeValueDynCast(BeValue* value)
 		return NULL;
 	BeValue* result = value->DynCast(T::TypeId);
 	return (T*)result;
+}
+
+template <typename T>
+T* BeValueDynCastExact(BeValue* value)
+{
+	if (value == NULL)
+		return NULL;
+	if (value->GetTypeId() != T::TypeId)
+		return NULL;
+	return (T*)value;
 }
 
 class BeBlock;
@@ -1320,6 +1332,106 @@ public:
 	}
 };
 
+//////////////////////////////////////////////////////////////////////////
+
+class BeConstEvalGetType : public BeInst
+{
+public:
+	BE_VALUE_TYPE(BeConstEvalGetType, BeInst);
+
+public:
+	int mTypeId;
+	BeType* mResultType;
+
+public:	
+	virtual BeType* GetType() override
+	{
+		return mResultType;
+	}
+
+	virtual void HashInst(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		hashCtx.Mixin(mTypeId);
+	}
+};
+
+class BeConstEvalDynamicCastCheck : public BeInst
+{
+public:
+	BE_VALUE_TYPE(BeConstEvalDynamicCastCheck, BeInst);
+
+public:
+	BeValue* mValue;
+	int mTypeId;
+	BeType* mResultType;
+
+public:
+	virtual BeType* GetType() override
+	{
+		return mResultType;
+	}
+
+	virtual void HashInst(BeHashContext& hashCtx) override
+	{		
+		hashCtx.Mixin(TypeId);
+		mValue->HashReference(hashCtx);
+		hashCtx.Mixin(mTypeId);
+	}
+};
+
+class BeConstEvalGetVirtualFunc : public BeInst
+{
+public:
+	BE_VALUE_TYPE(BeConstEvalGetVirtualFunc, BeInst);
+
+public:
+	BeValue* mValue;
+	int mVirtualTableIdx;
+	BeType* mResultType;
+
+public:
+	virtual BeType* GetType() override
+	{
+		return mResultType;
+	}
+
+	virtual void HashInst(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		mValue->HashReference(hashCtx);
+		hashCtx.Mixin(mVirtualTableIdx);
+	}
+};
+
+class BeConstEvalGetInterfaceFunc : public BeInst
+{
+public:
+	BE_VALUE_TYPE(BeConstEvalGetInterfaceFunc, BeInst);
+
+public:
+	BeValue* mValue;
+	int mIFaceTypeId;
+	int mVirtualTableIdx;
+	BeType* mResultType;
+
+public:
+	virtual BeType* GetType() override
+	{
+		return mResultType;
+	}
+
+	virtual void HashInst(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		mValue->HashReference(hashCtx);
+		hashCtx.Mixin(mIFaceTypeId);
+		hashCtx.Mixin(mVirtualTableIdx);
+	}
+};
+
+//////////////////////////////////////////////////////////////////////////
+
 class BeArgument : public BeValue
 {
 public:
@@ -2007,6 +2119,7 @@ public:
 	int mIdx;	
 
 	void ToString(String& str);	
+	void GetFilePath(String& outStr);
 
 	virtual void HashContent(BeHashContext& hashCtx) override
 	{
@@ -2174,6 +2287,8 @@ public:
 	BeRetInst* CreateRetVoid();
 	BeRetInst* CreateRet(BeValue* value);	
 	BeCallInst* CreateCall(BeValue* func, const SizedArrayImpl<BeValue*>& args);
+
+	
 
 	BeConstant* GetConstant(BeType* type, double floatVal);
 	BeConstant* GetConstant(BeType* type, int64 intVal);

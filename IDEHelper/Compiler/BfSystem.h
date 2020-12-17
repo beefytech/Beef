@@ -1122,6 +1122,14 @@ enum BfWarning
 	BfWarning_C4554_PossiblePrecedenceError				= 4554
 };
 
+class BfErrorLocation
+{
+public:
+	String mFile;
+	int mLine;
+	int mColumn;
+};
+
 class BfErrorBase
 {
 public:
@@ -1129,7 +1137,8 @@ public:
 	bool mIsDeferred;
 	BfSourceData* mSource;	
 	int mSrcStart;
-	int mSrcEnd;
+	int mSrcEnd;	
+	BfErrorLocation* mLocation;
 
 public:
 	BfErrorBase()
@@ -1139,6 +1148,7 @@ public:
 		mSource = NULL;		
 		mSrcStart = -1;
 		mSrcEnd = -1;
+		mLocation = NULL;
 	}
 
 	~BfErrorBase();
@@ -1278,10 +1288,10 @@ public:
 	BfError* Warn(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
 	BfError* WarnAfter(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
 
-	BfError* MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags = BfFailFlag_None);
-	BfError* MoreInfo(const StringImpl& info);
-	BfError* MoreInfo(const StringImpl& info, BfAstNode* refNode);
-	BfError* MoreInfoAfter(const StringImpl& info, BfAstNode* refNode);
+	BfMoreInfo* MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags = BfFailFlag_None);
+	BfMoreInfo* MoreInfo(const StringImpl& info);
+	BfMoreInfo* MoreInfo(const StringImpl& info, BfAstNode* refNode);
+	BfMoreInfo* MoreInfoAfter(const StringImpl& info, BfAstNode* refNode);
 
 	BfError* FailAt(const StringImpl& error, BfSourceData* bfSource, int srcIdx, int srcLen = 1, BfFailFlags flags = BfFailFlag_None);
 	BfError* FailAfterAt(const StringImpl& error, BfSourceData* bfSource, int srcIdx);

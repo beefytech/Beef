@@ -535,6 +535,13 @@ BfMethodInfoEx::~BfMethodInfoEx()
 
 BfMethodInstance::~BfMethodInstance()
 {		
+	if (mInCEMachine)
+	{
+		auto module = GetOwner()->mModule;
+		if (module->mCompiler->mCEMachine != NULL)
+			module->mCompiler->mCEMachine->RemoveMethod(this);
+	}
+
 	if (mHasMethodRefType)
 	{				
 		auto module = GetOwner()->mModule;
@@ -557,13 +564,7 @@ BfMethodInstance::~BfMethodInstance()
 		mHotMethod->Deref();
 	}	
 
-	delete mMethodInfoEx;
-
-	if (mInCEMachine)
-	{
-		auto module = GetOwner()->mModule;
-		module->mCompiler->mCEMachine->RemoveMethod(this);
-	}
+	delete mMethodInfoEx;	
 }
 
 BfImportKind BfMethodInstance::GetImportKind()

@@ -2756,12 +2756,17 @@ void BfContext::Cleanup()
 	// Can't clean up LLVM types, they are allocated with a bump allocator
 	RemoveInvalidFailTypes();	
 
+	// Clean up deleted BfTypes
+	// These need to get deleted before the modules because we access mModule in the MethodInstance dtors
+	for (auto type : mTypeGraveyard)
+	{
+		BF_ASSERT(type->mRebuildFlags & BfTypeRebuildFlag_Deleted);
+		delete type;
+	}
+	mTypeGraveyard.Clear();
+
 	for (auto module : mDeletingModules)
 	{
-// 		auto itr = std::find(mFinishedModuleWorkList.begin(), mFinishedModuleWorkList.end(), module);
-// 		if (itr != mFinishedModuleWorkList.end())
-// 			mFinishedModuleWorkList.erase(itr);
-
 		int idx = (int)mFinishedModuleWorkList.IndexOf(module);
 		if (idx != -1)		
 			mFinishedModuleWorkList.RemoveAt(idx);		
@@ -2773,14 +2778,7 @@ void BfContext::Cleanup()
 		delete module;
 	}
 	mDeletingModules.Clear();	
-
-	// Clean up deleted BfTypes
-	for (auto type : mTypeGraveyard)
-	{		
-		BF_ASSERT(type->mRebuildFlags & BfTypeRebuildFlag_Deleted);
-		delete type;
-	}
-	mTypeGraveyard.Clear();
+	
 	for (auto typeDef : mTypeDefGraveyard)
 		delete typeDef;
 	mTypeDefGraveyard.Clear();

@@ -42,7 +42,8 @@ USING_NS_BF;
 
 bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfScopeData* scopeData)
 {		
-	if (((mCompiler->mIsResolveOnly) || (mBfIRBuilder->mIgnoreWrites)) && (deferredCallEntry->mDeferredBlock == NULL))
+	if ((((mCompiler->mIsResolveOnly) && (!mIsConstModule)) || 
+		(mBfIRBuilder->mIgnoreWrites)) && (deferredCallEntry->mDeferredBlock == NULL))
 	{
 		// For resolve entries, we only keep deferred blocks because we need to process them later so we can
 		//  resolve inside of them.  This is also required for lambda bind scan-pass
@@ -782,7 +783,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 
 void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool moveBlocks)
 {	
-	if ((mCompiler->mIsResolveOnly) && (deferredCallEntry.mHandlerCount > 0))
+	if ((mCompiler->mIsResolveOnly) && (!mIsConstModule) && (deferredCallEntry.mHandlerCount > 0))
 	{
 		// We only want to process deferred blocks once, otherwise it could significantly slow down autocompletion
 		return;

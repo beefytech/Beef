@@ -356,6 +356,7 @@ public:
 	BfTypeDef* mGenericIRefEnumeratorTypeDef;
 	
 	BfTypeDef* mInternalTypeDef;
+	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
 	BfTypeDef* mIPrintableTypeDef;
 	BfTypeDef* mIHashableTypeDef;

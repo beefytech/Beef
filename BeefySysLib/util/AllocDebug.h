@@ -2,6 +2,8 @@
 
 //#define BP_ALLOC_TRACK
 
+#include <cstdint>
+
 #ifdef BF_PLATFORM_WINDOWS
 
 #define _CRTDBG_MAP_ALLOC
@@ -88,3 +90,28 @@ void BpDump();
 
 void* StompAlloc(int size);
 void StompFree(void* addr);
+
+template <typename T>
+class AllocatorStomp
+{
+public:
+	T* allocate(intptr_t count)
+	{
+		return (T*)StompAlloc((int)(sizeof(T) * count));
+	}
+
+	void deallocate(T* ptr)
+	{
+		StompFree(ptr);
+	}
+
+	void* rawAllocate(intptr_t size)
+	{
+		return StompAlloc((int)size);
+	}
+
+	void rawDeallocate(void* ptr)
+	{
+		StompFree(ptr);
+	}
+};

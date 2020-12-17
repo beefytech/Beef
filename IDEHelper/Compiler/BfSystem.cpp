@@ -928,6 +928,7 @@ bool BfProject::IsTestProject()
 
 BfErrorBase::~BfErrorBase()
 {
+	delete mLocation;
 }
 
 void BfErrorBase::SetSource(BfPassInstance* passInstance, BfSourceData* source)
@@ -1598,9 +1599,8 @@ BfError* BfPassInstance::WarnAfter(int warningNumber, const StringImpl& warning,
 	return WarnAt(warningNumber, warning, refNode->GetSourceData(), refNode->GetSrcEnd());
 }
 
-BfError* BfPassInstance::MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags)
-{	
-	String msgPrefix;
+BfMoreInfo* BfPassInstance::MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags)
+{		
 	if (!mLastWasDisplayed)
 	{
 		if (mLastWasAdded)
@@ -1612,25 +1612,20 @@ BfError* BfPassInstance::MoreInfoAt(const StringImpl& info, BfSourceData* bfSour
 			moreInfo->mSrcStart = srcIdx;
 			moreInfo->mSrcEnd = srcIdx + srcLen;
 
-			if (lastError->mIsWarning)
-				msgPrefix = ":warn";
-			else
-				msgPrefix = ":error";
-
 			lastError->mMoreInfo.push_back(moreInfo);
+			return moreInfo;
 		}
 
 		return NULL;
 	}
 
+	String msgPrefix;
 	MessageAt(msgPrefix, " > " + info, bfSource, srcIdx, srcLen, flags);
 	return NULL;
 }
 
-BfError* BfPassInstance::MoreInfo(const StringImpl& info)
-{
-	String outText;
-
+BfMoreInfo* BfPassInstance::MoreInfo(const StringImpl& info)
+{	
 	if (!mLastWasDisplayed)
 	{
 		if (mLastWasAdded)
@@ -1642,23 +1637,21 @@ BfError* BfPassInstance::MoreInfo(const StringImpl& info)
 			moreInfo->mSrcStart = -1;
 			moreInfo->mSrcEnd = -1;
 
-			if (lastError->mIsWarning)
-				outText = ":warn ";
-			else
-				outText = ":error ";
-
 			lastError->mMoreInfo.push_back(moreInfo);
+			return moreInfo;
 		}
 
 		return NULL;
 	}
 	
+	String outText;
+	outText += "  > ";
 	outText += info;
 	OutputLine(outText);
 	return NULL;
 }
 
-BfError* BfPassInstance::MoreInfo(const StringImpl& info, BfAstNode* refNode)
+BfMoreInfo* BfPassInstance::MoreInfo(const StringImpl& info, BfAstNode* refNode)
 {	
 	if (refNode == NULL)
 		return MoreInfo(info);
@@ -1666,7 +1659,7 @@ BfError* BfPassInstance::MoreInfo(const StringImpl& info, BfAstNode* refNode)
 		return MoreInfoAt(info, refNode->GetSourceData(), refNode->GetSrcStart(), refNode->GetSrcLength());
 }
 
-BfError* BfPassInstance::MoreInfoAfter(const StringImpl& info, BfAstNode* refNode)
+BfMoreInfo* BfPassInstance::MoreInfoAfter(const StringImpl& info, BfAstNode* refNode)
 {
 	return MoreInfoAt(info, refNode->GetSourceData(), refNode->GetSrcEnd(), 1);
 }
@@ -3486,6 +3479,14 @@ BF_EXPORT const char* BF_CALLTYPE BfPassInstance_GetErrorData(BfPassInstance* bf
 			}
 		}
 	}
+
+	if (bfError->mLocation != NULL)
+	{
+		fileName = (char*)bfError->mLocation->mFile.c_str();
+		*outLine = bfError->mLocation->mLine;
+		*outColumn = bfError->mLocation->mColumn;
+	}
+
 	outSrcStart = bfError->mSrcStart;
 	outSrcEnd = bfError->mSrcEnd;
 	outMoreInfoCount = (int)bfError->mMoreInfo.size();
@@ -3504,6 +3505,16 @@ BF_EXPORT const char* BfPassInstance_Error_GetMoreInfoData(BfPassInstance* bfPas
 			fileName = (char*)srcFileName->c_str();
 		}		
 	}
+
+	if (moreInfo->mLocation != NULL)
+	{
+		fileName = (char*)moreInfo->mLocation->mFile.c_str();
+		if (outLine != NULL)
+			*outLine = moreInfo->mLocation->mLine;
+		if (outColumn != NULL)
+			*outColumn = moreInfo->mLocation->mColumn;
+	}
+
 	srcStart = moreInfo->mSrcStart;
 	srcEnd = moreInfo->mSrcEnd;
 	return moreInfo->mInfo.c_str();
