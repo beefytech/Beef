@@ -5027,7 +5027,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			{
 				if (mModule->mIsConstModule)
 				{
-					funcCallInst = mModule->mBfIRBuilder->ConstEval_GetInterfaceFunc(irArgs[0], methodInstance->mMethodInstanceGroup->mOwner->mTypeId, methodInstance->mVirtualTableIdx, funcPtrType1);
+					funcCallInst = mModule->mBfIRBuilder->ConstEval_GetInterfaceFunc(irArgs[0], methodInstance->mMethodInstanceGroup->mOwner->mTypeId, methodInstance->mMethodDef->mIdx, funcPtrType1);
 				}
 				else
 				{
@@ -6518,7 +6518,7 @@ SplatArgs(lookupVal, irArgs);
 			{
 				auto underlyingType = wantType->GetUnderlyingType();
 				mModule->PopulateType(underlyingType, BfPopulateType_Data);
-				if (underlyingType->IsValuelessType())
+				if ((underlyingType->IsValuelessType()) && (!underlyingType->IsVoid()))
 				{
 					// We don't actually pass a 'this' pointer for mut methods on valueless structs
 					argIdx++;
