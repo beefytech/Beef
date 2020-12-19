@@ -23,7 +23,16 @@ namespace System
 		[LinkName("#CallerExpression")]
 		public static extern String[Int32.MaxValue] CallerExpression;
 
+		[LinkName("#ProjectName")]
+		public static extern String ProjectName;
+
+		[LinkName("#ModuleName")]
+		public static extern String ModuleName;
+
 		[LinkName("#TimeLocal")]
 		public static extern String TimeLocal;
+
+		[LinkName("#IsConstEval")]
+		public static extern bool IsConstEval;
 	}
 }

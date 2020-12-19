@@ -1282,7 +1282,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		str += StrFormat(" %d %d", constantGEP->mIdx0, constantGEP->mIdx1);
 		return;
 	}
-
+	
 	if (auto constantExtract = BeValueDynCast<BeExtractValueConstant>(value))
 	{
 		str += "ConstExtract ";
@@ -2450,9 +2450,10 @@ String BeModule::ToString(BeFunction* wantFunc)
 					}
 					break;
 				DISPLAY_INST1(BeConstEvalGetType, "ConstEvalGetType", mTypeId);
+				DISPLAY_INST1(BeConstEvalGetReflectType, "ConstEvalGetReflectType", mTypeId);
 				DISPLAY_INST2(BeConstEvalDynamicCastCheck, "ConstEvalDynamicCastCheck", mValue, mTypeId);
 				DISPLAY_INST2(BeConstEvalGetVirtualFunc, "ConstEvalGetVirtualFunc", mValue, mVirtualTableIdx);
-				DISPLAY_INST3(BeConstEvalGetInterfaceFunc, "ConstEvalGetInterfaceFunc", mValue, mIFaceTypeId, mVirtualTableIdx);
+				DISPLAY_INST3(BeConstEvalGetInterfaceFunc, "ConstEvalGetInterfaceFunc", mValue, mIFaceTypeId, mMethodIdx);
 				default:
 					BF_FATAL("Notimpl");
 					str += "<UNKNOWN INST>";

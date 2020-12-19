@@ -412,6 +412,7 @@ public:
 	BfType* FindType(const StringImpl& typeName);
 	String TypeIdToString(int typeId);
 	BfHotTypeData* GetHotTypeData(int typeId);	
+	void ReflectInit();
 
 public:
 	BfContext(BfCompiler* compiler);

@@ -70,6 +70,11 @@ BeType* BeContext::GetPrimitiveType(BeTypeCode typeCode)
 	return primType;
 }
 
+BeType* BeContext::GetVoidPtrType()
+{
+	return GetPointerTo(GetPrimitiveType(BeTypeCode_None));
+}
+
 BeStructType* BeContext::CreateStruct(const StringImpl& name)
 {
 	BeStructType* structType = mTypes.Alloc<BeStructType>();

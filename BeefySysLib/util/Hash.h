@@ -147,3 +147,15 @@ public:
 };
 
 NS_BF_END
+
+namespace std
+{
+	template<>
+	struct hash<Beefy::Val128>
+	{
+		size_t operator()(const Beefy::Val128& val) const
+		{
+			return val.mLow;
+		}
+	};
+}

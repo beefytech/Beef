@@ -771,7 +771,7 @@ public:
 	BfTypeVector mMethodGenericArguments;
 	Dictionary<int64, BfType*> mGenericTypeBindings;
 	BfMethodCustomAttributes* mMethodCustomAttributes;
-	int mMinDependDepth;
+	int mMinDependDepth;	
 
 	BfMethodInfoEx()
 	{
@@ -779,10 +779,10 @@ public:
 		mForeignType = NULL;
 		mClosureInstanceInfo = NULL;
 		mMethodCustomAttributes = NULL;
-		mMinDependDepth = -1;
+		mMinDependDepth = -1;		
 	}
-
-	~BfMethodInfoEx();
+	
+	~BfMethodInfoEx();	
 };
 
 enum BfImportCallKind
@@ -872,6 +872,8 @@ public:
 
 	~BfMethodInstance();
 
+	void CopyFrom(BfMethodInstance* methodInstance);
+
 	bool IsMixin()
 	{
 		return mMethodDef->mMethodType == BfMethodType_Mixin;
@@ -923,7 +925,7 @@ public:
 	int GetIRFunctionParamCount(BfModule* module);
 
 	bool IsExactMatch(BfMethodInstance* other, bool ignoreImplicitParams = false, bool checkThis = false);	
-	bool IsReifiedAndImplemented();
+	bool IsReifiedAndImplemented();	
 
 	BfMethodInfoEx* GetMethodInfoEx();
 	BfCustomAttributes* GetCustomAttributes()
@@ -1292,7 +1294,7 @@ public:
 	bool mFieldIncluded;
 	bool mIsEnumPayloadCase;
 	bool mIsThreadLocal;
-	bool mIsInferredType;
+	bool mIsInferredType;	
 	int mLastRevisionReferenced;
 
 public:
@@ -1314,7 +1316,7 @@ public:
 		mFieldIncluded = copyFrom.mFieldIncluded;		
 		mIsEnumPayloadCase = copyFrom.mIsEnumPayloadCase;
 		mIsThreadLocal = copyFrom.mIsThreadLocal;
-		mIsInferredType = copyFrom.mIsInferredType;
+		mIsInferredType = copyFrom.mIsInferredType;		
 		mLastRevisionReferenced = copyFrom.mLastRevisionReferenced;		
 	}
 

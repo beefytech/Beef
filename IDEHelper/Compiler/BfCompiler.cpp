@@ -371,14 +371,15 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mHotState = NULL;	
 	mHotResolveData = NULL;
 		
+	mBfObjectTypeDef = NULL;
+	mChar32TypeDef = NULL;
 	mArray1TypeDef = NULL;
 	mArray2TypeDef = NULL;
 	mArray3TypeDef = NULL;
 	mArray4TypeDef = NULL;
 	mSpanTypeDef = NULL;
 	mAttributeTypeDef = NULL;
-	mAttributeUsageAttributeTypeDef = NULL;
-	mBfObjectTypeDef = NULL;
+	mAttributeUsageAttributeTypeDef = NULL;	
 	mClassVDataTypeDef = NULL;
 	mCLinkAttributeTypeDef = NULL;
 	mImportAttributeTypeDef = NULL;
@@ -1043,26 +1044,28 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 	//////////////////////////////////////////////////////////////////////////
 
+	mContext->ReflectInit();
+
 	// Create types we'll need for vdata, so we won't change the vdata hash afterward
-	bfModule->CreatePointerType(bfModule->GetPrimitiveType(BfTypeCode_NullPtr));
-
-	///
-	
-	auto typeDefType = bfModule->ResolveTypeDef(mTypeTypeDef)->ToTypeInstance();
-	if (!typeDefType)
-		return;
-	BF_ASSERT(typeDefType != NULL);
-	vdataContext->mBfTypeType = typeDefType->ToTypeInstance();
-
-	auto typeInstanceDefType = bfModule->ResolveTypeDef(mReflectTypeInstanceTypeDef);
-	if (!typeInstanceDefType)
-		return;
-	auto typeInstanceDefTypeInstance = typeInstanceDefType->ToTypeInstance();
-
-	auto typeDef = mSystem->FindTypeDef("System.ClassVData");
-	BF_ASSERT(typeDef != NULL);
-	auto bfClassVDataType = bfModule->ResolveTypeDef(typeDef)->ToTypeInstance();	
-	vdataContext->mBfClassVDataPtrType = bfModule->CreatePointerType(bfClassVDataType);
+// 	bfModule->CreatePointerType(bfModule->GetPrimitiveType(BfTypeCode_NullPtr));
+// 
+// 	///
+// 	
+// 	auto typeDefType = bfModule->ResolveTypeDef(mTypeTypeDef)->ToTypeInstance();
+// 	if (!typeDefType)
+// 		return;
+// 	BF_ASSERT(typeDefType != NULL);
+// 	vdataContext->mBfTypeType = typeDefType->ToTypeInstance();
+// 
+// 	auto typeInstanceDefType = bfModule->ResolveTypeDef(mReflectTypeInstanceTypeDef);
+// 	if (!typeInstanceDefType)
+// 		return;
+// 	auto typeInstanceDefTypeInstance = typeInstanceDefType->ToTypeInstance();
+// 
+// 	auto typeDef = mSystem->FindTypeDef("System.ClassVData");
+// 	BF_ASSERT(typeDef != NULL);
+// 	auto bfClassVDataType = bfModule->ResolveTypeDef(typeDef)->ToTypeInstance();	
+// 	vdataContext->mBfClassVDataPtrType = bfModule->CreatePointerType(bfClassVDataType);
 
 	//////////////////////////////////////////////////////////////////////////
 
@@ -1278,6 +1281,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 	bool madeBfTypeData = false;
 	
+	auto typeDefType = mContext->mBfTypeType;
 	bool needsTypeList = bfModule->IsMethodImplementedAndReified(typeDefType, "GetType");
 	bool needsObjectTypeData = needsTypeList || bfModule->IsMethodImplementedAndReified(vdataContext->mBfObjectType, "RawGetType") || bfModule->IsMethodImplementedAndReified(vdataContext->mBfObjectType, "GetType");	
 	bool needsTypeNames = bfModule->IsMethodImplementedAndReified(typeDefType, "GetName") || bfModule->IsMethodImplementedAndReified(typeDefType, "GetFullName");
@@ -1801,7 +1805,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			bool hadRet = false;
 
 			String entryClassName = project->mStartupObject;
-			typeDef = mSystem->FindTypeDef(entryClassName, 0, bfModule->mProject, {}, NULL, BfFindTypeDefFlag_AllowGlobal);
+			auto typeDef = mSystem->FindTypeDef(entryClassName, 0, bfModule->mProject, {}, NULL, BfFindTypeDefFlag_AllowGlobal);
 
 			if (typeDef != NULL)
 			{
@@ -6546,14 +6550,33 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		return typeDef;
 	};
 
+
+	_GetRequiredType("System.Void");
+	_GetRequiredType("System.Boolean");	
+	_GetRequiredType("System.Int");
+	_GetRequiredType("System.Int8");
+	_GetRequiredType("System.Int16");
+	_GetRequiredType("System.Int32");
+	_GetRequiredType("System.Int64");
+	_GetRequiredType("System.UInt");
+	_GetRequiredType("System.UInt8");
+	_GetRequiredType("System.UInt16");
+	_GetRequiredType("System.UInt32");
+	_GetRequiredType("System.UInt64");
+	_GetRequiredType("System.Float");
+	_GetRequiredType("System.Double");
+	_GetRequiredType("System.Char8");
+	_GetRequiredType("System.Char16");
+	mChar32TypeDef = _GetRequiredType("System.Char32");
+
+	mBfObjectTypeDef = _GetRequiredType("System.Object");	 
 	mArray1TypeDef = _GetRequiredType("System.Array1", 1);
 	mArray2TypeDef = _GetRequiredType("System.Array2", 1);
 	mArray3TypeDef = _GetRequiredType("System.Array3", 1);
 	mArray4TypeDef = _GetRequiredType("System.Array4", 1);
-	mSpanTypeDef = _GetRequiredType("System.Span", 1);
+	mSpanTypeDef = _GetRequiredType("System.Span", 1);	
 	mAttributeTypeDef = _GetRequiredType("System.Attribute");
-	mAttributeUsageAttributeTypeDef = _GetRequiredType("System.AttributeUsageAttribute");
-	mBfObjectTypeDef = _GetRequiredType("System.Object");
+	mAttributeUsageAttributeTypeDef = _GetRequiredType("System.AttributeUsageAttribute");	
 	mClassVDataTypeDef = _GetRequiredType("System.ClassVData");
 	mCLinkAttributeTypeDef = _GetRequiredType("System.CLinkAttribute");
 	mImportAttributeTypeDef = _GetRequiredType("System.ImportAttribute");
@@ -6622,6 +6645,9 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	for (int i = 0; i < BfTypeCode_Length; i++)
 		mContext->mPrimitiveStructTypes[i] = NULL;
+
+	mContext->mBfTypeType = NULL;
+	mContext->mBfClassVDataPtrType = NULL;
 
 	if (!hasRequiredTypes)
 	{

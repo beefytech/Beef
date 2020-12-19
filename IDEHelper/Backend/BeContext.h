@@ -275,6 +275,7 @@ public:
 public:
 	BeContext();	
 	BeType* GetPrimitiveType(BeTypeCode typeCode);	
+	BeType* GetVoidPtrType();
 	BeStructType* CreateStruct(const StringImpl& name);
 	BeStructType* CreateStruct(const SizedArrayImpl<BeType*>& types);
 	BePointerType* GetPointerTo(BeType* beType);

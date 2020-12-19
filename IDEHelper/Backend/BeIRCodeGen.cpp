@@ -765,6 +765,22 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			BE_MEM_END("ParamType_Const_PtrToInt");
 			return;
 		}
+		else if (constType == BfConstType_IntToPtr)
+		{
+			CMD_PARAM(BeConstant*, target);
+			CMD_PARAM(BeType*, toType);
+
+			auto castedVal = mBeModule->mAlloc.Alloc<BeCastConstant>();
+			castedVal->mInt64 = target->mInt64;
+			castedVal->mType = toType;
+			castedVal->mTarget = target;
+			BF_ASSERT(target->GetType() != NULL);
+			BF_ASSERT(!target->GetType()->IsComposite());
+			BF_ASSERT(toType->IsPointer());
+			beValue = castedVal;
+			BE_MEM_END("ParamType_Const_IntToPtr");
+			return;
+		}
 		else if (constType == BfConstType_AggZero)
 		{
 			CMD_PARAM(BeType*, type);
@@ -2545,6 +2561,17 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, inst);
 		}
 		break;
+	case BfIRCmd_ConstEval_GetReflectType:
+		{
+			CMD_PARAM(int32, typeId);
+			CMD_PARAM(BeType*, resultType);
+
+			auto inst = mBeModule->AllocInst<BeConstEvalGetReflectType>();
+			inst->mTypeId = typeId;
+			inst->mResultType = resultType;
+			SetResult(curId, inst);
+		}
+		break;
 	case BfIRCmd_ConstEval_DynamicCastCheck:
 		{
 			CMD_PARAM(BeValue*, value);
@@ -2575,13 +2602,13 @@ void BeIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(BeValue*, value);
 			CMD_PARAM(int32, ifaceTypeId);
-			CMD_PARAM(int32, virtualTableIdx);
+			CMD_PARAM(int32, methodIdx);
 			CMD_PARAM(BeType*, resultType);
 
 			auto inst = mBeModule->AllocInst<BeConstEvalGetInterfaceFunc>();
 			inst->mValue = value;
 			inst->mIFaceTypeId = ifaceTypeId;
-			inst->mVirtualTableIdx = virtualTableIdx;
+			inst->mMethodIdx = methodIdx;
 			inst->mResultType = resultType;
 			SetResult(curId, inst);
 		}

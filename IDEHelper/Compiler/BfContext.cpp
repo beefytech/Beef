@@ -631,20 +631,10 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 			BfLogSysM("Module %p inlining method %p into func:%p\n", module, methodInstance, workItem.mFunc);
 
-			BfMethodInstance dupMethodInstance = *methodInstance;
-			if (dupMethodInstance.mMethodInfoEx != NULL)
-			{
-				dupMethodInstance.mMethodInfoEx = new BfMethodInfoEx();
-				*dupMethodInstance.mMethodInfoEx = *(methodInstance->mMethodInfoEx);
-				for (auto genericParam : dupMethodInstance.mMethodInfoEx->mGenericParams)
-					genericParam->AddRef();				
-				dupMethodInstance.mMethodInfoEx->mMethodCustomAttributes = NULL;
-			}
-			dupMethodInstance.mHasBeenProcessed = false;			
-			dupMethodInstance.mIRFunction = workItem.mFunc;
-			dupMethodInstance.mMethodProcessRequest = NULL;
-			dupMethodInstance.mIsReified = true;			
-			dupMethodInstance.mHotMethod = NULL;
+			BfMethodInstance dupMethodInstance;
+			dupMethodInstance.CopyFrom(methodInstance);						
+			dupMethodInstance.mIRFunction = workItem.mFunc;			
+			dupMethodInstance.mIsReified = true;
 			dupMethodInstance.mInCEMachine = false; // Only have the original one
 			BF_ASSERT(module->mIsReified); // We should only bother inlining in reified modules
 
@@ -1435,6 +1425,31 @@ BfHotTypeData* BfContext::GetHotTypeData(int typeId)
 	}
 
 	return NULL;
+}
+
+void BfContext::ReflectInit()
+{
+	auto bfModule = mScratchModule;
+
+	bfModule->CreatePointerType(bfModule->GetPrimitiveType(BfTypeCode_NullPtr));
+
+	///
+
+	auto typeDefType = bfModule->ResolveTypeDef(mCompiler->mTypeTypeDef)->ToTypeInstance();
+	if (!typeDefType)
+		return;
+	BF_ASSERT(typeDefType != NULL);
+	mBfTypeType = typeDefType->ToTypeInstance();
+
+	auto typeInstanceDefType = bfModule->ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef);
+	if (!typeInstanceDefType)
+		return;
+	auto typeInstanceDefTypeInstance = typeInstanceDefType->ToTypeInstance();
+
+	auto typeDef = mSystem->FindTypeDef("System.ClassVData");
+	BF_ASSERT(typeDef != NULL);
+	auto bfClassVDataType = bfModule->ResolveTypeDef(typeDef)->ToTypeInstance();
+	mBfClassVDataPtrType = bfModule->CreatePointerType(bfClassVDataType);
 }
 
 void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)

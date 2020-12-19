@@ -118,6 +118,7 @@ enum BfConstType
 	BfConstType_GEP32_2,
 	BfConstType_ExtractValue,
 	BfConstType_PtrToInt,
+	BfConstType_IntToPtr,
 	BfConstType_TypeOf,
 	BfConstType_AggZero,
 	BfConstType_Array,
@@ -282,6 +283,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_Func_SetLinkage,
 
 	BfIRCmd_ConstEval_GetBfType,
+	BfIRCmd_ConstEval_GetReflectType,
 	BfIRCmd_ConstEval_DynamicCastCheck,
 	BfIRCmd_ConstEval_GetVirtualFunc,
 	BfIRCmd_ConstEval_GetInterfaceFunc,
@@ -831,6 +833,13 @@ struct BfConstantPtrToInt
 	BfTypeCode mToTypeCode;
 };
 
+struct BfConstantIntToPtr
+{
+	BfConstType mConstType;
+	int mTarget;
+	BfIRType mToType;
+};
+
 struct BfConstantGEP32_2
 {
 	BfConstType mConstType;
@@ -1230,9 +1239,10 @@ public:
 	void Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage);
 	
 	BfIRValue ConstEval_GetBfType(int typeId, BfIRType resultType);
+	BfIRValue ConstEval_GetReflectType(int typeId, BfIRType resultType);
 	BfIRValue ConstEval_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType);
 	BfIRValue ConstEval_GetVirtualFunc(BfIRValue value, int virtualTableId, BfIRType resultType);
-	BfIRValue ConstEval_GetInterfaceFunc(BfIRValue value, int typeId, int virtualTableId, BfIRType resultType);
+	BfIRValue ConstEval_GetInterfaceFunc(BfIRValue value, int typeId, int methodIdx, BfIRType resultType);
 
 	void SaveDebugLocation();
 	void RestoreDebugLocation();

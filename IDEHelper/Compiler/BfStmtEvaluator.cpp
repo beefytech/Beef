@@ -3933,7 +3933,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 			allowPrivate = false;
 		}			
 
-		if (mCompiler->mOptions.mObjectHasDebugFlags)
+		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
 		{			
 			auto preDelete = GetInternalMethod((deleteStmt->mTargetTypeToken != NULL) ? "Dbg_ObjectPreCustomDelete" : "Dbg_ObjectPreDelete");
 			SizedArray<BfIRValue, 4> llvmArgs;
@@ -3990,7 +3990,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		}
 		else
 		{
-			if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
+			if ((mCompiler->mOptions.mEnableRealtimeLeakCheck) && (!mIsConstModule))
 			{				
 				SizedArray<BfIRValue, 4> llvmArgs;
 				llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(objectType)));
@@ -6784,7 +6784,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 
 			if (!customAllocator)
 			{
-				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
+				if ((mCompiler->mOptions.mEnableRealtimeLeakCheck) && (!mIsConstModule))
 				{
 					auto moduleMethodInstance = GetInternalMethod("Dbg_MarkObjectDeleted");
 					AddDeferredCall(moduleMethodInstance, llvmArgs, scope, deleteStmt, false, true);
@@ -6801,7 +6801,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 			auto moduleMethodInstance = GetMethodInstance(objectType, methodInstance->mMethodDef, BfTypeVector());
 			AddDeferredCall(moduleMethodInstance, llvmArgs, scope, deleteStmt, false, true);
 
-			if (mCompiler->mOptions.mObjectHasDebugFlags)
+			if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
 			{
 				auto moduleMethodInstance = GetMethodByName(internalType->ToTypeInstance(), (deleteStmt->mTargetTypeToken != NULL) ? "Dbg_ObjectPreCustomDelete" : "Dbg_ObjectPreDelete");
 				AddDeferredCall(moduleMethodInstance, llvmArgs, scope, deleteStmt, false, true);
@@ -6813,7 +6813,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 			{
 				val = LoadValue(val);
 				BfModuleMethodInstance moduleMethodInstance;
-				if (mCompiler->mOptions.mEnableRealtimeLeakCheck)
+				if ((mCompiler->mOptions.mDebugAlloc) && (!mIsConstModule))
 					moduleMethodInstance = GetMethodByName(internalType->ToTypeInstance(), "Dbg_RawFree");
 				else
 					moduleMethodInstance = GetMethodByName(internalType->ToTypeInstance(), "Free");

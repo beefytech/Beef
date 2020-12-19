@@ -1338,13 +1338,15 @@ void BfModule::StartExtension()
 
 void BfModule::GetConstClassValueParam(BfIRValue classVData, SizedArrayImpl<BfIRValue>& typeValueParams)
 {
+	auto hasObjectDebugFlags = mContext->mBfObjectType->mFieldInstances[0].mResolvedType->IsInteger();
+
 	BfIRValue vDataValue;
-	if (mCompiler->mOptions.mObjectHasDebugFlags)
+	if (hasObjectDebugFlags)
 		vDataValue = mBfIRBuilder->CreatePtrToInt(classVData, BfTypeCode_IntPtr);
 	else
 		vDataValue = mBfIRBuilder->CreateBitCast(classVData, mBfIRBuilder->MapType(mContext->mBfClassVDataPtrType));	
 	typeValueParams.push_back(vDataValue);
-	if (mCompiler->mOptions.mObjectHasDebugFlags)
+	if (hasObjectDebugFlags)
 	{
 		auto primType = GetPrimitiveType(BfTypeCode_IntPtr);
 		typeValueParams.push_back(GetDefaultValue(primType));		
@@ -4640,6 +4642,12 @@ BfIRValue BfModule::CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* ou
 	PopulateType(typeInstance, BfPopulateType_DataAndMethods);
 
 	BfType* classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);
+
+	if (mIsConstModule)
+	{
+		auto idVal = mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, typeInstance->mTypeId);
+		return mBfIRBuilder->CreateIntToPtr(idVal, mBfIRBuilder->MapType(CreatePointerType(classVDataType)));
+	}	
 		
 	BfIRValue* globalVariablePtr = NULL;
 	mClassVDataRefs.TryGetValue(typeInstance, &globalVariablePtr);
@@ -4828,6 +4836,13 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 	{
 		return mBfIRBuilder->CreateTypeOf(type);
 	}
+
+	if (mIsConstModule)
+	{
+		auto typeTypeDef = ResolveTypeDef(mCompiler->mTypeTypeDef);
+		auto typeTypeInst = typeTypeDef->ToTypeInstance();
+		return mBfIRBuilder->ConstEval_GetReflectType(type->mTypeId, mBfIRBuilder->MapType(typeTypeInst));
+	}
 	
 	BfIRValue globalVariable;
 	
@@ -4883,6 +4898,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		return BfIRValue();
 	}
 	
+	if (mContext->mBfTypeType == NULL)
+	{
+
+	}
+
 	BfIRValue typeTypeData;
 	int typeFlags = 0;	
 	if (needsTypeData)
@@ -5141,29 +5161,32 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	StringT<128> mangledName;
 	BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), typeInstance, typeInstance->mModule);
 	
-	for (int methodIdx = 0; methodIdx < (int)typeDef->mMethods.size(); methodIdx++)
+	if (!mIsConstModule)
 	{
-		auto methodDef = typeDef->mMethods[methodIdx];
-		auto methodInstance = typeInstance->mMethodInstanceGroups[methodIdx].mDefault;
-		if (methodInstance == NULL)
-			continue;
-		if (typeInstance->IsUnspecializedType())
-			continue;
-		if (!typeInstance->IsTypeMemberAccessible(methodDef->mDeclaringType, mProject))
+		for (int methodIdx = 0; methodIdx < (int)typeDef->mMethods.size(); methodIdx++)
 		{
-			if (methodInstance->mChainType == BfMethodChainType_ChainMember)
+			auto methodDef = typeDef->mMethods[methodIdx];
+			auto methodInstance = typeInstance->mMethodInstanceGroups[methodIdx].mDefault;
+			if (methodInstance == NULL)
+				continue;
+			if (typeInstance->IsUnspecializedType())
+				continue;
+			if (!typeInstance->IsTypeMemberAccessible(methodDef->mDeclaringType, mProject))
 			{
-				BF_ASSERT(!methodInstance->GetOwner()->IsUnspecializedType());
+				if (methodInstance->mChainType == BfMethodChainType_ChainMember)
+				{
+					BF_ASSERT(!methodInstance->GetOwner()->IsUnspecializedType());
 
-				// We need to create an empty thunk for this chained method
-				BfIRFunction func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
-				mBfIRBuilder->SetActiveFunction(func);
-				auto block = mBfIRBuilder->CreateBlock("entry", true);
-				mBfIRBuilder->SetInsertPoint(block);
-				mBfIRBuilder->CreateRetVoid();
-				mBfIRBuilder->SetActiveFunction(BfIRFunction());
+					// We need to create an empty thunk for this chained method
+					BfIRFunction func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
+					mBfIRBuilder->SetActiveFunction(func);
+					auto block = mBfIRBuilder->CreateBlock("entry", true);
+					mBfIRBuilder->SetInsertPoint(block);
+					mBfIRBuilder->CreateRetVoid();
+					mBfIRBuilder->SetActiveFunction(BfIRFunction());
+				}
 			}
-		}		
+		}
 	}
 	
 	SizedArray<BfIRValue, 32> vData;
@@ -5292,7 +5315,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			{
 				highestIFaceVirtIdx = BF_MAX(highestIFaceVirtIdx, interfaceEntry.mStartVirtualIdx + interfaceEntry.mInterfaceType->mVirtualMethodTableSize);
 
-				if (!typeInstance->IsTypeMemberAccessible(interfaceEntry.mDeclaringType, mProject))
+				if ((!mIsConstModule) && (!typeInstance->IsTypeMemberAccessible(interfaceEntry.mDeclaringType, mProject)))
 					continue;
 
 				_InterfaceMatchEntry* matchEntry = NULL;
@@ -5391,13 +5414,14 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					if (entry.mDeclaringMethod.mMethodNum == -1)
 						continue;
 					BfMethodInstance* methodInstance = (BfMethodInstance*)entry.mImplementingMethod;
-					if ((methodInstance == NULL) || (!typeInstance->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject)))
+					if ((methodInstance == NULL) || 
+						((!mIsConstModule) && (!typeInstance->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject))))
 					{
 						if (origVTable.empty())
 							origVTable = typeInstance->mVirtualMethodTable;
 
 						BfMethodInstance* declMethodInstance = entry.mDeclaringMethod;
-						if (typeInstance->IsTypeMemberAccessible(declMethodInstance->mMethodDef->mDeclaringType, mProject))
+						if ((mIsConstModule) || (typeInstance->IsTypeMemberAccessible(declMethodInstance->mMethodDef->mDeclaringType, mProject)))
 						{
 							// Prepare to reslot...
 							entry.mImplementingMethod = entry.mDeclaringMethod;
@@ -5429,7 +5453,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						if (!reslotNames.Contains(methodInstance->mMethodDef->mName))
 							continue;
 
-						if (!typeInstance->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject))
+						if ((!mIsConstModule) && (!typeInstance->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject)))
 							continue;
 						if ((methodInstance->mChainType != BfMethodChainType_None) && (methodInstance->mChainType != BfMethodChainType_ChainHead))
 							continue;
@@ -5465,7 +5489,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 						BfMethodInstance* methodInstance = (BfMethodInstance*)entry.mImplementingMethod;
 						if ((methodInstance != NULL) && (!methodInstance->mMethodDef->mIsAbstract))
 						{
-							BF_ASSERT(typeInstance->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject));
+							BF_ASSERT((mIsConstModule) || typeInstance->IsTypeMemberAccessible(methodInstance->mMethodDef->mDeclaringType, mProject));
 							moduleMethodInst = GetMethodInstanceAtIdx(methodInstance->mMethodInstanceGroup->mOwner, methodInstance->mMethodInstanceGroup->mMethodIdx, NULL, BfGetMethodInstanceFlag_NoInline);
 							auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 							vValue = funcPtr;
@@ -5531,7 +5555,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			auto interfaceEntry = interfacePair.mValue.mEntry;
 
 			bool makeEmpty = false;
-			if (!typeInstance->IsTypeMemberAccessible(interfaceEntry->mDeclaringType, mProject))
+			if ((!mIsConstModule) && (!typeInstance->IsTypeMemberAccessible(interfaceEntry->mDeclaringType, mProject)))
 				makeEmpty = true;
 			
 			int endVirtualIdx = interfaceEntry->mStartVirtualIdx + interfaceEntry->mInterfaceType->mVirtualMethodTableSize;
@@ -5627,10 +5651,10 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			}
 		}
 				
-		if ((needsVData) && (!typeInstance->mTypeDef->mIsStatic))
+		if ((needsVData) && (!typeInstance->mTypeDef->mIsStatic) && (!mIsConstModule))
 		{
 			BfIRValue ifaceMethodExtVar;
-			if (!ifaceMethodExtData.IsEmpty())
+			if ((!ifaceMethodExtData.IsEmpty()) && (!mIsConstModule))
 			{
 				StringT<128> classVDataName;
 				BfMangler::MangleStaticFieldName(classVDataName, mCompiler->GetMangleKind(), typeInstance, "bf_hs_replace_IFaceExt");
@@ -6228,6 +6252,10 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		if (!needsTypeData)
 			break;
 
+		// Disable const method reflection info for now
+		if (mIsConstModule)
+			break;
+
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodIdx];
 		if (!methodInstanceGroup->IsImplemented())
 			continue;		
@@ -6270,9 +6298,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			}
 		}
 		
-		if (!typeInstance->IsTypeMemberAccessible(methodDef->mDeclaringType, mProject))
+		if ((!mIsConstModule) && (!typeInstance->IsTypeMemberAccessible(methodDef->mDeclaringType, mProject)))
 			continue;
-
 		
 		//
 		{
@@ -6709,7 +6736,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 
 	mTypeDataRefs[typeInstance] = typeDataVar;
 
-	if (classVDataVar)
+	if ((!mIsConstModule) && (classVDataVar))
 	{	
 		BF_ASSERT(!classVDataName.IsEmpty());
 
@@ -6750,6 +6777,8 @@ void BfModule::CheckStaticAccess(BfTypeInstance* typeInstance)
 {	
 	// Note: this is not just for perf, it fixes a field var-type resolution issue
 	if (mBfIRBuilder->mIgnoreWrites)
+		return;
+	if (mIsConstModule)
 		return;
 
 	PopulateType(typeInstance, BfPopulateType_DataAndMethods);
@@ -6891,7 +6920,7 @@ BfIRFunction BfModule::GetBuiltInFunc(BfBuiltInFuncType funcTypeId)
 			break;
 		case BfBuiltInFuncType_Malloc:			
 			{
-				if (mCompiler->mOptions.mDebugAlloc)
+				if ((mCompiler->mOptions.mDebugAlloc) && (!mIsConstModule))
 				{
 					func = GetInternalMethod("Dbg_RawAlloc", 1).mFunc;
 				}
@@ -6914,7 +6943,7 @@ BfIRFunction BfModule::GetBuiltInFunc(BfBuiltInFuncType funcTypeId)
 			break;
 		case BfBuiltInFuncType_Free:			
 		{				
-				if (mCompiler->mOptions.mDebugAlloc)	 
+				if ((mCompiler->mOptions.mDebugAlloc) && (!mIsConstModule))
 				{
 					func = GetInternalMethod("Dbg_RawFree").mFunc;
 				}
@@ -8142,7 +8171,7 @@ BfIRValue BfModule::AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTar
 	if ((allocFlags & BfAllocFlags_NoDefaultToMalloc) != 0)
 		return result;
 	
-	if (mCompiler->mOptions.mDebugAlloc)
+	if ((mCompiler->mOptions.mDebugAlloc) && (!mIsConstModule))
 	{
 		BfIRValue allocData = GetDbgRawAllocData(type);
 		BfModuleMethodInstance allocMethod = GetInternalMethod("Dbg_RawAlloc", 2);
@@ -8838,13 +8867,14 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 		}		
 		else
 		{	
-			if ((mBfIRBuilder->mIgnoreWrites) || (mCompiler->mIsResolveOnly))
+			if ((mBfIRBuilder->mIgnoreWrites) || 
+				((mCompiler->mIsResolveOnly) && (!mIsConstModule)))
 				return GetDefaultValue(typeInstance);
 
 			auto classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);			
 			auto vData = mBfIRBuilder->CreateBitCast(vDataRef, mBfIRBuilder->MapTypeInstPtr(classVDataType->ToTypeInstance()));			
 
-			if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
+			if (mCompiler->mOptions.mObjectHasDebugFlags)
 			{
 				SizedArray<BfIRValue, 4> llvmArgs;
 				llvmArgs.push_back(vData);
@@ -8870,6 +8900,12 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				BfIRValue objectVal = mBfIRBuilder->CreateCall(irFunc, llvmArgs);
 				auto objResult = mBfIRBuilder->CreateBitCast(objectVal, mBfIRBuilder->MapType(mContext->mBfObjectType, BfIRPopulateType_Full));
 				auto vdataPtr = mBfIRBuilder->CreateInBoundsGEP(objResult, 0, 0);
+
+				if (mIsConstModule)
+				{					
+					vdataPtr = mBfIRBuilder->CreateBitCast(vdataPtr, mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapTypeInstPtr(classVDataType->ToTypeInstance())));
+				}
+
 				mBfIRBuilder->CreateStore(vData, vdataPtr);
 				result = mBfIRBuilder->CreateBitCast(objectVal, mBfIRBuilder->MapType(typeInstance));				
 			}
@@ -9136,7 +9172,7 @@ bool BfModule::WantsLifetimes()
 
 bool BfModule::HasCompiledOutput()
 {
-	return (!mSystem->mIsResolveOnly) && (mIsReified);
+	return (!mSystem->mIsResolveOnly) && (mIsReified) && (!mIsConstModule);
 }
 
 // We will skip the object access check for any occurances of this value
@@ -13112,6 +13148,11 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 		if ((fieldDef->mIsExtern) && (fieldDef->mIsConst) && (typeType->IsPointer()))
 		{
 			typeType = typeType->GetUnderlyingType();
+		}
+
+		if (mIsConstModule)
+		{			
+			mCompiler->mCEMachine->QueueStaticField(fieldInstance, staticVarName);
 		}
 
 		PopulateType(typeType);
@@ -17487,7 +17528,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 
 	int dependentGenericStartIdx = 0;
-	if (methodDef->mIsLocalMethod) // See DoMethodDeclaration for an explaination of dependentGenericStartIdx
+	if ((methodDef->mIsLocalMethod) && (mCurMethodState != NULL)) // See DoMethodDeclaration for an explaination of dependentGenericStartIdx
 		dependentGenericStartIdx = (int)mCurMethodState->GetRootMethodState()->mMethodInstance->GetNumGenericArguments();
 
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);	
@@ -17495,7 +17536,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	SetAndRestoreValue<BfFilePosition> prevFilePos(mCurFilePosition);	
 	SetAndRestoreValue<bool> prevHadBuildError(mHadBuildError, false);
 	SetAndRestoreValue<bool> prevHadWarning(mHadBuildWarning, false);
-	SetAndRestoreValue<bool> prevIgnoreWarnings(mIgnoreWarnings, false);
+	SetAndRestoreValue<bool> prevIgnoreWarnings(mIgnoreWarnings, mIsConstModule);
 
 	if ((methodInstance->mIsReified) &&
 		((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_CtorNoBody)))

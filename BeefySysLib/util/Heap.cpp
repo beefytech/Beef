@@ -151,6 +151,8 @@ void ContiguousHeap::Clear(int maxAllocSize)
 		while (block != NULL)
 		{
 			block->mKind = ChBlockKind_Bad;
+			if (block->mNext == -1)
+				break;
 			block = CH_REL_TO_ABS(block->mNext);
 		}
 	}	

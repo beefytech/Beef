@@ -35,10 +35,8 @@ namespace System
 				if (data == null)
 					return true;
 
-				var type = data.GetType();
-				if (type == typeof(List<T>))
+				if (var list = data as List<T>)
 				{
-					var list = (List<T>)data;
 					return list.Count == 0;
 				}
 				return false;
@@ -54,10 +52,8 @@ namespace System
 				if (data == null)
 					return 0;
 
-				var type = data.GetType();
-				if (type == typeof(List<T>))
+				if (var list = data as List<T>)
 				{
-					var list = (List<T>)data;
 					return list.Count;
 				}
 				return 1;
@@ -105,11 +101,8 @@ namespace System
 				return;
 			}
 
-			var type = data.GetType();
-			
-			if (type == typeof(List<T>))
+			if (var list = data as List<T>)
 			{
-				var list = (List<T>)data;
 				list.Add(ownDelegate);
 			}
 			else
@@ -125,10 +118,8 @@ namespace System
 		{
 			Object data = Target;
 
-			var type = data.GetType();
-			if (type == typeof(List<T>))
+			if (var list = data as List<T>)
 			{
-				var list = (List<T>)data;
 				int32 idx = -1;
 				for (int32 i = 0; i < list.Count; i++)
 					if (Delegate.Equals(list[i], compareDelegate))
@@ -193,9 +184,8 @@ namespace System
 			if (mData == 0)
 				return;
 			var data = Target;
-			if (data.GetType() == typeof(List<T>))
+			if (var list = data as List<T>)
 			{
-				var list = (List<T>)data;
 				for (var dlg in list)
 					delete dlg;
 			}
@@ -282,10 +272,8 @@ namespace System
 				if (data == null)
 					return false;
 
-				var type = data.GetType();
-				if (type == typeof(List<T>))
+				if (var list = data as List<T>)
 				{
-					var list = (List<T>)data;
 					repeat
 					{
 						mIdx++;

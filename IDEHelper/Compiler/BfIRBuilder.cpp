@@ -1280,6 +1280,12 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			BfIRValue targetConst(BfIRValueFlags_Const, ptrToIntConst->mTarget);
 			return ToString(targetConst) + StrFormat(" PtrToInt TypeCode:%d", ptrToIntConst->mToTypeCode);			
 		}
+		else if (constant->mConstType == BfConstType_IntToPtr)
+		{
+			auto bitcast = (BfConstantIntToPtr*)constant;
+			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
+			return ToString(targetConst) + " IntToPtr " + ToString(bitcast->mToType);
+		}
 		else if (constant->mConstType == BfConstType_Array)
 		{
 			auto constArray = (BfConstantArray*)constant;
@@ -1894,6 +1900,14 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				BfIRValue targetConst(BfIRValueFlags_Const, ptrToIntConst->mTarget);
 				Write(targetConst);
 				Write(ptrToIntConst->mToTypeCode);
+			}
+			break;
+		case (int)BfConstType_IntToPtr:			
+			{
+				auto intToPtrConst = (BfConstantIntToPtr*)constant;
+				BfIRValue targetConst(BfIRValueFlags_Const, intToPtrConst->mTarget);
+				Write(targetConst);
+				Write(intToPtrConst->mToType);
 			}
 			break;
 		case (int)BfConstType_AggZero:
@@ -4074,6 +4088,20 @@ BfIRValue BfIRBuilder::CreatePtrToInt(BfIRValue val, BfTypeCode typeCode)
 
 BfIRValue BfIRBuilder::CreateIntToPtr(BfIRValue val, BfIRType type)
 {
+	if (val.IsConst())
+	{
+		auto ptrToInt = mTempAlloc.Alloc<BfConstantIntToPtr>();
+		ptrToInt->mConstType = BfConstType_IntToPtr;
+		ptrToInt->mTarget = val.mId;
+		ptrToInt->mToType = type;
+
+		BfIRValue castedVal(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(ptrToInt));
+#ifdef CHECK_CONSTHOLDER
+		castedVal.mHolder = this;
+#endif
+		return castedVal;
+	}
+
 	BfIRValue retVal = WriteCmd(BfIRCmd_IntToPtr, val, type);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;
@@ -4806,6 +4834,13 @@ BfIRValue BfIRBuilder::ConstEval_GetBfType(int typeId, BfIRType resultType)
 	return retVal;
 }
 
+BfIRValue BfIRBuilder::ConstEval_GetReflectType(int typeId, BfIRType resultType)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetReflectType, typeId, resultType);
+	NEW_CMD_INSERTED;
+	return retVal;
+}
+
 BfIRValue BfIRBuilder::ConstEval_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType)
 {
 	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_DynamicCastCheck, value, typeId, resultType);
@@ -4820,9 +4855,9 @@ BfIRValue BfIRBuilder::ConstEval_GetVirtualFunc(BfIRValue value, int virtualTabl
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::ConstEval_GetInterfaceFunc(BfIRValue value, int typeId, int virtualTableId, BfIRType resultType)
+BfIRValue BfIRBuilder::ConstEval_GetInterfaceFunc(BfIRValue value, int typeId, int methodIdx, BfIRType resultType)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetInterfaceFunc, value, typeId, virtualTableId, resultType);
+	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetInterfaceFunc, value, typeId, methodIdx, resultType);
 	NEW_CMD_INSERTED;
 	return retVal;
 }
@@ -4920,6 +4955,7 @@ void BfIRBuilder::CreateObjectAccessCheck(BfIRValue value, bool useAsm)
 	NEW_CMD_INSERTED_IRBLOCK;
 	if (!mIgnoreWrites)
 	{
+		BF_ASSERT(!value.IsConst());
 		BF_ASSERT(!retBlock.IsFake());
 		mActualInsertBlock = retBlock;
 	}

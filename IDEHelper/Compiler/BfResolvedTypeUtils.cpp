@@ -567,6 +567,29 @@ BfMethodInstance::~BfMethodInstance()
 	delete mMethodInfoEx;	
 }
 
+void BfMethodInstance::CopyFrom(BfMethodInstance* methodInstance)
+{
+	*this = *methodInstance;
+	if (mMethodInfoEx != NULL)
+	{
+		mMethodInfoEx = new BfMethodInfoEx();
+		*mMethodInfoEx = *(methodInstance->mMethodInfoEx);
+		for (auto genericParam : mMethodInfoEx->mGenericParams)
+			genericParam->AddRef();
+		mMethodInfoEx->mMethodCustomAttributes = NULL;
+		
+		if (mMethodInfoEx->mClosureInstanceInfo != NULL)
+		{
+			mMethodInfoEx->mClosureInstanceInfo = new BfClosureInstanceInfo();
+			*mMethodInfoEx->mClosureInstanceInfo = *methodInstance->mMethodInfoEx->mClosureInstanceInfo;
+		}
+	}
+	mHasBeenProcessed = false;
+	mIRFunction = BfIRValue();
+	mMethodProcessRequest = NULL;
+	mHotMethod = NULL;
+}
+
 BfImportKind BfMethodInstance::GetImportKind()
 {
 	if (mMethodDef->mImportKind != BfImportKind_Import_Unknown)

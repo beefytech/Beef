@@ -1361,6 +1361,28 @@ public:
 	}
 };
 
+class BeConstEvalGetReflectType : public BeInst
+{
+public:
+	BE_VALUE_TYPE(BeConstEvalGetReflectType, BeInst);
+
+public:
+	int mTypeId;
+	BeType* mResultType;
+
+public:
+	virtual BeType* GetType() override
+	{
+		return mResultType;
+	}
+
+	virtual void HashInst(BeHashContext& hashCtx) override
+	{
+		hashCtx.Mixin(TypeId);
+		hashCtx.Mixin(mTypeId);
+	}
+};
+
 class BeConstEvalDynamicCastCheck : public BeInst
 {
 public:
@@ -1417,7 +1439,7 @@ public:
 public:
 	BeValue* mValue;
 	int mIFaceTypeId;
-	int mVirtualTableIdx;
+	int mMethodIdx;
 	BeType* mResultType;
 
 public:
@@ -1431,7 +1453,7 @@ public:
 		hashCtx.Mixin(TypeId);
 		mValue->HashReference(hashCtx);
 		hashCtx.Mixin(mIFaceTypeId);
-		hashCtx.Mixin(mVirtualTableIdx);
+		hashCtx.Mixin(mMethodIdx);
 	}
 };
 

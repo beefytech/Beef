@@ -1,9 +1,10 @@
+using System.Diagnostics;
 namespace System.Text
 {
 	class UTF8
 	{
-		public static int8* sTrailingBytesForUTF8 = new int8[]*
-		(
+		public const int8[256] sTrailingBytesForUTF8 =
+		.(
 		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -12,13 +13,13 @@ namespace System.Text
 		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 		    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 		    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, 3,3,3,3,3,3,3,3,4,4,4,4,5,5,5,5
-		) ~ delete _;
+		);
 
-		public static uint32* sOffsetsFromUTF8 = new uint32[]*
-		(
+		public const uint32[6] sOffsetsFromUTF8 =
+		.(
 			0x00000000, 0x00003080, 0x000E2080,
 		    0x03C82080, 0xFA082080, 0x82082080
-		) ~ delete _;
+		);
 
 		public static int GetEncodedLength(char32 c)
 		{
@@ -58,6 +59,7 @@ namespace System.Text
 			case 2: c <<= 6; c += (int32)buf[bufIdx++]; fallthrough;
 			case 1: c <<= 6; c += (int32)buf[bufIdx++]; fallthrough;
 			}
+
 			c -= (int32)UTF8.sOffsetsFromUTF8[trailingBytes];
 			return (c, trailingBytes + 1);
 		}
