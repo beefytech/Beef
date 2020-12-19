@@ -4464,7 +4464,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 						}
 					}
 
-					if (caseValue.mType == switchValue.mType)
+					if ((caseValue.mType == switchValue.mType) || (eqResult))
 					{
 						constantInt = mBfIRBuilder->GetConstant(caseValue.mValue);
 						if ((constantInt != NULL) && (!mBfIRBuilder->IsInt(constantInt->mTypeCode)))
