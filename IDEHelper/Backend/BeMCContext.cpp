@@ -2864,6 +2864,39 @@ BeMCOperand BeMCContext::CreateLoad(const BeMCOperand& mcTarget)
 	return result;
 }
 
+static bool NeedsDecompose(BeConstant* constant)
+{
+	if (auto arrayConst = BeValueDynCast<BeStructConstant>(constant))
+	{
+		for (auto& val : arrayConst->mMemberValues)
+		{
+			if (NeedsDecompose(val))
+				return true;			
+		}
+		return false;
+	}
+
+	if (auto globalVar = BeValueDynCast<BeGlobalVariable>(constant))
+	{
+		return true;
+	}
+	else if (auto castConst = BeValueDynCast<BeCastConstant>(constant))
+	{
+		return true;
+	}	
+	else if (auto castConst = BeValueDynCast<BeBitCastInst>(constant))
+	{
+		if (auto targetConstant = BeValueDynCast<BeConstant>(castConst->mValue))
+			return NeedsDecompose(targetConstant);
+	}
+	else if (auto castConst = BeValueDynCast<BeGEPConstant>(constant))
+	{		
+		return NeedsDecompose(castConst->mTarget);
+	}
+
+	return false;
+}
+
 void BeMCContext::CreateStore(BeMCInstKind instKind, const BeMCOperand& val, const BeMCOperand& ptr)
 {
 	BeMCOperand mcVal = val;
@@ -2871,33 +2904,30 @@ void BeMCContext::CreateStore(BeMCInstKind instKind, const BeMCOperand& val, con
 
 	if (mcVal.mKind == BeMCOperandKind_ConstAgg)
 	{
-		bool needsDecompose = false;
-
-		if (auto arrayConst = BeValueDynCast<BeStructConstant>(mcVal.mConstant))
+		if (auto aggConst = BeValueDynCast<BeStructConstant>(mcVal.mConstant))
 		{
-			for (auto& val : arrayConst->mMemberValues)
-			{
-				if (auto globalVar = BeValueDynCast<BeGlobalVariable>(val))
-				{
-					needsDecompose = true;
-				}
-				else if (auto castConst = BeValueDynCast<BeCastConstant>(val))
-				{
-					needsDecompose = true;
-				}
-			}
-
-			if (needsDecompose)
+			if (NeedsDecompose(mcVal.mConstant))
 			{
 				int offset = 0;
 
-				auto arrayType = arrayConst->GetType();
-				BEMC_ASSERT(arrayType->IsSizedArray());
-				auto sizedArrayType = (BeSizedArrayType*)arrayType;
-
-				for (auto& val : arrayConst->mMemberValues)
-				{
-					auto destOperand = AllocVirtualReg(mModule->mContext->GetPointerTo(sizedArrayType->mElementType));
+				auto aggType = aggConst->GetType();
+				
+				for (int memberIdx = 0; memberIdx < (int)aggConst->mMemberValues.size(); memberIdx++)
+				{					
+					auto val = aggConst->mMemberValues[memberIdx];
+					BeType* elemType = NULL;
+					if (aggType->IsSizedArray())
+						elemType = ((BeSizedArrayType*)aggType)->mElementType;
+					else
+					{
+						auto& memberInfo = ((BeStructType*)aggType)->mMembers[memberIdx];
+						offset = memberInfo.mByteOffset;
+						elemType = memberInfo.mType;
+					}
+					if (elemType->mSize == 0)
+						continue;
+					
+					auto destOperand = AllocVirtualReg(mModule->mContext->GetPointerTo(elemType));
 					auto vregInfo = GetVRegInfo(destOperand);
 					vregInfo->mDefOnFirstUse = true;
 					vregInfo->mRelTo = mcPtr;
@@ -2905,12 +2935,13 @@ void BeMCContext::CreateStore(BeMCInstKind instKind, const BeMCOperand& val, con
 
 					vregInfo->mRelOffset = BeMCOperand::FromImmediate(offset);
 
-					destOperand.mKind = BeMCOperandKind_VRegLoad;
+					//destOperand.mKind = BeMCOperandKind_VRegLoad;
 
 					auto elementVal = GetOperand(val);
-					AllocInst(instKind, destOperand, elementVal);
+					//AllocInst(instKind, destOperand, elementVal);
+					CreateStore(instKind, elementVal, destOperand);
 
-					offset += sizedArrayType->mElementType->mSize;
+					offset += elemType->mSize;
 				}
 				return;
 			}
@@ -15742,7 +15773,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "DoCallback");
+	mDebugging = (function->mName == "?SetDefaults@KeySettings@BeefTest@bf@@QEAAXXZ");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;

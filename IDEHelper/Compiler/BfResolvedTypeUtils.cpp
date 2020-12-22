@@ -1096,7 +1096,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
-	if (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2))
+	if ((!module->mIsConstModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2)))
 	{
 		auto irReturnType = module->GetIRLoweredType(loweredReturnTypeCode, loweredReturnTypeCode2);
 		returnType = irReturnType;
@@ -1106,7 +1106,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
 	}
-	else if (GetStructRetIdx(forceStatic) != -1)
+	else if ((!module->mIsConstModule) && (GetStructRetIdx(forceStatic) != -1))
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
@@ -1125,11 +1125,9 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 	{
 		returnType = module->mBfIRBuilder->MapType(mReturnType);
 	}	
-
 	
-
 	for (int paramIdx = -1; paramIdx < GetParamCount(); paramIdx++)
-	{			
+	{
 		BfType* checkType = NULL;
 		if (paramIdx == -1)
 		{
@@ -1150,7 +1148,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		else
 		{
 			checkType = GetParamType(paramIdx);
-		}		
+		}
 
 		/*if (GetParamName(paramIdx) == "this")
 		{
@@ -1161,11 +1159,15 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		bool doSplat = false;
 		if (paramIdx == -1)
 		{
-			if ((checkType->IsSplattable()) && (AllowsThisSplatting()))
+			if ((!mMethodDef->mIsMutating) && (checkType->IsTypedPrimitive()))
+			{
+				checkType = checkType->GetUnderlyingType();
+			}
+			else if ((!module->mIsConstModule) && (checkType->IsSplattable()) && (AllowsThisSplatting()))
 			{
 				doSplat = true;
 			}
-			else if ((!mMethodDef->mIsMutating) && (mCallingConvention == BfCallingConvention_Unspecified))
+			else if ((!module->mIsConstModule) && (!mMethodDef->mIsMutating) && (mCallingConvention == BfCallingConvention_Unspecified))
 				checkLowered = true;
 		}
 		else
@@ -1174,11 +1176,15 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			{
 				doSplat = true;
 			}
-			else if ((checkType->IsSplattable()) && (AllowsSplatting()))
+			else if (checkType->IsTypedPrimitive())
+			{
+				checkType = checkType->GetUnderlyingType();
+			}
+			else if ((!module->mIsConstModule) && (checkType->IsSplattable()) && (AllowsSplatting()))
 			{
 				doSplat = true;
 			}
-			else
+			else if (!module->mIsConstModule)
 				checkLowered = true;
 		}
 
@@ -1258,7 +1264,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			paramIdx++; // Skip over the explicit 'this'
 	}
 
-	if (GetStructRetIdx(forceStatic) == 1)
+	if ((!module->mIsConstModule) && (GetStructRetIdx(forceStatic) == 1))
 	{		
 		BF_SWAP(paramTypes[0], paramTypes[1]);
 	}
@@ -3082,7 +3088,12 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 				if (typedVal)
 				{
 					auto constant = ctx->mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
-					if (constant->mConstType == BfConstType_Undef)
+					if (constant == NULL)
+					{
+						ctx->mFailed = true;
+						ctx->mModule->Fail("Array size not a constant value", arrayType->mParams[0]);
+					}
+					else if (constant->mConstType == BfConstType_Undef)
 					{
 						elementCount = -1; // Marker for undef
 					}

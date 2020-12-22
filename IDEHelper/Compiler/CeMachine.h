@@ -55,6 +55,7 @@ typedef int addr_ce;
 enum CeErrorKind
 {
 	CeErrorKind_None,
+	CeErrorKind_Error,
 	CeErrorKind_GlobalVariable,
 	CeErrorKind_FunctionPointer,
 	CeErrorKind_Intrinsic
@@ -83,6 +84,7 @@ enum CeOp : int16
 	CeOp_FrameAddr_64,
 	CeOp_FrameAddrOfs_32,
 
+	CeOp_ConstData,
 	CeOp_ConstDataRef,
 	CeOp_Zero,
 	CEOP_SIZED(Const),
@@ -255,19 +257,39 @@ enum CeFunctionKind
 	CeFunctionKind_Char32_IsNumber,
 };
 
+class CeConstStructFixup
+{
+public:
+	enum Kind
+	{
+		Kind_None,
+		Kind_StringPtr,
+		Kind_StringCharPtr,
+	};
+
+public:
+	Kind mKind;
+	int mValue;
+	int mOffset;
+};
+
 class CeConstStructData
 {
 public:
 	Val128 mHash;
 	Array<uint8> mData;
+	Array<uint8> mFixedData;
+	Array<CeConstStructFixup> mFixups;
 	addr_ce mAddr;
 	int mBindExecuteId;
+	bool mQueueFixups;
 
 public:
 	CeConstStructData()
 	{
 		mBindExecuteId = -1;
 		mAddr = 0;
+		mQueueFixups = false;
 	}
 };
 
@@ -336,7 +358,8 @@ public:
 
 enum CeEvalFlags
 {
-	CeEvalFlags_None = 0	
+	CeEvalFlags_None = 0,
+	CeEvalFlags_Cascade = 1
 };
 
 enum CeOperandKind
@@ -346,7 +369,7 @@ enum CeOperandKind
 	CeOperandKind_AllocaAddr,
 	CeOperandKind_Block,
 	CeOperandKind_Immediate,
-	CeOperandKind_ConstAgg,	
+	CeOperandKind_ConstStructTableIdx,	
 	CeOperandKind_CallTableIdx
 };
 
@@ -360,6 +383,7 @@ public:
 		int mBlockIdx;
 		int mImmediate;
 		int mCallTableIdx;
+		int mStructTableIdx;
 		BeConstant* mConstant;
 	};
 	BeType* mType;
@@ -462,7 +486,7 @@ public:
 	CeMachine* mCeMachine;	
 	CeFunction* mCeFunction;
 	BeFunction* mBeFunction;	
-	CeOperand mReturnVal;	
+	CeOperand mReturnVal;
 	BeType* mIntPtrType;
 	int mPtrSize;	
 
@@ -554,6 +578,14 @@ public:
 	}
 };
 
+class CeAppendAllocInfo
+{
+public:
+	BfModule* mModule;
+	BfIRValue mAllocValue;
+	BfIRValue mAppendSizeValue;
+};
+
 class CeMachine
 {
 public:
@@ -575,14 +607,17 @@ public:
 	Dictionary<Val128, addr_ce> mConstDataMap;	
 	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
 	HashSet<int> mStaticCtorExecSet;
+	CeAppendAllocInfo* mAppendAllocInfo;
 	
 	BfAstNode* mCurTargetSrc;
 	BfModule* mCurModule;	
+	BfType* mCurExpectingType;
 
 public:
 	CeMachine(BfCompiler* compiler);
 	~CeMachine();
-		
+	
+	BfError* Fail(const StringImpl& error);
 	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
 
 	void Init();	
@@ -592,14 +627,15 @@ public:
 	addr_ce GetString(int stringId);
 	addr_ce GetConstantData(BeConstant* constant);
 	BfType* GetBfType(int typeId);	
+	void PrepareConstStructEntry(CeConstStructData& constStructData);
 
 	BeContext* GetBeContext();
 	BeModule* GetBeModule();
 	void DerefMethodInfo(CeFunctionInfo* ceFunctionInfo);
-	void RemoveMethod(BfMethodInstance* methodInstance);	
-	int GetConstantSize(BfConstant* constant);
-	CeErrorKind WriteConstant(Array<uint8>& arr, BeConstant* constVal);
-	void WriteConstant(uint8* ptr, BfConstant* constant);
+	void RemoveMethod(BfMethodInstance* methodInstance);		
+	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type);
+	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal);
+	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);		
 	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr);
 
@@ -612,7 +648,11 @@ public:
 	void QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
 	void QueueMethod(BfModuleMethodInstance moduleMethodInstance);
 	void QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName);
-	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags);
+
+	void SetAppendAllocInfo(BfModule* module, BfIRValue allocValue, BfIRValue appendSizeValue);
+	void ClearAppendAllocInfo();
+
+	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
 };
 
 NS_BF_END

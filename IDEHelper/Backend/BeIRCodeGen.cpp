@@ -790,29 +790,47 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			BE_MEM_END("ParamType_Const_AggZero");
 			return;
 		}
-		else if (constType == BfConstType_Array)
+		else if (constType == BfConstType_Agg)
 		{
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(CmdParamVec<BeConstant*>, values);
 
-			auto arrayType = (BeSizedArrayType*)type;
-			int fillCount = (int)(arrayType->mLength - values.size());
-			if (fillCount > 0)
+			if (type->IsSizedArray())
 			{
-				auto lastValue = values.back();
-				for (int i = 0; i < fillCount; i++)
-					values.push_back(lastValue);
+				auto arrayType = (BeSizedArrayType*)type;
+				int fillCount = (int)(arrayType->mLength - values.size());
+				if (fillCount > 0)
+				{
+					auto lastValue = values.back();
+					for (int i = 0; i < fillCount; i++)
+						values.push_back(lastValue);
+				}
+			}
+			else
+			{
+				BF_ASSERT(type->IsStruct());
 			}
 
 			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();
-			constStruct->mType = type;
-			for (auto val : values)
+			constStruct->mType = type;			
+			for (int i = 0; i < (int)values.size(); i++)
 			{
+				auto val = values[i];
 				BeConstant* constant = BeValueDynCast<BeConstant>(val);
 				constStruct->mMemberValues.push_back(constant);
 #ifdef _DEBUG
-				auto memberType = constant->GetType();
-				BF_ASSERT(memberType == arrayType->mElementType);
+				if (type->IsSizedArray())
+				{
+					auto arrayType = (BeSizedArrayType*)type;
+					auto memberType = constant->GetType();
+					BF_ASSERT(memberType == arrayType->mElementType);
+				}
+				else
+				{
+					auto structType = (BeStructType*)type;
+					auto memberType = constant->GetType();
+					BF_ASSERT(memberType == structType->mMembers[i].mType);
+				}
 #endif
 			}
 			beValue = constStruct;
@@ -1140,22 +1158,46 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, mBeContext->CreateVectorType(elementType, length));
 		}
 		break;	
-	case BfIRCmd_CreateConstStruct:
+	case BfIRCmd_CreateConstAgg:
 		{
 			CMD_PARAM(BeType*, type);
-			CMD_PARAM(CmdParamVec<BeValue*>, values)			
-			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();						
+			CMD_PARAM(CmdParamVec<BeValue*>, values);
+
+			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();
 			constStruct->mType = type;
-			BF_ASSERT(type->IsStruct());			
+			
+			if (type->IsStruct())
+			{				
+				FixValues((BeStructType*)type, values);
 
-			FixValues((BeStructType*)type, values);
-
-			BF_ASSERT(((BeStructType*)type)->mMembers.size() == values.size());
-			for (int i = 0; i < (int)values.size(); i++)			
+				BF_ASSERT(((BeStructType*)type)->mMembers.size() == values.size());
+				for (int i = 0; i < (int)values.size(); i++)
+				{
+					auto val = values[i];
+					BF_ASSERT(mBeContext->AreTypesEqual(((BeStructType*)type)->mMembers[i].mType, val->GetType()));
+					constStruct->mMemberValues.push_back(BeValueDynCast<BeConstant>(val));
+				}
+			}
+			else
 			{
-				auto val = values[i];
-				BF_ASSERT(mBeContext->AreTypesEqual(((BeStructType*)type)->mMembers[i].mType, val->GetType()));
-				constStruct->mMemberValues.push_back(BeValueDynCast<BeConstant>(val));
+				BF_ASSERT(type->IsSizedArray());
+				auto arrayType = (BeSizedArrayType*)type;
+
+				int fillCount = (int)(arrayType->mLength - values.size());
+				if (fillCount > 0)
+				{
+					auto lastValue = values.back();
+					for (int i = 0; i < fillCount; i++)
+						values.push_back(lastValue);
+				}
+
+				BF_ASSERT(arrayType->mLength == values.size());
+				for (int i = 0; i < (int)values.size(); i++)
+				{
+					auto val = values[i];
+					BF_ASSERT(mBeContext->AreTypesEqual(((BeSizedArrayType*)type)->mElementType, val->GetType()));
+					constStruct->mMemberValues.push_back(BeValueDynCast<BeConstant>(val));
+				}
 			}
 			SetResult(curId, constStruct);
 		}
@@ -1167,19 +1209,7 @@ void BeIRCodeGen::HandleNextCmd()
 			beConst->mType = type;
 			SetResult(curId, beConst);
 		}
-		break;
-	case BfIRCmd_CreateConstArray:
-		{
-			CMD_PARAM(BeType*, type);
-			CMD_PARAM(CmdParamVec<BeConstant*>, values);
-
-			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();
-			constStruct->mType = type;
-			for (auto val : values)
-				constStruct->mMemberValues.push_back(BeValueDynCast<BeConstant>(val));
-			SetResult(curId, constStruct);
-		}
-		break;
+		break;	
 	case BfIRCmd_CreateConstString:
 		{
 			CMD_PARAM(String, str);			

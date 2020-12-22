@@ -1594,9 +1594,6 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			}
 		}
 	};
-
-	PopulateType(resolvedType);
-	AddDependency(resolvedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_LocalUsage);
 	
 	localDef->mResolvedType = resolvedType;
 	localDef->mIsReadOnly = isReadOnly;
@@ -1656,8 +1653,9 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			{
 				BfConstResolver constResolver(this);
 				initValue = constResolver.Resolve(varDecl->mInitializer, resolvedType, BfConstResolveFlag_RemapFromStringId);
-				if (!initValue)
-					initValue = GetDefaultTypedValue(resolvedType);				
+				if (!initValue)							
+					initValue = GetDefaultTypedValue(resolvedType);
+				
 			}
 			else if (varDecl->mInitializer->IsA<BfUninitializedExpression>())				
 			{				
@@ -1680,15 +1678,12 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 				if ((!handledVarInit) && (initValue))
 					initValue = Cast(varDecl->mInitializer, initValue, resolvedType, BfCastFlags_PreferAddr);
-
-				// Why did we remove this?
-// 				if ((valExprEvaluator.mResultIsTempComposite) && (initValue.IsAddr()))
-// 				{
-// 					BF_ASSERT(initValue.mType->IsComposite());
-// 					localDef->mAddr = initValue.mValue;
-// 					handledVarInit = true;
-// 					handledVarStore = true;
-// 				}
+			}
+						
+			if ((initValue) && (resolvedType->IsUndefSizedArray()))
+			{
+				resolvedType = initValue.mType;
+				unresolvedType = resolvedType;
 			}
 		}
 		if ((!handledVarInit) && (!isConst))
@@ -1728,9 +1723,14 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		}
 		else
 		{
-			BF_ASSERT(!localDef->mResolvedType->IsRef());
+			BF_ASSERT(!resolvedType->IsRef());
 		}
 	}
+
+	PopulateType(resolvedType);
+	AddDependency(resolvedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_LocalUsage);
+
+	localDef->mResolvedType = resolvedType;
 
 	_CheckConst();
 
@@ -1771,6 +1771,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		initValue = LoadValue(initValue);
 		if (initValue.IsSplat())
 		{
+			BF_ASSERT(!mIsConstModule);
 			if (!localDef->mAddr)
 				localDef->mAddr = AllocLocalVariable(resolvedType, localDef->mName);
 			AggregateSplatIntoAddr(initValue, localDef->mAddr);
@@ -4945,12 +4946,12 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 	BfType* origType;
 	BfExprEvaluator exprEvaluator(this);
 	bool alreadyWritten = false;
-	if (mCurMethodInstance->GetStructRetIdx() != -1)	
+	if ((!mIsConstModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
 		exprEvaluator.mReceivingValue = &mCurMethodState->mRetVal;	
 	if (mCurMethodInstance->mMethodDef->mIsReadOnly)
 		exprEvaluator.mAllowReadOnlyReference = true;
 	auto retValue = CreateValueFromExpression(exprEvaluator, returnStmt->mExpression, expectingReturnType, BfEvalExprFlags_AllowRefExpr, &origType);	
-	if (mCurMethodInstance->GetStructRetIdx() != -1)
+	if ((!mIsConstModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
 		alreadyWritten = exprEvaluator.mReceivingValue == NULL;
 	MarkScopeLeft(&mCurMethodState->mHeadScope);
 	

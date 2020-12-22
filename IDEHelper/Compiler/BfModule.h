@@ -1593,6 +1593,7 @@ public:
 	BfTypedValue RemoveRef(BfTypedValue typedValue);
 	BfTypedValue LoadOrAggregateValue(BfTypedValue typedValue);
 	BfTypedValue LoadValue(BfTypedValue typedValue, BfAstNode* refNode = NULL, bool isVolatile = false);	
+	BfTypedValue PrepareConst(BfTypedValue& typedValue);
 	void AggregateSplatIntoAddr(BfTypedValue typedValue, BfIRValue addrVal);
 	BfTypedValue AggregateSplat(BfTypedValue typedValue, BfIRValue* valueArrPtr = NULL);	
 	BfTypedValue MakeAddressable(BfTypedValue typedValue);

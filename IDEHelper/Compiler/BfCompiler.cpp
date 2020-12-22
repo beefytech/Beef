@@ -434,6 +434,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mStaticInitAfterAttributeTypeDef = NULL;	
 	mStaticInitPriorityAttributeTypeDef = NULL;
 	mStringTypeDef = NULL;
+	mStringViewTypeDef = NULL;
 	mThreadStaticAttributeTypeDef = NULL;
 	mTypeTypeDef = NULL;
 	mUnboundAttributeTypeDef = NULL;	
@@ -1359,7 +1360,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		StringT<128> typesVariableName;
 		BfMangler::MangleStaticFieldName(typesVariableName, GetMangleKind(), typeDefType->ToTypeInstance(), "sTypes", typeDefPtrType);
 		auto arrayType = bfModule->mBfIRBuilder->GetSizedArrayType(bfModule->mBfIRBuilder->MapType(typeDefType), (int)typeDataVector.size());
-		auto typeDataConst = bfModule->mBfIRBuilder->CreateConstArray(arrayType, typeDataVector);
+		auto typeDataConst = bfModule->mBfIRBuilder->CreateConstAgg_Value(arrayType, typeDataVector);
 		BfIRValue typeDataArray = bfModule->mBfIRBuilder->CreateGlobalVariable(arrayType, true, BfIRLinkageType_External,
 			typeDataConst, typesVariableName);
 
@@ -1401,7 +1402,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	{
 		auto elemType = bfModule->CreatePointerType(bfModule->GetPrimitiveType(BfTypeCode_Int8));
 		auto arrayType = bfModule->mBfIRBuilder->GetSizedArrayType(bfModule->mBfIRBuilder->MapType(elemType), (int)forceLinkValues.size());
-		auto typeDataConst = bfModule->mBfIRBuilder->CreateConstArray(arrayType, forceLinkValues);
+		auto typeDataConst = bfModule->mBfIRBuilder->CreateConstAgg_Value(arrayType, forceLinkValues);
 		BfIRValue typeDataArray = bfModule->mBfIRBuilder->CreateGlobalVariable(arrayType, true, BfIRLinkageType_Internal,
 			typeDataConst, "FORCELINK_MODULES");
 	}
@@ -1431,7 +1432,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		stringList.Add(bfModule->mBfIRBuilder->CreateConstNull(stringPtrIRType));
 
 		BfIRType stringArrayType = bfModule->mBfIRBuilder->GetSizedArrayType(stringPtrIRType, (int)stringList.size());
-		auto stringArray = bfModule->mBfIRBuilder->CreateConstArray(stringArrayType, stringList);
+		auto stringArray = bfModule->mBfIRBuilder->CreateConstAgg_Value(stringArrayType, stringList);
 		
 		auto stringArrayVar = bfModule->mBfIRBuilder->CreateGlobalVariable(stringArrayType, true, BfIRLinkageType_External, stringArray, stringsVariableName);
 		
@@ -1459,7 +1460,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		}
 
 		BfIRType stringArrayType = bfModule->mBfIRBuilder->GetSizedArrayType(stringPtrIRType, (int)usedStringIdMap.size());
-		auto stringArray = bfModule->mBfIRBuilder->CreateConstArray(stringArrayType, stringList);
+		auto stringArray = bfModule->mBfIRBuilder->CreateConstAgg_Value(stringArrayType, stringList);
 
 		auto stringArrayVar = bfModule->mBfIRBuilder->CreateGlobalVariable(stringArrayType, true, BfIRLinkageType_External, stringArray, stringsVariableName);
 
@@ -5378,10 +5379,11 @@ void BfCompiler::PopulateReified()
 									{
 										auto& checkMethodInstanceGroup = typeInst->mMethodInstanceGroups[checkMethodDef->mIdx];
 										auto checkMethodInstance = checkMethodInstanceGroup.mDefault;
-										if (checkMethodInstance == NULL)
-											continue;
-										if ((checkMethodDef->mIsExtern) && (checkMethodInstance->IsReifiedAndImplemented()))
-											forceMethod = true;
+										if (checkMethodInstance != NULL)											
+										{
+											if ((checkMethodDef->mIsExtern) && (checkMethodInstance->IsReifiedAndImplemented()))
+												forceMethod = true;
+										}
 										checkMethodDef = checkMethodDef->mNextWithSameName;
 									}
 								}
@@ -6632,6 +6634,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mStaticInitAfterAttributeTypeDef = _GetRequiredType("System.StaticInitAfterAttribute");
 	mStaticInitPriorityAttributeTypeDef = _GetRequiredType("System.StaticInitPriorityAttribute");
 	mStringTypeDef = _GetRequiredType("System.String");
+	mStringViewTypeDef = _GetRequiredType("System.StringView");
 	mTestAttributeTypeDef = _GetRequiredType("System.TestAttribute");
 	mThreadStaticAttributeTypeDef = _GetRequiredType("System.ThreadStaticAttribute");
 	mTypeTypeDef = _GetRequiredType("System.Type");

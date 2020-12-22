@@ -12,6 +12,12 @@ extern "C"
 
 USING_NS_BF;
 
+enum CeOpInfoFlag
+{
+	CeOpInfoFlag_None,
+	CeOpInfoFlag_SizeX,
+};
+
 struct CeOpInfo
 {
 	const char* mName;
@@ -19,6 +25,7 @@ struct CeOpInfo
 	CeOperandInfoKind mOperandA;
 	CeOperandInfoKind mOperandB;
 	CeOperandInfoKind mOperandC;
+	CeOpInfoFlag mFlags;
 };
 
 #define CEOPINFO_SIZED_1(OPNAME, OPINFOA) \
@@ -26,21 +33,21 @@ struct CeOpInfo
 	{OPNAME "_16", OPINFOA}, \
 	{OPNAME "_32", OPINFOA}, \
 	{OPNAME "_64", OPINFOA}, \
-	{OPNAME "_X", OPINFOA, CEOI_IMM32}
+	{OPNAME "_X", OPINFOA, CEOI_None, CEOI_None, CEOI_None, CeOpInfoFlag_SizeX}
 
 #define CEOPINFO_SIZED_2(OPNAME, OPINFOA, OPINFOB) \
 	{OPNAME "_8", OPINFOA, OPINFOB}, \
 	{OPNAME "_16", OPINFOA, OPINFOB}, \
 	{OPNAME "_32", OPINFOA, OPINFOB}, \
 	{OPNAME "_64", OPINFOA, OPINFOB}, \
-	{OPNAME "_X", OPINFOA, CEOI_IMM32, OPINFOB}
+	{OPNAME "_X",  OPINFOA, OPINFOB, CEOI_None, CEOI_None, CeOpInfoFlag_SizeX}
 
 #define CEOPINFO_SIZED_3(OPNAME, OPINFOA, OPINFOB, OPINFOC) \
 	{OPNAME "_8", OPINFOA, OPINFOB, OPINFOC}, \
 	{OPNAME "_16", OPINFOA, OPINFOB, OPINFOC}, \
 	{OPNAME "_32", OPINFOA, OPINFOB, OPINFOC}, \
 	{OPNAME "_64", OPINFOA, OPINFOB, OPINFOC}, \
-	{OPNAME "_X", OPINFOA, CEOI_IMM32, OPINFOB, OPINFOC}
+	{OPNAME "_X", OPINFOA, OPINFOB, OPINFOC, CEOI_None, CeOpInfoFlag_SizeX}
 
 #define CEOPINFO_SIZED_NUMERIC_2(OPNAME, OPINFOA, OPINFOB) \
 	{OPNAME "_I8", OPINFOA, OPINFOB}, \
@@ -92,7 +99,8 @@ static CeOpInfo gOpInfo[] =
 	{"FrameAddr_32", CEOI_FrameRef, CEOI_FrameRef},
 	{"FrameAddr_64", CEOI_FrameRef, CEOI_FrameRef},
 	{"FrameAddrOfs_32", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM32},
-	{"CeOp_ConstDataRef", CEOI_FrameRef, CEOI_IMM32},
+	{"ConstData", CEOI_FrameRef, CEOI_IMM32},
+	{"ConstDataRef", CEOI_FrameRef, CEOI_IMM32},
 	{"Zero", CEOI_None, CEOI_FrameRef, CEOI_IMM32},	
 		
 	{"Const_8", CEOI_FrameRef, CEOI_IMM8},
@@ -307,6 +315,12 @@ void CeDumpContext::Dump()
 
 		mStr += StrFormat("%04X: ", ofs);
 
+		int32 sizeX = -1;
+		if ((opInfo.mFlags & CeOpInfoFlag_SizeX) != 0)
+		{
+			sizeX = CE_GET(int);
+		}
+
 		if (opInfo.mResultKind != CEOI_None)
 		{
 			DumpOperandInfo(opInfo.mResultKind);
@@ -314,6 +328,12 @@ void CeDumpContext::Dump()
 		}
 
 		mStr += opInfo.mName;
+
+		if (sizeX != -1)
+		{
+			mStr += StrFormat(":%d", sizeX);
+		}
+
 		if (opInfo.mOperandA != CEOI_None)
 		{
 			mStr += " ";
@@ -720,7 +740,21 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			}
 
 			if (globalVar->mInitializer != NULL)
-				return GetOperand(globalVar->mInitializer);
+			{
+				auto result = GetOperand(globalVar->mInitializer, false, true);
+				if (result.mKind == CeOperandKind_ConstStructTableIdx)
+				{
+					auto& constTableEntry = mCeFunction->mConstStructTable[result.mStructTableIdx];
+					auto ptrType = mCeMachine->GetBeContext()->GetPointerTo(globalVar->mType);
+					auto dataResult = FrameAlloc(ptrType);
+					Emit(CeOp_ConstDataRef);
+					EmitFrameOffset(dataResult);
+					Emit((int32)result.mCallTableIdx);
+					return dataResult;
+				}
+
+				return result;
+			}
 
 			errorKind = CeErrorKind_GlobalVariable;
 			errorType = mCeMachine->GetBeContext()->GetPointerTo(globalVar->mType);
@@ -851,7 +885,8 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			if (mConstDataMap.TryAdd(structConstant, NULL, &constDataPtr))
 			{												
 				CeConstStructData constStructData;
-				errorKind = mCeMachine->WriteConstant(constStructData.mData, structConstant);
+				constStructData.mQueueFixups = true;
+				errorKind = mCeMachine->WriteConstant(constStructData, structConstant);
 				if (errorKind == CeErrorKind_None)
 				{
 					*constDataPtr = (int)mCeFunction->mConstStructTable.size();
@@ -860,17 +895,27 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 				else
 				{
 					*constDataPtr = -1;
-				}				
+				}
 			}
 
 			if (*constDataPtr != -1)
 			{
-				auto ptrResult = mCeMachine->GetBeContext()->GetPointerTo(structConstant->mType);
-				auto result = FrameAlloc(ptrResult);
-				Emit(CeOp_ConstDataRef);			
-				EmitFrameOffset(result);
-				Emit((int32)*constDataPtr);
-				return result;
+				if (!allowImmediate)
+				{
+					auto result = FrameAlloc(structConstant->mType);
+					Emit(CeOp_ConstData);
+					EmitFrameOffset(result);
+					Emit((int32)*constDataPtr);
+					return result;
+				}
+				else
+				{
+					CeOperand result;
+					result.mKind = CeOperandKind_ConstStructTableIdx;
+					result.mCallTableIdx = *constDataPtr;
+					result.mType = structConstant->mType;
+					return result;
+				}
 			}
 			else
 			{				
@@ -1737,8 +1782,7 @@ void CeBuilder::Build()
 					auto castedInst = (BeRetInst*)inst;
 					if (castedInst->mRetValue != NULL)
 					{
-						auto mcVal = GetOperand(castedInst->mRetValue);
-
+						auto mcVal = GetOperand(castedInst->mRetValue);												
 						BF_ASSERT(mReturnVal.mKind == CeOperandKind_AllocaAddr);
 						EmitSizedOp(CeOp_Move_8, mcVal, NULL, true);
 						Emit((int32)mReturnVal.mFrameOfs);
@@ -2046,16 +2090,7 @@ void CeBuilder::Build()
 					
 					BeConstant* constant = BeValueDynCast<BeConstant>(castedInst->mAggVal);
 					CeOperand mcAgg;
-
-					if (constant == NULL)
-					{
-						mcAgg = GetOperand(castedInst->mAggVal, false, true);
-						if (mcAgg.mKind == CeOperandKind_ConstAgg)
-						{
-							constant = mcAgg.mConstant;
-						}
-					}
-
+					
 					if (constant != NULL)
 					{
 						result.mImmediate = 0;
@@ -2557,12 +2592,15 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mExecuteId = 0;
 	mCurTargetSrc = NULL;
 	mCurModule = NULL;
+	mCurExpectingType = NULL;
 	mHeap = NULL;
 	mStringCharsOffset = -1;
+	mAppendAllocInfo = NULL;
 }
 
 CeMachine::~CeMachine()
 {
+	delete mAppendAllocInfo;
 	delete mCeModule;
 	delete mHeap;
 
@@ -2571,6 +2609,15 @@ CeMachine::~CeMachine()
 		auto functionInfo = kv.mValue;
 		delete functionInfo;
 	}
+}
+
+BfError* CeMachine::Fail(const StringImpl& error)
+{
+	auto bfError = mCurModule->Fail("Unable to const-evaluate function", mCurTargetSrc);
+	if (bfError == NULL)
+		return NULL;
+	mCompiler->mPassInstance->MoreInfo(error);
+	return bfError;
 }
 
 BfError* CeMachine::Fail(const CeFrame& curFrame, const StringImpl& str)
@@ -2693,12 +2740,12 @@ addr_ce CeMachine::GetConstantData(BeConstant* constant)
 			writeConstant = gvConstant->mInitializer;
 	}
 
-	Array<uint8> data;
-	auto result = WriteConstant(data, writeConstant);
+	CeConstStructData structData;
+	auto result = WriteConstant(structData, writeConstant);
 	BF_ASSERT(result == CeErrorKind_None);
 
-	uint8* ptr = CeMalloc(data.mSize);
-	memcpy(ptr, data.mVals, data.mSize);
+	uint8* ptr = CeMalloc(structData.mData.mSize);
+	memcpy(ptr, structData.mData.mVals, structData.mData.mSize);
 	return (addr_ce)(ptr - mMemory.mVals);
 }
 
@@ -2736,7 +2783,7 @@ addr_ce CeMachine::GetReflectType(int typeId)
 			beValue = mCeModule->mBfIRBuilder->mBeIRCodeGen->GetBeValue(globalVar->mStreamId);
 		}		
 	}
-	
+		
 	if (auto constant = BeValueDynCast<BeConstant>(beValue))	
 		*addrPtr = GetConstantData(constant);
 
@@ -2790,6 +2837,40 @@ BfType* CeMachine::GetBfType(int typeId)
 	if ((uintptr)typeId < (uintptr)mCeModule->mContext->mTypes.size())
 		return mCeModule->mContext->mTypes[typeId];
 	return NULL;
+}
+
+void CeMachine::PrepareConstStructEntry(CeConstStructData& constEntry)
+{
+	if (constEntry.mHash.IsZero())
+	{
+		constEntry.mHash = Hash128(&constEntry.mData[0], constEntry.mData.mSize);
+		if (!constEntry.mFixups.IsEmpty())		
+			constEntry.mHash = Hash128(&constEntry.mFixups[0], constEntry.mFixups.mSize * sizeof(CeConstStructFixup), constEntry.mHash);
+	}
+
+	if (!constEntry.mFixups.IsEmpty())
+	{
+		if (constEntry.mFixedData.IsEmpty())
+			constEntry.mFixedData = constEntry.mData;
+
+		for (auto& fixup : constEntry.mFixups)
+		{
+			if (fixup.mKind == CeConstStructFixup::Kind_StringPtr)
+			{
+				BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeModule->ResolveTypeDef(mCompiler->mStringTypeDef, BfPopulateType_Data);
+				addr_ce addrPtr = GetString(fixup.mValue);
+				*(addr_ce*)(constEntry.mFixedData.mVals + fixup.mOffset) = addrPtr;
+			}
+			else if (fixup.mKind == CeConstStructFixup::Kind_StringCharPtr)
+			{
+				BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeModule->ResolveTypeDef(mCompiler->mStringTypeDef, BfPopulateType_Data);
+				addr_ce addrPtr = GetString(fixup.mValue);
+				*(addr_ce*)(constEntry.mFixedData.mVals + fixup.mOffset) = addrPtr + stringTypeInst->mInstSize;
+			}
+		}
+	}	
+
+	constEntry.mBindExecuteId = mExecuteId;
 }
 
 BeContext* CeMachine::GetBeContext()
@@ -2858,38 +2939,138 @@ void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 	}
 }
 
-int CeMachine::GetConstantSize(BfConstant* constant)
-{
+//#define CE_GETC(T) *((T*)(addr += sizeof(T)) - 1)
+#define CE_GETC(T) *(T*)(mMemory.mVals + addr)
+
+bool CeMachine::WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type)
+{	
 	switch (constant->mTypeCode)
 	{
 	case BfTypeCode_Int8:
 	case BfTypeCode_UInt8:
 	case BfTypeCode_Boolean:
 	case BfTypeCode_Char8:
-		return 1;
+		CE_GETC(int8) = constant->mInt8;
+		return true;
 	case BfTypeCode_Int16:
 	case BfTypeCode_UInt16:
 	case BfTypeCode_Char16:
-		return 2;	
+		CE_GETC(int16) = constant->mInt16;
+		return true;
 	case BfTypeCode_Int32:
 	case BfTypeCode_UInt32:
 	case BfTypeCode_Char32:
-		return 4;
+		CE_GETC(int32) = constant->mInt32;
+		return true;
 	case BfTypeCode_Int64:
-	case BfTypeCode_UInt64:	
-		return 8;
+	case BfTypeCode_UInt64:
+		CE_GETC(int64) = constant->mInt64;
+		return true;
 	case BfTypeCode_NullPtr:
-		return 4;
+		if (mCeModule->mSystem->mPtrSize == 4)
+			CE_GETC(int32) = 0;
+		else
+			CE_GETC(int64) = 0;
+		return true;
 	case BfTypeCode_Float:
-		return 4;
+		CE_GETC(float) = (float)constant->mDouble;
+		return true;
 	case BfTypeCode_Double:
-		return 8;
+		CE_GETC(double) = constant->mDouble;
+		return true;
 	}
 
-	return -1;
+	if (constant->mConstType == BfConstType_Agg)
+	{
+		auto aggConstant = (BfConstantAgg*)constant;
+		if (type->IsSizedArray())
+		{
+			return false;
+		}
+		else
+		{
+			BF_ASSERT(type->IsStruct());
+
+			module->PopulateType(type);
+			auto typeInst = type->ToTypeInstance();
+			int idx = 0;
+
+			if (typeInst->mBaseType != NULL)
+			{
+				auto baseConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[0]);
+				WriteConstant(module, addr, baseConstant, typeInst->mBaseType);
+			}
+
+			for (auto& fieldInstance : typeInst->mFieldInstances)
+			{
+				if (fieldInstance.mDataOffset < 0)
+					continue;
+
+				auto fieldConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[fieldInstance.mDataIdx]);
+				if (fieldConstant == NULL)
+					return false;
+				WriteConstant(module, addr + fieldInstance.mDataOffset, fieldConstant, fieldInstance.mResolvedType);
+			}
+		}
+		return true;
+	}
+
+	if (constant->mConstType == BfConstType_AggZero)
+	{		
+		BF_ASSERT(type->IsComposite());
+		memset(mMemory.mVals + addr, 0, type->mSize);		
+		return true;
+	}
+
+	if (constant->mConstType == BfConstType_BitCast)
+	{
+		auto constBitCast = (BfConstantBitCast*)constant;
+
+		auto constTarget = module->mBfIRBuilder->GetConstantById(constBitCast->mTarget);
+		return WriteConstant(module, addr, constTarget, type);
+	}
+
+	if (constant->mConstType == BfConstType_GEP32_2)
+	{
+		auto gepConst = (BfConstantGEP32_2*)constant;
+		auto constTarget = module->mBfIRBuilder->GetConstantById(gepConst->mTarget);
+		if (constTarget->mConstType == BfConstType_GlobalVar)
+		{
+			auto globalVar = (BfGlobalVar*)constTarget;
+			if (strncmp(globalVar->mName, "__bfStrData", 10) == 0)
+			{
+				BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeModule->ResolveTypeDef(mCompiler->mStringTypeDef, BfPopulateType_Data);
+
+				int stringId = atoi(globalVar->mName + 11);
+				addr_ce strAddr = GetString(stringId) + stringTypeInst->mInstSize;				
+				if (mCeModule->mSystem->mPtrSize == 4)
+					CE_GETC(int32) = strAddr;
+				else
+					CE_GETC(int64) = strAddr;
+				return true;
+			}
+		}
+	}
+
+	if (constant->mConstType == BfConstType_GlobalVar)
+	{
+		auto globalVar = (BfGlobalVar*)constant;
+		if (strncmp(globalVar->mName, "__bfStrObj", 10) == 0)
+		{
+			int stringId = atoi(globalVar->mName  + 10);
+			addr_ce strAddr = GetString(stringId);			
+			if (mCeModule->mSystem->mPtrSize == 4)
+				CE_GETC(int32) = strAddr;
+			else
+				CE_GETC(int64) = strAddr;
+			return true;
+		}
+	}
+
+	return false;
 }
 
-CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
+CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constVal)
 {
 	auto beType = constVal->GetType();
 	if (auto globalVar = BeValueDynCast<BeGlobalVariable>(constVal))
@@ -2899,7 +3080,7 @@ CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
 			int stringId = atoi(globalVar->mName.c_str() + 10);
 			addr_ce stringAddr = GetString(stringId);
 
-			auto ptr = arr.GrowUninitialized(mCeModule->mSystem->mPtrSize);
+			auto ptr = data.mData.GrowUninitialized(mCeModule->mSystem->mPtrSize);
 			int64 addr64 = stringAddr;
 			memcpy(ptr, &addr64, mCeModule->mSystem->mPtrSize);
 			return CeErrorKind_None;
@@ -2908,16 +3089,18 @@ CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
 		if (globalVar->mInitializer == NULL)
 			return CeErrorKind_GlobalVariable;
 
-		//uint8* gvData = CeMalloc(globalVar->mType->mSize);
-		Array<uint8> gvData;
+		
+		BF_ASSERT(!data.mQueueFixups);
+		CeConstStructData gvData;
+		
 		auto result = WriteConstant(gvData, globalVar->mInitializer);
 		if (result != CeErrorKind_None)
 			return result;
 
-		uint8* gvPtr = CeMalloc(gvData.mSize);
-		memcpy(gvPtr, gvData.mVals, gvData.mSize);
+		uint8* gvPtr = CeMalloc(gvData.mData.mSize);
+		memcpy(gvPtr, gvData.mData.mVals, gvData.mData.mSize);
 
-		auto ptr = arr.GrowUninitialized(mCeModule->mSystem->mPtrSize);
+		auto ptr = data.mData.GrowUninitialized(mCeModule->mSystem->mPtrSize);
 		int64 addr64 = (addr_ce)(gvPtr - mMemory.mVals);
 		memcpy(ptr, &addr64, mCeModule->mSystem->mPtrSize);
 		return CeErrorKind_None;
@@ -2928,7 +3111,7 @@ CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
 	}
 	else if (auto constStruct = BeValueDynCast<BeStructConstant>(constVal))
 	{
-		int startOfs = arr.mSize;
+		int startOfs = data.mData.mSize;
 		if (constStruct->mType->mTypeCode == BeTypeCode_Struct)
 		{
 			BeStructType* structType = (BeStructType*)constStruct->mType;
@@ -2937,22 +3120,22 @@ CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
 			{
 				auto& member = structType->mMembers[memberIdx];
 				// Do any per-member alignment				
-				int wantZeroes = member.mByteOffset - (arr.mSize - startOfs);
+				int wantZeroes = member.mByteOffset - (data.mData.mSize - startOfs);
 				if (wantZeroes > 0)				
-					arr.Insert(arr.size(), (uint8)0, wantZeroes);				
+					data.mData.Insert(data.mData.size(), (uint8)0, wantZeroes);				
 
-				auto result = WriteConstant(arr, constStruct->mMemberValues[memberIdx]);
+				auto result = WriteConstant(data, constStruct->mMemberValues[memberIdx]);
 				if (result != CeErrorKind_None)
 					return result;
 			}
 			// Do end padding
-			arr.Insert(arr.size(), (uint8)0, structType->mSize - (arr.mSize - startOfs));			
+			data.mData.Insert(data.mData.size(), (uint8)0, structType->mSize - (data.mData.mSize - startOfs));
 		}
 		else if (constStruct->mType->mTypeCode == BeTypeCode_SizedArray)
 		{
 			for (auto& memberVal : constStruct->mMemberValues)
 			{
-				auto result = WriteConstant(arr, memberVal);
+				auto result = WriteConstant(data, memberVal);
 				if (result != CeErrorKind_None)
 					return result;
 			}
@@ -2962,11 +3145,11 @@ CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
 	}
 	else if (auto constStr = BeValueDynCast<BeStringConstant>(constVal))
 	{
-		arr.Insert(arr.mSize, (uint8*)constStr->mString.c_str(), (int)constStr->mString.length() + 1);
+		data.mData.Insert(data.mData.mSize, (uint8*)constStr->mString.c_str(), (int)constStr->mString.length() + 1);
 	}
 	else if (auto constCast = BeValueDynCast<BeCastConstant>(constVal))
 	{
-		auto result = WriteConstant(arr, constCast->mTarget);
+		auto result = WriteConstant(data, constCast->mTarget);
 		if (result != CeErrorKind_None)
 			return result;
 	}
@@ -2991,7 +3174,38 @@ CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
 			{
 				BF_FATAL("Invalid GEP");
 			}
-						
+			
+			addr_ce addr = -1;
+
+			if (globalVar->mName.StartsWith("__bfStrData"))
+			{
+				int stringId = atoi(globalVar->mName.c_str() + 11);
+
+				if (data.mQueueFixups)
+				{
+					addr = 0;
+					CeConstStructFixup fixup;
+					fixup.mKind = CeConstStructFixup::Kind_StringCharPtr;
+					fixup.mValue = stringId;
+					fixup.mOffset = (int)data.mData.mSize;
+					data.mFixups.Add(fixup);
+				}
+				else
+				{
+					addr_ce stringAddr = GetString(stringId);
+					BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeModule->ResolveTypeDef(mCeModule->mCompiler->mStringTypeDef, BfPopulateType_Data);
+					addr = stringAddr + stringTypeInst->mInstSize;
+				}
+			}
+
+			if (addr != -1)
+			{
+				auto ptr = data.mData.GrowUninitialized(mCeModule->mSystem->mPtrSize);
+				int64 addr64 = addr + dataOfs;
+				memcpy(ptr, &addr64, mCeModule->mSystem->mPtrSize);
+				return CeErrorKind_None;
+			}
+
 			return CeErrorKind_GlobalVariable;
 
 			// 			auto sym = GetSymbol(globalVar);
@@ -3008,7 +3222,8 @@ CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
 			BF_FATAL("Invalid GEPConstant");
 		}
 	}
-	else if ((beType->IsPointer()) && (constVal->mTarget != NULL))
+	
+	/*else if ((beType->IsPointer()) && (constVal->mTarget != NULL))
 	{
 		auto result = WriteConstant(arr, constVal->mTarget);
 		if (result != CeErrorKind_None)
@@ -3027,52 +3242,225 @@ CeErrorKind CeMachine::WriteConstant(Array<uint8>& arr, BeConstant* constVal)
 			memset(ptr, 0, writeSize);
 			sizeLeft -= writeSize;
 		}
+	}*/
+
+	else if (BeValueDynCastExact<BeConstant>(constVal) != NULL)
+	{
+		if (constVal->mType->IsStruct())
+		{
+			if (constVal->mType->mSize > 0)
+			{
+				auto ptr = data.mData.GrowUninitialized(constVal->mType->mSize);
+				memset(ptr, 0, constVal->mType->mSize);				
+			}			
+		}
+		else
+		{
+			auto ptr = data.mData.GrowUninitialized(beType->mSize);
+			memcpy(ptr, &constVal->mInt64, beType->mSize);			
+		}
 	}
 	else
-	{
-		auto ptr = arr.GrowUninitialized(beType->mSize);
-		memcpy(ptr, &constVal->mInt64, beType->mSize);
-	}
+		return CeErrorKind_Error;
+
 	return CeErrorKind_None;
 }
 
-#define CE_GETC(T) *((T*)(ptr += sizeof(T)) - 1)
 
-void CeMachine::WriteConstant(uint8* ptr, BfConstant* constant)
-{
-	switch (constant->mTypeCode)
-	{
-	case BfTypeCode_Int8:
-	case BfTypeCode_UInt8:
-	case BfTypeCode_Boolean:
-	case BfTypeCode_Char8:
-		CE_GETC(int8) = constant->mInt8;
-		return;
-	case BfTypeCode_Int16:
-	case BfTypeCode_UInt16:
-	case BfTypeCode_Char16:
-		CE_GETC(int16) = constant->mInt16;
-		return;
-	case BfTypeCode_Int32:
-	case BfTypeCode_UInt32:
-	case BfTypeCode_Char32:
-		CE_GETC(int32) = constant->mInt32;
-		return;
-	case BfTypeCode_Int64:
-	case BfTypeCode_UInt64:	
-		CE_GETC(int64) = constant->mInt64;
-		return;
-	case BfTypeCode_NullPtr:
-		CE_GETC(int32) = 0;
-		return;
-	case BfTypeCode_Float:
-		CE_GETC(float) = (float)constant->mDouble;
-		return;
-	case BfTypeCode_Double:
-		CE_GETC(double) = constant->mDouble;
-		return;
+#define CE_CREATECONST_CHECKPTR(PTR, SIZE) \
+	if ((((uint8*)(PTR) - memStart) - 0x10000) + (SIZE) > (memSize - 0x10000)) \
+	{ \
+		Fail("Access violation creating constant result"); \
+		return BfIRValue(); \
 	}
+
+BfIRValue CeMachine::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType, BfType** outType)
+{
+	BfIRBuilder* irBuilder = module->mBfIRBuilder;
+
+	uint8* memStart = mMemory.mVals;
+	int memSize = mMemory.mSize;
+
+	if (bfType->IsPrimitiveType())
+	{
+		auto primType = (BfPrimitiveType*)bfType;
+
+		auto typeCode = primType->mTypeDef->mTypeCode;
+		if (typeCode == BfTypeCode_IntPtr)
+			typeCode = (mCeModule->mCompiler->mSystem->mPtrSize == 4) ? BfTypeCode_Int32 : BfTypeCode_Int64;
+		else if (typeCode == BfTypeCode_UIntPtr)
+			typeCode = (mCeModule->mCompiler->mSystem->mPtrSize == 4) ? BfTypeCode_UInt32 : BfTypeCode_UInt64;
+
+		switch (typeCode)
+		{
+		case BfTypeCode_Int8:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(int8));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int8*)ptr);
+		case BfTypeCode_UInt8:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint8));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(uint8*)ptr);
+		case BfTypeCode_Int16:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(int16));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int16*)ptr);
+		case BfTypeCode_UInt16:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint16));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(uint16*)ptr);
+		case BfTypeCode_Int32:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(int32));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(int32*)ptr);
+		case BfTypeCode_UInt32:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(uint32));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, (uint64)*(uint32*)ptr);
+		case BfTypeCode_Int64:
+		case BfTypeCode_UInt64:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(int64));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(uint64*)ptr);
+		case BfTypeCode_Float:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(float));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(float*)ptr);
+		case BfTypeCode_Double:
+			CE_CREATECONST_CHECKPTR(ptr, sizeof(double));
+			return irBuilder->CreateConst(primType->mTypeDef->mTypeCode, *(double*)ptr);
+		}
+
+		return BfIRValue();
+	}
+
+	if (bfType->IsTypeInstance())
+	{
+		auto typeInst = bfType->ToTypeInstance();
+
+		uint8* instData = ptr;		
+// 		if ((typeInst->IsObject()) && (!isBaseType))
+// 		{
+// 			CE_CREATECONST_CHECKPTR(ptr, sizeof(addr_ce));
+// 			instData = mMemory.mVals + *(addr_ce*)ptr;
+// 			CE_CREATECONST_CHECKPTR(instData, typeInst->mInstSize);
+// 		}
+
+		if (typeInst->IsInstanceOf(mCompiler->mStringTypeDef))
+		{
+			BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeModule->ResolveTypeDef(mCompiler->mStringTypeDef, BfPopulateType_Data);
+			module->PopulateType(stringTypeInst);
+
+			auto lenByteCount = stringTypeInst->mFieldInstances[0].mResolvedType->mSize;
+			auto lenOffset = stringTypeInst->mFieldInstances[0].mDataOffset;
+			auto allocSizeOffset = stringTypeInst->mFieldInstances[1].mDataOffset;
+			auto ptrOffset = stringTypeInst->mFieldInstances[2].mDataOffset;
+			
+			int32 lenVal = *(int32*)(instData + lenOffset);
+
+			char* charPtr = NULL;
+
+			if (lenByteCount == 4)
+			{
+				int32 allocSizeVal = *(int32*)(instData + allocSizeOffset);
+				if ((allocSizeVal & 0x40000000) != 0)
+				{
+					int32 ptrVal = *(int32*)(instData + ptrOffset);
+					charPtr = (char*)(ptrVal + memStart);
+				}
+				else
+				{
+					charPtr = (char*)(instData + ptrOffset);
+				}
+			}
+
+			CE_CREATECONST_CHECKPTR(charPtr, lenVal);
+			String str(charPtr, lenVal);
+			return module->GetStringObjectValue(str);
+		}
+
+		SizedArray<BfIRValue, 8> fieldVals;
+
+		if (typeInst->IsInstanceOf(mCeModule->mCompiler->mSpanTypeDef))
+		{
+			if ((outType != NULL) && (mCurExpectingType->IsSizedArray()))
+			{				
+				module->PopulateType(typeInst);
+
+				auto ptrOffset = typeInst->mFieldInstances[0].mDataOffset;
+				auto lenOffset = typeInst->mFieldInstances[1].mDataOffset;
+				
+				BfType* elemType = typeInst->GetUnderlyingType();
+
+				CE_CREATECONST_CHECKPTR(instData, mCeModule->mSystem->mPtrSize * 2);
+				addr_ce addr = *(addr_ce*)(instData + ptrOffset);
+				int32 lenVal = *(int32*)(instData + lenOffset);				
+				CE_CREATECONST_CHECKPTR(memStart + addr, lenVal);
+
+				for (int i = 0; i < lenVal; i++)
+				{
+					auto result = CreateConstant(module, memStart + addr + i * elemType->GetStride(), elemType);
+					if (!result)
+						return BfIRValue();
+					fieldVals.Add(result);
+				}
+
+				auto irArrayType = irBuilder->GetSizedArrayType(irBuilder->MapType(elemType, BfIRPopulateType_Full), lenVal);
+				auto instResult = irBuilder->CreateConstAgg(irArrayType, fieldVals);
+				*outType = module->CreateSizedArrayType(elemType, lenVal);
+				return instResult;
+			}
+		}
+
+		if (typeInst->IsObjectOrInterface())
+		{
+			Fail(StrFormat("Reference type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));
+			return BfIRValue();
+		}
+
+		if (typeInst->IsPointer())
+		{
+			Fail(StrFormat("Pointer type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));
+			return BfIRValue();
+		}
+
+		if (typeInst->mBaseType != NULL)
+		{
+			auto result = CreateConstant(module, instData, typeInst->mBaseType);
+			if (!result)
+				return BfIRValue();
+			fieldVals.Add(result);
+		}
+
+		for (int fieldIdx = 0; fieldIdx < typeInst->mFieldInstances.size(); fieldIdx++)		
+		{			
+			auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
+			if (fieldInstance.mDataOffset < 0)
+				continue;
+			
+			if ((fieldInstance.mDataOffset == 0) && (typeInst == mCompiler->mContext->mBfObjectType))
+			{
+				auto vdataPtr = module->GetClassVDataPtr(typeInst);
+				if (fieldInstance.mResolvedType->IsInteger())
+					fieldVals.Add(irBuilder->CreatePtrToInt(vdataPtr, ((BfPrimitiveType*)fieldInstance.mResolvedType)->mTypeDef->mTypeCode));
+				else
+					fieldVals.Add(vdataPtr);
+				continue;
+			}
+
+			auto result = CreateConstant(module, instData + fieldInstance.mDataOffset, fieldInstance.mResolvedType);
+			if (!result)
+				return BfIRValue();
+
+			if (fieldInstance.mDataIdx == fieldVals.mSize)
+				fieldVals.Add(result);
+			else
+			{
+				while (fieldInstance.mDataIdx >= fieldVals.mSize)
+					fieldVals.Add(BfIRValue());
+				fieldVals[fieldInstance.mDataIdx] = result;				
+			}
+		}
+		
+		auto instResult = irBuilder->CreateConstAgg(irBuilder->MapTypeInst(typeInst, BfIRPopulateType_Full), fieldVals);
+		return instResult;
+	}		
+
+	return BfIRValue();
 }
+
 #define CE_CHECKSTACK() \
 	if (stackPtr < memStart) \
 	{ \
@@ -3087,6 +3475,12 @@ void CeMachine::WriteConstant(uint8* ptr, BfConstant* constant)
 	}
 
 // This check will fail for addresses < 64K (null pointer), or out-of-bounds
+#define CE_CHECKSIZE(SIZE) \
+	if ((SIZE) < 0) \
+	{ \
+		_Fail("Invalid memory size"); \
+		return false; \
+	}
 #define CE_CHECKADDR(ADDR, SIZE) \
 	if (((ADDR) - 0x10000) + (SIZE) > (memSize - 0x10000)) \
 	{ \
@@ -3606,6 +4000,8 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto destAddr = CE_GETFRAME(addr_ce);
 				uint8 setValue = CE_GETFRAME(uint8);
 				int32 setSize = CE_GETFRAME(int32);
+				CE_CHECKSIZE(setSize);
+				CE_CHECKADDR(destAddr, setSize);
 				memset(memStart + destAddr, setValue, setSize);
 			}
 			break;
@@ -3614,6 +4010,8 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto destAddr = CE_GETFRAME(addr_ce);
 				uint8 setValue = CE_GETINST(uint8);
 				int32 setSize = CE_GETINST(int32);
+				CE_CHECKSIZE(setSize);				
+				CE_CHECKADDR(destAddr, setSize);
 				memset(memStart + destAddr, setValue, setSize);
 			}
 			break;
@@ -3622,6 +4020,9 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto destAddr = CE_GETFRAME(addr_ce);
 				auto srcAddr = CE_GETFRAME(addr_ce);				
 				int32 size = CE_GETFRAME(int32);
+				CE_CHECKSIZE(size);
+				CE_CHECKADDR(srcAddr, size);
+				CE_CHECKADDR(destAddr, size);
 				memcpy(memStart + destAddr, memStart + srcAddr, size);
 			}
 			break;
@@ -3640,6 +4041,21 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				result = (int32)(addr - memStart + ofs);
 			}
 			break;
+		case CeOp_ConstData:
+			{
+				auto frameOfs = CE_GETINST(int32);
+				int32 constIdx = CE_GETINST(int32);
+				auto& constEntry = ceFunction->mConstStructTable[constIdx];				
+
+				if (constEntry.mBindExecuteId != mExecuteId)
+				{
+					PrepareConstStructEntry(constEntry);
+					_FixVariables();
+				}
+				auto& buff = (constEntry.mFixedData.mSize > 0) ? constEntry.mFixedData : constEntry.mData;				
+				memcpy(framePtr + frameOfs, buff.mVals, buff.mSize);			
+			}
+			break;
 		case CeOp_ConstDataRef:
 			{
 				auto frameOfs = CE_GETINST(int32);
@@ -3647,15 +4063,17 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto& constEntry = ceFunction->mConstStructTable[constIdx];
 				if (constEntry.mBindExecuteId != mExecuteId)
 				{
-					if (constEntry.mHash.IsZero())
-						constEntry.mHash = Hash128(&constEntry.mData[0], constEntry.mData.mSize);
+					PrepareConstStructEntry(constEntry);
+					_FixVariables();
 					
+					auto& buff = (constEntry.mFixedData.mSize > 0) ? constEntry.mFixedData : constEntry.mData;
+
 					addr_ce* constAddrPtr = NULL;
 					if (mConstDataMap.TryAdd(constEntry.mHash, NULL, &constAddrPtr))
 					{
-						uint8* data = CeMalloc(constEntry.mData.mSize);
+						uint8* data = CeMalloc(buff.mSize);
 						_FixVariables();
-						memcpy(data, &constEntry.mData[0], constEntry.mData.mSize);
+						memcpy(data, &buff[0], buff.mSize);
 						*constAddrPtr = (addr_ce)(data - memStart);
 					}
 
@@ -3699,7 +4117,7 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		case CeOp_Const_X:
 			{
 				int32 constSize = CE_GETINST(int32);
-				auto resultPtr = &CE_GETFRAME(uint8);				
+				auto resultPtr = &CE_GETFRAME(uint8);
 				memcpy(resultPtr, instPtr, constSize);
 				instPtr += constSize;
 			}
@@ -3714,7 +4132,16 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			CE_LOAD(uint32);
 			break;
 		case CeOp_Load_64:
-			CE_LOAD(uint64);
+			CE_LOAD(uint64);		
+			break;
+		case CeOp_Load_X:
+			{
+				int32 size = CE_GETINST(int32);
+				auto resultPtr = &CE_GETFRAME(uint8);
+				auto ceAddr = CE_GETFRAME(addr_ce);
+				CE_CHECKADDR(ceAddr, size);
+				memcpy(resultPtr, memStart + ceAddr, size);				
+			}
 			break;
 		case CeOp_Store_8:
 			CE_STORE(uint8);
@@ -3780,6 +4207,14 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			break;
 		case CeOp_Pop_64:
 			CEOP_POP(int64);
+			break;
+		case CeOp_Pop_X:
+			{
+				int32 size = CE_GETINST(int32);
+				auto resultPtr = &CE_GETFRAME(uint8);
+				memcpy(resultPtr, stackPtr, size);
+				stackPtr += size;
+			}
 			break;
 		case CeOp_AdjustSP:
 			{
@@ -3884,7 +4319,9 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			break;
 		case CeOp_GetMethod:
-			{				
+			{
+				BF_ASSERT(memStart == mMemory.mVals);
+
 				auto& result = CE_GETFRAME(CeFunction*);
 				int32 callIdx = CE_GETINST(int32);
 				auto& callEntry = ceFunction->mCallTable[callIdx];
@@ -3896,7 +4333,7 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if (callEntry.mFunctionInfo == NULL)
 					{
 						_Fail("Unable to locate function entry");
-						break;
+						return false;
 					}
 					
 					if ((callEntry.mFunctionInfo->mCeFunction == NULL) && (!callEntry.mFunctionInfo->mMethodRef.IsNull()))
@@ -3915,7 +4352,7 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if (callEntry.mFunctionInfo->mCeFunction == NULL)
 					{
 						_Fail("Method not generated");
-						break;
+						return false;
 					}
 
 					callEntry.mFunction = callEntry.mFunctionInfo->mCeFunction;
@@ -3927,6 +4364,7 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					callEntry.mBindRevision = mRevision;
 				}
 
+				BF_ASSERT(memStart == mMemory.mVals);
 				result = callEntry.mFunction;
 // 				if (callEntry.mFunction->mName.Contains("__static_dump"))
 // 				{
@@ -4550,7 +4988,10 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 }
 
 void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder)
-{	
+{
+	if (mHeap == NULL)
+		mHeap = new	ContiguousHeap();
+
 	if (ceFunction->mMethodInstance != NULL)
 	{
 		auto methodDef = ceFunction->mMethodInstance->mMethodDef;
@@ -4731,29 +5172,59 @@ void CeMachine::QueueStaticField(BfFieldInstance* fieldInstance, const StringImp
 	mStaticFieldMap[mangledFieldName] = staticFieldInfo;
 }
 
-BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags)
-{	
-// 	for (int argIdx = 0; argIdx < (int)args.size(); argIdx++)
-// 	{
-// 		auto arg = args[argIdx];
-// 		if (!arg.IsConst())
-// 			return BfTypedValue();
-// 	}
+void CeMachine::SetAppendAllocInfo(BfModule* module, BfIRValue allocValue, BfIRValue appendSizeValue)
+{
+	delete mAppendAllocInfo;
+	mAppendAllocInfo = new CeAppendAllocInfo();
+	mAppendAllocInfo->mModule = module;
+	mAppendAllocInfo->mAllocValue = allocValue;
+	mAppendAllocInfo->mAppendSizeValue = appendSizeValue;
+}
 
+void CeMachine::ClearAppendAllocInfo()
+{
+	delete mAppendAllocInfo;
+	mAppendAllocInfo = NULL;
+}
+
+BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
+{	
 	// DISABLED
 	return BfTypedValue();
 
+	if (mAppendAllocInfo != NULL)
+	{
+		if ((mAppendAllocInfo->mAppendSizeValue) && (!mAppendAllocInfo->mAppendSizeValue.IsConst()))
+			return BfTypedValue();
+	}
+
+	int thisArgIdx = -1;
+	int appendAllocIdx = -1;
+	if (methodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)
+	{
+		if (!methodInstance->GetOwner()->IsValuelessType())
+			thisArgIdx = 0;
+		if ((methodInstance->GetParamCount() >= 1) && (methodInstance->GetParamKind(0) == BfParamKind_AppendIdx))
+			appendAllocIdx = 1;
+	}
+
+	for (int argIdx = 0; argIdx < (int)args.size(); argIdx++)
+	{
+		auto arg = args[argIdx];
+		if (!arg.IsConst())
+		{
+			if ((argIdx != thisArgIdx) && (argIdx != appendAllocIdx))
+				return BfTypedValue();
+		}
+	}
+	
 	SetAndRestoreValue<BfAstNode*> prevTargetSrc(mCurTargetSrc, targetSrc);
 	SetAndRestoreValue<BfModule*> prevModule(mCurModule, module);
+	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);
 
 	BF_ASSERT(mCallStack.IsEmpty());
 	
-	auto methodDef = methodInstance->mMethodDef;
-	if (!methodDef->mIsStatic)
-	{
-		if (!methodInstance->GetOwner()->IsValueType())
-			return BfTypedValue();
-	}
+	auto methodDef = methodInstance->mMethodDef;	
 
 	if (mCeModule == NULL)
 		Init();
@@ -4763,29 +5234,141 @@ BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	if (!ceFunction->mInitialized)	
 		PrepareFunction(ceFunction, NULL);
 	
-	if (mHeap == NULL)
-		mHeap = new	ContiguousHeap();
 	mMemory.Resize(BF_CE_STACK_SIZE);
 
 	auto stackPtr = &mMemory[0] + mMemory.mSize;	
-	auto* memStart = &mMemory[0];
+	auto* memStart = &mMemory[0];	
 
+	BfTypeInstance* thisType = methodInstance->GetOwner();
+	addr_ce allocThisInstAddr = 0;
+	addr_ce allocThisAddr = 0;
+	int allocThisSize = -1;
+
+	if (thisArgIdx != -1)
+	{
+		allocThisSize = thisType->mInstSize;
+
+		if ((mAppendAllocInfo != NULL) && (mAppendAllocInfo->mAppendSizeValue))
+		{
+			BF_ASSERT(mAppendAllocInfo->mModule == module);
+			BF_ASSERT(mAppendAllocInfo->mAppendSizeValue.IsConst());
+
+			auto appendSizeConstant = module->mBfIRBuilder->GetConstant(mAppendAllocInfo->mAppendSizeValue);
+			BF_ASSERT(module->mBfIRBuilder->IsInt(appendSizeConstant->mTypeCode));
+			allocThisSize += appendSizeConstant->mInt32;
+		}
+
+		stackPtr -= allocThisSize;		
+		auto allocThisPtr = stackPtr;
+		memset(allocThisPtr, 0, allocThisSize);
+		
+		if (thisType->IsObject())
+			*(int32*)(allocThisPtr) = thisType->mTypeId;
+		
+		allocThisInstAddr = allocThisPtr - memStart;
+		allocThisAddr = allocThisInstAddr;		
+	}
+
+	addr_ce allocAppendIdxAddr = 0;
+	if (appendAllocIdx != -1)
+	{
+		stackPtr -= mCeModule->mSystem->mPtrSize;		
+		memset(stackPtr, 0, mCeModule->mSystem->mPtrSize);
+		allocAppendIdxAddr = stackPtr - memStart;
+	}
+	
+	auto _FixVariables = [&]()
+	{		
+		intptr memOffset = &mMemory[0] - memStart;
+		if (memOffset == 0)
+			return;
+		memStart += memOffset;
+		stackPtr += memOffset;		
+	};
+
+	addr_ce compositeStartAddr = stackPtr - memStart;
+	int paramIdx = methodInstance->GetParamCount();
+	for (int argIdx = (int)args.size() - 1; argIdx >= 0; argIdx--)
+	{
+		BfType* paramType = NULL;		
+		while (true)
+		{
+			paramIdx--;
+			paramType = methodInstance->GetParamType(paramIdx);
+			if (paramType->IsTypedPrimitive())
+				paramType = paramType->GetUnderlyingType();
+			if (!paramType->IsValuelessType())
+				break;
+		}		
+		if (paramType->IsComposite())
+		{
+			auto paramTypeInst = paramType->ToTypeInstance();
+			stackPtr -= paramTypeInst->mInstSize;
+		}
+	}
+
+	addr_ce useCompositeAddr = compositeStartAddr;
+	paramIdx = methodInstance->GetParamCount();
 	for (int argIdx = (int)args.size() - 1; argIdx >= 0; argIdx--)
  	{
+		BfType* paramType = NULL;		
+		while (true)
+		{
+			paramIdx--;
+			paramType = methodInstance->GetParamType(paramIdx);			
+			if (paramType->IsTypedPrimitive())
+				paramType = paramType->GetUnderlyingType();
+			if (!paramType->IsValuelessType())
+				break;
+		}				
+		
  		auto arg = args[argIdx];
- 		if (!arg.IsConst())
- 			return BfTypedValue();
-				
-		auto constant = module->mBfIRBuilder->GetConstant(arg);
-		int constSize = GetConstantSize(constant);
-		if (constSize == -1)
-			return BfTypedValue();
+		if (!arg.IsConst())
+		{
+			if (argIdx == thisArgIdx)
+			{
+				if (mAppendAllocInfo != NULL)
+					BF_ASSERT(mAppendAllocInfo->mAllocValue == arg);
 
-		stackPtr -= constSize;
-		WriteConstant(stackPtr, constant);
+				stackPtr -= mCeModule->mSystem->mPtrSize;				
+				int64 addr64 = allocThisAddr;
+				memcpy(stackPtr, &addr64, mCeModule->mSystem->mPtrSize);
+				continue;
+			}
+			else if (argIdx == appendAllocIdx)
+			{
+				stackPtr -= mCeModule->mSystem->mPtrSize;
+				int64 addr64 = allocAppendIdxAddr;
+				memcpy(stackPtr, &addr64, mCeModule->mSystem->mPtrSize);
+				continue;
+			}
+			else
+				return BfTypedValue();
+		}
+
+		auto constant = module->mBfIRBuilder->GetConstant(arg);
+		if (paramType->IsComposite())
+		{
+			auto paramTypeInst = paramType->ToTypeInstance();
+			useCompositeAddr -= paramTypeInst->mInstSize;
+			if (!WriteConstant(module, useCompositeAddr, constant, paramType))
+				return BfTypedValue();
+			_FixVariables();
+
+			stackPtr -= mCeModule->mSystem->mPtrSize;
+			int64 addr64 = useCompositeAddr;
+			memcpy(stackPtr, &addr64, mCeModule->mSystem->mPtrSize);			
+		}
+		else
+		{
+			stackPtr -= paramType->mSize;
+			if (!WriteConstant(module, stackPtr - memStart, constant, paramType))
+				return BfTypedValue();
+			_FixVariables();
+		}						
  	}
 
-	addr_ce retAddr = 0;
+	addr_ce retAddr = 0;	
 	auto returnType = methodInstance->mReturnType;
 	if (!returnType->IsValuelessType())
 	{
@@ -4796,64 +5379,32 @@ BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 	bool success = Execute(ceFunction, stackPtr - ceFunction->mFrameSize, stackPtr);
 	memStart = &mMemory[0];
-		
-	auto constHolder = module->mBfIRBuilder;
+	
+	addr_ce retInstAddr = retAddr;
+	if ((returnType->IsObject()) || (returnType->IsPointer()))
+	{
+		// Or pointer?
+		retInstAddr = *(addr_ce*)(memStart + retAddr);
+	}
 
 	BfTypedValue returnValue;
 
 	if (success)
 	{
 		BfTypedValue retValue;
-		if (retAddr != 0)
+		if ((retInstAddr != 0) || (allocThisInstAddr != 0))
 		{
-			auto* retPtr = memStart + retAddr;
-			BfIRValue constVal;
-
-			if (returnType->IsPrimitiveType())
-			{				
-				auto primType = (BfPrimitiveType*)returnType;
-
-				auto typeCode = primType->mTypeDef->mTypeCode;
-				if (typeCode == BfTypeCode_IntPtr)
-					typeCode = (module->mCompiler->mSystem->mPtrSize == 4) ? BfTypeCode_Int32 : BfTypeCode_Int64;
-				else if (typeCode == BfTypeCode_UIntPtr)
-					typeCode = (module->mCompiler->mSystem->mPtrSize == 4) ? BfTypeCode_UInt32 : BfTypeCode_UInt64;
-
-				switch (typeCode)
-				{
-				case BfTypeCode_Int8:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, *(int8*)retPtr);
-					break;
-				case BfTypeCode_UInt8:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, *(uint8*)retPtr);
-					break;
-				case BfTypeCode_Int16:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, *(int16*)retPtr);
-					break;
-				case BfTypeCode_UInt16:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, *(uint16*)retPtr);
-					break;
-				case BfTypeCode_Int32:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, *(int32*)retPtr);
-					break;
-				case BfTypeCode_UInt32:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, (uint64)*(uint32*)retPtr);
-					break;
-				case BfTypeCode_Int64:
-				case BfTypeCode_UInt64:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, *(uint64*)retPtr);
-					break;
-				case BfTypeCode_Float:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, *(float*)retPtr);
-					break;
-				case BfTypeCode_Double:
-					constVal = constHolder->CreateConst(primType->mTypeDef->mTypeCode, *(double*)retPtr);
-					break;				
-				}
+			auto* retPtr = memStart + retInstAddr;
+			if (allocThisInstAddr != 0)
+			{
+				retPtr = memStart + allocThisAddr;
+				returnType = thisType;
 			}
 
+			BfType* usedReturnType = returnType;
+			BfIRValue constVal = CreateConstant(module, retPtr, returnType, &usedReturnType);
 			if (constVal)
-				returnValue = BfTypedValue(constVal, returnType);
+				returnValue = BfTypedValue(constVal, usedReturnType);
 		}
 		else
 		{
@@ -4870,7 +5421,7 @@ BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	mCallStack.Clear();
 	mStaticCtorExecSet.Clear();	
 	mStaticFieldMap.Clear();
-	mHeap->Clear(BF_CE_MAX_CARRYOVER_HEAP);
+	mHeap->Clear(BF_CE_MAX_CARRYOVER_HEAP);	
 
 	return returnValue;
 }

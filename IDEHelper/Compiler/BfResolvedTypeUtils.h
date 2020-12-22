@@ -528,6 +528,7 @@ public:
 	virtual bool IsObjectOrInterface() { return false; }
 	virtual bool IsString() { return false; }
 	virtual bool IsSizedArray() { return false; }
+	virtual bool IsUndefSizedArray() { return false; }
 	virtual bool IsUnknownSizedArray() { return false; }
 	virtual bool IsArray() { return false; }	
 	virtual bool IsDelegate() { return false; }
@@ -2277,6 +2278,7 @@ public:
 	virtual bool NeedsExplicitAlignment() override { return mElementType->NeedsExplicitAlignment(); }
 
 	virtual bool IsSizedArray() override { return true; }
+	virtual bool IsUndefSizedArray() override { return mElementCount == -1; }
 		
 	virtual bool IsWrappableType() override { return true; }
 	virtual bool IsValueType() override { return true; } // Is a type of struct

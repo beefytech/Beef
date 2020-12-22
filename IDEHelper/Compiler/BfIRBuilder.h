@@ -121,7 +121,7 @@ enum BfConstType
 	BfConstType_IntToPtr,
 	BfConstType_TypeOf,
 	BfConstType_AggZero,
-	BfConstType_Array,
+	BfConstType_Agg,
 	BfConstType_ArrayZero,
 	BfConstType_ArrayZero8,
 	BfConstType_Undef,
@@ -160,10 +160,9 @@ enum BfIRCmd : uint8
 	BfIRCmd_GetPointerToType,
 	BfIRCmd_GetSizedArrayType,
 	BfIRCmd_GetVectorType,
-
-	BfIRCmd_CreateConstStruct,
+	
 	BfIRCmd_CreateConstStructZero,
-	BfIRCmd_CreateConstArray,
+	BfIRCmd_CreateConstAgg,
 	BfIRCmd_CreateConstArrayZero,
 	BfIRCmd_CreateConstString,
 	BfIRCmd_ConfigConst,
@@ -855,7 +854,7 @@ struct BfConstantExtractValue
 	int mIdx0;	
 };
 
-struct BfConstantArray
+struct BfConstantAgg
 {
 	BfConstType mConstType;
 	BfIRType mType;
@@ -900,7 +899,7 @@ public:
 	BfIRValue CreateConstNull();
 	BfIRValue CreateConstNull(BfIRType nullType);
 	BfIRValue CreateConstStructZero(BfIRType aggType);
-	BfIRValue CreateConstArray(BfIRType type, const BfSizedArray<BfIRValue>& values);
+	BfIRValue CreateConstAgg(BfIRType type, const BfSizedArray<BfIRValue>& values);
 	BfIRValue CreateConstArrayZero(BfIRType type, int count);
 	BfIRValue CreateConstArrayZero(int count);
 	BfIRValue CreateTypeOf(BfType* type);
@@ -1115,8 +1114,8 @@ public:
 	BfIRType GetPointerTo(BfIRType type);
 	BfIRType GetSizedArrayType(BfIRType elementType, int length);
 	BfIRType GetVectorType(BfIRType elementType, int length);
-
-	BfIRValue CreateConstStruct(BfIRType type, const BfSizedArray<BfIRValue>& values);	
+	
+	BfIRValue CreateConstAgg_Value(BfIRType type, const BfSizedArray<BfIRValue>& values);
 	BfIRValue CreateConstString(const StringImpl& string);
 	BfIRValue ConstToMemory(BfIRValue constVal);
 	BfIRValue GetConfigConst(BfIRConfigConst constType, BfTypeCode typeCode);

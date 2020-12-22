@@ -3111,9 +3111,7 @@ BeBlock* BeModule::CreateBlock(const StringImpl& name)
 void BeModule::AddBlock(BeFunction* function, BeBlock* block)
 {
 	block->mFunction = function;
-	function->mBlocks.push_back(block);
-
-	//block->mFuncRelId = function->mCurElementId++;
+	function->mBlocks.push_back(block);	
 }
 
 void BeModule::RemoveBlock(BeFunction* function, BeBlock* block)

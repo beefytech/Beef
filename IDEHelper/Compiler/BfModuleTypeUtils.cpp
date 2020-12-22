@@ -5328,6 +5328,8 @@ BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
 
 BfIRType BfModule::GetIRLoweredType(BfTypeCode loweredTypeCode, BfTypeCode loweredTypeCode2)
 {
+	BF_ASSERT(!mIsConstModule);
+
 	BF_ASSERT(loweredTypeCode != BfTypeCode_None);	
 	if (loweredTypeCode2 == BfTypeCode_None)	
 		return mBfIRBuilder->GetPrimitiveType(loweredTypeCode);	
@@ -9798,7 +9800,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 }
 
 BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfType* toType, BfCastFlags castFlags, BfCastResultFlags* resultFlags)
-{	
+{
 	bool silentFail = ((castFlags & BfCastFlags_SilentFail) != 0);
 	bool explicitCast = (castFlags & BfCastFlags_Explicit) != 0;
 	bool ignoreErrors = mIgnoreErrors || ((castFlags & BfCastFlags_SilentFail) != 0);
@@ -10763,11 +10765,40 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 	}
 
-	if ((typedVal.mValue.IsConst()) && (toType->IsPointer()) && (toType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8)) && (typedVal.mType->IsInstanceOf(mCompiler->mStringTypeDef)))
+	if (typedVal.mValue.IsConst())
 	{
-		int stringId = GetStringPoolIdx(typedVal.mValue, mBfIRBuilder);
-		if (stringId >= 0)
-			return GetStringCharPtr(stringId);
+		if ((toType->IsPointer()) && (toType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8)) && (typedVal.mType->IsInstanceOf(mCompiler->mStringTypeDef)))
+		{
+			int stringId = GetStringPoolIdx(typedVal.mValue, mBfIRBuilder);
+			if (stringId >= 0)
+				return GetStringCharPtr(stringId);
+		}
+		else if ((toType->IsInstanceOf(mCompiler->mStringViewTypeDef)))
+		{
+			int stringId = GetStringPoolIdx(typedVal.mValue, mBfIRBuilder);
+			if (stringId >= 0)
+			{
+				int strLen = 0;
+				String str;
+				BfStringPoolEntry* entry = NULL;
+				if (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry))
+				{
+					auto svTypeInst = toType->ToTypeInstance();
+
+					mBfIRBuilder->PopulateType(svTypeInst);					
+
+					auto stringCharPtr = GetStringCharPtr(stringId);					
+					SizedArray<BfIRValue, 2> spanFieldVals;
+					spanFieldVals.Add(mBfIRBuilder->CreateConstStructZero(mBfIRBuilder->MapType(svTypeInst->mBaseType->mBaseType)));
+					spanFieldVals.Add(stringCharPtr);
+					spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, entry->mString.mLength));					
+
+					SizedArray<BfIRValue, 2> svFieldVals;
+					svFieldVals.Add(mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(svTypeInst->mBaseType), spanFieldVals));
+					return mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(svTypeInst), svFieldVals);
+				}				
+			}
+		}
 	}
 
 	// Check user-defined operators
@@ -11275,6 +11306,15 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 
 	PopulateType(toType, ((castFlags & BfCastFlags_NoConversionOperator) != 0) ? BfPopulateType_Data : BfPopulateType_DataAndMethods);
 
+	if ((toType->IsSizedArray()) && (typedVal.mType->IsSizedArray()))
+	{
+		// Retain our type if we're casting from a known-sized array to an unknown-sized arrays
+		if ((toType->IsUndefSizedArray()) && ((typedVal.mType->GetUnderlyingType()) == (toType->GetUnderlyingType())))
+		{
+			return typedVal;
+		}
+	}
+
 	if ((castFlags & BfCastFlags_Force) != 0)
 	{
 		if (toType->IsValuelessType())
@@ -11575,11 +11615,11 @@ BfTypedValue BfModule::GetIntCoercible(const BfTypedValue& typedValue)
 	if (typedValue.mValue.IsConst())
 	{		
 		auto constant = mBfIRBuilder->GetConstant(typedValue.mValue);
-		if (constant->mConstType == BfConstType_Array)
+		if (constant->mConstType == BfConstType_Agg)
 		{
 			uint64 intVal = 0;
 
-			auto constantArray = (BfConstantArray*)constant;
+			auto constantArray = (BfConstantAgg*)constant;
 			int memberIdx = 0;			
 			for (int memberIdx = 0; memberIdx < (int)constantArray->mValues.size(); memberIdx++)
 			{

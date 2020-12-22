@@ -406,12 +406,12 @@ int BfIRConstHolder::IsZero(BfIRValue value)
 	if (constant->mConstType == BfConstType_AggZero)
 		return 1;
 
-	if (constant->mConstType == BfConstType_Array)
+	if (constant->mConstType == BfConstType_Agg)
 	{
-		auto constArr = (BfConstantArray*)constant;
-		for (int i = 0; i < constArr->mValues.mSize; i++)
+		auto constAgg = (BfConstantAgg*)constant;
+		for (int i = 0; i < constAgg->mValues.mSize; i++)
 		{
-			int elemResult = IsZero(constArr->mValues[i]);
+			int elemResult = IsZero(constAgg->mValues[i]);
 			if (elemResult != 1)
 				return elemResult;
 		}
@@ -454,17 +454,17 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 		return (constLHS->mUInt64 == constRHS->mUInt64) ? 1 : 0;
 	}
 	
-	if (constLHS->mConstType == BfConstType_Array)
+	if (constLHS->mConstType == BfConstType_Agg)
 	{
-		auto arrayLHS = (BfConstantArray*)constLHS;
-		auto arrayRHS = (BfConstantArray*)constRHS;
+		auto aggLHS = (BfConstantAgg*)constLHS;
+		auto aggRHS = (BfConstantAgg*)constRHS;
 		
-		if (arrayLHS->mValues.mSize != arrayRHS->mValues.mSize)
+		if (aggLHS->mValues.mSize != aggRHS->mValues.mSize)
 			return -1;
 
-		for (int i = 0; i < arrayLHS->mValues.mSize; i++)
+		for (int i = 0; i < aggLHS->mValues.mSize; i++)
 		{
-			int elemResult = CheckConstEquality(arrayLHS->mValues[i], arrayRHS->mValues[i]);
+			int elemResult = CheckConstEquality(aggLHS->mValues[i], aggRHS->mValues[i]);
 			if (elemResult != 1)
 				return elemResult;
 		}
@@ -641,18 +641,18 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		auto aggZero = (BfConstant*)fromConst;
 		return CreateConstStructZero(fromConst->mIRType);
 	}
-	else if (fromConst->mConstType == BfConstType_Array)
+	else if (fromConst->mConstType == BfConstType_Agg)
 	{
-		auto constArray = (BfConstantArray*)fromConst;
+		auto constAgg = (BfConstantAgg*)fromConst;
 
 		BfSizedVector<BfIRValue, 8> copiedVals;
-		copiedVals.reserve(constArray->mValues.size());
-		for (auto fromVal : constArray->mValues)
+		copiedVals.reserve(constAgg->mValues.size());
+		for (auto fromVal : constAgg->mValues)
 		{
 			auto elementConst = fromHolder->GetConstant(fromVal);
 			copiedVals.push_back(CreateConst(elementConst, fromHolder));
 		}
-		return CreateConstArray(constArray->mType, copiedVals);
+		return CreateConstAgg(constAgg->mType, copiedVals);
 	}
 	else if ((IsInt(fromConst->mTypeCode)) || (fromConst->mTypeCode == BfTypeCode_Boolean) || (fromConst->mTypeCode == BfTypeCode_StringId))
 	{		
@@ -722,10 +722,10 @@ BfIRValue BfIRConstHolder::CreateConstStructZero(BfIRType aggType)
 	return irValue;
 }
 
-BfIRValue BfIRConstHolder::CreateConstArray(BfIRType type, const BfSizedArray<BfIRValue>& values)
+BfIRValue BfIRConstHolder::CreateConstAgg(BfIRType type, const BfSizedArray<BfIRValue>& values)
 {
-	BfConstantArray* constant = mTempAlloc.Alloc<BfConstantArray>();
-	constant->mConstType = BfConstType_Array;
+	BfConstantAgg* constant = mTempAlloc.Alloc<BfConstantAgg>();
+	constant->mConstType = BfConstType_Agg;
 	constant->mType = type = type;
 	auto irValue = BfIRValue(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(constant));
 
@@ -1286,17 +1286,17 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
 			return ToString(targetConst) + " IntToPtr " + ToString(bitcast->mToType);
 		}
-		else if (constant->mConstType == BfConstType_Array)
+		else if (constant->mConstType == BfConstType_Agg)
 		{
-			auto constArray = (BfConstantArray*)constant;
-			String str = ToString(constArray->mType);
+			auto constAgg = (BfConstantAgg*)constant;
+			String str = ToString(constAgg->mType);
 			str += "(";
 
-			for (int i = 0; i < (int)constArray->mValues.size(); i++)
+			for (int i = 0; i < (int)constAgg->mValues.size(); i++)
 			{
 				if (i > 0)
 					str += ", ";
-				str += ToString(constArray->mValues[i]);
+				str += ToString(constAgg->mValues[i]);
 			}
 			str += ");";
 			return str;
@@ -1915,9 +1915,9 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				Write(constant->mIRType);
 			}
 			break;
-		case (int)BfConstType_Array:
+		case (int)BfConstType_Agg:
 			{
-				auto arrayConst = (BfConstantArray*)constant;
+				auto arrayConst = (BfConstantAgg*)constant;
 				Write(arrayConst->mType);
 				Write(arrayConst->mValues);
 			}
@@ -2316,9 +2316,9 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		if (arrayType->mElementType->IsValuelessType())		
 			irType = elementIrType;		
 		else if (arrayType->mElementType->IsSizeAligned())
-			irType = GetSizedArrayType(MapType(arrayType->mElementType), arrayType->mElementCount);
+			irType = GetSizedArrayType(MapType(arrayType->mElementType), BF_MAX(arrayType->mElementCount, 0));
 		else
-			irType = GetSizedArrayType(MapType(mModule->GetPrimitiveType(BfTypeCode_Int8)), arrayType->mSize);				
+			irType = GetSizedArrayType(MapType(mModule->GetPrimitiveType(BfTypeCode_Int8)), BF_MAX(arrayType->mSize, 0));
 
 		if (wantDIData)				
 			diType = DbgCreateArrayType((int64)arrayType->mSize * 8, arrayType->mAlign * 8, DbgGetType(arrayType->mElementType), arrayType->mElementCount);
@@ -2710,7 +2710,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								if (isOptimized)
 									continue;
 
-								if ((constant->mConstType == BfConstType_Array) ||
+								if ((constant->mConstType == BfConstType_Agg) ||
 									(constant->mConstType == BfConstType_AggZero) ||
 									(constant->mTypeCode == BfTypeCode_NullPtr))
 								{										
@@ -3555,6 +3555,7 @@ BfIRType BfIRBuilder::GetPointerTo(BfIRType type)
 
 BfIRType BfIRBuilder::GetSizedArrayType(BfIRType elementType, int length)
 {
+	BF_ASSERT(length >= 0);
 	if (mIgnoreWrites)
 	{
 		auto constSizedArrayType = mTempAlloc.Alloc<BfConstantSizedArrayType>();
@@ -3570,7 +3571,7 @@ BfIRType BfIRBuilder::GetSizedArrayType(BfIRType elementType, int length)
 		return retType;
 	}
 	else
-	{
+	{		
 		BfIRType retType = WriteCmd(BfIRCmd_GetSizedArrayType, elementType, length);
 		NEW_CMD_INSERTED_IRTYPE;
 		return retType;
@@ -3584,26 +3585,12 @@ BfIRType BfIRBuilder::GetVectorType(BfIRType elementType, int length)
 	return retType;	
 }
 
-BfIRValue BfIRBuilder::CreateConstStruct(BfIRType type, const BfSizedArray<BfIRValue>& values)
+BfIRValue BfIRBuilder::CreateConstAgg_Value(BfIRType type, const BfSizedArray<BfIRValue>& values)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_CreateConstStruct, type, values);
+	BfIRValue retVal = WriteCmd(BfIRCmd_CreateConstAgg, type, values);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;
 }
-
-/*BfIRValue BfIRBuilder::CreateConstStructZero(BfIRType type)
-{
-	BfIRValue retVal = WriteCmd(BfIRCmd_CreateConstStructZero, type);
-	NEW_CMD_INSERTED_IRVALUE;
-	return retVal;
-}
-
-BfIRValue BfIRBuilder::CreateConstArray(BfIRType type, const BfSizedArray<BfIRValue>& values)
-{
-	BfIRValue retVal = WriteCmd(BfIRCmd_CreateConstArray, type, values);
-	NEW_CMD_INSERTED_IRVALUE;
-	return retVal;
-}*/
 
 BfIRValue BfIRBuilder::CreateConstString(const StringImpl& str)
 {
@@ -3620,8 +3607,8 @@ BfIRValue BfIRBuilder::ConstToMemory(BfIRValue constVal)
 		return *value;
 	
 	BfIRType constType;
-	if (constant->mConstType == BfConstType_Array)
-		constType = ((BfConstantArray*)constant)->mType;
+	if (constant->mConstType == BfConstType_Agg)
+		constType = ((BfConstantAgg*)constant)->mType;
 	else if (constant->mConstType == BfConstType_AggZero)
 		constType = constant->mIRType;
 	else if (constant->mTypeCode == BfTypeCode_NullPtr)
@@ -4181,9 +4168,9 @@ BfIRValue BfIRBuilder::CreateExtractValue(BfIRValue val, int idx)
 	auto aggConstant = GetConstant(val);
 	if (aggConstant != NULL)
 	{
-		if (aggConstant->mConstType == BfConstType_Array)
+		if (aggConstant->mConstType == BfConstType_Agg)
 		{
-			auto arrayConstant = (BfConstantArray*)aggConstant;
+			auto arrayConstant = (BfConstantAgg*)aggConstant;
 			return arrayConstant->mValues[idx];
 		}
 		
@@ -4223,7 +4210,7 @@ BfIRValue BfIRBuilder::CreateExtractValue(BfIRValue val, BfIRValue idx)
 	auto arrConst = GetConstant(val);
 	if (arrConst != NULL)
 	{
-		if ((arrConst->mConstType == BfConstType_Array) || (arrConst->mConstType == BfConstType_AggZero))
+		if ((arrConst->mConstType == BfConstType_Agg) || (arrConst->mConstType == BfConstType_AggZero))
 		{
 			BfIRValue arrMemVal = ConstToMemory(val);
 			auto valAddr = CreateInBoundsGEP(arrMemVal, CreateConst(BfTypeCode_IntPtr, 0), idx);
@@ -4670,6 +4657,11 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 	NEW_CMD_INSERTED_IRVALUE;	
 	mFunctionMap[name] = retVal;
 
+	if ((mModule->mIsConstModule) && (name.Contains("Dbg_")))
+	{
+		NOP;
+	}
+
 	//BfLogSys(mModule->mSystem, "BfIRBuilder::CreateFunction: %d %s Module:%p\n", retVal.mId, name.c_str(), mModule);
 
 	return retVal;
@@ -4955,7 +4947,6 @@ void BfIRBuilder::CreateObjectAccessCheck(BfIRValue value, bool useAsm)
 	NEW_CMD_INSERTED_IRBLOCK;
 	if (!mIgnoreWrites)
 	{
-		BF_ASSERT(!value.IsConst());
 		BF_ASSERT(!retBlock.IsFake());
 		mActualInsertBlock = retBlock;
 	}

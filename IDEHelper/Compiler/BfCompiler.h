@@ -349,6 +349,7 @@ public:
 	BfTypeDef* mActionTypeDef;
 	BfTypeDef* mEnumTypeDef;
 	BfTypeDef* mStringTypeDef;
+	BfTypeDef* mStringViewTypeDef;
 	BfTypeDef* mTypeTypeDef;
 	BfTypeDef* mValueTypeTypeDef;	
 	BfTypeDef* mResultTypeDef;

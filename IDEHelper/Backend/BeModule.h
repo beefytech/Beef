@@ -530,8 +530,7 @@ public:
 	Array<BeBlock*> mBlocks;		
 	Array<BeFunctionParam> mParams;
 	BeDbgFunction* mDbgFunction;
-	BeGlobalVariable* mRemapBindVar;
-	int mCurElementId;
+	BeGlobalVariable* mRemapBindVar;	
 
 public:
 	BeFunction()
@@ -548,8 +547,7 @@ public:
 		mNoFramePointerElim = false;
 		mIsDLLExport = false;
 		mIsDLLImport = false;
-		mRemapBindVar = NULL;
-		mCurElementId = 0;
+		mRemapBindVar = NULL;		
 	}	
 
 	BeFunctionType* GetFuncType()

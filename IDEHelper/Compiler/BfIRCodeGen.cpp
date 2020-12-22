@@ -882,27 +882,44 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 			llvmValue = llvm::ConstantExpr::getPtrToInt(target, llvmToType);
 			return;
 		}
+		else if (constType == BfConstType_IntToPtr)
+		{
+			CMD_PARAM(llvm::Constant*, target);
+			CMD_PARAM(llvm::Type*, toType);
+			llvmValue = llvm::ConstantExpr::getIntToPtr(target, toType);
+			return;
+		}
 		else if (constType == BfConstType_AggZero)
 		{
 			CMD_PARAM(llvm::Type*, type);
 			llvmValue = llvm::ConstantAggregateZero::get(type);
 			return;
 		}
-		else if (constType == BfConstType_Array)
+		else if (constType == BfConstType_Agg)
 		{
 			CMD_PARAM(llvm::Type*, type);
 			CMD_PARAM(CmdParamVec<llvm::Constant*>, values);
 
-			auto arrayType = (llvm::ArrayType*)type;
-			int fillCount = (int)(arrayType->getNumElements() - values.size());
-			if (fillCount > 0)
+			if (auto arrayType = llvm::dyn_cast<llvm::ArrayType>(type))
 			{
-				auto lastValue = values.back();				
-				for (int i = 0; i < fillCount; i++)
-					values.push_back(lastValue);				
+				int fillCount = (int)(arrayType->getNumElements() - values.size());
+				if (fillCount > 0)
+				{
+					auto lastValue = values.back();
+					for (int i = 0; i < fillCount; i++)
+						values.push_back(lastValue);
+				}
+				llvmValue = llvm::ConstantArray::get(arrayType, values);
 			}
-
-			llvmValue = llvm::ConstantArray::get((llvm::ArrayType*)type, values);
+			else if (auto structType = llvm::dyn_cast<llvm::StructType>(type))
+			{
+				llvmValue = llvm::ConstantStruct::get(structType, values);
+			}
+			else
+			{
+				Fail("Bad type");
+			}
+						
 			return;
 		}
 
@@ -1616,19 +1633,43 @@ void BfIRCodeGen::HandleNextCmd()
 			SetResult(curId, llvm::FixedVectorType::get(elementType, length));
 		}
 		break;	
-	case BfIRCmd_CreateConstStruct:
+	case BfIRCmd_CreateConstAgg:
 		{
 			CMD_PARAM(llvm::Type*, type);
 			CMD_PARAM(CmdParamVec<llvm::Value*>, values)
 			llvm::SmallVector<llvm::Constant*, 8> copyValues; 
-			FixValues((llvm::StructType*)type, values);
-			for (auto val : values)
+
+			if (auto arrayType = llvm::dyn_cast<llvm::ArrayType>(type))
 			{
-				auto constValue = llvm::dyn_cast<llvm::Constant>(val);
-				BF_ASSERT(constValue != NULL);
-				copyValues.push_back(constValue);
+				for (auto val : values)
+				{
+					auto constValue = llvm::dyn_cast<llvm::Constant>(val);
+					BF_ASSERT(constValue != NULL);
+					copyValues.push_back(constValue);
+				}
+
+				int fillCount = (int)(arrayType->getNumElements() - copyValues.size());
+				if (fillCount > 0)
+				{
+					auto lastValue = copyValues.back();
+					for (int i = 0; i < fillCount; i++)
+						copyValues.push_back(lastValue);
+				}
+				SetResult(curId, llvm::ConstantArray::get(arrayType, copyValues));
 			}
-			SetResult(curId, llvm::ConstantStruct::get((llvm::StructType*)type, copyValues));
+			else if (auto structType = llvm::dyn_cast<llvm::StructType>(type))
+			{
+				FixValues(structType, values);
+				for (auto val : values)
+				{
+					auto constValue = llvm::dyn_cast<llvm::Constant>(val);
+					BF_ASSERT(constValue != NULL);
+					copyValues.push_back(constValue);
+				}
+				SetResult(curId, llvm::ConstantStruct::get(structType, copyValues));
+			}
+			else
+				Fail("Bad type");
 		}
 		break;
 	case BfIRCmd_CreateConstStructZero:
@@ -1636,14 +1677,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Type*, type);
 			SetResult(curId, llvm::ConstantAggregateZero::get(type));
 		}
-		break;
-	case BfIRCmd_CreateConstArray:
-		{
-			CMD_PARAM(llvm::Type*, type);
-			CMD_PARAM(CmdParamVec<llvm::Constant*>, values);
-			SetResult(curId, llvm::ConstantArray::get((llvm::ArrayType*)type, values));
-		}
-		break;
+		break;	
 	case BfIRCmd_CreateConstString:
 		{
 			CMD_PARAM(String, str);

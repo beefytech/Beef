@@ -231,6 +231,9 @@ ContiguousHeap::AllocRef ContiguousHeap::Alloc(int size)
 		blockList->PushBack(CH_ABS_TO_REL(block));
 
 		mFreeList.Add(CH_ABS_TO_REL(block));
+
+		if (mFreeIdx >= mFreeList.mSize)
+			mFreeIdx = 0;
 	}
 }
 

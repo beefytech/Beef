@@ -59,12 +59,24 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 			if (initializer != NULL)
 			{
 				if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(initializer))
-					arraySize = (int)invocationExpr->mArguments.size();				
+				{
+					if (auto memberRefExpr = BfNodeDynCast<BfMemberReferenceExpression>(invocationExpr->mTarget))
+					{
+						// Dot-initialized
+						if (memberRefExpr->mTarget == NULL)
+							arraySize = (int)invocationExpr->mArguments.size();
+					}					
+				}
 			}
 
 			if (arraySize != -1)
 			{				
 				mResult = BfTypedValue(mModule->GetConstValue(arraySize), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+				return mResult;
+			}
+			else
+			{
+				mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(BfTypeCode_IntPtr), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 				return mResult;
 			}
 		}
@@ -411,7 +423,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 	if (expandedParamsElementType != NULL)
 	{				
 		auto arrayType = mModule->mBfIRBuilder->GetSizedArrayType(mModule->mBfIRBuilder->MapType(expandedParamsElementType), (int)expandedParamsConstValues.size());
-		auto constArray = mModule->mBfIRBuilder->CreateConstArray(arrayType, expandedParamsConstValues);
+		auto constArray = mModule->mBfIRBuilder->CreateConstAgg(arrayType, expandedParamsConstValues);
 		llvmArgs.push_back(constArray);
 	}	
 
