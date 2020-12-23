@@ -12388,6 +12388,13 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 			auto defFlags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
 			
+			if (mIsConstModule)
+			{				
+				defFlags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_NoReference);
+				if (!mCompiler->mIsResolveOnly)
+					defFlags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_NoForceReification | BfGetMethodInstanceFlag_Unreified | BfGetMethodInstanceFlag_NoReference);
+			}
+
 			// Not extern
 			// Create the instance in the proper module and then create a reference in this one
 			moduleMethodInst = instModule->GetMethodInstance(typeInst, methodDef, methodGenericArguments, defFlags, foreignType);
@@ -12587,7 +12594,10 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	if (lookupMethodGenericArguments.size() == 0)
 	{
 		methodInstance = methodInstGroup->mDefault;
-		
+
+		if ((methodInstance != NULL) && ((flags & BfGetMethodInstanceFlag_NoReference) != 0))
+			return methodInstance;
+
 		if ((methodInstance != NULL) && (isReified) && (!methodInstance->mIsReified))
 		{
 			MarkDerivedDirty(typeInst);
@@ -12696,6 +12706,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			methodInstance = *methodInstancePtr;
 
+			if ((flags & BfGetMethodInstanceFlag_NoReference) != 0)
+				return methodInstance;
+
 			if ((methodInstance->mRequestedByAutocomplete) && (!mCompiler->IsAutocomplete()))
 			{
 				// We didn't want to process this message yet if it was autocomplete-specific, but now we will
@@ -12747,16 +12760,16 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			if (methodInstance->mIsReified != isReified)
 				BfLogSysM("GetMethodInstance %p Decl_AwaitingReference setting reified to %d\n", methodInstance, isReified);
 
-			if ((!isReified) && 
+			if ((!isReified) &&
 				((methodInstance->mDeclModule == NULL) || (!methodInstance->mDeclModule->mIsModuleMutable)))
 			{
 				methodInstance->mDeclModule = mContext->mUnreifiedModule;
 				methodInstance->mIRFunction = BfIRFunction();
 			}
-			methodInstance->mIsReified = isReified;		
+			methodInstance->mIsReified = isReified;
 
 			if ((methodInstance->mHotMethod != NULL) && (!mCompiler->IsHotCompile()) && (isReified))
-			{				
+			{
 				methodInstance->mHotMethod->mFlags = (BfHotDepDataFlags)(methodInstance->mHotMethod->mFlags | BfHotDepDataFlag_IsOriginalBuild);
 			}
 
@@ -12766,8 +12779,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				{
 					// Wait until unreified
 				}
-				else 
-					AddMethodToWorkList(methodInstance);				
+				else
+					AddMethodToWorkList(methodInstance);
 			}
 			else
 			{
@@ -13024,6 +13037,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		addToWorkList = false;
 	}
 
+// 	if ((flags & BfGetMethodInstanceFlag_NoReference) != 0)
+// 		addToWorkList = false;
+	
 	declareModule->DoMethodDeclaration(methodDef->GetMethodDeclaration(), false, addToWorkList);
 	
 	if (processNow)

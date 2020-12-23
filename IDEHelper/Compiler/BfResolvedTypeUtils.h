@@ -73,7 +73,8 @@ enum BfGetMethodInstanceFlags : uint16
 	BfGetMethodInstanceFlag_Friend = 0x100,
 	BfGetMethodInstanceFlag_DisableObjectAccessChecks = 0x200,
 	BfGetMethodInstanceFlag_NoInline = 0x400,
-	BfGetMethodInstanceFlag_DepthExceeded = 0x800
+	BfGetMethodInstanceFlag_DepthExceeded = 0x800,
+	BfGetMethodInstanceFlag_NoReference = 0x1000
 };
 
 class BfDependencyMap

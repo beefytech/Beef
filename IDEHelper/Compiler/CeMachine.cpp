@@ -5442,6 +5442,9 @@ BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	SetAndRestoreValue<BfModule*> prevModule(mCurModule, module);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
 	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);
+	
+	// Reentrancy may occur as methods need defining
+	SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(module->mCurMethodState, NULL);
 
 	if (mAppendAllocInfo != NULL)
 	{
