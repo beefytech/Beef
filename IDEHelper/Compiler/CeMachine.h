@@ -202,6 +202,8 @@ public:
 		mCeFunction = NULL;
 		mRefCount = 0;
 	}
+
+	~CeFunctionInfo();
 };
 
 class CeCallEntry
@@ -247,6 +249,8 @@ enum CeFunctionKind
 	CeFunctionKind_DebugWrite,
 	CeFunctionKind_DebugWrite_Int,
 	CeFunctionKind_GetReflectType,
+	CeFunctionKind_GetReflectTypeById,
+	CeFunctionKind_Sleep,
 	CeFunctionKind_Char32_ToLower,
 	CeFunctionKind_Char32_ToUpper,
 	CeFunctionKind_Char32_IsLower,
@@ -595,7 +599,8 @@ public:
 	BfCompiler* mCompiler;
 	BfModule* mCeModule;
 	int mRevision;
-	int mExecuteId;
+	int mRevisionExecuteTime;
+	int mExecuteId;	
 
 	// These are only valid for the current execution
 	ContiguousHeap* mHeap;
@@ -610,6 +615,7 @@ public:
 	CeAppendAllocInfo* mAppendAllocInfo;
 	
 	BfAstNode* mCurTargetSrc;
+	BfMethodInstance* mCurMethodInstance;
 	BfModule* mCurModule;	
 	BfType* mCurExpectingType;
 
@@ -623,6 +629,7 @@ public:
 	void Init();	
 	uint8* CeMalloc(int size);
 	bool CeFree(addr_ce addr);
+	addr_ce CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elemsAddr);	
 	addr_ce GetReflectType(int typeId);
 	addr_ce GetString(int stringId);
 	addr_ce GetConstantData(BeConstant* constant);
@@ -633,13 +640,15 @@ public:
 	BeModule* GetBeModule();
 	void DerefMethodInfo(CeFunctionInfo* ceFunctionInfo);
 	void RemoveMethod(BfMethodInstance* methodInstance);		
-	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type);
+	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type, bool isParams = false);
 	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal);
 	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);		
 	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr);
 
 	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);	
+
+	void CheckFunctions();
 	CeFunction* GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added);
 	CeFunction* GetPreparedFunction(BfMethodInstance* methodInstance);
 	

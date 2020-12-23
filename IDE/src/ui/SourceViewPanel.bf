@@ -1027,6 +1027,18 @@ namespace IDE.ui
 					doBackground = true;
 			}
 
+			// If there's a long-running const eval then cancel that first
+			if (!mDeferredResolveResults.IsEmpty)
+			{
+				for (var result in mDeferredResolveResults)
+				{
+					if (result.mResolveType == .ClassifyFullRefresh)
+					{
+						bfCompiler.RequestCancelBackground();
+					}
+				}
+			}
+
             if (mIsClang)
             {
 #if !IDE_C_SUPPORT

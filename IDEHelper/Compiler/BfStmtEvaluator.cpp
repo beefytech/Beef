@@ -6438,10 +6438,15 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 				methodMatcher.CheckType(itrInterface, itr, false);
 			methodMatcher.TryDevirtualizeCall(itr);
 			exprEvaluator.mReceivingValue = &nextResult;			
-			auto retVal = exprEvaluator.CreateCall(&methodMatcher, itr);
+			auto retVal = exprEvaluator.CreateCall(&methodMatcher, itr);			
 			if (exprEvaluator.mReceivingValue != NULL)
 			{
-				AssertErrorState();
+				if (mIsConstModule)
+				{
+					mBfIRBuilder->CreateStore(retVal.mValue, nextResult.mValue);
+				}
+				else
+					AssertErrorState();
 			}
 			if ((retVal) && (!retVal.mType->IsVar()))
 			{

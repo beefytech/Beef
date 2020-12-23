@@ -148,6 +148,24 @@ public:
 	~AutoPerfRecordAndPrint();
 };
 
+class AutoTimer
+{
+public:
+	uint32 mStartTick;
+	int* mTimePtr;
+
+public:
+	AutoTimer(int& timeRef)
+	{
+		mTimePtr = &timeRef;
+		mStartTick = BFTickCount();
+	}
+
+	~AutoTimer()
+	{
+		*mTimePtr += BFTickCount() - mStartTick;
+	}
+};
 
 class DebugTimeGuard
 {

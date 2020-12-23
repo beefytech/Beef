@@ -36,6 +36,30 @@ namespace System.Reflection
 	        }
 	    }
 
+		public bool IsConst
+		{
+			get
+			{
+				return mFieldData.mFlags.HasFlag(.Const);
+			}
+		}
+
+		public bool IsStatic
+		{
+			get
+			{
+				return mFieldData.mFlags.HasFlag(.Static);
+			}
+		}
+
+		public bool IsInstanceField
+		{
+			get
+			{
+				return !mFieldData.mFlags.HasFlag(.Static) && !mFieldData.mFlags.HasFlag(.Const);
+			}
+		}
+
 		public StringView Name
 		{
 			get
@@ -519,6 +543,14 @@ namespace System.Reflection
 	                return FieldInfo(mTypeInstance, fieldData);
 	            }
 	        }
+
+			public int32 Index
+			{
+				get
+				{
+					return mIdx;
+				}
+			}
 
 			public Result<FieldInfo> GetNext() mut
 			{

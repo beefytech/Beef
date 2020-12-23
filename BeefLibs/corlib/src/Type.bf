@@ -454,14 +454,20 @@ namespace System
         {
             return (int32)mTypeId;
         }
-        
+
+		static extern Type ConstEval_GetTypeById(int32 typeId);
+
         protected static Type GetType(TypeId typeId)
         {
+			if (Compiler.IsConstEval)
+				return ConstEval_GetTypeById((.)typeId);
             return sTypes[(int32)typeId];
         }
 
 		protected static Type GetType_(int32 typeId)
 		{
+			if (Compiler.IsConstEval)
+				return ConstEval_GetTypeById(typeId);
 		    return sTypes[typeId];
 		}
 

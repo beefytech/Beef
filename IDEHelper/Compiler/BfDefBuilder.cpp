@@ -821,6 +821,8 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				methodDef->mIsNoReturn = true;
 			else if (typeRefName == "SkipCall")
 				methodDef->mIsSkipCall = true;
+			else if (typeRefName == "ConstEval")
+				methodDef->mIsConstEval = true;
 			else if (typeRefName == "NoShow")
 				methodDef->mIsNoShow = true;
 			else if (typeRefName == "NoDiscard")

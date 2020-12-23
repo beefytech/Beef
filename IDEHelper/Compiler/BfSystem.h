@@ -733,6 +733,7 @@ public:
 	bool mIsNoSplat;
 	bool mIsNoReflect;
 	bool mIsSkipCall;
+	bool mIsConstEval;
 	bool mIsOperator;
 	bool mIsExtern;	
 	bool mIsNoDiscard;
@@ -761,6 +762,7 @@ public:
 		mIsNoSplat = false;
 		mIsNoReflect = false;
 		mIsSkipCall = false;
+		mIsConstEval = false;
 		mIsOperator = false;
 		mIsExtern = false;
 		mIsNoDiscard = false;

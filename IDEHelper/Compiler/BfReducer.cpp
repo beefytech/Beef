@@ -5441,7 +5441,7 @@ BfExpression* BfReducer::CreateAttributedExpression(BfTokenNode* tokenNode, bool
 
 	if (!onlyAllowIdentifier)
 	{		
-		BfExpression* expr = CreateExpressionAfter(attrib);
+		BfExpression* expr = CreateExpressionAfter(attrib, CreateExprFlags_EarlyExit);
 		if (expr != NULL)
 		{
 			if (auto identifier = BfNodeDynCast<BfIdentifierNode>(expr))

@@ -175,9 +175,7 @@ USING_NS_BF;
 	auto constRHS = GetConstantById(rhs.mId); \
 	if ((constLHS->mConstType == BfConstType_Undef) || (constRHS->mConstType == BfConstType_Undef)) \
 	{ \
-		if (((constLHS->mConstType == BfConstType_Undef) || (constLHS->mTypeCode < BfTypeCode_Length)) && \
-			((constRHS->mConstType == BfConstType_Undef) || (constRHS->mTypeCode < BfTypeCode_Length))) \
-			return GetUndefConstValue(BfTypeCode_Boolean); \
+		return GetUndefConstValue(MapType(mModule->GetPrimitiveType(BfTypeCode_Boolean))); \
 	} \
 	if ((constLHS->mTypeCode < BfTypeCode_Length) && (constRHS->mTypeCode < BfTypeCode_Length)) \
 	{ \
@@ -654,6 +652,14 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		}
 		return CreateConstAgg(constAgg->mType, copiedVals);
 	}
+	else if (fromConst->mConstType == BfConstType_Undef)
+	{
+		auto constUndef = (BfConstantUndef*)fromConst;
+		BF_ASSERT(constUndef->mType.mKind != BfIRTypeData::TypeKind_Stream);
+		if (constUndef->mType.mKind == BfIRTypeData::TypeKind_Stream)
+			return GetUndefConstValue(BfIRValue());
+		return GetUndefConstValue(constUndef->mType);
+	}
 	else if ((IsInt(fromConst->mTypeCode)) || (fromConst->mTypeCode == BfTypeCode_Boolean) || (fromConst->mTypeCode == BfTypeCode_StringId))
 	{		
 		return CreateConst(fromConst->mTypeCode, fromConst->mUInt64);		
@@ -778,11 +784,11 @@ BfIRValue BfIRConstHolder::CreateTypeOf(BfType* type)
 	return irValue;
 }
 
-BfIRValue BfIRConstHolder::GetUndefConstValue(BfTypeCode typeCode)
+BfIRValue BfIRConstHolder::GetUndefConstValue(BfIRType irType)
 {	
 	auto constUndef = mTempAlloc.Alloc<BfConstantUndef>();
 	constUndef->mConstType = BfConstType_Undef;	
-	constUndef->mTypeCode = typeCode;
+	constUndef->mType = irType;
 
 	BfIRValue undefVal(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(constUndef));		
 #ifdef CHECK_CONSTHOLDER
@@ -3461,12 +3467,11 @@ BfIRFunction BfIRBuilder::GetFakeFunction()
 }
 
 BfIRType BfIRBuilder::GetPrimitiveType(BfTypeCode typeCode)
-{	
-	
+{
 	FixTypeCode(typeCode);
-	BfIRType retType = WriteCmd(BfIRCmd_PrimitiveType, typeCode);
-	NEW_CMD_INSERTED_IRTYPE;
-	return retType;
+ 	BfIRType retType = WriteCmd(BfIRCmd_PrimitiveType, typeCode);
+ 	NEW_CMD_INSERTED_IRTYPE;
+ 	return retType;
 }
 
 BfIRType BfIRBuilder::CreateStructType(const StringImpl& name)
@@ -3495,6 +3500,7 @@ BfIRType BfIRBuilder::MapType(BfType* type, BfIRPopulateType populateType)
 	{				
 		PopulateType(type, populateType);
 	}
+	BF_ASSERT(type->mTypeId > 0);
 	BfIRType retType;
 	retType.mKind = BfIRType::TypeKind_TypeId;
 	retType.mId = type->mTypeId;

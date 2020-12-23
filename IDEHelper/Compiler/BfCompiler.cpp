@@ -397,6 +397,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mActionTypeDef = NULL;
 	mEnumTypeDef = NULL;
 	mFriendAttributeTypeDef = NULL;
+	mConstEvalAttributeTypeDef = NULL;
 	mNoExtensionAttributeTypeDef = NULL;
 	mCheckedAttributeTypeDef = NULL;
 	mUncheckedAttributeTypeDef = NULL;
@@ -406,7 +407,8 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mGenericIEnumeratorTypeDef = NULL;
 	mGenericIRefEnumeratorTypeDef = NULL;
 	mInlineAttributeTypeDef = NULL;
-	mInternalTypeDef = NULL;
+	mThreadTypeDef = NULL;
+	mInternalTypeDef = NULL;	
 	mDiagnosticsDebugTypeDef = NULL;
 	mIDisposableTypeDef = NULL;
 	mIPrintableTypeDef = NULL;
@@ -6596,6 +6598,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mActionTypeDef = _GetRequiredType("System.Action");
 	mEnumTypeDef = _GetRequiredType("System.Enum");
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
+	mConstEvalAttributeTypeDef = _GetRequiredType("System.ConstEvalAttribute");
 	mNoExtensionAttributeTypeDef = _GetRequiredType("System.NoExtensionAttribute");
 	mCheckedAttributeTypeDef = _GetRequiredType("System.CheckedAttribute");
 	mUncheckedAttributeTypeDef = _GetRequiredType("System.UncheckedAttribute");
@@ -6606,6 +6609,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.IEnumerator", 1);
 	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.IRefEnumerator", 1);	
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
+	mThreadTypeDef = _GetRequiredType("System.Threading.Thread");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
 	mDiagnosticsDebugTypeDef = _GetRequiredType("System.Diagnostics.Debug");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
@@ -7258,6 +7262,11 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mPassInstance->OutputLine(StrFormat(":low %d module%s built, %d object file%s generated", 
 		numModulesWritten, (numModulesWritten != 1) ? "s" : "",
 		numObjFilesWritten, (numObjFilesWritten != 1) ? "s" : ""));
+
+	if ((mCEMachine != NULL) && (!mIsResolveOnly) && (mCEMachine->mRevisionExecuteTime > 0))
+	{
+		mPassInstance->OutputLine(StrFormat(":med Const evaluation time: %0.2fs", mCEMachine->mRevisionExecuteTime / 1000.0f));
+	}
 	
 	BpLeave();	
 	mPassInstance->WriteErrorSummary();

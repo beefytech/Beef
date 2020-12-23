@@ -69,7 +69,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_AllowNonConst = 0x10000,
 	BfEvalExprFlags_StringInterpolateFormat = 0x20000,
 	BfEvalExprFlags_NoLookupError = 0x40000,
-	BfEvalExprFlags_ConstExpr = 0x80000,
+	BfEvalExprFlags_ConstEval = 0x80000,
+	BfEvalExprFlags_InCascade = 0x100000,
 };
 
 enum BfCastFlags
@@ -904,13 +905,15 @@ public:
 
 	~BfLambdaInstance()
 	{
-		delete mMethodInstance->mMethodDef;
+		auto methodDef = mMethodInstance->mMethodDef;
 		delete mMethodInstance;
+		delete methodDef;		
 		
 		if (mDtorMethodInstance != NULL)
 		{
-			delete mDtorMethodInstance->mMethodDef;
-			delete mDtorMethodInstance;			
+			auto methodDef = mDtorMethodInstance->mMethodDef;
+			delete mDtorMethodInstance;
+			delete methodDef;
 		}
 	}
 };

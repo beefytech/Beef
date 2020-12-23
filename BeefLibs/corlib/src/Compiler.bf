@@ -34,5 +34,21 @@ namespace System
 
 		[LinkName("#IsConstEval")]
 		public static extern bool IsConstEval;
+
+		[LinkName("#IsBuilding")]
+		public static extern bool IsBuilding;
+
+		[LinkName("#IsReified")]
+		public static extern bool IsReified;
+
+		[LinkName("#CompileRev")]
+		public static extern int32 CompileRev;
+
+		[ConstEval]
+		public static void Assert(bool cond)
+		{
+			if (!cond)
+				Runtime.FatalError("Assert failed");
+		}
 	}
 }

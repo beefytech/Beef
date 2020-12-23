@@ -470,8 +470,8 @@ void BfAutoComplete::AddMethod(BfTypeInstance* typeInstance, BfMethodDef* method
 	if (auto entryAdded = AddEntry(entry, filter))
 	{
 		if (methodDecl != NULL)
-		{
-			if ((methodInstance != NULL) && (methodInstance->mMethodDef->mIsLocalMethod) && (GetCursorIdx(methodDecl) == methodDecl->mReturnType->mSrcEnd))
+		{			
+			if ((methodInstance != NULL) && (methodInstance->mMethodDef->mIsLocalMethod) && (methodDecl->mReturnType != NULL) && (GetCursorIdx(methodDecl) == methodDecl->mReturnType->mSrcEnd))
 			{
 				// This isn't really a local method decl, it just looks like one
 				return;

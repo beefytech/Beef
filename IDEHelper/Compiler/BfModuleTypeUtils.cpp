@@ -10169,12 +10169,12 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 			if (allowCast)
 			{
-				if (ignoreWrites)
+				if ((ignoreWrites) && (!typedVal.mValue.IsConst()))
 					return mBfIRBuilder->GetFakeVal();
 				return mBfIRBuilder->CreateBitCast(typedVal.mValue, mBfIRBuilder->MapType(toType));
 			}
 		}
-	}	
+	}
 
 	// MethodRef -> Function
 	if ((typedVal.mType->IsMethodRef()) && (toType->IsFunction()))
@@ -10566,12 +10566,13 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 					auto undefConst = (BfConstantUndef*)constant;
 					
-					auto fakeVal = GetFakeTypedValue(GetPrimitiveType(undefConst->mTypeCode));
-					// Why did we have this BfCastFlags_Explicit? It broke creating errors on things like "int16 val = TCount;"
-					//auto val = CastToValue(srcNode, fakeVal, toType, (BfCastFlags)(castFlags | BfCastFlags_Explicit));
+					BF_ASSERT(undefConst->mType.mKind == BfIRTypeData::TypeKind_TypeId);
+					auto bfType = mContext->mTypes[undefConst->mType.mId];
+
+					auto fakeVal = GetFakeTypedValue(bfType);
 					auto val = CastToValue(srcNode, fakeVal, toType, castFlags);
 					if (val)
-						return val;
+						return mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(toType));
 				}
 			}
 		}

@@ -11781,6 +11781,9 @@ namespace IDE
 				bool didClean = false;
                 if (mWantsBeefClean)
                 {
+					mBfBuildCompiler?.CancelBackground();
+					mBfResolveCompiler?.CancelBackground();
+
                     if ((!mBfBuildCompiler.HasQueuedCommands()) &&
 						((mBfResolveCompiler == null) || (!mBfResolveCompiler.HasQueuedCommands())))
                     {
@@ -11857,6 +11860,9 @@ namespace IDE
 
                 if (mWantsClean)
                 {
+					mBfBuildCompiler?.CancelBackground();
+					mBfResolveCompiler?.CancelBackground();
+
                     if ((!mBfBuildCompiler.HasQueuedCommands()) && (!mBfResolveCompiler.HasQueuedCommands())
 #if IDE_C_SUPPORT
                         && (!mDepClang.HasQueuedCommands()) && (!mResolveClang.HasQueuedCommands())

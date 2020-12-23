@@ -815,7 +815,7 @@ struct BfConstantSizedArrayType
 struct BfConstantUndef
 {
 	BfConstType mConstType;
-	BfTypeCode mTypeCode;
+	BfIRType mType;
 };
 
 struct BfConstantBitCast
@@ -903,7 +903,7 @@ public:
 	BfIRValue CreateConstArrayZero(BfIRType type, int count);
 	BfIRValue CreateConstArrayZero(int count);
 	BfIRValue CreateTypeOf(BfType* type);
-	BfIRValue GetUndefConstValue(BfTypeCode typeCode);	
+	BfIRValue GetUndefConstValue(BfIRType type);	
 };
 
 enum BfIRPopulateType

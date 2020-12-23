@@ -26,6 +26,9 @@ namespace IDE.ui
 		public int mDirtyDelay;
 		public int mStatusBoxUpdateCnt = -1;
 
+		public int32 mResolveStuckTicks;
+		public float mResolveLastPct = -1;
+
         public this()
         {
             mConfigComboBox = new DarkComboBox();
@@ -225,8 +228,19 @@ namespace IDE.ui
 #endif
                 )
 			{
+				float completionPct = gApp.mBfResolveCompiler.GetCompletionPercentage();
+				if (completionPct != mResolveLastPct)
+				{
+					mResolveStuckTicks = 0;
+					mResolveLastPct = completionPct;
+				}
+				else
+					mResolveStuckTicks++;
+
 				MarkDirtyEx();
 			}
+			else
+				mResolveStuckTicks = 0;
         }
 
         public override void Draw(Graphics g)        
@@ -379,6 +393,10 @@ namespace IDE.ui
 			else if ((gApp.mBuildContext != null) && (!completionPct.HasValue))
 			{
 				DrawStatusBox("Custom Build Commands...", gApp.mBuildContext.mUpdateCnt);
+			}
+			else if (mResolveStuckTicks > 300)
+			{
+				DrawStatusBox("Const Evaluation");
 			}
 			else
 				mStatusBoxUpdateCnt = -1;

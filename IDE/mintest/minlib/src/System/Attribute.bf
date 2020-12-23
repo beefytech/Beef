@@ -231,6 +231,12 @@ namespace System
 
 	}
 
+	[AttributeUsage(.Method | .Invocation)]
+	public struct ConstEvalAttribute : Attribute
+	{
+
+	}
+
 	[AttributeUsage(.Method /*2*/)]
 	public struct IntrinsicAttribute : Attribute
 	{

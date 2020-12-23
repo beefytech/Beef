@@ -36,7 +36,7 @@ BfConstResolver::BfConstResolver(BfModule* bfModule) : BfExprEvaluator(bfModule)
 
 BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfConstResolveFlags flags)
 {	
-	mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_ConstExpr);
+	mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_ConstEval);
 
 	// Handle the 'int[?] val = .(1, 2, 3)' case
 	if ((flags & BfConstResolveFlag_ArrayInitSize) != 0)
@@ -76,7 +76,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 			}
 			else
 			{
-				mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(BfTypeCode_IntPtr), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
+				mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_IntPtr)), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 				return mResult;
 			}
 		}
@@ -176,7 +176,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 					BfTypedValue result;
 					result.mKind = BfTypedValueKind_Value;
 					result.mType = genericTypeConstraint;
-					result.mValue = mModule->mBfIRBuilder->GetUndefConstValue(primType->mTypeDef->mTypeCode);
+					result.mValue = mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->GetPrimitiveType(primType->mTypeDef->mTypeCode));
 					return result;
 				}
 			}

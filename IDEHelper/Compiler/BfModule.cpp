@@ -83,8 +83,8 @@ BfLocalMethod::~BfLocalMethod()
 		BF_ASSERT(mSource->mRefCount >= 0);
 	}
 
-	delete mMethodDef;
-	delete mMethodInstanceGroup;	
+	delete mMethodInstanceGroup;
+	delete mMethodDef;	
 }
 
 void BfDeferredLocalAssignData::ExtendFrom(BfDeferredLocalAssignData* outerLocalAssignData, bool doChain)
@@ -1134,7 +1134,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "-")
+                (mModuleName == "System_StringView")
 				//|| (mModuleName == "BeefTest2_ClearColorValue")
 				//|| (mModuleName == "Tests_FuncRefs")
 				)
@@ -1441,12 +1441,12 @@ BfTypedValue BfModule::GetDefaultTypedValue(BfType* type, bool allowRef, BfDefau
 
 	if (defaultValueKind == BfDefaultValueKind_Undef)
 	{
-		auto primType = type->ToPrimitiveType();
-		if (primType != NULL)
-		{
-			return BfTypedValue(mBfIRBuilder->GetUndefConstValue(primType->mTypeDef->mTypeCode), type);
-		}
-		return BfTypedValue(mBfIRBuilder->CreateUndefValue(mBfIRBuilder->MapType(type)), type);
+// 		auto primType = type->ToPrimitiveType();
+// 		if (primType != NULL)
+// 		{
+// 			return BfTypedValue(mBfIRBuilder->GetUndefConstValue( primType), type);
+// 		}
+		return BfTypedValue(mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(type)), type);
 	}
 
 	BfTypedValue typedValue;
@@ -5390,7 +5390,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			}
 		}
 
-		if ((!typeInstance->IsInterface()) && (typeInstance->mVirtualMethodTableSize > 0) && (needsVData))
+		if ((!mIsConstModule) && (!typeInstance->IsInterface()) && (typeInstance->mVirtualMethodTableSize > 0) && (needsVData))
 		{
 			int startTabIdx = (int)vData.size();
 			
@@ -7925,7 +7925,7 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 					BfTypedValue result;
 					result.mKind = BfTypedValueKind_Value;
 					result.mType = genericTypeConstraint;
-					result.mValue = mBfIRBuilder->GetUndefConstValue(primType->mTypeDef->mTypeCode);
+					result.mValue = mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(primType));
 					typedVal = result;
 					handled = true;
 				}				
@@ -12064,6 +12064,11 @@ void BfModule::AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInsta
 
 BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstance* methodInstance, BfGetMethodInstanceFlags flags)
 {	
+	if (mIsConstModule)
+	{
+		NOP;
+	}
+
 	if ((flags & BfGetMethodInstanceFlag_ResultNotUsed) != 0)
 		return BfModuleMethodInstance(methodInstance, BfIRValue());
 
@@ -12257,6 +12262,11 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 
 BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags, BfTypeInstance* foreignType)
 {
+	if (mIsConstModule)
+	{
+		NOP;
+	}
+
 	if (methodDef->mMethodType == BfMethodType_Init)
 		return BfModuleMethodInstance();
 
@@ -12338,7 +12348,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mMethodInfoEx != NULL) && (mCurMethodInstance->mMethodInfoEx->mMinDependDepth >= 32))
 			flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_DepthExceeded);
 
-		if ((!mIsReified) && (instModule->mIsReified))
+		if ((!mIsConstModule) && (!mIsReified) && (instModule->mIsReified))
 		{
 			BF_ASSERT(!mCompiler->mIsResolveOnly);
 			// A resolve-only module is specializing a method from a type in a reified module, 
@@ -12351,7 +12361,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		}
 		else
 		{
-			if ((mIsReified) && (!instModule->mIsReified))
+			if ((!mIsConstModule) && (mIsReified) && (!instModule->mIsReified))
 			{
 				if (!typeInst->IsUnspecializedTypeVariation())
 				{
@@ -13080,6 +13090,10 @@ void BfModule::SetupMethodIdHash(BfMethodInstance* methodInstance)
 	}	
 
 	methodInstance->mIdHash = (int64)hashCtx.Finish64();
+	if (methodInstance->mIdHash == 0x3400000029LL)
+	{
+		NOP;
+	}	
 }
 
 BfIRValue BfModule::GetInterfaceSlotNum(BfTypeInstance* ifaceType)
@@ -13133,6 +13147,18 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	if (str == "#IsConstEval")
 	{
 		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, mIsConstModule ? 1 : 0), GetPrimitiveType(BfTypeCode_Boolean));
+	}
+	if (str == "#IsBuilding")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, (!mCompiler->mIsResolveOnly) ? 1 : 0), GetPrimitiveType(BfTypeCode_Boolean));
+	}
+	if (str == "#IsReified")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, mIsReified ? 1 : 0), GetPrimitiveType(BfTypeCode_Boolean));
+	}
+	if (str == "#CompileRev")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mRevision), GetPrimitiveType(BfTypeCode_Int32));
 	}
 	if (str == "#ModuleName")
 	{
@@ -14504,7 +14530,7 @@ void BfModule::CreateDelegateInvokeMethod()
 	if (mCurMethodInstance->mReturnType->IsValueType())
 		mBfIRBuilder->PopulateType(mCurMethodInstance->mReturnType, BfIRPopulateType_Full);
 		
-	if ((!mIsConstModule) && (mCurMethodInstance->GetStructRetIdx() != 0))
+	if ((mIsConstModule) || (mCurMethodInstance->GetStructRetIdx() != 0))
 		memberFuncArgs.push_back(BfIRValue()); // Push 'target'
 
 	int thisIdx = 0;
@@ -17078,11 +17104,13 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 				BP_ZONE_F("ProcessMethod lambdaInstance %s", lambdaInstance->mMethodInstance->mMethodDef->mName.c_str());
 				lambdaInstance->mMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;
 				ProcessMethod(lambdaInstance->mMethodInstance);
+				lambdaInstance->mMethodInstance->mMethodInstanceGroup = NULL;
 
 				if (lambdaInstance->mDtorMethodInstance != NULL)
 				{
 					lambdaInstance->mDtorMethodInstance->mMethodInstanceGroup = &methodInstanceGroup;
 					ProcessMethod(lambdaInstance->mDtorMethodInstance);
+					lambdaInstance->mDtorMethodInstance->mMethodInstanceGroup = NULL;
 				}
 			}
 		}
@@ -17546,22 +17574,25 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 	BF_ASSERT(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_NotSet);
 
-	if ((methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude) &&
-		(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Referenced))
+	if (!mIsConstModule)
 	{
-		methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Referenced;
-		
-		auto owningModule = methodInstance->GetOwner()->mModule;
-
-		if (owningModule->mIsScratchModule)
+		if ((methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude) &&
+			(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Referenced))
 		{
-			BF_ASSERT(owningModule->mOnDemandMethodCount == 0);
-		}
-		else
-        {
-			BF_ASSERT((owningModule->mOnDemandMethodCount > 0) || (!HasCompiledOutput()) || (owningModule->mExtensionCount > 0));
-            if (owningModule->mOnDemandMethodCount > 0)
-				owningModule->mOnDemandMethodCount--;
+			methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Referenced;
+
+			auto owningModule = methodInstance->GetOwner()->mModule;
+
+			if (owningModule->mIsScratchModule)
+			{
+				BF_ASSERT(owningModule->mOnDemandMethodCount == 0);
+			}
+			else
+			{
+				BF_ASSERT((owningModule->mOnDemandMethodCount > 0) || (!HasCompiledOutput()) || (owningModule->mExtensionCount > 0));
+				if (owningModule->mOnDemandMethodCount > 0)
+					owningModule->mOnDemandMethodCount--;
+			}
 		}
 	}
 

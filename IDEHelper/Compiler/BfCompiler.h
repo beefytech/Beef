@@ -359,6 +359,7 @@ public:
 	BfTypeDef* mGenericIEnumeratorTypeDef;
 	BfTypeDef* mGenericIRefEnumeratorTypeDef;
 	
+	BfTypeDef* mThreadTypeDef;
 	BfTypeDef* mInternalTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
@@ -401,6 +402,7 @@ public:
 	BfTypeDef* mDisableChecksAttributeTypeDef;
 	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;
 	BfTypeDef* mFriendAttributeTypeDef;
+	BfTypeDef* mConstEvalAttributeTypeDef;
 	BfTypeDef* mNoExtensionAttributeTypeDef;
 	BfTypeDef* mCheckedAttributeTypeDef;
 	BfTypeDef* mUncheckedAttributeTypeDef;	
