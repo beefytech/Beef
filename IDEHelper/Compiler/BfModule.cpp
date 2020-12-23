@@ -19437,7 +19437,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		// If we hot swap, we want to make sure at least one method refers to this extern method so it gets pulled in
 		//  incase it gets called later by some hot-loaded coded
 		if ((mCompiler->mOptions.mAllowHotSwapping) && (mCurMethodInstance->mIRFunction) && (!mCurMethodInstance->mIRFunction.IsFake()) && (mCurTypeInstance != mContext->mBfObjectType))
-			CreateFakeCallerMethod(mangledName);
+		{
+			if (!mCurMethodInstance->mMethodDef->mName.StartsWith("ConstEval_"))
+				CreateFakeCallerMethod(mangledName);
+		}
 		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);
 	}
 	else if ((methodInstance->GetImportKind() == BfImportKind_Import_Dynamic) && (!mCompiler->IsHotCompile()))

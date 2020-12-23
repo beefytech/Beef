@@ -208,8 +208,9 @@ static_assert(BF_ARRAY_COUNT(gOpInfo) == (int)CeOp_COUNT, "gOpName incorrect siz
 
 CeFunction::~CeFunction()
 {
+	BF_ASSERT(mId == -1);
 	for (auto innerFunc : mInnerFunctions)
-		delete innerFunc;
+		delete innerFunc;	
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -585,7 +586,8 @@ void CeBuilder::EmitUnaryOp(CeOp iOp, CeOp fOp, const CeOperand& val, CeOperand&
 void CeBuilder::EmitSizedOp(CeOp baseOp, const CeOperand& operand, CeOperand* outResult, bool allowNonStdSize)
 {
 	bool isStdSize = true;
-	CeOp op = CeOp_InvalidOp;	
+	CeOp op = CeOp_InvalidOp;
+
 	if (operand.mType->mSize == 1)
 		op = baseOp;
 	else if (operand.mType->mSize == 2)
@@ -1194,13 +1196,14 @@ void CeBuilder::Build()
 			if (beFunction->mBlocks.IsEmpty())
 				continue;
 
-			CeFunction* innerFunction = new CeFunction();
+			CeFunction* innerFunction = new CeFunction();			
 			innerFunction->mCeInnerFunctionInfo = new CeInnerFunctionInfo();
 			innerFunction->mCeInnerFunctionInfo->mName = beFunction->mName;
 			innerFunction->mCeInnerFunctionInfo->mBeFunction = beFunction;
 			innerFunction->mCeInnerFunctionInfo->mOwner = mCeFunction;
 			mInnerFunctionMap[beFunction] = (int)mCeFunction->mInnerFunctions.size();
 			mCeFunction->mInnerFunctions.Add(innerFunction);
+			mCeMachine->MapFunctionId(innerFunction);
 		}
 
 // 		for (int globalVarIdx = startGlobalVariableCount; globalVarIdx < (int)beModule->mGlobalVariables.size(); globalVarIdx++)
@@ -1447,7 +1450,7 @@ void CeBuilder::Build()
 						BF_ASSERT(ceTarget.mType->IsPointer());
 						auto pointerType = (BePointerType*)ceTarget.mType;
 						auto elemType = pointerType->mElementType;
-
+						
 						CeOperand refOperand = ceTarget;
 						refOperand.mType = elemType;						
 						EmitSizedOp(CeOp_Load_8, refOperand, &result, true);
@@ -2601,6 +2604,7 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCeModule = NULL;		
 	mRevision = 0;
 	mExecuteId = 0;
+	mCurFunctionId = 0;
 	mRevisionExecuteTime = 0;
 	mCurTargetSrc = NULL;
 	mCurModule = NULL;
@@ -2620,6 +2624,14 @@ CeMachine::~CeMachine()
 	for (auto kv : mFunctions)
 	{
 		auto functionInfo = kv.mValue;
+		if (functionInfo->mCeFunction != NULL)
+		{
+			// We don't need to actually unmap it at this point
+			functionInfo->mCeFunction->mId = -1;
+			for (auto innerFunction : functionInfo->mCeFunction->mInnerFunctions)
+				innerFunction->mId = -1;
+		}
+
 		delete functionInfo;
 	}
 }
@@ -2946,7 +2958,7 @@ void CeMachine::DerefMethodInfo(CeFunctionInfo* ceFunctionInfo)
 
 	auto itr = mNamedFunctionMap.Find(ceFunctionInfo->mName);
 	if (itr->mValue == ceFunctionInfo)
-		mNamedFunctionMap.Remove(itr);
+		mNamedFunctionMap.Remove(itr);	
 	delete ceFunctionInfo;
 }
 
@@ -2967,6 +2979,17 @@ void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 				if (callEntry.mFunctionInfo != NULL)
 					DerefMethodInfo(callEntry.mFunctionInfo);
 			}
+			if (ceFunction->mId != -1)
+			{
+				mFunctionIdMap.Remove(ceFunction->mId);
+				ceFunction->mId = -1;
+				for (auto innerFunction : ceFunction->mInnerFunctions)
+				{
+					mFunctionIdMap.Remove(innerFunction->mId);
+					innerFunction->mId = -1;
+				}
+			}
+
 			delete ceFunction;
 			ceFunctionInfo->mCeFunction = NULL;
 			ceFunctionInfo->mMethodInstance = NULL;
@@ -2986,8 +3009,6 @@ void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 
 		mFunctions.Remove(itr);
 	}
-
-	CheckFunctions();
 }
 
 //#define CE_GETC(T) *((T*)(addr += sizeof(T)) - 1)
@@ -3733,8 +3754,10 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 	uint8* instPtr = (ceFunction->mCode.IsEmpty()) ? NULL : &ceFunction->mCode[0];
 	uint8* stackPtr = startStackPtr;
 	uint8* framePtr = startFramePtr;
+	bool needsFunctionIds = mCeModule->mSystem->mPtrSize != 8;
 	
 	volatile bool* cancelPtr = &mCompiler->mCanceling;
+
 
 	auto _GetCurFrame = [&]()
 	{
@@ -4196,6 +4219,13 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				memcpy(memStart + destAddr, memStart + srcAddr, size);
 			}
 			break;
+		case CeOp_FrameAddr_32:
+			{
+				auto& result = CE_GETFRAME(int32);
+				auto addr = &CE_GETFRAME(uint8);
+				result = addr - memStart;
+			}
+			break;
 		case CeOp_FrameAddr_64:
 			{
 				auto& result = CE_GETFRAME(int64);
@@ -4492,7 +4522,7 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				BF_ASSERT(memStart == mMemory.mVals);
 
-				auto& result = CE_GETFRAME(CeFunction*);
+				auto resultFrameIdx = CE_GETINST(int32);
 				int32 callIdx = CE_GETINST(int32);
 				auto& callEntry = ceFunction->mCallTable[callIdx];
 				if (callEntry.mBindRevision != mRevision)
@@ -4535,29 +4565,31 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				BF_ASSERT(memStart == mMemory.mVals);
-				result = callEntry.mFunction;
-// 				if (callEntry.mFunction->mName.Contains("__static_dump"))
-// 				{
-// 					int32 val = *(int32*)(stackPtr);
-// 					OutputDebugStrF("__static_dump: %d\n", val);
-// 				}				
+				auto callFunction = callEntry.mFunction;
+				if (needsFunctionIds)
+					*(int32*)(framePtr + resultFrameIdx) = callFunction->mId;
+				else
+					*(CeFunction**)(framePtr + resultFrameIdx) = callFunction;
 			}
 			break;
 		case CeOp_GetMethod_Inner:
 			{
-				auto& result = CE_GETFRAME(CeFunction*);
+				auto resultFrameIdx = CE_GETINST(int32);
 				int32 innerIdx = CE_GETINST(int32);
 
 				auto outerFunction = ceFunction;
 				if (outerFunction->mCeInnerFunctionInfo != NULL)
 					outerFunction = outerFunction->mCeInnerFunctionInfo->mOwner;
-				auto& callEntry = outerFunction->mInnerFunctions[innerIdx];
-				result = callEntry;
+				auto callFunction = outerFunction->mInnerFunctions[innerIdx];
+				if (needsFunctionIds)
+					*(int32*)(framePtr + resultFrameIdx) = callFunction->mId;
+				else
+					*(CeFunction**)(framePtr + resultFrameIdx) = callFunction;
 			}
 			break;
 		case CeOp_GetMethod_Virt:
 			{
-				auto& result = CE_GETFRAME(CeFunction*);
+				auto resultFrameIdx = CE_GETINST(int32);
 				auto valueAddr = CE_GETFRAME(addr_ce);
 				int32 virtualIdx = CE_GETINST(int32);
 
@@ -4569,12 +4601,15 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto methodInstance = (BfMethodInstance*)valueType->mVirtualMethodTable[virtualIdx].mImplementingMethod;
 				
 				auto callFunction = GetPreparedFunction(methodInstance);
-				result = callFunction;
+				if (needsFunctionIds)
+					*(int32*)(framePtr + resultFrameIdx) = callFunction->mId;
+				else
+					*(CeFunction**)(framePtr + resultFrameIdx) = callFunction;
 			}
 			break;
 		case CeOp_GetMethod_IFace:
 			{
-				auto& result = CE_GETFRAME(CeFunction*);
+				auto resultFrameIdx = CE_GETINST(int32);
 				auto valueAddr = CE_GETFRAME(addr_ce);
 				int32 ifaceId = CE_GETINST(int32);
 				int32 methodIdx = CE_GETINST(int32);
@@ -4610,13 +4645,23 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				auto callFunction = GetPreparedFunction(methodInstance);
-				result = callFunction;				
+				if (needsFunctionIds)
+					*(int32*)(framePtr + resultFrameIdx) = callFunction->mId;
+				else
+					*(CeFunction**)(framePtr + resultFrameIdx) = callFunction;
 			}
 			break;
 		case CeOp_Call:
 			{
 				callCount++;
-				auto callFunction = CE_GETFRAME(CeFunction*);
+				CeFunction* callFunction;
+				if (needsFunctionIds)
+				{
+					int32 functionId = CE_GETFRAME(int32);
+					callFunction = mFunctionIdMap[functionId];
+				}
+				else
+					callFunction = CE_GETFRAME(CeFunction*);
 
 				bool handled = false;
 				if (!_CheckFunction(callFunction, handled))
@@ -5247,7 +5292,7 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 	ceBuilder.mCeFunction = ceFunction;
 	ceBuilder.Build();
 
-	/*if (!ceFunction->mCode.IsEmpty())
+	if (!ceFunction->mCode.IsEmpty())
 	{
 		CeDumpContext dumpCtx;
 		dumpCtx.mCeFunction = ceFunction;
@@ -5257,15 +5302,15 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 		dumpCtx.Dump();
 
 		OutputDebugStrF("Code for %s:\n%s\n", ceBuilder.mBeFunction->mName.c_str(), dumpCtx.mStr.c_str());
-	}*/
+	}
 }
 
-void CeMachine::CheckFunctions()
-{
-	for (auto kv : mFunctions)
-	{
-		BF_ASSERT((((intptr)(void*)kv.mKey->mMethodDef) & 0xFF) != 0xDD);
-	}
+void CeMachine::MapFunctionId(CeFunction* ceFunction)
+{	
+	if (mCeModule->mSystem->mPtrSize == 8)
+		return;
+	ceFunction->mId = ++mCurFunctionId;
+	mFunctionIdMap[ceFunction->mId] = ceFunction;
 }
 
 CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added)
@@ -5275,8 +5320,6 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 		if ((func.IsConst()) || (func.IsFake()))
 			return NULL;
 	}
-
-	CheckFunctions();
 
 	CeFunctionInfo** functionInfoPtr = NULL;
 	CeFunctionInfo* ceFunctionInfo = NULL;
@@ -5331,12 +5374,13 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 		
 		BF_ASSERT(ceFunctionInfo->mCeFunction == NULL);
 
-		ceFunction = new CeFunction();
+		ceFunction = new CeFunction();		
 		ceFunction->mCeFunctionInfo = ceFunctionInfo;
 		ceFunction->mMethodInstance = methodInstance;
 
 		ceFunctionInfo->mMethodInstance = methodInstance;
 		ceFunctionInfo->mCeFunction = ceFunction;
+		MapFunctionId(ceFunction);
 	}
 	
 

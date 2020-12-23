@@ -1013,11 +1013,12 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(bool, isOptimized);
 
 			BF_ASSERT(mBeModule == NULL);
-			mPtrSize = ptrSize;
+			mPtrSize = ptrSize;			
 			mIsOptimized = isOptimized;
 			mBeContext = new BeContext();
 			mBeModule = new BeModule(moduleName, mBeContext);
-			mBeModule->mBeIRCodeGen = this;
+			mBeModule->mBeIRCodeGen = this;			
+			mBeContext->mPointerSize = ptrSize;
 
 			for (auto constInt : mConfigConsts)
 			{

@@ -344,6 +344,7 @@ public:
 	Array<CeFunction*> mInnerFunctions;
 	String mGenError;
 	int mFrameSize;	
+	int mId;
 
 public:
 	CeFunction()
@@ -355,6 +356,7 @@ public:
 		mMethodInstance = NULL;
 		mFailed = false;
 		mFrameSize = 0;
+		mId = -1;
 	}	
 
 	~CeFunction();
@@ -595,12 +597,14 @@ class CeMachine
 public:
 	Dictionary<BfMethodInstance*, CeFunctionInfo*> mFunctions;
 	Dictionary<String, CeFunctionInfo*> mNamedFunctionMap;
-		
+	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit		
+
 	BfCompiler* mCompiler;
 	BfModule* mCeModule;
 	int mRevision;
 	int mRevisionExecuteTime;
 	int mExecuteId;	
+	int mCurFunctionId;
 
 	// These are only valid for the current execution
 	ContiguousHeap* mHeap;
@@ -612,7 +616,7 @@ public:
 	Dictionary<Val128, addr_ce> mConstDataMap;	
 	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
 	HashSet<int> mStaticCtorExecSet;
-	CeAppendAllocInfo* mAppendAllocInfo;
+	CeAppendAllocInfo* mAppendAllocInfo;	
 	
 	BfAstNode* mCurTargetSrc;
 	BfMethodInstance* mCurMethodInstance;
@@ -647,6 +651,7 @@ public:
 	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr);
 
 	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);	
+	void MapFunctionId(CeFunction* ceFunction);
 
 	void CheckFunctions();
 	CeFunction* GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added);
