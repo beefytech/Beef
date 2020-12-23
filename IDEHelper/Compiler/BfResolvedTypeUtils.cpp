@@ -536,7 +536,9 @@ BfMethodInfoEx::~BfMethodInfoEx()
 BfMethodInstance::~BfMethodInstance()
 {		
 	if (mMethodInstanceGroup != NULL)
+	{
 		BfLogSys(GetOwner()->mModule->mSystem, "BfMethodInstance::~BfMethodInstance %p Local:%d InCEMachine:%d\n", this, mMethodDef->mIsLocalMethod, mInCEMachine);
+	}
 	else
 	{
 		BF_ASSERT(!mMethodDef->mIsLocalMethod);

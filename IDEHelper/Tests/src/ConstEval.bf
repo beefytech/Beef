@@ -23,6 +23,7 @@ namespace Tests
 		const String cStrA = "Abc";
 		const String cStrB = GetStringA(cStrA, 12, 23);
 
+		// ConstEval attribute means this method will always be const-evaluated
 		[ConstEval]
 		static String GetStringA(String str, int a, int b)
 		{
