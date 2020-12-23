@@ -51,7 +51,7 @@ public:
 	{
 		int size = 0;
 		int checkNode = mHead;
-		while (checkNode != NULL)
+		while (checkNode != -1)
 		{
 			size++;
 			checkNode = CH_REL_TO_ABS(checkNode)->mNext;

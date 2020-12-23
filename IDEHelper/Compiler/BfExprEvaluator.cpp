@@ -5488,7 +5488,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	{
 		BfTypeCode loweredRetType = BfTypeCode_None;
 		BfTypeCode loweredRetType2 = BfTypeCode_None;		
-		if (methodInstance->GetLoweredReturnType(&loweredRetType, &loweredRetType2))
+		if ((!IsConstEval()) && (methodInstance->GetLoweredReturnType(&loweredRetType, &loweredRetType2)))
 		{
 			auto retVal = mModule->CreateAlloca(methodInstance->mReturnType);
 			BfIRType loweredIRType = mModule->GetIRLoweredType(loweredRetType, loweredRetType2);			

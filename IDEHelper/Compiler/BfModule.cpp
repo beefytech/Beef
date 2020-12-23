@@ -15546,7 +15546,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 		BfType* resolvedTypeRef2 = NULL;
 		String paramName;
 		bool isSplattable = false;
-		bool tryLowering = true;		
+		bool tryLowering = !mIsConstModule;		
 		if (isThis)
 		{
 			paramName = "this";

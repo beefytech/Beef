@@ -3909,11 +3909,11 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 					if (sleepMS > 200)
 					{
-						Sleep(200);
+						BfpThread_Sleep(200);
 						sleepMS -= 200;
 						continue;
 					}
-					Sleep(sleepMS);
+					BfpThread_Sleep(sleepMS);
 					break;
 				}
 				
@@ -5292,7 +5292,7 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 	ceBuilder.mCeFunction = ceFunction;
 	ceBuilder.Build();
 
-	if (!ceFunction->mCode.IsEmpty())
+	/*if (!ceFunction->mCode.IsEmpty())
 	{
 		CeDumpContext dumpCtx;
 		dumpCtx.mCeFunction = ceFunction;
@@ -5302,7 +5302,7 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 		dumpCtx.Dump();
 
 		OutputDebugStrF("Code for %s:\n%s\n", ceBuilder.mBeFunction->mName.c_str(), dumpCtx.mStr.c_str());
-	}
+	}*/
 }
 
 void CeMachine::MapFunctionId(CeFunction* ceFunction)
