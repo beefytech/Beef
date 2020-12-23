@@ -2347,6 +2347,7 @@ BfClosureType::BfClosureType(BfTypeInstance* srcDelegate, Val128 closureHash) :
 
 BfClosureType::~BfClosureType()
 {
+	mMethodInstanceGroups.Clear();
 	if (mCreatedTypeDef)
 		delete mTypeDef;
 	for (auto directAllocNode : mDirectAllocNodes)
@@ -2425,6 +2426,7 @@ void BfClosureType::Finish()
 
 BfDelegateType::~BfDelegateType()
 {	
+	mMethodInstanceGroups.Clear();
 	delete mTypeDef;	
 }
 
@@ -2441,6 +2443,7 @@ BfTupleType::BfTupleType()
 
 BfTupleType::~BfTupleType()
 {
+	mMethodInstanceGroups.Clear();
 	if (mCreatedTypeDef)
 		delete mTypeDef;
 	delete mSource;
