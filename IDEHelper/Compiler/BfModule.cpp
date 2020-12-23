@@ -7857,7 +7857,7 @@ BF_NOINLINE void BfModule::EvaluateWithNewScope(BfExprEvaluator& exprEvaluator, 
 	newScope.mOuterIsConditional = true;
 	newScope.mAllowTargeting = false;
 	mCurMethodState->AddScope(&newScope);
-	NewScopeState();
+	NewScopeState(true, false);
 	exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | flags);
 	exprEvaluator.Evaluate(expr, (flags & BfEvalExprFlags_PropogateNullConditional) != 0, (flags & BfEvalExprFlags_IgnoreNullConditional) != 0, (flags & BfEvalExprFlags_AllowSplat) != 0);
 	RestoreScopeState();

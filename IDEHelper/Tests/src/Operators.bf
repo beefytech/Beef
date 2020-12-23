@@ -6,6 +6,36 @@ namespace Tests
 {
 	class Operators
 	{
+		struct FlagsRegister
+		{
+			public bool zero;
+			public bool subtract;
+			public bool half_carry;
+			public bool carry;
+
+			const uint8 ZERO_FLAG_BYTE_POSITION = 7;
+			const uint8 SUBTRACT_FLAG_BYTE_POSITION = 6;
+			const uint8 HALF_CARRY_FLAG_BYTE_POSITION = 5;
+			const uint8 CARRY_FLAG_BYTE_POSITION = 4;
+
+			public this(bool z, bool s, bool hc, bool c)
+			{
+				zero = z;
+				subtract = s;
+				half_carry = hc;
+				carry = c;
+			}
+
+			//Convert flag register to a uint8
+			public static implicit operator uint8 (FlagsRegister flag)
+			{
+				return (flag.zero 		  ? 1 : 0)	<< ZERO_FLAG_BYTE_POSITION |
+					   (flag.subtract     ? 1 : 0)  << SUBTRACT_FLAG_BYTE_POSITION |
+					   (flag.half_carry   ? 1 : 0)	<< HALF_CARRY_FLAG_BYTE_POSITION |
+					   (flag.carry        ? 1 : 0) 	<< CARRY_FLAG_BYTE_POSITION;
+			};
+		}
+
 		struct StructA
 		{
 			public int mA;
@@ -283,6 +313,9 @@ namespace Tests
 			StructOp3<int16, int32> so3 = .();
 			float f = so3.Use(1, 2);
 			Test.Assert(f == 3);
+
+			FlagsRegister fr = .(true, false, true, true);
+			Test.Assert(fr == (uint8)0b10110000);
 
 			/*let oai = OuterOp<float>.InnerOp<int>.Op(1.0f, 100);
 			Test.Assert(oai == 101.0f);
