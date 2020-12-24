@@ -580,6 +580,7 @@ struct BfIRTypeData
 	{
 		TypeKind_None,
 		TypeKind_TypeId,
+		TypeKind_TypeCode,
 		TypeKind_TypeInstId,
 		TypeKind_TypeInstPtrId,
 		TypeKind_Stream,
@@ -1102,7 +1103,7 @@ public:
 	void Module_SetTargetTriple(const StringImpl& targetTriple);	
 	void Module_AddModuleFlag(const StringImpl& flag, int val);
 
-	BfIRType GetPrimitiveType(BfTypeCode typeCode);
+	BfIRType GetPrimitiveType(BfTypeCode typeCode);	
 	BfIRType CreateStructType(const StringImpl& name);
 	BfIRType CreateStructType(const BfSizedArray<BfIRType>& memberTypes);
 	void StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& memberTypes, bool isPacked);	

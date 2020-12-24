@@ -66,6 +66,11 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 						if (memberRefExpr->mTarget == NULL)
 							arraySize = (int)invocationExpr->mArguments.size();
 					}					
+					else if (auto indexerExpr = BfNodeDynCast<BfIndexerExpression>(invocationExpr->mTarget))
+					{
+						// Sized array initializer
+						arraySize = (int)invocationExpr->mArguments.size();
+					}
 				}
 			}
 
@@ -75,7 +80,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 				return mResult;
 			}
 			else
-			{
+			{				
 				mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_IntPtr)), mModule->GetPrimitiveType(BfTypeCode_IntPtr));
 				return mResult;
 			}

@@ -1134,7 +1134,7 @@ void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 			//  code as we walk the AST
 			//mBfIRBuilder->mDbgVerifyCodeGen = true;			
 			if (
-                (mModuleName == "System_StringView")
+                (mModuleName == "-")
 				//|| (mModuleName == "BeefTest2_ClearColorValue")
 				//|| (mModuleName == "Tests_FuncRefs")
 				)
@@ -4078,12 +4078,19 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 
 	if (fieldInstance != NULL)
 		MarkFieldInitialized(fieldInstance);
-
+	
 	if ((doStore) && (result))
 	{
-		result = LoadValue(result);
-		if (!result.mType->IsValuelessType())
-			mBfIRBuilder->CreateStore(result.mValue, staticVarRef.mValue);		
+		if (fieldInstance->mResolvedType->IsUnknownSizedArray())
+		{
+			AssertErrorState();
+		}
+		else
+		{
+			result = LoadValue(result);
+			if (!result.mType->IsValuelessType())
+				mBfIRBuilder->CreateStore(result.mValue, staticVarRef.mValue);
+		}
 	}
 
 	return result;
@@ -13613,14 +13620,14 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 						mBfIRBuilder->PopulateType(localVarDef->mResolvedType);
 						auto constMem = mBfIRBuilder->ConstToMemory(localVarDef->mConstValue);
 
-						if (IsTargetingBeefBackend())
-						{
-							diValue = mBfIRBuilder->CreateAliasValue(constMem);
-							didConstToMem = true;
-
-							diType = mBfIRBuilder->DbgCreateReferenceType(diType);
-						}
-						else
+// 						if (IsTargetingBeefBackend())
+// 						{
+// 							diValue = mBfIRBuilder->CreateAliasValue(constMem);
+// 							didConstToMem = true;
+// 
+// 							diType = mBfIRBuilder->DbgCreateReferenceType(diType);
+// 						}
+						//else
 						{
 							isByAddr = true;
 							mBfIRBuilder->SaveDebugLocation();

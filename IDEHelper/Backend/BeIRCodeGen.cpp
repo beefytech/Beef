@@ -633,6 +633,14 @@ void BeIRCodeGen::Read(BeType*& beType)
 	}
 
 	int typeId = (int)ReadSLEB128();
+
+	if (typeKind == BfIRType::TypeKind::TypeKind_TypeCode)
+	{
+		bool isSigned = false;
+		beType = GetBeType((BfTypeCode)typeId, isSigned);
+		return;
+	}
+
 	auto& typeEntry = GetTypeEntry(typeId);
 	if (typeKind == BfIRType::TypeKind::TypeKind_TypeId)
 		beType = typeEntry.mBeType;

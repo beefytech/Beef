@@ -744,6 +744,14 @@ void BfIRCodeGen::Read(llvm::Type*& llvmType)
 	}
 
 	int typeId = (int)ReadSLEB128();
+
+	if (typeKind == BfIRType::TypeKind::TypeKind_TypeCode)
+	{
+		bool isSigned = false;
+		llvmType = GetLLVMType((BfTypeCode)typeId, isSigned);
+		return;
+	}
+
 	auto& typeEntry = GetTypeEntry(typeId);
 	if (typeKind == BfIRType::TypeKind::TypeKind_TypeId)
 		llvmType = typeEntry.mLLVMType;

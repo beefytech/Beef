@@ -2462,6 +2462,13 @@ public:
 	BfTokenNode* mOpenBracket;
 	BfSizedArray<ASTREF(BfAstNode*)> mParams; // Either commas or constant size expression
 	BfTokenNode* mCloseBracket;
+
+	bool IsInferredSize()
+	{
+		if (mParams.mSize > 0)
+			return BfNodeIsA<BfUninitializedExpression>(mParams[0]);
+		return false;
+	}
 };	BF_AST_DECL(BfArrayTypeRef, BfElementedTypeRef);
 
 class BfNullableTypeRef : public BfElementedTypeRef

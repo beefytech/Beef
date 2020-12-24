@@ -2901,7 +2901,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					continue;
 
 				SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, field);
-
+				
 				BfType* resolvedFieldType = NULL;
 
 				if (field->IsEnumCaseEntry())
@@ -2938,13 +2938,36 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					// For 'let', make read-only
 				}
 				else
-				{
+				{										
 					resolvedFieldType = ResolveTypeRef(field->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
 					if (resolvedFieldType == NULL)
 					{
 						// Failed, just put in placeholder 'var'
 						AssertErrorState();
 						resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);
+					}
+				}
+
+				if (resolvedFieldType->IsUndefSizedArray())
+				{
+					if (auto arrayTypeRef = BfNodeDynCast<BfArrayTypeRef>(field->mTypeRef))
+					{
+						if (arrayTypeRef->IsInferredSize())
+						{
+							if (field->mInitializer != NULL)
+							{
+								DeferredResolveEntry resolveEntry;
+								resolveEntry.mFieldDef = field;
+								resolveEntry.mTypeArrayIdx = (int)llvmFieldTypes.size();
+								deferredVarResolves.push_back(resolveEntry);
+
+								fieldInstance->mIsInferredType = true;
+							}							
+							else
+							{
+								AssertErrorState();
+							}
+						}
 					}
 				}
 

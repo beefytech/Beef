@@ -1368,6 +1368,11 @@ String BfIRBuilder::ToString(BfIRType irType)
 		{
 			llvmType = mBfIRCodeGen->GetLLVMType(irType.mId);
 		} 
+		else if (irType.mKind == BfIRType::TypeKind::TypeKind_TypeCode)
+		{
+			bool isSigned = false;
+			llvmType = mBfIRCodeGen->GetLLVMType((BfTypeCode)irType.mId, isSigned);
+		}
 		else
 		{
 			auto& typeEntry = mBfIRCodeGen->GetTypeEntry(irType.mId);
@@ -1400,9 +1405,14 @@ String BfIRBuilder::ToString(BfIRType irType)
 		{
 			beType = mBeIRCodeGen->GetBeType(irType.mId);
 		}
+		else if (irType.mKind == BfIRType::TypeKind::TypeKind_TypeCode)
+		{
+			bool isSigned = false;
+			beType = mBeIRCodeGen->GetBeType((BfTypeCode)irType.mId, isSigned);
+		}
 		else
 		{
-			auto& typeEntry = mBeIRCodeGen->GetTypeEntry(irType.mId);
+			auto& typeEntry = mBeIRCodeGen->GetTypeEntry(irType.mId);			
 			if (irType.mKind == BfIRType::TypeKind::TypeKind_TypeId)
 				beType = typeEntry.mBeType;
 			else if (irType.mKind == BfIRType::TypeKind::TypeKind_TypeInstId)
@@ -3469,9 +3479,11 @@ BfIRFunction BfIRBuilder::GetFakeFunction()
 BfIRType BfIRBuilder::GetPrimitiveType(BfTypeCode typeCode)
 {
 	FixTypeCode(typeCode);
- 	BfIRType retType = WriteCmd(BfIRCmd_PrimitiveType, typeCode);
- 	NEW_CMD_INSERTED_IRTYPE;
- 	return retType;
+
+	BfIRType irType;
+	irType.mKind = BfIRTypeData::TypeKind_TypeCode;
+	irType.mId = (int)typeCode;
+	return irType;
 }
 
 BfIRType BfIRBuilder::CreateStructType(const StringImpl& name)
