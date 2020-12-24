@@ -20002,6 +20002,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			}
 		}		
 
+		if ((binaryOp == BfBinaryOp_Add) && (resultType->IsInstanceOf(mModule->mCompiler->mStringTypeDef)))
+		{
+			// Allow failover to constant string addition
+			if ((leftValue.mValue.IsConst()) && (rightValue.mValue.IsConst()))
+				skipOpOverload = true;
+		}
+
 		if (!skipOpOverload)
 		{
 			BfBinaryOp findBinaryOp = binaryOp;
