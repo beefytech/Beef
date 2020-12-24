@@ -419,7 +419,7 @@ public:
 
 	int mCurTypeId;	
 	int mTypeInitCount;
-	String mOutputPath;		
+	String mOutputPath;
 	Array<BfType*> mGenericInstancePurgatory;	
 	Array<int> mTypeIdFreeList;
 
@@ -436,7 +436,7 @@ public:
 	BfIRFunction CreateLoadSharedLibraries(BfVDataModule* bfModule, Array<BfMethodInstance*>& dllMethods);
 	void GetTestMethods(BfVDataModule* bfModule, Array<TestMethod>& testMethods, HashContext& vdataHashCtx);
 	void EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& testMethods, BfIRValue& retValue);
-	void CreateVData(BfVDataModule* bfModule);	
+	void CreateVData(BfVDataModule* bfModule);
 	void UpdateDependencyMap(bool deleteUnusued, bool& didWork);
 	void ProcessPurgatory(bool reifiedOnly);
 	bool VerifySlotNums();

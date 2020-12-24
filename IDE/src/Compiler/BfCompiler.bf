@@ -70,6 +70,9 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 BfCompiler_GetCompileRevision(void* bfCompiler);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern int32 BfCompiler_GetCurConstEvalExecuteId(void* bfCompiler);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_Delete(void* bfCompiler);
 
@@ -668,6 +671,11 @@ namespace IDE.Compiler
 		public int32 GetCompileRevision()
 		{
 			return BfCompiler_GetCompileRevision(mNativeBfCompiler);
+		}
+
+		public int32 GetCurConstEvalExecuteId()
+		{
+			return BfCompiler_GetCurConstEvalExecuteId(mNativeBfCompiler);
 		}
 
 		public void GetTypeDefList(String outStr)

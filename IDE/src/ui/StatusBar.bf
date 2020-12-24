@@ -26,8 +26,8 @@ namespace IDE.ui
 		public int mDirtyDelay;
 		public int mStatusBoxUpdateCnt = -1;
 
-		public int32 mResolveStuckTicks;
-		public float mResolveLastPct = -1;
+		public int32 mResolveConstEvalStuckTicks;
+		public float mResolveLastConstEvalExecuteId = -1;
 
         public this()
         {
@@ -228,19 +228,19 @@ namespace IDE.ui
 #endif
                 )
 			{
-				float completionPct = gApp.mBfResolveCompiler.GetCompletionPercentage();
-				if (completionPct != mResolveLastPct)
+				int32 executeId = gApp.mBfResolveCompiler.GetCurConstEvalExecuteId();
+				if (executeId != mResolveLastConstEvalExecuteId)
 				{
-					mResolveStuckTicks = 0;
-					mResolveLastPct = completionPct;
+					mResolveConstEvalStuckTicks = 0;
+					mResolveLastConstEvalExecuteId = executeId;
 				}
-				else
-					mResolveStuckTicks++;
+				else if (executeId != -1)
+					mResolveConstEvalStuckTicks++;
 
 				MarkDirtyEx();
 			}
 			else
-				mResolveStuckTicks = 0;
+				mResolveConstEvalStuckTicks = 0;
         }
 
         public override void Draw(Graphics g)        
@@ -394,7 +394,7 @@ namespace IDE.ui
 			{
 				DrawStatusBox("Custom Build Commands...", gApp.mBuildContext.mUpdateCnt);
 			}
-			else if (mResolveStuckTicks > 300)
+			else if (mResolveConstEvalStuckTicks > 300)
 			{
 				DrawStatusBox("Const Evaluation");
 			}

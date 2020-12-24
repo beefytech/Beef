@@ -8711,6 +8711,15 @@ BF_EXPORT int BF_CALLTYPE BfCompiler_GetCompileRevision(BfCompiler* bfCompiler)
 	return bfCompiler->mRevision;
 }
 
+BF_EXPORT int BF_CALLTYPE BfCompiler_GetCurConstEvalExecuteId(BfCompiler* bfCompiler)
+{
+	if (bfCompiler->mCEMachine == NULL)
+		return -1;
+	if (bfCompiler->mCEMachine->mCurMethodInstance == NULL)
+		return -1;
+	return bfCompiler->mCEMachine->mExecuteId;
+}
+
 BF_EXPORT void BF_CALLTYPE BfCompiler_Cancel(BfCompiler* bfCompiler)
 {
 	bfCompiler->Cancel();
