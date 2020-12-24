@@ -10494,6 +10494,7 @@ BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConst
 
 	if (constant->mConstType == BfConstType_GlobalVar)
 	{
+		mBfIRBuilder->PopulateType(wantType);
 		auto result = BfTypedValue(irValue, wantType, true);
 		if (!wantType->IsComposite())
 			result = LoadValue(result);
