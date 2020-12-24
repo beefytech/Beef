@@ -6416,7 +6416,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						if (strcmp(globalVar->mName, "#CallerExpression") == 0)
 						{
 							int exprIdx = constGep32_2->mIdx1;
-							if ((exprIdx >= 0) && (exprIdx <= (int)argValues.size()))
+							if ((exprIdx >= 0) && (exprIdx < (int)argValues.size()))
 							{
 								auto expr = argValues[exprIdx].mExpression;
 								if (expr != NULL)
