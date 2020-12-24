@@ -5528,6 +5528,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodMatcher* methodMatcher, BfTyped
 		BF_ASSERT(castedTarget);
 		target = castedTarget;
 	}	
+
+	PerformCallChecks(moduleMethodInstance.mMethodInstance, methodMatcher->mTargetSrc);
+
 	return CreateCall(methodMatcher->mTargetSrc, target, BfTypedValue(), methodMatcher->mBestMethodDef, moduleMethodInstance, false, methodMatcher->mArguments);
 }
 

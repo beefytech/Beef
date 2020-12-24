@@ -941,6 +941,44 @@ namespace System
 			}
 		}
 
+		public void operator+=(String str)
+		{
+			Append(str);
+		}
+
+		public void operator+=(StringView sv)
+		{
+			Append(sv);
+		}
+
+		public void operator+=(char8 c)
+		{
+			Append(c);
+		}
+
+		public void operator+=(char32 c)
+		{
+			Append(c);
+		}
+
+		[Error("String addition is not supported. Consider allocating a new string and using Append, Concat, or +=")]
+		public static String operator+(String lhs, String rhs)
+		{
+			return lhs;
+		}
+
+		[Error("String addition is not supported. Consider allocating a new string and using Append, Concat, or +=")]
+		public static String operator+(String lhs, StringView rhs)
+		{
+			return lhs;
+		}
+
+		[Error("String addition is not supported. Consider allocating a new string and using Append, Concat, or +=")]
+		public static String operator+(String lhs, char32 rhs)
+		{
+			return lhs;
+		}
+
 		public void EnsureNullTerminator()
 		{
 			int allocSize = AllocSize;
