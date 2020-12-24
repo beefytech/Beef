@@ -4849,7 +4849,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 							}
 						}
 
-						if ((bestMethodInst->mMethodDef->HasBody()) && (matchedMethod == NULL))
+						bool hasDefaultImpl = bestMethodInst->mMethodDef->HasBody() || bestMethodInst->mMethodDef->mIsAbstract;
+						if ((hasDefaultImpl) && (matchedMethod == NULL))
 						{
 							auto methodDef = bestMethodInst->mMethodDef;
 							BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_ForeignMethodDef;
