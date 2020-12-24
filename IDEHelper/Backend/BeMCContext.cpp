@@ -5410,6 +5410,10 @@ void BeMCContext::FixOperand(BeMCOperand& operand, int depth)
 		{
 			operand = checkOperand;
 		}
+		else if (checkOperand.IsImmediate())
+		{
+			operand = checkOperand;
+		}
 	}
 }
 
@@ -13186,7 +13190,7 @@ void BeMCContext::DoCodeEmission()
 				}
 				break;
 			case BeMCInstKind_PreserveVolatiles:
-				{
+				{					
 					for (int vregIdx : *inst->mLiveness)
 					{
 						if (vregIdx >= mLivenessContext.mNumItems)
@@ -13299,6 +13303,11 @@ void BeMCContext::DoCodeEmission()
 				break;
 			case BeMCInstKind_Mov:
 				{
+					if (mDebugging)
+					{
+						NOP;
+					}
+
 					if (inst->mArg1.mKind == BeMCOperandKind_ConstAgg)
 					{
 						if (mDebugging)
@@ -13313,6 +13322,14 @@ void BeMCContext::DoCodeEmission()
 					auto vregInfo = GetVRegInfo(inst->mArg1);
 					auto arg0Type = GetType(inst->mArg0);
 					auto arg1Type = GetType(inst->mArg1);
+
+// 					auto arg1 = inst->mArg1;
+// 					while (arg1.IsVReg())
+// 					{
+// 						auto vregInfo = GetVRegInfo(arg1);
+// 						if (vregInfo->IsDirectRelTo())
+// 							arg1 = vregInfo->mRelTo;
+// 					}
 
 					if (instForm == BeMCInstForm_Unknown)
 					{
@@ -13606,7 +13623,7 @@ void BeMCContext::DoCodeEmission()
 								if (EmitStdXMMInst(instForm, inst, 0x10, 0x11))
 									break;
 
-								if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsImmediateInt()))
+								if ((inst->mArg0.IsNativeReg()) && (arg1.IsImmediateInt()))
 								{
 									auto arg0Type = GetType(inst->mArg0);
 									if (arg0Type->mTypeCode == BeTypeCode_Int16)
@@ -13614,7 +13631,7 @@ void BeMCContext::DoCodeEmission()
 										Emit(0x66);
 										EmitREX(BeMCOperand(), inst->mArg0, false);
 										Emit(0xB8 + EncodeRegNum(inst->mArg0.mReg));
-										mOut.Write((int16)inst->mArg1.mImmediate);
+										mOut.Write((int16)arg1.mImmediate);
 										break;
 									}
 									else if ((arg0Type->mTypeCode == BeTypeCode_Int32) || (arg0Type->mTypeCode == BeTypeCode_Int64))
@@ -15773,7 +15790,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?SetDefaults@KeySettings@BeefTest@bf@@QEAAXXZ");
+	//mDebugging = (function->mName == "??$EmitNow@UInitialize@CoreEvents@Atma@bf@@@Emitter@Atma@bf@@QEAAXUInitialize@CoreEvents@Atma@bf@@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
