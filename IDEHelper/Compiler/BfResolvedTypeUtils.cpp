@@ -2239,7 +2239,7 @@ BfType* BfTypeInstance::GetUnderlyingType()
 {
 	if (!mIsTypedPrimitive)
 	{
-		if (mGenericTypeInfo != NULL)
+		if ((mGenericTypeInfo != NULL) && (!mGenericTypeInfo->mTypeGenericArguments.IsEmpty()))
 			return mGenericTypeInfo->mTypeGenericArguments[0];
 		return NULL;
 	}

@@ -129,6 +129,9 @@ bool BfModule::InitGenericParams(BfType* resolvedTypeRef)
 	auto genericTypeInst = resolvedTypeRef->ToGenericTypeInstance();
 	genericTypeInst->mGenericTypeInfo->mInitializedGenericParams = true;
 
+	if (genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.IsEmpty())
+		return true;
+
 	if (genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0]->IsGenericParam())
 	{
 		BF_ASSERT(genericTypeInst->mGenericTypeInfo->mIsUnspecialized);
@@ -9062,10 +9065,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			if (type->IsUnspecializedType())
 				isUnspecialized = true;
 			BF_ASSERT(!type->IsVar());
-// 			if (type->IsVar())
-// 				isUnspecialized = true;
 
-			String typeName = TypeToString(type);
 			types.push_back(type);
 			names.push_back(fieldName);
 		}
