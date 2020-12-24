@@ -5234,7 +5234,7 @@ BfTypeInstance* BfModule::GetWrappedStructType(BfType* type, bool allowSpecializ
 	{
 		if (allowSpecialized)
 		{
-			if (type->IsUnknownSizedArray())
+			if (type->IsUnknownSizedArrayType())
 			{
 				BfUnknownSizedArrayType* sizedArrayType = (BfUnknownSizedArrayType*)type;
 				BfTypeVector typeVector;
@@ -6391,7 +6391,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 	if (!unspecializedType->IsUnspecializedType())
 		return unspecializedType;
 
-	if (unspecializedType->IsUnknownSizedArray())
+	if (unspecializedType->IsUnknownSizedArrayType())
 	{
 		auto* arrayType = (BfUnknownSizedArrayType*)unspecializedType;
 		auto elementType = ResolveGenericType(arrayType->mElementType, typeGenericArguments, methodGenericArguments, allowFail);
@@ -12445,7 +12445,7 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 		DoTypeToString(str, concreteTypeType->mInterface, typeNameFlags, genericMethodNameOverrides);
 		return;
 	}
-	else if (resolvedType->IsUnknownSizedArray())
+	else if (resolvedType->IsUnknownSizedArrayType())
 	{
 		auto arrayType = (BfUnknownSizedArrayType*)resolvedType;
 		DoTypeToString(str, arrayType->mElementType, typeNameFlags, genericMethodNameOverrides);

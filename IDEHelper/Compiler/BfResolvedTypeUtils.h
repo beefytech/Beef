@@ -530,7 +530,7 @@ public:
 	virtual bool IsString() { return false; }
 	virtual bool IsSizedArray() { return false; }
 	virtual bool IsUndefSizedArray() { return false; }
-	virtual bool IsUnknownSizedArray() { return false; }
+	virtual bool IsUnknownSizedArrayType() { return false; }
 	virtual bool IsArray() { return false; }	
 	virtual bool IsDelegate() { return false; }
 	virtual bool IsFunction() { return false; }
@@ -2308,7 +2308,7 @@ public:
 public:
 	virtual bool NeedsExplicitAlignment() override { return mElementType->NeedsExplicitAlignment(); }
 
-	virtual bool IsUnknownSizedArray() override { return true; }
+	virtual bool IsUnknownSizedArrayType() override { return true; }
 
 	virtual bool IsWrappableType() override { return true; }
 	virtual bool IsValueType() override { return true; } // Is a type of struct

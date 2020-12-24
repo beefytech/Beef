@@ -3774,7 +3774,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 
 		auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
 
-		if (fieldType->IsVar())
+		if ((fieldType->IsVar()) || (fieldType->IsUndefSizedArray()))
 		{
 			auto initValue = GetFieldInitializerValue(fieldInstance, fieldDef->mInitializer, fieldDef, fieldType);
 			if (!initValue)
@@ -3784,7 +3784,15 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 			}
 			if (fieldInstance != NULL)
 			{
-				fieldInstance->mResolvedType = initValue.mType;
+				if (fieldType->IsUndefSizedArray())
+				{
+					if ((initValue.mType->IsSizedArray()) && (initValue.mType->GetUnderlyingType() == fieldType->GetUnderlyingType()))
+					{
+						fieldInstance->mResolvedType = initValue.mType;
+					}
+				}
+				else
+					fieldInstance->mResolvedType = initValue.mType;
 			}
 			constValue = initValue.mValue;
 		}
@@ -3843,7 +3851,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	
 	if (!fieldInstance->mIsInferredType)
 		return fieldType;
-	if (!fieldType->IsVar())
+	if ((!fieldType->IsVar()) && (!fieldType->IsUndefSizedArray()))
 		return fieldType;	
 	
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, typeInstance);
@@ -3856,7 +3864,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	if ((!field->mIsStatic) && (typeDef->mIsStatic))
 	{
 		AssertErrorState();		
-		return GetPrimitiveType(BfTypeCode_Var);
+		return fieldType;
 	}
 	
 	bool hadInferenceCycle = false;
@@ -3875,7 +3883,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 				fieldModule->Fail(StrFormat("Field '%s.%s' creates a type inference cycle", TypeToString(fieldOwner).c_str(), fieldDef->mName.c_str()), fieldDef->mTypeRef, true);				
 			}
 						
-			return GetPrimitiveType(BfTypeCode_Var);
+			return fieldType;
 		}
 	}
 	mContext->mFieldResolveReentrys.push_back(fieldInstance);
@@ -3888,7 +3896,7 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 	{
 		if ((field->mTypeRef->IsA<BfVarTypeReference>()) || (field->mTypeRef->IsA<BfLetTypeReference>()))
 			Fail("Implicitly-typed fields must be initialized", field->GetRefNode());		
-		return GetPrimitiveType(BfTypeCode_Var);
+		return fieldType;
 	}
 
 	BfType* resolvedType = NULL;
@@ -3925,14 +3933,21 @@ BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInsta
 			BfTypedValue valueFromExpr;
 			valueFromExpr = GetFieldInitializerValue(fieldInstance);
 			FixIntUnknown(valueFromExpr);
-			resolvedType = valueFromExpr.mType;
+
+			if (fieldType->IsUndefSizedArray())
+			{
+				if ((valueFromExpr.mType != NULL) && (valueFromExpr.mType->IsSizedArray()) && (valueFromExpr.mType->GetUnderlyingType() == fieldType->GetUnderlyingType()))
+					resolvedType = valueFromExpr.mType;
+			}
+			else
+				resolvedType = valueFromExpr.mType;
 		}
 
 		mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 	}
 
 	if (resolvedType == NULL)
-		return GetPrimitiveType(BfTypeCode_Var);
+		return fieldType;
 				
 	fieldInstance->SetResolvedType(resolvedType);
 
@@ -4081,7 +4096,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 	
 	if ((doStore) && (result))
 	{
-		if (fieldInstance->mResolvedType->IsUnknownSizedArray())
+		if (fieldInstance->mResolvedType->IsUndefSizedArray())
 		{
 			AssertErrorState();
 		}

@@ -1668,7 +1668,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 	}
 	else if (type->IsSizedArray())
 	{
-		if (type->IsUnknownSizedArray())
+		if (type->IsUnknownSizedArrayType())
 		{
 			auto arrType = (BfUnknownSizedArrayType*)type;
 			name += StrFormat("arr_$", arrType->mSize);

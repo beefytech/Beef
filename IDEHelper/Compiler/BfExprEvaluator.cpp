@@ -508,10 +508,10 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 		return InferGenericArgument(methodInstance, argPointerType->mElementType, wantPointerType->mElementType, BfIRValue());		
 	}
 
-	if (wantType->IsUnknownSizedArray())
+	if (wantType->IsUnknownSizedArrayType())
 	{
 		auto wantArrayType = (BfUnknownSizedArrayType*)wantType;		
-		if (argType->IsUnknownSizedArray())
+		if (argType->IsUnknownSizedArrayType())
 		{
 			auto argArrayType = (BfUnknownSizedArrayType*)argType;
 			InferGenericArgument(methodInstance, argArrayType->mElementCountSource, wantArrayType->mElementCountSource, BfIRValue());
@@ -5002,7 +5002,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		{
 			if (methodInstance->mReturnType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
 			{
-				if (mExpectingType->IsSizedArray())
+				if ((mExpectingType != NULL) && (mExpectingType->IsSizedArray()))
 				{
 					return BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(mExpectingType)), mExpectingType);
 				}
@@ -18478,8 +18478,8 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 			mModule->MakeAddressable(target);
 
 		mModule->PopulateType(underlyingType);
-		if ((sizedArrayType->IsUnknownSizedArray()) || (isUndefIndex))
-		{			
+		if ((sizedArrayType->IsUndefSizedArray()) || (isUndefIndex))
+		{
 			mResult = mModule->GetDefaultTypedValue(underlyingType, false, BfDefaultValueKind_Addr);
 		}
 		else if (sizedArrayType->IsValuelessType())				

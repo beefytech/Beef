@@ -2785,7 +2785,7 @@ int BfResolvedTypeSet::Hash(BfType* type, LookupContext* ctx, bool allowRef)
 		auto sizedArray = (BfSizedArrayType*)type;
 		int elemHash = Hash(sizedArray->mElementType, ctx) ^ HASH_SIZED_ARRAY;
 		int hashVal = (elemHash << 5) - elemHash;
-		if (type->IsUnknownSizedArray())
+		if (type->IsUnknownSizedArrayType())
 		{
 			auto unknownSizedArray = (BfUnknownSizedArrayType*)type;
 			int elemHash = Hash(unknownSizedArray->mElementCountSource, ctx);
@@ -4060,7 +4060,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 			BfTypedValue typedVal = constResolver.Resolve(sizeExpr, NULL, BfConstResolveFlag_ArrayInitSize);
 			if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
 			{
-				if (!lhs->IsUnknownSizedArray())
+				if (!lhs->IsUnknownSizedArrayType())
 					return false;
 
 				auto lhsUnknownSizedArray = (BfUnknownSizedArrayType*)lhs;
@@ -4070,7 +4070,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				typedVal = ctx->mModule->Cast(sizeExpr, typedVal, intType);
 			if (typedVal)
 			{				
-				if (lhs->IsUnknownSizedArray())
+				if (lhs->IsUnknownSizedArrayType())
 					return false;				
 				
 				auto constant = ctx->mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
