@@ -656,6 +656,9 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			name += strP;
 			name += '`';
 		}		
+
+		if (constExprValueType->mValue.mTypeCode == BfTypeCode_Let)
+			name += "Undef";
 	}
 	else
 	{
@@ -1756,6 +1759,8 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			name += "$";
 		}
 		MangleConst(mangleContext, name, val);		
+		if (constExprValueType->mValue.mTypeCode == BfTypeCode_Let)
+			name += "Undef";
 	}
 	else
 	{
