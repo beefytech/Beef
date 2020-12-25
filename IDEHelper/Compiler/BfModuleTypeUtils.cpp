@@ -8047,6 +8047,13 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 					if ((selfType->IsSpecializedType()) || (selfType->IsUnspecializedTypeVariation()))
 						selfType = ResolveTypeDef(selfType->ToTypeInstance()->mTypeDef, populateType);
 				}
+				if (selfType != NULL)
+				{
+					auto selfTypeInst = selfType->ToTypeInstance();
+					if ((selfTypeInst != NULL) && (selfTypeInst->mTypeDef->IsGlobalsContainer()))
+						selfType = NULL;
+				}
+
 				if (selfType == NULL)
 				{
 					Fail("'Self' type is not usable here", typeRef);
