@@ -1103,6 +1103,15 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 			if (typeAliasDecl->mAliasToType != NULL)
 				aliasToType = ResolveTypeRef(typeAliasDecl->mAliasToType, BfPopulateType_IdentityNoRemapAlias);				
 		}
+
+		if (aliasToType != NULL)
+		{
+			if (aliasToType->IsConstExprValue())
+			{
+				Fail(StrFormat("Illegal alias to type '%s'", TypeToString(aliasToType).c_str()), typeAlias->mTypeDef->GetRefNode());
+				aliasToType = NULL;
+			}
+		}
 		
 		if (aliasToType != NULL)
 		{
