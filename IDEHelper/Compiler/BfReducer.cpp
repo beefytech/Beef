@@ -7707,8 +7707,9 @@ BfExpression* BfReducer::CreateIndexerExpression(BfExpression* target)
 	if (attributeDirective != NULL)
 	{
 		BfAttributedExpression* attribExpr = mAlloc->Alloc<BfAttributedExpression>();
-		attribExpr->mAttributes = attributeDirective;
-		MEMBER_SET(attribExpr, mExpression, indexerExpr);
+		ReplaceNode(indexerExpr, attribExpr);		
+		attribExpr->mExpression = indexerExpr;
+		MEMBER_SET(attribExpr, mAttributes, attributeDirective);
 		return attribExpr;
 	}
 

@@ -10826,8 +10826,10 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				{
 					auto svTypeInst = toType->ToTypeInstance();
 
-					mBfIRBuilder->PopulateType(svTypeInst);					
-
+					PopulateType(svTypeInst);
+					PopulateType(svTypeInst->mBaseType);
+					mBfIRBuilder->PopulateType(svTypeInst);
+					
 					auto stringCharPtr = GetStringCharPtr(stringId);					
 					SizedArray<BfIRValue, 2> spanFieldVals;
 					spanFieldVals.Add(mBfIRBuilder->CreateConstStructZero(mBfIRBuilder->MapType(svTypeInst->mBaseType->mBaseType)));
