@@ -7322,7 +7322,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		typeConstraintInst = genericParamInst->mTypeConstraint->ToTypeInstance();
 	
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Struct) && 
-		((checkGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_Var)) == 0) && (!checkArgType->IsValueType()))
+		((checkGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_Enum | BfGenericParamFlag_Var)) == 0) && (!checkArgType->IsValueType()))
 	{
 		if (!ignoreErrors)
 			*errorOut = Fail(StrFormat("The type '%s' must be a value type in order to use it as parameter '%s' for '%s'",
