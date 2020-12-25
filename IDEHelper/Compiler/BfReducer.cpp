@@ -1133,6 +1133,9 @@ BfExpression* BfReducer::CheckBinaryOperatorPrecedence(BfBinaryOperatorExpressio
 		bool didCondSwap = false;
 		while (auto rightCondExpression = BfNodeDynCast<BfConditionalExpression>(checkBinOpExpression->mRight))
 		{
+			if (rightCondExpression->mTrueExpression == NULL)
+				break;
+
 			// Turn (A || (B ? C : D)) into ((A || B) ? C : D)
 
 			BfExpression* exprA = checkBinOpExpression->mLeft;
