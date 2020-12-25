@@ -7918,15 +7918,19 @@ BfTypedValue BfModule::TryLookupGenericConstVaue(BfIdentifierNode* identifierNod
 			{
 				BfConstExprValueType* constExprValueType = (BfConstExprValueType*)genericParamResult;
 
+				auto constType = genericTypeConstraint;
+				if (constType == NULL)
+					constType = GetPrimitiveType(BfTypeCode_IntPtr);
+
 				BfExprEvaluator exprEvaluator(this);
-				exprEvaluator.mExpectingType = genericTypeConstraint;
+				exprEvaluator.mExpectingType = constType;
 				exprEvaluator.GetLiteral(identifierNode, constExprValueType->mValue);								
 
 				if (exprEvaluator.mResult)
 				{
-					auto castedVal = CastToValue(identifierNode, exprEvaluator.mResult, genericTypeConstraint, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail));
+					auto castedVal = CastToValue(identifierNode, exprEvaluator.mResult, constType, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail));
 					if (castedVal)
-						return BfTypedValue(castedVal, genericTypeConstraint);
+						return BfTypedValue(castedVal, constType);
 				}
 				
 				return exprEvaluator.mResult;
