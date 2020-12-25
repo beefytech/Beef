@@ -10227,6 +10227,7 @@ namespace IDE
 			profileCmd.mSampleRate = sampleRate;
 			if (var processCompileCmd = mExecutionQueue.Back as ProcessBfCompileCmd)
 			{
+				delete processCompileCmd.mProfileCmd;
 				processCompileCmd.mProfileCmd = profileCmd;
 			}
 		}
