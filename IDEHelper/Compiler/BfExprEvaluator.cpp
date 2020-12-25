@@ -8749,7 +8749,10 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 		if (mResult.mType->IsSizedArray())
 		{
 			mResult.mType = mModule->GetWrappedStructType(mResult.mType);
-			mResult.mValue = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapTypeInstPtr(mResult.mType->ToTypeInstance()));
+			if (mResult.mType->IsValuelessType())
+				mResult.mValue = mModule->mBfIRBuilder->GetFakeVal();
+			else
+				mResult.mValue = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapTypeInstPtr(mResult.mType->ToTypeInstance()));
 		}
 		else if (mResult.mType->IsWrappableType())
 		{
