@@ -8833,7 +8833,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 						if (constant->mConstType == BfConstType_Undef)
 							elementCount = -1; // Undef marker
 						else if (BfIRBuilder::IsInt(constant->mTypeCode))
-							elementCount = constant->mInt32;
+							elementCount = (intptr)constant->mInt64;
 					}
 				}
 			}
