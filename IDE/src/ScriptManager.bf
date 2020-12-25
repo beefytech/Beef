@@ -2173,6 +2173,16 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void DeleteTextBackward(int count)
+		{
+			var textPanel = GetActiveTextPanel();
+			if (textPanel == null)
+				return;
+			for (int i < count)
+				textPanel.EditWidget.mEditWidgetContent.Backspace();
+		}
+
+		[IDECommand]
 		public void MarkPosition()
 		{
 			var textPanel = GetActiveTextPanel();

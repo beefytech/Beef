@@ -50,7 +50,8 @@ class BfAtom
 {
 public:
 	StringView mString;
-	int mRefCount;	
+	int mRefCount;
+	int mPendingDerefCount;
 	int mHash;
 	uint32 mAtomUpdateIdx;
 	bool mIsSystemType;
@@ -929,7 +930,8 @@ public:
 	bool mHasExtensionMethods;
 	bool mHasOverrideMethods;	
 	bool mIsOpaque;
-	bool mIsNextRevision;	
+	bool mIsNextRevision;
+	bool mInDeleteQueue;
 
 public:
 	BfTypeDef()
@@ -969,6 +971,7 @@ public:
 		mIsOpaque = false;
 		mPartialUsed = false;
 		mIsNextRevision = false;
+		mInDeleteQueue = false;
 		mDupDetectedRevision = -1;
 		mNestDepth = 0;
 		mOuterType = NULL;

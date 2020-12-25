@@ -2159,23 +2159,30 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 			// If any atoms have been placed in the graveyard, typesHash will be zero and thus cause a rebuild
 			uint32 atomUpdateIdx = lookupEntry.mName.GetAtomUpdateIdx();
 			
-			// Sanity check, mostly checking that useTypeDef wasn't deleted
-			BF_ASSERT((lookupEntry.mUseTypeDef->mName->mAtomUpdateIdx >= 1) && (lookupEntry.mUseTypeDef->mName->mAtomUpdateIdx <= mSystem->mAtomUpdateIdx));
-
-			// Only do the actual lookup if types were added or removed whose name is contained in one of the name parts referenced
-			if (atomUpdateIdx != lookupEntry.mAtomUpdateIdx)
+			if (atomUpdateIdx == 0)
 			{
-				// NOTE: we purposely don't use mNextRevision here. If the the was NOT rebuilt then that means we didn't actually rebuild
-				//  so the mNextRevision will be ignored
-				auto useTypeDef = lookupEntry.mUseTypeDef;
-				BfTypeDef* ambiguousTypeDef = NULL;
-				BfTypeDef* result = mSystem->FindTypeDef(lookupEntry.mName, lookupEntry.mNumGenericParams, useTypeDef->mProject, useTypeDef->mNamespaceSearch, &ambiguousTypeDef);
-				if (result != lookupEntryPair.mValue.mTypeDef)
-				{					
-					isDirty = true;
+				isDirty = true;				
+			}
+			else
+			{
+				// Sanity check, mostly checking that useTypeDef wasn't deleted
+				BF_ASSERT((lookupEntry.mUseTypeDef->mName->mAtomUpdateIdx >= 1) && (lookupEntry.mUseTypeDef->mName->mAtomUpdateIdx <= mSystem->mAtomUpdateIdx));
+
+				// Only do the actual lookup if types were added or removed whose name is contained in one of the name parts referenced
+				if (atomUpdateIdx != lookupEntry.mAtomUpdateIdx)
+				{
+					// NOTE: we purposely don't use mNextRevision here. If the the was NOT rebuilt then that means we didn't actually rebuild
+					//  so the mNextRevision will be ignored
+					auto useTypeDef = lookupEntry.mUseTypeDef;
+					BfTypeDef* ambiguousTypeDef = NULL;
+					BfTypeDef* result = mSystem->FindTypeDef(lookupEntry.mName, lookupEntry.mNumGenericParams, useTypeDef->mProject, useTypeDef->mNamespaceSearch, &ambiguousTypeDef);
+					if (result != lookupEntryPair.mValue.mTypeDef)
+					{
+						isDirty = true;
+					}
+					else
+						lookupEntry.mAtomUpdateIdx = atomUpdateIdx;
 				}
-				else
-					lookupEntry.mAtomUpdateIdx = atomUpdateIdx;
 			}
 		}		
 

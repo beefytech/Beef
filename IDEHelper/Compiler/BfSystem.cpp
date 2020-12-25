@@ -103,6 +103,8 @@ void Beefy::DoBfLog(int fileIdx, const char* fmt ...)
 BfAtom::~BfAtom()
 {
 	BF_ASSERT(mPrevNamesMap.IsEmpty());
+	BF_ASSERT(mRefCount == 0);
+	BF_ASSERT(mPendingDerefCount == 0);
 }
 
 void BfAtom::Ref()
@@ -360,7 +362,7 @@ uint32 BfAtomComposite::GetAtomUpdateIdx()
 	for (int i = 0; i < mSize; i++)
 	{
 		auto atom = mParts[i];
-		if (atom->mRefCount == 0)
+		if ((atom->mRefCount - atom->mPendingDerefCount) == 0)
 			return 0; // 0 is our "error condition" when we're looking at a graveyard'ed atom
 		updateIdx = BF_MAX(updateIdx, atom->mAtomUpdateIdx);
 	}
@@ -618,6 +620,12 @@ void BfTypeDef::FreeMembers()
 		{
 			if (!mIsNextRevision)
 				mSystem->UntrackName(this);
+			if (mInDeleteQueue)
+			{
+				BF_ASSERT(mName->mPendingDerefCount > 0);
+				if (mName->mPendingDerefCount > 0)
+					mName->mPendingDerefCount--;
+			}
 			mSystem->ReleaseAtom(mName);
 		}
 		mName = NULL;
@@ -625,6 +633,12 @@ void BfTypeDef::FreeMembers()
 
 	if (mNameEx != NULL)
 	{
+		if (mInDeleteQueue)
+		{
+			BF_ASSERT(mNameEx->mPendingDerefCount > 0);
+			if (mNameEx->mPendingDerefCount > 0)
+				mNameEx->mPendingDerefCount--;			
+		}
 		mSystem->ReleaseAtom(mNameEx);
 		mNameEx = NULL;
 	}
@@ -1854,6 +1868,7 @@ BfAtom* BfSystem::GetAtom(const StringImpl& string)
 		atom->mAtomUpdateIdx = ++mAtomUpdateIdx;
 		atom->mString = *stringPtr;
 		atom->mRefCount = 1;
+		atom->mPendingDerefCount = 0;
 		
 		atom->mHash = 0;
 		for (char c : string)
@@ -2496,6 +2511,21 @@ void BfSystem::RemoveTypeDef(BfTypeDef* typeDef)
 	// mTypeDef is already locked by the system lock
 	mTypeDefs.Remove(typeDef);	
 	AutoCrit autoCrit(mDataLock);
+	
+	// This will get properly handled in UntrackName when we process the mTypeDefDeleteQueue, but this
+	//  mAtomUpdateIdx increment will trigger lookup changes in BfContext::VerifyTypeLookups
+	if (typeDef->mName != mEmptyAtom)
+	{
+		typeDef->mName->mAtomUpdateIdx = ++mAtomUpdateIdx;
+		typeDef->mName->mPendingDerefCount++;
+	}
+	if (typeDef->mNameEx != mEmptyAtom)
+	{
+		typeDef->mNameEx->mAtomUpdateIdx = ++mAtomUpdateIdx;
+		typeDef->mNameEx->mPendingDerefCount++;
+	}
+	typeDef->mInDeleteQueue = true;
+	
 	mTypeDefDeleteQueue.push_back(typeDef);	
 	mTypeMapVersion++;
 }

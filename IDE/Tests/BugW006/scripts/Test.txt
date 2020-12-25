@@ -1,0 +1,25 @@
+# This tests that types that fail generic tests don't create types referenced in methods
+# and also that they get deleted immediately when they are dereferenced.
+
+ShowFile("src/Program.bf")
+
+GotoText("//Test_Y")
+AdjustCursor(16, 1)
+InsertText(" abc")
+Sleep(500)
+InsertText(", in")
+Sleep(500)
+InsertText("t def")
+
+Compile()
+
+DeleteTextBackward(5)
+Sleep(500)
+DeleteTextBackward(4)
+Sleep(500)
+DeleteTextBackward(4)
+Sleep(500)
+ToggleCommentAt("Test_Definition")
+
+Sleep(500)
+Compile()
