@@ -9391,6 +9391,18 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		_BoolResult(type->IsObject());
 	else if (memberName == "IsValueType")
 		_BoolResult(type->IsValueType());
+	else if (memberName == "IsPrimitive")
+		_BoolResult(type->IsPrimitiveType());
+	else if (memberName == "IsInteger")
+		_BoolResult(type->IsInteger());
+	else if (memberName == "IsIntegral")
+		_BoolResult(type->IsIntegral());
+	else if (memberName == "IsSigned")
+		_BoolResult(type->IsSigned());
+	else if (memberName == "IsFloatingPoint")
+		_BoolResult(type->IsFloat());
+	else if (memberName == "IsPointer")
+		_BoolResult(type->IsPointer());
 	else if (memberName == "IsStruct")
 		_BoolResult(type->IsStruct());
 	else if (memberName == "IsSplattable")
