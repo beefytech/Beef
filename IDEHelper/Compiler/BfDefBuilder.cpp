@@ -585,8 +585,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	{
 		if (methodDeclaration->mNameNode != NULL)
 			methodDef->mName = methodDeclaration->mNameNode->ToString();
-		methodDef->mMethodType = BfMethodType_Mixin;				
-		methodDef->mIsNoSplat = true;
+		methodDef->mMethodType = BfMethodType_Mixin;		
 	}
 	else
 	{

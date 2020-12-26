@@ -5322,7 +5322,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		{
 			if (paramType->IsStruct())
 			{
-				if ((!doingThis) || (!methodDef->mIsMutating && methodInstance->AllowsSplatting()))
+				if ((!doingThis) || (!methodDef->mIsMutating && methodInstance->AllowsSplatting(paramIdx)))
 				{
 					BfTypeCode loweredTypeCode = BfTypeCode_None;
 					BfTypeCode loweredTypeCode2 = BfTypeCode_None;					
@@ -5778,7 +5778,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	if (mModule->mIsConstModule)
 		allowThisSplatting = owner->IsTypedPrimitive() || owner->IsValuelessType();
 	else
-		allowThisSplatting = methodInstance->AllowsThisSplatting();
+		allowThisSplatting = methodInstance->AllowsSplatting(-1);
 
 	if ((!allowThisSplatting) || (methodDef->mIsMutating))
 	{
@@ -5788,7 +5788,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	}
 	
 	auto thisType = methodInstance->GetThisType();
-	PushArg(argVal, irArgs, !methodInstance->AllowsThisSplatting(), thisType->IsPointer());
+	PushArg(argVal, irArgs, !methodInstance->AllowsSplatting(-1), thisType->IsPointer());
 }
 
 void BfExprEvaluator::FinishDeferredEvals(SizedArrayImpl<BfResolvedArg>& argValues)
@@ -10832,7 +10832,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 	bool isStructTarget = (target) && (target.mType->IsStruct());
 	bool bindCapturesThis = bindMethodInstance->HasThis() && !isStructTarget;
-	bool needsSplat = (isStructTarget) && (!bindMethodInstance->mMethodDef->mIsMutating) && (bindMethodInstance->AllowsSplatting());
+	bool needsSplat = (isStructTarget) && (!bindMethodInstance->mMethodDef->mIsMutating) && (bindMethodInstance->AllowsSplatting(-1));
 	bool captureThisByValue = isStructTarget;	
 	if (bindMethodInstance->mMethodDef->mIsLocalMethod)
 	{

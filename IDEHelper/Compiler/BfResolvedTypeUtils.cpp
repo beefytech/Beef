@@ -733,7 +733,7 @@ int BfMethodInstance::GetStructRetIdx(bool forceStatic)
 			return 0;
 		if (!owner->IsValueType())
 			return 1;
-		if ((mMethodDef->mIsMutating) || (!owner->IsSplattable()) || ((!AllowsThisSplatting()) && (!owner->GetLoweredType(BfTypeUsage_Parameter))))
+		if ((mMethodDef->mIsMutating) || (!owner->IsSplattable()) || ((!AllowsSplatting(-1)) && (!owner->GetLoweredType(BfTypeUsage_Parameter))))
 			return 1;
 		return 0;		
 	}
@@ -800,22 +800,28 @@ bool BfMethodInstance::IsTestMethod()
 		(mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes != NULL) && (mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes->Contains(GetOwner()->mModule->mCompiler->mTestAttributeTypeDef));
 }
 
-bool BfMethodInstance::AllowsSplatting()
+bool BfMethodInstance::AllowsSplatting(int paramIdx)
 {
-	if (mCallingConvention != BfCallingConvention_Unspecified)
-		return false;
-	if (mMethodDef->mIsNoSplat)
-		return false;
-	return true;
-}
-
-bool BfMethodInstance::AllowsThisSplatting()
-{
-	if (mCallingConvention != BfCallingConvention_Unspecified)
-		return false;
-	if (mMethodDef->mIsNoSplat)
-		return false;
-	return !mMethodDef->HasNoThisSplat();
+	if (paramIdx == -1)
+	{
+		if (mCallingConvention != BfCallingConvention_Unspecified)
+			return false;
+		if (mMethodDef->mIsNoSplat)
+			return false;
+		return !mMethodDef->HasNoThisSplat();
+	}
+	else
+	{
+		if (mCallingConvention != BfCallingConvention_Unspecified)
+			return false;
+		if ((mMethodDef->mIsNoSplat) || (mMethodDef->mMethodType == BfMethodType_Mixin))
+		{
+			if (IsImplicitCapture(paramIdx))
+				return true;
+			return false;
+		}
+		return true;
+	}
 }
 
 bool BfMethodInstance::HasThis()
@@ -839,7 +845,7 @@ BfType* BfMethodInstance::GetThisType()
 	{
 		auto thisType = mParams[0].mResolvedType;
 		auto owner = GetOwner();
-		if ((thisType->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (!thisType->GetLoweredType(BfTypeUsage_Parameter)))
+		if ((thisType->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting(-1))) && (!thisType->GetLoweredType(BfTypeUsage_Parameter)))
 			return owner->mModule->CreatePointerType(thisType);
 		return thisType;
 	}
@@ -926,7 +932,7 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool returnUnderlyingParams
 		{
 			BF_FATAL("Wrong 'this' index");
 		}
-		if ((thisType->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting())) && (!thisType->GetLoweredType(BfTypeUsage_Parameter)))
+		if ((thisType->IsValueType()) && ((mMethodDef->mIsMutating) || (!AllowsSplatting(paramIdx))) && (!thisType->GetLoweredType(BfTypeUsage_Parameter)))
 			return owner->mModule->CreatePointerType(thisType);
 		return thisType;
 	}
@@ -959,7 +965,7 @@ bool BfMethodInstance::GetParamIsSplat(int paramIdx)
 	{
 		BF_ASSERT(!mMethodDef->mIsStatic);
 		auto owner = mMethodInstanceGroup->mOwner;
-		if ((owner->IsValueType()) && (mMethodDef->mIsMutating || !AllowsSplatting()))
+		if ((owner->IsValueType()) && (mMethodDef->mIsMutating || !AllowsSplatting(paramIdx)))
 			return false;
 		return owner->mIsSplattable;
 	}	
@@ -1172,7 +1178,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			{
 				checkType = checkType->GetUnderlyingType();
 			}
-			else if ((!module->mIsConstModule) && (checkType->IsSplattable()) && (AllowsThisSplatting()))
+			else if ((!module->mIsConstModule) && (checkType->IsSplattable()) && (AllowsSplatting(-1)))
 			{
 				doSplat = true;
 			}
@@ -1189,7 +1195,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			{
 				checkType = checkType->GetUnderlyingType();
 			}
-			else if ((!module->mIsConstModule) && (checkType->IsSplattable()) && (AllowsSplatting()))
+			else if ((!module->mIsConstModule) && (checkType->IsSplattable()) && (AllowsSplatting(paramIdx)))
 			{
 				doSplat = true;
 			}

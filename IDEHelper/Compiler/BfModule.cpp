@@ -15565,6 +15565,11 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 	if ((methodInstance->HasThis()) && (!methodDef->mHasExplicitThis))	
 		paramIdx = -1;	
 
+	if (methodInstance->mMethodDef->mName == "Invoke@GetFFIType$wPb")
+	{
+		NOP;
+	}
+
 	int argCount = methodInstance->GetIRFunctionParamCount(this);
 
 	while (argIdx < argCount)
@@ -15593,8 +15598,8 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 				resolvedTypeRef = mCurMethodState->mClosureState->mClosureType;
 			else
 				resolvedTypeRef = methodInstance->GetThisType();
-			isSplattable = (!mIsConstModule) && (resolvedTypeRef->IsSplattable()) && (methodInstance->AllowsThisSplatting());
-			tryLowering = (!mIsConstModule) && (methodInstance->AllowsThisSplatting());
+			isSplattable = (!mIsConstModule) && (resolvedTypeRef->IsSplattable()) && (methodInstance->AllowsSplatting(-1));
+			tryLowering = (!mIsConstModule) && (methodInstance->AllowsSplatting(-1));
         }
 		else
 		{
@@ -15602,7 +15607,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
         	resolvedTypeRef = methodInstance->GetParamType(paramIdx);
 			if (resolvedTypeRef->IsMethodRef())
 				isSplattable = true;
-			else if ((!mIsConstModule) && (resolvedTypeRef->IsSplattable()) && (methodInstance->AllowsSplatting()))
+			else if ((!mIsConstModule) && (resolvedTypeRef->IsSplattable()) && (methodInstance->AllowsSplatting(paramIdx)))
 			{
 				auto resolvedTypeInst = resolvedTypeRef->ToTypeInstance();
 				if ((resolvedTypeInst != NULL) && (resolvedTypeInst->mIsCRepr))
@@ -16756,7 +16761,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		else
 			paramVar->mValue = mBfIRBuilder->GetFakeVal();
 				
-		if ((!mIsConstModule) && (thisType->IsSplattable()) && (methodInstance->AllowsThisSplatting()))		
+		if ((!mIsConstModule) && (thisType->IsSplattable()) && (methodInstance->AllowsSplatting(-1)))
 		{
 			if (!thisType->IsTypedPrimitive())
 				paramVar->mIsSplat = true;
@@ -16848,9 +16853,9 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			{
 				paramVar->mIsSplat = true;
 			}
-			else if ((resolvedType->IsComposite()) && (resolvedType->IsSplattable()))
+			else if ((!mIsConstModule) && (resolvedType->IsComposite()) && (resolvedType->IsSplattable()))
 			{
-				if ((!mIsConstModule) && (methodInstance->AllowsSplatting()))
+				if (methodInstance->AllowsSplatting(paramIdx))
 				{
 					int splatCount = resolvedType->GetSplatCount();
 					if (argIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
@@ -21563,7 +21568,7 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 		{
 			methodParam.mIsSplat = true;
 		}
-		else if ((checkType->IsComposite()) && (methodInstance->AllowsSplatting()))
+		else if ((checkType->IsComposite()) && (methodInstance->AllowsSplatting(paramIdx)))
 		{
 			PopulateType(checkType, BfPopulateType_Data);
 			if (checkType->IsSplattable())

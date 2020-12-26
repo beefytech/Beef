@@ -906,8 +906,7 @@ public:
 	bool AlwaysInline();
 	BfImportCallKind GetImportCallKind();	
 	bool IsTestMethod();
-	bool AllowsSplatting();
-	bool AllowsThisSplatting();
+	bool AllowsSplatting(int paramIdx);
 	int GetParamCount();
 	int GetImplicitParamCount();	
 	void GetParamName(int paramIdx, StringImpl& name);
