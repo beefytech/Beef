@@ -10751,12 +10751,29 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					result = mModule->mBfIRBuilder->CreatePtrToInt(funcValue, BfTypeCode_IntPtr);
 				}
 			}
-			else if ((bindResult.mOrigTarget) && (bindResult.mOrigTarget.mType->IsGenericParam()) && (bindResult.mMethodInstance->GetOwner()->IsInterface()))
-			{
-				result = mModule->mBfIRBuilder->GetFakeVal();
-			}
-			else
-			{				
+			else 
+			{			
+				if ((bindResult.mOrigTarget) && (bindResult.mOrigTarget.mType->IsGenericParam()) && (bindResult.mMethodInstance->GetOwner()->IsInterface()))
+				{
+					bool matching = true;
+					if (methodInstance->HasExplicitThis())
+					{
+						auto thisType = methodInstance->GetParamType(0);
+						
+						if (thisType->IsPointer())						
+							thisType = thisType->GetUnderlyingType();
+						if (thisType->IsRef())
+							thisType = thisType->GetUnderlyingType();
+
+						matching = thisType == bindResult.mOrigTarget.mType;
+					}
+
+					if (matching)
+					{
+						mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), mExpectingType);
+						return;
+					}
+				}
 				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType);
 			}			
 			if (result)
