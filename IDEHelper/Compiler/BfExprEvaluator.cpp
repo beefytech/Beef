@@ -8397,6 +8397,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				needsMut = false;
 		}
 
+		if ((mFunctionBindResult != NULL) && (mFunctionBindResult->mSkipMutCheck))
+			needsMut = false;
+
 		if (needsMut)
 		{
 			String err = StrFormat("call mutating method '%s' on", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str());
@@ -10748,8 +10751,12 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					result = mModule->mBfIRBuilder->CreatePtrToInt(funcValue, BfTypeCode_IntPtr);
 				}
 			}
-			else
+			else if ((bindResult.mOrigTarget) && (bindResult.mOrigTarget.mType->IsGenericParam()) && (bindResult.mMethodInstance->GetOwner()->IsInterface()))
 			{
+				result = mModule->mBfIRBuilder->GetFakeVal();
+			}
+			else
+			{				
 				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType);
 			}			
 			if (result)

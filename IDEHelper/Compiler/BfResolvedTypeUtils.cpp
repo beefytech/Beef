@@ -3813,7 +3813,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		bool isMutating = true;
 
 		int paramRefOfs = 0;
-		if (!rhsDelegateType->mParams.IsEmpty())
+		if ((!rhsDelegateType->mParams.IsEmpty()) && (lhs->IsFunction()))
 		{
 			auto param0 = rhsDelegateType->mParams[0];
 			if ((param0->mNameNode != NULL) && (param0->mNameNode->Equals("this")))
