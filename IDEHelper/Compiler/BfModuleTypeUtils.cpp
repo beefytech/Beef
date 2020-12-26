@@ -9996,7 +9996,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 	// Generic param -> *
 	if ((typedVal.mType->IsGenericParam()) && (!toType->IsGenericParam()))
 	{
-		if (toType == mContext->mBfObjectType)
+		if ((typedVal.mKind != Beefy::BfTypedValueKind_GenericConstValue) && (toType == mContext->mBfObjectType))
 		{			
 			// Always allow casting from generic to object
 			return typedVal.mValue;
