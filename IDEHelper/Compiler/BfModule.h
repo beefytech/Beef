@@ -1820,6 +1820,7 @@ public:
 	void CreateDllImportMethod();	
 	BfIRCallingConv GetIRCallingConvention(BfMethodInstance* methodInstance);
 	void SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined);
+	void EmitInitBlocks(const std::function<void(BfAstNode*)>& initBlockCallback);
 	void EmitCtorBody(bool& skipBody);
 	void EmitDtorBody();
 	void EmitEnumToStringBody();

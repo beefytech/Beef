@@ -792,7 +792,10 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			else if (typeRefName == "Inline")
 				methodDef->mAlwaysInline = true;
 			else if (typeRefName == "AllowAppend")
+			{
 				methodDef->mHasAppend = true;
+				methodDef->mIsNoSplat = true;
+			}
 			else if (typeRefName == "Checked")
 				methodDef->mCheckedKind = BfCheckedKind_Checked;
 			else if (typeRefName == "Unchecked")
@@ -1866,6 +1869,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					methodDef->mProtection = BfProtection_Public;					
 					methodDef->mMethodType = BfMethodType_CtorCalcAppend;
 					methodDef->mIsMutating = method->mIsMutating;
+					methodDef->mIsNoSplat = true;
 					
 					methodDef->mMethodDeclaration = method->mMethodDeclaration;
 					methodDef->mReturnTypeRef = mSystem->mDirectIntTypeRef;

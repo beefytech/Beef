@@ -411,6 +411,8 @@ public:
 
 	void EmitAppendAlign(int align, int sizeMultiple = 0)
 	{
+		BF_ASSERT(align > 0);
+
 		if (mIsFirstConstPass)
 			mModule->mCurMethodInstance->mAppendAllocAlign = BF_MAX((int)mModule->mCurMethodInstance->mAppendAllocAlign, align);
 
@@ -425,6 +427,8 @@ public:
 			else
 				mCurAppendAlign = sizeMultiple % align;
 		}
+
+		BF_ASSERT(mCurAppendAlign > 0);
 
 		if (mConstAccum)
 		{
@@ -613,6 +617,8 @@ public:
 							return;
 						}
 					}
+
+					mModule->PopulateType(resultType);
 
 					if (isRawArrayAlloc)
 					{
@@ -13129,10 +13135,6 @@ void BfModule::SetupMethodIdHash(BfMethodInstance* methodInstance)
 	}	
 
 	methodInstance->mIdHash = (int64)hashCtx.Finish64();
-	if (methodInstance->mIdHash == 0x3400000029LL)
-	{
-		NOP;
-	}	
 }
 
 BfIRValue BfModule::GetInterfaceSlotNum(BfTypeInstance* ifaceType)
@@ -14730,7 +14732,7 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 		return BfTypedValue();
 
 	// Do we need to iterate in order to resolve mAppendAllocAlign?
-	bool isFirstRun = methodInst->mAppendAllocAlign < 0;
+	bool isFirstRun = methodInst->mEndingAppendAllocAlign < 0;
 	bool wasAllConst = true;
 
 	int argIdx = 0;
@@ -15079,10 +15081,15 @@ void BfModule::CreateStaticCtor()
 				{					
 					continue;
 				}
-				GetFieldInitializerValue(fieldInst, NULL, NULL, NULL, true);
-				
+				GetFieldInitializerValue(fieldInst, NULL, NULL, NULL, true);				
 			}
 		}
+
+		auto _CheckInitBlock = [&](BfAstNode* node)
+		{
+		};
+
+		EmitInitBlocks(_CheckInitBlock);
 	}
 	else
 	{
@@ -15565,11 +15572,6 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 	if ((methodInstance->HasThis()) && (!methodDef->mHasExplicitThis))	
 		paramIdx = -1;	
 
-	if (methodInstance->mMethodDef->mName == "Invoke@GetFFIType$wPb")
-	{
-		NOP;
-	}
-
 	int argCount = methodInstance->GetIRFunctionParamCount(this);
 
 	while (argIdx < argCount)
@@ -15750,6 +15752,37 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 			_SetupParam(paramName, resolvedTypeRef2);
 				
 		paramIdx++;
+	}
+}
+
+void BfModule::EmitInitBlocks(const std::function<void(BfAstNode*)>& initBlockCallback)
+{
+	auto methodDef = mCurMethodInstance->mMethodDef;
+
+	mCurTypeInstance->mTypeDef->PopulateMemberSets();
+	BfMemberSetEntry* entry = NULL;
+	BfMethodDef* initMethodDef = NULL;
+	mCurTypeInstance->mTypeDef->mMethodSet.TryGetWith(String("__BfInit"), &entry);
+	if (entry != NULL)
+		initMethodDef = (BfMethodDef*)entry->mMemberDef;
+
+	SizedArray<BfAstNode*, 8> initBodies;
+
+	for (; initMethodDef != NULL; initMethodDef = initMethodDef->mNextWithSameName)
+	{
+		if (initMethodDef->mDeclaringType != methodDef->mDeclaringType)
+			continue;
+		if (initMethodDef->mMethodType != BfMethodType_Init)
+			continue;
+		if (initMethodDef->mIsStatic != methodDef->mIsStatic)
+			continue;
+		initBodies.Insert(0, initMethodDef->mBody);
+	}
+
+	for (auto body : initBodies)
+	{
+		initBlockCallback(body);
+		VisitEmbeddedStatement(body);
 	}
 }
 
@@ -16012,29 +16045,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				}
 			}
 
-			mCurTypeInstance->mTypeDef->PopulateMemberSets();
-			BfMemberSetEntry* entry = NULL;
-			BfMethodDef* initMethodDef = NULL;
-			mCurTypeInstance->mTypeDef->mMethodSet.TryGetWith(String("__BfInit"), &entry);
-			if (entry != NULL)
-				initMethodDef = (BfMethodDef*)entry->mMemberDef;
-
-			SizedArray<BfAstNode*, 8> initBodies;
-
-			for (; initMethodDef != NULL; initMethodDef = initMethodDef->mNextWithSameName)
-			{
-				if (initMethodDef->mDeclaringType != methodDef->mDeclaringType)
-					continue;
-				if (initMethodDef->mMethodType != BfMethodType_Init)
-					continue;
-				initBodies.Insert(0, initMethodDef->mBody);
-			}
-
-			for (auto body : initBodies)
-			{
-				_CheckInitBlock(body);
-				VisitEmbeddedStatement(body);				
-			}
+			EmitInitBlocks(_CheckInitBlock);
 
 			if (hadInlineInitBlock)
 			{
