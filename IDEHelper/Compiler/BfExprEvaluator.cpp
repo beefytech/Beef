@@ -1706,7 +1706,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		
 		if ((argIdx >= 0) && (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params) && (paramsElementType == NULL))
 		{
-			if (paramIdx >= (int) mArguments.size())
+			if (argIdx >= (int) mArguments.size())
 				break; // No params			
 
 			BfTypedValue argTypedValue = ResolveArgTypedValue(mArguments[argIdx], NULL, genericArgumentsSubstitute);
