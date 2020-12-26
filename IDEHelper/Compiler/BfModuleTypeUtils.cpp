@@ -551,21 +551,21 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 		typeInst->mIsReified = mIsReified;
 
 		//BF_ASSERT(typeInst->mTypeDef->mTypeCode != BfTypeCode_Extension);
+				
+		typeInst->mRevision = mCompiler->mRevision;
+		if (typeInst->mTypeDef != NULL)
+			BF_ASSERT(typeInst->mTypeDef->mDefState != BfTypeDef::DefState_Deleted);
 
 		if (resolvedTypeRef->IsTuple())
 		{
 			auto tupleType = (BfTypeInstance*)resolvedTypeRef;
 			for (int fieldIdx = 0; fieldIdx < (int)tupleType->mFieldInstances.size(); fieldIdx++)
-			{
+			{				
 				auto fieldInstance = (BfFieldInstance*)&tupleType->mFieldInstances[fieldIdx];
-// 				if (fieldInstance->GetResolvedType()->IsUnspecializedType())
-// 					tupleType->mHasUnspecializedMembers = true;
+				// We need to make sure dependencies get set immediately since we already resolved the types
+				AddFieldDependency(typeInst, fieldInstance, fieldInstance->mResolvedType);
 			}
 		}
-		
-		typeInst->mRevision = mCompiler->mRevision;
-		if (typeInst->mTypeDef != NULL)
-			BF_ASSERT(typeInst->mTypeDef->mDefState != BfTypeDef::DefState_Deleted);
 	}
 
 	if (resolvedTypeRef->IsGenericTypeInstance())
