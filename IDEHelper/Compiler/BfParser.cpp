@@ -2119,15 +2119,18 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 
 			if (isInterpolate)
 			{
-				auto interpolateExpr = mAlloc->Alloc<BfStringInterpolationExpression>();
-				interpolateExpr->mString = mLiteral.mString;
-				interpolateExpr->mTriviaStart = mTriviaStart;
-				interpolateExpr->mSrcStart = mTokenStart;
-				interpolateExpr->mSrcEnd = mSrcIdx;
-				BfSizedArrayInitIndirect(interpolateExpr->mExpressions, interpolateExpressions, mAlloc);				
-				mGeneratedNode = interpolateExpr;
-				mSyntaxToken = BfSyntaxToken_GeneratedNode;
-				mToken = BfToken_None;
+				if (mLiteral.mTypeCode == BfTypeCode_CharPtr)
+				{
+					auto interpolateExpr = mAlloc->Alloc<BfStringInterpolationExpression>();
+					interpolateExpr->mString = mLiteral.mString;
+					interpolateExpr->mTriviaStart = mTriviaStart;
+					interpolateExpr->mSrcStart = mTokenStart;
+					interpolateExpr->mSrcEnd = mSrcIdx;
+					BfSizedArrayInitIndirect(interpolateExpr->mExpressions, interpolateExpressions, mAlloc);				
+					mGeneratedNode = interpolateExpr;
+					mSyntaxToken = BfSyntaxToken_GeneratedNode;
+					mToken = BfToken_None;
+				}
 			}
 
 			return;
