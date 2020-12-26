@@ -351,7 +351,8 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 		BfError* error = NULL;
 		if ((genericArg == NULL) || (!CheckGenericConstraints(BfGenericParamSource(genericTypeInst), genericArg, typeRef, genericParamInstance, NULL, &error)))
 		{
-			genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
+			if (!genericTypeInst->IsUnspecializedTypeVariation())
+				genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
 			return false;
 		}		
 	}	
@@ -2019,7 +2020,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		return;
 	}
 
-	CheckCircularDataError();
+	if (!typeInstance->mTypeFailed)
+		CheckCircularDataError();
 
 	bool underlyingTypeDeferred = false;
 	BfType* underlyingType = NULL;	
@@ -9153,10 +9155,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		resolvedEntry->mValue = tupleType;
 		BF_ASSERT(BfResolvedTypeSet::Hash(tupleType, &lookupCtx) == resolvedEntry->mHash);
 		populateModule->InitType(tupleType, populateType);
-
-#ifdef _DEBUG
-		BF_ASSERT(ResolveType(tupleType, BfPopulateType_Identity) == tupleType);
-#endif
 
 		return ResolveTypeResult(typeRef, tupleType, populateType, resolveFlags);
 	}
