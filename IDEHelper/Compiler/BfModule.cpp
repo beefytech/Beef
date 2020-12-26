@@ -16848,7 +16848,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			{
 				paramVar->mIsSplat = true;
 			}
-			else if (resolvedType->IsComposite() && resolvedType->IsSplattable())
+			else if ((resolvedType->IsComposite()) && (resolvedType->IsSplattable()))
 			{
 				if ((!mIsConstModule) && (methodInstance->AllowsSplatting()))
 				{

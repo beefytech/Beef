@@ -2479,6 +2479,8 @@ BfFieldDef* BfTupleType::AddField(const StringImpl& name)
 
 void BfTupleType::Finish()
 {
+	BF_ASSERT(!mTypeFailed);
+	
 	auto bfSystem = mTypeDef->mSystem;
 	mSource = new BfSource(bfSystem);
 	mTypeDef->mSource = mSource;
