@@ -10582,6 +10582,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 
 	if (bindResult.mMethodInstance == NULL)
 	{
+		if ((mResult) && (mResult.mType->IsVar()))
+			return;
 		mResult = BfTypedValue();
 		return;
 	}
@@ -14233,7 +14235,16 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	
 	auto moduleMethodInstance = GetSelectedMethod(targetSrc, methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher);
 	if (!moduleMethodInstance)
+	{
+		if (methodMatcher.mHasVarArguments)
+		{
+			mResult = mModule->GetDefaultTypedValue(mModule->GetPrimitiveType(BfTypeCode_Var));
+			return;
+		}
+
+		mModule->Fail("Failed to get selected mixin", targetSrc);
 		return;
+	}
 	auto methodInstance = moduleMethodInstance.mMethodInstance;
 
 	for (int checkGenericIdx = 0; checkGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size(); checkGenericIdx++)
