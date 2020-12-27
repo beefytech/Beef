@@ -3,7 +3,7 @@ using System.Collections;
 
 namespace System
 {
-	struct Span<T>
+	struct Span<T> : IEnumerable<T>
 	{
 		protected T* mPtr;
 		protected int mLength;
