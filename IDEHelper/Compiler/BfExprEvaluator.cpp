@@ -12902,8 +12902,8 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 					if (!storeValue)
 						continue;
 					if (!resultType->IsValuelessType())
-					{
-						storeValue = mModule->LoadValue(storeValue);
+					{						
+						storeValue = mModule->LoadOrAggregateValue(storeValue);
 						mModule->mBfIRBuilder->CreateStore(storeValue.mValue, elemAddr);
 					}
 				}
