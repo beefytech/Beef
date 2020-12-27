@@ -1777,7 +1777,7 @@ void BeModule::Hash(BeHashContext& hashCtx)
 		{
 			return (lhs->mName < rhs->mName);
 		});
-
+	
 		for (auto& beGlobalVar : mGlobalVariables)
 		{
 			if (beGlobalVar->mInitializer != NULL)
@@ -1874,15 +1874,16 @@ String BeModule::ToString(BeFunction* wantFunc)
 		}
 		str += "\n";
 
-		str += "; Global variables\n";
-		for (auto gv : mGlobalVariables)
+		str += "; Global variables\n";		
+		for (int gvIdx = 0; gvIdx < (int)mGlobalVariables.size(); gvIdx++)
 		{
+			auto gv = mGlobalVariables[gvIdx];
 			str += gv->mName;
 			str += " =";
 			if (gv->mInitializer == NULL)
 				str += " external";
 			if (gv->mLinkageType == BfIRLinkageType_Internal)
-				str += " internal";			
+				str += " internal";
 			if (gv->mIsConstant)
 				str += " constant";
 			if (gv->mIsTLS)
@@ -1902,7 +1903,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 				str += " align ";
 				str += StrFormat("%d", gv->mAlign);
 			}
-			str += "\n";			
+			str += "\n";
 		}
 		str += "\n";
 

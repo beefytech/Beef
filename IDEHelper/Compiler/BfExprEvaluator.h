@@ -23,14 +23,20 @@ enum BfArgFlags
 	BfArgFlag_StringInterpolateArg = 0x1000
 };
 
+enum BfResolveArgsFlags
+{
+	BfResolveArgsFlag_None = 0,
+	BfResolveArgsFlag_DeferFixits = 1,
+	BfResolveArgsFlag_DeferParamValues = 2, // We still evaluate but don't generate code until the method is selected (for SkipCall support)
+	BfResolveArgsFlag_DeferParamEval = 4,
+	BfResolveArgsFlag_AllowUnresolvedTypes = 8,
+	BfResolveArgsFlag_InsideStringInterpolationAlloc = 0x10
+};
+
 enum BfResolveArgFlags
 {
 	BfResolveArgFlag_None = 0,
-	BfResolveArgFlag_DeferFixits = 1,
-	BfResolveArgFlag_DeferParamValues = 2, // We still evaluate but don't generate code until the method is selected (for SkipCall support)
-	BfResolveArgFlag_DeferParamEval = 4,
-	BfResolveArgFlag_AllowUnresolvedTypes = 8,
-	BfResolveArgFlag_InsideStringInterpolationAlloc = 0x10
+	BfResolveArgFlag_FromGeneric = 1
 };
 
 class BfResolvedArg
@@ -202,7 +208,7 @@ public:
 	Array<BfAmbiguousEntry> mAmbiguousEntries;	
 
 public:
-	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute, BfType *origCheckType = NULL);	
+	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute, BfType *origCheckType = NULL, BfResolveArgFlags flags = BfResolveArgFlag_None);
 	bool InferFromGenericConstraints(BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs);
 	void CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute, 
@@ -391,7 +397,7 @@ public:
 	BfType* BindGenericType(BfAstNode* node, BfType* bindType);
 	BfType* ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 	void ResolveGenericType();	
-	void ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveArgFlags flags = BfResolveArgFlag_None);
+	void ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveArgsFlags flags = BfResolveArgsFlag_None);
 	BfAllocTarget ResolveAllocTarget(BfAstNode* newNode, BfTokenNode*& newToken, BfCustomAttributes** outCustomAttributes = NULL);
 	BfTypedValue ResolveArgValue(BfResolvedArg& resolvedArg, BfType* wantType, BfTypedValue* receivingValue = NULL, BfParamKind paramKind = BfParamKind_Normal, BfIdentifierNode* paramNameNode = NULL);
 	BfMethodDef* GetPropertyMethodDef(BfPropertyDef* propDef, BfMethodType methodType, BfCheckedKind checkedKind, BfTypedValue propTarget);

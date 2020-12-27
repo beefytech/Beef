@@ -350,7 +350,9 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 			{
 				if ((genericParamInst->mTypeConstraint != NULL) && (genericParamInst->mTypeConstraint->IsDelegate()))
 				{
-					argType = genericParamInst->mTypeConstraint;
+					argType = mModule->ResolveGenericType(genericParamInst->mTypeConstraint, NULL, mCheckMethodGenericArguments);
+					if (argType == NULL)
+						return true;
 				}
 			}
 
@@ -358,10 +360,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 			auto prevArgValue = mPrevArgValues[wantGenericParam->mGenericParamIdx];
 			if (prevGenericMethodArg == NULL)			
 			{
-				if ((argType != NULL) && (argType->IsUnspecializedTypeVariation()))
-					argType = mModule->ResolveGenericType(argType, NULL, mCheckMethodGenericArguments);
-				if (argType != NULL)
-					_SetGeneric();
+				_SetGeneric();
 				return true;
 			}			
 
@@ -381,7 +380,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 					return true;
 				}
 			}
-
+			
 			if (argType->IsIntUnknown())
 			{
 				// New int fits into previous arg type, that's good
@@ -1072,7 +1071,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	RETURN_RESULTS;
 }
 
-BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute, BfType *origCheckType)
+BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute, BfType *origCheckType, BfResolveArgFlags flags)
 {	
 	BfTypedValue argTypedValue = resolvedArg.mTypedValue;
 	if ((resolvedArg.mArgFlags & BfArgFlag_DelegateBindAttempt) != 0)
@@ -1085,12 +1084,12 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 		if (exprEvaluator.CanBindDelegate(delegateBindExpr, &boundMethodInstance, origCheckType, genericArgumentsSubstitute))
 		{
 			if (delegateBindExpr->mNewToken == NULL)
-			{				
+			{					
 				if (boundMethodInstance->GetOwner()->IsFunction())
 				{
 					return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), boundMethodInstance->GetOwner());
 				}
-				else if (boundMethodInstance->mDisallowCalling)
+				else if ((boundMethodInstance->mDisallowCalling) || ((flags & BfResolveArgFlag_FromGeneric) == 0))
 				{
 					argTypedValue = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), checkType);
 				}
@@ -1592,7 +1591,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 						argTypedValue = mTarget;
 				}
 				else
-					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], checkType, genericArgumentsSubstitute, origCheckType);
+					argTypedValue = ResolveArgTypedValue(mArguments[argIdx], checkType, genericArgumentsSubstitute, origCheckType, BfResolveArgFlag_FromGeneric);
 				if (!argTypedValue.IsUntypedValue())
 				{
 					auto type = argTypedValue.mType;
@@ -3295,7 +3294,7 @@ void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolation
 		argExprs.Add(stringInterpolationExpression);
 		BfSizedArray<BfExpression*> sizedArgExprs(argExprs);
 		BfResolvedArgs argValues(&sizedArgExprs);
-		ResolveArgValues(argValues, BfResolveArgFlag_InsideStringInterpolationAlloc);
+		ResolveArgValues(argValues, BfResolveArgsFlag_InsideStringInterpolationAlloc);
 		MatchMethod(stringInterpolationExpression, NULL, newString, false, false, "AppendF", argValues, NULL);
 		mResult = newString;
 
@@ -4568,7 +4567,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 	return BfTypedValue();
 }
 
-void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveArgFlags flags)
+void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveArgsFlags flags)
 {	
 	static int idx = 0;
 	idx++;
@@ -4589,7 +4588,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 	if (autoComplete != NULL)
 	{
 		hadIgnoredFixits = autoComplete->mIgnoreFixits;
-		if (flags & BfResolveArgFlag_DeferFixits)
+		if (flags & BfResolveArgsFlag_DeferFixits)
 			autoComplete->mIgnoreFixits = true;
 	}
 
@@ -4649,14 +4648,14 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_StringInterpolateArg);
 
 		BfExprEvaluator exprEvaluator(mModule);
-		exprEvaluator.mResolveGenericParam = (flags & BfResolveArgFlag_AllowUnresolvedTypes) == 0;
+		exprEvaluator.mResolveGenericParam = (flags & BfResolveArgsFlag_AllowUnresolvedTypes) == 0;
 		exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_AllowOutExpr);
 		bool handled = false;
 		bool evaluated = false;
 
 		if (auto interpolateExpr = BfNodeDynCastExact<BfStringInterpolationExpression>(argExpr))
 		{
-			if ((interpolateExpr->mAllocNode == NULL) || ((flags & BfResolveArgFlag_InsideStringInterpolationAlloc) != 0))
+			if ((interpolateExpr->mAllocNode == NULL) || ((flags & BfResolveArgsFlag_InsideStringInterpolationAlloc) != 0))
 			{
 				resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_StringInterpolateFormat);
 				for (auto innerExpr : interpolateExpr->mExpressions)
@@ -4665,7 +4664,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		}
 
 		bool deferParamEval = false;
-		if ((flags & BfResolveArgFlag_DeferParamEval) != 0)
+		if ((flags & BfResolveArgsFlag_DeferParamEval) != 0)
 		{
 			if (argExpr != NULL)
 			{
@@ -4749,7 +4748,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 
 		if ((argExpr != NULL) && (!handled))
 		{
-			bool deferParamValues = (flags & BfResolveArgFlag_DeferParamValues) != 0;
+			bool deferParamValues = (flags & BfResolveArgsFlag_DeferParamValues) != 0;
 			SetAndRestoreValue<bool> ignoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, mModule->mBfIRBuilder->mIgnoreWrites || deferParamValues);
 			auto prevInsertBlock = mModule->mBfIRBuilder->GetInsertBlock();
 			if (deferParamValues)			
@@ -13214,7 +13213,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	if (objCreateExpr != NULL)
 	{
 		argValues.Init(objCreateExpr->mOpenToken, &objCreateExpr->mArguments, &objCreateExpr->mCommas, objCreateExpr->mCloseToken);
-		ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval); ////
+		ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval); ////
 	}
 	
 	if (typeInstance == NULL)
@@ -13798,7 +13797,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 		}
 
 		if (genericArg == NULL)
-		{	
+		{
 			if (unspecializedMethod == NULL)
 				unspecializedMethod = mModule->GetRawMethodInstance(curTypeInst, methodDef);
 
@@ -13913,11 +13912,6 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 
 	if (methodDef->IsEmptyPartial())
 		return methodInstance;
-
-	if (methodDef->mName == "RemoveFast")
-	{
-		NOP;
-	}
 
 	if (methodInstance.mMethodInstance->mMethodInfoEx != NULL)
 	{
@@ -15045,7 +15039,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 						{
 							BfResolvedArgs argValues(invocationExpr->mOpenParen, &invocationExpr->mArguments, &invocationExpr->mCommas, invocationExpr->mCloseParen);
 
-							BfResolveArgFlags resolveArgsFlags = BfResolveArgFlag_DeferParamEval;
+							BfResolveArgsFlags resolveArgsFlags = BfResolveArgsFlag_DeferParamEval;
 							ResolveArgValues(argValues, resolveArgsFlags);
 
 							if ((mReceivingValue != NULL) && (mReceivingValue->mType == expectingType) && (mReceivingValue->IsAddr()))
@@ -15073,7 +15067,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 						{
 							BfResolvedArgs argValues(invocationExpr->mOpenParen, &invocationExpr->mArguments, &invocationExpr->mCommas, invocationExpr->mCloseParen);
 
-							BfResolveArgFlags resolveArgsFlags = BfResolveArgFlag_None;
+							BfResolveArgsFlags resolveArgsFlags = BfResolveArgsFlag_None;
 							ResolveArgValues(argValues, resolveArgsFlags);
 
 							CheckGenericCtor((BfGenericParamType*)expectingType, argValues, invocationExpr->mTarget);
@@ -15532,10 +15526,10 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		}
 	}	
 
-	BfResolveArgFlags resolveArgsFlags = (BfResolveArgFlags)(BfResolveArgFlag_DeferFixits | BfResolveArgFlag_AllowUnresolvedTypes);	
-	resolveArgsFlags = (BfResolveArgFlags)(resolveArgsFlags | BfResolveArgFlag_DeferParamEval);
+	BfResolveArgsFlags resolveArgsFlags = (BfResolveArgsFlags)(BfResolveArgsFlag_DeferFixits | BfResolveArgsFlag_AllowUnresolvedTypes);	
+	resolveArgsFlags = (BfResolveArgsFlags)(resolveArgsFlags | BfResolveArgsFlag_DeferParamEval);
 	if ((mayBeSkipCall) || (mayBeConstEvalCall))
-		resolveArgsFlags = (BfResolveArgFlags)(resolveArgsFlags | BfResolveArgFlag_DeferParamValues);
+		resolveArgsFlags = (BfResolveArgsFlags)(resolveArgsFlags | BfResolveArgsFlag_DeferParamValues);
 
 	static int sCallIdx = 0;
 	sCallIdx++;
@@ -18260,7 +18254,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 		SizedArray<BfExpression*, 2> argExprs;		
 		BfSizedArray<BfExpression*> sizedArgExprs(indexerExpr->mArguments);
 		BfResolvedArgs argValues(&sizedArgExprs);
-		ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval);
+		ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 		//exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, NULL);
 
 		mIndexerValues = argValues.mResolvedArgs;
