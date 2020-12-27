@@ -1079,6 +1079,7 @@ public:
 public:	
 	BfSystem* mSystem;
 	String mName;
+	String mSafeName;
 	Array<BfProject*> mDependencies;
 	BfTargetType mTargetType;
 	BfCodeGenOptions mCodeGenOptions;	
@@ -1409,6 +1410,7 @@ public:
 	
 	CritSect mDataLock; // short-lived, hold only while active modifying data
 	// The following are protected by mDataLock:
+	HashSet<String> mUsedSafeProjectNames;
 	Array<BfProject*> mProjects;
 	Array<BfProject*> mProjectDeleteQueue;
 	Array<BfParser*> mParsers;

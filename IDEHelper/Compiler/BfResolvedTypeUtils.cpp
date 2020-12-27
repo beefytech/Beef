@@ -552,7 +552,7 @@ BfMethodInstance::~BfMethodInstance()
 	}
 
 	if (mHasMethodRefType)
-	{				
+	{
 		auto module = GetOwner()->mModule;
 		if (!module->mContext->mDeleting)
 		{
@@ -593,6 +593,7 @@ void BfMethodInstance::CopyFrom(BfMethodInstance* methodInstance)
 			*mMethodInfoEx->mClosureInstanceInfo = *methodInstance->mMethodInfoEx->mClosureInstanceInfo;
 		}
 	}
+	mHasMethodRefType = false;
 	mHasBeenProcessed = false;
 	mIRFunction = BfIRValue();
 	mMethodProcessRequest = NULL;

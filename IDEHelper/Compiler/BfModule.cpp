@@ -3325,6 +3325,15 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 	if ((usedType->mRebuildFlags & BfTypeRebuildFlag_AwaitingReference) != 0)
 		mContext->MarkAsReferenced(checkDType);
 
+#ifdef _DEBUG
+	// If a MethodRef depends ON US, that means it's a local method that we own
+	if (userType->IsMethodRef())
+	{
+		auto methodRefType = (BfMethodRefType*)userType;
+		BF_ASSERT(methodRefType->mOwner == checkDType);
+	}
+#endif
+
 	if (!checkDType->mDependencyMap.AddUsedBy(userType, flags))
 		return;
 	if (checkDType->IsGenericTypeInstance())
@@ -4744,6 +4753,9 @@ BfIRValue BfModule::CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* ou
 				classVDataName);		
 
 		mClassVDataRefs[typeInstance] = globalVariable;
+		
+		if (mCurTypeInstance != NULL)
+			AddDependency(typeInstance, mCurTypeInstance, BfDependencyMap::DependencyFlag_StaticValue);
 	}
 	return globalVariable;
 }
@@ -5554,7 +5566,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 			if (!origVTable.empty())
 				typeInstance->mVirtualMethodTable = origVTable;
 		}
-		
+
 		int ifaceMethodExtStart = (int)typeInstance->GetIFaceVMethodSize();
 		if (typeInstance->mHotTypeData != NULL)
 		{			
@@ -5705,7 +5717,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 					int idx = interfaceEntry->mStartVirtualIdx;
 					int endVirtualIdx = interfaceEntry->mStartVirtualIdx + interfaceEntry->mInterfaceType->mVirtualMethodTableSize;
 
-					if (endVirtualIdx > ifaceMethodExtStart)
+					if ((endVirtualIdx > ifaceMethodExtStart) && (ifaceMethodExtVar))
 						vtablePtr = mBfIRBuilder->CreateInBoundsGEP(ifaceMethodExtVar, 0, interfaceEntry->mStartVirtualIdx - ifaceMethodExtStart);
 					else
 						vtablePtr = mBfIRBuilder->CreateInBoundsGEP(classVDataVar, 0, iFaceMethodStartIdx + interfaceEntry->mStartVirtualIdx);
@@ -9767,7 +9779,9 @@ BfModule* BfModule::GetSpecializedMethodModule(const SizedArrayImpl<BfProject*>&
 	{		
 		String specModuleName = mModuleName;
 		for (auto bfProject : projectList)
-			specModuleName += StrFormat("@%s", bfProject->mName.c_str());
+		{			
+			specModuleName += StrFormat("@%s", bfProject->mSafeName.c_str());
+		}
 		specModule = new BfModule(mContext, specModuleName);
 		specModule->mProject = mainModule->mProject;
 		specModule->mParentModule = mainModule;
@@ -12093,11 +12107,6 @@ void BfModule::AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInsta
 
 BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstance* methodInstance, BfGetMethodInstanceFlags flags)
 {	
-	if (mIsConstModule)
-	{
-		NOP;
-	}
-
 	if ((flags & BfGetMethodInstanceFlag_ResultNotUsed) != 0)
 		return BfModuleMethodInstance(methodInstance, BfIRValue());
 
@@ -12291,11 +12300,6 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 
 BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags, BfTypeInstance* foreignType)
 {
-	if (mIsConstModule)
-	{
-		NOP;
-	}
-
 	if (methodDef->mMethodType == BfMethodType_Init)
 		return BfModuleMethodInstance();
 
@@ -12417,11 +12421,13 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 			auto defFlags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
 			
+			defFlags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_NoReference);
+
 			if (mIsConstModule)
 			{				
-				defFlags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_NoReference);
+				defFlags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_MethodInstanceOnly);
 				if (!mCompiler->mIsResolveOnly)
-					defFlags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_NoForceReification | BfGetMethodInstanceFlag_Unreified | BfGetMethodInstanceFlag_NoReference);
+					defFlags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_NoForceReification | BfGetMethodInstanceFlag_Unreified | BfGetMethodInstanceFlag_MethodInstanceOnly);
 			}
 
 			// Not extern
@@ -12624,7 +12630,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	{
 		methodInstance = methodInstGroup->mDefault;
 
-		if ((methodInstance != NULL) && ((flags & BfGetMethodInstanceFlag_NoReference) != 0))
+		if ((methodInstance != NULL) && ((flags & BfGetMethodInstanceFlag_MethodInstanceOnly) != 0))
 			return methodInstance;
 
 		if ((methodInstance != NULL) && (isReified) && (!methodInstance->mIsReified))
@@ -12735,7 +12741,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		{
 			methodInstance = *methodInstancePtr;
 
-			if ((flags & BfGetMethodInstanceFlag_NoReference) != 0)
+			if ((flags & BfGetMethodInstanceFlag_MethodInstanceOnly) != 0)
 				return methodInstance;
 
 			if ((methodInstance->mRequestedByAutocomplete) && (!mCompiler->IsAutocomplete()))
@@ -12854,6 +12860,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			return BfModuleMethodInstance(methodInstance, BfIRFunction());
 		else
 		{
+			if ((flags & (BfGetMethodInstanceFlag_MethodInstanceOnly | BfGetMethodInstanceFlag_NoReference)) != 0)
+				return methodInstance;
+
 			if (methodInstance->mDeclModule != this)
 				return ReferenceExternalMethodInstance(methodInstance, flags);				
 
@@ -12887,6 +12896,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			auto specMethodInstance = specModule->GetMethodInstance(typeInst, methodDef, methodGenericArguments, (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_ExplicitSpecializedModule));
 			if (mAwaitingInitFinish)
 				return BfModuleMethodInstance(specMethodInstance.mMethodInstance, BfIRFunction());
+			if ((flags & (BfGetMethodInstanceFlag_MethodInstanceOnly | BfGetMethodInstanceFlag_NoReference)) != 0)
+				return specMethodInstance.mMethodInstance;
 			return ReferenceExternalMethodInstance(specMethodInstance.mMethodInstance, flags);
 		}
 
@@ -13247,9 +13258,10 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 		}
 	}	
 
-	if (mIsScratchModule)
+	if ((mIsScratchModule) && (mCompiler->mIsResolveOnly))
 	{
-		// Just fake it for the extern and unspecialized modules		
+		// Just fake it for the extern and unspecialized modules
+		// We can't do this for compilation because unreified methods with default params need to get acutal global variable refs
 		return BfTypedValue(mBfIRBuilder->CreateConstNull(), fieldInstance->GetResolvedType(), true);
 	}
 	
@@ -14935,7 +14947,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 	bindResult.mWantsArgs = true;
 	{
 		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
-		exprEvaluator.ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval);
+		exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 		SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(exprEvaluator.mFunctionBindResult, &bindResult);
 		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, true);
 	}
@@ -14978,7 +14990,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 		// Do it again, but without mIgnoreWrites set
 		BfResolvedArgs argValues;
 		argValues.Init(&ctorInvocation->mArguments);
-		exprEvaluator.ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval);
+		exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 
 		BfFunctionBindResult bindResult;
 		bindResult.mSkipThis = true;
@@ -16272,7 +16284,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				OutputDebugStrF("Expr: %@  %d\n", argValues.mArguments->mVals, argValues.mArguments->mSize);
 			}
 		}
-		exprEvaluator.ResolveArgValues(argValues, BfResolveArgFlag_DeferParamEval);
+		exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 
 		BfTypedValue appendIdxVal;
 		if (methodDef->mHasAppend)

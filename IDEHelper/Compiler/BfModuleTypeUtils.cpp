@@ -9768,7 +9768,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 		auto dataType = GetPrimitiveType(BfTypeCode_IntPtr);
 		if (!methodRefMethod.mFunc)
 		{
-			if (HasCompiledOutput())
+			if ((!methodInstance->mIsUnspecialized) && (HasCompiledOutput()))
 				AssertErrorState();
 			return GetDefaultValue(dataType);
 		}

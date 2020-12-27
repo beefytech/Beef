@@ -3689,6 +3689,29 @@ BF_EXPORT BfProject* BF_CALLTYPE BfSystem_CreateProject(BfSystem* bfSystem, cons
 	bfProject->mSystem = bfSystem;
 	bfProject->mIdx = (int)bfSystem->mProjects.size();
 	bfSystem->mProjects.push_back(bfProject);	
+
+	String safeProjectName = projectName;
+	for (auto& c : safeProjectName)
+	{
+		if (((c >= 'A') && (c <= 'Z')) ||
+			((c >= 'a') && (c <= 'z')) ||
+			((c >= '0') && (c <= '9')))
+		{
+			// Leave
+		}
+		else
+			c = '_';
+	}
+
+	String tryName = safeProjectName;
+	for (int i = 2; true; i++)
+	{
+		if (bfSystem->mUsedSafeProjectNames.Add(ToUpper(tryName)))
+			break;
+		tryName = safeProjectName + StrFormat("_%d", i);
+	}
+	bfProject->mSafeName = tryName;	
+
 	BfLogSys(bfSystem, "Creating project %p\n", bfProject);
 	return bfProject;
 }
@@ -3774,7 +3797,8 @@ BF_EXPORT void BF_CALLTYPE BfProject_Delete(BfProject* bfProject)
 	bfProject->mDeleteStage = BfProject::DeleteStage_Queued;
 
 	bfSystem->mProjectDeleteQueue.push_back(bfProject);	
-	
+	bfSystem->mUsedSafeProjectNames.Remove(bfProject->mSafeName);
+
 	BF_ASSERT(bfSystem->mProjects[bfProject->mIdx] == bfProject);	
 	bool wasRemoved = bfSystem->mProjects.Remove(bfProject);	
 	BF_ASSERT(wasRemoved);
