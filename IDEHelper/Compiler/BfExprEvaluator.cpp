@@ -260,7 +260,7 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 
 		BfType* methodGenericTypeConstraint = NULL;
 		auto _SetGeneric = [&]()
-		{			
+		{
 			if (argType != NULL)
 			{
 				// Disallow illegal types
@@ -358,7 +358,10 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 			auto prevArgValue = mPrevArgValues[wantGenericParam->mGenericParamIdx];
 			if (prevGenericMethodArg == NULL)			
 			{
-				_SetGeneric();				
+				if ((argType != NULL) && (argType->IsUnspecializedTypeVariation()))
+					argType = mModule->ResolveGenericType(argType, NULL, mCheckMethodGenericArguments);
+				if (argType != NULL)
+					_SetGeneric();
 				return true;
 			}			
 
@@ -13910,7 +13913,12 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 
 	if (methodDef->IsEmptyPartial())
 		return methodInstance;
-	
+
+	if (methodDef->mName == "RemoveFast")
+	{
+		NOP;
+	}
+
 	if (methodInstance.mMethodInstance->mMethodInfoEx != NULL)
 	{
 		for (int checkGenericIdx = 0; checkGenericIdx < (int)methodInstance.mMethodInstance->mMethodInfoEx->mGenericParams.size(); checkGenericIdx++)
