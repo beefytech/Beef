@@ -15676,10 +15676,11 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 					PopulateType(resolvedTypeRef, BfPopulateType_Data);
 					addDeref = resolvedTypeRef->mSize;
 				}
-				else if (methodInstance->WantsStructsAttribByVal())
+				else if ((methodInstance->WantsStructsAttribByVal()) && (!resolvedTypeRef->IsSizedArray()))
 				{
 					mBfIRBuilder->PopulateType(resolvedTypeRef);
-					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal, mSystem->mPtrSize);
+					BF_ASSERT(resolvedTypeRef->mAlign > 0);
+					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal, resolvedTypeRef->mAlign);
 				}
 			}
 			else if (resolvedTypeRef->IsPrimitiveType())

@@ -534,6 +534,11 @@ extern "C" Interop::StructJ Func4J(Interop::StructJ arg0, Interop::StructJ arg1,
 	return ret;
 }
 
+extern "C" double Func5(float v0[2], float v1[3])
+{
+	return v0[0] + v0[1]*10 + v1[0]*100 + v1[1]*1000 + v1[2]*10000;
+}
+
 void UseIt()
 {
 	Interop::StructA sa;

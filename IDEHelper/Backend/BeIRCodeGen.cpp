@@ -2400,7 +2400,7 @@ void BeIRCodeGen::HandleNextCmd()
 						callInst->mArgs[argIdx - 1].mByRefSize = arg;
 						if (auto func = BeValueDynCast<BeFunction>(callInst->mFunc))
 						{
-							BF_ASSERT(func->mParams[argIdx - 1].mByValSize == arg);
+							BF_ASSERT((func->mParams[argIdx - 1].mByValSize == arg) || (func->mParams[argIdx - 1].mByValSize == -1));
 						}
 					}
 					else

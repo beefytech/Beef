@@ -308,6 +308,9 @@ namespace Tests
 		[LinkName(.C)]
 		public static extern StructJ Func4J(StructJ arg0, StructJ arg1, StructJ arg2, StructJ arg3);
 
+		[LinkName(.C)]
+		public static extern  double Func5(float[2] v0, float[3] v1);
+
 		static int32 LocalFunc0K(int32 a, StructK b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
 		static int32 LocalFunc0L(int32 a, StructL b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
 		static int32 LocalFunc0M(int32 a, StructM b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
@@ -517,6 +520,9 @@ namespace Tests
 			sj3.mLength = 6;
 			var sjRet = Func4J(sj0, sj1, sj2, sj3);
 			Test.Assert(sjRet.mLength == 6050403);
+
+			var val5 = Func5(.(1, 2), .(3, 4, 5));
+			Test.Assert(Math.Round(val5) == 54321);
 		}
 	}
 }
