@@ -72,6 +72,7 @@ public:
 	bool mReformatting;		
 	bool mIgnoreTrivia;
 	bool mDocPrep;
+	BlockState* mCurBlockState;
 	int mCurIndentLevel;
 	int mQueuedSpaceCount;
 	int mLastSpaceOffset; // Indent difference from original to new	
@@ -114,6 +115,7 @@ public:
 	void QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration);	
 	int CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx);
 	void WriteIgnoredNode(BfAstNode* node);	
+	void CheckRawNode(BfAstNode* node);
 
 	virtual void Visit(BfAstNode* bfAstNode) override;
 	virtual void Visit(BfErrorNode* bfErrorNode) override;

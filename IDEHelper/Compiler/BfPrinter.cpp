@@ -23,6 +23,7 @@ BfPrinter::BfPrinter(BfRootNode *rootNode, BfRootNode *sidechannelRootNode, BfRo
 	mTriviaIdx = 0;
 	mCurSrcIdx = 0;
 	mCurIndentLevel = 0;
+	mCurBlockState = NULL;
 	mQueuedSpaceCount = 0;
 	mLastSpaceOffset = 0;
 	mReformatting = false;	
@@ -375,6 +376,8 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 		startIdx = node->mSrcStart;
 	}
 
+	int lineEmittedChars = 0;
+
 	// This handles tab adjustment within multiline comments
 	FlushIndent();	
 	bool isNewLine = false;	
@@ -517,7 +520,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 						len++;
 				}
 				
-				if (mCurCol + len > mMaxCol)
+				if ((mCurCol + len > mMaxCol) && (lineEmittedChars >= 8))
 				{
 					Write("\n");
 					mQueuedSpaceCount = mCurIndentLevel * 4;
@@ -536,6 +539,7 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 							break;
 						startIdx++;
 					}
+					lineEmittedChars = 0;
 				}
 			}
 
@@ -554,9 +558,15 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 				}
 
 				if (c == '\n')
-					mCurCol = 0;				
+				{
+					mCurCol = 0;
+					lineEmittedChars = 0;
+				}
 				else if (isutf(c))
+				{
 					mCurCol++;
+					lineEmittedChars++;
+				}
 			}
 		}
 	}
@@ -566,6 +576,60 @@ void BfPrinter::WriteIgnoredNode(BfAstNode* node)
 	mTriviaIdx = endIdx;	
 	mIsFirstStatementInBlock = false;
 	mExpectingNewLine = wasExpectingNewLine;
+}
+
+void BfPrinter::CheckRawNode(BfAstNode* node)
+{
+	if (node == NULL)
+		return;
+	if ((!BfNodeIsExact<BfTokenNode>(node)) &&
+		(!BfNodeIsExact<BfIdentifierNode>(node)) &&
+		(!BfNodeIsExact<BfLiteralExpression>(node)))
+		return;
+	
+	//mForceUseTrivia = true;
+
+	// Usually 'raw' nodes get merged into larger nodes like expressions/statements, but if they don't then this tries to help formatting
+	mExpectingNewLine = false;
+	mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
+	mNextStateModify.mExpectingSpace = false;
+
+	bool inLineStart = false;
+	int spaceCount = 0;
+
+	auto parserData = node->GetParserData();			
+	for (int i = node->mTriviaStart; i < node->mSrcStart; i++)
+	{
+		char c = parserData->mSrc[i];
+		if (c == '\n')
+		{
+			ExpectNewLine();
+			inLineStart = true;
+			spaceCount = 0;
+		}
+		else if (c == '\t')
+		{
+			ExpectSpace();
+			if (inLineStart)
+				spaceCount += 4;
+		}
+		else if (c == ' ')
+		{
+			ExpectSpace();
+			if (inLineStart)
+				spaceCount++;
+		}
+		else
+		{
+			inLineStart = false;
+		}
+	}
+
+	if ((spaceCount > 0) && (mCurBlockState != NULL))
+	{
+		int indentCount = spaceCount / 4;
+		mNextStateModify.mWantVirtualIndent = BF_MAX(indentCount, mCurBlockState->mIndentStart + 1);
+	}
 }
 
 void BfPrinter::Visit(BfAstNode* bfAstNode)
@@ -1087,7 +1151,7 @@ void BfPrinter::Visit(BfTokenNode* tokenNode)
 	{
 		BF_ASSERT(tokenNode->GetSrcEnd() > tokenNode->GetSrcStart());
 		WriteSourceString(tokenNode);
-	}
+	}	
 }
 
 void BfPrinter::Visit(BfTokenPairNode* tokenPairNode)
@@ -2868,16 +2932,16 @@ void BfPrinter::DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToke
 void BfPrinter::Visit(BfBlock* block)
 {	
 	BlockState blockState;
+	SetAndRestoreValue<BlockState*> prevBlockState(mCurBlockState, &blockState);
+
 	DoBlockOpen(NULL, block->mOpenBrace, block->mCloseBrace, false, blockState);
 	for (auto& childNodeRef : *block)
 	{
 		BfAstNode* child = childNodeRef;
-		SetAndRestoreValue<bool> prevForceTrivia(mForceUseTrivia);
-		bool isSolitary = child->IsA<BfIdentifierNode>();
-		if (isSolitary)
-			mForceUseTrivia = true;
-
+		SetAndRestoreValue<bool> prevForceTrivia(mForceUseTrivia);		
+		SetAndRestoreValue<int> prevVirtualIndent(mNextStateModify.mWantVirtualIndent);
 		SetAndRestoreValue<BfAstNode*> prevBlockMember(mCurBlockMember, child);
+		CheckRawNode(child);
 		child->Accept(this);
 	}
 	DoBlockClose(NULL, block->mOpenBrace, block->mCloseBrace, false, blockState);
