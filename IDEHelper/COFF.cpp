@@ -4821,6 +4821,12 @@ uint8* COFF::CvReadStream(int streamIdx, int* outSize)
 	if (streamIdx >= mCvStreamSizes.size())
 		return NULL;
 
+	if ((streamIdx < 0) || (streamIdx >= mCvStreamSizes.mSize))
+	{
+		Fail(StrFormat("Invalid PDB stream index: %d", streamIdx));
+		return NULL;
+	}
+
 	int streamSize = mCvStreamSizes[streamIdx];
 	if (outSize != NULL)
 		*outSize = streamSize;
