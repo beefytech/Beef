@@ -2217,6 +2217,10 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 				if (!isAbstract)
 					impString += ", ";
 			}
+
+			if (methodInst->GetParamKind(paramIdx) == BfParamKind_Params)
+				methodName += "params ";
+
 			methodName += mModule->TypeToString(methodInst->GetParamType(paramIdx), nameFlags);
 			methodName += " ";
 			methodName += methodDef->mParams[paramIdx]->mName;
@@ -2229,7 +2233,12 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			}
 
 			if (!isAbstract)
+			{
+				if (methodInst->GetParamKind(paramIdx) == BfParamKind_Params)
+					impString += "params ";
+
 				impString += methodDef->mParams[paramIdx]->mName;
+			}
 		}
 		methodName += ")";
 
@@ -3482,13 +3491,20 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 			
 			int insertPos = FixitGetMemberInsertPos(mModule->mCurTypeInstance->mTypeDef);
 			String methodStr = "\f\a";
+			if (methodInstance->mMethodDef->mHasAppend)
+				methodStr += "[AllowAppend]\r";
 			methodStr += "public this(";
+			int useParamIdx = 0;
 			for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
 			{
-				if (paramIdx > 0)
+				if (useParamIdx > 0)
 					methodStr += ", ";
 
-				switch (methodInstance->GetParamKind(paramIdx))
+				auto paramKind = methodInstance->GetParamKind(paramIdx);
+				if (paramKind == BfParamKind_AppendIdx)
+					continue;
+
+				switch (paramKind)
 				{
 				case BfParamKind_Params:
 					methodStr += "params ";
@@ -3499,19 +3515,25 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 				methodStr += mModule->TypeToString(methodInstance->GetParamType(paramIdx), BfTypeNameFlag_ReduceName);
 				methodStr += " ";
 				methodStr += methodInstance->GetParamName(paramIdx);
+				useParamIdx++;
 			}
-			methodStr += ") : base(";
+			methodStr += ") : base(";			
 
 			ctorShowName += "this(";
+			useParamIdx = 0;
 			for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
 			{
-				if (paramIdx > 0)
+				if (useParamIdx > 0)
 				{
 					ctorShowName += ", ";
 					methodStr += ", ";
 				}
 
-				switch (methodInstance->GetParamKind(paramIdx))
+				auto paramKind = methodInstance->GetParamKind(paramIdx);
+				if (paramKind == BfParamKind_AppendIdx)
+					continue;
+
+				switch (paramKind)
 				{
 				case BfParamKind_Params:
 					methodStr += "params ";
@@ -3533,6 +3555,7 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 
 				methodStr += methodInstance->GetParamName(paramIdx);
 				ctorShowName += methodInstance->GetParamName(paramIdx);
+				useParamIdx++;
 			}
 			ctorShowName += ")";
 
