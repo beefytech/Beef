@@ -15539,9 +15539,14 @@ BfIRCallingConv BfModule::GetIRCallingConvention(BfMethodInstance* methodInstanc
 		return BfIRCallingConv_StdCall;
 	if (methodInstance->mCallingConvention == BfCallingConvention_Fastcall)
 		return BfIRCallingConv_FastCall;
-	if ((!methodDef->mIsStatic) && (!owner->IsValuelessType()) &&
-		((!owner->IsSplattable()) || (methodDef->HasNoThisSplat())))
-		return BfIRCallingConv_ThisCall;
+	if (!methodDef->mIsStatic) 
+	{
+		if (owner->mIsCRepr)
+			return BfIRCallingConv_ThisCall;
+		if ((!owner->IsValuelessType()) &&
+			((!owner->IsSplattable()) || (methodDef->HasNoThisSplat())))
+			return BfIRCallingConv_ThisCall;
+	}
 	return BfIRCallingConv_CDecl;
 
 	//return GetIRCallingConvention(owner, methodInstance->mMethodDef);
@@ -15629,8 +15634,14 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 					// crepr splat is always splattable
 					isSplattable = true;
 				}
-				else if (resolvedTypeRef->GetSplatCount() + argIdx <= mCompiler->mOptions.mMaxSplatRegs)
-					isSplattable = true;
+				else
+				{
+					auto resolvedTypeInst = resolvedTypeRef->ToTypeInstance();
+					if ((resolvedTypeInst != NULL) && (resolvedTypeInst->mIsCRepr))
+						isSplattable = true;
+					else if (resolvedTypeRef->GetSplatCount() + argIdx <= mCompiler->mOptions.mMaxSplatRegs)
+						isSplattable = true;
+				}
 			}			
 		}
 
@@ -16881,9 +16892,15 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			{
 				if (methodInstance->AllowsSplatting(paramIdx))
 				{
-					int splatCount = resolvedType->GetSplatCount();
-					if (argIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
+					auto resolveTypeInst = resolvedType->ToTypeInstance();
+					if ((resolveTypeInst != NULL) && (resolveTypeInst->mIsCRepr))
 						paramVar->mIsSplat = true;
+					else
+					{
+						int splatCount = resolvedType->GetSplatCount();
+						if (argIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
+							paramVar->mIsSplat = true;
+					}
 				}
 			}
 		}
@@ -21597,8 +21614,14 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 			PopulateType(checkType, BfPopulateType_Data);
 			if (checkType->IsSplattable())
 			{
+				bool isSplat = false;
+				auto checkTypeInstance = checkType->ToTypeInstance();
+				if ((checkTypeInstance != NULL) && (checkTypeInstance->mIsCRepr))
+					isSplat = true;					
 				int splatCount = checkType->GetSplatCount();
 				if (checkArgIdx + splatCount <= mCompiler->mOptions.mMaxSplatRegs)
+					isSplat = true;
+				if (isSplat)
 				{
 					methodParam.mIsSplat = true;
 					argIdx += splatCount;

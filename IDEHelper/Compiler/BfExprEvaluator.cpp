@@ -5660,8 +5660,13 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 	{
 		disableLowering = true;
 		auto argTypeInstance = argVal.mType->ToTypeInstance();
-		if ((!disableSplat) && (int)irArgs.size() + argVal.mType->GetSplatCount() <= mModule->mCompiler->mOptions.mMaxSplatRegs)
-			wantSplat = true;
+		if (!disableSplat)
+		{
+			if ((argTypeInstance != NULL) && (argTypeInstance->mIsCRepr))
+				wantSplat = true;
+			else if ((int)irArgs.size() + argVal.mType->GetSplatCount() <= mModule->mCompiler->mOptions.mMaxSplatRegs)
+				wantSplat = true;
+		}
 	}
 
 	if (wantSplat)

@@ -3700,8 +3700,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			splatIterate(typeInstance);
 
 			if (isCRepr)
-			{				
-				typeInstance->mIsSplattable = false;
+			{
+				if ((mCompiler->mOptions.mMachineType == BfMachineType_x86) && (mCompiler->mOptions.mPlatformType == BfPlatformType_Windows))
+				{
+					typeInstance->mIsSplattable = (dataCount <= 4) && (!hadNonSplattable) && (dataPos > 4);
+				}
+				else
+					typeInstance->mIsSplattable = false;
 			}
 			else
 				typeInstance->mIsSplattable = (dataCount <= 3) && (!hadNonSplattable);

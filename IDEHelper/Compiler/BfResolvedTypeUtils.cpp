@@ -753,7 +753,29 @@ bool BfMethodInstance::HasSelf()
 }
 
 bool BfMethodInstance::GetLoweredReturnType(BfTypeCode* loweredTypeCode, BfTypeCode* loweredTypeCode2)
-{		
+{
+	// Win32 handler
+	if ((mMethodDef->mIsStatic) && (mReturnType->IsComposite()) && 
+		((mReturnType->mSize == 4) || (mReturnType->mSize == 8)))
+	{
+		auto returnTypeInst = mReturnType->ToTypeInstance();
+		if ((returnTypeInst != NULL) && (returnTypeInst->mIsCRepr))
+		{
+			auto module = GetOwner()->mModule;
+			auto compiler = module->mCompiler;
+			if ((compiler->mOptions.mMachineType == BfMachineType_x86) && (compiler->mOptions.mPlatformType == BfPlatformType_Windows))
+			{
+				if (loweredTypeCode != NULL)
+				{
+					*loweredTypeCode = BfTypeCode_Int32;
+					if (mReturnType->mSize == 8)
+						*loweredTypeCode = BfTypeCode_Int64;
+				}
+				return true;
+			}
+		}
+	}
+
 	return mReturnType->GetLoweredType(mMethodDef->mIsStatic ? BfTypeUsage_Return_Static : BfTypeUsage_Return_NonStatic, loweredTypeCode, loweredTypeCode2);	
 }
 
@@ -1233,7 +1255,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			continue;
 		
 		if ((doSplat) && (!checkType->IsMethodRef()))
-		{
+		{			
 			int splatCount = checkType->GetSplatCount();			
 			if ((int)paramTypes.size() + splatCount > module->mCompiler->mOptions.mMaxSplatRegs)
 			{
@@ -1738,56 +1760,101 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 	if (mHasUnderlyingArray)
 		return false;
 
+	bool deepCheck = false;
+
 	if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows)
 	{
 		// Odd Windows rule: composite returns for non-static methods are always sret
 		if (typeUsage == BfTypeUsage_Return_NonStatic)
-			return false;
+			return false;		
 	}
 	else
-	{		
-		// Non-Windows systems allow lowered splitting of composites over two int params
- 		if (mModule->mSystem->mPtrSize == 8)
- 		{
-			if ((mInstSize >= 4) && (mInstSize <= 16))
+	{
+		// Non-Win64 systems allow lowered splitting of composites over multiple params
+		if (mModule->mSystem->mPtrSize == 8)
+			deepCheck = true;
+		else
+		{
+			// We know this is correct for Linux x86 and Android armv7
+			if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Linux)
 			{
-				BfTypeCode types[4] = { BfTypeCode_None };
-				
-				std::function<void(BfType*, int)> _CheckType = [&](BfType* type, int offset)
+				if ((typeUsage == BfTypeUsage_Return_NonStatic) || (typeUsage == BfTypeUsage_Return_Static))
+					return false;
+			}
+		}
+	}
+
+	if (deepCheck)
+	{
+
+		if ((mInstSize >= 4) && (mInstSize <= 16))
+		{
+			BfTypeCode types[4] = { BfTypeCode_None };
+
+			std::function<void(BfType*, int)> _CheckType = [&](BfType* type, int offset)
+			{
+				if (auto typeInst = type->ToTypeInstance())
 				{
-					if (auto typeInst = type->ToTypeInstance())
+					if (typeInst->IsValueType())
 					{
-						if (typeInst->IsValueType())
+						if (typeInst->mBaseType != NULL)
+							_CheckType(typeInst->mBaseType, offset);
+
+						for (auto& fieldInstance : typeInst->mFieldInstances)
 						{
-							if (typeInst->mBaseType != NULL)
-								_CheckType(typeInst->mBaseType, offset);
-
-							for (auto& fieldInstance : typeInst->mFieldInstances)
-							{
-								if (fieldInstance.mDataOffset >= 0)
-									_CheckType(fieldInstance.mResolvedType, offset + fieldInstance.mDataOffset);
-							}
+							if (fieldInstance.mDataOffset >= 0)
+								_CheckType(fieldInstance.mResolvedType, offset + fieldInstance.mDataOffset);
 						}
-						else
-							types[offset / 4] = BfTypeCode_Object;
 					}
-					else if (type->IsPrimitiveType())
+					else
+						types[offset / 4] = BfTypeCode_Object;
+				}
+				else if (type->IsPrimitiveType())
+				{
+					auto primType = (BfPrimitiveType*)type;
+					types[offset / 4] = primType->mTypeDef->mTypeCode;
+				}
+				else if (type->IsSizedArray())
+				{
+					auto sizedArray = (BfSizedArrayType*)type;
+					for (int i = 0; i < sizedArray->mElementCount; i++)
+						_CheckType(sizedArray->mElementType, offset + i * sizedArray->mElementType->GetStride());
+				}
+			};
+
+			_CheckType(this, 0);
+
+			bool handled = false;
+
+			if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows)
+			{
+				bool hasFloat = false;
+				for (int type = 0; type < 4; type++)
+				{
+					if ((types[type] == BfTypeCode_Float) ||
+						(types[type] == BfTypeCode_Double))
+						hasFloat = false;
+				}
+
+				if (!hasFloat)
+				{
+					if (mInstSize == 4)
 					{
-						auto primType = (BfPrimitiveType*)type;
-						types[offset / 4] = primType->mTypeDef->mTypeCode;
+						if (outTypeCode != NULL)
+							*outTypeCode = BfTypeCode_Int32;
+						return true;
 					}
-					else if (type->IsSizedArray())
+
+					if (mInstSize == 8)
 					{
-						auto sizedArray = (BfSizedArrayType*)type;
-						for (int i = 0; i < sizedArray->mElementCount; i++)
-							_CheckType(sizedArray->mElementType, offset + i * sizedArray->mElementType->GetStride());
+						if (outTypeCode != NULL)
+							*outTypeCode = BfTypeCode_Int64;
+						return true;
 					}
-				};
-
-				_CheckType(this, 0);
-
-				bool handled = false;
-
+				}
+			}
+			else
+			{
 				if (mInstSize >= 8)
 				{
 					if (outTypeCode != NULL)
@@ -1803,7 +1870,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 				{
 					handled = true;
 					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Int8;					
+						*outTypeCode2 = BfTypeCode_Int8;
 				}
 				if (mInstSize == 10)
 				{
@@ -1812,16 +1879,16 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 						*outTypeCode2 = BfTypeCode_Int16;
 				}
 				if (mInstSize == 12)
-				{					
+				{
 					handled = true;
 					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Int32;					
+						*outTypeCode2 = BfTypeCode_Int32;
 				}
 				if (mInstSize == 16)
 				{
 					handled = true;
 					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Int64;					
+						*outTypeCode2 = BfTypeCode_Int64;
 				}
 
 				if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_None))
@@ -1831,7 +1898,7 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 						*outTypeCode = BfTypeCode_Float;
 				}
 				if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_Float))
-				{					
+				{
 					if (outTypeCode != NULL)
 						*outTypeCode = BfTypeCode_Float2;
 				}
@@ -1859,15 +1926,6 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 
 				if (handled)
 					return true;
-			}		
- 		}
-		else
-		{
-			// We know this is correct for Linux x86 and Android armv7
-			if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Linux)
-			{				
-				if ((typeUsage == BfTypeUsage_Return_NonStatic) || (typeUsage == BfTypeUsage_Return_Static))
-					return false;
 			}
 		}
 	}
