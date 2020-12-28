@@ -4752,10 +4752,7 @@ BfIRValue BfModule::CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* ou
 				BfIRValue(),
 				classVDataName);		
 
-		mClassVDataRefs[typeInstance] = globalVariable;
-		
-		if (mCurTypeInstance != NULL)
-			AddDependency(typeInstance, mCurTypeInstance, BfDependencyMap::DependencyFlag_StaticValue);
+		mClassVDataRefs[typeInstance] = globalVariable;		
 	}
 	return globalVariable;
 }
@@ -15691,7 +15688,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 				{
 					mBfIRBuilder->PopulateType(resolvedTypeRef);
 					BF_ASSERT(resolvedTypeRef->mAlign > 0);
-					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal, resolvedTypeRef->mAlign);
+					mBfIRBuilder->Func_AddAttribute(func, argIdx + 1, BfIRAttribute_ByVal, mSystem->mPtrSize);
 				}
 			}
 			else if (resolvedTypeRef->IsPrimitiveType())

@@ -5373,7 +5373,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 						}
 						else if ((methodInstance->WantsStructsAttribByVal()) && (!paramType->IsSizedArray()))
 						{
-							mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_ByVal, paramType->mAlign);
+							mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_ByVal, mModule->mSystem->mPtrSize);
 						}
 					}
 				}
