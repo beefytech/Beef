@@ -3492,7 +3492,7 @@ namespace IDE.ui
             {
 				if ((!autoCompleteRequireControl) || (mWidgetWindow.IsKeyDown(KeyCode.Control)))
 				{
-	                if (mAutoComplete != null)
+	                if ((mAutoComplete != null) && (mAutoComplete.IsShowing()))
 	                {
 	                    if (mAutoComplete.mAutoCompleteListWidget != null)
 	                    {
