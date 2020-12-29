@@ -716,6 +716,18 @@ namespace System
 					return i;
 		}
 
+		[NoDiscard]
+		public StringView Substring(int pos)
+		{
+			return .(this, pos);
+		}
+
+		[NoDiscard]
+		public StringView Substring(int pos, int length)
+		{
+			return .(this, pos, length);
+		}
+
 		public void Append(StringView strView)
 		{
 			Append(strView.Ptr, strView.Length);
