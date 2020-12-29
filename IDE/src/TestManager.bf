@@ -12,6 +12,10 @@ namespace IDE
 		{
 			public Project mProject;
 			public String mTestExePath ~ delete _;
+			public int32 mTestCount;
+			public int32 mExecutedCount;
+			public int32 mSkipCount;
+			public int32 mFailedCount;
 		}
 
 		public class TestEntry
@@ -23,6 +27,8 @@ namespace IDE
 			public bool mShouldFail;
 			public bool mProfile;
 			public bool mIgnore;
+			public bool mFailed;
+			public bool mExecuted;
 		}
 
 		public class TestInstance
@@ -35,7 +41,7 @@ namespace IDE
 			public String mArgs ~ delete _;
 			public String mWorkingDir ~ delete _;
 			public NamedPipe mPipeServer ~ delete _;
-			public int mShouldFailIdx = -1;
+			public int32 mCurTestIdx = -1;
 		}
 
 		public bool mIsDone;
@@ -147,15 +153,73 @@ namespace IDE
 
 			String clientStr = scope String();
 
-			int curTestIdx = -1;
 			int curTestRunCount = 0;
 			bool testsFinished = false;
 			bool failed = false;
+			int testFailCount = 0;
+			bool testHadOutput = false;
 
 			int exitCode = 0;
 
+			String queuedOutText = scope .();
+
+			Stopwatch testTimer = scope .();
+			
+			void FlushTestStart()
+			{
+				if (testHadOutput)
+					return;
+				
+				if ((testInstance.mCurTestIdx >= 0) && (testInstance.mCurTestIdx < testInstance.mTestEntries.Count))
+				{
+					testHadOutput = true;
+					String outputLine = scope String();
+					let testEntry = testInstance.mTestEntries[testInstance.mCurTestIdx];
+					outputLine.AppendF($"Testing '{testEntry.mName}'");
+					QueueOutputLine(outputLine);
+				}
+			}
+
+			void FlushOutText(bool force)
+			{
+				if (queuedOutText.IsEmpty)
+					return;
+				if ((!queuedOutText.EndsWith('\n')) && (force))
+					queuedOutText.Append('\n');
+				int lastCrPos = -1;
+				while (true)
+				{
+					int crPos = queuedOutText.IndexOf('\n', lastCrPos + 1);
+					if (crPos == -1)
+						break;
+
+					FlushTestStart();
+
+					String outputLine = scope String();
+					outputLine.Append(" >");
+					if (crPos - lastCrPos - 2 > 0)
+						outputLine.Append(StringView(queuedOutText, lastCrPos + 1, crPos - lastCrPos - 2));
+
+					QueueOutputLine(outputLine);
+					lastCrPos = crPos;
+				}
+
+				if (lastCrPos != -1)
+					queuedOutText.Remove(0, lastCrPos + 1);
+			}
+
 			while (true)
 			{
+				if ((mDebug) && (gApp.mDebugger.IsPaused()))
+				{
+					FlushTestStart();
+				}
+
+				if (testTimer.ElapsedMilliseconds > 1000)
+				{
+					FlushTestStart();
+				}
+
 				int doneCount = 0;
 
 				for (int itr < 2)
@@ -190,35 +254,35 @@ namespace IDE
 						outStr.AppendF("CMD: {0}", cmd);
 						QueueOutput(outStr);*/
 
+						
+
 						List<StringView> cmdParts = scope .(cmd.Split('\t'));
 						switch (cmdParts[0])
 						{
 						case ":TestInit":
 						case ":TestBegin":
 						case ":TestQuery":
-							if ((curTestIdx == -1) || (curTestRunCount > 0))
+							testTimer.Stop();
+							testTimer.Start();
+							FlushOutText(true);
+							testHadOutput = false;
+							if ((testInstance.mCurTestIdx == -1) || (curTestRunCount > 0))
 							{
-								curTestIdx++;
+								testInstance.mCurTestIdx++;
 								curTestRunCount = 0;
 							}
 
+							curProjectInfo.mTestCount = (.)testInstance.mTestEntries.Count;
+
 							while (true)
 							{
-								if (curTestIdx < testInstance.mTestEntries.Count)
+								if (testInstance.mCurTestIdx < testInstance.mTestEntries.Count)
 								{
 									curTestRunCount++;
 									bool skipEntry = false;
 
-									let testEntry = testInstance.mTestEntries[curTestIdx];
-									if (testEntry.mShouldFail)
-									{
-										skipEntry = testInstance.mShouldFailIdx != curTestIdx;
-									}
-									else if (testInstance.mShouldFailIdx != -1)
-									{
-										skipEntry = true;
-									}
-
+									let testEntry = testInstance.mTestEntries[testInstance.mCurTestIdx];
+									
 									if ((!skipEntry) && (testEntry.mIgnore) && (!mIncludeIgnored))
 									{
 										QueueOutputLine("Test Ignored: {0}", testEntry.mName);
@@ -227,13 +291,20 @@ namespace IDE
 
 									if (skipEntry)
 									{
-										curTestIdx++;
+										curProjectInfo.mSkipCount++;
+										testInstance.mCurTestIdx++;
 										curTestRunCount = 0;
 										continue;
 									}
 
-									var clientCmd = scope String();
-									clientCmd.AppendF(":TestRun\t{0}\n", curTestIdx);
+									curProjectInfo.mExecutedCount++;
+									testEntry.mExecuted = true;
+
+									String clientCmd = scope $":TestRun\t{testInstance.mCurTestIdx}";
+									if ((gApp.mTestBreakOnFailure) && (mDebug))
+										clientCmd.Append("\tFailBreak");
+									clientCmd.Append("\n");
+
 									if (testInstance.mPipeServer.Write(clientCmd) case .Err)
 										failed = true;
 								}
@@ -245,15 +316,55 @@ namespace IDE
 								break;
 							}
 						case ":TestResult":
+							testTimer.Stop();
 							int timeMS = int32.Parse(cmdParts[1]).Get();
-							var testEntry = testInstance.mTestEntries[curTestIdx];
+							var testEntry = testInstance.mTestEntries[testInstance.mCurTestIdx];
+
 							if (testEntry.mShouldFail)
 							{
-								QueueOutputLine("ERROR: Test should have failed but didn't: {0} Time: {1}ms", testEntry.mName, timeMS);
-								failed = true;
+								if (testEntry.mFailed)
+								{
+									QueueOutputLine("Test expectedly failed: {0} Time: {1}ms", testEntry.mName, timeMS);
+								}
+								else
+								{
+									curProjectInfo.mFailedCount++;
+									QueueOutputLine("ERROR: Test should have failed but didn't: '{0}' defined at line {2}:{3} in {1}", testEntry.mName, testEntry.mFilePath, testEntry.mLine + 1, testEntry.mColumn + 1);
+								}
 							}
 							else
-								QueueOutputLine("Test completed: {0} Time: {1}ms", testEntry.mName, timeMS);
+							{
+								if (testHadOutput)
+									QueueOutputLine(" Test Time: {1}ms", testEntry.mName, timeMS);
+								else
+									QueueOutputLine("Test '{0}' Time: {1}ms", testEntry.mName, timeMS);
+							}
+						case ":TestFail",
+							 ":TestFatal":
+							var testEntry = testInstance.mTestEntries[testInstance.mCurTestIdx];
+							if (!testEntry.mFailed)
+							{
+								testFailCount++;
+								testEntry.mFailed = true;
+
+								if (!testEntry.mShouldFail)
+								{
+									curProjectInfo.mFailedCount++;
+									FlushTestStart();
+									QueueOutputLine("ERROR: Test failed. {}", cmd.Substring(cmdParts[0].Length + 1));
+								}
+							}
+							if (cmdParts[0] == ":TestFatal")
+							{
+								if (testInstance.mPipeServer.Write(":TestContinue\n") case .Err)
+									failed = true;
+							}
+							break;
+						case ":TestWrite":
+							String str = scope String()..Append(cmd.Substring(cmdParts[0].Length + 1));
+							str.Replace('\r', '\n');
+							queuedOutText.Append(str);
+							FlushOutText(false);
 						case ":TestFinish":
 							testsFinished = true;
 						default:
@@ -318,6 +429,14 @@ namespace IDE
 				}
 			}
 
+			FlushOutText(true);
+
+			/*if ((testFailCount > 0) && (!failed))
+			{
+				failed = true;
+				TestFailed();
+			}*/
+
 			if (mWantsStop)
 			{
 				QueueOutputLine("Tests aborted");
@@ -325,26 +444,42 @@ namespace IDE
 			else if (!testsFinished)
 			{
 				var str = scope String();
-				if (curTestIdx == -1)
+				if (testInstance.mCurTestIdx == -1)
 				{
 					str.AppendF("Failed to start tests");
 				}
-				else if (curTestIdx < testInstance.mTestEntries.Count)
+				else if (testInstance.mCurTestIdx < testInstance.mTestEntries.Count)
 				{
-					var testEntry = testInstance.mTestEntries[curTestIdx];
-					if (testInstance.mShouldFailIdx == curTestIdx)
+					var testEntry = testInstance.mTestEntries[testInstance.mCurTestIdx];
+					if (testEntry.mShouldFail)
+					{
+						// Success
+						testEntry.mFailed = true;
+						QueueOutputLine("Test expectedly failed: {0}", testEntry.mName);
+					}
+					else
+					{
+						if (!testEntry.mFailed)
+						{
+							curProjectInfo.mFailedCount++;
+							testEntry.mFailed = true;
+							testFailCount++;
+							QueueOutputLine("Failed test '{0}' defined at line {2}:{3} in {1}", testEntry.mName, testEntry.mFilePath, testEntry.mLine + 1, testEntry.mColumn + 1);
+						}
+					}
+					/*if (testInstance.mShouldFailIdx == testInstance.mCurTestIdx)
 					{
 						// Success
 						QueueOutputLine("Test expectedly failed: {0}", testEntry.mName);
 					}
 					else
 					{
-						str.AppendF("ERROR: Failed test '{0}' at line {2}:{3} in {1}", testEntry.mName, testEntry.mFilePath, testEntry.mLine + 1, testEntry.mColumn + 1);
-					}
+						str.AppendF("Failed test '{0}' defined at line {2}:{3} in {1}", testEntry.mName, testEntry.mFilePath, testEntry.mLine + 1, testEntry.mColumn + 1);
+					}*/
 				}
 				else
 				{
-					str.AppendF("ERROR: Failed to finish tests");
+					str.AppendF("Failed to finish tests");
 				}
 
 				if (str.Length > 0)
@@ -363,8 +498,9 @@ namespace IDE
 			else if (testInstance.mTestEntries.IsEmpty)
 			{
 				QueueOutputLine(
-					"""
-					WARNING: No test methods defined. Consider adding a [Test] attribute to a static method in a project whose build type is set to 'Test'.
+					$"""
+					WARNING: No test methods defined in project '{mProjectInfos[testInstance.mProjectIdx].mProject.mProjectName}'.
+					Consider adding a [Test] attribute to a static method in a project whose build type is set to 'Test'.
 					If you do have test methods defined, make sure the Workspace properties has that project's 'Test' configuration selected.
 					""");
 			}
@@ -391,7 +527,8 @@ namespace IDE
 					gApp.mDebugger.Terminate();
 			}
 
-			int nextShouldFailIdx = -1;
+			int32 nextTestIdx = -1;
+
 			bool doNext = true;
 			var curProjectInfo = GetCurProjectInfo();
 			if (curProjectInfo != null)
@@ -400,14 +537,9 @@ namespace IDE
 				{
 					if (mTestInstance.mThread.Join(0))
 					{
-						for (int entryIdx = mTestInstance.mShouldFailIdx + 1; entryIdx < mTestInstance.mTestEntries.Count; entryIdx++)
+						if (mTestInstance.mCurTestIdx < mTestInstance.mTestEntries.Count - 1)
 						{
-							let testEntry = mTestInstance.mTestEntries[entryIdx];
-							if (testEntry.mShouldFail)
-							{
-								nextShouldFailIdx = entryIdx;
-								break;
-							}
+							nextTestIdx = mTestInstance.mCurTestIdx + 1;
 						}
 
 						DeleteAndNullify!(mTestInstance);
@@ -431,25 +563,23 @@ namespace IDE
 
 				Debug.Assert(mTestInstance == null);
 
-				if (nextShouldFailIdx == -1)
+				if (nextTestIdx == -1)
 				{
+					PrintProjectSummary();
 					mProjectInfoIdx++;
 					if (mProjectInfoIdx >= mProjectInfos.Count)
 					{
 						mIsDone = true;
 						return;
 					}
-				}
+				}	
 
 				mTestInstance = new TestInstance();
 				mTestInstance.mProjectIdx = mProjectInfoIdx;
-				mTestInstance.mShouldFailIdx = nextShouldFailIdx;
+				mTestInstance.mCurTestIdx = nextTestIdx;
 
 				curProjectInfo = GetCurProjectInfo();
-				if (mTestInstance.mShouldFailIdx != -1)
-					gApp.OutputLineSmart("Starting should-fail testing on {0}...", curProjectInfo.mProject.mProjectName);
-				else
-					gApp.OutputLineSmart("Starting testing on {0}...", curProjectInfo.mProject.mProjectName);
+				gApp.OutputLineSmart("Starting testing on {0}...", curProjectInfo.mProject.mProjectName);
 				
 				mTestInstance.mThread = new Thread(new () => { TestProc(mTestInstance); } );
 
@@ -499,6 +629,21 @@ namespace IDE
 
 				mTestInstance.mThread.Start(false);
 			}
+		}
+
+		public void PrintProjectSummary()
+		{
+			var curProjectInfo = GetCurProjectInfo();
+			if (curProjectInfo == null)
+				return;
+
+			String completeStr = scope $"Completed {curProjectInfo.mExecutedCount} of {curProjectInfo.mTestCount} tests for '{curProjectInfo.mProject.mProjectName}'";
+			if (curProjectInfo.mFailedCount > 0)
+			{
+				completeStr.AppendF($" with {curProjectInfo.mFailedCount} failure{((curProjectInfo.mFailedCount != 1) ? "s" : "")}");
+			}
+			completeStr.Append("\n");
+			QueueOutputLine(completeStr);
 		}
 
 		public void TestFailed()

@@ -108,6 +108,10 @@ namespace System
 		[CallingConvention(.Cdecl)]
 		static extern void Test_Init(char8* testData);
 		[CallingConvention(.Cdecl)]
+		static extern void Test_Error(char8* error);
+		[CallingConvention(.Cdecl)]
+		static extern void Test_Write(char8* str);
+		[CallingConvention(.Cdecl)]
 		static extern int32 Test_Query();
 		[CallingConvention(.Cdecl)]
 		static extern void Test_Finish();

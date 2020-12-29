@@ -376,6 +376,7 @@ namespace System
 		public bool ShouldFail;
 		public bool Ignore;
 		public bool Profile;
+		public String Tag;
 	}
 
 	public struct ImportAttribute : Attribute

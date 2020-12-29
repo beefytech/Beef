@@ -55,6 +55,13 @@ static Beefy::StringT<0> gCmdLineString;
 bf::System::Runtime::BfRtCallbacks gBfRtCallbacks;
 BfRtFlags gBfRtFlags = (BfRtFlags)0;
 
+static int gTestMethodIdx = -1;
+static uint32 gTestStartTick = 0;
+static bool gTestBreakOnFailure = false;
+
+static BfpFile* gClientPipe = NULL;
+static Beefy::String gTestInBuffer;
+
 namespace bf
 {
 	namespace System
@@ -101,6 +108,8 @@ namespace bf
 
 		private:
 			BFRT_EXPORT static void Test_Init(char* testData);
+			BFRT_EXPORT static void Test_Error(char* error);
+			BFRT_EXPORT static void Test_Write(char* str);
 			BFRT_EXPORT static int32 Test_Query();
 			BFRT_EXPORT static void Test_Finish();
 		};		
@@ -201,6 +210,24 @@ bool IsDebuggerPresent()
 
 #endif
 
+static void TestString(const StringImpl& str);
+static void TestReadCmd(Beefy::String& str);
+
+static void Internal_FatalError(const char* error)
+{
+	if (gClientPipe != NULL)
+	{
+		Beefy::String str = ":TestFatal\t";
+		str += error;
+		str += "\n";
+		TestString(str);
+
+ 		Beefy::String result;
+ 		TestReadCmd(result);
+	}
+
+	BfpSystem_FatalError(error, "BEEF FATAL ERROR");
+}
 
 extern "C" BFRT_EXPORT int BF_CALLTYPE ftoa(float val, char* str)
 {
@@ -265,7 +292,7 @@ void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 
 	if (gBfRtCallbacks.Alloc != NULL)
 	{
-		BfpSystem_FatalError(StrFormat("BeefRT already initialized. Multiple executable modules in the same process cannot dynamically link to the Beef runtime.").c_str(), "BEEF FATAL ERROR");
+		Internal_FatalError(StrFormat("BeefRT already initialized. Multiple executable modules in the same process cannot dynamically link to the Beef runtime.").c_str());
 	}
 
 	if (version != BFRT_VERSION)
@@ -394,7 +421,7 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 		BF_DEBUG_BREAK();
 	}
 	
-	BfpSystem_FatalError("Index out of range", "FATAL ERROR");
+	Internal_FatalError("Index out of range");
 }
 
 void Internal::FatalError(bf::System::String* error, intptr stackOffset)
@@ -405,7 +432,7 @@ void Internal::FatalError(bf::System::String* error, intptr stackOffset)
 		BF_DEBUG_BREAK();		
 	}
 
-    BfpSystem_FatalError(error->CStr(), "FATAL ERROR");
+    Internal_FatalError(error->CStr());
 }
 
 void Internal::MemCpy(void* dest, void* src, intptr length)
@@ -568,12 +595,6 @@ void Internal::ReportMemory()
 #endif
 }
 
-static int gTestMethodIdx = -1;
-static uint32 gTestStartTick = 0;
-
-static BfpFile* gClientPipe = NULL;
-static Beefy::String gTestInBuffer;
-
 static void TestString(const StringImpl& str)
 {
 	BfpFileResult fileResult;
@@ -608,7 +629,7 @@ static void TestReadCmd(Beefy::String& str)
 }
 
 void Internal::Test_Init(char* testData)
-{	
+{
 	BfpSystem_SetCrashReportKind(BfpCrashReportKind_None);
 
 	Beefy::String args = GetCommandLineArgs();
@@ -624,6 +645,40 @@ void Internal::Test_Init(char* testData)
 	outStr += "\n";
 	outStr += ":TestBegin\n";
 	TestString(outStr);
+}
+
+void Internal::Test_Error(char* error)
+{
+	if (gTestBreakOnFailure)
+	{
+		SETUP_ERROR(error, 3);
+		BF_DEBUG_BREAK();
+	}
+
+	if (gClientPipe != NULL)
+	{
+		Beefy::String str = ":TestFail\t";
+		str += error;
+		str += "\n";
+		TestString(str);
+	}
+}
+
+void Internal::Test_Write(char* strPtr)
+{
+	if (gClientPipe != NULL)
+	{
+		Beefy::String str = ":TestWrite\t";
+		str += strPtr;
+		for (char& c : str)
+		{
+			if (c == '\n')
+				c = '\r';
+		}
+
+		str += "\n";
+		TestString(str);
+	}
 }
 
 int32 Internal::Test_Query()
@@ -650,7 +705,16 @@ int32 Internal::Test_Query()
 	if (result == ":TestRun")
 	{
 		gTestStartTick = BfpSystem_TickCount();
+		Beefy::String options;
+		int tabPos = (int)param.IndexOf('\t');
+		if (tabPos != -1)
+		{
+			options = param.Substring(tabPos + 1);
+			param.RemoveToEnd(tabPos);
+		}
+
 		gTestMethodIdx = atoi(param.c_str());
+		gTestBreakOnFailure = options.Contains("FailBreak");
 		return gTestMethodIdx;
 	}
 	else if (result == ":TestFinish")
@@ -791,7 +855,7 @@ void Contract::ReportFailure(Contract::ContractFailureKind failureKind, char* us
 		gBfRtCallbacks.DebugMessageData_Fatal();
 	}
 
-	BfpSystem_FatalError(errorMsg.c_str(), "CONTRACT ERROR");
+	Internal_FatalError(errorMsg.c_str());
 
 	return;
 }

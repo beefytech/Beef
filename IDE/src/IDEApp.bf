@@ -324,6 +324,7 @@ namespace IDE
 		public bool mEnableGCCollect = true;
 		public bool mDbgFastUpdate;
 		public bool mTestEnableConsole = false;
+		public bool mTestBreakOnFailure = true;
 		public ProfileInstance mLongUpdateProfileId;
 		public uint32 mLastLongUpdateCheck;
 		public uint32 mLastLongUpdateCheckError;
@@ -5417,10 +5418,16 @@ namespace IDE
 			var testRunMenu = testMenu.AddMenuItem("&Run", null, null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(testRunMenu, "&Normal Tests", "Run Normal Tests");
 			AddMenuItem(testRunMenu, "&All Tests", "Run All Tests");
+			
 
 			var testDebugMenu = testMenu.AddMenuItem("&Debug", null, null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(testDebugMenu, "&Normal Tests", "Debug Normal Tests");
 			AddMenuItem(testDebugMenu, "&All Tests", "Debug All Tests");
+			testDebugMenu.AddMenuItem(null);
+			testDebugMenu.AddMenuItem("Break on Failure", null, new (menu) =>
+				{
+				    ToggleCheck(menu, ref mTestBreakOnFailure);
+				}, null, null, true, mTestBreakOnFailure ? 1 : 0);
 
 			AddMenuItem(testMenu, "Enable Console", "Test Enable Console", null, null, true, mTestEnableConsole ? 1 : 0);
 
@@ -12173,6 +12180,14 @@ namespace IDE
 							{
 								if (isFirstMsg)
 								{
+									if (mTestManager != null)
+									{
+										// Give test manager time to flush
+										Thread.Sleep(100);
+										mTestManager.Update();
+										mOutputPanel.Update();
+									}
+
 									OutputLineSmart(scope String("ERROR: ", errorMsg));
 									if (gApp.mRunningTestScript)
 									{
@@ -13302,7 +13317,7 @@ namespace IDE
 			if (mTestManager != null)
 			{
 				mTestManager.Update();
-				if (mTestManager.mIsDone)
+				if ((mTestManager.mIsDone) && (mTestManager.mQueuedOutput.IsEmpty))
 				{
 					if (mMainFrame != null)
 						mMainFrame.mStatusBar.SelectConfig(mTestManager.mPrevConfigName);

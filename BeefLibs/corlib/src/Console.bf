@@ -68,14 +68,18 @@ namespace System
 		{
 			if (outStreamWriter == null)
 			{
+				Stream stream;
+#if BF_TEST_BUILD
+				stream = new Test.TestStream();
+#else
 				FileStream fileStream = new .();
-				Stream stream = fileStream;
+				stream = fileStream;
 				if (fileStream.OpenStd(stdKind) case .Err)
 				{
 					DeleteAndNullify!(fileStream);
 					stream = new NullStream();
 				}
-
+#endif
 				StreamWriter newStreamWriter = new StreamWriter(stream, InputEncoding, 4096, true);
 				newStreamWriter.AutoFlush = true;
 
