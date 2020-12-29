@@ -2279,7 +2279,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		return;
 	}
 	
-	if ((!mCompiler->mIsResolveOnly) && (!typeInstance->mHasBeenInstantiated))
+	if ((!mCompiler->mIsResolveOnly) && (!typeInstance->HasBeenInstantiated()))
 	{
 		for (auto& dep : typeInstance->mDependencyMap)
 		{
@@ -2814,7 +2814,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		auto typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
 		if (typeOptions != NULL)
 		{			
-			typeInstance->mHasBeenInstantiated = typeOptions->Apply(typeInstance->mHasBeenInstantiated, BfOptionFlags_ReflectAssumeInstantiated);
+			typeInstance->mHasBeenInstantiated = typeOptions->Apply(typeInstance->HasBeenInstantiated(), BfOptionFlags_ReflectAssumeInstantiated);
 		}
 	}
 
@@ -4352,7 +4352,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				implRequired = true;
 				declRequired = true;
 			}
-			if (typeInstance->mIncludeAllMethods)
+			if (typeInstance->IncludeAllMethods())
 				implRequired = true;
 
 			if ((typeOptionsIncludeAll) && (ApplyTypeOptionMethodFilters(true, methodDef, typeOptions)))
@@ -4471,6 +4471,15 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 									continue;
 								if ((constant->mInt8 & BfCustomAttributeFlags_AlwaysIncludeTarget) != 0)
 									forceMethodImpl = true;
+
+								if (attrTypeInst->mAttributeData == NULL)
+									PopulateType(attrTypeInst);
+								BF_ASSERT(attrTypeInst->mAttributeData != NULL);
+								if (attrTypeInst->mAttributeData != NULL)
+								{
+									if ((attrTypeInst->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_IncludeAllMethods) != 0)
+										forceMethodImpl = true;
+								}
 							}
 						}
 					}

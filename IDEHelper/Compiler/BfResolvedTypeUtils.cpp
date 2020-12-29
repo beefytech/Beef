@@ -535,21 +535,7 @@ BfMethodInfoEx::~BfMethodInfoEx()
 
 BfMethodInstance::~BfMethodInstance()
 {		
-	if (mMethodInstanceGroup != NULL)
-	{
-		BfLogSys(GetOwner()->mModule->mSystem, "BfMethodInstance::~BfMethodInstance %p Local:%d InCEMachine:%d\n", this, mMethodDef->mIsLocalMethod, mInCEMachine);
-	}
-	else
-	{
-		BF_ASSERT(!mMethodDef->mIsLocalMethod);
-	}
-
-	if (mInCEMachine)
-	{
-		auto module = GetOwner()->mModule;
-		if (module->mCompiler->mCEMachine != NULL)
-			module->mCompiler->mCEMachine->RemoveMethod(this);
-	}
+	Dispose(true);
 
 	if (mHasMethodRefType)
 	{
@@ -561,19 +547,42 @@ BfMethodInstance::~BfMethodInstance()
 		}
 	}
 
+	delete mMethodInfoEx;	
+}
+
+void BfMethodInstance::Dispose(bool isDeleting)
+{
+	if (mIsDisposed)
+		return;
+	mIsDisposed = true;
+	
+	if (mMethodInstanceGroup != NULL)
+	{
+		BfLogSys(GetOwner()->mModule->mSystem, "BfMethodInstance::~BfMethodInstance %p Local:%d InCEMachine:%d Deleting:%d\n", this, mMethodDef->mIsLocalMethod, mInCEMachine, isDeleting);
+	}
+	else
+	{
+		BF_ASSERT(!mMethodDef->mIsLocalMethod);
+	}
+
+	if (mInCEMachine)
+	{
+		auto module = GetOwner()->mModule;
+		if (module->mCompiler->mCEMachine != NULL)
+			module->mCompiler->mCEMachine->RemoveMethod(this);
+	}	
+
 	if (mMethodProcessRequest != NULL)
 	{
 		BF_ASSERT(mMethodProcessRequest->mMethodInstance == this);
 		mMethodProcessRequest->mMethodInstance = NULL;
 	}
-	
+
 	if (mHotMethod != NULL)
-	{		
+	{
 		mHotMethod->mFlags = (BfHotDepDataFlags)(mHotMethod->mFlags & ~BfHotDepDataFlag_IsBound);
 		mHotMethod->Deref();
-	}	
-
-	delete mMethodInfoEx;	
+	}
 }
 
 void BfMethodInstance::CopyFrom(BfMethodInstance* methodInstance)
@@ -2205,6 +2214,8 @@ bool BfTypeInstance::IsAlwaysInclude()
 		auto typeOptions = mModule->mSystem->GetTypeOptions(mTypeOptionsIdx);		
 		typeOptions->Apply(alwaysInclude, BfOptionFlags_ReflectAlwaysIncludeType);
 	}
+	if ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_Type) != 0)
+		alwaysInclude = true;
 	return alwaysInclude;
 }
 

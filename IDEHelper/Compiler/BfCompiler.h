@@ -58,7 +58,8 @@ public:
 		CompileState_None,
 		CompileState_Normal,
 		CompileState_Unreified,
-		CompileState_VData
+		CompileState_VData,
+		CompileState_Cleanup
 	};
 
 	struct Stats

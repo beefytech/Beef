@@ -2778,6 +2778,26 @@ void BfContext::Cleanup()
 	// Can't clean up LLVM types, they are allocated with a bump allocator
 	RemoveInvalidFailTypes();	
 
+	mCompiler->mCompileState = BfCompiler::CompileState_Cleanup;
+
+	// We can't remove the local methods if they still may be referenced by a BfMethodRefType used to specialize a method
+	if (mMethodWorkList.empty())
+	{
+		Array<BfLocalMethod*> survivingLocalMethods;
+
+		for (auto localMethod : mLocalMethodGraveyard)
+		{
+			if ((localMethod->mMethodInstanceGroup != NULL) && (localMethod->mMethodInstanceGroup->mRefCount > 0))
+			{
+				localMethod->Dispose();
+				survivingLocalMethods.push_back(localMethod);
+			}
+			else
+				delete localMethod;
+		}
+		mLocalMethodGraveyard = survivingLocalMethods;
+	}
+
 	// Clean up deleted BfTypes
 	// These need to get deleted before the modules because we access mModule in the MethodInstance dtors
 	for (auto type : mTypeGraveyard)
@@ -2803,22 +2823,7 @@ void BfContext::Cleanup()
 	
 	for (auto typeDef : mTypeDefGraveyard)
 		delete typeDef;
-	mTypeDefGraveyard.Clear();
-
-	// We can't remove the local methods if they still may be referenced by a BfMethodRefType used to specialize a method
-	if (mMethodWorkList.empty())
-	{
-		Array<BfLocalMethod*> survivingLocalMethods;
-
-		for (auto localMethod : mLocalMethodGraveyard)
-		{
-			if ((localMethod->mMethodInstanceGroup != NULL) && (localMethod->mMethodInstanceGroup->mRefCount > 0))
-				survivingLocalMethods.push_back(localMethod);			
-			else
-				delete localMethod;
-		}
-		mLocalMethodGraveyard = survivingLocalMethods;
-	}
+	mTypeDefGraveyard.Clear();	
 		
 	mScratchModule->Cleanup();
 	mUnreifiedModule->Cleanup();

@@ -82,9 +82,23 @@ BfLocalMethod::~BfLocalMethod()
 		mSource->mRefCount--;
 		BF_ASSERT(mSource->mRefCount >= 0);
 	}
-
+	
 	delete mMethodInstanceGroup;
 	delete mMethodDef;	
+}
+
+void BfLocalMethod::Dispose()
+{
+	if (mMethodInstanceGroup == NULL)
+		return;
+	if (mMethodInstanceGroup->mDefault != NULL)
+		mMethodInstanceGroup->mDefault->Dispose();
+	
+	if (mMethodInstanceGroup->mMethodSpecializationMap != NULL)
+	{
+		for (auto& kv : *mMethodInstanceGroup->mMethodSpecializationMap)
+			kv.mValue->Dispose();
+	}
 }
 
 void BfDeferredLocalAssignData::ExtendFrom(BfDeferredLocalAssignData* outerLocalAssignData, bool doChain)
@@ -1185,6 +1199,12 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 	//  causes other types rebuild BEFORE they get deleted, which is okay (though wasteful)
 	//BF_ASSERT((mProject == NULL) || (!mProject->mDisabled));
 
+	if (mCompiler->mCompileState == BfCompiler::CompileState_Cleanup)
+	{
+		// Cleaning up local methods may cause some necessary NewRevisions
+		force = true;
+	}
+
 	// Already on new revision?
 	if ((mRevision == mCompiler->mRevision) && (!force))
 		return;
@@ -1887,7 +1907,7 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 		return;
 	
 	auto checkBaseType = val.mType->ToTypeInstance();
-	if ((checkBaseType != NULL) && (checkBaseType->IsObject()))
+	if ((checkBaseType != NULL) && (checkBaseType->IsObject()) && (!arraySize))
 	{	
 		bool hadDtorCall = false;
 		while (checkBaseType != NULL)
@@ -8571,7 +8591,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					auto loadedPtr = _CreateDynAlloc(sizeValue, arrayType->mAlign);
 					auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(loadedPtr, mBfIRBuilder->MapType(arrayType)), arrayType);
 					if (!noDtorCall)
-						AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
+						AddStackAlloc(typedVal, BfIRValue(), NULL, scopeData, false, true);
 					InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
 					return typedVal.mValue;
 				}
@@ -8610,7 +8630,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					auto typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);
 					mBfIRBuilder->ClearDebugLocation_Last();
 					if (!noDtorCall)
-						AddStackAlloc(typedVal, arraySize, NULL, scopeData, false, true);
+						AddStackAlloc(typedVal, BfIRValue(), NULL, scopeData, false, true);
 					InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
 					return typedVal.mValue;
 				}
@@ -11118,13 +11138,13 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 					{
 						auto constant = mCurTypeInstance->mConstHolder->GetConstant(setProp.mParam.mValue);
 						if ((constant != NULL) && (constant->mBool))
-							mCurTypeInstance->mHasBeenInstantiated = true;
+							mCurTypeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(mCurTypeInstance->mAlwaysIncludeFlags | BfAlwaysIncludeFlag_AssumeInstantiated);							
 					}
 					else if (propertyDef->mName == "IncludeAllMethods")
 					{
 						auto constant = mCurTypeInstance->mConstHolder->GetConstant(setProp.mParam.mValue);
 						if ((constant != NULL) && (constant->mBool))
-							mCurTypeInstance->mIncludeAllMethods = true;
+							mCurTypeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(mCurTypeInstance->mAlwaysIncludeFlags | BfAlwaysIncludeFlag_IncludeAllMethods);
 					}
 				}
 			}
@@ -11149,6 +11169,12 @@ void BfModule::ProcessTypeInstCustomAttributes(bool& isPacked, bool& isUnion, bo
 					}
 				}
 			}
+
+			if (customAttribute.mType->mAttributeData == NULL)
+				PopulateType(customAttribute.mType);
+			BF_ASSERT(customAttribute.mType->mAttributeData != NULL);
+			if ((customAttribute.mType->mAttributeData != NULL) && ((customAttribute.mType->mAttributeData->mAlwaysIncludeUser & BfAlwaysIncludeFlag_AssumeInstantiated) != 0))
+				mCurTypeInstance->mAlwaysIncludeFlags = (BfAlwaysIncludeFlags)(mCurTypeInstance->mAlwaysIncludeFlags | customAttribute.mType->mAttributeData->mAlwaysIncludeUser);
 		}
 	}
 }
@@ -11205,6 +11231,12 @@ void BfModule::ProcessCustomAttributeData()
 						if (constant != NULL)
 							attributeData->mAttributeTargets = (BfAttributeTargets)constant->mInt32;
 					}
+					else if (propDef->mName == "AlwaysIncludeUser")
+					{
+						auto constant = mCurTypeInstance->mConstHolder->GetConstant(setProp.mParam.mValue);
+						if (constant != NULL)
+							attributeData->mAlwaysIncludeUser = (BfAlwaysIncludeFlags)constant->mInt32;						
+					}
 				}
 
 				hasCustomAttribute = true;
@@ -11217,6 +11249,7 @@ void BfModule::ProcessCustomAttributeData()
 		attributeData->mAttributeTargets = mCurTypeInstance->mBaseType->mAttributeData->mAttributeTargets;
 		attributeData->mInherited = mCurTypeInstance->mBaseType->mAttributeData->mInherited;
 		attributeData->mAllowMultiple = mCurTypeInstance->mBaseType->mAttributeData->mAllowMultiple;
+		attributeData->mAlwaysIncludeUser = mCurTypeInstance->mBaseType->mAttributeData->mAlwaysIncludeUser;
 	}
 
 	mCurTypeInstance->mAttributeData = attributeData;

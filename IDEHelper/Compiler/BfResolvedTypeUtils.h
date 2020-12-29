@@ -822,6 +822,7 @@ public:
 	bool mDisallowCalling:1;		
 	bool mIsInnerOverride:1;
 	bool mInCEMachine:1;
+	bool mIsDisposed:1;
 	BfMethodChainType mChainType;
 	BfCallingConvention mCallingConvention;
 	BfMethodInstanceGroup* mMethodInstanceGroup;
@@ -859,6 +860,7 @@ public:
 		mDisallowCalling = false;
 		mIsInnerOverride = false;
 		mInCEMachine = false;
+		mIsDisposed = false;
 		mChainType = BfMethodChainType_None;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mMethodInstanceGroup = NULL;
@@ -874,6 +876,7 @@ public:
 	}
 
 	~BfMethodInstance();
+	void Dispose(bool isDeleting = false);
 
 	void CopyFrom(BfMethodInstance* methodInstance);
 
@@ -1545,6 +1548,7 @@ class BfAttributeData
 {
 public:
 	BfAttributeTargets mAttributeTargets;
+	BfAlwaysIncludeFlags mAlwaysIncludeUser;
 	bool mInherited;
 	bool mAllowMultiple;
 
@@ -1552,6 +1556,7 @@ public:
 	BfAttributeData()
 	{
 		mAttributeTargets = BfAttributeTargets_All;
+		mAlwaysIncludeUser = BfAlwaysIncludeFlag_None;
 		mInherited = true;
 		mAllowMultiple = false;
 	}
@@ -1794,8 +1799,8 @@ public:
 	int mInstSize;	
 	int16 mInheritDepth;
 	int16 mSlotNum;
+	BfAlwaysIncludeFlags mAlwaysIncludeFlags;
 	bool mHasBeenInstantiated;
-	bool mIncludeAllMethods;
 	bool mIsReified;
 	bool mIsTypedPrimitive;
 	bool mIsCRepr;	
@@ -1861,9 +1866,9 @@ public:
 		mBaseTypeMayBeIncomplete = false;
 		mIsFinishingType = false;
 		mResolvingConstField = false;
-		mHasPackingHoles = false;				
-		mHasBeenInstantiated = false;
-		mIncludeAllMethods = false;
+		mHasPackingHoles = false;	
+		mAlwaysIncludeFlags = BfAlwaysIncludeFlag_None;
+		mHasBeenInstantiated = false;		
 		mWantsGCMarking = false;
 		mHasParameterizedBase = false;
 		mHasDeclError = false;
@@ -1952,7 +1957,10 @@ public:
 	bool GetResultInfo(BfType*& valueType, int& okTagId);
 	BfGenericTypeInfo::GenericParamsVector* GetGenericParamsVector(BfTypeDef* declaringTypeDef);
 	void GenerateProjectsReferenced();
-	bool IsAlwaysInclude();
+	bool IsAlwaysInclude();	
+	bool HasBeenInstantiated() { return mHasBeenInstantiated || ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_AssumeInstantiated) != 0); }
+	bool IncludeAllMethods() { return ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_IncludeAllMethods) != 0); }
+	
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };

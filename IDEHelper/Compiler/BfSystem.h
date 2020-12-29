@@ -200,13 +200,22 @@ enum BfObjectFlags : uint8
 	BfObjectFlag_StackDeleted = 0x80 // We remove StackAlloc so it doesn't get scanned
 };
 
-enum BfCustomAttributeFlags
+enum BfCustomAttributeFlags : uint8
 {
 	BfCustomAttributeFlags_None,
 	BfCustomAttributeFlags_DisallowAllowMultiple = 1,
 	BfCustomAttributeFlags_NotInherited = 2,
 	BfCustomAttributeFlags_ReflectAttribute = 4,
 	BfCustomAttributeFlags_AlwaysIncludeTarget = 8
+};
+
+enum BfAlwaysIncludeFlags : uint8
+{
+	BfAlwaysIncludeFlag_None = 0,
+	BfAlwaysIncludeFlag_Type = 1,
+	BfAlwaysIncludeFlag_IncludeAllMethods = 2,
+	BfAlwaysIncludeFlag_AssumeInstantiated = 4,
+	BfAlwaysIncludeFlag_All = BfAlwaysIncludeFlag_Type | BfAlwaysIncludeFlag_IncludeAllMethods | BfAlwaysIncludeFlag_AssumeInstantiated
 };
 
 enum BfPlatformType

@@ -1313,7 +1313,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			continue;
 
 		bool needsTypeData = (needsTypeList) || ((type->IsObject()) && (needsObjectTypeData));
-		bool needsVData = (type->IsObject()) && (typeInst->mHasBeenInstantiated);
+		bool needsVData = (type->IsObject()) && (typeInst->HasBeenInstantiated());
 
 		bool forceReflectFields = false;
 
@@ -2764,7 +2764,7 @@ void BfCompiler::GenerateSlotNums()
 		if ((typeInstance->mSlotNum <= 0) || (!isHotCompile))
 		{
 			if ((mContext->mReferencedIFaceSlots.Contains(typeInstance)) || 
-				(typeInstance->mHasBeenInstantiated) || (typeInstance->mIncludeAllMethods))
+				(typeInstance->mHasBeenInstantiated) || (typeInstance->IncludeAllMethods()))
 			{
 				if (typeInstance->mSlotNum == -2)
 					typeInstance->mSlotNum = -1;
@@ -5437,7 +5437,7 @@ void BfCompiler::PopulateReified()
 				}
 
 				// Only check virtual stuff if we have been instantiated
-				if (typeInst->mHasBeenInstantiated)
+				if (typeInst->HasBeenInstantiated())
 				{
 					// If we have any virtual methods overrides that are unreified but the declaring virtual method is reified then we also need to reify
 					for (auto&& vEntry : typeInst->mVirtualMethodTable)
@@ -5468,7 +5468,7 @@ void BfCompiler::PopulateReified()
 					auto checkType = typeInst;
 					while (checkType != NULL)
 					{
-						if ((checkType != typeInst) && (checkType->mHasBeenInstantiated))
+						if ((checkType != typeInst) && (checkType->HasBeenInstantiated()))
 						{
 							// We will already check this type here in its own loop
 							break;
@@ -8854,7 +8854,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetTypeInfo(BfCompiler* bfCompiler,
 		{
 			if (typeInst->mIsReified)
 				outString += " Reified";
-			if (typeInst->mHasBeenInstantiated)
+			if (typeInst->HasBeenInstantiated())
 				outString += " Instantiated";
 			if (typeInst->mTypeFailed)
 				outString += " TypeFailed";

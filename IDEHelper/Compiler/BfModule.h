@@ -247,6 +247,7 @@ public:
 		mNextWithSameName = NULL;
 	}
 	~BfLocalMethod();
+	void Dispose();
 };
 
 class BfDeferredCapture
