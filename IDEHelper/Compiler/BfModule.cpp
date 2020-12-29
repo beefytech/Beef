@@ -16160,8 +16160,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		auto targetToken = BfNodeDynCast<BfTokenNode>(ctorInvocation->mTarget);
 		targetType = (targetToken->GetToken() == BfToken_This) ? mCurTypeInstance : mCurTypeInstance->mBaseType;
 	}
-	else if ((mCurTypeInstance->mBaseType != NULL) && (!mCurTypeInstance->IsUnspecializedType()))
-	{		
+	else if ((mCurTypeInstance->mBaseType != NULL) && (!mCurTypeInstance->IsUnspecializedType()) && (methodDef->mMethodType != BfMethodType_CtorNoBody))
+	{
 		auto baseType = mCurTypeInstance->mBaseType;
 		if ((!mCurTypeInstance->IsTypedPrimitive()) &&
 			(baseType->mTypeDef != mCompiler->mValueTypeTypeDef) &&

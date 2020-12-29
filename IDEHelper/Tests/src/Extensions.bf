@@ -116,6 +116,36 @@ namespace Tests
 			public override void MethodA() { }
 		}
 
+		class ClassD
+		{
+			public int mD = MethodD0() ~ MethodD0();
+		    
+			public int MethodD0()
+			{
+				return mD + 1;
+			}
+
+			public void MethodD1()
+			{
+
+			}
+		}
+
+		class ClassE : ClassD
+		{
+			public int mE = MethodE0();
+
+			public int MethodE0()
+			{
+				return mE + 1;
+			}
+		}
+
+		extension ClassE
+		{
+
+		}
+
 		class TClassA<T> where T : IDisposable
 		{
 			public int32 mA = 10;
@@ -192,6 +222,10 @@ namespace Tests
 
 			ClassC cc = scope .();
 			cc.MethodB();
+
+			ClassE ce = scope .();
+			Test.Assert(ce.mD == 1);
+			Test.Assert(ce.mE == 1);
 		}
 
 		[Test]
