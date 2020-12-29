@@ -66,6 +66,15 @@ namespace System
 		AlwaysIncludeTarget = 8
 	}
 
+	public enum AlwaysIncludeFlags
+	{
+		None,
+		Type = 1,
+		IncludeAllMethods = 2,
+		AssumeInstantiated = 4,
+		All = Type | IncludeAllMethods | AssumeInstantiated
+	}
+
     public sealed struct AttributeUsageAttribute : Attribute
 	{
 	    AttributeTargets mAttributeTarget = .All;
@@ -101,6 +110,11 @@ namespace System
 		{
 			get { return mReflectUser; }
 			set mut { mReflectUser = value; }
+		}
+
+		public AlwaysIncludeFlags AlwaysIncludeUser
+		{
+			set {}
 		}
 	}
 
