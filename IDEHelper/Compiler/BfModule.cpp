@@ -1467,11 +1467,6 @@ BfTypedValue BfModule::GetDefaultTypedValue(BfType* type, bool allowRef, BfDefau
 
 	if (defaultValueKind == BfDefaultValueKind_Undef)
 	{
-// 		auto primType = type->ToPrimitiveType();
-// 		if (primType != NULL)
-// 		{
-// 			return BfTypedValue(mBfIRBuilder->GetUndefConstValue( primType), type);
-// 		}
 		return BfTypedValue(mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(type)), type);
 	}
 

@@ -10044,7 +10044,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 
 				BfTypedValue fromTypedValue;
  				if (typedVal.mKind == BfTypedValueKind_GenericConstValue)
- 					fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint);
+ 					fromTypedValue = GetDefaultTypedValue(genericParamInst->mTypeConstraint, false, BfDefaultValueKind_Undef);
  				else
 					fromTypedValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), genericParamInst->mTypeConstraint, genericParamInst->mTypeConstraint->IsValueType());
 
