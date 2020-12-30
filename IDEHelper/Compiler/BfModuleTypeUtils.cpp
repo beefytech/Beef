@@ -306,7 +306,7 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 
 bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstance* genericTypeInst, bool ignoreErrors)
 {
-	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsTypeAlias()))
+	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsTypeAlias()) && (mCurTypeInstance->IsGenericTypeInstance()))
 	{
 		// Don't validate constraints during the population of a concrete generic type alias instance, we want to
 		//  throw those errors at the usage sites
@@ -327,8 +327,12 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 		auto underlyingType = genericTypeInst->GetUnderlyingType();
 		if ((underlyingType != NULL) && (underlyingType->IsGenericTypeInstance()))
 		{
+			auto underlyingGenericType = underlyingType->ToGenericTypeInstance();
 			PopulateType(underlyingType, BfPopulateType_Declaration);
-			return ValidateGenericConstraints(typeRef, (BfTypeInstance*)underlyingType, ignoreErrors);
+			bool result = ValidateGenericConstraints(typeRef, underlyingGenericType, ignoreErrors);
+			if (underlyingGenericType->mGenericTypeInfo->mHadValidateErrors)
+				genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
+			return result;
 		}
 		return true;
 	}
@@ -7285,18 +7289,18 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				if (curGenericTypeInstance->mGenericTypeInfo->mHadValidateErrors)
 					doValidate = false;
 			}
-			if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mCurBaseTypeRef != NULL)) // We validate constraints for base types later
+			if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mCurBaseTypeRef != NULL) && (!mContext->mCurTypeState->mTypeInstance->IsTypeAlias())) // We validate constraints for base types later
 				doValidate = false;
 		}
 
 		if (doValidate)
 			ValidateGenericConstraints(typeRef, genericTypeInstance, false);
 	}
-
+	
 	if (populateType != BfPopulateType_IdentityNoRemapAlias)
 	{
 		while ((resolvedTypeRef != NULL) && (resolvedTypeRef->IsTypeAlias()))
-		{			
+		{
 			if (mCurTypeInstance != NULL)
 				AddDependency(resolvedTypeRef, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
 			if ((typeInstance->mCustomAttributes != NULL) && (!typeRef->IsTemporary()))
