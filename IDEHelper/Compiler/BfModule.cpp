@@ -2807,8 +2807,16 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 			{
 				//auto unspecializedMethod = &mCurMethodInstance->mMethodInstanceGroup->mMethodSpecializationMap.begin()->second;
 				auto unspecializedMethod = methodInstance->mMethodInstanceGroup->mDefault;
-				if (unspecializedMethod->mHasFailed)
-					return false; // At least SOME error has already been reported
+				if (unspecializedMethod == methodInstance)
+				{
+					// This is a local method inside a generic method
+					BF_ASSERT(methodInstance->mMethodDef->mIsLocalMethod);
+				}
+				else 
+				{
+					if (unspecializedMethod->mHasFailed)
+						return false; // At least SOME error has already been reported
+				}
 			}
 
 			if (isSpecializedMethod)
@@ -20040,7 +20048,12 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 			VisitCodeBlock(blockBody);
 		}
 		else if (auto bodyExpr = BfNodeDynCast<BfExpression>(body))
-			CreateValueFromExpression(bodyExpr);
+		{
+			BfType* expectType = NULL;
+			if (!methodInstance->mReturnType->IsVoid())
+				expectType = methodInstance->mReturnType;
+			CreateValueFromExpression(bodyExpr, expectType);
+		}
 	};
 
 	auto _SafeResolveTypeRef = [&](BfTypeReference* typeRef)
