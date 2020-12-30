@@ -1148,7 +1148,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		auto irReturnType = module->GetIRLoweredType(loweredReturnTypeCode, loweredReturnTypeCode2);
 		returnType = irReturnType;
 	}
-	else if (mReturnType->IsValuelessType())
+	else if ((mReturnType->IsValuelessType()) || (mReturnType->IsVar()))
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);

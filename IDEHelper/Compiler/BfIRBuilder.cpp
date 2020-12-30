@@ -730,6 +730,13 @@ BfIRValue BfIRConstHolder::CreateConstStructZero(BfIRType aggType)
 
 BfIRValue BfIRConstHolder::CreateConstAgg(BfIRType type, const BfSizedArray<BfIRValue>& values)
 {
+#ifdef _DEBUG
+	for (auto& val : values)
+	{
+		BF_ASSERT(val);
+	}
+#endif
+
 	BfConstantAgg* constant = mTempAlloc.Alloc<BfConstantAgg>();
 	constant->mConstType = BfConstType_Agg;
 	constant->mType = type = type;
@@ -4766,6 +4773,13 @@ BfIRValue BfIRBuilder::CreateRet(BfIRValue val)
 	return retVal;
 }
 
+BfIRValue BfIRBuilder::CreateSetRet(BfIRValue val, int returnTypeId)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_CreateSetRet, val, returnTypeId);
+	NEW_CMD_INSERTED;
+	return retVal;
+}
+
 void BfIRBuilder::CreateRetVoid()
 {
 	WriteCmd(BfIRCmd_CreateRetVoid);
@@ -5391,4 +5405,22 @@ void BfIRBuilder::DbgCreateAnnotation(BfIRMDNode scope, const StringImpl& name, 
 	NEW_CMD_INSERTED;
 }
 
+BfIRState BfIRBuilder::GetState()
+{
+	BfIRState state;
+	state.mActualInsertBlock = mActualInsertBlock;
+	state.mInsertBlock = mInsertBlock;
+	state.mActiveFunction = mActiveFunction;
+	state.mActiveFunctionHasBody = mActiveFunctionHasBody;
+	state.mSavedDebugLocs = mSavedDebugLocs;
+	return state;
+}
 
+void BfIRBuilder::SetState(const BfIRState& state)
+{
+	mActualInsertBlock = state.mActualInsertBlock;
+	mInsertBlock = state.mInsertBlock;
+	mActiveFunction = state.mActiveFunction;
+	mActiveFunctionHasBody = state.mActiveFunctionHasBody;
+	mSavedDebugLocs = state.mSavedDebugLocs;
+}

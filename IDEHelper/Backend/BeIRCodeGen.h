@@ -53,6 +53,19 @@ public:
 	}
 };
 
+class BeState
+{
+public:
+	BeFunction* mActiveFunction;
+	Array<BeDbgLoc*> mSavedDebugLocs;
+	bool mHasDebugLoc;
+
+	BeBlock* mActiveBlock;
+	int mInsertPos;
+	BeDbgLoc* mCurDbgLoc;
+	BeDbgLoc* mPrevDbgLocInline;
+	BeDbgLoc* mLastDbgLoc;
+};
 
 template <typename T>
 class CmdParamVec : public SizedArray<T, 8>
@@ -139,6 +152,9 @@ public:
 	BeMDNode* GetBeMetadata(int streamId);
 
 	BeType* GetBeTypeById(int id);
+
+	BeState GetState();
+	void SetState(const BeState& state);
 };
 
 NS_BF_END

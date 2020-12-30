@@ -270,6 +270,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_SetTailCall,
 	BfIRCmd_SetCallAttribute,
 	BfIRCmd_CreateRet,
+	BfIRCmd_CreateSetRet,
 	BfIRCmd_CreateRetVoid,
 	BfIRCmd_CreateUnreachable,
 	BfIRCmd_Call_AddAttribute,
@@ -627,6 +628,7 @@ enum BfIRAttribute
 	BfIRAttribute_NoAlias,
 	BfIRAttribute_NoCapture,
 	BfIRAttribute_StructRet,
+	BfIRAttribute_VarRet,
 	BfIRAttribute_ZExt,
 	BfIRAttribute_ByVal,
 	BfIRAttribute_Dereferencable,
@@ -914,6 +916,15 @@ enum BfIRPopulateType
 	BfIRPopulateType_Eventually_Full,
 	BfIRPopulateType_Full,
 	BfIRPopulateType_Full_ForceDefinition
+};
+
+struct BfIRState
+{
+	BfIRBlock mActualInsertBlock; // Only when not ignoring writes
+	BfIRBlock mInsertBlock;
+	BfIRFunction mActiveFunction;
+	bool mActiveFunctionHasBody;
+	Array<BfFilePosition> mSavedDebugLocs;
 };
 
 class BfIRBuilder : public BfIRConstHolder
@@ -1227,6 +1238,7 @@ public:
 	void SetTailCall(BfIRValue callInst);
 	void SetCallAttribute(BfIRValue callInst, int paramIdx, BfIRAttribute attribute);
 	BfIRValue CreateRet(BfIRValue val);
+	BfIRValue CreateSetRet(BfIRValue val, int returnTypeId);
 	void CreateRetVoid();	
 	void CreateUnreachable();	
 	void Call_AddAttribute(BfIRValue callInst, int argIdx, BfIRAttribute attr);
@@ -1315,6 +1327,9 @@ public:
 		BfIRMDNode type, bool isLocalToUnit, BfIRValue val, BfIRMDNode Decl = BfIRMDNode());
 	BfIRMDNode DbgCreateLexicalBlock(BfIRMDNode scope, BfIRMDNode file, int line, int col);	
 	void DbgCreateAnnotation(BfIRMDNode scope, const StringImpl& name, BfIRValue value);	
+
+	BfIRState GetState();
+	void SetState(const BfIRState& state);
 };
 
 NS_BF_END

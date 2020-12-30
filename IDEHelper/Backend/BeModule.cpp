@@ -2349,6 +2349,7 @@ String BeModule::ToString(BeFunction* wantFunc)
 							str += " void";
 					}
 					break;
+				DISPLAY_INST2(BeSetRetInst, "setret", mRetValue, mReturnTypeId);
 				case BeCallInst::TypeId:
 					{
 						auto castedInst = (BeCallInst*)inst;
@@ -3379,6 +3380,15 @@ BeRetInst* BeModule::CreateRet(BeValue* value)
 {
 	auto inst = mAlloc.Alloc<BeRetInst>();
 	inst->mRetValue = value;
+	AddInst(inst);
+	return inst;
+}
+
+BeSetRetInst* BeModule::CreateSetRet(BeValue* value, int returnTypeId)
+{
+	auto inst = mAlloc.Alloc<BeSetRetInst>();
+	inst->mRetValue = value;
+	inst->mReturnTypeId = returnTypeId;
 	AddInst(inst);
 	return inst;
 }

@@ -121,9 +121,26 @@ namespace Tests
 			return sa.mA + sa.mB + tup.0 + tup.1 + arr[0] + arr[1];
 		}
 
+		[ConstEval]
+		static var StrToValue(String str)
+		{
+			if (str.Contains('.'))
+				return float.Parse(str).Value;
+			return int.Parse(str).Value;
+		}
+
+		class ClassA
+		{
+			public const let cVal0 = StrToValue("123");
+			public const let cVal1 = StrToValue("1.23");
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
+			Test.Assert(ClassA.cVal0 == 123);
+			Test.Assert(ClassA.cVal0 == 1.23);
+
 			const int fac = Factorial(8);
 			Test.Assert(fac == 40320);
 			const int fib = Fibonacci(27);

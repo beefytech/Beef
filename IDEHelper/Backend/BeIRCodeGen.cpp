@@ -379,9 +379,11 @@ BeType* BeIRCodeGen::GetBeType(BfTypeCode typeCode, bool& isSigned)
 		else
 		return llvm::Type::getInt64Ty(*mLLVMContext);*/
 	case BfTypeCode_Float:
+		isSigned = true;
 		beTypeCode = BeTypeCode_Float;
 		break;
 	case BfTypeCode_Double:	
+		isSigned = true;
 		beTypeCode = BeTypeCode_Double;
 		break;
 	}
@@ -2330,6 +2332,13 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, mBeModule->CreateRet(val));
 		}
 		break;
+	case BfIRCmd_CreateSetRet:
+		{
+			CMD_PARAM(BeValue*, val);
+			CMD_PARAM(int, returnTypeId);
+			SetResult(curId, mBeModule->CreateSetRet(val, returnTypeId));
+		}
+		break;
 	case BfIRCmd_CreateRetVoid:
 		{
 			mBeModule->CreateRetVoid();
@@ -2433,7 +2442,9 @@ void BeIRCodeGen::HandleNextCmd()
 			}
 			else
 			{
-				if (attribute == BFIRAttribute_AlwaysInline)
+				if (attribute == BfIRAttribute_VarRet)
+					func->mIsVarReturn = true;
+				else if (attribute == BFIRAttribute_AlwaysInline)
 					func->mAlwaysInline = true;				
 				else if (attribute == BFIRAttribute_NoUnwind)
 					func->mNoUnwind = true;
@@ -3482,4 +3493,34 @@ BeMDNode* BeIRCodeGen::GetBeMetadata(int id)
 BeType* BeIRCodeGen::GetBeTypeById(int id)
 {
 	return GetTypeEntry(id).mBeType;
+}
+
+BeState BeIRCodeGen::GetState()
+{
+	BeState state;
+	state.mActiveFunction = mActiveFunction;
+	state.mSavedDebugLocs = mSavedDebugLocs;
+	state.mHasDebugLoc = mHasDebugLoc;
+
+	state.mActiveBlock = mBeModule->mActiveBlock;
+	state.mInsertPos = mBeModule->mInsertPos;
+	state.mCurDbgLoc = mBeModule->mCurDbgLoc;
+	state.mPrevDbgLocInline = mBeModule->mPrevDbgLocInline;
+	state.mLastDbgLoc = mBeModule->mLastDbgLoc;
+
+	return state;
+}
+
+void BeIRCodeGen::SetState(const BeState& state)
+{
+	mActiveFunction = state.mActiveFunction;
+	mBeModule->mActiveFunction = mActiveFunction;
+	mSavedDebugLocs = state.mSavedDebugLocs;
+	mHasDebugLoc = state.mHasDebugLoc;
+
+	mBeModule->mActiveBlock = state.mActiveBlock;
+	mBeModule->mInsertPos = state.mInsertPos;
+	mBeModule->mCurDbgLoc = state.mCurDbgLoc;
+	mBeModule->mPrevDbgLocInline = state.mPrevDbgLocInline;
+	mBeModule->mLastDbgLoc = state.mLastDbgLoc;
 }

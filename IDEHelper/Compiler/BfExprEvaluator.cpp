@@ -5025,8 +5025,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	bool forceBind = false;
 
 	if (mModule->mCompiler->mCEMachine != NULL)
-	{		
-		if (mModule->mIsConstModule)
+	{
+		if ((mModule->mIsConstModule) && (!methodInstance->mReturnType->IsVar()))
 		{						
 			mModule->mCompiler->mCEMachine->QueueMethod(methodInstance, func);
 		}
@@ -5043,9 +5043,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			else
 			{
 				CeEvalFlags evalFlags = CeEvalFlags_None;				
-				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
+				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);				
 				if (constRet)
+				{
+					BF_ASSERT(!constRet.mType->IsVar());
 					return constRet;
+				}
 			}
 		}
 	}

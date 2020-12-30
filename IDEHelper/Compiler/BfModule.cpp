@@ -2731,7 +2731,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 {	
 	BP_ZONE("BfModule::Fail");
 
-	if (mIgnoreErrors)
+ 	if (mIgnoreErrors)
 	{		
 		mHadIgnoredError = true;		
 		if (mAttributeState != NULL)
@@ -13639,6 +13639,9 @@ void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 
 void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAliasValue, BfIRValue declareBefore, BfIRInitType initType)
 {
+	if (localVarDef->mResolvedType->IsVar())
+		return;
+
 	if ((mBfIRBuilder->DbgHasInfo()) &&
 		((mCurMethodInstance == NULL) || (!mCurMethodInstance->mIsUnspecialized)) &&
 		(mHasFullDebugInfo) &&
@@ -14460,7 +14463,7 @@ void BfModule::CreateReturn(BfIRValue val)
 	mBfIRBuilder->CreateRet(val);			
 }
 
-void BfModule::EmitReturn(BfIRValue val)
+void BfModule::EmitReturn(const BfTypedValue& val)
 {
 	if (mCurMethodState->mIRExitBlock)
 	{
@@ -14468,11 +14471,23 @@ void BfModule::EmitReturn(BfIRValue val)
 		{
 			if (val) // We allow for val to be empty if we know we've already written the value to mRetVal
 			{
-				BfIRValue retVal = mCurMethodState->mRetVal.mValue;
-				if (!mCurMethodState->mRetVal)
-					retVal = mBfIRBuilder->CreateLoad(mCurMethodState->mRetValAddr);
-				
-				mBfIRBuilder->CreateStore(val, retVal);
+				if ((mCurMethodState->mRetValAddr) || (mCurMethodState->mRetVal))
+				{
+					BfIRValue retVal = mCurMethodState->mRetVal.mValue;
+					if (!mCurMethodState->mRetVal)
+						retVal = mBfIRBuilder->CreateLoad(mCurMethodState->mRetValAddr);
+
+					mBfIRBuilder->CreateStore(val.mValue, retVal);
+				}
+				else if (mIsConstModule)
+				{
+					mBfIRBuilder->CreateSetRet(val.mValue, val.mType->mTypeId);
+				}
+				else
+				{
+					// Just ignore
+					BF_ASSERT(mCurMethodInstance->mReturnType->IsVar());					
+				}
 			}
 		}
 		EmitDeferredScopeCalls(true, NULL, mCurMethodState->mIRExitBlock);
@@ -14486,7 +14501,7 @@ void BfModule::EmitReturn(BfIRValue val)
 			if (mCurMethodInstance->mReturnType->IsValuelessType())
 				mBfIRBuilder->CreateRetVoid();
 			else
-				mBfIRBuilder->CreateRet(val);
+				mBfIRBuilder->CreateRet(val.mValue);
 		}
 	}
 
@@ -15601,7 +15616,7 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 		return;
 	
 	if (mCompiler->mOptions.mNoFramePointerElim)
-		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_NoFramePointerElim);	
+		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_NoFramePointerElim);		
 	mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_NoUnwind);
 	if (mSystem->mPtrSize == 8) // We need unwind info for debugging 
 		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_UWTable);
@@ -15609,6 +15624,8 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 	if (methodInstance == NULL)
 		return;
 
+	if (methodInstance->mReturnType->IsVar())
+		mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_VarRet);
 	if (methodDef->mImportKind == BfImportKind_Export)
 		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_DllExport);
 	if (methodDef->mIsNoReturn)
@@ -19278,6 +19295,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	else if (!skipBody)
 	{
 		bool isEmptyBodied = BfNodeDynCast<BfTokenNode>(methodDef->mBody) != NULL;
+		
+		bool wantsRetVal = true;
+		if ((mIsConstModule) && (methodDef->mMethodType != BfMethodType_CtorCalcAppend))
+			wantsRetVal = false;
+		else if (mCurMethodInstance->mReturnType->IsVar())
+			wantsRetVal = false;
 
 		if ((!mCurMethodInstance->mReturnType->IsValuelessType()) && (!isEmptyBodied))
 		{			
@@ -19291,7 +19314,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				mBfIRBuilder->ClearDebugLocation(storeInst);
 				mCurMethodState->mRetValAddr = allocaInst;
 			}
-			else
+			else if (wantsRetVal)
 			{
 				auto allocaInst = AllocLocalVariable(mCurMethodInstance->mReturnType, "__return", false);
 				mCurMethodState->mRetVal = BfTypedValue(allocaInst, mCurMethodInstance->mReturnType, true);
@@ -19414,7 +19437,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				{
 					mCurMethodState->mHadReturn = true;
 					retVal = LoadOrAggregateValue(retVal);
-					EmitReturn(retVal.mValue);
+					EmitReturn(retVal);
 				}
 			}
 		}		
@@ -21211,14 +21234,13 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 		(methodDef->mReturnTypeRef != NULL))
 	{
 		SetAndRestoreValue<bool> prevIngoreErrors(mIgnoreErrors, mIgnoreErrors || (methodDef->GetPropertyDeclaration() != NULL));
-		resolvedReturnType = ResolveTypeRef(methodDef->mReturnTypeRef, BfPopulateType_Declaration, 
-			(BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowRef | BfResolveTypeRefFlag_AllowRefGeneric));
 
-		if ((resolvedReturnType != NULL) && (resolvedReturnType->IsVar()) && (methodDef->mMethodType != BfMethodType_Mixin))
-		{
-			Fail("Cannot declare var return types", methodDef->mReturnTypeRef);
-			resolvedReturnType = GetPrimitiveType(BfTypeCode_Var);
-		}
+		BfResolveTypeRefFlags flags = (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowRef | BfResolveTypeRefFlag_AllowRefGeneric);
+
+		if ((methodDef->mIsConstEval) && (methodDef->mReturnTypeRef->IsA<BfVarTypeReference>()))		
+			resolvedReturnType = GetPrimitiveType(BfTypeCode_Var);		
+		else
+			resolvedReturnType = ResolveTypeRef(methodDef->mReturnTypeRef, BfPopulateType_Declaration, flags);		
 		
 		if (resolvedReturnType == NULL)
 			resolvedReturnType = GetPrimitiveType(BfTypeCode_Var);

@@ -65,6 +65,7 @@ enum CeOp : int16
 {
 	CeOp_InvalidOp,
 	CeOp_Ret,
+	CeOp_SetRetType,
 	CeOp_Jmp,
 	CeOp_JmpIf,
 	CeOp_JmpIfNot,
@@ -331,8 +332,10 @@ public:
 	CeInnerFunctionInfo* mCeInnerFunctionInfo;
 	BfMethodInstance* mMethodInstance;	
 	CeFunctionKind mFunctionKind;
+	bool mGenerating;
 	bool mInitialized;
-	bool mFailed;		
+	bool mFailed;
+	bool mIsVarReturn;
 	Array<uint8> mCode;	
 	Array<String> mFiles;
 	Array<CeEmitEntry> mEmitTable;
@@ -344,6 +347,7 @@ public:
 	Array<CeFunction*> mInnerFunctions;
 	String mGenError;
 	int mFrameSize;	
+	int mMaxReturnSize;
 	int mId;
 
 public:
@@ -352,10 +356,13 @@ public:
 		mCeFunctionInfo = NULL;
 		mCeInnerFunctionInfo = NULL;
 		mFunctionKind = CeFunctionKind_Normal;
+		mGenerating = false;
 		mInitialized = false;
 		mMethodInstance = NULL;
 		mFailed = false;
+		mIsVarReturn = false;
 		mFrameSize = 0;
+		mMaxReturnSize = 0;
 		mId = -1;
 	}	
 
@@ -559,6 +566,7 @@ public:
 	addr_ce mStackAddr;
 	addr_ce mFrameAddr;
 	uint8* mInstPtr;
+	BfType* mReturnType;
 
 public:
 	CeFrame()
@@ -567,6 +575,7 @@ public:
 		mStackAddr = 0;
 		mFrameAddr = 0;
 		mInstPtr = NULL;
+		mReturnType = NULL;
 	}
 };
 
@@ -621,7 +630,7 @@ public:
 	BfAstNode* mCurTargetSrc;
 	BfMethodInstance* mCurMethodInstance;
 	BfModule* mCurModule;	
-	BfType* mCurExpectingType;
+	BfType* mCurExpectingType;	
 
 public:
 	CeMachine(BfCompiler* compiler);
@@ -648,7 +657,7 @@ public:
 	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal);
 	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);		
-	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr);
+	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType);
 
 	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);	
 	void MapFunctionId(CeFunction* ceFunction);

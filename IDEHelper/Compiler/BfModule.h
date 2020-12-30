@@ -1552,7 +1552,7 @@ public:
 
 	// Util
 	void CreateReturn(BfIRValue val);	
-	void EmitReturn(BfIRValue val);
+	void EmitReturn(const BfTypedValue& val);
 	void EmitDefaultReturn();
 	void EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfDeferredBlockFlags flags = BfDeferredBlockFlag_None);
 	bool AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfScopeData* scope);

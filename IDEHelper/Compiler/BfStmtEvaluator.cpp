@@ -3787,9 +3787,9 @@ void BfModule::Visit(BfThrowStatement* throwStmt)
 	Fail("Exceptions are not supported", throwStmt->mThrowToken);
 
 	if (mCurMethodInstance->mReturnType->IsVoid())
-		EmitReturn(BfIRValue());
+		EmitReturn(BfTypedValue());
 	else
-		EmitReturn(GetDefaultValue(mCurMethodInstance->mReturnType));	
+		EmitReturn(GetDefaultTypedValue(mCurMethodInstance->mReturnType));	
 }
 
 void BfModule::Visit(BfDeleteStatement* deleteStmt)
@@ -4927,7 +4927,7 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 		MarkScopeLeft(&mCurMethodState->mHeadScope);
 		if (retType->IsVoid())
 		{
-			EmitReturn(BfIRValue());
+			EmitReturn(BfTypedValue());
 			return;
 		}
 
@@ -4937,11 +4937,13 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 			return;
 		}				
 
-		EmitReturn(GetDefaultValue(retType));		
+		EmitReturn(GetDefaultTypedValue(retType));		
 		return;
 	}
 
 	BfType* expectingReturnType = retType;
+	if ((expectingReturnType != NULL) && (expectingReturnType->IsVar()))
+		expectingReturnType = NULL;
 	
 	BfType* origType;
 	BfExprEvaluator exprEvaluator(this);
@@ -4964,21 +4966,21 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 		}
 		else
 		{
-			EmitReturn(BfIRValue());
+			EmitReturn(BfTypedValue());
 			return;
 		}		
 	}
 
 	if (retValue.mType->IsVar())
 	{
-		EmitReturn(BfIRValue());
+		EmitReturn(BfTypedValue());
 	}
 	else if (retValue.mType->IsVoid())
 	{				
 		if (retType->IsVoid())
 		{
 			Warn(0, "Returning void value", returnStmt->mReturnToken);
-			EmitReturn(BfIRValue());
+			EmitReturn(BfTypedValue());
 		}
 	}
 	else
@@ -4987,7 +4989,7 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 		{
 			expectingReturnType = NULL;
 			Fail("Attempting to return value from void method", returnStmt->mExpression);
-			EmitReturn(BfIRValue());
+			EmitReturn(BfTypedValue());
 			return;
 		}
 
@@ -4997,9 +4999,9 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 		}
 
 		if (!alreadyWritten)
-			EmitReturn(LoadOrAggregateValue(retValue).mValue);
+			EmitReturn(LoadOrAggregateValue(retValue));
 		else
-			EmitReturn(BfIRValue());
+			EmitReturn(BfTypedValue());
 	}
 }
 

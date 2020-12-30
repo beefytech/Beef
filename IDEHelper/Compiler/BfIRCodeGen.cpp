@@ -3522,7 +3522,11 @@ void BfIRCodeGen::HandleNextCmd()
 					NULL, llvm::GlobalValue::NotThreadLocal);								
 			}			
 			else
-				func->addAttribute(argIdx, LLVMMapAttribute(attribute));
+			{
+				auto attr = LLVMMapAttribute(attribute);
+				if (attr != llvm::Attribute::None)
+					func->addAttribute(argIdx, attr);
+			}
 		}
 		break;
 	case BfIRCmd_Func_AddAttribute1:

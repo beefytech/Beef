@@ -518,6 +518,7 @@ public:
 	String mName;
 #endif
 	BfIRLinkageType mLinkageType;	
+	bool mIsVarReturn;
 	bool mAlwaysInline;		
 	bool mNoUnwind;
 	bool mUWTable;
@@ -539,6 +540,7 @@ public:
 		mLinkageType = BfIRLinkageType_External;
 		mModule = NULL;
 		mDbgFunction = NULL;
+		mIsVarReturn = false;
 		mAlwaysInline = false;
 		mDidInlinePass = false;		
 		mNoUnwind = false;
@@ -1263,6 +1265,15 @@ public:
 		if (mRetValue != NULL)
 			mRetValue->HashReference(hashCtx);
 	}
+};
+
+class BeSetRetInst : public BeRetInst
+{
+public:
+	BE_VALUE_TYPE(BeSetRetInst, BeRetInst);
+
+public:
+	int32 mReturnTypeId;
 };
 
 class BeCallInst : public BeInst
@@ -2311,6 +2322,7 @@ public:
 	BeCondBrInst* CreateCondBr(BeValue* cond, BeBlock* trueBlock, BeBlock* falseBlock);
 	BeRetInst* CreateRetVoid();
 	BeRetInst* CreateRet(BeValue* value);	
+	BeSetRetInst* CreateSetRet(BeValue* value, int returnTypeId);
 	BeCallInst* CreateCall(BeValue* func, const SizedArrayImpl<BeValue*>& args);
 
 	
