@@ -13146,13 +13146,20 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)resolvedTypeRef);
 		if (genericParam->mTypeConstraint == NULL)
 		{
-			if ((genericParam->mGenericParamFlags & BfGenericParamFlag_New) == 0)
+			if ((genericParam->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
 			{
-				mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericParam->GetName().c_str()), objCreateExpr->mTypeRef);
+				// Allow it
 			}
-			if (objCreateExpr->mArguments.size() != 0)
+			else
 			{
-				mModule->Fail(StrFormat("Only default parameterless constructors can be called on generic argument '%s'", genericParam->GetName().c_str()), objCreateExpr->mTypeRef);
+				if ((genericParam->mGenericParamFlags & BfGenericParamFlag_New) == 0)
+				{
+					mModule->Fail(StrFormat("Must add 'where %s : new' constraint to generic parameter to instantiate type", genericParam->GetName().c_str()), objCreateExpr->mTypeRef);
+				}
+				if (objCreateExpr->mArguments.size() != 0)
+				{
+					mModule->Fail(StrFormat("Only default parameterless constructors can be called on generic argument '%s'", genericParam->GetName().c_str()), objCreateExpr->mTypeRef);
+				}
 			}
 		}
 		
