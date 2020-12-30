@@ -420,7 +420,7 @@ public:
 	{
 		mFailed = false;
 		mIsFirstConstPass = false;
-		mCurAppendAlign = 0;
+		mCurAppendAlign = 1;
 	}
 
 	void EmitAppendAlign(int align, int sizeMultiple = 0)
@@ -702,7 +702,7 @@ public:
 
 							auto calcAppendMethodModule = mModule->GetMethodInstanceAtIdx(bindResult.mMethodInstance->GetOwner(), bindResult.mMethodInstance->mMethodDef->mIdx + 1, BF_METHODNAME_CALCAPPEND);
 														
-							auto subDependSize = mModule->TryConstCalcAppend(bindResult.mMethodInstance, calcAppendArgs);							
+							auto subDependSize = mModule->TryConstCalcAppend(calcAppendMethodModule.mMethodInstance, calcAppendArgs);
 							if (calcAppendMethodModule.mMethodInstance->mAppendAllocAlign > 0)
 							{								
 								EmitAppendAlign(calcAppendMethodModule.mMethodInstance->mAppendAllocAlign);
@@ -14760,6 +14760,8 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 {
 	BP_ZONE("BfModule::TryConstCalcAppend");
 
+	BF_ASSERT(methodInst->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend);
+
 	if ((mCompiler->mIsResolveOnly) && (!mIsConstModule))
 		return BfTypedValue();
 
@@ -14895,7 +14897,11 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 		if (!appendAllocVisitor.mFailed)
 			constValue = appendAllocVisitor.mConstAccum;
 		if (isFirstRun)
+		{
 			mCurMethodInstance->mEndingAppendAllocAlign = appendAllocVisitor.mCurAppendAlign;
+			if (mCurMethodInstance->mAppendAllocAlign <= 0)
+				mCurMethodInstance->mAppendAllocAlign = 1;
+		}
 
 		if (isFirstRun)
 		{
