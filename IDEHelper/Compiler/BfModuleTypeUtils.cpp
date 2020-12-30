@@ -2204,6 +2204,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				BfStaticSearch* staticSearch;
 				if (typeInstance->mStaticSearchMap.TryAdd(typeDef, NULL, &staticSearch))
 				{
+					SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, typeDef);
 					for (auto typeRef : typeDef->mStaticSearch)
 					{
 						auto staticType = ResolveTypeRef(typeRef, NULL, BfPopulateType_Identity);
@@ -8470,7 +8471,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			mIgnoreErrors = prevIgnoreErrors.mPrevVal;
 			BfTypeReference* errorRefNode = qualifiedTypeRef->mLeft;
-			if ((leftIsValid) && (mCurTypeInstance != NULL) && (mSystem->ContainsNamespace(leftComposite, mCurTypeInstance->mTypeDef->mProject)))
+			if ((leftIsValid) && (mCurTypeInstance != NULL) && (mSystem->ContainsNamespace(leftComposite, curTypeDef->mProject)))
 			{
 				// The left was a namespace name, so throw an error on the whole string
 				errorRefNode = qualifiedTypeRef;
