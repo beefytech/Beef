@@ -109,6 +109,7 @@ public:
 		DependencyFlag_NameReference		= 0x400000,
 		DependencyFlag_VirtualCall			= 0x800000,
 		DependencyFlag_WeakReference		= 0x1000000, // Keeps alive but won't rebuild
+		DependencyFlag_ConstEval			= 0x2000000,
 
 		DependencyFlag_DependentUsageMask = ~(DependencyFlag_UnspecializedType | DependencyFlag_MethodGenericArg | DependencyFlag_GenericArgRef)
 	};
@@ -127,6 +128,7 @@ public:
 
 public:
 	typedef Dictionary<BfType*, DependencyEntry> TypeMap;	
+	DependencyFlags mFlagsUnion;
 	TypeMap mTypeSet;
 	int mMinDependDepth;
 
@@ -134,6 +136,7 @@ public:
 	BfDependencyMap()
 	{
 		mMinDependDepth = 0;
+		mFlagsUnion = DependencyFlag_None;
 	}
 
 	bool AddUsedBy(BfType* dependentType, DependencyFlags flags);	
@@ -401,16 +404,17 @@ enum BfTypeRebuildFlags
 	BfTypeRebuildFlag_NonStaticChange = 2,
 	BfTypeRebuildFlag_MethodInlineInternalsChange = 4,
 	BfTypeRebuildFlag_MethodSignatureChange = 8,	
-	BfTypeRebuildFlag_DeleteQueued = 0x10,
-	BfTypeRebuildFlag_Deleted = 0x20,	
-	BfTypeRebuildFlag_AddedToWorkList = 0x40,
-	BfTypeRebuildFlag_AwaitingReference = 0x80,
-	BfTypeRebuildFlag_SpecializedMethodRebuild = 0x100, // Temporarily set
-	BfTypeRebuildFlag_SpecializedByAutocompleteMethod = 0x200,
-	BfTypeRebuildFlag_UnderlyingTypeDeferred = 0x400,
-	BfTypeRebuildFlag_TypeDataSaved = 0x800,
-	BfTypeRebuildFlag_InTempPool = 0x1000,
-	BfTypeRebuildFlag_ResolvingBase = 0x2000
+	BfTypeRebuildFlag_ConstEvalChange = 0x10,
+	BfTypeRebuildFlag_DeleteQueued = 0x20,
+	BfTypeRebuildFlag_Deleted = 0x40,
+	BfTypeRebuildFlag_AddedToWorkList = 0x80,
+	BfTypeRebuildFlag_AwaitingReference = 0x100,
+	BfTypeRebuildFlag_SpecializedMethodRebuild = 0x200, // Temporarily set
+	BfTypeRebuildFlag_SpecializedByAutocompleteMethod = 0x400,
+	BfTypeRebuildFlag_UnderlyingTypeDeferred = 0x800,
+	BfTypeRebuildFlag_TypeDataSaved = 0x1000,
+	BfTypeRebuildFlag_InTempPool = 0x2000,
+	BfTypeRebuildFlag_ResolvingBase = 0x4000
 };
 
 class BfTypeDIReplaceCallback;
@@ -1820,7 +1824,7 @@ public:
 	bool mIsFinishingType;	
 	bool mHasPackingHoles;		
 	bool mWantsGCMarking;
-	bool mHasDeclError;
+	bool mHasDeclError;	
 
 public:
 	BfTypeInstance()

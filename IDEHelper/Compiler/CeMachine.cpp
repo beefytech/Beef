@@ -2630,6 +2630,7 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCurFunctionId = 0;
 	mRevisionExecuteTime = 0;
 	mCurTargetSrc = NULL;
+	mCurCEFunction = NULL;
 	mCurModule = NULL;
 	mCurMethodInstance = NULL;
 	mCurExpectingType = NULL;
@@ -5243,6 +5244,7 @@ bool CeMachine::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder)
 {
 	AutoTimer autoTimer(mRevisionExecuteTime);
+	SetAndRestoreValue<CeFunction*> prevCEFunction(mCurCEFunction, ceFunction);
 
 	if (mHeap == NULL)
 		mHeap = new	ContiguousHeap();
@@ -5441,7 +5443,10 @@ CeFunction* CeMachine::GetPreparedFunction(BfMethodInstance* methodInstance)
 }
 
 void CeMachine::QueueMethod(BfMethodInstance* methodInstance, BfIRValue func)
-{
+{	
+	auto curOwner = mCurCEFunction->mMethodInstance->GetOwner();
+	curOwner->mModule->AddDependency(methodInstance->GetOwner(), curOwner, BfDependencyMap::DependencyFlag_ConstEval);
+
 	bool added = false;
 	auto ceFunction = GetFunction(methodInstance, func, added);
 }
@@ -5737,6 +5742,8 @@ BfTypedValue CeMachine::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	mStaticCtorExecSet.Clear();	
 	mStaticFieldMap.Clear();
 	mHeap->Clear(BF_CE_MAX_CARRYOVER_HEAP);	
+
+	module->AddDependency(methodInstance->GetOwner(), module->mCurTypeInstance, BfDependencyMap::DependencyFlag_ConstEval);
 
 	return returnValue;
 }

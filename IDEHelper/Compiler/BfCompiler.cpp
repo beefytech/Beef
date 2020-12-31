@@ -2175,6 +2175,8 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 						}
 					}
 					
+					depType->mDependencyMap.mFlagsUnion = BfDependencyMap::DependencyFlag_None;
+
 					// Not combined with previous loop because PopulateType could modify typeInst->mDependencyMap
 					for (auto itr = depType->mDependencyMap.begin(); itr != depType->mDependencyMap.end();)
 					{
@@ -2240,6 +2242,8 @@ void BfCompiler::UpdateDependencyMap(bool deleteUnusued, bool& didWork)
 								
 							++itr;
 						}
+
+						depType->mDependencyMap.mFlagsUnion = (BfDependencyMap::DependencyFlags)(depType->mDependencyMap.mFlagsUnion | depData.mFlags);
 					}
 
 					if ((!depType->IsGenericTypeInstance() && (!depType->IsBoxed())) || 
@@ -3335,6 +3339,13 @@ void BfCompiler::UpdateRevisedTypes()
 							if ((compositeTypeDef->mDefState != BfTypeDef::DefState_Signature_Changed) &&
 								(compositeTypeDef->mDefState != BfTypeDef::DefState_InlinedInternals_Changed))
 								compositeTypeDef->mDefState = BfTypeDef::DefState_Internals_Changed;
+						}
+						else if (checkTypeDef->mDefState == BfTypeDef::DefState_Refresh)
+						{
+							if ((compositeTypeDef->mDefState != BfTypeDef::DefState_Signature_Changed) &&
+								(compositeTypeDef->mDefState != BfTypeDef::DefState_InlinedInternals_Changed) &&
+								(compositeTypeDef->mDefState != BfTypeDef::DefState_Internals_Changed))
+								compositeTypeDef->mDefState = BfTypeDef::DefState_Refresh;
 						}
 
 						BF_ASSERT(checkTypeDef->mIsPartial);

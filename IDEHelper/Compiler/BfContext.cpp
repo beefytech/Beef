@@ -1219,8 +1219,31 @@ void BfContext::TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst)
 		auto dependencyFlags = depItr.mValue.mFlags;
 
 		// We don't need to cascade rebuilding for method-based usage - just rebuild the type directly (unlike TypeDataChanged, which cascades)
-		if (dependencyFlags & BfDependencyMap::DependencyFlag_InlinedCall)
+		if ((dependencyFlags & BfDependencyMap::DependencyFlag_InlinedCall) != 0)
 		{
+			RebuildType(dependentType);
+		}
+	}
+}
+
+void BfContext::TypeConstEvalChanged(BfTypeInstance* typeInst)
+{
+	if (typeInst->mRebuildFlags & BfTypeRebuildFlag_ConstEvalChange) // Already did change?
+		return;
+	typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags | BfTypeRebuildFlag_ConstEvalChange);
+
+	// These don't happen in TypeDataChanged because we don't need to cascade
+	for (auto& depItr : typeInst->mDependencyMap)
+	{
+		auto dependentType = depItr.mKey;
+		auto dependencyFlags = depItr.mValue.mFlags;
+
+		// We don't need to cascade rebuilding for method-based usage - just rebuild the type directly (unlike TypeDataChanged, which cascades)
+		if ((dependencyFlags & BfDependencyMap::DependencyFlag_ConstEval) != 0)
+		{
+			auto depTypeInst = dependentType->ToTypeInstance();
+			if (depTypeInst != NULL)
+				TypeConstEvalChanged(depTypeInst);
 			RebuildType(dependentType);
 		}
 	}
@@ -1868,6 +1891,11 @@ void BfContext::UpdateRevisedTypes()
 			(typeInst->IsInterface()))
 		{
 			isSignatureChange = true;
+		}
+
+		if ((typeDef->mDefState != BfTypeDef::DefState_Refresh) && ((typeInst->mDependencyMap.mFlagsUnion & BfDependencyMap::DependencyFlag_ConstEval) != 0))
+		{
+			TypeConstEvalChanged(typeInst);
 		}
 
 		if (isSignatureChange)

@@ -440,7 +440,8 @@ public:
 	void RebuildDependentTypes(BfDependedType* dType);	
 	void TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange);
 	void TypeMethodSignaturesChanged(BfTypeInstance* typeInst);
-	void TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst);		
+	void TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst);
+	void TypeConstEvalChanged(BfTypeInstance* typeInst);
 	void CheckSpecializedErrorData();
 	void TryUnreifyModules();
 	void MarkUsedModules(BfProject* project, BfModule* module);

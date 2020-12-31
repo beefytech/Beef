@@ -1841,21 +1841,26 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	{
 		BF_ASSERT(mCurTypeDef->mTypeCode == prevRevisionTypeDef->mTypeCode);
 
-		if ((mCurTypeDef->mFullHash == prevRevisionTypeDef->mFullHash) && (!mFullRefresh))
+		if (mCurTypeDef->mFullHash == prevRevisionTypeDef->mFullHash)
 		{
-			BfLogSys(bfParser->mSystem, "DefBuilder deleting typeDef with no changes %p\n", prevRevisionTypeDef);
-			prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Defined;			
-			BF_ASSERT(prevRevisionTypeDef->mNextRevision == mCurTypeDef);
-			prevRevisionTypeDef->mNextRevision = NULL;
-			delete mCurTypeDef;
-			mCurTypeDef = NULL;
+			if (!mFullRefresh)
+			{
+				BfLogSys(bfParser->mSystem, "DefBuilder deleting typeDef with no changes %p\n", prevRevisionTypeDef);
+				prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Defined;
+				BF_ASSERT(prevRevisionTypeDef->mNextRevision == mCurTypeDef);
+				prevRevisionTypeDef->mNextRevision = NULL;
+				delete mCurTypeDef;
+				mCurTypeDef = NULL;
+			}
+			else
+				prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Refresh;
 		}
 		else if (mCurTypeDef->mSignatureHash != prevRevisionTypeDef->mSignatureHash)
 			prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Signature_Changed;
 		else if (mCurTypeDef->mInlineHash != prevRevisionTypeDef->mInlineHash)
 			prevRevisionTypeDef->mDefState = BfTypeDef::DefState_InlinedInternals_Changed;
 		else
-			prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Internals_Changed;		
+			prevRevisionTypeDef->mDefState = BfTypeDef::DefState_Internals_Changed;
 	}
 	
 	// There's a new type with this name...

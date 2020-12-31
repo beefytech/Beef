@@ -908,6 +908,7 @@ public:
 		DefState_Signature_Changed,
 		DefState_InlinedInternals_Changed, // Code within methods, including inlined methods, changed
 		DefState_Internals_Changed, // Only code within a non-inlined methods changed
+		DefState_Refresh,
 		DefState_Deleted
 	};
 

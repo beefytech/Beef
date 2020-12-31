@@ -3053,6 +3053,8 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 		compositeTypeDef->mDefState = BfTypeDef::DefState_InlinedInternals_Changed;
 	else if ((nextRevision->mDefState == BfTypeDef::DefState_Internals_Changed) || (compositeTypeDef->mFullHash != nextRevision->mFullHash))
 		compositeTypeDef->mDefState = BfTypeDef::DefState_Internals_Changed;
+	else if (nextRevision->mDefState == BfTypeDef::DefState_Refresh)
+		compositeTypeDef->mDefState = BfTypeDef::DefState_Refresh;
 	//InjectNewRevision(compositeTypeDef);
 
 	VerifyTypeDef(compositeTypeDef);
