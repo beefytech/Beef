@@ -2898,10 +2898,10 @@ static bool NeedsDecompose(BeConstant* constant)
 }
 
 void BeMCContext::CreateStore(BeMCInstKind instKind, const BeMCOperand& val, const BeMCOperand& ptr)
-{
+{	
 	BeMCOperand mcVal = val;
 	BeMCOperand mcPtr = ptr;
-
+	
 	if (mcVal.mKind == BeMCOperandKind_ConstAgg)
 	{
 		if (auto aggConst = BeValueDynCast<BeStructConstant>(mcVal.mConstant))
@@ -3670,7 +3670,7 @@ void BeMCContext::CreatePhiAssign(BeMCBlock* mcBlock, const BeMCOperand& testVal
 				{
 					SetAndRestoreValue<BeMCBlock*> prevActiveBlock(mActiveBlock, block);
 					for (int checkIdx = (int)block->mInstructions.size() - 1; checkIdx >= 0; checkIdx--)
-					{
+					{						
 						auto checkInst = block->mInstructions[checkIdx];
 						if ((checkInst->mArg0.mKind == BeMCOperandKind_Block) &&
 							(checkInst->mArg0.mBlock == phi->mBlock))
@@ -3684,15 +3684,19 @@ void BeMCContext::CreatePhiAssign(BeMCBlock* mcBlock, const BeMCOperand& testVal
 								auto prevDest = checkInst->mArg0;
 
 								checkInst->mArg0 = falseLabel;
-								checkInst->mArg1.mCmpKind = BeModule::InvertCmp(checkInst->mArg1.mCmpKind);
+								checkInst->mArg1.mCmpKind = BeModule::InvertCmp(checkInst->mArg1.mCmpKind);								
 
-								AllocInst(BeMCInstKind_Mov, result, phiVal.mValue, checkIdx + 1);
-								AllocInst(BeMCInstKind_Br, prevDest, checkIdx + 2);
-								AllocInst(BeMCInstKind_Label, falseLabel, checkIdx + 3);
+								int insertIdx = checkIdx + 1;
+								SetAndRestoreValue<int*> prevInsertIdxRef(mInsertInstIdxRef, &insertIdx);
+								CreateStore(BeMCInstKind_Mov, phiVal.mValue, OperandToAddr(result));
+								AllocInst(BeMCInstKind_Br, prevDest);
+								AllocInst(BeMCInstKind_Label, falseLabel);								
 							}
 							else
-							{
-								AllocInst(BeMCInstKind_Mov, result, phiVal.mValue, checkIdx);
+							{								
+								int insertIdx = checkIdx;
+								SetAndRestoreValue<int*> prevInsertIdxRef(mInsertInstIdxRef, &insertIdx);								
+								CreateStore(BeMCInstKind_Mov, phiVal.mValue, OperandToAddr(result));
 							}
 
 							found = true;
@@ -15790,7 +15794,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "??$EmitNow@UInitialize@CoreEvents@Atma@bf@@@Emitter@Atma@bf@@QEAAXUInitialize@CoreEvents@Atma@bf@@@Z");
+	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
