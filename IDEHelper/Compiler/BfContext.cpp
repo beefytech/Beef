@@ -1002,7 +1002,15 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->ReleaseData();
 	type->mDefineState = BfTypeDefineState_Undefined;	
 	typeInst->mSpecializedMethodReferences.Clear();
+	typeInst->mAlwaysIncludeFlags = BfAlwaysIncludeFlag_None;
+	typeInst->mHasBeenInstantiated = false;
 	typeInst->mLookupResults.Clear();
+	typeInst->mIsUnion = false;
+	typeInst->mIsCRepr = false;
+	typeInst->mIsPacked = false;
+	typeInst->mIsSplattable = false;
+	typeInst->mHasUnderlyingArray = false;
+
 	typeInst->mIsTypedPrimitive = false;
 	typeInst->mMergedFieldDataCount = 0;
 	typeInst->mTypeIncomplete = true;
@@ -1010,8 +1018,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mHasBeenInstantiated = false;
 	typeInst->mHasParameterizedBase = false;
 	typeInst->mTypeFailed = false;
-	typeInst->mTypeWarned = false;		
-	typeInst->mIsSplattable = false;
+	typeInst->mTypeWarned = false;			
 	typeInst->mHasUnderlyingArray = false;
 	typeInst->mHasPackingHoles = false;	
 	typeInst->mWantsGCMarking = false;

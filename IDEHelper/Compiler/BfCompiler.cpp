@@ -1150,7 +1150,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 		vdataTypeList.push_back(type);
 
-		vdataHashCtx.Mixin(type->mTypeId);		
+		vdataHashCtx.Mixin(type->mTypeId);
 
 		BF_ASSERT((type != NULL) || (mPassInstance->HasFailed()));
 		if ((type != NULL) && (typeInst != NULL))
@@ -1161,6 +1161,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			
 			if (type->IsInterface())
 				vdataHashCtx.Mixin(typeInst->mSlotNum);
+			vdataHashCtx.Mixin(typeInst->mAlwaysIncludeFlags);
+			vdataHashCtx.Mixin(typeInst->mHasBeenInstantiated);
 
 			if (!module->mIsScratchModule)
 			{
