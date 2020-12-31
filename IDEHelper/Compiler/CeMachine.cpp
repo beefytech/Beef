@@ -211,7 +211,8 @@ CeFunction::~CeFunction()
 {
 	BF_ASSERT(mId == -1);
 	for (auto innerFunc : mInnerFunctions)
-		delete innerFunc;	
+		delete innerFunc;
+	delete mCeInnerFunctionInfo;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1208,17 +1209,6 @@ void CeBuilder::Build()
 			mCeFunction->mInnerFunctions.Add(innerFunction);
 			mCeMachine->MapFunctionId(innerFunction);
 		}
-
-// 		for (int globalVarIdx = startGlobalVariableCount; globalVarIdx < (int)beModule->mGlobalVariables.size(); globalVarIdx++)
-// 		{
-// 			auto beGlobalVariable = beModule->mGlobalVariables[globalVarIdx];
-// 			if (beGlobalVariable->mInitializer == NULL)
-// 				continue;
-// 
-// 			CeStaticFieldInfo* staticFieldInfoPtr = NULL;
-// 			mCeMachine->mStaticFieldMap.TryAdd(beGlobalVariable->mName, NULL, &staticFieldInfoPtr);			
-// 			staticFieldInfoPtr->mBeConstant = beGlobalVariable;
-// 		}
 
 		if (!mCeFunction->mCeFunctionInfo->mName.IsEmpty())
 		{
@@ -2645,9 +2635,8 @@ CeMachine::~CeMachine()
 	delete mCeModule;
 	delete mHeap;
 
-	for (auto kv : mFunctions)
+	auto _RemoveFunctionInfo = [&](CeFunctionInfo* functionInfo)
 	{
-		auto functionInfo = kv.mValue;
 		if (functionInfo->mCeFunction != NULL)
 		{
 			// We don't need to actually unmap it at this point
@@ -2657,6 +2646,18 @@ CeMachine::~CeMachine()
 		}
 
 		delete functionInfo;
+	};
+
+	for (auto kv : mNamedFunctionMap)
+	{
+		if (kv.mValue->mMethodInstance == NULL)
+			_RemoveFunctionInfo(kv.mValue);
+	}
+
+	for (auto kv : mFunctions)
+	{
+		BF_ASSERT(kv.mValue != NULL);
+		_RemoveFunctionInfo(kv.mValue);
 	}
 }
 
