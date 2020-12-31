@@ -1006,6 +1006,15 @@ bool BfAstNode::Equals(const StringImpl& str)
 	return strncmp(str.GetPtr(), source->mSrc + mSrcStart, len) == 0;
 }
 
+bool BfAstNode::Equals(const StringView& str)
+{
+	int len = mSrcEnd - mSrcStart;
+	if (len != str.mLength)
+		return false;
+	auto source = GetSourceData();
+	return strncmp(str.mPtr, source->mSrc + mSrcStart, len) == 0;
+}
+
 bool BfAstNode::Equals(const char* str)
 {	
 	auto source = GetSourceData();

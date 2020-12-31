@@ -67,6 +67,24 @@ bool StringView::operator!=(const StringImpl& strB) const
 	return strncmp(this->mPtr, strB.GetPtr(), this->mLength) != 0;
 }
 
+bool StringView::StartsWith(const StringView& b, StringView::CompareKind comparisonType) const
+{
+	if (this->mLength < b.mLength)
+		return false;
+	if (comparisonType == String::CompareKind_OrdinalIgnoreCase)
+		return String::EqualsIgnoreCaseHelper(mPtr, b.mPtr, b.mLength);
+	return String::EqualsHelper(mPtr, b.mPtr, b.mLength);
+}
+
+bool StringView::EndsWith(const StringView& b, StringView::CompareKind comparisonType) const
+{
+	if (this->mLength < b.mLength)
+		return false;
+	if (comparisonType == String::CompareKind_OrdinalIgnoreCase)
+		return String::EqualsIgnoreCaseHelper(this->mPtr + this->mLength - b.mLength, b.mPtr, b.mLength);
+	return String::EqualsHelper(this->mPtr + this->mLength - b.mLength, b.mPtr, b.mLength);
+}
+
 intptr StringView::IndexOf(const StringView& subStr, bool ignoreCase) const
 {
 	for (intptr ofs = 0; ofs <= mLength - subStr.mLength; ofs++)

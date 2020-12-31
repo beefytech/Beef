@@ -17,6 +17,17 @@ struct StringSplitEnumerator;
 class StringView
 {
 public:
+	enum CompareKind
+	{
+		CompareKind_CurrentCulture = 0,
+		CompareKind_CurrentCultureIgnoreCase = 1,
+		CompareKind_InvariantCulture = 2,
+		CompareKind_InvariantCultureIgnoreCase = 3,
+		CompareKind_Ordinal = 4,
+		CompareKind_OrdinalIgnoreCase = 5,
+	};
+
+public:
 	const char* mPtr;
 	intptr mLength;
 
@@ -253,6 +264,23 @@ public:
 		return mLength;
 	}
 
+	bool StartsWith(const StringView& b, CompareKind comparisonType = CompareKind_Ordinal) const;
+	bool EndsWith(const StringView& b, CompareKind comparisonType = CompareKind_Ordinal) const;
+
+	bool StartsWith(char c) const
+	{
+		if (this->mLength == 0)
+			return false;
+		return this->mPtr[0] == c;
+	}
+
+	bool EndsWith(char c) const
+	{
+		if (this->mLength == 0)
+			return false;
+		return this->mPtr[this->mLength - 1] == c;
+	}
+
 	intptr IndexOf(const StringView& subStr, bool ignoreCase = false) const;
 	intptr IndexOf(const StringView& subStr, int32 startIdx) const;
 	intptr IndexOf(const StringView& subStr, int64 startIdx) const;
@@ -487,6 +515,8 @@ public:
 		CompareKind_Ordinal = 4,
 		CompareKind_OrdinalIgnoreCase = 5,
 	};
+
+	friend class StringView;
 
 public:
 	typedef int int_strsize;

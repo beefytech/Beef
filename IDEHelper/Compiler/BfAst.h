@@ -1090,6 +1090,7 @@ public:
 	StringView ToStringView();
 	void ToString(StringImpl& str);
 	bool Equals(const StringImpl& str);
+	bool Equals(const StringView& str);
 	bool Equals(const char* str);
 	void Init(BfParser* bfParser);
 	void Accept(BfStructuralVisitor* bfVisitor);

@@ -1262,6 +1262,57 @@ void BfDefBuilder::AddParam(BfMethodDef* methodDef, BfTypeReference* typeRef, co
 	methodDef->mParams.push_back(paramDef);
 }
 
+BfTypeDef* BfDefBuilder::ComparePrevTypeDef(BfTypeDef* prevTypeDef, BfTypeDef* checkTypeDef)
+{
+	if (!mCurTypeDef->IsExtension())
+		return prevTypeDef;
+
+	BF_ASSERT(mCurTypeDef->mGenericParamDefs.size() == prevTypeDef->mGenericParamDefs.size());
+	BF_ASSERT(mCurTypeDef->mGenericParamDefs.size() == checkTypeDef->mGenericParamDefs.size());
+
+	bool prevMatches = true;
+	bool checkMatches = true;
+
+	for (int genericParamIdx = 0; genericParamIdx < (int)mCurTypeDef->mGenericParamDefs.size(); genericParamIdx++)
+	{
+		BfGenericParamDef* paramDef = mCurTypeDef->mGenericParamDefs[genericParamIdx];
+		BfGenericParamDef* prevParamDef = prevTypeDef->mGenericParamDefs[genericParamIdx];
+		BfGenericParamDef* checkParamDef = checkTypeDef->mGenericParamDefs[genericParamIdx];
+
+		if (*paramDef != *prevParamDef)
+			prevMatches = false;
+		if (*paramDef != *checkParamDef)
+			checkMatches = false;
+	}
+
+	if (mCurTypeDef->mExternalConstraints.mSize == prevTypeDef->mExternalConstraints.mSize)
+	{
+		for (int constraintIdx = 0; constraintIdx < mCurTypeDef->mExternalConstraints.mSize; constraintIdx++)
+		{
+			if (mCurTypeDef->mExternalConstraints[constraintIdx] != prevTypeDef->mExternalConstraints[constraintIdx])
+				prevMatches = false;
+		}
+	}
+	else
+		prevMatches = false;
+
+	if (mCurTypeDef->mExternalConstraints.mSize == checkTypeDef->mExternalConstraints.mSize)
+	{
+		for (int constraintIdx = 0; constraintIdx < mCurTypeDef->mExternalConstraints.mSize; constraintIdx++)
+		{
+			if (mCurTypeDef->mExternalConstraints[constraintIdx] != checkTypeDef->mExternalConstraints[constraintIdx])
+				checkMatches = false;
+		}
+	}
+	else
+		checkMatches = false;
+
+	if ((!prevMatches) && (checkMatches))
+		return checkTypeDef;
+
+	return prevTypeDef;	
+}
+
 void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 {
 	BF_ASSERT(typeDeclaration->GetSourceData() == mCurSource->mSourceData);
@@ -1374,7 +1425,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 	SetAndRestoreValue<HashContext*> prevFullHashCtx(mFullHashCtx, &fullHashCtx);
 	SetAndRestoreValue<HashContext*> prevSignatureHashCtx(mSignatureHashCtx, &signatureHashCtx);
-	
+
 	if (bfParser != NULL)
 	{
 		mFullHashCtx->MixinStr(bfParser->mFileName);
@@ -1627,6 +1678,12 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		}
 	}
 
+	int outerGenericSize = 0;
+	if (mCurTypeDef->mOuterType != NULL)
+		outerGenericSize = (int)mCurTypeDef->mOuterType->mGenericParamDefs.size();
+	bool isGeneric = (outerGenericSize != 0) || (typeDeclaration->mGenericParams != NULL);
+	ParseGenericParams(typeDeclaration->mGenericParams, typeDeclaration->mGenericConstraintsDeclaration, mCurTypeDef->mGenericParamDefs, &mCurTypeDef->mExternalConstraints, outerGenericSize, isGeneric);
+
 	if (!isAutoCompleteTempType)
 	{
 		BfTypeDef* prevDef = NULL;
@@ -1669,6 +1726,12 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 							{
 								prevRevisionTypeDef = checkTypeDef;
 								prevDef = checkTypeDef;
+							}
+							else
+							{
+								auto bestTypeDef = ComparePrevTypeDef(prevRevisionTypeDef, checkTypeDef);
+								prevRevisionTypeDef = bestTypeDef;
+								prevDef = bestTypeDef;
 							}
 						}
 					}
@@ -1731,12 +1794,6 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 	BfLogSysM("Creating TypeDef %p Hash:%d from TypeDecl: %p Source: %p ResolvePass: %d AutoComplete:%d\n", mCurTypeDef, mSystem->mTypeDefs.GetHash(mCurTypeDef), typeDeclaration, 
 		typeDeclaration->GetSourceData(), mResolvePassData != NULL, isAutoCompleteTempType);				
-
-	int outerGenericSize = 0;
-	if (mCurTypeDef->mOuterType != NULL)
-		outerGenericSize = (int)mCurTypeDef->mOuterType->mGenericParamDefs.size();
-	bool isGeneric = (outerGenericSize != 0) || (typeDeclaration->mGenericParams != NULL);
-	ParseGenericParams(typeDeclaration->mGenericParams, typeDeclaration->mGenericConstraintsDeclaration, mCurTypeDef->mGenericParamDefs, &mCurTypeDef->mExternalConstraints, outerGenericSize, isGeneric);
 	
 	BF_ASSERT(mCurTypeDef->mNameEx == NULL);
 	

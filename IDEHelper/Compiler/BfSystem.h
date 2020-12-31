@@ -628,13 +628,44 @@ public:
 	{
 		mGenericParamFlags = BfGenericParamFlag_None;
 	}
+
+	bool operator==(const BfConstraintDef& other) const
+	{
+		if (mGenericParamFlags != other.mGenericParamFlags)
+			return false;
+		if (mConstraints.mSize != other.mConstraints.mSize)
+			return false;
+		for (int i = 0; i < mConstraints.mSize; i++)
+		{
+			if (!mConstraints[i]->Equals(other.mConstraints[i]->ToStringView()))
+				return false;
+		}
+		return true;
+	}
+
+	bool operator!=(const BfConstraintDef& other) const
+	{
+		return !(*this == other);
+	}
 };
 
 class BfGenericParamDef : public BfConstraintDef
 {
 public:	
 	String mName;		
-	Array<BfIdentifierNode*> mNameNodes; // 0 is always the def name	
+	Array<BfIdentifierNode*> mNameNodes; // 0 is always the def name
+	
+	bool operator==(const BfGenericParamDef& other) const
+	{
+		if (mName != other.mName)
+			return false;
+		return *(BfConstraintDef*)this == *(BfConstraintDef*)&other;
+	}
+
+	bool operator!=(const BfGenericParamDef& other) const
+	{
+		return !(*this == other);
+	}
 };
 
 class BfExternalConstraintDef : public BfConstraintDef
