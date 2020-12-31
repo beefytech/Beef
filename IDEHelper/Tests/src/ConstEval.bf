@@ -139,7 +139,7 @@ namespace Tests
 		public static void TestBasics()
 		{
 			Test.Assert(ClassA.cVal0 == 123);
-			Test.Assert(ClassA.cVal0 == 1.23);
+			Test.Assert(Math.Abs(ClassA.cVal1 - 1.23) < 0.0001);
 
 			const int fac = Factorial(8);
 			Test.Assert(fac == 40320);
