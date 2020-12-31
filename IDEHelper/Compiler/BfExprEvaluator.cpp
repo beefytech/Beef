@@ -4930,6 +4930,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	auto _GetDefaultReturnValue = [&]()
 	{
+		if ((returnType->IsVar()) && (mExpectingType != NULL))
+			returnType = mExpectingType;
 		if (returnType->IsRef())
 		{
 			auto result = mModule->GetDefaultTypedValue(returnType->GetUnderlyingType(), true, BfDefaultValueKind_Addr);
@@ -5009,9 +5011,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					return BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(mExpectingType)), mExpectingType);
 				}
 			}
+			auto returnType = methodInstance->mReturnType;
+			if ((returnType->IsVar()) && (mExpectingType != NULL))
+				returnType = mExpectingType;
 			if (methodInstance->mReturnType->IsValuelessType())
-				return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), methodInstance->mReturnType);
-			return BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(methodInstance->mReturnType)), methodInstance->mReturnType);
+				return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), returnType);
+			return BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(returnType)), returnType);
 		}
 
 		BfTypedValue result;
@@ -6749,8 +6754,6 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	auto func = moduleMethodInstance.mFunc;	
 	BfTypedValue result = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs);	
-	if ((result.mType != NULL) && (result.mType->IsVar()) && (mModule->mCompiler->mIsResolveOnly))		
-		mModule->Fail("Method return type reference failed to resolve", targetSrc);
 	return result;
 }
 
