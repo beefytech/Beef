@@ -9750,7 +9750,7 @@ BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* met
 	BF_ASSERT(!owner->IsTuple());
 
 	auto genericType = (BfTypeInstance*)owner;
-	if (genericType->IsUnspecializedType())
+	if ((genericType->IsUnspecializedType()) && (!genericType->IsUnspecializedTypeVariation()))
 		return methodInstance;
 	
 	auto unspecializedType = ResolveTypeDef(genericType->mTypeDef);	
@@ -10113,16 +10113,18 @@ bool BfModule::HasMixin(BfTypeInstance* typeInstance, const StringImpl& methodNa
 	return BfModuleMethodInstance();
 }
 
-StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* methodGenericArgs)
-{
+StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags, BfTypeVector* typeGenericArgs, BfTypeVector* methodGenericArgs)
+{	
 	auto methodDef = methodInst->mMethodDef;
 	bool allowResolveGenericParamNames = ((methodNameFlags & BfMethodNameFlag_ResolveGenericParamNames) != 0);
 
 	BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None;
 
+	bool hasGenericArgs = (typeGenericArgs != NULL) || (methodGenericArgs != NULL);
+
 	BfType* type = methodInst->mMethodInstanceGroup->mOwner;
-	if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
-		type = ResolveGenericType(type, NULL, methodGenericArgs);
+	if ((hasGenericArgs) && (type->IsUnspecializedType()))
+		type = ResolveGenericType(type, typeGenericArgs, methodGenericArgs);
 	if ((type == NULL) || (!type->IsUnspecializedTypeVariation()))
 		typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
 	if (allowResolveGenericParamNames)
@@ -10135,8 +10137,8 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 		auto typeNameFlags = BfTypeNameFlags_None;
 		if (allowResolveGenericParamNames)
 			typeNameFlags = BfTypeNameFlag_ResolveGenericParamNames;
-		if ((methodGenericArgs != NULL) && (type->IsUnspecializedType()))
-			type = ResolveGenericType(type, NULL, methodGenericArgs);
+		if ((hasGenericArgs) && (type->IsUnspecializedType()))
+			type = ResolveGenericType(type, typeGenericArgs, methodGenericArgs);
 		methodName += TypeToString(type, typeNameFlags);
 	};
 

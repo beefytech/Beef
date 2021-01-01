@@ -17,6 +17,24 @@ namespace IDETest
 			}
 		}
 
+		class ClassT<T>
+		{
+			public void Test<T2>(T t, T2 t2)
+			{
+				
+			}
+
+			public void Test<T2>(T t, T2 t2) //FAIL
+			{
+				
+			}
+		}
+
+		public static void Boing<TA, TB, TC>()
+		{
+			ClassT<TC>.Test<TB>(default, default); //FAIL 'IDETest.Methods.ClassT<TC>.Test<TB>(TC t, TB t2)' is a candidate
+		}
+
 		public static void MethodA(ClassA zong, int arg)
 		{
 

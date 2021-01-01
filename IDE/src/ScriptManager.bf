@@ -2444,7 +2444,16 @@ namespace IDE
 						{
 							bool foundErrorText = false;
 							if (var error = FindError(lineIdx))
-								foundErrorText = error.mError.Contains(wantsError);
+							{
+								if (error.mError.Contains(wantsError))
+									foundErrorText = true;
+								if (error.mMoreInfo != null)
+								{
+									for (var moreInfo in error.mMoreInfo)
+										if (moreInfo.mError.Contains(wantsError))
+											foundErrorText = true;
+								}
+							}
 							if (!foundErrorText)
 							{
 								mScriptManager.Fail("Error at line {0} in {1} did not contain error text '{2}'\n\t", lineIdx + 1, textPanel.mFilePath, wantsError);

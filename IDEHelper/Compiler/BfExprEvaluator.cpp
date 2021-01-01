@@ -932,6 +932,9 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	paramDiff = (int) newMethodInstance->GetParamCount() - (int) prevMethodInstance->GetParamCount();
 	RETURN_BETTER_OR_WORSE(paramDiff < 0, paramDiff > 0);	
 
+	BfMethodInstance* typeUnspecNewMethodInstance = mModule->GetUnspecializedMethodInstance(newMethodInstance, true);
+	BfMethodInstance* typeUnspecPrevMethodInstance = mModule->GetUnspecializedMethodInstance(prevMethodInstance, true);
+
 	// Check specificity of args
 	
 	std::function<void(BfType*, BfType*)> _CompareParamTypes = [&](BfType* newType, BfType* prevType)
@@ -942,8 +945,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 			auto prevGenericParamType = (BfGenericParamType*)prevType;
 			if ((newGenericParamType->mGenericParamKind == BfGenericParamKind_Method) && (prevGenericParamType->mGenericParamKind == BfGenericParamKind_Method))
 			{
-				auto newMethodGenericParam = newMethodInstance->mMethodInfoEx->mGenericParams[newGenericParamType->mGenericParamIdx];
-				auto prevMethodGenericParam = prevMethodInstance->mMethodInfoEx->mGenericParams[prevGenericParamType->mGenericParamIdx];
+				auto newMethodGenericParam = typeUnspecNewMethodInstance->mMethodInfoEx->mGenericParams[newGenericParamType->mGenericParamIdx];
+				auto prevMethodGenericParam = typeUnspecPrevMethodInstance->mMethodInfoEx->mGenericParams[prevGenericParamType->mGenericParamIdx];
 				SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(prevMethodGenericParam, newMethodGenericParam), mModule->AreConstraintsSubset(newMethodGenericParam, prevMethodGenericParam));
 			}
 		}
@@ -973,14 +976,14 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	{
 		int newArgIdx = argIdx + newImplicitParamCount;
 		int prevArgIdx = argIdx + prevImplicitParamCount;		
-		_CompareParamTypes(newMethodInstance->GetParamType(newArgIdx), prevMethodInstance->GetParamType(prevArgIdx));
-	}	
+		_CompareParamTypes(typeUnspecNewMethodInstance->GetParamType(newArgIdx), typeUnspecPrevMethodInstance->GetParamType(prevArgIdx));
+	}		
 
 	// Do generic constraint subset test directly to handle cases like "NotDisposed<T>()" vs "NotDisposed<T>() where T : IDisposable"
 	if ((newMethodInstance->GetNumGenericArguments() > 0) && (newMethodInstance->GetNumGenericArguments() == prevMethodInstance->GetNumGenericArguments()))
 	{
 		for (int genericParamIdx = 0; genericParamIdx < (int)newMethodInstance->GetNumGenericArguments(); genericParamIdx++)
-		{
+		{		
 			auto newMethodGenericParam = newMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
 			auto prevMethodGenericParam = prevMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
 			SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(prevMethodGenericParam, newMethodGenericParam), mModule->AreConstraintsSubset(newMethodGenericParam, prevMethodGenericParam));
@@ -1385,13 +1388,17 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		return false;
 		
 	mMethodCheckCount++;
-
-	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);
+	
+	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);	
 	if (methodInstance == NULL)
 	{		
 		BFMODULE_FATAL(mModule, "Failed to get raw method in BfMethodMatcher::CheckMethod");
 		return false;
 	}
+	BfMethodInstance* typeUnspecMethodInstance = mModule->GetUnspecializedMethodInstance(methodInstance, true);	
+	BfTypeVector* typeGenericArguments = NULL;
+	if (typeInstance->mGenericTypeInfo != NULL)
+		typeGenericArguments = &typeInstance->mGenericTypeInfo->mTypeGenericArguments;
 
 	if ((mInterfaceMethodInstance != NULL) && (methodInstance->GetExplicitInterface() != NULL))
 	{
@@ -1773,7 +1780,8 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		auto wantType = methodInstance->GetParamType(paramIdx);
 		if ((genericArgumentsSubstitute != NULL) && (wantType->IsUnspecializedType()))
 		{
-			auto resolvedType = mModule->ResolveGenericType(wantType, NULL, genericArgumentsSubstitute, false);
+			wantType = typeUnspecMethodInstance->GetParamType(paramIdx);
+			auto resolvedType = mModule->ResolveGenericType(wantType, typeGenericArguments, genericArgumentsSubstitute, false);
 			if (resolvedType == NULL)
 				goto NoMatch;
 			wantType = resolvedType;
@@ -2039,15 +2047,27 @@ void BfMethodMatcher::FlushAmbiguityError()
 			error = mModule->Fail("Ambiguous method call", mTargetSrc);
 		if (error != NULL)
 		{
-			BfMethodInstance* bestMethodInstance = mModule->GetRawMethodInstance(mBestMethodTypeInstance, mBestMethodDef);
+			auto unspecializedType = mModule->GetUnspecializedTypeInstance(mBestMethodTypeInstance);
+			BfMethodInstance* bestMethodInstance = mModule->GetRawMethodInstance(unspecializedType, mBestMethodDef);
+			BfTypeVector* typeGenericArguments = NULL;
+			if (mBestMethodTypeInstance->mGenericTypeInfo != NULL)
+				typeGenericArguments = &mBestMethodTypeInstance->mGenericTypeInfo->mTypeGenericArguments;
+			
 			mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(bestMethodInstance, BfMethodNameFlag_ResolveGenericParamNames,
-                mBestMethodGenericArguments.empty() ? NULL : &mBestMethodGenericArguments).c_str()),
+                typeGenericArguments, mBestMethodGenericArguments.empty() ? NULL : &mBestMethodGenericArguments).c_str()),
 				bestMethodInstance->mMethodDef->GetRefNode());
 		
 			for (auto& ambiguousEntry : mAmbiguousEntries)
 			{
-				mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(ambiguousEntry.mMethodInstance, BfMethodNameFlag_ResolveGenericParamNames,
-                    ambiguousEntry.mBestMethodGenericArguments.empty() ? NULL : &ambiguousEntry.mBestMethodGenericArguments).c_str()),
+				auto typeInstance = ambiguousEntry.mMethodInstance->GetOwner();
+				auto unspecTypeMethodInstance = mModule->GetUnspecializedMethodInstance(ambiguousEntry.mMethodInstance, true);
+				
+				BfTypeVector* typeGenericArguments = NULL;
+				if (typeInstance->mGenericTypeInfo != NULL)
+					typeGenericArguments = &typeInstance->mGenericTypeInfo->mTypeGenericArguments;
+
+				mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(unspecTypeMethodInstance, BfMethodNameFlag_ResolveGenericParamNames,
+					typeGenericArguments, ambiguousEntry.mBestMethodGenericArguments.empty() ? NULL : &ambiguousEntry.mBestMethodGenericArguments).c_str()),
 					ambiguousEntry.mMethodInstance->mMethodDef->GetRefNode());
 			}
 		}
@@ -9435,6 +9455,10 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		_BoolResult(type->IsNullable());
 	else if (memberName == "IsGenericType")
 		_BoolResult(type->IsGenericTypeInstance());
+	else if (memberName == "IsArray")
+		_BoolResult(type->IsArray());
+	else if (memberName == "IsSizedArray")
+		_BoolResult(type->IsSizedArray());
 	else if (memberName == "TypeId")
 		_Int32Result(type->mTypeId);
 	else if (memberName == "GenericParamCount")
