@@ -627,7 +627,7 @@ public:
 	HashSet<int> mStaticCtorExecSet;
 	CeAppendAllocInfo* mAppendAllocInfo;	
 	
-	CeFunction* mCurCEFunction;
+	CeFunction* mPreparingFunction;
 	BfAstNode* mCurTargetSrc;
 	BfMethodInstance* mCurMethodInstance;
 	BfModule* mCurModule;	
