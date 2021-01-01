@@ -191,6 +191,22 @@ namespace System
 		    }
 		}
 
+		public bool IsArray
+		{
+			get
+			{
+				return (mTypeFlags & TypeFlags.Array) != 0;
+			}
+		}
+
+		public bool IsSizedArray
+		{
+			get
+			{
+				return (mTypeFlags & TypeFlags.SizedArray) != 0;
+			}
+		}
+
 		public bool IsObject
 		{
 		    get
