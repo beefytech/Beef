@@ -2949,7 +2949,7 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 		bool hasInitializers = false;
 		for (auto methodDef : partialTypeDef->mMethods)
 		{
-			if (methodDef->mMethodType == BfMethodType_Init)
+			if ((methodDef->mMethodType == BfMethodType_Init) && (!methodDef->mIsStatic))
 				hasInitializers = true;
 			auto& hasMethods = allHasMethods[isExtension ? 1 : 0][methodDef->mIsStatic ? 1 : 0];
 			if (methodDef->mMethodType == BfMethodType_Ctor)
@@ -3012,6 +3012,12 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 // 		methodDef->mIsMutating = true;
 // 	}
 
+	if (compositeTypeDef->mName->ToString() == "Core")
+	{
+		NOP;
+	}
+
+	// Static ctor
 	if ((allHasMethods[0][1].mCtor == 0) && (allHasMethods[1][1].mCtor > 1))
 	{
 		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Ctor, BfProtection_Public, true, "");

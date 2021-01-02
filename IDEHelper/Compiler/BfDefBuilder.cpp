@@ -1992,6 +1992,11 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 				}
 			}
 		}
+		else if (method->mMethodType == BfMethodType_Init)
+		{
+			if (method->mIsStatic)
+				needsStaticInit = true;
+		}
 		else if (method->mMethodType == BfMethodType_Dtor)
 		{
 			if (method->mIsStatic)
