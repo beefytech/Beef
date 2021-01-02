@@ -985,6 +985,28 @@ namespace System.Reflection
 				strBuffer.Append(',');
 			strBuffer.Append(']');
 		}
+
+		public Result<Object> CreateObject(int32 count)
+		{
+			if ([Friend]mTypeClassVData == null)
+				return .Err;
+
+			Object obj;
+
+			let genericType = GetGenericArg(0);
+			let arraySize = [Friend]mInstSize - genericType.Size + genericType.Stride * count;
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, 1);
+#else
+			void* mem = new [Align(16)] uint8[arraySize]* (?);
+			obj = Internal.UnsafeCastToObject(mem);
+			obj.[Friend]mClassVData = (.)(void*)[Friend]mTypeClassVData;
+#endif
+			Internal.MemSet((uint8*)Internal.UnsafeCastToPtr(obj) + [Friend]mInstSize, 0, [Friend]arraySize - [Friend]mInstSize);
+			var array = (Array)obj;
+			array.[Friend]mLength = count;
+			return obj;
+		}
     }
 
     public enum TypeFlags : uint32
