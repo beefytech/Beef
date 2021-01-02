@@ -5568,8 +5568,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfMethodMatcher* methodMatcher, BfTyped
 	}	
 
 	PerformCallChecks(moduleMethodInstance.mMethodInstance, methodMatcher->mTargetSrc);
-
-	return CreateCall(methodMatcher->mTargetSrc, target, BfTypedValue(), methodMatcher->mBestMethodDef, moduleMethodInstance, false, methodMatcher->mArguments);
+	
+	return CreateCall(methodMatcher->mTargetSrc, target, BfTypedValue(), methodMatcher->mBestMethodDef, moduleMethodInstance, false, methodMatcher->mArguments);	
 }
 
 void BfExprEvaluator::MakeBaseConcrete(BfTypedValue& typedValue)
@@ -5873,7 +5873,7 @@ void BfExprEvaluator::AddCallDependencies(BfMethodInstance* methodInstance)
 }
 
 //TODO: delete argumentsZ
-BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValue& inTarget, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance moduleMethodInstance, bool bypassVirtual, SizedArrayImpl<BfResolvedArg>& argValues, bool skipThis)
+BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValue& inTarget, const BfTypedValue& origTarget, BfMethodDef* methodDef, BfModuleMethodInstance moduleMethodInstance, bool bypassVirtual, SizedArrayImpl<BfResolvedArg>& argValues, BfTypedValue* argCascade, bool skipThis)
 {
 	static int sCallIdx = 0;
  	if (!mModule->mCompiler->mIsResolveOnly)
@@ -6617,7 +6617,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		}
 		
 		if ((argExprIdx != -1) && (argExprIdx < (int)argValues.size()) && ((argValues[argExprIdx].mArgFlags & BfArgFlag_Cascade) != 0))
+		{
+			mUsedAsStatement = true;
 			argCascades.Add(argValue);
+		}
 	
 		if (expandedParamsArray)
 		{
@@ -6787,9 +6790,17 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs);	
 
 	if (argCascades.mSize == 1)
-		return argCascades[0];
+	{
+		if (argCascade == NULL)
+			return argCascades[0];
+		*argCascade = argCascades[0];
+	}
 	if (argCascades.mSize > 1)
-		return mModule->CreateTuple(argCascades, {});
+	{
+		if (argCascade == NULL)
+			return mModule->CreateTuple(argCascades, {});
+		*argCascade = mModule->CreateTuple(argCascades, {});
+	}
 
 	return callResult;
 }
@@ -8471,6 +8482,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 
 	BfTypedValue result;
+	BfTypedValue argCascade;
 	
 	//
 	{
@@ -8486,26 +8498,13 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_ConstEval);
 		}
 
-		result = CreateCall(targetSrc, callTarget, origTarget, methodDef, moduleMethodInstance, bypassVirtual, argValues.mResolvedArgs, skipThis);
+		result = CreateCall(targetSrc, callTarget, origTarget, methodDef, moduleMethodInstance, bypassVirtual, argValues.mResolvedArgs, &argCascade, skipThis);
 	}
 	
 	if (result)
 	{
 		if (result.mType->IsRef())
-			result = mModule->RemoveRef(result);
-		if (result.mType->IsSelf())
-		{
-			if (methodMatcher.mSelfType != NULL)
-			{
-				BF_ASSERT(mModule->IsInGeneric());
-				result = mModule->GetDefaultTypedValue(methodMatcher.mSelfType);
-			}
-			else
-			{
-				// Will be an error
-				result = mModule->GetDefaultTypedValue(methodMatcher.mBestMethodTypeInstance);
-			}
-		}
+			result = mModule->RemoveRef(result);		
 	}
 
 	PerformCallChecks(moduleMethodInstance.mMethodInstance, targetSrc);
@@ -8562,6 +8561,30 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 					if (wasGetDefinition)
 						autoComplete->mIsGetDefinition = true;
 				}
+			}
+		}
+	}
+
+	if (argCascade)
+	{
+		if (argCascade.mType->IsRef())
+			argCascade = mModule->RemoveRef(argCascade);
+		result = argCascade;
+	}
+
+	if (result)
+	{
+		if (result.mType->IsSelf())
+		{
+			if (methodMatcher.mSelfType != NULL)
+			{
+				BF_ASSERT(mModule->IsInGeneric());
+				result = mModule->GetDefaultTypedValue(methodMatcher.mSelfType);
+			}
+			else
+			{
+				// Will be an error
+				result = mModule->GetDefaultTypedValue(methodMatcher.mBestMethodTypeInstance);
 			}
 		}
 	}
