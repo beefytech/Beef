@@ -152,7 +152,16 @@ static
 		}
 	}
 
+	[NoShow]
+	[Warn("This mixin has been replaced by ClearAndDeleteItems")]
 	public static mixin DeleteAndClearItems(var container)
+	{
+		for (var value in container)
+			delete value;
+		container.Clear();
+	}
+
+	public static mixin ClearAndDeleteItems(var container)
 	{
 		for (var value in container)
 			delete value;

@@ -6390,7 +6390,7 @@ namespace IDE.ui
             }
             else
             {
-				DeleteAndClearItems!(mErrorList);
+				ClearAndDeleteItems(mErrorList);
             }
             
             int32 errorCount = processingPassInstance.GetErrorCount();

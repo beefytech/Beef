@@ -1195,7 +1195,7 @@ namespace IDE
 			}
 
 			var aDialog = QuerySaveFiles(changedList);
-			DeleteAndClearItems!(changedList);
+			ClearAndDeleteItems(changedList);
 
 			aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) =>
 				{
@@ -2977,7 +2977,7 @@ namespace IDE
 			using (data.Open("MainDockingFrame"))
 			    DeserializeDockingFrame(data, mDockingFrame);
 
-			DeleteAndClearItems!(mRecentlyDisplayedFiles);
+			ClearAndDeleteItems(mRecentlyDisplayedFiles);
 			for (data.Enumerate("RecentFilesList"))
 			{
 				String relPath = scope String();

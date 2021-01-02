@@ -924,7 +924,7 @@ namespace IDE
 			{
 				HashSet<String> usedCommands = scope .();
 				List<String> allocatedStrs = scope .();
-				defer { DeleteAndClearItems!(allocatedStrs); }
+				defer { ClearAndDeleteItems(allocatedStrs); }
 
 				List<Entry> newEntries = new .();
 				for (let cmdStr in sd.Enumerate())

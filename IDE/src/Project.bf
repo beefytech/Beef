@@ -1938,7 +1938,7 @@ namespace IDE
 					ReadStrings("EnvironmentVars", options.mDebugOptions.mEnvironmentVars);
 			        
 			    	// BeefOptions
-					DeleteAndClearItems!(options.mBeefOptions.mPreprocessorMacros);
+					ClearAndDeleteItems(options.mBeefOptions.mPreprocessorMacros);
 					if (data.Contains("PreprocessorMacros"))
 					{
 			            for (var _preproc in data.Enumerate("PreprocessorMacros"))

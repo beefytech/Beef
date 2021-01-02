@@ -220,7 +220,7 @@ namespace IDE
 
 		public void Clear()
 		{
-			DeleteAndClearItems!(mCmdList);
+			ClearAndDeleteItems(mCmdList);
 			mFailed = false;
 			mCurCmd = null;
 		}

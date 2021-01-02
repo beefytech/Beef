@@ -14417,6 +14417,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		return;
 	}
 	auto methodInstance = moduleMethodInstance.mMethodInstance;
+	PerformCallChecks(methodInstance, targetSrc);
 
 	for (int checkGenericIdx = 0; checkGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size(); checkGenericIdx++)
 	{

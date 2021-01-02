@@ -87,7 +87,7 @@ namespace IDE.ui
 
         void GetEntries()
         {
-			DeleteAndClearItems!(mEntries);
+			ClearAndDeleteItems(mEntries);
             ResolveParams resolveParams = scope ResolveParams();
             mSourceViewPanel.Classify(ResolveType.GetNavigationData, resolveParams);
             if (resolveParams.mNavigationData != null)
