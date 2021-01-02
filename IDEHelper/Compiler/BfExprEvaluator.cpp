@@ -4119,6 +4119,17 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					
 				mModule->PopulateType(resolvedFieldType, BfPopulateType_Data);					
 				mModule->AddDependency(curCheckType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
+				if (fieldInstance->mHadConstEval)
+				{
+					mModule->AddDependency(curCheckType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ConstEvalConstField);
+					if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mCurFieldDef != NULL))
+					{
+						// If we're initializing another const field then
+						auto resolvingFieldInstance = &mModule->mContext->mCurTypeState->mTypeInstance->mFieldInstances[mModule->mContext->mCurTypeState->mCurFieldDef->mIdx];
+						if (resolvingFieldInstance->GetFieldDef()->mIsConst)
+							resolvingFieldInstance->mHadConstEval = true;
+					}
+				}
 
 				auto autoComplete = GetAutoComplete();
 				if (autoComplete != NULL)

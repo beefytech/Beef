@@ -4088,6 +4088,10 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 		}
 		else if (fieldDef->mIsConst)
 		{
+			int ceExecuteId = -1;
+			if (mCompiler->mCEMachine != NULL)
+				ceExecuteId = mCompiler->mCEMachine->mExecuteId;
+
 			BfTypeState typeState;
 			typeState.mTypeInstance = mCurTypeInstance;
 			typeState.mCurTypeDef = fieldDef->mDeclaringType;
@@ -4108,8 +4112,14 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 					resolveFlags = BfConstResolveFlag_NoCast;
 				}
 				UpdateSrcPos(initializer);
-				return constResolver.Resolve(initializer, fieldType, resolveFlags);
-			}
+				auto result = constResolver.Resolve(initializer, fieldType, resolveFlags);
+				if (mCompiler->mCEMachine != NULL)
+				{
+					if (mCompiler->mCEMachine->mExecuteId != ceExecuteId)
+						fieldInstance->mHadConstEval = true;
+				}
+				return result;
+			}			
 		}
 				
 		BfExprEvaluator exprEvaluator(this);

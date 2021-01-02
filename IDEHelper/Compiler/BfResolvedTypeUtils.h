@@ -94,22 +94,23 @@ public:
 		DependencyFlag_PtrMemberData		= 0x80,
 		DependencyFlag_StaticValue			= 0x100,
 		DependencyFlag_ConstValue			= 0x200,
-		DependencyFlag_MethodGenericArg		= 0x400,
-		DependencyFlag_LocalUsage			= 0x800,
-		DependencyFlag_ExprTypeReference	= 0x1000,
-		DependencyFlag_TypeGenericArg		= 0x2000,
-		DependencyFlag_UnspecializedType    = 0x4000,
-		DependencyFlag_GenericArgRef		= 0x8000,
-		DependencyFlag_ParamOrReturnValue	= 0x10000,
-		DependencyFlag_CustomAttribute		= 0x20000,
-		DependencyFlag_Constraint			= 0x40000,
-		DependencyFlag_StructElementType	= 0x80000,
-		DependencyFlag_TypeReference		= 0x100000, // Explicit type reference for things like tuples, so all referencing types get passed over on symbol reference
-		DependencyFlag_Allocates			= 0x200000,
-		DependencyFlag_NameReference		= 0x400000,
-		DependencyFlag_VirtualCall			= 0x800000,
-		DependencyFlag_WeakReference		= 0x1000000, // Keeps alive but won't rebuild
-		DependencyFlag_ConstEval			= 0x2000000,
+		DependencyFlag_ConstEvalConstField	= 0x400, // Used a field that was CE-generated
+		DependencyFlag_ConstEval			= 0x800,
+		DependencyFlag_MethodGenericArg		= 0x1000,
+		DependencyFlag_LocalUsage			= 0x2000,
+		DependencyFlag_ExprTypeReference	= 0x4000,
+		DependencyFlag_TypeGenericArg		= 0x8000,
+		DependencyFlag_UnspecializedType    = 0x10000,
+		DependencyFlag_GenericArgRef		= 0x20000,
+		DependencyFlag_ParamOrReturnValue	= 0x40000,
+		DependencyFlag_CustomAttribute		= 0x80000,
+		DependencyFlag_Constraint			= 0x100000,
+		DependencyFlag_StructElementType	= 0x200000,
+		DependencyFlag_TypeReference		= 0x400000, // Explicit type reference for things like tuples, so all referencing types get passed over on symbol reference
+		DependencyFlag_Allocates			= 0x800000,
+		DependencyFlag_NameReference		= 0x1000000,
+		DependencyFlag_VirtualCall			= 0x2000000,
+		DependencyFlag_WeakReference		= 0x4000000, // Keeps alive but won't rebuild		
 
 		DependencyFlag_DependentUsageMask = ~(DependencyFlag_UnspecializedType | DependencyFlag_MethodGenericArg | DependencyFlag_GenericArgRef)
 	};
@@ -405,16 +406,17 @@ enum BfTypeRebuildFlags
 	BfTypeRebuildFlag_MethodInlineInternalsChange = 4,
 	BfTypeRebuildFlag_MethodSignatureChange = 8,	
 	BfTypeRebuildFlag_ConstEvalChange = 0x10,
-	BfTypeRebuildFlag_DeleteQueued = 0x20,
-	BfTypeRebuildFlag_Deleted = 0x40,
-	BfTypeRebuildFlag_AddedToWorkList = 0x80,
-	BfTypeRebuildFlag_AwaitingReference = 0x100,
-	BfTypeRebuildFlag_SpecializedMethodRebuild = 0x200, // Temporarily set
-	BfTypeRebuildFlag_SpecializedByAutocompleteMethod = 0x400,
-	BfTypeRebuildFlag_UnderlyingTypeDeferred = 0x800,
-	BfTypeRebuildFlag_TypeDataSaved = 0x1000,
-	BfTypeRebuildFlag_InTempPool = 0x2000,
-	BfTypeRebuildFlag_ResolvingBase = 0x4000
+	BfTypeRebuildFlag_ConstEvalFieldChange = 0x20,
+	BfTypeRebuildFlag_DeleteQueued = 0x40,
+	BfTypeRebuildFlag_Deleted = 0x80,
+	BfTypeRebuildFlag_AddedToWorkList = 0x100,
+	BfTypeRebuildFlag_AwaitingReference = 0x200,
+	BfTypeRebuildFlag_SpecializedMethodRebuild = 0x400, // Temporarily set
+	BfTypeRebuildFlag_SpecializedByAutocompleteMethod = 0x800,
+	BfTypeRebuildFlag_UnderlyingTypeDeferred = 0x1000,
+	BfTypeRebuildFlag_TypeDataSaved = 0x2000,
+	BfTypeRebuildFlag_InTempPool = 0x4000,
+	BfTypeRebuildFlag_ResolvingBase = 0x8000
 };
 
 class BfTypeDIReplaceCallback;
@@ -1303,7 +1305,8 @@ public:
 	bool mFieldIncluded;
 	bool mIsEnumPayloadCase;
 	bool mIsThreadLocal;
-	bool mIsInferredType;	
+	bool mIsInferredType;
+	bool mHadConstEval;
 	int mLastRevisionReferenced;
 
 public:
@@ -1326,6 +1329,7 @@ public:
 		mIsEnumPayloadCase = copyFrom.mIsEnumPayloadCase;
 		mIsThreadLocal = copyFrom.mIsThreadLocal;
 		mIsInferredType = copyFrom.mIsInferredType;		
+		mHadConstEval = copyFrom.mHadConstEval;
 		mLastRevisionReferenced = copyFrom.mLastRevisionReferenced;		
 	}
 
@@ -1344,6 +1348,7 @@ public:
 		mFieldIncluded = true;
 		mIsThreadLocal = false;
 		mIsInferredType = false;
+		mHadConstEval = false;
 		mLastRevisionReferenced = -1;
 	}		
 

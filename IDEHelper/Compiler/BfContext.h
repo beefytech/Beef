@@ -442,6 +442,7 @@ public:
 	void TypeMethodSignaturesChanged(BfTypeInstance* typeInst);
 	void TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst);
 	void TypeConstEvalChanged(BfTypeInstance* typeInst);
+	void TypeConstEvalFieldChanged(BfTypeInstance* typeInst);
 	void CheckSpecializedErrorData();
 	void TryUnreifyModules();
 	void MarkUsedModules(BfProject* project, BfModule* module);

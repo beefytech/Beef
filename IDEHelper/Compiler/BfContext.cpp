@@ -1246,6 +1246,35 @@ void BfContext::TypeConstEvalChanged(BfTypeInstance* typeInst)
 				TypeConstEvalChanged(depTypeInst);
 			RebuildType(dependentType);
 		}
+		else if ((dependencyFlags & BfDependencyMap::DependencyFlag_ConstEvalConstField) != 0)
+		{
+			auto depTypeInst = dependentType->ToTypeInstance();
+			if (depTypeInst != NULL)
+				TypeConstEvalFieldChanged(depTypeInst);
+			RebuildType(dependentType);
+		}
+	}
+}
+
+void BfContext::TypeConstEvalFieldChanged(BfTypeInstance* typeInst)
+{
+	if (typeInst->mRebuildFlags & BfTypeRebuildFlag_ConstEvalFieldChange) // Already did change?
+		return;
+	typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags | BfTypeRebuildFlag_ConstEvalFieldChange);
+
+	// These don't happen in TypeDataChanged because we don't need to cascade
+	for (auto& depItr : typeInst->mDependencyMap)
+	{
+		auto dependentType = depItr.mKey;
+		auto dependencyFlags = depItr.mValue.mFlags;
+		
+		if ((dependencyFlags & BfDependencyMap::DependencyFlag_ConstEvalConstField) != 0)
+		{
+			auto depTypeInst = dependentType->ToTypeInstance();
+			if (depTypeInst != NULL)
+				TypeConstEvalFieldChanged(depTypeInst);
+			RebuildType(dependentType);
+		}
 	}
 }
 
