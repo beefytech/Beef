@@ -2120,7 +2120,7 @@ class BfInitializerExpression : public BfExpression
 public:
 	BF_AST_TYPE(BfInitializerExpression, BfExpression);
 
-	BfExpression* mTarget;
+	BfAstNode* mTarget;
 	BfTokenNode* mOpenBrace;
 	BfSizedArray<BfExpression*> mValues;
 	BfSizedArray<BfTokenNode*> mCommas;

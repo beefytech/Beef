@@ -1692,6 +1692,17 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			}
 			}*/
 		}
+		else if (endNodeIdx != -1)
+		{
+			if (auto blockNode = BfNodeDynCast<BfBlock>(mVisitorPos.Get(endNodeIdx)))
+			{
+				auto typeRef = CreateTypeRef(mVisitorPos.GetCurrent());
+				if (typeRef)
+				{
+					exprLeft = TryCreateInitializerExpression(typeRef);
+				}
+			}
+		}
 	}
 
 	if (exprLeft == NULL)
@@ -1917,43 +1928,55 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			}
 			else if (token == BfToken_Dot) // Abbreviated dot syntax ".EnumVal"
 			{
-				auto memberReferenceExpr = mAlloc->Alloc<BfMemberReferenceExpression>();
-				ReplaceNode(tokenNode, memberReferenceExpr);
-				MEMBER_SET(memberReferenceExpr, mDotToken, tokenNode);
-
-				bool handled = false;
-				if (auto nextToken = BfNodeDynCastExact<BfTokenNode>(mVisitorPos.GetNext()))
+				// Initializer ".{ x = 1, y = 2 }"
+				if (auto blockNode = BfNodeDynCast<BfBlock>(mVisitorPos.GetNext()))
 				{
-					if (nextToken->GetToken() == BfToken_LParen)
+					auto typeRef = CreateTypeRef(mVisitorPos.GetCurrent());
+					if (typeRef)
 					{
-						// It's an unnamed dot ctor
-						handled = true;
+						exprLeft = TryCreateInitializerExpression(typeRef);
 					}
 				}
-
-				if (!handled)
+				else
 				{
-					auto memberName = ExpectIdentifierAfter(memberReferenceExpr);
-					if (memberName != NULL)
+					auto memberReferenceExpr = mAlloc->Alloc<BfMemberReferenceExpression>();
+					ReplaceNode(tokenNode, memberReferenceExpr);
+					MEMBER_SET(memberReferenceExpr, mDotToken, tokenNode);
+
+					bool handled = false;
+					if (auto nextToken = BfNodeDynCastExact<BfTokenNode>(mVisitorPos.GetNext()))
 					{
-						MEMBER_SET(memberReferenceExpr, mMemberName, memberName);
+						if (nextToken->GetToken() == BfToken_LParen)
+						{
+							// It's an unnamed dot ctor
+							handled = true;
+						}
 					}
-				}
-				// We don't set exprLeft here because it's illegal to do ".EnumVal.SomethingElse".  That wouldn't make
-				//  sense because the abbreviated syntax relies on type inference and the ".SomethingElse" wouldn't be
-				//  the right type (whatever it is), AND mostly importantly, it breaks autocomplete when we are typing
-				//  "KEnum val = ." above a line that starts with a something like a method call "OtherThing.MethodCall()"
-				// The exception is if we're creating an enum val with a payload
 
-				//auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
-				//if ((nextToken != NULL) && (nextToken->GetToken() == BfToken_LParen))
-				{
-					exprLeft = memberReferenceExpr;
+					if (!handled)
+					{
+						auto memberName = ExpectIdentifierAfter(memberReferenceExpr);
+						if (memberName != NULL)
+						{
+							MEMBER_SET(memberReferenceExpr, mMemberName, memberName);
+						}
+					}
+					// We don't set exprLeft here because it's illegal to do ".EnumVal.SomethingElse".  That wouldn't make
+					//  sense because the abbreviated syntax relies on type inference and the ".SomethingElse" wouldn't be
+					//  the right type (whatever it is), AND mostly importantly, it breaks autocomplete when we are typing
+					//  "KEnum val = ." above a line that starts with a something like a method call "OtherThing.MethodCall()"
+					// The exception is if we're creating an enum val with a payload
+
+					//auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
+					//if ((nextToken != NULL) && (nextToken->GetToken() == BfToken_LParen))
+					{
+						exprLeft = memberReferenceExpr;
+					}
+					/*else
+					{
+					return memberReferenceExpr;
+					}*/
 				}
-				/*else
-				{
-				return memberReferenceExpr;
-				}*/
 			}
 			else if (token == BfToken_LBracket)
 			{
@@ -7072,7 +7095,7 @@ BfInvocationExpression* BfReducer::CreateInvocationExpression(BfAstNode* target,
 	return invocationExpr;
 }
 
-BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfExpression* target)
+BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfAstNode* target)
 {
 	auto block = BfNodeDynCast<BfBlock>(mVisitorPos.GetNext());
 	if (block == NULL)

@@ -134,6 +134,14 @@ namespace Tests
 			sb1.mA = 1;
 			sb1.mB = 2;
 			Test.Assert(sb0 == sb1);
+
+			sb0 = StructB { mA = 2 };
+			Test.Assert(sb0.mA == 2);
+			Test.Assert(sb0.mB == 0);
+
+			sb0 = .{ mA = 3, mB = 4 };
+			Test.Assert(sb0.mA == 3);
+			Test.Assert(sb0.mB == 4);
 		}
 
 		[Test]

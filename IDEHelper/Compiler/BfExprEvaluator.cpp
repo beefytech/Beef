@@ -9240,10 +9240,53 @@ void BfExprEvaluator::Visit(BfSizedArrayCreateExpression* createExpr)
 }
 
 void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
-{
-	VisitChild(initExpr->mTarget);	 
+{		
+	uint64 unassignedFieldFlags = 0;
+	
+	if (auto typeRef = BfNodeDynCast<BfTypeReference>(initExpr->mTarget))
+	{
+		BfType* type = NULL;
+		if (auto typeRef = BfNodeDynCast<BfDotTypeReference>(initExpr->mTarget))
+		{
+			type = mExpectingType;
+		}
+		if (type == NULL)
+			type = mModule->ResolveTypeRef(typeRef);
+		if (type != NULL)
+		{
+			if (type->IsValueType())
+			{
+				if (mReceivingValue != NULL)
+				{
+					mResult = *mReceivingValue;
+					mReceivingValue = NULL;
+				}
+				else
+				{
+					mResult = BfTypedValue(mModule->CreateAlloca(type), type, true);
+				}
+				auto typeInstance = type->ToTypeInstance();
+				if (typeInstance != NULL)
+					unassignedFieldFlags = (1 << typeInstance->mMergedFieldDataCount) - 1;
+			}
+			else
+			{
+				mModule->Fail("Initializer expressions can only be used on value types or allocated values", initExpr->mTarget);
+			}
+		}
+	}
+	else
+		VisitChild(initExpr->mTarget);	 
 	if (!mResult)
 		mResult = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
+
+	BfIRBlock initBlock = BfIRBlock();
+	if (unassignedFieldFlags != 0)
+	{
+		initBlock = mModule->mBfIRBuilder->CreateBlock("initStart", true);
+		mModule->mBfIRBuilder->CreateBr(initBlock);
+		mModule->mBfIRBuilder->SetInsertPoint(initBlock);
+	}
 
 	BfTypedValue initValue = GetResult(true);	
 	bool isFirstAdd = true;	
@@ -9261,9 +9304,20 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 			{
 				StringT<128> findName;
 				identifierNode->ToString(findName);
+				mResultFieldInstance = NULL;
 				fieldResult = LookupField(identifierNode, initValue, findName, BfLookupFieldFlag_IsImplicitThis);
 				if ((fieldResult.mKind == BfTypedValueKind_TempAddr) || (fieldResult.mKind == BfTypedValueKind_RestrictedTempAddr))
 					fieldResult.mKind = BfTypedValueKind_Addr;
+
+				if ((mResultFieldInstance != NULL) && (mResultFieldInstance->mMergedDataIdx != -1))
+				{
+					int resultLocalVarField = 0;
+					int resultLocalVarFieldCount = 0;
+					mResultFieldInstance->GetDataRange(resultLocalVarField, resultLocalVarFieldCount);
+
+					for (int i = 0; i < resultLocalVarFieldCount; i++)
+						unassignedFieldFlags &= ~((int64)1 << (resultLocalVarField - 1 + i));
+				}
 
 				wasValidInitKind = true;
 
@@ -9339,6 +9393,15 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 		{
 			mModule->Fail("Invalid initializer member declarator", initExpr);
 		}
+	}
+
+	if (unassignedFieldFlags != 0)
+	{
+		auto curBlock = mModule->mBfIRBuilder->GetInsertBlock();
+		mModule->mBfIRBuilder->SetInsertPointAtStart(initBlock);
+		mModule->mBfIRBuilder->CreateMemSet(initValue.mValue, mModule->GetConstValue(0, mModule->GetPrimitiveType(BfTypeCode_Int8)),
+			mModule->GetConstValue(initValue.mType->mSize), initValue.mType->mAlign);
+		mModule->mBfIRBuilder->SetInsertPoint(curBlock);
 	}
 
 	mResult = initValue;
