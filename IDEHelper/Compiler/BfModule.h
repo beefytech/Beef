@@ -1737,6 +1737,7 @@ public:
 	bool TryLocalVariableInit(BfLocalVariable* localVar);
 	void LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit);
 	void CreateDIRetVal();
+	BfTypedValue CreateTuple(const Array<BfTypedValue>& values, const Array<String>& fieldNames);
 	void CheckTupleVariableDeclaration(BfTupleExpression* tupleExpr, BfType* initType);
 	void HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, BfTupleExpression* tupleExpr, BfTypedValue initTupleValue, bool isReadOnly, bool isConst, bool forceAddr, BfIRBlock* declBlock = NULL);
 	void HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl);

@@ -2250,8 +2250,15 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 					unaryOpExpr->mOp = unaryOp;
 					unaryOpExpr->mOpToken = tokenNode;
 					ReplaceNode(tokenNode, unaryOpExpr);
+
+					CreateExprFlags innerFlags = (CreateExprFlags)(rhsCreateExprFlags | CreateExprFlags_EarlyExit);
+					if (unaryOp == BfUnaryOp_Cascade)
+					{
+						innerFlags = (CreateExprFlags)(innerFlags | (createExprFlags & CreateExprFlags_AllowVariableDecl));
+					}
+
 					// Don't attempt binary or unary operations- they will always be lower precedence
-					unaryOpExpr->mExpression = CreateExpressionAfter(unaryOpExpr, (CreateExprFlags)(rhsCreateExprFlags | CreateExprFlags_EarlyExit));
+					unaryOpExpr->mExpression = CreateExpressionAfter(unaryOpExpr, innerFlags);
 					if (unaryOpExpr->mExpression == NULL)
 						return NULL;
 					MoveNode(unaryOpExpr->mExpression, unaryOpExpr);

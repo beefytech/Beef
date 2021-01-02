@@ -1672,6 +1672,7 @@ const char* Beefy::BfGetOpName(BfUnaryOp unaryOp)
 	case BfUnaryOp_Out: return "out";
 	case BfUnaryOp_Mut: return "mut";
 	case BfUnaryOp_Params: return "params";
+	case BfUnaryOp_Cascade: return "..";
 	default: return "???";
 	}
 }
@@ -1759,6 +1760,8 @@ BfUnaryOp Beefy::BfTokenToUnaryOp(BfToken token)
 		return BfUnaryOp_Out;
 	case BfToken_Params:
 		return BfUnaryOp_Params;
+	case BfToken_DotDot:
+		return BfUnaryOp_Cascade;
 	default:
 		return BfUnaryOp_None;
 	}

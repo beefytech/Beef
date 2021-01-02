@@ -4616,8 +4616,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 	SizedArray<BfExpression*, 8> deferredArgs;
 
 	int argIdx = 0;
-	//for (int argIdx = 0; argIdx < argCount ; argIdx++)
-
+	
 	while (true)
 	{
 		//printf("Args: %p %p %d\n", resolvedArgs.mArguments, resolvedArgs.mArguments->mVals, resolvedArgs.mArguments->mSize);
@@ -4680,6 +4679,15 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 				resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_StringInterpolateFormat);
 				for (auto innerExpr : interpolateExpr->mExpressions)
 					deferredArgs.Add(innerExpr);
+			}
+		}
+
+		if (auto unaryOpExpr = BfNodeDynCastExact<BfUnaryOperatorExpression>(argExpr))
+		{
+			if (unaryOpExpr->mOp == BfUnaryOp_Cascade)
+			{
+				resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_Cascade);
+				argExpr = unaryOpExpr->mExpression;
 			}
 		}
 
@@ -5899,6 +5907,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		BF_ASSERT(returnType->IsInterface());
 	}*/
 
+	Array<BfTypedValue> argCascades;
 	BfTypedValue target = inTarget;
 
 	if (!skipThis)
@@ -6607,6 +6616,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				argValue = mModule->LoadValue(argValue);
 		}
 		
+		if ((argExprIdx != -1) && (argExprIdx < (int)argValues.size()) && ((argValues[argExprIdx].mArgFlags & BfArgFlag_Cascade) != 0))
+			argCascades.Add(argValue);
 	
 		if (expandedParamsArray)
 		{
@@ -6773,8 +6784,14 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	}
 
 	auto func = moduleMethodInstance.mFunc;	
-	BfTypedValue result = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs);	
-	return result;
+	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs);	
+
+	if (argCascades.mSize == 1)
+		return argCascades[0];
+	if (argCascades.mSize > 1)
+		return mModule->CreateTuple(argCascades, {});
+
+	return callResult;
 }
 
 BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, BfTypeInstance* targetType, BfResolvedArgs& argValues, bool callCtorBodyOnly, bool allowAppendAlloc, BfTypedValue* appendIndexValue)
@@ -19376,7 +19393,11 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			}			
 		}
 		break;
-		
+	case BfUnaryOp_Cascade:
+		{
+			mModule->Fail("Illegal use of argument cascade expression", opToken);
+		}
+		break;
 	default:
 		mModule->Fail("INTERNAL ERROR: Unhandled unary operator", unaryOpExpr);
 		break;

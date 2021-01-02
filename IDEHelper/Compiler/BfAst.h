@@ -1834,7 +1834,8 @@ enum BfUnaryOp
 	BfUnaryOp_Ref,
 	BfUnaryOp_Out,
 	BfUnaryOp_Mut,
-	BfUnaryOp_Params,	
+	BfUnaryOp_Params,
+	BfUnaryOp_Cascade
 };
 
 class BfTokenNode : public BfAstNode

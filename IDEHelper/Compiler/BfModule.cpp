@@ -13830,6 +13830,29 @@ void BfModule::CreateDIRetVal()
 	}	
 }
 
+BfTypedValue BfModule::CreateTuple(const Array<BfTypedValue>& values, const Array<String>& fieldNames)
+{
+	BfTypeVector fieldTypes;
+	for (auto arg : values)
+		fieldTypes.Add(arg.mType);
+	
+	auto tupleType = CreateTupleType(fieldTypes, fieldNames);
+
+	auto tupleTypedValue = BfTypedValue(CreateAlloca(tupleType), tupleType, true);
+	for (int fieldIdx = 0; fieldIdx < tupleType->mFieldInstances.size(); fieldIdx++)
+	{
+		auto& fieldInstance = tupleType->mFieldInstances[fieldIdx];
+		if (fieldInstance.mDataIdx <= 0)
+			continue;
+
+		auto typedVal = values[fieldIdx];
+		typedVal = LoadOrAggregateValue(typedVal);
+		mBfIRBuilder->CreateAlignedStore(typedVal.mValue, mBfIRBuilder->CreateInBoundsGEP(tupleTypedValue.mValue, 0, fieldInstance.mDataIdx), typedVal.mType->mAlign);
+	}
+
+	return tupleTypedValue;
+}
+
 void BfModule::CheckVariableDef(BfLocalVariable* variableDef)
 {	
 	if (variableDef->mName.IsEmpty())
