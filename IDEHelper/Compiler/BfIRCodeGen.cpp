@@ -923,8 +923,13 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 			{
 				llvmValue = llvm::ConstantStruct::get(structType, values);
 			}
+			else if (auto vecType = llvm::dyn_cast<llvm::VectorType>(type))
+			{
+				llvmValue = llvm::ConstantVector::get(values);
+			}
 			else
 			{
+				llvmValue = NULL;
 				Fail("Bad type");
 			}
 						

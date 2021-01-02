@@ -816,6 +816,17 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 						values.push_back(lastValue);
 				}
 			}
+			else if (type->IsVector())
+			{
+				auto vecType = (BeVectorType*)type;
+				int fillCount = (int)(vecType->mLength - values.size());
+				if (fillCount > 0)
+				{
+					auto lastValue = values.back();
+					for (int i = 0; i < fillCount; i++)
+						values.push_back(lastValue);
+				}
+			}
 			else
 			{
 				BF_ASSERT(type->IsStruct());
@@ -835,8 +846,15 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 					auto memberType = constant->GetType();
 					BF_ASSERT(memberType == arrayType->mElementType);
 				}
+				else if (type->IsVector())
+				{
+					auto vecType = (BeVectorType*)type;
+					auto memberType = constant->GetType();
+					BF_ASSERT(memberType == vecType->mElementType);
+				}
 				else
 				{
+					BF_ASSERT(type->IsStruct());
 					auto structType = (BeStructType*)type;
 					auto memberType = constant->GetType();
 					BF_ASSERT(memberType == structType->mMembers[i].mType);

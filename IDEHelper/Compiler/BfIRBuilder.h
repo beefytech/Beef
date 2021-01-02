@@ -1025,6 +1025,7 @@ public:
 	void CreateDbgTypeDefinition(BfType* type);
 	bool WantsDbgDefinition(BfType * type);
 	void CreateTypeDeclaration(BfType* type, bool forceDbgDefine);
+	void CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInstance* typeInstance, bool forceDbgDefine);
 	void CreateTypeDefinition(BfType* type, bool forceDbgDefine);
 	void ReplaceDITemporaryTypes();
 	void PushDbgLoc(BfTypeInstance* typeInst);

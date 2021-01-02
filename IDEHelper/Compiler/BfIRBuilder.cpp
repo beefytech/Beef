@@ -3084,6 +3084,186 @@ bool BfIRBuilder::WantsDbgDefinition(BfType* type)
 	return false;
 }
 
+void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInstance* typeInstance, bool forceDbgDefine)
+{
+	auto typeDef = typeInstance->mTypeDef;
+
+#ifdef BFIR_RENTRY_CHECK
+	ReEntryCheck reEntryCheck(&mDefReentrySet, type);
+#endif
+
+	bool isGlobalContainer = typeDef->IsGlobalsContainer();
+
+	auto diForwardDecl = DbgGetTypeInst(typeInstance);
+	llvm::SmallVector<BfIRType, 8> irFieldTypes;
+	if ((!typeInstance->IsTypedPrimitive()) && (typeInstance->mBaseType != NULL))
+	{
+		irFieldTypes.push_back(MapTypeInst(typeInstance->mBaseType, BfIRPopulateType_Eventually_Full));
+	}
+
+	llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;
+
+	bool isPacked = false;
+	bool isUnion = false;
+	bool isCRepr = false;
+
+	if (typeInstance->IsBoxed())
+	{
+		auto boxedType = (BfBoxedType*)typeInstance;
+		BF_ASSERT(!boxedType->mFieldInstances.IsEmpty());
+
+		auto& fieldInst = boxedType->mFieldInstances.back();
+		auto elementType = fieldInst.mResolvedType;
+		populateModule->PopulateType(elementType, BfPopulateType_Data);
+
+		if (!elementType->IsValuelessType())
+		{
+			irFieldTypes.push_back(MapType(elementType, elementType->IsValueType() ? BfIRPopulateType_Eventually_Full : BfIRPopulateType_Declaration));
+		}
+	}
+	else
+	{
+		isCRepr = typeInstance->mIsCRepr;
+		isPacked = typeInstance->mIsPacked;
+		isUnion = typeInstance->mIsUnion;
+	}
+
+	BfSizedVector<BfFieldInstance*, 8> orderedFields;
+
+	bool isPayloadEnum = (typeInstance->IsEnum()) && (!typeInstance->IsTypedPrimitive());
+	for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
+	{
+		auto fieldInstance = &fieldInstanceRef;
+		if (!fieldInstance->mFieldIncluded)
+			continue;
+		auto fieldDef = fieldInstance->GetFieldDef();
+
+		if ((fieldInstance->mResolvedType == NULL) || (typeInstance->IsBoxed()))
+			continue;
+
+		if ((fieldDef != NULL) && (fieldDef->mIsStatic))
+			continue; // Just create type first - we may contain a static reference to ourselves, creating an dependency loop
+
+		auto resolvedFieldType = fieldInstance->GetResolvedType();
+
+		mModule->PopulateType(resolvedFieldType, BfPopulateType_Declaration);
+		BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
+		BfIRMDNode resolvedFieldDIType;
+
+		if ((fieldDef != NULL) && (resolvedFieldType->IsStruct()))
+			PopulateType(resolvedFieldType, BfIRPopulateType_Eventually_Full);
+
+		if ((fieldDef == NULL) && (typeInstance->IsPayloadEnum()))
+		{
+			orderedFields.push_back(fieldInstance);
+		}
+
+		if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
+		{
+			bool useForUnion = false;
+
+			BF_ASSERT(!fieldInstance->mIsEnumPayloadCase);
+
+			if ((!fieldDef->mIsStatic) && (!resolvedFieldType->IsValuelessType()))
+			{
+				if (!isUnion)
+				{
+					BF_ASSERT(resolvedFieldIRType.mId != -1);
+					//irFieldTypes.push_back(resolvedFieldIRType);
+
+					if (fieldInstance->mDataIdx != -1)
+					{
+						while (fieldInstance->mDataIdx >= (int)orderedFields.size())
+							orderedFields.push_back(NULL);
+						orderedFields[fieldInstance->mDataIdx] = fieldInstance;
+					}
+
+				}
+			}
+		}
+	}
+
+	int dataPos = 0;
+	if (typeInstance->mBaseType != NULL)
+		dataPos = typeInstance->mBaseType->mInstSize;
+
+	int unionSize = 0;
+	if (typeInstance->mIsUnion)
+	{
+		auto unionInnerType = typeInstance->GetUnionInnerType();
+		irFieldTypes.push_back(MapType(unionInnerType, unionInnerType->IsValueType() ? BfIRPopulateType_Eventually_Full : BfIRPopulateType_Declaration));
+		unionSize = unionInnerType->mSize;
+		dataPos += unionSize;
+	}
+
+	for (int fieldIdx = 0; fieldIdx < (int)orderedFields.size(); fieldIdx++)
+	{
+		auto fieldInstance = orderedFields[fieldIdx];
+		if (fieldInstance == NULL)
+			continue;
+
+		auto resolvedFieldType = fieldInstance->GetResolvedType();
+
+		BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
+
+		//bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
+		bool needsExplicitAlignment = true;
+		if (!needsExplicitAlignment)
+		{
+			int alignSize = resolvedFieldType->mAlign;
+			dataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
+		}
+
+		if (fieldInstance->mDataOffset > dataPos)
+		{
+			int fillSize = fieldInstance->mDataOffset - dataPos;
+			auto byteType = mModule->GetPrimitiveType(BfTypeCode_Int8);
+			auto arrType = GetSizedArrayType(MapType(byteType), fillSize);
+			irFieldTypes.push_back(arrType);
+			dataPos = fieldInstance->mDataOffset;
+		}
+		dataPos += fieldInstance->mDataSize;
+
+		BF_ASSERT((int)irFieldTypes.size() == fieldInstance->mDataIdx);
+		irFieldTypes.push_back(resolvedFieldIRType);
+
+		if ((isCRepr) && (needsExplicitAlignment) && (fieldIdx == (int)orderedFields.size() - 1))
+		{
+			// Add explicit padding at end to enforce the "aligned size"
+			int endPad = typeInstance->mInstSize - dataPos;
+			if (endPad > 0)
+			{
+				auto byteType = mModule->GetPrimitiveType(BfTypeCode_Int8);
+				auto arrType = GetSizedArrayType(MapType(byteType), endPad);
+				irFieldTypes.push_back(arrType);
+				dataPos += endPad;
+			}
+		}
+	}
+
+	if (typeInstance->mIsUnion)
+	{
+
+	}
+	else if ((typeInstance->IsEnum()) && (typeInstance->IsStruct()))
+	{
+		BF_FATAL("Shouldn't happen");
+
+		// Just an empty placeholder
+		auto byteType = GetPrimitiveType(BfTypeCode_UInt8);
+		auto rawDataType = GetSizedArrayType(byteType, 0);
+		irFieldTypes.push_back(rawDataType);
+	}
+
+	if (!typeInstance->IsTypedPrimitive())
+		StructSetBody(MapTypeInst(typeInstance), irFieldTypes, /*isPacked || !isCRepr*/true);
+
+	if (typeInstance->IsNullable())
+	{
+		BF_ASSERT(irFieldTypes.size() <= 3);
+	}
+}
+
 void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 {	
 	auto populateModule = mModule->mContext->mUnreifiedModule;
@@ -3124,183 +3304,12 @@ void BfIRBuilder::CreateTypeDefinition(BfType* type, bool forceDbgDefine)
 	bool underlyingIsVector = false;
 	typeInstance->GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingIsVector);
 	if (underlyingArraySize > 0)
-		return;
-
-	auto typeDef = typeInstance->mTypeDef;	
-		
-#ifdef BFIR_RENTRY_CHECK
-	ReEntryCheck reEntryCheck(&mDefReentrySet, type);
-#endif
-	
-	bool isGlobalContainer = typeDef->IsGlobalsContainer();
-
-	auto diForwardDecl = DbgGetTypeInst(typeInstance);		
-	llvm::SmallVector<BfIRType, 8> irFieldTypes;
-	if ((!typeInstance->IsTypedPrimitive()) && (typeInstance->mBaseType != NULL))
-	{		
-		irFieldTypes.push_back(MapTypeInst(typeInstance->mBaseType, BfIRPopulateType_Eventually_Full));
-	}
-	
-	llvm::SmallVector<BfIRMDNode, 8> diFieldTypes;	
-
-	bool isPacked = false;
-	bool isUnion = false;
-	bool isCRepr = false;	
-	
-	if (typeInstance->IsBoxed())
 	{
-		auto boxedType = (BfBoxedType*)typeInstance;
-		BF_ASSERT(!boxedType->mFieldInstances.IsEmpty());
-
-		auto& fieldInst = boxedType->mFieldInstances.back();
-		auto elementType = fieldInst.mResolvedType;
-		populateModule->PopulateType(elementType, BfPopulateType_Data);
-
-		if (!elementType->IsValuelessType())
-		{
-			irFieldTypes.push_back(MapType(elementType, elementType->IsValueType() ? BfIRPopulateType_Eventually_Full : BfIRPopulateType_Declaration));
-		}
+		// Don't populate data
 	}
 	else
 	{
-		isCRepr = typeInstance->mIsCRepr;
-		isPacked = typeInstance->mIsPacked;	
-		isUnion = typeInstance->mIsUnion;			
-	}
-	
-	BfSizedVector<BfFieldInstance*, 8> orderedFields;
-	
-	bool isPayloadEnum = (typeInstance->IsEnum()) && (!typeInstance->IsTypedPrimitive());	
-	for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
-	{
-		auto fieldInstance = &fieldInstanceRef;			
-		if (!fieldInstance->mFieldIncluded)
-			continue;
-		auto fieldDef = fieldInstance->GetFieldDef();
-
-		if ((fieldInstance->mResolvedType == NULL) || (typeInstance->IsBoxed()))
-			continue;
-		
-		if ((fieldDef != NULL) && (fieldDef->mIsStatic))
-			continue; // Just create type first - we may contain a static reference to ourselves, creating an dependency loop
-
-		auto resolvedFieldType = fieldInstance->GetResolvedType();	
-		
-		mModule->PopulateType(resolvedFieldType, BfPopulateType_Declaration);					
-		BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
-		BfIRMDNode resolvedFieldDIType;
-
-		if ((fieldDef != NULL) && (resolvedFieldType->IsStruct()))
-			PopulateType(resolvedFieldType, BfIRPopulateType_Eventually_Full);
-		
-		if ((fieldDef == NULL) && (typeInstance->IsPayloadEnum()))
-		{
-			orderedFields.push_back(fieldInstance);			
-		}
-
-		if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
-		{		
-			bool useForUnion = false;
-				
-			BF_ASSERT(!fieldInstance->mIsEnumPayloadCase);
-				
-			if ((!fieldDef->mIsStatic) && (!resolvedFieldType->IsValuelessType()))
-			{
-				if (!isUnion)					
-				{
-					BF_ASSERT(resolvedFieldIRType.mId != -1);
-					//irFieldTypes.push_back(resolvedFieldIRType);
-
-					if (fieldInstance->mDataIdx != -1)
-					{
-						while (fieldInstance->mDataIdx >= (int)orderedFields.size())
-							orderedFields.push_back(NULL);
-						orderedFields[fieldInstance->mDataIdx] = fieldInstance;
-					}
-
-				}
-			}			
-		}
-	}
-
-	int dataPos = 0;
-	if (typeInstance->mBaseType != NULL)
-		dataPos = typeInstance->mBaseType->mInstSize;
-
-	int unionSize = 0;
-	if (typeInstance->mIsUnion)
-	{
-		auto unionInnerType = typeInstance->GetUnionInnerType();
-		irFieldTypes.push_back(MapType(unionInnerType, unionInnerType->IsValueType() ? BfIRPopulateType_Eventually_Full : BfIRPopulateType_Declaration));
-		unionSize = unionInnerType->mSize;
-		dataPos += unionSize;
-	}
-
-	for (int fieldIdx = 0; fieldIdx < (int)orderedFields.size(); fieldIdx++)
-	{
-		auto fieldInstance = orderedFields[fieldIdx];
-		if (fieldInstance == NULL)
-			continue;
-
-		auto resolvedFieldType = fieldInstance->GetResolvedType();
-
-		BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
-		
-		//bool needsExplicitAlignment = !isCRepr || resolvedFieldType->NeedsExplicitAlignment();
-		bool needsExplicitAlignment = true;
-		if (!needsExplicitAlignment)
-		{
-			int alignSize = resolvedFieldType->mAlign;
-			dataPos = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
-		}
-
-		if (fieldInstance->mDataOffset > dataPos)
-		{
-			int fillSize = fieldInstance->mDataOffset - dataPos;
-			auto byteType = mModule->GetPrimitiveType(BfTypeCode_Int8);
-			auto arrType = GetSizedArrayType(MapType(byteType), fillSize);
-			irFieldTypes.push_back(arrType);
-			dataPos = fieldInstance->mDataOffset;
-		}
-		dataPos += fieldInstance->mDataSize;
-
-		BF_ASSERT((int)irFieldTypes.size() == fieldInstance->mDataIdx);
-		irFieldTypes.push_back(resolvedFieldIRType);
-
-		if ((isCRepr) && (needsExplicitAlignment) && (fieldIdx == (int)orderedFields.size() - 1))
-		{
-			// Add explicit padding at end to enforce the "aligned size"
-			int endPad = typeInstance->mInstSize - dataPos;
-			if (endPad > 0)
-			{				
-				auto byteType = mModule->GetPrimitiveType(BfTypeCode_Int8);
-				auto arrType = GetSizedArrayType(MapType(byteType), endPad);
-				irFieldTypes.push_back(arrType);
-				dataPos += endPad;
-			}
-		}
-	}
-		
-	if (typeInstance->mIsUnion)
-	{
-		
-	}
-	else if ((typeInstance->IsEnum()) && (typeInstance->IsStruct()))
-	{
-		BF_FATAL("Shouldn't happen");
-
-		// Just an empty placeholder
-		auto byteType = GetPrimitiveType(BfTypeCode_UInt8);
-		auto rawDataType = GetSizedArrayType(byteType, 0);
-		irFieldTypes.push_back(rawDataType);
-	}
-
-	if (!typeInstance->IsTypedPrimitive())
-		StructSetBody(MapTypeInst(typeInstance), irFieldTypes, /*isPacked || !isCRepr*/true);
-
-	if (typeInstance->IsNullable())
-	{
-		BF_ASSERT(irFieldTypes.size() <= 3);
+		CreateTypeDefinition_Data(populateModule, typeInstance, forceDbgDefine);
 	}
 
 	for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
@@ -4681,11 +4690,6 @@ BfIRFunction BfIRBuilder::CreateFunction(BfIRFunctionType funcType, BfIRLinkageT
 	BfIRFunction retVal = WriteCmd(BfIRCmd_CreateFunction, funcType, (uint8)linkageType, name);	
 	NEW_CMD_INSERTED_IRVALUE;	
 	mFunctionMap[name] = retVal;
-
-	if ((mModule->mIsConstModule) && (name.Contains("Dbg_")))
-	{
-		NOP;
-	}
 
 	//BfLogSys(mModule->mSystem, "BfIRBuilder::CreateFunction: %d %s Module:%p\n", retVal.mId, name.c_str(), mModule);
 
