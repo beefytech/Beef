@@ -153,7 +153,7 @@ static
 	}
 
 	[NoShow]
-	[Warn("This mixin has been replaced by ClearAndDeleteItems")]
+	[Obsolete("This mixin has been replaced by ClearAndDeleteItems", false)]
 	public static mixin DeleteAndClearItems(var container)
 	{
 		for (var value in container)

@@ -3093,9 +3093,9 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 	{
 		String err;
 		if (methodInstance != NULL)
-			StrFormat("Method error: '", MethodToString(methodInstance).c_str());
+			err += StrFormat("Method error: '", MethodToString(methodInstance).c_str());
 		else
-			StrFormat("Type error: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
+			err += StrFormat("Type error: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
 		String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
 		if (str != NULL)
 			err += *str;
@@ -3109,9 +3109,9 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 	{
 		String err;
 		if (methodInstance != NULL)
-			StrFormat("Method warning: '", MethodToString(methodInstance).c_str());
+			err += StrFormat("Method warning: '", MethodToString(methodInstance).c_str());
 		else
-			StrFormat("Type warning: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
+			err += StrFormat("Type warning: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
 		String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
 		if (str != NULL)
 			err += *str;
