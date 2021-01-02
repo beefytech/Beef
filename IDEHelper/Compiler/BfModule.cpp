@@ -9754,6 +9754,9 @@ BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* met
 	if ((genericType->IsUnspecializedType()) && (!genericType->IsUnspecializedTypeVariation()))
 		return methodInstance;
 	
+	if (methodInstance->mMethodDef->mIsLocalMethod)
+		return methodInstance;
+
 	auto unspecializedType = ResolveTypeDef(genericType->mTypeDef);	
 	if (unspecializedType == NULL)
 	{
