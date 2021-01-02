@@ -489,6 +489,13 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 			methodDef->mIsVirtual = true;		
 	}
 
+	bool isAutoCtor = false;
+	if (auto autoCtorDeclaration = BfNodeDynCast<BfAutoConstructorDeclaration>(methodDeclaration))
+	{
+		methodDef->mProtection = BfProtection_Public;
+		isAutoCtor = true;
+	}
+
 	if (auto ctorDeclaration = BfNodeDynCast<BfConstructorDeclaration>(methodDeclaration))
 	{
 		methodDef->mIsMutating = true;
@@ -645,8 +652,16 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		paramDef->mMethodGenericParamIdx = mSystem->GetGenericParamIdx(methodDef->mGenericParams, paramDef->mTypeRef);
 		if (paramDecl->mModToken == NULL)
 			paramDef->mParamKind = BfParamKind_Normal;		
-		else //
+		else if (paramDecl->mModToken->mToken == BfToken_Params)
 			paramDef->mParamKind = BfParamKind_Params;
+		else if ((paramDecl->mModToken->mToken == BfToken_ReadOnly) && (isAutoCtor))
+		{
+			// Readonly specifier
+		}
+		else
+		{
+			Fail(StrFormat("Invalid use of '%s' specifier", BfTokenToString(paramDecl->mModToken->mToken)), paramDecl->mModToken);
+		}
 
 		if ((mCurTypeDef->mIsFunction) && (paramIdx == 0) && (paramDef->mName == "this"))
 		{
@@ -704,6 +719,23 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 				Fail("Only 'mut' is allowed here", refTypeRef->mRefToken);				
 			}
 			methodDef->mIsMutating = true;
+		}
+	}
+
+	if (isAutoCtor)
+	{
+		for (auto paramDef : methodDef->mParams)
+		{
+			auto fieldDef = new BfFieldDef();
+			fieldDef->mName = paramDef->mName;
+			fieldDef->mTypeRef = paramDef->mTypeRef;
+			fieldDef->mProtection = BfProtection_Public;
+			fieldDef->mDeclaringType = mCurTypeDef;
+			fieldDef->mIdx = mCurTypeDef->mFields.mSize;
+			if ((paramDef->mParamDeclaration->mModToken != NULL) &&
+				(paramDef->mParamDeclaration->mModToken->mToken == BfToken_ReadOnly))
+				fieldDef->mIsReadOnly = true;
+			mCurTypeDef->mFields.Add(fieldDef);
 		}
 	}
 
@@ -1819,6 +1851,9 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		}
 	}
 	
+	if (typeDeclaration->mAutoCtor != NULL)
+		VisitChildNoRef(typeDeclaration->mAutoCtor);
+
 	if (auto defineBlock = BfNodeDynCast<BfBlock>(typeDeclaration->mDefineNode))
 	{
 		for (auto& member : *defineBlock)
@@ -1829,8 +1864,9 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	else if (auto defineTokenNode = BfNodeDynCast<BfTokenNode>(typeDeclaration->mDefineNode))
 	{
 		if (defineTokenNode->GetToken() == BfToken_Semicolon)
-		{
-			mCurTypeDef->mIsOpaque = true;
+		{	
+			if (typeDeclaration->mAutoCtor == NULL)
+				mCurTypeDef->mIsOpaque = true;
 		}
 	}
 

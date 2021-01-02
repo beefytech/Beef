@@ -8420,6 +8420,14 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 				if (baseTypeIdx > 0)
 				{
+					if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+					{
+						if (tokenNode->mToken == BfToken_Semicolon)
+						{
+							break;
+						}
+					}
+
 					BfTokenNode* commaToken = NULL;
 					if (typeDeclaration->mGenericParams != NULL)
 					{
@@ -8436,6 +8444,32 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 						break;
 					MoveNode(commaToken, typeDeclaration);
 					baseClassCommas.push_back(commaToken);
+				}
+
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+				{
+					if (tokenNode->mToken == BfToken_This)
+					{
+						mVisitorPos.MoveNext();												
+						auto ctorDecl = mAlloc->Alloc<BfAutoConstructorDeclaration>();
+						BfDeferredAstSizedArray<BfParameterDeclaration*> params(ctorDecl->mParams, mAlloc);
+						BfDeferredAstSizedArray<BfTokenNode*> commas(ctorDecl->mCommas, mAlloc);
+						ctorDecl->mReturnType = NULL;
+						ReplaceNode(tokenNode, ctorDecl);
+						MEMBER_SET(ctorDecl, mThisToken, tokenNode);						
+						ParseMethod(ctorDecl, &params, &commas);
+						
+						if (typeDeclaration->mAutoCtor == NULL)
+						{
+							MEMBER_SET(typeDeclaration, mAutoCtor, ctorDecl);
+						}
+						else
+						{
+							Fail("Only one auto-constructor is allowed", ctorDecl);
+							AddErrorNode(ctorDecl);
+						}
+						continue;
+					}
 				}
 
 				auto baseType = CreateTypeRefAfter(typeDeclaration);
@@ -8879,7 +8913,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				(token == BfToken_Delegate) || (token == BfToken_Function) ||
 				(token == BfToken_Params) || (token == BfToken_LParen) ||
 				(token == BfToken_Var) || (token == BfToken_LBracket) ||
-				(token == BfToken_DotDotDot)))
+				(token == BfToken_ReadOnly) || (token == BfToken_DotDotDot)))
 			{
 				// These get picked up below
 			}
@@ -8938,7 +8972,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 			}
 			else
 			{
-				if ((token != BfToken_Out) && (token != BfToken_Ref) && (token != BfToken_Mut) && (token != BfToken_Params))
+				if ((token != BfToken_Out) && (token != BfToken_Ref) && (token != BfToken_Mut) && (token != BfToken_Params) && (token != BfToken_ReadOnly))
 				{
 					Fail("Invalid token", tokenNode);
 					return NULL;
@@ -9340,6 +9374,9 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 
 		endToken = NULL;
 	}
+
+	if (auto autoCtorDecl = BfNodeDynCast<BfAutoConstructorDeclaration>(ctorDecl))
+		return true;
 
 	if ((endToken != NULL) && (endToken->GetToken() == BfToken_Semicolon))
 	{

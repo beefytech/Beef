@@ -1147,6 +1147,7 @@ void BfElementVisitor::Visit(BfTypeDeclaration* typeDeclaration)
 	VisitChild(typeDeclaration->mTypeNode);
 	VisitChild(typeDeclaration->mNameNode);
 	VisitChild(typeDeclaration->mColonToken);
+	VisitChild(typeDeclaration->mAutoCtor);
 	for (auto& baseClass : typeDeclaration->mBaseClasses)
 		VisitChild(baseClass);
 	for (auto& comma : typeDeclaration->mBaseClassCommas)

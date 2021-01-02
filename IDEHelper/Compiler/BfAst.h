@@ -338,6 +338,7 @@ class BfMemberReferenceExpression;
 class BfDynamicCastExpression;
 class BfCheckTypeExpression;
 class BfConstructorDeclaration;
+class BfAutoConstructorDeclaration;
 class BfDestructorDeclaration;
 class BfQualifiedTypeReference;
 class BfUsingDirective;
@@ -2282,6 +2283,7 @@ public:
 	BfTokenNode* mTypeNode;
 	BfIdentifierNode* mNameNode;	
 	BfAstNode* mDefineNode;		
+	BfAutoConstructorDeclaration* mAutoCtor;
 	BfGenericParamsDeclaration* mGenericParams;
 	BfGenericConstraintsDeclaration* mGenericConstraintsDeclaration;
 	bool mIgnoreDeclaration;
@@ -2993,6 +2995,12 @@ public:
 	BfExpression* mInitializer;
 	
 };	BF_AST_DECL(BfConstructorDeclaration, BfMethodDeclaration);
+
+class BfAutoConstructorDeclaration : public BfConstructorDeclaration
+{
+public:
+	BF_AST_TYPE(BfAutoConstructorDeclaration, BfConstructorDeclaration);
+};	BF_AST_DECL(BfAutoConstructorDeclaration, BfConstructorDeclaration);
 
 class BfDestructorDeclaration : public BfMethodDeclaration
 {

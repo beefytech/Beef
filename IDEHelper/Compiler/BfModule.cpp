@@ -3876,7 +3876,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 
 BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfFieldDef* field)
 {	
-	bool isDeclType = BfNodeDynCastExact<BfDeclTypeRef>(field->mFieldDeclaration->mTypeRef) != NULL;
+	bool isDeclType = (field->mFieldDeclaration != NULL) && BfNodeDynCastExact<BfDeclTypeRef>(field->mFieldDeclaration->mTypeRef) != NULL;
 
 	auto fieldType = fieldInstance->GetResolvedType();
 	if ((field->mIsConst) && (!isDeclType))
@@ -16155,7 +16155,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			}
 
 			EmitInitBlocks(_CheckInitBlock);
-
+			
 			if (hadInlineInitBlock)
 			{
 				RestoreScopeState();
@@ -16227,6 +16227,34 @@ void BfModule::EmitCtorBody(bool& skipBody)
 
 			RestoreScopeState();
 		}		
+	}
+
+	if (!methodInstance->mIsAutocompleteMethod)
+	{
+		if (auto autoDecl = BfNodeDynCast<BfAutoConstructorDeclaration>(methodDeclaration))
+		{
+			BfExprEvaluator exprEvaluator(this);
+			for (int paramIdx = 0; paramIdx < methodDef->mParams.mSize; paramIdx++)
+			{
+				auto paramDef = methodDef->mParams[paramIdx];
+				auto& fieldInstance = mCurTypeInstance->mFieldInstances[paramIdx];
+				BF_ASSERT(paramDef->mName == fieldInstance.GetFieldDef()->mName);
+				if (fieldInstance.mDataIdx < 0)
+					continue;
+
+				auto localVar = mCurMethodState->mLocals[paramIdx + 1];
+				BF_ASSERT(localVar->mName == paramDef->mName);
+				auto localVal = exprEvaluator.LoadLocal(localVar);
+
+				if (paramDef->mParamKind != BfParamKind_Normal)
+					continue;
+
+				auto thisVal = GetThis();
+				auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(thisVal.mValue, 0, fieldInstance.mDataIdx);
+				mBfIRBuilder->CreateAlignedStore(localVar->mValue, fieldPtr, localVar->mResolvedType->mAlign);
+				MarkFieldInitialized(&fieldInstance);
+			}
+		}
 	}
 
 	// Call base ctor (if applicable)
@@ -19521,7 +19549,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 
 	for (auto localVar : mCurMethodState->mLocals)
 	{
-		if ((skipEndChecks) || (methodDef->mBody == NULL))
+		if (auto autoCtorDecl = BfNodeDynCast<BfAutoConstructorDeclaration>(methodDeclaration))
+		{
+			//
+		}
+		else if ((skipEndChecks) || (methodDef->mBody == NULL))
 			break;
 		LocalVariableDone(localVar, true);
 	}
@@ -21751,7 +21783,12 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 	{
 		if (methodDeclaration->mEndSemicolon == NULL)
 		{
-			AssertParseErrorState();
+			if (auto autoCtorDecl = BfNodeDynCast<BfAutoConstructorDeclaration>(methodDeclaration))
+			{
+				// 
+			}
+			else
+				AssertParseErrorState();
 		}
 		else
 		{

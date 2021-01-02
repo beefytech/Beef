@@ -124,6 +124,17 @@ namespace Tests
 			Dictionary<int, StructK> dict;
 		}
 
+		struct StructL : this(int a, int b);
+
+		struct StructM : this(readonly int a, readonly int b)
+		{
+			public int c;
+			this
+			{
+				c = 100;
+			}
+		}
+
 		[Test]
 		static void TestBasics()
 		{
@@ -142,6 +153,21 @@ namespace Tests
 			sb0 = .{ mA = 3, mB = 4 };
 			Test.Assert(sb0.mA == 3);
 			Test.Assert(sb0.mB == 4);
+
+			StructL sl = .(12, 23);
+			Test.Assert(sl.a == 12);
+			Test.Assert(sl.b == 23);
+
+			StructM sm = .(12, 23);
+			[IgnoreErrors]
+			{
+				sm.a += 100;
+				sm.b += 100;
+				sm.c += 100;
+			}
+			Test.Assert(sm.a == 12);
+			Test.Assert(sm.b == 23);
+			Test.Assert(sm.c == 200);
 		}
 
 		[Test]

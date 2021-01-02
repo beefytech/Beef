@@ -2758,6 +2758,7 @@ void BfPrinter::Visit(BfTypeDeclaration* typeDeclaration)
 	ExpectSpace();
 	QueueVisitChild(typeDeclaration->mNameNode);
 	QueueVisitChild(typeDeclaration->mGenericParams);
+	QueueVisitChild(typeDeclaration->mAutoCtor);
 	if (typeDeclaration->mColonToken != NULL)
 	{
 		ExpectSpace();
