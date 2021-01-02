@@ -9746,8 +9746,9 @@ BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* met
 	if (!owner->IsGenericTypeInstance())
 		return methodInstance;
 
-	BF_ASSERT(!owner->IsDelegateFromTypeRef());
-	BF_ASSERT(!owner->IsTuple());
+	if ((owner->IsDelegateFromTypeRef()) ||
+		(owner->IsTuple()))
+		return methodInstance;
 
 	auto genericType = (BfTypeInstance*)owner;
 	if ((genericType->IsUnspecializedType()) && (!genericType->IsUnspecializedTypeVariation()))
