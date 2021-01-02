@@ -2611,6 +2611,8 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 		ExpectSpace();
 		QueueVisitChild(fieldDeclaration->mNewSpecifier);
 		ExpectSpace();
+		QueueVisitChild(fieldDeclaration->mExternSpecifier);
+		ExpectSpace();
 		QueueVisitChild(fieldDeclaration->mStaticSpecifier);
 		ExpectSpace();
 		QueueVisitChild(fieldDeclaration->mPrecedingComma);
