@@ -822,7 +822,12 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			else if (typeRefName == "CVarArgs")
 				methodDef->mCallingConvention = BfCallingConvention_CVarArgs;
 			else if (typeRefName == "Inline")
-				methodDef->mAlwaysInline = true;
+			{
+				if (methodDef->mIsExtern)
+					Fail("Extern methods cannot be inline", attributes->mAttributeTypeRef);
+				else
+					methodDef->mAlwaysInline = true;
+			}
 			else if (typeRefName == "AllowAppend")
 			{
 				methodDef->mHasAppend = true;

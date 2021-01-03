@@ -4124,7 +4124,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					mModule->AddDependency(curCheckType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ConstEvalConstField);
 					if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mCurFieldDef != NULL))
 					{
-						// If we're initializing another const field then
+						// If we're initializing another const field then also set it as having const eval
 						auto resolvingFieldInstance = &mModule->mContext->mCurTypeState->mTypeInstance->mFieldInstances[mModule->mContext->mCurTypeState->mCurFieldDef->mIdx];
 						if (resolvingFieldInstance->GetFieldDef()->mIsConst)
 							resolvingFieldInstance->mHadConstEval = true;
