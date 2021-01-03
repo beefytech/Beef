@@ -587,7 +587,7 @@ namespace IDE
 
 			if (mParentFolder != null)
 			{
-				data.Add("Type", (mIncludeKind == .Ignore) ? "IgnoreFolder" : "Folder");
+				data.Add("Type", (mIncludeKind == .Ignore) ? "IgnoreFolder" : (mIncludeKind == .Auto) ? "AutoFolder" : "Folder");
 	            base.Serialize(data);
 				if (mAutoInclude != (mIncludeKind == .Auto))
 					data.ConditionalAdd("AutoInclude", mAutoInclude, mIncludeKind == .Auto);
@@ -672,6 +672,11 @@ namespace IDE
                         projectItem = new ProjectFolder();
 						projectItem.mIncludeKind = .Manual;
 					}
+					else if (type == "AutoFolder")
+					{
+					    projectItem = new ProjectFolder();
+						projectItem.mIncludeKind = .Auto;
+					}
 					else if (type == "IgnoreFolder")
 					{
 						projectItem = new ProjectFolder();
@@ -727,7 +732,7 @@ namespace IDE
 				String fileName = scope String();
 				fileEntry.GetFileName(fileName);
 
-				if (!gApp.IsFilteredOut(fileName))
+				if ((!gApp.IsFilteredOut(fileName)) && (!mChildMap.ContainsKey(fileName)))
 				{
 					let projectItem = new ProjectSource();
 					projectItem.mProject = mProject;
