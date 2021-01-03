@@ -1104,6 +1104,7 @@ namespace IDE
 					}
 
 			        var runCmd = gApp.QueueRun(linkerPath, linkLine, gApp.mInstallDir, .UTF16WithBom);
+					runCmd.mEnvVars = new .() { (new String("VSLANG"), new String("1033")) };
 			        runCmd.mOnlyIfNotFailed = true;
 			        var tagetCompletedCmd = new IDEApp.TargetCompletedCmd(project);
 			        tagetCompletedCmd.mOnlyIfNotFailed = true;
