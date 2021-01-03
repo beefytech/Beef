@@ -1719,7 +1719,8 @@ namespace IDE.ui
 
         void HandleDragUpdate(DragEvent evt)
         {
-            evt.mDragAllowed = false;
+			var dragKind = evt.mDragKind;
+            evt.mDragKind = .None;
             if (mIsAuto)
                 return;
 
@@ -1736,20 +1737,20 @@ namespace IDE.ui
                 // Check for if we're dragging after the last open child item.  If so, treat it as if we're dragging to after the topmost parent
                 /*if ((evt.mDragTargetDir != 1) || (dragTarget != dragTarget.mParentItem.mChildItems[dragTarget.mParentItem.mChildItems.Count - 1]))
                     return;*/
-                evt.mDragTargetDir = 1;
+                evt.mDragKind = .After;
                 dragTarget = (WatchListViewItem)dragTarget.mParentItem;
                 evt.mDragTarget = dragTarget;
             }
-            if ((dragTarget.mLabel == "") && (evt.mDragTargetDir >= 0))
-                evt.mDragTargetDir = -1;            
-            if (evt.mDragTargetDir == 0)
+            if ((dragTarget.mLabel == "") && (dragKind == .After))
+                dragKind = .Before;            
+            if (dragKind == .None)
                 return;
-            evt.mDragAllowed = true;
+            evt.mDragKind = dragKind;
         }
 
         void HandleDragEnd(DragEvent theEvent)
         {
-            if (!theEvent.mDragAllowed)
+            if (theEvent.mDragKind == .None)
                 return;
 
             if (theEvent.mDragTarget is IDEListViewItem)
@@ -1766,9 +1767,9 @@ namespace IDE.ui
                     {
                         // We're dragging a top-level item into a new position
                         source.mParentItem.RemoveChildItem(source, false);
-                        if (theEvent.mDragTargetDir == -1) // Before
+                        if (theEvent.mDragKind == .Before) // Before
                             target.mParentItem.InsertChild(source, target);
-                        else if (theEvent.mDragTargetDir == 1) // After
+                        else if (theEvent.mDragKind == .After) // After
                             target.mParentItem.AddChild(source, target);
                     }
                     else
@@ -1778,8 +1779,8 @@ namespace IDE.ui
 
                         var rootItem = mListView.GetRoot();
                         int idx = rootItem.mChildItems.IndexOf(target);
-                        if (theEvent.mDragTargetDir > 0)
-                            idx += theEvent.mDragTargetDir;
+                        if (theEvent.mDragKind == .After)
+                            idx++;
                         var listViewItem = (WatchListViewItem)rootItem.CreateChildItemAtIndex(idx);
                         listViewItem.mVisible = false;
                         SetupListViewItem(listViewItem, compactEvalStr, compactEvalStr);

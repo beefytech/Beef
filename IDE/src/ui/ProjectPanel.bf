@@ -145,8 +145,8 @@ namespace IDE.ui
             mListView.UpdateScrollbars();
             mListView.mOnFocusChanged.Add(new => FocusChangedHandler);
 
-            /*mListView.mOnDragEnd.Add(new => HandleDragEnd);
-            mListView.mOnDragUpdate.Add(new => HandleDragUpdate);*/
+            mListView.mOnDragEnd.Add(new => HandleDragEnd);
+            mListView.mOnDragUpdate.Add(new => HandleDragUpdate);
             
             AddWidget(mListView);
 
@@ -217,24 +217,175 @@ namespace IDE.ui
             DarkListViewItem source = (DarkListViewItem)theEvent.mSender;
             DarkListViewItem target = (DarkListViewItem)theEvent.mDragTarget;
 
+			theEvent.mDragKind = .None;
+
+			int validCount = 0;
+			int invalidCount = 0;
             if (source.mListView == target.mListView)
             {
-                ProjectItem sourceProjectItem = mListViewToProjectMap[source];
-                ProjectItem targetProjectItem = mListViewToProjectMap[target];
-                if (((sourceProjectItem.mParentFolder == null) || (targetProjectItem.mParentFolder == null)) ||
-                    (sourceProjectItem.mProject != targetProjectItem.mProject))
-                    theEvent.mDragAllowed = false;
-            }                
+				if (mListViewToProjectMap.GetValue(target) case .Ok(var targetProjectItem))
+				{
+					mListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
+						{
+							if (mListViewToProjectMap.GetValue(selectedItem) case .Ok(var sourceProjectItem))
+							{
+								if ((sourceProjectItem.mParentFolder != null) && (sourceProjectItem.mProject == targetProjectItem.mProject))
+									validCount++;
+								else
+									invalidCount++;
+							}
+						});
+				}
+            }
+
+			if ((validCount > 0) && (invalidCount == 0))
+				theEvent.mDragKind = .Inside;
         }
 
         void HandleDragEnd(DragEvent theEvent)
         {
-            if (!theEvent.mDragAllowed)
+            if (theEvent.mDragKind == .None)
                 return;
 
-            if (theEvent.mDragTarget is DarkListViewItem)
+            if (theEvent.mDragTarget is ProjectListViewItem)
             {
-                DarkListViewItem source = (DarkListViewItem)theEvent.mSender;
+				ProjectListViewItem source = (ProjectListViewItem)theEvent.mSender;
+				ProjectListViewItem target = (ProjectListViewItem)theEvent.mDragTarget;
+
+				theEvent.mDragKind = .None;
+
+				if (source.mListView == target.mListView)
+				{
+					if (mListViewToProjectMap.GetValue(target) case .Ok(var targetProjectItem))
+					{
+						if (targetProjectItem == null)
+						    return;
+
+						if (source == target)
+						    return;
+
+						var targetProjectFolder = targetProjectItem as ProjectFolder;
+						if (targetProjectFolder == null)
+							targetProjectFolder = targetProjectItem.mParentFolder;
+						var targetListItem = mProjectToListViewMap[targetProjectFolder];
+
+						int moveCount = 0;
+						int selectCount = 0;
+						mListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
+							{
+								if (mListViewToProjectMap.GetValue(selectedItem) case .Ok(var sourceProjectItem))
+								{
+									if (sourceProjectItem.mParentFolder != targetProjectFolder)
+										moveCount++;
+								}
+								selectCount++;
+							});
+
+						if (moveCount == 0)
+							return;
+
+						var targetDisplayName = targetProjectFolder.GetFullDisplayName(.. scope .());
+						if (targetDisplayName.IsEmpty)
+							targetDisplayName = "src";
+
+						Dialog dialog;
+						if (selectCount == 1)
+						{
+							dialog = ThemeFactory.mDefault.CreateDialog("Move file to a new location?",
+								scope $"Are you sure you want to move this file to '{targetDisplayName}'?");
+						}
+						else
+						{
+							dialog = ThemeFactory.mDefault.CreateDialog("Move files to a new location?",
+								scope $"Are you sure you want to move these files to '{targetDisplayName}'?");
+						}
+						dialog.AddButton("Yes", new (evt) =>
+							{
+								List<String> fileErrors = scope .();
+
+								List<ListViewItem> selectedItems = scope .();
+								mListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
+									{
+										selectedItems.Add(selectedItem);
+									});
+
+								for (var selectedItem in selectedItems)
+								{
+									if (mListViewToProjectMap.GetValue(selectedItem) case .Ok(var sourceProjectItem))
+									{
+										var sourceProjectFileItem = sourceProjectItem as ProjectFileItem;
+										if (sourceProjectFileItem == null)
+											return;
+
+										var sourcePath = sourceProjectFileItem.GetFullImportPath(.. scope .());
+										var destPath = targetProjectFolder.GetFullImportPath(.. scope .());
+										destPath.AppendF($"{Path.DirectorySeparatorChar}{sourceProjectFileItem.mName}");
+
+										if (File.Move(sourcePath, destPath) case .Ok)
+										{
+											gApp.FileRenamed(sourceProjectFileItem, sourcePath, destPath);
+										}
+										else
+											fileErrors.Add(scope:: .(destPath));
+
+										if (targetProjectFolder != sourceProjectItem.mParentFolder)
+										{
+											source.mParentItem.RemoveChildItem(source, false);
+											sourceProjectItem.mParentFolder.RemoveChild(sourceProjectItem);
+
+											targetListItem.AddChildAtIndex(0, source);
+											targetListItem.mOpenButton.Open(true, false);
+											targetProjectFolder.AddChildAtIndex(0, sourceProjectItem);
+										}
+									}
+								}
+
+								QueueSortItem(targetListItem);
+								DoSortItem(targetListItem);
+
+								if (!fileErrors.IsEmpty)
+								{
+									var errorStr = scope String();
+									if (fileErrors.Count == 1)
+										errorStr.AppendF("Failed to move file to: {0}", fileErrors[0]);
+									else
+									{
+										errorStr.AppendF("Failed to move {0} files:", fileErrors.Count);
+										for (var file in fileErrors)
+											errorStr.Append("\n  {}", file);
+									}
+									gApp.Fail(errorStr);
+								}
+							});
+						dialog.AddButton("No", new (evt) =>
+							{
+								
+							});
+						dialog.PopupWindow(gApp.GetActiveWindow());
+
+						
+						//RehupFolder(targetProjectFolder.mProject.mRootFolder, .FullTraversal);
+
+						/*if (theEvent.mDragTargetDir == -1) // Before          
+						{
+						    target.mParentItem.InsertChild(source, target);
+						    targetProjectItem.mParentFolder.InsertChild(sourceProjectItem, targetProjectItem);
+						}
+						else if (theEvent.mDragTargetDir == 0) // Inside
+						{
+						    target.AddChildAtIndex(0, source);
+						    target.mOpenButton.Open(true, false);
+						    ((ProjectFolder)targetProjectItem).AddChildAtIndex(0, sourceProjectItem);
+						}
+						else if (theEvent.mDragTargetDir == 1) // After
+						{                        
+						    target.mParentItem.AddChild(source, target);
+						    targetProjectItem.mParentFolder.AddChild(sourceProjectItem, targetProjectItem);                        
+						}*/
+					}
+				}
+
+                /*DarkListViewItem source = (DarkListViewItem)theEvent.mSender;
                 DarkListViewItem target = (DarkListViewItem)theEvent.mDragTarget;
 
                 if (source.mListView == target.mListView)
@@ -242,32 +393,8 @@ namespace IDE.ui
                     ProjectItem targetProjectItem = mListViewToProjectMap[target];
                     ProjectItem sourceProjectItem = mListViewToProjectMap[source];
 
-                    if ((targetProjectItem == null) || (sourceProjectItem == null))
-                        return;
-
-                    if (source == target)
-                        return;
-
-                    source.mParentItem.RemoveChildItem(source);
-                    sourceProjectItem.mParentFolder.RemoveChild(sourceProjectItem);
-
-                    if (theEvent.mDragTargetDir == -1) // Before          
-                    {
-                        target.mParentItem.InsertChild(source, target);
-                        targetProjectItem.mParentFolder.InsertChild(sourceProjectItem, targetProjectItem);
-                    }
-                    else if (theEvent.mDragTargetDir == 0) // Inside
-                    {
-                        target.AddChildAtIndex(0, source);
-                        target.mOpenButton.Open(true, false);
-                        ((ProjectFolder)targetProjectItem).AddChildAtIndex(0, sourceProjectItem);
-                    }
-                    else if (theEvent.mDragTargetDir == 1) // After
-                    {                        
-                        target.mParentItem.AddChild(source, target);
-                        targetProjectItem.mParentFolder.AddChild(sourceProjectItem, targetProjectItem);                        
-                    }
-                }
+                    
+                }*/
             }            
         }
 
@@ -342,6 +469,7 @@ namespace IDE.ui
 			item.mOnMouseClick.Add(new => ListViewItemClicked);
             UpdateColors();
             DarkListViewItem listViewItem = (DarkListViewItem)item;
+			listViewItem.AllowDragging = true;
             listViewItem.mFocusColor = gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText;
             listViewItem.mSelectColor = gApp.mSettings.mUISettings.mColors.mWorkspaceDisabledText;
         }
@@ -1136,10 +1264,13 @@ namespace IDE.ui
         {
             if (item.Focused)
             {
-                // Just rehup focus handler - handles case of closing file then clicking on it again
-                //  even though it's already selected.  We want that to re-open it.
-                FocusChangedHandler(item);
-                return;
+				if (mListView.GetRoot().GetSelectedItemCount() <= 1)
+				{
+	                // Just rehup focus handler - handles case of closing file then clicking on it again
+	                //  even though it's already selected.  We want that to re-open it.
+	                FocusChangedHandler(item);
+					return;
+				}
             }
 
             mListView.GetRoot().SelectItem(item, checkKeyStates);

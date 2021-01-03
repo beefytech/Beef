@@ -151,20 +151,23 @@ namespace Beefy.widgets
 
         public void Update()
         {
-            int32 ticksDown = mWidget.mUpdateCnt - mDownUpdateCnt;
+            //int32 ticksDown = mWidget.mUpdateCnt - mDownUpdateCnt;
 
-            if (((mMouseFlags & MouseFlag.Left) != 0) && (ticksDown >= mMinDownTicks))
+            if ((mMouseFlags & MouseFlag.Left) != 0)
             {
-                if ((!mIsDragging) && (mAllowDrag))
+				bool isTriggered = false;
+				/*if ((mMinDownTicks > 0) && (ticksDown >= mMinDownTicks))
+					isTriggered = true;*/
+				if ((Math.Abs(mMouseX - mMouseDownX) >= mTriggerDist) || (Math.Abs(mMouseY - mMouseDownY) >= mTriggerDist))
+					isTriggered = true;
+
+                if ((!mIsDragging) && (mAllowDrag) && (isTriggered))
                 {
-                    if ((Math.Abs(mMouseX - mMouseDownX) >= mTriggerDist) || (Math.Abs(mMouseY - mMouseDownY) >= mTriggerDist))
-                    {
-                        SetHooks(true);
-                        mPreparingForWidgetMove = false;
-                        mAborted = false;
-                        mIsDragging = true;
-                        mDragInterface.DragStart();
-                    }
+                    SetHooks(true);
+                    mPreparingForWidgetMove = false;
+                    mAborted = false;
+                    mIsDragging = true;
+                    mDragInterface.DragStart();
                 }
 
                 if (mIsDragging)

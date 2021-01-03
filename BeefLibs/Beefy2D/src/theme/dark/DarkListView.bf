@@ -101,7 +101,7 @@ namespace Beefy.theme.dark
         public DragEvent mCurDragEvent ~ delete _;
         public DragHelper mDragHelper ~ delete _;
         public DarkListViewItem mDragTarget;
-        public int32 mDragTargetInsertDir;
+        public DragKind mDragKind;
         public bool mOpenOnDoubleClick = true;
         public bool mIsBold;
 
@@ -171,6 +171,14 @@ namespace Beefy.theme.dark
 			get
 			{
 				return (mOpenButton != null) && (mOpenButton.mIsOpen);
+			}
+		}
+
+		public override bool IsDragging
+		{
+			get
+			{
+				return (mDragTarget != null) && (mDragHelper.mIsDragging);
 			}
 		}
 
@@ -596,8 +604,52 @@ namespace Beefy.theme.dark
                 DrawLinesGrid(g);
 
 			DrawChildren(g);
-            
-            if (mDragTarget != null)
+
+			if (mDragTarget != null)
+			{
+				listView.mOnPostDraw.Add(new (g) =>
+					{
+						float targetX;
+						float targetY;
+						mDragTarget.SelfToOtherTranslate(mListView, 0, 0, out targetX, out targetY);
+
+						//using (g.PushTranslate(targetX, targetY))
+						{
+						    /*if ((mUpdateCnt % 60) == 0)
+						        Debug.WriteLine(String.Format("{0} indent {1}", mDragTarget.mLabel, mDragTarget.mDepth));*/
+
+							if (mDragKind == .Inside)
+							{
+								using (g.PushColor(0xFF6f9761))
+								{
+									//g.FillRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(22));
+									//g.OutlineRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(20));
+									g.DrawButton(DarkTheme.sDarkTheme.GetImage(Focused ? DarkTheme.ImageIdx.MenuSelect : DarkTheme.ImageIdx.MenuNonFocusSelect),
+										targetX + GS!(2), targetY, listView.mWidth - targetX - GS!(24));
+								}
+							}
+							else
+							{
+						        if ((mDragKind == .Inside) || (mDragKind == .After)) // Inside or after
+						            targetY += mDragTarget.mSelfHeight;
+						        
+						        if (mDragKind == .After) // After
+						            targetY += mDragTarget.mChildAreaHeight + mDragTarget.mBottomPadding;
+
+						        if (mDragKind == .Inside) // Inside
+						            targetX += ((DarkListView)mListView).mChildIndent + mDragTarget.mChildIndent;
+
+						        /*if (-curY + targetY > mHeight)                    
+						            wasTargetBelowBottom = true;*/                    
+
+						        using (g.PushColor(0xFF95A68F))
+						            g.FillRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(2));
+							}
+						}
+					});
+			}	
+
+            /*if (mDragTarget != null)
             {
                 float targetX;
                 float targetY;
@@ -614,20 +666,28 @@ namespace Beefy.theme.dark
                     /*if ((mUpdateCnt % 60) == 0)
                         Debug.WriteLine(String.Format("{0} indent {1}", mDragTarget.mLabel, mDragTarget.mDepth));*/
 
-                    if (mDragTargetInsertDir >= 0) // Inside or after
-                        targetY += mDragTarget.mSelfHeight;
-                    
-                    if (mDragTargetInsertDir > 0) // After
-                        targetY += mDragTarget.mChildAreaHeight + mDragTarget.mBottomPadding;
+					if (mDragKind == .Inside)
+					{
+						using (g.PushColor(0xFF95A68F))
+							g.FillRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(22));
+					}
+					else
+					{
+	                    if ((mDragKind == .Inside) || (mDragKind == .After)) // Inside or after
+	                        targetY += mDragTarget.mSelfHeight;
+	                    
+	                    if (mDragKind == .After) // After
+	                        targetY += mDragTarget.mChildAreaHeight + mDragTarget.mBottomPadding;
 
-                    if (mDragTargetInsertDir == 0) // Inside
-                        targetX += ((DarkListView)mListView).mChildIndent + mDragTarget.mChildIndent;
+	                    if (mDragKind == .Inside) // Inside
+	                        targetX += ((DarkListView)mListView).mChildIndent + mDragTarget.mChildIndent;
 
-                    if (-curY + targetY > mHeight)                    
-                        wasTargetBelowBottom = true;                    
+	                    if (-curY + targetY > mHeight)                    
+	                        wasTargetBelowBottom = true;                    
 
-                    using (g.PushColor(0xFF95A68F))
-                        g.FillRect(targetX + 4, targetY, mListView.mWidth - targetX - 28, 2);
+	                    using (g.PushColor(0xFF95A68F))
+	                        g.FillRect(targetX + GS!(4), targetY, mListView.mWidth - targetX - GS!(28), GS!(2));
+					}
                 }
 
                 if (wasTargetBelowBottom)
@@ -635,7 +695,7 @@ namespace Beefy.theme.dark
                     /*Image img = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.MoveDownArrow);
                     g.Draw(img, mWidth / 2 - img.mWidth / 2, mHeight - img.mHeight);*/
                 }
-            }
+            }*/
         }
 
         public override bool Open(bool open, bool immediate = false)
@@ -662,7 +722,7 @@ namespace Beefy.theme.dark
                 e.mSender = GetMainItem();
                 e.mDragTarget = mDragTarget;                
                 if (mDragHelper.mAborted)
-                    e.mDragAllowed = false;
+                    e.mDragKind = .None;
                 if (listView.mOnDragEnd.HasListeners)
                     listView.mOnDragEnd(e);
             }
@@ -723,12 +783,12 @@ namespace Beefy.theme.dark
                 
                 float yOfs = aY - childY;
                 if (yOfs < mHeight / 2)
-                    mDragTargetInsertDir = -1;
+                    mDragKind = .Before;
                 else
                 {
-                    mDragTargetInsertDir = 1;
+                    mDragKind = .After;
                     if ((listViewItem.mOpenButton != null) && (listViewItem.mOpenButton.mIsOpen))
-                        mDragTargetInsertDir = 0;
+                        mDragKind = .None;
                 }
 
 				delete mCurDragEvent;
@@ -737,12 +797,12 @@ namespace Beefy.theme.dark
                 mCurDragEvent.mY = y;
                 mCurDragEvent.mSender = head;
                 mCurDragEvent.mDragTarget = foundWidget;
-                mCurDragEvent.mDragTargetDir = mDragTargetInsertDir;
+                mCurDragEvent.mDragKind = mDragKind;
                 listView.mOnDragUpdate(mCurDragEvent);                
-                mDragTargetInsertDir = mCurDragEvent.mDragTargetDir;
+                mDragKind = mCurDragEvent.mDragKind;
 
                 mDragTarget = mCurDragEvent.mDragTarget as DarkListViewItem;
-                if (!mCurDragEvent.mDragAllowed)
+                if (mCurDragEvent.mDragKind == .None)
                     mDragTarget = null;
 
                 if (mDragTarget != null)
@@ -847,6 +907,7 @@ namespace Beefy.theme.dark
 
         public Event<delegate void(DragEvent)> mOnDragUpdate ~ _.Dispose();
         public Event<delegate void(DragEvent)> mOnDragEnd ~ _.Dispose();
+		public Event<delegate void(Graphics)> mOnPostDraw ~ _.Dispose();
 
         public this()
         {
@@ -1003,6 +1064,13 @@ namespace Beefy.theme.dark
                 }
             }
         }
+
+		public override void DrawAll(Graphics g)
+		{
+			base.DrawAll(g);
+			mOnPostDraw(g);
+			mOnPostDraw.Dispose();
+		}
 
         public override void MouseMove(float x, float y)
         {

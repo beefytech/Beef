@@ -114,6 +114,28 @@ namespace System
 			}
 		}
 
+		public void AddFront(T ownDelegate) mut
+		{
+			Object data = Target;
+			if (data == null)
+			{
+				Target = ownDelegate;
+				return;
+			}
+
+			if (var list = data as List<T>)
+			{
+				list.Insert(0, ownDelegate);
+			}
+			else
+			{
+				var list = new List<T>();
+				list.Add(ownDelegate);
+				list.Add((T)data);
+				Target = list;
+			}
+		}
+
 		public void Remove(T compareDelegate, bool deleteDelegate = false) mut
 		{
 			Object data = Target;

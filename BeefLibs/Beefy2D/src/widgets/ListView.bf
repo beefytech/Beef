@@ -4,6 +4,7 @@ using System.Collections;
 using System.Text;
 using System.Diagnostics;
 using Beefy.gfx;
+using Beefy.events;
 
 namespace Beefy.widgets
 {   
@@ -111,6 +112,14 @@ namespace Beefy.widgets
 			}
 		}
 
+		public virtual bool IsDragging
+		{
+			get
+			{
+				return false;
+			}
+		}
+
         public virtual float LabelX { get { return 0; } }
         public virtual float LabelWidth { get { return mWidth; } }
 
@@ -184,6 +193,16 @@ namespace Beefy.widgets
 
             return null;
         }
+
+		public int32 GetSelectedItemCount()
+		{
+		    int32 count = 0;
+			WithSelectedItems(scope [&] (item) =>
+				{
+					count++;
+				});
+		    return count;
+		}
 
         public ListViewItem FindLastSelectedItem(bool filterToVisible = false)
         {
@@ -320,12 +339,43 @@ namespace Beefy.widgets
                 }
                 else
                 {
-                    SelectItemExclusively(item);
-                    if (item.Selected)
-                        item.Focused = true;
+					if (item.Selected)
+					{
+						item.mOnMouseUp.AddFront(new => ItemMouseUpHandler);
+
+						var focusedItem = FindFocusedItem();
+						if (focusedItem != null)
+						{
+							focusedItem.Focused = false;
+							focusedItem.Selected = true;
+						}
+						item.Focused = true;
+					}
+					else
+					{
+						SelectItemExclusively(item);
+						if (item.Selected)
+							item.Focused = true;
+					}
+                    //SelectItemExclusively(item);
+                    //if (item.Selected)
+                        //item.Focused = true;
                 }
             }
         }
+
+		void ItemMouseUpHandler(MouseEvent evt)
+		{
+			var item = evt.mSender as ListViewItem;
+			if ((item.mMouseOver) && (!item.IsDragging))
+			{
+				SelectItemExclusively(item);
+				if (item.Selected)
+					item.Focused = true;
+			}
+
+			item.mOnMouseUp.Remove(scope => ItemMouseUpHandler, true);
+		}
 
         public virtual void Clear()
         {
@@ -671,11 +721,6 @@ namespace Beefy.widgets
 				String.NewOrSet!(mLabel, value);
 			}
 		}
-    }
-
-    public class ListViewDragData
-    {
-        List<ListViewItem> mDragItems;
     }
 
     public abstract class ListView : ScrollableWidget

@@ -455,6 +455,19 @@ namespace IDE
 			}
 		}
 
+		public void GetFullDisplayName(String displayName)
+		{
+			if (mParentFolder == null)
+				return;
+
+			if (mParentFolder.mParentFolder != null)
+			{
+				mParentFolder.mParentFolder.GetFullDisplayName(displayName);
+				displayName.Append("/");
+			}
+			displayName.Append(mName);
+		}
+
         public void GetRelDir(String path)
         {
 			if (mPath != null)

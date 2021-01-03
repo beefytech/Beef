@@ -4,12 +4,19 @@ using System.Text;
 
 namespace Beefy.events
 {
+	public enum DragKind
+	{
+		None,
+		Inside,
+		Before,
+		After
+	}
+
     public class DragEvent : Event
     {
         public float mX;
         public float mY;
         public Object mDragTarget;
-        public int32 mDragTargetDir;
-        public bool mDragAllowed = true;
+        public DragKind mDragKind = .Inside;
     }
 }
