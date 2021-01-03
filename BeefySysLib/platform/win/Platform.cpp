@@ -1645,24 +1645,31 @@ public:
 			}
 
 			UTF16String envW;
-			WCHAR* envPtrW = NULL;
+			void* envVoidPtr = NULL;
+			
 			if ((env != NULL) && (env[0] != 0))
 			{
-				const char* envPtr = env;
-				while (true)
-				{
-					if ((envPtr[0] == 0) && (envPtr[1] == 0))
-						break;
-					envPtr++;
+				bool useUnicodeEnv = false;
+				if (useUnicodeEnv)
+				{				
+					const char* envPtr = env;
+					while (true)
+					{
+						if ((envPtr[0] == 0) && (envPtr[1] == 0))
+							break;
+						envPtr++;
+					}
+
+					int envSize = (int)(envPtr - env) + 2;
+					String str8(env, envSize);
+					envW = UTF8Decode(str8);
+					envVoidPtr = (void*)envW.c_str();
+					startupInfo.dwFlags |= CREATE_UNICODE_ENVIRONMENT;
 				}
-
-				int envSize = (int)(envPtr - env) + 2;
-
-				String str8(env, envSize);
-				envW = UTF8Decode(str8);
-
-				envPtrW = (WCHAR*)envW.c_str();
-				startupInfo.dwFlags |= CREATE_UNICODE_ENVIRONMENT;
+				else
+				{
+					envVoidPtr = (void*)env;
+				}
 			}
 			
 			retVal = ::CreateProcessW(
@@ -1672,7 +1679,7 @@ public:
 				NULL,               // pointer to thread security attributes
 				true,               // handle inheritance flag
 				creationFlags,      // creation flags
-				envPtrW,     // pointer to new environment block
+				envVoidPtr,     // pointer to new environment block
 				dirStrPtr,   // pointer to current directory name
 				&startupInfo,        // pointer to STARTUPINFO
 				&processInfo         // pointer to PROCESS_INFORMATION
@@ -2757,6 +2764,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 		if (outResult != NULL)
 		{
 			int lastError = GetLastError();
+
 			switch (lastError)
 			{
 			case ERROR_SHARING_VIOLATION:
