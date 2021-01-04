@@ -187,6 +187,18 @@ static
 		}
 	}
 
+	public static mixin DeleteDictionaryAndItems(var container)
+	{
+		if (container != null)
+		{
+			for (var value in container)
+			{
+				delete value.value;
+			}
+			delete container;
+		}
+	}
+
 	public static mixin DeleteDictionaryAndKeysAndItems(var container)
 	{
 		if (container != null)
