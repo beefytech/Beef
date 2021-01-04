@@ -874,6 +874,12 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			beValue = beConst;
 			return;
 		}
+		else if (constType == BfConstType_Undef)
+		{
+			CMD_PARAM(BeType*, type);
+			beValue = mBeModule->CreateUndefValue(type);
+			return;
+		}
 
 		bool isSigned = false;
 		BeType* llvmConstType = GetBeType(typeCode, isSigned);

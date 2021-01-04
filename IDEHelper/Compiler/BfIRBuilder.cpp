@@ -1950,6 +1950,12 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				Write(constant->mInt64);
 			}
 			break;
+		case (int)BfConstType_Undef:
+			{	
+				auto undefConst = (BfConstantUndef*)constant;
+				Write(undefConst->mType);
+			}
+			break;
 		default:			
 			{
 				BF_FATAL("Unhandled");

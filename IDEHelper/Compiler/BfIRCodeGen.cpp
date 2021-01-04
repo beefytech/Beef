@@ -935,6 +935,12 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 						
 			return;
 		}
+		else if (constType == BfConstType_Undef)
+		{
+			CMD_PARAM(llvm::Type*, type);
+			llvmValue = llvm::UndefValue::get(type);
+			return;
+		}
 
 		bool isSigned;
 		llvm::Type* llvmConstType = GetLLVMType(typeCode, isSigned);
