@@ -3557,7 +3557,8 @@ BfModuleOptions BfModule::GetModuleOptions()
 	if (headModule->mOwnedTypeInstances.size() > 0)
 	{
 		auto typeInst = headModule->mOwnedTypeInstances[0];
-		PopulateType(typeInst);
+		if (typeInst->mTypeOptionsIdx == -2)
+			PopulateType(typeInst);
 		if (typeInst->mTypeOptionsIdx != -1)
 		{
 			auto typeOptions = mSystem->GetTypeOptions(typeInst->mTypeOptionsIdx);
@@ -9649,8 +9650,8 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 {
 	if (!typeInstance->mResolvingVarField)
 	{
-		if (typeInstance->IsIncomplete())
-			PopulateType(typeInstance, BfPopulateType_DataAndMethods);
+		if (typeInstance->mDefineState < BfTypeDefineState_HasInterfaces)
+			PopulateType(typeInstance, BfPopulateType_AllowStaticMethods);
 	}
 	else
 	{
@@ -9677,10 +9678,12 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 			if ((typeInstance->mGenericTypeInfo != NULL) && (typeInstance->mGenericTypeInfo->mFinishedGenericParams) && (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NotSet))
 			{
 				methodGroup.mOnDemandKind = BfMethodOnDemandKind_NoDecl_AwaitingReference;
-				declModule->mOnDemandMethodCount++;
+				if (!declModule->mIsScratchModule)
+					declModule->mOnDemandMethodCount++;
 			}
 
-			BF_ASSERT((methodGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) || (typeInstance->mTypeFailed));
+			BF_ASSERT((methodGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) || 
+				(typeInstance->mTypeFailed) || (typeInstance->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted));
 			if ((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl))
 				methodGroup.mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 			
@@ -12399,7 +12402,13 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	{
 		// For autocomplete, we still may not actually generate methods. This shouldn't matter, and on-demand works differently
 		//  for resolve-only because we don't differentiate between reified/unreified there
-		PopulateType(typeInst, BfPopulateType_Full);
+		if ((methodDef->mIsStatic) /*&& (mIsConstModule)*/)
+		{
+			if (typeInst->mDefineState < BfTypeDefineState_HasInterfaces)
+				PopulateType(typeInst, BfPopulateType_AllowStaticMethods);
+		}
+		else
+			PopulateType(typeInst, BfPopulateType_Full);		
 	}
 	
 	bool tryModuleMethodLookup = false;
@@ -12661,8 +12670,11 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 	if (methodInstGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
 	{
-		BfLogSysM("Forcing BfMethodOnDemandKind_NotSet to BfMethodOnDemandKind_AlwaysInclude for Method:%s in Type:%p\n", methodDef->mName.c_str(), typeInst);
-		methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
+		if (typeInst->mDefineState > BfTypeDefineState_DefinedAndMethodsSlotted)		
+		{
+			BfLogSysM("Forcing BfMethodOnDemandKind_NotSet to BfMethodOnDemandKind_AlwaysInclude for Method:%s in Type:%p\n", methodDef->mName.c_str(), typeInst);
+			methodInstGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;			
+		}
 	}
 	
 	BfIRFunction prevIRFunc;
@@ -12964,6 +12976,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			BF_ASSERT(methodInstGroup->mDefault == NULL);
 			methodInstance = new BfMethodInstance();
 			methodInstGroup->mDefault = methodInstance;
+
+			BF_ASSERT(typeInst->mDefineState > BfTypeDefineState_Declared);
 
 			BfLogSysM("Created Default MethodInst: %p TypeInst: %p Group: %p\n", methodInstance, typeInst, methodInstGroup);
 		}
@@ -17787,8 +17801,6 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		if ((methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude) &&
 			(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Referenced))
 		{
-			methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Referenced;
-
 			auto owningModule = methodInstance->GetOwner()->mModule;
 
 			if (owningModule->mIsScratchModule)
@@ -17801,6 +17813,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 				if (owningModule->mOnDemandMethodCount > 0)
 					owningModule->mOnDemandMethodCount--;
 			}
+
+			methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Referenced;
 		}
 	}
 
@@ -17845,9 +17859,16 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	if ((methodDeclaration == NULL) && (mCurMethodState == NULL))
 		UseDefaultSrcPos();
 
-	// We may not actually be populated in relatively rare autocompelte cases
-	PopulateType(mCurTypeInstance, BfPopulateType_DataAndMethods);
-	mBfIRBuilder->PopulateType(mCurTypeInstance, BfIRPopulateType_Full);
+	if ((mIsConstModule) && (methodDef->mIsStatic))
+	{
+		PopulateType(mCurTypeInstance, BfPopulateType_AllowStaticMethods);
+	}
+	else
+	{
+		// We may not actually be populated in relatively rare autocompelte cases
+		PopulateType(mCurTypeInstance, BfPopulateType_DataAndMethods);
+		mBfIRBuilder->PopulateType(mCurTypeInstance, BfIRPopulateType_Full);
+	}
 
 	BfAstNode* nameNode = NULL;
 	if (methodDeclaration != NULL)
@@ -21005,11 +21026,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	bool ignoreWrites = mBfIRBuilder->mIgnoreWrites;
 	
- 	if ((!isTemporaryFunc) && (mCurTypeInstance->mDefineState < BfTypeDefineState_Defined))
- 	{
-		BF_ASSERT(mContext->mResolvingVarField);
-		isTemporaryFunc = true;
- 	}
+//  	if ((!isTemporaryFunc) && (mCurTypeInstance->mDefineState < BfTypeDefineState_Defined))
+//  	{
+// 		BF_ASSERT(mContext->mResolvingVarField);
+// 		isTemporaryFunc = true;
+//  	}
 	
 	if ((mAwaitingInitFinish) && (!mBfIRBuilder->mIgnoreWrites))
 		FinishInit();

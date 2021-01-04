@@ -589,13 +589,6 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 		BfSavedTypeData* savedTypeData;
 		if (mContext->mSavedTypeDataMap.Remove(typeName, &savedTypeData))
 		{
-			// 			if (resolvedTypeRef->mTypeId != -1)
-			// 			{
-			// 				// If we have an ID and it as the last one assigned the roll back the ID counter
-			// 				if (resolvedTypeRef->mTypeId == mCompiler->mCurTypeId - 1)
-			// 					mCompiler->mCurTypeId--;
-			// 			}
-
 			mContext->mSavedTypeData[savedTypeData->mTypeId] = NULL;
 
 			resolvedTypeRef->mTypeId = savedTypeData->mTypeId;
@@ -608,8 +601,8 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 					BfLogSysM("Using mSavedTypeData HotTypeData %p for %p\n", savedTypeData->mHotTypeData, resolvedTypeRef);
 					typeInst->mHotTypeData = savedTypeData->mHotTypeData;
 					savedTypeData->mHotTypeData = NULL;
-				}				
-			}			
+				}
+			}
 			delete savedTypeData;
 			mContext->mTypes[resolvedTypeRef->mTypeId] = resolvedTypeRef;
 		}
@@ -1965,6 +1958,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if ((populateType >= BfPopulateType_Identity) && (populateType <= BfPopulateType_IdentityNoRemapAlias))
 		return;
 
+	if ((populateType <= BfPopulateType_AllowStaticMethods) && (typeInstance->mDefineState >= BfTypeDefineState_HasInterfaces))
+		return;
+
 	if (!resolvedTypeRef->IsValueType())
 	{
 		resolvedTypeRef->mSize = typeInstance->mAlign = mSystem->mPtrSize;
@@ -2731,6 +2727,44 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
+	if ((mCompiler->mOptions.mAllowHotSwapping) &&
+		(typeInstance->mDefineState < BfTypeDefineState_HasInterfaces) && 
+		(typeInstance->mDefineState != BfTypeDefineState_ResolvingBaseType))
+	{		
+		if (typeInstance->mHotTypeData == NULL)
+		{
+			typeInstance->mHotTypeData = new BfHotTypeData();
+			BfLogSysM("Created HotTypeData %p created for type %p in DoPopulateType\n", typeInstance->mHotTypeData, typeInstance);
+		}
+
+		// Clear any unused versions (if we have errors, etc)
+		if (mCompiler->mHotState != NULL)
+			typeInstance->mHotTypeData->ClearVersionsAfter(mCompiler->mHotState->mCommittedHotCompileIdx);
+		else
+			BF_ASSERT(typeInstance->mHotTypeData->mTypeVersions.IsEmpty()); // We should have created a new HotTypeData when rebuilding the type
+
+		BfHotTypeVersion* hotTypeVersion = new BfHotTypeVersion();
+		hotTypeVersion->mTypeId = typeInstance->mTypeId;
+		if (typeInstance->mBaseType != NULL)
+		{
+			if (typeInstance->mBaseType->mHotTypeData != NULL)
+				hotTypeVersion->mBaseType = typeInstance->mBaseType->mHotTypeData->GetLatestVersion();
+			else
+			{
+				AssertErrorState();
+			}
+		}
+		hotTypeVersion->mDeclHotCompileIdx = mCompiler->mOptions.mHotCompileIdx;
+		if (mCompiler->IsHotCompile())
+			hotTypeVersion->mCommittedHotCompileIdx = -1;
+		else
+			hotTypeVersion->mCommittedHotCompileIdx = 0;
+		hotTypeVersion->mRefCount++;
+		typeInstance->mHotTypeData->mTypeVersions.Add(hotTypeVersion);
+
+		BfLogSysM("BfHotTypeVersion %p created for type %p\n", hotTypeVersion, typeInstance);		
+	}
+
 	BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
 	typeInstance->mDefineState = BfTypeDefineState_HasInterfaces;
 
@@ -2739,13 +2773,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, mIgnoreErrors | validateEntry.mIgnoreErrors);
 		ValidateGenericConstraints(validateEntry.mTypeRef, validateEntry.mGenericType, false);
 	}
-
-	if (populateType <= BfPopulateType_Interfaces)
-		return;
-
-	prevSkipTypeProtectionChecks.Restore();
-	typeInstance->mInstSize = std::max(0, typeInstance->mInstSize);
-	typeInstance->mInstAlign = std::max(0, typeInstance->mInstAlign);
 
 	if (!typeInstance->IsBoxed())
 	{
@@ -2790,7 +2817,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	if (typeInstance->mTypeOptionsIdx == -2)
-		SetTypeOptions(typeInstance);	
+		SetTypeOptions(typeInstance);
+
+	if (populateType <= BfPopulateType_AllowStaticMethods)
+		return;	
+
+	prevSkipTypeProtectionChecks.Restore();
+	typeInstance->mInstSize = std::max(0, typeInstance->mInstSize);
+	typeInstance->mInstAlign = std::max(0, typeInstance->mInstAlign);	
 
 	ProcessCustomAttributeData();
 	bool isPacked = false;
@@ -3565,37 +3599,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}	
 	
 	if ((mCompiler->mOptions.mAllowHotSwapping) && (typeInstance->mDefineState < BfTypeDefineState_Defined))
-	{
-		if (typeInstance->mHotTypeData == NULL)
-		{
-			typeInstance->mHotTypeData = new BfHotTypeData();
-			BfLogSysM("Created HotTypeData %p created for type %p in DoPopulateType\n", typeInstance->mHotTypeData, typeInstance);
-		}
-
-		// Clear any unused versions (if we have errors, etc)
-		if (mCompiler->mHotState != NULL)
-			typeInstance->mHotTypeData->ClearVersionsAfter(mCompiler->mHotState->mCommittedHotCompileIdx);
-		else
-			BF_ASSERT(typeInstance->mHotTypeData->mTypeVersions.IsEmpty()); // We should have created a new HotTypeData when rebuilding the type
-
-		BfHotTypeVersion* hotTypeVersion = new BfHotTypeVersion();
-		hotTypeVersion->mTypeId = typeInstance->mTypeId;
-		if (typeInstance->mBaseType != NULL)
-		{			
-			if (typeInstance->mBaseType->mHotTypeData != NULL)
-				hotTypeVersion->mBaseType = typeInstance->mBaseType->mHotTypeData->GetLatestVersion();
-			else
-			{
-				AssertErrorState();
-			}
-		}
-		hotTypeVersion->mDeclHotCompileIdx = mCompiler->mOptions.mHotCompileIdx;
-		if (mCompiler->IsHotCompile())
-			hotTypeVersion->mCommittedHotCompileIdx = -1;
-		else
-			hotTypeVersion->mCommittedHotCompileIdx = 0;
-		hotTypeVersion->mRefCount++;
-		typeInstance->mHotTypeData->mTypeVersions.Add(hotTypeVersion);
+	{	
+		auto hotTypeVersion = typeInstance->mHotTypeData->mTypeVersions.back();
 
 		if ((typeInstance->mBaseType != NULL) && (typeInstance->mBaseType->mHotTypeData != NULL))
 		{
@@ -3623,8 +3628,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		for (auto member : hotTypeVersion->mMembers)
 			member->mRefCount++;
-
-		BfLogSysM("BfHotTypeVersion %p created for type %p\n", hotTypeVersion, typeInstance);
 	}
 
 	typeInstance->mDefineState = BfTypeDefineState_Defined;
@@ -4047,8 +4050,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	{
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
 
+		// Thsi MAY be generated already
 		// This should still be set to the default value
-		BF_ASSERT((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet) || (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude));
+		//BF_ASSERT((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet) || (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude));
 	}
 
 
@@ -4248,7 +4252,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	// Generate all methods. Pass 1
 	for (auto methodDef : typeDef->mMethods)
 	{			
-		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
+		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];		
 
 		if (typeOptions != NULL)
 		{
@@ -4265,6 +4269,12 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
 			continue;
+		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_InWorkList)
+			continue;
+		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference)
+			continue;
+		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Referenced)
+			continue;
 
 		if (isFailedType)
 		{
@@ -4273,7 +4283,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		}
 
 		// This should still be set to the default value
-		BF_ASSERT(methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet);
+		BF_ASSERT((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet) || (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl));
 
 		if ((isBoxed) && (!methodDef->mIsVirtual))
 		{
@@ -5102,11 +5112,14 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 
 			BF_ASSERT(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Referenced);
 			if (!mIsScratchModule)
-			{
+			{					
+				auto onDemandModule = owningModule;
 				if (owningModule->mParentModule != NULL)
-					BF_ASSERT(owningModule->mParentModule->mOnDemandMethodCount > 0);
-				else
-					BF_ASSERT(owningModule->mOnDemandMethodCount > 0);
+					onDemandModule = owningModule->mParentModule;
+				
+				if (methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
+					owningModule->mOnDemandMethodCount++;
+				BF_ASSERT(onDemandModule->mOnDemandMethodCount > 0);
 			}
 			methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_InWorkList;
 		}

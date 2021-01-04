@@ -41,9 +41,11 @@ enum BfPopulateType
 	BfPopulateType_Declaration,
 	BfPopulateType_BaseType,
 	BfPopulateType_Interfaces,
+	BfPopulateType_AllowStaticMethods,
 	BfPopulateType_Data,
 	BfPopulateType_DataAndMethods,
 	BfPopulateType_Full = BfPopulateType_DataAndMethods,
+	
 	BfPopulateType_Full_Force
 };
 
