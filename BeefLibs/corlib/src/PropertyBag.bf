@@ -4,7 +4,7 @@ namespace System
 {
 	class PropertyBag
 	{
-		public Dictionary<String, Object> mProperties ~ DeleteDictionaryAndKeysAndItems!(_);
+		public Dictionary<String, Object> mProperties ~ DeleteDictionaryAndKeysAndValues!(_);
 
 		public void Add<T>(String key, T value) where T : struct
 		{

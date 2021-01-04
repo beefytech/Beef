@@ -17,7 +17,7 @@ namespace IDE.ui
 	{
 		public String mDocString = new String(256) ~ delete _;
 		public String mBriefString ~ delete _;
-		public Dictionary<String, String> mParamInfo ~ DeleteDictionaryAndKeysAndItems!(_);
+		public Dictionary<String, String> mParamInfo ~ DeleteDictionaryAndKeysAndValues!(_);
 
 		public String ShowDocString
 		{

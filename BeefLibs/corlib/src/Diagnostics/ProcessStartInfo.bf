@@ -19,7 +19,7 @@ namespace System.Diagnostics
 		String mDirectory = new String() ~ delete _;
 		String mVerb = new String("Open") ~ delete _;
 
-		public Dictionary<String, String> mEnvironmentVariables ~ DeleteDictionaryAndKeysAndItems!(_); 
+		public Dictionary<String, String> mEnvironmentVariables ~ DeleteDictionaryAndKeysAndValues!(_); 
 
 		public bool UseShellExecute { get { return mUseShellExecute; } set { mUseShellExecute = value; } };
 		public bool RedirectStandardInput { get { return mRedirectStandardInput; } set { mRedirectStandardInput = value; } };

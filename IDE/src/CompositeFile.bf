@@ -14,7 +14,7 @@ namespace IDE
 		public Monitor mMonitor = new .() ~ delete _;
 		static String sVersionStr = "///@singleFileVersion ";
 		static String sSectionStr = "///@embed ";
-		public Dictionary<String, String> mData = new .() ~ DeleteDictionaryAndKeysAndItems!(_);
+		public Dictionary<String, String> mData = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
 		public String mFilePath ~ delete _;
 		public bool mPendingSave;
 		public bool mHasChanges;

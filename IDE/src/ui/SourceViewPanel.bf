@@ -162,7 +162,7 @@ namespace IDE.ui
 		public String mFileName ~ delete _;
 		public String mBackupFileName ~ delete _; // Didn't match hash
 		public String mFoundPath ~ delete _;
-		public Dictionary<String, String> mRemapMap = new .() ~ DeleteDictionaryAndKeysAndItems!(_);
+		public Dictionary<String, String> mRemapMap = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
 		
 		public ~this()
 		{

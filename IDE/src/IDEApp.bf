@@ -446,7 +446,7 @@ namespace IDE
             public String mFileName ~ delete _;
             public String mArgs  ~ delete _;
             public String mWorkingDir  ~ delete _;
-			public Dictionary<String, String> mEnvVars ~ DeleteDictionaryAndKeysAndItems!(_);
+			public Dictionary<String, String> mEnvVars ~ DeleteDictionaryAndKeysAndValues!(_);
             public ArgsFileKind mUseArgsFile;
             public int32 mParallelGroup = -1;
 			public bool mIsTargetRun;

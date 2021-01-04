@@ -314,11 +314,11 @@ namespace IDE
 
         public class Config
         {
-            public Dictionary<String, Options> mPlatforms = new Dictionary<String, Options>() ~ DeleteDictionaryAndKeysAndItems!(_);
+            public Dictionary<String, Options> mPlatforms = new Dictionary<String, Options>() ~ DeleteDictionaryAndKeysAndValues!(_);
         }
 
 		public BeefGlobalOptions mBeefGlobalOptions = new BeefGlobalOptions() ~ delete _;
-        public Dictionary<String, Config> mConfigs = new Dictionary<String, Config>() ~ DeleteDictionaryAndKeysAndItems!(_);
+        public Dictionary<String, Config> mConfigs = new Dictionary<String, Config>() ~ DeleteDictionaryAndKeysAndValues!(_);
 		public HashSet<String> mExtraPlatforms = new .() ~ DeleteContainerAndItems!(_);
 
         public class ProjectSourceCompileInstance
@@ -892,7 +892,7 @@ namespace IDE
 
         public void Deserialize(StructuredData data)
         {
-			DeleteDictionaryAndKeysAndItems!(mConfigs);
+			DeleteDictionaryAndKeysAndValues!(mConfigs);
 			mConfigs = new Dictionary<String, Config>();
 
 			using (data.Open("Workspace"))

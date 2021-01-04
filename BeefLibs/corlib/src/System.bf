@@ -153,7 +153,7 @@ static
 	}
 
 	[NoShow]
-	[Obsolete("This mixin has been replaced by ClearAndDeleteItems", false)]
+	[Obsolete("Replaced by ClearAndDeleteItems", false)]
 	public static mixin DeleteAndClearItems(var container)
 	{
 		for (var value in container)
@@ -187,7 +187,7 @@ static
 		}
 	}
 
-	public static mixin DeleteDictionaryAndItems(var container)
+	public static mixin DeleteDictionaryAndValues(var container)
 	{
 		if (container != null)
 		{
@@ -199,7 +199,22 @@ static
 		}
 	}
 
+	[NoShow]
+	[Obsolete("Replaced by DeleteDictionaryAndKeysAndValues", false)]
 	public static mixin DeleteDictionaryAndKeysAndItems(var container)
+	{
+		if (container != null)
+		{
+			for (var value in container)
+			{
+				delete value.key;
+				delete value.value;
+			}
+			delete container;
+		}
+	}
+
+	public static mixin DeleteDictionaryAndKeysAndValues(var container)
 	{
 		if (container != null)
 		{
