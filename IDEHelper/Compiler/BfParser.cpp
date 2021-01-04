@@ -1707,7 +1707,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 		case '"':
 		case '\'':
 		{
-			SizedArray<BfBlock*, 4> interpolateExpressions;
+			SizedArray<BfUnscopedBlock*, 4> interpolateExpressions;
 			
 			String lineHeader;
 			String strLiteral;
@@ -2013,31 +2013,44 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 					{
 						if (c == '{')
 						{
-							BfBlock* newBlock = mAlloc->Alloc<BfBlock>();
-							mTokenStart = mSrcIdx - 1;
-							mTriviaStart = mTokenStart;
-							mTokenEnd = mTokenStart + 1;
-							mToken = BfToken_LBrace;
-							newBlock->mOpenBrace = (BfTokenNode*)CreateNode();
-							newBlock->Init(this);
-							ParseBlock(newBlock, 1, true);
-							if (mToken == BfToken_RBrace)
+							if (mSrc[mSrcIdx] == '{')
 							{
-								newBlock->mCloseBrace = (BfTokenNode*)CreateNode();
-								newBlock->SetSrcEnd(mSrcIdx);
-								strLiteral += "}";
+								strLiteral += '{';
+								mSrcIdx++;
 							}
-							else if ((mSyntaxToken == BfSyntaxToken_EOF) || (mSyntaxToken == BfSyntaxToken_StringQuote))
+							else
 							{
-								mSrcIdx--;
-								mPassInstance->FailAfterAt("Expected '}'", mSourceData, newBlock->GetSrcEnd() - 1);
-							}							
-							mInAsmBlock = false;
-							interpolateExpressions.Add(newBlock);
+								BfUnscopedBlock* newBlock = mAlloc->Alloc<BfUnscopedBlock>();
+								mTokenStart = mSrcIdx - 1;
+								mTriviaStart = mTokenStart;
+								mTokenEnd = mTokenStart + 1;
+								mToken = BfToken_LBrace;
+								newBlock->mOpenBrace = (BfTokenNode*)CreateNode();
+								newBlock->Init(this);
+								ParseBlock(newBlock, 1, true);
+								if (mToken == BfToken_RBrace)
+								{
+									newBlock->mCloseBrace = (BfTokenNode*)CreateNode();
+									newBlock->SetSrcEnd(mSrcIdx);
+									strLiteral += "}";
+								}
+								else if ((mSyntaxToken == BfSyntaxToken_EOF) || (mSyntaxToken == BfSyntaxToken_StringQuote))
+								{
+									mSrcIdx--;
+									mPassInstance->FailAfterAt("Expected '}'", mSourceData, newBlock->GetSrcEnd() - 1);
+								}
+								mInAsmBlock = false;
+								interpolateExpressions.Add(newBlock);
+							}
 						}
 						else if (c == '}')
 						{
-							if (!interpolateExpressions.IsEmpty())
+							if (mSrc[mSrcIdx] == '}')
+							{
+								strLiteral += '}';
+								mSrcIdx++;
+							}
+							else if (!interpolateExpressions.IsEmpty())
 							{
 								auto block = interpolateExpressions.back();
 								if (block->mCloseBrace == NULL)

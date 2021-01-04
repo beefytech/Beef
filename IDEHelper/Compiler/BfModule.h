@@ -121,7 +121,8 @@ enum BfEmbeddedStatementFlags
 {
 	BfEmbeddedStatementFlags_None = 0,
 	BfEmbeddedStatementFlags_IsConditional = 1,
-	BfEmbeddedStatementFlags_IsDeferredBlock = 2
+	BfEmbeddedStatementFlags_IsDeferredBlock = 2,
+	BfEmbeddedStatementFlags_Unscoped = 4
 };
 
 enum BfLocalVarAssignKind
@@ -1653,6 +1654,7 @@ public:
 	virtual void Visit(BfForEachStatement* forEachStmt) override;
 	virtual void Visit(BfDeferStatement* deferStmt) override;
 	virtual void Visit(BfBlock* block) override;
+	virtual void Visit(BfUnscopedBlock* block) override;
 	virtual void Visit(BfLabeledBlock* labeledBlock) override;
 	virtual void Visit(BfRootNode* rootNode) override;
 	virtual void Visit(BfInlineAsmStatement* asmStmt) override;

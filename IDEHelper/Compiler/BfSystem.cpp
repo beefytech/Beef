@@ -3012,11 +3012,6 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 // 		methodDef->mIsMutating = true;
 // 	}
 
-	if (compositeTypeDef->mName->ToString() == "Core")
-	{
-		NOP;
-	}
-
 	// Static ctor
 	if ((allHasMethods[0][1].mCtor == 0) && (allHasMethods[1][1].mCtor > 1))
 	{

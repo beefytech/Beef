@@ -651,6 +651,11 @@ void BfStructuralVisitor::Visit(BfBlock* block)
 	Visit(block->ToBase());	
 }
 
+void BfStructuralVisitor::Visit(BfUnscopedBlock* block)
+{
+	Visit(block->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfBlockExtension* block)
 {
 	BF_ASSERT("Shouldn't see this block, BfBlock::Iterator not being used?");

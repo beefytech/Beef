@@ -3090,15 +3090,23 @@ void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEval
 
 	if ((block != NULL) && (openBrace != NULL))
 		UpdateSrcPos(openBrace);
-	if (mCurMethodState != NULL)
+
+	if ((flags & BfEmbeddedStatementFlags_Unscoped) != 0)
 	{
-		bool isIgnore = mBfIRBuilder->mIgnoreWrites;
+		SetAndRestoreValue<BfExprEvaluator*> prevExprEvaluator(mCurMethodState->mCurScope->mExprEvaluator, exprEvaluator);
+
+		VisitCodeBlock(block);
+	}
+	else if (mCurMethodState != NULL)
+	{
+		bool isIgnore = mBfIRBuilder->mIgnoreWrites;		
 		
 		mCurMethodState->mInHeadScope = false;
 
 		BfScopeData scopeData;		
 		if (IsTargetingBeefBackend())
 			scopeData.mValueScopeStart = mBfIRBuilder->CreateValueScopeStart();
+
 		mCurMethodState->AddScope(&scopeData);
 		if (block != NULL)
 		{
@@ -3391,7 +3399,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 						}
 						else
 						{
-							FailAfter("Expression block cannot be used here. Consider adding semicolon if a statement was intended.", expr);
+ 							FailAfter("Expression block cannot be used here. Consider adding semicolon if a statement was intended.", expr);
 						}
 					}
 				}
@@ -6841,6 +6849,11 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 void BfModule::Visit(BfBlock* block)
 {
 	VisitEmbeddedStatement(block);
+}
+
+void BfModule::Visit(BfUnscopedBlock* block)
+{
+	VisitEmbeddedStatement(block, NULL, BfEmbeddedStatementFlags_Unscoped);
 }
 
 void BfModule::Visit(BfLabeledBlock* labeledBlock)

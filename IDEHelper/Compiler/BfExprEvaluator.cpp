@@ -2856,7 +2856,7 @@ void BfExprEvaluator::Visit(BfBlock* blockExpr)
 		if (!lastExpr->IsMissingSemicolon())
 			mModule->Fail("Expression blocks must end in an expression which is missing its terminating semicolon", lastExpr->mTrailingSemicolon);
 	}
-	else if (auto lastExpr = BfNodeDynCast<BfExpression>(blockExpr->mChildArr.GetLast()))
+	else if (blockExpr->mChildArr.GetLast()->IsExpression())
 	{
 		// Expression		
 	}
@@ -2865,7 +2865,7 @@ void BfExprEvaluator::Visit(BfBlock* blockExpr)
 		mModule->Fail("Expression blocks must end with an expression", blockExpr);
 	}			
 
-	mModule->VisitEmbeddedStatement(blockExpr, this);
+	mModule->VisitEmbeddedStatement(blockExpr, this, BfNodeIsA<BfUnscopedBlock>(blockExpr) ? BfEmbeddedStatementFlags_Unscoped : BfEmbeddedStatementFlags_None);
 }
 
 bool BfExprEvaluator::CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail)

@@ -266,6 +266,7 @@ class BfAttributedStatement;
 class BfLiteralExpression;
 class BfStringInterpolationExpression;
 class BfBlock;
+class BfUnscopedBlock;
 class BfBlockExtension;
 class BfRootNode;
 class BfErrorNode;
@@ -545,6 +546,7 @@ public:
 	virtual void Visit(BfUsingModDirective* usingDirective);
 	virtual void Visit(BfNamespaceDeclaration* namespaceDeclaration);
 	virtual void Visit(BfBlock* block);
+	virtual void Visit(BfUnscopedBlock* block);
 	virtual void Visit(BfBlockExtension* block);
 	virtual void Visit(BfRootNode* rootNode);
 	virtual void Visit(BfInlineAsmStatement* asmStmt);
@@ -1720,6 +1722,12 @@ public:
 		return Iterator(NULL, 0);
 	}
 };	BF_AST_DECL(BfBlock, BfExpression);
+
+class BfUnscopedBlock : public BfBlock
+{
+public:
+	BF_AST_TYPE(BfUnscopedBlock, BfBlock);
+};  BF_AST_DECL(BfUnscopedBlock, BfBlock);
 
 class BfTypedValueExpression : public BfExpression
 {
