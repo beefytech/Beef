@@ -1912,7 +1912,10 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		type = ResolveTypeRef(varDecl->mTypeRef);
 	}
 	if (type == NULL)
-		type = mContext->mBfObjectType;
+	{		
+		type = GetPrimitiveType(BfTypeCode_Var);
+		val = GetDefaultTypedValue(type);
+	}
 
 	if ((type->IsVar()) || (type->IsLet()))
 	{
