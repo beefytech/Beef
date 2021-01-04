@@ -6795,8 +6795,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 
 			paramDef->mTypeRef = directTypeRef;
 			paramDef->mName = unspecializedParamDef->mName;
-			methodDef->mParams.push_back(paramDef);
-			paramIdx++;
+			methodDef->mParams.push_back(paramDef);			
 
 			delegateInfo->mParams.Add(paramType);
 		}
