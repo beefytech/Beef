@@ -1881,6 +1881,14 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		}
 	}
 
+	for (int externConstraintIdx = 0; externConstraintIdx < (int)checkMethod->mExternalConstraints.size(); externConstraintIdx++)
+	{
+		auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[checkMethod->mGenericParams.size() + externConstraintIdx];
+		BF_ASSERT(genericParam->mExternType != NULL);
+ 		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericParam->mExternType, NULL, genericParam, genericArgumentsSubstitute, NULL))
+ 			goto NoMatch;
+	}
+
 	// Method is applicable, check to see which method is better
 	if (mBestMethodDef != NULL)
 	{
@@ -1926,7 +1934,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				ambiguousEntry.mMethodInstance = methodInstance;
 				if (genericArgumentsSubstitute != NULL)
 					ambiguousEntry.mBestMethodGenericArguments = *genericArgumentsSubstitute;
-				if (methodInstance->GetNumGenericParams() != 0)
+				if (methodInstance->mMethodDef->mGenericParams.size() != 0)
 				{
 					BF_ASSERT(!ambiguousEntry.mBestMethodGenericArguments.empty());
 				}
@@ -7904,12 +7912,25 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			if (fieldVal.mType->IsVar())			
 				return BfTypedValue(mModule->GetDefaultValue(fieldVal.mType), fieldVal.mType);		
 			if (fieldVal.mType->IsGenericParam())
-			{				
+			{					
 				auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)fieldVal.mType);
-				if ((genericParam->mTypeConstraint != NULL) && 
-					((genericParam->mTypeConstraint->IsDelegate()) || (genericParam->mTypeConstraint->IsFunction())))
+				BfType* typeConstraint = genericParam->mTypeConstraint;
+
+				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
 				{
-					BfMethodInstance* invokeMethodInstance = mModule->GetRawMethodInstanceAtIdx(genericParam->mTypeConstraint->ToTypeInstance(), 0, "Invoke");
+					for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+						genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+					{
+						auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+						if ((genericParam->mExternType == fieldVal.mType) && (genericParam->mTypeConstraint != NULL))
+							typeConstraint = genericParam->mTypeConstraint;
+					}
+				}
+				
+				if ((typeConstraint != NULL) &&
+					((typeConstraint->IsDelegate()) || (typeConstraint->IsFunction())))
+				{
+					BfMethodInstance* invokeMethodInstance = mModule->GetRawMethodInstanceAtIdx(typeConstraint->ToTypeInstance(), 0, "Invoke");
 
 					methodDef = invokeMethodInstance->mMethodDef;
 					methodMatcher.mBestMethodInstance = invokeMethodInstance;
