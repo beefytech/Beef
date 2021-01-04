@@ -14298,6 +14298,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		}
 		else if (argExpr != NULL)
 			exprEvaluator->Evaluate(argExpr, false, false, true);
+		else
+			mModule->Fail("Missing argument", targetSrc);
 		auto argValue = exprEvaluator->mResult;
 		mModule->FixIntUnknown(argValue);
 
