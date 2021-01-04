@@ -5979,6 +5979,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 
 	BF_ASSERT((namedTypeRef != NULL) || (directStrTypeRef != NULL));
 
+	auto usedOuterType = outerType;
 	if (nestedTypeDef == NULL)
 	{
 		StringView findName;
@@ -6026,6 +6027,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 									Fail(StrFormat("'%s.%s' is inaccessible due to its protection level", TypeToString(checkOuterType).c_str(), BfTypeUtils::TypeToString(typeRef).c_str()), typeRef); // CS0122
 								}
 
+								usedOuterType = checkOuterType;
 								nestedTypeDef = checkType;
 								break;
 							}
@@ -6054,12 +6056,12 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfTypeReference* typeRef, 
 	}
 
 	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, ignoreErrors || mIgnoreErrors);
-	if ((genericTypeRef != NULL) || (outerType->IsGenericTypeInstance()))
+	if ((genericTypeRef != NULL) || (usedOuterType->IsGenericTypeInstance()))
 	{
 		BfTypeVector genericArgs;
-		if (outerType->IsGenericTypeInstance())
+		if (usedOuterType->IsGenericTypeInstance())
 		{
-			auto genericTypeInst = (BfTypeInstance*)outerType;
+			auto genericTypeInst = (BfTypeInstance*)usedOuterType;
 			genericArgs = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments;
 		}
 
