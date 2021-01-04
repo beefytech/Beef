@@ -1,7 +1,7 @@
 PUSHD %~dp0
 
 @IF EXIST llvm-project_11_0_0 GOTO LLVM_HAS
-git clone --depth 1 --branch llvmorg-11.0.0 https://github.com/llvm/llvm-project.git llvm-project_11_0_0
+git clone --depth 1 --branch llvmorg-11.0.0 --config core.autocrlf=false https://github.com/llvm/llvm-project.git llvm-project_11_0_0
 pushd llvm-project_11_0_0
 
 :LLVM_HAS
