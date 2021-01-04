@@ -551,6 +551,13 @@ namespace System
 			return str.Ptr;
 		}
 
+		public static implicit operator Span<char8>(String str)
+		{
+		    if (str == null)
+				return .(null, 0);
+			return .(str.Ptr, str.Length);
+		}
+
 		[Commutable]
 		public static bool operator==(String s1, String s2)
 		{
