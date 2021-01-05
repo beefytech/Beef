@@ -16310,17 +16310,17 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				BF_ASSERT(paramDef->mName == fieldInstance.GetFieldDef()->mName);
 				if (fieldInstance.mDataIdx < 0)
 					continue;
+				if (paramDef->mParamKind != BfParamKind_Normal)
+					continue;
 
 				auto localVar = mCurMethodState->mLocals[paramIdx + 1];
 				BF_ASSERT(localVar->mName == paramDef->mName);
 				auto localVal = exprEvaluator.LoadLocal(localVar);
-
-				if (paramDef->mParamKind != BfParamKind_Normal)
-					continue;
-
+				localVal = LoadOrAggregateValue(localVal);
+				
 				auto thisVal = GetThis();
 				auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(thisVal.mValue, 0, fieldInstance.mDataIdx);
-				mBfIRBuilder->CreateAlignedStore(localVar->mValue, fieldPtr, localVar->mResolvedType->mAlign);
+				mBfIRBuilder->CreateAlignedStore(localVal.mValue, fieldPtr, localVar->mResolvedType->mAlign);
 				MarkFieldInitialized(&fieldInstance);
 			}
 		}
