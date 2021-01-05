@@ -993,11 +993,51 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 		{
 			SET_BETTER_OR_WORSE(newMethodInstance->HasExternConstraints(), prevMethodInstance->HasExternConstraints());
 		}
-	}		
-
+	}
+	
 	if ((isBetter) || (isWorse))
 	{
 		RETURN_RESULTS;
+	}
+
+	if ((newMethodInstance->mMethodDef->mExternalConstraints.size() != 0) || (prevMethodInstance->mMethodDef->mExternalConstraints.size() != 0))
+	{	
+		struct GenericParamPair
+		{
+			BfGenericMethodParamInstance* mParams[2];
+			GenericParamPair()
+			{
+				mParams[0] = NULL;
+				mParams[1] = NULL;
+			}
+		};
+
+		Dictionary<BfType*, GenericParamPair> externConstraints;
+
+		auto _GetParams = [&](int idx, BfMethodInstance* methodInstance)
+		{
+			for (int externConstraintIdx = 0; externConstraintIdx < (int)methodInstance->mMethodDef->mExternalConstraints.size(); externConstraintIdx++)
+			{
+				auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[methodInstance->mMethodDef->mGenericParams.size() + externConstraintIdx];
+				BF_ASSERT(genericParam->mExternType != NULL);				
+				GenericParamPair* pairPtr = NULL;
+				externConstraints.TryAdd(genericParam->mExternType, NULL, &pairPtr);
+				pairPtr->mParams[idx] = genericParam;
+			}
+		};
+
+		_GetParams(0, newMethodInstance);
+		_GetParams(0, prevMethodInstance);
+
+		for (auto kv : externConstraints)
+		{
+			SET_BETTER_OR_WORSE(mModule->AreConstraintsSubset(kv.mValue.mParams[1], kv.mValue.mParams[0]), mModule->AreConstraintsSubset(kv.mValue.mParams[0], kv.mValue.mParams[1]));
+		}
+
+		if ((isBetter) || (isWorse))
+		{
+			RETURN_RESULTS;
+		}
 	}
 
 	// Does one have a body and one doesn't?  Obvious!	
@@ -1389,7 +1429,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		
 	mMethodCheckCount++;
 	
-	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);	
+	BfMethodInstance* methodInstance = mModule->GetRawMethodInstance(typeInstance, checkMethod);
 	if (methodInstance == NULL)
 	{		
 		BFMODULE_FATAL(mModule, "Failed to get raw method in BfMethodMatcher::CheckMethod");
