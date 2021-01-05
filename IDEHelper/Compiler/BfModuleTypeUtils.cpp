@@ -2712,6 +2712,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		for (int iFaceIdx = 0; iFaceIdx < (int)interfaces.size(); iFaceIdx++)
 		{
 			auto checkInterface = interfaces[iFaceIdx].mIFaceTypeInst;
+
+			SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, interfaces[iFaceIdx].mDeclaringType);
+			SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, interfaces[iFaceIdx].mTypeRef);
+
 			PopulateType(checkInterface, BfPopulateType_Data);
 
 			BfTypeInterfaceEntry* found = NULL;
@@ -2750,6 +2754,16 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				interfaces.push_back(depIFaceEntry);
 			}
 		}
+
+		if (typeInstance->mTypeFailed)
+		{
+			// Circular references in interfaces - just clear them all out
+			typeInstance->mInterfaces.Clear();
+			interfaces.Clear();
+		}
+
+		if (_CheckTypeDone())
+			return;
 	}
 
 	if ((mCompiler->mOptions.mAllowHotSwapping) &&
@@ -2791,7 +2805,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	}
 
 	BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
-	typeInstance->mDefineState = BfTypeDefineState_HasInterfaces;
+	if (typeInstance->mDefineState < BfTypeDefineState_HasInterfaces)
+		typeInstance->mDefineState = BfTypeDefineState_HasInterfaces;
 
 	for (auto& validateEntry : deferredTypeValidateList)
 	{		
