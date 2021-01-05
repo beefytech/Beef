@@ -580,7 +580,18 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 // 			(genericTypeInst->mGenericParams.size() == genericTypeInst->mTypeGenericArguments.size()));
 
 		for (auto typeGenericArg : genericTypeInst->mGenericTypeInfo->mTypeGenericArguments)
-			BF_ASSERT((typeGenericArg->mRebuildFlags & BfTypeRebuildFlag_Deleted) == 0);
+		{
+			BF_ASSERT((typeGenericArg->mRebuildFlags & BfTypeRebuildFlag_Deleted) == 0);			
+			if (mIsReified)
+			{
+				// Try to reify any generic args
+				for (auto genericArg : typeInst->mGenericTypeInfo->mTypeGenericArguments)
+				{
+					if (!genericArg->IsReified())
+						PopulateType(genericArg, BfPopulateType_Declaration);
+				}
+			}
+		}
 	}
 
 	if (!mContext->mSavedTypeDataMap.IsEmpty())
@@ -984,6 +995,15 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 // 					}
 // 					else
 // 						mContext->RebuildType(typeInst, false, false);					
+
+					if (typeInst->mGenericTypeInfo != NULL)
+					{
+						for (auto genericArg : typeInst->mGenericTypeInfo->mTypeGenericArguments)
+						{
+							if (!genericArg->IsReified())
+								PopulateType(genericArg, BfPopulateType_Declaration);
+						}
+					}
 				}
 			}
 			else
