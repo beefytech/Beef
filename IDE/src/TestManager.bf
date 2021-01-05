@@ -198,7 +198,7 @@ namespace IDE
 					String outputLine = scope String();
 					outputLine.Append(" >");
 					if (crPos - lastCrPos - 2 > 0)
-						outputLine.Append(StringView(queuedOutText, lastCrPos + 1, crPos - lastCrPos - 2));
+						outputLine.Append(StringView(queuedOutText, lastCrPos + 1, crPos - lastCrPos - 1));
 
 					QueueOutputLine(outputLine);
 					lastCrPos = crPos;
