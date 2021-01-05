@@ -366,6 +366,11 @@ bool BfModule::ValidateGenericConstraints(BfTypeReference* typeRef, BfTypeInstan
 
 bool BfModule::AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter)
 {
+	if (checkOuter == NULL)
+		return true;
+	if (checkInner == NULL)
+		return false;
+
 	// Added new flags?
 	if ((checkInner->mGenericParamFlags | checkOuter->mGenericParamFlags) != checkOuter->mGenericParamFlags)
 	{
@@ -4318,7 +4323,10 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			if (!boxedRequired)
 			{
 				if (wantsOnDemandMethods)
+				{
 					methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_NoDecl_AwaitingReference;
+					mOnDemandMethodCount++;
+				}
 				continue;
 			}
 		}
@@ -4329,7 +4337,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		if ((methodDef->mName == BF_METHODNAME_DYNAMICCAST) && (typeInstance->IsValueType()))
 			continue; // This is just a placeholder for boxed types
 
-		methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
+		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
+			methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
 		
 		if (wantsOnDemandMethods)
 		{	
@@ -4429,18 +4438,26 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 			if (!implRequired)
 			{
-				if (!mIsScratchModule)
-					mOnDemandMethodCount++;
+				BF_ASSERT(methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_NotSet);
+				if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
+				{
+					if (!mIsScratchModule)
+						mOnDemandMethodCount++;
+				}
 
 				if (!declRequired)
 				{
-					methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_NoDecl_AwaitingReference;
+					if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
+						methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_NoDecl_AwaitingReference;
 					continue;
 				}
 				else
 				{
-					methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
+					if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
+						methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 				}
+
+				VerifyOnDemandMethods();
 			}
 		}		
 	}
@@ -4468,7 +4485,13 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 				continue;
 
 			int prevWorklistSize = (int)mContext->mMethodWorkList.size();
-			auto moduleMethodInstance = GetMethodInstance(typeInstance, methodDef, BfTypeVector(), ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None);
+
+			auto flags = ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None;
+
+			if (methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude)
+				flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_MethodInstanceOnly);
+
+			auto moduleMethodInstance = GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags);
 
 			auto methodInstance = moduleMethodInstance.mMethodInstance;
 			if (methodInstance == NULL)
@@ -4608,13 +4631,15 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 								if (boxedMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
 								{
 									boxedMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
-									if (!mIsScratchModule)
-										mOnDemandMethodCount++;									
+									VerifyOnDemandMethods();
 								}
 							}							
 
+							auto methodFlags = matchedMethod->mIsForeignMethodDef ? BfGetMethodInstanceFlag_ForeignMethodDef : BfGetMethodInstanceFlag_None;
+							methodFlags = (BfGetMethodInstanceFlags)(methodFlags | BfGetMethodInstanceFlag_MethodInstanceOnly);
+							
 							auto moduleMethodInstance = GetMethodInstance(typeInstance, matchedMethod->mMethodDef, BfTypeVector(),
-								matchedMethod->mIsForeignMethodDef ? BfGetMethodInstanceFlag_ForeignMethodDef : BfGetMethodInstanceFlag_None,
+								methodFlags,
 								matchedMethod->GetForeignType());
 							auto methodInstance = moduleMethodInstance.mMethodInstance;
 							UniqueSlotVirtualMethod(methodInstance);
@@ -4916,7 +4941,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 						if ((hasDefaultImpl) && (matchedMethod == NULL))
 						{
 							auto methodDef = bestMethodInst->mMethodDef;
-							BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_ForeignMethodDef;
+							BfGetMethodInstanceFlags flags = (BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_ForeignMethodDef | BfGetMethodInstanceFlag_MethodInstanceOnly);
 							if ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType()))
 								flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_UnspecializedPass);
 							auto methodInst = GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags, ifaceInst);
@@ -4927,7 +4952,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 								BfMethodInstance* newMethodInstance = methodInst.mMethodInstance;
 								BF_ASSERT(newMethodInstance->mIsForeignMethodDef);					
 								if (newMethodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference)
-									mOnDemandMethodCount++;
+									mOnDemandMethodCount++;								
 								continue;
 							}
 						}
@@ -5006,6 +5031,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		}
 	}
 
+	VerifyOnDemandMethods();
+
 	ambiguityContext.Finish();
 	CheckAddFailType();
 
@@ -5083,6 +5110,8 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 			}
 
 			AddMethodToWorkList(defaultMethod);
+			// This should put all the specialized methods in the worklist, including us
+			return;
 		}
 	}
 
@@ -5132,16 +5161,34 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 
 			BF_ASSERT(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Referenced);
 			if (!mIsScratchModule)
-			{					
+			{				
 				auto onDemandModule = owningModule;
 				if (owningModule->mParentModule != NULL)
 					onDemandModule = owningModule->mParentModule;
+
+				owningModule->VerifyOnDemandMethods();
 				
 				if (methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
 					owningModule->mOnDemandMethodCount++;
 				BF_ASSERT(onDemandModule->mOnDemandMethodCount > 0);
+
+				VerifyOnDemandMethods();
 			}
 			methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_InWorkList;
+
+			if (methodInstance->mMethodInstanceGroup->mMethodSpecializationMap != NULL)
+			{
+				for (auto& kv : *methodInstance->mMethodInstanceGroup->mMethodSpecializationMap)
+				{
+					auto specMethodInstance = kv.mValue;
+					if ((!specMethodInstance->mDeclModule->mIsModuleMutable) && (!specMethodInstance->mDeclModule->mReifyQueued))
+					{
+						specMethodInstance->mDeclModule->PrepareForIRWriting(specMethodInstance->GetOwner());
+					}
+					specMethodInstance->mDeclModule->AddMethodToWorkList(specMethodInstance);
+				}
+			}
+			
 		}
 	}
 	else
@@ -9077,11 +9124,6 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 			auto genericArg = genericArgs[genericParamIdx + startDefGenericParamIdx];
 			genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(genericArg);
 			genericTypeInst->mGenericTypeInfo->mTypeGenericArgumentRefs.push_back(genericArgRef);
-
-			if (genericArg->IsConstExprValue())
-			{
-				NOP;
-			}
 
 			genericParamIdx++;
 		}

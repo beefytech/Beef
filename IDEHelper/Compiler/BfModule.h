@@ -1481,6 +1481,7 @@ public:
 	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType);
 	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);	
 	void SetFail();
+	void VerifyOnDemandMethods();
 	bool IsSkippingExtraResolveChecks();
 	BfError* Fail(const StringImpl& error, BfAstNode* refNode = NULL, bool isPersistent = false);
 	BfError* FailInternal(const StringImpl& error, BfAstNode* refNode = NULL);
@@ -1852,7 +1853,7 @@ public:
 	BfTypedValue CreateValueFromExpression(BfExprEvaluator& exprEvaluator, BfExpression* expr, BfType* wantTypeRef = NULL, BfEvalExprFlags flags = BfEvalExprFlags_None, BfType** outOrigType = NULL);
 	BfTypedValue CreateValueFromExpression(BfExpression* expr, BfType* wantTypeRef = NULL, BfEvalExprFlags flags = BfEvalExprFlags_None, BfType** outOrigType = NULL);
 	BfTypedValue GetOrCreateVarAddr(BfExpression* expr);
-	BfMethodInstance* GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL);	
+	BfMethodInstance* GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName = NULL);
 	BfMethodInstance* GetRawMethodInstance(BfTypeInstance* typeInstance, BfMethodDef* methodDef);
 	BfMethodInstance* GetRawMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount = -1, bool checkBase = false, bool allowMixin = false);
 	BfMethodInstance* GetUnspecializedMethodInstance(BfMethodInstance* methodInstance, bool useUnspecializedType = true); // Unspecialized owner type and unspecialized method type		

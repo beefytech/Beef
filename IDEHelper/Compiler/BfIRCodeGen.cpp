@@ -3344,11 +3344,6 @@ void BfIRCodeGen::HandleNextCmd()
 				int intrinId = -1;
 				if (mIntrinsicReverseMap.TryGetValue(funcPtr, &intrinId))
 				{
-					if (intrinId == BfIRIntrinsic__PLATFORM)
-					{
-						NOP;
-					}
-
 					if (intrinId == BfIRIntrinsic_MemSet)
 					{
 						int align = 1;

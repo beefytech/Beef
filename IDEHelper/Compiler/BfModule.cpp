@@ -1301,7 +1301,9 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 					for (auto& methodGroup : typeInst->mMethodInstanceGroups)
 					{
 						if ((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) ||
-							(methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference))
+							(methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) ||
+							(methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) ||
+							(methodGroup.mOnDemandKind == BfMethodOnDemandKind_InWorkList))
 						{
 							oldOnDemandCount++;
 						}
@@ -1320,7 +1322,8 @@ void BfModule::StartNewRevision(RebuildKind rebuildKind, bool force)
 	
 	if (!mIsDeleting)
 		Init();
-	mOnDemandMethodCount += oldOnDemandCount;	
+	mOnDemandMethodCount += oldOnDemandCount;
+	VerifyOnDemandMethods();
 }
 
 void BfModule::StartExtension()
@@ -2718,6 +2721,34 @@ void BfModule::SetFail()
 		if (mAttributeState != NULL)
 			mAttributeState->mFlags = (BfAttributeState::Flags)(mAttributeState->mFlags | BfAttributeState::Flag_HadError);		
 	}	
+}
+
+void BfModule::VerifyOnDemandMethods()
+{
+#ifdef _DEBUG
+// 	if (mParentModule != NULL)
+// 	{
+// 		BF_ASSERT(mOnDemandMethodCount == 0);
+// 		mParentModule->VerifyOnDemandMethods();
+// 		return;
+// 	}
+// 
+// 	int onDemandCount = 0;
+// 	for (auto type : mOwnedTypeInstances)
+// 	{
+// 		auto typeInst = type->ToTypeInstance();
+// 		for (auto& methodGroup : typeInst->mMethodInstanceGroups)
+// 		{
+// 			if ((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) ||
+// 				(methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference) ||
+// 				(methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) ||
+// 				(methodGroup.mOnDemandKind == BfMethodOnDemandKind_InWorkList))
+// 				onDemandCount++;
+// 		}
+// 	}
+// 
+// 	BF_ASSERT(mOnDemandMethodCount == onDemandCount);
+#endif
 }
 
 bool BfModule::IsSkippingExtraResolveChecks()
@@ -9687,12 +9718,14 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 			if ((methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference) || (methodGroup.mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl))
 				methodGroup.mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 			
-			return declModule->GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector(), (BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_Unreified)).mMethodInstance;
+			BfGetMethodInstanceFlags useFlags = (BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_MethodInstanceOnly | BfGetMethodInstanceFlag_UnspecializedPass | BfGetMethodInstanceFlag_Unreified);
+			return declModule->GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector(), useFlags).mMethodInstance;
 		}
 		else
 		{
 			auto declModule = typeInstance->mModule;
-			return declModule->GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector(), (BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_UnspecializedPass)).mMethodInstance;
+			BfGetMethodInstanceFlags useFlags = (BfGetMethodInstanceFlags)(BfGetMethodInstanceFlag_MethodInstanceOnly | BfGetMethodInstanceFlag_UnspecializedPass);
+			return declModule->GetMethodInstance(typeInstance, typeInstance->mTypeDef->mMethods[methodIdx], BfTypeVector(), useFlags).mMethodInstance;
 		}
 	}
 	auto methodInstance = typeInstance->mMethodInstanceGroups[methodIdx].mDefault;
@@ -9715,7 +9748,7 @@ BfMethodInstance* BfModule::GetRawMethodInstance(BfTypeInstance* typeInstance, B
 		return GetMethodInstance(typeInstance, methodDef, BfTypeVector()).mMethodInstance;
 	}
 
-	return GetRawMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
+	return GetRawMethodInstanceAtIdx(typeInstance, methodDef->mIdx, NULL);
 }
 
 BfMethodInstance* BfModule::GetRawMethodByName(BfTypeInstance* typeInstance, const StringImpl& methodName, int paramCount, bool checkBase, bool allowMixin)
@@ -12724,6 +12757,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					methodInstance->UndoDeclaration(!methodInstance->mIRFunction.IsFake());
 					doingRedeclare = true;
 					mOnDemandMethodCount++;
+					VerifyOnDemandMethods();
 				}
 			}
 			else
@@ -12879,8 +12913,14 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					AddMethodToWorkList(methodInstance);
 			}
 			else
-			{
+			{				
 				methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Referenced;
+				auto owningModule = methodInstance->GetOwner()->mModule;
+				if (!owningModule->mIsScratchModule)
+				{
+					owningModule->mOnDemandMethodCount--;
+					owningModule->VerifyOnDemandMethods();
+				}
 			}
 		}
 
@@ -13137,6 +13177,11 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	if ((methodDef->mMethodType == BfMethodType_Mixin) && (methodDef->mGenericParams.size() != 0) && (!isUnspecializedPass))
 	{
 		// For mixins we only process the unspecialized version
+		addToWorkList = false;
+	}
+
+	if ((flags & BfGetMethodInstanceFlag_MethodInstanceOnly) != 0)
+	{
 		addToWorkList = false;
 	}
 
@@ -17793,11 +17838,11 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 
 	BfMethodInstance* defaultMethodInstance = methodInstance->mMethodInstanceGroup->mDefault;
-
-	BF_ASSERT(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_NotSet);
-
+	
 	if (!mIsConstModule)
 	{
+		BF_ASSERT(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_NotSet);
+
 		if ((methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_AlwaysInclude) &&
 			(methodInstance->mMethodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_Referenced))
 		{
@@ -17815,6 +17860,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 			}
 
 			methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Referenced;
+			VerifyOnDemandMethods();
 		}
 	}
 
@@ -18057,12 +18103,20 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		
 		BF_ASSERT(unspecializedMethodInstance != methodInstance);
 		if (!unspecializedMethodInstance->mHasBeenProcessed)
-		{			
-			// Make sure the unspecialized method is processed so we can take its bindings
+		{
+			if (mIsConstModule)
+			{
+				// This will have already been populated by CeMachine
+				methodState.mGenericTypeBindings = &methodInstance->GetMethodInfoEx()->mGenericTypeBindings;
+			}
+			else
+			{				
+				// Make sure the unspecialized method is processed so we can take its bindings
 
-			// Clear mCurMethodState so we don't think we're in a local method
-			SetAndRestoreValue<BfMethodState*> prevMethodState_Unspec(mCurMethodState, prevMethodState.mPrevVal);
-			mContext->ProcessMethod(unspecializedMethodInstance);
+				// Clear mCurMethodState so we don't think we're in a local method
+				SetAndRestoreValue<BfMethodState*> prevMethodState_Unspec(mCurMethodState, prevMethodState.mPrevVal);
+				mContext->ProcessMethod(unspecializedMethodInstance);
+			}
 		}
 		methodState.mGenericTypeBindings = &unspecializedMethodInstance->GetMethodInfoEx()->mGenericTypeBindings;
 	}
@@ -22020,17 +22074,25 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 				mFuncReferences[methodInstance] = func;
 		}
 	}
-		
+	
+	if (methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
+	{
+		methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
+		auto owningModule = methodInstance->GetOwner()->mModule;
+		if (!owningModule->mIsScratchModule)
+			owningModule->mOnDemandMethodCount++;
+		VerifyOnDemandMethods();		
+	}
+
+	bool wasAwaitingDecl = methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl;
+	if (wasAwaitingDecl)
+		methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingReference;
+
 	if (addToWorkList)
 	{
-		bool wasAwaitingDecl = methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl;
-		if (wasAwaitingDecl)
-			methodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingReference;		
-
 		if ((!methodDef->mIsAbstract) && (!methodInstance->mIgnoreBody))
-		{
-			if (!wasAwaitingDecl)
-				AddMethodToWorkList(methodInstance);			
+		{			
+			AddMethodToWorkList(methodInstance);
 		}
 		else
 		{			
@@ -22043,6 +22105,10 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 				methodInstance->mIRFunction = BfIRFunction();
 			}
 		}
+	}	
+	else
+	{
+		//BF_ASSERT(methodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference);
 	}
 		
 	if ((!methodInstance->IsSpecializedGenericMethodOrType()) && (!mCurTypeInstance->IsBoxed()) && 

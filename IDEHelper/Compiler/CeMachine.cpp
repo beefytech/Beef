@@ -1154,6 +1154,23 @@ void CeBuilder::HandleParams()
 	}
 }
 
+void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance* dupMethodInstance)
+{
+	auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
+	auto irBuilder = mCeMachine->mCeModule->mBfIRBuilder;
+	auto beModule = irCodeGen->mBeModule;
+		
+	dupMethodInstance->mIsReified = true;
+	dupMethodInstance->mInCEMachine = false; // Only have the original one
+	
+	mCeMachine->mCeModule->mHadBuildError = false;
+	auto irState = irBuilder->GetState();
+	auto beState = irCodeGen->GetState();
+	mCeMachine->mCeModule->ProcessMethod(dupMethodInstance, true);
+	irCodeGen->SetState(beState);
+	irBuilder->SetState(irState);
+}
+
 void CeBuilder::Build()
 {
 	auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
@@ -1164,32 +1181,41 @@ void CeBuilder::Build()
 
 	auto methodInstance = mCeFunction->mMethodInstance;
 	
+
 	if (methodInstance != NULL)
 	{
+		BfMethodInstance dupMethodInstance;
+		dupMethodInstance.CopyFrom(methodInstance);
 		auto methodDef = methodInstance->mMethodDef;
 
-		BfMethodInstance dupMethodInstance;
-		dupMethodInstance.CopyFrom(methodInstance);		
-		dupMethodInstance.mIsReified = true;
-		dupMethodInstance.mInCEMachine = false; // Only have the original one
+		bool isGenericVariation = (methodInstance->mIsUnspecializedVariation) || (methodInstance->GetOwner()->IsUnspecializedTypeVariation());				
+		int dependentGenericStartIdx = 0;
+		if (methodInstance->mMethodInfoEx != NULL)
+			dependentGenericStartIdx = (int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+		if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) ||
+			((methodInstance->GetOwner()->IsGenericTypeInstance()) && (!isGenericVariation) && (!methodInstance->mMethodDef->mIsLocalMethod))))
+		{
+			auto unspecializedMethodInstance = mCeMachine->mCeModule->GetUnspecializedMethodInstance(methodInstance, !methodInstance->mMethodDef->mIsLocalMethod);
+			if (!unspecializedMethodInstance->mHasBeenProcessed)
+			{
+				BfMethodInstance dupUnspecMethodInstance;
+				dupUnspecMethodInstance.CopyFrom(unspecializedMethodInstance);
+				ProcessMethod(unspecializedMethodInstance, &dupUnspecMethodInstance);
+				dupMethodInstance.GetMethodInfoEx()->mGenericTypeBindings = dupUnspecMethodInstance.mMethodInfoEx->mGenericTypeBindings;
+			}
+		}
 
 		int startFunctionCount = (int)beModule->mFunctions.size();
+		ProcessMethod(methodInstance, &dupMethodInstance);		
 		
-		mCeMachine->mCeModule->mHadBuildError = false;
-		auto irState = irBuilder->GetState();
-		auto beState = irCodeGen->GetState();		
-		mCeMachine->mCeModule->ProcessMethod(&dupMethodInstance, true);
-		irCodeGen->SetState(beState);
-		irBuilder->SetState(irState);
-
 		if (!dupMethodInstance.mIRFunction)
 		{
 			mCeFunction->mFailed = true;
 			return;
-		}
+		}		
+		mBeFunction = (BeFunction*)irCodeGen->GetBeValue(dupMethodInstance.mIRFunction.mId);
 
 		mIntPtrType = irCodeGen->mBeContext->GetPrimitiveType((mPtrSize == 4) ? BeTypeCode_Int32 : BeTypeCode_Int64);
-		mBeFunction = (BeFunction*)irCodeGen->GetBeValue(dupMethodInstance.mIRFunction.mId);
 
 		for (int funcIdx = startFunctionCount; funcIdx < (int)beModule->mFunctions.size(); funcIdx++)
 		{
