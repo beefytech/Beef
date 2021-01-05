@@ -1120,6 +1120,7 @@ namespace System.Reflection
 			obj = Internal.UnsafeCastToObject(mem);
 			obj.[Friend]mClassVData = (.)(void*)[Friend]mTypeClassVData;
 #endif
+			//Array1 holds the first element, we only want to set the remaining elements
 			if(count > 1)
 				Internal.MemSet((uint8*)Internal.UnsafeCastToPtr(obj) + [Friend]mInstSize, 0, [Friend]arraySize - [Friend]mInstSize);
 			var array = (Array)obj;
