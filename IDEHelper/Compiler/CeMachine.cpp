@@ -2714,13 +2714,27 @@ BfError* CeMachine::Fail(const CeFrame& curFrame, const StringImpl& str)
 			err = str;
 			err += " ";
 		}
-		
-		err += StrFormat("in const evaluation of ");
-		if (ceFunction->mMethodInstance != NULL)
-			err += mCeModule->MethodToString(ceFunction->mMethodInstance, BfMethodNameFlag_OmitParams);
-		else
+				
+		auto contextMethodInstance = mCurModule->mCurMethodInstance;
+		if (stackIdx > 1)
 		{
-			err += mCeModule->MethodToString(ceFunction->mCeInnerFunctionInfo->mOwner->mMethodInstance, BfMethodNameFlag_OmitParams);
+			auto func = mCallStack[stackIdx - 1].mFunction;
+			contextMethodInstance = func->mCeFunctionInfo->mMethodInstance;			
+		}
+
+		err += StrFormat("in const evaluation of ");
+		
+		//
+		{
+			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeModule->mCurTypeInstance, (contextMethodInstance != NULL) ? contextMethodInstance->GetOwner() : NULL);
+			SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeModule->mCurMethodInstance, contextMethodInstance);
+
+			if (ceFunction->mMethodInstance != NULL)
+				err += mCeModule->MethodToString(ceFunction->mMethodInstance, BfMethodNameFlag_OmitParams);
+			else
+			{
+				err += mCeModule->MethodToString(ceFunction->mCeInnerFunctionInfo->mOwner->mMethodInstance, BfMethodNameFlag_OmitParams);
+			}
 		}
 		 
 		if (emitEntry != NULL)
@@ -2830,6 +2844,8 @@ addr_ce CeMachine::GetReflectType(int typeId)
 	addr_ce* addrPtr = NULL;
 	if (!mReflectMap.TryAdd(typeId, NULL, &addrPtr))
 		return *addrPtr;
+
+	SetAndRestoreValue<bool> ignoreWrites(mCeModule->mBfIRBuilder->mIgnoreWrites, false);
 
 	if (mCeModule->mContext->mBfTypeType == NULL)
 		mCeModule->mContext->ReflectInit();
@@ -2981,9 +2997,12 @@ void CeMachine::DerefMethodInfo(CeFunctionInfo* ceFunctionInfo)
 		return;
 	BF_ASSERT(ceFunctionInfo->mMethodInstance == NULL);	
 
-	auto itr = mNamedFunctionMap.Find(ceFunctionInfo->mName);
-	if (itr->mValue == ceFunctionInfo)
-		mNamedFunctionMap.Remove(itr);	
+	if (!ceFunctionInfo->mName.IsEmpty())
+	{
+		auto itr = mNamedFunctionMap.Find(ceFunctionInfo->mName);
+		if (itr->mValue == ceFunctionInfo)
+			mNamedFunctionMap.Remove(itr);
+	}
 	delete ceFunctionInfo;
 }
 

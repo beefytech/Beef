@@ -5078,12 +5078,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	if (mModule->mCompiler->mCEMachine != NULL)
 	{
-		if ((mModule->mIsConstModule) && (!methodInstance->mReturnType->IsVar()))
-		{						
-			mModule->mCompiler->mCEMachine->QueueMethod(methodInstance, func);
-		}
-		else if ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0)
-		{
+		bool doConstReturn = false;
+
+		if ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0)
+		{			
 			if (mFunctionBindResult != NULL)
 			{
 				forceBind = true;
@@ -5091,6 +5089,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			else if ((mBfEvalExprFlags & BfEvalExprFlags_InCascade) != 0)
 			{
 				mModule->Fail("Const evaluation not allowed with cascade operator", targetSrc);
+			}			
+			else if (methodInstance->mIsUnspecialized)
+			{
+				doConstReturn = true;
 			}
 			else
 			{
@@ -5101,7 +5103,34 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					BF_ASSERT(!constRet.mType->IsVar());
 					return constRet;
 				}
+			}			
+		}
+		else if (mModule->mIsConstModule)
+ 		{		
+			if (methodInstance->mIsUnspecialized)
+			{
+				doConstReturn = true;
 			}
+			else
+			{
+				mModule->mCompiler->mCEMachine->QueueMethod(methodInstance, func);
+			}
+ 		}
+
+		if (doConstReturn)
+		{
+			if ((returnType->IsVar()) && (mExpectingType != NULL))
+				returnType = mExpectingType;
+			if (returnType->IsRef())
+			{
+				return _GetDefaultReturnValue();
+			}
+			else
+			{
+				return mModule->GetDefaultTypedValue(returnType, true, BfDefaultValueKind_Undef);
+			}
+
+			return _GetDefaultReturnValue();
 		}
 	}
 
