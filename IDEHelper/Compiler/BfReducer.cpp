@@ -9209,6 +9209,8 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				nameAfterNode = nameIdentifierNode;				
 			}			
 		}
+
+		node->mSrcEnd = paramDecl->mSrcEnd;
 	}
 
 	if (attributes != NULL)
