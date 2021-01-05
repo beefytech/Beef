@@ -403,6 +403,13 @@ namespace System.Collections
 				Internal.MemCpy(destList.mItems, mItems, mSize * strideof(T), alignof(T));
 		}
 
+		public void CopyTo(Span<T> span)
+		{
+			// Delegate rest of error checking to Array.Copy.
+			for (int i = 0; i < mSize; i++)
+				span[i] = mItems[i];
+		}
+
 		public void CopyTo(T[] array, int arrayIndex)
 		{
 			// Delegate rest of error checking to Array.Copy.

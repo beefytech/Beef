@@ -10,7 +10,7 @@ namespace System.Collections
 		public void Add(T item);
 		public void Clear();
 		public bool Contains(T item);
-		public void CopyTo(T[] arr, int index);
+		public void CopyTo(Span<T> span);
 		public bool Remove(T item);
 	}
 }

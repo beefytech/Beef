@@ -290,23 +290,15 @@ namespace System.Collections
 			}
 		}
 		
-		public void CopyTo(KeyValuePair[] kvPair, int index)
+		public void CopyTo(Span<KeyValuePair> kvPair)
 		{
-			Keys.Reset();
-			Values.Reset();
-			int i = 0;
-
-			repeat
+			Debug.Assert(kvPair.Length >= mCount);
+			int idx = 0;
+			for (var kv in this)
 			{
-				if (i >= index)
-				{
-					kvPair[i] = (Keys.Current, Values.Current);
-				}
+				kvPair[idx] = kv;
+				++idx;
 			}
-			while(Keys.MoveNext() && Values.MoveNext());
-
-			Keys.Reset();
-			Values.Reset();
 		}
 
 		public Enumerator GetEnumerator()
