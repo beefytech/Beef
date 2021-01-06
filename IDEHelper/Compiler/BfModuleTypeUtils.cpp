@@ -9666,11 +9666,18 @@ BfType* BfModule::ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, B
 			auto genericTypeDef = ResolveGenericInstanceDef(genericTypeRef);
 			if (genericTypeDef == NULL)
 				return NULL;
-
+			
 			BfTypeVector typeVector;
 			for (int i = 0; i < (int)genericTypeDef->mGenericParamDefs.size(); i++)
 				typeVector.push_back(GetGenericParamType(BfGenericParamKind_Type, i));
-			return ResolveTypeDef(genericTypeDef, typeVector, populateType);
+			auto result = ResolveTypeDef(genericTypeDef, typeVector, populateType);
+			if ((result != NULL) && (genericTypeRef->mCommas.size() + 1 != genericTypeDef->mGenericParamDefs.size()))
+			{
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, result->ToTypeInstance());
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
+				Fail(StrFormat("Type '%s' requires %d generic arguments", TypeToString(result).c_str(), genericTypeDef->mGenericParamDefs.size()), typeRef);
+			}
+			return result;
 		}
 	}
 
