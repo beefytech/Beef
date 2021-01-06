@@ -2,7 +2,7 @@ PUSHD %~dp0
 
 @IF EXIST llvm-project_11_0_0 GOTO LLVM_HAS
 git clone --depth 1 --branch llvmorg-11.0.0 --config core.autocrlf=false https://github.com/llvm/llvm-project.git llvm-project_11_0_0
-pushd llvm-project_11_0_0
+@rem pushd llvm-project_11_0_0
 
 :LLVM_HAS
 
@@ -17,8 +17,9 @@ cd llvm_win64_11_0_0
 @GOTO DOBUILD
 
 :DOBUILD
-cmake --build . -t $(cat ../llvm_targets.txt) --config Debug
-cmake --build . -t $(cat ../llvm_targets.txt) --config Release
+set /p LLVM_TARGETS=<../llvm_targets.txt
+cmake --build . -t %LLVM_TARGETS% --config Debug
+cmake --build . -t %LLVM_TARGETS% --config Release
 
 :SUCCESS
 @ECHO SUCCESS!
