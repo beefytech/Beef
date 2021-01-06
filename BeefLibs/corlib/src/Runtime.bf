@@ -1,3 +1,4 @@
+using System.Threading;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS || BF_DEBUG_ALLOC
 #define BF_DBG_RUNTIME
 #endif
@@ -303,6 +304,7 @@ namespace System
 #if BF_DBG_RUNTIME
 			Dbg_Init(cVersion, (int32)flags, &BfRtCallbacks.sCallbacks);
 #endif
+			Thread.[Friend]Init();
 		}
 
 		[NoReturn]

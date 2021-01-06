@@ -140,7 +140,7 @@ namespace System.Threading
             SetStart((Delegate)start, maxStackSize);
         }
 
-        static this()
+        static void Init()
         {
 #unwarn
             RuntimeThreadInit runtimeThreadInitRef = ?;
