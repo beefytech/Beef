@@ -3171,10 +3171,14 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 					hashVal = ((hashVal ^ elemHash) << 5) - hashVal;
 					return hashVal;
 				}
-				if (!typedVal)	
+				if (!typedVal)
 					ctx->mFailed = true;
 				if (typedVal)
+				{
+					SetAndRestoreValue<bool> prevIgnoreWrites(ctx->mModule->mBfIRBuilder->mIgnoreWrites, true);
 					typedVal = ctx->mModule->Cast(sizeExpr, typedVal, intType);
+				}
+			
 				if (typedVal)
 				{
 					auto constant = ctx->mModule->mBfIRBuilder->GetConstant(typedVal.mValue);
