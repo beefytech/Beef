@@ -4608,7 +4608,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			lastNotEqBlock = notEqBB;
 		}
 
-		if (lastDefaultBlock)
+		if ((lastDefaultBlock) && (switchStatement))
 			mBfIRBuilder->SetSwitchDefaultDest(switchStatement, lastDefaultBlock);
 
 		auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
