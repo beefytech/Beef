@@ -295,6 +295,7 @@ namespace System
 			return str.Ptr;
 		}
 
+		[Commutable]
 		public static bool operator==(String s1, String s2)
 		{
 			return Equals(s1, s2);

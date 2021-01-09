@@ -215,6 +215,14 @@ namespace System
 		    }
 		}
 
+		public bool IsInterface
+		{
+		    get
+		    {
+		        return (mTypeFlags & TypeFlags.Interface) != 0;
+		    }
+		}
+
 		public bool IsValueType
 		{
 		    get
@@ -263,6 +271,32 @@ namespace System
             }
         }
 
+		public bool IsBoxedStructPtr
+		{
+		    get
+		    {
+		        return (mTypeFlags & (TypeFlags.Boxed | TypeFlags.Pointer)) == TypeFlags.Boxed | TypeFlags.Pointer;
+		    }
+		}
+
+		public bool IsBoxedPrimitivePtr
+		{
+			get
+			{
+				if (!mTypeFlags.HasFlag(.Boxed))
+					return false;
+
+				let underyingType = UnderlyingType;
+				if (var genericTypeInstance = underyingType as SpecializedGenericType)
+				{
+					if (genericTypeInstance.UnspecializedType == typeof(Pointer<>))
+						return true;
+				}
+
+				return false;
+			}
+		}
+
 		public Type BoxedPtrType
 		{
 			get
@@ -283,6 +317,14 @@ namespace System
 				}
 
 				return null;
+			}
+		}
+
+		public TypeInstance BoxedType
+		{
+			get
+			{
+				return (TypeInstance)GetType(mBoxedType);
 			}
 		}
 
@@ -374,6 +416,14 @@ namespace System
 		    }
 		}
 
+		public virtual TypeInstance.InterfaceEnumerator Interfaces
+		{
+		    get
+		    {
+		        return .(null);
+		    }
+		}
+
 		public virtual TypeInstance OuterType
 		{
 		    get
@@ -420,14 +470,20 @@ namespace System
         {
             return (int32)mTypeId;
         }
-        
+
+		static extern Type Comptime_GetTypeById(int32 typeId);
+
         protected static Type GetType(TypeId typeId)
         {
+			if (Compiler.IsComptime)
+				return Comptime_GetTypeById((.)typeId);
             return sTypes[(int32)typeId];
         }
 
 		protected static Type GetType_(int32 typeId)
 		{
+			if (Compiler.IsComptime)
+				return Comptime_GetTypeById(typeId);
 		    return sTypes[typeId];
 		}
 
@@ -477,11 +533,6 @@ namespace System
 			GetFullName(strBuffer);
         }*/
         
-        public virtual Type GetBaseType()
-        {
-            return null;
-        }
-
         protected this()
         {
         }
@@ -491,12 +542,12 @@ namespace System
             return type == this;
         }
 
-		public virtual bool CheckInterface(Type interfaceType)
+		public virtual Result<FieldInfo> GetField(String fieldName)
 		{
-		    return false;
+		    return .Err;
 		}
 
-		public virtual Result<FieldInfo> GetField(String fieldName)
+		public virtual Result<FieldInfo> GetField(int idx)
 		{
 		    return .Err;
 		}
@@ -505,7 +556,14 @@ namespace System
 		{
 		    return FieldInfo.Enumerator(null, bindingFlags);
 		}
-		
+
+		public Result<T> GetCustomAttribute<T>() where T : Attribute
+		{
+			if (var typeInstance = this as TypeInstance)
+				return typeInstance.[Friend]GetCustomAttribute<T>(typeInstance.[Friend]mCustomAttributesIdx);
+			return .Err;
+		}
+
 		public override void ToString(String strBuffer)
 		{
 			GetFullName(strBuffer);
@@ -618,8 +676,8 @@ namespace System.Reflection
 			public TypeId mReturnType;
 			public int16 mParamCount;
 			public MethodFlags mFlags;
-			public int32 mVirtualIdx;
 			public int32 mMethodIdx;
+			public int32 mVirtualIdx;
 			public int32 mCustomAttributesIdx;
         }
 
@@ -646,6 +704,27 @@ namespace System.Reflection
 			public int32 mStartVirtualIdx;
 		}
 
+		public struct InterfaceEnumerator : IEnumerator<TypeInstance>
+		{
+			public TypeInstance mTypeInstance;
+			public int mIdx = -1;
+
+			public this(TypeInstance typeInstance)
+			{
+				mTypeInstance = typeInstance;
+			}
+
+			public Result<TypeInstance> GetNext() mut
+			{
+				if (mTypeInstance == null)
+					return .Err;
+				mIdx++;
+				if (mIdx >= mTypeInstance.mInterfaceCount)
+					return .Err;
+				return Type.[Friend]GetType(mTypeInstance.mInterfaceDataPtr[mIdx].mInterfaceType) as TypeInstance;
+			}
+		}
+
         ClassVData* mTypeClassVData;
         String mName;
         String mNamespace;
@@ -660,17 +739,17 @@ namespace System.Reflection
 
 		uint8 mInterfaceSlot;
         uint8 mInterfaceCount;
-        int16 mInterfaceMethodCount;
+		int16 mInterfaceMethodCount;
         int16 mMethodDataCount;
         int16 mPropertyDataCount;
         int16 mFieldDataCount;
 
         InterfaceData* mInterfaceDataPtr;
 		void** mInterfaceMethodTable;
-        MethodData* mMethodDataPtr;
-        void* mPropertyDataPtr;
-        FieldData* mFieldDataPtr;
-        void** mCustomAttrDataPtr;
+		MethodData* mMethodDataPtr;
+		void* mPropertyDataPtr;
+		FieldData* mFieldDataPtr;
+		void** mCustomAttrDataPtr;
 
         public override int32 InstanceSize
         {
@@ -700,15 +779,23 @@ namespace System.Reflection
         {
             get
             {
-                return (TypeInstance)Type.[Friend]GetType(mBaseType);
+                return (TypeInstance)Type.GetType(mBaseType);
             }
         }
+
+		public override InterfaceEnumerator Interfaces
+		{
+		    get
+		    {
+		        return .(this);
+		    }
+		}
 
 		public override TypeInstance OuterType
 		{
 		    get
 		    {
-		        return (TypeInstance)Type.[Friend]GetType(mOuterType);
+		        return (TypeInstance)Type.GetType(mOuterType);
 		    }
 		}
 
@@ -716,7 +803,7 @@ namespace System.Reflection
 		{
 		    get
 		    {
-		        return Type.[Friend]GetType(mUnderlyingType);
+		        return Type.GetType(mUnderlyingType);
 		    }
 		}
 
@@ -728,33 +815,23 @@ namespace System.Reflection
 			}
 		}
 
-		public override Type GetBaseType()
-		{
-			return Type.[Friend]GetType(mBaseType);
-		}
-
         public override bool IsSubtypeOf(Type checkBaseType)
 		{
 		    TypeInstance curType = this;
+			if (curType.IsBoxed)
+			{
+				curType = curType.UnderlyingType as TypeInstance;
+				if (curType == null)
+					return false;
+			}
 		    while (true)
 		    {
 		        if (curType == checkBaseType)
 		            return true;
 		        if (curType.mBaseType == 0)
 		            return false;
-		        curType = (TypeInstance)Type.[Friend]GetType(curType.mBaseType);
+		        curType = (TypeInstance)Type.GetType(curType.mBaseType);
 		    }
-		}
-
-		public override bool CheckInterface(Type interfaceType)
-		{
-			for (int i < mInterfaceCount)
-				if (mInterfaceDataPtr[i].mInterfaceType == interfaceType.TypeId)
-					return true;
-			let baseType = GetBaseType();
-			if (baseType != null)
-				return baseType.CheckInterface(interfaceType);
-		    return false;
 		}
 
         public override void GetFullName(String strBuffer)
@@ -762,11 +839,26 @@ namespace System.Reflection
 			if (mTypeFlags.HasFlag(TypeFlags.Tuple))
 			{
 				strBuffer.Append('(');
-				for (int fieldIdx < mFieldDataCount)
+				if (mFieldDataCount > 0)
 				{
-					if (fieldIdx > 0)
-						strBuffer.Append(", ");
-					GetType(mFieldDataPtr[fieldIdx].[Friend]mFieldTypeId).GetFullName(strBuffer);
+					for (int fieldIdx < mFieldDataCount)
+					{
+						if (fieldIdx > 0)
+							strBuffer.Append(", ");
+						GetType(mFieldDataPtr[fieldIdx].[Friend]mFieldTypeId).GetFullName(strBuffer);
+					}
+				}
+				else if ((mTypeFlags.HasFlag(.Splattable)) && (mFieldDataPtr != null))
+				{
+					let splatData = (FieldSplatData*)mFieldDataPtr;
+					for (int i < 3)
+					{
+						if (splatData.mSplatTypes[i] == 0)
+							break;
+						if (i > 0)
+							strBuffer.Append(", ");
+						GetType(splatData.mSplatTypes[i]).GetFullName(strBuffer);
+					}
 				}
 				strBuffer.Append(')');
 			}
@@ -778,19 +870,34 @@ namespace System.Reflection
 			}
 			else
 			{
-				if (mOuterType != 0)
+				if ((mName != null) && (mName != ""))
 				{
-					GetType(mOuterType).GetFullName(strBuffer);
-					strBuffer.Append(".");
-				}
-				else
-				{
-					if (!String.IsNullOrEmpty(mNamespace))
-		            	strBuffer.Append(mNamespace, ".");
-				}
+					if (mOuterType != 0)
+					{
+						let outerType = GetType(mOuterType);
+						if (outerType != null)
+							outerType.GetFullName(strBuffer);
+						else
+							strBuffer.Append("???");
+						strBuffer.Append(".");
+					}
+					else
+					{
+						if (!String.IsNullOrEmpty(mNamespace))
+					    	strBuffer.Append(mNamespace, ".");
+					}
 
-				if (mName != null)
 					strBuffer.Append(mName);
+				}
+				else if (mTypeFlags.HasFlag(.Delegate))
+					strBuffer.Append("delegate");
+				else if (mTypeFlags.HasFlag(.Function))
+					strBuffer.Append("function");
+				else if (mBaseType != 0)
+				{
+					strBuffer.Append("derivative of ");
+					GetType(mBaseType).GetFullName(strBuffer);
+				}
 			}
         }
 
@@ -810,10 +917,22 @@ namespace System.Reflection
 		    return .Err;
 		}
 
+		public override Result<FieldInfo> GetField(int fieldIdx)
+		{
+			if ((fieldIdx < 0) || (fieldIdx >= mFieldDataCount))
+				return .Err;
+			return FieldInfo(this, &mFieldDataPtr[fieldIdx]);
+		}
+
 		public override FieldInfo.Enumerator GetFields(BindingFlags bindingFlags = cDefaultLookup)
 		{
 		    return FieldInfo.Enumerator(this, bindingFlags);
-		}		
+		}
+
+		Result<T> GetCustomAttribute<T>(int customAttributeIdx) where T : Attribute
+		{
+			return .Err;
+		}
     }
 
 	[Ordered, AlwaysInclude(AssumeInstantiated=true)]
@@ -825,7 +944,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				return Type.[Friend]GetType(mElementType);
+				return Type.GetType(mElementType);
 			}
 		}
 
@@ -855,7 +974,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				return Type.[Friend]GetType(mElementType);
+				return Type.GetType(mElementType);
 			}
 		}
 
@@ -882,7 +1001,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				return Type.[Friend]GetType(mElementType);
+				return Type.GetType(mElementType);
 			}
 		}
 
@@ -919,14 +1038,14 @@ namespace System.Reflection
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     class SpecializedGenericType : TypeInstance
     {
-        TypeId mUnspecializedType;
-        TypeId* mResolvedTypeRefs;
+        protected TypeId mUnspecializedType;
+        protected TypeId* mResolvedTypeRefs;
 
 		public Type UnspecializedType
 		{
 			get
 			{
-				return Type.[Friend]GetType(mUnspecializedType);
+				return Type.GetType(mUnspecializedType);
 			}
 		}
 
@@ -934,7 +1053,7 @@ namespace System.Reflection
 		{
 			get
 			{
-				var unspecializedTypeG = Type.[Friend]GetType(mUnspecializedType);
+				var unspecializedTypeG = Type.GetType(mUnspecializedType);
 				var unspecializedType = (UnspecializedGenericType)unspecializedTypeG;
 				return unspecializedType.[Friend]mGenericParamCount;
 			}
@@ -947,7 +1066,7 @@ namespace System.Reflection
 
 		public override void GetFullName(String strBuffer)
 		{
-			var unspecializedTypeG = Type.[Friend]GetType(mUnspecializedType);
+			var unspecializedTypeG = Type.GetType(mUnspecializedType);
 			var unspecializedType = (UnspecializedGenericType)unspecializedTypeG;
 			base.GetFullName(strBuffer);
 
@@ -963,7 +1082,7 @@ namespace System.Reflection
 				{
 					if (i > 0)
 						strBuffer.Append(", ");
-					Type.[Friend]GetType(mResolvedTypeRefs[i]).GetFullName(strBuffer);
+					Type.GetType(mResolvedTypeRefs[i]).GetFullName(strBuffer);
 				}
 				strBuffer.Append('>');
 			}
@@ -979,7 +1098,7 @@ namespace System.Reflection
 
 		public override void GetFullName(String strBuffer)
 		{
-			Type.[Friend]GetType(mResolvedTypeRefs[0]).GetFullName(strBuffer);
+			Type.GetType(mResolvedTypeRefs[0]).GetFullName(strBuffer);
 			strBuffer.Append('[');
 			for (int commaNum < mRank - 1)
 				strBuffer.Append(',');
@@ -1002,7 +1121,9 @@ namespace System.Reflection
 			obj = Internal.UnsafeCastToObject(mem);
 			obj.[Friend]mClassVData = (.)(void*)[Friend]mTypeClassVData;
 #endif
-			Internal.MemSet((uint8*)Internal.UnsafeCastToPtr(obj) + [Friend]mInstSize, 0, [Friend]arraySize - [Friend]mInstSize);
+			//Array1 holds the first element, we only want to set the remaining elements
+			if(count > 1)
+				Internal.MemSet((uint8*)Internal.UnsafeCastToPtr(obj) + [Friend]mInstSize, 0, [Friend]arraySize - [Friend]mInstSize);
 			var array = (Array)obj;
 			array.[Friend]mLength = count;
 			return obj;
@@ -1019,17 +1140,19 @@ namespace System.Reflection
         Boxed                   = 0x0010,
         Pointer                 = 0x0020,
         Struct                  = 0x0040,
-        Primitive               = 0x0080,
-		TypedPrimitive          = 0x0100,
-		Tuple					= 0x0200,
-		Nullable				= 0x0400,
-		SizedArray				= 0x0800,
-		Splattable				= 0x1000,
-		Union					= 0x2000,
+		Interface               = 0x0080,
+        Primitive               = 0x0100,
+		TypedPrimitive          = 0x0200,
+		Tuple					= 0x0400,
+		Nullable				= 0x0800,
+		SizedArray				= 0x1000,
+		Splattable				= 0x2000,
+		Union					= 0x4000,
 		//
 		WantsMark				= 0x8000,
 		Delegate				= 0x10000,
-		HasDestructor			= 0x20000,
+		Function				= 0x20000,
+		HasDestructor			= 0x40000,
     }
 
     public enum FieldFlags : uint16
