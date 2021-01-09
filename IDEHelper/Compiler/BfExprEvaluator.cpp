@@ -1125,7 +1125,11 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 		BF_ASSERT(resolvedArg.mExpression->IsA<BfDelegateBindExpression>());
 		auto delegateBindExpr = BfNodeDynCast<BfDelegateBindExpression>(resolvedArg.mExpression);
 		BfMethodInstance* boundMethodInstance = NULL;
-		if (exprEvaluator.CanBindDelegate(delegateBindExpr, &boundMethodInstance, origCheckType, genericArgumentsSubstitute))
+
+		auto bindType = checkType;
+		if ((bindType == NULL) && (origCheckType != NULL) && (!origCheckType->IsUnspecializedTypeVariation()))
+			bindType = checkType;
+		if (exprEvaluator.CanBindDelegate(delegateBindExpr, &boundMethodInstance, bindType, genericArgumentsSubstitute))
 		{
 			if (delegateBindExpr->mNewToken == NULL)
 			{					
