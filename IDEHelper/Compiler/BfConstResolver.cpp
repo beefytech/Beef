@@ -68,11 +68,11 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 					}					
 					else if (auto indexerExpr = BfNodeDynCast<BfIndexerExpression>(invocationExpr->mTarget))
 					{
-						if (auto target = BfNodeDynCast<BfDotTypeReference>(indexerExpr->mTarget))
+						if (indexerExpr->mArguments.size() == 0)
 						{
 							// Inferred-type sized array initializer
 							arraySize = (int)invocationExpr->mArguments.size();
-						}																		
+						}						
 					}
 				}
 			}
