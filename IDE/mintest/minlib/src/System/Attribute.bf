@@ -231,7 +231,30 @@ namespace System
 
 	}
 
-	[AttributeUsage(.Method | .Invocation)]
+	[AttributeUsage(.Method)]
+	public struct ComptimeAttribute : Attribute
+	{
+		public this()
+		{
+
+		}
+
+		public bool OnlyFromComptime
+		{
+			set
+			{
+			}
+		}
+
+		public bool ConstEval
+		{
+			set
+			{
+			}
+		}
+	}
+
+	[AttributeUsage(.Invocation)]
 	public struct ConstEvalAttribute : Attribute
 	{
 
@@ -455,5 +478,15 @@ namespace System
 		public this(String message)
 		{
 		}
+	}
+
+	interface IComptimeTypeApply
+	{
+		void ApplyToType(Type type);
+	}
+
+	interface IComptimeMethodApply
+	{
+		void ApplyToMethod(Type type);
 	}
 }

@@ -304,7 +304,7 @@ namespace System
 		{
 
 		}
-	}
+	}	
 
 	[AttributeUsage(.Method /*2*/)]
 	public struct IntrinsicAttribute : Attribute
@@ -518,5 +518,15 @@ namespace System
 		public this(String message)
 		{
 		}
+	}
+
+	interface IComptimeTypeApply
+	{
+		void ApplyToType(Type type);
+	}
+
+	interface IComptimeMethodApply
+	{
+		void ApplyToMethod(Type type);
 	}
 }

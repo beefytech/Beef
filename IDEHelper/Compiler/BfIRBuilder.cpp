@@ -4893,37 +4893,37 @@ void BfIRBuilder::Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage)
 	NEW_CMD_INSERTED;
 }
 
-BfIRValue BfIRBuilder::ConstEval_GetBfType(int typeId, BfIRType resultType)
+BfIRValue BfIRBuilder::Comptime_GetBfType(int typeId, BfIRType resultType)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetBfType, typeId, resultType);
+	BfIRValue retVal = WriteCmd(BfIRCmd_Comptime_GetBfType, typeId, resultType);
 	NEW_CMD_INSERTED;
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::ConstEval_GetReflectType(int typeId, BfIRType resultType)
+BfIRValue BfIRBuilder::Comptime_GetReflectType(int typeId, BfIRType resultType)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetReflectType, typeId, resultType);
+	BfIRValue retVal = WriteCmd(BfIRCmd_Comptime_GetReflectType, typeId, resultType);
 	NEW_CMD_INSERTED;
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::ConstEval_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType)
+BfIRValue BfIRBuilder::Comptime_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_DynamicCastCheck, value, typeId, resultType);
+	BfIRValue retVal = WriteCmd(BfIRCmd_Comptime_DynamicCastCheck, value, typeId, resultType);
 	NEW_CMD_INSERTED;
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::ConstEval_GetVirtualFunc(BfIRValue value, int virtualTableId, BfIRType resultType)
+BfIRValue BfIRBuilder::Comptime_GetVirtualFunc(BfIRValue value, int virtualTableId, BfIRType resultType)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetVirtualFunc, value, virtualTableId, resultType);
+	BfIRValue retVal = WriteCmd(BfIRCmd_Comptime_GetVirtualFunc, value, virtualTableId, resultType);
 	NEW_CMD_INSERTED;
 	return retVal;
 }
 
-BfIRValue BfIRBuilder::ConstEval_GetInterfaceFunc(BfIRValue value, int typeId, int methodIdx, BfIRType resultType)
+BfIRValue BfIRBuilder::Comptime_GetInterfaceFunc(BfIRValue value, int typeId, int methodIdx, BfIRType resultType)
 {
-	BfIRValue retVal = WriteCmd(BfIRCmd_ConstEval_GetInterfaceFunc, value, typeId, methodIdx, resultType);
+	BfIRValue retVal = WriteCmd(BfIRCmd_Comptime_GetInterfaceFunc, value, typeId, methodIdx, resultType);
 	NEW_CMD_INSERTED;
 	return retVal;
 }

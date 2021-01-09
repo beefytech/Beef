@@ -2451,11 +2451,11 @@ String BeModule::ToString(BeFunction* wantFunc)
 						}
 					}
 					break;
-				DISPLAY_INST1(BeConstEvalGetType, "ConstEvalGetType", mTypeId);
-				DISPLAY_INST1(BeConstEvalGetReflectType, "ConstEvalGetReflectType", mTypeId);
-				DISPLAY_INST2(BeConstEvalDynamicCastCheck, "ConstEvalDynamicCastCheck", mValue, mTypeId);
-				DISPLAY_INST2(BeConstEvalGetVirtualFunc, "ConstEvalGetVirtualFunc", mValue, mVirtualTableIdx);
-				DISPLAY_INST3(BeConstEvalGetInterfaceFunc, "ConstEvalGetInterfaceFunc", mValue, mIFaceTypeId, mMethodIdx);
+				DISPLAY_INST1(BeComptimeGetType, "ComptimeGetType", mTypeId);
+				DISPLAY_INST1(BeComptimeGetReflectType, "ComptimeGetReflectType", mTypeId);
+				DISPLAY_INST2(BeComptimeDynamicCastCheck, "ComptimeDynamicCastCheck", mValue, mTypeId);
+				DISPLAY_INST2(BeComptimeGetVirtualFunc, "ComptimeGetVirtualFunc", mValue, mVirtualTableIdx);
+				DISPLAY_INST3(BeComptimeGetInterfaceFunc, "ComptimeGetInterfaceFunc", mValue, mIFaceTypeId, mMethodIdx);
 				default:
 					BF_FATAL("Notimpl");
 					str += "<UNKNOWN INST>";

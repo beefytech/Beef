@@ -2646,62 +2646,62 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, mBeModule->GetInsertBlock());
 		}
 		break;
-	case BfIRCmd_ConstEval_GetBfType:
+	case BfIRCmd_Comptime_GetBfType:
 		{
 			CMD_PARAM(int32, typeId);
 			CMD_PARAM(BeType*, resultType);
 
-			auto inst = mBeModule->AllocInst<BeConstEvalGetType>();
+			auto inst = mBeModule->AllocInst<BeComptimeGetType>();
 			inst->mTypeId = typeId;
 			inst->mResultType = resultType;
 			SetResult(curId, inst);
 		}
 		break;
-	case BfIRCmd_ConstEval_GetReflectType:
+	case BfIRCmd_Comptime_GetReflectType:
 		{
 			CMD_PARAM(int32, typeId);
 			CMD_PARAM(BeType*, resultType);
 
-			auto inst = mBeModule->AllocInst<BeConstEvalGetReflectType>();
+			auto inst = mBeModule->AllocInst<BeComptimeGetReflectType>();
 			inst->mTypeId = typeId;
 			inst->mResultType = resultType;
 			SetResult(curId, inst);
 		}
 		break;
-	case BfIRCmd_ConstEval_DynamicCastCheck:
+	case BfIRCmd_Comptime_DynamicCastCheck:
 		{
 			CMD_PARAM(BeValue*, value);
 			CMD_PARAM(int32, typeId);
 			CMD_PARAM(BeType*, resultType);
 
-			auto inst = mBeModule->AllocInst<BeConstEvalDynamicCastCheck>();
+			auto inst = mBeModule->AllocInst<BeComptimeDynamicCastCheck>();
 			inst->mValue = value;
 			inst->mTypeId = typeId;
 			inst->mResultType = resultType;
 			SetResult(curId, inst);
 		}
 		break;
-	case BfIRCmd_ConstEval_GetVirtualFunc:
+	case BfIRCmd_Comptime_GetVirtualFunc:
 		{
 			CMD_PARAM(BeValue*, value);
 			CMD_PARAM(int32, virtualTableIdx);
 			CMD_PARAM(BeType*, resultType);
 
-			auto inst = mBeModule->AllocInst<BeConstEvalGetVirtualFunc>();
+			auto inst = mBeModule->AllocInst<BeComptimeGetVirtualFunc>();
 			inst->mValue = value;
 			inst->mVirtualTableIdx = virtualTableIdx;
 			inst->mResultType = resultType;
 			SetResult(curId, inst);
 		}
 		break;
-	case BfIRCmd_ConstEval_GetInterfaceFunc:
+	case BfIRCmd_Comptime_GetInterfaceFunc:
 		{
 			CMD_PARAM(BeValue*, value);
 			CMD_PARAM(int32, ifaceTypeId);
 			CMD_PARAM(int32, methodIdx);
 			CMD_PARAM(BeType*, resultType);
 
-			auto inst = mBeModule->AllocInst<BeConstEvalGetInterfaceFunc>();
+			auto inst = mBeModule->AllocInst<BeComptimeGetInterfaceFunc>();
 			inst->mValue = value;
 			inst->mIFaceTypeId = ifaceTypeId;
 			inst->mMethodIdx = methodIdx;

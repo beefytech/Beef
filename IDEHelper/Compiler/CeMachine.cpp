@@ -1371,8 +1371,8 @@ void CeBuilder::Build()
 			case BeValueScopeStartInst::TypeId:
 			case BeValueScopeEndInst::TypeId:
 			case BeValueScopeRetainInst::TypeId:
-			case BeConstEvalGetVirtualFunc::TypeId:
-			case BeConstEvalGetInterfaceFunc::TypeId:
+			case BeComptimeGetVirtualFunc::TypeId:
+			case BeComptimeGetInterfaceFunc::TypeId:
 				break;
 			case BeUnreachableInst::TypeId:
 				Emit(CeOp_InvalidOp);
@@ -2385,7 +2385,7 @@ void CeBuilder::Build()
 
 						ceFunc = GetOperand(beFunction, false, true);
 					}
-					else if (auto beGetVirtualFunc = BeValueDynCast<BeConstEvalGetVirtualFunc>(castedInst->mFunc))
+					else if (auto beGetVirtualFunc = BeValueDynCast<BeComptimeGetVirtualFunc>(castedInst->mFunc))
 					{
 						virtTarget = GetOperand(beGetVirtualFunc->mValue);
 						virtualTableIdx = beGetVirtualFunc->mVirtualTableIdx;
@@ -2394,7 +2394,7 @@ void CeBuilder::Build()
 						BF_ASSERT(resultType->IsPointer());
 						beFuncType = (BeFunctionType*)((BePointerType*)resultType)->mElementType;
 					}
-					else if (auto beGetInterfaceFunc = BeValueDynCast<BeConstEvalGetInterfaceFunc>(castedInst->mFunc))
+					else if (auto beGetInterfaceFunc = BeValueDynCast<BeComptimeGetInterfaceFunc>(castedInst->mFunc))
 					{
 						virtTarget = GetOperand(beGetInterfaceFunc->mValue);
 						ifaceTypeId = beGetInterfaceFunc->mIFaceTypeId;
@@ -2533,17 +2533,17 @@ void CeBuilder::Build()
 					EmitFrameOffset(mcStackVal);
 				}
 				break;
-			case BeConstEvalGetType::TypeId:
+			case BeComptimeGetType::TypeId:
 				{
-					auto castedInst = (BeConstEvalGetType*)inst;
+					auto castedInst = (BeComptimeGetType*)inst;
 					result.mKind = CeOperandKind_Immediate;
 					result.mImmediate = castedInst->mTypeId;
 					result.mType = beModule->mContext->GetPrimitiveType(BeTypeCode_Int32);
 				}
 				break;
-			case BeConstEvalGetReflectType::TypeId:
+			case BeComptimeGetReflectType::TypeId:
 				{
-					auto castedInst = (BeConstEvalGetReflectType*)inst;
+					auto castedInst = (BeComptimeGetReflectType*)inst;
 					auto ptrType = beModule->mContext->GetVoidPtrType();
 					result = FrameAlloc(ptrType);
 
@@ -2552,9 +2552,9 @@ void CeBuilder::Build()
 					Emit((int32)castedInst->mTypeId);
 				}
 				break;
-			case BeConstEvalDynamicCastCheck::TypeId:
+			case BeComptimeDynamicCastCheck::TypeId:
 				{
-					auto castedInst = (BeConstEvalDynamicCastCheck*)inst;
+					auto castedInst = (BeComptimeDynamicCastCheck*)inst;
 					auto mcValue = GetOperand(castedInst->mValue);
 
 					auto ptrType = beModule->mContext->GetVoidPtrType();

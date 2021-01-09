@@ -5239,7 +5239,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			{
 				if (mModule->mIsComptimeModule)
 				{
-					funcCallInst = mModule->mBfIRBuilder->ConstEval_GetInterfaceFunc(irArgs[0], methodInstance->mMethodInstanceGroup->mOwner->mTypeId, methodInstance->mMethodDef->mIdx, funcPtrType1);
+					funcCallInst = mModule->mBfIRBuilder->Comptime_GetInterfaceFunc(irArgs[0], methodInstance->mMethodInstanceGroup->mOwner->mTypeId, methodInstance->mMethodDef->mIdx, funcPtrType1);
 				}
 				else
 				{
@@ -5259,7 +5259,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			}
 			else if (mModule->mIsComptimeModule)
 			{
-				funcCallInst = mModule->mBfIRBuilder->ConstEval_GetVirtualFunc(irArgs[0], methodInstance->mVirtualTableIdx, funcPtrType1);
+				funcCallInst = mModule->mBfIRBuilder->Comptime_GetVirtualFunc(irArgs[0], methodInstance->mVirtualTableIdx, funcPtrType1);
 			}
 			else
 			{

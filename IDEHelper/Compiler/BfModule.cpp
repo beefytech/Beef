@@ -4838,7 +4838,7 @@ BfIRValue BfModule::GetClassVDataPtr(BfTypeInstance* typeInstance)
 {
 	auto classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);
 	if (mIsComptimeModule)
-		return mBfIRBuilder->ConstEval_GetBfType(typeInstance->mTypeId, mBfIRBuilder->MapType(CreatePointerType(classVDataType)));
+		return mBfIRBuilder->Comptime_GetBfType(typeInstance->mTypeId, mBfIRBuilder->MapType(CreatePointerType(classVDataType)));
 	return mBfIRBuilder->CreateBitCast(CreateClassVDataGlobal(typeInstance), mBfIRBuilder->MapType(CreatePointerType(classVDataType)));
 }
 
@@ -4955,7 +4955,7 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 	{
 		auto typeTypeDef = ResolveTypeDef(mCompiler->mTypeTypeDef);
 		auto typeTypeInst = typeTypeDef->ToTypeInstance();
-		return mBfIRBuilder->ConstEval_GetReflectType(type->mTypeId, mBfIRBuilder->MapType(typeTypeInst));
+		return mBfIRBuilder->Comptime_GetReflectType(type->mTypeId, mBfIRBuilder->MapType(typeTypeInst));
 	}
 	
 	BfIRValue globalVariable;
@@ -9370,7 +9370,7 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 
 	if (mIsComptimeModule)
 	{
-		auto callResult = mBfIRBuilder->ConstEval_DynamicCastCheck(targetValue.mValue, targetType->mTypeId, mBfIRBuilder->MapType(mContext->mBfObjectType));
+		auto callResult = mBfIRBuilder->Comptime_DynamicCastCheck(targetValue.mValue, targetType->mTypeId, mBfIRBuilder->MapType(mContext->mBfObjectType));
 		auto cmpResult = mBfIRBuilder->CreateCmpNE(callResult, GetDefaultValue(mContext->mBfObjectType));
 		irb->CreateCondBr(cmpResult, trueBlock, falseBlock);
 		return;
@@ -19753,7 +19753,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		//  incase it gets called later by some hot-loaded coded
 		if ((mCompiler->mOptions.mAllowHotSwapping) && (mCurMethodInstance->mIRFunction) && (!mCurMethodInstance->mIRFunction.IsFake()) && (mCurTypeInstance != mContext->mBfObjectType))
 		{
-			if (!mCurMethodInstance->mMethodDef->mName.StartsWith("ConstEval_"))
+			if (!mCurMethodInstance->mMethodDef->mName.StartsWith("Comptime_"))
 				CreateFakeCallerMethod(mangledName);
 		}
 		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);

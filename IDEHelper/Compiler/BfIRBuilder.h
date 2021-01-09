@@ -284,11 +284,11 @@ enum BfIRCmd : uint8
 	BfIRCmd_Func_SafeRename,
 	BfIRCmd_Func_SetLinkage,
 
-	BfIRCmd_ConstEval_GetBfType,
-	BfIRCmd_ConstEval_GetReflectType,
-	BfIRCmd_ConstEval_DynamicCastCheck,
-	BfIRCmd_ConstEval_GetVirtualFunc,
-	BfIRCmd_ConstEval_GetInterfaceFunc,
+	BfIRCmd_Comptime_GetBfType,
+	BfIRCmd_Comptime_GetReflectType,
+	BfIRCmd_Comptime_DynamicCastCheck,
+	BfIRCmd_Comptime_GetVirtualFunc,
+	BfIRCmd_Comptime_GetInterfaceFunc,
 
 	BfIRCmd_SaveDebugLocation,
 	BfIRCmd_RestoreDebugLocation,
@@ -1263,11 +1263,11 @@ public:
 	void Func_SafeRename(BfIRFunction func);
 	void Func_SetLinkage(BfIRFunction func, BfIRLinkageType linkage);
 	
-	BfIRValue ConstEval_GetBfType(int typeId, BfIRType resultType);
-	BfIRValue ConstEval_GetReflectType(int typeId, BfIRType resultType);
-	BfIRValue ConstEval_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType);
-	BfIRValue ConstEval_GetVirtualFunc(BfIRValue value, int virtualTableId, BfIRType resultType);
-	BfIRValue ConstEval_GetInterfaceFunc(BfIRValue value, int typeId, int methodIdx, BfIRType resultType);
+	BfIRValue Comptime_GetBfType(int typeId, BfIRType resultType);
+	BfIRValue Comptime_GetReflectType(int typeId, BfIRType resultType);
+	BfIRValue Comptime_DynamicCastCheck(BfIRValue value, int typeId, BfIRType resultType);
+	BfIRValue Comptime_GetVirtualFunc(BfIRValue value, int virtualTableId, BfIRType resultType);
+	BfIRValue Comptime_GetInterfaceFunc(BfIRValue value, int typeId, int methodIdx, BfIRType resultType);
 
 	void SaveDebugLocation();
 	void RestoreDebugLocation();

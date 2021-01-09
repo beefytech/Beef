@@ -1348,10 +1348,10 @@ public:
 
 //////////////////////////////////////////////////////////////////////////
 
-class BeConstEvalGetType : public BeInst
+class BeComptimeGetType : public BeInst
 {
 public:
-	BE_VALUE_TYPE(BeConstEvalGetType, BeInst);
+	BE_VALUE_TYPE(BeComptimeGetType, BeInst);
 
 public:
 	int mTypeId;
@@ -1370,10 +1370,10 @@ public:
 	}
 };
 
-class BeConstEvalGetReflectType : public BeInst
+class BeComptimeGetReflectType : public BeInst
 {
 public:
-	BE_VALUE_TYPE(BeConstEvalGetReflectType, BeInst);
+	BE_VALUE_TYPE(BeComptimeGetReflectType, BeInst);
 
 public:
 	int mTypeId;
@@ -1392,10 +1392,10 @@ public:
 	}
 };
 
-class BeConstEvalDynamicCastCheck : public BeInst
+class BeComptimeDynamicCastCheck : public BeInst
 {
 public:
-	BE_VALUE_TYPE(BeConstEvalDynamicCastCheck, BeInst);
+	BE_VALUE_TYPE(BeComptimeDynamicCastCheck, BeInst);
 
 public:
 	BeValue* mValue;
@@ -1416,10 +1416,10 @@ public:
 	}
 };
 
-class BeConstEvalGetVirtualFunc : public BeInst
+class BeComptimeGetVirtualFunc : public BeInst
 {
 public:
-	BE_VALUE_TYPE(BeConstEvalGetVirtualFunc, BeInst);
+	BE_VALUE_TYPE(BeComptimeGetVirtualFunc, BeInst);
 
 public:
 	BeValue* mValue;
@@ -1440,10 +1440,10 @@ public:
 	}
 };
 
-class BeConstEvalGetInterfaceFunc : public BeInst
+class BeComptimeGetInterfaceFunc : public BeInst
 {
 public:
-	BE_VALUE_TYPE(BeConstEvalGetInterfaceFunc, BeInst);
+	BE_VALUE_TYPE(BeComptimeGetInterfaceFunc, BeInst);
 
 public:
 	BeValue* mValue;

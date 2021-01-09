@@ -98,16 +98,6 @@ namespace System
 		public static void EmitDefinition(Type owner, StringView text)
 		{
 			Comptime_EmitDefinition((.)owner.TypeId, text);
-		}
-
-		interface IComptimeTypeApply
-		{
-			void ApplyToType(Type type);
-		}
-
-		interface IComptimeMethodApply
-		{
-			void ApplyToMethod(Type type);
-		}
+		}	
 	}
 }
