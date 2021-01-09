@@ -36,7 +36,7 @@ BfConstResolver::BfConstResolver(BfModule* bfModule) : BfExprEvaluator(bfModule)
 
 BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfConstResolveFlags flags)
 {	
-	mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_ConstEval);
+	mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
 
 	// Handle the 'int[?] val = .(1, 2, 3)' case
 	if ((flags & BfConstResolveFlag_ArrayInitSize) != 0)

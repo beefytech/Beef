@@ -861,8 +861,10 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 				methodDef->mIsNoReturn = true;
 			else if (typeRefName == "SkipCall")
 				methodDef->mIsSkipCall = true;
-			else if (typeRefName == "ConstEval")
-				methodDef->mIsConstEval = true;
+			else if (typeRefName == "Comptime")
+			{
+				methodDef->mHasComptime = true;
+			}
 			else if (typeRefName == "NoShow")
 				methodDef->mIsNoShow = true;
 			else if (typeRefName == "NoDiscard")
@@ -883,6 +885,10 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 						methodDef->mCommutableKind = BfCommutableKind_Forward;
 				}
 			}			
+			else if (typeRefName == "OnCompile")
+			{
+				mCurTypeDef->mHasCEOnCompile = true;				
+			}
 		}
 
 		attributes = attributes->mNextAttribute;
@@ -900,7 +906,7 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfTypeDef* 
 			if (typeRefName == "AlwaysInclude")
 				typeDef->mIsAlwaysInclude = true;
 			else if (typeRefName == "NoDiscard")
-				typeDef->mIsNoDiscard = true;
+				typeDef->mIsNoDiscard = true;			
 		}
 
 		attributes = attributes->mNextAttribute;
@@ -927,7 +933,8 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 		Fail("Const properties are not allowed", propertyDeclaration->mConstSpecifier);
 	}
 
-	HashNode(*mSignatureHashCtx, propertyDeclaration, propertyDeclaration->mDefinitionBlock);	
+	if (mSignatureHashCtx != NULL)
+		HashNode(*mSignatureHashCtx, propertyDeclaration, propertyDeclaration->mDefinitionBlock);	
 
 	BfPropertyDef* propertyDef = new BfPropertyDef();
 	mCurTypeDef->mProperties.push_back(propertyDef);
@@ -956,7 +963,8 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 	if (propertyDeclaration->mDefinitionBlock == NULL) // To differentiate between autocompleting partial property if it transitions to a field
 	{
 		//mCurTypeDef->mSignatureHash = HashString("nullprop", mCurTypeDef->mSignatureHash);
-		mSignatureHashCtx->MixinStr("nullprop");
+		if (mSignatureHashCtx != NULL)
+			mSignatureHashCtx->MixinStr("nullprop");
 	}
 
 	auto indexerDeclaration = BfNodeDynCast<BfIndexerDeclaration>(propertyDeclaration);	
@@ -985,10 +993,13 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	for (auto methodDeclaration : propertyDeclaration->mMethods)
 	{
-		HashNode(*mSignatureHashCtx, methodDeclaration->mAttributes);
-		HashNode(*mSignatureHashCtx, methodDeclaration->mProtectionSpecifier);
-		HashNode(*mSignatureHashCtx, methodDeclaration->mNameNode);
-		HashNode(*mSignatureHashCtx, methodDeclaration->mMutSpecifier);		
+		if (mSignatureHashCtx != NULL)
+		{
+			HashNode(*mSignatureHashCtx, methodDeclaration->mAttributes);
+			HashNode(*mSignatureHashCtx, methodDeclaration->mProtectionSpecifier);
+			HashNode(*mSignatureHashCtx, methodDeclaration->mNameNode);
+			HashNode(*mSignatureHashCtx, methodDeclaration->mMutSpecifier);
+		}
 
 		if (!wantsBody)
 			continue;
@@ -1096,7 +1107,7 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 }
 
 void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
-{	
+{
 	mSystem->CheckLockYield();
 
 	int endingAdd = 1;// Add '1' for autocompletion of 'new' initializer
@@ -1141,7 +1152,8 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 	fieldDef->mInitializer = fieldDeclaration->mInitializer;
 
 	//mCurTypeDef->mSignatureHash = HashNode(fieldDeclaration, mCurTypeDef->mSignatureHash);
-	HashNode(*mSignatureHashCtx, fieldDeclaration);
+	if (mSignatureHashCtx != NULL)
+		HashNode(*mSignatureHashCtx, fieldDeclaration);
 }
 
 void BfDefBuilder::Visit(BfEnumCaseDeclaration* enumCaseDeclaration)
@@ -1918,26 +1930,35 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	bool hasCtor = false;	
 	bool needsDefaultCtor = (mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (!mCurTypeDef->mIsStatic) && (!isAlias);
 	bool hasDefaultCtor = false;
-	bool hasStaticCtor = false;
-	bool hasDtor = false;
-	bool hasStaticDtor = false;
-	bool hasMarkMethod = false;
-	bool hasStaticMarkMethod = false;
-	bool hasDynamicCastMethod = false;
-	bool hasToStringMethod = false;		
-	bool needsEqualsMethod = ((mCurTypeDef->mTypeCode == BfTypeCode_Struct) || (mCurTypeDef->mTypeCode == BfTypeCode_Enum)) && (!mCurTypeDef->mIsStatic);
-	bool hasEqualsMethod = false;
+	BfMethodDef* ctorClear = NULL;
+	BfMethodDef* staticCtor = NULL;
+	BfMethodDef* dtor = NULL;
+	BfMethodDef* staticDtor = NULL;
+	BfMethodDef* markMethod = NULL;
+	BfMethodDef* staticMarkMethod = NULL;
+	BfMethodDef* dynamicCastMethod = NULL;
+	BfMethodDef* toStringMethod = NULL;
+	bool needsEqualsMethod = ((mCurTypeDef->mTypeCode == BfTypeCode_Struct) || (mCurTypeDef->mTypeCode == BfTypeCode_Enum)) && (!mCurTypeDef->mIsStatic);	
+	BfMethodDef* equalsMethod = NULL;
+	BfMethodDef* strictEqualsMethod = NULL;
 	
 	bool needsStaticInit = false;
 	for (int methodIdx = 0; methodIdx < (int)mCurTypeDef->mMethods.size(); methodIdx++)
 	{
 		auto method = mCurTypeDef->mMethods[methodIdx];
+		
+		auto _SetMethod = [&](BfMethodDef*& setMethodDef, BfMethodDef* methodDef)
+		{
+			if ((setMethodDef != NULL) && (setMethodDef->mMethodDeclaration == NULL))
+				setMethodDef->mProtection = BfProtection_Hidden;
+			setMethodDef = methodDef;
+		};
 
 		if (method->mMethodType == BfMethodType_Ctor)
 		{
 			if (method->mIsStatic)
 			{
-				if (hasStaticCtor)
+				if ((staticCtor != NULL) && (staticCtor->mMethodDeclaration != NULL))
 				{
 					Fail("Only one static constructor is allowed", method->mMethodDeclaration);
 					method->mIsStatic = false;
@@ -1950,9 +1971,9 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 				}
 
 				if (method->mName == BF_METHODNAME_MARKMEMBERS_STATIC)
-					hasStaticMarkMethod = true;
+					_SetMethod(staticMarkMethod, method);
 
-				hasStaticCtor = true;
+				_SetMethod(staticCtor, method);
 			}
 			else			
 			{
@@ -1997,6 +2018,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 				}
 			}
 		}
+		if (method->mMethodType == BfMethodType_CtorClear)
+		{
+			ctorClear = method;
+		}
 		else if (method->mMethodType == BfMethodType_Init)
 		{
 			if (method->mIsStatic)
@@ -2006,22 +2031,22 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		{
 			if (method->mIsStatic)
 			{
-				if (hasStaticDtor)
+				if ((staticDtor != NULL) && (staticDtor->mMethodDeclaration != NULL))
 				{
 					Fail("Only one static constructor is allowed", method->mMethodDeclaration);
 					method->mIsStatic = false;
 				}
 				
-				hasStaticDtor = true;
+				_SetMethod(staticDtor, method);
 			}
 			else
 			{
-				if (hasDtor)
+				if ((dtor != NULL) && (dtor->mMethodDeclaration != NULL))
 				{
 					Fail("Only one destructor is allowed", method->mMethodDeclaration);
 					method->mIsStatic = false;
 				}
-				hasDtor = true;
+				_SetMethod(dtor, method);				
 			}
 
 			if (method->mParams.size() != 0)			
@@ -2032,16 +2057,16 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			if (method->mIsStatic)
 			{
 				if (method->mName == BF_METHODNAME_MARKMEMBERS_STATIC)
-					hasStaticMarkMethod = true;
+					_SetMethod(staticMarkMethod, method);
 			}
 			else
 			{
 				if (method->mName == BF_METHODNAME_MARKMEMBERS)
-					hasMarkMethod = true;
+					_SetMethod(markMethod, method);
 				if (method->mName == BF_METHODNAME_DYNAMICCAST)
-					hasDynamicCastMethod = true;
+					_SetMethod(dynamicCastMethod, method);
 				if (method->mName == BF_METHODNAME_TO_STRING)
-					hasToStringMethod = true;
+					_SetMethod(toStringMethod, method);
 			}
 		}
 		else if ((method->mMethodType == BfMethodType_Operator) &&
@@ -2056,7 +2081,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					if ((method->mParams[0]->mTypeRef->ToString() == mCurTypeDef->mName->ToString()) &&
 						(method->mParams[1]->mTypeRef->ToString() == mCurTypeDef->mName->ToString()))
 					{
-						hasEqualsMethod = true;
+						_SetMethod(equalsMethod, method);
 					}
 				}
 			}			
@@ -2121,7 +2146,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		}
 	}
 	
-	bool needsDynamicCastMethod = !hasDynamicCastMethod;
+	bool needsDynamicCastMethod = dynamicCastMethod == NULL;
 
 	if (mCurTypeDef->mIsFunction)
 	{
@@ -2131,24 +2156,24 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		needsDynamicCastMethod = false;
 	}
 
-	if ((mCurTypeDef->mTypeCode == BfTypeCode_Object) && (!mCurTypeDef->mIsStatic))
+	if ((mCurTypeDef->mTypeCode == BfTypeCode_Object) && (!mCurTypeDef->mIsStatic) && (ctorClear == NULL))
 	{				
 		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "");
 		methodDef->mIsMutating = true;
 	}
 
-	if ((needsDtor) && (!hasDtor))
+	if ((needsDtor) && (dtor == NULL))
 	{		
 		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, false, "");
 		BF_ASSERT(mCurTypeDef->mDtorDef == methodDef);
 	}
 
-	if ((needsStaticDtor) && (!hasStaticDtor))
+	if ((needsStaticDtor) && (staticDtor == NULL))
 	{		
 		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, true, "");
 	}
 
-	if ((needsStaticInit) && (!hasStaticCtor))
+	if ((needsStaticInit) && (staticCtor == NULL))
 	{				
 		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, BfProtection_Public, true, "");
 	}
@@ -2202,7 +2227,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 	if (mCurTypeDef->mTypeCode != BfTypeCode_Interface)
 	{
-		if ((hasStaticField) && (!hasStaticMarkMethod))
+		if ((hasStaticField) && (staticMarkMethod == NULL))
 		{						
 			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, true, BF_METHODNAME_MARKMEMBERS_STATIC);
 			methodDef->mIsNoReflect = true;
@@ -2214,7 +2239,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			methodDef->mIsNoReflect = true;
 		}
 
-		if ((hasNonStaticField) && (!hasMarkMethod))
+		if ((hasNonStaticField) && (markMethod == NULL))
 		{				
 			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, false, BF_METHODNAME_MARKMEMBERS);
 			methodDef->mIsVirtual = true;
@@ -2225,7 +2250,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		}
 	}
 	
-	if (hasToStringMethod)
+	if (toStringMethod != NULL)
 		wantsToString = false;
 	
 	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (!isPayloadEnum))
@@ -2292,7 +2317,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		mCurTypeDef->mHasOverrideMethods = true;
 	}
 	
-	if ((needsEqualsMethod) && (!hasEqualsMethod))
+	if ((needsEqualsMethod) && (equalsMethod == NULL))
 	{		
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);

@@ -35,6 +35,11 @@ namespace System
 			return .Ok(matched);
 		}
 
+		public virtual Result<MethodInfo, MethodError> GetMethod(int methodIdx)
+		{
+			return .Err(.NoResults);
+		}
+
 		public virtual Result<Object> CreateObject()
 		{
 			return .Err;
@@ -59,6 +64,13 @@ namespace System.Reflection
 		public override MethodInfo.Enumerator GetMethods(BindingFlags bindingFlags = cDefaultLookup)
 		{
 		    return MethodInfo.Enumerator(this, bindingFlags);
+		}
+
+		public override Result<MethodInfo, MethodError> GetMethod(int methodIdx)
+		{
+			if ((methodIdx < 0) || (methodIdx >= mMethodDataCount))
+				return .Err(.NoResults);
+			return MethodInfo(this, &mMethodDataPtr[methodIdx]);
 		}
 
 		public override Result<Object> CreateObject()

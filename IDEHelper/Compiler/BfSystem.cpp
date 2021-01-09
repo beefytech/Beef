@@ -679,6 +679,42 @@ void BfTypeDef::FreeMembers()
 	mIsNextRevision = false;
 }
 
+void BfTypeDef::ClearEmitted()
+{
+	for (auto& partial : mPartials)
+		partial->ClearEmitted();
+
+	if (mEmitParser != NULL)
+	{
+		mEmitParser->mRefCount--;
+		BF_ASSERT(mEmitParser->mRefCount >= 0);
+		mEmitParser = NULL;
+	}
+
+	if (mHasEmitMembers)
+	{
+		for (int methodIdx = (int)mMethods.size() - 1; methodIdx >= 0; methodIdx--)
+		{
+			auto methodDef = mMethods[methodIdx];
+			if ((methodDef->mMethodDeclaration != NULL) && (methodDef->mMethodDeclaration->IsEmitted()))
+			{
+				delete methodDef;
+				mMethods.RemoveAt(methodIdx);
+			}
+		}
+
+		for (int fieldIdx = (int)mFields.size() - 1; fieldIdx >= 0; fieldIdx--)
+		{
+			auto fieldDef = mFields[fieldIdx];
+			if ((fieldDef->mFieldDeclaration != NULL) && (fieldDef->mFieldDeclaration->IsEmitted()))
+			{
+				delete fieldDef;
+				mFields.RemoveAt(fieldIdx);
+			}
+		}
+	}
+}
+
 void BfTypeDef::PopulateMemberSets()
 {
 	if ((!mMethodSet.IsEmpty()) || (!mFieldSet.IsEmpty()) || (!mPropertySet.IsEmpty()))
@@ -721,6 +757,13 @@ void BfTypeDef::PopulateMemberSets()
 	}
 }
 
+void BfTypeDef::ClearMemberSets()
+{
+	mMethodSet.Clear();
+	mFieldSet.Clear();
+	mPropertySet.Clear();
+}
+
 BfTypeDef::~BfTypeDef()
 {
 	BfLogSysM("BfTypeDef::~BfTypeDef %08X\n", this);
@@ -731,6 +774,12 @@ BfTypeDef::~BfTypeDef()
 	{
 		mSource->mRefCount--;
 		BF_ASSERT(mSource->mRefCount >= 0);
+	}
+
+	if (mEmitParser != NULL)
+	{
+		mEmitParser->mRefCount--;
+		BF_ASSERT(mEmitParser->mRefCount >= 0);
 	}
 }
 
@@ -1533,6 +1582,8 @@ BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, Bf
 	if (!WantsRangeRecorded(bfParser, srcIdx, srcLen, true))
 		return NULL;
 
+	mWarnIdx++;
+
 	TrimSourceRange(bfSource, srcIdx, srcLen);
 
 	BfError* errorVal = new BfError();
@@ -1564,6 +1615,7 @@ BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, Bf
 
 BfError* BfPassInstance::Warn(int warningNumber, const StringImpl& warning)
 {
+	mWarnIdx++;
 	mLastWasAdded = false;
 	mLastWasDisplayed = (int)mErrors.size() <= sMaxDisplayErrors;
 	if (!mLastWasDisplayed)
@@ -1577,6 +1629,7 @@ BfError* BfPassInstance::Warn(int warningNumber, const StringImpl& warning, BfAs
 {
 	BP_ZONE("BfPassInstance::Warn");
 
+	mWarnIdx++;
 	mLastWasAdded = false;
 	mLastWasDisplayed = (int)mErrors.size() <= sMaxErrors;
 	if (!mLastWasDisplayed)
@@ -1638,9 +1691,9 @@ BfMoreInfo* BfPassInstance::MoreInfoAt(const StringImpl& info, BfSourceData* bfS
 	return NULL;
 }
 
-BfMoreInfo* BfPassInstance::MoreInfo(const StringImpl& info)
+BfMoreInfo* BfPassInstance::MoreInfo(const StringImpl& info, bool forceQueue)
 {	
-	if (!mLastWasDisplayed)
+	if ((!mLastWasDisplayed) || (forceQueue))
 	{
 		if (mLastWasAdded)
 		{
@@ -2534,6 +2587,8 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 {
 	BfLogSys(this, "InjectNewRevision from %p (decl:%p) into %p (decl:%p)\n", typeDef->mNextRevision, typeDef->mNextRevision->mTypeDeclaration, typeDef, typeDef->mTypeDeclaration);
 
+	typeDef->ClearEmitted();
+
 	bool setDeclaringType = !typeDef->mIsCombinedPartial;
 
 	auto nextTypeDef = typeDef->mNextRevision;
@@ -2651,7 +2706,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mTypeCode = nextTypeDef->mTypeCode;
 
 	typeDef->mIsAlwaysInclude = nextTypeDef->mIsAlwaysInclude;
-	typeDef->mIsNoDiscard = nextTypeDef->mIsNoDiscard;
+	typeDef->mIsNoDiscard = nextTypeDef->mIsNoDiscard;	
 	typeDef->mIsPartial = nextTypeDef->mIsPartial;
 	typeDef->mIsExplicitPartial = nextTypeDef->mIsExplicitPartial;
 	//mPartialUsed	
@@ -2663,6 +2718,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mIsConcrete = nextTypeDef->mIsConcrete;
 	typeDef->mIsStatic = nextTypeDef->mIsStatic;
 	typeDef->mHasAppendCtor = nextTypeDef->mHasAppendCtor;
+	typeDef->mHasCEOnCompile = nextTypeDef->mHasCEOnCompile;
 	typeDef->mHasCtorNoBody = nextTypeDef->mHasCtorNoBody;
 	typeDef->mHasOverrideMethods = nextTypeDef->mHasOverrideMethods;
 	typeDef->mHasExtensionMethods = nextTypeDef->mHasExtensionMethods;
@@ -2722,7 +2778,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	delete nextTypeDef;
 	typeDef->mNextRevision = NULL;
 
-	typeDef->mDefState = BfTypeDef::DefState_Defined;
+	typeDef->mDefState = BfTypeDef::DefState_Defined;	
 
 	VerifyTypeDef(typeDef);
 }
@@ -2771,6 +2827,8 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mHasCtorNoBody = partialTypeDef->mHasCtorNoBody;
 		typeDef->mHasExtensionMethods = partialTypeDef->mHasExtensionMethods;
 		typeDef->mHasOverrideMethods = partialTypeDef->mHasOverrideMethods;
+		typeDef->mIsAlwaysInclude = partialTypeDef->mIsAlwaysInclude;
+		typeDef->mHasCEOnCompile = partialTypeDef->mHasCEOnCompile;
 
 		for (auto generic : partialTypeDef->mGenericParamDefs)
 		{
@@ -2806,6 +2864,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 	typeDef->mIsConcrete |= partialTypeDef->mIsConcrete;
 	typeDef->mIsStatic |= partialTypeDef->mIsStatic;
 	typeDef->mHasAppendCtor |= partialTypeDef->mHasAppendCtor;	
+	typeDef->mHasCEOnCompile |= partialTypeDef->mHasCEOnCompile;
 	typeDef->mHasExtensionMethods |= partialTypeDef->mHasExtensionMethods;
 	typeDef->mHasOverrideMethods |= partialTypeDef->mHasOverrideMethods;
 	typeDef->mProtection = BF_MIN(typeDef->mProtection, partialTypeDef->mProtection);	
@@ -3237,12 +3296,12 @@ void BfSystem::RemoveOldParsers()
 
 				BfLogSys(this, "Deleting Old Parser: %p  New Parser: %p\n", bfParser, bfParser->mNextRevision);
 
+				mParsers.RemoveAt(i);
+				i--;
+
 				mDataLock.Unlock();
 				delete bfParser;
-				mDataLock.Lock();
-
-				mParsers.erase(mParsers.begin() + i);
-				i--;
+				mDataLock.Lock();				
 			}
 		}		
 	}

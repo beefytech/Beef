@@ -880,6 +880,21 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			beValue = mBeModule->CreateUndefValue(type);
 			return;
 		}
+		else if (constType == BfConstType_TypeOf)
+		{
+			CMD_PARAM(BeType*, type);
+			beValue = mReflectDataMap[type];
+			BF_ASSERT(beValue != NULL);
+			return;
+		}
+		else if (constType == BfConstType_TypeOf_WithData)
+		{
+			CMD_PARAM(BeType*, type);
+			CMD_PARAM(BeValue*, value);
+			mReflectDataMap[type] = value;
+			beValue = value;			
+			return;
+		}
 
 		bool isSigned = false;
 		BeType* llvmConstType = GetBeType(typeCode, isSigned);
@@ -1967,6 +1982,13 @@ void BeIRCodeGen::HandleNextCmd()
 			SetResult(curId, castedVal);
 			
 			//SetResult(curId, globalVariable);
+		}
+		break;
+	case BfIRCmd_SetReflectTypeData:
+		{
+			CMD_PARAM(BeType*, type);
+			CMD_PARAM(BeValue*, value);
+			mReflectDataMap[type] = value;
 		}
 		break;
 	case BfIRCmd_CreateBlock:

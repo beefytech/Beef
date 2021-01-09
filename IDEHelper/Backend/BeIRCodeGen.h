@@ -89,6 +89,7 @@ public:
 	Dictionary<int, BeIRTypeEntry> mTypes;	
 
 	Dictionary<BeType*, BeDbgType*> mOnDemandTypeMap;
+	Dictionary<BeType*, BeValue*> mReflectDataMap;
 	Array<int> mConfigConsts;	
 
 public:	

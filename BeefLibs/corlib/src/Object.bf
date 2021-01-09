@@ -40,12 +40,12 @@ namespace System
             return false;
         }
 #endif
-		extern Type ConstEval_GetType();
+		extern Type Comptime_GetType();
 
         public Type GetType()
         {
-			if (Compiler.IsConstEval)
-				return ConstEval_GetType();
+			if (Compiler.IsComptime)
+				return Comptime_GetType();
 
             Type type;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
@@ -65,8 +65,8 @@ namespace System
 		[NoShow]
         Type RawGetType()
         {
-			if (Compiler.IsConstEval)
-				return ConstEval_GetType();
+			if (Compiler.IsComptime)
+				return Comptime_GetType();
 
             Type type;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS

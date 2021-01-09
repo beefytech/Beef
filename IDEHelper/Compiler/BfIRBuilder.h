@@ -120,6 +120,7 @@ enum BfConstType
 	BfConstType_PtrToInt,
 	BfConstType_IntToPtr,
 	BfConstType_TypeOf,
+	BfConstType_TypeOf_WithData,
 	BfConstType_AggZero,
 	BfConstType_Agg,
 	BfConstType_ArrayZero,
@@ -235,6 +236,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_GlobalVar_SetAlignment,
 	BfIRCmd_GlobalVar_SetStorageKind,
 	BfIRCmd_GlobalStringPtr,
+	BfIRCmd_SetReflectTypeData,
 
 	BfIRCmd_CreateBlock,
 	BfIRCmd_MaybeChainNewBlock,
@@ -771,6 +773,14 @@ struct BfTypeOf_Const
 {
 	BfConstType mConstType;
 	BfType* mType;
+	BfIRValue mTypeData;
+};
+
+struct BfTypeOf_WithData_Const
+{
+	BfConstType mConstType;
+	BfType* mType;
+	BfIRValue mTypeData;
 };
 
 struct BfConstant
@@ -906,6 +916,7 @@ public:
 	BfIRValue CreateConstArrayZero(BfIRType type, int count);
 	BfIRValue CreateConstArrayZero(int count);
 	BfIRValue CreateTypeOf(BfType* type);
+	BfIRValue CreateTypeOf(BfType* type, BfIRValue typeData);
 	BfIRValue GetUndefConstValue(BfIRType type);	
 };
 
@@ -1199,6 +1210,7 @@ public:
 	void GlobalVar_SetAlignment(BfIRValue globalVar, int alignment);
 	void GlobalVar_SetStorageKind(BfIRValue globalVar, BfIRStorageKind storageKind);
 	BfIRValue CreateGlobalStringPtr(const StringImpl& str);
+	void SetReflectTypeData(BfIRType type, BfIRValue globalVar);
 
 	BfIRBlock CreateBlock(const StringImpl& name, bool addNow = false);
 	BfIRBlock MaybeChainNewBlock(const StringImpl& name); // Creates new block if current block isn't empty

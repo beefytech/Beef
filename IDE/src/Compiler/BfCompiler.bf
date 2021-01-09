@@ -61,6 +61,9 @@ namespace IDE.Compiler
         [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_Cancel(void* bfCompiler);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfCompiler_RequestFastFinish(void* bfCompiler);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void BfCompiler_ClearCompletionPercentage(void* bfCompiler);
 
@@ -110,6 +113,12 @@ namespace IDE.Compiler
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_ForceRebuild(void* bfCompiler);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* BfCompiler_GetEmitSource(void* bfCompiler, char8* fileName);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern int32 BfCompiler_GetEmitSourceVersion(void* bfCompiler, char8* fileName);
 
 		public enum HotTypeFlags
 		{
@@ -265,6 +274,20 @@ namespace IDE.Compiler
 		public void ForceRebuild()
 		{
 			BfCompiler_ForceRebuild(mNativeBfCompiler);
+		}
+
+		public bool GetEmitSource(StringView fileName, String outText)
+		{
+			char8* str = BfCompiler_GetEmitSource(mNativeBfCompiler, fileName.ToScopeCStr!());
+			if (str == null)
+				return false;
+			outText.Append(str);
+			return true;
+		}
+
+		public int32 GetEmitVersion(StringView fileName)
+		{
+			return BfCompiler_GetEmitSourceVersion(mNativeBfCompiler, fileName.ToScopeCStr!());
 		}
 
         public void QueueSetPassInstance(BfPassInstance passInstance)
@@ -657,6 +680,15 @@ namespace IDE.Compiler
                 	BfCompiler_Cancel(mNativeBfCompiler);
             }
         }
+
+		public override void RequestFastFinish()
+		{
+		    if ([Friend]mThreadWorker.mThreadRunning || [Friend]mThreadWorkerHi.mThreadRunning)
+		    {
+				if (mNativeBfCompiler != null)
+		        	BfCompiler_RequestFastFinish(mNativeBfCompiler);
+		    }
+		}
 
         public void ClearCompletionPercentage()
         {

@@ -1143,7 +1143,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;	
-	if ((!module->mIsConstModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2)))
+	if ((!module->mIsComptimeModule) && (GetLoweredReturnType(&loweredReturnTypeCode, &loweredReturnTypeCode2)))
 	{
 		auto irReturnType = module->GetIRLoweredType(loweredReturnTypeCode, loweredReturnTypeCode2);
 		returnType = irReturnType;
@@ -1153,7 +1153,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
 	}
-	else if ((!module->mIsConstModule) && (GetStructRetIdx(forceStatic) != -1))
+	else if ((!module->mIsComptimeModule) && (GetStructRetIdx(forceStatic) != -1))
 	{
 		auto voidType = module->GetPrimitiveType(BfTypeCode_None);
 		returnType = module->mBfIRBuilder->MapType(voidType);
@@ -1210,11 +1210,11 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			{
 				checkType = checkType->GetUnderlyingType();
 			}
-			else if ((!module->mIsConstModule) && (checkType->IsSplattable()) && (AllowsSplatting(-1)))
+			else if ((!module->mIsComptimeModule) && (checkType->IsSplattable()) && (AllowsSplatting(-1)))
 			{
 				doSplat = true;
 			}
-			else if ((!module->mIsConstModule) && (!mMethodDef->mIsMutating) && (mCallingConvention == BfCallingConvention_Unspecified))
+			else if ((!module->mIsComptimeModule) && (!mMethodDef->mIsMutating) && (mCallingConvention == BfCallingConvention_Unspecified))
 				checkLowered = true;
 		}
 		else
@@ -1227,11 +1227,11 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			{
 				checkType = checkType->GetUnderlyingType();
 			}
-			else if ((!module->mIsConstModule) && (checkType->IsSplattable()) && (AllowsSplatting(paramIdx)))
+			else if ((!module->mIsComptimeModule) && (checkType->IsSplattable()) && (AllowsSplatting(paramIdx)))
 			{
 				doSplat = true;
 			}
-			else if (!module->mIsConstModule)
+			else if (!module->mIsComptimeModule)
 				checkLowered = true;
 		}
 
@@ -1311,7 +1311,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			paramIdx++; // Skip over the explicit 'this'
 	}
 
-	if ((!module->mIsConstModule) && (GetStructRetIdx(forceStatic) == 1))
+	if ((!module->mIsComptimeModule) && (GetStructRetIdx(forceStatic) == 1))
 	{		
 		BF_SWAP(paramTypes[0], paramTypes[1]);
 	}
@@ -1509,6 +1509,8 @@ BfTypeInstance::~BfTypeInstance()
 		delete methodInst;
 	for (auto operatorInfo : mOperatorInfo)
 		delete operatorInfo;
+	for (auto localMethod : mOwnedLocalMethods)
+		delete localMethod;
 	delete mHotTypeData;
 	delete mConstHolder;
 }

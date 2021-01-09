@@ -132,6 +132,11 @@ namespace IDE
 
         }
 
+		public virtual void RequestFastFinish()
+		{
+
+		}
+
         public void CancelBackground()
         {
             RequestCancelBackground();

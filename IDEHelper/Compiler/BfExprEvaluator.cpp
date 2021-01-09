@@ -799,7 +799,8 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				SET_BETTER_OR_WORSE((!isUnspecializedParam) && (!paramType->IsVar()), 
 					(!isPrevUnspecializedParam) && (!prevParamType->IsVar()));
 				
-				if ((!isBetter) && (!isWorse) && (!isUnspecializedParam) && (!isPrevUnspecializedParam))
+				// Why did we have this !isUnspecializedParam check? We need the 'canCast' logic still
+				if ((!isBetter) && (!isWorse) /*&& (!isUnspecializedParam) && (!isPrevUnspecializedParam)*/)
 				{
 					SET_BETTER_OR_WORSE((paramType != NULL) && (!paramType->IsUnspecializedType()),
 						(prevParamType != NULL) && (!prevParamType->IsUnspecializedType()));
@@ -851,7 +852,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				}
 			}
 
-			if ((!isBetter) & (!isWorse) && (paramsEquivalent))
+			if ((!isBetter) && (!isWorse) && (paramsEquivalent))
 			{
 				if ((origParamType != origPrevParamType) && (paramWasConstExpr) && (!prevParamWasConstExpr))
 					betterByConstExprParam = true;
@@ -2698,21 +2699,21 @@ BfAutoComplete* BfExprEvaluator::GetAutoComplete()
 	return mModule->mCompiler->mResolvePassData->mAutoComplete;
 }
 
-bool BfExprEvaluator::IsConstEval()
+bool BfExprEvaluator::IsComptime()
 {
-	return (mModule->mIsConstModule) || ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0);
+	return (mModule->mIsComptimeModule) || ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0);
 }
 
-bool BfExprEvaluator::IsConstEvalEntry()
+bool BfExprEvaluator::IsComptimeEntry()
 {
-	if (mModule->mIsConstModule)
+	if (mModule->mIsComptimeModule)
 		return false;
-	return ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0);
+	return ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0);
 }
 
 int BfExprEvaluator::GetStructRetIdx(BfMethodInstance* methodInstance, bool forceStatic)
 {
-	if (IsConstEval())
+	if (IsComptime())
 		return -1;
 	return methodInstance->GetStructRetIdx(forceStatic);
 }
@@ -3333,7 +3334,7 @@ void BfExprEvaluator::Visit(BfLiteralExpression* literalExpr)
 
 void BfExprEvaluator::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
 {
-	if (IsConstEvalEntry())
+	if (IsComptimeEntry())
 	{
 		mModule->Fail("Const evaluation of string interpolation not allowed", stringInterpolationExpression);
 	}
@@ -5075,43 +5076,57 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	if ((mModule->mCompiler->mResolvePassData != NULL) && (mModule->mCompiler->mResolvePassData->mAutoComplete != NULL))
 	{
-		// In an autocomplete pass we may have stale method references that need to be resolved
-		//  in the full classify pass, and in the full classify pass while just refreshing internals, we 
-		//  may have NULL funcs temporarily.  We simply skip generating the method call here.		
-		if (methodInstance->mVirtualTableIdx == -1)
-		{			
-			if (methodInstance->GetOwner()->IsInterface())
-			{				
-				// We're attempting to directly invoke a non-virtual interface method, if we're return an interface then 
-				//  it is a concrete interface
-				if (returnType->IsInterface())
-					returnType = mModule->CreateConcreteInterfaceType(returnType->ToTypeInstance());
-			}
+		bool wantQuickEval = true;
+
+		if (IsComptime())
+		{		
+			auto autoComplete = mModule->mCompiler->mResolvePassData->mAutoComplete;
+			wantQuickEval = 
+				((autoComplete->mResolveType != BfResolveType_Autocomplete) &&
+				(autoComplete->mResolveType != BfResolveType_Autocomplete_HighPri) &&
+				(autoComplete->mResolveType != BfResolveType_GetResultString));
 		}
 
-		if ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0)
+		if (wantQuickEval)
 		{
-			if (methodInstance->mReturnType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
+			// In an autocomplete pass we may have stale method references that need to be resolved
+					//  in the full classify pass, and in the full classify pass while just refreshing internals, we 
+					//  may have NULL funcs temporarily.  We simply skip generating the method call here.		
+			if (methodInstance->mVirtualTableIdx == -1)
 			{
-				if ((mExpectingType != NULL) && (mExpectingType->IsSizedArray()))
+				if (methodInstance->GetOwner()->IsInterface())
 				{
-					return BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(mExpectingType)), mExpectingType);
+					// We're attempting to directly invoke a non-virtual interface method, if we're return an interface then 
+					//  it is a concrete interface
+					if (returnType->IsInterface())
+						returnType = mModule->CreateConcreteInterfaceType(returnType->ToTypeInstance());
 				}
 			}
-			auto returnType = methodInstance->mReturnType;
-			if ((returnType->IsVar()) && (mExpectingType != NULL))
-				returnType = mExpectingType;
-			if (methodInstance->mReturnType->IsValuelessType())
-				return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), returnType);
-			return BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(returnType)), returnType);
-		}
 
-		BfTypedValue result;
-		if (sret != NULL)
-			result = *sret;
- 		else
-            result = _GetDefaultReturnValue();
-		return result;
+			if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0)
+			{
+				if (methodInstance->mReturnType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
+				{
+					if ((mExpectingType != NULL) && (mExpectingType->IsSizedArray()))
+					{
+						return BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(mExpectingType)), mExpectingType);
+					}
+				}
+				auto returnType = methodInstance->mReturnType;
+				if ((returnType->IsVar()) && (mExpectingType != NULL))
+					returnType = mExpectingType;
+				if (methodInstance->mReturnType->IsValuelessType())
+					return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), returnType);
+				return BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(returnType)), returnType);
+			}
+
+			BfTypedValue result;
+			if (sret != NULL)
+				result = *sret;
+			else
+				result = _GetDefaultReturnValue();
+			return result;
+		}
 	}
 
 	bool forceBind = false;
@@ -5120,7 +5135,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	{
 		bool doConstReturn = false;
 
-		if ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0)
+		if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0)
 		{			
 			if (mFunctionBindResult != NULL)
 			{
@@ -5134,6 +5149,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			{
 				doConstReturn = true;
 			}
+			else if (((methodInstance->mComptimeFlags & BfComptimeFlag_OnlyFromComptime) != 0) && (!mModule->mIsComptimeModule))
+			{
+				// This either generated an error already or this is just the non-const type check pass for a comptime-only method
+				doConstReturn = true;
+			}
 			else
 			{
 				CeEvalFlags evalFlags = CeEvalFlags_None;				
@@ -5143,9 +5163,20 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					BF_ASSERT(!constRet.mType->IsVar());
 					return constRet;
 				}
+
+				if (mModule->mCompiler->mFastFinish)
+				{
+					if ((mModule->mCurMethodInstance == NULL) || (!mModule->mCurMethodInstance->mIsAutocompleteMethod))
+					{
+						// We didn't properly resolve this so queue for a rebuild later
+						mModule->DeferRebuildType(mModule->mCurTypeInstance);
+					}
+
+					doConstReturn = true;
+				}
 			}			
 		}
-		else if (mModule->mIsConstModule)
+		else if (mModule->mIsComptimeModule)
  		{		
 			if (methodInstance->mIsUnspecialized)
 			{
@@ -5206,7 +5237,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 			if (methodInstance->mMethodInstanceGroup->mOwner->IsInterface())
 			{
-				if (mModule->mIsConstModule)
+				if (mModule->mIsComptimeModule)
 				{
 					funcCallInst = mModule->mBfIRBuilder->ConstEval_GetInterfaceFunc(irArgs[0], methodInstance->mMethodInstanceGroup->mOwner->mTypeId, methodInstance->mMethodDef->mIdx, funcPtrType1);
 				}
@@ -5226,7 +5257,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					funcCallInst = mModule->mBfIRBuilder->CreateLoad(funcPtr);
 				}
 			}
-			else if (mModule->mIsConstModule)
+			else if (mModule->mIsComptimeModule)
 			{
 				funcCallInst = mModule->mBfIRBuilder->ConstEval_GetVirtualFunc(irArgs[0], methodInstance->mVirtualTableIdx, funcPtrType1);
 			}
@@ -5323,7 +5354,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		if (irArgs.size() != 0)
 		{
 			auto targetType = methodInstance->mMethodInstanceGroup->mOwner;
-			if ((targetType->IsValueType()) && (targetType->IsSplattable()) && (!methodDef->HasNoThisSplat()) && (!IsConstEval()))
+			if ((targetType->IsValueType()) && (targetType->IsSplattable()) && (!methodDef->HasNoThisSplat()) && (!IsComptime()))
 				mFunctionBindResult->mTarget = BfTypedValue(irArgs[0], targetType, BfTypedValueKind_SplatHead);
 			else
 				mFunctionBindResult->mTarget = BfTypedValue(irArgs[0], targetType, targetType->IsComposite() ? BfTypedValueKind_Addr : BfTypedValueKind_Value);
@@ -5484,7 +5515,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					mModule->PopulateType(paramType, BfPopulateType_Data);
 
 					auto typeInst = paramType->ToTypeInstance();
-					if ((typeInst != NULL) && (typeInst->mIsCRepr) && (typeInst->IsSplattable()) && (!IsConstEval()))
+					if ((typeInst != NULL) && (typeInst->mIsCRepr) && (typeInst->IsSplattable()) && (!IsComptime()))
 					{
 						// We're splatting
 					}
@@ -5527,7 +5558,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 				doingThis = false;
 				continue;
 			}
-			bool isSplatted = methodInstance->GetParamIsSplat(thisIdx) && (!IsConstEval()); // (resolvedTypeRef->IsSplattable()) && (!methodDef->mIsMutating);
+			bool isSplatted = methodInstance->GetParamIsSplat(thisIdx) && (!IsComptime()); // (resolvedTypeRef->IsSplattable()) && (!methodDef->mIsMutating);
 			if (isSplatted)
 			{
 				BfTypeUtils::SplatIterate(_HandleParamType, paramType);
@@ -5561,7 +5592,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 				continue;
 			}
 			
-			if ((methodInstance->GetParamIsSplat(paramIdx)) && (!IsConstEval()))
+			if ((methodInstance->GetParamIsSplat(paramIdx)) && (!IsComptime()))
 			{
 				BfTypeUtils::SplatIterate(_HandleParamType, paramType);
 				paramIdx++;
@@ -5614,7 +5645,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	{
 		BfTypeCode loweredRetType = BfTypeCode_None;
 		BfTypeCode loweredRetType2 = BfTypeCode_None;		
-		if ((!IsConstEval()) && (methodInstance->GetLoweredReturnType(&loweredRetType, &loweredRetType2)))
+		if ((!IsComptime()) && (methodInstance->GetLoweredReturnType(&loweredRetType, &loweredRetType2)))
 		{
 			auto retVal = mModule->CreateAlloca(methodInstance->mReturnType);
 			BfIRType loweredIRType = mModule->GetIRLoweredType(loweredRetType, loweredRetType2);			
@@ -5780,7 +5811,7 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 		return;	
 
 	bool wantSplat = false;
-	if ((argVal.mType->IsSplattable()) && (!disableSplat) && (!IsConstEval()))
+	if ((argVal.mType->IsSplattable()) && (!disableSplat) && (!IsComptime()))
 	{
 		disableLowering = true;
 		auto argTypeInstance = argVal.mType->ToTypeInstance();
@@ -5801,7 +5832,7 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 	{		
 		if (argVal.mType->IsComposite())
 		{	
-			if ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0)
+			if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0)
 			{
 				// Const eval entry - we want any incoming consts as they are
 			}
@@ -5812,7 +5843,7 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 			else
 				argVal = mModule->MakeAddressable(argVal);
 			
-			if ((!IsConstEval()) && (!disableLowering) && (!isIntrinsic))
+			if ((!IsComptime()) && (!disableLowering) && (!isIntrinsic))
 			{
 				BfTypeCode loweredTypeCode = BfTypeCode_None;
 				BfTypeCode loweredTypeCode2 = BfTypeCode_None;				
@@ -5906,7 +5937,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	auto owner = methodInstance->GetOwner();
 
 	bool allowThisSplatting;
-	if (mModule->mIsConstModule)
+	if (mModule->mIsComptimeModule)
 		allowThisSplatting = owner->IsTypedPrimitive() || owner->IsValuelessType();
 	else
 		allowThisSplatting = methodInstance->AllowsSplatting(-1);
@@ -6210,7 +6241,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		}
 		else
 		{
-			wantsSplat = methodInstance->GetParamIsSplat(paramIdx) && (!IsConstEval());
+			wantsSplat = methodInstance->GetParamIsSplat(paramIdx) && (!IsComptime());
 			if (methodInstance->IsImplicitCapture(paramIdx))
 			{
 				auto paramType = methodInstance->GetParamType(paramIdx);
@@ -6275,7 +6306,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					if (methodDef->mMethodType == BfMethodType_Extension)
 						numElements++;
 
-					if (IsConstEvalEntry())
+					if (IsComptimeEntry())
 					{
 						if ((wantType->IsArray()) || (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
 						{
@@ -6694,7 +6725,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				else
 				{
 					// We need to make a temp and get the addr of that
-					if ((!wantsSplat) && (!argValue.IsValuelessType()) && (!argValue.IsAddr()) && (!IsConstEvalEntry()))
+					if ((!wantsSplat) && (!argValue.IsValuelessType()) && (!argValue.IsAddr()) && (!IsComptimeEntry()))
 					{
 						argValue = mModule->MakeAddressable(argValue);
 					}
@@ -6714,7 +6745,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		{
 			if (argValue)
 			{
-				if (IsConstEvalEntry())
+				if (IsComptimeEntry())
 				{
 					auto constant = mModule->mBfIRBuilder->GetConstant(expandedParamsArray.mValue);
 					BF_ASSERT(constant->mConstType == BfConstType_Agg);
@@ -8588,15 +8619,28 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	//
 	{
 		SetAndRestoreValue<BfEvalExprFlags> prevEvalExprFlag(mBfEvalExprFlags);
-
+		
 		if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mConstEvalAttributeTypeDef)))
 		{
 			mModule->mAttributeState->mUsed = true;
-			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_ConstEval);
+			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
 		}
-		else if (moduleMethodInstance.mMethodInstance->mMethodDef->mIsConstEval)
+		else if ((moduleMethodInstance.mMethodInstance->mComptimeFlags & BfComptimeFlag_ConstEval) != 0)
 		{
-			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_ConstEval);
+			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
+		}
+		else if (((moduleMethodInstance.mMethodInstance->mComptimeFlags & BfComptimeFlag_Comptime) != 0) && (!mModule->mIsComptimeModule))
+		{
+			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
+		}		
+
+		if (((moduleMethodInstance.mMethodInstance->mComptimeFlags & BfComptimeFlag_OnlyFromComptime) != 0) &&
+			((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) &&
+			(mModule->mCurMethodInstance->mComptimeFlags == BfComptimeFlag_None) &&
+			(!mModule->mIsComptimeModule))
+		{
+			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags &~ BfEvalExprFlags_Comptime);
+			mModule->Fail(StrFormat("Method '%s' can only be invoked at comptime. Consider adding [Comptime] to the current method.", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str()), targetSrc);
 		}
 
 		result = CreateCall(targetSrc, callTarget, origTarget, methodDef, moduleMethodInstance, bypassVirtual, argValues.mResolvedArgs, &argCascade, skipThis);
@@ -11314,7 +11358,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
 		{
 			auto paramType = methodInstance->GetParamType(paramIdx);
-			if ((paramType->IsSplattable()) && (!IsConstEval()))
+			if ((paramType->IsSplattable()) && (!IsComptime()))
 			{
 				BfTypeUtils::SplatIterate([&](BfType* checkType) { irArgs.push_back(mModule->mBfIRBuilder->GetArgument(argIdx++)); }, paramType);
 			}
@@ -13180,7 +13224,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 
 				// Actually leave it alone?
 				if ((isUninit) && 
-					((mModule->IsOptimized()) || (mModule->mIsConstModule) || (mModule->mBfIRBuilder->mIgnoreWrites)))
+					((mModule->IsOptimized()) || (mModule->mIsComptimeModule) || (mModule->mBfIRBuilder->mIgnoreWrites)))
 					return;
 
 				bool doClear = true;
@@ -13564,7 +13608,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		{
 			allocValue = mModule->AllocFromType(resolvedTypeRef, allocTarget, appendSizeValue, BfIRValue(), 0, BfAllocFlags_None, allocAlign);
 		}
-		if (((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0) && (mModule->mCompiler->mCEMachine != NULL))
+		if (((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) && (mModule->mCompiler->mCEMachine != NULL))
 		{
 			mModule->mCompiler->mCEMachine->SetAppendAllocInfo(mModule, allocValue, appendSizeValue);
 		}
@@ -13615,7 +13659,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 					{
 						mModule->AssertErrorState();
 					}
-					else if ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) == 0)
+					else if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) == 0)
 					{
 						SizedArray<BfIRValue, 1> irArgs;
 						irArgs.push_back(mResult.mValue);
@@ -13623,7 +13667,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 					}
 				}
 
-				if ((!mModule->mIsConstModule) && (isStackAlloc) && (mModule->mCompiler->mOptions.mEnableRealtimeLeakCheck))
+				if ((!mModule->mIsComptimeModule) && (isStackAlloc) && (mModule->mCompiler->mOptions.mEnableRealtimeLeakCheck))
 				{
 					BfMethodInstance* markMethod = mModule->GetRawMethodByName(mModule->mContext->mBfObjectType, "GCMarkMembers");
 					BF_ASSERT(markMethod != NULL);
@@ -13693,7 +13737,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		}
 	}
 
-	if (((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0) && (mModule->mCompiler->mCEMachine != NULL))
+	if (((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) && (mModule->mCompiler->mCEMachine != NULL))
 	{
 		mModule->mCompiler->mCEMachine->ClearAppendAllocInfo();
 	}
@@ -13887,7 +13931,7 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 
 	if ((target.mType->IsStruct()) && (!target.IsAddr()))
 	{
-		if (IsConstEvalEntry())
+		if (IsComptimeEntry())
 			return target;
 		target = mModule->MakeAddressable(target);
 	}
@@ -13923,7 +13967,7 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 				auto ptrType = mModule->CreatePointerType(primStructType);
 				target = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType)), primStructType, true);
 			}
-			else if ((primStructType->IsSplattable()) && (target.IsSplat()) && (!IsConstEval()))
+			else if ((primStructType->IsSplattable()) && (target.IsSplat()) && (!IsComptime()))
 			{
 				target.mType = primStructType;
 				target.mKind = BfTypedValueKind_SplatHead;								
@@ -15739,7 +15783,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 
 	int methodCount = 0;
 	bool mayBeSkipCall = false;
-	bool mayBeConstEvalCall = false;
+	bool mayBeComptimeCall = false;
 	if (thisValue.mType != NULL)
 	{
 		if (thisValue.mType->IsAllocType())
@@ -15757,8 +15801,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				{
 					if (methodDef->mIsSkipCall)
 						mayBeSkipCall = true;
-					if (methodDef->mIsConstEval)
-						mayBeConstEvalCall = true;
+					if (methodDef->mHasComptime)
+						mayBeComptimeCall = true;
 					methodDef = methodDef->mNextWithSameName;
 				}
 			}
@@ -15784,7 +15828,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 
 	BfResolveArgsFlags resolveArgsFlags = (BfResolveArgsFlags)(BfResolveArgsFlag_DeferFixits | BfResolveArgsFlag_AllowUnresolvedTypes);	
 	resolveArgsFlags = (BfResolveArgsFlags)(resolveArgsFlags | BfResolveArgsFlag_DeferParamEval);
-	if ((mayBeSkipCall) || (mayBeConstEvalCall))
+	if ((mayBeSkipCall) || (mayBeComptimeCall))
 		resolveArgsFlags = (BfResolveArgsFlags)(resolveArgsFlags | BfResolveArgsFlag_DeferParamValues);
 
 	static int sCallIdx = 0;
@@ -15810,7 +15854,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		}
 	}
 
-	if ((isCascade) && (cascadeOperatorToken != NULL) && ((mBfEvalExprFlags & BfEvalExprFlags_ConstEval) != 0))
+	if ((isCascade) && (cascadeOperatorToken != NULL) && ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0))
 		mModule->Fail("Cascade operator cannot be used in const evaluation", cascadeOperatorToken);
 
 	SetAndRestoreValue<bool> prevUsedAsStatement(mUsedAsStatement, mUsedAsStatement || isCascade);
@@ -16061,7 +16105,7 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 			}
 		}
 	}
-	
+		
 	if ((mOrigPropTarget) && (mOrigPropTarget.mType != mPropTarget.mType) &&
 		((!mOrigPropTarget.mType->IsGenericParam()) && (mPropTarget.mType->IsInterface())))
 	{
@@ -16080,6 +16124,10 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 			while (checkTypeInst != NULL)
 			{
 				mModule->PopulateType(checkTypeInst, BfPopulateType_DataAndMethods);
+				BF_ASSERT((checkTypeInst->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted) || (mModule->mCompiler->IsAutocomplete()));
+
+				if (checkTypeInst->mDefineState != BfTypeDefineState_DefinedAndMethodsSlotted)
+					break;
 
 				for (auto& iface : checkTypeInst->mInterfaces)
 				{
@@ -16132,7 +16180,7 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 			}
 						
 			if (bestIFaceEntry != NULL)
-			{					
+			{									
 				auto ifaceMethodEntry = checkTypeInst->mInterfaceMethodTable[bestIFaceEntry->mStartInterfaceTableIdx + methodDef->mIdx];				
 				BfMethodInstance* bestMethodInstance = ifaceMethodEntry.mMethodRef;
 				if (bestMethodInstance != NULL)
@@ -18735,7 +18783,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 				}
 			}
 		}
-		else if (((mModule->HasCompiledOutput()) || (mModule->mIsConstModule)) && 
+		else if (((mModule->HasCompiledOutput()) || (mModule->mIsComptimeModule)) && 
 			(wantsChecks))
 		{
 			if (checkedKind == BfCheckedKind_NotSet)
@@ -18767,7 +18815,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 						OutputDebugStrF("-OOB %d %d\n", oobFunc.mFunc.mId, oobFunc.mFunc.mFlags);
 					}*/
 
-					if (mModule->mIsConstModule)
+					if (mModule->mIsComptimeModule)
 						mModule->mCompiler->mCEMachine->QueueMethod(oobFunc.mMethodInstance, oobFunc.mFunc);
 
 					SizedArray<BfIRValue, 1> args;

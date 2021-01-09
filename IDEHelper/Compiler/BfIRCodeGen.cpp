@@ -941,6 +941,21 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 			llvmValue = llvm::UndefValue::get(type);
 			return;
 		}
+		else if (constType == BfConstType_TypeOf)
+		{
+			CMD_PARAM(llvm::Type*, type);
+			llvmValue = mReflectDataMap[type];
+			BF_ASSERT(llvmValue != NULL);
+			return;
+		}
+		else if (constType == BfConstType_TypeOf_WithData)
+		{
+			CMD_PARAM(llvm::Type*, type);
+			CMD_PARAM(llvm::Value*, value);
+			mReflectDataMap[type] = value;
+			llvmValue = value;
+			return;
+		}
 
 		bool isSigned;
 		llvm::Type* llvmConstType = GetLLVMType(typeCode, isSigned);
@@ -2264,6 +2279,13 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM(String, str);
 			SetResult(curId, mIRBuilder->CreateGlobalStringPtr(llvm::StringRef(str.c_str(), str.length())));
+		}
+		break;
+	case BfIRCmd_SetReflectTypeData:
+		{
+			CMD_PARAM(llvm::Type*, type);
+			CMD_PARAM(llvm::Value*, value);
+			mReflectDataMap[type] = value;
 		}
 		break;
 	case BfIRCmd_CreateBlock:

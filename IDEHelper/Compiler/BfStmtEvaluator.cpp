@@ -42,7 +42,7 @@ USING_NS_BF;
 
 bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfScopeData* scopeData)
 {		
-	if ((((mCompiler->mIsResolveOnly) && (!mIsConstModule)) || 
+	if ((((mCompiler->mIsResolveOnly) && (!mIsComptimeModule)) || 
 		(mBfIRBuilder->mIgnoreWrites)) && (deferredCallEntry->mDeferredBlock == NULL))
 	{
 		// For resolve entries, we only keep deferred blocks because we need to process them later so we can
@@ -783,7 +783,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 
 void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool moveBlocks)
 {	
-	if ((mCompiler->mIsResolveOnly) && (!mIsConstModule) && (deferredCallEntry.mHandlerCount > 0))
+	if ((mCompiler->mIsResolveOnly) && (!mIsComptimeModule) && (deferredCallEntry.mHandlerCount > 0))
 	{
 		// We only want to process deferred blocks once, otherwise it could significantly slow down autocompletion
 		return;
@@ -1770,7 +1770,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		initValue = LoadValue(initValue);
 		if (initValue.IsSplat())
 		{
-			BF_ASSERT(!mIsConstModule);
+			BF_ASSERT(!mIsComptimeModule);
 			if (!localDef->mAddr)
 				localDef->mAddr = AllocLocalVariable(resolvedType, localDef->mName);
 			AggregateSplatIntoAddr(initValue, localDef->mAddr);
@@ -3944,7 +3944,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 			allowPrivate = false;
 		}			
 
-		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
+		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule))
 		{			
 			auto preDelete = GetInternalMethod((deleteStmt->mTargetTypeToken != NULL) ? "Dbg_ObjectPreCustomDelete" : "Dbg_ObjectPreDelete");
 			SizedArray<BfIRValue, 4> llvmArgs;
@@ -4001,7 +4001,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		}
 		else
 		{
-			if ((mCompiler->mOptions.mEnableRealtimeLeakCheck) && (!mIsConstModule))
+			if ((mCompiler->mOptions.mEnableRealtimeLeakCheck) && (!mIsComptimeModule))
 			{				
 				SizedArray<BfIRValue, 4> llvmArgs;
 				llvmArgs.push_back(mBfIRBuilder->CreateBitCast(val.mValue, mBfIRBuilder->MapType(objectType)));
@@ -4958,12 +4958,12 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 	BfType* origType;
 	BfExprEvaluator exprEvaluator(this);
 	bool alreadyWritten = false;
-	if ((!mIsConstModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
+	if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
 		exprEvaluator.mReceivingValue = &mCurMethodState->mRetVal;	
 	if (mCurMethodInstance->mMethodDef->mIsReadOnly)
 		exprEvaluator.mAllowReadOnlyReference = true;
 	auto retValue = CreateValueFromExpression(exprEvaluator, returnStmt->mExpression, expectingReturnType, BfEvalExprFlags_AllowRefExpr, &origType);	
-	if ((!mIsConstModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
+	if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
 		alreadyWritten = exprEvaluator.mReceivingValue == NULL;
 	MarkScopeLeft(&mCurMethodState->mHeadScope);
 	
@@ -6453,7 +6453,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			auto retVal = exprEvaluator.CreateCall(&methodMatcher, itr);			
 			if (exprEvaluator.mReceivingValue != NULL)
 			{
-				if (mIsConstModule)
+				if (mIsComptimeModule)
 				{
 					mBfIRBuilder->CreateStore(retVal.mValue, nextResult.mValue);
 				}
@@ -6802,7 +6802,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 
 			if (!customAllocator)
 			{
-				if ((mCompiler->mOptions.mEnableRealtimeLeakCheck) && (!mIsConstModule))
+				if ((mCompiler->mOptions.mEnableRealtimeLeakCheck) && (!mIsComptimeModule))
 				{
 					auto moduleMethodInstance = GetInternalMethod("Dbg_MarkObjectDeleted");
 					AddDeferredCall(moduleMethodInstance, llvmArgs, scope, deleteStmt, false, true);
@@ -6819,7 +6819,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 			auto moduleMethodInstance = GetMethodInstance(objectType, methodInstance->mMethodDef, BfTypeVector());
 			AddDeferredCall(moduleMethodInstance, llvmArgs, scope, deleteStmt, false, true);
 
-			if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsConstModule))
+			if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule))
 			{
 				auto moduleMethodInstance = GetMethodByName(internalType->ToTypeInstance(), (deleteStmt->mTargetTypeToken != NULL) ? "Dbg_ObjectPreCustomDelete" : "Dbg_ObjectPreDelete");
 				AddDeferredCall(moduleMethodInstance, llvmArgs, scope, deleteStmt, false, true);
@@ -6831,7 +6831,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 			{
 				val = LoadValue(val);
 				BfModuleMethodInstance moduleMethodInstance;
-				if ((mCompiler->mOptions.mDebugAlloc) && (!mIsConstModule))
+				if ((mCompiler->mOptions.mDebugAlloc) && (!mIsComptimeModule))
 					moduleMethodInstance = GetMethodByName(internalType->ToTypeInstance(), "Dbg_RawFree");
 				else
 					moduleMethodInstance = GetMethodByName(internalType->ToTypeInstance(), "Free");

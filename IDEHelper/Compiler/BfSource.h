@@ -101,6 +101,7 @@ public:
 	virtual ~BfSource();
 
 	virtual BfParser* ToParser() { return NULL; }	
+	virtual void HadSrcRealloc() {}
 	
 	BfErrorNode* CreateErrorNode(BfAstNode* astNode);
 	void AddErrorNode(BfAstNode* astNode);	

@@ -341,6 +341,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mAwaitingDelete = false;
 	mScanOnly = false;
 	mCompleteParse = false;
+	mIsEmitted = false;
 	mJumpTable = NULL;
 	mProject = bfProject;
 	mPassInstance = NULL;
@@ -524,6 +525,8 @@ void BfParser::SetSource(const char* data, int length)
 	if (mFileName.IsEmpty())
 		canCache = false;
 	if (mProject == NULL)
+		canCache = false;
+	if (mIsEmitted)
 		canCache = false;
 
 	uint64 cacheHash = 0;
@@ -3447,7 +3450,10 @@ void BfParser::Parse(BfPassInstance* passInstance)
 {
 	BP_ZONE_F("BfParser::Parse %s", mFileName.c_str());
 
+	mSyntaxToken = BfSyntaxToken_None;
 	mPassInstance = passInstance;
+
+	int startIdx = mSrcIdx;	
 
 	if (mUsingCache)
 	{
@@ -3476,7 +3482,7 @@ void BfParser::Parse(BfPassInstance* passInstance)
 		mPassInstance->Warn(0, "No matching #endif found", mPreprocessorNodeStack.back().first);
 	}
 
-	for (int i = 1; i < mJumpTableSize; i++)
+	for (int i = (startIdx / PARSER_JUMPTABLE_DIVIDE)+1; i < mJumpTableSize; i++)
 		if (mJumpTable[i].mCharIdx == 0)
 			mJumpTable[i] = mJumpTable[i - 1];
 
@@ -3521,6 +3527,26 @@ void BfParser::Close()
 			BfLogSys(mSystem, "Duplicate parser %p not added to cache\n", this);
 		}
 	}	
+}
+
+void BfParser::HadSrcRealloc()
+{
+	int jumpTableSize = ((mSrcAllocSize + 1) + PARSER_JUMPTABLE_DIVIDE - 1) / PARSER_JUMPTABLE_DIVIDE;
+	if (jumpTableSize > mJumpTableSize)
+	{		
+		auto jumpTable = new BfLineStartEntry[jumpTableSize];
+		memset(jumpTable, 0, jumpTableSize * sizeof(BfLineStartEntry));
+		memcpy(jumpTable, mJumpTable, mJumpTableSize * sizeof(BfLineStartEntry));
+
+		delete mJumpTable;
+
+		mJumpTable = jumpTable;
+		mJumpTableSize = jumpTableSize;
+
+		mParserData->mJumpTable = mJumpTable;
+		mParserData->mJumpTableSize = mJumpTableSize;
+	}
+	
 }
 
 void BfParser::GenerateAutoCompleteFrom(int srcPosition)

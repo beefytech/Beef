@@ -91,7 +91,9 @@ int BfSource::AllocChars(int charCount)
 
 		BF_ASSERT(mSourceData->ToParser() != NULL);
 		mSourceData->mSrc = mSrc;		
-	}
+
+		HadSrcRealloc();
+	}	
 
 	int retVal = mSrcLength;
 	mSrcLength += charCount;

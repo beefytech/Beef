@@ -23,8 +23,8 @@ namespace Tests
 		const String cStrA = "Abc";
 		const String cStrB = GetStringA(cStrA, 12, 23);
 
-		// ConstEval attribute means this method will always be const-evaluated
-		[ConstEval]
+		// Comptime attribute means this method will always be const-evaluated
+		[Comptime]
 		static String GetStringA(String str, int a, int b)
 		{
 			// Const-eval functions can return scope-allocated data
@@ -101,7 +101,7 @@ namespace Tests
 		}
 
 		// This method can only be const evaluated
-		[ConstEval]
+		[Comptime]
 		public static int32 ConstSum(params int32[] vals)
 		{
 			int32 sum = 0;
@@ -112,8 +112,8 @@ namespace Tests
 
 		public static int32 MethodB()
 		{
-			// Returns different results depending on whether we are const-evaluating
-			return Compiler.IsConstEval ? 1 : 0;
+			// Returns different results depending on whether we are comptime
+			return Compiler.IsComptime ? 1 : 0;
 		}
 
 		public static int32 MethodC(StructA sa = .(1, 2), (int32, int32) tup = (20, 30), int32[2] arr = .(300, 400))
@@ -121,7 +121,7 @@ namespace Tests
 			return sa.mA + sa.mB + tup.0 + tup.1 + arr[0] + arr[1];
 		}
 
-		[ConstEval]
+		[Comptime(ConstEval=true)]
 		static var StrToValue(String str)
 		{
 			if (str.Contains('.'))
@@ -164,7 +164,7 @@ namespace Tests
 			//Compiler.Assert(val1 == 24);
 			Test.Assert(val1 == 70);
 
-			// This method is marked as ConstEval so it always evaluates as const
+			// This method is marked as Comptime so it always evaluates as const
 			let val2 = ConstSum(3, 20, 100);
 			Compiler.Assert(val2 == 123);
 

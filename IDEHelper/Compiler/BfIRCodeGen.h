@@ -107,7 +107,8 @@ public:
 	Dictionary<int, llvm::Function*> mIntrinsicMap;
 	Dictionary<llvm::Function*, int> mIntrinsicReverseMap;	
 	Array<llvm::Constant*> mConfigConsts32;
-	Array<llvm::Constant*> mConfigConsts64;	
+	Array<llvm::Constant*> mConfigConsts64;
+	Dictionary<llvm::Type*, llvm::Value*> mReflectDataMap;
 
 public:		
 	void InitTarget();

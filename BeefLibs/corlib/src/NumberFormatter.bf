@@ -1235,7 +1235,7 @@ namespace System
 		//   _isCustomFormat, _specifierIsUpper, _specifier & _precision.
 		this(CultureInfo cultureInfo)
 		{
-			if (Compiler.IsConstEval)
+			if (Compiler.IsComptime)
 				_cbuf = new char8[0];
 			else
 				_cbuf = sEmtpyBuf;

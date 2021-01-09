@@ -737,7 +737,7 @@ void BfContext::HandleChangedTypeDef(BfTypeDef* typeDef, bool isAutoCompleteTemp
 		}		
 	}
 
-	if (!typeDef->mIsPartial)
+	if ((!typeDef->mIsPartial) && (!isAutoCompleteTempType))
 	{
 		if ((typeDef->mDefState == BfTypeDef::DefState_New) ||
 			(typeDef->mDefState == BfTypeDef::DefState_Deleted) ||
@@ -1025,6 +1025,11 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mHasDeclError = false;
 	delete typeInst->mTypeInfoEx;
 	typeInst->mTypeInfoEx = NULL;
+	
+	typeInst->mTypeDef->ClearEmitted();
+	for (auto localMethod : typeInst->mOwnedLocalMethods)
+		delete localMethod;
+	typeInst->mOwnedLocalMethods.Clear();
 
 	if (typeInst->IsGenericTypeInstance())
 	{
@@ -2851,7 +2856,24 @@ void BfContext::Cleanup()
 
 		for (auto localMethod : mLocalMethodGraveyard)
 		{
-			if ((localMethod->mMethodInstanceGroup != NULL) && (localMethod->mMethodInstanceGroup->mRefCount > 0))
+			bool inCEMachine = false;
+			if (localMethod->mMethodInstanceGroup != NULL)
+			{
+				if ((localMethod->mMethodInstanceGroup->mDefault != NULL) && (localMethod->mMethodInstanceGroup->mDefault->mInCEMachine))
+					inCEMachine = true;
+				if (localMethod->mMethodInstanceGroup->mMethodSpecializationMap != NULL)
+				{
+					for (auto& kv : *localMethod->mMethodInstanceGroup->mMethodSpecializationMap)
+						if (kv.mValue->mInCEMachine)
+							inCEMachine = true;
+				}
+			}
+
+			if (inCEMachine)
+			{
+				localMethod->mMethodInstanceGroup->mOwner->mOwnedLocalMethods.Add(localMethod);
+			}
+			else if ((localMethod->mMethodInstanceGroup != NULL) && (localMethod->mMethodInstanceGroup->mRefCount > 0))
 			{
 				localMethod->Dispose();
 				survivingLocalMethods.push_back(localMethod);

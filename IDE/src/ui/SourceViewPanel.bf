@@ -153,6 +153,17 @@ namespace IDE.ui
 		}
     }    
 
+	public class HoverResolveTask
+	{
+		public int32 mCursorPos;
+		public String mResult ~ delete _;
+
+		public ~this()
+		{
+			NOP!();
+		}
+	}
+
 	public class SourceFindTask
 	{
 		public WaitEvent mDoneEvent = new WaitEvent() ~ delete _;
@@ -306,6 +317,7 @@ namespace IDE.ui
 		public List<ResolveParams> mDeferredResolveResults = new .() ~ DeleteContainerAndItems!(_);
         public bool mTrackedTextElementViewListDirty;
         public String mFilePath ~ delete _;
+		public int32 mEmitRevision = -1;
 		public bool mIsBinary;
 		public String mAliasFilePath ~ delete _;
 #if IDE_C_SUPPORT
@@ -321,6 +333,7 @@ namespace IDE.ui
 		HTTPRequest mOldVerHTTPRequest ~ delete _;
 		IDEApp.ExecutionInstance mOldVerLoadExecutionInstance ~ { if (_ != null) _.mAutoDelete = true; };
 		SourceFindTask mSourceFindTask ~ delete _;
+		HoverResolveTask mHoverResolveTask ~ delete _;
 		bool mWantsFastClassify;
         bool mWantsFullClassify; // This triggers a classify
         bool mWantsFullRefresh; // If mWantsFullClassify is set, mWantsFullRefresh makes the whole thing refresh
@@ -579,6 +592,8 @@ namespace IDE.ui
 
 			if (ResolveCompiler.mThreadWorkerHi.mThreadRunning)
 			{
+				ResolveCompiler.RequestFastFinish();
+
 				//Debug.WriteLine("Deferred DoAutoComplete");
 				DeleteAndNullify!(mQueuedAutoComplete);
 				mQueuedAutoComplete = new .();
@@ -968,6 +983,11 @@ namespace IDE.ui
                 //return;
             }*/
 
+			if (compiler.IsPerformingBackgroundOperation())
+			{
+				compiler.RequestFastFinish();
+			}
+
 			if (bfSystem == null)
 				return false;
 
@@ -1023,7 +1043,7 @@ namespace IDE.ui
             bool doBackground = (useResolveType == ResolveType.Classify) || (useResolveType == ResolveType.ClassifyFullRefresh);
 			if (mAsyncAutocomplete)
 			{
-				if ((useResolveType == .Autocomplete) || (useResolveType == .GetCurrentLocation) || (useResolveType == .GetSymbolInfo))
+				if ((useResolveType == .Autocomplete) || (useResolveType == .GetCurrentLocation) || (useResolveType == .GetSymbolInfo) || (useResolveType == .GetResultString))
 					doBackground = true;
 			}
 
@@ -1111,7 +1131,9 @@ namespace IDE.ui
 
 				bool isHi = (resolveType != .ClassifyFullRefresh) && (resolveType != .Classify);
 				if (isHi)
+				{
 					Debug.Assert(!bfCompiler.mThreadWorkerHi.mThreadRunning);
+				}
 				else
 					Debug.Assert(!bfCompiler.mThreadWorker.mThreadRunning);
 
@@ -1209,7 +1231,10 @@ namespace IDE.ui
             var bfCompiler = BfResolveCompiler;
             //var bfSystem = IDEApp.sApp.mBfResolveSystem;
             //bfCompiler.StartTiming();
-            DoClassify(ResolveType.Classify, resolveParams);
+			ResolveType resolveType = ResolveType.Classify;
+			if (resolveParams != null)
+				resolveType = resolveParams.mResolveType;
+            DoClassify(resolveType, resolveParams);
             //bfCompiler.StopTiming();
             if (bfCompiler != null)
                 bfCompiler.QueueDeferredResolveAll();
@@ -1600,6 +1625,11 @@ namespace IDE.ui
 			}
 			else if (resolveType == ResolveType.GetResultString)
 			{
+				if ((mHoverResolveTask != null) && (mHoverResolveTask.mCursorPos == resolveParams.mOverrideCursorPos))
+				{
+					mHoverResolveTask.mResult = new String(autocompleteInfo);
+				}
+
 				resolveParams.mResultString = new String(autocompleteInfo);
 			}
 			else if (resolveType == ResolveType.GetCurrentLocation)
@@ -1664,7 +1694,7 @@ namespace IDE.ui
             var bfCompiler = BfResolveCompiler;
             //var compiler = ResolveCompiler;
             
-            bool isBackground = (resolveType == ResolveType.Classify) || (resolveType == ResolveType.ClassifyFullRefresh);
+            bool isBackground = (resolveType == ResolveType.Classify) || (resolveType == ResolveType.ClassifyFullRefresh) || (resolveType == .GetResultString);
             bool fullRefresh = resolveType == ResolveType.ClassifyFullRefresh;
 
 			if (!isBackground)
@@ -1775,15 +1805,18 @@ namespace IDE.ui
 			int cursorPos = mEditWidget.mEditWidgetContent.CursorTextPos;
 			/*if (resolveType == ResolveType.Autocomplete)
 				cursorPos--;*/
-			if ((resolveParams != null) && (resolveParams.mOverrideCursorPos != -1))
-				cursorPos = resolveParams.mOverrideCursorPos;
+			if (resolveParams != null)
+			{
+				 if (resolveParams.mOverrideCursorPos != -1)
+					cursorPos = resolveParams.mOverrideCursorPos;
+			}
 
             if ((resolveType == ResolveType.GetNavigationData) || (resolveType == ResolveType.GetFixits))
                 parser.SetAutocomplete(-1);
             else
 			{
 				bool setAutocomplete = ((!isBackground) && (resolveType != ResolveType.RenameSymbol));
-				if ((resolveType == .Autocomplete) || (resolveType == .GetCurrentLocation) || (resolveType == .GetSymbolInfo))
+				if ((resolveType == .Autocomplete) || (resolveType == .GetCurrentLocation) || (resolveType == .GetSymbolInfo) || (resolveType == .GetResultString))
 					setAutocomplete = true;
 				if (setAutocomplete)
                 	parser.SetAutocomplete(Math.Max(0, cursorPos));
@@ -1866,7 +1899,9 @@ namespace IDE.ui
 
 					resolveParams.mCancelled = true;
                     if (resolveType == ResolveType.ClassifyFullRefresh)
+					{
                         QueueFullRefresh(false);
+					}
                     bfCompiler.QueueDeferredResolveAll();
                 }
             }
@@ -4639,6 +4674,7 @@ namespace IDE.ui
 
 		public void UpdateMouseover(bool mouseoverFired, bool mouseInbounds, int line, int lineChar)
 		{
+
 			
 #unwarn
 		    CompilerBase compiler = ResolveCompiler;
@@ -4839,7 +4875,7 @@ namespace IDE.ui
 	            }
 	        }
 
-	        if (((mHoverWatch == null) && (mouseoverFired)) || (debugExpr == null) || (hasClangHoverErrorData))
+	        if (((mHoverWatch == null) && (mouseoverFired)) || (debugExpr == null) || (hasClangHoverErrorData) || (mHoverResolveTask?.mResult != null))
 	        {
 	            float x;
 	            float y;
@@ -4857,18 +4893,22 @@ namespace IDE.ui
 
 				String origDebugExpr = null;
 
+				bool handlingHoverResolveTask = false;
+
 				if ((debugExpr != null) || (isOverMessage))
 				{
-					let resolveParams = scope ResolveParams();
-					resolveParams.mOverrideCursorPos = (int32)textIdx;
-					if (!gApp.mDebugger.IsPaused())
-						Classify(ResolveType.GetResultString, resolveParams);
-					if (!String.IsNullOrEmpty(resolveParams.mResultString))
+					if (mHoverResolveTask != null)
+					{
+						if (mHoverResolveTask.mCursorPos != textIdx)
+							DeleteAndNullify!(mHoverResolveTask);
+					}
+
+					if ((!String.IsNullOrEmpty(mHoverResolveTask?.mResult)))
 					{
 						origDebugExpr = scope:: String();
 						origDebugExpr.Set(debugExpr);
 
-						debugExpr.Set(resolveParams.mResultString);
+						debugExpr.Set(mHoverResolveTask.mResult);
 
 						if (debugExpr.StartsWith(':'))
 						{
@@ -4889,6 +4929,12 @@ namespace IDE.ui
 						}
 					}
 
+					if (mHoverResolveTask?.mResult != null)
+					{
+						handlingHoverResolveTask = true;
+						DeleteAndNullify!(mHoverResolveTask);
+					}
+
 					if (!triedShow)
 					{
 				        mHoverWatch.Show(this, x, y, debugExpr, debugExpr);
@@ -4899,6 +4945,22 @@ namespace IDE.ui
 	            if ((!didShow) &&
 					((debugExpr == null) || (isOverMessage) || (!mHoverWatch.Show(this, x, y, origDebugExpr ?? debugExpr, debugExpr))))
 	            {
+					if (mHoverResolveTask == null)
+					{
+						if ((!handlingHoverResolveTask) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning))
+						{
+							ResolveParams resolveParams = new .();
+							resolveParams.mOverrideCursorPos = (int32)textIdx;
+							Classify(ResolveType.GetResultString, resolveParams);
+							//Debug.WriteLine($"GetResultString {resolveParams} {resolveParams.mInDeferredList}");
+							if (!resolveParams.mInDeferredList)
+								delete resolveParams;
+
+							mHoverResolveTask = new HoverResolveTask();
+							mHoverResolveTask.mCursorPos = (int32)textIdx;
+						}
+					}
+
 #if IDE_C_SUPPORT
 	                if ((mIsClang) && (textIdx != -1))
 	                {
@@ -4994,7 +5056,6 @@ namespace IDE.ui
 							{
 								mWantsFullRefresh = true;
 								mRefireMouseOverAfterRefresh = true;
-								//Debug.WriteLine("Full refresh...");
 							}
 						}
 
@@ -5026,7 +5087,6 @@ namespace IDE.ui
 				{
 					if (mHoverWatch.mCloseDelay > 0)
 					{
-						//Debug.WriteLine("mHoverWatch.mCloseCountdown = 20");
 						mHoverWatch.mCloseDelay--;
 						mHoverWatch.mCloseCountdown = 20;
 					}
@@ -5042,7 +5102,6 @@ namespace IDE.ui
 				}
 				else
 				{
-					//Debug.WriteLine("mCloseCountdown = 0");
 					mHoverWatch.mCloseCountdown = 0;
 				}
 	        }            
@@ -5088,7 +5147,7 @@ namespace IDE.ui
 #if IDE_C_SUPPORT
 			hasClangHoverErrorData = mClangHoverErrorData != null;
 #endif
-		    if (((mouseoverFired) || (mHoverWatch != null) || (hasClangHoverErrorData)) && 
+		    if (((mouseoverFired) || (mHoverWatch != null) || (hasClangHoverErrorData) || (mHoverResolveTask?.mResult != null)) && 
 		        (mousePos.x >= 0))
 		    {
 		        int line;
@@ -5104,455 +5163,6 @@ namespace IDE.ui
 				}
 			}
 		}
-
-        public void UpdateMouseover2()
-        {
-			if (mWidgetWindow == null)
-				return;
-
-			if (CheckLeftMouseover())
-			{
-				return;
-			}
-
-			if ((DarkTooltipManager.sTooltip != null) && (DarkTooltipManager.sTooltip.mRelWidget == this))
-				DarkTooltipManager.CloseTooltip();
-
-			if (!CheckAllowHoverWatch())
-			{
-				return;
-			}
-
-            /*if ((mHoverWatch != null) && (mHoverWatch.mCloseDelay > 0))
-                return;*/
-            var editWidgetContent = mEditWidget.Content;
-            Point mousePos;
-            bool mouseoverFired = DarkTooltipManager.CheckMouseover(editWidgetContent, 10, out mousePos);
-
-#unwarn
-            CompilerBase compiler = ResolveCompiler;
-
-			bool hasClangHoverErrorData = false;
-
-#if IDE_C_SUPPORT
-			hasClangHoverErrorData = mClangHoverErrorData != null;
-#endif
-            if (((mouseoverFired) || (mHoverWatch != null) || (hasClangHoverErrorData)) && 
-                (mousePos.x >= 0))
-            {
-                int line;
-                int lineChar;
-                String debugExpr = null;
-
-                BfSystem bfSystem = IDEApp.sApp.mBfResolveSystem;                
-                BfPassInstance passInstance = null;
-                BfParser parser = null;
-                int textIdx = -1;
-
-                bool isOverMessage = false;
-                float overflowX;
-                if (editWidgetContent.GetLineCharAtCoord(mousePos.x, mousePos.y, out line, out lineChar, out overflowX))
-                {
-                    textIdx = editWidgetContent.GetTextIdx(line, lineChar);
-                    
-                    int startIdx = editWidgetContent.GetTextIdx(line, lineChar);
-
-                    uint8 checkFlags = (uint8)SourceElementFlags.Error;
-                    if (!IDEApp.sApp.mDebugger.mIsRunning)
-                    {
-                        // Prioritize debug info over warning when we are debugging
-                        checkFlags |= (uint8)SourceElementFlags.Warning; 
-                    }
-                    if ((editWidgetContent.mData.mText[startIdx].mDisplayFlags & checkFlags) != 0)
-                        isOverMessage = true;
-
-					bool doSimpleMouseover = false;
-
-                    if ((editWidgetContent.mSelection != null) &&
-                        (textIdx >= editWidgetContent.mSelection.Value.MinPos) &&
-                        (textIdx < editWidgetContent.mSelection.Value.MaxPos))
-                    {
-                        debugExpr = scope:: String();
-                        editWidgetContent.GetSelectionText(debugExpr);
-                    }
-                    else if (mIsBeefSource)
-                    {
-						if (bfSystem != null)
-						{
-							parser = bfSystem.CreateEmptyParser(null);
-						
-	                        var text = scope String();
-	                        mEditWidget.GetText(text);
-	                        parser.SetSource(text, mFilePath);
-	                        parser.SetAutocomplete(textIdx);
-	                        passInstance = bfSystem.CreatePassInstance("Mouseover");
-							parser.SetCompleteParse();
-	                        parser.Parse(passInstance, !mIsBeefSource);
-	                        parser.Reduce(passInstance);
-	                        debugExpr = scope:: String();
-	                        if (parser.GetDebugExpressionAt(textIdx, debugExpr))
-	                        {
-	                            if (debugExpr.StartsWith("`"))
-									debugExpr[0] = ':';
-	                            else if (debugExpr.StartsWith(":"))
-	                                debugExpr = null;
-	                        }
-						}
-                    }
-                    else if (mIsClang)
-						doSimpleMouseover = true;
-
-					if (doSimpleMouseover)
-					SimpleMouseover: do
-                    {
-                        int endIdx = startIdx;
-                        String sb = scope:: String();
-                        bool isInvalid = false;
-                        bool prevWasSpace = false;
-
-						if (editWidgetContent.mData.mText[startIdx].mChar.IsWhiteSpace)
-							break;
-
-                        startIdx--;
-                        while (startIdx > 0)
-                        {
-                            var char8Data = editWidgetContent.mData.mText[startIdx];
-                            if (char8Data.mDisplayTypeId == (uint8)SourceElementType.Comment)
-                            {
-                                if (startIdx == endIdx - 1)
-                                {
-                                    // Inside comment
-                                    isInvalid = true;
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                char8 c = (char8)char8Data.mChar;
-                                if ((c == ' ') || (c == '\t'))
-                                {
-                                    // Ignore
-                                    prevWasSpace = true;
-                                }
-								else if (c == '\n')
-								{
-									break;
-								}
-                                else
-                                {
-                                    if (c == '>')
-                                    {
-                                        // Is this "->"?
-                                        if ((startIdx > 1) && ((char8)editWidgetContent.mData.mText[startIdx - 1].mChar == '-'))
-                                        {
-                                            sb.Insert(0, "->");
-                                            startIdx--;
-                                        }
-                                        else
-                                            break;
-                                    }
-                                    else if (c == ':')
-                                    {
-                                        // Is this "::"?
-                                        if ((startIdx > 1) && ((char8)editWidgetContent.mData.mText[startIdx - 1].mChar == ':'))
-                                        {
-                                            sb.Insert(0, "::");
-                                            startIdx--;
-                                        }
-                                        else
-                                            break;
-                                    }
-                                    else if (c == '.')
-                                        sb.Insert(0, c);
-                                    else if ((c == '_') || (c.IsLetterOrDigit))
-                                    {
-                                        if (prevWasSpace)
-                                            break;
-                                        sb.Insert(0, c);
-                                    }
-                                    else
-                                        break;
-
-                                    prevWasSpace = false;
-                                }
-                            }
-                            startIdx--;
-                        }
-						
-                        prevWasSpace = false;
-                        while ((endIdx < editWidgetContent.mData.mTextLength) && (endIdx > startIdx))
-                        {
-                            var char8Data = editWidgetContent.mData.mText[endIdx];
-                            if (char8Data.mDisplayTypeId == (uint8)SourceElementType.Comment)
-                            {
-                                // Ignore
-                                prevWasSpace = true;
-                            }
-                            else
-                            {
-                                char8 c = (char8)char8Data.mChar;
-                                if ((c == ' ') || (c == '\t'))
-                                {
-                                    // Ignore
-                                    prevWasSpace = true;
-                                }
-                                else if ((c == '_') || (c.IsLetterOrDigit))
-                                {
-                                    if (prevWasSpace)
-                                        break;
-
-                                    sb.Append(c);
-                                }
-                                else
-                                    break;
-
-                                prevWasSpace = false;
-                            }
-                            endIdx++;
-                        }
-
-                        if (!isInvalid)
-                            debugExpr = sb;
-                    }
-                }
-
-                bool triedShow = false;
-
-                if (mHoverWatch != null)
-                {
-                    if (debugExpr != null)                        
-                    {
-                        if (mHoverWatch.mEvalString != debugExpr)
-						{
-                            mHoverWatch.Close();
-							mHoverWatch = null;
-						}
-                        else
-                            triedShow = true;
-                    }
-                }
-
-                if (((mHoverWatch == null) && (mouseoverFired)) || (debugExpr == null) || (hasClangHoverErrorData))
-                {
-                    float x;
-                    float y;
-                    editWidgetContent.GetTextCoordAtLineChar(line, lineChar, out x, out y);
-
-					bool hasHoverWatchOpen = (mHoverWatch != null) && (mHoverWatch.mListView != null);
-                    if (mHoverWatch == null)
-                        mHoverWatch = new HoverWatch();
-
-                    if (debugExpr != null)
-                        triedShow = true;
-
-					bool didShow = false;
-					//if ((debugExpr == "var") || (debugExpr == "let"))
-
-					String origDebugExpr = null;
-
-					if ((debugExpr != null) || (isOverMessage))
-					{
-						let resolveParams = scope ResolveParams();
-						resolveParams.mOverrideCursorPos = (int32)textIdx;
-						Classify(ResolveType.GetResultString, resolveParams);
-						if (!String.IsNullOrEmpty(resolveParams.mResultString))
-						{
-							origDebugExpr = scope:: String();
-							origDebugExpr.Set(debugExpr);
-
-							debugExpr.Set(resolveParams.mResultString);
-						}
-
-						if (!triedShow)
-						{
-					        mHoverWatch.Show(this, x, y, debugExpr, debugExpr);
-							triedShow = true;
-						}
-					}
-
-                    if ((!didShow) &&
-						((debugExpr == null) || (isOverMessage) || (!mHoverWatch.Show(this, x, y, origDebugExpr ?? debugExpr, debugExpr))))
-                    {
-#if IDE_C_SUPPORT
-                        if ((mIsClang) && (textIdx != -1))
-                        {
-                            bool hasErrorFlag = (mEditWidget.Content.mData.mText[textIdx].mDisplayFlags != 0);
-
-                            if (hasErrorFlag)
-                            {
-                                if (!compiler.IsPerformingBackgroundOperation())
-                                {
-                                    bool hadValidError = false;
-                                    if (mClangHoverErrorData != null)
-                                    {
-                                        String[] stringParts = String.StackSplit!(mClangHoverErrorData, '\t');
-                                        int startIdx = (int32)int32.Parse(stringParts[0]);
-                                        int endIdx = (int32)int32.Parse(stringParts[1]);
-                                        if ((textIdx >= startIdx) && (textIdx < endIdx))
-                                        {
-                                            hadValidError = true;
-                                            triedShow = true;
-                                            mHoverWatch.Show(this, x, y, scope String(":", stringParts[2]));
-											if (debugExpr != null)
-                                            	mHoverWatch.mEvalString.Set(debugExpr); // Set to old debugStr for comparison
-											else
-												mHoverWatch.mEvalString.Clear();
-                                        }
-
-                                    }
-
-                                    if (!hadValidError)
-                                    {
-                                        mErrorLookupTextIdx = (int32)textIdx;
-                                        Classify(ResolveType.Classify);
-                                        triedShow = false;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                triedShow = false;
-								delete mClangHoverErrorData;
-                                mClangHoverErrorData = null;
-                            }
-                        }
-#endif
-
-                        if ((parser != null) && (mIsBeefSource))
-						ErrorScope:
-                        {
-							//TODO: Needed this?
-                            /*var resolvePassData = parser.CreateResolvePassData();
-							defer (scope) delete resolvePassData;
-                            bfSystem.NotifyWillRequestLock(1);
-                            bfSystem.Lock(1);
-                            parser.BuildDefs(passInstance, resolvePassData, false);
-                            BfResolveCompiler.ClassifySource(passInstance, parser, resolvePassData, null);*/
-                            
-                            BfPassInstance.BfError bestError = scope BfPassInstance.BfError();
-
-                            for (var bfError in mErrorList)
-                            {
-                                if (bfError.mIsWhileSpecializing)
-                                    continue;
-
-                                if ((textIdx >= bfError.mSrcStart) && (textIdx < bfError.mSrcEnd))
-                                {
-                                    if ((bestError.mError == null) || (bestError.mIsWarning) || (bestError.mIsPersistent))
-                                        bestError = bfError;                                    
-                                }
-                            }
-                            
-                            String showMouseoverString = null;
-                            if (bestError.mError != null)
-                            {
-                                showMouseoverString = scope:: String(":", bestError.mError);
-
-								if (bestError.mMoreInfo != null)
-								{
-									for (var moreInfo in bestError.mMoreInfo)
-									{
-										showMouseoverString.AppendF("\n@{0}\t{1}\t{2}", moreInfo.mFilePath, moreInfo.mSrcStart, moreInfo.mError);
-									}
-								}
-                            }
-							else
-							{
-								var flags = (SourceElementFlags)editWidgetContent.mData.mText[textIdx].mDisplayFlags;
-								if ((flags.HasFlag(.Error)) || (flags.HasFlag(.Warning)))
-								{
-									mWantsFullRefresh = true;
-									mRefireMouseOverAfterRefresh = true;
-									//Debug.WriteLine("Full refresh...");
-								}
-							}
-
-                            if (showMouseoverString != null)
-                            {
-                                triedShow = true;
-                                mHoverWatch.Show(this, x, y, showMouseoverString, showMouseoverString);
-								if (debugExpr != null)
-                                	mHoverWatch.mEvalString.Set(debugExpr); // Set to old debugStr for comparison
-                            }
-                            else
-                                triedShow = false;
-                        }
-                    }
-					if (!hasHoverWatchOpen)
-                    	mHoverWatch.mOpenMousePos = DarkTooltipManager.sLastRelMousePos;
-                }
-
-				// Not used?
-				if ((mHoverWatch != null) && (mHoverWatch.mTextPanel != this))
-				{
-					mHoverWatch.Close();
-					mHoverWatch = null;
-				}
-
-                if (mHoverWatch != null)
-                {
-					if ((!triedShow) && (!IDEApp.sApp.HasPopupMenus()))
-					{
-						if (mHoverWatch.mCloseDelay > 0)
-						{
-							//Debug.WriteLine("mHoverWatch.mCloseCountdown = 20");
-							mHoverWatch.mCloseDelay--;
-							mHoverWatch.mCloseCountdown = 20;
-						}
-	                    else
-	                    {
-	                        mHoverWatch.Close();
-	                        mHoverWatch = null;
-#if IDE_C_SUPPORT
-							delete mClangHoverErrorData;
-	                        mClangHoverErrorData = null;
-#endif
-	                    }
-					}
-					else
-					{
-						//Debug.WriteLine("mCloseCountdown = 0");
-						mHoverWatch.mCloseCountdown = 0;
-					}
-                }            
-                
-                if (passInstance != null)
-                    delete passInstance;
-                if (parser != null)
-                {
-                    delete parser;
-                    mWantsParserCleanup = true;
-                }
-            }
-
-#if IDE_C_SUPPORT
-			delete mClangHoverErrorData;
-            mClangHoverErrorData = null;
-#endif
-
-            /*if ((mIsClang) && (!compiler.IsPerformingBackgroundOperation()))
-            {
-                bool hadValidError = false;
-                if (mClangHoverErrorData != null)
-                {
-                    int textIdx = -1;
-                    int line;
-                    int lineChar;
-                    if (editWidgetContent.GetLineCharAtCoord(mousePos.x, mousePos.y, out line, out lineChar))                    
-                        textIdx = editWidgetContent.GetTextIdx(line, lineChar);
-
-                    string[] stringParts = mClangHoverErrorData.Split('\t');
-                    int startIdx = int.Parse(stringParts[0]);
-                    int endIdx = int.Parse(stringParts[1]);
-                    if ((textIdx >= startIdx) && (textIdx < endIdx))
-                    {
-                        hadValidError = true;                        
-                        mHoverWatch.Show(this, x, y, ":" + stringParts[2]);
-                        mHoverWatch.mEvalString.Set(debugExpr); // Set to old debugStr for comparison
-                    }
-                }
-            }*/
-        }
 
         void DuplicateEditState(out EditWidgetContent.CharData[] char8Data, out IdSpan char8IdData)
         {
@@ -5840,6 +5450,13 @@ namespace IDE.ui
 						checkIdx++;
 						continue;
 					}
+
+					if (!resolveResult.mWaitEvent.WaitFor(0))
+					{
+						if (waitTime != 0)
+							ResolveCompiler.RequestFastFinish();
+					}
+
 					if (!resolveResult.mWaitEvent.WaitFor(waitTime))
 					{
 						checkIdx++;
@@ -5847,6 +5464,9 @@ namespace IDE.ui
 					}
 					mDeferredResolveResults.RemoveAt(checkIdx);
 				}
+
+				//Debug.WriteLine($"HandleResolveResult {resolveResult}");
+
 				HandleResolveResult(resolveResult.mResolveType, resolveResult.mAutocompleteInfo, resolveResult);
 
 				//Debug.WriteLine("ProcessDeferredResolveResults finished {0}", resolveResult.mResolveType);
@@ -5887,12 +5507,15 @@ namespace IDE.ui
 					{
 						MarkDirty();
 					    if (resolveResult.mPassInstance.HadSignatureChanges())
+						{
 					        mWantsFullRefresh = true;
+						}
 					}
 				}
 				/*if (checkIt)
 					Debug.Assert(data.mDisplayTypeId == 8);*/
 
+				//Debug.WriteLine($"Deleting {resolveResult}");
 				delete resolveResult;
 			}
 		}
@@ -6368,6 +5991,9 @@ namespace IDE.ui
 					mLockFlashPct = 0;
 				MarkDirty();
 			}
+
+			if ((mEmitRevision >= 0) && ((mUpdateCnt % 30) == 0))
+				CheckEmitRevision();
         }
 
         void InjectErrors(BfPassInstance processingPassInstance, EditWidgetContent.CharData[] processResolveCharData, IdSpan processCharIdSpan, bool keepPersistentErrors)
@@ -6396,10 +6022,14 @@ namespace IDE.ui
             int32 errorCount = processingPassInstance.GetErrorCount();
             mErrorList.Capacity = mErrorList.Count + errorCount;
 
+			bool hadNonDeferredErrors = false;
+
             for (int32 errorIdx = 0; errorIdx < errorCount; errorIdx++)
             {
                 BfPassInstance.BfError bfError = new BfPassInstance.BfError();
                 processingPassInstance.GetErrorData(errorIdx, bfError);
+				if (!bfError.mIsDeferred)
+					hadNonDeferredErrors = true;
 
 				for (int32 moreInfoIdx < bfError.mMoreInfoCount)
 				{
@@ -6424,6 +6054,9 @@ namespace IDE.ui
 
                     if (bfError.mIsWhileSpecializing)
                         continue;
+
+					if ((bfError.mIsDeferred) && (hadNonDeferredErrors))
+						continue;
 
                     if (bfError.mIsPersistent)
                     {
@@ -6822,6 +6455,28 @@ namespace IDE.ui
 			}
 
 			return false;
+		}
+
+		public void CheckEmitRevision()
+		{
+			if (mEmitRevision != -1)
+			{
+				BfCompiler compiler = null;
+				if (mFilePath.Contains("$EmitR$"))
+					compiler = gApp.mBfResolveCompiler;
+				else if (mFilePath.Contains("$Emit$"))
+					compiler = gApp.mBfBuildCompiler;
+
+				if (compiler != null)
+				{
+					int32 version = compiler.GetEmitVersion(mFilePath);
+					if ((version >= 0) && (version != mEmitRevision))
+					{
+						mEmitRevision = version;
+						Reload();
+					}
+				}
+			}
 		}
     }
 }

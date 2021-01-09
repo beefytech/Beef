@@ -274,10 +274,36 @@ namespace System
 
 	}
 
-	[AttributeUsage(.Method | .Invocation)]
+	[AttributeUsage(.Method)]
+	public struct ComptimeAttribute : Attribute
+	{
+		public this()
+		{
+
+		}
+
+		public bool OnlyFromComptime
+		{
+			set
+			{
+			}
+		}
+
+		public bool ConstEval
+		{
+			set
+			{
+			}
+		}
+	}
+
+	[AttributeUsage(.Invocation)]
 	public struct ConstEvalAttribute : Attribute
 	{
+		public this()
+		{
 
+		}
 	}
 
 	[AttributeUsage(.Method /*2*/)]

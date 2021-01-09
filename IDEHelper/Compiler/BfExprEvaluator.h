@@ -390,8 +390,8 @@ public:
 	void FinishExpressionResult();	
 	virtual bool CheckAllowValue(const BfTypedValue& typedValue, BfAstNode* refNode);
 	BfAutoComplete* GetAutoComplete();	
-	bool IsConstEval();
-	bool IsConstEvalEntry();
+	bool IsComptime();
+	bool IsComptimeEntry();
 	int GetStructRetIdx(BfMethodInstance* methodInstance, bool forceStatic = false);
 	BfTypedValue SetupNullConditional(BfTypedValue target, BfTokenNode* dotToken);
 	void Evaluate(BfAstNode* astNode, bool propogateNullConditional = false, bool ignoreNullConditional = false, bool allowSplat = true);	

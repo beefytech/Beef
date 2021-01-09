@@ -1407,6 +1407,23 @@ namespace IDE
 				}
 			}
 
+			BfCompiler compiler = null;
+
+			if (fileName.Contains("$EmitR$"))
+				compiler = mBfResolveCompiler;
+			else if (fileName.Contains("$Emit$"))
+				compiler = mBfBuildCompiler;
+
+			if (compiler != null)
+			{
+				if (compiler.GetEmitSource(fileName, outBuffer))
+				{
+					if (onPreFilter != null)
+						onPreFilter();
+					return .Ok;
+				}
+			}
+
 			return Utils.LoadTextFile(fileName, outBuffer, autoRetry, onPreFilter);
 		}
 
@@ -6145,6 +6162,16 @@ namespace IDE
 				useFilePath = scope:: String(useFilePath);
 			}
 
+			int32 emitRevision = -1;
+			//
+			{
+				int barPos = useFilePath.IndexOf('|');
+				if (barPos != -1)
+				{
+					emitRevision = int32.Parse(useFilePath.Substring(barPos + 1)).Value;
+					useFilePath.RemoveToEnd(barPos);
+				}
+			}
             
             if ((useFilePath != null) && (!IDEUtils.FixFilePath(useFilePath)))
 				return null;
@@ -6219,6 +6246,8 @@ namespace IDE
 					sourceViewPanelTab.mTabbedView.FinishTabAnim();
 					if (setFocus)
 					    sourceViewPanel.FocusEdit();
+
+					sourceViewPanel.CheckEmitRevision();
 				}
 			}
 
@@ -6236,6 +6265,7 @@ namespace IDE
             }
             else
                 success = sourceViewPanel.Show(useFilePath, !mInitialized);
+			sourceViewPanel.mEmitRevision = emitRevision;
 
             if (!success)
             {

@@ -946,6 +946,14 @@ BfParser* BfAstNode::GetParser()
 	return sourceData->ToParser();
 }
 
+bool BfAstNode::IsEmitted()
+{
+	auto parser = GetParser();
+	if (parser == NULL)
+		return false;
+	return parser->mIsEmitted;
+}
+
 bool BfAstNode::IsFromParser(BfParser* parser)
 {
 	if (parser == NULL)

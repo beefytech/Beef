@@ -1088,6 +1088,7 @@ public:
 	BfSourceData* GetSourceData();
 	BfParserData* GetParserData();
 	BfParser* GetParser();
+	bool IsEmitted();
 	bool IsFromParser(BfParser* parser);
 	String ToString();
 	StringView ToStringView();

@@ -323,6 +323,8 @@ public:
 	BfCodeGen mCodeGen;
 	String mOutputDirectory;
 	bool mCanceling;
+	bool mFastFinish;
+	bool mHasQueuedTypeRebuilds; // Infers we had a fast finish that requires a type rebuild
 	bool mHadCancel;
 	bool mWantsDeferMethodDecls;		
 	bool mInInvalidState;
@@ -362,10 +364,13 @@ public:
 	
 	BfTypeDef* mThreadTypeDef;
 	BfTypeDef* mInternalTypeDef;
+	BfTypeDef* mCompilerTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
 	BfTypeDef* mIPrintableTypeDef;
 	BfTypeDef* mIHashableTypeDef;
+	BfTypeDef* mIComptimeTypeApply;
+	BfTypeDef* mIComptimeMethodApply;
 	
 	BfTypeDef* mMethodRefTypeDef;
 	BfTypeDef* mNullableTypeDef;
@@ -403,6 +408,7 @@ public:
 	BfTypeDef* mDisableChecksAttributeTypeDef;
 	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;
 	BfTypeDef* mFriendAttributeTypeDef;
+	BfTypeDef* mComptimeAttributeTypeDef;
 	BfTypeDef* mConstEvalAttributeTypeDef;
 	BfTypeDef* mNoExtensionAttributeTypeDef;
 	BfTypeDef* mCheckedAttributeTypeDef;
@@ -417,6 +423,7 @@ public:
 	BfTypeDef* mWarnAttributeTypeDef;
 	BfTypeDef* mIgnoreErrorsAttributeTypeDef;
 	BfTypeDef* mReflectAttributeTypeDef;		
+	BfTypeDef* mOnCompileAttributeTypeDef;
 
 	int mCurTypeId;	
 	int mTypeInitCount;
@@ -493,9 +500,11 @@ public:
 	void ProcessAutocompleteTempType();	
 	void GetSymbolReferences();	
 	void Cancel();
+	void RequestFastFinish();
 	String GetTypeDefList();
 	String GetTypeDefMatches(const StringImpl& searchSrc);
 	String GetTypeDefInfo(const StringImpl& typeName);	
+	int GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer);
 
 	void CompileLog(const char* fmt ...);
 	void ReportMemory(MemReporter* memReporter);

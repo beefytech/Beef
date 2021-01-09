@@ -195,6 +195,22 @@ namespace Tests
 			TI iface = val as TI;
 		}
 
+		public void MethodA<T>(List<T> list)
+		{
+
+		}
+
+		public void MethodA<T>(Span<T> list)
+		{
+
+		}
+
+		public void MethodB<T>()
+		{
+			List<T> list = null;
+			MethodA(list);
+		}
+
 		[Test]
 		public static void TestBasics()
 		{

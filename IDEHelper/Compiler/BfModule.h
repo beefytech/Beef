@@ -32,6 +32,7 @@ NS_BF_BEGIN
 class BfType;
 class BfResolvedType;
 class BfExprEvaluator;
+class CeEmitContext;
 
 enum BfPopulateType
 {	
@@ -71,7 +72,7 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_AllowNonConst = 0x10000,
 	BfEvalExprFlags_StringInterpolateFormat = 0x20000,
 	BfEvalExprFlags_NoLookupError = 0x40000,
-	BfEvalExprFlags_ConstEval = 0x80000,
+	BfEvalExprFlags_Comptime = 0x80000,
 	BfEvalExprFlags_InCascade = 0x100000,
 };
 
@@ -1450,7 +1451,7 @@ public:
 	bool mWantsIRIgnoreWrites;
 	bool mHasGenericMethods;
 	bool mIsSpecialModule; // vdata, unspecialized, external
-	bool mIsConstModule;
+	bool mIsComptimeModule;
 	bool mIsScratchModule;
 	bool mIsSpecializedMethodModuleRoot;
 	bool mIsModuleMutable; // Set to false after writing module to disk, can be set back to true after doing extension module	
@@ -1686,6 +1687,7 @@ public:
 	BfInternalAccessSet* GetInternalAccessSet();
 	bool CheckInternalProtection(BfTypeDef* usingTypeDef);
 	void AddFailType(BfTypeInstance* typeInstance);
+	void DeferRebuildType(BfTypeInstance* typeInstance);
 	void MarkDerivedDirty(BfTypeInstance* typeInst);
 	void CheckAddFailType();
 	void PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
@@ -1695,6 +1697,9 @@ public:
 	void SetTypeOptions(BfTypeInstance* typeInstance);
 	BfModuleOptions GetModuleOptions();
 	BfCheckedKind GetDefaultCheckedKind();
+	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& ctxString, BfAstNode* refNode);
+	void ExecuteCEOnCompile(BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind, CeEmitContext* ceEmitContext);
+	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers);
 	void DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
 	static BfModule* GetModuleFor(BfType* type);
 	void DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance);

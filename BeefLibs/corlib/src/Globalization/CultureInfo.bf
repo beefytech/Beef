@@ -83,7 +83,7 @@ namespace System.Globalization
 		{
 		    get
 			{
-				if (Compiler.IsConstEval)
+				if (Compiler.IsComptime)
 					return InitUserDefaultCulture();
 				if (tlCurrentCulture == null)
 					tlCurrentCulture = CultureInfo.DefaultThreadCurrentCulture ?? CultureInfo.UserDefaultCulture;

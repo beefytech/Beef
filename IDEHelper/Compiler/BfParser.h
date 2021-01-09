@@ -81,7 +81,7 @@ public:
 	Dictionary<int, BfParserWarningEnabledChange> mWarningEnabledChanges;
 	std::set<int> mUnwarns;
 	bool mFailed; // Don't cache if there's a warning or an error
-	bool mDidReduce;		
+	bool mDidReduce;			
 
 public:
 	BfParserData();
@@ -157,6 +157,7 @@ public:
 	bool mQuickCompatMode;	
 	bool mScanOnly;
 	bool mCompleteParse;
+	bool mIsEmitted;
 	BfLineStartEntry* mJumpTable;
 	int mJumpTableSize;
 	int mOrigSrcLength;	
@@ -231,6 +232,7 @@ public:
 	void Parse(BfPassInstance* passInstance);		
 	int GetCharIdAtIndex(int findIndex);
 	virtual void Close() override;
+	virtual void HadSrcRealloc() override;
 
 	void GenerateAutoCompleteFrom(int srcPosition);	
 		

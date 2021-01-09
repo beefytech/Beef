@@ -131,7 +131,7 @@ namespace System
 		public static T* AllocRawArrayUnmarked<T>(int size)
 		{
 #if BF_ENABLE_REALTIME_LEAK_CHECK
-			if (Compiler.IsConstEval)
+			if (Compiler.IsComptime)
 				return new T[size]*(?);
 			// We don't want to use the default mark function because the GC will mark the entire array,
 			//  whereas we have a custom marking routine because we only want to mark up to mSize

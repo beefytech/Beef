@@ -218,6 +218,13 @@ enum BfAlwaysIncludeFlags : uint8
 	BfAlwaysIncludeFlag_All = BfAlwaysIncludeFlag_Type | BfAlwaysIncludeFlag_IncludeAllMethods | BfAlwaysIncludeFlag_AssumeInstantiated
 };
 
+enum BfCEOnCompileKind : uint8
+{
+	BfCEOnCompileKind_None,
+	BfCEOnCompileKind_TypeInit,
+	BfCEOnCompileKind_TypeDone
+};
+
 enum BfPlatformType
 {
 	BfPlatformType_Unknown,
@@ -740,6 +747,14 @@ enum BfCommutableKind : int8
 	BfCommutableKind_Reverse,
 };
 
+enum BfComptimeFlags : int8
+{
+	BfComptimeFlag_None,
+	BfComptimeFlag_Comptime = 1,
+	BfComptimeFlag_OnlyFromComptime = 2,
+	BfComptimeFlag_ConstEval = 4
+};
+
 class BfMethodDef : public BfMemberDef
 {
 public:		
@@ -774,7 +789,7 @@ public:
 	bool mIsNoSplat;
 	bool mIsNoReflect;
 	bool mIsSkipCall;
-	bool mIsConstEval;
+	bool mHasComptime;
 	bool mIsOperator;
 	bool mIsExtern;	
 	bool mIsNoDiscard;
@@ -803,7 +818,7 @@ public:
 		mIsNoSplat = false;
 		mIsNoReflect = false;
 		mIsSkipCall = false;
-		mIsConstEval = false;
+		mHasComptime = false;
 		mIsOperator = false;
 		mIsExtern = false;
 		mIsNoDiscard = false;
@@ -914,11 +929,12 @@ public:
 
 public:
 	BfTypeDef* mNextRevision;
-
+	
 	BfSystem* mSystem;
 	BfProject* mProject;
 	BfTypeDeclaration* mTypeDeclaration;
 	BfSource* mSource;
+	BfParser* mEmitParser;
 	DefState mDefState;	
 	Val128 mSignatureHash; // Data, methods, etc
 	Val128 mFullHash;	
@@ -953,7 +969,7 @@ public:
 	int mPartialIdx;
 	int mNestDepth;
 	int mDupDetectedRevision; // Error state
-	BfTypeCode mTypeCode;
+	BfTypeCode mTypeCode;	
 	bool mIsAlwaysInclude;
 	bool mIsNoDiscard;
 	bool mIsPartial;
@@ -966,6 +982,7 @@ public:
 	bool mIsAbstract;
 	bool mIsConcrete;
 	bool mIsStatic;	
+	bool mHasCEOnCompile;
 	bool mHasAppendCtor;
 	bool mHasCtorNoBody;
 	bool mHasExtensionMethods;
@@ -973,6 +990,7 @@ public:
 	bool mIsOpaque;
 	bool mIsNextRevision;
 	bool mInDeleteQueue;
+	bool mHasEmitMembers;
 
 public:
 	BfTypeDef()
@@ -988,7 +1006,7 @@ public:
 		mNameEx = NULL;
 		mSystem = NULL;
 		mProject = NULL;
-		mTypeCode = BfTypeCode_None;
+		mTypeCode = BfTypeCode_None;		
 		mIsAlwaysInclude = false;
 		mIsNoDiscard = false;
 		mIsExplicitPartial = false;
@@ -996,6 +1014,7 @@ public:
 		mIsCombinedPartial = false;
 		mTypeDeclaration = NULL;
 		mSource = NULL;
+		mEmitParser = NULL;
 		mDefState = DefState_New;
 		mHash = 0;		
 		mPartialIdx = -1;
@@ -1005,6 +1024,7 @@ public:
 		mIsFunction = false;
 		mIsClosure = false;
 		mIsStatic = false;
+		mHasCEOnCompile = false;
 		mHasAppendCtor = false;
 		mHasCtorNoBody = false;
 		mHasExtensionMethods = false;
@@ -1013,12 +1033,13 @@ public:
 		mPartialUsed = false;
 		mIsNextRevision = false;
 		mInDeleteQueue = false;
+		mHasEmitMembers = false;
 		mDupDetectedRevision = -1;
 		mNestDepth = 0;
 		mOuterType = NULL;
 		mTypeDeclaration = NULL;
 		mDtorDef = NULL;		
-		mNextRevision = NULL;
+		mNextRevision = NULL;		
 		mProtection = BfProtection_Public;
 	}
 
@@ -1026,7 +1047,9 @@ public:
 	bool IsGlobalsContainer();	
 	void Reset();
 	void FreeMembers();
+	void ClearEmitted();
 	void PopulateMemberSets();
+	void ClearMemberSets();
 	void RemoveGenericParamDef(BfGenericParamDef* genericParamDef);	
 	int GetSelfGenericParamCount();
 	String ToString();
@@ -1284,12 +1307,13 @@ public:
 	BfSystem* mSystem;
 	bool mTrimMessagesToCursor;
 	int mFailedIdx;	
+	int mWarnIdx;
 	
 	Dictionary<BfSourceData*, String> mSourceFileNameMap;
 	HashSet<BfErrorEntry> mErrorSet;
 	Array<BfError*> mErrors;
 	int mIgnoreCount;
-	int mWarningCount;
+	int mWarningCount;	
 	int mDeferredErrorCount;
 	Deque<String> mOutStream;	
 	bool mLastWasDisplayed;
@@ -1303,11 +1327,12 @@ public:
 	{
 		mTrimMessagesToCursor = false;
 		mFailedIdx = 0;
+		mWarnIdx = 0;
 		mSystem = bfSystem;
 		mLastWasDisplayed = false;
 		mLastWasAdded = false;
 		mClassifierPassId = 0;
-		mWarningCount = 0;
+		mWarningCount = 0;		
 		mDeferredErrorCount = 0;
 		mIgnoreCount = 0;
 		mFilterErrorsTo = NULL;
@@ -1336,7 +1361,7 @@ public:
 	BfError* WarnAfter(int warningNumber, const StringImpl& warning, BfAstNode* refNode);
 
 	BfMoreInfo* MoreInfoAt(const StringImpl& info, BfSourceData* bfSource, int srcIdx, int srcLen, BfFailFlags flags = BfFailFlag_None);
-	BfMoreInfo* MoreInfo(const StringImpl& info);
+	BfMoreInfo* MoreInfo(const StringImpl& info, bool forceQueue = false);
 	BfMoreInfo* MoreInfo(const StringImpl& info, BfAstNode* refNode);
 	BfMoreInfo* MoreInfoAfter(const StringImpl& info, BfAstNode* refNode);
 

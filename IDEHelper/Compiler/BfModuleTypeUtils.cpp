@@ -3,6 +3,7 @@
 #include "BfCompiler.h"
 #include "BfSystem.h"
 #include "BfParser.h"
+#include "BfReducer.h"
 #include "BfCodeGen.h"
 #include "BfExprEvaluator.h"
 #include <fcntl.h>
@@ -17,6 +18,7 @@
 #include "BfFixits.h"
 #include "BfIRCodeGen.h"
 #include "BfDefBuilder.h"
+#include "CeMachine.h"
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -1931,6 +1933,177 @@ void BfModule::SetTypeOptions(BfTypeInstance* typeInstance)
 	typeInstance->mTypeOptionsIdx = GenerateTypeOptions(typeInstance->mCustomAttributes, typeInstance, true);
 }
 
+void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& ctxString, BfAstNode* refNode)
+{
+	if (ceEmitContext->mEmitData.IsEmpty())
+		return;
+
+	int prevFailIdx = mCompiler->mPassInstance->mFailedIdx;
+	int prevWarnIdx = mCompiler->mPassInstance->mWarnIdx;
+	
+	String src;
+
+	if (activeTypeDef->mEmitParser != NULL)
+		src += "\n\n";
+
+	src += "// Code emission in ";
+	src += ctxString;
+	src += "\n\n";
+	src += ceEmitContext->mEmitData;	
+	ceEmitContext->mEmitData.Clear();
+
+	int startSrcIdx = 0;
+	if (activeTypeDef->mEmitParser == NULL)
+	{
+		BfParser* parser = new BfParser(mSystem, typeInstance->mTypeDef->mProject);
+		parser->mIsEmitted = true;
+		parser->mFileName = typeInstance->mTypeDef->mName->ToString();
+
+		BfLogSys(mSystem, "CreateParser (emit): %p\n", parser);
+
+		if (mCompiler->mIsResolveOnly)
+			parser->mFileName += "$EmitR$";
+		else
+			parser->mFileName += "$Emit$";
+
+		parser->mFileName += StrFormat("%d", typeInstance->mTypeId);
+		if (activeTypeDef->mPartialIdx != -1)
+			parser->mFileName + StrFormat(":%d", activeTypeDef->mPartialIdx);
+
+		parser->mFileName += StrFormat(".bf|%d", typeInstance->mRevision);		
+		activeTypeDef->mEmitParser = parser;
+		parser->mRefCount++;
+		parser->SetSource(src.c_str(), src.mLength);
+	}
+	else
+	{		
+		int idx = activeTypeDef->mEmitParser->AllocChars(src.mLength + 1);
+		memcpy((uint8*)activeTypeDef->mEmitParser->mSrc + idx, src.c_str(), src.mLength + 1);
+		activeTypeDef->mEmitParser->mSrcIdx = idx;
+		activeTypeDef->mEmitParser->mSrcLength = idx + src.mLength;
+		activeTypeDef->mEmitParser->mParserData->mSrcLength = activeTypeDef->mEmitParser->mSrcLength;
+	}
+
+	activeTypeDef->mEmitParser->Parse(mCompiler->mPassInstance);	
+	activeTypeDef->mEmitParser->FinishSideNodes();
+	
+	auto typeDeclaration = activeTypeDef->mEmitParser->mAlloc->Alloc<BfTypeDeclaration>();
+
+	BfReducer bfReducer;
+	bfReducer.mSource = activeTypeDef->mEmitParser;	
+	bfReducer.mPassInstance = mCompiler->mPassInstance;
+	bfReducer.mAlloc = activeTypeDef->mEmitParser->mAlloc;
+	bfReducer.mSystem = mSystem;
+	bfReducer.mCurTypeDecl = typeDeclaration;
+	typeDeclaration->mDefineNode = activeTypeDef->mEmitParser->mRootNode;
+	bfReducer.HandleTypeDeclaration(typeDeclaration, NULL);
+
+	BfDefBuilder defBuilder(mSystem);
+	defBuilder.mCurTypeDef = typeInstance->mTypeDef;
+	defBuilder.DoVisitChild(typeDeclaration->mDefineNode);
+	defBuilder.FinishTypeDef(typeInstance->mTypeDef->mTypeCode == BfTypeCode_Enum);
+
+	//
+	{
+		AutoCrit crit(mSystem->mDataLock);
+		mSystem->mParsers.Add(activeTypeDef->mEmitParser);
+	}
+
+	if ((prevFailIdx != mCompiler->mPassInstance->mFailedIdx) && (refNode != NULL))
+		Fail("Emitted code had errors", refNode);
+	else if ((prevWarnIdx != mCompiler->mPassInstance->mWarnIdx) && (refNode != NULL))
+		Warn(0, "Emitted code had warnings", refNode);
+	else if ((prevFailIdx != mCompiler->mPassInstance->mFailedIdx) ||
+		(prevWarnIdx != mCompiler->mPassInstance->mWarnIdx))
+	{
+		AddFailType(typeInstance);
+	}
+}
+
+void BfModule::ExecuteCEOnCompile(BfTypeInstance* typeInstance, BfCEOnCompileKind onCompileKind, CeEmitContext* ceEmitContext)
+{	
+	if (!typeInstance->mTypeDef->mHasCEOnCompile)
+		return;
+
+	int methodCount = (int)typeInstance->mTypeDef->mMethods.size();
+	for (int methodIdx = 0; methodIdx < methodCount; methodIdx++)
+	{
+		auto methodDef = typeInstance->mTypeDef->mMethods[methodIdx];
+		auto methodDeclaration = BfNodeDynCast<BfMethodDeclaration>(methodDef->mMethodDeclaration);
+		if (methodDeclaration == NULL)
+			continue;
+		if (methodDeclaration->mAttributes == NULL)
+			continue;
+		auto customAttributes = GetCustomAttributes(methodDeclaration->mAttributes, BfAttributeTargets_Method);
+		defer({ delete customAttributes; });
+
+		auto onCompileAttribute = customAttributes->Get(mCompiler->mOnCompileAttributeTypeDef);
+		if (onCompileAttribute == NULL)
+			continue;
+
+		if (onCompileAttribute->mCtorArgs.size() < 1)
+			continue;
+		auto constant = typeInstance->mConstHolder->GetConstant(onCompileAttribute->mCtorArgs[0]);
+		if (constant == NULL)
+			continue;
+		if (onCompileKind != (BfCEOnCompileKind)constant->mInt32)
+			continue;
+
+		if (!methodDef->mIsStatic)
+		{
+			Fail("OnCompile methods must be static", methodDeclaration);
+			continue;
+		}
+
+		if (!methodDef->mParams.IsEmpty())
+		{
+			Fail("OnCompile methods cannot declare parameters", methodDeclaration);
+			continue;
+		}
+
+		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCEMachine->mCurEmitContext);
+		
+		if (onCompileKind == BfCEOnCompileKind_TypeInit)
+		{
+			mCompiler->mCEMachine->mCurEmitContext = ceEmitContext;
+		}
+
+		auto methodInstance = GetRawMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
+		auto result = mCompiler->mCEMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
+
+		if (!ceEmitContext->mEmitData.IsEmpty())
+		{
+			String ctxStr = "OnCompile execution of ";
+			ctxStr += MethodToString(methodInstance);
+			UpdateCEEmit(ceEmitContext, typeInstance, methodInstance->mMethodDef->mDeclaringType, ctxStr, methodInstance->mMethodDef->GetRefNode());
+		}
+
+		if (mCompiler->mCanceling)
+		{
+			DeferRebuildType(typeInstance);
+		}		
+	}
+}
+
+void BfModule::DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers)
+{
+	typeInstance->mTypeDef->ClearEmitted();
+
+	int startMethodCount = typeInstance->mTypeDef->mMethods.mSize;
+	int startFieldCount = typeInstance->mTypeDef->mFields.mSize;
+
+	CeEmitContext emitContext;
+	emitContext.mType = typeInstance;
+	ExecuteCEOnCompile(typeInstance, BfCEOnCompileKind_TypeInit, &emitContext);
+	
+	if ((startMethodCount != typeInstance->mTypeDef->mMethods.mSize) ||
+		(startFieldCount != typeInstance->mTypeDef->mFields.mSize))
+	{
+		typeInstance->mTypeDef->ClearMemberSets();
+		hadNewMembers = true;
+	}
+}
+
 void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
 {
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
@@ -1991,7 +2164,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		resolvedTypeRef->mSize = typeInstance->mAlign = mSystem->mPtrSize;
 	}
 	
-	BF_ASSERT((typeInstance->mMethodInstanceGroups.size() == 0) || (typeInstance->mMethodInstanceGroups.size() == typeDef->mMethods.size()));
+	BF_ASSERT((typeInstance->mMethodInstanceGroups.size() == 0) || (typeInstance->mMethodInstanceGroups.size() == typeDef->mMethods.size()) || (typeInstance->mTypeDef->mHasEmitMembers));
 	typeInstance->mMethodInstanceGroups.Resize(typeDef->mMethods.size());
 	for (int i = 0; i < (int)typeInstance->mMethodInstanceGroups.size(); i++)
 	{
@@ -2807,9 +2980,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
 	if (typeInstance->mDefineState < BfTypeDefineState_HasInterfaces)
 		typeInstance->mDefineState = BfTypeDefineState_HasInterfaces;
-
+	
 	for (auto& validateEntry : deferredTypeValidateList)
-	{		
+	{
 		SetAndRestoreValue<bool> ignoreErrors(mIgnoreErrors, mIgnoreErrors | validateEntry.mIgnoreErrors);
 		ValidateGenericConstraints(validateEntry.mTypeRef, validateEntry.mGenericType, false);
 	}
@@ -2858,7 +3031,28 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	if (typeInstance->mTypeOptionsIdx == -2)
 		SetTypeOptions(typeInstance);
-
+	
+// 	if (typeInstance->mDefineState == BfTypeDefineState_CETypeInit)
+// 	{
+// 		if (populateType <= BfPopulateType_AllowStaticMethods)
+// 			return;
+// 
+// 		auto refNode = typeDef->GetRefNode();		
+// 		Fail("OnCompile const evaluation creates a data dependency during TypeInit", refNode);
+// 		mCompiler->mCEMachine->Fail("OnCompile const evaluation creates a data dependency during TypeInit");
+// 	}
+// 	else if (typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit)
+// 	{
+// 		typeInstance->mDefineState = BfTypeDefineState_CETypeInit;
+// 		ExecuteCEOnCompile(typeInstance, BfCEOnCompileKind_TypeInit);
+// 
+// 		if (_CheckTypeDone())
+// 			return;				
+// 
+// 		if (typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit)
+// 			typeInstance->mDefineState = BfTypeDefineState_CEPostTypeInit;
+// 	}
+	
 	if (populateType <= BfPopulateType_AllowStaticMethods)
 		return;	
 
@@ -3156,6 +3350,44 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 			}
 		}
+
+ 		if (typeInstance->mDefineState == BfTypeDefineState_CETypeInit)
+ 		{
+ 			if (populateType <= BfPopulateType_AllowStaticMethods)
+ 				return;
+ 
+			String error = "OnCompile const evaluation creates a data dependency during TypeInit";
+			if (mCompiler->mCEMachine->mCurBuilder != NULL)
+			{
+				error += StrFormat(" during const-eval generation of '%s'", MethodToString(mCompiler->mCEMachine->mCurBuilder->mCeFunction->mMethodInstance).c_str());
+			}
+
+ 			auto refNode = typeDef->GetRefNode();		
+ 			Fail(error, refNode);
+			if (mCompiler->mCEMachine->mCurFrame != NULL)
+ 				mCompiler->mCEMachine->Fail(*mCompiler->mCEMachine->mCurFrame, error);
+			else
+				mCompiler->mCEMachine->Fail(error);
+ 		}
+ 		else if (typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit)
+ 		{			
+ 			typeInstance->mDefineState = BfTypeDefineState_CETypeInit;
+			bool hadNewMembers = false;
+			DoCEEmit(typeInstance, hadNewMembers);		
+
+ 			if (typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit)
+ 				typeInstance->mDefineState = BfTypeDefineState_CEPostTypeInit;
+
+			if (hadNewMembers)
+			{
+				typeInstance->mTypeDef->mHasEmitMembers = true;
+				DoPopulateType(resolvedTypeRef, populateType);
+				return;
+			}
+
+			if (_CheckTypeDone())
+				return;
+ 		}
 	}
 
 	if (_CheckTypeDone())
@@ -3670,7 +3902,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			member->mRefCount++;
 	}
 
-	typeInstance->mDefineState = BfTypeDefineState_Defined;
+	if (typeInstance->mDefineState < BfTypeDefineState_Defined)
+	{
+		typeInstance->mDefineState = BfTypeDefineState_Defined;
+		if (!typeInstance->IsBoxed())
+			ExecuteCEOnCompile(typeInstance, BfCEOnCompileKind_TypeDone, NULL);
+	}
 
 	if (typeInstance->mTypeFailed)
 		mHadBuildError = true;
@@ -3832,7 +4069,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		int64 min = 0;
 		int64 max = 0;
 
-		bool isFirst = false;
+		bool isFirst = true;
 
 		if (typeInstance->mTypeInfoEx == NULL)
 			typeInstance->mTypeInfoEx = new BfTypeInfoEx();
@@ -4310,20 +4547,19 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
 			continue;
 		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_InWorkList)
-			continue;
-		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference)
-			continue;
+			continue;		
 		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Referenced)
 			continue;
-
+		
 		if (isFailedType)
 		{
 			// We don't want method decls from failed generic types to clog up our type system
 			continue;
 		}
-
-		// This should still be set to the default value
-		BF_ASSERT((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet) || (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl));
+		
+		BF_ASSERT((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet) || 
+			(methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) ||
+			(methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference));
 
 		if ((isBoxed) && (!methodDef->mIsVirtual))
 		{
@@ -4351,12 +4587,11 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 		if ((methodDef->mName == BF_METHODNAME_DYNAMICCAST) && (typeInstance->IsValueType()))
 			continue; // This is just a placeholder for boxed types
-
-		if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
-			methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
 		
+		bool doAlwaysInclude = false;
+
 		if (wantsOnDemandMethods)
-		{	
+		{
 			bool implRequired = false;
 			bool declRequired = false;
 
@@ -4452,9 +4687,8 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			}
 
 			if (!implRequired)
-			{
-				BF_ASSERT(methodInstanceGroup->mOnDemandKind != BfMethodOnDemandKind_NotSet);
-				if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
+			{				
+				if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
 				{
 					if (!mIsScratchModule)
 						mOnDemandMethodCount++;
@@ -4462,19 +4696,41 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 				if (!declRequired)
 				{
-					if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
+					if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
 						methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_NoDecl_AwaitingReference;
 					continue;
 				}
 				else
 				{
-					if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude)
+					if (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet)
 						methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingDecl;
 				}
 
 				VerifyOnDemandMethods();
 			}
+			else
+			{
+				doAlwaysInclude = true;				
+			}
 		}		
+		else
+			doAlwaysInclude = true;
+
+		if (doAlwaysInclude)
+		{
+			bool wasDeclared = (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingDecl) ||
+				(methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference);
+			
+			methodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
+
+			if (wasDeclared)
+			{
+				if (!mIsScratchModule)
+					mOnDemandMethodCount--;
+				if (methodInstanceGroup->mDefault != NULL)
+					AddMethodToWorkList(methodInstanceGroup->mDefault);
+			}
+		}
 	}
 
 	BfLogSysM("Starting DoTypeInstanceMethodProcessing %p GetMethodInstance pass.  OnDemandMethods: %d\n", typeInstance, mOnDemandMethodCount);
@@ -5480,7 +5736,7 @@ BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
 
 BfIRType BfModule::GetIRLoweredType(BfTypeCode loweredTypeCode, BfTypeCode loweredTypeCode2)
 {
-	BF_ASSERT(!mIsConstModule);
+	BF_ASSERT(!mIsComptimeModule);
 
 	BF_ASSERT(loweredTypeCode != BfTypeCode_None);	
 	if (loweredTypeCode2 == BfTypeCode_None)	

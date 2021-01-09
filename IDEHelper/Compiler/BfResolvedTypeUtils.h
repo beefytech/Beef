@@ -416,7 +416,9 @@ enum BfTypeRebuildFlags
 	BfTypeRebuildFlag_UnderlyingTypeDeferred = 0x1000,
 	BfTypeRebuildFlag_TypeDataSaved = 0x2000,
 	BfTypeRebuildFlag_InTempPool = 0x4000,
-	BfTypeRebuildFlag_ResolvingBase = 0x8000
+	BfTypeRebuildFlag_ResolvingBase = 0x8000,
+	BfTypeRebuildFlag_InFailTypes = 0x10000,
+	BfTypeRebuildFlag_RebuildQueued = 0x20000,
 };
 
 class BfTypeDIReplaceCallback;
@@ -425,9 +427,12 @@ enum BfTypeDefineState : uint8
 {
 	BfTypeDefineState_Undefined,
 	BfTypeDefineState_Declared,
-	BfTypeDefineState_ResolvingBaseType,
+	BfTypeDefineState_ResolvingBaseType,	
 	BfTypeDefineState_HasInterfaces,
+	BfTypeDefineState_CETypeInit,
+	BfTypeDefineState_CEPostTypeInit,
 	BfTypeDefineState_Defined,
+	BfTypeDefineState_CEAfterFields,
 	BfTypeDefineState_DefinedAndMethodsSlotted,
 };
 
@@ -830,6 +835,7 @@ public:
 	bool mInCEMachine:1;
 	bool mIsDisposed:1;
 	BfMethodChainType mChainType;
+	BfComptimeFlags mComptimeFlags;
 	BfCallingConvention mCallingConvention;
 	BfMethodInstanceGroup* mMethodInstanceGroup;
 	BfMethodDef* mMethodDef;
@@ -868,6 +874,7 @@ public:
 		mInCEMachine = false;
 		mIsDisposed = false;
 		mChainType = BfMethodChainType_None;
+		mComptimeFlags = BfComptimeFlag_None;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mMethodInstanceGroup = NULL;
 		mMethodDef = NULL;									
@@ -1792,6 +1799,7 @@ public:
 	Array<BfMethodInstance*> mInternalMethods;			
 	Dictionary<BfTypeDef*, BfStaticSearch> mStaticSearchMap;
 	Dictionary<BfTypeDef*, BfInternalAccessSet> mInternalAccessMap;
+	Array<BfLocalMethod*> mOwnedLocalMethods; // Local methods in CEMachine
 	bool mHasStaticInitMethod;
 	bool mHasStaticDtorMethod;
 	bool mHasStaticMarkMethod;	
@@ -1969,7 +1977,7 @@ public:
 	bool IsAlwaysInclude();	
 	bool HasBeenInstantiated() { return mHasBeenInstantiated || ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_AssumeInstantiated) != 0); }
 	bool IncludeAllMethods() { return ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_IncludeAllMethods) != 0); }
-	
+	bool DefineStateAllowsStaticMethods() { return mDefineState >= BfTypeDefineState_HasInterfaces; }
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };

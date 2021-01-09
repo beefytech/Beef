@@ -346,6 +346,8 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	memset(&mStats, 0, sizeof(mStats));
 	mCompletionPct = 0;	
 	mCanceling = false;
+	mFastFinish = false;
+	mHasQueuedTypeRebuilds = false;
 	mIsResolveOnly = isResolveOnly;
 	mResolvePassData = NULL;
 	mPassInstance = NULL;
@@ -397,6 +399,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mActionTypeDef = NULL;
 	mEnumTypeDef = NULL;
 	mFriendAttributeTypeDef = NULL;
+	mComptimeAttributeTypeDef = NULL;
 	mConstEvalAttributeTypeDef = NULL;
 	mNoExtensionAttributeTypeDef = NULL;
 	mCheckedAttributeTypeDef = NULL;
@@ -408,11 +411,14 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mGenericIRefEnumeratorTypeDef = NULL;
 	mInlineAttributeTypeDef = NULL;
 	mThreadTypeDef = NULL;
-	mInternalTypeDef = NULL;	
+	mInternalTypeDef = NULL;
+	mCompilerTypeDef = NULL;
 	mDiagnosticsDebugTypeDef = NULL;
 	mIDisposableTypeDef = NULL;
 	mIPrintableTypeDef = NULL;
 	mIHashableTypeDef = NULL;
+	mIComptimeTypeApply = NULL;
+	mIComptimeMethodApply = NULL;
 	mLinkNameAttributeTypeDef = NULL;
 	mCallingConventionAttributeTypeDef = NULL;
 	mMethodRefTypeDef = NULL;
@@ -447,6 +453,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mWarnAttributeTypeDef = NULL;
 	mIgnoreErrorsAttributeTypeDef = NULL;
 	mReflectAttributeTypeDef = NULL;
+	mOnCompileAttributeTypeDef = NULL;
 
 	mLastAutocompleteModule = NULL;
 
@@ -3919,6 +3926,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 		return;
 	}
 
+	mFastFinish = false;
+
 	SetAndRestoreValue<BfMethodState*> prevMethodState(module->mCurMethodState, NULL);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(module->mCurTypeInstance, NULL);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(module->mCurMethodInstance, NULL);
@@ -6522,13 +6531,15 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	
 
 	if (IsHotCompile())
-	{		
+	{
 		mContext->EnsureHotMangledVirtualMethodNames();		
 	}
 
 	mOutputDirectory = outputDirectory;
 	mSystem->StartYieldSection();
 
+	mFastFinish = false;
+	mHasQueuedTypeRebuilds = false;
 	mCanceling = false;
 	mSystem->CheckLockYield();
 
@@ -6611,6 +6622,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mActionTypeDef = _GetRequiredType("System.Action");
 	mEnumTypeDef = _GetRequiredType("System.Enum");
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
+	mComptimeAttributeTypeDef = _GetRequiredType("System.ComptimeAttribute");
 	mConstEvalAttributeTypeDef = _GetRequiredType("System.ConstEvalAttribute");
 	mNoExtensionAttributeTypeDef = _GetRequiredType("System.NoExtensionAttribute");
 	mCheckedAttributeTypeDef = _GetRequiredType("System.CheckedAttribute");
@@ -6624,10 +6636,13 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
 	mThreadTypeDef = _GetRequiredType("System.Threading.Thread");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
+	mCompilerTypeDef = _GetRequiredType("System.Compiler");
 	mDiagnosticsDebugTypeDef = _GetRequiredType("System.Diagnostics.Debug");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
 	mIPrintableTypeDef = _GetRequiredType("System.IPrintable");
 	mIHashableTypeDef = _GetRequiredType("System.IHashable");
+	mIComptimeTypeApply = _GetRequiredType("System.IComptimeTypeApply");
+	mIComptimeMethodApply = _GetRequiredType("System.IComptimeMethodApply");
 	mLinkNameAttributeTypeDef = _GetRequiredType("System.LinkNameAttribute");
 	mCallingConventionAttributeTypeDef = _GetRequiredType("System.CallingConventionAttribute");
 	mMethodRefTypeDef = _GetRequiredType("System.MethodReference", 1);
@@ -6662,6 +6677,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mWarnAttributeTypeDef = _GetRequiredType("System.WarnAttribute");
 	mIgnoreErrorsAttributeTypeDef = _GetRequiredType("System.IgnoreErrorsAttribute");
 	mReflectAttributeTypeDef = _GetRequiredType("System.ReflectAttribute");
+	mOnCompileAttributeTypeDef = _GetRequiredType("System.OnCompileAttribute");
 
 	for (int i = 0; i < BfTypeCode_Length; i++)
 		mContext->mPrimitiveStructTypes[i] = NULL;
@@ -7213,6 +7229,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}
 	mCodeGen.ProcessErrors(mPassInstance, mCanceling);
 
+	mCEMachine->CompileDone();
+
 	// This has to happen after codegen because we may delete modules that are referenced in codegen	
 	mContext->Cleanup();	
 	if ((!IsHotCompile()) && (!mIsResolveOnly) && (!mCanceling))
@@ -7346,7 +7364,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	mContext->ValidateDependencies();
 
-	return !didCancel;
+	return !didCancel && !mHasQueuedTypeRebuilds;
 }
 
 bool BfCompiler::Compile(const StringImpl& outputDirectory)
@@ -7380,9 +7398,17 @@ void BfCompiler::ClearResults()
 void BfCompiler::Cancel()
 {
 	mCanceling = true;
+	mFastFinish = true;
 	mHadCancel = true;
 	BfLogSysM("BfCompiler::Cancel\n");
 	BpEvent("BfCompiler::Cancel", "");
+}
+
+void BfCompiler::RequestFastFinish()
+{
+	mFastFinish = true;
+	BfLogSysM("BfCompiler::RequestFastFinish\n");
+	BpEvent("BfCompiler::RequestFastFinish", "");
 }
 
 //#define WANT_COMPILE_LOG
@@ -8538,6 +8564,38 @@ String BfCompiler::GetTypeDefInfo(const StringImpl& inTypeName)
 	return result;
 }
 
+int BfCompiler::GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer)
+{	
+	int lastDollarPos = (int)fileName.LastIndexOf('$');
+	if (lastDollarPos == -1)
+		return -1;	
+	int dotPos = (int)fileName.LastIndexOf('.');
+	if (dotPos == -1)
+		return -1;
+	
+	String typeIdStr = fileName.Substring(lastDollarPos + 1, dotPos - lastDollarPos - 1);
+
+	int revisionId = (int)atoi(typeIdStr.c_str());
+	int typeId = (int)atoi(typeIdStr.c_str());
+	if ((typeId <= 0) || (typeId >= mContext->mTypes.mSize))
+		return -1;
+
+	auto type = mContext->mTypes[typeId];
+	if (type == NULL)
+		return -1;
+	auto typeInst = type->ToTypeInstance();
+	if (typeInst == NULL)
+		return -1;
+
+	auto typeDef = typeInst->mTypeDef;
+
+	if (typeDef->mEmitParser == NULL)
+		return -1;
+	if (outBuffer != NULL)
+		outBuffer->Append(typeDef->mEmitParser->mSrc, typeDef->mEmitParser->mSrcLength);
+	return typeInst->mRevision;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 PerfManager* BfGetPerfManager(BfParser* bfParser);
@@ -8736,6 +8794,11 @@ BF_EXPORT int BF_CALLTYPE BfCompiler_GetCurConstEvalExecuteId(BfCompiler* bfComp
 BF_EXPORT void BF_CALLTYPE BfCompiler_Cancel(BfCompiler* bfCompiler)
 {
 	bfCompiler->Cancel();
+}
+
+BF_EXPORT void BF_CALLTYPE BfCompiler_RequestFastFinish(BfCompiler* bfCompiler)
+{
+	bfCompiler->RequestFastFinish();
 }
 
 BF_EXPORT void BF_CALLTYPE BfCompiler_ClearBuildCache(BfCompiler* bfCompiler)
@@ -9251,3 +9314,17 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_ForceRebuild(BfCompiler* bfCompiler)
 	bfCompiler->mOptions.mForceRebuildIdx++;
 }
 
+BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetEmitSource(BfCompiler* bfCompiler, char* fileName)
+{
+	String& outString = *gTLStrReturn.Get();
+	outString.clear();
+	bfCompiler->GetEmitSource(fileName, &outString);
+	if (outString.IsEmpty())
+		return NULL;
+	return outString.c_str();
+}
+
+BF_EXPORT int32 BF_CALLTYPE BfCompiler_GetEmitSourceVersion(BfCompiler* bfCompiler, char* fileName)
+{
+	return bfCompiler->GetEmitSource(fileName, NULL);
+}

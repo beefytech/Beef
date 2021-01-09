@@ -471,19 +471,19 @@ namespace System
             return (int32)mTypeId;
         }
 
-		static extern Type ConstEval_GetTypeById(int32 typeId);
+		static extern Type Comptime_GetTypeById(int32 typeId);
 
         protected static Type GetType(TypeId typeId)
         {
-			if (Compiler.IsConstEval)
-				return ConstEval_GetTypeById((.)typeId);
+			if (Compiler.IsComptime)
+				return Comptime_GetTypeById((.)typeId);
             return sTypes[(int32)typeId];
         }
 
 		protected static Type GetType_(int32 typeId)
 		{
-			if (Compiler.IsConstEval)
-				return ConstEval_GetTypeById(typeId);
+			if (Compiler.IsComptime)
+				return Comptime_GetTypeById(typeId);
 		    return sTypes[typeId];
 		}
 
@@ -543,6 +543,11 @@ namespace System
         }
 
 		public virtual Result<FieldInfo> GetField(String fieldName)
+		{
+		    return .Err;
+		}
+
+		public virtual Result<FieldInfo> GetField(int idx)
 		{
 		    return .Err;
 		}
@@ -910,6 +915,13 @@ namespace System.Reflection
 		            return FieldInfo(this, fieldData);
 		    }
 		    return .Err;
+		}
+
+		public override Result<FieldInfo> GetField(int fieldIdx)
+		{
+			if ((fieldIdx < 0) || (fieldIdx >= mFieldDataCount))
+				return .Err;
+			return FieldInfo(this, &mFieldDataPtr[fieldIdx]);
 		}
 
 		public override FieldInfo.Enumerator GetFields(BindingFlags bindingFlags = cDefaultLookup)

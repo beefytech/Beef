@@ -251,6 +251,7 @@ enum CeFunctionKind
 	CeFunctionKind_DebugWrite_Int,
 	CeFunctionKind_GetReflectType,
 	CeFunctionKind_GetReflectTypeById,
+	CeFunctionKind_EmitDefinition,
 	CeFunctionKind_Sleep,
 	CeFunctionKind_Char32_ToLower,
 	CeFunctionKind_Char32_ToUpper,
@@ -372,7 +373,9 @@ public:
 enum CeEvalFlags
 {
 	CeEvalFlags_None = 0,
-	CeEvalFlags_Cascade = 1
+	CeEvalFlags_Cascade = 1,
+	CeEvalFlags_PersistantError = 2,
+	CeEvalFlags_DeferIfNotOnlyError = 4,
 };
 
 enum CeOperandKind
@@ -602,6 +605,18 @@ public:
 	BfIRValue mAppendSizeValue;
 };
 
+class CeEmitContext
+{
+public:
+	BfType* mType;	
+	String mEmitData;
+
+	CeEmitContext()
+	{
+		mType = NULL;		
+	}
+};
+
 class CeMachine
 {
 public:
@@ -628,7 +643,11 @@ public:
 	HashSet<int> mStaticCtorExecSet;
 	CeAppendAllocInfo* mAppendAllocInfo;	
 	
+	CeEmitContext* mCurEmitContext;
+	CeEvalFlags mCurEvalFlags;
+	CeBuilder* mCurBuilder;
 	CeFunction* mPreparingFunction;
+	CeFrame* mCurFrame;
 	BfAstNode* mCurTargetSrc;
 	BfMethodInstance* mCurMethodInstance;
 	BfModule* mCurModule;	
@@ -650,6 +669,8 @@ public:
 	addr_ce GetConstantData(BeConstant* constant);
 	BfType* GetBfType(int typeId);	
 	void PrepareConstStructEntry(CeConstStructData& constStructData);
+	bool CheckMemory(addr_ce addr, int32 size);
+	bool GetStringFromStringView(addr_ce addr, StringImpl& str);
 
 	BeContext* GetBeContext();
 	BeModule* GetBeModule();
@@ -659,7 +680,7 @@ public:
 	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal);
 	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);		
-	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType);
+	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType);	
 
 	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);	
 	void MapFunctionId(CeFunction* ceFunction);
@@ -670,6 +691,7 @@ public:
 	
 public:
 	void CompileStarted();
+	void CompileDone();
 	void QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
 	void QueueMethod(BfModuleMethodInstance moduleMethodInstance);
 	void QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName);

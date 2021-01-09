@@ -634,6 +634,12 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		auto typeOf = (BfTypeOf_Const*)fromConst;
 		return CreateTypeOf(typeOf->mType);
 	}
+	else if (fromConst->mConstType == BfConstType_TypeOf_WithData)
+	{		
+		auto typeOf = (BfTypeOf_WithData_Const*)fromConst;
+		auto dataConstant = fromHolder->GetConstant(typeOf->mTypeData);
+		return CreateTypeOf(typeOf->mType, CreateConst(dataConstant, fromHolder));
+	}
 	else if (fromConst->mConstType == BfConstType_AggZero)
 	{
 		auto aggZero = (BfConstant*)fromConst;
@@ -783,7 +789,20 @@ BfIRValue BfIRConstHolder::CreateTypeOf(BfType* type)
 {
 	BfTypeOf_Const* typeOf = mTempAlloc.Alloc<BfTypeOf_Const>();
 	typeOf->mConstType = BfConstType_TypeOf;
+	typeOf->mType = type;	
+	auto irValue = BfIRValue(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(typeOf));
+#ifdef CHECK_CONSTHOLDER
+	irValue.mHolder = this;
+#endif
+	return irValue;
+}
+
+BfIRValue BfIRConstHolder::CreateTypeOf(BfType* type, BfIRValue typeData)
+{
+	BfTypeOf_WithData_Const* typeOf = mTempAlloc.Alloc<BfTypeOf_WithData_Const>();
+	typeOf->mConstType = BfConstType_TypeOf_WithData;
 	typeOf->mType = type;
+	typeOf->mTypeData = typeData;
 	auto irValue = BfIRValue(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(typeOf));
 #ifdef CHECK_CONSTHOLDER
 	irValue.mHolder = this;
@@ -1949,11 +1968,18 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 			{
 				Write(constant->mInt64);
 			}
+			break;		
+		case (int)BfConstType_TypeOf:
+			{
+				auto typeofConst = (BfTypeOf_Const*)constant;
+				Write(MapType(typeofConst->mType, BfIRPopulateType_Identity));
+			}
 			break;
-		case (int)BfConstType_Undef:
-			{	
-				auto undefConst = (BfConstantUndef*)constant;
-				Write(undefConst->mType);
+		case (int)BfConstType_TypeOf_WithData:
+			{
+				auto typeofConst = (BfTypeOf_WithData_Const*)constant;
+				Write(MapType(typeofConst->mType, BfIRPopulateType_Identity));
+				Write(typeofConst->mTypeData);
 			}
 			break;
 		default:			
@@ -4474,6 +4500,12 @@ BfIRValue BfIRBuilder::CreateGlobalStringPtr(const StringImpl& str)
 	BfIRValue retVal = WriteCmd(BfIRCmd_GlobalStringPtr, str);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;
+}
+
+void BfIRBuilder::SetReflectTypeData(BfIRType type, BfIRValue globalVar)
+{
+	BfIRValue retVal = WriteCmd(BfIRCmd_SetReflectTypeData, type, globalVar);
+	NEW_CMD_INSERTED_IRVALUE;	
 }
 
 BfIRBlock BfIRBuilder::CreateBlock(const StringImpl& name, bool addNow)
