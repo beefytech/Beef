@@ -696,7 +696,8 @@ void BfTypeDef::ClearEmitted()
 		for (int methodIdx = (int)mMethods.size() - 1; methodIdx >= 0; methodIdx--)
 		{
 			auto methodDef = mMethods[methodIdx];
-			if ((methodDef->mMethodDeclaration != NULL) && (methodDef->mMethodDeclaration->IsEmitted()))
+			if ((methodDef->mAddedAfterEmit) ||
+				((methodDef->mMethodDeclaration != NULL) && (methodDef->mMethodDeclaration->IsEmitted())))
 			{
 				delete methodDef;
 				mMethods.RemoveAt(methodIdx);
@@ -710,6 +711,16 @@ void BfTypeDef::ClearEmitted()
 			{
 				delete fieldDef;
 				mFields.RemoveAt(fieldIdx);
+			}
+		}
+
+		for (int propIdx = (int)mProperties.size() - 1; propIdx >= 0; propIdx--)
+		{
+			auto propDef = mProperties[propIdx];
+			if ((propDef->mFieldDeclaration != NULL) && (propDef->mFieldDeclaration->IsEmitted()))
+			{
+				delete propDef;
+				mProperties.RemoveAt(propIdx);
 			}
 		}
 	}
@@ -827,6 +838,16 @@ BfMethodDef* BfTypeDef::GetMethodByName(const StringImpl& name, int paramCount)
 		if ((name == method->mName) && ((paramCount == -1) || (paramCount == (int)method->mParams.size())))
 			return method;
 	}
+	return NULL;
+}
+
+BfFieldDef* BfTypeDef::GetFieldByName(const StringImpl& name)
+{
+	PopulateMemberSets();
+	BfFieldDef* nextField = NULL;
+	BfMemberSetEntry* entry;
+	if (mFieldSet.TryGetWith(name, &entry))
+		return (BfFieldDef*)entry->mMemberDef;
 	return NULL;
 }
 
@@ -1753,7 +1774,7 @@ void BfPassInstance::TryFlushDeferredError()
 						if (moreInfo->mSource != NULL)						
 							MessageAt(":error", " > " + moreInfo->mInfo, moreInfo->mSource, moreInfo->mSrcStart, moreInfo->mSrcEnd - moreInfo->mSrcStart);
 						else
-							OutputLine(":error" + moreInfo->mInfo);
+							OutputLine(":error " + moreInfo->mInfo);
 					}
 				}
 			}

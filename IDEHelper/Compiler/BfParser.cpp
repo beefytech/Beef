@@ -493,6 +493,8 @@ void BfParser::NewLine()
 	mLineStart = mSrcIdx;
 	mLineNum++;
 
+	if (mJumpTable == NULL)
+		return;
 	int idx = (mSrcIdx / PARSER_JUMPTABLE_DIVIDE);
 	if (idx == 0)
 		return;
@@ -575,7 +577,8 @@ void BfParser::SetSource(const char* data, int length)
 	mOrigSrcLength = length;
 	mSrcAllocSize = mSrcLength /*+ EXTRA_BUFFER_SIZE*/;	 
 	char* ownedSrc = new char[mSrcAllocSize + 1];
-	memcpy(ownedSrc, data, length);
+	if (data != NULL)
+		memcpy(ownedSrc, data, length);
 	ownedSrc[length] = 0;
 	mSrc = ownedSrc;
 	mSrcIdx = 0;
@@ -3482,9 +3485,12 @@ void BfParser::Parse(BfPassInstance* passInstance)
 		mPassInstance->Warn(0, "No matching #endif found", mPreprocessorNodeStack.back().first);
 	}
 
-	for (int i = (startIdx / PARSER_JUMPTABLE_DIVIDE)+1; i < mJumpTableSize; i++)
-		if (mJumpTable[i].mCharIdx == 0)
-			mJumpTable[i] = mJumpTable[i - 1];
+	if (mJumpTable != NULL)
+	{
+		for (int i = (startIdx / PARSER_JUMPTABLE_DIVIDE) + 1; i < mJumpTableSize; i++)
+			if (mJumpTable[i].mCharIdx == 0)
+				mJumpTable[i] = mJumpTable[i - 1];
+	}
 
 	if (mPassInstance->HasFailed())
 		mParsingFailed = true;

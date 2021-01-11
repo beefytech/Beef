@@ -2410,6 +2410,7 @@ public:
 	Array<BfCustomAttribute> mAttributes;	
 	bool Contains(BfTypeDef* typeDef);
 	BfCustomAttribute* Get(BfTypeDef* typeDef);
+	BfCustomAttribute* Get(BfType* type);
 
 	void ReportMemory(MemReporter* memReporter);
 };

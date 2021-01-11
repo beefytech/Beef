@@ -211,9 +211,26 @@ namespace Tests
 			MethodA(list);
 		}
 
+		public static void MethodC()
+		{
+
+		}
+
+		public static void MethodD(delegate void() dlg)
+		{
+
+		}
+
+		public static void MethodD<T1>(delegate void(T1) dlg)
+		{
+
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
+			MethodD(scope => MethodC);
+
 			List<Entry> list = scope .();
 			list.Sort();
 

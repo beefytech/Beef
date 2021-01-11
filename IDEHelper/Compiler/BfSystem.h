@@ -41,6 +41,7 @@ class BfSystem;
 class BfTypeReference;
 class BfCompiler;
 class BfProject;
+class BfTypeDef;
 
 struct BfTypeDefMapFuncs;
 typedef MultiHashSet<BfTypeDef*, BfTypeDefMapFuncs> BfTypeDefMap;
@@ -794,6 +795,7 @@ public:
 	bool mIsExtern;	
 	bool mIsNoDiscard;
 	bool mHasExplicitThis;
+	bool mAddedAfterEmit;
 	BfCommutableKind mCommutableKind;
 	BfCheckedKind mCheckedKind;
 	BfImportKind mImportKind;	
@@ -823,6 +825,7 @@ public:
 		mIsExtern = false;
 		mIsNoDiscard = false;
 		mHasExplicitThis = false;
+		mAddedAfterEmit = false;
 		mBody = NULL;
 		mExplicitInterface = NULL;
 		mReturnTypeRef = NULL;		
@@ -1054,6 +1057,7 @@ public:
 	int GetSelfGenericParamCount();
 	String ToString();
 	BfMethodDef* GetMethodByName(const StringImpl& name, int paramCount = -1);
+	BfFieldDef* GetFieldByName(const StringImpl& name);
 	bool HasAutoProperty(BfPropertyDeclaration* propertyDeclaration);	
 	String GetAutoPropertyName(BfPropertyDeclaration* propertyDeclaration);
 	BfAstNode* GetRefNode();

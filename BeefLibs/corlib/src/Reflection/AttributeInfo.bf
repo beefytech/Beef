@@ -7,9 +7,33 @@ namespace System.Reflection
 		    *((*(T2**)&data)++)
 		}
 
+		public static bool HasCustomAttribute(void* inAttrData, Type attributeType)
+		{
+			TypeId findTypeId = attributeType.[Friend]mTypeId;
+
+			void* data = inAttrData;
+			data++;
+
+			uint8 count = Decode!<uint8>(data);
+			for (int32 attrIdx = 0; attrIdx < count; attrIdx++)
+			AttrBlock:
+			{
+			    void* startPtr = data;
+			    var len = Decode!<uint16>(data);
+			    void* endPtr = (uint8*)startPtr + len;
+
+			    var typeId = Decode!<TypeId>(data);
+			    if (typeId == findTypeId)
+					return true;
+			    
+		        data = endPtr;
+			}
+
+			return false;
+		}
+
 		public static Result<void> GetCustomAttribute(void* inAttrData, Type attributeType, Object targetAttr)
 		{
-
 			TypeId findTypeId = attributeType.[Friend]mTypeId;
 
 			void* data = inAttrData;

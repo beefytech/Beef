@@ -472,6 +472,9 @@ namespace System
         }
 
 		static extern Type Comptime_GetTypeById(int32 typeId);
+		static extern Type Comptime_GetTypeByName(StringView name);
+		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
+		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeId, void* dataPtr);
 
         protected static Type GetType(TypeId typeId)
         {
@@ -485,6 +488,19 @@ namespace System
 			if (Compiler.IsComptime)
 				return Comptime_GetTypeById(typeId);
 		    return sTypes[typeId];
+		}
+
+		public static Result<Type> GetTypeByName(StringView typeName)
+		{
+			if (Compiler.IsComptime)
+			{
+				var type = Comptime_GetTypeByName(typeName);
+				if (type == null)
+					return .Err;
+				return type;
+			}
+
+			return .Err;
 		}
 
 		void GetBasicName(String strBuffer)
@@ -557,8 +573,28 @@ namespace System
 		    return FieldInfo.Enumerator(null, bindingFlags);
 		}
 
+		public bool HasCustomAttribute<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+			{
+				return Comptime_Type_GetCustomAttribute((int32)TypeId, typeof(T).TypeId, null);
+			}
+
+			if (var typeInstance = this as TypeInstance)
+				return typeInstance.[Friend]HasCustomAttribute<T>(typeInstance.[Friend]mCustomAttributesIdx);
+			return false;
+		}
+
 		public Result<T> GetCustomAttribute<T>() where T : Attribute
 		{
+			if (Compiler.IsComptime)
+			{
+				T val = ?;
+				if (Comptime_Type_GetCustomAttribute((int32)TypeId, typeof(T).TypeId, &val))
+					return val;
+				return .Err;
+			}
+
 			if (var typeInstance = this as TypeInstance)
 				return typeInstance.[Friend]GetCustomAttribute<T>(typeInstance.[Friend]mCustomAttributesIdx);
 			return .Err;
@@ -577,6 +613,9 @@ namespace System
 			{
 				while (true)
 				{
+					if (Compiler.IsComptime)
+						Runtime.FatalError("Comptime type enumeration not supported");
+
 					if (mCurId >= sTypeCount)
 						return .Err;
 					let type = sTypes[mCurId++];
@@ -929,6 +968,15 @@ namespace System.Reflection
 		    return FieldInfo.Enumerator(this, bindingFlags);
 		}
 
+		bool HasCustomAttribute<T>(int customAttributeIdx) where T : Attribute
+		{
+			if (customAttributeIdx == -1)
+			    return false;
+
+			void* data = mCustomAttrDataPtr[customAttributeIdx];
+			return AttributeInfo.HasCustomAttribute(data, typeof(T));
+		}
+
 		Result<T> GetCustomAttribute<T>(int customAttributeIdx) where T : Attribute
 		{
 			if (customAttributeIdx == -1)
@@ -1043,6 +1091,17 @@ namespace System.Reflection
         }
 
         uint8 mGenericParamCount;
+
+		public Result<Type> GetSpecializedType(params Span<Type> typeArgs)
+		{
+			if (Compiler.IsComptime)
+			{
+				 var specializedType = Type.[Friend]Comptime_GetSpecializedType(this, typeArgs);
+				if (specializedType != null)
+					return specializedType;
+			}
+			return .Err;
+		}
     }
 
     // Only for resolved types

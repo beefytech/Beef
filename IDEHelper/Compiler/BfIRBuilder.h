@@ -28,6 +28,8 @@
 
 NS_BF_BEGIN
 
+typedef int addr_ce;
+
 class BfModule;
 class BfType;
 class BfTypeInstance;
@@ -123,6 +125,7 @@ enum BfConstType
 	BfConstType_TypeOf_WithData,
 	BfConstType_AggZero,
 	BfConstType_Agg,
+	BfConstType_AggCE,
 	BfConstType_ArrayZero,
 	BfConstType_ArrayZero8,
 	BfConstType_Undef,
@@ -874,6 +877,13 @@ struct BfConstantAgg
 	BfSizedArray<BfIRValue> mValues;
 };
 
+struct BfConstantAggCE
+{
+	BfConstType mConstType;
+	BfIRType mType;
+	addr_ce mCEAddr;
+};
+
 struct BfConstantArrayZero
 {
 	BfConstType mConstType;
@@ -904,6 +914,7 @@ public:
 	bool TryGetBool(BfIRValue id, bool& boolVal);
 	int IsZero(BfIRValue val);
 	int CheckConstEquality(BfIRValue lhs, BfIRValue rhs); // -1 = fail, 0 = false, 1 = true
+	//void WriteConstant(void* data, BeConstant* constVal);
 
 	BfIRValue CreateConst(BfTypeCode typeCode, uint64 val);	
 	BfIRValue CreateConst(BfTypeCode typeCode, int val);
@@ -913,6 +924,7 @@ public:
 	BfIRValue CreateConstNull(BfIRType nullType);
 	BfIRValue CreateConstStructZero(BfIRType aggType);
 	BfIRValue CreateConstAgg(BfIRType type, const BfSizedArray<BfIRValue>& values);
+	BfIRValue CreateConstAggCE(BfIRType type, addr_ce ptr);
 	BfIRValue CreateConstArrayZero(BfIRType type, int count);
 	BfIRValue CreateConstArrayZero(int count);
 	BfIRValue CreateTypeOf(BfType* type);

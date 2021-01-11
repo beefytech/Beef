@@ -2671,6 +2671,14 @@ BfCustomAttribute* BfCustomAttributes::Get(BfTypeDef * typeDef)
 	return NULL;
 }
 
+BfCustomAttribute* BfCustomAttributes::Get(BfType* type)
+{
+	for (auto& customAttr : mAttributes)
+		if (customAttr.mType == type)
+			return &customAttr;
+	return NULL;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BfResolvedTypeSet::~BfResolvedTypeSet()

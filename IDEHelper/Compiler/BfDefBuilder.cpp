@@ -61,6 +61,7 @@ BfDefBuilder::BfDefBuilder(BfSystem* bfSystem)
 	mCurTypeDef = NULL;
 	mCurActualTypeDef = NULL;
 	mFullRefresh = false;
+	mIsComptime = false;
 	mResolvePassData = NULL;
 	mCurSource = NULL;
 
@@ -1184,7 +1185,7 @@ BfFieldDef* BfDefBuilder::AddField(BfTypeDef* typeDef, BfTypeReference* fieldTyp
 	return fieldDef;
 }
 
-BfMethodDef* BfDefBuilder::AddMethod(BfTypeDef* typeDef, BfMethodType methodType, BfProtection protection, bool isStatic, const StringImpl& name)
+BfMethodDef* BfDefBuilder::AddMethod(BfTypeDef* typeDef, BfMethodType methodType, BfProtection protection, bool isStatic, const StringImpl& name, bool addedAfterEmit)
 {
 	BF_ASSERT(typeDef->mTypeCode != BfTypeCode_TypeAlias);
 
@@ -1192,7 +1193,8 @@ BfMethodDef* BfDefBuilder::AddMethod(BfTypeDef* typeDef, BfMethodType methodType
 	methodDef->mIdx = (int)typeDef->mMethods.size();
 	typeDef->mMethods.push_back(methodDef);	
 	methodDef->mDeclaringType = typeDef;
-	methodDef->mMethodType = methodType;
+	methodDef->mMethodType = methodType;	
+	methodDef->mAddedAfterEmit = addedAfterEmit;
 	if (name.empty())
 	{
 		if (methodType == BfMethodType_Ctor)
@@ -1364,6 +1366,12 @@ BfTypeDef* BfDefBuilder::ComparePrevTypeDef(BfTypeDef* prevTypeDef, BfTypeDef* c
 
 void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 {
+	if (typeDeclaration->IsEmitted())
+	{
+		Fail("Type declarations are not allowed in emitted code", typeDeclaration);
+		return;
+	}
+
 	BF_ASSERT(typeDeclaration->GetSourceData() == mCurSource->mSourceData);
 
 	if ((typeDeclaration->mTypeNode != NULL) && (typeDeclaration->mNameNode == NULL))
@@ -1999,6 +2007,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					methodDef->mReturnTypeRef = mSystem->mDirectIntTypeRef;
 					methodDef->mIsStatic = true;
 					methodDef->mBody = method->mBody;
+					methodDef->mAddedAfterEmit = mIsComptime;
 
 					for (auto param : method->mParams)
 					{
@@ -2014,7 +2023,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					newParam->mName = "appendIdx";
 					newParam->mTypeRef = mSystem->mDirectRefIntTypeRef;
 					newParam->mParamKind = BfParamKind_AppendIdx;
-					method->mParams.Insert(0, newParam);					
+					method->mParams.Insert(0, newParam);
 				}
 			}
 		}
@@ -2158,24 +2167,24 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 	if ((mCurTypeDef->mTypeCode == BfTypeCode_Object) && (!mCurTypeDef->mIsStatic) && (ctorClear == NULL))
 	{				
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "");
-		methodDef->mIsMutating = true;
+		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "", mIsComptime);
+		methodDef->mIsMutating = true;		
 	}
 
 	if ((needsDtor) && (dtor == NULL))
 	{		
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, false, "");
+		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, false, "", mIsComptime);
 		BF_ASSERT(mCurTypeDef->mDtorDef == methodDef);
 	}
 
 	if ((needsStaticDtor) && (staticDtor == NULL))
 	{		
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, true, "");
+		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, true, "", mIsComptime);
 	}
 
 	if ((needsStaticInit) && (staticCtor == NULL))
 	{				
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, BfProtection_Public, true, "");
+		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, BfProtection_Public, true, "", mIsComptime);
 	}
 		
 	bool makeCtorPrivate = hasCtor;
@@ -2193,7 +2202,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 		// Create default constructor.  If it's the only constructor then make it public,
 		//  otherwise make it private so we can still internally use it but the user can't		
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, prot, false, "");
+		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, prot, false, "", mIsComptime);
 		methodDef->mIsMutating = true;
 	}
 
@@ -2229,19 +2238,19 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	{
 		if ((hasStaticField) && (staticMarkMethod == NULL))
 		{						
-			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, true, BF_METHODNAME_MARKMEMBERS_STATIC);
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, true, BF_METHODNAME_MARKMEMBERS_STATIC, mIsComptime);
 			methodDef->mIsNoReflect = true;
 		}
 
 		if (hasThreadStatics)
 		{
-			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, true, BF_METHODNAME_FIND_TLS_MEMBERS);
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, true, BF_METHODNAME_FIND_TLS_MEMBERS, mIsComptime);
 			methodDef->mIsNoReflect = true;
 		}
 
 		if ((hasNonStaticField) && (markMethod == NULL))
 		{				
-			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, false, BF_METHODNAME_MARKMEMBERS);
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Normal, BfProtection_Protected, false, BF_METHODNAME_MARKMEMBERS, mIsComptime);
 			methodDef->mIsVirtual = true;
 			methodDef->mIsOverride = true;
 			methodDef->mIsNoReflect = true;
@@ -2262,6 +2271,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mReturnTypeRef = mSystem->mDirectBoolTypeRef;
 		methodDef->mProtection = BfProtection_Public;
 		AddParam(methodDef, mSystem->mDirectSelfTypeRef, "checkEnum");
+		methodDef->mAddedAfterEmit = mIsComptime;
 
 		// Underlying
 		{
@@ -2272,6 +2282,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			methodDef->mReturnTypeRef = mSystem->mDirectSelfBaseTypeRef;
 			methodDef->mMethodType = BfMethodType_PropertyGetter;
 			methodDef->mProtection = BfProtection_Public;
+			methodDef->mAddedAfterEmit = mIsComptime;
 
 			auto propDef = new BfPropertyDef();
 			mCurTypeDef->mProperties.Add(propDef);
@@ -2292,6 +2303,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			methodDef->mReturnTypeRef = mSystem->mDirectRefSelfBaseTypeRef;
 			methodDef->mMethodType = BfMethodType_PropertyGetter;
 			methodDef->mProtection = BfProtection_Public;
+			methodDef->mAddedAfterEmit = mIsComptime;
 
 			auto propDef = new BfPropertyDef();
 			mCurTypeDef->mProperties.Add(propDef);
@@ -2315,6 +2327,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mIsVirtual = true;
 		AddParam(methodDef, mSystem->mDirectStringTypeRef, "outStr");
 		mCurTypeDef->mHasOverrideMethods = true;
+		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 	
 	if ((needsEqualsMethod) && (equalsMethod == NULL))
@@ -2325,9 +2338,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mName = BF_METHODNAME_DEFAULT_EQUALS;
 		methodDef->mReturnTypeRef = mSystem->mDirectBoolTypeRef;
 		methodDef->mProtection = BfProtection_Private;
-		methodDef->mIsStatic = true;
+		methodDef->mIsStatic = true;		
 		AddParam(methodDef, mSystem->mDirectSelfTypeRef, "lhs");
 		AddParam(methodDef, mSystem->mDirectSelfTypeRef, "rhs");
+		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 
 	if (needsEqualsMethod)
@@ -2341,6 +2355,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mIsStatic = true;
 		AddParam(methodDef, mSystem->mDirectSelfTypeRef, "lhs");
 		AddParam(methodDef, mSystem->mDirectSelfTypeRef, "rhs");
+		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 
 	HashContext inlineHashCtx;

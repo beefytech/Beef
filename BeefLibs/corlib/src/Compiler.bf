@@ -1,21 +1,6 @@
 using System.Reflection;
 namespace System
 {
-	[AttributeUsage(.Method)]
-	struct OnCompileAttribute : Attribute
-	{
-		public enum Kind
-		{
-			None,
-			TypeInit,
-			TypeDone
-		}
-
-		public this(Kind kind)
-		{
-		}
-	}
-
 	static class Compiler
 	{
 		public struct MethodBuilder

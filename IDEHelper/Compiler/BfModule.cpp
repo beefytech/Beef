@@ -2714,6 +2714,14 @@ void BfModule::SetElementType(BfAstNode* astNode, BfSourceElementType elementTyp
 	}
 }
 
+bool BfModule::PreFail()
+{
+	if (!mIgnoreErrors)
+		return true;
+	SetFail();
+	return false;
+}
+
 void BfModule::SetFail()
 {
 	if (mIgnoreErrors)
@@ -2758,7 +2766,7 @@ bool BfModule::IsSkippingExtraResolveChecks()
 	return mCompiler->IsSkippingExtraResolveChecks();
 }
 
-BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPersistent)
+BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPersistent, bool deferError)
 {	
 	BP_ZONE("BfModule::Fail");
 
@@ -2825,7 +2833,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	{	
 		auto _CheckMethodInstance = [&](BfMethodInstance* methodInstance)
 		{
-			// Propogatea the fail all the way to the main method (assuming we're in a local method or lambda)
+			// Propogate the fail all the way to the main method (assuming we're in a local method or lambda)
 			methodInstance->mHasFailed = true;
 
 			bool isSpecializedMethod = ((methodInstance != NULL) && (!methodInstance->mIsUnspecialized) && (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mMethodGenericArguments.size() != 0));
@@ -2886,19 +2894,19 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 		{
 			if (!_CheckMethodInstance(mCurMethodInstance))
 				return NULL;
-		}
+		}		
+	}
 
-		// Keep in mind that all method specializations with generic type instances as its method generic params
-		//  need to be deferred because the specified generic type instance might get deleted at the end of the 
-		//  compilation due to no longer having indirect references removed, and we have to ignore errors from
-		//  those method specializations if that occurs
-		if (isWhileSpecializing)
-		{
-			BfError* bfError = mCompiler->mPassInstance->DeferFail(errorString, refNode);
-			if (bfError != NULL)
-				bfError->mIsWhileSpecializing = isWhileSpecializing;
-			return bfError;
-		}
+	// Keep in mind that all method specializations with generic type instances as its method generic params
+	//  need to be deferred because the specified generic type instance might get deleted at the end of the 
+	//  compilation due to no longer having indirect references removed, and we have to ignore errors from
+	//  those method specializations if that occurs
+	if ((isWhileSpecializing) || (deferError))
+	{
+		BfError* bfError = mCompiler->mPassInstance->DeferFail(errorString, refNode);
+		if (bfError != NULL)
+			bfError->mIsWhileSpecializing = isWhileSpecializing;
+		return bfError;
 	}
 
 	if ((!isWhileSpecializing) && (mCurTypeInstance != NULL) && ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType())))
@@ -3720,7 +3728,7 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 				mBfIRBuilder->GlobalVar_SetStorageKind(globalVar, storageKind);
 
 			BF_ASSERT(globalVar);
-			mStaticFieldRefs[fieldInstance] = globalVar;
+			mStaticFieldRefs[fieldInstance] = globalVar;			
 		}
 	}	
 }
@@ -10618,7 +10626,7 @@ BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConst
 	return BfTypedValue(irValue, wantType, false);
 }
 
-BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType)
+BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType, bool allowStringId)
 {
 	if (constant->mTypeCode == BfTypeCode_NullPtr)
 	{
@@ -10633,14 +10641,17 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 
 	if (constant->mTypeCode == BfTypeCode_StringId)
 	{
-		if ((wantType->IsInstanceOf(mCompiler->mStringTypeDef)) || 
-			((wantType->IsPointer()) && (wantType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))))
+		if (!allowStringId)
 		{
-			const StringImpl& str = mContext->mStringObjectIdMap[constant->mInt32].mString;
-			BfIRValue stringObjConst = GetStringObjectValue(str);
-			if (wantType->IsPointer())
-				return GetStringCharPtr(stringObjConst);
-			return stringObjConst;
+			if ((wantType->IsInstanceOf(mCompiler->mStringTypeDef)) ||
+				((wantType->IsPointer()) && (wantType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))))
+			{
+				const StringImpl& str = mContext->mStringObjectIdMap[constant->mInt32].mString;
+				BfIRValue stringObjConst = GetStringObjectValue(str);
+				if (wantType->IsPointer())
+					return GetStringCharPtr(stringObjConst);
+				return stringObjConst;
+			}
 		}
 	}
 
@@ -10686,7 +10697,7 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 			}
 		}
 
-		return mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(wantType), newVals);
+		return mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(wantType, BfIRPopulateType_Identity), newVals);
 	}
 
 	return mBfIRBuilder->CreateConst(constant, constHolder);	
@@ -10836,8 +10847,25 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		if (mCurTypeInstance != NULL)
 			AddDependency(attrTypeInst, mCurTypeInstance, BfDependencyMap::DependencyFlag_CustomAttribute);
 
-		customAttribute.mType = attrTypeInst;		
+		customAttribute.mType = attrTypeInst;
 		
+		bool allocatedMethodState = NULL;		
+		defer(
+			{
+				if (allocatedMethodState)
+				{
+					delete mCurMethodState;
+					mCurMethodState = NULL;
+				}
+			});
+
+		if (mCurMethodState == NULL)
+		{
+			allocatedMethodState = true;
+			mCurMethodState = new BfMethodState();
+			mCurMethodState->mTempKind = BfMethodState::TempKind_Static;
+		}
+
 		BfConstResolver constResolver(this);
 		if (allowNonConstArgs)
 			constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowNonConst);
@@ -19747,6 +19775,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction); 		
 	}	
 	
+	// Avoid linking any internal funcs that were just supposed to be comptime-accessible
+	if (((methodInstance->mComptimeFlags & BfComptimeFlag_OnlyFromComptime) != 0) && (!mIsComptimeModule))
+		wantsRemoveBody = true;
+
 	if ((hasExternSpecifier) && (!skipBody))
 	{
 		// If we hot swap, we want to make sure at least one method refers to this extern method so it gets pulled in
@@ -19764,7 +19796,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);
 	}
 	else if (wantsRemoveBody)
-		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);
+		mBfIRBuilder->Func_DeleteBody(mCurMethodInstance->mIRFunction);	
 
 	// We don't want to hold on to pointers to LLVMFunctions of unspecialized types.
 	//  This allows us to delete the mScratchModule LLVM module without rebuilding all

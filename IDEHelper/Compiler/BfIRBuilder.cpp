@@ -758,6 +758,20 @@ BfIRValue BfIRConstHolder::CreateConstAgg(BfIRType type, const BfSizedArray<BfIR
 	return irValue;
 }
 
+BfIRValue BfIRConstHolder::CreateConstAggCE(BfIRType type, addr_ce addr)
+{
+	BfConstantAggCE* constant = mTempAlloc.Alloc<BfConstantAggCE>();
+	constant->mConstType = BfConstType_AggCE;
+	constant->mType = type = type;
+	constant->mCEAddr = addr;
+	auto irValue = BfIRValue(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(constant));
+
+#ifdef CHECK_CONSTHOLDER
+	irValue.mHolder = this;
+#endif
+	return irValue;
+}
+
 BfIRValue BfIRConstHolder::CreateConstArrayZero(BfIRType type, int count)
 {
 	BfConstantArrayZero* constant = mTempAlloc.Alloc<BfConstantArrayZero>();

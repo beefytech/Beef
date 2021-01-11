@@ -365,8 +365,9 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 						autoComplete->CheckEmptyStart(prevNode, wantType);
 					}
 				}
-
-				mModule->Fail(StrFormat("Not enough parameters specified. Expected %d fewer.", methodInstance->GetParamCount() - (int)arguments.size()), refNode);
+				
+				if (mModule->PreFail())
+					mModule->Fail(StrFormat("Not enough parameters specified. Expected %d fewer.", methodInstance->GetParamCount() - (int)arguments.size()), refNode);
 				return false;
 			}
 

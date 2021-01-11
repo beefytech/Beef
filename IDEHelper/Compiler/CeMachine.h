@@ -7,6 +7,8 @@
 
 NS_BF_BEGIN
 
+class BfParser;
+class BfReducer;
 class BfMethodInstance;
 class BeModule;
 class BeContext;
@@ -22,8 +24,6 @@ class BeSwitchInst;
 class BeGlobalVariable;
 class CeMachine;
 class CeFunction;
-
-typedef int addr_ce;
 
 #define CEOP_SIZED(OPNAME) \
 	CeOp_##OPNAME##_8, \
@@ -251,6 +251,9 @@ enum CeFunctionKind
 	CeFunctionKind_DebugWrite_Int,
 	CeFunctionKind_GetReflectType,
 	CeFunctionKind_GetReflectTypeById,
+	CeFunctionKind_GetReflectTypeByName,
+	CeFunctionKind_GetReflectSpecializedType,
+	CeFunctionKind_Type_GetCustomAttribute,
 	CeFunctionKind_EmitDefinition,
 	CeFunctionKind_Sleep,
 	CeFunctionKind_Char32_ToLower,
@@ -368,6 +371,7 @@ public:
 	}	
 
 	~CeFunction();
+	void Print();
 };
 
 enum CeEvalFlags
@@ -424,8 +428,9 @@ public:
 };
 
 #define BF_CE_STACK_SIZE 4*1024*1024
+#define BF_CE_INITIAL_MEMORY BF_CE_STACK_SIZE + 128*1024
 #define BF_CE_MAX_MEMORY 128*1024*1024
-#define BF_CE_MAX_CARRYOVER_MEMORY BF_CE_STACK_SIZE + 1024*1024
+#define BF_CE_MAX_CARRYOVER_MEMORY BF_CE_STACK_SIZE * 2
 #define BF_CE_MAX_CARRYOVER_HEAP 1024*1024
 
 enum CeOperandInfoKind
@@ -518,6 +523,7 @@ public:
 	Dictionary<BeConstant*, int> mConstDataMap;
 	Dictionary<BeFunction*, int> mInnerFunctionMap;
 	Dictionary<BeGlobalVariable*, int> mStaticFieldMap;
+	Dictionary<String, BfFieldInstance*> mStaticFieldInstanceMap;
 	
 public:
 	CeBuilder()
@@ -585,14 +591,12 @@ public:
 
 class CeStaticFieldInfo
 {
-public:
-	BfFieldInstance* mFieldInstance;	
+public:	
 	addr_ce mAddr;
 
 public:
 	CeStaticFieldInfo()
 	{
-		mFieldInstance = NULL;		
 		mAddr = 0;
 	}
 };
@@ -617,70 +621,100 @@ public:
 	}
 };
 
+class CeContext
+{
+public:
+	CeMachine* mCeMachine;
+	int mReflectTypeIdOffset;
+	int mExecuteId;
+	CeEvalFlags mCurEvalFlags;
+
+	// These are only valid for the current execution	
+	ContiguousHeap* mHeap;
+	Array<CeFrame> mCallStack;
+	Array<uint8> mMemory;
+	Dictionary<int, addr_ce> mStringMap;
+	Dictionary<int, addr_ce> mReflectMap;
+	Dictionary<Val128, addr_ce> mConstDataMap;	
+	HashSet<int> mStaticCtorExecSet;	
+	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
+	Dictionary<void*, addr_ce> mMemToCtxMap;
+
+	BfMethodInstance* mCurMethodInstance;
+	BfType* mCurExpectingType;
+	BfAstNode* mCurTargetSrc;
+	BfModule* mCurModule;
+	CeFrame* mCurFrame;
+	CeEmitContext* mCurEmitContext;
+
+public:
+	CeContext();
+	~CeContext();
+
+	BfError* Fail(const StringImpl& error);
+	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
+
+	uint8* CeMalloc(int size);
+	bool CeFree(addr_ce addr);
+	addr_ce CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elemsAddr);
+	addr_ce GetReflectType(int typeId);
+	addr_ce GetReflectType(const String& typeName);
+	int GetTypeIdFromType(addr_ce typeAddr);
+	addr_ce GetReflectSpecializedType(addr_ce unspecializedType, addr_ce typeArgsSpanAddr);
+	addr_ce GetString(int stringId);
+	addr_ce GetConstantData(BeConstant* constant);
+	BfType* GetBfType(int typeId);
+	void PrepareConstStructEntry(CeConstStructData& constStructData);
+	bool CheckMemory(addr_ce addr, int32 size);
+	bool GetStringFromStringView(addr_ce addr, StringImpl& str);
+	bool GetCustomAttribute(BfCustomAttributes* customAttributes, int attributeTypeId, addr_ce resultAddr);	
+
+	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type, bool isParams = false);	
+	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);	
+	BfIRValue CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfIRConstHolder* constHolder, BfCustomAttribute* customAttribute);
+
+	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType);
+	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
+};
+
 class CeMachine
 {
 public:
 	Dictionary<BfMethodInstance*, CeFunctionInfo*> mFunctions;
 	Dictionary<String, CeFunctionInfo*> mNamedFunctionMap;
-	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit		
+	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit			
+	
+	Array<CeContext*> mContextList;
 
 	BfCompiler* mCompiler;
 	BfModule* mCeModule;
 	int mRevision;
-	int mRevisionExecuteTime;
-	int mExecuteId;	
-	int mCurFunctionId;
-
-	// These are only valid for the current execution
-	ContiguousHeap* mHeap;
-	Array<CeFrame> mCallStack;
-	Array<uint8> mMemory;
-	Dictionary<int, addr_ce> mStringMap;
-	int mStringCharsOffset;
-	Dictionary<int, addr_ce> mReflectMap;
-	Dictionary<Val128, addr_ce> mConstDataMap;	
-	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
-	HashSet<int> mStaticCtorExecSet;
-	CeAppendAllocInfo* mAppendAllocInfo;	
+	int mRevisionExecuteTime;	
+	int mCurFunctionId;	
+	int mExecuteId;
+	CeAppendAllocInfo* mAppendAllocInfo;
 	
-	CeEmitContext* mCurEmitContext;
-	CeEvalFlags mCurEvalFlags;
+	CeContext* mCurContext;
+	CeEmitContext* mCurEmitContext;	
 	CeBuilder* mCurBuilder;
-	CeFunction* mPreparingFunction;
-	CeFrame* mCurFrame;
-	BfAstNode* mCurTargetSrc;
-	BfMethodInstance* mCurMethodInstance;
-	BfModule* mCurModule;	
-	BfType* mCurExpectingType;	
+	CeFunction* mPreparingFunction;		
+
+	BfParser* mTempParser;
+	BfReducer* mTempReducer;
+	BfPassInstance* mTempPassInstance;
 
 public:
 	CeMachine(BfCompiler* compiler);
-	~CeMachine();
-	
-	BfError* Fail(const StringImpl& error);
-	BfError* Fail(const CeFrame& curFrame, const StringImpl& error);
+	~CeMachine();		
 
-	void Init();	
-	uint8* CeMalloc(int size);
-	bool CeFree(addr_ce addr);
-	addr_ce CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elemsAddr);	
-	addr_ce GetReflectType(int typeId);
-	addr_ce GetString(int stringId);
-	addr_ce GetConstantData(BeConstant* constant);
-	BfType* GetBfType(int typeId);	
-	void PrepareConstStructEntry(CeConstStructData& constStructData);
-	bool CheckMemory(addr_ce addr, int32 size);
-	bool GetStringFromStringView(addr_ce addr, StringImpl& str);
-
+	void Init();		
 	BeContext* GetBeContext();
 	BeModule* GetBeModule();
+
 	void DerefMethodInfo(CeFunctionInfo* ceFunctionInfo);
-	void RemoveMethod(BfMethodInstance* methodInstance);		
-	bool WriteConstant(BfModule* module, addr_ce addr, BfConstant* constant, BfType* type, bool isParams = false);
-	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal);
-	BfIRValue CreateConstant(BfModule* module, uint8* ptr, BfType* type, BfType** outType = NULL);
-	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);		
-	bool Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType);	
+	void RemoveMethod(BfMethodInstance* methodInstance);					
+	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);			
+	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext);	
 
 	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);	
 	void MapFunctionId(CeFunction* ceFunction);
@@ -688,17 +722,19 @@ public:
 	void CheckFunctions();
 	CeFunction* GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added);
 	CeFunction* GetPreparedFunction(BfMethodInstance* methodInstance);
-	
+
 public:
 	void CompileStarted();
 	void CompileDone();
 	void QueueMethod(BfMethodInstance* methodInstance, BfIRValue func);
 	void QueueMethod(BfModuleMethodInstance moduleMethodInstance);
-	void QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName);
+	void QueueStaticField(BfFieldInstance* fieldInstance, const StringImpl& mangledFieldName);	
 
 	void SetAppendAllocInfo(BfModule* module, BfIRValue allocValue, BfIRValue appendSizeValue);
 	void ClearAppendAllocInfo();
 
+	CeContext* AllocContext();
+	void ReleaseContext(CeContext* context);
 	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
 };
 

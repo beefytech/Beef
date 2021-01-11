@@ -813,6 +813,25 @@ bool BfAstNode::LocationEndEquals(BfAstNode* otherNode)
 		(GetSrcEnd() == otherNode->GetSrcEnd());
 }
 
+String BfAstNode::LocationToString()
+{
+	auto parserData = GetParserData();
+	if (parserData == NULL)
+		return String();
+
+	String loc;
+	
+	int line = -1;
+	int lineChar = -1;
+	parserData->GetLineCharAtIdx(mSrcStart, line, lineChar);
+	if (line != -1)
+		loc += StrFormat("at line %d:%d", line + 1, lineChar + 1);
+	loc += " in ";
+	loc += parserData->mFileName;
+
+	return loc;
+}
+
 void BfAstNode::Add(BfAstNode* bfAstNode)
 {	
 #ifdef BF_AST_HAS_PARENT_MEMBER

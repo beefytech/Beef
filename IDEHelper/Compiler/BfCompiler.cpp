@@ -8573,9 +8573,7 @@ int BfCompiler::GetEmitSource(const StringImpl& fileName, StringImpl* outBuffer)
 	if (dotPos == -1)
 		return -1;
 	
-	String typeIdStr = fileName.Substring(lastDollarPos + 1, dotPos - lastDollarPos - 1);
-
-	int revisionId = (int)atoi(typeIdStr.c_str());
+	String typeIdStr = fileName.Substring(lastDollarPos + 1, dotPos - lastDollarPos - 1);	
 	int typeId = (int)atoi(typeIdStr.c_str());
 	if ((typeId <= 0) || (typeId >= mContext->mTypes.mSize))
 		return -1;
@@ -8786,7 +8784,9 @@ BF_EXPORT int BF_CALLTYPE BfCompiler_GetCurConstEvalExecuteId(BfCompiler* bfComp
 {
 	if (bfCompiler->mCEMachine == NULL)
 		return -1;
-	if (bfCompiler->mCEMachine->mCurMethodInstance == NULL)
+	if (bfCompiler->mCEMachine->mCurContext == NULL)
+		return -1;
+	if (bfCompiler->mCEMachine->mCurContext->mCurMethodInstance == NULL)
 		return -1;
 	return bfCompiler->mCEMachine->mExecuteId;
 }

@@ -275,6 +275,21 @@ namespace System
 	}
 
 	[AttributeUsage(.Method)]
+	struct OnCompileAttribute : Attribute
+	{
+		public enum Kind
+		{
+			None,
+			TypeInit,
+			TypeDone
+		}
+
+		public this(Kind kind)
+		{
+		}
+	}
+
+	[AttributeUsage(.Method)]
 	public struct ComptimeAttribute : Attribute
 	{
 		public this()

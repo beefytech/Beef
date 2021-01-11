@@ -2092,36 +2092,39 @@ Done:
 void BfMethodMatcher::FlushAmbiguityError()
 {
 	if (!mAmbiguousEntries.empty())
-	{		
-		BfError* error;
-		if (!mMethodName.empty())
-			error = mModule->Fail(StrFormat("Ambiguous method call for '%s'", mMethodName.c_str()), mTargetSrc);
-		else
-			error = mModule->Fail("Ambiguous method call", mTargetSrc);
-		if (error != NULL)
+	{	
+		if (mModule->PreFail())
 		{
-			auto unspecializedType = mModule->GetUnspecializedTypeInstance(mBestMethodTypeInstance);
-			BfMethodInstance* bestMethodInstance = mModule->GetRawMethodInstance(unspecializedType, mBestMethodDef);
-			BfTypeVector* typeGenericArguments = NULL;
-			if (mBestMethodTypeInstance->mGenericTypeInfo != NULL)
-				typeGenericArguments = &mBestMethodTypeInstance->mGenericTypeInfo->mTypeGenericArguments;
-			
-			mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(bestMethodInstance, BfMethodNameFlag_ResolveGenericParamNames,
-                typeGenericArguments, mBestMethodGenericArguments.empty() ? NULL : &mBestMethodGenericArguments).c_str()),
-				bestMethodInstance->mMethodDef->GetRefNode());
-		
-			for (auto& ambiguousEntry : mAmbiguousEntries)
+			BfError* error;
+			if (!mMethodName.empty())
+				error = mModule->Fail(StrFormat("Ambiguous method call for '%s'", mMethodName.c_str()), mTargetSrc);
+			else
+				error = mModule->Fail("Ambiguous method call", mTargetSrc);
+			if (error != NULL)
 			{
-				auto typeInstance = ambiguousEntry.mMethodInstance->GetOwner();
-				auto unspecTypeMethodInstance = mModule->GetUnspecializedMethodInstance(ambiguousEntry.mMethodInstance, true);
-				
+				auto unspecializedType = mModule->GetUnspecializedTypeInstance(mBestMethodTypeInstance);
+				BfMethodInstance* bestMethodInstance = mModule->GetRawMethodInstance(unspecializedType, mBestMethodDef);
 				BfTypeVector* typeGenericArguments = NULL;
-				if (typeInstance->mGenericTypeInfo != NULL)
-					typeGenericArguments = &typeInstance->mGenericTypeInfo->mTypeGenericArguments;
+				if (mBestMethodTypeInstance->mGenericTypeInfo != NULL)
+					typeGenericArguments = &mBestMethodTypeInstance->mGenericTypeInfo->mTypeGenericArguments;
 
-				mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(unspecTypeMethodInstance, BfMethodNameFlag_ResolveGenericParamNames,
-					typeGenericArguments, ambiguousEntry.mBestMethodGenericArguments.empty() ? NULL : &ambiguousEntry.mBestMethodGenericArguments).c_str()),
-					ambiguousEntry.mMethodInstance->mMethodDef->GetRefNode());
+				mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(bestMethodInstance, BfMethodNameFlag_ResolveGenericParamNames,
+					typeGenericArguments, mBestMethodGenericArguments.empty() ? NULL : &mBestMethodGenericArguments).c_str()),
+					bestMethodInstance->mMethodDef->GetRefNode());
+
+				for (auto& ambiguousEntry : mAmbiguousEntries)
+				{
+					auto typeInstance = ambiguousEntry.mMethodInstance->GetOwner();
+					auto unspecTypeMethodInstance = mModule->GetUnspecializedMethodInstance(ambiguousEntry.mMethodInstance, true);
+
+					BfTypeVector* typeGenericArguments = NULL;
+					if (typeInstance->mGenericTypeInfo != NULL)
+						typeGenericArguments = &typeInstance->mGenericTypeInfo->mTypeGenericArguments;
+
+					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' is a candidate", mModule->MethodToString(unspecTypeMethodInstance, BfMethodNameFlag_ResolveGenericParamNames,
+						typeGenericArguments, ambiguousEntry.mBestMethodGenericArguments.empty() ? NULL : &ambiguousEntry.mBestMethodGenericArguments).c_str()),
+						ambiguousEntry.mMethodInstance->mMethodDef->GetRefNode());
+				}
 			}
 		}
 
@@ -3758,8 +3761,14 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	}
 
 	if (!thisValue.HasType())			
-	{
-		thisValue = BfTypedValue(mModule->mCurTypeInstance);		
+	{		
+		if ((mModule->mContext->mCurTypeState != NULL) && (mModule->mContext->mCurTypeState->mTypeInstance == mModule->mCurTypeInstance) &&
+			(mModule->mContext->mCurTypeState->mResolveKind == BfTypeState::ResolveKind_Attributes))
+		{
+			// Can't do static lookups yet
+		}
+		else
+			thisValue = BfTypedValue(mModule->mCurTypeInstance);		
 	}
 
 	BfTypedValue result;
@@ -4314,14 +4323,17 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					return retVal;
 				}
 				else if (!target)
-				{						
-					if ((flags & BfLookupFieldFlag_CheckingOuter) != 0)
-						mModule->Fail(StrFormat("An instance reference is required to reference non-static outer field '%s.%s'", mModule->TypeToString(curCheckType).c_str(), field->mName.c_str()),
-							targetSrc);
-					else if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend))
-						mModule->Fail(StrFormat("Cannot reference field '%s' before append allocations", field->mName.c_str()), targetSrc);
-					else
-						mModule->Fail(StrFormat("Cannot reference non-static field '%s' from a static method", field->mName.c_str()), targetSrc);
+				{		
+					if (mModule->PreFail())
+					{
+						if ((flags & BfLookupFieldFlag_CheckingOuter) != 0)
+							mModule->Fail(StrFormat("An instance reference is required to reference non-static outer field '%s.%s'", mModule->TypeToString(curCheckType).c_str(), field->mName.c_str()),
+								targetSrc);
+						else if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_CtorCalcAppend))
+							mModule->Fail(StrFormat("Cannot reference field '%s' before append allocations", field->mName.c_str()), targetSrc);
+						else
+							mModule->Fail(StrFormat("Cannot reference non-static field '%s' from a static method", field->mName.c_str()), targetSrc);
+					}
 					return mModule->GetDefaultTypedValue(resolvedFieldType, false, BfDefaultValueKind_Addr);
 				}
 
@@ -4501,12 +4513,15 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 						if (matchedProp != NULL)
 						{
-							auto error = mModule->Fail(StrFormat("Ambiguous reference to property '%s.%s'", mModule->TypeToString(curCheckType).c_str(), fieldName.c_str()), targetSrc);
-							if (error != NULL)
+							if (mModule->PreFail())
 							{
-								mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See property declaration in project '%s'", matchedProp->mDeclaringType->mProject->mName.c_str()), matchedProp->mFieldDeclaration);
-								mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See property declaration in project '%s'", prop->mDeclaringType->mProject->mName.c_str()), prop->mFieldDeclaration);
-								break;
+								auto error = mModule->Fail(StrFormat("Ambiguous reference to property '%s.%s'", mModule->TypeToString(curCheckType).c_str(), fieldName.c_str()), targetSrc);
+								if (error != NULL)
+								{
+									mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See property declaration in project '%s'", matchedProp->mDeclaringType->mProject->mName.c_str()), matchedProp->mFieldDeclaration);
+									mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See property declaration in project '%s'", prop->mDeclaringType->mProject->mName.c_str()), prop->mFieldDeclaration);
+									break;
+								}
 							}
 						}
 
@@ -6201,32 +6216,35 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			}			
 
 			if (argExprIdx < (int)argValues.size())
-			{				
-				BfAstNode* errorRef = argValues[argExprIdx].mExpression;
-				if (errorRef == NULL)
-					errorRef = targetSrc;				
+			{			
+				if (mModule->PreFail())
+				{
+					BfAstNode* errorRef = argValues[argExprIdx].mExpression;
+					if (errorRef == NULL)
+						errorRef = targetSrc;
 
-				BfError* error;
-				if ((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0)
-				{					
-					int checkIdx = argExprIdx - 1;
-					while (checkIdx >= 0)
+					BfError* error;
+					if ((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0)
 					{
-						if ((argValues[checkIdx].mArgFlags & BfArgFlag_StringInterpolateFormat) != 0)
+						int checkIdx = argExprIdx - 1;
+						while (checkIdx >= 0)
 						{
-							errorRef = argValues[checkIdx].mExpression;
-							break;
+							if ((argValues[checkIdx].mArgFlags & BfArgFlag_StringInterpolateFormat) != 0)
+							{
+								errorRef = argValues[checkIdx].mExpression;
+								break;
+							}
+							checkIdx--;
 						}
-						checkIdx--;
+						error = mModule->Fail("Expanded string interpolation generates too many arguments. If string allocation was intended then consider adding a specifier such as 'scope'.", errorRef);
 					}
-					error = mModule->Fail("Expanded string interpolation generates too many arguments. If string allocation was intended then consider adding a specifier such as 'scope'.", errorRef);
+					else if ((prevBindResult.mPrevVal != NULL) && (prevBindResult.mPrevVal->mBindType != NULL))
+						error = mModule->Fail(StrFormat("Method '%s' has too few parameters to bind to '%s'.", mModule->MethodToString(methodInstance).c_str(), mModule->TypeToString(prevBindResult.mPrevVal->mBindType).c_str()), errorRef);
+					else
+						error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", (int)argValues.size() - argExprIdx), errorRef);
+					if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
+						mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 				}
-				else if ((prevBindResult.mPrevVal != NULL) && (prevBindResult.mPrevVal->mBindType != NULL))
- 					error = mModule->Fail(StrFormat("Method '%s' has too few parameters to bind to '%s'.", mModule->MethodToString(methodInstance).c_str(), mModule->TypeToString(prevBindResult.mPrevVal->mBindType).c_str()), errorRef);
-				else
-					error = mModule->Fail(StrFormat("Too many arguments, expected %d fewer.", (int)argValues.size() - argExprIdx), errorRef);
-				if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
-					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
 				failed = true;
 				break;				
 			}
@@ -6488,8 +6506,11 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 					if (showCtorError)
 					{
-						error = mModule->Fail(StrFormat("No parameterless constructor is available for base class. Consider calling base constructor '%s'.",
-							mModule->MethodToString(methodInstance).c_str()), refNode);
+						if (mModule->PreFail())
+						{
+							error = mModule->Fail(StrFormat("No parameterless constructor is available for base class. Consider calling base constructor '%s'.",
+								mModule->MethodToString(methodInstance).c_str()), refNode);
+						}
 						
 						auto srcNode = mModule->mCurMethodInstance->mMethodDef->GetRefNode();
 						if ((autoComplete != NULL) && (autoComplete->CheckFixit(srcNode)))
@@ -6497,10 +6518,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					}					
 				}
 
-				if (error == NULL)
-					error = mModule->Fail(StrFormat("Not enough parameters specified, expected %d more.", methodInstance->GetParamCount() - paramIdx), refNode);
-				if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
-					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
+				if (mModule->PreFail())
+				{
+					if (error == NULL)
+						error = mModule->Fail(StrFormat("Not enough parameters specified, expected %d more.", methodInstance->GetParamCount() - paramIdx), refNode);
+					if ((error != NULL) && (methodInstance->mMethodDef->mMethodDeclaration != NULL))
+						mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodInstance->mMethodDef->GetRefNode());
+				}
 				failed = true;
 				break;
 			}			

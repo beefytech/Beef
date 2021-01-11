@@ -18,6 +18,7 @@ public:
 	BfTypeDef* mCurTypeDef;
 	BfTypeDef* mCurActualTypeDef;
 	bool mFullRefresh;
+	bool mIsComptime;
 	BfResolvePassData* mResolvePassData;
 	BfAtomComposite mNamespace;
 	Array<BfAtomComposite> mNamespaceSearch;
@@ -33,7 +34,7 @@ public:
 	//static BfNamedTypeReference* AllocTypeReference(BfSource* bfSource, const StringImpl& typeName);
 	//static BfResolvedTypeReference* AllocTypeReference(BfSource* bfSource, BfType* type);
 	static BfFieldDef* AddField(BfTypeDef* typeDef, BfTypeReference* typeRef, const StringImpl& name);
-	static BfMethodDef* AddMethod(BfTypeDef* typeDef, BfMethodType methodType, BfProtection protection, bool isStatic, const StringImpl& name);
+	static BfMethodDef* AddMethod(BfTypeDef* typeDef, BfMethodType methodType, BfProtection protection, bool isStatic, const StringImpl& name, bool addedAfterEmit = false);
 	static BfMethodDef* AddDtor(BfTypeDef* typeDef);
 	static void AddDynamicCastMethods(BfTypeDef* typeDef);
 	void AddParam(BfMethodDef* methodDef, BfTypeReference* typeRef, const StringImpl& paramName);

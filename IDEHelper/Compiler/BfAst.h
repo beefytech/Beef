@@ -1101,6 +1101,7 @@ public:
 	static void ClassAccept(BfAstNode* node, BfStructuralVisitor* bfVisitor) { bfVisitor->Visit(node); }
 	bool LocationEquals(BfAstNode* otherNode);
 	bool LocationEndEquals(BfAstNode* otherNode);
+	String LocationToString();
 	void Add(BfAstNode* bfAstNode);
 	bool IsMissingSemicolon();
 	bool IsExpression();
