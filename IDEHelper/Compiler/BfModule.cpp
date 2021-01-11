@@ -1909,10 +1909,17 @@ void BfModule::AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* r
 	{	
 		bool hadDtorCall = false;
 		while (checkBaseType != NULL)
-		{
-			if ((checkBaseType->mTypeDef->mDtorDef != NULL) /*&& (checkBaseType != mContext->mBfObjectType)*/)
+		{	
+			checkBaseType->mTypeDef->PopulateMemberSets();
+			BfMemberSetEntry* entry = NULL;
+			BfMethodDef* dtorMethodDef = NULL;
+			checkBaseType->mTypeDef->mMethodSet.TryGetWith(String("~this"), &entry);
+			if (entry != NULL)
+				dtorMethodDef = (BfMethodDef*)entry->mMemberDef;
+
+			if (dtorMethodDef != NULL)
 			{				
-				auto dtorMethodInstance = GetMethodInstance(checkBaseType, checkBaseType->mTypeDef->mDtorDef, BfTypeVector());
+				auto dtorMethodInstance = GetMethodInstance(checkBaseType, dtorMethodDef, BfTypeVector());
 				if (dtorMethodInstance)				
 				{
 					bool isDynAlloc = (scopeData != NULL) && (mCurMethodState->mCurScope->IsDyn(scopeData));
@@ -12552,11 +12559,11 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					BfMethodSpecializationRequest* specializationRequest = mContext->mMethodSpecializationWorkList.Alloc();
 					specializationRequest->mFromModule = typeInst->mModule;
 					specializationRequest->mFromModuleRevision = typeInst->mModule->mRevision;
-					specializationRequest->mMethodDef = methodDef;
+					specializationRequest->Init(typeInst, foreignType, methodDef);
+					//specializationRequest->mMethodDef = methodDef;
 					specializationRequest->mMethodGenericArguments = methodGenericArguments;
 					specializationRequest->mType = typeInst;
-					specializationRequest->mFlags = flags;
-					specializationRequest->mForeignType = foreignType;
+					specializationRequest->mFlags = flags;					
 				}
 			}
 
@@ -15524,9 +15531,16 @@ void BfModule::EmitDtorBody()
 					UpdateSrcPos(typeDef->mTypeDeclaration->mNameNode);
 				}
 
-				if (checkBaseType->mTypeDef->mDtorDef != NULL)
+				checkBaseType->mTypeDef->PopulateMemberSets();
+				BfMemberSetEntry* entry = NULL;
+				BfMethodDef* dtorMethodDef = NULL;
+				checkBaseType->mTypeDef->mMethodSet.TryGetWith(String("~this"), &entry);
+				if (entry != NULL)
+					dtorMethodDef = (BfMethodDef*)entry->mMemberDef;
+
+				if (dtorMethodDef != NULL)
 				{
-					auto dtorMethodInstance = GetMethodInstance(checkBaseType, checkBaseType->mTypeDef->mDtorDef, BfTypeVector());
+					auto dtorMethodInstance = GetMethodInstance(checkBaseType, dtorMethodDef, BfTypeVector());
 					if (IsSkippingExtraResolveChecks())
 					{
 						// Nothing

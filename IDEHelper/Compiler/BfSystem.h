@@ -959,8 +959,7 @@ public:
 	HashSet<BfMemberSetEntry> mMethodSet;
 	HashSet<BfMemberSetEntry> mFieldSet;
 	HashSet<BfMemberSetEntry> mPropertySet;
-	Array<BfOperatorDef*> mOperators;
-	BfMethodDef* mDtorDef;
+	Array<BfOperatorDef*> mOperators;	
 	Array<BfGenericParamDef*> mGenericParamDefs;	
 	Array<BfExternalConstraintDef> mExternalConstraints;
 	Array<BfTypeReference*> mBaseTypes;	
@@ -1040,8 +1039,7 @@ public:
 		mDupDetectedRevision = -1;
 		mNestDepth = 0;
 		mOuterType = NULL;
-		mTypeDeclaration = NULL;
-		mDtorDef = NULL;		
+		mTypeDeclaration = NULL;		
 		mNextRevision = NULL;		
 		mProtection = BfProtection_Public;
 	}

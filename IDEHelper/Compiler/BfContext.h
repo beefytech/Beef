@@ -44,7 +44,7 @@ public:
 class BfMethodSpecializationRequest : public BfWorkListEntry
 {
 public:	
-	BfMethodDef* mMethodDef;
+	int32 mMethodIdx;
 	BfTypeVector mMethodGenericArguments;
 	BfGetMethodInstanceFlags mFlags;
 	BfTypeInstance* mForeignType;
@@ -52,9 +52,20 @@ public:
 public:
 	BfMethodSpecializationRequest()
 	{		
-		mMethodDef = NULL;
+		mMethodIdx = -1;
 		mFlags = BfGetMethodInstanceFlag_None;
 		mForeignType = NULL;
+	}
+
+	void Init(BfTypeInstance* typeInstance, BfTypeInstance* foreignType, BfMethodDef* methodDef)
+	{
+		mType = typeInstance;
+		mMethodIdx = methodDef->mIdx;
+		mForeignType = foreignType;
+		if (foreignType != NULL)
+			BF_ASSERT(foreignType->mTypeDef->mMethods[mMethodIdx] == methodDef);
+		else
+			BF_ASSERT(typeInstance->mTypeDef->mMethods[mMethodIdx] == methodDef);
 	}
 };
 

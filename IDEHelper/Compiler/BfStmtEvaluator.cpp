@@ -3933,9 +3933,17 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 		while (checkTypeInst != NULL)
 		{
 			auto checkTypeDef = checkTypeInst->mTypeDef;
-			if (checkTypeDef->mDtorDef != NULL)
+
+			checkTypeDef->PopulateMemberSets();
+			BfMemberSetEntry* entry = NULL;
+			BfMethodDef* dtorMethodDef = NULL;
+			checkTypeDef->mMethodSet.TryGetWith(String("~this"), &entry);
+			if (entry != NULL)
+				dtorMethodDef = (BfMethodDef*)entry->mMemberDef;
+
+			if (dtorMethodDef)
 			{
-				if (!CheckProtection(checkTypeDef->mDtorDef->mProtection, checkTypeInst->mTypeDef, allowProtected, allowPrivate))
+				if (!CheckProtection(dtorMethodDef->mProtection, checkTypeInst->mTypeDef, allowProtected, allowPrivate))
 				{
 					auto error = Fail(StrFormat("'%s.~this()' is inaccessible due to its protection level", TypeToString(checkTypeInst).c_str()), deleteStmt->mExpression); // CS0122																																												
 				}

@@ -520,8 +520,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 		if (methodDef->mIsStatic)
 			methodDef->mName = "__BfStaticDtor";
 		else
-		{
-			mCurTypeDef->mDtorDef = methodDef;
+		{			
 			methodDef->mName = "~this";
 			if (!methodDef->mIsVirtual)
 			{
@@ -1228,9 +1227,7 @@ BfMethodDef* BfDefBuilder::AddMethod(BfTypeDef* typeDef, BfMethodType methodType
 			{
 				methodDef->mName = "~this";
 				methodDef->mIsVirtual = true;
-				methodDef->mIsOverride = true;
-				BF_ASSERT(typeDef->mDtorDef == NULL);
-				typeDef->mDtorDef = methodDef;
+				methodDef->mIsOverride = true;				
 			}
 		}
 		else
@@ -1254,9 +1251,7 @@ BfMethodDef* BfDefBuilder::AddDtor(BfTypeDef* typeDef)
 	methodDef->mProtection = BfProtection_Public;
 	methodDef->mMethodType = BfMethodType_Dtor;
 	methodDef->mIsVirtual = true;
-	methodDef->mIsOverride = true;
-	BF_ASSERT(typeDef->mDtorDef == NULL);
-	typeDef->mDtorDef = methodDef;
+	methodDef->mIsOverride = true;	
 	return methodDef;
 }
 
@@ -2174,7 +2169,6 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if ((needsDtor) && (dtor == NULL))
 	{		
 		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, false, "", mIsComptime);
-		BF_ASSERT(mCurTypeDef->mDtorDef == methodDef);
 	}
 
 	if ((needsStaticDtor) && (staticDtor == NULL))

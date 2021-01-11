@@ -444,9 +444,22 @@ bool BfContext::ProcessWorkList(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 				auto module = workItemRef->mFromModule;
 				workIdx = mMethodSpecializationWorkList.RemoveAt(workIdx);
-
+				
 				auto typeInst = methodSpecializationRequest.mType->ToTypeInstance();
-				module->GetMethodInstance(methodSpecializationRequest.mType->ToTypeInstance(), methodSpecializationRequest.mMethodDef, methodSpecializationRequest.mMethodGenericArguments, 
+				
+				BfMethodDef* methodDef = NULL;
+				if (methodSpecializationRequest.mForeignType != NULL)
+				{
+					module->PopulateType(methodSpecializationRequest.mForeignType);
+					methodDef = methodSpecializationRequest.mForeignType->mTypeDef->mMethods[methodSpecializationRequest.mMethodIdx];
+				}
+				else
+				{
+					module->PopulateType(typeInst);
+					methodDef = typeInst->mTypeDef->mMethods[methodSpecializationRequest.mMethodIdx];
+				}
+
+				module->GetMethodInstance(typeInst, methodDef, methodSpecializationRequest.mMethodGenericArguments,
 					(BfGetMethodInstanceFlags)(methodSpecializationRequest.mFlags | BfGetMethodInstanceFlag_ResultNotUsed), methodSpecializationRequest.mForeignType);
 				didWork = true;
 			}
@@ -2534,11 +2547,6 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 
 		auto methodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
 
-		if (methodDef->mName == "set__Capacity")
-		{
-			NOP;
-		}
-
 		auto targetContext = methodRef.mTypeInstance->mContext;
 		BfMethodSpecializationRequest* specializationRequest = targetContext->mMethodSpecializationWorkList.Alloc();
 		if (specializedMethodRefInfo.mHasReifiedRef)
@@ -2546,7 +2554,8 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 		else
 			specializationRequest->mFromModule = mUnreifiedModule;
 		specializationRequest->mFromModuleRevision = typeInst->mModule->mRevision;
-		specializationRequest->mMethodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
+		specializationRequest->mMethodIdx = methodRef.mMethodNum;
+		//specializationRequest->mMethodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
 		specializationRequest->mMethodGenericArguments = methodRef.mMethodGenericArguments;
 		specializationRequest->mType = methodRef.mTypeInstance;				
 

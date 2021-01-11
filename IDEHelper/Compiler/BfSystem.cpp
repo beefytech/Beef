@@ -2669,8 +2669,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 				methodDef->mCodeChanged = true;
 			nextMethodDef->mParams.Clear();
 			nextMethodDef->mGenericParams.Clear();
-		}				
-		// Leave typeDef->mDtorDef
+		}						
 	}
 	else
 	{	
@@ -2685,8 +2684,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 		if (setDeclaringType)
 			for (auto method : typeDef->mMethods)
 				method->mDeclaringType = typeDef;
-		nextTypeDef->mMethods.Clear();
-		typeDef->mDtorDef = nextTypeDef->mDtorDef;
+		nextTypeDef->mMethods.Clear();		
 	}
 
 	for (auto fieldDef : typeDef->mFields)
@@ -2970,18 +2968,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mProperties.push_back(newProp);
 	}
 	typeDef->mPropertySet.Clear();
-
-	if (partialTypeDef->mDtorDef != NULL)
-	{
-		if (typeDef->mDtorDef != NULL)
-		{			
-			//passInstance->Fail("Destructor already defined", partialTypeDef->mDtorDef->mMethodDeclaration->mNameNode);
-			//TODO:
-		}
-		else
-			typeDef->mDtorDef = partialTypeDef->mDtorDef;	
-	}	
-
+	
 	BF_ASSERT(partialTypeDef->mPartials.empty());
 	partialTypeDef->mPartialIdx = (int)typeDef->mPartials.size();
 	typeDef->mPartials.push_back(partialTypeDef);
@@ -3100,8 +3087,7 @@ void BfSystem::FinishCompositePartial(BfTypeDef* compositeTypeDef)
 	}
 
 	if ((allHasMethods[0][0].mDtor == 0) && (allHasMethods[1][0].mDtor > 1))
-	{
-		nextRevision->mDtorDef = NULL;
+	{		
 		auto methodDef = BfDefBuilder::AddMethod(nextRevision, BfMethodType_Dtor, BfProtection_Public, false, "");
 		methodDef->mDeclaringType = primaryDef;
 	}
