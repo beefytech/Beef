@@ -286,7 +286,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 
 			if (!name.empty())
 			{
-				if ((name == "class") || (name == "struct") || (name == "struct*") || (name == "const") || (name == "var") || (name == "interface") || (name == "enum"))
+				if ((name == "class") || (name == "struct") || (name == "struct*") || (name == "const") || (name == "var") || (name == "concrete") || (name == "interface") || (name == "enum"))
 				{
 					int prevFlags = constraintDef->mGenericParamFlags & 
 						(BfGenericParamFlag_Class | BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr | BfGenericParamFlag_Interface | BfGenericParamFlag_Enum);
@@ -319,6 +319,8 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_StructPtr);
 					else if (name == "const")
 						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Const);
+					else if (name == "concrete")
+						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Concrete);
 					else if (name == "interface")
 						constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Interface);
 					else if (name == "enum")
@@ -459,10 +461,7 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 
 		if (mCurTypeDef->mTypeCode == BfTypeCode_Interface)
 		{
-			if ((methodDef->mIsConcrete) && (!mCurTypeDef->mIsConcrete))
-				Fail("Only interfaces declared as 'concrete' can be declare methods as 'concrete'. Consider adding 'concrete' to the interface declaration.", methodDeclaration->mVirtualSpecifier);
-			//if (!methodDef->mIsConcrete)
-				//Fail(StrFormat("Interfaces methods cannot be declared as '%s'", methodDeclaration->mVirtualSpecifier->ToString().c_str()), methodDeclaration->mVirtualSpecifier);
+			//
 		}
 		else
 		{
@@ -1654,8 +1653,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	mCurTypeDef->mSource = mCurSource;
 	mCurTypeDef->mSource->mRefCount++;
 	mCurTypeDef->mTypeDeclaration = typeDeclaration;
-	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);
-	mCurTypeDef->mIsConcrete = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Concrete);
+	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);	
 	mCurTypeDef->mIsStatic = typeDeclaration->mStaticSpecifier != NULL;
 	mCurTypeDef->mIsDelegate = false;
 	mCurTypeDef->mIsFunction = false;
@@ -1720,16 +1718,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 			mCurTypeDef->mIsAbstract = false;
 		}
 	}
-
-	if (mCurTypeDef->mIsConcrete)
-	{
-		if (mCurTypeDef->mTypeCode != BfTypeCode_Interface)
-		{
-			mPassInstance->Warn(0, StrFormat("Types declared as '%s' cannot be 'concrete'", BfTokenToString(typeToken)).c_str(), typeDeclaration->mAbstractSpecifier);
-			mCurTypeDef->mIsConcrete = false;
-		}
-	}
-
+	
 	int outerGenericSize = 0;
 	if (mCurTypeDef->mOuterType != NULL)
 		outerGenericSize = (int)mCurTypeDef->mOuterType->mGenericParamDefs.size();

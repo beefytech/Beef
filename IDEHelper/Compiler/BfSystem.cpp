@@ -2733,8 +2733,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 	typeDef->mIsDelegate = nextTypeDef->mIsDelegate;
 	typeDef->mIsFunction = nextTypeDef->mIsFunction;
 	typeDef->mIsClosure = nextTypeDef->mIsClosure;
-	typeDef->mIsAbstract = nextTypeDef->mIsAbstract;
-	typeDef->mIsConcrete = nextTypeDef->mIsConcrete;
+	typeDef->mIsAbstract = nextTypeDef->mIsAbstract;	
 	typeDef->mIsStatic = nextTypeDef->mIsStatic;
 	typeDef->mHasAppendCtor = nextTypeDef->mHasAppendCtor;
 	typeDef->mHasCEOnCompile = nextTypeDef->mHasCEOnCompile;
@@ -2839,8 +2838,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mFullNameEx = partialTypeDef->mFullNameEx;
 		typeDef->mProtection = partialTypeDef->mProtection;		
 		typeDef->mIsDelegate = partialTypeDef->mIsDelegate;
-		typeDef->mIsAbstract = partialTypeDef->mIsAbstract;
-		typeDef->mIsConcrete = partialTypeDef->mIsConcrete;
+		typeDef->mIsAbstract = partialTypeDef->mIsAbstract;		
 		typeDef->mIsStatic = partialTypeDef->mIsStatic;
 		typeDef->mHasAppendCtor = partialTypeDef->mHasAppendCtor;		
 		typeDef->mHasCtorNoBody = partialTypeDef->mHasCtorNoBody;
@@ -2879,8 +2877,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 	}	
 
 	// Merge attributes together
-	typeDef->mIsAbstract |= partialTypeDef->mIsAbstract;
-	typeDef->mIsConcrete |= partialTypeDef->mIsConcrete;
+	typeDef->mIsAbstract |= partialTypeDef->mIsAbstract;	
 	typeDef->mIsStatic |= partialTypeDef->mIsStatic;
 	typeDef->mHasAppendCtor |= partialTypeDef->mHasAppendCtor;	
 	typeDef->mHasCEOnCompile |= partialTypeDef->mHasCEOnCompile;

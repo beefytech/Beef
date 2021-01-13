@@ -6000,6 +6000,22 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		itr = target;
 		bool hadGetEnumeratorType = false;
 
+		if (genericParamInst != NULL)
+		{			
+			for (auto ifaceConstraint : genericParamInst->mInterfaceConstraints)
+			{
+				if (ifaceConstraint->IsInstanceOf(mCompiler->mGenericIEnumerableTypeDef))
+				{
+					if (targetTypeInstance != NULL)
+					{
+						targetTypeInstance = NULL;
+						break;
+					}
+					targetTypeInstance = ifaceConstraint->ToTypeInstance();					
+				}
+			}
+		}
+
 		if (targetTypeInstance != NULL)
 		{
 			PopulateType(targetTypeInstance, BfPopulateType_DataAndMethods);
@@ -6012,20 +6028,30 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			{
 				hadGetEnumeratorType = true;
 				Fail(StrFormat("Type '%s' does not contain a non-static 'GetEnumerator' method", TypeToString(targetTypeInstance).c_str()), forEachStmt->mCollectionExpression);
-			}
-			else if (getEnumeratorMethod.mMethodInstance->mMethodDef->mIsConcrete)
-			{
-				hadGetEnumeratorType = true;
-				Fail(StrFormat("Iteration requires a concrete implementation of '%s'", TypeToString(targetTypeInstance).c_str()), forEachStmt->mCollectionExpression);
-			}
+			}			
 			else
 			{
+				if (getEnumeratorMethod.mMethodInstance->mMethodDef->mIsConcrete)
+				{
+					hadGetEnumeratorType = true;
+					if (genericParamInst != NULL)
+					{
+						if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Concrete) == 0)
+							Fail(StrFormat("Iteration requires a concrete implementation of '%s', consider adding 'concrete' constraint to '%s'", TypeToString(targetTypeInstance).c_str(), genericParamInst->GetName().c_str()), forEachStmt->mCollectionExpression);
+					}
+					else
+						Fail(StrFormat("Iteration requires a concrete implementation of '%s'", TypeToString(targetTypeInstance).c_str()), forEachStmt->mCollectionExpression);
+				}
+
 				hadGetEnumeratorType = true;
 				BfExprEvaluator exprEvaluator(this);
 				SizedArray<BfIRValue, 1> args;
 				auto castedTarget = Cast(forEachStmt->mCollectionExpression, target, getEnumeratorMethod.mMethodInstance->GetOwner());
 				exprEvaluator.PushThis(forEachStmt->mCollectionExpression, castedTarget, getEnumeratorMethod.mMethodInstance, args);
 				itr = exprEvaluator.CreateCall(forEachStmt->mCollectionExpression, getEnumeratorMethod.mMethodInstance, IsSkippingExtraResolveChecks() ? BfIRValue() : getEnumeratorMethod.mFunc, false, args);
+
+				if (itr.mType->IsConcreteInterfaceType())
+					itr.mType = itr.mType->GetUnderlyingType();
 			}
 		}
 
@@ -6060,6 +6086,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			};
 
 			auto enumeratorTypeInst = itr.mType->ToTypeInstance();
+
 			if (enumeratorTypeInst != NULL)
 			{
 				for (auto& interfaceRef : enumeratorTypeInst->mInterfaces)

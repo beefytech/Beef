@@ -1350,6 +1350,8 @@ void BfModule::StartExtension()
 	mStaticFieldRefs.Clear();
 	for (auto& kv : mInterfaceSlotRefs)
 		kv.mValue = BfIRValue();
+	for (auto& pairVal : mDeferredMethodCallData)
+		delete pairVal.mValue;
 	mDeferredMethodCallData.Clear();
 	mDeferredMethodIds.Clear();
 
@@ -5142,11 +5144,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, mContext->mScratchModule);
 	}
 
-	if (typeDataName == "?sBfTypeData@@bf@@2HA")
-	{
-		NOP;
-	}
-
 	int typeCode = BfTypeCode_None;		
 				
 	if (typeInstance != NULL)
@@ -7482,6 +7479,15 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		}
 	}
 
+	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Concrete) &&
+		((checkGenericParamFlags & (BfGenericParamFlag_Interface | BfGenericParamFlag_Var)) == 0) && (checkArgType->IsInterface()))
+	{
+		if (!ignoreErrors)
+			*errorOut = Fail(StrFormat("The type '%s' must be an concrete type in order to use it as parameter '%s' for '%s'",
+				TypeToString(origCheckArgType).c_str(), genericParamInst->GetName().c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);
+		return false;
+	}
+
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Interface) &&
 		((checkGenericParamFlags & (BfGenericParamFlag_Interface | BfGenericParamFlag_Var)) == 0) && (!checkArgType->IsInterface()))
 	{
@@ -7708,19 +7714,6 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 						_TypeToString(genericParamInst->mTypeConstraint).c_str()), checkArgTypeRef);
 				return false;
 			}
-		}
-	}
-
-	if ((genericParamInst->mInterfaceConstraints.size() > 0) && (origCheckArgType->IsInterface()))
-	{	
-		PopulateType(origCheckArgType);
-		auto checkTypeInst = origCheckArgType->ToTypeInstance();
-		if (checkTypeInst->mTypeDef->mIsConcrete)
-		{
-			if (!ignoreErrors)
-				*errorOut = Fail(StrFormat("Generic argument '%s', declared to be concrete interface '%s' for '%s', must be a concrete type", genericParamInst->GetName().c_str(),
-					TypeToString(origCheckArgType).c_str()), checkArgTypeRef);
-			return false;
 		}
 	}
 

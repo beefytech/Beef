@@ -28,7 +28,7 @@ namespace System.Collections
         Result<T*> GetNextRef() mut;
 	}
     
-    concrete interface IEnumerable<T>
+    interface IEnumerable<T>
     {
         concrete IEnumerator<T> GetEnumerator();
     }

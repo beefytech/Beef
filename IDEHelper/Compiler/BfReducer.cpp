@@ -8162,8 +8162,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 	break;
 
 	case BfToken_Sealed:
-	case BfToken_Abstract:
-	case BfToken_Concrete:
+	case BfToken_Abstract:	
 	case BfToken_Public:
 	case BfToken_Private:
 	case BfToken_Protected:
@@ -8241,7 +8240,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			MEMBER_SET(typeDeclaration, mSealedSpecifier, tokenNode);
 		}
 
-		if ((token == BfToken_Abstract) || (token == BfToken_Concrete))
+		if (token == BfToken_Abstract)
 		{
 			if (typeDeclaration->mAbstractSpecifier != NULL)
 			{
@@ -9618,6 +9617,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 				case BfToken_Class:
 				case BfToken_Struct:
 				case BfToken_Const:
+				case BfToken_Concrete:
 				case BfToken_Var:
 				case BfToken_New:
 				case BfToken_Delete:

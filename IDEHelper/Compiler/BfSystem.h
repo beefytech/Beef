@@ -629,14 +629,15 @@ enum BfGenericParamFlags : uint16
 	BfGenericParamFlag_StructPtr	= 4,
 	BfGenericParamFlag_Enum			= 8,
 	BfGenericParamFlag_Interface	= 0x10,	
-	BfGenericParamFlag_New			= 0x20,
-	BfGenericParamFlag_Delete		= 0x40,
-	BfGenericParamFlag_Var			= 0x80,
-	BfGenericParamFlag_Const		= 0x100,
-	BfGenericParamFlag_Equals		= 0x200,
-	BfGenericParamFlag_Equals_Op    = 0x400,
-	BfGenericParamFlag_Equals_Type  = 0x800,
-	BfGenericParamFlag_Equals_IFace = 0x1000
+	BfGenericParamFlag_Concrete		= 0x20,
+	BfGenericParamFlag_New			= 0x40,
+	BfGenericParamFlag_Delete		= 0x80,
+	BfGenericParamFlag_Var			= 0x100,
+	BfGenericParamFlag_Const		= 0x200,
+	BfGenericParamFlag_Equals		= 0x400,
+	BfGenericParamFlag_Equals_Op    = 0x800,
+	BfGenericParamFlag_Equals_Type  = 0x1000,
+	BfGenericParamFlag_Equals_IFace = 0x2000
 };
 
 class BfConstraintDef
@@ -994,8 +995,7 @@ public:
 	bool mIsDelegate;
 	bool mIsFunction;
 	bool mIsClosure;
-	bool mIsAbstract;
-	bool mIsConcrete;
+	bool mIsAbstract;	
 	bool mIsStatic;	
 	bool mHasCEOnCompile;
 	bool mHasAppendCtor;
@@ -1033,8 +1033,7 @@ public:
 		mDefState = DefState_New;
 		mHash = 0;		
 		mPartialIdx = -1;
-		mIsAbstract = false;
-		mIsConcrete = false;
+		mIsAbstract = false;		
 		mIsDelegate = false;
 		mIsFunction = false;
 		mIsClosure = false;

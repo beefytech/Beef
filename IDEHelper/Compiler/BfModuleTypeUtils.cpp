@@ -7678,7 +7678,7 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 
 BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTypeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
-	if (mCompiler->mIsResolveOnly)
+	if ((mCompiler->mIsResolveOnly) && (!IsInSpecializedSection()))
 	{
 		bool isGetDefinition = false;
 		BfAutoComplete* autoComplete = NULL;

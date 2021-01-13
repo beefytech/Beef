@@ -226,9 +226,14 @@ namespace Tests
 
 		}
 
-		static int MethodE<T, T2>(T val) where T : IEnumerable<T2>
+		static T2 MethodE<T, T2>(T val) where T : concrete, IEnumerable<T2> where T2 : operator T2 + T2
 		{
-			return 0;
+			T2 total = default;
+			for (var v in val)
+			{
+				total += v;
+			}
+			return total;
 		}
 
 		static int MethodF<T>(IEnumerable<T> val)
@@ -243,6 +248,7 @@ namespace Tests
 
 			List<Entry> list = scope .();
 			list.Sort();
+			List<float> floatList = scope .() {1, 2, 3};
 
 			ClassA ca = scope .();
 			ClassB cb = scope .();
@@ -278,8 +284,15 @@ namespace Tests
 
 			Test.Assert(ClassE.Instance.CreateSystem<int>() == 999);
 
-			MethodE(list);
-			MethodF(list);
+			/*IEnumerable<float> ie = floatList;
+			Test.Assert(
+				[IgnoreErrors(true)]
+				{
+					Test.Assert(MethodE(ie) == 8);
+					true
+				} == false);*/
+			Test.Assert(MethodE(floatList) == 6);
+			Test.Assert(MethodF(floatList) == 0);
 		}
 	}
 

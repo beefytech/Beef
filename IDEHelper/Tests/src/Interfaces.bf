@@ -23,7 +23,7 @@ namespace Tests
 			}
 		}
 
-		concrete interface IFaceC
+		interface IFaceC
 		{
 			concrete IFaceA GetConcreteIA();
 		}

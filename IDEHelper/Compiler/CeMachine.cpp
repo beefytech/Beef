@@ -287,7 +287,7 @@ void CeDumpContext::DumpOperandInfo(CeOperandInfoKind operandInfoKind)
 		{
 			int64 val = CE_GET(int64);
 			char str[64];
-			sprintf(str, "%lld", val);
+			sprintf(str, "%lld", (long long)val);
 			mStr += str;
 		}
 		break;
