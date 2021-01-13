@@ -71,7 +71,7 @@ bool StringView::StartsWith(const StringView& b, StringView::CompareKind compari
 {
 	if (this->mLength < b.mLength)
 		return false;
-	if (comparisonType == String::CompareKind_OrdinalIgnoreCase)
+	if (comparisonType == StringView::CompareKind_OrdinalIgnoreCase)
 		return String::EqualsIgnoreCaseHelper(mPtr, b.mPtr, b.mLength);
 	return String::EqualsHelper(mPtr, b.mPtr, b.mLength);
 }
@@ -80,7 +80,7 @@ bool StringView::EndsWith(const StringView& b, StringView::CompareKind compariso
 {
 	if (this->mLength < b.mLength)
 		return false;
-	if (comparisonType == String::CompareKind_OrdinalIgnoreCase)
+	if (comparisonType == StringView::CompareKind_OrdinalIgnoreCase)
 		return String::EqualsIgnoreCaseHelper(this->mPtr + this->mLength - b.mLength, b.mPtr, b.mLength);
 	return String::EqualsHelper(this->mPtr + this->mLength - b.mLength, b.mPtr, b.mLength);
 }
