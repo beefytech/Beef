@@ -2774,7 +2774,7 @@ bool BfModule::IsSkippingExtraResolveChecks()
 }
 
 BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPersistent, bool deferError)
-{	
+{
 	BP_ZONE("BfModule::Fail");
 
  	if (mIgnoreErrors)
@@ -2786,7 +2786,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	}
 
  	if (!mReportErrors)
-	{
+	{		
 		mCompiler->mPassInstance->SilentFail();
 		return NULL;
 	}
@@ -2798,6 +2798,14 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 
 	if (mIsComptimeModule)
 	{
+		if ((mCompiler->mCEMachine->mCurContext != NULL) && (mCompiler->mCEMachine->mCurContext->mCurTargetSrc != NULL))
+		{
+			BfError* bfError = mCompiler->mPassInstance->Fail("Comptime method generation had errors", mCompiler->mCEMachine->mCurContext->mCurTargetSrc);
+			if (bfError != NULL)
+				mCompiler->mPassInstance->MoreInfo(error, refNode);
+			return bfError;
+		}
+
 		mHadBuildError = true;
 		return NULL;
 	}
@@ -2925,6 +2933,14 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 	if (!mHadBuildError)
 		mHadBuildError = true;
 
+	if ((mCurMethodState != NULL) && (mCurMethodState->mEmitRefNode != NULL))
+	{
+		BfError* bfError = mCompiler->mPassInstance->Fail("Emitted code had errors", mCurMethodState->mEmitRefNode);
+		if (bfError != NULL)
+			mCompiler->mPassInstance->MoreInfo(errorString, refNode);	
+		return bfError;
+	}
+
 	// Check mixins
 	{
 		auto checkMethodInstance = mCurMethodState;
@@ -2934,7 +2950,8 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 			if (rootMixinState != NULL)
 			{
 				BfError* bfError = mCompiler->mPassInstance->Fail(StrFormat("Failed to inject mixin '%s'", MethodToString(rootMixinState->mMixinMethodInstance).c_str()), rootMixinState->mSource);
-				mCompiler->mPassInstance->MoreInfo(errorString, refNode);
+				if (bfError != NULL)
+					mCompiler->mPassInstance->MoreInfo(errorString, refNode);
 
 				auto mixinState = checkMethodInstance->mMixinState;
 				while ((mixinState != NULL) && (mixinState->mPrevMixinState != NULL))
@@ -3041,6 +3058,14 @@ BfError* BfModule::Warn(int warningNum, const StringImpl& warning, BfAstNode* re
 		// We used to bubble up warnings into the mixin injection site, BUT
 		//  we are now assuming any relevant warnings will be given at the declaration site
 		return NULL;
+	}
+
+	if ((mCurMethodState != NULL) && (mCurMethodState->mEmitRefNode != NULL))
+	{
+		BfError* bfError = mCompiler->mPassInstance->Warn(warningNum, "Emitted code had errors", mCurMethodState->mEmitRefNode);
+		if (bfError != NULL)
+			mCompiler->mPassInstance->MoreInfo(warning, refNode);
+		return bfError;
 	}
 
 	BfError* bfError;
@@ -4973,6 +4998,8 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 		return mBfIRBuilder->Comptime_GetReflectType(type->mTypeId, mBfIRBuilder->MapType(typeTypeInst));
 	}
 	
+	PopulateType(type);
+
 	BfIRValue globalVariable;
 	
 	BfIRValue* globalVariablePtr = NULL;
@@ -4995,6 +5022,11 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 	{
 		typeDataName += "sBfTypeData.";
 		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, this);		
+	}
+
+	if (typeDataName == "?sBfTypeData@Zoing@BeefTest@bf@@2HA")
+	{
+		NOP;
 	}
 
 	BfLogSysM("Creating TypeData %s\n", typeDataName.c_str());
@@ -5108,6 +5140,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	{
 		typeDataName += "sBfTypeData.";
 		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, mContext->mScratchModule);
+	}
+
+	if (typeDataName == "?sBfTypeData@@bf@@2HA")
+	{
+		NOP;
 	}
 
 	int typeCode = BfTypeCode_None;		
@@ -6401,6 +6438,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		auto methodDef = typeDef->mMethods[methodIdx];
 		if (methodDef->mIsNoReflect)
 			continue;
+		if (methodDef->mHasComptime)
+			continue;
 
 		auto defaultMethod = methodInstanceGroup->mDefault;
 		if (defaultMethod == NULL)
@@ -6480,44 +6519,8 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		}
 				
 		BfIRValue methodNameConst = GetStringObjectValue(methodDef->mName, true);
-				
-		enum MethodFlags
-		{
-			MethodFlags_Protected = 3,
-			MethodFlags_Public = 6,
-			MethodFlags_Static = 0x10,
-			MethodFlags_Virtual = 0x40,
-			MethodFlags_StdCall = 0x1000,
-			MethodFlags_FastCall = 0x2000,
-			MethodFlags_ThisCall = 0x3000,
-			MethodFlags_Mutating = 0x4000,
-			MethodFlags_Constructor = 0x8000,
-		};
-
-		MethodFlags methodFlags = (MethodFlags)0;
-
-		if (methodDef->mProtection == BfProtection_Protected)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Protected);
-		if (methodDef->mProtection == BfProtection_Public)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Public);
-		if (methodDef->mIsStatic)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Static);
-		if ((methodDef->mIsVirtual) || (moduleMethodInstance.mMethodInstance->mVirtualTableIdx != -1))
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Virtual);
-		if (methodDef->mCallingConvention == BfCallingConvention_Fastcall)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_FastCall);
-		if (methodDef->mIsMutating)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Mutating);
-		if (methodDef->mMethodType == BfMethodType_Ctor)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_Constructor);
-
-		auto callingConvention = GetIRCallingConvention(defaultMethod);
-		if (callingConvention == BfIRCallingConv_ThisCall)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_ThisCall);
-		else if (callingConvention == BfIRCallingConv_StdCall)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_StdCall);
-		else if (callingConvention == BfIRCallingConv_FastCall)
-			methodFlags = (MethodFlags)(methodFlags | MethodFlags_FastCall);
+						
+		BfMethodFlags methodFlags = moduleMethodInstance.mMethodInstance->GetMethodFlags();
 		
 		int customAttrIdx = _HandleCustomAttrs(methodCustomAttributes);
 
@@ -9830,8 +9833,11 @@ BfMethodInstance* BfModule::GetUnspecializedMethodInstance(BfMethodInstance* met
 		return methodInstance;
 
 	if ((owner->IsDelegateFromTypeRef()) ||
+		(owner->IsFunctionFromTypeRef()) ||
 		(owner->IsTuple()))
+	{
 		return methodInstance;
+	}
 
 	auto genericType = (BfTypeInstance*)owner;
 	if ((genericType->IsUnspecializedType()) && (!genericType->IsUnspecializedTypeVariation()))
@@ -10451,9 +10457,14 @@ StringT<128> BfModule::MethodToString(BfMethodInstance* methodInst, BfMethodName
 	return methodName;
 }
 
-void BfModule::pv(BfType* type)
+void BfModule::pt(BfType* type)
 {
 	OutputDebugStrF("%s\n", TypeToString(type).c_str());
+}
+
+void BfModule::pm(BfMethodInstance* type)
+{
+	OutputDebugStrF("%s\n", MethodToString(type).c_str());
 }
 
 static void AddAttributeTargetName(BfAttributeTargets& flagsLeft, BfAttributeTargets checkFlag, String& str, String addString)
@@ -12077,9 +12088,11 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 			return false;
 	}
 	else if (methodA->mMethodDef->mName != methodB->mMethodDef->mName)
-		return false;			
+		return false;
 	if (methodA->mMethodDef->mCheckedKind != methodB->mMethodDef->mCheckedKind)
 		return false;	
+	if (methodA->mMethodDef->mHasComptime != methodB->mMethodDef->mHasComptime)
+		return false;
 	if ((methodA->mMethodDef->mMethodType == BfMethodType_Mixin) != (methodB->mMethodDef->mMethodType == BfMethodType_Mixin))
 		return false;
 
@@ -14270,7 +14283,8 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 			while (deferredCallEntry != NULL)
 			{
 				if (deferredCallEntry->mDeferredBlock != NULL)
-				{					
+				{
+					SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, deferredCallEntry->mEmitRefNode);
 					VisitEmbeddedStatement(deferredCallEntry->mDeferredBlock, NULL, BfEmbeddedStatementFlags_IsDeferredBlock);
 				}
 				deferredCallEntry = deferredCallEntry->mNext;
@@ -19583,6 +19597,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 					isExpressionBody = true;
 			}
 
+			DoCEEmit(methodInstance);
+
 			if (auto fieldDtorBody = BfNodeDynCast<BfFieldDtorDeclaration>(methodDef->mBody))
 			{
 				while (fieldDtorBody != NULL)
@@ -19790,7 +19806,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}	
 	
 	// Avoid linking any internal funcs that were just supposed to be comptime-accessible
-	if (((methodInstance->mComptimeFlags & BfComptimeFlag_OnlyFromComptime) != 0) && (!mIsComptimeModule))
+	if ((methodDef->mHasComptime) && (!mIsComptimeModule))
 		wantsRemoveBody = true;
 
 	if ((hasExternSpecifier) && (!skipBody))

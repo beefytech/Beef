@@ -1989,6 +1989,12 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 				Write(MapType(typeofConst->mType, BfIRPopulateType_Identity));
 			}
 			break;
+		case (int)BfConstType_Undef:
+			{
+				auto undefConst = (BfConstantUndef*)constant;
+				Write(undefConst->mType);
+			}
+			break;
 		case (int)BfConstType_TypeOf_WithData:
 			{
 				auto typeofConst = (BfTypeOf_WithData_Const*)constant;
@@ -4478,7 +4484,7 @@ BfIRValue BfIRBuilder::CreateGlobalVariable(BfIRType varType, bool isConstant, B
 		retVal.mId = chunkId;
 		NEW_CMD_INSERTED_IRVALUE;
 		return retVal;
-	}
+	}	
 
 	auto irValue = BfIRValue(BfIRValueFlags_Const, chunkId);
 	return irValue;	

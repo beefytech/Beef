@@ -1172,6 +1172,8 @@ void CeBuilder::HandleParams()
 
 void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance* dupMethodInstance)
 {
+	SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(mCeMachine->mCeModule->mCurMethodState, NULL);
+
 	auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
 	auto irBuilder = mCeMachine->mCeModule->mBfIRBuilder;
 	auto beModule = irCodeGen->mBeModule;
@@ -2680,7 +2682,7 @@ BfError* CeContext::Fail(const StringImpl& error)
 	auto bfError = mCurModule->Fail(StrFormat("Unable to comptime %s", mCurModule->MethodToString(mCurMethodInstance).c_str()), mCurTargetSrc, (mCurEvalFlags & CeEvalFlags_PersistantError) != 0);
 	if (bfError == NULL)
 		return NULL;
-	mCeMachine->mCompiler->mPassInstance->MoreInfo(error, mCeMachine->mCeModule->mCompiler->GetAutoComplete() != NULL);
+	mCeMachine->mCompiler->mPassInstance->MoreInfo(error, mCeMachine->mCompiler->GetAutoComplete() != NULL);
 	return bfError;
 }
 
@@ -3018,6 +3020,12 @@ addr_ce CeContext::GetString(int stringId)
 
 	*ceAddrPtr = mem - mMemory.mVals;
 	return *ceAddrPtr;
+}
+
+addr_ce CeContext::GetString(const StringImpl& str)
+{
+	int stringId = mCeMachine->mCeModule->mContext->GetStringLiteralId(str);
+	return GetString(stringId);
 }
 
 BfType* CeContext::GetBfType(int typeId)
@@ -3616,14 +3624,15 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 	AutoTimer autoTimer(mCeMachine->mRevisionExecuteTime);
 
+	SetAndRestoreValue<CeContext*> prevContext(mCeMachine->mCurContext, this);
 	SetAndRestoreValue<CeEvalFlags> prevEvalFlags(mCurEvalFlags, flags);
 	SetAndRestoreValue<BfAstNode*> prevTargetSrc(mCurTargetSrc, targetSrc);
 	SetAndRestoreValue<BfModule*> prevModule(mCurModule, module);
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, methodInstance);
-	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);
+	SetAndRestoreValue<BfType*> prevExpectingType(mCurExpectingType, expectingType);	
 
 	// Reentrancy may occur as methods need defining
-	SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(module->mCurMethodState, NULL);
+	//SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(module->mCurMethodState, NULL);
 
 	if (mCeMachine->mAppendAllocInfo != NULL)
 	{
@@ -3887,7 +3896,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	}
 
 #define CE_CHECKALLOC(SIZE) \
-	if ((uintptr)memSize + (uintptr)SIZE > BF_CE_MAX_MEMORY) \
+	if ((SIZE < 0) || (uintptr)memSize + (uintptr)SIZE > BF_CE_MAX_MEMORY) \
 	{ \
 		_Fail("Maximum memory size exceeded"); \
 	}
@@ -4005,6 +4014,14 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	stackPtr -= ceFunction->mFrameSize; \
 	instPtr = &ceFunction->mCode[0]; \
 	CE_CHECKSTACK();
+
+static void CeSetAddrVal(void* ptr, addr_ce val, int32 ptrSize)
+{
+	if (ptrSize == 4)
+		*(int32*)(ptr) = (int32)val;
+	else
+		*(int64*)(ptr) = (int64)val;
+}
 
 bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType)
 {	
@@ -4208,7 +4225,119 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				handled = true;
 				return true;
 			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitDefinition)
+			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethodCount)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + 4);
+				
+				CeTypeInfo* typeInfo = mCeMachine->GetTypeInfo(GetBfType(typeId));				
+				if (typeInfo == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
+				}
+
+				*(int32*)(stackPtr + 0) = (int)typeInfo->mMethodInstances.size();
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethod)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + 8);
+				int32 methodIdx = *(int32*)((uint8*)stackPtr + 8+4);
+				
+				CeTypeInfo* typeInfo = mCeMachine->GetTypeInfo(GetBfType(typeId));				
+				if (typeInfo == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
+				}
+				if ((methodIdx < 0) || (methodIdx >= typeInfo->mMethodInstances.mSize))
+				{
+					_Fail("Method out of bounds");
+					return false;
+				}
+
+				*(int64*)(stackPtr + 0) = (int64)(intptr)typeInfo->mMethodInstances[methodIdx];
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_ToString)
+			{				
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
+				
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}
+				
+				CeSetAddrVal(stackPtr + 0, GetString(mCeMachine->mCeModule->MethodToString(methodInstance)), ptrSize);
+				_FixVariables();
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetName)
+			{				
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
+				
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}
+				
+				CeSetAddrVal(stackPtr + 0, GetString(methodInstance->mMethodDef->mName), ptrSize);
+				_FixVariables();
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetInfo)			
+			{	
+				// int32 mReturnType
+				// int32 mParamCount
+				// int16 mFlags
+
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+4+2);
+				
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}
+				
+				*(int32*)(stackPtr + 0) = methodInstance->mReturnType->mTypeId;
+				*(int32*)(stackPtr + 4) = methodInstance->GetParamCount();
+				*(int16*)(stackPtr + 4+4) = methodInstance->GetMethodFlags();				
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetParamInfo)			
+			{	
+				// int32 mParamType				
+				// int16 mFlags
+				// str mName
+
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+2+ptrSize);
+				int32 paramIdx = *(int32*)((uint8*)stackPtr + 4+2+ptrSize+8);
+				
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}
+				
+				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
+				*(int16*)(stackPtr + 4) = 0; // Flags
+				CeSetAddrVal(stackPtr + 4+2, GetString(methodInstance->GetParamName(paramIdx)), ptrSize);
+				_FixVariables();
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitTypeBody)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr);
 				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + sizeof(int32));
@@ -4222,6 +4351,60 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("Invalid StringView");
 					return false;
 				}
+
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMethodEntry)
+			{
+				int64 methodHandle = *(int64*)((uint8*)stackPtr);
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + sizeof(int64));
+
+				if ((mCurEmitContext == NULL) || (mCurEmitContext->mMethodInstance == NULL) ||
+					(methodHandle != (int64)mCurEmitContext->mMethodInstance))
+				{
+					_Fail("Code cannot be emitted for this method in this context");
+					return false;
+				}
+				if (!GetStringFromStringView(strViewPtr, mCurEmitContext->mEmitData))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMethodExit)
+			{
+				int64 methodHandle = *(int64*)((uint8*)stackPtr);
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + sizeof(int64));
+				if ((mCurEmitContext == NULL) || (mCurEmitContext->mMethodInstance == NULL) ||
+					(methodHandle != (int64)mCurEmitContext->mMethodInstance))
+				{
+					_Fail("Code cannot be emitted for this method in this context");
+					return false;
+				}
+				if (!GetStringFromStringView(strViewPtr, mCurEmitContext->mExitEmitData))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+
+				handled = true;
+				return true;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_EmitMixin)
+			{				
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr);				
+				String emitStr;
+				if (!GetStringFromStringView(strViewPtr, emitStr))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+
+				mCurModule->CEMixin(mCurTargetSrc, emitStr);
 
 				handled = true;
 				return true;
@@ -4461,7 +4644,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 			if (valueAddr == 0)
 			{
-				result = 0;
+				CeSetAddrVal(&result, 0, ptrSize);
 			}
 			else
 			{
@@ -4477,10 +4660,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				if (ceModule->TypeIsSubTypeOf(valueType->ToTypeInstance(), ifaceType->ToTypeInstance(), false))
-					result = valueAddr;
+					CeSetAddrVal(&result, valueAddr, ptrSize);
 				else
-					result = 0;
-			}
+					CeSetAddrVal(&result, 0, ptrSize);
+					
+			}			
 		}
 		break;
 		case CeOp_GetReflectType:
@@ -4669,7 +4853,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			CE_LOAD(uint32);
 			break;
 		case CeOp_Load_64:
-			CE_LOAD(uint64);
+			CE_LOAD(uint64);			
 			break;
 		case CeOp_Load_X:
 		{
@@ -4973,7 +5157,15 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 			CE_CHECKADDR(valueAddr, sizeof(int32));
 			int32 objTypeId = *(int32*)(memStart + valueAddr);
-			auto valueType = ceModule->mContext->mTypes[objTypeId]->ToTypeInstance();
+
+			auto bfObjectType = GetBfType(objTypeId);
+			if ((bfObjectType == NULL) || (!bfObjectType->IsTypeInstance()))
+			{
+				_Fail("Invalid object");
+				return false;
+			}
+
+			auto valueType = bfObjectType->ToTypeInstance();
 			BfMethodInstance* methodInstance = NULL;
 
 			if (valueType != NULL)
@@ -5671,8 +5863,10 @@ void CeMachine::CompileStarted()
 
 void CeMachine::CompileDone()
 {
-	// So things like delted local methods get recheckeds
+	// So things like deleted local methods get recheckeds
 	mRevision++;
+	mTypeInfoMap.Clear();
+	mMethodInstanceSet.Clear();
 }
 
 void CeMachine::DerefMethodInfo(CeFunctionInfo* ceFunctionInfo)
@@ -6008,12 +6202,48 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Type_GetCustomAttribute;
 				}
+				else if (methodDef->mName == "Comptime_GetMethod")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_GetMethod;
+				}
+				else if (methodDef->mName == "Comptime_GetMethodCount")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_GetMethodCount;
+				}
+				else if (methodDef->mName == "Comptime_Method_ToString")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_ToString;
+				}
+				else if (methodDef->mName == "Comptime_Method_GetName")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_GetName;
+				}
+				else if (methodDef->mName == "Comptime_Method_GetInfo")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_GetInfo;
+				}
+				else if (methodDef->mName == "Comptime_Method_GetParamInfo")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_GetParamInfo;
+				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mCompilerTypeDef))
 			{
-				if (methodDef->mName == "Comptime_EmitDefinition")
+				if (methodDef->mName == "Comptime_EmitTypeBody")
 				{
-					ceFunction->mFunctionKind = CeFunctionKind_EmitDefinition;
+					ceFunction->mFunctionKind = CeFunctionKind_EmitTypeBody;
+				}
+				else if (methodDef->mName == "Comptime_EmitMethodEntry")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_EmitMethodEntry;
+				}
+				else if (methodDef->mName == "Comptime_EmitMethodExit")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_EmitMethodExit;
+				}
+				else if (methodDef->mName == "Comptime_EmitMixin")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_EmitMixin;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mDiagnosticsDebugTypeDef))
@@ -6186,6 +6416,52 @@ CeFunction* CeMachine::GetPreparedFunction(BfMethodInstance* methodInstance)
 	if (!ceFunction->mInitialized)
 		PrepareFunction(ceFunction, NULL);
 	return ceFunction;
+}
+
+CeTypeInfo* CeMachine::GetTypeInfo(BfType* type)
+{
+	if (type == NULL)
+		return NULL;
+
+	auto typeInstance = type->ToTypeInstance();
+	if (typeInstance == NULL)
+		return NULL;
+
+	CeTypeInfo* ceTypeInfo = NULL;
+	if (!mTypeInfoMap.TryAdd(type, NULL, &ceTypeInfo))
+	{
+		if (ceTypeInfo->mRevision == typeInstance->mRevision)
+			return ceTypeInfo;
+		ceTypeInfo->mMethodInstances.Clear();
+	}
+	
+	mCeModule->PopulateType(typeInstance, BfPopulateType_DataAndMethods);
+	ceTypeInfo->mRevision = typeInstance->mRevision;
+	for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
+	{
+		if (methodGroup.mDefault != NULL)
+		{
+			mMethodInstanceSet.Add(methodGroup.mDefault);
+			ceTypeInfo->mMethodInstances.Add(methodGroup.mDefault);
+		}
+		if (methodGroup.mMethodSpecializationMap != NULL)
+		{
+			for (auto& kv : *methodGroup.mMethodSpecializationMap)
+			{
+				mMethodInstanceSet.Add(kv.mValue);
+				ceTypeInfo->mMethodInstances.Add(kv.mValue);
+			}
+		}
+	}	
+	return ceTypeInfo;
+}
+
+BfMethodInstance* CeMachine::GetMethodInstance(int64 methodHandle)
+{
+	BfMethodInstance* methodInstance = (BfMethodInstance*)(intptr)methodHandle;
+	if (!mMethodInstanceSet.Contains(methodInstance))
+		return false;
+	return methodInstance;
 }
 
 void CeMachine::QueueMethod(BfMethodInstance* methodInstance, BfIRValue func)

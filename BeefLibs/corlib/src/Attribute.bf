@@ -1,3 +1,4 @@
+using System.Reflection;
 namespace System
 {
     public struct Attribute
@@ -542,6 +543,6 @@ namespace System
 
 	interface IComptimeMethodApply
 	{
-		void ApplyToMethod(Type type);
+		void ApplyToMethod(ComptimeMethodInfo methodInfo);
 	}
 }

@@ -273,6 +273,7 @@ public:
 	SizedArray<BfIRValue, 1> mScopeArgs;
 	Array<BfDeferredCapture> mCaptures;	
 	BfBlock* mDeferredBlock;
+	BfAstNode* mEmitRefNode;
 	int64 mBlockId;
 	int mHandlerCount;
 	bool mBypassVirtual;
@@ -292,6 +293,7 @@ public:
 		mNext = NULL;
 		mSrcNode = NULL;
 		mDeferredBlock = NULL;
+		mEmitRefNode = NULL;
 		mBlockId = -1;
 		mHandlerCount = 0;
 		mArgsNeedLoad = false;
@@ -991,6 +993,7 @@ public:
 	BfScopeData* mCurScope;
 	BfScopeData* mTailScope; // Usually equals mCurScope
 	BfScopeData* mOverrideScope;
+	BfAstNode* mEmitRefNode;
 	TempKind mTempKind; // Used for var inference, etc
 	bool mInDeferredBlock;
 	bool mHadReturn;
@@ -1024,6 +1027,7 @@ public:
 		mHeadScope.mIsScopeHead = true;
 		mCurScope = &mHeadScope;
 		mTailScope = &mHeadScope;
+		mEmitRefNode = NULL;
 		mOverrideScope = NULL;
 		mHadReturn = false;
 		mLeftBlockUncond = false;				
@@ -1370,6 +1374,12 @@ public:
 
 #define BFMODULE_FATAL(module, msg) (module)->FatalError((msg), __FILE__, __LINE__)
 
+struct BfCEParseContext
+{
+	int mFailIdx;
+	int mWarnIdx;	
+};
+
 class BfModule : public BfStructuralVisitor
 {
 public:
@@ -1523,7 +1533,8 @@ public:
 	StringT<128> TypeToString(BfType* resolvedType, BfTypeNameFlags typeNameFlags, Array<String>* genericMethodParamNameOverrides = NULL);	
 	void DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameFlags typeNameFlags = BfTypeNameFlags_None, Array<String>* genericMethodParamNameOverrides = NULL);
 	StringT<128> MethodToString(BfMethodInstance* methodInst, BfMethodNameFlags methodNameFlags = BfMethodNameFlag_ResolveGenericParamNames, BfTypeVector* typeGenericArgs = NULL, BfTypeVector* methodGenericArgs = NULL);
-	void pv(BfType* type);
+	void pt(BfType* type);
+	void pm(BfMethodInstance* type);
 	void CurrentAddToConstHolder(BfIRValue& irVal);
 	void ClearConstData();
 	BfTypedValue GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType);
@@ -1562,7 +1573,7 @@ public:
 	void EmitDefaultReturn();
 	void EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfDeferredBlockFlags flags = BfDeferredBlockFlag_None);
 	bool AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfScopeData* scope);
-	void AddDeferredBlock(BfBlock* block, BfScopeData* scope, Array<BfDeferredCapture>* captures = NULL);
+	BfDeferredCallEntry* AddDeferredBlock(BfBlock* block, BfScopeData* scope, Array<BfDeferredCapture>* captures = NULL);
 	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false);	
 	void EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool moveBlocks);
 	void EmitDeferredCallProcessor(SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);	
@@ -1698,10 +1709,14 @@ public:
 	void SetTypeOptions(BfTypeInstance* typeInstance);
 	BfModuleOptions GetModuleOptions();
 	BfCheckedKind GetDefaultCheckedKind();
+	void FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext);
+	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& src);
 	void UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& ctxString, BfAstNode* refNode);
 	void HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes);
+	void CEMixin(BfAstNode* refNode, const StringImpl& src);
 	void ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInst, BfCEOnCompileKind onCompileKind);
 	void DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers);
+	void DoCEEmit(BfMethodInstance* methodInstance);
 	void DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType = BfPopulateType_Data);
 	static BfModule* GetModuleFor(BfType* type);
 	void DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance);

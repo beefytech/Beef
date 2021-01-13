@@ -16,6 +16,12 @@ namespace System
 		    return MethodInfo.Enumerator(null, bindingFlags);
 		}
 
+		[Comptime]
+		public virtual ComptimeMethodInfo.Enumerator GetMethods(BindingFlags bindingFlags = cDefaultLookup)
+		{
+		    return ComptimeMethodInfo.Enumerator(null, bindingFlags);
+		}
+
 		public virtual Result<MethodInfo, MethodError> GetMethod(StringView methodName, BindingFlags bindingFlags = cDefaultLookup)
 		{
 			MethodInfo matched = default;
@@ -38,6 +44,16 @@ namespace System
 		public virtual Result<MethodInfo, MethodError> GetMethod(int methodIdx)
 		{
 			return .Err(.NoResults);
+		}
+
+		[Comptime]
+		public virtual Result<ComptimeMethodInfo, MethodError> GetMethod(int methodIdx)
+		{
+			int64 nativeMethod = Comptime_GetMethod((.)TypeId, (.)methodIdx);
+			if (nativeMethod == 0)
+				return .Err(.NoResults);
+
+			return ComptimeMethodInfo(nativeMethod);
 		}
 
 		public virtual Result<Object> CreateObject()
@@ -64,6 +80,12 @@ namespace System.Reflection
 		public override MethodInfo.Enumerator GetMethods(BindingFlags bindingFlags = cDefaultLookup)
 		{
 		    return MethodInfo.Enumerator(this, bindingFlags);
+		}
+
+		[Comptime]
+		public override ComptimeMethodInfo.Enumerator GetMethods(BindingFlags bindingFlags = cDefaultLookup)
+		{
+		    return ComptimeMethodInfo.Enumerator(this, bindingFlags);
 		}
 
 		public override Result<MethodInfo, MethodError> GetMethod(int methodIdx)

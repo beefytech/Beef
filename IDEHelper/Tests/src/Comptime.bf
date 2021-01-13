@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace Tests
 {
@@ -27,11 +29,26 @@ namespace Tests
 			[Comptime]
 			public void ApplyToType(Type type)
 			{
-				Compiler.EmitDefinition(type, scope $"""
+				Compiler.EmitTypeBody(type, scope $"""
 					public int32 m{mMemberName} = {mInitVal};
 					public int32 GetVal{mMemberName}() => mC;
 					""");
+			}
+		}
 
+		[AttributeUsage(.Method)]
+		struct LogAttribute : Attribute, IComptimeMethodApply
+		{
+			public static String gLog = new .() ~ delete _;
+
+			[Comptime] 
+			public void ApplyToMethod(ComptimeMethodInfo method)
+			{
+				String emit = scope $"LogAttribute.gLog.AppendF($\"Called {method}";
+				for (var fieldIdx < method.ParamCount)
+					emit.AppendF($" {{ {method.GetParamName(fieldIdx)} }}");
+				emit.Append("\");");
+				Compiler.EmitMethodEntry(method, emit);
 			}
 		}
 
@@ -43,11 +60,17 @@ namespace Tests
 			[OnCompile(.TypeInit), Comptime]
 			public static void Generate()
 			{
-				Compiler.EmitDefinition(typeof(Self), """
+				Compiler.EmitTypeBody(typeof(Self), """
 					public int32 mB = 234;
 					public int32 GetValB() => mB;
 					""");
 			}
+		}
+
+		[Log]
+		public static void MethodA(int a, int b)
+		{
+
 		}
 
 		[Test]
@@ -59,6 +82,12 @@ namespace Tests
 			Test.Assert(ca.GetValB() == 234);
 			Test.Assert(ca.mC == 345);
 			Test.Assert(ca.GetValC() == 345);
+
+			Compiler.Mixin("int val = 99;");
+			Test.Assert(val == 99);
+
+			MethodA(34, 45);
+			Debug.Assert(LogAttribute.gLog == "Called Tests.Comptime.MethodA(int a, int b) 34 45");
 		}
 	}
 }

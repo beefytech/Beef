@@ -777,8 +777,11 @@ namespace IDE.ui
 						if (itr.GetNext() case .Ok(let fileName))
 						{
 							entry.mFile = new String(fileName);
-							entry.mLine = int.Parse(itr.GetNext()).Get();
-							entry.mColumn = int.Parse(itr.GetNext()).Get();
+							if (!entry.mFile.IsEmpty)
+							{
+								entry.mLine = int.Parse(itr.GetNext()).Get();
+								entry.mColumn = int.Parse(itr.GetNext()).Get();
+							}
 						}
 					}
 				}

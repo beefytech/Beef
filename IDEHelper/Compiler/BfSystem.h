@@ -187,6 +187,19 @@ enum BfTypeFlags
 	BfTypeFlags_HasDestructor   = 0x40000,
 };
 
+enum BfMethodFlags
+{
+	BfMethodFlags_Protected = 3,
+	BfMethodFlags_Public = 6,
+	BfMethodFlags_Static = 0x10,
+	BfMethodFlags_Virtual = 0x40,
+	BfMethodFlags_StdCall = 0x1000,
+	BfMethodFlags_FastCall = 0x2000,
+	BfMethodFlags_ThisCall = 0x3000,
+	BfMethodFlags_Mutating = 0x4000,
+	BfMethodFlags_Constructor = 0x8000,
+};
+
 enum BfObjectFlags : uint8
 {
 	BfObjectFlag_None = 0,

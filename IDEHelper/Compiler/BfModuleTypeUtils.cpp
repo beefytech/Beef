@@ -1933,24 +1933,11 @@ void BfModule::SetTypeOptions(BfTypeInstance* typeInstance)
 	typeInstance->mTypeOptionsIdx = GenerateTypeOptions(typeInstance->mCustomAttributes, typeInstance, true);
 }
 
-void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& ctxString, BfAstNode* refNode)
+BfCEParseContext BfModule::CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& src)
 {
-	if (ceEmitContext->mEmitData.IsEmpty())
-		return;
-
-	int prevFailIdx = mCompiler->mPassInstance->mFailedIdx;
-	int prevWarnIdx = mCompiler->mPassInstance->mWarnIdx;
-	
-	String src;
-
-	if (activeTypeDef->mEmitParser != NULL)
-		src += "\n\n";
-
-	src += "// Code emission in ";
-	src += ctxString;
-	src += "\n\n";
-	src += ceEmitContext->mEmitData;	
-	ceEmitContext->mEmitData.Clear();
+	BfCEParseContext ceParseContext;
+	ceParseContext.mFailIdx = mCompiler->mPassInstance->mFailedIdx;
+	ceParseContext.mWarnIdx = mCompiler->mPassInstance->mWarnIdx;
 
 	bool createdParser = false;
 	int startSrcIdx = 0;
@@ -1972,7 +1959,7 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 		if (activeTypeDef->mPartialIdx != -1)
 			parser->mFileName + StrFormat(":%d", activeTypeDef->mPartialIdx);
 
-		parser->mFileName += StrFormat(".bf|%d", typeInstance->mRevision);		
+		parser->mFileName += StrFormat(".bf|%d", typeInstance->mRevision);
 		activeTypeDef->mEmitParser = parser;
 		parser->mRefCount++;
 		parser->SetSource(src.c_str(), src.mLength);
@@ -1986,9 +1973,49 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 		activeTypeDef->mEmitParser->mParserData->mSrcLength = activeTypeDef->mEmitParser->mSrcLength;
 	}
 
-	activeTypeDef->mEmitParser->Parse(mCompiler->mPassInstance);	
+	activeTypeDef->mEmitParser->Parse(mCompiler->mPassInstance);
 	activeTypeDef->mEmitParser->FinishSideNodes();
-	
+
+	if (createdParser)
+	{
+		AutoCrit crit(mSystem->mDataLock);
+		mSystem->mParsers.Add(activeTypeDef->mEmitParser);
+	}
+
+	return ceParseContext;
+}
+
+void BfModule::FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext)
+{
+	if ((ceParseContext->mFailIdx != mCompiler->mPassInstance->mFailedIdx) && (refNode != NULL))
+		Fail("Emitted code had errors", refNode);
+	else if ((ceParseContext->mWarnIdx != mCompiler->mPassInstance->mWarnIdx) && (refNode != NULL))
+		Warn(0, "Emitted code had warnings", refNode);
+	else if ((ceParseContext->mFailIdx != mCompiler->mPassInstance->mFailedIdx) ||
+		(ceParseContext->mWarnIdx != mCompiler->mPassInstance->mWarnIdx))
+	{
+		AddFailType(typeInstance);
+	}
+}
+
+void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfTypeDef* activeTypeDef, const StringImpl& ctxString, BfAstNode* refNode)
+{
+	if (ceEmitContext->mEmitData.IsEmpty())
+		return;
+		
+	String src;
+
+	if (activeTypeDef->mEmitParser != NULL)
+		src += "\n\n";
+
+	src += "// Code emission in ";
+	src += ctxString;
+	src += "\n\n";
+	src += ceEmitContext->mEmitData;	
+	ceEmitContext->mEmitData.Clear();
+
+	BfCEParseContext ceParseContext = CEEmitParse(typeInstance, activeTypeDef, src);
+		
 	auto typeDeclaration = activeTypeDef->mEmitParser->mAlloc->Alloc<BfTypeDeclaration>();
 
 	BfReducer bfReducer;
@@ -2008,21 +2035,7 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 	defBuilder.DoVisitChild(typeDeclaration->mDefineNode);
 	defBuilder.FinishTypeDef(typeInstance->mTypeDef->mTypeCode == BfTypeCode_Enum);
 
-	if (createdParser)
-	{
-		AutoCrit crit(mSystem->mDataLock);
-		mSystem->mParsers.Add(activeTypeDef->mEmitParser);
-	}
-
-	if ((prevFailIdx != mCompiler->mPassInstance->mFailedIdx) && (refNode != NULL))
-		Fail("Emitted code had errors", refNode);
-	else if ((prevWarnIdx != mCompiler->mPassInstance->mWarnIdx) && (refNode != NULL))
-		Warn(0, "Emitted code had warnings", refNode);
-	else if ((prevFailIdx != mCompiler->mPassInstance->mFailedIdx) ||
-		(prevWarnIdx != mCompiler->mPassInstance->mWarnIdx))
-	{
-		AddFailType(typeInstance);
-	}
+	FinishCEParseContext(refNode, typeInstance, &ceParseContext);	
 }
 
 void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfCustomAttributes* customAttributes, HashSet<BfTypeInstance*> foundAttributes)
@@ -2066,7 +2079,12 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			
 			auto result = ceContext->Call(customAttribute.mRef, this, methodInstance, args, CeEvalFlags_None, NULL);
 
-			if (!ceEmitContext->mEmitData.IsEmpty())
+			if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
+			{
+				// We populated before we could finish
+				AssertErrorState();
+			}
+			else if (!ceEmitContext->mEmitData.IsEmpty())
 			{
 				String ctxStr = "comptime ApplyToType of ";
 				ctxStr += TypeToString(attrType);
@@ -2080,6 +2098,76 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			mCompiler->mCEMachine->ReleaseContext(ceContext);
 		}
 	}
+}
+
+void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
+{
+	auto activeTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
+
+	String src;
+	if (activeTypeDef->mEmitParser != NULL)
+		src += "\n\n";
+	src += "// Code emission in ";	
+	src += MethodToString(mCurMethodInstance);	
+	src += "\n";
+	src += code;
+
+	BfReducer bfReducer;
+	bfReducer.mSource = activeTypeDef->mEmitParser;
+	bfReducer.mPassInstance = mCompiler->mPassInstance;
+	bfReducer.mSystem = mSystem;
+	bfReducer.mCurTypeDecl = activeTypeDef->mTypeDeclaration;
+	bfReducer.mCurMethodDecl = BfNodeDynCast<BfMethodDeclaration>(mCurMethodInstance->mMethodDef->mMethodDeclaration);
+	
+	SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, refNode);
+	
+	EmitEnsureInstructionAt();
+	bool wantsDIData = (mBfIRBuilder->DbgHasInfo()) && (mHasFullDebugInfo);
+	mBfIRBuilder->SaveDebugLocation();
+
+	BfCEParseContext ceParseContext = CEEmitParse(mCurTypeInstance, activeTypeDef, src);
+	bfReducer.mAlloc = activeTypeDef->mEmitParser->mAlloc;
+	bfReducer.HandleBlock(activeTypeDef->mEmitParser->mRootNode, false);
+
+	SetAndRestoreValue<BfIRMDNode> prevInlinedAt(mCurMethodState->mCurScope->mDIInlinedAt);
+	SetAndRestoreValue<BfIRMDNode> prevDIScope(mCurMethodState->mCurScope->mDIScope);
+	SetAndRestoreValue<BfIRMDNode> prevAltDIFile(mCurMethodState->mCurScope->mAltDIFile);
+
+	if (wantsDIData)
+	{
+		llvm::SmallVector<BfIRMDNode, 8> diParams;
+		diParams.push_back(mBfIRBuilder->DbgGetType(GetPrimitiveType(BfTypeCode_None)));
+		BfIRMDNode diFuncType = mBfIRBuilder->DbgCreateSubroutineType(diParams);
+
+		//int defLine = mModule->mCurFilePosition.mCurLine;
+
+		int flags = 0;
+		mCurMethodState->mCurScope->mDIInlinedAt = mBfIRBuilder->DbgGetCurrentLocation();
+
+		// We used to have the "def" line be the inlining position, but the linker we de-duplicate instances of these functions without regard to their unique line
+		//  definitions, so we need to be consistent and use the actual line
+		UpdateSrcPos(activeTypeDef->mEmitParser->mRootNode, BfSrcPosFlag_NoSetDebugLoc);
+		int defLine = mCurFilePosition.mCurLine;
+		auto diParentType = mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance);
+		if (!mBfIRBuilder->mIgnoreWrites)
+		{
+			String methodName = "Comptime_Mixin";						
+			mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(diParentType, methodName, "", mCurFilePosition.mFileInstance->mDIFile,
+				defLine + 1, diFuncType, false, true, mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
+			mCurMethodState->mCurScope->mAltDIFile = mCurFilePosition.mFileInstance->mDIFile;
+		}
+	}
+	
+	UpdateSrcPos(activeTypeDef->mEmitParser->mRootNode);
+
+	SetIllegalSrcPos();
+	
+	Visit(activeTypeDef->mEmitParser->mRootNode);
+
+	mBfIRBuilder->RestoreDebugLocation();
+	mBfIRBuilder->DupDebugLocation();
+
+	FinishCEParseContext(refNode, mCurTypeInstance, &ceParseContext);
 }
 
 void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfCEOnCompileKind onCompileKind)
@@ -2166,7 +2254,12 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		auto methodInstance = GetRawMethodInstanceAtIdx(typeInstance, methodDef->mIdx);
 		auto result = mCompiler->mCEMachine->Call(methodDef->GetRefNode(), this, methodInstance, {}, (CeEvalFlags)(CeEvalFlags_PersistantError | CeEvalFlags_DeferIfNotOnlyError), NULL);
 
-		if (!ceEmitContext->mEmitData.IsEmpty())
+		if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
+		{
+			// We populated before we could finish
+			AssertErrorState();
+		}
+		else if (!ceEmitContext->mEmitData.IsEmpty())
 		{
 			String ctxStr = "OnCompile execution of ";
 			ctxStr += MethodToString(methodInstance);
@@ -2192,14 +2285,121 @@ void BfModule::DoCEEmit(BfTypeInstance* typeInstance, bool& hadNewMembers)
 
 	CeEmitContext emitContext;
 	emitContext.mType = typeInstance;
-	ExecuteCEOnCompile(&emitContext, typeInstance, BfCEOnCompileKind_TypeInit);
-	
+	ExecuteCEOnCompile(&emitContext, typeInstance, BfCEOnCompileKind_TypeInit);	
+
 	if ((startMethodCount != typeInstance->mTypeDef->mMethods.mSize) ||
 		(startFieldCount != typeInstance->mTypeDef->mFields.mSize) ||
 		(startPropCount != typeInstance->mTypeDef->mProperties.mSize))
 	{
 		typeInstance->mTypeDef->ClearMemberSets();
 		hadNewMembers = true;
+	}
+}
+
+void BfModule::DoCEEmit(BfMethodInstance* methodInstance)
+{
+	auto customAttributes = methodInstance->GetCustomAttributes();
+	if (customAttributes == NULL)
+		return;
+
+	auto typeInstance = methodInstance->GetOwner();
+
+	CeEmitContext ceEmitContext;
+	ceEmitContext.mMethodInstance = methodInstance;
+
+	BfTypeInstance* iComptimeMethodApply = NULL;
+	for (auto& customAttribute : customAttributes->mAttributes)
+	{
+		auto attrType = customAttribute.mType;
+		PopulateType(attrType, BfPopulateType_DataAndMethods);
+		if (attrType->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
+			continue;
+
+		for (auto& ifaceEntry : attrType->mInterfaces)
+		{
+			if (iComptimeMethodApply == NULL)
+				iComptimeMethodApply = ResolveTypeDef(mCompiler->mIComptimeMethodApply)->ToTypeInstance();
+			if (ifaceEntry.mInterfaceType != iComptimeMethodApply)
+				continue;
+
+// 			if (!foundAttributes.Add(attrType))
+// 				continue;
+
+			BfMethodInstance* applyMethodInstance = attrType->mInterfaceMethodTable[ifaceEntry.mStartInterfaceTableIdx].mMethodRef;
+			if (applyMethodInstance == NULL)
+				continue;
+
+			SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCEMachine->mCurEmitContext, &ceEmitContext);
+			auto ceContext = mCompiler->mCEMachine->AllocContext();
+
+			BfIRValue attrVal = ceContext->CreateAttribute(customAttribute.mRef, this, typeInstance->mConstHolder, &customAttribute);
+
+			SizedArray<BfIRValue, 1> args;
+			if (!attrType->IsValuelessType())
+				args.Add(attrVal);
+			args.Add(mBfIRBuilder->CreateConst(BfTypeCode_UInt64, (uint64)(intptr)methodInstance));
+			mCompiler->mCEMachine->mMethodInstanceSet.Add(methodInstance);
+
+			//TESTING
+// 			mCompiler->mCEMachine->ReleaseContext(ceContext);			
+// 			ceContext = mCompiler->mCEMachine->AllocContext();
+// 			ceContext->mMemory.mSize = ceContext->mMemory.mAllocSize;
+
+			auto activeTypeDef = typeInstance->mTypeDef;			
+			auto result = ceContext->Call(customAttribute.mRef, this, applyMethodInstance, args, CeEvalFlags_None, NULL);
+
+			if ((!ceEmitContext.mEmitData.IsEmpty()) || (!ceEmitContext.mExitEmitData.IsEmpty()))
+			{
+				String src;				
+				src += "// Code emission in comptime ApplyToMethod of ";
+				src += TypeToString(attrType);
+				src += " to ";
+				src += MethodToString(methodInstance);
+				src += " ";
+				src += customAttribute.mRef->LocationToString();
+				src += "\n";
+				
+				BfReducer bfReducer;
+				bfReducer.mSource = activeTypeDef->mEmitParser;
+				bfReducer.mPassInstance = mCompiler->mPassInstance;				
+				bfReducer.mSystem = mSystem;
+				bfReducer.mCurTypeDecl = activeTypeDef->mTypeDeclaration;
+				bfReducer.mCurMethodDecl = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration);
+
+				if (!ceEmitContext.mEmitData.IsEmpty())
+				{
+					SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, customAttribute.mRef);
+
+					String entrySrc = src;
+					if (activeTypeDef->mEmitParser != NULL)
+						entrySrc += "\n\n";
+					entrySrc += src;
+					entrySrc += ceEmitContext.mEmitData;
+					BfCEParseContext ceParseContext = CEEmitParse(typeInstance, activeTypeDef, entrySrc);
+					bfReducer.mAlloc = activeTypeDef->mEmitParser->mAlloc;
+					bfReducer.HandleBlock(activeTypeDef->mEmitParser->mRootNode, false);
+					Visit(activeTypeDef->mEmitParser->mRootNode);
+					FinishCEParseContext(customAttribute.mRef, typeInstance, &ceParseContext);
+				}
+
+				if (!ceEmitContext.mExitEmitData.IsEmpty())
+				{
+					String exitSrc;
+					if (activeTypeDef->mEmitParser != NULL)
+						exitSrc += "\n\n";
+					exitSrc += src;
+					exitSrc += ceEmitContext.mExitEmitData;
+					BfCEParseContext ceParseContext = CEEmitParse(typeInstance, activeTypeDef, exitSrc);
+					bfReducer.mAlloc = activeTypeDef->mEmitParser->mAlloc;
+					bfReducer.HandleBlock(activeTypeDef->mEmitParser->mRootNode, false);
+					auto deferredBlock = AddDeferredBlock(activeTypeDef->mEmitParser->mRootNode, &mCurMethodState->mHeadScope);
+					deferredBlock->mEmitRefNode = customAttribute.mRef;
+					FinishCEParseContext(customAttribute.mRef, typeInstance, &ceParseContext);
+				}
+			}
+
+			mCompiler->mCEMachine->ReleaseContext(ceContext);
+		}
 	}
 }
 
@@ -6316,6 +6516,11 @@ BfPointerType* BfModule::CreatePointerType(BfTypeReference* typeRef)
 
 BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
+	if (typeDef->mTypeDeclaration == NULL)
+	{
+		BF_ASSERT(!typeDef->mIsDelegate && !typeDef->mIsFunction);
+	}	
+
 	//BF_ASSERT(typeDef->mTypeCode != BfTypeCode_Extension);
 	BF_ASSERT(!typeDef->mIsPartial || typeDef->mIsCombinedPartial);
 

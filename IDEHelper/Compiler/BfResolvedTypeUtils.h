@@ -899,6 +899,7 @@ public:
 	}
 
 	BfImportKind GetImportKind();
+	BfMethodFlags GetMethodFlags();
 	void UndoDeclaration(bool keepIRFunction = false);
 	BfTypeInstance* GetOwner();	
 	BfModule* GetModule();

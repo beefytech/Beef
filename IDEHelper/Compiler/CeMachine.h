@@ -254,7 +254,17 @@ enum CeFunctionKind
 	CeFunctionKind_GetReflectTypeByName,
 	CeFunctionKind_GetReflectSpecializedType,
 	CeFunctionKind_Type_GetCustomAttribute,
-	CeFunctionKind_EmitDefinition,
+	CeFunctionKind_GetMethodCount,
+	CeFunctionKind_GetMethod,
+	CeFunctionKind_Method_ToString,
+	CeFunctionKind_Method_GetName,
+	CeFunctionKind_Method_GetInfo,
+	CeFunctionKind_Method_GetParamInfo,
+
+	CeFunctionKind_EmitTypeBody,
+	CeFunctionKind_EmitMethodEntry,
+	CeFunctionKind_EmitMethodExit,
+	CeFunctionKind_EmitMixin,
 	CeFunctionKind_Sleep,
 	CeFunctionKind_Char32_ToLower,
 	CeFunctionKind_Char32_ToUpper,
@@ -612,12 +622,15 @@ public:
 class CeEmitContext
 {
 public:
-	BfType* mType;	
+	BfType* mType;
+	BfMethodInstance* mMethodInstance;
 	String mEmitData;
+	String mExitEmitData;
 
 	CeEmitContext()
 	{
 		mType = NULL;		
+		mMethodInstance = NULL;
 	}
 };
 
@@ -662,6 +675,7 @@ public:
 	int GetTypeIdFromType(addr_ce typeAddr);
 	addr_ce GetReflectSpecializedType(addr_ce unspecializedType, addr_ce typeArgsSpanAddr);
 	addr_ce GetString(int stringId);
+	addr_ce GetString(const StringImpl& str);
 	addr_ce GetConstantData(BeConstant* constant);
 	BfType* GetBfType(int typeId);
 	void PrepareConstStructEntry(CeConstStructData& constStructData);
@@ -677,12 +691,20 @@ public:
 	BfTypedValue Call(BfAstNode* targetSrc, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
 };
 
+struct CeTypeInfo
+{
+	Array<BfMethodInstance*> mMethodInstances;
+	int mRevision;
+};
+
 class CeMachine
 {
 public:
 	Dictionary<BfMethodInstance*, CeFunctionInfo*> mFunctions;
 	Dictionary<String, CeFunctionInfo*> mNamedFunctionMap;
 	Dictionary<int, CeFunction*> mFunctionIdMap; // Only used for 32-bit			
+	Dictionary<BfType*, CeTypeInfo> mTypeInfoMap;
+	HashSet<BfMethodInstance*> mMethodInstanceSet;
 	
 	Array<CeContext*> mContextList;
 
@@ -722,6 +744,8 @@ public:
 	void CheckFunctions();
 	CeFunction* GetFunction(BfMethodInstance* methodInstance, BfIRValue func, bool& added);
 	CeFunction* GetPreparedFunction(BfMethodInstance* methodInstance);
+	CeTypeInfo* GetTypeInfo(BfType* type);
+	BfMethodInstance* GetMethodInstance(int64 methodHandle);
 
 public:
 	void CompileStarted();

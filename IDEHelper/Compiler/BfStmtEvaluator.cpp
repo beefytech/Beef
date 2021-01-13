@@ -512,13 +512,14 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 	return true;
 }
 
-void BfModule::AddDeferredBlock(BfBlock* block, BfScopeData* scopeData, Array<BfDeferredCapture>* captures)
+BfDeferredCallEntry* BfModule::AddDeferredBlock(BfBlock* block, BfScopeData* scopeData, Array<BfDeferredCapture>* captures)
 {
 	BfDeferredCallEntry* deferredCallEntry = new BfDeferredCallEntry();
 	deferredCallEntry->mDeferredBlock = block;
 	if (captures != NULL)
 		deferredCallEntry->mCaptures = *captures;
 	AddDeferredCallEntry(deferredCallEntry, scopeData);
+	return deferredCallEntry;
 }
 
 BfDeferredCallEntry* BfModule::AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scopeData, BfAstNode* srcNode, bool bypassVirtual, bool doNullCheck)
@@ -826,6 +827,7 @@ void BfModule::EmitDeferredCall(BfDeferredCallEntry& deferredCallEntry, bool mov
 			AddLocalVariableDef(localVar, true);
 		}
 				
+		SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, deferredCallEntry.mEmitRefNode);
 		VisitEmbeddedStatement(deferredCallEntry.mDeferredBlock, NULL, BfEmbeddedStatementFlags_IsDeferredBlock);		
 		RestoreScopeState();
 		return;
@@ -6684,7 +6686,7 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 				}
 			}			
 			AddDeferredBlock(block, scope, &captures);
-		}				
+		}
 		else
 			AddDeferredBlock(block, scope);
 	}

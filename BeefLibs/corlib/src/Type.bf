@@ -475,6 +475,12 @@ namespace System
 		static extern Type Comptime_GetTypeByName(StringView name);
 		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
 		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeId, void* dataPtr);
+		static extern int32 Comptime_GetMethodCount(int32 typeId);
+		static extern int64 Comptime_GetMethod(int32 typeId, int32 methodIdx);
+		static extern String Comptime_Method_ToString(int64 methodHandle);
+		static extern String Comptime_Method_GetName(int64 methodHandle);
+		static extern ComptimeMethodInfo.Info Comptime_Method_GetInfo(int64 methodHandle);
+		static extern ComptimeMethodInfo.ParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
 
         protected static Type GetType(TypeId typeId)
         {

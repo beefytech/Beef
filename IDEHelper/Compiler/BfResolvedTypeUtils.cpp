@@ -630,6 +630,35 @@ BfImportKind BfMethodInstance::GetImportKind()
 	return BfMethodDef::GetImportKindFromPath(*filePath);
 }
 
+BfMethodFlags BfMethodInstance::GetMethodFlags()
+{
+	BfMethodFlags methodFlags = (BfMethodFlags)0;
+
+	if (mMethodDef->mProtection == BfProtection_Protected)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Protected);
+	if (mMethodDef->mProtection == BfProtection_Public)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Public);
+	if (mMethodDef->mIsStatic)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Static);
+	if ((mMethodDef->mIsVirtual) || (mVirtualTableIdx != -1))
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Virtual);
+	if (mMethodDef->mCallingConvention == BfCallingConvention_Fastcall)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_FastCall);
+	if (mMethodDef->mIsMutating)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Mutating);
+	if (mMethodDef->mMethodType == BfMethodType_Ctor)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Constructor);
+
+	auto callingConvention = GetOwner()->mModule->GetIRCallingConvention(this);
+	if (callingConvention == BfIRCallingConv_ThisCall)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_ThisCall);
+	else if (callingConvention == BfIRCallingConv_StdCall)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_StdCall);
+	else if (callingConvention == BfIRCallingConv_FastCall)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_FastCall);
+	return methodFlags;
+}
+
 void BfMethodInstance::UndoDeclaration(bool keepIRFunction)
 {	
 	

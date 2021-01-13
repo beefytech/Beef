@@ -69,7 +69,10 @@ namespace System
 
 		static extern void* Comptime_MethodBuilder_EmitStr(void* native, StringView str);
 		static extern void* Comptime_CreateMethod(int32 typeId, StringView methodName, Type returnType, MethodFlags methodFlags);
-		static extern void Comptime_EmitDefinition(int32 typeId, StringView text);
+		static extern void Comptime_EmitTypeBody(int32 typeId, StringView text);
+		static extern void Comptime_EmitMethodEntry(int64 methodHandle, StringView text);
+		static extern void Comptime_EmitMethodExit(int64 methodHandle, StringView text);
+		static extern void Comptime_EmitMixin(StringView text);
 
 		[Comptime(OnlyFromComptime=true)]
 		public static MethodBuilder CreateMethod(Type owner, StringView methodName, Type returnType, MethodFlags methodFlags)
@@ -80,9 +83,28 @@ namespace System
 		}
 
 		[Comptime(OnlyFromComptime=true)]
-		public static void EmitDefinition(Type owner, StringView text)
+		public static void EmitTypeBody(Type owner, StringView text)
 		{
-			Comptime_EmitDefinition((.)owner.TypeId, text);
-		}	
+			Comptime_EmitTypeBody((.)owner.TypeId, text);
+		}
+
+		[Comptime(OnlyFromComptime=true)]
+		public static void EmitMethodEntry(ComptimeMethodInfo methodHandle, StringView text)
+		{
+			Comptime_EmitMethodEntry(methodHandle.mNativeMethodInstance, text);
+		}
+
+		[Comptime(OnlyFromComptime=true)]
+		public static void EmitMethodExit(ComptimeMethodInfo methodHandle, StringView text)
+		{
+			Comptime_EmitMethodExit(methodHandle.mNativeMethodInstance, text);
+		}
+
+		[Comptime]
+		public static void Mixin(StringView text)
+		{
+			if (Compiler.IsComptime)
+				Comptime_EmitMixin(text);
+		}
 	}
 }

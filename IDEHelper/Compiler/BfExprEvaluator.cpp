@@ -1111,6 +1111,11 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	RETURN_BETTER_OR_WORSE(newMethodDef->mDeclaringType == activeDef, prevMethodDef->mDeclaringType == activeDef);
 	RETURN_BETTER_OR_WORSE(newMethodDef->mDeclaringType->IsExtension(), prevMethodDef->mDeclaringType->IsExtension());
 	RETURN_BETTER_OR_WORSE(newMethodDef->mIsMutating, prevMethodDef->mIsMutating);
+	if (newMethodDef->mHasComptime != prevMethodDef->mHasComptime)
+	{
+		bool isComptime = (mModule->mIsComptimeModule) || ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0);
+		RETURN_BETTER_OR_WORSE(newMethodDef->mHasComptime == isComptime, prevMethodDef->mHasComptime == isComptime);
+	}
 
 	RETURN_RESULTS;
 }
@@ -5189,10 +5194,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					{
 						// We didn't properly resolve this so queue for a rebuild later
 						mModule->DeferRebuildType(mModule->mCurTypeInstance);
-					}
-
-					doConstReturn = true;
+					}					
 				}
+				doConstReturn = true;
 			}			
 		}
 		else if (mModule->mIsComptimeModule)
