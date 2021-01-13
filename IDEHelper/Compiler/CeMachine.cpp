@@ -3308,7 +3308,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		}
 	}
 
-	if (constant->mConstType == BfTypeCode_StringId)
+	if (constant->mTypeCode == BfTypeCode_StringId)
 	{		
 		addr_ce strAddr = GetString(constant->mInt32);
 
@@ -6460,7 +6460,7 @@ BfMethodInstance* CeMachine::GetMethodInstance(int64 methodHandle)
 {
 	BfMethodInstance* methodInstance = (BfMethodInstance*)(intptr)methodHandle;
 	if (!mMethodInstanceSet.Contains(methodInstance))
-		return false;
+		return NULL;
 	return methodInstance;
 }
 
