@@ -226,6 +226,16 @@ namespace Tests
 
 		}
 
+		static int MethodE<T, T2>(T val) where T : IEnumerable<T2>
+		{
+			return 0;
+		}
+
+		static int MethodF<T>(IEnumerable<T> val)
+		{
+			return 0;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -267,6 +277,9 @@ namespace Tests
 			Test.Assert(LibA.LibA2.CheckEq(cd, cd2));
 
 			Test.Assert(ClassE.Instance.CreateSystem<int>() == 999);
+
+			MethodE(list);
+			MethodF(list);
 		}
 	}
 

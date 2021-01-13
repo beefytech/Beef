@@ -321,7 +321,8 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 			if ((*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] == NULL)
 				mInferredCount++;
 			(*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx] = argType;
-			mPrevArgValues[wantGenericParam->mGenericParamIdx] = argValue;			
+			if (!mPrevArgValues.IsEmpty())
+				mPrevArgValues[wantGenericParam->mGenericParamIdx] = argValue;			
 		};
 		
 		if (argType->IsVar())
@@ -353,10 +354,16 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 					argType = mModule->ResolveGenericType(genericParamInst->mTypeConstraint, NULL, mCheckMethodGenericArguments);
 					if (argType == NULL)
 						return true;
-				}
+				}			
 			}
 
-			auto prevGenericMethodArg = (*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx];
+			if (mPrevArgValues.IsEmpty())
+			{
+				_SetGeneric();
+				return true;
+			}
+
+			auto prevGenericMethodArg = (*mCheckMethodGenericArguments)[wantGenericParam->mGenericParamIdx];			
 			auto prevArgValue = mPrevArgValues[wantGenericParam->mGenericParamIdx];
 			if (prevGenericMethodArg == NULL)			
 			{
@@ -580,6 +587,28 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 	
 	return true;
 }
+
+// void BfGenericInferContext::PropogateInference(BfType* resolvedType, BfType* unresovledType)
+// {
+// 	if (!unresovledType->IsUnspecializedTypeVariation())
+// 		return;
+// 
+// 	auto resolvedTypeInstance = resolvedType->ToTypeInstance();
+// 	auto unresolvedTypeInstance = unresovledType->ToTypeInstance();
+// 
+// 	if ((resolvedTypeInstance == NULL) || (unresolvedTypeInstance == NULL))
+// 		return;
+// 	if (resolvedTypeInstance->mTypeDef != unresolvedTypeInstance->mTypeDef)
+// 		return;
+// 
+// 	if (unres)
+// 
+// 	if (resolvedType->IsGenericTypeInstance())
+// 	{
+// 		
+// 
+// 	}
+// }
 
 int BfMethodMatcher::GetMostSpecificType(BfType* lhs, BfType* rhs)
 {
@@ -1519,10 +1548,6 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	if (checkMethod->mHasAppend)
 		paramIdx++;
 
-// 	int outmostGenericCount = 0;
-// 	if (checkMethod->mIsLocalMethod)
-// 		outmostGenericCount = (int)mModule->mCurMethodState->GetRootMethodState()->mMethodInstance->mGenericParams.size();
-
 	int uniqueGenericStartIdx = mModule->GetLocalInferrableGenericArgCount(checkMethod);
 
 	if ((mHadExplicitGenericArguments) && (checkMethod->mGenericParams.size() != mExplicitMethodGenericArguments.size() + uniqueGenericStartIdx))
@@ -1532,8 +1557,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		checkGenericArgRef = NULL;
 
 	mCheckMethodGenericArguments.resize(checkMethod->mGenericParams.size());	
-
-	//mPrevArgValues.resize(checkMethod->mGenericParams.size());
+	
 	for (auto& genericArgRef : mCheckMethodGenericArguments)
 		genericArgRef = NULL;
 	
@@ -14161,6 +14185,38 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 						}
 					}
 				}				
+			}
+
+			if (genericArg == NULL)
+			{
+				// Attempt to infer from other generic args
+				for (int srcGenericIdx = 0; srcGenericIdx < (int)methodMatcher.mBestMethodGenericArguments.size(); srcGenericIdx++)
+				{
+					auto& srcGenericArg = methodMatcher.mBestMethodGenericArguments[srcGenericIdx];
+					if (srcGenericArg == NULL)
+						continue;
+
+					auto srcGenericParam = unspecializedMethod->mMethodInfoEx->mGenericParams[srcGenericIdx];
+					
+					BfGenericInferContext genericInferContext;
+					genericInferContext.mModule = mModule;
+					genericInferContext.mCheckMethodGenericArguments = &methodMatcher.mBestMethodGenericArguments;
+					
+					for (auto ifaceConstraint : srcGenericParam->mInterfaceConstraints)
+					{
+						if ((ifaceConstraint->IsUnspecializedTypeVariation()) && (ifaceConstraint->IsGenericTypeInstance()))
+						{	
+							genericInferContext.InferGenericArgument(unspecializedMethod, srcGenericArg, ifaceConstraint, BfIRValue());
+
+							auto typeInstance = srcGenericArg->ToTypeInstance();
+							if (typeInstance != NULL)
+							{
+								for (auto ifaceEntry : typeInstance->mInterfaces)
+									genericInferContext.InferGenericArgument(unspecializedMethod, ifaceEntry.mInterfaceType, ifaceConstraint, BfIRValue());
+							}							
+						}						
+					}					
+				}
 			}
 
 			if (genericArg == NULL)
