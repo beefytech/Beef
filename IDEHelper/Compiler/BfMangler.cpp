@@ -883,6 +883,9 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 	else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
 		name += "`UCHK";
 
+	if (methodDef->mHasComptime)
+		name += "`COMPTIME";
+
 	if ((methodInst->mMethodDef->mDeclaringType->mPartialIdx != -1) && (methodInst->mMethodDef->mDeclaringType->IsExtension()) &&
 		(!methodInst->mIsForeignMethodDef) && (!methodInst->mMethodDef->mIsExtern) &&
 		((!methodInst->mMethodDef->mIsOverride) || (methodDef->mName == BF_METHODNAME_MARKMEMBERS) || (methodDef->mMethodType == BfMethodType_Dtor)))
@@ -2064,7 +2067,10 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 		if (methodDef->mCheckedKind == BfCheckedKind_Checked)
 			name += "CHK$";
 		else if (methodDef->mCheckedKind == BfCheckedKind_Unchecked)
-			name += "UCHK$";		
+			name += "UCHK$";	
+
+		if (methodDef->mHasComptime)
+			name += "COMPTIME$";
 	}
 
 	/*if ((methodInst->mMethodInstanceGroup->mOwner->mTypeDef->IsGlobalsContainer()) && (methodInst->mMethodDef->mMethodDeclaration == NULL))
