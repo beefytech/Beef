@@ -37,7 +37,8 @@ enum BfResolveArgsFlags
 enum BfResolveArgFlags
 {
 	BfResolveArgFlag_None = 0,
-	BfResolveArgFlag_FromGeneric = 1
+	BfResolveArgFlag_FromGeneric = 1,
+	BfResolveArgFlag_FromGenericParam = 2
 };
 
 class BfResolvedArg
@@ -141,6 +142,7 @@ public:
 	{
 		return (int)mCheckMethodGenericArguments->size() - mInferredCount;
 	}
+	void InferGenericArguments(BfMethodInstance* methodInstance);
 };
 
 class BfMethodMatcher

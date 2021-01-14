@@ -241,6 +241,17 @@ namespace Tests
 			return 0;
 		}
 
+		public static TResult Sum<T, TElem, TDlg, TResult>(this T it, TDlg dlg)
+		    where T: concrete, IEnumerable<TElem>
+		    where TDlg: delegate TResult(TElem)
+		    where TResult: operator TResult + TResult
+		{
+		    var result = default(TResult);
+		    for(var elem in it)
+		        result += dlg(elem);
+		    return result;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -293,6 +304,8 @@ namespace Tests
 				} == false);*/
 			Test.Assert(MethodE(floatList) == 6);
 			Test.Assert(MethodF(floatList) == 0);
+
+			Test.Assert(floatList.Sum((x) => x * 2) == 12);
 		}
 	}
 

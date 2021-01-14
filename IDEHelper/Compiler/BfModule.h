@@ -74,6 +74,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_NoLookupError = 0x40000,
 	BfEvalExprFlags_Comptime = 0x80000,
 	BfEvalExprFlags_InCascade = 0x100000,
+	BfEvalExprFlags_InferReturnType = 0x200000,
+	BfEvalExprFlags_WasMethodRef = 0x400000
 };
 
 enum BfCastFlags
@@ -652,6 +654,13 @@ public:
 	Array<BfMixinRecord> mMixinStateRecords;
 };
 
+enum BfReturnTypeInferState
+{
+	BfReturnTypeInferState_None,
+	BfReturnTypeInferState_Inferring,
+	BfReturnTypeInferState_Fail,
+};
+
 class BfClosureState
 {
 public:
@@ -661,6 +670,7 @@ public:
 	// When we need to look into another local method to determine captures, but we don't want to process local variable declarations or cause infinite recursion
 	bool mBlindCapturing;
 	bool mDeclaringMethodIsMutating;	
+	BfReturnTypeInferState mReturnTypeInferState;
 	BfLocalMethod* mLocalMethod;
 	BfClosureInstanceInfo* mClosureInstanceInfo;
 	BfMethodDef* mClosureMethodDef;
@@ -684,6 +694,7 @@ public:
 		mCaptureStartAccessId = -1;
 		mBlindCapturing = false;
 		mDeclaringMethodIsMutating = false;
+		mReturnTypeInferState = BfReturnTypeInferState_None;
 		mActiveDeferredLocalMethod = NULL;		
 		mReturnType = NULL;
 		mClosureType = NULL;		

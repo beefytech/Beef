@@ -8037,6 +8037,8 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 
 	if (!exprEvaluator.mResult)
 	{
+		if ((flags & BfEvalExprFlags_InferReturnType) != 0)
+			return exprEvaluator.mResult;
 		if (!mCompiler->mPassInstance->HasFailed())
 			Fail("INTERNAL ERROR: No expression result returned but no error caught in expression evaluator", expr);
 		return BfTypedValue();

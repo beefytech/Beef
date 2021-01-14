@@ -4900,8 +4900,12 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 	if (mCurMethodInstance->IsMixin())
 		retType = NULL;
 
-	if (mCurMethodState->mClosureState != NULL)	
+	bool inferReturnType = false;
+	if (mCurMethodState->mClosureState != NULL)
+	{
 		retType = mCurMethodState->mClosureState->mReturnType;
+		inferReturnType = (mCurMethodState->mClosureState->mReturnTypeInferState != BfReturnTypeInferState_None);
+	}
 
 	auto checkScope = mCurMethodState->mCurScope;
 	while (checkScope != NULL)
@@ -4931,7 +4935,7 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 		checkLocalAssignData = checkLocalAssignData->mChainedAssignData;
 	}
 
-	if (retType == NULL)
+	if ((retType == NULL) && (!inferReturnType))
 	{
 		if (returnStmt->mExpression != NULL)
 		{
@@ -4972,7 +4976,38 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 		exprEvaluator.mReceivingValue = &mCurMethodState->mRetVal;	
 	if (mCurMethodInstance->mMethodDef->mIsReadOnly)
 		exprEvaluator.mAllowReadOnlyReference = true;
+
+	if (inferReturnType)
+		expectingReturnType = NULL;
+
 	auto retValue = CreateValueFromExpression(exprEvaluator, returnStmt->mExpression, expectingReturnType, BfEvalExprFlags_AllowRefExpr, &origType);	
+	
+	if ((retValue) && (inferReturnType))
+	{
+		if (mCurMethodState->mClosureState->mReturnType == NULL)
+			mCurMethodState->mClosureState->mReturnType = retValue.mType;
+		else
+		{
+			if ((retValue.mType == mCurMethodState->mClosureState->mReturnType) ||
+				(CanCast(retValue, mCurMethodState->mClosureState->mReturnType)))
+			{
+				// Leave as-is
+			}
+			else if (CanCast(GetFakeTypedValue(mCurMethodState->mClosureState->mReturnType), retValue.mType))
+			{
+				mCurMethodState->mClosureState->mReturnType = retValue.mType;
+			}
+			else
+			{
+				mCurMethodState->mClosureState->mReturnTypeInferState = BfReturnTypeInferState_Fail;
+			}
+		}
+	}
+	if ((retType == NULL) && (inferReturnType))
+		retType = mCurMethodState->mClosureState->mReturnType;
+	if (retType == NULL)
+		retType = GetPrimitiveType(BfTypeCode_None);
+
 	if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
 		alreadyWritten = exprEvaluator.mReceivingValue == NULL;
 	MarkScopeLeft(&mCurMethodState->mHeadScope);
