@@ -6018,6 +6018,9 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		}		
 	}
 
+	if (target.mType->IsConcreteInterfaceType())
+		target.mType = target.mType->GetUnderlyingType();
+
 	if (isArray || isSizedArray)
 	{
 		itrType = GetPrimitiveType(BfTypeCode_IntPtr);
