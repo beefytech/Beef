@@ -291,7 +291,7 @@ void BfStructuralVisitor::Visit(BfDelegateTypeRef* typeRef)
 	Visit(typeRef->ToBase());
 }
 
-void BfStructuralVisitor::Visit(BfDeclTypeRef* declTypeRef)
+void BfStructuralVisitor::Visit(BfExprModTypeRef* declTypeRef)
 {
 	Visit(declTypeRef->ToBase());
 }
@@ -1307,6 +1307,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "checked";
 	case BfToken_Class:
 		return "class";
+	case BfToken_Comptype:
+		return "comptype";
 	case BfToken_Concrete:
 		return "concrete";
 	case BfToken_Const:

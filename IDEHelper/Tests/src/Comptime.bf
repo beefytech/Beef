@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Collections;
 
 namespace Tests
 {
@@ -73,6 +74,40 @@ namespace Tests
 
 		}
 
+		struct DoublingEnumerator<TElem, TEnum> : IEnumerator<TElem>
+			where TElem : operator TElem + TElem
+			where TEnum : concrete, IEnumerator<TElem>
+		{
+			TEnum mEnum;
+
+			public this(TEnum e)
+			{
+				mEnum = e;
+			}
+
+			public Result<TElem> GetNext() mut
+			{
+				switch (mEnum.GetNext())
+				{
+				case .Ok(let val): return .Ok(val + val);
+				case .Err: return .Err;
+				}
+			}
+		}
+
+		static Type GetConcreteEnumerator<TCollection, TElem>() where TCollection : IEnumerable<TElem>
+		{
+			TCollection col = ?;
+			return col.GetEnumerator().GetType();
+		}
+
+		public static DoublingEnumerator<TElem, comptype(GetConcreteEnumerator<TCollection, TElem>())> GetDoublingEnumerator<TCollection, TElem>(this TCollection it)
+		    where TCollection: concrete, IEnumerable<TElem>
+		    where TElem : operator TElem + TElem
+		{
+		    return .(it.GetEnumerator());
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -88,6 +123,14 @@ namespace Tests
 
 			MethodA(34, 45);
 			Debug.Assert(LogAttribute.gLog == "Called Tests.Comptime.MethodA(int a, int b) 34 45");
+
+			List<float> fList = scope .() { 1, 2, 3 };
+			var e = fList.GetDoublingEnumerator();
+			Test.Assert(e.GetNext().Value == 2);
+			Test.Assert(e.GetNext().Value == 4);
+			Test.Assert(e.GetNext().Value == 6);
+
+			//Test.Assert(fList.DoubleVals() == 12);
 		}
 	}
 }

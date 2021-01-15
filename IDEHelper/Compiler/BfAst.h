@@ -122,6 +122,7 @@ enum BfToken : uint8
 	BfToken_Catch,
 	BfToken_Checked,
 	BfToken_Class,
+	BfToken_Comptype,
 	BfToken_Concrete,
 	BfToken_Const,
 	BfToken_Continue,
@@ -308,7 +309,7 @@ class BfLetTypeReference;
 class BfGenericInstanceTypeRef;
 class BfTupleTypeRef;
 class BfDelegateTypeRef;
-class BfDeclTypeRef;
+class BfExprModTypeRef;
 class BfCommentNode;
 class BfIfStatement;
 class BfParenthesizedExpression;
@@ -473,8 +474,8 @@ public:
 	virtual void Visit(BfArrayTypeRef* typeRef);
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef);
 	virtual void Visit(BfTupleTypeRef* typeRef);
-	virtual void Visit(BfDelegateTypeRef* typeRef);
-	virtual void Visit(BfDeclTypeRef* declTypeRef);
+	virtual void Visit(BfDelegateTypeRef* typeRef);	
+	virtual void Visit(BfExprModTypeRef* declTypeRef);
 	virtual void Visit(BfPointerTypeRef* typeRef);
 	virtual void Visit(BfNullableTypeRef* typeRef);
 	virtual void Visit(BfVariableDeclaration* varDecl);	
@@ -2543,16 +2544,16 @@ public:
 	BfAstNode* mCloseParen;
 };	BF_AST_DECL(BfDelegateTypeRef, BfTypeReference);
 
-class BfDeclTypeRef : public BfTypeReference
+class BfExprModTypeRef : public BfTypeReference
 {
 public:
-	BF_AST_TYPE(BfDeclTypeRef, BfTypeReference);
+	BF_AST_TYPE(BfExprModTypeRef, BfTypeReference);
 
 	BfTokenNode* mToken;
 	BfTokenNode* mOpenParen;
 	BfExpression* mTarget;
 	BfTokenNode* mCloseParen;
-};	BF_AST_DECL(BfDeclTypeRef, BfTypeReference);
+};	BF_AST_DECL(BfExprModTypeRef, BfTypeReference);
 
 enum BfGenericParamKind
 {	

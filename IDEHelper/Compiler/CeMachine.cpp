@@ -3480,6 +3480,19 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			return BfIRValue();
 		}
 
+		if (typeInst->IsInstanceOf(ceModule->mCompiler->mTypeTypeDef))
+		{
+			addr_ce addr = *(addr_ce*)(instData);
+			int typeId = GetTypeIdFromType(addr);
+			if (typeId <= 0)
+			{
+				Fail("Unable to locate return type type");
+				return BfIRValue();
+			}
+
+			return module->CreateTypeDataRef(module->mContext->mTypes[typeId]);
+		}
+
 		if (typeInst->IsObjectOrInterface())
 		{
 			Fail(StrFormat("Reference type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));
@@ -3846,7 +3859,12 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 	memStart = &mMemory[0];
 
 	addr_ce retInstAddr = retAddr;
-	if ((returnType->IsObject()) || (returnType->IsPointer()))
+
+	if (returnType->IsInstanceOf(mCeMachine->mCompiler->mTypeTypeDef))
+	{
+		// Allow
+	}
+	else if ((returnType->IsObject()) || (returnType->IsPointer()))
 	{
 		// Or pointer?
 		retInstAddr = *(addr_ce*)(memStart + retAddr);

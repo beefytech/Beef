@@ -142,6 +142,7 @@ public:
 	{
 		return (int)mCheckMethodGenericArguments->size() - mInferredCount;
 	}
+	bool InferGenericArguments(BfMethodInstance* methodInstance, int srcGenericIdx);
 	void InferGenericArguments(BfMethodInstance* methodInstance);
 };
 
@@ -212,7 +213,7 @@ public:
 
 public:
 	BfTypedValue ResolveArgTypedValue(BfResolvedArg& resolvedArg, BfType* checkType, BfTypeVector* genericArgumentsSubstitute, BfType *origCheckType = NULL, BfResolveArgFlags flags = BfResolveArgFlag_None);
-	bool InferFromGenericConstraints(BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs);
+	bool InferFromGenericConstraints(BfMethodInstance* methodInstance, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs);
 	void CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute, 
 		bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail);

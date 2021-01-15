@@ -955,7 +955,7 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfTypeReference* typeRef)
 		}
 	}
 	
-	if (auto declTypeRef = BfNodeDynCastExact<BfDeclTypeRef>(typeRef))
+	if (auto declTypeRef = BfNodeDynCastExact<BfExprModTypeRef>(typeRef))
 	{
 		mResult = DbgTypedValue();
 		VisitChild(declTypeRef->mTarget);

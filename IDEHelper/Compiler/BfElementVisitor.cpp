@@ -414,7 +414,7 @@ void BfElementVisitor::Visit(BfTupleTypeRef* typeRef)
 	VisitChild(typeRef->mCloseParen);
 }
 
-void BfElementVisitor::Visit(BfDeclTypeRef* typeRef)
+void BfElementVisitor::Visit(BfExprModTypeRef* typeRef)
 {
 	Visit(typeRef->ToBase());
 

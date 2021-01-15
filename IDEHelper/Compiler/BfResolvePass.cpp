@@ -126,7 +126,7 @@ BfAstNode* BfResolvePassData::FindBaseNode(BfAstNode* node)
 		{
 			baseNode = qualifiedNameNode->mRight;
 		}
-		else if (auto declTypeRef = BfNodeDynCast<BfDeclTypeRef>(baseNode))
+		else if (auto declTypeRef = BfNodeDynCast<BfExprModTypeRef>(baseNode))
 		{
 			baseNode = NULL;
 			break;

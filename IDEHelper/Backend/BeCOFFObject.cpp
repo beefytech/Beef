@@ -1986,6 +1986,12 @@ void BeCOFFObject::Generate(BeModule* module)
 	{
 		auto globalVar = module->mGlobalVariables[globalVarIdx];
 
+		if ((globalVar->mRefCount == 0) && (globalVar->mInitializer == NULL))
+		{
+			globalVarSyms.push_back(NULL);
+			continue;
+		}
+
 		BeMCSymbol* sym = mSymbols.Alloc();
 		sym->mType = globalVar->mType;
 		sym->mName = globalVar->mName;
@@ -2001,6 +2007,10 @@ void BeCOFFObject::Generate(BeModule* module)
 	for (int globalVarIdx = 0; globalVarIdx < (int)module->mGlobalVariables.size(); globalVarIdx++)
 	{
 		auto globalVar = module->mGlobalVariables[globalVarIdx];
+
+		if ((globalVar->mRefCount == 0) && (globalVar->mInitializer == NULL))		
+			continue;
+
 		auto sym = globalVarSyms[globalVarIdx];
 
 		if (globalVar->mInitializer != NULL)

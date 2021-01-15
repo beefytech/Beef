@@ -7296,7 +7296,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 	if ((mCEMachine != NULL) && (!mIsResolveOnly) && (mCEMachine->mRevisionExecuteTime > 0))
 	{
-		mPassInstance->OutputLine(StrFormat(":med Const evaluation time: %0.2fs", mCEMachine->mRevisionExecuteTime / 1000.0f));
+		mPassInstance->OutputLine(StrFormat(":med Comptime execution time: %0.2fs", mCEMachine->mRevisionExecuteTime / 1000.0f));
 	}
 	
 	BpLeave();	

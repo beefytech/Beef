@@ -44,6 +44,7 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mMappedObjectRevision = 0;
 	mDeleting = false;
 	mLockModules = false;
+	mAllowLockYield = true;
 
 	mCurTypeState = NULL;
 	mCurConstraintState = NULL;
@@ -255,9 +256,15 @@ void BfContext::EnsureHotMangledVirtualMethodNames()
 	}
 }
 
+void BfContext::CheckLockYield()
+{
+	if (mAllowLockYield)
+		mSystem->CheckLockYield();
+}
+
 bool BfContext::IsCancellingAndYield()
 {
-	mSystem->CheckLockYield();
+	CheckLockYield();
 	return mCompiler->mCanceling;
 }
 

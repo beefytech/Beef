@@ -103,7 +103,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		wantIgnoreWrites = true;
 	}
 
-	SetAndRestoreValue<bool> ignoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, wantIgnoreWrites);
+	SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, wantIgnoreWrites);
 	
 	auto prevInsertBlock = mModule->mBfIRBuilder->GetInsertBlock();
 
@@ -139,7 +139,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 					{
 						if ((flags & BfConstResolveFlag_RemapFromStringId) != 0)
 						{
-							ignoreWrites.Restore();
+							prevIgnoreWrites.Restore();
 							mModule->mBfIRBuilder->PopulateType(mResult.mType);
 							return BfTypedValue(mModule->GetStringObjectValue(stringId), mResult.mType);
 						}
@@ -203,7 +203,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		{
 			auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
 			if ((constant->mConstType == BfConstType_GlobalVar) && ((mBfEvalExprFlags & BfConstResolveFlag_AllowGlobalVariable) != 0))
-				isConst = false;
+				isConst = false;			
 		}
 		
 		if ((!isConst) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowNonConst) == 0))
@@ -232,6 +232,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 	}*/
 
 	mModule->FixIntUnknown(mResult);	
+	mModule->FixValueActualization(mResult);
 
 	return mResult;
 }

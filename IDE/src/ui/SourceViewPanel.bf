@@ -4947,7 +4947,7 @@ namespace IDE.ui
 	            {
 					if (mHoverResolveTask == null)
 					{
-						if ((!handlingHoverResolveTask) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning))
+						if ((!handlingHoverResolveTask) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning) && (gApp.mSettings.mEditorSettings.mHiliteCursorReferences))
 						{
 							ResolveParams resolveParams = new .();
 							resolveParams.mOverrideCursorPos = (int32)textIdx;

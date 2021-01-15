@@ -2889,6 +2889,10 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate)
 						if (SrcPtrHasToken("class"))
 							mToken = BfToken_Class;
 						break;
+					case TOKEN_HASH('c', 'o', 'm', 'p'):
+						if ((!mCompatMode) && (SrcPtrHasToken("comptype")))
+							mToken = BfToken_Comptype;
+						break;
 					case TOKEN_HASH('c', 'o', 'n', 'c'):
 						if ((!mCompatMode) && (SrcPtrHasToken("concrete")))
 							mToken = BfToken_Concrete;

@@ -637,7 +637,8 @@ enum BfGenericParamFlags : uint16
 	BfGenericParamFlag_Equals		= 0x400,
 	BfGenericParamFlag_Equals_Op    = 0x800,
 	BfGenericParamFlag_Equals_Type  = 0x1000,
-	BfGenericParamFlag_Equals_IFace = 0x2000
+	BfGenericParamFlag_Equals_IFace = 0x2000,
+	BfGenericParamFlag_ComptypeExpr = 0x4000
 };
 
 class BfConstraintDef

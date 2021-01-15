@@ -3408,12 +3408,12 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 		}
 
 		return hashVal;
-	}
-	else if (auto declTypeRef = BfNodeDynCastExact<BfDeclTypeRef>(typeRef))
+	}	
+	else if (auto exprModTypeRef = BfNodeDynCastExact<BfExprModTypeRef>(typeRef))
 	{
 		if (ctx->mResolvedType == NULL)
 		{
-			if (declTypeRef->mTarget != NULL)			
+			if (exprModTypeRef->mTarget != NULL)
 			{
 				BfTypedValue result;
 				//
@@ -3427,9 +3427,34 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 					SetAndRestoreValue<bool> ignoreWrites(ctx->mModule->mBfIRBuilder->mIgnoreWrites, true);
 					SetAndRestoreValue<bool> allowUninitReads(ctx->mModule->mCurMethodState->mAllowUinitReads, true);
 
-					result = ctx->mModule->CreateValueFromExpression(declTypeRef->mTarget);
+					if (exprModTypeRef->mToken->mToken == BfToken_Comptype)
+						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, ctx->mModule->ResolveTypeDef(ctx->mModule->mCompiler->mTypeTypeDef), BfEvalExprFlags_Comptime);
+					else
+						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget);
 				}
-				ctx->mResolvedType = result.mType;
+								
+				if ((result) && (exprModTypeRef->mToken->mToken == BfToken_Comptype))
+				{
+					auto constant = ctx->mModule->mBfIRBuilder->GetConstant(result.mValue);
+					if (constant != NULL)
+					{
+						if ((constant->mConstType == BfConstType_TypeOf) || (constant->mConstType == BfConstType_TypeOf_WithData))
+						{
+							auto typeOf = (BfTypeOf_Const*)constant;
+							ctx->mResolvedType = typeOf->mType;
+						}
+						else if (constant->mConstType == BfConstType_Undef)
+						{							
+							ctx->mHadVar = true;
+							ctx->mResolvedType = ctx->mModule->GetPrimitiveType(BfTypeCode_Var);
+						}
+					}
+					
+					if (ctx->mResolvedType == NULL)
+						ctx->mModule->Fail("Constant System.Type value required", exprModTypeRef->mTarget);
+				}
+				else
+					ctx->mResolvedType = result.mType;
 			}
 		}
 
@@ -3875,7 +3900,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 		}
 	}
 	
-	if (auto declTypeRef = BfNodeDynCastExact<BfDeclTypeRef>(rhs))
+	if (auto declTypeRef = BfNodeDynCastExact<BfExprModTypeRef>(rhs))
 	{
 		BF_ASSERT(ctx->mResolvedType != NULL);
 		return lhs == ctx->mResolvedType;

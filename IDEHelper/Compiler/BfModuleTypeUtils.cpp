@@ -3515,7 +3515,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						fieldInstance->mIsEnumPayloadCase = true;
 					}
 				}
-				else if ((field->mTypeRef != NULL) && ((field->mTypeRef->IsExact<BfVarTypeReference>()) || (field->mTypeRef->IsExact<BfLetTypeReference>()) || (field->mTypeRef->IsExact<BfDeclTypeRef>())))
+				else if ((field->mTypeRef != NULL) && ((field->mTypeRef->IsExact<BfVarTypeReference>()) || (field->mTypeRef->IsExact<BfLetTypeReference>()) || (field->mTypeRef->IsExact<BfExprModTypeRef>())))
 				{
 					resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);
 
@@ -5153,7 +5153,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			if ((mContext->mFieldResolveReentrys.size() == 0) && (!mContext->mResolvingVarField))
 			{
 				disableYield.Release();
-				mSystem->CheckLockYield();
+				mContext->CheckLockYield();
 				disableYield.Acquire();
 			}
 		}
@@ -6256,6 +6256,21 @@ void BfModule::FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs)
 
 	FixIntUnknown(lhs);
 	FixIntUnknown(rhs);
+}
+
+void BfModule::FixValueActualization(BfTypedValue& typedVal)
+{
+	if (!typedVal.mValue.IsConst())
+		return;	
+	if (mBfIRBuilder->mIgnoreWrites)
+		return;
+	auto constant = mBfIRBuilder->GetConstant(typedVal.mValue);
+	if (constant->mConstType == BfConstType_TypeOf)
+	{				
+		auto constTypeOf = (BfTypeOf_Const*)constant;
+		AddDependency(constTypeOf->mType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+		typedVal.mValue = CreateTypeDataRef(constTypeOf->mType);
+	}
 }
 
 BfTypeInstance* BfModule::GetPrimitiveStructType(BfTypeCode typeCode)
@@ -7858,7 +7873,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 								{
 									baseNode = qualifiedNameNode->mRight;
 								}
-								else if (auto declTypeRef = BfNodeDynCast<BfDeclTypeRef>(baseNode))
+								else if (auto declTypeRef = BfNodeDynCast<BfExprModTypeRef>(baseNode))
 								{
 									baseNode = NULL;
 									break;
@@ -8868,6 +8883,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 							return GetGenericParamType(BfGenericParamKind_Method, genericParamIdx);
 						else
 						{
+							if ((mContext->mCurConstraintState != NULL) && (mContext->mCurConstraintState->mMethodInstance == checkMethodInstance) && 
+								(mContext->mCurConstraintState->mMethodGenericArgsOverride != NULL))
+							{
+								return ResolveTypeResult(typeRef, (*mContext->mCurConstraintState->mMethodGenericArgsOverride)[genericParamIdx], populateType, resolveFlags);
+							}
+
 							SetAndRestoreValue<BfGetSymbolReferenceKind> prevSymbolRefKind;
 							if (mCompiler->mResolvePassData != NULL) // Don't add these typeRefs, they are indirect
 								prevSymbolRefKind.Init(mCompiler->mResolvePassData->mGetSymbolReferenceKind, BfGetSymbolReferenceKind_None);
@@ -9334,10 +9355,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;
 	BfResolvedTypeSet::Entry* resolvedEntry = NULL;
-	auto inserted = mContext->mResolvedTypes.Insert(typeRef, &lookupCtx, &resolvedEntry);
-	
+	auto inserted = mContext->mResolvedTypes.Insert(typeRef, &lookupCtx, &resolvedEntry);	
+
 	if (resolvedEntry == NULL)
-	{		
+	{
+		if (lookupCtx.mHadVar)
+			return ResolveTypeResult(typeRef, GetPrimitiveType(BfTypeCode_Var), populateType, resolveFlags);
 		return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 	}
 
@@ -9620,7 +9643,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		for (auto genericArgRef : genericArguments)
 		{
 			auto genericArg = ResolveTypeRef(genericArgRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowGenericTypeParamConstValue | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue));
-			if (genericArg == NULL)
+			if ((genericArg == NULL) || (genericArg->IsVar()))
 			{
 				mContext->mResolvedTypes.RemoveEntry(resolvedEntry);
 				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);

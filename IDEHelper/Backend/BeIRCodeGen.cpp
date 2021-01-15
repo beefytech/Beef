@@ -710,6 +710,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			}
 			else
 				beValue = GetBeValue(streamId);
+			beValue->mRefCount++;
 			BE_MEM_END("ParamType_Const_GlobalVar");
 			return;
 		}		

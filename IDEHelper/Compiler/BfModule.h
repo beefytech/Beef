@@ -1762,6 +1762,7 @@ public:
 	BfType* FixIntUnknown(BfType* type);
 	void FixIntUnknown(BfTypedValue& typedVal, BfType* matchType = NULL);	
 	void FixIntUnknown(BfTypedValue& lhs, BfTypedValue& rhs);
+	void FixValueActualization(BfTypedValue& typedVal);
 	bool TypeEquals(BfTypedValue& val, BfType* type);
 	BfTypeDef* ResolveGenericInstanceDef(BfGenericInstanceTypeRef* genericTypeRef, BfType** outType = NULL, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);

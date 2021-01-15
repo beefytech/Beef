@@ -588,53 +588,40 @@ bool BfGenericInferContext::InferGenericArgument(BfMethodInstance* methodInstanc
 	return true;
 }
 
+bool BfGenericInferContext::InferGenericArguments(BfMethodInstance* methodInstance, int srcGenericIdx)
+{
+	auto& srcGenericArg = (*mCheckMethodGenericArguments)[srcGenericIdx];
+	if (srcGenericArg == NULL)
+		return false;
+
+	int startInferCount = mInferredCount;
+
+	auto srcGenericParam = methodInstance->mMethodInfoEx->mGenericParams[srcGenericIdx];
+	for (auto ifaceConstraint : srcGenericParam->mInterfaceConstraints)
+	{
+		if ((ifaceConstraint->IsUnspecializedTypeVariation()) && (ifaceConstraint->IsGenericTypeInstance()))
+		{
+			InferGenericArgument(methodInstance, srcGenericArg, ifaceConstraint, BfIRValue());
+			auto typeInstance = srcGenericArg->ToTypeInstance();
+			if (typeInstance != NULL)
+			{
+				for (auto ifaceEntry : typeInstance->mInterfaces)
+					InferGenericArgument(methodInstance, ifaceEntry.mInterfaceType, ifaceConstraint, BfIRValue());
+			}
+		}
+	}
+
+	return mInferredCount != startInferCount;
+}
+
 void BfGenericInferContext::InferGenericArguments(BfMethodInstance* methodInstance)
 {
 	// Attempt to infer from other generic args
 	for (int srcGenericIdx = 0; srcGenericIdx < (int)mCheckMethodGenericArguments->size(); srcGenericIdx++)
 	{
-		auto& srcGenericArg = (*mCheckMethodGenericArguments)[srcGenericIdx];
-		if (srcGenericArg == NULL)
-			continue;
-
-		auto srcGenericParam = methodInstance->mMethodInfoEx->mGenericParams[srcGenericIdx];
-		for (auto ifaceConstraint : srcGenericParam->mInterfaceConstraints)
-		{
-			if ((ifaceConstraint->IsUnspecializedTypeVariation()) && (ifaceConstraint->IsGenericTypeInstance()))
-			{
-				InferGenericArgument(methodInstance, srcGenericArg, ifaceConstraint, BfIRValue());
-				auto typeInstance = srcGenericArg->ToTypeInstance();
-				if (typeInstance != NULL)
-				{
-					for (auto ifaceEntry : typeInstance->mInterfaces)
-						InferGenericArgument(methodInstance, ifaceEntry.mInterfaceType, ifaceConstraint, BfIRValue());
-				}
-			}
-		}
+		InferGenericArguments(methodInstance, srcGenericIdx);
 	}
 }
-
-// void BfGenericInferContext::PropogateInference(BfType* resolvedType, BfType* unresovledType)
-// {
-// 	if (!unresovledType->IsUnspecializedTypeVariation())
-// 		return;
-// 
-// 	auto resolvedTypeInstance = resolvedType->ToTypeInstance();
-// 	auto unresolvedTypeInstance = unresovledType->ToTypeInstance();
-// 
-// 	if ((resolvedTypeInstance == NULL) || (unresolvedTypeInstance == NULL))
-// 		return;
-// 	if (resolvedTypeInstance->mTypeDef != unresolvedTypeInstance->mTypeDef)
-// 		return;
-// 
-// 	if (unres)
-// 
-// 	if (resolvedType->IsGenericTypeInstance())
-// 	{
-// 		
-// 
-// 	}
-// }
 
 int BfMethodMatcher::GetMostSpecificType(BfType* lhs, BfType* rhs)
 {
@@ -1440,10 +1427,10 @@ bool BfMethodMatcher::WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInst
 	return true;
 }
 
-bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs)
+bool BfMethodMatcher::InferFromGenericConstraints(BfMethodInstance* methodInstance, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs)
 {
-	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Equals) == 0)
-		return false;
+// 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Equals) == 0)
+// 		return false;
 
 	if (!genericParamInst->mExternType->IsGenericParam())
 		return false;
@@ -1490,6 +1477,9 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* generi
 
 		if (checkOpConstraint.mBinaryOp != BfBinaryOp_None)
 		{
+			if ((leftType == NULL) || (rightType == NULL))
+				continue;
+
 			BfExprEvaluator exprEvaluator(mModule);
 
 			BfTypedValue leftValue(mModule->mBfIRBuilder->GetFakeVal(), leftType);
@@ -1507,6 +1497,9 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* generi
 		}
 		else
 		{
+			if (rightType == NULL)
+				continue;
+
 			BfTypedValue rightValue(mModule->mBfIRBuilder->GetFakeVal(), rightType);
 
 			StringT<128> failedOpName;
@@ -1534,6 +1527,28 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfGenericParamInstance* generi
 						checkArgType = exprEvaluator.mResult.mType;					
 				}
 			}			
+		}
+	}
+
+	if ((checkArgType == NULL) && ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_ComptypeExpr) != 0))
+	{
+		for (auto comptypeConstraint : genericParamInst->mComptypeConstraint)
+		{
+			BfConstraintState constraintSet;
+			constraintSet.mPrevState = mModule->mContext->mCurConstraintState;
+			constraintSet.mGenericParamInstance = genericParamInst;
+			constraintSet.mMethodInstance = methodInstance;
+			constraintSet.mMethodGenericArgsOverride = methodGenericArgs;
+			
+			SetAndRestoreValue<BfConstraintState*> prevConstraintSet(mModule->mContext->mCurConstraintState, &constraintSet);
+			if (!mModule->CheckConstraintState(NULL))
+				return false;
+
+			SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mModule->mCurMethodInstance, methodInstance);
+			SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mModule->mCurTypeInstance, methodInstance->GetOwner());
+			SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
+
+			checkArgType = mModule->ResolveTypeRef(comptypeConstraint);
 		}
 	}
 
@@ -1857,23 +1872,55 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 				}
 
 				paramIdx++;
-			}			
-		}
-
-		//
-		for (int genericArgIdx = uniqueGenericStartIdx; genericArgIdx < (int)checkMethod->mGenericParams.size(); genericArgIdx++)
-		{
-			auto& genericArg = mCheckMethodGenericArguments[genericArgIdx];
-			if (genericArg == NULL)
-			{
-				auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericArgIdx];
-				InferFromGenericConstraints(genericParam, &mCheckMethodGenericArguments);
-				if (genericArg != NULL)
-					continue;
-				if (!allowEmptyGenericSet.Contains(genericArgIdx))
-					goto NoMatch;
 			}
 		}
+
+// 		while (true)
+// 		{
+// 
+// 		}
+
+		//
+
+		bool failed = false;
+		bool inferredAllGenericArguments = false;
+		for (int pass = 0; true; pass++)
+		{
+			bool madeProgress = false;
+			bool hasUninferred = false;
+			failed = false;
+
+			for (int genericArgIdx = uniqueGenericStartIdx; genericArgIdx < (int)checkMethod->mGenericParams.size(); genericArgIdx++)
+			{
+				auto& genericArg = mCheckMethodGenericArguments[genericArgIdx];
+				if (genericArg == NULL)
+				{
+					auto genericParam = methodInstance->mMethodInfoEx->mGenericParams[genericArgIdx];
+					InferFromGenericConstraints(methodInstance, genericParam, &mCheckMethodGenericArguments);
+					if (genericArg != NULL)
+					{
+						if (inferredAllGenericArguments)
+							genericInferContext.InferGenericArguments(methodInstance, genericArgIdx);						
+						madeProgress = true;
+					}
+					hasUninferred = true;
+					if (!allowEmptyGenericSet.Contains(genericArgIdx))
+						failed = true;
+				}
+			}
+
+			if (!hasUninferred)
+				break;
+			if (inferredAllGenericArguments)
+			{
+				if (!madeProgress)
+					break;
+			}
+			genericInferContext.InferGenericArguments(methodInstance);
+			inferredAllGenericArguments = true;
+		}
+		if (failed)
+			goto NoMatch;
 	}
 
 	if (checkMethod->mMethodType == BfMethodType_Extension)
@@ -2538,7 +2585,7 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 	if ((mModule->mCompiler->IsAutocomplete()) || (mModule->mContext->mResolvingVarField))
 		return;
 
-	if (mModule->mBfIRBuilder->mIgnoreWrites)
+	if ((mModule->mBfIRBuilder->mIgnoreWrites) && (!mBestMethodDef->mIsConcrete))
 		return;
 
 	if (mBestMethodTypeInstance->IsInterface())
@@ -5169,6 +5216,17 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	auto _GetDefaultReturnValue = [&]()
 	{
+		if (methodInstance->mVirtualTableIdx == -1)
+		{
+			if (methodInstance->GetOwner()->IsInterface())
+			{
+				// We're attempting to directly invoke a non-virtual interface method, if we're return an interface then 
+				//  it is a concrete interface
+				if (returnType->IsInterface())
+					returnType = mModule->CreateConcreteInterfaceType(returnType->ToTypeInstance());
+			}
+		}
+
 		if ((returnType->IsVar()) && (mExpectingType != NULL))
 			returnType = mExpectingType;
 		if (returnType->IsRef())
@@ -5241,19 +5299,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		if (wantQuickEval)
 		{
 			// In an autocomplete pass we may have stale method references that need to be resolved
-					//  in the full classify pass, and in the full classify pass while just refreshing internals, we 
-					//  may have NULL funcs temporarily.  We simply skip generating the method call here.		
-			if (methodInstance->mVirtualTableIdx == -1)
-			{
-				if (methodInstance->GetOwner()->IsInterface())
-				{
-					// We're attempting to directly invoke a non-virtual interface method, if we're return an interface then 
-					//  it is a concrete interface
-					if (returnType->IsInterface())
-						returnType = mModule->CreateConcreteInterfaceType(returnType->ToTypeInstance());
-				}
-			}
-
+			//  in the full classify pass, and in the full classify pass while just refreshing internals, we 
+			//  may have NULL funcs temporarily.  We simply skip generating the method call here.					
 			if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0)
 			{
 				if (methodInstance->mReturnType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
@@ -5348,6 +5395,15 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			}
 			else
 			{
+				if (returnType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
+				{
+					if (mExpectingType->IsUndefSizedArray())
+					{
+						if (returnType->GetUnderlyingType() == mExpectingType->GetUnderlyingType())
+							return mModule->GetDefaultTypedValue(mExpectingType, true, BfDefaultValueKind_Undef);
+					}
+				}
+
 				return mModule->GetDefaultTypedValue(returnType, true, BfDefaultValueKind_Undef);
 			}
 
@@ -6148,7 +6204,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
  	if (!mModule->mCompiler->mIsResolveOnly)
 		sCallIdx++;
 	int callIdx = sCallIdx;
-	if (callIdx == 1177)
+	if (callIdx == 0x000020F9)
 	{
 		NOP;
 	}
@@ -7594,8 +7650,7 @@ bool BfExprEvaluator::CheckGenericCtor(BfGenericParamType* genericParamType, BfR
 	{
 		mModule->Fail(StrFormat("Must add 'where %s : struct' constraint to generic parameter to instantiate type without allocator", genericConstraint->GetGenericParamDef()->mName.c_str()), targetSrc);
 		success = false;
-	}
-	
+	}	
 
 	return success;
 }
@@ -7618,9 +7673,12 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		BF_ASSERT(!mFunctionBindResult->mOrigTarget);
 		mFunctionBindResult->mOrigTarget = origTarget;		
 	}
-
+	
 	if (target)
 	{
+		if (target.mType->IsConcreteInterfaceType())
+			target.mType = target.mType->GetUnderlyingType();
+
 		// Turn T* into a T, if we can
 		if ((target.mType->IsPointer()) && (target.mType->GetUnderlyingType()->IsGenericParam()))
 		{
@@ -9790,7 +9848,6 @@ void BfExprEvaluator::Visit(BfTypeOfExpression* typeOfExpr)
 	}
 
 	mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
-
 	mResult = BfTypedValue(mModule->CreateTypeDataRef(type), typeType);
 }
 
@@ -15579,6 +15636,11 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							return;
 						}
 					}
+				}
+				else if (expectingType->IsVar())
+				{
+					// Silently allow
+					gaveUnqualifiedDotError = true;
 				}
 				else
 				{

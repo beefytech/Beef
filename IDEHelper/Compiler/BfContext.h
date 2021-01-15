@@ -309,6 +309,8 @@ public:
 	BfType* mLeftType;
 	BfType* mRightType;
 	BfConstraintState* mPrevState;
+	BfMethodInstance* mMethodInstance;
+	BfTypeVector* mMethodGenericArgsOverride;
 
 public:
 	BfConstraintState()
@@ -316,6 +318,8 @@ public:
 		mGenericParamInstance = NULL;
 		mLeftType = NULL;
 		mRightType = NULL;
+		mMethodInstance = NULL;
+		mMethodGenericArgsOverride = NULL;
 		mPrevState = NULL;
 	}
 
@@ -343,6 +347,7 @@ public:
 	BfSystem* mSystem;
 	BfCompiler* mCompiler;		
 	
+	bool mAllowLockYield;
 	bool mLockModules;
 	BfModule* mScratchModule;
 	BfModule* mUnreifiedModule;	
@@ -433,6 +438,7 @@ public:
 	void ReportMemory(MemReporter* memReporter);
 	void ProcessMethod(BfMethodInstance* methodInstance);
 	int GetStringLiteralId(const StringImpl& str);		
+	void CheckLockYield();
 	bool IsCancellingAndYield();
 	void QueueFinishModule(BfModule * module);
 	void CancelWorkItems();

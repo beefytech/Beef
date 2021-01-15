@@ -1104,6 +1104,7 @@ public:
 	BfType* mExternType;
 	Array<BfTypeInstance*> mInterfaceConstraints;
 	Array<BfGenericOperatorConstraintInstance> mOperatorConstraints;
+	Array<BfTypeReference*> mComptypeConstraint;
 	BfType* mTypeConstraint;
 	int mRefCount;
 
@@ -2428,7 +2429,7 @@ public:
 	{
 		BfHashFlag_None = 0,
 		BfHashFlag_AllowRef = 1,
-		BfHashFlag_AllowGenericParamConstValue = 2
+		BfHashFlag_AllowGenericParamConstValue = 2		
 	};
 	
 	class LookupContext
@@ -2440,6 +2441,7 @@ public:
 		BfTypeInstance* mRootOuterTypeInstance;
 		BfType* mResolvedType;		
 		BfResolveTypeRefFlags mResolveFlags;		
+		bool mHadVar;
 		bool mFailed;		
 
 	public:
@@ -2451,6 +2453,7 @@ public:
 			mModule = NULL;
 			mResolvedType = NULL;
 			mFailed = false;
+			mHadVar = false;
 			mResolveFlags = BfResolveTypeRefFlag_None;
 		}
 
@@ -2488,10 +2491,10 @@ public:
 		int tryCount = 0;		
 		ctx->mFailed = false;
 		int hashVal = Hash(findType, ctx, BfHashFlag_AllowRef);
-		if (ctx->mFailed)
+		if ((ctx->mFailed) || (ctx->mHadVar))
 		{			
 			return false;
-		}		
+		}
 		int bucket = (hashVal & 0x7FFFFFFF) % mHashSize;
 		auto checkEntry = mHashHeads[bucket];
 		while (checkEntry != NULL)

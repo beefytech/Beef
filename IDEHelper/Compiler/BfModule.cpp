@@ -3962,7 +3962,7 @@ void BfModule::ResolveConstField(BfTypeInstance* typeInstance, BfFieldInstance* 
 
 BfType* BfModule::ResolveVarFieldType(BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfFieldDef* field)
 {	
-	bool isDeclType = (field->mFieldDeclaration != NULL) && BfNodeDynCastExact<BfDeclTypeRef>(field->mFieldDeclaration->mTypeRef) != NULL;
+	bool isDeclType = (field->mFieldDeclaration != NULL) && BfNodeDynCastExact<BfExprModTypeRef>(field->mFieldDeclaration->mTypeRef) != NULL;
 
 	auto fieldType = fieldInstance->GetResolvedType();
 	if ((field->mIsConst) && (!isDeclType))
@@ -7280,9 +7280,16 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			else
 			{
 				bool checkEquality = false;
-
-				if (constraintType->IsPrimitiveType())
+				
+				if (constraintType->IsVar())
 				{
+					// From a `comptype` generic undef resolution. Ignore.
+					genericParamInstance->mGenericParamFlags |= BfGenericParamFlag_ComptypeExpr;
+					genericParamInstance->mComptypeConstraint.Add(constraintTypeRef);
+					continue;
+				}
+				else if (constraintType->IsPrimitiveType())
+				{					
 					if (isUnspecialized)
 					{
 						Fail("Primitive constraints are not allowed unless preceded with 'const'", constraintTypeRef);
@@ -7336,7 +7343,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				{
 					auto constraintTypeInst = constraintType->ToTypeInstance();
 					if (genericParamInstance->mTypeConstraint != NULL)
-					{						
+					{
 						if ((constraintTypeInst != NULL) && (TypeIsSubTypeOf(constraintTypeInst, genericParamInstance->mTypeConstraint->ToTypeInstance(), false)))
 						{
 							// Allow more specific type
@@ -8079,6 +8086,8 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 
 	if ((flags & BfEvalExprFlags_AllowIntUnknown) == 0)
 		FixIntUnknown(typedVal);
+	if (!mBfIRBuilder->mIgnoreWrites)
+		FixValueActualization(typedVal);
 	exprEvaluator.CheckResultForReading(typedVal);
 
 	if ((wantTypeRef == NULL) || (!wantTypeRef->IsRef()))
@@ -8098,7 +8107,7 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 			if (!allowRef)
 				typedVal = RemoveRef(typedVal);
 		}
-	}
+	}	
 
 	if ((!typedVal.mType->IsComposite()) && (!typedVal.mType->IsGenericParam())) // Load non-structs by default
 	{
@@ -8115,7 +8124,7 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 		if (outOrigType != NULL)
 			*outOrigType = typedVal.mType;
 
-		if ((flags & BfEvalExprFlags_NoCast) == 0)
+		if (((flags & BfEvalExprFlags_NoCast) == 0) && (!wantTypeRef->IsVar()))
 		{
 			BfCastFlags castFlags = ((flags & BfEvalExprFlags_ExplicitCast) != 0) ? BfCastFlags_Explicit : BfCastFlags_None;
 			if ((flags & BfEvalExprFlags_FieldInitializer) != 0)
@@ -8125,9 +8134,6 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 				return typedVal;
 		}
 
-		//WTF- why did we have this?
-		/*if ((flags & BfEvalExprFlags_ExplicitCast) == 0)
-			typedVal = LoadValue(typedVal, 0, exprEvaluator.mIsVolatileReference);*/
 		if (exprEvaluator.mIsVolatileReference)
 			typedVal = LoadValue(typedVal, 0, exprEvaluator.mIsVolatileReference);
 	}
@@ -13252,9 +13258,9 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 // 	if ((flags & BfGetMethodInstanceFlag_NoReference) != 0)
 // 		addToWorkList = false;
-	
-	declareModule->DoMethodDeclaration(methodDef->GetMethodDeclaration(), false, addToWorkList);
-	
+		
+	declareModule->DoMethodDeclaration(methodDef->GetMethodDeclaration(), false, addToWorkList);	
+
 	if (processNow)
 	{
 		SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
@@ -13805,6 +13811,16 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 				isByAddr = true;
 			}
 
+			if (diValue.IsConst())
+			{
+				auto constant = mBfIRBuilder->GetConstant(diValue);
+				if ((constant->mConstType == BfConstType_TypeOf) || (constant->mConstType == BfConstType_TypeOf_WithData))
+				{
+					// Ignore for now
+					return;
+				}
+			}
+
 			auto diType = mBfIRBuilder->DbgGetType(localVarDef->mResolvedType);
 			bool didConstToMem = false;
 
@@ -13882,7 +13898,7 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 						if (isByAddr)
 							localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertDeclare(diValue, diVariable, declareBefore);
 						else if (diValue)
-						{
+						{							
 							localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(diValue, diVariable);
 						}
 						else if (mCompiler->mOptions.mToolsetType != BfToolsetType_GNU) // DWARF chokes on this:
@@ -17390,7 +17406,7 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 			}
 			delete deferredLocalMethod;
 
-			mSystem->CheckLockYield();
+			mContext->CheckLockYield();
 		}
 	}
 
@@ -17455,7 +17471,7 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 			}
 		}
 
-		mSystem->CheckLockYield();
+		mContext->CheckLockYield();
 	}
 }
 
@@ -21169,7 +21185,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized || mCurTypeInstance->mResolvingVarField);
-	SetAndRestoreValue<bool> prevIsCapturingMethodMatchInfo;
+	SetAndRestoreValue<bool> prevIsCapturingMethodMatchInfo;	
+	SetAndRestoreValue<bool> prevAllowLockYield(mContext->mAllowLockYield, false);
 	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
 	if (mCompiler->IsAutocomplete())	
 		prevIsCapturingMethodMatchInfo.Init(mCompiler->mResolvePassData->mAutoComplete->mIsCapturingMethodMatchInfo, false);
@@ -21314,28 +21331,18 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			else
 			{
 				auto externConstraintDef = genericParam->GetExternConstraintDef();
-
-// 				if (unspecializedTypeInstance == NULL)
-// 					unspecializedTypeInstance = GetUnspecializedTypeInstance(mCurTypeInstance);
-// 				
-// 				// Resolve in the unspecialized type, then resolve the generic later. This fixes ambiguity where the type is specialized by a method generic arg
-// 				{
-// 					SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, unspecializedTypeInstance);
-// 					genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
-// 				}
-
 				genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
 
 				auto autoComplete = mCompiler->GetAutoComplete();
-if (autoComplete != NULL)
-autoComplete->CheckTypeRef(externConstraintDef->mTypeRef, false);
+				if (autoComplete != NULL)
+					autoComplete->CheckTypeRef(externConstraintDef->mTypeRef, false);
 
-if (genericParam->mExternType != NULL)
-{
-	//
-}
-else
-genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
+				if (genericParam->mExternType != NULL)
+				{
+					//
+				}
+				else
+					genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 			}
 
 			ResolveGenericParamConstraints(genericParam, methodInstance->mIsUnspecialized);
@@ -21486,7 +21493,8 @@ genericParam->mExternType = GetPrimitiveType(BfTypeCode_Var);
 
 		BfResolveTypeRefFlags flags = (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowRef | BfResolveTypeRefFlag_AllowRefGeneric);
 
-		if (((methodInstance->mComptimeFlags & BfComptimeFlag_ConstEval) != 0) && (methodDef->mReturnTypeRef->IsA<BfVarTypeReference>()))
+		if ((((methodInstance->mComptimeFlags & BfComptimeFlag_ConstEval) != 0) || (methodInstance->mIsAutocompleteMethod))
+			&& (methodDef->mReturnTypeRef->IsA<BfVarTypeReference>()))
 			resolvedReturnType = GetPrimitiveType(BfTypeCode_Var);		
 		else
 			resolvedReturnType = ResolveTypeRef(methodDef->mReturnTypeRef, BfPopulateType_Declaration, flags);		

@@ -1708,6 +1708,8 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 			// Statics, inner types
 			
 			auto checkType = targetValue.mType;			
+			if (checkType->IsConcreteInterfaceType())
+				checkType = checkType->GetUnderlyingType();
 
 			if (checkType->IsGenericParam())
 			{

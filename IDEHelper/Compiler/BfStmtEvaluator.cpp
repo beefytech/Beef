@@ -3420,8 +3420,8 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 		}
 		else
 			child->Accept(this);
-		
-		mSystem->CheckLockYield();
+				
+		mContext->CheckLockYield();
 
 		++itr;
 	}
@@ -3437,7 +3437,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 				//??
 				auto moduleMethodInstance = GetLocalMethodInstance(localMethod, BfTypeVector(), NULL, true);
 			}
-			mSystem->CheckLockYield();
+			mContext->CheckLockYield();
 		}
 
 		while ((int)mCurMethodState->mLocalMethods.size() > startLocalMethod)
@@ -4967,7 +4967,11 @@ void BfModule::Visit(BfReturnStatement* returnStmt)
 
 	BfType* expectingReturnType = retType;
 	if ((expectingReturnType != NULL) && (expectingReturnType->IsVar()))
-		expectingReturnType = NULL;
+	{
+		NOP;
+		// 		expectingReturnType = NULL;
+	}
+
 	
 	BfType* origType;
 	BfExprEvaluator exprEvaluator(this);

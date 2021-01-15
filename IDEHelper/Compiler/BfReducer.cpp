@@ -270,7 +270,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 			{
 				// Tuple start
 			}
-			else if ((checkToken == BfToken_Decltype) || (checkToken == BfToken_AllocType) || (checkToken == BfToken_RetType) || (checkToken == BfToken_Nullable))
+			else if ((checkToken == BfToken_Comptype) || (checkToken == BfToken_Decltype) || (checkToken == BfToken_AllocType) || (checkToken == BfToken_RetType) || (checkToken == BfToken_Nullable))
 			{
 				// Decltype start
 			}
@@ -777,7 +777,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int*
 					checkIdx = funcEndNode;
 					continue;
 				}
-				else if ((checkToken == BfToken_Decltype) || (checkToken == BfToken_AllocType) || (checkToken == BfToken_RetType) || (checkToken == BfToken_Nullable))
+				else if ((checkToken == BfToken_Comptype) || (checkToken == BfToken_Decltype) || (checkToken == BfToken_AllocType) || (checkToken == BfToken_RetType) || (checkToken == BfToken_Nullable))
 				{
 					int endNodeIdx = checkIdx + 1;
 
@@ -2231,7 +2231,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 					}
 				}
 			}
-			else if (tokenNode->GetToken() == BfToken_Decltype)
+			else if ((tokenNode->GetToken() == BfToken_Comptype) || (tokenNode->GetToken() == BfToken_Decltype))
 			{
 				auto typeRef = CreateTypeRef(tokenNode, CreateTypeRefFlags_EarlyExit);
 				if (typeRef != NULL)
@@ -4755,9 +4755,9 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					if ((createTypeRefFlags & CreateTypeRefFlags_EarlyExit) != 0)
 						return delegateTypeRef;
 				}
-				else if (token == BfToken_Decltype)
+				else if ((token == BfToken_Comptype) || (token == BfToken_Decltype))
 				{
-					auto declTypeRef = mAlloc->Alloc<BfDeclTypeRef>();
+					auto declTypeRef = mAlloc->Alloc<BfExprModTypeRef>();
 					ReplaceNode(tokenNode, declTypeRef);
 					declTypeRef->mToken = tokenNode;
 					tokenNode = ExpectTokenAfter(declTypeRef, BfToken_LParen);
@@ -5064,6 +5064,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 								(token == BfToken_LParen) ||
 								(token == BfToken_Delegate) ||
 								(token == BfToken_Function) ||
+								(token == BfToken_Comptype) ||
 								(token == BfToken_Decltype) ||
 								((token == BfToken_Star) && (mAllowTypeWildcard))))
 							doAddType = true;
@@ -6521,6 +6522,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, int depth, BfAstNode* defe
 			(token == BfToken_AllocType) ||
 			(token == BfToken_RetType) ||
 			(token == BfToken_Nullable) ||
+			(token == BfToken_Comptype) ||
 			(token == BfToken_Decltype) ||
 			(token == BfToken_LParen))
 		{
