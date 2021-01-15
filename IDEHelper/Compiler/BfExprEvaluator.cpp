@@ -1429,9 +1429,6 @@ bool BfMethodMatcher::WantsCheckMethod(BfProtectionCheckFlags& flags, BfTypeInst
 
 bool BfMethodMatcher::InferFromGenericConstraints(BfMethodInstance* methodInstance, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs)
 {
-// 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Equals) == 0)
-// 		return false;
-
 	if (!genericParamInst->mExternType->IsGenericParam())
 		return false;
 
@@ -1441,17 +1438,6 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfMethodInstance* methodInstan
 
 	BfType* checkArgType = NULL;
 	
-	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Equals_Type) != 0)
-	{
-		checkArgType = genericParamInst->mTypeConstraint;
-	}
-
-	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Equals_IFace) != 0)
-	{
-		if (!genericParamInst->mInterfaceConstraints.IsEmpty())
-			checkArgType = genericParamInst->mInterfaceConstraints[0];
-	}	
-
 	for (auto& checkOpConstraint : genericParamInst->mOperatorConstraints)
 	{
 		auto leftType = checkOpConstraint.mLeftType;
@@ -1491,8 +1477,8 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfMethodInstance* methodInstan
 				SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
 				exprEvaluator.PerformBinaryOperation(NULL, NULL, checkOpConstraint.mBinaryOp, NULL, BfBinOpFlag_NoClassify, leftValue, rightValue);
 			}
-
-			if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Equals_Op) != 0)
+			
+			if (exprEvaluator.mResult)
 				checkArgType = exprEvaluator.mResult.mType;
 		}
 		else
@@ -1522,8 +1508,8 @@ bool BfMethodMatcher::InferFromGenericConstraints(BfMethodInstance* methodInstan
 					BfExprEvaluator exprEvaluator(mModule);
 					exprEvaluator.mResult = rightValue;
 					exprEvaluator.PerformUnaryOperation(NULL, checkOpConstraint.mUnaryOp, NULL, BfUnaryOpFlag_IsConstraintCheck);
-					
-					if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_Equals_Op) != 0)
+				
+					if (exprEvaluator.mResult)
 						checkArgType = exprEvaluator.mResult.mType;					
 				}
 			}			

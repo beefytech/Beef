@@ -281,9 +281,7 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 			{
 				name = tokenPairNode->mLeft->ToString() + tokenPairNode->mRight->ToString();
 			}
-
-			bool hasEquals = (genericConstraint->mColonToken != NULL) && (genericConstraint->mColonToken->mToken == BfToken_AssignEquals);			
-
+			
 			if (!name.empty())
 			{
 				if ((name == "class") || (name == "struct") || (name == "struct*") || (name == "const") || (name == "var") || (name == "concrete") || (name == "interface") || (name == "enum"))
@@ -355,18 +353,6 @@ void BfDefBuilder::ParseGenericParams(BfGenericParamsDeclaration* genericParamsD
 					return;
 				}				
 			}
-
-			if (hasEquals)
-			{				
-				if (constraintDef->mConstraints.IsEmpty())
-				{
-					constraintDef->mGenericParamFlags = (BfGenericParamFlags)(constraintDef->mGenericParamFlags | BfGenericParamFlag_Equals);
-				}
-				else
-				{
-					Fail("Type assignment must be the first constraint", genericConstraint->mColonToken);
-				}
-			}			
 			
 			constraintDef->mConstraints.Add(constraintNode);
 		}

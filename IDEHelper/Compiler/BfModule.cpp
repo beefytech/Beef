@@ -7213,9 +7213,7 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 					continue;
 				}
 			}
-
-			if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Equals) != 0)
-				genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | BfGenericParamFlag_Equals_Op);
+			
 			genericParamInstance->mOperatorConstraints.Add(opConstraintInstance);
 
 			continue;
@@ -7322,21 +7320,13 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 					}
 					checkEquality = true;
 				}
-
-				if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Equals) != 0)
-				{
-					genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | BfGenericParamFlag_Equals_Type);
-					checkEquality = true;
-				}
-
+				
 				if (checkEquality)
 				{
 					genericParamInstance->mTypeConstraint = constraintType;
 				}
 				else if (constraintType->IsInterface())
-				{
- 					if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Equals) != 0)
- 						genericParamInstance->mGenericParamFlags = (BfGenericParamFlags)(genericParamInstance->mGenericParamFlags | BfGenericParamFlag_Equals_IFace);
+				{ 
 					genericParamInstance->mInterfaceConstraints.push_back(constraintType->ToTypeInstance());
 				}
 				else

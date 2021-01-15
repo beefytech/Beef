@@ -9565,7 +9565,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 		if (genericParamName != NULL)
 		{
 			MEMBER_SET(genericConstraint, mTypeRef, genericParamName);
-			tokenNode = ExpectTokenAfter(genericConstraint, BfToken_Colon, BfToken_AssignEquals);
+			tokenNode = ExpectTokenAfter(genericConstraint, BfToken_Colon);
 		}
 		else
 			isDone = true;

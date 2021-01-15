@@ -236,17 +236,17 @@ namespace System
 
         ///
 
-        public static TResult? operator+<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T + TOther where TResult : struct
+        public static TResult? operator+<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T + TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue + rhs);
         }
-        public static TResult? operator+<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther + T where TResult : struct
+        public static TResult? operator+<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther + T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs + rhs.mValue);
         }
-        public static TResult? operator+<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T + TOther where TResult : struct
+        public static TResult? operator+<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T + TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue + rhs.mValue);
@@ -254,19 +254,19 @@ namespace System
 
         ///
 
-        public static TResult? operator-<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther - T where TResult : struct
+        public static TResult? operator-<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther - T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs - rhs.mValue);
         }
 
-        public static TResult? operator-<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T - TOther where TResult : struct
+        public static TResult? operator-<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T - TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue - rhs);
         }
 
-        public static TResult? operator-<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T - TOther where TResult : struct
+        public static TResult? operator-<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T - TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue - rhs.mValue);
@@ -274,19 +274,19 @@ namespace System
 
         //
 
-        public static TResult? operator*<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther * T where TResult : struct
+        public static TResult? operator*<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther * T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs * rhs.mValue);
         }
 
-        public static TResult? operator*<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T * TOther where TResult : struct
+        public static TResult? operator*<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T * TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue * rhs);
         }
 
-        public static TResult? operator*<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T * TOther where TResult : struct
+        public static TResult? operator*<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T * TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue * rhs.mValue);
@@ -294,19 +294,19 @@ namespace System
 
         //
 
-        public static TResult? operator/<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther / T where TResult : struct
+        public static TResult? operator/<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther / T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs / rhs.mValue);
         }
 
-        public static TResult? operator/<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T / TOther where TResult : struct
+        public static TResult? operator/<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T / TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue / rhs);
         }
 
-        public static TResult? operator/<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T / TOther where TResult : struct
+        public static TResult? operator/<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T / TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue / rhs.mValue);
@@ -314,19 +314,19 @@ namespace System
 
         //
 
-        public static TResult? operator%<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther % T where TResult : struct
+        public static TResult? operator%<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther % T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs % rhs.mValue);
         }
 
-        public static TResult? operator%<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T % TOther where TResult : struct
+        public static TResult? operator%<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T % TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue % rhs);
         }
 
-        public static TResult? operator%<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T % TOther where TResult : struct
+        public static TResult? operator%<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T % TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue % rhs.mValue);
@@ -334,19 +334,19 @@ namespace System
 
         //
 
-        public static TResult? operator^<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther ^ T where TResult : struct
+        public static TResult? operator^<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther ^ T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs ^ rhs.mValue);
         }
 
-        public static TResult? operator^<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T ^ TOther where TResult : struct
+        public static TResult? operator^<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T ^ TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue ^ rhs);
         }
 
-        public static TResult? operator^<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T ^ TOther where TResult : struct
+        public static TResult? operator^<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T ^ TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue ^ rhs.mValue);
@@ -354,19 +354,19 @@ namespace System
 
         //
 
-        public static TResult? operator&<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther & T where TResult : struct
+        public static TResult? operator&<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther & T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs & rhs.mValue);
         }
 
-        public static TResult? operator&<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T & TOther where TResult : struct
+        public static TResult? operator&<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T & TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue & rhs);
         }
 
-        public static TResult? operator&<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T & TOther where TResult : struct
+        public static TResult? operator&<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T & TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue & rhs.mValue);
@@ -374,19 +374,19 @@ namespace System
 
         //
 
-        public static TResult? operator|<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther | T where TResult : struct
+        public static TResult? operator|<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther | T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs | rhs.mValue);
         }
 
-        public static TResult? operator|<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T | TOther where TResult : struct
+        public static TResult? operator|<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T | TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue | rhs);
         }
 
-        public static TResult? operator|<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T | TOther where TResult : struct
+        public static TResult? operator|<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T | TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue | rhs.mValue);
@@ -399,19 +399,19 @@ namespace System
 		    return (lhs.mHasValue) ? lhs.mValue : rhs;
 		}
 
-        public static TResult? operator??<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther ?? T where TResult : struct
+        public static TResult? operator??<TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther ?? T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs ?? rhs.mValue);
         }
 
-        public static TResult? operator??<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T ?? TOther where TResult : struct
+        public static TResult? operator??<TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T ?? TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue ?? rhs);
         }
 
-        public static TResult? operator??<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T ?? TOther where TResult : struct
+        public static TResult? operator??<TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T ?? TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue ?? rhs.mValue);
@@ -419,19 +419,19 @@ namespace System
 
         //
 
-        public static TResult? operator<< <TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult = operator TOther << T where TResult : struct
+        public static TResult? operator<< <TOther, TResult>(TOther lhs, Nullable<T> rhs) where TResult : operator TOther << T where TResult : struct
         {
             if (!rhs.mHasValue) return null;
             return Nullable<TResult>(lhs << rhs.mValue);
         }
 
-        public static TResult? operator<< <TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult = operator T << TOther where TResult : struct
+        public static TResult? operator<< <TOther, TResult>(Nullable<T> lhs, TOther rhs) where TResult : operator T << TOther where TResult : struct
         {
             if (!lhs.mHasValue) return null;
             return Nullable<TResult>(lhs.mValue << rhs);
         }
 
-        public static TResult? operator<< <TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult = operator T << TOther where TResult : struct
+        public static TResult? operator<< <TOther, TResult>(Nullable<T> lhs, Nullable<TOther> rhs) where TOther : struct where TResult : operator T << TOther where TResult : struct
         {
             if ((!lhs.mHasValue) || (!rhs.mHasValue)) return null;
             return Nullable<TResult>(lhs.mValue << rhs.mValue);
