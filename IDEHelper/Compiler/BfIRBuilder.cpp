@@ -4237,6 +4237,17 @@ BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, BfIRValue idx0, BfIRValu
 
 BfIRValue BfIRBuilder::CreateIsNull(BfIRValue val)
 {
+	auto constant = GetConstant(val);
+	if (constant != NULL)
+	{
+		if (constant->mTypeCode == BfTypeCode_NullPtr)
+			return CreateConst(BfTypeCode_Boolean, 1);
+		if (constant->mConstType == BfConstType_BitCastNull)
+			return CreateConst(BfTypeCode_Boolean, 1);
+		if (constant->mConstType == BfConstType_GlobalVar)
+			return CreateConst(BfTypeCode_Boolean, 0);
+	}
+
 	BfIRValue retVal = WriteCmd(BfIRCmd_IsNull, val);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;
@@ -4244,6 +4255,17 @@ BfIRValue BfIRBuilder::CreateIsNull(BfIRValue val)
 
 BfIRValue BfIRBuilder::CreateIsNotNull(BfIRValue val)
 {
+	auto constant = GetConstant(val);
+	if (constant != NULL)
+	{
+		if (constant->mTypeCode == BfTypeCode_NullPtr)
+			return CreateConst(BfTypeCode_Boolean, 0);
+		if (constant->mConstType == BfConstType_BitCastNull)
+			return CreateConst(BfTypeCode_Boolean, 0);
+		if (constant->mConstType == BfConstType_GlobalVar)
+			return CreateConst(BfTypeCode_Boolean, 1);		
+	}
+
 	BfIRValue retVal = WriteCmd(BfIRCmd_IsNotNull, val);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;
