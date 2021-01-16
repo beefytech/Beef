@@ -12791,11 +12791,18 @@ void BeMCContext::DoCodeEmission()
 									dbgStr += StrFormat("#### %d Dbg Start Gap %s\n", funcCodePos, dbgVar->mName.c_str());
 								}
 
-								// Starting a new gap
-								BeDbgVariableRange range;
-								range.mOffset = funcCodePos;
-								range.mLength = -1;
-								dbgVar->mGaps.push_back(range);
+								if (dbgVar->mDeclStart == -1)
+								{
+									// Ignore
+								}
+								else
+								{
+									// Starting a new gap
+									BeDbgVariableRange range;
+									range.mOffset = funcCodePos;
+									range.mLength = -1;
+									dbgVar->mGaps.push_back(range);
+								}
 							}
 						}
 					}
@@ -15794,7 +15801,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SATint@@PEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
+	//mDebugging = (function->mName == "?ConvertType@TestC@BeefTest@bf@@SAPEAVType@System@3@PEAVString@53@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
