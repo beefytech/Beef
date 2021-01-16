@@ -1351,6 +1351,8 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 				exprEvaluator.mExpectingType = expectType;
 				exprEvaluator.Evaluate(resolvedArg.mExpression);
 				argTypedValue = exprEvaluator.GetResult();
+				if ((argTypedValue) && (argTypedValue.mType->IsVar()))
+					argTypedValue = BfTypedValue();
 				
 				if (mModule->mCurMethodState != NULL)
 					mModule->mCurMethodState->mNoBind = prevNoBind;
