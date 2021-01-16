@@ -9350,7 +9350,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
-	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError));
+	lookupCtx.mResolveFlags = (BfResolveTypeRefFlags)(resolveFlags & (BfResolveTypeRefFlag_NoCreate | BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_DisallowComptime));
 	lookupCtx.mRootTypeRef = typeRef;
 	lookupCtx.mRootTypeDef = typeDef;
 	lookupCtx.mModule = this;

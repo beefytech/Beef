@@ -2890,6 +2890,7 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 			return true;
 		};
 
+		bool hadMethodInstance = false;
 		if (mCurMethodState != NULL)
 		{
 			auto checkMethodState = mCurMethodState;
@@ -2902,12 +2903,14 @@ BfError* BfModule::Fail(const StringImpl& error, BfAstNode* refNode, bool isPers
 					continue;
 				}
 
+				hadMethodInstance = true;
 				if (!_CheckMethodInstance(methodInstance))
 					return NULL;
 				checkMethodState = checkMethodState->mPrevMethodState;
 			}
 		}
-		else if (mCurMethodInstance != NULL)
+		
+		if ((!hadMethodInstance) && (mCurMethodInstance != NULL))
 		{
 			if (!_CheckMethodInstance(mCurMethodInstance))
 				return NULL;
@@ -7225,7 +7228,11 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 			bfAutocomplete->CheckTypeRef(constraintTypeRef, true);
 		//TODO: Constraints may refer to other generic params (of either type or method)
 		//  TO allow resolution, perhaps move this generic param initalization into GetMethodInstance (passing a genericPass bool)
-		auto constraintType = ResolveTypeRef(constraintTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowGenericMethodParamConstValue);
+
+		BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_AllowGenericMethodParamConstValue;
+		if (isUnspecialized)
+			resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_DisallowComptime);
+		auto constraintType = ResolveTypeRef(constraintTypeRef, BfPopulateType_Declaration, resolveFlags);
 		if (constraintType != NULL)
 		{
 			if ((constraintDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0)
@@ -17881,8 +17888,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}
 
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || methodInstance->mIsUnspecialized);
-	bool ignoreWrites = mBfIRBuilder->mIgnoreWrites;
-
+	
 	if ((HasCompiledOutput()) && (!mBfIRBuilder->mIgnoreWrites))
 	{
 		BF_ASSERT(!methodInstance->mIRFunction.IsFake() || (methodInstance->GetImportCallKind() != BfImportCallKind_None));
@@ -17952,6 +17958,9 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	auto typeDef = methodInstance->mMethodInstanceGroup->mOwner->mTypeDef;
 	auto methodDef = methodInstance->mMethodDef;
 	auto methodDeclaration = methodDef->GetMethodDeclaration();
+
+	if ((methodDef->mHasComptime) && (!mIsComptimeModule))
+		mBfIRBuilder->mIgnoreWrites = true;
 
 	if ((methodInstance->mIsReified) && (methodInstance->mVirtualTableIdx != -1))
 	{
@@ -18320,7 +18329,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 		}
 	}
 
-	bool wantsDIData = (mBfIRBuilder->DbgHasInfo()) && (!methodDef->IsEmptyPartial()) && (!mCurMethodInstance->mIsUnspecialized) && (mHasFullDebugInfo);
+	bool wantsDIData = (mBfIRBuilder->DbgHasInfo()) && (!methodDef->IsEmptyPartial()) && (!mBfIRBuilder->mIgnoreWrites) && (mHasFullDebugInfo);
 	if (methodDef->mMethodType == BfMethodType_Mixin)
 		wantsDIData = false;
 	
@@ -19709,7 +19718,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
         mBfIRBuilder->MoveBlockToEnd(mCurMethodState->mIRExitBlock);
 		mBfIRBuilder->SetInsertPoint(mCurMethodState->mIRExitBlock);
 
-		if (!mCurMethodState->mDIRetVal)
+		if ((!mCurMethodState->mDIRetVal) && (wantsDIData))
 			CreateDIRetVal();
 	}
 
@@ -19807,8 +19816,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	}	
 	
 	// Avoid linking any internal funcs that were just supposed to be comptime-accessible
-	if ((methodDef->mHasComptime) && (!mIsComptimeModule))
-		wantsRemoveBody = true;
+	/*if ((methodDef->mHasComptime) && (!mIsComptimeModule))
+		wantsRemoveBody = true;*/
 
 	if ((hasExternSpecifier) && (!skipBody))
 	{

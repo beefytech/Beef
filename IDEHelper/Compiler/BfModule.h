@@ -73,9 +73,10 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_StringInterpolateFormat = 0x20000,
 	BfEvalExprFlags_NoLookupError = 0x40000,
 	BfEvalExprFlags_Comptime = 0x80000,
-	BfEvalExprFlags_InCascade = 0x100000,
-	BfEvalExprFlags_InferReturnType = 0x200000,
-	BfEvalExprFlags_WasMethodRef = 0x400000
+	BfEvalExprFlags_DisallowComptime = 0x100000,
+	BfEvalExprFlags_InCascade = 0x200000,
+	BfEvalExprFlags_InferReturnType = 0x400000,
+	BfEvalExprFlags_WasMethodRef = 0x800000
 };
 
 enum BfCastFlags

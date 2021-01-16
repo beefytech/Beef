@@ -74,38 +74,21 @@ namespace Tests
 
 		}
 
-		struct DoublingEnumerator<TElem, TEnum> : IEnumerator<TElem>
-			where TElem : operator TElem + TElem
-			where TEnum : concrete, IEnumerator<TElem>
+		static Type GetBiggerType(Type t)
 		{
-			TEnum mEnum;
-
-			public this(TEnum e)
+			switch (t)
 			{
-				mEnum = e;
+			case typeof(int8): return typeof(int16);
+			case typeof(int16): return typeof(int32);
+			case typeof(int32): return typeof(int64);
+			case typeof(float): return typeof(double);
 			}
-
-			public Result<TElem> GetNext() mut
-			{
-				switch (mEnum.GetNext())
-				{
-				case .Ok(let val): return .Ok(val + val);
-				case .Err: return .Err;
-				}
-			}
+			return null;
 		}
 
-		static Type GetConcreteEnumerator<TCollection, TElem>() where TCollection : IEnumerable<TElem>
+		static TTo GetBigger<TFrom, TTo>(TFrom val) where TTo : comptype(GetBiggerType(typeof(TFrom))), operator explicit TFrom
 		{
-			TCollection col = ?;
-			return col.GetEnumerator().GetType();
-		}
-
-		public static DoublingEnumerator<TElem, comptype(GetConcreteEnumerator<TCollection, TElem>())> GetDoublingEnumerator<TCollection, TElem>(this TCollection it)
-		    where TCollection: concrete, IEnumerable<TElem>
-		    where TElem : operator TElem + TElem
-		{
-		    return .(it.GetEnumerator());
+			return (.)val;
 		}
 
 		[Test]
@@ -124,13 +107,8 @@ namespace Tests
 			MethodA(34, 45);
 			Debug.Assert(LogAttribute.gLog == "Called Tests.Comptime.MethodA(int a, int b) 34 45");
 
-			List<float> fList = scope .() { 1, 2, 3 };
-			var e = fList.GetDoublingEnumerator();
-			Test.Assert(e.GetNext().Value == 2);
-			Test.Assert(e.GetNext().Value == 4);
-			Test.Assert(e.GetNext().Value == 6);
-
-			//Test.Assert(fList.DoubleVals() == 12);
+			var v0 = GetBigger((int8)123);
+			Test.Assert(v0.GetType() == typeof(int16));
 		}
 	}
 }

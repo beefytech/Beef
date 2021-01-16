@@ -2912,6 +2912,9 @@ BfType* BfExprEvaluator::BindGenericType(BfAstNode* node, BfType* bindType)
 		if (!bindType->IsGenericParam())
 			return bindType;
 
+		if (genericTypeBindings == NULL)					
+			return bindType;		
+
 		(*genericTypeBindings)[nodeId] = bindType;
 		return bindType;
 	}
@@ -5336,6 +5339,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			else if (((methodInstance->mComptimeFlags & BfComptimeFlag_OnlyFromComptime) != 0) && (!mModule->mIsComptimeModule))
 			{
 				// This either generated an error already or this is just the non-const type check pass for a comptime-only method
+				doConstReturn = true;
+			}
+			else if ((mBfEvalExprFlags & BfEvalExprFlags_DisallowComptime) != 0)
+			{
 				doConstReturn = true;
 			}
 			else

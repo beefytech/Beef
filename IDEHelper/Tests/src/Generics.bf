@@ -252,6 +252,34 @@ namespace Tests
 		    return result;
 		}
 
+		struct DoublingEnumerator<TElem, TEnum> : IEnumerator<TElem>
+			where TElem : operator TElem + TElem
+			where TEnum : concrete, IEnumerator<TElem>
+		{
+			TEnum mEnum;
+
+			public this(TEnum e)
+			{
+				mEnum = e;
+			}
+
+			public Result<TElem> GetNext() mut
+			{
+				switch (mEnum.GetNext())
+				{
+				case .Ok(let val): return .Ok(val + val);
+				case .Err: return .Err;
+				}
+			}
+		}
+
+		static DoublingEnumerator<TElem, decltype(default(TCollection).GetEnumerator())> GetDoublingEnumerator<TCollection, TElem>(this TCollection it)
+		    where TCollection: concrete, IEnumerable<TElem>
+		    where TElem : operator TElem + TElem
+		{
+		    return .(it.GetEnumerator());
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -306,6 +334,11 @@ namespace Tests
 			Test.Assert(MethodF(floatList) == 0);
 
 			Test.Assert(floatList.Sum((x) => x * 2) == 12);
+
+			var e = floatList.GetDoublingEnumerator();
+			Test.Assert(e.GetNext().Value == 2);
+			Test.Assert(e.GetNext().Value == 4);
+			Test.Assert(e.GetNext().Value == 6);
 		}
 	}
 

@@ -3427,10 +3427,21 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 					SetAndRestoreValue<bool> ignoreWrites(ctx->mModule->mBfIRBuilder->mIgnoreWrites, true);
 					SetAndRestoreValue<bool> allowUninitReads(ctx->mModule->mCurMethodState->mAllowUinitReads, true);
 
+					BfEvalExprFlags exprFlags = BfEvalExprFlags_None;
+					if ((ctx->mResolveFlags & BfResolveTypeRefFlag_DisallowComptime) != 0)
+					{
+						exprFlags = (BfEvalExprFlags)(exprFlags | BfEvalExprFlags_DisallowComptime);
+					}
+
 					if (exprModTypeRef->mToken->mToken == BfToken_Comptype)
-						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, ctx->mModule->ResolveTypeDef(ctx->mModule->mCompiler->mTypeTypeDef), BfEvalExprFlags_Comptime);
+					{
+						exprFlags = (BfEvalExprFlags)(exprFlags | BfEvalExprFlags_Comptime);
+						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, ctx->mModule->ResolveTypeDef(ctx->mModule->mCompiler->mTypeTypeDef), exprFlags);
+					}
 					else
+					{
 						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget);
+					}
 				}
 								
 				if ((result) && (exprModTypeRef->mToken->mToken == BfToken_Comptype))

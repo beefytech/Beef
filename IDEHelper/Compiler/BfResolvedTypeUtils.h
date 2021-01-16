@@ -31,7 +31,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_Attribute = 0x100,
 	BfResolveTypeRefFlag_NoReify = 0x200,
 	BfResolveTypeRefFlag_NoCreate = 0x400,
-	BfResolveTypeRefFlag_NoWarnOnMut = 0x800
+	BfResolveTypeRefFlag_NoWarnOnMut = 0x800,
+	BfResolveTypeRefFlag_DisallowComptime = 0x1000
 };
 
 enum BfTypeNameFlags : uint16
