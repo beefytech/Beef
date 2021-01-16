@@ -9767,7 +9767,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 					{
 						String filter;
 						identiferNode->ToString(filter);
-						autoComplete->AddTypeMembers(typeInstance, false, true, filter, typeInstance, false, true);
+						autoComplete->AddTypeMembers(typeInstance, false, true, filter, typeInstance, false, true, false);
 					}
 				}
 			}

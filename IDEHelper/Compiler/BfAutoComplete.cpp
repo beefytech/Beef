@@ -744,7 +744,7 @@ void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, c
 	}
 }
 
-void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bool addNonStatic, const StringImpl& filter, BfTypeInstance* startType, bool allowInterfaces, bool allowImplicitThis)
+void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bool addNonStatic, const StringImpl& filter, BfTypeInstance* startType, bool allowInterfaces, bool allowImplicitThis, bool checkOuterType)
 {
 	bool isInterface = false;
 	
@@ -839,23 +839,23 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 	if (allowInterfaces)
 	{
 		for (auto iface : typeInst->mInterfaces)
-			AddTypeMembers(iface.mInterfaceType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis);
+			AddTypeMembers(iface.mInterfaceType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis, false);
 	}
 
 	if (typeInst->mBaseType != NULL)
-		AddTypeMembers(typeInst->mBaseType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis);
+		AddTypeMembers(typeInst->mBaseType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis, false);
 	else
 	{
 		if (typeInst->IsStruct())
-			AddTypeMembers(mModule->mContext->mBfObjectType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis);
+			AddTypeMembers(mModule->mContext->mBfObjectType, addStatic, addNonStatic, filter, startType, false, allowImplicitThis, false);
 	}
 
-	if ((addStatic) && (allowImplicitThis))
+	if ((addStatic) && (allowImplicitThis) && (checkOuterType))
 	{
 		auto outerType = mModule->GetOuterType(typeInst);
 		if (outerType != NULL)
 		{
-			AddTypeMembers(outerType, true, false, filter, startType, false, allowImplicitThis);
+			AddTypeMembers(outerType, true, false, filter, startType, false, allowImplicitThis, false);
 		}
 	}
 }
@@ -1419,7 +1419,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		mModule->PopulateGlobalContainersList(globalLookup);
 		for (auto& globalContainer : mModule->mContext->mCurTypeState->mGlobalContainers)
 		{
-			AddTypeMembers(globalContainer.mTypeInst, true, false, filter, globalContainer.mTypeInst, true, true);
+			AddTypeMembers(globalContainer.mTypeInst, true, false, filter, globalContainer.mTypeInst, true, true, false);
 		}
 	}
 		
@@ -1428,7 +1428,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	{
 		for (auto typeInst : staticSearch->mStaticTypes)
 		{
-			AddTypeMembers(typeInst, true, false, filter, typeInst, true, true);
+			AddTypeMembers(typeInst, true, false, filter, typeInst, true, true, false);
 			AddInnerTypes(typeInst, filter, false, false);
 		}
 	}
@@ -1446,11 +1446,11 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 				AddEntry(AutoCompleteEntry("object", "this"), filter);
 			else
 				AddEntry(AutoCompleteEntry("pointer", "this"), filter);
-			AddTypeMembers(mModule->mCurTypeInstance, true, true, filter, mModule->mCurTypeInstance, mModule->mCurTypeInstance->IsInterface(), true);
+			AddTypeMembers(mModule->mCurTypeInstance, true, true, filter, mModule->mCurTypeInstance, mModule->mCurTypeInstance->IsInterface(), true, true);
 		}
 		else
 		{
-			AddTypeMembers(mModule->mCurTypeInstance, true, false, filter, mModule->mCurTypeInstance, mModule->mCurTypeInstance->IsInterface(), true);
+			AddTypeMembers(mModule->mCurTypeInstance, true, false, filter, mModule->mCurTypeInstance, mModule->mCurTypeInstance->IsInterface(), true, true);
 		}
 
 		if (mModule->mCurMethodState != NULL)
@@ -1529,7 +1529,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 			staticOnly = false;
 
 		//BF_ASSERT(mModule->mCurTypeInstance->mResolvingConstField);
-		AddTypeMembers(mModule->mCurTypeInstance, true, !staticOnly, filter, mModule->mCurTypeInstance, false, true);
+		AddTypeMembers(mModule->mCurTypeInstance, true, !staticOnly, filter, mModule->mCurTypeInstance, false, true, true);
 	}
 
 	auto checkMethodState = mModule->mCurMethodState;
@@ -1721,7 +1721,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 					bool showStatics = !targetValue.mValue;
 
 					for (auto interfaceConstraint : genericParamInstance->mInterfaceConstraints)
-						AddTypeMembers(interfaceConstraint, showStatics, !showStatics, filter, interfaceConstraint, true, false);
+						AddTypeMembers(interfaceConstraint, showStatics, !showStatics, filter, interfaceConstraint, true, false, false);
 
 					if (genericParamInstance->mTypeConstraint != NULL)
 						checkType = genericParamInstance->mTypeConstraint;
@@ -1763,7 +1763,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 
 				if (!onlyShowTypes)
 				{
-					AddTypeMembers(typeInst, isStatic, !isStatic, filter, typeInst, false, false);
+					AddTypeMembers(typeInst, isStatic, !isStatic, filter, typeInst, false, false, false);
 
 					if (!isStatic)
 					{
@@ -1796,7 +1796,7 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 
 				if (typeInst->IsInterface())
 				{
-					AddTypeMembers(mModule->mContext->mBfObjectType, isStatic, !isStatic, filter, mModule->mContext->mBfObjectType, true, false);
+					AddTypeMembers(mModule->mContext->mBfObjectType, isStatic, !isStatic, filter, mModule->mContext->mBfObjectType, true, false, false);
 				}
 			}
 
