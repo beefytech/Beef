@@ -4676,9 +4676,12 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					
 					if ((!target.IsStatic()) || (prop->mIsStatic))
 					{						
-						if ((!curCheckType->IsTypeMemberIncluded(prop->mDeclaringType, activeTypeDef, mModule)) ||
-							(!curCheckType->IsTypeMemberAccessible(prop->mDeclaringType, activeTypeDef)))
-							continue;
+						if (!mModule->IsInSpecializedSection())
+						{
+							if ((!curCheckType->IsTypeMemberIncluded(prop->mDeclaringType, activeTypeDef, mModule)) ||
+								(!curCheckType->IsTypeMemberAccessible(prop->mDeclaringType, mModule->GetVisibleProjectSet())))
+								continue;
+						}
 
 						if (matchedProp != NULL)
 						{
@@ -7182,7 +7185,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 			}
 
 			if (!mModule->IsInSpecializedSection())
-			{				
+			{
 				if ((!curTypeInst->IsTypeMemberIncluded(checkMethod->mDeclaringType, activeTypeDef, mModule)) ||
 					(!curTypeInst->IsTypeMemberAccessible(checkMethod->mDeclaringType, visibleProjectSet)))
 					continue;
