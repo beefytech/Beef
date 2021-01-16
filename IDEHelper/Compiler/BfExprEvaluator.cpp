@@ -1328,8 +1328,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 				}
 
 				auto prevBlock = mModule->mBfIRBuilder->GetInsertBlock();
-
-				
+								
 				BfExprEvaluator exprEvaluator(mModule);									
 				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowIntUnknown | BfEvalExprFlags_NoAutoComplete);
 				if ((resolvedArg.mArgFlags & BfArgFlag_ParamsExpr) != 0)
@@ -1599,7 +1598,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		else
 		{
 			// Being in autocomplete mode is the only excuse for not having the virtual method table slotted
-			if ((!mModule->mCompiler->IsAutocomplete()) && (!targetTypeInstance->mTypeFailed))
+			if ((!mModule->mCompiler->IsAutocomplete()) && (!targetTypeInstance->mTypeFailed) && (!targetTypeInstance->IsUnspecializedTypeVariation()))
 			{
 				mModule->AssertErrorState();
 			}
@@ -8113,6 +8112,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 	bool skipThis = false;
 
+	BfTypedValue fieldVal;
+	bool hasFieldVal = false;
+
 	// Fail, check for delegate field invocation
 	if ((methodDef == NULL) && ((methodGenericArguments == NULL) || (methodGenericArguments->size() == 0)))
 	{
@@ -8145,8 +8147,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			}
 			return enumResult;
 		}
-
-		BfTypedValue fieldVal;
+		
 		if (allowImplicitThis)
 		{			
 			auto identifierNode = BfNodeDynCast<BfIdentifierNode>(targetSrc);
@@ -8159,148 +8160,23 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			fieldVal = LookupField(targetSrc, target, methodName);
 		}
 
-		if (mPropDef != NULL)
-			fieldVal = GetResult();
-
 		if (fieldVal)
-		{			
-			if (fieldVal.mType->IsGenericParam())
+		{
+			hasFieldVal = true;
+			wantsExtensionCheck = !fieldVal.mType->IsDelegate() && !fieldVal.mType->IsFunction();
+		}
+		else if (mPropDef != NULL)
+		{
+			hasFieldVal = true;
+
+			BfMethodDef* matchedMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind, mPropTarget);
+			if (matchedMethod != NULL)
 			{
-				bool delegateFailed = true;
-				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)fieldVal.mType);
-				BfTypeInstance* typeInstConstraint = NULL;
-				if (genericParamInstance->mTypeConstraint != NULL)
-					typeInstConstraint = genericParamInstance->mTypeConstraint->ToTypeInstance();
-				if ((typeInstConstraint != NULL) &&
-					((typeInstConstraint->mTypeDef == mModule->mCompiler->mDelegateTypeDef) || (typeInstConstraint->mTypeDef == mModule->mCompiler->mFunctionTypeDef)))
-				{
-					MarkResultUsed();
-					
-// 					if (argValues.mResolvedArgs.size() > 0)
-// 					{
-// 						if ((argValues.mResolvedArgs[0].mArgFlags & BfArgFlag_FromParamComposite) != 0)
-// 							delegateFailed = false;
-// 					}
-// 					else 
-						
-					if (argValues.mArguments->size() == 1)
-					{
-						BfExprEvaluator exprEvaluator(mModule);
-						exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_AllowParamsExpr;
-						exprEvaluator.Evaluate((*argValues.mArguments)[0]);
-						if ((mModule->mCurMethodState != NULL) && (exprEvaluator.mResultLocalVar != NULL) && (exprEvaluator.mResultLocalVarRefNode != NULL))
-						{	
-							/*if (exprEvaluator.mResult.mKind != BfTypedValueKind_Params)
-								mModule->Warn(0, "'params' token expected", (*argValues.mArguments)[0]);*/
-
-							auto localVar = exprEvaluator.mResultLocalVar;
-							if ((localVar->mCompositeCount >= 0) && (localVar->mResolvedType == fieldVal.mType))
-							{
-								delegateFailed = false;
-								if (mModule->mCurMethodInstance->mIsUnspecialized)
-								{
-									auto retTypeType = mModule->CreateModifiedTypeType(fieldVal.mType, BfToken_RetType);
-									return mModule->GetFakeTypedValue(retTypeType);
-								}
-							}
-						}
-					}
-					
-					if (delegateFailed)
-					{
-						mModule->Fail(StrFormat("Generic delegates can only be invoked with 'params %s' composite parameters", mModule->TypeToString(fieldVal.mType).c_str()), targetSrc);
-						return BfTypedValue();
-					}
-				}				
-			}
-
-			if (fieldVal.mType->IsTypeInstance())
-			{
-				prevBindResult.Restore();
-				auto fieldTypeInst = fieldVal.mType->ToTypeInstance();				
-				MarkResultUsed();
-				return MatchMethod(targetSrc, NULL, fieldVal, false, false, "Invoke", argValues, methodGenericArguments, checkedKind);				
-			}					
-			if (fieldVal.mType->IsVar())			
-				return BfTypedValue(mModule->GetDefaultValue(fieldVal.mType), fieldVal.mType);		
-			if (fieldVal.mType->IsGenericParam())
-			{					
-				auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)fieldVal.mType);
-				BfType* typeConstraint = genericParam->mTypeConstraint;
-
-				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
-				{
-					for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
-						genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
-					{
-						auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
-						if ((genericParam->mExternType == fieldVal.mType) && (genericParam->mTypeConstraint != NULL))
-							typeConstraint = genericParam->mTypeConstraint;
-					}
-				}
-				
-				if ((typeConstraint != NULL) &&
-					((typeConstraint->IsDelegate()) || (typeConstraint->IsFunction())))
-				{
-					BfMethodInstance* invokeMethodInstance = mModule->GetRawMethodInstanceAtIdx(typeConstraint->ToTypeInstance(), 0, "Invoke");
-
-					methodDef = invokeMethodInstance->mMethodDef;
-					methodMatcher.mBestMethodInstance = invokeMethodInstance;
-					methodMatcher.mBestMethodTypeInstance = invokeMethodInstance->GetOwner();
-					methodMatcher.mBestMethodDef = invokeMethodInstance->mMethodDef;
-					target = mModule->GetDefaultTypedValue(methodMatcher.mBestMethodTypeInstance);
-					isFailurePass = false;
-					isIndirectMethodCall = true;
-				}
-			}
-			else if (fieldVal.mType->IsMethodRef())
-			{
-				auto functionBindResults = prevBindResult.mPrevVal;
-				if (functionBindResults != NULL)
-				{
-					functionBindResults->mOrigTarget = fieldVal;										
-				}
-				origTarget = fieldVal;
-				
-				auto methodRefType = (BfMethodRefType*)fieldVal.mType;
-				BfMethodInstance* methodInstance = methodRefType->mMethodRef;
-				methodDef = methodInstance->mMethodDef;
-				if (methodDef->mIsLocalMethod)
-				{
-					methodMatcher.mBestMethodInstance = mModule->ReferenceExternalMethodInstance(methodInstance);
-				}
-				else
-				{					
-					BfTypeVector methodGenericArguments;
-					if (methodInstance->mMethodInfoEx != NULL)
-						methodGenericArguments = methodInstance->mMethodInfoEx->mMethodGenericArguments;
-					methodMatcher.mBestMethodInstance = mModule->GetMethodInstance(methodInstance->GetOwner(), methodInstance->mMethodDef, methodGenericArguments);
-				}
-				methodMatcher.mBestMethodTypeInstance = methodInstance->GetOwner();
-				if (methodInstance->HasThis())
-				{
-					bool failed = false;
-					target = DoImplicitArgCapture(targetSrc, methodInstance, -1, failed, BfImplicitParamKind_General, origTarget);
-				}
-				else if (!methodDef->mIsStatic)
-				{
-					auto thisType = methodInstance->GetParamType(-1);
-					BF_ASSERT(thisType->IsValuelessType());
-					target = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), methodMatcher.mBestMethodTypeInstance);
-				}
-				else
-					target = BfTypedValue(methodMatcher.mBestMethodTypeInstance);
-				methodMatcher.mBypassVirtual = true;
-				bypassVirtual = true;
-				isFailurePass = false;
-				isIndirectMethodCall = true;
-			}
-
-			if (methodDef == NULL)
-			{
-				mModule->Fail(StrFormat("Cannot perform invocation on type '%s'", mModule->TypeToString(fieldVal.mType).c_str()), targetSrc);
-				return BfTypedValue();
-			}
+				auto getMethodInstance = mModule->GetRawMethodInstance(mPropTarget.mType->ToTypeInstance(), matchedMethod);
+				if ((getMethodInstance != NULL) &&
+					((getMethodInstance->mReturnType->IsDelegate()) || (getMethodInstance->mReturnType->IsFunction())))
+					wantsExtensionCheck = false;
+			}						
 		}
 	}
 
@@ -8484,6 +8360,143 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 					curTypeInst = methodMatcher.mBestMethodTypeInstance;
 					methodDef = methodMatcher.mBestMethodDef;					
 				}
+			}
+		}
+	}
+
+	if ((methodDef == NULL) && (hasFieldVal))
+	{
+		if (mPropDef != NULL)
+			fieldVal = GetResult();
+
+		if (fieldVal)
+		{
+			if (fieldVal.mType->IsGenericParam())
+			{
+				bool delegateFailed = true;
+				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)fieldVal.mType);
+				BfTypeInstance* typeInstConstraint = NULL;
+				if (genericParamInstance->mTypeConstraint != NULL)
+					typeInstConstraint = genericParamInstance->mTypeConstraint->ToTypeInstance();
+				if ((typeInstConstraint != NULL) &&
+					((typeInstConstraint->mTypeDef == mModule->mCompiler->mDelegateTypeDef) || (typeInstConstraint->mTypeDef == mModule->mCompiler->mFunctionTypeDef)))
+				{
+					MarkResultUsed();
+
+					if (argValues.mArguments->size() == 1)
+					{
+						BfExprEvaluator exprEvaluator(mModule);
+						exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_AllowParamsExpr;
+						exprEvaluator.Evaluate((*argValues.mArguments)[0]);
+						if ((mModule->mCurMethodState != NULL) && (exprEvaluator.mResultLocalVar != NULL) && (exprEvaluator.mResultLocalVarRefNode != NULL))
+						{
+							auto localVar = exprEvaluator.mResultLocalVar;
+							if ((localVar->mCompositeCount >= 0) && (localVar->mResolvedType == fieldVal.mType))
+							{
+								delegateFailed = false;
+								if (mModule->mCurMethodInstance->mIsUnspecialized)
+								{
+									auto retTypeType = mModule->CreateModifiedTypeType(fieldVal.mType, BfToken_RetType);
+									return mModule->GetFakeTypedValue(retTypeType);
+								}
+							}
+						}
+					}
+
+					if (delegateFailed)
+					{
+						mModule->Fail(StrFormat("Generic delegates can only be invoked with 'params %s' composite parameters", mModule->TypeToString(fieldVal.mType).c_str()), targetSrc);
+						return BfTypedValue();
+					}
+				}
+			}
+
+			if (fieldVal.mType->IsTypeInstance())
+			{
+				prevBindResult.Restore();
+				auto fieldTypeInst = fieldVal.mType->ToTypeInstance();
+				MarkResultUsed();
+				return MatchMethod(targetSrc, NULL, fieldVal, false, false, "Invoke", argValues, methodGenericArguments, checkedKind);
+			}
+			if (fieldVal.mType->IsVar())
+				return BfTypedValue(mModule->GetDefaultValue(fieldVal.mType), fieldVal.mType);
+			if (fieldVal.mType->IsGenericParam())
+			{
+				auto genericParam = mModule->GetGenericParamInstance((BfGenericParamType*)fieldVal.mType);
+				BfType* typeConstraint = genericParam->mTypeConstraint;
+
+				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+				{
+					for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+						genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+					{
+						auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+						if ((genericParam->mExternType == fieldVal.mType) && (genericParam->mTypeConstraint != NULL))
+							typeConstraint = genericParam->mTypeConstraint;
+					}
+				}
+
+				if ((typeConstraint != NULL) &&
+					((typeConstraint->IsDelegate()) || (typeConstraint->IsFunction())))
+				{
+					BfMethodInstance* invokeMethodInstance = mModule->GetRawMethodInstanceAtIdx(typeConstraint->ToTypeInstance(), 0, "Invoke");
+
+					methodDef = invokeMethodInstance->mMethodDef;
+					methodMatcher.mBestMethodInstance = invokeMethodInstance;
+					methodMatcher.mBestMethodTypeInstance = invokeMethodInstance->GetOwner();
+					methodMatcher.mBestMethodDef = invokeMethodInstance->mMethodDef;
+					target = mModule->GetDefaultTypedValue(methodMatcher.mBestMethodTypeInstance);
+					isFailurePass = false;
+					isIndirectMethodCall = true;
+				}
+			}
+			else if (fieldVal.mType->IsMethodRef())
+			{
+				auto functionBindResults = prevBindResult.mPrevVal;
+				if (functionBindResults != NULL)
+				{
+					functionBindResults->mOrigTarget = fieldVal;
+				}
+				origTarget = fieldVal;
+
+				auto methodRefType = (BfMethodRefType*)fieldVal.mType;
+				BfMethodInstance* methodInstance = methodRefType->mMethodRef;
+				methodDef = methodInstance->mMethodDef;
+				if (methodDef->mIsLocalMethod)
+				{
+					methodMatcher.mBestMethodInstance = mModule->ReferenceExternalMethodInstance(methodInstance);
+				}
+				else
+				{
+					BfTypeVector methodGenericArguments;
+					if (methodInstance->mMethodInfoEx != NULL)
+						methodGenericArguments = methodInstance->mMethodInfoEx->mMethodGenericArguments;
+					methodMatcher.mBestMethodInstance = mModule->GetMethodInstance(methodInstance->GetOwner(), methodInstance->mMethodDef, methodGenericArguments);
+				}
+				methodMatcher.mBestMethodTypeInstance = methodInstance->GetOwner();
+				if (methodInstance->HasThis())
+				{
+					bool failed = false;
+					target = DoImplicitArgCapture(targetSrc, methodInstance, -1, failed, BfImplicitParamKind_General, origTarget);
+				}
+				else if (!methodDef->mIsStatic)
+				{
+					auto thisType = methodInstance->GetParamType(-1);
+					BF_ASSERT(thisType->IsValuelessType());
+					target = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), methodMatcher.mBestMethodTypeInstance);
+				}
+				else
+					target = BfTypedValue(methodMatcher.mBestMethodTypeInstance);
+				methodMatcher.mBypassVirtual = true;
+				bypassVirtual = true;
+				isFailurePass = false;
+				isIndirectMethodCall = true;
+			}
+
+			if (methodDef == NULL)
+			{
+				mModule->Fail(StrFormat("Cannot perform invocation on type '%s'", mModule->TypeToString(fieldVal.mType).c_str()), targetSrc);
+				return BfTypedValue();
 			}
 		}
 	}
@@ -10474,8 +10487,13 @@ void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 	}
 	else if ((!targetType->IsInterface()) && (!mModule->TypeIsSubTypeOf(targetTypeInstance, srcTypeInstance)))
 	{
-		mModule->Fail(StrFormat("Cannot convert type '%s' to '%s' via any conversion", 
-			mModule->TypeToString(targetValue.mType).c_str(), mModule->TypeToString(targetTypeInstance).c_str()), dynCastExpr->mAsToken);
+		if (!mModule->IsInSpecializedSection())
+		{
+			mModule->Fail(StrFormat("Cannot convert type '%s' to '%s' via any conversion",
+				mModule->TypeToString(targetValue.mType).c_str(), mModule->TypeToString(targetTypeInstance).c_str()), dynCastExpr->mAsToken);
+		}
+		mResult = mModule->GetDefaultTypedValue(targetType);
+		return;
 	}
 
 	if (autoComplete != NULL)	
