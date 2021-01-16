@@ -2236,6 +2236,28 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 	}
 }
 
+void BfModule::CreateRetValLocal()
+{
+	if (mCurMethodState->mRetVal)
+	{
+		BfLocalVariable* localDef = new BfLocalVariable();
+		localDef->mName = "return";
+		localDef->mResolvedType = mCurMethodState->mRetVal.mType;
+		localDef->mAddr = mCurMethodState->mRetVal.mValue;
+		localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;				
+		AddLocalVariableDef(localDef);
+	}
+	else if (mCurMethodState->mRetValAddr)
+	{
+		BfLocalVariable* localDef = new BfLocalVariable();
+		localDef->mName = "return";
+		localDef->mResolvedType = CreateRefType(mCurMethodInstance->mReturnType);
+		localDef->mAddr = mCurMethodState->mRetValAddr;
+		localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
+		AddLocalVariableDef(localDef);
+	}
+}
+
 void BfModule::MarkDynStack(BfScopeData* scopeData)
 {
 	auto checkScope = mCurMethodState->mCurScope;
@@ -5316,8 +5338,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 		else
 			typeDataVar = mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(mContext->mBfTypeType));
 				
-		mTypeDataRefs[typeInstance] = typeDataVar;
-
+		mTypeDataRefs[type] = typeDataVar;
 		return typeDataVar;
 	}
 	
@@ -6876,7 +6897,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 	}
 	typeDataVar = mBfIRBuilder->CreateBitCast(typeDataVar, mBfIRBuilder->MapType(mContext->mBfTypeType));
 
-	mTypeDataRefs[typeInstance] = typeDataVar;
+	mTypeDataRefs[typeInstance] = typeDataVar;	
 
 	if ((!mIsComptimeModule) && (classVDataVar))
 	{	
@@ -13972,7 +13993,7 @@ void BfModule::CreateDIRetVal()
 		}
 
 		mCurMethodState->mDIRetVal = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
-			"__return", mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, mBfIRBuilder->DbgGetType(dbgType));
+			"@return", mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, mBfIRBuilder->DbgGetType(dbgType));
 		auto declareCall = mBfIRBuilder->DbgInsertDeclare(dbgValue, mCurMethodState->mDIRetVal);
 	}	
 }
@@ -14292,6 +14313,9 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 			{
 				if (deferredCallEntry->mDeferredBlock != NULL)
 				{
+					if (checkScope == &mCurMethodState->mHeadScope)
+						CreateRetValLocal();
+
 					SetAndRestoreValue<BfAstNode*> prevCustomAttribute(mCurMethodState->mEmitRefNode, deferredCallEntry->mEmitRefNode);
 					VisitEmbeddedStatement(deferredCallEntry->mDeferredBlock, NULL, BfEmbeddedStatementFlags_IsDeferredBlock);
 				}
@@ -14374,11 +14398,14 @@ void BfModule::EmitDeferredScopeCalls(bool useSrcPositions, BfScopeData* scopeDa
 		if (hasWork)
 		{
 			SetAndRestoreValue<BfScopeData*> prevScope(mCurMethodState->mCurScope, checkScope);
-
+			
 			if (deferCloseNode != NULL)
 			{							
 				UpdateSrcPos(deferCloseNode);
 			}
+
+			if (checkScope == &mCurMethodState->mHeadScope)
+				CreateRetValLocal();
 
 			if (doneBlock)
 			{

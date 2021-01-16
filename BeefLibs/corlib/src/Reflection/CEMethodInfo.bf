@@ -49,7 +49,7 @@ namespace System.Reflection
 			get
 			{
 				if (Compiler.IsComptime)
-					Type.[Friend]GetType((.)Type.[Friend]Comptime_Method_GetInfo(mNativeMethodInstance).mReturnTypeId);
+					return Type.[Friend]GetType((.)Type.[Friend]Comptime_Method_GetInfo(mNativeMethodInstance).mReturnTypeId);
 				return null;
 			}
 		}

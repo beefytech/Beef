@@ -583,7 +583,7 @@ namespace System
 		{
 			if (Compiler.IsComptime)
 			{
-				return Comptime_Type_GetCustomAttribute((int32)TypeId, typeof(T).TypeId, null);
+				return Comptime_Type_GetCustomAttribute((int32)TypeId, (.)typeof(T).TypeId, null);
 			}
 
 			if (var typeInstance = this as TypeInstance)
@@ -596,7 +596,7 @@ namespace System
 			if (Compiler.IsComptime)
 			{
 				T val = ?;
-				if (Comptime_Type_GetCustomAttribute((int32)TypeId, typeof(T).TypeId, &val))
+				if (Comptime_Type_GetCustomAttribute((int32)TypeId, (.)typeof(T).TypeId, &val))
 					return val;
 				return .Err;
 			}

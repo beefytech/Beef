@@ -48,8 +48,20 @@ namespace Tests
 				String emit = scope $"LogAttribute.gLog.AppendF($\"Called {method}";
 				for (var fieldIdx < method.ParamCount)
 					emit.AppendF($" {{ {method.GetParamName(fieldIdx)} }}");
-				emit.Append("\");");
+				emit.Append("\\n\");");
 				Compiler.EmitMethodEntry(method, emit);
+
+				if (var genericType = method.ReturnType as SpecializedGenericType)
+				{
+					if ((genericType.UnspecializedType == typeof(Result<>)) || (genericType.UnspecializedType == typeof(Result<,>)))
+					{
+						Compiler.EmitMethodExit(method, """
+							if (@return case .Err)
+							LogAttribute.gLog.AppendF($"Error: {@return}");
+							""");
+					}
+					
+				}
 			}
 		}
 
@@ -68,10 +80,16 @@ namespace Tests
 			}
 		}
 
-		[Log]
-		public static void MethodA(int a, int b)
+		enum MethodAErr
 		{
+			ErrorA,
+			ErrorB
+		}
 
+		[Log]
+		static Result<int, MethodAErr> MethodA(int a, int b)
+		{
+			return .Err(.ErrorB);
 		}
 
 		static Type GetBiggerType(Type t)
@@ -104,8 +122,9 @@ namespace Tests
 			Compiler.Mixin("int val = 99;");
 			Test.Assert(val == 99);
 
-			MethodA(34, 45);
-			Debug.Assert(LogAttribute.gLog == "Called Tests.Comptime.MethodA(int a, int b) 34 45");
+
+			MethodA(34, 45).IgnoreError();
+			Debug.Assert(LogAttribute.gLog == "Called Tests.Comptime.MethodA(int a, int b) 34 45\nError: Err(ErrorB)");
 
 			var v0 = GetBigger((int8)123);
 			Test.Assert(v0.GetType() == typeof(int16));

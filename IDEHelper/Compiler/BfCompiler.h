@@ -374,9 +374,10 @@ public:
 	
 	BfTypeDef* mMethodRefTypeDef;
 	BfTypeDef* mNullableTypeDef;
-	
+		
 	BfTypeDef* mPointerTTypeDef;
 	BfTypeDef* mPointerTypeDef;
+	BfTypeDef* mReflectTypeIdTypeDef;
 	BfTypeDef* mReflectArrayType;
 	BfTypeDef* mReflectFieldDataDef;
 	BfTypeDef* mReflectFieldSplatDataDef;
@@ -388,7 +389,7 @@ public:
 	BfTypeDef* mReflectSizedArrayType;
 	BfTypeDef* mReflectSpecializedGenericType;
 	BfTypeDef* mReflectTypeInstanceTypeDef;
-	BfTypeDef* mReflectUnspecializedGenericType;	
+	BfTypeDef* mReflectUnspecializedGenericType;		
 	
 	BfTypeDef* mSizedArrayTypeDef;
 	BfTypeDef* mAttributeTypeDef;

@@ -3727,7 +3727,8 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				wantName = findName;
 				while (wantName.StartsWith("@"))
 				{
-					varSkipCount++;
+					if (wantName != "@return")
+						varSkipCount++;
 					wantName.Remove(0);
 				}
 			}
@@ -9942,7 +9943,10 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 	else if (memberName == "IsSizedArray")
 		_BoolResult(type->IsSizedArray());
 	else if (memberName == "TypeId")
+	{
 		_Int32Result(type->mTypeId);
+		mResult.mType = mModule->ResolveTypeDef(mModule->mCompiler->mReflectTypeIdTypeDef);
+	}
 	else if (memberName == "GenericParamCount")
 	{
 		auto genericTypeInst = type->ToGenericTypeInstance();

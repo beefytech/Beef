@@ -1776,6 +1776,7 @@ public:
 	BfLocalVariable* AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo = false, bool doAliasValue = false, BfIRValue declareBefore = BfIRValue(), BfIRInitType initType = BfIRInitType_NotSet);	
 	bool TryLocalVariableInit(BfLocalVariable* localVar);
 	void LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit);
+	void CreateRetValLocal();
 	void CreateDIRetVal();
 	BfTypedValue CreateTuple(const Array<BfTypedValue>& values, const Array<String>& fieldNames);
 	void CheckTupleVariableDeclaration(BfTupleExpression* tupleExpr, BfType* initType);

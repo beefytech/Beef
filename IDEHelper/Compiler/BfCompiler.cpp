@@ -426,6 +426,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mOrderedAttributeTypeDef = NULL;
 	mPointerTTypeDef = NULL;
 	mPointerTypeDef = NULL;
+	mReflectTypeIdTypeDef = NULL;
 	mReflectArrayType = NULL;
 	mReflectFieldDataDef = NULL;
 	mReflectFieldSplatDataDef = NULL;
@@ -6650,6 +6651,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mOrderedAttributeTypeDef = _GetRequiredType("System.OrderedAttribute");
 	mPointerTTypeDef = _GetRequiredType("System.Pointer", 1);
 	mPointerTypeDef = _GetRequiredType("System.Pointer", 0);
+	mReflectTypeIdTypeDef = _GetRequiredType("System.Reflection.TypeId");
 	mReflectArrayType = _GetRequiredType("System.Reflection.ArrayType");
 	mReflectFieldDataDef = _GetRequiredType("System.Reflection.TypeInstance.FieldData");
 	mReflectFieldSplatDataDef = _GetRequiredType("System.Reflection.TypeInstance.FieldSplatData");

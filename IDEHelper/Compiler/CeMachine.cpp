@@ -2861,11 +2861,11 @@ addr_ce CeContext::GetReflectType(int typeId)
 		ceModule->PopulateType(bfType, BfPopulateType_DataAndMethods);
 
 	Dictionary<int, int> usedStringMap;
-	auto irData = ceModule->CreateTypeData(bfType, usedStringMap, true, true, true, false);	
+	auto irData = ceModule->CreateTypeData(bfType, usedStringMap, true, true, true, false);		
 	
 	BeValue* beValue = NULL;
 	if (auto constant = mCeMachine->mCeModule->mBfIRBuilder->GetConstant(irData))
-	{		
+	{
 		if (constant->mConstType == BfConstType_BitCast)
 		{
 			auto bitcast = (BfConstantBitCast*)constant;
@@ -2875,12 +2875,13 @@ addr_ce CeContext::GetReflectType(int typeId)
 		{
 			auto globalVar = (BfGlobalVar*)constant;
 			beValue = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen->GetBeValue(globalVar->mStreamId);
-		}		
+		}
 	}
-		
-	if (auto constant = BeValueDynCast<BeConstant>(beValue))	
+
+	if (auto constant = BeValueDynCast<BeConstant>(beValue))
 		*addrPtr = GetConstantData(constant);
 
+	// We need to 'get' again because we might have resized	
 	return *addrPtr;
 }
 
@@ -4103,9 +4104,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				int32 size = *(int32*)((uint8*)stackPtr + 4);
 				CE_CHECKALLOC(size);
-				uint8* ptr = CeMalloc(size);
-				addr_ce& result = *(addr_ce*)((uint8*)stackPtr + 0);
-				result = (addr_ce)(ptr - memStart);
+				uint8* ptr = CeMalloc(size);				
+				CeSetAddrVal(stackPtr + 0, ptr - memStart, ptrSize);
 				handled = true;
 				return true;
 			}
@@ -4185,7 +4185,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				auto reflectType = GetReflectType(typeId);
 				_FixVariables();
-				*(addr_ce*)(stackPtr + 0) = reflectType;
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
 				handled = true;
 				return true;
 			}
@@ -4194,7 +4194,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				int32 typeId = *(int32*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
 				auto reflectType = GetReflectType(typeId);
 				_FixVariables();
-				*(addr_ce*)(stackPtr + 0) = reflectType;
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);				
 				handled = true;
 				return true;
 			}
@@ -4209,7 +4209,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 				auto reflectType = GetReflectType(typeName);
 				_FixVariables();
-				*(addr_ce*)(stackPtr + 0) = reflectType;
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
 				handled = true;
 				return true;
 			}
@@ -4220,7 +4220,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				auto reflectType = GetReflectSpecializedType(typeAddr, typeSpan);
 				_FixVariables();
-				*(addr_ce*)(stackPtr + 0) = reflectType;
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
 				handled = true;
 				return true;
 			}
@@ -4348,10 +4348,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 				
+				addr_ce stringAddr = GetString(methodInstance->GetParamName(paramIdx));
+				_FixVariables();
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
 				*(int16*)(stackPtr + 4) = 0; // Flags
-				CeSetAddrVal(stackPtr + 4+2, GetString(methodInstance->GetParamName(paramIdx)), ptrSize);
-				_FixVariables();
+				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);				
 				handled = true;
 				return true;
 			}

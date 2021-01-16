@@ -9768,11 +9768,12 @@ void BfReducer::HandleBlock(BfBlock* block, bool allowEndingExpression)
 			flags = (CreateStmtFlags)(flags | CreateStmtFlags_AllowUnterminatedExpression);
 
 		auto statement = CreateStatement(node, flags);
-		if (statement == NULL)
+		if ((statement == NULL) && (mSource != NULL))
 			statement = mSource->CreateErrorNode(node);
 
 		isDone = !mVisitorPos.MoveNext();
-		mVisitorPos.Write(statement);
+		if (statement != NULL)
+			mVisitorPos.Write(statement);
 	}
 
 	mVisitorPos.Trim();
