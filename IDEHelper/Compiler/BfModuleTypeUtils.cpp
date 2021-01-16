@@ -8677,7 +8677,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 		{
 			const char* refTypeStr = BfTokenToString(refTypeRef->mRefToken->mToken);
 			Fail(StrFormat("Invalid use of '%s'. Only method parameters, return types, and local variables can be declared as %s types", refTypeStr, refTypeStr), refTypeRef->mRefToken);
-			return ResolveTypeRef(refTypeRef->mElementType);
+			return ResolveTypeRef(refTypeRef->mElementType, populateType, resolveFlags, numGenericArgs);
 		}
 	}
 
