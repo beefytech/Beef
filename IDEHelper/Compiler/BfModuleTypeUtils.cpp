@@ -5526,7 +5526,11 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 								BfMethodInstance* newMethodInstance = methodInst.mMethodInstance;
 								BF_ASSERT(newMethodInstance->mIsForeignMethodDef);					
 								if (newMethodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_Decl_AwaitingReference)
-									mOnDemandMethodCount++;								
+								{
+									if (!mIsScratchModule)
+										mOnDemandMethodCount++;
+								}		
+	
 								continue;
 							}
 						}
