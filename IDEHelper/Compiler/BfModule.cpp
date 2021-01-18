@@ -18182,7 +18182,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup)
 	else if (mCurTypeInstance->mTypeDef->mTypeDeclaration != NULL)
 		UpdateSrcPos(mCurTypeInstance->mTypeDef->mTypeDeclaration, BfSrcPosFlag_NoSetDebugLoc);		
 		
-	if (mCurMethodState == NULL) // Only do initial classify for the 'outer' method state, not any local methods or lambdas
+	if ((mCurMethodState == NULL) && (!IsInSpecializedSection())) // Only do initial classify for the 'outer' method state, not any local methods or lambdas
 	{
 		if ((mCompiler->mIsResolveOnly) && (!mIsComptimeModule) && (methodDef->mBody != NULL) && (!mCurTypeInstance->IsBoxed()) &&
 			(methodDef->mBody->IsFromParser(mCompiler->mResolvePassData->mParser)) && (mCompiler->mResolvePassData->mSourceClassifier != NULL))
