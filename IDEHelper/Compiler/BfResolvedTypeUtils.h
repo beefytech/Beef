@@ -817,7 +817,8 @@ public:
 	bool mIsUnspecialized:1;
 	bool mIsUnspecializedVariation:1;
 	bool mIsReified:1;
-	bool mHasBeenProcessed:1;	
+	bool mHasBeenDeclared:1;
+	bool mHasBeenProcessed:1;
 	bool mHasFailed:1;
 	bool mFailedConstraints:1;
 	bool mMangleWithIdx:1;
@@ -856,6 +857,7 @@ public:
 		mIsUnspecialized = false;		
 		mIsUnspecializedVariation = false;
 		mIsReified = true;
+		mHasBeenDeclared = false;
 		mHasBeenProcessed = false;
 		mHasFailed = false;
 		mFailedConstraints = false;
@@ -1256,6 +1258,7 @@ public:
 	int mRefCount; // External references from BfMethodRefType
 	BfMethodOnDemandKind mOnDemandKind;
 	bool mExplicitlyReflected;
+	bool mHasEmittedReference;
 
 public:
 	BfMethodInstanceGroup()
@@ -1267,6 +1270,7 @@ public:
 		mOnDemandKind = BfMethodOnDemandKind_NotSet;
 		mRefCount = 0;
 		mExplicitlyReflected = false;
+		mHasEmittedReference = false;
 	}
 
 	~BfMethodInstanceGroup();	

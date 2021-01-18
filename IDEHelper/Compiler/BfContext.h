@@ -130,7 +130,8 @@ public:
 		ResolveKind_ResolvingVarType,
 		ResolveKind_UnionInnerType,
 		ResolveKind_LocalVariable,
-		ResolveKind_Attributes
+		ResolveKind_Attributes,
+		ResolveKind_ConstField
 	};
 
 public:

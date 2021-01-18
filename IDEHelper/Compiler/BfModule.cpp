@@ -4203,12 +4203,12 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 			if (mCompiler->mCEMachine != NULL)
 				ceExecuteId = mCompiler->mCEMachine->mExecuteId;
 
-			BfTypeState typeState;
+			BfTypeState typeState;			
 			typeState.mTypeInstance = mCurTypeInstance;
 			typeState.mCurTypeDef = fieldDef->mDeclaringType;
 			typeState.mCurFieldDef = fieldDef;
 			SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
-
+			
 			BfConstResolver constResolver(this);
 			if (fieldType->IsVar())
 				return constResolver.Resolve(initializer);
@@ -4224,7 +4224,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 				}
 				UpdateSrcPos(initializer);
 				auto result = constResolver.Resolve(initializer, fieldType, resolveFlags);
-				if (mCompiler->mCEMachine != NULL)
+				if ((mCompiler->mCEMachine != NULL) && (fieldInstance != NULL))
 				{
 					if (mCompiler->mCEMachine->mExecuteId != ceExecuteId)
 						fieldInstance->mHadConstEval = true;
@@ -4588,19 +4588,21 @@ void BfModule::CreateValueTypeEqualsMethod(bool strictEquals)
 		auto _SizedIndex = [&](BfIRValue target, BfIRValue index)
 		{
 			BfTypedValue result;
-			if (sizedArrayType->mElementType->IsSizeAligned())
-			{
-				auto ptrType = CreatePointerType(sizedArrayType->mElementType);
-				auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
-				auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
-				result = BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
-			}
-			else
-			{
+// 			if (sizedArrayType->mElementType->IsSizeAligned())
+// 			{
+// 				auto ptrType = CreatePointerType(sizedArrayType->mElementType);
+// 				auto ptrValue = mBfIRBuilder->CreateBitCast(target, mBfIRBuilder->MapType(ptrType));
+// 				auto gepResult = mBfIRBuilder->CreateInBoundsGEP(ptrValue, index);
+// 				result = BfTypedValue(gepResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+// 			}
+// 			else
+// 			{
+// 				auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
+// 				result = BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
+// 			}
 
-				auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index);
-				result = BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
-			}
+			auto indexResult = CreateIndexedValue(sizedArrayType->mElementType, target, index, true);
+			result = BfTypedValue(indexResult, sizedArrayType->mElementType, BfTypedValueKind_Addr);
 
 			if (!result.mType->IsValueType())
 				result = LoadValue(result);
@@ -10732,6 +10734,12 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 					newVals[fieldInstance.mDataIdx] = memberVal;
 				}
 			}
+
+			for (auto& val : newVals)
+			{
+				if (!val)
+					val = mBfIRBuilder->CreateConstArrayZero(0);
+			}
 		}
 
 		return mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(wantType, BfIRPopulateType_Identity), newVals);
@@ -12034,21 +12042,26 @@ BfIRValue BfModule::ExtractValue(BfTypedValue typedValue, int dataIdx)
 
 BfIRValue BfModule::CreateIndexedValue(BfType* elementType, BfIRValue value, BfIRValue indexValue, bool isElementIndex)
 {
-	if (elementType->IsSizeAligned())
-	{
-		if (isElementIndex)
-			return mBfIRBuilder->CreateInBoundsGEP(value, GetConstValue(0), indexValue);
-		else
-			return mBfIRBuilder->CreateInBoundsGEP(value, indexValue);
-	}
-	
-	auto ptrType = CreatePointerType(elementType);
-	auto ofsVal = mBfIRBuilder->CreateNumericCast(indexValue, true, BfTypeCode_IntPtr);
-	auto ofsScaledVal = mBfIRBuilder->CreateMul(ofsVal, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, elementType->GetStride()));
-	auto i8PtrType = mBfIRBuilder->GetPointerTo(mBfIRBuilder->GetPrimitiveType(BfTypeCode_Int8));
-	BfIRValue origPtrValue = mBfIRBuilder->CreateBitCast(value, i8PtrType);
-	BfIRValue newPtrValue = mBfIRBuilder->CreateInBoundsGEP(origPtrValue, ofsScaledVal);
-	return mBfIRBuilder->CreateBitCast(newPtrValue, mBfIRBuilder->MapType(ptrType));
+	if (isElementIndex)
+		return mBfIRBuilder->CreateInBoundsGEP(value, GetConstValue(0), indexValue);
+	else
+		return mBfIRBuilder->CreateInBoundsGEP(value, indexValue);
+
+// 	if (elementType->IsSizeAligned())
+// 	{
+// 		if (isElementIndex)
+// 			return mBfIRBuilder->CreateInBoundsGEP(value, GetConstValue(0), indexValue);
+// 		else
+// 			return mBfIRBuilder->CreateInBoundsGEP(value, indexValue);
+// 	}
+// 	
+// 	auto ptrType = CreatePointerType(elementType);
+// 	auto ofsVal = mBfIRBuilder->CreateNumericCast(indexValue, true, BfTypeCode_IntPtr);
+// 	auto ofsScaledVal = mBfIRBuilder->CreateMul(ofsVal, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, elementType->GetStride()));
+// 	auto i8PtrType = mBfIRBuilder->GetPointerTo(mBfIRBuilder->GetPrimitiveType(BfTypeCode_Int8));
+// 	BfIRValue origPtrValue = mBfIRBuilder->CreateBitCast(value, i8PtrType);
+// 	BfIRValue newPtrValue = mBfIRBuilder->CreateInBoundsGEP(origPtrValue, ofsScaledVal);
+// 	return mBfIRBuilder->CreateBitCast(newPtrValue, mBfIRBuilder->MapType(ptrType));
 }
 
 BfIRValue BfModule::CreateIndexedValue(BfType* elementType, BfIRValue value, int indexValue, bool isElementIndex)
@@ -13343,6 +13356,14 @@ void BfModule::SetupMethodIdHash(BfMethodInstance* methodInstance)
 	}	
 
 	methodInstance->mIdHash = (int64)hashCtx.Finish64();
+}
+
+bool BfModule::CheckUseMethodInstance(BfMethodInstance* methodInstance, BfAstNode* refNode)
+{
+	if (methodInstance->mHasBeenDeclared)
+		return true;
+	Fail(StrFormat("Circular reference in method instance '%s'", MethodToString(methodInstance).c_str()), refNode);
+	return false;
 }
 
 BfIRValue BfModule::GetInterfaceSlotNum(BfTypeInstance* ifaceType)
@@ -21220,6 +21241,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	if (mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
 		mCurMethodInstance->mMethodInstanceGroup->mOnDemandKind = BfMethodOnDemandKind_Decl_AwaitingReference;
 
+	defer({ mCurMethodInstance->mHasBeenDeclared = true; });
 
 	// If we are doing this then we may end up creating methods when var types are unknown still, failing on splat/zero-sized info
 	BF_ASSERT((!mCurTypeInstance->mResolvingVarField) || (mBfIRBuilder->mIgnoreWrites));
@@ -21246,7 +21268,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		StackOverflow();
 
 	if (typeInstance->IsClosure())
-	{
+	{		
 		if (methodDef->mName == "Invoke")
 			return;
 	}
@@ -22511,7 +22533,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	}
 
 	mCompiler->mStats.mMethodDeclarations++;
-	mCompiler->UpdateCompletion();
+	mCompiler->UpdateCompletion();	
 }
 
 void BfModule::UniqueSlotVirtualMethod(BfMethodInstance* methodInstance)
@@ -23430,7 +23452,8 @@ void BfModule::DbgFinish()
 			{
 				if ((methodInstGroup.IsImplemented()) && (methodInstGroup.mDefault != NULL) && 					
 					(!methodInstGroup.mDefault->mMethodDef->mIsStatic) && (methodInstGroup.mDefault->mIsReified) && (!methodInstGroup.mDefault->mAlwaysInline) &&
-					((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Referenced)))
+					((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Referenced)) &&
+					(methodInstGroup.mHasEmittedReference))
 				{
 					hasConfirmedReference = true;
 				}

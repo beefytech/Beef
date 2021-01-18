@@ -666,6 +666,10 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 			return GetUndefConstValue(BfIRValue());
 		return GetUndefConstValue(constUndef->mType);
 	}
+	else if (fromConst->mConstType == BfConstType_ArrayZero8)
+	{
+		return CreateConstArrayZero(fromConst->mInt32);
+	}
 	else if ((IsInt(fromConst->mTypeCode)) || (fromConst->mTypeCode == BfTypeCode_Boolean) || (fromConst->mTypeCode == BfTypeCode_StringId))
 	{		
 		return CreateConst(fromConst->mTypeCode, fromConst->mUInt64);		
@@ -1287,6 +1291,10 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 		{
 			return StrFormat("Constant %lld", constant->mInt64);
 		}
+		else if (constant->mTypeCode == BfTypeCode_StringId)
+		{
+			return StrFormat("StringId %d", constant->mInt64);
+		}
 		else if (constant->mConstType == BfConstType_GlobalVar)
 		{
 			if (mBfIRCodeGen != NULL)
@@ -1299,8 +1307,17 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 				strStream.flush();
 				return outStr;
 			}
+			else if (mBeIRCodeGen != NULL)
+			{
+				auto gvConst = (BfGlobalVar*)constant;
+				auto val = mBeIRCodeGen->GetBeValue(gvConst->mStreamId);
+				String outStr;
+				BeDumpContext dumpCtx;				
+				dumpCtx.ToString(outStr, val);								
+				return outStr;
+			}
 			else
-				return "???";
+				return "GlobalVar???";
 		}		
 		else if (constant->mConstType == BfConstType_BitCast)
 		{
@@ -1344,7 +1361,7 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 					str += ", ";
 				str += ToString(constAgg->mValues[i]);
 			}
-			str += ");";
+			str += ")";
 			return str;
 		}
 		else if (constant->mConstType == BfConstType_AggZero)
@@ -1390,7 +1407,7 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 			return str;
 		}	
 		else
-			return "???";
+			return "Value???";
 	}
 	else
 	{
@@ -2369,7 +2386,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		}
 		
 		irType = CreateStructType(name);
-		StructSetBody(irType, members, false);
+		StructSetBody(irType, members, type->mSize, type->mAlign, false);
 	}
 	else if (type->IsSizedArray())
 	{
@@ -2390,10 +2407,12 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		
 		if (arrayType->mElementType->IsValuelessType())		
 			irType = elementIrType;		
-		else if (arrayType->mElementType->IsSizeAligned())
-			irType = GetSizedArrayType(MapType(arrayType->mElementType), BF_MAX(arrayType->mElementCount, 0));
 		else
-			irType = GetSizedArrayType(MapType(mModule->GetPrimitiveType(BfTypeCode_Int8)), BF_MAX(arrayType->mSize, 0));
+			irType = GetSizedArrayType(MapType(arrayType->mElementType), BF_MAX(arrayType->mElementCount, 0));
+// 		else if (arrayType->mElementType->IsSizeAligned())
+// 			irType = GetSizedArrayType(MapType(arrayType->mElementType), BF_MAX(arrayType->mElementCount, 0));
+// 		else
+// 			irType = GetSizedArrayType(MapType(mModule->GetPrimitiveType(BfTypeCode_Int8)), BF_MAX(arrayType->mSize, 0));
 
 		if (wantDIData)				
 			diType = DbgCreateArrayType((int64)arrayType->mSize * 8, arrayType->mAlign * 8, DbgGetType(arrayType->mElementType), arrayType->mElementCount);
@@ -2734,9 +2753,17 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 
 						if (fieldInstance->mConstIdx != -1)
 						{
+							if (fieldInstance->GetFieldDef()->mName == "mMembers")
+							{
+								NOP;
+							}
+
 							constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
 							staticValue = mModule->ConstantToCurrent(constant, typeInstance->mConstHolder, resolvedFieldType);
 						}
+
+						if (fieldInstance->mResolvedType->IsComposite())
+							PopulateType(fieldInstance->mResolvedType);
 
 						BfIRMDNode constDIType;
 						if (resolvedFieldType->IsTypedPrimitive())
@@ -2806,7 +2833,8 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 								}
 								else
 								{
-									mModule->FatalError(StrFormat("Invalid constant type for %s", staticVarName.c_str()));
+									// Ignore other types (for now)
+									continue;
 								}
 							}
 							
@@ -2835,8 +2863,9 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 						{
 							int flags = 0;
 							String fieldName = fieldDef->mName;
-							if (constant != NULL)
-							{								
+							if ((constant != NULL) && 
+								((IsInt(constant->mTypeCode)) || (IsFloat(constant->mTypeCode))))
+							{
 								int64 writeVal = constant->mInt64;
 								if (constant->mTypeCode == BfTypeCode_Float)
 								{
@@ -3308,7 +3337,7 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 	}
 
 	if (!typeInstance->IsTypedPrimitive())
-		StructSetBody(MapTypeInst(typeInstance), irFieldTypes, /*isPacked || !isCRepr*/true);
+		StructSetBody(MapTypeInst(typeInstance), irFieldTypes, typeInstance->mInstSize, typeInstance->mInstAlign, true);
 
 	if (typeInstance->IsNullable())
 	{
@@ -3568,9 +3597,9 @@ BfIRType BfIRBuilder::CreateStructType(const BfSizedArray<BfIRType>& memberTypes
 	return retType;
 }
 
-void BfIRBuilder::StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& memberTypes, bool isPacked)
+void BfIRBuilder::StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& memberTypes, int size, int align, bool isPacked)
 {
-	WriteCmd(BfIRCmd_StructSetBody, type, memberTypes, isPacked);
+	WriteCmd(BfIRCmd_StructSetBody, type, memberTypes, size, align, isPacked);
 	NEW_CMD_INSERTED;
 }
 

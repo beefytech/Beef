@@ -76,7 +76,8 @@ enum BfEvalExprFlags
 	BfEvalExprFlags_DisallowComptime = 0x100000,
 	BfEvalExprFlags_InCascade = 0x200000,
 	BfEvalExprFlags_InferReturnType = 0x400000,
-	BfEvalExprFlags_WasMethodRef = 0x800000
+	BfEvalExprFlags_WasMethodRef = 0x800000,
+	BfEvalExprFlags_DeclType = 0x1000000,
 };
 
 enum BfCastFlags
@@ -1918,6 +1919,7 @@ public:
 	BfModuleMethodInstance GetMethodInstance(BfMethodInstance* methodInstance, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
 	BfMethodInstance* GetOuterMethodInstance(BfMethodInstance* methodInstance); // Only useful for local methods
 	void SetupMethodIdHash(BfMethodInstance* methodInstance);
+	bool CheckUseMethodInstance(BfMethodInstance* methodInstance, BfAstNode* refNode);
 
 	// Type Data
 	BfIRValue CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* outNumElements = NULL, String* outMangledName = NULL);

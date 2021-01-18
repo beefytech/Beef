@@ -1330,6 +1330,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 				auto prevBlock = mModule->mBfIRBuilder->GetInsertBlock();
 								
 				BfExprEvaluator exprEvaluator(mModule);									
+				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_Comptime);
 				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowIntUnknown | BfEvalExprFlags_NoAutoComplete);
 				if ((resolvedArg.mArgFlags & BfArgFlag_ParamsExpr) != 0)
 					exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowParamsExpr);
@@ -4465,7 +4466,13 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 					}
 
 					if (fieldInstance->mConstIdx == -1)
-					{							
+					{	
+						if ((mBfEvalExprFlags & BfEvalExprFlags_DeclType) != 0)
+						{
+							// We don't need a real value
+							return BfTypedValue(mModule->GetDefaultValue(resolvedFieldType), resolvedFieldType);
+						}
+
 						curCheckType->mModule->ResolveConstField(curCheckType, fieldInstance, field);
 						if (fieldInstance->mConstIdx == -1)
 							return BfTypedValue(mModule->GetDefaultValue(resolvedFieldType), resolvedFieldType);
@@ -5353,7 +5360,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			else
 			{
 				CeEvalFlags evalFlags = CeEvalFlags_None;				
-				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);				
+				auto constRet = mModule->mCompiler->mCEMachine->Call(targetSrc, mModule, methodInstance, irArgs, evalFlags, mExpectingType);
 				if (constRet)
 				{
 					BF_ASSERT(!constRet.mType->IsVar());
@@ -5624,7 +5631,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	
 	if (returnType->IsComposite())
 		mModule->mBfIRBuilder->PopulateType(returnType);
-		
+	
+	methodInstance->mMethodInstanceGroup->mHasEmittedReference = true;
+
 	BfIRValue callInst;
 	int callIRArgCount = (int)irArgs.size();
 	if (sret != NULL)
@@ -7118,6 +7127,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			mModule->CheckStaticAccess(targetTypeInst);
 	}
 
+	if (methodInstance->mReturnType == NULL)
+	{
+		mModule->AssertErrorState();
+		mModule->Fail("Circular reference in method instance", targetSrc);
+		return BfTypedValue();
+	}
+
 	auto func = moduleMethodInstance.mFunc;	
 	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs);	
 
@@ -7237,7 +7253,11 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	// There should always be a constructor
 	BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
 
-	auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher.mBestMethodGenericArguments);
+	auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher.mBestMethodGenericArguments);	
+	if (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc))
+	{
+		return BfTypedValue();
+	}
 
 	BfAutoComplete* autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)
@@ -7321,7 +7341,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 			{
 				BfExprEvaluator exprEvaluator(mModule);
 				exprEvaluator.mReceivingValue = receivingValue;
-				BfEvalExprFlags flags = (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_NoAutoComplete) | BfEvalExprFlags_NoCast);
+				BfEvalExprFlags flags = (BfEvalExprFlags)((mBfEvalExprFlags & (BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime)) | BfEvalExprFlags_NoCast);
 				if ((paramKind == BfParamKind_Params) || (paramKind == BfParamKind_DelegateParam))
 					flags = (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowParamsExpr);
 
@@ -8556,7 +8576,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		prevBindResult.mPrevVal->mCheckedMultipleMethods = true;
 
 	BfModuleMethodInstance moduleMethodInstance = GetSelectedMethod(targetSrc, curTypeInst, methodDef, methodMatcher);
-	
+	if (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc))
+		return BfTypedValue();
+
 	if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized))
 	{
 		if (methodMatcher.mHasVarArguments)
@@ -14851,6 +14873,10 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		mModule->Fail("Failed to get selected mixin", targetSrc);
 		return;
 	}
+
+	if (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc))	
+		return;	
+
 	auto methodInstance = moduleMethodInstance.mMethodInstance;
 	PerformCallChecks(methodInstance, targetSrc);
 
@@ -17959,6 +17985,8 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 
 					if (expr != NULL)
 					{	
+						auto evalFlags = (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_Comptime);
+
 						bool tryDefer = false;						
  						if ((checkArrayType->IsComposite()) && 
  							((expr->IsA<BfInvocationExpression>()) || (expr->IsExact<BfTupleExpression>())))
@@ -17966,12 +17994,12 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 							// We evaluate with a new scope because this expression may create variables that we don't want to be visible to other
 							//  non-deferred evaluations (since the value may actually be a FakeVal)
 							SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
-							elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType, BfEvalExprFlags_CreateConditionalScope);
+							elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType, (BfEvalExprFlags)(evalFlags | BfEvalExprFlags_CreateConditionalScope));
 							deferredValue = !prevIgnoreWrites.mPrevVal && elementValue.mValue.IsFake();
  						}
 						else
 						{
-							elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType);
+							elementValue = mModule->CreateValueFromExpression(expr, checkArrayType->mElementType, evalFlags);
 						}
 
 						if (!elementValue)
@@ -17981,8 +18009,8 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 							elementValue = mModule->GetDefaultTypedValue(checkArrayType->mElementType);
 
 						// For now, we can't properly create const-valued non-size-aligned composites
-						if (checkArrayType->mElementType->NeedsExplicitAlignment())
-							isAllConst = false;
+// 						if (checkArrayType->mElementType->NeedsExplicitAlignment())
+// 							isAllConst = false;
 						if (!elementValue.mValue.IsConst())
 							isAllConst = false;
 						if (elementValue.IsAddr())
@@ -18173,14 +18201,8 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 			auto allocArrayType = checkArrayType;
 			if (checkArrayType->IsUndefSizedArray())
 				allocArrayType = mModule->CreateSizedArrayType(checkArrayType->GetUnderlyingType(), (int)members.size());
-
-			if (checkArrayType->mElementType->IsStruct())
-			{
-				// This fixed cases where we have non-size-aligned initializers. Assume zero-initialized
-				return mModule->mBfIRBuilder->CreateConstStructZero(mModule->mBfIRBuilder->MapType(checkArrayType)); 
-			}
-			else
-				return mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(checkArrayType), members);
+			
+			return mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(checkArrayType), members);
 		};
 
 		_GetValues(arrayType, openToken, valueExprs, commas, closeToken, false);
@@ -18389,6 +18411,12 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 				if (fieldInstance->mDataIdx < 0)
 					continue;
 				irValues[fieldInstance->mDataIdx] = typedValues[fieldIdx].mValue;
+			}
+
+			for (auto& val : irValues)
+			{
+				if (!val)
+					val = mModule->mBfIRBuilder->CreateConstArrayZero(0);
 			}
 			
 			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(tupleType), irValues), tupleType);

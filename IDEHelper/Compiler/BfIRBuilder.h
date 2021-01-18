@@ -588,7 +588,7 @@ struct BfIRTypeData
 		TypeKind_TypeId,
 		TypeKind_TypeCode,
 		TypeKind_TypeInstId,
-		TypeKind_TypeInstPtrId,
+		TypeKind_TypeInstPtrId,		
 		TypeKind_Stream,
 		TypeKind_SizedArray
 	};
@@ -1141,7 +1141,7 @@ public:
 	BfIRType GetPrimitiveType(BfTypeCode typeCode);	
 	BfIRType CreateStructType(const StringImpl& name);
 	BfIRType CreateStructType(const BfSizedArray<BfIRType>& memberTypes);
-	void StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& memberTypes, bool isPacked);	
+	void StructSetBody(BfIRType type, const BfSizedArray<BfIRType>& memberTypes, int size, int align, bool isPacked);
 	BfIRType MapType(BfType* type, BfIRPopulateType populateType = BfIRPopulateType_Declaration);
 	BfIRType MapTypeInst(BfTypeInstance* typeInst, BfIRPopulateType populateType = BfIRPopulateType_Declaration);
 	BfIRType MapTypeInstPtr(BfTypeInstance* typeInst);

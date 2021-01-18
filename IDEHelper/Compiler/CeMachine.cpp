@@ -978,7 +978,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
  				BF_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray);
  				auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
  				elementType = arrayType->mElementType;
- 				byteOffset = gepConstant->mIdx1 * elementType->mSize;
+ 				byteOffset = gepConstant->mIdx1 * elementType->GetStride();
  			}
  
  			auto elementPtrType = mCeMachine->GetBeContext()->GetPointerTo(elementType);
@@ -987,13 +987,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			EmitFrameOffset(result);
 			EmitFrameOffset(mcVal);
 			Emit(&byteOffset, mPtrSize);
- 			
-// 			result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
-//  			// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use			
-//  			auto vregInfo = GetVRegInfo(result);
-//  			vregInfo->mDefOnFirstUse = true;
-//  			result.mKind = CeOperandKind_VReg;
- 
+
  			return result;
 		}
 		break;
@@ -1843,9 +1837,12 @@ void CeBuilder::Build()
 					if (castedInst->mRetValue != NULL)
 					{
 						auto mcVal = GetOperand(castedInst->mRetValue);
-						BF_ASSERT(mReturnVal.mKind == CeOperandKind_AllocaAddr);
-						EmitSizedOp(CeOp_Move_8, mcVal, NULL, true);
-						Emit((int32)mReturnVal.mFrameOfs);						
+						if (mcVal.mType->mSize > 0)
+						{
+							BF_ASSERT(mReturnVal.mKind == CeOperandKind_AllocaAddr);
+							EmitSizedOp(CeOp_Move_8, mcVal, NULL, true);
+							Emit((int32)mReturnVal.mFrameOfs);
+						}
 					}
 
 					if (instType == BeRetInst::TypeId)
@@ -1974,7 +1971,7 @@ void CeBuilder::Build()
 										Emit((CeOp)(CeOp_AddConst_I32));
 										EmitFrameOffset(result);
 										EmitFrameOffset(ceVal);
-										Emit((int32)(ceIdx1.mImmediate * arrayType->mElementType->mSize));
+										Emit((int32)(ceIdx1.mImmediate * arrayType->mElementType->GetStride()));
 									}
 								}
 								else
@@ -2012,7 +2009,7 @@ void CeBuilder::Build()
 										auto mcElementSize = FrameAlloc(mIntPtrType);
 										Emit(CeOp_Const_32);
 										EmitFrameOffset(mcElementSize);
-										Emit((int32)arrayType->mElementType->mSize);
+										Emit((int32)arrayType->mElementType->GetStride());
 
 										auto ofsValue = FrameAlloc(mIntPtrType);
 										Emit(CeOp_Mul_I32);
@@ -2030,7 +2027,7 @@ void CeBuilder::Build()
 										auto mcElementSize = FrameAlloc(mIntPtrType);
 										Emit(CeOp_Const_64);
 										EmitFrameOffset(mcElementSize);
-										Emit((int64)arrayType->mElementType->mSize);
+										Emit((int64)arrayType->mElementType->GetStride());
 
 										auto ofsValue = FrameAlloc(mIntPtrType);
 										Emit(CeOp_Mul_I64);
@@ -2064,13 +2061,13 @@ void CeBuilder::Build()
 							{
 								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
 								elementType = arrayType->mElementType;
-								byteOffset = ceIdx1.mImmediate * elementType->mSize;
+								byteOffset = ceIdx1.mImmediate * elementType->GetStride();
 							}
 							else if (ptrType->mElementType->mTypeCode == BeTypeCode_Vector)
 							{
 								auto arrayType = (BeVectorType*)ptrType->mElementType;
 								elementType = arrayType->mElementType;
-								byteOffset = ceIdx1.mImmediate * elementType->mSize;
+								byteOffset = ceIdx1.mImmediate * elementType->GetStride();
 							}
 							else
 							{
@@ -2099,7 +2096,7 @@ void CeBuilder::Build()
  						int relScale = 1;
  						if (ceIdx0.IsImmediate())
 						{
-							int byteOffset = ceIdx0.mImmediate * ptrType->mElementType->mSize;
+							int byteOffset = ceIdx0.mImmediate * ptrType->mElementType->GetStride();
 							if (byteOffset != 0)
 							{
 								result = FrameAlloc(ptrType);
@@ -2117,7 +2114,7 @@ void CeBuilder::Build()
 								auto mcElementSize = FrameAlloc(mIntPtrType);
 								Emit(CeOp_Const_32);
 								EmitFrameOffset(mcElementSize);
-								Emit((int32)ptrType->mElementType->mSize);
+								Emit((int32)ptrType->mElementType->GetStride());
 
 								auto ofsValue = FrameAlloc(mIntPtrType);
 								Emit(CeOp_Mul_I32);
@@ -2135,7 +2132,7 @@ void CeBuilder::Build()
 								auto mcElementSize = FrameAlloc(mIntPtrType);
 								Emit(CeOp_Const_64);
 								EmitFrameOffset(mcElementSize);
-								Emit((int64)ptrType->mElementType->mSize);
+								Emit((int64)ptrType->mElementType->GetStride());
 
 								auto ofsValue = FrameAlloc(mIntPtrType);
 								Emit(CeOp_Mul_I64);
@@ -2232,7 +2229,7 @@ void CeBuilder::Build()
 					{
 						auto sizedArray = (BeSizedArrayType*)aggType;
 						memberType = sizedArray->mElementType;
-						byteOffset = BF_ALIGN(memberType->mSize, memberType->mAlign) * castedInst->mIdx;
+						byteOffset = memberType->GetStride() * castedInst->mIdx;
 					}
 					else
 					{
@@ -3348,6 +3345,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 {
 	auto ceModule = mCeMachine->mCeModule;
 	BfIRBuilder* irBuilder = module->mBfIRBuilder;
+	int32 ptrSize = module->mSystem->mPtrSize;
 
 	uint8* memStart = mMemory.mVals;
 	int memSize = mMemory.mSize;
@@ -3443,6 +3441,33 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			CE_CREATECONST_CHECKPTR(charPtr, lenVal);
 			String str(charPtr, lenVal);
 			return module->GetStringObjectValue(str);
+			
+		}
+
+		if (typeInst->IsInstanceOf(mCeMachine->mCompiler->mStringViewTypeDef))
+		{
+			char* charPtr = (char*)memStart + *(addr_ce*)(ptr);
+			int32 lenVal = *(int32*)(ptr + ptrSize);
+
+			CE_CREATECONST_CHECKPTR(charPtr, lenVal);
+			String str(charPtr, lenVal);
+
+			auto stringViewType = ceModule->ResolveTypeDef(mCeMachine->mCompiler->mStringViewTypeDef, BfPopulateType_Data)->ToTypeInstance();
+			auto spanType = stringViewType->mBaseType;
+			auto valueTypeType = spanType->mBaseType;
+
+			SizedArray<BfIRValue, 1> valueTypeValues;
+			BfIRValue valueTypeVal = irBuilder->CreateConstAgg(irBuilder->MapType(valueTypeType, BfIRPopulateType_Full), valueTypeValues);
+
+			SizedArray<BfIRValue, 3> spanValues;
+			spanValues.Add(valueTypeVal);
+			spanValues.Add(module->GetStringCharPtr(str));
+			spanValues.Add(irBuilder->CreateConst(BfTypeCode_IntPtr, lenVal));
+			BfIRValue spanVal = irBuilder->CreateConstAgg(irBuilder->MapType(spanType, BfIRPopulateType_Full), spanValues);
+
+			SizedArray<BfIRValue, 1> stringViewValues;
+			stringViewValues.Add(spanVal);
+			return irBuilder->CreateConstAgg(irBuilder->MapType(stringViewType, BfIRPopulateType_Full), stringViewValues);
 		}
 
 		SizedArray<BfIRValue, 8> fieldVals;
@@ -3499,13 +3524,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			Fail(StrFormat("Reference type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));
 			return BfIRValue();
 		}
-
-		if (typeInst->IsPointer())
-		{
-			Fail(StrFormat("Pointer type '%s' return value not allowed", module->TypeToString(typeInst).c_str()));
-			return BfIRValue();
-		}
-
+		
 		if (typeInst->mBaseType != NULL)
 		{
 			auto result = CreateConstant(module, instData, typeInst->mBaseType);
@@ -3513,7 +3532,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 				return BfIRValue();
 			fieldVals.Add(result);
 		}
-
+		
 		for (int fieldIdx = 0; fieldIdx < typeInst->mFieldInstances.size(); fieldIdx++)
 		{
 			auto& fieldInstance = typeInst->mFieldInstances[fieldIdx];
@@ -3526,7 +3545,7 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 				if (fieldInstance.mResolvedType->IsInteger())
 					fieldVals.Add(irBuilder->CreatePtrToInt(vdataPtr, ((BfPrimitiveType*)fieldInstance.mResolvedType)->mTypeDef->mTypeCode));
 				else
-					fieldVals.Add(vdataPtr);
+					fieldVals.Add(vdataPtr);				
 				continue;
 			}
 
@@ -3535,17 +3554,46 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 				return BfIRValue();
 
 			if (fieldInstance.mDataIdx == fieldVals.mSize)
-				fieldVals.Add(result);
+			{
+				fieldVals.Add(result);				
+			}
 			else
 			{
 				while (fieldInstance.mDataIdx >= fieldVals.mSize)
 					fieldVals.Add(BfIRValue());
-				fieldVals[fieldInstance.mDataIdx] = result;
+				fieldVals[fieldInstance.mDataIdx] = result;				
 			}
+		}
+				
+		for (auto& fieldVal : fieldVals)
+		{
+			if (!fieldVal)
+				fieldVal = irBuilder->CreateConstArrayZero(0);
 		}
 
 		auto instResult = irBuilder->CreateConstAgg(irBuilder->MapTypeInst(typeInst, BfIRPopulateType_Full), fieldVals);
 		return instResult;
+	}
+
+	if (bfType->IsPointer())
+	{
+		Fail(StrFormat("Pointer type '%s' return value not allowed", module->TypeToString(bfType).c_str()));
+		return BfIRValue();
+	}
+
+	if ((bfType->IsSizedArray()) && (!bfType->IsUnknownSizedArrayType()))
+	{
+		SizedArray<BfIRValue, 8> values;
+		auto sizedArrayType = (BfSizedArrayType*)bfType;
+		for (int i = 0; i < sizedArrayType->mElementCount; i++)
+		{
+			auto elemValue = CreateConstant(module, ptr + i * sizedArrayType->mElementType->GetStride(), sizedArrayType->mElementType);
+			if (!elemValue)
+				return BfIRValue();
+			values.Add(elemValue);
+		}		
+
+		return irBuilder->CreateConstAgg(irBuilder->MapType(sizedArrayType, BfIRPopulateType_Full), values);
 	}
 
 	return BfIRValue();
@@ -6085,7 +6133,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 			else if (globalVar->mType->mTypeCode == BeTypeCode_SizedArray)
 			{
 				auto arrayType = (BeSizedArrayType*)globalVar->mType;
-				dataOfs = arrayType->mElementType->mSize * constGep->mIdx1;
+				dataOfs = arrayType->mElementType->GetStride() * constGep->mIdx1;
 			}
 			else
 			{

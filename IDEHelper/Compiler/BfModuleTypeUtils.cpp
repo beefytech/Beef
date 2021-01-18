@@ -1216,7 +1216,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		}
 		if (arrayType->mElementCount > 0)
 		{
-			arrayType->mSize = (arrayType->mElementType->GetStride() * ((int)arrayType->mElementCount - 1)) + arrayType->mElementType->mSize;
+		 	arrayType->mSize = (int)(arrayType->mElementType->GetStride() * arrayType->mElementCount);
 			arrayType->mAlign = std::max((int32)arrayType->mElementType->mAlign, 1);
 		}
 		else if (arrayType->mElementCount < 0)

@@ -161,7 +161,7 @@ BeSizedArrayType* BeContext::CreateSizedArrayType(BeType* type, int length)
 	arrayType->mTypeCode = BeTypeCode_SizedArray;
 	arrayType->mElementType = type;
 	arrayType->mLength = length;
-	arrayType->mSize = type->mSize * length;
+	arrayType->mSize = type->GetStride() * length;
 	arrayType->mAlign = type->mAlign;
 	return arrayType;
 }
@@ -173,7 +173,7 @@ BeVectorType* BeContext::CreateVectorType(BeType* type, int length)
 	arrayType->mTypeCode = BeTypeCode_Vector;
 	arrayType->mElementType = type;
 	arrayType->mLength = length;
-	arrayType->mSize = type->mSize * length;
+	arrayType->mSize = type->GetStride() * length;
 	arrayType->mAlign = type->mAlign;
 	return arrayType;
 }

@@ -91,6 +91,11 @@ public:
 
 	}
 
+	int GetStride()
+	{
+		return BF_ALIGN(mSize, mAlign);
+	}
+
 	bool IsPointer()
 	{
 		return (mTypeCode == BeTypeCode_Pointer) || (mTypeCode == BeTypeCode_NullPtr);

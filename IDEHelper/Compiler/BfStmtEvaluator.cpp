@@ -238,7 +238,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 		instSize = dataPos;
 
 		deferIRType = mBfIRBuilder->CreateStructType(typeName);
-		mBfIRBuilder->StructSetBody(deferIRType, llvmTypes, false);
+		mBfIRBuilder->StructSetBody(deferIRType, llvmTypes, instSize, instAlign, false);
 		
 		auto prevInsertPoint = mBfIRBuilder->GetInsertBlock();
 		if (!isLooped)
@@ -356,7 +356,7 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 			deferredMethodCallData->mAlign = instAlign;
 			deferredMethodCallData->mSize = instSize;
 			deferredMethodCallData->mDeferType = mBfIRBuilder->CreateStructType(typeName);
-			mBfIRBuilder->StructSetBody(deferredMethodCallData->mDeferType, llvmTypes, false);
+			mBfIRBuilder->StructSetBody(deferredMethodCallData->mDeferType, llvmTypes, instSize, instAlign, false);
 			deferredMethodCallData->mDeferTypePtr = mBfIRBuilder->GetPointerTo(deferredMethodCallData->mDeferType);
 		}
 
@@ -6572,10 +6572,8 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		}
 		else
 		{
-			BfIRValue ptrValue = mBfIRBuilder->CreateBitCast(target.mValue, mBfIRBuilder->MapType(ptrType));			
-			arrayItem = BfTypedValue(CreateIndexedValue(arrayType->mElementType, ptrValue, itrVal), arrayType->mElementType, true);
-			if (isRefExpression)
-				arrayItem = BfTypedValue(arrayItem.mValue, CreateRefType(arrayItem.mType));
+			target = MakeAddressable(target);
+			arrayItem = BfTypedValue(CreateIndexedValue(arrayType->mElementType, target.mValue, itrVal, true), arrayType->mElementType, true);
 		}
 		arrayItem = Cast(forEachStmt->mCollectionExpression, arrayItem, varType, BfCastFlags_Explicit);
 		if ((arrayItem) && (!arrayItem.mValue.IsFake()))

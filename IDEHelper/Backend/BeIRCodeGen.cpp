@@ -649,7 +649,7 @@ void BeIRCodeGen::Read(BeType*& beType)
 	else if (typeKind == BfIRType::TypeKind::TypeKind_TypeInstId)
 		beType = typeEntry.mInstBeType;
 	else if (typeKind == BfIRType::TypeKind::TypeKind_TypeInstPtrId)
-		beType = mBeContext->GetPointerTo(typeEntry.mInstBeType);	
+		beType = mBeContext->GetPointerTo(typeEntry.mInstBeType);
 	BE_MEM_END("BeType");
 }
 
@@ -838,28 +838,50 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			for (int i = 0; i < (int)values.size(); i++)
 			{
 				auto val = values[i];
-				BeConstant* constant = BeValueDynCast<BeConstant>(val);
-				constStruct->mMemberValues.push_back(constant);
+				BeConstant* constant = BeValueDynCast<BeConstant>(val);				
 #ifdef _DEBUG
 				if (type->IsSizedArray())
 				{
 					auto arrayType = (BeSizedArrayType*)type;
 					auto memberType = constant->GetType();
-					BF_ASSERT(memberType == arrayType->mElementType);
+					if (memberType != arrayType->mElementType)
+						Fail("ConstAgg array member type mismatch");
 				}
 				else if (type->IsVector())
 				{
 					auto vecType = (BeVectorType*)type;
 					auto memberType = constant->GetType();
-					BF_ASSERT(memberType == vecType->mElementType);
+					if (memberType != vecType->mElementType)
+						Fail("ConstAgg vector member type mismatch");
 				}
 				else
 				{
 					BF_ASSERT(type->IsStruct());
 					auto structType = (BeStructType*)type;
-					auto memberType = constant->GetType();
-					BF_ASSERT(memberType == structType->mMembers[i].mType);
+					auto valType = constant->GetType();					
+					if (structType->mIsOpaque)
+					{
+						Fail("ConstAgg with opaque struct");
+					}
+					else if (valType != structType->mMembers[i].mType)
+					{
+						if ((valType->IsSizedArray()) && (structType->mMembers[i].mType->IsSizedArray()))
+						{
+							auto valSizedType = (BeSizedArrayType*)valType;
+							auto memberSizedType = (BeSizedArrayType*)structType->mMembers[i].mType;
+							if ((valSizedType->mSize == 0) && (valSizedType->mElementType == memberSizedType->mElementType))
+							{								
+								constant->mType = memberSizedType;
+								constStruct->mMemberValues.Add(constant);
+								continue;
+							}
+						}
+
+						Fail("ConstAgg struct member type mismatch");
+					}
 				}
+
+				constStruct->mMemberValues.Add(constant);
 #endif
 			}
 			beValue = constStruct;
@@ -1151,10 +1173,14 @@ void BeIRCodeGen::HandleNextCmd()
 		{			
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(CmdParamVec<BeType*>, members);
+			CMD_PARAM(int, instSize);
+			CMD_PARAM(int, instAlign);
 			CMD_PARAM(bool, isPacked);
 			BF_ASSERT(type->mTypeCode == BeTypeCode_Struct);			
 			auto structType = (BeStructType*)type;
 			mBeContext->SetStructBody(structType, members, isPacked);
+			structType->mSize = instSize;
+			structType->mAlign = instAlign;
 		}
 		break;
 	case  BfIRCmd_Type:

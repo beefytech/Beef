@@ -60,18 +60,24 @@ class BfIRTypeEntry
 {
 public:
 	int mTypeId;
+	int mSize;
+	int mAlign;
 	llvm::DIType* mDIType;
 	llvm::DIType* mInstDIType;
 	llvm::Type* mLLVMType;
+	llvm::Type* mAlignLLVMType;
 	llvm::Type* mInstLLVMType;	
 
 public:
 	BfIRTypeEntry()
 	{
 		mTypeId = -1;
+		mSize = -1;
+		mAlign = -1;
 		mDIType = NULL;
 		mInstDIType = NULL;
 		mLLVMType = NULL;
+		mAlignLLVMType = NULL;
 		mInstLLVMType = NULL;
 	}
 };
@@ -109,6 +115,7 @@ public:
 	Array<llvm::Constant*> mConfigConsts32;
 	Array<llvm::Constant*> mConfigConsts64;
 	Dictionary<llvm::Type*, llvm::Value*> mReflectDataMap;
+	Dictionary<llvm::Type*, llvm::Type*> mAlignedTypeToNormalType;
 
 public:		
 	void InitTarget();
@@ -127,6 +134,8 @@ public:
 	llvm::Type* GetElemType(llvm::Value* value);
 	bool TryMemCpy(llvm::Value* ptr, llvm::Value* val);	
 	bool TryVectorCpy(llvm::Value* ptr, llvm::Value* val);
+	llvm::Type* GetSizeAlignedType(BfIRTypeEntry* typeEntry);
+	llvm::Value* FixGEP(llvm::Value* fromValue, llvm::Value* result);
 
 public:
 	BfIRCodeGen();
@@ -146,10 +155,10 @@ public:
 	void Read(Val128& i);
 	void Read(bool& val);
 	void Read(BfIRTypeEntry*& type);
-	void Read(llvm::Type*& llvmType);
+	void Read(llvm::Type*& llvmType, BfIRTypeEntry** outTypeEntry = NULL);
 	void Read(llvm::FunctionType*& llvmType);
-	void Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry = NULL);
-	void Read(llvm::Constant*& llvmConstant);
+	void Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry = NULL, bool wantSizeAligned = false);
+	void Read(llvm::Constant*& llvmConstant, bool wantSizeAligned = false);
 	void Read(llvm::Function*& llvmFunc);
 	void Read(llvm::BasicBlock*& llvmBlock);
 	void Read(llvm::MDNode*& llvmMD);
@@ -163,6 +172,28 @@ public:
 		{
 			T result;
 			Read(result);
+			vec.push_back(result);
+		}
+	}
+
+	void Read(llvm::SmallVectorImpl<llvm::Value*>& vec, bool wantSizeAligned = false)
+	{
+		int len = (int)ReadSLEB128();
+		for (int i = 0; i < len; i++)
+		{
+			llvm::Value* result;
+			Read(result, NULL, wantSizeAligned);
+			vec.push_back(result);
+		}
+	}
+
+	void Read(llvm::SmallVectorImpl<llvm::Constant*>& vec, bool wantSizeAligned = false)
+	{
+		int len = (int)ReadSLEB128();
+		for (int i = 0; i < len; i++)
+		{
+			llvm::Constant* result;
+			Read(result, wantSizeAligned);
 			vec.push_back(result);
 		}
 	}

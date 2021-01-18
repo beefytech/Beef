@@ -712,7 +712,7 @@ void BfIRCodeGen::Read(BfIRTypeEntry*& type)
 	type = &GetTypeEntry(typeId);
 }
 
-void BfIRCodeGen::Read(llvm::Type*& llvmType)
+void BfIRCodeGen::Read(llvm::Type*& llvmType, BfIRTypeEntry** outTypeEntry)
 {
 	BfIRType::TypeKind typeKind = (BfIRType::TypeKind)mStream->Read();
 	if (typeKind == BfIRType::TypeKind::TypeKind_None)
@@ -759,6 +759,8 @@ void BfIRCodeGen::Read(llvm::Type*& llvmType)
 		llvmType = typeEntry.mInstLLVMType;
 	else if (typeKind == BfIRType::TypeKind::TypeKind_TypeInstPtrId)
 		llvmType = typeEntry.mInstLLVMType->getPointerTo();
+	if (outTypeEntry != NULL)
+		*outTypeEntry = &typeEntry;
 }
 
 void BfIRCodeGen::Read(llvm::FunctionType*& llvmType)
@@ -769,7 +771,7 @@ void BfIRCodeGen::Read(llvm::FunctionType*& llvmType)
 	llvmType = (llvm::FunctionType*)result.mLLVMType;
 }
 
-void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
+void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry, bool wantSizeAligned)
 {
 	BfIRParamType paramType = (BfIRParamType)mStream->Read();
 	if (paramType == BfIRParamType_None)
@@ -903,10 +905,20 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 			llvmValue = llvm::ConstantAggregateZero::get(type);
 			return;
 		}
+		else if (constType == BfConstType_ArrayZero8)
+		{
+			CMD_PARAM(int, count);
+			auto arrType = llvm::ArrayType::get(llvm::Type::getInt8Ty(*mLLVMContext), count);
+			llvmValue = llvm::ConstantAggregateZero::get(arrType);
+			return;
+		}
 		else if (constType == BfConstType_Agg)
 		{
-			CMD_PARAM(llvm::Type*, type);
-			CMD_PARAM(CmdParamVec<llvm::Constant*>, values);
+			BfIRTypeEntry* typeEntry = NULL;
+			llvm::Type* type = NULL;
+			Read(type, &typeEntry);			
+			CmdParamVec<llvm::Constant*> values;
+			Read(values, type->isArrayTy());
 
 			if (auto arrayType = llvm::dyn_cast<llvm::ArrayType>(type))
 			{
@@ -921,7 +933,31 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 			}
 			else if (auto structType = llvm::dyn_cast<llvm::StructType>(type))
 			{
-				llvmValue = llvm::ConstantStruct::get(structType, values);
+				for (int i = 0; i < (int)values.size(); i++)
+				{
+					if (values[i]->getType() != structType->getElementType(i))
+					{
+						auto valArrayType = llvm::dyn_cast<llvm::ArrayType>(values[i]->getType());
+						auto structArrayType = llvm::dyn_cast<llvm::ArrayType>(structType->getElementType(i));
+						if ((valArrayType != NULL) && (structArrayType != NULL))
+						{
+							if ((valArrayType->getNumElements() == 0) && (valArrayType->getElementType() == structArrayType->getElementType()))
+							{
+								values[i] = llvm::ConstantAggregateZero::get(structArrayType);
+							}
+						}
+					}
+				}
+
+				if ((wantSizeAligned) && (typeEntry != NULL))
+				{
+					auto alignedType = llvm::dyn_cast<llvm::StructType>(GetSizeAlignedType(typeEntry));
+					if (type != alignedType)
+						values.push_back(llvm::ConstantAggregateZero::get(alignedType->getElementType(alignedType->getNumElements() - 1)));
+					llvmValue = llvm::ConstantStruct::get(alignedType, values);
+				}
+				else
+					llvmValue = llvm::ConstantStruct::get(structType, values);
 			}
 			else if (auto vecType = llvm::dyn_cast<llvm::VectorType>(type))
 			{
@@ -1046,10 +1082,10 @@ void BfIRCodeGen::Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry)
 	}
 }
 
-void BfIRCodeGen::Read(llvm::Constant*& llvmConstant)
+void BfIRCodeGen::Read(llvm::Constant*& llvmConstant, bool wantSizeAligned)
 {
 	llvm::Value* value;
-	Read(value);
+	Read(value, NULL, wantSizeAligned);
 	if (value == NULL)
 	{
 		llvmConstant = NULL;
@@ -1310,6 +1346,54 @@ bool BfIRCodeGen::TryVectorCpy(llvm::Value* ptr, llvm::Value* val)
 // 	}
 
 	return true;
+}
+
+llvm::Type* BfIRCodeGen::GetSizeAlignedType(BfIRTypeEntry* typeEntry)
+{	
+	if ((typeEntry->mAlignLLVMType == NULL) && ((typeEntry->mSize & (typeEntry->mAlign - 1)) != 0))
+	{
+		auto structType = llvm::dyn_cast<llvm::StructType>(typeEntry->mLLVMType);
+		if (structType != NULL)
+		{
+			BF_ASSERT(structType->isPacked());
+
+			auto alignType = llvm::StructType::create(*mLLVMContext, (structType->getName().str() + "_ALIGNED").c_str());
+			llvm::SmallVector<llvm::Type*, 8> members;
+			for (int elemIdx = 0; elemIdx < (int)structType->getNumElements(); elemIdx++)
+			{
+				members.push_back(structType->getElementType(elemIdx));
+			}
+			int alignSize = BF_ALIGN(typeEntry->mSize, typeEntry->mAlign);
+			int fillSize = alignSize - typeEntry->mSize;
+			members.push_back(llvm::ArrayType::get(llvm::Type::getInt8Ty(*mLLVMContext), fillSize));
+			alignType->setBody(members, structType->isPacked());
+
+			typeEntry->mAlignLLVMType = alignType;
+			mAlignedTypeToNormalType[alignType] = structType;
+		}
+	}
+
+	if (typeEntry->mAlignLLVMType != NULL)
+		return typeEntry->mAlignLLVMType;
+
+	return typeEntry->mLLVMType;
+}
+
+llvm::Value* BfIRCodeGen::FixGEP(llvm::Value* fromValue, llvm::Value* result)
+{
+	if (auto ptrType = llvm::dyn_cast<llvm::PointerType>(fromValue->getType()))
+	{
+		if (auto arrayType = llvm::dyn_cast<llvm::ArrayType>(ptrType->getElementType()))
+		{
+			llvm::Type* normalType = NULL;
+			if (mAlignedTypeToNormalType.TryGetValue(arrayType->getElementType(), &normalType))
+			{
+				return mIRBuilder->CreateBitCast(result, normalType->getPointerTo());
+			}
+		}
+	}
+
+	return result;
 }
 
 void BfIRCodeGen::CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value* size, int alignment, bool isVolatile)
@@ -1604,15 +1688,26 @@ void BfIRCodeGen::HandleNextCmd()
 			SetResult(curId, llvm::StructType::create(*mLLVMContext, typeName.c_str()));
 		}
 		break;	
-	case BfIRCmd_StructSetBody:
+	case BfIRCmd_StructSetBody:		
 		{
-			CMD_PARAM(llvm::Type*, type);
+			llvm::Type* type = NULL;
+			BfIRTypeEntry* typeEntry = NULL;
+
+			Read(type, &typeEntry);
 			CMD_PARAM(CmdParamVec<llvm::Type*>, members);
+			CMD_PARAM(int, instSize);
+			CMD_PARAM(int, instAlign);
 			CMD_PARAM(bool, isPacked);
+			
 			BF_ASSERT(llvm::isa<llvm::StructType>(type));
 			auto structType = (llvm::StructType*)type;
 			if (structType->isOpaque())
 				structType->setBody(members, isPacked);
+			if (typeEntry != NULL)
+			{
+				typeEntry->mSize = instSize;
+				typeEntry->mAlign = instAlign;
+			}
 		}
 		break;
 	case  BfIRCmd_Type:
@@ -1655,9 +1750,15 @@ void BfIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_GetSizedArrayType:
 		{
-			CMD_PARAM(llvm::Type*, elementType);
+			llvm::Type* elementType = NULL;
+			BfIRTypeEntry* elementTypeEntry = NULL;
+
+			Read(elementType, &elementTypeEntry);
 			CMD_PARAM(int, length);
-			SetResult(curId, llvm::ArrayType::get(elementType, length));
+			if (elementTypeEntry != NULL)
+				SetResult(curId, llvm::ArrayType::get(GetSizeAlignedType(elementTypeEntry), length));
+			else
+				SetResult(curId, llvm::ArrayType::get(elementType, length));
 		}
 		break;	
 	case BfIRCmd_GetVectorType:
@@ -2056,7 +2157,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, val);
 			CMD_PARAM(int, idx0);
 			CMD_PARAM(int, idx1);
-			SetResult(curId, mIRBuilder->CreateConstInBoundsGEP2_32(NULL, val, idx0, idx1));
+			SetResult(curId, FixGEP(val, mIRBuilder->CreateConstInBoundsGEP2_32(NULL, val, idx0, idx1)));
 		}
 		break;
 	case BfIRCmd_InBoundsGEP1:
@@ -2072,7 +2173,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, idx0);
 			CMD_PARAM(llvm::Value*, idx1);
 			llvm::Value* indices[2] = { idx0, idx1 };			
-			SetResult(curId, mIRBuilder->CreateInBoundsGEP(val, llvm::makeArrayRef(indices)));
+			SetResult(curId, FixGEP(val, mIRBuilder->CreateInBoundsGEP(val, llvm::makeArrayRef(indices))));
 		}
 		break;
 	case BfIRCmd_IsNull:

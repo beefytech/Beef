@@ -3440,7 +3440,7 @@ int BfResolvedTypeSet::Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHash
 					}
 					else
 					{
-						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget);
+						result = ctx->mModule->CreateValueFromExpression(exprModTypeRef->mTarget, NULL, BfEvalExprFlags_DeclType);
 					}
 				}
 								

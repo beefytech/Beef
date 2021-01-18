@@ -485,6 +485,28 @@ public:
 		this->mSize--;
 	}
 
+	void RemoveAll(const std::function<bool(const T& val)>& func)
+	{
+		int outIdx = 0;
+		for (int i = 0; i < this->mSize; i++)
+		{
+			if (func(this->mVals[i]))
+			{
+				this->mVals[i].~T();
+			}
+			else 
+			{
+				if (i != outIdx)
+				{
+					new (&this->mVals[outIdx]) T(this->mVals[i]);
+				}
+
+				outIdx++;
+			}
+		}
+		this->mSize = outIdx;
+	}
+
 	void RemoveRange(intptr idx, intptr length)
 	{
 		BF_ASSERT(
