@@ -19161,9 +19161,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
             	mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), underlyingType, true);
 			else
 			{
-				mResult = mModule->GetDefaultTypedValue(underlyingType);
-				if (sizedArrayType->mElementCount != 0)
-					mModule->AssertErrorState();
+				mResult = mModule->GetDefaultTypedValue(underlyingType, false, BfDefaultValueKind_Addr);
 			}
 		}
 		else if (target.IsAddr())

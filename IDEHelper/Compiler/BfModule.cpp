@@ -5053,11 +5053,6 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, this);		
 	}
 
-	if (typeDataName == "?sBfTypeData@Zoing@BeefTest@bf@@2HA")
-	{
-		NOP;
-	}
-
 	BfLogSysM("Creating TypeData %s\n", typeDataName.c_str());
 				
 	globalVariable = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(typeTypeInst, BfIRPopulateType_Full), true, BfIRLinkageType_External, BfIRValue(), typeDataName);

@@ -109,6 +109,58 @@ namespace Tests
 			return (.)val;
 		}
 
+		public struct TypePrinter<T>
+		{
+			const int cFieldCount = GetFieldCount();
+			const (int32, StringView)[cFieldCount] cMembers = Make();
+
+			static int GetFieldCount()
+			{
+				int fieldCount = 0;
+				for (let field in typeof(T).GetFields())
+					if (!field.IsStatic)
+						fieldCount++;
+
+				//Debug.WriteLine($"{fieldCount}");
+
+				return fieldCount;
+			}
+			
+			static decltype(cMembers) Make()
+			{
+				if (cFieldCount == 0)
+					return default(decltype(cMembers));
+
+				decltype(cMembers) fields = ?;
+
+				int i = 0;
+				for (let field in typeof(T).GetFields())
+				{
+					if (!field.IsStatic)
+						fields[i++] = (field.MemberOffset, field.Name);
+				}
+
+				return fields;
+			}
+
+			public override void ToString(String strBuffer)
+			{
+				for (var t in cMembers)
+				{
+					if (@t != 0)
+						strBuffer.Append("\n");
+					strBuffer.AppendF($"{t.0} {t.1}");
+				}
+			}
+		}
+
+		struct TestType
+		{
+			public float mX;
+			public float mY;
+			public float mZ;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -122,12 +174,20 @@ namespace Tests
 			Compiler.Mixin("int val = 99;");
 			Test.Assert(val == 99);
 
-
 			MethodA(34, 45).IgnoreError();
 			Debug.Assert(LogAttribute.gLog == "Called Tests.Comptime.MethodA(int a, int b) 34 45\nError: Err(ErrorB)");
 
 			var v0 = GetBigger((int8)123);
 			Test.Assert(v0.GetType() == typeof(int16));
+
+			String str = scope .();
+			TypePrinter<TestType> tp = .();
+			tp.ToString(str);
+			Debug.Assert(str == """
+				0 mX
+				4 mY
+				8 mZ
+				""");
 		}
 	}
 }

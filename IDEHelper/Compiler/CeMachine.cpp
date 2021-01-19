@@ -3686,7 +3686,7 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 
 	AutoTimer autoTimer(mCeMachine->mRevisionExecuteTime);
 
-	SetAndRestoreValue<CeContext*> prevContext(mCeMachine->mCurContext, this);
+ 	SetAndRestoreValue<CeContext*> prevContext(mCeMachine->mCurContext, this);
 	SetAndRestoreValue<CeEvalFlags> prevEvalFlags(mCurEvalFlags, flags);
 	SetAndRestoreValue<BfAstNode*> prevTargetSrc(mCurTargetSrc, targetSrc);
 	SetAndRestoreValue<BfModule*> prevModule(mCurModule, module);
@@ -3942,9 +3942,13 @@ BfTypedValue CeContext::Call(BfAstNode* targetSrc, BfModule* module, BfMethodIns
 				Fail("Failed to encode return argument");
 			}
 		}
+		else if (returnType->IsComposite())
+		{
+			returnValue = BfTypedValue(module->mBfIRBuilder->CreateConstArrayZero(module->mBfIRBuilder->MapType(returnType)), returnType);
+		}
 		else
 		{
-			returnValue = BfTypedValue(module->mBfIRBuilder->GetFakeVal(), returnType);
+			returnValue = BfTypedValue(module->mBfIRBuilder->GetFakeVal(), returnType);			
 		}
 	}
 
