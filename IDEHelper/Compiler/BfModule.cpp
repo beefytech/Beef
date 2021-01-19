@@ -6543,7 +6543,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, Dictionary<int, int>& usedStrin
 				
 		BfIRValue methodNameConst = GetStringObjectValue(methodDef->mName, true);
 						
-		BfMethodFlags methodFlags = moduleMethodInstance.mMethodInstance->GetMethodFlags();
+		BfMethodFlags methodFlags = defaultMethod->GetMethodFlags();
 		
 		int customAttrIdx = _HandleCustomAttrs(methodCustomAttributes);
 

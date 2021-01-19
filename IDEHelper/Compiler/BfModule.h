@@ -1808,6 +1808,7 @@ public:
 	BfTypeInstance* GetBaseType(BfTypeInstance* typeInst);
 	void HandleTypeGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, int typeGenericParamIdx);
 	void HandleMethodGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, BfMethodDef* methodDef, int typeGenericParamIdx);
+	bool ResolveTypeResult_Validate(BfTypeReference* typeRef, BfType* resolvedTypeRef);
 	BfType* ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTypeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags);
 	void ShowAmbiguousTypeError(BfAstNode* refNode, BfTypeDef* typeDef, BfTypeDef* otherTypeDef);
 	void ShowGenericArgCountError(BfTypeReference* typeRef, int wantedGenericParams);	
@@ -1820,7 +1821,7 @@ public:
 	void CheckTypeRefFixit(BfAstNode* typeRef, const char* appendName = NULL);
 	void CheckIdentifierFixit(BfAstNode* node);
 	void TypeRefNotFound(BfTypeReference* typeRef, const char* appendName = NULL);
-	bool ValidateTypeWildcard(BfTypeReference* typeRef, bool isAttributeRef);
+	bool ValidateTypeWildcard(BfTypeReference* typeRef, bool isAttributeRef);	
 	BfType* ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0, int numGenericArgs = 0);
 	BfType* ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, bool resolveGenericParam = true);
 	BfType* ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfTypeReference*>* genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);

@@ -7695,6 +7695,63 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 	return GetGenericTypeParamInstance(type->mGenericParamIdx);
 }
 
+bool BfModule::ResolveTypeResult_Validate(BfTypeReference* typeRef, BfType* resolvedTypeRef)
+{
+	if ((typeRef == NULL) || (resolvedTypeRef == NULL))
+		return true;
+
+	BfTypeInstance* genericTypeInstance = resolvedTypeRef->ToGenericTypeInstance();
+	
+	if ((genericTypeInstance != NULL) && (genericTypeInstance != mCurTypeInstance))
+	{
+		bool doValidate = (genericTypeInstance->mGenericTypeInfo->mHadValidateErrors) ||
+			(!genericTypeInstance->mGenericTypeInfo->mValidatedGenericConstraints) ||
+			(genericTypeInstance->mGenericTypeInfo->mIsUnspecializedVariation);
+		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->IsOrInUnspecializedVariation()))
+			doValidate = false;
+		if (mCurTypeInstance != NULL)
+		{
+			if (mCurTypeInstance->IsUnspecializedTypeVariation())
+				doValidate = false;
+			if (auto curGenericTypeInstance = mCurTypeInstance->ToGenericTypeInstance())
+			{
+				if ((curGenericTypeInstance->mDependencyMap.mMinDependDepth > 32) &&
+					(genericTypeInstance->mDependencyMap.mMinDependDepth > 32))
+				{
+					Fail(StrFormat("Generic type dependency depth exceeded for type '{}'", TypeToString(genericTypeInstance).c_str()), typeRef);
+					return false;
+				}
+
+				if (curGenericTypeInstance->mGenericTypeInfo->mHadValidateErrors)
+					doValidate = false;
+			}
+			if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mCurBaseTypeRef != NULL) && (!mContext->mCurTypeState->mTypeInstance->IsTypeAlias())) // We validate constraints for base types later
+				doValidate = false;
+		}
+
+		if (doValidate)
+			ValidateGenericConstraints(typeRef, genericTypeInstance, false);
+	}
+
+	if (auto genericInstanceTypeRef = BfNodeDynCastExact<BfGenericInstanceTypeRef>(typeRef))
+	{
+		if (genericTypeInstance != NULL)
+		{
+			auto genericTypeInfo = genericTypeInstance->GetGenericTypeInfo();			
+			for (int argIdx = 0; argIdx < (int)genericInstanceTypeRef->mGenericArguments.size(); argIdx++)
+			{
+				ResolveTypeResult_Validate(genericInstanceTypeRef->mGenericArguments[argIdx], genericTypeInfo->mTypeGenericArguments[argIdx]);
+			}
+		}
+	}	
+	else if (auto elementedTypeRef = BfNodeDynCast<BfElementedTypeRef>(typeRef))
+	{
+		return ResolveTypeResult_Validate(elementedTypeRef, resolvedTypeRef->GetUnderlyingType());
+	}
+
+	return true;
+}
+
 BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTypeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
 {
 	if ((mCompiler->mIsResolveOnly) && (!IsInSpecializedSection()))
@@ -7946,36 +8003,8 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	
 	populateModule->PopulateType(resolvedTypeRef, populateType);
 	
-	if ((genericTypeInstance != NULL) && (genericTypeInstance != mCurTypeInstance) && (populateType > BfPopulateType_Identity))
-	{
-		bool doValidate = (genericTypeInstance->mGenericTypeInfo->mHadValidateErrors) || 
-			(!genericTypeInstance->mGenericTypeInfo->mValidatedGenericConstraints) || 
-			(genericTypeInstance->mGenericTypeInfo->mIsUnspecializedVariation);
-		if ((mCurMethodInstance != NULL) && (mCurMethodInstance->IsOrInUnspecializedVariation()))
-			doValidate = false;
-		if (mCurTypeInstance != NULL)
-		{
-			if (mCurTypeInstance->IsUnspecializedTypeVariation())
-				doValidate = false;
-			if (auto curGenericTypeInstance = mCurTypeInstance->ToGenericTypeInstance())
-			{
-				if ((curGenericTypeInstance->mDependencyMap.mMinDependDepth > 32) &&
-					(genericTypeInstance->mDependencyMap.mMinDependDepth > 32))
-				{
-					Fail(StrFormat("Generic type dependency depth exceeded for type '{}'", TypeToString(genericTypeInstance).c_str()), typeRef);
-					return NULL;
-				}
-
-				if (curGenericTypeInstance->mGenericTypeInfo->mHadValidateErrors)
-					doValidate = false;
-			}
-			if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mCurBaseTypeRef != NULL) && (!mContext->mCurTypeState->mTypeInstance->IsTypeAlias())) // We validate constraints for base types later
-				doValidate = false;
-		}
-
-		if (doValidate)
-			ValidateGenericConstraints(typeRef, genericTypeInstance, false);
-	}
+	if ((populateType > BfPopulateType_Identity) && (!ResolveTypeResult_Validate(typeRef, resolvedTypeRef)))
+		return NULL;	
 	
 	if (populateType != BfPopulateType_IdentityNoRemapAlias)
 	{
