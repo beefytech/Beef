@@ -839,7 +839,7 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 			{
 				auto val = values[i];
 				BeConstant* constant = BeValueDynCast<BeConstant>(val);				
-#ifdef _DEBUG
+
 				if (type->IsSizedArray())
 				{
 					auto arrayType = (BeSizedArrayType*)type;
@@ -882,9 +882,9 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 				}
 
 				constStruct->mMemberValues.Add(constant);
-#endif
 			}
 			beValue = constStruct;
+
 			BE_MEM_END("ParamType_Const_Array");
 			return;
 		}
@@ -1236,7 +1236,7 @@ void BeIRCodeGen::HandleNextCmd()
 		}
 		break;	
 	case BfIRCmd_CreateConstAgg:
-		{
+		{			
 			CMD_PARAM(BeType*, type);
 			CMD_PARAM(CmdParamVec<BeValue*>, values);
 

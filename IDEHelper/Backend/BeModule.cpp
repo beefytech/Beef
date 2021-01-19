@@ -3005,6 +3005,12 @@ void BeModule::AddInst(BeInst* inst)
 
 void BeModule::ToString(StringImpl& str, BeType* type)
 {
+	if (type == NULL)
+	{
+		str += "<MissingType>";
+		return;
+	}
+
 	switch (type->mTypeCode)
 	{
 	case BeTypeCode_None:

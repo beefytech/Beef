@@ -746,7 +746,7 @@ BfIRValue BfIRConstHolder::CreateConstAgg(BfIRType type, const BfSizedArray<BfIR
 		BF_ASSERT(val);
 	}
 #endif
-
+	
 	BfConstantAgg* constant = mTempAlloc.Alloc<BfConstantAgg>();
 	constant->mConstType = BfConstType_Agg;
 	constant->mType = type = type;
@@ -1297,9 +1297,12 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 		}
 		else if (constant->mConstType == BfConstType_GlobalVar)
 		{
-			if (mBfIRCodeGen != NULL)
+			auto gvConst = (BfGlobalVar*)constant;
+			if (gvConst->mStreamId == -1)
 			{
-				auto gvConst = (BfGlobalVar*)constant;
+			}
+			else if (mBfIRCodeGen != NULL)
+			{				
 				auto val = mBfIRCodeGen->GetLLVMValue(gvConst->mStreamId);
 				std::string outStr;
 				llvm::raw_string_ostream strStream(outStr);
@@ -1308,8 +1311,7 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 				return outStr;
 			}
 			else if (mBeIRCodeGen != NULL)
-			{
-				auto gvConst = (BfGlobalVar*)constant;
+			{				
 				auto val = mBeIRCodeGen->GetBeValue(gvConst->mStreamId);
 				String outStr;
 				BeDumpContext dumpCtx;				
@@ -1317,7 +1319,7 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 				return outStr;
 			}
 			else
-				return "GlobalVar???";
+				return String("GlobalVar ") + gvConst->mName;
 		}		
 		else if (constant->mConstType == BfConstType_BitCast)
 		{
@@ -1367,6 +1369,16 @@ String BfIRBuilder::ToString(BfIRValue irValue)
 		else if (constant->mConstType == BfConstType_AggZero)
 		{
 			return ToString(constant->mIRType) + " zeroinitializer";
+		}
+		else if (constant->mConstType == BfConstType_TypeOf)
+		{
+			auto typeofConst = (BfTypeOf_Const*)constant;
+			return "typeof " + mModule->TypeToString(typeofConst->mType);
+		}
+		else if (constant->mConstType == BfConstType_TypeOf_WithData)
+		{
+			auto typeofConst = (BfTypeOf_WithData_Const*)constant;
+			return "typeof_withData " + mModule->TypeToString(typeofConst->mType);
 		}
 		else
 		{
@@ -1485,7 +1497,7 @@ String BfIRBuilder::ToString(BfIRType irType)
 	}
 	else if (irType.mKind == BfIRTypeData::TypeKind_TypeId)
 	{
-		return StrFormat("Type Id %d", irType.mId);
+		return StrFormat("Type Id %d (%s)", irType.mId, mModule->TypeToString(mModule->mContext->mTypes[irType.mId]).c_str());
 	}
 	else
 	{

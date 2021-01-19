@@ -120,9 +120,6 @@ namespace Tests
 				for (let field in typeof(T).GetFields())
 					if (!field.IsStatic)
 						fieldCount++;
-
-				//Debug.WriteLine($"{fieldCount}");
-
 				return fieldCount;
 			}
 			
